@@ -76,7 +76,7 @@ project are:
 
     .. warning::
 
-      The default value ``./*.cabal`` only takes effect if there is no explicit 
+      The default value ``./*.cabal`` only takes effect if there is no explicit
       ``cabal.project`` file.
       If you use such explicit file you *must* fill the field.
 
@@ -302,7 +302,7 @@ package, and thus apply globally:
     This option cannot be specified via a ``cabal.project`` file.
 
 .. option:: --ignore-project
-    
+
     Ignores the local ``cabal.project`` file and uses the default
     configuration with the local ``foo.cabal`` file. Note that
     if this flag is set while the ``--project-file`` flag is also
@@ -1661,7 +1661,7 @@ Most users generally won't need these.
                --fine-grained-conflicts
                --no-fine-grained-conflicts
     :synopsis: Skip a version of a package if it does not resolve any conflicts
-	       encountered in the last version (solver optimization).
+               encountered in the last version (solver optimization).
 
     :default: True
 
@@ -1678,7 +1678,7 @@ Most users generally won't need these.
                --minimize-conflict-set
                --no-minimize-conflict-set
     :synopsis: Try to improve the solver error message when there is no
-	       solution.
+               solution.
 
     :default: False
 

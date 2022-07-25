@@ -37,11 +37,11 @@ does.
 So, you cannot have
 
 ```
-	Section heading
-	===============
+    Section heading
+    ===============
 
-	Some unimportant block
-	""""""""""""""""""""""
+    Some unimportant block
+    """"""""""""""""""""""
 ```
 
   instead you need to observe order and either promote your block:

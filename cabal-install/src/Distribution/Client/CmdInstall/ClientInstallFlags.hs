@@ -66,7 +66,7 @@ clientInstallOptions _ =
     "How to handle already existing symlinks."
     cinstOverwritePolicy (\v flags -> flags { cinstOverwritePolicy = v })
     $ reqArg "always|never|prompt"
-        (parsecToReadE (\err -> "Error parsing overwrite-policy: " ++ err) (toFlag `fmap` parsec)) 
+        (parsecToReadE (\err -> "Error parsing overwrite-policy: " ++ err) (toFlag `fmap` parsec))
         (map prettyShow . flagToList)
   , option [] ["install-method"]
     "How to install the executables."

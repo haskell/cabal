@@ -31,7 +31,7 @@ data SPDXLicenseListVersion
     | SPDXLicenseListVersion_3_6
     | SPDXLicenseListVersion_3_9
     | SPDXLicenseListVersion_3_10
-    | SPDXLicenseListVersion_3_16 
+    | SPDXLicenseListVersion_3_16
   deriving (Eq, Ord, Show, Enum, Bounded)
 
 allVers :: Set.Set SPDXLicenseListVersion

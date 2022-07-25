@@ -31,7 +31,7 @@ import qualified Text.PrettyPrint as Disp
 -- LicenseId
 -------------------------------------------------------------------------------
 
--- | SPDX License identifiers list v3.16 
+-- | SPDX License identifiers list v3.16
 data LicenseId
 {{ licenseIds }}
   deriving (Eq, Ord, Enum, Bounded, Show, Read, Typeable, Data)

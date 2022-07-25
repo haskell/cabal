@@ -13,7 +13,7 @@ main = setupTest $ do
     buildInfo <- decodeBuildInfoFile buildInfoFp
     assertCommonBuildInfo buildInfo
     let [libBI, exeBI] = components buildInfo
-    
+
     assertComponentPure libBI defCompAssertion
       { modules = ["MyLib"]
       , compType = "lib"

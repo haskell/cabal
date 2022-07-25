@@ -18,26 +18,26 @@ import Distribution.Simple
 import Distribution.Simple.Flag
 
 tests :: [TestTree]
-tests = 
+tests =
     [ configureTests
     ]
 
 configureTests :: TestTree
 configureTests = testGroup "Configure tests"
     [ testCase "New config" $ do
-        let flags = (defaultNixStyleFlags ()) 
+        let flags = (defaultNixStyleFlags ())
               { configFlags = mempty
                   { configOptimization = Flag MaximumOptimisation
                   , configVerbosity = Flag silent
                   }
               }
         projConfig <- configureAction' flags [] defaultGlobalFlags
-        
+
         Flag MaximumOptimisation @=?
           (packageConfigOptimization . projectConfigLocalPackages $ snd projConfig)
 
     , testCase "Replacement + new config" $ do
-        let flags = (defaultNixStyleFlags ()) 
+        let flags = (defaultNixStyleFlags ())
               { configExFlags = mempty
                   { configAppend = Flag True }
               , configFlags = mempty
@@ -51,9 +51,9 @@ configureTests = testGroup "Configure tests"
 
         Flag NoOptimisation @=? packageConfigOptimization projectConfigLocalPackages
         Flag silent         @=? projectConfigVerbosity projectConfigBuildOnly
-    
+
     , testCase "Old + new config" $ do
-        let flags = (defaultNixStyleFlags ()) 
+        let flags = (defaultNixStyleFlags ())
               { configExFlags = mempty
                   { configAppend = Flag True }
               , configFlags = mempty
@@ -65,9 +65,9 @@ configureTests = testGroup "Configure tests"
 
         Flag MaximumOptimisation @=? packageConfigOptimization projectConfigLocalPackages
         Flag silent              @=? projectConfigVerbosity projectConfigBuildOnly
-    
+
     , testCase "Old + new config, no appending" $ do
-        let flags = (defaultNixStyleFlags ()) 
+        let flags = (defaultNixStyleFlags ())
               { configFlags = mempty
                   { configVerbosity = Flag silent }
               , projectFlags = mempty
@@ -77,9 +77,9 @@ configureTests = testGroup "Configure tests"
 
         NoFlag      @=? packageConfigOptimization projectConfigLocalPackages
         Flag silent @=? projectConfigVerbosity projectConfigBuildOnly
-    
+
     , testCase "Old + new config, backup check" $ do
-        let flags = (defaultNixStyleFlags ()) 
+        let flags = (defaultNixStyleFlags ())
               { configFlags = mempty
                   { configVerbosity = Flag silent }
               , projectFlags = mempty
@@ -88,7 +88,7 @@ configureTests = testGroup "Configure tests"
             backup = projectFile <.> "local~"
 
         exists <- doesFileExist backup
-        when exists $ 
+        when exists $
           removeFile backup
 
         _ <- configureAction' flags [] defaultGlobalFlags

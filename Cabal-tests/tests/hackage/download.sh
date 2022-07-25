@@ -5,7 +5,7 @@ if test ! -f archive/archive.tar; then
   wget http://hackage.haskell.org/cgi-bin/hackage-scripts/archive.tar
   mkdir -p archive
   mv archive.tar archive/
-  tar -C archive -xf archive/archive.tar    
+  tar -C archive -xf archive/archive.tar
 
 fi
 

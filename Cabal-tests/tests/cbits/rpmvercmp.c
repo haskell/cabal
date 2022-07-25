@@ -21,10 +21,10 @@
 #include <stdlib.h>
 
 /* macros to help code look more like upstream */
-#define rstreq(a, b)	(strcmp(a, b) == 0)
-#define risalnum(c)	isalnum((char)(c))
-#define risdigit(c)	isdigit((char)(c))
-#define risalpha(c)	isalpha((char)(c))
+#define rstreq(a, b)    (strcmp(a, b) == 0)
+#define risalnum(c)     isalnum((char)(c))
+#define risdigit(c)     isdigit((char)(c))
+#define risalpha(c)     isalpha((char)(c))
 
 int rmpvercmp_impl(const char *a, const char *b, char *buf1, char *buf2);
 
@@ -39,7 +39,7 @@ int rpmvercmp(const char * a, const char * b)
 
     char *buf1 = malloc(strlen(a) + 1);
     char *buf2 = malloc(strlen(b) + 1);
-    
+
     if (!buf1 || !buf2) return 0; // arbitrary
 
     int r = rmpvercmp_impl(a, b, buf1, buf2);
@@ -64,71 +64,71 @@ int rmpvercmp_impl(const char *a, const char *b, char *str1, char *str2) {
 
     /* loop through each version segment of str1 and str2 and compare them */
     while (*one && *two) {
-	while (*one && !risalnum(*one)) one++;
-	while (*two && !risalnum(*two)) two++;
+        while (*one && !risalnum(*one)) one++;
+        while (*two && !risalnum(*two)) two++;
 
-	/* If we ran to the end of either, we are finished with the loop */
-	if (!(*one && *two)) break;
+        /* If we ran to the end of either, we are finished with the loop */
+        if (!(*one && *two)) break;
 
-	str1 = one;
-	str2 = two;
+        str1 = one;
+        str2 = two;
 
-	/* grab first completely alpha or completely numeric segment */
-	/* leave one and two pointing to the start of the alpha or numeric */
-	/* segment and walk str1 and str2 to end of segment */
-	if (risdigit(*str1)) {
-	    while (*str1 && risdigit(*str1)) str1++;
-	    while (*str2 && risdigit(*str2)) str2++;
-	    isnum = 1;
-	} else {
-	    while (*str1 && risalpha(*str1)) str1++;
-	    while (*str2 && risalpha(*str2)) str2++;
-	    isnum = 0;
-	}
+        /* grab first completely alpha or completely numeric segment */
+        /* leave one and two pointing to the start of the alpha or numeric */
+        /* segment and walk str1 and str2 to end of segment */
+        if (risdigit(*str1)) {
+            while (*str1 && risdigit(*str1)) str1++;
+            while (*str2 && risdigit(*str2)) str2++;
+            isnum = 1;
+        } else {
+            while (*str1 && risalpha(*str1)) str1++;
+            while (*str2 && risalpha(*str2)) str2++;
+            isnum = 0;
+        }
 
-	/* save character at the end of the alpha or numeric segment */
-	/* so that they can be restored after the comparison */
-	oldch1 = *str1;
-	*str1 = '\0';
-	oldch2 = *str2;
-	*str2 = '\0';
+        /* save character at the end of the alpha or numeric segment */
+        /* so that they can be restored after the comparison */
+        oldch1 = *str1;
+        *str1 = '\0';
+        oldch2 = *str2;
+        *str2 = '\0';
 
-	/* this cannot happen, as we previously tested to make sure that */
-	/* the first string has a non-null segment */
-	if (one == str1) return -1;	/* arbitrary */
+        /* this cannot happen, as we previously tested to make sure that */
+        /* the first string has a non-null segment */
+        if (one == str1) return -1;     /* arbitrary */
 
-	/* take care of the case where the two version segments are */
-	/* different types: one numeric, the other alpha (i.e. empty) */
-	/* numeric segments are always newer than alpha segments */
-	/* XXX See patch #60884 (and details) from bugzilla #50977. */
-	if (two == str2) return (isnum ? 1 : -1);
+        /* take care of the case where the two version segments are */
+        /* different types: one numeric, the other alpha (i.e. empty) */
+        /* numeric segments are always newer than alpha segments */
+        /* XXX See patch #60884 (and details) from bugzilla #50977. */
+        if (two == str2) return (isnum ? 1 : -1);
 
-	if (isnum) {
-	    /* this used to be done by converting the digit segments */
-	    /* to ints using atoi() - it's changed because long  */
-	    /* digit segments can overflow an int - this should fix that. */
+        if (isnum) {
+            /* this used to be done by converting the digit segments */
+            /* to ints using atoi() - it's changed because long  */
+            /* digit segments can overflow an int - this should fix that. */
 
-	    /* throw away any leading zeros - it's a number, right? */
-	    while (*one == '0') one++;
-	    while (*two == '0') two++;
+            /* throw away any leading zeros - it's a number, right? */
+            while (*one == '0') one++;
+            while (*two == '0') two++;
 
-	    /* whichever number has more digits wins */
-	    if (strlen(one) > strlen(two)) return 1;
-	    if (strlen(two) > strlen(one)) return -1;
-	}
+            /* whichever number has more digits wins */
+            if (strlen(one) > strlen(two)) return 1;
+            if (strlen(two) > strlen(one)) return -1;
+        }
 
-	/* strcmp will return which one is greater - even if the two */
-	/* segments are alpha or if they are numeric.  don't return  */
-	/* if they are equal because there might be more segments to */
-	/* compare */
-	rc = strcmp(one, two);
-	if (rc) return (rc < 1 ? -1 : 1);
+        /* strcmp will return which one is greater - even if the two */
+        /* segments are alpha or if they are numeric.  don't return  */
+        /* if they are equal because there might be more segments to */
+        /* compare */
+        rc = strcmp(one, two);
+        if (rc) return (rc < 1 ? -1 : 1);
 
-	/* restore character that was replaced by null above */
-	*str1 = oldch1;
-	one = str1;
-	*str2 = oldch2;
-	two = str2;
+        /* restore character that was replaced by null above */
+        *str1 = oldch1;
+        one = str1;
+        *str2 = oldch2;
+        two = str2;
     }
 
     /* this catches the case where all numeric and alpha segments have */

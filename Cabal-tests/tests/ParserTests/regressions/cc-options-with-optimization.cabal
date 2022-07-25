@@ -6,7 +6,7 @@ maintainer:    me@example.com
 name:          cxx-options-with-optimization
 synopsis:      test a build check
 version:       1
-         
+
 library
     build-depends: base >= 4.9 && <4.10
     cc-options: -O2

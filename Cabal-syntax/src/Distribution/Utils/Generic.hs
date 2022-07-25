@@ -237,7 +237,7 @@ validateUTF8 = go 0 where
         Just (cn, bs') | cn .&. 0xC0 == 0x80 ->
             moreBytes (off + 1) (byteCount-1) overlong bs' ((acc `shiftL` 6) .|. fromIntegral cn .&. 0x3F)
         _ -> Just off
-        
+
 
 -- | Ignore a Unicode byte order mark (BOM) at the beginning of the input
 --

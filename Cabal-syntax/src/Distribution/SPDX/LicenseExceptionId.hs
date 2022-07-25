@@ -29,7 +29,7 @@ import qualified Text.PrettyPrint as Disp
 -- LicenseExceptionId
 -------------------------------------------------------------------------------
 
--- | SPDX License Exceptions identifiers list v3.16 
+-- | SPDX License Exceptions identifiers list v3.16
 data LicenseExceptionId
     = DS389_exception -- ^ @389-exception@, 389 Directory Server Exception
     | Autoconf_exception_2_0 -- ^ @Autoconf-exception-2.0@, Autoconf exception 2.0

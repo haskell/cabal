@@ -25,7 +25,7 @@ module Distribution.Client.Sandbox.PackageEnvironment (
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
-import Distribution.Client.Config      ( SavedConfig(..) 
+import Distribution.Client.Config      ( SavedConfig(..)
                                        , configFieldDescriptions
                                        , haddockFlagsFields
                                        , installDirsFields, withProgramsFields
@@ -45,7 +45,7 @@ import Distribution.Deprecated.ParseUtils         ( FieldDescr(..), ParseResult(
                                        , commaListFieldParsec, commaNewLineListFieldParsec
                                        , liftField, lineNo, locatedErrorMsg
                                        , readFields
-                                       , showPWarning 
+                                       , showPWarning
                                        , syntaxError, warning )
 import System.Directory                ( doesFileExist )
 import System.FilePath                 ( (</>) )

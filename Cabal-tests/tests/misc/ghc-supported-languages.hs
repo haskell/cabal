@@ -23,7 +23,7 @@ checkProblems :: [Extension] -> [String]
 checkProblems implemented =
 
   let unregistered  =
-        [ ext | ext <- implemented          -- extensions that ghc knows about 
+        [ ext | ext <- implemented          -- extensions that ghc knows about
               , not (registered ext)        -- but that are not registered
               , ext `notElem` exceptions ]  -- except for the exceptions
 
@@ -31,10 +31,10 @@ checkProblems implemented =
 
       -- exceptions that are not implemented
       badExceptions  = exceptions \\ implemented
-      
+
       -- exceptions that are now registered
       badExceptions' = filter registered exceptions
-      
+
    in catMaybes
       [ check unregistered $ unlines
           [ "The following extensions are known to GHC but are not in the "
@@ -66,7 +66,7 @@ checkProblems implemented =
    registered (UnknownExtension _) = False
    registered _                    = True
 
-   check [] _ = Nothing  
+   check [] _ = Nothing
    check _  i = Just i
 
 

@@ -37,7 +37,7 @@ import Distribution.Client.BuildReports.Types
 import Distribution.Client.Version            (cabalInstallVersion)
 import Distribution.Compiler                  (CompilerId (..))
 import Distribution.FieldGrammar
-import Distribution.Fields                   
+import Distribution.Fields
 import Distribution.Package                   (PackageIdentifier (..), mkPackageName)
 import Distribution.PackageDescription        (FlagAssignment)
 import Distribution.Parsec

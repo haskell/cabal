@@ -159,7 +159,7 @@ getHaddockProg :: Verbosity
                -> Compiler
                -> HaddockArgs
                -> Flag Bool -- ^ quickjump feature
-               -> IO (ConfiguredProgram, Version) 
+               -> IO (ConfiguredProgram, Version)
 getHaddockProg verbosity programDb comp args quickJumpFlag = do
     let HaddockArgs { argQuickJump
                     , argOutput
@@ -349,7 +349,7 @@ haddock pkg_descr lbi suffixes flags' = do
 
 
 -- | Execute 'Haddock' configured with 'HaddocksFlags'.  It is used to build
--- index and contents for documentation of multiple packages. 
+-- index and contents for documentation of multiple packages.
 --
 createHaddockIndex :: Verbosity
                    -> ProgramDb
@@ -641,7 +641,7 @@ renderArgs verbosity tmpFileOpts version comp platform args k = do
       haddockSupportsResponseFiles = version >  mkVersion [2,16,2]
   createDirectoryIfMissingVerbose verbosity True outputDir
   case argPrologue args of
-    Flag prologueText -> 
+    Flag prologueText ->
       withTempFileEx tmpFileOpts outputDir "haddock-prologue.txt" $
         \prologueFileName h -> do
               do
@@ -697,7 +697,7 @@ renderArgs verbosity tmpFileOpts version comp platform args k = do
 renderPureArgs :: Version -> Compiler -> Platform -> HaddockArgs -> [String]
 renderPureArgs version comp platform args = concat
     [ map (\f -> "--dump-interface="++ unDir (argOutputDir args) </> f)
-      . flagToList . argInterfaceFile $ args 
+      . flagToList . argInterfaceFile $ args
 
     , if haddockSupportsPackageName
         then maybe [] (\pkg -> [ "--package-name=" ++ prettyShow (pkgName pkg)
