@@ -7,7 +7,7 @@
             "flags": [],
             "package": "Cabal-syntax",
             "source": "local",
-            "version": "3.8.0.20220526"
+            "version": "3.8.1.0"
         },
         {
             "cabal_sha256": "b6ad76fd3f4bf133cdc2dc9176e23447f2a0a8e9316047d53154cd11f871446d",
@@ -25,7 +25,7 @@
             "flags": [],
             "package": "Cabal",
             "source": "local",
-            "version": "3.8.0.20220526"
+            "version": "3.8.1.0"
         },
         {
             "cabal_sha256": "e3d78b13db9512aeb106e44a334ab42b7aa48d26c097299084084cb8be5c5568",
@@ -152,7 +152,7 @@
             ],
             "package": "cabal-install-solver",
             "source": "local",
-            "version": "3.8.0.20220526"
+            "version": "3.8.1.0"
         },
         {
             "cabal_sha256": "188d0b5a0491e8b686b32d9b144c9287760ba333d2509bf3f17e3d846fbc2332",
@@ -291,7 +291,7 @@
             ],
             "package": "cabal-install",
             "source": "local",
-            "version": "3.8.0.20220526"
+            "version": "3.8.1.0"
         }
     ],
     "builtin": [

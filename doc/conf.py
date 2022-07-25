@@ -13,7 +13,7 @@ import sphinx_rtd_theme
 sys.path.insert(0, os.path.abspath('.'))
 import cabaldomain
 
-version = "3.8.0.20220526"
+version = "3.8.1.0"
 
 extensions = [
     'sphinx.ext.extlinks',
