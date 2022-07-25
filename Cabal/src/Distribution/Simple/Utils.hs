@@ -713,7 +713,22 @@ maybeExit cmd = do
   res <- cmd
   unless (res == ExitSuccess) $ exitWith res
 
-
+-- | Log a command execution (that's typically about to happen)
+-- at info level, and log working directory and environment overrides
+-- at debug level if specified.
+--
+logCommand :: Verbosity -> Process.CreateProcess -> IO ()
+logCommand verbosity cp = do
+  infoNoWrap verbosity $ "Running: " <> case Process.cmdspec cp of
+    Process.ShellCommand sh -> sh
+    Process.RawCommand path args -> Process.showCommandForUser path args
+  case Process.env cp of
+    Just env -> debugNoWrap verbosity $ "with environment: " ++ show env
+    Nothing -> return ()
+  case Process.cwd cp of
+    Just cwd -> debugNoWrap verbosity $ "with working directory: " ++ show cwd
+    Nothing -> return ()
+  hFlush stdout
 
 printRawCommandAndArgs :: Verbosity -> FilePath -> [String] -> IO ()
 printRawCommandAndArgs verbosity path args = withFrozenCallStack $
