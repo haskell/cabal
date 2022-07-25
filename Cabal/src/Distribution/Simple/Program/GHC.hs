@@ -52,9 +52,9 @@ normaliseGhcArgs (Just ghcVersion) PackageDescription{..} ghcArgs
    = argumentFilters . filter simpleFilters . filterRtsOpts $ ghcArgs
   where
     supportedGHCVersions :: VersionRange
-    supportedGHCVersions = intersectVersionRanges
-        (orLaterVersion (mkVersion [8,0]))
-        (earlierVersion (mkVersion [9,3]))
+    supportedGHCVersions = orLaterVersion (mkVersion [8,0])
+      -- we (weakly) support unknown future GHC versions for the purpose
+      -- of filtering GHC arguments
 
     from :: Monoid m => [Int] -> m -> m
     from version flags
