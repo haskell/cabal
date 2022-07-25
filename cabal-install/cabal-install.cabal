@@ -165,7 +165,6 @@ library
         Distribution.Client.Security.HTTP
         Distribution.Client.Setup
         Distribution.Client.SetupWrapper
-        Distribution.Client.Signal
         Distribution.Client.SolverInstallPlan
         Distribution.Client.SourceFiles
         Distribution.Client.SrcDist

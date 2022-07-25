@@ -113,8 +113,6 @@ import Distribution.Client.Manpage            (manpageCmd)
 import Distribution.Client.ManpageFlags       (ManpageFlags (..))
 import Distribution.Client.Utils
          ( determineNumJobs, relaxEncodingErrors )
-import Distribution.Client.Signal
-         ( installTerminationHandler )
 import Distribution.Client.Version
          ( cabalInstallVersion )
 
@@ -172,7 +170,6 @@ import Control.Exception        (try)
 --
 main :: IO ()
 main = do
-  installTerminationHandler
   -- Enable line buffering so that we can get fast feedback even when piped.
   -- This is especially important for CI and build systems.
   hSetBuffering stdout LineBuffering
