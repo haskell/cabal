@@ -92,18 +92,6 @@ Cabal 3.8.0.20220526 Changelog
 
   Test-suite stanzas now may contain a `code-generators:` field that can be used to run executables as preprocessors which take existing locations of library code and cabal-generated ghc build flags, and output new modules for use in the test stanza. This can be used to automatically generate drivers for "discover" style tests, including doctests.
 
-- Terminate subprocesses when killed [#7914](https://github.com/haskell/cabal/issues/7914) [#7921](https://github.com/haskell/cabal/pull/7921)
-
-  - cabal (and 'cabal run' in particular) no longer leaves children running
-    when it is killed (unix)
-
-- Cleanup subprocess helpers, remove obsolete functions [#7995](https://github.com/haskell/cabal/pull/7995)
-
-  - Distribution.Compat.Process: Remove createProcess, runInteractiveProcess
-    and rawSystem.
-  - Distribution.Simple.Utils: Remove printRawCommandAndArgs,
-    printRawCommandAndArgsAndEnv and createProcessWithEnv.
-
 - Allow glob-star matches with literal filenames (no extensions) [#5883](https://github.com/haskell/cabal/issues/5883) [#8005](https://github.com/haskell/cabal/pull/8005)
 
   - Cabal file glob syntax extended to allow matches of the form dir/**/FileNoExtension
