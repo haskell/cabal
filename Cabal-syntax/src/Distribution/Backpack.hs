@@ -98,7 +98,7 @@ data OpenUnitId
 -- TODO: cache holes?
 
 instance Binary OpenUnitId
-instance Structured OpenUnitId 
+instance Structured OpenUnitId
 instance NFData OpenUnitId where
     rnf (IndefFullUnitId cid subst) = rnf cid `seq` rnf subst
     rnf (DefiniteUnitId uid) = rnf uid

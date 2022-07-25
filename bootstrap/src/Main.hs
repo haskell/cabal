@@ -73,7 +73,7 @@ main2 meta plan = do
                   { builtinPackageName = pkgname
                   , builtinVersion     = ver
                   }
-            
+
             _ -> do
                 (src, rev, revhash) <- case P.uSha256 unit of
                     Just _  -> do

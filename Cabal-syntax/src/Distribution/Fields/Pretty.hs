@@ -34,7 +34,7 @@ import qualified Distribution.Fields.Parser as P
 import qualified Data.ByteString  as BS
 import qualified Text.PrettyPrint as PP
 
--- | This type is used to discern when a comment block should go 
+-- | This type is used to discern when a comment block should go
 --   before or after a cabal-like file field, otherwise it would
 --   be hardcoded to a single position. It is often used in
 --   conjunction with @PrettyField@.
@@ -153,7 +153,7 @@ renderField (Opts rann indent post) fw (PrettyField ann name doc) =
     narrowStyle = PP.style { PP.lineLength = PP.lineLength PP.style - fw }
 
 renderField opts@(Opts rann indent post) _ (PrettySection ann name args fields) = Block Margin Margin $
-    
+
     attachComments
       (post ann [ PP.render $ PP.hsep $ PP.text (fromUTF8BS name) : args ])
     ++

@@ -35,7 +35,7 @@ instance NFData LibraryName where rnf = genericRnf
 --
 -- /Note:/ there are no 'Pretty' or 'Parsec' instances,
 -- as there's other way to represent 'LibraryName', namely as bare
--- 'UnqualComponentName'. 
+-- 'UnqualComponentName'.
 prettyLibraryNameComponent :: LibraryName -> Disp.Doc
 prettyLibraryNameComponent LMainLibName      = Disp.text "lib"
 prettyLibraryNameComponent (LSubLibName str) = Disp.text "lib:" <<>> pretty str

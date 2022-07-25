@@ -81,4 +81,3 @@ getChoiceByLongFlag (ChoiceOpt alts) val = listToMaybe
 getChoiceByLongFlag _ _ =
   error "Distribution.command.getChoiceByLongFlag: expected a choice option"
 
-

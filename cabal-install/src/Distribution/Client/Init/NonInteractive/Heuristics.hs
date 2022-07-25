@@ -125,7 +125,7 @@ guessPackageType :: Interactive m => InitFlags -> m PackageType
 guessPackageType flags = do
   if fromFlagOrDefault False (initializeTestSuite flags)
     then
-      return TestSuite 
+      return TestSuite
     else do
       let lastDir dirs   = L.last . splitDirectories $ dirs
           srcCandidates  = [defaultSourceDir, "src", "source"]

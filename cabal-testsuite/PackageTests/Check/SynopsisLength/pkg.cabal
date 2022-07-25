@@ -3,7 +3,7 @@ name: pkg
 version: 0
 category: example
 maintainer: none@example.com
-synopsis: this is a preposterously big synopsis but don't worry because it is this big on 
+synopsis: this is a preposterously big synopsis but don't worry because it is this big on
 description: this is a preposterously filler description so warnings are not triggered but don
 license: BSD-3-Clause
 

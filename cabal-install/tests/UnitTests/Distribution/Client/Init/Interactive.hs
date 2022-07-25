@@ -322,7 +322,7 @@ createProjectTest pkgIx srcDb = testGroup "createProject tests"
             exe  @?= Nothing
             test @?! Nothing
           Left e -> assertFailure $ show e
-    
+
     , testCase "Check the interactive library workflow" $ do
         let inputs = fromList
               -- package type

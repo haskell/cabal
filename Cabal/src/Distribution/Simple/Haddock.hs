@@ -138,6 +138,53 @@ data Output = Html | Hoogle
 -- ------------------------------------------------------------------------------
 -- Haddock support
 
+<<<<<<< HEAD
+=======
+-- | Get Haddock program and check if it matches the request
+getHaddockProg :: Verbosity
+               -> ProgramDb
+               -> Compiler
+               -> HaddockArgs
+               -> Flag Bool -- ^ quickjump feature
+               -> IO (ConfiguredProgram, Version)
+getHaddockProg verbosity programDb comp args quickJumpFlag = do
+    let HaddockArgs { argQuickJump
+                    , argOutput
+                    } = args
+        hoogle = Hoogle `elem` fromFlagOrDefault [] argOutput
+
+    (haddockProg, version, _) <-
+      requireProgramVersion verbosity haddockProgram
+        (orLaterVersion (mkVersion [2,0])) programDb
+
+    -- various sanity checks
+    when (hoogle && version < mkVersion [2,2]) $
+      die' verbosity "Haddock 2.0 and 2.1 do not support the --hoogle flag."
+
+    when (fromFlag argQuickJump && version < mkVersion [2,19]) $ do
+      let msg = "Haddock prior to 2.19 does not support the --quickjump flag."
+          alt = "The generated documentation won't have the QuickJump feature."
+      if Flag True == quickJumpFlag
+        then die' verbosity msg
+        else warn verbosity (msg ++ "\n" ++ alt)
+
+    haddockGhcVersionStr <- getProgramOutput verbosity haddockProg
+                              ["--ghc-version"]
+    case (simpleParsec haddockGhcVersionStr, compilerCompatVersion GHC comp) of
+      (Nothing, _) -> die' verbosity "Could not get GHC version from Haddock"
+      (_, Nothing) -> die' verbosity "Could not get GHC version from compiler"
+      (Just haddockGhcVersion, Just ghcVersion)
+        | haddockGhcVersion == ghcVersion -> return ()
+        | otherwise -> die' verbosity $
+               "Haddock's internal GHC version must match the configured "
+            ++ "GHC version.\n"
+            ++ "The GHC version is " ++ prettyShow ghcVersion ++ " but "
+            ++ "haddock is using GHC version " ++ prettyShow haddockGhcVersion
+
+    return (haddockProg, version)
+
+
+>>>>>>> b1f59dde5 (Fix whitespace violations)
 haddock :: PackageDescription
         -> LocalBuildInfo
         -> [PPSuffixHandler]
@@ -316,6 +363,25 @@ haddock pkg_descr lbi suffixes flags' = do
       files <- matchDirFileGlob verbosity (specVersion pkg_descr) "." fpath
       for_ files $ copyFileTo verbosity (unDir $ argOutputDir commonArgs)
 
+<<<<<<< HEAD
+=======
+
+-- | Execute 'Haddock' configured with 'HaddocksFlags'.  It is used to build
+-- index and contents for documentation of multiple packages.
+--
+createHaddockIndex :: Verbosity
+                   -> ProgramDb
+                   -> Compiler
+                   -> Platform
+                   -> HaddockProjectFlags
+                   -> IO ()
+createHaddockIndex verbosity programDb comp platform flags = do
+    let args = fromHaddockProjectFlags flags
+    (haddockProg, _version) <-
+      getHaddockProg verbosity programDb comp args (haddockProjectQuickJump flags)
+    runHaddock verbosity defaultTempFileOptions comp platform haddockProg False args
+
+>>>>>>> b1f59dde5 (Fix whitespace violations)
 -- ------------------------------------------------------------------------------
 -- Contributions to HaddockArgs (see also Doctest.hs for very similar code).
 
@@ -572,6 +638,7 @@ renderArgs verbosity tmpFileOpts version comp platform args k = do
   let haddockSupportsUTF8          = version >= mkVersion [2,14,4]
       haddockSupportsResponseFiles = version >  mkVersion [2,16,2]
   createDirectoryIfMissingVerbose verbosity True outputDir
+<<<<<<< HEAD
   withTempFileEx tmpFileOpts outputDir "haddock-prologue.txt" $
     \prologueFileName h -> do
           do
@@ -592,6 +659,47 @@ renderArgs verbosity tmpFileOpts version comp platform args k = do
                    (\responseFileName -> k (["@" ++ responseFileName], result))
                else
                  k (renderedArgs, result)
+=======
+  case argPrologue args of
+    Flag prologueText ->
+      withTempFileEx tmpFileOpts outputDir "haddock-prologue.txt" $
+        \prologueFileName h -> do
+              do
+                 when haddockSupportsUTF8 (hSetEncoding h utf8)
+                 hPutStrLn h prologueText
+                 hClose h
+                 let pflag = "--prologue=" ++ prologueFileName
+                     renderedArgs = pflag : renderPureArgs version comp platform args
+                 if haddockSupportsResponseFiles
+                   then
+                     withResponseFile
+                       verbosity
+                       tmpFileOpts
+                       outputDir
+                       "haddock-response.txt"
+                       (if haddockSupportsUTF8 then Just utf8 else Nothing)
+                       renderedArgs
+                       (\responseFileName -> k (["@" ++ responseFileName], result))
+                   else
+                     k (renderedArgs, result)
+    _ -> do
+      let renderedArgs = (case argPrologueFile args of
+                            Flag pfile -> ["--prologue="++pfile]
+                            _          -> [])
+                      <> renderPureArgs version comp platform args
+      if haddockSupportsResponseFiles
+        then
+          withResponseFile
+            verbosity
+            tmpFileOpts
+            outputDir
+            "haddock-response.txt"
+            (if haddockSupportsUTF8 then Just utf8 else Nothing)
+            renderedArgs
+            (\responseFileName -> k (["@" ++ responseFileName], result))
+        else
+          k (renderedArgs, result)
+>>>>>>> b1f59dde5 (Fix whitespace violations)
     where
       outputDir = (unDir $ argOutputDir args)
       result = intercalate ", "
@@ -607,6 +715,7 @@ renderArgs verbosity tmpFileOpts version comp platform args k = do
 
 renderPureArgs :: Version -> Compiler -> Platform -> HaddockArgs -> [String]
 renderPureArgs version comp platform args = concat
+<<<<<<< HEAD
     [ (:[]) . (\f -> "--dump-interface="++ unDir (argOutputDir args) </> f)
       . fromFlag . argInterfaceFile $ args
 
@@ -615,6 +724,16 @@ renderPureArgs version comp platform args = concat
                       , "--package-version=" ++ prettyShow (pkgVersion pkg)
                       ])
              . fromFlag . argPackageName $ args
+=======
+    [ map (\f -> "--dump-interface="++ unDir (argOutputDir args) </> f)
+      . flagToList . argInterfaceFile $ args
+
+    , if haddockSupportsPackageName
+        then maybe [] (\pkg -> [ "--package-name=" ++ prettyShow (pkgName pkg)
+                               , "--package-version=" ++ prettyShow (pkgVersion pkg)
+                               ])
+             . flagToMaybe . argPackageName $ args
+>>>>>>> b1f59dde5 (Fix whitespace violations)
         else []
 
     , [ "--since-qual=external" | isVersion 2 20 ]

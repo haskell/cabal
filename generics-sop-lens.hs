@@ -33,7 +33,7 @@ data Foobar = Foobar
 
 genericLenses
     :: forall a xs proxy. (GDatatypeInfo a, GCode a ~ '[xs], All Typeable xs)
-    => proxy a 
+    => proxy a
     -> String
 genericLenses p = case gdatatypeInfo p of
     Newtype _ _ _                   -> "-- newtype deriving not implemented"
@@ -52,7 +52,7 @@ genericLenses p = case gdatatypeInfo p of
 
 genericClassyLenses
     :: forall a xs proxy. (GDatatypeInfo a, GCode a ~ '[xs], All Typeable xs)
-    => proxy a 
+    => proxy a
     -> String
 genericClassyLenses p = case gdatatypeInfo p of
     Newtype _ _ _                   -> "-- newtype deriving not implemented"

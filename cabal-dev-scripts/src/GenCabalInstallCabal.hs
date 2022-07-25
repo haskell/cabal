@@ -25,7 +25,7 @@ withIO k = do
     parseBool "True"  = Just True
     parseBool "False" = Just False
     parseBool _       = Nothing
-    
+
 
 main :: IO ()
 main = withIO $ \dev src tgt -> do

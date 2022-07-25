@@ -18,7 +18,7 @@ import Distribution.Simple.Flag
 import Distribution.Simple.PackageIndex
 import Distribution.Verbosity
 
-tests 
+tests
     :: Verbosity
     -> InitFlags
     -> Compiler
@@ -82,6 +82,6 @@ tests _v _initFlags comp pkgIx srcDb =
 
           Left (BreakException ex) -> assertFailure $ show ex
           Right _ -> return ()
-        
+
 
     ]

@@ -331,7 +331,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
               , "[\"test/Main.hs\", \"test/Foo.hs\", \"test/bar.y\"]"
               ]
 
-        case (_runPrompt $ createProject comp silent pkgIx srcDb (emptyFlags 
+        case (_runPrompt $ createProject comp silent pkgIx srcDb (emptyFlags
             { initializeTestSuite = Flag True
             , packageType = Flag LibraryAndExecutable
             })) inputs of
@@ -475,7 +475,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
               , "[\"test/Main.hs\", \"test/Foo.hs\", \"test/bar.y\"]"
               ]
 
-        case (_runPrompt $ createProject comp silent pkgIx srcDb (emptyFlags 
+        case (_runPrompt $ createProject comp silent pkgIx srcDb (emptyFlags
             { initializeTestSuite = Flag True
             , packageType = Flag Library
             })) inputs of
@@ -515,7 +515,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
             _testOtherExts    test @?= map EnableExtension [OverloadedStrings, LambdaCase, RankNTypes, RecordWildCards]
             _testDependencies test @?! []
             _testBuildTools   test @?= [mkStringyDep "happy:happy"]
-            
+
             assertBool "The library should be a dependency of the test executable" $
               mkPackageNameDep (_optPkgName opts) `elem` _testDependencies test
 

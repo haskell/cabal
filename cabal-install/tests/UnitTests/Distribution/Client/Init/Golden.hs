@@ -215,7 +215,7 @@ goldenTestTests v pkgIx pkgDir pkgName = testGroup "test golden tests"
       (goldenTest "test-build-tools-with-comments.golden") $
         let opts = WriteOpts False False False v pkgDir Library pkgName defaultCabalVersion
         in runGoldenTest opts testArgs (emptyFlags {buildTools = Flag ["happy"]})
-    
+
     , goldenVsString "Standalone tests, empty flags, not simple, no options, no comments"
       (goldenTest "standalone-test-no-comments.golden") $
         let opts = WriteOpts False False True v pkgDir TestSuite pkgName defaultCabalVersion
@@ -256,7 +256,7 @@ goldenCabalTests v pkgIx srcDb = testGroup ".cabal file golden tests"
     , goldenVsString "Library, empty flags, not simple, no comments + no minimal"
       (goldenCabal "cabal-lib-no-comments.golden") $
         runGoldenTest (libProjArgs "N") emptyFlags
-    
+
     , goldenVsString "Test suite, empty flags, not simple, with comments + no minimal"
       (goldenCabal "cabal-test-suite-with-comments.golden") $
         runGoldenTest (testProjArgs "Y") emptyFlags
@@ -286,12 +286,12 @@ goldenCabalTests v pkgIx srcDb = testGroup ".cabal file golden tests"
               testStanza = mkTestStanza opts $ testTarget {_testDependencies = mangleBaseDep testTarget _testDependencies}
 
           mkStanza $ pkgFields ++ [commonStanza, libStanza, testStanza]
-        
+
         (Right (ProjectSettings opts pkgDesc Nothing Nothing (Just testTarget), _)) -> do
           let pkgFields = mkPkgDescription opts pkgDesc
               commonStanza = mkCommonStanza opts
               testStanza = mkTestStanza opts $ testTarget {_testDependencies = mangleBaseDep testTarget _testDependencies}
-          
+
           mkStanza $ pkgFields ++ [commonStanza, testStanza]
 
         (Right (ProjectSettings _ _ l e t, _)) -> assertFailure $

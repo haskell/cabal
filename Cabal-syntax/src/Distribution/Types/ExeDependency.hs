@@ -37,7 +37,7 @@ instance Pretty ExeDependency where
       pver | isAnyVersion ver = PP.empty
            | otherwise        = pretty ver
 
--- | 
+-- |
 --
 -- Examples
 --
