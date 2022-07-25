@@ -1,5 +1,5 @@
-# 3.8.0.20220526 a pre-release; [Mikolaj Konarski](mailto:mikolaj@well-typed.com) May 2022
-  * See https://github.com/haskell/cabal/blob/master/release-notes/Cabal-3.8.0.20220526.md
+# 3.8.1.0 [Mikolaj Konarski](mailto:mikolaj@well-typed.com) August 2022
+  * See https://github.com/haskell/cabal/blob/master/release-notes/Cabal-3.8.1.0.md
 
 # 3.6.3.0 March 2022
   * See https://github.com/haskell/cabal/blob/master/release-notes/Cabal-3.6.3.0.md
