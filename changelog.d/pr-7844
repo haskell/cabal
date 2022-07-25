@@ -1,8 +1,0 @@
-synopsis: Disable job management on Windows 7
-packages: Cabal
-prs: #7844
-significance: significant
-
-description: {
-- cabal now works on Windows 7
-}

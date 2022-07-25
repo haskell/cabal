@@ -1,4 +1,0 @@
-synopsis: cabal init -i should autodetect author name and maintainer email (fix #8255)
-packages: cabal-install
-issues: #8255
-prs: #8267

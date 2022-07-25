@@ -1,9 +1,0 @@
-synopsis: Apply local options only to local packages
-packages: cabal-install
-prs: #7973
-issues: #7998
-
-description: {
-- Command-line `ghc-options` only applies to local packages
-- `program-options` stanza only applies to local packages
-}

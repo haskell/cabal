@@ -1,3 +1,0 @@
-synopsis: Fix the timestamp shown during cabal update
-packages: cabal-install
-prs: #7934

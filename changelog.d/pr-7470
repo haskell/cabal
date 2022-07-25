@@ -1,4 +1,0 @@
-synopsis: adds a verbosity flag "+nowarn", to suppress all warnings
-packages: cabal-install
-prs: #7470
-issues: #7286

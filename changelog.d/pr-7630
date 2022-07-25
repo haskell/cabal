@@ -1,4 +1,0 @@
-synopsis: Autoatically pipe auth from repo uris into curl transport.
-packages: Cabal
-prs: #7630
-issues: #4743

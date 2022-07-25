@@ -1,3 +1,0 @@
-synopsis: Add support for the 64-bit S390X architecture
-prs: #8065
-packages: Cabal Cabal-syntax

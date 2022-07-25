@@ -1,9 +1,0 @@
-synopsis: Update the SPDX License List to version 3.16
-packages: Cabal-syntax
-prs: #8127
-issues: #8126
-description: {
-
-The LicenseId and LicenseExceptionId types are updated to reflect the SPDX License List version 3.16 (2022-02-06).
-
-}
