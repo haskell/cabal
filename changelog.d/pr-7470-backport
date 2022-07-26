@@ -1,4 +1,0 @@
-synopsis: removes the warnings for extraneous versions
-packages: cabal-install
-prs: #7470
-issues: #7286

@@ -1,3 +1,0 @@
-synopsis: raise lower bound of process and remove compatibility shims
-packages: Cabal Cabal-tests cabal-testsuite
-prs: #7922

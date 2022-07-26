@@ -1,3 +1,0 @@
-synopsis: Make extra-packages work properly
-packages: cabal-install
-prs: #6972

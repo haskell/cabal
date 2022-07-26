@@ -1,2 +1,0 @@
-synopsis: Remove bootstrapping plan files from version control, and simplify bootstrap update Makefile targets.
-prs: #7949

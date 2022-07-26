@@ -1,4 +1,0 @@
-synopsis: Fix running GHCJS executables
-packages: cabal-install
-prs: #7575
-issues: #6175 #6361

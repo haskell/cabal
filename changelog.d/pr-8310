@@ -1,7 +1,0 @@
-synopsis: Remove the GHC version upper bound when deciding whether to filter GHC arguments
-pr: #8310 #8260
-description: {
-
-- Previously, for unknown new versions of GHC, it was not filtering GHC arguments at all, while now it filters them in the same way as for the last known GHC version. This seems a better default and it's one less place to update at release time. Perhaps erroring out or emitting a warning would be safer, but we already emit a general warning elsewhere.
-
-}

@@ -1,4 +1,0 @@
-synopsis: fix Ctrl-C handling during package download
-packages: cabal-install
-prs: #7929
-issues: #6322

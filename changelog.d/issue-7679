@@ -1,4 +1,0 @@
-synopsis: Fix list-bin to only choose the selected component
-packages: cabal-install
-issues: #7679
-prs: #7791
