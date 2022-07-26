@@ -113,10 +113,34 @@ names. When running `cabal-install` test suites, one need only use `cabal test` 
 `cabal run <test-target>` in order to test locally.
 
 
-Conventions
------------
+Whitespace Conventions
+----------------------
 
-* Spaces, not tabs.
+* No tab characters allowed.
+* No trailing whitespace allowed.
+* File needs to be terminated by a newline character.
+
+These conventions are enforced by the
+[fix-whitespace](https://hackage.haskell.org/package/fix-whitespace)
+tool.  Install it from hackage as usual (`cabal install fix-whitespace`)
+and run it in the project root to fix whitespace violations.
+
+The files included in the automatic whitespace check are specified in
+`fix-whitespace.yaml`.  Please add to this file if you add textfiles
+to this repository that are not included by the rules given there.
+Note that files that make essential use of tab characters (like `Makefile`)
+should _not_ be included in the automatic check.
+
+Whitespace conventions are enforced by
+[CI](https://github.com/haskell/cabal/actions/workflows/whitespace.yml).
+If you push a fix of a whitespace violation, please do so in a
+_separate commit_.
+
+
+
+
+Other Conventions
+-----------------
 
 * Try to follow style conventions of a file you are modifying, and
   avoid gratuitous reformatting (it makes merges harder!)
