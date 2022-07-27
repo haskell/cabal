@@ -1,4 +1,4 @@
-cabal-install 3.8.0.20220526 Changelog
+cabal-install 3.8.1.0 Changelog
 ---
 
 ### Significant changes
