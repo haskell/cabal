@@ -4,6 +4,9 @@
 # Make Cabal-syntax package
 a64b9aea0839cd7183dfae1e94455b870a3d5812
 
+# Fix whitespace violations
+b1f59dde5b2f456d9698584598d7f571abe433a8
+
 # 2020 Summer
 ########################################
 
