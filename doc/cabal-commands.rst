@@ -186,6 +186,23 @@ Arguments and flags common to some or all commands are:
 
     Already generated `build-info.json` files will be removed since they would be stale otherwise.
 
+cabal init
+----------
+
+``cabal init [FLAGS]`` initialises a Cabal package, picking
+reasonable defaults. Run it in your project folder.
+
+.. option:: -i, --interactive
+
+    Enable interactive mode.
+
+.. option:: -m, --minimal
+
+    Generate a short .cabal file, without extra empty fields or
+    explanatory comments.
+
+See :ref:`init quickstart` for an overview on the command, and
+``cabal init --help`` for the complete list of options.
 
 cabal list-bin
 --------------
@@ -528,6 +545,90 @@ or the interpreter line
 
 For more information see :cfg-field:`verbose`
 
+cabal fetch
+-----------
+
+*☞ N.B.:* ``cabal fetch`` only works for legacy ``v1-`` commands and only
+for single package projects. If you are not maintaining an old project,
+`cabal build`_ with ``--only-download`` has similar effects to ``fetch``
+and benefits from compatibility with newer build methods.
+
+``cabal fetch [FLAGS] PACKAGES`` downloads packages for later installation.
+It fetches the project plus its dependencies, very useful when
+e.g. you plan to work on a project with unreliable or no internet access.
+
+.. option:: --no-dependencies
+
+    Ignore dependencies.
+
+.. option:: --disable-tests
+
+    Disable dependency checking and compilation
+    for test suites listed in the package
+    description file.
+
+.. option::  --disable-benchmarks
+
+    Disable dependency checking and compilation
+    for benchmarks listed in the package
+    description file.
+
+Check ``cabal fetch --help`` for a complete list of options.
+
+cabal list
+----------
+
+``cabal list [FLAGS] STRINGS`` lists all packages matching a search string.
+
+.. option::  --installed
+
+    Only output installed packages.
+
+.. option::  --simple-output
+
+    Print matching packages in a one-package-one-line format.
+
+.. option::  -i, --ignore-case
+
+.. option::  -I, --strict-case
+
+.. option:: --package-db=DB
+
+    Append the given package database to the list of used package
+    databases. See `cabal info`_ for a thorough explanation.
+
+.. option:: -w, --with-compiler=PATH
+
+    Path to specific compiler.
+
+cabal get
+---------
+
+``cabal get [PACKAGES]`` (synonym: ``cabal unpack``) downloads and unpacks
+the source code of ``PACKAGES`` locally. By default the content of the
+packages is unpacked in the current working directory, in named subfolders
+(e.g.  ``./filepath-1.2.0.8/``), use ``--destdir=PATH`` to specify another
+folder. By default the latest version of the package is downloaded, you can
+ask for a spefic one by adding version numbers
+(``cabal get random-1.0.0.1``).
+
+.. option:: -s, --source-repository[=head|this|...]]
+
+    Clone the package's source repository (Darcs, Git, etc.) instead
+    of downloading the tarball. Only works if the package specifies
+    a ``source-repository``.
+
+.. option:: --index-state=STATE
+
+    Pin your request to a specific Hackage index state. Available
+    ``STATE`` formats: Unix timestamps (e.g. ``@1474732068``),
+    ISO8601 UTC timestamps (e.g. ``2016-09-24T17:47:48Z``), or ``HEAD``
+    (default).
+
+.. option:: --pristine
+
+    Unpacks the pristine tarball, i.e. disregarding any Hackage revision.
+
 cabal freeze
 ------------
 
@@ -738,6 +839,19 @@ artifacts for the script, which are stored under the .cabal/script-builds direct
 In addition when clean is invoked it will remove all script build artifacts for
 which the corresponding script no longer exists.
 
+cabal info
+----------
+
+``cabal info [FLAGS] PACKAGES`` displays useful informations about remote
+packages.
+
+.. option:: --package-db=DB
+
+    Append the given package database to the list of package databases
+    used (to satisfy dependencies and register into). May be a specific
+    file, ``global`` or ``user``. The initial list is ``['global'], ['global',
+    'user']``, depending on context. Use ``clear`` to reset the list to empty.
+
 cabal sdist
 -----------
 
@@ -772,6 +886,50 @@ that must be satisfied for it to function correctly in the larger build ecosyste
 ``autogen-modules`` is able to replace uses of the hooks to add generated modules, along with
 the custom publishing of Haddock documentation to Hackage.
 
+cabal upload
+------------
+
+``cabal upload [FLAGS] TARFILES`` uploads source packages or documentation
+to Hackage.
+
+.. option:: --publish
+
+    Publish the package immediately instead of uploading it as a
+    `package candidate <https://hackage.haskell.org/upload#candidates>`__
+    (make sure everything is fine, you cannot delete published packages
+    on Hackage!).
+
+.. option:: -d, --documentation
+
+    Upload documentation instead of a source package. To upload
+    documentation for a published package (and not a candidate), add
+    ``--publish``.
+
+.. option:: -u, --username
+
+    Your Hackage username.
+
+.. option:: -p, --password
+
+    Your Hackage password.
+
+.. option:: -P, --password-command
+
+    Command to get your Hackage password.
+
+cabal report
+------------
+
+``cabal report [FLAGS]`` uploads build reports to Hackage.
+
+.. option:: -u, --username
+
+    Your Hackage username.
+
+.. option:: -p, --password
+
+    Your Hackage password.
+
 cabal gen-bounds
 ----------------
 
@@ -780,6 +938,38 @@ currently have them.  Generated bounds are printed to stdout. You can then
 paste them into your .cabal file.
 
 See `the section on generating dependency version bounds <cabal-package.html#generating-dependency-version-bounds>`__ for more details and examples.
+
+cabal user-config
+-----------------
+
+``cabal user-config [init|diff|update]`` prints and updates user's global
+cabal preferences. It is very useful when you are e.g. first configuring
+``cabal`` on a new machine.
+
+- ``cabal user-config init`` creates a new configuration file.
+
+  .. option:: --config-file=PATH
+
+      Specify config file path. (default: ``~/.cabal/config``).
+
+  .. option:: -f, --force
+
+    Force configuration file overwriting if already exists.
+
+- ``cabal user-config diff`` prints a diff of the user's config file and the
+  default one.
+
+- ``cabal user-config update`` updates the user's config file with additional
+  lines.
+
+  .. option:: -a, --augment=CONFIGLINE
+
+      Pass additional configuration lines to be incorporated in the
+      config file. e.g.
+      ``cabal user-config update --augment "offline: True"``.
+
+      Note how ``--augment`` syntax follows ``cabal user-config diff``
+      output.
 
 cabal outdated
 --------------
