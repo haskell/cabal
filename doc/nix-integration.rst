@@ -29,7 +29,7 @@ If the package (which must be locally unpacked) provides a ``shell.nix`` or ``de
 - ``cabal v1-gen-bounds``
 - ``cabal v1-run``
 
-If the package does not provide an expression, ``cabal`` runs normally.
+If the package does not provide a Nix expression, ``cabal`` runs normally.
 
 Creating Nix Expressions
 ------------------------
