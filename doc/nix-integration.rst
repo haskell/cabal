@@ -11,10 +11,8 @@ Nix Integration
 Enabling Nix Integration
 ------------------------
 
-To enable Nix integration, simply pass the ``--enable-nix`` global
-option when you call ``cabal``. To use this option everywhere, edit
-your :ref:`global configuration file<config-file-discovery>`
-(default: ``$HOME/.cabal/config``) to include:
+To enable Nix integration, simply pass the ``--enable-nix`` global option when you call ``cabal`` (eg. ``cabal --enable-nix build``).
+To use this option everywhere, edit your :ref:`global configuration file<config-file-discovery>` (default: ``$HOME/.cabal/config``) to include:
 
 .. code-block:: cabal
 
