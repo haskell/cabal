@@ -24,6 +24,8 @@ creating an empty directory.
     $ cd proglet/
 
 
+.. _init quickstart:
+
 Using ``cabal init``
 --------------------
 
