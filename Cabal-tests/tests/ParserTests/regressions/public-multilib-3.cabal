@@ -1,5 +1,5 @@
 cabal-version: 3.0
-name:          public-multilib1
+name:          public-multilib3
 version:       0
 synopsis:      public-multilibs
 category:      Tests
@@ -9,6 +9,6 @@ library
   default-language: Haskell2010
   build-depends:
     , base     ^>=4.14
-    , somelib:internal ^>=1.0
+    , somelib
 
   exposed-modules:  Foo
