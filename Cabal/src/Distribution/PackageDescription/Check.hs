@@ -227,6 +227,7 @@ data CheckExplanation =
         | UnknownArch [String]
         | UnknownCompiler [String]
         | BaseNoUpperBounds
+        | MissingUpperBounds PackageName
         | SuspiciousFlagName [String]
         | DeclaredUsedFlags (Set FlagName) (Set FlagName)
         | NonASCIICustomField [String]
@@ -669,6 +670,9 @@ ppExplanation (UnknownArch unknownArches) =
     "Unknown architecture name " ++ commaSep (map quote unknownArches)
 ppExplanation (UnknownCompiler unknownImpls) =
     "Unknown compiler name " ++ commaSep (map quote unknownImpls)
+ppExplanation (MissingUpperBounds pname) =
+  "'" ++ unPackageName pname ++ "' misses upper bounds, add them"
+  ++ " with `cabal gen-bounds`."
 ppExplanation BaseNoUpperBounds =
     "The dependency 'build-depends: base' does not specify an upper "
       ++ "bound on the version number. Each major release of the 'base' "
@@ -1813,30 +1817,19 @@ checkCabalVersion pkg =
 -- | Check the build-depends fields for any weirdness or bad practice.
 --
 checkPackageVersions :: GenericPackageDescription -> [PackageCheck]
-checkPackageVersions pkg =
-  catMaybes [
-
-    -- Check that the version of base is bounded above.
-    -- For example this bans "build-depends: base >= 3".
-    -- It should probably be "build-depends: base >= 3 && < 4"
-    -- which is the same as  "build-depends: base == 3.*"
-    check (not (hasUpperBound baseDependency)) $
-      PackageDistInexcusable BaseNoUpperBounds
-
-  ]
+checkPackageVersions pkg = do
+  (name, vr) <- Map.toList deps
+  -- Check that the version of base is bounded above.
+  -- For example this bans "build-depends: base >= 3".
+  -- It should probably be "build-depends: base >= 3 && < 4"
+  -- which is the same as  "build-depends: base == 3.*"
+  maybe [] pure $ check (not (hasUpperBound vr)) $
+           if unPackageName name == "base" then
+              PackageDistInexcusable BaseNoUpperBounds
+           else
+              PackageDistSuspiciousWarn $ MissingUpperBounds name
   where
-    baseDependency = case typicalPkg pkg of
-      Right (pkg', _) | not (null baseDeps) ->
-          foldr intersectVersionRanges anyVersion baseDeps
-        where
-          baseDeps =
-            [ vr | Dependency pname vr _ <- allBuildDepends pkg'
-                 , pname == mkPackageName "base" ]
-
-      -- Just in case finalizePD fails for any reason,
-      -- or if the package doesn't depend on the base package at all,
-      -- then we will just skip the check, since hasUpperBound noVersion = True
-      _          -> noVersion
+    deps = toDependencyVersionsMap allBuildDepends pkg
 
 checkConditionals :: GenericPackageDescription -> [PackageCheck]
 checkConditionals pkg =
@@ -2398,6 +2391,18 @@ checkGlobFiles verbosity pkg root =
     getWarning field glob (GlobMissingDirectory dir) =
       [ PackageDistSuspiciousWarn (GlobNoDir field glob dir) ]
 
+toDependencyVersionsMap :: (PackageDescription -> [Dependency]) -> GenericPackageDescription -> Map PackageName VersionRange
+toDependencyVersionsMap lens pkg = case typicalPkg pkg of
+      Right (pkgs', _) ->
+        Map.fromListWith intersectVersionRanges
+          [ (pname, vr)
+          | Dependency pname vr _ <- lens pkgs'
+          ]
+      -- Just in case finalizePD fails for any reason,
+      -- or if the package doesn't depend on the base package at all,
+      -- no deps is no checks.
+      _ -> Map.empty
+
 -- | Check that setup dependencies, have proper bounds.
 -- In particular, @base@ and @Cabal@ upper bounds are mandatory.
 checkSetupVersions :: GenericPackageDescription -> [PackageCheck]
@@ -2410,14 +2415,7 @@ checkSetupVersions pkg =
     ]
   where
     criticalPkgs = ["Cabal", "base"]
-    deps = case typicalPkg pkg of
-      Right (pkgs', _) ->
-        Map.fromListWith intersectVersionRanges
-          [ (pname, vr)
-          | sbi <- maybeToList $ setupBuildInfo pkgs'
-          , Dependency pname vr _ <- setupDepends sbi
-          ]
-      _ -> Map.empty
+    deps = toDependencyVersionsMap ((=<<) setupDepends . maybeToList .  setupBuildInfo) pkg
     emitError nm =
       PackageDistInexcusable (UpperBoundSetup nm)
 
