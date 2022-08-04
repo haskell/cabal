@@ -1825,13 +1825,14 @@ checkPackageVersions pkg =
   (PackageDistInexcusable BaseNoUpperBounds <$ bases)
   where
     deps = toDependencyVersionsMap allBuildDepends pkg
+    -- base gets special treatment (it's more critical)
     (bases, others) = partition (("base" ==) . unPackageName) $ do
       (name, vr) <- Map.toList deps
-      -- Check that the version of base is bounded above.
+      -- Check that the version of a package is bounded above.
       -- For example this bans "build-depends: base >= 3".
       -- It should probably be "build-depends: base >= 3 && < 4"
       -- which is the same as  "build-depends: base == 3.*"
-      if (not (hasUpperBound vr)) then pure name else []
+      if hasUpperBound vr then [] else pure name -- emit for the error
 
 checkConditionals :: GenericPackageDescription -> [PackageCheck]
 checkConditionals pkg =
