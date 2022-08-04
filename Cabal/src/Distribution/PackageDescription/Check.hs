@@ -2391,18 +2391,6 @@ checkGlobFiles verbosity pkg root =
     getWarning field glob (GlobMissingDirectory dir) =
       [ PackageDistSuspiciousWarn (GlobNoDir field glob dir) ]
 
-toDependencyVersionsMap :: (PackageDescription -> [Dependency]) -> GenericPackageDescription -> Map PackageName VersionRange
-toDependencyVersionsMap lens pkg = case typicalPkg pkg of
-      Right (pkgs', _) ->
-        Map.fromListWith intersectVersionRanges
-          [ (pname, vr)
-          | Dependency pname vr _ <- lens pkgs'
-          ]
-      -- Just in case finalizePD fails for any reason,
-      -- or if the package doesn't depend on the base package at all,
-      -- no deps is no checks.
-      _ -> Map.empty
-
 -- | Check that setup dependencies, have proper bounds.
 -- In particular, @base@ and @Cabal@ upper bounds are mandatory.
 checkSetupVersions :: GenericPackageDescription -> [PackageCheck]
@@ -2453,6 +2441,19 @@ checkDuplicateModules pkg =
 -- ------------------------------------------------------------
 -- * Utils
 -- ------------------------------------------------------------
+
+toDependencyVersionsMap :: (PackageDescription -> [Dependency]) -> GenericPackageDescription -> Map PackageName VersionRange
+toDependencyVersionsMap lens pkg = case typicalPkg pkg of
+      Right (pkgs', _) ->
+        Map.fromListWith intersectVersionRanges
+          [ (pname, vr)
+          | Dependency pname vr _ <- lens pkgs'
+          ]
+      -- Just in case finalizePD fails for any reason,
+      -- or if the package doesn't depend on the base package at all,
+      -- no deps is no checks.
+      _ -> Map.empty
+
 
 quote :: String -> String
 quote s = "'" ++ s ++ "'"
