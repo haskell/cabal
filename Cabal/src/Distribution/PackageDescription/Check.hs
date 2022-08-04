@@ -227,7 +227,7 @@ data CheckExplanation =
         | UnknownArch [String]
         | UnknownCompiler [String]
         | BaseNoUpperBounds
-        | MissingUpperBounds PackageName
+        | MissingUpperBounds [PackageName]
         | SuspiciousFlagName [String]
         | DeclaredUsedFlags (Set FlagName) (Set FlagName)
         | NonASCIICustomField [String]
@@ -670,9 +670,12 @@ ppExplanation (UnknownArch unknownArches) =
     "Unknown architecture name " ++ commaSep (map quote unknownArches)
 ppExplanation (UnknownCompiler unknownImpls) =
     "Unknown compiler name " ++ commaSep (map quote unknownImpls)
-ppExplanation (MissingUpperBounds pname) =
-  "'" ++ unPackageName pname ++ "' misses upper bounds, add them"
-  ++ " with `cabal gen-bounds`."
+ppExplanation (MissingUpperBounds names) =
+    "These packages miss upper bounds '"
+      ++ (intercalate "','" (unPackageName <$> names)) ++ "'"
+      ++ " please add them with with `cabal gen-bounds`."
+      ++ " For more information see: "
+      ++ " https://www.parsonsmatt.org/2020/05/07/on_pvp_restrictive_bounds.html"
 ppExplanation BaseNoUpperBounds =
     "The dependency 'build-depends: base' does not specify an upper "
       ++ "bound on the version number. Each major release of the 'base' "
@@ -1817,19 +1820,18 @@ checkCabalVersion pkg =
 -- | Check the build-depends fields for any weirdness or bad practice.
 --
 checkPackageVersions :: GenericPackageDescription -> [PackageCheck]
-checkPackageVersions pkg = do
-  (name, vr) <- Map.toList deps
-  -- Check that the version of base is bounded above.
-  -- For example this bans "build-depends: base >= 3".
-  -- It should probably be "build-depends: base >= 3 && < 4"
-  -- which is the same as  "build-depends: base == 3.*"
-  maybe [] pure $ check (not (hasUpperBound vr)) $
-           if unPackageName name == "base" then
-              PackageDistInexcusable BaseNoUpperBounds
-           else
-              PackageDistSuspiciousWarn $ MissingUpperBounds name
+checkPackageVersions pkg =
+  PackageDistSuspiciousWarn (MissingUpperBounds others) :
+  (PackageDistInexcusable BaseNoUpperBounds <$ bases)
   where
     deps = toDependencyVersionsMap allBuildDepends pkg
+    (bases, others) = partition (("base" ==) . unPackageName) $ do
+      (name, vr) <- Map.toList deps
+      -- Check that the version of base is bounded above.
+      -- For example this bans "build-depends: base >= 3".
+      -- It should probably be "build-depends: base >= 3 && < 4"
+      -- which is the same as  "build-depends: base == 3.*"
+      if (not (hasUpperBound vr)) then pure name else []
 
 checkConditionals :: GenericPackageDescription -> [PackageCheck]
 checkConditionals pkg =
