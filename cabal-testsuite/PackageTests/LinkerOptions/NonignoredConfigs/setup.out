@@ -1,0 +1,28 @@
+# cabal v2-install
+Wrote tarball sdist to <ROOT>/setup.dist/work/./basic/dist/sdist/basic-1.0.tar.gz
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following will be built:
+ - basic-1.0 (lib) (requires build)
+Configuring library for basic-1.0..
+Preprocessing library for basic-1.0..
+Building library for basic-1.0..
+Installing library in <PATH>
+# cabal v2-install
+Wrote tarball sdist to <ROOT>/setup.dist/work/./basic/dist/sdist/basic-1.0.tar.gz
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following will be built:
+ - basic-1.0 (lib) (requires build)
+Configuring library for basic-1.0..
+Preprocessing library for basic-1.0..
+Building library for basic-1.0..
+Installing library in <PATH>
+# cabal v2-install
+Wrote tarball sdist to <ROOT>/setup.dist/work/./basic/dist/sdist/basic-1.0.tar.gz
+Resolving dependencies...
+Up to date
+# cabal v2-install
+Wrote tarball sdist to <ROOT>/setup.dist/work/./basic/dist/sdist/basic-1.0.tar.gz
+Resolving dependencies...
+Up to date
