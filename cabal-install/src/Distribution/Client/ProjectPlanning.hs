@@ -663,6 +663,7 @@ rebuildInstallPlan verbosity
                          projectConfigAllPackages,
                          projectConfigLocalPackages,
                          projectConfigSpecificPackage,
+                         projectPackagesNamed,
                          projectConfigBuildOnly
                        }
                        (compiler, platform, progdb) pkgConfigDB
@@ -687,6 +688,7 @@ rebuildInstallPlan verbosity
                 localPackages
                 sourcePackageHashes
                 defaultInstallDirs
+                projectPackagesNamed
                 projectConfigShared
                 projectConfigAllPackages
                 projectConfigLocalPackages
@@ -1345,6 +1347,7 @@ elaborateInstallPlan
   -> [PackageSpecifier (SourcePackage (PackageLocation loc))]
   -> Map PackageId PackageSourceHash
   -> InstallDirs.InstallDirTemplates
+  -> [PackageVersionConstraint]
   -> ProjectConfigShared
   -> PackageConfig
   -> PackageConfig
@@ -1356,6 +1359,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                      solverPlan localPackages
                      sourcePackageHashes
                      defaultInstallDirs
+                     extraPackages
                      sharedPackageConfig
                      allPackagesConfig
                      localPackagesConfig
@@ -2026,15 +2030,21 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
       $ map packageId
       $ SolverInstallPlan.reverseDependencyClosure
           solverPlan
-          (map PlannedId (Set.toList pkgsLocalToProject))
+          (map PlannedId (Set.toList pkgsInplaceToProject))
 
     isLocalToProject :: Package pkg => pkg -> Bool
     isLocalToProject pkg = Set.member (packageId pkg)
                                       pkgsLocalToProject
 
+    pkgsInplaceToProject :: Set PackageId
+    pkgsInplaceToProject =
+        Set.fromList (catMaybes (map shouldBeLocal localPackages))
+        --TODO: localPackages is a misnomer, it's all project packages
+        -- here is where we decide which ones will be local!
+
     pkgsLocalToProject :: Set PackageId
     pkgsLocalToProject =
-        Set.fromList (catMaybes (map shouldBeLocal localPackages))
+        Set.fromList (catMaybes (map (isInLocal extraPackages) localPackages))
         --TODO: localPackages is a misnomer, it's all project packages
         -- here is where we decide which ones will be local!
 
@@ -2101,6 +2111,28 @@ shouldBeLocal :: PackageSpecifier (SourcePackage (PackageLocation loc)) -> Maybe
 shouldBeLocal NamedPackage{}              = Nothing
 shouldBeLocal (SpecificSourcePackage pkg) = case srcpkgSource pkg of
     LocalUnpackedPackage _ -> Just (packageId pkg)
+    _                      -> Nothing
+
+-- Used to determine which packages are affected by local package configuration
+-- flags like ‘--enable-shared enable-executable-dynamic --disable-library-vanilla’.
+isInLocal :: [PackageVersionConstraint] -> PackageSpecifier (SourcePackage (PackageLocation loc)) -> Maybe PackageId
+isInLocal _              NamedPackage{}              = Nothing
+isInLocal _extraPackages (SpecificSourcePackage pkg) = case srcpkgSource pkg of
+    LocalUnpackedPackage _ -> Just (packageId pkg)
+    -- LocalTarballPackage is matched here too, because otherwise ‘sdistize’
+    -- produces for ‘localPackages’ in the ‘ProjectBaseContext’ a
+    -- LocalTarballPackage, and ‘shouldBeLocal’ will make flags like
+    -- ‘--disable-library-vanilla’ have no effect for a typical
+    -- ‘cabal install --lib --enable-shared enable-executable-dynamic --disable-library-vanilla’,
+    -- as these flags would apply to local packages, but the sdist would
+    -- erroneously not get categorized as a local package, so the flags would be
+    -- ignored and produce a package with an unchanged hash.
+    LocalTarballPackage  _ -> Just (packageId pkg)
+    -- TODO: the docs say ‘extra-packages’ is implemented in cabal project
+    -- files.  We can fix that here by checking that the version range matches.
+    --RemoteTarballPackage    _ -> _
+    --RepoTarballPackage      _ -> _
+    --RemoteSourceRepoPackage _ -> _
     _                      -> Nothing
 
 -- | Given a 'ElaboratedPlanPackage', report if it matches a 'ComponentName'.
