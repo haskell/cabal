@@ -71,7 +71,7 @@ import Distribution.Simple.BuildPaths
 import Distribution.Simple.Command
          ( CommandUI(..), commandShowOptions )
 import Distribution.Simple.Program.GHC
-         ( GhcMode(..), GhcOptions(..), renderGhcOptions )
+         ( GhcMode(..), GhcDynLinkMode(..), GhcOptions(..), renderGhcOptions )
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.InstalledPackageInfo as IPI
@@ -249,7 +249,12 @@ data SetupScriptOptions = SetupScriptOptions {
     -- | Is the task we are going to run an interactive foreground task,
     -- or an non-interactive background task? Based on this flag we
     -- decide whether or not to delegate ctrl+c to the spawned task
-    isInteractive            :: Bool
+    isInteractive            :: Bool,
+
+    -- Also track build output artifact configuration.
+
+    -- | Pass `-dynamic` to `ghc` for dynamic rather than static linking.
+    setupConfigDynamic       :: Bool
   }
 
 defaultSetupScriptOptions :: SetupScriptOptions
@@ -272,7 +277,8 @@ defaultSetupScriptOptions = SetupScriptOptions {
     useWin32CleanHack        = False,
     forceExternalSetupMethod = False,
     setupCacheLock           = Nothing,
-    isInteractive            = False
+    isInteractive            = False,
+    setupConfigDynamic       = False
   }
 
 workingDir :: SetupScriptOptions -> FilePath
@@ -840,6 +846,9 @@ getExternalSetupMethod verbosity options pkg bt = do
               -- --ghc-option=-v instead!
               ghcOptVerbosity       = Flag (min verbosity normal)
             , ghcOptMode            = Flag GhcModeMake
+            , ghcOptDynLinkMode     = case setupConfigDynamic options'' of
+                                      True  -> Flag GhcDynamicOnly
+                                      False -> Flag GhcStaticOnly
             , ghcOptInputFiles      = toNubListR [setupHs]
             , ghcOptOutputFile      = Flag setupProgFile
             , ghcOptObjDir          = Flag setupDir
