@@ -478,7 +478,7 @@ exAvSrcPkg ex =
           -- solver allows unknown extensions/languages when the compiler
           -- supports them.
           let checks = C.checkPackage (srcpkgDescription package) Nothing
-          in filter (not . isUnknownLangExt) checks
+          in filter (not . isMissingUpperBound) $ filter (not . isUnknownLangExt) checks
     in if null pkgCheckErrors
        then package
        else error $ "invalid GenericPackageDescription for package "
@@ -670,6 +670,10 @@ exAvSrcPkg ex =
     isUnknownLangExt pc = case C.explanation pc of
                             C.UnknownExtensions {} -> True
                             C.UnknownLanguages {} -> True
+                            _ -> False
+    isMissingUpperBound :: C.PackageCheck -> Bool
+    isMissingUpperBound pc = case C.explanation pc of
+                            C.MissingUpperBounds {} -> True
                             _ -> False
 
 
