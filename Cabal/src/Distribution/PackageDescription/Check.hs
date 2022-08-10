@@ -2450,12 +2450,17 @@ checkDuplicateModules pkg =
 -- ------------------------------------------------------------
 
 toDependencyVersionsMap :: (PackageDescription -> [Dependency]) -> GenericPackageDescription -> Map PackageName VersionRange
-toDependencyVersionsMap lens pkg = case typicalPkg pkg of
+toDependencyVersionsMap selectDependencies pkg = case typicalPkg pkg of
       Right (pkgs', _) ->
-        Map.fromListWith intersectVersionRanges
-          [ (pname, vr)
-          | Dependency pname vr _ <- lens pkgs'
-          ]
+        let
+          self :: PackageName
+          self = pkgName $ package pkgs'
+        in
+        Map.fromListWith intersectVersionRanges $ do
+          Dependency pname vr _ <- selectDependencies pkgs'
+          if pname == self then
+            []
+          else [(pname, vr)]
       -- Just in case finalizePD fails for any reason,
       -- or if the package doesn't depend on the base package at all,
       -- no deps is no checks.
