@@ -663,6 +663,19 @@ The following settings control the behavior of the dependency solver:
    explicitly constrained. When set to `none`, the solver will
    consider all packages.
 
+.. cfg-field:: require-artifacts: boolean
+               --require-artifacts
+               --no-require-artifacts
+   :synopsis: Only consider installed package options with compatible artifacts.
+
+   :default: True
+   :since: 3.9
+
+   Enable the dependency resolver step that considers only installed package
+   options that have compatible build artifact configuration (e.g. so it
+   doesn't prefer an installed dynamic-only package over a source package when
+   static files are required).
+
 
 Package configuration options
 -----------------------------

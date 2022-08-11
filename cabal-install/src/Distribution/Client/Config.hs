@@ -310,6 +310,7 @@ instance Semigroup SavedConfig where
         installStrongFlags           = combine installStrongFlags,
         installAllowBootLibInstalls  = combine installAllowBootLibInstalls,
         installOnlyConstrained       = combine installOnlyConstrained,
+        installRequireArtifacts      = combine installRequireArtifacts,
         installReinstall             = combine installReinstall,
         installAvoidReinstalls       = combine installAvoidReinstalls,
         installOverrideReinstall     = combine installOverrideReinstall,

@@ -7,6 +7,7 @@ module Distribution.Solver.Modular.Preference
     , enforceManualFlags
     , enforcePackageConstraints
     , enforceSingleInstanceRestriction
+    , enforceArtifactRequirements
     , firstGoal
     , preferBaseGoalChoice
     , preferLinked
@@ -22,7 +23,9 @@ import Prelude ()
 import Distribution.Solver.Compat.Prelude
 
 import qualified Data.List as L
+import Data.Map ((!))
 import qualified Data.Map as M
+import qualified Data.Set as S
 import Control.Monad.Trans.Reader (Reader, runReader, ask, local)
 
 import Distribution.PackageDescription (lookupFlagAssignment, unFlagAssignment) -- from Cabal
@@ -36,8 +39,11 @@ import Distribution.Solver.Types.PackagePath
 import Distribution.Solver.Types.PackagePreferences
 import Distribution.Solver.Types.Variable
 
+import Distribution.Solver.Types.ArtifactSelection
+import Distribution.Solver.Modular.Assignment
 import Distribution.Solver.Modular.Dependency
 import Distribution.Solver.Modular.Flag
+import Distribution.Solver.Modular.Index
 import Distribution.Solver.Modular.Package
 import qualified Distribution.Solver.Modular.PSQ as P
 import Distribution.Solver.Modular.Tree
@@ -510,3 +516,218 @@ enforceSingleInstanceRestriction = (`runReader` M.empty) . go
         (Nothing, Just qpn') -> do
           -- Not linked, already used. This is an error
           return $ Fail (CS.union (varToConflictSet (P qpn)) (varToConflictSet (P qpn'))) MultipleInstances
+
+-- | Monad used internally in 'enforceArtifactRequirements'.
+--
+-- Track which 'I's / 'POptions' and values for other variables would be chosen
+-- up to our location if this path in the tree were taken.  That lets us lookup
+-- dependencies and consult the index to retrieve the 'PInfo' of the
+-- dependencies to see what build artifacts they provide.
+--
+-- Also track choices (flag and stanza choices) that we know would introduce a
+-- dependency between two solved package options with conflicting build artifact
+-- requirements and availability.
+type EnforceAR = Reader (Assignment, ARUndeterminedDeps)
+
+-- | Internal map of variable choices that would introduce a conflict for the
+-- artifact requirements check.
+data ARUndeterminedDeps
+  = ARDeps ARReveal (Map ARChoice ARUndeterminedDeps)
+  deriving (Eq)
+
+instance Semigroup ARUndeterminedDeps where
+  ARDeps ar ad <> ARDeps br bd = ARDeps (ar <> br) (M.unionWith (<>) ad bd)
+
+instance Monoid ARUndeterminedDeps where
+  mempty = ARDeps mempty M.empty
+
+-- | Representation of a variable choice with information relevant to the
+-- artifact requirements checker.
+data ARChoice = ARPackage QPN ArtifactSelection | ARFlag QFN Bool | ARStanza QSN
+  deriving (Eq, Ord)
+
+-- | Used to track failures that the artifact requirements checker detects.
+data ARReveal
+  = ARReveal (Maybe ARFailure)
+  deriving (Eq)
+
+instance Semigroup ARReveal where
+  ARReveal Nothing <> b = b
+  a@(ARReveal (Just _)) <> _ = a
+
+instance Monoid ARReveal where
+  mempty = ARReveal Nothing
+
+-- | An alias for a failure node in the tree.
+type ARFailure = (ConflictSet, FailReason)
+
+-- | If a package depends on a dependency and we consider a package option to
+-- satisfy that dependency that does not provide the required build artifacts,
+-- detect this condition so we can mark this path in the search tree as invalid
+-- with this 'MissingArtifacts' reason.
+enforceArtifactRequirements :: Index -> Tree d c -> Tree d c
+enforceArtifactRequirements idx = (`runReader` initialTracking) . go
+  where
+    -- No assignments or conditional choices are made in the beginning.
+    initialTracking :: (Assignment, ARUndeterminedDeps)
+    initialTracking = (A M.empty M.empty M.empty, mempty)
+
+    -- For all child nodes, note that we made a choice that brought about any
+    -- conflict.
+    failingChoice :: CS.ConflictSet -> ARUndeterminedDeps -> ARUndeterminedDeps
+    failingChoice annotation (ARDeps failure choices) = ARDeps failure' choices'
+      where
+        (ARReveal arr) = failure
+        failure' = ARReveal $ (\(cs, fr) -> (annotation `CS.union` cs, fr)) <$> arr
+        choices' = failingChoice annotation <$> choices
+
+    -- Convert a package dependency, optionally conditional on a flag or stanza
+    -- have not tried yet, into our tracker so we can merge and reduce it.
+    depToAR :: Assignment -> QPN -> ArtifactSelection -> FlaggedDep QPN -> ARUndeterminedDeps
+    depToAR assn@(A _pa fa _sa) qpn requiredArts (Flagged qfn _fInfo trueDeps falseDeps)
+      = let
+          flagAR      b     = ARFlag qfn b
+          failing           = failingChoice (CS.singleton $ F qfn)
+          conflicting True  = failing $ foldMap (depToAR assn qpn requiredArts) trueDeps
+          conflicting False = failing $ foldMap (depToAR assn qpn requiredArts) falseDeps
+        in
+          case M.lookup qfn fa of
+            (Just b)  -> conflicting b
+            (Nothing) -> ARDeps mempty (M.fromList [(flagAR b, conflicting b) | b <- [True, False]])
+    depToAR assn@(A _pa _fa sa) qpn requiredArts (Stanza qsn trueDeps)
+      = let
+          stanzaAR    = ARStanza qsn
+          failing     = failingChoice (CS.singleton $ S qsn)
+          conflicting = failing $ foldMap (depToAR assn qpn requiredArts) trueDeps
+        in
+          case M.lookup qsn sa of
+            (Just False) -> mempty
+            (Just True)  -> conflicting
+            (Nothing)    -> ARDeps mempty (M.singleton stanzaAR conflicting)
+    depToAR _ qpn requiredArts (Simple (LDep _dr (Dep (PkgComponent dep _) _ci)) _comp)
+      = let
+          rdepAR providedArts      = ARPackage dep providedArts
+          conflicting providedArts = ARDeps (ARReveal $ Just (cs, fr providedArts)) M.empty
+          cs                       = cps [qpn, dep]
+          fr providedArts          = MissingArtifacts $ requiredArts `artsDifference` providedArts
+          cps qpns                 = foldr CS.union CS.empty . map (CS.singleton . P) $ qpns
+
+          choices          = M.fromList $
+            [ (rdepAR providedArts, conflicting providedArts)
+            | providedArts <- asSelections
+            , not $ requiredArts `artsSubsetOf` providedArts
+            ]
+        in ARDeps mempty choices
+    depToAR _ _qpn _requiredArts (Simple (LDep _dr _) _comp) = mempty
+
+    -- Find the powerlist.
+    powerlist :: [a] -> [[a]]
+    powerlist []     = [[]]
+    powerlist (x:xs) = [zs | ys <- powerlist xs, zs <- [ys, x:ys]]
+
+    -- All possible selections; there are just 4.
+    asSelections :: [ArtifactSelection]
+    asSelections = toAs <$> powerlist asKinds
+      where
+        toAs = ArtifactSelection . S.fromList
+        asKinds = let ArtifactSelection asSet = allArtifacts in S.toList asSet
+
+    -- Find all of the few choices that would contradict one just made.
+    -- Used to trim the 'ARUndeterminedDeps' tree of choices we know we will
+    -- not make.
+    compl :: ARChoice -> [ARChoice]
+    compl (ARFlag    qfn b)            = [ARFlag qfn b' | b' <- [True, False], b' /= b]
+    compl (ARStanza  _qsn)             = []
+    compl (ARPackage qpn providedArts) = [ARPackage qpn as | as <- asSelections, as /= providedArts]
+
+    -- See if we can reduce the record of conditional failures once we make a
+    -- choice.
+    reduceARDeps :: ARChoice -> ARUndeterminedDeps -> ARUndeterminedDeps
+    reduceARDeps choice _arDeps@(ARDeps arr choices) =
+      case M.lookup choice choices of
+        (Nothing)                               ->
+          ARDeps arr (reduceARDeps choice <$> choices)
+        (Just arDeps'@(ARDeps arr' choices')) ->
+          case arr of
+            (ARReveal (Just _)) ->
+              ARDeps (arr <> arr') (reduceARDeps choice <$> (trim $ M.delete choice choices <> choices'))
+            _                   ->
+              arDeps'
+      where
+        trim = foldr (\x acc -> M.delete x . acc) id $ compl choice
+
+    -- Selecting a package, flag, or stanza can introduce a missing artifact
+    -- condition.  Check each possible location.
+    go :: Tree d c -> EnforceAR (Tree d c)
+    go (PChoice qpn rdm gr cs) =
+      PChoice qpn rdm gr <$> sequenceA (W.mapWithKey (goP qpn) (fmap go cs))
+    go (FChoice qfn rdm y t m d ts) =
+      FChoice qfn rdm y t m d <$> sequenceA (W.mapWithKey (goF qfn) (fmap go ts))
+    go (SChoice qsn rdm y t ts) =
+      SChoice qsn rdm y t <$> sequenceA (W.mapWithKey (goS qsn) (fmap go ts))
+    go (GoalChoice rdm ts) =
+      GoalChoice rdm <$> traverse go ts
+    go x@(Fail _ _) = return x
+    go x@(Done _ _) = return x
+
+    -- Helper routine that inserts fail nodes if we detect a missing artifact
+    -- condition for this choice.
+    arGuard :: CS.ConflictSet -> EnforceAR (Tree d c) -> EnforceAR (Tree d c)
+    arGuard annotation r = do
+      -- Make sure we don't detect a conflict.
+      (_assn, arDeps) <- ask
+      case arDeps of
+        (ARDeps (ARReveal (Just failure) ) _choices) -> do
+          -- (Redundantly ensure that our choice is part of the conflict set.)
+          let
+            (cs, fr) = failure
+            cs' = cs `CS.union` annotation
+          return $ Fail cs' fr
+        _ -> do
+          r
+
+    -- Try a package choice.
+    goP :: QPN -> POption -> EnforceAR (Tree d c) -> EnforceAR (Tree d c)
+    goP qpn@(Q _ pn) (POption i _) r = do
+      -- We are trying an instance.  Our job here is to detect when a choice
+      -- would introduce a case of missing artifacts (one package depends on
+      -- another that doesn't provide the build artifacts the first requires).
+      -- We'll also track what assignments we would make if we took this path
+      -- in the tree, and we'll also track which choices would introduce this
+      -- condition.
+
+      -- Get the dependencies of this 'I' and the build artifacts it provides
+      -- and requires.
+      let PInfo deps _exes _finfo _fr (providedArts, requiredArts) = idx ! pn ! i
+
+      let
+        qdeps = qualifyDeps (defaultQualifyOptions idx) qpn deps
+
+        assign (A pa fa sa, arDeps) = (A (M.insert qpn i $ pa) fa sa, arDeps)
+        merge  (assn,       arDeps) = (assn, arDeps <> foldMap (depToAR assn qpn requiredArts) qdeps)
+        reduce (assn,       arDeps) = (assn, reduceARDeps (ARPackage qpn providedArts) $ arDeps)
+      local (reduce . merge . assign) $ do
+        arGuard (varToConflictSet (P qpn)) $ do
+          r
+
+    -- Try a flag choice.
+    goF :: QFN -> Bool -> EnforceAR (Tree d c) -> EnforceAR (Tree d c)
+    goF qfn@(FN _qpn@(Q _ _pn) _f) b r = do
+      let
+        assign (A pa fa sa, arDeps) = (A pa (M.insert qfn b $ fa) sa, arDeps)
+        reduce (assn,       arDeps) = (assn, reduceARDeps (ARFlag qfn b) $ arDeps)
+      local (reduce . assign) $ do
+        arGuard (varToConflictSet (F qfn)) $ do
+          r
+
+    -- Try a stanza choice.
+    goS :: QSN -> Bool -> EnforceAR (Tree d c) -> EnforceAR (Tree d c)
+    goS qsn@(SN (Q _pp _pn) _s) b r = do
+      let
+        assign (A pa fa sa, arDeps) = (A pa fa (M.insert qsn b $ sa), arDeps)
+        reduce (assn,       arDeps)
+          | True <- b = (assn, reduceARDeps (ARStanza qsn) $ arDeps)
+          | otherwise = (assn, arDeps)
+      local (reduce . assign) $ do
+        arGuard (varToConflictSet (S qsn)) $ do
+          r

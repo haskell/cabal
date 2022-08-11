@@ -958,6 +958,7 @@ data FetchFlags = FetchFlags {
       fetchStrongFlags      :: Flag StrongFlags,
       fetchAllowBootLibInstalls :: Flag AllowBootLibInstalls,
       fetchOnlyConstrained  :: Flag OnlyConstrained,
+      fetchRequireArtifacts :: Flag RequireArtifacts,
       fetchTests            :: Flag Bool,
       fetchBenchmarks       :: Flag Bool,
       fetchVerbosity :: Flag Verbosity
@@ -980,6 +981,7 @@ defaultFetchFlags = FetchFlags {
     fetchStrongFlags      = Flag (StrongFlags False),
     fetchAllowBootLibInstalls = Flag (AllowBootLibInstalls False),
     fetchOnlyConstrained  = Flag OnlyConstrainedNone,
+    fetchRequireArtifacts = Flag (RequireArtifacts True),
     fetchTests            = toFlag False,
     fetchBenchmarks       = toFlag False,
     fetchVerbosity = toFlag normal
@@ -1044,6 +1046,7 @@ fetchCommand = CommandUI {
                          fetchStrongFlags      (\v flags -> flags { fetchStrongFlags      = v })
                          fetchAllowBootLibInstalls (\v flags -> flags { fetchAllowBootLibInstalls = v })
                          fetchOnlyConstrained  (\v flags -> flags { fetchOnlyConstrained  = v })
+                         fetchRequireArtifacts (\v flags -> flags { fetchRequireArtifacts = v })
 
   }
 
@@ -1067,6 +1070,7 @@ data FreezeFlags = FreezeFlags {
       freezeStrongFlags      :: Flag StrongFlags,
       freezeAllowBootLibInstalls :: Flag AllowBootLibInstalls,
       freezeOnlyConstrained  :: Flag OnlyConstrained,
+      freezeRequireArtifacts :: Flag RequireArtifacts,
       freezeVerbosity        :: Flag Verbosity
     }
 
@@ -1087,6 +1091,7 @@ defaultFreezeFlags = FreezeFlags {
     freezeStrongFlags      = Flag (StrongFlags False),
     freezeAllowBootLibInstalls = Flag (AllowBootLibInstalls False),
     freezeOnlyConstrained  = Flag OnlyConstrainedNone,
+    freezeRequireArtifacts = Flag (RequireArtifacts True),
     freezeVerbosity        = toFlag normal
    }
 
@@ -1142,6 +1147,7 @@ freezeCommand = CommandUI {
                          freezeStrongFlags      (\v flags -> flags { freezeStrongFlags      = v })
                          freezeAllowBootLibInstalls (\v flags -> flags { freezeAllowBootLibInstalls = v })
                          freezeOnlyConstrained  (\v flags -> flags { freezeOnlyConstrained  = v })
+                         freezeRequireArtifacts (\v flags -> flags { freezeRequireArtifacts = v })
 
   }
 
@@ -1589,6 +1595,7 @@ data InstallFlags = InstallFlags {
     installStrongFlags      :: Flag StrongFlags,
     installAllowBootLibInstalls :: Flag AllowBootLibInstalls,
     installOnlyConstrained  :: Flag OnlyConstrained,
+    installRequireArtifacts :: Flag RequireArtifacts,
     installReinstall        :: Flag Bool,
     installAvoidReinstalls  :: Flag AvoidReinstalls,
     installOverrideReinstall :: Flag Bool,
@@ -1632,6 +1639,7 @@ defaultInstallFlags = InstallFlags {
     installStrongFlags     = Flag (StrongFlags False),
     installAllowBootLibInstalls = Flag (AllowBootLibInstalls False),
     installOnlyConstrained = Flag OnlyConstrainedNone,
+    installRequireArtifacts = Flag (RequireArtifacts True),
     installReinstall       = Flag False,
     installAvoidReinstalls = Flag (AvoidReinstalls False),
     installOverrideReinstall = Flag False,
@@ -1857,7 +1865,8 @@ installOptions showOrParseArgs =
                         installShadowPkgs       (\v flags -> flags { installShadowPkgs       = v })
                         installStrongFlags      (\v flags -> flags { installStrongFlags      = v })
                         installAllowBootLibInstalls (\v flags -> flags { installAllowBootLibInstalls = v })
-                        installOnlyConstrained  (\v flags -> flags { installOnlyConstrained  = v }) ++
+                        installOnlyConstrained  (\v flags -> flags { installOnlyConstrained  = v })
+                        installRequireArtifacts (\v flags -> flags { installRequireArtifacts = v }) ++
 
       [ option [] ["reinstall"]
           "Install even if it means installing the same version again."
@@ -2454,10 +2463,11 @@ optionSolverFlags :: ShowOrParseArgs
                   -> (flags -> Flag StrongFlags)      -> (Flag StrongFlags      -> flags -> flags)
                   -> (flags -> Flag AllowBootLibInstalls) -> (Flag AllowBootLibInstalls -> flags -> flags)
                   -> (flags -> Flag OnlyConstrained)  -> (Flag OnlyConstrained  -> flags -> flags)
+                  -> (flags -> Flag RequireArtifacts) -> (Flag RequireArtifacts -> flags -> flags)
                   -> [OptionField flags]
 optionSolverFlags showOrParseArgs getmbj setmbj getrg setrg getcc setcc
                   getfgc setfgc getmc setmc getig setig getpo setpo getsip setsip
-                  getstrfl setstrfl getib setib getoc setoc =
+                  getstrfl setstrfl getib setib getoc setoc getra setra =
   [ option [] ["max-backjumps"]
       ("Maximum number of backjumps allowed while solving (default: " ++ show defaultMaxBackjumps ++ "). Use a negative number to enable unlimited backtracking. Use 0 to disable backtracking completely.")
       getmbj setmbj
@@ -2520,6 +2530,11 @@ optionSolverFlags showOrParseArgs getmbj setmbj getrg setrg getcc setcc
             (toFlag `fmap` parsec))
          (flagToList . fmap prettyShow))
 
+  , option [] ["require-artifacts"]
+      "Reject installed dependency package options that are missing required build artifacts (default)."
+      (fmap asBool . getra)
+      (setra . fmap RequireArtifacts)
+      (yesNoOpt showOrParseArgs)
   ]
 
 usagePackages :: String -> String -> String

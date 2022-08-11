@@ -170,6 +170,8 @@ planPackages verbosity comp platform fetchFlags
 
       . setOnlyConstrained onlyConstrained
 
+      . setRequireArtifacts requireArtifacts
+
       . setSolverVerbosity verbosity
 
       . addConstraints
@@ -205,6 +207,7 @@ planPackages verbosity comp platform fetchFlags
     maxBackjumps     = fromFlag (fetchMaxBackjumps     fetchFlags)
     allowBootLibInstalls = fromFlag (fetchAllowBootLibInstalls fetchFlags)
     onlyConstrained  = fromFlag (fetchOnlyConstrained  fetchFlags)
+    requireArtifacts = fromFlag (fetchRequireArtifacts fetchFlags)
 
 
 checkTarget :: Verbosity -> UserTarget -> IO ()

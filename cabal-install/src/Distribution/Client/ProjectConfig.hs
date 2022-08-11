@@ -85,6 +85,7 @@ import Distribution.Client.HttpUtils
          , downloadURI )
 import Distribution.Client.Utils.Parsec (renderParseError)
 
+import Distribution.Solver.Types.ArtifactSelection
 import Distribution.Solver.Types.SourcePackage
 import Distribution.Solver.Types.Settings
 import Distribution.Solver.Types.PackageConstraint
@@ -221,7 +222,7 @@ projectConfigWithSolverRepoContext verbosity
 -- 'SolverSettings' with no optional fields (by applying defaults).
 --
 resolveSolverSettings :: ProjectConfig -> SolverSettings
-resolveSolverSettings ProjectConfig{
+resolveSolverSettings projectConfig@ProjectConfig{
                         projectConfigShared,
                         projectConfigLocalPackages,
                         projectConfigSpecificPackage
@@ -251,6 +252,8 @@ resolveSolverSettings ProjectConfig{
     solverSettingStrongFlags       = fromFlag projectConfigStrongFlags
     solverSettingAllowBootLibInstalls = fromFlag projectConfigAllowBootLibInstalls
     solverSettingOnlyConstrained   = fromFlag projectConfigOnlyConstrained
+    solverSettingRequireArtifacts  = fromFlag projectConfigRequireArtifacts
+    solverSettingSourceArtifacts   = artsFromPackageConfig (projectConfigAllPackages projectConfig)
     solverSettingIndexState        = flagToMaybe projectConfigIndexState
     solverSettingActiveRepos       = flagToMaybe projectConfigActiveRepos
     solverSettingIndependentGoals  = fromFlag projectConfigIndependentGoals
@@ -275,6 +278,7 @@ resolveSolverSettings ProjectConfig{
        projectConfigStrongFlags       = Flag (StrongFlags False),
        projectConfigAllowBootLibInstalls = Flag (AllowBootLibInstalls False),
        projectConfigOnlyConstrained   = Flag OnlyConstrainedNone,
+       projectConfigRequireArtifacts  = Flag (RequireArtifacts True),
        projectConfigIndependentGoals  = Flag (IndependentGoals False),
        projectConfigPreferOldest      = Flag (PreferOldest False)
      --projectConfigShadowPkgs        = Flag False,
@@ -283,6 +287,12 @@ resolveSolverSettings ProjectConfig{
      --projectConfigOverrideReinstall = Flag False,
      --projectConfigUpgradeDeps       = Flag False
     }
+
+    artsFromPackageConfig packageConfig = (\arts -> Just (arts, arts)) . mconcat $
+      [ sourceArtsOf packageConfig staticOutsOnly [(packageConfigVanillaLib, True)]
+      , sourceArtsOf packageConfig dynOutsOnly    [(packageConfigSharedLib, False), (packageConfigDynExe, False)]
+      ]
+    sourceArtsOf packageConfig arts fs = if any (\(fld, def) -> fromFlagOrDefault def . (fld $) $ packageConfig) fs then arts else mempty
 
 
 -- | Resolve the project configuration, with all its optional fields, into

@@ -41,6 +41,7 @@ import Distribution.Client.Targets
          ( userToPackageConstraint, userConstraintPackageName )
 import Distribution.Client.JobControl (Lock)
 
+import           Distribution.Solver.Types.ArtifactSelection
 import qualified Distribution.Solver.Types.ComponentDeps as CD
 import           Distribution.Solver.Types.Settings
 import           Distribution.Solver.Types.ConstraintSource
@@ -314,6 +315,12 @@ planLocalPackage verbosity comp platform configFlags configExFlags
       benchmarksEnabled =
         fromFlagOrDefault False $ configBenchmarks configFlags
 
+      sourceArts = mconcat $
+        [ sourceArtsOf staticOutsOnly [(configVanillaLib, True)]
+        , sourceArtsOf dynOutsOnly    [(configSharedLib, False), (configDynExe, False)]
+        ]
+      sourceArtsOf arts fs = if any (\(fld, def) -> fromFlagOrDefault def . (fld $) $ configFlags) fs then arts else mempty
+
       resolverParams :: DepResolverParams
       resolverParams =
           removeLowerBounds
@@ -325,6 +332,8 @@ planLocalPackage verbosity comp platform configFlags configExFlags
             -- preferences from the config file or command line
             [ PackageVersionPreference name ver
             | PackageVersionConstraint name ver <- configPreferences configExFlags ]
+
+        . setSourceArtifacts (Just (sourceArts, sourceArts))
 
         . addConstraints
             -- version constraints from the config file or command line
