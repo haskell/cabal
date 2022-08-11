@@ -3,6 +3,12 @@ cabal-install 3.8.1.0 Changelog
 
 ### Significant changes
 
+- `Cabal-3.8.1.0` is used, which brings [its own set of changes](./Cabal-3.8.1.0.md),
+  many of which are significant.
+
+- Expose `cabal-install` as library [#1597](https://github.com/haskell/cabal/issues/1597) [#3781](https://github.com/haskell/cabal/issues/3781) [#4798](https://github.com/haskell/cabal/issues/4798) [#6090](https://github.com/haskell/cabal/issues/6090) [#7224](https://github.com/haskell/cabal/issues/7224) [#7358](https://github.com/haskell/cabal/pull/7358)
+- Split out package `cabal-install-solver`
+
 - `cabal init` rewrite [#1074](https://github.com/haskell/cabal/issues/1074) [#6758](https://github.com/haskell/cabal/issues/6758) [#6864](https://github.com/haskell/cabal/issues/6864) [#7251](https://github.com/haskell/cabal/issues/7251) [#7255](https://github.com/haskell/cabal/issues/7255) [#7256](https://github.com/haskell/cabal/issues/7256) [#7273](https://github.com/haskell/cabal/issues/7273)
 
   - Restructures the `cabal init` command to fix historical
@@ -22,19 +28,41 @@ cabal-install 3.8.1.0 Changelog
     - Interactive, simple, and non-interactive workflows are
       covered.
 
-- Windows: rewrite paths to configure [#7494](https://github.com/haskell/cabal/issues/7494) [#7649](https://github.com/haskell/cabal/issues/7649)
-
-- Expose `cabal-install` as library [#1597](https://github.com/haskell/cabal/issues/1597) [#3781](https://github.com/haskell/cabal/issues/3781) [#4798](https://github.com/haskell/cabal/issues/4798) [#6090](https://github.com/haskell/cabal/issues/6090) [#7224](https://github.com/haskell/cabal/issues/7224) [#7358](https://github.com/haskell/cabal/pull/7358)
-
 - Conditionals and imports in `cabal.project` files [#7556](https://github.com/haskell/cabal/issues/7556) [#7783](https://github.com/haskell/cabal/pull/7783)
 
   `cabal.project` files now allow conditional logic on compiler version, arch, etc. as well as imports of other local or remote project of freeze files (both old and new style).
 
-- Split out package `Cabal-syntax` for `.cabal` file syntax and parsing [#7559](https://github.com/haskell/cabal/issues/7559) [#7620](https://github.com/haskell/cabal/pull/7620)
+- Changes to `cabal v2-configure` [#5591](https://github.com/haskell/cabal/issues/5591) [#7180](https://github.com/haskell/cabal/issues/7180) [#7405](https://github.com/haskell/cabal/issues/7405) [#7402](https://github.com/haskell/cabal/pull/7402)
 
-- Build release archives (and validate) with GHC 9.2.3 [#8271](https://github.com/haskell/cabal/issues/8271) [#8272](https://github.com/haskell/cabal/pull/8272)
+  - removes the `--dry-run` part of the `v2-configure` command. now the command only generates a cabal.project.local. to get the old functionality back, run `cabal v2-build --dry-run` after (or instead of, if generating cabal.project.local is not needed) `v2-configure`
+  - add `--enable-append` and `--disable-append` flags to `v2-configure`, which toggle the option for the new configuration to be appended to the old config file
+  - add `--enable-backup` and `--disable-backup` flags to `v2-configure`, which toggle the backup feature for the configuration file
 
-  - The release binaries are now built with GHC 9.2.3, which fixes some minor snags
+- Better support for scripts [#5508](https://github.com/haskell/cabal/issues/5508) [#5698](https://github.com/haskell/cabal/issues/5698) [#6149](https://github.com/haskell/cabal/issues/6149) [#6354](https://github.com/haskell/cabal/issues/6354) [#7073](https://github.com/haskell/cabal/issues/7073) [#7842](https://github.com/haskell/cabal/issues/7842) [#7851](https://github.com/haskell/cabal/pull/7851) [#7925](https://github.com/haskell/cabal/pull/7925) [#7938](https://github.com/haskell/cabal/pull/7938) [#7990](https://github.com/haskell/cabal/pull/7990) [#7997](https://github.com/haskell/cabal/pull/7997)
+
+  - Script support improved or added across relevant commands.
+  - `cabal run script` will now cache results and will not do a fresh build every time.
+  - `cabal build script` added: It will build the cache for script.
+  - `cabal repl script` added: It will open a repl for script using the cache if available.
+  - `cabal clean script` added: It will clean the cache for script.
+  - `cabal clean` will now remove script caches for which there is no marching script.
+  - `cabal list-bin` now works with scripts
+  - The name of the generated script executable has been changed from "script" to
+    "cabal-script-<your-sanitized-script-name>" for easier process management.
+  - Reduce the default verbosity of scripts, so that the build output doesn't interfere with the script output.
+  - Scripts now support a project metadata block that allows them to use options
+    that would normally be set in a cabal.project file.
+
+- `cabal-install-solver`: Backtrack when no pkg-config is present [#7448](https://github.com/haskell/cabal/issues/7448) [#7621](https://github.com/haskell/cabal/pull/7621)
+
+  When solving for pkgconfig-depends, when pkg-config is not present, the cabal solver will now backtrack and try a different automatic flag and dependency configuration, just as it does if pkg-config is present, but does not contain the specified package.
+
+- Apply local options only to local packages [#7998](https://github.com/haskell/cabal/issues/7998) [#7973](https://github.com/haskell/cabal/pull/7973)
+
+  - Command-line `ghc-options` only applies to local packages
+  - `program-options` stanza only applies to local packages
+
+- Add `--open` flag to `cabal haddock` [#7366](https://github.com/haskell/cabal/issues/7366) [#7550](https://github.com/haskell/cabal/pull/7550)
 
 
 ### Other changes
@@ -83,12 +111,6 @@ cabal-install 3.8.1.0 Changelog
 
   #7982 also completes a changelog entry for `Cabal-3.6.1.0`, noting it is required for `cabal-install >= 3.6`.
 
-- Handle option argument parse errors without `error` [#7573](https://github.com/haskell/cabal/issues/7573) [#7579](https://github.com/haskell/cabal/pull/7579)
-
-  - Errors parsing arguments such as `-v=3` no longer result in
-    stack traces.
-  - `Distribution.ReadE.readEOrFail` was removed.
-
 - Add `preferred-versions` support for `LocalIndexRepo` [#7294](https://github.com/haskell/cabal/issues/7294) [#7295](https://github.com/haskell/cabal/pull/7295)
 
   - Previously, the only repo-index-type that reads the preferred-versions file was `RepoRemote`.
@@ -100,12 +122,6 @@ cabal-install 3.8.1.0 Changelog
   - `cabal outdated` honours the `preferred-versions` file which might deprecate or prefer certain
     versions of packages. In particular, if the only newer version of a package has been deprecated,
     `cabal outdated` should not report that there are newer versions available.
-
-- Changes to `cabal v2-configure` [#5591](https://github.com/haskell/cabal/issues/5591) [#7180](https://github.com/haskell/cabal/issues/7180) [#7405](https://github.com/haskell/cabal/issues/7405) [#7402](https://github.com/haskell/cabal/pull/7402)
-
-  - removes the `--dry-run` part of the `v2-configure` command
-  - add `--enable-append` and `--disable-append` flags to `v2-configure`, which toggle the option for the new configuration to be appended to the old config file
-  - add `--enable-backup` and `--disable-backup` flags to `v2-configure`, which toggle the backup feature for the configuration file
 
 - Standalone tests for `cabal init` [#7410](https://github.com/haskell/cabal/issues/7410) [#7424](https://github.com/haskell/cabal/pull/7424)
 
@@ -134,21 +150,6 @@ cabal-install 3.8.1.0 Changelog
 
   By including the fact that a plan failure is expected in the error message, hopefully users will be more confident that setting `tests: True` was the right move, so they will be able to focus on the true cause of the problem: the fact that no plan including the tests exists.
 
-- Better support for scripts [#5508](https://github.com/haskell/cabal/issues/5508) [#5698](https://github.com/haskell/cabal/issues/5698) [#6149](https://github.com/haskell/cabal/issues/6149) [#6354](https://github.com/haskell/cabal/issues/6354) [#7073](https://github.com/haskell/cabal/issues/7073) [#7842](https://github.com/haskell/cabal/issues/7842) [#7851](https://github.com/haskell/cabal/pull/7851) [#7925](https://github.com/haskell/cabal/pull/7925) [#7938](https://github.com/haskell/cabal/pull/7938) [#7990](https://github.com/haskell/cabal/pull/7990) [#7997](https://github.com/haskell/cabal/pull/7997)
-
-  - Script support improved or added across relevant commands.
-  - `cabal run script` will now cache results and will not do a fresh build every time.
-  - `cabal build script` added: It will build the cache for script.
-  - `cabal repl script` added: It will open a repl for script using the cache if available.
-  - `cabal clean script` added: It will clean the cache for script.
-  - `cabal clean` will now remove script caches for which there is no marching script.
-  - `cabal list-bin` now works with scripts
-  - The name of the generated script executable has been changed from "script" to
-    "cabal-script-<your-sanitized-script-name>" for easier process management.
-  - Reduce the default verbosity of scripts, so that the build output doesn't interfere with the script output.
-  - Scripts now support a project metadata block that allows them to use options
-    that would normally be set in a cabal.project file.
-
 - Remove `Distribution.Client.Compat.FilePerms` [#7948](https://github.com/haskell/cabal/pull/7948)
 
   - Remove the module `Distribution.Client.Compat.FilePerms`, since it's
@@ -157,11 +158,6 @@ cabal-install 3.8.1.0 Changelog
 - Avoid malformed range requests [#5952](https://github.com/haskell/cabal/issues/5952) [#7970](https://github.com/haskell/cabal/pull/7970)
 
   - Don't send malformed range requests. Should make fetching from head.hackage and other "unstable" overlays more reliable.
-
-- Apply local options only to local packages [#7998](https://github.com/haskell/cabal/issues/7998) [#7973](https://github.com/haskell/cabal/pull/7973)
-
-  - Command-line `ghc-options` only applies to local packages
-  - `program-options` stanza only applies to local packages
 
 - Improve error message for empty `--allow-newer=`  [#7740](https://github.com/haskell/cabal/issues/7740) [#8140](https://github.com/haskell/cabal/pull/8140)
 
@@ -195,8 +191,6 @@ cabal-install 3.8.1.0 Changelog
 
 - Lazily decode cache files for checking invalidation [#7466](https://github.com/haskell/cabal/issues/7466) [#7516](https://github.com/haskell/cabal/pull/7516)
 
-- Add `--open` flag to `cabal haddock` [#7366](https://github.com/haskell/cabal/issues/7366) [#7550](https://github.com/haskell/cabal/pull/7550)
-
 - Defer `build-tools-depends` choices as well as setup choices [#7532](https://github.com/haskell/cabal/pull/7532) [#7561](https://github.com/haskell/cabal/pull/7561)
 
 - Fix running GHCJS executables [#6175](https://github.com/haskell/cabal/issues/6175) [#6361](https://github.com/haskell/cabal/issues/6361) [#7575](https://github.com/haskell/cabal/pull/7575)
@@ -224,6 +218,11 @@ cabal-install 3.8.1.0 Changelog
 - cabal init -i should autodetect author name and maintainer email (fix #8255) [#8255](https://github.com/haskell/cabal/issues/8255) [#8267](https://github.com/haskell/cabal/pull/8267)
 
 - cabal init -i: add the GHC2021 language option [#8265](https://github.com/haskell/cabal/issues/8265) [#8277](https://github.com/haskell/cabal/pull/8277)
+
+- Automatically pipe auth from repo uris into curl transport. [#4743](https://github.com/haskell/cabal/issues/4743) [#7630](https://github.com/haskell/cabal/pull/7630)
+
+- Build release archives (and validate) with GHC 9.2.3 [#8271](https://github.com/haskell/cabal/issues/8271) [#8272](https://github.com/haskell/cabal/pull/8272)
+  - The release binaries are now built with GHC 9.2.3, which fixes some minor snags
 
 ### Internal changes
 

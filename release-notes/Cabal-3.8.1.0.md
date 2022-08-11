@@ -3,24 +3,13 @@ Cabal 3.8.1.0 Changelog
 
 ### Significant changes
 
-- Cabal init rewrite [#1074](https://github.com/haskell/cabal/issues/1074) [#6758](https://github.com/haskell/cabal/issues/6758) [#6864](https://github.com/haskell/cabal/issues/6864) [#7251](https://github.com/haskell/cabal/issues/7251) [#7255](https://github.com/haskell/cabal/issues/7255) [#7256](https://github.com/haskell/cabal/issues/7256) [#7273](https://github.com/haskell/cabal/issues/7273)
+- Split out package `Cabal-syntax` for `.cabal` file syntax and parsing [#7559](https://github.com/haskell/cabal/issues/7559) [#7620](https://github.com/haskell/cabal/pull/7620)
 
-  - Restructures the `cabal init` command to fix historical
-    issues. All flags are preserved.
-    - Codebases for interactive and non-interactive flags
-      are disentangled.
-    - Data structures now exploit relevant stanza structure
-      and formatters only care about stanza data
-    - Heuristics and prompts have a pure and impure implementation.
+- Unmarked "visibility: public" and "build-depends: pkg:lib" syntaxes as experimental, allowing Hackage upload of packages exposing or using multiple public libraries [#6801](https://github.com/haskell/cabal/issues/6801) [#7286](https://github.com/haskell/cabal/issues/7286) [#8089](https://github.com/haskell/cabal/pull/8089)
 
-  - Sets default behavior to be `--interactive` as opposed to
-    `--non-interactive`.
+- Add code-generators field to test-suite stanza [#4500](https://github.com/haskell/cabal/issues/4500) [#7688](https://github.com/haskell/cabal/pull/7688)
 
-  - Rewrites tests to achieve 98% coverage
-    - Golden files now test every stanza individually
-    - Every flag is covered by a unit test
-    - Interactive, simple, and non-interactive workflows are
-      covered.
+  Test-suite stanzas now may contain a `code-generators:` field that can be used to run executables as preprocessors which take existing locations of library code and cabal-generated ghc build flags, and output new modules for use in the test stanza. This can be used to automatically generate drivers for "discover" style tests, including doctests.
 
 - Windows: redo the fix to breakage caused by new autoconf; the wrong fix made cabal sometimes fail with old autoconf [#7494](https://github.com/haskell/cabal/issues/7494) [#7649](https://github.com/haskell/cabal/issues/7649)
 
@@ -28,9 +17,6 @@ Cabal 3.8.1.0 Changelog
   - Adds a subtler fix/workaround for the deficiencies of new autoconf versions on Windows.
 
 - Windows: rewrite paths to configure [#7494](https://github.com/haskell/cabal/issues/7494) [#7649](https://github.com/haskell/cabal/issues/7649)
-
-- Expose `cabal-install` as library [#1597](https://github.com/haskell/cabal/issues/1597) [#3781](https://github.com/haskell/cabal/issues/3781) [#4798](https://github.com/haskell/cabal/issues/4798) [#6090](https://github.com/haskell/cabal/issues/6090) [#7224](https://github.com/haskell/cabal/issues/7224) [#7358](https://github.com/haskell/cabal/pull/7358)
-
 - Enabled foreign library building on apple silicon [#7837](https://github.com/haskell/cabal/issues/7837) [#8227](https://github.com/haskell/cabal/issues/8227) [#8232](https://github.com/haskell/cabal/pull/8232)
 
   - Enabled foreign library building on apple silicon
@@ -84,14 +70,6 @@ Cabal 3.8.1.0 Changelog
 
   Improves `cabal check` logic for duplicate modules to take into account conditional branches. If a module appears on both sides of an `if/else` clause in a cabal file, it is now correctly not reported as a duplicate.
 
-- Backtrack when no pkg-config is present [#7448](https://github.com/haskell/cabal/issues/7448) [#7621](https://github.com/haskell/cabal/pull/7621)
-
-  When solving for pkgconfig-depends, when pkg-config is not present, the cabal solver will now backtrack and try a different automatic flag and dependency configuration, just as it does if pkg-config is present, but does not contain the specified package.
-
-- Add code-generators field to test-suite stanza [#4500](https://github.com/haskell/cabal/issues/4500) [#7688](https://github.com/haskell/cabal/pull/7688)
-
-  Test-suite stanzas now may contain a `code-generators:` field that can be used to run executables as preprocessors which take existing locations of library code and cabal-generated ghc build flags, and output new modules for use in the test stanza. This can be used to automatically generate drivers for "discover" style tests, including doctests.
-
 - Allow glob-star matches with literal filenames (no extensions) [#5883](https://github.com/haskell/cabal/issues/5883) [#8005](https://github.com/haskell/cabal/pull/8005)
 
   - Cabal file glob syntax extended to allow matches of the form dir/**/FileNoExtension
@@ -120,17 +98,14 @@ Cabal 3.8.1.0 Changelog
 
   argument) means.
 
-- Create Cabal-syntax for .cabal files [#7559](https://github.com/haskell/cabal/issues/7559) [#7620](https://github.com/haskell/cabal/pull/7620)
 - Fix haddock command via Setup.hs for internal libraries [#1919](https://github.com/haskell/cabal/issues/1919) [#7827](https://github.com/haskell/cabal/pull/7827)
 - `ghc-options` and `--with-gcc` are now passed to GHC when compiling C and C++ sources [#4439](https://github.com/haskell/cabal/issues/4439) [#5440](https://github.com/haskell/cabal/pull/5440) [#7874](https://github.com/haskell/cabal/pull/7874)
 - 'cabal check' to fail when no upper bounds for base or Cabal are present in setup dependencies [#4683](https://github.com/haskell/cabal/issues/4683) [#5370](https://github.com/haskell/cabal/pull/5370) [#7409](https://github.com/haskell/cabal/pull/7409)
 - --repl-options doesn’t split on whitespace [#6190](https://github.com/haskell/cabal/issues/6190) [#7799](https://github.com/haskell/cabal/pull/7799)
 - '--repl-no-load' option skips startup modules load in REPL [#7541](https://github.com/haskell/cabal/issues/7541) [#7578](https://github.com/haskell/cabal/pull/7578)
 - Add -c alias for --constraint command line flag [#7765](https://github.com/haskell/cabal/issues/7765) [#7766](https://github.com/haskell/cabal/pull/7766)
-- Add "prompt" strategy when symlinking binaries. [#5672](https://github.com/haskell/cabal/pull/5672)
 - Add fields extra-libraries-static and extra-lib-dirs-static [#6688](https://github.com/haskell/cabal/issues/6688) [#7399](https://github.com/haskell/cabal/issues/7399) [#7536](https://github.com/haskell/cabal/pull/7536)
 - Paths passed to GHC are now relative to the current working directory
-- Autoatically pipe auth from repo uris into curl transport. [#4743](https://github.com/haskell/cabal/issues/4743) [#7630](https://github.com/haskell/cabal/pull/7630)
 - raise lower bound of process and remove compatibility shims [#7922](https://github.com/haskell/cabal/pull/7922)
 - changes the cabal check warning about long synopsis, so it warns only synopsis bigger than the set size [#7932](https://github.com/haskell/cabal/issues/7932) [#7933](https://github.com/haskell/cabal/pull/7933)
 - Remove bootstrapping plan files from version control, and simplify bootstrap update Makefile targets. [#7949](https://github.com/haskell/cabal/pull/7949)
@@ -138,8 +113,6 @@ Cabal 3.8.1.0 Changelog
 - Support GHC 9.4's `clang`-based Windows toolchain [#8062](https://github.com/haskell/cabal/pull/8062)
 - Add support for the 64-bit S390X architecture [#8065](https://github.com/haskell/cabal/pull/8065)
 - Add wasm32-wasi to recognized arch/os [#8096](https://github.com/haskell/cabal/pull/8096)
-- Unmarked "visibility: public" and "build-depends: pkg:lib" syntaxes as experimental, allowing Hackage upload of packages exposing or using multiple public libraries [#6801](https://github.com/haskell/cabal/issues/6801) [#7286](https://github.com/haskell/cabal/issues/7286) [#8089](https://github.com/haskell/cabal/pull/8089)
-- Sync repo darcs [#7137](https://github.com/haskell/cabal/pull/7137)
 
 - *Cabal-syntax* Derive Eq for DependencyMap [#7849](https://github.com/haskell/cabal/issues/7849) [#8061](https://github.com/haskell/cabal/pull/8061)
 - *Cabal-syntax* Allow trailing whitespace after flags in cabal.project [#7279](https://github.com/haskell/cabal/issues/7279) [#8006](https://github.com/haskell/cabal/pull/8006)
