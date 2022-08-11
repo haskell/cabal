@@ -849,11 +849,18 @@ The library section should contain the following fields:
 
     :since: 3.0
 
-    :default: ``private`` for internal libraries. Cannot be set for public library.
+    :default:
+        ``private`` for internal libraries. Cannot be set for main
+        (unnamed) library, which is always public.
 
-    Cabal recognizes ``public`` and ``private`` here...
+    Can be ``public`` or ``private``.
+    Makes it possible to have multiple public libraries in a single package.
+    If set to ``public``, depending on this library from another package is
+    allowed. If set to ``private``, depending on this library is allowed only
+    from the same package.
 
-    Multiple public libraries...
+    See section on :ref:`Internal Libraries <sublibs>` for examples and more
+    information.
 
 .. pkg-field:: reexported-modules: exportlist
     :since: 1.22
@@ -990,6 +997,18 @@ a real-world use case:
       ghc-options: -funbox-strict-fields -Wall -fwarn-tabs -O2
 
       default-language: Haskell2010
+
+**Multiple public libraries**
+
+Cabal 3.0 and later support exposing multiple libraries from a single package
+through the field :pkg-field:`library:visibility`.
+Having multiple public libraries is useful for separating the unit of
+distribution (package) from the unit of buildable code (library).
+For more information about the rationale and some examples, see
+`this blog post <https://fgaz.me/posts/2019-11-14-cabal-multiple-libraries/>`__.
+
+..
+    TODO inline the blog post
 
 
 Opening an interpreter session
@@ -1561,16 +1580,16 @@ system-dependent values for these fields.
     **Library Names**
 
     External libraries are identified by the package's name they're
-    provided by (currently a package can only publicly expose its
-    main library component; in future, packages with multiple exposed
-    public library components will be supported and a syntax for
-    referring to public sub-libraries will be provided).
+    provided by, optionally followed by a colon and the library name
+    (available from ``cabal-version: 3.0``).
+    If the library name is absent, the main (unnamed) library will be used.
+    To refer to the main (unnamed) library explicitly, use the name of the
+    package (``foo:foo``).
+    Multiple libraries from the same package can be specified with the shorthand
+    syntax ``pkg:{lib1,lib2}```.
 
-    In order to specify an intra-package dependency on an internal
-    library component you can use the unqualified name of the
-    library component. Note that locally defined sub-library
-    names shadow external package names of the same name. See section on
-    :ref:`Internal Libraries <sublibs>` for examples and more information.
+    See section on :ref:`Internal Libraries <sublibs>` for examples and more
+    information.
 
     **Version Constraints**
 
