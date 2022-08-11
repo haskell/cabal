@@ -81,6 +81,7 @@ library
     Distribution.Solver.Modular.Var
     Distribution.Solver.Modular.Version
     Distribution.Solver.Modular.WeightedPSQ
+    Distribution.Solver.Types.ArtifactSelection
     Distribution.Solver.Types.ComponentDeps
     Distribution.Solver.Types.ConstraintSource
     Distribution.Solver.Types.DependencyResolver

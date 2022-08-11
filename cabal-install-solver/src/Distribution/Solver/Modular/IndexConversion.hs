@@ -25,6 +25,8 @@ import Distribution.PackageDescription.Configuration
 import qualified Distribution.Simple.PackageIndex as SI
 import Distribution.System
 
+import           Distribution.Solver.Types.ArtifactSelection
+                   ( ArtifactSelection(..), allArtifacts, staticOutsOnly, dynOutsOnly )
 import           Distribution.Solver.Types.ComponentDeps
                    ( Component(..), componentNameToComponent )
 import           Distribution.Solver.Types.Flag
@@ -75,8 +77,8 @@ convIPI' (ShadowPkgs sip) idx =
   where
 
     -- shadowing is recorded in the package info
-    shadow (pn, i, PInfo fdeps comps fds _)
-      | sip = (pn, i, PInfo fdeps comps fds (Just Shadowed))
+    shadow (pn, i, PInfo fdeps comps fds _ arts)
+      | sip = (pn, i, PInfo fdeps comps fds (Just Shadowed) arts)
     shadow x                                     = x
 
 -- | Extract/recover the package ID from an installed package info, and convert it to a solver's I.
@@ -90,8 +92,8 @@ convId ipi = (pn, I ver $ Inst $ IPI.installedUnitId ipi)
 convIP :: SI.InstalledPackageIndex -> IPI.InstalledPackageInfo -> (PN, I, PInfo)
 convIP idx ipi =
   case traverse (convIPId (DependencyReason pn M.empty S.empty) comp idx) (IPI.depends ipi) of
-        Left u    -> (pn, i, PInfo [] M.empty M.empty (Just (Broken u)))
-        Right fds -> (pn, i, PInfo fds components M.empty Nothing)
+        Left u    -> (pn, i, PInfo [] M.empty M.empty (Just (Broken u)) mempty)
+        Right fds -> (pn, i, PInfo fds components M.empty Nothing (ipiToAS ipi))
  where
   -- TODO: Handle sub-libraries and visibility.
   components =
@@ -150,6 +152,16 @@ convIPId dr comp idx ipid =
                 in  Right (D.Simple (LDep dr (Dep (PkgComponent pn name) (Fixed i))) comp)
                 -- NB: something we pick up from the
                 -- InstalledPackageIndex is NEVER an executable
+
+-- | Extract the ArtifactSelection representing which artifacts are available
+-- in this installed package.
+ipiToAS :: IPI.InstalledPackageInfo -> ArtifactSelection
+ipiToAS ipi = mconcat [statics, dynamics]
+  where
+    statics :: ArtifactSelection
+    statics = if any ($ ipi) [IPI.pkgVanillaLib] then staticOutsOnly else mempty
+    dynamics :: ArtifactSelection
+    dynamics = if any ($ ipi) [IPI.pkgSharedLib, IPI.pkgDynExe] then dynOutsOnly else mempty
 
 -- | Convert a cabal-install source package index to the simpler,
 -- more uniform index format of the solver.
@@ -238,7 +250,7 @@ convGPD os arch cinfo constraints strfl solveExes pn
         isPrivate LibraryVisibilityPrivate = True
         isPrivate LibraryVisibilityPublic  = False
 
-  in PInfo flagged_deps components fds fr
+  in PInfo flagged_deps components fds fr allArtifacts
 
 -- | Applies the given predicate (for example, testing buildability or
 -- visibility) to the given component and environment. Values are combined with

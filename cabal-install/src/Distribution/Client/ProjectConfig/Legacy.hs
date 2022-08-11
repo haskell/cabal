@@ -732,16 +732,16 @@ convertToLegacySharedConfig
     }
 
     configExFlags = ConfigExFlags {
-      configCabalVersion  = projectConfigCabalVersion,
-      configAppend        = mempty,
-      configBackup        = mempty,
-      configExConstraints = projectConfigConstraints,
-      configPreferences   = projectConfigPreferences,
-      configSolver        = projectConfigSolver,
-      configAllowOlder    = projectConfigAllowOlder,
-      configAllowNewer    = projectConfigAllowNewer,
+      configCabalVersion     = projectConfigCabalVersion,
+      configAppend           = mempty,
+      configBackup           = mempty,
+      configExConstraints    = projectConfigConstraints,
+      configPreferences      = projectConfigPreferences,
+      configSolver           = projectConfigSolver,
+      configAllowOlder       = projectConfigAllowOlder,
+      configAllowNewer       = projectConfigAllowNewer,
       configWriteGhcEnvironmentFilesPolicy
-                          = projectConfigWriteGhcEnvironmentFilesPolicy
+                             = projectConfigWriteGhcEnvironmentFilesPolicy
     }
 
     installFlags = InstallFlags {

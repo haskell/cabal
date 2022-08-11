@@ -2114,7 +2114,7 @@ shouldBeLocal (SpecificSourcePackage pkg) = case srcpkgSource pkg of
     _                      -> Nothing
 
 -- Used to determine which packages are affected by local package configuration
--- flags like ‘--enable-shared enable-executable-dynamic --disable-library-vanilla’.
+-- flags like ‘--enable-shared --enable-executable-dynamic --disable-library-vanilla’.
 isInLocal :: [PackageVersionConstraint] -> PackageSpecifier (SourcePackage (PackageLocation loc)) -> Maybe PackageId
 isInLocal _              NamedPackage{}              = Nothing
 isInLocal _extraPackages (SpecificSourcePackage pkg) = case srcpkgSource pkg of
@@ -3414,7 +3414,8 @@ setupHsScriptOptions (ReadyPackage elab@ElaboratedConfiguredPackage{..})
       useWin32CleanHack        = False,   --TODO: [required eventually]
       forceExternalSetupMethod = isParallelBuild,
       setupCacheLock           = Just cacheLock,
-      isInteractive            = False
+      isInteractive            = False,
+      setupConfigDynamicDeps   = elabDynExe
     }
 
 

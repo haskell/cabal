@@ -92,7 +92,13 @@ data InstalledPackageInfo
         frameworks        :: [String],
         haddockInterfaces :: [FilePath],
         haddockHTMLs      :: [FilePath],
-        pkgRoot           :: Maybe FilePath
+        pkgRoot           :: Maybe FilePath,
+        -- Artifacts included in this package:
+        pkgVanillaLib     :: Bool,
+        pkgSharedLib      :: Bool,
+        pkgDynExe         :: Bool,
+        pkgProfLib        :: Bool,
+        pkgProfExe        :: Bool
     }
     deriving (Eq, Generic, Typeable, Read, Show)
 
@@ -173,5 +179,10 @@ emptyInstalledPackageInfo
         haddockInterfaces = [],
         haddockHTMLs      = [],
         pkgRoot           = Nothing,
-        libVisibility     = LibraryVisibilityPrivate
+        libVisibility     = LibraryVisibilityPrivate,
+        pkgVanillaLib     = True,
+        pkgSharedLib      = True,
+        pkgDynExe         = True,
+        pkgProfLib        = True,
+        pkgProfExe        = True
     }

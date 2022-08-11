@@ -18,6 +18,7 @@ import Distribution.Solver.Modular.Dependency
 import Distribution.Solver.Modular.Flag
 import Distribution.Solver.Modular.Package
 import Distribution.Solver.Modular.Tree
+import Distribution.Solver.Types.ArtifactSelection
 
 -- | An index contains information about package instances. This is a nested
 -- dictionary. Package names are mapped to instances, which in turn is mapped
@@ -36,6 +37,7 @@ data PInfo = PInfo (FlaggedDeps PN)
                    (Map ExposedComponent ComponentInfo)
                    FlagInfo
                    (Maybe FailReason)
+                   ArtifactSelection  -- Which artifacts are available?  (sdists have all.)
 
 -- | Info associated with each library and executable in a package instance.
 data ComponentInfo = ComponentInfo {
@@ -64,7 +66,7 @@ defaultQualifyOptions idx = QO {
                               | -- Find all versions of base ..
                                 Just is <- [M.lookup base idx]
                                 -- .. which are installed ..
-                              , (I _ver (Inst _), PInfo deps _comps _flagNfo _fr) <- M.toList is
+                              , (I _ver (Inst _), PInfo deps _comps _flagNfo _fr _arts) <- M.toList is
                                 -- .. and flatten all their dependencies ..
                               , (LDep _ (Dep (PkgComponent dep _) _ci), _comp) <- flattenFlaggedDeps deps
                               ]
