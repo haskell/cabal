@@ -510,6 +510,17 @@ virtual-modules
         \mathrm{commalist}\left({\left(\mathop{\mathit{upper}}{\left\{ \mathop{\mathit{alpha\text{-}num}}\mid[\mathop{\mathord{``}\mathtt{\text{'}}\mathord{"}}\mathop{\mathord{``}\mathtt{\text{_}}\mathord{"}}] \right\}}^\ast_{}\right)}^+_{\mathop{\mathord{``}\mathtt{\text{.}}\mathord{"}}}\right)
 
 
+Library fields
+--------------
+
+visibility
+    * Optional field
+    * Documentation of :pkg-field:`library:visibility`
+
+    .. math::
+        \left\{ \mathop{\mathord{``}\mathtt{public}\mathord{"}}\mid\mathop{\mathord{``}\mathtt{private}\mathord{"}} \right\}
+
+
 Package description fields
 --------------------------
 

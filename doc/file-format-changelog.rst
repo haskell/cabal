@@ -86,6 +86,11 @@ relative to the respective preceding *published* version.
 ``cabal-version: 3.0``
 ----------------------
 
+* New :pkg-field:`library:visibility` for exposing sublibraries.
+
+* New ``pkg:lib`` and ``pkg:{lib1,lib2}`` syntax in :pkg-field:`build-depends`
+  for depending on public sublibraries from other packages.
+
 * Added the :pkg-field:`extra-dynamic-library-flavours` field to specify non-trivial
   variants of dynamic flavours. It is :pkg-field:`extra-library-flavours` but for
   shared libraries. Mainly useful for GHC's RTS library.
