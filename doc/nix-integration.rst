@@ -11,10 +11,8 @@ Nix Integration
 Enabling Nix Integration
 ------------------------
 
-To enable Nix integration, simply pass the ``--enable-nix`` global
-option when you call ``cabal``. To use this option everywhere, edit
-your :ref:`global configuration file<config-file-discovery>`
-(default: ``$HOME/.cabal/config``) to include:
+To enable Nix integration, simply pass the ``--enable-nix`` global option when you call ``cabal`` (eg. ``cabal --enable-nix v1-build``).
+To use this option everywhere, edit your :ref:`global configuration file<config-file-discovery>` (default: ``$HOME/.cabal/config``) to include:
 
 .. code-block:: cabal
 
@@ -22,16 +20,16 @@ your :ref:`global configuration file<config-file-discovery>`
 
 If the package (which must be locally unpacked) provides a ``shell.nix`` or ``default.nix`` file, this flag will cause ``cabal`` to run most commands through ``nix-shell``. If both expressions are present, ``shell.nix`` is preferred. The following commands are affected:
 
-- ``cabal configure``
-- ``cabal build``
-- ``cabal repl``
-- ``cabal install`` (only if installing into a sandbox)
-- ``cabal haddock``
-- ``cabal freeze``
-- ``cabal gen-bounds``
-- ``cabal run``
+- ``cabal v1-configure``
+- ``cabal v1-build``
+- ``cabal v1-repl``
+- ``cabal v1-install`` (only if installing into a sandbox)
+- ``cabal v1-haddock``
+- ``cabal v1-freeze``
+- ``cabal v1-gen-bounds``
+- ``cabal v1-run``
 
-If the package does not provide an expression, ``cabal`` runs normally.
+If the package does not provide a Nix expression, ``cabal`` runs normally.
 
 Creating Nix Expressions
 ------------------------

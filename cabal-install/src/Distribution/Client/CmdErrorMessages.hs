@@ -72,6 +72,13 @@ renderListCommaAnd [x]    = x
 renderListCommaAnd [x,x'] = x ++ " and " ++ x'
 renderListCommaAnd (x:xs) = x ++ ", " ++ renderListCommaAnd xs
 
+renderListTabular :: [String] -> String
+renderListTabular = ("\n"++) . unlines . map ("| * "++)
+
+renderListPretty :: [String] -> String
+renderListPretty xs = if length xs > 5 then renderListTabular xs
+                                       else renderListCommaAnd xs
+
 -- | Render a list of things in the style @blah blah; this that; and the other@
 renderListSemiAnd :: [String] -> String
 renderListSemiAnd []     = ""

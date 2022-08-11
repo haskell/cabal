@@ -58,6 +58,28 @@ getDataFileName name = do
 
 getBinDir, getLibDir, getDynLibDir, getDataDir, getLibexecDir, getSysconfDir :: IO FilePath
 
+{% defblock function_defs %}
+minusFileName :: FilePath -> String -> FilePath
+minusFileName dir ""     = dir
+minusFileName dir "."    = dir
+minusFileName dir suffix =
+  minusFileName (fst (splitFileName dir)) (fst (splitFileName suffix))
+
+splitFileName :: FilePath -> (String, String)
+splitFileName p = (reverse (path2++drive), reverse fname)
+  where
+    (path,drive) = case p of
+      (c:':':p') -> (reverse p',[':',c])
+      _          -> (reverse p ,"")
+    (fname,path1) = break isPathSeparator path
+    path2 = case path1 of
+      []                           -> "."
+      [_]                          -> path1   -- don't remove the trailing slash if
+                                              -- there is only one character
+      (c:path') | isPathSeparator c -> path'
+      _                             -> path1
+{% endblock %}
+
 {# body #}
 {# ######################################################################### #}
 
@@ -75,6 +97,8 @@ getDynLibDir  = catchIO (getEnv "{{ manglePkgName packageName }}_dynlibdir")  (\
 getDataDir    = catchIO (getEnv "{{ manglePkgName packageName }}_datadir")    (\_ -> getPrefixDirReloc $ {{ datadir }})
 getLibexecDir = catchIO (getEnv "{{ manglePkgName packageName }}_libexecdir") (\_ -> getPrefixDirReloc $ {{ libexecdir }})
 getSysconfDir = catchIO (getEnv "{{ manglePkgName packageName }}_sysconfdir") (\_ -> getPrefixDirReloc $ {{ sysconfdir }})
+
+{% useblock function_defs %}
 
 {% elif absolute %}
 
@@ -118,6 +142,8 @@ getPrefixDirRel dirRel = try_size 2048 -- plenty, PATH_MAX is 512 under Win32.
               return ((bindir `minusFileName` {{ bindir}}) `joinFileName` dirRel)
             | otherwise  -> try_size (size * 2)
 
+{% useblock function_defs %}
+
 {% if isI386 %}
 foreign import stdcall unsafe "windows.h GetModuleFileNameW"
   c_GetModuleFileName :: Ptr () -> CWString -> Int32 -> IO Int32
@@ -139,28 +165,6 @@ notRelocAbsoluteOrWindows = _
 
 {# filename stuff                                                            #}
 {# ######################################################################### #}
-
-{% if not absolute %}
-minusFileName :: FilePath -> String -> FilePath
-minusFileName dir ""     = dir
-minusFileName dir "."    = dir
-minusFileName dir suffix =
-  minusFileName (fst (splitFileName dir)) (fst (splitFileName suffix))
-
-splitFileName :: FilePath -> (String, String)
-splitFileName p = (reverse (path2++drive), reverse fname)
-  where
-    (path,drive) = case p of
-       (c:':':p') -> (reverse p',[':',c])
-       _          -> (reverse p ,"")
-    (fname,path1) = break isPathSeparator path
-    path2 = case path1 of
-      []                           -> "."
-      [_]                          -> path1   -- don't remove the trailing slash if
-                                              -- there is only one character
-      (c:path') | isPathSeparator c -> path'
-      _                             -> path1
-{% endif %}
 
 joinFileName :: String -> String -> FilePath
 joinFileName ""  fname = fname

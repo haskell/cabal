@@ -1,9 +1,11 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE PatternSynonyms #-}
 
 module Distribution.Types.ComponentName (
-  ComponentName(..),
+  ComponentName(.., CFLibName, CExeName, CTestName, CBenchName),
   showComponentName,
+  componentNameRaw,
   componentNameStanza,
   componentNameString,
   ) where
@@ -21,11 +23,31 @@ import qualified Distribution.Compat.CharParsing as P
 
 -- Libraries live in a separate namespace, so must distinguish
 data ComponentName = CLibName   LibraryName
-                   | CFLibName  UnqualComponentName
-                   | CExeName   UnqualComponentName
-                   | CTestName  UnqualComponentName
-                   | CBenchName UnqualComponentName
+                   | CNotLibName NotLibComponentName
                    deriving (Eq, Generic, Ord, Read, Show, Typeable)
+
+data NotLibComponentName
+                   = CNLFLibName  { toCompName :: UnqualComponentName }
+                   | CNLExeName   { toCompName :: UnqualComponentName }
+                   | CNLTestName  { toCompName :: UnqualComponentName }
+                   | CNLBenchName { toCompName :: UnqualComponentName }
+                   deriving (Eq, Generic, Ord, Read, Show, Typeable)
+
+pattern CFLibName :: UnqualComponentName -> ComponentName
+pattern CFLibName  n = CNotLibName (CNLFLibName  n)
+
+pattern CExeName :: UnqualComponentName -> ComponentName
+pattern CExeName   n = CNotLibName (CNLExeName   n)
+
+pattern CTestName :: UnqualComponentName -> ComponentName
+pattern CTestName  n = CNotLibName (CNLTestName  n)
+
+pattern CBenchName :: UnqualComponentName -> ComponentName
+pattern CBenchName n = CNotLibName (CNLBenchName n)
+{-# COMPLETE CLibName, CFLibName, CExeName, CTestName, CBenchName #-}
+
+instance Binary NotLibComponentName
+instance Structured NotLibComponentName
 
 instance Binary ComponentName
 instance Structured ComponentName
@@ -59,6 +81,10 @@ showComponentName (CExeName   name) = "executable '" ++ prettyShow name ++ "'"
 showComponentName (CTestName  name) = "test suite '" ++ prettyShow name ++ "'"
 showComponentName (CBenchName name) = "benchmark '" ++ prettyShow name ++ "'"
 
+componentNameRaw :: ComponentName -> String
+componentNameRaw l@(CLibName  _) = showComponentName l
+componentNameRaw (CNotLibName x) = prettyShow $ toCompName x
+
 componentNameStanza :: ComponentName -> String
 componentNameStanza (CLibName lib)    = libraryNameStanza lib
 componentNameStanza (CFLibName  name) = "foreign-library " ++ prettyShow name
@@ -71,8 +97,5 @@ componentNameStanza (CBenchName name) = "benchmark " ++ prettyShow name
 -- @Nothing@ if the 'ComponentName' was for the public
 -- library.
 componentNameString :: ComponentName -> Maybe UnqualComponentName
-componentNameString (CLibName lib) = libraryNameString lib
-componentNameString (CFLibName  n) = Just n
-componentNameString (CExeName   n) = Just n
-componentNameString (CTestName  n) = Just n
-componentNameString (CBenchName n) = Just n
+componentNameString (CLibName  lib) = libraryNameString lib
+componentNameString (CNotLibName x) = Just $ toCompName x
