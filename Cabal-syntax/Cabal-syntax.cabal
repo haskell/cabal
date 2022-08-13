@@ -51,9 +51,11 @@ library
     build-depends: unix  >= 2.6.0.0 && < 2.8
 
   ghc-options: -Wall -fno-ignore-asserts -fwarn-tabs -fwarn-incomplete-uni-patterns -fwarn-incomplete-record-updates
-  ghc-options: -Wcompat -Wnoncanonical-monad-instances
 
-  if impl(ghc <8.8)
+  if impl(ghc >= 8.0)
+    ghc-options: -Wcompat -Wnoncanonical-monad-instances
+
+  if impl(ghc >= 8.0) && impl(ghc < 8.8)
     ghc-options: -Wnoncanonical-monadfail-instances
 
   exposed-modules:
