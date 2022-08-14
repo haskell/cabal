@@ -8,41 +8,54 @@
 
 <img src="https://www.haskell.org/cabal/images/Cabal-light.png" align="right">
 
-This Cabal Git repository contains the following packages:
+This Cabal Git repository contains the following main packages:
 
  * [Cabal](Cabal/README.md): the Cabal library package ([license](Cabal/LICENSE))
  * [Cabal-syntax](Cabal-syntax/README.md): the `.cabal` file format library ([license](Cabal-syntax/LICENSE))
  * [cabal-install](cabal-install/README.md): the package containing the `cabal` tool ([license](cabal-install/LICENSE))
+ * [cabal-install-solver](cabal-install-solve): the package containing the solver component of the `cabal` tool ([license](cabal-install-solver/LICENSE))
 
 The canonical upstream repository is located at
 https://github.com/haskell/cabal.
 
-Installing cabal-install (by downloading the binary)
-----------------------------------------------------
+Ways to get the `cabal-install` binary
+--------------------------------
 
-Prebuilt binary releases can be obtained from https://www.haskell.org/cabal/download.html.
-The `cabal-install` binary download for your platform should contain the `cabal` executable.
+1. _GHCup (**preferred**)_: get GHCup using [the directions on its website](https://www.haskell.org/ghcup/) and run:
 
-Installing cabal-install (preferred, with cabal-install)
---------------------------------------------------------
+    ```
+    ghcup install --set cabal latest
+    ```
 
-Assuming that you have a pre-existing, recent version of `cabal-install`, run:
+2. _[Download from official website](https://www.haskell.org/cabal/download.html)_:
+    the `cabal-install` binary download for your platform should contain the `cabal` executable.
 
-```
-cabal install cabal-install
-```
+Ways to build `cabal-install` for everyday use
+--------------------------------------------
 
-To get the latest version of `cabal-install`. (You may want to `cabal update` first.)
+1. _With cabal-install_:
+    if you have a pre-existing version of `cabal-install`, run:
 
-To install the latest version from the Git repository, clone the
-Git repository and then run:
+    ```
+    cabal install cabal-install
+    ```
 
-```
-cabal install --project-file=cabal.project.release cabal-install
-```
+    to get the latest version of `cabal-install`. (You may want to `cabal update` first.)
 
-Installing cabal-install without cabal-install
-----------------------------------------------
+2. _From Git_:
+    again with a pre-existing version of `cabal-install`,
+    you can install the latest version from the Git repository. Clone the
+    Git repository, move to its root, and run:
 
-Assuming you don't have a pre-existing copy of `cabal-install`,
-look into [`bootstrap`](bootstrap) directory.
+    ```
+    cabal install --project-file=cabal.project.release cabal-install
+    ```
+
+3. _Bootstrapping_:
+    if you don't have a pre-existing version of `cabal-install`,
+    look into the [`bootstrap`](bootstrap) directory.
+
+Build for hacking and contributing to cabal
+-------------------------------------------
+
+Refer to [CONTRIBUTING.md](CONTRIBUTING.md).
