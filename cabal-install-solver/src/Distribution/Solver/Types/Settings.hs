@@ -3,6 +3,7 @@
 module Distribution.Solver.Types.Settings
     ( ReorderGoals(..)
     , IndependentGoals(..)
+    , PreferOldest(..)
     , MinimizeConflictSet(..)
     , AvoidReinstalls(..)
     , ShadowPkgs(..)
@@ -40,6 +41,9 @@ newtype MinimizeConflictSet = MinimizeConflictSet Bool
 newtype IndependentGoals = IndependentGoals Bool
   deriving (BooleanFlag, Eq, Generic, Show)
 
+newtype PreferOldest = PreferOldest Bool
+  deriving (BooleanFlag, Eq, Generic, Show)
+
 newtype AvoidReinstalls = AvoidReinstalls Bool
   deriving (BooleanFlag, Eq, Generic, Show)
 
@@ -69,6 +73,7 @@ instance Binary ReorderGoals
 instance Binary CountConflicts
 instance Binary FineGrainedConflicts
 instance Binary IndependentGoals
+instance Binary PreferOldest
 instance Binary MinimizeConflictSet
 instance Binary AvoidReinstalls
 instance Binary ShadowPkgs
@@ -81,6 +86,7 @@ instance Structured ReorderGoals
 instance Structured CountConflicts
 instance Structured FineGrainedConflicts
 instance Structured IndependentGoals
+instance Structured PreferOldest
 instance Structured MinimizeConflictSet
 instance Structured AvoidReinstalls
 instance Structured ShadowPkgs

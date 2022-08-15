@@ -302,6 +302,7 @@ instance Semigroup SavedConfig where
         installFineGrainedConflicts  = combine installFineGrainedConflicts,
         installMinimizeConflictSet   = combine installMinimizeConflictSet,
         installIndependentGoals      = combine installIndependentGoals,
+        installPreferOldest          = combine installPreferOldest,
         installShadowPkgs            = combine installShadowPkgs,
         installStrongFlags           = combine installStrongFlags,
         installAllowBootLibInstalls  = combine installAllowBootLibInstalls,

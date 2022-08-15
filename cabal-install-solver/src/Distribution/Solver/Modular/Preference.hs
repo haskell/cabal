@@ -86,18 +86,31 @@ preferLinked = addWeight (const (const linked))
 preferPackagePreferences :: (PN -> PackagePreferences) -> EndoTreeTrav d c
 preferPackagePreferences pcs =
     preferPackageStanzaPreferences pcs .
+    -- Each package is assigned a list of weights (currently three of them),
+    -- and options are ordered by comparison of these lists.
+    --
+    -- The head of the list (and thus the top priority for ordering)
+    -- is whether the package version is "preferred"
+    -- (https://hackage.haskell.org/packages/preferred-versions).
+    --
+    -- The next two elements depend on 'PackagePreferences'.
+    -- For 'PreferInstalled' they are whether the version is installed (0 or 1)
+    -- and how close is the version to the latest one (between 0.0 and 1.0).
+    -- For 'PreferLatest' the weights are the same, but swapped, so that
+    -- ordering considers how new is the package first.
+    -- For 'PreferOldest' one weight measures how close is the version to the
+    -- the oldest one possible (between 0.0 and 1.0) and another checks whether
+    -- the version is installed (0 or 1).
     addWeights [
           \pn _  opt -> preferred pn opt
-
-        -- Note that we always rank installed before uninstalled, and later
-        -- versions before earlier, but we can change the priority of the
-        -- two orderings.
         , \pn vs opt -> case preference pn of
                           PreferInstalled -> installed opt
                           PreferLatest    -> latest vs opt
+                          PreferOldest    -> oldest vs opt
         , \pn vs opt -> case preference pn of
                           PreferInstalled -> latest vs opt
                           PreferLatest    -> installed opt
+                          PreferOldest    -> installed opt
         ]
   where
     -- Prefer packages with higher version numbers over packages with
@@ -107,6 +120,11 @@ preferPackagePreferences pcs =
       let l = length sortedVersions
           index = fromMaybe l $ L.findIndex (<= version opt) sortedVersions
       in  fromIntegral index / fromIntegral l
+
+    -- Prefer packages with lower version numbers over packages with
+    -- higher version numbers.
+    oldest :: [Ver] -> POption -> Weight
+    oldest sortedVersions opt = 1 - latest sortedVersions opt
 
     preference :: PN -> InstalledPreference
     preference pn =

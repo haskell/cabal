@@ -30,6 +30,8 @@ tests = [
       testGroup "Simple dependencies" [
           runTest $         mkTest db1 "alreadyInstalled"   ["A"]      (solverSuccess [])
         , runTest $         mkTest db1 "installLatest"      ["B"]      (solverSuccess [("B", 2)])
+        , runTest $ preferOldest
+                  $         mkTest db1 "installOldest"      ["B"]      (solverSuccess [("B", 1)])
         , runTest $         mkTest db1 "simpleDep1"         ["C"]      (solverSuccess [("B", 1), ("C", 1)])
         , runTest $         mkTest db1 "simpleDep2"         ["D"]      (solverSuccess [("B", 2), ("D", 1)])
         , runTest $         mkTest db1 "failTwoVersions"    ["C", "D"] anySolverFailure
