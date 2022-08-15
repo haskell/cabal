@@ -24,7 +24,7 @@ module Distribution.Simple.PreProcess (preprocessComponent, preprocessExtras,
                                 knownSuffixHandlers, ppSuffixes,
                                 PPSuffixHandler, PreProcessor(..),
                                 mkSimplePreProcessor, runSimplePreProcessor,
-                                ppCpp, ppCpp', ppGreenCard, ppC2hs, ppHsc2hs,
+                                ppCpp, ppCpp', ppGhcCpp, ppGreenCard, ppC2hs, ppHsc2hs,
                                 ppHappy, ppAlex, ppUnlit, platformDefines,
                                 unsorted
                                )
@@ -385,11 +385,8 @@ ppCpp :: BuildInfo -> LocalBuildInfo -> ComponentLocalBuildInfo -> PreProcessor
 ppCpp = ppCpp' []
 
 ppCpp' :: [String] -> BuildInfo -> LocalBuildInfo -> ComponentLocalBuildInfo -> PreProcessor
-ppCpp' extraArgs bi lbi clbi =
-  case compilerFlavor (compiler lbi) of
-    GHC   -> ppGhcCpp ghcProgram   (const True) args bi lbi clbi
-    GHCJS -> ppGhcCpp ghcjsProgram (const True) args bi lbi clbi
-    _     -> ppCpphs  args bi lbi clbi
+ppCpp' extraArgs bi lbi =
+    ppCpphs args bi lbi
   where cppArgs = getCppOptions bi lbi
         args    = cppArgs ++ extraArgs
 
