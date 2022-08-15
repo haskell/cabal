@@ -1,0 +1,11 @@
+synopsis: Use cpphs for .cpphs files
+packages: Cabal
+prs: #8383
+issues: #4278
+
+description: {
+
+- .cpphs files are now processed with cpphs only
+- .cpphs files may require build-tool-depends cpphs:cpphs now
+
+}
