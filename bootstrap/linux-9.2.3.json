@@ -10,13 +10,13 @@
             "version": "3.9.0.0"
         },
         {
-            "cabal_sha256": "b6ad76fd3f4bf133cdc2dc9176e23447f2a0a8e9316047d53154cd11f871446d",
+            "cabal_sha256": "04df32d9497add5f0b90a27a3eceffa4bad5c2f41d038bd12ed6efc454db3faf",
             "revision": 0,
-            "src_sha256": "89d3e89c1367f9046edad58b0a434b6758c76f1b8c62c7c56536e5d1ee9f4a3d",
+            "src_sha256": "44b31b6cd3129893ac1a007573dedb69dde667fa06ee108526d58f08b1a1f7ab",
             "flags": [],
             "package": "process",
             "source": "hackage",
-            "version": "1.6.14.0"
+            "version": "1.6.15.0"
         },
         {
             "cabal_sha256": null,
