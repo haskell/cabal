@@ -214,8 +214,13 @@ main = do
             unexpected_passes <- takeMVar unexpected_passes_var
             skipped           <- takeMVar skipped_var
 
-            -- print skipped
-            logAll $ "SKIPPED " ++ show (length skipped) ++ " tests"
+            -- print summary
+            let sl = show . length
+                testSummary =
+                  sl all_tests ++ " tests, " ++ sl skipped ++ " skipped, "
+                    ++ sl unexpected_passes ++ " unexpected passes, "
+                    ++ sl unexpected_fails ++ " unexpected fails."
+            logAll testSummary
 
             -- print failed or unexpected ok
             if null (unexpected_fails ++ unexpected_passes)
