@@ -134,7 +134,7 @@ instance Arbitrary ShortToken where
   arbitrary =
     ShortToken <$>
       (shortListOf1 5 (choose ('#', '~'))
-       `suchThat` (all (`notElem` "{}"))
+       `suchThat` (all (`notElem` "{}'"))
        `suchThat` (not . ("[]" `isPrefixOf`)))
     --TODO: [code cleanup] need to replace parseHaskellString impl to stop
     -- accepting Haskell list syntax [], ['a'] etc, just allow String syntax.
