@@ -1,12 +1,9 @@
 import Test.Cabal.Prelude
 import qualified Data.ByteString as BS
--- import qualified Data.ByteString.Base16 as BS16
--- import qualified Crypto.Hash.SHA256 as SHA256
+import qualified Data.ByteString.Base16 as BS16
+import qualified Crypto.Hash.SHA256 as SHA256
 import System.FilePath
     ( (</>) )
-
-    -- Note: we cannot simply use `expectBroken` or `skip` or similar
-    -- becuase this test fails on imports (see #8357).
 
 main = cabalTest $ do
     cabal "v2-sdist" ["deterministic"]
@@ -24,6 +21,4 @@ main = cabalTest $ do
     known <- liftIO (BS.readFile knownSdist)
     unknown <- liftIO (BS.readFile mySdist)
 
-    skipIf "#8356" True -- bogus, just to indicate that the test is skipped
-    assertEqual "hashes didn't match for sdist" True True
-    -- assertEqual "hashes didn't match for sdist" (BS16.encode $ SHA256.hash known) (BS16.encode $ SHA256.hash unknown)
+    assertEqual "hashes didn't match for sdist" (BS16.encode $ SHA256.hash known) (BS16.encode $ SHA256.hash unknown)
