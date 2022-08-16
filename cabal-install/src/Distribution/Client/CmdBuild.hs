@@ -6,6 +6,9 @@ module Distribution.Client.CmdBuild (
     buildCommand,
     buildAction,
 
+    BuildFlags(..),
+    defaultBuildFlags,
+
     -- * Internals exposed for testing
     selectPackageTargets,
     selectComponentTarget
