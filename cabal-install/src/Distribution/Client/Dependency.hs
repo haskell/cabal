@@ -109,7 +109,7 @@ import           Distribution.Solver.Types.ComponentDeps (ComponentDeps)
 import qualified Distribution.Solver.Types.ComponentDeps as CD
 import           Distribution.Solver.Types.ConstraintSource
 import           Distribution.Solver.Types.DependencyResolver
-import           Distribution.Solver.Types.InstalledPreference as Preference
+import           Distribution.Solver.Types.InstalledPreference
 import           Distribution.Solver.Types.LabeledPackageConstraint
 import           Distribution.Solver.Types.OptionalStanza
 import           Distribution.Solver.Types.PackageConstraint
@@ -767,14 +767,13 @@ interpretPackagesPreference selected defaultPref prefs =
       [ (pkgname, pref)
       | PackageInstalledPreference pkgname pref <- prefs ]
     installPrefDefault = case defaultPref of
-      PreferAllLatest         -> const Preference.PreferLatest
-      PreferAllOldest         -> const Preference.PreferOldest
-      PreferAllInstalled      -> const Preference.PreferInstalled
+      PreferAllLatest         -> const PreferLatest
+      PreferAllInstalled      -> const PreferInstalled
       PreferLatestForSelected -> \pkgname ->
         -- When you say cabal install foo, what you really mean is, prefer the
         -- latest version of foo, but the installed version of everything else
-        if pkgname `Set.member` selected then Preference.PreferLatest
-                                         else Preference.PreferInstalled
+        if pkgname `Set.member` selected then PreferLatest
+                                         else PreferInstalled
 
     stanzasPref :: PackageName -> [OptionalStanza]
     stanzasPref pkgname =
@@ -1020,9 +1019,8 @@ resolveWithoutDependencies (DepResolverParams targets constraints
                           (installPref pkg, versionPref pkg, packageVersion pkg)
         installPref   :: UnresolvedSourcePackage -> Bool
         installPref   = case preferInstalled of
-          Preference.PreferLatest    -> const False
-          Preference.PreferOldest    -> const False
-          Preference.PreferInstalled -> not . null
+          PreferLatest    -> const False
+          PreferInstalled -> not . null
                            . InstalledPackageIndex.lookupSourcePackageId
                                                      installedPkgIndex
                            . packageId

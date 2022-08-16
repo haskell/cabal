@@ -7,7 +7,6 @@ module UnitTests.Distribution.Solver.Modular.DSL.TestCaseUtils (
   , disableFineGrainedConflicts
   , minimizeConflictSet
   , independentGoals
-  , preferOldest
   , allowBootLibInstalls
   , onlyConstrained
   , disableBackjumping
@@ -67,10 +66,6 @@ minimizeConflictSet test =
 independentGoals :: SolverTest -> SolverTest
 independentGoals test = test { testIndepGoals = IndependentGoals True }
 
--- | Combinator to turn on --prefer-oldest
-preferOldest :: SolverTest -> SolverTest
-preferOldest test = test { testPreferOldest = PreferOldest True }
-
 allowBootLibInstalls :: SolverTest -> SolverTest
 allowBootLibInstalls test =
     test { testAllowBootLibInstalls = AllowBootLibInstalls True }
@@ -116,7 +111,6 @@ data SolverTest = SolverTest {
   , testFineGrainedConflicts :: FineGrainedConflicts
   , testMinimizeConflictSet  :: MinimizeConflictSet
   , testIndepGoals           :: IndependentGoals
-  , testPreferOldest         :: PreferOldest
   , testAllowBootLibInstalls :: AllowBootLibInstalls
   , testOnlyConstrained      :: OnlyConstrained
   , testEnableBackjumping    :: EnableBackjumping
@@ -214,7 +208,6 @@ mkTestExtLangPC exts langs mPkgConfigDb db label targets result = SolverTest {
   , testFineGrainedConflicts = FineGrainedConflicts True
   , testMinimizeConflictSet  = MinimizeConflictSet False
   , testIndepGoals           = IndependentGoals False
-  , testPreferOldest         = PreferOldest False
   , testAllowBootLibInstalls = AllowBootLibInstalls False
   , testOnlyConstrained      = OnlyConstrainedNone
   , testEnableBackjumping    = EnableBackjumping True
@@ -237,7 +230,7 @@ runTest SolverTest{..} = askOption $ \(OptionShowSolverLog showSolverLog) ->
                      testSupportedLangs testPkgConfigDb testTargets
                      testMaxBackjumps (CountConflicts True)
                      testFineGrainedConflicts testMinimizeConflictSet
-                     testIndepGoals testPreferOldest (ReorderGoals False) testAllowBootLibInstalls
+                     testIndepGoals (ReorderGoals False) testAllowBootLibInstalls
                      testOnlyConstrained testEnableBackjumping testSolveExecutables
                      (sortGoals <$> testGoalOrder) testConstraints
                      testSoftConstraints testVerbosity testEnableAllTests

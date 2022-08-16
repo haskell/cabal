@@ -203,7 +203,6 @@ data ProjectConfigShared
        projectConfigOnlyConstrained   :: Flag OnlyConstrained,
        projectConfigPerComponent      :: Flag Bool,
        projectConfigIndependentGoals  :: Flag IndependentGoals,
-       projectConfigPreferOldest      :: Flag PreferOldest,
 
        projectConfigProgPathExtra     :: NubList FilePath
 
@@ -411,8 +410,7 @@ data SolverSettings
        solverSettingOnlyConstrained   :: OnlyConstrained,
        solverSettingIndexState        :: Maybe TotalIndexState,
        solverSettingActiveRepos       :: Maybe ActiveRepos,
-       solverSettingIndependentGoals  :: IndependentGoals,
-       solverSettingPreferOldest      :: PreferOldest
+       solverSettingIndependentGoals  :: IndependentGoals
        -- Things that only make sense for manual mode, not --local mode
        -- too much control!
      --solverSettingShadowPkgs        :: Bool,

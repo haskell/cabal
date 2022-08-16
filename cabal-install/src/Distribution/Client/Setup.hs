@@ -943,7 +943,6 @@ data FetchFlags = FetchFlags {
       fetchFineGrainedConflicts :: Flag FineGrainedConflicts,
       fetchMinimizeConflictSet :: Flag MinimizeConflictSet,
       fetchIndependentGoals :: Flag IndependentGoals,
-      fetchPreferOldest     :: Flag PreferOldest,
       fetchShadowPkgs       :: Flag ShadowPkgs,
       fetchStrongFlags      :: Flag StrongFlags,
       fetchAllowBootLibInstalls :: Flag AllowBootLibInstalls,
@@ -965,7 +964,6 @@ defaultFetchFlags = FetchFlags {
     fetchFineGrainedConflicts = Flag (FineGrainedConflicts True),
     fetchMinimizeConflictSet = Flag (MinimizeConflictSet False),
     fetchIndependentGoals = Flag (IndependentGoals False),
-    fetchPreferOldest     = Flag (PreferOldest False),
     fetchShadowPkgs       = Flag (ShadowPkgs False),
     fetchStrongFlags      = Flag (StrongFlags False),
     fetchAllowBootLibInstalls = Flag (AllowBootLibInstalls False),
@@ -1029,7 +1027,6 @@ fetchCommand = CommandUI {
                          fetchFineGrainedConflicts (\v flags -> flags { fetchFineGrainedConflicts = v })
                          fetchMinimizeConflictSet (\v flags -> flags { fetchMinimizeConflictSet = v })
                          fetchIndependentGoals (\v flags -> flags { fetchIndependentGoals = v })
-                         fetchPreferOldest     (\v flags -> flags { fetchPreferOldest = v })
                          fetchShadowPkgs       (\v flags -> flags { fetchShadowPkgs       = v })
                          fetchStrongFlags      (\v flags -> flags { fetchStrongFlags      = v })
                          fetchAllowBootLibInstalls (\v flags -> flags { fetchAllowBootLibInstalls = v })
@@ -1052,7 +1049,6 @@ data FreezeFlags = FreezeFlags {
       freezeFineGrainedConflicts :: Flag FineGrainedConflicts,
       freezeMinimizeConflictSet :: Flag MinimizeConflictSet,
       freezeIndependentGoals :: Flag IndependentGoals,
-      freezePreferOldest     :: Flag PreferOldest,
       freezeShadowPkgs       :: Flag ShadowPkgs,
       freezeStrongFlags      :: Flag StrongFlags,
       freezeAllowBootLibInstalls :: Flag AllowBootLibInstalls,
@@ -1072,7 +1068,6 @@ defaultFreezeFlags = FreezeFlags {
     freezeFineGrainedConflicts = Flag (FineGrainedConflicts True),
     freezeMinimizeConflictSet = Flag (MinimizeConflictSet False),
     freezeIndependentGoals = Flag (IndependentGoals False),
-    freezePreferOldest     = Flag (PreferOldest False),
     freezeShadowPkgs       = Flag (ShadowPkgs False),
     freezeStrongFlags      = Flag (StrongFlags False),
     freezeAllowBootLibInstalls = Flag (AllowBootLibInstalls False),
@@ -1127,7 +1122,6 @@ freezeCommand = CommandUI {
                          freezeFineGrainedConflicts (\v flags -> flags { freezeFineGrainedConflicts = v })
                          freezeMinimizeConflictSet (\v flags -> flags { freezeMinimizeConflictSet = v })
                          freezeIndependentGoals (\v flags -> flags { freezeIndependentGoals = v })
-                         freezePreferOldest     (\v flags -> flags { freezePreferOldest = v })
                          freezeShadowPkgs       (\v flags -> flags { freezeShadowPkgs       = v })
                          freezeStrongFlags      (\v flags -> flags { freezeStrongFlags      = v })
                          freezeAllowBootLibInstalls (\v flags -> flags { freezeAllowBootLibInstalls = v })
@@ -1562,7 +1556,6 @@ data InstallFlags = InstallFlags {
     installFineGrainedConflicts :: Flag FineGrainedConflicts,
     installMinimizeConflictSet :: Flag MinimizeConflictSet,
     installIndependentGoals :: Flag IndependentGoals,
-    installPreferOldest     :: Flag PreferOldest,
     installShadowPkgs       :: Flag ShadowPkgs,
     installStrongFlags      :: Flag StrongFlags,
     installAllowBootLibInstalls :: Flag AllowBootLibInstalls,
@@ -1605,7 +1598,6 @@ defaultInstallFlags = InstallFlags {
     installFineGrainedConflicts = Flag (FineGrainedConflicts True),
     installMinimizeConflictSet = Flag (MinimizeConflictSet False),
     installIndependentGoals= Flag (IndependentGoals False),
-    installPreferOldest    = Flag (PreferOldest False),
     installShadowPkgs      = Flag (ShadowPkgs False),
     installStrongFlags     = Flag (StrongFlags False),
     installAllowBootLibInstalls = Flag (AllowBootLibInstalls False),
@@ -1831,7 +1823,6 @@ installOptions showOrParseArgs =
                         installFineGrainedConflicts (\v flags -> flags { installFineGrainedConflicts = v })
                         installMinimizeConflictSet (\v flags -> flags { installMinimizeConflictSet = v })
                         installIndependentGoals (\v flags -> flags { installIndependentGoals = v })
-                        installPreferOldest     (\v flags -> flags { installPreferOldest = v })
                         installShadowPkgs       (\v flags -> flags { installShadowPkgs       = v })
                         installStrongFlags      (\v flags -> flags { installStrongFlags      = v })
                         installAllowBootLibInstalls (\v flags -> flags { installAllowBootLibInstalls = v })
@@ -2408,14 +2399,13 @@ optionSolverFlags :: ShowOrParseArgs
                   -> (flags -> Flag FineGrainedConflicts) -> (Flag FineGrainedConflicts -> flags -> flags)
                   -> (flags -> Flag MinimizeConflictSet) -> (Flag MinimizeConflictSet -> flags -> flags)
                   -> (flags -> Flag IndependentGoals) -> (Flag IndependentGoals -> flags -> flags)
-                  -> (flags -> Flag PreferOldest) -> (Flag PreferOldest -> flags -> flags)
                   -> (flags -> Flag ShadowPkgs)       -> (Flag ShadowPkgs       -> flags -> flags)
                   -> (flags -> Flag StrongFlags)      -> (Flag StrongFlags      -> flags -> flags)
                   -> (flags -> Flag AllowBootLibInstalls) -> (Flag AllowBootLibInstalls -> flags -> flags)
                   -> (flags -> Flag OnlyConstrained)  -> (Flag OnlyConstrained  -> flags -> flags)
                   -> [OptionField flags]
 optionSolverFlags showOrParseArgs getmbj setmbj getrg setrg getcc setcc
-                  getfgc setfgc getmc setmc getig setig getpo setpo getsip setsip
+                  getfgc setfgc getmc setmc getig setig getsip setsip
                   getstrfl setstrfl getib setib getoc setoc =
   [ option [] ["max-backjumps"]
       ("Maximum number of backjumps allowed while solving (default: " ++ show defaultMaxBackjumps ++ "). Use a negative number to enable unlimited backtracking. Use 0 to disable backtracking completely.")
@@ -2448,11 +2438,6 @@ optionSolverFlags showOrParseArgs getmbj setmbj getrg setrg getcc setcc
       "Treat several goals on the command line as independent. If several goals depend on the same package, different versions can be chosen."
       (fmap asBool . getig)
       (setig . fmap IndependentGoals)
-      (yesNoOpt showOrParseArgs)
-  , option [] ["prefer-oldest"]
-      "Prefer the oldest (instead of the latest) versions of packages available. Useful to determine lower bounds in the build-depends section."
-      (fmap asBool . getpo)
-      (setpo . fmap PreferOldest)
       (yesNoOpt showOrParseArgs)
   , option [] ["shadow-installed-packages"]
       "If multiple package instances of the same version are installed, treat all but one as shadowed."

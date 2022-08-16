@@ -7,5 +7,5 @@ import Prelude (Show)
 -- | Whether we prefer an installed version of a package or simply the latest
 -- version.
 --
-data InstalledPreference = PreferInstalled | PreferLatest | PreferOldest
+data InstalledPreference = PreferInstalled | PreferLatest
   deriving Show

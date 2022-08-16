@@ -54,7 +54,6 @@ instance ToExpr OverwritePolicy
 instance ToExpr PackageConfig
 instance ToExpr PackageDB
 instance ToExpr PackageProperty
-instance ToExpr PreferOldest
 instance ToExpr PreSolver
 instance ToExpr ProjectConfig
 instance ToExpr ProjectConfigBuildOnly
