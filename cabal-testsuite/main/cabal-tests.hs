@@ -217,7 +217,7 @@ main = do
             -- print skipped
             logAll $ "SKIPPED " ++ show (length skipped) ++ " tests"
 
-            -- print failed or ook
+            -- print failed or unexpected ok
             if null (unexpected_fails ++ unexpected_passes)
             then logAll "OK"
             else do
