@@ -7,6 +7,8 @@ module Distribution.Client.CmdHaddock (
     haddockCommand,
     haddockAction,
 
+    ClientHaddockFlags(..),
+
     -- * Internals exposed for testing
     selectPackageTargets,
     selectComponentTarget
