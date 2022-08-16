@@ -5,7 +5,7 @@ stages:
 # https://gitlab.haskell.org/haskell/haskell-language-server/-/pipelines
 variables:
   # Commit of ghc/ci-images repository from which to pull Docker images
-  DOCKER_REV: "4ed1a4f27828ba96a34662dc954335e29b470cd2"
+  DOCKER_REV: "9e4c540d9e4972a36291dfdf81f079f37d748890"
 
   GHC_VERSION: 9.2.3
   CABAL_INSTALL_VERSION: 3.6.2.0
@@ -58,6 +58,16 @@ build-x86_64-linux:
   image: "registry.gitlab.haskell.org/ghc/ci-images/x86_64-linux-deb10:$DOCKER_REV"
   variables:
     TARBALL_ARCHIVE_SUFFIX: x86_64-linux-deb10
+    TARBALL_EXT: tar.xz
+    ADD_CABAL_ARGS: "--enable-split-sections"
+
+build-x86_64-linux-deb11:
+  extends: .build
+  tags:
+    - x86_64-linux
+  image: "registry.gitlab.haskell.org/ghc/ci-images/x86_64-linux-deb11:$DOCKER_REV"
+  variables:
+    TARBALL_ARCHIVE_SUFFIX: x86_64-linux-deb11
     TARBALL_EXT: tar.xz
     ADD_CABAL_ARGS: "--enable-split-sections"
 
