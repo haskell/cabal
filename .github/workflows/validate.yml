@@ -37,11 +37,13 @@ jobs:
       GHC_FOR_RELEASE: ${{ format('["{0}"]', env.GHC_FOR_RELEASE) }}
     strategy:
       matrix:
-#        os: ["ubuntu-latest", "macos-latest", "windows-latest"]
-        os: ["ubuntu-latest"]
-#        ghc: ["9.2.3", "9.0.2", "8.10.7", "8.8.4", "8.6.5", "8.4.4"]
-        ghc: ["8.10.7"]
+        os: ["ubuntu-latest", "macos-latest", "windows-latest"]
+#        os: ["ubuntu-latest"]
+        ghc: ["9.2.3", "9.0.2", "8.10.7", "8.8.4", "8.6.5", "8.4.4"]
+#        ghc: ["8.10.7"]
         exclude:
+          - os: "windows-latest"
+            ghc: "8.10.7"
           # lot of segfaults caused by ghc bugs
           - os: "windows-latest"
             ghc: "8.8.4"
