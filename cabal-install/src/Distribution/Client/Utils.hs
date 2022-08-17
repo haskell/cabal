@@ -431,7 +431,7 @@ getCurrentYear = do
 -- | From System.Directory.Extra
 --   https://hackage.haskell.org/package/extra-1.7.9
 listFilesInside :: (FilePath -> IO Bool) -> FilePath -> IO [FilePath]
-listFilesInside test dir = ifM (notM $ test $ dropTrailingPathSeparator dir) (pure []) $ do
+listFilesInside test dir = ifNotM (test $ dropTrailingPathSeparator dir) (pure []) $ do
     (dirs,files) <- partitionM doesDirectoryExist =<< listContents dir
     rest <- concatMapM (listFilesInside test) dirs
     pure $ files ++ rest
@@ -453,6 +453,11 @@ listContents dir = do
 ifM :: Monad m => m Bool -> m a -> m a -> m a
 ifM b t f = do b' <- b; if b' then t else f
 
+-- | 'ifM' with swapped branches:
+--   @ifNotM b t f = ifM (not <$> b) t f@
+ifNotM :: Monad m => m Bool -> m a -> m a -> m a
+ifNotM = flip . ifM
+
 -- | From Control.Monad.Extra
 --   https://hackage.haskell.org/package/extra-1.7.9
 concatMapM :: Monad m => (a -> m [b]) -> [a] -> m [b]
@@ -468,11 +473,6 @@ partitionM f (x:xs) = do
     res <- f x
     (as,bs) <- partitionM f xs
     pure ([x | res]++as, [x | not res]++bs)
-
--- | From Control.Monad.Extra
---   https://hackage.haskell.org/package/extra-1.7.9
-notM :: Functor m => m Bool -> m Bool
-notM = fmap not
 
 safeRead :: Read a => String -> Maybe a
 safeRead s
