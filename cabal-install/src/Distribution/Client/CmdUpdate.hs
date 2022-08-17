@@ -85,7 +85,7 @@ updateCommand = CommandUI
      ++ "  " ++ pname ++ " v2-update hackage.haskell.org,HEAD\n"
      ++ "  " ++ pname ++ " v2-update hackage.haskell.org\n"
      ++ "    Download hackage.haskell.org at a specific index state.\n\n"
-     ++ "  " ++ pname ++ " new update hackage.haskell.org head.hackage\n"
+     ++ "  " ++ pname ++ " v2-update hackage.haskell.org head.hackage\n"
      ++ "    Download hackage.haskell.org and head.hackage\n"
      ++ "    head.hackage must be a known repo-id. E.g. from\n"
      ++ "    your cabal.project(.local) file.\n"
