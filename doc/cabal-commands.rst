@@ -186,6 +186,42 @@ Arguments and flags common to some or all commands are:
 
     Already generated `build-info.json` files will be removed since they would be stale otherwise.
 
+Target Forms
+------------
+
+A cabal command target can take any of the following forms:
+
+-  A package target: ``package``, which specifies that all enabled
+   components of a package to be built. By default, test suites and
+   benchmarks are *not* enabled, unless they are explicitly requested
+   (e.g., via ``--enable-tests``.)
+
+-  A component target: ``[package:][ctype:]component``, which specifies
+   a specific component (e.g., a library, executable, test suite or
+   benchmark) to be built.
+
+-  All packages: ``all``, which specifies all packages within the project.
+
+-  Components of a particular type: ``package:ctypes``, ``all:ctypes``:
+   which specifies all components of the given type. Where valid
+   ``ctypes`` are:
+
+     - ``libs``, ``libraries``,
+     - ``flibs``, ``foreign-libraries``,
+     - ``exes``, ``executables``,
+     - ``tests``,
+     - ``benches``, ``benchmarks``.
+
+-  A module target: ``[package:][ctype:]module``, which specifies that the
+   component of which the given module is a part of will be built.
+
+-  A filepath target: ``[package:][ctype:]filepath``, which specifies that the
+   component of which the given filepath is a part of will be built.
+
+-  A script target: ``path/to/script``, which specifies the path to a script
+   file. This is supported by ``build``, ``repl``, ``run``, and ``clean``.
+   Script targets are not part of a package.
+
 cabal init
 ----------
 
@@ -313,42 +349,6 @@ Some examples:
 
     $ cabal update                  # update all remote repos
     $ cabal update head.hackage     # update only head.hackage
-
-Target Forms
-------------
-
-A cabal command target can take any of the following forms:
-
--  A package target: ``package``, which specifies that all enabled
-   components of a package to be built. By default, test suites and
-   benchmarks are *not* enabled, unless they are explicitly requested
-   (e.g., via ``--enable-tests``.)
-
--  A component target: ``[package:][ctype:]component``, which specifies
-   a specific component (e.g., a library, executable, test suite or
-   benchmark) to be built.
-
--  All packages: ``all``, which specifies all packages within the project.
-
--  Components of a particular type: ``package:ctypes``, ``all:ctypes``:
-   which specifies all components of the given type. Where valid
-   ``ctypes`` are:
-
-     - ``libs``, ``libraries``,
-     - ``flibs``, ``foreign-libraries``,
-     - ``exes``, ``executables``,
-     - ``tests``,
-     - ``benches``, ``benchmarks``.
-
--  A module target: ``[package:][ctype:]module``, which specifies that the
-   component of which the given module is a part of will be built.
-
--  A filepath target: ``[package:][ctype:]filepath``, which specifies that the
-   component of which the given filepath is a part of will be built.
-
--  A script target: ``path/to/script``, which specifies the path to a script
-   file. This is supported by ``build``, ``repl``, ``run``, and ``clean``.
-   Script targets are not part of a package.
 
 cabal build
 -----------
