@@ -145,9 +145,7 @@ withEnv :: String -> String -> IO a -> IO a
 withEnv k v m = do
   mb_old <- lookupEnv k
   setEnv k v
-  m `Exception.finally` (case mb_old of
-    Nothing -> unsetEnv k
-    Just old -> setEnv k old)
+  m `Exception.finally` setOrUnsetEnv k mb_old
 
 -- | Executes the action with a list of environment variables and
 -- corresponding overrides, where
@@ -160,15 +158,15 @@ withEnv k v m = do
 withEnvOverrides :: [(String, Maybe FilePath)] -> IO a -> IO a
 withEnvOverrides overrides m = do
   mb_olds <- traverse lookupEnv envVars
-  traverse_ (uncurry update) overrides
-  m `Exception.finally` zipWithM_ update envVars mb_olds
+  traverse_ (uncurry setOrUnsetEnv) overrides
+  m `Exception.finally` zipWithM_ setOrUnsetEnv envVars mb_olds
    where
     envVars :: [String]
     envVars = map fst overrides
 
-    update :: String -> Maybe FilePath -> IO ()
-    update var Nothing    = unsetEnv var
-    update var (Just val) = setEnv var val
+setOrUnsetEnv :: String -> Maybe String -> IO ()
+setOrUnsetEnv var Nothing    = unsetEnv var
+setOrUnsetEnv var (Just val) = setEnv var val
 
 -- | Executes the action, increasing the PATH environment
 -- in some way
