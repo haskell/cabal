@@ -28,6 +28,7 @@ module Distribution.Client.Utils
   , listFilesRecursive
   , listFilesInside
   , safeRead
+  , hasElem
   ) where
 
 import Prelude ()
@@ -73,7 +74,7 @@ import Data.Time.Calendar (toGregorian)
 import qualified System.Directory as Dir
 import qualified System.IO.Error as IOError
 #endif
-
+import qualified Data.Set as Set
 
 -- | Generic merging utility. For sorted input lists this is a full outer join.
 --
@@ -478,3 +479,9 @@ safeRead :: Read a => String -> Maybe a
 safeRead s
   | [(x, "")] <- reads s = Just x
   | otherwise = Nothing
+
+
+-- | @hasElem xs x = elem x xs@ except that @xs@ is turned into a 'Set' first.
+--   Use underapplied to speed up subsequent lookups, e.g. @filter (hasElem xs) ys@.
+hasElem :: Ord a => [a] -> a -> Bool
+hasElem xs = (`Set.member` Set.fromList xs)

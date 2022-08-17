@@ -19,7 +19,7 @@ import Prelude ()
 import Distribution.Client.Compat.Prelude
 
 import Distribution.Client.Utils
-         ( incVersion )
+         ( hasElem, incVersion )
 import Distribution.Client.Freeze
          ( getFreezePkgs )
 import Distribution.Client.Setup
@@ -106,33 +106,29 @@ genBounds verbosity packageDBs repoCtxt comp platform progdb globalFlags freezeF
     case epd of
       Left _ -> putStrLn "finalizePD failed"
       Right (pd,_) -> do
-        let needBounds = filter (not . hasUpperBound . depVersion) $
+       let needBounds = map depName $ filter (not . hasUpperBound . depVersion) $
                          enabledBuildDepends pd defaultComponentRequestedSpec
 
-        if (null needBounds)
-          then putStrLn
-               "Congratulations, all your dependencies have upper bounds!"
-          else go needBounds
-  where
-     go needBounds = do
        pkgs  <- getFreezePkgs
                   verbosity packageDBs repoCtxt comp platform progdb
                   globalFlags freezeFlags
 
-       putStrLn boundsNeededMsg
-
-       let isNeeded pkg = unPackageName (packageName pkg)
-                          `elem` map depName needBounds
+       let isNeeded = hasElem needBounds . unPackageName . packageName
        let thePkgs = filter isNeeded pkgs
 
        let padTo = maximum $ map (length . unPackageName . packageName) pkgs
-       traverse_ (putStrLn . (++",") . showBounds padTo) thePkgs
 
-     depName :: Dependency -> String
-     depName (Dependency pn _ _) = unPackageName pn
+       if null thePkgs then putStrLn
+         "Congratulations, all your dependencies have upper bounds!"
+        else do
+         putStrLn boundsNeededMsg
+         traverse_ (putStrLn . (++",") . showBounds padTo) thePkgs
 
-     depVersion :: Dependency -> VersionRange
-     depVersion (Dependency _ vr _) = vr
+depName :: Dependency -> String
+depName (Dependency pn _ _) = unPackageName pn
+
+depVersion :: Dependency -> VersionRange
+depVersion (Dependency _ vr _) = vr
 
 -- | The message printed when some dependencies are found to be lacking proper
 -- PVP-mandated bounds.

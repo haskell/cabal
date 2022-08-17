@@ -287,6 +287,7 @@ cabalGArgs global_args cmd args input = do
               , "man"
               , "v1-freeze"
               , "check"
+              , "gen-bounds"
               , "get", "unpack"
               , "info"
               , "init"

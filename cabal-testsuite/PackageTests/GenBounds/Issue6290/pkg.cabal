@@ -1,0 +1,11 @@
+cabal-version:       2.4
+name:                pkg
+version:             0.0.0.0
+
+library lib
+  build-depends:
+    base >= 4 && < 5
+
+executable exec
+  main-is:       Main.hs
+  build-depends: lib
