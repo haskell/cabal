@@ -933,6 +933,7 @@ look something like this:
         default-language: Haskell2010
 
     test-suite test-foo
+        type:             exitcode-stdio-1.0
         main-is:          test-foo.hs
         -- NOTE: no constraints on 'foo-internal' as same-package
         --       dependencies implicitly refer to the same package instance
@@ -1206,14 +1207,14 @@ Test suites
 The test suite may be described using the following fields, as well as
 build information fields (see the section on `build information`_).
 
-.. pkg-field:: type: interface
+.. pkg-field:: type: interface (required until ``cabal-version`` 3.8)
 
     The interface type and version of the test suite. Cabal supports two
-    test suite interfaces, called ``exitcode-stdio-1.0`` (default) and
+    test suite interfaces, called ``exitcode-stdio-1.0`` (default since ``cabal-version`` 3.8) and
     ``detailed-0.9``. Each of these types may require or disallow other
     fields as described below.
 
-Test suites using the ``exitcode-stdio-1.0`` (default) interface are executables
+Test suites using the ``exitcode-stdio-1.0`` (default since ``cabal-version`` 3.8) interface are executables
 that indicate test failure with a non-zero exit code when run; they may
 provide human-readable log information through the standard output and
 error channels. The ``exitcode-stdio-1.0`` type requires the ``main-is``
@@ -1222,6 +1223,7 @@ field.
 .. pkg-field:: main-is: filename
     :synopsis: Module containing tests main function.
 
+    :required: ``exitcode-stdio-1.0``
     :disallowed: ``detailed-0.9``
 
     The name of the ``.hs`` or ``.lhs`` file containing the ``Main``
@@ -1243,6 +1245,7 @@ the :pkg-field:`test-module` field.
 
 .. pkg-field:: test-module: identifier
 
+    :required: ``detailed-0.9``
     :disallowed: ``exitcode-stdio-1.0``
 
     The module exporting the ``tests`` symbol.
@@ -1263,6 +1266,7 @@ demonstrate the use of the ``exitcode-stdio-1.0`` interface.
     Build-Type:     Simple
 
     Test-Suite test-foo
+        type:             exitcode-stdio-1.0
         main-is:          test-foo.hs
         build-depends:    base >= 4 && < 5
         default-language: Haskell2010
@@ -1297,6 +1301,7 @@ be provided by the library that provides the testing facility.
     Build-Type:     Simple
 
     Test-Suite test-bar
+        type:             detailed-0.9
         test-module:      Bar
         build-depends:    base >= 4 && < 5, Cabal >= 1.9.2 && < 2
         default-language: Haskell2010
@@ -1359,6 +1364,16 @@ Benchmarks
 The benchmark may be described using the following fields, as well as
 build information fields (see the section on `build information`_).
 
+.. pkg-field:: type: interface (required until ``cabal-version`` 3.8)
+
+    The interface type and version of the benchmark. At the moment Cabal
+    only support one benchmark interface, called ``exitcode-stdio-1.0``.
+
+Benchmarks using the ``exitcode-stdio-1.0`` (default since ``cabal-version`` 3.8) interface are executables
+that indicate failure to run the benchmark with a non-zero exit code
+when run; they may provide human-readable information through the
+standard output and error channels.
+
 .. pkg-field:: main-is: filename
 
     The name of the ``.hs`` or ``.lhs`` file containing the ``Main``
@@ -1383,6 +1398,7 @@ Example:
     Build-Type:     Simple
 
     Benchmark bench-foo
+        type:             exitcode-stdio-1.0
         main-is:          bench-foo.hs
         build-depends:    base >= 4 && < 5, time >= 1.1 && < 1.7
         default-language: Haskell2010
@@ -2717,6 +2733,7 @@ Starting with Cabal-2.2 it's possible to use common build info stanzas.
 
       test-suite tests
         import:           deps, test-deps
+        type:             exitcode-stdio-1.0
         main-is:          Tests.hs
         build-depends:    foo
         default-language: Haskell2010
