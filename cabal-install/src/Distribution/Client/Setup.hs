@@ -115,7 +115,7 @@ import Distribution.PackageDescription
          ( BuildType(..), RepoKind(..), LibraryName(..) )
 import Distribution.System ( Platform )
 import Distribution.ReadE
-         ( ReadE(..), succeedReadE, parsecToReadE )
+         ( ReadE(..), succeedReadE, parsecToReadE, parsecToReadEErr, unexpectMsgString )
 import qualified Distribution.Compat.CharParsing as P
 import Distribution.Verbosity
          ( lessVerbose, normal, verboseNoFlags, verboseNoTimestamp )
@@ -161,6 +161,7 @@ globalCommand commands = CommandUI {
           , "info"
           , "user-config"
           , "get"
+          , "unpack"
           , "init"
           , "configure"
           , "build"
@@ -248,6 +249,7 @@ globalCommand commands = CommandUI {
         , par
         , startGroup "package"
         , addCmd "get"
+        , addCmd "unpack"
         , addCmd "init"
         , par
         , addCmd "configure"
@@ -345,11 +347,6 @@ globalCommand commands = CommandUI {
          globalConfigFile (\v flags -> flags { globalConfigFile = v })
          (reqArgFlag "FILE")
 
-      ,option [] ["default-user-config"]
-         "Set a location for a cabal.config file for projects without their own cabal.config freeze file."
-         globalConstraintsFile (\v flags -> flags {globalConstraintsFile = v})
-         (reqArgFlag "FILE")
-
       ,option [] ["ignore-expiry"]
          "Ignore expiry dates on signed metadata (use only in exceptional circumstances)"
          globalIgnoreExpiry (\v flags -> flags { globalIgnoreExpiry = v })
@@ -359,14 +356,33 @@ globalCommand commands = CommandUI {
          "Set a transport for http(s) requests. Accepts 'curl', 'wget', 'powershell', and 'plain-http'. (default: 'curl')"
          globalHttpTransport (\v flags -> flags { globalHttpTransport = v })
          (reqArgFlag "HttpTransport")
-      ,option [] ["nix"]
-         "Nix integration: run commands through nix-shell if a 'shell.nix' file exists"
-         globalNix (\v flags -> flags { globalNix = v })
-         (boolOpt [] [])
 
+      ,multiOption "nix"
+        globalNix (\v flags -> flags { globalNix = v })
+        [
+          noArg (Flag True) [] ["enable-nix"]
+          "Enable Nix integration: run commands through nix-shell if a 'shell.nix' file exists",
+          noArg (Flag False) [] ["disable-nix"]
+          "Disable Nix integration"
+        ]
+
+      ,option [] ["store-dir", "storedir"]
+         "The location of the build store"
+         globalStoreDir (\v flags -> flags { globalStoreDir = v })
+         (reqArgFlag "DIR")
+
+      , option [] ["active-repositories"]
+         "The active package repositories (set to ':none' to disable all repositories)"
+         globalActiveRepos (\v flags ->  flags { globalActiveRepos = v })
+         (reqArg "REPOS" (parsecToReadE (\err -> "Error parsing active-repositories: " ++ err)
+                                        (toFlag `fmap` parsec))
+                         (map prettyShow . flagToList))
       ]
 
     -- arguments we don't want shown in the help
+    -- the remote repo flags are not useful compared to the more general "active-repositories" flag.
+    -- the global logs directory was only used in v1, while in v2 we have specific project config logs dirs
+    -- default-user-config is support for a relatively obscure workflow for v1-freeze.
     argsNotShown :: [OptionField GlobalFlags]
     argsNotShown = [
        option [] ["remote-repo"]
@@ -389,22 +405,11 @@ globalCommand commands = CommandUI {
          globalLogsDir (\v flags -> flags { globalLogsDir = v })
          (reqArgFlag "DIR")
 
-      ,option [] ["world-file"]
-         "The location of the world file"
-         globalWorldFile (\v flags -> flags { globalWorldFile = v })
+      ,option [] ["default-user-config"]
+         "Set a location for a cabal.config file for projects without their own cabal.config freeze file."
+         globalConstraintsFile (\v flags -> flags {globalConstraintsFile = v})
          (reqArgFlag "FILE")
 
-      ,option [] ["store-dir", "storedir"]
-         "The location of the nix-local-build store"
-         globalStoreDir (\v flags -> flags { globalStoreDir = v })
-         (reqArgFlag "DIR")
-
-      , option [] ["active-repositories"]
-         "The active package repositories"
-         globalActiveRepos (\v flags ->  flags { globalActiveRepos = v })
-         (reqArg "REPOS" (parsecToReadE (\err -> "Error parsing active-repositories: " ++ err)
-                                        (toFlag `fmap` parsec))
-                         (map prettyShow . flagToList))
       ]
 
 -- ------------------------------------------------------------
@@ -450,7 +455,7 @@ filterConfigureFlags :: ConfigFlags -> Version -> ConfigFlags
 filterConfigureFlags flags cabalLibVersion
   -- NB: we expect the latest version to be the most common case,
   -- so test it first.
-  | cabalLibVersion >= mkVersion [2,5,0]  = flags_latest
+  | cabalLibVersion >= mkVersion [3,7,0]  = flags_latest
   -- The naming convention is that flags_version gives flags with
   -- all flags *introduced* in version eliminated.
   -- It is NOT the latest version of Cabal library that
@@ -483,7 +488,10 @@ filterConfigureFlags flags cabalLibVersion
 
     flags_3_7_0 = flags_latest {
         -- Cabal < 3.7 does not know about --extra-lib-dirs-static
-        configExtraLibDirsStatic = []
+        configExtraLibDirsStatic = [],
+
+        -- Cabal < 3.7 does not understand '--enable-build-info' or '--disable-build-info'
+        configDumpBuildInfo = NoFlag
       }
 
     flags_2_5_0 = flags_3_7_0 {
@@ -650,7 +658,7 @@ configureExOptions _showOrParseArgs src =
       "the backup of the config file before any alterations"
       configBackup (\v flags -> flags { configBackup = v })
       (boolOpt [] [])
-  , option [] ["constraint"]
+  , option "c" ["constraint"]
       "Specify constraints on a package (version, installed/source, flags)"
       configExConstraints (\v flags -> flags { configExConstraints = v })
       (reqArg "CONSTRAINT"
@@ -672,7 +680,7 @@ configureExOptions _showOrParseArgs src =
     (fmap unAllowOlder . configAllowOlder)
     (\v flags -> flags { configAllowOlder = fmap AllowOlder v})
     (optArg "DEPS"
-     (parsecToReadE ("Cannot parse the list of packages: " ++) relaxDepsParser)
+     (parsecToReadEErr unexpectMsgString  relaxDepsParser)
      (Just RelaxDepsAll) relaxDepsPrinter)
 
   , option [] ["allow-newer"]
@@ -680,7 +688,7 @@ configureExOptions _showOrParseArgs src =
     (fmap unAllowNewer . configAllowNewer)
     (\v flags -> flags { configAllowNewer = fmap AllowNewer v})
     (optArg "DEPS"
-     (parsecToReadE ("Cannot parse the list of packages: " ++) relaxDepsParser)
+     (parsecToReadEErr unexpectMsgString  relaxDepsParser)
      (Just RelaxDepsAll) relaxDepsPrinter)
 
   , option [] ["write-ghc-environment-files"]
@@ -712,8 +720,13 @@ writeGhcEnvironmentFilesPolicyPrinter = \case
 
 
 relaxDepsParser :: CabalParsing m => m (Maybe RelaxDeps)
-relaxDepsParser =
-  (Just . RelaxDepsSome . toList) `fmap` P.sepByNonEmpty parsec (P.char ',')
+relaxDepsParser = do
+  rs <- P.sepBy parsec (P.char ',')
+  if null rs
+    then fail $ "empty argument list is not allowed. "
+             ++ "Note: use --allow-newer without the equals sign to permit all "
+             ++ "packages to use newer versions."
+    else return . Just . RelaxDepsSome . toList $ rs
 
 relaxDepsPrinter :: (Maybe RelaxDeps) -> [Maybe String]
 relaxDepsPrinter Nothing                     = []
@@ -930,6 +943,7 @@ data FetchFlags = FetchFlags {
       fetchFineGrainedConflicts :: Flag FineGrainedConflicts,
       fetchMinimizeConflictSet :: Flag MinimizeConflictSet,
       fetchIndependentGoals :: Flag IndependentGoals,
+      fetchPreferOldest     :: Flag PreferOldest,
       fetchShadowPkgs       :: Flag ShadowPkgs,
       fetchStrongFlags      :: Flag StrongFlags,
       fetchAllowBootLibInstalls :: Flag AllowBootLibInstalls,
@@ -951,6 +965,7 @@ defaultFetchFlags = FetchFlags {
     fetchFineGrainedConflicts = Flag (FineGrainedConflicts True),
     fetchMinimizeConflictSet = Flag (MinimizeConflictSet False),
     fetchIndependentGoals = Flag (IndependentGoals False),
+    fetchPreferOldest     = Flag (PreferOldest False),
     fetchShadowPkgs       = Flag (ShadowPkgs False),
     fetchStrongFlags      = Flag (StrongFlags False),
     fetchAllowBootLibInstalls = Flag (AllowBootLibInstalls False),
@@ -1014,6 +1029,7 @@ fetchCommand = CommandUI {
                          fetchFineGrainedConflicts (\v flags -> flags { fetchFineGrainedConflicts = v })
                          fetchMinimizeConflictSet (\v flags -> flags { fetchMinimizeConflictSet = v })
                          fetchIndependentGoals (\v flags -> flags { fetchIndependentGoals = v })
+                         fetchPreferOldest     (\v flags -> flags { fetchPreferOldest = v })
                          fetchShadowPkgs       (\v flags -> flags { fetchShadowPkgs       = v })
                          fetchStrongFlags      (\v flags -> flags { fetchStrongFlags      = v })
                          fetchAllowBootLibInstalls (\v flags -> flags { fetchAllowBootLibInstalls = v })
@@ -1036,6 +1052,7 @@ data FreezeFlags = FreezeFlags {
       freezeFineGrainedConflicts :: Flag FineGrainedConflicts,
       freezeMinimizeConflictSet :: Flag MinimizeConflictSet,
       freezeIndependentGoals :: Flag IndependentGoals,
+      freezePreferOldest     :: Flag PreferOldest,
       freezeShadowPkgs       :: Flag ShadowPkgs,
       freezeStrongFlags      :: Flag StrongFlags,
       freezeAllowBootLibInstalls :: Flag AllowBootLibInstalls,
@@ -1055,6 +1072,7 @@ defaultFreezeFlags = FreezeFlags {
     freezeFineGrainedConflicts = Flag (FineGrainedConflicts True),
     freezeMinimizeConflictSet = Flag (MinimizeConflictSet False),
     freezeIndependentGoals = Flag (IndependentGoals False),
+    freezePreferOldest     = Flag (PreferOldest False),
     freezeShadowPkgs       = Flag (ShadowPkgs False),
     freezeStrongFlags      = Flag (StrongFlags False),
     freezeAllowBootLibInstalls = Flag (AllowBootLibInstalls False),
@@ -1109,6 +1127,7 @@ freezeCommand = CommandUI {
                          freezeFineGrainedConflicts (\v flags -> flags { freezeFineGrainedConflicts = v })
                          freezeMinimizeConflictSet (\v flags -> flags { freezeMinimizeConflictSet = v })
                          freezeIndependentGoals (\v flags -> flags { freezeIndependentGoals = v })
+                         freezePreferOldest     (\v flags -> flags { freezePreferOldest = v })
                          freezeShadowPkgs       (\v flags -> flags { freezeShadowPkgs       = v })
                          freezeStrongFlags      (\v flags -> flags { freezeStrongFlags      = v })
                          freezeAllowBootLibInstalls (\v flags -> flags { freezeAllowBootLibInstalls = v })
@@ -1284,6 +1303,7 @@ instance Semigroup ReportFlags where
 
 data GetFlags = GetFlags {
     getDestDir          :: Flag FilePath,
+    getOnlyPkgDescr     :: Flag Bool,
     getPristine         :: Flag Bool,
     getIndexState       :: Flag TotalIndexState,
     getActiveRepos      :: Flag ActiveRepos,
@@ -1294,6 +1314,7 @@ data GetFlags = GetFlags {
 defaultGetFlags :: GetFlags
 defaultGetFlags = GetFlags {
     getDestDir          = mempty,
+    getOnlyPkgDescr     = mempty,
     getPristine         = mempty,
     getIndexState       = mempty,
     getActiveRepos      = mempty,
@@ -1305,17 +1326,8 @@ getCommand :: CommandUI GetFlags
 getCommand = CommandUI {
     commandName         = "get",
     commandSynopsis     = "Download/Extract a package's source code (repository).",
-    commandDescription  = Just $ \_ -> wrapText $
-          "Creates a local copy of a package's source code. By default it gets "
-       ++ "the source\ntarball and unpacks it in a local subdirectory. "
-       ++ "Alternatively, with -s it will\nget the code from the source "
-       ++ "repository specified by the package.\n",
-    commandNotes        = Just $ \pname ->
-          "Examples:\n"
-       ++ "  " ++ pname ++ " get hlint\n"
-       ++ "    Download the latest stable version of hlint;\n"
-       ++ "  " ++ pname ++ " get lens --source-repository=head\n"
-       ++ "    Download the source repository (i.e. git clone from github).\n",
+    commandDescription  = Just $ \_ -> wrapText $ unlines descriptionOfGetCommand,
+    commandNotes        = Just $ \pname -> unlines $ notesOfGetCommand "get" pname,
     commandUsage        = usagePackages "get",
     commandDefaultFlags = defaultGetFlags,
     commandOptions      = \_ -> [
@@ -1348,6 +1360,16 @@ getCommand = CommandUI {
                                       (toFlag `fmap` parsec))
                           (flagToList . fmap prettyShow))
 
+       , option [] ["only-package-description"]
+           "Unpack only the package description file."
+           getOnlyPkgDescr (\v flags -> flags { getOnlyPkgDescr = v })
+           trueArg
+
+       , option [] ["package-description-only"]
+           "A synonym for --only-package-description."
+           getOnlyPkgDescr (\v flags -> flags { getOnlyPkgDescr = v })
+           trueArg
+
        , option [] ["pristine"]
            ("Unpack the original pristine tarball, rather than updating the "
            ++ ".cabal file with the latest revision from the package archive.")
@@ -1356,12 +1378,38 @@ getCommand = CommandUI {
        ]
   }
 
+-- | List of lines describing command @get@.
+descriptionOfGetCommand :: [String]
+descriptionOfGetCommand =
+  [ "Creates a local copy of a package's source code. By default it gets the source"
+  , "tarball and unpacks it in a local subdirectory. Alternatively, with -s it will"
+  , "get the code from the source repository specified by the package."
+  ]
+
+-- | Notes for the command @get@.
+notesOfGetCommand
+  :: String    -- ^ Either @"get"@ or @"unpack"@.
+  -> String    -- ^ E.g. @"cabal"@.
+  -> [String]  -- ^ List of lines.
+notesOfGetCommand cmd pname =
+  [ "Examples:"
+  , "  " ++ unwords [ pname, cmd, "hlint" ]
+  , "    Download the latest stable version of hlint;"
+  , "  " ++ unwords [ pname, cmd, "lens --source-repository=head" ]
+  , "    Download the source repository of lens (i.e. git clone from github)."
+  ]
+
 -- 'cabal unpack' is a deprecated alias for 'cabal get'.
 unpackCommand :: CommandUI GetFlags
-unpackCommand = getCommand {
-  commandName  = "unpack",
-  commandUsage = usagePackages "unpack"
+unpackCommand = getCommand
+  { commandName        = "unpack"
+  , commandSynopsis    = synopsis
+  , commandNotes       = Just $ \ pname -> unlines $
+      notesOfGetCommand "unpack" pname
+  , commandUsage       = usagePackages "unpack"
   }
+  where
+  synopsis = "Deprecated alias for 'get'."
 
 instance Monoid GetFlags where
   mempty = gmempty
@@ -1428,7 +1476,7 @@ listOptions =
         listSimpleOutput (\v flags -> flags { listSimpleOutput = v })
         trueArg
     , option ['i'] ["ignore-case"]
-        "Ignore case destictions"
+        "Ignore case distinctions"
         listCaseInsensitive (\v flags -> flags { listCaseInsensitive = v })
         (boolOpt' (['i'], ["ignore-case"]) (['I'], ["strict-case"]))
 
@@ -1526,6 +1574,7 @@ data InstallFlags = InstallFlags {
     installFineGrainedConflicts :: Flag FineGrainedConflicts,
     installMinimizeConflictSet :: Flag MinimizeConflictSet,
     installIndependentGoals :: Flag IndependentGoals,
+    installPreferOldest     :: Flag PreferOldest,
     installShadowPkgs       :: Flag ShadowPkgs,
     installStrongFlags      :: Flag StrongFlags,
     installAllowBootLibInstalls :: Flag AllowBootLibInstalls,
@@ -1546,7 +1595,6 @@ data InstallFlags = InstallFlags {
     -- when removing v1 commands
     installSymlinkBinDir    :: Flag FilePath,
     installPerComponent     :: Flag Bool,
-    installOneShot          :: Flag Bool,
     installNumJobs          :: Flag (Maybe Int),
     installKeepGoing        :: Flag Bool,
     installRunTests         :: Flag Bool,
@@ -1569,6 +1617,7 @@ defaultInstallFlags = InstallFlags {
     installFineGrainedConflicts = Flag (FineGrainedConflicts True),
     installMinimizeConflictSet = Flag (MinimizeConflictSet False),
     installIndependentGoals= Flag (IndependentGoals False),
+    installPreferOldest    = Flag (PreferOldest False),
     installShadowPkgs      = Flag (ShadowPkgs False),
     installStrongFlags     = Flag (StrongFlags False),
     installAllowBootLibInstalls = Flag (AllowBootLibInstalls False),
@@ -1587,7 +1636,6 @@ defaultInstallFlags = InstallFlags {
     installReportPlanningFailure = Flag False,
     installSymlinkBinDir   = mempty,
     installPerComponent    = Flag True,
-    installOneShot         = Flag False,
     installNumJobs         = mempty,
     installKeepGoing       = Flag False,
     installRunTests        = mempty,
@@ -1721,7 +1769,7 @@ haddockOptions showOrParseArgs
     , name `elem` ["hoogle", "html", "html-location"
                   ,"executables", "tests", "benchmarks", "all", "internal", "css"
                   ,"hyperlink-source", "quickjump", "hscolour-css"
-                  ,"contents-location", "for-hackage"]
+                  ,"contents-location", "use-index", "for-hackage", "base-url", "lib"]
     ]
 
 testOptions :: ShowOrParseArgs -> [OptionField TestFlags]
@@ -1795,6 +1843,7 @@ installOptions showOrParseArgs =
                         installFineGrainedConflicts (\v flags -> flags { installFineGrainedConflicts = v })
                         installMinimizeConflictSet (\v flags -> flags { installMinimizeConflictSet = v })
                         installIndependentGoals (\v flags -> flags { installIndependentGoals = v })
+                        installPreferOldest     (\v flags -> flags { installPreferOldest = v })
                         installShadowPkgs       (\v flags -> flags { installShadowPkgs       = v })
                         installStrongFlags      (\v flags -> flags { installStrongFlags      = v })
                         installAllowBootLibInstalls (\v flags -> flags { installAllowBootLibInstalls = v })
@@ -1881,11 +1930,6 @@ installOptions showOrParseArgs =
           "Per-component builds when possible"
           installPerComponent (\v flags -> flags { installPerComponent = v })
           (boolOpt [] [])
-
-      , option [] ["one-shot"]
-          "Do not record the packages in the world file."
-          installOneShot (\v flags -> flags { installOneShot = v })
-          (yesNoOpt showOrParseArgs)
 
       , option [] ["run-tests"]
           "Run package test suites during installation."
@@ -2010,20 +2054,19 @@ instance Semigroup UploadFlags where
 initCommand :: CommandUI IT.InitFlags
 initCommand = CommandUI {
     commandName = "init",
-    commandSynopsis = "Create a new .cabal package file.",
+    commandSynopsis = "Create a new cabal package.",
     commandDescription = Just $ \_ -> wrapText $
-         "Create a .cabal, Setup.hs, and optionally a LICENSE file.\n"
+         "Create a .cabal, CHANGELOG.md, minimal initial Haskell code and optionally a LICENSE file.\n"
       ++ "\n"
-      ++ "Calling init with no arguments creates an executable, "
-      ++ "guessing as many options as possible. The interactive "
-      ++ "mode can be invoked by the -i/--interactive flag, which "
-      ++ "will try to guess as much as possible and prompt you for "
-      ++ "the rest. You can change init to always be interactive by "
-      ++ "setting the interactive flag in your configuration file. "
-      ++ "Command-line arguments are provided for scripting purposes.\n",
+      ++ "Calling init with no arguments runs interactive mode, "
+      ++ "which will try to guess as much as possible and prompt you for the rest.\n"
+      ++ "Non-interactive mode can be invoked by the -n/--non-interactive flag, "
+      ++ "which will let you specify the options via flags and will use the defaults for the rest.\n"
+      ++ "It is also possible to call init with a single argument, which denotes the project's desired "
+      ++ "root directory.\n",
     commandNotes = Nothing,
     commandUsage = \pname ->
-         "Usage: " ++ pname ++ " init [FLAGS]\n",
+         "Usage: " ++ pname ++ " init [PROJECT ROOT] [FLAGS]\n",
     commandDefaultFlags = IT.defaultInitFlags,
     commandOptions = initOptions
   }
@@ -2213,11 +2256,9 @@ initOptions _ =
     (reqArg' "TOOL" (Flag . (:[]))
                     (fromFlagOrDefault []))
 
-    -- NB: this is a bit of a transitional hack and will likely be
-    -- removed again if `cabal init` is migrated to the v2-* command
-    -- framework
   , option "w" ["with-compiler"]
-    "give the path to a particular compiler"
+    "give the path to a particular compiler. For 'init', this flag is used \
+    \to set the bounds inferred for the 'base' package."
     IT.initHcPath (\v flags -> flags { IT.initHcPath = v })
     (reqArgFlag "PATH")
 
@@ -2379,13 +2420,14 @@ optionSolverFlags :: ShowOrParseArgs
                   -> (flags -> Flag FineGrainedConflicts) -> (Flag FineGrainedConflicts -> flags -> flags)
                   -> (flags -> Flag MinimizeConflictSet) -> (Flag MinimizeConflictSet -> flags -> flags)
                   -> (flags -> Flag IndependentGoals) -> (Flag IndependentGoals -> flags -> flags)
+                  -> (flags -> Flag PreferOldest) -> (Flag PreferOldest -> flags -> flags)
                   -> (flags -> Flag ShadowPkgs)       -> (Flag ShadowPkgs       -> flags -> flags)
                   -> (flags -> Flag StrongFlags)      -> (Flag StrongFlags      -> flags -> flags)
                   -> (flags -> Flag AllowBootLibInstalls) -> (Flag AllowBootLibInstalls -> flags -> flags)
                   -> (flags -> Flag OnlyConstrained)  -> (Flag OnlyConstrained  -> flags -> flags)
                   -> [OptionField flags]
 optionSolverFlags showOrParseArgs getmbj setmbj getrg setrg getcc setcc
-                  getfgc setfgc getmc setmc getig setig getsip setsip
+                  getfgc setfgc getmc setmc getig setig getpo setpo getsip setsip
                   getstrfl setstrfl getib setib getoc setoc =
   [ option [] ["max-backjumps"]
       ("Maximum number of backjumps allowed while solving (default: " ++ show defaultMaxBackjumps ++ "). Use a negative number to enable unlimited backtracking. Use 0 to disable backtracking completely.")
@@ -2418,6 +2460,11 @@ optionSolverFlags showOrParseArgs getmbj setmbj getrg setrg getcc setcc
       "Treat several goals on the command line as independent. If several goals depend on the same package, different versions can be chosen."
       (fmap asBool . getig)
       (setig . fmap IndependentGoals)
+      (yesNoOpt showOrParseArgs)
+  , option [] ["prefer-oldest"]
+      "Prefer the oldest (instead of the latest) versions of packages available. Useful to determine lower bounds in the build-depends section."
+      (fmap asBool . getpo)
+      (setpo . fmap PreferOldest)
       (yesNoOpt showOrParseArgs)
   , option [] ["shadow-installed-packages"]
       "If multiple package instances of the same version are installed, treat all but one as shadowed."

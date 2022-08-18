@@ -10,7 +10,7 @@ See bootstrap/README.md for usage instructions.
 USAGE = """
 This utility is only intended for use in building cabal-install
 on a new platform. If you already have a functional (if dated) cabal-install
-please rather run `cabal v2-install .`. or `release.py`
+please rather run `cabal v2-install .`.
 """
 
 from enum import Enum
@@ -184,9 +184,17 @@ def install_dep(dep: BootstrapDep, ghc: Compiler) -> None:
         if dep.revision is not None:
             shutil.copyfile(cabal_file, sdist_dir / f'{dep.package}.cabal')
 
+        # We rely on the presence of Setup.hs
+        if len(list(sdist_dir.glob('Setup.*hs'))) == 0:
+            with open(sdist_dir / 'Setup.hs', 'w') as f:
+                f.write('import Distribution.Simple\n')
+                f.write('main = defaultMain\n')
+
     elif dep.source == PackageSource.LOCAL:
         if dep.package == 'Cabal':
             sdist_dir = Path('Cabal').resolve()
+        elif dep.package == 'Cabal-syntax':
+            sdist_dir = Path('Cabal-syntax').resolve()
         elif dep.package == 'cabal-install-solver':
             sdist_dir = Path('cabal-install-solver').resolve()
         elif dep.package == 'cabal-install':

@@ -1,10 +1,10 @@
-# This file is auto-generated
-#
-# To regenerate it run
-#
-#     make github-actions
-#
 name: Quick jobs
+
+# See: https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#concurrency.
+concurrency:
+  group: ${{ github.ref }}-${{ github.workflow }}
+  cancel-in-progress: true
+
 on:
   push:
     branches:
@@ -24,12 +24,15 @@ jobs:
         # https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-commands-for-github-actions#adding-a-system-path
         run: |
           echo "$HOME/.cabal/bin" >> $GITHUB_PATH
-          echo "/opt/cabal/3.2/bin" >> $GITHUB_PATH
-          echo "/opt/ghc/8.10.4/bin" >> $GITHUB_PATH
       - uses: actions/cache@v1
         with:
           path: ~/.cabal/store
           key: linux-store-meta
+      - name: ghcup
+        run: |
+          ghcup config set cache true
+          ghcup install ghc recommended
+          ghcup set ghc recommended
       - name: Update Hackage index
         run: cabal v2-update
       - name: Install alex
@@ -40,7 +43,6 @@ jobs:
           make -B lexer
           make -B spdx
           make -B templates
-          make -B github-actions
       - name: Check that diff is clean
         run: |
           git status > /dev/null
@@ -52,8 +54,6 @@ jobs:
       - name: Set PATH
         run: |
           echo "$HOME/.cabal/bin" >> $GITHUB_PATH
-          echo "/opt/cabal/3.2/bin" >> $GITHUB_PATH
-          echo "/opt/ghc/8.10.4/bin" >> $GITHUB_PATH
       - name: Install cabal-env
         run: |
           mkdir -p $HOME/.cabal/bin
@@ -66,6 +66,11 @@ jobs:
         with:
           path: ~/.cabal/store
           key: linux-store-doctest
+      - name: ghcup
+        run: |
+          ghcup config set cache true
+          ghcup install ghc recommended
+          ghcup set ghc recommended
       - name: Update Hackage index
         run: cabal v2-update
       - name: Install doctest

@@ -1,4 +1,0 @@
-synopsis: Add --open flag to `cabal haddock`
-packages: cabal-install
-prs: #7550
-issues: #7366

@@ -4,7 +4,13 @@
 # default config
 #######################################################################
 
-HC=ghc-8.2.2
+# We use the default ghc in PATH as default
+# Use the ghc-x.y.z trigger several errors in windows:
+# * It triggers the max path length issue:
+#   See https://github.com/haskell/cabal/issues/6271#issuecomment-1065102255
+# * It triggers a `createProcess: does not exist` error in units tests
+#   See https://github.com/haskell/cabal/issues/8049
+HC=ghc
 CABAL=cabal
 CABALPLAN=cabal-plan
 JOBS=4
@@ -36,7 +42,7 @@ Usage: ./validate.sh [options]
 
 Available options:
   -j, --jobs JOBS                   cabal v2-build -j argument (default:  $JOBS)
-      --libonly                     Test onlt Cabal-the-library
+      --libonly                     Test only Cabal-the-library
       --cli                         Test both Cabal-the-library and cabal-install
       --(no-)run-lib-tests          Run library tests
       --(no-)run-cli-tests          Run client tests
@@ -52,7 +58,7 @@ Available options:
       --partial-hackage-tests       Run hackage-tests on parts of Hackage data
   -v, --verbose                     Verbose output
   -q, --quiet                       Less output
-  -s, --step STEP                   Run only specific step (can be specified mutliple times)
+  -s, --step STEP                   Run only specific step (can be specified multiple times)
       --list-steps                  List steps and build-targets and exit
       --help                        Print this message and exit
 EOF
@@ -290,7 +296,9 @@ JOBS="-j$JOBS"
 # assume compiler is GHC
 RUNHASKELL=$(echo $HC | sed -E 's/ghc(-[0-9.]*)$/runghc\1/')
 
-if [ "$(uname)" = "Linux" ]; then
+if [ "$OSTYPE" = "msys" ]; then
+    ARCH="x86_64-windows"
+elif [ "$(uname)" = "Linux" ]; then
     ARCH="x86_64-linux"
 else
     ARCH="x86_64-osx"
@@ -317,7 +325,7 @@ print_header print-config
 
 cat <<EOF
 compiler:            $HC
-runhaskell           $RUNHASKELL
+runhaskell:          $RUNHASKELL
 cabal-install:       $CABAL
 cabal-plan:          $CABALPLAN
 jobs:                $JOBS
@@ -329,7 +337,7 @@ dependencies only:   $DEPSONLY
 doctest:             $DOCTEST
 benchmarks:          $BENCHMARKS
 verbose:             $VERBOSE
-extra complers:      $EXTRAHCS
+extra compilers:     $EXTRAHCS
 
 EOF
 }
@@ -394,13 +402,12 @@ CMD="$($CABALPLANLISTBIN Cabal-tests:test:no-thunks-test) $TESTSUITEJOBS --hide-
 
 CMD=$($CABALPLANLISTBIN Cabal-tests:test:hackage-tests)
 (cd Cabal-tests && timed $CMD read-fields) || exit 1
-
 if $HACKAGETESTSALL; then
-  (cd Cabal-tests && timed $CMD parsec)    || exit 1
-  (cd Cabal-tests && timed $CMD roundtrip) || exit 1
+    (cd Cabal-tests && timed $CMD parsec)    || exit 1
+    (cd Cabal-tests && timed $CMD roundtrip) || exit 1
 else
-  (cd Cabal-tests && timed $CMD parsec d)    || exit 1
-  (cd Cabal-tests && timed $CMD roundtrip k) || exit 1
+    (cd Cabal-tests && timed $CMD parsec d)    || exit 1
+    (cd Cabal-tests && timed $CMD roundtrip k) || exit 1
 fi
 }
 
@@ -438,7 +445,7 @@ CMD="$($CABALPLANLISTBIN cabal-install:test:unit-tests) -j1 --hide-successes"
 (cd cabal-install && timed $CMD) || exit 1
 
 # Only single job, otherwise we fail with "Heap exhausted"
-CMD="$($CABALPLANLISTBIN cabal-install:test:memory-usage-tests) -j1 --hide-successes"
+CMD="$($CABALPLANLISTBIN cabal-install:test:mem-use-tests) -j1 --hide-successes"
 (cd cabal-install && timed $CMD) || exit 1
 
 # This test-suite doesn't like concurrency
@@ -452,7 +459,7 @@ CMD="$($CABALPLANLISTBIN cabal-install:test:integration-tests2) -j1 --hide-succe
 step_cli_suite() {
 print_header "cabal-install: cabal-testsuite"
 
-CMD="$($CABALPLANLISTBIN cabal-testsuite:exe:cabal-tests) --builddir=$CABAL_TESTSUITE_BDIR --with-cabal=$($CABALPLANLISTBIN cabal-install:exe:cabal) $TESTSUITEJOBS --hide-successes"
+CMD="$($CABALPLANLISTBIN cabal-testsuite:exe:cabal-tests) --builddir=$CABAL_TESTSUITE_BDIR --with-cabal=$($CABALPLANLISTBIN cabal-install:exe:cabal) $TESTSUITEJOBS  --with-ghc=$HC --hide-successes"
 (cd cabal-testsuite && timed $CMD) || exit 1
 }
 

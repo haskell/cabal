@@ -97,6 +97,7 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
+import qualified Data.ByteString.Lazy.Char8 as LBS.Char8
 
 import Control.Exception (Handler (..), SomeAsyncException, assert, catches, handle)
 import System.Directory  (canonicalizePath, createDirectoryIfMissing, doesDirectoryExist, doesFileExist, removeFile, renameDirectory)
@@ -598,7 +599,7 @@ rebuildTargets verbosity
     createDirectoryIfMissingVerbose verbosity True distTempDirectory
     traverse_ (createPackageDBIfMissing verbosity compiler progdb) packageDBsToUse
 
-    -- Before traversing the install plan, pre-emptively find all packages that
+    -- Before traversing the install plan, preemptively find all packages that
     -- will need to be downloaded and start downloading them.
     asyncDownloadPackages verbosity withRepoCtx
                           installPlan pkgsBuildStatus $ \downloadMap ->
@@ -918,8 +919,8 @@ unpackPackageTarball verbosity tarball parentdir pkgid pkgTextOverride =
 -- | This is a bit of a hacky workaround. A number of packages ship
 -- pre-processed .hs files in a dist directory inside the tarball. We don't
 -- use the standard 'dist' location so unless we move this dist dir to the
--- right place then we'll miss the shipped pre-procssed files. This hacky
--- approach to shipped pre-procssed files ought to be replaced by a proper
+-- right place then we'll miss the shipped pre-processed files. This hacky
+-- approach to shipped pre-processed files ought to be replaced by a proper
 -- system, though we'll still need to keep this hack for older packages.
 --
 moveTarballShippedDistDirectory :: Verbosity -> DistDirLayout
@@ -1016,9 +1017,18 @@ buildAndInstallUnpackedPackage verbosity
             -- https://github.com/haskell/cabal/issues/4130
             createDirectoryIfMissingVerbose verbosity True entryDir
 
-            LBS.writeFile
-              (entryDir </> "cabal-hash.txt")
-              (renderPackageHashInputs (packageHashInputs pkgshared pkg))
+            let hashFileName     = entryDir </> "cabal-hash.txt"
+                outPkgHashInputs = renderPackageHashInputs (packageHashInputs pkgshared pkg)
+
+            info verbosity $
+              "creating file with the inputs used to compute the package hash: " ++ hashFileName
+
+            LBS.writeFile hashFileName outPkgHashInputs
+
+            debug verbosity "Package hash inputs:"
+            traverse_
+              (debug verbosity . ("> " ++))
+              (lines $ LBS.Char8.unpack outPkgHashInputs)
 
             -- Ensure that there are no files in `tmpDir`, that are
             -- not in `entryDir`. While this breaks the

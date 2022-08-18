@@ -124,7 +124,7 @@ isReversePartialTopologicalOrder g vs =
             (Just ixu, Just ixv) -> ixu > ixv
             _                    -> True
         | let ixs = array (bounds g)
-                          (zip (range (bounds g)) (repeat Nothing) ++ 
+                          (zip (range (bounds g)) (repeat Nothing) ++
                            zip vs (map Just [0::Int ..]))
         , (u,v) <- edges g ]
 

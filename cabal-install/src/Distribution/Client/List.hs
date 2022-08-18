@@ -192,7 +192,7 @@ info verbosity _ _ _ _ _ _ [] =
     notice verbosity "No packages requested. Nothing to do."
 
 info verbosity packageDBs repoCtxt comp progdb
-     globalFlags _listFlags userTargets = do
+     _ _listFlags userTargets = do
 
     installedPkgIndex <- getInstalledPackages verbosity comp packageDBs progdb
     sourcePkgDb       <- getSourcePackages verbosity repoCtxt
@@ -209,7 +209,6 @@ info verbosity packageDBs repoCtxt comp progdb
                    ++ map packageId
                       (PackageIndex.allPackages sourcePkgIndex)
     pkgSpecifiers <- resolveUserTargets verbosity repoCtxt
-                       (fromFlag $ globalWorldFile globalFlags)
                        sourcePkgs' userTargets
 
     pkgsinfo      <- sequenceA

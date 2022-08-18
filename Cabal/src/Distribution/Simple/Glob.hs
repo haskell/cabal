@@ -96,7 +96,8 @@ explainGlobSyntaxError filepath NoExtensionOnStar =
   ++ "'. If a wildcard '*' is used it must be with an file extension."
 explainGlobSyntaxError filepath LiteralFileNameGlobStar =
      "invalid file glob '" ++ filepath
-  ++ "'. If a wildcard '**' is used as a parent directory, the"
+  ++ "'. Prior to 'cabal-version: 3.8'"
+  ++ " if a wildcard '**' is used as a parent directory, the"
   ++ " file's base name must be a wildcard '*'."
 explainGlobSyntaxError _ EmptyGlob =
      "invalid file glob. A glob cannot be the empty string."
@@ -111,7 +112,7 @@ explainGlobSyntaxError filepath VersionDoesNotSupportGlob =
   ++ "Alternatively if you require compatibility with earlier Cabal "
   ++ "versions then list all the files explicitly."
 
-data IsRecursive = Recursive | NonRecursive
+data IsRecursive = Recursive | NonRecursive deriving Eq
 
 data MultiDot = MultiDotDisabled | MultiDotEnabled
 
@@ -125,7 +126,7 @@ data GlobFinal
     -- ^ First argument: Is this a @**/*.ext@ pattern?
     --   Second argument: should we match against the exact extensions, or accept a suffix?
     --   Third argument: the extensions to accept.
-  | FinalLit FilePath
+  | FinalLit IsRecursive FilePath
     -- ^ Literal file name.
 
 reconstructGlob :: Glob -> FilePath
@@ -134,7 +135,8 @@ reconstructGlob (GlobStem dir glob) =
 reconstructGlob (GlobFinal final) = case final of
   FinalMatch Recursive _ exts -> "**" </> "*" <.> exts
   FinalMatch NonRecursive _ exts -> "*" <.> exts
-  FinalLit path -> path
+  FinalLit Recursive path -> "**" </> path
+  FinalLit NonRecursive path -> path
 
 -- | Returns 'Nothing' if the glob didn't match at all, or 'Just' the
 --   result if the glob matched (or would have matched with a higher
@@ -159,8 +161,8 @@ fileGlobMatchesSegments pat (seg : segs) = case pat of
       let (candidateBase, candidateExts) = splitExtensions seg
       guard (null segs && not (null candidateBase))
       checkExt multidot ext candidateExts
-    FinalLit filename -> do
-      guard (null segs && filename == seg)
+    FinalLit isRecursive filename -> do
+      guard ((isRecursive == Recursive || null segs) && filename == seg)
       return (GlobMatch ())
 
 checkExt
@@ -181,12 +183,14 @@ parseFileGlob version filepath = case reverse (splitDirectories filepath) of
         Left EmptyGlob
   (filename : "**" : segments)
     | allowGlobStar -> do
-        ext <- case splitExtensions filename of
+        finalSegment <- case splitExtensions filename of
           ("*", ext) | '*' `elem` ext -> Left StarInExtension
                      | null ext       -> Left NoExtensionOnStar
-                     | otherwise      -> Right ext
-          _                           -> Left LiteralFileNameGlobStar
-        foldM addStem (GlobFinal $ FinalMatch Recursive multidot ext) segments
+                     | otherwise      -> Right (FinalMatch Recursive multidot ext)
+          _                           -> if allowLiteralFilenameGlobStar
+                                           then Right (FinalLit Recursive filename)
+                                           else Left LiteralFileNameGlobStar
+        foldM addStem (GlobFinal finalSegment) segments
     | otherwise -> Left VersionDoesNotSupportGlobStar
   (filename : segments) -> do
         pat <- case splitExtensions filename of
@@ -196,7 +200,7 @@ parseFileGlob version filepath = case reverse (splitDirectories filepath) of
                      | otherwise           -> Right (FinalMatch NonRecursive multidot ext)
           (_, ext)   | '*' `elem` ext      -> Left StarInExtension
                      | '*' `elem` filename -> Left StarInFileName
-                     | otherwise           -> Right (FinalLit filename)
+                     | otherwise           -> Right (FinalLit NonRecursive filename)
         foldM addStem (GlobFinal pat) segments
   where
     allowGlob     = version >= CabalSpecV1_6
@@ -207,6 +211,7 @@ parseFileGlob version filepath = case reverse (splitDirectories filepath) of
     multidot
       | version >= CabalSpecV2_4 = MultiDotEnabled
       | otherwise                = MultiDotDisabled
+    allowLiteralFilenameGlobStar = version >= CabalSpecV3_8
 
 -- | This will 'die'' when the glob matches no files, or if the glob
 -- refers to a missing directory, or if the glob fails to parse.
@@ -300,7 +305,20 @@ runDirFileGlob verbosity rawDir pat = do
           return $ mapMaybe checkName candidates
         else
           return [ GlobMissingDirectory joinedPrefix ]
-    FinalLit fn -> do
+    FinalLit Recursive fn -> do
+      let prefix = dir </> joinedPrefix
+      directoryExists <- doesDirectoryExist prefix
+      if directoryExists
+        then do
+          candidates <- getDirectoryContentsRecursive prefix
+          let checkName candidate
+                  | takeFileName candidate == fn = Just $ GlobMatch (joinedPrefix </> candidate)
+                  | otherwise = Nothing
+          return $ mapMaybe checkName candidates
+        else
+          return [ GlobMissingDirectory joinedPrefix ]
+
+    FinalLit NonRecursive fn -> do
       exists <- doesFileExist (dir </> joinedPrefix </> fn)
       return [ GlobMatch (joinedPrefix </> fn) | exists ]
 

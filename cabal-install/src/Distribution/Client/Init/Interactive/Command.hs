@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase, MultiWayIf #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Init.Command
@@ -53,12 +53,16 @@ import Distribution.Client.Init.FlagExtractors
 import Distribution.Client.Init.Prompt
 import Distribution.Client.Init.Types
 import Distribution.Client.Init.Utils
-import Distribution.Simple.Setup (Flag(..))
+import Distribution.Client.Init.NonInteractive.Heuristics (guessAuthorName, guessAuthorEmail)
+import Distribution.FieldGrammar.Newtypes (SpecLicense(..))
+import Distribution.Simple.Setup (Flag(..), fromFlagOrDefault)
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import Distribution.Client.Types (SourcePackageDb(..))
 import Distribution.Solver.Types.PackageIndex (elemByPackageName)
 
 import Language.Haskell.Extension (Language(..))
+import Distribution.License (knownLicenses)
+import Distribution.Parsec (simpleParsec')
 
 
 -- | Main driver for interactive prompt code.
@@ -91,7 +95,7 @@ createProject v pkgIx srcDb initFlags = do
 
   pkgType <- packageTypePrompt initFlags
   isMinimal <- getMinimal initFlags
-  doOverwrite <- getOverwrite initFlags
+  doOverwrite <- overwritePrompt initFlags
   pkgDir <- getPackageDir initFlags
   pkgDesc <- fixupDocFiles v =<< genPkgDescription initFlags srcDb
 
@@ -100,37 +104,38 @@ createProject v pkgIx srcDb initFlags = do
       mkOpts cs = WriteOpts
         doOverwrite isMinimal cs
         v pkgDir pkgType pkgName
+      initFlags' = initFlags { cabalVersion = Flag cabalSpec }
 
   case pkgType of
     Library -> do
-      libTarget <- genLibTarget initFlags pkgIx
+      libTarget <- genLibTarget initFlags' pkgIx
       testTarget <- addLibDepToTest pkgName <$>
-        genTestTarget initFlags pkgIx
+        genTestTarget initFlags' pkgIx
 
-      comments <- noCommentsPrompt initFlags
+      comments <- noCommentsPrompt initFlags'
 
       return $ ProjectSettings
         (mkOpts comments cabalSpec) pkgDesc
         (Just libTarget) Nothing testTarget
 
     Executable -> do
-      exeTarget <- genExeTarget initFlags pkgIx
-      comments <- noCommentsPrompt initFlags
+      exeTarget <- genExeTarget initFlags' pkgIx
+      comments <- noCommentsPrompt initFlags'
 
       return $ ProjectSettings
         (mkOpts comments cabalSpec) pkgDesc Nothing
         (Just exeTarget) Nothing
 
     LibraryAndExecutable -> do
-      libTarget <- genLibTarget initFlags pkgIx
+      libTarget <- genLibTarget initFlags' pkgIx
 
       exeTarget <- addLibDepToExe pkgName <$>
-        genExeTarget initFlags pkgIx
+        genExeTarget initFlags' pkgIx
 
       testTarget <- addLibDepToTest pkgName <$>
-        genTestTarget initFlags pkgIx
+        genTestTarget initFlags' pkgIx
 
-      comments <- noCommentsPrompt initFlags
+      comments <- noCommentsPrompt initFlags'
 
       return $ ProjectSettings
         (mkOpts comments cabalSpec) pkgDesc (Just libTarget)
@@ -141,27 +146,14 @@ createProject v pkgIx srcDb initFlags = do
       -- are *not* passed, the user will be prompted for a package type (which
       -- includes TestSuite in the list). It prevents that the user end up with a
       -- TestSuite target with initializeTestSuite set to NoFlag, thus avoiding the prompt.
-      let initFlags' = initFlags { initializeTestSuite = Flag True }
-      testTarget <- genTestTarget initFlags' pkgIx
+      let initFlags'' = initFlags' { initializeTestSuite = Flag True }
+      testTarget <- genTestTarget initFlags'' pkgIx
 
-      comments <- noCommentsPrompt initFlags'
+      comments <- noCommentsPrompt initFlags''
 
       return $ ProjectSettings
         (mkOpts comments cabalSpec) pkgDesc
         Nothing Nothing testTarget
-  where
-    -- Add package name as dependency of test suite
-    --
-    addLibDepToTest _ Nothing = Nothing
-    addLibDepToTest n (Just t) = Just $ t
-      { _testDependencies = _testDependencies t ++ [mkPackageNameDep n]
-      }
-
-    -- Add package name as dependency of executable
-    --
-    addLibDepToExe n exe = exe
-      { _exeDependencies = _exeDependencies exe ++ [mkPackageNameDep n]
-      }
 
 -- -------------------------------------------------------------------- --
 -- Target and pkg description generation
@@ -176,9 +168,11 @@ genPkgDescription
     => InitFlags
     -> SourcePackageDb
     -> m PkgDescription
-genPkgDescription flags srcDb = PkgDescription
-    <$> cabalVersionPrompt flags
-    <*> packageNamePrompt srcDb flags
+genPkgDescription flags' srcDb = do
+  csv <- cabalVersionPrompt flags'
+  let flags = flags' { cabalVersion = Flag csv }
+  PkgDescription csv
+    <$> packageNamePrompt srcDb flags
     <*> versionPrompt flags
     <*> licensePrompt flags
     <*> authorPrompt flags
@@ -258,6 +252,13 @@ genTestTarget flags pkgs = initializeTestSuitePrompt flags >>= go
 -- -------------------------------------------------------------------- --
 -- Prompts
 
+overwritePrompt :: Interactive m => InitFlags -> m Bool
+overwritePrompt flags = do
+  isOverwrite <- getOverwrite flags
+  promptYesNo
+    "Do you wish to overwrite existing files (backups will be created) (y/n)"
+    (DefaultPrompt isOverwrite)
+
 cabalVersionPrompt :: Interactive m => InitFlags -> m CabalSpecVersion
 cabalVersionPrompt flags = getCabalVersion flags $ do
     v <- promptList "Please choose version of the Cabal specification to use"
@@ -290,7 +291,7 @@ cabalVersionPrompt flags = getCabalVersion flags $ do
       CabalSpecV2_2  -> "2.2   (+ support for 'common', 'elif', redundant commas, SPDX)"
       CabalSpecV2_4  -> "2.4   (+ support for '**' globbing)"
       CabalSpecV3_0  -> "3.0   (+ set notation for ==, common stanzas in ifs, more redundant commas, better pkgconfig-depends)"
-      CabalSpecV3_4  -> "3.4   (+ support for 'pkg:sublib' syntax, active repo configuration, rich index-state syntax)"
+      CabalSpecV3_4  -> "3.4   (+ sublibraries in 'mixins', optional 'default-language')"
       _ -> showCabalSpecVersion v
 
 packageNamePrompt :: Interactive m => SourcePackageDb -> InitFlags -> m PackageName
@@ -316,7 +317,7 @@ packageNamePrompt srcDb flags = getPackageName flags $ do
       ++ unPackageName pn
       ++ " is already in use by another package on Hackage."
 
-    promptOtherNameMsg pn = inUseMsg pn ++ " Do you want to choose a different name"
+    promptOtherNameMsg pn = inUseMsg pn ++ " Do you want to choose a different name (y/n)"
 
 versionPrompt :: Interactive m => InitFlags -> m Version
 versionPrompt flags = getVersion flags go
@@ -331,29 +332,38 @@ versionPrompt flags = getVersion flags go
           go
         Just v -> return v
 
-licensePrompt :: Interactive m => InitFlags -> m SPDX.License
+licensePrompt :: Interactive m => InitFlags -> m SpecLicense
 licensePrompt flags = getLicense flags $ do
+    let csv = fromFlagOrDefault defaultCabalVersion (cabalVersion flags)
     l <- promptList "Please choose a license"
-      licenses
+      (licenses csv)
       MandatoryPrompt
       Nothing
       True
 
-    case simpleParsec l of
+    case simpleParsec' csv l of
       Nothing -> do
-        putStrLn "The license must be a valid SPDX expression."
+        putStrLn ( "The license must be a valid SPDX expression:"
+                ++ "\n - On the SPDX License List: https://spdx.org/licenses/"
+                ++ "\n - NONE, if you do not want to grant any license"
+                ++ "\n - LicenseRef-( alphanumeric | - | . )+"
+                 )
         licensePrompt flags
       Just l' -> return l'
   where
-    licenses = SPDX.licenseId <$> defaultLicenseIds
+    licenses csv = if csv >= CabalSpecV2_2
+      then SPDX.licenseId <$> defaultLicenseIds
+      else fmap prettyShow knownLicenses
 
 authorPrompt :: Interactive m => InitFlags -> m String
-authorPrompt flags = getAuthor flags $
-    promptStr "Author name" OptionalPrompt
+authorPrompt flags = getAuthor flags $ do
+    name <- guessAuthorName
+    promptStr "Author name" (DefaultPrompt name)
 
 emailPrompt :: Interactive m => InitFlags -> m String
-emailPrompt flags = getEmail flags $
-    promptStr "Maintainer email" OptionalPrompt
+emailPrompt flags = getEmail flags $ do
+    email' <- guessAuthorEmail
+    promptStr "Maintainer email" (DefaultPrompt email')
 
 homepagePrompt :: Interactive m => InitFlags -> m String
 homepagePrompt flags = getHomepage flags $
@@ -403,22 +413,21 @@ testDirsPrompt flags = getTestDirs flags $ do
 
 languagePrompt :: Interactive m => InitFlags -> String -> m Language
 languagePrompt flags pkgType = getLanguage flags $ do
-    lang <- promptList ("Choose a language for your " ++ pkgType)
-      ["Haskell2010", "Haskell98"]
-      (DefaultPrompt "Haskell2010")
+    let h2010   = "Haskell2010"
+        h98     = "Haskell98"
+        ghc2021 = "GHC2021 (requires at least GHC 9.2)"
+
+    l <- promptList ("Choose a language for your " ++ pkgType)
+      [h2010, h98, ghc2021]
+      (DefaultPrompt h2010)
       Nothing
       True
 
-    case lang of
-      "Haskell2010" -> return Haskell2010
-      "Haskell98" -> return Haskell98
-      l | all isAlphaNum l -> return $ UnknownLanguage l
-      _ -> do
-        putStrLn
-          $ "\nThe language must be alphanumeric. "
-          ++ "Please enter a different language."
-
-        languagePrompt flags pkgType
+    if
+      | l == h2010       -> return Haskell2010
+      | l == h98         -> return Haskell98
+      | l == ghc2021     -> return GHC2021
+      | otherwise        -> return $ UnknownLanguage l
 
 noCommentsPrompt :: Interactive m => InitFlags -> m Bool
 noCommentsPrompt flags = getNoComments flags $ do

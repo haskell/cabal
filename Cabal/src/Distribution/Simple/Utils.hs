@@ -5,6 +5,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE LambdaCase #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -37,21 +38,23 @@ module Distribution.Simple.Utils (
         debug, debugNoWrap,
         chattyTry,
         annotateIO,
-        printRawCommandAndArgs, printRawCommandAndArgsAndEnv,
         withOutputMarker,
 
         -- * exceptions
         handleDoesNotExist,
+        ignoreSigPipe,
 
         -- * running programs
         rawSystemExit,
         rawSystemExitCode,
+        rawSystemProc,
+        rawSystemProcAction,
         rawSystemExitWithEnv,
         rawSystemStdout,
         rawSystemStdInOut,
         rawSystemIOWithEnv,
         rawSystemIOWithEnvAndAction,
-        createProcessWithEnv,
+        fromCreatePipe,
         maybeExit,
         xargs,
         findProgramVersion,
@@ -59,7 +62,7 @@ module Distribution.Simple.Utils (
         -- ** 'IOData' re-export
         --
         -- These types are re-exported from
-        -- "Distribution.Utils.IOData" for convience as they're
+        -- "Distribution.Utils.IOData" for convenience as they're
         -- exposed in the API of 'rawSystemStdInOut'
         IOData(..),
         KnownIODataMode (..),
@@ -170,11 +173,6 @@ module Distribution.Simple.Utils (
         -- * FilePath stuff
         isAbsoluteOnAnyPlatform,
         isRelativeOnAnyPlatform,
-
-        -- * Deprecated functions
-        findFile,
-        findModuleFile,
-        findModuleFiles,
   ) where
 
 import Prelude ()
@@ -186,22 +184,17 @@ import qualified Distribution.Utils.IOData as IOData
 import Distribution.ModuleName as ModuleName
 import Distribution.System
 import Distribution.Version
-import Distribution.Compat.Async
+import Distribution.Compat.Async (waitCatch, withAsyncNF)
 import Distribution.Compat.CopyFile
-import Distribution.Compat.Internal.TempFile
 import Distribution.Compat.FilePath as FilePath
+import Distribution.Compat.Internal.TempFile
+import Distribution.Compat.Lens (Lens', over)
 import Distribution.Compat.Stack
 import Distribution.Verbosity
 import Distribution.Types.PackageId
 
-#if __GLASGOW_HASKELL__ < 711
-#ifdef VERSION_base
-#define BOOTSTRAPPED_CABAL 1
-#endif
-#else
 #ifdef CURRENT_PACKAGE_KEY
 #define BOOTSTRAPPED_CABAL 1
-#endif
 #endif
 
 #ifdef BOOTSTRAPPED_CABAL
@@ -236,10 +229,7 @@ import qualified Control.Exception as Exception
 import Foreign.C.Error (Errno (..), ePIPE)
 import Data.Time.Clock.POSIX (getPOSIXTime, POSIXTime)
 import Numeric (showFFloat)
-import Distribution.Compat.Process  (createProcess, rawSystem, runInteractiveProcess)
-import System.Process
-         ( ProcessHandle
-         , showCommandForUser, waitForProcess)
+import Distribution.Compat.Process (proc)
 import qualified System.Process as Process
 import qualified GHC.IO.Exception as GHC
 
@@ -328,13 +318,8 @@ verbatimUserError :: String -> IOError
 verbatimUserError = ioeSetVerbatim . userError
 
 dieWithLocation' :: Verbosity -> FilePath -> Maybe Int -> String -> IO a
-dieWithLocation' verbosity filename mb_lineno msg = withFrozenCallStack $ do
-    ts <- getPOSIXTime
-    pname <- getProgName
-    ioError . verbatimUserError
-            . withMetadata ts AlwaysMark VerboseTrace verbosity
-            . wrapTextVerbosity verbosity
-            $ pname ++ ": " ++
+dieWithLocation' verbosity filename mb_lineno msg =
+    die' verbosity $
               filename ++ (case mb_lineno of
                             Just lineno -> ":" ++ show lineno
                             Nothing -> "") ++
@@ -342,20 +327,45 @@ dieWithLocation' verbosity filename mb_lineno msg = withFrozenCallStack $ do
 
 die' :: Verbosity -> String -> IO a
 die' verbosity msg = withFrozenCallStack $ do
-    ts <- getPOSIXTime
-    pname <- getProgName
     ioError . verbatimUserError
-            . withMetadata ts AlwaysMark VerboseTrace verbosity
-            . wrapTextVerbosity verbosity
-            $ pname ++ ": " ++ msg
+          =<< annotateErrorString verbosity
+          =<< pure . wrapTextVerbosity verbosity
+          =<< pure . addErrorPrefix
+          =<< prefixWithProgName msg
 
 dieNoWrap :: Verbosity -> String -> IO a
 dieNoWrap verbosity msg = withFrozenCallStack $ do
     -- TODO: should this have program name or not?
-    ts <- getPOSIXTime
     ioError . verbatimUserError
-            . withMetadata ts AlwaysMark VerboseTrace verbosity
-            $ msg
+          =<< annotateErrorString verbosity
+              (addErrorPrefix msg)
+
+-- | Prefixing a message to indicate that it is a fatal error,
+-- if the 'errorPrefix' is not already present.
+addErrorPrefix :: String -> String
+addErrorPrefix msg
+  | errorPrefix `isPrefixOf` msg = msg
+      -- Backpack prefixes its errors already with "Error:", see
+      -- 'Distribution.Utils.LogProgress.dieProgress'.
+      -- Taking it away there destroys the layout, so we rather
+      -- check here whether the prefix is already present.
+  | otherwise                    = unwords [errorPrefix, msg]
+
+-- | A prefix indicating that a message is a fatal error.
+errorPrefix :: String
+errorPrefix = "Error:"
+
+-- | Prefix an error string with program name from 'getProgName'
+prefixWithProgName :: String -> IO String
+prefixWithProgName msg = do
+    pname <- getProgName
+    return $ pname ++ ": " ++ msg
+
+-- | Annotate an error string with timestamp and 'withMetadata'.
+annotateErrorString :: Verbosity -> String -> IO String
+annotateErrorString verbosity msg = do
+    ts <- getPOSIXTime
+    return $ withMetadata ts AlwaysMark VerboseTrace verbosity msg
 
 -- | Given a block of IO code that may raise an exception, annotate
 -- it with the metadata from the current scope.  Use this as close
@@ -365,11 +375,16 @@ dieNoWrap verbosity msg = withFrozenCallStack $ do
 annotateIO :: Verbosity -> IO a -> IO a
 annotateIO verbosity act = do
     ts <- getPOSIXTime
-    modifyIOError (f ts) act
-  where
-    f ts ioe = ioeSetErrorString ioe
-             . withMetadata ts NeverMark VerboseTrace verbosity
-             $ ioeGetErrorString ioe
+    flip modifyIOError act $
+      ioeModifyErrorString $ withMetadata ts NeverMark VerboseTrace verbosity
+
+-- | A semantic editor for the error message inside an 'IOError'.
+ioeModifyErrorString :: (String -> String) -> IOError -> IOError
+ioeModifyErrorString = over ioeErrorString
+
+-- | A lens for the error message inside an 'IOError'.
+ioeErrorString :: Lens' IOError String
+ioeErrorString f ioe = ioeSetErrorString ioe <$> f (ioeGetErrorString ioe)
 
 
 {-# NOINLINE topHandlerWith #-}
@@ -415,22 +430,18 @@ topHandlerWith cont prog = do
                                l@(n:_) | isDigit n -> ':' : l
                                _                        -> ""
               detail       = ioeGetErrorString ioe
-          in wrapText (pname ++ ": " ++ file ++ detail)
+          in wrapText $ addErrorPrefix $ pname ++ ": " ++ file ++ detail
         _ ->
           displaySomeException se ++ "\n"
 
 -- | BC wrapper around 'Exception.displayException'.
 displaySomeException :: Exception.Exception e => e -> String
-displaySomeException se =
-#if __GLASGOW_HASKELL__ < 710
-    show se
-#else
-    Exception.displayException se
-#endif
+displaySomeException se = Exception.displayException se
 
 topHandler :: IO a -> IO a
 topHandler prog = topHandlerWith (const $ exitWith (ExitFailure 1)) prog
 
+-- | Depending on 'isVerboseStderr', set the output handle to 'stderr' or 'stdout'.
 verbosityHandle :: Verbosity -> Handle
 verbosityHandle verbosity
     | isVerboseStderr verbosity = stderr
@@ -695,75 +706,115 @@ clearMarkers s = unlines . filter isMarker $ lines s
 
 -- -----------------------------------------------------------------------------
 -- rawSystem variants
+--
+-- These all use 'Distribution.Compat.Process.proc' to ensure we
+-- consistently use process jobs on Windows and Ctrl-C delegation
+-- on Unix.
+--
+-- Additionally, they take care of logging command execution.
+--
+
+-- | Helper to use with one of the 'rawSystem' variants, and exit
+-- unless the command completes successfully.
 maybeExit :: IO ExitCode -> IO ()
 maybeExit cmd = do
-  res <- cmd
-  unless (res == ExitSuccess) $ exitWith res
+  exitcode <- cmd
+  unless (exitcode == ExitSuccess) $ exitWith exitcode
 
+-- | Log a command execution (that's typically about to happen)
+-- at info level, and log working directory and environment overrides
+-- at debug level if specified.
+--
+logCommand :: Verbosity -> Process.CreateProcess -> IO ()
+logCommand verbosity cp = do
+  infoNoWrap verbosity $ "Running: " <> case Process.cmdspec cp of
+    Process.ShellCommand sh -> sh
+    Process.RawCommand path args -> Process.showCommandForUser path args
+  case Process.env cp of
+    Just env -> debugNoWrap verbosity $ "with environment: " ++ show env
+    Nothing -> return ()
+  case Process.cwd cp of
+    Just cwd -> debugNoWrap verbosity $ "with working directory: " ++ show cwd
+    Nothing -> return ()
+  hFlush stdout
 
-
-printRawCommandAndArgs :: Verbosity -> FilePath -> [String] -> IO ()
-printRawCommandAndArgs verbosity path args = withFrozenCallStack $
-    printRawCommandAndArgsAndEnv verbosity path args Nothing Nothing
-
-printRawCommandAndArgsAndEnv :: Verbosity
-                             -> FilePath
-                             -> [String]
-                             -> Maybe FilePath
-                             -> Maybe [(String, String)]
-                             -> IO ()
-printRawCommandAndArgsAndEnv verbosity path args mcwd menv = do
-    case menv of
-        Just env -> debugNoWrap verbosity ("Environment: " ++ show env)
-        Nothing -> return ()
-    case mcwd of
-        Just cwd -> debugNoWrap verbosity ("Working directory: " ++ show cwd)
-        Nothing -> return ()
-    infoNoWrap verbosity (showCommandForUser path args)
-
--- Exit with the same exit code if the subcommand fails
+-- | Execute the given command with the given arguments, exiting
+-- with the same exit code if the command fails.
+--
 rawSystemExit :: Verbosity -> FilePath -> [String] -> IO ()
-rawSystemExit verbosity path args = withFrozenCallStack $ do
-  printRawCommandAndArgs verbosity path args
-  hFlush stdout
-  exitcode <- rawSystem path args
-  unless (exitcode == ExitSuccess) $ do
-    debug verbosity $ path ++ " returned " ++ show exitcode
-    exitWith exitcode
+rawSystemExit verbosity path args = withFrozenCallStack $
+  maybeExit $ rawSystemExitCode verbosity path args
 
+-- | Execute the given command with the given arguments, returning
+-- the command's exit code.
+--
 rawSystemExitCode :: Verbosity -> FilePath -> [String] -> IO ExitCode
-rawSystemExitCode verbosity path args = withFrozenCallStack $ do
-  printRawCommandAndArgs verbosity path args
-  hFlush stdout
-  exitcode <- rawSystem path args
-  unless (exitcode == ExitSuccess) $ do
-    debug verbosity $ path ++ " returned " ++ show exitcode
+rawSystemExitCode verbosity path args = withFrozenCallStack $
+  rawSystemProc verbosity $ proc path args
+
+-- | Execute the given command with the given arguments, returning
+-- the command's exit code.
+--
+-- Create the process argument with 'Distribution.Compat.Process.proc'
+-- to ensure consistent options with other 'rawSystem' functions in this
+-- module.
+--
+rawSystemProc :: Verbosity -> Process.CreateProcess -> IO ExitCode
+rawSystemProc verbosity cp = withFrozenCallStack $ do
+  (exitcode, _) <- rawSystemProcAction verbosity cp $ \_ _ _ -> return ()
   return exitcode
 
+-- | Execute the given command with the given arguments, returning
+-- the command's exit code. 'action' is executed while the command
+-- is running, and would typically be used to communicate with the
+-- process through pipes.
+--
+-- Create the process argument with 'Distribution.Compat.Process.proc'
+-- to ensure consistent options with other 'rawSystem' functions in this
+-- module.
+--
+rawSystemProcAction :: Verbosity -> Process.CreateProcess
+                    -> (Maybe Handle -> Maybe Handle -> Maybe Handle -> IO a)
+                    -> IO (ExitCode, a)
+rawSystemProcAction verbosity cp action = withFrozenCallStack $ do
+  logCommand verbosity cp
+  (exitcode, a) <- Process.withCreateProcess cp $ \mStdin mStdout mStderr p -> do
+    a <- action mStdin mStdout mStderr
+    exitcode <- Process.waitForProcess p
+    return (exitcode, a)
+  unless (exitcode == ExitSuccess) $ do
+    let cmd = case Process.cmdspec cp of
+          Process.ShellCommand sh -> sh
+          Process.RawCommand path _args -> path
+    debug verbosity $ cmd ++ " returned " ++ show exitcode
+  return (exitcode, a)
+
+-- | fromJust for dealing with 'Maybe Handle' values as obtained via
+-- 'System.Process.CreatePipe'. Creating a pipe using 'CreatePipe' guarantees
+-- a 'Just' value for the corresponding handle.
+--
+fromCreatePipe :: Maybe Handle -> Handle
+fromCreatePipe = maybe (error "fromCreatePipe: Nothing") id
+
+-- | Execute the given command with the given arguments and
+-- environment, exiting with the same exit code if the command fails.
+--
 rawSystemExitWithEnv :: Verbosity
                      -> FilePath
                      -> [String]
                      -> [(String, String)]
                      -> IO ()
-rawSystemExitWithEnv verbosity path args env = withFrozenCallStack $ do
-    printRawCommandAndArgsAndEnv verbosity path args Nothing (Just env)
-    hFlush stdout
-    (_,_,_,ph) <- createProcess $
-                  (Process.proc path args) { Process.env = (Just env)
-#ifdef MIN_VERSION_process
-#if MIN_VERSION_process(1,2,0)
--- delegate_ctlc has been added in process 1.2, and we still want to be able to
--- bootstrap GHC on systems not having that version
-                                           , Process.delegate_ctlc = True
-#endif
-#endif
-                                           }
-    exitcode <- waitForProcess ph
-    unless (exitcode == ExitSuccess) $ do
-        debug verbosity $ path ++ " returned " ++ show exitcode
-        exitWith exitcode
+rawSystemExitWithEnv verbosity path args env = withFrozenCallStack $
+  maybeExit $ rawSystemProc verbosity $
+    (proc path args) { Process.env = Just env
+                     }
 
--- Closes the passed in handles before returning.
+-- | Execute the given command with the given arguments, returning
+-- the command's exit code.
+--
+-- Optional arguments allow setting working directory, environment
+-- and input and output handles.
+--
 rawSystemIOWithEnv :: Verbosity
                    -> FilePath
                    -> [String]
@@ -774,16 +825,20 @@ rawSystemIOWithEnv :: Verbosity
                    -> Maybe Handle  -- ^ stderr
                    -> IO ExitCode
 rawSystemIOWithEnv verbosity path args mcwd menv inp out err = withFrozenCallStack $ do
-    (_,_,_,ph) <- createProcessWithEnv verbosity path args mcwd menv
-                                       (mbToStd inp) (mbToStd out) (mbToStd err)
-    exitcode <- waitForProcess ph
-    unless (exitcode == ExitSuccess) $ do
-      debug verbosity $ path ++ " returned " ++ show exitcode
-    return exitcode
+  (exitcode, _) <- rawSystemIOWithEnvAndAction
+    verbosity path args mcwd menv action inp out err
+  return exitcode
   where
-    mbToStd :: Maybe Handle -> Process.StdStream
-    mbToStd = maybe Process.Inherit Process.UseHandle
+    action = return ()
 
+-- | Execute the given command with the given arguments, returning
+-- the command's exit code. 'action' is executed while the command
+-- is running, and would typically be used to communicate with the
+-- process through pipes.
+--
+-- Optional arguments allow setting working directory, environment
+-- and input and output handles.
+--
 rawSystemIOWithEnvAndAction
     :: Verbosity
     -> FilePath
@@ -796,52 +851,21 @@ rawSystemIOWithEnvAndAction
     -> Maybe Handle  -- ^ stderr
     -> IO (ExitCode, a)
 rawSystemIOWithEnvAndAction verbosity path args mcwd menv action inp out err = withFrozenCallStack $ do
-    (_,_,_,ph) <- createProcessWithEnv verbosity path args mcwd menv
-                                       (mbToStd inp) (mbToStd out) (mbToStd err)
-    a <- action
-    exitcode <- waitForProcess ph
-    unless (exitcode == ExitSuccess) $ do
-      debug verbosity $ path ++ " returned " ++ show exitcode
-    return (exitcode, a)
+  let cp = (proc path args) { Process.cwd           = mcwd
+                            , Process.env           = menv
+                            , Process.std_in        = mbToStd inp
+                            , Process.std_out       = mbToStd out
+                            , Process.std_err       = mbToStd err
+                            }
+  rawSystemProcAction verbosity cp (\_ _ _ -> action)
   where
     mbToStd :: Maybe Handle -> Process.StdStream
     mbToStd = maybe Process.Inherit Process.UseHandle
 
-createProcessWithEnv ::
-     Verbosity
-  -> FilePath
-  -> [String]
-  -> Maybe FilePath           -- ^ New working dir or inherit
-  -> Maybe [(String, String)] -- ^ New environment or inherit
-  -> Process.StdStream  -- ^ stdin
-  -> Process.StdStream  -- ^ stdout
-  -> Process.StdStream  -- ^ stderr
-  -> IO (Maybe Handle, Maybe Handle, Maybe Handle,ProcessHandle)
-  -- ^ Any handles created for stdin, stdout, or stderr
-  -- with 'CreateProcess', and a handle to the process.
-createProcessWithEnv verbosity path args mcwd menv inp out err = withFrozenCallStack $ do
-    printRawCommandAndArgsAndEnv verbosity path args mcwd menv
-    hFlush stdout
-    (inp', out', err', ph) <- createProcess $
-                                (Process.proc path args) {
-                                    Process.cwd           = mcwd
-                                  , Process.env           = menv
-                                  , Process.std_in        = inp
-                                  , Process.std_out       = out
-                                  , Process.std_err       = err
-#ifdef MIN_VERSION_process
-#if MIN_VERSION_process(1,2,0)
--- delegate_ctlc has been added in process 1.2, and we still want to be able to
--- bootstrap GHC on systems not having that version
-                                  , Process.delegate_ctlc = True
-#endif
-#endif
-                                  }
-    return (inp', out', err', ph)
-
--- | Run a command and return its output.
+-- | Execute the given command with the given arguments, returning
+-- the command's output. Exits if the command exits with error.
 --
--- The output is assumed to be text in the locale encoding.
+-- Provides control over the binary/text mode of the output.
 --
 rawSystemStdout :: forall mode. KnownIODataMode mode => Verbosity -> FilePath -> [String] -> IO mode
 rawSystemStdout verbosity path args = withFrozenCallStack $ do
@@ -851,9 +875,13 @@ rawSystemStdout verbosity path args = withFrozenCallStack $ do
     die' verbosity errors
   return output
 
--- | Run a command and return its output, errors and exit status. Optionally
--- also supply some input. Also provides control over whether the binary/text
--- mode of the input and output.
+-- | Execute the given command with the given arguments, returning
+-- the command's output, errors and exit code.
+--
+-- Optional arguments allow setting working directory, environment
+-- and command input.
+--
+-- Provides control over the binary/text mode of the input and output.
 --
 rawSystemStdInOut :: KnownIODataMode mode
                   => Verbosity
@@ -865,13 +893,16 @@ rawSystemStdInOut :: KnownIODataMode mode
                   -> IODataMode mode          -- ^ iodata mode, acts as proxy
                   -> IO (mode, String, ExitCode) -- ^ output, errors, exit
 rawSystemStdInOut verbosity path args mcwd menv input _ = withFrozenCallStack $ do
-  printRawCommandAndArgs verbosity path args
+  let cp = (proc path args) { Process.cwd     = mcwd
+                            , Process.env     = menv
+                            , Process.std_in  = Process.CreatePipe
+                            , Process.std_out = Process.CreatePipe
+                            , Process.std_err = Process.CreatePipe
+                            }
 
-  Exception.bracket
-     (runInteractiveProcess path args mcwd menv)
-     (\(inh,outh,errh,_) -> hClose inh >> hClose outh >> hClose errh)
-    $ \(inh,outh,errh,pid) -> do
-
+  (exitcode, (mberr1, mberr2)) <- rawSystemProcAction verbosity cp $ \mb_in mb_out mb_err -> do
+    let (inh, outh, errh) = (fromCreatePipe mb_in, fromCreatePipe mb_out, fromCreatePipe mb_err)
+    flip Exception.finally (hClose inh >> hClose outh >> hClose errh) $ do
       -- output mode depends on what the caller wants
       -- but the errors are always assumed to be text (in the current locale)
       hSetBinaryMode errh False
@@ -888,28 +919,26 @@ rawSystemStdInOut verbosity path args mcwd menv input _ = withFrozenCallStack $ 
         -- wait for both to finish
         mberr1 <- waitCatch outA
         mberr2 <- waitCatch errA
+        return (mberr1, mberr2)
 
-        -- wait for the program to terminate
-        exitcode <- waitForProcess pid
+  -- get the stderr, so it can be added to error message
+  err <- reportOutputIOError mberr2
 
-        -- get the stderr, so it can be added to error message
-        err <- reportOutputIOError mberr2
+  unless (exitcode == ExitSuccess) $
+    debug verbosity $ path ++ " returned " ++ show exitcode
+                   ++ if null err then "" else
+                      " with error message:\n" ++ err
+                   ++ case input of
+                        Nothing       -> ""
+                        Just d | IOData.null d  -> ""
+                        Just (IODataText inp)   -> "\nstdin input:\n" ++ inp
+                        Just (IODataBinary inp) -> "\nstdin input (binary):\n" ++ show inp
 
-        unless (exitcode == ExitSuccess) $
-          debug verbosity $ path ++ " returned " ++ show exitcode
-                         ++ if null err then "" else
-                            " with error message:\n" ++ err
-                         ++ case input of
-                              Nothing       -> ""
-                              Just d | IOData.null d  -> ""
-                              Just (IODataText inp)   -> "\nstdin input:\n" ++ inp
-                              Just (IODataBinary inp) -> "\nstdin input (binary):\n" ++ show inp
+  -- Check if we hit an exception while consuming the output
+  -- (e.g. a text decoding error)
+  out <- reportOutputIOError mberr1
 
-        -- Check if we hit an exception while consuming the output
-        -- (e.g. a text decoding error)
-        out <- reportOutputIOError mberr1
-
-        return (out, err, exitcode)
+  return (out, err, exitcode)
   where
     reportOutputIOError :: Either Exception.SomeException a -> IO a
     reportOutputIOError (Right x) = return x
@@ -917,11 +946,13 @@ rawSystemStdInOut verbosity path args mcwd menv input _ = withFrozenCallStack $ 
         Just ioe -> throwIO (ioeSetFileName ioe ("output of " ++ path))
         Nothing  -> throwIO exc
 
-    ignoreSigPipe :: IO () -> IO ()
-    ignoreSigPipe = Exception.handle $ \e -> case e of
-        GHC.IOError { GHC.ioe_type  = GHC.ResourceVanished, GHC.ioe_errno = Just ioe }
-            | Errno ioe == ePIPE -> return ()
-        _ -> throwIO e
+-- | Ignore SIGPIPE in a subcomputation.
+--
+ignoreSigPipe :: IO () -> IO ()
+ignoreSigPipe = Exception.handle $ \case
+    GHC.IOError { GHC.ioe_type  = GHC.ResourceVanished, GHC.ioe_errno = Just ioe }
+        | Errno ioe == ePIPE -> return ()
+    e -> throwIO e
 
 -- | Look for a program and try to find it's version number. It can accept
 -- either an absolute path or the name of a program binary, in which case we
@@ -978,12 +1009,6 @@ xargs maxSize rawSystemFun fixedArgs bigArgs =
 ----------------
 -- Finding files
 
-
-{-# DEPRECATED findFile "Use findFileEx instead. This symbol will be removed in Cabal 3.2 (est. December 2019)" #-}
-findFile :: [FilePath]    -- ^search locations
-         -> FilePath      -- ^File Name
-         -> IO FilePath
-findFile = findFileEx normal
 
 -- | Find a file by looking in a search path. The file path must match exactly.
 --
@@ -1087,13 +1112,6 @@ findAllFiles :: (a -> FilePath) -> [a] -> IO [a]
 findAllFiles file = filterM (doesFileExist . file)
 
 
-{-# DEPRECATED findModuleFiles "Use findModuleFilesEx instead. This symbol will be removed in Cabal 3.2 (est. December 2019)" #-}
-findModuleFiles :: [FilePath]   -- ^ build prefix (location of objects)
-                -> [String]     -- ^ search suffixes
-                -> [ModuleName] -- ^ modules
-                -> IO [(FilePath, FilePath)]
-findModuleFiles = findModuleFilesEx normal
-
 -- | Finds the files corresponding to a list of Haskell module names.
 --
 -- As 'findModuleFile' but for a list of module names.
@@ -1105,13 +1123,6 @@ findModuleFilesEx :: Verbosity
                   -> IO [(FilePath, FilePath)]
 findModuleFilesEx verbosity searchPath extensions moduleNames =
   traverse (findModuleFileEx verbosity searchPath extensions) moduleNames
-
-{-# DEPRECATED findModuleFile "Use findModuleFileEx instead. This symbol will be removed in Cabal 3.2 (est. December 2019)" #-}
-findModuleFile :: [FilePath]  -- ^ build prefix (location of objects)
-               -> [String]    -- ^ search suffixes
-               -> ModuleName  -- ^ module
-               -> IO (FilePath, FilePath)
-findModuleFile = findModuleFileEx normal
 
 -- | Find the file corresponding to a Haskell module name.
 --
@@ -1129,7 +1140,7 @@ findModuleFileEx verbosity searchPath extensions mod_name =
                              (ModuleName.toFilePath mod_name)
   where
     notFound = die' verbosity $
-      "Error: Could not find module: " ++ prettyShow mod_name
+      "Could not find module: " ++ prettyShow mod_name
       ++ " with any suffix: "          ++ show extensions
       ++ " in the search path: "       ++ show searchPath
 

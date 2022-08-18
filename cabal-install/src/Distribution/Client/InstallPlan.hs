@@ -708,7 +708,7 @@ processingInvariant plan (Processing processingSet completedSet failedSet) =
     -- The failed set is upwards closed, i.e. equal to its own rev dep closure
     assert (failedSet == reverseClosure failedSet) $
 
-    -- All immediate reverse deps of packges that are currently processing
+    -- All immediate reverse deps of packages that are currently processing
     -- are not currently being processed (ie not in the processing set).
     assert (and [ rdeppkgid `Set.notMember` processingSet
                 | pkgid     <- Set.toList processingSet
@@ -744,7 +744,7 @@ processingInvariant plan (Processing processingSet completedSet failedSet) =
 
 -- | Flatten an 'InstallPlan', producing the sequence of source packages in
 -- the order in which they would be processed when the plan is executed. This
--- can be used for simultations or presenting execution dry-runs.
+-- can be used for simulations or presenting execution dry-runs.
 --
 -- It is guaranteed to give the same order as using 'execute' (with a serial
 -- in-order 'JobControl'), which is a reverse topological orderings of the

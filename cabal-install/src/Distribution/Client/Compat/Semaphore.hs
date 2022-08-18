@@ -17,7 +17,7 @@ import Data.Typeable (Typeable)
 import Data.List.NonEmpty (NonEmpty (..))
 import qualified Data.List.NonEmpty as NE
 
--- | 'QSem' is a quantity semaphore in which the resource is aqcuired
+-- | 'QSem' is a quantity semaphore in which the resource is acquired
 -- and released in units of one. It provides guaranteed FIFO ordering
 -- for satisfying blocked `waitQSem` calls.
 --

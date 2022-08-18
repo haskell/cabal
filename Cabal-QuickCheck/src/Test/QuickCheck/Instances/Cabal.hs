@@ -25,7 +25,7 @@ import Distribution.ModuleName
 import Distribution.Simple.Compiler                (DebugInfoLevel (..), OptimisationLevel (..), PackageDB (..), ProfDetailLevel (..), knownProfDetailLevels)
 import Distribution.Simple.Flag                    (Flag (..))
 import Distribution.Simple.InstallDirs
-import Distribution.Simple.Setup                   (HaddockTarget (..), TestShowDetails (..))
+import Distribution.Simple.Setup                   (HaddockTarget (..), TestShowDetails (..), DumpBuildInfo)
 import Distribution.SPDX
 import Distribution.System
 import Distribution.Types.Dependency
@@ -483,9 +483,15 @@ instance Arbitrary TestShowDetails where
 instance Arbitrary PackageDB where
     arbitrary = oneof [ pure GlobalPackageDB
                       , pure UserPackageDB
-                      , SpecificPackageDB <$> arbitraryShortToken
+                      , SpecificPackageDB <$> arbitraryShortPath
                       ]
 
+-------------------------------------------------------------------------------
+-- DumpBuildInfo
+-------------------------------------------------------------------------------
+
+instance Arbitrary DumpBuildInfo where
+    arbitrary = arbitraryBoundedEnum
 
 -------------------------------------------------------------------------------
 -- Helpers
@@ -497,8 +503,14 @@ shortListOf1 bound gen = sized $ \n -> do
     vectorOf k gen
 
 arbitraryShortToken :: Gen String
-arbitraryShortToken =
-    shortListOf1 5 $ elements [c | c <- ['#' ..  '~' ], c `notElem` "{}[]" ]
+arbitraryShortToken = arbitraryShortStringWithout "{}[]"
+
+arbitraryShortPath :: Gen String
+arbitraryShortPath = arbitraryShortStringWithout "{}[],"
+
+arbitraryShortStringWithout :: String -> Gen String
+arbitraryShortStringWithout excludeChars =
+    shortListOf1 5 $ elements [c | c <- ['#' ..  '~' ], c `notElem` excludeChars ]
 
 -- |
 intSqrt :: Int -> Int

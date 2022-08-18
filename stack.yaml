@@ -1,11 +1,27 @@
-resolver: lts-11.6
+resolver: lts-18.28 # ghc-8.10.7
+
 packages:
+- Cabal-syntax/
 - Cabal/
+- Cabal-described
+- Cabal-QuickCheck/
+- Cabal-tests/
+- Cabal-tree-diff/
+- cabal-benchmarks/
+- cabal-install-solver/
 - cabal-install/
 - cabal-testsuite/
+- solver-benchmarks/
+
 extra-deps:
-  - resolv-0.1.1.1
-  - QuickCheck-2.11.3
+# Not included in stackage
+- rere-0.2@rev:1
+
+# We require the released version of Cabal and Cabal-syntax for cabal-testsuite
+# but usually we have a development, newer version set in the local package
+# Also needed for hackage-security and Win32
+allow-newer: true
+
 nix:
   packages:
   - autoconf

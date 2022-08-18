@@ -22,7 +22,8 @@ import Distribution.ModuleName (fromString)
 import Distribution.Simple.Flag
 import Data.List (foldl')
 import qualified Data.Set as Set
-import Distribution.Client.Init.Utils (mkStringyDep)
+import Distribution.Client.Init.Utils (mkPackageNameDep, mkStringyDep)
+import Distribution.FieldGrammar.Newtypes
 
 tests
     :: Verbosity
@@ -83,7 +84,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
             _pkgCabalVersion  desc @?= CabalSpecV2_2
             _pkgName          desc @?= mkPackageName "QuxPackage"
             _pkgVersion       desc @?= mkVersion [4,2,6]
-            _pkgLicense       desc @?! SPDX.NONE
+            _pkgLicense       desc @?! (SpecLicense . Left $ SPDX.NONE)
             _pkgAuthor        desc @?= "Foobar"
             _pkgEmail         desc @?= "foobar@qux.com"
             _pkgHomePage      desc @?= "qux.com"
@@ -105,7 +106,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
             _exeLanguage        exe @?= Haskell98
             _exeOtherModules    exe @?= []
             _exeOtherExts       exe @?= []
-            _exeDependencies    exe @?= []
+            _exeDependencies    exe @?! []
             _exeBuildTools      exe @?= []
 
             _testMainIs       test @?= HsFilePath "quxTest/Main.hs" Standard
@@ -113,8 +114,13 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
             _testLanguage     test @?= Haskell98
             _testOtherModules test @?= []
             _testOtherExts    test @?= []
-            _testDependencies test @?= []
+            _testDependencies test @?! []
             _testBuildTools   test @?= []
+
+            assertBool "The library should be a dependency of the executable" $
+              mkPackageNameDep (_optPkgName opts) `elem` _exeDependencies exe
+            assertBool "The library should be a dependency of the test executable" $
+              mkPackageNameDep (_optPkgName opts) `elem` _testDependencies test
 
           Right (ProjectSettings _ _ lib exe test, _) -> do
             lib  @?! Nothing
@@ -163,7 +169,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
             _pkgCabalVersion  desc @?= CabalSpecV2_2
             _pkgName          desc @?= mkPackageName "QuxPackage"
             _pkgVersion       desc @?= mkVersion [4,2,6]
-            _pkgLicense       desc @?! SPDX.NONE
+            _pkgLicense       desc @?! (SpecLicense . Left $ SPDX.NONE)
             _pkgAuthor        desc @?= "Foobar"
             _pkgEmail         desc @?= "foobar@qux.com"
             _pkgHomePage      desc @?= "qux.com"
@@ -185,7 +191,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
             _exeLanguage        exe @?= Haskell98
             _exeOtherModules    exe @?= []
             _exeOtherExts       exe @?= []
-            _exeDependencies    exe @?= []
+            _exeDependencies    exe @?! []
             _exeBuildTools      exe @?= []
 
             _testMainIs       test @?= HsFilePath "quxTest/Main.hs" Standard
@@ -193,8 +199,13 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
             _testLanguage     test @?= Haskell98
             _testOtherModules test @?= []
             _testOtherExts    test @?= []
-            _testDependencies test @?= []
+            _testDependencies test @?! []
             _testBuildTools   test @?= []
+
+            assertBool "The library should be a dependency of the executable" $
+              mkPackageNameDep (_optPkgName opts) `elem` _exeDependencies exe
+            assertBool "The library should be a dependency of the test executable" $
+              mkPackageNameDep (_optPkgName opts) `elem` _testDependencies test
 
           Right (ProjectSettings _ _ lib exe test, _) -> do
             lib  @?! Nothing
@@ -320,7 +331,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
               , "[\"test/Main.hs\", \"test/Foo.hs\", \"test/bar.y\"]"
               ]
 
-        case (_runPrompt $ createProject comp silent pkgIx srcDb (emptyFlags 
+        case (_runPrompt $ createProject comp silent pkgIx srcDb (emptyFlags
             { initializeTestSuite = Flag True
             , packageType = Flag LibraryAndExecutable
             })) inputs of
@@ -336,7 +347,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
             _pkgCabalVersion  desc @?= CabalSpecV3_4
             _pkgName          desc @?= mkPackageName "test-package"
             _pkgVersion       desc @?= mkVersion [0,1,0,0]
-            _pkgLicense       desc @?= SPDX.NONE
+            _pkgLicense       desc @?= (SpecLicense . Left $ SPDX.NONE)
             _pkgAuthor        desc @?= "Foobar"
             _pkgEmail         desc @?= "foobar@qux.com"
             _pkgHomePage      desc @?= ""
@@ -368,6 +379,11 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
             _testOtherExts    test @?= map EnableExtension [OverloadedStrings, LambdaCase, RankNTypes, RecordWildCards]
             _testDependencies test @?! []
             _testBuildTools   test @?= [mkStringyDep "happy:happy"]
+
+            assertBool "The library should be a dependency of the executable" $
+              mkPackageNameDep (_optPkgName opts) `elem` _exeDependencies exe
+            assertBool "The library should be a dependency of the test executable" $
+              mkPackageNameDep (_optPkgName opts) `elem` _testDependencies test
 
           Right (ProjectSettings _ _ lib exe test, _) -> do
             lib  @?! Nothing
@@ -459,7 +475,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
               , "[\"test/Main.hs\", \"test/Foo.hs\", \"test/bar.y\"]"
               ]
 
-        case (_runPrompt $ createProject comp silent pkgIx srcDb (emptyFlags 
+        case (_runPrompt $ createProject comp silent pkgIx srcDb (emptyFlags
             { initializeTestSuite = Flag True
             , packageType = Flag Library
             })) inputs of
@@ -475,7 +491,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
             _pkgCabalVersion  desc @?= CabalSpecV3_4
             _pkgName          desc @?= mkPackageName "test-package"
             _pkgVersion       desc @?= mkVersion [0,1,0,0]
-            _pkgLicense       desc @?= SPDX.NONE
+            _pkgLicense       desc @?= (SpecLicense . Left $ SPDX.NONE)
             _pkgAuthor        desc @?= "Foobar"
             _pkgEmail         desc @?= "foobar@qux.com"
             _pkgHomePage      desc @?= ""
@@ -499,6 +515,9 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
             _testOtherExts    test @?= map EnableExtension [OverloadedStrings, LambdaCase, RankNTypes, RecordWildCards]
             _testDependencies test @?! []
             _testBuildTools   test @?= [mkStringyDep "happy:happy"]
+
+            assertBool "The library should be a dependency of the test executable" $
+              mkPackageNameDep (_optPkgName opts) `elem` _testDependencies test
 
           Right (ProjectSettings _ _ lib exe test, _) -> do
             lib  @?! Nothing
@@ -615,7 +634,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
             _pkgCabalVersion  desc @?= CabalSpecV3_4
             _pkgName          desc @?= mkPackageName "test-package"
             _pkgVersion       desc @?= mkVersion [0,1,0,0]
-            _pkgLicense       desc @?= SPDX.NONE
+            _pkgLicense       desc @?= (SpecLicense . Left $ SPDX.NONE)
             _pkgAuthor        desc @?= "Foobar"
             _pkgEmail         desc @?= "foobar@qux.com"
             _pkgHomePage      desc @?= ""
@@ -639,6 +658,9 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
             _exeOtherExts       exe @?= map EnableExtension [OverloadedStrings, LambdaCase, RankNTypes, RecordWildCards]
             _exeDependencies    exe @?! []
             _exeBuildTools      exe @?= [mkStringyDep "happy:happy"]
+
+            assertBool "The library should be a dependency of the executable" $
+              mkPackageNameDep (_optPkgName opts) `elem` _exeDependencies exe
 
           Right (ProjectSettings _ _ lib exe test, _) -> do
             lib  @?! Nothing
@@ -723,7 +745,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
             _pkgCabalVersion  desc @?= CabalSpecV3_4
             _pkgName          desc @?= mkPackageName "test-package"
             _pkgVersion       desc @?= mkVersion [0,1,0,0]
-            _pkgLicense       desc @?= SPDX.NONE
+            _pkgLicense       desc @?= (SpecLicense . Left $ SPDX.NONE)
             _pkgAuthor        desc @?= "Foobar"
             _pkgEmail         desc @?= "foobar@qux.com"
             _pkgHomePage      desc @?= ""
@@ -815,7 +837,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
             _pkgCabalVersion  desc @?= CabalSpecV3_4
             _pkgName          desc @?= mkPackageName "test-package"
             _pkgVersion       desc @?= mkVersion [0,1,0,0]
-            _pkgLicense       desc @?= SPDX.NONE
+            _pkgLicense       desc @?= (SpecLicense . Left $ SPDX.NONE)
             _pkgAuthor        desc @?= "Foobar"
             _pkgEmail         desc @?= "foobar@qux.com"
             _pkgHomePage      desc @?= ""
@@ -1174,7 +1196,8 @@ nonInteractiveTests pkgIx srcDb comp = testGroup "Check top level getter functio
           [ testSimple "base version bounds is correct"
             (fmap
               (flip foldl' anyVersion $ \a (Dependency n v _) ->
-                if unPackageName n == "base" then v else a)
+                if unPackageName n == "base" && baseVersion comp /= anyVersion
+                  then v else a)
             . (\x -> dependenciesHeuristics x "" pkgIx))
             (baseVersion comp)
             [ "True"
@@ -1202,7 +1225,7 @@ nonInteractiveTests pkgIx srcDb comp = testGroup "Check top level getter functio
       , testSimple "Check minimalHeuristics output" minimalHeuristics False [""]
       , testSimple "Check overwriteHeuristics output" overwriteHeuristics False [""]
       , testSimple "Check initializeTestSuiteHeuristics output" initializeTestSuiteHeuristics False [""]
-      , testSimple "Check licenseHeuristics output" licenseHeuristics SPDX.NONE [""]
+      , testSimple "Check licenseHeuristics output" licenseHeuristics (SpecLicense $ Left SPDX.NONE) [""]
       ]
     , testGroup "Bool heuristics tests"
       [ testBool "Check noCommentsHeuristics output" noCommentsHeuristics False ""

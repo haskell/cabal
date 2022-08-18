@@ -22,7 +22,6 @@ module Distribution.Client.Utils
   , relaxEncodingErrors
   , ProgressPhase (..)
   , progressMessage
-  , cabalInstallVersion
   , pvpize
   , incVersion
   , getCurrentYear
@@ -50,7 +49,9 @@ import Data.List
          ( groupBy )
 import Foreign.C.Types ( CInt(..) )
 import qualified Control.Exception as Exception
-         ( finally, bracket )
+         ( finally )
+import qualified Control.Exception.Safe as Safe
+         ( bracket )
 import System.Directory
          ( canonicalizePath, doesFileExist, findExecutable, getCurrentDirectory
          , removeFile, setCurrentDirectory, getDirectoryContents, doesDirectoryExist )
@@ -119,7 +120,7 @@ withTempFileName :: FilePath
                  -> String
                  -> (FilePath -> IO a) -> IO a
 withTempFileName tmpDir template action =
-  Exception.bracket
+  Safe.bracket
     (openTempFile tmpDir template)
     (\(name, _) -> removeExistingFile name)
     (\(name, h) -> hClose h >> action name)
@@ -238,9 +239,10 @@ makeRelativeCanonical path dir
   | takeDrive path /= takeDrive dir = path
   | otherwise                       = go (splitPath path) (splitPath dir)
   where
-    go (p:ps) (d:ds) | p == d = go ps ds
-    go    []     []           = "./"
-    go    ps     ds           = joinPath (replicate (length ds) ".." ++ ps)
+    go (p:ps) (d:ds) | p' == d' = go ps ds
+      where (p', d') = (dropTrailingPathSeparator p, dropTrailingPathSeparator d)
+    go    []     []             = "./"
+    go    ps     ds             = joinPath (replicate (length ds) ".." ++ ps)
 
 -- | Convert a 'FilePath' to a lazy 'ByteString'. Each 'Char' is
 -- encoded as a little-endian 'Word32'.
@@ -394,10 +396,6 @@ progressMessage verbosity phase subject = do
         ProgressInstalling  -> "Installing   "
         ProgressCompleted   -> "Completed    "
 
--- TODO: write a test around this. Don't abuse Paths_cabal_install.
---
-cabalInstallVersion :: Version
-cabalInstallVersion = mkVersion [3,6]
 
 -- | Given a version, return an API-compatible (according to PVP) version range.
 --

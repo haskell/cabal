@@ -19,8 +19,19 @@ relative to the respective preceding *published* version.
     versions of the ``Cabal`` library denote unreleased development
     branches which have no stability guarantee.
 
-``cabal-version: 3.x``
+``cabal-version: 3.8``
 ----------------------
+
+* Added field ``code-generators`` to :pkg-section:`test-suite` stanzas. This
+  enumerates executabes (possibly brought into scope by  :pkg-field:`build-tool-depends`) that are run after all other
+  preprocessors. These executables are invoked with a target dir for
+  output, a sequence of all source directories with source files of
+  local lib components that the given test stanza depends on, and
+  following a double dash, all options cabal would pass to ghc for a
+  build. They are expected to output a newline-separated list of
+  generated modules which have been written to the targetdir. This can
+  be used for driving doctests and other discover-style tests generated
+  from source code.
 
 * Added fields :pkg-field:`extra-libraries-static` and
   :pkg-field:`extra-lib-dirs-static` to allow Haskell libraries to remember
@@ -33,6 +44,16 @@ relative to the respective preceding *published* version.
   :pkg-field:`extra-libraries`.
   When :pkg-field:`extra-lib-dirs-static` is not given, it defaults to
   :pkg-field:`extra-lib-dirs`.
+
+* Wildcard matching has been slightly expanded. Matches are now
+  allowed of the form ``foo/**/literalFile``. Prior, double-star
+  wildcards required the trailing filename itself be a wildcard.
+
+* Allow the omission of the `type` field in `test-suite` and `benchmark` stanzas
+  when the type can be inferred by the presence of `main-is` or `test-module`.
+
+* License fields use identifiers from SPDX License List version
+  ``3.16 2022-02-06``
 
 ``cabal-version: 3.6``
 ----------------------
@@ -64,6 +85,11 @@ relative to the respective preceding *published* version.
 
 ``cabal-version: 3.0``
 ----------------------
+
+* New :pkg-field:`library:visibility` for exposing sublibraries.
+
+* New ``pkg:lib`` and ``pkg:{lib1,lib2}`` syntax in :pkg-field:`build-depends`
+  for depending on public sublibraries from other packages.
 
 * Added the :pkg-field:`extra-dynamic-library-flavours` field to specify non-trivial
   variants of dynamic flavours. It is :pkg-field:`extra-library-flavours` but for
@@ -153,7 +179,7 @@ relative to the respective preceding *published* version.
 * New :pkg-field:`library:virtual-modules` field added.
 
 * New :pkg-field:`cxx-sources` and :pkg-field:`cxx-options` fields
-  added for suppporting bundled foreign routines implemented in C++.
+  added for supporting bundled foreign routines implemented in C++.
 
 * New :pkg-field:`extra-bundled-libraries` field for specifying
   additional custom library objects to be installed.

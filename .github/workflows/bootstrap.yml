@@ -1,10 +1,10 @@
-# This file is auto-generated
-#
-# To regenerate it run
-#
-#     make github-actions
-#
 name: Bootstrap
+
+# See: https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#concurrency.
+concurrency:
+  group: ${{ github.ref }}-${{ github.workflow }}
+  cancel-in-progress: true
+
 on:
   push:
     branches:
@@ -15,14 +15,25 @@ on:
       - created
 
 jobs:
-  boostrap-linux:
-    name: Bootstrap on Linux
-    runs-on: ubuntu-18.04
+  bootstrap:
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        ghc: ["8.6.5", "8.8.4", "8.10.7", "9.0.2", "9.2.3"]
+        include:
+          - os: macos-latest
+            ghc: "9.2.3"
+    name: Bootstrap ${{ matrix.os }} ghc-${{ matrix.ghc }}
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
       - name: bootstrap.py
         run: |
-          python3 bootstrap/bootstrap.py -w /opt/ghc/8.10.4/bin/ghc -d bootstrap/linux-8.10.4.json
+          GHC_VERSION=${{ matrix.ghc }}
+          ghcup config set cache true
+          ghcup install ghc $GHC_VERSION
+          # We use linux dependencies also on macos
+          python3 bootstrap/bootstrap.py -w $(ghcup whereis ghc $GHC_VERSION) -d bootstrap/linux-$GHC_VERSION.json
 
       - name: Smoke test
         run: |
@@ -30,33 +41,5 @@ jobs:
 
       - uses: actions/upload-artifact@v2
         with:
-          name: cabal-linux-bootstrapped
-          path: _build/artifacts/*
-
-  boostrap-macos:
-    name: Bootstrap on macOS
-    runs-on: macos-latest
-    steps:
-      - name: Install GHC
-        run: |
-          cd $(mktemp -d)
-          curl -sLO "https://downloads.haskell.org/~ghc/8.10.4/ghc-8.10.4-x86_64-apple-darwin.tar.xz"
-          tar -xJf ghc-*.tar.xz
-          cd ghc-*
-          ./configure --prefix=/opt/ghc/8.10.4
-          sudo make install
-      - uses: actions/checkout@v2
-
-      # We use linux dependencies
-      - name: bootstrap.py
-        run: |
-          python3 bootstrap/bootstrap.py -w /opt/ghc/8.10.4/bin/ghc -d bootstrap/linux-8.10.4.json
-
-      - name: Smoke test
-        run: |
-          _build/bin/cabal --version
-
-      - uses: actions/upload-artifact@v2
-        with:
-          name: cabal-macos-bootstrapped
+          name: cabal-${{ matrix.os }}-${{ matrix.ghc }}-bootstrapped
           path: _build/artifacts/*

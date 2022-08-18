@@ -90,7 +90,7 @@ import Distribution.Client.DistDirLayout
 import Distribution.Client.RebuildMonad
          ( runRebuild )
 import Distribution.Client.InstallSymlink
-         ( symlinkBinary, trySymlink )
+         ( symlinkBinary, trySymlink, promptRun )
 import Distribution.Client.Types.OverwritePolicy
          ( OverwritePolicy (..) )
 import Distribution.Simple.Flag
@@ -180,7 +180,7 @@ installCommand = CommandUI
 --   Exes are installed in the store like a normal dependency, then they are
 --   symlinked/copied in the directory specified by --installdir.
 --   To do this we need a dummy projectBaseContext containing the targets as
---   estra packages and using a temporary dist directory.
+--   extra packages and using a temporary dist directory.
 -- * libraries
 --   Libraries install through a similar process, but using GHC environment
 --   files instead of symlinks. This means that 'v2-install'ing libraries
@@ -781,7 +781,7 @@ installUnitExes verbosity overwritePolicy
               <> "Use --overwrite-policy=always to overwrite."
             -- This shouldn't even be possible, but we keep it in case
             -- symlinking/copying logic changes
-            AlwaysOverwrite ->
+            _ ->
               case installMethod of
                 InstallMethodSymlink -> "Symlinking"
                 InstallMethodCopy    ->
@@ -816,7 +816,8 @@ installBuiltExe verbosity overwritePolicy
   exists <- doesPathExist destination
   case (exists, overwritePolicy) of
     (True , NeverOverwrite ) -> pure False
-    (True , AlwaysOverwrite) -> remove >> copy
+    (True , AlwaysOverwrite) -> overwrite
+    (True , PromptOverwrite) -> maybeOverwrite
     (False, _              ) -> copy
   where
     source      = sourceDir </> exeName
@@ -827,6 +828,13 @@ installBuiltExe verbosity overwritePolicy
       then removeDirectory destination
       else removeFile      destination
     copy = copyFile source destination >> pure True
+    overwrite :: IO Bool
+    overwrite = remove >> copy
+    maybeOverwrite :: IO Bool
+    maybeOverwrite
+      = promptRun
+        "Existing file found while installing executable. Do you want to overwrite that file? (y/n)"
+        overwrite
 
 -- | Create 'GhcEnvironmentFileEntry's for packages with exposed libraries.
 entriesForLibraryComponents :: TargetsMap -> [GhcEnvironmentFileEntry]

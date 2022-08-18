@@ -1,5 +1,7 @@
 {-# LANGUAGE CPP, DeriveGeneric, DeriveFunctor,
              RecordWildCards, NamedFieldPuns #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+
 -- TODO
 {-# OPTIONS_GHC -fno-warn-incomplete-uni-patterns #-}
 -----------------------------------------------------------------------------
@@ -92,7 +94,7 @@ import qualified System.Directory as IO
          ( doesFileExist, doesDirectoryExist, canonicalizePath
          , getCurrentDirectory )
 import System.FilePath
-         ( (</>), (<.>), normalise, dropTrailingPathSeparator )
+         ( (</>), (<.>), normalise, dropTrailingPathSeparator, equalFilePath )
 import Text.EditDistance
          ( defaultEditCosts, restrictedDamerauLevenshteinDistance )
 import Distribution.Utils.Path
@@ -202,7 +204,7 @@ instance Structured SubComponentTarget
 readTargetSelectors :: [PackageSpecifier (SourcePackage (PackageLocation a))]
                     -> Maybe ComponentKindFilter
                     -- ^ This parameter is used when there are ambiguous selectors.
-                    --   If it is 'Just', then we attempt to resolve ambiguitiy
+                    --   If it is 'Just', then we attempt to resolve ambiguity
                     --   by applying it, since otherwise there is no way to allow
                     --   contextually valid yet syntactically ambiguous selectors.
                     --   (#4676, #5461)
@@ -465,8 +467,9 @@ resolveTargetSelectors :: KnownTargets
 resolveTargetSelectors (KnownTargets{knownPackagesAll = []}) [] _ =
     ([TargetSelectorNoTargetsInProject], [])
 
-resolveTargetSelectors (KnownTargets{knownPackagesPrimary = []}) [] _ =
-    ([TargetSelectorNoTargetsInCwd], [])
+-- if the component kind filter is just exes, we don't want to suggest "all" as a target.
+resolveTargetSelectors (KnownTargets{knownPackagesPrimary = []}) [] ckf =
+    ([TargetSelectorNoTargetsInCwd (ckf /= Just ExeKind) ], [])
 
 resolveTargetSelectors (KnownTargets{knownPackagesPrimary}) [] _ =
     ([], [TargetPackage TargetImplicitCwd pkgids Nothing])
@@ -591,8 +594,10 @@ data TargetSelectorProblem
    | TargetSelectorUnrecognised String
      -- ^ Syntax error when trying to parse a target string.
    | TargetSelectorNoCurrentPackage TargetString
-   | TargetSelectorNoTargetsInCwd
+   | TargetSelectorNoTargetsInCwd Bool
+     -- ^ bool that flags when it is acceptable to suggest "all" as a target
    | TargetSelectorNoTargetsInProject
+   | TargetSelectorNoScript TargetString
   deriving (Show, Eq)
 
 -- | Qualification levels.
@@ -791,13 +796,21 @@ reportTargetSelectorProblems verbosity problems = do
         --TODO: report a different error if there is a .cabal file but it's
         -- not a member of the project
 
-    case [ () | TargetSelectorNoTargetsInCwd <- problems ] of
+    case [ () | TargetSelectorNoTargetsInCwd True <- problems ] of
       []  -> return ()
       _:_ ->
         die' verbosity $
             "No targets given and there is no package in the current "
          ++ "directory. Use the target 'all' for all packages in the "
          ++ "project or specify packages or components by name or location. "
+         ++ "See 'cabal build --help' for more details on target options."
+
+    case [ () | TargetSelectorNoTargetsInCwd False <- problems ] of
+      []  -> return ()
+      _:_ ->
+        die' verbosity $
+            "No targets given and there is no package in the current "
+         ++ "directory. Specify packages or components by name or location. "
          ++ "See 'cabal build --help' for more details on target options."
 
     case [ () | TargetSelectorNoTargetsInProject <- problems ] of
@@ -812,6 +825,14 @@ reportTargetSelectorProblems verbosity problems = do
          ++ "file in the root directory of your project. This file lists the "
          ++ "packages in your project and all other build configuration. "
          ++ "See the Cabal user guide for full details."
+
+    case [ t | TargetSelectorNoScript t <- problems ] of
+      []  -> return ()
+      target:_ ->
+        die' verbosity $
+            "The script '" ++ showTargetString target ++ "' does not exist, "
+         ++ "and only script targets may contain whitespace characters or end "
+         ++ "with ':'"
 
     fail "reportTargetSelectorProblems: internal error"
 
@@ -1746,14 +1767,14 @@ knownPackageName KnownPackageName{pinfoName} = pinfoName
 emptyKnownTargets :: KnownTargets
 emptyKnownTargets = KnownTargets [] [] [] [] [] []
 
-getKnownTargets :: (Applicative m, Monad m)
+getKnownTargets :: forall m a. (Applicative m, Monad m)
                 => DirActions m
                 -> [PackageSpecifier (SourcePackage (PackageLocation a))]
                 -> m KnownTargets
 getKnownTargets dirActions@DirActions{..} pkgs = do
     pinfo <- traverse (collectKnownPackageInfo dirActions) pkgs
     cwd   <- getCurrentDirectory
-    let (ppinfo, opinfo) = selectPrimaryPackage cwd pinfo
+    (ppinfo, opinfo) <- selectPrimaryPackage cwd pinfo
     return KnownTargets {
       knownPackagesAll       = pinfo,
       knownPackagesPrimary   = ppinfo,
@@ -1763,14 +1784,19 @@ getKnownTargets dirActions@DirActions{..} pkgs = do
       knownComponentsOther   = allComponentsIn opinfo
     }
   where
+    mPkgDir :: KnownPackage -> Maybe FilePath
+    mPkgDir KnownPackage { pinfoDirectory = Just (dir,_) } = Just dir
+    mPkgDir _ = Nothing
+
     selectPrimaryPackage :: FilePath
                          -> [KnownPackage]
-                         -> ([KnownPackage], [KnownPackage])
-    selectPrimaryPackage cwd = partition isPkgDirCwd
-      where
-        isPkgDirCwd KnownPackage { pinfoDirectory = Just (dir,_) }
-          | dir == cwd = True
-        isPkgDirCwd _  = False
+                         -> m ([KnownPackage], [KnownPackage])
+    selectPrimaryPackage _ [] = return ([] , [])
+    selectPrimaryPackage cwd (pkg : packages) = do
+      (ppinfo, opinfo) <- selectPrimaryPackage cwd packages
+      isPkgDirCwd <- maybe (pure False) (compareFilePath dirActions cwd) (mPkgDir pkg)
+      return (if isPkgDirCwd then (pkg : ppinfo, opinfo) else (ppinfo, pkg : opinfo))
+
     allComponentsIn ps =
       [ c | KnownPackage{pinfoComponents} <- ps, c <- pinfoComponents ]
 
@@ -2164,6 +2190,18 @@ matchComponentModuleFile cs str = do
                                       -- is stored without the extension
 
 -- utils
+
+-- | Compare two filepaths for equality using DirActions' canonicalizePath
+-- to normalize AND canonicalize filepaths before comparison.
+compareFilePath :: (Applicative m, Monad m) => DirActions m
+                -> FilePath -> FilePath -> m Bool
+compareFilePath DirActions{..} fp1 fp2
+  | equalFilePath fp1 fp2 = pure True -- avoid unnecessary IO if we can match earlier
+  | otherwise = do
+    c1 <- canonicalizePath fp1
+    c2 <- canonicalizePath fp2
+    pure $ equalFilePath c1 c2
+
 
 matchFile :: [(FilePath, a)] -> FilePath -> Match (FilePath, a)
 matchFile fs =

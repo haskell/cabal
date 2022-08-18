@@ -1,0 +1,4 @@
+# cabal check
+Warning: The following warnings are likely to affect your build negatively:
+Warning: Instead of 'cc-options: -Ifolder' use 'include-dirs: folder'
+Warning: Hackage would reject this package.

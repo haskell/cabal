@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$comment": "When you change this, make sure to update the code in 'ShowBuildInfo.hs'",
+  "type": "object",
+  "properties": {
+    "cabal-lib-version": {
+      "type": "string"
+    },
+    "compiler": {
+      "type": "object",
+      "properties": {
+        "flavour": {
+          "type": "string"
+        },
+        "compiler-id": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        }
+      },
+      "required": ["flavour", "compiler-id", "path"]
+    },
+    "components": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "unit-id": {
+            "type": "string"
+          },
+          "compiler-args": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "modules": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "src-files": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "hs-src-dirs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "src-dir": {
+            "type": "string"
+          },
+          "cabal-file": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "name",
+          "unit-id",
+          "compiler-args",
+          "modules",
+          "src-files",
+          "hs-src-dirs",
+          "src-dir",
+          "cabal-file"
+        ]
+      }
+    }
+  },
+  "required": ["cabal-lib-version", "compiler", "components"]
+}

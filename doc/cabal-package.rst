@@ -52,7 +52,7 @@ directory of the package:
 
 :file:`Setup.hs`
     a single-module Haskell program to perform various setup tasks (with
-    the interface described in the section on :ref:`installing-packages`).
+    the interface described in the section on :ref:`setup-commands`).
     This module should import only modules that will be present in all Haskell
     implementations, including modules of the Cabal library. The content of
     this file is determined by the :pkg-field:`build-type` setting in the
@@ -60,8 +60,8 @@ directory of the package:
     library to do most of the work.
 
 Once you have these, you can create a source bundle of this directory
-for distribution. Building of the package is discussed in the section on
-:ref:`installing-packages`.
+for distribution. Building of the package is demonstrated in the section
+:ref:`building-packages`.
 
 One of the purposes of Cabal is to make it easier to build a package
 with different Haskell implementations. So it provides abstractions of
@@ -87,10 +87,11 @@ computer architecture and user-specified configuration flags.
     version:  1.0
 
     library
-      build-depends:   base >= 4 && < 5
-      exposed-modules: Foo
-      extensions:      ForeignFunctionInterface
-      ghc-options:     -Wall
+      default-language: Haskell2010
+      build-depends:    base >= 4 && < 5
+      exposed-modules:  Foo
+      extensions:       ForeignFunctionInterface
+      ghc-options:      -Wall
       if os(windows)
         build-depends: Win32 >= 2.1 && < 2.6
 
@@ -101,15 +102,15 @@ The HUnit package contains a file ``HUnit.cabal`` containing:
 
 ::
 
+    cabal-version:  3.0
     name:           HUnit
     version:        1.1.1
     synopsis:       A unit testing framework for Haskell
     homepage:       http://hunit.sourceforge.net/
     category:       Testing
     author:         Dean Herington
-    license:        BSD3
+    license:        BSD-3-Clause
     license-file:   LICENSE
-    cabal-version:  1.12
     build-type:     Simple
 
     library
@@ -117,6 +118,7 @@ The HUnit package contains a file ``HUnit.cabal`` containing:
       exposed-modules:    Test.HUnit.Base, Test.HUnit.Lang,
                           Test.HUnit.Terminal, Test.HUnit.Text, Test.HUnit
       default-extensions: CPP
+      default-language:   Haskell2010
 
 and the following ``Setup.hs``:
 
@@ -130,25 +132,27 @@ Example: A package containing executable programs
 
 ::
 
+    cabal-version:  3.0
     name:           TestPackage
     version:        0.0
     synopsis:       Small package with two programs
     author:         Angela Author
-    license:        BSD3
+    license:        BSD-3-Clause
     build-type:     Simple
-    cabal-version:  >= 1.8
 
     executable program1
-      build-depends:  HUnit >= 1.1.1 && < 1.2
-      main-is:        main.hs
-      hs-source-dirs: prog1
+      build-depends:    HUnit >= 1.1.1 && < 1.2
+      main-is:          main.hs
+      hs-source-dirs:   prog1
+      default-language: Haskell2010
 
     executable program2
       -- A different main.hs because of hs-source-dirs.
-      main-is:        main.hs
-      build-depends:  HUnit >= 1.1.1 && < 1.2
-      hs-source-dirs: prog2
-      other-modules:  Utils
+      main-is:          main.hs
+      build-depends:    HUnit >= 1.1.1 && < 1.2
+      hs-source-dirs:   prog2
+      other-modules:    Utils
+      default-language: Haskell2010
 
 with ``Setup.hs`` the same as above.
 
@@ -157,38 +161,41 @@ Example: A package containing a library and executable programs
 
 ::
 
+    cabal-version:   3.0
     name:            TestPackage
     version:         0.0
     synopsis:        Package with library and two programs
-    license:         BSD3
+    license:         BSD-3-Clause
     author:          Angela Author
     build-type:      Simple
-    cabal-version:   >= 1.8
 
     library
-      build-depends:   HUnit >= 1.1.1 && < 1.2
-      hs-source-dirs:  lib
-      exposed-modules: A, B, C
+      build-depends:    HUnit >= 1.1.1 && < 1.2
+      hs-source-dirs:   lib
+      exposed-modules:  A, B, C
+      default-language: Haskell2010
 
     executable program1
-      main-is:         main.hs
-      hs-source-dirs:  prog1
-      other-modules:   D, E
+      main-is:          main.hs
+      hs-source-dirs:   prog1
+      other-modules:    D, E
+      default-language: Haskell2010
 
     executable program2
       -- A different main.hs because of hs-source-dirs.
-      main-is:         main.hs
+      main-is:          main.hs
       -- No bound on internal libraries.
-      build-depends:   TestPackage
-      hs-source-dirs:  prog2
-      other-modules:   Utils
+      build-depends:    TestPackage
+      hs-source-dirs:   prog2
+      other-modules:    Utils
+      default-language: Haskell2010
 
 with ``Setup.hs`` the same as above. Note that any library modules
 required (directly or indirectly) by an executable must be listed again.
 
 The trivial setup script used in these examples uses the *simple build
 infrastructure* provided by the Cabal library (see
-`Distribution.Simple <../release/cabal-latest/doc/API/Cabal/Distribution-Simple.html>`__).
+`Distribution.Simple <https://hackage.haskell.org/package/Cabal/docs/Distribution-Simple.html>`__).
 The simplicity lies in its interface rather that its implementation. It
 automatically handles preprocessing with standard preprocessors, and
 builds packages for all the Haskell implementations.
@@ -412,7 +419,7 @@ describe the package as a whole:
 
     The type of build used by this package. Build types are the
     constructors of the
-    `BuildType <../release/cabal-latest/doc/API/Cabal/Distribution-PackageDescription.html#t:BuildType>`__
+    `BuildType <https://hackage.haskell.org/package/Cabal/docs/Distribution-PackageDescription.html#t:BuildType>`__
     type. This field is optional and when missing, its default value
     is inferred according to the following rules:
 
@@ -629,19 +636,78 @@ describe the package as a whole:
     and is rather intended as extra metadata for use by third party
     tooling, such as e.g. CI tooling.
 
-    Here's a typical usage example
+    Here's a typical usage example:
 
     ::
 
-        tested-with: GHC == 8.6.3, GHC == 8.4.4, GHC == 8.2.2, GHC == 8.0.2,
+        tested-with: GHC == 9.0.1, GHC == 8.10.4, GHC == 8.8.4,
+                     GHC == 8.6.5, GHC == 8.4.4, GHC == 8.2.2, GHC == 8.0.2,
                      GHC == 7.10.3, GHC == 7.8.4, GHC == 7.6.3, GHC == 7.4.2
 
-    which can (starting with Cabal 3.0) also be written using the more
-    concise set notation syntax
+    The same can be spread over several lines, for instance:
 
     ::
 
-        tested-with: GHC == { 8.6.3, 8.4.4, 8.2.2, 8.0.2, 7.10.3, 7.8.4, 7.6.3, 7.4.2 }
+        tested-with: GHC == 9.0.1
+                   , GHC == 8.10.4
+                   , GHC == 8.8.4
+                   , GHC == 8.6.5
+                   , GHC == 8.4.4
+                   , GHC == 8.2.2
+                   , GHC == 8.0.2
+                   , GHC == 7.10.3
+                   , GHC == 7.8.4
+                   , GHC == 7.6.3
+                   , GHC == 7.4.2
+
+    The separating comma can also be dropped altogether:
+
+    ::
+
+        tested-with:
+          GHC == 9.0.1
+          GHC == 8.10.4
+          GHC == 8.8.4
+          GHC == 8.6.5
+          GHC == 8.4.4
+          GHC == 8.2.2
+          GHC == 8.0.2
+          GHC == 7.10.3
+          GHC == 7.8.4
+          GHC == 7.6.3
+          GHC == 7.4.2
+
+    However, this alternative might
+    `disappear <https://github.com/haskell/cabal/issues/4894#issuecomment-909008657>`__
+    in the future.
+
+    Starting with :pkg-field:`cabal-version` 3.0,
+    there are further conveniences.
+
+    1. A preceding ``,`` is allowed, so a bullet-list style
+       is possible (recommended):
+
+        ::
+
+            tested-with:
+              , GHC == 9.0.1
+              , GHC == 8.10.4
+              , GHC == 8.8.4
+              , GHC == 8.6.5
+              , GHC == 8.4.4
+              , GHC == 8.2.2
+              , GHC == 8.0.2
+              , GHC == 7.10.3
+              , GHC == 7.8.4
+              , GHC == 7.6.3
+              , GHC == 7.4.2
+
+
+    2. A concise set notation syntax is available:
+
+       ::
+
+           tested-with: GHC == { 9.0.1, 8.10.4, 8.8.4, 8.6.5, 8.4.4, 8.2.2, 8.0.2, 7.10.3, 7.8.4, 7.6.3, 7.4.2 }
 
 .. pkg-field:: data-files: filename list
 
@@ -676,9 +742,12 @@ describe the package as a whole:
 
     - ``**`` wildcards can only appear as the final path component
       before the file name (e.g., ``data/**/images/*.jpg`` is not
-      allowed). If a ``**`` wildcard is used, then the file name must
-      include a ``*`` wildcard (e.g., ``data/**/README.rst`` is not
       allowed).
+
+    - Prior to Cabal 3.8, if a ``**`` wildcard is used, then
+      the file name must include a ``*`` wildcard (e.g.,
+      ``data/**/README.rst`` was not allowed). As of ``cabal-version:
+      3.8`` or greater, this restriction is lifted.
 
     - A wildcard that does not match any files is an error.
 
@@ -721,7 +790,7 @@ describe the package as a whole:
     A list of additional files or directories to be removed by
     :ref:`setup-clean`. These  would typically be additional files created by
     additional hooks, such as the scheme described in the section on
-    `system-dependent parameters`_
+    `system-dependent parameters`_.
 
 Library
 ^^^^^^^
@@ -780,11 +849,18 @@ The library section should contain the following fields:
 
     :since: 3.0
 
-    :default: ``private`` for internal libraries. Cannot be set for public library.
+    :default:
+        ``private`` for internal libraries. Cannot be set for main
+        (unnamed) library, which is always public.
 
-    Cabal recognizes ``public`` and ``private`` here...
+    Can be ``public`` or ``private``.
+    Makes it possible to have multiple public libraries in a single package.
+    If set to ``public``, depending on this library from another package is
+    allowed. If set to ``private``, depending on this library is allowed only
+    from the same package.
 
-    Multiple public libraries...
+    See section on :ref:`Internal Libraries <sublibs>` for examples and more
+    information.
 
 .. pkg-field:: reexported-modules: exportlist
     :since: 1.22
@@ -841,24 +917,27 @@ look something like this:
     name:           foo
     version:        0.1.0.0
     license:        BSD3
+    license-file:   LICENSE
     build-type:     Simple
 
     library foo-internal
-        exposed-modules: Foo.Internal
+        exposed-modules:  Foo.Internal
         -- NOTE: no explicit constraints on base needed
         --       as they're inherited from the 'library' stanza
-        build-depends: base
+        build-depends:    base
+        default-language: Haskell2010
 
     library
-        exposed-modules: Foo.Public
-        build-depends: foo-internal, base >= 4.3 && < 5
+        exposed-modules:  Foo.Public
+        build-depends:    foo-internal, base >= 4.3 && < 5
+        default-language: Haskell2010
 
     test-suite test-foo
-        type:       exitcode-stdio-1.0
-        main-is:    test-foo.hs
+        main-is:          test-foo.hs
         -- NOTE: no constraints on 'foo-internal' as same-package
         --       dependencies implicitly refer to the same package instance
-        build-depends: foo-internal, base
+        build-depends:    foo-internal, base
+        default-language: Haskell2010
 
 Internal libraries are also useful for packages that define multiple
 executables, but do not define a publicly accessible library. Internal
@@ -876,9 +955,10 @@ a real-world use case:
 
 ::
 
-    cabal-version: 2.2
+    cabal-version: 3.0
     name: haddock-library
     version: 1.6.0
+    license: BSD-3-Clause
 
     library
       build-depends:
@@ -894,6 +974,8 @@ a real-world use case:
 
       exposed-modules:
         Documentation.Haddock
+
+      default-language: Haskell2010
 
     library attoparsec
       build-depends:
@@ -913,6 +995,20 @@ a real-world use case:
         Data.Attoparsec.Internal
 
       ghc-options: -funbox-strict-fields -Wall -fwarn-tabs -O2
+
+      default-language: Haskell2010
+
+**Multiple public libraries**
+
+Cabal 3.0 and later support exposing multiple libraries from a single package
+through the field :pkg-field:`library:visibility`.
+Having multiple public libraries is useful for separating the unit of
+distribution (package) from the unit of buildable code (library).
+For more information about the rationale and some examples, see
+`this blog post <https://fgaz.me/posts/2019-11-14-cabal-multiple-libraries/>`__.
+
+..
+    TODO inline the blog post
 
 
 Opening an interpreter session
@@ -942,7 +1038,7 @@ disambiguation purposes. Example:
     $ cabal repl bench:baz
 
 Freezing dependency versions
-""""""""""""""""""""""""""""
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 If a package is built in several different environments, such as a
 development environment, a staging environment and a production
@@ -959,10 +1055,10 @@ The command writes the selected version for all dependencies to the
 the dependency versions specified in it.
 
 Generating dependency version bounds
-""""""""""""""""""""""""""""""""""""
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Cabal also has the ability to suggest dependency version bounds that
-conform to `Package Versioning Policy`_, which is
+conform to the `Package Versioning Policy`_, which is
 a recommended versioning system for publicly released Cabal packages.
 This is done by running the ``gen-bounds`` command:
 
@@ -970,25 +1066,28 @@ This is done by running the ``gen-bounds`` command:
 
     $ cabal gen-bounds
 
-For example, given the following dependencies specified in
+For example, given the following dependencies without bounds specified in
 :pkg-field:`build-depends`:
 
 ::
 
     build-depends:
-      foo == 0.5.2
-      bar == 1.1
+      base,
+      mtl,
+      transformers,
 
-``gen-bounds`` will suggest changing them to the following:
+``gen-bounds`` might suggest changing them to the following:
 
 ::
 
     build-depends:
-      foo >= 0.5.2 && < 0.6
-      bar >= 1.1 && < 1.2
+      base          >= 4.15.0 && < 4.16,
+      mtl           >= 2.2.2 && < 2.3,
+      transformers  >= 0.5.6 && < 0.6,
+
 
 Listing outdated dependency version bounds
-""""""""""""""""""""""""""""""""""""""""""
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Manually updating dependency version bounds in a ``.cabal`` file or a
 freeze file can be tedious, especially when there's a lot of
@@ -999,44 +1098,6 @@ version on Hackage that is outside the version bound specified in the
 configured to act on the freeze file (both old- and v2-style) and
 ignore major (or all) version bumps on Hackage for a subset of
 dependencies.
-
-The following flags are supported by the ``outdated`` command:
-
-``--freeze-file``
-    Read dependency version bounds from the freeze file (``cabal.config``)
-    instead of the package description file (``$PACKAGENAME.cabal``).
-    ``--v1-freeze-file`` is an alias for this flag starting in Cabal 2.4.
-``--v2-freeze-file``
-    :since: 2.4
-
-    Read dependency version bounds from the v2-style freeze file
-    (by default, ``cabal.project.freeze``) instead of the package
-    description file. ``--new-freeze-file`` is an alias for this flag
-    that can be used with pre-2.4 ``cabal``.
-``--project-file`` *PROJECTFILE*
-    :since: 2.4
-
-    Read dependendency version bounds from the v2-style freeze file
-    related to the named project file (i.e., ``$PROJECTFILE.freeze``)
-    instead of the package desctription file. If multiple ``--project-file``
-    flags are provided, only the final one is considered. This flag
-    must only be passed in when ``--new-freeze-file`` is present.
-``--simple-output``
-    Print only the names of outdated dependencies, one per line.
-``--exit-code``
-    Exit with a non-zero exit code when there are outdated dependencies.
-``-q, --quiet``
-    Don't print any output. Implies ``-v0`` and ``--exit-code``.
-``--ignore`` *PACKAGENAMES*
-    Don't warn about outdated dependency version bounds for the packages in this
-    list.
-``--minor`` *[PACKAGENAMES]*
-    Ignore major version bumps for these packages. E.g. if there's a version 2.0
-    of a package ``pkg`` on Hackage and the freeze file specifies the constraint
-    ``pkg == 1.9``, ``cabal outdated --freeze --minor=pkg`` will only consider
-    the ``pkg`` outdated when there's a version of ``pkg`` on Hackage satisfying
-    ``pkg > 1.9 && < 2.0``. ``--minor`` can also be used without arguments, in
-    that case major version bumps are ignored for all packages.
 
 Examples:
 
@@ -1076,6 +1137,8 @@ Examples:
     Outdated dependencies:
     HUnit ==1.3.1.1 (latest: 1.3.1.2)
 
+See `the command documentation <cabal-commands.html#cabal-outdated>`__ for a
+list of available flags.
 
 Executables
 ^^^^^^^^^^^
@@ -1143,14 +1206,14 @@ Test suites
 The test suite may be described using the following fields, as well as
 build information fields (see the section on `build information`_).
 
-.. pkg-field:: type: interface (required)
+.. pkg-field:: type: interface
 
     The interface type and version of the test suite. Cabal supports two
-    test suite interfaces, called ``exitcode-stdio-1.0`` and
+    test suite interfaces, called ``exitcode-stdio-1.0`` (default) and
     ``detailed-0.9``. Each of these types may require or disallow other
     fields as described below.
 
-Test suites using the ``exitcode-stdio-1.0`` interface are executables
+Test suites using the ``exitcode-stdio-1.0`` (default) interface are executables
 that indicate test failure with a non-zero exit code when run; they may
 provide human-readable log information through the standard output and
 error channels. The ``exitcode-stdio-1.0`` type requires the ``main-is``
@@ -1159,7 +1222,6 @@ field.
 .. pkg-field:: main-is: filename
     :synopsis: Module containing tests main function.
 
-    :required: ``exitcode-stdio-1.0``
     :disallowed: ``detailed-0.9``
 
     The name of the ``.hs`` or ``.lhs`` file containing the ``Main``
@@ -1181,7 +1243,6 @@ the :pkg-field:`test-module` field.
 
 .. pkg-field:: test-module: identifier
 
-    :required: ``detailed-0.9``
     :disallowed: ``exitcode-stdio-1.0``
 
     The module exporting the ``tests`` symbol.
@@ -1195,16 +1256,16 @@ demonstrate the use of the ``exitcode-stdio-1.0`` interface.
 .. code-block:: cabal
     :caption: foo.cabal
 
+    Cabal-Version:  3.0
     Name:           foo
     Version:        1.0
-    License:        BSD3
-    Cabal-Version:  >= 1.9.2
+    License:        BSD-3-Clause
     Build-Type:     Simple
 
     Test-Suite test-foo
-        type:       exitcode-stdio-1.0
-        main-is:    test-foo.hs
-        build-depends: base >= 4 && < 5
+        main-is:          test-foo.hs
+        build-depends:    base >= 4 && < 5
+        default-language: Haskell2010
 
 .. code-block:: haskell
     :caption: test-foo.hs
@@ -1229,16 +1290,16 @@ be provided by the library that provides the testing facility.
 .. code-block:: cabal
     :caption: bar.cabal
 
+    Cabal-Version:  3.0
     Name:           bar
     Version:        1.0
-    License:        BSD3
-    Cabal-Version:  >= 1.9.2
+    License:        BSD-3-Clause
     Build-Type:     Simple
 
     Test-Suite test-bar
-        type:       detailed-0.9
-        test-module: Bar
-        build-depends: base >= 4 && < 5, Cabal >= 1.9.2 && < 2
+        test-module:      Bar
+        build-depends:    base >= 4 && < 5, Cabal >= 1.9.2 && < 2
+        default-language: Haskell2010
 
 
 .. code-block:: haskell
@@ -1298,19 +1359,7 @@ Benchmarks
 The benchmark may be described using the following fields, as well as
 build information fields (see the section on `build information`_).
 
-.. pkg-field:: type: interface (required)
-
-    The interface type and version of the benchmark. At the moment Cabal
-    only support one benchmark interface, called ``exitcode-stdio-1.0``.
-
-Benchmarks using the ``exitcode-stdio-1.0`` interface are executables
-that indicate failure to run the benchmark with a non-zero exit code
-when run; they may provide human-readable information through the
-standard output and error channels.
-
 .. pkg-field:: main-is: filename
-
-    :required: ``exitcode-stdio-1.0``
 
     The name of the ``.hs`` or ``.lhs`` file containing the ``Main``
     module. Note that it is the ``.hs`` filename that must be listed,
@@ -1320,26 +1369,23 @@ standard output and error channels.
     field of an executable section. Further, while the name of the file may
     vary, the module itself must be named ``Main``.
 
-Example: Package using ``exitcode-stdio-1.0`` interface
+Example:
 """""""""""""""""""""""""""""""""""""""""""""""""""""""
-
-The example package description and executable source file below
-demonstrate the use of the ``exitcode-stdio-1.0`` interface.
 
 .. code-block:: cabal
     :caption: foo.cabal
     :name: foo-bench.cabal
 
+    Cabal-Version:  3.0
     Name:           foo
     Version:        1.0
-    License:        BSD3
-    Cabal-Version:  >= 1.9.2
+    License:        BSD-3-Clause
     Build-Type:     Simple
 
     Benchmark bench-foo
-        type:       exitcode-stdio-1.0
-        main-is:    bench-foo.hs
-        build-depends: base >= 4 && < 5, time >= 1.1 && < 1.7
+        main-is:          bench-foo.hs
+        build-depends:    base >= 4 && < 5, time >= 1.1 && < 1.7
+        default-language: Haskell2010
 
 .. code-block:: haskell
     :caption: bench-foo.hs
@@ -1534,16 +1580,16 @@ system-dependent values for these fields.
     **Library Names**
 
     External libraries are identified by the package's name they're
-    provided by (currently a package can only publicly expose its
-    main library component; in future, packages with multiple exposed
-    public library components will be supported and a syntax for
-    referring to public sub-libraries will be provided).
+    provided by, optionally followed by a colon and the library name
+    (available from ``cabal-version: 3.0``).
+    If the library name is absent, the main (unnamed) library will be used.
+    To refer to the main (unnamed) library explicitly, use the name of the
+    package (``foo:foo``).
+    Multiple libraries from the same package can be specified with the shorthand
+    syntax ``pkg:{lib1,lib2}```.
 
-    In order to specify an intra-package dependency on an internal
-    library component you can use the unqualified name of the
-    library component. Note that locally defined sub-library
-    names shadow external package names of the same name. See section on
-    :ref:`Internal Libraries <sublibs>` for examples and more information.
+    See section on :ref:`Internal Libraries <sublibs>` for examples and more
+    information.
 
     **Version Constraints**
 
@@ -1735,7 +1781,7 @@ system-dependent values for these fields.
     A list of Haskell extensions used by every module. These determine
     corresponding compiler options enabled for all files. Extension
     names are the constructors of the
-    `Extension <../release/cabal-latest/doc/API/Cabal/Language-Haskell-Extension.html#t:Extension>`__
+    `Extension <https://hackage.haskell.org/package/Cabal/docs/Language-Haskell-Extension.html#t:Extension>`__
     type. For example, ``CPP`` specifies that Haskell source files are
     to be preprocessed with a C preprocessor.
 
@@ -2238,10 +2284,10 @@ system-dependent values for these fields.
 
     .. Note::
 
-       The current version of Cabal suffers from an infelicity in how the
-       entries of :pkg-field:`mixins` are parsed: an entry will fail to parse
-       if the provided renaming clause has whitespace after the opening
-       parenthesis. This will be fixed in future versions of Cabal.
+       Cabal files with :pkg-field:`cabal-version` < 3.0 suffer from an
+       infelicity in how the entries of :pkg-field:`mixins` are parsed: an
+       entry will fail to parse if the provided renaming clause has whitespace
+       after the opening parenthesis.
 
        See issues :issue:`5150`, :issue:`4864`, and :issue:`5293`.
 
@@ -2308,10 +2354,10 @@ Example: A package containing a library and executable programs
 
 ::
 
+    Cabal-Version: 3.0
     Name: Test1
     Version: 0.0.1
-    Cabal-Version: >= 1.8
-    License: BSD3
+    License: BSD-3-Clause
     Author:  Jane Doe
     Synopsis: Test package to test configurations
     Category: Example
@@ -2333,9 +2379,10 @@ Example: A package containing a library and executable programs
       -- assign automatically while searching for a solution
 
     Library
-      Build-Depends:   base >= 4.2 && < 4.9
-      Exposed-Modules: Testing.Test1
-      Extensions:      CPP
+      Build-Depends:      base >= 4.2 && < 4.9
+      Exposed-Modules:    Testing.Test1
+      Default-Extensions: CPP
+      Default-Language:   Haskell2010
 
       GHC-Options: -Wall
       if flag(Debug)
@@ -2358,9 +2405,10 @@ Example: A package containing a library and executable programs
             Build-Depends: old-time >= 1.0 && < 1.2
 
     Executable test1
-      Main-is: T1.hs
-      Other-Modules: Testing.Test1
-      Build-Depends: base >= 4.2 && < 4.9
+      Main-is:          T1.hs
+      Other-Modules:    Testing.Test1
+      Build-Depends:    base >= 4.2 && < 4.9
+      Default-Language: Haskell2010
 
       if flag(debug)
         CC-Options: "-DDEBUG"
@@ -2385,10 +2433,10 @@ Example: Using explicit braces rather than indentation for layout
 
 ::
 
+    Cabal-Version: 3.0
     Name: Test1
     Version: 0.0.1
-    Cabal-Version: >= 1.8
-    License: BSD3
+    License: BSD-3-Clause
     Author:  Jane Doe
     Synopsis: Test package to test configurations
     Category: Example
@@ -2401,9 +2449,10 @@ Example: Using explicit braces rather than indentation for layout
     }
 
     Library {
-      Build-Depends:   base >= 4.2 && < 4.9
-      Exposed-Modules: Testing.Test1
-      Extensions:      CPP
+      Build-Depends:       base >= 4.2 && < 4.9
+      Exposed-Modules:     Testing.Test1
+      Default-Extensions:  CPP
+      Default-language:    Haskell2010
       if flag(debug) {
         CPP-Options: -DDEBUG
         if !os(windows) {
@@ -2448,8 +2497,8 @@ Configuration Flags
 
     .. note::
 
-      This value may be `overridden in several
-      ways <installing-packages.html#controlling-flag-assignments>`__. The
+      This value may be :ref:`overridden in several
+      ways <controlling flag assignments>`. The
       rationale for having flags default to True is that users usually
       want new features as soon as they are available. Flags representing
       features that are not (yet) recommended for most users (such as
@@ -2499,6 +2548,8 @@ Since Cabal 2.2 conditional blocks support ``elif`` construct.
            property-descriptions-or-conditionals
       else
            property-descriptions-or-conditionals
+
+.. _conditions:
 
 Conditions
 """"""""""
@@ -2562,8 +2613,7 @@ Resolution of Conditions and Flags
 """"""""""""""""""""""""""""""""""
 
 If a package descriptions specifies configuration flags the package user
-can `control these in several
-ways <installing-packages.html#controlling-flag-assignments>`__. If the
+can :ref:`control these in several ways <controlling flag assignments>`. If the
 user does not fix the value of a flag, Cabal will try to find a flag
 assignment in the following way.
 
@@ -2661,14 +2711,15 @@ Starting with Cabal-2.2 it's possible to use common build info stanzas.
         build-depends: tasty ^>= 0.12.0.1
 
       library
-        import: deps
-        exposed-modules: Foo
+        import:           deps
+        exposed-modules:  Foo
+        default-language: Haskell2010
 
       test-suite tests
-        import: deps, test-deps
-        type: exitcode-stdio-1.0
-        main-is: Tests.hs
-        build-depends: foo
+        import:           deps, test-deps
+        main-is:          Tests.hs
+        build-depends:    foo
+        default-language: Haskell2010
 
 -  You can use `build information`_ fields in common stanzas.
 
@@ -2732,12 +2783,12 @@ repository specifies a tag.
 ::
 
     source-repository head
-      type:     darcs
-      location: http://darcs.haskell.org/cabal/
+      type:     git
+      location: https://github.com/haskell/cabal
 
     source-repository this
-      type:     darcs
-      location: http://darcs.haskell.org/cabal-branches/cabal-1.6/
+      type:     git
+      location: https://github.com/haskell/cabal
       tag:      1.6.1
 
 The exact fields are as follows:
@@ -2824,7 +2875,7 @@ The ``get`` command supports the following options:
     Where to place the package source, defaults to (a subdirectory of)
     the current directory.
 ``-s --source-repository`` *[head\|this\|...]*
-    Fork the package's source repository using the appropriate version
+    Clone the package's source repository using the appropriate version
     control system. The optional argument allows to choose a specific
     repository kind.
 ``--index-state`` *[HEAD\|@<unix-timestamp>\|<iso8601-utc-timestamp>]*
@@ -2833,6 +2884,9 @@ The ``get`` command supports the following options:
     ``2016-09-24T17:47:48Z``), or ``HEAD`` (default).
     This determines which package versions are available as well as which
     ``.cabal`` file revision is selected (unless ``--pristine`` is used).
+``--only-package-description``
+    Unpack only the package description file. A synonym,
+    ``--package-description-only``, is provided for convenience.
 ``--pristine``
     Unpack the original pristine tarball, rather than updating the
     ``.cabal`` file with the latest revision from the package archive.
@@ -2902,7 +2956,7 @@ The availability of the
 ``MIN_VERSION_package_(A,B,C)`` CPP macros
 inside ``Setup.hs`` scripts depends on the condition that either
 
-- a ``custom-setup`` section has been declared (or ``cabal v2-build`` is being
+- a ``custom-setup`` section has been declared (or ``cabal build`` is being
   used which injects an implicit hard-coded ``custom-setup`` stanza if it's missing), or
 - GHC 8.0 or later is used (which natively injects package version CPP macros)
 
@@ -3028,8 +3082,8 @@ Accessing data files from package code
 
 The placement on the target system of files listed in
 the :pkg-field:`data-files` field varies between systems, and in some cases
-one can even move packages around after installation (see `prefix
-independence <setup-commands.html#prefix-independence>`__). To
+one can even move packages around after installation
+(see :ref:`prefix independence`). To
 enable packages to find these files in a portable way, Cabal generates a
 module called :file:`Paths_{pkgname}` (with any hyphens in *pkgname*
 replaced by underscores) during building, so that it may be imported by
@@ -3087,7 +3141,7 @@ exports the constant ``version ::``
 which is defined as the version of your package as specified in the
 ``version`` field.
 
-.. _system-dependent-parameters:
+.. _system-dependent parameters:
 
 System-dependent parameters
 ---------------------------
@@ -3306,7 +3360,7 @@ a few options:
        posthaddock args flags desc info = ....
 
    See ``UserHooks`` in
-   `Distribution.Simple <../release/cabal-latest/doc/API/Cabal/Distribution-Simple.html>`__
+   `Distribution.Simple <https://hackage.haskell.org/package/Cabal/docs/Distribution-Simple.html>`__
    for the details, but note that this interface is experimental, and
    likely to change in future releases.
 
@@ -3318,7 +3372,7 @@ a few options:
 -  You could delegate all the work to ``make``, though this is unlikely
    to be very portable. Cabal supports this with the :pkg-field:`build-type`
    ``Make`` and a trivial setup library
-   `Distribution.Make <../release/cabal-latest/doc/API/Cabal/Distribution-Make.html>`__,
+   `Distribution.Make <https://hackage.haskell.org/package/Cabal/docs/Distribution-Make.html>`__,
    which simply parses the command line arguments and invokes ``make``.
    Here ``Setup.hs`` should look like this:
 
@@ -3357,9 +3411,7 @@ a few options:
                                   sysconfdir=$(destdir)/$(sysconfdir) \
 
 -  Finally, with the :pkg-field:`build-type` ``Custom``, you can also write your
-   own setup script from scratch. It must conform to the interface
-   described in the section on `building and installing
-   packages <installing-packages.html>`__, and you may use the Cabal
+   own setup script from scratch, and you may use the Cabal
    library for all or part of the work. One option is to copy the source
    of ``Distribution.Simple``, and alter it for your needs. Good luck.
 

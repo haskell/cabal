@@ -47,7 +47,10 @@ projectFlagsOptions showOrParseArgs =
         (reqArg "FILE" (succeedReadE Flag) flagToList)
     , option ['z'] ["ignore-project"]
         "Ignore local project configuration"
-        flagIgnoreProject (\v flags -> flags { flagIgnoreProject = v })
+        -- Flag True: --ignore-project is given and --project-file is not given
+        -- Flag False: --ignore-project and --project-file is given
+        -- NoFlag: neither --ignore-project or --project-file is given
+        flagIgnoreProject (\v flags -> flags { flagIgnoreProject = if v == NoFlag then NoFlag else toFlag ((flagProjectFileName flags) == NoFlag && v == Flag True) })
         (yesNoOpt showOrParseArgs)
     ]
 

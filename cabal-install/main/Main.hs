@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE CPP, ScopedTypeVariables #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -78,6 +78,7 @@ import qualified Distribution.Client.CmdBuild     as CmdBuild
 import qualified Distribution.Client.CmdRepl      as CmdRepl
 import qualified Distribution.Client.CmdFreeze    as CmdFreeze
 import qualified Distribution.Client.CmdHaddock   as CmdHaddock
+import qualified Distribution.Client.CmdHaddockProject as CmdHaddockProject
 import qualified Distribution.Client.CmdInstall   as CmdInstall
 import qualified Distribution.Client.CmdRun       as CmdRun
 import qualified Distribution.Client.CmdTest      as CmdTest
@@ -111,15 +112,16 @@ import Distribution.Client.Types.Credentials  (Password (..))
 import Distribution.Client.Init               (initCmd)
 import Distribution.Client.Manpage            (manpageCmd)
 import Distribution.Client.ManpageFlags       (ManpageFlags (..))
-import Distribution.Client.Utils              (determineNumJobs
-                                              ,relaxEncodingErrors
-                                              ,cabalInstallVersion
-                                              )
+import Distribution.Client.Utils
+         ( determineNumJobs, relaxEncodingErrors )
+import Distribution.Client.Signal
+         ( installTerminationHandler )
+import Distribution.Client.Version
+         ( cabalInstallVersion )
 
 import Distribution.Package (packageId)
 import Distribution.PackageDescription
          ( BuildType(..), Executable(..), buildable )
-import Distribution.PackageDescription.Parsec ( readGenericPackageDescription )
 
 import Distribution.PackageDescription.PrettyPrint
          ( writeGenericPackageDescription )
@@ -138,6 +140,7 @@ import Distribution.Simple.Configure
          , getPersistBuildConfig, interpretPackageDbFlags
          , tryGetPersistBuildConfig )
 import qualified Distribution.Simple.LocalBuildInfo as LBI
+import Distribution.Simple.PackageDescription ( readGenericPackageDescription )
 import Distribution.Simple.Program (defaultProgramDb
                                    ,configureAllKnownPrograms
                                    ,simpleProgramInvocation
@@ -146,7 +149,7 @@ import Distribution.Simple.Program.Db (reconfigurePrograms)
 import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Simple.Utils
          ( cabalVersion, die', dieNoVerbosity, info, notice, topHandler
-         , findPackageDesc, tryFindPackageDesc )
+         , findPackageDesc, tryFindPackageDesc, createDirectoryIfMissingVerbose )
 import Distribution.Text
          ( display )
 import Distribution.Verbosity as Verbosity
@@ -160,18 +163,24 @@ import System.FilePath          ( dropExtension, splitExtension
                                 , takeExtension, (</>), (<.>) )
 import System.IO                ( BufferMode(LineBuffering), hSetBuffering
                                 , stderr, stdout )
-import System.Directory         (doesFileExist, getCurrentDirectory)
+import System.Directory         ( doesFileExist, getCurrentDirectory
+                                , withCurrentDirectory)
 import Data.Monoid              (Any(..))
-import Control.Exception        (try)
+import Control.Exception        (AssertionFailed, assert, try)
 
 
 -- | Entry point
 --
 main :: IO ()
 main = do
+  installTerminationHandler
   -- Enable line buffering so that we can get fast feedback even when piped.
   -- This is especially important for CI and build systems.
   hSetBuffering stdout LineBuffering
+
+  -- Check whether assertions are enabled and print a warning in that case.
+  warnIfAssertionsAreEnabled
+
   -- If the locale encoding for CLI doesn't support all Unicode characters,
   -- printing to it may fail unless we relax the handling of encoding errors
   -- when writing to stderr and stdout.
@@ -179,6 +188,14 @@ main = do
   relaxEncodingErrors stderr
   (args0, args1) <- break (== "--") <$> getArgs
   mainWorker =<< (++ args1) <$> expandResponse args0
+
+warnIfAssertionsAreEnabled :: IO ()
+warnIfAssertionsAreEnabled =
+  assert False (return ()) `catch`
+  (\(_e :: AssertionFailed) -> putStrLn assertionsEnabledMsg)
+  where
+    assertionsEnabledMsg =
+      "Warning: this is a debug build of cabal-install with assertions enabled."
 
 mainWorker :: [String] -> IO ()
 mainWorker args = do
@@ -232,7 +249,7 @@ mainWorker args = do
       , regularCmd infoCommand infoAction
       , regularCmd fetchCommand fetchAction
       , regularCmd getCommand getAction
-      , hiddenCmd  unpackCommand unpackAction
+      , regularCmd unpackCommand unpackAction
       , regularCmd checkCommand checkAction
       , regularCmd uploadCommand uploadAction
       , regularCmd reportCommand reportAction
@@ -253,6 +270,8 @@ mainWorker args = do
       , newCmd  CmdRepl.replCommand           CmdRepl.replAction
       , newCmd  CmdFreeze.freezeCommand       CmdFreeze.freezeAction
       , newCmd  CmdHaddock.haddockCommand     CmdHaddock.haddockAction
+      , newCmd  CmdHaddockProject.haddockProjectCommand
+                                              CmdHaddockProject.haddockProjectAction
       , newCmd  CmdInstall.installCommand     CmdInstall.installAction
       , newCmd  CmdRun.runCommand             CmdRun.runAction
       , newCmd  CmdTest.testCommand           CmdTest.testAction
@@ -907,10 +926,19 @@ unpackAction getFlags extraArgs globalFlags = do
   getAction getFlags extraArgs globalFlags
 
 initAction :: InitFlags -> [String] -> Action
-initAction initFlags extraArgs globalFlags
-    | not (null extraArgs) =
-      die' verbosity $ "'init' doesn't take any extra arguments: " ++ unwords extraArgs
-    | otherwise = do
+initAction initFlags extraArgs globalFlags = do
+  -- it takes the first value within extraArgs (if there's one)
+  -- and uses it as the root directory for the new project
+  case extraArgs of
+    [] -> initAction'
+    [projectDir] -> do
+      createDirectoryIfMissingVerbose verbosity True projectDir
+      withCurrentDirectory projectDir initAction'
+    _ -> die' verbosity $
+      "'init' only takes a single, optional, extra " ++
+      "argument for the project root directory"
+  where
+    initAction' = do
       confFlags <- loadConfigOrSandboxConfig verbosity globalFlags
       -- override with `--with-compiler` from CLI if available
       let confFlags' = savedConfigureFlags confFlags `mappend` compFlags
@@ -922,7 +950,7 @@ initAction initFlags extraArgs globalFlags
       withRepoContext verbosity globalFlags' $ \repoContext ->
         initCmd verbosity (configPackageDB' confFlags')
           repoContext comp progdb initFlags'
-  where
+
     verbosity = fromFlag (initVerbosity initFlags)
     compFlags = mempty { configHcPath = initHcPath initFlags }
 
@@ -962,7 +990,7 @@ manpageAction :: [CommandSpec action] -> ManpageFlags -> [String] -> Action
 manpageAction commands flags extraArgs _ = do
   let verbosity = fromFlag (manpageVerbosity flags)
   unless (null extraArgs) $
-    die' verbosity $ "'manpage' doesn't take any extra arguments: " ++ unwords extraArgs
+    die' verbosity $ "'man' doesn't take any extra arguments: " ++ unwords extraArgs
   pname <- getProgName
   let cabalCmd = if takeExtension pname == ".exe"
                  then dropExtension pname

@@ -477,9 +477,8 @@ exAvSrcPkg ex =
           -- We ignore these warnings because some unit tests test that the
           -- solver allows unknown extensions/languages when the compiler
           -- supports them.
-          let ignore = ["Unknown extensions:", "Unknown languages:"]
-          in [ err | err <- C.checkPackage (srcpkgDescription package) Nothing
-             , not $ any (`isPrefixOf` C.explanation err) ignore ]
+          let checks = C.checkPackage (srcpkgDescription package) Nothing
+          in filter (not . isUnknownLangExt) checks
     in if null pkgCheckErrors
        then package
        else error $ "invalid GenericPackageDescription for package "
@@ -666,6 +665,14 @@ exAvSrcPkg ex =
         (directDeps, []) -> map mkDirect directDeps
         _                -> error "mkSetupDeps: custom setup has non-simple deps"
 
+    -- Check for `UnknownLanguages` and `UnknownExtensions`. See
+    isUnknownLangExt :: C.PackageCheck -> Bool
+    isUnknownLangExt pc = case C.explanation pc of
+                            C.UnknownExtensions {} -> True
+                            C.UnknownLanguages {} -> True
+                            _ -> False
+
+
 mkSimpleVersion :: ExamplePkgVersion -> C.Version
 mkSimpleVersion n = C.mkVersion [n, 0, 0]
 
@@ -733,6 +740,7 @@ exResolve :: ExampleDb
           -> FineGrainedConflicts
           -> MinimizeConflictSet
           -> IndependentGoals
+          -> PreferOldest
           -> ReorderGoals
           -> AllowBootLibInstalls
           -> OnlyConstrained
@@ -745,7 +753,7 @@ exResolve :: ExampleDb
           -> EnableAllTests
           -> Progress String String CI.SolverInstallPlan.SolverInstallPlan
 exResolve db exts langs pkgConfigDb targets mbj countConflicts
-          fineGrainedConflicts minimizeConflictSet indepGoals reorder
+          fineGrainedConflicts minimizeConflictSet indepGoals prefOldest reorder
           allowBootLibInstalls onlyConstrained enableBj solveExes goalOrder
           constraints prefs verbosity enableAllTests
     = resolveDependencies C.buildPlatform compiler pkgConfigDb Modular params
@@ -774,6 +782,7 @@ exResolve db exts langs pkgConfigDb targets mbj countConflicts
                    $ setFineGrainedConflicts fineGrainedConflicts
                    $ setMinimizeConflictSet minimizeConflictSet
                    $ setIndependentGoals indepGoals
+                   $ (if asBool prefOldest then setPreferenceDefault PreferAllOldest else id)
                    $ setReorderGoals reorder
                    $ setMaxBackjumps mbj
                    $ setAllowBootLibInstalls allowBootLibInstalls

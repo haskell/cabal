@@ -64,7 +64,8 @@ import Data.TreeDiff.Pretty          (ansiWlEditExprCompact)
 parseIndex :: (Monoid a, NFData a) => (FilePath -> Bool)
            -> (FilePath -> B.ByteString -> IO a) -> IO a
 parseIndex predicate action = do
-    configPath <- getConfigFilePath mempty
+    cabalDir   <- getCabalDir
+    configPath <- getCabalConfigPath cabalDir
     cfg        <- B.readFile configPath
     cfgFields  <- either (fail . show) pure $ Parsec.readFields cfg
     repoCache  <- case lookupInConfig "remote-repo-cache" cfgFields of
@@ -73,6 +74,18 @@ parseIndex predicate action = do
     let repos        = reposFromConfig cfgFields
         tarName repo = repoCache </> repo </> "01-index.tar"
     mconcat <$> traverse (parseIndex' predicate action . tarName) repos
+  where
+    getCabalDir = do
+        mx <- lookupEnv "CABAL_DIR"
+        case mx of
+            Just x  -> return x
+            Nothing -> getAppUserDataDirectory "cabal"
+    getCabalConfigPath cabalDir = do
+        mx <- lookupEnv "CABAL_CONFIG"
+        case mx of
+            Just x  -> return x
+            Nothing -> return (cabalDir </> "config")
+
 
 parseIndex'
     :: (Monoid a, NFData a)
@@ -236,7 +249,7 @@ roundtripTest testFieldsTransform fpath bs = do
         then do
             parsecFields <- assertRight $ Parsec.readFields patchedBs
             let prettyFields = PP.fromParsecFields parsecFields
-            let bs'' = PP.showFields (return []) prettyFields
+            let bs'' = PP.showFields (return PP.NoComment) prettyFields
             z0 <- parse "3rd" (toUTF8BS bs'')
 
             -- note: we compare "raw" GPDs, on purpose; stricter equality

@@ -8,9 +8,9 @@ The current recommended way of developing Cabal is to use the
 that you have a sufficiently recent cabal-install (see above),
 it is sufficient to run:
 
-~~~~
+```
 cabal v2-build cabal
-~~~~
+```
 
 To build a local, development copy of cabal-install.  The location
 of your build products will vary depending on which version of
@@ -20,11 +20,11 @@ to find the binary (or just run `find -type f -executable -name cabal`).
 
 Here are some other useful variations on the commands:
 
-~~~~
+```
 cabal v2-build Cabal # build library only
-cabal v2-build Cabal:unit-tests # build Cabal's unit test suite
+cabal v2-build Cabal-tests:unit-tests # build Cabal's unit test suite
 cabal v2-build cabal-tests # etc...
-~~~~
+```
 
 Running tests
 -------------
@@ -91,7 +91,7 @@ run without it).
 
 There are also other test suites:
 
-* `Cabal:unit-tests` are small, quick-running unit tests
+* `Cabal-tests:unit-tests` are small, quick-running unit tests
   on small pieces of functionality in Cabal.  If you are working
   on some utility functions in the Cabal library you should run this
   test suite.
@@ -113,10 +113,34 @@ names. When running `cabal-install` test suites, one need only use `cabal test` 
 `cabal run <test-target>` in order to test locally.
 
 
-Conventions
------------
+Whitespace Conventions
+----------------------
 
-* Spaces, not tabs.
+* No tab characters allowed.
+* No trailing whitespace allowed.
+* File needs to be terminated by a newline character.
+
+These conventions are enforced by the
+[fix-whitespace](https://hackage.haskell.org/package/fix-whitespace)
+tool.  Install it from hackage as usual (`cabal install fix-whitespace`)
+and run it in the project root to fix whitespace violations.
+
+The files included in the automatic whitespace check are specified in
+`fix-whitespace.yaml`.  Please add to this file if you add textfiles
+to this repository that are not included by the rules given there.
+Note that files that make essential use of tab characters (like `Makefile`)
+should _not_ be included in the automatic check.
+
+Whitespace conventions are enforced by
+[CI](https://github.com/haskell/cabal/actions/workflows/whitespace.yml).
+If you push a fix of a whitespace violation, please do so in a
+_separate commit_.
+
+
+
+
+Other Conventions
+-----------------
 
 * Try to follow style conventions of a file you are modifying, and
   avoid gratuitous reformatting (it makes merges harder!)
@@ -129,10 +153,6 @@ Conventions
   us out and add a comment.  We'll try to remind you during code review.
 
 * If you do something tricky or non-obvious, add a comment.
-
-* If your commit only touches comments, you can use `[ci skip]`
-  anywhere in the body of the commit message to avoid needlessly
-  triggering the build bots.
 
 * For local imports (Cabal module importing Cabal module), import lists
   are NOT required (although you may use them at your discretion.)  For
@@ -187,6 +207,40 @@ We like [this style guide][guide].
 
 [guide]: https://github.com/tibbe/haskell-style-guide/blob/master/haskell-style.md
 
+GitHub Ticket Conventions
+-------------------
+
+Each major `Cabal`/`cabal-install` release (e.g. 3.4, 3.6, etc.) has a
+corresponding GitHub Project and milestone. A ticket is included in a release's
+project if the release managers are tenatively planning on including a fix for
+the ticket in the release, i.e. if they are actively seeking someone to work on
+the ticket.
+
+By contrast, a ticket is milestoned to a given release if we are open to
+accepting a fix in that release, i.e. we would very much appreciate someone
+working on it, but are not committing to actively sourcing someone to work on
+it.
+
+GitHub Pull Request Conventions
+-------------------
+
+Every (non-backport) pull request has to go through a review and get 2
+approvals. After this is done, the author of the pull request is expected to add
+any final touches they deem important and put the `merge me` label on the pull
+request. If the author lacks permissions to apply labels, they are welcome to
+explicitly signal the merge intent on the discussion thread of the pull request,
+at which point others (e.g., reviewers) apply the label. Merge buttons are
+reserved for exceptional situations, e.g., CI fixes being iterated on or
+backports/patches that need to be expedited for a release.
+
+Currently there is a 2 day buffer for potential extra feedback between the last
+update of a pull request (e.g. a commit, a rebase, an addition of the `merge me`
+label) and the moment the Mergify bot picks up the pull request for a merge.
+
+If your pull request consists of several commits, consider using `squash+merge
+me` instead of `merge me`: the Mergify bot will squash all the commits into one
+and concatenate the commit messages of the commits before merging.
+
 Changelog
 ---------
 
@@ -230,6 +284,9 @@ You can find a large number of real-world examples of changelog files
 At release time, the entries will be merged with
 [this tool](https://github.com/phadej/changelog-d).
 
+In addition, if you're changing the .cabal file format specification you should
+add an entry in `doc/file-format-changelog.rst`.
+
 Communicating
 -------------
 
@@ -240,15 +297,17 @@ There are a few main venues of communication:
 * For more organizational concerns, the [mailing
   list](http://www.haskell.org/mailman/listinfo/cabal-devel) is used.
 
-* Many developers idle on `#hackage` on `irc.freenode.net` ([archives](http://ircbrowse.net/browse/hackage)).  `#ghc` ([archives](http://ircbrowse.net/browse/ghc)) is also a decently good bet.
+* Many developers idle on `#hackage` on [`irc.libera.chat`](https://libera.chat). The `#ghc` channel is also a decently good bet.
+  * You can join the channel using a web client, even anonymously: https://web.libera.chat/#hackage
+  * Alternatively you can join it using [matrix](https://matrix.org/): https://matrix.to/#/#hackage:libera.chat
 
 Releases
 --------
 
 Notes for how to make a release are at the
 wiki page ["Making a release"](https://github.com/haskell/cabal/wiki/Making-a-release).
-Currently, @23Skidoo, @rthomas, @tibbe and @dcoutts have access to
-`haskell.org/cabal`, and @davean is the point of contact for getting
+Currently, [@emilypi](https://github.com/emilypi), [@fgaz](https://github.com/fgaz) and [@Mikolaj](https://github.com/Mikolaj) have access to
+`haskell.org/cabal`, and [@Mikolaj](https://github.com/Mikolaj) is the point of contact for getting
 permissions.
 
 API Documentation

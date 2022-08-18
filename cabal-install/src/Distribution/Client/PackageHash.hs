@@ -34,7 +34,7 @@ import Distribution.Types.Flag
          ( FlagAssignment, showFlagAssignment )
 import Distribution.Simple.Compiler
          ( CompilerId, OptimisationLevel(..), DebugInfoLevel(..)
-         , ProfDetailLevel(..), showProfDetailLevel )
+         , ProfDetailLevel(..), PackageDB, showProfDetailLevel )
 import Distribution.Simple.InstallDirs
          ( PathTemplate, fromPathTemplate )
 import Distribution.Types.PkgconfigVersion (PkgconfigVersion)
@@ -156,7 +156,7 @@ hashedInstalledPackageIdVeryShort pkghashinputs@PackageHashInputs{pkgHashPkgId} 
   where
     PackageIdentifier name version = pkgHashPkgId
 
--- | All the information that contribues to a package's hash, and thus its
+-- | All the information that contributes to a package's hash, and thus its
 -- 'InstalledPackageId'.
 --
 data PackageHashInputs = PackageHashInputs {
@@ -200,6 +200,7 @@ data PackageHashConfigInputs = PackageHashConfigInputs {
        pkgHashExtraIncludeDirs    :: [FilePath],
        pkgHashProgPrefix          :: Maybe PathTemplate,
        pkgHashProgSuffix          :: Maybe PathTemplate,
+       pkgHashPackageDbs          :: [Maybe PackageDB],
 
        -- Haddock options
        pkgHashDocumentation       :: Bool,
@@ -214,7 +215,10 @@ data PackageHashConfigInputs = PackageHashConfigInputs {
        pkgHashHaddockCss          :: Maybe FilePath,
        pkgHashHaddockLinkedSource :: Bool,
        pkgHashHaddockQuickJump    :: Bool,
-       pkgHashHaddockContents     :: Maybe PathTemplate
+       pkgHashHaddockContents     :: Maybe PathTemplate,
+       pkgHashHaddockIndex        :: Maybe PathTemplate,
+       pkgHashHaddockBaseUrl      :: Maybe String,
+       pkgHashHaddockLib          :: Maybe String
 
 --     TODO: [required eventually] pkgHashToolsVersions     ?
 --     TODO: [required eventually] pkgHashToolsExtraOptions ?
@@ -293,6 +297,7 @@ renderPackageHashInputs PackageHashInputs{
       , opt   "extra-include-dirs" [] unwords pkgHashExtraIncludeDirs
       , opt   "prog-prefix" Nothing (maybe "" fromPathTemplate) pkgHashProgPrefix
       , opt   "prog-suffix" Nothing (maybe "" fromPathTemplate) pkgHashProgSuffix
+      , opt   "package-dbs" [] (unwords . map show) pkgHashPackageDbs
 
       , opt   "documentation"  False prettyShow pkgHashDocumentation
       , opt   "haddock-hoogle" False prettyShow pkgHashHaddockHoogle
@@ -307,6 +312,9 @@ renderPackageHashInputs PackageHashInputs{
       , opt   "haddock-hyperlink-source" False prettyShow pkgHashHaddockLinkedSource
       , opt   "haddock-quickjump" False prettyShow pkgHashHaddockQuickJump
       , opt   "haddock-contents-location" Nothing (maybe "" fromPathTemplate) pkgHashHaddockContents
+      , opt   "haddock-index-location" Nothing (maybe "" fromPathTemplate) pkgHashHaddockIndex
+      , opt   "haddock-base-url" Nothing (fromMaybe "") pkgHashHaddockBaseUrl
+      , opt   "haddock-lib" Nothing (fromMaybe "") pkgHashHaddockLib
 
       ] ++ Map.foldrWithKey (\prog args acc -> opt (prog ++ "-options") [] unwords args : acc) [] pkgHashProgramArgs
   where

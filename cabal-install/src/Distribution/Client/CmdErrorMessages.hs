@@ -72,6 +72,13 @@ renderListCommaAnd [x]    = x
 renderListCommaAnd [x,x'] = x ++ " and " ++ x'
 renderListCommaAnd (x:xs) = x ++ ", " ++ renderListCommaAnd xs
 
+renderListTabular :: [String] -> String
+renderListTabular = ("\n"++) . unlines . map ("| * "++)
+
+renderListPretty :: [String] -> String
+renderListPretty xs = if length xs > 5 then renderListTabular xs
+                                       else renderListCommaAnd xs
+
 -- | Render a list of things in the style @blah blah; this that; and the other@
 renderListSemiAnd :: [String] -> String
 renderListSemiAnd []     = ""
@@ -94,7 +101,7 @@ sortGroupOn key = map (\(x:|xs) -> (key x, x:xs))
 
 
 ----------------------------------------------------
--- Renderering for a few project and package types
+-- Rendering for a few project and package types
 --
 
 renderTargetSelector :: TargetSelector -> String
@@ -201,7 +208,7 @@ renderComponentKind Plural ckind = case ckind of
 
 
 -------------------------------------------------------
--- Renderering error messages for TargetProblem
+-- Rendering error messages for TargetProblem
 --
 
 -- | Default implementation of 'reportTargetProblems' simply renders one problem per line.
@@ -302,7 +309,7 @@ renderTargetProblem verb _ (TargetProblemNoSuchComponent pkgid cname) =
 
 
 ------------------------------------------------------------
--- Renderering error messages for TargetProblemNoneEnabled
+-- Rendering error messages for TargetProblemNoneEnabled
 --
 
 -- | Several commands have a @TargetProblemNoneEnabled@ problem constructor.
@@ -330,10 +337,13 @@ renderTargetProblemNoneEnabled verb targetSelector targets =
               [ "the " ++ showComponentName availableTargetComponentName
               | AvailableTarget {availableTargetComponentName} <- targets' ]
          ++ plural (listPlural targets') " is " " are "
-         ++ "not available because the solver did not find a plan that "
-         ++ "included the " ++ renderOptionalStanza Plural stanza
-         ++ ". Force the solver to enable this for all packages by adding the "
-         ++ "line 'tests: True' to the 'cabal.project.local' file."
+         ++ "not available because the solver picked a plan that does not "
+         ++ "include the " ++ renderOptionalStanza Plural stanza
+         ++ ", perhaps because no such plan exists. To see the error message "
+         ++ "explaining the problems with such plans, force the solver to "
+         ++ "include the " ++ renderOptionalStanza Plural stanza ++ " for all "
+         ++ "packages, by adding the line 'tests: True' to the "
+         ++ "'cabal.project.local' file."
         (TargetNotBuildable, _) ->
             renderListCommaAnd
               [ "the " ++ showComponentName availableTargetComponentName
@@ -367,7 +377,7 @@ renderTargetProblemNoneEnabled verb targetSelector targets =
       )
 
 ------------------------------------------------------------
--- Renderering error messages for TargetProblemNoneEnabled
+-- Rendering error messages for TargetProblemNoneEnabled
 --
 
 -- | Several commands have a @TargetProblemNoTargets@ problem constructor.
@@ -402,7 +412,7 @@ renderTargetProblemNoTargets verb targetSelector =
         error $ "renderTargetProblemNoTargets: " ++ show ts
 
 -----------------------------------------------------------
--- Renderering error messages for CannotPruneDependencies
+-- Rendering error messages for CannotPruneDependencies
 --
 
 renderCannotPruneDependencies :: CannotPruneDependencies -> String
@@ -433,7 +443,7 @@ renderCannotPruneDependencies (CannotPruneDependencies brokenPackages) =
            ++ "    (name of library, executable, test-suite or benchmark)\n"
            ++ " - build Data.Foo       -- module name\n"
            ++ " - build Data/Foo.hsc   -- file name\n\n"
-           ++ "An ambigious target can be qualified by package, component\n"
+           ++ "An ambiguous target can be qualified by package, component\n"
            ++ "and/or component kind (lib|exe|test|bench|flib)\n"
            ++ " - build foo:tests      -- component qualified by package\n"
            ++ " - build tests:Data.Foo -- module qualified by component\n"

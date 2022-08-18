@@ -138,7 +138,7 @@ sdistOptions showOrParseArgs =
 
 sdistAction :: (ProjectFlags, SdistFlags) -> [String] -> GlobalFlags -> IO ()
 sdistAction (ProjectFlags{..}, SdistFlags{..}) targetStrings globalFlags = do
-    (baseCtx, distDirLayout) <- withProjectOrGlobalConfig verbosity ignoreProject globalConfigFlag withProject withoutProject
+    (baseCtx, distDirLayout) <- withProjectOrGlobalConfig verbosity flagIgnoreProject globalConfigFlag withProject withoutProject
 
     let localPkgs = localPackages baseCtx
 
@@ -187,7 +187,6 @@ sdistAction (ProjectFlags{..}, SdistFlags{..}) targetStrings globalFlags = do
     listSources    = fromFlagOrDefault False sdistListSources
     nulSeparated   = fromFlagOrDefault False sdistNulSeparated
     mOutputPath    = flagToMaybe sdistOutputPath
-    ignoreProject  = flagIgnoreProject
 
     prjConfig :: ProjectConfig
     prjConfig = commandLineFlagsToProjectConfig
@@ -273,9 +272,16 @@ reifyTargetSelectors pkgs sels =
         ([], sels') -> Right sels'
         (errs, _)   -> Left errs
     where
-        flatten (SpecificSourcePackage pkg@SourcePackage{}) = pkg
-        flatten _ = error "The impossible happened: how do we not know about a local package?"
-        pkgs' = fmap flatten pkgs
+        -- there can be pkgs which are in extra-packages:
+        -- these are not SpecificSourcePackage
+        --
+        -- Why these packages are in localPkgs, it's confusing.
+        -- Anyhow, better to be lenient here.
+        --
+        flatten (SpecificSourcePackage pkg@SourcePackage{}) = Just pkg
+        flatten _                                           = Nothing
+
+        pkgs' = mapMaybe flatten pkgs
 
         getPkg pid = case find ((== pid) . packageId) pkgs' of
             Just pkg -> Right pkg

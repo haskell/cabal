@@ -25,6 +25,7 @@ module Distribution.Client.BuildReports.Anonymous (
     parseBuildReport,
     parseBuildReportList,
     showBuildReport,
+    cabalInstallID
 --    showList,
   ) where
 
@@ -33,14 +34,13 @@ import Prelude ()
 
 import Distribution.CabalSpecVersion
 import Distribution.Client.BuildReports.Types
-import Distribution.Client.Utils              (cabalInstallVersion)
+import Distribution.Client.Version            (cabalInstallVersion)
 import Distribution.Compiler                  (CompilerId (..))
 import Distribution.FieldGrammar
-import Distribution.Fields                    (readFields, showFields)
-import Distribution.Fields.ParseResult        (ParseResult, parseFatalFailure, runParseResult)
+import Distribution.Fields
 import Distribution.Package                   (PackageIdentifier (..), mkPackageName)
 import Distribution.PackageDescription        (FlagAssignment)
-import Distribution.Parsec                    (PError (..), zeroPos)
+import Distribution.Parsec
 import Distribution.System                    (Arch, OS)
 
 import qualified Distribution.Client.BuildReports.Lens as L
@@ -154,4 +154,4 @@ parseBuildReportList str =
 -- Pretty-printing
 
 showBuildReport :: BuildReport -> String
-showBuildReport = showFields (const []) . prettyFieldGrammar CabalSpecV2_4 fieldDescrs
+showBuildReport = showFields (const NoComment) . prettyFieldGrammar CabalSpecV2_4 fieldDescrs

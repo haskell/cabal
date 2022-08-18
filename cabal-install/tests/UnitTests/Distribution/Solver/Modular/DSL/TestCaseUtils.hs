@@ -7,6 +7,7 @@ module UnitTests.Distribution.Solver.Modular.DSL.TestCaseUtils (
   , disableFineGrainedConflicts
   , minimizeConflictSet
   , independentGoals
+  , preferOldest
   , allowBootLibInstalls
   , onlyConstrained
   , disableBackjumping
@@ -43,7 +44,7 @@ import Distribution.Verbosity
 
 -- cabal-install
 import qualified Distribution.Solver.Types.PackagePath as P
-import Distribution.Solver.Types.PkgConfigDb (PkgConfigDb, pkgConfigDbFromList)
+import Distribution.Solver.Types.PkgConfigDb (PkgConfigDb (..), pkgConfigDbFromList)
 import Distribution.Solver.Types.Settings
 import Distribution.Solver.Types.Variable
 import Distribution.Client.Dependency (foldProgress)
@@ -65,6 +66,10 @@ minimizeConflictSet test =
 -- for the goals as if we were solving for each goal independently.
 independentGoals :: SolverTest -> SolverTest
 independentGoals test = test { testIndepGoals = IndependentGoals True }
+
+-- | Combinator to turn on --prefer-oldest
+preferOldest :: SolverTest -> SolverTest
+preferOldest test = test { testPreferOldest = PreferOldest True }
 
 allowBootLibInstalls :: SolverTest -> SolverTest
 allowBootLibInstalls test =
@@ -111,6 +116,7 @@ data SolverTest = SolverTest {
   , testFineGrainedConflicts :: FineGrainedConflicts
   , testMinimizeConflictSet  :: MinimizeConflictSet
   , testIndepGoals           :: IndependentGoals
+  , testPreferOldest         :: PreferOldest
   , testAllowBootLibInstalls :: AllowBootLibInstalls
   , testOnlyConstrained      :: OnlyConstrained
   , testEnableBackjumping    :: EnableBackjumping
@@ -166,7 +172,7 @@ mkTest :: ExampleDb
        -> [String]
        -> SolverResult
        -> SolverTest
-mkTest = mkTestExtLangPC Nothing Nothing []
+mkTest = mkTestExtLangPC Nothing Nothing (Just [])
 
 mkTestExts :: [Extension]
            -> ExampleDb
@@ -174,7 +180,7 @@ mkTestExts :: [Extension]
            -> [String]
            -> SolverResult
            -> SolverTest
-mkTestExts exts = mkTestExtLangPC (Just exts) Nothing []
+mkTestExts exts = mkTestExtLangPC (Just exts) Nothing (Just [])
 
 mkTestLangs :: [Language]
             -> ExampleDb
@@ -182,25 +188,25 @@ mkTestLangs :: [Language]
             -> [String]
             -> SolverResult
             -> SolverTest
-mkTestLangs langs = mkTestExtLangPC Nothing (Just langs) []
+mkTestLangs langs = mkTestExtLangPC Nothing (Just langs) (Just [])
 
-mkTestPCDepends :: [(String, String)]
+mkTestPCDepends :: Maybe [(String, String)]
                 -> ExampleDb
                 -> String
                 -> [String]
                 -> SolverResult
                 -> SolverTest
-mkTestPCDepends pkgConfigDb = mkTestExtLangPC Nothing Nothing pkgConfigDb
+mkTestPCDepends mPkgConfigDb = mkTestExtLangPC Nothing Nothing mPkgConfigDb
 
 mkTestExtLangPC :: Maybe [Extension]
                 -> Maybe [Language]
-                -> [(String, String)]
+                -> Maybe [(String, String)]
                 -> ExampleDb
                 -> String
                 -> [String]
                 -> SolverResult
                 -> SolverTest
-mkTestExtLangPC exts langs pkgConfigDb db label targets result = SolverTest {
+mkTestExtLangPC exts langs mPkgConfigDb db label targets result = SolverTest {
     testLabel                = label
   , testTargets              = targets
   , testResult               = result
@@ -208,6 +214,7 @@ mkTestExtLangPC exts langs pkgConfigDb db label targets result = SolverTest {
   , testFineGrainedConflicts = FineGrainedConflicts True
   , testMinimizeConflictSet  = MinimizeConflictSet False
   , testIndepGoals           = IndependentGoals False
+  , testPreferOldest         = PreferOldest False
   , testAllowBootLibInstalls = AllowBootLibInstalls False
   , testOnlyConstrained      = OnlyConstrainedNone
   , testEnableBackjumping    = EnableBackjumping True
@@ -219,7 +226,7 @@ mkTestExtLangPC exts langs pkgConfigDb db label targets result = SolverTest {
   , testDb                   = db
   , testSupportedExts        = exts
   , testSupportedLangs       = langs
-  , testPkgConfigDb          = pkgConfigDbFromList pkgConfigDb
+  , testPkgConfigDb          = maybe NoPkgConfigDb pkgConfigDbFromList mPkgConfigDb
   , testEnableAllTests       = EnableAllTests False
   }
 
@@ -230,7 +237,7 @@ runTest SolverTest{..} = askOption $ \(OptionShowSolverLog showSolverLog) ->
                      testSupportedLangs testPkgConfigDb testTargets
                      testMaxBackjumps (CountConflicts True)
                      testFineGrainedConflicts testMinimizeConflictSet
-                     testIndepGoals (ReorderGoals False) testAllowBootLibInstalls
+                     testIndepGoals testPreferOldest (ReorderGoals False) testAllowBootLibInstalls
                      testOnlyConstrained testEnableBackjumping testSolveExecutables
                      (sortGoals <$> testGoalOrder) testConstraints
                      testSoftConstraints testVerbosity testEnableAllTests

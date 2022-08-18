@@ -31,7 +31,7 @@ import Distribution.Package
 import Distribution.Simple.Setup
          ( Flag(..), fromFlag, fromFlagOrDefault, flagToMaybe )
 import Distribution.Simple.Utils
-         ( notice, die', info, writeFileAtomic )
+         ( notice, die', info, warn, writeFileAtomic )
 import qualified Distribution.PackageDescription as PD
 import Distribution.Simple.Program
          ( programName )
@@ -49,8 +49,11 @@ import qualified Distribution.Client.Tar as Tar (extractTarGzFile)
 import Distribution.Client.IndexUtils
         ( getSourcePackagesAtIndexState, TotalIndexState, ActiveRepos )
 import Distribution.Solver.Types.SourcePackage
+import Distribution.PackageDescription.PrettyPrint
+        ( writeGenericPackageDescription )
 
 import qualified Data.Map as Map
+import Control.Monad ( mapM_ )
 import System.Directory
          ( createDirectoryIfMissing, doesDirectoryExist, doesFileExist )
 import System.FilePath
@@ -67,7 +70,7 @@ get :: Verbosity
 get verbosity _ _ _ [] =
     notice verbosity "No packages requested. Nothing to do."
 
-get verbosity repoCtxt globalFlags getFlags userTargets = do
+get verbosity repoCtxt _ getFlags userTargets = do
   let useSourceRepo = case getSourceRepository getFlags of
                         NoFlag -> False
                         _      -> True
@@ -84,7 +87,6 @@ get verbosity repoCtxt globalFlags getFlags userTargets = do
   (sourcePkgDb, _, _) <- getSourcePackagesAtIndexState verbosity repoCtxt idxState activeRepos
 
   pkgSpecifiers <- resolveUserTargets verbosity repoCtxt
-                   (fromFlag $ globalWorldFile globalFlags)
                    (packageIndex sourcePkgDb)
                    userTargets
 
@@ -95,21 +97,34 @@ get verbosity repoCtxt globalFlags getFlags userTargets = do
   unless (null prefix) $
     createDirectoryIfMissing True prefix
 
-  if useSourceRepo
-    then clone  pkgs
-    else unpack pkgs
+  if onlyPkgDescr
+    then do
+      when useSourceRepo $
+        warn verbosity $
+          "Ignoring --source-repository for --only-package-description"
+
+      mapM_ (unpackOnlyPkgDescr verbosity prefix) pkgs
+    else
+      if useSourceRepo
+        then clone pkgs
+        else unpack pkgs
 
   where
+    resolverParams :: SourcePackageDb -> [PackageSpecifier UnresolvedSourcePackage] -> DepResolverParams
     resolverParams sourcePkgDb pkgSpecifiers =
         --TODO: add command-line constraint and preference args for unpack
         standardInstallPolicy mempty sourcePkgDb pkgSpecifiers
 
+    onlyPkgDescr = fromFlagOrDefault False (getOnlyPkgDescr getFlags)
+
+    prefix :: String
     prefix = fromFlagOrDefault "" (getDestDir getFlags)
 
     clone :: [UnresolvedSourcePackage] -> IO ()
     clone = clonePackagesFromSourceRepo verbosity prefix kind
           . map (\pkg -> (packageId pkg, packageSourceRepos pkg))
       where
+        kind :: Maybe RepoKind
         kind = fromFlag . getSourceRepository $ getFlags
         packageSourceRepos :: SourcePackage loc -> [PD.SourceRepo]
         packageSourceRepos = PD.sourceRepos
@@ -140,6 +155,7 @@ get verbosity repoCtxt globalFlags getFlags userTargets = do
           LocalUnpackedPackage _ ->
             error "Distribution.Client.Get.unpack: the impossible happened."
       where
+        usePristine :: Bool
         usePristine = fromFlagOrDefault False (getPristine getFlags)
 
 checkTarget :: Verbosity -> UserTarget -> IO ()
@@ -185,6 +201,23 @@ unpackPackage verbosity prefix pkgid descOverride pkgPath = do
                       ++ " with the latest revision from the index."
         writeFileAtomic descFilePath pkgtxt
 
+
+-- | Write a @pkgId.cabal@ file with the package description to the destination
+-- directory, unless one already exists.
+unpackOnlyPkgDescr :: Verbosity -> FilePath -> UnresolvedSourcePackage -> IO ()
+unpackOnlyPkgDescr verbosity dstDir pkg = do
+    let pkgFile = dstDir </> prettyShow (packageId pkg) <.> "cabal"
+    existsFile <- doesFileExist pkgFile
+    when existsFile $ die' verbosity $
+      "The file \"" ++ pkgFile ++ "\" already exists, not overwriting."
+    existsDir <- doesDirectoryExist (addTrailingPathSeparator pkgFile)
+    when existsDir $ die' verbosity $
+      "A directory \"" ++ pkgFile ++ "\" is in the way, not unpacking."
+    notice verbosity $ "Writing package description to " ++ pkgFile
+    case srcpkgDescrOverride pkg of
+      Just pkgTxt -> writeFileAtomic pkgFile pkgTxt
+      Nothing ->
+        writeGenericPackageDescription pkgFile (srcpkgDescription pkg)
 
 -- ------------------------------------------------------------
 -- * Cloning packages from their declared source repositories
@@ -291,7 +324,8 @@ clonePackagesFromSourceRepo verbosity destDirPrefix
         Left SourceRepoLocationUnspecified ->
           throwIO (ClonePackageNoRepoLocation pkgid repo)
 
-      let destDir = destDirPrefix </> prettyShow (packageName pkgid)
+      let destDir :: FilePath
+          destDir = destDirPrefix </> prettyShow (packageName pkgid)
       destDirExists  <- doesDirectoryExist destDir
       destFileExists <- doesFileExist      destDir
       when (destDirExists || destFileExists) $

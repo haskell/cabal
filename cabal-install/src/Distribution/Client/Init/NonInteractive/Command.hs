@@ -46,7 +46,6 @@ import Distribution.Version (Version)
 import Distribution.ModuleName (ModuleName, components)
 import Distribution.Types.Dependency (Dependency(..))
 import Distribution.Types.PackageName (PackageName, unPackageName)
-import qualified Distribution.SPDX as SPDX
 import Distribution.Client.Init.Defaults
 import Distribution.Client.Init.NonInteractive.Heuristics
 import Distribution.Client.Init.Utils
@@ -63,6 +62,7 @@ import Language.Haskell.Extension (Language(..), Extension(..))
 import System.FilePath (splitDirectories, (</>))
 import Distribution.Simple.Compiler
 import qualified Data.Set as Set
+import Distribution.FieldGrammar.Newtypes
 
 
 -- | Main driver for interactive prompt code.
@@ -115,7 +115,8 @@ createProject comp v pkgIx srcDb initFlags = do
   case pkgType of
     Library -> do
       libTarget <- genLibTarget initFlags comp pkgIx cabalSpec
-      testTarget <- genTestTarget initFlags comp pkgIx cabalSpec
+      testTarget <- addLibDepToTest pkgName <$>
+        genTestTarget initFlags comp pkgIx cabalSpec
 
       return $ ProjectSettings
         (mkOpts comments cabalSpec) pkgDesc
@@ -130,13 +131,15 @@ createProject comp v pkgIx srcDb initFlags = do
 
     LibraryAndExecutable -> do
       libTarget <- genLibTarget initFlags comp pkgIx cabalSpec
-      exeTarget <- genExeTarget initFlags comp pkgIx cabalSpec
-      testTarget <- genTestTarget initFlags comp pkgIx cabalSpec
+      exeTarget <- addLibDepToExe pkgName <$>
+        genExeTarget initFlags comp pkgIx cabalSpec
+      testTarget <- addLibDepToTest pkgName <$>
+        genTestTarget initFlags comp pkgIx cabalSpec
 
       return $ ProjectSettings
         (mkOpts comments cabalSpec) pkgDesc (Just libTarget)
         (Just exeTarget) testTarget
-    
+
     TestSuite -> do
       testTarget <- genTestTarget initFlags comp pkgIx cabalSpec
 
@@ -267,7 +270,7 @@ versionHeuristics flags = getVersion flags $ return defaultVersion
 -- | Choose a license for the package.
 -- The license can come from Initflags (license field), if it is not present
 -- then prompt the user from a predefined list of licenses.
-licenseHeuristics :: Interactive m => InitFlags -> m SPDX.License
+licenseHeuristics :: Interactive m => InitFlags -> m SpecLicense
 licenseHeuristics flags = getLicense flags $ guessLicense flags
 
 -- | The author's name. Prompt, or try to guess from an existing
@@ -355,7 +358,7 @@ exposedModulesHeuristics flags = do
 
           otherModules' <- libOtherModulesHeuristics flags
           return $ filter (`notElem` otherModules') modulesNames
-        
+
         else
           return []
 

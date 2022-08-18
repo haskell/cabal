@@ -1,0 +1,15 @@
+cabal-version: >= 1.2
+build-type: Custom
+name: pkg
+version: 0
+category: example
+maintainer: none@example.com
+synopsis: synopsis
+description: description
+license: ISC
+license-file: LICENSE
+
+custom-setup
+
+library
+  exposed-modules: Foo

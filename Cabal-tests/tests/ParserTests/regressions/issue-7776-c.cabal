@@ -1,0 +1,19 @@
+cabal-version: 3.4
+name:          issue
+version:       7776
+build-type:    Simple
+synopsis:      duplicate-module check
+category:      Test
+description:   With duplicate modules not guarded by any condition, it should throw an error.
+license:       BSD-3-Clause
+license-file:  LICENSE
+maintainer:    Cabal Contributors
+
+library
+    exposed-modules:  Foo
+    other-modules:
+        GHC.Hs.Type
+    hs-source-dirs:
+        compat
+    other-modules:
+        GHC.Hs.Type

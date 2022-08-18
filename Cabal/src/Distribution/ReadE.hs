@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.ReadE
@@ -13,14 +14,17 @@ module Distribution.ReadE (
    -- * ReadE
    ReadE(..), succeedReadE, failReadE,
    -- * Projections
-   readEOrFail,
-   parsecToReadE,
+   parsecToReadE, parsecToReadEErr,
+   -- * Parse Errors
+   unexpectMsgString,
   ) where
 
 import Distribution.Compat.Prelude
 import Prelude ()
+import qualified Data.Bifunctor as Bi (first)
 
 import Distribution.Parsec
+import qualified Text.Parsec.Error as Parsec
 import Distribution.Parsec.FieldLineStream
 
 -- | Parser with simple error reporting
@@ -38,12 +42,22 @@ succeedReadE f = ReadE (Right . f)
 failReadE :: ErrorMsg -> ReadE a
 failReadE = ReadE . const . Left
 
-readEOrFail :: ReadE a -> String -> a
-readEOrFail r = either error id . runReadE r
+runParsecFromString :: ParsecParser a -> String -> Either Parsec.ParseError a
+runParsecFromString p txt =
+    runParsecParser p "<parsecToReadE>" (fieldLineStreamFromString txt)
 
 parsecToReadE :: (String -> ErrorMsg) -> ParsecParser a -> ReadE a
 parsecToReadE err p = ReadE $ \txt ->
-    case runParsecParser p "<parsecToReadE>" (fieldLineStreamFromString txt) of
-        Right x -> Right x
-        Left _e -> Left (err txt)
--- TODO: use parsec error to make 'ErrorMsg'.
+    (const $ err txt) `Bi.first` runParsecFromString p txt
+
+parsecToReadEErr :: (Parsec.ParseError -> ErrorMsg) -> ParsecParser a -> ReadE a
+parsecToReadEErr err p = ReadE $
+    Bi.first err . runParsecFromString p
+
+-- Show only unexpected error messages
+unexpectMsgString :: Parsec.ParseError -> String
+unexpectMsgString = unlines
+   . map Parsec.messageString
+   . filter (\case { Parsec.UnExpect _ -> True; _ -> False })
+   . Parsec.errorMessages
+

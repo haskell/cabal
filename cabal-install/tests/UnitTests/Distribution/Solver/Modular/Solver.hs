@@ -30,6 +30,8 @@ tests = [
       testGroup "Simple dependencies" [
           runTest $         mkTest db1 "alreadyInstalled"   ["A"]      (solverSuccess [])
         , runTest $         mkTest db1 "installLatest"      ["B"]      (solverSuccess [("B", 2)])
+        , runTest $ preferOldest
+                  $         mkTest db1 "installOldest"      ["B"]      (solverSuccess [("B", 1)])
         , runTest $         mkTest db1 "simpleDep1"         ["C"]      (solverSuccess [("B", 1), ("C", 1)])
         , runTest $         mkTest db1 "simpleDep2"         ["D"]      (solverSuccess [("B", 2), ("D", 1)])
         , runTest $         mkTest db1 "failTwoVersions"    ["C", "D"] anySolverFailure
@@ -253,10 +255,12 @@ tests = [
         , runTest $ mkTest dbBuildable2 "choose version that sets buildable to false" ["A"] (solverSuccess [("A", 1), ("B", 2)])
          ]
     , testGroup "Pkg-config dependencies" [
-          runTest $ mkTestPCDepends [] dbPC1 "noPkgs" ["A"] anySolverFailure
-        , runTest $ mkTestPCDepends [("pkgA", "0")] dbPC1 "tooOld" ["A"] anySolverFailure
-        , runTest $ mkTestPCDepends [("pkgA", "1.0.0"), ("pkgB", "1.0.0")] dbPC1 "pruneNotFound" ["C"] (solverSuccess [("A", 1), ("B", 1), ("C", 1)])
-        , runTest $ mkTestPCDepends [("pkgA", "1.0.0"), ("pkgB", "2.0.0")] dbPC1 "chooseNewest" ["C"] (solverSuccess [("A", 1), ("B", 2), ("C", 1)])
+          runTest $ mkTestPCDepends (Just []) dbPC1 "noPkgs" ["A"] anySolverFailure
+        , runTest $ mkTestPCDepends (Just [("pkgA", "0")]) dbPC1 "tooOld" ["A"] anySolverFailure
+        , runTest $ mkTestPCDepends (Just [("pkgA", "1.0.0"), ("pkgB", "1.0.0")]) dbPC1 "pruneNotFound" ["C"] (solverSuccess [("A", 1), ("B", 1), ("C", 1)])
+        , runTest $ mkTestPCDepends (Just [("pkgA", "1.0.0"), ("pkgB", "2.0.0")]) dbPC1 "chooseNewest" ["C"] (solverSuccess [("A", 1), ("B", 2), ("C", 1)])
+        , runTest $ mkTestPCDepends Nothing dbPC1 "noPkgConfigFailure" ["A"] anySolverFailure
+        , runTest $ mkTestPCDepends Nothing dbPC1 "noPkgConfigSuccess" ["D"] (solverSuccess [("D",1)])
         ]
     , testGroup "Independent goals" [
           runTest $ indep $ mkTest db16 "indepGoals1" ["A", "B"] (solverSuccess [("A", 1), ("B", 1), ("C", 1), ("D", 1), ("D", 2), ("E", 1)])
@@ -1570,7 +1574,7 @@ db23 = [
 -- or also its link target.
 --
 -- It turns out that as long as the Single Instance Restriction is in place,
--- it does not matter, because there will aways be an option that is failing
+-- it does not matter, because there will always be an option that is failing
 -- due to the SIR, which contains the link target in its conflict set.
 --
 -- Even if the SIR is not in place, if there is a solution, one will always
@@ -1665,7 +1669,7 @@ dbLangs1 = [
 testBuildable :: String -> ExampleDependency -> TestTree
 testBuildable testName unavailableDep =
     runTest $
-    mkTestExtLangPC (Just []) (Just [Haskell98]) [] db testName ["pkg"] expected
+    mkTestExtLangPC (Just []) (Just [Haskell98]) (Just []) db testName ["pkg"] expected
   where
     expected = solverSuccess [("false-dep", 1), ("pkg", 1)]
     db = [
@@ -1718,12 +1722,14 @@ dbBuildable2 = [
   ]
 
 -- | Package databases for testing @pkg-config@ dependencies.
+-- when no pkgconfig db is present, cabal must pick flag1 false and flag2 true to avoid the pkg dependency.
 dbPC1 :: ExampleDb
 dbPC1 = [
     Right $ exAv "A" 1 [ExPkg ("pkgA", 1)]
   , Right $ exAv "B" 1 [ExPkg ("pkgB", 1), ExAny "A"]
   , Right $ exAv "B" 2 [ExPkg ("pkgB", 2), ExAny "A"]
   , Right $ exAv "C" 1 [ExAny "B"]
+  , Right $ exAv "D" 1 [exFlagged "flag1" [ExAny "A"] [], exFlagged "flag2" [] [ExAny "A"]]
   ]
 
 -- | Test for the solver's summarized log. The final conflict set is {A, F},

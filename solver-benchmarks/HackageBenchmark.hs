@@ -220,7 +220,7 @@ runCabal timeoutSeconds cabalUnderTest cabal flags = do
           & Map.insert "CABAL_CONFIG" (cabalDir </> "config")
           & Map.insert "CABAL_DIR"     cabalDir
 
-  -- Run cabal update, 
+  -- Run cabal update,
   putStrLn $ "Running cabal update (using " ++ cabal ++ ") ..."
   (ec, uout, uerr) <- readCreateProcessWithExitCode (proc cabal ["update"])
       { cwd = Just cabalDir

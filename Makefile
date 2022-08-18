@@ -14,16 +14,9 @@ lib : $(LEXER_HS)
 exe : $(LEXER_HS)
 	$(CABALBUILD) cabal-install:exes
 
-# Build library with oldest supported GHC
-lib-ghc-7.6 :
-	$(CABALBUILD) --project-file=cabal.project.libonly --with-compiler=ghc-7.6.3 Cabal:libs
-
-lib-ghc-7.8 :
-	$(CABALBUILD) --project-file=cabal.project.libonly --with-compiler=ghc-7.8.4 Cabal:libs
-
 # source generation: Lexer
 
-LEXER_HS:=Cabal/src/Distribution/Fields/Lexer.hs
+LEXER_HS:=Cabal-syntax/src/Distribution/Fields/Lexer.hs
 
 lexer : $(LEXER_HS)
 
@@ -34,12 +27,12 @@ $(LEXER_HS) : templates/Lexer.x
 
 # source generation: SPDX
 
-SPDX_LICENSE_HS:=Cabal/src/Distribution/SPDX/LicenseId.hs
-SPDX_EXCEPTION_HS:=Cabal/src/Distribution/SPDX/LicenseExceptionId.hs
+SPDX_LICENSE_HS:=Cabal-syntax/src/Distribution/SPDX/LicenseId.hs
+SPDX_EXCEPTION_HS:=Cabal-syntax/src/Distribution/SPDX/LicenseExceptionId.hs
 
 spdx : $(SPDX_LICENSE_HS) $(SPDX_EXCEPTION_HS)
 
-SPDX_LICENSE_VERSIONS:=3.0 3.2 3.6 3.9 3.10
+SPDX_LICENSE_VERSIONS:=3.0 3.2 3.6 3.9 3.10 3.16
 
 $(SPDX_LICENSE_HS) : templates/SPDX.LicenseId.template.hs cabal-dev-scripts/src/GenUtils.hs cabal-dev-scripts/src/GenSPDX.hs license-list-data/licenses-3.0.json license-list-data/licenses-3.2.json
 	cabal v2-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-spdx -- templates/SPDX.LicenseId.template.hs $(SPDX_LICENSE_VERSIONS:%=license-list-data/licenses-%.json) $(SPDX_LICENSE_HS)
@@ -68,18 +61,7 @@ buildinfo-fields-reference : phony
 
 # analyse-imports
 analyse-imports : phony
-	find Cabal/src cabal-install/src -type f -name '*.hs' | xargs cabal v2-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta analyse-imports --
-
-# github actions
-github-actions : .github/workflows/artifacts.yml
-github-actions : .github/workflows/quick-jobs.yml
-github-actions : .github/workflows/bootstrap.yml
-github-actions : .github/workflows/linux.yml
-github-actions : .github/workflows/macos.yml
-github-actions : .github/workflows/windows.yml
-
-.github/workflows/%.yml : templates/ci-%.template.yml cabal-dev-scripts/src/GenValidate.hs
-	cabal v2-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-validate -- $< $@
+	find Cabal-syntax/src Cabal/src cabal-install/src -type f -name '*.hs' | xargs cabal v2-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta analyse-imports --
 
 # ghcid
 
@@ -92,7 +74,7 @@ ghcid-cli :
 # doctests (relies on .ghc.environment files)
 
 doctest :
-	doctest --fast Cabal/src
+	doctest --fast Cabal-syntax/src Cabal/src
 
 # This is not run as part of validate.sh (we need hackage-security, which is tricky to get).
 doctest-cli :
@@ -144,10 +126,6 @@ cabal-install-test-accept:
 #
 #   make validate-via-docker-all -j4 -O
 #
-validate-via-docker-all : validate-via-docker-7.6.3
-validate-via-docker-all : validate-via-docker-7.8.4
-validate-via-docker-all : validate-via-docker-7.10.3
-validate-via-docker-all : validate-via-docker-8.0.2
 validate-via-docker-all : validate-via-docker-8.2.2
 validate-via-docker-all : validate-via-docker-8.4.4
 validate-via-docker-all : validate-via-docker-8.6.5
@@ -160,9 +138,6 @@ validate-dockerfiles : .docker/validate-8.6.5.dockerfile
 validate-dockerfiles : .docker/validate-8.4.4.dockerfile
 validate-dockerfiles : .docker/validate-8.2.2.dockerfile
 validate-dockerfiles : .docker/validate-8.6.5.dockerfile
-validate-dockerfiles : .docker/validate-7.10.3.dockerfile
-validate-dockerfiles : .docker/validate-7.8.4.dockerfile
-validate-dockerfiles : .docker/validate-7.6.3.dockerfile
 
 .docker/validate-%.dockerfile : .docker/validate.dockerfile.zinza cabal-dev-scripts/src/GenValidateDockerfile.hs
 	cabal v2-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-validate-dockerfile -- $* $< $@
@@ -170,18 +145,6 @@ validate-dockerfiles : .docker/validate-7.6.3.dockerfile
 # This is good idea anyway
 # and we have a test relying on this limit being sufficiently small
 DOCKERARGS:=--ulimit nofile=1024:1024
-
-validate-via-docker-7.6.3:
-	docker build $(DOCKERARGS) -t cabal-validate:7.6.3 -f .docker/validate-7.6.3.dockerfile .
-
-validate-via-docker-7.8.4:
-	docker build $(DOCKERARGS) -t cabal-validate:7.8.4 -f .docker/validate-7.8.4.dockerfile .
-
-validate-via-docker-7.10.3:
-	docker build $(DOCKERARGS) -t cabal-validate:7.10.3 -f .docker/validate-7.10.3.dockerfile .
-
-validate-via-docker-8.0.2:
-	docker build $(DOCKERARGS) -t cabal-validate:8.0.2 -f .docker/validate-8.0.2.dockerfile .
 
 validate-via-docker-8.2.2:
 	docker build $(DOCKERARGS) -t cabal-validate:8.2.2 -f .docker/validate-8.2.2.dockerfile .
@@ -209,26 +172,21 @@ weeder :
 # tags
 .PHONY : tags
 tags :
-	hasktags -b Cabal/src Cabal-described/src cabal-install/src cabal-testsuite/src
+	hasktags -b Cabal-syntax/src Cabal/src Cabal-described/src cabal-install/src cabal-testsuite/src
 
-# boostrapping
+# bootstrapping
 ##############################################################################
 
-bootstrap-plans-linux: phony
-	@if [ $$(uname) != "Linux" ]; then echo "Not Linux"; false; fi
-	cabal v2-build --project=cabal.project.release --with-compiler ghc-8.6.5  --dry-run cabal-install:exe:cabal
-	cp dist-newstyle/cache/plan.json bootstrap/linux-8.6.5.plan.json
-	cabal v2-build --project=cabal.project.release --with-compiler ghc-8.8.4  --dry-run cabal-install:exe:cabal
-	cp dist-newstyle/cache/plan.json bootstrap/linux-8.8.4.plan.json
-	cabal v2-build --project=cabal.project.release --with-compiler ghc-8.10.4 --dry-run cabal-install:exe:cabal
-	cp dist-newstyle/cache/plan.json bootstrap/linux-8.10.4.plan.json
+bootstrap-json-%: phony
+	cabal v2-build --project=cabal.project.release --with-compiler=ghc-$* --dry-run cabal-install:exe:cabal
+	cp dist-newstyle/cache/plan.json bootstrap/linux-$*.plan.json
+	@# -v0 to avoid build output on stdout
+	cd bootstrap && cabal v2-run -v0 cabal-bootstrap-gen -- linux-$*.plan.json \
+		| python3 -m json.tool > linux-$*.json
 
-bootstrap-jsons-linux: phony
-	@if [ $$(uname) != "Linux" ]; then echo "Not Linux"; false; fi
-	cabal v2-build               --builddir=dist-newstyle-bootstrap --project=cabal.project.bootstrap cabal-bootstrap-gen
-	cabal v2-run -vnormal+stderr --builddir=dist-newstyle-bootstrap --project=cabal.project.bootstrap cabal-bootstrap-gen -- bootstrap/linux-8.6.5.plan.json  | python3 -m json.tool | tee bootstrap/linux-8.6.5.json
-	cabal v2-run -vnormal+stderr --builddir=dist-newstyle-bootstrap --project=cabal.project.bootstrap cabal-bootstrap-gen -- bootstrap/linux-8.8.4.plan.json  | python3 -m json.tool | tee bootstrap/linux-8.8.4.json
-	cabal v2-run -vnormal+stderr --builddir=dist-newstyle-bootstrap --project=cabal.project.bootstrap cabal-bootstrap-gen -- bootstrap/linux-8.10.4.plan.json | python3 -m json.tool | tee bootstrap/linux-8.10.4.json
+BOOTSTRAP_GHC_VERSIONS := 8.6.5 8.8.4 8.10.7 9.0.2 9.2.3
+
+bootstrap-jsons: $(BOOTSTRAP_GHC_VERSIONS:%=bootstrap-json-%)
 
 # documentation
 ##############################################################################
@@ -242,7 +200,7 @@ SPHINX_FLAGS:=-n -W --keep-going -E
 SPHINX_HTML_OUTDIR:=dist-newstyle/doc/users-guide
 USERGUIDE_STAMP:=$(SPHINX_HTML_OUTDIR)/index.html
 
-# do pip install everytime so we have up to date requirements when we build
+# do pip install every time so we have up to date requirements when we build
 users-guide: .python-sphinx-virtualenv $(USERGUIDE_STAMP)
 $(USERGUIDE_STAMP) : doc/*.rst
 	mkdir -p $(SPHINX_HTML_OUTDIR)
@@ -251,3 +209,12 @@ $(USERGUIDE_STAMP) : doc/*.rst
 .python-sphinx-virtualenv:
 	python3 -m venv .python-sphinx-virtualenv
 	(. ./.python-sphinx-virtualenv/bin/activate)
+
+# This goal is intended for manual invocation, always rebuilds.
+.PHONY: users-guide-requirements
+users-guide-requirements: doc/requirements.txt
+
+.PHONY: doc/requirements.txt
+doc/requirements.txt: .python-sphinx-virtualenv
+	. .python-sphinx-virtualenv/bin/activate \
+	  && make -C doc build-and-check-requirements

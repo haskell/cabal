@@ -1,4 +1,3 @@
-# trivial gitignore file
 .cabal-sandbox/
 cabal.sandbox.config
 cabal.project.local
@@ -15,7 +14,7 @@ dist-*
 register.sh
 ./cabal.config
 cabal-tests.log
-.python-sphinx-virtualenv/
+bootstrap/*.plan.json
 
 /Cabal/dist/
 /Cabal/tests/Setup
@@ -66,8 +65,14 @@ progress.txt
 # test files
 register.sh
 
+# windows test artifacts
+cabal-testsuite/**/*.exe
+cabal-testsuite/**/*.bat
+
 # python artifacts from documentation builds
 *.pyc
+.python-sphinx-virtualenv/
+/doc/.skjold_cache/
 
 # macOS folder metadata
 .DS_Store

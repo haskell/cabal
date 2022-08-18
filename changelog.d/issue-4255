@@ -1,0 +1,4 @@
+synopsis: Avoid spurious warnings from -with-rtsopts
+packages: Cabal
+issues: #4255
+prs: #8183

@@ -57,4 +57,3 @@ escapeResponseFileArg = reverse . foldl' escape []
         _ | isSpace c -> c:'\\':cs
           | otherwise -> c:cs
 
-

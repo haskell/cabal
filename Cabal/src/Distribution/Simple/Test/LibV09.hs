@@ -13,7 +13,6 @@ import Prelude ()
 import Distribution.Compat.Prelude
 import Distribution.Types.UnqualComponentName
 
-import Distribution.Compat.CreatePipe
 import Distribution.Compat.Environment
 import Distribution.Compat.Internal.TempFile
 import Distribution.ModuleName
@@ -42,7 +41,8 @@ import System.Directory
     , setCurrentDirectory )
 import System.FilePath ( (</>), (<.>) )
 import System.IO ( hClose, hPutStr )
-import System.Process (StdStream(..), waitForProcess)
+import Distribution.Compat.Process (proc)
+import qualified System.Process as Process
 
 runTest :: PD.PackageDescription
         -> LBI.LocalBuildInfo
@@ -62,7 +62,7 @@ runTest pkg_descr lbi clbi flags suite = do
     -- Check that the test executable exists.
     exists <- doesFileExist cmd
     unless exists $
-      die' verbosity $ "Error: Could not find test program \"" ++ cmd
+      die' verbosity $ "Could not find test program \"" ++ cmd
                     ++ "\". Did you build the package first?"
 
     -- Remove old .tix files if appropriate.
@@ -79,49 +79,48 @@ runTest pkg_descr lbi clbi flags suite = do
 
     suiteLog <- CE.bracket openCabalTemp deleteIfExists $ \tempLog -> do
 
+        -- Run test executable
+        let opts = map (testOption pkg_descr lbi suite) $ testOptions flags
+            dataDirPath = pwd </> PD.dataDir pkg_descr
+            tixFile = pwd </> tixFilePath distPref way testName'
+            pkgPathEnv = (pkgPathEnvVar pkg_descr "datadir", dataDirPath)
+                       : existingEnv
+            shellEnv = [("HPCTIXFILE", tixFile) | isCoverageEnabled]
+                     ++ pkgPathEnv
+        -- Add (DY)LD_LIBRARY_PATH if needed
+        shellEnv' <-
+          if LBI.withDynExe lbi
+          then do
+            let (Platform _ os) = LBI.hostPlatform lbi
+            paths <- LBI.depLibraryPaths True False lbi clbi
+            cpath <- canonicalizePath $ LBI.componentBuildDir lbi clbi
+            return (addLibraryPath os (cpath : paths) shellEnv)
+          else return shellEnv
+        let (cmd', opts') = case testWrapper flags of
+                              Flag path -> (path, cmd:opts)
+                              NoFlag -> (cmd, opts)
+
         -- TODO: this setup is broken,
         -- if the test output is too big, we will deadlock.
-        (rOut, wOut) <- createPipe
+        (rOut, wOut) <- Process.createPipe
+        (exitcode, logText) <- rawSystemProcAction verbosity
+            (proc cmd' opts') { Process.env           = Just shellEnv'
+                              , Process.std_in        = Process.CreatePipe
+                              , Process.std_out       = Process.UseHandle wOut
+                              , Process.std_err       = Process.UseHandle wOut
+                              } $ \mIn _ _ -> do
+          let wIn = fromCreatePipe mIn
+          hPutStr wIn $ show (tempLog, PD.testName suite)
+          hClose wIn
 
-        -- Run test executable
-        (Just wIn, _, _, process) <- do
-                let opts = map (testOption pkg_descr lbi suite) $ testOptions flags
-                    dataDirPath = pwd </> PD.dataDir pkg_descr
-                    tixFile = pwd </> tixFilePath distPref way testName'
-                    pkgPathEnv = (pkgPathEnvVar pkg_descr "datadir", dataDirPath)
-                               : existingEnv
-                    shellEnv = [("HPCTIXFILE", tixFile) | isCoverageEnabled]
-                             ++ pkgPathEnv
-                -- Add (DY)LD_LIBRARY_PATH if needed
-                shellEnv' <-
-                  if LBI.withDynExe lbi
-                  then do
-                    let (Platform _ os) = LBI.hostPlatform lbi
-                    paths <- LBI.depLibraryPaths True False lbi clbi
-                    cpath <- canonicalizePath $ LBI.componentBuildDir lbi clbi
-                    return (addLibraryPath os (cpath : paths) shellEnv)
-                  else return shellEnv
-                case testWrapper flags of
-                  Flag path -> createProcessWithEnv verbosity path (cmd:opts) Nothing (Just shellEnv')
-                               -- these handles are closed automatically
-                               CreatePipe (UseHandle wOut) (UseHandle wOut)
-
-                  NoFlag -> createProcessWithEnv verbosity cmd opts Nothing (Just shellEnv')
-                            -- these handles are closed automatically
-                            CreatePipe (UseHandle wOut) (UseHandle wOut)
-
-        hPutStr wIn $ show (tempLog, PD.testName suite)
-        hClose wIn
-
-        -- Append contents of temporary log file to the final human-
-        -- readable log file
-        logText <- LBS.hGetContents rOut
-        -- Force the IO manager to drain the test output pipe
-        _ <- evaluate (force logText)
-
-        exitcode <- waitForProcess process
-        unless (exitcode == ExitSuccess) $ do
-            debug verbosity $ cmd ++ " returned " ++ show exitcode
+          -- Append contents of temporary log file to the final human-
+          -- readable log file
+          logText <- LBS.hGetContents rOut
+          -- Force the IO manager to drain the test output pipe
+          _ <- evaluate (force logText)
+          return logText
+        unless (exitcode == ExitSuccess) $
+          debug verbosity $ cmd ++ " returned " ++ show exitcode
 
         -- Generate final log file name
         let finalLogName l = testLogDir
@@ -160,7 +159,7 @@ runTest pkg_descr lbi clbi flags suite = do
     when isCoverageEnabled $
       case PD.library pkg_descr of
         Nothing ->
-          die' verbosity "Error: test coverage is only supported for packages with a library component"
+          die' verbosity "Test coverage is only supported for packages with a library component."
         Just library ->
           markupTest verbosity lbi distPref (prettyShow $ PD.package pkg_descr) suite library
 

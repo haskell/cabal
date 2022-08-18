@@ -112,7 +112,7 @@ import Distribution.Simple.Program
          ( defaultProgramDb )
 import Distribution.Simple.Utils
          ( die', notice, warn, lowercase, cabalVersion, toUTF8BS )
-import Distribution.Client.Utils
+import Distribution.Client.Version
          ( cabalInstallVersion )
 import Distribution.Compiler
          ( CompilerFlavor(..), defaultCompilerFlavor )
@@ -243,7 +243,6 @@ instance Semigroup SavedConfig where
         globalLocalNoIndexRepos = lastNonEmptyNL globalLocalNoIndexRepos,
         globalActiveRepos       = combine globalActiveRepos,
         globalLogsDir           = combine globalLogsDir,
-        globalWorldFile         = combine globalWorldFile,
         globalIgnoreExpiry      = combine globalIgnoreExpiry,
         globalHttpTransport     = combine globalHttpTransport,
         globalNix               = combine globalNix,
@@ -303,6 +302,7 @@ instance Semigroup SavedConfig where
         installFineGrainedConflicts  = combine installFineGrainedConflicts,
         installMinimizeConflictSet   = combine installMinimizeConflictSet,
         installIndependentGoals      = combine installIndependentGoals,
+        installPreferOldest          = combine installPreferOldest,
         installShadowPkgs            = combine installShadowPkgs,
         installStrongFlags           = combine installStrongFlags,
         installAllowBootLibInstalls  = combine installAllowBootLibInstalls,
@@ -321,7 +321,6 @@ instance Semigroup SavedConfig where
         installReportPlanningFailure = combine installReportPlanningFailure,
         installSymlinkBinDir         = combine installSymlinkBinDir,
         installPerComponent          = combine installPerComponent,
-        installOneShot               = combine installOneShot,
         installNumJobs               = combine installNumJobs,
         installKeepGoing             = combine installKeepGoing,
         installRunTests              = combine installRunTests,
@@ -409,6 +408,7 @@ instance Semigroup SavedConfig where
         configFlagError           = combine configFlagError,
         configRelocatable         = combine configRelocatable,
         configUseResponseFiles    = combine configUseResponseFiles,
+        configDumpBuildInfo       = combine configDumpBuildInfo,
         configAllowDependingOnPrivateLibs =
             combine configAllowDependingOnPrivateLibs
         }
@@ -488,6 +488,9 @@ instance Semigroup SavedConfig where
         haddockKeepTempFiles = combine haddockKeepTempFiles,
         haddockVerbosity     = combine haddockVerbosity,
         haddockCabalFilePath = combine haddockCabalFilePath,
+        haddockIndex         = combine haddockIndex,
+        haddockBaseUrl       = combine haddockBaseUrl,
+        haddockLib           = combine haddockLib,
         haddockArgs          = lastNonEmpty haddockArgs
         }
         where
@@ -539,7 +542,6 @@ baseSavedConfig = do
   userPrefix <- getCabalDir
   cacheDir   <- defaultCacheDir
   logsDir    <- defaultLogsDir
-  worldFile  <- defaultWorldFile
   return mempty {
     savedConfigureFlags  = mempty {
       configHcFlavor     = toFlag defaultCompiler,
@@ -551,8 +553,7 @@ baseSavedConfig = do
     },
     savedGlobalFlags = mempty {
       globalCacheDir     = toFlag cacheDir,
-      globalLogsDir      = toFlag logsDir,
-      globalWorldFile    = toFlag worldFile
+      globalLogsDir      = toFlag logsDir
     }
   }
 
@@ -566,14 +567,12 @@ initialSavedConfig :: IO SavedConfig
 initialSavedConfig = do
   cacheDir    <- defaultCacheDir
   logsDir     <- defaultLogsDir
-  worldFile   <- defaultWorldFile
   extraPath   <- defaultExtraPath
   installPath <- defaultInstallPath
   return mempty {
     savedGlobalFlags     = mempty {
       globalCacheDir     = toFlag cacheDir,
-      globalRemoteRepos  = toNubList [defaultRemoteRepo],
-      globalWorldFile    = toFlag worldFile
+      globalRemoteRepos  = toNubList [defaultRemoteRepo]
     },
     savedConfigureFlags  = mempty {
       configProgramPathExtra = toNubList extraPath
@@ -738,8 +737,21 @@ loadRawConfig verbosity configFileFlag = do
     Nothing -> do
       notice verbosity $
         "Config file path source is " ++ sourceMsg source ++ "."
-      notice verbosity $ "Config file " ++ configFile ++ " not found."
-      createDefaultConfigFile verbosity [] configFile
+      -- 2021-10-07, issue #7705
+      -- Only create default config file if name was not given explicitly
+      -- via option --config-file or environment variable.
+      case source of
+        Default -> do
+          notice verbosity msgNotFound
+          createDefaultConfigFile verbosity [] configFile
+        CommandlineOption   -> failNoConfigFile
+        EnvironmentVariable -> failNoConfigFile
+      where
+        msgNotFound = unwords [ "Config file not found:", configFile ]
+        failNoConfigFile = die' verbosity $ unlines
+          [ msgNotFound
+          , "(Config files can be created via the cabal-command 'user-config init'.)"
+          ]
     Just (ParseOk ws conf) -> do
       unless (null ws) $ warn verbosity $
         unlines (map (showPWarning configFile) ws)
@@ -752,8 +764,10 @@ loadRawConfig verbosity configFileFlag = do
 
   where
     sourceMsg CommandlineOption =   "commandline option"
-    sourceMsg EnvironmentVariable = "env var CABAL_CONFIG"
+    sourceMsg EnvironmentVariable = "environment variable CABAL_CONFIG"
     sourceMsg Default =             "default config file"
+
+-- | Provenance of the config file.
 
 data ConfigFileSource = CommandlineOption
                       | EnvironmentVariable

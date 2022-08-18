@@ -1,0 +1,3 @@
+# cabal v2-haddock
+Resolving dependencies...
+No documentation was generated as this package does not contain a library. Perhaps you want to use the --haddock-all flag, or one or more of the --haddock-executables, --haddock-tests, --haddock-benchmarks or --haddock-internal flags.

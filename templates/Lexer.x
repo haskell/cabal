@@ -19,10 +19,10 @@ module Distribution.Fields.Lexer
   ,bol_section, in_section, in_field_layout, in_field_braces
   ,mkLexState) where
 
--- [Note: boostrapping parsec parser]
+-- [Note: bootstrapping parsec parser]
 --
 -- We manually produce the `Lexer.hs` file from `boot/Lexer.x` (make lexer)
--- because boostrapping cabal-install would be otherwise tricky.
+-- because bootstrapping cabal-install would be otherwise tricky.
 -- Alex is (atm) tricky package to build, cabal-install has some magic
 -- to move bundled generated files in place, so rather we don't depend
 -- on it before we can build it ourselves.

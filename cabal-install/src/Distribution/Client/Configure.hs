@@ -59,6 +59,8 @@ import Distribution.Client.SavedFlags ( readCommandFlags, writeCommandFlags )
 import Distribution.Simple.Setup
          ( ConfigFlags(..)
          , fromFlag, toFlag, flagToMaybe, fromFlagOrDefault )
+import Distribution.Simple.PackageDescription
+         ( readGenericPackageDescription )
 import Distribution.Simple.PackageIndex as PackageIndex
          ( InstalledPackageIndex, lookupPackageName )
 import Distribution.Package
@@ -68,13 +70,11 @@ import Distribution.Types.GivenComponent
 import Distribution.Types.PackageVersionConstraint
          ( PackageVersionConstraint(..), thisPackageVersionConstraint )
 import qualified Distribution.PackageDescription as PkgDesc
-import Distribution.PackageDescription.Parsec
-         ( readGenericPackageDescription )
 import Distribution.PackageDescription.Configuration
          ( finalizePD )
 import Distribution.Version
-         ( Version, mkVersion, anyVersion, thisVersion
-         , VersionRange, orLaterVersion )
+         ( Version, anyVersion, thisVersion
+         , VersionRange )
 import Distribution.Simple.Utils as Utils
          ( warn, notice, debug, die'
          , defaultPackageDesc )
@@ -84,21 +84,12 @@ import Distribution.System
 import System.FilePath ( (</>) )
 
 -- | Choose the Cabal version such that the setup scripts compiled against this
--- version will support the given command-line flags.
+-- version will support the given command-line flags. Currently, it implements no
+-- specific restrictions and allows any version, unless the second argument is
+-- filled with a 'Version', in which case this version is picked.
 chooseCabalVersion :: ConfigExFlags -> Maybe Version -> VersionRange
-chooseCabalVersion configExFlags maybeVersion =
-  maybe defaultVersionRange thisVersion maybeVersion
-  where
-    -- Cabal < 1.19.2 doesn't support '--exact-configuration' which is needed
-    -- for '--allow-newer' to work.
-    allowNewer = isRelaxDeps
-                 (maybe mempty unAllowNewer $ configAllowNewer configExFlags)
-    allowOlder = isRelaxDeps
-                 (maybe mempty unAllowOlder $ configAllowOlder configExFlags)
-
-    defaultVersionRange = if allowOlder || allowNewer
-                          then orLaterVersion (mkVersion [1,19,2])
-                          else anyVersion
+chooseCabalVersion _configExFlags maybeVersion =
+  maybe anyVersion thisVersion maybeVersion
 
 -- | Configure the package found in the local directory
 configure :: Verbosity
@@ -311,10 +302,13 @@ planLocalPackage verbosity comp platform configFlags configExFlags
         srcpkgDescrOverride      = Nothing
       }
 
+      testsEnabled :: Bool
       testsEnabled = fromFlagOrDefault False $ configTests configFlags
+      benchmarksEnabled :: Bool
       benchmarksEnabled =
         fromFlagOrDefault False $ configBenchmarks configFlags
 
+      resolverParams :: DepResolverParams
       resolverParams =
           removeLowerBounds
           (fromMaybe (AllowOlder mempty) $ configAllowOlder configExFlags)
@@ -392,7 +386,9 @@ configurePackage verbosity platform comp scriptOptions configFlags
     scriptOptions (Just pkg) configureCommand configureFlags (const extraArgs)
 
   where
+    gpkg :: PkgDesc.GenericPackageDescription
     gpkg = srcpkgDescription spkg
+    configureFlags :: Version -> ConfigFlags
     configureFlags   = filterConfigureFlags configFlags {
       configIPID = if isJust (flagToMaybe (configIPID configFlags))
                     -- Make sure cabal configure --ipid works.
@@ -420,6 +416,7 @@ configurePackage verbosity platform comp scriptOptions configFlags
                                     `mappend` configTests configFlags
     }
 
+    pkg :: PkgDesc.PackageDescription
     pkg = case finalizePD flags (enableStanzas stanzas)
            (const True)
            platform comp [] gpkg of

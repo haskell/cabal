@@ -25,7 +25,8 @@ module Distribution.Simple.PreProcess (preprocessComponent, preprocessExtras,
                                 PPSuffixHandler, PreProcessor(..),
                                 mkSimplePreProcessor, runSimplePreProcessor,
                                 ppCpp, ppCpp', ppGreenCard, ppC2hs, ppHsc2hs,
-                                ppHappy, ppAlex, ppUnlit, platformDefines
+                                ppHappy, ppAlex, ppUnlit, platformDefines,
+                                unsorted
                                )
     where
 
@@ -50,12 +51,13 @@ import Distribution.Simple.Program
 import Distribution.Simple.Program.ResponseFile
 import Distribution.Simple.Test.LibV09
 import Distribution.System
+import Distribution.Types.PackageName.Magic
 import Distribution.Pretty
 import Distribution.Version
 import Distribution.Verbosity
 import Distribution.Utils.Path
 
-import System.Directory (doesFileExist)
+import System.Directory (doesFileExist, doesDirectoryExist)
 import System.Info (os, arch)
 import System.FilePath (splitExtension, dropExtensions, (</>), (<.>),
                         takeDirectory, normalise, replaceExtension,
@@ -109,11 +111,28 @@ data PreProcessor = PreProcessor {
   --       eg alex and happy have --ghc flags. However we can't really include
   --       ghc-specific code into supposedly portable source tarballs.
 
+  -- | This function can reorder /all/ modules, not just those that the
+  -- require the preprocessor in question. As such, this function should be
+  -- well-behaved and not reorder modules it doesn't have dominion over!
+  ppOrdering :: Verbosity
+             -> [FilePath] -- Source directories
+             -> [ModuleName] -- Module names
+             -> IO [ModuleName], -- Sorted modules
+
   runPreProcessor :: (FilePath, FilePath) -- Location of the source file relative to a base dir
                   -> (FilePath, FilePath) -- Output file name, relative to an output base dir
                   -> Verbosity -- verbosity
                   -> IO ()     -- Should exit if the preprocessor fails
   }
+
+-- | Just present the modules in the order given; this is the default and it is
+-- appropriate for preprocessors which do not have any sort of dependencies
+-- between modules.
+unsorted :: Verbosity
+         -> [FilePath]
+         -> [ModuleName]
+         -> IO [ModuleName]
+unsorted _ _ ms = pure ms
 
 -- | Function to determine paths to possible extra C sources for a
 -- preprocessor: just takes the path to the build directory and uses
@@ -153,61 +172,72 @@ preprocessComponent :: PackageDescription
                     -> Verbosity
                     -> [PPSuffixHandler]
                     -> IO ()
-preprocessComponent pd comp lbi clbi isSrcDist verbosity handlers = do
- -- NB: never report instantiation here; we'll report it properly when
- -- building.
- setupMessage' verbosity "Preprocessing" (packageId pd)
-    (componentLocalName clbi) (Nothing :: Maybe [(ModuleName, Module)])
- case comp of
-  (CLib lib@Library{ libBuildInfo = bi }) -> do
-    let dirs = map getSymbolicPath (hsSourceDirs bi) ++
-             [ autogenComponentModulesDir lbi clbi ,autogenPackageModulesDir lbi]
-    for_ (map ModuleName.toFilePath $ allLibModules lib clbi) $
-      pre dirs (componentBuildDir lbi clbi) (localHandlers bi)
-  (CFLib flib@ForeignLib { foreignLibBuildInfo = bi, foreignLibName = nm }) -> do
-    let nm' = unUnqualComponentName nm
-    let flibDir = buildDir lbi </> nm' </> nm' ++ "-tmp"
-        dirs    = map getSymbolicPath (hsSourceDirs bi) ++ [autogenComponentModulesDir lbi clbi
-                                     ,autogenPackageModulesDir lbi]
-    for_ (map ModuleName.toFilePath $ foreignLibModules flib) $
-      pre dirs flibDir (localHandlers bi)
-  (CExe exe@Executable { buildInfo = bi, exeName = nm }) -> do
-    let nm' = unUnqualComponentName nm
-    let exeDir = buildDir lbi </> nm' </> nm' ++ "-tmp"
-        dirs   = map getSymbolicPath (hsSourceDirs bi) ++ [autogenComponentModulesDir lbi clbi
-                                    ,autogenPackageModulesDir lbi]
-    for_ (map ModuleName.toFilePath $ otherModules bi) $
-      pre dirs exeDir (localHandlers bi)
-    pre (map getSymbolicPath (hsSourceDirs bi)) exeDir (localHandlers bi) $
-      dropExtensions (modulePath exe)
-  CTest test@TestSuite{ testName = nm } -> do
-    let nm' = unUnqualComponentName nm
-    case testInterface test of
-      TestSuiteExeV10 _ f ->
-          preProcessTest test f $ buildDir lbi </> nm' </> nm' ++ "-tmp"
-      TestSuiteLibV09 _ _ -> do
-          let testDir = buildDir lbi </> stubName test
-                  </> stubName test ++ "-tmp"
-          writeSimpleTestStub test testDir
-          preProcessTest test (stubFilePath test) testDir
-      TestSuiteUnsupported tt ->
-          die' verbosity $ "No support for preprocessing test "
-                        ++ "suite type " ++ prettyShow tt
-  CBench bm@Benchmark{ benchmarkName = nm } -> do
-    let nm' = unUnqualComponentName nm
-    case benchmarkInterface bm of
-      BenchmarkExeV10 _ f ->
-          preProcessBench bm f $ buildDir lbi </> nm' </> nm' ++ "-tmp"
-      BenchmarkUnsupported tt ->
-          die' verbosity $ "No support for preprocessing benchmark "
-                        ++ "type " ++ prettyShow tt
+preprocessComponent pd comp lbi clbi isSrcDist verbosity handlers =
+  -- Skip preprocessing for scripts since they should be regular Haskell files,
+  -- but may have no or unknown extensions.
+  when (package pd /= fakePackageId) $ do
+   -- NB: never report instantiation here; we'll report it properly when
+   -- building.
+   setupMessage' verbosity "Preprocessing" (packageId pd)
+      (componentLocalName clbi) (Nothing :: Maybe [(ModuleName, Module)])
+   case comp of
+    (CLib lib@Library{ libBuildInfo = bi }) -> do
+      let dirs = map getSymbolicPath (hsSourceDirs bi) ++
+               [ autogenComponentModulesDir lbi clbi ,autogenPackageModulesDir lbi]
+      let hndlrs = localHandlers bi
+      mods <- orderingFromHandlers verbosity dirs hndlrs (allLibModules lib clbi)
+      for_ (map ModuleName.toFilePath mods) $
+        pre dirs (componentBuildDir lbi clbi) hndlrs
+    (CFLib flib@ForeignLib { foreignLibBuildInfo = bi, foreignLibName = nm }) -> do
+      let nm' = unUnqualComponentName nm
+      let flibDir = buildDir lbi </> nm' </> nm' ++ "-tmp"
+          dirs    = map getSymbolicPath (hsSourceDirs bi) ++ [autogenComponentModulesDir lbi clbi
+                                       ,autogenPackageModulesDir lbi]
+      let hndlrs = localHandlers bi
+      mods <- orderingFromHandlers verbosity dirs hndlrs (foreignLibModules flib)
+      for_ (map ModuleName.toFilePath mods) $
+        pre dirs flibDir hndlrs
+    (CExe exe@Executable { buildInfo = bi, exeName = nm }) -> do
+      let nm' = unUnqualComponentName nm
+      let exeDir = buildDir lbi </> nm' </> nm' ++ "-tmp"
+          dirs   = map getSymbolicPath (hsSourceDirs bi) ++ [autogenComponentModulesDir lbi clbi
+                                      ,autogenPackageModulesDir lbi]
+      let hndlrs = localHandlers bi
+      mods <- orderingFromHandlers verbosity dirs hndlrs (otherModules bi)
+      for_ (map ModuleName.toFilePath mods) $
+        pre dirs exeDir hndlrs
+      pre (map getSymbolicPath (hsSourceDirs bi)) exeDir (localHandlers bi) $
+        dropExtensions (modulePath exe)
+    CTest test@TestSuite{ testName = nm } -> do
+      let nm' = unUnqualComponentName nm
+      case testInterface test of
+        TestSuiteExeV10 _ f ->
+            preProcessTest test f $ buildDir lbi </> nm' </> nm' ++ "-tmp"
+        TestSuiteLibV09 _ _ -> do
+            let testDir = buildDir lbi </> stubName test
+                    </> stubName test ++ "-tmp"
+            writeSimpleTestStub test testDir
+            preProcessTest test (stubFilePath test) testDir
+        TestSuiteUnsupported tt ->
+            die' verbosity $ "No support for preprocessing test "
+                          ++ "suite type " ++ prettyShow tt
+    CBench bm@Benchmark{ benchmarkName = nm } -> do
+      let nm' = unUnqualComponentName nm
+      case benchmarkInterface bm of
+        BenchmarkExeV10 _ f ->
+            preProcessBench bm f $ buildDir lbi </> nm' </> nm' ++ "-tmp"
+        BenchmarkUnsupported tt ->
+            die' verbosity $ "No support for preprocessing benchmark "
+                          ++ "type " ++ prettyShow tt
   where
+    orderingFromHandlers v d hndlrs mods =
+      foldM (\acc (_,pp) -> ppOrdering pp v d acc) mods hndlrs
     builtinHaskellSuffixes = ["hs", "lhs", "hsig", "lhsig"]
     builtinCSuffixes       = cSourceExtensions
     builtinSuffixes        = builtinHaskellSuffixes ++ builtinCSuffixes
     localHandlers bi = [(ext, h bi lbi clbi) | (ext, h) <- handlers]
     pre dirs dir lhndlrs fp =
-      preprocessFile (map unsafeMakeSymbolicPath dirs) dir isSrcDist fp verbosity builtinSuffixes lhndlrs
+      preprocessFile (map unsafeMakeSymbolicPath dirs) dir isSrcDist fp verbosity builtinSuffixes lhndlrs True
     preProcessTest test = preProcessComponent (testBuildInfo test)
                           (testModules test)
     preProcessBench bm = preProcessComponent (benchmarkBuildInfo bm)
@@ -225,20 +255,20 @@ preprocessComponent pd comp lbi clbi isSrcDist verbosity handlers = do
                                             , autogenPackageModulesDir lbi ]
         sequence_ [ preprocessFile (map unsafeMakeSymbolicPath sourceDirs) dir isSrcDist
                 (ModuleName.toFilePath modu) verbosity builtinSuffixes
-                biHandlers
+                biHandlers False
                 | modu <- modules ]
-
         -- XXX: what we do here (re SymbolicPath dir)
         -- XXX: 2020-10-15 do we rely here on CWD being the PackageDir?
+        -- Note we don't fail on missing in this case, because the main file may be generated later (i.e. by a test code generator)
         preprocessFile (unsafeMakeSymbolicPath dir : hsSourceDirs bi) dir isSrcDist
             (dropExtensions $ exePath) verbosity
-            builtinSuffixes biHandlers
+            builtinSuffixes biHandlers False
 
 --TODO: try to list all the modules that could not be found
 --      not just the first one. It's annoying and slow due to the need
 --      to reconfigure after editing the .cabal file each time.
 
--- |Find the first extension of the file that exists, and preprocess it
+-- | Find the first extension of the file that exists, and preprocess it
 -- if required.
 preprocessFile
     :: [SymbolicPath PackageDir SourceDir] -- ^ source directories
@@ -249,8 +279,9 @@ preprocessFile
     -> Verbosity                -- ^verbosity
     -> [String]                 -- ^builtin suffixes
     -> [(String, PreProcessor)] -- ^possible preprocessors
+    -> Bool                     -- ^fail on missing file
     -> IO ()
-preprocessFile searchLoc buildLoc forSDist baseFile verbosity builtinSuffixes handlers = do
+preprocessFile searchLoc buildLoc forSDist baseFile verbosity builtinSuffixes handlers failOnMissing = do
     -- look for files in the various source dirs with this module name
     -- and a file extension of a known preprocessor
     psrcFiles <- findFileWithExtension' (map fst handlers) (map getSymbolicPath searchLoc) baseFile
@@ -264,8 +295,8 @@ preprocessFile searchLoc buildLoc forSDist baseFile verbosity builtinSuffixes ha
         -- the rest of the build system being aware of it (somewhat dodgy)
       Nothing -> do
                  bsrcFiles <- findFileWithExtension builtinSuffixes (buildLoc : map getSymbolicPath searchLoc) baseFile
-                 case bsrcFiles of
-                  Nothing ->
+                 case (bsrcFiles, failOnMissing) of
+                  (Nothing, True) ->
                     die' verbosity $ "can't find source for " ++ baseFile
                                   ++ " in " ++ intercalate ", " (map getSymbolicPath searchLoc)
                   _       -> return ()
@@ -332,6 +363,7 @@ ppGreenCard :: BuildInfo -> LocalBuildInfo -> ComponentLocalBuildInfo -> PreProc
 ppGreenCard _ lbi _
     = PreProcessor {
         platformIndependent = False,
+        ppOrdering = unsorted,
         runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity ->
           runDbProgram verbosity greencardProgram (withPrograms lbi)
               (["-tffi", "-o" ++ outFile, inFile])
@@ -343,6 +375,7 @@ ppUnlit :: PreProcessor
 ppUnlit =
   PreProcessor {
     platformIndependent = True,
+    ppOrdering = unsorted,
     runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity ->
       withUTF8FileContents inFile $ \contents ->
         either (writeUTF8File outFile) (die' verbosity) (unlit inFile contents)
@@ -365,6 +398,7 @@ ppGhcCpp :: Program -> (Version -> Bool)
 ppGhcCpp program xHs extraArgs _bi lbi clbi =
   PreProcessor {
     platformIndependent = False,
+    ppOrdering = unsorted,
     runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity -> do
       (prog, version, _) <- requireProgramVersion verbosity
                               program anyVersion (withPrograms lbi)
@@ -385,6 +419,7 @@ ppCpphs :: [String] -> BuildInfo -> LocalBuildInfo -> ComponentLocalBuildInfo ->
 ppCpphs extraArgs _bi lbi clbi =
   PreProcessor {
     platformIndependent = False,
+    ppOrdering = unsorted,
     runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity -> do
       (cpphsProg, cpphsVersion, _) <- requireProgramVersion verbosity
                                         cpphsProgram anyVersion (withPrograms lbi)
@@ -401,6 +436,7 @@ ppHsc2hs :: BuildInfo -> LocalBuildInfo -> ComponentLocalBuildInfo -> PreProcess
 ppHsc2hs bi lbi clbi =
   PreProcessor {
     platformIndependent = False,
+    ppOrdering = unsorted,
     runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity -> do
       (gccProg, _) <- requireProgram verbosity gccProgram (withPrograms lbi)
       (hsc2hsProg, hsc2hsVersion, _) <- requireProgramVersion verbosity
@@ -554,6 +590,7 @@ ppC2hs :: BuildInfo -> LocalBuildInfo -> ComponentLocalBuildInfo -> PreProcessor
 ppC2hs bi lbi clbi =
   PreProcessor {
     platformIndependent = False,
+    ppOrdering = unsorted,
     runPreProcessor = \(inBaseDir, inRelativeFile)
                        (outBaseDir, outRelativeFile) verbosity -> do
       (c2hsProg, _, _) <- requireProgramVersion verbosity
@@ -671,6 +708,7 @@ platformDefines lbi =
       IOS       -> ["ios"]
       Android   -> ["android"]
       Ghcjs     -> ["ghcjs"]
+      Wasi      -> ["wasi"]
       Hurd      -> ["hurd"]
       OtherOS _ -> []
     archStr = case hostArch of
@@ -685,12 +723,14 @@ platformDefines lbi =
       SH          -> []
       IA64        -> ["ia64"]
       S390        -> ["s390"]
+      S390X       -> ["s390x"]
       Alpha       -> ["alpha"]
       Hppa        -> ["hppa"]
       Rs6000      -> ["rs6000"]
       M68k        -> ["m68k"]
       Vax         -> ["vax"]
       JavaScript  -> ["javascript"]
+      Wasm32      -> ["wasm32"]
       OtherArch _ -> []
 
 ppHappy :: BuildInfo -> LocalBuildInfo -> ComponentLocalBuildInfo -> PreProcessor
@@ -713,6 +753,7 @@ standardPP :: LocalBuildInfo -> Program -> [String] -> PreProcessor
 standardPP lbi prog args =
   PreProcessor {
     platformIndependent = False,
+    ppOrdering = unsorted,
     runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity ->
       runDbProgram verbosity prog (withPrograms lbi)
                            (args ++ ["-o", outFile, inFile])
@@ -772,9 +813,13 @@ preprocessExtras verbosity comp lbi = case comp of
                         ++ "type " ++ prettyShow tt
   where
     pp :: FilePath -> IO [FilePath]
-    pp dir = (map (dir </>) . filter not_sub . concat)
-          <$> for knownExtrasHandlers
-                (withLexicalCallStack (\f -> f dir))
+    pp dir = do
+        b <- doesDirectoryExist dir
+        if b
+         then (map (dir </>) . filter not_sub . concat)
+                 <$> for knownExtrasHandlers
+                     (withLexicalCallStack (\f -> f dir))
+         else pure []
     -- TODO: This is a terrible hack to work around #3545 while we don't
     -- reorganize the directory layout.  Basically, for the main
     -- library, we might accidentally pick up autogenerated sources for

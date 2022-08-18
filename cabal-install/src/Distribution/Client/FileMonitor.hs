@@ -453,7 +453,7 @@ checkFileMonitorChanged
       where
         -- In fileMonitorCheckIfOnlyValueChanged mode we want to guarantee that
         -- if we return MonitoredValueChanged that only the value changed.
-        -- We do that by checkin for file changes first. Otherwise it makes
+        -- We do that by checking for file changes first. Otherwise it makes
         -- more sense to do the cheaper test first.
         checkForChanges :: IO (Maybe (MonitorChangedReason a))
         checkForChanges
@@ -768,7 +768,7 @@ probeMonitorStateGlobRel _ _ root dirName
 
 
     return (MonitorStateGlobFiles glob mtime' children)
-    -- Again, we don't force a cache rewite with 'cacheChanged', but we do use
+    -- Again, we don't force a cache rewrite with 'cacheChanged', but we do use
     -- the new mtime' if any.
   where
     probeMergeResult :: MergeResult (FilePath, MonitorStateFileStatus) FilePath

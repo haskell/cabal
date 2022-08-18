@@ -17,7 +17,7 @@ project or can be referenced as a unit):
 
 In general, the accepted field names coincide with the accepted command
 line flags that ``cabal install`` and other commands take. For example,
-``cabal v2-configure --enable-profiling`` will write out a project
+``cabal configure --enable-profiling`` will write out a project
 file with ``profiling: True``.
 
 The full configuration of a project is determined by combining the
@@ -28,10 +28,40 @@ options):
 
 2. ``cabal.project`` (the project configuration)
 
-3. ``cabal.project.freeze`` (the output of ``cabal v2-freeze``)
+3. ``cabal.project.freeze`` (the output of ``cabal freeze``)
 
-4. ``cabal.project.local`` (the output of ``cabal v2-configure``)
+4. ``cabal.project.local`` (the output of ``cabal configure``)
 
+Any call to ``cabal build`` will consider ``cabal.project*`` files from parent
+directories when there is none in the current directory.
+
+.. _conditionals and imports:
+
+Conditionals and imports
+------------------------
+
+As of ``cabal-install`` version 3.8, cabal supports conditional logic
+and imports in ``cabal.project`` files. :ref:`conditions` in cabal
+may case on operating system, architecture, and
+compiler (i.e. there is no support for a notion of custom flags in
+project files). Imports may specify local filepaths or remote urls,
+and may reference either cabal.project files or v1-style cabal.config
+freeze files. As a usage example:
+
+::
+
+    if(os(darwin))
+      optimization: False
+    elif(os(freebsd))
+      packages: freebsd/*.cabal
+    else
+      optimization: True
+
+    import: https://some.remote.source/subdir/cabal.config
+
+    import: relativepath/extra-project.project
+
+    import: /absolutepath/some-project.project
 
 Specifying the local packages
 -----------------------------
@@ -43,6 +73,12 @@ project are:
     :synopsis: Project packages.
 
     :default: ``./*.cabal``
+
+    .. warning::
+
+      The default value ``./*.cabal`` only takes effect if there is no explicit
+      ``cabal.project`` file.
+      If you use such explicit file you *must* fill the field.
 
     Specifies the list of package locations which contain the local
     packages to be built by this project. Package locations can take the
@@ -86,8 +122,8 @@ project are:
 .. cfg-field:: extra-packages: package list with version bounds (comma separated)
     :synopsis: Adds external packages as local
 
-    [STRIKEOUT:Specifies a list of external packages from Hackage which
-    should be considered local packages.] (Not implemented)
+    :strike:`Specifies a list of external packages from Hackage which
+    should be considered local packages.` (Not implemented)
 
     There is no command line variant of this field.
 
@@ -110,7 +146,7 @@ directory layout::
     foo-helper/     # local package
     unix/           # vendored external package
 
-All of these options support globs. ``cabal v2-build`` has its own glob
+All of these options support globs. ``cabal build`` has its own glob
 format:
 
 -  Anywhere in a path, as many times as you like, you can specify an
@@ -265,9 +301,66 @@ package, and thus apply globally:
 
     This option cannot be specified via a ``cabal.project`` file.
 
+.. option:: --ignore-project
+
+    Ignores the local ``cabal.project`` file and uses the default
+    configuration with the local ``foo.cabal`` file. Note that
+    if this flag is set while the ``--project-file`` flag is also
+    set then this flag will be ignored.
+
 .. option:: --store-dir=DIR
 
     Specifies the name of the directory of the global package store.
+
+.. cfg-field:: package-dbs: package DB stack (comma separated)
+               --package-db=[clear, global, user, PATH]
+    :synopsis: PackageDB stack manipulation
+    :since: 3.7
+
+    There are three package databases involved with most builds:
+
+    global
+        Compiler installation of rts, base, etc.
+    store
+        Nix-style local build cache
+    in-place
+        Project-specific build directory
+
+    By default, the package stack you will have with v2 commands is:
+
+    ::
+
+        -- [global, store]
+
+    So all remote packages required by your project will be
+    registered in the store package db (because it is last).
+
+    When cabal starts building your local projects, it appends the in-place db
+    to the end:
+
+    ::
+
+        -- [global, store, in-place]
+
+    So your local packages get put in ``dist-newstyle`` instead of the store.
+
+    This flag manipulates the default prefix: ``[global, store]`` and accepts
+    paths, the special value ``global`` referring to the global package db, and
+    ``clear`` which removes all prior entries. For example,
+
+    ::
+
+        -- [global, store, foo]
+        package-dbs: foo
+
+        -- [foo]
+        package-dbs: clear, foo
+
+        -- [bar, baz]
+        package-dbs: clear, foo, clear, bar, baz
+
+    The command line variant of this flag is ``--package-db=DB`` which can be
+    specified multiple times.
 
 Phase control
 -------------
@@ -300,7 +393,7 @@ Solver configuration options
 The following settings control the behavior of the dependency solver:
 
 .. cfg-field:: constraints: constraints list (comma separated)
-               --constraint="pkg >= 2.0"
+               --constraint="pkg >= 2.0", -c "pkg >= 2.0"
     :synopsis: Extra dependencies constraints.
 
     Add extra constraints to the version bounds, flag settings,
@@ -322,9 +415,9 @@ The following settings control the behavior of the dependency solver:
         constraints: bar == 2.1,
                      bar +foo -baz
 
-    Valid constraints take the same form as for the `constraint
-    command line option
-    <installing-packages.html#cmdoption-setup-configure-constraint>`__.
+    Valid constraints take the same form as for the
+    :option:`runhaskell Setup.hs configure --constraint`
+    command line option.
 
 .. cfg-field:: preferences: preference (comma separated)
                --preference="pkg >= 2.0"
@@ -341,7 +434,7 @@ The following settings control the behavior of the dependency solver:
     dependency solver runtime.
 
     One way to use :cfg-field:`preferences` is to take a known working set of
-    constraints (e.g., via ``cabal v2-freeze``) and record them as
+    constraints (e.g., via ``cabal freeze``) and record them as
     preferences. In this case, the solver will first attempt to use this
     configuration, and if this violates hard constraints, it will try to
     find the minimal number of upgrades to satisfy the hard constraints
@@ -475,7 +568,7 @@ The following settings control the behavior of the dependency solver:
       index-state: @1474739268
 
       -- ISO8601 UTC timestamp format example
-      -- This format is used by 'cabal v2-configure'
+      -- This format is used by 'cabal configure'
       -- for storing `--index-state` values.
       index-state: 2016-09-24T17:47:48Z
 
@@ -533,19 +626,19 @@ The following settings control the behavior of the dependency solver:
     overriding repository.
 
     The special repository reference :rest stands for "all the other repositories"
-    and can be useful to avoid lenghty lists of repository names:
+    and can be useful to avoid lengthy lists of repository names:
 
     ::
 
       -- Force my-repository to be the first repository considered
       active-repositories: :rest, my-repository
 
-    The special repository reference "none" disables all repositories, effectively
+    The special repository reference :none disables all repositories, effectively
     putting cabal in "offline" mode:
 
     ::
 
-      active-repositories: none
+      active-repositories: :none
 
 
 .. cfg-field:: reject-unconstrained-dependencies: all, none
@@ -591,16 +684,13 @@ an external dependency) should be built with ``-fno-state-hack``::
     package bytestring
         ghc-options: -fno-state-hack
 
-``ghc-options`` is not specifically described in this documentation,
-but is one of many fields for configuring programs.  They take the form
-``progname-options`` and ``progname-location``, and
-can only be set inside package stanzas.  (TODO: They are not supported
-at top-level, see :issue:`3579`.)
+``ghc-options`` is not specifically described in this documentation, but is one
+of many fields for configuring programs.  They take the form
+``progname-options`` and ``progname-location``, and can be set for all local
+packages in a ``program-options`` stanza or under a package stanza.
 
-At the moment, there is no way to specify an option to apply to all
-external packages or all inplace packages. Additionally, it is only
-possible to specify these options on the command line for all local
-packages (there is no per-package command line interface.)
+On the command line, these options are applied to all local packages.
+There is no per-package command line interface.
 
 Some flags were added by more recent versions of the Cabal library. This
 means that they are NOT supported by packages which use Custom setup
@@ -631,7 +721,7 @@ feature was added.
     The command line variant of this flag is ``--flags``. There is also
     a shortened form ``-ffoo -f-bar``.
 
-    A common mistake is to say ``cabal v2-build -fhans``, where
+    A common mistake is to say ``cabal build -fhans``, where
     ``hans`` is a flag for a transitive dependency that is not in the
     local package; in this case, the flag will be silently ignored. If
     ``haskell-tor`` is the package you want this flag to apply to, try
@@ -656,7 +746,7 @@ feature was added.
     ``ghc-pkg`` in the same directory as the ``ghc`` directory. If this
     heuristic does not work, set :cfg-field:`with-hc-pkg` explicitly.
 
-    For inplace packages, ``cabal v2-build`` maintains a separate build
+    For inplace packages, ``cabal build`` maintains a separate build
     directory for each version of GHC, so you can maintain multiple
     build trees for different versions of GHC without clobbering each
     other.
@@ -721,8 +811,7 @@ feature was added.
     A list of extra arguments to pass to the external ``./configure``
     script, if one is used. This is only useful for packages which have
     the ``Configure`` build type. See also the section on
-    `system-dependent
-    parameters <developing-packages.html#system-dependent-parameters>`__.
+    :ref:`system-dependent parameters`.
 
     The command line variant of this flag is ``--configure-option=arg``,
     which can be specified multiple times to pass multiple options.
@@ -911,7 +1000,7 @@ Executable options
                --program-prefix=prefix
     :synopsis: Prepend prefix to program names.
 
-    [STRIKEOUT:Prepend *prefix* to installed program names.] (Currently
+    :strike:`Prepend *prefix* to installed program names.` (Currently
     implemented in a silly and not useful way. If you need this to work
     give us a shout.)
 
@@ -925,7 +1014,7 @@ Executable options
                --program-suffix=suffix
     :synopsis: Append refix to program names.
 
-    [STRIKEOUT:Append *suffix* to installed program names.] (Currently
+    :strike:`Append *suffix* to installed program names.` (Currently
     implemented in a silly and not useful way. If you need this to work
     give us a shout.)
 
@@ -995,7 +1084,7 @@ Dynamic linking options
 
     :default: False
 
-    [STRIKEOUT:Build a package which is relocatable.] (TODO: It is not
+    :strike:`Build a package which is relocatable.` (TODO: It is not
     clear what this actually does, or if it works at all.)
 
     The command line variant of this flag is ``--relocatable``.
@@ -1094,7 +1183,7 @@ Profiling options
     Build libraries and executables with profiling enabled (for
     compilers that support profiling as a separate mode). It is only
     necessary to specify :cfg-field:`profiling` for the specific package you
-    want to profile; ``cabal v2-build`` will ensure that all of its
+    want to profile; ``cabal build`` will ensure that all of its
     transitive dependencies are built with profiling enabled.
 
     To enable profiling for only libraries or executables, see
@@ -1240,15 +1329,19 @@ Haddock options
 
     :default: False
 
-    Enables building of Haddock documentation
+    Enables building of Haddock documentation.
+    Implied when calling ``cabal haddock``.
 
     The command line variant of this flag is ``--enable-documentation``
     and ``--disable-documentation``.
 
-    `documentation: true` does not imply :cfg-field:`haddock-benchmarks`,
-    :cfg-field:`haddock-executables`, :cfg-field:`haddock-internal` or
-    :cfg-field:`haddock-tests`. These need to be enabled separately if
-    desired.
+    ``documentation: true`` does not imply
+    :cfg-field:`haddock-all`,
+    :cfg-field:`haddock-benchmarks`,
+    :cfg-field:`haddock-executables`,
+    :cfg-field:`haddock-internal` or
+    :cfg-field:`haddock-tests`.
+    These need to be enabled separately if desired.
 
 .. cfg-field:: doc-index-file: templated path
                --doc-index-file=TEMPLATE
@@ -1257,100 +1350,86 @@ Haddock options
     A central index of Haddock API documentation (template cannot use
     ``$pkgid``), which should be updated as documentation is built.
 
-    The command line variant of this flag is
-    ``--doc-index-file=TEMPLATE``
-
 The following commands are equivalent to ones that would be passed when
-running ``setup haddock``. (TODO: Where does the documentation get put.)
+running ``setup haddock``.
 
 .. cfg-field:: haddock-hoogle: boolean
+               --haddock-hoogle
     :synopsis: Generate Hoogle file.
 
     :default: False
 
     Generate a text file which can be converted by Hoogle_
-    into a database for searching. This is equivalent to running ``haddock``
-    with the ``--hoogle`` flag.
-
-    The command line variant of this flag is ``--hoogle`` (for the
-    ``haddock`` command).
+    into a database for searching.
+    This is equivalent to running ``haddock`` with the ``--hoogle`` flag.
 
 .. cfg-field:: haddock-html: boolean
+               --haddock-html
     :synopsis: Build HTML documentation.
 
     :default: True
 
     Build HTML documentation.
 
-    The command line variant of this flag is ``--html`` (for the
-    ``haddock`` command).
+.. cfg-field:: haddock-quickjump: boolean
+               --haddock-quickjump
+    :synopsis: Generate Quickjump file.
+
+    :default: False
+
+    Generate an index for interactive documentation navigation.
+    This is equivalent to running ``haddock`` with the ``--quickjump`` flag.
 
 .. cfg-field:: haddock-html-location: templated path
-               --html-location=TEMPLATE
+               --haddock-html-location=TEMPLATE
     :synopsis: Haddock HTML templates location.
 
     Specify a template for the location of HTML documentation for
     prerequisite packages. The substitutions are applied to the template
     to obtain a location for each package, which will be used by
     hyperlinks in the generated documentation. For example, the
-    following command generates links pointing at [Hackage] pages:
+    following command generates links pointing at Hackage pages:
 
     ::
 
         html-location: http://hackage.haskell.org/packages/archive/$pkg/latest/doc/html
 
-    The command line variant of this flag is ``--html-location`` (for
-    the ``haddock`` subcommand).
+    If passed on the command line,
+    the argument may be quoted to prevent substitution by the shell.
 
     ::
 
         --html-location='http://hackage.haskell.org/packages/archive/$pkg/latest/doc/html'
 
-    Here the argument is quoted to prevent substitution by the shell. If
-    this option is omitted, the location for each package is obtained
+    If this option is omitted, the location for each package is obtained
     using the package tool (e.g. ``ghc-pkg``).
 
 .. cfg-field:: haddock-executables: boolean
+               --haddock-executables
     :synopsis: Generate documentation for executables.
 
     :default: False
 
     Run haddock on all executable programs.
 
-    The command line variant of this flag is ``--executables`` (for the
-    ``haddock`` subcommand).
-
 .. cfg-field:: haddock-tests: boolean
+               --haddock-tests
     :synopsis: Generate documentation for tests.
 
     :default: False
 
     Run haddock on all test suites.
 
-    The command line variant of this flag is ``--tests`` (for the
-    ``haddock`` subcommand).
-
 .. cfg-field:: haddock-benchmarks: boolean
+               --haddock-benchmarks
     :synopsis: Generate documentation for benchmarks.
 
     :default: False
 
     Run haddock on all benchmarks.
 
-    The command line variant of this flag is ``--benchmarks`` (for the
-    ``haddock`` subcommand).
-
-.. cfg-field:: haddock-all: boolean
-    :synopsis: Generate documentation for everything
-
-    :default: False
-
-    Run haddock on all components.
-
-    The command line variant of this flag is ``--all`` (for the
-    ``haddock`` subcommand).
-
 .. cfg-field:: haddock-internal: boolean
+               --haddock-internal
     :synopsis: Generate documentation for internal modules
 
     :default: False
@@ -1358,55 +1437,53 @@ running ``setup haddock``. (TODO: Where does the documentation get put.)
     Build haddock documentation which includes unexposed modules and
     symbols.
 
-    The command line variant of this flag is ``--internal`` (for the
-    ``haddock`` subcommand).
+.. cfg-field:: haddock-all: boolean
+               --haddock-all
+    :synopsis: Generate documentation for everything
+
+    :default: False
+
+    Run haddock on all components.
 
 .. cfg-field:: haddock-css: path
-    :synopsis: Location of Haddoc CSS file.
+               --haddock-css=PATH
+    :synopsis: Location of Haddock CSS file.
 
     The CSS file that should be used to style the generated
-    documentation (overriding haddock's default.)
-
-    The command line variant of this flag is ``--css`` (for the
-    ``haddock`` subcommand).
+    documentation (overriding haddock's default).
 
 .. cfg-field:: haddock-hyperlink-source: boolean
+               --haddock-hyperlink-source
     :synopsis: Generate hyperlinked source code for documentation
 
     :default: False
 
     Generated hyperlinked source code using `HsColour`_, and have
     Haddock documentation link to it.
-
-    The command line variant of this flag is ``--hyperlink-source`` (for
-    the ``haddock`` subcommand).
+    This is equivalent to running ``haddock`` with the ``--hyperlinked-source`` flag.
 
 .. cfg-field:: haddock-hscolour-css: path
+               --haddock-hscolour-css=PATH
     :synopsis: Location of CSS file for HsColour
 
     The CSS file that should be used to style the generated hyperlinked
     source code (from `HsColour`_).
 
-    The command line variant of this flag is ``--hscolour-css`` (for the
-    ``haddock`` subcommand).
-
 .. cfg-field:: haddock-contents-location: URL
+               --haddock-contents-location=URL
     :synopsis: URL for contents page.
 
     A baked-in URL to be used as the location for the contents page.
-
-    The command line variant of this flag is ``--contents-location``
-    (for the ``haddock`` subcommand).
 
 .. cfg-field:: haddock-keep-temp-files: boolean
     :synopsis: Keep temporary Haddock files.
 
     Keep temporary files.
 
-    The command line variant of this flag is ``--keep-temp-files`` (for
-    the ``haddock`` subcommand).
+    There is no command line variant of this flag.
 
 .. cfg-field:: open: boolean
+               --open
     :synopsis: Open generated documentation in-browser.
 
     When generating HTML documentation, attempt to open it in a browser
@@ -1431,6 +1508,32 @@ Advanced global configuration options
     <https://gitlab.haskell.org/ghc/ghc/-/issues/13753>`_ that supports
     the ``-package-env -`` option that allows ignoring the package
     environment files).
+
+.. cfg-field:: build-info: True, False
+               --enable-build-info
+               --disable-build-info
+    :synopsis: Whether build information for each individual component should be
+               written in a machine readable format.
+
+    :default: ``False``
+
+    Enable generation of build information for Cabal components. Contains very
+    detailed information on how to build an individual component, such as
+    compiler version, modules of a component and how to compile the component.
+
+    The output format is in json, and the exact location can be discovered from
+    ``plan.json``, where it is identified by ``build-info`` within the items in
+    the ``install-plan``.
+    Note, that this field in ``plan.json`` can be ``null``, if and only if
+    ``build-type: Custom`` is set, and the ``Cabal`` version is too
+    old (i.e. ``< 3.7``).
+    If the field is missing entirely, the component is not a local one, thus,
+    no ``build-info`` exists for that particular component within the
+    ``install-plan``.
+
+    .. note::
+        The format and fields of the generated build information is currently experimental,
+        in the future we might add or remove fields, depending on the needs of other tooling.
 
 
 .. cfg-field:: http-transport: curl, wget, powershell, or plain-http
@@ -1465,8 +1568,8 @@ Advanced global configuration options
 
     :default: ``~/.cabal/packages``
 
-    [STRIKEOUT:The location where packages downloaded from remote
-    repositories will be cached.] Not implemented yet.
+    :strike:`The location where packages downloaded from remote
+    repositories will be cached.` Not implemented yet.
 
     The command line variant of this flag is
     ``--remote-repo-cache=DIR``.
@@ -1477,7 +1580,7 @@ Advanced global configuration options
 
     :default: ``~/.cabal/logs``
 
-    [STRIKEOUT:The location where build logs for packages are stored.]
+    :strike:`The location where build logs for packages are stored.`
     Not implemented yet.
 
     The command line variant of this flag is ``--logs-dir=DIR``.
@@ -1488,24 +1591,16 @@ Advanced global configuration options
 
     :default: ``~/.cabal/logs/build.log``
 
-    [STRIKEOUT:The file to save build summaries. Valid variables which
-    can be used in the path are ``$pkgid``, ``$compiler``, ``$os`` and
-    ``$arch``.] Not implemented yet.
+    :strike:`The file to save build summaries.` Not implemented yet.
+
+    Valid variables which can be used in the path are ``$pkgid``,
+    ``$compiler``, ``$os`` and ``$arch``.
 
     The command line variant of this flag is
     ``--build-summary=TEMPLATE``.
 
-.. cfg-field:: world-file: path
-               --world-file=FILE
-    :deprecated:
-
-    [STRIKEOUT:The location of the world file.] Deprecated.
-
-    The command line variant of this flag is ``--world-file=FILE``.
-
 Undocumented fields: ``root-cmd``, ``symlink-bindir``, ``build-log``,
-``remote-build-reporting``, ``report-planned-failure``, ``one-shot``,
-``offline``.
+``remote-build-reporting``, ``report-planned-failure``, ``offline``.
 
 Advanced solver options
 ^^^^^^^^^^^^^^^^^^^^^^^
@@ -1566,7 +1661,7 @@ Most users generally won't need these.
                --fine-grained-conflicts
                --no-fine-grained-conflicts
     :synopsis: Skip a version of a package if it does not resolve any conflicts
-	       encountered in the last version (solver optimization).
+               encountered in the last version (solver optimization).
 
     :default: True
 
@@ -1583,7 +1678,7 @@ Most users generally won't need these.
                --minimize-conflict-set
                --no-minimize-conflict-set
     :synopsis: Try to improve the solver error message when there is no
-	       solution.
+               solution.
 
     :default: False
 
@@ -1632,5 +1727,23 @@ Most users generally won't need these.
 
     The command line variant of this field is
     ``--cabal-lib-version=1.24.0.1``.
+
+.. cfg-field:: prefer-oldest: boolean
+               --prefer-oldest
+               --no-prefer-oldest
+    :synopsis: Prefer the oldest versions of packages available.
+    :since:    3.8
+
+    :default:  False
+
+    By default, when solver has a choice of multiple versions of the same
+    package, it will first try to derive a build plan with the latest
+    version. This flag switches the behaviour, making the solver
+    to prefer the oldest packages available.
+
+    The primary use case is to help users in establishing lower bounds
+    of upstream dependencies.
+
+    The command line variant of this field is ``--(no-)prefer-oldest``.
 
 .. include:: references.inc

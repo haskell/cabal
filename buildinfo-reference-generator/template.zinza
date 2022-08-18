@@ -86,10 +86,10 @@ Field syntax is described as they are in the latest cabal file format version.
 
 
   .. math::
-      
+
       \mathbf{fix}\; \mathit{expr}\; \mathbf{in}\; \mathit{digit}
       \mid \mathit{expr} \circ \mathord{``}\mathtt{+}\mathord{"} \circ \mathit{expr}
-      \mid \mathord{``}\mathtt{(} \mathord{"} \circ \mathit{expr} \circ \mathord{``}\mathtt{)}\mathord{"} 
+      \mid \mathord{``}\mathtt{(} \mathord{"} \circ \mathit{expr} \circ \mathord{``}\mathtt{)}\mathord{"}
 
 Lists
 -----

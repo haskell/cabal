@@ -62,6 +62,7 @@ module Distribution.Simple.Compiler (
         profilingSupported,
         backpackSupported,
         arResponseFilesSupported,
+        arDashLSupported,
         libraryDynDirSupported,
         libraryVisibilitySupported,
 
@@ -165,7 +166,7 @@ compilerInfo c = CompilerInfo (compilerId c)
 -- |Some compilers have a notion of a database of available packages.
 -- For some there is just one global db of packages, other compilers
 -- support a per-user or an arbitrary db specified at some location in
--- the file system. This can be used to build isloated environments of
+-- the file system. This can be used to build isolated environments of
 -- packages, for example to build a collection of related packages
 -- without installing them globally.
 --
@@ -364,6 +365,12 @@ libraryDynDirSupported comp = case compilerFlavor comp of
 -- arguments (i.e. @file-style arguments).
 arResponseFilesSupported :: Compiler -> Bool
 arResponseFilesSupported = ghcSupported "ar supports at file"
+
+-- | Does this compiler's "ar" command support llvm-ar's -L flag,
+-- which compels the archiver to add an input archive's members
+-- rather than adding the archive itself.
+arDashLSupported :: Compiler -> Bool
+arDashLSupported = ghcSupported "ar supports -L"
 
 -- | Does this compiler support Haskell program coverage?
 coverageSupported :: Compiler -> Bool

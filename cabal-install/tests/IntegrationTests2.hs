@@ -16,6 +16,7 @@ import Prelude ()
 import Distribution.Client.DistDirLayout
 import Distribution.Client.ProjectConfig
 import Distribution.Client.Config (getCabalDir)
+import Distribution.Client.HttpUtils
 import Distribution.Client.TargetSelector hiding (DirActions(..))
 import qualified Distribution.Client.TargetSelector as TS (DirActions(..))
 import Distribution.Client.ProjectPlanning
@@ -43,12 +44,16 @@ import qualified Distribution.Client.CmdRun     as CmdRun
 import qualified Distribution.Client.CmdTest    as CmdTest
 import qualified Distribution.Client.CmdBench   as CmdBench
 import qualified Distribution.Client.CmdHaddock as CmdHaddock
+import qualified Distribution.Client.CmdListBin as CmdListBin
 
 import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import Distribution.Simple.Setup (toFlag, HaddockFlags(..), defaultHaddockFlags)
+import Distribution.Client.Setup (globalCommand)
 import Distribution.Simple.Compiler
+import Distribution.Simple.Command
+import qualified Distribution.Simple.Flag as Flag
 import Distribution.System
 import Distribution.Version
 import Distribution.ModuleName (ModuleName)
@@ -70,6 +75,9 @@ import Test.Tasty.Options
 import Data.Tagged (Tagged(..))
 
 import qualified Data.ByteString as BS
+import Distribution.Client.GlobalFlags (GlobalFlags, globalNix)
+import Distribution.Simple.Flag (Flag (Flag, NoFlag))
+import Data.Maybe (fromJust)
 
 #if !MIN_VERSION_directory(1,2,7)
 removePathForcibly :: FilePath -> IO ()
@@ -98,16 +106,18 @@ tests config =
     , testCase "proj conf1"    (testExceptionInProjectConfig config)
     ]
   , testGroup "Target selectors" $
-    [ testCaseSteps "valid"             testTargetSelectors
-    , testCase      "bad syntax"        testTargetSelectorBadSyntax
-    , testCaseSteps "ambiguous syntax"  testTargetSelectorAmbiguous
-    , testCase      "no current pkg"    testTargetSelectorNoCurrentPackage
-    , testCase      "no targets"        testTargetSelectorNoTargets
-    , testCase      "project empty"     testTargetSelectorProjectEmpty
+    [ testCaseSteps "valid"              testTargetSelectors
+    , testCase      "bad syntax"         testTargetSelectorBadSyntax
+    , testCaseSteps "ambiguous syntax"   testTargetSelectorAmbiguous
+    , testCase      "no current pkg"     testTargetSelectorNoCurrentPackage
+    , testCase      "no targets"         testTargetSelectorNoTargets
+    , testCase      "project empty"      testTargetSelectorProjectEmpty
+    , testCase      "canonicalized path" testTargetSelectorCanonicalizedPath
     , testCase      "problems (common)"  (testTargetProblemsCommon config)
     , testCaseSteps "problems (build)"   (testTargetProblemsBuild config)
     , testCaseSteps "problems (repl)"    (testTargetProblemsRepl config)
     , testCaseSteps "problems (run)"     (testTargetProblemsRun config)
+    , testCaseSteps "problems (list-bin)" (testTargetProblemsListBin config)
     , testCaseSteps "problems (test)"    (testTargetProblemsTest config)
     , testCaseSteps "problems (bench)"   (testTargetProblemsBench config)
     , testCaseSteps "problems (haddock)" (testTargetProblemsHaddock config)
@@ -132,9 +142,16 @@ tests config =
 
   , testGroup "Regression tests" $
     [ testCase "issue #3324" (testRegressionIssue3324 config)
+    , testCase "program options scope all" (testProgramOptionsAll config)
+    , testCase "program options scope local" (testProgramOptionsLocal config)
+    , testCase "program options scope specific" (testProgramOptionsSpecific config)
+    ]
+  , testGroup "Flag tests" $
+    [
+      testCase "Test Nix Flag" testNixFlags,
+      testCase "Test Ignore Project Flag" testIgnoreProjectFlag
     ]
   ]
-
 
 testFindProjectRoot :: Assertion
 testFindProjectRoot = do
@@ -506,7 +523,7 @@ mkTargetAllPackages = TargetAllPackages Nothing
 
 instance IsString PackageIdentifier where
     fromString pkgidstr = pkgid
-      where pkgid = fromMaybe (error $"fromString @PackageIdentifier " ++ show pkgidstr) $ simpleParse pkgidstr
+      where pkgid = fromMaybe (error $ "fromString @PackageIdentifier " ++ show pkgidstr) $ simpleParse pkgidstr
 
 
 testTargetSelectorNoCurrentPackage :: Assertion
@@ -536,7 +553,7 @@ testTargetSelectorNoTargets :: Assertion
 testTargetSelectorNoTargets = do
     (_, _, _, localPackages, _) <- configureProject testdir config
     Left errs <- readTargetSelectors localPackages Nothing []
-    errs @?= [TargetSelectorNoTargetsInCwd]
+    errs @?= [TargetSelectorNoTargetsInCwd True]
     cleanProject testdir
   where
     testdir = "targets/complex"
@@ -552,6 +569,28 @@ testTargetSelectorProjectEmpty = do
   where
     testdir = "targets/empty"
     config  = mempty
+
+
+-- | Ensure we don't miss primary package and produce
+-- TargetSelectorNoTargetsInCwd error due to symlink or
+-- drive capitalisation mismatch when no targets are given
+testTargetSelectorCanonicalizedPath :: Assertion
+testTargetSelectorCanonicalizedPath = do
+  (_, _, _, localPackages, _) <- configureProject testdir config
+  cwd <- getCurrentDirectory
+  let virtcwd = cwd </> basedir </> symlink
+  -- Check that the symlink is there before running test as on Windows
+  -- some versions/configurations of git won't pull down/create the symlink
+  canRunTest <- doesDirectoryExist virtcwd
+  when canRunTest (do
+      let dirActions' = (dirActions symlink) { TS.getCurrentDirectory = return virtcwd }
+      Right ts <- readTargetSelectorsWith dirActions' localPackages Nothing []
+      ts @?= [TargetPackage TargetImplicitCwd ["p-0.1"] Nothing])
+  cleanProject testdir
+  where
+    testdir = "targets/simple"
+    symlink = "targets/symbolic-link-to-simple"
+    config = mempty
 
 
 testTargetProblemsCommon :: ProjectConfig -> Assertion
@@ -838,9 +877,85 @@ testTargetProblemsRepl config reportSubCase = do
          [ TargetPackage TargetExplicitNamed ["p-0.1"] (Just BenchKind) ]
          [ ("p-0.1-inplace-a-benchmark", CBenchName "a-benchmark") ]
 
+testTargetProblemsListBin :: ProjectConfig -> (String -> IO ()) -> Assertion
+testTargetProblemsListBin config reportSubCase = do
+    reportSubCase "one-of-each"
+    do (_,elaboratedPlan,_) <- planProject "targets/one-of-each" config
+       assertProjectDistinctTargets
+         elaboratedPlan
+         CmdListBin.selectPackageTargets
+         CmdListBin.selectComponentTarget
+         [ TargetPackage TargetExplicitNamed ["p-0.1"] Nothing
+         ]
+         [ ("p-0.1-inplace-p1",      CExeName   "p1")
+         ]
+
+    reportSubCase "multiple-exes"
+    assertProjectTargetProblems
+      "targets/multiple-exes" config
+      CmdListBin.selectPackageTargets
+      CmdListBin.selectComponentTarget
+      [ ( flip CmdListBin.matchesMultipleProblem
+               [ AvailableTarget "p-0.1" (CExeName "p2")
+                   (TargetBuildable () TargetRequestedByDefault) True
+               , AvailableTarget "p-0.1" (CExeName "p1")
+                   (TargetBuildable () TargetRequestedByDefault) True
+               ]
+        , mkTargetPackage "p-0.1" )
+      ]
+
+    reportSubCase "multiple targets"
+    do (_,elaboratedPlan,_) <- planProject "targets/multiple-exes" config
+       assertProjectDistinctTargets
+         elaboratedPlan
+         CmdListBin.selectPackageTargets
+         CmdListBin.selectComponentTarget
+         [ mkTargetComponent "p-0.1" (CExeName "p1")
+         , mkTargetComponent "p-0.1" (CExeName "p2")
+         ]
+         [ ("p-0.1-inplace-p1", CExeName "p1")
+         , ("p-0.1-inplace-p2", CExeName "p2")
+         ]
+
+    reportSubCase "exes-disabled"
+    assertProjectTargetProblems
+      "targets/exes-disabled" config
+      CmdListBin.selectPackageTargets
+      CmdListBin.selectComponentTarget
+      [ ( flip TargetProblemNoneEnabled
+               [ AvailableTarget "p-0.1" (CExeName "p") TargetNotBuildable True
+               ]
+        , mkTargetPackage "p-0.1" )
+      ]
+
+    reportSubCase "empty-pkg"
+    assertProjectTargetProblems
+      "targets/empty-pkg" config
+      CmdListBin.selectPackageTargets
+      CmdListBin.selectComponentTarget
+      [ ( TargetProblemNoTargets, mkTargetPackage "p-0.1" )
+      ]
+
+    reportSubCase "lib-only"
+    assertProjectTargetProblems
+      "targets/lib-only" config
+      CmdListBin.selectPackageTargets
+      CmdListBin.selectComponentTarget
+      [ (CmdListBin.noComponentsProblem, mkTargetPackage "p-0.1" )
+      ]
 
 testTargetProblemsRun :: ProjectConfig -> (String -> IO ()) -> Assertion
 testTargetProblemsRun config reportSubCase = do
+    reportSubCase "one-of-each"
+    do (_,elaboratedPlan,_) <- planProject "targets/one-of-each" config
+       assertProjectDistinctTargets
+         elaboratedPlan
+         CmdRun.selectPackageTargets
+         CmdRun.selectComponentTarget
+         [ TargetPackage TargetExplicitNamed ["p-0.1"] Nothing
+         ]
+         [ ("p-0.1-inplace-p1",      CExeName   "p1")
+         ]
 
     reportSubCase "multiple-exes"
     assertProjectTargetProblems
@@ -1439,6 +1554,96 @@ testRegressionIssue3324 config = when (buildOS /= Windows) $ do
   where
     testdir = "regression/3324"
 
+-- | Test global program options are propagated correctly
+-- from ProjectConfig to ElaboratedInstallPlan
+testProgramOptionsAll :: ProjectConfig -> Assertion
+testProgramOptionsAll config0 = do
+    -- P is a tarball package, Q is a local dir package that depends on it.
+    (_, elaboratedPlan, _) <- planProject testdir config
+    let packages = filterConfiguredPackages $ InstallPlan.toList elaboratedPlan
+
+    assertEqual "q"
+                (Just [ghcFlag])
+                (getProgArgs packages "q")
+    assertEqual "p"
+                (Just [ghcFlag])
+                (getProgArgs packages "p")
+  where
+    testdir = "regression/program-options"
+    programArgs = MapMappend (Map.fromList [("ghc", [ghcFlag])])
+    ghcFlag = "-fno-full-laziness"
+
+    -- Insert flag into global config
+    config = config0 {
+      projectConfigAllPackages = (projectConfigAllPackages config0) {
+        packageConfigProgramArgs = programArgs
+      }
+    }
+
+-- | Test local program options are propagated correctly
+-- from ProjectConfig to ElaboratedInstallPlan
+testProgramOptionsLocal :: ProjectConfig -> Assertion
+testProgramOptionsLocal config0 = do
+    (_, elaboratedPlan, _) <- planProject testdir config
+    let localPackages = filterConfiguredPackages $ InstallPlan.toList elaboratedPlan
+
+    assertEqual "q"
+                (Just [ghcFlag])
+                (getProgArgs localPackages "q")
+    assertEqual "p"
+                Nothing
+                (getProgArgs localPackages "p")
+  where
+    testdir = "regression/program-options"
+    programArgs = MapMappend (Map.fromList [("ghc", [ghcFlag])])
+    ghcFlag = "-fno-full-laziness"
+
+    -- Insert flag into local config
+    config = config0 {
+      projectConfigLocalPackages = (projectConfigLocalPackages config0) {
+        packageConfigProgramArgs = programArgs
+      }
+    }
+
+-- | Test package specific program options are propagated correctly
+-- from ProjectConfig to ElaboratedInstallPlan
+testProgramOptionsSpecific :: ProjectConfig -> Assertion
+testProgramOptionsSpecific config0 = do
+    (_, elaboratedPlan, _) <- planProject testdir config
+    let packages = filterConfiguredPackages $ InstallPlan.toList elaboratedPlan
+
+    assertEqual "q"
+                (Nothing)
+                (getProgArgs packages "q")
+    assertEqual "p"
+                (Just [ghcFlag])
+                (getProgArgs packages "p")
+  where
+    testdir = "regression/program-options"
+    programArgs = MapMappend (Map.fromList [("ghc", [ghcFlag])])
+    ghcFlag = "-fno-full-laziness"
+
+    -- Insert flag into package "p" config
+    config = config0 {
+        projectConfigSpecificPackage = MapMappend (Map.fromList [(mkPackageName "p", configArgs)])
+    }
+    configArgs = mempty {
+        packageConfigProgramArgs = programArgs
+    }
+
+filterConfiguredPackages :: [ElaboratedPlanPackage] -> [ElaboratedConfiguredPackage]
+filterConfiguredPackages [] = []
+filterConfiguredPackages (InstallPlan.PreExisting _    : pkgs) = filterConfiguredPackages pkgs
+filterConfiguredPackages (InstallPlan.Installed   elab : pkgs) = elab : filterConfiguredPackages pkgs
+filterConfiguredPackages (InstallPlan.Configured  elab : pkgs) = elab : filterConfiguredPackages pkgs
+
+getProgArgs :: [ElaboratedConfiguredPackage] -> String -> Maybe [String]
+getProgArgs [] _ = Nothing
+getProgArgs (elab : pkgs) name
+    | pkgName (elabPkgSourceId elab) == mkPackageName name
+        = Map.lookup "ghc" (elabProgramArgs elab)
+    | otherwise
+        = getProgArgs pkgs name
 
 ---------------------------------
 -- Test utils to plan and build
@@ -1488,8 +1693,11 @@ configureProject testdir cliConfig = do
     -- ended in an exception (as we leave the files to help with debugging).
     cleanProject testdir
 
+    httpTransport <- configureTransport verbosity [] Nothing
+
     (projectConfig, localPackages) <-
       rebuildProjectConfig verbosity
+                           httpTransport
                            distDirLayout
                            cliConfig
 
@@ -1510,8 +1718,8 @@ type PlanDetails = (ProjDetails,
 planProject :: FilePath -> ProjectConfig -> IO PlanDetails
 planProject testdir cliConfig = do
 
-    projDetails@
-      (distDirLayout,
+    projDetails@(
+       distDirLayout,
        cabalDirLayout,
        projectConfig,
        localPackages,
@@ -1733,3 +1941,41 @@ tryFewTimes action = go (3 :: Int) where
         hPutStrLn stderr $ "Trying " ++ show n ++ " after " ++ show e
         threadDelay 10000
         go (n - 1)
+
+testNixFlags :: Assertion
+testNixFlags = do
+  let gc = globalCommand []
+  -- changing from the v1 to v2 build command does not change whether the "--enable-nix" flag
+  -- sets the globalNix param of the GlobalFlags type to True even though the v2 command doesn't use it
+  let nixEnabledFlags = getFlags gc . commandParseArgs gc True $ ["--enable-nix", "build"]
+  let nixDisabledFlags = getFlags gc . commandParseArgs gc True $ ["--disable-nix", "build"]
+  let nixDefaultFlags = getFlags gc . commandParseArgs gc True $ ["build"]
+  True @=? isJust nixDefaultFlags
+  True @=? isJust nixEnabledFlags
+  True @=? isJust nixDisabledFlags
+  Just True @=? (fromFlag . globalNix . fromJust $ nixEnabledFlags)
+  Just False @=? (fromFlag . globalNix . fromJust $ nixDisabledFlags)
+  Nothing @=? (fromFlag . globalNix . fromJust $ nixDefaultFlags)
+  where
+    fromFlag :: Flag Bool -> Maybe Bool
+    fromFlag (Flag x) = Just x
+    fromFlag NoFlag = Nothing
+    getFlags :: CommandUI GlobalFlags -> CommandParse (GlobalFlags -> GlobalFlags, [String]) -> Maybe GlobalFlags
+    getFlags cui (CommandReadyToGo (mkflags, _)) = Just . mkflags . commandDefaultFlags $ cui
+    getFlags _ _ = Nothing
+
+testIgnoreProjectFlag :: Assertion
+testIgnoreProjectFlag = do
+  -- Coverage flag should be false globally by default (~/.cabal folder)
+  (_, _, prjConfigGlobal, _, _) <- configureProject testdir ignoreSetConfig
+  let globalCoverageFlag = packageConfigCoverage . projectConfigLocalPackages $ prjConfigGlobal
+  False @=? Flag.fromFlagOrDefault False globalCoverageFlag
+  -- It is set to true in the cabal.project file
+  (_, _, prjConfigLocal, _, _) <- configureProject testdir emptyConfig
+  let localCoverageFlag = packageConfigCoverage . projectConfigLocalPackages $ prjConfigLocal
+  True @=? Flag.fromFlagOrDefault False localCoverageFlag
+  where
+    testdir = "build/ignore-project"
+    emptyConfig = mempty
+    ignoreSetConfig :: ProjectConfig
+    ignoreSetConfig = mempty { projectConfigShared = mempty { projectConfigIgnoreProject = Flag True } }

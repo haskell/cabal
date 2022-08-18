@@ -9,7 +9,6 @@ import Prelude ()
 import Distribution.Compat.Prelude
 
 import Distribution.Types.UnqualComponentName
-import Distribution.Compat.CreatePipe
 import Distribution.Compat.Environment
 import qualified Distribution.PackageDescription as PD
 import Distribution.Simple.Build.PathsModule
@@ -32,6 +31,7 @@ import System.Directory
     , getCurrentDirectory, removeDirectoryRecursive )
 import System.FilePath ( (</>), (<.>) )
 import System.IO ( stdout, stderr )
+import System.Process ( createPipe )
 
 import qualified Data.ByteString.Lazy as LBS
 
@@ -53,7 +53,7 @@ runTest pkg_descr lbi clbi flags suite = do
                   </> testName' <.> exeExtension (LBI.hostPlatform lbi)
     -- Check that the test executable exists.
     exists <- doesFileExist cmd
-    unless exists $ die' verbosity $ "Error: Could not find test program \"" ++ cmd
+    unless exists $ die' verbosity $ "Could not find test program \"" ++ cmd
                           ++ "\". Did you build the package first?"
 
     -- Remove old .tix files if appropriate.
@@ -144,7 +144,7 @@ runTest pkg_descr lbi clbi flags suite = do
     when isCoverageEnabled $
         case PD.library pkg_descr of
             Nothing ->
-                die' verbosity "Error: test coverage is only supported for packages with a library component"
+                die' verbosity "Test coverage is only supported for packages with a library component."
 
             Just library ->
                 markupTest verbosity lbi distPref (prettyShow $ PD.package pkg_descr) suite library

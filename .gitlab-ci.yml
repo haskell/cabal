@@ -1,0 +1,152 @@
+stages:
+  - build
+
+# Used for ci setup in the gitlab mirror of the project:
+# https://gitlab.haskell.org/haskell/haskell-language-server/-/pipelines
+variables:
+  # Commit of ghc/ci-images repository from which to pull Docker images
+  DOCKER_REV: "4ed1a4f27828ba96a34662dc954335e29b470cd2"
+
+  GHC_VERSION: 9.2.3
+  CABAL_INSTALL_VERSION: 3.6.2.0
+
+workflow:
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: always
+    # Triggered if you start it from the gitlab web ui
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+      when: always
+    - when: never
+
+.build:
+  stage: build
+  script:
+    - bash .gitlab/ci.sh
+  artifacts:
+    expire_in: 2 week
+    paths:
+      - out/*
+
+build-aarch64-linux-deb10:
+  extends: .build
+  tags:
+    - aarch64-linux
+  image: "registry.gitlab.haskell.org/ghc/ci-images/aarch64-linux-deb10:$DOCKER_REV"
+  variables:
+    TARBALL_ARCHIVE_SUFFIX: aarch64-linux-deb10
+    TARBALL_EXT: tar.xz
+    ADD_CABAL_ARGS: ""
+
+build-armv7-linux-deb10:
+  extends: .build
+  tags:
+    - armv7-linux
+  image: "registry.gitlab.haskell.org/ghc/ci-images/armv7-linux-deb10:$DOCKER_REV"
+  variables:
+    TARBALL_ARCHIVE_SUFFIX: armv7-linux-deb1
+    TARBALL_EXT: tar.xz
+    ADD_CABAL_ARGS: ""
+    # temp, because 3.6.2.0 is broken
+    CABAL_INSTALL_VERSION: 3.4.0.0
+  retry: 2
+
+build-x86_64-linux:
+  extends: .build
+  tags:
+    - x86_64-linux
+  image: "registry.gitlab.haskell.org/ghc/ci-images/x86_64-linux-deb10:$DOCKER_REV"
+  variables:
+    TARBALL_ARCHIVE_SUFFIX: x86_64-linux-deb10
+    TARBALL_EXT: tar.xz
+    ADD_CABAL_ARGS: "--enable-split-sections"
+
+build-x86_64-linux-alpine:
+  extends: .build
+  tags:
+    - x86_64-linux
+  before_script:
+    # for cabal build
+    - sudo apk add --no-cache zlib zlib-dev zlib-static
+  image: "registry.gitlab.haskell.org/ghc/ci-images/x86_64-linux-alpine3_12:$DOCKER_REV"
+  variables:
+    TARBALL_ARCHIVE_SUFFIX: x86_64-linux-alpine
+    TARBALL_EXT: tar.xz
+    ADD_CABAL_ARGS: "--enable-split-sections --enable-executable-static"
+
+build-i386-linux-alpine:
+  extends: .build
+  tags:
+    - x86_64-linux
+  image: "i386/alpine:3.12"
+  before_script:
+    # for GHC
+    - apk add --no-cache bash curl gcc g++ binutils binutils-gold bsd-compat-headers gmp-dev ncurses-dev libffi-dev make xz tar perl
+    # for cabal build
+    - apk add --no-cache zlib zlib-dev zlib-static
+  variables:
+    TARBALL_ARCHIVE_SUFFIX: i386-linux-alpine
+    TARBALL_EXT: tar.xz
+    ADD_CABAL_ARGS: "--enable-split-sections --enable-executable-static"
+    # temp, because 3.6.2.0 is broken
+    CABAL_INSTALL_VERSION: 3.4.0.0
+
+build-x86_64-freebsd12:
+  extends: .build
+  tags:
+    - x86_64-freebsd12
+  variables:
+    TARBALL_ARCHIVE_SUFFIX: x86_64-freebsd12
+    TARBALL_EXT: tar.xz
+    ADD_CABAL_ARGS: "--enable-split-sections"
+
+build-x86_64-darwin:
+  extends: .build
+  tags:
+    - x86_64-darwin
+  variables:
+    TARBALL_ARCHIVE_SUFFIX: x86_64-darwin
+    TARBALL_EXT: tar.xz
+    ADD_CABAL_ARGS: ""
+
+build-aarch64-darwin:
+  stage: build
+  tags:
+    - aarch64-darwin-m1
+  before_script:
+    - export HOMEBREW_CHANGE_ARCH_TO_ARM=1
+    - arch -arm64 /bin/bash ./.gitlab/brew.sh llvm autoconf automake coreutils make tree
+  # C_INCLUDE_PATH: https://gitlab.haskell.org/ghc/ghc/-/issues/20592
+  script: |
+    export PATH="$CI_PROJECT_DIR/.brew/opt/llvm/bin:$CI_PROJECT_DIR/.brew/bin:$CI_PROJECT_DIR/.brew/sbin:$PATH"
+    export CC=$CI_PROJECT_DIR/.brew/opt/llvm/bin/clang
+    export CXX=$CI_PROJECT_DIR/.brew/opt/llvm/bin/clang++
+    export LD=ld
+    export AR=$CI_PROJECT_DIR/.brew/opt/llvm/bin/llvm-ar
+    export RANLIB=$CI_PROJECT_DIR/.brew/opt/llvm/bin/llvm-ranlib
+    export C_INCLUDE_PATH="`xcrun --show-sdk-path`/usr/include/ffi"
+    arch -arm64 /bin/bash ./.gitlab/ci.sh
+  after_script:
+    - rm -Rf /private/tmp/.brew_tmp
+  variables:
+    MACOSX_DEPLOYMENT_TARGET: "10.7"
+    TARBALL_ARCHIVE_SUFFIX: aarch64-darwin
+    TARBALL_EXT: tar.xz
+    ADD_CABAL_ARGS: ""
+  artifacts:
+    expire_in: 2 week
+    paths:
+      - out/*
+
+build-x86_64-windows:
+  extends: .build
+  script:
+    - $env:CHERE_INVOKING = "yes"
+    - bash '-lc' "ADD_CABAL_ARGS=$env:ADD_CABAL_ARGS GHC_VERSION=$env:GHC_VERSION CABAL_INSTALL_VERSION=$CABAL_INSTALL_VERSION .gitlab/ci.sh"
+  tags:
+    - new-x86_64-windows
+  variables:
+    TARBALL_ARCHIVE_SUFFIX: x86_64-windows
+    TARBALL_EXT: zip
+    ADD_CABAL_ARGS: ""
+  retry: 2

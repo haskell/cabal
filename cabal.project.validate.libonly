@@ -1,11 +1,10 @@
+packages: Cabal-syntax/
 packages: Cabal/
 packages: cabal-testsuite/
 packages: Cabal-QuickCheck/
 packages: Cabal-tree-diff
 packages: Cabal-described
 packages: Cabal-tests
-
-packages: vendor/cabal-doctest-1.0.8
 
 tests: True
 
@@ -15,6 +14,8 @@ write-ghc-environment-files: never
 constraints: rere -rere-cfg
 constraints: these -assoc
 
+package Cabal-syntax
+  ghc-options: -Werror -fno-ignore-asserts
 package Cabal
   ghc-options: -Werror -fno-ignore-asserts
 package cabal-testsuite

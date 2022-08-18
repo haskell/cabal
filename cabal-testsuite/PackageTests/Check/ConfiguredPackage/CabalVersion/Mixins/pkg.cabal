@@ -1,0 +1,15 @@
+cabal-version: >= 1.10
+build-type: Simple
+name: pkg
+synopsis: synopsis
+description: description
+version: 0
+category: example
+maintainer: none@example.com
+license: GPL-3
+license-file: LICENSE
+
+library
+  exposed-modules: Module
+  default-language: Haskell98
+  mixins: base

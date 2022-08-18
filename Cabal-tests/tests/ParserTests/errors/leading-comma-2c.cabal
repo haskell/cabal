@@ -8,7 +8,7 @@ library
   default-language: Haskell2010
   exposed-modules:
     LeadingComma, MixedComma NoComma
-   
+
 
   build-depends: base, containers
 

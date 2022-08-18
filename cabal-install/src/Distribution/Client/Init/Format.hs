@@ -20,6 +20,7 @@ module Distribution.Client.Init.Format
 , annNoComments
 , postProcessFieldLines
   -- * stanza generation
+, mkCommonStanza
 , mkLibStanza
 , mkExeStanza
 , mkTestStanza
@@ -30,14 +31,16 @@ module Distribution.Client.Init.Format
 import Distribution.Pretty
 import Distribution.Fields
 import Distribution.Client.Init.Types
+import Distribution.License
 import Text.PrettyPrint
 import Distribution.Solver.Compat.Prelude hiding (empty)
 import Distribution.PackageDescription.FieldGrammar
-import Distribution.Simple.Utils
+import Distribution.Simple.Utils hiding (cabalVersion)
 import Distribution.Utils.Path
 import Distribution.Package (unPackageName)
 import qualified Distribution.SPDX.License as SPDX
 import Distribution.CabalSpecVersion
+import Distribution.FieldGrammar.Newtypes (SpecLicense(SpecLicense))
 
 
 -- | Construct a 'PrettyField' from a field that can be automatically
@@ -63,21 +66,21 @@ fieldD
     -> WriteOpts
     -> PrettyField FieldAnnotation
 fieldD fieldName fieldContents fieldComments includeField opts
-    | fieldContents == empty =
-      -- If there is no content, optionally produce a commented out field.
-      fieldSEmptyContents fieldComments
-    | otherwise =
-        -- If the "--no-comments" or "--minimal" flag is set, strip comments.
-        let comments
-              | isMinimal = []
-              | hasNoComments = []
-              | otherwise = fieldComments
-
-        -- If the "--minimal" flag is set, strip comments.
-        in fieldSWithContents comments
+      -- If the "--no-comments" or "--minimal" flag is set, strip comments.
+    | hasNoComments || isMinimal = contents NoComment
+    | otherwise                  = contents $ commentPositionFor fieldName fieldComments
   where
+    commentPositionFor fn
+      | fn == "cabal-version" = CommentAfter
+      | otherwise = CommentBefore
+
     isMinimal = _optMinimal opts
     hasNoComments = _optNoComments opts
+
+    contents
+        -- If there is no content, optionally produce a commented out field.
+      | fieldContents == empty = fieldSEmptyContents
+      | otherwise              = fieldSWithContents
 
     fieldSEmptyContents cs
       | not includeField || isMinimal = PrettyEmpty
@@ -87,34 +90,56 @@ fieldD fieldName fieldContents fieldComments includeField opts
         empty
 
     fieldSWithContents cs =
-      PrettyField (withComments (map ("-- " ++) cs)) fieldName fieldContents
+      PrettyField (withComments cs) fieldName fieldContents
 
 
 -- | A field annotation instructing the pretty printer to comment out the field
 --   and any contents, with no comments.
-commentedOutWithComments :: [String] -> FieldAnnotation
-commentedOutWithComments = FieldAnnotation True . map ("-- " ++)
+commentedOutWithComments :: CommentPosition -> FieldAnnotation
+commentedOutWithComments (CommentBefore cs) = FieldAnnotation True . CommentBefore $ map commentNoTrailing cs
+commentedOutWithComments (CommentAfter  cs) = FieldAnnotation True . CommentAfter  $ map commentNoTrailing cs
+commentedOutWithComments NoComment = FieldAnnotation True NoComment
 
 -- | A field annotation with the specified comment lines.
-withComments :: [String] -> FieldAnnotation
-withComments = FieldAnnotation False
+withComments :: CommentPosition -> FieldAnnotation
+withComments (CommentBefore cs) = FieldAnnotation False . CommentBefore $ map commentNoTrailing cs
+withComments (CommentAfter  cs) = FieldAnnotation False . CommentAfter  $ map commentNoTrailing cs
+withComments NoComment = FieldAnnotation False NoComment
 
 -- | A field annotation with no comments.
 annNoComments :: FieldAnnotation
-annNoComments = FieldAnnotation False []
+annNoComments = FieldAnnotation False NoComment
 
 postProcessFieldLines :: FieldAnnotation -> [String] -> [String]
 postProcessFieldLines ann
-    | annCommentedOut ann = fmap ("-- " ++)
-    | otherwise = id
+  | annCommentedOut ann = fmap commentNoTrailing
+  | otherwise = id
 
 -- -------------------------------------------------------------------- --
 -- Stanzas
 
+-- The common stanzas are hardcoded for simplicity purposes,
+-- see https://github.com/haskell/cabal/pull/7558#discussion_r693173846
+mkCommonStanza :: WriteOpts -> PrettyField FieldAnnotation
+mkCommonStanza opts = case specHasCommonStanzas $ _optCabalSpec opts of
+  NoCommonStanzas -> PrettyEmpty
+  _ -> PrettySection
+    annNoComments
+    "common"
+    [text "warnings"]
+    [field "ghc-options" text "-Wall" [] False opts]
+
 mkLibStanza :: WriteOpts -> LibTarget -> PrettyField FieldAnnotation
 mkLibStanza opts (LibTarget srcDirs lang expMods otherMods exts deps tools) =
   PrettySection annNoComments (toUTF8BS "library") []
-    [ field "exposed-modules" formatExposedModules (toList expMods)
+    [ case specHasCommonStanzas $ _optCabalSpec opts of
+        NoCommonStanzas -> PrettyEmpty
+        _ -> field "import" (hsep . map text) ["warnings"]
+          ["Import common warning flags."]
+          False
+          opts
+
+    , field "exposed-modules" formatExposedModules (toList expMods)
       ["Modules exported by the library."]
       True
       opts
@@ -153,7 +178,14 @@ mkLibStanza opts (LibTarget srcDirs lang expMods otherMods exts deps tools) =
 mkExeStanza :: WriteOpts -> ExeTarget -> PrettyField FieldAnnotation
 mkExeStanza opts (ExeTarget exeMain appDirs lang otherMods exts deps tools) =
     PrettySection annNoComments (toUTF8BS "executable") [exeName]
-      [ field "main-is" unsafeFromHs exeMain
+      [ case specHasCommonStanzas $ _optCabalSpec opts of
+          NoCommonStanzas -> PrettyEmpty
+          _ -> field "import" (hsep . map text) ["warnings"]
+            ["Import common warning flags."]
+            False
+            opts
+
+      , field "main-is" unsafeFromHs exeMain
          [".hs or .lhs file containing the Main module."]
          True
         opts
@@ -194,7 +226,14 @@ mkExeStanza opts (ExeTarget exeMain appDirs lang otherMods exts deps tools) =
 mkTestStanza :: WriteOpts -> TestTarget -> PrettyField FieldAnnotation
 mkTestStanza opts (TestTarget testMain dirs lang otherMods exts deps tools) =
     PrettySection annNoComments (toUTF8BS "test-suite") [suiteName]
-       [ field "default-language" id lang
+       [ case specHasCommonStanzas $ _optCabalSpec opts of
+           NoCommonStanzas -> PrettyEmpty
+           _ -> field "import" (hsep . map text) ["warnings"]
+             ["Import common warning flags."]
+             False
+             opts
+
+       , field "default-language" id lang
          ["Base language which the package is written in."]
          True
          opts
@@ -244,6 +283,8 @@ mkPkgDescription opts pkgDesc =
       , "and can be different from the cabal-install (the tool) version and the"
       , "Cabal (the library) version you are using. As such, the Cabal (the library)"
       , "version used must be equal or greater than the version stated in this field."
+      , "Starting from the specification version 2.2, the cabal-version field must be"
+      , "the first thing in the cabal file."
       ]
       False
       opts
@@ -289,13 +330,15 @@ mkPkgDescription opts pkgDesc =
       False
       opts
 
-    , field  "license" pretty (_pkgLicense pkgDesc)
+    , field "license" pretty (_pkgLicense pkgDesc)
       ["The license under which the package is released."]
       True
       opts
 
     , case _pkgLicense pkgDesc of
-        SPDX.NONE -> PrettyEmpty
+        SpecLicense (Left  SPDX.NONE)          -> PrettyEmpty
+        SpecLicense (Right AllRightsReserved)  -> PrettyEmpty
+        SpecLicense (Right UnspecifiedLicense) -> PrettyEmpty
         _ -> field "license-file" text "LICENSE"
              ["The file containing the license text."]
              False
@@ -320,12 +363,10 @@ mkPkgDescription opts pkgDesc =
       []
       False
       opts
-    , if cabalSpec < CabalSpecV2_2
-      then PrettyEmpty
-      else field "build-type" text "Simple"
-           []
-           False
-           opts
+    , field "build-type" text "Simple"
+      []
+      False
+      opts
     , case _pkgExtraDocFiles pkgDesc of
         Nothing -> PrettyEmpty
         Just fs ->
@@ -348,7 +389,6 @@ mkPkgDescription opts pkgDesc =
 listFieldS :: [String] -> Doc
 listFieldS = text . intercalate ", "
 
-
 unsafeFromHs :: HsFilePath -> Doc
 unsafeFromHs = text . _hsFilePath
 
@@ -356,3 +396,7 @@ buildToolTag :: WriteOpts -> FieldName
 buildToolTag opts
   | _optCabalSpec opts < CabalSpecV3_0 = "build-tools"
   | otherwise = "build-tool-depends"
+
+commentNoTrailing :: String -> String
+commentNoTrailing "" = "--"
+commentNoTrailing c  = "-- " ++ c

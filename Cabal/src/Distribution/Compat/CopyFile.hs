@@ -20,6 +20,8 @@ import Distribution.Compat.Internal.TempFile
 import Control.Exception
          ( bracketOnError )
 import qualified Data.ByteString.Lazy as BSL
+import Data.Bits
+         ( (.|.) )
 import System.IO.Error
          ( ioeSetLocation )
 import System.Directory
@@ -34,10 +36,8 @@ import Foreign
 
 import System.Posix.Types
          ( FileMode )
-import System.Posix.Internals
-         ( c_chmod, withFilePath )
-import Foreign.C
-         ( throwErrnoPathIfMinus1_ )
+import System.Posix.Files
+         ( getFileStatus, fileMode, setFileMode )
 
 #else /* else mingw32_HOST_OS */
 
@@ -69,15 +69,17 @@ copyOrdinaryFile, copyExecutableFile :: FilePath -> FilePath -> IO ()
 copyOrdinaryFile   src dest = copyFile src dest >> setFileOrdinary   dest
 copyExecutableFile src dest = copyFile src dest >> setFileExecutable dest
 
-setFileOrdinary,  setFileExecutable, setDirOrdinary  :: FilePath -> IO ()
+setFileOrdinary, setFileExecutable, setDirOrdinary :: FilePath -> IO ()
 #ifndef mingw32_HOST_OS
-setFileOrdinary   path = setFileMode path 0o644 -- file perms -rw-r--r--
-setFileExecutable path = setFileMode path 0o755 -- file perms -rwxr-xr-x
+-- When running with a restrictive UMASK such as 0077 we still want to
+-- install files and directories that are accessible to other users.
+setFileOrdinary   path = addFileMode path 0o644 -- file perms -rw-r--r--
+setFileExecutable path = addFileMode path 0o755 -- file perms -rwxr-xr-x
 
-setFileMode :: FilePath -> FileMode -> IO ()
-setFileMode name m =
-  withFilePath name $ \s -> do
-    throwErrnoPathIfMinus1_ "setFileMode" name (c_chmod s m)
+addFileMode :: FilePath -> FileMode -> IO ()
+addFileMode name m = do
+  o <- fileMode <$> getFileStatus name
+  setFileMode name (m .|. o)
 #else
 setFileOrdinary   _ = return ()
 setFileExecutable _ = return ()

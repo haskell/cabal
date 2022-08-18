@@ -1,7 +1,7 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple
@@ -67,6 +67,7 @@ import Distribution.Simple.UserHooks
 import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.PackageDescription.Configuration
+import Distribution.Simple.PackageDescription
 import Distribution.Simple.Program
 import Distribution.Simple.Program.Db
 import Distribution.Simple.PreProcess
@@ -98,16 +99,18 @@ import Distribution.System (buildPlatform)
 import System.Environment (getArgs, getProgName)
 import System.Directory   (removeFile, doesFileExist
                           ,doesDirectoryExist, removeDirectoryRecursive)
-import System.FilePath                      (searchPathSeparator, takeDirectory, (</>), splitDirectories, dropDrive)
+import System.FilePath    (searchPathSeparator, takeDirectory, (</>),
+                           splitDirectories, dropDrive)
+#ifdef mingw32_HOST_OS
+import System.FilePath    (normalise, splitDrive)
+#endif
 import Distribution.Compat.ResponseFile (expandResponse)
 import Distribution.Compat.Directory        (makeAbsolute)
 import Distribution.Compat.Environment      (getEnvironment)
 import Distribution.Compat.GetShortPathName (getShortPathName)
 
-import qualified Data.ByteString.Lazy as B
 import Data.List       (unionBy, (\\))
 
-import Distribution.PackageDescription.Parsec
 
 -- | A simple implementation of @main@ for a Cabal setup script.
 -- It reads the package description file using IO, and performs the
@@ -179,7 +182,6 @@ defaultMainHelper hooks args = topHandler $ do
       [configureCommand progs `commandAddAction`
         \fs as -> configureAction hooks fs as >> return ()
       ,buildCommand     progs `commandAddAction` buildAction        hooks
-      ,showBuildInfoCommand progs `commandAddAction` showBuildInfoAction    hooks
       ,replCommand      progs `commandAddAction` replAction         hooks
       ,installCommand         `commandAddAction` installAction      hooks
       ,copyCommand            `commandAddAction` copyAction         hooks
@@ -263,33 +265,6 @@ buildAction hooks flags args = do
   hookedAction verbosity preBuild buildHook postBuild
                (return lbi { withPrograms = progs })
                hooks flags' { buildArgs = args } args
-
-showBuildInfoAction :: UserHooks -> ShowBuildInfoFlags -> Args -> IO ()
-showBuildInfoAction hooks (ShowBuildInfoFlags flags fileOutput) args = do
-  distPref <- findDistPrefOrDefault (buildDistPref flags)
-  let verbosity = fromFlag $ buildVerbosity flags
-  lbi <- getBuildConfig hooks verbosity distPref
-  let flags' = flags { buildDistPref = toFlag distPref
-                     , buildCabalFilePath = maybeToFlag (cabalFilePath lbi)
-                     }
-
-  progs <- reconfigurePrograms verbosity
-             (buildProgramPaths flags')
-             (buildProgramArgs flags')
-             (withPrograms lbi)
-
-  pbi <- preBuild hooks args flags'
-  let lbi' = lbi { withPrograms = progs }
-      pkg_descr0 = localPkgDescr lbi'
-      pkg_descr = updatePackageDescription pbi pkg_descr0
-      -- TODO: Somehow don't ignore build hook?
-  buildInfoString <- showBuildInfo pkg_descr lbi' flags
-
-  case fileOutput of
-    Nothing -> B.putStr buildInfoString
-    Just fp -> B.writeFile fp buildInfoString
-
-  postBuild hooks args flags' pkg_descr lbi'
 
 replAction :: UserHooks -> ReplFlags -> Args -> IO ()
 replAction hooks flags args = do
@@ -700,7 +675,7 @@ runConfigureScript verbosity backwardsCompatHack flags lbi = do
   -- TODO: We don't check for colons, tildes or leading dashes. We
   -- also should check the builddir's path, destdir, and all other
   -- paths as well.
-  let configureFile' = intercalate "/" $ splitDirectories configureFile
+  let configureFile' = toUnix configureFile
   for_ badAutoconfCharacters $ \(c, cname) ->
     when (c `elem` dropDrive configureFile') $
       warn verbosity $ concat
@@ -717,11 +692,6 @@ runConfigureScript verbosity backwardsCompatHack flags lbi = do
       pathEnv = maybe (intercalate spSep extraPath)
                 ((intercalate spSep extraPath ++ spSep)++) $ lookup "PATH" env
       overEnv = ("CFLAGS", Just cflagsEnv) :
--- TODO: Move to either Cabal/src/Distribution/Compat/Environment.hs
--- or Cabal/src/Distribution/Compat/FilePath.hs:
-#ifdef mingw32_HOST_OS
-                ("PATH_SEPARATOR", Just ";") :
-#endif
                 [("PATH", Just pathEnv) | not (null extraPath)]
       hp = hostPlatform lbi
       maybeHostFlag = if hp == buildPlatform then [] else ["--host=" ++ show (pretty hp)]
@@ -744,6 +714,19 @@ runConfigureScript verbosity backwardsCompatHack flags lbi = do
                ++ "Unix compatibility toolchain such as MinGW+MSYS or Cygwin. "
                ++ "If you are not on Windows, ensure that an 'sh' command "
                ++ "is discoverable in your path."
+
+-- | Convert Windows path to Unix ones
+toUnix :: String -> String
+#ifdef mingw32_HOST_OS
+toUnix s = let tmp = normalise s
+               (l, rest) = case splitDrive tmp of
+                             ([],  x) -> ("/"      , x)
+                             (h:_, x) -> ('/':h:"/", x)
+               parts = splitDirectories rest
+           in  l ++ intercalate "/" parts
+#else
+toUnix s = intercalate "/" $ splitDirectories s
+#endif
 
 badAutoconfCharacters :: [(Char, String)]
 badAutoconfCharacters =

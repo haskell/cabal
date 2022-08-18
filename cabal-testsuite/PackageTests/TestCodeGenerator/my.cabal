@@ -1,0 +1,19 @@
+cabal-version:  3.8
+name:           my
+version:        0.1
+license:        BSD-3-Clause
+build-type:     Simple
+
+library
+    default-language: Haskell2010
+    exposed-modules:    Foo
+    build-depends:      base
+
+test-suite test-Foo
+    default-language: Haskell2010
+    type:   exitcode-stdio-1.0
+    hs-source-dirs: tests
+    main-is:    Main.hs
+    build-tool-depends: test-code-gen:test-code-gen
+    code-generators: test-code-gen
+    build-depends: base, my

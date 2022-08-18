@@ -7,6 +7,8 @@ module Distribution.Client.CmdHaddock (
     haddockCommand,
     haddockAction,
 
+    ClientHaddockFlags(..),
+
     -- * Internals exposed for testing
     selectPackageTargets,
     selectComponentTarget
@@ -16,29 +18,37 @@ import Distribution.Client.Compat.Prelude
 import Prelude ()
 
 import Distribution.Client.ProjectOrchestration
+import Distribution.Client.ProjectPlanning
+         ( ElaboratedSharedConfig(..) )
 import Distribution.Client.CmdErrorMessages
 import Distribution.Client.TargetProblem
          ( TargetProblem (..), TargetProblem' )
 import Distribution.Client.NixStyleOptions
          ( NixStyleFlags (..), nixStyleOptions, defaultNixStyleFlags )
 import Distribution.Client.Setup
-         ( GlobalFlags, ConfigFlags(..) )
+         ( GlobalFlags, ConfigFlags(..), InstallFlags (..))
 import Distribution.Simple.Setup
          ( HaddockFlags(..), fromFlagOrDefault, trueArg )
 import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives, ShowOrParseArgs, OptionField, option )
+import Distribution.Simple.Program.Builtin
+         ( haddockProgram )
+import Distribution.Simple.Program.Db
+         ( addKnownProgram, reconfigurePrograms )
 import Distribution.Verbosity
          ( normal )
 import Distribution.Simple.Utils
-         ( wrapText, die' )
+         ( wrapText, die', notice )
 import Distribution.Simple.Flag (Flag(..))
+
+import qualified System.Exit (exitSuccess)
 
 newtype ClientHaddockFlags = ClientHaddockFlags { openInBrowser :: Flag Bool }
 
 haddockCommand :: CommandUI (NixStyleFlags ClientHaddockFlags)
 haddockCommand = CommandUI {
   commandName         = "v2-haddock",
-  commandSynopsis     = "Build Haddock documentation",
+  commandSynopsis     = "Build Haddock documentation.",
   commandUsage        = usageAlternatives "v2-haddock" [ "[FLAGS] TARGET" ],
   commandDescription  = Just $ \_ -> wrapText $
         "Build Haddock documentation for the specified packages within the "
@@ -116,11 +126,25 @@ haddockAction flags@NixStyleFlags {..} targetStrings globalFlags = do
 
     printPlan verbosity baseCtx buildCtx
 
-    buildOutcomes <- runProjectBuildPhase verbosity baseCtx buildCtx
-    runProjectPostBuildPhase verbosity baseCtx buildCtx buildOutcomes
+    progs <- reconfigurePrograms verbosity
+               (haddockProgramPaths haddockFlags)
+               (haddockProgramArgs haddockFlags)
+             -- we need to insert 'haddockProgram' before we reconfigure it,
+             -- otherwise 'set
+           . addKnownProgram haddockProgram
+           . pkgConfigCompilerProgs
+           . elaboratedShared
+           $ buildCtx
+    let buildCtx' = buildCtx { elaboratedShared =
+                               (elaboratedShared buildCtx)
+                               { pkgConfigCompilerProgs = progs } }
+
+    buildOutcomes <- runProjectBuildPhase verbosity baseCtx buildCtx'
+    runProjectPostBuildPhase verbosity baseCtx buildCtx' buildOutcomes
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
-    cliConfig = commandLineFlagsToProjectConfig globalFlags flags mempty -- ClientInstallFlags, not needed here
+    flags' = flags { installFlags = installFlags { installDocumentation = Flag True } }
+    cliConfig = commandLineFlagsToProjectConfig globalFlags flags' mempty -- ClientInstallFlags, not needed here
 
 -- | This defines what a 'TargetSelector' means for the @haddock@ command.
 -- It selects the 'AvailableTarget's that the 'TargetSelector' refers to,
@@ -186,4 +210,13 @@ selectComponentTarget = selectComponentTargetBasic
 
 reportBuildDocumentationTargetProblems :: Verbosity -> [TargetProblem'] -> IO a
 reportBuildDocumentationTargetProblems verbosity problems =
-  reportTargetProblems verbosity "build documentation for" problems
+  case problems of
+    [TargetProblemNoneEnabled _ _] -> do
+      notice verbosity $ unwords
+        [ "No documentation was generated as this package does not contain a library."
+        , "Perhaps you want to use the --haddock-all flag, or one or more of the"
+        , "--haddock-executables, --haddock-tests, --haddock-benchmarks or"
+        , "--haddock-internal flags."
+        ]
+      System.Exit.exitSuccess
+    _ -> reportTargetProblems verbosity "build documentation for" problems

@@ -1,0 +1,8 @@
+library
+    import:           warnings
+    exposed-modules:  MyLib
+    -- other-modules:
+    -- other-extensions:
+    build-depends:    base
+    hs-source-dirs:   src
+    default-language: Haskell98

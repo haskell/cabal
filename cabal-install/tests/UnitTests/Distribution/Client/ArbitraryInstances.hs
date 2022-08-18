@@ -38,7 +38,6 @@ import Distribution.Client.Targets
 import Distribution.Client.Types                         (RepoName (..), WriteGhcEnvironmentFilesPolicy)
 import Distribution.Client.Types.AllowNewer
 import Distribution.Client.Types.OverwritePolicy         (OverwritePolicy)
-import Distribution.Client.World                         (WorldPkgInfo (..))
 import Distribution.Solver.Types.OptionalStanza          (OptionalStanza (..), OptionalStanzaMap, OptionalStanzaSet, optStanzaSetFromList, optStanzaTabulate)
 import Distribution.Solver.Types.PackageConstraint       (PackageProperty (..))
 
@@ -250,14 +249,6 @@ instance Arbitrary RelaxDepSubject where
 
 instance Arbitrary RelaxedDep where
     arbitrary = genericArbitrary
-    shrink    = genericShrink
-
--------------------------------------------------------------------------------
--- WorldPkgInfo
--------------------------------------------------------------------------------
-
-instance Arbitrary WorldPkgInfo where
-    arbitrary = WorldPkgInfo <$> arbitrary <*> arbitrary
     shrink    = genericShrink
 
 -------------------------------------------------------------------------------

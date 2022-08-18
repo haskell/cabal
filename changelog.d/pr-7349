@@ -1,4 +1,0 @@
-synopsis: Add language extensions for GHC 9.2
-pr: #7349
-issues: #7312
-decription: { Add support for new language extensions added in 9.2 }

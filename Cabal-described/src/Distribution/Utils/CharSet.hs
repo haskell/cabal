@@ -2,7 +2,7 @@
 {-# LANGUAGE CPP          #-}
 -- | Sets of characters.
 --
--- Using this is more efficint than 'RE.Type.Alt':ng individual characters.
+-- Using this is more efficient than 'RE.Type.Alt':ng individual characters.
 module Distribution.Utils.CharSet (
     -- * Set of characters
     CharSet,

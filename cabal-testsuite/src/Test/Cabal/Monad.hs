@@ -18,6 +18,7 @@ module Test.Cabal.Monad (
     gitProgram,
     cabalProgram,
     diffProgram,
+    python3Program,
     -- * The test environment
     TestEnv(..),
     getTestEnv,
@@ -48,6 +49,8 @@ module Test.Cabal.Monad (
     CommonArgs(..),
     renderCommonArgs,
     commonArgParser,
+    -- * Version Constants
+    cabalVersionLibrary,
 ) where
 
 import Test.Cabal.Script
@@ -63,9 +66,11 @@ import Distribution.Simple.Program.Db
 import Distribution.Simple.Program
 import Distribution.Simple.Configure
     ( configCompilerEx )
+import qualified Distribution.Simple.Utils as U (cabalVersion)
 import Distribution.Text
 
 import Distribution.Verbosity
+import Distribution.Version
 
 import Data.Monoid ((<>), mempty)
 import qualified Control.Exception as E
@@ -211,6 +216,9 @@ cabalProgram = (simpleProgram "cabal") {
 diffProgram :: Program
 diffProgram = simpleProgram "diff"
 
+python3Program :: Program
+python3Program = simpleProgram "python3"
+
 -- | Run a test in the test monad according to program's arguments.
 runTestM :: String -> TestM a -> IO a
 runTestM mode m = withSystemTempDirectory "cabal-testsuite" $ \tmp_dir -> do
@@ -225,7 +233,7 @@ runTestM mode m = withSystemTempDirectory "cabal-testsuite" $ \tmp_dir -> do
     -- Add test suite specific programs
     let program_db0 =
             addKnownPrograms
-                ([gitProgram, hackageRepoToolProgram, cabalProgram, diffProgram] ++ builtinPrograms)
+                ([gitProgram, hackageRepoToolProgram, cabalProgram, diffProgram, python3Program] ++ builtinPrograms)
                 (runnerProgramDb senv)
     -- Reconfigure according to user flags
     let cargs = testCommonArgs args
@@ -399,6 +407,7 @@ mkNormalizerEnv = do
     list_out <- liftIO $ readProcess (programPath ghc_pkg_program)
                       ["list", "--global", "--simple-output"] ""
     tmpDir <- liftIO $ getTemporaryDirectory
+
     return NormalizerEnv {
         normalizerRoot
             = addTrailingPathSeparator (testSourceDir env),
@@ -411,8 +420,14 @@ mkNormalizerEnv = do
         normalizerKnownPackages
             = mapMaybe simpleParse (words list_out),
         normalizerPlatform
-            = testPlatform env
+            = testPlatform env,
+        normalizerCabalVersion
+            = cabalVersionLibrary
     }
+    where
+
+cabalVersionLibrary :: Version
+cabalVersionLibrary = U.cabalVersion
 
 requireProgramM :: Program -> TestM ConfiguredProgram
 requireProgramM program = do

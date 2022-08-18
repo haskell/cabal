@@ -1,0 +1,3 @@
+# cabal check
+Warning: pkg.cabal:0:0: "name" field missing
+Error: cabal: parse error

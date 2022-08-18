@@ -106,7 +106,7 @@ import Data.ByteString.Lazy          ( ByteString )
 import qualified Data.ByteString            as BS
 import qualified Data.ByteString.Lazy.Char8 as BLC8
 import Data.List
-    ( (\\), inits, stripPrefix, intersect, dropWhileEnd )
+    ( (\\), inits, stripPrefix, intersect)
 import qualified Data.Map as Map
 import System.Directory
     ( canonicalizePath, createDirectoryIfMissing, doesFileExist
@@ -128,6 +128,7 @@ import Text.PrettyPrint
     , punctuate, quotes, render, renderStyle, sep, text )
 import Distribution.Compat.Environment ( lookupEnv )
 
+import qualified Data.Maybe as M
 import qualified Data.Set as Set
 import qualified Distribution.Compat.NonEmptySet as NES
 
@@ -635,6 +636,22 @@ configure (pkg_descr0, pbi) cfg = do
                                       "--enable-split-objs; ignoring")
                                 return False
 
+    let compilerSupportsGhciLibs :: Bool
+        compilerSupportsGhciLibs =
+          case compilerId comp of
+            CompilerId GHC version
+              | version > mkVersion [9,3] && windows ->
+                False
+            CompilerId GHC _ ->
+                True
+            CompilerId GHCJS _ ->
+                True
+            _ -> False
+          where
+            windows = case compPlatform of
+              Platform _ Windows -> True
+              Platform _ _ -> False
+
     let ghciLibByDefault =
           case compilerId comp of
             CompilerId GHC _ ->
@@ -650,6 +667,15 @@ configure (pkg_descr0, pbi) cfg = do
             CompilerId GHCJS _ ->
               not (GHCJS.isDynamic comp)
             _ -> False
+
+    withGHCiLib_ <-
+      case fromFlagOrDefault ghciLibByDefault (configGHCiLib cfg) of
+        True | not compilerSupportsGhciLibs -> do
+          warn verbosity $
+                "--enable-library-for-ghci is no longer supported on Windows with"
+              ++ " GHC 9.4 and later; ignoring..."
+          return False
+        v -> return v
 
     let sharedLibsByDefault
           | fromFlag (configDynExe cfg) =
@@ -747,8 +773,7 @@ configure (pkg_descr0, pbi) cfg = do
                 withProfExeDetail   = ProfDetailNone,
                 withOptimization    = fromFlag $ configOptimization cfg,
                 withDebugInfo       = fromFlag $ configDebugInfo cfg,
-                withGHCiLib         = fromFlagOrDefault ghciLibByDefault $
-                                      configGHCiLib cfg,
+                withGHCiLib         = withGHCiLib_,
                 splitSections       = split_sections,
                 splitObjs           = split_objs,
                 stripExes           = strip_exe,
@@ -1136,7 +1161,7 @@ configureCoverage verbosity cfg comp = do
 computeEffectiveProfiling :: ConfigFlags -> (Bool {- lib -}, Bool {- exe -})
 computeEffectiveProfiling cfg =
   -- The --profiling flag sets the default for both libs and exes,
-  -- but can be overidden by --library-profiling, or the old deprecated
+  -- but can be overridden by --library-profiling, or the old deprecated
   -- --executable-profiling flag.
   --
   -- The --profiling-detail and --library-profiling-detail flags behave
@@ -1286,7 +1311,7 @@ selectDependency pkgid internalIndex installedIndex requiredDepsMap
         -- If we know the exact pkg to use, then use it.
         Just pkginstance -> Right pkginstance
         -- Otherwise we just pick an arbitrary instance of the latest version.
-        Nothing -> case pickLastIPI $ PackageIndex.lookupDependency installedIndex dep_pkgname vr of
+        Nothing -> case pickLastIPI $ PackageIndex.lookupInternalDependency installedIndex dep_pkgname vr lib of
           Nothing  -> Left (DependencyNotExists dep_pkgname)
           Just pkg -> Right pkg
       return $ ExternalDependency $ ipiToPreExistingComponent ipi
@@ -1937,11 +1962,19 @@ checkPackageProblems :: Verbosity
 checkPackageProblems verbosity dir gpkg pkg = do
   ioChecks      <- checkPackageFiles verbosity pkg dir
   let pureChecks = checkPackage gpkg (Just pkg)
-      errors   = [ e | PackageBuildImpossible e <- pureChecks ++ ioChecks ]
-      warnings = [ w | PackageBuildWarning    w <- pureChecks ++ ioChecks ]
+      (errors, warnings) =
+        partitionEithers (M.mapMaybe classEW $ pureChecks ++ ioChecks)
   if null errors
-    then traverse_ (warn verbosity) warnings
-    else die' verbosity (intercalate "\n\n" errors)
+    then traverse_ (warn verbosity) (map show warnings)
+    else die' verbosity (intercalate "\n\n" $ map show errors)
+  where
+    -- Classify error/warnings. Left: error, Right: warning.
+    classEW :: PackageCheck -> Maybe (Either PackageCheck PackageCheck)
+    classEW e@(PackageBuildImpossible _) = Just (Left e)
+    classEW w@(PackageBuildWarning _) = Just (Right w)
+    classEW (PackageDistSuspicious _) = Nothing
+    classEW (PackageDistSuspiciousWarn _) = Nothing
+    classEW (PackageDistInexcusable _) = Nothing
 
 -- | Preform checks if a relocatable build is allowed
 checkRelocatable :: Verbosity
@@ -2041,12 +2074,12 @@ checkForeignLibSupported comp platform flib = go (compilerFlavor comp)
       ]
 
     goGhcPlatform :: Platform -> Maybe String
-    goGhcPlatform (Platform X86_64 OSX    ) = goGhcOsx     (foreignLibType flib)
+    goGhcPlatform (Platform _      OSX    ) = goGhcOsx     (foreignLibType flib)
     goGhcPlatform (Platform _      Linux  ) = goGhcLinux   (foreignLibType flib)
     goGhcPlatform (Platform I386   Windows) = goGhcWindows (foreignLibType flib)
     goGhcPlatform (Platform X86_64 Windows) = goGhcWindows (foreignLibType flib)
     goGhcPlatform _ = unsupported [
-        "Building foreign libraries is currently only supported on OSX, "
+        "Building foreign libraries is currently only supported on Mac OS, "
       , "Linux and Windows"
       ]
 

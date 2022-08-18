@@ -82,5 +82,3 @@ instance HasUnitId (ConfiguredPackage loc) where
 instance PackageInstalled (ConfiguredPackage loc) where
   installedDepends = CD.flatDeps . depends
 
-
-

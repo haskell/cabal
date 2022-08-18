@@ -113,7 +113,6 @@ import qualified Distribution.Client.ProjectPlanning as ProjectPlanning
 import           Distribution.Client.ProjectPlanning.Types
 import           Distribution.Client.ProjectBuilding
 import           Distribution.Client.ProjectPlanOutput
-import           Distribution.Client.RebuildMonad ( runRebuild )
 
 import           Distribution.Client.TargetProblem
                    ( TargetProblem (..) )
@@ -121,7 +120,10 @@ import           Distribution.Client.Types
                    ( GenericReadyPackage(..), UnresolvedSourcePackage
                    , PackageSpecifier(..)
                    , SourcePackageDb(..)
-                   , WriteGhcEnvironmentFilesPolicy(..) )
+                   , WriteGhcEnvironmentFilesPolicy(..)
+                   , PackageLocation(..)
+                   , DocsResult(..)
+                   , TestsResult(..) )
 import           Distribution.Solver.Types.PackageIndex
                    ( lookupPackageName )
 import qualified Distribution.Client.InstallPlan as InstallPlan
@@ -130,7 +132,14 @@ import           Distribution.Client.TargetSelector
                    , ComponentKind(..), componentKind
                    , readTargetSelectors, reportTargetSelectorProblems )
 import           Distribution.Client.DistDirLayout
+
+import           Distribution.Client.BuildReports.Anonymous (cabalInstallID)
+import qualified Distribution.Client.BuildReports.Anonymous as BuildReports
+import qualified Distribution.Client.BuildReports.Storage as BuildReports
+         ( storeLocal )
+
 import           Distribution.Client.Config (getCabalDir)
+import           Distribution.Client.HttpUtils
 import           Distribution.Client.Setup hiding (packageName)
 import           Distribution.Compiler
                    ( CompilerFlavor(GHC) )
@@ -160,13 +169,17 @@ import           Distribution.Verbosity
 import           Distribution.Version
                    ( mkVersion )
 import           Distribution.Simple.Compiler
-                   ( compilerCompatVersion, showCompilerId
+                   ( compilerCompatVersion, showCompilerId, compilerId, compilerInfo
                    , OptimisationLevel(..))
+import           Distribution.Utils.NubList
+                   ( fromNubList )
+import           Distribution.System
+                   ( Platform(Platform) )
 
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Set as Set
 import qualified Data.Map as Map
-import           Control.Exception (assert)
+import           Control.Exception ( assert )
 #ifdef MIN_VERSION_unix
 import           System.Posix.Signals (sigKILL, sigSEGV)
 #endif
@@ -199,7 +212,7 @@ establishProjectBaseContext verbosity cliConfig currentCommand = do
     establishProjectBaseContextWithRoot verbosity cliConfig projectRoot currentCommand
   where
     mprojectFile   = Setup.flagToMaybe projectConfigProjectFile
-    ProjectConfigShared { projectConfigProjectFile } = projectConfigShared cliConfig
+    ProjectConfigShared { projectConfigProjectFile} = projectConfigShared cliConfig
 
 -- | Like 'establishProjectBaseContext' but doesn't search for project root.
 establishProjectBaseContextWithRoot
@@ -213,8 +226,13 @@ establishProjectBaseContextWithRoot verbosity cliConfig projectRoot currentComma
 
     let distDirLayout  = defaultDistDirLayout projectRoot mdistDirectory
 
+    httpTransport <- configureTransport verbosity
+                     (fromNubList . projectConfigProgPathExtra $ projectConfigShared cliConfig)
+                     (flagToMaybe . projectConfigHttpTransport $ projectConfigBuildOnly cliConfig)
+
     (projectConfig, localPackages) <-
       rebuildProjectConfig verbosity
+                           httpTransport
                            distDirLayout
                            cliConfig
 
@@ -405,7 +423,7 @@ runProjectPostBuildPhase _ ProjectBaseContext{buildSettings} _ _
   = return ()
 
 runProjectPostBuildPhase verbosity
-                         ProjectBaseContext {..} ProjectBuildContext {..}
+                         ProjectBaseContext {..} bc@ProjectBuildContext {..}
                          buildOutcomes = do
     -- Update other build artefacts
     -- TODO: currently none, but could include:
@@ -443,6 +461,9 @@ runProjectPostBuildPhase verbosity
                                      elaboratedPlanOriginal
                                      elaboratedShared
                                      postBuildStatus
+
+    -- Write the build reports
+    writeBuildReports buildSettings bc elaboratedPlanToExecute buildOutcomes
 
     -- Finally if there were any build failures then report them and throw
     -- an exception to terminate the program
@@ -748,26 +769,24 @@ filterTargetsKindWith p ts =
         , p (componentKind cname) ]
 
 selectBuildableTargets :: [AvailableTarget k] -> [k]
-selectBuildableTargets ts =
-    [ k | AvailableTarget _ _ (TargetBuildable k _) _ <- ts ]
+selectBuildableTargets = selectBuildableTargetsWith (const True)
+
+zipBuildableTargetsWith :: (TargetRequested -> Bool)
+                        -> [AvailableTarget k] -> [(k, AvailableTarget k)]
+zipBuildableTargetsWith p ts =
+    [ (k, t) | t@(AvailableTarget _ _ (TargetBuildable k req) _) <- ts, p req ]
 
 selectBuildableTargetsWith :: (TargetRequested -> Bool)
                           -> [AvailableTarget k] -> [k]
-selectBuildableTargetsWith p ts =
-    [ k | AvailableTarget _ _ (TargetBuildable k req) _ <- ts, p req ]
+selectBuildableTargetsWith p = map fst . zipBuildableTargetsWith p
 
 selectBuildableTargets' :: [AvailableTarget k] -> ([k], [AvailableTarget ()])
-selectBuildableTargets' ts =
-    (,) [ k | AvailableTarget _ _ (TargetBuildable k _) _ <- ts ]
-        [ forgetTargetDetail t
-        | t@(AvailableTarget _ _ (TargetBuildable _ _) _) <- ts ]
+selectBuildableTargets' = selectBuildableTargetsWith' (const True)
 
 selectBuildableTargetsWith' :: (TargetRequested -> Bool)
                            -> [AvailableTarget k] -> ([k], [AvailableTarget ()])
-selectBuildableTargetsWith' p ts =
-    (,) [ k | AvailableTarget _ _ (TargetBuildable k req) _ <- ts, p req ]
-        [ forgetTargetDetail t
-        | t@(AvailableTarget _ _ (TargetBuildable _ req) _) <- ts, p req ]
+selectBuildableTargetsWith' p =
+  (fmap . map) forgetTargetDetail . unzip . zipBuildableTargetsWith p
 
 
 forgetTargetDetail :: AvailableTarget k -> AvailableTarget ()
@@ -984,6 +1003,59 @@ printPlan verbosity
                 Setup.Flag MaximumOptimisation -> "2"
                 Setup.NoFlag                   -> "1")]
       ++ "\n"
+
+
+writeBuildReports :: BuildTimeSettings -> ProjectBuildContext -> ElaboratedInstallPlan -> BuildOutcomes -> IO ()
+writeBuildReports settings buildContext plan buildOutcomes = do
+  let plat@(Platform arch os) = pkgConfigPlatform . elaboratedShared $ buildContext
+      comp = pkgConfigCompiler . elaboratedShared $ buildContext
+      getRepo (RepoTarballPackage r _ _) = Just r
+      getRepo _ = Nothing
+      fromPlanPackage (InstallPlan.Configured pkg) (Just result) =
+            let installOutcome = case result of
+                   Left bf -> case buildFailureReason bf of
+                      DependentFailed p -> BuildReports.DependencyFailed p
+                      DownloadFailed _  -> BuildReports.DownloadFailed
+                      UnpackFailed _ -> BuildReports.UnpackFailed
+                      ConfigureFailed _ -> BuildReports.ConfigureFailed
+                      BuildFailed _ -> BuildReports.BuildFailed
+                      TestsFailed _ -> BuildReports.TestsFailed
+                      InstallFailed _ -> BuildReports.InstallFailed
+
+                      ReplFailed _ -> BuildReports.InstallOk
+                      HaddocksFailed _ -> BuildReports.InstallOk
+                      BenchFailed _ -> BuildReports.InstallOk
+
+                   Right _br -> BuildReports.InstallOk
+
+                docsOutcome = case result of
+                   Left bf -> case buildFailureReason bf of
+                      HaddocksFailed _ -> BuildReports.Failed
+                      _ -> BuildReports.NotTried
+                   Right br -> case buildResultDocs br of
+                      DocsNotTried -> BuildReports.NotTried
+                      DocsFailed -> BuildReports.Failed
+                      DocsOk -> BuildReports.Ok
+
+                testsOutcome = case result of
+                   Left bf -> case buildFailureReason bf of
+                      TestsFailed _ -> BuildReports.Failed
+                      _ -> BuildReports.NotTried
+                   Right br -> case buildResultTests br of
+                      TestsNotTried -> BuildReports.NotTried
+                      TestsOk -> BuildReports.Ok
+
+            in Just $ (BuildReports.BuildReport (packageId pkg) os arch (compilerId comp) cabalInstallID (elabFlagAssignment pkg) (map packageId $ elabLibDependencies pkg) installOutcome docsOutcome testsOutcome, getRepo . elabPkgSourceLocation $ pkg) -- TODO handle failure log files?
+      fromPlanPackage _ _ = Nothing
+      buildReports = mapMaybe (\x -> fromPlanPackage x (InstallPlan.lookupBuildOutcome x buildOutcomes)) $ InstallPlan.toList plan
+
+
+  BuildReports.storeLocal (compilerInfo comp)
+                          (buildSettingSummaryFile settings)
+                          buildReports
+                          plat
+  -- Note this doesn't handle the anonymous build reports set by buildSettingBuildReports but those appear to not be used or missed from v1
+  -- The usage pattern appears to be that rather than rely on flags to cabal to send build logs to the right place and package them with reports, etc, it is easier to simply capture its output to an appropriate handle.
 
 -- | If there are build failures then report them and throw an exception.
 --
@@ -1239,20 +1311,15 @@ data BuildFailurePresentation =
 establishDummyProjectBaseContext
   :: Verbosity
   -> ProjectConfig
+     -- ^ Project configuration including the global config if needed
   -> DistDirLayout
      -- ^ Where to put the dist directory
   -> [PackageSpecifier UnresolvedSourcePackage]
      -- ^ The packages to be included in the project
   -> CurrentCommand
   -> IO ProjectBaseContext
-establishDummyProjectBaseContext verbosity cliConfig distDirLayout localPackages currentCommand = do
+establishDummyProjectBaseContext verbosity projectConfig distDirLayout localPackages currentCommand = do
     cabalDir <- getCabalDir
-
-    globalConfig <- runRebuild ""
-                  $ readGlobalConfig verbosity
-                  $ projectConfigConfigFile
-                  $ projectConfigShared cliConfig
-    let projectConfig = globalConfig <> cliConfig
 
     let ProjectConfigBuildOnly {
           projectConfigLogsDir

@@ -1,0 +1,22 @@
+# cabal build
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following will be built:
+ - CompileFail-0.1.0.0 (lib) (first run)
+ - CompileFail-0.1.0.0 (test:CompileFail-test) (first run)
+Configuring library for CompileFail-0.1.0.0..
+Preprocessing library for CompileFail-0.1.0.0..
+Building library for CompileFail-0.1.0.0..
+Configuring test suite 'CompileFail-test' for CompileFail-0.1.0.0..
+Preprocessing test suite 'CompileFail-test' for CompileFail-0.1.0.0..
+Building test suite 'CompileFail-test' for CompileFail-0.1.0.0..
+# cabal build
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following will be built:
+ - CompileFail-0.1.0.0 (lib:failing) (first run)
+ - CompileFail-0.1.0.0 (exe:CompileFail-exe) (first run)
+Configuring library 'failing' for CompileFail-0.1.0.0..
+Preprocessing library 'failing' for CompileFail-0.1.0.0..
+Building library 'failing' for CompileFail-0.1.0.0..
+Error: cabal: Failed to build CompileFail-0.1.0.0 because it depends on CompileFail-0.1.0.0 which itself failed to build.
+Failed to build CompileFail-0.1.0.0-inplace-failing.

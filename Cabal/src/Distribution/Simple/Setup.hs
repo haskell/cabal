@@ -38,14 +38,16 @@ module Distribution.Simple.Setup (
   GlobalFlags(..),   emptyGlobalFlags,   defaultGlobalFlags,   globalCommand,
   ConfigFlags(..),   emptyConfigFlags,   defaultConfigFlags,   configureCommand,
   configPrograms,
-  configAbsolutePaths, readPackageDbList, showPackageDbList,
+  configAbsolutePaths, readPackageDb, readPackageDbList, showPackageDb, showPackageDbList,
   CopyFlags(..),     emptyCopyFlags,     defaultCopyFlags,     copyCommand,
   InstallFlags(..),  emptyInstallFlags,  defaultInstallFlags,  installCommand,
   HaddockTarget(..),
   HaddockFlags(..),  emptyHaddockFlags,  defaultHaddockFlags,  haddockCommand,
+  Visibility(..),
+  HaddockProjectFlags(..), emptyHaddockProjectFlags, defaultHaddockProjectFlags, haddockProjectCommand,
   HscolourFlags(..), emptyHscolourFlags, defaultHscolourFlags, hscolourCommand,
   BuildFlags(..),    emptyBuildFlags,    defaultBuildFlags,    buildCommand,
-  ShowBuildInfoFlags(..),                defaultShowBuildFlags, showBuildInfoCommand,
+  DumpBuildInfo(..),
   ReplFlags(..),                         defaultReplFlags,     replCommand,
   ReplOptions(..),
   CleanFlags(..),    emptyCleanFlags,    defaultCleanFlags,    cleanCommand,
@@ -58,7 +60,7 @@ module Distribution.Simple.Setup (
   defaultBenchmarkFlags, benchmarkCommand,
   CopyDest(..),
   configureArgs, configureOptions, configureCCompiler, configureLinker,
-  buildOptions, haddockOptions, installDirsOptions,
+  buildOptions, haddockOptions, haddockProjectOptions, installDirsOptions,
   testOptions', benchmarkOptions',
   programDbOptions, programDbPaths',
   programFlagsDescription,
@@ -99,6 +101,7 @@ import Distribution.Simple.InstallDirs
 import Distribution.Verbosity
 import Distribution.Utils.NubList
 import Distribution.Types.ComponentId
+import Distribution.Types.DumpBuildInfo
 import Distribution.Types.GivenComponent
 import Distribution.Types.Module
 import Distribution.Types.PackageVersionConstraint
@@ -274,6 +277,11 @@ data ConfigFlags = ConfigFlags {
       -- ^Halt and show an error message indicating an error in flag assignment
     configRelocatable :: Flag Bool, -- ^ Enable relocatable package built
     configDebugInfo :: Flag DebugInfoLevel,  -- ^ Emit debug info.
+    configDumpBuildInfo :: Flag DumpBuildInfo,
+      -- ^ Should we dump available build information on build?
+      -- Dump build information to disk before attempting to build,
+      -- tooling can parse these files and use them to compile the
+      -- source files themselves.
     configUseResponseFiles :: Flag Bool,
       -- ^ Whether to use response files at all. They're used for such tools
       -- as haddock, or ld.
@@ -343,6 +351,7 @@ instance Eq ConfigFlags where
     && equal configFlagError
     && equal configRelocatable
     && equal configDebugInfo
+    && equal configDumpBuildInfo
     && equal configUseResponseFiles
     where
       equal f = on (==) f a b
@@ -376,8 +385,8 @@ defaultConfigFlags progDb = emptyConfigFlags {
     configVerbosity    = Flag normal,
     configUserInstall  = Flag False,           --TODO: reverse this
 #if defined(mingw32_HOST_OS)
-    -- See #1589.
-    configGHCiLib      = Flag True,
+    -- See #8062 and GHC #21019.
+    configGHCiLib      = Flag False,
 #else
     configGHCiLib      = NoFlag,
 #endif
@@ -393,6 +402,7 @@ defaultConfigFlags progDb = emptyConfigFlags {
     configFlagError    = NoFlag,
     configRelocatable  = Flag False,
     configDebugInfo    = Flag NoDebugInfo,
+    configDumpBuildInfo = NoFlag,
     configUseResponseFiles = NoFlag
   }
 
@@ -559,6 +569,17 @@ configureOptions showOrParseArgs =
           noArg (Flag NoDebugInfo) []
                 ["disable-debug-info"]
                 "Don't emit debug info"
+         ]
+
+      , multiOption "build-info"
+         configDumpBuildInfo
+         (\v flags -> flags { configDumpBuildInfo = v })
+         [noArg (Flag DumpBuildInfo) []
+                ["enable-build-info"]
+                "Enable build information generation during project building",
+          noArg (Flag NoDumpBuildInfo) []
+                ["disable-build-info"]
+                "Disable build information generation during project building"
          ]
 
       ,option "" ["library-for-ghci"]
@@ -732,18 +753,28 @@ configureOptions showOrParseArgs =
         (fmap fromPathTemplate . get) (set . fmap toPathTemplate)
 
 readPackageDbList :: String -> [Maybe PackageDB]
-readPackageDbList "clear"  = [Nothing]
-readPackageDbList "global" = [Just GlobalPackageDB]
-readPackageDbList "user"   = [Just UserPackageDB]
-readPackageDbList other    = [Just (SpecificPackageDB other)]
+readPackageDbList str = [readPackageDb str]
+
+-- | Parse a PackageDB stack entry
+--
+-- @since 3.7.0.0
+readPackageDb :: String -> Maybe PackageDB
+readPackageDb "clear"  = Nothing
+readPackageDb "global" = Just GlobalPackageDB
+readPackageDb "user"   = Just UserPackageDB
+readPackageDb other    = Just (SpecificPackageDB other)
 
 showPackageDbList :: [Maybe PackageDB] -> [String]
 showPackageDbList = map showPackageDb
-  where
-    showPackageDb Nothing                       = "clear"
-    showPackageDb (Just GlobalPackageDB)        = "global"
-    showPackageDb (Just UserPackageDB)          = "user"
-    showPackageDb (Just (SpecificPackageDB db)) = db
+
+-- | Show a PackageDB stack entry
+--
+-- @since 3.7.0.0
+showPackageDb :: Maybe PackageDB -> String
+showPackageDb Nothing                       = "clear"
+showPackageDb (Just GlobalPackageDB)        = "global"
+showPackageDb (Just UserPackageDB)          = "user"
+showPackageDb (Just (SpecificPackageDB db)) = db
 
 showProfDetailLevelFlag :: Flag ProfDetailLevel -> [String]
 showProfDetailLevelFlag NoFlag    = []
@@ -1347,10 +1378,13 @@ data HaddockFlags = HaddockFlags {
     haddockQuickJump    :: Flag Bool,
     haddockHscolourCss  :: Flag FilePath,
     haddockContents     :: Flag PathTemplate,
+    haddockIndex        :: Flag PathTemplate,
     haddockDistPref     :: Flag FilePath,
     haddockKeepTempFiles:: Flag Bool,
     haddockVerbosity    :: Flag Verbosity,
     haddockCabalFilePath :: Flag FilePath,
+    haddockBaseUrl      :: Flag String,
+    haddockLib          :: Flag String,
     haddockArgs         :: [String]
   }
   deriving (Show, Generic, Typeable)
@@ -1377,6 +1411,9 @@ defaultHaddockFlags  = HaddockFlags {
     haddockKeepTempFiles= Flag False,
     haddockVerbosity    = Flag normal,
     haddockCabalFilePath = mempty,
+    haddockIndex        = NoFlag,
+    haddockBaseUrl      = NoFlag,
+    haddockLib          = NoFlag,
     haddockArgs         = mempty
   }
 
@@ -1504,6 +1541,23 @@ haddockOptions showOrParseArgs =
    (reqArg' "URL"
     (toFlag . toPathTemplate)
     (flagToList . fmap fromPathTemplate))
+
+  ,option "" ["index-location"]
+   "Use a separately-generated HTML index"
+   haddockIndex (\v flags -> flags { haddockIndex = v})
+   (reqArg' "URL"
+    (toFlag . toPathTemplate)
+    (flagToList . fmap fromPathTemplate))
+
+  ,option "" ["base-url"]
+   "Base URL for static files."
+   haddockBaseUrl (\v flags -> flags { haddockBaseUrl = v})
+   (reqArgFlag "URL")
+
+  ,option "" ["lib"]
+   "location of Haddocks static / auxiliary files"
+   haddockLib (\v flags -> flags { haddockLib = v})
+   (reqArgFlag "DIR")
   ]
 
 emptyHaddockFlags :: HaddockFlags
@@ -1514,6 +1568,245 @@ instance Monoid HaddockFlags where
   mappend = (<>)
 
 instance Semigroup HaddockFlags where
+  (<>) = gmappend
+
+-- ------------------------------------------------------------
+-- * HaddocksFlags flags
+-- ------------------------------------------------------------
+
+-- | Governs whether modules from a given interface should be visible or
+-- hidden in the Haddock generated content page.  We don't expose this
+-- functionality to the user, but simply use 'Visible' for only local packages.
+-- Visibility of modules is available since @haddock-2.26.1@.
+--
+data Visibility = Visible | Hidden
+  deriving (Eq, Show)
+
+data HaddockProjectFlags = HaddockProjectFlags {
+    haddockProjectHackage      :: Flag Bool,
+    -- ^ a shortcut option which builds documentation linked to hackage.  It implies:
+    -- * `--html-location='https://hackage.haskell.org/package/$prg-$version/docs'
+    -- * `--quickjump`
+    -- * `--gen-index`
+    -- * `--gen-contents`
+    -- * `--hyperlinked-source`
+    haddockProjectLocal        :: Flag Bool,
+    -- ^ a shortcut option which builds self contained directory which contains
+    -- all the documentation, it implies:
+    -- * `--quickjump`
+    -- * `--gen-index`
+    -- * `--gen-contents`
+    -- * `--hyperlinked-source`
+    --
+    -- And it will also pass `--base-url` option to `haddock`.
+
+    -- options passed to @haddock@ via 'createHaddockIndex'
+    haddockProjectDir          :: Flag String,
+    -- ^ output directory of combined haddocks, the default is './haddocks'
+    haddockProjectPrologue     :: Flag String,
+    haddockProjectGenIndex     :: Flag Bool,
+    haddockProjectGenContents  :: Flag Bool,
+    haddockProjectInterfaces   :: Flag [(FilePath, Maybe FilePath, Maybe FilePath, Visibility)],
+    -- ^ 'haddocksInterfaces' is inferred by the 'haddocksAction'; currently not
+    -- exposed to the user.
+
+    -- options passed to @haddock@ via 'HaddockFlags' when building
+    -- documentation
+
+    haddockProjectProgramPaths :: [(String, FilePath)],
+    haddockProjectProgramArgs  :: [(String, [String])],
+    haddockProjectHoogle       :: Flag Bool,
+    -- haddockHtml is not supported
+    haddockProjectHtmlLocation :: Flag String,
+    -- haddockForHackage is not supported
+    haddockProjectExecutables  :: Flag Bool,
+    haddockProjectTestSuites   :: Flag Bool,
+    haddockProjectBenchmarks   :: Flag Bool,
+    haddockProjectForeignLibs  :: Flag Bool,
+    haddockProjectInternal     :: Flag Bool,
+    haddockProjectCss          :: Flag FilePath,
+    haddockProjectLinkedSource :: Flag Bool,
+    haddockProjectQuickJump    :: Flag Bool,
+    haddockProjectHscolourCss  :: Flag FilePath,
+    -- haddockContent is not supported, a fixed value is provided
+    -- haddockIndex is not supported, a fixed value is provided
+    -- haddockDistPerf is not supported, note: it changes location of the haddocks
+    haddockProjectKeepTempFiles:: Flag Bool,
+    haddockProjectVerbosity    :: Flag Verbosity,
+    -- haddockBaseUrl is not supported, a fixed value is provided
+    haddockProjectLib          :: Flag String
+  }
+  deriving (Show, Generic, Typeable)
+
+defaultHaddockProjectFlags :: HaddockProjectFlags
+defaultHaddockProjectFlags = HaddockProjectFlags {
+    haddockProjectHackage      = Flag False,
+    haddockProjectLocal        = Flag False,
+    haddockProjectDir          = Flag "./haddocks",
+    haddockProjectPrologue     = NoFlag,
+    haddockProjectGenIndex     = Flag False,
+    haddockProjectGenContents  = Flag False,
+    haddockProjectTestSuites   = Flag False,
+    haddockProjectProgramPaths = mempty,
+    haddockProjectProgramArgs  = mempty,
+    haddockProjectHoogle       = Flag False,
+    haddockProjectHtmlLocation = NoFlag,
+    haddockProjectExecutables  = Flag False,
+    haddockProjectBenchmarks   = Flag False,
+    haddockProjectForeignLibs  = Flag False,
+    haddockProjectInternal     = Flag False,
+    haddockProjectCss          = NoFlag,
+    haddockProjectLinkedSource = Flag False,
+    haddockProjectQuickJump    = Flag False,
+    haddockProjectHscolourCss  = NoFlag,
+    haddockProjectKeepTempFiles= Flag False,
+    haddockProjectVerbosity    = Flag normal,
+    haddockProjectLib          = NoFlag,
+    haddockProjectInterfaces   = NoFlag
+  }
+
+haddockProjectCommand :: CommandUI HaddockProjectFlags
+haddockProjectCommand = CommandUI
+  { commandName        = "v2-haddock-project"
+  , commandSynopsis    = "Generate Haddocks HTML documentation for the cabal project."
+  , commandDescription = Just $ \_ ->
+      "Require the programm haddock, version 2.26.\n"
+  , commandNotes       = Nothing
+  , commandUsage       = usageAlternatives "haddocks" $
+      [ "[FLAGS]"
+      , "COMPONENTS [FLAGS]"
+      ]
+  , commandDefaultFlags = defaultHaddockProjectFlags
+  , commandOptions      = \showOrParseArgs ->
+         haddockProjectOptions showOrParseArgs
+      ++ programDbPaths   progDb ParseArgs
+             haddockProjectProgramPaths (\v flags -> flags { haddockProjectProgramPaths = v})
+      ++ programDbOption  progDb showOrParseArgs
+             haddockProjectProgramArgs (\v fs -> fs { haddockProjectProgramArgs = v })
+      ++ programDbOptions progDb ParseArgs
+             haddockProjectProgramArgs  (\v flags -> flags { haddockProjectProgramArgs = v})
+  }
+  where
+    progDb = addKnownProgram haddockProgram
+             $ addKnownProgram ghcProgram
+             $ emptyProgramDb
+
+haddockProjectOptions :: ShowOrParseArgs -> [OptionField HaddockProjectFlags]
+haddockProjectOptions _showOrParseArgs =
+    [option "" ["hackage"]
+     (concat ["A short-cut option to build documentation linked to hackage; "
+             ,"it implies --quickjump, --gen-index, --gen-contents, "
+             ,"--hyperlinked-source and --html-location"
+             ])
+     haddockProjectHackage (\v flags -> flags { haddockProjectHackage = v })
+     trueArg
+
+    ,option "" ["local"]
+     (concat ["A short-cut option to build self contained documentation; "
+             ,"it implies  --quickjump, --gen-index, --gen-contents "
+             ,"and --hyperlinked-source."
+             ])
+     haddockProjectLocal (\v flags -> flags { haddockProjectLocal = v })
+     trueArg
+
+    ,option "" ["output"]
+      "Output directory"
+      haddockProjectDir (\v flags -> flags { haddockProjectDir = v })
+      (optArg' "DIRECTORY" maybeToFlag (fmap Just . flagToList))
+
+    ,option "" ["prologue"]
+     "File path to a prologue file in haddock format"
+     haddockProjectPrologue (\v flags -> flags { haddockProjectPrologue = v})
+     (optArg' "PATH" maybeToFlag (fmap Just . flagToList))
+
+    ,option "" ["gen-index"]
+     "Generate index"
+     haddockProjectGenIndex (\v flags -> flags { haddockProjectGenIndex = v})
+     trueArg
+
+    ,option "" ["gen-contents"]
+     "Generate contents"
+     haddockProjectGenContents (\v flags -> flags { haddockProjectGenContents = v})
+     trueArg
+
+    ,option "" ["hoogle"]
+     "Generate a hoogle database"
+     haddockProjectHoogle (\v flags -> flags { haddockProjectHoogle = v })
+     trueArg
+
+    ,option "" ["html-location"]
+     "Location of HTML documentation for pre-requisite packages"
+     haddockProjectHtmlLocation (\v flags -> flags { haddockProjectHtmlLocation = v })
+     (reqArgFlag "URL")
+
+    ,option "" ["executables"]
+     "Run haddock for Executables targets"
+     haddockProjectExecutables (\v flags -> flags { haddockProjectExecutables = v })
+     trueArg
+
+    ,option "" ["tests"]
+     "Run haddock for Test Suite targets"
+     haddockProjectTestSuites (\v flags -> flags { haddockProjectTestSuites = v })
+     trueArg
+
+    ,option "" ["benchmarks"]
+     "Run haddock for Benchmark targets"
+     haddockProjectBenchmarks (\v flags -> flags { haddockProjectBenchmarks = v })
+     trueArg
+
+    ,option "" ["foreign-libraries"]
+     "Run haddock for Foreign Library targets"
+     haddockProjectForeignLibs (\v flags -> flags { haddockProjectForeignLibs = v })
+     trueArg
+
+    ,option "" ["internal"]
+     "Run haddock for internal modules and include all symbols"
+     haddockProjectInternal (\v flags -> flags { haddockProjectInternal = v })
+     trueArg
+
+    ,option "" ["css"]
+     "Use PATH as the haddock stylesheet"
+     haddockProjectCss (\v flags -> flags { haddockProjectCss = v })
+     (reqArgFlag "PATH")
+
+    ,option "" ["hyperlink-source","hyperlink-sources","hyperlinked-source"]
+     "Hyperlink the documentation to the source code"
+     haddockProjectLinkedSource (\v flags -> flags { haddockProjectLinkedSource = v })
+     trueArg
+
+    ,option "" ["quickjump"]
+     "Generate an index for interactive documentation navigation"
+     haddockProjectQuickJump (\v flags -> flags { haddockProjectQuickJump = v })
+     trueArg
+
+    ,option "" ["hscolour-css"]
+     "Use PATH as the HsColour stylesheet"
+     haddockProjectHscolourCss (\v flags -> flags { haddockProjectHscolourCss = v })
+     (reqArgFlag "PATH")
+
+    ,option "" ["keep-temp-files"]
+     "Keep temporary files"
+     haddockProjectKeepTempFiles (\b flags -> flags { haddockProjectKeepTempFiles = b })
+     trueArg
+
+    ,optionVerbosity haddockProjectVerbosity
+     (\v flags -> flags { haddockProjectVerbosity = v })
+
+    ,option "" ["lib"]
+     "location of Haddocks static / auxiliary files"
+     haddockProjectLib (\v flags -> flags { haddockProjectLib = v})
+     (reqArgFlag "DIR")
+    ]
+
+
+emptyHaddockProjectFlags :: HaddockProjectFlags
+emptyHaddockProjectFlags = mempty
+
+instance Monoid HaddockProjectFlags where
+  mempty = gmempty
+  mappend = (<>)
+
+instance Semigroup HaddockProjectFlags where
   (<>) = gmappend
 
 -- ------------------------------------------------------------
@@ -1788,9 +2081,9 @@ replOptions _ =
     replOptionsNoLoad (\p flags -> flags { replOptionsNoLoad = p })
     trueArg
   , option [] ["repl-options"]
-    "use this option for the repl"
-    replOptionsFlags (\p flags -> flags { replOptionsFlags = p ++ replOptionsFlags flags })
-    (reqArg "FLAG" (succeedReadE (:[])) id)
+    "Use the option(s) for the repl"
+    replOptionsFlags (\p flags -> flags { replOptionsFlags = p })
+    (reqArg "FLAG" (succeedReadE words) id)
   ]
 
 -- ------------------------------------------------------------
@@ -2182,81 +2475,6 @@ optionNumJobs get set =
             | n < 1     -> Left "The number of jobs should be 1 or more."
             | otherwise -> Right (Just n)
           _             -> Left "The jobs value should be a number or '$ncpus'"
-
-
--- ------------------------------------------------------------
--- * show-build-info command flags
--- ------------------------------------------------------------
-
-data ShowBuildInfoFlags = ShowBuildInfoFlags
-  { buildInfoBuildFlags :: BuildFlags
-  , buildInfoOutputFile :: Maybe FilePath
-  } deriving (Show, Typeable)
-
-defaultShowBuildFlags  :: ShowBuildInfoFlags
-defaultShowBuildFlags =
-    ShowBuildInfoFlags
-      { buildInfoBuildFlags = defaultBuildFlags
-      , buildInfoOutputFile = Nothing
-      }
-
-showBuildInfoCommand :: ProgramDb -> CommandUI ShowBuildInfoFlags
-showBuildInfoCommand progDb = CommandUI
-  { commandName         = "show-build-info"
-  , commandSynopsis     = "Emit details about how a package would be built."
-  , commandDescription  = Just $ \_ -> wrapText $
-         "Components encompass executables, tests, and benchmarks.\n"
-      ++ "\n"
-      ++ "Affected by configuration options, see `configure`.\n"
-  , commandNotes        = Just $ \pname ->
-       "Examples:\n"
-        ++ "  " ++ pname ++ " show-build-info      "
-        ++ "    All the components in the package\n"
-        ++ "  " ++ pname ++ " show-build-info foo       "
-        ++ "    A component (i.e. lib, exe, test suite)\n\n"
-        ++ programFlagsDescription progDb
---TODO: re-enable once we have support for module/file targets
---        ++ "  " ++ pname ++ " show-build-info Foo.Bar   "
---        ++ "    A module\n"
---        ++ "  " ++ pname ++ " show-build-info Foo/Bar.hs"
---        ++ "    A file\n\n"
---        ++ "If a target is ambiguous it can be qualified with the component "
---        ++ "name, e.g.\n"
---        ++ "  " ++ pname ++ " show-build-info foo:Foo.Bar\n"
---        ++ "  " ++ pname ++ " show-build-info testsuite1:Foo/Bar.hs\n"
-  , commandUsage        = usageAlternatives "show-build-info" $
-      [ "[FLAGS]"
-      , "COMPONENTS [FLAGS]"
-      ]
-  , commandDefaultFlags = defaultShowBuildFlags
-  , commandOptions      = \showOrParseArgs ->
-      parseBuildFlagsForShowBuildInfoFlags showOrParseArgs progDb
-      ++
-      [ option [] ["buildinfo-json-output"]
-                "Write the result to the given file instead of stdout"
-                buildInfoOutputFile (\pf flags -> flags { buildInfoOutputFile = pf })
-                (reqArg' "FILE" Just (maybe [] pure))
-      ]
-
-  }
-
-parseBuildFlagsForShowBuildInfoFlags :: ShowOrParseArgs -> ProgramDb -> [OptionField ShowBuildInfoFlags]
-parseBuildFlagsForShowBuildInfoFlags showOrParseArgs progDb =
-  map
-      (liftOption
-        buildInfoBuildFlags
-          (\bf flags -> flags { buildInfoBuildFlags = bf } )
-      )
-      buildFlags
-  where
-    buildFlags = buildOptions progDb showOrParseArgs
-      ++
-      [ optionVerbosity
-        buildVerbosity (\v flags -> flags { buildVerbosity = v })
-
-      , optionDistPref
-        buildDistPref (\d flags -> flags { buildDistPref = d }) showOrParseArgs
-      ]
 
 -- ------------------------------------------------------------
 -- * Other Utils

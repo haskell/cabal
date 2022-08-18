@@ -6,17 +6,17 @@ See the [Cabal web site] for more information.
 If you also want the `cabal` command-line program, you need the
 [cabal-install] package in addition to this library.
 
-[cabal-install]: ../cabal-install/README.md
+[cabal-install]: ../cabal-install
 
 More information
 ================
 
-Please see the [Cabal web site] for the [user guide] and [API
+Please see the [Cabal web site], the [user guide] and the [API
 documentation]. There is additional information available on the
 [development wiki].
 
 [user guide]:        http://www.haskell.org/cabal/users-guide
-[API documentation]: http://www.haskell.org/cabal/release/cabal-latest/doc/API/Cabal/Distribution-Simple.html
+[API documentation]: https://hackage.haskell.org/package/Cabal/docs/Distribution-Simple.html
 [development wiki]:  https://github.com/haskell/cabal/wiki
 
 

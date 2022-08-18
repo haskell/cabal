@@ -37,6 +37,7 @@ module Distribution.Client.Init.Types
 , BreakException(..)
 , PurePrompt(..)
 , evalPrompt
+, Severity(..)
   -- * Aliases
 , IsLiterate
 , IsSimple
@@ -63,16 +64,18 @@ import Distribution.Types.Dependency as P
 import Distribution.Verbosity (silent)
 import Distribution.Version
 import qualified Distribution.Package as P
-import Distribution.SPDX.License (License)
 import Distribution.ModuleName
 import Distribution.CabalSpecVersion
 import Distribution.Client.Utils as P
+import Distribution.Fields.Pretty
 import Language.Haskell.Extension ( Language(..), Extension )
+import qualified System.IO
 
 import qualified System.Directory as P
-import qualified System.Process as P
+import qualified System.Process as Process
 import qualified Distribution.Compat.Environment as P
 import System.FilePath
+import Distribution.FieldGrammar.Newtypes (SpecLicense)
 
 
 -- -------------------------------------------------------------------- --
@@ -93,7 +96,7 @@ data InitFlags =
     , packageName :: Flag P.PackageName
     , version :: Flag Version
     , cabalVersion :: Flag CabalSpecVersion
-    , license :: Flag License
+    , license :: Flag SpecLicense
     , author :: Flag String
     , email :: Flag String
     , homepage :: Flag String
@@ -136,7 +139,7 @@ data PkgDescription = PkgDescription
     { _pkgCabalVersion :: CabalSpecVersion
     , _pkgName :: P.PackageName
     , _pkgVersion :: Version
-    , _pkgLicense :: License
+    , _pkgLicense :: SpecLicense
     , _pkgAuthor :: String
     , _pkgEmail :: String
     , _pkgHomePage :: String
@@ -309,6 +312,7 @@ class Monad m => Interactive m where
     canonicalizePathNoThrow :: FilePath -> m FilePath
     readProcessWithExitCode :: FilePath -> [String] -> String -> m (ExitCode, String, String)
     getEnvironment :: m [(String, String)]
+    getCurrentYear :: m Integer
     listFilesInside :: (FilePath -> m Bool) -> FilePath -> m [FilePath]
     listFilesRecursive :: FilePath -> m [FilePath]
 
@@ -318,9 +322,11 @@ class Monad m => Interactive m where
     createDirectory :: FilePath -> m ()
     removeDirectory :: FilePath -> m ()
     writeFile :: FilePath -> String -> m ()
+    removeExistingFile :: FilePath -> m ()
     copyFile :: FilePath -> FilePath -> m ()
     renameDirectory :: FilePath -> FilePath -> m ()
-    message :: Verbosity -> String -> m ()
+    hFlush :: System.IO.Handle -> m ()
+    message :: Verbosity -> Severity -> String -> m ()
 
     -- misc functions
     break :: m Bool
@@ -336,8 +342,9 @@ instance Interactive IO where
     doesDirectoryExist = P.doesDirectoryExist
     doesFileExist = P.doesFileExist
     canonicalizePathNoThrow = P.canonicalizePathNoThrow
-    readProcessWithExitCode = P.readProcessWithExitCode
+    readProcessWithExitCode = Process.readProcessWithExitCode
     getEnvironment = P.getEnvironment
+    getCurrentYear = P.getCurrentYear
     listFilesInside = P.listFilesInside
     listFilesRecursive = P.listFilesRecursive
 
@@ -346,10 +353,13 @@ instance Interactive IO where
     createDirectory = P.createDirectory
     removeDirectory = P.removeDirectoryRecursive
     writeFile = P.writeFile
+    removeExistingFile = P.removeExistingFile
     copyFile = P.copyFile
     renameDirectory = P.renameDirectory
-    message q = unless (q == silent) . putStrLn
-
+    hFlush = System.IO.hFlush
+    message q severity msg
+      | q == silent = pure ()
+      | otherwise  = putStrLn $ "[" ++ show severity ++ "] " ++ msg
     break = return False
     throwPrompt = throwM
 
@@ -368,6 +378,7 @@ instance Interactive PurePrompt where
       input <- pop
       return (ExitSuccess, input, "")
     getEnvironment = fmap (map read) popList
+    getCurrentYear = fmap read pop
     listFilesInside pred' !_ = do
       input <- map splitDirectories <$> popList
       map joinPath <$> filterM (fmap and . traverse pred') input
@@ -375,12 +386,17 @@ instance Interactive PurePrompt where
 
     putStr !_ = return ()
     putStrLn !_ = return ()
-    createDirectory !_ = return ()
-    removeDirectory !_ = return ()
-    writeFile !_ !_ = return ()
-    copyFile !_ !_ = return ()
-    renameDirectory !_ !_ = return ()
-    message !_ !_ = return ()
+    createDirectory !d = checkInvalidPath d ()
+    removeDirectory !d = checkInvalidPath d ()
+    writeFile !f !_ = checkInvalidPath f ()
+    removeExistingFile !f = checkInvalidPath f ()
+    copyFile !f !_ = checkInvalidPath f ()
+    renameDirectory !d !_ = checkInvalidPath d ()
+    hFlush _ = return ()
+    message !_ !severity !msg = case severity of
+      Error -> PurePrompt $ \_ -> Left $ BreakException
+        (show severity ++ ": " ++ msg)
+      _     -> return ()
 
     break = return True
     throwPrompt (BreakException e) = PurePrompt $ \s -> Left $ BreakException
@@ -405,6 +421,14 @@ popList = pop >>= \a -> case P.safeRead a of
     Nothing -> throwPrompt $ BreakException ("popList: " ++ show a)
     Just as -> return as
 
+checkInvalidPath :: String -> a -> PurePrompt a
+checkInvalidPath path act =
+    -- The check below is done this way so it's easier to append
+    -- more invalid paths in the future, if necessary
+    if path `elem` ["."] then
+      throwPrompt $ BreakException $ "Invalid path: " ++ path
+    else
+      return act
 
 -- | A pure exception thrown exclusively by the pure prompter
 -- to cancel infinite loops in the prompting process.
@@ -415,6 +439,10 @@ popList = pop >>= \a -> case P.safeRead a of
 newtype BreakException = BreakException String deriving (Eq, Show)
 
 instance Exception BreakException
+
+-- | Used to inform the intent of prompted messages.
+--
+data Severity = Log | Info | Warning | Error deriving (Eq, Show)
 
 -- | Convenience alias for the literate haskell flag
 --
@@ -439,6 +467,6 @@ data DefaultPrompt t
 data FieldAnnotation = FieldAnnotation
   { annCommentedOut :: Bool
     -- ^ True iif the field and its contents should be commented out.
-  , annCommentLines :: [String]
+  , annCommentLines :: CommentPosition
     -- ^ Comment lines to place before the field or section.
   }

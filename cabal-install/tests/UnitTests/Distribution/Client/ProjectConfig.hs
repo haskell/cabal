@@ -384,7 +384,6 @@ instance Arbitrary ProjectConfigBuildOnly where
         <*> arbitrary
         <*> arbitrary
         <*> (fmap getShortToken <$> arbitrary)
-        <*> arbitrary
         <*> arbitraryNumJobs
         <*> arbitrary
         <*> arbitrary
@@ -406,7 +405,6 @@ instance Arbitrary ProjectConfigBuildOnly where
                                   , projectConfigBuildReports = x05
                                   , projectConfigReportPlanningFailure = x06
                                   , projectConfigSymlinkBinDir = x07
-                                  , projectConfigOneShot = x08
                                   , projectConfigNumJobs = x09
                                   , projectConfigKeepGoing = x10
                                   , projectConfigOfflineMode = x11
@@ -425,7 +423,6 @@ instance Arbitrary ProjectConfigBuildOnly where
                                , projectConfigBuildReports = x05'
                                , projectConfigReportPlanningFailure = x06'
                                , projectConfigSymlinkBinDir = x07'
-                               , projectConfigOneShot = x08'
                                , projectConfigNumJobs = postShrink_NumJobs x09'
                                , projectConfigKeepGoing = x10'
                                , projectConfigOfflineMode = x11'
@@ -436,12 +433,12 @@ instance Arbitrary ProjectConfigBuildOnly where
                                , projectConfigLogsDir = x16
                                , projectConfigClientInstallFlags = x17' }
       | ((x00', x01', x02', x03', x04'),
-         (x05', x06', x07', x08', x09'),
+         (x05', x06', x07',       x09'),
          (x10', x11', x12',       x14'),
          (            x17', x18'      ))
           <- shrink
                ((x00, x01, x02, x03, x04),
-                (x05, x06, x07, x08, preShrink_NumJobs x09),
+                (x05, x06, x07,      preShrink_NumJobs x09),
                 (x10, x11, x12,      x14),
                 (          x17, x18     ))
       ]
@@ -459,6 +456,7 @@ instance Arbitrary ProjectConfigShared where
         projectConfigHcPath               <- arbitraryFlag arbitraryShortToken
         projectConfigHcPkg                <- arbitraryFlag arbitraryShortToken
         projectConfigHaddockIndex         <- arbitrary
+        projectConfigPackageDBs           <- shortListOf 2 arbitrary
         projectConfigRemoteRepos          <- arbitrary
         projectConfigLocalNoIndexRepos    <- arbitrary
         projectConfigActiveRepos          <- arbitrary
@@ -481,6 +479,7 @@ instance Arbitrary ProjectConfigShared where
         projectConfigOnlyConstrained      <- arbitrary
         projectConfigPerComponent         <- arbitrary
         projectConfigIndependentGoals     <- arbitrary
+        projectConfigPreferOldest         <- arbitrary
         projectConfigProgPathExtra        <- toNubList <$> listOf arbitraryShortToken
         return ProjectConfigShared {..}
       where
@@ -497,6 +496,7 @@ instance Arbitrary ProjectConfigShared where
         <*> shrinkerAla (fmap NonEmpty) projectConfigHcPath
         <*> shrinkerAla (fmap NonEmpty) projectConfigHcPkg
         <*> shrinker projectConfigHaddockIndex
+        <*> shrinker projectConfigPackageDBs
         <*> shrinker projectConfigRemoteRepos
         <*> shrinker projectConfigLocalNoIndexRepos
         <*> shrinker projectConfigActiveRepos
@@ -519,6 +519,7 @@ instance Arbitrary ProjectConfigShared where
         <*> shrinker projectConfigOnlyConstrained
         <*> shrinker projectConfigPerComponent
         <*> shrinker projectConfigIndependentGoals
+        <*> shrinker projectConfigPreferOldest
         <*> shrinker projectConfigProgPathExtra
       where
         preShrink_Constraints  = map fst
@@ -559,7 +560,7 @@ instance Arbitrary PackageConfig where
         <*> arbitrary <*> arbitrary
         <*> arbitrary <*> arbitrary
         <*> arbitrary <*> arbitrary
-        <*> arbitrary <*> arbitrary
+        <*> arbitrary <*> arbitrary <*> arbitrary
         <*> arbitrary <*> arbitrary
         <*> arbitraryFlag arbitraryShortToken
         <*> arbitrary
@@ -571,6 +572,9 @@ instance Arbitrary PackageConfig where
         <*> arbitrary
         <*> arbitraryFlag arbitraryShortToken
         <*> arbitrary
+        <*> arbitrary
+        <*> arbitraryFlag arbitraryShortToken
+        <*> arbitraryFlag arbitraryShortToken
         <*> arbitrary
         <*> arbitrary
         <*> arbitrary
@@ -618,6 +622,7 @@ instance Arbitrary PackageConfig where
                          , packageConfigCoverage = x25
                          , packageConfigRelocatable = x26
                          , packageConfigDebugInfo = x27
+                         , packageConfigDumpBuildInfo = x27_1
                          , packageConfigRunTests = x28
                          , packageConfigDocumentation = x29
                          , packageConfigHaddockHoogle = x30
@@ -634,6 +639,9 @@ instance Arbitrary PackageConfig where
                          , packageConfigHaddockHscolourCss = x39
                          , packageConfigHaddockContents = x40
                          , packageConfigHaddockForHackage = x41
+                         , packageConfigHaddockIndex = x54
+                         , packageConfigHaddockBaseUrl = x55
+                         , packageConfigHaddockLib = x56
                          , packageConfigTestHumanLog = x44
                          , packageConfigTestMachineLog = x45
                          , packageConfigTestShowDetails = x46
@@ -674,6 +682,7 @@ instance Arbitrary PackageConfig where
                       , packageConfigCoverage = x25'
                       , packageConfigRelocatable = x26'
                       , packageConfigDebugInfo = x27'
+                      , packageConfigDumpBuildInfo = x27_1'
                       , packageConfigRunTests = x28'
                       , packageConfigDocumentation = x29'
                       , packageConfigHaddockHoogle = x30'
@@ -690,6 +699,9 @@ instance Arbitrary PackageConfig where
                       , packageConfigHaddockHscolourCss = fmap getNonEmpty x39'
                       , packageConfigHaddockContents = x40'
                       , packageConfigHaddockForHackage = x41'
+                      , packageConfigHaddockIndex = x54'
+                      , packageConfigHaddockBaseUrl = x55'
+                      , packageConfigHaddockLib = x56'
                       , packageConfigTestHumanLog = x44'
                       , packageConfigTestMachineLog = x45'
                       , packageConfigTestShowDetails = x46'
@@ -703,11 +715,12 @@ instance Arbitrary PackageConfig where
           (x10', x11', x12', x13', x14'),
           (x15', x16', x53', x17', x18', x19')),
          ((x20', x20_1', x21', x22', x23', x24'),
-          (x25', x26', x27', x28', x29'),
+          (x25', x26', x27', x27_1', x28', x29'),
           (x30', x31', x32', (x33', x33_1'), x34'),
           (x35', x36', x37', x38', x43', x39'),
           (x40', x41'),
-          (x44', x45', x46', x47', x48', x49', x51', x52')))
+          (x44', x45', x46', x47', x48', x49', x51', x52', x54', x55'),
+          x56'))
           <- shrink
              (((preShrink_Paths x00, preShrink_Args x01, x02, x03, x04),
                 (x05, x42, x06, x50, x07, x08, x09),
@@ -717,11 +730,11 @@ instance Arbitrary PackageConfig where
                   map NonEmpty x18,
                   x19)),
                ((x20, x20_1, x21, x22, x23, x24),
-                 (x25, x26, x27, x28, x29),
+                 (x25, x26, x27, x27_1, x28, x29),
                  (x30, x31, x32, (x33, x33_1), x34),
                  (x35, x36, fmap NonEmpty x37, x38, x43, fmap NonEmpty x39),
                  (x40, x41),
-                 (x44, x45, x46, x47, x48, x49, x51, x52)))
+                 (x44, x45, x46, x47, x48, x49, x51, x52, x54, x55), x56))
       ]
       where
         preShrink_Paths  = Map.map NonEmpty
@@ -793,6 +806,9 @@ instance Arbitrary MinimizeConflictSet where
 
 instance Arbitrary IndependentGoals where
     arbitrary = IndependentGoals <$> arbitrary
+
+instance Arbitrary PreferOldest where
+    arbitrary = PreferOldest <$> arbitrary
 
 instance Arbitrary StrongFlags where
     arbitrary = StrongFlags <$> arbitrary

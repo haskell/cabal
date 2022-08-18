@@ -1,0 +1,78 @@
+# Adapted from agda/agda/.github/workflows/user-manual.yml by Andreas, 2021-09-11
+
+name: Users guide
+
+# See: https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#concurrency.
+concurrency:
+  group: ${{ github.ref }}-${{ github.workflow }}
+  cancel-in-progress: true
+
+on:
+  push:
+    branches:
+    - master
+    paths:
+    - 'doc/Makefile'
+    - 'doc/pyproject.toml'
+    - 'doc/requirements.in'
+    - 'doc/requirements.txt'
+    - 'doc/*.inc'
+    - 'doc/*.py'
+    - 'doc/*.rst'
+    - 'doc/**/*.json'
+    - '.github/workflows/users-guide.yml'
+  pull_request:
+    paths:
+    - 'doc/Makefile'
+    - 'doc/pyproject.toml'
+    - 'doc/requirements.in'
+    - 'doc/requirements.txt'
+    - 'doc/*.inc'
+    - 'doc/*.py'
+    - 'doc/*.rst'
+    - 'doc/**/*.json'
+    - '.github/workflows/users-guide.yml'
+  release:
+    types:
+      - created
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.7]
+
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: recursive
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    # Subsumed by make users-guide
+    # - name: Install dependencies
+    #   run: |
+    #     pip install -r doc/requirements.txt
+
+    - name: Build User's Guide in HTML
+      run: |
+        make SPHINX_HTML_OUTDIR=html users-guide
+
+    - uses: actions/upload-artifact@v2
+      with:
+        name: users-guide-html
+        path: html/
+
+    - name: Check security of requirements.txt
+      env:
+        SKJOLD_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        make -C doc check-requirements

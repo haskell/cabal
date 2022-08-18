@@ -1,0 +1,6 @@
+# cabal init
+# Setup configure
+Configuring app-0.1.0.0...
+# Setup build
+Preprocessing executable 'app' for app-0.1.0.0..
+Building executable 'app' for app-0.1.0.0..

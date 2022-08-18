@@ -1,7 +1,8 @@
+cabal-version:      2.2
 name:               cabal-benchmarks
 version:            3
-copyright:          2003-2021, Cabal Development Team (see AUTHORS file)
-license:            BSD3
+copyright:          2003-2022, Cabal Development Team (see AUTHORS file)
+license:            BSD-3-Clause
 license-file:       LICENSE
 author:             Cabal Development Team <cabal-devel@haskell.org>
 maintainer:         cabal-devel@haskell.org
@@ -12,7 +13,6 @@ description:
   This package contains benchmarks that test cabal's dependency solver by running the cabal executable.
 
 category:           Distribution
-cabal-version:      >=1.10
 build-type:         Simple
 extra-source-files: README.md
 
@@ -30,5 +30,5 @@ test-suite cabal-benchmarks
   build-depends:
       base
     , bytestring
-    , Cabal
+    , Cabal-syntax
     , criterion   >=1.5.6.2 && <1.6

@@ -1,7 +1,7 @@
+cabal-version: 3.8
 name: p
 version: 0.1
 build-type: Simple
-cabal-version: >= 1.10
 
 benchmark solver-disabled
   type: exitcode-stdio-1.0
@@ -9,7 +9,6 @@ benchmark solver-disabled
   build-depends: a-package-that-does-not-exist
 
 benchmark user-disabled
-  type: exitcode-stdio-1.0
   main-is: Test.hs
   build-depends: base
 

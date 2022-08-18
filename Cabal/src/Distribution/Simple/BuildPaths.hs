@@ -15,7 +15,7 @@
 
 module Distribution.Simple.BuildPaths (
     defaultDistPref, srcPref,
-    haddockDirName, hscolourPref, haddockPref,
+    buildInfoPref, haddockDirName, hscolourPref, haddockPref,
     autogenPackageModulesDir,
     autogenComponentModulesDir,
 
@@ -66,6 +66,10 @@ srcPref distPref = distPref </> "src"
 
 hscolourPref :: HaddockTarget -> FilePath -> PackageDescription -> FilePath
 hscolourPref = haddockPref
+
+-- | Build info json file, generated in every build
+buildInfoPref :: FilePath -> FilePath
+buildInfoPref distPref = distPref </> "build-info.json"
 
 -- | This is the name of the directory in which the generated haddocks
 -- should be stored. It does not include the @<dist>/doc/html@ prefix.

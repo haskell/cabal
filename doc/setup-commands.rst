@@ -1,17 +1,21 @@
+.. _setup-commands:
+
 Setup.hs Commands
 =================
 
 .. highlight:: console
 
-The low-level Cabal interface is implemented using ``Setup.hs`` scripts.
-You should prefer using higher level interface provided by
-nix-style builds.
+GHC provides the commands ``runhaskell`` and ``runghc`` (they are equivalent)
+to allow you to run Haskell programs without first having to compile them
+(scripts). The low-level Cabal interface is implemented using ``Setup.hs``
+scripts. You should prefer using higher level interface provided by nix-style
+builds.
 
 ::
 
     $ runhaskell Setup.hs [command] [option...]
 
-For the summary of the command syntax, run:
+For the summary of the ``Setup.hs`` script's command syntax, run:
 
 ::
 
@@ -32,7 +36,7 @@ performs the actual building, while the last both copies the build
 results to some permanent place and registers the package with GHC.
 
 .. note ::
-    
+
     Global installing of packages is not recommended.
     The :ref:`nix-style-builds` is the preferred way of building and installing
     packages.
@@ -108,7 +112,7 @@ the values supplied via these options are recorded in a private file
 read by later stages.
 
 If a user-supplied ``configure`` script is run (see the section on
-:ref:`system-dependent-parameters` or
+:ref:`system-dependent parameters` or
 on :ref:`more-complex-packages`), it is
 passed the :option:`--with-hc-pkg`, :option:`--prefix`, :option:`--bindir`,
 :option:`--libdir`, :option:`--dynlibdir`, :option:`--datadir`, :option:`--libexecdir` and
@@ -376,8 +380,7 @@ used when specifying installation paths. The defaults are also specified
 in terms of these variables. A number of the variables are actually for
 other paths, like ``$prefix``. This allows paths to be specified
 relative to each other rather than as absolute paths, which is important
-for building relocatable packages (see `prefix
-independence <#prefix-independence>`__).
+for building relocatable packages (see :ref:`prefix independence`).
 
 $prefix
     The path variable that stands for the root of the installation. For
@@ -479,14 +482,16 @@ For the simple build system, the following defaults apply:
       - (empty)
       - (empty)
 
-Prefix-independence
+.. _prefix independence:
+
+Prefix independence
 """""""""""""""""""
 
 On Windows it is possible to obtain the pathname of the running program.
 This means that we can construct an installable executable package that
 is independent of its absolute install location. The executable can find
 its auxiliary files by finding its own path and knowing the location of
-the other files relative to ``$bindir``. Prefix-independence is
+the other files relative to ``$bindir``. Prefix independence is
 particularly useful: it means the user can choose the install location
 (i.e. the value of ``$prefix``) at install-time, rather than having to
 bake the path into the binary when it is built.
@@ -496,16 +501,17 @@ all of ``$bindir``, ``$libdir``, ``$dynlibdir``, ``$datadir`` and ``$libexecdir`
 with ``$prefix``. If this is not the case then the compiled executable
 will have baked-in all absolute paths.
 
-The application need do nothing special to achieve prefix-independence.
+The application need do nothing special to achieve prefix independence.
 If it finds any files using ``getDataFileName`` and the :ref:`other functions
-provided for the
-purpose <accessing-data-files>`,
+provided for the purpose <accessing-data-files>`,
 the files will be accessed relative to the location of the current
 executable.
 
-A library cannot (currently) be prefix-independent, because it will be
+A library cannot (currently) be prefix independent, because it will be
 linked into an executable whose file system location bears no relation
 to the library package.
+
+.. _controlling flag assignments:
 
 Controlling Flag Assignments
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -609,15 +615,6 @@ Miscellaneous options
 
     Specifies the *component identifier* of the component being built;
     this is only valid if you are configuring a single component.
-
-.. option:: --default-user-config=file
-
-    Allows a "default" ``cabal.config`` freeze file to be passed in
-    manually. This file will only be used if one does not exist in the
-    project directory already. Typically, this can be set from the
-    global cabal ``config`` file so as to provide a default set of
-    partial constraints to be used by projects, providing a way for
-    users to peg themselves to stable package collections.
 
 .. option:: --enable-optimization[=n] or -O [n]
 
@@ -826,7 +823,7 @@ Miscellaneous options
 .. option:: --configure-option=str
 
     An extra option to an external ``configure`` script, if one is used
-    (see the section on :ref:`system-dependent-parameters`).
+    (see the section on :ref:`system-dependent parameters`).
     There can be several of these options.
 
 .. option:: --extra-include-dirs[=dir]
@@ -879,70 +876,6 @@ Miscellaneous options
     Cabal's API, where you want to error if you didn't specify enough
     :option:`--dependency` flags.
 
-.. option:: --allow-newer[=pkgs], --allow-older[=pkgs]
-
-    Selectively relax upper or lower bounds in dependencies without
-    editing the package description respectively.
-
-    The following description focuses on upper bounds and the
-    :option:`--allow-newer` flag, but applies analogously to
-    :option:`--allow-older` and lower bounds. :option:`--allow-newer`
-    and :option:`--allow-older` can be used at the same time.
-
-    If you want to install a package A that depends on B >= 1.0 && <
-    2.0, but you have the version 2.0 of B installed, you can compile A
-    against B 2.0 by using ``cabal install --allow-newer=B A``. This
-    works for the whole package index: if A also depends on C that in
-    turn depends on B < 2.0, C's dependency on B will be also relaxed.
-
-    Example:
-
-    ::
-
-        $ cd foo
-        $ cabal configure
-        Resolving dependencies...
-        cabal: Could not resolve dependencies:
-        [...]
-        $ cabal configure --allow-newer
-        Resolving dependencies...
-        Configuring foo...
-
-    Additional examples:
-
-    ::
-
-        # Relax upper bounds in all dependencies.
-        $ cabal install --allow-newer foo
-
-        # Relax upper bounds only in dependencies on bar, baz and quux.
-        $ cabal install --allow-newer=bar,baz,quux foo
-
-        # Relax the upper bound on bar and force bar==2.1.
-        $ cabal install --allow-newer=bar --constraint="bar==2.1" foo
-
-    It's also possible to limit the scope of :option:`--allow-newer` to single
-    packages with the ``--allow-newer=scope:dep`` syntax. This means
-    that the dependency on ``dep`` will be relaxed only for the package
-    ``scope``.
-
-    Example:
-
-    ::
-
-        # Relax upper bound in foo's dependency on base; also relax upper bound in
-        # every package's dependency on lens.
-        $ cabal install --allow-newer=foo:base,lens
-
-        # Relax upper bounds in foo's dependency on base and bar's dependency
-        # on time; also relax the upper bound in the dependency on lens specified by
-        # any package.
-        $ cabal install --allow-newer=foo:base,lens --allow-newer=bar:time
-
-    Finally, one can enable :option:`--allow-newer` permanently by setting
-    ``allow-newer: True`` in the ``~/.cabal/config`` file. Enabling
-    'allow-newer' selectively is also supported in the config file
-    (``allow-newer: foo, bar, baz:base``).
 
 .. option:: --constraint=constraint
 
@@ -1028,11 +961,6 @@ Miscellaneous options
         # is a dependency of the build tool bar being used to
         # build package foo.
         $ cabal install --constraint="foo:bar:exe.baz == 1.0"
-
-.. option:: --preference=preference
-
-    Specify a soft constraint on versions of a package. The solver will
-    attempt to satisfy these preferences on a "best-effort" basis.
 
 .. option:: --disable-response-files
 
@@ -1132,7 +1060,7 @@ This command takes the following options:
 .. option:: --hscolour-css=path
 
     The argument *path* denotes a CSS file, which is passed to HsColour_ as in
-    
+
     ::
 
         $ runhaskell Setup.hs hscolour --css=*path*
@@ -1358,7 +1286,7 @@ the package.
     results in real time).
 
 .. option:: --test-options=options
-    
+
     Give extra options to the test executables.
 
 .. option:: --test-option=option

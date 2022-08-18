@@ -27,6 +27,7 @@ import Distribution.Client.Init.FlagExtractors
 import Distribution.Simple.Setup
 import Distribution.CabalSpecVersion
 import qualified Data.Set as Set
+import Distribution.FieldGrammar.Newtypes
 
 
 -- -------------------------------------------------------------------- --
@@ -71,7 +72,7 @@ createProjectTest pkgIx srcDb = testGroup "createProject tests"
               , dependencies = Flag []
               }
 
-        case (_runPrompt $ createProject silent pkgIx srcDb dummyFlags') (fromList ["3", "quxTest/Main.hs"]) of
+        case (_runPrompt $ createProject silent pkgIx srcDb dummyFlags') (fromList ["n", "3", "quxTest/Main.hs"]) of
           Right (ProjectSettings opts desc (Just lib) (Just exe) (Just test), _) -> do
             _optOverwrite  opts @?= False
             _optMinimal    opts @?= False
@@ -84,7 +85,7 @@ createProjectTest pkgIx srcDb = testGroup "createProject tests"
             _pkgCabalVersion  desc @?= CabalSpecV2_2
             _pkgName          desc @?= mkPackageName "QuxPackage"
             _pkgVersion       desc @?= mkVersion [4,2,6]
-            _pkgLicense       desc @?! SPDX.NONE
+            _pkgLicense       desc @?! (SpecLicense . Left $ SPDX.NONE)
             _pkgAuthor        desc @?= "Foobar"
             _pkgEmail         desc @?= "foobar@qux.com"
             _pkgHomePage      desc @?= "qux.com"
@@ -129,6 +130,8 @@ createProjectTest pkgIx srcDb = testGroup "createProject tests"
         let inputs = fromList
               -- package type
               [ "3"
+              -- overwrite
+              , "n"
               -- package dir
               , "test-package"
               -- package description
@@ -142,8 +145,10 @@ createProjectTest pkgIx srcDb = testGroup "createProject tests"
               -- license
               , "3"
               -- author
+              , "git username"
               , "Foobar"
               -- email
+              , "git email"
               , "foobar@qux.com"
               -- homepage
               , "qux.com"
@@ -188,7 +193,7 @@ createProjectTest pkgIx srcDb = testGroup "createProject tests"
             _pkgCabalVersion  desc @?= CabalSpecV2_4
             _pkgName          desc @?= mkPackageName "test-package"
             _pkgVersion       desc @?= mkVersion [3,1,2,3]
-            _pkgLicense       desc @?! SPDX.NONE
+            _pkgLicense       desc @?! (SpecLicense . Left $ SPDX.NONE)
             _pkgAuthor        desc @?= "Foobar"
             _pkgEmail         desc @?= "foobar@qux.com"
             _pkgHomePage      desc @?= "qux.com"
@@ -231,6 +236,8 @@ createProjectTest pkgIx srcDb = testGroup "createProject tests"
         let inputs = fromList
               -- package type
               [  "1"
+              -- overwrite
+              , "n"
               -- package dir
               , "test-package"
               -- package description
@@ -244,8 +251,10 @@ createProjectTest pkgIx srcDb = testGroup "createProject tests"
               -- license
               , "3"
               -- author
+              , "git username"
               , "Foobar"
               -- email
+              , "git email"
               , "foobar@qux.com"
               -- homepage
               , "qux.com"
@@ -283,7 +292,7 @@ createProjectTest pkgIx srcDb = testGroup "createProject tests"
             _pkgCabalVersion  desc @?= CabalSpecV2_4
             _pkgName          desc @?= mkPackageName "test-package"
             _pkgVersion       desc @?= mkVersion [3,1,2,3]
-            _pkgLicense       desc @?! SPDX.NONE
+            _pkgLicense       desc @?! (SpecLicense . Left $ SPDX.NONE)
             _pkgAuthor        desc @?= "Foobar"
             _pkgEmail         desc @?= "foobar@qux.com"
             _pkgHomePage      desc @?= "qux.com"
@@ -313,11 +322,13 @@ createProjectTest pkgIx srcDb = testGroup "createProject tests"
             exe  @?= Nothing
             test @?! Nothing
           Left e -> assertFailure $ show e
-    
+
     , testCase "Check the interactive library workflow" $ do
         let inputs = fromList
               -- package type
               [  "4"
+              -- overwrite
+              , "n"
               -- package dir
               , "test-package"
               -- package description
@@ -331,8 +342,10 @@ createProjectTest pkgIx srcDb = testGroup "createProject tests"
               -- license
               , "3"
               -- author
+              , "git username"
               , "Foobar"
               -- email
+              , "git email"
               , "foobar@qux.com"
               -- homepage
               , "qux.com"
@@ -364,7 +377,7 @@ createProjectTest pkgIx srcDb = testGroup "createProject tests"
             _pkgCabalVersion  desc @?= CabalSpecV2_4
             _pkgName          desc @?= mkPackageName "test-package"
             _pkgVersion       desc @?= mkVersion [3,1,2,3]
-            _pkgLicense       desc @?! SPDX.NONE
+            _pkgLicense       desc @?! (SpecLicense . Left $ SPDX.NONE)
             _pkgAuthor        desc @?= "Foobar"
             _pkgEmail         desc @?= "foobar@qux.com"
             _pkgHomePage      desc @?= "qux.com"
@@ -392,6 +405,8 @@ createProjectTest pkgIx srcDb = testGroup "createProject tests"
         let inputs = fromList
               -- package type
               [ "3"
+              -- overwrite
+              , "n"
               -- package dir
               , "test-package"
               -- package description
@@ -405,8 +420,10 @@ createProjectTest pkgIx srcDb = testGroup "createProject tests"
               -- license
               , "3"
               -- author
+              , "git username"
               , "Foobar"
               -- email
+              , "git email"
               , "foobar@qux.com"
               -- homepage
               , "qux.com"
@@ -445,7 +462,7 @@ createProjectTest pkgIx srcDb = testGroup "createProject tests"
             _pkgCabalVersion  desc @?= CabalSpecV2_4
             _pkgName          desc @?= mkPackageName "test-package"
             _pkgVersion       desc @?= mkVersion [3,1,2,3]
-            _pkgLicense       desc @?! SPDX.NONE
+            _pkgLicense       desc @?! (SpecLicense . Left $ SPDX.NONE)
             _pkgAuthor        desc @?= "Foobar"
             _pkgEmail         desc @?= "foobar@qux.com"
             _pkgHomePage      desc @?= "qux.com"
@@ -480,6 +497,8 @@ createProjectTest pkgIx srcDb = testGroup "createProject tests"
         let inputs = fromList
               -- package type
               [ "1"
+              -- overwrite
+              , "n"
               -- package dir
               , "test-package"
               -- package description
@@ -493,8 +512,10 @@ createProjectTest pkgIx srcDb = testGroup "createProject tests"
               -- license
               , "3"
               -- author
+              , "git username"
               , "Foobar"
               -- email
+              , "git email"
               , "foobar@qux.com"
               -- homepage
               , "qux.com"
@@ -526,7 +547,7 @@ createProjectTest pkgIx srcDb = testGroup "createProject tests"
             _pkgCabalVersion  desc @?= CabalSpecV2_4
             _pkgName          desc @?= mkPackageName "test-package"
             _pkgVersion       desc @?= mkVersion [3,1,2,3]
-            _pkgLicense       desc @?! SPDX.NONE
+            _pkgLicense       desc @?! (SpecLicense . Left $ SPDX.NONE)
             _pkgAuthor        desc @?= "Foobar"
             _pkgEmail         desc @?= "foobar@qux.com"
             _pkgHomePage      desc @?= "qux.com"
@@ -553,6 +574,8 @@ createProjectTest pkgIx srcDb = testGroup "createProject tests"
         let inputs = fromList
               -- package type
               [ "1"
+              -- overwrite
+              , "n"
               -- package dir
               , "test-package"
               -- package description
@@ -566,8 +589,10 @@ createProjectTest pkgIx srcDb = testGroup "createProject tests"
               -- license
               , "3"
               -- author
+              , "git username"
               , "Foobar"
               -- email
+              , "git email"
               , "foobar@qux.com"
               -- homepage
               , "qux.com"
@@ -605,7 +630,7 @@ createProjectTest pkgIx srcDb = testGroup "createProject tests"
             _pkgCabalVersion  desc @?= CabalSpecV1_10
             _pkgName          desc @?= mkPackageName "test-package"
             _pkgVersion       desc @?= mkVersion [3,1,2,3]
-            _pkgLicense       desc @?! SPDX.NONE
+            _pkgLicense       desc @?! (SpecLicense . Left $ SPDX.NONE)
             _pkgAuthor        desc @?= "Foobar"
             _pkgEmail         desc @?= "foobar@qux.com"
             _pkgHomePage      desc @?= "qux.com"
@@ -632,6 +657,8 @@ createProjectTest pkgIx srcDb = testGroup "createProject tests"
         let inputs = fromList
               -- package type
               [ "2"
+              -- overwrite
+              , "n"
               -- package dir
               , "test-package"
               -- package description
@@ -645,8 +672,10 @@ createProjectTest pkgIx srcDb = testGroup "createProject tests"
               -- license
               , "3"
               -- author
+              , "git username"
               , "Foobar"
               -- email
+              , "git email"
               , "foobar@qux.com"
               -- homepage
               , "qux.com"
@@ -678,7 +707,7 @@ createProjectTest pkgIx srcDb = testGroup "createProject tests"
             _pkgCabalVersion  desc @?= CabalSpecV2_4
             _pkgName          desc @?= mkPackageName "test-package"
             _pkgVersion       desc @?= mkVersion [3,1,2,3]
-            _pkgLicense       desc @?! SPDX.NONE
+            _pkgLicense       desc @?! (SpecLicense . Left $ SPDX.NONE)
             _pkgAuthor        desc @?= "Foobar"
             _pkgEmail         desc @?= "foobar@qux.com"
             _pkgHomePage      desc @?= "qux.com"
@@ -713,7 +742,9 @@ fileCreatorTests pkgIx srcDb _pkgName = testGroup "generators"
               , "y"               -- "yes to prompt internal to package name"
               , "0.2.0.1"         -- package version
               , "2"               -- pick the second license in the list
+              , "git username"    -- name guessed by calling "git config user.name"
               , "Foobar"          -- author name
+              , "git email"       -- email guessed by calling "git config user.email"
               , "foobar@qux.com"  -- maintainer email
               , "qux.com"         -- package homepage
               , "Qux's package"   -- package synopsis
@@ -819,10 +850,14 @@ interactiveTests srcDb = testGroup "Check top level getter functions"
         , testSimplePrompt "2" synopsisPrompt
             "Resistance is futile, you will be assimilated" ["Resistance is futile, you will be assimilated"]
         ]
-    , testSimplePrompt "Check authorPrompt output" authorPrompt
-        "Foobar" ["Foobar"]
-    , testSimplePrompt "Check emailPrompt output" emailPrompt
-        "foobar@qux.com" ["foobar@qux.com"]
+    , testSimplePrompt "Check authorPrompt output (name supplied by the user)" authorPrompt
+        "Foobar" ["git username", "Foobar"]
+    , testSimplePrompt "Check authorPrompt output (name guessed from git config)" authorPrompt
+        "git username" ["git username", ""]
+    , testSimplePrompt "Check emailPrompt output (email supplied by the user)" emailPrompt
+        "foobar@qux.com" ["git email", "foobar@qux.com"]
+    , testSimplePrompt "Check emailPrompt output (email guessed from git config)" emailPrompt
+        "git@email" ["git@email", ""]
     , testSimplePrompt "Check homepagePrompt output" homepagePrompt
         "qux.com" ["qux.com"]
     , testSimplePrompt "Check testDirsPrompt output" testDirsPrompt
@@ -847,24 +882,24 @@ interactiveTests srcDb = testGroup "Check top level getter functions"
       ]
     , testGroup "Check licensePrompt output" $ let other = show (1 + P.length defaultLicenseIds) in
         [ testNumberedPrompt "License indices" licensePrompt $
-            fmap (\l -> SPDX.License $ SPDX.ELicense (SPDX.ELicenseId l) Nothing) defaultLicenseIds
+            fmap (\l -> SpecLicense . Left . SPDX.License $ SPDX.ELicense (SPDX.ELicenseId l) Nothing) defaultLicenseIds
         , testSimplePrompt "Other license 1"
-            licensePrompt (mkLicense SPDX.CC_BY_NC_ND_4_0)
+            licensePrompt (SpecLicense . Left $ mkLicense SPDX.CC_BY_NC_ND_4_0)
             [ other
             , "CC-BY-NC-ND-4.0"
             ]
         , testSimplePrompt "Other license 2"
-            licensePrompt (mkLicense SPDX.D_FSL_1_0)
+            licensePrompt (SpecLicense . Left $ mkLicense SPDX.D_FSL_1_0)
             [ other
             , "D-FSL-1.0"
             ]
         , testSimplePrompt "Other license 3"
-            licensePrompt (mkLicense SPDX.NPOSL_3_0)
+            licensePrompt (SpecLicense . Left $ mkLicense SPDX.NPOSL_3_0)
             [ other
             , "NPOSL-3.0"
             ]
         , testSimplePrompt "Invalid license"
-            licensePrompt SPDX.NONE
+            licensePrompt (SpecLicense $ Left SPDX.NONE)
             [ other
             , "yay"
             , other
@@ -877,17 +912,16 @@ interactiveTests srcDb = testGroup "Check top level getter functions"
         ]
     , testGroup "Check languagePrompt output"
         [ testNumberedPrompt "Language indices" (`languagePrompt` "test")
-            [Haskell2010, Haskell98]
+            [Haskell2010, Haskell98, GHC2021]
         , testSimplePrompt "Other language"
             (`languagePrompt` "test") (UnknownLanguage "Haskell2022")
-            [ "3"
+            [ "4"
             , "Haskell2022"
             ]
         , testSimplePrompt "Invalid language"
-            (`languagePrompt` "test") Haskell2010
-            [ "3"
+            (`languagePrompt` "test") (UnknownLanguage "Lang_TS!")
+            [ "4"
             , "Lang_TS!"
-            , "1"
             ]
         ]
     , testGroup "Check srcDirsPrompt output"

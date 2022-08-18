@@ -23,12 +23,11 @@ module Distribution.Client.Init.FileCreators
 , prepareTestTarget
 ) where
 
-import Prelude hiding (writeFile)
-import Distribution.Client.Compat.Prelude hiding (head, empty, writeFile)
+import Prelude hiding (writeFile, readFile)
+import Distribution.Client.Compat.Prelude hiding (head, empty, writeFile, readFile)
 
 import qualified Data.Set as Set (member)
 
-import Distribution.Client.Utils (getCurrentYear, removeExistingFile)
 import Distribution.Client.Init.Defaults
 import Distribution.Client.Init.Licenses
   ( bsd2, bsd3, gplv2, gplv3, lgpl21, lgpl3, agplv3, apache20, mit, mpl20, isc )
@@ -41,51 +40,63 @@ import Distribution.Client.Init.Format
 import Distribution.CabalSpecVersion (showCabalSpecVersion)
 
 import System.FilePath ((</>), (<.>))
+import Distribution.FieldGrammar.Newtypes
+import Distribution.License (licenseToSPDX)
 
 -- -------------------------------------------------------------------- --
 --  File generation
 
-writeProject :: ProjectSettings -> IO ()
+writeProject :: Interactive m => ProjectSettings -> m ()
 writeProject (ProjectSettings opts pkgDesc libTarget exeTarget testTarget)
     | null pkgName = do
-      message opts "\nError: no package name given, so no .cabal file can be generated\n"
+      message opts T.Error "no package name given, so no .cabal file can be generated\n"
     | otherwise = do
 
       -- clear prompt history a bit"
-      message opts
-        $ "\nUsing cabal specification: "
+      message opts T.Log
+        $ "Using cabal specification: "
         ++ showCabalSpecVersion (_optCabalSpec opts)
-        ++ "\n"
 
       writeLicense opts pkgDesc
       writeChangeLog opts pkgDesc
 
       let pkgFields = mkPkgDescription opts pkgDesc
+          commonStanza = mkCommonStanza opts
 
       libStanza <- prepareLibTarget opts libTarget
       exeStanza <- prepareExeTarget opts exeTarget
       testStanza <- prepareTestTarget opts testTarget
 
-      writeCabalFile opts $ pkgFields ++ [libStanza, exeStanza, testStanza]
+      (reusedCabal, cabalContents) <- writeCabalFile opts $
+        pkgFields ++ [commonStanza, libStanza, exeStanza, testStanza]
 
       when (null $ _pkgSynopsis pkgDesc) $
-        message opts "\nWarning: no synopsis given. You should edit the .cabal file and add one."
+        message opts T.Warning "No synopsis given. You should edit the .cabal file and add one."
 
-      message opts "You may want to edit the .cabal file and add a Description field."
+      message opts T.Info "You may want to edit the .cabal file and add a Description field."
+
+      when reusedCabal $ do
+        existingCabal <- readFile $ unPackageName (_optPkgName opts) ++ ".cabal"
+        when (existingCabal /= cabalContents) $
+          message opts T.Warning "A .cabal file was found and not updated, if updating is desired please use the '--overwrite' option."
+
+      -- clear out last line for presentation.
+      T.putStrLn ""
   where
     pkgName = unPackageName $ _optPkgName opts
 
 
 prepareLibTarget
-    :: WriteOpts
+    :: Interactive m
+    => WriteOpts
     -> Maybe LibTarget
-    -> IO (PrettyField FieldAnnotation)
+    -> m (PrettyField FieldAnnotation)
 prepareLibTarget _ Nothing = return PrettyEmpty
 prepareLibTarget opts (Just libTarget) = do
-    void $ writeDirectoriesSafe opts srcDirs
+    void $ writeDirectoriesSafe opts $ filter (/= ".") srcDirs
     -- avoid writing when conflicting exposed paths may
     -- exist.
-    when (expMods == (myLibModule :| [])) $ do
+    when (expMods == (myLibModule :| [])) . void $
       writeFileSafe opts libPath myLibHs
 
     return $ mkLibStanza opts libTarget
@@ -97,9 +108,10 @@ prepareLibTarget opts (Just libTarget) = do
       _ -> _hsFilePath myLibFile
 
 prepareExeTarget
-    :: WriteOpts
+    :: Interactive m
+    => WriteOpts
     -> Maybe ExeTarget
-    -> IO (PrettyField FieldAnnotation)
+    -> m (PrettyField FieldAnnotation)
 prepareExeTarget _ Nothing = return PrettyEmpty
 prepareExeTarget opts (Just exeTarget) = do
     void $ writeDirectoriesSafe opts appDirs
@@ -120,9 +132,10 @@ prepareExeTarget opts (Just exeTarget) = do
       else myExeHs
 
 prepareTestTarget
-    :: WriteOpts
+    :: Interactive m
+    => WriteOpts
     -> Maybe TestTarget
-    -> IO (PrettyField FieldAnnotation)
+    -> m (PrettyField FieldAnnotation)
 prepareTestTarget _ Nothing = return PrettyEmpty
 prepareTestTarget opts (Just testTarget) = do
     void $ writeDirectoriesSafe opts testDirs'
@@ -136,18 +149,20 @@ prepareTestTarget opts (Just testTarget) = do
       _ -> testMainIs
 
 writeCabalFile
-    :: WriteOpts
+    :: Interactive m
+    => WriteOpts
     -> [PrettyField FieldAnnotation]
       -- ^ .cabal fields
-    -> IO ()
-writeCabalFile opts fields =
-    writeFileSafe opts cabalFileName cabalContents
-  where
-    cabalContents = showFields'
-      annCommentLines
-      postProcessFieldLines
-      4 fields
+    -> m (Bool, String)
+writeCabalFile opts fields = do
+    let cabalContents = showFields'
+          annCommentLines
+          postProcessFieldLines
+          4 fields
 
+    reusedCabal <- writeFileSafe opts cabalFileName cabalContents
+    return (reusedCabal, cabalContents)
+  where
     cabalFileName = pkgName ++ ".cabal"
     pkgName = unPackageName $ _optPkgName opts
 
@@ -160,20 +175,19 @@ writeCabalFile opts fields =
 -- If the license type is unknown no license file will be prepared and
 -- a warning will be raised.
 --
-writeLicense :: WriteOpts -> PkgDescription -> IO ()
+writeLicense :: Interactive m => WriteOpts -> PkgDescription -> m ()
 writeLicense writeOpts pkgDesc = do
   year <- show <$> getCurrentYear
   case licenseFile year (_pkgAuthor pkgDesc) of
-    Just licenseText -> do
-      message writeOpts "\nCreating LICENSE..."
-      writeFileSafe writeOpts "LICENSE" licenseText
-    Nothing -> message writeOpts "Warning: unknown license type, you must put a copy in LICENSE yourself."
+    Just licenseText ->
+      void $ writeFileSafe writeOpts "LICENSE" licenseText
+    Nothing -> message writeOpts T.Warning "unknown license type, you must put a copy in LICENSE yourself."
   where
-    getLid (SPDX.License (SPDX.ELicense (SPDX.ELicenseId lid) Nothing)) =
-      Just lid
+    getLid (Left (SPDX.License (SPDX.ELicense (SPDX.ELicenseId lid) Nothing))) = Just lid
+    getLid (Right l) = getLid . Left $ licenseToSPDX l
     getLid _ = Nothing
 
-    licenseFile year auth = case getLid $ _pkgLicense pkgDesc of
+    licenseFile year auth = case getLid . getSpecLicense $ _pkgLicense pkgDesc of
       Just SPDX.BSD_2_Clause -> Just $ bsd2 auth year
       Just SPDX.BSD_3_Clause -> Just $ bsd3 auth year
       Just SPDX.Apache_2_0 -> Just apache20
@@ -194,7 +208,7 @@ writeLicense writeOpts pkgDesc = do
 
 -- | Writes the changelog to the current directory.
 --
-writeChangeLog :: WriteOpts -> PkgDescription -> IO ()
+writeChangeLog :: Interactive m => WriteOpts -> PkgDescription -> m ()
 writeChangeLog opts pkgDesc
   | Just docs <- _pkgExtraDocFiles pkgDesc
   , defaultChangelog `Set.member` docs = go
@@ -209,81 +223,87 @@ writeChangeLog opts pkgDesc
     , "* First version. Released on an unsuspecting world."
     ]
 
-  go = do
-    message opts ("Creating " ++ defaultChangelog ++"...")
-    writeFileSafe opts defaultChangelog changeLog
+  go =
+    void $ writeFileSafe opts defaultChangelog changeLog
 
 -- -------------------------------------------------------------------- --
 -- Utilities
 
+data WriteAction = Overwrite | Fresh | Existing deriving Eq
+
+instance Show WriteAction where
+  show Overwrite = "Overwriting"
+  show Fresh     = "Creating fresh"
+  show Existing  = "Using existing"
+
 -- | Possibly generate a message to stdout, taking into account the
 --   --quiet flag.
-message :: Interactive m => WriteOpts -> String -> m ()
+message :: Interactive m => WriteOpts -> T.Severity -> String -> m ()
 message opts = T.message (_optVerbosity opts)
 
 -- | Write a file \"safely\" if it doesn't exist, backing up any existing version when
 --   the overwrite flag is set.
-writeFileSafe :: WriteOpts -> FilePath -> String -> IO ()
+writeFileSafe :: Interactive m => WriteOpts -> FilePath -> String -> m Bool
 writeFileSafe opts fileName content = do
     exists <- doesFileExist fileName
 
     let action
-          | doOverwrite = "Overwriting"
-          | exists = "Creating fresh"
-          | otherwise = "Creating"
+          | exists && doOverwrite = Overwrite
+          | not exists = Fresh
+          | otherwise = Existing
 
     go exists
 
-    message opts $ action ++ " file " ++ fileName ++ "..."
-    writeFile fileName content
+    message opts T.Log $ show action ++ " file " ++ fileName ++ "..."
+    return $ action == Existing
   where
     doOverwrite = _optOverwrite opts
 
     go exists
-      | exists, doOverwrite = do
-        removeExistingFile fileName
-      | exists, not doOverwrite = do
+      | not exists = do
+        writeFile fileName content
+      | exists && doOverwrite = do
         newName <- findNewPath fileName
-        message opts $ concat
-          [ "Warning: "
-          , fileName
+        message opts T.Log $ concat
+          [ fileName
           , " already exists. Backing up old version in "
           , newName
           ]
 
-        copyFile fileName newName
-        removeExistingFile fileName
+        copyFile fileName newName   -- backups the old file
+        removeExistingFile fileName -- removes the original old file
+        writeFile fileName content  -- writes the new file
       | otherwise = return ()
 
-writeDirectoriesSafe :: WriteOpts -> [String] -> IO ()
-writeDirectoriesSafe opts dirs = for_ dirs $ \dir -> do
+writeDirectoriesSafe :: Interactive m => WriteOpts -> [String] -> m Bool
+writeDirectoriesSafe opts dirs = fmap or $ for dirs $ \dir -> do
     exists <- doesDirectoryExist dir
 
     let action
-          | doOverwrite = "Overwriting"
-          | exists = "Creating fresh"
-          | otherwise = "Creating"
+          | exists && doOverwrite = Overwrite
+          | not exists = Fresh
+          | otherwise = Existing
 
     go dir exists
 
-    message opts $ action ++ " directory ./" ++ dir ++ "..."
-    createDirectory dir
+    message opts T.Log $ show action ++ " directory ./" ++ dir ++ "..."
+    return $ action == Existing
   where
     doOverwrite = _optOverwrite opts
 
     go dir exists
-      | exists, doOverwrite = do
-        removeDirectory dir
-      | exists, not doOverwrite = do
+      | not exists = do
+        createDirectory dir
+      | exists && doOverwrite = do
         newDir <- findNewPath dir
-        message opts $ concat
-          [ "Warning: "
-          , dir
+        message opts T.Log $ concat
+          [ dir
           , " already exists. Backing up old version in "
           , newDir
           ]
 
-        renameDirectory dir newDir
+        renameDirectory dir newDir -- backups the old directory
+        createDirectory dir        -- creates the new directory
       | otherwise = return ()
 
 findNewPath :: Interactive m => FilePath -> m FilePath

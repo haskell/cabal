@@ -1,3 +1,6 @@
 import Test.Cabal.Prelude
 main = cabalTest $ do
-    cabal "v2-build" ["exe:q"]
+  linux <- isLinux
+  osx <- isOSX
+  skipIf "8032 heisenbug profiling" (linux || osx)
+  cabal "v2-build" ["exe:q"]

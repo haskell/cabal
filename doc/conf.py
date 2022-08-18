@@ -13,9 +13,14 @@ import sphinx_rtd_theme
 sys.path.insert(0, os.path.abspath('.'))
 import cabaldomain
 
-version = "3.6.0.0"
+version = "3.9.0.0"
 
-extensions = ['sphinx.ext.extlinks', 'sphinx.ext.todo']
+extensions = [
+    'sphinx.ext.extlinks',
+    'sphinx.ext.todo',
+    'sphinx-jsonschema',
+    'sphinxnotes.strike'
+]
 
 templates_path = ['_templates']
 source_suffix = '.rst'
@@ -24,17 +29,17 @@ master_doc = 'index'
 
 # extlinks -- see http://www.sphinx-doc.org/en/stable/ext/extlinks.html
 extlinks = {
-    'issue': ('https://github.com/haskell/cabal/issues/%s', '#'),
+    'issue': ('https://github.com/haskell/cabal/issues/%s', 'issue #%s'),
 
-    'ghc-wiki': ('https://gitlab.haskell.org/ghc/ghc/-/wikis/%s', ''),
-    'ghc-ticket': ('https://gitlab.haskell.org/ghc/ghc/-/issues/%s', 'GHC #'),
+    'ghc-wiki': ('https://gitlab.haskell.org/ghc/ghc/-/wikis/%s', '%s'),
+    'ghc-ticket': ('https://gitlab.haskell.org/ghc/ghc/-/issues/%s', 'GHC issue #%s'),
 
-    'hackage-pkg': ('http://hackage.haskell.org/package/%s', ''),
+    'hackage-pkg': ('http://hackage.haskell.org/package/%s', '%s'),
 }
 
 # General information about the project.
 project = u'Cabal'
-copyright = u'2003-2021, Cabal Team'
+copyright = u'2003-2022, Cabal Team'
 # N.B. version comes from ghc_config
 release = version  # The full version, including alpha/beta/rc tags.
 
@@ -53,9 +58,13 @@ exclude_patterns = ['.build', "*.gen.rst"]
 # on_rtd is whether we are on readthedocs.org, this line of code grabbed from docs.readthedocs.org
 on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
 
-if not on_rtd:  # only import and set the theme if we're building docs locally
+html_theme = 'sphinx_rtd_theme'
+# only import the theme if we're building docs locally
+if on_rtd:
+    html_style = None
+    using_rtd_theme = True
+else:
     import sphinx_rtd_theme
-    html_theme = 'sphinx_rtd_theme'
     html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 
 # The name for this set of Sphinx documents.  If None, it defaults to
@@ -76,6 +85,9 @@ html_context = {
     "github_version": "master/",
     "conf_py_path": "doc/",
     "source_suffix": '.rst',
+}
+html_theme_options = {
+    'collapse_navigation': False,
 }
 
 

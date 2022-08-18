@@ -7,11 +7,11 @@ please rather run `cabal v2-install`.
 The typical usage is porting to a new linux architecture,
 then the `linux-ghcvec.json` file is available in `bootstrap/` folder:
 
-On a (linux) system you are boostrapping, run
+On a (linux) system you are bootstrapping, run
 
     ./bootstrap/bootstrap.py -d ./bootstrap/linux-ghcver.json -w /path/to-ghc
-    
-From the top directory of the source checkout.
+
+from the top directory of the source checkout.
 
 To generate the `platform-ghcver` files for other platforms, do:
 
@@ -23,8 +23,8 @@ To generate the `platform-ghcver` files for other platforms, do:
        ```sh
        cabal v2-build --with-compiler=/path/to/ghc --dry-run cabal-install:exe:cabal
        cp dist-newstyle/cache/plan.json bootstrap/platform-ghcver.plan.json
-       cabal v2-build               --builddir=dist-newstyle-bootstrap --project=cabal.project.bootstrap cabal-bootstrap-gen
-       cabal v2-run -vnormal+stderr --builddir=dist-newstyle-bootstrap --project=cabal.project.bootstrap cabal-bootstrap-gen -- bootstrap/platform-ghcver.plan.json | tee bootstrap/platform-ghcver.json
+       cd bootstrap
+       cabal v2-run -v0 cabal-bootstrap-gen -- platform-ghcver.plan.json | tee platform-ghcver.json
        ```
 
   3. You may need to tweak `bootstrap/platform-ghcver.json` file manually,

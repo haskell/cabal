@@ -1,8 +1,15 @@
-{-# LANGUAGE RecordWildCards, NamedFieldPuns, DeriveGeneric, ConstraintKinds #-}
+{-# LANGUAGE RecordWildCards, NamedFieldPuns, DeriveGeneric, ConstraintKinds, FlexibleInstances #-}
 
 -- | Project configuration, implementation in terms of legacy types.
 --
 module Distribution.Client.ProjectConfig.Legacy (
+
+   -- Project config skeletons
+    ProjectConfigSkeleton,
+    parseProjectSkeleton,
+    instantiateProjectConfigSkeleton,
+    singletonProjectConfigSkeleton,
+    projectSkeletonImports,
 
     -- * Project config in terms of legacy types
     LegacyProjectConfig,
@@ -17,13 +24,12 @@ module Distribution.Client.ProjectConfig.Legacy (
 
     -- * Internals, just for tests
     parsePackageLocationTokenQ,
-    renderPackageLocationToken,
+    renderPackageLocationToken
   ) where
 
-import Prelude ()
 import Distribution.Client.Compat.Prelude
 
-import Distribution.Types.Flag (parsecFlagAssignment)
+import Distribution.Types.Flag (parsecFlagAssignment, FlagName)
 
 import Distribution.Client.ProjectConfig.Types
 import Distribution.Client.Types.RepoName (RepoName (..), unRepoName)
@@ -38,23 +44,29 @@ import Distribution.Client.CmdInstall.ClientInstallFlags
          ( ClientInstallFlags(..), defaultClientInstallFlags
          , clientInstallOptions )
 
+import Distribution.Compat.Lens (view)
+
 import Distribution.Solver.Types.ConstraintSource
 
 import Distribution.FieldGrammar
 import Distribution.Package
 import Distribution.Types.SourceRepo (RepoType)
+import Distribution.Types.CondTree
+         ( CondTree (..), CondBranch (..), mapTreeConds, traverseCondTreeC )
 import Distribution.PackageDescription
-         ( dispFlagAssignment )
+         ( dispFlagAssignment, Condition (..), ConfVar (..), FlagAssignment )
+import Distribution.PackageDescription.Configuration (simplifyWithSysParams)
 import Distribution.Simple.Compiler
-         ( OptimisationLevel(..), DebugInfoLevel(..) )
+         ( OptimisationLevel(..), DebugInfoLevel(..), CompilerInfo(..) )
 import Distribution.Simple.InstallDirs ( CopyDest (NoCopyDest) )
 import Distribution.Simple.Setup
-         ( Flag(Flag), toFlag, fromFlagOrDefault
+         ( Flag(..), toFlag, fromFlagOrDefault
          , ConfigFlags(..), configureOptions
          , HaddockFlags(..), haddockOptions, defaultHaddockFlags
          , TestFlags(..), testOptions', defaultTestFlags
          , BenchmarkFlags(..), benchmarkOptions', defaultBenchmarkFlags
-         , programDbPaths', splitArgs
+         , programDbPaths', splitArgs, DumpBuildInfo (NoDumpBuildInfo, DumpBuildInfo)
+         , readPackageDb, showPackageDb
          )
 import Distribution.Client.NixStyleOptions (NixStyleFlags (..))
 import Distribution.Client.ProjectFlags (ProjectFlags (..), projectFlagsOptions, defaultProjectFlags)
@@ -84,7 +96,7 @@ import Distribution.Deprecated.ParseUtils
          ( ParseResult(..), PError(..), syntaxError, PWarning(..)
          , commaNewLineListFieldParsec, newLineListField, parseTokenQ
          , parseHaskellString, showToken
-         , simpleFieldParsec
+         , simpleFieldParsec, parseFail
          )
 import Distribution.Client.ParseUtils
 import Distribution.Simple.Command
@@ -92,12 +104,131 @@ import Distribution.Simple.Command
          , OptionField, option, reqArg' )
 import Distribution.Types.PackageVersionConstraint
          ( PackageVersionConstraint )
-import Distribution.Parsec (ParsecParser)
+import Distribution.Parsec (ParsecParser, parsecToken)
+import Distribution.System (OS, Arch)
 
 import qualified Data.Map as Map
-import qualified Data.ByteString as BS
+import qualified Data.Set as Set
+import qualified Data.ByteString.Char8 as BS
 
-import Network.URI (URI (..))
+import Network.URI (URI (..), parseURI)
+
+import Distribution.Fields.ConfVar (parseConditionConfVarFromClause)
+
+import Distribution.Client.HttpUtils
+import System.FilePath ((</>), isPathSeparator, makeValid)
+import System.Directory (createDirectoryIfMissing)
+
+
+
+
+------------------------------------------------------------------
+-- Handle extended project config files with conditionals and imports.
+--
+
+-- | ProjectConfigSkeleton is a tree of conditional blocks and imports wrapping a config. It can be finalized by providing the conditional resolution info
+-- and then resolving and downloading the imports
+type ProjectConfigSkeleton = CondTree ConfVar [ProjectConfigImport] ProjectConfig
+type ProjectConfigImport = String
+
+
+singletonProjectConfigSkeleton :: ProjectConfig -> ProjectConfigSkeleton
+singletonProjectConfigSkeleton x = CondNode x mempty mempty
+
+instantiateProjectConfigSkeleton :: OS -> Arch -> CompilerInfo -> FlagAssignment -> ProjectConfigSkeleton -> ProjectConfig
+instantiateProjectConfigSkeleton os arch impl _flags skel = go $ mapTreeConds (fst . simplifyWithSysParams os arch impl) skel
+    where
+        go :: CondTree
+               FlagName
+               [ProjectConfigImport]
+               ProjectConfig
+             -> ProjectConfig
+        go (CondNode l _imps ts) =
+           let branches = concatMap processBranch ts
+           in l <> mconcat branches
+        processBranch (CondBranch cnd t mf) = case cnd of
+           (Lit True) ->  [go t]
+           (Lit False) -> maybe ([]) ((:[]) . go) mf
+           _ -> error $ "unable to process condition: " ++ show cnd -- TODO it would be nice if there were a pretty printer
+
+projectSkeletonImports :: ProjectConfigSkeleton -> [ProjectConfigImport]
+projectSkeletonImports = view traverseCondTreeC
+
+parseProjectSkeleton :: FilePath -> HttpTransport -> Verbosity -> [ProjectConfigImport] -> FilePath -> BS.ByteString -> IO (ParseResult ProjectConfigSkeleton)
+parseProjectSkeleton cacheDir httpTransport verbosity seenImports source bs = (sanityWalkPCS False =<<) <$> liftPR (go []) (ParseUtils.readFields bs)
+  where
+    go :: [ParseUtils.Field] -> [ParseUtils.Field] -> IO (ParseResult ProjectConfigSkeleton)
+    go acc (x:xs) = case x of
+         (ParseUtils.F l "import" importLoc) ->
+            if importLoc `elem` seenImports
+              then pure . parseFail $ ParseUtils.FromString ("cyclical import of " ++ importLoc) (Just l)
+              else do
+                let fs = fmap (\z -> CondNode z [importLoc] mempty) $ fieldsToConfig (reverse acc)
+                res <- parseProjectSkeleton cacheDir httpTransport verbosity (importLoc : seenImports) importLoc =<< fetchImportConfig importLoc
+                rest <- go [] xs
+                pure . fmap mconcat . sequence $ [fs, res, rest]
+         (ParseUtils.Section l "if" p xs') -> do
+                subpcs <- go [] xs'
+                let fs = fmap singletonProjectConfigSkeleton $ fieldsToConfig (reverse acc)
+                (elseClauses, rest) <- parseElseClauses xs
+                let condNode =  (\c pcs e -> CondNode mempty mempty [CondBranch c pcs e]) <$>
+                      -- we rewrap as as a section so the readFields lexer of the conditional parser doesn't get confused
+                      adaptParseError l (parseConditionConfVarFromClause . BS.pack $ "if(" <> p <> ")") <*>
+                      subpcs <*>
+                      elseClauses
+                pure . fmap mconcat . sequence $ [fs, condNode, rest]
+         _ -> go (x:acc) xs
+    go acc [] = pure . fmap singletonProjectConfigSkeleton . fieldsToConfig $ reverse acc
+
+    parseElseClauses :: [ParseUtils.Field] -> IO (ParseResult (Maybe ProjectConfigSkeleton), ParseResult ProjectConfigSkeleton)
+    parseElseClauses x = case x of
+         (ParseUtils.Section _l "else" _p xs':xs) -> do
+               subpcs <- go [] xs'
+               rest <- go [] xs
+               pure (Just <$> subpcs, rest)
+         (ParseUtils.Section l "elif" p xs':xs) -> do
+               subpcs <- go [] xs'
+               (elseClauses, rest) <- parseElseClauses xs
+               let condNode = (\c pcs e -> CondNode mempty mempty [CondBranch c pcs e]) <$>
+                                  adaptParseError l (parseConditionConfVarFromClause . BS.pack $ "else("<> p <> ")") <*>
+                                  subpcs <*>
+                                  elseClauses
+               pure (Just <$> condNode, rest)
+         _ -> (\r -> (pure Nothing,r)) <$> go [] x
+
+    fieldsToConfig xs = fmap (addProvenance . convertLegacyProjectConfig) $ parseLegacyProjectConfigFields source xs
+    addProvenance x = x {projectConfigProvenance = Set.singleton (Explicit source)}
+
+    adaptParseError _ (Right x) = pure x
+    adaptParseError l (Left e) = parseFail $ ParseUtils.FromString (show e) (Just l)
+
+    liftPR :: (a -> IO (ParseResult b)) -> ParseResult a -> IO (ParseResult b)
+    liftPR f (ParseOk ws x) = addWarnings <$> f x
+       where addWarnings (ParseOk ws' x') = ParseOk (ws' ++ ws) x'
+             addWarnings x' = x'
+    liftPR _ (ParseFailed e) = pure $ ParseFailed e
+
+    fetchImportConfig :: ProjectConfigImport -> IO BS.ByteString
+    fetchImportConfig pci = case parseURI pci of
+         Just uri -> do
+            let fp = cacheDir </> map (\x -> if isPathSeparator x then '_' else x) (makeValid $ show uri)
+            createDirectoryIfMissing True cacheDir
+            _ <- downloadURI httpTransport verbosity uri fp
+            BS.readFile fp
+         Nothing -> BS.readFile pci
+
+    modifiesCompiler :: ProjectConfig -> Bool
+    modifiesCompiler pc = isSet projectConfigHcFlavor || isSet projectConfigHcPath || isSet projectConfigHcPkg
+      where
+         isSet f = f (projectConfigShared pc) /= NoFlag
+
+    sanityWalkPCS :: Bool -> ProjectConfigSkeleton -> ParseResult ProjectConfigSkeleton
+    sanityWalkPCS underConditional t@(CondNode d _c comps)
+           | underConditional && modifiesCompiler d = parseFail $ ParseUtils.FromString "Cannot set compiler in a conditional clause of a cabal project file" Nothing
+           | otherwise = mapM_ sanityWalkBranch comps >> pure t
+
+    sanityWalkBranch:: CondBranch ConfVar [ProjectConfigImport] ProjectConfig -> ParseResult ()
+    sanityWalkBranch (CondBranch _c t f) = traverse (sanityWalkPCS True) f >> sanityWalkPCS True t >> pure ()
 
 ------------------------------------------------------------------
 -- Representing the project config file in terms of legacy types
@@ -197,7 +328,7 @@ commandLineFlagsToProjectConfig globalFlags NixStyleFlags {..} clientInstallFlag
         -- split the package config (from command line arguments) into
         -- those applied to all packages and those to local only.
         --
-        -- for now we will just copy over the ProgramPaths/Args/Extra into
+        -- for now we will just copy over the ProgramPaths/Extra into
         -- the AllPackages.  The LocalPackages do not inherit them from
         -- AllPackages, and as such need to retain them.
         --
@@ -214,7 +345,6 @@ commandLineFlagsToProjectConfig globalFlags NixStyleFlags {..} clientInstallFlag
         splitConfig :: PackageConfig -> (PackageConfig, PackageConfig)
         splitConfig pc = (pc
                          , mempty { packageConfigProgramPaths = packageConfigProgramPaths pc
-                                  , packageConfigProgramArgs  = packageConfigProgramArgs  pc
                                   , packageConfigProgramPathExtra = packageConfigProgramPathExtra pc
                                   , packageConfigDocumentation = packageConfigDocumentation pc })
 
@@ -352,11 +482,11 @@ convertLegacyAllPackageFlags globalFlags configFlags configExFlags installFlags 
       configDistPref            = projectConfigDistDir,
       configHcFlavor            = projectConfigHcFlavor,
       configHcPath              = projectConfigHcPath,
-      configHcPkg               = projectConfigHcPkg
+      configHcPkg               = projectConfigHcPkg,
     --configProgramPathExtra    = projectConfigProgPathExtra DELETE ME
     --configInstallDirs         = projectConfigInstallDirs,
     --configUserInstall         = projectConfigUserInstall,
-    --configPackageDBs          = projectConfigPackageDBs,
+      configPackageDBs          = projectConfigPackageDBs
     } = configFlags
 
     ConfigExFlags {
@@ -384,6 +514,7 @@ convertLegacyAllPackageFlags globalFlags configFlags configExFlags installFlags 
       installMinimizeConflictSet = projectConfigMinimizeConflictSet,
       installPerComponent       = projectConfigPerComponent,
       installIndependentGoals   = projectConfigIndependentGoals,
+      installPreferOldest       = projectConfigPreferOldest,
     --installShadowPkgs         = projectConfigShadowPkgs,
       installStrongFlags        = projectConfigStrongFlags,
       installAllowBootLibInstalls = projectConfigAllowBootLibInstalls,
@@ -437,6 +568,7 @@ convertLegacyPerPackageFlags configFlags installFlags
       configCoverage            = coverage,
       configLibCoverage         = libcoverage, --deprecated
       configDebugInfo           = packageConfigDebugInfo,
+      configDumpBuildInfo       = packageConfigDumpBuildInfo,
       configRelocatable         = packageConfigRelocatable
     } = configFlags
     packageConfigProgramPaths   = MapLast    (Map.fromList configProgramPaths)
@@ -464,7 +596,10 @@ convertLegacyPerPackageFlags configFlags installFlags
       haddockLinkedSource       = packageConfigHaddockLinkedSource,
       haddockQuickJump          = packageConfigHaddockQuickJump,
       haddockHscolourCss        = packageConfigHaddockHscolourCss,
-      haddockContents           = packageConfigHaddockContents
+      haddockContents           = packageConfigHaddockContents,
+      haddockIndex              = packageConfigHaddockIndex,
+      haddockBaseUrl            = packageConfigHaddockBaseUrl,
+      haddockLib                = packageConfigHaddockLib
     } = haddockFlags
 
     TestFlags {
@@ -499,7 +634,6 @@ convertLegacyBuildOnlyFlags globalFlags configFlags
     GlobalFlags {
       globalCacheDir          = projectConfigCacheDir,
       globalLogsDir           = projectConfigLogsDir,
-      globalWorldFile         = _,
       globalHttpTransport     = projectConfigHttpTransport,
       globalIgnoreExpiry      = projectConfigIgnoreExpiry
     } = globalFlags
@@ -519,7 +653,6 @@ convertLegacyBuildOnlyFlags globalFlags configFlags
       installBuildReports       = projectConfigBuildReports,
       installReportPlanningFailure = projectConfigReportPlanningFailure,
       installSymlinkBinDir      = projectConfigSymlinkBinDir,
-      installOneShot            = projectConfigOneShot,
       installNumJobs            = projectConfigNumJobs,
       installKeepGoing          = projectConfigKeepGoing,
       installOfflineMode        = projectConfigOfflineMode
@@ -585,7 +718,6 @@ convertToLegacySharedConfig
       globalLocalNoIndexRepos = projectConfigLocalNoIndexRepos,
       globalActiveRepos       = projectConfigActiveRepos,
       globalLogsDir           = projectConfigLogsDir,
-      globalWorldFile         = mempty,
       globalIgnoreExpiry      = projectConfigIgnoreExpiry,
       globalHttpTransport     = projectConfigHttpTransport,
       globalNix               = mempty,
@@ -595,7 +727,8 @@ convertToLegacySharedConfig
 
     configFlags = mempty {
       configVerbosity     = projectConfigVerbosity,
-      configDistPref      = projectConfigDistDir
+      configDistPref      = projectConfigDistDir,
+      configPackageDBs    = projectConfigPackageDBs
     }
 
     configExFlags = ConfigExFlags {
@@ -627,6 +760,7 @@ convertToLegacySharedConfig
       installFineGrainedConflicts = projectConfigFineGrainedConflicts,
       installMinimizeConflictSet = projectConfigMinimizeConflictSet,
       installIndependentGoals  = projectConfigIndependentGoals,
+      installPreferOldest      = projectConfigPreferOldest,
       installShadowPkgs        = mempty, --projectConfigShadowPkgs,
       installStrongFlags       = projectConfigStrongFlags,
       installAllowBootLibInstalls = projectConfigAllowBootLibInstalls,
@@ -641,7 +775,6 @@ convertToLegacySharedConfig
       installReportPlanningFailure = projectConfigReportPlanningFailure,
       installSymlinkBinDir     = projectConfigSymlinkBinDir,
       installPerComponent      = projectConfigPerComponent,
-      installOneShot           = projectConfigOneShot,
       installNumJobs           = projectConfigNumJobs,
       installKeepGoing         = projectConfigKeepGoing,
       installRunTests          = mempty,
@@ -699,7 +832,7 @@ convertToLegacyAllPackageConfig
       configCabalFilePath       = mempty,
       configVerbosity           = mempty,
       configUserInstall         = mempty, --projectConfigUserInstall,
-      configPackageDBs          = mempty, --projectConfigPackageDBs,
+      configPackageDBs          = mempty,
       configGHCiLib             = mempty,
       configSplitSections       = mempty,
       configSplitObjs           = mempty,
@@ -724,6 +857,7 @@ convertToLegacyAllPackageConfig
       configRelocatable         = mempty,
       configDebugInfo           = mempty,
       configUseResponseFiles    = mempty,
+      configDumpBuildInfo       = mempty,
       configAllowDependingOnPrivateLibs = mempty
     }
 
@@ -797,6 +931,7 @@ convertToLegacyPerPackageConfig PackageConfig {..} =
       configRelocatable         = packageConfigRelocatable,
       configDebugInfo           = packageConfigDebugInfo,
       configUseResponseFiles    = mempty,
+      configDumpBuildInfo       = packageConfigDumpBuildInfo,
       configAllowDependingOnPrivateLibs = mempty
     }
 
@@ -826,6 +961,9 @@ convertToLegacyPerPackageConfig PackageConfig {..} =
       haddockKeepTempFiles = mempty,
       haddockVerbosity     = mempty,
       haddockCabalFilePath = mempty,
+      haddockIndex         = packageConfigHaddockIndex,
+      haddockBaseUrl       = packageConfigHaddockBaseUrl,
+      haddockLib           = packageConfigHaddockLib,
       haddockArgs          = mempty
     }
 
@@ -851,14 +989,17 @@ convertToLegacyPerPackageConfig PackageConfig {..} =
 -- Parsing and showing the project config file
 --
 
-parseLegacyProjectConfig :: FilePath -> BS.ByteString -> ParseResult LegacyProjectConfig
-parseLegacyProjectConfig source =
-    parseConfig (legacyProjectConfigFieldDescrs constraintSrc)
+parseLegacyProjectConfigFields :: FilePath -> [ParseUtils.Field] -> ParseResult LegacyProjectConfig
+parseLegacyProjectConfigFields source =
+    parseFieldsAndSections (legacyProjectConfigFieldDescrs constraintSrc)
                 legacyPackageConfigSectionDescrs
                 legacyPackageConfigFGSectionDescrs
                 mempty
   where
     constraintSrc = ConstraintSourceProjectConfig source
+
+parseLegacyProjectConfig :: FilePath -> BS.ByteString -> ParseResult LegacyProjectConfig
+parseLegacyProjectConfig source bs = parseLegacyProjectConfigFields source =<< ParseUtils.readFields bs
 
 showLegacyProjectConfig :: LegacyProjectConfig -> String
 showLegacyProjectConfig config =
@@ -977,6 +1118,11 @@ legacySharedConfigFieldDescrs constraintSrc = concat
   , liftFields
       legacyConfigureShFlags
       (\flags conf -> conf { legacyConfigureShFlags = flags })
+  . addFields
+      [ commaNewLineListFieldParsec "package-dbs"
+        (Disp.text . showPackageDb) (fmap readPackageDb parsecToken)
+        configPackageDBs (\v conf -> conf { configPackageDBs = v })
+      ]
   . filterFields ["verbose", "builddir" ]
   . commandOptionsToFields
   $ configureOptions ParseArgs
@@ -1024,10 +1170,10 @@ legacySharedConfigFieldDescrs constraintSrc = concat
       , "root-cmd", "symlink-bindir"
       , "build-log"
       , "remote-build-reporting", "report-planning-failure"
-      , "one-shot", "jobs", "keep-going", "offline", "per-component"
+      , "jobs", "keep-going", "offline", "per-component"
         -- solver flags:
       , "max-backjumps", "reorder-goals", "count-conflicts"
-      , "fine-grained-conflicts" , "minimize-conflict-set", "independent-goals"
+      , "fine-grained-conflicts" , "minimize-conflict-set", "independent-goals", "prefer-oldest"
       , "strong-flags" , "allow-boot-library-installs"
       , "reject-unconstrained-dependencies", "index-state"
       ]
@@ -1083,6 +1229,7 @@ legacyPackageConfigFieldDescrs =
           dispFlagAssignment parsecFlagAssignment
           configConfigurationsFlags
           (\v conf -> conf { configConfigurationsFlags = v })
+      , overrideDumpBuildInfo
       ]
   . filterFields
       [ "with-compiler", "with-hc-pkg"
@@ -1136,7 +1283,8 @@ legacyPackageConfigFieldDescrs =
       , "foreign-libraries"
       , "executables", "tests", "benchmarks", "all", "internal", "css"
       , "hyperlink-source", "quickjump", "hscolour-css"
-      , "contents-location", "keep-temp-files"
+      , "contents-location", "index-location", "keep-temp-files", "base-url"
+      , "lib"
       ]
   . commandOptionsToFields
   ) (haddockOptions ParseArgs)
@@ -1180,6 +1328,23 @@ legacyPackageConfigFieldDescrs =
         (toFlag <$> parsec <|> pure mempty)
         configHcFlavor (\v flags -> flags { configHcFlavor = v })
 
+    overrideDumpBuildInfo =
+      liftField configDumpBuildInfo
+                (\v flags -> flags { configDumpBuildInfo = v }) $
+      let name = "build-info" in
+      FieldDescr name
+        (\f -> case f of
+                 Flag NoDumpBuildInfo -> Disp.text "False"
+                 Flag DumpBuildInfo   -> Disp.text "True"
+                 _                    -> Disp.empty)
+        (\line str _ -> case () of
+         _ |  str == "False" -> ParseOk [] (Flag NoDumpBuildInfo)
+           |  str == "True"  -> ParseOk [] (Flag DumpBuildInfo)
+           | lstr == "false" -> ParseOk [caseWarning name] (Flag NoDumpBuildInfo)
+           | lstr == "true"  -> ParseOk [caseWarning name] (Flag DumpBuildInfo)
+           | otherwise       -> ParseFailed (NoParse name line)
+           where
+             lstr = lowercase str)
 
     -- TODO: [code cleanup] The following is a hack. The "optimization" and
     -- "debug-info" fields are OptArg, and viewAsFieldDescr fails on that.
@@ -1202,13 +1367,11 @@ legacyPackageConfigFieldDescrs =
            |  str == "0"     -> ParseOk [] (Flag NoOptimisation)
            |  str == "1"     -> ParseOk [] (Flag NormalOptimisation)
            |  str == "2"     -> ParseOk [] (Flag MaximumOptimisation)
-           | lstr == "false" -> ParseOk [caseWarning] (Flag NoOptimisation)
-           | lstr == "true"  -> ParseOk [caseWarning] (Flag NormalOptimisation)
+           | lstr == "false" -> ParseOk [caseWarning name] (Flag NoOptimisation)
+           | lstr == "true"  -> ParseOk [caseWarning name] (Flag NormalOptimisation)
            | otherwise       -> ParseFailed (NoParse name line)
            where
-             lstr = lowercase str
-             caseWarning = PWarning $
-               "The '" ++ name ++ "' field is case sensitive, use 'True' or 'False'.")
+             lstr = lowercase str)
 
     overrideFieldDebugInfo =
       liftField configDebugInfo (\v flags -> flags { configDebugInfo = v }) $
@@ -1227,13 +1390,14 @@ legacyPackageConfigFieldDescrs =
            |  str == "1"     -> ParseOk [] (Flag MinimalDebugInfo)
            |  str == "2"     -> ParseOk [] (Flag NormalDebugInfo)
            |  str == "3"     -> ParseOk [] (Flag MaximalDebugInfo)
-           | lstr == "false" -> ParseOk [caseWarning] (Flag NoDebugInfo)
-           | lstr == "true"  -> ParseOk [caseWarning] (Flag NormalDebugInfo)
+           | lstr == "false" -> ParseOk [caseWarning name] (Flag NoDebugInfo)
+           | lstr == "true"  -> ParseOk [caseWarning name] (Flag NormalDebugInfo)
            | otherwise       -> ParseFailed (NoParse name line)
            where
-             lstr = lowercase str
-             caseWarning = PWarning $
-               "The '" ++ name ++ "' field is case sensitive, use 'True' or 'False'.")
+             lstr = lowercase str)
+
+    caseWarning name = PWarning $
+      "The '" ++ name ++ "' field is case sensitive, use 'True' or 'False'."
 
     prefixTest name | "test-" `isPrefixOf` name = name
                     | otherwise = "test-" ++ name

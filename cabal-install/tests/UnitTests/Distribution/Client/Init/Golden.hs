@@ -110,8 +110,8 @@ goldenExeTests
     -> PackageName
     -> TestTree
 goldenExeTests v pkgIx pkgDir pkgName = testGroup "exe golden tests"
-    [ goldenVsString "Empty flags, not simple, no options"
-      (goldenExe "exe.golden") $
+    [ goldenVsString "Empty flags, not simple, no options, no comments"
+      (goldenExe "exe-no-comments.golden") $
         let opts = WriteOpts False False True v pkgDir Executable pkgName defaultCabalVersion
         in runGoldenExe opts exeArgs emptyFlags
 
@@ -148,12 +148,13 @@ goldenLibTests
     -> PackageName
     -> TestTree
 goldenLibTests v pkgIx pkgDir pkgName = testGroup "lib golden tests"
-    [ goldenVsString "Empty flags, not simple, no options"
-      (goldenLib "lib.golden") $
+    [ goldenVsString "Empty flags, not simple, no options, no comments"
+      (goldenLib "lib-no-comments.golden") $
         let opts = WriteOpts False False True v pkgDir Library pkgName defaultCabalVersion
         in runGoldenLib opts libArgs emptyFlags
 
-    , goldenVsString "Empty flags, simple, no options" (goldenLib "lib-simple.golden") $
+    , goldenVsString "Empty flags, simple, no options, no comments"
+      (goldenLib "lib-simple-no-comments.golden") $
         let opts = WriteOpts False False True v pkgDir Library pkgName defaultCabalVersion
         in runGoldenLib opts libArgs emptyFlags
 
@@ -190,8 +191,8 @@ goldenTestTests
     -> PackageName
     -> TestTree
 goldenTestTests v pkgIx pkgDir pkgName = testGroup "test golden tests"
-    [ goldenVsString "Empty flags, not simple, no options"
-      (goldenTest "test.golden") $
+    [ goldenVsString "Empty flags, not simple, no options, no comments"
+      (goldenTest "test-no-comments.golden") $
         let opts = WriteOpts False False True v pkgDir Library pkgName defaultCabalVersion
         in runGoldenTest opts testArgs emptyFlags
 
@@ -214,9 +215,9 @@ goldenTestTests v pkgIx pkgDir pkgName = testGroup "test golden tests"
       (goldenTest "test-build-tools-with-comments.golden") $
         let opts = WriteOpts False False False v pkgDir Library pkgName defaultCabalVersion
         in runGoldenTest opts testArgs (emptyFlags {buildTools = Flag ["happy"]})
-    
-    , goldenVsString "Standalone tests, empty flags, not simple, no options"
-      (goldenTest "standalone-test.golden") $
+
+    , goldenVsString "Standalone tests, empty flags, not simple, no options, no comments"
+      (goldenTest "standalone-test-no-comments.golden") $
         let opts = WriteOpts False False True v pkgDir TestSuite pkgName defaultCabalVersion
         in runGoldenTest opts testArgs emptyFlags
 
@@ -255,7 +256,7 @@ goldenCabalTests v pkgIx srcDb = testGroup ".cabal file golden tests"
     , goldenVsString "Library, empty flags, not simple, no comments + no minimal"
       (goldenCabal "cabal-lib-no-comments.golden") $
         runGoldenTest (libProjArgs "N") emptyFlags
-    
+
     , goldenVsString "Test suite, empty flags, not simple, with comments + no minimal"
       (goldenCabal "cabal-test-suite-with-comments.golden") $
         runGoldenTest (testProjArgs "Y") emptyFlags
@@ -271,24 +272,27 @@ goldenCabalTests v pkgIx srcDb = testGroup ".cabal file golden tests"
 
         (Right (ProjectSettings opts pkgDesc (Just libTarget) (Just exeTarget) (Just testTarget), _)) -> do
           let pkgFields = mkPkgDescription opts pkgDesc
+              commonStanza = mkCommonStanza opts
               libStanza  = mkLibStanza  opts $ libTarget {_libDependencies  = mangleBaseDep libTarget  _libDependencies}
               exeStanza  = mkExeStanza  opts $ exeTarget {_exeDependencies  = mangleBaseDep exeTarget  _exeDependencies}
               testStanza = mkTestStanza opts $ testTarget {_testDependencies = mangleBaseDep testTarget _testDependencies}
 
-          mkStanza $ pkgFields ++ [libStanza, exeStanza, testStanza]
+          mkStanza $ pkgFields ++ [commonStanza, libStanza, exeStanza, testStanza]
 
         (Right (ProjectSettings opts pkgDesc (Just libTarget) Nothing (Just testTarget), _)) -> do
           let pkgFields = mkPkgDescription opts pkgDesc
+              commonStanza = mkCommonStanza opts
               libStanza  = mkLibStanza  opts $ libTarget  {_libDependencies  = mangleBaseDep libTarget  _libDependencies}
               testStanza = mkTestStanza opts $ testTarget {_testDependencies = mangleBaseDep testTarget _testDependencies}
 
-          mkStanza $ pkgFields ++ [libStanza, testStanza]
-        
+          mkStanza $ pkgFields ++ [commonStanza, libStanza, testStanza]
+
         (Right (ProjectSettings opts pkgDesc Nothing Nothing (Just testTarget), _)) -> do
           let pkgFields = mkPkgDescription opts pkgDesc
+              commonStanza = mkCommonStanza opts
               testStanza = mkTestStanza opts $ testTarget {_testDependencies = mangleBaseDep testTarget _testDependencies}
-          
-          mkStanza $ pkgFields ++ [testStanza]
+
+          mkStanza $ pkgFields ++ [commonStanza, testStanza]
 
         (Right (ProjectSettings _ _ l e t, _)) -> assertFailure $
           show l ++ "\n" ++ show e ++ "\n" ++ show t
@@ -336,7 +340,9 @@ pkgArgs = fromList
     , "y"
     , "0.1.0.0"
     , "2"
+    , "git username"
     , "foo-kmett"
+    , "git email"
     , "foo-kmett@kmett.kmett"
     , "home"
     , "synopsis"
@@ -344,20 +350,20 @@ pkgArgs = fromList
     ]
 
 testProjArgs :: String -> NonEmpty String
-testProjArgs comments = fromList ["4", "foo-package"]
+testProjArgs comments = fromList ["4", "n", "foo-package"]
   <> pkgArgs
   <> fromList (NEL.drop 1 testArgs)
   <> fromList [comments]
 
 libProjArgs :: String -> NonEmpty String
-libProjArgs comments = fromList ["1", "foo-package"]
+libProjArgs comments = fromList ["1", "n", "foo-package"]
   <> pkgArgs
   <> libArgs
   <> testArgs
   <> fromList [comments]
 
 fullProjArgs :: String -> NonEmpty String
-fullProjArgs comments = fromList ["3", "foo-package"]
+fullProjArgs comments = fromList ["3", "n", "foo-package"]
   <> pkgArgs
   <> libArgs
   <> exeArgs
