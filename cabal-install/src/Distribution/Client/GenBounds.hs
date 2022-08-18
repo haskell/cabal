@@ -40,7 +40,7 @@ import Distribution.Simple.PackageDescription
 import Distribution.Simple.Program
          ( ProgramDb )
 import Distribution.Simple.Utils
-         ( tryFindPackageDesc )
+         ( notice, tryFindPackageDesc )
 import Distribution.System
          ( Platform )
 import Distribution.Version
@@ -118,11 +118,11 @@ genBounds verbosity packageDBs repoCtxt comp platform progdb globalFlags freezeF
 
        let padTo = maximum $ map (length . unPackageName . packageName) pkgs
 
-       if null thePkgs then putStrLn
+       if null thePkgs then notice verbosity
          "Congratulations, all your dependencies have upper bounds!"
         else do
-         putStrLn boundsNeededMsg
-         traverse_ (putStrLn . (++",") . showBounds padTo) thePkgs
+         notice verbosity boundsNeededMsg
+         traverse_ (notice verbosity . (++",") . showBounds padTo) thePkgs
 
 depName :: Dependency -> String
 depName (Dependency pn _ _) = unPackageName pn
