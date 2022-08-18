@@ -612,7 +612,7 @@ defaultLogsDir =
 -- | Default position of the world file
 defaultWorldFile :: IO FilePath
 defaultWorldFile =
-  getXdgDirectory XdgCache $ "cabal" </> "world"
+  getXdgDirectory XdgState $ "cabal" </> "world"
 
 defaultExtraPath :: IO [FilePath]
 defaultExtraPath = do
