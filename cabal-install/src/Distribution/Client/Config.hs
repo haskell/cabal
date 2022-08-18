@@ -22,12 +22,13 @@ module Distribution.Client.Config (
     showConfigWithComments,
     parseConfig,
 
-    getCabalDir,
     defaultConfigFile,
     defaultCacheDir,
+    defaultStoreDir,
     defaultCompiler,
     defaultInstallPath,
     defaultLogsDir,
+    defaultReportsDir,
     defaultUserInstall,
 
     baseSavedConfig,
@@ -605,14 +606,17 @@ defaultCacheDir :: IO FilePath
 defaultCacheDir =
   getXdgDirectory XdgCache $ "cabal" </> "packages"
 
+defaultStoreDir :: IO FilePath
+defaultStoreDir =
+  getXdgDirectory XdgState $ "cabal" </> "store"
+
 defaultLogsDir :: IO FilePath
 defaultLogsDir =
   getXdgDirectory XdgCache $ "cabal" </> "logs"
 
--- | Default position of the world file
-defaultWorldFile :: IO FilePath
-defaultWorldFile =
-  getXdgDirectory XdgState $ "cabal" </> "world"
+defaultReportsDir :: IO FilePath
+defaultReportsDir =
+  getXdgDirectory XdgCache $ "cabal" </> "reports"
 
 defaultExtraPath :: IO [FilePath]
 defaultExtraPath = do

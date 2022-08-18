@@ -138,7 +138,7 @@ import qualified Distribution.Client.BuildReports.Anonymous as BuildReports
 import qualified Distribution.Client.BuildReports.Storage as BuildReports
          ( storeLocal )
 
-import           Distribution.Client.Config (getCabalDir)
+import           Distribution.Client.Config ()
 import           Distribution.Client.HttpUtils
 import           Distribution.Client.Setup hiding (packageName)
 import           Distribution.Compiler
@@ -222,8 +222,6 @@ establishProjectBaseContextWithRoot
     -> CurrentCommand
     -> IO ProjectBaseContext
 establishProjectBaseContextWithRoot verbosity cliConfig projectRoot currentCommand = do
-    cabalDir <- getCabalDir
-
     let distDirLayout  = defaultDistDirLayout projectRoot mdistDirectory
 
     httpTransport <- configureTransport verbosity
@@ -247,9 +245,9 @@ establishProjectBaseContextWithRoot verbosity cliConfig projectRoot currentComma
         mlogsDir = Setup.flagToMaybe projectConfigLogsDir
     mstoreDir <- sequenceA $ makeAbsolute
                  <$> Setup.flagToMaybe projectConfigStoreDir
-    let cabalDirLayout = mkCabalDirLayout cabalDir mstoreDir mlogsDir
+    cabalDirLayout <- mkCabalDirLayout mstoreDir mlogsDir
 
-        buildSettings = resolveBuildTimeSettings
+    let  buildSettings = resolveBuildTimeSettings
                           verbosity cabalDirLayout
                           projectConfig
 
@@ -1319,8 +1317,6 @@ establishDummyProjectBaseContext
   -> CurrentCommand
   -> IO ProjectBaseContext
 establishDummyProjectBaseContext verbosity projectConfig distDirLayout localPackages currentCommand = do
-    cabalDir <- getCabalDir
-
     let ProjectConfigBuildOnly {
           projectConfigLogsDir
         } = projectConfigBuildOnly projectConfig
@@ -1331,9 +1327,10 @@ establishDummyProjectBaseContext verbosity projectConfig distDirLayout localPack
 
         mlogsDir = flagToMaybe projectConfigLogsDir
         mstoreDir = flagToMaybe projectConfigStoreDir
-        cabalDirLayout = mkCabalDirLayout cabalDir mstoreDir mlogsDir
 
-        buildSettings :: BuildTimeSettings
+    cabalDirLayout <- mkCabalDirLayout mstoreDir mlogsDir
+
+    let buildSettings :: BuildTimeSettings
         buildSettings = resolveBuildTimeSettings
                           verbosity cabalDirLayout
                           projectConfig

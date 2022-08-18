@@ -71,7 +71,7 @@ import Distribution.Client.Setup
          , ConfigExFlags(..), InstallFlags(..)
          , filterTestFlags )
 import Distribution.Client.Config
-         ( getCabalDir, defaultUserInstall )
+         ( defaultReportsDir, defaultUserInstall )
 import Distribution.Client.Tar (extractTarGzFile)
 import Distribution.Client.Types as Source
 import Distribution.Client.BuildReports.Types
@@ -831,10 +831,10 @@ postInstallActions verbosity
 storeDetailedBuildReports :: Verbosity -> FilePath
                           -> [(BuildReports.BuildReport, Maybe Repo)] -> IO ()
 storeDetailedBuildReports verbosity logsDir reports = sequence_
-  [ do dotCabal <- getCabalDir
+  [ do allReportsDir <- defaultReportsDir
        let logFileName = prettyShow (BuildReports.package report) <.> "log"
            logFile     = logsDir </> logFileName
-           reportsDir  = dotCabal </> "reports" </> unRepoName (remoteRepoName remoteRepo)
+           reportsDir  = allReportsDir </> unRepoName (remoteRepoName remoteRepo)
            reportFile  = reportsDir </> logFileName
 
        handleMissingLogFile $ do

@@ -22,7 +22,7 @@ import Distribution.CabalSpecVersion
     ( CabalSpecVersion (..), cabalSpecLatest)
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.Config
-    ( getCabalDir )
+    ( defaultCacheDir )
 import Distribution.Client.DistDirLayout
     ( DistDirLayout(..) )
 import Distribution.Client.HashValue
@@ -125,8 +125,8 @@ import qualified Text.Parsec as P
 -- @CABAL_DIR\/script-builds\/@
 getScriptCacheDirectoryRoot :: IO FilePath
 getScriptCacheDirectoryRoot = do
-  cabalDir <- getCabalDir
-  return $ cabalDir </> "script-builds"
+  cacheDir <- defaultCacheDir
+  return $ cacheDir </> "script-builds"
 
 -- | Get the hash of a script's absolute path)
 --

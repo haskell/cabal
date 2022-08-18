@@ -64,7 +64,7 @@ import Distribution.Simple.BuildPaths
 import Distribution.Simple.Program.Find
          ( ProgramSearchPathEntry(..) )
 import Distribution.Client.Config
-         ( defaultInstallPath, getCabalDir, loadConfig, SavedConfig(..) )
+         ( defaultInstallPath, loadConfig, SavedConfig(..) )
 import qualified Distribution.Simple.PackageIndex as PI
 import Distribution.Solver.Types.PackageIndex
          ( lookupPackageName, searchByName )
@@ -254,7 +254,6 @@ installAction flags@NixStyleFlags { extraFlags = clientInstallFlags', .. } targe
     withoutProject globalConfig = do
       tss <- traverse (parseWithoutProjectTargetSelector verbosity) targetStrings'
 
-      cabalDir <- getCabalDir
       let
         projectConfig = globalConfig <> cliConfig
 
@@ -268,8 +267,9 @@ installAction flags@NixStyleFlags { extraFlags = clientInstallFlags', .. } targe
 
         mlogsDir = flagToMaybe projectConfigLogsDir
         mstoreDir = flagToMaybe projectConfigStoreDir
-        cabalDirLayout = mkCabalDirLayout cabalDir mstoreDir mlogsDir
+      cabalDirLayout <- mkCabalDirLayout mstoreDir mlogsDir
 
+      let
         buildSettings = resolveBuildTimeSettings
                           verbosity cabalDirLayout
                           projectConfig
@@ -912,11 +912,10 @@ getPackageDbStack
   -> Flag FilePath
   -> IO PackageDBStack
 getPackageDbStack compilerId storeDirFlag logsDirFlag = do
-  cabalDir <- getCabalDir
   mstoreDir <- traverse makeAbsolute $ flagToMaybe storeDirFlag
   let
     mlogsDir    = flagToMaybe logsDirFlag
-    cabalLayout = mkCabalDirLayout cabalDir mstoreDir mlogsDir
+  cabalLayout <- mkCabalDirLayout mstoreDir mlogsDir
   pure $ storePackageDBStack (cabalStoreDirLayout cabalLayout) compilerId
 
 -- | This defines what a 'TargetSelector' means for the @bench@ command.
