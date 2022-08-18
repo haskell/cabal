@@ -130,7 +130,7 @@ import Text.PrettyPrint
 import Text.PrettyPrint.HughesPJ
          ( text, Doc )
 import System.Directory
-         ( createDirectoryIfMissing, getAppUserDataDirectory, getHomeDirectory, getXdgDirectory, XdgDirectory(XdgCache, XdgConfig), renameFile )
+         ( createDirectoryIfMissing, getAppUserDataDirectory, getHomeDirectory, getXdgDirectory, XdgDirectory(XdgCache, XdgConfig, XdgState), renameFile )
 import Network.URI
          ( URI(..), URIAuth(..), parseURI )
 import System.FilePath
