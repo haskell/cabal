@@ -192,7 +192,7 @@ main = do
 warnIfAssertionsAreEnabled :: IO ()
 warnIfAssertionsAreEnabled =
   assert False (return ()) `catch`
-  (\(_e :: AssertionFailed) -> putStrLn assertionsEnabledMsg)
+  (\(_e :: AssertionFailed) -> hPutStrLn stderr assertionsEnabledMsg)
   where
     assertionsEnabledMsg =
       "Warning: this is a debug build of cabal-install with assertions enabled."
