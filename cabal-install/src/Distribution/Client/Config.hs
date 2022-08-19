@@ -599,6 +599,18 @@ getCabalDir = do
     Nothing -> defaultCabalDir
     Just dir -> return dir
 
+maybeGetCabalDir :: IO (Maybe FilePath)
+maybeGetCabalDir = do
+  mDir <- lookupEnv "CABAL_DIR"
+  case mDir of
+    Just dir -> return $ Just dir
+    Nothing -> do
+      defaultDir <- defaultCabalDir
+      dotCabalExists <- doesDirectoryExist defaultDir
+      return $ if dotCabalExists
+               then Just defaultDir
+               else Nothing
+
 -- The default behaviour of cabal-install is to use the XDG directory
 -- standard.  However, if CABAL_DIR is set, we instead use that
 -- directory as a single store for everything cabal-related, like the
@@ -607,15 +619,10 @@ getCabalDir = do
 -- This function abstracts that decision-making.
 getDefaultDir :: XdgDirectory -> FilePath -> IO FilePath
 getDefaultDir xdg subdir = do
-  mDir <- lookupEnv "CABAL_DIR"
+  mDir <- maybeGetCabalDir
   case mDir of
     Just dir -> return $ dir </> subdir
-    Nothing -> do
-      defaultDir <- defaultCabalDir
-      dotCabalExists <- doesDirectoryExist defaultDir
-      if dotCabalExists
-        then return $ defaultDir </> subdir
-        else getXdgDirectory xdg $ "cabal" </> subdir
+    Nothing -> getXdgDirectory xdg $ "cabal" </> subdir
 
 defaultConfigFile :: IO FilePath
 defaultConfigFile =
@@ -643,13 +650,23 @@ defaultReportsDir =
 
 defaultExtraPath :: IO [FilePath]
 defaultExtraPath = do
-  dir <- getHomeDirectory
-  return [dir </> ".local" </> "bin"]
+  mDir <- maybeGetCabalDir
+  case mDir of
+    Just dir ->
+      return [dir </> "bin"]
+    Nothing -> do
+      dir <- getHomeDirectory
+      return [dir </> ".local" </> "bin"]
 
 defaultInstallPath :: IO FilePath
 defaultInstallPath = do
-  dir <- getHomeDirectory
-  return (dir </> ".local" </> "bin")
+  mDir <- maybeGetCabalDir
+  case mDir of
+    Just dir ->
+      return $ dir </> "bin"
+    Nothing -> do
+      dir <- getHomeDirectory
+      return $ dir </> ".local" </> "bin"
 
 defaultCompiler :: CompilerFlavor
 defaultCompiler = fromMaybe GHC defaultCompilerFlavor
