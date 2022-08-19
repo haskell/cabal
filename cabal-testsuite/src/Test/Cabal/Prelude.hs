@@ -839,7 +839,7 @@ getScriptCacheDirectory script = do
     cabalDir <- testCabalDir `fmap` getTestEnv
     hashinput <- liftIO $ canonicalizePath script
     let hash = C.unpack . Base16.encode . SHA256.hash . C.pack $ hashinput
-    return $ cabalDir </> "packages" </> "script-builds" </> hash
+    return $ cabalDir </> "script-builds" </> hash
 
 ------------------------------------------------------------------------
 -- * Skipping tests

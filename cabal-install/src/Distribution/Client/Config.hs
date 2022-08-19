@@ -24,6 +24,7 @@ module Distribution.Client.Config (
 
     defaultConfigFile,
     defaultCacheDir,
+    defaultScriptBuildsDir,
     defaultStoreDir,
     defaultCompiler,
     defaultInstallPath,
@@ -623,6 +624,10 @@ defaultConfigFile =
 defaultCacheDir :: IO FilePath
 defaultCacheDir =
   getDefaultDir XdgCache "packages"
+
+defaultScriptBuildsDir :: IO FilePath
+defaultScriptBuildsDir =
+  getDefaultDir XdgCache "script-builds"
 
 defaultStoreDir :: IO FilePath
 defaultStoreDir =
