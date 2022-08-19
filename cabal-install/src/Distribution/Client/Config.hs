@@ -131,7 +131,7 @@ import Text.PrettyPrint
 import Text.PrettyPrint.HughesPJ
          ( text, Doc )
 import System.Directory
-         ( createDirectoryIfMissing, getAppUserDataDirectory, getHomeDirectory, getXdgDirectory, XdgDirectory(XdgCache, XdgConfig, XdgState), renameFile )
+         ( createDirectoryIfMissing, getAppUserDataDirectory, getHomeDirectory, getXdgDirectory, XdgDirectory(XdgCache, XdgConfig, XdgState), renameFile, doesDirectoryExist )
 import Network.URI
          ( URI(..), URIAuth(..), parseURI )
 import System.FilePath
@@ -598,25 +598,43 @@ getCabalDir = do
     Nothing -> defaultCabalDir
     Just dir -> return dir
 
+-- The default behaviour of cabal-install is to use the XDG directory
+-- standard.  However, if CABAL_DIR is set, we instead use that
+-- directory as a single store for everything cabal-related, like the
+-- old ~/.cabal behaviour.  Also, for backwards compatibility, if
+-- ~/.cabal exists we treat that as equivalent to CABAL_DIR being set.
+-- This function abstracts that decision-making.
+getDefaultDir :: XdgDirectory -> FilePath -> IO FilePath
+getDefaultDir xdg subdir = do
+  mDir <- lookupEnv "CABAL_DIR"
+  case mDir of
+    Just dir -> return $ dir </> subdir
+    Nothing -> do
+      defaultDir <- defaultCabalDir
+      dotCabalExists <- doesDirectoryExist defaultDir
+      if dotCabalExists
+        then return $ defaultDir </> subdir
+        else getXdgDirectory xdg $ "cabal" </> subdir
+
 defaultConfigFile :: IO FilePath
 defaultConfigFile =
-  getXdgDirectory XdgConfig $ "cabal" </> "config"
+  getDefaultDir XdgConfig "config"
 
 defaultCacheDir :: IO FilePath
 defaultCacheDir =
-  getXdgDirectory XdgCache $ "cabal" </> "packages"
+  getDefaultDir XdgCache "packages"
 
 defaultStoreDir :: IO FilePath
 defaultStoreDir =
-  getXdgDirectory XdgState $ "cabal" </> "store"
+  getDefaultDir XdgState "store"
 
 defaultLogsDir :: IO FilePath
 defaultLogsDir =
-  getXdgDirectory XdgCache $ "cabal" </> "logs"
+  getDefaultDir XdgCache "logs"
 
 defaultReportsDir :: IO FilePath
 defaultReportsDir =
-  getXdgDirectory XdgCache $ "cabal" </> "reports"
+  getDefaultDir XdgCache "reports"
 
 defaultExtraPath :: IO [FilePath]
 defaultExtraPath = do
