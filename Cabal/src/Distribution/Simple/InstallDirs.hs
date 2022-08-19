@@ -59,7 +59,7 @@ import Distribution.System
 import Distribution.Compiler
 import Distribution.Simple.InstallDirs.Internal
 
-import System.Directory (getAppUserDataDirectory)
+import System.Directory (getAppUserDataDirectory, doesDirectoryExist, getHomeDirectory)
 import System.FilePath
   ( (</>), isPathSeparator
   , pathSeparator, dropDrive
@@ -174,6 +174,18 @@ type InstallDirTemplates = InstallDirs PathTemplate
 defaultInstallDirs :: CompilerFlavor -> Bool -> Bool -> IO InstallDirTemplates
 defaultInstallDirs = defaultInstallDirs' False
 
+maybeGetCabalDir :: IO (Maybe FilePath)
+maybeGetCabalDir = do
+  mDir <- lookupEnv "CABAL_DIR"
+  case mDir of
+    Just dir -> return $ Just dir
+    Nothing -> do
+      defaultDir <- getAppUserDataDirectory "cabal"
+      dotCabalExists <- doesDirectoryExist defaultDir
+      return $ if dotCabalExists
+               then Just defaultDir
+               else Nothing
+
 defaultInstallDirs' :: Bool {- use external internal deps -}
                     -> CompilerFlavor -> Bool -> Bool -> IO InstallDirTemplates
 defaultInstallDirs' True comp userInstall hasLibs = do
@@ -186,10 +198,12 @@ defaultInstallDirs' False comp userInstall _hasLibs = do
   installPrefix <-
       if userInstall
       then do
-        mDir <- lookupEnv "CABAL_DIR"
+        mDir <- maybeGetCabalDir
         case mDir of
-          Nothing -> getAppUserDataDirectory "cabal"
           Just dir -> return dir
+          Nothing -> do
+            dir <- getHomeDirectory
+            return $ dir </> ".local"
       else case buildOS of
            Windows -> do windowsProgramFilesDir <- getWindowsProgramFilesDir
                          return (windowsProgramFilesDir </> "Haskell")

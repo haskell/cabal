@@ -30,6 +30,7 @@ module Distribution.Client.Config (
     defaultInstallPath,
     defaultLogsDir,
     defaultReportsDir,
+    defaultPrefix,
     defaultUserInstall,
 
     baseSavedConfig,
@@ -541,7 +542,7 @@ instance Semigroup SavedConfig where
 --
 baseSavedConfig :: IO SavedConfig
 baseSavedConfig = do
-  userPrefix <- getCabalDir
+  userPrefix <- defaultPrefix
   cacheDir   <- defaultCacheDir
   logsDir    <- defaultLogsDir
   return mempty {
@@ -589,23 +590,13 @@ initialSavedConfig = do
     }
   }
 
-defaultCabalDir :: IO FilePath
-defaultCabalDir = getAppUserDataDirectory "cabal"
-
-getCabalDir :: IO FilePath
-getCabalDir = do
-  mDir <- lookupEnv "CABAL_DIR"
-  case mDir of
-    Nothing -> defaultCabalDir
-    Just dir -> return dir
-
 maybeGetCabalDir :: IO (Maybe FilePath)
 maybeGetCabalDir = do
   mDir <- lookupEnv "CABAL_DIR"
   case mDir of
     Just dir -> return $ Just dir
     Nothing -> do
-      defaultDir <- defaultCabalDir
+      defaultDir <- getAppUserDataDirectory "cabal"
       dotCabalExists <- doesDirectoryExist defaultDir
       return $ if dotCabalExists
                then Just defaultDir
@@ -647,6 +638,16 @@ defaultLogsDir =
 defaultReportsDir :: IO FilePath
 defaultReportsDir =
   getDefaultDir XdgCache "reports"
+
+defaultPrefix :: IO FilePath
+defaultPrefix = do
+  mDir <- maybeGetCabalDir
+  case mDir of
+    Just dir ->
+      return dir
+    Nothing -> do
+      dir <- getHomeDirectory
+      return $ dir </> ".local"
 
 defaultExtraPath :: IO [FilePath]
 defaultExtraPath = do
