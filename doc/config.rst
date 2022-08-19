@@ -109,7 +109,7 @@ The following directories are used:
   expect that its contents will be reconstructed as needed.
 
 * ``$XDG_STATE_HOME/cabal`` for compiled libraries and other stateful
-  artifacts.  DEfaults to ``~/.local/state`` on Unix and
+  artifacts.  Defaults to ``~/.local/state`` on Unix and
   ``%LOCALAPPDATA%`` on Windows.  Deleting this directory might cause
   installed programs to stop working.
 
