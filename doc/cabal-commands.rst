@@ -735,7 +735,7 @@ cabal install
 -------------
 
 ``cabal install [FLAGS] [TARGETS]`` builds the specified target packages and
-symlinks/copies their executables in ``installdir`` (usually ``~/.cabal/bin``).
+symlinks/copies their executables in ``installdir`` (usually ``~/.local/bin``).
 
 .. warning::
 
