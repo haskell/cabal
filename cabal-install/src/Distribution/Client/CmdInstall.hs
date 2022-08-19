@@ -605,7 +605,7 @@ installExes verbosity baseCtx buildCtx platform compiler
   installdir <- fromFlagOrDefault
                 (warn verbosity installdirUnknown >> pure installPath) $
                 pure <$> cinstInstalldir clientInstallFlags
-  createDirectoryIfMissingVerbose verbosity False installdir
+  createDirectoryIfMissingVerbose verbosity True installdir
   warnIfNoExes verbosity buildCtx
 
   installMethod <- flagElim defaultMethod return $
