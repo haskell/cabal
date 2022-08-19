@@ -197,7 +197,7 @@ install verbosity packageDBs repos comp platform progdb
         warn verbosity $ "--root-cmd is no longer supported, "
         ++ "see https://github.com/haskell/cabal/issues/3353"
         ++ " (if you didn't type --root-cmd, comment out root-cmd"
-        ++ " in your ~/.cabal/config file)"
+        ++ " in your ~/.config/cabal/config file)"
     let userOrSandbox = fromFlag (configUserInstall configFlags)
     unless userOrSandbox $
         warn verbosity $ "the --global flag is deprecated -- "

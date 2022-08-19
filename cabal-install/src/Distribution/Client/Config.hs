@@ -665,7 +665,7 @@ defaultRemoteRepo = RemoteRepo name uri Nothing [] 0 False
     str  = "hackage.haskell.org"
     name = RepoName str
     uri  = URI "http:" (Just (URIAuth "" str "")) "/" "" ""
-    -- Note that lots of old ~/.cabal/config files will have the old url
+    -- Note that lots of old config files will have the old url
     -- http://hackage.haskell.org/packages/archive
     -- but new config files can use the new url (without the /packages/archive)
     -- and avoid having to do a http redirect
@@ -1459,7 +1459,7 @@ parseExtraLines verbosity extraLines =
       unlines (map (showPWarning "Error parsing additional config lines") ws)
 
 -- | Get the differences (as a pseudo code diff) between the user's
--- '~/.cabal/config' and the one that cabal would generate if it didn't exist.
+-- config file and the one that cabal would generate if it didn't exist.
 userConfigDiff :: Verbosity -> GlobalFlags -> [String] -> IO [String]
 userConfigDiff verbosity globalFlags extraLines = do
   userConfig <- loadRawConfig normal (globalConfigFile globalFlags)
@@ -1506,7 +1506,7 @@ userConfigDiff verbosity globalFlags extraLines = do
         in (topAndTail left, topAndTail (drop 1 right))
 
 
--- | Update the user's ~/.cabal/config' keeping the user's customizations.
+-- | Update the user's config file keeping the user's customizations.
 userConfigUpdate :: Verbosity -> GlobalFlags -> [String] -> IO ()
 userConfigUpdate verbosity globalFlags extraLines = do
   userConfig  <- loadRawConfig normal (globalConfigFile globalFlags)

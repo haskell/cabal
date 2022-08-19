@@ -427,7 +427,7 @@ filterBuildFlags version config buildFlags
       buildNumJobs = NoFlag
       }
     buildFlags_latest     = buildFlags {
-      -- Take the 'jobs' setting '~/.cabal/config' into account.
+      -- Take the 'jobs' setting config file into account.
       buildNumJobs = Flag . Just . determineNumJobs $
                      (numJobsConfigFlag `mappend` numJobsCmdLineFlag)
       }

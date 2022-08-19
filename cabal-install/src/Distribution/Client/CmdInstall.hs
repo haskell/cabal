@@ -150,7 +150,7 @@ installCommand = CommandUI
   , commandDescription  = Just $ \_ -> wrapText $
     "Installs one or more packages. This is done by installing them "
     ++ "in the store and symlinking/copying the executables in the directory "
-    ++ "specified by the --installdir flag (`~/.cabal/bin/` by default). "
+    ++ "specified by the --installdir flag (`~/.local/bin/` by default). "
     ++ "If you want the installed executables to be available globally, "
     ++ "make sure that the PATH environment variable contains that directory. "
     ++ "\n\n"
