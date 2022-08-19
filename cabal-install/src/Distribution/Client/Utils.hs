@@ -480,8 +480,13 @@ safeRead s
   | [(x, "")] <- reads s = Just x
   | otherwise = Nothing
 
-
 -- | @hasElem xs x = elem x xs@ except that @xs@ is turned into a 'Set' first.
 --   Use underapplied to speed up subsequent lookups, e.g. @filter (hasElem xs) ys@.
+--   Only amortized when used several times!
+--
+--   Time complexity \(O((n+m) \log(n))\) for \(m\) lookups in a list of length \(n\).
+--   (Compare this to 'elem''s \(O(nm)\).)
+--
+--   This is [Agda.Utils.List.hasElem](https://hackage.haskell.org/package/Agda-2.6.2.2/docs/Agda-Utils-List.html#v:hasElem).
 hasElem :: Ord a => [a] -> a -> Bool
 hasElem xs = (`Set.member` Set.fromList xs)
