@@ -38,7 +38,7 @@ jobs:
     strategy:
       matrix:
         os: ["ubuntu-latest", "macos-latest", "windows-latest"]
-        ghc: ["9.2.3", "9.0.2", "8.10.7", "8.8.4", "8.6.5", "8.4.4"]
+        ghc: ["9.4.2", "9.2.3", "9.0.2", "8.10.7", "8.8.4", "8.6.5", "8.4.4"]
         exclude:
           # corrupts GHA cache or the fabric of reality itself, see https://github.com/haskell/cabal/issues/8356
           - os: "windows-latest"
@@ -61,7 +61,7 @@ jobs:
         id: setup-haskell
         with:
           ghc-version: ${{ matrix.ghc }}
-          cabal-version: latest # default, keeping for visibility
+          cabal-version: '3.8.1.0'
 
       #  See the following link for a breakdown of the following step
       #  https://github.com/haskell/actions/issues/7#issuecomment-745697160
@@ -212,6 +212,7 @@ jobs:
         id: setup-haskell
         with:
           ghc-version: ${{ matrix.ghc }}
+          cabal-version: '3.8.1.0'
 
       # As we are reusing the cached build dir from the previous step
       # the generated artifacts are available here,

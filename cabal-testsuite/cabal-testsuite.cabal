@@ -26,7 +26,7 @@ common shared
   default-language: Haskell2010
 
   build-depends:
-    , base >= 4.6 && <4.17
+    , base >= 4.6 && <4.18
     -- this needs to match the in-tree lib:Cabal version
     , Cabal ^>= 3.9.0.0
     , Cabal-syntax ^>= 3.9.0.0
@@ -113,11 +113,8 @@ executable setup
 custom-setup
   -- we only depend on even stable releases of lib:Cabal
   -- and due to Custom complexity and ConstraintSetupCabalMaxVersion
-  -- it can't be the current version
-  if impl(ghc < 8)
-    setup-depends: Cabal == 3.6.*,
-                   Cabal-syntax == 3.6.*,
-  else
-    setup-depends: Cabal == 3.8.*,
-                   Cabal-syntax == 3.8.*,
-  setup-depends: base, filepath, directory
+  -- it has to be the latest release version plus
+  -- you have to use the latest cabal-install release
+  setup-depends: Cabal == 3.8.*,
+                 Cabal-syntax == 3.8.*,
+                 base, filepath, directory
