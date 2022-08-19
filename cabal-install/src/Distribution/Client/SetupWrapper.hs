@@ -240,7 +240,7 @@ data SetupScriptOptions = SetupScriptOptions {
     -- When we are installing in parallel, we always use the external setup
     -- method. Since compiling the setup script each time adds noticeable
     -- overhead, we use a shared setup script cache
-    -- ('~/.cabal/setup-exe-cache'). For each (compiler, platform, Cabal
+    -- ('$XDG_CACHE_HOME/cabal/setup-exe-cache'). For each (compiler, platform, Cabal
     -- version) combination the cache holds a compiled setup script
     -- executable. This only affects the Simple build type; for the Custom,
     -- Configure and Make build types we always compile the setup script anew.
