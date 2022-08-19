@@ -121,7 +121,7 @@ Arguments and flags common to some or all commands are:
         $ cabal install --allow-newer=foo:base,lens --allow-newer=bar:time
 
     Finally, one can enable :option:`--allow-newer` permanently by setting
-    ``allow-newer: True`` in the ``~/.cabal/config`` file. Enabling
+    ``allow-newer: True`` in the ``~/.config/cabal/config`` file. Enabling
     'allow-newer' selectively is also supported in the config file
     (``allow-newer: foo, bar, baz:base``).
 
@@ -950,7 +950,7 @@ cabal preferences. It is very useful when you are e.g. first configuring
 
   .. option:: --config-file=PATH
 
-      Specify config file path. (default: ``~/.cabal/config``).
+      Specify config file path. (default: ``~/.config/cabal/config``).
 
   .. option:: -f, --force
 

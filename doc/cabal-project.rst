@@ -24,7 +24,7 @@ The full configuration of a project is determined by combining the
 following sources (later entries override earlier ones, except for appendable
 options):
 
-1. ``~/.cabal/config`` (the user-wide global configuration)
+1. ``~/.config/cabal/config`` (the user-wide global configuration)
 
 2. ``cabal.project`` (the project configuration)
 
