@@ -30,7 +30,6 @@ module Distribution.Client.Config (
     defaultInstallPath,
     defaultLogsDir,
     defaultReportsDir,
-    defaultPrefix,
     defaultUserInstall,
 
     baseSavedConfig,
@@ -93,7 +92,8 @@ import Distribution.Simple.Setup
          , Flag(..), toFlag, flagToMaybe, fromFlagOrDefault )
 import Distribution.Simple.InstallDirs
          ( InstallDirs(..), defaultInstallDirs
-         , PathTemplate, toPathTemplate )
+         , PathTemplate, toPathTemplate,
+           maybeGetCabalDir, defaultInstallPrefix)
 import Distribution.Deprecated.ParseUtils
          ( FieldDescr(..), liftField, runP
          , ParseResult(..), PError(..), PWarning(..)
@@ -133,7 +133,7 @@ import Text.PrettyPrint
 import Text.PrettyPrint.HughesPJ
          ( text, Doc )
 import System.Directory
-         ( createDirectoryIfMissing, getAppUserDataDirectory, getHomeDirectory, getXdgDirectory, XdgDirectory(XdgCache, XdgConfig, XdgState), renameFile, doesDirectoryExist )
+         ( createDirectoryIfMissing, getHomeDirectory, getXdgDirectory, XdgDirectory(XdgCache, XdgConfig, XdgState), renameFile )
 import Network.URI
          ( URI(..), URIAuth(..), parseURI )
 import System.FilePath
@@ -141,7 +141,7 @@ import System.FilePath
 import System.IO.Error
          ( isDoesNotExistError )
 import Distribution.Compat.Environment
-         ( getEnvironment, lookupEnv )
+         ( getEnvironment )
 import qualified Data.Map as M
 import qualified Data.ByteString as BS
 
@@ -542,7 +542,7 @@ instance Semigroup SavedConfig where
 --
 baseSavedConfig :: IO SavedConfig
 baseSavedConfig = do
-  userPrefix <- defaultPrefix
+  userPrefix <- defaultInstallPrefix
   cacheDir   <- defaultCacheDir
   logsDir    <- defaultLogsDir
   return mempty {
@@ -590,18 +590,6 @@ initialSavedConfig = do
     }
   }
 
-maybeGetCabalDir :: IO (Maybe FilePath)
-maybeGetCabalDir = do
-  mDir <- lookupEnv "CABAL_DIR"
-  case mDir of
-    Just dir -> return $ Just dir
-    Nothing -> do
-      defaultDir <- getAppUserDataDirectory "cabal"
-      dotCabalExists <- doesDirectoryExist defaultDir
-      return $ if dotCabalExists
-               then Just defaultDir
-               else Nothing
-
 -- The default behaviour of cabal-install is to use the XDG directory
 -- standard.  However, if CABAL_DIR is set, we instead use that
 -- directory as a single store for everything cabal-related, like the
@@ -638,16 +626,6 @@ defaultLogsDir =
 defaultReportsDir :: IO FilePath
 defaultReportsDir =
   getDefaultDir XdgCache "reports"
-
-defaultPrefix :: IO FilePath
-defaultPrefix = do
-  mDir <- maybeGetCabalDir
-  case mDir of
-    Just dir ->
-      return dir
-    Nothing -> do
-      dir <- getHomeDirectory
-      return $ dir </> ".local"
 
 defaultExtraPath :: IO [FilePath]
 defaultExtraPath = do

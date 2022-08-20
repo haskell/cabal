@@ -47,6 +47,9 @@ module Distribution.Simple.InstallDirs (
         packageTemplateEnv,
         abiTemplateEnv,
         installDirsTemplateEnv,
+
+        maybeGetCabalDir,
+        defaultInstallPrefix
   ) where
 
 import Prelude ()
@@ -174,6 +177,8 @@ type InstallDirTemplates = InstallDirs PathTemplate
 defaultInstallDirs :: CompilerFlavor -> Bool -> Bool -> IO InstallDirTemplates
 defaultInstallDirs = defaultInstallDirs' False
 
+-- | If @CABAL\_DIR@ is set or @~/.cabal@ exists, return that
+-- directory.
 maybeGetCabalDir :: IO (Maybe FilePath)
 maybeGetCabalDir = do
   mDir <- lookupEnv "CABAL_DIR"
@@ -185,6 +190,17 @@ maybeGetCabalDir = do
       return $ if dotCabalExists
                then Just defaultDir
                else Nothing
+
+-- | The default prefix used for installation.
+defaultInstallPrefix :: IO FilePath
+defaultInstallPrefix = do
+  mDir <- maybeGetCabalDir
+  case mDir of
+    Just dir ->
+      return dir
+    Nothing -> do
+      dir <- getHomeDirectory
+      return $ dir </> ".local"
 
 defaultInstallDirs' :: Bool {- use external internal deps -}
                     -> CompilerFlavor -> Bool -> Bool -> IO InstallDirTemplates
