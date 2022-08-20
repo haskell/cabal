@@ -10,7 +10,8 @@ store configuration, caches, and the store.  Specifically,
 `$XDG_CONFIG_HOME/cabal` stores the configuration file,
 `$XDG_CACHE_HOME/cabal` stores downloaded packages and similar, and
 `$XDG_STATE_HOME/cabal` mainly contains the store of compiled
-packages.
+packages.  Further, `cabal install will put executables in
+`~/.local/bin` by default.
 
 The `dist`/`dist-newstyle` directories are not affected.
 
