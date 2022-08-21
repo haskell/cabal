@@ -48,6 +48,7 @@ module Distribution.Client.Config (
     postProcessRepo,
   ) where
 
+import Distribution.Compat.Environment (lookupEnv)
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
@@ -92,8 +93,7 @@ import Distribution.Simple.Setup
          , Flag(..), toFlag, flagToMaybe, fromFlagOrDefault )
 import Distribution.Simple.InstallDirs
          ( InstallDirs(..), defaultInstallDirs
-         , PathTemplate, toPathTemplate,
-           maybeGetCabalDir, defaultInstallPrefix)
+         , PathTemplate, toPathTemplate)
 import Distribution.Deprecated.ParseUtils
          ( FieldDescr(..), liftField, runP
          , ParseResult(..), PError(..), PWarning(..)
@@ -133,7 +133,7 @@ import Text.PrettyPrint
 import Text.PrettyPrint.HughesPJ
          ( text, Doc )
 import System.Directory
-         ( createDirectoryIfMissing, getHomeDirectory, getXdgDirectory, XdgDirectory(XdgCache, XdgConfig, XdgState), renameFile )
+         ( createDirectoryIfMissing, getHomeDirectory, getXdgDirectory, XdgDirectory(XdgCache, XdgConfig, XdgState), renameFile, getAppUserDataDirectory, doesDirectoryExist )
 import Network.URI
          ( URI(..), URIAuth(..), parseURI )
 import System.FilePath
@@ -590,6 +590,20 @@ initialSavedConfig = do
     }
   }
 
+-- | If @CABAL\_DIR@ is set or @~/.cabal@ exists, return that
+-- directory.
+maybeGetCabalDir :: IO (Maybe FilePath)
+maybeGetCabalDir = do
+  mDir <- lookupEnv "CABAL_DIR"
+  case mDir of
+    Just dir -> return $ Just dir
+    Nothing -> do
+      defaultDir <- getAppUserDataDirectory "cabal"
+      dotCabalExists <- doesDirectoryExist defaultDir
+      return $ if dotCabalExists
+               then Just defaultDir
+               else Nothing
+
 -- The default behaviour of cabal-install is to use the XDG directory
 -- standard.  However, if CABAL_DIR is set, we instead use that
 -- directory as a single store for everything cabal-related, like the
@@ -602,6 +616,17 @@ getDefaultDir xdg subdir = do
   case mDir of
     Just dir -> return $ dir </> subdir
     Nothing -> getXdgDirectory xdg $ "cabal" </> subdir
+
+-- | The default prefix used for installation.
+defaultInstallPrefix :: IO FilePath
+defaultInstallPrefix = do
+  mDir <- maybeGetCabalDir
+  case mDir of
+    Just dir ->
+      return dir
+    Nothing -> do
+      dir <- getHomeDirectory
+      return $ dir </> ".local"
 
 defaultConfigFile :: IO FilePath
 defaultConfigFile =
