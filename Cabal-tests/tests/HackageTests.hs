@@ -24,9 +24,8 @@ import Distribution.PackageDescription.Check       (PackageCheck (..), checkPack
 import Distribution.PackageDescription.PrettyPrint (showGenericPackageDescription)
 import Distribution.PackageDescription.Quirks      (patchQuirks)
 import Distribution.Simple.Utils                   (fromUTF8BS, toUTF8BS)
-import Distribution.Simple.InstallDirs             (maybeGetCabalDir)
 import Numeric                                     (showFFloat)
-import System.Directory                            (getXdgDirectory, XdgDirectory(XdgCache, XdgConfig))
+import System.Directory                            (getXdgDirectory, XdgDirectory(XdgCache, XdgConfig), getAppUserDataDirectory, doesDirectoryExist)
 import System.Environment                          (lookupEnv)
 import System.Exit                                 (exitFailure)
 import System.FilePath                             ((</>))
@@ -85,6 +84,18 @@ parseIndex predicate action = do
               case mDir of
                 Nothing -> getXdgDirectory XdgConfig $ "cabal" </> "config"
                 Just dir -> return $ dir </> "config"
+    maybeGetCabalDir :: IO (Maybe FilePath)
+    maybeGetCabalDir = do
+      mDir <- lookupEnv "CABAL_DIR"
+      case mDir of
+        Just dir -> return $ Just dir
+        Nothing -> do
+          defaultDir <- getAppUserDataDirectory "cabal"
+          dotCabalExists <- doesDirectoryExist defaultDir
+          return $ if dotCabalExists
+                   then Just defaultDir
+                   else Nothing
+
 
 parseIndex'
     :: (Monoid a, NFData a)
