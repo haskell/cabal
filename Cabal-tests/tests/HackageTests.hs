@@ -24,6 +24,7 @@ import Distribution.PackageDescription.Check       (PackageCheck (..), checkPack
 import Distribution.PackageDescription.PrettyPrint (showGenericPackageDescription)
 import Distribution.PackageDescription.Quirks      (patchQuirks)
 import Distribution.Simple.Utils                   (fromUTF8BS, toUTF8BS)
+import Distribution.Simple.InstallDirs             (maybeGetCabalDir)
 import Numeric                                     (showFFloat)
 import System.Directory                            (getXdgDirectory, XdgDirectory(XdgCache, XdgConfig))
 import System.Environment                          (lookupEnv)
@@ -79,7 +80,11 @@ parseIndex predicate action = do
         mx <- lookupEnv "CABAL_CONFIG"
         case mx of
             Just x  -> return x
-            Nothing -> getXdgDirectory XdgConfig $ "cabal" </> "config"
+            Nothing -> do
+              mDir <- maybeGetCabalDir
+              case mDir of
+                Nothing -> getXdgDirectory XdgConfig $ "cabal" </> "config"
+                Just dir -> return $ dir </> "config"
 
 parseIndex'
     :: (Monoid a, NFData a)
