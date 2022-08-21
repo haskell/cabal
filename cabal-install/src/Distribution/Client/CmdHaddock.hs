@@ -143,7 +143,8 @@ haddockAction flags@NixStyleFlags {..} targetStrings globalFlags = do
     runProjectPostBuildPhase verbosity baseCtx buildCtx' buildOutcomes
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
-    flags' = flags { installFlags = installFlags { installDocumentation = Flag True } }
+    installDoc = fromFlagOrDefault True (installDocumentation installFlags)
+    flags' = flags { installFlags = installFlags { installDocumentation = Flag installDoc } }
     cliConfig = commandLineFlagsToProjectConfig globalFlags flags' mempty -- ClientInstallFlags, not needed here
 
 -- | This defines what a 'TargetSelector' means for the @haddock@ command.
