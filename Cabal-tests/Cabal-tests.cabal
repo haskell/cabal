@@ -149,7 +149,6 @@ test-suite hackage-tests
     , Cabal
     , Cabal-syntax
     , Cabal-tree-diff
-    , cabal-install
     , containers
     , deepseq
     , directory
