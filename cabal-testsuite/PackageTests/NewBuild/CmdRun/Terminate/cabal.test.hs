@@ -4,6 +4,8 @@ import Control.Concurrent (threadDelay)
 import System.Directory (removeFile)
 import Control.Exception (catch, throwIO)
 import System.IO.Error (isDoesNotExistError)
+import qualified Data.Time.Clock as Time
+import qualified Data.Time.Format as Time
 
 {-
 This test verifies that 'cabal run' terminates its
@@ -18,16 +20,28 @@ main :: IO ()
 main = cabalTest $ do
   skipIfWindows -- test project relies on Posix
 
+  -- timestamped logging to aid with #8416
+  let logIO msg = do
+        ts <- Time.getCurrentTime
+        let tsfmt = Time.formatTime Time.defaultTimeLocale "%H:%M:%S.%q" ts
+        putStrLn $ tsfmt <> " [cabal.test] " <> msg
+      log = liftIO . logIO
+
   dir <- fmap testCurrentDir getTestEnv
   let runFile = dir </> "exe.run"
   liftIO $ removeFile runFile `catchNoExist` return ()
 
+  log "about to v2-build"
   cabal_raw_action ["v2-build", "exe"] (\_ -> return ())
+  log "about to v2-run"
   r <- fails $ cabal_raw_action ["v2-run", "exe"] $ \cabalHandle -> do
     -- wait for "cabal run" to have started "exe"
+    logIO "about to wait for file"
     waitFile total runFile
     -- then kill "cabal run"
+    logIO "about to terminate cabal"
     Process.terminateProcess cabalHandle
+  log "v2-run done"
 
   -- "exe" should exit, and should have been interrupted before
   -- finishing its sleep
