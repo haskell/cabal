@@ -103,6 +103,7 @@ executable cabal-tests
     , clock                 ^>= 0.7.2 || ^>=0.8
 
   build-tool-depends: cabal-testsuite:setup
+  default-extensions: TypeOperators
 
 -- this executable is needed by lib:cabal-testsuite
 executable setup
