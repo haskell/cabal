@@ -105,13 +105,13 @@ The following directories are used:
 
 * ``$XDG_CACHE_HOME/cabal`` for downloaded packages and script
   executables.  Defaults to ``~/.cache/cabal`` on Unix, and
-  ``%LOCALAPPDATA%`` on Windows.  You can in delete this directory and
-  expect that its contents will be reconstructed as needed.
+  ``%LOCALAPPDATA%/cabal`` on Windows.  You can delete this directory
+  and expect that its contents will be reconstructed as needed.
 
 * ``$XDG_STATE_HOME/cabal`` for compiled libraries and other stateful
-  artifacts.  Defaults to ``~/.local/state`` on Unix and
-  ``%LOCALAPPDATA%`` on Windows.  Deleting this directory might cause
-  installed programs to stop working.
+  artifacts.  Defaults to ``~/.local/state/cabal`` on Unix and
+  ``%LOCALAPPDATA%/cabal`` on Windows.  Deleting this directory might
+  cause installed programs to stop working.
 
 * ``~/.local/bin`` for executables installed with ``cabal install``.
 
