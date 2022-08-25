@@ -162,7 +162,7 @@ import System.Environment       (getArgs, getProgName)
 import System.FilePath          ( dropExtension, splitExtension
                                 , takeExtension, (</>), (<.>) )
 import System.IO                ( BufferMode(LineBuffering), hSetBuffering
-                                , stderr, stdout )
+                                , stderr, stdout, hPutStrLn )
 import System.Directory         ( doesFileExist, getCurrentDirectory
                                 , withCurrentDirectory)
 import Data.Monoid              (Any(..))
@@ -192,7 +192,7 @@ main = do
 warnIfAssertionsAreEnabled :: IO ()
 warnIfAssertionsAreEnabled =
   assert False (return ()) `catch`
-  (\(_e :: AssertionFailed) -> putStrLn assertionsEnabledMsg)
+  (\(_e :: AssertionFailed) -> hPutStrLn stderr assertionsEnabledMsg)
   where
     assertionsEnabledMsg =
       "Warning: this is a debug build of cabal-install with assertions enabled."
