@@ -1,7 +1,5 @@
 # cabal v2-update
 Downloading the latest package list from test-local-repo
-# cabal v2-sdist
-Wrote tarball sdist to <ROOT>/dist-newstyle/sdist/my-0.1.tar.gz
 # cabal v2-run
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
