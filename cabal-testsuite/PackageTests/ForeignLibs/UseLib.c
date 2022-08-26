@@ -4,7 +4,7 @@
 /* Forward declarations */
 bool myForeignLibInit();
 void myForeignLibExit();
-void sayHi();
+extern void sayHi();
 
 int main()
 {
