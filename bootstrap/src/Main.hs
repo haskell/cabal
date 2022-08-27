@@ -1,3 +1,5 @@
+{-# LANGUAGE CPP #-}
+
 module Main (main) where
 
 import Control.Monad      (when)
@@ -34,9 +36,15 @@ main = do
 
 main1 :: FilePath -> IO ()
 main1 planPath = do
-    meta <- I.cachedHackageMetadata
+    meta <- getMap <$> I.cachedHackageMetadata
     plan <- P.decodePlanJson planPath
     main2 meta plan
+  where
+#if MIN_VERSION_cabal_install_parsers(0,4,0)
+    getMap = snd
+#else
+    getMap = id
+#endif
 
 main2 :: Map.Map C.PackageName I.PackageInfo -> P.PlanJson -> IO ()
 main2 meta plan = do

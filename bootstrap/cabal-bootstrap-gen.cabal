@@ -8,13 +8,18 @@ executable cabal-bootstrap-gen
   ghc-options:      -Wall
   main-is:          Main.hs
   build-depends:
-    , aeson                  ^>=1.5.2.0
-    , base                   ^>=4.12.0.0 || ^>=4.13.0.0 || ^>=4.14.0.0
-    , bytestring             ^>=0.10.8.2 || ^>= 0.11.0.0
-    , Cabal                  ^>=3.2.0.0
-    , cabal-install-parsers  ^>=0.3.0.1
+    , aeson                  ^>=1.5.2.0  || ^>=2.0.3.0
+        -- Not yet picked up: (*)        || ^>=2.1.0.0
+    , base                   ^>=4.12.0.0 || ^>=4.13.0.0 || ^>=4.14.0.0 || ^>=4.15.0.0 || ^>=4.16.0.0
+    , bytestring             ^>=0.10.8.2 || ^>=0.11.0.0
+    , Cabal                  ^>=3.2.0.0  || ^>=3.4.1.0  || ^>=3.6.3.0
+        -- Not yet picked up: (*)        || ^>=3.8.1.0
+    , cabal-install-parsers  ^>=0.3.0.1  || ^>=0.4.5
     , cabal-plan             ^>=0.7.0.0
     , containers             ^>=0.6.0.1
     , text                   ^>=1.2.3.0
+        -- Not yet picked up: (*)        || ^>=2.0.1
     , topograph              ^>=1.0.0.1
     , transformers           ^>=0.5.6.2
+        -- Not yet picked up: (*)        || ^>=0.6.0.4
+        -- (*) as of 2022-08-19
