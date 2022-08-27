@@ -187,7 +187,6 @@ data CheckExplanation =
         | OptSplitObjs String
         | OptWls String
         | OptExts String
-        | OptThreaded String
         | OptRts String
         | OptWithRts String
         | COptONumber String String
@@ -494,9 +493,6 @@ ppExplanation (OptWls fieldName) =
 ppExplanation (OptExts fieldName) =
     "Instead of '" ++ fieldName ++ ": -fglasgow-exts' it is preferable to use "
       ++ "the 'extensions' field."
-ppExplanation (OptThreaded fieldName) =
-    "'" ++ fieldName ++ ": -threaded' has no effect for libraries. It should "
-      ++ "only be used for executables."
 ppExplanation (OptRts fieldName) =
     "'" ++ fieldName ++ ": -rtsopts' has no effect for libraries. It should "
       ++ "only be used for executables."
@@ -1375,9 +1371,6 @@ checkGhcOptions fieldName getOptions pkg =
 
   , checkFlags ["-fglasgow-exts"] $
       PackageDistSuspicious (OptExts fieldName)
-
-  , check ("-threaded" `elem` lib_ghc_options) $
-      PackageBuildWarning (OptThreaded fieldName)
 
   , check ("-rtsopts" `elem` lib_ghc_options) $
       PackageBuildWarning (OptRts fieldName)
