@@ -149,7 +149,7 @@ import Distribution.Simple.Program.Db (reconfigurePrograms)
 import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Simple.Utils
          ( cabalVersion, die', dieNoVerbosity, info, notice, topHandler
-         , findPackageDesc, tryFindPackageDesc, createDirectoryIfMissingVerbose )
+         , findPackageDesc, tryFindPackageDesc, createDirectoryIfMissingVerbose, warn )
 import Distribution.Text
          ( display )
 import Distribution.Verbosity as Verbosity
@@ -192,10 +192,10 @@ main = do
 warnIfAssertionsAreEnabled :: IO ()
 warnIfAssertionsAreEnabled =
   assert False (return ()) `catch`
-  (\(_e :: AssertionFailed) -> putStrLn assertionsEnabledMsg)
+  (\(_e :: AssertionFailed) -> warn normal assertionsEnabledMsg)
   where
     assertionsEnabledMsg =
-      "Warning: this is a debug build of cabal-install with assertions enabled."
+      "this is a debug build of cabal-install with assertions enabled."
 
 mainWorker :: [String] -> IO ()
 mainWorker args = do
