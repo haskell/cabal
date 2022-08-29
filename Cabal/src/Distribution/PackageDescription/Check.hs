@@ -1601,20 +1601,35 @@ checkPaths pkg =
   ++
   [ PackageDistInexcusable $
       GlobSyntaxError "data-files" (explainGlobSyntaxError pat err)
-  | pat <- dataFiles pkg
-  , Left err <- [parseFileGlob (specVersion pkg) pat]
+  | (Left err, pat) <- zip globsDataFiles $ dataFiles pkg
   ]
   ++
   [ PackageDistInexcusable
       (GlobSyntaxError "extra-source-files" (explainGlobSyntaxError pat err))
-  | pat <- extraSrcFiles pkg
-  , Left err <- [parseFileGlob (specVersion pkg) pat]
+  | (Left err, pat) <- zip globsExtraSrcFiles $ extraSrcFiles pkg
   ]
   ++
   [ PackageDistInexcusable $
       GlobSyntaxError "extra-doc-files" (explainGlobSyntaxError pat err)
-  | pat <- extraDocFiles pkg
-  , Left err <- [parseFileGlob (specVersion pkg) pat]
+  | (Left err, pat) <- zip globsExtraDocFiles $ extraDocFiles pkg
+  ]
+  ++
+  [ PackageBuildWarning $
+      GlobSyntaxError "data-files" err
+  | (Right glob, pat) <- zip globsDataFiles $ dataFiles pkg
+  , Left err <- [isRecursiveInRoot glob pat]
+  ]
+  ++
+  [ PackageBuildWarning $
+      GlobSyntaxError "extra-source-files" err
+  | (Right glob, pat) <- zip globsExtraSrcFiles $ extraSrcFiles pkg
+  , Left err <- [isRecursiveInRoot glob pat]
+  ]
+  ++
+  [ PackageBuildWarning $
+      GlobSyntaxError "extra-doc-files" err
+  | (Right glob, pat) <- zip globsExtraDocFiles $ extraDocFiles pkg
+  , Left err <- [isRecursiveInRoot glob pat]
   ]
   where
     isOutsideTree path = case splitDirectories path of
@@ -1655,6 +1670,12 @@ checkPaths pkg =
         [ (path, "extra-lib-dirs-static", PathKindDirectory) | path <- extraLibDirsStatic bi ]
       | bi <- allBuildInfo pkg
       ]
+    globsDataFiles :: [Either GlobSyntaxError Glob]
+    globsDataFiles =  parseFileGlob (specVersion pkg) <$> dataFiles pkg
+    globsExtraSrcFiles :: [Either GlobSyntaxError Glob]
+    globsExtraSrcFiles =  parseFileGlob (specVersion pkg) <$> extraSrcFiles pkg
+    globsExtraDocFiles :: [Either GlobSyntaxError Glob]
+    globsExtraDocFiles =  parseFileGlob (specVersion pkg) <$> extraDocFiles pkg
 
 --TODO: check sets of paths that would be interpreted differently between Unix
 -- and windows, ie case-sensitive or insensitive. Things that might clash, or
