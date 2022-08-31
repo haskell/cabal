@@ -40,7 +40,7 @@ pull_request_rules:
       - label=merge delay passed
       - '#approved-reviews-by>=2'
 
-# rebase+merge strategy for backports: require 1 approver instead of 2
+  # rebase+merge strategy for backports: require 1 approver instead of 2
   - actions:
       queue:
         name: default
