@@ -196,6 +196,7 @@ data CheckExplanation =
         | BadRelativePAth String FilePath String
         | DistPoint (Maybe String) FilePath
         | GlobSyntaxError String String
+        | RecursiveGlobInRoot String FilePath
         | InvalidOnWin [FilePath]
         | FilePathTooLong FilePath
         | FilePathNameTooLong FilePath
@@ -532,6 +533,10 @@ ppExplanation (DistPoint mfield path) =
                         mfield
 ppExplanation (GlobSyntaxError field expl) =
     "In the '" ++ field ++ "' field: " ++ expl
+ppExplanation (RecursiveGlobInRoot field glob) =
+    "In the '" ++ field ++ "': glob '" ++ glob
+    ++ "' starts at project root directory, this might "
+    ++ "include `.git/`, ``dist-newstyle/``, or other large directories!"
 ppExplanation (InvalidOnWin paths) =
     "The " ++ quotes paths ++ " invalid on Windows, which "
       ++ "would cause portability problems for this package. Windows file "
@@ -1614,22 +1619,22 @@ checkPaths pkg =
   | (Left err, pat) <- zip globsExtraDocFiles $ extraDocFiles pkg
   ]
   ++
-  [ PackageBuildWarning $
-      GlobSyntaxError "data-files" err
+  [ PackageDistSuspiciousWarn $
+      RecursiveGlobInRoot "data-files" pat
   | (Right glob, pat) <- zip globsDataFiles $ dataFiles pkg
-  , Left err <- [isRecursiveInRoot glob pat]
+  , isRecursiveInRoot glob
   ]
   ++
-  [ PackageBuildWarning $
-      GlobSyntaxError "extra-source-files" err
+  [ PackageDistSuspiciousWarn $
+      RecursiveGlobInRoot "extra-source-files" pat
   | (Right glob, pat) <- zip globsExtraSrcFiles $ extraSrcFiles pkg
-  , Left err <- [isRecursiveInRoot glob pat]
+  , isRecursiveInRoot glob
   ]
   ++
-  [ PackageBuildWarning $
-      GlobSyntaxError "extra-doc-files" err
+  [ PackageDistSuspiciousWarn $
+      RecursiveGlobInRoot "extra-doc-files" pat
   | (Right glob, pat) <- zip globsExtraDocFiles $ extraDocFiles pkg
-  , Left err <- [isRecursiveInRoot glob pat]
+  , isRecursiveInRoot glob
   ]
   where
     isOutsideTree path = case splitDirectories path of

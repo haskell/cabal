@@ -338,9 +338,7 @@ splitConstantPrefix = unfoldr' step
     step (GlobStem seg pat) = Right (seg, pat)
     step (GlobFinal pat) = Left pat
 
-isRecursiveInRoot :: Glob -> FilePath -> Either String ()
-isRecursiveInRoot (GlobFinal (FinalMatch Recursive _ _)) path =
-  Left $ "File glob " ++ path ++ " starts at project root directory" ++
-  " this might include `.git/`, ``dist-newstyle/``, or" ++
-  " other large directories!"
-isRecursiveInRoot _ _= Right ()
+
+isRecursiveInRoot :: Glob  ->Bool
+isRecursiveInRoot (GlobFinal (FinalMatch Recursive _ _))  = True
+isRecursiveInRoot _ = False
