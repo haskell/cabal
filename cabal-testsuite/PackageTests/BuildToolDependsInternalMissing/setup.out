@@ -1,4 +1,4 @@
 # Setup configure
 Configuring build-tool-depends-missing-0.1.0.0...
 Error: [Cabal-5559]
-The package depends on a missing internal executable: build-tool-depends-missing:hello-world
+[no-internal-exe] The package depends on a missing internal executable: build-tool-depends-missing:hello-world

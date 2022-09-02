@@ -1,4 +1,4 @@
 # cabal check
 The following errors will cause portability problems on other environments:
-Error: The path 'n?ul/*.a' is invalid on Windows, which would cause portability problems for this package. Windows file names cannot contain any of the characters ":*?<>|" and there a few reserved names including "aux", "nul", "con", "prn", "com1-9", "lpt1-9" and "clock$".
+Error: [invalid-path-win] The path 'n?ul/*.a' is invalid on Windows, which would cause portability problems for this package. Windows file names cannot contain any of the characters ":*?<>|" and there a few reserved names including "aux", "nul", "con", "prn", "com1-9", "lpt1-9" and "clock$".
 Error: Hackage would reject this package.

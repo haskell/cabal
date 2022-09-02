@@ -66,6 +66,7 @@ module Distribution.Client.Setup
   , unpackCommand
   , GetFlags (..)
   , checkCommand
+  , CheckFlags (..)
   , formatCommand
   , uploadCommand
   , UploadFlags (..)
@@ -146,6 +147,7 @@ import Distribution.PackageDescription
   , LibraryName (..)
   , RepoKind (..)
   )
+import Distribution.PackageDescription.Check (CheckExplanationIDString)
 import Distribution.Parsec
   ( parsecCommaList
   )
@@ -1542,6 +1544,56 @@ genBoundsCommand =
     }
 
 -- ------------------------------------------------------------
+-- Check command
+-- ------------------------------------------------------------
+
+data CheckFlags = CheckFlags
+  { checkVerbosity :: Flag Verbosity
+  , checkIgnore :: [CheckExplanationIDString]
+  }
+  deriving (Show, Typeable)
+
+defaultCheckFlags :: CheckFlags
+defaultCheckFlags =
+  CheckFlags
+    { checkVerbosity = Flag normal
+    , checkIgnore = []
+    }
+
+checkCommand :: CommandUI CheckFlags
+checkCommand =
+  CommandUI
+    { commandName = "check"
+    , commandSynopsis = "Check the package for common mistakes."
+    , commandDescription = Just $ \_ ->
+        wrapText $
+          "Expects a .cabal package file in the current directory.\n"
+            ++ "\n"
+            ++ "Some checks correspond to the requirements to packages on Hackage. "
+            ++ "If no `Error` is reported, Hackage should accept the "
+            ++ "package. If errors are present, `check` exits with 1 and Hackage "
+            ++ "will refuse the package.\n"
+    , commandNotes = Nothing
+    , commandUsage = usageFlags "check"
+    , commandDefaultFlags = defaultCheckFlags
+    , commandOptions = checkOptions'
+    }
+
+checkOptions' :: ShowOrParseArgs -> [OptionField CheckFlags]
+checkOptions' _showOrParseArgs =
+  [ optionVerbosity
+      checkVerbosity
+      (\v flags -> flags{checkVerbosity = v})
+  , option
+      ['i']
+      ["ignore"]
+      "ignore a specific warning (e.g. --ignore=missing-upper-bounds)"
+      checkIgnore
+      (\v c -> c{checkIgnore = v ++ checkIgnore c})
+      (reqArg' "WARNING" (: []) (const []))
+  ]
+
+-- ------------------------------------------------------------
 
 -- * Update command
 
@@ -1571,25 +1623,6 @@ cleanCommand =
   Cabal.cleanCommand
     { commandUsage = \pname ->
         "Usage: " ++ pname ++ " v1-clean [FLAGS]\n"
-    }
-
-checkCommand :: CommandUI (Flag Verbosity)
-checkCommand =
-  CommandUI
-    { commandName = "check"
-    , commandSynopsis = "Check the package for common mistakes."
-    , commandDescription = Just $ \_ ->
-        wrapText $
-          "Expects a .cabal package file in the current directory.\n"
-            ++ "\n"
-            ++ "Some checks correspond to the requirements to packages on Hackage. "
-            ++ "If no `Error` is reported, Hackage should accept the "
-            ++ "package. If errors are present, `check` exits with 1 and Hackage "
-            ++ "will refuse the package.\n"
-    , commandNotes = Nothing
-    , commandUsage = usageFlags "check"
-    , commandDefaultFlags = toFlag normal
-    , commandOptions = \_ -> [optionVerbosity id const]
     }
 
 formatCommand :: CommandUI (Flag Verbosity)

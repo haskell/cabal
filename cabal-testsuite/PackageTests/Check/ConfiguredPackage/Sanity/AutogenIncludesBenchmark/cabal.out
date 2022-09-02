@@ -1,4 +1,4 @@
 # cabal check
 The package will not build sanely due to these errors:
-Error: An include in 'autogen-includes' is not in 'includes'.
+Error: [autogen-exe] An include in 'autogen-includes' is not in 'includes'.
 Error: Hackage would reject this package.

@@ -1,3 +1,3 @@
 # cabal check
 These warnings may cause trouble when distributing the package:
-Warning: To use the 'extra-framework-dirs' field the package needs to specify 'cabal-version: 1.24' or higher.
+Warning: [extra-framework-dirs] To use the 'extra-framework-dirs' field the package needs to specify 'cabal-version: 1.24' or higher.

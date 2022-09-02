@@ -1,6 +1,6 @@
 # cabal check
 The package will not build sanely due to these errors:
-Error: No executables, libraries, tests, or benchmarks found. Nothing to do.
+Error: [no-target] No executables, libraries, tests, or benchmarks found. Nothing to do.
 These warnings will likely cause trouble when distributing the package:
-Warning: pkg.cabal:0:0: A package using 'cabal-version: 2.2' must use section syntax. See the Cabal user guide for details.
+Warning: [parser-warning] pkg.cabal:0:0: A package using 'cabal-version: 2.2' must use section syntax. See the Cabal user guide for details.
 Error: Hackage would reject this package.

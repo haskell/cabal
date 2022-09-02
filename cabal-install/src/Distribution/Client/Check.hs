@@ -59,14 +59,22 @@ readGenericPackageDescriptionCheck verbosity fpath = do
 -- is fit to upload to Hackage, @False@ otherwise.
 -- Note: must be called with the CWD set to the directory containing
 -- the '.cabal' file.
-check :: Verbosity -> IO Bool
-check verbosity = do
+check
+  :: Verbosity
+  -> [CheckExplanationIDString]
+  -- ^ List of check-ids in String form
+  -- (e.g. @invalid-path-win@) to ignore.
+  -> IO Bool
+check verbosity ignores = do
   pdfile <- defaultPackageDesc verbosity
   (ws, ppd) <- readGenericPackageDescriptionCheck verbosity pdfile
   -- convert parse warnings into PackageChecks
   let ws' = map (wrapParseWarning pdfile) ws
   ioChecks <- checkPackageFilesGPD verbosity ppd "."
-  let packageChecks = ioChecks ++ checkPackage ppd ++ ws'
+  let packageChecksPrim = ioChecks ++ checkPackage ppd ++ ws'
+      (packageChecks, unrecs) = filterPackageChecksByIdString packageChecksPrim ignores
+
+  CM.mapM_ (\s -> warn verbosity ("Unrecognised ignore \"" ++ s ++ "\"")) unrecs
 
   CM.mapM_ (outputGroupCheck verbosity) (groupChecks packageChecks)
 

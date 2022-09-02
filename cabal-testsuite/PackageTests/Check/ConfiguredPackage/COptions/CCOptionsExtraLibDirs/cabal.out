@@ -1,4 +1,4 @@
 # cabal check
 The following errors are likely to affect your build negatively:
-Error: Instead of 'cc-options: -Llibdir' use 'extra-lib-dirs: libdir'
+Error: [misplaced-c-opt] Instead of 'cc-options: -Llibdir' use 'extra-lib-dirs: libdir'
 Error: Hackage would reject this package.

@@ -1,4 +1,4 @@
 # cabal check
 The following errors are likely to affect your build negatively:
-Error: 'cpp-options: -Q' is not a portable C-preprocessor flag.
+Error: [cpp-options] 'cpp-options: -Q' is not a portable C-preprocessor flag.
 Error: Hackage would reject this package.

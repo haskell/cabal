@@ -1,4 +1,4 @@
 # cabal check
 The package will not build sanely due to these errors:
-Error: Duplicate modules in library: Foo
+Error: [duplicate-modules] Duplicate modules in library: Foo
 Error: Hackage would reject this package.

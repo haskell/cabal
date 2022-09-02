@@ -1,4 +1,4 @@
 # cabal check
 The following errors will cause portability problems on other environments:
-Error: The source-repository 'location' is a required field.
+Error: [repo-no-location] The source-repository 'location' is a required field.
 Error: Hackage would reject this package.
