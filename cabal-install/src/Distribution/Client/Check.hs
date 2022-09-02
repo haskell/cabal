@@ -81,7 +81,7 @@ check verbosity = do
   --      the exact same errors as it will.
   let pkg_desc = flattenPackageDescription ppd
   ioChecks <- checkPackageFiles verbosity pkg_desc "."
-  let packageChecks = ioChecks ++ checkPackage ppd (Just pkg_desc) ++ ws'
+  let packageChecks = ioChecks ++ checkPackage ppd ++ ws'
 
   CM.mapM_ (outputGroupCheck verbosity) (groupChecks packageChecks)
 

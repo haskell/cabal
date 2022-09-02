@@ -84,6 +84,7 @@ library
     Distribution.Compat.Time
     Distribution.Make
     Distribution.PackageDescription.Check
+    Distribution.PackageDescription.Check.Prim
     Distribution.ReadE
     Distribution.Simple
     Distribution.Simple.Bench
