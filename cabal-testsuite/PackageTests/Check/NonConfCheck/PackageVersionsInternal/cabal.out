@@ -1,0 +1,6 @@
+# cabal check
+Warning: These warnings may cause trouble when distributing the package:
+Warning: These packages miss upper bounds:
+- base
+Please add them, using `cabal gen-bounds` for suggestions. For more
+information see: https://pvp.haskell.org/
