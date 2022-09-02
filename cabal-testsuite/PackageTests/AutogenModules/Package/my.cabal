@@ -14,7 +14,7 @@ description:
 
 Library
     default-language: Haskell2010
-    build-depends: base
+    build-depends: base == 4.*
     exposed-modules:
         MyLibrary
         PackageInfo_AutogenModules
@@ -28,7 +28,7 @@ Library
 Executable Exe
     default-language: Haskell2010
     main-is: Dummy.hs
-    build-depends: base
+    build-depends: base == 4.*
     other-modules:
         MyExeModule
         PackageInfo_AutogenModules
@@ -41,7 +41,7 @@ Test-Suite Test
     default-language: Haskell2010
     main-is: Dummy.hs
     type: exitcode-stdio-1.0
-    build-depends: base
+    build-depends: base == 4.*
     other-modules:
         MyTestModule
         PackageInfo_AutogenModules
@@ -54,7 +54,7 @@ Benchmark Bench
     default-language: Haskell2010
     main-is: Dummy.hs
     type: exitcode-stdio-1.0
-    build-depends: base
+    build-depends: base == 4.*
     other-modules:
         MyBenchModule
         PackageInfo_AutogenModules
