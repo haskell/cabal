@@ -262,6 +262,12 @@ jobs:
           ghc-version: ${{ matrix.ghc }}
           cabal-version: latest # default, we are not using it in this job
 
+      - name: Install cabal-plan
+        run: |
+          cd $(mktemp -d)
+          cabal install cabal-plan --constraint='cabal-plan +exe'
+          echo "$HOME/.cabal/bin" >> $GITHUB_PATH
+
       - name: Download cabal executable from workflow artifacts
         uses: actions/download-artifact@v2
         with:
