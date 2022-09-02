@@ -1,4 +1,15 @@
 pull_request_rules:
+
+  # implementing PR delay logic: apply a label after 2 days of inactivity
+  # the label will allow Mergify to merge (see #8442)
+  - actions:
+      label:
+        add:
+          - merge delay passed
+    name: Wait for 2 days before validating merge
+    conditions:
+      - updated-at<2 days ago
+
   # rebase+merge strategy
   - actions:
       queue:
@@ -11,8 +22,9 @@ pull_request_rules:
     conditions:
       - base=master
       - label=merge me
+      - label=merge delay passed
       - '#approved-reviews-by>=2'
-      - updated-at<2 days ago
+
   # merge+squash strategy
   - actions:
       queue:
@@ -25,8 +37,9 @@ pull_request_rules:
     conditions:
       - base=master
       - label=squash+merge me
+      - label=merge delay passed
       - '#approved-reviews-by>=2'
-      - updated-at<2 days ago
+
   # rebase+merge strategy for backports: require 1 approver instead of 2
   - actions:
       queue:
