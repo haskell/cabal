@@ -26,9 +26,9 @@ import Test.Cabal.Prelude
 main = setupAndCabalTest . recordMode DoNotRecord $ do
   -- Foreign libraries don't work with GHC 7.6 and earlier
   skipUnlessGhcVersion ">= 7.8"
-  osx <- isOSX
-  ghc80 <- isGhcVersion "== 8.0.2"
-  expectBrokenIf (osx && ghc80) 7989 $
+  win <- isWindows
+  ghc94 <- isGhcVersion "== 9.4.*"
+  expectBrokenIf (win && ghc94) 8451 $
     withPackageDb $ do
         setup_install []
         setup "copy" [] -- regression test #4156
