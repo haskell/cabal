@@ -20,6 +20,11 @@ allow-newer:
 constraints: rere -rere-cfg
 constraints: these -assoc
 
+-- Andreas, 2022-08-19, https://github.com/haskell/cabal/issues/8377
+-- Force latest dependencies in the development version:
+constraints: text >= 2.0
+constraints: time >= 1.12
+
 -- So us hackers get all the assertion failures early:
 --
 -- NOTE: currently commented out, see

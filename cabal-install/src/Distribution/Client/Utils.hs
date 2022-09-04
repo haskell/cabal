@@ -28,6 +28,7 @@ module Distribution.Client.Utils
   , listFilesRecursive
   , listFilesInside
   , safeRead
+  , hasElem
   ) where
 
 import Prelude ()
@@ -73,7 +74,7 @@ import Data.Time.Calendar (toGregorian)
 import qualified System.Directory as Dir
 import qualified System.IO.Error as IOError
 #endif
-
+import qualified Data.Set as Set
 
 -- | Generic merging utility. For sorted input lists this is a full outer join.
 --
@@ -145,9 +146,7 @@ withEnv :: String -> String -> IO a -> IO a
 withEnv k v m = do
   mb_old <- lookupEnv k
   setEnv k v
-  m `Exception.finally` (case mb_old of
-    Nothing -> unsetEnv k
-    Just old -> setEnv k old)
+  m `Exception.finally` setOrUnsetEnv k mb_old
 
 -- | Executes the action with a list of environment variables and
 -- corresponding overrides, where
@@ -160,15 +159,15 @@ withEnv k v m = do
 withEnvOverrides :: [(String, Maybe FilePath)] -> IO a -> IO a
 withEnvOverrides overrides m = do
   mb_olds <- traverse lookupEnv envVars
-  traverse_ (uncurry update) overrides
-  m `Exception.finally` zipWithM_ update envVars mb_olds
+  traverse_ (uncurry setOrUnsetEnv) overrides
+  m `Exception.finally` zipWithM_ setOrUnsetEnv envVars mb_olds
    where
     envVars :: [String]
     envVars = map fst overrides
 
-    update :: String -> Maybe FilePath -> IO ()
-    update var Nothing    = unsetEnv var
-    update var (Just val) = setEnv var val
+setOrUnsetEnv :: String -> Maybe String -> IO ()
+setOrUnsetEnv var Nothing    = unsetEnv var
+setOrUnsetEnv var (Just val) = setEnv var val
 
 -- | Executes the action, increasing the PATH environment
 -- in some way
@@ -433,7 +432,7 @@ getCurrentYear = do
 -- | From System.Directory.Extra
 --   https://hackage.haskell.org/package/extra-1.7.9
 listFilesInside :: (FilePath -> IO Bool) -> FilePath -> IO [FilePath]
-listFilesInside test dir = ifM (notM $ test $ dropTrailingPathSeparator dir) (pure []) $ do
+listFilesInside test dir = ifNotM (test $ dropTrailingPathSeparator dir) (pure []) $ do
     (dirs,files) <- partitionM doesDirectoryExist =<< listContents dir
     rest <- concatMapM (listFilesInside test) dirs
     pure $ files ++ rest
@@ -455,6 +454,11 @@ listContents dir = do
 ifM :: Monad m => m Bool -> m a -> m a -> m a
 ifM b t f = do b' <- b; if b' then t else f
 
+-- | 'ifM' with swapped branches:
+--   @ifNotM b t f = ifM (not <$> b) t f@
+ifNotM :: Monad m => m Bool -> m a -> m a -> m a
+ifNotM = flip . ifM
+
 -- | From Control.Monad.Extra
 --   https://hackage.haskell.org/package/extra-1.7.9
 concatMapM :: Monad m => (a -> m [b]) -> [a] -> m [b]
@@ -471,12 +475,18 @@ partitionM f (x:xs) = do
     (as,bs) <- partitionM f xs
     pure ([x | res]++as, [x | not res]++bs)
 
--- | From Control.Monad.Extra
---   https://hackage.haskell.org/package/extra-1.7.9
-notM :: Functor m => m Bool -> m Bool
-notM = fmap not
-
 safeRead :: Read a => String -> Maybe a
 safeRead s
   | [(x, "")] <- reads s = Just x
   | otherwise = Nothing
+
+-- | @hasElem xs x = elem x xs@ except that @xs@ is turned into a 'Set' first.
+--   Use underapplied to speed up subsequent lookups, e.g. @filter (hasElem xs) ys@.
+--   Only amortized when used several times!
+--
+--   Time complexity \(O((n+m) \log(n))\) for \(m\) lookups in a list of length \(n\).
+--   (Compare this to 'elem''s \(O(nm)\).)
+--
+--   This is [Agda.Utils.List.hasElem](https://hackage.haskell.org/package/Agda-2.6.2.2/docs/Agda-Utils-List.html#v:hasElem).
+hasElem :: Ord a => [a] -> a -> Bool
+hasElem xs = (`Set.member` Set.fromList xs)
