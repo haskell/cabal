@@ -369,6 +369,7 @@ step_time_summary() {
 step_build() {
 print_header "build"
 timed $CABALNEWBUILD $TARGETS --dry-run || exit 1
+$CABALPLAN topo --builddir=$BUILDDIR || exit 1
 timed $CABALNEWBUILD $TARGETS || exit 1
 }
 

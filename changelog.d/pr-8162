@@ -1,10 +1,10 @@
-synopsis: Added haddocks command
+synopsis: Added haddock-project command
 packages: cabal-install
 prs: #8162
 issues: #7669
 description: {
 
-The `haddock-package` command can be used to build documentation of multiple
+The `haddock-project` command can be used to build documentation of multiple
 packages.  By passing `--local` option the directory will be self contained,
 by passing `--hackage` links to dependencies will link to `hackage`.  Both
 `--local` and `--hackage` options imply `--quickfix`, `--gen-index`,
