@@ -62,7 +62,7 @@ import System.Exit (ExitCode (..))
 import System.FilePath ((</>), takeExtensions, takeDrive, takeDirectory, normalise, splitPath, joinPath, splitFileName, (<.>), dropTrailingPathSeparator)
 import Control.Concurrent (threadDelay)
 import qualified Data.Char as Char
-import System.Directory (getTemporaryDirectory, getCurrentDirectory, canonicalizePath, copyFile, copyFile, doesDirectoryExist, doesFileExist, createDirectoryIfMissing, getDirectoryContents)
+import System.Directory (getTemporaryDirectory, getCurrentDirectory, canonicalizePath, copyFile, copyFile, doesDirectoryExist, doesFileExist, createDirectoryIfMissing, getDirectoryContents, listDirectory)
 import Control.Retry (exponentialBackoff, limitRetriesByCumulativeDelay)
 import Network.Wait (waitTcpVerbose)
 
@@ -1131,3 +1131,14 @@ withShorterPathForNewBuildStore test = do
              then takeDrive `fmap` getCurrentDirectory
              else getTemporaryDirectory
   withTempDirectory normal tempDir "cabal-test-store" test
+
+-- | Find where a package locates in the store dir. This works only if there is exactly one 1 ghc version
+-- and exactly 1 directory for the given package in the store dir.
+findDependencyInStore :: FilePath -- ^store dir
+                      -> String -- ^package name prefix
+                      -> IO FilePath -- ^package dir
+findDependencyInStore storeDir packageNamePrefix = do
+    storeDirForGhcVersion <- head <$> listDirectory storeDir
+    packageDirs <- listDirectory (storeDir </> storeDirForGhcVersion)
+    let libDir = head $ filter (packageNamePrefix `isPrefixOf`) packageDirs
+    pure (storeDir </> storeDirForGhcVersion </> libDir)
