@@ -111,7 +111,7 @@ main = do
                 -> IO result
         runTest runner path
             = runner Nothing [] path $
-                ["--builddir", dist_dir, path] ++ renderCommonArgs (mainCommonArgs args)
+                ["--builddir", dist_dir, "--store-dir", dist_dir </> "store"] ++ renderCommonArgs (mainCommonArgs args)
 
     case mainArgTestPaths args of
         [path] -> do
