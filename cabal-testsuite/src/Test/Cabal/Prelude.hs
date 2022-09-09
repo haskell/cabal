@@ -1137,8 +1137,15 @@ withShorterPathForNewBuildStore test = do
 findDependencyInStore :: FilePath -- ^store dir
                       -> String -- ^package name prefix
                       -> IO FilePath -- ^package dir
-findDependencyInStore storeDir packageNamePrefix = do
+findDependencyInStore storeDir pkgName = do
     storeDirForGhcVersion <- head <$> listDirectory storeDir
     packageDirs <- listDirectory (storeDir </> storeDirForGhcVersion)
-    let libDir = head $ filter (packageNamePrefix `isPrefixOf`) packageDirs
+    -- Ideally, we should call 'hashedInstalledPackageId' from 'Distribution.Client.PackageHash'.
+    -- But 'PackageHashInputs', especially 'PackageHashConfigInputs', is too hard to construct.
+    let pkgName' =
+            if buildOS == OSX
+            then filter (not . flip elem "aeiou") pkgName
+                -- simulates the way 'hashedInstalledPackageId' uses to compress package name
+            else pkgName
+    let libDir = head $ filter (pkgName' `isPrefixOf`) packageDirs
     pure (storeDir </> storeDirForGhcVersion </> libDir)
