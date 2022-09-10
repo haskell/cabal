@@ -315,7 +315,7 @@ cabalGArgs global_args cmd args input = do
           | cmd == "v1-install" || cmd == "v1-build" = [ "-j1" ]
           | otherwise                                = []
 
-        cabal_args = global_args
+        cabal_args = global_args ++ [ "--store-dir", testCabalDir env </> "store"]
                   ++ [ cmd, marked_verbose ]
                   ++ extra_args
                   ++ args
