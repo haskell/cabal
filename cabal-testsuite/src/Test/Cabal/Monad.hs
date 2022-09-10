@@ -320,7 +320,6 @@ runTestM mode m = withSystemTempDirectory "cabal-testsuite" $ \tmp_dir -> do
                         -- Set CABAL_DIR in addition to HOME, since HOME has no
                         -- effect on Windows.
                         , ("CABAL_DIR", Just (testCabalDir env))
-                        , ("CABAL_STORE_DIR", Just (testCabalDir env </> "store"))
                         , ("CABAL_CONFIG", Just $ testCabalDir env </> "config")
                         ],
                     testShouldFail = False,
