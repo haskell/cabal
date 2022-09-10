@@ -160,6 +160,8 @@ jobs:
         run: sh validate.sh $FLAGS -s lib-tests
 
       - name: Validate lib-suite
+        env:
+          CABAL_STORE_DIR: dist-newstyle/store
         run: sh validate.sh $FLAGS -s lib-suite
 
       - name: Validate cli-tests
@@ -168,6 +170,8 @@ jobs:
 
       - name: Validate cli-suite
         if: matrix.cli != 'false'
+        env:
+          CABAL_STORE_DIR: dist-newstyle/store
         run: sh validate.sh $FLAGS -s cli-suite
 
   validate-old-ghcs:
