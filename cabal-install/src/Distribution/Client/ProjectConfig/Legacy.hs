@@ -346,7 +346,15 @@ commandLineFlagsToProjectConfig globalFlags NixStyleFlags {..} clientInstallFlag
         splitConfig pc = (pc
                          , mempty { packageConfigProgramPaths = packageConfigProgramPaths pc
                                   , packageConfigProgramPathExtra = packageConfigProgramPathExtra pc
-                                  , packageConfigDocumentation = packageConfigDocumentation pc })
+
+                                  -- Some flags to haddock should be passed to dependencies
+                                  , packageConfigDocumentation = packageConfigDocumentation pc
+                                  , packageConfigHaddockHoogle = packageConfigHaddockHoogle pc
+                                  , packageConfigHaddockHtml = packageConfigHaddockHtml pc
+                                  , packageConfigHaddockInternal = packageConfigHaddockInternal pc
+                                  , packageConfigHaddockQuickJump = packageConfigHaddockQuickJump pc
+                                  , packageConfigHaddockLinkedSource = packageConfigHaddockLinkedSource pc
+                                  })
 
 -- | Convert from the types currently used for the user-wide @~/.cabal/config@
 -- file into the 'ProjectConfig' type.
