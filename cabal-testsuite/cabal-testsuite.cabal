@@ -114,6 +114,10 @@ custom-setup
   -- we only depend on even stable releases of lib:Cabal
   -- and due to Custom complexity and ConstraintSetupCabalMaxVersion
   -- it can't be the current version
-  setup-depends: Cabal == 3.6.*,
-                 Cabal-syntax == 3.6.*,
-                 base, filepath, directory
+  if impl(ghc < 8)
+    setup-depends: Cabal == 3.6.*,
+                   Cabal-syntax == 3.6.*,
+  else
+    setup-depends: Cabal == 3.8.*,
+                   Cabal-syntax == 3.8.*,
+  setup-depends: base, filepath, directory
