@@ -45,7 +45,6 @@ params = Map.fromList
     , pair "8.6.5"  $ Z "ghc-8.6.5"  "8.6.5-bionic"  False True  False True  ""
     , pair "8.4.4"  $ Z "ghc-8.4.4"  "8.4.4-bionic"  False True  False True  ""
     , pair "8.2.2"  $ Z "ghc-8.2.2"  "8.2.2-bionic"  True  True  False True  ""
-    , pair "8.0.2"  $ Z "ghc-8.0.2"  "8.0.2-bionic"  True  True  False True  ""
     ]
   where
     pair = (,)
