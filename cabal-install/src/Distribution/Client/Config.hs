@@ -604,12 +604,12 @@ maybeGetCabalDir = do
                then Just defaultDir
                else Nothing
 
--- The default behaviour of cabal-install is to use the XDG directory
--- standard.  However, if CABAL_DIR is set, we instead use that
--- directory as a single store for everything cabal-related, like the
--- old ~/.cabal behaviour.  Also, for backwards compatibility, if
--- ~/.cabal exists we treat that as equivalent to CABAL_DIR being set.
--- This function abstracts that decision-making.
+-- | The default behaviour of cabal-install is to use the XDG
+-- directory standard.  However, if @CABAL_DIR@ is set, we instead use
+-- that directory as a single store for everything cabal-related, like
+-- the old @~/.cabal@ behaviour.  Also, for backwards compatibility,
+-- if @~/.cabal@ exists we treat that as equivalent to @CABAL_DIR@
+-- being set.  This function abstracts that decision-making.
 getDefaultDir :: XdgDirectory -> FilePath -> IO FilePath
 getDefaultDir xdg subdir = do
   mDir <- maybeGetCabalDir
