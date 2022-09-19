@@ -13,17 +13,20 @@ on a new platform. If you already have a functional (if dated) cabal-install
 please rather run `cabal v2-install .`.
 """
 
+import argparse
 from enum import Enum
 import hashlib
-import logging
 import json
 from pathlib import Path
 import platform
 import shutil
 import subprocess
+import sys
+import tempfile
+import urllib.request
 from textwrap import dedent
-from typing import Set, Optional, Dict, List, Tuple, \
-                   NewType, BinaryIO, NamedTuple, TypeVar
+from typing import Optional, Dict, List, Tuple, \
+                   NewType, BinaryIO, NamedTuple
 
 #logging.basicConfig(level=logging.INFO)
 
@@ -68,6 +71,15 @@ BootstrapInfo = NamedTuple('BootstrapInfo', [
     ('dependencies', List[BootstrapDep]),
 ])
 
+FetchInfo = NamedTuple('FetchInfo', [
+    ('url', str),
+    ('sha256', SHA256Hash)
+])
+
+FetchPlan = Dict[Path, FetchInfo]
+
+local_packages: List[PackageName] = ["Cabal-syntax", "Cabal", "cabal-install-solver", "cabal-install"]
+
 class Compiler:
     def __init__(self, ghc_path: Path):
         if not ghc_path.is_file():
@@ -75,14 +87,17 @@ class Compiler:
 
         self.ghc_path = ghc_path.resolve()
 
+        exe = ''
+        if platform.system() == 'Windows': exe = '.exe'
+
         info = self._get_ghc_info()
         self.version = info['Project version']
         #self.lib_dir = Path(info['LibDir'])
         #self.ghc_pkg_path = (self.lib_dir / 'bin' / 'ghc-pkg').resolve()
-        self.ghc_pkg_path = (self.ghc_path.parent / 'ghc-pkg').resolve()
+        self.ghc_pkg_path = (self.ghc_path.parent / ('ghc-pkg' + exe)).resolve()
         if not self.ghc_pkg_path.is_file():
             raise TypeError(f'ghc-pkg {self.ghc_pkg_path} is not a file')
-        self.hsc2hs_path = (self.ghc_path.parent / 'hsc2hs').resolve()
+        self.hsc2hs_path = (self.ghc_path.parent / ('hsc2hs' + exe)).resolve()
         if not self.hsc2hs_path.is_file():
             raise TypeError(f'hsc2hs {self.hsc2hs_path} is not a file')
 
@@ -118,36 +133,6 @@ def verify_sha256(expected_hash: SHA256Hash, f: Path):
     if h != expected_hash:
         raise BadTarball(f, expected_hash, h)
 
-def fetch_package(package: PackageName,
-                  version: Version,
-                  src_sha256: SHA256Hash,
-                  revision: Optional[int],
-                  cabal_sha256: Optional[SHA256Hash],
-                  ) -> (Path, Path):
-    import urllib.request
-
-    # Download source distribution
-    tarball = TARBALLS / f'{package}-{version}.tar.gz'
-    if not tarball.exists():
-        print(f'Fetching {package}-{version}...')
-        tarball.parent.mkdir(parents=True, exist_ok=True)
-        url = package_url(package, version)
-        with urllib.request.urlopen(url) as resp:
-            shutil.copyfileobj(resp, tarball.open('wb'))
-
-    verify_sha256(src_sha256, tarball)
-
-    # Download revised cabal file
-    cabal_file = TARBALLS / f'{package}.cabal'
-    if revision is not None and not cabal_file.exists():
-        assert cabal_sha256 is not None
-        url = package_cabal_url(package, version, revision)
-        with urllib.request.urlopen(url) as resp:
-            shutil.copyfileobj(resp, cabal_file.open('wb'))
-            verify_sha256(cabal_sha256, cabal_file)
-
-    return (tarball, cabal_file)
-
 def read_bootstrap_info(path: Path) -> BootstrapInfo:
     obj = json.load(path.open())
 
@@ -169,13 +154,15 @@ def check_builtin(dep: BuiltinDep, ghc: Compiler) -> None:
     print(f'Using {dep.package}-{dep.version} from GHC...')
     return
 
-def install_dep(dep: BootstrapDep, ghc: Compiler) -> None:
-    dist_dir = (DISTDIR / f'{dep.package}-{dep.version}').resolve()
-
+def resolve_dep(dep : BootstrapDep) -> Path:
     if dep.source == PackageSource.HACKAGE:
-        assert dep.src_sha256 is not None
-        (tarball, cabal_file) = fetch_package(dep.package, dep.version, dep.src_sha256,
-                                dep.revision, dep.cabal_sha256)
+
+        tarball = TARBALLS / f'{dep.package}-{dep.version}.tar.gz'
+        verify_sha256(dep.src_sha256, tarball)
+
+        cabal_file = TARBALLS / f'{dep.package}.cabal'
+        verify_sha256(dep.cabal_sha256, cabal_file)
+
         UNPACKED.mkdir(parents=True, exist_ok=True)
         shutil.unpack_archive(tarball.resolve(), UNPACKED, 'gztar')
         sdist_dir = UNPACKED / f'{dep.package}-{dep.version}'
@@ -191,16 +178,16 @@ def install_dep(dep: BootstrapDep, ghc: Compiler) -> None:
                 f.write('main = defaultMain\n')
 
     elif dep.source == PackageSource.LOCAL:
-        if dep.package == 'Cabal':
-            sdist_dir = Path('Cabal').resolve()
-        elif dep.package == 'Cabal-syntax':
-            sdist_dir = Path('Cabal-syntax').resolve()
-        elif dep.package == 'cabal-install-solver':
-            sdist_dir = Path('cabal-install-solver').resolve()
-        elif dep.package == 'cabal-install':
-            sdist_dir = Path('cabal-install').resolve()
+        if dep.package in local_packages:
+            sdist_dir = Path(dep.package).resolve()
         else:
             raise ValueError(f'Unknown local package {dep.package}')
+    return sdist_dir
+
+def install_dep(dep: BootstrapDep, ghc: Compiler) -> None:
+    dist_dir = (DISTDIR / f'{dep.package}-{dep.version}').resolve()
+
+    sdist_dir = resolve_dep(dep)
 
     install_sdist(dist_dir, sdist_dir, ghc, dep.flags)
 
@@ -307,7 +294,7 @@ def archive_name(cabalversion):
 
     return f'cabal-install-{cabalversion}-{machine}-{version}'
 
-def make_archive(cabal_path):
+def make_distribution_archive(cabal_path):
     import tempfile
 
     print(f'Creating distribution tarball')
@@ -334,28 +321,62 @@ def make_archive(cabal_path):
 
     return archivename
 
+def fetch_from_plan(plan : FetchPlan, output_dir : Path):
+  output_dir.resolve()
+  output_dir.mkdir(parents=True, exist_ok=True)
+
+  for path in plan:
+    output_path = output_dir / path
+    url = plan[path].url
+    sha = plan[path].sha256
+    if not output_path.exists():
+      print(f'Fetching {url}...')
+      with urllib.request.urlopen(url) as resp:
+        shutil.copyfileobj(resp, output_path.open('wb'))
+    verify_sha256(sha, output_path)
+
+def gen_fetch_plan(info : BootstrapInfo) -> FetchPlan :
+    sources_dict = {}
+    for dep in info.dependencies:
+      if not(dep.package in local_packages):
+        sources_dict[f"{dep.package}-{dep.version}.tar.gz"] = FetchInfo(package_url(dep.package, dep.version), dep.src_sha256)
+        if dep.revision is not None:
+          sources_dict[f"{dep.package}.cabal"] = FetchInfo(package_cabal_url(dep.package, dep.version, dep.revision), dep.cabal_sha256)
+    return sources_dict
+
+def find_ghc(compiler) -> Compiler:
+  if compiler is None:
+      path = shutil.which('ghc')
+      if path is None:
+          raise ValueError("Couldn't find ghc in PATH")
+      ghc = Compiler(Path(path))
+  else:
+      ghc = Compiler(compiler)
+  return ghc
+
 def main() -> None:
-    import argparse
     parser = argparse.ArgumentParser(
         description="bootstrapping utility for cabal-install.",
         epilog = USAGE,
         formatter_class = argparse.RawDescriptionHelpFormatter)
-    parser.add_argument('-d', '--deps', type=Path, default='bootstrap-deps.json',
+    parser.add_argument('-d', '--deps', type=Path,
                         help='bootstrap dependency file')
     parser.add_argument('-w', '--with-compiler', type=Path,
                         help='path to GHC')
+    parser.add_argument('-s', '--bootstrap-sources', type=Path,
+                        help='path to prefetched bootstrap sources archive')
+    parser.add_argument('--archive', dest='want_archive', action='store_true')
+    parser.add_argument('--no-archive', dest='want_archive', action='store_false')
+    parser.set_defaults(want_archive=True)
+
+    subparsers = parser.add_subparsers(dest="command")
+
+    parser_fetch = subparsers.add_parser('build', help='build cabal-install (default)')
+
+    parser_fetch = subparsers.add_parser('fetch', help='fetch all required sources from Hackage (for offline builds)')
+    parser_fetch.add_argument('-o','--output', type=Path, default='bootstrap-sources')
+
     args = parser.parse_args()
-
-    # Find compiler
-    if args.with_compiler is None:
-        path = shutil.which('ghc')
-        if path is None:
-            raise ValueError("Couldn't find ghc in PATH")
-        ghc = Compiler(Path(path))
-    else:
-        ghc = Compiler(args.with_compiler)
-
-    print(f'Bootstrapping cabal-install with GHC {ghc.version} at {ghc.ghc_path}...')
 
     print(dedent("""
         DO NOT use this script if you have another recent cabal-install available.
@@ -363,26 +384,82 @@ def main() -> None:
         architectures.
     """))
 
+    ghc = find_ghc(args.with_compiler)
+
+    sources_fmt = 'gztar'
+    if platform.system() == 'Windows': sources_fmt = 'zip'
+
+    if args.deps is None:
+      # We have a tarball with all the required information, unpack it
+      if args.bootstrap_sources is not None:
+        print(f'Unpacking {args.bootstrap_sources} to {TARBALLS}')
+        shutil.unpack_archive(args.bootstrap_sources.resolve(), TARBALLS, sources_fmt)
+        args.deps = TARBALLS / 'plan-bootstrap.json'
+        print(f"using plan-bootstrap.json ({args.deps}) from {args.bootstrap_sources}")
+      else:
+        print("The bootstrap script requires a bootstrap plan JSON file.")
+        print("See bootstrap/README.md for more information.")
+        sys.exit(1)
+
     info = read_bootstrap_info(args.deps)
-    bootstrap(info, ghc)
-    cabal_path = (BINDIR / 'cabal').resolve()
 
-    archive = make_archive(cabal_path)
+    if args.command == 'fetch':
+        plan = gen_fetch_plan(info)
 
-    print(dedent(f'''
-        Bootstrapping finished!
+        print(f'Fetching sources to bootstrap cabal-install with GHC {ghc.version} at {ghc.ghc_path}...')
 
-        The resulting cabal-install executable can be found at
+        # In temporary directory, create a directory which we will archive
+        tmpdir = TMPDIR.resolve()
+        tmpdir.mkdir(parents=True, exist_ok=True)
 
-            {cabal_path}
+        rootdir = Path(tempfile.mkdtemp(dir=tmpdir))
 
-        It have been archived for distribution in
+        fetch_from_plan(plan, rootdir)
 
-            {archive}
+        shutil.copyfile(args.deps, rootdir / 'plan-bootstrap.json')
 
-        You now should use this to build a full cabal-install distribution
-        using v2-build.
-    '''))
+        archivename = shutil.make_archive(args.output, sources_fmt, root_dir=rootdir)
+
+        print(dedent(f"""
+            Bootstrap sources saved to {archivename}
+
+            Use these with the command:
+
+            bootstrap.py -w {ghc.ghc_path} -s {archivename}
+            """))
+
+    else: # 'build' command (default behaviour)
+
+        print(f'Bootstrapping cabal-install with GHC {ghc.version} at {ghc.ghc_path}...')
+
+        if args.bootstrap_sources is None:
+          plan = gen_fetch_plan(info)
+          fetch_from_plan(plan, TARBALLS)
+
+        bootstrap(info, ghc)
+        cabal_path = (BINDIR / 'cabal').resolve()
+
+        print(dedent(f'''
+            Bootstrapping finished!
+
+            The resulting cabal-install executable can be found at
+
+              {cabal_path}
+            '''))
+
+        if args.want_archive:
+            dist_archive = make_distribution_archive(cabal_path)
+
+            print(dedent(f'''
+                The cabal-install executable has been archived for distribution in
+
+                  {dist_archive}
+                '''))
+
+        print(dedent(f'''
+            You now should use this to build a full cabal-install distribution
+            using v2-build.
+            '''))
 
 def subprocess_run(args, **kwargs):
     "Like subprocess.run, but also print what we run"

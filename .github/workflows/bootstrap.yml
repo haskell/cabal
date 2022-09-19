@@ -32,8 +32,12 @@ jobs:
           GHC_VERSION=${{ matrix.ghc }}
           ghcup config set cache true
           ghcup install ghc $GHC_VERSION
-          # We use linux dependencies also on macos
-          python3 bootstrap/bootstrap.py -w $(ghcup whereis ghc $GHC_VERSION) -d bootstrap/linux-$GHC_VERSION.json
+
+          # Fetch the bootstrap sources (we use linux dependencies also on macos)
+          python3 bootstrap/bootstrap.py -w $(ghcup whereis ghc $GHC_VERSION) -d bootstrap/linux-$GHC_VERSION.json fetch
+
+          # Bootstrap using the bootstrap sources
+          python3 bootstrap/bootstrap.py -w $(ghcup whereis ghc $GHC_VERSION) --bootstrap-sources bootstrap-sources.tar.gz
 
       - name: Smoke test
         run: |

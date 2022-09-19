@@ -31,10 +31,10 @@ import Distribution.Compat.Process      (proc)
 import Distribution.Simple.Command
 import Distribution.Simple.Flag         (fromFlag, fromFlagOrDefault)
 import Distribution.Simple.Utils
-  ( IOData(..), IODataMode(..), ignoreSigPipe, rawSystemStdInOut, rawSystemProcAction, fromCreatePipe )
+  ( IOData(..), IODataMode(..), ignoreSigPipe, rawSystemStdInOut, rawSystemProcAction,
+    fromCreatePipe, die' )
 import System.IO                        (hClose, hPutStr)
 import System.Environment               (lookupEnv)
-import System.FilePath                  (takeFileName)
 import qualified System.Process as Process
 
 data FileInfo = FileInfo String String -- ^ path, description
@@ -78,9 +78,11 @@ manpageCmd pname commands flags
 
         unless (ec1 == ExitSuccess) $ exitWith ec1
 
-        pager <- fromMaybe "less" <$> lookupEnv "PAGER"
-        -- 'less' is borked with color sequences otherwise
-        let pagerArgs = if takeFileName pager == "less" then ["-R"] else []
+        pagerAndArgs <- fromMaybe "less -R" <$> lookupEnv "PAGER"
+        -- 'less' is borked with color sequences otherwise, hence -R
+        (pager, pagerArgs) <- case words pagerAndArgs of
+          []     -> die' verbosity "man: empty value of the PAGER environment variable"
+          (p:pa) -> pure (p, pa)
         -- Pipe output of @nroff@ into @less@
         (ec2, _) <- rawSystemProcAction verbosity
             (proc pager pagerArgs) { Process.std_in = Process.CreatePipe }
