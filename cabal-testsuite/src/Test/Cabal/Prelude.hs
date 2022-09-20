@@ -332,6 +332,14 @@ withProjectFile :: FilePath -> TestM a -> TestM a
 withProjectFile fp m =
     withReaderT (\env -> env { testCabalProjectFile = fp }) m
 
+-- | Decode a json object from the *last* line of the result output.
+withJsonOutput :: JSON.FromJSON a => WithCallStack (Result -> TestM a)
+withJsonOutput r = do
+    let jsonLine = last . lines . getMarkedOutput $ resultOutput r
+    case JSON.eitherDecode' (BSL.fromStrict $ C.pack jsonLine) of
+        Left err -> fail $ "Failed to decode JSON object:" ++ err
+        Right o -> pure o
+
 -- | Assuming we've successfully configured a new-build project,
 -- read out the plan metadata so that we can use it to do other
 -- operations.

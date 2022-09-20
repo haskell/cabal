@@ -1,0 +1,20 @@
+# cabal v2-update
+Downloading the latest package list from test-local-repo
+# cabal status
+Resolving dependencies...
+Error: cabal: Could not resolve dependencies:
+[__0] trying: InvalidDep-0.1.0.0 (user goal)
+[__1] trying: another-framework-0.8.1.1 (dependency of InvalidDep)
+[__2] next goal: base (dependency of another-framework)
+[__2] rejecting: base-<VERSION>/installed-<HASH> (conflict: another-framework => base<3 && >=3)
+[__2] fail (backjumping, conflict set: another-framework, base)
+After searching the rest of the dependency tree exhaustively, these were the goals I've had most trouble fulfilling: another-framework (3), InvalidDep (2), base (2)
+# cabal status
+Resolving dependencies...
+Error: cabal: Could not resolve dependencies:
+[__0] trying: InvalidDep-0.1.0.0 (user goal)
+[__1] trying: another-framework-0.8.1.1 (dependency of InvalidDep)
+[__2] next goal: base (dependency of another-framework)
+[__2] rejecting: base-<VERSION>/installed-<HASH> (conflict: another-framework => base<3 && >=3)
+[__2] fail (backjumping, conflict set: another-framework, base)
+After searching the rest of the dependency tree exhaustively, these were the goals I've had most trouble fulfilling: another-framework (3), InvalidDep (2), base (2)

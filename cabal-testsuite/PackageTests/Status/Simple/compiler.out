@@ -1,0 +1,4 @@
+# cabal status
+Warning: <ROOT>/cabal.project: Unrecognized field 'executables' on line 4
+Resolving dependencies...
+{"cabal-version":"3.9","compiler":{"flavour":"ghc","compiler-id":"ghc-<GHCVER>","path":"<GHCPATH>"}}

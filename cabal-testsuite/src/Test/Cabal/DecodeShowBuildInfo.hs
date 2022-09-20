@@ -1,6 +1,8 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE OverloadedStrings #-}
 module Test.Cabal.DecodeShowBuildInfo where
 
 import           Test.Cabal.Prelude
@@ -14,6 +16,8 @@ import           Distribution.Package
 import           Distribution.Pretty (prettyShow)
 import           Control.Monad.Trans.Reader
 import           Data.Aeson
+import           Data.List (sort, nub)
+import           Data.Maybe (maybeToList, isJust)
 import           GHC.Generics
 import           System.Exit
 
@@ -186,3 +190,85 @@ bench = CBenchName . mkUnqualComponentName
 -- | Helper function to create a main library component name.
 mainLib :: ComponentName
 mainLib = CLibName LMainLibName
+
+-- -----------------------------------------------------------
+-- Cabal Status json decoder
+-- -----------------------------------------------------------
+
+-- Copied from 'CmdStatus' at the moment, but maybe the datatypes diverge at some point
+-- in the future. Thus, we copy them here.
+
+data StatusInformation = StatusInformation
+  { siCabalVersion :: String
+  , siCompiler :: Maybe CompilerInformation
+  , siTargetResolving :: Maybe [ResolvedTarget]
+  }
+  deriving (Generic, Show, Read, Eq, Ord)
+
+data CompilerInformation = CompilerInformation
+  { ciFlavour :: String
+  , ciCompilerId :: String
+  , ciPath :: FilePath
+  }
+  deriving (Generic, Show, Read, Eq, Ord)
+
+data ResolvedTarget = ResolvedTarget
+  { rtOriginalTarget :: String
+  -- | UnitId of the resolved target.
+  -- If 'Nothing', then the given target can not be resolved
+  -- to a target in this project.
+  , rtUnitId :: Maybe String
+  }
+  deriving (Generic, Show, Read, Eq, Ord)
+
+instance FromJSON StatusInformation where
+  parseJSON = withObject "StatusInformation" $ \v -> do
+    StatusInformation
+      <$> v .: "cabal-version"
+      <*> v .:? "compiler"
+      <*> v .:? "targets"
+
+instance FromJSON CompilerInformation where
+  parseJSON = genericParseJSON defaultOptions { fieldLabelModifier = drop 3 . camelTo2 '-' }
+
+instance FromJSON ResolvedTarget where
+  parseJSON = withObject "ResolvedTarget" $ \v -> do
+    ResolvedTarget
+      <$> v .: "target"
+      <*> v .: "unit-id"
+
+-- -----------------------------------------------------------
+-- Assertion Helpers to define succinct test cases
+-- -----------------------------------------------------------
+
+allUniqueTargets :: StatusInformation -> [TargetString]
+allUniqueTargets si = nub . sort . map rtOriginalTarget . concat $ maybeToList $ siTargetResolving si
+
+type TargetString = String
+
+resolve :: TargetString -> StatusInformation -> TestM [ResolvedTarget]
+resolve target si = do
+  rts <- resolveAll target si
+  pure $ filter (not . (==Nothing) . rtUnitId) rts
+
+resolveOnce :: TargetString -> StatusInformation -> TestM ()
+resolveOnce target si = do
+  resolveAll target si >>= \case
+    [rt] -> assertBool "Has associated unit-id" (isJust $ rtUnitId rt)
+    _ -> fail "Failed to resolve exactly once"
+
+resolveAll :: TargetString -> StatusInformation -> TestM [ResolvedTarget]
+resolveAll target si = do
+  case fmap (filter ((== target) . rtOriginalTarget)) (siTargetResolving si) of
+    Nothing -> fail $ "Failed to find \"" ++ target ++ "\". Available: " ++ show (allUniqueTargets si)
+    Just rts -> pure rts
+
+unresolvable :: TargetString -> StatusInformation -> TestM ()
+unresolvable target si =
+  resolveAll target si >>= \case
+    [t] -> assertEqual "No associated unit-id" Nothing (rtUnitId t)
+    ts
+      -- assumes that the target was given to `cabal status --target <target>` only once
+      | all ((==Nothing) . rtUnitId) ts -> fail "Target resolves to Nothing multiple times. Internal inconsistency."
+      | otherwise -> fail $ "Target unexpectedly resolves to the following units: " ++ show (map rtUnitId ts)
+

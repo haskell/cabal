@@ -1,0 +1,41 @@
+# cabal status
+Error: cabal: The status command requires the flag '--output-format'.
+# cabal status
+Resolving dependencies...
+{"cabal-version":"3.9","targets":[{"target":"exe/Main.hs","unit-id":"Simple-0.1.0.0-inplace-Simple"}]}
+# cabal status
+{"cabal-version":"3.9","targets":[{"target":"exe/Main.hs","unit-id":"Simple-0.1.0.0-inplace-Simple"},{"target":"exe/Main2.hs","unit-id":"Simple-0.1.0.0-inplace-Simple2"}]}
+# cabal status
+{"cabal-version":"3.9","targets":[{"target":"src/MyLib.hs","unit-id":null}]}
+# cabal status
+{"cabal-version":"3.9","targets":[{"target":"src/MyLib2.hs","unit-id":null}]}
+# cabal status
+{"cabal-version":"3.9","targets":[{"target":"bench/Bench.hs","unit-id":null}]}
+# cabal status
+{"cabal-version":"3.9","targets":[{"target":"test/Main.hs","unit-id":null}]}
+# cabal status
+{"cabal-version":"3.9","targets":[{"target":"flibsrc/MyForeignLib/AnotherVal.hs","unit-id":"Simple-0.1.0.0-inplace-myforeignlib"},{"target":"flibsrc/MyForeignLib/Hello.hs","unit-id":"Simple-0.1.0.0-inplace-myforeignlib"},{"target":"flibsrc/MyForeignLib/SomeBindings.hsc","unit-id":"Simple-0.1.0.0-inplace-myforeignlib"},{"target":"csrc/MyForeignLibWrapper.c","unit-id":null}]}
+# cabal status
+{"cabal-version":"3.9","targets":[{"target":"Benchs","unit-id":"Simple-0.1.0.0-inplace-Benchs"}]}
+# cabal status
+{"cabal-version":"3.9","targets":[{"target":"all","unit-id":"Simple-0.1.0.0-inplace"},{"target":"all","unit-id":"Simple-0.1.0.0-inplace-Simple"},{"target":"all","unit-id":"Simple-0.1.0.0-inplace-Simple2"},{"target":"all","unit-id":"Simple-0.1.0.0-inplace-myforeignlib"}]}
+# cabal status
+{"cabal-version":"3.9","targets":[{"target":"exes","unit-id":"Simple-0.1.0.0-inplace-Simple"},{"target":"exes","unit-id":"Simple-0.1.0.0-inplace-Simple2"}]}
+# cabal status
+{"cabal-version":"3.9","targets":[{"target":"tests","unit-id":"Simple-0.1.0.0-inplace-Tests"}]}
+# cabal status
+{"cabal-version":"3.9","targets":[{"target":"benchmarks","unit-id":"Simple-0.1.0.0-inplace-Benchs"}]}
+# cabal status
+{"cabal-version":"3.9","targets":[{"target":"executables","unit-id":"Simple-0.1.0.0-inplace-Simple"},{"target":"executables","unit-id":"Simple-0.1.0.0-inplace-Simple2"}]}
+# cabal status
+{"cabal-version":"3.9","targets":[{"target":"Main2.hs","unit-id":null}]}
+# cabal status
+{"cabal-version":"3.9","targets":[{"target":"Main3.hs","unit-id":null},{"target":"src/MyLib2.hs","unit-id":null},{"target":"Main3.hs","unit-id":null}]}
+# cabal status
+{"cabal-version":"3.9","targets":[{"target":"Lib.hs","unit-id":null}]}
+# cabal status
+{"cabal-version":"3.9","compiler":{"flavour":"ghc","compiler-id":"ghc-<GHCVER>","path":"<GHCPATH>"},"targets":[{"target":"Lib.hs","unit-id":null}]}
+# cabal status
+{"cabal-version":"3.9","targets":[{"target":"Lib2.hs","unit-id":null}]}
+# cabal status
+{"cabal-version":"3.9","compiler":{"flavour":"ghc","compiler-id":"ghc-<GHCVER>","path":"<GHCPATH>"},"targets":[{"target":"Lib.hs","unit-id":null}]}
