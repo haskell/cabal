@@ -56,7 +56,7 @@ Various environment variables affect ``cabal-install``.
    subdirectories of this directory, including the configuration file
    if ``CABAL_CONFIG`` is unset.  If ``CABAL_DIR`` is unset, Cabal
    will store data files according to the XDG Base Directory
-   Specification.
+   Specification (see `directories`_).
 
    .. note::
 
@@ -89,6 +89,8 @@ explicitly via ``--config-file`` or ``$CABAL_CONFIG``, then
 ``cabal-install`` will generate the default one, with directories
 based on ``$CABAL_DIR`` (if set) or according to the XDG Base
 Directory Specification.
+
+.. _directories:
 
 Directories
 -----------
