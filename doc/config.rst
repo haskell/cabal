@@ -88,7 +88,7 @@ If the configuration file does not exist, and it was not given
 explicitly via ``--config-file`` or ``$CABAL_CONFIG``, then
 ``cabal-install`` will generate the default one, with directories
 based on ``$CABAL_DIR`` (if set) or according to the XDG Base
-Directory Specification.
+Directory Specification, as listed below.
 
 .. _directories:
 
@@ -100,8 +100,7 @@ data in directories according to the XDG Base Directory Specification.
 The following directories are used:
 
 * ``$XDG_CONFIG_HOME/cabal`` for the main configuration file.  On
-  Unix, this defaults to ``~/.config/cabal``, and most of the
-  documentation will assume this default.  On Windows this defaults to
+  Unix, this defaults to ``~/.config/cabal``.  On Windows this defaults to
   ``%APPDATA%/cabal``.  Overridden by the ``CABAL_CONFIG`` environment
   variable if set.
 
@@ -248,7 +247,8 @@ thus, looks similar to a ``package-name.cabal``'s ``build-depends`` section.
 .. note::
     The ``preferred-versions`` file can be used to restrict the package set from Hackage, by preferring
     certain versions or marking a specific version as deprecated. To achieve this, add a
-    local no-index repository to your ``~/.config/cabal/config``, where the directory contains your custom
+    local no-index repository to your :ref:`configuration file <config-file-discovery>`,
+    where the directory contains your custom
     ``preferred-versions``. After running ``cabal update``, all ``cabal`` operations will honour the
     configuration.
 
