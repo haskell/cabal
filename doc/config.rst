@@ -95,7 +95,7 @@ Directory Specification.
 Directories
 -----------
 
-Unless the ``CABAL_DIR`` environment variable is set, Cabal will store
+Unless the ``CABAL_DIR`` environment variable is set or `~/.cabal` exists, Cabal will store
 data in directories according to the XDG Base Directory Specification.
 The following directories are used:
 
