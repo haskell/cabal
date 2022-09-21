@@ -138,7 +138,6 @@ import qualified Distribution.Client.BuildReports.Anonymous as BuildReports
 import qualified Distribution.Client.BuildReports.Storage as BuildReports
          ( storeLocal )
 
-import           Distribution.Client.Config ()
 import           Distribution.Client.HttpUtils
 import           Distribution.Client.Setup hiding (packageName)
 import           Distribution.Compiler
