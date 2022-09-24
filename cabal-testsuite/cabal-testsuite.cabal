@@ -26,7 +26,7 @@ common shared
   default-language: Haskell2010
 
   build-depends:
-    , base >= 4.6 && <4.17
+    , base >= 4.6 && <4.18
     -- this needs to match the in-tree lib:Cabal version
     , Cabal ^>= 3.9.0.0
     , Cabal-syntax ^>= 3.9.0.0
@@ -103,6 +103,7 @@ executable cabal-tests
     , clock                 ^>= 0.7.2 || ^>=0.8
 
   build-tool-depends: cabal-testsuite:setup
+  default-extensions: TypeOperators
 
 -- this executable is needed by lib:cabal-testsuite
 executable setup
@@ -112,7 +113,8 @@ executable setup
 custom-setup
   -- we only depend on even stable releases of lib:Cabal
   -- and due to Custom complexity and ConstraintSetupCabalMaxVersion
-  -- it can't be the current version
-  setup-depends: Cabal == 3.6.*,
-                 Cabal-syntax == 3.6.*,
+  -- it has to be the latest release version plus
+  -- you have to use the latest cabal-install release
+  setup-depends: Cabal == 3.8.*,
+                 Cabal-syntax == 3.8.*,
                  base, filepath, directory
