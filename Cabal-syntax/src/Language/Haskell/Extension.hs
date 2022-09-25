@@ -583,6 +583,9 @@ data KnownExtension =
   -- | Enable explicit type applications with the syntax @id \@Int@.
   | TypeApplications
 
+  -- | Enable @type data@ declarations, defining constructors at the type level.
+  | TypeData
+
   -- | Dissolve the distinction between types and kinds, allowing the compiler
   -- to reason about kind equality and therefore enabling GADTs to be promoted
   -- to the type-level.
