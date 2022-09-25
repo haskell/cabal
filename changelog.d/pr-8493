@@ -5,6 +5,6 @@ significance: significant
 
 description: {
 
-- adds the TypeData language extension (ghc extension 106)
+- adds support for the TypeData language extension (GHC proposal #106)
 
 }
