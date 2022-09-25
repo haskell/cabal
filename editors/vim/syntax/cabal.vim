@@ -266,6 +266,7 @@ syn keyword cabalExtension contained
   \ TransformListComp
   \ TupleSections
   \ TypeApplications
+  \ TypeData
   \ TypeFamilies
   \ TypeFamilyDependencies
   \ TypeInType
