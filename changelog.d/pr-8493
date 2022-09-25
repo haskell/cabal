@@ -1,0 +1,10 @@
+synopsis: Add language extension TypeData
+packages: Cabal-syntax
+prs: #8493
+significance: significant
+
+description: {
+
+- adds the TypeData language extension (ghc extension 106)
+
+}
