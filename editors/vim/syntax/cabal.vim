@@ -160,6 +160,7 @@ syn keyword cabalExtension contained
   \ DataKinds
   \ DatatypeContexts
   \ DefaultSignatures
+  \ DeepSubsumption
   \ DeriveAnyClass
   \ DeriveDataTypeable
   \ DeriveFoldable
