@@ -10,5 +10,8 @@ library
   build-depends:
     , base     ^>=4.14
     , somelib
+    , alphalib
+    , betalib
+    , deltalib
 
   exposed-modules:  Foo
