@@ -1,8 +1,8 @@
 No 'maintainer' field.
 No 'description' field.
 These packages miss upper bounds:
-  - somelib
   - alphalib
   - betalib
   - deltalib
+  - somelib
 Please add them, using `cabal gen-bounds` for suggestions. For more information see:  https://pvp.haskell.org/

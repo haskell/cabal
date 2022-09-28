@@ -668,9 +668,11 @@ ppExplanation (UnknownArch unknownArches) =
 ppExplanation (UnknownCompiler unknownImpls) =
     "Unknown compiler name " ++ commaSep (map quote unknownImpls)
 ppExplanation (MissingUpperBounds names) =
-    "These packages miss upper bounds '"
-      ++ (intercalate "','" (unPackageName <$> names)) ++ "'"
-      ++ " please add them using `cabal gen-bounds` for suggestions."
+    let separator = "\n  - "
+    in
+    "These packages miss upper bounds:" ++ separator
+      ++ (intercalate separator (unPackageName <$> names)) ++ "\n"
+      ++  "Please add them, using `cabal gen-bounds` for suggestions."
       ++ " For more information see: "
       ++ " https://pvp.haskell.org/"
 ppExplanation BaseNoUpperBounds =

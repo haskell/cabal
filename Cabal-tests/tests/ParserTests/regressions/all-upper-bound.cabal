@@ -1,7 +1,7 @@
 cabal-version: 3.0
-name:          public-multilib3
+name:          all-upper-bound
 version:       0
-synopsis:      public-multilibs
+synopsis:      all-upper-bound
 category:      Tests
 license:       MIT
 
