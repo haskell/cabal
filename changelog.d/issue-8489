@@ -1,6 +1,6 @@
 synopsis: `ghc`, `ghc-boot`, `ghci` packages should be non-upgradable
 packages: cabal-install
-prs: #????
+prs: #8501
 issues: #8489
 
 description: {
