@@ -22,12 +22,14 @@ module Distribution.Client.Config (
     showConfigWithComments,
     parseConfig,
 
-    getCabalDir,
     defaultConfigFile,
     defaultCacheDir,
+    defaultScriptBuildsDir,
+    defaultStoreDir,
     defaultCompiler,
     defaultInstallPath,
     defaultLogsDir,
+    defaultReportsDir,
     defaultUserInstall,
 
     baseSavedConfig,
@@ -46,6 +48,7 @@ module Distribution.Client.Config (
     postProcessRepo,
   ) where
 
+import Distribution.Compat.Environment (lookupEnv)
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
@@ -90,7 +93,7 @@ import Distribution.Simple.Setup
          , Flag(..), toFlag, flagToMaybe, fromFlagOrDefault )
 import Distribution.Simple.InstallDirs
          ( InstallDirs(..), defaultInstallDirs
-         , PathTemplate, toPathTemplate )
+         , PathTemplate, toPathTemplate)
 import Distribution.Deprecated.ParseUtils
          ( FieldDescr(..), liftField, runP
          , ParseResult(..), PError(..), PWarning(..)
@@ -130,7 +133,7 @@ import Text.PrettyPrint
 import Text.PrettyPrint.HughesPJ
          ( text, Doc )
 import System.Directory
-         ( createDirectoryIfMissing, getAppUserDataDirectory, renameFile )
+         ( createDirectoryIfMissing, getHomeDirectory, getXdgDirectory, XdgDirectory(XdgCache, XdgConfig, XdgState), renameFile, getAppUserDataDirectory, doesDirectoryExist )
 import Network.URI
          ( URI(..), URIAuth(..), parseURI )
 import System.FilePath
@@ -138,7 +141,7 @@ import System.FilePath
 import System.IO.Error
          ( isDoesNotExistError )
 import Distribution.Compat.Environment
-         ( getEnvironment, lookupEnv )
+         ( getEnvironment )
 import qualified Data.Map as M
 import qualified Data.ByteString as BS
 
@@ -539,7 +542,7 @@ instance Semigroup SavedConfig where
 --
 baseSavedConfig :: IO SavedConfig
 baseSavedConfig = do
-  userPrefix <- getCabalDir
+  userPrefix <- defaultInstallPrefix
   cacheDir   <- defaultCacheDir
   logsDir    <- defaultLogsDir
   return mempty {
@@ -587,40 +590,91 @@ initialSavedConfig = do
     }
   }
 
-defaultCabalDir :: IO FilePath
-defaultCabalDir = getAppUserDataDirectory "cabal"
-
-getCabalDir :: IO FilePath
-getCabalDir = do
+-- | If @CABAL\_DIR@ is set or @~/.cabal@ exists, return that
+-- directory.  Otherwise returns Nothing.  If this function returns
+-- Nothing, then it implies that we are not using a single directory
+-- for everything, but instead use XDG paths.  Fundamentally, this
+-- function is used to implement transparent backwards compatibility
+-- with pre-XDG versions of cabal-install.
+maybeGetCabalDir :: IO (Maybe FilePath)
+maybeGetCabalDir = do
   mDir <- lookupEnv "CABAL_DIR"
   case mDir of
-    Nothing -> defaultCabalDir
-    Just dir -> return dir
+    Just dir -> return $ Just dir
+    Nothing -> do
+      defaultDir <- getAppUserDataDirectory "cabal"
+      dotCabalExists <- doesDirectoryExist defaultDir
+      return $ if dotCabalExists
+               then Just defaultDir
+               else Nothing
+
+-- | The default behaviour of cabal-install is to use the XDG
+-- directory standard.  However, if @CABAL_DIR@ is set, we instead use
+-- that directory as a single store for everything cabal-related, like
+-- the old @~/.cabal@ behaviour.  Also, for backwards compatibility,
+-- if @~/.cabal@ exists we treat that as equivalent to @CABAL_DIR@
+-- being set.  This function abstracts that decision-making.
+getDefaultDir :: XdgDirectory -> FilePath -> IO FilePath
+getDefaultDir xdg subdir = do
+  mDir <- maybeGetCabalDir
+  case mDir of
+    Just dir -> return $ dir </> subdir
+    Nothing -> getXdgDirectory xdg $ "cabal" </> subdir
+
+-- | The default prefix used for installation.
+defaultInstallPrefix :: IO FilePath
+defaultInstallPrefix = do
+  mDir <- maybeGetCabalDir
+  case mDir of
+    Just dir ->
+      return dir
+    Nothing -> do
+      dir <- getHomeDirectory
+      return $ dir </> ".local"
 
 defaultConfigFile :: IO FilePath
-defaultConfigFile = do
-  dir <- getCabalDir
-  return $ dir </> "config"
+defaultConfigFile =
+  getDefaultDir XdgConfig "config"
 
 defaultCacheDir :: IO FilePath
-defaultCacheDir = do
-  dir <- getCabalDir
-  return $ dir </> "packages"
+defaultCacheDir =
+  getDefaultDir XdgCache "packages"
+
+defaultScriptBuildsDir :: IO FilePath
+defaultScriptBuildsDir =
+  getDefaultDir XdgCache "script-builds"
+
+defaultStoreDir :: IO FilePath
+defaultStoreDir =
+  getDefaultDir XdgState "store"
 
 defaultLogsDir :: IO FilePath
-defaultLogsDir = do
-  dir <- getCabalDir
-  return $ dir </> "logs"
+defaultLogsDir =
+  getDefaultDir XdgCache "logs"
+
+defaultReportsDir :: IO FilePath
+defaultReportsDir =
+  getDefaultDir XdgCache "reports"
 
 defaultExtraPath :: IO [FilePath]
 defaultExtraPath = do
-  dir <- getCabalDir
-  return [dir </> "bin"]
+  mDir <- maybeGetCabalDir
+  case mDir of
+    Just dir ->
+      return [dir </> "bin"]
+    Nothing -> do
+      dir <- getHomeDirectory
+      return [dir </> ".local" </> "bin"]
 
 defaultInstallPath :: IO FilePath
 defaultInstallPath = do
-  dir <- getCabalDir
-  return (dir </> "bin")
+  mDir <- maybeGetCabalDir
+  case mDir of
+    Just dir ->
+      return $ dir </> "bin"
+    Nothing -> do
+      dir <- getHomeDirectory
+      return $ dir </> ".local" </> "bin"
 
 defaultCompiler :: CompilerFlavor
 defaultCompiler = fromMaybe GHC defaultCompilerFlavor
@@ -636,7 +690,7 @@ defaultRemoteRepo = RemoteRepo name uri Nothing [] 0 False
     str  = "hackage.haskell.org"
     name = RepoName str
     uri  = URI "http:" (Just (URIAuth "" str "")) "/" "" ""
-    -- Note that lots of old ~/.cabal/config files will have the old url
+    -- Note that lots of old config files will have the old url
     -- http://hackage.haskell.org/packages/archive
     -- but new config files can use the new url (without the /packages/archive)
     -- and avoid having to do a http redirect
@@ -1430,7 +1484,7 @@ parseExtraLines verbosity extraLines =
       unlines (map (showPWarning "Error parsing additional config lines") ws)
 
 -- | Get the differences (as a pseudo code diff) between the user's
--- '~/.cabal/config' and the one that cabal would generate if it didn't exist.
+-- config file and the one that cabal would generate if it didn't exist.
 userConfigDiff :: Verbosity -> GlobalFlags -> [String] -> IO [String]
 userConfigDiff verbosity globalFlags extraLines = do
   userConfig <- loadRawConfig normal (globalConfigFile globalFlags)
@@ -1477,7 +1531,7 @@ userConfigDiff verbosity globalFlags extraLines = do
         in (topAndTail left, topAndTail (drop 1 right))
 
 
--- | Update the user's ~/.cabal/config' keeping the user's customizations.
+-- | Update the user's config file keeping the user's customizations.
 userConfigUpdate :: Verbosity -> GlobalFlags -> [String] -> IO ()
 userConfigUpdate verbosity globalFlags extraLines = do
   userConfig  <- loadRawConfig normal (globalConfigFile globalFlags)

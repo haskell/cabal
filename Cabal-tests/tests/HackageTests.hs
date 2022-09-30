@@ -25,7 +25,7 @@ import Distribution.PackageDescription.PrettyPrint (showGenericPackageDescriptio
 import Distribution.PackageDescription.Quirks      (patchQuirks)
 import Distribution.Simple.Utils                   (fromUTF8BS, toUTF8BS)
 import Numeric                                     (showFFloat)
-import System.Directory                            (getAppUserDataDirectory)
+import System.Directory                            (getXdgDirectory, XdgDirectory(XdgCache, XdgConfig), getAppUserDataDirectory, doesDirectoryExist)
 import System.Environment                          (lookupEnv)
 import System.Exit                                 (exitFailure)
 import System.FilePath                             ((</>))
@@ -63,27 +63,38 @@ import Data.TreeDiff.Pretty          (ansiWlEditExprCompact)
 parseIndex :: (Monoid a, NFData a) => (FilePath -> Bool)
            -> (FilePath -> B.ByteString -> IO a) -> IO a
 parseIndex predicate action = do
-    cabalDir   <- getCabalDir
-    configPath <- getCabalConfigPath cabalDir
+    configPath <- getCabalConfigPath
     cfg        <- B.readFile configPath
     cfgFields  <- either (fail . show) pure $ Parsec.readFields cfg
+    repoCache  <- case lookupInConfig "remote-repo-cache" cfgFields of
+                    []        -> getCacheDirPath   -- Default
+                    (rrc : _) -> return rrc        -- User-specified
     let repos        = reposFromConfig cfgFields
-        repoCache    = case lookupInConfig "remote-repo-cache" cfgFields of
-            []        -> cabalDir </> "packages"  -- Default
-            (rrc : _) -> rrc                      -- User-specified
         tarName repo = repoCache </> repo </> "01-index.tar"
     mconcat <$> traverse (parseIndex' predicate action . tarName) repos
   where
-    getCabalDir = do
-        mx <- lookupEnv "CABAL_DIR"
-        case mx of
-            Just x  -> return x
-            Nothing -> getAppUserDataDirectory "cabal"
-    getCabalConfigPath cabalDir = do
+    getCacheDirPath =
+        getXdgDirectory XdgCache $ "cabal" </> "packages"
+    getCabalConfigPath = do
         mx <- lookupEnv "CABAL_CONFIG"
         case mx of
             Just x  -> return x
-            Nothing -> return (cabalDir </> "config")
+            Nothing -> do
+              mDir <- maybeGetCabalDir
+              case mDir of
+                Nothing -> getXdgDirectory XdgConfig $ "cabal" </> "config"
+                Just dir -> return $ dir </> "config"
+    maybeGetCabalDir :: IO (Maybe FilePath)
+    maybeGetCabalDir = do
+      mDir <- lookupEnv "CABAL_DIR"
+      case mDir of
+        Just dir -> return $ Just dir
+        Nothing -> do
+          defaultDir <- getAppUserDataDirectory "cabal"
+          dotCabalExists <- doesDirectoryExist defaultDir
+          return $ if dotCabalExists
+                   then Just defaultDir
+                   else Nothing
 
 
 parseIndex'

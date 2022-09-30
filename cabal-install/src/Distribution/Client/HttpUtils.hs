@@ -500,7 +500,7 @@ wgetTransport prog =
             warningMsg     =  "the 'wget' transport currently doesn't support"
                            ++ " range requests, which wastes network bandwidth."
                            ++ " To fix this, set 'http-transport' to 'curl' or"
-                           ++ " 'plain-http' in '~/.cabal/config'."
+                           ++ " 'plain-http' in '~/.config/cabal/config'."
                            ++ " Note that the 'plain-http' transport doesn't"
                            ++ " support HTTPS.\n"
 
