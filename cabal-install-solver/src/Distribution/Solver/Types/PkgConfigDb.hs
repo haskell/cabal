@@ -70,10 +70,11 @@ readPkgConfigDb verbosity progdb = handle ioErrorHandler $ do
         (pkgVersions, _errs, exitCode) <-
                      getProgramInvocationOutputAndErrors verbosity
                        (programInvocation pkgConfig ("--modversion" : pkgNames))
+        print (pkgVersions, exitCode)
         case exitCode of
           ExitSuccess -> (return . pkgConfigDbFromList . zip pkgNames) (lines pkgVersions)
           -- if there's a single broken pc file the above fails, so we fall back into calling it individually
-          _ -> pkgConfigDbFromList . catMaybes <$> mapM (getIndividualVersion pkgConfig) pkgList
+          _ -> pkgConfigDbFromList . catMaybes <$> mapM (getIndividualVersion pkgConfig) pkgNames
   where
     -- For when pkg-config invocation fails (possibly because of a
     -- too long command line).
