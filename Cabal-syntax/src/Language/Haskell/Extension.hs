@@ -165,6 +165,11 @@ data KnownExtension =
   -- | Enable the dreaded monomorphism restriction.
   | MonomorphismRestriction
 
+  -- | Enable deep subsumption, relaxing the simple subsumption rules,
+  -- implicitly inserting eta-expansions when matching up function types
+  -- with different quantification structures.
+  | DeepSubsumption
+
   -- | Allow a specification attached to a multi-parameter type class
   -- which indicates that some parameters are entirely determined by
   -- others. The implementation will check that this property holds
@@ -498,6 +503,9 @@ data KnownExtension =
 
   -- | Enable datatype promotion.
   | DataKinds
+
+  -- | Enable @type data@ declarations, defining constructors at the type level.
+  | TypeData
 
   -- | Enable parallel arrays syntax (@[:@, @:]@) for /Data Parallel Haskell/.
   | ParallelArrays

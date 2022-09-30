@@ -160,6 +160,7 @@ syn keyword cabalExtension contained
   \ DataKinds
   \ DatatypeContexts
   \ DefaultSignatures
+  \ DeepSubsumption
   \ DeriveAnyClass
   \ DeriveDataTypeable
   \ DeriveFoldable
@@ -266,6 +267,7 @@ syn keyword cabalExtension contained
   \ TransformListComp
   \ TupleSections
   \ TypeApplications
+  \ TypeData
   \ TypeFamilies
   \ TypeFamilyDependencies
   \ TypeInType
