@@ -1,6 +1,6 @@
 # Adapted from agda/agda/.github/workflows/user-manual.yml by Andreas, 2021-09-11
 
-name: Users guide
+name: Assorted
 
 # See: https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#concurrency.
 concurrency:
@@ -42,6 +42,7 @@ defaults:
 
 jobs:
   build:
+    name: Users guide
     runs-on: ubuntu-latest
     strategy:
       matrix:

@@ -1,4 +1,4 @@
-name: Changelogs
+name: Assorted
 
 on:
   push:
@@ -21,6 +21,7 @@ defaults:
 
 jobs:
   build:
+    name: Changelogs
     runs-on: ubuntu-latest
 
     steps:
