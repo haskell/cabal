@@ -77,7 +77,7 @@ import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.InstalledPackageInfo as IPI
 import Distribution.Client.Types
 import Distribution.Client.Config
-         ( getCabalDir )
+         ( defaultCacheDir )
 import Distribution.Client.IndexUtils
          ( getInstalledPackages )
 import Distribution.Client.JobControl
@@ -240,7 +240,7 @@ data SetupScriptOptions = SetupScriptOptions {
     -- When we are installing in parallel, we always use the external setup
     -- method. Since compiling the setup script each time adds noticeable
     -- overhead, we use a shared setup script cache
-    -- ('~/.cabal/setup-exe-cache'). For each (compiler, platform, Cabal
+    -- ('$XDG_CACHE_HOME/cabal/setup-exe-cache'). For each (compiler, platform, Cabal
     -- version) combination the cache holds a compiled setup script
     -- executable. This only affects the Simple build type; for the Custom,
     -- Configure and Make build types we always compile the setup script anew.
@@ -740,8 +740,8 @@ getExternalSetupMethod verbosity options pkg bt = do
   cachedSetupDirAndProg :: SetupScriptOptions -> Version
                         -> IO (FilePath, FilePath)
   cachedSetupDirAndProg options' cabalLibVersion = do
-    cabalDir <- getCabalDir
-    let setupCacheDir       = cabalDir </> "setup-exe-cache"
+    cacheDir <- defaultCacheDir
+    let setupCacheDir       = cacheDir </> "setup-exe-cache"
         cachedSetupProgFile = setupCacheDir
                               </> ("setup-" ++ buildTypeString ++ "-"
                                    ++ cabalVersionString ++ "-"

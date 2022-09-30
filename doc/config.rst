@@ -7,7 +7,7 @@ Overview
 --------
 
 The global configuration file for ``cabal-install`` is by default
-``$HOME/.cabal/config``. If you do not have this file, ``cabal`` will create
+``$XDG_CONFIG_HOME/cabal/config``. If you do not have this file, ``cabal`` will create
 it for you on the first call to ``cabal update``
 (details see `configuration file discovery`_).
 Alternatively, you can explicitly ask ``cabal`` to create it for you using
@@ -18,7 +18,7 @@ Alternatively, you can explicitly ask ``cabal`` to create it for you using
 
 You can change the location of the global configuration file by specifying
 either ``--config-file=FILE`` on the command line or by setting the
-``CABAL_CONFIG`` environment variable.
+``CABAL_CONFIG`` or ``CABAL_DIR`` environment variable.
 
 Most of the options in this configuration file are also available as
 command line arguments, and the corresponding documentation can be used
@@ -51,16 +51,22 @@ Various environment variables affect ``cabal-install``.
    The variable to find global configuration file.
 
 ``CABAL_DIR``
-   Default content directory for ``cabal-install`` files.
-   Default value is ``getAppUserDataDirectory "cabal"``, which is
-   ``$HOME/.cabal`` on unix systems and ``%APPDATA%\cabal`` in Windows.
+
+   If set, *all* ``cabal-install`` content files will be stored as
+   subdirectories of this directory, including the configuration file
+   if ``CABAL_CONFIG`` is unset.  If ``CABAL_DIR`` is unset, Cabal
+   will store data files according to the XDG Base Directory
+   Specification (see `directories`_).
 
    .. note::
 
-       The CABAL_DIR might be dropped in the future, when
-       ``cabal-install`` starts to use XDG Directory specification.
+       For backwards compatibility, if the directory ``~/.cabal`` on
+       Unix or ``%APPDATA%\cabal`` on Windows exist and ``CABAL_DIR``
+       is unset, ``cabal-install`` will behave as if ``CABAL_DIR`` was
+       set to point at this directory.
 
 ``CABAL_BUILDDIR``
+
     The override for default ``dist`` build directory.
     Note, the nix-style builds build directory (``dist-newstyle``)
     is not affected by this environment variable.
@@ -75,13 +81,40 @@ The configuration file location is determined as follows:
 1. If option ``--config-file`` is given, use it;
 2. otherwise, if ``$CABAL_CONFIG`` is set use it;
 3. otherwise, if ``$CABAL_DIR`` is set use ``$CABAL_DIR/config``;
-4. otherwise use ``config`` in ``getAppUserDirectory "cabal"``.
+4. otherwise use ``config`` in ``$XDG_CONFIG_HOME/cabal``, which
+   defaults to ``~/.config/cabal`` on Unix.
 
 If the configuration file does not exist, and it was not given
 explicitly via ``--config-file`` or ``$CABAL_CONFIG``, then
 ``cabal-install`` will generate the default one, with directories
-based on ``$CABAL_DIR`` (if set) or ``getAppUserDirectory "cabal"``
-prefix.
+based on ``$CABAL_DIR`` (if set) or according to the XDG Base
+Directory Specification, as listed below.
+
+.. _directories:
+
+Directories
+-----------
+
+Unless the ``CABAL_DIR`` environment variable is set or `~/.cabal` exists, Cabal will store
+data in directories according to the XDG Base Directory Specification.
+The following directories are used:
+
+* ``$XDG_CONFIG_HOME/cabal`` for the main configuration file.  On
+  Unix, this defaults to ``~/.config/cabal``.  On Windows this defaults to
+  ``%APPDATA%/cabal``.  Overridden by the ``CABAL_CONFIG`` environment
+  variable if set.
+
+* ``$XDG_CACHE_HOME/cabal`` for downloaded packages and script
+  executables.  Defaults to ``~/.cache/cabal`` on Unix, and
+  ``%LOCALAPPDATA%/cabal`` on Windows.  You can delete this directory
+  and expect that its contents will be reconstructed as needed.
+
+* ``$XDG_STATE_HOME/cabal`` for compiled libraries and other stateful
+  artifacts.  Defaults to ``~/.local/state/cabal`` on Unix and
+  ``%LOCALAPPDATA%/cabal`` on Windows.  Deleting this directory might
+  cause installed programs to stop working.
+
+* ``~/.local/bin`` for executables installed with ``cabal install``.
 
 Repository specification
 ------------------------
@@ -97,7 +130,7 @@ the repository to be the central Hackage server:
 
 The name of the repository is given on the first line, and can be
 anything; packages downloaded from this repository will be cached under
-``~/.cabal/packages/hackage.haskell.org`` (or whatever name you specify;
+``$XDG_CACHE_HOME/cabal/packages/hackage.haskell.org`` (or whatever name you specify;
 you can change the prefix by changing the value of
 :cfg-field:`remote-repo-cache`). If you want, you can configure multiple
 repositories, and ``cabal`` will combine them and be able to download
@@ -214,7 +247,8 @@ thus, looks similar to a ``package-name.cabal``'s ``build-depends`` section.
 .. note::
     The ``preferred-versions`` file can be used to restrict the package set from Hackage, by preferring
     certain versions or marking a specific version as deprecated. To achieve this, add a
-    local no-index repository to your ``~/.cabal/config``, where the directory contains your custom
+    local no-index repository to your :ref:`configuration file <config-file-discovery>`,
+    where the directory contains your custom
     ``preferred-versions``. After running ``cabal update``, all ``cabal`` operations will honour the
     configuration.
 
