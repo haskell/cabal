@@ -591,7 +591,11 @@ initialSavedConfig = do
   }
 
 -- | If @CABAL\_DIR@ is set or @~/.cabal@ exists, return that
--- directory.
+-- directory.  Otherwise returns Nothing.  If this function returns
+-- Nothing, then it implies that we are not using a single directory
+-- for everything, but instead use XDG paths.  Fundamentally, this
+-- function is used to implement transparent backwards compatibility
+-- with pre-XDG versions of cabal-install.
 maybeGetCabalDir :: IO (Maybe FilePath)
 maybeGetCabalDir = do
   mDir <- lookupEnv "CABAL_DIR"
