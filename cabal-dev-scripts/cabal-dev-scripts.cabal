@@ -22,7 +22,7 @@ executable gen-spdx
     , bytestring
     , containers
     , Diff                  ^>=0.4
-    , lens                  ^>=4.18.1 || ^>=4.19.1 || ^>=5.0.1
+    , lens                  ^>=4.18.1 || ^>=4.19.1 || ^>=5.0.1 || ^>=5.2
     , optparse-applicative  ^>=0.15.1.0 || ^>=0.16.0.0
     , text
     , zinza                 ^>=0.2
@@ -39,7 +39,7 @@ executable gen-spdx-exc
     , bytestring
     , containers
     , Diff                  ^>=0.4
-    , lens                  ^>=4.18.1 || ^>=4.19.1 || ^>=5.0.1
+    , lens                  ^>=4.18.1 || ^>=4.19.1 || ^>=5.0.1 || ^>=5.2
     , optparse-applicative  ^>=0.15.1.0 || ^>=0.16.0.0
     , text
     , zinza                 ^>=0.2
