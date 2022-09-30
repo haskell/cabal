@@ -6,14 +6,16 @@ import Test.Cabal.Prelude
 main = setupAndCabalTest $ do
   skipUnlessGhcVersion ">= 8.8"
   isWin <- isWindows
+  ghc94 <- isGhcVersion "== 9.4.*"
   env   <- getTestEnv
   let pwd      = testCurrentDir env
       customCC = pwd ++ "/custom-cc" ++ if isWin then ".bat" else ""
 
-  setup "configure"
-    [ "--ghc-option=-DNOERROR1"
-    , "--ghc-option=-optc=-DNOERROR2"
-    , "--ghc-option=-optP=-DNOERROR3"
-    , "--with-gcc=" ++ customCC
-    ]
-  setup "build" ["-v2"]
+  expectBrokenIf (isWin && ghc94) 8451 $ do
+    setup "configure"
+      [ "--ghc-option=-DNOERROR1"
+      , "--ghc-option=-optc=-DNOERROR2"
+      , "--ghc-option=-optP=-DNOERROR3"
+      , "--with-gcc=" ++ customCC
+      ]
+    setup "build" ["-v2"]

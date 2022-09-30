@@ -49,7 +49,7 @@ library
   if os(windows)
     build-depends: Win32 >= 2.3.0.0 && < 2.14
   else
-    build-depends: unix  >= 2.6.0.0 && < 2.8
+    build-depends: unix  >= 2.6.0.0 && < 2.9
 
   ghc-options: -Wall -fno-ignore-asserts -fwarn-tabs -fwarn-incomplete-uni-patterns -fwarn-incomplete-record-updates
 
