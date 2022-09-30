@@ -1274,7 +1274,7 @@ reportCommand = CommandUI {
     commandSynopsis     = "Upload build reports to a remote server.",
     commandDescription  = Nothing,
     commandNotes        = Just $ \_ ->
-         "You can store your Hackage login in the ~/.cabal/config file\n",
+         "You can store your Hackage login in the ~/.config/cabal/config file\n",
     commandUsage        = usageAlternatives "report" ["[FLAGS]"],
     commandDefaultFlags = defaultReportFlags,
     commandOptions      = \_ ->
@@ -1681,7 +1681,7 @@ installCommand = CommandUI {
      ++ " `v1-configure` for a list of commands being affected.\n"
      ++ "\n"
      ++ "Installed executables will by default"
-     ++ " be put into `~/.cabal/bin/`."
+     ++ " be put into `~/.local/bin/`."
      ++ " If you want installed executable to be available globally, make"
      ++ " sure that the PATH environment variable contains that directory.\n"
      ++ "\n",
@@ -2003,7 +2003,7 @@ uploadCommand = CommandUI {
     commandSynopsis     = "Uploads source packages or documentation to Hackage.",
     commandDescription  = Nothing,
     commandNotes        = Just $ \_ ->
-         "You can store your Hackage login in the ~/.cabal/config file\n"
+         "You can store your Hackage login in the ~/.config/cabal/config file\n"
       ++ relevantConfigValuesText ["username", "password", "password-command"],
     commandUsage        = \pname ->
          "Usage: " ++ pname ++ " upload [FLAGS] TARFILES\n",
@@ -2358,18 +2358,18 @@ userConfigCommand = CommandUI {
   commandDescription  = Just $ \_ -> wrapText $
        "When upgrading cabal, the set of configuration keys and their default"
     ++ " values may change. This command provides means to merge the existing"
-    ++ " config in ~/.cabal/config"
+    ++ " config in ~/.config/cabal/config"
     ++ " (i.e. all bindings that are actually defined and not commented out)"
     ++ " and the default config of the new version.\n"
     ++ "\n"
-    ++ "init: Creates a new config file at either ~/.cabal/config or as"
+    ++ "init: Creates a new config file at either ~/.config/cabal/config or as"
     ++ " specified by --config-file, if given. An existing file won't be "
     ++ " overwritten unless -f or --force is given.\n"
-    ++ "diff: Shows a pseudo-diff of the user's ~/.cabal/config file and"
+    ++ "diff: Shows a pseudo-diff of the user's ~/.config/cabal/config file and"
     ++ " the default configuration that would be created by cabal if the"
     ++ " config file did not exist.\n"
     ++ "update: Applies the pseudo-diff to the configuration that would be"
-    ++ " created by default, and write the result back to ~/.cabal/config.",
+    ++ " created by default, and write the result back to ~/.config/cabal/config.",
 
   commandNotes        = Nothing,
   commandUsage        = usageAlternatives "user-config" ["init", "diff", "update"],

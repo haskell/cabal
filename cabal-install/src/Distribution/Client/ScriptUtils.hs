@@ -6,7 +6,7 @@
 -- | Utilities to help commands with scripts
 --
 module Distribution.Client.ScriptUtils (
-    getScriptCacheDirectoryRoot, getScriptHash, getScriptCacheDirectory, ensureScriptCacheDirectory,
+    getScriptHash, getScriptCacheDirectory, ensureScriptCacheDirectory,
     withContextAndSelectors, AcceptNoTargets(..), TargetContext(..),
     updateContextAndWriteProjectFile, updateContextAndWriteProjectFile',
     fakeProjectSourcePackage, lSrcpkgDescription
@@ -22,7 +22,7 @@ import Distribution.CabalSpecVersion
     ( CabalSpecVersion (..), cabalSpecLatest)
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.Config
-    ( getCabalDir )
+    ( defaultScriptBuildsDir )
 import Distribution.Client.DistDirLayout
     ( DistDirLayout(..) )
 import Distribution.Client.HashValue
@@ -120,14 +120,6 @@ import qualified Text.Parsec as P
 --    repl to deal with the fact that the repl is relative to the working directory and not
 --    the project root.
 
--- | Get the directory where script builds are cached.
---
--- @CABAL_DIR\/script-builds\/@
-getScriptCacheDirectoryRoot :: IO FilePath
-getScriptCacheDirectoryRoot = do
-  cabalDir <- getCabalDir
-  return $ cabalDir </> "script-builds"
-
 -- | Get the hash of a script's absolute path)
 --
 -- Two hashes will be the same as long as the absolute paths
@@ -138,14 +130,14 @@ getScriptHash script = showHashValue . hashValue . fromString <$> canonicalizePa
 -- | Get the directory for caching a script build.
 --
 -- The only identity of a script is it's absolute path, so append the
--- hashed path to @CABAL_DIR\/script-builds\/@ to get the cache directory.
+-- hashed path to the @script-builds@ dir to get the cache directory.
 getScriptCacheDirectory :: FilePath -> IO FilePath
-getScriptCacheDirectory script = (</>) <$> getScriptCacheDirectoryRoot <*> getScriptHash script
+getScriptCacheDirectory script = (</>) <$> defaultScriptBuildsDir <*> getScriptHash script
 
 -- | Get the directory for caching a script build and ensure it exists.
 --
 -- The only identity of a script is it's absolute path, so append the
--- hashed path to @CABAL_DIR\/script-builds\/@ to get the cache directory.
+-- hashed path to the @script-builds@ dir to get the cache directory.
 ensureScriptCacheDirectory :: Verbosity -> FilePath -> IO FilePath
 ensureScriptCacheDirectory verbosity script = do
   cacheDir <- getScriptCacheDirectory script

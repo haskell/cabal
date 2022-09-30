@@ -71,7 +71,7 @@ import Distribution.Client.Setup
          , ConfigExFlags(..), InstallFlags(..)
          , filterTestFlags )
 import Distribution.Client.Config
-         ( getCabalDir, defaultUserInstall )
+         ( defaultReportsDir, defaultUserInstall )
 import Distribution.Client.Tar (extractTarGzFile)
 import Distribution.Client.Types as Source
 import Distribution.Client.BuildReports.Types
@@ -197,7 +197,7 @@ install verbosity packageDBs repos comp platform progdb
         warn verbosity $ "--root-cmd is no longer supported, "
         ++ "see https://github.com/haskell/cabal/issues/3353"
         ++ " (if you didn't type --root-cmd, comment out root-cmd"
-        ++ " in your ~/.cabal/config file)"
+        ++ " in your ~/.config/cabal/config file)"
     let userOrSandbox = fromFlag (configUserInstall configFlags)
     unless userOrSandbox $
         warn verbosity $ "the --global flag is deprecated -- "
@@ -831,10 +831,10 @@ postInstallActions verbosity
 storeDetailedBuildReports :: Verbosity -> FilePath
                           -> [(BuildReports.BuildReport, Maybe Repo)] -> IO ()
 storeDetailedBuildReports verbosity logsDir reports = sequence_
-  [ do dotCabal <- getCabalDir
+  [ do allReportsDir <- defaultReportsDir
        let logFileName = prettyShow (BuildReports.package report) <.> "log"
            logFile     = logsDir </> logFileName
-           reportsDir  = dotCabal </> "reports" </> unRepoName (remoteRepoName remoteRepo)
+           reportsDir  = allReportsDir </> unRepoName (remoteRepoName remoteRepo)
            reportFile  = reportsDir </> logFileName
 
        handleMissingLogFile $ do

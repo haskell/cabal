@@ -73,7 +73,7 @@ import qualified Data.Map as Map
 
 -- | This type corresponds directly to what can be written in the
 -- @cabal.project@ file. Other sources of configuration can also be injected
--- into this type, such as the user-wide @~/.cabal/config@ file and the
+-- into this type, such as the user-wide config file and the
 -- command line of @cabal configure@ or @cabal build@.
 --
 -- Since it corresponds to the external project file it is an instance of

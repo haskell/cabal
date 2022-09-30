@@ -622,7 +622,7 @@ writeProjectConfigFile file =
     writeFile file . showProjectConfig
 
 
--- | Read the user's @~/.cabal/config@ file.
+-- | Read the user's cabal-install config file.
 --
 readGlobalConfig :: Verbosity -> Flag FilePath -> Rebuild ProjectConfig
 readGlobalConfig verbosity configFileFlag = do

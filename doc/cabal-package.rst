@@ -1574,7 +1574,7 @@ in ghc's package DB and so we can figure out what the location of the library
 is. Foreign libraries however don't get registered, which means that we'd have
 to have a way of finding out where a platform library got installed (other than by
 searching the ``lib/`` directory). Instead, we install foreign libraries in
-``~/.cabal/lib``, much like we install executables in ``~/.cabal/bin``.
+``~/.local/lib``.
 
 Build information
 ^^^^^^^^^^^^^^^^^
