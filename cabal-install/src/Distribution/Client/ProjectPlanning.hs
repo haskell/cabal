@@ -444,8 +444,8 @@ configureCompiler verbosity
         progdb   =
             userSpecifyPaths (Map.toList (getMapLast packageConfigProgramPaths))
           . modifyProgramSearchPath
-              (++ [ ProgramSearchPathDir dir
-                  | dir <- fromNubList packageConfigProgramPathExtra ])
+              ([ ProgramSearchPathDir dir
+               | dir <- fromNubList packageConfigProgramPathExtra ] ++)
           $ defaultProgramDb
 
 
