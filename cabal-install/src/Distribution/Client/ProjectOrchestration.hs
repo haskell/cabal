@@ -859,8 +859,10 @@ printPlan verbosity
           ProjectBaseContext {
             buildSettings = BuildTimeSettings{buildSettingDryRun},
             projectConfig = ProjectConfig {
+              projectConfigAllPackages =
+                  PackageConfig {packageConfigOptimization = globalOptimization},
               projectConfigLocalPackages =
-                  PackageConfig {packageConfigOptimization}
+                  PackageConfig {packageConfigOptimization = localOptimization}
             }
           }
           ProjectBuildContext {
@@ -994,7 +996,7 @@ printPlan verbosity
     showBuildProfile :: String
     showBuildProfile = "Build profile: " ++ unwords [
       "-w " ++ (showCompilerId . pkgConfigCompiler) elaboratedShared,
-      "-O" ++  (case packageConfigOptimization of
+      "-O" ++  (case globalOptimization <> localOptimization of -- if local is not set, read global
                 Setup.Flag NoOptimisation      -> "0"
                 Setup.Flag NormalOptimisation  -> "1"
                 Setup.Flag MaximumOptimisation -> "2"
