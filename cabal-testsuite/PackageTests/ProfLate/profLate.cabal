@@ -1,0 +1,8 @@
+Cabal-Version: 3.8
+Name: profLate
+Version: 0.1
+Build-Type: Simple
+
+Executable main
+    Main-is: Exe.hs
+    Build-Depends: base
