@@ -7,6 +7,11 @@
 {% if not absolute %}
 {-# LANGUAGE ForeignFunctionInterface #-}
 {% endif %}
+{% if supportsCpp %}
+#if __GLASGOW_HASKELL__ >= 810
+{-# OPTIONS_GHC -Wno-prepositive-qualified-module #-}
+#endif
+{% endif %}
 {-# OPTIONS_GHC -fno-warn-missing-import-lists #-}
 {-# OPTIONS_GHC -w #-}
 module Paths_{{ manglePkgName packageName }} (
