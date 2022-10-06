@@ -57,6 +57,15 @@ pull_request_rules:
       - body~=backport
       - '#approved-reviews-by>=1'
 
+  # backports should be labeled as such
+  - actions:
+      label:
+        add:
+          - backport
+    name: Label backports as such
+    conditions:
+      - body~=automatic backport
+
 queue_rules:
   - name: default
     conditions: []
