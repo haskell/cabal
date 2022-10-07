@@ -187,7 +187,7 @@ replCommand = Client.installCommand {
 --
 replAction :: NixStyleFlags (ReplOptions, EnvFlags) -> [String] -> GlobalFlags -> IO ()
 replAction flags@NixStyleFlags { extraFlags = (replOpts, envFlags), ..} targetStrings globalFlags
-  = withContextAndSelectors AcceptNoTargets (Just LibKind) flags targetStrings globalFlags $ \targetCtx ctx targetSelectors -> do
+  = withContextAndSelectors AcceptNoTargets (Just LibKind) flags targetStrings globalFlags ReplCommand $ \targetCtx ctx targetSelectors -> do
     when (buildSettingOnlyDeps (buildSettings ctx)) $
       die' verbosity $ "The repl command does not support '--only-dependencies'. "
           ++ "You may wish to use 'build --only-dependencies' and then "
