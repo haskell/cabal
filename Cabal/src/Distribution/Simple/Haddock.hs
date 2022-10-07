@@ -138,8 +138,6 @@ data Output = Html | Hoogle
 -- ------------------------------------------------------------------------------
 -- Haddock support
 
-<<<<<<< HEAD
-=======
 -- | Get Haddock program and check if it matches the request
 getHaddockProg :: Verbosity
                -> ProgramDb
@@ -184,7 +182,6 @@ getHaddockProg verbosity programDb comp args quickJumpFlag = do
     return (haddockProg, version)
 
 
->>>>>>> b1f59dde5 (Fix whitespace violations)
 haddock :: PackageDescription
         -> LocalBuildInfo
         -> [PPSuffixHandler]

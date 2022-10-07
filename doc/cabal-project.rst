@@ -301,13 +301,8 @@ package, and thus apply globally:
 
     This option cannot be specified via a ``cabal.project`` file.
 
-<<<<<<< HEAD
--- option:: --ignore-project
-    
-=======
 .. option:: --ignore-project
 
->>>>>>> b1f59dde5 (Fix whitespace violations)
     Ignores the local ``cabal.project`` file and uses the default
     configuration with the local ``foo.cabal`` file. Note that
     if this flag is set while the ``--project-file`` flag is also
