@@ -663,6 +663,9 @@ data KnownExtension =
   -- | Enable linear types.
   | LinearTypes
 
+  -- | Allow the use of visible forall in types of terms.
+  | RequiredTypeArguments
+
   -- | Enable the generation of selector functions corresponding to record fields.
   | FieldSelectors
 
