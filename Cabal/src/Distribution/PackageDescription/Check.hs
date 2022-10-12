@@ -1822,11 +1822,7 @@ checkCabalVersion pkg =
 --
 checkPackageVersions :: GenericPackageDescription -> [PackageCheck]
 checkPackageVersions pkg =
-  if length others > 0
-  then
-    PackageDistSuspiciousWarn (MissingUpperBounds others) : baseErrors
-  else
-    baseErrors
+  map (PackageDistSuspiciousWarn . MissingUpperBounds) others : baseErrors
   where
     baseErrors = PackageDistInexcusable BaseNoUpperBounds <$ bases
     deps = toDependencyVersionsMap allBuildDepends pkg
