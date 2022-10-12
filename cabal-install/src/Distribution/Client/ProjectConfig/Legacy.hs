@@ -119,6 +119,7 @@ import Distribution.Fields.ConfVar (parseConditionConfVarFromClause)
 import Distribution.Client.HttpUtils
 import System.FilePath ((</>), isPathSeparator, makeValid, isAbsolute, takeDirectory)
 import System.Directory (createDirectoryIfMissing)
+import Distribution.Client.ReplFlags ( multiReplOption )
 
 
 
@@ -293,7 +294,8 @@ data LegacySharedConfig = LegacySharedConfig {
        legacyConfigureExFlags  :: ConfigExFlags,
        legacyInstallFlags      :: InstallFlags,
        legacyClientInstallFlags:: ClientInstallFlags,
-       legacyProjectFlags      :: ProjectFlags
+       legacyProjectFlags      :: ProjectFlags,
+       legacyMultiRepl         :: Flag Bool
      } deriving (Show, Generic)
 
 instance Monoid LegacySharedConfig where
@@ -327,7 +329,7 @@ commandLineFlagsToProjectConfig globalFlags NixStyleFlags {..} clientInstallFlag
                                      haddockFlags testFlags benchmarkFlags,
       projectConfigShared        = convertLegacyAllPackageFlags
                                      globalFlags configFlags
-                                     configExFlags installFlags projectFlags,
+                                     configExFlags installFlags projectFlags NoFlag,
       projectConfigLocalPackages = localConfig,
       projectConfigAllPackages   = allConfig
     }
@@ -389,7 +391,8 @@ convertLegacyGlobalConfig
       savedHaddockFlags      = haddockFlags,
       savedTestFlags         = testFlags,
       savedBenchmarkFlags    = benchmarkFlags,
-      savedProjectFlags      = projectFlags
+      savedProjectFlags      = projectFlags,
+      savedReplMulti         = replMulti
     } =
     mempty {
       projectConfigBuildOnly   = configBuildOnly,
@@ -412,7 +415,7 @@ convertLegacyGlobalConfig
                             haddockFlags' testFlags' benchmarkFlags'
     configShared        = convertLegacyAllPackageFlags
                             globalFlags configFlags
-                            configExFlags' installFlags' projectFlags'
+                            configExFlags' installFlags' projectFlags' replMulti
     configBuildOnly     = convertLegacyBuildOnlyFlags
                             globalFlags configFlags
                             installFlags' clientInstallFlags'
@@ -432,7 +435,7 @@ convertLegacyProjectConfig
     legacyPackagesNamed,
     legacySharedConfig = LegacySharedConfig globalFlags configShFlags
                                             configExFlags installSharedFlags
-                                            clientInstallFlags projectFlags,
+                                            clientInstallFlags projectFlags multiRepl,
     legacyAllConfig,
     legacyLocalConfig  = LegacyPackageConfig configFlags installPerPkgFlags
                                              haddockFlags testFlags benchmarkFlags,
@@ -460,7 +463,7 @@ convertLegacyProjectConfig
                             testFlags benchmarkFlags
     configPackagesShared= convertLegacyAllPackageFlags
                             globalFlags (configFlags <> configShFlags)
-                            configExFlags installSharedFlags projectFlags
+                            configExFlags installSharedFlags projectFlags multiRepl
     configBuildOnly     = convertLegacyBuildOnlyFlags
                             globalFlags configShFlags
                             installSharedFlags clientInstallFlags
@@ -483,8 +486,9 @@ convertLegacyAllPackageFlags
     -> ConfigExFlags
     -> InstallFlags
     -> ProjectFlags
+    -> Flag Bool
     -> ProjectConfigShared
-convertLegacyAllPackageFlags globalFlags configFlags configExFlags installFlags projectFlags =
+convertLegacyAllPackageFlags globalFlags configFlags configExFlags installFlags projectFlags projectConfigMultiRepl =
     ProjectConfigShared{..}
   where
     GlobalFlags {
@@ -726,6 +730,7 @@ convertToLegacySharedConfig
       , legacyInstallFlags       = installFlags
       , legacyClientInstallFlags = projectConfigClientInstallFlags
       , legacyProjectFlags       = projectFlags
+      , legacyMultiRepl          = projectConfigMultiRepl
       }
   where
     globalFlags = GlobalFlags {
@@ -1216,6 +1221,8 @@ legacySharedConfigFieldDescrs constraintSrc = concat
       (\flags conf -> conf { legacyProjectFlags = flags })
   . commandOptionsToFields
   $ projectFlagsOptions ParseArgs
+
+  , [ liftField legacyMultiRepl (\flags conf -> conf { legacyMultiRepl = flags }) (commandOptionToField multiReplOption) ]
 
   ]
 

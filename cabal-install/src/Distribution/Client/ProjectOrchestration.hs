@@ -907,6 +907,9 @@ printPlan verbosity
       , if verbosity >= deafening
         then prettyShow (installedUnitId elab)
         else prettyShow (packageId elab)
+      , case elabBuildStyle elab of
+          BuildInplaceOnly InMemory -> "(interactive)"
+          _ -> ""
       , case elabPkgOrComp elab of
           ElabPackage pkg -> showTargets elab ++ ifVerbose (showStanzas (pkgStanzasEnabled pkg))
           ElabComponent comp ->
@@ -1053,7 +1056,7 @@ writeBuildReports settings buildContext plan buildOutcomes = do
                       TestsNotTried -> BuildReports.NotTried
                       TestsOk -> BuildReports.Ok
 
-            in Just $ (BuildReports.BuildReport (packageId pkg) os arch (compilerId comp) cabalInstallID (elabFlagAssignment pkg) (map packageId $ elabLibDependencies pkg) installOutcome docsOutcome testsOutcome, getRepo . elabPkgSourceLocation $ pkg) -- TODO handle failure log files?
+            in Just $ (BuildReports.BuildReport (packageId pkg) os arch (compilerId comp) cabalInstallID (elabFlagAssignment pkg) (map (packageId . fst) $ elabLibDependencies pkg) installOutcome docsOutcome testsOutcome, getRepo . elabPkgSourceLocation $ pkg) -- TODO handle failure log files?
       fromPlanPackage _ _ = Nothing
       buildReports = mapMaybe (\x -> fromPlanPackage x (InstallPlan.lookupBuildOutcome x buildOutcomes)) $ InstallPlan.toList plan
 

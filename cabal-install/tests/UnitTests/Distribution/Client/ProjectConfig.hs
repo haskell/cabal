@@ -563,6 +563,7 @@ instance Arbitrary ProjectConfigShared where
         projectConfigIndependentGoals     <- arbitrary
         projectConfigPreferOldest         <- arbitrary
         projectConfigProgPathExtra        <- toNubList <$> listOf arbitraryShortToken
+        projectConfigMultiRepl            <- arbitrary
         return ProjectConfigShared {..}
       where
         arbitraryConstraints :: Gen [(UserConstraint, ConstraintSource)]
@@ -606,6 +607,7 @@ instance Arbitrary ProjectConfigShared where
         <*> shrinker projectConfigIndependentGoals
         <*> shrinker projectConfigPreferOldest
         <*> shrinker projectConfigProgPathExtra
+        <*> shrinker projectConfigMultiRepl
       where
         preShrink_Constraints  = map fst
         postShrink_Constraints = map (\uc -> (uc, projectConfigConstraintSource))

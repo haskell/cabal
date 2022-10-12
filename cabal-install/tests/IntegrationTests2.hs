@@ -743,9 +743,9 @@ testTargetProblemsRepl config reportSubCase = do
     reportSubCase "multiple-libs"
     assertProjectTargetProblems
       "targets/multiple-libs" config
-      CmdRepl.selectPackageTargets
+      (CmdRepl.selectPackageTargets (CmdRepl.MultiReplDecision Nothing False))
       CmdRepl.selectComponentTarget
-      [ ( flip CmdRepl.matchesMultipleProblem
+      [ ( flip (CmdRepl.matchesMultipleProblem (CmdRepl.MultiReplDecision Nothing False))
                [ AvailableTarget "p-0.1" (CLibName LMainLibName)
                    (TargetBuildable () TargetRequestedByDefault) True
                , AvailableTarget "q-0.1" (CLibName LMainLibName)
@@ -757,9 +757,9 @@ testTargetProblemsRepl config reportSubCase = do
     reportSubCase "multiple-exes"
     assertProjectTargetProblems
       "targets/multiple-exes" config
-      CmdRepl.selectPackageTargets
+      (CmdRepl.selectPackageTargets (CmdRepl.MultiReplDecision Nothing False))
       CmdRepl.selectComponentTarget
-      [ ( flip CmdRepl.matchesMultipleProblem
+      [ ( flip (CmdRepl.matchesMultipleProblem (CmdRepl.MultiReplDecision Nothing False))
                [ AvailableTarget "p-0.1" (CExeName "p2")
                    (TargetBuildable () TargetRequestedByDefault) True
                , AvailableTarget "p-0.1" (CExeName "p1")
@@ -771,9 +771,9 @@ testTargetProblemsRepl config reportSubCase = do
     reportSubCase "multiple-tests"
     assertProjectTargetProblems
       "targets/multiple-tests" config
-      CmdRepl.selectPackageTargets
+      (CmdRepl.selectPackageTargets (CmdRepl.MultiReplDecision Nothing False))
       CmdRepl.selectComponentTarget
-      [ ( flip CmdRepl.matchesMultipleProblem
+      [ ( flip (CmdRepl.matchesMultipleProblem (CmdRepl.MultiReplDecision Nothing False))
                [ AvailableTarget "p-0.1" (CTestName "p2")
                    (TargetBuildable () TargetNotRequestedByDefault) True
                , AvailableTarget "p-0.1" (CTestName "p1")
@@ -786,7 +786,7 @@ testTargetProblemsRepl config reportSubCase = do
     do (_,elaboratedPlan,_) <- planProject "targets/multiple-exes" config
        assertProjectDistinctTargets
          elaboratedPlan
-         CmdRepl.selectPackageTargets
+         (CmdRepl.selectPackageTargets (CmdRepl.MultiReplDecision Nothing False))
          CmdRepl.selectComponentTarget
          [ mkTargetComponent "p-0.1" (CExeName "p1")
          , mkTargetComponent "p-0.1" (CExeName "p2")
@@ -798,7 +798,7 @@ testTargetProblemsRepl config reportSubCase = do
     reportSubCase "libs-disabled"
     assertProjectTargetProblems
       "targets/libs-disabled" config
-      CmdRepl.selectPackageTargets
+      (CmdRepl.selectPackageTargets (CmdRepl.MultiReplDecision Nothing False))
       CmdRepl.selectComponentTarget
       [ ( flip TargetProblemNoneEnabled
                [ AvailableTarget "p-0.1" (CLibName LMainLibName) TargetNotBuildable True ]
@@ -808,7 +808,7 @@ testTargetProblemsRepl config reportSubCase = do
     reportSubCase "exes-disabled"
     assertProjectTargetProblems
       "targets/exes-disabled" config
-      CmdRepl.selectPackageTargets
+      (CmdRepl.selectPackageTargets (CmdRepl.MultiReplDecision Nothing False))
       CmdRepl.selectComponentTarget
       [ ( flip TargetProblemNoneEnabled
                [ AvailableTarget "p-0.1" (CExeName "p") TargetNotBuildable True
@@ -819,7 +819,7 @@ testTargetProblemsRepl config reportSubCase = do
     reportSubCase "test-only"
     assertProjectTargetProblems
       "targets/test-only" config
-      CmdRepl.selectPackageTargets
+      (CmdRepl.selectPackageTargets (CmdRepl.MultiReplDecision Nothing False))
       CmdRepl.selectComponentTarget
       [ ( flip TargetProblemNoneEnabled
                [ AvailableTarget "p-0.1" (CTestName "pexe")
@@ -831,7 +831,7 @@ testTargetProblemsRepl config reportSubCase = do
     reportSubCase "empty-pkg"
     assertProjectTargetProblems
       "targets/empty-pkg" config
-      CmdRepl.selectPackageTargets
+      (CmdRepl.selectPackageTargets (CmdRepl.MultiReplDecision Nothing False))
       CmdRepl.selectComponentTarget
       [ ( TargetProblemNoTargets, mkTargetPackage "p-0.1" )
       ]
@@ -841,7 +841,7 @@ testTargetProblemsRepl config reportSubCase = do
        -- by default we only get the lib
        assertProjectDistinctTargets
          elaboratedPlan
-         CmdRepl.selectPackageTargets
+         (CmdRepl.selectPackageTargets (CmdRepl.MultiReplDecision Nothing False))
          CmdRepl.selectComponentTarget
          [ TargetPackage TargetExplicitNamed ["p-0.1"] Nothing ]
          [ ("p-0.1-inplace", (CLibName LMainLibName)) ]
@@ -849,13 +849,13 @@ testTargetProblemsRepl config reportSubCase = do
        -- components even though we did not explicitly enable tests/benchmarks
        assertProjectDistinctTargets
          elaboratedPlan
-         CmdRepl.selectPackageTargets
+         (CmdRepl.selectPackageTargets (CmdRepl.MultiReplDecision Nothing False))
          CmdRepl.selectComponentTarget
          [ TargetPackage TargetExplicitNamed ["p-0.1"] (Just TestKind) ]
          [ ("p-0.1-inplace-a-testsuite", CTestName  "a-testsuite") ]
        assertProjectDistinctTargets
          elaboratedPlan
-         CmdRepl.selectPackageTargets
+         (CmdRepl.selectPackageTargets (CmdRepl.MultiReplDecision Nothing False))
          CmdRepl.selectComponentTarget
          [ TargetPackage TargetExplicitNamed ["p-0.1"] (Just BenchKind) ]
          [ ("p-0.1-inplace-a-benchmark", CBenchName "a-benchmark") ]

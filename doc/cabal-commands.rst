@@ -801,10 +801,6 @@ Local packages can also be specified, in which case the library
 component in the package will be used, or the (first listed) executable in the
 package if there is no library. Dependencies are built or rebuilt as necessary.
 
-Currently, it is not supported to pass multiple targets to ``repl``
-(``repl`` will just successively open a separate GHCi session for
-each target.)
-
 Examples:
 
 ::
@@ -868,6 +864,19 @@ configuration from the 'cabal.project', 'cabal.project.local' and other files.
 The configuration information for the script is cached under the cabal directory
 and can be pre-built with ``cabal build path/to/script``.
 See ``cabal run`` for more information on scripts.
+
+.. option:: --enable-multi-repl
+
+    Allow starting GHCi with multiple targets.
+    This requires GHC with multiple home unit support (GHC-9.4+)
+
+    The closure of required components will be loaded.
+
+.. option:: --disable-multi-repl
+
+    Disallow starting GHCi with multiple targets. This reverts back to the behaviour
+    in version 3.10 and earlier where only a single component can be loaded at
+    once.
 
 .. _cabal run:
 

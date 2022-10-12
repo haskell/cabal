@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE NamedFieldPuns #-}
@@ -14,6 +16,7 @@ module Distribution.Client.ProjectPlanning.Types (
     ElaboratedInstallPlan,
     normaliseConfiguredPackage,
     ElaboratedConfiguredPackage(..),
+    showElaboratedInstallPlan,
 
     elabDistDirParams,
     elabExeDependencyPaths,
@@ -39,6 +42,8 @@ module Distribution.Client.ProjectPlanning.Types (
     ElaboratedSharedConfig(..),
     ElaboratedReadyPackage,
     BuildStyle(..),
+    MemoryOrDisk(..),
+    isInplaceBuildStyle,
     CabalFileText,
 
     -- * Build targets
@@ -109,6 +114,7 @@ import qualified Data.Map as Map
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.Monoid as Mon
 import           System.FilePath ((</>))
+import           Text.PrettyPrint ( hsep, parens, text )
 
 
 -- | The combination of an elaborated install plan plus a
@@ -135,6 +141,27 @@ elabPlanPackageName verbosity (Configured elab)
     = elabConfiguredName verbosity elab
 elabPlanPackageName verbosity (Installed elab)
     = elabConfiguredName verbosity elab
+
+showElaboratedInstallPlan :: ElaboratedInstallPlan -> String
+showElaboratedInstallPlan = InstallPlan.showInstallPlan_gen showNode
+  where
+    showNode pkg = InstallPlan.ShowPlanNode { InstallPlan.showPlanHerald = herald
+                                            , InstallPlan.showPlanNeighbours = deps }
+      where
+        herald = (hsep [ text (InstallPlan.showPlanPackageTag pkg)
+                       , InstallPlan.foldPlanPackage (const mempty) in_mem pkg
+                       , pretty (packageId pkg)
+                       , parens (pretty (nodeKey pkg))])
+
+        in_mem elab = case elabBuildStyle elab of
+                        BuildInplaceOnly InMemory -> parens (text "In Memory")
+                        _ -> mempty
+
+        deps = InstallPlan.foldPlanPackage installed_deps local_deps pkg
+
+        installed_deps = map pretty . nodeNeighbors
+
+        local_deps cfg =  [ (if internal then text "+" else mempty) <> pretty (confInstId uid) | (uid, internal) <- elabLibDependencies cfg ]
 
 --TODO: [code cleanup] decide if we really need this, there's not much in it, and in principle
 --      even platform and compiler could be different if we're building things
@@ -327,7 +354,7 @@ data ElaboratedConfiguredPackage
        elabBuildTargets          :: [ComponentTarget],
        elabTestTargets           :: [ComponentTarget],
        elabBenchTargets          :: [ComponentTarget],
-       elabReplTarget            :: Maybe ComponentTarget,
+       elabReplTarget            :: [ComponentTarget],
        elabHaddockTargets        :: [ComponentTarget],
 
        elabBuildHaddocks         :: Bool,
@@ -442,7 +469,7 @@ dataDirEnvVarForPackage :: DistDirLayout
 dataDirEnvVarForPackage distDirLayout pkg =
   case elabBuildStyle pkg
   of BuildAndInstall -> Nothing
-     BuildInplaceOnly -> Just
+     BuildInplaceOnly {} -> Just
        ( pkgPathEnvVar (elabPkgDescription pkg) "datadir"
        , Just $ srcPath (elabPkgSourceLocation pkg)
             </> dataDir (elabPkgDescription pkg))
@@ -541,13 +568,13 @@ elabOrderLibDependencies :: ElaboratedConfiguredPackage -> [UnitId]
 elabOrderLibDependencies elab =
     case elabPkgOrComp elab of
         ElabPackage pkg    -> map (newSimpleUnitId . confInstId) $
-                              ordNub $ CD.flatDeps (pkgLibDependencies pkg)
+                              ordNub $ CD.flatDeps (map fst <$> pkgLibDependencies pkg)
         ElabComponent comp -> compOrderLibDependencies comp
 
 -- | The library dependencies (i.e., the libraries we depend on, NOT
 -- the dependencies of the library), NOT including setup dependencies.
--- These are passed to the @Setup@ script via @--dependency@.
-elabLibDependencies :: ElaboratedConfiguredPackage -> [ConfiguredId]
+-- These are passed to the @Setup@ script via @--dependency@ or @--promised-dependency@.
+elabLibDependencies :: ElaboratedConfiguredPackage -> [(ConfiguredId, Bool)]
 elabLibDependencies elab =
     case elabPkgOrComp elab of
         ElabPackage pkg    -> ordNub (CD.nonSetupDeps (pkgLibDependencies pkg))
@@ -581,7 +608,7 @@ elabExeDependencyPaths elab =
 -- | The setup dependencies (the library dependencies of the setup executable;
 -- note that it is not legal for setup scripts to have executable
 -- dependencies at the moment.)
-elabSetupDependencies :: ElaboratedConfiguredPackage -> [ConfiguredId]
+elabSetupDependencies :: ElaboratedConfiguredPackage -> [(ConfiguredId, Bool)]
 elabSetupDependencies elab =
     case elabPkgOrComp elab of
         ElabPackage pkg -> CD.setupDeps (pkgLibDependencies pkg)
@@ -625,7 +652,7 @@ elabInplaceDependencyBuildCacheFiles layout sconf plan root_elab =
     go =<< InstallPlan.directDeps plan (nodeKey root_elab)
   where
     go = InstallPlan.foldPlanPackage (const []) $ \elab -> do
-            guard (elabBuildStyle elab == BuildInplaceOnly)
+            guard (isInplaceBuildStyle (elabBuildStyle elab))
             return $ distPackageCacheFile layout (elabDistDirParams sconf elab) "build"
 
 -- | Some extra metadata associated with an
@@ -643,8 +670,9 @@ data ElaboratedComponent
     -- it's a setup dep.
     compComponentName :: Maybe ComponentName,
     -- | The *external* library dependencies of this component.  We
-    -- pass this to the configure script.
-    compLibDependencies :: [ConfiguredId],
+    -- pass this to the configure script. The Bool indicates whether the
+    -- dependency is a promised dependency (True) or not (False).
+    compLibDependencies :: [(ConfiguredId, Bool)],
     -- | In a component prior to instantiation, this list specifies
     -- the 'OpenUnitId's which, after instantiation, are the
     -- actual dependencies of this package.  Note that this does
@@ -691,8 +719,9 @@ data ElaboratedPackage
        pkgInstalledId :: InstalledPackageId,
 
        -- | The exact dependencies (on other plan packages)
-       --
-       pkgLibDependencies :: ComponentDeps [ConfiguredId],
+       -- The boolean value indicates whether the dependency is a promised dependency
+       -- or not.
+       pkgLibDependencies :: ComponentDeps [(ConfiguredId, Bool)],
 
        -- | Components which depend (transitively) on an internally
        -- defined library.  These are used by 'elabRequiresRegistration',
@@ -729,7 +758,7 @@ instance Structured ElaboratedPackage
 -- which can be useful in some circumstances.
 pkgOrderDependencies :: ElaboratedPackage -> ComponentDeps [UnitId]
 pkgOrderDependencies pkg =
-    fmap (map (newSimpleUnitId . confInstId)) (pkgLibDependencies pkg) `Mon.mappend`
+    fmap (map (newSimpleUnitId . confInstId)) (map fst <$> pkgLibDependencies pkg) `Mon.mappend`
     fmap (map (newSimpleUnitId . confInstId)) (pkgExeDependencies pkg)
 
 -- | This is used in the install plan to indicate how the package will be
@@ -743,7 +772,7 @@ data BuildStyle =
     -- the results discarded.
     BuildAndInstall
 
-    -- | The package is built, but the files are not installed anywhere,
+    -- | For 'OnDisk': The package is built, but the files are not installed anywhere,
     -- rather the build dir is kept and the package is registered inplace.
     --
     -- Such packages can still subsequently be installed.
@@ -751,18 +780,41 @@ data BuildStyle =
     -- Typically 'BuildAndInstall' packages will only depend on other
     -- 'BuildAndInstall' style packages and not on 'BuildInplaceOnly' ones.
     --
-  | BuildInplaceOnly
-  deriving (Eq, Show, Generic)
+    -- For 'InMemory':  Built in-memory only using GHC multi-repl, they are not built or installed
+    -- anywhere on disk. BuildInMemory packages can't be depended on by BuildAndInstall nor BuildInplaceOnly packages
+    -- (because they don't exist on disk) but can depend on other BuildStyles.
+    --
+    -- At the moment @'BuildInplaceOnly' 'InMemory'@ is only used by the 'repl' command.
+    --
+    -- We use single constructor 'BuildInplaceOnly' as for most cases
+    -- inplace packages are handled similarly.
+    --
+  | BuildInplaceOnly MemoryOrDisk
+  deriving (Eq, Ord, Show, Generic)
+
+-- | How 'BuildInplaceOnly' component is built.
+data MemoryOrDisk
+    = OnDisk
+    | InMemory  deriving (Eq, Ord, Show, Generic)
+
+-- Note: order of 'BuildStyle' and 'MemoryOrDisk' matters for 'Semigroup' / 'Monoid' instances
+
+isInplaceBuildStyle :: BuildStyle -> Bool
+isInplaceBuildStyle (BuildInplaceOnly {}) = True
+isInplaceBuildStyle BuildAndInstall = False
+
+instance Binary MemoryOrDisk
+instance Structured MemoryOrDisk
+
+instance Semigroup BuildStyle where
+  -- 'BuildAndInstall' i.e. the smallest / first constructor is the unit.
+  (<>) = max
+
+instance Monoid BuildStyle where
+  mempty = BuildAndInstall
 
 instance Binary BuildStyle
 instance Structured BuildStyle
-instance Semigroup BuildStyle where
-    BuildInplaceOnly <> _ = BuildInplaceOnly
-    _ <> BuildInplaceOnly = BuildInplaceOnly
-    _ <> _ = BuildAndInstall
-instance Monoid BuildStyle where
-    mempty = BuildAndInstall
-    mappend = (<>)
 
 type CabalFileText = LBS.ByteString
 

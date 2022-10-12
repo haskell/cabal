@@ -152,7 +152,7 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
         [ "pkg-src-sha256" J..= J.String (showHashValue hash)
         | Just hash <- [elabPkgSourceHash elab] ] ++
         (case elabBuildStyle elab of
-            BuildInplaceOnly ->
+            BuildInplaceOnly {} ->
                 ["dist-dir"   J..= J.String dist_dir] ++ [buildInfoFileLocation]
             BuildAndInstall ->
                 -- TODO: install dirs?
@@ -162,7 +162,7 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
           ElabPackage pkg ->
             let components = J.object $
                   [ comp2str c J..= (J.object $
-                    [ "depends"     J..= map (jdisplay . confInstId) ldeps
+                    [ "depends"     J..= map (jdisplay . confInstId) (map fst ldeps)
                     , "exe-depends" J..= map (jdisplay . confInstId) edeps
                     ] ++
                     bin_file c)
@@ -172,7 +172,7 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
                                            (pkgExeDependencies pkg) ]
             in ["components" J..= components]
           ElabComponent comp ->
-            ["depends"     J..= map (jdisplay . confInstId) (elabLibDependencies elab)
+            ["depends"     J..= map (jdisplay . confInstId) (map fst $ elabLibDependencies elab)
             ,"exe-depends" J..= map jdisplay (elabExeDependencies elab)
             ,"component-name" J..= J.String (comp2str (compSolverName comp))
             ] ++
@@ -256,7 +256,7 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
       bin_file' s =
         ["bin-file" J..= J.String bin]
        where
-        bin = if elabBuildStyle elab == BuildInplaceOnly
+        bin = if isInplaceBuildStyle (elabBuildStyle elab)
                then dist_dir </> "build" </> prettyShow s </> prettyShow s <.> exeExtension plat
                else InstallDirs.bindir (elabInstallDirs elab) </> prettyShow s <.> exeExtension plat
 
@@ -264,7 +264,7 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
       flib_file' s =
         ["bin-file" J..= J.String bin]
        where
-        bin = if elabBuildStyle elab == BuildInplaceOnly
+        bin = if isInplaceBuildStyle (elabBuildStyle elab)
                then dist_dir </> "build" </> prettyShow s </> ("lib" ++ prettyShow s) <.> dllExtension plat
                else InstallDirs.bindir (elabInstallDirs elab) </> ("lib" ++ prettyShow s) <.> dllExtension plat
 
@@ -273,7 +273,8 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
 
     style2str :: Bool -> BuildStyle -> String
     style2str True  _                = "local"
-    style2str False BuildInplaceOnly = "inplace"
+    style2str False (BuildInplaceOnly OnDisk) = "inplace"
+    style2str False (BuildInplaceOnly InMemory) = "interactive"
     style2str False BuildAndInstall  = "global"
 
     jdisplay :: Pretty a => a -> J.Value
@@ -601,7 +602,7 @@ postBuildProjectStatus plan previousPackagesUpToDate
         ]
 
     elabLibDeps :: ElaboratedConfiguredPackage -> [UnitId]
-    elabLibDeps = map (newSimpleUnitId . confInstId) . elabLibDependencies
+    elabLibDeps = map (newSimpleUnitId . confInstId) . map fst . elabLibDependencies
 
     -- Was a build was attempted for this package?
     -- If it doesn't have both a build status and outcome then the answer is no.
@@ -640,8 +641,8 @@ postBuildProjectStatus plan previousPackagesUpToDate
         case pkg of
           InstallPlan.PreExisting _     -> False
           InstallPlan.Installed   _     -> False
-          InstallPlan.Configured srcpkg -> elabBuildStyle srcpkg
-                                        == BuildInplaceOnly
+          InstallPlan.Configured srcpkg -> isInplaceBuildStyle (elabBuildStyle srcpkg)
+
     packagesAlreadyInStore :: Set UnitId
     packagesAlreadyInStore =
       selectPlanPackageIdSet $ \pkg ->
@@ -947,7 +948,7 @@ selectGhcEnvironmentFilePackageDbs elaboratedInstallPlan =
     inplacePackages =
       [ srcpkg
       | srcpkg <- sourcePackages
-      , elabBuildStyle srcpkg == BuildInplaceOnly ]
+      , isInplaceBuildStyle (elabBuildStyle srcpkg) ]
 
     sourcePackages :: [ElaboratedConfiguredPackage]
     sourcePackages =

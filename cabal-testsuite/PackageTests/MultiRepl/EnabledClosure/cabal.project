@@ -1,0 +1,3 @@
+packages: pkg-a/*.cabal
+packages: pkg-b/*.cabal
+packages: pkg-c/*.cabal
