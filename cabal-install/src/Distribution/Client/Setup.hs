@@ -367,7 +367,7 @@ globalCommand commands = CommandUI {
           optArg' "(True or False)" maybeStringToBoolFlag (\case
             Flag True -> [Just "enable"]
             Flag False -> [Just "disable"]
-            NoFlag -> [Just "disable"]) "" ["nix"] 
+            NoFlag -> [Just "disable"]) "" ["nix"]
             "Nix integration: run commands through nix-shell if a 'shell.nix' file exists (default is False)",
           noArg (Flag True) [] ["enable-nix"]
           "Enable Nix integration: run commands through nix-shell if a 'shell.nix' file exists",
