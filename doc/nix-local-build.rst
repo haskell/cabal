@@ -146,7 +146,7 @@ must be built per-project, versus external packages, which can be cached
 across projects. To be more precise:
 
 1. A **local package** is one that is listed explicitly in the
-   ``packages``, ``optional-packages`` and ``extra-packages`` fields of a
+   ``packages``, ``optional-packages`` or ``extra-packages`` fields of a
    project. They refer to packages, whose source code usually lives
    directly in a folder in your project, with the exception of those in
    :cfg-field:`extra-packages`, which instead reside on Hackage, but are treated
