@@ -147,10 +147,9 @@ across projects. To be more precise:
 
 1. A **local package** is one that is listed explicitly in the
    ``packages``, ``optional-packages`` or ``extra-packages`` fields of a
-   project. They refer to packages, whose source code usually lives
-   directly in a folder in your project, with the exception of those in
-   :cfg-field:`extra-packages`, which instead reside on Hackage, but are treated
-   as being local anyway.
+   project. Packages in the former two fields will usually have their
+   source code stored in a folder in your project, while ``extra-packages`` lists
+   packages residing on Hackage that are treated as being local anyway.
 
 Local packages, as well as the external packages (below) which depend on
 them, are built **inplace**, meaning that they are always built
