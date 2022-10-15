@@ -3157,11 +3157,28 @@ the configured data directory for ``pretty-show`` is controlled with the
 Accessing the package version
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The aforementioned auto generated :file:`Paths_{pkgname}` module also
-exports the constant ``version ::``
-`Version <http://hackage.haskell.org/package/base/docs/Data-Version.html>`__
+The auto generated :file:`PackageInfo_{pkgname}` module exports the constant
+``version ::`` `Version <http://hackage.haskell.org/package/base/docs/Data-Version.html>`__
 which is defined as the version of your package as specified in the
 ``version`` field.
+
+Accessing package-related informations
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The auto generated :file:`PackageInfo_{pkgname}` module exports the following
+package-related constants:
+
+.. code-block:: haskell
+
+    name :: String
+    version :: Version
+    synopsis :: String
+    copyright :: String
+    homepage :: String
+
+Unlike :file:`Paths_{pkgname}` (see <#accessing-data-files-from-package-code>),
+:file:`PackageInfo_{pkgname}` is system- and path-independent. It aims to be
+easier to work with for hash-based tools such as Nix.
 
 .. _system-dependent parameters:
 

@@ -12,5 +12,7 @@ description:
 
 Executable TestPathsModule
     main-is: Main.hs
-    other-modules: Paths_PathsModule
+    other-modules:
+        PackageInfo_PathsModule
+        Paths_PathsModule
     build-depends: base
