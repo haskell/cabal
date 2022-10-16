@@ -1,0 +1,3 @@
+synopsis: Look into ~/.cabal/bin when searching for VCS programs
+packages: cabal-install
+prs: #8538

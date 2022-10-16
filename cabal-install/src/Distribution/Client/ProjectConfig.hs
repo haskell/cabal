@@ -109,7 +109,7 @@ import Distribution.Client.Types.SourceRepo
 import Distribution.Simple.Compiler
          ( Compiler, compilerInfo )
 import Distribution.Simple.Program
-         ( ConfiguredProgram(..) )
+         ( Program(..), ConfiguredProgram(..), ProgramSearchPathEntry(..), findProgramOnSearchPath )
 import Distribution.Simple.Setup
          ( Flag(Flag), toFlag, flagToMaybe, flagToList
          , fromFlag, fromFlagOrDefault )
@@ -1139,11 +1139,16 @@ syncAndReadSourcePackagesRemoteRepos verbosity
                             [ ((rtype, rloc), [(repo, vcsRepoType vcs)])
                             | (repo, rloc, rtype, vcs) <- repos' ]
 
-    --TODO: pass progPathExtra on to 'configureVCS'
-    let _progPathExtra = fromNubList projectConfigProgPathExtra
+    let progPathExtra = fromNubList projectConfigProgPathExtra
     getConfiguredVCS <- delayInitSharedResources $ \repoType ->
-                          let vcs = Map.findWithDefault (error $ "Unknown VCS: " ++ prettyShow repoType) repoType knownVCSs in
-                          configureVCS verbosity {-progPathExtra-} vcs
+                          let vcs = Map.findWithDefault (error $ "Unknown VCS: " ++ prettyShow repoType) repoType knownVCSs
+                              vcsProgramName = programName (vcsProgram vcs)
+                              vcs2 = vcs {vcsProgram = (vcsProgram vcs) {programFindLocation = findProgramOnExtraPath}}
+                              findProgramOnExtraPath v p = do
+                                r1 <- findProgramOnSearchPath v (map ProgramSearchPathDir progPathExtra) vcsProgramName
+                                r2 <- findProgramOnSearchPath v p vcsProgramName
+                                return (r1 <|> r2)
+                          in configureVCS verbosity vcs2
 
     concat <$> sequenceA
       [ rerunIfChanged verbosity monitor repoGroup' $ do
