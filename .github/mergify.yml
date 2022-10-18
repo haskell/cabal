@@ -9,7 +9,9 @@ pull_request_rules:
     name: Wait for 2 days before validating merge
     conditions:
       - updated-at<2 days ago
-      - label=merge me
+      - or:
+        - label=merge me
+        - label=squash+merge me
       - '#approved-reviews-by>=2'
 
   # rebase+merge strategy
