@@ -19,11 +19,14 @@ constraints: these -assoc
 
 write-ghc-environment-files: never
 
+program-options
+  ghc-options: -fno-ignore-asserts
+
 package Cabal-syntax
-  ghc-options: -Werror -fno-ignore-asserts
+  ghc-options: -Werror
 package Cabal
-  ghc-options: -Werror -fno-ignore-asserts
+  ghc-options: -Werror
 package cabal-testsuite
-  ghc-options: -Werror -fno-ignore-asserts
+  ghc-options: -Werror
 package cabal-install
-  ghc-options: -Werror -fno-ignore-asserts
+  ghc-options: -Werror
