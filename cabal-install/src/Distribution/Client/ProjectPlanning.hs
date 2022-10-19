@@ -4279,21 +4279,25 @@ setupHsConfigureArgs elab@(ElaboratedConfiguredPackage{elabPkgOrComp = ElabCompo
         (error "setupHsConfigureArgs: trying to configure setup")
         (compComponentName comp)
 
-setupHsBuildFlags
-  :: ElaboratedConfiguredPackage
-  -> ElaboratedSharedConfig
-  -> Verbosity
-  -> FilePath
-  -> Cabal.BuildFlags
-setupHsBuildFlags _ _ verbosity builddir =
-  Cabal.BuildFlags
-    { buildProgramPaths = mempty -- unused, set at configure time
-    , buildProgramArgs = mempty -- unused, set at configure time
-    , buildVerbosity = toFlag verbosity
-    , buildDistPref = toFlag builddir
-    , buildNumJobs = mempty -- TODO: [nice to have] sometimes want to use toFlag (Just numBuildJobs),
-    , buildArgs = mempty -- unused, passed via args not flags
-    , buildCabalFilePath = mempty
+setupHsBuildFlags :: Flag String
+                  -> ElaboratedConfiguredPackage
+                  -> ElaboratedSharedConfig
+                  -> Verbosity
+                  -> FilePath
+                  -> Cabal.BuildFlags
+setupHsBuildFlags par_strat elab _ verbosity builddir =
+    Cabal.BuildFlags {
+      buildProgramPaths = mempty, --unused, set at configure time
+      buildProgramArgs  = mempty, --unused, set at configure time
+      buildVerbosity    = toFlag verbosity,
+      buildDistPref     = toFlag builddir,
+      buildNumJobs      = mempty, --TODO: [nice to have] sometimes want to use toFlag (Just numBuildJobs),
+      buildUseSemaphore =
+        if elabSetupScriptCliVersion elab >= mkVersion [3,9,0,0]
+          then par_strat
+          else mempty,
+      buildArgs         = mempty, -- unused, passed via args not flags
+      buildCabalFilePath= mempty
     }
 
 setupHsBuildArgs :: ElaboratedConfiguredPackage -> [String]

@@ -41,6 +41,7 @@ import Data.List (stripPrefix)
 import qualified Data.Map as Map
 import Data.Monoid (All (..), Any (..), Endo (..))
 import qualified Data.Set as Set
+import Distribution.Types.ParStrat
 
 normaliseGhcArgs :: Maybe Version -> PackageDescription -> [String] -> [String]
 normaliseGhcArgs (Just ghcVersion) PackageDescription{..} ghcArgs
@@ -513,19 +514,19 @@ data GhcOptions = GhcOptions
   -- ^ Use the \"split sections\" feature; the @ghc -split-sections@ flag.
   , ghcOptSplitObjs :: Flag Bool
   -- ^ Use the \"split object files\" feature; the @ghc -split-objs@ flag.
-  , ghcOptNumJobs :: Flag (Maybe Int)
+  , ghcOptNumJobs :: Flag ParStrat
   -- ^ Run N jobs simultaneously (if possible).
   , ghcOptHPCDir :: Flag FilePath
   -- ^ Enable coverage analysis; the @ghc -fhpc -hpcdir@ flags.
-  , ----------------
+   ----------------
     -- GHCi
 
-    ghcOptGHCiScripts :: [FilePath]
+  , ghcOptGHCiScripts :: [FilePath]
   -- ^ Extra GHCi startup scripts; the @-ghci-script@ flag
-  , ------------------------
+   ------------------------
     -- Redirecting outputs
 
-    ghcOptHiSuffix :: Flag String
+  , ghcOptHiSuffix :: Flag String
   , ghcOptObjSuffix :: Flag String
   , ghcOptDynHiSuffix :: Flag String
   -- ^ only in 'GhcStaticAndDynamic' mode
@@ -546,14 +547,19 @@ data GhcOptions = GhcOptions
   , ghcOptDylibName :: Flag String
   , ghcOptRPaths :: NubListR FilePath
   , ---------------
-    -- Misc flags
 
-    ghcOptVerbosity :: Flag Verbosity
-  -- ^ Get GHC to be quiet or verbose with what it's doing; the @ghc -v@ flag.
-  , ghcOptExtraPath :: NubListR FilePath
+  ---------------
+  -- Misc flags
+
+  -- | Get GHC to be quiet or verbose with what it's doing; the @ghc -v@ flag.
+  ghcOptVerbosity     :: Flag Verbosity,
+
+  ghcOptExtraPath :: NubListR FilePath,
   -- ^ Put the extra folders in the PATH environment variable we invoke
   -- GHC with
-  , ghcOptCabal :: Flag Bool
+  -- | Put the extra folders in the PATH environment variable we invoke
+  -- GHC with
+  ghcOptCabal :: Flag Bool
   -- ^ Let GHC know that it is Cabal that's calling it.
   -- Modifies some of the GHC error messages.
   }
@@ -693,7 +699,7 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
         , if parmakeSupported comp
             then case ghcOptNumJobs opts of
               NoFlag -> []
-              Flag n -> ["-j" ++ maybe "" show n]
+              Flag n -> ["-j" ++ show n]
             else []
         , --------------------
           -- Creating libraries
@@ -729,13 +735,90 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
           --------------------
           -- CPP, C, and C++ stuff
 
-          ["-I" ++ dir | dir <- flags ghcOptCppIncludePath]
-        , ["-optP" ++ opt | opt <- ghcOptCppOptions opts]
-        , concat
-            [ ["-optP-include", "-optP" ++ inc]
-            | inc <- flags ghcOptCppIncludes
-            ]
-        , ["-optc" ++ opt | opt <- ghcOptCcOptions opts]
+         case flagToMaybe (ghcOptDebugInfo opts) of
+            Nothing                                -> []
+            Just NoDebugInfo                       -> []
+            Just MinimalDebugInfo                  -> ["-g1"]
+            Just NormalDebugInfo                   -> ["-g2"]
+            Just MaximalDebugInfo                  -> ["-g3"]
+
+        , [ "-prof" | flagBool ghcOptProfilingMode ]
+
+        , case flagToMaybe (ghcOptProfilingAuto opts) of
+            _ | not (flagBool ghcOptProfilingMode)
+                                      -> []
+            Nothing                   -> []
+            Just GhcProfAutoAll
+              | flagProfAuto implInfo -> ["-fprof-auto"]
+              | otherwise             -> ["-auto-all"] -- not the same, but close
+            Just GhcProfLate
+              | flagProfLate implInfo -> ["-fprof-late"]
+              | otherwise             -> ["-fprof-auto-top"] -- not the same, not very close, but what we have.
+            Just GhcProfAutoToplevel
+              | flagProfAuto implInfo -> ["-fprof-auto-top"]
+              | otherwise             -> ["-auto-all"]
+            Just GhcProfAutoExported
+              | flagProfAuto implInfo -> ["-fprof-auto-exported"]
+              | otherwise             -> ["-auto"]
+
+        , [ "-split-sections" | flagBool ghcOptSplitSections ]
+        , [ "-split-objs" | flagBool ghcOptSplitObjs ]
+
+        , case flagToMaybe (ghcOptHPCDir opts) of
+            Nothing -> []
+            Just hpcdir -> ["-fhpc", "-hpcdir", hpcdir]
+
+        , if parmakeSupported comp
+          then case ghcOptNumJobs opts of
+            NoFlag  -> []
+            Flag Serial -> []
+            Flag (UseSem name) -> if jsemSupported comp then ["-jsem " ++ name]
+                                                        else []
+            Flag (NumJobs n) -> ["-j" ++ show n]
+          else []
+
+        --------------------
+        -- Creating libraries
+
+        , [ "-staticlib" | flagBool ghcOptStaticLib ]
+        , [ "-shared"    | flagBool ghcOptShared    ]
+        , case flagToMaybe (ghcOptDynLinkMode opts) of
+            Nothing                  -> []
+            Just GhcStaticOnly       -> ["-static"]
+            Just GhcDynamicOnly      -> ["-dynamic"]
+            Just GhcStaticAndDynamic -> ["-static", "-dynamic-too"]
+        , [ "-fPIC"    | flagBool ghcOptFPic ]
+
+        , concat [ ["-dylib-install-name", libname] | libname <- flag ghcOptDylibName ]
+
+        ------------------------
+        -- Redirecting outputs
+
+        , concat [ ["-osuf",    suf] | suf <- flag ghcOptObjSuffix ]
+        , concat [ ["-hisuf",   suf] | suf <- flag ghcOptHiSuffix  ]
+        , concat [ ["-dynosuf", suf] | suf <- flag ghcOptDynObjSuffix ]
+        , concat [ ["-dynhisuf",suf] | suf <- flag ghcOptDynHiSuffix  ]
+        , concat [ ["-outputdir", dir] | dir <- flag ghcOptOutputDir ]
+        , concat [ ["-odir",    dir] | dir <- flag ghcOptObjDir ]
+        , concat [ ["-hidir",   dir] | dir <- flag ghcOptHiDir  ]
+        , concat [ ["-stubdir", dir] | dir <- flag ghcOptStubDir ]
+
+        -----------------------
+        -- Source search path
+
+        , [ "-i"        | flagBool ghcOptSourcePathClear ]
+        , [ "-i" ++ dir | dir <- flags ghcOptSourcePath ]
+
+        --------------------
+
+        --------------------
+        -- CPP, C, and C++ stuff
+
+        , [ "-I"    ++ dir | dir <- flags ghcOptCppIncludePath ]
+        , [ "-optP" ++ opt | opt <- ghcOptCppOptions opts]
+        , concat [ [ "-optP-include", "-optP" ++ inc]
+                 | inc <- flags ghcOptCppIncludes ]
+        , [ "-optc" ++ opt | opt <- ghcOptCcOptions opts]
         , -- C++ compiler options: GHC >= 8.10 requires -optcxx, older requires -optc
           let cxxflag = case compilerCompatVersion GHC comp of
                 Just v | v >= mkVersion [8, 10] -> "-optcxx"

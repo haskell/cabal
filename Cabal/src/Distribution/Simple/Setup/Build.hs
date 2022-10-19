@@ -44,13 +44,14 @@ import Distribution.Simple.Setup.Common
 
 -- ------------------------------------------------------------
 
-data BuildFlags = BuildFlags
-  { buildProgramPaths :: [(String, FilePath)]
-  , buildProgramArgs :: [(String, [String])]
-  , buildDistPref :: Flag FilePath
-  , buildVerbosity :: Flag Verbosity
-  , buildNumJobs :: Flag (Maybe Int)
-  , -- TODO: this one should not be here, it's just that the silly
+data BuildFlags = BuildFlags {
+    buildProgramPaths :: [(String, FilePath)],
+    buildProgramArgs :: [(String, [String])],
+    buildDistPref    :: Flag FilePath,
+    buildVerbosity   :: Flag Verbosity,
+    buildNumJobs     :: Flag (Maybe Int),
+    buildUseSemaphore :: Flag String,
+    -- TODO: this one should not be here, it's just that the silly
     -- UserHooks stop us from passing extra info in other ways
     buildArgs :: [String]
   , buildCabalFilePath :: Flag FilePath
@@ -58,16 +59,16 @@ data BuildFlags = BuildFlags
   deriving (Read, Show, Generic, Typeable)
 
 defaultBuildFlags :: BuildFlags
-defaultBuildFlags =
-  BuildFlags
-    { buildProgramPaths = mempty
-    , buildProgramArgs = []
-    , buildDistPref = mempty
-    , buildVerbosity = Flag normal
-    , buildNumJobs = mempty
-    , buildArgs = []
-    , buildCabalFilePath = mempty
-    }
+defaultBuildFlags  = BuildFlags {
+    buildProgramPaths = mempty,
+    buildProgramArgs = [],
+    buildDistPref    = mempty,
+    buildVerbosity   = Flag normal,
+    buildNumJobs     = mempty,
+    buildUseSemaphore = NoFlag,
+    buildArgs        = [],
+    buildCabalFilePath = mempty
+  }
 
 buildCommand :: ProgramDb -> CommandUI BuildFlags
 buildCommand progDb =
@@ -123,8 +124,10 @@ buildOptions
   -> [OptionField BuildFlags]
 buildOptions progDb showOrParseArgs =
   [ optionNumJobs
-      buildNumJobs
-      (\v flags -> flags{buildNumJobs = v})
+      buildNumJobs (\v flags -> flags { buildNumJobs = v })
+  , option [] ["semaphore"] "semaphore"
+      buildUseSemaphore (\v flags -> flags { buildUseSemaphore = v })
+       (reqArg' "SEMAPHORE" Flag flagToList)
   ]
     ++ programDbPaths
       progDb

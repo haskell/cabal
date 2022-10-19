@@ -473,81 +473,77 @@ instance Arbitrary ClientInstallFlags where
       <*> arbitraryFlag arbitraryShortToken
 
 instance Arbitrary ProjectConfigBuildOnly where
-  arbitrary =
-    ProjectConfigBuildOnly
-      <$> arbitrary
-      <*> arbitrary
-      <*> arbitrary
-      <*> arbitrary
-      <*> (toNubList <$> shortListOf 2 arbitrary)
-      <*> arbitrary
-      <*> arbitrary
-      <*> arbitrary
-      <*> (fmap getShortToken <$> arbitrary)
-      <*> arbitraryNumJobs
-      <*> arbitrary
-      <*> arbitrary
-      <*> arbitrary
-      <*> (fmap getShortToken <$> arbitrary)
-      <*> arbitrary
-      <*> (fmap getShortToken <$> arbitrary)
-      <*> (fmap getShortToken <$> arbitrary)
-      <*> arbitrary
-    where
-      arbitraryNumJobs = fmap (fmap getPositive) <$> arbitrary
+    arbitrary =
+      ProjectConfigBuildOnly
+        <$> arbitrary
+        <*> arbitrary
+        <*> arbitrary
+        <*> arbitrary
+        <*> (toNubList <$> shortListOf 2 arbitrary)
+        <*> arbitrary
+        <*> arbitrary
+        <*> arbitrary
+        <*> (fmap getShortToken <$> arbitrary)
+        <*> arbitraryNumJobs
+        <*> arbitrary
+        <*> arbitrary
+        <*> arbitrary
+        <*> arbitrary
+        <*> (fmap getShortToken <$> arbitrary)
+        <*> arbitrary
+        <*> (fmap getShortToken <$> arbitrary)
+        <*> (fmap getShortToken <$> arbitrary)
+        <*> arbitrary
+      where
+        arbitraryNumJobs = fmap (fmap getPositive) <$> arbitrary
 
-  shrink
-    ProjectConfigBuildOnly
-      { projectConfigVerbosity = x00
-      , projectConfigDryRun = x01
-      , projectConfigOnlyDeps = x02
-      , projectConfigOnlyDownload = x18
-      , projectConfigSummaryFile = x03
-      , projectConfigLogFile = x04
-      , projectConfigBuildReports = x05
-      , projectConfigReportPlanningFailure = x06
-      , projectConfigSymlinkBinDir = x07
-      , projectConfigNumJobs = x09
-      , projectConfigKeepGoing = x10
-      , projectConfigOfflineMode = x11
-      , projectConfigKeepTempFiles = x12
-      , projectConfigHttpTransport = x13
-      , projectConfigIgnoreExpiry = x14
-      , projectConfigCacheDir = x15
-      , projectConfigLogsDir = x16
-      , projectConfigClientInstallFlags = x17
-      } =
-      [ ProjectConfigBuildOnly
-        { projectConfigVerbosity = x00'
-        , projectConfigDryRun = x01'
-        , projectConfigOnlyDeps = x02'
-        , projectConfigOnlyDownload = x18'
-        , projectConfigSummaryFile = x03'
-        , projectConfigLogFile = x04'
-        , projectConfigBuildReports = x05'
-        , projectConfigReportPlanningFailure = x06'
-        , projectConfigSymlinkBinDir = x07'
-        , projectConfigNumJobs = postShrink_NumJobs x09'
-        , projectConfigKeepGoing = x10'
-        , projectConfigOfflineMode = x11'
-        , projectConfigKeepTempFiles = x12'
-        , projectConfigHttpTransport = x13
-        , projectConfigIgnoreExpiry = x14'
-        , projectConfigCacheDir = x15
-        , projectConfigLogsDir = x16
-        , projectConfigClientInstallFlags = x17'
-        }
-      | ( (x00', x01', x02', x03', x04')
-          , (x05', x06', x07', x09')
-          , (x10', x11', x12', x14')
-          , (x17', x18')
-          ) <-
-          shrink
-            ( (x00, x01, x02, x03, x04)
-            , (x05, x06, x07, preShrink_NumJobs x09)
-            , (x10, x11, x12, x14)
-            , (x17, x18)
-            )
+    shrink ProjectConfigBuildOnly { projectConfigVerbosity = x00
+                                  , projectConfigDryRun = x01
+                                  , projectConfigOnlyDeps = x02
+                                  , projectConfigOnlyDownload = x18
+                                  , projectConfigSummaryFile = x03
+                                  , projectConfigLogFile = x04
+                                  , projectConfigBuildReports = x05
+                                  , projectConfigReportPlanningFailure = x06
+                                  , projectConfigSymlinkBinDir = x07
+                                  , projectConfigNumJobs = x09
+                                  , projectConfigUseSemaphore = x19
+                                  , projectConfigKeepGoing = x10
+                                  , projectConfigOfflineMode = x11
+                                  , projectConfigKeepTempFiles = x12
+                                  , projectConfigHttpTransport = x13
+                                  , projectConfigIgnoreExpiry = x14
+                                  , projectConfigCacheDir = x15
+                                  , projectConfigLogsDir = x16
+                                  , projectConfigClientInstallFlags = x17 } =
+      [ ProjectConfigBuildOnly { projectConfigVerbosity = x00'
+                               , projectConfigDryRun = x01'
+                               , projectConfigOnlyDeps = x02'
+                               , projectConfigOnlyDownload = x18'
+                               , projectConfigSummaryFile = x03'
+                               , projectConfigLogFile = x04'
+                               , projectConfigBuildReports = x05'
+                               , projectConfigReportPlanningFailure = x06'
+                               , projectConfigSymlinkBinDir = x07'
+                               , projectConfigNumJobs = postShrink_NumJobs x09'
+                               , projectConfigUseSemaphore = x19'
+                               , projectConfigKeepGoing = x10'
+                               , projectConfigOfflineMode = x11'
+                               , projectConfigKeepTempFiles = x12'
+                               , projectConfigHttpTransport = x13
+                               , projectConfigIgnoreExpiry = x14'
+                               , projectConfigCacheDir = x15
+                               , projectConfigLogsDir = x16
+                               , projectConfigClientInstallFlags = x17' }
+      | ((x00', x01', x02', x03', x04'),
+         (x05', x06', x07',       x09'),
+         (x10', x11', x12',       x14'),
+         (            x17', x18', x19'))
+          <- shrink
+               ((x00, x01, x02, x03, x04),
+                (x05, x06, x07,      preShrink_NumJobs x09),
+                (x10, x11, x12,      x14),
+                (          x17, x18, x19))
       ]
       where
         preShrink_NumJobs = fmap (fmap Positive)
