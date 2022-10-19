@@ -232,7 +232,8 @@ library
         parsec     >= 3.1.13.0 && < 3.2,
         regex-base  >= 0.94.0.0 && <0.95,
         regex-posix >= 0.96.0.0 && <0.97,
-        safe-exceptions >= 0.1.7.0 && < 0.2
+        safe-exceptions >= 0.1.7.0 && < 0.2,
+        semaphore-compat >= 1.0.0 && < 1.1
 
     if flag(native-dns)
       if os(windows)

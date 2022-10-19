@@ -41,6 +41,7 @@ import Distribution.Types.LocalBuildInfo
 import Distribution.Types.ModuleRenaming
 import Distribution.Types.MungedPackageId
 import Distribution.Types.MungedPackageName
+import Distribution.Types.ParStrat
 import Distribution.Types.TargetInfo
 import Distribution.Utils.Path
 
@@ -110,6 +111,7 @@ build
   -- ^ preprocessors to run before compiling
   -> IO ()
 build pkg_descr lbi flags suffixes = do
+  checkSemaphoreSupport verbosity (compiler lbi) flags
   targets <- readTargetInfos verbosity pkg_descr lbi (buildArgs flags)
   let componentsToBuild = neededTargetsInBuildOrder' pkg_descr lbi (map nodeKey targets)
   info verbosity $
@@ -145,10 +147,21 @@ build pkg_descr lbi flags suffixes = do
             , withPackageDB = withPackageDB lbi ++ [internalPackageDB]
             , installedPkgs = index
             }
+    par_strat <-
+      toFlag <$> case buildUseSemaphore flags of
+        Flag sem_name -> case buildNumJobs flags of
+          Flag{} -> do
+            warn verbosity $ "Ignoring -j due to --semaphore"
+            return $ UseSem sem_name
+          NoFlag -> return $ UseSem sem_name
+        NoFlag -> return $ case buildNumJobs flags of
+          Flag n -> NumJobs n
+          NoFlag -> Serial
+
     mb_ipi <-
       buildComponent
         verbosity
-        (buildNumJobs flags)
+        par_strat
         pkg_descr
         lbi'
         suffixes
@@ -161,6 +174,15 @@ build pkg_descr lbi flags suffixes = do
   where
     distPref = fromFlag (buildDistPref flags)
     verbosity = fromFlag (buildVerbosity flags)
+
+-- | Check for conditions that would prevent the build from succeeding.
+checkSemaphoreSupport
+  :: Verbosity -> Compiler -> BuildFlags -> IO ()
+checkSemaphoreSupport verbosity comp flags = do
+  unless (jsemSupported comp || (isNothing (flagToMaybe (buildUseSemaphore flags)))) $
+    die' verbosity $
+      "Your compiler does not support the -jsem flag. "
+        ++ "To use this feature you must use GHC 9.8 or later."
 
 -- | Write available build information for 'LocalBuildInfo' to disk.
 --
@@ -317,7 +339,7 @@ startInterpreter verbosity programDb comp platform packageDBs =
 
 buildComponent
   :: Verbosity
-  -> Flag (Maybe Int)
+  -> Flag ParStrat
   -> PackageDescription
   -> LocalBuildInfo
   -> [PPSuffixHandler]
@@ -926,7 +948,7 @@ addInternalBuildTools pkg lbi bi progs =
 -- multiple libs, e.g. for 'LibTest' library-style test suites
 buildLib
   :: Verbosity
-  -> Flag (Maybe Int)
+  -> Flag ParStrat
   -> PackageDescription
   -> LocalBuildInfo
   -> Library
@@ -946,7 +968,7 @@ buildLib verbosity numJobs pkg_descr lbi lib clbi =
 -- foreign library in configure.
 buildFLib
   :: Verbosity
-  -> Flag (Maybe Int)
+  -> Flag ParStrat
   -> PackageDescription
   -> LocalBuildInfo
   -> ForeignLib
@@ -959,7 +981,7 @@ buildFLib verbosity numJobs pkg_descr lbi flib clbi =
 
 buildExe
   :: Verbosity
-  -> Flag (Maybe Int)
+  -> Flag ParStrat
   -> PackageDescription
   -> LocalBuildInfo
   -> Executable
