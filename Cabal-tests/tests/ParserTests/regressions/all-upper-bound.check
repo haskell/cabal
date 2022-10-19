@@ -1,5 +1,3 @@
-No 'maintainer' field.
-No 'description' field.
 These packages miss upper bounds:
   - alphalib
   - betalib
