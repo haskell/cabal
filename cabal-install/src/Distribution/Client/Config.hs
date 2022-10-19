@@ -293,6 +293,7 @@ instance Semigroup SavedConfig where
         where
           combine = combine' savedInitFlags
 
+<<<<<<< HEAD
       combinedSavedInstallFlags = InstallFlags {
         installDocumentation         = combine installDocumentation,
         installHaddockIndex          = combine installHaddockIndex,
@@ -329,6 +330,46 @@ instance Semigroup SavedConfig where
         installRunTests              = combine installRunTests,
         installOfflineMode           = combine installOfflineMode
         }
+=======
+      combinedSavedInstallFlags =
+        InstallFlags
+          { installDocumentation = combine installDocumentation
+          , installHaddockIndex = combine installHaddockIndex
+          , installDryRun = combine installDryRun
+          , installOnlyDownload = combine installOnlyDownload
+          , installDest = combine installDest
+          , installMaxBackjumps = combine installMaxBackjumps
+          , installReorderGoals = combine installReorderGoals
+          , installCountConflicts = combine installCountConflicts
+          , installFineGrainedConflicts = combine installFineGrainedConflicts
+          , installMinimizeConflictSet = combine installMinimizeConflictSet
+          , installIndependentGoals = combine installIndependentGoals
+          , installPreferOldest = combine installPreferOldest
+          , installShadowPkgs = combine installShadowPkgs
+          , installStrongFlags = combine installStrongFlags
+          , installAllowBootLibInstalls = combine installAllowBootLibInstalls
+          , installOnlyConstrained = combine installOnlyConstrained
+          , installReinstall = combine installReinstall
+          , installAvoidReinstalls = combine installAvoidReinstalls
+          , installOverrideReinstall = combine installOverrideReinstall
+          , installUpgradeDeps = combine installUpgradeDeps
+          , installOnly = combine installOnly
+          , installOnlyDeps = combine installOnlyDeps
+          , installIndexState = combine installIndexState
+          , installRootCmd = combine installRootCmd
+          , installSummaryFile = lastNonEmptyNL installSummaryFile
+          , installLogFile = combine installLogFile
+          , installBuildReports = combine installBuildReports
+          , installReportPlanningFailure = combine installReportPlanningFailure
+          , installSymlinkBinDir = combine installSymlinkBinDir
+          , installPerComponent = combine installPerComponent
+          , installNumJobs = combine installNumJobs
+          , installUseSemaphore = combine installUseSemaphore
+          , installKeepGoing = combine installKeepGoing
+          , installRunTests = combine installRunTests
+          , installOfflineMode = combine installOfflineMode
+          }
+>>>>>>> 0a1c167a7 (Add support for using GHC's -jsem option)
         where
           combine        = combine'        savedInstallFlags
           lastNonEmptyNL = lastNonEmptyNL' savedInstallFlags

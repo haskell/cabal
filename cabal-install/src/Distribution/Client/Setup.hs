@@ -88,7 +88,50 @@ import Distribution.Simple.Program (ProgramDb, defaultProgramDb)
 import Distribution.Simple.Command hiding (boolOpt, boolOpt')
 import qualified Distribution.Simple.Command as Command
 import Distribution.Simple.Configure
+<<<<<<< HEAD
        ( configCompilerAuxEx, interpretPackageDbFlags, computeEffectiveProfiling )
+=======
+  ( computeEffectiveProfiling
+  , configCompilerAuxEx
+  , interpretPackageDbFlags
+  )
+import Distribution.Simple.Flag
+  ( Flag (..)
+  , flagElim
+  , flagToList
+  , flagToMaybe
+  , fromFlagOrDefault
+  , maybeToFlag
+  , toFlag
+  )
+import Distribution.Simple.InstallDirs
+  ( InstallDirs (..)
+  , PathTemplate
+  , combinePathTemplate
+  , fromPathTemplate
+  , toPathTemplate
+  )
+import Distribution.Simple.Program (ProgramDb, defaultProgramDb)
+import Distribution.Simple.Setup
+  ( BenchmarkFlags
+  , BooleanFlag (..)
+  , BuildFlags (..)
+  , CleanFlags (..)
+  , ConfigFlags (..)
+  , CopyFlags (..)
+  , HaddockFlags (..)
+  , RegisterFlags (..)
+  , ReplFlags
+  , TestFlags
+  , boolOpt
+  , boolOpt'
+  , falseArg
+  , optionVerbosity
+  , readPackageDbList
+  , showPackageDbList
+  , trueArg
+  )
+>>>>>>> 0a1c167a7 (Add support for using GHC's -jsem option)
 import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Simple.Flag
          ( Flag(..), toFlag, flagToMaybe, flagToList, maybeToFlag
@@ -1607,18 +1650,29 @@ data InstallFlags = InstallFlags {
     installReportPlanningFailure :: Flag Bool,
     -- Note: symlink-bindir is no longer used by v2-install and can be removed
     -- when removing v1 commands
+<<<<<<< HEAD
     installSymlinkBinDir    :: Flag FilePath,
     installPerComponent     :: Flag Bool,
     installNumJobs          :: Flag (Maybe Int),
     installKeepGoing        :: Flag Bool,
     installRunTests         :: Flag Bool,
     installOfflineMode      :: Flag Bool
+=======
+    installSymlinkBinDir :: Flag FilePath
+  , installPerComponent :: Flag Bool
+  , installNumJobs :: Flag (Maybe Int)
+  , installUseSemaphore :: Flag Bool
+  , installKeepGoing :: Flag Bool
+  , installRunTests :: Flag Bool
+  , installOfflineMode :: Flag Bool
+>>>>>>> 0a1c167a7 (Add support for using GHC's -jsem option)
   }
   deriving (Eq, Show, Generic)
 
 instance Binary InstallFlags
 
 defaultInstallFlags :: InstallFlags
+<<<<<<< HEAD
 defaultInstallFlags = InstallFlags {
     installDocumentation   = Flag False,
     installHaddockIndex    = Flag docIndexFile,
@@ -1655,6 +1709,46 @@ defaultInstallFlags = InstallFlags {
     installRunTests        = mempty,
     installOfflineMode     = Flag False
   }
+=======
+defaultInstallFlags =
+  InstallFlags
+    { installDocumentation = Flag False
+    , installHaddockIndex = Flag docIndexFile
+    , installDest = Flag Cabal.NoCopyDest
+    , installDryRun = Flag False
+    , installOnlyDownload = Flag False
+    , installMaxBackjumps = Flag defaultMaxBackjumps
+    , installReorderGoals = Flag (ReorderGoals False)
+    , installCountConflicts = Flag (CountConflicts True)
+    , installFineGrainedConflicts = Flag (FineGrainedConflicts True)
+    , installMinimizeConflictSet = Flag (MinimizeConflictSet False)
+    , installIndependentGoals = Flag (IndependentGoals False)
+    , installPreferOldest = Flag (PreferOldest False)
+    , installShadowPkgs = Flag (ShadowPkgs False)
+    , installStrongFlags = Flag (StrongFlags False)
+    , installAllowBootLibInstalls = Flag (AllowBootLibInstalls False)
+    , installOnlyConstrained = Flag OnlyConstrainedNone
+    , installReinstall = Flag False
+    , installAvoidReinstalls = Flag (AvoidReinstalls False)
+    , installOverrideReinstall = Flag False
+    , installUpgradeDeps = Flag False
+    , installOnly = Flag False
+    , installOnlyDeps = Flag False
+    , installIndexState = mempty
+    , installRootCmd = mempty
+    , installSummaryFile = mempty
+    , installLogFile = mempty
+    , installBuildReports = Flag NoReports
+    , installReportPlanningFailure = Flag False
+    , installSymlinkBinDir = mempty
+    , installPerComponent = Flag True
+    , installNumJobs = mempty
+    , installUseSemaphore = Flag False
+    , installKeepGoing = Flag False
+    , installRunTests = mempty
+    , installOfflineMode = Flag False
+    }
+>>>>>>> 0a1c167a7 (Add support for using GHC's -jsem option)
   where
     docIndexFile = toPathTemplate ("$datadir" </> "doc"
                                    </> "$arch-$os-$compiler" </> "index.html")
@@ -1949,11 +2043,27 @@ installOptions showOrParseArgs =
           "Run package test suites during installation."
           installRunTests (\v flags -> flags { installRunTests = v })
           trueArg
+<<<<<<< HEAD
 
       , optionNumJobs
         installNumJobs (\v flags -> flags { installNumJobs = v })
 
       , option [] ["keep-going"]
+=======
+       , option
+          []
+          ["semaphore"]
+          "Use a semaphore so GHC can compile components in parallel"
+          installUseSemaphore
+          (\v flags -> flags{installUseSemaphore = v})
+          (yesNoOpt showOrParseArgs)
+       , optionNumJobs
+          installNumJobs
+          (\v flags -> flags{installNumJobs = v})
+       , option
+          []
+          ["keep-going"]
+>>>>>>> 0a1c167a7 (Add support for using GHC's -jsem option)
           "After a build failure, continue to build other unaffected packages."
           installKeepGoing (\v flags -> flags { installKeepGoing = v })
           trueArg
@@ -1972,6 +2082,34 @@ installOptions showOrParseArgs =
               trueArg ]
           _ -> []
 
+
+optionNumJobs
+  :: (flags -> Flag (Maybe Int))
+  -> (Flag (Maybe Int) -> flags -> flags)
+  -> OptionField flags
+optionNumJobs get set =
+  option
+    "j"
+    ["jobs"]
+    "Run NUM jobs simultaneously (or '$ncpus' if no NUM is given)."
+    get
+    set
+    ( optArg
+        "NUM"
+        (fmap Flag numJobsParser)
+        ("", Flag Nothing)
+        (map (Just . maybe "$ncpus" show) . flagToList)
+    )
+  where
+    numJobsParser :: ReadE (Maybe Int)
+    numJobsParser = ReadE $ \s ->
+      case s of
+        "$ncpus" -> Right Nothing
+        _ -> case reads s of
+          [(n, "")]
+            | n < 1 -> Left "The number of jobs should be 1 or more."
+            | otherwise -> Right (Just n)
+          _ -> Left "The jobs value should be a number or '$ncpus'"
 
 instance Monoid InstallFlags where
   mempty = gmempty

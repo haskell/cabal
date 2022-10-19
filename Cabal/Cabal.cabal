@@ -148,6 +148,7 @@ library
     Distribution.Types.LocalBuildInfo
     Distribution.Types.TargetInfo
     Distribution.Types.GivenComponent
+    Distribution.Types.ParStrat
     Distribution.Utils.Json
     Distribution.Utils.NubList
     Distribution.Utils.Progress

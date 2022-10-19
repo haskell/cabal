@@ -343,6 +343,46 @@ resolveBuildTimeSettings verbosity
       projectConfigKeepTempFiles         = toFlag False,
       projectConfigIgnoreExpiry          = toFlag False
     }
+<<<<<<< HEAD
+=======
+  ProjectConfig
+    { projectConfigShared =
+      ProjectConfigShared
+        { projectConfigRemoteRepos
+        , projectConfigLocalNoIndexRepos
+        , projectConfigProgPathExtra
+        }
+    , projectConfigBuildOnly
+    } =
+    BuildTimeSettings{..}
+    where
+      buildSettingDryRun = fromFlag projectConfigDryRun
+      buildSettingOnlyDeps = fromFlag projectConfigOnlyDeps
+      buildSettingOnlyDownload = fromFlag projectConfigOnlyDownload
+      buildSettingSummaryFile = fromNubList projectConfigSummaryFile
+      -- buildSettingLogFile       -- defined below, more complicated
+      -- buildSettingLogVerbosity  -- defined below, more complicated
+      buildSettingBuildReports = fromFlag projectConfigBuildReports
+      buildSettingSymlinkBinDir = flagToList projectConfigSymlinkBinDir
+      buildSettingNumJobs =
+        if fromFlag projectConfigUseSemaphore
+          then UseSem (determineNumJobs projectConfigNumJobs)
+          else case (determineNumJobs projectConfigNumJobs) of
+            1 -> Serial
+            n -> NumJobs (Just n)
+      buildSettingKeepGoing = fromFlag projectConfigKeepGoing
+      buildSettingOfflineMode = fromFlag projectConfigOfflineMode
+      buildSettingKeepTempFiles = fromFlag projectConfigKeepTempFiles
+      buildSettingRemoteRepos = fromNubList projectConfigRemoteRepos
+      buildSettingLocalNoIndexRepos = fromNubList projectConfigLocalNoIndexRepos
+      buildSettingCacheDir = fromFlag projectConfigCacheDir
+      buildSettingHttpTransport = flagToMaybe projectConfigHttpTransport
+      buildSettingIgnoreExpiry = fromFlag projectConfigIgnoreExpiry
+      buildSettingReportPlanningFailure =
+        fromFlag projectConfigReportPlanningFailure
+      buildSettingProgPathExtra = fromNubList projectConfigProgPathExtra
+      buildSettingHaddockOpen = False
+>>>>>>> 0a1c167a7 (Add support for using GHC's -jsem option)
 
     -- The logging logic: what log file to use and what verbosity.
     --
@@ -370,10 +410,27 @@ resolveBuildTimeSettings verbosity
 
     isParallelBuild = buildSettingNumJobs >= 2
 
+<<<<<<< HEAD
     substLogFileName :: PathTemplate
                      -> Compiler -> Platform
                      -> PackageId -> UnitId -> FilePath
     substLogFileName template compiler platform pkgid uid =
+=======
+      useDefaultTemplate
+        | buildSettingBuildReports == DetailedReports = True
+        | isJust givenTemplate = False
+        | isParallelBuild buildSettingNumJobs = True
+        | otherwise = False
+
+      substLogFileName
+        :: PathTemplate
+        -> Compiler
+        -> Platform
+        -> PackageId
+        -> UnitId
+        -> FilePath
+      substLogFileName template compiler platform pkgid uid =
+>>>>>>> 0a1c167a7 (Add support for using GHC's -jsem option)
         fromPathTemplate (substPathTemplate env template)
       where
         env = initialPathTemplateEnv
@@ -394,6 +451,15 @@ resolveBuildTimeSettings verbosity
       | isParallelBuild                             = False
       | otherwise                                   = False
 
+<<<<<<< HEAD
+=======
+      overrideVerbosity :: Bool
+      overrideVerbosity
+        | buildSettingBuildReports == DetailedReports = True
+        | isJust givenTemplate = True
+        | isParallelBuild buildSettingNumJobs = False
+        | otherwise = False
+>>>>>>> 0a1c167a7 (Add support for using GHC's -jsem option)
 
 ---------------------------------------------
 -- Reading and writing project config files

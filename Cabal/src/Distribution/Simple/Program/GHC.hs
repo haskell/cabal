@@ -45,6 +45,7 @@ import Data.List (stripPrefix)
 import qualified Data.Map as Map
 import Data.Monoid (All(..), Any(..), Endo(..))
 import qualified Data.Set as Set
+import Distribution.Types.ParStrat
 
 normaliseGhcArgs :: Maybe Version -> PackageDescription -> [String] -> [String]
 normaliseGhcArgs (Just ghcVersion) PackageDescription{..} ghcArgs
@@ -468,8 +469,29 @@ data GhcOptions = GhcOptions {
   -- set to be able to make use of the 'ghcOptExtensions'.
   ghcOptExtensionMap    :: Map Extension (Maybe CompilerFlag),
 
+<<<<<<< HEAD
   ----------------
   -- Compilation
+=======
+    ghcOptOptimisation :: Flag GhcOptimisation
+  -- ^ What optimisation level to use; the @ghc -O@ flag.
+  , ghcOptDebugInfo :: Flag DebugInfoLevel
+  -- ^ Emit debug info; the @ghc -g@ flag.
+  , ghcOptProfilingMode :: Flag Bool
+  -- ^ Compile in profiling mode; the @ghc -prof@ flag.
+  , ghcOptProfilingAuto :: Flag GhcProfAuto
+  -- ^ Automatically add profiling cost centers; the @ghc -fprof-auto*@ flags.
+  , ghcOptSplitSections :: Flag Bool
+  -- ^ Use the \"split sections\" feature; the @ghc -split-sections@ flag.
+  , ghcOptSplitObjs :: Flag Bool
+  -- ^ Use the \"split object files\" feature; the @ghc -split-objs@ flag.
+  , ghcOptNumJobs :: Flag ParStrat
+  -- ^ Run N jobs simultaneously (if possible).
+  , ghcOptHPCDir :: Flag FilePath
+  -- ^ Enable coverage analysis; the @ghc -fhpc -hpcdir@ flags.
+  , ----------------
+    -- GHCi
+>>>>>>> 0a1c167a7 (Add support for using GHC's -jsem option)
 
   -- | What optimisation level to use; the @ghc -O@ flag.
   ghcOptOptimisation  :: Flag GhcOptimisation,
@@ -531,9 +553,16 @@ data GhcOptions = GhcOptions {
 
   -- | Put the extra folders in the PATH environment variable we invoke
   -- GHC with
+<<<<<<< HEAD
   ghcOptExtraPath     :: NubListR FilePath,
 
   -- | Let GHC know that it is Cabal that's calling it.
+=======
+  -- | Put the extra folders in the PATH environment variable we invoke
+  -- GHC with
+  , ghcOptCabal :: Flag Bool
+  -- ^ Let GHC know that it is Cabal that's calling it.
+>>>>>>> 0a1c167a7 (Add support for using GHC's -jsem option)
   -- Modifies some of the GHC error messages.
   ghcOptCabal         :: Flag Bool
 
@@ -601,8 +630,58 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
   , [ "-no-link" | flagBool ghcOptNoLink ]
   , [ "-flink-rts" | flagBool ghcOptLinkRts ]
 
+<<<<<<< HEAD
   ---------------
   -- Misc flags
+=======
+          case flagToMaybe (ghcOptOptimisation opts) of
+            Nothing -> []
+            Just GhcNoOptimisation -> ["-O0"]
+            Just GhcNormalOptimisation -> ["-O"]
+            Just GhcMaximumOptimisation -> ["-O2"]
+            Just (GhcSpecialOptimisation s) -> ["-O" ++ s] -- eg -Odph
+        , case flagToMaybe (ghcOptDebugInfo opts) of
+            Nothing -> []
+            Just NoDebugInfo -> []
+            Just MinimalDebugInfo -> ["-g1"]
+            Just NormalDebugInfo -> ["-g2"]
+            Just MaximalDebugInfo -> ["-g3"]
+        , ["-prof" | flagBool ghcOptProfilingMode]
+        , case flagToMaybe (ghcOptProfilingAuto opts) of
+            _
+              | not (flagBool ghcOptProfilingMode) ->
+                  []
+            Nothing -> []
+            Just GhcProfAutoAll
+              | flagProfAuto implInfo -> ["-fprof-auto"]
+              | otherwise -> ["-auto-all"] -- not the same, but close
+            Just GhcProfLate
+              | flagProfLate implInfo -> ["-fprof-late"]
+              | otherwise -> ["-fprof-auto-top"] -- not the same, not very close, but what we have.
+            Just GhcProfAutoToplevel
+              | flagProfAuto implInfo -> ["-fprof-auto-top"]
+              | otherwise -> ["-auto-all"]
+            Just GhcProfAutoExported
+              | flagProfAuto implInfo -> ["-fprof-auto-exported"]
+              | otherwise -> ["-auto"]
+        , ["-split-sections" | flagBool ghcOptSplitSections]
+        , ["-split-objs" | flagBool ghcOptSplitObjs]
+        , case flagToMaybe (ghcOptHPCDir opts) of
+            Nothing -> []
+            Just hpcdir -> ["-fhpc", "-hpcdir", hpcdir]
+        , if parmakeSupported comp
+            then case ghcOptNumJobs opts of
+              NoFlag -> []
+              Flag Serial -> []
+              Flag (UseSem name) ->
+                if jsemSupported comp
+                  then ["-jsem " ++ name]
+                  else []
+              Flag (NumJobs n) -> ["-j" ++ show n]
+            else []
+        , --------------------
+          -- Creating libraries
+>>>>>>> 0a1c167a7 (Add support for using GHC's -jsem option)
 
   , maybe [] verbosityOpts (flagToMaybe (ghcOptVerbosity opts))
 

@@ -3509,6 +3509,7 @@ setupHsConfigureFlags (ReadyPackage elab@ElaboratedConfiguredPackage{..})
     configCabalFilePath       = mempty
     configVerbosity           = toFlag verbosity
 
+<<<<<<< HEAD
     configInstantiateWith     = Map.toList elabInstantiatedWith
 
     configDeterministic       = mempty -- doesn't matter, configIPID/configCID overridese
@@ -3648,6 +3649,28 @@ setupHsBuildFlags _ _ verbosity builddir =
       buildNumJobs      = mempty, --TODO: [nice to have] sometimes want to use toFlag (Just numBuildJobs),
       buildArgs         = mempty, -- unused, passed via args not flags
       buildCabalFilePath= mempty
+=======
+setupHsBuildFlags
+  :: Flag String
+  -> ElaboratedConfiguredPackage
+  -> ElaboratedSharedConfig
+  -> Verbosity
+  -> FilePath
+  -> Cabal.BuildFlags
+setupHsBuildFlags par_strat elab _ verbosity builddir =
+  Cabal.BuildFlags
+    { buildProgramPaths = mempty -- unused, set at configure time
+    , buildProgramArgs = mempty -- unused, set at configure time
+    , buildVerbosity = toFlag verbosity
+    , buildDistPref = toFlag builddir
+    , buildNumJobs = mempty -- TODO: [nice to have] sometimes want to use toFlag (Just numBuildJobs),
+    , buildUseSemaphore =
+        if elabSetupScriptCliVersion elab >= mkVersion [3, 9, 0, 0]
+          then par_strat
+          else mempty
+    , buildArgs = mempty -- unused, passed via args not flags
+    , buildCabalFilePath = mempty
+>>>>>>> 0a1c167a7 (Add support for using GHC's -jsem option)
     }
 
 

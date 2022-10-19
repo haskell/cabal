@@ -42,9 +42,32 @@ module Distribution.Simple.Compiler (
         OptimisationLevel(..),
         flagToOptimisationLevel,
 
+<<<<<<< HEAD
         -- * Support for debug info levels
         DebugInfoLevel(..),
         flagToDebugInfoLevel,
+=======
+    -- * Support for language extensions
+  , CompilerFlag
+  , languageToFlags
+  , unsupportedLanguages
+  , extensionsToFlags
+  , unsupportedExtensions
+  , parmakeSupported
+  , reexportedModulesSupported
+  , renamingPackageFlagsSupported
+  , unifiedIPIDRequired
+  , packageKeySupported
+  , unitIdSupported
+  , coverageSupported
+  , profilingSupported
+  , backpackSupported
+  , arResponseFilesSupported
+  , arDashLSupported
+  , libraryDynDirSupported
+  , libraryVisibilitySupported
+  , jsemSupported
+>>>>>>> 0a1c167a7 (Add support for using GHC's -jsem option)
 
         -- * Support for language extensions
         CompilerFlag,
@@ -347,6 +370,14 @@ unitIdSupported = ghcSupported "Uses unit IDs"
 -- | Does this compiler support Backpack?
 backpackSupported :: Compiler -> Bool
 backpackSupported = ghcSupported "Support Backpack"
+
+-- | Does this compiler support the -jsem option?
+jsemSupported :: Compiler -> Bool
+jsemSupported comp = case compilerFlavor comp of
+  GHC -> v >= mkVersion [9, 7]
+  _ -> False
+  where
+    v = compilerVersion comp
 
 -- | Does this compiler support a package database entry with:
 -- "dynamic-library-dirs"?

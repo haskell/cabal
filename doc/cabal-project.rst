@@ -269,6 +269,22 @@ package, and thus apply globally:
     ``-j2`` is also supported; a bare ``--jobs`` or ``-j`` is equivalent
     to ``--jobs=$ncpus``.
 
+.. cfg-field::  semaphore: boolean
+                --semaphore
+                --no-semaphore
+    :synopsis: Use GHC's support for semaphore based parallelism.
+
+    :default: False
+
+    This option instructs cabal to control parallelism by creating a new system semaphore,
+    whose number of tokens is specified by ``--jobs`` (or ``-j``).
+    This semaphore is passed to GHC, which allows it to use any leftover parallelism
+    that ``cabal-install`` is not using.
+
+    Requires ``ghc >= 9.8``.
+
+    The command line variant of this field is ``--semaphore``.
+
 .. cfg-field::  keep-going: boolean
                 --keep-going
     :synopsis: Try to continue building on failure.

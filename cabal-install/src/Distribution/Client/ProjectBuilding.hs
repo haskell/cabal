@@ -41,6 +41,7 @@ module Distribution.Client.ProjectBuilding (
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
+<<<<<<< HEAD
 import           Distribution.Client.PackageHash (renderPackageHashInputs)
 import           Distribution.Client.RebuildMonad
 import           Distribution.Client.ProjectConfig
@@ -48,6 +49,16 @@ import           Distribution.Client.ProjectPlanning
 import           Distribution.Client.ProjectPlanning.Types
 import           Distribution.Client.ProjectBuilding.Types
 import           Distribution.Client.Store
+=======
+import Distribution.Client.PackageHash (renderPackageHashInputs)
+import Distribution.Client.ProjectBuilding.Types
+import Distribution.Client.ProjectConfig
+import Distribution.Client.ProjectConfig.Types
+import Distribution.Client.ProjectPlanning
+import Distribution.Client.ProjectPlanning.Types
+import Distribution.Client.RebuildMonad
+import Distribution.Client.Store
+>>>>>>> 0a1c167a7 (Add support for using GHC's -jsem option)
 
 import           Distribution.Client.Types
                    hiding (BuildOutcomes, BuildOutcome,
@@ -62,6 +73,7 @@ import           Distribution.Client.JobControl
 import           Distribution.Client.FetchUtils
 import           Distribution.Client.GlobalFlags (RepoContext)
 import qualified Distribution.Client.Tar as Tar
+<<<<<<< HEAD
 import           Distribution.Client.Setup
                    ( filterConfigureFlags, filterHaddockArgs
                    , filterHaddockFlags, filterTestFlags )
@@ -69,13 +81,39 @@ import           Distribution.Client.SourceFiles
 import           Distribution.Client.SrcDist (allPackageSourceFiles)
 import           Distribution.Client.Utils
                    ( ProgressPhase(..), findOpenProgramLocation, progressMessage, removeExistingFile )
+=======
+import Distribution.Client.Types hiding
+  ( BuildFailure (..)
+  , BuildOutcome
+  , BuildOutcomes
+  , BuildResult (..)
+  )
+import Distribution.Client.Utils
+  ( ProgressPhase (..)
+  , findOpenProgramLocation
+  , numberOfProcessors
+  , progressMessage
+  , removeExistingFile
+  )
+>>>>>>> 0a1c167a7 (Add support for using GHC's -jsem option)
 
 import           Distribution.Compat.Lens
 import           Distribution.Package
 import qualified Distribution.PackageDescription as PD
+<<<<<<< HEAD
 import           Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import qualified Distribution.InstalledPackageInfo as Installed
 import           Distribution.Simple.BuildPaths (haddockDirName)
+=======
+import Distribution.Simple.BuildPaths (haddockDirName)
+import Distribution.Simple.Command (CommandUI)
+import Distribution.Simple.Compiler
+  ( Compiler
+  , PackageDB (..)
+  , compilerId
+  , jsemSupported
+  )
+>>>>>>> 0a1c167a7 (Add support for using GHC's -jsem option)
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import           Distribution.Types.BuildType
 import           Distribution.Types.PackageDescription.Lens (componentModules)
@@ -99,10 +137,18 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString.Lazy.Char8 as LBS.Char8
 
+<<<<<<< HEAD
 import Control.Exception (Handler (..), SomeAsyncException, assert, catches, handle)
 import System.Directory  (canonicalizePath, createDirectoryIfMissing, doesDirectoryExist, doesFileExist, removeFile, renameDirectory)
 import System.FilePath   (dropDrive, makeRelative, normalise, takeDirectory, (<.>), (</>))
 import System.IO         (IOMode (AppendMode), Handle, withFile)
+=======
+import Control.Exception (Handler (..), SomeAsyncException, assert, bracket, catches, handle)
+import System.Directory (canonicalizePath, createDirectoryIfMissing, doesDirectoryExist, doesFileExist, removeFile, renameDirectory)
+import System.FilePath (dropDrive, makeRelative, normalise, takeDirectory, (<.>), (</>))
+import System.IO (Handle, IOMode (AppendMode), withFile)
+import System.Semaphore (SemaphoreName (..))
+>>>>>>> 0a1c167a7 (Add support for using GHC's -jsem option)
 
 import Distribution.Compat.Directory (listDirectory)
 
@@ -557,6 +603,7 @@ invalidatePackageRegFileMonitor PackageFileMonitor{pkgFileMonitorReg} =
 -- | Build things for real.
 --
 -- It requires the 'BuildStatusMap' gathered by 'rebuildTargetsDryRun'.
+<<<<<<< HEAD
 --
 rebuildTargets :: Verbosity
                -> DistDirLayout
@@ -579,6 +626,57 @@ rebuildTargets verbosity
                  buildSettingNumJobs,
                  buildSettingKeepGoing
                } = do
+=======
+rebuildTargets
+  :: Verbosity
+  -> ProjectConfig
+  -> DistDirLayout
+  -> StoreDirLayout
+  -> ElaboratedInstallPlan
+  -> ElaboratedSharedConfig
+  -> BuildStatusMap
+  -> BuildTimeSettings
+  -> IO BuildOutcomes
+rebuildTargets
+  verbosity
+  ProjectConfig
+    { projectConfigBuildOnly = config
+    }
+  distDirLayout@DistDirLayout{..}
+  storeDirLayout
+  installPlan
+  sharedPackageConfig@ElaboratedSharedConfig
+    { pkgConfigCompiler = compiler
+    , pkgConfigCompilerProgs = progdb
+    }
+  pkgsBuildStatus
+  buildSettings@BuildTimeSettings
+    { buildSettingNumJobs
+    , buildSettingKeepGoing
+    }
+    | fromFlagOrDefault False (projectConfigOfflineMode config) && not (null packagesToDownload) = return offlineError
+    | otherwise = do
+        -- Concurrency control: create the job controller and concurrency limits
+        -- for downloading, building and installing.
+        mkJobControl <- case buildSettingNumJobs of
+          Serial -> newSerialJobControl
+          NumJobs n -> newParallelJobControl (fromMaybe numberOfProcessors n)
+          UseSem n ->
+            if jsemSupported compiler
+              then newSemaphoreJobControl n
+              else do
+                warn verbosity "-jsem is not supported by the selected compiler, falling back to normal parallelism control."
+                newParallelJobControl n
+        registerLock <- newLock -- serialise registration
+        cacheLock <- newLock -- serialise access to setup exe cache
+        -- TODO: [code cleanup] eliminate setup exe cache
+        info verbosity $
+          "Executing install plan "
+            ++ case buildSettingNumJobs of
+              NumJobs n -> " in parallel using " ++ show n ++ " threads."
+              UseSem n -> " in parallel using a semaphore with " ++ show n ++ " slots."
+              Serial -> " serially."
+>>>>>>> 0a1c167a7 (Add support for using GHC's -jsem option)
 
     -- Concurrency control: create the job controller and concurrency limits
     -- for downloading, building and installing.
@@ -589,6 +687,7 @@ rebuildTargets verbosity
     cacheLock     <- newLock -- serialise access to setup exe cache
                              --TODO: [code cleanup] eliminate setup exe cache
 
+<<<<<<< HEAD
     debug verbosity $
         "Executing install plan "
      ++ if isParallelBuild
@@ -635,6 +734,88 @@ rebuildTargets verbosity
         , pkgdb <- concat [ elabBuildPackageDBStack elab
                           , elabRegisterPackageDBStack elab
                           , elabSetupPackageDBStack elab ]
+=======
+        bracket (pure mkJobControl) cleanupJobControl $ \jobControl -> do
+          -- Before traversing the install plan, preemptively find all packages that
+          -- will need to be downloaded and start downloading them.
+          asyncDownloadPackages
+            verbosity
+            withRepoCtx
+            installPlan
+            pkgsBuildStatus
+            $ \downloadMap ->
+              -- For each package in the plan, in dependency order, but in parallel...
+              InstallPlan.execute
+                mkJobControl
+                keepGoing
+                (BuildFailure Nothing . DependentFailed . packageId)
+                installPlan
+                $ \pkg ->
+                  -- TODO: review exception handling
+                  handle (\(e :: BuildFailure) -> return (Left e)) $ fmap Right $ do
+                    let uid = installedUnitId pkg
+                        pkgBuildStatus = Map.findWithDefault (error "rebuildTargets") uid pkgsBuildStatus
+
+                    rebuildTarget
+                      verbosity
+                      distDirLayout
+                      storeDirLayout
+                      (jobControlSemaphore jobControl)
+                      buildSettings
+                      downloadMap
+                      registerLock
+                      cacheLock
+                      sharedPackageConfig
+                      installPlan
+                      pkg
+                      pkgBuildStatus
+    where
+      keepGoing = buildSettingKeepGoing
+      withRepoCtx =
+        projectConfigWithBuilderRepoContext
+          verbosity
+          buildSettings
+      packageDBsToUse =
+        -- all the package dbs we may need to create
+        (Set.toList . Set.fromList)
+          [ pkgdb
+          | InstallPlan.Configured elab <- InstallPlan.toList installPlan
+          , pkgdb <-
+              concat
+                [ elabBuildPackageDBStack elab
+                , elabRegisterPackageDBStack elab
+                , elabSetupPackageDBStack elab
+                ]
+          ]
+
+      offlineError :: BuildOutcomes
+      offlineError = Map.fromList . map makeBuildOutcome $ packagesToDownload
+        where
+          makeBuildOutcome :: ElaboratedConfiguredPackage -> (UnitId, BuildOutcome)
+          makeBuildOutcome
+            ElaboratedConfiguredPackage
+              { elabUnitId
+              , elabPkgSourceId = PackageIdentifier{pkgName, pkgVersion}
+              } =
+              ( elabUnitId
+              , Left
+                  ( BuildFailure
+                      { buildFailureLogFile = Nothing
+                      , buildFailureReason = GracefulFailure $ makeError pkgName pkgVersion
+                      }
+                  )
+              )
+          makeError :: PackageName -> Version -> String
+          makeError n v =
+            "--offline was specified, hence refusing to download the package: "
+              ++ unPackageName n
+              ++ " version "
+              ++ Disp.render (pretty v)
+
+      packagesToDownload :: [ElaboratedConfiguredPackage]
+      packagesToDownload =
+        [ elab | InstallPlan.Configured elab <- InstallPlan.reverseTopologicalOrder installPlan, isRemote $ elabPkgSourceLocation elab
+>>>>>>> 0a1c167a7 (Add support for using GHC's -jsem option)
         ]
 
 
@@ -653,6 +834,7 @@ createPackageDBIfMissing _ _ _ _ = return ()
 
 
 -- | Given all the context and resources, (re)build an individual package.
+<<<<<<< HEAD
 --
 rebuildTarget :: Verbosity
               -> DistDirLayout
@@ -673,6 +855,35 @@ rebuildTarget verbosity
               sharedPackageConfig
               plan rpkg@(ReadyPackage pkg)
               pkgBuildStatus
+=======
+rebuildTarget
+  :: Verbosity
+  -> DistDirLayout
+  -> StoreDirLayout
+  -> Maybe SemaphoreName
+  -> BuildTimeSettings
+  -> AsyncFetchMap
+  -> Lock
+  -> Lock
+  -> ElaboratedSharedConfig
+  -> ElaboratedInstallPlan
+  -> ElaboratedReadyPackage
+  -> BuildStatus
+  -> IO BuildResult
+rebuildTarget
+  verbosity
+  distDirLayout@DistDirLayout{distBuildDirectory}
+  storeDirLayout
+  semaphoreName
+  buildSettings
+  downloadMap
+  registerLock
+  cacheLock
+  sharedPackageConfig
+  plan
+  rpkg@(ReadyPackage pkg)
+  pkgBuildStatus
+>>>>>>> 0a1c167a7 (Add support for using GHC's -jsem option)
     -- Technically, doing the --only-download filtering only in this function is
     -- not perfect. We could also prune the plan at an earlier stage, like it's
     -- done with --only-dependencies. But...
@@ -740,8 +951,18 @@ rebuildTarget verbosity
     buildAndInstall :: FilePath -> FilePath -> IO BuildResult
     buildAndInstall srcdir builddir =
         buildAndInstallUnpackedPackage
+<<<<<<< HEAD
           verbosity distDirLayout storeDirLayout
           buildSettings registerLock cacheLock
+=======
+          verbosity
+          distDirLayout
+          storeDirLayout
+          semaphoreName
+          buildSettings
+          registerLock
+          cacheLock
+>>>>>>> 0a1c167a7 (Add support for using GHC's -jsem option)
           sharedPackageConfig
           plan rpkg
           srcdir builddir'
@@ -753,8 +974,17 @@ rebuildTarget verbosity
     buildInplace buildStatus srcdir builddir =
         --TODO: [nice to have] use a relative build dir rather than absolute
         buildInplaceUnpackedPackage
+<<<<<<< HEAD
           verbosity distDirLayout
           buildSettings registerLock cacheLock
+=======
+          verbosity
+          distDirLayout
+          semaphoreName
+          buildSettings
+          registerLock
+          cacheLock
+>>>>>>> 0a1c167a7 (Add support for using GHC's -jsem option)
           sharedPackageConfig
           plan rpkg
           buildStatus
@@ -966,6 +1196,48 @@ buildAndInstallUnpackedPackage verbosity
                                plan rpkg@(ReadyPackage pkg)
                                srcdir builddir = do
 
+<<<<<<< HEAD
+=======
+buildAndInstallUnpackedPackage
+  :: Verbosity
+  -> DistDirLayout
+  -> StoreDirLayout
+  -> Maybe SemaphoreName
+  -- ^ Whether to pass a semaphore to build process
+  -- this is different to BuildTimeSettings because the
+  -- name of the semaphore is created freshly each time.
+  -> BuildTimeSettings
+  -> Lock
+  -> Lock
+  -> ElaboratedSharedConfig
+  -> ElaboratedInstallPlan
+  -> ElaboratedReadyPackage
+  -> FilePath
+  -> FilePath
+  -> IO BuildResult
+buildAndInstallUnpackedPackage
+  verbosity
+  distDirLayout@DistDirLayout{distTempDirectory}
+  storeDirLayout@StoreDirLayout
+    { storePackageDBStack
+    }
+  maybe_semaphore
+  BuildTimeSettings
+    { buildSettingNumJobs
+    , buildSettingLogFile
+    }
+  registerLock
+  cacheLock
+  pkgshared@ElaboratedSharedConfig
+    { pkgConfigPlatform = platform
+    , pkgConfigCompiler = compiler
+    , pkgConfigCompilerProgs = progdb
+    }
+  plan
+  rpkg@(ReadyPackage pkg)
+  srcdir
+  builddir = do
+>>>>>>> 0a1c167a7 (Add support for using GHC's -jsem option)
     createDirectoryIfMissingVerbose verbosity True (srcdir </> builddir)
     initLogFile
 
@@ -1119,6 +1391,7 @@ buildAndInstallUnpackedPackage verbosity
         ElabComponent comp -> prettyShow pkgid
             ++ " (" ++ maybe "custom" prettyShow (compComponentName comp) ++ ")"
 
+<<<<<<< HEAD
     noticeProgress :: ProgressPhase -> IO ()
     noticeProgress phase = when isParallelBuild $
         progressMessage verbosity phase dispname
@@ -1128,6 +1401,16 @@ buildAndInstallUnpackedPackage verbosity
     whenHaddock action
       | hasValidHaddockTargets pkg = action
       | otherwise                  = return ()
+=======
+      noticeProgress :: ProgressPhase -> IO ()
+      noticeProgress phase =
+        when (isParallelBuild buildSettingNumJobs) $
+          progressMessage verbosity phase dispname
+
+      whenHaddock action
+        | hasValidHaddockTargets pkg = action
+        | otherwise = return ()
+>>>>>>> 0a1c167a7 (Add support for using GHC's -jsem option)
 
     configureCommand = Cabal.configureCommand defaultProgramDb
     configureFlags v = flip filterConfigureFlags v $
@@ -1135,8 +1418,16 @@ buildAndInstallUnpackedPackage verbosity
                                              verbosity builddir
     configureArgs _  = setupHsConfigureArgs pkg
 
+<<<<<<< HEAD
     buildCommand     = Cabal.buildCommand defaultProgramDb
     buildFlags   _   = setupHsBuildFlags pkg pkgshared verbosity builddir
+=======
+      buildCommand = Cabal.buildCommand defaultProgramDb
+      comp_par_strat = case maybe_semaphore of
+        Just sem_name -> Cabal.Flag (getSemaphoreName sem_name)
+        _ -> Cabal.NoFlag
+      buildFlags _ = setupHsBuildFlags comp_par_strat pkg pkgshared verbosity builddir
+>>>>>>> 0a1c167a7 (Add support for using GHC's -jsem option)
 
     haddockCommand   = Cabal.haddockCommand
     haddockFlags _   = setupHsHaddockFlags pkg pkgshared
@@ -1190,11 +1481,24 @@ buildAndInstallUnpackedPackage verbosity
           exists <- doesFileExist logFile
           when exists $ removeFile logFile
 
+<<<<<<< HEAD
     withLogging :: (Maybe Handle -> IO r) -> IO r
     withLogging action =
       case mlogFile of
         Nothing      -> action Nothing
         Just logFile -> withFile logFile AppendMode (action . Just)
+=======
+      scriptOptions =
+        setupHsScriptOptions
+          rpkg
+          plan
+          pkgshared
+          distDirLayout
+          srcdir
+          builddir
+          (isParallelBuild buildSettingNumJobs)
+          cacheLock
+>>>>>>> 0a1c167a7 (Add support for using GHC's -jsem option)
 
 
 hasValidHaddockTargets :: ElaboratedConfiguredPackage -> Bool
@@ -1218,6 +1522,53 @@ hasValidHaddockTargets ElaboratedConfiguredPackage{..}
       where
         hasHaddocks = not (null (elabPkgDescription ^. componentModules name))
 
+<<<<<<< HEAD
+=======
+buildInplaceUnpackedPackage
+  :: Verbosity
+  -> DistDirLayout
+  -> Maybe SemaphoreName
+  -> BuildTimeSettings
+  -> Lock
+  -> Lock
+  -> ElaboratedSharedConfig
+  -> ElaboratedInstallPlan
+  -> ElaboratedReadyPackage
+  -> BuildStatusRebuild
+  -> FilePath
+  -> FilePath
+  -> IO BuildResult
+buildInplaceUnpackedPackage
+  verbosity
+  distDirLayout@DistDirLayout
+    { distTempDirectory
+    , distPackageCacheDirectory
+    , distDirectory
+    , distHaddockOutputDir
+    }
+  maybe_semaphore
+  BuildTimeSettings{buildSettingNumJobs, buildSettingHaddockOpen}
+  registerLock
+  cacheLock
+  pkgshared@ElaboratedSharedConfig
+    { pkgConfigCompiler = compiler
+    , pkgConfigCompilerProgs = progdb
+    , pkgConfigPlatform = platform
+    }
+  plan
+  rpkg@(ReadyPackage pkg)
+  buildStatus
+  srcdir
+  builddir = do
+    -- TODO: [code cleanup] there is duplication between the
+    --      distdirlayout and the builddir here builddir is not
+    --      enough, we also need the per-package cachedir
+    createDirectoryIfMissingVerbose verbosity True builddir
+    createDirectoryIfMissingVerbose
+      verbosity
+      True
+      (distPackageCacheDirectory dparams)
+>>>>>>> 0a1c167a7 (Add support for using GHC's -jsem option)
 
 buildInplaceUnpackedPackage :: Verbosity
                             -> DistDirLayout
@@ -1372,9 +1723,15 @@ buildInplaceUnpackedPackage verbosity
           buildResultLogFile = Nothing
         }
 
+<<<<<<< HEAD
   where
     ipkgid  = installedUnitId pkg
     dparams = elabDistDirParams pkgshared pkg
+=======
+      comp_par_strat = case maybe_semaphore of
+        Just sem_name -> Cabal.toFlag (getSemaphoreName sem_name)
+        _ -> Cabal.NoFlag
+>>>>>>> 0a1c167a7 (Add support for using GHC's -jsem option)
 
     isParallelBuild = buildSettingNumJobs >= 2
 
@@ -1423,10 +1780,22 @@ buildInplaceUnpackedPackage verbosity
                                              verbosity builddir
     configureArgs _  = setupHsConfigureArgs pkg
 
+<<<<<<< HEAD
     buildCommand     = Cabal.buildCommand defaultProgramDb
     buildFlags   _   = setupHsBuildFlags pkg pkgshared
                                          verbosity builddir
     buildArgs     _  = setupHsBuildArgs  pkg
+=======
+      buildCommand = Cabal.buildCommand defaultProgramDb
+      buildFlags _ =
+        setupHsBuildFlags
+          comp_par_strat
+          pkg
+          pkgshared
+          verbosity
+          builddir
+      buildArgs _ = setupHsBuildArgs pkg
+>>>>>>> 0a1c167a7 (Add support for using GHC's -jsem option)
 
     testCommand      = Cabal.testCommand -- defaultProgramDb
     testFlags      v = flip filterTestFlags v $
@@ -1451,9 +1820,22 @@ buildInplaceUnpackedPackage verbosity
     haddockArgs    v = flip filterHaddockArgs v $
                        setupHsHaddockArgs pkg
 
+<<<<<<< HEAD
     scriptOptions    = setupHsScriptOptions rpkg plan pkgshared
                                             distDirLayout srcdir builddir
                                             isParallelBuild cacheLock
+=======
+      scriptOptions =
+        setupHsScriptOptions
+          rpkg
+          plan
+          pkgshared
+          distDirLayout
+          srcdir
+          builddir
+          (isParallelBuild buildSettingNumJobs)
+          cacheLock
+>>>>>>> 0a1c167a7 (Add support for using GHC's -jsem option)
 
     setupInteractive :: CommandUI flags
                      -> (Version -> flags) -> (Version -> [String]) -> IO ()

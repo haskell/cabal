@@ -68,10 +68,18 @@ import Distribution.CabalSpecVersion
 import Distribution.Version
 import Distribution.System
 import Distribution.Types.PackageName.Magic
+<<<<<<< HEAD
 import Distribution.Verbosity
 import Distribution.Pretty
 import Distribution.Utils.NubList
 import Distribution.Utils.Path
+=======
+import Distribution.Types.ParStrat
+import Distribution.Utils.NubList
+import Distribution.Utils.Path
+import Distribution.Verbosity (Verbosity)
+import Distribution.Version
+>>>>>>> 0a1c167a7 (Add support for using GHC's -jsem option)
 
 import Control.Monad (msum)
 import Data.Char (isLower)
@@ -372,6 +380,7 @@ toJSLibName lib
 -- -----------------------------------------------------------------------------
 -- Building a library
 
+<<<<<<< HEAD
 buildLib :: Verbosity -> Cabal.Flag (Maybe Int) -> PackageDescription
          -> LocalBuildInfo -> Library -> ComponentLocalBuildInfo
          -> IO ()
@@ -387,6 +396,38 @@ buildOrReplLib :: Maybe [String] -> Verbosity
                -> Cabal.Flag (Maybe Int) -> PackageDescription
                -> LocalBuildInfo -> Library
                -> ComponentLocalBuildInfo -> IO ()
+=======
+buildLib
+  :: Verbosity
+  -> Flag ParStrat
+  -> PackageDescription
+  -> LocalBuildInfo
+  -> Library
+  -> ComponentLocalBuildInfo
+  -> IO ()
+buildLib = buildOrReplLib Nothing
+
+replLib
+  :: [String]
+  -> Verbosity
+  -> Flag ParStrat
+  -> PackageDescription
+  -> LocalBuildInfo
+  -> Library
+  -> ComponentLocalBuildInfo
+  -> IO ()
+replLib = buildOrReplLib . Just
+
+buildOrReplLib
+  :: Maybe [String]
+  -> Verbosity
+  -> Flag ParStrat
+  -> PackageDescription
+  -> LocalBuildInfo
+  -> Library
+  -> ComponentLocalBuildInfo
+  -> IO ()
+>>>>>>> 0a1c167a7 (Add support for using GHC's -jsem option)
 buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
   let uid = componentUnitId clbi
       libTargetDir = componentBuildDir lbi clbi
@@ -740,6 +781,7 @@ startInterpreter verbosity progdb comp platform packageDBs = do
 
 -- | Build a foreign library
 buildFLib
+<<<<<<< HEAD
   :: Verbosity          -> Cabal.Flag (Maybe Int)
   -> PackageDescription -> LocalBuildInfo
   -> ForeignLib         -> ComponentLocalBuildInfo -> IO ()
@@ -751,11 +793,33 @@ replFLib
   -> LocalBuildInfo          -> ForeignLib
   -> ComponentLocalBuildInfo -> IO ()
 replFLib replFlags  v njobs pkg lbi =
+=======
+  :: Verbosity
+  -> Flag ParStrat
+  -> PackageDescription
+  -> LocalBuildInfo
+  -> ForeignLib
+  -> ComponentLocalBuildInfo
+  -> IO ()
+buildFLib v njobs pkg lbi = gbuild v njobs pkg lbi . GBuildFLib
+
+replFLib
+  :: [String]
+  -> Verbosity
+  -> Flag ParStrat
+  -> PackageDescription
+  -> LocalBuildInfo
+  -> ForeignLib
+  -> ComponentLocalBuildInfo
+  -> IO ()
+replFLib replFlags v njobs pkg lbi =
+>>>>>>> 0a1c167a7 (Add support for using GHC's -jsem option)
   gbuild v njobs pkg lbi . GReplFLib replFlags
 
 -- | Build an executable with GHC.
 --
 buildExe
+<<<<<<< HEAD
   :: Verbosity          -> Cabal.Flag (Maybe Int)
   -> PackageDescription -> LocalBuildInfo
   -> Executable         -> ComponentLocalBuildInfo -> IO ()
@@ -766,6 +830,26 @@ replExe
   -> Cabal.Flag (Maybe Int)  -> PackageDescription
   -> LocalBuildInfo          -> Executable
   -> ComponentLocalBuildInfo -> IO ()
+=======
+  :: Verbosity
+  -> Flag ParStrat
+  -> PackageDescription
+  -> LocalBuildInfo
+  -> Executable
+  -> ComponentLocalBuildInfo
+  -> IO ()
+buildExe v njobs pkg lbi = gbuild v njobs pkg lbi . GBuildExe
+
+replExe
+  :: [String]
+  -> Verbosity
+  -> Flag ParStrat
+  -> PackageDescription
+  -> LocalBuildInfo
+  -> Executable
+  -> ComponentLocalBuildInfo
+  -> IO ()
+>>>>>>> 0a1c167a7 (Add support for using GHC's -jsem option)
 replExe replFlags v njobs pkg lbi =
   gbuild v njobs pkg lbi . GReplExe replFlags
 
@@ -1044,9 +1128,20 @@ isHaskell :: FilePath -> Bool
 isHaskell fp = elem (takeExtension fp) [".hs", ".lhs"]
 
 -- | Generic build function. See comment for 'GBuildMode'.
+<<<<<<< HEAD
 gbuild :: Verbosity          -> Cabal.Flag (Maybe Int)
        -> PackageDescription -> LocalBuildInfo
        -> GBuildMode         -> ComponentLocalBuildInfo -> IO ()
+=======
+gbuild
+  :: Verbosity
+  -> Flag ParStrat
+  -> PackageDescription
+  -> LocalBuildInfo
+  -> GBuildMode
+  -> ComponentLocalBuildInfo
+  -> IO ()
+>>>>>>> 0a1c167a7 (Add support for using GHC's -jsem option)
 gbuild verbosity numJobs pkg_descr lbi bm clbi = do
   (ghcjsProg, _) <- requireProgram verbosity ghcjsProgram (withPrograms lbi)
   let replFlags = case bm of

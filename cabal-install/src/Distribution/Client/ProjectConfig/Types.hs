@@ -12,8 +12,16 @@ module Distribution.Client.ProjectConfig.Types (
     PackageConfig(..),
 
     -- * Resolving configuration
+<<<<<<< HEAD
     SolverSettings(..),
     BuildTimeSettings(..),
+=======
+  , SolverSettings (..)
+  , BuildTimeSettings (..)
+  , ParStratX (..)
+  , isParallelBuild
+  , ParStrat
+>>>>>>> 0a1c167a7 (Add support for using GHC's -jsem option)
 
     -- * Extra useful Monoids
     MapLast(..),
@@ -66,6 +74,7 @@ import Distribution.Utils.NubList
          ( NubList )
 
 import qualified Data.Map as Map
+import Distribution.Types.ParStrat
 
 -------------------------------
 -- Project config types
@@ -130,6 +139,7 @@ data ProjectConfig
 -- and not the /value/ of the things we build. This means this information
 -- does not need to be tracked for changes since it does not affect the
 -- outcome.
+<<<<<<< HEAD
 --
 data ProjectConfigBuildOnly
    = ProjectConfigBuildOnly {
@@ -152,6 +162,29 @@ data ProjectConfigBuildOnly
        projectConfigLogsDir               :: Flag FilePath,
        projectConfigClientInstallFlags    :: ClientInstallFlags
      }
+=======
+data ProjectConfigBuildOnly = ProjectConfigBuildOnly
+  { projectConfigVerbosity :: Flag Verbosity
+  , projectConfigDryRun :: Flag Bool
+  , projectConfigOnlyDeps :: Flag Bool
+  , projectConfigOnlyDownload :: Flag Bool
+  , projectConfigSummaryFile :: NubList PathTemplate
+  , projectConfigLogFile :: Flag PathTemplate
+  , projectConfigBuildReports :: Flag ReportLevel
+  , projectConfigReportPlanningFailure :: Flag Bool
+  , projectConfigSymlinkBinDir :: Flag FilePath
+  , projectConfigNumJobs :: Flag (Maybe Int)
+  , projectConfigUseSemaphore :: Flag Bool
+  , projectConfigKeepGoing :: Flag Bool
+  , projectConfigOfflineMode :: Flag Bool
+  , projectConfigKeepTempFiles :: Flag Bool
+  , projectConfigHttpTransport :: Flag String
+  , projectConfigIgnoreExpiry :: Flag Bool
+  , projectConfigCacheDir :: Flag FilePath
+  , projectConfigLogsDir :: Flag FilePath
+  , projectConfigClientInstallFlags :: ClientInstallFlags
+  }
+>>>>>>> 0a1c167a7 (Add support for using GHC's -jsem option)
   deriving (Eq, Show, Generic)
 
 
@@ -437,6 +470,7 @@ instance Structured SolverSettings
 --
 -- Use 'resolveBuildTimeSettings' to make one from the project config (by
 -- applying defaults etc).
+<<<<<<< HEAD
 --
 data BuildTimeSettings
    = BuildTimeSettings {
@@ -463,3 +497,34 @@ data BuildTimeSettings
        buildSettingProgPathExtra         :: [FilePath],
        buildSettingHaddockOpen           :: Bool
      }
+=======
+data BuildTimeSettings = BuildTimeSettings
+  { buildSettingDryRun :: Bool
+  , buildSettingOnlyDeps :: Bool
+  , buildSettingOnlyDownload :: Bool
+  , buildSettingSummaryFile :: [PathTemplate]
+  , buildSettingLogFile
+      :: Maybe
+          ( Compiler
+            -> Platform
+            -> PackageId
+            -> UnitId
+            -> FilePath
+          )
+  , buildSettingLogVerbosity :: Verbosity
+  , buildSettingBuildReports :: ReportLevel
+  , buildSettingReportPlanningFailure :: Bool
+  , buildSettingSymlinkBinDir :: [FilePath]
+  , buildSettingNumJobs :: ParStratInstall
+  , buildSettingKeepGoing :: Bool
+  , buildSettingOfflineMode :: Bool
+  , buildSettingKeepTempFiles :: Bool
+  , buildSettingRemoteRepos :: [RemoteRepo]
+  , buildSettingLocalNoIndexRepos :: [LocalRepo]
+  , buildSettingCacheDir :: FilePath
+  , buildSettingHttpTransport :: Maybe String
+  , buildSettingIgnoreExpiry :: Bool
+  , buildSettingProgPathExtra :: [FilePath]
+  , buildSettingHaddockOpen :: Bool
+  }
+>>>>>>> 0a1c167a7 (Add support for using GHC's -jsem option)

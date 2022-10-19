@@ -660,6 +660,7 @@ convertLegacyBuildOnlyFlags globalFlags configFlags
       configVerbosity           = projectConfigVerbosity
     } = configFlags
 
+<<<<<<< HEAD
     InstallFlags {
       installDryRun             = projectConfigDryRun,
       installOnlyDownload       = projectConfigOnlyDownload,
@@ -679,6 +680,24 @@ convertLegacyBuildOnlyFlags globalFlags configFlags
     HaddockFlags {
       haddockKeepTempFiles      = projectConfigKeepTempFiles --TODO: this ought to live elsewhere
     } = haddockFlags
+=======
+      InstallFlags
+        { installDryRun = projectConfigDryRun
+        , installOnlyDownload = projectConfigOnlyDownload
+        , installOnly = _
+        , installOnlyDeps = projectConfigOnlyDeps
+        , installRootCmd = _
+        , installSummaryFile = projectConfigSummaryFile
+        , installLogFile = projectConfigLogFile
+        , installBuildReports = projectConfigBuildReports
+        , installReportPlanningFailure = projectConfigReportPlanningFailure
+        , installSymlinkBinDir = projectConfigSymlinkBinDir
+        , installNumJobs = projectConfigNumJobs
+        , installUseSemaphore = projectConfigUseSemaphore
+        , installKeepGoing = projectConfigKeepGoing
+        , installOfflineMode = projectConfigOfflineMode
+        } = installFlags
+>>>>>>> 0a1c167a7 (Add support for using GHC's -jsem option)
 
 
 convertToLegacyProjectConfig :: ProjectConfig -> LegacyProjectConfig
@@ -750,6 +769,7 @@ convertToLegacySharedConfig
       configInstallDirs   = projectConfigInstallDirs
     }
 
+<<<<<<< HEAD
     configExFlags = ConfigExFlags {
       configCabalVersion  = projectConfigCabalVersion,
       configAppend        = mempty,
@@ -804,6 +824,46 @@ convertToLegacySharedConfig
         { flagProjectFileName = projectConfigProjectFile
         , flagIgnoreProject   = projectConfigIgnoreProject
         }
+=======
+      installFlags =
+        InstallFlags
+          { installDocumentation = packageConfigDocumentation
+          , installHaddockIndex = projectConfigHaddockIndex
+          , installDest = Flag NoCopyDest
+          , installDryRun = projectConfigDryRun
+          , installOnlyDownload = projectConfigOnlyDownload
+          , installReinstall = mempty -- projectConfigReinstall,
+          , installAvoidReinstalls = mempty -- projectConfigAvoidReinstalls,
+          , installOverrideReinstall = mempty -- projectConfigOverrideReinstall,
+          , installMaxBackjumps = projectConfigMaxBackjumps
+          , installUpgradeDeps = mempty -- projectConfigUpgradeDeps,
+          , installReorderGoals = projectConfigReorderGoals
+          , installCountConflicts = projectConfigCountConflicts
+          , installFineGrainedConflicts = projectConfigFineGrainedConflicts
+          , installMinimizeConflictSet = projectConfigMinimizeConflictSet
+          , installIndependentGoals = projectConfigIndependentGoals
+          , installPreferOldest = projectConfigPreferOldest
+          , installShadowPkgs = mempty -- projectConfigShadowPkgs,
+          , installStrongFlags = projectConfigStrongFlags
+          , installAllowBootLibInstalls = projectConfigAllowBootLibInstalls
+          , installOnlyConstrained = projectConfigOnlyConstrained
+          , installOnly = mempty
+          , installOnlyDeps = projectConfigOnlyDeps
+          , installIndexState = projectConfigIndexState
+          , installRootCmd = mempty -- no longer supported
+          , installSummaryFile = projectConfigSummaryFile
+          , installLogFile = projectConfigLogFile
+          , installBuildReports = projectConfigBuildReports
+          , installReportPlanningFailure = projectConfigReportPlanningFailure
+          , installSymlinkBinDir = projectConfigSymlinkBinDir
+          , installPerComponent = projectConfigPerComponent
+          , installNumJobs = projectConfigNumJobs
+          , installUseSemaphore = projectConfigUseSemaphore
+          , installKeepGoing = projectConfigKeepGoing
+          , installRunTests = mempty
+          , installOfflineMode = projectConfigOfflineMode
+          }
+>>>>>>> 0a1c167a7 (Add support for using GHC's -jsem option)
 
 
 convertToLegacyAllPackageConfig :: ProjectConfig -> LegacyPackageConfig
@@ -1116,6 +1176,7 @@ renderPackageLocationToken s | needsQuoting = show s
 
 
 legacySharedConfigFieldDescrs :: ConstraintSource -> [FieldDescr LegacySharedConfig]
+<<<<<<< HEAD
 legacySharedConfigFieldDescrs constraintSrc = concat
   [ liftFields
       legacyGlobalFlags
@@ -1213,6 +1274,132 @@ legacySharedConfigFieldDescrs constraintSrc = concat
 
   ]
 
+=======
+legacySharedConfigFieldDescrs constraintSrc =
+  concat
+    [ liftFields
+        legacyGlobalFlags
+        (\flags conf -> conf{legacyGlobalFlags = flags})
+        . addFields
+          [ newLineListField
+              "extra-prog-path-shared-only"
+              showTokenQ
+              parseTokenQ
+              (fromNubList . globalProgPathExtra)
+              (\v conf -> conf{globalProgPathExtra = toNubList v})
+          ]
+        . filterFields
+          [ "remote-repo-cache"
+          , "logs-dir"
+          , "store-dir"
+          , "ignore-expiry"
+          , "http-transport"
+          , "active-repositories"
+          ]
+        . commandOptionsToFields
+        $ commandOptions (globalCommand []) ParseArgs
+    , liftFields
+        legacyConfigureShFlags
+        (\flags conf -> conf{legacyConfigureShFlags = flags})
+        . addFields
+          [ commaNewLineListFieldParsec
+              "package-dbs"
+              (Disp.text . showPackageDb)
+              (fmap readPackageDb parsecToken)
+              configPackageDBs
+              (\v conf -> conf{configPackageDBs = v})
+          ]
+        . filterFields (["verbose", "builddir"] ++ map optionName installDirsOptions)
+        . commandOptionsToFields
+        $ configureOptions ParseArgs
+    , liftFields
+        legacyConfigureExFlags
+        (\flags conf -> conf{legacyConfigureExFlags = flags})
+        . addFields
+          [ commaNewLineListFieldParsec
+              "constraints"
+              (pretty . fst)
+              (fmap (\constraint -> (constraint, constraintSrc)) parsec)
+              configExConstraints
+              (\v conf -> conf{configExConstraints = v})
+          , commaNewLineListFieldParsec
+              "preferences"
+              pretty
+              parsec
+              configPreferences
+              (\v conf -> conf{configPreferences = v})
+          , monoidFieldParsec
+              "allow-older"
+              (maybe mempty pretty)
+              (fmap Just parsec)
+              (fmap unAllowOlder . configAllowOlder)
+              (\v conf -> conf{configAllowOlder = fmap AllowOlder v})
+          , monoidFieldParsec
+              "allow-newer"
+              (maybe mempty pretty)
+              (fmap Just parsec)
+              (fmap unAllowNewer . configAllowNewer)
+              (\v conf -> conf{configAllowNewer = fmap AllowNewer v})
+          ]
+        . filterFields
+          [ "cabal-lib-version"
+          , "solver"
+          , "write-ghc-environment-files"
+          -- not "constraint" or "preference", we use our own plural ones above
+          ]
+        . commandOptionsToFields
+        $ configureExOptions ParseArgs constraintSrc
+    , liftFields
+        legacyInstallFlags
+        (\flags conf -> conf{legacyInstallFlags = flags})
+        . addFields
+          [ newLineListField
+              "build-summary"
+              (showTokenQ . fromPathTemplate)
+              (fmap toPathTemplate parseTokenQ)
+              (fromNubList . installSummaryFile)
+              (\v conf -> conf{installSummaryFile = toNubList v})
+          ]
+        . filterFields
+          [ "doc-index-file"
+          , "root-cmd"
+          , "symlink-bindir"
+          , "build-log"
+          , "remote-build-reporting"
+          , "report-planning-failure"
+          , "jobs"
+          , "semaphore"
+          , "keep-going"
+          , "offline"
+          , "per-component"
+          , -- solver flags:
+            "max-backjumps"
+          , "reorder-goals"
+          , "count-conflicts"
+          , "fine-grained-conflicts"
+          , "minimize-conflict-set"
+          , "independent-goals"
+          , "prefer-oldest"
+          , "strong-flags"
+          , "allow-boot-library-installs"
+          , "reject-unconstrained-dependencies"
+          , "index-state"
+          ]
+        . commandOptionsToFields
+        $ installOptions ParseArgs
+    , liftFields
+        legacyClientInstallFlags
+        (\flags conf -> conf{legacyClientInstallFlags = flags})
+        . commandOptionsToFields
+        $ clientInstallOptions ParseArgs
+    , liftFields
+        legacyProjectFlags
+        (\flags conf -> conf{legacyProjectFlags = flags})
+        . commandOptionsToFields
+        $ projectFlagsOptions ParseArgs
+    , [liftField legacyMultiRepl (\flags conf -> conf{legacyMultiRepl = flags}) (commandOptionToField multiReplOption)]
+    ]
+>>>>>>> 0a1c167a7 (Add support for using GHC's -jsem option)
 
 legacyPackageConfigFieldDescrs :: [FieldDescr LegacyPackageConfig]
 legacyPackageConfigFieldDescrs =

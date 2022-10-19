@@ -41,7 +41,11 @@ import Distribution.Types.LibraryVisibility
 import Distribution.Types.LocalBuildInfo
 import Distribution.Types.MungedPackageId
 import Distribution.Types.MungedPackageName
+<<<<<<< HEAD
 import Distribution.Types.ModuleRenaming
+=======
+import Distribution.Types.ParStrat
+>>>>>>> 0a1c167a7 (Add support for using GHC's -jsem option)
 import Distribution.Types.TargetInfo
 import Distribution.Utils.Path
 
@@ -103,6 +107,7 @@ build    :: PackageDescription  -- ^ Mostly information from the .cabal file
          -> [ PPSuffixHandler ] -- ^ preprocessors to run before compiling
          -> IO ()
 build pkg_descr lbi flags suffixes = do
+  checkSemaphoreSupport verbosity (compiler lbi) flags
   targets <- readTargetInfos verbosity pkg_descr lbi (buildArgs flags)
   let componentsToBuild = neededTargetsInBuildOrder' pkg_descr lbi (map nodeKey targets)
   info verbosity $ "Component build order: "
@@ -128,6 +133,7 @@ build pkg_descr lbi flags suffixes = do
     componentInitialBuildSteps distPref pkg_descr lbi clbi verbosity
     let bi     = componentBuildInfo comp
         progs' = addInternalBuildTools pkg_descr lbi bi (withPrograms lbi)
+<<<<<<< HEAD
         lbi'   = lbi {
                    withPrograms  = progs',
                    withPackageDB = withPackageDB lbi ++ [internalPackageDB],
@@ -135,6 +141,35 @@ build pkg_descr lbi flags suffixes = do
                  }
     mb_ipi <- buildComponent verbosity (buildNumJobs flags) pkg_descr
                    lbi' suffixes comp clbi distPref
+=======
+        lbi' =
+          lbi
+            { withPrograms = progs'
+            , withPackageDB = withPackageDB lbi ++ [internalPackageDB]
+            , installedPkgs = index
+            }
+    par_strat <-
+      toFlag <$> case buildUseSemaphore flags of
+        Flag sem_name -> case buildNumJobs flags of
+          Flag{} -> do
+            warn verbosity $ "Ignoring -j due to --semaphore"
+            return $ UseSem sem_name
+          NoFlag -> return $ UseSem sem_name
+        NoFlag -> return $ case buildNumJobs flags of
+          Flag n -> NumJobs n
+          NoFlag -> Serial
+
+    mb_ipi <-
+      buildComponent
+        verbosity
+        par_strat
+        pkg_descr
+        lbi'
+        suffixes
+        comp
+        clbi
+        distPref
+>>>>>>> 0a1c167a7 (Add support for using GHC's -jsem option)
     return (maybe index (Index.insert `flip` index) mb_ipi)
 
   return ()
@@ -142,6 +177,15 @@ build pkg_descr lbi flags suffixes = do
   distPref  = fromFlag (buildDistPref flags)
   verbosity = fromFlag (buildVerbosity flags)
 
+
+-- | Check for conditions that would prevent the build from succeeding.
+checkSemaphoreSupport
+  :: Verbosity -> Compiler -> BuildFlags -> IO ()
+checkSemaphoreSupport verbosity comp flags = do
+  unless (jsemSupported comp || (isNothing (flagToMaybe (buildUseSemaphore flags)))) $
+    die' verbosity $
+      "Your compiler does not support the -jsem flag. "
+        ++ "To use this feature you must use GHC 9.8 or later."
 
 -- | Write available build information for 'LocalBuildInfo' to disk.
 --
@@ -257,6 +301,7 @@ startInterpreter verbosity programDb comp platform packageDBs =
     GHCJS -> GHCJS.startInterpreter verbosity programDb comp platform packageDBs
     _     -> die' verbosity "A REPL is not supported with this compiler."
 
+<<<<<<< HEAD
 buildComponent :: Verbosity
                -> Flag (Maybe Int)
                -> PackageDescription
@@ -268,6 +313,27 @@ buildComponent :: Verbosity
                -> IO (Maybe InstalledPackageInfo)
 buildComponent verbosity numJobs pkg_descr lbi suffixes
                comp@(CLib lib) clbi distPref = do
+=======
+buildComponent
+  :: Verbosity
+  -> Flag ParStrat
+  -> PackageDescription
+  -> LocalBuildInfo
+  -> [PPSuffixHandler]
+  -> Component
+  -> ComponentLocalBuildInfo
+  -> FilePath
+  -> IO (Maybe InstalledPackageInfo)
+buildComponent
+  verbosity
+  numJobs
+  pkg_descr
+  lbi
+  suffixes
+  comp@(CLib lib)
+  clbi
+  distPref = do
+>>>>>>> 0a1c167a7 (Add support for using GHC's -jsem option)
     preprocessComponent pkg_descr comp lbi clbi False verbosity suffixes
     extras <- preprocessExtras verbosity comp lbi
     setupMessage' verbosity "Building" (packageId pkg_descr)
@@ -699,9 +765,20 @@ addInternalBuildTools pkg lbi bi progs =
 
 -- TODO: build separate libs in separate dirs so that we can build
 -- multiple libs, e.g. for 'LibTest' library-style test suites
+<<<<<<< HEAD
 buildLib :: Verbosity -> Flag (Maybe Int)
                       -> PackageDescription -> LocalBuildInfo
                       -> Library            -> ComponentLocalBuildInfo -> IO ()
+=======
+buildLib
+  :: Verbosity
+  -> Flag ParStrat
+  -> PackageDescription
+  -> LocalBuildInfo
+  -> Library
+  -> ComponentLocalBuildInfo
+  -> IO ()
+>>>>>>> 0a1c167a7 (Add support for using GHC's -jsem option)
 buildLib verbosity numJobs pkg_descr lbi lib clbi =
   case compilerFlavor (compiler lbi) of
     GHC   -> GHC.buildLib   verbosity numJobs pkg_descr lbi lib clbi
@@ -714,17 +791,39 @@ buildLib verbosity numJobs pkg_descr lbi lib clbi =
 --
 -- NOTE: We assume that we already checked that we can actually build the
 -- foreign library in configure.
+<<<<<<< HEAD
 buildFLib :: Verbosity -> Flag (Maybe Int)
                        -> PackageDescription -> LocalBuildInfo
                        -> ForeignLib         -> ComponentLocalBuildInfo -> IO ()
+=======
+buildFLib
+  :: Verbosity
+  -> Flag ParStrat
+  -> PackageDescription
+  -> LocalBuildInfo
+  -> ForeignLib
+  -> ComponentLocalBuildInfo
+  -> IO ()
+>>>>>>> 0a1c167a7 (Add support for using GHC's -jsem option)
 buildFLib verbosity numJobs pkg_descr lbi flib clbi =
     case compilerFlavor (compiler lbi) of
       GHC -> GHC.buildFLib verbosity numJobs pkg_descr lbi flib clbi
       _   -> die' verbosity "Building is not supported with this compiler."
 
+<<<<<<< HEAD
 buildExe :: Verbosity -> Flag (Maybe Int)
                       -> PackageDescription -> LocalBuildInfo
                       -> Executable         -> ComponentLocalBuildInfo -> IO ()
+=======
+buildExe
+  :: Verbosity
+  -> Flag ParStrat
+  -> PackageDescription
+  -> LocalBuildInfo
+  -> Executable
+  -> ComponentLocalBuildInfo
+  -> IO ()
+>>>>>>> 0a1c167a7 (Add support for using GHC's -jsem option)
 buildExe verbosity numJobs pkg_descr lbi exe clbi =
   case compilerFlavor (compiler lbi) of
     GHC   -> GHC.buildExe   verbosity numJobs pkg_descr lbi exe clbi

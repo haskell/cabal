@@ -32,6 +32,7 @@
 -- needs is to unify it with the code for managing sets of fields that can be
 -- read and written from files. This would allow us to save configure flags in
 -- config files.
+<<<<<<< HEAD
 
 module Distribution.Simple.Setup (
 
@@ -79,6 +80,108 @@ module Distribution.Simple.Setup (
   BooleanFlag(..),
   boolOpt, boolOpt', trueArg, falseArg,
   optionVerbosity, optionNumJobs) where
+=======
+module Distribution.Simple.Setup
+  ( GlobalFlags (..)
+  , emptyGlobalFlags
+  , defaultGlobalFlags
+  , globalCommand
+  , ConfigFlags (..)
+  , emptyConfigFlags
+  , defaultConfigFlags
+  , configureCommand
+  , configPrograms
+  , configAbsolutePaths
+  , readPackageDb
+  , readPackageDbList
+  , showPackageDb
+  , showPackageDbList
+  , CopyFlags (..)
+  , emptyCopyFlags
+  , defaultCopyFlags
+  , copyCommand
+  , InstallFlags (..)
+  , emptyInstallFlags
+  , defaultInstallFlags
+  , installCommand
+  , HaddockTarget (..)
+  , HaddockFlags (..)
+  , emptyHaddockFlags
+  , defaultHaddockFlags
+  , haddockCommand
+  , Visibility (..)
+  , HaddockProjectFlags (..)
+  , emptyHaddockProjectFlags
+  , defaultHaddockProjectFlags
+  , haddockProjectCommand
+  , HscolourFlags (..)
+  , emptyHscolourFlags
+  , defaultHscolourFlags
+  , hscolourCommand
+  , BuildFlags (..)
+  , emptyBuildFlags
+  , defaultBuildFlags
+  , buildCommand
+  , DumpBuildInfo (..)
+  , ReplFlags (..)
+  , defaultReplFlags
+  , replCommand
+  , ReplOptions (..)
+  , CleanFlags (..)
+  , emptyCleanFlags
+  , defaultCleanFlags
+  , cleanCommand
+  , RegisterFlags (..)
+  , emptyRegisterFlags
+  , defaultRegisterFlags
+  , registerCommand
+  , unregisterCommand
+  , SDistFlags (..)
+  , emptySDistFlags
+  , defaultSDistFlags
+  , sdistCommand
+  , TestFlags (..)
+  , emptyTestFlags
+  , defaultTestFlags
+  , testCommand
+  , TestShowDetails (..)
+  , BenchmarkFlags (..)
+  , emptyBenchmarkFlags
+  , defaultBenchmarkFlags
+  , benchmarkCommand
+  , CopyDest (..)
+  , configureArgs
+  , configureOptions
+  , configureCCompiler
+  , configureLinker
+  , buildOptions
+  , haddockOptions
+  , haddockProjectOptions
+  , installDirsOptions
+  , testOptions'
+  , benchmarkOptions'
+  , programDbOptions
+  , programDbPaths'
+  , programFlagsDescription
+  , replOptions
+  , splitArgs
+  , defaultDistPref
+  , optionDistPref
+  , Flag (..)
+  , toFlag
+  , fromFlag
+  , fromFlagOrDefault
+  , flagToMaybe
+  , flagToList
+  , maybeToFlag
+  , BooleanFlag (..)
+  , boolOpt
+  , boolOpt'
+  , trueArg
+  , falseArg
+  , optionVerbosity
+  ) where
+>>>>>>> 0a1c167a7 (Add support for using GHC's -jsem option)
 
 import Prelude ()
 import Distribution.Compat.Prelude hiding (get)
