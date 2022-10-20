@@ -88,7 +88,7 @@ import Distribution.Simple.Configure
 import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Simple.Flag
          ( Flag(..), toFlag, flagToMaybe, flagToList, maybeToFlag
-         , flagElim, fromFlagOrDefault, maybeStringToBoolFlag
+         , flagElim, fromFlagOrDefault
          )
 import Distribution.Simple.Setup
          ( ConfigFlags(..), BuildFlags(..), ReplFlags
@@ -364,7 +364,7 @@ globalCommand commands = CommandUI {
       ,multiOption "nix"
         globalNix (\v flags -> flags { globalNix = v })
         [
-          optArg' "(True or False)" maybeStringToBoolFlag (\case
+          optArg' "(True or False)" (maybeToFlag . (readMaybe =<<)) (\case
             Flag True -> [Just "enable"]
             Flag False -> [Just "disable"]
             NoFlag -> [Just "disable"]) "" ["nix"]

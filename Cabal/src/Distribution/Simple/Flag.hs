@@ -26,7 +26,6 @@ module Distribution.Simple.Flag (
   flagToMaybe,
   flagToList,
   maybeToFlag,
-  maybeStringToBoolFlag,
   BooleanFlag(..) ) where
 
 import Prelude ()
@@ -124,12 +123,6 @@ allFlags flags = if all (\f -> fromFlagOrDefault False f) flags
 maybeToFlag :: Maybe a -> Flag a
 maybeToFlag Nothing  = NoFlag
 maybeToFlag (Just x) = Flag x
-
-maybeStringToBoolFlag :: Maybe String -> Flag Bool
-maybeStringToBoolFlag Nothing = NoFlag
-maybeStringToBoolFlag (Just "True") = Flag True
-maybeStringToBoolFlag (Just "False") = Flag False
-maybeStringToBoolFlag _ = NoFlag
 
 -- | Types that represent boolean flags.
 class BooleanFlag a where
