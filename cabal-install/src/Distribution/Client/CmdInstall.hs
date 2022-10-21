@@ -308,6 +308,7 @@ installAction flags@NixStyleFlags { extraFlags = clientInstallFlags', .. } targe
         projectConfigHcFlavor,
         projectConfigHcPath,
         projectConfigHcPkg,
+        projectConfigInstallDirs,
         projectConfigStoreDir
       },
       projectConfigLocalPackages = PackageConfig {

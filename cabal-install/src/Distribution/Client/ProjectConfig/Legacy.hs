@@ -501,7 +501,7 @@ convertLegacyAllPackageFlags globalFlags configFlags configExFlags installFlags 
       configHcPath              = projectConfigHcPath,
       configHcPkg               = projectConfigHcPkg,
     --configProgramPathExtra    = projectConfigProgPathExtra DELETE ME
-    --configInstallDirs         = projectConfigInstallDirs,
+      configInstallDirs         = projectConfigInstallDirs,
     --configUserInstall         = projectConfigUserInstall,
       configPackageDBs          = projectConfigPackageDBs
     } = configFlags
@@ -843,7 +843,7 @@ convertToLegacyAllPackageConfig
       configOptimization        = mempty,
       configProgPrefix          = mempty,
       configProgSuffix          = mempty,
-      configInstallDirs         = mempty,
+      configInstallDirs         = projectConfigInstallDirs,
       configScratchDir          = mempty,
       configDistPref            = mempty,
       configCabalFilePath       = mempty,
@@ -1140,7 +1140,7 @@ legacySharedConfigFieldDescrs constraintSrc = concat
         (Disp.text . showPackageDb) (fmap readPackageDb parsecToken)
         configPackageDBs (\v conf -> conf { configPackageDBs = v })
       ]
-  . filterFields ["verbose", "builddir" ]
+  . filterFields ["verbose", "builddir", "datadir" ]
   . commandOptionsToFields
   $ configureOptions ParseArgs
 
@@ -1336,7 +1336,6 @@ legacyPackageConfigFieldDescrs =
       []
   . commandOptionsToFields
   ) (benchmarkOptions' ParseArgs)
-
 
   where
     overrideFieldCompiler =

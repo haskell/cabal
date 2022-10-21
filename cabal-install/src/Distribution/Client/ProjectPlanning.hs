@@ -679,6 +679,8 @@ rebuildInstallPlan verbosity
             getPackageSourceHashes verbosity withRepoCtx solverPlan
 
         defaultInstallDirs <- liftIO $ userInstallDirTemplates compiler
+        let installDirs = (fmap Flag defaultInstallDirs) <> (projectConfigInstallDirs projectConfigShared)
+
         (elaboratedPlan, elaboratedShared)
           <- liftIO . runLogProgress verbosity $
               elaborateInstallPlan
@@ -689,7 +691,7 @@ rebuildInstallPlan verbosity
                 solverPlan
                 localPackages
                 sourcePackageHashes
-                defaultInstallDirs
+                installDirs
                 projectConfigShared
                 projectConfigAllPackages
                 projectConfigLocalPackages
@@ -697,7 +699,7 @@ rebuildInstallPlan verbosity
         let instantiatedPlan
               = instantiateInstallPlan
                   cabalStoreDirLayout
-                  defaultInstallDirs
+                  installDirs
                   elaboratedShared
                   elaboratedPlan
         liftIO $ debugNoWrap verbosity (InstallPlan.showInstallPlan instantiatedPlan)
@@ -1347,7 +1349,7 @@ elaborateInstallPlan
   -> SolverInstallPlan
   -> [PackageSpecifier (SourcePackage (PackageLocation loc))]
   -> Map PackageId PackageSourceHash
-  -> InstallDirs.InstallDirTemplates
+  -> InstallDirs (Flag PathTemplate)
   -> ProjectConfigShared
   -> PackageConfig
   -> PackageConfig
@@ -2287,7 +2289,7 @@ extractElabBuildStyle _ = BuildAndInstall
 --  * We use the state monad to cache already instantiated modules, so
 --    we don't instantiate the same thing multiple times.
 --
-instantiateInstallPlan :: StoreDirLayout -> InstallDirs.InstallDirTemplates -> ElaboratedSharedConfig -> ElaboratedInstallPlan -> ElaboratedInstallPlan
+instantiateInstallPlan :: StoreDirLayout -> (InstallDirs (Flag PathTemplate)) -> ElaboratedSharedConfig -> ElaboratedInstallPlan -> ElaboratedInstallPlan
 instantiateInstallPlan storeDirLayout defaultInstallDirs elaboratedShared plan =
     InstallPlan.new (IndependentGoals False)
                     (Graph.fromDistinctList (Map.elems ready_map))
