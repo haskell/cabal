@@ -32,7 +32,7 @@ import Distribution.Compat.Environment          (lookupEnv)
 import Distribution.Package                     (PkgconfigName, mkPkgconfigName)
 import Distribution.Parsec
 import Distribution.Simple.Program
-       (ProgramDb, getProgramOutput, pkgConfigProgram, needProgram)
+       (ProgramDb, getProgramOutput, pkgConfigProgram, needProgram, ConfiguredProgram)
 import Distribution.Simple.Program.Run          (getProgramInvocationOutputAndErrors, programInvocation)
 import Distribution.Simple.Utils                (info)
 import Distribution.Types.PkgconfigVersion
@@ -70,7 +70,6 @@ readPkgConfigDb verbosity progdb = handle ioErrorHandler $ do
         (pkgVersions, _errs, exitCode) <-
                      getProgramInvocationOutputAndErrors verbosity
                        (programInvocation pkgConfig ("--modversion" : pkgNames))
-        print (pkgVersions, exitCode)
         case exitCode of
           ExitSuccess -> (return . pkgConfigDbFromList . zip pkgNames) (lines pkgVersions)
           -- if there's a single broken pc file the above fails, so we fall back into calling it individually
@@ -86,6 +85,8 @@ readPkgConfigDb verbosity progdb = handle ioErrorHandler $ do
 
     ioErrorHandler :: IOException -> IO PkgConfigDb
     ioErrorHandler e = noPkgConfig (show e)
+
+    getIndividualVersion :: ConfiguredProgram -> String -> IO (Maybe (String, String))
     getIndividualVersion pkgConfig pkg = do
        (pkgVersion, _errs, exitCode) <-
                getProgramInvocationOutputAndErrors verbosity
