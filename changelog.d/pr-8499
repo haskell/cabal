@@ -1,5 +1,5 @@
 synopsis: orders extra stanzas
-packages: cabal-install
+packages: Cabal
 prs: #8499
 issues: #8458
 description: {
