@@ -6,6 +6,7 @@ In order, the following will be built:
 Configuring library for example-1.0..
 Preprocessing library for example-1.0..
 Building library for example-1.0..
+Error: cabal: Failed to build example-1.0-inplace.
 # cabal v2-haddock
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:

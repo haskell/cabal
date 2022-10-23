@@ -160,6 +160,7 @@ syn keyword cabalExtension contained
   \ DataKinds
   \ DatatypeContexts
   \ DefaultSignatures
+  \ DeepSubsumption
   \ DeriveAnyClass
   \ DeriveDataTypeable
   \ DeriveFoldable
@@ -207,6 +208,7 @@ syn keyword cabalExtension contained
   \ LexicalNegation
   \ LiberalTypeSynonyms
   \ LinearTypes
+  \ RequiredTypeArguments
   \ MagicHash
   \ MonadComprehensions
   \ MonadFailDesugaring
@@ -266,6 +268,7 @@ syn keyword cabalExtension contained
   \ TransformListComp
   \ TupleSections
   \ TypeApplications
+  \ TypeData
   \ TypeFamilies
   \ TypeFamilyDependencies
   \ TypeInType
@@ -343,6 +346,7 @@ syn keyword cabalExtension contained
   \ NoLexicalNegation
   \ NoLiberalTypeSynonyms
   \ NoLinearTypes
+  \ NoRequiredTypeArguments
   \ NoMagicHash
   \ NoMonadComprehensions
   \ NoMonadFailDesugaring

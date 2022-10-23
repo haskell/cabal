@@ -146,11 +146,10 @@ must be built per-project, versus external packages, which can be cached
 across projects. To be more precise:
 
 1. A **local package** is one that is listed explicitly in the
-   ``packages``, ``optional-packages`` or ``extra-packages`` field of a
-   project. Usually, these refer to packages whose source code lives
-   directly in a folder in your project. But you can list an
-   arbitrary Hackage package in :cfg-field:`packages`
-   to force it to be treated as local.
+   ``packages``, ``optional-packages`` or ``extra-packages`` fields of a
+   project. Packages in the former two fields will usually have their
+   source code stored in a folder in your project, while ``extra-packages`` lists
+   packages residing on Hackage that are treated as being local anyway.
 
 Local packages, as well as the external packages (below) which depend on
 them, are built **inplace**, meaning that they are always built
@@ -159,8 +158,8 @@ packages are not cached and not given unique hashes, which makes them
 suitable for packages which you want to edit and recompile.
 
 2. An **external package** is any package which is not listed in the
-   ``packages`` field. The source code for external packages is usually
-   retrieved from Hackage.
+   ``packages``, ``optional-packages`` and ``extra-packages`` fields.
+   The source code for external packages is usually retrieved from Hackage.
 
 When an external package does not depend on an inplace package, it can
 be built and installed to a **global** store, which can be shared across

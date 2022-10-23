@@ -6,6 +6,8 @@
 module Distribution.PackageDescription.FieldGrammar (
     -- * Package description
     packageDescriptionFieldGrammar,
+    CompatFilePath(..),
+    CompatLicenseFile(..),
     -- * Library
     libraryFieldGrammar,
     -- * Foreign library

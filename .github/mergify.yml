@@ -9,7 +9,9 @@ pull_request_rules:
     name: Wait for 2 days before validating merge
     conditions:
       - updated-at<2 days ago
-      - label=merge me
+      - or:
+        - label=merge me
+        - label=squash+merge me
       - '#approved-reviews-by>=2'
 
   # rebase+merge strategy
@@ -56,6 +58,15 @@ pull_request_rules:
       - base!=master
       - body~=backport
       - '#approved-reviews-by>=1'
+
+  # backports should be labeled as such
+  - actions:
+      label:
+        add:
+          - backport
+    name: Label backports as such
+    conditions:
+      - body~=automatic backport
 
 queue_rules:
   - name: default
