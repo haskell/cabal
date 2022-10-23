@@ -153,6 +153,16 @@ tests = [
                       solverFailure (isInfixOf "only already installed instances can be used")
         , runTest $ allowBootLibInstalls $ mkTest dbBase "Install base with --allow-boot-library-installs" ["base"] $
                       solverSuccess [("base", 1), ("ghc-prim", 1), ("integer-gmp", 1), ("integer-simple", 1)]
+        , runTest $ mkTest dbGHCDepend "Refuse to install newer version of ghc requested by another library" ["A"] $
+                      solverFailure . isInfixOf $
+                            "Could not resolve dependencies:\n"
+                         ++ "[__0] trying: A-1.0.0 (user goal)\n"
+                         ++ "[__1] next goal: ghc (dependency of A)\n"
+                         ++ "[__1] rejecting: ghc-1.0.0/installed-1 (conflict: A => ghc==2.0.0)\n"
+                         ++ "[__1] rejecting: ghc-2.0.0 (constraint from non-upgradeable package requires installed instance)\n"
+                         ++ "[__1] fail (backjumping, conflict set: A, ghc)\n"
+                         ++ "After searching the rest of the dependency tree exhaustively, "
+                              ++ "these were the goals I've had most trouble fulfilling: A, ghc"
         ]
     , testGroup "reject-unconstrained" [
           runTest $ onlyConstrained $ mkTest db12 "missing syb" ["E"] $
@@ -1122,6 +1132,16 @@ dbBase = [
     , Right $ exAv "integer-simple" 1 []
     , Right $ exAv "integer-gmp" 1 []
     ]
+
+dbGHCDepend :: ExampleDb
+dbGHCDepend =
+  let base = exInst "base" 1 "base-1" []
+  in [
+    Left base
+  , Left $ exInst "ghc" 1 "ghc-1" [base]
+  , Right $ exAv "ghc" 2 []
+  , Right $ exAv "A" 1 [ExFix "ghc" 2]
+  ]
 
 db13 :: ExampleDb
 db13 = [
