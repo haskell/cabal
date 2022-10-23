@@ -168,7 +168,7 @@ jobs:
 
       - name: Validate cli-tests
         if: matrix.cli != 'false'
-        run: sh validate.sh $FLAGS -s cli-tests
+        run: sh validate.sh $FLAGS -s cli-tests | sed 's/error://'
 
       - name: Validate cli-suite
         if: matrix.cli != 'false'
