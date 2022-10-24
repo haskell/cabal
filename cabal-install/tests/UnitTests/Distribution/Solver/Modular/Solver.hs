@@ -148,12 +148,12 @@ tests = [
         , runTest $ mkTest db12 "baseShim5" ["D"] anySolverFailure
         , runTest $ mkTest db12 "baseShim6" ["E"] (solverSuccess [("E", 1), ("syb", 2)])
         ]
-    , testGroup "Base" [
+    , testGroup "Base and Nonupgradable" [
           runTest $ mkTest dbBase "Refuse to install base without --allow-boot-library-installs" ["base"] $
                       solverFailure (isInfixOf "only already installed instances can be used")
         , runTest $ allowBootLibInstalls $ mkTest dbBase "Install base with --allow-boot-library-installs" ["base"] $
                       solverSuccess [("base", 1), ("ghc-prim", 1), ("integer-gmp", 1), ("integer-simple", 1)]
-        , runTest $ mkTest dbGHCDepend "Refuse to install newer version of ghc requested by another library" ["A"] $
+        , runTest $ mkTest dbNonupgrade "Refuse to install newer ghc requested by another library" ["A"] $
                       solverFailure . isInfixOf $
                             "Could not resolve dependencies:\n"
                          ++ "[__0] trying: A-1.0.0 (user goal)\n"
@@ -163,6 +163,10 @@ tests = [
                          ++ "[__1] fail (backjumping, conflict set: A, ghc)\n"
                          ++ "After searching the rest of the dependency tree exhaustively, "
                               ++ "these were the goals I've had most trouble fulfilling: A, ghc"
+        , runTest $ mkTest dbNonupgrade "Refuse to install newer ghci requested by another library" ["B"] $
+                      solverFailure (isInfixOf "constraint from non-upgradeable package requires installed instance")
+        , runTest $ mkTest dbNonupgrade "Refuse to install newer ghc-boot requested by another library" ["C"] $
+                      solverFailure (isInfixOf "constraint from non-upgradeable package requires installed instance")
         ]
     , testGroup "reject-unconstrained" [
           runTest $ onlyConstrained $ mkTest db12 "missing syb" ["E"] $
@@ -1133,14 +1137,20 @@ dbBase = [
     , Right $ exAv "integer-gmp" 1 []
     ]
 
-dbGHCDepend :: ExampleDb
-dbGHCDepend =
+dbNonupgrade :: ExampleDb
+dbNonupgrade =
   let base = exInst "base" 1 "base-1" []
   in [
     Left base
   , Left $ exInst "ghc" 1 "ghc-1" [base]
-  , Right $ exAv "ghc" 2 []
+  , Left $ exInst "ghci" 1 "ghci-1" [base]
+  , Left $ exInst "ghc-boot" 1 "ghc-boot-1" [base]
+  , Right $ exAv "ghc" 2 [ExFix "base" 1]
+  , Right $ exAv "ghci" 2 [ExFix "base" 1]
+  , Right $ exAv "ghc-boot" 2 [ExFix "base" 1]
   , Right $ exAv "A" 1 [ExFix "ghc" 2]
+  , Right $ exAv "B" 1 [ExFix "ghci" 2]
+  , Right $ exAv "C" 1 [ExFix "ghc-boot" 2]
   ]
 
 db13 :: ExampleDb
