@@ -154,15 +154,7 @@ tests = [
         , runTest $ allowBootLibInstalls $ mkTest dbBase "Install base with --allow-boot-library-installs" ["base"] $
                       solverSuccess [("base", 1), ("ghc-prim", 1), ("integer-gmp", 1), ("integer-simple", 1)]
         , runTest $ mkTest dbNonupgrade "Refuse to install newer ghc requested by another library" ["A"] $
-                      solverFailure . isInfixOf $
-                            "Could not resolve dependencies:\n"
-                         ++ "[__0] trying: A-1.0.0 (user goal)\n"
-                         ++ "[__1] next goal: ghc (dependency of A)\n"
-                         ++ "[__1] rejecting: ghc-1.0.0/installed-1 (conflict: A => ghc==2.0.0)\n"
-                         ++ "[__1] rejecting: ghc-2.0.0 (constraint from non-upgradeable package requires installed instance)\n"
-                         ++ "[__1] fail (backjumping, conflict set: A, ghc)\n"
-                         ++ "After searching the rest of the dependency tree exhaustively, "
-                              ++ "these were the goals I've had most trouble fulfilling: A, ghc"
+                      solverFailure (isInfixOf "constraint from non-upgradeable package requires installed instance")
         , runTest $ mkTest dbNonupgrade "Refuse to install newer ghci requested by another library" ["B"] $
                       solverFailure (isInfixOf "constraint from non-upgradeable package requires installed instance")
         , runTest $ mkTest dbNonupgrade "Refuse to install newer ghc-boot requested by another library" ["C"] $
