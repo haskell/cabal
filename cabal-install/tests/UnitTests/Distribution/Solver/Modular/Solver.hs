@@ -154,11 +154,11 @@ tests = [
         , runTest $ allowBootLibInstalls $ mkTest dbBase "Install base with --allow-boot-library-installs" ["base"] $
                       solverSuccess [("base", 1), ("ghc-prim", 1), ("integer-gmp", 1), ("integer-simple", 1)]
         , runTest $ mkTest dbNonupgrade "Refuse to install newer ghc requested by another library" ["A"] $
-                      solverFailure (isInfixOf "constraint from non-upgradeable package requires installed instance")
+                      solverFailure (isInfixOf "rejecting: ghc-2.0.0 (constraint from non-upgradeable package requires installed instance)")
         , runTest $ mkTest dbNonupgrade "Refuse to install newer ghci requested by another library" ["B"] $
-                      solverFailure (isInfixOf "constraint from non-upgradeable package requires installed instance")
+                      solverFailure (isInfixOf "rejecting: ghci-2.0.0 (constraint from non-upgradeable package requires installed instance)")
         , runTest $ mkTest dbNonupgrade "Refuse to install newer ghc-boot requested by another library" ["C"] $
-                      solverFailure (isInfixOf "constraint from non-upgradeable package requires installed instance")
+                      solverFailure (isInfixOf "rejecting: ghc-boot-2.0.0 (constraint from non-upgradeable package requires installed instance)")
         ]
     , testGroup "reject-unconstrained" [
           runTest $ onlyConstrained $ mkTest db12 "missing syb" ["E"] $
