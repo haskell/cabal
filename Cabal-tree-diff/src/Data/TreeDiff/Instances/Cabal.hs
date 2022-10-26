@@ -57,6 +57,8 @@ instance ToExpr Dependency where
 
 instance ToExpr (SymbolicPath from to)
 
+instance ToExpr a => ToExpr (InstallDirs a)
+
 instance ToExpr AbiDependency
 instance ToExpr AbiHash
 instance ToExpr Arch
