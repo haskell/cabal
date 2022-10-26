@@ -24,7 +24,7 @@ The full configuration of a project is determined by combining the
 following sources (later entries override earlier ones, except for appendable
 options):
 
-1. ``~/.cabal/config`` (the user-wide global configuration)
+1. :ref:`The user-wide global configuration <config-file-discovery>` (default: ``~/.config/cabal/config``)
 
 2. ``cabal.project`` (the project configuration)
 
@@ -127,8 +127,10 @@ project are:
 .. cfg-field:: extra-packages: package list with version bounds (comma separated)
     :synopsis: Adds external packages as local
 
-    :strike:`Specifies a list of external packages from Hackage which
-    should be considered local packages.` (Not implemented)
+    Specifies a list of external packages from Hackage, which
+    should be considered local packages. The motivation for
+    :cfg-field:`extra-packages` is making libraries that are not
+    dependencies of any package in the project available for use in ghci.
 
     There is no command line variant of this field.
 

@@ -1,0 +1,8 @@
+# cabal build
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O2
+In order, the following will be built:
+ - test-0.1.0.0 (lib) (first run)
+Configuring library for test-0.1.0.0..
+Preprocessing library for test-0.1.0.0..
+Building library for test-0.1.0.0..

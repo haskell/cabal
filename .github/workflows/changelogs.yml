@@ -1,4 +1,4 @@
-name: Changelogs
+name: Assorted
 
 on:
   push:
@@ -21,6 +21,7 @@ defaults:
 
 jobs:
   build:
+    name: Changelogs
     runs-on: ubuntu-latest
 
     steps:
@@ -35,8 +36,9 @@ jobs:
       - name: ghcup
         run: |
           ghcup config set cache true
-          ghcup install ghc recommended
-          ghcup set ghc recommended
+          ghcup install ghc 8.10.7
+          ghcup set ghc 8.10.7
+      # GHC 8.10.7 needed due to https://github.com/phadej/changelog-d/pull/2
       - name: Update Hackage index
         run: cabal v2-update
       # Cannot install it from tarball due to

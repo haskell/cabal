@@ -10,6 +10,7 @@ Building library for CompileFail-0.1.0.0..
 Configuring test suite 'CompileFail-test' for CompileFail-0.1.0.0..
 Preprocessing test suite 'CompileFail-test' for CompileFail-0.1.0.0..
 Building test suite 'CompileFail-test' for CompileFail-0.1.0.0..
+Error: cabal: Failed to build CompileFail-0.1.0.0-inplace-CompileFail-test.
 # cabal build
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:

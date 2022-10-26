@@ -15,7 +15,6 @@ import Prelude ()
 
 import Distribution.Client.DistDirLayout
 import Distribution.Client.ProjectConfig
-import Distribution.Client.Config (getCabalDir)
 import Distribution.Client.HttpUtils
 import Distribution.Client.TargetSelector hiding (DirActions(..))
 import qualified Distribution.Client.TargetSelector as TS (DirActions(..))
@@ -51,6 +50,7 @@ import Distribution.PackageDescription
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import Distribution.Simple.Setup (toFlag, HaddockFlags(..), defaultHaddockFlags)
 import Distribution.Client.Setup (globalCommand)
+import Distribution.Client.Config (loadConfig, SavedConfig(savedGlobalFlags))
 import Distribution.Simple.Compiler
 import Distribution.Simple.Command
 import qualified Distribution.Simple.Flag as Flag
@@ -1678,8 +1678,7 @@ type ProjDetails = (DistDirLayout,
 
 configureProject :: FilePath -> ProjectConfig -> IO ProjDetails
 configureProject testdir cliConfig = do
-    cabalDir <- getCabalDir
-    let cabalDirLayout = defaultCabalDirLayout cabalDir
+    cabalDirLayout <- defaultCabalDirLayout
 
     projectRootDir <- canonicalizePath (basedir </> testdir)
     isexplict      <- doesFileExist (projectRootDir </> "cabal.project")
@@ -1956,6 +1955,15 @@ testNixFlags = do
   Just True @=? (fromFlag . globalNix . fromJust $ nixEnabledFlags)
   Just False @=? (fromFlag . globalNix . fromJust $ nixDisabledFlags)
   Nothing @=? (fromFlag . globalNix . fromJust $ nixDefaultFlags)
+
+  -- Config file options
+  defaultConfig <- loadConfig verbosity (Flag (basedir </> "nix-config/default-config"))
+  trueConfig <- loadConfig verbosity (Flag (basedir </> "nix-config/nix-true"))
+  falseConfig <- loadConfig verbosity (Flag (basedir </> "nix-config/nix-false"))
+
+  Nothing @=? (fromFlag . globalNix . savedGlobalFlags $ defaultConfig)
+  Just True @=? (fromFlag . globalNix . savedGlobalFlags $ trueConfig)
+  Just False @=? (fromFlag . globalNix . savedGlobalFlags $ falseConfig)
   where
     fromFlag :: Flag Bool -> Maybe Bool
     fromFlag (Flag x) = Just x

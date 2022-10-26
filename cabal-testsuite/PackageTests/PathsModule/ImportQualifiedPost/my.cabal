@@ -1,0 +1,17 @@
+name: PathsModule
+version: 0.1
+license: BSD3
+author: Martijn Bastiaan
+category: PackageTests
+build-type: Simple
+Cabal-version: >= 1.2
+
+description:
+    Check that the generated paths module compiles.
+
+Executable TestPathsModule
+    main-is: Main.hs
+    if impl(ghc >= 8.10.0)
+        ghc-options: -Werror -fwarn-prepositive-qualified-module
+    other-modules: Paths_PathsModule
+    build-depends: base

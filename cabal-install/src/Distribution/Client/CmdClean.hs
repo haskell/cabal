@@ -4,12 +4,12 @@ module Distribution.Client.CmdClean (cleanCommand, cleanAction) where
 import Prelude ()
 import Distribution.Client.Compat.Prelude
 
+import Distribution.Client.Config
+    ( defaultScriptBuildsDir )
 import Distribution.Client.DistDirLayout
     ( DistDirLayout(..), defaultDistDirLayout )
 import Distribution.Client.ProjectConfig
     ( findProjectRoot )
-import Distribution.Client.ScriptUtils
-    ( getScriptCacheDirectoryRoot )
 import Distribution.Client.Setup
     ( GlobalFlags )
 import Distribution.ReadE ( succeedReadE )
@@ -121,7 +121,7 @@ cleanAction CleanFlags{..} extraArgs _ = do
     -- There is currently no good way to specify to only clean orphaned caches.
     -- It would be better as part of an explicit gc step (see issue #3333)
     toClean  <- Set.fromList <$> mapM canonicalizePath extraArgs
-    cacheDir <- getScriptCacheDirectoryRoot
+    cacheDir <- defaultScriptBuildsDir
     existsCD <- doesDirectoryExist cacheDir
     caches   <- if existsCD then listDirectory cacheDir else return []
     paths    <- fmap concat . forM caches $ \cache -> do
