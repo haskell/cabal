@@ -95,14 +95,16 @@ Directory Specification, as listed below.
 Directories
 -----------
 
-Unless the ``CABAL_DIR`` environment variable is set or `~/.cabal` exists, Cabal will store
-data in directories according to the XDG Base Directory Specification.
-The following directories are used:
+Unless the ``CABAL_DIR`` environment variable is set or a ``~/.cabal``
+directory exists, Cabal will by default store data in directories
+according to the XDG Base Directory Specification.  The following
+directories are used unless otherwise specified in the configuration
+file:
 
-* ``$XDG_CONFIG_HOME/cabal`` for the main configuration file.  On
-  Unix, this defaults to ``~/.config/cabal``.  On Windows this defaults to
-  ``%APPDATA%/cabal``.  Overridden by the ``CABAL_CONFIG`` environment
-  variable if set.
+* ``$XDG_CONFIG_HOME/cabal`` for the main configuration file.
+  Defaults to ``~/.config/cabal`` on Unix, and ``%APPDATA%/cabal`` on
+  Windows.  Overridden by the ``CABAL_CONFIG`` environment variable if
+  set.
 
 * ``$XDG_CACHE_HOME/cabal`` for downloaded packages and script
   executables.  Defaults to ``~/.cache/cabal`` on Unix, and
@@ -110,9 +112,10 @@ The following directories are used:
   and expect that its contents will be reconstructed as needed.
 
 * ``$XDG_STATE_HOME/cabal`` for compiled libraries and other stateful
-  artifacts.  Defaults to ``~/.local/state/cabal`` on Unix and
-  ``%LOCALAPPDATA%/cabal`` on Windows.  Deleting this directory might
-  cause installed programs to stop working.
+  artifacts, including the Cabal store.  Defaults to
+  ``~/.local/state/cabal`` on Unix and ``%LOCALAPPDATA%/cabal`` on
+  Windows.  Deleting this directory might cause installed programs to
+  stop working.
 
 * ``~/.local/bin`` for executables installed with ``cabal install``.
 
