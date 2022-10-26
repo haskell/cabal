@@ -125,7 +125,13 @@ checkRepoTarballFetched repo pkgid = do
 verifyFetchedTarball :: Verbosity -> RepoContext -> Repo -> PackageId -> IO Bool
 verifyFetchedTarball verbosity repoCtxt repo pkgid =
    let file = packageFile repo pkgid
-   in case repo of
+       handleError :: IO Bool -> IO Bool
+       handleError act = do
+         res <- Safe.try act
+         case res of
+           Left e -> warn verbosity ("Error verifying fetched tarball: " ++ show (e :: SomeException)) >> pure False
+           Right b -> pure b
+   in handleError $ case repo of
            -- a secure repo has hashes we can compare against to confirm this is the correct file.
            RepoSecure{} ->
              repoContextWithSecureRepo repoCtxt repo $ \repoSecure ->
