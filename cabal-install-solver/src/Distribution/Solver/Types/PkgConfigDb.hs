@@ -63,22 +63,19 @@ readPkgConfigDb verbosity progdb = handle ioErrorHandler $ do
     case mpkgConfig of
       Nothing             -> noPkgConfig "Cannot find pkg-config program"
       Just (pkgConfig, _) -> do
-        (pkgList, _errs, eCode) <- getProgramInvocationOutputAndErrors verbosity (programInvocation pkgConfig ["--list-all"])
+        pkgList <- lines <$> getProgramOutput verbosity pkgConfig ["--list-all"]
         -- The output of @pkg-config --list-all@ also includes a description
         -- for each package, which we do not need.
-        let pkgNames = map (takeWhile (not . isSpace)) $ lines pkgList
-        case eCode of
-          ExitSuccess -> do
-            (pkgVersions, _errs, exitCode) <-
+        let pkgNames = map (takeWhile (not . isSpace)) pkgList
+        (pkgVersions, _errs, exitCode) <-
                      getProgramInvocationOutputAndErrors verbosity
                        (programInvocation pkgConfig ("--modversion" : pkgNames))
-            case exitCode of
-                  ExitSuccess -> return . pkgConfigDbFromList . zip pkgNames . lines $ pkgVersions
-                  -- if there's a single broken pc file the above fails, so we fall back into calling it individually
-                  _ -> do
-                     info verbosity ("call to pkg-config --modversion on all packages failed. Falling back to querying pkg-config individually on each package")
-                     pkgConfigDbFromList . catMaybes <$> mapM (getIndividualVersion pkgConfig) pkgNames
-          _ -> noPkgConfig ("pkg-config --list-all call failed with code " ++ show eCode)
+        case exitCode of
+          ExitSuccess -> (return . pkgConfigDbFromList . zip pkgNames) (lines pkgVersions)
+          -- if there's a single broken pc file the above fails, so we fall back into calling it individually
+          _ -> do
+             info verbosity ("call to pkg-config --modversion on all packages failed. Falling back to querying pkg-config individually on each package")
+             pkgConfigDbFromList . catMaybes <$> mapM (getIndividualVersion pkgConfig) pkgNames
   where
     -- For when pkg-config invocation fails (possibly because of a
     -- too long command line).
