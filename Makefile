@@ -74,7 +74,7 @@ ghcid-cli :
 # doctests (relies on .ghc.environment files)
 
 doctest :
-	doctest --fast Cabal-syntax/src Cabal/src
+	doctest --fast -XHaskell2010 Cabal-syntax/src Cabal/src
 
 # This is not run as part of validate.sh (we need hackage-security, which is tricky to get).
 doctest-cli :
