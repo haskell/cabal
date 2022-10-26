@@ -37,8 +37,8 @@ jobs:
       - name: ghcup
         run: |
           ghcup config set cache true
-          ghcup install ghc 8.10.7
-          ghcup set ghc 8.10.7
+          ghcup install ghc 9.2.4
+          ghcup set ghc 9.2.4
       - name: Update Hackage index
         run: cabal v2-update
       - name: Install doctest
