@@ -46,7 +46,7 @@ data FileInfo = FileInfo String String -- ^ path, description
 -- | A list of files that should be documented in the manual page.
 files :: [FileInfo]
 files =
-  [ (FileInfo "~/.cabal/config" "The defaults that can be overridden with command-line options.")
+  [ (FileInfo "~/.config/cabal/config" "The defaults that can be overridden with command-line options.")
   ]
 
 manpageCmd :: String -> [CommandSpec a] -> ManpageFlags -> IO ()

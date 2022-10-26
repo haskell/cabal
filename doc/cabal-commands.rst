@@ -121,7 +121,7 @@ Arguments and flags common to some or all commands are:
         $ cabal install --allow-newer=foo:base,lens --allow-newer=bar:time
 
     Finally, one can enable :option:`--allow-newer` permanently by setting
-    ``allow-newer: True`` in the ``~/.cabal/config`` file. Enabling
+    ``allow-newer: True`` in the :ref:`config file <config-file-discovery>`. Enabling
     'allow-newer' selectively is also supported in the config file
     (``allow-newer: foo, bar, baz:base``).
 
@@ -598,7 +598,7 @@ cabal install
 ^^^^^^^^^^^^^
 
 ``cabal install [FLAGS] [TARGETS]`` builds the specified target packages and
-symlinks/copies their executables in ``installdir`` (usually ``~/.cabal/bin``).
+symlinks/copies their executables in ``installdir`` (usually ``~/.local/bin``).
 
 .. warning::
 

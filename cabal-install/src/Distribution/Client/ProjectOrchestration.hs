@@ -138,7 +138,6 @@ import qualified Distribution.Client.BuildReports.Anonymous as BuildReports
 import qualified Distribution.Client.BuildReports.Storage as BuildReports
          ( storeLocal )
 
-import           Distribution.Client.Config (getCabalDir)
 import           Distribution.Client.HttpUtils
 import           Distribution.Client.Setup hiding (packageName)
 import           Distribution.Compiler
@@ -187,7 +186,7 @@ import           System.Posix.Signals (sigKILL, sigSEGV)
 
 -- | Tracks what command is being executed, because we need to hide this somewhere
 -- for cases that need special handling (usually for error reporting).
-data CurrentCommand = InstallCommand | HaddockCommand | OtherCommand
+data CurrentCommand = InstallCommand | HaddockCommand | BuildCommand | ReplCommand | OtherCommand
                     deriving (Show, Eq)
 
 -- | This holds the context of a project prior to solving: the content of the
@@ -222,8 +221,6 @@ establishProjectBaseContextWithRoot
     -> CurrentCommand
     -> IO ProjectBaseContext
 establishProjectBaseContextWithRoot verbosity cliConfig projectRoot currentCommand = do
-    cabalDir <- getCabalDir
-
     let distDirLayout  = defaultDistDirLayout projectRoot mdistDirectory
 
     httpTransport <- configureTransport verbosity
@@ -247,9 +244,9 @@ establishProjectBaseContextWithRoot verbosity cliConfig projectRoot currentComma
         mlogsDir = Setup.flagToMaybe projectConfigLogsDir
     mstoreDir <- sequenceA $ makeAbsolute
                  <$> Setup.flagToMaybe projectConfigStoreDir
-    let cabalDirLayout = mkCabalDirLayout cabalDir mstoreDir mlogsDir
+    cabalDirLayout <- mkCabalDirLayout mstoreDir mlogsDir
 
-        buildSettings = resolveBuildTimeSettings
+    let  buildSettings = resolveBuildTimeSettings
                           verbosity cabalDirLayout
                           projectConfig
 
@@ -862,8 +859,10 @@ printPlan verbosity
           ProjectBaseContext {
             buildSettings = BuildTimeSettings{buildSettingDryRun},
             projectConfig = ProjectConfig {
+              projectConfigAllPackages =
+                  PackageConfig {packageConfigOptimization = globalOptimization},
               projectConfigLocalPackages =
-                  PackageConfig {packageConfigOptimization}
+                  PackageConfig {packageConfigOptimization = localOptimization}
             }
           }
           ProjectBuildContext {
@@ -997,7 +996,7 @@ printPlan verbosity
     showBuildProfile :: String
     showBuildProfile = "Build profile: " ++ unwords [
       "-w " ++ (showCompilerId . pkgConfigCompiler) elaboratedShared,
-      "-O" ++  (case packageConfigOptimization of
+      "-O" ++  (case globalOptimization <> localOptimization of -- if local is not set, read global
                 Setup.Flag NoOptimisation      -> "0"
                 Setup.Flag NormalOptimisation  -> "1"
                 Setup.Flag MaximumOptimisation -> "2"
@@ -1153,7 +1152,7 @@ dieOnBuildFailures verbosity currentCommand plan buildOutcomes
       , [pkg]              <- rootpkgs
       , installedUnitId pkg == pkgid
       , isFailureSelfExplanatory (buildFailureReason failure)
-      , currentCommand /= InstallCommand
+      , currentCommand `notElem` [InstallCommand, BuildCommand, ReplCommand]
       = True
       | otherwise
       = False
@@ -1319,8 +1318,6 @@ establishDummyProjectBaseContext
   -> CurrentCommand
   -> IO ProjectBaseContext
 establishDummyProjectBaseContext verbosity projectConfig distDirLayout localPackages currentCommand = do
-    cabalDir <- getCabalDir
-
     let ProjectConfigBuildOnly {
           projectConfigLogsDir
         } = projectConfigBuildOnly projectConfig
@@ -1331,9 +1328,10 @@ establishDummyProjectBaseContext verbosity projectConfig distDirLayout localPack
 
         mlogsDir = flagToMaybe projectConfigLogsDir
         mstoreDir = flagToMaybe projectConfigStoreDir
-        cabalDirLayout = mkCabalDirLayout cabalDir mstoreDir mlogsDir
 
-        buildSettings :: BuildTimeSettings
+    cabalDirLayout <- mkCabalDirLayout mstoreDir mlogsDir
+
+    let buildSettings :: BuildTimeSettings
         buildSettings = resolveBuildTimeSettings
                           verbosity cabalDirLayout
                           projectConfig

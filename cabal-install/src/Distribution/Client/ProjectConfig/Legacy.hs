@@ -365,7 +365,7 @@ commandLineFlagsToProjectConfig globalFlags NixStyleFlags {..} clientInstallFlag
                                   , packageConfigHaddockLinkedSource = packageConfigHaddockLinkedSource pc
                                   })
 
--- | Convert from the types currently used for the user-wide @~/.cabal/config@
+-- | Convert from the types currently used for the user-wide Cabal config
 -- file into the 'ProjectConfig' type.
 --
 -- Only a subset of the 'ProjectConfig' can be represented in the user-wide

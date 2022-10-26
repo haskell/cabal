@@ -74,6 +74,10 @@ jobs:
           key: ${{ runner.os }}-${{ matrix.ghc }}-20220419-${{ github.sha }}
           restore-keys: ${{ runner.os }}-${{ matrix.ghc }}-20220419-
 
+      - name: Work around git problem https://bugs.launchpad.net/ubuntu/+source/git/+bug/1993586 (cabal PR #8546)
+        run: |
+          git config --global protocol.file.allow always
+
       # The '+exe' constraint below is important, otherwise cabal-install
       # might decide to build the library but not the executable which is
       # what we need.
