@@ -1,5 +1,5 @@
 synopsis: build pkgconfig db individually when bulk fails
-packages: cabal-install, cabal-install-solver
+packages: cabal-install cabal-install-solver
 prs: #8496
 issues: #8494
 
