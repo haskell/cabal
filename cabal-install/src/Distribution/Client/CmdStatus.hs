@@ -59,6 +59,7 @@ import Distribution.Types.UnitId
 import Distribution.Verbosity
          ( normal )
 import Distribution.Version
+import Debug.Trace
 
 -------------------------------------------------------------------------------
 -- Command
@@ -158,7 +159,7 @@ statusOptions showOrParseArgs =
 statusAction :: NixStyleFlags StatusFlags -> [String] -> GlobalFlags -> IO ()
 statusAction flags@NixStyleFlags { extraFlags = statusFlags, ..} cliTargetStrings globalFlags = do
   when (NoFlag == statusOutputFormat statusFlags) $ do
-    die' verbosity "The status command requires the flag '--output-format'."
+    die' verbosity "The status command requires the flag '--output-format'. Try '--output-format=json'."
   when (not $ null cliTargetStrings) $
     die' verbosity "The status command doesn't take target arguments directly. Use appropriate flags to pass in target information."
 
@@ -169,6 +170,7 @@ statusAction flags@NixStyleFlags { extraFlags = statusFlags, ..} cliTargetString
                         (cabalDirLayout baseCtx)
                         (projectConfig baseCtx)
                         (localPackages baseCtx)
+                        (installedPackages baseCtx)
 
   compilerInformation <- if not $ fromFlagOrDefault False (statusCompiler statusFlags)
     then pure Nothing
@@ -186,6 +188,7 @@ statusAction flags@NixStyleFlags { extraFlags = statusFlags, ..} cliTargetString
     then pure Nothing
     else do
       let targetStrings = statusTargets statusFlags
+      traceShowM targetStrings
       mtargetSelectors <- mapM (readTargetSelector (localPackages baseCtx) Nothing) targetStrings
       let (unresolvable, targetSelectors) = partitionEithers
                     $ map (\(mts, str) -> case mts of
@@ -193,6 +196,7 @@ statusAction flags@NixStyleFlags { extraFlags = statusFlags, ..} cliTargetString
                         Right ts -> Right (ts, str)
                     )
                     $ zip mtargetSelectors targetStrings
+      traceShowM mtargetSelectors
       -- Interpret the targets on the command line as build targets
       -- (as opposed to say repl or haddock targets).
       -- TODO: don't throw on targets that are invalid.
