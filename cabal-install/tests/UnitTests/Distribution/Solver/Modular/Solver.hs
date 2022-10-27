@@ -1130,13 +1130,10 @@ dbBase = [
     ]
 
 dbNonupgrade :: ExampleDb
-dbNonupgrade =
-  let base = exInst "base" 1 "base-1" []
-  in [
-    Left base
-  , Left $ exInst "ghc" 1 "ghc-1" [base]
-  , Left $ exInst "ghci" 1 "ghci-1" [base]
-  , Left $ exInst "ghc-boot" 1 "ghc-boot-1" [base]
+dbNonupgrade = [
+    Left $ exInst "ghc" 1 "ghc-1" []
+  , Left $ exInst "ghci" 1 "ghci-1" []
+  , Left $ exInst "ghc-boot" 1 "ghc-boot-1" []
   , Right $ exAv "ghc" 2 [ExFix "base" 1]
   , Right $ exAv "ghci" 2 [ExFix "base" 1]
   , Right $ exAv "ghc-boot" 2 [ExFix "base" 1]
