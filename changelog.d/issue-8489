@@ -5,7 +5,7 @@ issues: #8489
 
 description: {
 
-- `Distribution.Solver.Modular.Solver`'s `nonInstallable` list was left intact, as
-  there seem to be discrepancies between the two. Possibly, the comments are outdated.
+- Changed both `Distribution.Client.Dependency`'s `dontUpgradeNonUpgradeablePackages`
+  and `Distribution.Solver.Modular.Solver`'s `nonInstallable` to be in sync.
 
 }
