@@ -67,7 +67,7 @@ import Distribution.Simple.Setup
          , TestFlags(..), testOptions', defaultTestFlags
          , BenchmarkFlags(..), benchmarkOptions', defaultBenchmarkFlags
          , programDbPaths', splitArgs, DumpBuildInfo (NoDumpBuildInfo, DumpBuildInfo)
-         , readPackageDb, showPackageDb
+         , readPackageDb, showPackageDb, installDirsOptions
          )
 import Distribution.Client.NixStyleOptions (NixStyleFlags (..))
 import Distribution.Client.ProjectFlags (ProjectFlags (..), projectFlagsOptions, defaultProjectFlags)
@@ -102,7 +102,7 @@ import Distribution.Deprecated.ParseUtils
 import Distribution.Client.ParseUtils
 import Distribution.Simple.Command
          ( CommandUI(commandOptions), ShowOrParseArgs(..)
-         , OptionField, option, reqArg' )
+         , OptionField(..), option, reqArg' )
 import Distribution.Types.PackageVersionConstraint
          ( PackageVersionConstraint )
 import Distribution.Parsec (ParsecParser, parsecToken)
@@ -1140,7 +1140,7 @@ legacySharedConfigFieldDescrs constraintSrc = concat
         (Disp.text . showPackageDb) (fmap readPackageDb parsecToken)
         configPackageDBs (\v conf -> conf { configPackageDBs = v })
       ]
-  . filterFields ["verbose", "builddir", "datadir" ]
+  . filterFields (["verbose", "builddir"] ++ map optionName installDirsOptions)
   . commandOptionsToFields
   $ configureOptions ParseArgs
 

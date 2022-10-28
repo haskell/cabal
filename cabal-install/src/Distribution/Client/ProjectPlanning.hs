@@ -680,7 +680,6 @@ rebuildInstallPlan verbosity
 
         defaultInstallDirs <- liftIO $ userInstallDirTemplates compiler
         let installDirs = fmap Cabal.fromFlag $ (fmap Flag defaultInstallDirs) <> (projectConfigInstallDirs projectConfigShared)
-
         (elaboratedPlan, elaboratedShared)
           <- liftIO . runLogProgress verbosity $
               elaborateInstallPlan
@@ -3441,7 +3440,6 @@ storePackageInstallDirs' StoreDirLayout{ storePackageDirectory
     htmldir      = docdir  </> "html"
     haddockdir   = htmldir
     sysconfdir   = prefix </> "etc"
-
 
 
 computeInstallDirs :: StoreDirLayout
