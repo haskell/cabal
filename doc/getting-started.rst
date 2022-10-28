@@ -166,6 +166,33 @@ Now you can build and re-run your code to see the new output:
         /    /  /    /   \    \
        /____/  /____/     \____\
 
+Run a single-file Haskell script
+--------------------------------
+
+Cabal also enables us to run single-file Haskell scripts
+without creating a project directory or ``.cabal`` file.
+The cabal directives are placed in the file within a comment.
+
+.. code-block:: haskell
+
+    #!/usr/bin/env cabal
+    {- cabal:
+    build-depends: base, split
+    -}
+    
+    import Data.List.Split (chunksOf)
+    
+    main :: IO ()
+    main = getLine >>= print . chunksOf 3
+
+This can be run using ``cabal run myscript`` or directly, with execute permission.
+
+.. code-block:: console
+
+    $ cabal run myscript
+    
+    $ chmod +x myscript
+    $ ./myscript
 
 What Next?
 ----------
