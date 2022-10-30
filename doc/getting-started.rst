@@ -179,9 +179,9 @@ The cabal directives are placed in the file within a comment.
     {- cabal:
     build-depends: base, split
     -}
-    
+
     import Data.List.Split (chunksOf)
-    
+
     main :: IO ()
     main = getLine >>= print . chunksOf 3
 
@@ -190,9 +190,19 @@ This can be run using ``cabal run myscript`` or directly, with execute permissio
 .. code-block:: console
 
     $ cabal run myscript
-    
+
     $ chmod +x myscript
     $ ./myscript
+
+Project metadata can also be included:
+
+.. code-block:: haskell
+
+    {- project:
+    with-compiler: ghc-8.10.7
+    -}
+
+See more in the :doc:`cabal run <cabal-commands#cabal-run>` documentation.
 
 What Next?
 ----------
