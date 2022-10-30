@@ -140,6 +140,7 @@ createProjectTest pkgIx srcDb = testGroup "createProject tests"
               -- package name
               , "test-package"
               , "test-package"
+              , "test-package"
               -- version
               , "3.1.2.3"
               -- license
@@ -246,6 +247,7 @@ createProjectTest pkgIx srcDb = testGroup "createProject tests"
               -- package name
               , "test-package"
               , "test-package"
+              , "test-package"
               -- version
               , "3.1.2.3"
               -- license
@@ -337,6 +339,7 @@ createProjectTest pkgIx srcDb = testGroup "createProject tests"
               -- package name
               , "test-package"
               , "test-package"
+              , "test-package"
               -- version
               , "3.1.2.3"
               -- license
@@ -413,6 +416,7 @@ createProjectTest pkgIx srcDb = testGroup "createProject tests"
               -- cabal version
               , "4"
               -- package name
+              , "test-package"
               , "test-package"
               , "test-package"
               -- version
@@ -507,6 +511,7 @@ createProjectTest pkgIx srcDb = testGroup "createProject tests"
               -- package name
               , "test-package"
               , "test-package"
+              , "test-package"
               -- version
               , "3.1.2.3"
               -- license
@@ -582,6 +587,7 @@ createProjectTest pkgIx srcDb = testGroup "createProject tests"
               -- cabal version
               , "4"
               -- package name
+              , "test-package"
               , "test-package"
               , "test-package"
               -- version
@@ -665,6 +671,7 @@ createProjectTest pkgIx srcDb = testGroup "createProject tests"
               -- cabal version
               , "4"
               -- package name
+              , "test-package"
               , "test-package"
               , "test-package"
               -- version
