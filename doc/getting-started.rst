@@ -202,7 +202,7 @@ Project metadata can also be included:
     with-compiler: ghc-8.10.7
     -}
 
-See more in the :doc:`cabal run <cabal-commands#cabal-run>` documentation.
+See more in the documentation for :ref:`cabal run`.
 
 What Next?
 ----------
