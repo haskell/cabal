@@ -745,7 +745,8 @@ convertToLegacySharedConfig
     configFlags = mempty {
       configVerbosity     = projectConfigVerbosity,
       configDistPref      = projectConfigDistDir,
-      configPackageDBs    = projectConfigPackageDBs
+      configPackageDBs    = projectConfigPackageDBs,
+      configInstallDirs   = projectConfigInstallDirs
     }
 
     configExFlags = ConfigExFlags {
