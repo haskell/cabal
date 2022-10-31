@@ -688,11 +688,26 @@ runConfigureScript verbosity backwardsCompatHack flags lbi = do
   let extraPath = fromNubList $ configProgramPathExtra flags
   let cflagsEnv = maybe (unwords ccFlags) (++ (" " ++ unwords ccFlags))
                   $ lookup "CFLAGS" env
+      flagEnvVar :: FlagName -> String
+      flagEnvVar flag = "CABAL_FLAG_" ++ map f (unFlagName flag)
+        where f c
+                | isAlphaNum c = c
+                | otherwise    = '_'
+      cabalFlagEnv = [ (flagEnvVar flag, Just val)
+                     | (flag, bool) <- unFlagAssignment $ flagAssignment lbi
+                     , let val = if bool then "1" else "0"
+                     ] ++
+                     [ ( "CABAL_FLAGS"
+                       , Just $ unwords [ showFlagValue fv | fv <- unFlagAssignment $ flagAssignment lbi ]
+                       )
+                     ]
+
       spSep = [searchPathSeparator]
       pathEnv = maybe (intercalate spSep extraPath)
                 ((intercalate spSep extraPath ++ spSep)++) $ lookup "PATH" env
       overEnv = ("CFLAGS", Just cflagsEnv) :
-                [("PATH", Just pathEnv) | not (null extraPath)]
+                [("PATH", Just pathEnv) | not (null extraPath)] ++
+                cabalFlagEnv
       hp = hostPlatform lbi
       maybeHostFlag = if hp == buildPlatform then [] else ["--host=" ++ show (pretty hp)]
       args' = configureFile':args ++ ["CC=" ++ ccProgShort] ++ maybeHostFlag
