@@ -845,6 +845,8 @@ The configuration information for the script is cached under the cabal directory
 and can be pre-built with ``cabal build path/to/script``.
 See ``cabal run`` for more information on scripts.
 
+.. _cabal run:
+
 cabal run
 ^^^^^^^^^
 
