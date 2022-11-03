@@ -6,7 +6,7 @@
 -- | Utilities to help commands with scripts
 --
 module Distribution.Client.ScriptUtils (
-    getScriptCacheDirectoryRoot, getScriptHash, getScriptCacheDirectory, ensureScriptCacheDirectory,
+    getScriptHash, getScriptCacheDirectory, ensureScriptCacheDirectory,
     withContextAndSelectors, AcceptNoTargets(..), TargetContext(..),
     updateContextAndWriteProjectFile, updateContextAndWriteProjectFile',
     fakeProjectSourcePackage, lSrcpkgDescription
@@ -22,7 +22,7 @@ import Distribution.CabalSpecVersion
     ( CabalSpecVersion (..), cabalSpecLatest)
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.Config
-    ( getCabalDir )
+    ( defaultScriptBuildsDir )
 import Distribution.Client.DistDirLayout
     ( DistDirLayout(..) )
 import Distribution.Client.HashValue
@@ -120,14 +120,6 @@ import qualified Text.Parsec as P
 --    repl to deal with the fact that the repl is relative to the working directory and not
 --    the project root.
 
--- | Get the directory where script builds are cached.
---
--- @CABAL_DIR\/script-builds\/@
-getScriptCacheDirectoryRoot :: IO FilePath
-getScriptCacheDirectoryRoot = do
-  cabalDir <- getCabalDir
-  return $ cabalDir </> "script-builds"
-
 -- | Get the hash of a script's absolute path)
 --
 -- Two hashes will be the same as long as the absolute paths
@@ -138,14 +130,14 @@ getScriptHash script = showHashValue . hashValue . fromString <$> canonicalizePa
 -- | Get the directory for caching a script build.
 --
 -- The only identity of a script is it's absolute path, so append the
--- hashed path to @CABAL_DIR\/script-builds\/@ to get the cache directory.
+-- hashed path to the @script-builds@ dir to get the cache directory.
 getScriptCacheDirectory :: FilePath -> IO FilePath
-getScriptCacheDirectory script = (</>) <$> getScriptCacheDirectoryRoot <*> getScriptHash script
+getScriptCacheDirectory script = (</>) <$> defaultScriptBuildsDir <*> getScriptHash script
 
 -- | Get the directory for caching a script build and ensure it exists.
 --
 -- The only identity of a script is it's absolute path, so append the
--- hashed path to @CABAL_DIR\/script-builds\/@ to get the cache directory.
+-- hashed path to the @script-builds@ dir to get the cache directory.
 ensureScriptCacheDirectory :: Verbosity -> FilePath -> IO FilePath
 ensureScriptCacheDirectory verbosity script = do
   cacheDir <- getScriptCacheDirectory script
@@ -179,10 +171,11 @@ withContextAndSelectors
   -> NixStyleFlags a     -- ^ Command line flags
   -> [String]            -- ^ Target strings or a script and args.
   -> GlobalFlags         -- ^ Global flags.
+  -> CurrentCommand      -- ^ Current Command (usually for error reporting).
   -> (TargetContext -> ProjectBaseContext -> [TargetSelector] -> IO b)
   -- ^ The body of your command action.
   -> IO b
-withContextAndSelectors noTargets kind flags@NixStyleFlags {..} targetStrings globalFlags act
+withContextAndSelectors noTargets kind flags@NixStyleFlags {..} targetStrings globalFlags cmd act
   = withTemporaryTempDirectory $ \mkTmpDir -> do
     (tc, ctx) <- withProjectOrGlobalConfig verbosity ignoreProject globalConfigFlag with (without mkTmpDir)
 
@@ -217,11 +210,11 @@ withContextAndSelectors noTargets kind flags@NixStyleFlags {..} targetStrings gl
     defaultTarget = [TargetPackage TargetExplicitNamed [fakePackageId] Nothing]
 
     with = do
-      ctx <- establishProjectBaseContext verbosity cliConfig OtherCommand
+      ctx <- establishProjectBaseContext verbosity cliConfig cmd
       return (ProjectContext, ctx)
     without mkDir globalConfig = do
       distDirLayout <- establishDummyDistDirLayout verbosity (globalConfig <> cliConfig) =<< mkDir
-      ctx <- establishDummyProjectBaseContext verbosity (globalConfig <> cliConfig) distDirLayout [] OtherCommand
+      ctx <- establishDummyProjectBaseContext verbosity (globalConfig <> cliConfig) distDirLayout [] cmd
       return (GlobalContext, ctx)
     scriptOrError script err = do
       exists <- doesFileExist script

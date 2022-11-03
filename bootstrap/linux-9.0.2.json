@@ -1,6 +1,15 @@
 {
     "dependencies": [
         {
+            "cabal_sha256": "1125a0a4be3aafc8da208940f219d4e4df8a0db87d892cc42bb369071855c590",
+            "revision": 0,
+            "src_sha256": "dc2785d6548cec2e80700fab007d3e9467f65d3c58ab3efa21b34d9017cf0efd",
+            "flags": [],
+            "package": "directory",
+            "source": "hackage",
+            "version": "1.3.7.1"
+        },
+        {
             "cabal_sha256": null,
             "revision": null,
             "src_sha256": null,
@@ -351,10 +360,6 @@
         {
             "package": "unix",
             "version": "2.7.2.2"
-        },
-        {
-            "package": "directory",
-            "version": "1.3.6.2"
         },
         {
             "package": "transformers",
