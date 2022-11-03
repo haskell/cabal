@@ -863,24 +863,22 @@ printPlan verbosity
                   PackageConfig {packageConfigOptimization = globalOptimization},
               projectConfigLocalPackages =
                   PackageConfig {packageConfigOptimization = localOptimization}
-            }
+            },
+            currentCommand
           }
           ProjectBuildContext {
             elaboratedPlanToExecute = elaboratedPlan,
             elaboratedShared,
             pkgsBuildStatus
           }
-
-  | null pkgs
-  = notice verbosity "Up to date"
-
-  | otherwise
-  = noticeNoWrap verbosity $ unlines $
+  | null pkgs && currentCommand == BuildCommand
+    = notice verbosity "Up to date"
+  | not (null pkgs) = noticeNoWrap verbosity $ unlines $
       (showBuildProfile ++ "In order, the following "
        ++ wouldWill ++ " be built"
        ++ ifNormal " (use -v for more details)" ++ ":")
     : map showPkgAndReason pkgs
-
+  | otherwise = return ()
   where
     pkgs = InstallPlan.executionOrder elaboratedPlan
 
