@@ -51,6 +51,7 @@ simpleCreateProjectTests v pkgIx srcDb pkgName =
       let inputs = fromList
             [ "1"           -- package type: Library
             , "simple-test" -- package dir (ignored, piped to current dir due to prompt monad)
+            , "simple-test" -- package dir again (ignored again, due to prompt monad)
             , "n"           -- no tests
             ]
 
@@ -65,7 +66,7 @@ simpleCreateProjectTests v pkgIx srcDb pkgName =
         Right (settings', _) -> settings @=? settings'
 
     , testCase "Simple lib createProject - with tests" $ do
-      let inputs = fromList ["1", "simple-test", "y", "1"]
+      let inputs = fromList ["1", "simple-test", "simple-test", "y", "1"]
           flags = emptyFlags { packageType = Flag Library }
           settings = ProjectSettings
             (WriteOpts False False False v "/home/test/1" Library pkgName defaultCabalVersion)
@@ -77,7 +78,7 @@ simpleCreateProjectTests v pkgIx srcDb pkgName =
         Right (settings', _) -> settings @=? settings'
 
     , testCase "Simple exe createProject" $ do
-      let inputs = fromList ["2", "simple-test"]
+      let inputs = fromList ["2", "simple-test", "simple-test"]
           flags = emptyFlags { packageType = Flag Executable }
           settings = ProjectSettings
             (WriteOpts False False False v "/home/test/2" Executable pkgName defaultCabalVersion)
@@ -89,7 +90,7 @@ simpleCreateProjectTests v pkgIx srcDb pkgName =
         Right (settings', _) -> settings @=? settings'
 
     , testCase "Simple lib+exe createProject - no tests" $ do
-      let inputs = fromList ["2", "simple-test", "n"]
+      let inputs = fromList ["2", "simple-test", "simple-test", "n"]
           flags = emptyFlags { packageType = Flag LibraryAndExecutable }
           settings = ProjectSettings
             (WriteOpts False False False v "/home/test/2" LibraryAndExecutable pkgName defaultCabalVersion)
@@ -100,7 +101,7 @@ simpleCreateProjectTests v pkgIx srcDb pkgName =
         Left e -> assertFailure $ "Failed to create simple lib+exe project: " ++ show e
         Right (settings', _) -> settings @=? settings'
     , testCase "Simple lib+exe createProject - with tests" $ do
-      let inputs = fromList ["2", "simple-test", "y", "1"]
+      let inputs = fromList ["2", "simple-test", "simple-test", "y", "1"]
           flags = emptyFlags { packageType = Flag LibraryAndExecutable }
           settings = ProjectSettings
             (WriteOpts False False False v "/home/test/2" LibraryAndExecutable pkgName defaultCabalVersion)
@@ -113,7 +114,7 @@ simpleCreateProjectTests v pkgIx srcDb pkgName =
         Right (settings', _) -> settings @=? settings'
 
     , testCase "Simple standalone tests" $ do
-      let inputs = fromList ["2", "simple-test", "y", "1"]
+      let inputs = fromList ["2", "simple-test", "simple-test", "y", "1"]
           flags = emptyFlags { packageType = Flag TestSuite }
           settings = ProjectSettings
             (WriteOpts False False False v "/home/test/2" TestSuite pkgName defaultCabalVersion)

@@ -746,6 +746,7 @@ fileCreatorTests pkgIx srcDb _pkgName = testGroup "generators"
         let inputs = fromList
               [ "1"               -- pick the first cabal version in the list
               , "my-test-package" -- package name
+              , "my-test-package" -- current dir for the purpose of guessing the package name
               , "y"               -- "yes to prompt internal to package name"
               , "0.2.0.1"         -- package version
               , "2"               -- pick the second license in the list
@@ -803,15 +804,18 @@ interactiveTests srcDb = testGroup "Check top level getter functions"
           (packageNamePrompt srcDb) (mkPackageName "test-package")
           [ "test-package"
           , "test-package"
+          , "test-package"
           ]
       , testSimplePrompt "New package name 2"
           (packageNamePrompt srcDb) (mkPackageName "test-package")
           [ "test-package"
+          , "test-package"
           , ""
           ]
       , testSimplePrompt "Existing package name 1"
           (packageNamePrompt srcDb) (mkPackageName "test-package")
           [ "test-package"
+          , "test-package"
           , "cabal-install"
           , "y"
           , "test-package"
@@ -819,6 +823,7 @@ interactiveTests srcDb = testGroup "Check top level getter functions"
       , testSimplePrompt "Existing package name 2"
           (packageNamePrompt srcDb) (mkPackageName "cabal-install")
           [ "test-package"
+          , "test-package"
           , "cabal-install"
           , "n"
           ]
