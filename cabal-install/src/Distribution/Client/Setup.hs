@@ -505,7 +505,7 @@ filterConfigureFlags flags cabalLibVersion
     flags_2_5_0 = flags_3_7_0 {
       -- Cabal < 2.5 does not understand --dependency=pkg:component=cid
       -- (public sublibraries), so we convert it to the legacy
-      -- --dependency=pkg_or_internal_compoent=cid
+      -- --dependency=pkg_or_internal_component=cid
         configDependencies =
           let convertToLegacyInternalDep (GivenComponent _ (LSubLibName cn) cid) =
                 Just $ GivenComponent

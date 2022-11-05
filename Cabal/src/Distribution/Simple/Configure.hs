@@ -2067,7 +2067,7 @@ checkForeignLibSupported comp platform flib = go (compilerFlavor comp)
     go :: CompilerFlavor -> Maybe String
     go GHC
       | compilerVersion comp < mkVersion [7,8] = unsupported [
-        "Building foreign libraires is only supported with GHC >= 7.8"
+        "Building foreign libraries is only supported with GHC >= 7.8"
       ]
       | otherwise = goGhcPlatform platform
     go _   = unsupported [
