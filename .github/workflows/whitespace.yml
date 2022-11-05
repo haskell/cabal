@@ -1,4 +1,4 @@
-name: Whitespace
+name: Assorted
 
 on:
   push:
@@ -10,6 +10,7 @@ on:
       - created
 jobs:
   check:
+    name: Whitespace
     runs-on: ubuntu-latest
 
     env:

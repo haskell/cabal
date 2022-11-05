@@ -364,6 +364,11 @@ globalCommand commands = CommandUI {
       ,multiOption "nix"
         globalNix (\v flags -> flags { globalNix = v })
         [
+          optArg' "(True or False)" (maybeToFlag . (readMaybe =<<)) (\case
+            Flag True -> [Just "enable"]
+            Flag False -> [Just "disable"]
+            NoFlag -> [Just "disable"]) "" ["nix"]
+            "Nix integration: run commands through nix-shell if a 'shell.nix' file exists (default is False)",
           noArg (Flag True) [] ["enable-nix"]
           "Enable Nix integration: run commands through nix-shell if a 'shell.nix' file exists",
           noArg (Flag False) [] ["disable-nix"]
@@ -413,7 +418,6 @@ globalCommand commands = CommandUI {
          "Set a location for a cabal.config file for projects without their own cabal.config freeze file."
          globalConstraintsFile (\v flags -> flags {globalConstraintsFile = v})
          (reqArgFlag "FILE")
-
       ]
 
 -- ------------------------------------------------------------

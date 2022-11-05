@@ -5,4 +5,5 @@ source-repository-package
 -- A Sample repo to test post-checkout-command
     location: https://github.com/haskell/bytestring
     post-checkout-command: true
+    tag: 0.10.9.0
 -- https://en.wikipedia.org/wiki/True_and_false_(commands)

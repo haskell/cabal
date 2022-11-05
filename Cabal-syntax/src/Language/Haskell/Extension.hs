@@ -77,7 +77,7 @@ instance Pretty Language where
   pretty other                   = Disp.text (show other)
 
 instance Parsec Language where
-  parsec = classifyLanguage <$> P.some P.anyChar
+  parsec = classifyLanguage <$> P.munch1 isAlphaNum
 
 classifyLanguage :: String -> Language
 classifyLanguage = \str -> case lookup str langTable of
@@ -164,6 +164,11 @@ data KnownExtension =
 
   -- | Enable the dreaded monomorphism restriction.
   | MonomorphismRestriction
+
+  -- | Enable deep subsumption, relaxing the simple subsumption rules,
+  -- implicitly inserting eta-expansions when matching up function types
+  -- with different quantification structures.
+  | DeepSubsumption
 
   -- | Allow a specification attached to a multi-parameter type class
   -- which indicates that some parameters are entirely determined by
@@ -499,6 +504,9 @@ data KnownExtension =
   -- | Enable datatype promotion.
   | DataKinds
 
+  -- | Enable @type data@ declarations, defining constructors at the type level.
+  | TypeData
+
   -- | Enable parallel arrays syntax (@[:@, @:]@) for /Data Parallel Haskell/.
   | ParallelArrays
 
@@ -654,6 +662,9 @@ data KnownExtension =
 
   -- | Enable linear types.
   | LinearTypes
+
+  -- | Allow the use of visible forall in types of terms.
+  | RequiredTypeArguments
 
   -- | Enable the generation of selector functions corresponding to record fields.
   | FieldSelectors

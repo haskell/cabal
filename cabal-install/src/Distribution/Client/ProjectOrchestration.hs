@@ -186,7 +186,7 @@ import           System.Posix.Signals (sigKILL, sigSEGV)
 
 -- | Tracks what command is being executed, because we need to hide this somewhere
 -- for cases that need special handling (usually for error reporting).
-data CurrentCommand = InstallCommand | HaddockCommand | OtherCommand
+data CurrentCommand = InstallCommand | HaddockCommand | BuildCommand | ReplCommand | OtherCommand
                     deriving (Show, Eq)
 
 -- | This holds the context of a project prior to solving: the content of the
@@ -859,8 +859,10 @@ printPlan verbosity
           ProjectBaseContext {
             buildSettings = BuildTimeSettings{buildSettingDryRun},
             projectConfig = ProjectConfig {
+              projectConfigAllPackages =
+                  PackageConfig {packageConfigOptimization = globalOptimization},
               projectConfigLocalPackages =
-                  PackageConfig {packageConfigOptimization}
+                  PackageConfig {packageConfigOptimization = localOptimization}
             }
           }
           ProjectBuildContext {
@@ -994,7 +996,7 @@ printPlan verbosity
     showBuildProfile :: String
     showBuildProfile = "Build profile: " ++ unwords [
       "-w " ++ (showCompilerId . pkgConfigCompiler) elaboratedShared,
-      "-O" ++  (case packageConfigOptimization of
+      "-O" ++  (case globalOptimization <> localOptimization of -- if local is not set, read global
                 Setup.Flag NoOptimisation      -> "0"
                 Setup.Flag NormalOptimisation  -> "1"
                 Setup.Flag MaximumOptimisation -> "2"
@@ -1150,7 +1152,7 @@ dieOnBuildFailures verbosity currentCommand plan buildOutcomes
       , [pkg]              <- rootpkgs
       , installedUnitId pkg == pkgid
       , isFailureSelfExplanatory (buildFailureReason failure)
-      , currentCommand /= InstallCommand
+      , currentCommand `notElem` [InstallCommand, BuildCommand, ReplCommand]
       = True
       | otherwise
       = False
