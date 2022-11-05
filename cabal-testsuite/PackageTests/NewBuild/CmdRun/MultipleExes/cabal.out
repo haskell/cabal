@@ -14,7 +14,7 @@ Configuring executable 'bar' for MultipleExes-1.0..
 Preprocessing executable 'bar' for MultipleExes-1.0..
 Building executable 'bar' for MultipleExes-1.0..
 # cabal v2-run
-Up to date
+
 # cabal v2-run
 Error: cabal: The run command is for running a single executable at once. The target '' refers to the package MultipleExes-1.0 which includes 
 - executables: bar and foo
