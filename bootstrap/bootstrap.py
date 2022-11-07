@@ -334,6 +334,42 @@ def make_archive(cabal_path):
 
     return archivename
 
+<<<<<<< HEAD
+=======
+def fetch_from_plan(plan : FetchPlan, output_dir : Path):
+  output_dir.resolve()
+  output_dir.mkdir(parents=True, exist_ok=True)
+
+  for path in plan:
+    output_path = output_dir / path
+    url = plan[path].url
+    sha = plan[path].sha256
+    if not output_path.exists():
+      print(f'Fetching {url}...')
+      with urllib.request.urlopen(url, timeout = 1) as resp:
+        shutil.copyfileobj(resp, output_path.open('wb'))
+    verify_sha256(sha, output_path)
+
+def gen_fetch_plan(info : BootstrapInfo) -> FetchPlan :
+    sources_dict = {}
+    for dep in info.dependencies:
+      if not(dep.package in local_packages):
+        sources_dict[f"{dep.package}-{dep.version}.tar.gz"] = FetchInfo(package_url(dep.package, dep.version), dep.src_sha256)
+        if dep.revision is not None:
+          sources_dict[f"{dep.package}.cabal"] = FetchInfo(package_cabal_url(dep.package, dep.version, dep.revision), dep.cabal_sha256)
+    return sources_dict
+
+def find_ghc(compiler) -> Compiler:
+  if compiler is None:
+      path = shutil.which('ghc')
+      if path is None:
+          raise ValueError("Couldn't find ghc in PATH")
+      ghc = Compiler(Path(path))
+  else:
+      ghc = Compiler(compiler)
+  return ghc
+
+>>>>>>> 04bebfc88 (Set urllib.request.urlopen timeout in bootstrap.py to fix CI)
 def main() -> None:
     import argparse
     parser = argparse.ArgumentParser(
