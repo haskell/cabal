@@ -185,7 +185,8 @@ The cabal directives are placed in the file within a comment.
     main :: IO ()
     main = getLine >>= print . chunksOf 3
 
-This can be run using ``cabal run myscript`` or directly, with execute permission.
+This can be run using ``cabal run myscript``.
+On Unix-like systems this can be run directly with execute permission.
 
 .. code-block:: console
 
