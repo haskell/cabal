@@ -50,8 +50,12 @@ simpleCreateProjectTests v pkgIx srcDb pkgName =
     [ testCase "Simple lib createProject - no tests" $ do
       let inputs = fromList
             [ "1"           -- package type: Library
-            , "simple-test" -- package dir (ignored, piped to current dir due to prompt monad)
-            , "simple-test" -- package dir again (ignored again, due to prompt monad)
+            , "simple.test" -- package dir: used for determining package name;
+                            -- note that . will be replaced with - in a sanitization step,
+                            -- and we get the expected "simple-test" -- regression test for #8404
+            , "simple.test" -- package dir again: the prompt monad needs extra parameter for every
+                            -- IO call, and this one will be used for canonicalizePath,
+                            -- which is called as a part of sanitization
             , "n"           -- no tests
             ]
 
