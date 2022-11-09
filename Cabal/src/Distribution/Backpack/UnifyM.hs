@@ -6,6 +6,7 @@ module Distribution.Backpack.UnifyM (
     UnifyM,
     runUnifyM,
     failWith,
+    failWithMutuallyRecursiveUnitsError,
     addErr,
     failIfErrs,
     tryM,
@@ -386,19 +387,19 @@ lookupMooEnv (m, i) k =
 
 -- The workhorse functions
 
-convertUnitIdU' :: MooEnv -> UnitIdU s -> UnifyM s OpenUnitId
+-- | Returns `OpenUnitId` if there is no a mutually recursive unit.
+-- | Otherwise returns a list of signatures instantiated by given `UnitIdU`.
+convertUnitIdU' :: MooEnv -> UnitIdU s -> UnifyM s (Either [ModuleName] OpenUnitId)
 convertUnitIdU' stk uid_u = do
     x <- liftST $ UnionFind.find uid_u
     case x of
-        UnitIdThunkU uid -> return (DefiniteUnitId uid)
+        UnitIdThunkU uid -> return $ Right (DefiniteUnitId uid)
         UnitIdU u cid insts_u ->
             case lookupMooEnv stk u of
-                Just _i ->
-                    failWith (text "Unsupported mutually recursive unit identifier")
-                    -- return (UnitIdVar i)
+                Just _ -> return $ Left $ Map.keys insts_u
                 Nothing -> do
                     insts <- for insts_u $ convertModuleU' (extendMooEnv stk u)
-                    return (IndefFullUnitId cid insts)
+                    return $ Right (IndefFullUnitId cid insts)
 
 convertModuleU' :: MooEnv -> ModuleU s -> UnifyM s OpenModule
 convertModuleU' stk mod_u = do
@@ -406,12 +407,22 @@ convertModuleU' stk mod_u = do
     case mod of
         ModuleVarU mod_name -> return (OpenModuleVar mod_name)
         ModuleU uid_u mod_name -> do
-            uid <- convertUnitIdU' stk uid_u
-            return (OpenModule uid mod_name)
+            x <- convertUnitIdU' stk uid_u
+            case x of
+                Right uid -> return (OpenModule uid mod_name)
+                Left mod_names -> failWithMutuallyRecursiveUnitsError (pretty mod_name) mod_names
+
+failWithMutuallyRecursiveUnitsError :: Doc -> [ModuleName] -> UnifyM s a
+failWithMutuallyRecursiveUnitsError required_mod_name mod_names =
+    let sigsList = hcat $ punctuate (text ", ") $ map (quotes . pretty) mod_names in
+    failWith $
+        text "Cannot instantiate requirement" <+> quotes required_mod_name $$
+        text "Ensure \"build-depends:\" doesn't include any library with signatures:" <+> sigsList $$
+        text "as this creates a cyclic dependency, which GHC does not support."
 
 -- Helper functions
 
-convertUnitIdU :: UnitIdU s -> UnifyM s OpenUnitId
+convertUnitIdU :: UnitIdU s -> UnifyM s (Either [ModuleName] OpenUnitId)
 convertUnitIdU = convertUnitIdU' emptyMooEnv
 
 convertModuleU :: ModuleU s -> UnifyM s OpenModule
