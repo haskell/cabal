@@ -27,7 +27,6 @@ module Distribution.Client.Init.NonInteractive.Heuristics
   ) where
 
 import Distribution.Client.Compat.Prelude hiding (readFile, (<|>), many)
-import Distribution.Utils.Generic (safeLast)
 
 import Distribution.Simple.Setup (fromFlagOrDefault)
 
@@ -40,7 +39,7 @@ import System.FilePath
 import Distribution.CabalSpecVersion
 import Language.Haskell.Extension
 import Distribution.Version
-import Distribution.Types.PackageName (PackageName, mkPackageName)
+import Distribution.Types.PackageName (PackageName)
 import Distribution.Simple.Compiler
 import qualified Data.Set as Set
 import Distribution.FieldGrammar.Newtypes
@@ -82,24 +81,7 @@ guessLanguage _ = return defaultLanguage
 
 -- | Guess the package name based on the given root directory.
 guessPackageName :: Interactive m => FilePath -> m PackageName
-guessPackageName = fmap (mkPackageName . repair . fromMaybe "" . safeLast . splitDirectories)
-                 . canonicalizePathNoThrow
-  where
-    -- Treat each span of non-alphanumeric characters as a hyphen. Each
-    -- hyphenated component of a package name must contain at least one
-    -- alphabetic character. An arbitrary character ('x') will be prepended if
-    -- this is not the case for the first component, and subsequent components
-    -- will simply be run together. For example, "1+2_foo-3" will become
-    -- "x12-foo3".
-    repair = repair' ('x' :) id
-    repair' invalid valid x = case dropWhile (not . isAlphaNum) x of
-        "" -> repairComponent ""
-        x' -> let (c, r) = first repairComponent $ span isAlphaNum x'
-              in c ++ repairRest r
-      where
-        repairComponent c | all isDigit c = invalid c
-                          | otherwise     = valid c
-    repairRest = repair' id ('-' :)
+guessPackageName = filePathToPkgName
 
 -- | Try to guess the license from an already existing @LICENSE@ file in
 --   the package directory, comparing the file contents with the ones
