@@ -68,7 +68,7 @@ tests v initFlags pkgIx srcDb = testGroup "golden"
     pkgDir = evalPrompt (getPackageDir initFlags)
       $ fromList ["."]
     pkgName = evalPrompt (packageNamePrompt srcDb initFlags)
-      $ fromList ["test-package", "y"]
+      $ fromList ["test-package", "test-package", "y"]
 
 goldenPkgDescTests
     :: Verbosity
@@ -336,6 +336,7 @@ testArgs = fromList ["y", "1", "test", "1"]
 pkgArgs :: NonEmpty String
 pkgArgs = fromList
     [ "5"
+    , "foo-package"
     , "foo-package"
     , "y"
     , "0.1.0.0"
