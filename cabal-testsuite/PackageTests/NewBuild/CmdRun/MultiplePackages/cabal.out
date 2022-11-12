@@ -7,7 +7,6 @@ Configuring executable 'bar-exe' for bar-1.0..
 Preprocessing executable 'bar-exe' for bar-1.0..
 Building executable 'bar-exe' for bar-1.0..
 # cabal v2-run
-Up to date
 # cabal v2-run
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:

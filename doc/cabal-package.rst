@@ -999,6 +999,11 @@ a real-world use case:
 
       default-language: Haskell2010
 
+.. note::
+    For packages using ``cabal-version: 3.4`` or higher, the syntax to
+    specify an internal library in a ``build-depends:`` section is
+    ``package-name:internal-library-name``.
+
 **Multiple public libraries**
 
 Cabal 3.0 and later support exposing multiple libraries from a single package
