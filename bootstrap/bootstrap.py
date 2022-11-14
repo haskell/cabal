@@ -331,7 +331,7 @@ def fetch_from_plan(plan : FetchPlan, output_dir : Path):
     sha = plan[path].sha256
     if not output_path.exists():
       print(f'Fetching {url}...')
-      with urllib.request.urlopen(url, timeout = 1) as resp:
+      with urllib.request.urlopen(url, timeout = 10) as resp:
         shutil.copyfileobj(resp, output_path.open('wb'))
     verify_sha256(sha, output_path)
 
