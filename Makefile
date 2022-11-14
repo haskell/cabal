@@ -137,7 +137,6 @@ validate-dockerfiles : .docker/validate-8.8.4.dockerfile
 validate-dockerfiles : .docker/validate-8.6.5.dockerfile
 validate-dockerfiles : .docker/validate-8.4.4.dockerfile
 validate-dockerfiles : .docker/validate-8.2.2.dockerfile
-validate-dockerfiles : .docker/validate-8.6.5.dockerfile
 
 .docker/validate-%.dockerfile : .docker/validate.dockerfile.zinza cabal-dev-scripts/src/GenValidateDockerfile.hs
 	cabal v2-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-validate-dockerfile -- $* $< $@
