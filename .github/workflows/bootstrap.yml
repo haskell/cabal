@@ -26,6 +26,14 @@ jobs:
     name: Bootstrap ${{ matrix.os }} ghc-${{ matrix.ghc }}
     runs-on: ${{ matrix.os }}
     steps:
+      - uses: actions/cache@v3
+        name: Cache the downloads
+        id: bootstrap-cache
+        with:
+          path: "~/.cabal"
+          key: bootstrap-${{ runner.os }}-${{ matrix.ghc }}-20221115-${{ github.sha }}
+          restore-keys: bootstrap-${{ runner.os }}-${{ matrix.ghc }}-20221115-
+
       - uses: actions/checkout@v2
       - name: bootstrap.py
         run: |
