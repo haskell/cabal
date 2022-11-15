@@ -20,7 +20,7 @@ import qualified Text.PrettyPrint                as Disp
 -- @since 3.0.0.0
 --
 data LibraryVisibility
-      -- | Can be dependent from other packages
+      -- | Can be used as a dependency for other packages
     = LibraryVisibilityPublic
       -- | Internal library, default
     | LibraryVisibilityPrivate
