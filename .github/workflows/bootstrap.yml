@@ -30,7 +30,7 @@ jobs:
         name: Cache the downloads
         id: bootstrap-cache
         with:
-          path: "~/.cabal"
+          path: "/home/runner/work/cabal/cabal/_build"
           key: bootstrap-${{ runner.os }}-${{ matrix.ghc }}-20221115-${{ github.sha }}
           restore-keys: bootstrap-${{ runner.os }}-${{ matrix.ghc }}-20221115-
 
