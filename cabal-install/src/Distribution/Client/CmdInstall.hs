@@ -39,7 +39,7 @@ import Distribution.Client.Types
          , SourcePackageDb(..) )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Package
-         ( Package(..), PackageName, mkPackageName, unPackageName )
+         ( Package(..), PackageName, unPackageName )
 import Distribution.Types.PackageId
          ( PackageIdentifier(..) )
 import Distribution.Client.ProjectConfig
@@ -58,7 +58,7 @@ import Distribution.Client.ProjectConfig.Types
          , projectConfigConfigFile )
 import Distribution.Simple.Program.Db
          ( userSpecifyPaths, userSpecifyArgss, defaultProgramDb
-         , modifyProgramSearchPath, ProgramDb )
+         , modifyProgramSearchPath )
 import Distribution.Simple.BuildPaths
          ( exeExtension )
 import Distribution.Simple.Program.Find
@@ -124,11 +124,9 @@ import Distribution.Simple.Utils
          , withTempDirectory, createDirectoryIfMissingVerbose
          , ordNub )
 import Distribution.Utils.Generic
-         ( safeHead, writeFileAtomic )
+         ( writeFileAtomic )
 
 import qualified Data.ByteString.Lazy.Char8 as BS
-import Data.Ord
-         ( Down(..) )
 import qualified Data.Map as Map
 import qualified Data.List.NonEmpty as NE
 import Distribution.Utils.NubList
@@ -387,7 +385,7 @@ installAction flags@NixStyleFlags { extraFlags = clientInstallFlags', .. } targe
     unless dryRun $
       if installLibs
       then installLibraries verbosity
-           buildCtx compiler packageDbs progDb envFile nonGlobalEnvEntries
+           buildCtx compiler packageDbs envFile nonGlobalEnvEntries
       else installExes verbosity
            baseCtx buildCtx platform compiler configFlags clientInstallFlags
   where
@@ -640,29 +638,18 @@ installLibraries
   -> ProjectBuildContext
   -> Compiler
   -> PackageDBStack
-  -> ProgramDb
   -> FilePath -- ^ Environment file
   -> [GhcEnvironmentFileEntry]
   -> IO ()
 installLibraries verbosity buildCtx compiler
-                 packageDbs programDb envFile envEntries = do
-  -- Why do we get it again? If we updated a globalPackage then we need
-  -- the new version.
-  installedIndex <- getInstalledPackages verbosity compiler packageDbs programDb
+                 packageDbs envFile envEntries = do
   if supportsPkgEnvFiles $ getImplInfo compiler
     then do
       let
-        getLatest :: PackageName -> [InstalledPackageInfo]
-        getLatest = (=<<) (maybeToList . safeHead . snd) . take 1 . sortBy (comparing (Down . fst))
-                  . PI.lookupPackageName installedIndex
-        globalLatest = concat (getLatest <$> globalPackages)
-
         baseEntries =
           GhcEnvFileClearPackageDbStack : fmap GhcEnvFilePackageDb packageDbs
-        globalEntries = GhcEnvFilePackageId . installedUnitId <$> globalLatest
         pkgEntries = ordNub $
-              globalEntries
-          ++ envEntries
+             envEntries
           ++ entriesForLibraryComponents (targetsMap buildCtx)
         contents' = renderGhcEnvironmentFile (baseEntries ++ pkgEntries)
       createDirectoryIfMissing True (takeDirectory envFile)
@@ -700,15 +687,6 @@ warnIfNoExes verbosity buildCtx =
     exeMaybe (ComponentTarget (CExeName exe) _) = Just exe
     exeMaybe _                                  = Nothing
 
-globalPackages :: [PackageName]
-globalPackages = mkPackageName <$>
-  [ "ghc", "hoopl", "bytestring", "unix", "base", "time", "hpc", "filepath"
-  , "process", "array", "integer-gmp", "containers", "ghc-boot", "binary"
-  , "ghc-prim", "ghci", "rts", "terminfo", "transformers", "deepseq"
-  , "ghc-boot-th", "pretty", "template-haskell", "directory", "text"
-  , "bin-package-db"
-  ]
-
 -- | Return the package specifiers and non-global environment file entries.
 getEnvSpecsAndNonGlobalEntries
   :: PI.InstalledPackageIndex
@@ -732,9 +710,7 @@ environmentFileToSpecifiers ipi = foldMap $ \case
           <- PI.lookupUnitId ipi unitId
         , let pkgSpec = NamedPackage pkgName
                         [PackagePropertyVersion (thisVersion pkgVersion)]
-        -> if pkgName `elem` globalPackages
-          then ([pkgSpec], [])
-          else ([pkgSpec], [GhcEnvFilePackageId installedUnitId])
+        -> ([pkgSpec], [GhcEnvFilePackageId installedUnitId])
     _ -> ([], [])
 
 
