@@ -55,7 +55,7 @@ jobs:
 
     steps:
 
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - uses: haskell/actions/setup@v2
         id: setup-haskell
@@ -199,7 +199,7 @@ jobs:
       # cause it does not work with the git version included in it, see:
       # https://github.com/actions/checkout/issues/170
       # https://github.com/actions/checkout/issues/295
-      # - uses: actions/checkout@v2
+      # - uses: actions/checkout@v3
       - name: Checkout
         run: |
           echo $GITHUB_REF $GITHUB_SHA
@@ -259,7 +259,7 @@ jobs:
         ghc: ${{ fromJSON (needs.validate.outputs.GHC_FOR_RELEASE) }}
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - uses: haskell/actions/setup@v2
         id: setup-haskell
