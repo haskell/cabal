@@ -25,7 +25,6 @@ module Language.Haskell.Extension (
         knownExtensions
   ) where
 
-import qualified Prelude (head)
 import Distribution.Compat.Prelude
 
 import Data.Array (Array, accumArray, bounds, Ix(inRange), (!))
@@ -752,9 +751,9 @@ classifyKnownExtension string@(c : _)
 knownExtensionTable :: Array Char [(String, KnownExtension)]
 knownExtensionTable =
   accumArray (flip (:)) [] ('A', 'Z')
-    [ (Prelude.head str, (str, extension)) -- assume KnownExtension's Show returns a non-empty string
-    | extension <- [toEnum 0 ..]
-    , let str = show extension ]
+    [ (hd, (str, extension)) -- assume KnownExtension's Show returns a non-empty string
+    | (extension, str@(hd : _)) <- map (\e -> (e, show e)) [toEnum 0 ..]
+    ]
 
 knownExtensions :: [KnownExtension]
 knownExtensions = [minBound .. maxBound]
