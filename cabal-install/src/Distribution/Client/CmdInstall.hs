@@ -33,7 +33,7 @@ import Distribution.Client.CmdInstall.ClientInstallFlags
 import Distribution.Client.CmdInstall.ClientInstallTargetSelector
 
 import Distribution.Client.Setup
-         ( GlobalFlags(..), ConfigFlags(..) )
+         ( GlobalFlags(..), ConfigFlags(..), InstallFlags(..) )
 import Distribution.Client.Types
          ( PackageSpecifier(..), PackageLocation(..), UnresolvedSourcePackage
          , SourcePackageDb(..) )
@@ -128,6 +128,7 @@ import Distribution.Utils.Generic
 
 import qualified Data.ByteString.Lazy.Char8 as BS
 import qualified Data.Map as Map
+import qualified Data.Set as S
 import qualified Data.List.NonEmpty as NE
 import Distribution.Utils.NubList
          ( fromNubList )
@@ -361,14 +362,37 @@ installAction flags@NixStyleFlags { extraFlags = clientInstallFlags', .. } targe
       (projectConfigBuildOnly config)
       [ ProjectPackageRemoteTarball uri | uri <- uris ]
 
+    -- check for targets already in env
+    let getPackageName :: PackageSpecifier UnresolvedSourcePackage -> PackageName
+        getPackageName (NamedPackage pn _) = pn
+        getPackageName (SpecificSourcePackage (SourcePackage pkgId _ _ _)) = pkgName pkgId
+        targetNames = S.fromList $ map getPackageName (specs ++ uriSpecs)
+        envNames = S.fromList $ map getPackageName envSpecs
+        forceInstall = fromFlagOrDefault False $ installOverrideReinstall installFlags
+        nameIntersection = S.intersection targetNames envNames
+
+    -- we check for intersections in targets with the existing env
+    (envSpecs', nonGlobalEnvEntries') <- if null nameIntersection
+      then pure (envSpecs, map snd nonGlobalEnvEntries)
+      else if forceInstall
+             then let es = filter (\e -> not $ getPackageName e `S.member` nameIntersection) envSpecs
+                      nge = map snd . filter (\e -> not $ fst e `S.member` nameIntersection) $ nonGlobalEnvEntries
+                  in pure (es, nge)
+             else die' verbosity $ "Packages requested to install already exist in environment file at " ++ envFile ++ ". Overwriting them may break other packages. Use --force-reinstalls to proceed anyway. Packages: " ++ intercalate ", " (map prettyShow $ S.toList nameIntersection)
+
+    -- we construct an installed index of files in the cleaned target environment (absent overwrites) so that we can solve with regards to packages installed locally but not in the upstream repo
+    let installedPacks = PI.allPackagesByName installedIndex
+        newEnvNames = S.fromList $ map getPackageName envSpecs'
+        installedIndex' = PI.fromList . concatMap snd . filter (\p -> fst p `S.member` newEnvNames) $ installedPacks
+
     baseCtx <- establishDummyProjectBaseContext
                  verbosity
                  config
                  distDirLayout
-                 (envSpecs ++ specs ++ uriSpecs)
+                 (envSpecs' ++ specs ++ uriSpecs)
                  InstallCommand
 
-    buildCtx <- constructProjectBuildContext verbosity baseCtx targetSelectors
+    buildCtx <- constructProjectBuildContext verbosity (baseCtx {installedPackages = Just installedIndex'}) targetSelectors
 
     printPlan verbosity baseCtx buildCtx
 
@@ -385,7 +409,7 @@ installAction flags@NixStyleFlags { extraFlags = clientInstallFlags', .. } targe
     unless dryRun $
       if installLibs
       then installLibraries verbosity
-           buildCtx compiler packageDbs envFile nonGlobalEnvEntries
+           buildCtx compiler packageDbs envFile nonGlobalEnvEntries'
       else installExes verbosity
            baseCtx buildCtx platform compiler configFlags clientInstallFlags
   where
@@ -692,7 +716,7 @@ getEnvSpecsAndNonGlobalEntries
   :: PI.InstalledPackageIndex
   -> [GhcEnvironmentFileEntry]
   -> Bool
-  -> ([PackageSpecifier a], [GhcEnvironmentFileEntry])
+  -> ([PackageSpecifier a], [(PackageName, GhcEnvironmentFileEntry)])
 getEnvSpecsAndNonGlobalEntries installedIndex entries installLibs =
   if installLibs
   then (envSpecs, envEntries')
@@ -702,7 +726,7 @@ getEnvSpecsAndNonGlobalEntries installedIndex entries installLibs =
 
 environmentFileToSpecifiers
   :: PI.InstalledPackageIndex -> [GhcEnvironmentFileEntry]
-  -> ([PackageSpecifier a], [GhcEnvironmentFileEntry])
+  -> ([PackageSpecifier a], [(PackageName, GhcEnvironmentFileEntry)])
 environmentFileToSpecifiers ipi = foldMap $ \case
     (GhcEnvFilePackageId unitId)
         | Just InstalledPackageInfo
@@ -710,7 +734,7 @@ environmentFileToSpecifiers ipi = foldMap $ \case
           <- PI.lookupUnitId ipi unitId
         , let pkgSpec = NamedPackage pkgName
                         [PackagePropertyVersion (thisVersion pkgVersion)]
-        -> ([pkgSpec], [GhcEnvFilePackageId installedUnitId])
+        -> ([pkgSpec], [(pkgName, GhcEnvFilePackageId installedUnitId)])
     _ -> ([], [])
 
 

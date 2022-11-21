@@ -466,6 +466,7 @@ rebuildInstallPlan :: Verbosity
                    -> DistDirLayout -> CabalDirLayout
                    -> ProjectConfig
                    -> [PackageSpecifier UnresolvedSourcePackage]
+                   -> Maybe InstalledPackageIndex
                    -> IO ( ElaboratedInstallPlan  -- with store packages
                          , ElaboratedInstallPlan  -- with source packages
                          , ElaboratedSharedConfig
@@ -480,7 +481,7 @@ rebuildInstallPlan verbosity
                    }
                    CabalDirLayout {
                      cabalStoreDirLayout
-                   } = \projectConfig localPackages ->
+                   } = \projectConfig localPackages mbInstalledPackages ->
     runRebuild distProjectRootDirectory $ do
     progsearchpath <- liftIO $ getSystemSearchPath
     let projectConfigMonitored = projectConfig { projectConfigBuildOnly = mempty }
@@ -503,6 +504,7 @@ rebuildInstallPlan verbosity
                         <- phaseRunSolver         projectConfig
                                                   compilerEtc
                                                   localPackages
+                                                  (fromMaybe mempty mbInstalledPackages)
           (elaboratedPlan,
            elaboratedShared) <- phaseElaboratePlan projectConfig
                                                    compilerEtc pkgConfigDB
@@ -576,13 +578,15 @@ rebuildInstallPlan verbosity
         :: ProjectConfig
         -> (Compiler, Platform, ProgramDb)
         -> [PackageSpecifier UnresolvedSourcePackage]
+        -> InstalledPackageIndex
         -> Rebuild (SolverInstallPlan, PkgConfigDb, IndexUtils.TotalIndexState, IndexUtils.ActiveRepos)
     phaseRunSolver projectConfig@ProjectConfig {
                      projectConfigShared,
                      projectConfigBuildOnly
                    }
                    (compiler, platform, progdb)
-                   localPackages =
+                   localPackages
+                   installedPackages =
         rerunIfChanged verbosity fileMonitorSolverPlan
                        (solverSettings,
                         localPackages, localPackagesEnabledStanzas,
@@ -609,7 +613,7 @@ rebuildInstallPlan verbosity
             notice verbosity "Resolving dependencies..."
             planOrError <- foldProgress logMsg (pure . Left) (pure . Right) $
               planPackages verbosity compiler platform solver solverSettings
-                           installedPkgIndex sourcePkgDb pkgConfigDB
+                           (installedPackages <> installedPkgIndex) sourcePkgDb pkgConfigDB
                            localPackages localPackagesEnabledStanzas
             case planOrError of
               Left msg -> do reportPlanningFailure projectConfig compiler platform localPackages
@@ -1033,7 +1037,6 @@ planPackages :: Verbosity
 planPackages verbosity comp platform solver SolverSettings{..}
              installedPkgIndex sourcePkgDb pkgConfigDB
              localPackages pkgStanzasEnable =
-
     resolveDependencies
       platform (compilerInfo comp)
       pkgConfigDB solver
