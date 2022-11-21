@@ -11,8 +11,10 @@ import Prelude ()
 import Distribution.Solver.Compat.Prelude hiding (get,put)
 
 import Control.Exception (assert)
-import Control.Monad.Reader
-import Control.Monad.State
+import Control.Monad (forM_, zipWithM_)
+import Control.Monad.Reader (Reader, runReader, local, ask)
+import Control.Monad.State (MonadState, StateT, get, put, modify, execStateT)
+import Control.Monad.Trans (lift)
 import Data.Map ((!))
 import qualified Data.Map         as M
 import qualified Data.Set         as S

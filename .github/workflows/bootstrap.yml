@@ -51,7 +51,7 @@ jobs:
         run: |
           _build/bin/cabal --version
 
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: cabal-${{ matrix.os }}-${{ matrix.ghc }}-bootstrapped
           path: _build/artifacts/*

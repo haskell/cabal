@@ -54,7 +54,7 @@ module Distribution.Simple.Configure
   , platformDefines,
   ) where
 
-import qualified Prelude as Unsafe (tail)
+import Prelude ()
 import Distribution.Compat.Prelude
 
 import Distribution.Compiler
@@ -106,7 +106,8 @@ import Data.ByteString.Lazy          ( ByteString )
 import qualified Data.ByteString            as BS
 import qualified Data.ByteString.Lazy.Char8 as BLC8
 import Data.List
-    ( (\\), inits, stripPrefix, intersect)
+    ( (\\), stripPrefix, intersect)
+import qualified Data.List.NonEmpty as NEL
 import qualified Data.Map as Map
 import System.Directory
     ( canonicalizePath, createDirectoryIfMissing, doesFileExist
@@ -1784,7 +1785,7 @@ checkForeignDeps pkg lbi verbosity =
         findOffendingHdr =
             ifBuildsWith allHeaders ccArgs
                          (return Nothing)
-                         (go . Unsafe.tail . inits $ allHeaders) -- inits always contains at least []
+                         (go . tail . NEL.inits $ allHeaders)
             where
               go [] = return Nothing       -- cannot happen
               go (hdrs:hdrsInits) =

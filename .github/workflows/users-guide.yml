@@ -54,7 +54,7 @@ jobs:
         submodules: recursive
 
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.python-version }}
 
@@ -67,7 +67,7 @@ jobs:
       run: |
         make SPHINX_HTML_OUTDIR=html users-guide
 
-    - uses: actions/upload-artifact@v2
+    - uses: actions/upload-artifact@v3
       with:
         name: users-guide-html
         path: html/
