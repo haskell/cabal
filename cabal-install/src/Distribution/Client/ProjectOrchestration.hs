@@ -1340,6 +1340,7 @@ establishDummyProjectBaseContext verbosity projectConfig distDirLayout localPack
         buildSettings = resolveBuildTimeSettings
                           verbosity cabalDirLayout
                           projectConfig
+        installedPackages = Nothing
 
     return ProjectBaseContext {
       distDirLayout,
@@ -1347,7 +1348,8 @@ establishDummyProjectBaseContext verbosity projectConfig distDirLayout localPack
       projectConfig,
       localPackages,
       buildSettings,
-      currentCommand
+      currentCommand,
+      installedPackages
     }
 
 establishDummyDistDirLayout :: Verbosity -> ProjectConfig -> FilePath -> IO DistDirLayout
