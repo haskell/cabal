@@ -1,19 +1,32 @@
 # cabal v2-update
+This build is affected by the following project file(s):
+- <ROOT>/new_freeze.dist/source/cabal.project
 Downloading the latest package list from test-local-repo
 # cabal v2-build
+This build is affected by the following project file(s):
+- <ROOT>/new_freeze.dist/source/cabal.project
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following would be built:
  - my-library-dep-2.0 (lib) (requires build)
  - my-local-package-1.0 (exe:my-exe) (first run)
 # cabal v2-freeze
+This build is affected by the following project file(s):
+- <ROOT>/new_freeze.dist/source/cabal.project
 Freeze file not written due to flag(s)
 # cabal v2-freeze
+This build is affected by the following project file(s):
+- <ROOT>/new_freeze.dist/source/cabal.project
 Freeze file not written due to flag(s)
 # cabal v2-freeze
+This build is affected by the following project file(s):
+- <ROOT>/new_freeze.dist/source/cabal.project
 Resolving dependencies...
 Wrote freeze file: <ROOT>/new_freeze.dist/source/cabal.project.freeze
 # cabal v2-build
+This build is affected by the following project file(s):
+- <ROOT>/new_freeze.dist/source/cabal.project
+- <ROOT>/new_freeze.dist/source/cabal.project.freeze
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
@@ -27,12 +40,19 @@ Configuring executable 'my-exe' for my-local-package-1.0..
 Preprocessing executable 'my-exe' for my-local-package-1.0..
 Building executable 'my-exe' for my-local-package-1.0..
 # cabal v2-freeze
+This build is affected by the following project file(s):
+- <ROOT>/new_freeze.dist/source/cabal.project
+- <ROOT>/new_freeze.dist/source/cabal.project.freeze
 Wrote freeze file: <ROOT>/new_freeze.dist/source/cabal.project.freeze
 # cabal v2-build
+This build is affected by the following project file(s):
+- <ROOT>/new_freeze.dist/source/cabal.project
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following would be built:
  - my-library-dep-2.0 (lib) (requires build)
  - my-local-package-1.0 (exe:my-exe) (configuration changed)
 # cabal v2-freeze
+This build is affected by the following project file(s):
+- <ROOT>/new_freeze.dist/source/cabal.project
 Wrote freeze file: <ROOT>/new_freeze.dist/source/cabal.project.freeze

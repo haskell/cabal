@@ -1,4 +1,6 @@
 # cabal build
+This build is affected by the following project file(s):
+- <ROOT>/cabal.project
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
@@ -7,6 +9,8 @@ Configuring executable 'A' for A-0.1.0.0..
 Preprocessing executable 'A' for A-0.1.0.0..
 Building executable 'A' for A-0.1.0.0..
 # cabal v2-build
+This build is affected by the following project file(s):
+- <ROOT>/cabal.project
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
  - A-0.1.0.0 (exe:A) (configuration changed)

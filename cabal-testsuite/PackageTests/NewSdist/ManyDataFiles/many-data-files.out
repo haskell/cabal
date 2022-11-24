@@ -1,2 +1,4 @@
 # cabal v2-sdist
+This build is affected by the following project file(s):
+- <ROOT>/many-data-files.dist/source/cabal.project
 Wrote tarball sdist to <ROOT>/many-data-files.dist/source/dist-newstyle/sdist/many-data-files-0.tar.gz

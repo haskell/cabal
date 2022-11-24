@@ -1,4 +1,6 @@
 # cabal v2-update
+This build is affected by the following project file(s):
+- /home/pigs/git/cabal/cabal.project
 Downloading the latest package list from test-local-repo
 # cabal v1-freeze
 Resolving dependencies...

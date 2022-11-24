@@ -1,4 +1,7 @@
 # cabal v2-update
+This build is affected by the following project file(s):
+- <ROOT>/cabal.project
+- <ROOT>/cabal.project.freeze
 Downloading the latest package list from test-local-repo
 # cabal outdated
 Outdated dependencies:

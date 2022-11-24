@@ -1,4 +1,6 @@
 # cabal v2-run
+This build is affected by the following project file(s):
+- <ROOT>/cabal.project
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
@@ -7,7 +9,11 @@ Configuring executable 'bar-exe' for bar-1.0..
 Preprocessing executable 'bar-exe' for bar-1.0..
 Building executable 'bar-exe' for bar-1.0..
 # cabal v2-run
+This build is affected by the following project file(s):
+- <ROOT>/cabal.project
 # cabal v2-run
+This build is affected by the following project file(s):
+- <ROOT>/cabal.project
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
  - foo-1.0 (exe:foo-exe) (first run)
@@ -15,6 +21,8 @@ Configuring executable 'foo-exe' for foo-1.0..
 Preprocessing executable 'foo-exe' for foo-1.0..
 Building executable 'foo-exe' for foo-1.0..
 # cabal v2-run
+This build is affected by the following project file(s):
+- <ROOT>/cabal.project
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
  - bar-1.0 (exe:foo-exe) (first run)
@@ -22,16 +30,25 @@ Configuring executable 'foo-exe' for bar-1.0..
 Preprocessing executable 'foo-exe' for bar-1.0..
 Building executable 'foo-exe' for bar-1.0..
 # cabal v2-run
+This build is affected by the following project file(s):
+- <ROOT>/cabal.project
 Error: cabal: No targets given and there is no package in the current directory. Specify packages or components by name or location. See 'cabal build --help' for more details on target options.
 # cabal v2-run
+This build is affected by the following project file(s):
+- <ROOT>/cabal.project
 Error: cabal: The run command is for running a single executable at once. The target 'bar' refers to the package bar-1.0 which includes 
 - executables: bar-exe and foo-exe
+
 # cabal v2-run
+This build is affected by the following project file(s):
+- <ROOT>/cabal.project
 Error: cabal: Ambiguous target 'foo-exe'. It could be:
     bar:foo-exe (component)
    foo:foo-exe (component)
 
 # cabal v2-run
+This build is affected by the following project file(s):
+- <ROOT>/cabal.project
 Error: cabal: Unknown target 'foo:bar-exe'.
 The package foo has no component 'bar-exe'.
 

@@ -1,3 +1,5 @@
 # cabal v2-sdist
+This build is affected by the following project file(s):
+- <ROOT>/list-sources-output-dir.dist/source/cabal.project
 Wrote source list to <ROOT>/list-sources-output-dir.dist/source/lists/a-0.1.list
 Wrote source list to <ROOT>/list-sources-output-dir.dist/source/lists/b-0.1.list

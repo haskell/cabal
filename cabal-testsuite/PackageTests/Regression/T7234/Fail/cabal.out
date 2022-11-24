@@ -1,4 +1,6 @@
 # cabal v2-build
+This build is affected by the following project file(s):
+- <ROOT>/cabal.project
 Resolving dependencies...
 Error: cabal: Could not resolve dependencies:
 [__0] next goal: issue7234 (user goal)

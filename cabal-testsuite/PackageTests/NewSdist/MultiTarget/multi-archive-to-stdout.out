@@ -1,2 +1,4 @@
 # cabal v2-sdist
+This build is affected by the following project file(s):
+- <ROOT>/multi-archive-to-stdout.dist/source/cabal.project
 Error: cabal: Can't write multiple tarballs to standard output!

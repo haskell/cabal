@@ -1,4 +1,6 @@
 # cabal v2-sdist
+This build is affected by the following project file(s):
+- <ROOT>/multi-list-sources.dist/source/cabal.project
 a/Main.hs
 a/Test.hs
 a/a.cabal

@@ -1,4 +1,6 @@
 # cabal v2-run
+This build is affected by the following project file(s):
+- /home/pigs/git/cabal/cabal.project
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
@@ -6,3 +8,5 @@ In order, the following will be built:
 Configuring executable 'cabal-script-script.hs' for fake-package-0..
 Building executable 'cabal-script-script.hs' for fake-package-0..
 # cabal v2-run
+This build is affected by the following project file(s):
+- /home/pigs/git/cabal/cabal.project

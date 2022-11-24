@@ -1,4 +1,6 @@
 # cabal v2-update
+This build is affected by the following project file(s):
+- <ROOT>/cabal.project
 Downloading the latest package list from test-local-repo
 # pkg my-exe
 pkg Main.hs: remote-pkg-2.0
