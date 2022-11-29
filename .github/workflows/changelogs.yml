@@ -45,7 +45,7 @@ jobs:
       # https://github.com/haskell/cabal/issues/7360
       - uses: actions/checkout@v3
         with:
-          repository: "phadej/changelog-d"
+          repository: "fgaz/changelog-d"
           path: "changelog-d"
       - name: Install changelog-d
         run: |
