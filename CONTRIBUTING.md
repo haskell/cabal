@@ -282,7 +282,7 @@ You can find a large number of real-world examples of changelog files
 [here](https://github.com/haskell/cabal/tree/bc83de27569fda22dbe1e10be1a921bebf4d3430/changelog.d).
 
 At release time, the entries will be merged with
-[this tool](https://github.com/phadej/changelog-d).
+[this tool](https://github.com/fgaz/changelog-d).
 
 In addition, if you're changing the .cabal file format specification you should
 add an entry in `doc/file-format-changelog.rst`.
