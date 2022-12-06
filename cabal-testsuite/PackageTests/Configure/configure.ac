@@ -11,16 +11,16 @@ AC_CHECK_HEADER(zlib.h, [ZLIB_HEADER=yes], [], [])
 
 # Check that flag assignment has been propagated correctly
 if test "$CABAL_FLAG_true_flag" != "1"; then
-    echo "true flag incorrectly set"
+    echo "true flag incorrectly set: got '$CABAL_FLAG_true_flag'"
     exit 1
 fi
 if test "$CABAL_FLAG_false_flag" != "0"; then
-    echo "false flag incorrectly set"
+    echo "false flag incorrectly set: got '$CABAL_FLAG_false_flag'"
     exit 1
 fi
 
 if test "$CABAL_FLAGS" != "+a -b"; then
-    echo "CABAL_FLAGS incorrectly set"
+    echo "CABAL_FLAGS incorrectly set: got '$CABAL_FLAGS'"
     exit 1
 fi
 
