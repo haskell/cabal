@@ -19,7 +19,7 @@ if test "$CABAL_FLAG_false_flag" != "0"; then
     exit 1
 fi
 
-if test "$CABAL_FLAGS" != "+a -b"; then
+if test "$CABAL_FLAGS" != "-false-flag +true-flag"; then
     echo "CABAL_FLAGS incorrectly set: got '$CABAL_FLAGS'"
     exit 1
 fi
