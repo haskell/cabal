@@ -688,21 +688,21 @@ runConfigureScript verbosity backwardsCompatHack flags lbi = do
         , " building the package to fail later."
         ]
 
-  let -- | Convert a flag name to name of environment variable to represent its
+  let -- Convert a flag name to name of environment variable to represent its
       -- value for the configure script.
       flagEnvVar :: FlagName -> String
       flagEnvVar flag = "CABAL_FLAG_" ++ map f (unFlagName flag)
         where f c
                 | isAlphaNum c = c
                 | otherwise    = '_'
-      -- | A map from such env vars to every flag name and value where the name
+      -- A map from such env vars to every flag name and value where the name
       -- name maps to that that env var.
       cabalFlagMap :: Map String (NonEmpty (FlagName, Bool))
       cabalFlagMap = Map.fromListWith (<>)
                      [ (flagEnvVar flag, (flag, bool) :| [])
                      | (flag, bool) <- unFlagAssignment $ flagAssignment lbi
                      ]
-  -- | A map from env vars to flag names to the single flag we will go with
+  -- A map from env vars to flag names to the single flag we will go with
   cabalFlagMapDeconflicted :: Map String (FlagName, Bool) <-
     flip Map.traverseWithKey cabalFlagMap $ \ envVar -> \case
       -- No conflict: no problem
