@@ -713,7 +713,7 @@ runConfigureScript verbosity backwardsCompatHack flags lbi = do
             toName = quote . unFlagName . fst
             renderedList = intercalate ", " $ NonEmpty.toList $ toName <$> collidingFlags
         warn verbosity $ unwords
-          [ "Flags ", renderedList, "all map to the same environment variable"
+          [ "Flags", renderedList, "all map to the same environment variable"
           , quote envVar, "causing a collision."
           , "The value first flag", toName firstFlag, "will be used."
           ]
