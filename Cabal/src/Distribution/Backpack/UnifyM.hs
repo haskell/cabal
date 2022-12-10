@@ -6,7 +6,6 @@ module Distribution.Backpack.UnifyM (
     UnifyM,
     runUnifyM,
     failWith,
-    failWithMutuallyRecursiveUnitsError,
     addErr,
     failIfErrs,
     tryM,
@@ -389,17 +388,19 @@ lookupMooEnv (m, i) k =
 
 -- | Returns `OpenUnitId` if there is no a mutually recursive unit.
 -- | Otherwise returns a list of signatures instantiated by given `UnitIdU`.
-convertUnitIdU' :: MooEnv -> UnitIdU s -> UnifyM s (Either [ModuleName] OpenUnitId)
-convertUnitIdU' stk uid_u = do
+convertUnitIdU' :: MooEnv -> UnitIdU s -> Doc -> UnifyM s OpenUnitId
+convertUnitIdU' stk uid_u required_mod_name = do
     x <- liftST $ UnionFind.find uid_u
     case x of
-        UnitIdThunkU uid -> return $ Right (DefiniteUnitId uid)
+        UnitIdThunkU uid -> return $ DefiniteUnitId uid
         UnitIdU u cid insts_u ->
             case lookupMooEnv stk u of
-                Just _ -> return $ Left $ Map.keys insts_u
+                Just _ ->
+                    let mod_names = Map.keys insts_u
+                    in failWithMutuallyRecursiveUnitsError required_mod_name mod_names
                 Nothing -> do
                     insts <- for insts_u $ convertModuleU' (extendMooEnv stk u)
-                    return $ Right (IndefFullUnitId cid insts)
+                    return $ IndefFullUnitId cid insts
 
 convertModuleU' :: MooEnv -> ModuleU s -> UnifyM s OpenModule
 convertModuleU' stk mod_u = do
@@ -407,10 +408,8 @@ convertModuleU' stk mod_u = do
     case mod of
         ModuleVarU mod_name -> return (OpenModuleVar mod_name)
         ModuleU uid_u mod_name -> do
-            x <- convertUnitIdU' stk uid_u
-            case x of
-                Right uid -> return (OpenModule uid mod_name)
-                Left mod_names -> failWithMutuallyRecursiveUnitsError (pretty mod_name) mod_names
+            uid <- convertUnitIdU' stk uid_u (pretty mod_name)
+            return (OpenModule uid mod_name)
 
 failWithMutuallyRecursiveUnitsError :: Doc -> [ModuleName] -> UnifyM s a
 failWithMutuallyRecursiveUnitsError required_mod_name mod_names =
@@ -422,7 +421,7 @@ failWithMutuallyRecursiveUnitsError required_mod_name mod_names =
 
 -- Helper functions
 
-convertUnitIdU :: UnitIdU s -> UnifyM s (Either [ModuleName] OpenUnitId)
+convertUnitIdU :: UnitIdU s -> Doc -> UnifyM s OpenUnitId
 convertUnitIdU = convertUnitIdU' emptyMooEnv
 
 convertModuleU :: ModuleU s -> UnifyM s OpenModule

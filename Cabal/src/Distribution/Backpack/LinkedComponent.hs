@@ -210,16 +210,13 @@ toLinkedComponent verbosity db this_pid pkg_map ConfiguredComponent {
         -- Read out all the final results by converting back
         -- into a pure representation.
         let convertIncludeU (ComponentInclude dep_aid rns i) = do
-                x <- convertUnitIdU (ann_id dep_aid)
-                case x of
-                    Right uid -> return (ComponentInclude {
-                                    ci_ann_id = dep_aid { ann_id = uid },
-                                    ci_renaming = rns,
-                                    ci_implicit = i
-                                })
-                    Left mod_names ->
-                        let component_name = pretty $ ann_cname dep_aid
-                        in failWithMutuallyRecursiveUnitsError component_name mod_names
+                let component_name = pretty $ ann_cname dep_aid
+                uid <- convertUnitIdU (ann_id dep_aid) component_name
+                return (ComponentInclude {
+                        ci_ann_id = dep_aid { ann_id = uid },
+                        ci_renaming = rns,
+                        ci_implicit = i
+                    })
 
         shape <- convertModuleScopeU shape_u
         let (includes_u, sig_includes_u) = partitionEithers all_includes_u
