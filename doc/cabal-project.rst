@@ -913,7 +913,7 @@ Object code options
 
     :default: False
 
-    If the compiler (e.g., GHC 7.10 and later) supports outputing OS
+    If the compiler (e.g., GHC 7.10 and later) supports outputting OS
     native debug info (e.g., DWARF), setting ``debug-info: True`` will
     instruct it to do so. See the GHC wiki page on :ghc-wiki:`DWARF`
     for more information about this feature.
