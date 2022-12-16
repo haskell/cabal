@@ -193,7 +193,7 @@ lookupFlagAssignment fn = fmap snd . Map.lookup fn . getFlagAssignment
 
 -- | Insert or update the boolean value of a flag.
 --
--- If the flag is already present in the 'FlagAssigment', the
+-- If the flag is already present in the 'FlagAssignment', the
 -- value will be updated and the fact that multiple values have
 -- been provided for that flag will be recorded so that a
 -- warning can be generated later on.

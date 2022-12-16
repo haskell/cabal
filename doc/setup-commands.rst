@@ -790,7 +790,7 @@ Miscellaneous options
 
    Build a static library. This passes ``-staticlib`` to GHC (available
    for iOS, and with 8.4 more platforms).  The result is an archive ``.a``
-   containing all dependent haskell libararies combined.
+   containing all dependent haskell libraries combined.
 
 .. option:: --disable-static
 

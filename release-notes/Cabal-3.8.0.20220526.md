@@ -105,7 +105,7 @@ Cabal 3.8.0.20220526 Changelog
 
   - Make builds that use experimental Cabal language features less noisy. At -v1
     (normal) we show just first instance of use of experimental cabal language
-  features, along with count of further occurences in the same file.
+  features, along with count of further occurrences in the same file.
 
 - Fix Cabal not finding public sublibraries of installed packages [#7270](https://github.com/haskell/cabal/issues/7270) [#8089](https://github.com/haskell/cabal/pull/8089)
 
@@ -135,7 +135,7 @@ Cabal 3.8.0.20220526 Changelog
 - Add "prompt" strategy when symlinking binaries. [#5672](https://github.com/haskell/cabal/pull/5672)
 - Add fields extra-libraries-static and extra-lib-dirs-static [#6688](https://github.com/haskell/cabal/issues/6688) [#7399](https://github.com/haskell/cabal/issues/7399) [#7536](https://github.com/haskell/cabal/pull/7536)
 - Paths passed to GHC are now relative to the current working directory
-- Autoatically pipe auth from repo uris into curl transport. [#4743](https://github.com/haskell/cabal/issues/4743) [#7630](https://github.com/haskell/cabal/pull/7630)
+- Automatically pipe auth from repo uris into curl transport. [#4743](https://github.com/haskell/cabal/issues/4743) [#7630](https://github.com/haskell/cabal/pull/7630)
 - raise lower bound of process and remove compatibility shims [#7922](https://github.com/haskell/cabal/pull/7922)
 - changes the cabal check warning about long synopsis, so it warns only synopsis bigger than the set size [#7932](https://github.com/haskell/cabal/issues/7932) [#7933](https://github.com/haskell/cabal/pull/7933)
 - Remove bootstrapping plan files from version control, and simplify bootstrap update Makefile targets. [#7949](https://github.com/haskell/cabal/pull/7949)
