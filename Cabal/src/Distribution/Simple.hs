@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE CPP #-}
@@ -111,6 +112,8 @@ import Distribution.Compat.GetShortPathName (getShortPathName)
 
 import Data.List       (unionBy, (\\))
 
+import qualified Data.List.NonEmpty as NonEmpty
+import qualified Data.Map as Map
 
 -- | A simple implementation of @main@ for a Cabal setup script.
 -- It reads the package description file using IO, and performs the
@@ -685,6 +688,45 @@ runConfigureScript verbosity backwardsCompatHack flags lbi = do
         , " building the package to fail later."
         ]
 
+  let -- Convert a flag name to name of environment variable to represent its
+      -- value for the configure script.
+      flagEnvVar :: FlagName -> String
+      flagEnvVar flag = "CABAL_FLAG_" ++ map f (unFlagName flag)
+        where f c
+                | isAlphaNum c = c
+                | otherwise    = '_'
+      -- A map from such env vars to every flag name and value where the name
+      -- name maps to that that env var.
+      cabalFlagMap :: Map String (NonEmpty (FlagName, Bool))
+      cabalFlagMap = Map.fromListWith (<>)
+                     [ (flagEnvVar flag, (flag, bool) :| [])
+                     | (flag, bool) <- unFlagAssignment $ flagAssignment lbi
+                     ]
+  -- A map from env vars to flag names to the single flag we will go with
+  cabalFlagMapDeconflicted :: Map String (FlagName, Bool) <-
+    flip Map.traverseWithKey cabalFlagMap $ \ envVar -> \case
+      -- No conflict: no problem
+      singleFlag :| [] -> pure singleFlag
+      -- Conflict: warn and discard all but first
+      collidingFlags@(firstFlag :| _ : _) -> do
+        let quote s = "'" ++ s ++ "'"
+            toName = quote . unFlagName . fst
+            renderedList = intercalate ", " $ NonEmpty.toList $ toName <$> collidingFlags
+        warn verbosity $ unwords
+          [ "Flags", renderedList, "all map to the same environment variable"
+          , quote envVar, "causing a collision."
+          , "The value first flag", toName firstFlag, "will be used."
+          ]
+        pure firstFlag
+
+  let cabalFlagEnv = [ (envVar, Just val)
+                     | (envVar, (_, bool)) <- Map.toList cabalFlagMapDeconflicted
+                     , let val = if bool then "1" else "0"
+                     ] ++
+                     [ ( "CABAL_FLAGS"
+                       , Just $ unwords [ showFlagValue fv | fv <- unFlagAssignment $ flagAssignment lbi ]
+                       )
+                     ]
   let extraPath = fromNubList $ configProgramPathExtra flags
   let cflagsEnv = maybe (unwords ccFlags) (++ (" " ++ unwords ccFlags))
                   $ lookup "CFLAGS" env
@@ -692,7 +734,8 @@ runConfigureScript verbosity backwardsCompatHack flags lbi = do
       pathEnv = maybe (intercalate spSep extraPath)
                 ((intercalate spSep extraPath ++ spSep)++) $ lookup "PATH" env
       overEnv = ("CFLAGS", Just cflagsEnv) :
-                [("PATH", Just pathEnv) | not (null extraPath)]
+                [("PATH", Just pathEnv) | not (null extraPath)] ++
+                cabalFlagEnv
       hp = hostPlatform lbi
       maybeHostFlag = if hp == buildPlatform then [] else ["--host=" ++ show (pretty hp)]
       args' = configureFile':args ++ ["CC=" ++ ccProgShort] ++ maybeHostFlag
