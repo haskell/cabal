@@ -235,8 +235,9 @@ mkGenericSharedBundledLibName platform comp lib
 -- | Default extension for executable files on the current platform.
 -- (typically @\"\"@ on Unix and @\"exe\"@ on Windows or OS\/2)
 exeExtension :: Platform -> String
-exeExtension (Platform _arch os) = case os of
-                   Windows -> "exe"
+exeExtension platform = case platform of
+                   Platform _ Windows -> "exe"
+                   Platform Wasm32 _  -> "wasm"
                    _       -> ""
 
 -- | Extension for object files. For GHC the extension is @\"o\"@.
