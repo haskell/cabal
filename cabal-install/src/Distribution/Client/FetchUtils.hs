@@ -290,7 +290,7 @@ waitAsyncFetchPackage verbosity downloadMap srcloc =
 -- ------------------------------------------------------------
 
 -- | Generate the full path to the locally cached copy of
--- the tarball for a given @PackageIdentifer@.
+-- the tarball for a given @PackageIdentifier@.
 --
 packageFile :: Repo -> PackageId -> FilePath
 packageFile repo pkgid = packageDir repo pkgid
@@ -298,7 +298,7 @@ packageFile repo pkgid = packageDir repo pkgid
                      <.> "tar.gz"
 
 -- | Generate the full path to the directory where the local cached copy of
--- the tarball for a given @PackageIdentifer@ is stored.
+-- the tarball for a given @PackageIdentifier@ is stored.
 --
 packageDir :: Repo -> PackageId -> FilePath
 packageDir (RepoLocalNoIndex (LocalRepo _ dir _) _) _pkgid = dir

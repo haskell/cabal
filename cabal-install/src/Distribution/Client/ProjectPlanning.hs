@@ -3915,6 +3915,7 @@ packageHashConfigInputs shared@ElaboratedSharedConfig{..} pkg =
       pkgHashDebugInfo           = elabDebugInfo,
       pkgHashProgramArgs         = elabProgramArgs,
       pkgHashExtraLibDirs        = elabExtraLibDirs,
+      pkgHashExtraLibDirsStatic  = elabExtraLibDirsStatic,
       pkgHashExtraFrameworkDirs  = elabExtraFrameworkDirs,
       pkgHashExtraIncludeDirs    = elabExtraIncludeDirs,
       pkgHashProgPrefix          = elabProgPrefix,
