@@ -467,7 +467,7 @@ withProjectOrGlobalConfig
     -> Flag Bool                  -- ^ whether to ignore local project (--ignore-project flag)
     -> Flag FilePath              -- ^ @--cabal-config@
     -> IO a                       -- ^ with project
-    -> (ProjectConfig -> IO a)    -- ^ without projet
+    -> (ProjectConfig -> IO a)    -- ^ without project
     -> IO a
 withProjectOrGlobalConfig verbosity (Flag True) gcf _with without = do
     globalConfig <- runRebuild "" $ readGlobalConfig verbosity gcf

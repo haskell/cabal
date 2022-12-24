@@ -34,12 +34,12 @@ import Distribution.Client.TargetProblem         (TargetProblem (..))
 import Distribution.Simple.BuildPaths            (dllExtension, exeExtension)
 import Distribution.Simple.Command               (CommandUI (..))
 import Distribution.Simple.Setup                 (configVerbosity, fromFlagOrDefault)
-import Distribution.Simple.Utils                 (die', wrapText)
+import Distribution.Simple.Utils                 (die', info, wrapText)
 import Distribution.System                       (Platform)
 import Distribution.Types.ComponentName          (showComponentName)
 import Distribution.Types.UnitId                 (UnitId)
 import Distribution.Types.UnqualComponentName    (UnqualComponentName)
-import Distribution.Verbosity                    (silent, verboseStderr)
+import Distribution.Verbosity                    (normal, silent, verboseStderr)
 import System.FilePath                           ((<.>), (</>))
 
 import qualified Data.Map                                as Map
@@ -133,7 +133,7 @@ listbinAction flags@NixStyleFlags{..} args globalFlags = do
 
     case binfiles of
         []     -> die' verbosity "No target found"
-        [exe] -> putStrLn exe
+        [exe] -> info normal exe
         _ -> die' verbosity "Multiple targets found"
   where
     defaultVerbosity = verboseStderr silent

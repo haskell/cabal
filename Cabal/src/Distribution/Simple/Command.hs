@@ -574,7 +574,7 @@ helpCommandUI =
     commandNotes = Just $ \pname ->
        "Examples:\n"
     ++ "  " ++ pname ++ " help help\n"
-    ++ "    Oh, appararently you already know this.\n"
+    ++ "    Oh, apparently you already know this.\n"
   }
 
 -- | wraps a @CommandUI@ together with a function that turns it into a @Command@.
