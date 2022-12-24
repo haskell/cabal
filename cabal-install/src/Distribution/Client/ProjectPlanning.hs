@@ -170,7 +170,7 @@ import           Text.PrettyPrint (text, hang, quotes, colon, vcat, ($$), fsep, 
 import qualified Text.PrettyPrint as Disp
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-import           Control.Monad (sequence)
+import           Control.Monad (sequence, forM)
 import           Control.Monad.IO.Class (liftIO)
 import           Control.Monad.State as State (State, execState, runState, state)
 import           Control.Exception (assert)
