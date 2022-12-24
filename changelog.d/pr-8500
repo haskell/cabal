@@ -1,4 +1,4 @@
-synopsis: Print a warning when assertions are enabled
+synopsis: Redownload pkgs when source hash verification fails
 packages: cabal-install
 prs: #8500
 issues: #7541
