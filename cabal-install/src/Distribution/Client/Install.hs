@@ -1059,6 +1059,7 @@ performInstallations verbosity
         platform
         progdb
         distPref
+        (fromFlagOrDefault (setupConfigDynamic defaultSetupScriptOptions) $ configDynExe configFlags)
         (chooseCabalVersion configExFlags (libVersion miscOptions))
         (Just lock)
         parallelInstall
