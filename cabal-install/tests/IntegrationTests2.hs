@@ -1591,7 +1591,7 @@ testProgramOptionsLocal config0 = do
                 (Just [ghcFlag])
                 (getProgArgs localPackages "q")
     assertEqual "p"
-                Nothing
+                (Just [ghcFlag])
                 (getProgArgs localPackages "p")
   where
     testdir = "regression/program-options"

@@ -272,9 +272,9 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
     comp2str = prettyShow
 
     style2str :: Bool -> BuildStyle -> String
+    style2str _     BuildAndInstall  = "global"
     style2str True  _                = "local"
     style2str False BuildInplaceOnly = "inplace"
-    style2str False BuildAndInstall  = "global"
 
     jdisplay :: Pretty a => a -> J.Value
     jdisplay = J.String . prettyShow

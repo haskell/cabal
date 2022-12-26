@@ -321,7 +321,7 @@ containerStructure _ = Nominal faTypeRep 0 (show fTypeRep)
 -- Generic
 -------------------------------------------------------------------------------
 
--- | Derive 'structure' genrically.
+-- | Derive 'structure' generically.
 genericStructure :: forall a. (Typeable a, Generic a, GStructured (Rep a)) => Proxy a -> Structure
 genericStructure _ = gstructured (typeRep (Proxy :: Proxy a)) (Proxy :: Proxy (Rep a)) 0
 

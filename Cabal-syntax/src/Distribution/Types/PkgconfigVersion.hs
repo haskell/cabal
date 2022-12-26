@@ -53,7 +53,7 @@ instance Parsec PkgconfigVersion where
         predicate c = isAsciiAlphaNum c || c == '.' || c == '-'
 
 -------------------------------------------------------------------------------
--- rmpvercmp - pure Haskell implementation
+-- rpmvercmp - pure Haskell implementation
 -------------------------------------------------------------------------------
 
 -- | Compare two version strings as @pkg-config@ would compare them.

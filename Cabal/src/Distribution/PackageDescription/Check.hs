@@ -227,6 +227,7 @@ data CheckExplanation =
         | UnknownArch [String]
         | UnknownCompiler [String]
         | BaseNoUpperBounds
+        | MissingUpperBounds [PackageName]
         | SuspiciousFlagName [String]
         | DeclaredUsedFlags (Set FlagName) (Set FlagName)
         | NonASCIICustomField [String]
@@ -666,6 +667,14 @@ ppExplanation (UnknownArch unknownArches) =
     "Unknown architecture name " ++ commaSep (map quote unknownArches)
 ppExplanation (UnknownCompiler unknownImpls) =
     "Unknown compiler name " ++ commaSep (map quote unknownImpls)
+ppExplanation (MissingUpperBounds names) =
+    let separator = "\n  - "
+    in
+    "These packages miss upper bounds:" ++ separator
+      ++ (intercalate separator (unPackageName <$> names)) ++ "\n"
+      ++  "Please add them, using `cabal gen-bounds` for suggestions."
+      ++ " For more information see: "
+      ++ " https://pvp.haskell.org/"
 ppExplanation BaseNoUpperBounds =
     "The dependency 'build-depends: base' does not specify an upper "
       ++ "bound on the version number. Each major release of the 'base' "
@@ -1813,29 +1822,23 @@ checkCabalVersion pkg =
 --
 checkPackageVersions :: GenericPackageDescription -> [PackageCheck]
 checkPackageVersions pkg =
-  catMaybes [
-
-    -- Check that the version of base is bounded above.
-    -- For example this bans "build-depends: base >= 3".
-    -- It should probably be "build-depends: base >= 3 && < 4"
-    -- which is the same as  "build-depends: base == 3.*"
-    check (not (hasUpperBound baseDependency)) $
-      PackageDistInexcusable BaseNoUpperBounds
-
-  ]
+  -- if others is empty,
+  -- the error will still fire but listing no dependencies.
+  -- so we have to check
+  if length others > 0
+  then
+    PackageDistSuspiciousWarn (MissingUpperBounds others) : baseErrors
+  else
+    baseErrors
   where
-    baseDependency = case typicalPkg pkg of
-      Right (pkg', _) | not (null baseDeps) ->
-          foldr intersectVersionRanges anyVersion baseDeps
-        where
-          baseDeps =
-            [ vr | Dependency pname vr _ <- allBuildDepends pkg'
-                 , pname == mkPackageName "base" ]
-
-      -- Just in case finalizePD fails for any reason,
-      -- or if the package doesn't depend on the base package at all,
-      -- then we will just skip the check, since hasUpperBound noVersion = True
-      _          -> noVersion
+    baseErrors = PackageDistInexcusable BaseNoUpperBounds <$ bases
+    deps = toDependencyVersionsMap allBuildDepends pkg
+    -- base gets special treatment (it's more critical)
+    (bases, others) = partition (("base" ==) . unPackageName) $
+      [ name
+      | (name, vr) <- Map.toList deps
+      , not (hasUpperBound vr)
+      ]
 
 checkConditionals :: GenericPackageDescription -> [PackageCheck]
 checkConditionals pkg =
@@ -2409,14 +2412,7 @@ checkSetupVersions pkg =
     ]
   where
     criticalPkgs = ["Cabal", "base"]
-    deps = case typicalPkg pkg of
-      Right (pkgs', _) ->
-        Map.fromListWith intersectVersionRanges
-          [ (pname, vr)
-          | sbi <- maybeToList $ setupBuildInfo pkgs'
-          , Dependency pname vr _ <- setupDepends sbi
-          ]
-      _ -> Map.empty
+    deps = toDependencyVersionsMap (foldMap setupDepends . setupBuildInfo) pkg
     emitError nm =
       PackageDistInexcusable (UpperBoundSetup nm)
 
@@ -2454,6 +2450,24 @@ checkDuplicateModules pkg =
 -- ------------------------------------------------------------
 -- * Utils
 -- ------------------------------------------------------------
+
+toDependencyVersionsMap :: (PackageDescription -> [Dependency]) -> GenericPackageDescription -> Map PackageName VersionRange
+toDependencyVersionsMap selectDependencies pkg = case typicalPkg pkg of
+      Right (pkgs', _) ->
+        let
+          self :: PackageName
+          self = pkgName $ package pkgs'
+        in
+        Map.fromListWith intersectVersionRanges $
+          [ (pname, vr)
+          | Dependency pname vr _ <- selectDependencies pkgs'
+          , pname /= self
+          ]
+      -- Just in case finalizePD fails for any reason,
+      -- or if the package doesn't depend on the base package at all,
+      -- no deps is no checks.
+      _ -> Map.empty
+
 
 quote :: String -> String
 quote s = "'" ++ s ++ "'"

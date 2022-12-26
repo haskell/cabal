@@ -511,9 +511,9 @@ description file or freeze file.
 
     :since: 2.4
 
-    Read dependendency version bounds from the v2-style freeze file
+    Read dependency version bounds from the v2-style freeze file
     related to the named project file (i.e., ``$PROJECTFILE.freeze``)
-    instead of the package desctription file. If multiple ``--project-file``
+    instead of the package description file. If multiple ``--project-file``
     flags are provided, only the final one is considered. This flag
     must only be passed in when ``--new-freeze-file`` is present.
 
