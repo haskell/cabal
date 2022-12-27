@@ -161,7 +161,7 @@ import           Distribution.Simple.Flag
 import qualified Distribution.Simple.Setup as Setup
 import           Distribution.Simple.Command (commandShowOptions)
 import           Distribution.Simple.Configure (computeEffectiveProfiling)
-
+import           Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import           Distribution.Simple.Utils
                    ( die', warn, notice, noticeNoWrap, debugNoWrap, createDirectoryIfMissingVerbose, ordNub )
 import           Distribution.Verbosity
@@ -198,7 +198,8 @@ data ProjectBaseContext = ProjectBaseContext {
        projectConfig  :: ProjectConfig,
        localPackages  :: [PackageSpecifier UnresolvedSourcePackage],
        buildSettings  :: BuildTimeSettings,
-       currentCommand :: CurrentCommand
+       currentCommand :: CurrentCommand,
+       installedPackages :: Maybe InstalledPackageIndex
      }
 
 establishProjectBaseContext
@@ -260,11 +261,13 @@ establishProjectBaseContextWithRoot verbosity cliConfig projectRoot currentComma
       projectConfig,
       localPackages,
       buildSettings,
-      currentCommand
+      currentCommand,
+      installedPackages
     }
   where
     mdistDirectory = Setup.flagToMaybe projectConfigDistDir
     ProjectConfigShared { projectConfigDistDir } = projectConfigShared cliConfig
+    installedPackages = Nothing
 
 
 -- | This holds the context between the pre-build, build and post-build phases.
@@ -309,7 +312,8 @@ withInstallPlan
       distDirLayout,
       cabalDirLayout,
       projectConfig,
-      localPackages
+      localPackages,
+      installedPackages
     }
     action = do
     -- Take the project configuration and make a plan for how to build
@@ -321,6 +325,7 @@ withInstallPlan
                          distDirLayout cabalDirLayout
                          projectConfig
                          localPackages
+                         installedPackages
     action elaboratedPlan elaboratedShared
 
 runProjectPreBuildPhase
@@ -334,7 +339,8 @@ runProjectPreBuildPhase
       distDirLayout,
       cabalDirLayout,
       projectConfig,
-      localPackages
+      localPackages,
+      installedPackages
     }
     selectPlanSubset = do
     -- Take the project configuration and make a plan for how to build
@@ -346,6 +352,7 @@ runProjectPreBuildPhase
                          distDirLayout cabalDirLayout
                          projectConfig
                          localPackages
+                         installedPackages
 
     -- The plan for what to do is represented by an 'ElaboratedInstallPlan'
 
@@ -1333,6 +1340,7 @@ establishDummyProjectBaseContext verbosity projectConfig distDirLayout localPack
         buildSettings = resolveBuildTimeSettings
                           verbosity cabalDirLayout
                           projectConfig
+        installedPackages = Nothing
 
     return ProjectBaseContext {
       distDirLayout,
@@ -1340,7 +1348,8 @@ establishDummyProjectBaseContext verbosity projectConfig distDirLayout localPack
       projectConfig,
       localPackages,
       buildSettings,
-      currentCommand
+      currentCommand,
+      installedPackages
     }
 
 establishDummyDistDirLayout :: Verbosity -> ProjectConfig -> FilePath -> IO DistDirLayout
