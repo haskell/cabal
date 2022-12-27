@@ -11,7 +11,7 @@
 --
 -- Functions for fetching packages
 -----------------------------------------------------------------------------
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE RecordWildCards, ScopedTypeVariables #-}
 module Distribution.Client.FetchUtils (
 
     -- * fetching packages
@@ -22,6 +22,7 @@ module Distribution.Client.FetchUtils (
     -- ** specifically for repo packages
     checkRepoTarballFetched,
     fetchRepoTarball,
+    verifyFetchedTarball,
 
     -- ** fetching packages asynchronously
     asyncFetchPackages,
@@ -43,7 +44,7 @@ import Distribution.Client.HttpUtils
 import Distribution.Package
          ( PackageId, packageName, packageVersion )
 import Distribution.Simple.Utils
-         ( notice, info, debug, die' )
+         ( notice, info, debug, warn, die' )
 import Distribution.Verbosity
          ( verboseUnmarkOutput )
 import Distribution.Client.GlobalFlags
@@ -56,7 +57,8 @@ import qualified Control.Exception.Safe as Safe
 import Control.Concurrent.Async
 import Control.Concurrent.MVar
 import System.Directory
-         ( doesFileExist, createDirectoryIfMissing, getTemporaryDirectory )
+         ( doesFileExist, createDirectoryIfMissing, getTemporaryDirectory
+         , getFileSize )
 import System.IO
          ( openTempFile, hClose )
 import System.FilePath
@@ -67,6 +69,8 @@ import Network.URI
          ( URI(uriPath) )
 
 import qualified Hackage.Security.Client as Sec
+import qualified Hackage.Security.Util.Path as Sec
+import qualified Hackage.Security.Util.Checked as Sec
 
 -- ------------------------------------------------------------
 -- * Actually fetch things
@@ -118,6 +122,34 @@ checkRepoTarballFetched repo pkgid = do
       then return (Just file)
       else return Nothing
 
+verifyFetchedTarball :: Verbosity -> RepoContext -> Repo -> PackageId -> IO Bool
+verifyFetchedTarball verbosity repoCtxt repo pkgid =
+   let file = packageFile repo pkgid
+       handleError :: IO Bool -> IO Bool
+       handleError act = do
+         res <- Safe.try act
+         case res of
+           Left e -> warn verbosity ("Error verifying fetched tarball " ++ file ++ ", will redownload: " ++ show (e :: SomeException)) >> pure False
+           Right b -> pure b
+   in handleError $ case repo of
+           -- a secure repo has hashes we can compare against to confirm this is the correct file.
+           RepoSecure{} ->
+             repoContextWithSecureRepo repoCtxt repo $ \repoSecure ->
+                  Sec.withIndex repoSecure $ \callbacks ->
+                    let warnAndFail s = warn verbosity ("Fetched tarball " ++ file ++ " does not match server, will redownload: " ++ s) >> return False
+                    -- the do block in parens is due to dealing with the checked exceptions mechanism.
+                    in (do fileInfo <- Sec.indexLookupFileInfo callbacks pkgid
+                           sz <- Sec.FileLength . fromInteger <$> getFileSize file
+                           if sz /= Sec.fileInfoLength (Sec.trusted fileInfo)
+                             then warnAndFail "file length mismatch"
+                             else do
+                               res <- Sec.compareTrustedFileInfo (Sec.trusted fileInfo) <$> Sec.computeFileInfo (Sec.Path file :: Sec.Path Sec.Absolute)
+                               if res
+                                 then pure True
+                                 else warnAndFail "file hash mismatch")
+                       `Sec.catchChecked` (\(e :: Sec.InvalidPackageException) -> warnAndFail (show e))
+                       `Sec.catchChecked` (\(e :: Sec.VerificationError) -> warnAndFail (show e))
+           _ -> pure True
 
 -- | Fetch a package if we don't have it already.
 --

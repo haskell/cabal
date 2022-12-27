@@ -170,7 +170,7 @@ import           Text.PrettyPrint (text, hang, quotes, colon, vcat, ($$), fsep, 
 import qualified Text.PrettyPrint as Disp
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-import           Control.Monad (sequence)
+import           Control.Monad (sequence, forM)
 import           Control.Monad.IO.Class (liftIO)
 import           Control.Monad.State as State (State, execState, runState, state)
 import           Control.Exception (assert)
@@ -924,9 +924,9 @@ getPackageSourceHashes verbosity withRepoCtx solverPlan = do
         -- Tarballs from repositories, either where the repository provides
         -- hashes as part of the repo metadata, or where we will have to
         -- download and hash the tarball.
-        repoTarballPkgsWithMetadata    :: [(PackageId, Repo)]
+        repoTarballPkgsWithMetadataUnvalidated    :: [(PackageId, Repo)]
         repoTarballPkgsWithoutMetadata :: [(PackageId, Repo)]
-        (repoTarballPkgsWithMetadata,
+        (repoTarballPkgsWithMetadataUnvalidated,
          repoTarballPkgsWithoutMetadata) =
           partitionEithers
           [ case repo of
@@ -934,10 +934,16 @@ getPackageSourceHashes verbosity withRepoCtx solverPlan = do
               _            -> Right (pkgid, repo)
           | (pkgid, RepoTarballPackage repo _ _) <- allPkgLocations ]
 
+    (repoTarballPkgsWithMetadata, repoTarballPkgsToRedownload) <- fmap partitionEithers $
+      liftIO $ withRepoCtx $ \repoctx -> forM repoTarballPkgsWithMetadataUnvalidated $
+        \x@(pkg, repo) -> verifyFetchedTarball verbosity repoctx repo pkg >>= \b -> case b of
+                          True -> return $ Left x
+                          False -> return $ Right x
+
     -- For tarballs from repos that do not have hashes available we now have
     -- to check if the packages were downloaded already.
     --
-    (repoTarballPkgsToDownload,
+    (repoTarballPkgsToDownload',
      repoTarballPkgsDownloaded)
       <- fmap partitionEithers $
          liftIO $ sequence
@@ -947,6 +953,7 @@ getPackageSourceHashes verbosity withRepoCtx solverPlan = do
                   Just tarball -> return (Right (pkgid, tarball))
            | (pkgid, repo) <- repoTarballPkgsWithoutMetadata ]
 
+    let repoTarballPkgsToDownload = repoTarballPkgsToRedownload ++ repoTarballPkgsToDownload'
     (hashesFromRepoMetadata,
      repoTarballPkgsNewlyDownloaded) <-
       -- Avoid having to initialise the repository (ie 'withRepoCtx') if we
