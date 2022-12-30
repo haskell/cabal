@@ -1,8 +1,8 @@
 # cabal v2-build
 Warning: cannot determine version of <ROOT>/./pkg-config :
-"doh/n"
+""
 Warning: cannot determine version of <ROOT>/./pkg-config :
-"doh/n"
+""
 Resolving dependencies...
 Error: cabal: Could not resolve dependencies:
 [__0] next goal: CheckExtraProgPath (user goal)
