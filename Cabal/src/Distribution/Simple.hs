@@ -54,6 +54,8 @@ module Distribution.Simple (
         simpleUserHooks,
         autoconfUserHooks,
         emptyUserHooks,
+        -- ** Temporary hack for Hadrian
+        runConfigureScriptAndReadAndValidateBuildInfo,
   ) where
 
 import Control.Exception (try)
@@ -600,17 +602,7 @@ autoconfUserHooks
     where defaultPostConf :: Args -> ConfigFlags -> PackageDescription
                           -> LocalBuildInfo -> IO ()
           defaultPostConf args flags pkg_descr lbi
-              = do let verbosity = fromFlag (configVerbosity flags)
-                       baseDir lbi' = fromMaybe ""
-                                      (takeDirectory <$> cabalFilePath lbi')
-                   confExists <- doesFileExist $ (baseDir lbi) </> "configure"
-                   if confExists
-                     then runConfigureScript verbosity
-                            flags lbi
-                     else die' verbosity "configure script not found."
-
-                   pbi <- getHookedBuildInfo verbosity (buildDir lbi)
-                   sanityCheckHookedBuildInfo verbosity pkg_descr pbi
+              = do pbi <- runConfigureScriptAndReadAndValidateBuildInfoInternal flags pkg_descr lbi
                    let pkg_descr' = updatePackageDescription pbi pkg_descr
                        lbi' = lbi { localPkgDescr = pkg_descr' }
                    postConf simpleUserHooks args flags pkg_descr' lbi'
@@ -634,6 +626,26 @@ autoconfUserHooks
               getHookedBuildInfo verbosity (dist_dir </> "build")
             where
               verbosity = fromFlag (get_verbosity flags)
+
+{-# Deprecated runConfigureScriptAndReadAndValidateBuildInfo "This function is just exposed to facilitate a hack in Hadrian (the build system for GHC) that should go away. Do not use" #-}
+runConfigureScriptAndReadAndValidateBuildInfo
+  :: ConfigFlags -> PackageDescription -> LocalBuildInfo -> IO HookedBuildInfo
+runConfigureScriptAndReadAndValidateBuildInfo = runConfigureScriptAndReadAndValidateBuildInfoInternal
+
+runConfigureScriptAndReadAndValidateBuildInfoInternal
+  :: ConfigFlags -> PackageDescription -> LocalBuildInfo -> IO HookedBuildInfo
+runConfigureScriptAndReadAndValidateBuildInfoInternal flags pkg_descr lbi
+    = do let verbosity = fromFlag (configVerbosity flags)
+             baseDir lbi' = fromMaybe ""
+                            (takeDirectory <$> cabalFilePath lbi')
+         confExists <- doesFileExist $ (baseDir lbi) </> "configure"
+         if confExists
+           then runConfigureScript verbosity flags lbi
+           else die' verbosity "configure script not found."
+
+         pbi <- getHookedBuildInfo verbosity (buildDir lbi)
+         sanityCheckHookedBuildInfo verbosity pkg_descr pbi
+         return pbi
 
 getHookedBuildInfo :: Verbosity -> FilePath -> IO HookedBuildInfo
 getHookedBuildInfo verbosity build_dir = do

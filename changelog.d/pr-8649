@@ -1,0 +1,10 @@
+synopsis: Expose some functionality temporary for hack to build GHC
+prs: #8649
+
+description: {
+
+`runConfigureScriptAndReadAndValidateBuildInfo` should not be used for any
+other purpose as it has no stability guarantee and is marked deprecated to
+indicate this and ward of accidental usage.
+
+}
