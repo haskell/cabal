@@ -325,6 +325,7 @@ library
     Distribution.Simple.GHC.EnvironmentParser
     Distribution.Simple.GHC.Internal
     Distribution.Simple.GHC.ImplInfo
+    Distribution.Simple.ConfigureScript
     Distribution.ZinzaPrelude
     Paths_Cabal
 
