@@ -78,7 +78,7 @@ Cabal 3.8.1.0 Changelog
 
   - Make builds that use experimental Cabal language features less noisy. At -v1
     (normal) we show just first instance of use of experimental cabal language
-  features, along with count of further occurences in the same file.
+  features, along with count of further occurrences in the same file.
 
 - Fix Cabal not finding public sublibraries of installed packages [#7270](https://github.com/haskell/cabal/issues/7270) [#8089](https://github.com/haskell/cabal/pull/8089)
 

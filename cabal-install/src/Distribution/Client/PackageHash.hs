@@ -196,6 +196,7 @@ data PackageHashConfigInputs = PackageHashConfigInputs {
        pkgHashDebugInfo           :: DebugInfoLevel,
        pkgHashProgramArgs         :: Map String [String],
        pkgHashExtraLibDirs        :: [FilePath],
+       pkgHashExtraLibDirsStatic  :: [FilePath],
        pkgHashExtraFrameworkDirs  :: [FilePath],
        pkgHashExtraIncludeDirs    :: [FilePath],
        pkgHashProgPrefix          :: Maybe PathTemplate,
@@ -293,6 +294,7 @@ renderPackageHashInputs PackageHashInputs{
       , opt   "stripped-exe" True  prettyShow pkgHashStripExes
       , opt   "debug-info"   NormalDebugInfo (show . fromEnum) pkgHashDebugInfo
       , opt   "extra-lib-dirs"     [] unwords pkgHashExtraLibDirs
+      , opt   "extra-lib-dirs-static" [] unwords pkgHashExtraLibDirsStatic
       , opt   "extra-framework-dirs" [] unwords pkgHashExtraFrameworkDirs
       , opt   "extra-include-dirs" [] unwords pkgHashExtraIncludeDirs
       , opt   "prog-prefix" Nothing (maybe "" fromPathTemplate) pkgHashProgPrefix

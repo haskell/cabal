@@ -1535,12 +1535,13 @@ dropExeExtension filepath =
 -- | List of possible executable file extensions on the current build
 -- platform.
 exeExtensions :: [String]
-exeExtensions = case buildOS of
+exeExtensions = case (buildArch, buildOS) of
   -- Possible improvement: on Windows, read the list of extensions from the
   -- PATHEXT environment variable. By default PATHEXT is ".com; .exe; .bat;
   -- .cmd".
-  Windows -> ["", "exe"]
-  Ghcjs   -> ["", "exe"]
+  (_, Windows) -> ["", "exe"]
+  (_, Ghcjs)   -> ["", "exe"]
+  (Wasm32, _)  -> ["", "wasm"]
   _       -> [""]
 
 -- ------------------------------------------------------------
