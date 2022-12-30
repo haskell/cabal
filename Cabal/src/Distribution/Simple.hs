@@ -619,7 +619,7 @@ autoconfUserHooks
                    confExists <- doesFileExist $ (baseDir lbi) </> "configure"
                    if confExists
                      then runConfigureScript verbosity
-                            backwardsCompatHack flags lbi
+                            flags lbi
                      else die' verbosity "configure script not found."
 
                    pbi <- getHookedBuildInfo verbosity (buildDir lbi)
@@ -627,8 +627,6 @@ autoconfUserHooks
                    let pkg_descr' = updatePackageDescription pbi pkg_descr
                        lbi' = lbi { localPkgDescr = pkg_descr' }
                    postConf simpleUserHooks args flags pkg_descr' lbi'
-
-          backwardsCompatHack = False
 
           readHookWithArgs :: (a -> Flag Verbosity)
                            -> (a -> Flag FilePath)
@@ -650,9 +648,9 @@ autoconfUserHooks
             where
               verbosity = fromFlag (get_verbosity flags)
 
-runConfigureScript :: Verbosity -> Bool -> ConfigFlags -> LocalBuildInfo
+runConfigureScript :: Verbosity -> ConfigFlags -> LocalBuildInfo
                    -> IO ()
-runConfigureScript verbosity backwardsCompatHack flags lbi = do
+runConfigureScript verbosity flags lbi = do
   env <- getEnvironment
   let programDb = withPrograms lbi
   (ccProg, ccFlags) <- configureCCompiler verbosity programDb
@@ -751,6 +749,7 @@ runConfigureScript verbosity backwardsCompatHack flags lbi = do
       Nothing -> die' verbosity notFoundMsg
   where
     args = configureArgs backwardsCompatHack flags
+    backwardsCompatHack = False
 
     notFoundMsg = "The package has a './configure' script. "
                ++ "If you are on Windows, This requires a "
