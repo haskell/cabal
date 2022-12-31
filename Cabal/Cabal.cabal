@@ -89,6 +89,7 @@ library
     Distribution.Simple.Bench
     Distribution.Simple.Build
     Distribution.Simple.Build.Macros
+    Distribution.Simple.Build.PackageInfoModule
     Distribution.Simple.Build.PathsModule
     Distribution.Simple.BuildPaths
     Distribution.Simple.BuildTarget
@@ -319,6 +320,7 @@ library
     Distribution.GetOpt
     Distribution.Lex
     Distribution.Simple.Build.Macros.Z
+    Distribution.Simple.Build.PackageInfoModule.Z
     Distribution.Simple.Build.PathsModule.Z
     Distribution.Simple.GHC.EnvironmentParser
     Distribution.Simple.GHC.Internal

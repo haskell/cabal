@@ -20,6 +20,7 @@ module Distribution.Simple.BuildPaths (
     autogenComponentModulesDir,
 
     autogenPathsModuleName,
+    autogenPackageInfoModuleName,
     cppHeaderName,
     haddockName,
 
@@ -102,6 +103,14 @@ autogenPathsModuleName :: PackageDescription -> ModuleName
 autogenPathsModuleName pkg_descr =
   ModuleName.fromString $
     "Paths_" ++ map fixchar (prettyShow (packageName pkg_descr))
+  where fixchar '-' = '_'
+        fixchar c   = c
+
+-- | The name of the auto-generated PackageInfo_* module associated with a package
+autogenPackageInfoModuleName :: PackageDescription -> ModuleName
+autogenPackageInfoModuleName pkg_descr =
+  ModuleName.fromString $
+    "PackageInfo_" ++ map fixchar (prettyShow (packageName pkg_descr))
   where fixchar '-' = '_'
         fixchar c   = c
 

@@ -1,19 +1,19 @@
 Cabal-version: 2.2
-name: PathsModule
+name: PackageInfoModule
 version: 0.1
 license: BSD-3-Clause
-author: Johan Tibell
+author: Gautier DI FOLCO
 stability: stable
 category: PackageTests
 build-type: Simple
 
 description:
-    Check that the generated paths module compiles.
+    Check that the generated package info module compiles.
 
 Library
     exposed-modules:
-        PackageInfo_PathsModule
-        Paths_PathsModule
+        PackageInfo_PackageInfoModule
+        Paths_PackageInfoModule
     build-depends: base
     default-language: Haskell2010
     default-extensions:

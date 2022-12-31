@@ -17,11 +17,13 @@ Library
     build-depends: base
     exposed-modules:
         MyLibrary
+        PackageInfo_AutogenModules
         Paths_AutogenModules
         MyLibHelperModule
     other-modules:
         MyLibModule
     autogen-modules:
+        PackageInfo_AutogenModules
         Paths_AutogenModules
         MyLibHelperModule
 
@@ -31,9 +33,11 @@ Executable Exe
     build-depends: base
     other-modules:
         MyExeModule
+        PackageInfo_AutogenModules
         Paths_AutogenModules
         MyExeHelperModule
     autogen-modules:
+        PackageInfo_AutogenModules
         Paths_AutogenModules
         MyExeHelperModule
 
@@ -44,9 +48,11 @@ Test-Suite Test
     build-depends: base
     other-modules:
         MyTestModule
+        PackageInfo_AutogenModules
         Paths_AutogenModules
         MyTestHelperModule
     autogen-modules:
+        PackageInfo_AutogenModules
         Paths_AutogenModules
         MyTestHelperModule
 
@@ -57,8 +63,10 @@ Benchmark Bench
     build-depends: base
     other-modules:
         MyBenchModule
+        PackageInfo_AutogenModules
         Paths_AutogenModules
         MyBenchHelperModule
     autogen-modules:
+        PackageInfo_AutogenModules
         Paths_AutogenModules
         MyBenchHelperModule
