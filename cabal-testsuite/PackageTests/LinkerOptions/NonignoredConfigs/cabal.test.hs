@@ -54,7 +54,7 @@ main = cabalTest $ do
     -- Skip if on Windows, since my default Chocolatey Windows setup (and the CI
     -- server setup at the time, presumably) lacks support for dynamic builds
     -- since the base package appears to be static only, lacking e.g. ‘.dyn_o’
-    -- files.  Normal Windows installations would need suport for dynamic
+    -- files.  Normal Windows installations would need support for dynamic
     -- builds, or else this test would fail when it tries to build with the
     -- dynamic flags.
     skipIfWindows
