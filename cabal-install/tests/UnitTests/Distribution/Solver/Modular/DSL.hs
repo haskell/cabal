@@ -474,11 +474,14 @@ exAvSrcPkg ex =
               }
             }
         pkgCheckErrors =
-          -- We ignore these warnings because some unit tests test that the
-          -- solver allows unknown extensions/languages when the compiler
-          -- supports them.
+          -- We ignore unknown extensions/languages warnings because
+          -- some there are some unit tests test in which the solver allows
+          -- unknown extensions/languages when the compiler supports them.
+          -- Furthermore we ignore missing upper bound warnings because
+          -- they are not related to this test suite, and are tested
+          -- with golden tests.
           let checks = C.checkPackage (srcpkgDescription package) Nothing
-          in filter (not . isUnknownLangExt) checks
+          in filter (\x -> not (isMissingUpperBound x) && not (isUnknownLangExt x)) checks
     in if null pkgCheckErrors
        then package
        else error $ "invalid GenericPackageDescription for package "
@@ -670,6 +673,10 @@ exAvSrcPkg ex =
     isUnknownLangExt pc = case C.explanation pc of
                             C.UnknownExtensions {} -> True
                             C.UnknownLanguages {} -> True
+                            _ -> False
+    isMissingUpperBound :: C.PackageCheck -> Bool
+    isMissingUpperBound pc = case C.explanation pc of
+                            C.MissingUpperBounds {} -> True
                             _ -> False
 
 

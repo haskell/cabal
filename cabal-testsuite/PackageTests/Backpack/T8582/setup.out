@@ -1,0 +1,7 @@
+# Setup configure
+Configuring T8582-1.0...
+Error:
+    Cannot instantiate requirement 'ImplA'
+    Ensure "build-depends:" doesn't include any library with signatures: 'A'
+    as this creates a cyclic dependency, which GHC does not support.
+    In the stanza executable exe

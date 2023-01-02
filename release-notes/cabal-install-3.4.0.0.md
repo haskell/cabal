@@ -9,7 +9,7 @@
   - Support for `-this-package-key` deprecation
   - Use process `createPipe`
   - Add support for WINIO to Cabal
-  - Adopt to simplfied subsumption changes
+  - Adopt to simplified subsumption changes
 
   There are no magical `IO = WithCallStack Prelude.IO` alias in Cabal,
   as it is hard to get working with GHC-8.12's simplified subsumption.
@@ -28,7 +28,7 @@
   build-depends: thispkg:somesublib
   ```
 
-  This fixes an issue, where it was impossible to refer to extenral
+  This fixes an issue, where it was impossible to refer to external
   library, if you had sublibrary of the same name.
 
 - Add active-repositories configuration [#6819](https://github.com/haskell/cabal/issues/6819) [!6724](https://github.com/haskell/cabal/pull/6724) [!6868](https://github.com/haskell/cabal/pull/6868)
@@ -218,7 +218,7 @@
 - Include component name in unit-id [#6485](https://github.com/haskell/cabal/issues/6485) [!6547](https://github.com/haskell/cabal/pull/6547)
 - cabal v2-install prints copy/symlink destination [#6575](https://github.com/haskell/cabal/issues/6575) [!6582](https://github.com/haskell/cabal/pull/6582) [!6890](https://github.com/haskell/cabal/pull/6890)
 - Prepend hs-source-dir to match-component, fixes `cabal repl file` [#6622](https://github.com/haskell/cabal/issues/6622) [!6623](https://github.com/haskell/cabal/pull/6623) [!6826](https://github.com/haskell/cabal/pull/6826) [!6875](https://github.com/haskell/cabal/pull/6875)
-- Change 'optional-packages' default to empty, when cabal.project is mising. [#4797](https://github.com/haskell/cabal/issues/4797) [#6739](https://github.com/haskell/cabal/issues/6739) [!6740](https://github.com/haskell/cabal/pull/6740)
+- Change 'optional-packages' default to empty, when cabal.project is missing. [#4797](https://github.com/haskell/cabal/issues/4797) [#6739](https://github.com/haskell/cabal/issues/6739) [!6740](https://github.com/haskell/cabal/pull/6740)
 - v2-update reports new index-state [#6804](https://github.com/haskell/cabal/issues/6804) [!6810](https://github.com/haskell/cabal/pull/6810)
 - Fix rpmvercmp (trailing non-digit characters) [#6805](https://github.com/haskell/cabal/issues/6805) [!6808](https://github.com/haskell/cabal/pull/6808)
 - Add `-z` / `--ignore-project` flag to `cabal v2-update` [#6809](https://github.com/haskell/cabal/issues/6809) [!6814](https://github.com/haskell/cabal/pull/6814)

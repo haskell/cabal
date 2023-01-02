@@ -37,7 +37,7 @@ jobs:
       GHC_FOR_RELEASE: ${{ format('["{0}"]', env.GHC_FOR_RELEASE) }}
     strategy:
       matrix:
-        os: ["ubuntu-latest", "macos-latest", "windows-latest"]
+        os: ["ubuntu-20.04", "macos-latest", "windows-latest"]
         ghc: ["9.4.2", "9.2.3", "9.0.2", "8.10.7", "8.8.4", "8.6.5", "8.4.4"]
         exclude:
           # corrupts GHA cache or the fabric of reality itself, see https://github.com/haskell/cabal/issues/8356
@@ -55,9 +55,9 @@ jobs:
 
     steps:
 
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
-      - uses: haskell/actions/setup@v1
+      - uses: haskell/actions/setup@v2
         id: setup-haskell
         with:
           ghc-version: ${{ matrix.ghc }}
@@ -73,6 +73,10 @@ jobs:
             dist-*
           key: ${{ runner.os }}-${{ matrix.ghc }}-20220419-${{ github.sha }}
           restore-keys: ${{ runner.os }}-${{ matrix.ghc }}-20220419-
+
+      - name: Work around git problem https://bugs.launchpad.net/ubuntu/+source/git/+bug/1993586 (cabal PR #8546)
+        run: |
+          git config --global protocol.file.allow always
 
       # The '+exe' constraint below is important, otherwise cabal-install
       # might decide to build the library but not the executable which is
@@ -147,7 +151,7 @@ jobs:
       # - Make it available in the workflow to make easier testing it locally
       - name: Upload cabal-install executable to workflow artifacts
         if: matrix.cli != 'false' && matrix.ghc == env.GHC_FOR_RELEASE
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: cabal-${{ runner.os }}-${{ matrix.ghc }}
           path: ${{ env.CABAL_EXEC_TAR }}
@@ -172,7 +176,7 @@ jobs:
 
   validate-old-ghcs:
     name: Validate old ghcs ${{ matrix.extra-ghc }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     needs: validate
     # This job needs an older ubuntu (16.04) cause
     # the required old ghcs using the `-dyn` flavour
@@ -195,7 +199,7 @@ jobs:
       # cause it does not work with the git version included in it, see:
       # https://github.com/actions/checkout/issues/170
       # https://github.com/actions/checkout/issues/295
-      # - uses: actions/checkout@v2
+      # - uses: actions/checkout@v3
       - name: Checkout
         run: |
           echo $GITHUB_REF $GITHUB_SHA
@@ -208,7 +212,7 @@ jobs:
           apt-get update
           apt-get install -y ghc-${{ matrix.extra-ghc }}-dyn
 
-      - uses: haskell/actions/setup@v1
+      - uses: haskell/actions/setup@v2
         id: setup-haskell
         with:
           ghc-version: ${{ matrix.ghc }}
@@ -248,16 +252,16 @@ jobs:
     needs: validate
     strategy:
       matrix:
-        os: ["ubuntu-latest", "macos-latest", "windows-latest"]
+        os: ["ubuntu-20.04", "macos-latest", "windows-latest"]
         # We only use one ghc version the used one for the next release (defined at top of the workflow)
         # We need to build an array dynamically to inject the appropiate env var in a previous job,
         # see https://docs.github.com/en/actions/learn-github-actions/expressions#fromjson
         ghc: ${{ fromJSON (needs.validate.outputs.GHC_FOR_RELEASE) }}
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
-      - uses: haskell/actions/setup@v1
+      - uses: haskell/actions/setup@v2
         id: setup-haskell
         with:
           ghc-version: ${{ matrix.ghc }}
@@ -270,7 +274,7 @@ jobs:
           echo "$HOME/.cabal/bin" >> $GITHUB_PATH
 
       - name: Download cabal executable from workflow artifacts
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: cabal-${{ runner.os }}-${{ matrix.ghc }}
           path: cabal-head
@@ -293,7 +297,7 @@ jobs:
   validate-post-job:
     if: always()
     name: Validate post job
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     # IMPORTANT! Any job added to the workflow should be added here too
     needs: [validate, validate-old-ghcs, dogfooding]
 

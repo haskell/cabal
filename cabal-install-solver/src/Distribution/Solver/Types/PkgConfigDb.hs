@@ -24,6 +24,7 @@ import Distribution.Solver.Compat.Prelude
 import Prelude ()
 
 import           Control.Exception (handle)
+import           Control.Monad     (mapM)
 import qualified Data.Map          as M
 import           System.FilePath   (splitSearchPath)
 
@@ -31,7 +32,8 @@ import Distribution.Compat.Environment          (lookupEnv)
 import Distribution.Package                     (PkgconfigName, mkPkgconfigName)
 import Distribution.Parsec
 import Distribution.Simple.Program
-       (ProgramDb, getProgramOutput, pkgConfigProgram, needProgram)
+       (ProgramDb, getProgramOutput, pkgConfigProgram, needProgram, ConfiguredProgram)
+import Distribution.Simple.Program.Run          (getProgramInvocationOutputAndErrors, programInvocation)
 import Distribution.Simple.Utils                (info)
 import Distribution.Types.PkgconfigVersion
 import Distribution.Types.PkgconfigVersionRange
@@ -65,9 +67,15 @@ readPkgConfigDb verbosity progdb = handle ioErrorHandler $ do
         -- The output of @pkg-config --list-all@ also includes a description
         -- for each package, which we do not need.
         let pkgNames = map (takeWhile (not . isSpace)) pkgList
-        pkgVersions <- lines <$> getProgramOutput verbosity pkgConfig
-                                   ("--modversion" : pkgNames)
-        (return . pkgConfigDbFromList . zip pkgNames) pkgVersions
+        (pkgVersions, _errs, exitCode) <-
+                     getProgramInvocationOutputAndErrors verbosity
+                       (programInvocation pkgConfig ("--modversion" : pkgNames))
+        case exitCode of
+          ExitSuccess -> (return . pkgConfigDbFromList . zip pkgNames) (lines pkgVersions)
+          -- if there's a single broken pc file the above fails, so we fall back into calling it individually
+          _ -> do
+             info verbosity ("call to pkg-config --modversion on all packages failed. Falling back to querying pkg-config individually on each package")
+             pkgConfigDbFromList . catMaybes <$> mapM (getIndividualVersion pkgConfig) pkgNames
   where
     -- For when pkg-config invocation fails (possibly because of a
     -- too long command line).
@@ -79,6 +87,15 @@ readPkgConfigDb verbosity progdb = handle ioErrorHandler $ do
 
     ioErrorHandler :: IOException -> IO PkgConfigDb
     ioErrorHandler e = noPkgConfig (show e)
+
+    getIndividualVersion :: ConfiguredProgram -> String -> IO (Maybe (String, String))
+    getIndividualVersion pkgConfig pkg = do
+       (pkgVersion, _errs, exitCode) <-
+               getProgramInvocationOutputAndErrors verbosity
+                 (programInvocation pkgConfig ["--modversion",pkg])
+       return $ case exitCode of
+         ExitSuccess -> Just (pkg, pkgVersion)
+         _ -> Nothing
 
 -- | Create a `PkgConfigDb` from a list of @(packageName, version)@ pairs.
 pkgConfigDbFromList :: [(String, String)] -> PkgConfigDb

@@ -19,6 +19,7 @@ import qualified Distribution.Client.NixStyleOptions as NixStyleOptions
 import Distribution.Client.ProjectOrchestration
                                               (AvailableTarget(..)
                                               ,AvailableTargetStatus(..)
+                                              ,CurrentCommand(..)
                                               ,ProjectBaseContext(..)
                                               ,ProjectBuildContext(..)
                                               ,TargetSelector(..)
@@ -141,7 +142,7 @@ haddockProjectAction flags _extraArgs globalFlags = do
     -- we need.
     --
 
-    withContextAndSelectors RejectNoTargets Nothing nixFlags ["all"] globalFlags $ \targetCtx ctx targetSelectors -> do
+    withContextAndSelectors RejectNoTargets Nothing nixFlags ["all"] globalFlags HaddockCommand $ \targetCtx ctx targetSelectors -> do
       baseCtx <- case targetCtx of
         ProjectContext             -> return ctx
         GlobalContext              -> return ctx

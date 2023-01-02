@@ -25,7 +25,6 @@ module Language.Haskell.Extension (
         knownExtensions
   ) where
 
-import qualified Prelude (head)
 import Distribution.Compat.Prelude
 
 import Data.Array (Array, accumArray, bounds, Ix(inRange), (!))
@@ -77,7 +76,7 @@ instance Pretty Language where
   pretty other                   = Disp.text (show other)
 
 instance Parsec Language where
-  parsec = classifyLanguage <$> P.some P.anyChar
+  parsec = classifyLanguage <$> P.munch1 isAlphaNum
 
 classifyLanguage :: String -> Language
 classifyLanguage = \str -> case lookup str langTable of
@@ -663,6 +662,9 @@ data KnownExtension =
   -- | Enable linear types.
   | LinearTypes
 
+  -- | Allow the use of visible forall in types of terms.
+  | RequiredTypeArguments
+
   -- | Enable the generation of selector functions corresponding to record fields.
   | FieldSelectors
 
@@ -749,9 +751,9 @@ classifyKnownExtension string@(c : _)
 knownExtensionTable :: Array Char [(String, KnownExtension)]
 knownExtensionTable =
   accumArray (flip (:)) [] ('A', 'Z')
-    [ (Prelude.head str, (str, extension)) -- assume KnownExtension's Show returns a non-empty string
-    | extension <- [toEnum 0 ..]
-    , let str = show extension ]
+    [ (hd, (str, extension)) -- assume KnownExtension's Show returns a non-empty string
+    | (extension, str@(hd : _)) <- map (\e -> (e, show e)) [toEnum 0 ..]
+    ]
 
 knownExtensions :: [KnownExtension]
 knownExtensions = [minBound .. maxBound]

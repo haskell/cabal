@@ -1,4 +1,4 @@
-{-# LANGUAGE ForeignFunctionInterface, ScopedTypeVariables, CPP #-}
+{-# LANGUAGE ScopedTypeVariables, CPP #-}
 
 module Distribution.Client.Utils
   ( MergeResult(..)
@@ -48,7 +48,6 @@ import Control.Monad
          ( zipWithM_ )
 import Data.List
          ( groupBy )
-import Foreign.C.Types ( CInt(..) )
 import qualified Control.Exception as Exception
          ( finally )
 import qualified Control.Exception.Safe as Safe
@@ -62,6 +61,7 @@ import System.IO
          )
 import System.IO.Unsafe ( unsafePerformIO )
 
+import GHC.Conc.Sync ( getNumProcessors )
 import GHC.IO.Encoding
          ( recover, TextEncoding(TextEncoding) )
 import GHC.IO.Encoding.Failure
@@ -196,12 +196,10 @@ logDirChange l (Just d) m = do
   m `Exception.finally`
     (l $ "cabal: Leaving directory '" ++ d ++ "'\n")
 
-foreign import ccall "getNumberOfProcessors" c_getNumberOfProcessors :: IO CInt
-
 -- The number of processors is not going to change during the duration of the
 -- program, so unsafePerformIO is safe here.
 numberOfProcessors :: Int
-numberOfProcessors = fromEnum $ unsafePerformIO c_getNumberOfProcessors
+numberOfProcessors = unsafePerformIO getNumProcessors
 
 -- | Determine the number of jobs to use given the value of the '-j' flag.
 determineNumJobs :: Flag (Maybe Int) -> Int

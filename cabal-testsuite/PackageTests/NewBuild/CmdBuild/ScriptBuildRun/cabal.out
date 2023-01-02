@@ -6,4 +6,3 @@ In order, the following will be built:
 Configuring executable 'cabal-script-script.hs' for fake-package-0..
 Building executable 'cabal-script-script.hs' for fake-package-0..
 # cabal v2-run
-Up to date

@@ -213,7 +213,7 @@ runCabal timeoutSeconds cabalUnderTest cabal flags = do
   putStrLn $ "Cabal directory (for " ++ cabal ++ ") " ++ cabalDir
   createDirectoryIfMissing True cabalDir
 
-  -- shell enviroment
+  -- shell environment
   currEnv <- Map.fromList <$>  getEnvironment
   let thisEnv :: [(String, String)]
       thisEnv = Map.toList $ currEnv
