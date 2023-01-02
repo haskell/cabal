@@ -198,7 +198,7 @@ warnIfAssertionsAreEnabled =
     -- so instead of using function @warn@, we print straight to stderr.
   where
     assertionsEnabledMsg =
-      "this is a debug build of cabal-install with assertions enabled."
+      "Warning: this is a debug build of cabal-install with assertions enabled."
 
 mainWorker :: [String] -> IO ()
 mainWorker args = do
