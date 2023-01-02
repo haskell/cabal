@@ -1591,7 +1591,7 @@ testProgramOptionsLocal config0 = do
                 (Just [ghcFlag])
                 (getProgArgs localPackages "q")
     assertEqual "p"
-                Nothing
+                (Just [ghcFlag])
                 (getProgArgs localPackages "p")
   where
     testdir = "regression/program-options"
@@ -1729,6 +1729,7 @@ planProject testdir cliConfig = do
                          distDirLayout cabalDirLayout
                          projectConfig
                          localPackages
+                         Nothing
 
     return (projDetails,
             elaboratedPlan,

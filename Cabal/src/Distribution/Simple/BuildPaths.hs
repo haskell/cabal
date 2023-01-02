@@ -20,6 +20,7 @@ module Distribution.Simple.BuildPaths (
     autogenComponentModulesDir,
 
     autogenPathsModuleName,
+    autogenPackageInfoModuleName,
     cppHeaderName,
     haddockName,
 
@@ -102,6 +103,14 @@ autogenPathsModuleName :: PackageDescription -> ModuleName
 autogenPathsModuleName pkg_descr =
   ModuleName.fromString $
     "Paths_" ++ map fixchar (prettyShow (packageName pkg_descr))
+  where fixchar '-' = '_'
+        fixchar c   = c
+
+-- | The name of the auto-generated PackageInfo_* module associated with a package
+autogenPackageInfoModuleName :: PackageDescription -> ModuleName
+autogenPackageInfoModuleName pkg_descr =
+  ModuleName.fromString $
+    "PackageInfo_" ++ map fixchar (prettyShow (packageName pkg_descr))
   where fixchar '-' = '_'
         fixchar c   = c
 
@@ -235,8 +244,9 @@ mkGenericSharedBundledLibName platform comp lib
 -- | Default extension for executable files on the current platform.
 -- (typically @\"\"@ on Unix and @\"exe\"@ on Windows or OS\/2)
 exeExtension :: Platform -> String
-exeExtension (Platform _arch os) = case os of
-                   Windows -> "exe"
+exeExtension platform = case platform of
+                   Platform _ Windows -> "exe"
+                   Platform Wasm32 _  -> "wasm"
                    _       -> ""
 
 -- | Extension for object files. For GHC the extension is @\"o\"@.

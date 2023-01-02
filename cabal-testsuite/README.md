@@ -4,11 +4,12 @@ frameworks.
 How to run
 ----------
 
-1. Build `cabal-tests` (`cabal build cabal-tests`)
+1. Build `cabal-testsuite` (`cabal build cabal-testsuite:cabal-tests`)
 2. Run the `cabal-tests` executable. It will scan for all tests
    in your current directory and subdirectories and run them.
-   To run a specific set of tests, use `cabal-tests PATH ...`.  You can
-   control parallelism using the `-j` flag.
+   To run a specific set of tests, use `cabal-tests PATH ...`.
+   (e.g. `cabal run cabal-testsuite:cabal-tests -- cabal-testsuite/PackageTests/TestOptions/setup.test.hs`)
+   You can control parallelism using the `-j` flag.
 
 There are a few useful flags:
 

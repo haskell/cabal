@@ -205,7 +205,7 @@ cloneSourceRepo verbosity vcs
                                srcuri destdir
 
 
--- | Syncronise a set of 'SourceRepo's referring to the same repository with
+-- | Synchronise a set of 'SourceRepo's referring to the same repository with
 -- corresponding local directories. The local directories may or may not
 -- already exist.
 --
@@ -654,7 +654,7 @@ svnProgram = (simpleProgram "svn") {
 --
 --
 --                    ----->  foo on branch B ----->
---    resolve confict                                  Initial patch
+--    resolve conflict                                  Initial patch
 --                    ----->  foo on branch A ----->
 --
 --    Which is seems reasonable.

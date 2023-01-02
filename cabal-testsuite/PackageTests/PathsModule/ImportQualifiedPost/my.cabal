@@ -13,5 +13,7 @@ Executable TestPathsModule
     main-is: Main.hs
     if impl(ghc >= 8.10.0)
         ghc-options: -Werror -fwarn-prepositive-qualified-module
-    other-modules: Paths_PathsModule
+    other-modules:
+        PackageInfo_PathsModule
+        Paths_PathsModule
     build-depends: base

@@ -937,7 +937,7 @@ interactiveTests srcDb = testGroup "Check top level getter functions"
             ]
         ]
     , testGroup "Check srcDirsPrompt output"
-        [ testNumberedPrompt "Soruce dirs indices" srcDirsPrompt
+        [ testNumberedPrompt "Source dirs indices" srcDirsPrompt
             [[defaultSourceDir], ["lib"], ["src-lib"]]
         , testSimplePrompt "Other source dir"
             srcDirsPrompt ["src"]

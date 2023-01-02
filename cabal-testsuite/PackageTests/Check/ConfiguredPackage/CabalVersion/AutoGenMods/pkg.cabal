@@ -11,5 +11,7 @@ license-file: LICENSE
 
 library
   exposed-modules: Module
-  other-modules: Paths_pkg
+  other-modules:
+    PackageInfo_pkg
+    Paths_pkg
   default-language: Haskell2010
