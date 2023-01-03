@@ -568,6 +568,10 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
                       , toNubListR (cmmSources libBi)
                       , toNubListR (asmSources libBi)
                       , toNubListR (jsSources  libBi)
+                        -- JS files are C-like with GHC's JS backend: they are
+                        -- "compiled" into `.o` files (renamed with a header).
+                        -- This is a difference from GHCJS, for which we only
+                        -- pass the JS files at link time.
                       ]
       cLikeObjs   = map (`replaceExtension` objExtension) cLikeSources
       baseOpts    = componentGhcOptions verbosity lbi libBi clbi libTargetDir
