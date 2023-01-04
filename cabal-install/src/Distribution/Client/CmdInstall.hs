@@ -203,6 +203,15 @@ installAction flags@NixStyleFlags { extraFlags = clientInstallFlags', .. } targe
     targetFilter   = if installLibs then Just LibKind else Just ExeKind
     targetStrings' = if null targetStrings then ["."] else targetStrings
 
+    -- Note the logic here is rather goofy. Target selectors of the form "foo:bar" also parse as uris.
+    -- However, we want install to also take uri arguments. Hence, we only parse uri arguments in the case where
+    -- no project file is present (including an implicit one derived from being in a package directory)
+    -- or where the --ignore-project flag is passed explicitly. In such a case we only parse colon-free target selectors
+    -- as selectors, and otherwise parse things as URIs.
+
+    -- However, in the special case where --ignore-project is passed with no selectors, we want to act as though this is
+    -- a "normal" ignore project that actually builds and installs the selected package.
+
     withProject :: IO ([PackageSpecifier UnresolvedSourcePackage], [URI], [TargetSelector], ProjectConfig)
     withProject = do
       let reducedVerbosity = lessVerbose verbosity
@@ -232,7 +241,7 @@ installAction flags@NixStyleFlags { extraFlags = clientInstallFlags', .. } targe
         packageTargets =
           flip TargetPackageNamed targetFilter . pkgName <$> packageIds
 
-      if null targetStrings'
+      if null targetStrings'' -- if every selector is already resolved as a packageid, return without further parsing.
         then return (packageSpecifiers, [], packageTargets, projectConfig localBaseCtx)
         else do
           targetSelectors <-
@@ -249,10 +258,10 @@ installAction flags@NixStyleFlags { extraFlags = clientInstallFlags', .. } targe
                  , selectors ++ packageTargets
                  , projectConfig localBaseCtx )
 
-    withoutProject :: ProjectConfig -> IO ([PackageSpecifier pkg], [URI], [TargetSelector], ProjectConfig)
+    withoutProject :: ProjectConfig -> IO ([PackageSpecifier UnresolvedSourcePackage], [URI], [TargetSelector], ProjectConfig)
+    withoutProject _ | null targetStrings = withProject -- if there's no targets, we don't parse specially, but treat it as install in a standard cabal package dir
     withoutProject globalConfig = do
       tss <- traverse (parseWithoutProjectTargetSelector verbosity) targetStrings'
-
       let
         projectConfig = globalConfig <> cliConfig
 
