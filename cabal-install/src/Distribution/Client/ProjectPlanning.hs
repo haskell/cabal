@@ -332,10 +332,10 @@ rebuildProjectConfig verbosity
                        fileMonitorProjectConfigKey -- todo check deps too?
       $ do
           liftIO $ info verbosity "Project settings changed, reconfiguring..."
-          liftIO $ createDirectoryIfMissingVerbose verbosity True distProjectCacheDirectory
           projectConfigSkeleton <- phaseReadProjectConfig
-          -- have to create the cache directory before configuring the compiler
           let fetchCompiler = do
+                 -- have to create the cache directory before configuring the compiler
+                 liftIO $ createDirectoryIfMissingVerbose verbosity True distProjectCacheDirectory
                  (compiler, Platform arch os, _) <- configureCompiler verbosity distDirLayout ((fst $ PD.ignoreConditions projectConfigSkeleton) <> cliConfig)
                  pure (os, arch, compilerInfo compiler)
 
