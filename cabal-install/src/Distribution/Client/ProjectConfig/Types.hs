@@ -61,7 +61,7 @@ import Distribution.Simple.Compiler
 import Distribution.Simple.Setup
          ( Flag, HaddockTarget(..), TestShowDetails(..), DumpBuildInfo (..) )
 import Distribution.Simple.InstallDirs
-         ( PathTemplate )
+         ( PathTemplate, InstallDirs )
 import Distribution.Utils.NubList
          ( NubList )
 
@@ -169,12 +169,11 @@ data ProjectConfigShared
        projectConfigHcPkg             :: Flag FilePath,
        projectConfigHaddockIndex      :: Flag PathTemplate,
 
-       -- Things that only make sense for manual mode, not --local mode
+       -- Only makes sense for manual mode, not --local mode
        -- too much control!
      --projectConfigUserInstall       :: Flag Bool,
-     --projectConfigInstallDirs       :: InstallDirs (Flag PathTemplate),
-     --TODO: [required eventually] decide what to do with InstallDirs
-     -- currently we don't allow it to be specified in the config file
+
+       projectConfigInstallDirs       :: InstallDirs (Flag PathTemplate),
        projectConfigPackageDBs        :: [Maybe PackageDB],
 
        -- configuration used both by the solver and other phases

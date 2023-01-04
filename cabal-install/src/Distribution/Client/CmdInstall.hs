@@ -96,11 +96,11 @@ import Distribution.Client.Types.OverwritePolicy
 import Distribution.Simple.Flag
          ( fromFlagOrDefault, flagToMaybe, flagElim )
 import Distribution.Simple.Setup
-         ( Flag(..) )
+         ( Flag(..), installDirsOptions )
 import Distribution.Solver.Types.SourcePackage
          ( SourcePackage(..) )
 import Distribution.Simple.Command
-         ( CommandUI(..), usageAlternatives )
+         ( CommandUI(..), usageAlternatives, optionName )
 import Distribution.Simple.Configure
          ( configCompilerEx )
 import Distribution.Simple.Compiler
@@ -167,9 +167,14 @@ installCommand = CommandUI
       ++ "  " ++ pname ++ " v2-install ./pkgfoo\n"
       ++ "    Install the package in the ./pkgfoo directory\n"
 
-  , commandOptions      = nixStyleOptions clientInstallOptions
+  , commandOptions      = \x -> filter notInstallDirOpt $ nixStyleOptions clientInstallOptions x
   , commandDefaultFlags = defaultNixStyleFlags defaultClientInstallFlags
   }
+ where
+  -- install doesn't take installDirs flags, since it always installs into the store in a fixed way.
+  notInstallDirOpt x = not $ optionName x `elem` installDirOptNames
+  installDirOptNames = map optionName installDirsOptions
+
 
 -- | The @install@ command actually serves four different needs. It installs:
 -- * exes:
@@ -203,6 +208,15 @@ installAction flags@NixStyleFlags { extraFlags = clientInstallFlags', .. } targe
     targetFilter   = if installLibs then Just LibKind else Just ExeKind
     targetStrings' = if null targetStrings then ["."] else targetStrings
 
+    -- Note the logic here is rather goofy. Target selectors of the form "foo:bar" also parse as uris.
+    -- However, we want install to also take uri arguments. Hence, we only parse uri arguments in the case where
+    -- no project file is present (including an implicit one derived from being in a package directory)
+    -- or where the --ignore-project flag is passed explicitly. In such a case we only parse colon-free target selectors
+    -- as selectors, and otherwise parse things as URIs.
+
+    -- However, in the special case where --ignore-project is passed with no selectors, we want to act as though this is
+    -- a "normal" ignore project that actually builds and installs the selected package.
+
     withProject :: IO ([PackageSpecifier UnresolvedSourcePackage], [URI], [TargetSelector], ProjectConfig)
     withProject = do
       let reducedVerbosity = lessVerbose verbosity
@@ -232,7 +246,7 @@ installAction flags@NixStyleFlags { extraFlags = clientInstallFlags', .. } targe
         packageTargets =
           flip TargetPackageNamed targetFilter . pkgName <$> packageIds
 
-      if null targetStrings'
+      if null targetStrings'' -- if every selector is already resolved as a packageid, return without further parsing.
         then return (packageSpecifiers, [], packageTargets, projectConfig localBaseCtx)
         else do
           targetSelectors <-
@@ -249,10 +263,10 @@ installAction flags@NixStyleFlags { extraFlags = clientInstallFlags', .. } targe
                  , selectors ++ packageTargets
                  , projectConfig localBaseCtx )
 
-    withoutProject :: ProjectConfig -> IO ([PackageSpecifier pkg], [URI], [TargetSelector], ProjectConfig)
+    withoutProject :: ProjectConfig -> IO ([PackageSpecifier UnresolvedSourcePackage], [URI], [TargetSelector], ProjectConfig)
+    withoutProject _ | null targetStrings = withProject -- if there's no targets, we don't parse specially, but treat it as install in a standard cabal package dir
     withoutProject globalConfig = do
       tss <- traverse (parseWithoutProjectTargetSelector verbosity) targetStrings'
-
       let
         projectConfig = globalConfig <> cliConfig
 

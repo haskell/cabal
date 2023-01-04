@@ -686,6 +686,7 @@ rebuildInstallPlan verbosity
             getPackageSourceHashes verbosity withRepoCtx solverPlan
 
         defaultInstallDirs <- liftIO $ userInstallDirTemplates compiler
+        let installDirs = fmap Cabal.fromFlag $ (fmap Flag defaultInstallDirs) <> (projectConfigInstallDirs projectConfigShared)
         (elaboratedPlan, elaboratedShared)
           <- liftIO . runLogProgress verbosity $
               elaborateInstallPlan
@@ -696,7 +697,7 @@ rebuildInstallPlan verbosity
                 solverPlan
                 localPackages
                 sourcePackageHashes
-                defaultInstallDirs
+                installDirs
                 projectPackagesNamed
                 projectConfigShared
                 projectConfigAllPackages
@@ -705,7 +706,7 @@ rebuildInstallPlan verbosity
         let instantiatedPlan
               = instantiateInstallPlan
                   cabalStoreDirLayout
-                  defaultInstallDirs
+                  installDirs
                   elaboratedShared
                   elaboratedPlan
         liftIO $ debugNoWrap verbosity (InstallPlan.showInstallPlan instantiatedPlan)
@@ -3484,7 +3485,6 @@ storePackageInstallDirs' StoreDirLayout{ storePackageDirectory
     htmldir      = docdir  </> "html"
     haddockdir   = htmldir
     sysconfdir   = prefix </> "etc"
-
 
 
 computeInstallDirs :: StoreDirLayout
