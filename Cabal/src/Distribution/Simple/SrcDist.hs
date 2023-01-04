@@ -361,8 +361,10 @@ filterAutogenModules pkg_descr0 = mapLib filterAutogenModuleLib $
       otherModules   = filter (filterFunction bi) (otherModules bi)
     }
     pathsModule = autogenPathsModuleName pkg_descr0
+    packageInfoModule = autogenPackageInfoModuleName pkg_descr0
     filterFunction bi = \mn ->
                                    mn /= pathsModule
+                                && mn /= packageInfoModule
                                 && not (mn `elem` autogenModules bi)
 
 -- | Prepare a directory tree of source files for a snapshot version.

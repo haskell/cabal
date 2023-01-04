@@ -301,7 +301,7 @@ prop_syncRepos vcs mkVCSTestDriver
 --
 -- So, given a source repo dir, the corresponding 'RepoState' and a number of
 -- target repo dirs, pick a sequence of (lists of) sync targets from the
--- 'RepoState' and syncronise the target dirs with those targets, checking for
+-- 'RepoState' and synchronise the target dirs with those targets, checking for
 -- each one that the actual working state matches the expected repo state.
 --
 checkSyncRepos

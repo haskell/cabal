@@ -55,6 +55,7 @@ import qualified Distribution.Simple.HaskellSuite as HaskellSuite
 import qualified Distribution.Simple.PackageIndex as Index
 
 import Distribution.Simple.Build.Macros      (generateCabalMacrosHeader)
+import Distribution.Simple.Build.PackageInfoModule (generatePackageInfoModule)
 import Distribution.Simple.Build.PathsModule (generatePathsModule)
 import qualified Distribution.Simple.Program.HcPkg as HcPkg
 
@@ -773,7 +774,7 @@ componentInitialBuildSteps _distPref pkg_descr lbi clbi verbosity = do
 
   writeAutogenFiles verbosity pkg_descr lbi clbi
 
--- | Generate and write out the Paths_<pkg>.hs and cabal_macros.h files
+-- | Generate and write out the Paths_<pkg>.hs, PackageInfo_<pkg>.hs, and cabal_macros.h files
 --
 writeAutogenFiles :: Verbosity
                   -> PackageDescription
@@ -789,6 +790,13 @@ writeAutogenFiles verbosity pkg lbi clbi = do
   -- Ensure that the directory exists!
   createDirectoryIfMissingVerbose verbosity True pathsModuleDir
   rewriteFileEx verbosity pathsModulePath (generatePathsModule pkg lbi clbi)
+
+  let packageInfoModulePath = autogenComponentModulesDir lbi clbi
+                 </> ModuleName.toFilePath (autogenPackageInfoModuleName pkg) <.> "hs"
+      packageInfoModuleDir = takeDirectory packageInfoModulePath
+  -- Ensure that the directory exists!
+  createDirectoryIfMissingVerbose verbosity True packageInfoModuleDir
+  rewriteFileEx verbosity packageInfoModulePath (generatePackageInfoModule pkg lbi)
 
   --TODO: document what we're doing here, and move it to its own function
   case clbi of

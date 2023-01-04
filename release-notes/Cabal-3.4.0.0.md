@@ -9,7 +9,7 @@
   - Support for `-this-package-key` deprecation
   - Use process `createPipe`
   - Add support for WINIO to Cabal
-  - Adopt to simplfied subsumption changes
+  - Adopt to simplified subsumption changes
 
   There are no magical `IO = WithCallStack Prelude.IO` alias in Cabal,
   as it is hard to get working with GHC-9.0's simplified subsumption.
@@ -131,7 +131,7 @@
 - default-language field is optional in cabal-version: 3.4 [#6288](https://github.com/haskell/cabal/issues/6288) [!6924](https://github.com/haskell/cabal/pull/6924) [!6926](https://github.com/haskell/cabal/pull/6926)
 - Split `KnownRepoType` out of `RepoType` [#6432](https://github.com/haskell/cabal/issues/6432) [!6612](https://github.com/haskell/cabal/pull/6612)
 - Include component name in unit-id [#6485](https://github.com/haskell/cabal/issues/6485) [!6547](https://github.com/haskell/cabal/pull/6547)
-- Change 'optional-packages' default to empty, when cabal.project is mising. [#4797](https://github.com/haskell/cabal/issues/4797) [#6739](https://github.com/haskell/cabal/issues/6739) [!6740](https://github.com/haskell/cabal/pull/6740)
+- Change 'optional-packages' default to empty, when cabal.project is missing. [#4797](https://github.com/haskell/cabal/issues/4797) [#6739](https://github.com/haskell/cabal/issues/6739) [!6740](https://github.com/haskell/cabal/pull/6740)
 - Fix rpmvercmp (trailing non-digit characters) [#6805](https://github.com/haskell/cabal/issues/6805) [!6808](https://github.com/haskell/cabal/pull/6808)
 - other changes [!6556](https://github.com/haskell/cabal/pull/6556) [!6598](https://github.com/haskell/cabal/pull/6598) [!6910](https://github.com/haskell/cabal/pull/6910)
 - Package description parser benchmark [!6594](https://github.com/haskell/cabal/pull/6594)

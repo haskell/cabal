@@ -4,7 +4,7 @@
 
 -- | Compact representation of short 'Strings'
 --
--- This module is designed to be import qualifeid
+-- This module is designed to be import qualified
 --
 -- @
 -- import Distribution.Utils.ShortText (ShortText)

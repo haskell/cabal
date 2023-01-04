@@ -21,8 +21,8 @@ data BenchmarkInterface =
      -- | Benchmark interface \"exitcode-stdio-1.0\". The benchmark
      -- takes the form of an executable. It returns a zero exit code
      -- for success, non-zero for failure. The stdout and stderr
-     -- channels may be logged. It takes no command line parameters
-     -- and nothing on stdin.
+     -- channels may be logged. Test tooling may pass command line
+     -- arguments and/or connect the stdin channel to the test.
      --
      BenchmarkExeV10 Version FilePath
 

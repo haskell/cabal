@@ -6,6 +6,8 @@ data-files: example.txt
 
 library
     exposed-modules: SetupLib
-    other-modules: Paths_setup_lib
+    other-modules:
+        PackageInfo_setup_lib
+        Paths_setup_lib
     build-depends: base
     default-language: Haskell2010

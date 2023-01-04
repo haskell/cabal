@@ -1,0 +1,18 @@
+name: PackageInfoModule
+version: 0.1
+license: BSD3
+author: Gautier DI FOLCO
+stability: stable
+category: PackageTests
+build-type: Simple
+Cabal-version: >= 1.2
+
+description:
+    Check that the generated package info module compiles.
+
+Executable TestPackageInfoModule
+    main-is: Main.hs
+    other-modules:
+        PackageInfo_PackageInfoModule
+        Paths_PackageInfoModule
+    build-depends: base

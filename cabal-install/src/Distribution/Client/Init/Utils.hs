@@ -23,9 +23,9 @@ module Distribution.Client.Init.Utils
 ) where
 
 
-import qualified Prelude
+import qualified Prelude ()
 import Distribution.Client.Compat.Prelude hiding (putStrLn, empty, readFile, Parsec, many)
-import Distribution.Utils.Generic (isInfixOf)
+import Distribution.Utils.Generic (isInfixOf, safeLast)
 
 import Control.Monad (forM)
 
@@ -38,7 +38,6 @@ import Distribution.CabalSpecVersion (CabalSpecVersion(..))
 import Distribution.ModuleName (ModuleName)
 import Distribution.InstalledPackageInfo (InstalledPackageInfo, exposed)
 import qualified Distribution.Package as P
-import qualified Distribution.Types.PackageName as PN
 import Distribution.Simple.PackageIndex (InstalledPackageIndex, moduleNameIndex)
 import Distribution.Simple.Setup (Flag(..))
 import Distribution.Utils.String (trim)
@@ -277,11 +276,28 @@ chooseDep v flags (importer, m, mipi) = case mipi of
       Flag x -> x                   < CabalSpecV2_0
       NoFlag -> defaultCabalVersion < CabalSpecV2_0
 
-filePathToPkgName :: FilePath -> P.PackageName
-filePathToPkgName = PN.mkPackageName . Prelude.last . splitDirectories
+filePathToPkgName :: Interactive m => FilePath -> m P.PackageName
+filePathToPkgName = fmap (mkPackageName . repair . fromMaybe "" . safeLast . splitDirectories)
+                 . canonicalizePathNoThrow
+  where
+    -- Treat each span of non-alphanumeric characters as a hyphen. Each
+    -- hyphenated component of a package name must contain at least one
+    -- alphabetic character. An arbitrary character ('x') will be prepended if
+    -- this is not the case for the first component, and subsequent components
+    -- will simply be run together. For example, "1+2_foo-3" will become
+    -- "x12-foo3".
+    repair = repair' ('x' :) id
+    repair' invalid valid x = case dropWhile (not . isAlphaNum) x of
+        "" -> repairComponent ""
+        x' -> let (c, r) = first repairComponent $ span isAlphaNum x'
+              in c ++ repairRest r
+      where
+        repairComponent c | all isDigit c = invalid c
+                          | otherwise     = valid c
+    repairRest = repair' id ('-' :)
 
 currentDirPkgName :: Interactive m => m P.PackageName
-currentDirPkgName = filePathToPkgName <$> getCurrentDirectory
+currentDirPkgName = filePathToPkgName =<< getCurrentDirectory
 
 mkPackageNameDep :: PackageName -> Dependency
 mkPackageNameDep pkg = mkDependency pkg anyVersion (NES.singleton LMainLibName)
