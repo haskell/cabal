@@ -96,11 +96,11 @@ import Distribution.Client.Types.OverwritePolicy
 import Distribution.Simple.Flag
          ( fromFlagOrDefault, flagToMaybe, flagElim )
 import Distribution.Simple.Setup
-         ( Flag(..) )
+         ( Flag(..), installDirsOptions )
 import Distribution.Solver.Types.SourcePackage
          ( SourcePackage(..) )
 import Distribution.Simple.Command
-         ( CommandUI(..), usageAlternatives )
+         ( CommandUI(..), usageAlternatives, optionName )
 import Distribution.Simple.Configure
          ( configCompilerEx )
 import Distribution.Simple.Compiler
@@ -167,9 +167,14 @@ installCommand = CommandUI
       ++ "  " ++ pname ++ " v2-install ./pkgfoo\n"
       ++ "    Install the package in the ./pkgfoo directory\n"
 
-  , commandOptions      = nixStyleOptions clientInstallOptions
+  , commandOptions      = \x -> filter notInstallDirOpt $ nixStyleOptions clientInstallOptions x
   , commandDefaultFlags = defaultNixStyleFlags defaultClientInstallFlags
   }
+ where
+  -- install doesn't take installDirs flags, since it always installs into the store in a fixed way.
+  notInstallDirOpt x = not $ optionName x `elem` installDirOptNames
+  installDirOptNames = map optionName installDirsOptions
+
 
 -- | The @install@ command actually serves four different needs. It installs:
 -- * exes:

@@ -29,6 +29,7 @@ import Distribution.Version
 import Distribution.Simple.Program.Types
 import Distribution.Simple.Program.Db
 import Distribution.Simple.Utils (toUTF8BS)
+import qualified Distribution.Simple.InstallDirs as InstallDirs
 import Distribution.Types.PackageVersionConstraint
 
 import Distribution.Parsec
@@ -456,6 +457,7 @@ instance Arbitrary ProjectConfigShared where
         projectConfigHcPath               <- arbitraryFlag arbitraryShortToken
         projectConfigHcPkg                <- arbitraryFlag arbitraryShortToken
         projectConfigHaddockIndex         <- arbitrary
+        projectConfigInstallDirs          <- fixInstallDirs <$> arbitrary
         projectConfigPackageDBs           <- shortListOf 2 arbitrary
         projectConfigRemoteRepos          <- arbitrary
         projectConfigLocalNoIndexRepos    <- arbitrary
@@ -486,6 +488,7 @@ instance Arbitrary ProjectConfigShared where
         arbitraryConstraints :: Gen [(UserConstraint, ConstraintSource)]
         arbitraryConstraints =
             fmap (\uc -> (uc, projectConfigConstraintSource)) <$> arbitrary
+        fixInstallDirs x = x {InstallDirs.includedir = mempty, InstallDirs.mandir = mempty, InstallDirs.flibdir = mempty}
 
     shrink ProjectConfigShared {..} = runShrinker $ pure ProjectConfigShared
         <*> shrinker projectConfigDistDir
@@ -496,6 +499,7 @@ instance Arbitrary ProjectConfigShared where
         <*> shrinkerAla (fmap NonEmpty) projectConfigHcPath
         <*> shrinkerAla (fmap NonEmpty) projectConfigHcPkg
         <*> shrinker projectConfigHaddockIndex
+        <*> shrinker projectConfigInstallDirs
         <*> shrinker projectConfigPackageDBs
         <*> shrinker projectConfigRemoteRepos
         <*> shrinker projectConfigLocalNoIndexRepos
