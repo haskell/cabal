@@ -1,19 +1,19 @@
-name: PathsModule
+name: PackageInfoModule
 version: 0.1
 license: BSD3
-author: Martijn Bastiaan
+author: Gautier DI FOLCO
 category: PackageTests
 build-type: Simple
 Cabal-version: >= 1.2
 
 description:
-    Check that the generated paths module compiles.
+    Check that the generated package info module compiles.
 
-Executable TestPathsModule
+Executable TestPackageInfoModule
     main-is: Main.hs
     if impl(ghc >= 8.10.0)
         ghc-options: -Werror -fwarn-prepositive-qualified-module
     other-modules:
-        PackageInfo_PathsModule
-        Paths_PathsModule
+        PackageInfo_PackageInfoModule
+        Paths_PackageInfoModule
     build-depends: base

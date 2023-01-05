@@ -11,7 +11,9 @@ description:
     Check that the generated paths module compiles.
 
 Library
-    exposed-modules: Paths_PathsModule
+    exposed-modules:
+        PackageInfo_PathsModule
+        Paths_PathsModule
     build-depends: base
     default-language: Haskell2010
 
