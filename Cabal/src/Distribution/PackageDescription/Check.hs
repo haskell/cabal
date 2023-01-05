@@ -179,7 +179,6 @@ data CheckExplanation =
         | OptO String
         | OptHide String
         | OptMake String
-        | OptMain String
         | OptONot String
         | OptOOne String
         | OptOTwo String
@@ -468,8 +467,6 @@ ppExplanation (OptHide fieldName) =
 ppExplanation (OptMake fieldName) =
     "'" ++ fieldName
       ++ ": --make' is never needed. Cabal uses this automatically."
-ppExplanation (OptMain fieldName) =
-    "'" ++ fieldName ++ ": -main-is' is not portable."
 ppExplanation (OptONot fieldName) =
       "'" ++ fieldName ++ ": -O0' is not needed. "
       ++ "Use the --disable-optimization configure flag."
@@ -1369,9 +1366,6 @@ checkGhcOptions fieldName getOptions pkg =
 
   , checkFlags ["--make"] $
       PackageBuildWarning (OptMake fieldName)
-
-  , checkFlags ["-main-is"] $
-      PackageDistSuspicious (OptMain fieldName)
 
   , checkNonTestAndBenchmarkFlags ["-O0", "-Onot"] $
       PackageDistSuspicious (OptONot fieldName)
