@@ -11,8 +11,12 @@ license-file: LICENSE
 
 library
   exposed-modules: Foo
-  autogen-modules: Paths_pkg
-  other-modules: Paths_pkg
+  autogen-modules:
+    PackageInfo_pkg
+    Paths_pkg
+  other-modules:
+    PackageInfo_pkg
+    Paths_pkg
   default-language: Haskell2010
   default-extensions: RebindableSyntax,
                       OverloadedLists

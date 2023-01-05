@@ -39,7 +39,7 @@ import Distribution.ModuleName
 
 import Prelude ()
 import Distribution.Client.Compat.Prelude
-import Distribution.Verbosity (silent)
+import Distribution.Verbosity (normal)
 
 import System.FilePath
 
@@ -150,7 +150,8 @@ needBuildInfo pkg_descr bi modules = do
     -- A.hs-boot; need to track both.
     findNeededModules ["hs", "lhs", "hsig", "lhsig"]
     findNeededModules ["hs-boot", "lhs-boot"]
-    expandedExtraSrcFiles <- liftIO $ fmap concat . for (extraSrcFiles pkg_descr) $ \fpath -> matchDirFileGlobWithDie silent (\ _ _ -> return []) (specVersion pkg_descr) "." fpath
+    root <- askRoot
+    expandedExtraSrcFiles <- liftIO $ fmap concat . for (extraSrcFiles pkg_descr) $ \fpath -> matchDirFileGlobWithDie normal (\ _ _ -> return []) (specVersion pkg_descr) root fpath
     traverse_ needIfExists $ concat
         [ cSources bi
         , cxxSources bi

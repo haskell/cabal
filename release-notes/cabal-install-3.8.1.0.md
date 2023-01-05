@@ -195,7 +195,7 @@ cabal-install 3.8.1.0 Changelog
 
 - Fix running GHCJS executables [#6175](https://github.com/haskell/cabal/issues/6175) [#6361](https://github.com/haskell/cabal/issues/6361) [#7575](https://github.com/haskell/cabal/pull/7575)
 
-- Support Git submodules in `source-package-respository` [#5536](https://github.com/haskell/cabal/issues/5536) [#7625](https://github.com/haskell/cabal/pull/7625)
+- Support Git submodules in `source-package-repository` [#5536](https://github.com/haskell/cabal/issues/5536) [#7625](https://github.com/haskell/cabal/pull/7625)
 
 - Add support for `--package-db` flags to v2 commands [#5773](https://github.com/haskell/cabal/issues/5773) [#7676](https://github.com/haskell/cabal/pull/7676)
 

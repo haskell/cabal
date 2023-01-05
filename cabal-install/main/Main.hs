@@ -1,4 +1,6 @@
-{-# LANGUAGE CPP, ScopedTypeVariables #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -149,7 +151,7 @@ import Distribution.Simple.Program.Db (reconfigurePrograms)
 import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Simple.Utils
          ( cabalVersion, die', dieNoVerbosity, info, notice, topHandler
-         , findPackageDesc, tryFindPackageDesc, createDirectoryIfMissingVerbose, warn )
+         , findPackageDesc, tryFindPackageDesc, createDirectoryIfMissingVerbose )
 import Distribution.Text
          ( display )
 import Distribution.Verbosity as Verbosity
@@ -162,7 +164,7 @@ import System.Environment       (getArgs, getProgName)
 import System.FilePath          ( dropExtension, splitExtension
                                 , takeExtension, (</>), (<.>) )
 import System.IO                ( BufferMode(LineBuffering), hSetBuffering
-                                , stderr, stdout )
+                                , hPutStrLn, stderr, stdout )
 import System.Directory         ( doesFileExist, getCurrentDirectory
                                 , withCurrentDirectory)
 import Data.Monoid              (Any(..))
@@ -178,9 +180,6 @@ main = do
   -- This is especially important for CI and build systems.
   hSetBuffering stdout LineBuffering
 
-  -- Check whether assertions are enabled and print a warning in that case.
-  warnIfAssertionsAreEnabled
-
   -- If the locale encoding for CLI doesn't support all Unicode characters,
   -- printing to it may fail unless we relax the handling of encoding errors
   -- when writing to stderr and stdout.
@@ -189,20 +188,20 @@ main = do
   (args0, args1) <- break (== "--") <$> getArgs
   mainWorker =<< (++ args1) <$> expandResponse args0
 
+-- | Check whether assertions are enabled and print a warning in that case.
 warnIfAssertionsAreEnabled :: IO ()
 warnIfAssertionsAreEnabled =
   assert False (return ()) `catch`
-  (\(_e :: AssertionFailed) -> warn normal assertionsEnabledMsg)
+  (\(_e :: AssertionFailed) -> hPutStrLn stderr assertionsEnabledMsg)
+    -- Andreas, 2022-12-30, issue #8654:
+    -- The verbosity machinery is not in place at this point (option -v not parsed),
+    -- so instead of using function @warn@, we print straight to stderr.
   where
     assertionsEnabledMsg =
-      "this is a debug build of cabal-install with assertions enabled."
+      "Warning: this is a debug build of cabal-install with assertions enabled."
 
 mainWorker :: [String] -> IO ()
 mainWorker args = do
-  maybeScriptAndArgs <- case args of
-    []     -> return Nothing
-    (h:tl) -> (\b -> if b then Just (h:|tl) else Nothing) <$> CmdRun.validScript h
-
   topHandler $
     case commandsRun (globalCommand commands) commands args of
       CommandHelp   help                 -> printGlobalHelp help
@@ -216,9 +215,22 @@ mainWorker args = do
               -> printNumericVersion
           CommandHelp     help           -> printCommandHelp help
           CommandList     opts           -> printOptionsList opts
-          CommandErrors   errs           -> maybe (printErrors errs) go maybeScriptAndArgs where
-            go (script:|scriptArgs) = CmdRun.handleShebang script scriptArgs
-          CommandReadyToGo action        -> action globalFlags
+
+          CommandErrors   errs           -> do
+            -- Check whether cabal is called from a script, like #!/path/to/cabal.
+            case args of
+              []      -> printErrors errs
+              script : scriptArgs -> CmdRun.validScript script >>= \case
+                False -> printErrors errs
+                True  -> do
+                  -- In main operation (not help, version etc.) print warning if assertions are on.
+                  warnIfAssertionsAreEnabled
+                  CmdRun.handleShebang script scriptArgs
+
+          CommandReadyToGo action        -> do
+            -- In main operation (not help, version etc.) print warning if assertions are on.
+            warnIfAssertionsAreEnabled
+            action globalFlags
 
   where
     printCommandHelp help = do

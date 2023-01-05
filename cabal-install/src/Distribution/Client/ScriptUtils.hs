@@ -171,10 +171,11 @@ withContextAndSelectors
   -> NixStyleFlags a     -- ^ Command line flags
   -> [String]            -- ^ Target strings or a script and args.
   -> GlobalFlags         -- ^ Global flags.
+  -> CurrentCommand      -- ^ Current Command (usually for error reporting).
   -> (TargetContext -> ProjectBaseContext -> [TargetSelector] -> IO b)
   -- ^ The body of your command action.
   -> IO b
-withContextAndSelectors noTargets kind flags@NixStyleFlags {..} targetStrings globalFlags act
+withContextAndSelectors noTargets kind flags@NixStyleFlags {..} targetStrings globalFlags cmd act
   = withTemporaryTempDirectory $ \mkTmpDir -> do
     (tc, ctx) <- withProjectOrGlobalConfig verbosity ignoreProject globalConfigFlag with (without mkTmpDir)
 
@@ -209,11 +210,11 @@ withContextAndSelectors noTargets kind flags@NixStyleFlags {..} targetStrings gl
     defaultTarget = [TargetPackage TargetExplicitNamed [fakePackageId] Nothing]
 
     with = do
-      ctx <- establishProjectBaseContext verbosity cliConfig OtherCommand
+      ctx <- establishProjectBaseContext verbosity cliConfig cmd
       return (ProjectContext, ctx)
     without mkDir globalConfig = do
       distDirLayout <- establishDummyDistDirLayout verbosity (globalConfig <> cliConfig) =<< mkDir
-      ctx <- establishDummyProjectBaseContext verbosity (globalConfig <> cliConfig) distDirLayout [] OtherCommand
+      ctx <- establishDummyProjectBaseContext verbosity (globalConfig <> cliConfig) distDirLayout [] cmd
       return (GlobalContext, ctx)
     scriptOrError script err = do
       exists <- doesFileExist script

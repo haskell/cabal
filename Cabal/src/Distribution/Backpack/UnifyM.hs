@@ -386,19 +386,21 @@ lookupMooEnv (m, i) k =
 
 -- The workhorse functions
 
-convertUnitIdU' :: MooEnv -> UnitIdU s -> UnifyM s OpenUnitId
-convertUnitIdU' stk uid_u = do
+-- | Returns `OpenUnitId` if there is no a mutually recursive unit.
+-- | Otherwise returns a list of signatures instantiated by given `UnitIdU`.
+convertUnitIdU' :: MooEnv -> UnitIdU s -> Doc -> UnifyM s OpenUnitId
+convertUnitIdU' stk uid_u required_mod_name = do
     x <- liftST $ UnionFind.find uid_u
     case x of
-        UnitIdThunkU uid -> return (DefiniteUnitId uid)
+        UnitIdThunkU uid -> return $ DefiniteUnitId uid
         UnitIdU u cid insts_u ->
             case lookupMooEnv stk u of
-                Just _i ->
-                    failWith (text "Unsupported mutually recursive unit identifier")
-                    -- return (UnitIdVar i)
+                Just _ ->
+                    let mod_names = Map.keys insts_u
+                    in failWithMutuallyRecursiveUnitsError required_mod_name mod_names
                 Nothing -> do
                     insts <- for insts_u $ convertModuleU' (extendMooEnv stk u)
-                    return (IndefFullUnitId cid insts)
+                    return $ IndefFullUnitId cid insts
 
 convertModuleU' :: MooEnv -> ModuleU s -> UnifyM s OpenModule
 convertModuleU' stk mod_u = do
@@ -406,12 +408,20 @@ convertModuleU' stk mod_u = do
     case mod of
         ModuleVarU mod_name -> return (OpenModuleVar mod_name)
         ModuleU uid_u mod_name -> do
-            uid <- convertUnitIdU' stk uid_u
+            uid <- convertUnitIdU' stk uid_u (pretty mod_name)
             return (OpenModule uid mod_name)
+
+failWithMutuallyRecursiveUnitsError :: Doc -> [ModuleName] -> UnifyM s a
+failWithMutuallyRecursiveUnitsError required_mod_name mod_names =
+    let sigsList = hcat $ punctuate (text ", ") $ map (quotes . pretty) mod_names in
+    failWith $
+        text "Cannot instantiate requirement" <+> quotes required_mod_name $$
+        text "Ensure \"build-depends:\" doesn't include any library with signatures:" <+> sigsList $$
+        text "as this creates a cyclic dependency, which GHC does not support."
 
 -- Helper functions
 
-convertUnitIdU :: UnitIdU s -> UnifyM s OpenUnitId
+convertUnitIdU :: UnitIdU s -> Doc -> UnifyM s OpenUnitId
 convertUnitIdU = convertUnitIdU' emptyMooEnv
 
 convertModuleU :: ModuleU s -> UnifyM s OpenModule

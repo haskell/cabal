@@ -1,0 +1,36 @@
+Cabal-version: 2.2
+name: PackageInfoModule
+version: 0.1
+license: BSD-3-Clause
+author: Gautier DI FOLCO
+stability: stable
+category: PackageTests
+build-type: Simple
+
+description:
+    Check that the generated package info module compiles.
+
+Library
+    exposed-modules:
+        PackageInfo_PackageInfoModule
+        Paths_PackageInfoModule
+    build-depends: base
+    default-language: Haskell2010
+    default-extensions:
+        -- This is a non-exhaustive list of extensions that can cause code to
+        -- not compile when it would if the extension was disabled. This ensures
+        -- that autogen modules are compatible with default extensions.
+        NoImplicitPrelude
+        CPP
+        TemplateHaskell
+        QuasiQuotes
+        Arrows
+        OverloadedStrings
+    if impl(ghc >= 6.12)
+       default-extensions: MonoLocalBinds
+    if impl(ghc >= 7.0.1)
+       default-extensions: RebindableSyntax
+    if impl(ghc >= 7.4.1)
+       default-extensions: NoTraditionalRecordSyntax
+    if impl(ghc >= 7.8.1)
+       default-extensions: OverloadedLists

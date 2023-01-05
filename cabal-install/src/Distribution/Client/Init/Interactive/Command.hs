@@ -297,7 +297,7 @@ cabalVersionPrompt flags = getCabalVersion flags $ do
 packageNamePrompt :: Interactive m => SourcePackageDb -> InitFlags -> m PackageName
 packageNamePrompt srcDb flags = getPackageName flags $ do
     defName <- case packageDir flags of
-        Flag b -> return $ filePathToPkgName b
+        Flag b -> filePathToPkgName b
         NoFlag -> currentDirPkgName
 
     go $ DefaultPrompt defName

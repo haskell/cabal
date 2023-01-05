@@ -70,8 +70,9 @@ relative to the respective preceding *published* version.
 * License fields use identifiers from SPDX License List version
   ``3.9 2020-05-15``
 
-* Dependencies to sublibraries have to be specified explicitly,
+* Dependencies to sublibraries must be specified explicitly,
   even for current package.
+  For example: ``build-depends: mypackage:internal-lib``
   This way you can have an internal library with the same
   name as some external dependency.
 

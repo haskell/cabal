@@ -1,7 +1,7 @@
 synopsis: Update and sdist now only check for compiler when project file has conditionals
 packages: cabal-install
-prs: #8358
-issues: #8352
+prs: #8358 #8627
+issues: #8352 #8550 #8589
 
 description: {
 

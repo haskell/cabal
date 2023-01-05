@@ -101,7 +101,7 @@ defaultBuildFlags = BuildFlags
 --
 buildAction :: NixStyleFlags BuildFlags -> [String] -> GlobalFlags -> IO ()
 buildAction flags@NixStyleFlags { extraFlags = buildFlags, ..} targetStrings globalFlags
-  = withContextAndSelectors RejectNoTargets Nothing flags targetStrings globalFlags $ \targetCtx ctx targetSelectors -> do
+  = withContextAndSelectors RejectNoTargets Nothing flags targetStrings globalFlags BuildCommand $ \targetCtx ctx targetSelectors -> do
     -- TODO: This flags defaults business is ugly
     let onlyConfigure = fromFlag (buildOnlyConfigure defaultBuildFlags
                                  <> buildOnlyConfigure buildFlags)

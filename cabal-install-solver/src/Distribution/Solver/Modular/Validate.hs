@@ -12,7 +12,8 @@ module Distribution.Solver.Modular.Validate (validateTree) where
 -- assignment returned by exploration of the tree should be a complete valid
 -- assignment, i.e., actually constitute a solution.
 
-import Control.Monad.Reader
+import Control.Monad (foldM, mzero, liftM2)
+import Control.Monad.Reader (MonadReader, Reader, runReader, local, asks)
 import Data.Either (lefts)
 import Data.Function (on)
 

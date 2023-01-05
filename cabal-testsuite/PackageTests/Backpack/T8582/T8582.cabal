@@ -1,0 +1,22 @@
+name: T8582
+version: 1.0
+build-type: Simple
+cabal-version: 2.0
+
+library sig
+    default-language: Haskell2010
+    hs-source-dirs: sig
+    signatures: A
+    build-depends: base
+
+library impl
+    default-language: Haskell2010
+    hs-source-dirs: impl
+    exposed-modules: ImplA
+    reexported-modules: ImplA as A
+    build-depends: base, sig
+
+executable exe
+    default-language: Haskell2010
+    main-is: Main.hs
+    build-depends: base, impl, sig

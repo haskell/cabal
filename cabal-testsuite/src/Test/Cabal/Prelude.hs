@@ -170,7 +170,7 @@ setup'' prefix cmd args = do
     defaultRecordMode RecordMarked $ do
     recordHeader ["Setup", cmd]
 
-    -- We test `cabal act-act-setup` when running cabal-tests.
+    -- We test `cabal act-as-setup` when running cabal-tests.
     --
     -- `cabal` and `Setup.hs` do have different interface.
     --

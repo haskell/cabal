@@ -33,13 +33,13 @@ import Distribution.Client.CmdInstall.ClientInstallFlags
 import Distribution.Client.CmdInstall.ClientInstallTargetSelector
 
 import Distribution.Client.Setup
-         ( GlobalFlags(..), ConfigFlags(..) )
+         ( GlobalFlags(..), ConfigFlags(..), InstallFlags(..) )
 import Distribution.Client.Types
          ( PackageSpecifier(..), PackageLocation(..), UnresolvedSourcePackage
          , SourcePackageDb(..) )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Package
-         ( Package(..), PackageName, mkPackageName, unPackageName )
+         ( Package(..), PackageName, unPackageName )
 import Distribution.Types.PackageId
          ( PackageIdentifier(..) )
 import Distribution.Client.ProjectConfig
@@ -58,7 +58,7 @@ import Distribution.Client.ProjectConfig.Types
          , projectConfigConfigFile )
 import Distribution.Simple.Program.Db
          ( userSpecifyPaths, userSpecifyArgss, defaultProgramDb
-         , modifyProgramSearchPath, ProgramDb )
+         , modifyProgramSearchPath )
 import Distribution.Simple.BuildPaths
          ( exeExtension )
 import Distribution.Simple.Program.Find
@@ -96,11 +96,11 @@ import Distribution.Client.Types.OverwritePolicy
 import Distribution.Simple.Flag
          ( fromFlagOrDefault, flagToMaybe, flagElim )
 import Distribution.Simple.Setup
-         ( Flag(..) )
+         ( Flag(..), installDirsOptions )
 import Distribution.Solver.Types.SourcePackage
          ( SourcePackage(..) )
 import Distribution.Simple.Command
-         ( CommandUI(..), usageAlternatives )
+         ( CommandUI(..), usageAlternatives, optionName )
 import Distribution.Simple.Configure
          ( configCompilerEx )
 import Distribution.Simple.Compiler
@@ -124,12 +124,11 @@ import Distribution.Simple.Utils
          , withTempDirectory, createDirectoryIfMissingVerbose
          , ordNub )
 import Distribution.Utils.Generic
-         ( safeHead, writeFileAtomic )
+         ( writeFileAtomic )
 
 import qualified Data.ByteString.Lazy.Char8 as BS
-import Data.Ord
-         ( Down(..) )
 import qualified Data.Map as Map
+import qualified Data.Set as S
 import qualified Data.List.NonEmpty as NE
 import Distribution.Utils.NubList
          ( fromNubList )
@@ -168,9 +167,14 @@ installCommand = CommandUI
       ++ "  " ++ pname ++ " v2-install ./pkgfoo\n"
       ++ "    Install the package in the ./pkgfoo directory\n"
 
-  , commandOptions      = nixStyleOptions clientInstallOptions
+  , commandOptions      = \x -> filter notInstallDirOpt $ nixStyleOptions clientInstallOptions x
   , commandDefaultFlags = defaultNixStyleFlags defaultClientInstallFlags
   }
+ where
+  -- install doesn't take installDirs flags, since it always installs into the store in a fixed way.
+  notInstallDirOpt x = not $ optionName x `elem` installDirOptNames
+  installDirOptNames = map optionName installDirsOptions
+
 
 -- | The @install@ command actually serves four different needs. It installs:
 -- * exes:
@@ -204,6 +208,15 @@ installAction flags@NixStyleFlags { extraFlags = clientInstallFlags', .. } targe
     targetFilter   = if installLibs then Just LibKind else Just ExeKind
     targetStrings' = if null targetStrings then ["."] else targetStrings
 
+    -- Note the logic here is rather goofy. Target selectors of the form "foo:bar" also parse as uris.
+    -- However, we want install to also take uri arguments. Hence, we only parse uri arguments in the case where
+    -- no project file is present (including an implicit one derived from being in a package directory)
+    -- or where the --ignore-project flag is passed explicitly. In such a case we only parse colon-free target selectors
+    -- as selectors, and otherwise parse things as URIs.
+
+    -- However, in the special case where --ignore-project is passed with no selectors, we want to act as though this is
+    -- a "normal" ignore project that actually builds and installs the selected package.
+
     withProject :: IO ([PackageSpecifier UnresolvedSourcePackage], [URI], [TargetSelector], ProjectConfig)
     withProject = do
       let reducedVerbosity = lessVerbose verbosity
@@ -233,7 +246,7 @@ installAction flags@NixStyleFlags { extraFlags = clientInstallFlags', .. } targe
         packageTargets =
           flip TargetPackageNamed targetFilter . pkgName <$> packageIds
 
-      if null targetStrings'
+      if null targetStrings'' -- if every selector is already resolved as a packageid, return without further parsing.
         then return (packageSpecifiers, [], packageTargets, projectConfig localBaseCtx)
         else do
           targetSelectors <-
@@ -250,10 +263,10 @@ installAction flags@NixStyleFlags { extraFlags = clientInstallFlags', .. } targe
                  , selectors ++ packageTargets
                  , projectConfig localBaseCtx )
 
-    withoutProject :: ProjectConfig -> IO ([PackageSpecifier pkg], [URI], [TargetSelector], ProjectConfig)
+    withoutProject :: ProjectConfig -> IO ([PackageSpecifier UnresolvedSourcePackage], [URI], [TargetSelector], ProjectConfig)
+    withoutProject _ | null targetStrings = withProject -- if there's no targets, we don't parse specially, but treat it as install in a standard cabal package dir
     withoutProject globalConfig = do
       tss <- traverse (parseWithoutProjectTargetSelector verbosity) targetStrings'
-
       let
         projectConfig = globalConfig <> cliConfig
 
@@ -363,14 +376,37 @@ installAction flags@NixStyleFlags { extraFlags = clientInstallFlags', .. } targe
       (projectConfigBuildOnly config)
       [ ProjectPackageRemoteTarball uri | uri <- uris ]
 
+    -- check for targets already in env
+    let getPackageName :: PackageSpecifier UnresolvedSourcePackage -> PackageName
+        getPackageName (NamedPackage pn _) = pn
+        getPackageName (SpecificSourcePackage (SourcePackage pkgId _ _ _)) = pkgName pkgId
+        targetNames = S.fromList $ map getPackageName (specs ++ uriSpecs)
+        envNames = S.fromList $ map getPackageName envSpecs
+        forceInstall = fromFlagOrDefault False $ installOverrideReinstall installFlags
+        nameIntersection = S.intersection targetNames envNames
+
+    -- we check for intersections in targets with the existing env
+    (envSpecs', nonGlobalEnvEntries') <- if null nameIntersection
+      then pure (envSpecs, map snd nonGlobalEnvEntries)
+      else if forceInstall
+             then let es = filter (\e -> not $ getPackageName e `S.member` nameIntersection) envSpecs
+                      nge = map snd . filter (\e -> not $ fst e `S.member` nameIntersection) $ nonGlobalEnvEntries
+                  in pure (es, nge)
+             else die' verbosity $ "Packages requested to install already exist in environment file at " ++ envFile ++ ". Overwriting them may break other packages. Use --force-reinstalls to proceed anyway. Packages: " ++ intercalate ", " (map prettyShow $ S.toList nameIntersection)
+
+    -- we construct an installed index of files in the cleaned target environment (absent overwrites) so that we can solve with regards to packages installed locally but not in the upstream repo
+    let installedPacks = PI.allPackagesByName installedIndex
+        newEnvNames = S.fromList $ map getPackageName envSpecs'
+        installedIndex' = PI.fromList . concatMap snd . filter (\p -> fst p `S.member` newEnvNames) $ installedPacks
+
     baseCtx <- establishDummyProjectBaseContext
                  verbosity
                  config
                  distDirLayout
-                 (envSpecs ++ specs ++ uriSpecs)
+                 (envSpecs' ++ specs ++ uriSpecs)
                  InstallCommand
 
-    buildCtx <- constructProjectBuildContext verbosity baseCtx targetSelectors
+    buildCtx <- constructProjectBuildContext verbosity (baseCtx {installedPackages = Just installedIndex'}) targetSelectors
 
     printPlan verbosity baseCtx buildCtx
 
@@ -387,7 +423,7 @@ installAction flags@NixStyleFlags { extraFlags = clientInstallFlags', .. } targe
     unless dryRun $
       if installLibs
       then installLibraries verbosity
-           buildCtx compiler packageDbs progDb envFile nonGlobalEnvEntries
+           buildCtx compiler packageDbs envFile nonGlobalEnvEntries'
       else installExes verbosity
            baseCtx buildCtx platform compiler configFlags clientInstallFlags
   where
@@ -640,29 +676,18 @@ installLibraries
   -> ProjectBuildContext
   -> Compiler
   -> PackageDBStack
-  -> ProgramDb
   -> FilePath -- ^ Environment file
   -> [GhcEnvironmentFileEntry]
   -> IO ()
 installLibraries verbosity buildCtx compiler
-                 packageDbs programDb envFile envEntries = do
-  -- Why do we get it again? If we updated a globalPackage then we need
-  -- the new version.
-  installedIndex <- getInstalledPackages verbosity compiler packageDbs programDb
+                 packageDbs envFile envEntries = do
   if supportsPkgEnvFiles $ getImplInfo compiler
     then do
       let
-        getLatest :: PackageName -> [InstalledPackageInfo]
-        getLatest = (=<<) (maybeToList . safeHead . snd) . take 1 . sortBy (comparing (Down . fst))
-                  . PI.lookupPackageName installedIndex
-        globalLatest = concat (getLatest <$> globalPackages)
-
         baseEntries =
           GhcEnvFileClearPackageDbStack : fmap GhcEnvFilePackageDb packageDbs
-        globalEntries = GhcEnvFilePackageId . installedUnitId <$> globalLatest
         pkgEntries = ordNub $
-              globalEntries
-          ++ envEntries
+             envEntries
           ++ entriesForLibraryComponents (targetsMap buildCtx)
         contents' = renderGhcEnvironmentFile (baseEntries ++ pkgEntries)
       createDirectoryIfMissing True (takeDirectory envFile)
@@ -700,21 +725,12 @@ warnIfNoExes verbosity buildCtx =
     exeMaybe (ComponentTarget (CExeName exe) _) = Just exe
     exeMaybe _                                  = Nothing
 
-globalPackages :: [PackageName]
-globalPackages = mkPackageName <$>
-  [ "ghc", "hoopl", "bytestring", "unix", "base", "time", "hpc", "filepath"
-  , "process", "array", "integer-gmp", "containers", "ghc-boot", "binary"
-  , "ghc-prim", "ghci", "rts", "terminfo", "transformers", "deepseq"
-  , "ghc-boot-th", "pretty", "template-haskell", "directory", "text"
-  , "bin-package-db"
-  ]
-
 -- | Return the package specifiers and non-global environment file entries.
 getEnvSpecsAndNonGlobalEntries
   :: PI.InstalledPackageIndex
   -> [GhcEnvironmentFileEntry]
   -> Bool
-  -> ([PackageSpecifier a], [GhcEnvironmentFileEntry])
+  -> ([PackageSpecifier a], [(PackageName, GhcEnvironmentFileEntry)])
 getEnvSpecsAndNonGlobalEntries installedIndex entries installLibs =
   if installLibs
   then (envSpecs, envEntries')
@@ -724,7 +740,7 @@ getEnvSpecsAndNonGlobalEntries installedIndex entries installLibs =
 
 environmentFileToSpecifiers
   :: PI.InstalledPackageIndex -> [GhcEnvironmentFileEntry]
-  -> ([PackageSpecifier a], [GhcEnvironmentFileEntry])
+  -> ([PackageSpecifier a], [(PackageName, GhcEnvironmentFileEntry)])
 environmentFileToSpecifiers ipi = foldMap $ \case
     (GhcEnvFilePackageId unitId)
         | Just InstalledPackageInfo
@@ -732,9 +748,7 @@ environmentFileToSpecifiers ipi = foldMap $ \case
           <- PI.lookupUnitId ipi unitId
         , let pkgSpec = NamedPackage pkgName
                         [PackagePropertyVersion (thisVersion pkgVersion)]
-        -> if pkgName `elem` globalPackages
-          then ([pkgSpec], [])
-          else ([pkgSpec], [GhcEnvFilePackageId installedUnitId])
+        -> ([pkgSpec], [(pkgName, GhcEnvFilePackageId installedUnitId)])
     _ -> ([], [])
 
 

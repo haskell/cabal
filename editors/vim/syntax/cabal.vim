@@ -208,6 +208,7 @@ syn keyword cabalExtension contained
   \ LexicalNegation
   \ LiberalTypeSynonyms
   \ LinearTypes
+  \ RequiredTypeArguments
   \ MagicHash
   \ MonadComprehensions
   \ MonadFailDesugaring
@@ -345,6 +346,7 @@ syn keyword cabalExtension contained
   \ NoLexicalNegation
   \ NoLiberalTypeSynonyms
   \ NoLinearTypes
+  \ NoRequiredTypeArguments
   \ NoMagicHash
   \ NoMonadComprehensions
   \ NoMonadFailDesugaring
