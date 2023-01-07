@@ -850,9 +850,9 @@ mkProgramDb cfg initialProgramDb = programDb
                  . userSpecifyPaths (configProgramPaths cfg)
                  . setProgramSearchPath searchpath
                  $ initialProgramDb
-    searchpath = getProgramSearchPath initialProgramDb
-                 ++ map ProgramSearchPathDir
+    searchpath = map ProgramSearchPathDir
                  (fromNubList $ configProgramPathExtra cfg)
+                 ++ getProgramSearchPath initialProgramDb
 
 -- -----------------------------------------------------------------------------
 -- Helper functions for configure
