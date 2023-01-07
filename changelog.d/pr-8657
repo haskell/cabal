@@ -1,0 +1,11 @@
+synopsis: Warn if expected files are omitted from extra-doc-files
+packages: Cabal
+prs: #8657
+issues: #3964
+
+description: {
+
+- Emit a warning if there exist “readme” or “changelog” file at the root of the
+  package which are not included in the field “extra-doc-files”.
+
+}

@@ -39,7 +39,7 @@ module Distribution.PackageDescription.Check (
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Data.List                                     (group)
+import Data.List                                     ((\\), group)
 import Distribution.CabalSpecVersion
 import Distribution.Compat.Lens
 import Distribution.Compiler
@@ -250,6 +250,7 @@ data CheckExplanation =
         | MissingConfigureScript
         | UnknownDirectory String FilePath
         | MissingSourceControl
+        | MissingExpectedExtraDocFiles [FilePath]
     deriving (Eq, Ord, Show)
 
 -- | Wraps `ParseWarning` into `PackageCheck`.
@@ -781,6 +782,12 @@ ppExplanation MissingSourceControl =
       ++ "control information in the .cabal file using one or more "
       ++ "'source-repository' sections. See the Cabal user guide for "
       ++ "details."
+ppExplanation (MissingExpectedExtraDocFiles paths) =
+    "Please consider including the " ++ quotes paths
+      ++ " in the extra-doc-files section of the .cabal file "
+      ++ "if it contains useful information for users of the package."
+  where quotes [p] = "file " ++ quote p
+        quotes ps = "files " ++ intercalate ", " (map quote ps)
 
 
 -- | Results of some kind of failed package check.
@@ -2109,9 +2116,17 @@ checkPackageFiles verbosity pkg root = do
       doesFileExist        = System.doesFileExist                  . relative,
       doesDirectoryExist   = System.doesDirectoryExist             . relative,
       getDirectoryContents = System.Directory.getDirectoryContents . relative,
-      getFileContents      = BS.readFile                           . relative
+      getFileContents      = BS.readFile                           . relative,
+      getGlobFiles         = getGlobFiles_                         . relative
     }
     relative path = root </> path
+    getGlobFiles_ dir rawGlob = do
+      -- Note: we just skip over parse errors here; they're reported elsewhere.
+      case parseFileGlob (specVersion pkg) rawGlob of
+        Left _ -> return []
+        Right parsedGlob -> do
+          results <- runDirFileGlob verbosity dir parsedGlob
+          return [path | GlobMatch path <- results]
 
 -- | A record of operations needed to check the contents of packages.
 -- Used by 'checkPackageContent'.
@@ -2120,7 +2135,8 @@ data CheckPackageContentOps m = CheckPackageContentOps {
     doesFileExist        :: FilePath -> m Bool,
     doesDirectoryExist   :: FilePath -> m Bool,
     getDirectoryContents :: FilePath -> m [FilePath],
-    getFileContents      :: FilePath -> m BS.ByteString
+    getFileContents      :: FilePath -> m BS.ByteString,
+    getGlobFiles         :: FilePath -> FilePath -> m [FilePath]
   }
 
 -- | Sanity check things that requires looking at files in the package.
@@ -2142,11 +2158,13 @@ checkPackageContent ops pkg = do
   configureError  <- checkConfigureExists ops pkg
   localPathErrors <- checkLocalPathsExist ops pkg
   vcsLocation     <- checkMissingVcsInfo  ops pkg
+  unlistedReadmes <- checkDesirableExtraDocFilesAreIncluded ops pkg
 
   return $ licenseErrors
         ++ catMaybes [cabalBomError, cabalNameError, setupError, configureError]
         ++ localPathErrors
         ++ vcsLocation
+        ++ unlistedReadmes
 
 checkCabalFileBOM :: Monad m => CheckPackageContentOps m
                   -> m (Maybe PackageCheck)
@@ -2285,6 +2303,35 @@ repoTypeDirname GnuArch   = [".arch-params"]
 repoTypeDirname Bazaar    = [".bzr"]
 repoTypeDirname Monotone  = ["_MTN"]
 repoTypeDirname Pijul     = [".pijul"]
+
+checkDesirableExtraDocFilesAreIncluded :: Monad m => CheckPackageContentOps m
+                                       -> PackageDescription
+                                       -> m [PackageCheck]
+checkDesirableExtraDocFilesAreIncluded ops pkg = do
+    let dir = "."
+    rootContents <- getDirectoryContents ops dir
+    desirable <- filterM (doesFileExist ops)
+                         [ dir </> file
+                         | file <- rootContents
+                         , isDesirableExtraDocFile file
+                         ]
+    -- [TODO] extraSrcFiles: add warning if the files are globed in
+    --        extra-source-files instead of extra-doc-files?
+    allDocFiles <- concatMap (fmap (dir </>)) <$>
+        traverse (getGlobFiles ops dir) (extraDocFiles pkg)
+    case desirable \\ allDocFiles of
+        []       -> return []
+        unlisted -> return
+            [PackageDistSuspiciousWarn (MissingExpectedExtraDocFiles unlisted)]
+
+isDesirableExtraDocFile :: FilePath -> Bool
+isDesirableExtraDocFile fp = map toLower basename `elem` desirable
+  where
+    (basename, _ext) = splitExtension fp
+    desirable =
+      [ "readme"
+      , "changelog"
+      ]
 
 -- ------------------------------------------------------------
 -- * Checks involving files in the package
