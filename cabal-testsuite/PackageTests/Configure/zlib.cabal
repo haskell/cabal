@@ -6,6 +6,22 @@ maintainer:          ezyang@cs.stanford.edu
 build-type:          Configure
 cabal-version:       >=1.10
 
+flag con-flict
+  description:       A flag that will share an env var
+  default:           True
+
+flag con_flict
+  description:       A flag that will share an env var
+  default:           True
+
+flag true-flag
+  description:       A flag to ensure that flags are correctly passed to @configure@
+  default:           True
+
+flag false-flag
+  description:       A flag to ensure that flags are correctly passed to @configure@
+  default:           False
+
 library
   exposed-modules:     A
   build-depends:       base

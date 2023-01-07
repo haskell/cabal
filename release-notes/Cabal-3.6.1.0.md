@@ -33,15 +33,15 @@ Cabal 3.6.1.0 Changelog
   As such, this patch provides a workaround for
   older, already existing GHC versions by first always
   following the symbolic link of the ghc binary (if it is one)
-  and prefering its target directory as the guess lookup
+  and preferring its target directory as the guess lookup
   location.
 
   Rationale
 
   The canonicalized path of the ghc binary usually points to the
   bin/ directory unpacked from a bindist, which is less likely to be
-  tampered with by distributions and tools. As such, prefering the
-  canoncialized path should get us more robust results.
+  tampered with by distributions and tools. As such, preferring the
+  canonicalized path should get us more robust results.
 
 - Fix `cabal test --enable-library-coverage` for other-modules [#5213](https://github.com/haskell/cabal/issues/5213) [#7493](https://github.com/haskell/cabal/pull/7493)
 

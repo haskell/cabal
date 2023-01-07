@@ -12,7 +12,9 @@ executable foo
 
 library
     exposed-modules: LibFoo
-    other-modules: Paths_foo
+    other-modules:
+        PackageInfo_foo
+        Paths_foo
     build-depends: base
     default-language: Haskell2010
 

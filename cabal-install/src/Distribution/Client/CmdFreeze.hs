@@ -115,6 +115,7 @@ freezeAction flags@NixStyleFlags {..} extraArgs globalFlags = do
                          distDirLayout cabalDirLayout
                          projectConfig
                          localPackages
+                         Nothing
 
     let freezeConfig = projectFreezeConfig elaboratedPlan totalIndexState activeRepos
         dryRun = buildSettingDryRun buildSettings
@@ -233,4 +234,3 @@ projectFreezeConstraints plan =
         | InstallPlan.Configured elab <- InstallPlan.toList plan
         , elabLocalToProject elab
         ]
-

@@ -7,12 +7,8 @@ Configuring executable 'foo' for Single-1.0..
 Preprocessing executable 'foo' for Single-1.0..
 Building executable 'foo' for Single-1.0..
 # cabal v2-run
-Up to date
 # cabal v2-run
-Up to date
 # cabal v2-run
-Up to date
 # cabal v2-run
-Up to date
 # cabal v2-run
 Error: cabal: Cannot run the package bar, it is not in this project (either directly or indirectly). If you want to add it to the project then edit the cabal.project file.

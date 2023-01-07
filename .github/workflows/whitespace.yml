@@ -31,7 +31,7 @@ jobs:
         path: "~/.local/bin"
         key: fix-whitespace-${{ env.fix-whitespace-ver }}
 
-    - uses: haskell/actions/setup@v1
+    - uses: haskell/actions/setup@v2
       if: ${{ !steps.cache.outputs.cache-hit }}
       with:
         ghc-version: '9.2'

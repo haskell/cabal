@@ -14,12 +14,15 @@ write-ghc-environment-files: never
 constraints: rere -rere-cfg
 constraints: these -assoc
 
+program-options
+  ghc-options: -fno-ignore-asserts
+
 package Cabal-syntax
-  ghc-options: -Werror -fno-ignore-asserts
+  ghc-options: -Werror
 package Cabal
-  ghc-options: -Werror -fno-ignore-asserts
+  ghc-options: -Werror
 package cabal-testsuite
-  ghc-options: -Werror -fno-ignore-asserts
+  ghc-options: -Werror
 
 -- https://github.com/haskell-hvr/cryptohash-sha256/issues/12
 allow-newer: cryptohash-sha256:base

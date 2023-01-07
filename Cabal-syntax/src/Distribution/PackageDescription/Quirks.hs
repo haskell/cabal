@@ -37,7 +37,7 @@ patches = Map.fromList
     [ mk "-- This file has been generated from package.yaml by hpack version 0.17.0.\n--\n-- see: https://github.com/sol/hpack\n\nname:                unicode-transforms\nversion:             0.3.3\nsynopsis:            Unicode normalization\ndescription:         Fast Unic"
          (Fingerprint 15958160436627155571 10318709190730872881)
          (Fingerprint 11008465475756725834 13815629925116264363)
-         (bsRemove "  other-modules:\n      .\n") -- TODO: remove traling \n to test structural-diff
+         (bsRemove "  other-modules:\n      .\n") -- TODO: remove trailing \n to test structural-diff
     -- http://hackage.haskell.org/package/DSTM-0.1.2
     -- http://hackage.haskell.org/package/DSTM-0.1.1
     -- http://hackage.haskell.org/package/DSTM-0.1

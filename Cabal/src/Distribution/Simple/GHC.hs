@@ -114,7 +114,8 @@ import Control.Monad (msum, forM_)
 import Data.Char (isLower)
 import qualified Data.Map as Map
 import System.Directory
-         ( doesFileExist, getAppUserDataDirectory, createDirectoryIfMissing
+         ( doesFileExist, doesDirectoryExist
+         , getAppUserDataDirectory, createDirectoryIfMissing
          , canonicalizePath, removeFile, renameFile, getDirectoryContents
          , makeRelativeToCurrentDirectory )
 import System.FilePath          ( (</>), (<.>), takeExtension
@@ -532,6 +533,11 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
 
   let libBi = libBuildInfo lib
 
+  -- ensure extra lib dirs exist before passing to ghc
+  cleanedExtraLibDirs <- filterM doesDirectoryExist (extraLibDirs libBi)
+  cleanedExtraLibDirsStatic <- filterM doesDirectoryExist (extraLibDirsStatic libBi)
+
+
   let isGhcDynamic        = isDynamic comp
       dynamicTooSupported = supportsDynamicToo comp
       doingTH = usesTemplateHaskellOrQQ libBi
@@ -602,8 +608,8 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
                                                   else extraLibs libBi,
                       ghcOptLinkLibPath       = toNubListR $
                                                   if withFullyStaticExe lbi
-                                                    then extraLibDirsStatic libBi
-                                                    else extraLibDirs libBi,
+                                                    then cleanedExtraLibDirsStatic
+                                                    else cleanedExtraLibDirs,
                       ghcOptLinkFrameworks    = toNubListR $ PD.frameworks libBi,
                       ghcOptLinkFrameworkDirs = toNubListR $
                                                 PD.extraFrameworkDirs libBi,
@@ -892,7 +898,7 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
                 ghcOptPackages           = toNubListR $
                                            Internal.mkGhcOptPackages clbi ,
                 ghcOptLinkLibs           = extraLibs libBi,
-                ghcOptLinkLibPath        = toNubListR $ extraLibDirs libBi,
+                ghcOptLinkLibPath        = toNubListR $ cleanedExtraLibDirs,
                 ghcOptLinkFrameworks     = toNubListR $ PD.frameworks libBi,
                 ghcOptLinkFrameworkDirs  =
                   toNubListR $ PD.extraFrameworkDirs libBi,
@@ -926,7 +932,7 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
                 ghcOptPackages           = toNubListR $
                                            Internal.mkGhcOptPackages clbi ,
                 ghcOptLinkLibs           = extraLibs libBi,
-                ghcOptLinkLibPath        = toNubListR $ extraLibDirs libBi
+                ghcOptLinkLibPath        = toNubListR $ cleanedExtraLibDirs
               }
 
       info verbosity (show (ghcOptPackages ghcSharedLinkArgs))
@@ -1318,6 +1324,11 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
   rpaths <- getRPaths lbi clbi
   buildSources <- gbuildSources verbosity (package pkg_descr) (specVersion pkg_descr) tmpDir bm
 
+  -- ensure extra lib dirs exist before passing to ghc
+  cleanedExtraLibDirs <- filterM doesDirectoryExist (extraLibDirs bnfo)
+  cleanedExtraLibDirsStatic <- filterM doesDirectoryExist (extraLibDirsStatic bnfo)
+
+
   let cSrcs               = cSourcesFiles buildSources
       cxxSrcs             = cxxSourceFiles buildSources
       inputFiles          = inputSourceFiles buildSources
@@ -1382,8 +1393,8 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
                                                   else extraLibs bnfo,
                       ghcOptLinkLibPath       = toNubListR $
                                                   if withFullyStaticExe lbi
-                                                    then extraLibDirsStatic bnfo
-                                                    else extraLibDirs bnfo,
+                                                    then cleanedExtraLibDirsStatic
+                                                    else cleanedExtraLibDirs,
                       ghcOptLinkFrameworks    = toNubListR $
                                                 PD.frameworks bnfo,
                       ghcOptLinkFrameworkDirs = toNubListR $

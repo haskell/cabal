@@ -26,7 +26,7 @@ cNot (Lit b)  = Lit (not b)
 cNot (CNot c) = c
 cNot c        = CNot c
 
--- | Boolean AND of two 'Condtion' values.
+-- | Boolean AND of two 'Condition' values.
 cAnd :: Condition a -> Condition a -> Condition a
 cAnd (Lit False) _           = Lit False
 cAnd _           (Lit False) = Lit False
