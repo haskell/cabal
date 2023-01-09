@@ -1990,6 +1990,11 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir pkg lib clbi = do
   whenProf    $ copyModuleFiles "p_hi"
   whenShared  $ copyModuleFiles "dyn_hi"
 
+  -- copy .modpak files over:
+  whenVanilla $ copyModuleFilesIfExists "o_modpak"
+  whenProf    $ copyModuleFilesIfExists "p_o_modpak"
+  whenShared  $ copyModuleFilesIfExists "dyn_o_modpak"
+
   -- copy the built library files over:
   whenHasCode $ do
     whenVanilla $ do
@@ -2066,6 +2071,11 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir pkg lib clbi = do
 
     copyModuleFiles ext =
       findModuleFilesEx verbosity [builtDir] [ext] (allLibModules lib clbi)
+      >>= installOrdinaryFiles verbosity targetDir
+
+    copyModuleFilesIfExists ext =
+      traverse (findFileWithExtension' [ext] [builtDir] . ModuleName.toFilePath) (allLibModules lib clbi)
+      >>= pure . catMaybes
       >>= installOrdinaryFiles verbosity targetDir
 
     installIfExists srcDir dstDir name = do
