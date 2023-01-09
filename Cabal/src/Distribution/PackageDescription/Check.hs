@@ -2329,8 +2329,13 @@ isDesirableExtraDocFile fp = map toLower basename `elem` desirable
   where
     (basename, _ext) = splitExtension fp
     desirable =
-      [ "readme"
+      [ -- Source: hackage-server/src/Distribution/Server/Packages/Readme.hs
+        "readme"
+        -- Source: hackage-server/src/Distribution/Server/Packages/ChangeLog.hs
+      , "news"
       , "changelog"
+      , "change_log"
+      , "changes"
       ]
 
 -- ------------------------------------------------------------
