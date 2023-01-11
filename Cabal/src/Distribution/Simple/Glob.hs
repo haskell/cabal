@@ -339,6 +339,6 @@ splitConstantPrefix = unfoldr' step
     step (GlobFinal pat) = Left pat
 
 
-isRecursiveInRoot :: Glob  ->Bool
+isRecursiveInRoot :: Glob -> Bool
 isRecursiveInRoot (GlobFinal (FinalMatch Recursive _ _))  = True
 isRecursiveInRoot _ = False
