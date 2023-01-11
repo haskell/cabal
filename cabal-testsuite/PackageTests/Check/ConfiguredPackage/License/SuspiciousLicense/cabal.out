@@ -1,3 +1,4 @@
 # cabal check
 Warning: These warnings may cause trouble when distributing the package:
 Warning: Using 'license: BSD4' is almost always a misunderstanding. 'BSD4' refers to the old 4-clause BSD license with the advertising clause. 'BSD3' refers the new 3-clause BSD license.
+Warning: Please consider including a changelog file in the 'extra-doc-files' section of the .cabal file if it contains useful information for users of the package.

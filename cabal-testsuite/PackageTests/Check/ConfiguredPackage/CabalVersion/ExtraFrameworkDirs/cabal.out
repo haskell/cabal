@@ -1,3 +1,4 @@
 # cabal check
 Warning: These warnings may cause trouble when distributing the package:
+Warning: Please consider including a changelog file in the 'extra-doc-files' section of the .cabal file if it contains useful information for users of the package.
 Warning: To use the 'extra-framework-dirs' field the package needs to specify 'cabal-version: 1.24' or higher.

@@ -1,3 +1,4 @@
 # cabal check
 Warning: These warnings may cause trouble when distributing the package:
 Warning: When distributing packages it is encouraged to specify source control information in the .cabal file using one or more 'source-repository' sections. See the Cabal user guide for details.
+Warning: Please consider including a changelog file in the 'extra-doc-files' section of the .cabal file if it contains useful information for users of the package.

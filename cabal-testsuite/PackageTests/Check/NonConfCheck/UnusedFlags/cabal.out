@@ -1,3 +1,4 @@
 # cabal check
 Warning: These warnings may cause trouble when distributing the package:
 Warning: Declared and used flag sets differ: test-flag /= . 
+Warning: Please consider including a changelog file in the 'extra-doc-files' section of the .cabal file if it contains useful information for users of the package.

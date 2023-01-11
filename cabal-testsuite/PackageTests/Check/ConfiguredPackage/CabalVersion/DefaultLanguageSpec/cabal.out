@@ -1,4 +1,6 @@
 # cabal check
 Warning: The following warnings are likely to affect your build negatively:
 Warning: Packages using 'cabal-version: >= 1.10' and before 'cabal-version: 3.4' must specify the 'default-language' field for each component (e.g. Haskell98 or Haskell2010). If a component uses different languages in different modules then list the other ones in the 'other-languages' field.
+Warning: These warnings may cause trouble when distributing the package:
+Warning: Please consider including a changelog file in the 'extra-doc-files' section of the .cabal file if it contains useful information for users of the package.
 Warning: Hackage would reject this package.

@@ -1,4 +1,6 @@
 # cabal check
 Warning: The following warnings are likely to affect your build negatively:
 Warning: Instead of 'cc-options: -Ifolder' use 'include-dirs: folder'
+Warning: These warnings may cause trouble when distributing the package:
+Warning: Please consider including a changelog file in the 'extra-doc-files' section of the .cabal file if it contains useful information for users of the package.
 Warning: Hackage would reject this package.
