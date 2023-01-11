@@ -16,7 +16,7 @@ import Distribution.Client.Types.SourcePackageDb (SourcePackageDb(..))
 import qualified Data.List.NonEmpty as NEL
 import Distribution.Client.Init.Utils (currentDirPkgName, mkPackageNameDep, fixupDocFiles)
 import Distribution.Client.Init.Defaults
-import Distribution.Simple.Flag (fromFlagOrDefault, flagElim, Flag(..))
+import Distribution.Simple.Flag (fromFlagOrDefault, flagElim, Flag (..))
 import Distribution.Client.Init.FlagExtractors
 import qualified Data.Set as Set
 import Distribution.Types.Dependency
@@ -170,6 +170,6 @@ addBaseDepToFlags pkgIx initFlags = case dependencies initFlags of
       return $ initFlags
         { dependencies = Flag $ based ++ as
         }
-  _ -> do
+  NoFlag -> do
     based <- dependenciesPrompt pkgIx initFlags
     return initFlags { dependencies = Flag based }
