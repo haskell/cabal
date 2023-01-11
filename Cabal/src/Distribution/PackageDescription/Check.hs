@@ -36,10 +36,11 @@ module Distribution.PackageDescription.Check (
         checkPackageFileNames,
   ) where
 
+import Data.Foldable                                 (foldrM)
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Data.List                                     ((\\), group)
+import Data.List                                     (delete, group)
 import Distribution.CabalSpecVersion
 import Distribution.Compat.Lens
 import Distribution.Compiler
@@ -251,6 +252,7 @@ data CheckExplanation =
         | UnknownDirectory String FilePath
         | MissingSourceControl
         | MissingExpectedExtraDocFiles [FilePath]
+        | WrongFieldExpectedExtraDocFiles String [FilePath]
     deriving (Eq, Ord, Show)
 
 -- | Wraps `ParseWarning` into `PackageCheck`.
@@ -784,8 +786,14 @@ ppExplanation MissingSourceControl =
       ++ "details."
 ppExplanation (MissingExpectedExtraDocFiles paths) =
     "Please consider including the " ++ quotes paths
-      ++ " in the extra-doc-files section of the .cabal file "
+      ++ " in the 'extra-doc-files' section of the .cabal file "
       ++ "if it contains useful information for users of the package."
+  where quotes [p] = "file " ++ quote p
+        quotes ps = "files " ++ intercalate ", " (map quote ps)
+ppExplanation (WrongFieldExpectedExtraDocFiles field paths) =
+    "Please consider moving the " ++ quotes paths
+      ++ " from the '" ++ field ++ "' section of the .cabal file "
+      ++ "to the section 'extra-doc-files'."
   where quotes [p] = "file " ++ quote p
         quotes ps = "files " ++ intercalate ", " (map quote ps)
 
@@ -2158,13 +2166,11 @@ checkPackageContent ops pkg = do
   configureError  <- checkConfigureExists ops pkg
   localPathErrors <- checkLocalPathsExist ops pkg
   vcsLocation     <- checkMissingVcsInfo  ops pkg
-  unlistedReadmes <- checkDesirableExtraDocFilesAreIncluded ops pkg
 
   return $ licenseErrors
         ++ catMaybes [cabalBomError, cabalNameError, setupError, configureError]
         ++ localPathErrors
         ++ vcsLocation
-        ++ unlistedReadmes
 
 checkCabalFileBOM :: Monad m => CheckPackageContentOps m
                   -> m (Maybe PackageCheck)
@@ -2304,40 +2310,6 @@ repoTypeDirname Bazaar    = [".bzr"]
 repoTypeDirname Monotone  = ["_MTN"]
 repoTypeDirname Pijul     = [".pijul"]
 
-checkDesirableExtraDocFilesAreIncluded :: Monad m => CheckPackageContentOps m
-                                       -> PackageDescription
-                                       -> m [PackageCheck]
-checkDesirableExtraDocFilesAreIncluded ops pkg = do
-    let dir = "."
-    rootContents <- getDirectoryContents ops dir
-    desirable <- filterM (doesFileExist ops)
-                         [ dir </> file
-                         | file <- rootContents
-                         , isDesirableExtraDocFile file
-                         ]
-    -- [TODO] extraSrcFiles: add warning if the files are globed in
-    --        extra-source-files instead of extra-doc-files?
-    allDocFiles <- concatMap (fmap (dir </>)) <$>
-        traverse (getGlobFiles ops dir) (extraDocFiles pkg)
-    case desirable \\ allDocFiles of
-        []       -> return []
-        unlisted -> return
-            [PackageDistSuspiciousWarn (MissingExpectedExtraDocFiles unlisted)]
-
-isDesirableExtraDocFile :: FilePath -> Bool
-isDesirableExtraDocFile fp = map toLower basename `elem` desirable
-  where
-    (basename, _ext) = splitExtension fp
-    desirable =
-      [ -- Source: hackage-server/src/Distribution/Server/Packages/Readme.hs
-        "readme"
-        -- Source: hackage-server/src/Distribution/Server/Packages/ChangeLog.hs
-      , "news"
-      , "changelog"
-      , "change_log"
-      , "changes"
-      ]
-
 -- ------------------------------------------------------------
 -- * Checks involving files in the package
 -- ------------------------------------------------------------
@@ -2438,26 +2410,122 @@ checkGlobFiles :: Verbosity
                -> PackageDescription
                -> FilePath
                -> IO [PackageCheck]
-checkGlobFiles verbosity pkg root =
-  fmap concat $ for allGlobs $ \(field, dir, glob) ->
-    -- Note: we just skip over parse errors here; they're reported elsewhere.
-    case parseFileGlob (specVersion pkg) glob of
-      Left _ -> return []
-      Right parsedGlob -> do
-        results <- runDirFileGlob verbosity (root </> dir) parsedGlob
-        let individualWarnings = results >>= getWarning field glob
-            noMatchesWarning =
-              [ PackageDistSuspiciousWarn (GlobNoMatch field glob)
-              | all (not . suppressesNoMatchesWarning) results
-              ]
-        return (noMatchesWarning ++ individualWarnings)
+checkGlobFiles verbosity pkg root = do
+  -- Get the desirable doc files from package’s directory
+  rootContents <- System.Directory.getDirectoryContents root
+  desirableDocFiles0 <- filterM System.doesFileExist
+                                [ root </> file
+                                | file <- rootContents
+                                , isDesirableExtraDocFile file
+                                ]
+
+  -- Check the globs
+  (warnings, unlisted) <- foldrM checkGlob ([], desirableDocFiles0) allGlobs
+
+  return $ if null unlisted
+    -- No missing desirable file
+    then warnings
+    -- Some missing desirable files
+    else warnings ++
+        [PackageDistSuspiciousWarn (MissingExpectedExtraDocFiles unlisted)]
   where
-    adjustedDataDir = if null (dataDir pkg) then "." else dataDir pkg
+    adjustedDataDir = if null (dataDir pkg) then root else root </> dataDir pkg
+    -- Cabal fields with globs
+    allGlobs :: [(String, Bool, FilePath, FilePath)]
     allGlobs = concat
-      [ (,,) "extra-source-files" "." <$> extraSrcFiles pkg
-      , (,,) "extra-doc-files" "." <$> extraDocFiles pkg
-      , (,,) "data-files" adjustedDataDir <$> dataFiles pkg
+      [ (,,,) "extra-source-files" False root <$> extraSrcFiles pkg
+      , (,,,) "extra-doc-files" True root <$> extraDocFiles pkg
+      , (,,,) "data-files" False adjustedDataDir <$> dataFiles pkg
       ]
+
+    -- For each field with globs (see allGlobs), look for:
+    -- • errors (missing directory, no match)
+    -- • omitted documentation files (readme, changelog)
+    checkGlob :: (String, Bool, FilePath, FilePath)
+              -> ([PackageCheck], [FilePath])
+              -> IO ([PackageCheck], [FilePath])
+    checkGlob (field, isDocField, dir, glob) acc@(warnings, desirableDocs) =
+      -- Note: we just skip over parse errors here; they're reported elsewhere.
+      case parseFileGlob (specVersion pkg) glob of
+        Left _ -> return acc
+        Right parsedGlob -> do
+          results <- runDirFileGlob verbosity (root </> dir) parsedGlob
+          let acc0 = (warnings, True, [], desirableDocs)
+          return $ case foldr checkGlobResult acc0 results of
+            (individualWarnings, noMatchesWarn, wrongPaths, desirableDocs') ->
+              let wrongFieldWarnings = [ PackageDistSuspiciousWarn
+                                          (WrongFieldExpectedExtraDocFiles
+                                            field wrongPaths)
+                                       | not (null wrongPaths) ]
+              in
+                ( if noMatchesWarn
+                    then [PackageDistSuspiciousWarn (GlobNoMatch field glob)] ++
+                         individualWarnings ++
+                         wrongFieldWarnings
+                    else individualWarnings ++ wrongFieldWarnings
+                , desirableDocs'
+                )
+          where
+            checkGlobResult :: GlobResult FilePath
+                            -> ([PackageCheck], Bool, [FilePath], [FilePath])
+                            -> ([PackageCheck], Bool, [FilePath], [FilePath])
+            checkGlobResult result (ws, noMatchesWarn, wrongPaths, docFiles) =
+              let noMatchesWarn' = noMatchesWarn &&
+                                   not (suppressesNoMatchesWarning result)
+              in case getWarning field glob result of
+                -- No match: add warning and do no further check
+                Left w ->
+                  ( w : ws
+                  , noMatchesWarn'
+                  , wrongPaths
+                  , docFiles
+                  )
+                -- Match: check doc files
+                Right path ->
+                  let path' = "." </> path -- HACK? match getDirectoryContents result
+                      (wrongPaths', docFiles') = checkDoc isDocField path'
+                                                          wrongPaths docFiles
+                  in
+                    ( ws
+                    , noMatchesWarn'
+                    , wrongPaths'
+                    , docFiles'
+                    )
+
+    -- Check whether a path is a desirable doc: if so, check if it is in the
+    -- field "extra-doc-files" and remove it from the list of paths to check.
+    checkDoc :: Bool                     -- Is it "extra-doc-files" ?
+             -> FilePath                 -- Path to test
+             -> [FilePath]               -- Previous wrong paths
+             -> [FilePath]               -- Remaining paths to check
+             -> ([FilePath], [FilePath]) -- Updated paths
+    checkDoc isDocField path wrongFieldPaths docFiles =
+      if path `elem` docFiles
+        -- Found desirable doc file
+        then
+          ( if isDocField then wrongFieldPaths else path : wrongFieldPaths
+          , delete path docFiles
+          )
+        -- Not a desirable doc file
+        else
+          ( wrongFieldPaths
+          , docFiles
+          )
+
+    -- Test whether a file is a desirable documentation for Hackage server
+    isDesirableExtraDocFile :: FilePath -> Bool
+    isDesirableExtraDocFile fp = map toLower basename `elem` desirable
+      where
+        (basename, _ext) = splitExtension fp
+        desirable =
+          [ -- Source: hackage-server/src/Distribution/Server/Packages/Readme.hs
+            "readme"
+            -- Source: hackage-server/src/Distribution/Server/Packages/ChangeLog.hs
+          , "news"
+          , "changelog"
+          , "change_log"
+          , "changes"
+          ]
 
     -- If there's a missing directory in play, since our globs don't
     -- (currently) support disjunction, that will always mean there are no
@@ -2467,17 +2535,20 @@ checkGlobFiles verbosity pkg root =
     suppressesNoMatchesWarning (GlobWarnMultiDot _) = False
     suppressesNoMatchesWarning (GlobMissingDirectory _) = True
 
-    getWarning :: String -> FilePath -> GlobResult FilePath -> [PackageCheck]
-    getWarning _ _ (GlobMatch _) =
-      []
+    getWarning :: String
+               -> FilePath
+               -> GlobResult FilePath
+               -> Either PackageCheck FilePath
+    getWarning _ _ (GlobMatch path) =
+      Right path
     -- Before Cabal 2.4, the extensions of globs had to match the file
     -- exactly. This has been relaxed in 2.4 to allow matching only the
     -- suffix. This warning detects when pre-2.4 package descriptions are
     -- omitting files purely because of the stricter check.
     getWarning field glob (GlobWarnMultiDot file) =
-      [ PackageDistSuspiciousWarn (GlobExactMatch field glob file) ]
+      Left (PackageDistSuspiciousWarn (GlobExactMatch field glob file))
     getWarning field glob (GlobMissingDirectory dir) =
-      [ PackageDistSuspiciousWarn (GlobNoDir field glob dir) ]
+      Left (PackageDistSuspiciousWarn (GlobNoDir field glob dir))
 
 -- | Check that setup dependencies, have proper bounds.
 -- In particular, @base@ and @Cabal@ upper bounds are mandatory.
