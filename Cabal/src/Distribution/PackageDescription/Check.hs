@@ -65,7 +65,8 @@ import Distribution.Version
 import Distribution.Utils.Path
 import Language.Haskell.Extension
 import System.FilePath
-       (splitDirectories, splitExtension, splitPath, takeExtension, takeFileName, (<.>), (</>))
+       ( makeRelative, normalise, splitDirectories, splitExtension, splitPath
+       , takeExtension, takeFileName, (<.>), (</>))
 
 import qualified Data.ByteString.Lazy      as BS
 import qualified Data.Map                  as Map
@@ -2509,9 +2510,9 @@ checkGlobFiles verbosity pkg root = do
 
     -- Test whether a file is a desirable documentation for Hackage server
     isDesirableExtraDocFile :: [FilePath] -> FilePath -> Bool
-    isDesirableExtraDocFile paths fp = map toLower basename `elem` paths
+    isDesirableExtraDocFile paths path = map toLower basename `elem` paths
       where
-        (basename, _ext) = splitExtension fp
+        (basename, _ext) = splitExtension (makeRelative root (normalise path))
 
     -- Source: hackage-server/src/Distribution/Server/Packages/ChangeLog.hs
     desirableChangeLog =
