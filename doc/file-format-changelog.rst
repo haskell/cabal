@@ -161,6 +161,10 @@ relative to the respective preceding *published* version.
     ``foo/**/bar.html`` are all invalid). As ``**`` was an error in
     globs before, this does not affect any existing ``.cabal`` files
     that previously worked.
+    (Caveat: Double-star wildcards in :pkg-field:`data-files` directories,
+    e.g. ``data-files: data/**/*.csv``,
+    `are only supported correctly from Cabal 3.0 <https://github.com/haskell/cabal/issues/6125#issuecomment-1379878419>`_.)
+
 
   * Wildcards now match when the pattern's extensions form a suffix of
     the candidate file's extension, rather than requiring strict
