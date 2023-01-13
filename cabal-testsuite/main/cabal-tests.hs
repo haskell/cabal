@@ -82,8 +82,8 @@ main = do
     -- https://github.com/appveyor/ci/issues/1364
     hSetBuffering stderr LineBuffering
 
-    -- Parse arguments
-    args <- execParser (info mainArgParser mempty)
+    -- Parse arguments.  N.B. 'helper' adds the option `--help`.
+    args <- execParser $ info (mainArgParser <**> helper) mempty
     let verbosity = if mainArgVerbose args then verbose else normal
 
     -- To run our test scripts, we need to be able to run Haskell code
