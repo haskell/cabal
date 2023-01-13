@@ -2488,7 +2488,7 @@ checkGlobFiles verbosity pkg root = do
                     )
 
     -- Check whether a path is a desirable doc: if so, check if it is in the
-    -- field "extra-doc-files" and remove it from the list of paths to check.
+    -- field "extra-doc-files".
     checkDoc :: Bool                     -- Is it "extra-doc-files" ?
              -> FilePath                 -- Path to test
              -> Bool                     -- Look for changelog?
@@ -2508,12 +2508,13 @@ checkGlobFiles verbosity pkg root = do
         , wrongFieldPaths
         )
 
-    -- Test whether a file is a desirable documentation for Hackage server
+    -- Predicate for desirable documentation file on Hackage server
     isDesirableExtraDocFile :: [FilePath] -> FilePath -> Bool
     isDesirableExtraDocFile paths path = map toLower basename `elem` paths
       where
         (basename, _ext) = splitExtension (makeRelative root (normalise path))
 
+    -- Changelog patterns
     -- Source: hackage-server/src/Distribution/Server/Packages/ChangeLog.hs
     desirableChangeLog =
       [ "news"
@@ -2527,6 +2528,7 @@ checkGlobFiles verbosity pkg root = do
     --        • There is currently no reliable way to check what a good
     --          description is; there will be complains if the criterion is
     --          based on the length or number of words (can of worms).
+    -- -- Readme patterns
     -- -- Source: hackage-server/src/Distribution/Server/Packages/Readme.hs
     -- desirableReadme = ["readme"]
 

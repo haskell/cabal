@@ -5,7 +5,8 @@ issues: #3964
 
 description: {
 
-- Emit a warning if there exist “readme” or “changelog” file at the root of the
-  package which are not included in the field “extra-doc-files”.
-
+- Emit a warning if there is no “changelog” file at the root of the package or
+  it is not included in the field “extra-doc-files”. 
+- Emit a warning if a “changelog” file at the root of the package is included 
+  in a field different from “extra-doc-files”.
 }
