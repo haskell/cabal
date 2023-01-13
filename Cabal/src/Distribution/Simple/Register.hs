@@ -448,7 +448,9 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
     IPI.haddockInterfaces  = [haddockdir installDirs </> haddockName pkg],
     IPI.haddockHTMLs       = [htmldir installDirs],
     IPI.pkgRoot            = Nothing,
-    IPI.libVisibility      = libVisibility lib
+    IPI.libVisibility      = libVisibility lib,
+    IPI.providesStaticArtifacts = providesStaticArtifacts,
+    IPI.providesDynamicArtifacts = providesDynamicArtifacts
   }
   where
     ghc84 = case compilerId $ compiler lbi of
@@ -492,6 +494,15 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
       = (libdir installDirs : dynlibdir installDirs : extraLibDirs bi, [])
       -- the compiler doesn't understand the dynamic-library-dirs field so we
       -- add the dyn directory to the "normal" list in the library-dirs field
+    (providesStaticArtifacts, providesDynamicArtifacts) = case compilerFlavor comp of
+      GHC ->
+        let
+          none f t = all (not . f) t
+          libDefaults = none ($ lbi) [withVanillaLib, withSharedLib] && hasLibrary
+          statics = libDefaults || any ($ lbi) [withVanillaLib]
+          dynamics = any ($ lbi) [withSharedLib]
+        in (statics, dynamics)
+      _ -> (True, True)  -- Assume nothing is missing.
 
 -- | Construct 'InstalledPackageInfo' for a library that is in place in the
 -- build tree.

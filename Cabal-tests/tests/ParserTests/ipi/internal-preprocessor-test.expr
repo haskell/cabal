@@ -73,4 +73,6 @@ InstalledPackageInfo {
     "/home/ogre/Documents/other-haskell/cabal/cabal-testsuite/PackageTests/CustomPreProcess/setup.dist/work/dist/doc/html/internal-preprocessor-test"],
   pkgRoot =
   Just
-    "/home/ogre/Documents/other-haskell/cabal/cabal-testsuite/PackageTests/CustomPreProcess/setup.dist/work/dist"}
+    "/home/ogre/Documents/other-haskell/cabal/cabal-testsuite/PackageTests/CustomPreProcess/setup.dist/work/dist",
+  providesStaticArtifacts = True,
+  providesDynamicArtifacts = True}

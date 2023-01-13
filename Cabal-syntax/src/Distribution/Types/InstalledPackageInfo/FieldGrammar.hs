@@ -121,6 +121,8 @@ ipiFieldGrammar = mkInstalledPackageInfo
     <@> monoidalFieldAla    "haddock-interfaces"   (alaList' FSep FilePathNT)    L.haddockInterfaces
     <@> monoidalFieldAla    "haddock-html"         (alaList' FSep FilePathNT)    L.haddockHTMLs
     <@> optionalFieldAla    "pkgroot"              FilePathNT                    L.pkgRoot
+    <@> booleanFieldDef     "provides-static-artifacts"                          L.providesStaticArtifacts True
+    <@> booleanFieldDef     "provides-dynamic-artifacts"                         L.providesDynamicArtifacts True
   where
     mkInstalledPackageInfo _ Basic {..} = InstalledPackageInfo
         -- _basicPkgName is not used
