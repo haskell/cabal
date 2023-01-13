@@ -34,12 +34,12 @@ import Distribution.Client.TargetProblem         (TargetProblem (..))
 import Distribution.Simple.BuildPaths            (dllExtension, exeExtension)
 import Distribution.Simple.Command               (CommandUI (..))
 import Distribution.Simple.Setup                 (configVerbosity, fromFlagOrDefault)
-import Distribution.Simple.Utils                 (die', info, wrapText)
+import Distribution.Simple.Utils                 (die', withOutputMarker, wrapText)
 import Distribution.System                       (Platform)
 import Distribution.Types.ComponentName          (showComponentName)
 import Distribution.Types.UnitId                 (UnitId)
 import Distribution.Types.UnqualComponentName    (UnqualComponentName)
-import Distribution.Verbosity                    (normal, silent, verboseStderr)
+import Distribution.Verbosity                    (silent, verboseStderr)
 import System.FilePath                           ((<.>), (</>))
 
 import qualified Data.Map                                as Map
@@ -133,7 +133,14 @@ listbinAction flags@NixStyleFlags{..} args globalFlags = do
 
     case binfiles of
         []     -> die' verbosity "No target found"
-        [exe] -> info normal exe
+        [exe]  -> putStr $ withOutputMarker verbosity exe
+                    -- Andreas, 2023-01-13, issue #8400:
+                    -- Regular output of `list-bin` should go to stdout unconditionally,
+                    -- but for the sake of the testsuite, we want to mark it so it goes
+                    -- into the golden value for the test.
+                    -- Note: 'withOutputMarker' only checks 'isVerboseMarkOutput',
+                    -- thus, we can reuse @verbosity@ here, even if other components
+                    -- of @verbosity@ may be wrong (like 'VStderr', verbosity level etc.).
         _ -> die' verbosity "Multiple targets found"
   where
     defaultVerbosity = verboseStderr silent

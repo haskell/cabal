@@ -4,5 +4,4 @@ import Test.Cabal.Prelude
 main = cabalTest . void $ do
     res <- cabal' "list-bin" ["exe:testexe"]
 
-    assertOutputContains "SelectedComponent-1.0.0" res
-    assertOutputContains "testexe" res
+    assertOutputContains "SelectedComponent-1.0.0/build/testexe/testexe" res
