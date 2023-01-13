@@ -4,9 +4,9 @@ license:             BSD3
 author:              Edward Z. Yang
 maintainer:          ezyang@cs.stanford.edu
 build-type:          Simple
-cabal-version:       2.0
+cabal-version:       3.6
 
 library
-  build-depends:       base, sigs
+  build-depends:       base
   exposed-modules:     Foo
   default-language:    Haskell2010
