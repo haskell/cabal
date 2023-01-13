@@ -399,6 +399,7 @@ runProjectBuildPhase verbosity
                      ProjectBaseContext{..} ProjectBuildContext {..} =
     fmap (Map.union (previousBuildOutcomes pkgsBuildStatus)) $
     rebuildTargets verbosity
+                   projectConfig
                    distDirLayout
                    (cabalStoreDirLayout cabalDirLayout)
                    elaboratedPlanToExecute

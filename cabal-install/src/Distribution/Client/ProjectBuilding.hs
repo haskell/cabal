@@ -95,6 +95,7 @@ import           Distribution.Compat.Graph (IsNode(..))
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as Map
 import qualified Data.Set as Set
+import qualified Data.Maybe as Maybe
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString.Lazy.Char8 as LBS.Char8
@@ -105,6 +106,8 @@ import System.FilePath   (dropDrive, makeRelative, normalise, takeDirectory, (<.
 import System.IO         (IOMode (AppendMode), Handle, withFile)
 
 import Distribution.Compat.Directory (listDirectory)
+import Distribution.Simple.Flag (fromFlagOrDefault)
+import qualified Data.Maybe as Maybe
 
 
 ------------------------------------------------------------------------------
@@ -559,6 +562,7 @@ invalidatePackageRegFileMonitor PackageFileMonitor{pkgFileMonitorReg} =
 -- It requires the 'BuildStatusMap' gathered by 'rebuildTargetsDryRun'.
 --
 rebuildTargets :: Verbosity
+               -> ProjectConfig
                -> DistDirLayout
                -> StoreDirLayout
                -> ElaboratedInstallPlan
@@ -567,6 +571,9 @@ rebuildTargets :: Verbosity
                -> BuildTimeSettings
                -> IO BuildOutcomes
 rebuildTargets verbosity
+               ProjectConfig {
+                projectConfigBuildOnly = config
+               }
                distDirLayout@DistDirLayout{..}
                storeDirLayout
                installPlan
@@ -579,7 +586,6 @@ rebuildTargets verbosity
                  buildSettingNumJobs,
                  buildSettingKeepGoing
                } = do
-
     -- Concurrency control: create the job controller and concurrency limits
     -- for downloading, building and installing.
     jobControl    <- if isParallelBuild
@@ -599,30 +605,33 @@ rebuildTargets verbosity
     createDirectoryIfMissingVerbose verbosity True distTempDirectory
     traverse_ (createPackageDBIfMissing verbosity compiler progdb) packageDBsToUse
 
-    -- Before traversing the install plan, preemptively find all packages that
-    -- will need to be downloaded and start downloading them.
-    asyncDownloadPackages verbosity withRepoCtx
-                          installPlan pkgsBuildStatus $ \downloadMap ->
+    if not (null packagesToDownload) && fromFlagOrDefault False (projectConfigOfflineMode config) then
+      return offlineError
+    else 
+      -- Before traversing the install plan, preemptively find all packages that
+      -- will need to be downloaded and start downloading them.
+      asyncDownloadPackages verbosity withRepoCtx
+                            installPlan pkgsBuildStatus $ \downloadMap ->
 
-      -- For each package in the plan, in dependency order, but in parallel...
-      InstallPlan.execute jobControl keepGoing
-                          (BuildFailure Nothing . DependentFailed . packageId)
-                          installPlan $ \pkg ->
-        --TODO: review exception handling
-        handle (\(e :: BuildFailure) -> return (Left e)) $ fmap Right $
+        -- For each package in the plan, in dependency order, but in parallel...
+        InstallPlan.execute jobControl keepGoing
+                            (BuildFailure Nothing . DependentFailed . packageId)
+                            installPlan $ \pkg ->
+          --TODO: review exception handling
+          handle (\(e :: BuildFailure) -> return (Left e)) $ fmap Right $
 
-        let uid = installedUnitId pkg
-            pkgBuildStatus = Map.findWithDefault (error "rebuildTargets") uid pkgsBuildStatus in
+          let uid = installedUnitId pkg
+              pkgBuildStatus = Map.findWithDefault (error "rebuildTargets") uid pkgsBuildStatus in
 
-        rebuildTarget
-          verbosity
-          distDirLayout
-          storeDirLayout
-          buildSettings downloadMap
-          registerLock cacheLock
-          sharedPackageConfig
-          installPlan pkg
-          pkgBuildStatus
+          rebuildTarget
+            verbosity
+            distDirLayout
+            storeDirLayout
+            buildSettings downloadMap
+            registerLock cacheLock
+            sharedPackageConfig
+            installPlan pkg
+            pkgBuildStatus
   where
     isParallelBuild = buildSettingNumJobs >= 2
     keepGoing       = buildSettingKeepGoing
@@ -637,6 +646,51 @@ rebuildTargets verbosity
                           , elabSetupPackageDBStack elab ]
         ]
 
+    offlineError :: BuildOutcomes
+    offlineError = Map.fromList . map aux $ packagesToDownload
+      where
+        aux :: ElaboratedConfiguredPackage -> (UnitId, BuildOutcome)
+        aux elab = (installedUnitId elab, Left (BuildFailure {
+          buildFailureLogFile = Nothing,
+          buildFailureReason = DownloadFailed (error "Offline flag was set and the package was not downloaded")
+        }))
+
+    packagesToDownload :: [ElaboratedConfiguredPackage]
+    packagesToDownload = mapMaybe f3 . filter f . InstallPlan.reverseTopologicalOrder $ installPlan
+      where
+        f :: GenericPlanPackage InstalledPackageInfo ElaboratedConfiguredPackage -> Bool
+        f (InstallPlan.Configured elab) = f2 . elabPkgSourceLocation $ elab
+        f _ = False
+        f2 :: PackageLocation a -> Bool
+        f2 (RemoteTarballPackage _ _) = True
+        f2 (RepoTarballPackage {}) = True
+        f2 (RemoteSourceRepoPackage _ _) = True
+        f2 _ = False
+        f3 :: GenericPlanPackage InstalledPackageInfo ElaboratedConfiguredPackage -> Maybe ElaboratedConfiguredPackage
+        f3 (InstallPlan.Configured elab) = Just elab
+        f3 (InstallPlan.PreExisting _) = Nothing
+        f3 (InstallPlan.Installed _) = Nothing
+        
+    -- pkgs = map aux (InstallPlan.reverseTopologicalOrder installPlan)
+    --   where
+    --     aux (InstallPlan.Configured elab) = (installedUnitId elab, "configured", bsToS $ Map.findWithDefault (error "asyncDownloadPackages") (installedUnitId elab) pkgsBuildStatus, plToS $ elabPkgSourceLocation elab)
+    --     aux (InstallPlan.PreExisting elab) = (installedUnitId elab, "pe", "", "")
+    --     aux (InstallPlan.Installed elab) = (installedUnitId elab, "i", "", "")
+    -- bsToS :: BuildStatus -> String
+    -- bsToS BuildStatusDownload = "download"
+    -- bsToS BuildStatusPreExisting = "pe"
+    -- bsToS BuildStatusInstalled = "i"
+    -- bsToS (BuildStatusUnpack _) = "up"
+    -- bsToS (BuildStatusRebuild _ _) = "r"
+    -- bsToS (BuildStatusUpToDate _) = "utd"
+
+    -- plToS :: PackageLocation a -> String
+    -- plToS (LocalUnpackedPackage _) = "lup"
+    -- plToS (LocalTarballPackage _) = "ltp"
+    -- plToS (RemoteTarballPackage _ _) = "rtp"
+    -- plToS (RepoTarballPackage {}) = "retp"
+    -- plToS (RemoteSourceRepoPackage _ _) = "rsrp"
+    
 
 -- | Create a package DB if it does not currently exist. Note that this action
 -- is /not/ safe to run concurrently.
