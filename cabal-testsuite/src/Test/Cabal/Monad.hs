@@ -104,7 +104,7 @@ data CommonArgs = CommonArgs {
 commonArgParser :: Parser CommonArgs
 commonArgParser = CommonArgs
     <$> optional (option str
-        ( help "Path to cabal-install executable to test"
+        ( help "Path to cabal-install executable to test. If omitted, tests involving cabal-install are skipped!"
        <> long "with-cabal"
        <> metavar "PATH"
         ))
