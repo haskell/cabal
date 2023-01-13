@@ -1,2 +1,4 @@
+import P (p)
+
 main :: IO ()
-main = print "test"
+main = print p

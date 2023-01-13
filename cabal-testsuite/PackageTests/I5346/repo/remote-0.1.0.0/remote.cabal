@@ -1,18 +1,13 @@
 cabal-version:      3.0
-name:               indef
+name:               remote
 version:            0.1.0.0
--- synopsis:
--- description:
 license:            MIT
-license-file:       LICENSE
 author:             Colton Clemmer
 maintainer:         coltonclemmerdev@gmail.com
--- copyright:
 build-type:         Simple
 extra-doc-files:    CHANGELOG.md
--- extra-source-files:
 
 library
   build-depends:       base
-  exposed-modules:     Foo
+  exposed-modules:     P
   default-language:    Haskell2010
