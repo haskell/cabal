@@ -1,3 +1,3 @@
-module Foo where
+module Foo (f) where
 
 f = "Foo"
