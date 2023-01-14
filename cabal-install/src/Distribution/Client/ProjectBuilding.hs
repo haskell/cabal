@@ -607,7 +607,7 @@ rebuildTargets verbosity
 
     if fromFlagOrDefault False (projectConfigOfflineMode config) && not (null packagesToDownload) then
       return offlineError
-    else 
+    else
       -- Before traversing the install plan, preemptively find all packages that
       -- will need to be downloaded and start downloading them.
       asyncDownloadPackages verbosity withRepoCtx
@@ -650,20 +650,20 @@ rebuildTargets verbosity
     offlineError = Map.fromList . map makeBuildOutcome $ packagesToDownload
       where
         makeBuildOutcome :: ElaboratedConfiguredPackage -> (UnitId, BuildOutcome)
-        makeBuildOutcome ElaboratedConfiguredPackage { 
-          elabUnitId, 
-          elabPkgSourceId = PackageIdentifier { pkgName, pkgVersion } 
+        makeBuildOutcome ElaboratedConfiguredPackage {
+          elabUnitId,
+          elabPkgSourceId = PackageIdentifier { pkgName, pkgVersion }
         } = (elabUnitId, Left (BuildFailure {
           buildFailureLogFile = Nothing,
           buildFailureReason = DownloadFailed . error $ makeError pkgName pkgVersion
         }))
         makeError :: PackageName -> Version -> String
-        makeError n v = "--offline was specified, could not download package " 
-          ++ unPackageName n 
+        makeError n v = "--offline was specified, could not download package "
+          ++ unPackageName n
           ++ " version " ++ Disp.render (pretty v)
 
     packagesToDownload :: [ElaboratedConfiguredPackage]
-    packagesToDownload = [elab | InstallPlan.Configured elab <- InstallPlan.reverseTopologicalOrder installPlan, 
+    packagesToDownload = [elab | InstallPlan.Configured elab <- InstallPlan.reverseTopologicalOrder installPlan,
                              isRemote $ elabPkgSourceLocation elab]
       where
         isRemote :: PackageLocation a -> Bool
@@ -671,7 +671,7 @@ rebuildTargets verbosity
         isRemote (RepoTarballPackage {}) = True
         isRemote (RemoteSourceRepoPackage _ _) = True
         isRemote _ = False
-    
+
 
 -- | Create a package DB if it does not currently exist. Note that this action
 -- is /not/ safe to run concurrently.
