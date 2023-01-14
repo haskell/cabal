@@ -647,13 +647,20 @@ rebuildTargets verbosity
         ]
 
     offlineError :: BuildOutcomes
-    offlineError = Map.fromList . map makeError $ packagesToDownload
+    offlineError = Map.fromList . map makeBuildOutcome $ packagesToDownload
       where
-        makeError :: ElaboratedConfiguredPackage -> (UnitId, BuildOutcome)
-        makeError ElaboratedConfiguredPackage { elabUnitId, elabPkgSourceId = PackageIdentifier { pkgName, pkgVersion } } = (elabUnitId, Left (BuildFailure {
+        makeBuildOutcome :: ElaboratedConfiguredPackage -> (UnitId, BuildOutcome)
+        makeBuildOutcome ElaboratedConfiguredPackage { 
+          elabUnitId, 
+          elabPkgSourceId = PackageIdentifier { pkgName, pkgVersion } 
+        } = (elabUnitId, Left (BuildFailure {
           buildFailureLogFile = Nothing,
-          buildFailureReason = DownloadFailed (error ("--offline was specified, could not download package " ++ unPackageName pkgName ++ " version " ++ Disp.render (pretty pkgVersion)))
+          buildFailureReason = DownloadFailed . error $ makeError pkgName pkgVersion
         }))
+        makeError :: PackageName -> Version -> String
+        makeError n v = "--offline was specified, could not download package " 
+          ++ unPackageName n 
+          ++ " version " ++ Disp.render (pretty v)
 
     packagesToDownload :: [ElaboratedConfiguredPackage]
     packagesToDownload = [elab | InstallPlan.Configured elab <- InstallPlan.reverseTopologicalOrder installPlan, 
