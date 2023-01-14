@@ -95,10 +95,11 @@ import           Distribution.Compat.Graph (IsNode(..))
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-import qualified Data.Maybe as Maybe
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString.Lazy.Char8 as LBS.Char8
+
+import qualified Text.PrettyPrint as Disp
 
 import Control.Exception (Handler (..), SomeAsyncException, assert, catches, handle)
 import System.Directory  (canonicalizePath, createDirectoryIfMissing, doesDirectoryExist, doesFileExist, removeFile, renameDirectory)
@@ -107,7 +108,6 @@ import System.IO         (IOMode (AppendMode), Handle, withFile)
 
 import Distribution.Compat.Directory (listDirectory)
 import Distribution.Simple.Flag (fromFlagOrDefault)
-import qualified Data.Maybe as Maybe
 
 
 ------------------------------------------------------------------------------
@@ -647,49 +647,23 @@ rebuildTargets verbosity
         ]
 
     offlineError :: BuildOutcomes
-    offlineError = Map.fromList . map aux $ packagesToDownload
+    offlineError = Map.fromList . map makeError $ packagesToDownload
       where
-        aux :: ElaboratedConfiguredPackage -> (UnitId, BuildOutcome)
-        aux elab = (installedUnitId elab, Left (BuildFailure {
+        makeError :: ElaboratedConfiguredPackage -> (UnitId, BuildOutcome)
+        makeError ElaboratedConfiguredPackage { elabUnitId, elabPkgSourceId = PackageIdentifier { pkgName, pkgVersion } } = (elabUnitId, Left (BuildFailure {
           buildFailureLogFile = Nothing,
-          buildFailureReason = DownloadFailed (error "Offline flag was set and the package was not downloaded")
+          buildFailureReason = DownloadFailed (error ("--offline was specified, could not download package " ++ unPackageName pkgName ++ " version " ++ Disp.render (pretty pkgVersion)))
         }))
 
     packagesToDownload :: [ElaboratedConfiguredPackage]
-    packagesToDownload = mapMaybe f3 . filter f . InstallPlan.reverseTopologicalOrder $ installPlan
+    packagesToDownload = [elab | InstallPlan.Configured elab <- InstallPlan.reverseTopologicalOrder installPlan, 
+                             isRemote $ elabPkgSourceLocation elab]
       where
-        f :: GenericPlanPackage InstalledPackageInfo ElaboratedConfiguredPackage -> Bool
-        f (InstallPlan.Configured elab) = f2 . elabPkgSourceLocation $ elab
-        f _ = False
-        f2 :: PackageLocation a -> Bool
-        f2 (RemoteTarballPackage _ _) = True
-        f2 (RepoTarballPackage {}) = True
-        f2 (RemoteSourceRepoPackage _ _) = True
-        f2 _ = False
-        f3 :: GenericPlanPackage InstalledPackageInfo ElaboratedConfiguredPackage -> Maybe ElaboratedConfiguredPackage
-        f3 (InstallPlan.Configured elab) = Just elab
-        f3 (InstallPlan.PreExisting _) = Nothing
-        f3 (InstallPlan.Installed _) = Nothing
-        
-    -- pkgs = map aux (InstallPlan.reverseTopologicalOrder installPlan)
-    --   where
-    --     aux (InstallPlan.Configured elab) = (installedUnitId elab, "configured", bsToS $ Map.findWithDefault (error "asyncDownloadPackages") (installedUnitId elab) pkgsBuildStatus, plToS $ elabPkgSourceLocation elab)
-    --     aux (InstallPlan.PreExisting elab) = (installedUnitId elab, "pe", "", "")
-    --     aux (InstallPlan.Installed elab) = (installedUnitId elab, "i", "", "")
-    -- bsToS :: BuildStatus -> String
-    -- bsToS BuildStatusDownload = "download"
-    -- bsToS BuildStatusPreExisting = "pe"
-    -- bsToS BuildStatusInstalled = "i"
-    -- bsToS (BuildStatusUnpack _) = "up"
-    -- bsToS (BuildStatusRebuild _ _) = "r"
-    -- bsToS (BuildStatusUpToDate _) = "utd"
-
-    -- plToS :: PackageLocation a -> String
-    -- plToS (LocalUnpackedPackage _) = "lup"
-    -- plToS (LocalTarballPackage _) = "ltp"
-    -- plToS (RemoteTarballPackage _ _) = "rtp"
-    -- plToS (RepoTarballPackage {}) = "retp"
-    -- plToS (RemoteSourceRepoPackage _ _) = "rsrp"
+        isRemote :: PackageLocation a -> Bool
+        isRemote (RemoteTarballPackage _ _) = True
+        isRemote (RepoTarballPackage {}) = True
+        isRemote (RemoteSourceRepoPackage _ _) = True
+        isRemote _ = False
     
 
 -- | Create a package DB if it does not currently exist. Note that this action
