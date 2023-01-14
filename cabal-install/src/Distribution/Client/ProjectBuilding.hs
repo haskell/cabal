@@ -605,7 +605,7 @@ rebuildTargets verbosity
     createDirectoryIfMissingVerbose verbosity True distTempDirectory
     traverse_ (createPackageDBIfMissing verbosity compiler progdb) packageDBsToUse
 
-    if not (null packagesToDownload) && fromFlagOrDefault False (projectConfigOfflineMode config) then
+    if fromFlagOrDefault False (projectConfigOfflineMode config) && not (null packagesToDownload) then
       return offlineError
     else 
       -- Before traversing the install plan, preemptively find all packages that
