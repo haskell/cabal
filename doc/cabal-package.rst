@@ -763,7 +763,8 @@ describe the package as a whole:
     behaviour, put the files that wildcards will match against in
     their own folder.
 
-    ``**`` wildcards are available starting in Cabal 2.4.
+    ``**`` wildcards are available starting in Cabal 2.4
+    and `bug-free since Cabal 3.0 <https://github.com/haskell/cabal/issues/6125#issuecomment-1379878419>`_.
 
 .. pkg-field:: data-dir: directory
 
