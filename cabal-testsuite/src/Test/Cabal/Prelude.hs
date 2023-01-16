@@ -889,7 +889,7 @@ skipUnlessGhcVersion :: String -> TestM ()
 skipUnlessGhcVersion range = skipUnless ("needs ghc " ++ range) =<< isGhcVersion range
 
 skipIfGhcVersion :: String -> TestM ()
-skipIfGhcVersion range = skipUnless ("incompatible with ghc " ++ range) =<< isGhcVersion range
+skipIfGhcVersion range = skipIf ("incompatible with ghc " ++ range) =<< isGhcVersion range
 
 skipUnlessJavaScript :: TestM ()
 skipUnlessJavaScript = skipUnless "needs the JavaScript backend" =<< isJavaScript
