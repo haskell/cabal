@@ -2247,12 +2247,12 @@ initOptions _ =
                         (flagElim [] (fmap prettyShow)))
 
   , option ['d'] ["dependency"]
-    "Package dependency."
+    "Package dependencies. Permits comma separated list of dependencies."
     IT.dependencies
     (\v flags -> flags { IT.dependencies =
       mergeListFlag (IT.dependencies flags) v })
-    (reqArg "PACKAGE" (fmap Flag dependenciesReadE)
-                      (fmap prettyShow . fromFlagOrDefault []))
+    (reqArg "DEPENDENCIES" (fmap Flag dependenciesReadE)
+                           (fmap prettyShow . fromFlagOrDefault []))
 
   , option [] ["application-dir"]
     "Directory containing package application executable."
