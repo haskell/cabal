@@ -1,7 +1,6 @@
 # cabal check
 Warning: These warnings may cause trouble when distributing the package:
 Warning: pkg.cabal:1:2: Byte-order mark found at the beginning of the file
-Warning: Please consider including a changelog file in the 'extra-doc-files' section of the .cabal file if it contains useful information for users of the package.
 Warning: The following errors will cause portability problems on other environments:
 Warning: ./pkg.cabal starts with an Unicode byte order mark (BOM). This may cause problems with older cabal versions.
 Warning: Hackage would reject this package.

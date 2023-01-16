@@ -1,8 +1,6 @@
 # cabal check
 Warning: The following warnings are likely to affect your build negatively:
 Warning: 'ghc-shared-options: -hide-package' is never needed. Cabal hides all packages.
-Warning: These warnings may cause trouble when distributing the package:
-Warning: Please consider including a changelog file in the 'extra-doc-files' section of the .cabal file if it contains useful information for users of the package.
 Warning: The following errors will cause portability problems on other environments:
 Warning: 'ghc-options: -fasm' is unnecessary and will not work on CPU architectures other than x86, x86-64, ppc or sparc.
 Warning: 'ghc-prof-options: -fhpc' is not necessary. Use the configure flag  --enable-coverage instead.

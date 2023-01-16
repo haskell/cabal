@@ -1,8 +1,6 @@
 # cabal check
 Warning: The following warnings are likely to affect your build negatively:
 Warning: 'extra-source-files: ../outside' is a relative path outside of the source tree. This will not work when generating a tarball with 'sdist'.
-Warning: These warnings may cause trouble when distributing the package:
-Warning: Please consider including a changelog file in the 'extra-doc-files' section of the .cabal file if it contains useful information for users of the package.
 Warning: The following errors will cause portability problems on other environments:
 Warning: 'extra-source-files: ../outside' is not a good relative path: "parent directory segment: .."
 Warning: Hackage would reject this package.

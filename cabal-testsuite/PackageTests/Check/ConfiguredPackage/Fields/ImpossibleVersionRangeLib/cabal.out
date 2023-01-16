@@ -1,6 +1,4 @@
 # cabal check
 Warning: The package will not build sanely due to these errors:
 Warning: The package has an impossible version range for a dependency on an internal library: pkg:internal >1.0. This version range does not include the current package, and must be removed as the current package's library will always be used.
-Warning: These warnings may cause trouble when distributing the package:
-Warning: Please consider including a changelog file in the 'extra-doc-files' section of the .cabal file if it contains useful information for users of the package.
 Warning: Hackage would reject this package.

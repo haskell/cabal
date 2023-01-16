@@ -1,6 +1,4 @@
 # cabal check
 Warning: The package will not build sanely due to these errors:
 Warning: An include in 'autogen-includes' is not in 'includes'.
-Warning: These warnings may cause trouble when distributing the package:
-Warning: Please consider including a changelog file in the 'extra-doc-files' section of the .cabal file if it contains useful information for users of the package.
 Warning: Hackage would reject this package.

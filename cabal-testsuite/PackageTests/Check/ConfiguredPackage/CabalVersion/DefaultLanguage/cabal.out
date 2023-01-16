@@ -1,4 +1,3 @@
 # cabal check
 Warning: These warnings may cause trouble when distributing the package:
 Warning: pkg.cabal:14:3: The field "default-language" is available only since the Cabal specification version 1.10. This field will be ignored.
-Warning: Please consider including a changelog file in the 'extra-doc-files' section of the .cabal file if it contains useful information for users of the package.
