@@ -8,7 +8,6 @@ synopsis: AutogenModules
 category: PackageTests
 build-type: Simple
 cabal-version: 2.0
-extra-doc-files: ChangeLog.md
 
 description:
     Check that Cabal recognizes the autogen-modules fields below.

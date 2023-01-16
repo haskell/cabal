@@ -83,7 +83,6 @@ main = setupAndCabalTest $ do
                 ++ ".\\MyTestModule.hs\n"
                 ++ ".\\Dummy.hs\n"
                 ++ ".\\MyBenchModule.hs\n"
-                ++ ".\\ChangeLog.md\n"
                 ++ "LICENSE\n"
                 ++ ".\\AutogenModules.cabal\n"
 #else
@@ -95,7 +94,6 @@ main = setupAndCabalTest $ do
                 ++ "./MyTestModule.hs\n"
                 ++ "./Dummy.hs\n"
                 ++ "./MyBenchModule.hs\n"
-                ++ "./ChangeLog.md\n"
                 ++ "LICENSE\n"
                 ++ "./AutogenModules.cabal\n"
 #endif
