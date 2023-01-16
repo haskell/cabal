@@ -28,7 +28,7 @@ import Distribution.Simple.PackageDescription (readGenericPackageDescription)
 import Distribution.Simple.Program.Types
 import Distribution.Simple.Program.Db
 import Distribution.Simple.Program
-import Distribution.System (OS(Windows,Linux,OSX), buildOS)
+import Distribution.System (OS(Windows,Linux,OSX), Arch(JavaScript), buildOS, buildArch)
 import Distribution.Simple.Utils
     ( withFileContents, withTempDirectory, tryFindPackageDesc )
 import Distribution.Simple.Configure
@@ -899,6 +899,11 @@ isOSX = return (buildOS == OSX)
 
 isLinux :: TestM Bool
 isLinux = return (buildOS == Linux)
+
+isJavaScript :: TestM Bool
+isJavaScript = return (buildArch == JavaScript)
+  -- should probably be `hostArch` but Cabal doesn't distinguish build platform
+  -- and host platform
 
 skipIfWindows :: TestM ()
 skipIfWindows = skipIf "Windows" =<< isWindows
