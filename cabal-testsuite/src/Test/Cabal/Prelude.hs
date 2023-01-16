@@ -891,6 +891,12 @@ skipUnlessGhcVersion range = skipUnless ("needs ghc " ++ range) =<< isGhcVersion
 skipIfGhcVersion :: String -> TestM ()
 skipIfGhcVersion range = skipUnless ("incompatible with ghc " ++ range) =<< isGhcVersion range
 
+skipUnlessJavaScript :: TestM ()
+skipUnlessJavaScript = skipUnless "needs the JavaScript backend" =<< isJavaScript
+
+skipIfJavaScript :: TestM ()
+skipIfJavaScript = skipIf "incompatible with the JavaScript backend" =<< isJavaScript
+
 isWindows :: TestM Bool
 isWindows = return (buildOS == Windows)
 
