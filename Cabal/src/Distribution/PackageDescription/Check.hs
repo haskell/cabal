@@ -40,7 +40,7 @@ import Data.Foldable                                 (foldrM)
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Data.List                                     (group)
+import Data.List                                     (delete, group)
 import Distribution.CabalSpecVersion
 import Distribution.Compat.Lens
 import Distribution.Compiler
@@ -785,12 +785,12 @@ ppExplanation MissingSourceControl =
       ++ "control information in the .cabal file using one or more "
       ++ "'source-repository' sections. See the Cabal user guide for "
       ++ "details."
-ppExplanation (MissingExpectedExtraDocFiles files) =
-    "Please consider including " ++ gather files
+ppExplanation (MissingExpectedExtraDocFiles paths) =
+    "Please consider including the " ++ quotes paths
       ++ " in the 'extra-doc-files' section of the .cabal file "
       ++ "if it contains useful information for users of the package."
-  where gather [p] = p ++ " file"
-        gather ps = intercalate " and " ps ++ " files"
+  where quotes [p] = "file " ++ quote p
+        quotes ps = "files " ++ intercalate ", " (map quote ps)
 ppExplanation (WrongFieldExpectedExtraDocFiles field paths) =
     "Please consider moving the " ++ quotes paths
       ++ " from the '" ++ field ++ "' section of the .cabal file "
@@ -2412,16 +2412,23 @@ checkGlobFiles :: Verbosity
                -> FilePath
                -> IO [PackageCheck]
 checkGlobFiles verbosity pkg root = do
+  -- Get the desirable doc files from package’s directory
+  rootContents <- System.Directory.getDirectoryContents root
+  docFiles0 <- filterM System.doesFileExist
+                       [ file
+                       | file <- rootContents
+                       , isDesirableExtraDocFile desirableDocFiles file
+                       ]
   -- Check the globs
-  (warnings, missingChangeLog) <- foldrM checkGlob ([], True) allGlobs
+  (warnings, unlisted) <- foldrM checkGlob ([], docFiles0) allGlobs
 
-  return $ if missingChangeLog
-    -- Some missing desirable files
-    then let unlisted = [ "a changelog" | missingChangeLog]
-         in warnings ++
-            [PackageDistSuspiciousWarn (MissingExpectedExtraDocFiles unlisted)]
+  return $ if null unlisted
     -- No missing desirable file
-    else warnings
+    then warnings
+    -- Some missing desirable files
+    else warnings ++
+         let unlisted' = (root </>) <$> unlisted
+         in [PackageDistSuspiciousWarn (MissingExpectedExtraDocFiles unlisted')]
   where
     adjustedDataDir = if null (dataDir pkg) then root else root </> dataDir pkg
     -- Cabal fields with globs
@@ -2436,17 +2443,17 @@ checkGlobFiles verbosity pkg root = do
     -- • errors (missing directory, no match)
     -- • omitted documentation files (changelog)
     checkGlob :: (String, Bool, FilePath, FilePath)
-              -> ([PackageCheck], Bool)
-              -> IO ([PackageCheck], Bool)
-    checkGlob (field, isDocField, dir, glob) acc@(warnings, changelog) =
+              -> ([PackageCheck], [FilePath])
+              -> IO ([PackageCheck], [FilePath])
+    checkGlob (field, isDocField, dir, glob) acc@(warnings, docFiles1) =
       -- Note: we just skip over parse errors here; they're reported elsewhere.
       case parseFileGlob (specVersion pkg) glob of
         Left _ -> return acc
         Right parsedGlob -> do
           results <- runDirFileGlob verbosity (root </> dir) parsedGlob
-          let acc0 = (warnings, True, changelog, [])
+          let acc0 = (warnings, True, docFiles1, [])
           return $ case foldr checkGlobResult acc0 results of
-            (individualWarn, noMatchesWarn, changelog', wrongPaths) ->
+            (individualWarn, noMatchesWarn, docFiles1', wrongPaths) ->
               let wrongFieldWarnings = [ PackageDistSuspiciousWarn
                                           (WrongFieldExpectedExtraDocFiles
                                             field wrongPaths)
@@ -2457,13 +2464,13 @@ checkGlobFiles verbosity pkg root = do
                          individualWarn ++
                          wrongFieldWarnings
                     else individualWarn ++ wrongFieldWarnings
-                , changelog'
+                , docFiles1'
                 )
           where
             checkGlobResult :: GlobResult FilePath
-                            -> ([PackageCheck], Bool, Bool, [FilePath])
-                            -> ([PackageCheck], Bool, Bool, [FilePath])
-            checkGlobResult result (ws, noMatchesWarn, changelog1, wrongPaths) =
+                            -> ([PackageCheck], Bool, [FilePath], [FilePath])
+                            -> ([PackageCheck], Bool, [FilePath], [FilePath])
+            checkGlobResult result (ws, noMatchesWarn, docFiles2, wrongPaths) =
               let noMatchesWarn' = noMatchesWarn &&
                                    not (suppressesNoMatchesWarning result)
               in case getWarning field glob result of
@@ -2471,19 +2478,20 @@ checkGlobFiles verbosity pkg root = do
                 Left w ->
                   ( w : ws
                   , noMatchesWarn'
-                  , changelog1
+                  , docFiles2
                   , wrongPaths
                   )
                 -- Match: check doc files
                 Right path ->
-                  let (changelog1', wrongPaths') = checkDoc isDocField
-                                                            path
-                                                            changelog1
-                                                            wrongPaths
+                  let path' = makeRelative root (normalise path)
+                      (docFiles2', wrongPaths') = checkDoc isDocField
+                                                           path'
+                                                           docFiles2
+                                                           wrongPaths
                   in
                     ( ws
                     , noMatchesWarn'
-                    , changelog1'
+                    , docFiles2'
                     , wrongPaths'
                     )
 
@@ -2491,28 +2499,27 @@ checkGlobFiles verbosity pkg root = do
     -- field "extra-doc-files".
     checkDoc :: Bool                     -- Is it "extra-doc-files" ?
              -> FilePath                 -- Path to test
-             -> Bool                     -- Look for changelog?
+             -> [FilePath]               -- Pending doc files to check
              -> [FilePath]               -- Previous wrong paths
-             -> (Bool, [FilePath]) -- Updated paths
-    checkDoc isDocField path changelog wrongFieldPaths
-      -- Found desirable changelog file
-      | changelog && isDesirableExtraDocFile desirableChangeLog path =
-        ( False
-        , if isDocField
-            then wrongFieldPaths
-            else (root </> path) : wrongFieldPaths
-        )
-      -- Not a desirable doc file
-      | otherwise =
-        ( changelog
-        , wrongFieldPaths
-        )
+             -> ([FilePath], [FilePath]) -- Updated paths
+    checkDoc isDocField path docFiles wrongFieldPaths =
+      if path `elem` docFiles
+        -- Found desirable doc file
+        then
+          ( delete path docFiles
+          , if isDocField then wrongFieldPaths else path : wrongFieldPaths
+          )
+        -- Not a desirable doc file
+        else
+          ( docFiles
+          , wrongFieldPaths
+          )
 
     -- Predicate for desirable documentation file on Hackage server
     isDesirableExtraDocFile :: [FilePath] -> FilePath -> Bool
     isDesirableExtraDocFile paths path = map toLower basename `elem` paths
       where
-        (basename, _ext) = splitExtension (makeRelative root (normalise path))
+        (basename, _ext) = splitExtension path
 
     -- Changelog patterns
     -- Source: hackage-server/src/Distribution/Server/Packages/ChangeLog.hs
@@ -2531,6 +2538,7 @@ checkGlobFiles verbosity pkg root = do
     -- -- Readme patterns
     -- -- Source: hackage-server/src/Distribution/Server/Packages/Readme.hs
     -- desirableReadme = ["readme"]
+    desirableDocFiles = desirableChangeLog
 
     -- If there's a missing directory in play, since our globs don't
     -- (currently) support disjunction, that will always mean there are no

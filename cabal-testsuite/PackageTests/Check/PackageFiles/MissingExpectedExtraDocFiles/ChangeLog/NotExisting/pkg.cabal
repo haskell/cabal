@@ -6,7 +6,6 @@ version: 0
 category: example
 maintainer: none@example.com
 license: GPL-3.0-or-later
-extra-doc-files: ChangeLog.md
 
 library
   exposed-modules: Foo
