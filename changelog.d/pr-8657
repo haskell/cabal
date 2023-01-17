@@ -8,5 +8,6 @@ description: {
 - Emit a warning if there exist a “changelog” file at the root of the
   package which is not included in any field.
 - Emit a warning if a “changelog” file at the root of the package is included 
-  in a field different from “extra-doc-files”.
+  in a field different from “extra-doc-files” (Cabal spec >= 1.18) or 
+  “extra-source-files” (spec < 1.18).
 }

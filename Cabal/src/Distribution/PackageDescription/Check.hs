@@ -252,8 +252,8 @@ data CheckExplanation =
         | MissingConfigureScript
         | UnknownDirectory String FilePath
         | MissingSourceControl
-        | MissingExpectedExtraDocFiles [FilePath]
-        | WrongFieldExpectedExtraDocFiles String [FilePath]
+        | MissingExpectedDocFiles Bool [FilePath]
+        | WrongFieldForExpectedDocFiles Bool String [FilePath]
     deriving (Eq, Ord, Show)
 
 -- | Wraps `ParseWarning` into `PackageCheck`.
@@ -785,18 +785,24 @@ ppExplanation MissingSourceControl =
       ++ "control information in the .cabal file using one or more "
       ++ "'source-repository' sections. See the Cabal user guide for "
       ++ "details."
-ppExplanation (MissingExpectedExtraDocFiles paths) =
+ppExplanation (MissingExpectedDocFiles extraDocFileSupport paths) =
     "Please consider including the " ++ quotes paths
-      ++ " in the 'extra-doc-files' section of the .cabal file "
+      ++ " in the '" ++ targetField ++ "' section of the .cabal file "
       ++ "if it contains useful information for users of the package."
   where quotes [p] = "file " ++ quote p
         quotes ps = "files " ++ intercalate ", " (map quote ps)
-ppExplanation (WrongFieldExpectedExtraDocFiles field paths) =
+        targetField = if extraDocFileSupport
+                        then "extra-doc-files"
+                        else "extra-source-files"
+ppExplanation (WrongFieldForExpectedDocFiles extraDocFileSupport field paths) =
     "Please consider moving the " ++ quotes paths
       ++ " from the '" ++ field ++ "' section of the .cabal file "
-      ++ "to the section 'extra-doc-files'."
+      ++ "to the section '" ++ targetField ++ "'."
   where quotes [p] = "file " ++ quote p
         quotes ps = "files " ++ intercalate ", " (map quote ps)
+        targetField = if extraDocFileSupport
+                        then "extra-doc-files"
+                        else "extra-source-files"
 
 
 -- | Results of some kind of failed package check.
@@ -2419,13 +2425,18 @@ checkGlobFiles verbosity pkg root = do
     -- Some missing desirable files
     else warnings ++
          let unlisted' = (root </>) <$> unlisted
-         in [PackageDistSuspiciousWarn (MissingExpectedExtraDocFiles unlisted')]
+         in [ PackageDistSuspiciousWarn
+                (MissingExpectedDocFiles extraDocFilesSupport unlisted')
+            ]
   where
+    -- `extra-doc-files` is supported only from version 1.18
+    extraDocFilesSupport = specVersion pkg >= CabalSpecV1_18
     adjustedDataDir = if null (dataDir pkg) then root else root </> dataDir pkg
     -- Cabal fields with globs
     allGlobs :: [(String, Bool, FilePath, FilePath)]
     allGlobs = concat
-      [ (,,,) "extra-source-files" False root <$> extraSrcFiles pkg
+      [ (,,,) "extra-source-files" (not extraDocFilesSupport) root <$>
+        extraSrcFiles pkg
       , (,,,) "extra-doc-files" True root <$> extraDocFiles pkg
       , (,,,) "data-files" False adjustedDataDir <$> dataFiles pkg
       ]
@@ -2446,7 +2457,8 @@ checkGlobFiles verbosity pkg root = do
           return $ case foldr checkGlobResult acc0 results of
             (individualWarn, noMatchesWarn, docFiles1', wrongPaths) ->
               let wrongFieldWarnings = [ PackageDistSuspiciousWarn
-                                          (WrongFieldExpectedExtraDocFiles
+                                          (WrongFieldForExpectedDocFiles
+                                            extraDocFilesSupport
                                             field wrongPaths)
                                        | not (null wrongPaths) ]
               in
