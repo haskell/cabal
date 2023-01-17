@@ -2125,17 +2125,9 @@ checkPackageFiles verbosity pkg root = do
       doesFileExist        = System.doesFileExist                  . relative,
       doesDirectoryExist   = System.doesDirectoryExist             . relative,
       getDirectoryContents = System.Directory.getDirectoryContents . relative,
-      getFileContents      = BS.readFile                           . relative,
-      getGlobFiles         = getGlobFiles_                         . relative
+      getFileContents      = BS.readFile                           . relative
     }
     relative path = root </> path
-    getGlobFiles_ dir rawGlob = do
-      -- Note: we just skip over parse errors here; they're reported elsewhere.
-      case parseFileGlob (specVersion pkg) rawGlob of
-        Left _ -> return []
-        Right parsedGlob -> do
-          results <- runDirFileGlob verbosity dir parsedGlob
-          return [path | GlobMatch path <- results]
 
 -- | A record of operations needed to check the contents of packages.
 -- Used by 'checkPackageContent'.
@@ -2144,8 +2136,7 @@ data CheckPackageContentOps m = CheckPackageContentOps {
     doesFileExist        :: FilePath -> m Bool,
     doesDirectoryExist   :: FilePath -> m Bool,
     getDirectoryContents :: FilePath -> m [FilePath],
-    getFileContents      :: FilePath -> m BS.ByteString,
-    getGlobFiles         :: FilePath -> FilePath -> m [FilePath]
+    getFileContents      :: FilePath -> m BS.ByteString
   }
 
 -- | Sanity check things that requires looking at files in the package.
