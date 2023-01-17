@@ -20,10 +20,8 @@ import qualified Data.ByteString.Char8 as BS8
 import Data.Char (isSpace)
 import System.IO
 
-import Distribution.Compiler              (CompilerFlavor(..), CompilerId(..))
 import Distribution.Package               (getHSLibraryName)
-import Distribution.Simple.Compiler       (compilerId)
-import Distribution.Simple.LocalBuildInfo (LocalBuildInfo, compiler, localUnitId)
+import Distribution.Simple.LocalBuildInfo (LocalBuildInfo, localUnitId)
 
 -- Almost a copypasta of Distribution.Simple.Program.Ar.wipeMetadata
 checkMetadata :: LocalBuildInfo -> FilePath -> IO ()
