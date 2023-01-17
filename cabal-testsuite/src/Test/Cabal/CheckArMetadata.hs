@@ -32,10 +32,6 @@ checkMetadata lbi dir = withBinaryFile path ReadMode $ \ h ->
   where
     path = dir </> "lib" ++ getHSLibraryName (localUnitId lbi) ++ ".a"
 
-    _ghc_7_10 = case compilerId (compiler lbi) of
-      CompilerId GHC version | version >= mkVersion [7, 10]  -> True
-      _                                                      -> False
-
     checkError msg = assertFailure (
         "PackageTests.DeterministicAr.checkMetadata: " ++ msg ++
         " in " ++ path) >> undefined
