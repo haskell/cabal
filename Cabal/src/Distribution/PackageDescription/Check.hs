@@ -196,6 +196,7 @@ data CheckExplanation =
         | BadRelativePAth String FilePath String
         | DistPoint (Maybe String) FilePath
         | GlobSyntaxError String String
+        | RecursiveGlobInRoot String FilePath
         | InvalidOnWin [FilePath]
         | FilePathTooLong FilePath
         | FilePathNameTooLong FilePath
@@ -532,6 +533,10 @@ ppExplanation (DistPoint mfield path) =
                         mfield
 ppExplanation (GlobSyntaxError field expl) =
     "In the '" ++ field ++ "' field: " ++ expl
+ppExplanation (RecursiveGlobInRoot field glob) =
+    "In the '" ++ field ++ "': glob '" ++ glob
+    ++ "' starts at project root directory, this might "
+    ++ "include `.git/`, ``dist-newstyle/``, or other large directories!"
 ppExplanation (InvalidOnWin paths) =
     "The " ++ quotes paths ++ " invalid on Windows, which "
       ++ "would cause portability problems for this package. Windows file "
@@ -1601,20 +1606,35 @@ checkPaths pkg =
   ++
   [ PackageDistInexcusable $
       GlobSyntaxError "data-files" (explainGlobSyntaxError pat err)
-  | pat <- dataFiles pkg
-  , Left err <- [parseFileGlob (specVersion pkg) pat]
+  | (Left err, pat) <- zip globsDataFiles $ dataFiles pkg
   ]
   ++
   [ PackageDistInexcusable
       (GlobSyntaxError "extra-source-files" (explainGlobSyntaxError pat err))
-  | pat <- extraSrcFiles pkg
-  , Left err <- [parseFileGlob (specVersion pkg) pat]
+  | (Left err, pat) <- zip globsExtraSrcFiles $ extraSrcFiles pkg
   ]
   ++
   [ PackageDistInexcusable $
       GlobSyntaxError "extra-doc-files" (explainGlobSyntaxError pat err)
-  | pat <- extraDocFiles pkg
-  , Left err <- [parseFileGlob (specVersion pkg) pat]
+  | (Left err, pat) <- zip globsExtraDocFiles $ extraDocFiles pkg
+  ]
+  ++
+  [ PackageDistSuspiciousWarn $
+      RecursiveGlobInRoot "data-files" pat
+  | (Right glob, pat) <- zip globsDataFiles $ dataFiles pkg
+  , isRecursiveInRoot glob
+  ]
+  ++
+  [ PackageDistSuspiciousWarn $
+      RecursiveGlobInRoot "extra-source-files" pat
+  | (Right glob, pat) <- zip globsExtraSrcFiles $ extraSrcFiles pkg
+  , isRecursiveInRoot glob
+  ]
+  ++
+  [ PackageDistSuspiciousWarn $
+      RecursiveGlobInRoot "extra-doc-files" pat
+  | (Right glob, pat) <- zip globsExtraDocFiles $ extraDocFiles pkg
+  , isRecursiveInRoot glob
   ]
   where
     isOutsideTree path = case splitDirectories path of
@@ -1655,6 +1675,12 @@ checkPaths pkg =
         [ (path, "extra-lib-dirs-static", PathKindDirectory) | path <- extraLibDirsStatic bi ]
       | bi <- allBuildInfo pkg
       ]
+    globsDataFiles :: [Either GlobSyntaxError Glob]
+    globsDataFiles =  parseFileGlob (specVersion pkg) <$> dataFiles pkg
+    globsExtraSrcFiles :: [Either GlobSyntaxError Glob]
+    globsExtraSrcFiles =  parseFileGlob (specVersion pkg) <$> extraSrcFiles pkg
+    globsExtraDocFiles :: [Either GlobSyntaxError Glob]
+    globsExtraDocFiles =  parseFileGlob (specVersion pkg) <$> extraDocFiles pkg
 
 --TODO: check sets of paths that would be interpreted differently between Unix
 -- and windows, ie case-sensitive or insensitive. Things that might clash, or
