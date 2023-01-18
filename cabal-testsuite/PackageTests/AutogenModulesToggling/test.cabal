@@ -14,7 +14,7 @@ extra-source-files:
 build-type: Custom
 
 custom-setup
-  setup-depends: Cabal >= 3.8, base, directory
+  setup-depends: Cabal >= 3.9, base, directory
 
 flag generate
   description:
