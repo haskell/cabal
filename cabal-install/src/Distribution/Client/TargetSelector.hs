@@ -713,21 +713,26 @@ reportTargetSelectorProblems verbosity problems = do
     case [ (t, m, ms) | MatchingInternalError t m ms <- problems ] of
       [] -> return ()
       ((target, originalMatch, renderingsAndMatches):_) ->
-        die' verbosity $ "Internal error in target matching. It should always "
-           ++ "be possible to find a syntax that's sufficiently qualified to "
-           ++ "give an unambiguous match. However when matching '"
-           ++ showTargetString target ++ "'  we found "
-           ++ showTargetSelector originalMatch
-           ++ " (" ++ showTargetSelectorKind originalMatch ++ ") which does "
-           ++ "not have an unambiguous syntax. The possible syntax and the "
-           ++ "targets they match are as follows:\n"
+        die' verbosity $ "Internal error in target matching: could not make an "
+           ++ "unambiguous fully qualified target selector for '"
+           ++ showTargetString target ++ "'.\n"
+           ++ "We made the target '" ++ showTargetSelector originalMatch ++ "' ("
+           ++ showTargetSelectorKind originalMatch ++ ") that was expected to "
+           ++ "be unambiguous but matches the following targets:\n"
            ++ unlines
-                [ "'" ++ showTargetString rendering ++ "' which matches "
-                  ++ intercalate ", "
+                [ "'" ++ showTargetString rendering ++ "', matching:"
+                  ++ concatMap ("\n  - " ++)
                        [ showTargetSelector match ++
                          " (" ++ showTargetSelectorKind match ++ ")"
                        | match <- matches ]
                 | (rendering, matches) <- renderingsAndMatches ]
+           ++ "\nNote: Cabal expects to be able to make a single fully "
+           ++ "qualified name for a target or provide a more specific error. "
+           ++ "Our failure to do so is a bug in cabal. "
+           ++ "Tracking issue: https://github.com/haskell/cabal/issues/8684"
+           ++ "\n\nHint: this may be caused by trying to build a package that "
+           ++ "exists in the project directory but is missing from "
+           ++ "the 'packages' stanza in your cabal project file."
 
     case [ (t, e, g) | TargetSelectorExpected t e g <- problems ] of
       []      -> return ()
