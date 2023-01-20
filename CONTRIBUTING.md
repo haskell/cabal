@@ -4,16 +4,19 @@ Building Cabal for hacking
 --------------------------
 
 The current recommended way of developing Cabal is to use the
-`v2-build` feature which [shipped in cabal-install-1.24](http://blog.ezyang.com/2016/05/announcing-cabal-new-build-nix-style-local-builds/).  Assuming
-that you have a sufficiently recent cabal-install (see above),
-it is sufficient to run:
+`v2-build` feature which [shipped in cabal-install-1.24](http://blog.ezyang.com/2016/05/announcing-cabal-new-build-nix-style-local-builds/).  If you use the latest version of cabal published on Hackage, it is sufficient to run:
 
 ```
 cabal v2-build cabal
 ```
 
-To build a local, development copy of cabal-install.  The location
-of your build products will vary depending on which version of
+If not, you aren't able to build the testsuite, so you need to disable the default `cabal.project` that implies configuring the testsuite, e.g., with:
+
+```
+cabal v2-build --project-file=cabal.project.release cabal
+```
+
+The location of your build products will vary depending on which version of
 cabal-install you use to build; see the documentation section
 [Where are my build products?](http://cabal.readthedocs.io/en/latest/nix-local-build.html#where-are-my-build-products)
 to find the binary (or just run `find -type f -executable -name cabal`).
