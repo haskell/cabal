@@ -258,9 +258,11 @@ packageDBParams dbs = "--package-db=clear"
 ------------------------------------------------------------------------
 -- * Running cabal
 
+-- cabal cmd args
 cabal :: String -> [String] -> TestM ()
 cabal cmd args = void (cabal' cmd args)
 
+-- cabal cmd args
 cabal' :: String -> [String] -> TestM Result
 cabal' = cabalG' []
 

@@ -563,6 +563,7 @@ data GhcDynLinkMode = GhcStaticOnly       -- ^ @-static@
 data GhcProfAuto = GhcProfAutoAll       -- ^ @-fprof-auto@
                  | GhcProfAutoToplevel  -- ^ @-fprof-auto-top@
                  | GhcProfAutoExported  -- ^ @-fprof-auto-exported@
+                 | GhcProfLate          -- ^ @-fprof-late
  deriving (Show, Eq)
 
 runGHC :: Verbosity -> ConfiguredProgram -> Compiler -> Platform  -> GhcOptions
@@ -633,6 +634,9 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
       Just GhcProfAutoAll
         | flagProfAuto implInfo -> ["-fprof-auto"]
         | otherwise             -> ["-auto-all"] -- not the same, but close
+      Just GhcProfLate
+        | flagProfLate implInfo -> ["-fprof-late"]
+        | otherwise             -> ["-fprof-auto-top"] -- not the same, not very close, but what we have.
       Just GhcProfAutoToplevel
         | flagProfAuto implInfo -> ["-fprof-auto-top"]
         | otherwise             -> ["-auto-all"]
