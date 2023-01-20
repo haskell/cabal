@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 -- | The test monad
@@ -72,7 +73,10 @@ import Distribution.Text
 import Distribution.Verbosity
 import Distribution.Version
 
-import Data.Monoid ((<>), mempty)
+#if !MIN_VERSION_base(4,11,0)
+import Data.Monoid ((<>))
+#endif
+import Data.Monoid (mempty)
 import qualified Control.Exception as E
 import Control.Monad
 import Control.Monad.Trans.Reader
@@ -100,8 +104,8 @@ data CommonArgs = CommonArgs {
 commonArgParser :: Parser CommonArgs
 commonArgParser = CommonArgs
     <$> optional (option str
-        ( help "Path to cabal-install executable to test"
-       Data.Monoid.<> long "with-cabal"
+        ( help "Path to cabal-install executable to test. If omitted, tests involving cabal-install are skipped!"
+       <> long "with-cabal"
        <> metavar "PATH"
         ))
     <*> optional (option str
