@@ -20,10 +20,8 @@ import qualified Data.ByteString.Char8 as BS8
 import Data.Char (isSpace)
 import System.IO
 
-import Distribution.Compiler              (CompilerFlavor(..), CompilerId(..))
 import Distribution.Package               (getHSLibraryName)
-import Distribution.Simple.Compiler       (compilerId)
-import Distribution.Simple.LocalBuildInfo (LocalBuildInfo, compiler, localUnitId)
+import Distribution.Simple.LocalBuildInfo (LocalBuildInfo, localUnitId)
 
 -- Almost a copypasta of Distribution.Simple.Program.Ar.wipeMetadata
 checkMetadata :: LocalBuildInfo -> FilePath -> IO ()
@@ -31,10 +29,6 @@ checkMetadata lbi dir = withBinaryFile path ReadMode $ \ h ->
   hFileSize h >>= checkArchive h
   where
     path = dir </> "lib" ++ getHSLibraryName (localUnitId lbi) ++ ".a"
-
-    _ghc_7_10 = case compilerId (compiler lbi) of
-      CompilerId GHC version | version >= mkVersion [7, 10]  -> True
-      _                                                      -> False
 
     checkError msg = assertFailure (
         "PackageTests.DeterministicAr.checkMetadata: " ++ msg ++
