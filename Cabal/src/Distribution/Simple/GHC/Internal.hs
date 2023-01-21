@@ -588,6 +588,7 @@ profDetailLevelFlag forLib mpl =
       ProfDetailExportedFunctions   -> toFlag GhcProfAutoExported
       ProfDetailToplevelFunctions   -> toFlag GhcProfAutoToplevel
       ProfDetailAllFunctions        -> toFlag GhcProfAutoAll
+      ProfDetailTopLate             -> toFlag GhcProfLate
       ProfDetailOther _             -> mempty
 
 

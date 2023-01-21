@@ -23,6 +23,7 @@ module Distribution.Simple.Glob (
         fileGlobMatches,
         parseFileGlob,
         explainGlobSyntaxError,
+        isRecursiveInRoot,
         Glob,
   ) where
 
@@ -336,3 +337,8 @@ splitConstantPrefix = unfoldr' step
   where
     step (GlobStem seg pat) = Right (seg, pat)
     step (GlobFinal pat) = Left pat
+
+
+isRecursiveInRoot :: Glob -> Bool
+isRecursiveInRoot (GlobFinal (FinalMatch Recursive _ _))  = True
+isRecursiveInRoot _ = False
