@@ -133,7 +133,7 @@ listbinAction flags@NixStyleFlags{..} args globalFlags = do
 
     case binfiles of
         []     -> die' verbosity "No target found"
-        [exe]  -> putStr $ withOutputMarker verbosity exe
+        [exe]  -> putStr $ withOutputMarker verbosity $ exe ++ "\n"
                     -- Andreas, 2023-01-13, issue #8400:
                     -- Regular output of `list-bin` should go to stdout unconditionally,
                     -- but for the sake of the testsuite, we want to mark it so it goes
@@ -141,6 +141,10 @@ listbinAction flags@NixStyleFlags{..} args globalFlags = do
                     -- Note: 'withOutputMarker' only checks 'isVerboseMarkOutput',
                     -- thus, we can reuse @verbosity@ here, even if other components
                     -- of @verbosity@ may be wrong (like 'VStderr', verbosity level etc.).
+                    -- Andreas, 2023-01-20:
+                    -- Appending the newline character here rather than using 'putStrLn'
+                    -- because an active 'withOutputMarker' produces text that ends
+                    -- in newline characters.
         _ -> die' verbosity "Multiple targets found"
   where
     defaultVerbosity = verboseStderr silent
