@@ -567,6 +567,11 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
                       , toNubListR (cxxSources libBi)
                       , toNubListR (cmmSources libBi)
                       , toNubListR (asmSources libBi)
+                      , toNubListR (jsSources  libBi)
+                        -- JS files are C-like with GHC's JS backend: they are
+                        -- "compiled" into `.o` files (renamed with a header).
+                        -- This is a difference from GHCJS, for which we only
+                        -- pass the JS files at link time.
                       ]
       cLikeObjs   = map (`replaceExtension` objExtension) cLikeSources
       baseOpts    = componentGhcOptions verbosity lbi libBi clbi libTargetDir
@@ -723,6 +728,25 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
              whenSharedLib forceSharedLib (runGhcProgIfNeeded sharedCcOpts)
            unless forRepl $ whenProfLib (runGhcProgIfNeeded profCcOpts)
       | filename <- cSources libBi]
+
+  -- build any JS sources
+  unless (not has_code || null (jsSources libBi)) $ do
+    info verbosity "Building JS Sources..."
+    sequence_
+      [ do let vanillaJsOpts = Internal.componentJsGhcOptions verbosity implInfo
+                               lbi libBi clbi relLibTargetDir filename
+               profJsOpts    = vanillaJsOpts `mappend` mempty {
+                                 ghcOptProfilingMode = toFlag True,
+                                 ghcOptObjSuffix     = toFlag "p_o"
+                               }
+               odir          = fromFlag (ghcOptObjDir vanillaJsOpts)
+           createDirectoryIfMissingVerbose verbosity True odir
+           let runGhcProgIfNeeded jsOpts = do
+                 needsRecomp <- checkNeedsRecompilation filename jsOpts
+                 when needsRecomp $ runGhcProg jsOpts
+           runGhcProgIfNeeded vanillaJsOpts
+           unless forRepl $ whenProfLib (runGhcProgIfNeeded profJsOpts)
+      | filename <- jsSources libBi]
 
   -- build any ASM sources
   unless (not has_code || null (asmSources libBi)) $ do
@@ -2063,6 +2087,7 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir pkg lib clbi = do
                    && null (cxxSources (libBuildInfo lib))
                    && null (cmmSources (libBuildInfo lib))
                    && null (asmSources (libBuildInfo lib))
+                   && null (jsSources (libBuildInfo lib))
     has_code = not (componentIsIndefinite clbi)
     whenHasCode = when has_code
     whenVanilla = when (hasLib && withVanillaLib lbi)
