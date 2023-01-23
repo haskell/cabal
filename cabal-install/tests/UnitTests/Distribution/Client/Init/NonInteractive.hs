@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 module UnitTests.Distribution.Client.Init.NonInteractive
   ( tests
   ) where
@@ -24,6 +25,8 @@ import Data.List (foldl')
 import qualified Data.Set as Set
 import Distribution.Client.Init.Utils (mkPackageNameDep, mkStringyDep)
 import Distribution.FieldGrammar.Newtypes
+import Distribution.Simple.Command
+import Distribution.Client.Setup (initCommand)
 
 tests
     :: Verbosity
@@ -42,6 +45,9 @@ tests _v _initFlags comp pkgIx srcDb =
       ]
     , testGroup "non-interactive tests"
       [ nonInteractiveTests pkgIx srcDb comp
+      ]
+    , testGroup "cli parser tests"
+      [ cliListParserTests
       ]
     ]
 
@@ -1265,3 +1271,136 @@ testGo label f g h inputs = testCase label $
   case (_runPrompt $ f emptyFlags) (NEL.fromList inputs) of
     Left  x -> g x
     Right x -> h x
+
+cliListParserTests :: TestTree
+cliListParserTests = testGroup "cli list parser"
+  [ testCase "Single extraSrc" $ do
+      flags <- runParserTest ["-x", "Generated.hs"]
+      flags @?= emptyFlags
+        { extraSrc = Flag ["Generated.hs"]
+        }
+  , testCase "Multiple extraSrc" $ do
+      flags <- runParserTest ["-x", "Gen1.hs", "-x", "Gen2.hs", "-x", "Gen3.hs"]
+      flags @?= emptyFlags
+        { extraSrc = Flag ["Gen1.hs", "Gen2.hs", "Gen3.hs"]
+        }
+  , testCase "Single extraDoc" $ do
+      flags <- runParserTest ["--extra-doc-file", "README"]
+      flags @?= emptyFlags
+        { extraDoc = Flag $ ["README"]
+        }
+  , testCase "Multiple extraDoc" $ do
+      flags <- runParserTest ["--extra-doc-file", "README",
+                              "--extra-doc-file", "CHANGELOG",
+                              "--extra-doc-file", "LICENSE"]
+      flags @?= emptyFlags
+        { extraDoc = Flag $ map fromString ["README", "CHANGELOG", "LICENSE"]
+        }
+  , testCase "Single exposedModules" $ do
+      flags <- runParserTest ["-o", "Test"]
+      flags @?= emptyFlags
+        { exposedModules = Flag $ map fromString ["Test"]
+        }
+  , testCase "Multiple exposedModules" $ do
+      flags <- runParserTest ["-o", "Test", "-o", "Test2", "-o", "Test3"]
+      flags @?= emptyFlags
+        { exposedModules = Flag $ map fromString ["Test", "Test2", "Test3"]
+        }
+  -- there is no otherModules cli flag
+  -- , testCase "Single otherModules" $ do
+  --     flags <- runParserTest ["-o", "Test"]
+  --     flags @?= dummyFlags
+  --       { otherModules = Flag $ map fromString ["Test"]
+  --       }
+  -- , testCase "Multiple otherModules" $ do
+  --     flags <- runParserTest ["-o", "Test", "-o", "Test2", "-o", "Test3"]
+  --     flags @?= dummyFlags
+  --       { otherModules = Flag $ map fromString ["Test", "Test2", "Test3"]
+  --       }
+  , testCase "Single otherExts" $ do
+      flags <- runParserTest ["--extension", "OverloadedStrings"]
+      flags @?= emptyFlags
+        { otherExts = Flag [EnableExtension OverloadedStrings]
+        }
+  , testCase "Multiple otherExts" $ do
+      flags <- runParserTest ["--extension", "OverloadedStrings",
+                              "--extension", "FlexibleInstances",
+                              "--extension", "FlexibleContexts"]
+      flags @?= emptyFlags
+        { otherExts = Flag [EnableExtension OverloadedStrings,
+                            EnableExtension FlexibleInstances,
+                            EnableExtension FlexibleContexts]
+        }
+  , testCase "Single dependency" $ do
+      flags <- runParserTest ["-d", "base"]
+      flags @?= emptyFlags
+        { dependencies = Flag [mkStringyDep "base"]
+        }
+  , testCase "Multiple dependency flags" $ do
+      flags <- runParserTest ["-d", "base", "-d", "vector"]
+      flags @?= emptyFlags
+        { dependencies = Flag $ fmap mkStringyDep ["base", "vector"]
+        }
+  , testCase "Comma separated list of dependencies" $ do
+      flags <- runParserTest ["-d", "base,vector"]
+      flags @?= emptyFlags
+        { dependencies = Flag $ fmap mkStringyDep ["base", "vector"]
+        }
+  , testCase "Single applicationDirs" $ do
+      flags <- runParserTest ["--application-dir", "app"]
+      flags @?= emptyFlags
+        { applicationDirs = Flag ["app"]
+        }
+  , testCase "Multiple applicationDirs" $ do
+      flags <- runParserTest ["--application-dir", "app",
+                              "--application-dir", "exe",
+                              "--application-dir", "srcapp"]
+      flags @?= emptyFlags
+        { applicationDirs = Flag ["app", "exe", "srcapp"]
+        }
+  , testCase "Single sourceDirs" $ do
+      flags <- runParserTest ["--source-dir", "src"]
+      flags @?= emptyFlags
+        { sourceDirs = Flag ["src"]
+        }
+  , testCase "Multiple sourceDirs" $ do
+      flags <- runParserTest ["--source-dir", "src",
+                              "--source-dir", "lib",
+                              "--source-dir", "sources"]
+      flags @?= emptyFlags
+        { sourceDirs = Flag ["src", "lib", "sources"]
+        }
+  , testCase "Single buildTools" $ do
+      flags <- runParserTest ["--build-tool", "happy"]
+      flags @?= emptyFlags
+        { buildTools = Flag ["happy"]
+        }
+  , testCase "Multiple buildTools" $ do
+      flags <- runParserTest ["--build-tool", "happy",
+                              "--build-tool", "alex",
+                              "--build-tool", "make"]
+      flags @?= emptyFlags
+        { buildTools = Flag ["happy", "alex", "make"]
+        }
+  , testCase "Single testDirs" $ do
+      flags <- runParserTest ["--test-dir", "test"]
+      flags @?= emptyFlags
+        { testDirs = Flag ["test"]
+        }
+  , testCase "Multiple testDirs" $ do
+      flags <- runParserTest ["--test-dir", "test",
+                              "--test-dir", "tests",
+                              "--test-dir", "testsuite"]
+      flags @?= emptyFlags
+        { testDirs = Flag ["test", "tests", "testsuite"]
+        }
+  ]
+  where
+    assumeAllParse :: CommandParse (InitFlags -> InitFlags, [String]) -> IO InitFlags
+    assumeAllParse = \case
+      CommandReadyToGo (flagsF, []) -> pure (flagsF emptyFlags)
+      _ -> assertFailure "Expected successful parse"
+
+    runParserTest :: [String] -> IO InitFlags
+    runParserTest opts = do
+      assumeAllParse $ commandParseArgs initCommand False opts
