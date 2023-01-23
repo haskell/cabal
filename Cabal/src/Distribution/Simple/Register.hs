@@ -466,8 +466,7 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
                              || not (null (asmSources bi))
                              || not (null (cmmSources bi))
                              || not (null (cxxSources bi))
-                             || (not (null (jsSources bi)) &&
-                                compilerFlavor comp == GHCJS))
+                             || not (null (jsSources bi)))
                && not (componentIsIndefinite clbi)
     libdirsStatic
       | hasLibrary = libdir installDirs : extraLibDirsStaticOrFallback

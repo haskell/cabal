@@ -7,8 +7,8 @@ How to run
 1. Build `cabal-testsuite` (`cabal build cabal-testsuite:cabal-tests`)
 2. Run the `cabal-tests` executable. It will scan for all tests
    in your current directory and subdirectories and run them.
-   To run a specific set of tests, use `cabal-tests PATH ...`.
-   (e.g. `cabal run cabal-testsuite:cabal-tests -- cabal-testsuite/PackageTests/TestOptions/setup.test.hs`)
+   To run a specific set of tests, use `cabal-tests --with-cabal=CABALBIN PATH ...`.
+   (e.g. `cabal run cabal-testsuite:cabal-tests -- --with-cabal=cabal cabal-testsuite/PackageTests/TestOptions/setup.test.hs`)
    You can control parallelism using the `-j` flag.
 
 There are a few useful flags:
