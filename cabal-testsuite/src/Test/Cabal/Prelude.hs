@@ -28,7 +28,7 @@ import Distribution.Simple.PackageDescription (readGenericPackageDescription)
 import Distribution.Simple.Program.Types
 import Distribution.Simple.Program.Db
 import Distribution.Simple.Program
-import Distribution.System (OS(Windows,Linux,OSX), buildOS)
+import Distribution.System (OS(Windows,Linux,OSX), Arch(JavaScript), buildOS, buildArch)
 import Distribution.Simple.Utils
     ( withFileContents, withTempDirectory, tryFindPackageDesc )
 import Distribution.Simple.Configure
@@ -889,7 +889,13 @@ skipUnlessGhcVersion :: String -> TestM ()
 skipUnlessGhcVersion range = skipUnless ("needs ghc " ++ range) =<< isGhcVersion range
 
 skipIfGhcVersion :: String -> TestM ()
-skipIfGhcVersion range = skipUnless ("incompatible with ghc " ++ range) =<< isGhcVersion range
+skipIfGhcVersion range = skipIf ("incompatible with ghc " ++ range) =<< isGhcVersion range
+
+skipUnlessJavaScript :: TestM ()
+skipUnlessJavaScript = skipUnless "needs the JavaScript backend" =<< isJavaScript
+
+skipIfJavaScript :: TestM ()
+skipIfJavaScript = skipIf "incompatible with the JavaScript backend" =<< isJavaScript
 
 isWindows :: TestM Bool
 isWindows = return (buildOS == Windows)
@@ -899,6 +905,11 @@ isOSX = return (buildOS == OSX)
 
 isLinux :: TestM Bool
 isLinux = return (buildOS == Linux)
+
+isJavaScript :: TestM Bool
+isJavaScript = return (buildArch == JavaScript)
+  -- should probably be `hostArch` but Cabal doesn't distinguish build platform
+  -- and host platform
 
 skipIfWindows :: TestM ()
 skipIfWindows = skipIf "Windows" =<< isWindows

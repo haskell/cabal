@@ -64,7 +64,6 @@ main = cabalTest $ do
         results <- forM (zip [0..] lrun) $ \(idx, linking) -> do
             withDirectory "basic" $ do
                 withSourceCopyDir ("basic" ++ show idx) $ do
-                    cwd <- fmap testSourceCopyDir getTestEnv
                     -- (Now do ‘cd ..’, since withSourceCopyDir made our previous
                     -- previous such withDirectories now accumulate to be
                     -- relative to setup.dist/basic0, not testSourceDir
