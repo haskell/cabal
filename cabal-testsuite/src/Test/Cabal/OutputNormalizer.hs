@@ -27,6 +27,7 @@ normalizeOutput nenv =
     -- Install path frequently has architecture specific elements, so
     -- nub it out
   . resub "Installing (.+) in .+" "Installing \\1 in <PATH>"
+  . resub "  error, called at .*" "<CABAL_ERROR>"
     -- Things that look like libraries
   . resub "libHS[A-Za-z0-9.-]+\\.(so|dll|a|dynlib)" "<LIBRARY>"
     -- look for PackageHash directories
