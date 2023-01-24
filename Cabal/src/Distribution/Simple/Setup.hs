@@ -529,7 +529,7 @@ configureOptions showOrParseArgs =
 
       ,option "" ["profiling-detail"]
          ("Profiling detail level for executable and library (default, " ++
-          "none, exported-functions, toplevel-functions,  all-functions).")
+          "none, exported-functions, toplevel-functions,  all-functions, late).")
          configProfDetail (\v flags -> flags { configProfDetail = v })
          (reqArg' "level" (Flag . flagToProfDetailLevel)
                           showProfDetailLevelFlag)

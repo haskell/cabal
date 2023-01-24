@@ -134,6 +134,14 @@ type ArgPlaceHolder = String
 
 -- | Create an option taking a single OptDescr.
 --   No explicit Name is given for the Option, the name is the first LFlag given.
+--
+-- Example: @'option' sf lf d get set@
+-- * @sf@: Short option name, for example: @[\'d\']@. No hyphen permitted.
+-- * @lf@: Long option name, for example: @["debug"]@. No hyphens permitted.
+-- * @d@: Description of the option, shown to the user in help messages.
+-- * @get@: Get the current value of the flag.
+-- * @set@: Set the value of the flag. Gets the current value of the flag as a
+--          parameter.
 option :: SFlags -> LFlags -> Description -> get -> set -> MkOptDescr get set a
           -> OptionField a
 option sf lf@(n:_) d get set arg = OptionField n [arg sf lf d get set]
@@ -153,6 +161,15 @@ type MkOptDescr get set a = SFlags -> LFlags -> Description -> get -> set
                             -> OptDescr a
 
 -- | Create a string-valued command line interface.
+-- Usually called in the context of 'option' or 'multiOption'.
+--
+-- Example: @'reqArg' ad mkflag showflag@
+--
+-- * @ad@: Placeholder shown to the user, e.g. @"FILES"@ if files are expected
+--         parameters.
+-- * @mkflag@: How to parse the argument into the option.
+-- * @showflag@: If parsing goes wrong, display a useful error message to
+--               the user.
 reqArg :: Monoid b => ArgPlaceHolder -> ReadE b -> (b -> [String])
                    -> MkOptDescr (a -> b) (b -> a -> a) a
 reqArg ad mkflag showflag sf lf d get set =
