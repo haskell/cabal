@@ -935,7 +935,7 @@ getPackageSourceHashes verbosity withRepoCtx solverPlan = do
               _            -> Right (pkgid, repo)
           | (pkgid, RepoTarballPackage repo _ _) <- allPkgLocations ]
 
-    (repoTarballPkgsWithMetadata, repoTarballPkgsToRedownload) <- fmap partitionEithers $
+    (repoTarballPkgsWithMetadata, repoTarballPkgsToDownloadWithMeta) <- fmap partitionEithers $
       liftIO $ withRepoCtx $ \repoctx -> forM repoTarballPkgsWithMetadataUnvalidated $
         \x@(pkg, repo) -> verifyFetchedTarball verbosity repoctx repo pkg >>= \b -> case b of
                           True -> return $ Left x
@@ -944,7 +944,7 @@ getPackageSourceHashes verbosity withRepoCtx solverPlan = do
     -- For tarballs from repos that do not have hashes available we now have
     -- to check if the packages were downloaded already.
     --
-    (repoTarballPkgsToDownload',
+    (repoTarballPkgsToDownloadWithNoMeta,
      repoTarballPkgsDownloaded)
       <- fmap partitionEithers $
          liftIO $ sequence
@@ -954,7 +954,7 @@ getPackageSourceHashes verbosity withRepoCtx solverPlan = do
                   Just tarball -> return (Right (pkgid, tarball))
            | (pkgid, repo) <- repoTarballPkgsWithoutMetadata ]
 
-    let repoTarballPkgsToDownload = repoTarballPkgsToRedownload ++ repoTarballPkgsToDownload'
+    let repoTarballPkgsToDownload = repoTarballPkgsToDownloadWithMeta ++ repoTarballPkgsToDownloadWithNoMeta
     (hashesFromRepoMetadata,
      repoTarballPkgsNewlyDownloaded) <-
       -- Avoid having to initialise the repository (ie 'withRepoCtx') if we
