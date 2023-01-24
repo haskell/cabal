@@ -131,25 +131,29 @@ verifyFetchedTarball verbosity repoCtxt repo pkgid =
          case res of
            Left e -> warn verbosity ("Error verifying fetched tarball " ++ file ++ ", will redownload: " ++ show (e :: SomeException)) >> pure False
            Right b -> pure b
-   in handleError $ case repo of
-           -- a secure repo has hashes we can compare against to confirm this is the correct file.
-           RepoSecure{} ->
-             repoContextWithSecureRepo repoCtxt repo $ \repoSecure ->
-                  Sec.withIndex repoSecure $ \callbacks ->
-                    let warnAndFail s = warn verbosity ("Fetched tarball " ++ file ++ " does not match server, will redownload: " ++ s) >> return False
-                    -- the do block in parens is due to dealing with the checked exceptions mechanism.
-                    in (do fileInfo <- Sec.indexLookupFileInfo callbacks pkgid
-                           sz <- Sec.FileLength . fromInteger <$> getFileSize file
-                           if sz /= Sec.fileInfoLength (Sec.trusted fileInfo)
-                             then warnAndFail "file length mismatch"
-                             else do
-                               res <- Sec.compareTrustedFileInfo (Sec.trusted fileInfo) <$> Sec.computeFileInfo (Sec.Path file :: Sec.Path Sec.Absolute)
-                               if res
-                                 then pure True
-                                 else warnAndFail "file hash mismatch")
+   in handleError $ do
+        exists <- doesFileExist file
+        if not exists
+          then return False
+          else case repo of
+            -- a secure repo has hashes we can compare against to confirm this is the correct file.
+                RepoSecure{} ->
+                 repoContextWithSecureRepo repoCtxt repo $ \repoSecure ->
+                   Sec.withIndex repoSecure $ \callbacks ->
+                     let warnAndFail s = warn verbosity ("Fetched tarball " ++ file ++ " does not match server, will redownload: " ++ s) >> return False
+                     -- the do block in parens is due to dealing with the checked exceptions mechanism.
+                     in (do fileInfo <- Sec.indexLookupFileInfo callbacks pkgid
+                            sz <- Sec.FileLength . fromInteger <$> getFileSize file
+                            if sz /= Sec.fileInfoLength (Sec.trusted fileInfo)
+                              then warnAndFail "file length mismatch"
+                              else do
+                                res <- Sec.compareTrustedFileInfo (Sec.trusted fileInfo) <$> Sec.computeFileInfo (Sec.Path file :: Sec.Path Sec.Absolute)
+                                if res
+                                  then pure True
+                                  else warnAndFail "file hash mismatch")
                        `Sec.catchChecked` (\(e :: Sec.InvalidPackageException) -> warnAndFail (show e))
                        `Sec.catchChecked` (\(e :: Sec.VerificationError) -> warnAndFail (show e))
-           _ -> pure True
+                _ -> pure True
 
 -- | Fetch a package if we don't have it already.
 --
