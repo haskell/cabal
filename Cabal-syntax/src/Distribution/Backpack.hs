@@ -114,7 +114,7 @@ instance Pretty OpenUnitId where
 -- |
 --
 -- >>> eitherParsec "foobar" :: Either String OpenUnitId
---Right (DefiniteUnitId (DefUnitId {unDefUnitId = UnitId "foobar"}))
+-- Right (DefiniteUnitId (DefUnitId {unDefUnitId = UnitId "foobar"}))
 --
 -- >>> eitherParsec "foo[Str=text-1.2.3:Data.Text.Text]" :: Either String OpenUnitId
 -- Right (IndefFullUnitId (ComponentId "foo") (fromList [(ModuleName "Str",OpenModule (DefiniteUnitId (DefUnitId {unDefUnitId = UnitId "text-1.2.3"})) (ModuleName "Data.Text.Text"))]))
