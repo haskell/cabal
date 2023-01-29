@@ -286,8 +286,7 @@ cabalVersionPrompt flags = getCabalVersion flags $ do
 
     displayCabalVersion :: CabalSpecVersion -> String
     displayCabalVersion v = case v of
-      CabalSpecV1_24 -> "1.24  (legacy)"
-      CabalSpecV2_0  -> "2.0   (+ support for Backpack, internal sub-libs, '^>=' operator)"
+      CabalSpecV2_0  -> "2.0   (support for Backpack, internal sub-libs, '^>=' operator)"
       CabalSpecV2_2  -> "2.2   (+ support for 'common', 'elif', redundant commas, SPDX)"
       CabalSpecV2_4  -> "2.4   (+ support for '**' globbing)"
       CabalSpecV3_0  -> "3.0   (+ set notation for ==, common stanzas in ifs, more redundant commas, better pkgconfig-depends)"
