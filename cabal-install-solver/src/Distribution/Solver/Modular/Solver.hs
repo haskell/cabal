@@ -67,6 +67,7 @@ data SolverConfig = SolverConfig {
   shadowPkgs             :: ShadowPkgs,
   strongFlags            :: StrongFlags,
   allowBootLibInstalls   :: AllowBootLibInstalls,
+  nonInstallablePackages :: [PackageName],
   onlyConstrained        :: OnlyConstrained,
   maxBackjumps           :: Maybe Int,
   enableBackjumping      :: EnableBackjumping,
@@ -142,7 +143,7 @@ solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
     prunePhase       = (if asBool (avoidReinstalls sc) then P.avoidReinstalls (const True) else id) .
                        (if asBool (allowBootLibInstalls sc)
                         then id
-                        else P.requireInstalled (`elem` nonInstallable)) .
+                        else P.requireInstalled (`elem` nonInstallablePackages sc)) .
                        (case onlyConstrained sc of
                           OnlyConstrainedAll ->
                             P.onlyConstrained pkgIsExplicit
@@ -154,23 +155,6 @@ solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
 
     pkgIsExplicit :: PN -> Bool
     pkgIsExplicit pn = S.member pn allExplicit
-
-    -- packages that can never be installed or upgraded
-    -- If you change this enumeration, make sure to update the list in
-    -- "Distribution.Client.Dependency" as well
-    nonInstallable :: [PackageName]
-    nonInstallable =
-        L.map mkPackageName
-             [ "base"
-             , "ghc-bignum"
-             , "ghc-prim"
-             , "ghc-boot"
-             , "ghc"
-             , "ghci"
-             , "integer-gmp"
-             , "integer-simple"
-             , "template-haskell"
-             ]
 
     -- When --reorder-goals is set, we use preferReallyEasyGoalChoices, which
     -- prefers (keeps) goals only if the have 0 or 1 enabled choice.
