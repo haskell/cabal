@@ -568,7 +568,7 @@ mkHaddockArgs verbosity tmp lbi clbi htmlTemplate haddockVersion inFiles bi = do
           , ghcOptFPic = toFlag True
           , ghcOptHiSuffix = toFlag "dyn_hi"
           , ghcOptObjSuffix = toFlag "dyn_o"
-          , ghcOptExtra = hcSharedOptions GHC bi
+          , ghcOptExtra = hcOptions GHC bi ++ hcSharedOptions GHC bi
           }
   opts <-
     if withVanillaLib lbi
