@@ -1,12 +1,11 @@
 import Test.Cabal.Prelude
 
 main = cabalTest $ do
-    -- your test code here
     res <- cabal' "run" ["foo", "+RTS"]
-    assertOutputContains       "Warning" res
+    assertOutputContains "Warning: Your RTS options" res
 
     res <- cabal' "run" ["foo", "+RTS", "--"]
-    assertOutputContains       "Warning" res
+    assertOutputContains "Warning: Your RTS options" res
 
     res <- cabal' "run" ["foo", "--", "+RTS"]
-    assertOutputDoesNotContain "Warning" res
+    assertOutputDoesNotContain "Warning: Your RTS options" res

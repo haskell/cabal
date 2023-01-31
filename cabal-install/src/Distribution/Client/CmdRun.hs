@@ -47,7 +47,7 @@ import Distribution.Types.ComponentName
 import Distribution.Verbosity
          ( normal, silent )
 import Distribution.Simple.Utils
-         ( wrapText, die', info, notice, safeHead )
+         ( wrapText, die', info, notice, safeHead, warn )
 import Distribution.Client.ProjectPlanning
          ( ElaboratedConfiguredPackage(..)
          , ElaboratedInstallPlan, binDirectoryFor )
@@ -65,8 +65,12 @@ import Distribution.Types.UnitId
 import Distribution.Client.ScriptUtils
          ( AcceptNoTargets(..), withContextAndSelectors, updateContextAndWriteProjectFile, TargetContext(..) )
 
-import Data.List (group)
+import Data.List (elemIndex, group)
 import qualified Data.Set as Set
+
+import GHC.Environment 
+         ( getFullArgs )
+
 import System.Directory
          ( doesFileExist )
 import System.FilePath
@@ -138,6 +142,13 @@ runAction flags@NixStyleFlags {..} targetAndArgs globalFlags
                   "The run command does not support '--only-dependencies'. "
                ++ "You may wish to use 'build --only-dependencies' and then "
                ++ "use 'run'."
+            
+            fullArgs <- getFullArgs
+            when (occursOnlyOrBefore fullArgs "+RTS" "--") $
+              warn verbosity $
+                  "Your RTS options are applied to cabal, not the executable. "
+               ++ "Use 'cabal run -- +RTS -N' to pass the RTS options "
+               ++ "to your executable."
 
             -- Interpret the targets on the command line as build targets
             -- (as opposed to say repl or haddock targets).
@@ -462,3 +473,10 @@ renderRunProblem (TargetProblemNoExes targetSelector) =
  ++ " because "
  ++ plural (targetSelectorPluralPkgs targetSelector) "it does" "they do"
  ++ " not contain any executables."
+
+-- True if x occurs before y
+occursOnlyOrBefore :: (Eq a) => [a] -> a -> a -> Bool
+occursOnlyOrBefore xs x y = case (elemIndex x xs, elemIndex y xs) of
+                       (Just i, Just j) -> i < j
+                       (Just _, _) -> True
+                       _ -> False
