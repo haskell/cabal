@@ -68,7 +68,7 @@ import Distribution.Client.ScriptUtils
 import Data.List (elemIndex, group)
 import qualified Data.Set as Set
 
-import GHC.Environment 
+import GHC.Environment
          ( getFullArgs )
 
 import System.Directory
@@ -142,7 +142,7 @@ runAction flags@NixStyleFlags {..} targetAndArgs globalFlags
                   "The run command does not support '--only-dependencies'. "
                ++ "You may wish to use 'build --only-dependencies' and then "
                ++ "use 'run'."
-            
+
             fullArgs <- getFullArgs
             when (occursOnlyOrBefore fullArgs "+RTS" "--") $
               warn verbosity $
