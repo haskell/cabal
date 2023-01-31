@@ -174,6 +174,9 @@ configure verbosity hcPath hcPkgPath conf0 = do
         ++ " is version "
         ++ prettyShow ghcVersion
 
+  ghcInfo <- Internal.getGhcInfo verbosity implInfo ghcProg
+  let ghcInfoMap = Map.fromList ghcInfo
+
   -- This is slightly tricky, we have to configure ghc first, then we use the
   -- location of ghc to help find ghc-pkg in the case that the user did not
   -- specify the location of ghc-pkg directly:
@@ -181,7 +184,7 @@ configure verbosity hcPath hcPkgPath conf0 = do
     requireProgramVersion
       verbosity
       ghcPkgProgram
-        { programFindLocation = guessGhcPkgFromGhcPath ghcProg
+        { programFindLocation = guessGhcPkgFromGhcPath ghcProg ghcInfoMap
         }
       anyVersion
       (userMaybeSpecifyPath "ghc-pkg" hcPkgPath progdb1)
@@ -192,19 +195,19 @@ configure verbosity hcPath hcPkgPath conf0 = do
   -- Likewise we try to find the matching hsc2hs and haddock programs.
   let hsc2hsProgram' =
         hsc2hsProgram
-          { programFindLocation = guessHsc2hsFromGhcPath ghcProg
+          { programFindLocation = guessHsc2hsFromGhcPath ghcProg ghcInfoMap
           }
       haddockProgram' =
         haddockProgram
-          { programFindLocation = guessHaddockFromGhcPath ghcProg
+          { programFindLocation = guessHaddockFromGhcPath ghcProg ghcInfoMap
           }
       hpcProgram' =
         hpcProgram
-          { programFindLocation = guessHpcFromGhcPath ghcProg
+          { programFindLocation = guessHpcFromGhcPath ghcProg ghcInfoMap
           }
       runghcProgram' =
         runghcProgram
-          { programFindLocation = guessRunghcFromGhcPath ghcProg
+          { programFindLocation = guessRunghcFromGhcPath ghcProg ghcInfoMap
           }
       progdb3 =
         addKnownProgram haddockProgram' $
@@ -215,9 +218,7 @@ configure verbosity hcPath hcPkgPath conf0 = do
   languages <- Internal.getLanguages verbosity implInfo ghcProg
   extensions0 <- Internal.getExtensions verbosity implInfo ghcProg
 
-  ghcInfo <- Internal.getGhcInfo verbosity implInfo ghcProg
-  let ghcInfoMap = Map.fromList ghcInfo
-      filterJS = if ghcVersion < mkVersion [9, 8] then filterExt JavaScriptFFI else id
+  let filterJS = if ghcVersion < mkVersion [9, 8] then filterExt JavaScriptFFI else id
       extensions =
         -- workaround https://gitlab.haskell.org/ghc/ghc/-/issues/11214
         filterJS $
@@ -257,6 +258,29 @@ configure verbosity hcPath hcPkgPath conf0 = do
       progdb4 = Internal.configureToolchain implInfo ghcProg ghcInfoMap progdb3
   return (comp, compPlatform, progdb4)
 
+type GhcInfo = Map String String
+
+resloveGhcPath :: ConfiguredProgram -> GhcInfo -> FilePath
+resloveGhcPath ghcProg ghcInfo = fromMaybe (programPath ghcProg) realGhcPath
+  where
+    realGhcPath :: Maybe FilePath
+    --
+    -- This will give us the path to the actual `ghc` executable when `doctest`
+    -- is invoked via `cabal repl --with-ghc=doctest`.
+    --
+    -- Context:
+    --
+    -- If `doctest` is invoked via `cabal repl` it acts as a proxy for `ghc`.
+    -- It forwards all non-interactive invocations to `ghc` and only takes
+    -- responsibility when invoked with `--interactive`.  On `--info` it
+    -- augments the result of `ghc --info` with three additional fields:
+    --
+    -- 1. ghc: The path to the `ghc` executable that is used by `doctest`.
+    -- 2. ghc_version: The version of `ghc`
+    -- 3. version: The version of `doctest` itself.
+    --
+    realGhcPath = Map.lookup "ghc" ghcInfo
+
 -- | Given something like /usr/local/bin/ghc-6.6.1(.exe) we try and find
 -- the corresponding tool; e.g. if the tool is ghc-pkg, we try looking
 -- for a versioned or unversioned ghc-pkg in the same dir, that is:
@@ -267,13 +291,14 @@ configure verbosity hcPath hcPkgPath conf0 = do
 guessToolFromGhcPath
   :: Program
   -> ConfiguredProgram
+  -> GhcInfo
   -> Verbosity
   -> ProgramSearchPath
   -> IO (Maybe (FilePath, [FilePath]))
-guessToolFromGhcPath tool ghcProg verbosity searchpath =
+guessToolFromGhcPath tool ghcProg ghcInfo verbosity searchpath =
   do
     let toolname = programName tool
-        given_path = programPath ghcProg
+        given_path = resloveGhcPath ghcProg ghcInfo
         given_dir = takeDirectory given_path
     real_path <- canonicalizePath given_path
     let real_dir = takeDirectory real_path
@@ -337,6 +362,7 @@ guessToolFromGhcPath tool ghcProg verbosity searchpath =
 -- > /usr/local/bin/ghc-pkg(.exe)
 guessGhcPkgFromGhcPath
   :: ConfiguredProgram
+  -> GhcInfo
   -> Verbosity
   -> ProgramSearchPath
   -> IO (Maybe (FilePath, [FilePath]))
@@ -351,6 +377,7 @@ guessGhcPkgFromGhcPath = guessToolFromGhcPath ghcPkgProgram
 -- > /usr/local/bin/hsc2hs(.exe)
 guessHsc2hsFromGhcPath
   :: ConfiguredProgram
+  -> GhcInfo
   -> Verbosity
   -> ProgramSearchPath
   -> IO (Maybe (FilePath, [FilePath]))
@@ -365,6 +392,7 @@ guessHsc2hsFromGhcPath = guessToolFromGhcPath hsc2hsProgram
 -- > /usr/local/bin/haddock(.exe)
 guessHaddockFromGhcPath
   :: ConfiguredProgram
+  -> GhcInfo
   -> Verbosity
   -> ProgramSearchPath
   -> IO (Maybe (FilePath, [FilePath]))
@@ -372,6 +400,7 @@ guessHaddockFromGhcPath = guessToolFromGhcPath haddockProgram
 
 guessHpcFromGhcPath
   :: ConfiguredProgram
+  -> GhcInfo
   -> Verbosity
   -> ProgramSearchPath
   -> IO (Maybe (FilePath, [FilePath]))
@@ -379,6 +408,7 @@ guessHpcFromGhcPath = guessToolFromGhcPath hpcProgram
 
 guessRunghcFromGhcPath
   :: ConfiguredProgram
+  -> GhcInfo
   -> Verbosity
   -> ProgramSearchPath
   -> IO (Maybe (FilePath, [FilePath]))
