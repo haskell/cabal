@@ -402,7 +402,7 @@ dontUpgradeNonUpgradeablePackages params =
                 . InstalledPackageIndex.lookupPackageName
                                  (depResolverInstalledPkgIndex params)
 
--- NOTE: the lists of non-upgradable and non-installable packages use to be
+-- NOTE: the lists of non-upgradable and non-installable packages used to be
 -- respectively in this module and in `Distribution.Solver.Modular.Solver`.
 -- Since they were kept synced, they are now combined in the following list.
 --
