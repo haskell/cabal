@@ -2135,17 +2135,19 @@ isInLocal :: [PackageVersionConstraint] -> PackageSpecifier (SourcePackage (Pack
 isInLocal _              NamedPackage{}              = Nothing
 isInLocal _extraPackages (SpecificSourcePackage pkg) = case srcpkgSource pkg of
     LocalUnpackedPackage _ -> Just (packageId pkg)
-    -- LocalTarballPackage is matched here too, because otherwise ‘sdistize’
-    -- produces for ‘localPackages’ in the ‘ProjectBaseContext’ a
-    -- LocalTarballPackage, and ‘shouldBeLocal’ will make flags like
-    -- ‘--disable-library-vanilla’ have no effect for a typical
+    -- Things like
     -- ‘cabal install --lib --enable-shared enable-executable-dynamic --disable-library-vanilla’,
-    -- as these flags would apply to local packages, but the sdist would
-    -- erroneously not get categorized as a local package, so the flags would be
-    -- ignored and produce a package with an unchanged hash.
-    LocalTarballPackage  _ -> Just (packageId pkg)
-    -- TODO: the docs say ‘extra-packages’ is implemented in cabal project
-    -- files.  We can fix that here by checking that the version range matches.
+    -- won't work as cabal install installs from sdist tarballs,
+    -- and sdist tarballs are not local packages, so the flags won't apply.
+    --
+    -- And that is not incorrect behavior. Correct behavior would be
+    -- to specify exactly which libraries should be compiled how.
+    -- (maybe it's possible with `cabal.project`?)
+    --
+    -- OTOH, if we match on LocalTarballPackage where, then --enable-tests
+    -- would force tests there, and that is not what we want to do.
+    --
+    --LocalTarballPackage     _ -> _
     --RemoteTarballPackage    _ -> _
     --RepoTarballPackage      _ -> _
     --RemoteSourceRepoPackage _ -> _
