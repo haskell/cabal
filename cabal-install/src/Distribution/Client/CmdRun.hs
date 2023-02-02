@@ -64,8 +64,10 @@ import Distribution.Types.UnitId
          ( UnitId )
 import Distribution.Client.ScriptUtils
          ( AcceptNoTargets(..), withContextAndSelectors, updateContextAndWriteProjectFile, TargetContext(..) )
+import Distribution.Client.Utils
+         ( occursOnlyOrBefore )
 
-import Data.List (elemIndex, group)
+import Data.List ( group )
 import qualified Data.Set as Set
 
 import GHC.Environment
@@ -473,10 +475,3 @@ renderRunProblem (TargetProblemNoExes targetSelector) =
  ++ " because "
  ++ plural (targetSelectorPluralPkgs targetSelector) "it does" "they do"
  ++ " not contain any executables."
-
--- True if x occurs before y
-occursOnlyOrBefore :: (Eq a) => [a] -> a -> a -> Bool
-occursOnlyOrBefore xs x y = case (elemIndex x xs, elemIndex y xs) of
-                       (Just i, Just j) -> i < j
-                       (Just _, _) -> True
-                       _ -> False

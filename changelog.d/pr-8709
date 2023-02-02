@@ -1,0 +1,11 @@
+synopsis: Add warning for running cabal run with +RTS flag
+packages: cabal-install
+prs: #8709
+
+description: {
+
+This adds a warning when 'cabal run +RTS' is run,
+as this passes the +RTS options to cabal instead of the program.
+More often, users want to use 'cabal run -- +RTS'
+
+}

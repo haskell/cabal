@@ -29,6 +29,7 @@ module Distribution.Client.Utils
   , listFilesInside
   , safeRead
   , hasElem
+  , occursOnlyOrBefore
   ) where
 
 import Prelude ()
@@ -47,7 +48,7 @@ import System.FilePath
 import Control.Monad
          ( zipWithM_ )
 import Data.List
-         ( groupBy )
+         ( groupBy, elemIndex )
 import qualified Control.Exception as Exception
          ( finally )
 import qualified Control.Exception.Safe as Safe
@@ -488,3 +489,10 @@ safeRead s
 --   This is [Agda.Utils.List.hasElem](https://hackage.haskell.org/package/Agda-2.6.2.2/docs/Agda-Utils-List.html#v:hasElem).
 hasElem :: Ord a => [a] -> a -> Bool
 hasElem xs = (`Set.member` Set.fromList xs)
+
+-- True if x occurs before y
+occursOnlyOrBefore :: (Eq a) => [a] -> a -> a -> Bool
+occursOnlyOrBefore xs x y = case (elemIndex x xs, elemIndex y xs) of
+                       (Just i, Just j) -> i < j
+                       (Just _, _) -> True
+                       _ -> False
