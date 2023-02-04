@@ -717,7 +717,10 @@ resolveDependencies platform comp pkgConfigDB solver params =
   $ fmap (validateSolverResult platform comp indGoals)
   $ runSolver solver (SolverConfig reordGoals cntConflicts fineGrained minimize
                       indGoals noReinstalls
-                      shadowing strFlags allowBootLibs nonUpgradeablePackages
+                      shadowing strFlags allowBootLibs
+                      -- See comment of nonUpgradeablePackages about
+                      -- non-installable and non-upgradable packages.
+                      nonUpgradeablePackages
                       onlyConstrained_ maxBkjumps enableBj
                       solveExes order verbosity (PruneAfterFirstSuccess False))
                      platform comp installedPkgIndex sourcePkgIndex
