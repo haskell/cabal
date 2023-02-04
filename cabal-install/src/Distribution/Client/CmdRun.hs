@@ -149,8 +149,9 @@ runAction flags@NixStyleFlags {..} targetAndArgs globalFlags
             when (occursOnlyOrBefore fullArgs "+RTS" "--") $
               warn verbosity $
                   "Your RTS options are applied to cabal, not the executable. "
-               ++ "Use 'cabal run -- +RTS -N' to pass the RTS options "
-               ++ "to your executable."
+               ++ "Use '--' to separate cabal options from your "
+               ++ "executable options. For example, use 'cabal run -- +RTS -N "
+               ++ "to pass the '-N' RTS option to your executable."
 
             -- Interpret the targets on the command line as build targets
             -- (as opposed to say repl or haddock targets).
