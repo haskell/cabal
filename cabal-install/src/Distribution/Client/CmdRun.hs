@@ -65,7 +65,7 @@ import Distribution.Types.UnitId
 import Distribution.Client.ScriptUtils
          ( AcceptNoTargets(..), withContextAndSelectors, updateContextAndWriteProjectFile, TargetContext(..) )
 import Distribution.Client.Utils
-         ( occursOnlyOrBefore )
+         ( occursOnlyOrBefore, giveRTSWarning )
 
 import Data.List ( group )
 import qualified Data.Set as Set
@@ -147,11 +147,7 @@ runAction flags@NixStyleFlags {..} targetAndArgs globalFlags
 
             fullArgs <- getFullArgs
             when (occursOnlyOrBefore fullArgs "+RTS" "--") $
-              warn verbosity $
-                  "Your RTS options are applied to cabal, not the executable. "
-               ++ "Use '--' to separate cabal options from your "
-               ++ "executable options. For example, use 'cabal run -- +RTS -N "
-               ++ "to pass the '-N' RTS option to your executable."
+              warn verbosity $ giveRTSWarning "run"
 
             -- Interpret the targets on the command line as build targets
             -- (as opposed to say repl or haddock targets).

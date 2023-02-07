@@ -30,6 +30,7 @@ module Distribution.Client.Utils
   , safeRead
   , hasElem
   , occursOnlyOrBefore
+  , giveRTSWarning
   ) where
 
 import Prelude ()
@@ -496,3 +497,21 @@ occursOnlyOrBefore xs x y = case (elemIndex x xs, elemIndex y xs) of
                        (Just i, Just j) -> i < j
                        (Just _, _) -> True
                        _ -> False
+
+giveRTSWarning :: String -> String
+giveRTSWarning "run" = "Your RTS options are applied to cabal, not the "
+               ++ "executable. Use '--' to separate cabal options from your "
+               ++ "executable options. For example, use 'cabal run -- +RTS -N "
+               ++ "to pass the '-N' RTS option to your executable."
+giveRTSWarning "test" = "Your RTS options are applied to cabal, not the "
+               ++ "executable. Use '--test-options' to separate cabal options "
+               ++ "from your executable options. For example, use 'cabal test "
+               ++ "--test-options=\"+RTS -N\" to pass the '-N' RTS option "
+               ++ "to your executable."
+giveRTSWarning "bench" = "Your RTS options are applied to cabal, not the "
+               ++ "executable. Use '--benchmark-options' to separate cabal "
+               ++ "options from your executable options. For example, "
+               ++ "use 'cabal bench --benchmark-options=\"+RTS -N\" to "
+               ++ "pass the '-N' RTS option to your executable."
+giveRTSWarning _ = "Your RTS options are applied to cabal, not the "
+               ++ "executable."

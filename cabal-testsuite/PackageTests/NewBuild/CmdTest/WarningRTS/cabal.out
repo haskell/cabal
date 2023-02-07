@@ -1,0 +1,37 @@
+# cabal test
+Resolving dependencies...
+Warning: Your RTS options are applied to cabal, not the executable. Use '--test-options' to separate cabal options from your executable options. For example, use 'cabal test --test-options="+RTS -N" to pass the '-N' RTS option to your executable.
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following will be built:
+ - WarningRTS-1.0 (test:foo) (first run)
+Configuring test suite 'foo' for WarningRTS-1.0..
+Preprocessing test suite 'foo' for WarningRTS-1.0..
+Building test suite 'foo' for WarningRTS-1.0..
+Running 1 test suites...
+Test suite foo: RUNNING...
+Test suite foo: PASS
+Test suite logged to: <ROOT>/cabal.dist/work/./dist/build/<ARCH>/ghc-<GHCVER>/WarningRTS-1.0/t/foo/test/WarningRTS-1.0-foo.log
+1 of 1 test suites (1 of 1 test cases) passed.
+# cabal test
+Warning: Your RTS options are applied to cabal, not the executable. Use '--test-options' to separate cabal options from your executable options. For example, use 'cabal test --test-options="+RTS -N" to pass the '-N' RTS option to your executable.
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following will be built:
+ - WarningRTS-1.0 (test:foo) (first run)
+Preprocessing test suite 'foo' for WarningRTS-1.0..
+Building test suite 'foo' for WarningRTS-1.0..
+Running 1 test suites...
+Test suite foo: RUNNING...
+Test suite foo: PASS
+Test suite logged to: <ROOT>/cabal.dist/work/./dist/build/<ARCH>/ghc-<GHCVER>/WarningRTS-1.0/t/foo/test/WarningRTS-1.0-foo.log
+1 of 1 test suites (1 of 1 test cases) passed.
+# cabal test
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following will be built:
+ - WarningRTS-1.0 (test:foo) (first run)
+Preprocessing test suite 'foo' for WarningRTS-1.0..
+Building test suite 'foo' for WarningRTS-1.0..
+Running 1 test suites...
+Test suite foo: RUNNING...
+Test suite foo: PASS
+Test suite logged to: <ROOT>/cabal.dist/work/./dist/build/<ARCH>/ghc-<GHCVER>/WarningRTS-1.0/t/foo/test/WarningRTS-1.0-foo.log
+1 of 1 test suites (1 of 1 test cases) passed.

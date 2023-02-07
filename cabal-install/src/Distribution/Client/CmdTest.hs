@@ -29,6 +29,8 @@ import Distribution.Client.NixStyleOptions
          ( NixStyleFlags (..), nixStyleOptions, defaultNixStyleFlags )
 import Distribution.Client.Setup
          ( GlobalFlags(..), ConfigFlags(..) )
+import Distribution.Client.Utils
+         ( occursOnlyOrBefore, giveRTSWarning )
 import Distribution.Simple.Setup
          ( TestFlags(..), fromFlagOrDefault )
 import Distribution.Simple.Command
@@ -38,10 +40,12 @@ import Distribution.Simple.Flag
 import Distribution.Verbosity
          ( normal )
 import Distribution.Simple.Utils
-         ( notice, wrapText, die' )
+         ( notice, wrapText, die', warn )
 
 import qualified System.Exit (exitSuccess)
 
+import GHC.Environment
+         ( getFullArgs )
 
 testCommand :: CommandUI (NixStyleFlags ())
 testCommand = CommandUI
@@ -107,6 +111,10 @@ testAction flags@NixStyleFlags {..} targetStrings globalFlags = do
                   "The test command does not support '--only-dependencies'. "
                ++ "You may wish to use 'build --only-dependencies' and then "
                ++ "use 'test'."
+
+            fullArgs <- getFullArgs
+            when (occursOnlyOrBefore fullArgs "+RTS" "--") $
+              warn verbosity $ giveRTSWarning "test"
 
             -- Interpret the targets on the command line as test targets
             -- (as opposed to say build or haddock targets).
