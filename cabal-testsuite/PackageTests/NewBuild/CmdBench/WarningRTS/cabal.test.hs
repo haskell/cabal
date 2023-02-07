@@ -2,10 +2,10 @@ import Test.Cabal.Prelude
 
 main = cabalTest $ do
     res <- cabal' "bench" ["foo", "+RTS"]
-    assertOutputContains "Your RTS options are applied to cabal, not the executable. Use '--benchmark-options' " res
+    assertOutputContains "Some RTS options were found standalone" res
 
-    res <- cabal' "bench" ["foo", "+RTS", "--"]
-    assertOutputContains "Your RTS options are applied to cabal, not the executable. Use '--benchmark-options' " res
+    res <- cabal' "bench" ["foo", "--benchmark-options=\"+RTS\"", "+RTS"]
+    assertOutputContains "Some RTS options were found standalone" res
 
     res <- cabal' "bench" ["foo", "--benchmark-options=\"+RTS\""]
-    assertOutputDoesNotContain "Warning: Your RTS options" res
+    assertOutputDoesNotContain "Some RTS options were found standalone" res

@@ -102,7 +102,7 @@ benchAction flags@NixStyleFlags {..} targetStrings globalFlags = do
                ++ "use 'bench'."
 
             fullArgs <- getFullArgs
-            when (occursOnlyOrBefore fullArgs "+RTS" "--") $
+            when ("+RTS" `elem` fullArgs) $
               warn verbosity $ giveRTSWarning "bench"
 
             -- Interpret the targets on the command line as bench targets

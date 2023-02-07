@@ -113,7 +113,7 @@ testAction flags@NixStyleFlags {..} targetStrings globalFlags = do
                ++ "use 'test'."
 
             fullArgs <- getFullArgs
-            when (occursOnlyOrBefore fullArgs "+RTS" "--") $
+            when ("+RTS" `elem` fullArgs) $
               warn verbosity $ giveRTSWarning "test"
 
             -- Interpret the targets on the command line as test targets
