@@ -1,0 +1,4 @@
+synopsis: Document `remote-repo-cache` as implemented.
+packages: Cabal
+issues: #8737
+prs: #8738
