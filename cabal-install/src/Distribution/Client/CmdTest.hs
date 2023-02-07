@@ -30,7 +30,7 @@ import Distribution.Client.NixStyleOptions
 import Distribution.Client.Setup
          ( GlobalFlags(..), ConfigFlags(..) )
 import Distribution.Client.Utils
-         ( occursOnlyOrBefore, giveRTSWarning )
+         ( giveRTSWarning )
 import Distribution.Simple.Setup
          ( TestFlags(..), fromFlagOrDefault )
 import Distribution.Simple.Command
