@@ -65,7 +65,8 @@ jobs:
 
       #  See the following link for a breakdown of the following step
       #  https://github.com/haskell/actions/issues/7#issuecomment-745697160
-      - uses: actions/cache@v2
+      - if: ${{ runner.os != 'Windows' }}
+        uses: actions/cache@v2
         with:
           # validate.sh uses a special build dir
           path: |
