@@ -57,6 +57,16 @@ jobs:
 
       - uses: actions/checkout@v3
 
+      # See https://github.com/haskell/cabal/pull/8739
+      - name: Sudo chmod to permit ghcup to update its cache
+        run: |
+          if [[ "${{ runner.os }}" == "Linux" ]]; then
+            sudo ls -lah /usr/local/.ghcup/cache
+            sudo mkdir -p /usr/local/.ghcup/cache
+            sudo ls -lah /usr/local/.ghcup/cache
+            sudo chown -R $USER /usr/local/.ghcup
+            sudo chmod -R 777 /usr/local/.ghcup
+          fi
       - uses: haskell/actions/setup@v2
         id: setup-haskell
         with:
@@ -65,7 +75,10 @@ jobs:
 
       #  See the following link for a breakdown of the following step
       #  https://github.com/haskell/actions/issues/7#issuecomment-745697160
-      - uses: actions/cache@v2
+      #
+      # See https://github.com/haskell/cabal/pull/8739 for why Windows is excluded
+      - if: ${{ runner.os != 'Windows' }}
+        uses: actions/cache@v2
         with:
           # validate.sh uses a special build dir
           path: |
