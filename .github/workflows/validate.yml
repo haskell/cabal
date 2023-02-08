@@ -59,9 +59,10 @@ jobs:
 
       - name: Sudo chmod to permit ghcup to update its cache
         run: |
-          sudo mkdir -p /usr/local/.ghcup/cache
-          sudo chmod -R g+wr /usr/local/.ghcup/cache
-
+          if [[ "${{ runner.os }}" == "Linux" ]]; then
+            sudo mkdir -p /usr/local/.ghcup/cache
+            sudo chmod -R 777 /usr/local/.ghcup/cache
+          fi
       - uses: haskell/actions/setup@v2
         id: setup-haskell
         with:
