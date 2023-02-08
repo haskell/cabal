@@ -28,8 +28,19 @@ jobs:
         with:
           path: ~/.cabal/store
           key: linux-store-meta
+      # See https://github.com/haskell/cabal/pull/8739
+      - name: Sudo chmod to permit ghcup to update its cache
+        run: |
+          if [[ "${{ runner.os }}" == "Linux" ]]; then
+            sudo ls -lah /usr/local/.ghcup/cache
+            sudo mkdir -p /usr/local/.ghcup/cache
+            sudo ls -lah /usr/local/.ghcup/cache
+            sudo chown -R $USER /usr/local/.ghcup
+            sudo chmod -R 777 /usr/local/.ghcup
+          fi
       - name: ghcup
         run: |
+          ghcup --version
           ghcup config set cache true
           ghcup install ghc recommended
           ghcup set ghc recommended
@@ -66,8 +77,19 @@ jobs:
         with:
           path: ~/.cabal/store
           key: linux-store-doctest
+      # See https://github.com/haskell/cabal/pull/8739
+      - name: Sudo chmod to permit ghcup to update its cache
+        run: |
+          if [[ "${{ runner.os }}" == "Linux" ]]; then
+            sudo ls -lah /usr/local/.ghcup/cache
+            sudo mkdir -p /usr/local/.ghcup/cache
+            sudo ls -lah /usr/local/.ghcup/cache
+            sudo chown -R $USER /usr/local/.ghcup
+            sudo chmod -R 777 /usr/local/.ghcup
+          fi
       - name: ghcup
         run: |
+          ghcup --version
           ghcup config set cache true
           ghcup install ghc recommended
           ghcup set ghc recommended
