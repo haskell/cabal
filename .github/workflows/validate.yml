@@ -61,7 +61,8 @@ jobs:
         run: |
           if [[ "${{ runner.os }}" == "Linux" ]]; then
             sudo mkdir -p /usr/local/.ghcup/cache
-            sudo chmod -R 777 /usr/local/.ghcup/cache
+            sudo chown -R $USER /usr/local/.ghcup
+            sudo chmod -R 777 /usr/local/.ghcup
           fi
       - uses: haskell/actions/setup@v2
         id: setup-haskell
