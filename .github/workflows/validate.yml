@@ -57,6 +57,7 @@ jobs:
 
       - uses: actions/checkout@v3
 
+      # See https://github.com/haskell/cabal/pull/8739
       - name: Sudo chmod to permit ghcup to update its cache
         run: |
           if [[ "${{ runner.os }}" == "Linux" ]]; then
@@ -72,6 +73,8 @@ jobs:
 
       #  See the following link for a breakdown of the following step
       #  https://github.com/haskell/actions/issues/7#issuecomment-745697160
+      #
+      # See https://github.com/haskell/cabal/pull/8739 for why Windows is excluded
       - if: ${{ runner.os != 'Windows' }}
         uses: actions/cache@v2
         with:
