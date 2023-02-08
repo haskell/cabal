@@ -48,6 +48,7 @@ jobs:
       - name: bootstrap.py
         run: |
           GHC_VERSION=${{ matrix.ghc }}
+          ghcup --version
           ghcup config set cache true
           ghcup install ghc $GHC_VERSION
 
