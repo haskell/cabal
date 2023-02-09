@@ -1,3 +1,4 @@
 module Lib where
 
-foreign import javascript foo :: IO ()
+foo :: IO ()
+foo = putStrLn "Hello Not JS!"
