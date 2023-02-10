@@ -29,6 +29,14 @@ cabal v2-build Cabal-tests:unit-tests # build Cabal's unit test suite
 cabal v2-build cabal-tests # etc...
 ```
 
+Building Cabal for hacking with Nix
+--------------------------
+
+```
+nix develop # if you don't have direnv installed
+cabal build cabal
+```
+
 Running tests
 -------------
 
