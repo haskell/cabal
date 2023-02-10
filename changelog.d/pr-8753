@@ -1,0 +1,3 @@
+synopsis: add nix flake for easier contribution for nix users
+packages: cabal-install
+prs: #8753
