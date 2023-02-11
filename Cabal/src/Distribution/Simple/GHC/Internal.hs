@@ -442,7 +442,8 @@ componentGhcOptions verbosity implInfo lbi bi clbi odir =
       ghcOptSplitSections   = toFlag (splitSections lbi),
       ghcOptSplitObjs       = toFlag (splitObjs lbi),
       ghcOptSourcePathClear = toFlag True,
-      ghcOptSourcePath      = toNubListR $ [odir] ++ (map getSymbolicPath (hsSourceDirs bi))
+      ghcOptSourcePath      = toNubListR $ map getSymbolicPath (hsSourceDirs bi)
+                                           ++ [odir]
                                            ++ [autogenComponentModulesDir lbi clbi]
                                            ++ [autogenPackageModulesDir lbi],
       ghcOptCppIncludePath  = toNubListR $ [autogenComponentModulesDir lbi clbi
