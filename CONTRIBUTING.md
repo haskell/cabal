@@ -29,13 +29,15 @@ cabal v2-build Cabal-tests:unit-tests # build Cabal's unit test suite
 cabal v2-build cabal-tests # etc...
 ```
 
-Building Cabal for hacking with Nix
+Building Cabal for hacking with Nix (not officially supported)
 --------------------------
 
 ```
 nix develop # if you don't have direnv installed
 cabal build cabal
 ```
+
+NOTE: Building the cabal library with nix flakes is not officially supported and as such may fall out of date. Be prepared to tweak it and please contribute fixes back.
 
 Running tests
 -------------
