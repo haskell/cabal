@@ -44,7 +44,9 @@ tests _v _initFlags comp pkgIx srcDb =
               }
             inputs =
               -- createProject stuff
-              [ "True"
+              [ "Foobar"
+              , "foobar@qux.com"
+              , "True"
               , "[\"quxTest/Main.hs\"]"
               -- writeProject stuff
               -- writeLicense
