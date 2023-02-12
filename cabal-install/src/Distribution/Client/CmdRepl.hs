@@ -75,7 +75,7 @@ import Distribution.Types.BuildInfo
 import Distribution.Types.ComponentName
          ( componentNameString )
 import Distribution.Types.CondTree
-         ( CondTree(..), traverseCondTreeC )
+         ( CondTree(..) )
 import Distribution.Types.Dependency
          ( Dependency(..), mainLibSet )
 import Distribution.Types.Library
@@ -338,7 +338,12 @@ addDepsToProjectTarget deps pkgId ctx =
       | packageId pkg /= pkgId = SpecificSourcePackage pkg
       | SourcePackage{..} <- pkg =
         SpecificSourcePackage $ pkg { srcpkgDescription =
-          srcpkgDescription & (\f -> L.allCondTrees $ traverseCondTreeC f)
+          -- New dependencies are added to the original ones found in the
+          -- `targetBuildDepends` field.
+          -- `traverseBuildInfos` is used in order to update _all_ the
+          -- occurrences of the field `targetBuildDepends`. It ensures that
+          -- fields depending on the latter are also consistently updated.
+          srcpkgDescription &  (L.traverseBuildInfos . L.targetBuildDepends)
                             %~ (deps ++)
         }
     addDeps spec = spec

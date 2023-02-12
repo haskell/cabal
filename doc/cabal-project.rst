@@ -1583,8 +1583,8 @@ Advanced global configuration options
 
     :default: ``~/.cabal/packages``
 
-    :strike:`The location where packages downloaded from remote
-    repositories will be cached.` Not implemented yet.
+    The location where packages downloaded from remote repositories will be
+    cached.
 
     The command line variant of this flag is
     ``--remote-repo-cache=DIR``.
