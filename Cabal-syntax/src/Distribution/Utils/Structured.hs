@@ -7,7 +7,6 @@
 {-# LANGUAGE TypeFamilies        #-}
 {-# LANGUAGE TypeOperators       #-}
 {-# LANGUAGE PatternSynonyms     #-}
-{-# LANGUAGE TypeInType          #-}
 -- |
 --
 -- Copyright: (c) 2019 Oleg Grenrus
