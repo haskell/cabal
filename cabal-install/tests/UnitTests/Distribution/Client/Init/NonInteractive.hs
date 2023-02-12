@@ -73,7 +73,9 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
               , dependencies = Flag []
               }
             inputs = NEL.fromList
-              [ "True"
+              ["Foobar"
+              , "foobar@qux.com"
+              , "True"
               , "[\"quxTest/Main.hs\"]"
               ]
 
@@ -149,8 +151,11 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
               , dependencies = Flag []
               }
             inputs = NEL.fromList
+
+              [ "Foobar"
+              , "foobar@qux.com"
               -- extra sources
-              [ "[\"CHANGELOG.md\"]"
+              , "[\"CHANGELOG.md\"]"
               -- lib other modules
               , "False"
               -- exe other modules

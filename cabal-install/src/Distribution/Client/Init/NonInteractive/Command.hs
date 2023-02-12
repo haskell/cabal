@@ -274,14 +274,16 @@ licenseHeuristics :: Interactive m => InitFlags -> m SpecLicense
 licenseHeuristics flags = getLicense flags $ guessLicense flags
 
 -- | The author's name. Prompt, or try to guess from an existing
---   darcs repo.
+--   git repo.
 authorHeuristics :: Interactive m => InitFlags -> m String
-authorHeuristics flags = getAuthor flags guessAuthorEmail
+authorHeuristics flags = guessAuthorEmail >>=
+  maybe (getAuthor flags $ return "") (getAuthor flags . return)
 
 -- | The author's email. Prompt, or try to guess from an existing
---   darcs repo.
+--   git repo.
 emailHeuristics :: Interactive m => InitFlags -> m String
-emailHeuristics flags = getEmail flags guessAuthorName
+emailHeuristics flags = guessAuthorName >>=
+  maybe (getEmail flags $ return "") (getEmail flags . return)
 
 -- | Prompt for a homepage URL for the package.
 homepageHeuristics :: Interactive m => InitFlags -> m String
