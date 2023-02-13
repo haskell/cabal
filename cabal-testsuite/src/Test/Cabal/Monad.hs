@@ -530,6 +530,7 @@ data TestEnv = TestEnv
     -- relative to 'testSourceDir'
     , testSourceCopyRelativeDir :: FilePath
     }
+    deriving Show
 
 testRecordMode :: TestEnv -> RecordMode
 testRecordMode env = fromMaybe (testRecordDefaultMode env) (testRecordUserMode env)

@@ -37,6 +37,7 @@ data ScriptEnv = ScriptEnv
         , runnerPackages        :: [(OpenUnitId, ModuleRenaming)]
         , runnerWithSharedLib   :: Bool
         }
+    deriving Show
 
 {-
 
