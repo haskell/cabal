@@ -35,9 +35,20 @@ jobs:
           restore-keys: bootstrap-${{ runner.os }}-${{ matrix.ghc }}-20221115-
 
       - uses: actions/checkout@v3
+      # See https://github.com/haskell/cabal/pull/8739
+      - name: Sudo chmod to permit ghcup to update its cache
+        run: |
+          if [[ "${{ runner.os }}" == "Linux" ]]; then
+            sudo ls -lah /usr/local/.ghcup/cache
+            sudo mkdir -p /usr/local/.ghcup/cache
+            sudo ls -lah /usr/local/.ghcup/cache
+            sudo chown -R $USER /usr/local/.ghcup
+            sudo chmod -R 777 /usr/local/.ghcup
+          fi
       - name: bootstrap.py
         run: |
           GHC_VERSION=${{ matrix.ghc }}
+          ghcup --version
           ghcup config set cache true
           ghcup install ghc $GHC_VERSION
 
