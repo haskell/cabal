@@ -47,7 +47,7 @@ import Distribution.Types.ComponentName
 import Distribution.Verbosity
          ( normal, silent )
 import Distribution.Simple.Utils
-         ( wrapText, die', info, notice, safeHead )
+         ( wrapText, die', info, notice, safeHead, warn )
 import Distribution.Client.ProjectPlanning
          ( ElaboratedConfiguredPackage(..)
          , ElaboratedInstallPlan, binDirectoryFor )
@@ -64,9 +64,15 @@ import Distribution.Types.UnitId
          ( UnitId )
 import Distribution.Client.ScriptUtils
          ( AcceptNoTargets(..), withContextAndSelectors, updateContextAndWriteProjectFile, TargetContext(..) )
+import Distribution.Client.Utils
+         ( occursOnlyOrBefore, giveRTSWarning )
 
-import Data.List (group)
+import Data.List ( group )
 import qualified Data.Set as Set
+
+import GHC.Environment
+         ( getFullArgs )
+
 import System.Directory
          ( doesFileExist )
 import System.FilePath
@@ -138,6 +144,10 @@ runAction flags@NixStyleFlags {..} targetAndArgs globalFlags
                   "The run command does not support '--only-dependencies'. "
                ++ "You may wish to use 'build --only-dependencies' and then "
                ++ "use 'run'."
+
+            fullArgs <- getFullArgs
+            when (occursOnlyOrBefore fullArgs "+RTS" "--") $
+              warn verbosity $ giveRTSWarning "run"
 
             -- Interpret the targets on the command line as build targets
             -- (as opposed to say repl or haddock targets).

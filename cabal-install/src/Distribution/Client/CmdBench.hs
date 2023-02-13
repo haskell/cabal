@@ -29,6 +29,8 @@ import Distribution.Client.NixStyleOptions
          ( NixStyleFlags (..), nixStyleOptions, defaultNixStyleFlags )
 import Distribution.Client.Setup
          ( GlobalFlags, ConfigFlags(..) )
+import Distribution.Client.Utils
+         ( giveRTSWarning )
 import Distribution.Simple.Flag
          ( fromFlagOrDefault )
 import Distribution.Simple.Command
@@ -36,7 +38,10 @@ import Distribution.Simple.Command
 import Distribution.Verbosity
          ( normal )
 import Distribution.Simple.Utils
-         ( wrapText, die' )
+         ( wrapText, die', warn )
+
+import GHC.Environment
+         ( getFullArgs )
 
 benchCommand :: CommandUI (NixStyleFlags ())
 benchCommand = CommandUI {
@@ -95,6 +100,10 @@ benchAction flags@NixStyleFlags {..} targetStrings globalFlags = do
                   "The bench command does not support '--only-dependencies'. "
                ++ "You may wish to use 'build --only-dependencies' and then "
                ++ "use 'bench'."
+
+            fullArgs <- getFullArgs
+            when ("+RTS" `elem` fullArgs) $
+              warn verbosity $ giveRTSWarning "bench"
 
             -- Interpret the targets on the command line as bench targets
             -- (as opposed to say build or haddock targets).
