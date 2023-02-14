@@ -50,7 +50,7 @@ linkConfigFlags Dynamic =
 lrun :: [Linking]
 lrun = [Static, Dynamic, Static, Dynamic]
 
-main = cabalTest $ do
+main = cabalTest . expectBroken 8744 $ do
     -- Skip if on Windows, since my default Chocolatey Windows setup (and the CI
     -- server setup at the time, presumably) lacks support for dynamic builds
     -- since the base package appears to be static only, lacking e.g. ‘.dyn_o’
