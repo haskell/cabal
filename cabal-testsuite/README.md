@@ -25,6 +25,28 @@ There are a few useful flags:
   the autodetection doesn't work correctly (which may be the
   case for old versions of GHC.)
 
+doctests
+========
+
+You need to install the doctest tool. Make sure it's compiled with your current
+GHC, and don't forget to reinstall it every time you switch GHC version:
+
+``` shellsession
+cabal install doctest --overwrite-policy=always --ignore-project
+```
+
+After that you can run doctests for a component of your choice via the following command:
+
+``` shellsession
+cabal repl --with-ghc=doctest --build-depends=QuickCheck --build-depends=template-haskell --repl-options="-w" --project-file="cabal.project.validate" Cabal-syntax
+```
+
+In this example we have run doctests in `Cabal-syntax`. Notice, that some
+components have broken doctests
+([#8734](https://github.com/haskell/cabal/issues/8734));
+our CI currently checks that `Cabal-syntax` and `Cabal` doctests pass via
+`make doctest-install && make doctest` (you can use this make-based workflow too).
+
 How to write
 ------------
 
