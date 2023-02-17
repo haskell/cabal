@@ -65,14 +65,6 @@ jobs:
       - name: Set PATH
         run: |
           echo "$HOME/.cabal/bin" >> $GITHUB_PATH
-      - name: Install cabal-env
-        run: |
-          mkdir -p $HOME/.cabal/bin
-          curl -sL https://github.com/phadej/cabal-extras/releases/download/preview-20191225/cabal-env-snapshot-20191225-x86_64-linux.xz > cabal-env.xz
-          echo "1b567d529c5f627fd8c956e57ae8f0d9f11ee66d6db34b7fb0cb1c370b4edf01  cabal-env.xz" | sha256sum -c -
-          xz -d < cabal-env.xz > $HOME/.cabal/bin/cabal-env
-          rm -f cabal-env.xz
-          chmod a+x $HOME/.cabal/bin/cabal-env
       - uses: actions/cache@v1
         with:
           path: ~/.cabal/store
@@ -91,17 +83,12 @@ jobs:
         run: |
           ghcup --version
           ghcup config set cache true
-          ghcup install ghc recommended
-          ghcup set ghc recommended
+          ghcup install ghc --set recommended
+          ghcup install cabal --set latest
       - name: Update Hackage index
         run: cabal v2-update
-      - name: Install doctest
-        run: cabal v2-install doctest
-      - name: Install libraries
-        run: |
-          cabal-env --transitive QuickCheck
-          cabal-env array bytestring containers deepseq directory filepath pretty process time binary unix text parsec mtl
-          cat $HOME/.ghc/*/environments/default
       - uses: actions/checkout@v3
+      - name: Install doctest
+        run: make doctest-install
       - name: Doctest
         run: make doctest
