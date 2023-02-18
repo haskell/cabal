@@ -405,7 +405,7 @@ exceptionMessageCabalInstall e = case e of
     "the 'upload' command expects only .tar.gz archives: "
       ++ intercalate ", " otherFiles
   FileNotFound tarfile -> "file not found: " ++ tarfile
-  CheckAction extraArgs -> "'check' doesn't take any extra arguments: " ++ unwords extraArgs
+  CheckAction extraArgs -> "'check' only takes one (optional) directory path argument: " ++ unwords extraArgs
   ReportAction extraArgs -> "'report' doesn't take any extra arguments: " ++ unwords extraArgs
   InitAction ->
     "'init' only takes a single, optional, extra "

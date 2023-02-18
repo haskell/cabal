@@ -1234,10 +1234,13 @@ checkAction :: CheckFlags -> [String] -> Action
 checkAction checkFlags extraArgs _globalFlags = do
   let verbosityFlag = checkVerbosity checkFlags
       verbosity = fromFlag verbosityFlag
-  unless (null extraArgs) $
-    dieWithException verbosity $
-      CheckAction extraArgs
-  allOk <- Check.check (fromFlag verbosityFlag) (checkIgnore checkFlags)
+  path <- case extraArgs of
+    [] -> return "."
+    [dp] -> return dp
+    (_ : es) ->
+      dieWithException verbosity $
+        CheckAction es
+  allOk <- Check.check (fromFlag verbosityFlag) (checkIgnore checkFlags) path
   unless allOk exitFailure
 
 formatAction :: Flag Verbosity -> [String] -> Action

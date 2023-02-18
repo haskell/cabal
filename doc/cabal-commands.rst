@@ -1166,11 +1166,12 @@ Sanity checks and shipping
 cabal check
 ^^^^^^^^^^^
 
-``cabal check [FLAGS]`` checks the package for common mistakes (e.g.: if
-it is missing important fields like ``synopsis``, if it is using
+``cabal check [FLAGS] [TARGET]`` checks the package for common mistakes
+(e.g.: if it is missing important fields like ``synopsis``, if it is using
 tricky GHC options, etc.).
 
-Run ``cabal check`` in the folder where your ``.cabal`` package file is.
+Specify a ``TARGET`` folder or run ``cabal check`` in the folder where
+your ``.cabal`` package file is.
 
 .. option:: -i, --ignore=WARNING
 

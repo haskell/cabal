@@ -29,7 +29,7 @@ import Distribution.PackageDescription.Parsec
   , runParseResult
   )
 import Distribution.Parsec (PWarning (..), showPError)
-import Distribution.Simple.Utils (defaultPackageDesc, dieWithException, notice, warn, warnError)
+import Distribution.Simple.Utils (dieWithException, findPackageDesc, notice, warn, warnError)
 import System.IO (hPutStr, stderr)
 
 import qualified Control.Monad as CM
@@ -64,13 +64,18 @@ check
   -> [CheckExplanationIDString]
   -- ^ List of check-ids in String form
   -- (e.g. @invalid-path-win@) to ignore.
+  -> FilePath
+  -- ^ Folder to check (where `.cabal` file is).
   -> IO Bool
-check verbosity ignores = do
-  pdfile <- defaultPackageDesc verbosity
+check verbosity ignores checkDir = do
+  epdf <- findPackageDesc checkDir
+  pdfile <- case epdf of
+    Right cf -> return cf
+    Left e -> dieWithException verbosity e
   (ws, ppd) <- readGenericPackageDescriptionCheck verbosity pdfile
   -- convert parse warnings into PackageChecks
   let ws' = map (wrapParseWarning pdfile) ws
-  ioChecks <- checkPackageFilesGPD verbosity ppd "."
+  ioChecks <- checkPackageFilesGPD verbosity ppd checkDir
   let packageChecksPrim = ioChecks ++ checkPackage ppd ++ ws'
       (packageChecks, unrecs) = filterPackageChecksByIdString packageChecksPrim ignores
 
