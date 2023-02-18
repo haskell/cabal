@@ -965,16 +965,21 @@ findProgramVersion :: String             -- ^ version args
                    -> FilePath           -- ^ location
                    -> IO (Maybe Version)
 findProgramVersion versionArg selectVersion verbosity path = withFrozenCallStack $ do
-  str <- rawSystemStdout verbosity path [versionArg]
-         `catchIO`   (\_ -> return "")
-         `catchExit` (\_ -> return "")
-  let version :: Maybe Version
-      version = simpleParsec (selectVersion str)
-  case version of
-      Nothing -> warn verbosity $ "cannot determine version of " ++ path
-                               ++ " :\n" ++ show str
-      Just v  -> debug verbosity $ path ++ " is version " ++ prettyShow v
-  return version
+  str <- (Right <$> rawSystemStdout verbosity path [versionArg])
+         `catchIO`   (return . Left . show)
+         `catchExit` (return . Left . show)
+  case str of
+    Left err -> do
+      warn verbosity $ "cannot determine version of " ++ path ++ " :\n" ++ err
+      return Nothing
+    Right ver -> do
+      let version :: Maybe Version
+          version = simpleParsec (selectVersion ver)
+      case version of
+          Nothing -> warn verbosity $ "cannot determine version of " ++ path
+                                   ++ " :\n" ++ show str
+          Just v  -> debug verbosity $ path ++ " is version " ++ prettyShow v
+      return version
 
 
 -- | Like the Unix xargs program. Useful for when we've got very long command

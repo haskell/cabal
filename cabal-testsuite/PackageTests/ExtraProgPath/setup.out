@@ -1,8 +1,8 @@
 # cabal v2-build
 Warning: cannot determine version of <ROOT>/./pkg-config :
-""
+<ROOT>/./pkg-config: createProcess: posix_spawnp: does not exist (No such file or directory)
 Warning: cannot determine version of <ROOT>/./pkg-config :
-""
+<ROOT>/./pkg-config: createProcess: posix_spawnp: does not exist (No such file or directory)
 Resolving dependencies...
 Error: cabal: Could not resolve dependencies:
 [__0] next goal: CheckExtraProgPath (user goal)
