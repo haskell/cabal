@@ -13,9 +13,11 @@
 -- Portability :  portable
 --
 -- Entry point to the default cabal-install front-end.
+--
+-- @since 3.10.0.0
 -----------------------------------------------------------------------------
 
-module Main (main) where
+module Distribution.Client.Main (main) where
 
 import Distribution.Client.Setup
          ( GlobalFlags(..), globalCommand, withRepoContext
@@ -160,7 +162,7 @@ import Distribution.Version
          ( Version, mkVersion, orLaterVersion )
 
 import Distribution.Compat.ResponseFile
-import System.Environment       (getArgs, getProgName)
+import System.Environment       (getProgName)
 import System.FilePath          ( dropExtension, splitExtension
                                 , takeExtension, (</>), (<.>) )
 import System.IO                ( BufferMode(LineBuffering), hSetBuffering
@@ -173,8 +175,8 @@ import Control.Exception        (AssertionFailed, assert, try)
 
 -- | Entry point
 --
-main :: IO ()
-main = do
+main :: [String] -> IO ()
+main args = do
   installTerminationHandler
   -- Enable line buffering so that we can get fast feedback even when piped.
   -- This is especially important for CI and build systems.
@@ -185,7 +187,8 @@ main = do
   -- when writing to stderr and stdout.
   relaxEncodingErrors stdout
   relaxEncodingErrors stderr
-  (args0, args1) <- break (== "--") <$> getArgs
+  let (args0, args1) = break (== "--") args
+
   mainWorker =<< (++ args1) <$> expandResponse args0
 
 -- | Check whether assertions are enabled and print a warning in that case.
