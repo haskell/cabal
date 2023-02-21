@@ -82,10 +82,9 @@ data ClassificationStrictness = Permissive | Compat | Strict
 -- * Operating System
 -- ------------------------------------------------------------
 
--- | These are the known OS names: Linux, Windows, OSX
---  ,FreeBSD, OpenBSD, NetBSD, DragonFly
---  ,Solaris, AIX, HPUX, IRIX
---  ,HaLVM ,Hurd ,IOS, Android, Ghcjs, Wasi
+-- | These are the known OS names: Linux, Windows, OSX, FreeBSD, OpenBSD,
+--   NetBSD, DragonFly, Solaris, AIX, HPUX, IRIX, HaLVM, Hurd, IOS, Android,
+--   Ghcjs, Wasi
 --
 -- The following aliases can also be used:,
 --
