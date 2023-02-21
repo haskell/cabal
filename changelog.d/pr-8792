@@ -1,0 +1,10 @@
+synopsis: Add the "macos" alias for the OSX constructor of the OS datatype
+prs: #8792
+packages: Cabal-syntax
+
+description: {
+
+Add the "macos" alias for the OSX constructor of the OS datatype.
+Haddock syntax is also fixed to render properly.
+
+}
