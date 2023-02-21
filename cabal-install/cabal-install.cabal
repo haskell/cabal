@@ -140,6 +140,7 @@ library
         Distribution.Client.InstallSymlink
         Distribution.Client.JobControl
         Distribution.Client.List
+        Distribution.Client.Main
         Distribution.Client.Manpage
         Distribution.Client.ManpageFlags
         Distribution.Client.Nix
@@ -252,9 +253,9 @@ library
 
 
 executable cabal
-    import: warnings, base-dep, cabal-dep, cabal-syntax-dep
+    import: warnings, base-dep
     main-is: Main.hs
-    hs-source-dirs: main
+    hs-source-dirs: driver
     default-language: Haskell2010
 
     ghc-options: -rtsopts -threaded
@@ -264,9 +265,7 @@ executable cabal
         extra-libraries: bsd
 
     build-depends:
-        cabal-install,
-        directory,
-        filepath
+        cabal-install
 
 -- Small, fast running tests.
 --
