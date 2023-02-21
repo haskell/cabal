@@ -1,6 +1,6 @@
-import: ./dep/cabal.project
+import: ./dep1/cabal.project
 
 packages:
   main.cabal
-  dep/dep.cabal
+  dep1/dep1.cabal
   dep2/dep2.cabal

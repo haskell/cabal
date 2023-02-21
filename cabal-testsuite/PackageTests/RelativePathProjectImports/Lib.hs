@@ -1,6 +1,6 @@
 module Lib (foo) where
 
-import Dep (bar)
+import Dep1 (bar)
 import Dep2 (baz)
 
 foo :: Int
