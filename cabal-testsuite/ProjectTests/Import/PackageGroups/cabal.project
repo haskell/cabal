@@ -1,4 +1,4 @@
-import: ./PackageGroups/dep1-dep2.config
+import: cabal-configs/pkgs.config
 
 packages:
     ./
