@@ -51,7 +51,7 @@ test-suite unit-tests
   build-depends:
       array
     , async               >=2.2.2 && <2.3
-    , base                >=0     && <5
+    , base                >=4.9     && <5
     , binary
     , bytestring
     , Cabal
