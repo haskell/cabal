@@ -1,0 +1,32 @@
+# cabal build
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following will be built:
+ - dep1-0.1 (lib) (first run)
+ - dep2-0.1 (lib) (first run)
+ - main-0.1 (lib) (first run)
+Configuring library for dep1-0.1..
+Preprocessing library for dep1-0.1..
+Building library for dep1-0.1..
+Configuring library for dep2-0.1..
+Preprocessing library for dep2-0.1..
+Building library for dep2-0.1..
+Configuring library for main-0.1..
+Preprocessing library for main-0.1..
+Building library for main-0.1..
+# cabal clean
+# cabal build
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following will be built:
+ - dep1-0.1 (lib) (first run)
+Configuring library for dep1-0.1..
+Preprocessing library for dep1-0.1..
+Building library for dep1-0.1..
+# cabal build
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following will be built:
+ - dep2-0.1 (lib) (first run)
+Configuring library for dep2-0.1..
+Preprocessing library for dep2-0.1..
+Building library for dep2-0.1..

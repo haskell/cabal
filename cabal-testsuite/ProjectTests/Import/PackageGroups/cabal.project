@@ -1,0 +1,4 @@
+import: ./PackageGroups/dep1-dep2.config
+
+packages:
+    ./
