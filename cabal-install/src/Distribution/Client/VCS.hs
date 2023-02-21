@@ -460,8 +460,8 @@ vcsGit =
                    ++ verboseArg
                       where loc = srpLocation
         resetArgs   = "reset" : verboseArg ++ ["--hard", resetTarget, "--" ]
-        resetBranch = fmap ("origin/" ++) srpTag
         resetTarget = fromMaybe "HEAD" (resetBranch `mplus` srpTag)
+        resetBranch = fmap ("origin/" ++) srpBranch
         verboseArg  = [ "--quiet" | verbosity < Verbosity.normal ]
 
 gitProgram :: Program
