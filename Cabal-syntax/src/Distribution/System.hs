@@ -88,8 +88,9 @@ data ClassificationStrictness = Permissive | Compat | Strict
 --  ,HaLVM ,Hurd ,IOS, Android, Ghcjs, Wasi
 --
 -- The following aliases can also be used:,
+--
 --    * Windows aliases: mingw32, win32, cygwin32
---    * OSX alias: darwin
+--    * OSX alias: darwin, macos
 --    * Hurd alias: gnu
 --    * FreeBSD alias: kfreebsdgnu
 --    * Solaris alias: solaris2
@@ -123,7 +124,7 @@ knownOSs = [Linux, Windows, OSX
 osAliases :: ClassificationStrictness -> OS -> [String]
 osAliases Permissive Windows = ["mingw32", "win32", "cygwin32"]
 osAliases Compat     Windows = ["mingw32", "win32"]
-osAliases _          OSX     = ["darwin"]
+osAliases _          OSX     = ["darwin", "macos"]
 osAliases _          Hurd    = ["gnu"]
 osAliases Permissive FreeBSD = ["kfreebsdgnu"]
 osAliases Compat     FreeBSD = ["kfreebsdgnu"]
@@ -139,8 +140,6 @@ instance Pretty OS where
 
 instance Parsec OS where
   parsec = classifyOS Compat <$> parsecIdent
-
-
 
 classifyOS :: ClassificationStrictness -> String -> OS
 classifyOS strictness s =
