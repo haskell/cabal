@@ -24,7 +24,7 @@ jobs:
         # https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-commands-for-github-actions#adding-a-system-path
         run: |
           echo "$HOME/.cabal/bin" >> $GITHUB_PATH
-      - uses: actions/cache@v1
+      - uses: actions/cache@v3
         with:
           path: ~/.cabal/store
           key: linux-store-meta
@@ -65,7 +65,7 @@ jobs:
       - name: Set PATH
         run: |
           echo "$HOME/.cabal/bin" >> $GITHUB_PATH
-      - uses: actions/cache@v1
+      - uses: actions/cache@v3
         with:
           path: ~/.cabal/store
           key: linux-store-doctest
