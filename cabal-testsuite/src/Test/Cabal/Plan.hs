@@ -19,11 +19,13 @@ import Control.Monad
 
 -- TODO: index this
 data Plan = Plan { planInstallPlan :: [InstallItem] }
+  deriving Show
 
 data InstallItem
     = APreExisting
     | AConfiguredGlobal ConfiguredGlobal
     | AConfiguredInplace ConfiguredInplace
+  deriving Show
 
 -- local or inplace package
 data ConfiguredInplace = ConfiguredInplace
@@ -31,11 +33,13 @@ data ConfiguredInplace = ConfiguredInplace
     , configuredInplaceBuildInfo     :: Maybe FilePath
     , configuredInplacePackageName   :: PackageName
     , configuredInplaceComponentName :: Maybe ComponentName }
+  deriving Show
 
 data ConfiguredGlobal = ConfiguredGlobal
     { configuredGlobalBinFile       :: Maybe FilePath
     , configuredGlobalPackageName   :: PackageName
     , configuredGlobalComponentName :: Maybe ComponentName }
+  deriving Show
 
 instance FromJSON Plan where
     parseJSON (Object v) = fmap Plan (v .: "install-plan")
