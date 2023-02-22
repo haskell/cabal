@@ -78,7 +78,7 @@ jobs:
       #
       # See https://github.com/haskell/cabal/pull/8739 for why Windows is excluded
       - if: ${{ runner.os != 'Windows' }}
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           # validate.sh uses a special build dir
           path: |
@@ -234,7 +234,7 @@ jobs:
       # As we are reusing the cached build dir from the previous step
       # the generated artifacts are available here,
       # including the cabal executable and the test suite
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: |
             ${{ steps.setup-haskell.outputs.cabal-store }}
