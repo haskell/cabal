@@ -67,7 +67,7 @@ import Distribution.Simple.Program
 import Distribution.PackageDescription
 import Distribution.Simple.Compiler
 import Distribution.Simple.PackageIndex
-import Distribution.Simple.Setup
+import Distribution.Simple.Setup.Config
 import Distribution.System
 import Distribution.Pretty
 
