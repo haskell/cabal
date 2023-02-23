@@ -13,8 +13,10 @@ packages: cabal-benchmarks/
 
 optional-packages: ./vendored/*/*.cabal
 
-allow-newer:
-  hackage-security:Cabal
+allow-newer: hackage-security:Cabal
+
+allow-newer: *:text
+allow-newer: *:unix
 
 -- avoiding extra dependencies
 constraints: rere -rere-cfg

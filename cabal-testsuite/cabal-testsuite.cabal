@@ -26,10 +26,10 @@ common shared
   default-language: Haskell2010
 
   build-depends:
-    , base >= 4.6 && <4.17
+    , base >= 4.6 && <4.18
     -- this needs to match the in-tree lib:Cabal version
-    , Cabal ^>=3.8.0.0
-    , Cabal-syntax ^>=3.8.0.0
+    , Cabal ^>=3.8.1.0
+    , Cabal-syntax ^>=3.8.1.0
 
   ghc-options: -Wall -fwarn-tabs -fwarn-incomplete-uni-patterns
 
@@ -57,7 +57,7 @@ library
     Test.Cabal.ScriptEnv0
 
   build-depends:
-    , aeson                 ^>= 1.4.2.0 || ^>=1.5.0.0 || ^>= 2.0.0.0
+    , aeson                 ^>= 1.4.2.0 || ^>=1.5.0.0 || ^>= 2.0.0.0 || ^>= 2.1.0.0
     , async                 ^>= 2.2.1
     , attoparsec            ^>= 0.13.2.2 || ^>=0.14.1
     , base16-bytestring     ^>= 0.1.1.6 || ^>= 1.0.0.0
@@ -67,8 +67,8 @@ library
     , directory             ^>= 1.2.0.1 || ^>= 1.3.0.0
     , exceptions            ^>= 0.10.0
     , filepath              ^>= 1.3.0.1 || ^>= 1.4.0.0
-    , network-wait          ^>= 0.1.2.0
-    , optparse-applicative  ^>= 0.14.3.0 || ^>=0.15.1.0 || ^>=0.16.0.0
+    , network-wait           >= 0.1.2.0  && < 0.3
+    , optparse-applicative  ^>= 0.14.3.0 || ^>=0.15.1.0 || ^>=0.16.0.0 || ^>=0.17.0.0
     , process               ^>= 1.2.1.0 || ^>= 1.4.2.0 || ^>= 1.6.1.0
     , regex-base            ^>= 0.94.0.1
     , regex-tdfa            ^>= 1.2.3.1 || ^>=1.3.1.0
@@ -80,7 +80,7 @@ library
 
   if !os(windows)
     build-depends:
-      , unix                ^>= 2.6.0.0 || ^>= 2.7.0.0
+      , unix                ^>= 2.6.0.0 || ^>= 2.7.0.0 || ^>= 2.8.0.0
   else
     build-depends:
       , Win32
@@ -113,6 +113,6 @@ custom-setup
   -- we only depend on even stable releases of lib:Cabal
   -- and due to Custom complexity and ConstraintSetupCabalMaxVersion
   -- it can't be the current version
-  setup-depends: Cabal == 3.6.*,
-                 Cabal-syntax == 3.6.*,
+  setup-depends: Cabal == 3.8.*,
+                 Cabal-syntax == 3.8.*,
                  base, filepath, directory
