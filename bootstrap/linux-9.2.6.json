@@ -6,15 +6,15 @@
         },
         {
             "package": "ghc-prim",
-            "version": "0.9.0"
+            "version": "0.8.0"
         },
         {
             "package": "ghc-bignum",
-            "version": "1.3"
+            "version": "1.2"
         },
         {
             "package": "base",
-            "version": "4.17.0.0"
+            "version": "4.16.4.0"
         },
         {
             "package": "array",
@@ -22,11 +22,11 @@
         },
         {
             "package": "deepseq",
-            "version": "1.4.8.0"
+            "version": "1.4.6.1"
         },
         {
             "package": "ghc-boot-th",
-            "version": "9.4.4"
+            "version": "9.2.6"
         },
         {
             "package": "pretty",
@@ -34,19 +34,19 @@
         },
         {
             "package": "template-haskell",
-            "version": "2.19.0.0"
+            "version": "2.18.0.0"
         },
         {
             "package": "bytestring",
-            "version": "0.11.3.1"
+            "version": "0.11.4.0"
         },
         {
             "package": "containers",
-            "version": "0.6.6"
+            "version": "0.6.5.1"
         },
         {
             "package": "binary",
-            "version": "0.8.9.1"
+            "version": "0.8.9.0"
         },
         {
             "package": "filepath",
@@ -54,15 +54,11 @@
         },
         {
             "package": "time",
-            "version": "1.12.2"
+            "version": "1.11.1.1"
         },
         {
             "package": "unix",
-            "version": "2.7.3"
-        },
-        {
-            "package": "directory",
-            "version": "1.3.7.1"
+            "version": "2.7.2.2"
         },
         {
             "package": "transformers",
@@ -74,26 +70,31 @@
         },
         {
             "package": "text",
-            "version": "2.0.1"
+            "version": "1.2.5.0"
         },
         {
             "package": "parsec",
             "version": "3.1.15.0"
         },
         {
-            "package": "process",
-            "version": "1.6.16.0"
-        },
-        {
             "package": "stm",
-            "version": "2.5.1.0"
+            "version": "2.5.0.2"
         },
         {
             "package": "exceptions",
-            "version": "0.10.5"
+            "version": "0.10.4"
         }
     ],
     "dependencies": [
+        {
+            "cabal_sha256": "1125a0a4be3aafc8da208940f219d4e4df8a0db87d892cc42bb369071855c590",
+            "flags": [],
+            "package": "directory",
+            "revision": 0,
+            "source": "hackage",
+            "src_sha256": "dc2785d6548cec2e80700fab007d3e9467f65d3c58ab3efa21b34d9017cf0efd",
+            "version": "1.3.7.1"
+        },
         {
             "cabal_sha256": null,
             "flags": [],
@@ -102,6 +103,15 @@
             "source": "local",
             "src_sha256": null,
             "version": "3.10.1.0"
+        },
+        {
+            "cabal_sha256": "49d8a7f372d35363011591b253cae4c8db8b9ec594590448e20b7bed7acaee98",
+            "flags": [],
+            "package": "process",
+            "revision": 0,
+            "source": "hackage",
+            "src_sha256": "4c5c454e0f5c864c79b9fabd850307b26d8ac4037e45a6a39ab87e20b583bf06",
+            "version": "1.6.17.0"
         },
         {
             "cabal_sha256": null,
@@ -154,6 +164,15 @@
             "source": "hackage",
             "src_sha256": "df31d8efec775124dab856d7177ddcba31be9f9e0836ebdab03d94392f2dd453",
             "version": "4000.4.1"
+        },
+        {
+            "cabal_sha256": "2ef1bd3511e82ba56f7f23cd793dd2da84338a1e7c2cbea5b151417afe3baada",
+            "flags": [],
+            "package": "data-array-byte",
+            "revision": 1,
+            "source": "hackage",
+            "src_sha256": "1bb6eca0b3e02d057fe7f4e14c81ef395216f421ab30fdaa1b18017c9c025600",
+            "version": "0.1.0.1"
         },
         {
             "cabal_sha256": "02acedd7ac829b52756fe481a1d53294d8f5d42aaa56df560c62c6cec3587a14",
