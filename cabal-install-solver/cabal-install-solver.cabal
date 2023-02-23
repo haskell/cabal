@@ -121,7 +121,7 @@ library
 
   if flag(debug-conflict-sets)
     cpp-options:   -DDEBUG_CONFLICT_SETS
-    build-depends: base >=4.8
+    build-depends: base >=4.9
 
   if flag(debug-tracetree)
     cpp-options:   -DDEBUG_TRACETREE
