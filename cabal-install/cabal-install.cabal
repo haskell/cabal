@@ -2,6 +2,7 @@ Cabal-Version:      2.2
 
 Name:               cabal-install
 Version:            3.8.1.0
+x-revision:         3
 Synopsis:           The command-line interface for Cabal and Hackage.
 Description:
     The \'cabal\' command-line program simplifies the process of managing
@@ -216,7 +217,8 @@ library
         mtl        >= 2.0      && < 2.3,
         network-uri >= 2.6.0.2 && < 2.7,
         pretty     >= 1.1      && < 1.2,
-        process    >= 1.2.3.0  && < 1.7,
+        -- process lower bound moved from Cabal-3.8.1.0 to here:
+        process    >= 1.6.14.0 && < 1.7,
         random     >= 1.2      && < 1.3,
         stm        >= 2.0      && < 2.6,
         tar        >= 0.5.0.3  && < 0.6,
