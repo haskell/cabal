@@ -86,7 +86,7 @@ data ClassificationStrictness = Permissive | Compat | Strict
 --   NetBSD, DragonFly, Solaris, AIX, HPUX, IRIX, HaLVM, Hurd, IOS, Android,
 --   Ghcjs, Wasi
 --
--- The following aliases can also be used:,
+-- The following aliases can also be used:
 --
 --    * Windows aliases: mingw32, win32, cygwin32
 --    * OSX alias: darwin, macos
