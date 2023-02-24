@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE NamedFieldPuns, RecordWildCards, RankNTypes #-}
@@ -53,8 +54,11 @@ import Distribution.Version
          ( mkVersion )
 import qualified Distribution.PackageDescription as PD
 
+#if !MIN_VERSION_base(4,18,0)
 import Control.Applicative
          ( liftA2 )
+#endif
+
 import Control.Exception
          ( throw, try )
 import Control.Monad.Trans
