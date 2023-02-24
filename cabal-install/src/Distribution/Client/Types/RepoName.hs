@@ -1,6 +1,9 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE DeriveGeneric #-}
 module Distribution.Client.Types.RepoName (
     RepoName (..),
+    RemoteRepoName (..),
 ) where
 
 import Distribution.Client.Compat.Prelude
@@ -39,3 +42,7 @@ instance Parsec RepoName where
         parser = (:) <$> lead <*> rest
         lead = P.satisfy (\c -> isAlpha    c || c == '_' || c == '-' || c == '.')
         rest = P.munch   (\c -> isAlphaNum c || c == '_' || c == '-' || c == '.')
+
+newtype RemoteRepoName = RemoteRepoName {unRemoteRepoName :: String}
+  deriving newtype (Eq, Show, Ord)
+
