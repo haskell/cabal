@@ -78,7 +78,7 @@ jobs:
       #
       # See https://github.com/haskell/cabal/pull/8739 for why Windows is excluded
       - if: ${{ runner.os != 'Windows' }}
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           # validate.sh uses a special build dir
           path: |
@@ -187,6 +187,134 @@ jobs:
         if: matrix.cli != 'false'
         run: sh validate.sh $FLAGS -s cli-suite
 
+  # The job below is a copy-paste of validate with the necessary tweaks
+  # to make all work with an upcoming GHC. Those tweaks include:
+  # - ghcup needs the prerelease channel activated
+  # - allow-newer for base libraries and Cabal* libraries
+  # - (sometimes) disabling some parts on Windows because it's hard to figure
+  #   out why they fail
+  validate-prerelease:
+    name: Validate ${{ matrix.os }} ghc-prerelease
+    runs-on: ${{ matrix.os }}
+    outputs:
+      GHC_FOR_RELEASE: ${{ format('["{0}"]', env.GHC_FOR_RELEASE) }}
+    strategy:
+      matrix:
+        os: ["ubuntu-20.04", "macos-latest", "windows-latest"]
+
+    steps:
+
+      - uses: actions/checkout@v3
+
+      # See https://github.com/haskell/cabal/pull/8739
+      - name: Sudo chmod to permit ghcup to update its cache
+        run: |
+          if [[ "${{ runner.os }}" == "Linux" ]]; then
+            sudo ls -lah /usr/local/.ghcup/cache
+            sudo mkdir -p /usr/local/.ghcup/cache
+            sudo ls -lah /usr/local/.ghcup/cache
+            sudo chown -R $USER /usr/local/.ghcup
+            sudo chmod -R 777 /usr/local/.ghcup
+          fi
+
+      - name: ghcup
+        run: |
+          ghcup --version
+          ghcup config set cache true
+          ghcup config add-release-channel https://raw.githubusercontent.com/haskell/ghcup-metadata/master/ghcup-prereleases-0.0.7.yaml
+          ghcup install ghc --set 9.6.0.20230210
+          ghcup install cabal --set latest
+          ghc --version
+          cabal update
+
+      #  See the following link for a breakdown of the following step
+      #  https://github.com/haskell/actions/issues/7#issuecomment-745697160
+      #
+      # See https://github.com/haskell/cabal/pull/8739 for why Windows is excluded
+      - if: ${{ runner.os != 'Windows' }}
+        uses: actions/cache@v3
+        with:
+          # validate.sh uses a special build dir
+          path: |
+            ${{ steps.setup-haskell.outputs.cabal-store }}
+            dist-*
+          key: ${{ runner.os }}-${{ matrix.ghc }}-20220419-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-${{ matrix.ghc }}-20220419-
+
+      - name: Work around git problem https://bugs.launchpad.net/ubuntu/+source/git/+bug/1993586 (cabal PR #8546)
+        run: |
+          git config --global protocol.file.allow always
+
+      # The '+exe' constraint below is important, otherwise cabal-install
+      # might decide to build the library but not the executable which is
+      # what we need.
+      - name: Install cabal-plan
+        run: |
+          cd $(mktemp -d)
+          cabal install cabal-plan --constraint='cabal-plan +exe' --allow-newer
+          echo "$HOME/.cabal/bin" >> $GITHUB_PATH
+
+      # The tool is not essential to the rest of the test suite. If
+      # hackage-repo-tool is not present, any test that requires it will
+      # be skipped.
+      # We want to keep this in the loop but we don't want to fail if
+      # hackage-repo-tool breaks or fails to support a newer GHC version.
+      - name: Install hackage-repo-tool
+        continue-on-error: true
+        run: |
+          cd $(mktemp -d)
+          cabal install hackage-repo-tool
+
+      # Needed by cabal-testsuite/PackageTests/Configure/setup.test.hs
+      - name: Install Autotools
+        if: runner.os == 'macOS'
+        run: |
+          brew install automake
+
+      - name: Allow newer boot libraries
+        run: |
+          echo "allow-newer: base, template-haskell, ghc-prim, Cabal-syntax, Cabal-described, Cabal, cabal-install-solver, cabal-install" >> cabal.project.validate
+
+      - name: Set validate inputs
+        run: |
+          FLAGS="${{ env.COMMON_FLAGS }}"
+          if [[ "${{ matrix.cli }}" == "false" ]]; then
+            FLAGS="$FLAGS --lib-only"
+          fi
+          echo "FLAGS=$FLAGS" >> $GITHUB_ENV
+
+      - name: Validate print-config
+        run: sh validate.sh $FLAGS -s print-config
+
+      - name: Validate print-tool-versions
+        run: sh validate.sh $FLAGS -s print-tool-versions
+
+      - name: Validate build
+        run: sh validate.sh $FLAGS -s build
+
+      - name: Validate lib-tests
+        env:
+          # `rawSystemStdInOut reports text decoding errors`
+          # test does not find ghc without the full path in windows
+          GHCPATH: ${{ steps.setup-haskell.outputs.ghc-exe }}
+        run: sh validate.sh $FLAGS -s lib-tests
+
+      - name: Validate lib-suite
+        # see https://github.com/haskell/cabal/pull/8754#issuecomment-1435025848
+        # for discussion about the trouble on Windows
+        if: ${{ runner.os != 'Windows' }}
+        run: sh validate.sh $FLAGS -s lib-suite
+
+      - name: Validate cli-tests
+        if: matrix.cli != 'false'
+        run: sh validate.sh $FLAGS -s cli-tests
+
+      - name: Validate cli-suite
+        # see https://github.com/haskell/cabal/pull/8754#issuecomment-1435025848
+        # for discussion about the trouble on Windows
+        if: ( runner.os != 'Windows' ) && ( matrix.cli != 'false' )
+        run: sh validate.sh $FLAGS -s cli-suite
+
   validate-old-ghcs:
     name: Validate old ghcs ${{ matrix.extra-ghc }}
     runs-on: ubuntu-20.04
@@ -234,7 +362,7 @@ jobs:
       # As we are reusing the cached build dir from the previous step
       # the generated artifacts are available here,
       # including the cabal executable and the test suite
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: |
             ${{ steps.setup-haskell.outputs.cabal-store }}
