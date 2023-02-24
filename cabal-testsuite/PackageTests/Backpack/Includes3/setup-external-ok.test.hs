@@ -3,7 +3,7 @@ import Data.List
 import qualified Data.Char as Char
 main = setupAndCabalTest $ do
   skipUnlessGhcVersion ">= 8.1"
-  ghc <- isGhcVersion "== 9.0.2 || == 9.2.* || == 9.4.*"
+  ghc <- isGhcVersion "== 9.0.2 || == 9.2.* || == 9.4.* || == 9.6.*"
   expectBrokenIf ghc 7987 $
     withPackageDb $ do
       containers_id <- getIPID "containers"

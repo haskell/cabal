@@ -23,6 +23,7 @@ build-and-check-requirements: requirements.txt check-requirements
 # See https://modelpredict.com/wht-requirements-txt-is-not-enough
 requirements.txt: requirements.in
 	. ../.python-sphinx-virtualenv/bin/activate \
+	  && pip install --upgrade pip \
 	  && pip install pip-tools \
 	  && pip-compile requirements.in
 
