@@ -39,7 +39,7 @@ import Distribution.Client.Types
          , SourcePackageDb(..) )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Package
-         ( Package(..), PackageName, unPackageName )
+         ( Package(..), PackageName, mkPackageName, unPackageName )
 import Distribution.Types.PackageId
          ( PackageIdentifier(..) )
 import Distribution.Client.ProjectConfig
@@ -53,6 +53,7 @@ import Distribution.Client.ProjectFlags (ProjectFlags (..))
 import Distribution.Client.ProjectConfig.Types
          ( ProjectConfig(..), ProjectConfigShared(..)
          , ProjectConfigBuildOnly(..), PackageConfig(..)
+         , MapMappend(..)
          , getMapLast, getMapMappend, projectConfigLogsDir
          , projectConfigStoreDir, projectConfigBuildOnly
          , projectConfigConfigFile )
@@ -430,11 +431,23 @@ installAction flags@NixStyleFlags { extraFlags = clientInstallFlags', .. } targe
     configFlags' = disableTestsBenchsByDefault configFlags
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags')
     ignoreProject = flagIgnoreProject projectFlags
-    cliConfig = commandLineFlagsToProjectConfig
-                  globalFlags
-                  flags { configFlags = configFlags' }
-                  clientInstallFlags'
+    baseCliConfig = commandLineFlagsToProjectConfig
+                        globalFlags
+                        flags { configFlags = configFlags' }
+                        clientInstallFlags'
+    cliConfig = addLocalConfigToTargets baseCliConfig targetStrings
     globalConfigFlag = projectConfigConfigFile (projectConfigShared cliConfig)
+
+-- | Treat all direct targets of install command as local packages: #8637
+addLocalConfigToTargets :: ProjectConfig -> [String] -> ProjectConfig
+addLocalConfigToTargets config targetStrings
+    = config {
+        projectConfigSpecificPackage = projectConfigSpecificPackage config
+                                       <> MapMappend (Map.fromList targetPackageConfigs)
+    }
+  where
+    localConfig = projectConfigLocalPackages config
+    targetPackageConfigs = map (\x -> (mkPackageName x, localConfig)) targetStrings
 
 -- | Verify that invalid config options were not passed to the install command.
 --
