@@ -880,37 +880,29 @@ Miscellaneous options
 .. option:: --constraint=constraint
 
     Restrict solutions involving a package to given version
-    bounds, flag settings, and other properties. For example, to
-    consider only install plans that use version 2.1 of ``bar``
-    or do not use ``bar`` at all, write:
+    bounds, flag settings, and other properties.
+
+    The following considers only install plans where ``bar``,
+    if used, is restricted to version 2.1:
 
     ::
 
         $ cabal install --constraint="bar == 2.1"
 
+    The following prevents ``bar`` from being used at all:
+
+    ::
+
+        $ cabal install --constraint="bar <0"
+
     Version bounds have the same syntax as :pkg-field:`build-depends`.
-    As a special case, the following prevents ``bar`` from being
-    used at all:
+    Yet extra pseudo version bounds are available here in addition:
 
-    ::
+      - ``installed`` to fix a package to the already installed version.
+        Often useful for GHC-supplied packages in combination with :cfg-field:`allow-newer`,
+        e.g., ``--allow-newer='*:base' --constraint='base installed'``.
 
-        # Note: this is just syntax sugar for '> 1 && < 1', and is
-        # supported by build-depends.
-        $ cabal install --constraint="bar -none"
-
-    You can also specify flag assignments:
-
-    ::
-
-        # Require bar to be installed with the foo flag turned on and
-        # the baz flag turned off.
-        $ cabal install --constraint="bar +foo -baz"
-
-    To specify multiple constraints, you may pass the
-    ``constraint`` option multiple times.
-
-    There are also some more specialized constraints, which most people
-    don't generally need:
+      - ``source`` to fix a package to the local source copy.
 
     ::
 
@@ -924,8 +916,20 @@ Miscellaneous options
         # specify this.)
         $ cabal install --constraint="bar source"
 
+    Further, we can specify flag assignments with ``+FLAG`` and ``-FLAG``
+    or enable test (``test``) and benchmark (``bench``) suites:
+
+    ::
+
+        # Require bar to be installed with the foo flag turned on and
+        # the baz flag turned off.
+        $ cabal install --constraint="bar +foo -baz"
+
         # Require that bar have test suites and benchmarks enabled.
         $ cabal install --constraint="bar test" --constraint="bar bench"
+
+    To specify multiple constraints, you may pass the
+    ``constraint`` option multiple times.
 
     By default, constraints only apply to build dependencies
     (:pkg-field:`build-depends`), build dependencies of build
@@ -934,8 +938,8 @@ Miscellaneous options
     (:pkg-field:`custom-setup:setup-depends`) nor do they apply to build tools
     (:pkg-field:`build-tool-depends`) or the dependencies of build
     tools. To explicitly apply a constraint to a setup or build
-    tool dependency, you can add a qualifier to the constraint as
-    follows:
+    tool dependency, you can add a qualifier ``setup`` or ``any``
+    to the constraint as follows:
 
     ::
 
