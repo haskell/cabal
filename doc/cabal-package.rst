@@ -774,9 +774,9 @@ describe the package as a whole:
 
 .. pkg-field:: extra-source-files: filename list
 
-    A list of additional files to be included in source distributions
-    built with :ref:`setup-sdist`. As with :pkg-field:`data-files` it can use
-    a limited form of ``*`` wildcards in file names.
+    A list of additional files to be included in source distributions built with :ref:`setup-sdist`.
+    As with :pkg-field:`data-files` it can use a limited form of ``*`` wildcards in file names.
+    Files listed here are tracked by ``cabal build``; changes in these files cause (partial) rebuilds.
 
 .. pkg-field:: extra-doc-files: filename list
     :since: 1.18
