@@ -36,7 +36,7 @@ import Distribution.Types.ComponentInclude
 import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.Simple.BuildToolDepends
-import Distribution.Simple.Setup as Setup
+import Distribution.Simple.Flag ( Flag )
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Utils.LogProgress
 import Distribution.Utils.MapAccum

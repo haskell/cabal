@@ -70,7 +70,8 @@ import Distribution.Simple.Compiler
 import Distribution.Simple.Program
 import Distribution.Simple.Program.Script
 import qualified Distribution.Simple.Program.HcPkg as HcPkg
-import Distribution.Simple.Setup
+import Distribution.Simple.Flag
+import Distribution.Simple.Setup.Register
 import Distribution.PackageDescription
 import Distribution.Package
 import Distribution.License (licenseToSPDX, licenseFromSPDX)
