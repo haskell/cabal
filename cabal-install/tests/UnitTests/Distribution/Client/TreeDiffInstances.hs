@@ -55,6 +55,7 @@ instance ToExpr PackageConfig
 instance ToExpr PackageDB
 instance ToExpr PackageProperty
 instance ToExpr PreferOldest
+instance ToExpr RequireArtifacts
 instance ToExpr PreSolver
 instance ToExpr ProjectConfig
 instance ToExpr ProjectConfigBuildOnly

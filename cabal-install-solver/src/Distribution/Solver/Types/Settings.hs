@@ -14,6 +14,7 @@ module Distribution.Solver.Types.Settings
     , CountConflicts(..)
     , FineGrainedConflicts(..)
     , SolveExecutables(..)
+    , RequireArtifacts(..)
     ) where
 
 import Distribution.Solver.Compat.Prelude
@@ -69,6 +70,9 @@ newtype EnableBackjumping = EnableBackjumping Bool
 newtype SolveExecutables = SolveExecutables Bool
   deriving (BooleanFlag, Eq, Generic, Show)
 
+newtype RequireArtifacts = RequireArtifacts Bool
+  deriving (BooleanFlag, Eq, Generic, Show)
+
 instance Binary ReorderGoals
 instance Binary CountConflicts
 instance Binary FineGrainedConflicts
@@ -81,6 +85,7 @@ instance Binary StrongFlags
 instance Binary AllowBootLibInstalls
 instance Binary OnlyConstrained
 instance Binary SolveExecutables
+instance Binary RequireArtifacts
 
 instance Structured ReorderGoals
 instance Structured CountConflicts
@@ -94,6 +99,7 @@ instance Structured StrongFlags
 instance Structured AllowBootLibInstalls
 instance Structured OnlyConstrained
 instance Structured SolveExecutables
+instance Structured RequireArtifacts
 
 instance Pretty OnlyConstrained where
   pretty OnlyConstrainedAll  = PP.text "all"

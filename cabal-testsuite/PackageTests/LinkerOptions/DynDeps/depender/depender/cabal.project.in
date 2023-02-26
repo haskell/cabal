@@ -1,0 +1,4 @@
+packages: ./*.cabal
+
+repository my-local-repository
+    url: file+noindex://{SDIST_PATH}#shared-cache

@@ -178,6 +178,8 @@ planPackages verbosity comp platform freezeFlags
 
       . setOnlyConstrained onlyConstrained
 
+      . setRequireArtifacts requireArtifacts
+
       . setSolverVerbosity verbosity
 
       . addConstraints
@@ -206,6 +208,7 @@ planPackages verbosity comp platform freezeFlags
     maxBackjumps     = fromFlag (freezeMaxBackjumps     freezeFlags)
     allowBootLibInstalls = fromFlag (freezeAllowBootLibInstalls freezeFlags)
     onlyConstrained  = fromFlag (freezeOnlyConstrained  freezeFlags)
+    requireArtifacts = fromFlag (freezeRequireArtifacts freezeFlags)
 
 
 -- | Remove all unneeded packages from an install plan.

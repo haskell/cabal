@@ -25,6 +25,8 @@ import Distribution.PackageDescription.Configuration
 import qualified Distribution.Simple.PackageIndex as SI
 import Distribution.System
 
+import           Distribution.Solver.Types.ArtifactSelection
+                   ( ArtifactSelection(..), allArtifacts, staticOutsOnly, dynOutsOnly, noOuts )
 import           Distribution.Solver.Types.ComponentDeps
                    ( Component(..), componentNameToComponent )
 import           Distribution.Solver.Types.Flag
@@ -55,11 +57,12 @@ import Distribution.Solver.Modular.Version
 -- explicitly requested.
 convPIs :: OS -> Arch -> CompilerInfo -> Map PN [LabeledPackageConstraint]
         -> ShadowPkgs -> StrongFlags -> SolveExecutables
+        -> Maybe (ArtifactSelection, ArtifactSelection)
         -> SI.InstalledPackageIndex -> CI.PackageIndex (SourcePackage loc)
         -> Index
-convPIs os arch comp constraints sip strfl solveExes iidx sidx =
+convPIs os arch comp constraints sip strfl solveExes srcArts iidx sidx =
   mkIndex $
-  convIPI' sip iidx ++ convSPI' os arch comp constraints strfl solveExes sidx
+  convIPI' sip iidx ++ convSPI' os arch comp constraints strfl solveExes srcArts sidx
 
 -- | Convert a Cabal installed package index to the simpler,
 -- more uniform index format of the solver.
@@ -75,8 +78,8 @@ convIPI' (ShadowPkgs sip) idx =
   where
 
     -- shadowing is recorded in the package info
-    shadow (pn, i, PInfo fdeps comps fds _)
-      | sip = (pn, i, PInfo fdeps comps fds (Just Shadowed))
+    shadow (pn, i, PInfo fdeps comps fds _ arts)
+      | sip = (pn, i, PInfo fdeps comps fds (Just Shadowed) arts)
     shadow x                                     = x
 
 -- | Extract/recover the package ID from an installed package info, and convert it to a solver's I.
@@ -90,8 +93,8 @@ convId ipi = (pn, I ver $ Inst $ IPI.installedUnitId ipi)
 convIP :: SI.InstalledPackageIndex -> IPI.InstalledPackageInfo -> (PN, I, PInfo)
 convIP idx ipi =
   case traverse (convIPId (DependencyReason pn M.empty S.empty) comp idx) (IPI.depends ipi) of
-        Left u    -> (pn, i, PInfo [] M.empty M.empty (Just (Broken u)))
-        Right fds -> (pn, i, PInfo fds components M.empty Nothing)
+        Left u    -> (pn, i, PInfo [] M.empty M.empty (Just (Broken u)) mempty)
+        Right fds -> (pn, i, PInfo fds components M.empty Nothing (ipiToAS ipi))
  where
   -- TODO: Handle sub-libraries and visibility.
   components =
@@ -151,21 +154,32 @@ convIPId dr comp idx ipid =
                 -- NB: something we pick up from the
                 -- InstalledPackageIndex is NEVER an executable
 
+-- | Extract the 'ArtifactSelection's representing which artifacts are
+-- available in this installed package and which artifacts this installed
+-- package requires.  Assume both are the same.
+ipiToAS :: IPI.InstalledPackageInfo -> (ArtifactSelection, ArtifactSelection)
+ipiToAS ipi = (\x -> (x, x)) $ mconcat [statics, dynamics]
+  where
+    statics | IPI.providesStaticArtifacts ipi = staticOutsOnly | otherwise = mempty
+    dynamics | IPI.providesDynamicArtifacts ipi = dynOutsOnly | otherwise = mempty
+
 -- | Convert a cabal-install source package index to the simpler,
 -- more uniform index format of the solver.
 convSPI' :: OS -> Arch -> CompilerInfo -> Map PN [LabeledPackageConstraint]
-         -> StrongFlags -> SolveExecutables
+         -> StrongFlags -> SolveExecutables -> Maybe (ArtifactSelection, ArtifactSelection)
          -> CI.PackageIndex (SourcePackage loc) -> [(PN, I, PInfo)]
-convSPI' os arch cinfo constraints strfl solveExes =
-    L.map (convSP os arch cinfo constraints strfl solveExes) . CI.allPackages
+convSPI' os arch cinfo constraints strfl solveExes srcArts =
+    L.map (convSP os arch cinfo constraints strfl solveExes srcArts) . CI.allPackages
 
 -- | Convert a single source package into the solver-specific format.
 convSP :: OS -> Arch -> CompilerInfo -> Map PN [LabeledPackageConstraint]
-       -> StrongFlags -> SolveExecutables -> SourcePackage loc -> (PN, I, PInfo)
-convSP os arch cinfo constraints strfl solveExes (SourcePackage (PackageIdentifier pn pv) gpd _ _pl) =
+       -> StrongFlags -> SolveExecutables -> Maybe (ArtifactSelection, ArtifactSelection)
+       -> SourcePackage loc
+       -> (PN, I, PInfo)
+convSP os arch cinfo constraints strfl solveExes srcArts (SourcePackage (PackageIdentifier pn pv) gpd _ _pl) =
   let i = I pv InRepo
       pkgConstraints = fromMaybe [] $ M.lookup pn constraints
-  in  (pn, i, convGPD os arch cinfo pkgConstraints strfl solveExes pn gpd)
+  in  (pn, i, convGPD os arch cinfo pkgConstraints strfl solveExes srcArts pn gpd)
 
 -- We do not use 'flattenPackageDescription' or 'finalizePD'
 -- from 'Distribution.PackageDescription.Configuration' here, because we
@@ -173,9 +187,11 @@ convSP os arch cinfo constraints strfl solveExes (SourcePackage (PackageIdentifi
 
 -- | Convert a generic package description to a solver-specific 'PInfo'.
 convGPD :: OS -> Arch -> CompilerInfo -> [LabeledPackageConstraint]
-        -> StrongFlags -> SolveExecutables -> PN -> GenericPackageDescription
+        -> StrongFlags -> SolveExecutables
+        -> Maybe (ArtifactSelection, ArtifactSelection)
+        -> PN -> GenericPackageDescription
         -> PInfo
-convGPD os arch cinfo constraints strfl solveExes pn
+convGPD os arch cinfo constraints strfl solveExes srcArts pn
         (GenericPackageDescription pkg scannedVersion flags mlib sub_libs flibs exes tests benchs) =
   let
     fds  = flagInfo strfl flags
@@ -238,7 +254,7 @@ convGPD os arch cinfo constraints strfl solveExes pn
         isPrivate LibraryVisibilityPrivate = True
         isPrivate LibraryVisibilityPublic  = False
 
-  in PInfo flagged_deps components fds fr
+  in PInfo flagged_deps components fds fr (fromMaybe (allArtifacts, noOuts) srcArts)
 
 -- | Applies the given predicate (for example, testing buildability or
 -- visibility) to the given component and environment. Values are combined with

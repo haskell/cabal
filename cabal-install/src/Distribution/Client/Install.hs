@@ -89,6 +89,7 @@ import qualified Distribution.Client.Win32SelfUpgrade as Win32SelfUpgrade
 import qualified Distribution.InstalledPackageInfo as Installed
 import Distribution.Client.JobControl
 
+import           Distribution.Solver.Types.ArtifactSelection
 import qualified Distribution.Solver.Types.ComponentDeps as CD
 import           Distribution.Solver.Types.ConstraintSource
 import           Distribution.Solver.Types.Settings
@@ -375,6 +376,10 @@ planPackages verbosity comp platform solver
 
       . setOnlyConstrained onlyConstrained
 
+      . setRequireArtifacts requireArtifacts
+
+      . setSourceArtifacts sourceArtifacts
+
       . setSolverVerbosity verbosity
 
       . setPreferenceDefault (if upgradeDeps then PreferAllLatest
@@ -438,6 +443,8 @@ planPackages verbosity comp platform solver
     maxBackjumps     = fromFlag (installMaxBackjumps      installFlags)
     allowBootLibInstalls = fromFlag (installAllowBootLibInstalls installFlags)
     onlyConstrained  = fromFlag (installOnlyConstrained   installFlags)
+    requireArtifacts = fromFlag (installRequireArtifacts  installFlags)
+    sourceArtifacts  = Just (sourceArts, sourceArts)
     upgradeDeps      = fromFlag (installUpgradeDeps       installFlags)
     onlyDeps         = fromFlag (installOnlyDeps          installFlags)
 
@@ -445,6 +452,12 @@ planPackages verbosity comp platform solver
                                  (configAllowOlder configExFlags)
     allowNewer       = fromMaybe (AllowNewer mempty)
                                  (configAllowNewer configExFlags)
+
+    sourceArts       = mconcat $
+      [ sourceArtsOf staticOutsOnly [(configVanillaLib, True), (configFullyStaticExe, False)]
+      , sourceArtsOf dynOutsOnly    [(configSharedLib, False), (configDynExe, False)]
+      ]
+    sourceArtsOf arts fs = if any (\(fld, def) -> fromFlagOrDefault def . (fld $) $ configFlags) fs then arts else mempty
 
 -- | Remove the provided targets from the install plan.
 pruneInstallPlan :: Package targetpkg

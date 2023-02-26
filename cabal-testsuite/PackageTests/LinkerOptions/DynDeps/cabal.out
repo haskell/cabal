@@ -1,0 +1,14 @@
+# cabal v2-configure
+# cabal v2-build
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following will be built:
+ - dynamic-1.0 (lib) (first run)
+Configuring library for dynamic-1.0..
+Preprocessing library for dynamic-1.0..
+Building library for dynamic-1.0..
+# cabal v2-sdist
+Wrote tarball sdist to <ROOT>/cabal.dist/dynamic-sdist-repo/dynamic-1.0.tar.gz
+# cabal v2-configure
+# depender depender
+Dynamic's number is 3.

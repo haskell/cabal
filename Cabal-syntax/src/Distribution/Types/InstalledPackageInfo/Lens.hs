@@ -196,3 +196,11 @@ libVisibility :: Lens' InstalledPackageInfo LibraryVisibility
 libVisibility f s = fmap (\x -> s { T.libVisibility = x }) (f (T.libVisibility s))
 {-# INLINE libVisibility #-}
 
+providesStaticArtifacts :: Lens' InstalledPackageInfo Bool
+providesStaticArtifacts f s = fmap (\x -> s { T.providesStaticArtifacts = x }) (f (T.providesStaticArtifacts s))
+{-# INLINE providesStaticArtifacts #-}
+
+providesDynamicArtifacts :: Lens' InstalledPackageInfo Bool
+providesDynamicArtifacts f s = fmap (\x -> s { T.providesDynamicArtifacts = x }) (f (T.providesDynamicArtifacts s))
+{-# INLINE providesDynamicArtifacts #-}
+

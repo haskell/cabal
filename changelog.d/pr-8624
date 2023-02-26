@@ -1,0 +1,9 @@
+synopsis: Track static vs. dynamic dependencies
+packages: cabal-install-solver cabal-install
+prs: #8624
+description: {
+    Track build artifacts in installed packages.
+
+    Add a step to the validation phase of the modular resolver that detects
+    installed package options with incompatible build artifact configuration.
+}

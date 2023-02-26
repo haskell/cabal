@@ -30,6 +30,7 @@ import Distribution.Solver.Modular.PSQ (PSQ)
 import Distribution.Solver.Modular.Version
 import Distribution.Solver.Modular.WeightedPSQ (WeightedPSQ)
 import qualified Distribution.Solver.Modular.WeightedPSQ as W
+import Distribution.Solver.Types.ArtifactSelection
 import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.Flag
 import Distribution.Solver.Types.PackagePath
@@ -129,6 +130,7 @@ data FailReason = UnsupportedExtension Extension
                 | DependenciesNotLinked String
                 | CyclicDependencies
                 | UnsupportedSpecVer Ver
+                | MissingArtifacts ArtifactSelection
   deriving (Eq, Show)
 
 -- | Information about a dependency involved in a conflict, for error messages.

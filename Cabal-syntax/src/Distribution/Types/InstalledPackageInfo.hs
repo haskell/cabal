@@ -92,7 +92,10 @@ data InstalledPackageInfo
         frameworks        :: [String],
         haddockInterfaces :: [FilePath],
         haddockHTMLs      :: [FilePath],
-        pkgRoot           :: Maybe FilePath
+        pkgRoot           :: Maybe FilePath,
+        -- Artifacts included in this package:
+        providesStaticArtifacts  :: Bool,
+        providesDynamicArtifacts :: Bool
     }
     deriving (Eq, Generic, Typeable, Read, Show)
 
@@ -173,5 +176,7 @@ emptyInstalledPackageInfo
         haddockInterfaces = [],
         haddockHTMLs      = [],
         pkgRoot           = Nothing,
-        libVisibility     = LibraryVisibilityPrivate
+        libVisibility     = LibraryVisibilityPrivate,
+        providesStaticArtifacts  = True,
+        providesDynamicArtifacts = True
     }

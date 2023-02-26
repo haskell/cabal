@@ -53,6 +53,8 @@ module Distribution.Client.Dependency (
     setStrongFlags,
     setAllowBootLibInstalls,
     setOnlyConstrained,
+    setRequireArtifacts,
+    setSourceArtifacts,
     setMaxBackjumps,
     setEnableBackjumping,
     setSolveExecutables,
@@ -105,6 +107,7 @@ import Distribution.Verbosity
 import Distribution.Version
 import qualified Distribution.Compat.Graph as Graph
 
+import           Distribution.Solver.Types.ArtifactSelection (ArtifactSelection)
 import           Distribution.Solver.Types.ComponentDeps (ComponentDeps)
 import qualified Distribution.Solver.Types.ComponentDeps as CD
 import           Distribution.Solver.Types.ConstraintSource
@@ -174,7 +177,9 @@ data DepResolverParams = DepResolverParams {
 
        -- | Function to override the solver's goal-ordering heuristics.
        depResolverGoalOrder         :: Maybe (Variable QPN -> Variable QPN -> Ordering),
-       depResolverVerbosity         :: Verbosity
+       depResolverVerbosity         :: Verbosity,
+       depResolverRequireArtifacts  :: RequireArtifacts,
+       depResolverSourceArtifacts   :: Maybe (ArtifactSelection, ArtifactSelection)
      }
 
 showDepResolverParams :: DepResolverParams -> String
@@ -199,6 +204,9 @@ showDepResolverParams p =
   ++ "\nonly constrained packages: " ++ show (depResolverOnlyConstrained p)
   ++ "\nmax backjumps: "     ++ maybe "infinite" show
                                      (depResolverMaxBackjumps             p)
+  ++ "\nrequire artifacts: " ++ show (asBool (depResolverRequireArtifacts p))
+  ++ "\nsource artifacts provided: " ++ fromMaybe "(default)" (prettyShow . fst <$> depResolverSourceArtifacts p)
+  ++ "\nsource artifacts required: " ++ fromMaybe "(default)" (prettyShow . snd <$> depResolverSourceArtifacts p)
   where
     showLabeledConstraint :: LabeledPackageConstraint -> String
     showLabeledConstraint (LabeledPackageConstraint pc src) =
@@ -259,7 +267,9 @@ basicDepResolverParams installedPkgIndex sourcePkgIndex =
        depResolverEnableBackjumping = EnableBackjumping True,
        depResolverSolveExecutables  = SolveExecutables True,
        depResolverGoalOrder         = Nothing,
-       depResolverVerbosity         = normal
+       depResolverVerbosity         = normal,
+       depResolverRequireArtifacts  = RequireArtifacts True,
+       depResolverSourceArtifacts   = Nothing
      }
 
 addTargets :: [PackageName]
@@ -350,6 +360,18 @@ setOnlyConstrained :: OnlyConstrained -> DepResolverParams -> DepResolverParams
 setOnlyConstrained i params =
   params {
     depResolverOnlyConstrained = i
+  }
+
+setRequireArtifacts :: RequireArtifacts -> DepResolverParams -> DepResolverParams
+setRequireArtifacts i params =
+  params {
+    depResolverRequireArtifacts = i
+  }
+
+setSourceArtifacts :: Maybe (ArtifactSelection, ArtifactSelection) -> DepResolverParams -> DepResolverParams
+setSourceArtifacts i params =
+  params {
+    depResolverSourceArtifacts = i
   }
 
 setMaxBackjumps :: Maybe Int -> DepResolverParams -> DepResolverParams
@@ -711,7 +733,8 @@ resolveDependencies platform comp pkgConfigDB solver params =
   $ runSolver solver (SolverConfig reordGoals cntConflicts fineGrained minimize
                       indGoals noReinstalls
                       shadowing strFlags allowBootLibs onlyConstrained_ maxBkjumps enableBj
-                      solveExes order verbosity (PruneAfterFirstSuccess False))
+                      solveExes order verbosity (PruneAfterFirstSuccess False)
+                      requireArts sourceArts)
                      platform comp installedPkgIndex sourcePkgIndex
                      pkgConfigDB preferences constraints targets
   where
@@ -735,7 +758,9 @@ resolveDependencies platform comp pkgConfigDB solver params =
       enableBj
       solveExes
       order
-      verbosity) =
+      verbosity
+      requireArts
+      sourceArts) =
         if asBool (depResolverAllowBootLibInstalls params)
         then params
         else dontUpgradeNonUpgradeablePackages params
@@ -997,7 +1022,8 @@ resolveWithoutDependencies (DepResolverParams targets constraints
                               _reorderGoals _countConflicts _fineGrained
                               _minimizeConflictSet _indGoals _avoidReinstalls
                               _shadowing _strFlags _maxBjumps _enableBj _solveExes
-                              _allowBootLibInstalls _onlyConstrained _order _verbosity) =
+                              _allowBootLibInstalls _onlyConstrained _order _verbosity
+                              _requireArtifacts _sourceArtifacts) =
     collectEithers $ map selectPackage (Set.toList targets)
   where
     selectPackage :: PackageName -> Either ResolveNoDepsError UnresolvedSourcePackage

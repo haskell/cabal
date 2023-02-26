@@ -42,6 +42,7 @@ import Distribution.Client.IndexUtils.ActiveRepos
 import Distribution.Client.CmdInstall.ClientInstallFlags
          ( ClientInstallFlags(..) )
 
+import Distribution.Solver.Types.ArtifactSelection
 import Distribution.Solver.Types.Settings
 import Distribution.Solver.Types.ConstraintSource
 
@@ -200,6 +201,7 @@ data ProjectConfigShared
        projectConfigStrongFlags       :: Flag StrongFlags,
        projectConfigAllowBootLibInstalls :: Flag AllowBootLibInstalls,
        projectConfigOnlyConstrained   :: Flag OnlyConstrained,
+       projectConfigRequireArtifacts  :: Flag RequireArtifacts,
        projectConfigPerComponent      :: Flag Bool,
        projectConfigIndependentGoals  :: Flag IndependentGoals,
        projectConfigPreferOldest      :: Flag PreferOldest,
@@ -411,6 +413,8 @@ data SolverSettings
        solverSettingStrongFlags       :: StrongFlags,
        solverSettingAllowBootLibInstalls :: AllowBootLibInstalls,
        solverSettingOnlyConstrained   :: OnlyConstrained,
+       solverSettingRequireArtifacts  :: RequireArtifacts,
+       solverSettingSourceArtifacts   :: Maybe (ArtifactSelection, ArtifactSelection),
        solverSettingIndexState        :: Maybe TotalIndexState,
        solverSettingActiveRepos       :: Maybe ActiveRepos,
        solverSettingIndependentGoals  :: IndependentGoals,

@@ -179,7 +179,7 @@ addChildren bs@(BS { rdeps = rdm, next = OneGoal (StanzaGoal qsn@(SN qpn _) t gr
 -- and furthermore we update the set of goals.
 --
 -- TODO: We could inline this above.
-addChildren bs@(BS { next = Instance qpn (PInfo fdeps _ fdefs _) }) =
+addChildren bs@(BS { next = Instance qpn (PInfo fdeps _ fdefs _ _) }) =
   addChildren ((scopedExtendOpen qpn fdeps fdefs bs)
          { next = Goals })
 
