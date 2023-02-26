@@ -84,7 +84,12 @@ library
     Distribution.Compat.Time
     Distribution.Make
     Distribution.PackageDescription.Check
-    Distribution.PackageDescription.Check.Prim
+    Distribution.PackageDescription.Check.Common
+    Distribution.PackageDescription.Check.Conditional
+    Distribution.PackageDescription.Check.Monad
+    Distribution.PackageDescription.Check.Paths
+    Distribution.PackageDescription.Check.Target
+    Distribution.PackageDescription.Check.Warning
     Distribution.ReadE
     Distribution.Simple
     Distribution.Simple.Bench

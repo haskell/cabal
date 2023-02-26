@@ -19,21 +19,19 @@ desugarBuildToolSimple :: PackageName
                           -> [UnqualComponentName]
                           -> LegacyExeDependency
                           -> Maybe ExeDependency
-desugarBuildToolSimple pname exeNames led =
-  if foundLocal
-  then Just $ ExeDependency pname toolName reqVer
-  else Map.lookup name whiteMap
+desugarBuildToolSimple pname exeNames (LegacyExeDependency name reqVer)
+        | foundLocal = Just $ ExeDependency pname toolName reqVer
+        | otherwise = Map.lookup name allowMap
   where
-    LegacyExeDependency name reqVer = led
     toolName = mkUnqualComponentName name
     foundLocal = toolName `elem` exeNames
-    whitelist = [ "hscolour", "haddock", "happy", "alex", "hsc2hs", "c2hs"
+    allowlist = [ "hscolour", "haddock", "happy", "alex", "hsc2hs", "c2hs"
                 , "cpphs", "greencard", "hspec-discover"
                 ]
-    whiteMap  = Map.fromList $ flip map whitelist $ \n ->
+    allowMap  = Map.fromList $ flip map allowlist $ \n ->
       (n, ExeDependency (mkPackageName n) (mkUnqualComponentName n) reqVer)
 
--- | Desugar a "build-tools" entry into proper a executable dependency if
+-- | Desugar a "build-tools" entry into a proper executable dependency if
 -- possible.
 --
 -- An entry can be so desugared in two cases:

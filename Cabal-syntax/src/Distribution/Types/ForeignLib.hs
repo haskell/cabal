@@ -140,7 +140,7 @@ instance NFData ForeignLib where rnf = genericRnf
 instance Semigroup ForeignLib where
   a <> b =
     ForeignLib
-      { foreignLibName = combineName a b foreignLibName "foreign library"
+      { foreignLibName = combineNames a b foreignLibName "foreign library"
       , foreignLibType = combine foreignLibType
       , foreignLibOptions = combine foreignLibOptions
       , foreignLibBuildInfo = combine foreignLibBuildInfo

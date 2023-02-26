@@ -40,7 +40,7 @@ instance Monoid Executable where
 instance Semigroup Executable where
   a <> b =
     Executable
-      { exeName = combineName a b exeName "executable"
+      { exeName = combineNames a b exeName "executable"
       , modulePath = combine modulePath
       , exeScope = combine exeScope
       , buildInfo = combine buildInfo

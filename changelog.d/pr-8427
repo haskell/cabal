@@ -12,4 +12,8 @@ description: {
   we do not flatten GenericPackageDescription no more.
 - For `Cabal` the library users: `checkPackageFileNames` has been removed,
   use `checkPackageFiles` instead.
+- For `Cabal` the library users: `checkPackageFilesGPD` has been introduced,
+  a function similar to `checkPackageFiles` that works on
+  `GenericPackageDescription`. You do not need to use
+  `flattenPackageDescription` anymore.
 }

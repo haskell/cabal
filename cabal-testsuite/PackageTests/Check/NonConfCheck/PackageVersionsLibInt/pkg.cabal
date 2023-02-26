@@ -8,11 +8,13 @@ maintainer: none@example.com
 license: GPL-3.0-or-later
 
 library
-  exposed-modules: Module
-  build-depends: base == 4.*,
-                 internal > 1.0 && < 2.0
+  exposed-modules: Foo
+  build-depends: base <= 3.10,
+                 int-lib
   default-language: Haskell2010
 
-library internal
-  exposed-modules: Module
+library int-lib
+  exposed-modules: Bar
+  build-depends: text > 1
   default-language: Haskell2010
+

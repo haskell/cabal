@@ -9,7 +9,7 @@ module Distribution.Types.UnqualComponentName
   , mkUnqualComponentName
   , packageNameToUnqualComponentName
   , unqualComponentNameToPackageName
-  , combineName
+  , combineNames
   ) where
 
 import Distribution.Compat.Prelude
@@ -107,11 +107,12 @@ packageNameToUnqualComponentName = UnqualComponentName . unPackageNameST
 unqualComponentNameToPackageName :: UnqualComponentName -> PackageName
 unqualComponentNameToPackageName = mkPackageNameST . unUnqualComponentNameST
 
--- | Combine names in targets (partial function). Useful in 'Semigroup'
--- and similar instances.
-combineName :: a -> a -> (a -> UnqualComponentName) -> String ->
+-- | Combine names in targets if one name is empty or both names are equal
+-- (partial function).
+-- Useful in 'Semigroup' and similar instances.
+combineNames :: a -> a -> (a -> UnqualComponentName) -> String ->
                UnqualComponentName
-combineName a b tacc tt
+combineNames a b tacc tt
             -- One empty or the same.
         | P.null unb ||
           una == unb    = na
