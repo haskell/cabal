@@ -134,7 +134,7 @@ verifyFetchedTarball verbosity repoCtxt repo pkgid =
    in handleError $ do
         exists <- doesFileExist file
         if not exists
-          then return False
+          then return True -- if the file does not exist, it vacuously passes validation, since it will be downloaded as necessary with what we will then check is a valid hash.
           else case repo of
             -- a secure repo has hashes we can compare against to confirm this is the correct file.
                 RepoSecure{} ->

@@ -523,7 +523,8 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
       comp = compiler lbi
       ghcVersion = compilerVersion comp
       implInfo  = getImplInfo comp
-      platform@(Platform _hostArch hostOS) = hostPlatform lbi
+      platform@(Platform hostArch hostOS) = hostPlatform lbi
+      hasJsSupport = hostArch == JavaScript
       has_code = not (componentIsIndefinite clbi)
 
   relLibTargetDir <- makeRelativeToCurrentDirectory libTargetDir
@@ -567,11 +568,13 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
                       , toNubListR (cxxSources libBi)
                       , toNubListR (cmmSources libBi)
                       , toNubListR (asmSources libBi)
-                      , toNubListR (jsSources  libBi)
+                      , if hasJsSupport
                         -- JS files are C-like with GHC's JS backend: they are
                         -- "compiled" into `.o` files (renamed with a header).
                         -- This is a difference from GHCJS, for which we only
                         -- pass the JS files at link time.
+                        then toNubListR (jsSources  libBi)
+                        else mempty
                       ]
       cLikeObjs   = map (`replaceExtension` objExtension) cLikeSources
       baseOpts    = componentGhcOptions verbosity lbi libBi clbi libTargetDir
@@ -730,7 +733,7 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
       | filename <- cSources libBi]
 
   -- build any JS sources
-  unless (not has_code || null (jsSources libBi)) $ do
+  unless (not has_code || not hasJsSupport || null (jsSources libBi)) $ do
     info verbosity "Building JS Sources..."
     sequence_
       [ do let vanillaJsOpts = Internal.componentJsGhcOptions verbosity implInfo
@@ -2087,7 +2090,10 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir pkg lib clbi = do
                    && null (cxxSources (libBuildInfo lib))
                    && null (cmmSources (libBuildInfo lib))
                    && null (asmSources (libBuildInfo lib))
-                   && null (jsSources (libBuildInfo lib))
+                   && (null (jsSources (libBuildInfo lib)) || not hasJsSupport)
+    hasJsSupport = case hostPlatform lbi of
+      Platform JavaScript _ -> True
+      _                     -> False
     has_code = not (componentIsIndefinite clbi)
     whenHasCode = when has_code
     whenVanilla = when (hasLib && withVanillaLib lbi)

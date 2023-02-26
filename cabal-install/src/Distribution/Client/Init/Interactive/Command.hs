@@ -336,7 +336,7 @@ licensePrompt flags = getLicense flags $ do
     let csv = fromFlagOrDefault defaultCabalVersion (cabalVersion flags)
     l <- promptList "Please choose a license"
       (licenses csv)
-      MandatoryPrompt
+      (DefaultPrompt "BSD-3-Clause")
       Nothing
       True
 

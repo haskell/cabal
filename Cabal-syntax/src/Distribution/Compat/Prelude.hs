@@ -125,7 +125,7 @@ module Distribution.Compat.Prelude (
     readMaybe,
 
     -- * Debug.Trace (as deprecated functions)
-    trace, traceShow, traceShowId,
+    trace, traceShow, traceShowId, traceM, traceShowM
     ) where
 
 -- We also could hide few partial function
@@ -286,3 +286,11 @@ traceShowId x = Debug.Trace.traceShow x x
 traceShow :: Show a => a -> b -> b
 traceShow = Debug.Trace.traceShow
 {-# DEPRECATED traceShow "Don't leave me in the code" #-}
+
+traceM :: Applicative f => String -> f ()
+traceM = Debug.Trace.traceM
+{-# DEPRECATED traceM "Don't leave me in the code" #-}
+
+traceShowM :: (Show a, Applicative f) => a -> f ()
+traceShowM = Debug.Trace.traceShowM
+{-# DEPRECATED traceShowM "Don't leave me in the code" #-}

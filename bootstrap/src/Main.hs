@@ -93,7 +93,7 @@ main2 meta plan = do
                         return
                             ( Hackage
                             , Just $ fromIntegral (I.riRevision relInfo)
-                            , P.sha256FromByteString $ I.getSHA256 $ I.riCabal relInfo
+                            , P.sha256FromByteString $ I.getSHA256 $ getHash relInfo
                             )
 
                     Nothing -> case P.uType unit of
@@ -117,6 +117,12 @@ main2 meta plan = do
         { resBuiltin      = builtin
         , resDependencies = deps
         }
+  where
+#if MIN_VERSION_cabal_install_parsers(0,6,0)
+    getHash = I.riCabalHash
+#else
+    getHash = I.riCabal
+#endif
 
 bfs :: P.PlanJson -> P.Unit -> IO [P.Unit]
 bfs plan unit0 = do

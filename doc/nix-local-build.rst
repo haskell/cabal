@@ -268,7 +268,7 @@ this folder (the most important two are first):
     ``cabal sdist --list-only``. Thus if you do not list all your
     source files in a Cabal file, Cabal may fail to recompile when you
     edit them.
-``config`` (same format as ``cabal.project``)
+``config`` (binary)
     The full project configuration, merged from ``cabal.project`` (and
     friends) as well as the command line arguments.
 ``compiler`` (binary)

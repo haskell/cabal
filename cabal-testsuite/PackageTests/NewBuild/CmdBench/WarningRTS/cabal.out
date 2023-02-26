@@ -1,0 +1,31 @@
+# cabal bench
+Resolving dependencies...
+Warning: Some RTS options were found standalone, which affect cabal and not the binary. Please note that +RTS inside the --benchmark-options argument suffices if your goal is to affect the benchmarked binary. For example, use "cabal test --benchmark-options='+RTS -N'" to pass the '-N' RTS option to your binary.
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following will be built:
+ - WarningRTS-1.0 (bench:foo) (first run)
+Configuring benchmark 'foo' for WarningRTS-1.0..
+Preprocessing benchmark 'foo' for WarningRTS-1.0..
+Building benchmark 'foo' for WarningRTS-1.0..
+Running 1 benchmarks...
+Benchmark foo: RUNNING...
+Benchmark foo: FINISH
+# cabal bench
+Warning: Some RTS options were found standalone, which affect cabal and not the binary. Please note that +RTS inside the --benchmark-options argument suffices if your goal is to affect the benchmarked binary. For example, use "cabal test --benchmark-options='+RTS -N'" to pass the '-N' RTS option to your binary.
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following will be built:
+ - WarningRTS-1.0 (bench:foo) (first run)
+Preprocessing benchmark 'foo' for WarningRTS-1.0..
+Building benchmark 'foo' for WarningRTS-1.0..
+Running 1 benchmarks...
+Benchmark foo: RUNNING...
+Benchmark foo: FINISH
+# cabal bench
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following will be built:
+ - WarningRTS-1.0 (bench:foo) (first run)
+Preprocessing benchmark 'foo' for WarningRTS-1.0..
+Building benchmark 'foo' for WarningRTS-1.0..
+Running 1 benchmarks...
+Benchmark foo: RUNNING...
+Benchmark foo: FINISH

@@ -336,7 +336,6 @@ runTestM mode m = withSystemTempDirectory "cabal-testsuite" $ \tmp_dir -> do
                     testPlan = Nothing,
                     testRecordDefaultMode = DoNotRecord,
                     testRecordUserMode = Nothing,
-                    testRecordNormalizer = id,
                     testSourceCopyRelativeDir = "source"
                 }
     let go = do cleanup
@@ -527,12 +526,11 @@ data TestEnv = TestEnv
     , testRecordDefaultMode :: RecordMode
     -- | User explicitly set record mode.  Not implemented ATM.
     , testRecordUserMode :: Maybe RecordMode
-    -- | Function to normalize recorded output
-    , testRecordNormalizer :: String -> String
     -- | Name of the subdirectory we copied the test's sources to,
     -- relative to 'testSourceDir'
     , testSourceCopyRelativeDir :: FilePath
     }
+    deriving Show
 
 testRecordMode :: TestEnv -> RecordMode
 testRecordMode env = fromMaybe (testRecordDefaultMode env) (testRecordUserMode env)

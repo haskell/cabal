@@ -1,7 +1,6 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Distribution.Types.GenericPackageDescription (
@@ -86,7 +85,6 @@ instance L.HasBuildInfos GenericPackageDescription where
             <*> (traverse . L._2 . traverseCondTreeBuildInfo) f x4
             <*> (traverse . L._2 . traverseCondTreeBuildInfo) f x5
             <*> (traverse . L._2 . traverseCondTreeBuildInfo) f x6
-      where
 
 -- We use this traversal to keep [Dependency] field in CondTree up to date.
 traverseCondTreeBuildInfo
@@ -94,7 +92,7 @@ traverseCondTreeBuildInfo
     => LensLike' f (CondTree v [Dependency] comp) L.BuildInfo
 traverseCondTreeBuildInfo g = node where
     mkCondNode :: comp -> [CondBranch v [Dependency] comp] -> CondTree v [Dependency] comp
-    mkCondNode comp branches = CondNode comp (view L.targetBuildDepends comp) branches
+    mkCondNode comp = CondNode comp (view L.targetBuildDepends comp)
 
     node (CondNode comp _ branches) = mkCondNode
         <$> L.buildInfo g comp
