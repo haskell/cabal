@@ -1303,7 +1303,7 @@ reportCommand = CommandUI {
                             (flagToList . fmap unPassword))
 
       ,option ['R'] ["repository-name"]
-        "Hackage repository to upload to."
+        "Hackage repository to which the package is to be uploaded."
         reportRepoName (\v flags -> flags { reportRepoName = v })
         (reqArg' "REPO" (toFlag . RemoteRepoName) (flagToList . fmap unRemoteRepoName))
       ]
@@ -2060,7 +2060,7 @@ uploadCommand = CommandUI {
         (reqArg' "PASSWORD" (Flag . words) (fromMaybe [] . flagToMaybe))
 
       ,option ['R'] ["repository-name"]
-        "Hackage repository to upload to."
+        "Hackage repository to which the package is to be uploaded."
         uploadRepoName (\v flags -> flags { uploadRepoName = v })
         (reqArg' "REPO" (toFlag . RemoteRepoName) (flagToList . fmap unRemoteRepoName))
       ]

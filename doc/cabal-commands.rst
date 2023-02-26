@@ -1044,6 +1044,9 @@ to Hackage.
 
     Command to get your Hackage password.
 
+.. options:: -R, --repository-name
+    Hackage repository to which the package is to be uploaded.
+
 cabal report
 ^^^^^^^^^^^^
 
@@ -1056,3 +1059,6 @@ cabal report
 .. option:: -p, --password
 
     Your Hackage password.
+
+.. options:: -R, --repository-name
+    Hackage repository to which the package is to be uploaded.
