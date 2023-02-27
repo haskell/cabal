@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -Eeuxo pipefail
+set -Eeuo pipefail
 
 source "$CI_PROJECT_DIR/.gitlab/common.sh"
 
@@ -26,7 +26,6 @@ export PATH="$GHCUP_BINDIR:$PATH"
 export BOOTSTRAP_HASKELL_NONINTERACTIVE=1
 export BOOTSTRAP_HASKELL_GHC_VERSION=$GHC_VERSION
 export BOOTSTRAP_HASKELL_CABAL_VERSION=$CABAL_INSTALL_VERSION
-export BOOTSTRAP_HASKELL_VERBOSE=1
 export BOOTSTRAP_HASKELL_ADJUST_CABAL_CONFIG=yes
 
 # for some reason the subshell doesn't pick up the arm64 environment on darwin
