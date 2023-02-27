@@ -54,6 +54,12 @@ build-x86_64-linux:
   parallel:
     matrix:
       - PLATFORM:
+        - i386-linux-deb9
+        - x86_64-linux-deb9
+        - x86_64-linux-fedora33
+        - x86_64-linux-rocky8
+        - x86_64-linux-ubuntu18_04
+        - x86_64-linux-ubuntu20_04
         - x86_64-linux-deb10
         - x86_64-linux-deb11
   tags:
