@@ -55,6 +55,7 @@ build-x86_64-linux:
     matrix:
       - PLATFORM:
         - i386-linux-deb9
+        - x86_64-linux-centos7
         - x86_64-linux-deb9
         - x86_64-linux-fedora33
         - x86_64-linux-rocky8

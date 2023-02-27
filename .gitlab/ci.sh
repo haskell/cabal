@@ -48,7 +48,11 @@ case "$(uname -s)" in
 esac
 
 # https://github.com/haskell/cabal/issues/7313#issuecomment-811851884
-if [ "$(getconf LONG_BIT)" == "32" ] ; then
+# and
+# https://github.com/haskellari/lukko/issues/17
+#
+# $PLATFORM comes from CI.
+if [ "$(getconf LONG_BIT)" = "32" -o "${PLATFORM:=xxx}" = "x86_64-linux-centos7" ] ; then
     echo 'constraints: lukko -ofd-locking' >> cabal.project.release.local
 fi
 
