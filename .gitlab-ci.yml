@@ -51,21 +51,16 @@ build-armv7-linux-deb10:
 
 build-x86_64-linux:
   extends: .build
+  parallel:
+    matrix:
+      - PLATFORM:
+        - x86_64-linux-deb10
+        - x86_64-linux-deb11
   tags:
     - x86_64-linux
-  image: "registry.gitlab.haskell.org/ghc/ci-images/x86_64-linux-deb10:$DOCKER_REV"
+  image: "registry.gitlab.haskell.org/ghc/ci-images/$PLATFORM:$DOCKER_REV"
   variables:
-    TARBALL_ARCHIVE_SUFFIX: x86_64-linux-deb10
-    TARBALL_EXT: tar.xz
-    ADD_CABAL_ARGS: "--enable-split-sections"
-
-build-x86_64-linux-deb11:
-  extends: .build
-  tags:
-    - x86_64-linux
-  image: "registry.gitlab.haskell.org/ghc/ci-images/x86_64-linux-deb11:$DOCKER_REV"
-  variables:
-    TARBALL_ARCHIVE_SUFFIX: x86_64-linux-deb11
+    TARBALL_ARCHIVE_SUFFIX: $PLATFORM
     TARBALL_EXT: tar.xz
     ADD_CABAL_ARGS: "--enable-split-sections"
 
