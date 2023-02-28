@@ -40,8 +40,12 @@ import Distribution.Simple.Utils
          , die', info, noticeNoWrap, warn )
 import Distribution.Simple.Compiler
          ( CompilerFlavor(..), compilerFlavor )
-import Distribution.Simple.Setup
-         ( CopyFlags(..), fromFlag, HaddockTarget(ForDevelopment) )
+import Distribution.Simple.Flag
+    ( fromFlag )
+import Distribution.Simple.Setup.Copy
+    ( CopyFlags(..) )
+import Distribution.Simple.Setup.Haddock
+    ( HaddockTarget(ForDevelopment) )
 import Distribution.Simple.BuildTarget
 import Distribution.Utils.Path (getSymbolicPath)
 

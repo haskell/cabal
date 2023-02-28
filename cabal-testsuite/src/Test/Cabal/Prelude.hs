@@ -679,7 +679,7 @@ recordHeader args = do
     env <- getTestEnv
     let mode = testRecordMode env
         str_header = "# " ++ intercalate " " args ++ "\n"
-        header = C.pack (testRecordNormalizer env str_header)
+        header = C.pack str_header
     case mode of
         DoNotRecord -> return ()
         _ -> do
@@ -696,7 +696,7 @@ recordLog res = do
     liftIO $ C.appendFile (testWorkDir env </> "test.log")
                          (C.pack $ "+ " ++ resultCommand res ++ "\n"
                             ++ resultOutput res ++ "\n\n")
-    liftIO . C.appendFile (testActualFile env) . C.pack . testRecordNormalizer env $
+    liftIO . C.appendFile (testActualFile env) . C.pack $
         case mode of
             RecordAll    -> unlines (lines (resultOutput res))
             RecordMarked -> getMarkedOutput (resultOutput res)
@@ -786,10 +786,6 @@ recordMode :: RecordMode -> TestM a -> TestM a
 recordMode mode = withReaderT (\env -> env {
     testRecordUserMode = Just mode
     })
-
-recordNormalizer :: (String -> String) -> TestM a -> TestM a
-recordNormalizer f =
-    withReaderT (\env -> env { testRecordNormalizer = testRecordNormalizer env . f })
 
 assertOutputContains :: MonadIO m => WithCallStack (String -> Result -> m ())
 assertOutputContains needle result =

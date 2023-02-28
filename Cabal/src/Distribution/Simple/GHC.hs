@@ -98,8 +98,9 @@ import qualified Distribution.Simple.Program.Ar    as Ar
 import qualified Distribution.Simple.Program.Ld    as Ld
 import qualified Distribution.Simple.Program.Strip as Strip
 import Distribution.Simple.Program.GHC
-import Distribution.Simple.Setup
-import qualified Distribution.Simple.Setup as Cabal
+import Distribution.Simple.Flag ( Flag(Flag), fromFlag, fromFlagOrDefault, toFlag )
+import Distribution.Simple.Setup.Config
+import Distribution.Simple.Setup.Repl
 import Distribution.Simple.Compiler
 import Distribution.Version
 import Distribution.System
@@ -491,19 +492,19 @@ getInstalledPackagesMonitorFiles verbosity platform progdb =
 -- -----------------------------------------------------------------------------
 -- Building a library
 
-buildLib :: Verbosity          -> Cabal.Flag (Maybe Int)
+buildLib :: Verbosity          -> Flag (Maybe Int)
          -> PackageDescription -> LocalBuildInfo
          -> Library            -> ComponentLocalBuildInfo -> IO ()
 buildLib = buildOrReplLib Nothing
 
 replLib :: ReplOptions             -> Verbosity
-        -> Cabal.Flag (Maybe Int)  -> PackageDescription
+        -> Flag (Maybe Int)  -> PackageDescription
         -> LocalBuildInfo          -> Library
         -> ComponentLocalBuildInfo -> IO ()
 replLib = buildOrReplLib . Just
 
 buildOrReplLib :: Maybe ReplOptions -> Verbosity
-               -> Cabal.Flag (Maybe Int) -> PackageDescription
+               -> Flag (Maybe Int) -> PackageDescription
                -> LocalBuildInfo -> Library
                -> ComponentLocalBuildInfo -> IO ()
 buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
@@ -523,7 +524,8 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
       comp = compiler lbi
       ghcVersion = compilerVersion comp
       implInfo  = getImplInfo comp
-      platform@(Platform _hostArch hostOS) = hostPlatform lbi
+      platform@(Platform hostArch hostOS) = hostPlatform lbi
+      hasJsSupport = hostArch == JavaScript
       has_code = not (componentIsIndefinite clbi)
 
   relLibTargetDir <- makeRelativeToCurrentDirectory libTargetDir
@@ -567,11 +569,13 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
                       , toNubListR (cxxSources libBi)
                       , toNubListR (cmmSources libBi)
                       , toNubListR (asmSources libBi)
-                      , toNubListR (jsSources  libBi)
+                      , if hasJsSupport
                         -- JS files are C-like with GHC's JS backend: they are
                         -- "compiled" into `.o` files (renamed with a header).
                         -- This is a difference from GHCJS, for which we only
                         -- pass the JS files at link time.
+                        then toNubListR (jsSources  libBi)
+                        else mempty
                       ]
       cLikeObjs   = map (`replaceExtension` objExtension) cLikeSources
       baseOpts    = componentGhcOptions verbosity lbi libBi clbi libTargetDir
@@ -655,7 +659,7 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
           then do
               runGhcProg vanillaSharedOpts
               case (hpcdir Hpc.Dyn, hpcdir Hpc.Vanilla) of
-                (Cabal.Flag dynDir, Cabal.Flag vanillaDir) ->
+                (Flag dynDir, Flag vanillaDir) ->
                     -- When the vanilla and shared library builds are done
                     -- in one pass, only one set of HPC module interfaces
                     -- are generated. This set should suffice for both
@@ -730,7 +734,7 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
       | filename <- cSources libBi]
 
   -- build any JS sources
-  unless (not has_code || null (jsSources libBi)) $ do
+  unless (not has_code || not hasJsSupport || null (jsSources libBi)) $ do
     info verbosity "Building JS Sources..."
     sequence_
       [ do let vanillaJsOpts = Internal.componentJsGhcOptions verbosity implInfo
@@ -998,14 +1002,14 @@ startInterpreter verbosity progdb comp platform packageDBs = do
 
 -- | Build a foreign library
 buildFLib
-  :: Verbosity          -> Cabal.Flag (Maybe Int)
+  :: Verbosity          -> Flag (Maybe Int)
   -> PackageDescription -> LocalBuildInfo
   -> ForeignLib         -> ComponentLocalBuildInfo -> IO ()
 buildFLib v njobs pkg lbi = gbuild v njobs pkg lbi . GBuildFLib
 
 replFLib
   :: ReplOptions             -> Verbosity
-  -> Cabal.Flag (Maybe Int)  -> PackageDescription
+  -> Flag (Maybe Int)  -> PackageDescription
   -> LocalBuildInfo          -> ForeignLib
   -> ComponentLocalBuildInfo -> IO ()
 replFLib replFlags  v njobs pkg lbi =
@@ -1014,14 +1018,14 @@ replFLib replFlags  v njobs pkg lbi =
 -- | Build an executable with GHC.
 --
 buildExe
-  :: Verbosity          -> Cabal.Flag (Maybe Int)
+  :: Verbosity          -> Flag (Maybe Int)
   -> PackageDescription -> LocalBuildInfo
   -> Executable         -> ComponentLocalBuildInfo -> IO ()
 buildExe v njobs pkg lbi = gbuild v njobs pkg lbi . GBuildExe
 
 replExe
   :: ReplOptions             -> Verbosity
-  -> Cabal.Flag (Maybe Int)  -> PackageDescription
+  -> Flag (Maybe Int)  -> PackageDescription
   -> LocalBuildInfo          -> Executable
   -> ComponentLocalBuildInfo -> IO ()
 replExe replFlags v njobs pkg lbi =
@@ -1309,7 +1313,7 @@ replNoLoad replFlags l
     | otherwise                                = l
 
 -- | Generic build function. See comment for 'GBuildMode'.
-gbuild :: Verbosity          -> Cabal.Flag (Maybe Int)
+gbuild :: Verbosity          -> Flag (Maybe Int)
        -> PackageDescription -> LocalBuildInfo
        -> GBuildMode         -> ComponentLocalBuildInfo -> IO ()
 gbuild verbosity numJobs pkg_descr lbi bm clbi = do
@@ -2087,7 +2091,10 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir pkg lib clbi = do
                    && null (cxxSources (libBuildInfo lib))
                    && null (cmmSources (libBuildInfo lib))
                    && null (asmSources (libBuildInfo lib))
-                   && null (jsSources (libBuildInfo lib))
+                   && (null (jsSources (libBuildInfo lib)) || not hasJsSupport)
+    hasJsSupport = case hostPlatform lbi of
+      Platform JavaScript _ -> True
+      _                     -> False
     has_code = not (componentIsIndefinite clbi)
     whenHasCode = when has_code
     whenVanilla = when (hasLib && withVanillaLib lbi)

@@ -1,7 +1,7 @@
 cabal-version: 2.2
 name:          Cabal-tests
 version:       3
-copyright:     2003-2022, Cabal Development Team (see AUTHORS file)
+copyright:     2003-2023, Cabal Development Team (see AUTHORS file)
 license:       BSD-3-Clause
 license-file:  LICENSE
 author:        Cabal Development Team <cabal-devel@haskell.org>
@@ -51,7 +51,7 @@ test-suite unit-tests
   build-depends:
       array
     , async               >=2.2.2 && <2.3
-    , base                >=0     && <5
+    , base                >=4.9     && <5
     , binary
     , bytestring
     , Cabal

@@ -13,7 +13,7 @@ License:            BSD-3-Clause
 License-File:       LICENSE
 Author:             Cabal Development Team (see AUTHORS file)
 Maintainer:         Cabal Development Team <cabal-devel@haskell.org>
-Copyright:          2003-2022, Cabal Development Team
+Copyright:          2003-2023, Cabal Development Team
 Category:           Distribution
 Build-type:         Simple
 Extra-Source-Files:
@@ -140,6 +140,7 @@ library
         Distribution.Client.InstallSymlink
         Distribution.Client.JobControl
         Distribution.Client.List
+        Distribution.Client.Main
         Distribution.Client.Manpage
         Distribution.Client.ManpageFlags
         Distribution.Client.Nix
@@ -252,7 +253,7 @@ library
 
 
 executable cabal
-    import: warnings, base-dep, cabal-dep, cabal-syntax-dep
+    import: warnings, base-dep
     main-is: Main.hs
     hs-source-dirs: main
     default-language: Haskell2010
@@ -264,9 +265,7 @@ executable cabal
         extra-libraries: bsd
 
     build-depends:
-        cabal-install,
-        directory,
-        filepath
+        cabal-install
 
 -- Small, fast running tests.
 --

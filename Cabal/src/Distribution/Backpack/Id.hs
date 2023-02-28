@@ -13,7 +13,7 @@ import Distribution.Compat.Prelude
 import Distribution.Types.UnqualComponentName
 import Distribution.Simple.Compiler
 import Distribution.PackageDescription
-import Distribution.Simple.Setup as Setup
+import Distribution.Simple.Flag ( Flag(..) )
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Types.ComponentId

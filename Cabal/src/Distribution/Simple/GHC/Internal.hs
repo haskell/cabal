@@ -57,7 +57,7 @@ import Distribution.PackageDescription
 import Distribution.Lex
 import Distribution.Simple.Compiler
 import Distribution.Simple.Program.GHC
-import Distribution.Simple.Setup
+import Distribution.Simple.Flag ( Flag, maybeToFlag, toFlag )
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.Simple.Program
 import Distribution.Simple.LocalBuildInfo
@@ -442,7 +442,8 @@ componentGhcOptions verbosity implInfo lbi bi clbi odir =
       ghcOptSplitSections   = toFlag (splitSections lbi),
       ghcOptSplitObjs       = toFlag (splitObjs lbi),
       ghcOptSourcePathClear = toFlag True,
-      ghcOptSourcePath      = toNubListR $ [odir] ++ (map getSymbolicPath (hsSourceDirs bi))
+      ghcOptSourcePath      = toNubListR $ map getSymbolicPath (hsSourceDirs bi)
+                                           ++ [odir]
                                            ++ [autogenComponentModulesDir lbi clbi]
                                            ++ [autogenPackageModulesDir lbi],
       ghcOptCppIncludePath  = toNubListR $ [autogenComponentModulesDir lbi clbi

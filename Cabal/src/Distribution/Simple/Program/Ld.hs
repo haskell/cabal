@@ -27,8 +27,10 @@ import Distribution.Simple.Program.Run
          , runProgramInvocation )
 import Distribution.Simple.Program.Types
          ( ConfiguredProgram(..) )
-import Distribution.Simple.Setup
-         ( fromFlagOrDefault, configUseResponseFiles )
+import Distribution.Simple.Flag
+         ( fromFlagOrDefault )
+import Distribution.Simple.Setup.Config
+         ( configUseResponseFiles )
 import Distribution.Simple.Utils
          ( defaultTempFileOptions )
 import Distribution.Verbosity

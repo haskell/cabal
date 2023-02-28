@@ -31,6 +31,15 @@ jobs:
         path: "~/.local/bin"
         key: fix-whitespace-${{ env.fix-whitespace-ver }}
 
+    # See https://github.com/haskell/cabal/pull/8739
+    - name: Sudo chmod to permit ghcup to update its cache
+      run: |
+        if [[ "${{ runner.os }}" == "Linux" ]]; then
+          sudo mkdir -p /usr/local/.ghcup/cache
+          sudo chown -R $USER /usr/local/.ghcup
+          sudo chmod -R 777 /usr/local/.ghcup
+        fi
+
     - uses: haskell/actions/setup@v2
       if: ${{ !steps.cache.outputs.cache-hit }}
       with:

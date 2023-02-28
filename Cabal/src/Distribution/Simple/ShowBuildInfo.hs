@@ -76,7 +76,7 @@ import Distribution.Compiler
 import Distribution.Verbosity
 import Distribution.Simple.Compiler (Compiler, showCompilerId, compilerFlavor)
 import Distribution.Simple.Program
-import Distribution.Simple.Setup
+import Distribution.Simple.Setup.Build ( BuildFlags )
 import Distribution.Simple.Utils (cabalVersion)
 import Distribution.Utils.Json
 import Distribution.Types.Component

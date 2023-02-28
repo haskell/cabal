@@ -1,0 +1,2 @@
+# Needed for test, to ensure we test the file extension as well.
+!ChangeLog.md~

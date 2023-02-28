@@ -1,0 +1,4 @@
+module Generated (foo) where
+
+foo :: String
+foo = "Real module, ship to production"

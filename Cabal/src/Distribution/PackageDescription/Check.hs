@@ -2545,12 +2545,13 @@ checkGlobFiles verbosity pkg root = do
           )
 
     -- Predicate for desirable documentation file on Hackage server
-    isDesirableExtraDocFile :: [FilePath] -> FilePath -> Bool
-    isDesirableExtraDocFile paths path = map toLower basename `elem` paths
+    isDesirableExtraDocFile :: ([FilePath], [FilePath]) -> FilePath -> Bool
+    isDesirableExtraDocFile (basenames, extensions) path =
+      basename `elem` basenames && ext `elem` extensions
       where
-        (basename, _ext) = splitExtension path
+        (basename, ext) = splitExtension (map toLower path)
 
-    -- Changelog patterns
+    -- Changelog patterns (basenames & extensions)
     -- Source: hackage-server/src/Distribution/Server/Packages/ChangeLog.hs
     desirableChangeLog =
       [ "news"
@@ -2558,6 +2559,7 @@ checkGlobFiles verbosity pkg root = do
       , "change_log"
       , "changes"
       ]
+    desirableChangeLogExtensions = ["", ".txt", ".md", ".markdown", ".rst"]
     -- [TODO] Check readme. Observations:
     --        • Readme is not necessary if package description is good.
     --        • Some readmes exists only for repository browsing.
@@ -2567,7 +2569,7 @@ checkGlobFiles verbosity pkg root = do
     -- -- Readme patterns
     -- -- Source: hackage-server/src/Distribution/Server/Packages/Readme.hs
     -- desirableReadme = ["readme"]
-    desirableDocFiles = desirableChangeLog
+    desirableDocFiles = (desirableChangeLog, desirableChangeLogExtensions)
 
     -- If there's a missing directory in play, since our globs don't
     -- (currently) support disjunction, that will always mean there are no
