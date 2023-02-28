@@ -73,7 +73,8 @@ import Distribution.PackageDescription.Configuration
 import Distribution.PackageDescription.Check hiding (doesFileExist)
 import Distribution.Simple.BuildToolDepends
 import Distribution.Simple.Program
-import Distribution.Simple.Setup as Setup
+import Distribution.Simple.Setup.Config as Setup
+import Distribution.Simple.Setup.Common as Setup
 import Distribution.Simple.BuildTarget
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Types.PackageVersionConstraint

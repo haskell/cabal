@@ -36,7 +36,7 @@ import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import Distribution.PackageDescription
 import Distribution.ModuleName
-import Distribution.Simple.Setup as Setup
+import Distribution.Simple.Flag
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Types.AnnotatedId
 import Distribution.Types.ComponentRequestedSpec

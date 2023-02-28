@@ -98,8 +98,9 @@ import qualified Distribution.Simple.Program.Ar    as Ar
 import qualified Distribution.Simple.Program.Ld    as Ld
 import qualified Distribution.Simple.Program.Strip as Strip
 import Distribution.Simple.Program.GHC
-import Distribution.Simple.Setup
-import qualified Distribution.Simple.Setup as Cabal
+import Distribution.Simple.Flag ( Flag(Flag), fromFlag, fromFlagOrDefault, toFlag )
+import Distribution.Simple.Setup.Config
+import Distribution.Simple.Setup.Repl
 import Distribution.Simple.Compiler
 import Distribution.Version
 import Distribution.System
@@ -491,19 +492,19 @@ getInstalledPackagesMonitorFiles verbosity platform progdb =
 -- -----------------------------------------------------------------------------
 -- Building a library
 
-buildLib :: Verbosity          -> Cabal.Flag (Maybe Int)
+buildLib :: Verbosity          -> Flag (Maybe Int)
          -> PackageDescription -> LocalBuildInfo
          -> Library            -> ComponentLocalBuildInfo -> IO ()
 buildLib = buildOrReplLib Nothing
 
 replLib :: ReplOptions             -> Verbosity
-        -> Cabal.Flag (Maybe Int)  -> PackageDescription
+        -> Flag (Maybe Int)  -> PackageDescription
         -> LocalBuildInfo          -> Library
         -> ComponentLocalBuildInfo -> IO ()
 replLib = buildOrReplLib . Just
 
 buildOrReplLib :: Maybe ReplOptions -> Verbosity
-               -> Cabal.Flag (Maybe Int) -> PackageDescription
+               -> Flag (Maybe Int) -> PackageDescription
                -> LocalBuildInfo -> Library
                -> ComponentLocalBuildInfo -> IO ()
 buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
@@ -658,7 +659,7 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
           then do
               runGhcProg vanillaSharedOpts
               case (hpcdir Hpc.Dyn, hpcdir Hpc.Vanilla) of
-                (Cabal.Flag dynDir, Cabal.Flag vanillaDir) ->
+                (Flag dynDir, Flag vanillaDir) ->
                     -- When the vanilla and shared library builds are done
                     -- in one pass, only one set of HPC module interfaces
                     -- are generated. This set should suffice for both
@@ -1001,14 +1002,14 @@ startInterpreter verbosity progdb comp platform packageDBs = do
 
 -- | Build a foreign library
 buildFLib
-  :: Verbosity          -> Cabal.Flag (Maybe Int)
+  :: Verbosity          -> Flag (Maybe Int)
   -> PackageDescription -> LocalBuildInfo
   -> ForeignLib         -> ComponentLocalBuildInfo -> IO ()
 buildFLib v njobs pkg lbi = gbuild v njobs pkg lbi . GBuildFLib
 
 replFLib
   :: ReplOptions             -> Verbosity
-  -> Cabal.Flag (Maybe Int)  -> PackageDescription
+  -> Flag (Maybe Int)  -> PackageDescription
   -> LocalBuildInfo          -> ForeignLib
   -> ComponentLocalBuildInfo -> IO ()
 replFLib replFlags  v njobs pkg lbi =
@@ -1017,14 +1018,14 @@ replFLib replFlags  v njobs pkg lbi =
 -- | Build an executable with GHC.
 --
 buildExe
-  :: Verbosity          -> Cabal.Flag (Maybe Int)
+  :: Verbosity          -> Flag (Maybe Int)
   -> PackageDescription -> LocalBuildInfo
   -> Executable         -> ComponentLocalBuildInfo -> IO ()
 buildExe v njobs pkg lbi = gbuild v njobs pkg lbi . GBuildExe
 
 replExe
   :: ReplOptions             -> Verbosity
-  -> Cabal.Flag (Maybe Int)  -> PackageDescription
+  -> Flag (Maybe Int)  -> PackageDescription
   -> LocalBuildInfo          -> Executable
   -> ComponentLocalBuildInfo -> IO ()
 replExe replFlags v njobs pkg lbi =
@@ -1312,7 +1313,7 @@ replNoLoad replFlags l
     | otherwise                                = l
 
 -- | Generic build function. See comment for 'GBuildMode'.
-gbuild :: Verbosity          -> Cabal.Flag (Maybe Int)
+gbuild :: Verbosity          -> Flag (Maybe Int)
        -> PackageDescription -> LocalBuildInfo
        -> GBuildMode         -> ComponentLocalBuildInfo -> IO ()
 gbuild verbosity numJobs pkg_descr lbi bm clbi = do

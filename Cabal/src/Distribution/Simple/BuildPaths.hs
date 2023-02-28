@@ -49,7 +49,8 @@ import Distribution.ModuleName as ModuleName
 import Distribution.Compiler
 import Distribution.PackageDescription
 import Distribution.Simple.LocalBuildInfo
-import Distribution.Simple.Setup
+import Distribution.Simple.Setup.Haddock (HaddockTarget(..))
+import Distribution.Simple.Setup.Common (defaultDistPref)
 import Distribution.Pretty
 import Distribution.System
 import Distribution.Verbosity
