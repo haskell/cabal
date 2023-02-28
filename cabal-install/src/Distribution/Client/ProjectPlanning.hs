@@ -235,7 +235,7 @@ sanityCheckElaboratedConfiguredPackage
     -> ElaboratedConfiguredPackage
     -> a
     -> a
-sanityCheckElaboratedConfiguredPackage sharedConfig
+sanityCheckElaboratedConfiguredPackage _sharedConfig
                              elab@ElaboratedConfiguredPackage{..} =
     (case elabPkgOrComp of
         ElabPackage pkg -> sanityCheckElaboratedPackage elab pkg
