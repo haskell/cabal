@@ -181,7 +181,6 @@ import qualified Data.Map as Map
 import           Control.Exception ( assert )
 #ifdef MIN_VERSION_unix
 import           System.Posix.Signals (sigKILL, sigSEGV)
-import qualified Distribution.Client.BuildReports.Types as BuildReports
 #endif
 
 
