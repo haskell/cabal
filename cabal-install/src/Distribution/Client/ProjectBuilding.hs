@@ -585,7 +585,9 @@ rebuildTargets verbosity
                buildSettings@BuildTimeSettings{
                  buildSettingNumJobs,
                  buildSettingKeepGoing
-               } = do
+               }
+  | fromFlagOrDefault False (projectConfigOfflineMode config) && not (null packagesToDownload) = return offlineError
+  | otherwise = do
     -- Concurrency control: create the job controller and concurrency limits
     -- for downloading, building and installing.
     jobControl    <- if isParallelBuild
@@ -605,33 +607,30 @@ rebuildTargets verbosity
     createDirectoryIfMissingVerbose verbosity True distTempDirectory
     traverse_ (createPackageDBIfMissing verbosity compiler progdb) packageDBsToUse
 
-    if fromFlagOrDefault False (projectConfigOfflineMode config) && not (null packagesToDownload) then
-      return offlineError
-    else
-      -- Before traversing the install plan, preemptively find all packages that
-      -- will need to be downloaded and start downloading them.
-      asyncDownloadPackages verbosity withRepoCtx
-                            installPlan pkgsBuildStatus $ \downloadMap ->
+    -- Before traversing the install plan, preemptively find all packages that
+    -- will need to be downloaded and start downloading them.
+    asyncDownloadPackages verbosity withRepoCtx
+                          installPlan pkgsBuildStatus $ \downloadMap ->
 
-        -- For each package in the plan, in dependency order, but in parallel...
-        InstallPlan.execute jobControl keepGoing
-                            (BuildFailure Nothing . DependentFailed . packageId)
-                            installPlan $ \pkg ->
-          --TODO: review exception handling
-          handle (\(e :: BuildFailure) -> return (Left e)) $ fmap Right $
+      -- For each package in the plan, in dependency order, but in parallel...
+      InstallPlan.execute jobControl keepGoing
+                          (BuildFailure Nothing . DependentFailed . packageId)
+                          installPlan $ \pkg ->
+        --TODO: review exception handling
+        handle (\(e :: BuildFailure) -> return (Left e)) $ fmap Right $
 
-          let uid = installedUnitId pkg
-              pkgBuildStatus = Map.findWithDefault (error "rebuildTargets") uid pkgsBuildStatus in
+        let uid = installedUnitId pkg
+            pkgBuildStatus = Map.findWithDefault (error "rebuildTargets") uid pkgsBuildStatus in
 
-          rebuildTarget
-            verbosity
-            distDirLayout
-            storeDirLayout
-            buildSettings downloadMap
-            registerLock cacheLock
-            sharedPackageConfig
-            installPlan pkg
-            pkgBuildStatus
+        rebuildTarget
+          verbosity
+          distDirLayout
+          storeDirLayout
+          buildSettings downloadMap
+          registerLock cacheLock
+          sharedPackageConfig
+          installPlan pkg
+          pkgBuildStatus
   where
     isParallelBuild = buildSettingNumJobs >= 2
     keepGoing       = buildSettingKeepGoing
@@ -655,10 +654,10 @@ rebuildTargets verbosity
           elabPkgSourceId = PackageIdentifier { pkgName, pkgVersion }
         } = (elabUnitId, Left (BuildFailure {
           buildFailureLogFile = Nothing,
-          buildFailureReason = DownloadFailed . error $ makeError pkgName pkgVersion
+          buildFailureReason = GracefulFailure $ makeError pkgName pkgVersion
         }))
         makeError :: PackageName -> Version -> String
-        makeError n v = "--offline was specified, could not download package "
+        makeError n v = "--offline was specified, hence refusing to download the package: "
           ++ unPackageName n
           ++ " version " ++ Disp.render (pretty v)
 
