@@ -276,14 +276,14 @@ licenseHeuristics flags = getLicense flags $ guessLicense flags
 -- | The author's name. Prompt, or try to guess from an existing
 --   git repo.
 authorHeuristics :: Interactive m => InitFlags -> m String
-authorHeuristics flags = guessAuthorEmail >>=
-  maybe (getAuthor flags $ return "") (getAuthor flags . return)
+authorHeuristics flags = guessAuthorName >>=
+  maybe (getAuthor flags $ return "Unknown") (getAuthor flags . return)
 
 -- | The author's email. Prompt, or try to guess from an existing
 --   git repo.
 emailHeuristics :: Interactive m => InitFlags -> m String
-emailHeuristics flags = guessAuthorName >>=
-  maybe (getEmail flags $ return "") (getEmail flags . return)
+emailHeuristics flags = guessAuthorEmail >>=
+  maybe (getEmail flags $ return "Unknown") (getEmail flags . return)
 
 -- | Prompt for a homepage URL for the package.
 homepageHeuristics :: Interactive m => InitFlags -> m String
