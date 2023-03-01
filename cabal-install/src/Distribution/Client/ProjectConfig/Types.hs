@@ -162,6 +162,7 @@ data ProjectConfigShared
    = ProjectConfigShared {
        projectConfigDistDir           :: Flag FilePath,
        projectConfigConfigFile        :: Flag FilePath,
+       projectConfigProjectDir        :: Flag FilePath,
        projectConfigProjectFile       :: Flag FilePath,
        projectConfigIgnoreProject     :: Flag Bool,
        projectConfigHcFlavor          :: Flag CompilerFlavor,
