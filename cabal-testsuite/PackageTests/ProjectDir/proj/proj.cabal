@@ -1,0 +1,17 @@
+cabal-version: 3.8
+name:          proj
+version:       0.1
+
+flag extra
+  default:     False
+  manual:      True
+
+library
+  build-depends:   base
+  exposed-modules: Lib
+
+executable extra
+  build-depends:   base
+  main-is:         App.hs
+  if !flag(extra)
+    buildable: False

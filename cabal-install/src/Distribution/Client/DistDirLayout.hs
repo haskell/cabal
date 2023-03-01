@@ -10,7 +10,10 @@ module Distribution.Client.DistDirLayout (
     DistDirLayout(..),
     DistDirParams(..),
     defaultDistDirLayout,
+
+    -- * 'ProjectRoot'
     ProjectRoot(..),
+    defaultProjectFile,
 
     -- * 'StoreDirLayout'
     StoreDirLayout(..),
@@ -64,7 +67,7 @@ data DistDirParams = DistDirParams {
 data DistDirLayout = DistDirLayout {
 
        -- | The root directory of the project. Many other files are relative to
-       -- this location. In particular, the @cabal.project@ lives here.
+       -- this location (e.g. the @cabal.project@ file).
        --
        distProjectRootDirectory     :: FilePath,
 
@@ -156,17 +159,25 @@ data CabalDirLayout = CabalDirLayout {
 -- | Information about the root directory of the project.
 --
 -- It can either be an implicit project root in the current dir if no
--- @cabal.project@ file is found, or an explicit root if the file is found.
+-- @cabal.project@ file is found, or an explicit root if either
+-- the file is found or the project root directory was specicied.
 --
 data ProjectRoot =
-       -- | -- ^ An implicit project root. It contains the absolute project
+       -- | An implicit project root. It contains the absolute project
        -- root dir.
        ProjectRootImplicit FilePath
 
-       -- | -- ^ An explicit project root. It contains the absolute project
+       -- | An explicit project root. It contains the absolute project
        -- root dir and the relative @cabal.project@ file (or explicit override)
      | ProjectRootExplicit FilePath FilePath
+
+       -- | An explicit, absolute project root dir and an explicit, absolute
+       -- @cabal.project@ file.
+     | ProjectRootExplicitAbsolute FilePath FilePath
   deriving (Eq, Show)
+
+defaultProjectFile :: FilePath
+defaultProjectFile = "cabal.project"
 
 -- | Make the default 'DistDirLayout' based on the project root dir and
 -- optional overrides for the location of the @dist@ directory and the
@@ -180,8 +191,9 @@ defaultDistDirLayout projectRoot mdistDirectory =
     DistDirLayout {..}
   where
     (projectRootDir, projectFile) = case projectRoot of
-      ProjectRootImplicit dir      -> (dir, dir </> "cabal.project")
-      ProjectRootExplicit dir file -> (dir, dir </> file)
+      ProjectRootImplicit dir              -> (dir, dir </> defaultProjectFile)
+      ProjectRootExplicit dir file         -> (dir, dir </> file)
+      ProjectRootExplicitAbsolute dir file -> (dir, file)
 
     distProjectRootDirectory :: FilePath
     distProjectRootDirectory = projectRootDir
