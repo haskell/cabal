@@ -525,7 +525,8 @@ instance Semigroup SavedConfig where
           lastNonEmpty = lastNonEmpty'   savedBenchmarkFlags
 
       combinedSavedProjectFlags = ProjectFlags
-        { flagProjectFileName = combine flagProjectFileName
+        { flagProjectDir      = combine flagProjectDir
+        , flagProjectFile     = combine flagProjectFile
         , flagIgnoreProject   = combine flagIgnoreProject
         }
         where
