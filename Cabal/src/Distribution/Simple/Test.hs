@@ -28,7 +28,8 @@ import Distribution.Simple.Hpc
 import Distribution.Simple.InstallDirs
 import qualified Distribution.Simple.LocalBuildInfo as LBI
 import qualified Distribution.Types.LocalBuildInfo as LBI
-import Distribution.Simple.Setup
+import Distribution.Simple.Flag ( fromFlag )
+import Distribution.Simple.Setup.Test
 import Distribution.Simple.UserHooks
 import qualified Distribution.Simple.Test.ExeV10 as ExeV10
 import qualified Distribution.Simple.Test.LibV09 as LibV09

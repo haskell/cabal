@@ -25,7 +25,8 @@ import Distribution.Compat.Prelude
 import Distribution.PackageDescription
 import Distribution.Simple.Program
 import Distribution.Simple.Program.Db
-import Distribution.Simple.Setup
+import Distribution.Simple.Setup.Common
+import Distribution.Simple.Setup.Config
 
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Utils

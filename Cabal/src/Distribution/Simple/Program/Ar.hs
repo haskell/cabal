@@ -33,8 +33,10 @@ import Distribution.Simple.Program.ResponseFile
 import Distribution.Simple.Program.Run
          ( programInvocation, multiStageProgramInvocation
          , runProgramInvocation )
-import Distribution.Simple.Setup
-         ( fromFlagOrDefault, configUseResponseFiles )
+import Distribution.Simple.Flag
+         ( fromFlagOrDefault )
+import Distribution.Simple.Setup.Config
+         ( configUseResponseFiles )
 import Distribution.Simple.Utils
          ( defaultTempFileOptions, dieWithLocation', withTempDirectory )
 import Distribution.System

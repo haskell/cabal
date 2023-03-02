@@ -65,7 +65,10 @@ import qualified Distribution.InstalledPackageInfo as IPI
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import qualified Distribution.ModuleName as ModuleName
 
-import Distribution.Simple.Setup
+import Distribution.Simple.Flag
+import Distribution.Simple.Setup.Build
+import Distribution.Simple.Setup.Config
+import Distribution.Simple.Setup.Repl
 import Distribution.Simple.BuildTarget
 import Distribution.Simple.BuildToolDepends
 import Distribution.Simple.PreProcess

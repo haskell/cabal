@@ -17,12 +17,17 @@ import Distribution.Simple.Command
 import Distribution.Simple.Setup   (Flag (..), flagToList, flagToMaybe, toFlag, trueArg)
 
 data ProjectFlags = ProjectFlags
-    { flagProjectFileName :: Flag FilePath
-      -- ^ The cabal project file name; defaults to @cabal.project@.
-      -- The name itself denotes the cabal project file name, but it also
+    { flagProjectDir :: Flag FilePath
+      -- ^ The project directory.
+
+    , flagProjectFile :: Flag FilePath
+      -- ^ The cabal project file path; defaults to @cabal.project@.
+      -- This path, when relative, is relative to the project directory.
+      -- The filename portion of the path denotes the cabal project file name, but it also
       -- is the base of auxiliary project files, such as
       -- @cabal.project.local@ and @cabal.project.freeze@ which are also
-      -- read and written out in some cases.  If the path is not found
+      -- read and written out in some cases.
+      -- If a project directory was not specified, and the path is not found
       -- in the current working directory, we will successively probe
       -- relative to parent directories until this name is found.
 
@@ -34,23 +39,31 @@ data ProjectFlags = ProjectFlags
 
 defaultProjectFlags :: ProjectFlags
 defaultProjectFlags = ProjectFlags
-    { flagProjectFileName = mempty
+    { flagProjectDir      = mempty
+    , flagProjectFile     = mempty
     , flagIgnoreProject   = toFlag False
       -- Should we use 'Last' here?
     }
 
 projectFlagsOptions :: ShowOrParseArgs -> [OptionField ProjectFlags]
 projectFlagsOptions showOrParseArgs =
-    [ option [] ["project-file"]
-        "Set the name of the cabal.project file to search for in parent directories"
-        flagProjectFileName (\pf flags -> flags { flagProjectFileName = pf })
+    [ option [] ["project-dir"]
+        "Set the path of the project directory"
+        flagProjectDir (\path flags -> flags { flagProjectDir = path })
+        (reqArg "DIR" (succeedReadE Flag) flagToList)
+    , option [] ["project-file"]
+        "Set the path of the cabal.project file (relative to the project directory when relative)"
+        flagProjectFile (\pf flags -> flags { flagProjectFile = pf })
         (reqArg "FILE" (succeedReadE Flag) flagToList)
     , option ['z'] ["ignore-project"]
-        "Ignore local project configuration"
-        -- Flag True: --ignore-project is given and --project-file is not given
-        -- Flag False: --ignore-project and --project-file is given
-        -- NoFlag: neither --ignore-project or --project-file is given
-        flagIgnoreProject (\v flags -> flags { flagIgnoreProject = if v == NoFlag then NoFlag else toFlag ((flagProjectFileName flags) == NoFlag && v == Flag True) })
+        "Ignore local project configuration (unless --project-dir or --project-file is also set)"
+        flagIgnoreProject
+        (\v flags -> flags
+          { flagIgnoreProject = case v of
+              Flag True -> toFlag (flagProjectDir flags == NoFlag && flagProjectFile flags == NoFlag)
+              _         -> v
+          }
+        )
         (yesNoOpt showOrParseArgs)
     ]
 

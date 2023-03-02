@@ -18,7 +18,8 @@ import Distribution.Simple.Hpc
 import Distribution.Simple.InstallDirs
 import qualified Distribution.Simple.LocalBuildInfo as LBI
 import qualified Distribution.Types.LocalBuildInfo as LBI
-import Distribution.Simple.Setup
+import Distribution.Simple.Flag
+import Distribution.Simple.Setup.Test
 import Distribution.Simple.Test.Log
 import Distribution.Simple.Utils
 import Distribution.System

@@ -326,6 +326,20 @@ library
     Distribution.Simple.GHC.Internal
     Distribution.Simple.GHC.ImplInfo
     Distribution.Simple.ConfigureScript
+    Distribution.Simple.Setup.Benchmark
+    Distribution.Simple.Setup.Build
+    Distribution.Simple.Setup.Clean
+    Distribution.Simple.Setup.Common
+    Distribution.Simple.Setup.Config
+    Distribution.Simple.Setup.Copy
+    Distribution.Simple.Setup.Global
+    Distribution.Simple.Setup.Haddock
+    Distribution.Simple.Setup.Hscolour
+    Distribution.Simple.Setup.Install
+    Distribution.Simple.Setup.Register
+    Distribution.Simple.Setup.Repl
+    Distribution.Simple.Setup.SDist
+    Distribution.Simple.Setup.Test
     Distribution.ZinzaPrelude
     Paths_Cabal
 
