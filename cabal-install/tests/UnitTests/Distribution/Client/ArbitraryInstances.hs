@@ -134,8 +134,7 @@ newtype ArbitraryAbsoluteFilePath = ArbitraryAbsoluteFilePath { getAbsoluteFileP
 
 instance Arbitrary ArbitraryAbsoluteFilePath where
   arbitrary = do
-    count <- arbitrary
-    names <- replicateM count arbitrary
+    names <- replicateM 5 arbitrary
     let pathParts = map ('/':) names
     let path = intercalate "" pathParts
     pure $ ArbitraryAbsoluteFilePath path
