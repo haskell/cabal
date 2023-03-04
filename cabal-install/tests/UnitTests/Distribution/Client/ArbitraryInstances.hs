@@ -25,7 +25,7 @@ import Prelude ()
 import Control.Monad (replicateM)
 
 import Data.Char (isLetter)
-import Data.List ((\\), singleton)
+import Data.List ((\\))
 
 import Distribution.Simple.Setup
 import Distribution.Types.Flag   (mkFlagAssignment)
@@ -140,7 +140,7 @@ instance Arbitrary ArbitraryAbsoluteFilePath where
     let path = intercalate "" pathParts
     pure $ ArbitraryAbsoluteFilePath path
 
-  shrink = singleton
+  shrink a = [a]
 
 arbitraryAbsoluteFilePath :: Gen String
 arbitraryAbsoluteFilePath = getAbsoluteFilePath <$> arbitrary
