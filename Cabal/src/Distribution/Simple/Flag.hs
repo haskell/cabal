@@ -62,6 +62,20 @@ instance Functor Flag where
   fmap f (Flag x) = Flag (f x)
   fmap _ NoFlag  = NoFlag
 
+instance Foldable Flag where
+    foldMap f (Flag x) = f x
+    foldMap _ NoFlag = mempty
+
+    foldr _ z NoFlag = z
+    foldr f z (Flag x) = f x z
+
+    foldl _ z NoFlag = z
+    foldl f z (Flag x) = f z x
+
+instance Traversable Flag where
+    traverse f (Flag x) = Flag <$> f x
+    traverse _ NoFlag = pure NoFlag
+
 instance Applicative Flag where
   (Flag x) <*> y = x <$> y
   NoFlag   <*> _ = NoFlag
