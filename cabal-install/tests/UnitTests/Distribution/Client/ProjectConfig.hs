@@ -543,7 +543,7 @@ instance Arbitrary ProjectConfigShared where
         projectConfigLocalNoIndexRepos    <- arbitrary
         projectConfigActiveRepos          <- arbitrary
         projectConfigIndexState           <- arbitrary
-        projectConfigStoreDir             <- arbitraryFlag arbitraryShortToken
+        projectConfigStoreDir             <- arbitraryFlag arbitraryAbsoluteFilePath
         projectConfigConstraints          <- arbitraryConstraints
         projectConfigPreferences          <- shortListOf 2 arbitrary
         projectConfigCabalVersion         <- arbitrary

@@ -53,7 +53,7 @@ module Distribution.Client.Setup
     , yesNoOpt
     ) where
 
-import Prelude (sequence)
+import Prelude (mapM)
 import Distribution.Client.Compat.Prelude hiding (get)
 
 import Distribution.Client.Types.Credentials (Username (..), Password (..))
@@ -386,7 +386,7 @@ globalCommand commands = CommandUI {
       ,option [] ["store-dir", "storedir"]
          "The location of the build store"
          globalStoreDir (\v flags ->
-            case sequence $ fmap readAbsoluteFilePath v of
+            case mapM readAbsoluteFilePath v of
                 Just flag -> flags { globalStoreDir = flag }
                 Nothing -> error "expected an absolute directory name for --store-dir"
          )
