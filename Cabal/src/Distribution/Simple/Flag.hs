@@ -1,6 +1,8 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE DeriveFoldable #-}
+{-# LANGUAGE DeriveTraversable  #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.Flag
@@ -53,7 +55,7 @@ import Distribution.Compat.Stack
 -- Its monoid instance gives us the behaviour where it starts out as
 -- 'NoFlag' and later flags override earlier ones.
 --
-data Flag a = Flag a | NoFlag deriving (Eq, Generic, Show, Read, Typeable)
+data Flag a = Flag a | NoFlag deriving (Eq, Generic, Show, Read, Typeable, Foldable, Traversable)
 
 instance Binary a => Binary (Flag a)
 instance Structured a => Structured (Flag a)
@@ -61,20 +63,6 @@ instance Structured a => Structured (Flag a)
 instance Functor Flag where
   fmap f (Flag x) = Flag (f x)
   fmap _ NoFlag  = NoFlag
-
-instance Foldable Flag where
-    foldMap f (Flag x) = f x
-    foldMap _ NoFlag = mempty
-
-    foldr _ z NoFlag = z
-    foldr f z (Flag x) = f x z
-
-    foldl _ z NoFlag = z
-    foldl f z (Flag x) = f z x
-
-instance Traversable Flag where
-    traverse f (Flag x) = Flag <$> f x
-    traverse _ NoFlag = pure NoFlag
 
 instance Applicative Flag where
   (Flag x) <*> y = x <$> y
