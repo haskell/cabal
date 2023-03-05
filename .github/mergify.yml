@@ -1,3 +1,5 @@
+update_bot_account: { Mikolaj }
+
 pull_request_rules:
 
   # implementing PR delay logic: apply a label after 2 days of inactivity
