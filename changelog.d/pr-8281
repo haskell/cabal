@@ -1,4 +1,0 @@
-synopsis: Relax language selection parsing in `cabal init`
-packages: Cabal-syntax
-prs: #8281
-issues: #8278

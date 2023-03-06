@@ -1,4 +1,4 @@
-synopsis: cabal init should not suggest Cabal < 2.0
+synopsis: `cabal init` should not suggest Cabal < 2.0
 packages: Cabal
 issues: #8680
 

@@ -1,7 +1,0 @@
-synopsis: orders extra stanzas
-packages: Cabal
-prs: #8499
-issues: #8458
-description: {
-    Ensure that extra-src-dirs, extra sources, and extra other modules all are added using ordNub rather than incidentally alphabetized.
-}
