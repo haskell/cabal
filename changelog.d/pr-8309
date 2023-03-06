@@ -1,4 +1,0 @@
-synopsis: Add documentation for cabal-install commands: user-config,
-report, list, init, fetch, info, upload, get.
-prs: #8309
-issues: #8308 #7884 #7978

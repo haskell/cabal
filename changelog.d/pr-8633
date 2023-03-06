@@ -1,7 +1,0 @@
-synopsis: Specify default exe extension on wasm32 to be .wasm
-packages: Cabal
-prs: #8633
-issues:
-description: {
-  Specify default exe extension on wasm32 to be .wasm, following the convention in other WebAssembly toolchains.
-}

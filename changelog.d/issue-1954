@@ -1,4 +1,0 @@
-synopsis: Add `cabal get --only-package-description`
-packages: cabal-install
-prs: #1977 #5162 #8263
-issues: #1954
