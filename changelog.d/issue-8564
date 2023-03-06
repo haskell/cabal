@@ -1,5 +1,0 @@
-synopsis: The `configure` script of `build-type: configure` packages now has access to the flag assignment of the package being built via the `CABAL_FLAGS` and `CABAL_FLAG_<flag>` environment variables
-packages: Cabal
-prs: #8565
-issues: #8564
-
