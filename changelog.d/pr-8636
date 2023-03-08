@@ -1,8 +1,0 @@
-synopsis: Support `js-sources` with GHC, not only with GHCJS
-prs: #8636
-description: {
-
-- Take into account js-sources when building library components with GHC
-- Missing support for js-sources in executable components is tracked in #8639
-
-}

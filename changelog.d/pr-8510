@@ -1,8 +1,0 @@
-synopsis: don't send non-extant extra-lib-dirs to ghc
-packages: Cabal
-prs: #8510
-issues: #6492
-
-description: {
-If an extra-libs-dir does not exist, it does not get sent to ghc, which can error on windows.
-}
