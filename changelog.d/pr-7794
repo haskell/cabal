@@ -1,4 +1,0 @@
-synopsis: Include extra-lib-dirs-static into PackageHash
-packages: cabal-install
-prs: #7794
-issues: #6935

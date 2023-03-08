@@ -1,4 +1,0 @@
-synopsis: Add check for upper bound on any dependency in cabal check
-report, list, init, fetch, info, upload, get.
-prs: #8339
-issues: #8291

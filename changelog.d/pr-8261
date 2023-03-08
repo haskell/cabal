@@ -1,9 +1,0 @@
-synopsis: Implement --prefer-oldest
-packages: cabal-install
-prs: #8261
-
-description: {
-
-- Implement `--prefer-oldest` flag for Cabal solver, which tries to find a build plan with the oldest versions possible. This is useful to establish lower bounds.
-
-}

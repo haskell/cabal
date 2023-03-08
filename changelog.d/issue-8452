@@ -1,8 +1,0 @@
-synopsis: Fix issue with "nix" config option
-packages: cabal-install
-prs: #8522
-issues: #8452
-
-description: {
-    Nix option in config file was broken with #8054, this should fix it.
-}

@@ -1,9 +1,0 @@
-synopsis: cabal init -i should sanitize package name guessed from the directory name
-packages: cabal-install
-prs: #8561
-issues: #8404
-description: {
-    If the current directory name has any non-alphanumeric symbol in its name, the symbol will be replaced with a dash. Also, will make sure that the resulting package name starts with a letter.
-
-    This worked for cabal init -n already, and this PR only moves code around so that cabal init -i also benefits from this logic.
-}
