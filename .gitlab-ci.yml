@@ -94,6 +94,8 @@ build-aarch64-darwin:
     TARBALL_ARCHIVE_SUFFIX: aarch64-darwin
     TARBALL_EXT: tar.xz
     ADD_CABAL_ARGS: ""
+    # Update periodically.
+    BREW_VERSION: 4.0.5
   artifacts:
     expire_in: 2 week
     paths:
