@@ -25,6 +25,7 @@ type BuildOutcomes = Map UnitId BuildOutcome
 
 data BuildFailure = PlanningFailed
                   | DependentFailed PackageId
+                  | GracefulFailure String
                   | DownloadFailed  SomeException
                   | UnpackFailed    SomeException
                   | ConfigureFailed SomeException

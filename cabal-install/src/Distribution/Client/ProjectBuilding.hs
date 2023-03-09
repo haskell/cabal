@@ -99,12 +99,15 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString.Lazy.Char8 as LBS.Char8
 
+import qualified Text.PrettyPrint as Disp
+
 import Control.Exception (Handler (..), SomeAsyncException, assert, catches, handle)
 import System.Directory  (canonicalizePath, createDirectoryIfMissing, doesDirectoryExist, doesFileExist, removeFile, renameDirectory)
 import System.FilePath   (dropDrive, makeRelative, normalise, takeDirectory, (<.>), (</>))
 import System.IO         (IOMode (AppendMode), Handle, withFile)
 
 import Distribution.Compat.Directory (listDirectory)
+import Distribution.Simple.Flag (fromFlagOrDefault)
 
 
 ------------------------------------------------------------------------------
@@ -559,6 +562,7 @@ invalidatePackageRegFileMonitor PackageFileMonitor{pkgFileMonitorReg} =
 -- It requires the 'BuildStatusMap' gathered by 'rebuildTargetsDryRun'.
 --
 rebuildTargets :: Verbosity
+               -> ProjectConfig
                -> DistDirLayout
                -> StoreDirLayout
                -> ElaboratedInstallPlan
@@ -567,6 +571,9 @@ rebuildTargets :: Verbosity
                -> BuildTimeSettings
                -> IO BuildOutcomes
 rebuildTargets verbosity
+               ProjectConfig {
+                projectConfigBuildOnly = config
+               }
                distDirLayout@DistDirLayout{..}
                storeDirLayout
                installPlan
@@ -578,8 +585,9 @@ rebuildTargets verbosity
                buildSettings@BuildTimeSettings{
                  buildSettingNumJobs,
                  buildSettingKeepGoing
-               } = do
-
+               }
+  | fromFlagOrDefault False (projectConfigOfflineMode config) && not (null packagesToDownload) = return offlineError
+  | otherwise = do
     -- Concurrency control: create the job controller and concurrency limits
     -- for downloading, building and installing.
     jobControl    <- if isParallelBuild
@@ -636,6 +644,32 @@ rebuildTargets verbosity
                           , elabRegisterPackageDBStack elab
                           , elabSetupPackageDBStack elab ]
         ]
+
+    offlineError :: BuildOutcomes
+    offlineError = Map.fromList . map makeBuildOutcome $ packagesToDownload
+      where
+        makeBuildOutcome :: ElaboratedConfiguredPackage -> (UnitId, BuildOutcome)
+        makeBuildOutcome ElaboratedConfiguredPackage {
+          elabUnitId,
+          elabPkgSourceId = PackageIdentifier { pkgName, pkgVersion }
+        } = (elabUnitId, Left (BuildFailure {
+          buildFailureLogFile = Nothing,
+          buildFailureReason = GracefulFailure $ makeError pkgName pkgVersion
+        }))
+        makeError :: PackageName -> Version -> String
+        makeError n v = "--offline was specified, hence refusing to download the package: "
+          ++ unPackageName n
+          ++ " version " ++ Disp.render (pretty v)
+
+    packagesToDownload :: [ElaboratedConfiguredPackage]
+    packagesToDownload = [elab | InstallPlan.Configured elab <- InstallPlan.reverseTopologicalOrder installPlan,
+                             isRemote $ elabPkgSourceLocation elab]
+      where
+        isRemote :: PackageLocation a -> Bool
+        isRemote (RemoteTarballPackage _ _) = True
+        isRemote (RepoTarballPackage {}) = True
+        isRemote (RemoteSourceRepoPackage _ _) = True
+        isRemote _ = False
 
 
 -- | Create a package DB if it does not currently exist. Note that this action

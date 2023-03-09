@@ -400,6 +400,7 @@ runProjectBuildPhase verbosity
                      ProjectBaseContext{..} ProjectBuildContext {..} =
     fmap (Map.union (previousBuildOutcomes pkgsBuildStatus)) $
     rebuildTargets verbosity
+                   projectConfig
                    distDirLayout
                    (cabalStoreDirLayout cabalDirLayout)
                    elaboratedPlanToExecute
@@ -1019,6 +1020,7 @@ writeBuildReports settings buildContext plan buildOutcomes = do
       fromPlanPackage (InstallPlan.Configured pkg) (Just result) =
             let installOutcome = case result of
                    Left bf -> case buildFailureReason bf of
+                      GracefulFailure _ -> BuildReports.PlanningFailed
                       DependentFailed p -> BuildReports.DependencyFailed p
                       DownloadFailed _  -> BuildReports.DownloadFailed
                       UnpackFailed _ -> BuildReports.UnpackFailed
@@ -1209,6 +1211,7 @@ dieOnBuildFailures verbosity currentCommand plan buildOutcomes
           TestsFailed     _ -> "Tests failed for " ++ pkgstr
           BenchFailed     _ -> "Benchmarks failed for " ++ pkgstr
           InstallFailed   _ -> "Failed to build "  ++ pkgstr
+          GracefulFailure msg -> msg
           DependentFailed depid
                             -> "Failed to build " ++ prettyShow (packageId pkg)
                             ++ " because it depends on " ++ prettyShow depid
@@ -1301,6 +1304,7 @@ dieOnBuildFailures verbosity currentCommand plan buildOutcomes
         TestsFailed     e -> Just e
         BenchFailed     e -> Just e
         InstallFailed   e -> Just e
+        GracefulFailure _ -> Nothing
         DependentFailed _ -> Nothing
 
 data BuildFailurePresentation =
