@@ -6,10 +6,11 @@ set -Eeuo pipefail
 # FIXME: Use brew in supported way. See
 # https://docs.brew.sh/Installation#untar-anywhere-unsupported
 brew_dir="${CI_PROJECT_DIR}/.brew"
-# Temporarily? ensure there's no caching accidentally happening.
-rm -fr "${brew_dir}"
-mkdir -p "${brew_dir}"
-curl -L "https://github.com/Homebrew/brew/archive/refs/tags/${BREW_VERSION}.tar.gz" | tar xz --strip 1 -C "${brew_dir}"
+
+if [ ! -e "${brew_dir}" ]; then
+    mkdir -p "${brew_dir}"
+    curl -L "https://github.com/Homebrew/brew/archive/refs/tags/${BREW_VERSION}.tar.gz" | tar xz --strip 1 -C "${brew_dir}"
+fi
 
 export PATH="${brew_dir}/bin:${brew_dir}/sbin:$PATH"
 
