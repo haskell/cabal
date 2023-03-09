@@ -1,8 +1,0 @@
-synopsis: Improve mutually recursive unit identifier error message
-packages: Cabal
-prs: #8582
-description: {
-Improves the error message in case of mutually recursive unit identifiers
-by specifying the name of the identifier, the name of the signature, and a suggestion
-to check the 'build-depends:' section.
-}

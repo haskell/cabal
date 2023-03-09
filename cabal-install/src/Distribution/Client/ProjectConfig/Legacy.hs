@@ -540,7 +540,8 @@ convertLegacyAllPackageFlags globalFlags configFlags configExFlags installFlags 
     } = installFlags
 
     ProjectFlags
-        { flagProjectFileName = projectConfigProjectFile
+        { flagProjectDir      = projectConfigProjectDir
+        , flagProjectFile     = projectConfigProjectFile
         , flagIgnoreProject   = projectConfigIgnoreProject
         } = projectFlags
 
@@ -801,7 +802,8 @@ convertToLegacySharedConfig
     }
 
     projectFlags = ProjectFlags
-        { flagProjectFileName = projectConfigProjectFile
+        { flagProjectDir      = projectConfigProjectDir
+        , flagProjectFile     = projectConfigProjectFile
         , flagIgnoreProject   = projectConfigIgnoreProject
         }
 

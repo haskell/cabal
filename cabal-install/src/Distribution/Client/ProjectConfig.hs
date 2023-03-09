@@ -22,7 +22,7 @@ module Distribution.Client.ProjectConfig (
     -- * Project root
     findProjectRoot,
     ProjectRoot(..),
-    BadProjectRoot(..),
+    BadProjectRoot,
 
     -- * Project config files
     readProjectConfig,
@@ -73,7 +73,7 @@ import Distribution.Client.VCS
 
 import Distribution.Client.Types
 import Distribution.Client.DistDirLayout
-         ( DistDirLayout(..), CabalDirLayout(..), ProjectRoot(..) )
+         ( DistDirLayout(..), CabalDirLayout(..), ProjectRoot(..), defaultProjectFile )
 import Distribution.Client.GlobalFlags
          ( RepoContext(..), withRepoContext' )
 import Distribution.Client.BuildReports.Types
@@ -400,30 +400,61 @@ resolveBuildTimeSettings verbosity
 
 -- | Find the root of this project.
 --
--- Searches for an explicit @cabal.project@ file, in the current directory or
--- parent directories. If no project file is found then the current dir is the
--- project root (and the project will use an implicit config).
+-- The project directory will be one of the following:
+--   1. @mprojectDir@ when present
+--   2. The first directory containing @mprojectFile@/@cabal.project@, starting from the current directory
+--      and recursively checking parent directories
+--   3. The current directory
 --
-findProjectRoot :: Maybe FilePath -- ^ starting directory, or current directory
-                -> Maybe FilePath -- ^ @cabal.project@ file name override
-                -> IO (Either BadProjectRoot ProjectRoot)
-findProjectRoot _ (Just projectFile)
-  | isAbsolute projectFile = do
-    exists <- doesFileExist projectFile
-    if exists
-      then do projectFile' <- canonicalizePath projectFile
-              let projectRoot = ProjectRootExplicit (takeDirectory projectFile')
-                                                    (takeFileName projectFile')
-              return (Right projectRoot)
-      else return (Left (BadProjectRootExplicitFile projectFile))
+findProjectRoot
+  :: Verbosity
+  -> Maybe FilePath -- ^ Explicit project directory
+  -> Maybe FilePath -- ^ Explicit project file
+  -> IO (Either BadProjectRoot ProjectRoot)
+findProjectRoot verbosity mprojectDir mprojectFile = do
+  case mprojectDir of
+    Nothing
+      | Just file <- mprojectFile, isAbsolute file -> do
+          warn verbosity $
+            "Specifying an absolute path to the project file is deprecated."
+            <> " Use --project-dir to set the project's directory."
 
-findProjectRoot mstartdir mprojectFile = do
-    startdir <- maybe getCurrentDirectory canonicalizePath mstartdir
+          doesFileExist file >>= \case
+            False -> left (BadProjectRootExplicitFile file)
+            True  -> uncurry projectRoot =<< first dropTrailingPathSeparator . splitFileName <$> canonicalizePath file
+
+      | otherwise -> probeProjectRoot mprojectFile
+
+    Just dir -> doesDirectoryExist dir >>= \case
+      False -> left (BadProjectRootDir dir)
+      True  -> do
+        projectDir <- canonicalizePath dir
+
+        case mprojectFile of
+          Nothing -> pure $ Right (ProjectRootExplicit projectDir defaultProjectFile)
+
+          Just projectFile
+            | isAbsolute projectFile -> doesFileExist projectFile >>= \case
+                False -> left (BadProjectRootAbsoluteFile projectFile)
+                True  -> Right . ProjectRootExplicitAbsolute dir <$> canonicalizePath projectFile
+
+            | otherwise -> doesFileExist (projectDir </> projectFile) >>= \case
+                False -> left (BadProjectRootDirFile dir projectFile)
+                True  -> projectRoot projectDir projectFile
+  where
+    left = pure . Left
+
+    projectRoot projectDir projectFile =
+      pure $ Right (ProjectRootExplicit projectDir projectFile)
+
+probeProjectRoot :: Maybe FilePath -> IO (Either BadProjectRoot ProjectRoot)
+probeProjectRoot mprojectFile = do
+    startdir <- getCurrentDirectory
     homedir  <- getHomeDirectory
     probe startdir homedir
   where
     projectFileName :: String
-    projectFileName = fromMaybe "cabal.project" mprojectFile
+    projectFileName = fromMaybe defaultProjectFile mprojectFile
 
     -- Search upwards. If we get to the users home dir or the filesystem root,
     -- then use the current dir
@@ -443,7 +474,11 @@ findProjectRoot mstartdir mprojectFile = do
 
 -- | Errors returned by 'findProjectRoot'.
 --
-data BadProjectRoot = BadProjectRootExplicitFile FilePath
+data BadProjectRoot
+  = BadProjectRootExplicitFile FilePath
+  | BadProjectRootDir FilePath
+  | BadProjectRootAbsoluteFile FilePath
+  | BadProjectRootDirFile FilePath FilePath
 #if MIN_VERSION_base(4,8,0)
   deriving (Show, Typeable)
 #else
@@ -459,8 +494,18 @@ instance Exception BadProjectRoot where
 #endif
 
 renderBadProjectRoot :: BadProjectRoot -> String
-renderBadProjectRoot (BadProjectRootExplicitFile projectFile) =
+renderBadProjectRoot = \case
+  BadProjectRootExplicitFile projectFile ->
     "The given project file '" ++ projectFile ++ "' does not exist."
+
+  BadProjectRootDir dir ->
+    "The given project directory '" <> dir <> "' does not exist."
+
+  BadProjectRootAbsoluteFile file ->
+    "The given project file '" <> file <> "' does not exist."
+
+  BadProjectRootDirFile dir file ->
+    "The given project directory/file combination '" <> dir </> file <> "' does not exist."
 
 withProjectOrGlobalConfig
     :: Verbosity                  -- ^ verbosity
@@ -484,8 +529,7 @@ withProjectOrGlobalConfig'
 withProjectOrGlobalConfig' verbosity globalConfigFlag with without = do
   globalConfig <- runRebuild "" $ readGlobalConfig verbosity globalConfigFlag
 
-  let
-    res' = catch with
+  catch with
       $ \case
         (BadPackageLocations prov locs)
           | prov == Set.singleton Implicit
@@ -495,11 +539,6 @@ withProjectOrGlobalConfig' verbosity globalConfigFlag with without = do
           , any isGlobErr locs ->
             without globalConfig
         err -> throwIO err
-
-  catch res'
-    $ \case
-      (BadProjectRootExplicitFile "") -> without globalConfig
-      err -> throwIO err
 
 -- | Read all the config relevant for a project. This includes the project
 -- file if any, plus other global config.

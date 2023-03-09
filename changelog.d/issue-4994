@@ -1,4 +1,0 @@
-synopsis: Do not print "up to date" for commands unless running "cabal build"
-packages: Cabal
-issues: #4994
-prs: #8569

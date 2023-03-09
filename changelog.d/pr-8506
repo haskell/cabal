@@ -1,7 +1,0 @@
-synopsis: prepend rather than append extra prog path
-packages: Cabal
-prs: #8506
-issues: #6304
-description: {
-    Prepends the extra-prog-path to the system path rather than appending, to allow binaries in the extra path to override defaults.
-}

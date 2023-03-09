@@ -208,11 +208,12 @@ establishProjectBaseContext
     -> CurrentCommand
     -> IO ProjectBaseContext
 establishProjectBaseContext verbosity cliConfig currentCommand = do
-    projectRoot <- either throwIO return =<< findProjectRoot Nothing mprojectFile
+    projectRoot <- either throwIO return =<< findProjectRoot verbosity mprojectDir mprojectFile
     establishProjectBaseContextWithRoot verbosity cliConfig projectRoot currentCommand
   where
+    mprojectDir    = Setup.flagToMaybe projectConfigProjectDir
     mprojectFile   = Setup.flagToMaybe projectConfigProjectFile
-    ProjectConfigShared { projectConfigProjectFile} = projectConfigShared cliConfig
+    ProjectConfigShared { projectConfigProjectDir, projectConfigProjectFile } = projectConfigShared cliConfig
 
 -- | Like 'establishProjectBaseContext' but doesn't search for project root.
 establishProjectBaseContextWithRoot

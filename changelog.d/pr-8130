@@ -1,4 +1,4 @@
-synopsis: Split up Distribution.Simple.Setup
+synopsis: Split up `Distribution.Simple.Setup`
 packages: Cabal
 prs: #8130
 

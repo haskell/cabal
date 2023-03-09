@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -Eeuxo pipefail
+set -Eeuo pipefail
 
 source "$CI_PROJECT_DIR/.gitlab/common.sh"
 
@@ -26,7 +26,6 @@ export PATH="$GHCUP_BINDIR:$PATH"
 export BOOTSTRAP_HASKELL_NONINTERACTIVE=1
 export BOOTSTRAP_HASKELL_GHC_VERSION=$GHC_VERSION
 export BOOTSTRAP_HASKELL_CABAL_VERSION=$CABAL_INSTALL_VERSION
-export BOOTSTRAP_HASKELL_VERBOSE=1
 export BOOTSTRAP_HASKELL_ADJUST_CABAL_CONFIG=yes
 
 # for some reason the subshell doesn't pick up the arm64 environment on darwin
@@ -48,7 +47,11 @@ case "$(uname -s)" in
 esac
 
 # https://github.com/haskell/cabal/issues/7313#issuecomment-811851884
-if [ "$(getconf LONG_BIT)" == "32" ] ; then
+# and
+# https://github.com/haskellari/lukko/issues/17
+#
+# $PLATFORM comes from CI.
+if [ "$(getconf LONG_BIT)" = "32" -o "${PLATFORM:=xxx}" = "x86_64-linux-centos7" ] ; then
     echo 'constraints: lukko -ofd-locking' >> cabal.project.release.local
 fi
 

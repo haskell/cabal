@@ -1,0 +1,12 @@
+synopsis: Add --project-dir flag
+packages: cabal-install
+prs: #8454
+issues: #7695 #7940
+significance: significant
+
+description: {
+
+- Added --project-dir flag for specifying the project's root directory
+- Deprecated using --project-file with an absolute filepath without also using --project-dir
+
+}
