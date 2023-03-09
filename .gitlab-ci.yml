@@ -100,6 +100,9 @@ build-aarch64-darwin:
     expire_in: 2 week
     paths:
       - out/*
+  cache:
+    paths:
+      - .brew
 
 build-x86_64-windows:
   extends: .build
