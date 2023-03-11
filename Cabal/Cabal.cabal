@@ -84,12 +84,6 @@ library
     Distribution.Compat.Time
     Distribution.Make
     Distribution.PackageDescription.Check
-    Distribution.PackageDescription.Check.Common
-    Distribution.PackageDescription.Check.Conditional
-    Distribution.PackageDescription.Check.Monad
-    Distribution.PackageDescription.Check.Paths
-    Distribution.PackageDescription.Check.Target
-    Distribution.PackageDescription.Check.Warning
     Distribution.ReadE
     Distribution.Simple
     Distribution.Simple.Bench
@@ -328,6 +322,12 @@ library
     Distribution.Compat.SnocList
     Distribution.GetOpt
     Distribution.Lex
+    Distribution.PackageDescription.Check.Common
+    Distribution.PackageDescription.Check.Conditional
+    Distribution.PackageDescription.Check.Monad
+    Distribution.PackageDescription.Check.Paths
+    Distribution.PackageDescription.Check.Target
+    Distribution.PackageDescription.Check.Warning
     Distribution.Simple.Build.Macros.Z
     Distribution.Simple.Build.PackageInfoModule.Z
     Distribution.Simple.Build.PathsModule.Z
