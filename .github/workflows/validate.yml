@@ -71,7 +71,7 @@ jobs:
         id: setup-haskell
         with:
           ghc-version: ${{ matrix.ghc }}
-          cabal-version: '3.8.1.0'
+          cabal-version: '3.10.1.0'
 
       #  See the following link for a breakdown of the following step
       #  https://github.com/haskell/actions/issues/7#issuecomment-745697160
@@ -357,7 +357,7 @@ jobs:
         id: setup-haskell
         with:
           ghc-version: ${{ matrix.ghc }}
-          cabal-version: '3.8.1.0'
+          cabal-version: '3.10.1.0'
 
       # As we are reusing the cached build dir from the previous step
       # the generated artifacts are available here,

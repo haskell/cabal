@@ -115,6 +115,6 @@ custom-setup
   -- and due to Custom complexity and ConstraintSetupCabalMaxVersion
   -- it has to be the latest release version plus
   -- you have to use the latest cabal-install release
-  setup-depends: Cabal == 3.8.*,
-                 Cabal-syntax == 3.8.*,
+  setup-depends: Cabal == 3.10.*,
+                 Cabal-syntax == 3.10.*,
                  base, filepath, directory
