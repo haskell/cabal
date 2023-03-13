@@ -30,6 +30,7 @@ data CabalSpecVersion
     | CabalSpecV3_4
     | CabalSpecV3_6
     | CabalSpecV3_8
+    -- 3.10: no changes
   deriving (Eq, Ord, Show, Read, Enum, Bounded, Typeable, Data, Generic)
 
 instance Binary CabalSpecVersion
