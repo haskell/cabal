@@ -131,6 +131,11 @@ jobs:
           fi
           echo "FLAGS=$FLAGS" >> $GITHUB_ENV
 
+      - name: Allow newer dependencies when built with latest GHC
+        if: ${{ matrix.ghc }} == '9.6.1'
+        run: |
+          echo "allow-newer: rere:base, rere:transformers" >> cabal.project.validate
+
       - name: Validate print-config
         run: sh validate.sh $FLAGS -s print-config
 
