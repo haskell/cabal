@@ -1,6 +1,10 @@
 cabal-version: 2.2
 name:          Cabal-described
+<<<<<<< HEAD
 version:       3.10.1.0
+=======
+version:       3.11.0.0
+>>>>>>> dfe73930b (Bump versions and deps on master branch to 3.11 and regenerate bootstrap files (#8844))
 synopsis:      Described functionality for types in Cabal
 category:      Testing, Parsec
 description:   Provides rere bindings
@@ -11,8 +15,13 @@ library
   ghc-options:      -Wall
   build-depends:
     , base
+<<<<<<< HEAD
     , Cabal             ^>=3.10.0.0
     , Cabal-syntax      ^>=3.10.0.0
+=======
+    , Cabal             ^>=3.11.0.0
+    , Cabal-syntax      ^>=3.11.0.0
+>>>>>>> dfe73930b (Bump versions and deps on master branch to 3.11 and regenerate bootstrap files (#8844))
     , containers
     , pretty
     , QuickCheck

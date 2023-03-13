@@ -13,7 +13,11 @@ import sphinx_rtd_theme
 sys.path.insert(0, os.path.abspath('.'))
 import cabaldomain
 
+<<<<<<< HEAD
 version = "3.10.1.0"
+=======
+version = "3.11.0.0"
+>>>>>>> dfe73930b (Bump versions and deps on master branch to 3.11 and regenerate bootstrap files (#8844))
 
 extensions = [
     'sphinx.ext.extlinks',

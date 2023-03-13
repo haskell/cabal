@@ -3,3 +3,6 @@
 
 packages: .
 optimization: False
+
+allow-newer:
+  cabal-install-parsers:Cabal-syntax

@@ -101,7 +101,11 @@
             "revision": null,
             "source": "local",
             "src_sha256": null,
+<<<<<<< HEAD
             "version": "3.10.1.0"
+=======
+            "version": "3.11.0.0"
+>>>>>>> dfe73930b (Bump versions and deps on master branch to 3.11 and regenerate bootstrap files (#8844))
         },
         {
             "cabal_sha256": null,
@@ -110,16 +114,24 @@
             "revision": null,
             "source": "local",
             "src_sha256": null,
+<<<<<<< HEAD
             "version": "3.10.1.0"
         },
         {
             "cabal_sha256": "e3d78b13db9512aeb106e44a334ab42b7aa48d26c097299084084cb8be5c5568",
+=======
+            "version": "3.11.0.0"
+        },
+        {
+            "cabal_sha256": "29b28d2e19ae9f5ff92cea4ab8d2e185408ee5de73b4127f7b485a904c9a8b15",
+>>>>>>> dfe73930b (Bump versions and deps on master branch to 3.11 and regenerate bootstrap files (#8844))
             "flags": [
                 "-devel"
             ],
             "package": "network",
             "revision": 0,
             "source": "hackage",
+<<<<<<< HEAD
             "src_sha256": "7f7620fef1a1af3d3d6747f510e73223a5c600e7d7fd9ace073d1222bdc63d85",
             "version": "3.1.2.7"
         },
@@ -128,6 +140,16 @@
             "flags": [],
             "package": "th-compat",
             "revision": 0,
+=======
+            "src_sha256": "fde2d4b065f1984c76755004c64a29ae9ec52c8bf74f2485d805ef577e7c7822",
+            "version": "3.1.2.8"
+        },
+        {
+            "cabal_sha256": "e5ae7c083ef3a22248558f8451669bb1c55ea8090f5908b86b9033743c161730",
+            "flags": [],
+            "package": "th-compat",
+            "revision": 2,
+>>>>>>> dfe73930b (Bump versions and deps on master branch to 3.11 and regenerate bootstrap files (#8844))
             "source": "hackage",
             "src_sha256": "d8f97ac14ab47b6b8a7b0fdb4ff95426322ec56badd01652ac15da4a44d4bab8",
             "version": "0.1.4"
@@ -156,24 +178,40 @@
             "version": "4000.4.1"
         },
         {
+<<<<<<< HEAD
             "cabal_sha256": "02acedd7ac829b52756fe481a1d53294d8f5d42aaa56df560c62c6cec3587a14",
+=======
+            "cabal_sha256": "585792335d5541dba78fa8dfcb291a89cd5812a281825ff7a44afa296ab5d58a",
+>>>>>>> dfe73930b (Bump versions and deps on master branch to 3.11 and regenerate bootstrap files (#8844))
             "flags": [
                 "+integer-gmp",
                 "-random-initial-seed"
             ],
             "package": "hashable",
+<<<<<<< HEAD
             "revision": 0,
+=======
+            "revision": 1,
+>>>>>>> dfe73930b (Bump versions and deps on master branch to 3.11 and regenerate bootstrap files (#8844))
             "source": "hackage",
             "src_sha256": "1b4000ea82b81f69d46d0af4152c10c6303873510738e24cfc4767760d30e3f8",
             "version": "1.4.2.0"
         },
         {
+<<<<<<< HEAD
             "cabal_sha256": "2b9409023536823233ce3134558565d01b3382e651fa54ac8cb8a99967e023c9",
+=======
+            "cabal_sha256": "46367dc0c8326dcbeb7b93f200b567491c2f6029bccf822b8bb26ee660397e08",
+>>>>>>> dfe73930b (Bump versions and deps on master branch to 3.11 and regenerate bootstrap files (#8844))
             "flags": [
                 "-bench"
             ],
             "package": "async",
+<<<<<<< HEAD
             "revision": 2,
+=======
+            "revision": 3,
+>>>>>>> dfe73930b (Bump versions and deps on master branch to 3.11 and regenerate bootstrap files (#8844))
             "source": "hackage",
             "src_sha256": "484df85be0e76c4fed9376451e48e1d0c6e97952ce79735b72d54297e7e0a725",
             "version": "2.2.4"
@@ -236,7 +274,11 @@
             "revision": null,
             "source": "local",
             "src_sha256": null,
+<<<<<<< HEAD
             "version": "3.10.1.0"
+=======
+            "version": "3.11.0.0"
+>>>>>>> dfe73930b (Bump versions and deps on master branch to 3.11 and regenerate bootstrap files (#8844))
         },
         {
             "cabal_sha256": "facd0c04925ef925ec05243471fd16055229fdf51f64db1a1049de0cc6c6dfc3",
@@ -375,7 +417,11 @@
             "revision": null,
             "source": "local",
             "src_sha256": null,
+<<<<<<< HEAD
             "version": "3.10.1.0"
+=======
+            "version": "3.11.0.0"
+>>>>>>> dfe73930b (Bump versions and deps on master branch to 3.11 and regenerate bootstrap files (#8844))
         }
     ]
 }

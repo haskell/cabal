@@ -195,7 +195,11 @@ bootstrap-json-%: phony
 	cd bootstrap && cabal v2-run -v0 cabal-bootstrap-gen -- linux-$*.plan.json \
 		| python3 -m json.tool > linux-$*.json
 
+<<<<<<< HEAD
 BOOTSTRAP_GHC_VERSIONS := 8.10.7 9.0.2 9.2.6 9.4.4
+=======
+BOOTSTRAP_GHC_VERSIONS := 8.10.7 9.0.2 9.2.7 9.4.4
+>>>>>>> dfe73930b (Bump versions and deps on master branch to 3.11 and regenerate bootstrap files (#8844))
 
 bootstrap-jsons: $(BOOTSTRAP_GHC_VERSIONS:%=bootstrap-json-%)
 

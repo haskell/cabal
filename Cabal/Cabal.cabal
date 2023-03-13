@@ -1,6 +1,10 @@
 cabal-version: 2.2
 name:          Cabal
+<<<<<<< HEAD
 version:       3.10.1.0
+=======
+version:       3.11.0.0
+>>>>>>> dfe73930b (Bump versions and deps on master branch to 3.11 and regenerate bootstrap files (#8844))
 copyright:     2003-2023, Cabal Development Team (see AUTHORS file)
 license:       BSD-3-Clause
 license-file:  LICENSE
@@ -34,7 +38,11 @@ library
   hs-source-dirs: src
 
   build-depends:
+<<<<<<< HEAD
     Cabal-syntax ^>= 3.10,
+=======
+    Cabal-syntax ^>= 3.11,
+>>>>>>> dfe73930b (Bump versions and deps on master branch to 3.11 and regenerate bootstrap files (#8844))
     array      >= 0.4.0.1  && < 0.6,
     base       >= 4.9      && < 5,
     bytestring >= 0.10.0.0 && < 0.12,

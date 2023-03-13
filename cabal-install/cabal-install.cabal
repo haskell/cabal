@@ -1,7 +1,11 @@
 Cabal-Version:      2.2
 
 Name:               cabal-install
+<<<<<<< HEAD
 Version:            3.10.1.0
+=======
+Version:            3.11.0.0
+>>>>>>> dfe73930b (Bump versions and deps on master branch to 3.11 and regenerate bootstrap files (#8844))
 Synopsis:           The command-line interface for Cabal and Hackage.
 Description:
     The \'cabal\' command-line program simplifies the process of managing
@@ -49,6 +53,7 @@ common base-dep
     build-depends: base >=4.10 && <4.18
 
 common cabal-dep
+<<<<<<< HEAD
     build-depends: Cabal ^>=3.10
 
 common cabal-syntax-dep
@@ -56,6 +61,15 @@ common cabal-syntax-dep
 
 common cabal-install-solver-dep
     build-depends: cabal-install-solver ^>=3.10
+=======
+    build-depends: Cabal ^>=3.11
+
+common cabal-syntax-dep
+    build-depends: Cabal-syntax ^>=3.11
+
+common cabal-install-solver-dep
+    build-depends: cabal-install-solver ^>=3.11
+>>>>>>> dfe73930b (Bump versions and deps on master branch to 3.11 and regenerate bootstrap files (#8844))
 
 library
     import: warnings, base-dep, cabal-dep, cabal-syntax-dep, cabal-install-solver-dep

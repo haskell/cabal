@@ -31,7 +31,11 @@ library
     base,
     bytestring,
     containers,
+<<<<<<< HEAD
     Cabal-syntax ^>= 3.10,
+=======
+    Cabal-syntax ^>= 3.11,
+>>>>>>> dfe73930b (Bump versions and deps on master branch to 3.11 and regenerate bootstrap files (#8844))
     directory,
     filepath,
     optparse-applicative,

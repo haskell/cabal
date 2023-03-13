@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 VERSION=3.10.1.0
+=======
+VERSION=3.11.0.0
+>>>>>>> dfe73930b (Bump versions and deps on master branch to 3.11 and regenerate bootstrap files (#8844))
 
 #KIND=devel
 KIND=rc

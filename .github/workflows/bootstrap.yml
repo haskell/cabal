@@ -19,10 +19,17 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
+<<<<<<< HEAD
         ghc: ["8.10.7", "9.0.2", "9.2.6", "9.4.4"]
         include:
           - os: macos-latest
             ghc: "9.2.6"
+=======
+        ghc: ["8.10.7", "9.0.2", "9.2.7", "9.4.4"]
+        include:
+          - os: macos-latest
+            ghc: "9.2.7"
+>>>>>>> dfe73930b (Bump versions and deps on master branch to 3.11 and regenerate bootstrap files (#8844))
     name: Bootstrap ${{ matrix.os }} ghc-${{ matrix.ghc }}
     runs-on: ${{ matrix.os }}
     steps:

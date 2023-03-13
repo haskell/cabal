@@ -57,22 +57,6 @@ jobs:
 
       - uses: actions/checkout@v3
 
-      # See https://github.com/haskell/cabal/pull/8739
-      - name: Sudo chmod to permit ghcup to update its cache
-        run: |
-          if [[ "${{ runner.os }}" == "Linux" ]]; then
-            sudo ls -lah /usr/local/.ghcup/cache
-            sudo mkdir -p /usr/local/.ghcup/cache
-            sudo ls -lah /usr/local/.ghcup/cache
-            sudo chown -R $USER /usr/local/.ghcup
-            sudo chmod -R 777 /usr/local/.ghcup
-          fi
-      - uses: haskell/actions/setup@v2
-        id: setup-haskell
-        with:
-          ghc-version: ${{ matrix.ghc }}
-          cabal-version: '3.8.1.0'
-
       #  See the following link for a breakdown of the following step
       #  https://github.com/haskell/actions/issues/7#issuecomment-745697160
       #
@@ -87,6 +71,22 @@ jobs:
           key: ${{ runner.os }}-${{ matrix.ghc }}-20220419-${{ github.sha }}
           restore-keys: ${{ runner.os }}-${{ matrix.ghc }}-20220419-
 
+      # See https://github.com/haskell/cabal/pull/8739
+      - name: Sudo chmod to permit ghcup to update its cache
+        run: |
+          if [[ "${{ runner.os }}" == "Linux" ]]; then
+            sudo ls -lah /usr/local/.ghcup/cache
+            sudo mkdir -p /usr/local/.ghcup/cache
+            sudo ls -lah /usr/local/.ghcup/cache
+            sudo chown -R $USER /usr/local/.ghcup
+            sudo chmod -R 777 /usr/local/.ghcup
+          fi
+      - uses: haskell/actions/setup@v2
+        id: setup-haskell
+        with:
+          ghc-version: ${{ matrix.ghc }}
+          cabal-version: '3.10.1.0'
+
       - name: Work around git problem https://bugs.launchpad.net/ubuntu/+source/git/+bug/1993586 (cabal PR #8546)
         run: |
           git config --global protocol.file.allow always
@@ -98,7 +98,7 @@ jobs:
         run: |
           cd $(mktemp -d)
           cabal install cabal-plan --constraint='cabal-plan +exe'
-          echo "$HOME/.cabal/bin" >> $GITHUB_PATH
+          echo "$HOME/.cabal/bin:$HOME/.local/bin" >> $GITHUB_PATH
 
       # The tool is not essential to the rest of the test suite. If
       # hackage-repo-tool is not present, any test that requires it will
@@ -206,6 +206,20 @@ jobs:
 
       - uses: actions/checkout@v3
 
+      #  See the following link for a breakdown of the following step
+      #  https://github.com/haskell/actions/issues/7#issuecomment-745697160
+      #
+      # See https://github.com/haskell/cabal/pull/8739 for why Windows is excluded
+      - if: ${{ runner.os != 'Windows' }}
+        uses: actions/cache@v3
+        with:
+          # validate.sh uses a special build dir
+          path: |
+            ${{ steps.setup-haskell.outputs.cabal-store }}
+            dist-*
+          key: ${{ runner.os }}-${{ matrix.ghc }}-20220419-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-${{ matrix.ghc }}-20220419-
+
       # See https://github.com/haskell/cabal/pull/8739
       - name: Sudo chmod to permit ghcup to update its cache
         run: |
@@ -227,20 +241,6 @@ jobs:
           ghc --version
           cabal update
 
-      #  See the following link for a breakdown of the following step
-      #  https://github.com/haskell/actions/issues/7#issuecomment-745697160
-      #
-      # See https://github.com/haskell/cabal/pull/8739 for why Windows is excluded
-      - if: ${{ runner.os != 'Windows' }}
-        uses: actions/cache@v3
-        with:
-          # validate.sh uses a special build dir
-          path: |
-            ${{ steps.setup-haskell.outputs.cabal-store }}
-            dist-*
-          key: ${{ runner.os }}-${{ matrix.ghc }}-20220419-${{ github.sha }}
-          restore-keys: ${{ runner.os }}-${{ matrix.ghc }}-20220419-
-
       - name: Work around git problem https://bugs.launchpad.net/ubuntu/+source/git/+bug/1993586 (cabal PR #8546)
         run: |
           git config --global protocol.file.allow always
@@ -252,7 +252,7 @@ jobs:
         run: |
           cd $(mktemp -d)
           cabal install cabal-plan --constraint='cabal-plan +exe' --allow-newer
-          echo "$HOME/.cabal/bin" >> $GITHUB_PATH
+          echo "$HOME/.cabal/bin:$HOME/.local/bin" >> $GITHUB_PATH
 
       # The tool is not essential to the rest of the test suite. If
       # hackage-repo-tool is not present, any test that requires it will
@@ -348,17 +348,6 @@ jobs:
           git fetch origin $GITHUB_SHA:temporary-ci-branch
           git checkout $GITHUB_SHA || (git fetch && git checkout $GITHUB_SHA)
 
-      - name: Install extra compiler
-        run: |
-          apt-get update
-          apt-get install -y ghc-${{ matrix.extra-ghc }}-dyn
-
-      - uses: haskell/actions/setup@v2
-        id: setup-haskell
-        with:
-          ghc-version: ${{ matrix.ghc }}
-          cabal-version: '3.8.1.0'
-
       # As we are reusing the cached build dir from the previous step
       # the generated artifacts are available here,
       # including the cabal executable and the test suite
@@ -370,11 +359,22 @@ jobs:
           key: ${{ runner.os }}-${{ matrix.ghc }}-20220419-${{ github.sha }}
           restore-keys: ${{ runner.os }}-${{ matrix.ghc }}-20220419-
 
+      - name: Install extra compiler
+        run: |
+          apt-get update
+          apt-get install -y ghc-${{ matrix.extra-ghc }}-dyn
+
+      - uses: haskell/actions/setup@v2
+        id: setup-haskell
+        with:
+          ghc-version: ${{ matrix.ghc }}
+          cabal-version: latest # latest is mandatory for cabal-testsuite, see https://github.com/haskell/cabal/issues/8133
+
       - name: Install cabal-plan
         run: |
           cd $(mktemp -d)
           cabal install cabal-plan --constraint='cabal-plan +exe'
-          echo "$HOME/.cabal/bin" >> $GITHUB_PATH
+          echo "$HOME/.cabal/bin:$HOME/.local/bin" >> $GITHUB_PATH
 
       - name: Validate build
         run: sh validate.sh ${{ env.COMMON_FLAGS }} -s build
@@ -422,7 +422,7 @@ jobs:
         run: |
           cd $(mktemp -d)
           cabal install cabal-plan --constraint='cabal-plan +exe'
-          echo "$HOME/.cabal/bin" >> $GITHUB_PATH
+          echo "$HOME/.cabal/bin:$HOME/.local/bin" >> $GITHUB_PATH
 
       - name: Download cabal executable from workflow artifacts
         uses: actions/download-artifact@v3
