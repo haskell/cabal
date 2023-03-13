@@ -97,8 +97,13 @@ jobs:
       - name: Install cabal-plan
         run: |
           cd $(mktemp -d)
+<<<<<<< HEAD
           cabal install cabal-plan --constraint='cabal-plan +exe'
           echo "$HOME/.cabal/bin" >> $GITHUB_PATH
+=======
+          cabal install cabal-plan --allow-newer="base" --constraint='cabal-plan +exe'
+          echo "$HOME/.cabal/bin:$HOME/.local/bin" >> $GITHUB_PATH
+>>>>>>> 561bf1b7c (CI GHC 9.6: cabal-plan allow-newer base (TODO: revert))
 
       # The tool is not essential to the rest of the test suite. If
       # hackage-repo-tool is not present, any test that requires it will
@@ -254,8 +259,13 @@ jobs:
       - name: Install cabal-plan
         run: |
           cd $(mktemp -d)
+<<<<<<< HEAD
           cabal install cabal-plan --constraint='cabal-plan +exe' --allow-newer
           echo "$HOME/.cabal/bin" >> $GITHUB_PATH
+=======
+          cabal install cabal-plan --allow-newer="base" --constraint='cabal-plan +exe'
+          echo "$HOME/.cabal/bin:$HOME/.local/bin" >> $GITHUB_PATH
+>>>>>>> 561bf1b7c (CI GHC 9.6: cabal-plan allow-newer base (TODO: revert))
 
       # The tool is not essential to the rest of the test suite. If
       # hackage-repo-tool is not present, any test that requires it will
@@ -376,8 +386,13 @@ jobs:
       - name: Install cabal-plan
         run: |
           cd $(mktemp -d)
+<<<<<<< HEAD
           cabal install cabal-plan --constraint='cabal-plan +exe'
           echo "$HOME/.cabal/bin" >> $GITHUB_PATH
+=======
+          cabal install cabal-plan --allow-newer="base" --constraint='cabal-plan +exe'
+          echo "$HOME/.cabal/bin:$HOME/.local/bin" >> $GITHUB_PATH
+>>>>>>> 561bf1b7c (CI GHC 9.6: cabal-plan allow-newer base (TODO: revert))
 
       - name: Validate build
         run: sh validate.sh ${{ env.COMMON_FLAGS }} -s build
@@ -424,8 +439,13 @@ jobs:
       - name: Install cabal-plan
         run: |
           cd $(mktemp -d)
+<<<<<<< HEAD
           cabal install cabal-plan --constraint='cabal-plan +exe'
           echo "$HOME/.cabal/bin" >> $GITHUB_PATH
+=======
+          cabal install cabal-plan --allow-newer="base" --constraint='cabal-plan +exe'
+          echo "$HOME/.cabal/bin:$HOME/.local/bin" >> $GITHUB_PATH
+>>>>>>> 561bf1b7c (CI GHC 9.6: cabal-plan allow-newer base (TODO: revert))
 
       - name: Download cabal executable from workflow artifacts
         uses: actions/download-artifact@v3
