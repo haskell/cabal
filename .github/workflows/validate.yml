@@ -97,7 +97,7 @@ jobs:
       - name: Install cabal-plan
         run: |
           cd $(mktemp -d)
-          cabal install cabal-plan --constraint='cabal-plan +exe'
+          cabal install cabal-plan --allow-newer="base" --constraint='cabal-plan +exe'
           echo "$HOME/.cabal/bin:$HOME/.local/bin" >> $GITHUB_PATH
 
       # The tool is not essential to the rest of the test suite. If
@@ -254,7 +254,7 @@ jobs:
       - name: Install cabal-plan
         run: |
           cd $(mktemp -d)
-          cabal install cabal-plan --constraint='cabal-plan +exe' --allow-newer
+          cabal install cabal-plan --allow-newer="base" --constraint='cabal-plan +exe'
           echo "$HOME/.cabal/bin:$HOME/.local/bin" >> $GITHUB_PATH
 
       # The tool is not essential to the rest of the test suite. If
@@ -376,7 +376,7 @@ jobs:
       - name: Install cabal-plan
         run: |
           cd $(mktemp -d)
-          cabal install cabal-plan --constraint='cabal-plan +exe'
+          cabal install cabal-plan --allow-newer="base" --constraint='cabal-plan +exe'
           echo "$HOME/.cabal/bin:$HOME/.local/bin" >> $GITHUB_PATH
 
       - name: Validate build
@@ -424,7 +424,7 @@ jobs:
       - name: Install cabal-plan
         run: |
           cd $(mktemp -d)
-          cabal install cabal-plan --constraint='cabal-plan +exe'
+          cabal install cabal-plan --allow-newer="base" --constraint='cabal-plan +exe'
           echo "$HOME/.cabal/bin:$HOME/.local/bin" >> $GITHUB_PATH
 
       - name: Download cabal executable from workflow artifacts
