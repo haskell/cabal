@@ -194,6 +194,9 @@ jobs:
   # - (sometimes) disabling some parts on Windows because it's hard to figure
   #   out why they fail
   validate-prerelease:
+    # TODO: reenable when the next GHC prerelease appears
+    if: false
+
     name: Validate ${{ matrix.os }} ghc-prerelease
     runs-on: ${{ matrix.os }}
     outputs:
