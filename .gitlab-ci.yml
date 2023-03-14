@@ -45,6 +45,11 @@ build-x86_64-linux:
           - ubuntu20_04
           - deb10
           - deb11
+      - ARCH: aarch64
+        TAG: aarch64-linux
+        OS:
+          - deb10
+          - deb11
   tags:
     - $TAG
   image: "registry.gitlab.haskell.org/ghc/ci-images/$PLATFORM:$DOCKER_REV"
