@@ -11,9 +11,15 @@ library
   ghc-options:      -Wall
   build-depends:
     , base
+<<<<<<< HEAD
     , Cabal-syntax  ^>=3.10.0.0
     , Cabal         ^>=3.10.0.0
     , tree-diff     ^>=0.1 || ^>=0.2
+=======
+    , Cabal-syntax  ^>=3.11.0.0
+    , Cabal         ^>=3.11.0.0
+    , tree-diff     ^>=0.1 || ^>=0.2 || ^>=0.3
+>>>>>>> ba407e067 (Bump upper bounds for some deps due to GHC 9.6)
 
   exposed-modules:  Data.TreeDiff.Instances.Cabal
   other-modules:
