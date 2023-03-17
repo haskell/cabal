@@ -13,7 +13,7 @@ library
     , base
     , Cabal-syntax  ^>=3.11.0.0
     , Cabal         ^>=3.11.0.0
-    , tree-diff     ^>=0.1 || ^>=0.2
+    , tree-diff     ^>=0.1 || ^>=0.2 || ^>=0.3
 
   exposed-modules:  Data.TreeDiff.Instances.Cabal
   other-modules:
