@@ -1,0 +1,3 @@
+synopsis: Deduplicate LD_LIBRARY_PATH when running tests
+packages: Cabal
+prs: #8728
