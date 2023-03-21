@@ -26,24 +26,35 @@ workflow:
     paths:
       - out/*
 
-build-x86_64-linux:
+build-linux:
   extends: .build
   parallel:
     matrix:
-      - PLATFORM:
-        - i386-linux-deb9
-        - x86_64-linux-centos7
-        - x86_64-linux-deb9
-        - x86_64-linux-fedora33
-        - x86_64-linux-rocky8
-        - x86_64-linux-ubuntu18_04
-        - x86_64-linux-ubuntu20_04
-        - x86_64-linux-deb10
-        - x86_64-linux-deb11
+      - ARCH: i386
+        TAG: x86_64-linux
+        OS:
+          - deb9
+      - ARCH: x86_64
+        TAG: x86_64-linux
+        OS:
+          - centos7
+          - deb9
+          - fedora33
+          - rocky8
+          - ubuntu18_04
+          - ubuntu20_04
+          - deb10
+          - deb11
+      - ARCH: aarch64
+        TAG: aarch64-linux
+        OS:
+          - deb10
+          - deb11
   tags:
-    - x86_64-linux
+    - $TAG
   image: "registry.gitlab.haskell.org/ghc/ci-images/$PLATFORM:$DOCKER_REV"
   variables:
+    PLATFORM: "${ARCH}-linux-${OS}"
     TARBALL_ARCHIVE_SUFFIX: $PLATFORM
     TARBALL_EXT: tar.xz
     ADD_CABAL_ARGS: "--enable-split-sections"
