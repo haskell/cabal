@@ -369,7 +369,7 @@ globalCommand commands = CommandUI {
           optArg' "(True or False)" (maybeToFlag . (readMaybe =<<)) (\case
             Flag True -> [Just "enable"]
             Flag False -> [Just "disable"]
-            NoFlag -> [Just "disable"]) "" ["nix"]
+            NoFlag -> []) "" ["nix"] -- Must be empty because we need to return PP.empty from viewAsFieldDescr
             "Nix integration: run commands through nix-shell if a 'shell.nix' file exists (default is False)",
           noArg (Flag True) [] ["enable-nix"]
           "Enable Nix integration: run commands through nix-shell if a 'shell.nix' file exists",

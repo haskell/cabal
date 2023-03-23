@@ -50,7 +50,7 @@ import Distribution.PackageDescription
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import Distribution.Simple.Setup (toFlag, HaddockFlags(..), defaultHaddockFlags)
 import Distribution.Client.Setup (globalCommand)
-import Distribution.Client.Config (loadConfig, SavedConfig(savedGlobalFlags))
+import Distribution.Client.Config (loadConfig, SavedConfig(savedGlobalFlags), commentSavedConfig, initialSavedConfig, showConfigWithComments, createDefaultConfigFile)
 import Distribution.Simple.Compiler
 import Distribution.Simple.Command
 import qualified Distribution.Simple.Flag as Flag
@@ -62,6 +62,8 @@ import Distribution.Utils.Path
 
 import qualified Data.Map as Map
 import qualified Data.Set as Set
+import Data.List (isInfixOf)
+
 import Control.Monad
 import Control.Concurrent (threadDelay)
 import Control.Exception hiding (assert)
@@ -1938,13 +1940,17 @@ testNixFlags = do
   Nothing @=? (fromFlag . globalNix . fromJust $ nixDefaultFlags)
 
   -- Config file options
-  defaultConfig <- loadConfig verbosity (Flag (basedir </> "nix-config/default-config"))
+  defaultConfig <- createDefaultConfigFile verbosity [] (basedir </> "nix-config/default-config")
   trueConfig <- loadConfig verbosity (Flag (basedir </> "nix-config/nix-true"))
   falseConfig <- loadConfig verbosity (Flag (basedir </> "nix-config/nix-false"))
 
   Nothing @=? (fromFlag . globalNix . savedGlobalFlags $ defaultConfig)
   Just True @=? (fromFlag . globalNix . savedGlobalFlags $ trueConfig)
   Just False @=? (fromFlag . globalNix . savedGlobalFlags $ falseConfig)
+
+  defaultConfigFile <- readFile (basedir </> "nix-config/default-config")
+  True @=? isInfixOf "-- nix:\n" defaultConfigFile
+
   where
     fromFlag :: Flag Bool -> Maybe Bool
     fromFlag (Flag x) = Just x
