@@ -626,7 +626,7 @@ configure (pkg_descr0, pbi) cfg = do
                         _ | split_sections
                           -> do warn verbosity
                                      ("--enable-split-sections and " ++
-                                      "--enable-split-objs are mutually" ++
+                                      "--enable-split-objs are mutually " ++
                                       "exclusive; ignoring the latter")
                                 return False
                         GHC
