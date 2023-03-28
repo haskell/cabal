@@ -592,6 +592,20 @@ initialSavedConfig = do
     }
   }
 
+-- | Issue a warning if both @$XDG_CONFIG_HOME/cabal/config@ and
+-- @~/.cabal@ exists.
+warnOnTwoConfigs :: Verbosity -> IO ()
+warnOnTwoConfigs verbosity = do
+  defaultDir <- getAppUserDataDirectory "cabal"
+  dotCabalExists <- doesDirectoryExist defaultDir
+  xdgCfg <- getXdgDirectory XdgConfig ("cabal" </> "config")
+  xdgCfgExists <- doesFileExist xdgCfg
+  when (dotCabalExists && xdgCfgExists) $
+    warn normal $
+    "Both " <> defaultDir <>
+    " and " <> xdgCfg <>
+    " exist - ignoring the former."
+
 -- | If @CABAL\_DIR@ is set or @~/.cabal@ exists (and
 -- @$XDG_CONFIG_HOME/cabal/config@ does not exist), return that
 -- directory.  Otherwise returns Nothing.  If this function returns
@@ -609,14 +623,8 @@ maybeGetCabalDir = do
       dotCabalExists <- doesDirectoryExist defaultDir
       xdgCfg <- getXdgDirectory XdgConfig ("cabal" </> "config")
       xdgCfgExists <- doesFileExist xdgCfg
-      if dotCabalExists
-        then if xdgCfgExists
-             then do warn normal $
-                       "Both " <> defaultDir <>
-                       " and " <> xdgCfg <>
-                       " exist - ignoring the former."
-                     return Nothing
-             else return $ Just defaultDir
+      if dotCabalExists && not xdgCfgExists
+        then return $ Just defaultDir
         else return Nothing
 
 -- | The default behaviour of cabal-install is to use the XDG
@@ -783,6 +791,7 @@ defaultHackageRemoteRepoKeyThreshold = 3
 --
 loadConfig :: Verbosity -> Flag FilePath -> IO SavedConfig
 loadConfig verbosity configFileFlag = do
+  warnOnTwoConfigs verbosity
   config <- loadRawConfig verbosity configFileFlag
   extendToEffectiveConfig config
 
