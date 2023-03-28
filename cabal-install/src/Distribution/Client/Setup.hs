@@ -85,6 +85,8 @@ module Distribution.Client.Setup
   , cleanCommand
   , copyCommand
   , registerCommand
+  , PathFlags (..)
+  , pathCommand
   , liftOptions
   , yesNoOpt
   ) where
@@ -3319,6 +3321,42 @@ userConfigCommand =
             (reqArg' "CONFIGLINE" (Flag . (: [])) (fromMaybe [] . flagToMaybe))
         ]
     }
+
+-- ------------------------------------------------------------
+
+-- * Dirs
+
+-- ------------------------------------------------------------
+
+data PathFlags = PathFlags {
+  pathVerbosity   :: Flag Verbosity
+  } deriving Generic
+
+instance Monoid PathFlags where
+  mempty = PathFlags {
+    pathVerbosity   = toFlag normal
+    }
+  mappend = (<>)
+
+instance Semigroup PathFlags where
+  (<>) = gmappend
+
+pathCommand :: CommandUI PathFlags
+pathCommand = CommandUI {
+  commandName         = "path",
+  commandSynopsis     = "Display the directories used by cabal",
+  commandDescription  = Just $ \_ -> wrapText $
+       "This command prints the directories that are used by cabal,"
+    ++ " taking into account the contents of the configuration file and any"
+    ++ " environment variables.",
+
+  commandNotes        = Nothing,
+  commandUsage        = \pname -> "Usage: " ++ pname ++ " path\n",
+  commandDefaultFlags = mempty,
+  commandOptions      = \ _ -> [
+      optionVerbosity pathVerbosity (\v flags -> flags { pathVerbosity = v })]
+  }
+
 
 -- ------------------------------------------------------------
 

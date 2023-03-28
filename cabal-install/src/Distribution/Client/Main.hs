@@ -36,6 +36,7 @@ import Distribution.Client.Setup
   , ReportFlags (..)
   , UploadFlags (..)
   , UserConfigFlags (..)
+  , PathFlags (..)
   , actAsSetupCommand
   , benchmarkCommand
   , buildCommand
@@ -69,6 +70,7 @@ import Distribution.Client.Setup
   , unpackCommand
   , uploadCommand
   , userConfigCommand
+  , pathCommand
   , withRepoContext
   )
 import Distribution.Simple.Setup
@@ -102,6 +104,9 @@ import Distribution.Client.Config
   , loadConfig
   , userConfigDiff
   , userConfigUpdate
+  , defaultCacheDir
+  , defaultLogsDir
+  , defaultStoreDir
   )
 import qualified Distribution.Client.List as List
   ( info
@@ -368,6 +373,7 @@ mainWorker args = do
       , regularCmd reportCommand reportAction
       , regularCmd initCommand initAction
       , regularCmd userConfigCommand userConfigAction
+      , regularCmd pathCommand pathAction
       , regularCmd genBoundsCommand genBoundsAction
       , regularCmd CmdOutdated.outdatedCommand CmdOutdated.outdatedAction
       , wrapperCmd hscolourCommand hscolourVerbosity hscolourDistPref
@@ -1320,3 +1326,14 @@ manpageAction commands flags extraArgs _ = do
           then dropExtension pname
           else pname
   manpageCmd cabalCmd commands flags
+
+pathAction :: PathFlags -> [String] -> Action
+pathAction pathflags _extraArgs _globalFlags = do
+  let verbosity  = fromFlag (pathVerbosity pathflags)
+  cfg <- loadConfig verbosity mempty
+  putStrLn . ("cache-dir: "++) =<< maybe defaultCacheDir pure
+    (flagToMaybe $ globalCacheDir $ savedGlobalFlags cfg)
+  putStrLn . ("logs-dir: "++) =<< maybe defaultLogsDir pure
+    (flagToMaybe $ globalLogsDir $ savedGlobalFlags cfg)
+  putStrLn . ("store-dir: "++) =<< maybe defaultStoreDir pure
+    (flagToMaybe $ globalStoreDir $ savedGlobalFlags cfg)
