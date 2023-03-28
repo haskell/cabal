@@ -50,7 +50,7 @@ import Distribution.PackageDescription
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import Distribution.Simple.Setup (toFlag, HaddockFlags(..), defaultHaddockFlags)
 import Distribution.Client.Setup (globalCommand)
-import Distribution.Client.Config (loadConfig, SavedConfig(savedGlobalFlags), commentSavedConfig, initialSavedConfig, showConfigWithComments, createDefaultConfigFile)
+import Distribution.Client.Config (loadConfig, SavedConfig(savedGlobalFlags), createDefaultConfigFile)
 import Distribution.Simple.Compiler
 import Distribution.Simple.Command
 import qualified Distribution.Simple.Flag as Flag
