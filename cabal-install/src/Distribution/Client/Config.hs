@@ -601,7 +601,7 @@ warnOnTwoConfigs verbosity = do
   xdgCfg <- getXdgDirectory XdgConfig ("cabal" </> "config")
   xdgCfgExists <- doesFileExist xdgCfg
   when (dotCabalExists && xdgCfgExists) $
-    warn normal $
+    warn verbosity $
     "Both " <> defaultDir <>
     " and " <> xdgCfg <>
     " exist - ignoring the former."
