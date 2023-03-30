@@ -206,19 +206,6 @@ jobs:
 
       - uses: actions/checkout@v3
 
-      #  See the following link for a breakdown of the following step
-      #  https://github.com/haskell/actions/issues/7#issuecomment-745697160
-      #
-      # See https://github.com/haskell/cabal/pull/8739 for why Windows is excluded
-      - uses: actions/cache@v3
-        with:
-          # validate.sh uses a special build dir
-          path: |
-            ${{ steps.setup-haskell.outputs.cabal-store }}
-            dist-*
-          key: ${{ runner.os }}-${{ matrix.ghc }}-20220419-${{ github.sha }}
-          restore-keys: ${{ runner.os }}-${{ matrix.ghc }}-20220419-
-
       # See https://github.com/haskell/cabal/pull/8739
       - name: Sudo chmod to permit ghcup to update its cache
         run: |
@@ -243,6 +230,17 @@ jobs:
       - name: Work around git problem https://bugs.launchpad.net/ubuntu/+source/git/+bug/1993586 (cabal PR #8546)
         run: |
           git config --global protocol.file.allow always
+
+      #  See the following link for a breakdown of the following step
+      #  https://github.com/haskell/actions/issues/7#issuecomment-745697160
+      - uses: actions/cache@v3
+        with:
+          # validate.sh uses a special build dir
+          path: |
+            ${{ steps.setup-haskell.outputs.cabal-store }}
+            dist-*
+          key: ${{ runner.os }}-${{ matrix.ghc }}-20220419-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-${{ matrix.ghc }}-20220419-
 
       # The '+exe' constraint below is important, otherwise cabal-install
       # might decide to build the library but not the executable which is
@@ -347,17 +345,6 @@ jobs:
           git fetch origin $GITHUB_SHA:temporary-ci-branch
           git checkout $GITHUB_SHA || (git fetch && git checkout $GITHUB_SHA)
 
-      # As we are reusing the cached build dir from the previous step
-      # the generated artifacts are available here,
-      # including the cabal executable and the test suite
-      - uses: actions/cache@v3
-        with:
-          path: |
-            ${{ steps.setup-haskell.outputs.cabal-store }}
-            dist-*
-          key: ${{ runner.os }}-${{ matrix.ghc }}-20220419-${{ github.sha }}
-          restore-keys: ${{ runner.os }}-${{ matrix.ghc }}-20220419-
-
       - name: Install extra compiler
         run: |
           apt-get update
@@ -368,6 +355,17 @@ jobs:
         with:
           ghc-version: ${{ matrix.ghc }}
           cabal-version: latest # latest is mandatory for cabal-testsuite, see https://github.com/haskell/cabal/issues/8133
+
+      # As we are reusing the cached build dir from the previous step
+      # the generated artifacts are available here,
+      # including the cabal executable and the test suite
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ${{ steps.setup-haskell.outputs.cabal-store }}
+            dist-*
+          key: ${{ runner.os }}-${{ matrix.ghc }}-20220419-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-${{ matrix.ghc }}-20220419-
 
       - name: Install cabal-plan
         run: |
