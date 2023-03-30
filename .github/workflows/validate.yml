@@ -59,10 +59,7 @@ jobs:
 
       #  See the following link for a breakdown of the following step
       #  https://github.com/haskell/actions/issues/7#issuecomment-745697160
-      #
-      # See https://github.com/haskell/cabal/pull/8739 for why Windows is excluded
-      - if: ${{ runner.os != 'Windows' }}
-        uses: actions/cache@v3
+      - uses: actions/cache@v3
         with:
           # validate.sh uses a special build dir
           path: |
@@ -213,8 +210,7 @@ jobs:
       #  https://github.com/haskell/actions/issues/7#issuecomment-745697160
       #
       # See https://github.com/haskell/cabal/pull/8739 for why Windows is excluded
-      - if: ${{ runner.os != 'Windows' }}
-        uses: actions/cache@v3
+      - uses: actions/cache@v3
         with:
           # validate.sh uses a special build dir
           path: |
