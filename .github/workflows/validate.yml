@@ -107,9 +107,6 @@ jobs:
       - name: Set validate inputs
         run: |
           FLAGS="${{ env.COMMON_FLAGS }}"
-          if [[ "${{ matrix.cli }}" == "false" ]]; then
-            FLAGS="$FLAGS --lib-only"
-          fi
           if [[ ${{ matrix.ghc }} == ${{ env.GHC_FOR_SOLVER_BENCHMARKS }} ]]; then
             FLAGS="$FLAGS --solver-benchmarks"
           fi
@@ -133,7 +130,7 @@ jobs:
         run: sh validate.sh $FLAGS -s build
 
       - name: Tar cabal head executable
-        if: matrix.cli != 'false' && matrix.ghc == env.GHC_FOR_RELEASE
+        if: matrix.ghc == env.GHC_FOR_RELEASE
         run: |
           CABAL_EXEC=$(cabal-plan list-bin --builddir=dist-newstyle-validate-ghc-${{ matrix.ghc }} cabal-install:exe:cabal)
           # We have to tar the executable to preserve executable permissions
@@ -155,7 +152,7 @@ jobs:
       # - Reuse it in the dogfooding job (although we could use the cached build dir)
       # - Make it available in the workflow to make easier testing it locally
       - name: Upload cabal-install executable to workflow artifacts
-        if: matrix.cli != 'false' && matrix.ghc == env.GHC_FOR_RELEASE
+        if: matrix.ghc == env.GHC_FOR_RELEASE
         uses: actions/upload-artifact@v3
         with:
           name: cabal-${{ runner.os }}-${{ matrix.ghc }}
@@ -176,12 +173,11 @@ jobs:
         run: sh validate.sh $FLAGS -s lib-suite
 
       - name: Validate cli-tests
-        if: matrix.cli != 'false'
         run: sh validate.sh $FLAGS -s cli-tests
 
       - name: Validate cli-suite
         # Have to disable *-suite validation, see above the comment for lib-suite
-        if: ((runner.os != 'Windows')  || (matrix.ghc != '9.6.1')) && (matrix.cli != 'false')
+        if: (runner.os != 'Windows')  || (matrix.ghc != '9.6.1')
         run: sh validate.sh $FLAGS -s cli-suite
 
   validate-old-ghcs:
