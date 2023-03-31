@@ -324,7 +324,6 @@ mkLicenseExceptionId LicenseListVersion_3_10 s = Map.lookup s stringLookup_3_10
 mkLicenseExceptionId LicenseListVersion_3_16 s = Map.lookup s stringLookup_3_16
 mkLicenseExceptionId LicenseListVersion_3_20 s = Map.lookup s stringLookup_3_20
 
-
 stringLookup_3_0 :: Map String LicenseExceptionId
 stringLookup_3_0 = Map.fromList $ map (\i -> (licenseExceptionId i, i)) $
     licenseExceptionIdList LicenseListVersion_3_0
