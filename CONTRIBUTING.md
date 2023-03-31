@@ -118,7 +118,7 @@ names. When running `cabal-install` test suites, one need only use `cabal test` 
 QA Notes
 --------
 
-Manual Quality Assurance (QA) is done manually to ensure that the changes impacting the command-line interface, wether it is adding or modifying a behaviour,
+Manual Quality Assurance (QA) is performed to ensure that the changes impacting the command-line interface, whether adding or modifying a behaviour,
 are tested before being released. This allows us to catch UX regressions and put a human perspective into testing.
 
 Contributions that touch `cabal-install` are expected to include notes for the QA team. They are a description of an expected result upon calling `cabal-install` with
