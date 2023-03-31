@@ -65,8 +65,8 @@ jobs:
           path: |
             ${{ steps.setup-haskell.outputs.cabal-store }}
             dist-*
-          key: ${{ runner.os }}-${{ matrix.ghc }}-20220419-${{ github.sha }}
-          restore-keys: ${{ runner.os }}-${{ matrix.ghc }}-20220419-
+          key: ${{ runner.os }}-${{ matrix.ghc }}-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-${{ matrix.ghc }}-
 
       - uses: haskell/actions/setup@v2
         id: setup-haskell
@@ -236,8 +236,8 @@ jobs:
           path: |
             ${{ steps.setup-haskell.outputs.cabal-store }}
             dist-*
-          key: ${{ runner.os }}-${{ matrix.ghc }}-20220419-${{ github.sha }}
-          restore-keys: ${{ runner.os }}-${{ matrix.ghc }}-20220419-
+          key: ${{ runner.os }}-${{ matrix.ghc }}-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-${{ matrix.ghc }}-
 
       - name: Install cabal-plan
         run: |
