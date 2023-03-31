@@ -216,6 +216,7 @@ jobs:
         if: ((runner.os != 'Windows')  || (matrix.ghc != '9.6.1')) && (matrix.cli != 'false')
         run: sh validate.sh $FLAGS -s cli-suite
 
+<<<<<<< HEAD
   # The job below is a copy-paste of validate with the necessary tweaks
   # to make all work with an upcoming GHC. Those tweaks include:
   # - ghcup needs the prerelease channel activated
@@ -382,6 +383,8 @@ jobs:
         if: ( runner.os != 'Windows' ) && ( matrix.cli != 'false' )
         run: sh validate.sh $FLAGS -s cli-suite
 
+=======
+>>>>>>> bb10ae32b (CI: remove separate prerelease workflow)
   validate-old-ghcs:
     name: Validate old ghcs ${{ matrix.extra-ghc }}
     runs-on: ubuntu-20.04
