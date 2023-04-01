@@ -1,61 +1,46 @@
 # Cabal
 
-[![Hackage version](https://img.shields.io/hackage/v/Cabal.svg?label=Hackage)](https://hackage.haskell.org/package/Cabal)
-[![Stackage version](https://www.stackage.org/package/Cabal/badge/lts?label=Stackage)](https://www.stackage.org/package/Cabal)
-[![Documentation Status](http://readthedocs.org/projects/cabal/badge/?version=latest)](http://cabal.readthedocs.io/en/latest/?badge=latest)
-[![IRC chat](https://img.shields.io/badge/chat-via%20libera-brightgreen.svg)](https://web.libera.chat/#hackage)
-[![Matrix chat](https://img.shields.io/badge/chat-via%20matrix-brightgreen.svg)](https://matrix.to/#/#hackage:libera.chat)
+Cabal is a tool for building and packaging Haskell libraries and programs. It provides a common interface for package authors and distributors to easily build their applications in a portable way. Cabal is part of a larger infrastructure for distributing, organizing, and cataloging Haskell libraries and programs.
 
-<img src="https://www.haskell.org/cabal/images/Cabal-light.png" align="right">
+## Getting started
 
-This Cabal Git repository contains the following main packages:
+To use Cabal, you'll need to have Haskell installed on your system. Once you have Haskell installed, you can install Cabal using the following command:
 
- * [Cabal](Cabal/README.md): the Cabal library package ([license](Cabal/LICENSE))
- * [Cabal-syntax](Cabal-syntax/README.md): the `.cabal` file format library ([license](Cabal-syntax/LICENSE))
- * [cabal-install](cabal-install/README.md): the package containing the `cabal` tool ([license](cabal-install/LICENSE))
- * [cabal-install-solver](cabal-install-solver): the package containing the solver component of the `cabal` tool ([license](cabal-install-solver/LICENSE))
+$ cabal install cabal-install
 
-The canonical upstream repository is located at
-https://github.com/haskell/cabal.
 
-Ways to get the `cabal-install` binary
---------------------------------
+After installing Cabal, you can use it to create a new Haskell project. To create a new project, run the following command:
 
-1. _GHCup (**preferred**)_: get GHCup using [the directions on its website](https://www.haskell.org/ghcup/) and run:
+$ cabal init
 
-    ```
-    ghcup install --set cabal latest
-    ```
 
-2. _[Download from official website](https://www.haskell.org/cabal/download.html)_:
-    the `cabal-install` binary download for your platform should contain the `cabal` executable.
+This command will prompt you for information about your project, such as its name, version, and dependencies. Once you've provided this information, Cabal will generate a `.cabal` file for your project, which describes its structure and dependencies.
 
-Ways to build `cabal-install` for everyday use
---------------------------------------------
+You can then use Cabal to build and install your project. To build your project, run the following command:
 
-1. _With cabal-install_:
-    if you have a pre-existing version of `cabal-install`, run:
+$ cabal build
 
-    ```
-    cabal install cabal-install
-    ```
 
-    to get the latest version of `cabal-install`. (You may want to `cabal update` first.)
+This command will compile your project and generate executable files in the `dist/` directory. To install your project, run the following command:
 
-2. _From Git_:
-    again with a pre-existing version of `cabal-install`,
-    you can install the latest version from the Git repository. Clone the
-    Git repository, move to its root, and run:
+$ cabal install
 
-    ```
-    cabal install --project-file=cabal.project.release cabal-install
-    ```
 
-3. _Bootstrapping_:
-    if you don't have a pre-existing version of `cabal-install`,
-    look into the [`bootstrap`](bootstrap) directory.
+This command will install your project and its dependencies to your system's global package database.
 
-Build for hacking and contributing to cabal
--------------------------------------------
+## Fish shell integration
 
-Refer to [CONTRIBUTING.md](CONTRIBUTING.md).
+Fish shell users can install the [cabal-fish-completion](https://github.com/oh-my-fish/plugin-cabal) plugin to enable command-line completion for Cabal commands. To install the plugin using [Oh My Fish](https://github.com/oh-my-fish/oh-my-fish), run the following command:
+
+$ omf install cabal
+
+
+After installing the plugin, you can use tab completion to easily enter Cabal commands and options.
+
+## Documentation
+
+For more information about Cabal, including detailed documentation and usage examples, see the [official Cabal documentation](https://www.haskell.org/cabal/) or the [Cabal User Guide](https://cabal.readthedocs.io/en/3.4/).
+
+## Contributing
+
+If you're interested in contributing to Cabal, you can find the source code on [GitHub](https://github.com/haskell/cabal). Contributions are welcome and appreciated!
