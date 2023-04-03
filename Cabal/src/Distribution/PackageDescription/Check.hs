@@ -28,6 +28,7 @@ module Distribution.PackageDescription.Check (
         checkConfiguredPackage,
         wrapParseWarning,
         ppPackageCheck,
+        isHackageDistError,
 
         -- ** Checking package contents
         checkPackageFiles,
@@ -845,6 +846,12 @@ data PackageCheck =
        -- problems.
      | PackageDistInexcusable { explanation :: CheckExplanation }
   deriving (Eq, Ord)
+
+-- | Would Hackage refuse a package because of this error?
+isHackageDistError :: PackageCheck -> Bool
+isHackageDistError (PackageDistSuspicious {}) = False
+isHackageDistError (PackageDistSuspiciousWarn {}) = False
+isHackageDistError _ = True
 
 -- | Pretty printing 'PackageCheck'.
 --

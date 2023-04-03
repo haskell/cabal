@@ -94,12 +94,9 @@ check verbosity = do
         warn verbosity "The following errors will cause portability problems on other environments:"
         printCheckMessages distInexusable
 
-    let isDistError (PackageDistSuspicious     {}) = False
-        isDistError (PackageDistSuspiciousWarn {}) = False
-        isDistError _                              = True
-        isCheckError (PackageDistSuspiciousWarn {}) = False
+    let isCheckError (PackageDistSuspiciousWarn {}) = False
         isCheckError _                              = True
-        errors = filter isDistError packageChecks
+        errors = filter isHackageDistError packageChecks
 
     unless (null errors) $
         warn verbosity "Hackage would reject this package."
