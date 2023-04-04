@@ -604,7 +604,7 @@ warnOnTwoConfigs verbosity = do
     warn verbosity $
     "Both " <> defaultDir <>
     " and " <> xdgCfg <>
-    " exist - ignoring the former.\n"
+    " exist - ignoring the former.\n" <>
     "It is advisable to remove one of them. In that case, we will use the remaining one by default (unless '$CABAL_DIR' is explicitly set)."
 
 -- | If @CABAL\_DIR@ is set, return @Just@ its value. Otherwise, if
