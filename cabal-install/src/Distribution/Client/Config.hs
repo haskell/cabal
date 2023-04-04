@@ -604,15 +604,16 @@ warnOnTwoConfigs verbosity = do
     warn verbosity $
     "Both " <> defaultDir <>
     " and " <> xdgCfg <>
-    " exist - ignoring the former."
+    " exist - ignoring the former.\n"
+    "It is advisable to remove one of them. In that case, we will use the remaining one by default (unless '$CABAL_DIR' is explicitly set)."
 
--- | If @CABAL\_DIR@ is set or @~/.cabal@ exists (and
--- @$XDG_CONFIG_HOME/cabal/config@ does not exist), return that
--- directory.  Otherwise returns Nothing.  If this function returns
--- Nothing, then it implies that we are not using a single directory
--- for everything, but instead use XDG paths.  Fundamentally, this
--- function is used to implement transparent backwards compatibility
--- with pre-XDG versions of cabal-install.
+-- | If @CABAL\_DIR@ is set, return @Just@ its value. Otherwise, if
+-- @~/.cabal@ exists and @$XDG_CONFIG_HOME/cabal/config@ does not
+-- exist, return @Just "~/.cabal"@.  Otherwise, return @Nothing@.  If
+-- this function returns Nothing, then it implies that we are not
+-- using a single directory for everything, but instead use XDG paths.
+-- Fundamentally, this function is used to implement transparent
+-- backwards compatibility with pre-XDG versions of cabal-install.
 maybeGetCabalDir :: IO (Maybe FilePath)
 maybeGetCabalDir = do
   mDir <- lookupEnv "CABAL_DIR"
