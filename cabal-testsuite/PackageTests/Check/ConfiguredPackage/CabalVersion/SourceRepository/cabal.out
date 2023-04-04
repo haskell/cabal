@@ -1,4 +1,4 @@
 # cabal check
-Warning: The following errors will cause portability problems on other environments:
-Warning: The 'source-repository' section is new in Cabal 1.6. Unfortunately it messes up the parser in earlier Cabal versions so you need to specify 'cabal-version: >= 1.6'.
-Warning: Hackage would reject this package.
+The following errors will cause portability problems on other environments:
+Error: The 'source-repository' section is new in Cabal 1.6. Unfortunately it messes up the parser in earlier Cabal versions so you need to specify 'cabal-version: >= 1.6'.
+Error: Hackage would reject this package.

@@ -1,3 +1,3 @@
 # cabal check
-Warning: These warnings may cause trouble when distributing the package:
+These warnings will likely cause trouble when distributing the package:
 Warning: 'license: GPL-5' is not a known version of that license. The known versions are 2, 3. If this is not a mistake and you think it should be a known version then please file a ticket.

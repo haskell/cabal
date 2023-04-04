@@ -1,5 +1,5 @@
 # cabal check
-Warning: These warnings may cause trouble when distributing the package:
+These warnings may cause trouble when distributing the package:
 Warning: In 'data-files': the pattern 'data/*.dat' does not match the file 'data/foo.bar.dat' because the extensions do not exactly match (e.g., foo.en.html does not exactly match *.html). To enable looser suffix-only matching, set 'cabal-version: 2.4' or higher.
 Warning: In 'extra-doc-files': the pattern 'doc/*.html' does not match the file 'doc/foo.en.html' because the extensions do not exactly match (e.g., foo.en.html does not exactly match *.html). To enable looser suffix-only matching, set 'cabal-version: 2.4' or higher.
 Warning: In 'extra-doc-files': the pattern 'doc/*.html' does not match the file 'doc/foo.fr.html' because the extensions do not exactly match (e.g., foo.en.html does not exactly match *.html). To enable looser suffix-only matching, set 'cabal-version: 2.4' or higher.

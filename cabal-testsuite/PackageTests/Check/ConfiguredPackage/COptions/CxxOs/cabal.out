@@ -1,3 +1,3 @@
 # cabal check
-Warning: These warnings may cause trouble when distributing the package:
+These warnings will likely cause trouble when distributing the package:
 Warning: 'cxx-options: -O[n]' is generally not needed. When building with  optimisations Cabal automatically adds '-O2' for C++ code. Setting it yourself interferes with the --disable-optimization flag.

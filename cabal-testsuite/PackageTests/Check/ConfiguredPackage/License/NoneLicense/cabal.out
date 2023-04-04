@@ -1,4 +1,4 @@
 # cabal check
-Warning: The following errors will cause portability problems on other environments:
-Warning: The 'license' field is missing or is NONE.
-Warning: Hackage would reject this package.
+The following errors will cause portability problems on other environments:
+Error: The 'license' field is missing or is NONE.
+Error: Hackage would reject this package.
