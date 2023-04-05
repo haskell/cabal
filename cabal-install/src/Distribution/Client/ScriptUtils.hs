@@ -26,7 +26,7 @@ import Distribution.Client.Config
 import Distribution.Client.DistDirLayout
     ( DistDirLayout(..) )
 import Distribution.Client.HashValue
-    ( hashValue, showHashValue )
+    ( hashValue, showHashValueBase64 )
 import Distribution.Client.HttpUtils
          ( HttpTransport, configureTransport )
 import Distribution.Client.NixStyleOptions
@@ -125,7 +125,12 @@ import qualified Text.Parsec as P
 -- Two hashes will be the same as long as the absolute paths
 -- are the same.
 getScriptHash :: FilePath -> IO String
-getScriptHash script = showHashValue . hashValue . fromString <$> canonicalizePath script
+getScriptHash script
+  -- Base64 is shorter than Base16, which helps avoid long path issues on windows
+  -- but it can contain /'s which aren't valid in file paths so replace them with
+  -- %'s. 26 chars / 130 bits is enough to practically avoid collisions.
+  = map (\c -> if c == '/' then '%' else c) . take 26
+  . showHashValueBase64 . hashValue . fromString <$> canonicalizePath script
 
 -- | Get the directory for caching a script build.
 --
