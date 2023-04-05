@@ -7,4 +7,4 @@ Please include the following checklist in your PR:
 * [ ] The documentation has been updated, if necessary.
 * [ ] Include [manual QA notes](https://github.com/haskell/cabal/blob/master/CONTRIBUTING.md#qa-notes) if your PR relates to cabal-install.
 
-Please also shortly describe how you tested your change. Bonus points for added tests!
+Bonus points for added automated tests!
