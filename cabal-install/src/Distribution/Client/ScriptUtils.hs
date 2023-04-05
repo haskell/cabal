@@ -33,7 +33,7 @@ import Distribution.Client.NixStyleOptions
     ( NixStyleFlags (..) )
 import Distribution.Client.ProjectConfig
     ( ProjectConfig(..), ProjectConfigShared(..)
-    , reportParseResult, withProjectOrGlobalConfig
+    , reportParseResult, withGlobalConfig, withProjectOrGlobalConfig
     , projectConfigHttpTransport )
 import Distribution.Client.ProjectConfig.Legacy
     ( ProjectConfigSkeleton
@@ -182,7 +182,7 @@ withContextAndSelectors
   -> IO b
 withContextAndSelectors noTargets kind flags@NixStyleFlags {..} targetStrings globalFlags cmd act
   = withTemporaryTempDirectory $ \mkTmpDir -> do
-    (tc, ctx) <- withProjectOrGlobalConfig verbosity ignoreProject globalConfigFlag with (without mkTmpDir)
+    (tc, ctx) <- withProjectOrGlobalConfig verbosity ignoreProject globalConfigFlag withProject (withoutProject mkTmpDir)
 
     (tc', ctx', sels) <- case targetStrings of
       -- Only script targets may contain spaces and or end with ':'.
@@ -214,19 +214,25 @@ withContextAndSelectors noTargets kind flags@NixStyleFlags {..} targetStrings gl
     globalConfigFlag = projectConfigConfigFile (projectConfigShared cliConfig)
     defaultTarget = [TargetPackage TargetExplicitNamed [fakePackageId] Nothing]
 
-    with = do
+    withProject = do
       ctx <- establishProjectBaseContext verbosity cliConfig cmd
       return (ProjectContext, ctx)
-    without mkDir globalConfig = do
-      distDirLayout <- establishDummyDistDirLayout verbosity (globalConfig <> cliConfig) =<< mkDir
+    withoutProject mkTmpDir globalConfig = do
+      distDirLayout <- establishDummyDistDirLayout verbosity (globalConfig <> cliConfig) =<< mkTmpDir
       ctx <- establishDummyProjectBaseContext verbosity (globalConfig <> cliConfig) distDirLayout [] cmd
       return (GlobalContext, ctx)
+
+    scriptBaseCtx script globalConfig = do
+      let noDistDir = mempty { projectConfigShared = mempty { projectConfigDistDir = Flag "" } }
+      let cfg = noDistDir <> globalConfig <> cliConfig
+      rootDir <- ensureScriptCacheDirectory verbosity script
+      distDirLayout <- establishDummyDistDirLayout verbosity cfg rootDir
+      establishDummyProjectBaseContext verbosity cfg distDirLayout [] cmd
+
     scriptOrError script err = do
       exists <- doesFileExist script
       if exists then do
-        -- In the script case we always want a dummy context even when ignoreProject is False
-        let mkCacheDir = ensureScriptCacheDirectory verbosity script
-        (_, ctx) <- withProjectOrGlobalConfig verbosity (Flag True) globalConfigFlag with (without mkCacheDir)
+        ctx <- withGlobalConfig verbosity globalConfigFlag (scriptBaseCtx script)
 
         let projectRoot = distProjectRootDirectory $ distDirLayout ctx
         writeFile (projectRoot </> "scriptlocation") =<< canonicalizePath script
