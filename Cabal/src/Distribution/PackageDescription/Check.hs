@@ -849,9 +849,11 @@ data PackageCheck =
 
 -- | Would Hackage refuse a package because of this error?
 isHackageDistError :: PackageCheck -> Bool
+isHackageDistError (PackageBuildImpossible {}) = True
+isHackageDistError (PackageBuildWarning {}) = True
+isHackageDistError (PackageDistInexcusable {}) = True
 isHackageDistError (PackageDistSuspicious {}) = False
 isHackageDistError (PackageDistSuspiciousWarn {}) = False
-isHackageDistError _ = True
 
 -- | Pretty printing 'PackageCheck'.
 --
