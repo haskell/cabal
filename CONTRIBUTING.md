@@ -4,7 +4,8 @@ Building Cabal for hacking
 --------------------------
 
 The current recommended way of developing Cabal is to use the
-`v2-build` feature which [shipped in cabal-install-1.24](http://blog.ezyang.com/2016/05/announcing-cabal-new-build-nix-style-local-builds/).  If you use the latest version of cabal published on Hackage, it is sufficient to run:
+`v2-build` feature which [shipped in cabal-install-1.24](http://blog.ezyang.com/2016/05/announcing-cabal-new-build-nix-style-local-builds/).
+If you use the latest version of cabal published on Hackage, it is sufficient to run:
 
 ```
 cabal v2-build cabal
@@ -115,6 +116,26 @@ For these test executables, `-p` which applies a regex filter to the test
 names. When running `cabal-install` test suites, one need only use `cabal test` or
 `cabal run <test-target>` in order to test locally.
 
+QA Notes
+--------
+
+Manual Quality Assurance (QA) is performed to ensure that the changes impacting
+the command-line interface, whether adding or modifying a behaviour,
+are tested before being released. This allows us to catch UX regressions and put
+a human perspective into testing.
+
+Contributions that touch `cabal-install` are expected to include notes for the QA team.
+They are a description of an expected result upon calling `cabal-install` with certain parameters.
+
+For instance:
+
+> ## QA Notes
+> Calling `cabal haddock-project` should produce documentation for the whole cabal project with the following defaults enabled:
+> * Documentation lives in ./haddocks
+> * The file `./haddocks/index.html` should exist
+
+Manual QA is not expected to find every possible bug, but to really challenge the assumptions of the contributor, and to verify that their own testing
+of their patch is not influenced by their setup or implicit knowledge of the system.
 
 Whitespace Conventions
 ----------------------
