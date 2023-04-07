@@ -301,6 +301,11 @@ jobs:
       - name: print-config using cabal HEAD
         run: sh validate.sh ${{ env.COMMON_FLAGS }} --with-cabal ./cabal-head/cabal -s print-config
 
+      - name: Allow newer dependencies when built with latest GHC
+        if: ${{ matrix.ghc }} == '9.6.1'
+        run: |
+          echo "allow-newer: rere:base, rere:transformers" >> cabal.project.validate
+
       # We dont use cache to force a build with a fresh store dir and build dir
       # This way we check cabal can build all its dependencies
       - name: Build using cabal HEAD
