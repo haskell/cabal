@@ -28,7 +28,9 @@ import Distribution.Client.NixStyleOptions
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.ProjectPlanning.Types
 import Distribution.Client.ScriptUtils
-       (AcceptNoTargets(..), TargetContext(..), updateContextAndWriteProjectFile, withContextAndSelectors)
+       ( AcceptNoTargets(..), TargetContext(..)
+       , updateContextAndWriteProjectFile, withContextAndSelectors
+       , movedExePath )
 import Distribution.Client.Setup                 (GlobalFlags (..))
 import Distribution.Client.TargetProblem         (TargetProblem (..))
 import Distribution.Simple.BuildPaths            (dllExtension, exeExtension)
@@ -170,7 +172,7 @@ listbinAction flags@NixStyleFlags{..} args globalFlags = do
 
         bin_file c = case c of
             CD.ComponentExe s
-               | s == selectedComponent -> [bin_file' s]
+               | s == selectedComponent -> [moved_bin_file s]
             CD.ComponentTest s
                | s == selectedComponent -> [bin_file' s]
             CD.ComponentBench s
@@ -193,6 +195,8 @@ listbinAction flags@NixStyleFlags{..} args globalFlags = do
             if elabBuildStyle elab == BuildInplaceOnly
             then dist_dir </> "build" </> prettyShow s </> ("lib" ++ prettyShow s) <.> dllExtension plat
             else InstallDirs.bindir (elabInstallDirs elab) </> ("lib" ++ prettyShow s) <.> dllExtension plat
+
+        moved_bin_file s = fromMaybe (bin_file' s) (movedExePath selectedComponent distDirLayout elaboratedSharedConfig elab)
 
 -------------------------------------------------------------------------------
 -- Target Problem: the very similar to CmdRun
