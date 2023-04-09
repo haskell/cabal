@@ -2,5 +2,5 @@
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
- - fake-package-0 (exe:cabal-script-script.hs) (first run)
-<ROOT>/cabal.dist/work/./dist/build/<ARCH>/ghc-<GHCVER>/fake-package-0/x/cabal-script-script.hs/build/cabal-script-script.hs/cabal-script-script.hs
+ - fake-package-0 (exe:script-script.hs) (first run)
+<ROOT>/cabal.dist/work/./dist/build/<ARCH>/ghc-<GHCVER>/fake-package-0/x/script-script.hs/bin/cabal-script-script.hs
