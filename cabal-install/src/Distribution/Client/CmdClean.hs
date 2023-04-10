@@ -103,7 +103,7 @@ cleanAction CleanFlags{..} extraArgs _ = do
 
     projectRoot <- either throwIO return =<< findProjectRoot verbosity mprojectDir mprojectFile
 
-    let distLayout = defaultDistDirLayout projectRoot mdistDirectory
+    let distLayout = defaultDistDirLayout projectRoot mdistDirectory Nothing
 
     -- Do not clean a project if just running a script in it's directory
     when (null extraArgs || isJust mdistDirectory) $ do

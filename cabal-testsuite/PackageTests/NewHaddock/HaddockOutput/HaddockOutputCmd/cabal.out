@@ -1,0 +1,11 @@
+# cabal v2-update
+Downloading the latest package list from test-local-repo
+# cabal haddock
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following will be built:
+ - A-0.0.0 (lib) (first run)
+Configuring library for A-0.0.0..
+Preprocessing library for A-0.0.0..
+Running Haddock on library for A-0.0.0..
+Documentation created: <ROOT>/docs/index.html

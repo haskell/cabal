@@ -1,2 +1,3 @@
 *.dist
 Setup
+**/HaddockOutput/**/docs/

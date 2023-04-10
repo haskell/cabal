@@ -123,7 +123,10 @@ data DistDirLayout = DistDirLayout {
        distTempDirectory            :: FilePath,
        distBinDirectory             :: FilePath,
 
-       distPackageDB                :: CompilerId -> PackageDB
+       distPackageDB                :: CompilerId -> PackageDB,
+
+       -- | Is needed when `--haddock-output-dir` flag is used.
+       distHaddockOutputDir         :: Maybe FilePath
      }
 
 
@@ -180,14 +183,15 @@ defaultProjectFile :: FilePath
 defaultProjectFile = "cabal.project"
 
 -- | Make the default 'DistDirLayout' based on the project root dir and
--- optional overrides for the location of the @dist@ directory and the
--- @cabal.project@ file.
+-- optional overrides for the location of the @dist@ directory, the
+-- @cabal.project@ file and the documentation directory.
 --
 defaultDistDirLayout :: ProjectRoot    -- ^ the project root
                      -> Maybe FilePath -- ^ the @dist@ directory or default
                                        -- (absolute or relative to the root)
+                     -> Maybe FilePath -- ^ the documentation directory
                      -> DistDirLayout
-defaultDistDirLayout projectRoot mdistDirectory =
+defaultDistDirLayout projectRoot mdistDirectory haddockOutputDir =
     DistDirLayout {..}
   where
     (projectRootDir, projectFile) = case projectRoot of
@@ -272,6 +276,8 @@ defaultDistDirLayout projectRoot mdistDirectory =
     distPackageDB :: CompilerId -> PackageDB
     distPackageDB = SpecificPackageDB . distPackageDBPath
 
+    distHaddockOutputDir :: Maybe FilePath
+    distHaddockOutputDir = haddockOutputDir
 
 defaultStoreDirLayout :: FilePath -> StoreDirLayout
 defaultStoreDirLayout storeRoot =

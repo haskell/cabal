@@ -291,6 +291,7 @@ data PackageConfig
        packageConfigHaddockIndex        :: Flag PathTemplate, --TODO: [required eventually] use this
        packageConfigHaddockBaseUrl      :: Flag String, --TODO: [required eventually] use this
        packageConfigHaddockLib          :: Flag String, --TODO: [required eventually] use this
+       packageConfigHaddockOutputDir    :: Flag FilePath, --TODO: [required eventually] use this
        packageConfigHaddockForHackage   :: Flag HaddockTarget,
        -- Test options
        packageConfigTestHumanLog        :: Flag PathTemplate,

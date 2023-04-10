@@ -1780,7 +1780,7 @@ haddockOptions showOrParseArgs
     , name `elem` ["hoogle", "html", "html-location"
                   ,"executables", "tests", "benchmarks", "all", "internal", "css"
                   ,"hyperlink-source", "quickjump", "hscolour-css"
-                  ,"contents-location", "use-index", "for-hackage", "base-url", "lib"]
+                  ,"contents-location", "use-index", "for-hackage", "base-url", "lib", "output-dir"]
     ]
 
 testOptions :: ShowOrParseArgs -> [OptionField TestFlags]

@@ -494,6 +494,7 @@ instance Semigroup SavedConfig where
         haddockIndex         = combine haddockIndex,
         haddockBaseUrl       = combine haddockBaseUrl,
         haddockLib           = combine haddockLib,
+        haddockOutputDir     = combine haddockOutputDir,
         haddockArgs          = lastNonEmpty haddockArgs
         }
         where
