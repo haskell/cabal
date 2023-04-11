@@ -930,7 +930,7 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
                       -> insts
                     _ -> [],
                 ghcOptPackages           = toNubListR $
-                                           Internal.mkGhcOptPackages clbi ,
+                                           Internal.mkGhcOptPackages mempty clbi ,
                 ghcOptLinkLibs           = extraLibs libBi,
                 ghcOptLinkLibPath        = toNubListR $ cleanedExtraLibDirs,
                 ghcOptLinkFrameworks     = toNubListR $ PD.frameworks libBi,
@@ -964,7 +964,7 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
                       -> insts
                     _ -> [],
                 ghcOptPackages           = toNubListR $
-                                           Internal.mkGhcOptPackages clbi ,
+                                           Internal.mkGhcOptPackages mempty clbi ,
                 ghcOptLinkLibs           = extraLibs libBi,
                 ghcOptLinkLibPath        = toNubListR $ cleanedExtraLibDirs
               }

@@ -109,6 +109,9 @@ data LocalBuildInfo = LocalBuildInfo {
         componentNameMap :: Map ComponentName [ComponentLocalBuildInfo],
                 -- ^ A map from component name to all matching
                 -- components.  These coincide with 'componentGraph'
+        promisedPkgs  :: Map (PackageName, ComponentName) ComponentId,
+                -- ^ The packages we were promised, but aren't already installed.
+                -- MP: Perhaps this just needs to be a Set UnitId at this stage.
         installedPkgs :: InstalledPackageIndex,
                 -- ^ All the info about the installed packages that the
                 -- current package depends on (directly or indirectly).

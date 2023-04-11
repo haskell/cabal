@@ -77,12 +77,14 @@ import Distribution.Utils.Path
 import Language.Haskell.Extension
 
 import qualified Data.Map as Map
+import qualified Data.Set as Set
 import qualified Data.ByteString.Lazy.Char8 as BS
 import System.Directory         ( getDirectoryContents, getTemporaryDirectory )
 import System.Environment       ( getEnv )
 import System.FilePath          ( (</>), (<.>), takeExtension
                                 , takeDirectory, takeFileName)
 import System.IO                ( hClose, hPutStrLn )
+import Distribution.Types.ComponentId (ComponentId)
 
 targetPlatform :: [(String, String)] -> Maybe Platform
 targetPlatform ghcInfo = platformFromTriple =<< lookup "Target platform" ghcInfo
@@ -292,7 +294,7 @@ componentCcGhcOptions verbosity _implInfo lbi bi clbi odir filename =
                                           ++ [buildDir lbi </> dir | dir <- includeDirs bi],
       ghcOptHideAllPackages= toFlag True,
       ghcOptPackageDBs     = withPackageDB lbi,
-      ghcOptPackages       = toNubListR $ mkGhcOptPackages clbi,
+      ghcOptPackages       = toNubListR $ mkGhcOptPackages (promisedPkgs lbi) clbi,
       ghcOptCcOptions      = (case withOptimization lbi of
                                   NoOptimisation -> []
                                   _              -> ["-O2"]) ++
@@ -331,7 +333,7 @@ componentCxxGhcOptions verbosity _implInfo lbi bi clbi odir filename =
                                           ++ [buildDir lbi </> dir | dir <- includeDirs bi],
       ghcOptHideAllPackages= toFlag True,
       ghcOptPackageDBs     = withPackageDB lbi,
-      ghcOptPackages       = toNubListR $ mkGhcOptPackages clbi,
+      ghcOptPackages       = toNubListR $ mkGhcOptPackages (promisedPkgs lbi) clbi,
       ghcOptCxxOptions     = (case withOptimization lbi of
                                   NoOptimisation -> []
                                   _              -> ["-O2"]) ++
@@ -370,7 +372,7 @@ componentAsmGhcOptions verbosity _implInfo lbi bi clbi odir filename =
                                           ++ [buildDir lbi </> dir | dir <- includeDirs bi],
       ghcOptHideAllPackages= toFlag True,
       ghcOptPackageDBs     = withPackageDB lbi,
-      ghcOptPackages       = toNubListR $ mkGhcOptPackages clbi,
+      ghcOptPackages       = toNubListR $ mkGhcOptPackages (promisedPkgs lbi) clbi,
       ghcOptAsmOptions     = (case withOptimization lbi of
                                   NoOptimisation -> []
                                   _              -> ["-O2"]) ++
@@ -405,7 +407,7 @@ componentJsGhcOptions verbosity _implInfo lbi bi clbi odir filename =
                                           ++ [buildDir lbi </> dir | dir <- includeDirs bi],
       ghcOptHideAllPackages= toFlag True,
       ghcOptPackageDBs     = withPackageDB lbi,
-      ghcOptPackages       = toNubListR $ mkGhcOptPackages clbi,
+      ghcOptPackages       = toNubListR $ mkGhcOptPackages (promisedPkgs lbi) clbi,
       ghcOptObjDir         = toFlag odir
     }
 
@@ -448,7 +450,7 @@ componentGhcOptions verbosity implInfo lbi bi clbi odir =
       ghcOptHideAllPackages = toFlag True,
       ghcOptWarnMissingHomeModules = toFlag $ flagWarnMissingHomeModules implInfo,
       ghcOptPackageDBs      = withPackageDB lbi,
-      ghcOptPackages        = toNubListR $ mkGhcOptPackages clbi,
+      ghcOptPackages        = toNubListR $ mkGhcOptPackages mempty clbi,
       ghcOptSplitSections   = toFlag (splitSections lbi),
       ghcOptSplitObjs       = toFlag (splitObjs lbi),
       ghcOptSourcePathClear = toFlag True,
@@ -518,7 +520,7 @@ componentCmmGhcOptions verbosity _implInfo lbi bi clbi odir filename =
                              [autogenComponentModulesDir lbi clbi </> cppHeaderName],
       ghcOptHideAllPackages= toFlag True,
       ghcOptPackageDBs     = withPackageDB lbi,
-      ghcOptPackages       = toNubListR $ mkGhcOptPackages clbi,
+      ghcOptPackages       = toNubListR $ mkGhcOptPackages (promisedPkgs lbi) clbi,
       ghcOptOptimisation   = toGhcOptimisation (withOptimization lbi),
       ghcOptDebugInfo      = toFlag (withDebugInfo lbi),
       ghcOptExtra          = cmmOptions bi,
@@ -571,9 +573,18 @@ getHaskellObjects _implInfo lib lbi clbi pref wanted_obj_ext allow_split_objs
         return [ pref </> ModuleName.toFilePath x <.> wanted_obj_ext
                | x <- allLibModules lib clbi ]
 
-mkGhcOptPackages :: ComponentLocalBuildInfo
+-- | Create the required packaged arguments, but filtering out package arguments which
+-- aren't yet built, but promised. This filtering is used when compiling C/Cxx/Asm files,
+-- and is a hack to avoid passing bogus `-package` arguments to GHC. The assumption being that
+-- in 99% of cases we will include the right `-package` so that the C file finds the right headers.
+mkGhcOptPackages :: Map (PackageName, ComponentName) ComponentId
+                 -> ComponentLocalBuildInfo
                  -> [(OpenUnitId, ModuleRenaming)]
-mkGhcOptPackages = componentIncludes
+mkGhcOptPackages promisedPkgsMap clbi = [ i | i@(uid, _) <- componentIncludes clbi
+                                          , abstractUnitId uid `Set.notMember` promised_cids ]
+  where
+    -- Promised deps are going to be simple UnitIds
+    promised_cids = Set.fromList (map newSimpleUnitId (Map.elems promisedPkgsMap))
 
 substTopDir :: FilePath -> IPI.InstalledPackageInfo -> IPI.InstalledPackageInfo
 substTopDir topDir ipo

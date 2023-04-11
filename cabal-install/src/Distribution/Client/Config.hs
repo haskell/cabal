@@ -401,6 +401,7 @@ instance Semigroup SavedConfig where
         configConstraints         = lastNonEmpty configConstraints,
         -- TODO: NubListify
         configDependencies        = lastNonEmpty configDependencies,
+        configPromisedDependencies = lastNonEmpty configPromisedDependencies,
         -- TODO: NubListify
         configConfigurationsFlags = lastNonMempty configConfigurationsFlags,
         configTests               = combine configTests,

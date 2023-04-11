@@ -1,0 +1,24 @@
+synopsis: Add --promised-dependency flag to ./Setup configure interface
+packages: Cabal
+prs: #8726
+
+description: {
+
+There is a new flag `--promised-dependency`  to allow users to
+configure a package *without* having previously built the dependency.
+Instead, we promise to the configure phase that we will have built it
+by the time we build the package. This allows us to configure all the
+packages we intend to load into the repl without building any
+dependenices which we will load in the same session, because the
+promise is satisifed due to loading the package and it's dependency
+into one multi-session which ensures the dependency is built before
+it is needed.
+
+A user of ./Setup configure specifies a promised dependency by
+using the "--promised-dependency" flag with a normal dependency specification. For example:
+
+```
+   '--promised-dependency=cabal-install-solver=cabal-install-solver-3.9.0.0-inplace'
+```
+
+}

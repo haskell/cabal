@@ -134,6 +134,8 @@ import Data.List
          ( deleteFirstsBy )
 import System.FilePath
          ( (</>) )
+import Control.Exception
+         ( assert )
 
 globalCommand :: [Command action] -> CommandUI GlobalFlags
 globalCommand commands = CommandUI {
@@ -465,7 +467,7 @@ filterConfigureFlags :: ConfigFlags -> Version -> ConfigFlags
 filterConfigureFlags flags cabalLibVersion
   -- NB: we expect the latest version to be the most common case,
   -- so test it first.
-  | cabalLibVersion >= mkVersion [3,7,0]  = flags_latest
+  | cabalLibVersion >= mkVersion [3,11,0]  = flags_latest
   -- The naming convention is that flags_version gives flags with
   -- all flags *introduced* in version eliminated.
   -- It is NOT the latest version of Cabal library that
@@ -486,17 +488,26 @@ filterConfigureFlags flags cabalLibVersion
   | cabalLibVersion < mkVersion [2,1,0]  = flags_2_1_0
   | cabalLibVersion < mkVersion [2,5,0]  = flags_2_5_0
   | cabalLibVersion < mkVersion [3,7,0]  = flags_3_7_0
+  | cabalLibVersion < mkVersion [3,11,0]  = flags_3_11_0
   | otherwise = error "the impossible just happened" -- see first guard
   where
-    flags_latest = flags        {
+    flags_latest = flags {
       -- Cabal >= 1.19.1 uses '--dependency' and does not need '--constraint'.
       -- Note: this is not in the wrong place. configConstraints gets
       -- repopulated in flags_1_19_1 but it needs to be set to empty for
       -- newer versions first.
       configConstraints = []
-      }
+    }
 
-    flags_3_7_0 = flags_latest {
+    flags_3_11_0 = flags_latest {
+      -- It's too late to convert configPromisedDependencies to anything
+      -- meaningful, so we just assert that it's empty.
+      -- We add a Cabal>=3.11 constraint before solving when multi-repl is
+      -- enabled, so this should never trigger.
+      configPromisedDependencies = assert (null $ configPromisedDependencies flags) []
+    }
+
+    flags_3_7_0 = flags_3_11_0 {
         -- Cabal < 3.7 does not know about --extra-lib-dirs-static
         configExtraLibDirsStatic = [],
 

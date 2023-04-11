@@ -1609,7 +1609,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                     case Map.lookup (unDefUnitId def_uid) preexistingInstantiatedPkgs of
                         Just full -> full
                         Nothing -> error ("lookup_uid: " ++ prettyShow def_uid)
-            lc <- toLinkedComponent verbosity lookup_uid (elabPkgSourceId elab0)
+            lc <- toLinkedComponent verbosity False lookup_uid (elabPkgSourceId elab0)
                         (Map.union external_lc_map lc_map) cc
             infoProgress $ dispLinkedComponent lc
             -- NB: elab is setup to be the correct form for an
@@ -3602,6 +3602,9 @@ setupHsConfigureFlags (ReadyPackage elab@ElaboratedConfiguredPackage{..})
                                               Just _ -> error "non-library dependency"
                                               Nothing -> LMainLibName
                                 ]
+
+    configPromisedDependencies = []
+
     configConstraints         =
         case elabPkgOrComp of
             ElabPackage _ ->
