@@ -42,7 +42,8 @@ import Distribution.Simple.Setup.Common
 
 data ReplOptions = ReplOptions {
     replOptionsFlags :: [String],
-    replOptionsNoLoad :: Flag Bool
+    replOptionsNoLoad :: Flag Bool,
+    replOptionsFlagOutput :: Flag FilePath
   }
   deriving (Show, Generic, Typeable)
 
@@ -51,7 +52,7 @@ instance Structured ReplOptions
 
 
 instance Monoid ReplOptions where
-  mempty = ReplOptions mempty (Flag False)
+  mempty = ReplOptions mempty (Flag False) NoFlag
   mappend = (<>)
 
 instance Semigroup ReplOptions where
@@ -165,5 +166,9 @@ replOptions _ =
     "Use the option(s) for the repl"
     replOptionsFlags (\p flags -> flags { replOptionsFlags = p })
     (reqArg "FLAG" (succeedReadE words) id)
+  , option [] ["repl-multi-file"]
+    "Write repl options to this directory rather than starting repl mode"
+    replOptionsFlagOutput (\p flags -> flags { replOptionsFlagOutput = p })
+    (reqArg "DIR" (succeedReadE Flag) flagToList)
   ]
 
