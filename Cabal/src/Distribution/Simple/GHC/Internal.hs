@@ -422,7 +422,17 @@ componentGhcOptions verbosity implInfo lbi bi clbi odir =
       ghcOptThisUnitId      = case clbi of
         LibComponentLocalBuildInfo { componentCompatPackageKey = pk }
           -> toFlag pk
-        _ -> mempty,
+        _ | not (unitIdForExes implInfo) -> mempty
+        ExeComponentLocalBuildInfo { componentUnitId = uid }
+          -> toFlag (unUnitId uid)
+        TestComponentLocalBuildInfo { componentUnitId = uid }
+          -> toFlag (unUnitId uid)
+        BenchComponentLocalBuildInfo { componentUnitId = uid }
+          -> toFlag (unUnitId uid)
+        FLibComponentLocalBuildInfo { componentUnitId = uid }
+          -> toFlag (unUnitId uid)
+
+          ,
       ghcOptThisComponentId = case clbi of
           LibComponentLocalBuildInfo { componentComponentId = cid
                                      , componentInstantiatedWith = insts } ->
