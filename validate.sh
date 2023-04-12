@@ -13,7 +13,7 @@
 HC=ghc
 CABAL=cabal
 CABALPLAN=cabal-plan
-JOBS=12
+JOBS=4
 LIBTESTS=true
 CLITESTS=true
 CABALSUITETESTS=true
