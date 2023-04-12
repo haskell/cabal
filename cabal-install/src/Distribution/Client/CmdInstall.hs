@@ -106,7 +106,7 @@ import Distribution.Simple.Configure
          ( configCompilerEx )
 import Distribution.Simple.Compiler
          ( Compiler(..), CompilerId(..), CompilerFlavor(..)
-         , PackageDBStack )
+         , PackageDBStack, PackageDB(..) )
 import Distribution.Simple.GHC
          ( ghcPlatformAndVersionString, getGhcAppDir
          , GhcImplInfo(..), getImplInfo
@@ -357,7 +357,10 @@ installAction flags@NixStyleFlags { extraFlags = clientInstallFlags', .. } targe
   envFile <- getEnvFile clientInstallFlags platform compilerVersion
   existingEnvEntries <-
     getExistingEnvEntries verbosity compilerFlavor supportsPkgEnvFiles envFile
-  packageDbs <- getPackageDbStack compilerId projectConfigStoreDir projectConfigLogsDir
+  packageDbs' <- getPackageDbStack compilerId projectConfigStoreDir projectConfigLogsDir
+  let validDb (SpecificPackageDB fp) = doesFileExist fp
+      validDb _ = pure True
+  packageDbs <- filterM validDb packageDbs'
   installedIndex <- getInstalledPackages verbosity compiler packageDbs progDb
 
   let
