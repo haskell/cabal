@@ -78,6 +78,15 @@ jobs:
         run: |
           git config --global protocol.file.allow always
 
+      # The '+exe' constraint below is important, otherwise cabal-install
+      # might decide to build the library but not the executable which is
+      # what we need.
+      - name: Install cabal-plan
+        run: |
+          cd $(mktemp -d)
+          cabal install cabal-plan --allow-newer="base" --constraint='cabal-plan +exe'
+          echo "$HOME/.cabal/bin:$HOME/.local/bin" >> $GITHUB_PATH
+
       # The tool is not essential to the rest of the test suite. If
       # hackage-repo-tool is not present, any test that requires it will
       # be skipped.
@@ -123,11 +132,11 @@ jobs:
       - name: Tar cabal head executable
         if: matrix.ghc == env.GHC_FOR_RELEASE
         run: |
-          CABAL_EXEC=$(cabal list-bin --builddir=dist-newstyle-validate-ghc-${{ matrix.ghc }} --project-file=cabal.project.validate cabal-install:exe:cabal)
+          CABAL_EXEC=$(cabal-plan list-bin --builddir=dist-newstyle-validate-ghc-${{ matrix.ghc }} cabal-install:exe:cabal)
           # We have to tar the executable to preserve executable permissions
           # see https://github.com/actions/upload-artifact/issues/38
           if [[ ${{ runner.os }} == 'Windows' ]]; then
-            # `cabal list-bin` gives us a windows path but tar needs the posix one
+            # `cabal-plan` gives us a windows path but tar needs the posix one
             CABAL_EXEC=$(cygpath $CABAL_EXEC)
           fi
           if [[ "${{ runner.os }}" == "macOS" ]]; then
@@ -226,6 +235,12 @@ jobs:
           key: ${{ runner.os }}-${{ matrix.ghc }}-${{ github.sha }}
           restore-keys: ${{ runner.os }}-${{ matrix.ghc }}-
 
+      - name: Install cabal-plan
+        run: |
+          cd $(mktemp -d)
+          cabal install cabal-plan --allow-newer="base" --constraint='cabal-plan +exe'
+          echo "$HOME/.cabal/bin:$HOME/.local/bin" >> $GITHUB_PATH
+
       - name: Validate build
         run: sh validate.sh ${{ env.COMMON_FLAGS }} -s build
 
@@ -267,6 +282,12 @@ jobs:
         with:
           ghc-version: ${{ matrix.ghc }}
           cabal-version: latest # default, we are not using it in this job
+
+      - name: Install cabal-plan
+        run: |
+          cd $(mktemp -d)
+          cabal install cabal-plan --allow-newer="base" --constraint='cabal-plan +exe'
+          echo "$HOME/.cabal/bin:$HOME/.local/bin" >> $GITHUB_PATH
 
       - name: Download cabal executable from workflow artifacts
         uses: actions/download-artifact@v3
