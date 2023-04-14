@@ -1,4 +1,4 @@
-cabal-version:      2.2
+cabal-version:      >=1.0
 -- The cabal-version field refers to the version of the .cabal specification,
 -- and can be different from the cabal-install (the tool) version and the
 -- Cabal (the library) version you are using. As such, the Cabal (the library)
