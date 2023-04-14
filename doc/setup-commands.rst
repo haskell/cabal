@@ -9,7 +9,9 @@ GHC provides the commands ``runhaskell`` and ``runghc`` (they are equivalent)
 to allow you to run Haskell programs without first having to compile them
 (scripts). The low-level Cabal interface is implemented using ``Setup.hs``
 scripts. You should prefer using higher level interface provided by nix-style
-builds.
+builds. However, the documentation of the low level interface below may be helpful
+to high level interface users as well, because it delves into internal details
+common to both and omitted elsewhere.
 
 ::
 
@@ -1103,6 +1105,10 @@ runhaskell Setup.hs install
 Copy the files into the install locations and (for library packages)
 register the package with the compiler, i.e. make the modules it
 contains available to programs.
+
+Additionally for GHC the ``extra-compilation-artifacts`` directory is copied if present.
+GHC plugins can store extra data in subfolders.
+(e.g. *extra-compilation-artifacts/PLUGIN_NAME/HS_MODULE.txt*)
 
 The `install locations <#installation-paths>`__ are determined by
 options to `runhaskell Setup.hs configure`_.
