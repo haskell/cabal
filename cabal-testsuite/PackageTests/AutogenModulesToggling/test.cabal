@@ -1,0 +1,57 @@
+cabal-version: 3.0
+
+name: test
+version: 0.1
+category: Test
+maintainer: S
+synopsis: Test input
+description: Test input
+license: BSD-3-Clause
+
+extra-source-files:
+  src-inputs/**/*.hgen
+
+build-type: Custom
+
+custom-setup
+  setup-depends: Cabal >= 3.9, base, directory
+
+flag generate
+  description:
+    Generate files instead of using pregenerated ones
+  default:
+    False
+  manual:
+    True
+
+library
+  exposed-modules:
+    Lib
+    Generated
+
+  hs-source-dirs:
+    src
+
+  if flag(generate)
+    hs-source-dirs:
+      src-inputs
+    autogen-modules:
+      Generated
+    -- We don’t use any tools in this case but they’ll have to
+    -- go here
+    -- build-tool-depends:
+    --   alex:alex
+  else
+    hs-source-dirs:
+      gen
+
+  build-depends: base > 4
+  default-language: Haskell2010
+
+executable autogen-toggle-test
+  main-is: Main.hs
+  hs-source-dirs: .
+  default-language: Haskell2010
+  build-depends:
+    , base > 4
+    , test

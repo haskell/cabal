@@ -216,14 +216,14 @@ outdatedOptions _showOrParseArgs =
 
 -- | Entry point for the 'outdated' command.
 outdatedAction :: (ProjectFlags, OutdatedFlags) -> [String] -> GlobalFlags -> IO ()
-outdatedAction (ProjectFlags{flagProjectFileName}, OutdatedFlags{..}) _targetStrings globalFlags = do
+outdatedAction (ProjectFlags{flagProjectDir, flagProjectFile}, OutdatedFlags{..}) _targetStrings globalFlags = do
   config <- loadConfigOrSandboxConfig verbosity globalFlags
   let globalFlags' = savedGlobalFlags config `mappend` globalFlags
       configFlags  = savedConfigureFlags config
   withRepoContext verbosity globalFlags' $ \repoContext -> do
-    when (not newFreezeFile && isJust mprojectFile) $
+    when (not newFreezeFile && (isJust mprojectDir || isJust mprojectFile)) $
       die' verbosity $
-        "--project-file must only be used with --v2-freeze-file."
+        "--project-dir and --project-file must only be used with --v2-freeze-file."
 
     sourcePkgDb <- IndexUtils.getSourcePackages verbosity repoContext
     (comp, platform, _progdb) <- configCompilerAux' configFlags
@@ -234,7 +234,7 @@ outdatedAction (ProjectFlags{flagProjectFileName}, OutdatedFlags{..}) _targetStr
                        httpTransport <- configureTransport verbosity
                          (fromNubList . globalProgPathExtra $ globalFlags)
                          (flagToMaybe . globalHttpTransport $ globalFlags)
-                       depsFromNewFreezeFile verbosity httpTransport comp platform mprojectFile
+                       depsFromNewFreezeFile verbosity httpTransport comp platform mprojectDir mprojectFile
                 else do
                   depsFromPkgDesc verbosity comp platform
     debug verbosity $ "Dependencies loaded: "
@@ -252,7 +252,8 @@ outdatedAction (ProjectFlags{flagProjectFileName}, OutdatedFlags{..}) _targetStr
                       else fromFlagOrDefault normal outdatedVerbosity
     freezeFile    = fromFlagOrDefault False outdatedFreezeFile
     newFreezeFile = fromFlagOrDefault False outdatedNewFreezeFile
-    mprojectFile  = flagToMaybe flagProjectFileName
+    mprojectDir   = flagToMaybe flagProjectDir
+    mprojectFile  = flagToMaybe flagProjectFile
     simpleOutput  = fromFlagOrDefault False outdatedSimpleOutput
     quiet         = fromFlagOrDefault False outdatedQuiet
     exitCode      = fromFlagOrDefault quiet outdatedExitCode
@@ -298,10 +299,10 @@ depsFromFreezeFile verbosity = do
   return deps
 
 -- | Read the list of dependencies from the new-style freeze file.
-depsFromNewFreezeFile :: Verbosity -> HttpTransport -> Compiler -> Platform -> Maybe FilePath -> IO [PackageVersionConstraint]
-depsFromNewFreezeFile verbosity httpTransport compiler (Platform arch os) mprojectFile = do
+depsFromNewFreezeFile :: Verbosity -> HttpTransport -> Compiler -> Platform -> Maybe FilePath -> Maybe FilePath -> IO [PackageVersionConstraint]
+depsFromNewFreezeFile verbosity httpTransport compiler (Platform arch os) mprojectDir mprojectFile = do
   projectRoot <- either throwIO return =<<
-                 findProjectRoot Nothing mprojectFile
+                 findProjectRoot verbosity mprojectDir mprojectFile
   let distDirLayout = defaultDistDirLayout projectRoot
                       {- TODO: Support dist dir override -} Nothing
   projectConfig <- runRebuild (distProjectRootDirectory distDirLayout) $ do

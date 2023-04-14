@@ -192,6 +192,7 @@ instance Exception BuildFailure
 -- | Detail on the reason that a package failed to build.
 --
 data BuildFailureReason = DependentFailed PackageId
+                        | GracefulFailure String
                         | DownloadFailed  SomeException
                         | UnpackFailed    SomeException
                         | ConfigureFailed SomeException

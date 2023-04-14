@@ -19,10 +19,10 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        ghc: ["8.6.5", "8.8.4", "8.10.7", "9.0.2", "9.2.3"]
+        ghc: ["8.10.7", "9.0.2", "9.2.7", "9.4.4"]
         include:
           - os: macos-latest
-            ghc: "9.2.3"
+            ghc: "9.2.7"
     name: Bootstrap ${{ matrix.os }} ghc-${{ matrix.ghc }}
     runs-on: ${{ matrix.os }}
     steps:
@@ -35,9 +35,20 @@ jobs:
           restore-keys: bootstrap-${{ runner.os }}-${{ matrix.ghc }}-20221115-
 
       - uses: actions/checkout@v3
+      # See https://github.com/haskell/cabal/pull/8739
+      - name: Sudo chmod to permit ghcup to update its cache
+        run: |
+          if [[ "${{ runner.os }}" == "Linux" ]]; then
+            sudo ls -lah /usr/local/.ghcup/cache
+            sudo mkdir -p /usr/local/.ghcup/cache
+            sudo ls -lah /usr/local/.ghcup/cache
+            sudo chown -R $USER /usr/local/.ghcup
+            sudo chmod -R 777 /usr/local/.ghcup
+          fi
       - name: bootstrap.py
         run: |
           GHC_VERSION=${{ matrix.ghc }}
+          ghcup --version
           ghcup config set cache true
           ghcup install ghc $GHC_VERSION
 

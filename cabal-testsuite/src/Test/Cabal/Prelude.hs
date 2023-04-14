@@ -28,7 +28,7 @@ import Distribution.Simple.PackageDescription (readGenericPackageDescription)
 import Distribution.Simple.Program.Types
 import Distribution.Simple.Program.Db
 import Distribution.Simple.Program
-import Distribution.System (OS(Windows,Linux,OSX), buildOS)
+import Distribution.System (OS(Windows,Linux,OSX), Arch(JavaScript), buildOS, buildArch)
 import Distribution.Simple.Utils
     ( withFileContents, withTempDirectory, tryFindPackageDesc )
 import Distribution.Simple.Configure
@@ -258,9 +258,11 @@ packageDBParams dbs = "--package-db=clear"
 ------------------------------------------------------------------------
 -- * Running cabal
 
+-- cabal cmd args
 cabal :: String -> [String] -> TestM ()
 cabal cmd args = void (cabal' cmd args)
 
+-- cabal cmd args
 cabal' :: String -> [String] -> TestM Result
 cabal' = cabalG' []
 
@@ -677,7 +679,7 @@ recordHeader args = do
     env <- getTestEnv
     let mode = testRecordMode env
         str_header = "# " ++ intercalate " " args ++ "\n"
-        header = C.pack (testRecordNormalizer env str_header)
+        header = C.pack str_header
     case mode of
         DoNotRecord -> return ()
         _ -> do
@@ -694,7 +696,7 @@ recordLog res = do
     liftIO $ C.appendFile (testWorkDir env </> "test.log")
                          (C.pack $ "+ " ++ resultCommand res ++ "\n"
                             ++ resultOutput res ++ "\n\n")
-    liftIO . C.appendFile (testActualFile env) . C.pack . testRecordNormalizer env $
+    liftIO . C.appendFile (testActualFile env) . C.pack $
         case mode of
             RecordAll    -> unlines (lines (resultOutput res))
             RecordMarked -> getMarkedOutput (resultOutput res)
@@ -784,10 +786,6 @@ recordMode :: RecordMode -> TestM a -> TestM a
 recordMode mode = withReaderT (\env -> env {
     testRecordUserMode = Just mode
     })
-
-recordNormalizer :: (String -> String) -> TestM a -> TestM a
-recordNormalizer f =
-    withReaderT (\env -> env { testRecordNormalizer = testRecordNormalizer env . f })
 
 assertOutputContains :: MonadIO m => WithCallStack (String -> Result -> m ())
 assertOutputContains needle result =
@@ -887,7 +885,13 @@ skipUnlessGhcVersion :: String -> TestM ()
 skipUnlessGhcVersion range = skipUnless ("needs ghc " ++ range) =<< isGhcVersion range
 
 skipIfGhcVersion :: String -> TestM ()
-skipIfGhcVersion range = skipUnless ("incompatible with ghc " ++ range) =<< isGhcVersion range
+skipIfGhcVersion range = skipIf ("incompatible with ghc " ++ range) =<< isGhcVersion range
+
+skipUnlessJavaScript :: TestM ()
+skipUnlessJavaScript = skipUnless "needs the JavaScript backend" =<< isJavaScript
+
+skipIfJavaScript :: TestM ()
+skipIfJavaScript = skipIf "incompatible with the JavaScript backend" =<< isJavaScript
 
 isWindows :: TestM Bool
 isWindows = return (buildOS == Windows)
@@ -897,6 +901,11 @@ isOSX = return (buildOS == OSX)
 
 isLinux :: TestM Bool
 isLinux = return (buildOS == Linux)
+
+isJavaScript :: TestM Bool
+isJavaScript = return (buildArch == JavaScript)
+  -- should probably be `hostArch` but Cabal doesn't distinguish build platform
+  -- and host platform
 
 skipIfWindows :: TestM ()
 skipIfWindows = skipIf "Windows" =<< isWindows

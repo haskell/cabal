@@ -40,6 +40,7 @@ data GhcImplInfo = GhcImplInfo
   , alwaysNondecIndent   :: Bool -- ^ NondecreasingIndentation is always on
   , flagGhciScript       :: Bool -- ^ -ghci-script flag supported
   , flagProfAuto         :: Bool -- ^ new style -fprof-auto* flags
+  , flagProfLate         :: Bool -- ^ fprof-late flag
   , flagPackageConf      :: Bool -- ^ use package-conf instead of package-db
   , flagDebugInfo        :: Bool -- ^ -g flag supported
   , supportsDebugLevels  :: Bool -- ^ supports numeric @-g@ levels
@@ -67,6 +68,7 @@ ghcVersionImplInfo ver = GhcImplInfo
   , alwaysNondecIndent   = v <  [7,1]
   , flagGhciScript       = v >= [7,2]
   , flagProfAuto         = v >= [7,4]
+  , flagProfLate         = v >= [9,4]
   , flagPackageConf      = v <  [7,5]
   , flagDebugInfo        = v >= [7,10]
   , supportsDebugLevels  = v >= [8,0]
@@ -86,6 +88,7 @@ ghcjsVersionImplInfo _ghcjsver ghcver = GhcImplInfo
   , alwaysNondecIndent   = False
   , flagGhciScript       = True
   , flagProfAuto         = True
+  , flagProfLate         = True
   , flagPackageConf      = False
   , flagDebugInfo        = False
   , supportsDebugLevels  = ghcv >= [8,0]

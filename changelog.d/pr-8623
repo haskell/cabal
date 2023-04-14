@@ -1,7 +1,0 @@
-synopsis: Fix project-local flags being ignored
-packages: cabal-install
-prs: #8623
-description: {
-    Fix some cases of configuration flags being dropped, e.g. with `v2-install`
-    and `--enable-shared --enable-executable-dynamic --disable-library-vanilla`.
-}

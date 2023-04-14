@@ -425,6 +425,7 @@ data ProfDetailLevel = ProfDetailNone
                      | ProfDetailExportedFunctions
                      | ProfDetailToplevelFunctions
                      | ProfDetailAllFunctions
+                     | ProfDetailTopLate
                      | ProfDetailOther String
     deriving (Eq, Generic, Read, Show, Typeable)
 
@@ -448,6 +449,7 @@ knownProfDetailLevels =
   , ("exported-functions", ["exported"],        ProfDetailExportedFunctions)
   , ("toplevel-functions", ["toplevel", "top"], ProfDetailToplevelFunctions)
   , ("all-functions",      ["all"],             ProfDetailAllFunctions)
+  , ("late-toplevel",      ["late"],            ProfDetailTopLate)
   ]
 
 showProfDetailLevel :: ProfDetailLevel -> String
@@ -457,4 +459,5 @@ showProfDetailLevel dl = case dl of
     ProfDetailExportedFunctions -> "exported-functions"
     ProfDetailToplevelFunctions -> "toplevel-functions"
     ProfDetailAllFunctions      -> "all-functions"
+    ProfDetailTopLate           -> "late-toplevel"
     ProfDetailOther other       -> other

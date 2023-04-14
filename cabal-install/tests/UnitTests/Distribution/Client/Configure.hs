@@ -45,7 +45,7 @@ configureTests = testGroup "Configure tests"
                   , configVerbosity = Flag silent
                   }
               , projectFlags = mempty
-                  { flagProjectFileName = Flag projectFile }
+                  { flagProjectDir = Flag projectDir }
               }
         (_, ProjectConfig {..}) <- configureAction' flags [] defaultGlobalFlags
 
@@ -59,7 +59,7 @@ configureTests = testGroup "Configure tests"
               , configFlags = mempty
                   { configVerbosity = Flag silent }
               , projectFlags = mempty
-                  { flagProjectFileName = Flag projectFile }
+                  { flagProjectDir = Flag projectDir }
               }
         (_, ProjectConfig {..}) <- configureAction' flags [] defaultGlobalFlags
 
@@ -71,7 +71,7 @@ configureTests = testGroup "Configure tests"
               { configFlags = mempty
                   { configVerbosity = Flag silent }
               , projectFlags = mempty
-                  { flagProjectFileName = Flag projectFile }
+                  { flagProjectDir = Flag projectDir }
               }
         (_, ProjectConfig {..}) <- configureAction' flags [] defaultGlobalFlags
 
@@ -83,9 +83,9 @@ configureTests = testGroup "Configure tests"
               { configFlags = mempty
                   { configVerbosity = Flag silent }
               , projectFlags = mempty
-                  { flagProjectFileName = Flag projectFile }
+                  { flagProjectDir = Flag projectDir }
               }
-            backup = projectFile <.> "local~"
+            backup = projectDir </> "cabal.project.local~"
 
         exists <- doesFileExist backup
         when exists $
@@ -104,7 +104,7 @@ configureTests = testGroup "Configure tests"
                   , configProgramArgs = [("ghc", ghcFlags)]
                   }
               , projectFlags = mempty
-                  { flagProjectFileName = Flag projectFile }
+                  { flagProjectDir = Flag projectDir }
               }
         (_, ProjectConfig {..}) <- configureAction' flags [] defaultGlobalFlags
 
@@ -118,5 +118,5 @@ configureTests = testGroup "Configure tests"
                     (Map.lookup "ghc" (getMapMappend (packageConfigProgramArgs projectConfigLocalPackages)))
     ]
 
-projectFile :: FilePath
-projectFile = "tests" </> "fixtures" </> "configure" </> "cabal.project"
+projectDir :: FilePath
+projectDir = "tests" </> "fixtures" </> "configure"

@@ -763,7 +763,8 @@ describe the package as a whole:
     behaviour, put the files that wildcards will match against in
     their own folder.
 
-    ``**`` wildcards are available starting in Cabal 2.4.
+    ``**`` wildcards are available starting in Cabal 2.4
+    and `bug-free since Cabal 3.0 <https://github.com/haskell/cabal/issues/6125#issuecomment-1379878419>`_.
 
 .. pkg-field:: data-dir: directory
 
@@ -773,9 +774,9 @@ describe the package as a whole:
 
 .. pkg-field:: extra-source-files: filename list
 
-    A list of additional files to be included in source distributions
-    built with :ref:`setup-sdist`. As with :pkg-field:`data-files` it can use
-    a limited form of ``*`` wildcards in file names.
+    A list of additional files to be included in source distributions built with :ref:`setup-sdist`.
+    As with :pkg-field:`data-files` it can use a limited form of ``*`` wildcards in file names.
+    Files listed here are tracked by ``cabal build``; changes in these files cause (partial) rebuilds.
 
 .. pkg-field:: extra-doc-files: filename list
     :since: 1.18

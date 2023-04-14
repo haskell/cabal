@@ -7,8 +7,8 @@ How to run
 1. Build `cabal-testsuite` (`cabal build cabal-testsuite:cabal-tests`)
 2. Run the `cabal-tests` executable. It will scan for all tests
    in your current directory and subdirectories and run them.
-   To run a specific set of tests, use `cabal-tests PATH ...`.
-   (e.g. `cabal run cabal-testsuite:cabal-tests -- cabal-testsuite/PackageTests/TestOptions/setup.test.hs`)
+   To run a specific set of tests, use `cabal-tests --with-cabal=CABALBIN PATH ...`.
+   (e.g. `cabal run cabal-testsuite:cabal-tests -- --with-cabal=cabal cabal-testsuite/PackageTests/TestOptions/setup.test.hs`)
    You can control parallelism using the `-j` flag.
 
 There are a few useful flags:
@@ -24,6 +24,28 @@ There are a few useful flags:
   that was used to build `cabal-tests`; this can be used if
   the autodetection doesn't work correctly (which may be the
   case for old versions of GHC.)
+
+doctests
+========
+
+You need to install the doctest tool. Make sure it's compiled with your current
+GHC, and don't forget to reinstall it every time you switch GHC version:
+
+``` shellsession
+cabal install doctest --overwrite-policy=always --ignore-project
+```
+
+After that you can run doctests for a component of your choice via the following command:
+
+``` shellsession
+cabal repl --with-ghc=doctest --build-depends=QuickCheck --build-depends=template-haskell --repl-options="-w" --project-file="cabal.project.validate" Cabal-syntax
+```
+
+In this example we have run doctests in `Cabal-syntax`. Notice, that some
+components have broken doctests
+([#8734](https://github.com/haskell/cabal/issues/8734));
+our CI currently checks that `Cabal-syntax` and `Cabal` doctests pass via
+`make doctest-install && make doctest` (you can use this make-based workflow too).
 
 How to write
 ------------

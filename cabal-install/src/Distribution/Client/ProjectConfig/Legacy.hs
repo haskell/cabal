@@ -117,7 +117,7 @@ import Network.URI (URI (..), parseURI)
 import Distribution.Fields.ConfVar (parseConditionConfVarFromClause)
 
 import Distribution.Client.HttpUtils
-import System.FilePath ((</>), isPathSeparator, makeValid)
+import System.FilePath ((</>), isPathSeparator, makeValid, isAbsolute, takeDirectory)
 import System.Directory (createDirectoryIfMissing)
 
 
@@ -224,7 +224,8 @@ parseProjectSkeleton cacheDir httpTransport verbosity seenImports source bs = (s
             createDirectoryIfMissing True cacheDir
             _ <- downloadURI httpTransport verbosity uri fp
             BS.readFile fp
-         Nothing -> BS.readFile pci
+         Nothing -> BS.readFile $
+           if isAbsolute pci then pci else takeDirectory source </> pci
 
     modifiesCompiler :: ProjectConfig -> Bool
     modifiesCompiler pc = isSet projectConfigHcFlavor || isSet projectConfigHcPath || isSet projectConfigHcPkg
@@ -539,7 +540,8 @@ convertLegacyAllPackageFlags globalFlags configFlags configExFlags installFlags 
     } = installFlags
 
     ProjectFlags
-        { flagProjectFileName = projectConfigProjectFile
+        { flagProjectDir      = projectConfigProjectDir
+        , flagProjectFile     = projectConfigProjectFile
         , flagIgnoreProject   = projectConfigIgnoreProject
         } = projectFlags
 
@@ -800,7 +802,8 @@ convertToLegacySharedConfig
     }
 
     projectFlags = ProjectFlags
-        { flagProjectFileName = projectConfigProjectFile
+        { flagProjectDir      = projectConfigProjectDir
+        , flagProjectFile     = projectConfigProjectFile
         , flagIgnoreProject   = projectConfigIgnoreProject
         }
 

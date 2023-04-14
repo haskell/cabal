@@ -14,10 +14,17 @@ module UnitTests.Distribution.Client.ProjectConfig (tests) where
 import Data.Monoid
 import Control.Applicative
 #endif
+import Control.Monad
+import Data.Either (isRight)
+import Data.Foldable (for_)
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.List (isPrefixOf, intercalate, (\\))
+import Data.Maybe (fromMaybe)
 import Network.URI (URI)
+import System.Directory (withCurrentDirectory, canonicalizePath)
+import System.FilePath
+import System.IO.Unsafe (unsafePerformIO)
 
 import Distribution.Deprecated.ParseUtils
 import qualified Distribution.Deprecated.ReadP as Parse
@@ -35,12 +42,14 @@ import Distribution.Types.PackageVersionConstraint
 import Distribution.Parsec
 import Distribution.Pretty
 
+import Distribution.Client.DistDirLayout (defaultProjectFile)
 import Distribution.Client.Types
 import Distribution.Client.CmdInstall.ClientInstallFlags
 import Distribution.Client.Dependency.Types
 import Distribution.Client.Targets
 import Distribution.Client.Types.SourceRepo
 import Distribution.Utils.NubList
+import Distribution.Verbosity (silent)
 
 import Distribution.Solver.Types.PackageConstraint
 import Distribution.Solver.Types.ConstraintSource
@@ -55,6 +64,7 @@ import UnitTests.Distribution.Client.TreeDiffInstances ()
 import Data.TreeDiff.Class
 import Data.TreeDiff.QuickCheck
 import Test.Tasty
+import Test.Tasty.HUnit
 import Test.Tasty.QuickCheck
 
 tests :: [TestTree]
@@ -89,6 +99,7 @@ tests =
     , testProperty "specific"  prop_roundtrip_printparse_specific
     , testProperty "all"       prop_roundtrip_printparse_all
     ]
+  , testFindProjectRoot
   ]
   where
     usingGhc76orOlder =
@@ -96,6 +107,73 @@ tests =
         CompilerId GHC v -> v < mkVersion [7,7]
         _                -> False
 
+testFindProjectRoot :: TestTree
+testFindProjectRoot = testGroup "findProjectRoot"
+  [ test "defaults"                         (cd dir)    Nothing    Nothing          (succeeds dir file)
+  , test "defaults in lib"                  (cd libDir) Nothing    Nothing          (succeeds dir file)
+
+  , test "explicit file"                    (cd dir)    Nothing    (Just file)      (succeeds dir file)
+  , test "explicit file in lib"             (cd libDir) Nothing    (Just file)      (succeeds dir file)
+
+  , test "other file"                       (cd dir)    Nothing    (Just fileOther) (succeeds dir fileOther)
+  , test "other file in lib"                (cd libDir) Nothing    (Just fileOther) (succeeds dir fileOther)
+
+  -- Deprecated use-case
+  , test "absolute file"                    Nothing     Nothing    (Just absFile)   (succeeds dir file)
+
+  , test "nested file"                      (cd dir)    Nothing    (Just nixFile)   (succeeds dir nixFile)
+  , test "nested file in lib"               (cd libDir) Nothing    (Just nixFile)   (succeeds dir nixFile)
+
+  , test "explicit dir"                     Nothing     (Just dir) Nothing          (succeeds dir file)
+  , test "explicit dir & file"              Nothing     (Just dir) (Just file)      (succeeds dir file)
+  , test "explicit dir & nested file"       Nothing     (Just dir) (Just nixFile)   (succeeds dir nixFile)
+  , test "explicit dir & nested other file" Nothing     (Just dir) (Just nixOther)  (succeeds dir nixOther)
+
+  , test "explicit dir & absolute file"     Nothing     (Just dir) (Just absFile)   (succeedsWith ProjectRootExplicitAbsolute dir absFile)
+  ]
+  where
+    dir    = fixturesDir </> "project-root"
+    libDir = dir </> "lib"
+
+    file      = defaultProjectFile
+    fileOther = file <.> "other"
+    absFile   = dir </> file
+
+    nixFile   = "nix" </> file
+    nixOther  = nixFile <.> "other"
+
+    missing path = Just (path <.> "does_not_exist")
+
+    test name wrap projectDir projectFile validate =
+      testCaseSteps name $ \step -> fromMaybe id wrap $ do
+        result <- findProjectRoot silent projectDir projectFile
+        _ <- validate result
+
+        when (isRight result) $ do
+          for_ projectDir $ \path -> do
+            step "missing project dir"
+            fails =<< findProjectRoot silent (missing path) projectFile
+
+          for_ projectFile $ \path -> do
+            step "missing project file"
+            fails =<< findProjectRoot silent projectDir (missing path)
+
+    cd d = Just (withCurrentDirectory d)
+
+    succeeds = succeedsWith ProjectRootExplicit
+
+    succeedsWith mk projectDir projectFile result = case result of
+      Left err -> assertFailure $ "Expected ProjectRoot, but found " <> show err
+      Right pr -> pr @?= mk projectDir projectFile
+
+    fails result = case result of
+      Left _  -> pure ()
+      Right x -> assertFailure $ "Expected an error, but found " <> show x
+
+fixturesDir :: FilePath
+fixturesDir = unsafePerformIO $
+  canonicalizePath ("tests" </> "fixtures")
+{-# NOINLINE fixturesDir #-}
 
 ------------------------------------------------
 -- Round trip: conversion to/from legacy types
@@ -220,6 +298,7 @@ hackProjectConfigShared :: ProjectConfigShared -> ProjectConfigShared
 hackProjectConfigShared config =
     config {
       projectConfigProjectFile = mempty, -- not present within project files
+      projectConfigProjectDir  = mempty, -- ditto
       projectConfigConfigFile  = mempty, -- ditto
       projectConfigConstraints =
       --TODO: [required eventually] parse ambiguity in constraint
@@ -451,6 +530,7 @@ instance Arbitrary ProjectConfigShared where
     arbitrary = do
         projectConfigDistDir              <- arbitraryFlag arbitraryShortToken
         projectConfigConfigFile           <- arbitraryFlag arbitraryShortToken
+        projectConfigProjectDir           <- arbitraryFlag arbitraryShortToken
         projectConfigProjectFile          <- arbitraryFlag arbitraryShortToken
         projectConfigIgnoreProject        <- arbitrary
         projectConfigHcFlavor             <- arbitrary
@@ -493,6 +573,7 @@ instance Arbitrary ProjectConfigShared where
     shrink ProjectConfigShared {..} = runShrinker $ pure ProjectConfigShared
         <*> shrinker projectConfigDistDir
         <*> shrinker projectConfigConfigFile
+        <*> shrinker projectConfigProjectDir
         <*> shrinker projectConfigProjectFile
         <*> shrinker projectConfigIgnoreProject
         <*> shrinker projectConfigHcFlavor

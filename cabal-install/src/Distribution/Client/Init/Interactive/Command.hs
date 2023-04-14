@@ -286,8 +286,7 @@ cabalVersionPrompt flags = getCabalVersion flags $ do
 
     displayCabalVersion :: CabalSpecVersion -> String
     displayCabalVersion v = case v of
-      CabalSpecV1_24 -> "1.24  (legacy)"
-      CabalSpecV2_0  -> "2.0   (+ support for Backpack, internal sub-libs, '^>=' operator)"
+      CabalSpecV2_0  -> "2.0   (support for Backpack, internal sub-libs, '^>=' operator)"
       CabalSpecV2_2  -> "2.2   (+ support for 'common', 'elif', redundant commas, SPDX)"
       CabalSpecV2_4  -> "2.4   (+ support for '**' globbing)"
       CabalSpecV3_0  -> "3.0   (+ set notation for ==, common stanzas in ifs, more redundant commas, better pkgconfig-depends)"
@@ -337,7 +336,7 @@ licensePrompt flags = getLicense flags $ do
     let csv = fromFlagOrDefault defaultCabalVersion (cabalVersion flags)
     l <- promptList "Please choose a license"
       (licenses csv)
-      MandatoryPrompt
+      (DefaultPrompt "BSD-3-Clause")
       Nothing
       True
 
@@ -356,14 +355,10 @@ licensePrompt flags = getLicense flags $ do
       else fmap prettyShow knownLicenses
 
 authorPrompt :: Interactive m => InitFlags -> m String
-authorPrompt flags = getAuthor flags $ do
-    name <- guessAuthorName
-    promptStr "Author name" (DefaultPrompt name)
+authorPrompt flags = getAuthor flags $ guessAuthorName >>= promptOrDefault "Author name"
 
 emailPrompt :: Interactive m => InitFlags -> m String
-emailPrompt flags = getEmail flags $ do
-    email' <- guessAuthorEmail
-    promptStr "Maintainer email" (DefaultPrompt email')
+emailPrompt flags = getEmail flags $ guessAuthorEmail >>= promptOrDefault "Maintainer email"
 
 homepagePrompt :: Interactive m => InitFlags -> m String
 homepagePrompt flags = getHomepage flags $
@@ -468,3 +463,6 @@ srcDirsPrompt flags = getSrcDirs flags $ do
       True
 
     return [dir]
+
+promptOrDefault :: Interactive m => String -> Maybe String -> m String
+promptOrDefault s = maybe (promptStr s MandatoryPrompt)  (promptStr s . DefaultPrompt)

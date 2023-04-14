@@ -23,7 +23,7 @@ import qualified Distribution.PackageDescription as PD
 import Distribution.Simple.Compiler
 import Distribution.Simple.InstallDirs
 import qualified Distribution.Simple.LocalBuildInfo as LBI
-import Distribution.Simple.Setup
+import Distribution.Simple.Setup.Test ( TestShowDetails(Always, Never) )
 import Distribution.Simple.Utils
 import Distribution.System
 import Distribution.TestSuite

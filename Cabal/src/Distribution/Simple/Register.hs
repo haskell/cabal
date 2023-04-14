@@ -70,7 +70,8 @@ import Distribution.Simple.Compiler
 import Distribution.Simple.Program
 import Distribution.Simple.Program.Script
 import qualified Distribution.Simple.Program.HcPkg as HcPkg
-import Distribution.Simple.Setup
+import Distribution.Simple.Flag
+import Distribution.Simple.Setup.Register
 import Distribution.PackageDescription
 import Distribution.Package
 import Distribution.License (licenseToSPDX, licenseFromSPDX)
@@ -466,9 +467,11 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
                              || not (null (asmSources bi))
                              || not (null (cmmSources bi))
                              || not (null (cxxSources bi))
-                             || (not (null (jsSources bi)) &&
-                                compilerFlavor comp == GHCJS))
+                             || (not (null (jsSources bi)) && hasJsSupport))
                && not (componentIsIndefinite clbi)
+    hasJsSupport = case hostPlatform lbi of
+      Platform JavaScript _ -> True
+      _                     -> False
     libdirsStatic
       | hasLibrary = libdir installDirs : extraLibDirsStaticOrFallback
       | otherwise  =                      extraLibDirsStaticOrFallback

@@ -51,7 +51,9 @@ import Distribution.Simple.Program.GHC
 import Distribution.Simple.Program.ResponseFile
 import Distribution.Simple.Program
 import Distribution.Simple.PreProcess
-import Distribution.Simple.Setup
+import Distribution.Simple.Flag
+import Distribution.Simple.Setup.Haddock
+import Distribution.Simple.Setup.Hscolour
 import Distribution.Simple.Build
 import Distribution.Simple.BuildTarget
 import Distribution.Simple.InstallDirs

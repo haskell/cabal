@@ -114,6 +114,8 @@ data PreProcessor = PreProcessor {
   -- | This function can reorder /all/ modules, not just those that the
   -- require the preprocessor in question. As such, this function should be
   -- well-behaved and not reorder modules it doesn't have dominion over!
+  --
+  -- @since 3.8.1.0
   ppOrdering :: Verbosity
              -> [FilePath] -- Source directories
              -> [ModuleName] -- Module names

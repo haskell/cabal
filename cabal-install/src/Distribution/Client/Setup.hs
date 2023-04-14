@@ -112,7 +112,7 @@ import Distribution.Types.PackageVersionConstraint
 import Distribution.Types.UnqualComponentName
          ( unqualComponentNameToPackageName )
 import Distribution.PackageDescription
-         ( BuildType(..), RepoKind(..), LibraryName(..) )
+         ( BuildType(..), RepoKind(..), LibraryName(..), Dependency )
 import Distribution.System ( Platform )
 import Distribution.ReadE
          ( ReadE(..), succeedReadE, parsecToReadE, parsecToReadEErr, unexpectMsgString )
@@ -127,6 +127,8 @@ import Distribution.Client.GlobalFlags
          )
 import Distribution.Client.ManpageFlags (ManpageFlags, defaultManpageFlags, manpageOptions)
 import Distribution.FieldGrammar.Newtypes (SpecVersion (..))
+import Distribution.Parsec
+         ( parsecCommaList  )
 
 import Data.List
          ( deleteFirstsBy )
@@ -2166,12 +2168,14 @@ initOptions _ =
 
   , option ['x'] ["extra-source-file"]
     "Extra source file to be distributed with tarball."
-    IT.extraSrc (\v flags -> flags { IT.extraSrc = v })
+    IT.extraSrc
+    (\v flags -> flags { IT.extraSrc = mergeListFlag (IT.extraSrc flags) v })
     (reqArg' "FILE" (Flag . (:[]))
                     (fromFlagOrDefault []))
   , option [] ["extra-doc-file"]
     "Extra doc file to be distributed with tarball."
-    IT.extraDoc (\v flags -> flags { IT.extraDoc = v })
+    IT.extraDoc
+    (\v flags -> flags { IT.extraDoc = mergeListFlag (IT.extraDoc flags) v })
     (reqArg' "FILE" (Flag . (:[])) (fromFlagOrDefault []))
 
   , option [] ["lib", "is-library"]
@@ -2199,7 +2203,8 @@ initOptions _ =
 
       , option [] ["test-dir"]
         "Directory containing tests."
-        IT.testDirs (\v flags -> flags { IT.testDirs = v })
+        IT.testDirs (\v flags ->
+          flags { IT.testDirs = mergeListFlag (IT.testDirs flags) v })
         (reqArg' "DIR" (Flag . (:[]))
                        (fromFlagOrDefault []))
 
@@ -2226,7 +2231,8 @@ initOptions _ =
   , option ['o'] ["expose-module"]
     "Export a module from the package."
     IT.exposedModules
-    (\v flags -> flags { IT.exposedModules = v })
+    (\v flags -> flags { IT.exposedModules =
+      mergeListFlag (IT.exposedModules flags) v})
     (reqArg "MODULE" (parsecToReadE ("Cannot parse module name: "++)
                                  (Flag . (:[]) <$> parsec))
                      (flagElim [] (fmap prettyShow)))
@@ -2234,33 +2240,38 @@ initOptions _ =
   , option [] ["extension"]
     "Use a LANGUAGE extension (in the other-extensions field)."
     IT.otherExts
-    (\v flags -> flags { IT.otherExts = v })
+    (\v flags -> flags { IT.otherExts =
+      mergeListFlag (IT.otherExts flags) v })
     (reqArg "EXTENSION" (parsecToReadE ("Cannot parse extension: "++)
                                     (Flag . (:[]) <$> parsec))
                         (flagElim [] (fmap prettyShow)))
 
   , option ['d'] ["dependency"]
-    "Package dependency."
-    IT.dependencies (\v flags -> flags { IT.dependencies = v })
-    (reqArg "PACKAGE" (parsecToReadE ("Cannot parse dependency: "++)
-                                  (Flag . (:[]) <$> parsec))
-                      (flagElim [] (fmap prettyShow)))
+    "Package dependencies. Permits comma separated list of dependencies."
+    IT.dependencies
+    (\v flags -> flags { IT.dependencies =
+      mergeListFlag (IT.dependencies flags) v })
+    (reqArg "DEPENDENCIES" (fmap Flag dependenciesReadE)
+                           (fmap prettyShow . fromFlagOrDefault []))
 
   , option [] ["application-dir"]
     "Directory containing package application executable."
-    IT.applicationDirs (\v flags -> flags { IT.applicationDirs = v})
+    IT.applicationDirs (\v flags -> flags { IT.applicationDirs =
+      mergeListFlag (IT.applicationDirs flags) v})
     (reqArg' "DIR" (Flag . (:[]))
                    (fromFlagOrDefault []))
 
   , option [] ["source-dir", "sourcedir"]
     "Directory containing package library source."
-    IT.sourceDirs (\v flags -> flags { IT.sourceDirs = v })
+    IT.sourceDirs (\v flags -> flags { IT.sourceDirs =
+      mergeListFlag (IT.sourceDirs flags) v })
     (reqArg' "DIR" (Flag. (:[]))
                    (fromFlagOrDefault []))
 
   , option [] ["build-tool"]
     "Required external build tool."
-    IT.buildTools (\v flags -> flags { IT.buildTools = v })
+    IT.buildTools (\v flags -> flags { IT.buildTools =
+      mergeListFlag (IT.buildTools flags) v })
     (reqArg' "TOOL" (Flag . (:[]))
                     (fromFlagOrDefault []))
 
@@ -2272,6 +2283,16 @@ initOptions _ =
 
   , optionVerbosity IT.initVerbosity (\v flags -> flags { IT.initVerbosity = v })
   ]
+  where
+    dependenciesReadE :: ReadE [Dependency]
+    dependenciesReadE =
+      parsecToReadE
+        ("Cannot parse dependencies: " ++)
+        (parsecCommaList parsec)
+
+    mergeListFlag :: Flag [a] -> Flag [a] -> Flag [a]
+    mergeListFlag currentFlags v =
+      Flag $ concat (flagToList currentFlags ++ flagToList v)
 
 -- ------------------------------------------------------------
 -- * Copy and Register

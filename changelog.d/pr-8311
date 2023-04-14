@@ -1,4 +1,0 @@
-synopsis: Export pretty printer `ppPackageCheck` from
-Distribution.PackageDescription.Check
-packages: Cabal
-prs: #8311

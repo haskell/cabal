@@ -968,6 +968,7 @@ printBuildFailures verbosity buildOutcomes =
               | (pkgid, reason) <- failed ]
   where
     printFailureReason reason = case reason of
+      GracefulFailure msg -> msg
       DependentFailed pkgid -> " depends on " ++ prettyShow pkgid
                             ++ " which failed to install."
       DownloadFailed  e -> " failed while downloading the package."
@@ -1059,7 +1060,6 @@ performInstallations verbosity
         platform
         progdb
         distPref
-        (fromFlagOrDefault (setupConfigDynamic defaultSetupScriptOptions) $ configDynExe configFlags)
         (chooseCabalVersion configExFlags (libVersion miscOptions))
         (Just lock)
         parallelInstall

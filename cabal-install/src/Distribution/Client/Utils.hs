@@ -29,6 +29,8 @@ module Distribution.Client.Utils
   , listFilesInside
   , safeRead
   , hasElem
+  , occursOnlyOrBefore
+  , giveRTSWarning
   ) where
 
 import Prelude ()
@@ -47,7 +49,7 @@ import System.FilePath
 import Control.Monad
          ( zipWithM_ )
 import Data.List
-         ( groupBy )
+         ( groupBy, elemIndex )
 import qualified Control.Exception as Exception
          ( finally )
 import qualified Control.Exception.Safe as Safe
@@ -488,3 +490,30 @@ safeRead s
 --   This is [Agda.Utils.List.hasElem](https://hackage.haskell.org/package/Agda-2.6.2.2/docs/Agda-Utils-List.html#v:hasElem).
 hasElem :: Ord a => [a] -> a -> Bool
 hasElem xs = (`Set.member` Set.fromList xs)
+
+-- True if x occurs before y
+occursOnlyOrBefore :: (Eq a) => [a] -> a -> a -> Bool
+occursOnlyOrBefore xs x y = case (elemIndex x xs, elemIndex y xs) of
+                       (Just i, Just j) -> i < j
+                       (Just _, _) -> True
+                       _ -> False
+
+giveRTSWarning :: String -> String
+giveRTSWarning "run" = "Your RTS options are applied to cabal, not the "
+               ++ "executable. Use '--' to separate cabal options from your "
+               ++ "executable options. For example, use 'cabal run -- +RTS -N "
+               ++ "to pass the '-N' RTS option to your executable."
+giveRTSWarning "test" = "Some RTS options were found standalone, "
+               ++ "which affect cabal and not the binary. "
+               ++ "Please note that +RTS inside the --test-options argument "
+               ++ "suffices if your goal is to affect the tested binary. "
+               ++ "For example, use \"cabal test --test-options='+RTS -N'\" "
+               ++ "to pass the '-N' RTS option to your binary."
+giveRTSWarning "bench" = "Some RTS options were found standalone, "
+               ++ "which affect cabal and not the binary. Please note "
+               ++ "that +RTS inside the --benchmark-options argument "
+               ++ "suffices if your goal is to affect the benchmarked "
+               ++ "binary. For example, use \"cabal test --benchmark-options="
+               ++ "'+RTS -N'\" to pass the '-N' RTS option to your binary."
+giveRTSWarning _ = "Your RTS options are applied to cabal, not the "
+               ++ "binary."

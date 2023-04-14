@@ -290,10 +290,21 @@ package, and thus apply globally:
 
     This option cannot be specified via a ``cabal.project`` file.
 
+.. _cmdoption-project-dir:
+.. option:: --project-dir=DIR
+
+    Specifies the path of the project directory. If a relative
+    :ref:`project-file<cmdoption-project-file>` path is also specified,
+    it will be resolved relative to this directory.
+
+    The project directory need not contain a ``cabal.project`` file.
+
+    This option cannot be specified via a ``cabal.project`` file.
+
 .. _cmdoption-project-file:
 .. option:: --project-file=FILE
 
-    Specifies the name of the project file used to specify the
+    Specifies the path and name of the project file used to specify the
     rest of the top-level configuration; defaults to ``cabal.project``.
     This name not only specifies the name of the main project file,
     but also the auxiliary project files ``cabal.project.freeze``
@@ -301,7 +312,8 @@ package, and thus apply globally:
     ``--project-file=my.project``, then the other files that will
     be probed are ``my.project.freeze`` and ``my.project.local``.
 
-    If the specified project file is a relative path, we will
+    If :ref:`project-dir<cmdoption-project-dir>` is not specified,
+    and the path is relative, we will
     look for the file relative to the current working directory,
     and then for the parent directory, until the project file is
     found or we have hit the top of the user's home directory.
@@ -312,8 +324,8 @@ package, and thus apply globally:
 
     Ignores the local ``cabal.project`` file and uses the default
     configuration with the local ``foo.cabal`` file. Note that
-    if this flag is set while the ``--project-file`` flag is also
-    set then this flag will be ignored.
+    this flag will be ignored if either of the ``--project-dir`` or
+    ``--project-file`` flags are also set.
 
 .. option:: --store-dir=DIR
 
@@ -1238,6 +1250,14 @@ Profiling options
         each module, whether top level or local. In GHC specifically,
         this is for non-inline toplevel or where-bound functions or
         values.  Corresponds to ``-fprof-auto``.
+    late-toplevel
+        Like top-level but costs will be assigned to top level definitions after
+        optimization. This lowers profiling overhead massively while giving similar
+        levels of detail as toplevle-functions. However it means functions introduced
+        by GHC during optimization will show up in profiles as well.
+        Corresponds to ``-fprof-late`` if supported and ``-fprof-auto-top`` otherwise.
+    late
+        Currently an alias for late-toplevel
 
     The command line variant of this flag is
     ``--profiling-detail=none``.
@@ -1575,8 +1595,8 @@ Advanced global configuration options
 
     :default: ``~/.cabal/packages``
 
-    :strike:`The location where packages downloaded from remote
-    repositories will be cached.` Not implemented yet.
+    The location where packages downloaded from remote repositories will be
+    cached.
 
     The command line variant of this flag is
     ``--remote-repo-cache=DIR``.
