@@ -1747,7 +1747,7 @@ Most users generally won't need these.
                --prefer-oldest
                --no-prefer-oldest
     :synopsis: Prefer the oldest versions of packages available.
-    :since:    3.8
+    :since:    3.10
 
     :default:  False
 
