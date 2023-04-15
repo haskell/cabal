@@ -1202,7 +1202,8 @@ checkCommand = CommandUI {
       ++ "\n"
       ++ "The checks correspond to the requirements to packages on Hackage. "
       ++ "If no errors and warnings are reported, Hackage should accept the "
-      ++ "package. If 1 is returned, Hackage will refuse it.\n",
+      ++ "package. If errors are present, `check` exits with 1 and Hackage "
+      ++ "will refuse the package.\n",
     commandNotes        = Nothing,
     commandUsage        = usageFlags "check",
     commandDefaultFlags = toFlag normal,
