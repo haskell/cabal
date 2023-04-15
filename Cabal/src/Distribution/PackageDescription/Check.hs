@@ -1,3 +1,5 @@
+{-# LANGUAGE LambdaCase #-}
+
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.PackageDescription.Check
@@ -849,11 +851,12 @@ data PackageCheck =
 
 -- | Would Hackage refuse a package because of this error?
 isHackageDistError :: PackageCheck -> Bool
-isHackageDistError (PackageBuildImpossible {}) = True
-isHackageDistError (PackageBuildWarning {}) = True
-isHackageDistError (PackageDistInexcusable {}) = True
-isHackageDistError (PackageDistSuspicious {}) = False
-isHackageDistError (PackageDistSuspiciousWarn {}) = False
+isHackageDistError = \case
+    (PackageBuildImpossible {}) -> True
+    (PackageBuildWarning {}) -> True
+    (PackageDistInexcusable {}) -> True
+    (PackageDistSuspicious {}) -> False
+    (PackageDistSuspiciousWarn {}) -> False
 
 -- | Pretty printing 'PackageCheck'.
 --
