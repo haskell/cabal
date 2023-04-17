@@ -83,22 +83,22 @@ $instresc        = $printable
 tokens :-
 
 <0> {
-  @bom?  { \_ len _ -> do
-              when (len /= 0) $ addWarning LexWarningBOM
+  @bom?  { \pos len _ -> do
+              when (len /= 0) $ addWarningAt pos LexWarningBOM
               setStartCode bol_section
               lexToken
          }
 }
 
 <bol_section, bol_field_layout, bol_field_braces> {
-  @nbspspacetab* @nl         { \_pos len inp -> checkWhitespace len inp >> adjustPos retPos >> lexToken }
+  @nbspspacetab* @nl         { \pos len inp -> checkWhitespace pos len inp >> adjustPos retPos >> lexToken }
   -- no @nl here to allow for comments on last line of the file with no trailing \n
   $spacetab* "--" $comment*  ;  -- TODO: check the lack of @nl works here
                                 -- including counting line numbers
 }
 
 <bol_section> {
-  @nbspspacetab*   { \pos len inp -> checkLeadingWhitespace len inp >>
+  @nbspspacetab*   { \pos len inp -> checkLeadingWhitespace pos len inp >>
                                      if B.length inp == len
                                        then return (L pos EOF)
                                        else setStartCode in_section
@@ -123,7 +123,7 @@ tokens :-
 }
 
 <bol_field_layout> {
-  @nbspspacetab* { \pos len inp -> checkLeadingWhitespace len inp >>= \len' ->
+  @nbspspacetab* { \pos len inp -> checkLeadingWhitespace pos len inp >>= \len' ->
                                   if B.length inp == len
                                     then return (L pos EOF)
                                     else setStartCode in_field_layout
@@ -172,17 +172,17 @@ toki t pos  len  input = return $! L pos (t (B.take len input))
 tok :: Token -> Position -> Int -> ByteString -> Lex LToken
 tok  t pos _len _input = return $! L pos t
 
-checkLeadingWhitespace :: Int -> ByteString -> Lex Int
-checkLeadingWhitespace len bs
+checkLeadingWhitespace :: Position -> Int -> ByteString -> Lex Int
+checkLeadingWhitespace pos len bs
     | B.any (== 9) (B.take len bs) = do
-        addWarning LexWarningTab
-        checkWhitespace len bs
-    | otherwise = checkWhitespace len bs
+        addWarningAt pos LexWarningTab
+        checkWhitespace pos len bs
+    | otherwise = checkWhitespace pos len bs
 
-checkWhitespace :: Int -> ByteString -> Lex Int
-checkWhitespace len bs
+checkWhitespace :: Position -> Int -> ByteString -> Lex Int
+checkWhitespace pos len bs
     | B.any (== 194) (B.take len bs) = do
-        addWarning LexWarningNBSP
+        addWarningAt pos LexWarningNBSP
         return $ len - B.count 194 (B.take len bs)
     | otherwise = return len
 
