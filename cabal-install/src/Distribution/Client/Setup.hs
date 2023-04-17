@@ -1201,8 +1201,9 @@ checkCommand = CommandUI {
          "Expects a .cabal package file in the current directory.\n"
       ++ "\n"
       ++ "The checks correspond to the requirements to packages on Hackage. "
-      ++ "If no errors and warnings are reported, Hackage will accept this "
-      ++ "package.\n",
+      ++ "If no errors and warnings are reported, Hackage should accept the "
+      ++ "package. If errors are present, `check` exits with 1 and Hackage "
+      ++ "will refuse the package.\n",
     commandNotes        = Nothing,
     commandUsage        = usageFlags "check",
     commandDefaultFlags = toFlag normal,

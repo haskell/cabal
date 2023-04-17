@@ -48,7 +48,9 @@ readGenericPackageDescriptionCheck verbosity fpath = do
             die' verbosity "parse error"
         Right x  -> return (warnings, x)
 
--- | Note: must be called with the CWD set to the directory containing
+-- | Checks a packge for common errors. Returns @True@ if the package
+-- is fit to upload to Hackage, @False@ otherwise.
+-- Note: must be called with the CWD set to the directory containing
 -- the '.cabal' file.
 check :: Verbosity -> IO Bool
 check verbosity = do
@@ -94,12 +96,7 @@ check verbosity = do
         warn verbosity "The following errors will cause portability problems on other environments:"
         printCheckMessages distInexusable
 
-    let isDistError (PackageDistSuspicious     {}) = False
-        isDistError (PackageDistSuspiciousWarn {}) = False
-        isDistError _                              = True
-        isCheckError (PackageDistSuspiciousWarn {}) = False
-        isCheckError _                              = True
-        errors = filter isDistError packageChecks
+    let errors = filter isHackageDistError packageChecks
 
     unless (null errors) $
         warn verbosity "Hackage would reject this package."
@@ -107,7 +104,7 @@ check verbosity = do
     when (null packageChecks) $
         notice verbosity "No errors or warnings could be found in the package."
 
-    return (not . any isCheckError $ packageChecks)
+    return (null errors)
 
   where
     printCheckMessages :: [PackageCheck] -> IO ()
