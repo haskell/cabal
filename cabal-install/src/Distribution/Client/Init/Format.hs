@@ -278,7 +278,7 @@ mkTestStanza opts (TestTarget testMain dirs lang otherMods exts deps tools) =
 
 mkPkgDescription :: WriteOpts -> PkgDescription -> [PrettyField FieldAnnotation]
 mkPkgDescription opts pkgDesc =
-    [ field "cabal-version" text (showCabalSpecVersion cabalSpec)
+    [ field "cabal-version" text ((if cabalSpec < CabalSpecV1_12 then ">=" else "") ++ showCabalSpecVersion cabalSpec)
       [ "The cabal-version field refers to the version of the .cabal specification,"
       , "and can be different from the cabal-install (the tool) version and the"
       , "Cabal (the library) version you are using. As such, the Cabal (the library)"
