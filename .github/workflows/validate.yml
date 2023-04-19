@@ -37,7 +37,7 @@ jobs:
       GHC_FOR_RELEASE: ${{ format('["{0}"]', env.GHC_FOR_RELEASE) }}
     strategy:
       matrix:
-        os: ["ubuntu-20.04", "macos-latest", "windows-latest"]
+        os: ["ubuntu-latest", "macos-latest", "windows-latest"]
         ghc: ["9.6.1", "9.4.4", "9.2.7", "9.0.2", "8.10.7", "8.8.4", "8.6.5", "8.4.4"]
         exclude:
           # corrupts GHA cache or the fabric of reality itself, see https://github.com/haskell/cabal/issues/8356
@@ -173,7 +173,7 @@ jobs:
 
   validate-old-ghcs:
     name: Validate old ghcs ${{ matrix.extra-ghc }}
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     needs: validate
     # This job needs an older ubuntu (16.04) cause
     # the required old ghcs using the `-dyn` flavour
@@ -243,7 +243,7 @@ jobs:
     needs: validate
     strategy:
       matrix:
-        os: ["ubuntu-20.04", "macos-latest", "windows-latest"]
+        os: ["ubuntu-latest", "macos-latest", "windows-latest"]
         # We only use one ghc version the used one for the next release (defined at top of the workflow)
         # We need to build an array dynamically to inject the appropiate env var in a previous job,
         # see https://docs.github.com/en/actions/learn-github-actions/expressions#fromjson
@@ -292,7 +292,7 @@ jobs:
   validate-post-job:
     if: always()
     name: Validate post job
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     # IMPORTANT! Any job added to the workflow should be added here too
     needs: [validate, validate-old-ghcs, dogfooding]
 
