@@ -1,0 +1,3 @@
+packages: A
+
+haddock-output-dir: docs

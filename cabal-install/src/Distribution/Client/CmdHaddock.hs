@@ -16,7 +16,10 @@ module Distribution.Client.CmdHaddock (
 
 import Distribution.Client.Compat.Prelude
 import Prelude ()
+import System.Directory (makeAbsolute)
 
+import Distribution.Client.ProjectConfig.Types
+         (PackageConfig (..), ProjectConfig (..))
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.ProjectPlanning
          ( ElaboratedSharedConfig(..) )
@@ -83,20 +86,44 @@ haddockOptions _ =
     openInBrowser (\v f -> f { openInBrowser = v}) trueArg
   ]
 
+mkConfigAbsolute :: ProjectConfig -> IO ProjectConfig
+mkConfigAbsolute relConfig = do
+  let relPackageConfig = projectConfigLocalPackages relConfig
+  absHaddockOutputDir <- traverse makeAbsolute (packageConfigHaddockOutputDir relPackageConfig)
+  return (relConfig { projectConfigLocalPackages = relPackageConfig {
+     packageConfigHaddockOutputDir = absHaddockOutputDir} })
+
+mkFlagsAbsolute :: NixStyleFlags ClientHaddockFlags -> IO (NixStyleFlags ClientHaddockFlags)
+mkFlagsAbsolute relFlags = do
+  let relHaddockFlags = haddockFlags relFlags
+  absHaddockOutputDir <- traverse makeAbsolute (haddockOutputDir relHaddockFlags)
+  return (relFlags { haddockFlags = relHaddockFlags { haddockOutputDir = absHaddockOutputDir } })
+
 -- | The @haddock@ command is TODO.
 --
 -- For more details on how this works, see the module
 -- "Distribution.Client.ProjectOrchestration"
 --
 haddockAction :: NixStyleFlags ClientHaddockFlags -> [String] -> GlobalFlags -> IO ()
-haddockAction flags@NixStyleFlags {..} targetStrings globalFlags = do
+haddockAction relFlags targetStrings globalFlags = do
+    -- It's important to make --haddock-output-dir absolute since we change the working directory later.
+    flags@NixStyleFlags {..} <- mkFlagsAbsolute relFlags
+
+    let
+      verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
+      installDoc = fromFlagOrDefault True (installDocumentation installFlags)
+      flags' = flags { installFlags = installFlags { installDocumentation = Flag installDoc } }
+      cliConfig = commandLineFlagsToProjectConfig globalFlags flags' mempty -- ClientInstallFlags, not needed here
+
     projCtx <- establishProjectBaseContext verbosity cliConfig HaddockCommand
 
-    let baseCtx
+    let relBaseCtx@ProjectBaseContext { projectConfig = relProjectConfig }
           | fromFlagOrDefault False (openInBrowser extraFlags)
             = projCtx { buildSettings = (buildSettings projCtx) { buildSettingHaddockOpen = True } }
           | otherwise
             = projCtx
+    absProjectConfig <- mkConfigAbsolute relProjectConfig
+    let baseCtx = relBaseCtx { projectConfig = absProjectConfig }
 
     targetSelectors <- either (reportTargetSelectorProblems verbosity) return
                    =<< readTargetSelectors (localPackages baseCtx) Nothing targetStrings
@@ -141,11 +168,6 @@ haddockAction flags@NixStyleFlags {..} targetStrings globalFlags = do
 
     buildOutcomes <- runProjectBuildPhase verbosity baseCtx buildCtx'
     runProjectPostBuildPhase verbosity baseCtx buildCtx' buildOutcomes
-  where
-    verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
-    installDoc = fromFlagOrDefault True (installDocumentation installFlags)
-    flags' = flags { installFlags = installFlags { installDocumentation = Flag installDoc } }
-    cliConfig = commandLineFlagsToProjectConfig globalFlags flags' mempty -- ClientInstallFlags, not needed here
 
 -- | This defines what a 'TargetSelector' means for the @haddock@ command.
 -- It selects the 'AvailableTarget's that the 'TargetSelector' refers to,

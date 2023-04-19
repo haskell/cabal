@@ -1266,7 +1266,8 @@ buildInplaceUnpackedPackage verbosity
                             distDirLayout@DistDirLayout {
                               distTempDirectory,
                               distPackageCacheDirectory,
-                              distDirectory
+                              distDirectory,
+                              distHaddockOutputDir
                             }
                             BuildTimeSettings{buildSettingNumJobs, buildSettingHaddockOpen}
                             registerLock cacheLock
@@ -1390,10 +1391,11 @@ buildInplaceUnpackedPackage verbosity
               notice verbosity $ "Documentation tarball created: " ++ dest
 
             when (buildSettingHaddockOpen && haddockTarget /= Cabal.ForHackage) $ do
-              let dest = docDir </> name </> "index.html"
+              let dest = docDir </> "index.html"
                   name = haddockDirName haddockTarget (elabPkgDescription pkg)
-                  docDir = distBuildDirectory distDirLayout dparams
-                           </> "doc" </> "html"
+                  docDir = case distHaddockOutputDir of
+                    Nothing -> distBuildDirectory distDirLayout dparams </> "doc" </> "html" </> name
+                    Just dir -> dir
               exe <- findOpenProgramLocation platform
               case exe of
                 Right open -> runProgramInvocation verbosity (simpleProgramInvocation open [dest])

@@ -304,7 +304,7 @@ depsFromNewFreezeFile verbosity httpTransport compiler (Platform arch os) mproje
   projectRoot <- either throwIO return =<<
                  findProjectRoot verbosity mprojectDir mprojectFile
   let distDirLayout = defaultDistDirLayout projectRoot
-                      {- TODO: Support dist dir override -} Nothing
+                      {- TODO: Support dist dir override -} Nothing Nothing
   projectConfig <- runRebuild (distProjectRootDirectory distDirLayout) $ do
                       pcs <- readProjectLocalFreezeConfig verbosity httpTransport distDirLayout
                       pure $ instantiateProjectConfigSkeletonWithCompiler os arch (compilerInfo compiler) mempty pcs

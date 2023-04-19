@@ -1,3 +1,5 @@
+{-# LANGUAGE StandaloneDeriving #-}
+
 -- | Command line options for nix-style / v2 commands.
 --
 -- The commands take a lot of the same options, which affect how install plan

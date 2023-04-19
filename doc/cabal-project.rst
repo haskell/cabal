@@ -1509,6 +1509,16 @@ running ``setup haddock``.
 
     There is no command line variant of this flag.
 
+.. cfg-field:: haddock-output-dir: path
+               --haddock-output-dir=PATH
+    :synopsis: Generate haddock documentation into this directory.
+
+    Generate haddock documentation into this directory instead of the default
+    location next to other build products.
+
+    This flag is provided as a technology preview and is subject to change in the
+    next releases.
+
 .. cfg-field:: open: boolean
                --open
     :synopsis: Open generated documentation in-browser.
