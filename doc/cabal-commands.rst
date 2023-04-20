@@ -791,51 +791,75 @@ it may invoke the configuration step (see ``cabal configure``).
 cabal repl
 ^^^^^^^^^^
 
-``cabal repl TARGET`` loads all of the modules of the target into
-GHCi as interpreted bytecode. In addition to ``cabal build``'s flags,
-it additionally takes the ``--repl-options`` and ``--repl-no-load`` flags.
-
-To avoid ``ghci`` specific flags from triggering unneeded global rebuilds these
-flags are now stripped from the internal configuration. As a result
-``--ghc-options`` will no longer (reliably) work to pass flags to ``ghci`` (or
-other repls). Instead, you should use the new ``--repl-options`` flag to
-specify these options to the invoked repl. (This flag also works on ``cabal
-repl`` and ``Setup repl`` on sufficiently new versions of Cabal.)
-
-The ``repl-no-load`` flag disables the loading of target modules at startup.
+``cabal repl TARGET [FLAGS]``
+opens an interactive session for the target component within the project and
+loads all of the modules of the target into GHCi as interpreted bytecode.
+The available targets are the same as for the ``build`` command: individual components
+within packages in the project, including libraries, executables, test-suites
+and benchmarks (see `the build section <#cabal-build>`__ for the target syntax).
+Local packages can also be specified, in which case the library
+component in the package will be used, or the (first listed) executable in the
+package if there is no library. Dependencies are built or rebuilt as necessary.
 
 Currently, it is not supported to pass multiple targets to ``repl``
 (``repl`` will just successively open a separate GHCi session for
 each target.)
 
-It also provides a way to experiment with libraries without needing to download
-them manually or to install them globally.
-
-This command opens a REPL with the current default target loaded, and a version
-of the ``vector`` package matching that specification exposed.
+Examples:
 
 ::
 
-    $ cabal repl --build-depends "vector >= 0.12 && < 0.13"
+    $ cabal repl                # default component in the package in the current directory
+    $ cabal repl pkgname        # default component in the package named 'pkgname'
+    $ cabal repl ./pkgfoo       # default component in the package in the ./pkgfoo directory
+    $ cabal repl cname          # component named 'cname'
+    $ cabal repl pkgname:cname  # component 'cname' in the package 'pkgname'
 
-Both of these commands do the same thing as the above, but only exposes ``base``,
-``vector``, and the ``vector`` package's transitive dependencies even if the user
-is in a project context.
+Configuration flags can be specified on the command line and these extend the project
+configuration from the 'cabal.project', 'cabal.project.local' and other files.
 
-::
+.. option:: --repl-options
 
-    $ cabal repl --ignore-project --build-depends "vector >= 0.12 && < 0.13"
-    $ cabal repl --project='' --build-depends "vector >= 0.12 && < 0.13"
+    To avoid ``ghci``-specific flags from triggering unneeded global rebuilds, these
+    flags are stripped from the internal configuration. As a result,
+    ``--ghc-options`` will no longer (reliably) work to pass flags to ``ghci`` (or
+    other REPLs). Instead, you should use the ``--repl-options`` flag to
+    specify these options to the invoked REPL.
 
-This command would add ``vector``, but not (for example) ``primitive``, because
-it only includes the packages specified on the command line (and ``base``, which
-cannot be excluded for technical reasons).
+.. option:: --repl-no-load
 
-::
+    Disables the loading of target modules at startup.
 
-    $ cabal repl --build-depends vector --no-transitive-deps
+.. option:: -b, --build-depends
 
-``repl`` can open scripts by passing the path to the script as the target.
+    A way to experiment with libraries without needing to download
+    them manually or to install them globally.
+
+    This command opens a REPL with the current default target loaded, and a version
+    of the ``vector`` package matching that specification exposed.
+
+    ::
+
+        $ cabal repl --build-depends "vector >= 0.12 && < 0.13"
+
+    Both of these commands do the same thing as the above, but only expose ``base``,
+    ``vector``, and the ``vector`` package's transitive dependencies even if the user
+    is in a project context.
+
+    ::
+
+        $ cabal repl --ignore-project --build-depends "vector >= 0.12 && < 0.13"
+        $ cabal repl --project='' --build-depends "vector >= 0.12 && < 0.13"
+
+    This command would add ``vector``, but not (for example) ``primitive``, because
+    it only includes the packages specified on the command line (and ``base``, which
+    cannot be excluded for technical reasons).
+
+    ::
+
+        $ cabal repl --build-depends vector --no-transitive-deps
+
+``cabal repl`` can open scripts by passing the path to the script as the target.
 
 ::
 
