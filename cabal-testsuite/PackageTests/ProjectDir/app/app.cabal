@@ -1,0 +1,7 @@
+cabal-version: 3.6
+name:          app
+version:       0.1
+
+executable app
+  main-is:       App.hs
+  build-depends: base

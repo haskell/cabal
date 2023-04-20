@@ -1,11 +1,9 @@
 stages:
   - build
 
-# Used for ci setup in the gitlab mirror of the project:
-# https://gitlab.haskell.org/haskell/haskell-language-server/-/pipelines
 variables:
   # Commit of ghc/ci-images repository from which to pull Docker images
-  DOCKER_REV: "9e4c540d9e4972a36291dfdf81f079f37d748890"
+  DOCKER_REV: "572353e0644044fe3a5465bba4342a9a0b0eb60e"
 
   GHC_VERSION: 9.2.3
   CABAL_INSTALL_VERSION: 3.6.2.0
@@ -28,46 +26,36 @@ workflow:
     paths:
       - out/*
 
-build-aarch64-linux-deb10:
+build-linux:
   extends: .build
+  parallel:
+    matrix:
+      - ARCH: i386
+        TAG: x86_64-linux
+        OS:
+          - deb9
+      - ARCH: x86_64
+        TAG: x86_64-linux
+        OS:
+          - centos7
+          - deb9
+          - fedora33
+          - rocky8
+          - ubuntu18_04
+          - ubuntu20_04
+          - deb10
+          - deb11
+      - ARCH: aarch64
+        TAG: aarch64-linux
+        OS:
+          - deb10
+          - deb11
   tags:
-    - aarch64-linux
-  image: "registry.gitlab.haskell.org/ghc/ci-images/aarch64-linux-deb10:$DOCKER_REV"
+    - $TAG
+  image: "registry.gitlab.haskell.org/ghc/ci-images/$PLATFORM:$DOCKER_REV"
   variables:
-    TARBALL_ARCHIVE_SUFFIX: aarch64-linux-deb10
-    TARBALL_EXT: tar.xz
-    ADD_CABAL_ARGS: ""
-
-build-armv7-linux-deb10:
-  extends: .build
-  tags:
-    - armv7-linux
-  image: "registry.gitlab.haskell.org/ghc/ci-images/armv7-linux-deb10:$DOCKER_REV"
-  variables:
-    TARBALL_ARCHIVE_SUFFIX: armv7-linux-deb1
-    TARBALL_EXT: tar.xz
-    ADD_CABAL_ARGS: ""
-    # temp, because 3.6.2.0 is broken
-    CABAL_INSTALL_VERSION: 3.4.0.0
-  retry: 2
-
-build-x86_64-linux:
-  extends: .build
-  tags:
-    - x86_64-linux
-  image: "registry.gitlab.haskell.org/ghc/ci-images/x86_64-linux-deb10:$DOCKER_REV"
-  variables:
-    TARBALL_ARCHIVE_SUFFIX: x86_64-linux-deb10
-    TARBALL_EXT: tar.xz
-    ADD_CABAL_ARGS: "--enable-split-sections"
-
-build-x86_64-linux-deb11:
-  extends: .build
-  tags:
-    - x86_64-linux
-  image: "registry.gitlab.haskell.org/ghc/ci-images/x86_64-linux-deb11:$DOCKER_REV"
-  variables:
-    TARBALL_ARCHIVE_SUFFIX: x86_64-linux-deb11
+    PLATFORM: "${ARCH}-linux-${OS}"
+    TARBALL_ARCHIVE_SUFFIX: $PLATFORM
     TARBALL_EXT: tar.xz
     ADD_CABAL_ARGS: "--enable-split-sections"
 
@@ -83,32 +71,6 @@ build-x86_64-linux-alpine:
     TARBALL_ARCHIVE_SUFFIX: x86_64-linux-alpine
     TARBALL_EXT: tar.xz
     ADD_CABAL_ARGS: "--enable-split-sections --enable-executable-static"
-
-build-i386-linux-alpine:
-  extends: .build
-  tags:
-    - x86_64-linux
-  image: "i386/alpine:3.12"
-  before_script:
-    # for GHC
-    - apk add --no-cache bash curl gcc g++ binutils binutils-gold bsd-compat-headers gmp-dev ncurses-dev libffi-dev make xz tar perl
-    # for cabal build
-    - apk add --no-cache zlib zlib-dev zlib-static
-  variables:
-    TARBALL_ARCHIVE_SUFFIX: i386-linux-alpine
-    TARBALL_EXT: tar.xz
-    ADD_CABAL_ARGS: "--enable-split-sections --enable-executable-static"
-    # temp, because 3.6.2.0 is broken
-    CABAL_INSTALL_VERSION: 3.4.0.0
-
-build-x86_64-freebsd12:
-  extends: .build
-  tags:
-    - x86_64-freebsd12
-  variables:
-    TARBALL_ARCHIVE_SUFFIX: x86_64-freebsd12
-    TARBALL_EXT: tar.xz
-    ADD_CABAL_ARGS: "--enable-split-sections"
 
 build-x86_64-darwin:
   extends: .build
@@ -143,10 +105,15 @@ build-aarch64-darwin:
     TARBALL_ARCHIVE_SUFFIX: aarch64-darwin
     TARBALL_EXT: tar.xz
     ADD_CABAL_ARGS: ""
+    # Update periodically.
+    BREW_VERSION: 4.0.5
   artifacts:
     expire_in: 2 week
     paths:
       - out/*
+  cache:
+    paths:
+      - .brew
 
 build-x86_64-windows:
   extends: .build

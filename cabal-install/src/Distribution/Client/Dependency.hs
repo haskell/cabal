@@ -395,23 +395,30 @@ dontUpgradeNonUpgradeablePackages params =
         (PackageConstraint (ScopeAnyQualifier pkgname) PackagePropertyInstalled)
         ConstraintSourceNonUpgradeablePackage
       | Set.notMember (mkPackageName "base") (depResolverTargets params)
-      -- If you change this enumeration, make sure to update the list in
-      -- "Distribution.Solver.Modular.Solver" as well
-      , pkgname <- [ mkPackageName "base"
-                   , mkPackageName "ghc-bignum"
-                   , mkPackageName "ghc-prim"
-                   , mkPackageName "ghc-boot"
-                   , mkPackageName "ghc"
-                   , mkPackageName "ghci"
-                   , mkPackageName "integer-gmp"
-                   , mkPackageName "integer-simple"
-                   , mkPackageName "template-haskell"
-                   ]
+      , pkgname <- nonUpgradeablePackages
       , isInstalled pkgname ]
 
     isInstalled = not . null
                 . InstalledPackageIndex.lookupPackageName
                                  (depResolverInstalledPkgIndex params)
+
+-- NOTE: the lists of non-upgradable and non-installable packages used to be
+-- respectively in this module and in `Distribution.Solver.Modular.Solver`.
+-- Since they were kept synced, they are now combined in the following list.
+--
+-- See: https://github.com/haskell/cabal/issues/8581
+nonUpgradeablePackages :: [PackageName]
+nonUpgradeablePackages =
+  [ mkPackageName "base"
+  , mkPackageName "ghc-bignum"
+  , mkPackageName "ghc-prim"
+  , mkPackageName "ghc-boot"
+  , mkPackageName "ghc"
+  , mkPackageName "ghci"
+  , mkPackageName "integer-gmp"
+  , mkPackageName "integer-simple"
+  , mkPackageName "template-haskell"
+  ]
 
 addSourcePackages :: [UnresolvedSourcePackage]
                   -> DepResolverParams -> DepResolverParams
@@ -469,7 +476,7 @@ removeBounds  relKind relDeps            params =
     }
   where
     sourcePkgIndex' :: PackageIndex.PackageIndex UnresolvedSourcePackage
-    sourcePkgIndex' = fmap relaxDeps $ depResolverSourcePkgIndex params
+    sourcePkgIndex' = relaxDeps <$> depResolverSourcePkgIndex params
 
     relaxDeps :: UnresolvedSourcePackage -> UnresolvedSourcePackage
     relaxDeps srcPkg = srcPkg
@@ -710,7 +717,11 @@ resolveDependencies platform comp pkgConfigDB solver params =
   $ fmap (validateSolverResult platform comp indGoals)
   $ runSolver solver (SolverConfig reordGoals cntConflicts fineGrained minimize
                       indGoals noReinstalls
-                      shadowing strFlags allowBootLibs onlyConstrained_ maxBkjumps enableBj
+                      shadowing strFlags allowBootLibs
+                      -- See comment of nonUpgradeablePackages about
+                      -- non-installable and non-upgradable packages.
+                      nonUpgradeablePackages
+                      onlyConstrained_ maxBkjumps enableBj
                       solveExes order verbosity (PruneAfterFirstSuccess False))
                      platform comp installedPkgIndex sourcePkgIndex
                      pkgConfigDB preferences constraints targets

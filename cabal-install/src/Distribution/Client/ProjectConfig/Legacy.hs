@@ -540,7 +540,8 @@ convertLegacyAllPackageFlags globalFlags configFlags configExFlags installFlags 
     } = installFlags
 
     ProjectFlags
-        { flagProjectFileName = projectConfigProjectFile
+        { flagProjectDir      = projectConfigProjectDir
+        , flagProjectFile     = projectConfigProjectFile
         , flagIgnoreProject   = projectConfigIgnoreProject
         } = projectFlags
 
@@ -617,7 +618,8 @@ convertLegacyPerPackageFlags configFlags installFlags
       haddockContents           = packageConfigHaddockContents,
       haddockIndex              = packageConfigHaddockIndex,
       haddockBaseUrl            = packageConfigHaddockBaseUrl,
-      haddockLib                = packageConfigHaddockLib
+      haddockLib                = packageConfigHaddockLib,
+      haddockOutputDir          = packageConfigHaddockOutputDir
     } = haddockFlags
 
     TestFlags {
@@ -801,7 +803,8 @@ convertToLegacySharedConfig
     }
 
     projectFlags = ProjectFlags
-        { flagProjectFileName = projectConfigProjectFile
+        { flagProjectDir      = projectConfigProjectDir
+        , flagProjectFile     = projectConfigProjectFile
         , flagIgnoreProject   = projectConfigIgnoreProject
         }
 
@@ -983,6 +986,7 @@ convertToLegacyPerPackageConfig PackageConfig {..} =
       haddockIndex         = packageConfigHaddockIndex,
       haddockBaseUrl       = packageConfigHaddockBaseUrl,
       haddockLib           = packageConfigHaddockLib,
+      haddockOutputDir     = packageConfigHaddockOutputDir,
       haddockArgs          = mempty
     }
 
@@ -1303,7 +1307,7 @@ legacyPackageConfigFieldDescrs =
       , "executables", "tests", "benchmarks", "all", "internal", "css"
       , "hyperlink-source", "quickjump", "hscolour-css"
       , "contents-location", "index-location", "keep-temp-files", "base-url"
-      , "lib"
+      , "lib", "output-dir"
       ]
   . commandOptionsToFields
   ) (haddockOptions ParseArgs)

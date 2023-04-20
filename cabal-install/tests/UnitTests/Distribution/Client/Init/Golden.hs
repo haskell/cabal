@@ -87,10 +87,10 @@ goldenPkgDescTests v srcDb pkgDir pkgName = testGroup "package description golde
         let opts = WriteOpts False False False v pkgDir Library pkgName defaultCabalVersion
         in runPkgDesc opts emptyFlags pkgArgs
 
-    , goldenVsString "Dummy flags, with comments"
+    , goldenVsString "Dummy flags, >= cabal version syntax, with comments"
       (goldenPkgDesc "pkg-with-flags.golden") $
         let opts = WriteOpts False False False v pkgDir Library pkgName defaultCabalVersion
-        in runPkgDesc opts dummyFlags pkgArgs
+        in runPkgDesc opts (dummyFlags {cabalVersion = Flag CabalSpecV1_0}) pkgArgs
 
     , goldenVsString "Dummy flags, old cabal version, with comments"
       (goldenPkgDesc "pkg-old-cabal-with-flags.golden") $

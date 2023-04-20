@@ -27,7 +27,8 @@ import Distribution.Simple.BuildPaths
 import Distribution.Simple.Compiler
 import Distribution.Simple.InstallDirs
 import qualified Distribution.Simple.LocalBuildInfo as LBI
-import Distribution.Simple.Setup
+import Distribution.Simple.Flag ( fromFlag )
+import Distribution.Simple.Setup.Benchmark
 import Distribution.Simple.UserHooks
 import Distribution.Simple.Utils
 import Distribution.Pretty

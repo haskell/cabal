@@ -1,0 +1,23 @@
+# cabal v2-update
+Downloading the latest package list from test-local-repo
+# cabal v2-build
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following will be built:
+ - remote-0.1.0.0 (lib) (requires build)
+ - current-0.1.0.0 (exe:current) (first run)
+Error: cabal: --offline was specified, hence refusing to download the package: remote version 0.1.0.0.
+# cabal v2-build
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following will be built:
+ - remote-0.1.0.0 (lib) (requires build)
+ - current-0.1.0.0 (exe:current) (first run)
+Configuring library for remote-0.1.0.0..
+Preprocessing library for remote-0.1.0.0..
+Building library for remote-0.1.0.0..
+Installing library in <PATH>
+Configuring executable 'current' for current-0.1.0.0..
+Preprocessing executable 'current' for current-0.1.0.0..
+Building executable 'current' for current-0.1.0.0..
+# cabal v2-build
+Up to date

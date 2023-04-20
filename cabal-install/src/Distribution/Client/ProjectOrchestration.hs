@@ -208,11 +208,12 @@ establishProjectBaseContext
     -> CurrentCommand
     -> IO ProjectBaseContext
 establishProjectBaseContext verbosity cliConfig currentCommand = do
-    projectRoot <- either throwIO return =<< findProjectRoot Nothing mprojectFile
+    projectRoot <- either throwIO return =<< findProjectRoot verbosity mprojectDir mprojectFile
     establishProjectBaseContextWithRoot verbosity cliConfig projectRoot currentCommand
   where
+    mprojectDir    = Setup.flagToMaybe projectConfigProjectDir
     mprojectFile   = Setup.flagToMaybe projectConfigProjectFile
-    ProjectConfigShared { projectConfigProjectFile} = projectConfigShared cliConfig
+    ProjectConfigShared { projectConfigProjectDir, projectConfigProjectFile } = projectConfigShared cliConfig
 
 -- | Like 'establishProjectBaseContext' but doesn't search for project root.
 establishProjectBaseContextWithRoot
@@ -222,7 +223,8 @@ establishProjectBaseContextWithRoot
     -> CurrentCommand
     -> IO ProjectBaseContext
 establishProjectBaseContextWithRoot verbosity cliConfig projectRoot currentCommand = do
-    let distDirLayout  = defaultDistDirLayout projectRoot mdistDirectory
+    let haddockOutputDir = flagToMaybe (packageConfigHaddockOutputDir (projectConfigLocalPackages cliConfig))
+    let distDirLayout = defaultDistDirLayout projectRoot mdistDirectory haddockOutputDir
 
     httpTransport <- configureTransport verbosity
                      (fromNubList . projectConfigProgPathExtra $ projectConfigShared cliConfig)
@@ -399,6 +401,7 @@ runProjectBuildPhase verbosity
                      ProjectBaseContext{..} ProjectBuildContext {..} =
     fmap (Map.union (previousBuildOutcomes pkgsBuildStatus)) $
     rebuildTargets verbosity
+                   projectConfig
                    distDirLayout
                    (cabalStoreDirLayout cabalDirLayout)
                    elaboratedPlanToExecute
@@ -1018,6 +1021,7 @@ writeBuildReports settings buildContext plan buildOutcomes = do
       fromPlanPackage (InstallPlan.Configured pkg) (Just result) =
             let installOutcome = case result of
                    Left bf -> case buildFailureReason bf of
+                      GracefulFailure _ -> BuildReports.PlanningFailed
                       DependentFailed p -> BuildReports.DependencyFailed p
                       DownloadFailed _  -> BuildReports.DownloadFailed
                       UnpackFailed _ -> BuildReports.UnpackFailed
@@ -1208,6 +1212,7 @@ dieOnBuildFailures verbosity currentCommand plan buildOutcomes
           TestsFailed     _ -> "Tests failed for " ++ pkgstr
           BenchFailed     _ -> "Benchmarks failed for " ++ pkgstr
           InstallFailed   _ -> "Failed to build "  ++ pkgstr
+          GracefulFailure msg -> msg
           DependentFailed depid
                             -> "Failed to build " ++ prettyShow (packageId pkg)
                             ++ " because it depends on " ++ prettyShow depid
@@ -1300,6 +1305,7 @@ dieOnBuildFailures verbosity currentCommand plan buildOutcomes
         TestsFailed     e -> Just e
         BenchFailed     e -> Just e
         InstallFailed   e -> Just e
+        GracefulFailure _ -> Nothing
         DependentFailed _ -> Nothing
 
 data BuildFailurePresentation =
@@ -1354,7 +1360,7 @@ establishDummyProjectBaseContext verbosity projectConfig distDirLayout localPack
 
 establishDummyDistDirLayout :: Verbosity -> ProjectConfig -> FilePath -> IO DistDirLayout
 establishDummyDistDirLayout verbosity cliConfig tmpDir = do
-    let distDirLayout = defaultDistDirLayout projectRoot mdistDirectory
+    let distDirLayout = defaultDistDirLayout projectRoot mdistDirectory Nothing
 
     -- Create the dist directories
     createDirectoryIfMissingVerbose verbosity True $ distDirectory distDirLayout

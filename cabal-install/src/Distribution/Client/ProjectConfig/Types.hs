@@ -162,6 +162,7 @@ data ProjectConfigShared
    = ProjectConfigShared {
        projectConfigDistDir           :: Flag FilePath,
        projectConfigConfigFile        :: Flag FilePath,
+       projectConfigProjectDir        :: Flag FilePath,
        projectConfigProjectFile       :: Flag FilePath,
        projectConfigIgnoreProject     :: Flag Bool,
        projectConfigHcFlavor          :: Flag CompilerFlavor,
@@ -290,6 +291,7 @@ data PackageConfig
        packageConfigHaddockIndex        :: Flag PathTemplate, --TODO: [required eventually] use this
        packageConfigHaddockBaseUrl      :: Flag String, --TODO: [required eventually] use this
        packageConfigHaddockLib          :: Flag String, --TODO: [required eventually] use this
+       packageConfigHaddockOutputDir    :: Flag FilePath, --TODO: [required eventually] use this
        packageConfigHaddockForHackage   :: Flag HaddockTarget,
        -- Test options
        packageConfigTestHumanLog        :: Flag PathTemplate,

@@ -1,0 +1,13 @@
+cabal-version:      3.0
+name:               remote
+version:            0.1.0.0
+license:            MIT
+author:             Colton Clemmer
+maintainer:         coltonclemmerdev@gmail.com
+build-type:         Simple
+extra-doc-files:    CHANGELOG.md
+
+library
+  build-depends:       base
+  exposed-modules:     P
+  default-language:    Haskell2010

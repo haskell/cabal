@@ -1,0 +1,9 @@
+synopsis: Installation of extra-compilation-artifacts directory
+packages: Cabal
+prs: #8662
+issues:
+description: {
+
+- GHC plugins now can store custom data in the 'extra-compilation-artifacts' directory which gets installed with the package.
+
+}

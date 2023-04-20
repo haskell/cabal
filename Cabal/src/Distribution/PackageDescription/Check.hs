@@ -1,3 +1,5 @@
+{-# LANGUAGE LambdaCase #-}
+
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.PackageDescription.Check
@@ -28,6 +30,7 @@ module Distribution.PackageDescription.Check (
         checkConfiguredPackage,
         wrapParseWarning,
         ppPackageCheck,
+        isHackageDistError,
 
         -- ** Checking package contents
         checkPackageFiles,
@@ -845,6 +848,15 @@ data PackageCheck =
        -- problems.
      | PackageDistInexcusable { explanation :: CheckExplanation }
   deriving (Eq, Ord)
+
+-- | Would Hackage refuse a package because of this error?
+isHackageDistError :: PackageCheck -> Bool
+isHackageDistError = \case
+    (PackageBuildImpossible {}) -> True
+    (PackageBuildWarning {}) -> True
+    (PackageDistInexcusable {}) -> True
+    (PackageDistSuspicious {}) -> False
+    (PackageDistSuspiciousWarn {}) -> False
 
 -- | Pretty printing 'PackageCheck'.
 --

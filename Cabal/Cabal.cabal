@@ -1,6 +1,6 @@
 cabal-version: 2.2
 name:          Cabal
-version:       3.9.0.0
+version:       3.11.0.0
 copyright:     2003-2023, Cabal Development Team (see AUTHORS file)
 license:       BSD-3-Clause
 license-file:  LICENSE
@@ -34,7 +34,7 @@ library
   hs-source-dirs: src
 
   build-depends:
-    Cabal-syntax ^>= 3.9,
+    Cabal-syntax ^>= 3.11,
     array      >= 0.4.0.1  && < 0.6,
     base       >= 4.9      && < 5,
     bytestring >= 0.10.0.0 && < 0.12,
@@ -326,6 +326,20 @@ library
     Distribution.Simple.GHC.Internal
     Distribution.Simple.GHC.ImplInfo
     Distribution.Simple.ConfigureScript
+    Distribution.Simple.Setup.Benchmark
+    Distribution.Simple.Setup.Build
+    Distribution.Simple.Setup.Clean
+    Distribution.Simple.Setup.Common
+    Distribution.Simple.Setup.Config
+    Distribution.Simple.Setup.Copy
+    Distribution.Simple.Setup.Global
+    Distribution.Simple.Setup.Haddock
+    Distribution.Simple.Setup.Hscolour
+    Distribution.Simple.Setup.Install
+    Distribution.Simple.Setup.Register
+    Distribution.Simple.Setup.Repl
+    Distribution.Simple.Setup.SDist
+    Distribution.Simple.Setup.Test
     Distribution.ZinzaPrelude
     Paths_Cabal
 

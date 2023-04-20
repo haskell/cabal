@@ -60,7 +60,7 @@ import Distribution.Verbosity
 -- solver. Performs the necessary translations before and after.
 modularResolver :: SolverConfig -> DependencyResolver loc
 modularResolver sc (Platform arch os) cinfo iidx sidx pkgConfigDB pprefs pcs pns =
-  fmap (uncurry postprocess) $ -- convert install plan
+  uncurry postprocess <$> -- convert install plan
   solve' sc cinfo idx pkgConfigDB pprefs gcs pns
     where
       -- Indices have to be converted into solver-specific uniform index.
@@ -275,7 +275,7 @@ tryToMinimizeConflictSet runSolver sc cs cm =
                              ++ "conflict set: " ++ showCS cs') $
                   ExhaustiveSearch smallestKnownCS smallestKnownCM
             BackjumpLimitReached ->
-                failWith ("Reached backjump limit while minimizing conflict set.")
+                failWith "Reached backjump limit while minimizing conflict set."
                          BackjumpLimitReached
       where
         varStr = "\"" ++ showVar v ++ "\""

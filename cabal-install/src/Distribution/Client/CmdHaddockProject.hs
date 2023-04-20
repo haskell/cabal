@@ -129,6 +129,7 @@ haddockProjectAction flags _extraArgs globalFlags = do
           , haddockKeepTempFiles= haddockProjectKeepTempFiles flags
           , haddockVerbosity    = haddockProjectVerbosity     flags
           , haddockLib          = haddockProjectLib           flags
+          , haddockOutputDir    = haddockProjectOutputDir     flags
           }
         nixFlags = (commandDefaultFlags CmdHaddock.haddockCommand)
                    { NixStyleOptions.haddockFlags = haddockFlags

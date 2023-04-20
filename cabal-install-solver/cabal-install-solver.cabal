@@ -1,6 +1,6 @@
 cabal-version: 2.2
 name:          cabal-install-solver
-version:       3.9.0.0
+version:       3.11.0.0
 synopsis:      The command-line interface for Cabal and Hackage.
 description:
   The solver component used in cabal-install command-line program
@@ -105,10 +105,10 @@ library
 
   build-depends:
     , array         >=0.4      && <0.6
-    , base          >=4.10     && <4.18
+    , base          >=4.10     && <4.19
     , bytestring    >=0.10.6.0 && <0.12
-    , Cabal         ^>=3.9
-    , Cabal-syntax  ^>=3.9
+    , Cabal         ^>=3.11
+    , Cabal-syntax  ^>=3.11
     , containers    >=0.5.6.2  && <0.7
     , edit-distance ^>= 0.2.2
     , filepath      ^>=1.4.0.0
@@ -138,7 +138,7 @@ Test-Suite unit-tests
      UnitTests.Distribution.Solver.Modular.MessageUtils
 
    build-depends:
-     , base        >= 4.10  && <4.18
+     , base        >= 4.10  && <4.19
      , Cabal
      , Cabal-syntax
      , cabal-install-solver

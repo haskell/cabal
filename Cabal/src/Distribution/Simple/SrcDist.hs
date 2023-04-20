@@ -56,7 +56,8 @@ import Distribution.Version
 import Distribution.Simple.Configure (findDistPrefOrDefault)
 import Distribution.Simple.Glob (matchDirFileGlobWithDie)
 import Distribution.Simple.Utils
-import Distribution.Simple.Setup
+import Distribution.Simple.Flag
+import Distribution.Simple.Setup.SDist
 import Distribution.Simple.PreProcess
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Program
@@ -500,10 +501,7 @@ printPackageProblems :: Verbosity -> PackageDescription -> IO ()
 printPackageProblems verbosity pkg_descr = do
   ioChecks      <- checkPackageFiles verbosity pkg_descr "."
   let pureChecks = checkConfiguredPackage pkg_descr
-      isDistError (PackageDistSuspicious     _) = False
-      isDistError (PackageDistSuspiciousWarn _) = False
-      isDistError _                             = True
-      (errors, warnings) = partition isDistError (pureChecks ++ ioChecks)
+      (errors, warnings) = partition isHackageDistError (pureChecks ++ ioChecks)
   unless (null errors) $
       notice verbosity $ "Distribution quality errors:\n"
                       ++ unlines (map ppPackageCheck errors)

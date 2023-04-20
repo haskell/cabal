@@ -1,6 +1,6 @@
 cabal-version: 2.2
 name:          Cabal-tree-diff
-version:       3.9.0.0
+version:       3.11.0.0
 synopsis:      QuickCheck instances for types in Cabal
 category:      Testing
 description:   Provides tree-diff ToExpr instances for some types in Cabal
@@ -11,9 +11,9 @@ library
   ghc-options:      -Wall
   build-depends:
     , base
-    , Cabal-syntax  ^>=3.9.0.0
-    , Cabal         ^>=3.9.0.0
-    , tree-diff     ^>=0.1 || ^>=0.2
+    , Cabal-syntax  ^>=3.11.0.0
+    , Cabal         ^>=3.11.0.0
+    , tree-diff     ^>=0.1 || ^>=0.2 || ^>=0.3
 
   exposed-modules:  Data.TreeDiff.Instances.Cabal
   other-modules:

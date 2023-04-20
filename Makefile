@@ -57,7 +57,7 @@ $(TEMPLATE_PATHS) : templates/Paths_pkg.template.hs cabal-dev-scripts/src/GenPat
 
 buildinfo-fields-reference : phony
 	cabal build --builddir=dist-newstyle-bi --project-file=cabal.project.buildinfo buildinfo-reference-generator
-	$$(cabal-plan list-bin --builddir=dist-newstyle-bi buildinfo-reference-generator) buildinfo-reference-generator/template.zinza | tee $@
+	$$(cabal list-bin --builddir=dist-newstyle-bi buildinfo-reference-generator) buildinfo-reference-generator/template.zinza | tee $@
 
 # analyse-imports
 analyse-imports : phony
@@ -113,24 +113,22 @@ hackage-roundtrip-tests :
 	$(CABALRUN) hackage-tests -- roundtrip +RTS -s -qg -I0 -A64M -N${THREADS} -RTS ${TEST}
 
 cabal-install-test:
-	@which cabal-plan
 	$(CABALBUILD) -j3 cabal-tests cabal
 	rm -rf .ghc.environment.*
-	cd cabal-testsuite && `cabal-plan list-bin cabal-tests` --with-cabal=`cabal-plan list-bin cabal` --hide-successes -j3 ${TEST}
+	cd cabal-testsuite && `cabal list-bin cabal-tests` --with-cabal=`cabal list-bin cabal` --hide-successes -j3 ${TEST}
 
 # hackage-benchmarks (solver)
 
 hackage-benchmarks-run:
 	$(CABALBUILD) -j3 hackage-benchmark cabal
 	rm -rf .ghc.environment.*
-	$$(cabal-plan list-bin hackage-benchmark) --cabal1=cabal --cabal2=$$(cabal-plan list-bin cabal) --packages="hakyll servant-auth-server" --print-trials --concurrently
+	$$(cabal list-bin hackage-benchmark) --cabal1=cabal --cabal2=$$(cabal list-bin cabal) --packages="hakyll servant-auth-server" --print-trials --concurrently
 
 
 # This doesn't run build, as you first need to test with cabal-install-test :)
 cabal-install-test-accept:
-	@which cabal-plan
 	rm -rf .ghc.environment.*
-	cd cabal-testsuite && `cabal-plan list-bin cabal-tests` --with-cabal=`cabal-plan list-bin cabal` --hide-successes -j3 --accept ${TEST}
+	cd cabal-testsuite && `cabal list-bin cabal-tests` --with-cabal=`cabal list-bin cabal` --hide-successes -j3 --accept ${TEST}
 
 # Docker validation
 
@@ -195,7 +193,7 @@ bootstrap-json-%: phony
 	cd bootstrap && cabal v2-run -v0 cabal-bootstrap-gen -- linux-$*.plan.json \
 		| python3 -m json.tool > linux-$*.json
 
-BOOTSTRAP_GHC_VERSIONS := 8.6.5 8.8.4 8.10.7 9.0.2 9.2.3 9.4.4
+BOOTSTRAP_GHC_VERSIONS := 8.10.7 9.0.2 9.2.7 9.4.4
 
 bootstrap-jsons: $(BOOTSTRAP_GHC_VERSIONS:%=bootstrap-json-%)
 

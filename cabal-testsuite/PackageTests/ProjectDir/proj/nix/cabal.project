@@ -1,0 +1,4 @@
+packages: .
+
+package proj
+  flags: +extra

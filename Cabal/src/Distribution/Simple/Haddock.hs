@@ -51,7 +51,9 @@ import Distribution.Simple.Program.GHC
 import Distribution.Simple.Program.ResponseFile
 import Distribution.Simple.Program
 import Distribution.Simple.PreProcess
-import Distribution.Simple.Setup
+import Distribution.Simple.Flag
+import Distribution.Simple.Setup.Haddock
+import Distribution.Simple.Setup.Hscolour
 import Distribution.Simple.Build
 import Distribution.Simple.BuildTarget
 import Distribution.Simple.InstallDirs
@@ -241,7 +243,12 @@ haddock pkg_descr lbi suffixes flags' = do
           fromFlagOrDefault ForDevelopment (haddockForHackage flags')
 
     libdirArgs <- getGhcLibDir  verbosity lbi
-    let commonArgs = mconcat
+    -- The haddock-output-dir flag overrides any other documentation placement concerns.
+    -- The point is to give the user full freedom over the location if they need it.
+    let overrideWithOutputDir args = case haddockOutputDir flags of
+          NoFlag -> args
+          Flag dir -> args { argOutputDir = Dir dir }
+    let commonArgs = overrideWithOutputDir $ mconcat
             [ libdirArgs
             , fromFlags (haddockTemplateEnv lbi (packageId pkg_descr)) flags
             , fromPackageDescription haddockTarget pkg_descr ]

@@ -1,0 +1,14 @@
+synopsis: Make check comply with Hackage requirements
+packages: Cabal cabal-install
+prs: #8897
+
+description: {
+
+- `cabal check` will only return exitcode 1 when the package is not fit
+  for Hackage. E.g. it will not error anymore when your `synopsis:` is
+  larger than `description:`, just emit a warning.
+- Cabal: Distribution.Client.Check now exports `isHackageDistError`, for
+  third-party tools to know if a specific error will preclude a package
+  from being uploaded to Hacakge.
+
+}

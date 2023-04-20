@@ -99,9 +99,7 @@ tests config =
     -- * normal success
     -- * dry-run tests with changes
   [ testGroup "Discovery and planning" $
-    [ testCase "find root"      testFindProjectRoot
-    , testCase "find root fail" testExceptionFindProjectRoot
-    , testCase "no package"    (testExceptionInFindingPackage config)
+    [ testCase "no package"    (testExceptionInFindingPackage config)
     , testCase "no package2"   (testExceptionInFindingPackage2 config)
     , testCase "proj conf1"    (testExceptionInProjectConfig config)
     ]
@@ -152,25 +150,6 @@ tests config =
       testCase "Test Ignore Project Flag" testIgnoreProjectFlag
     ]
   ]
-
-testFindProjectRoot :: Assertion
-testFindProjectRoot = do
-    Left (BadProjectRootExplicitFile file) <- findProjectRoot (Just testdir)
-                                                              (Just testfile)
-    file @?= testfile
-  where
-    testdir  = basedir </> "exception" </> "no-pkg2"
-    testfile = "bklNI8O1OpOUuDu3F4Ij4nv3oAqN"
-
-
-testExceptionFindProjectRoot :: Assertion
-testExceptionFindProjectRoot = do
-    Right (ProjectRootExplicit dir _) <- findProjectRoot (Just testdir) Nothing
-    cwd <- getCurrentDirectory
-    dir @?= cwd </> testdir
-  where
-    testdir = basedir </> "exception" </> "no-pkg2"
-
 
 testTargetSelectors :: (String -> IO ()) -> Assertion
 testTargetSelectors reportSubCase = do
@@ -1681,12 +1660,12 @@ configureProject testdir cliConfig = do
     cabalDirLayout <- defaultCabalDirLayout
 
     projectRootDir <- canonicalizePath (basedir </> testdir)
-    isexplict      <- doesFileExist (projectRootDir </> "cabal.project")
+    isexplict <- doesFileExist (projectRootDir </> defaultProjectFile)
+
     let projectRoot
-          | isexplict = ProjectRootExplicit projectRootDir
-                                           (projectRootDir </> "cabal.project")
+          | isexplict = ProjectRootExplicit projectRootDir defaultProjectFile
           | otherwise = ProjectRootImplicit projectRootDir
-        distDirLayout = defaultDistDirLayout projectRoot Nothing
+        distDirLayout = defaultDistDirLayout projectRoot Nothing Nothing
 
     -- Clear state between test runs. The state remains if the previous run
     -- ended in an exception (as we leave the files to help with debugging).
@@ -1736,7 +1715,7 @@ planProject testdir cliConfig = do
             elaboratedShared)
 
 executePlan :: PlanDetails -> IO (ElaboratedInstallPlan, BuildOutcomes)
-executePlan ((distDirLayout, cabalDirLayout, _, _, buildSettings),
+executePlan ((distDirLayout, cabalDirLayout, config, _, buildSettings),
              elaboratedPlan,
              elaboratedShared) = do
 
@@ -1762,6 +1741,7 @@ executePlan ((distDirLayout, cabalDirLayout, _, _, buildSettings),
 
     buildOutcomes <-
       rebuildTargets verbosity
+                     config
                      distDirLayout
                      (cabalStoreDirLayout cabalDirLayout)
                      elaboratedPlan''
@@ -1778,7 +1758,7 @@ cleanProject testdir = do
     when alreadyExists $ removePathForcibly distDir
   where
     projectRoot    = ProjectRootImplicit (basedir </> testdir)
-    distDirLayout  = defaultDistDirLayout projectRoot Nothing
+    distDirLayout  = defaultDistDirLayout projectRoot Nothing Nothing
     distDir        = distDirectory distDirLayout
 
 

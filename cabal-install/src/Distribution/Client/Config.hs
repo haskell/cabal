@@ -494,6 +494,7 @@ instance Semigroup SavedConfig where
         haddockIndex         = combine haddockIndex,
         haddockBaseUrl       = combine haddockBaseUrl,
         haddockLib           = combine haddockLib,
+        haddockOutputDir     = combine haddockOutputDir,
         haddockArgs          = lastNonEmpty haddockArgs
         }
         where
@@ -525,7 +526,8 @@ instance Semigroup SavedConfig where
           lastNonEmpty = lastNonEmpty'   savedBenchmarkFlags
 
       combinedSavedProjectFlags = ProjectFlags
-        { flagProjectFileName = combine flagProjectFileName
+        { flagProjectDir      = combine flagProjectDir
+        , flagProjectFile     = combine flagProjectFile
         , flagIgnoreProject   = combine flagIgnoreProject
         }
         where
@@ -921,7 +923,11 @@ commentSavedConfig = do
             IT.language        = toFlag Haskell2010,
             IT.license         = NoFlag,
             IT.sourceDirs      = Flag [IT.defaultSourceDir],
-            IT.applicationDirs = Flag [IT.defaultApplicationDir]
+            IT.applicationDirs = Flag [IT.defaultApplicationDir],
+            IT.quiet           = Flag False,
+            IT.noComments      = Flag False,
+            IT.minimal         = Flag False,
+            IT.simpleProject   = Flag False
             },
         savedInstallFlags      = defaultInstallFlags,
         savedClientInstallFlags= defaultClientInstallFlags,
@@ -1461,10 +1467,10 @@ initFlagsFields = [ field
                   , name `notElem` exclusions ]
   where
     exclusions =
-      [ "author", "email", "quiet", "no-comments", "minimal", "overwrite"
+      [ "author", "email", "overwrite"
       , "package-dir", "packagedir", "package-name", "version", "homepage"
       , "synopsis", "category", "extra-source-file", "lib", "exe", "libandexe"
-      , "simple", "main-is", "expose-module", "exposed-modules", "extension"
+      , "main-is", "expose-module", "exposed-modules", "extension"
       , "dependency", "build-tool", "with-compiler"
       , "verbose"
       ]
