@@ -188,8 +188,8 @@ jobs:
     # the required old ghcs using the `-dyn` flavour
     # are not installable from ppa/hvr in newer ones
     # see https://github.com/haskell/cabal/issues/8011
-    container:
-      image: phadej/ghc:8.8.4-xenial
+    #container:
+    #  image: phadej/ghc:8.8.4-xenial
 
     strategy:
       matrix:
@@ -215,8 +215,8 @@ jobs:
 
       - name: Install extra compiler
         run: |
-          apt-get update
-          apt-get install -y ghc-${{ matrix.extra-ghc }}-dyn
+          sudo apt-get update
+          sudo apt-get install -y ghc-${{ matrix.extra-ghc }}-dyn
 
       - uses: haskell/actions/setup@v2
         id: setup-haskell
