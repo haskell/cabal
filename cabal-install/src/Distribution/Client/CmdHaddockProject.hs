@@ -44,6 +44,7 @@ import Distribution.Client.TargetProblem      (TargetProblem(..))
 
 import Distribution.Types.PackageId (pkgName)
 import Distribution.Types.PackageName (unPackageName)
+import Distribution.Types.UnitId (unUnitId)
 import Distribution.Types.Version (mkVersion)
 import Distribution.Types.VersionRange (orLaterVersion)
 import Distribution.Types.InstalledPackageInfo (InstalledPackageInfo (..))
@@ -167,6 +168,7 @@ haddockProjectAction flags _extraArgs globalFlags = do
                                       elaboratedPlan
               return (elaboratedPlan', targets)
 
+<<<<<<< HEAD
       printPlan verbosity baseCtx buildCtx
 
       let elaboratedPlan :: ElaboratedInstallPlan
@@ -222,6 +224,92 @@ haddockProjectAction flags _extraArgs globalFlags = do
                                      , Hidden
                                      ))
                 False -> return Nothing
+=======
+    packageInfos <- fmap (nub . concat) $ for pkgs $ \pkg ->
+      case pkg of
+        Left _
+          | not localStyle ->
+              return []
+        Left package -> do
+          -- TODO: this might not work for public packages with sublibraries
+          -- (which will be visible if one is using `--local` switch).
+          let packageName = unPackageName (pkgName $ sourcePackageId package)
+              destDir = outputDir </> packageName
+          fmap catMaybes $ for (haddockInterfaces package) $ \interfacePath -> do
+            let docDir = takeDirectory interfacePath
+            a <- doesFileExist interfacePath
+            case a of
+              True ->
+                copyDirectoryRecursive verbosity docDir destDir
+                  >> return
+                    ( Just
+                        ( packageName
+                        , interfacePath
+                        , Hidden
+                        )
+                    )
+              False -> return Nothing
+        Right package ->
+          case elabLocalToProject package of
+            True -> do
+              let distDirParams = elabDistDirParams sharedConfig' package
+                  unitId = unUnitId (elabUnitId package)
+                  buildDir = distBuildDirectory distLayout distDirParams
+                  packageName = unPackageName (pkgName $ elabPkgSourceId package)
+              let docDir =
+                    buildDir
+                      </> "doc"
+                      </> "html"
+                      </> packageName
+                  destDir = outputDir </> unitId
+                  interfacePath =
+                    destDir
+                      </> packageName
+                      <.> "haddock"
+              a <- doesDirectoryExist docDir
+              case a of
+                True ->
+                  copyDirectoryRecursive verbosity docDir destDir
+                    >> return
+                      [
+                        ( unitId
+                        , interfacePath
+                        , Visible
+                        )
+                      ]
+                False -> return []
+            False
+              | not localStyle ->
+                  return []
+            False -> do
+              let packageName = unPackageName (pkgName $ elabPkgSourceId package)
+                  unitId = unUnitId (elabUnitId package)
+                  packageDir =
+                    storePackageDirectory
+                      (cabalStoreDirLayout cabalLayout)
+                      (compilerId (pkgConfigCompiler sharedConfig'))
+                      (elabUnitId package)
+                  docDir = packageDir </> "share" </> "doc" </> "html"
+                  destDir = outputDir </> packageName
+                  interfacePath =
+                    destDir
+                      </> packageName
+                      <.> "haddock"
+              a <- doesDirectoryExist docDir
+              case a of
+                True ->
+                  copyDirectoryRecursive verbosity docDir destDir
+                    -- non local packages will be hidden in haddock's
+                    -- generated contents page
+                    >> return
+                      [
+                        ( unitId
+                        , interfacePath
+                        , Hidden
+                        )
+                      ]
+                False -> return []
+>>>>>>> 1840bca4b (haddock-project: use UnitId instead of package names)
 
           Right package ->
             case elabLocalToProject package of
@@ -281,6 +369,7 @@ haddockProjectAction flags _extraArgs globalFlags = do
                                           then Flag True
                                           else haddockProjectQuickJump flags
             , haddockProjectLinkedSource = haddockLinkedSource haddockFlags
+<<<<<<< HEAD
             , haddockProjectInterfaces  = Flag
                 [ ( interfacePath
                   , Just packageName
@@ -289,6 +378,17 @@ haddockProjectAction flags _extraArgs globalFlags = do
                   )
                 | (packageName, interfacePath, visibility) <- packageInfos
                 ]
+=======
+            , haddockProjectInterfaces =
+                Flag
+                  [ ( interfacePath
+                    , Just name
+                    , Just name
+                    , visibility
+                    )
+                  | (name, interfacePath, visibility) <- packageInfos
+                  ]
+>>>>>>> 1840bca4b (haddock-project: use UnitId instead of package names)
             }
       createHaddockIndex verbosity
                          (pkgConfigCompilerProgs sharedConfig')
