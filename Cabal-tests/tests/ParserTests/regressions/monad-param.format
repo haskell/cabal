@@ -1,4 +1,4 @@
-monad-param.cabal:19:3: Tabs used as indentation at 19:3, 20:3
+monad-param.cabal:19:1: Tabs used as indentation at 19:1, 20:1
 name:         monad-param
 version:      0.0.1
 license:      BSD3
