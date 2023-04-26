@@ -1,4 +1,4 @@
-th-lift-instances.cabal:15:9: Tabs used as indentation at 15:9
+th-lift-instances.cabal:15:1: Tabs used as indentation at 15:1
 cabal-version:      >=1.10
 name:               th-lift-instances
 version:            0.1.4

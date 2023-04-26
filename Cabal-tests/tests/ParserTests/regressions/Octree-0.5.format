@@ -1,4 +1,4 @@
-Octree-0.5.cabal:39:3: Non breaking spaces at 39:3, 41:3, 43:3
+Octree-0.5.cabal:39:1: Non breaking spaces at 39:1, 41:1, 43:1
 cabal-version: >=1.8
 name:          Octree
 version:       0.5

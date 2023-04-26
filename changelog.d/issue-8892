@@ -1,0 +1,11 @@
+synopsis: Regenerate Lexer.hs to avoid out-of-bound array access due to a bug in Alex
+packages: Cabal-syntax
+prs: #8896
+issues: #8892
+
+description: {
+
+- Regenerate Cabal-syntax's Lexer.hs with Alex 3.2.7.3 which includes a fix for
+  an out-of-bound array access (only noticeable with GHC's JavaScript backend).
+
+}
