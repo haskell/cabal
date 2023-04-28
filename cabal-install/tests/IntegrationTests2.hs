@@ -149,6 +149,7 @@ tests config =
   , testGroup "Flag tests" $
     [
       testCase "Test Nix Flag" testNixFlags,
+      testCase "Test Default Flags" testDefaultFlags,
       testCase "Test Ignore Project Flag" testIgnoreProjectFlag
     ]
   ]
@@ -1958,6 +1959,185 @@ testNixFlags = do
     getFlags :: CommandUI GlobalFlags -> CommandParse (GlobalFlags -> GlobalFlags, [String]) -> Maybe GlobalFlags
     getFlags cui (CommandReadyToGo (mkflags, _)) = Just . mkflags . commandDefaultFlags $ cui
     getFlags _ _ = Nothing
+
+testDefaultFlags :: Assertion
+testDefaultFlags = do
+  _ <- createDefaultConfigFile verbosity [] (basedir </> "nix-config/default-config")
+  defaultConfigFile <- readFile (basedir </> "nix-config/default-config")
+
+  True @=? testComment "default-user-config" defaultConfigFile
+  True @=? testComment "cabal-file" defaultConfigFile
+  True @=? testComment "with-compiler" defaultConfigFile
+  True @=? testComment "with-hc-pkg" defaultConfigFile
+  True @=? testComment "library-profiling" defaultConfigFile
+  True @=? testComment "shared" defaultConfigFile
+  True @=? testComment "static" defaultConfigFile
+  True @=? testComment "profiling" defaultConfigFile
+  True @=? testComment "executable-profiling" defaultConfigFile
+  True @=? testComment "profiling-detail" defaultConfigFile
+  True @=? testComment "library-profiling-detail" defaultConfigFile
+  True @=? testComment "build-info" defaultConfigFile
+  True @=? testComment "library-for-ghci" defaultConfigFile
+  True @=? testComment "executable-stripping" defaultConfigFile
+  True @=? testComment "library-stripping" defaultConfigFile
+  True @=? testComment "configure-option" defaultConfigFile
+  True @=? testComment "package-db" defaultConfigFile
+  True @=? testComment "flags" defaultConfigFile
+  True @=? testComment "extra-include-dirs" defaultConfigFile
+  True @=? testComment "deterministic" defaultConfigFile
+  True @=? testComment "cid" defaultConfigFile
+  True @=? testComment "extra-lib-dirs" defaultConfigFile
+  True @=? testComment "extra-lib-dirs-static" defaultConfigFile
+  True @=? testComment "extra-framework-dirs" defaultConfigFile
+  True @=? testComment "instantiate-with" defaultConfigFile
+  True @=? testComment "library-coverage" defaultConfigFile
+  True @=? testComment "response-files" defaultConfigFile
+  True @=? testComment "allow-depending-on-private-libs" defaultConfigFile
+  True @=? testComment "cabal-lib-version" defaultConfigFile
+  True @=? testComment "append" defaultConfigFile
+  True @=? testComment "backup" defaultConfigFile
+  True @=? testComment "constraint" defaultConfigFile
+  True @=? testComment "preference" defaultConfigFile
+  True @=? testComment "write-ghc-environment-files" defaultConfigFile
+  True @=? testComment "target-package-db" defaultConfigFile
+  True @=? testComment "index-state" defaultConfigFile
+  True @=? testComment "root-cmd" defaultConfigFile
+  True @=? testComment "symlink-bindir" defaultConfigFile
+  True @=? testComment "build-log" defaultConfigFile
+  True @=? testComment "run-tests" defaultConfigFile
+  True @=? testComment "package-env" defaultConfigFile
+  True @=? testComment "overwrite-policy" defaultConfigFile
+  True @=? testComment "install-method" defaultConfigFile
+  True @=? testComment "username" defaultConfigFile
+  True @=? testComment "password" defaultConfigFile
+  True @=? testComment "password-command" defaultConfigFile
+  True @=? testComment "builddir" defaultConfigFile
+
+  True @=? testAssigned "remote-repo-cache" defaultConfigFile
+  True @=? testAssigned "extra-prog-path" defaultConfigFile
+  True @=? testAssigned "build-summary" defaultConfigFile
+  True @=? testAssigned "remote-build-reporting" defaultConfigFile
+  True @=? testAssigned "jobs" defaultConfigFile
+  True @=? testAssigned "installdir" defaultConfigFile
+
+  True @=? testSubComment "root-keys" defaultConfigFile
+  True @=? testSubComment "html-location" defaultConfigFile
+  True @=? testSubComment "all" defaultConfigFile
+  True @=? testSubComment "css" defaultConfigFile
+  True @=? testSubComment "hscolour-css" defaultConfigFile
+  True @=? testSubComment "contents-location" defaultConfigFile
+  True @=? testSubComment "index-location" defaultConfigFile
+  True @=? testSubComment "base-url" defaultConfigFile
+  True @=? testSubComment "lib" defaultConfigFile
+  True @=? testSubComment "license" defaultConfigFile
+  True @=? testSubComment "extra-doc-file" defaultConfigFile
+  True @=? testSubComment "tests" defaultConfigFile
+  True @=? testSubComment "test-dir" defaultConfigFile
+  True @=? testSubComment "alex-location" defaultConfigFile
+  True @=? testSubComment "ar-location" defaultConfigFile
+  True @=? testSubComment "cpphs-location" defaultConfigFile
+  True @=? testSubComment "doctest-location" defaultConfigFile
+  True @=? testSubComment "gcc-location" defaultConfigFile
+  True @=? testSubComment "ghc-location" defaultConfigFile
+  True @=? testSubComment "ghc-pkg-location" defaultConfigFile
+  True @=? testSubComment "ghcjs-location" defaultConfigFile
+  True @=? testSubComment "ghcjs-pkg-location" defaultConfigFile
+  True @=? testSubComment "greencard-location" defaultConfigFile
+  True @=? testSubComment "haddock-location" defaultConfigFile
+  True @=? testSubComment "happy-location" defaultConfigFile
+  True @=? testSubComment "haskell-suite-location" defaultConfigFile
+  True @=? testSubComment "haskell-suite-pkg-location" defaultConfigFile
+  True @=? testSubComment "hmake-location" defaultConfigFile
+  True @=? testSubComment "hpc-location" defaultConfigFile
+  True @=? testSubComment "hscolour-location" defaultConfigFile
+  True @=? testSubComment "jhc-location" defaultConfigFile
+  True @=? testSubComment "ld-location" defaultConfigFile
+  True @=? testSubComment "pkg-config-location" defaultConfigFile
+  True @=? testSubComment "runghc-location" defaultConfigFile
+  True @=? testSubComment "strip-location" defaultConfigFile
+  True @=? testSubComment "tar-location" defaultConfigFile
+  True @=? testSubComment "uhc-location" defaultConfigFile
+  True @=? testSubComment "alex-options" defaultConfigFile
+  True @=? testSubComment "ar-options" defaultConfigFile
+  True @=? testSubComment "cpphs-options" defaultConfigFile
+  True @=? testSubComment "doctest-options" defaultConfigFile
+  True @=? testSubComment "gcc-options" defaultConfigFile
+  True @=? testSubComment "ghc-options" defaultConfigFile
+  True @=? testSubComment "ghc-pkg-options" defaultConfigFile
+  True @=? testSubComment "ghcjs-options" defaultConfigFile
+  True @=? testSubComment "ghcjs-pkg-options" defaultConfigFile
+  True @=? testSubComment "greencard-options" defaultConfigFile
+  True @=? testSubComment "haddock-options" defaultConfigFile
+  True @=? testSubComment "happy-options" defaultConfigFile
+  True @=? testSubComment "haskell-suite-options" defaultConfigFile
+  True @=? testSubComment "haskell-suite-pkg-options" defaultConfigFile
+  True @=? testSubComment "hmake-options" defaultConfigFile
+  True @=? testSubComment "hpc-options" defaultConfigFile
+  True @=? testSubComment "hscolour-options" defaultConfigFile
+  True @=? testSubComment "jhc-options" defaultConfigFile
+  True @=? testSubComment "ld-options" defaultConfigFile
+  True @=? testSubComment "pkg-config-options" defaultConfigFile
+  True @=? testSubComment "runghc-options" defaultConfigFile
+  True @=? testSubComment "strip-options" defaultConfigFile
+  True @=? testSubComment "tar-options" defaultConfigFile
+  True @=? testSubComment "uhc-options" defaultConfigFile
+
+  True @=? testSubCommentAssigned "secure" defaultConfigFile
+  True @=? testSubCommentAssigned "key-threshold" defaultConfigFile
+  True @=? testSubCommentAssigned "keep-temp-files" defaultConfigFile
+  True @=? testSubCommentAssigned "hoogle" defaultConfigFile
+  True @=? testSubCommentAssigned "html" defaultConfigFile
+  True @=? testSubCommentAssigned "executables" defaultConfigFile
+  True @=? testSubCommentAssigned "tests" defaultConfigFile
+  True @=? testSubCommentAssigned "benchmarks" defaultConfigFile
+  True @=? testSubCommentAssigned "foreign-libraries" defaultConfigFile
+  True @=? testSubCommentAssigned "internal" defaultConfigFile
+  True @=? testSubCommentAssigned "hyperlink-source" defaultConfigFile
+  True @=? testSubCommentAssigned "quickjump" defaultConfigFile
+  True @=? testSubCommentAssigned "interactive" defaultConfigFile
+  True @=? testSubCommentAssigned "quiet" defaultConfigFile
+  True @=? testSubCommentAssigned "no-comments" defaultConfigFile
+  True @=? testSubCommentAssigned "minimal" defaultConfigFile
+  True @=? testSubCommentAssigned "cabal-version" defaultConfigFile
+  True @=? testSubCommentAssigned "simple" defaultConfigFile
+  True @=? testSubCommentAssigned "language" defaultConfigFile
+  True @=? testSubCommentAssigned "application-dir" defaultConfigFile
+  True @=? testSubCommentAssigned "source-dir" defaultConfigFile
+  True @=? testSubCommentAssigned "prefix" defaultConfigFile
+  True @=? testSubCommentAssigned "bindir" defaultConfigFile
+  True @=? testSubCommentAssigned "libdir" defaultConfigFile
+  True @=? testSubCommentAssigned "libsubdir" defaultConfigFile
+  True @=? testSubCommentAssigned "dynlibdir" defaultConfigFile
+  True @=? testSubCommentAssigned "libexecdir" defaultConfigFile
+  True @=? testSubCommentAssigned "libexecsubdir" defaultConfigFile
+  True @=? testSubCommentAssigned "datadir" defaultConfigFile
+  True @=? testSubCommentAssigned "datasubdir" defaultConfigFile
+  True @=? testSubCommentAssigned "docdir" defaultConfigFile
+  True @=? testSubCommentAssigned "htmldir" defaultConfigFile
+  True @=? testSubCommentAssigned "haddockdir" defaultConfigFile
+  True @=? testSubCommentAssigned "sysconfdir" defaultConfigFile
+  True @=? testSubCommentAssigned "prefix" defaultConfigFile
+  True @=? testSubCommentAssigned "bindir" defaultConfigFile
+  True @=? testSubCommentAssigned "libdir" defaultConfigFile
+  True @=? testSubCommentAssigned "libsubdir" defaultConfigFile
+  True @=? testSubCommentAssigned "dynlibdir" defaultConfigFile
+  True @=? testSubCommentAssigned "libexecdir" defaultConfigFile
+  True @=? testSubCommentAssigned "libexecsubdir" defaultConfigFile
+  True @=? testSubCommentAssigned "datadir" defaultConfigFile
+  True @=? testSubCommentAssigned "datasubdir" defaultConfigFile
+  True @=? testSubCommentAssigned "docdir" defaultConfigFile
+  True @=? testSubCommentAssigned "htmldir" defaultConfigFile
+  True @=? testSubCommentAssigned "haddockdir" defaultConfigFile
+  True @=? testSubCommentAssigned "sysconfdir" defaultConfigFile
+  where
+    testComment :: String -> String -> Bool
+    testComment configOption = isInfixOf ("\n-- " ++ configOption ++ ":\n")
+    testSubComment :: String -> String -> Bool
+    testSubComment configOption = isInfixOf ("\n  -- " ++ configOption ++ ":\n")
+    testSubCommentAssigned :: String -> String -> Bool
+    testSubCommentAssigned configOption = isInfixOf ("\n  -- " ++ configOption ++ ": ")
+    testAssigned :: String -> String -> Bool
+    testAssigned configOption = isInfixOf ("\n" ++ configOption ++ ": ")
 
 testIgnoreProjectFlag :: Assertion
 testIgnoreProjectFlag = do
