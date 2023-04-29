@@ -142,6 +142,7 @@ haddock
   -- index-location:
   -- base-url:
   -- lib:
+  -- output-dir:
 
 init
   -- interactive: False

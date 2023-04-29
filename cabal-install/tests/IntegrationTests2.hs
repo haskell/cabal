@@ -1941,7 +1941,7 @@ testNixFlags = do
   Nothing @=? (fromFlag . globalNix . fromJust $ nixDefaultFlags)
 
   -- Config file options
-  defaultConfig <- createDefaultConfigFile verbosity [] (basedir </> "nix-config/default-config")
+  defaultConfig <- createDefaultConfigFile verbosity [] (basedir </> "config/default-config")
   trueConfig <- loadConfig verbosity (Flag (basedir </> "nix-config/nix-true"))
   falseConfig <- loadConfig verbosity (Flag (basedir </> "nix-config/nix-false"))
 
@@ -1949,7 +1949,7 @@ testNixFlags = do
   Just True @=? (fromFlag . globalNix . savedGlobalFlags $ trueConfig)
   Just False @=? (fromFlag . globalNix . savedGlobalFlags $ falseConfig)
 
-  defaultConfigFile <- readFile (basedir </> "nix-config/default-config")
+  defaultConfigFile <- readFile (basedir </> "config/default-config")
   True @=? isInfixOf "-- nix:\n" defaultConfigFile
 
   where
@@ -1962,8 +1962,8 @@ testNixFlags = do
 
 testDefaultFlags :: Assertion
 testDefaultFlags = do
-  _ <- createDefaultConfigFile verbosity [] (basedir </> "nix-config/default-config")
-  defaultConfigFile <- readFile (basedir </> "nix-config/default-config")
+  _ <- createDefaultConfigFile verbosity [] (basedir </> "config/default-config")
+  defaultConfigFile <- readFile (basedir </> "config/default-config")
 
   True @=? testComment "default-user-config" defaultConfigFile
   True @=? testComment "cabal-file" defaultConfigFile
