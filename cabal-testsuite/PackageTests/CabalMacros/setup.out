@@ -1,8 +1,8 @@
 # Setup configure
 Configuring CabalMacros-0.1...
 # Setup build
-Preprocessing library for CabalMacros-0.1..
-Building library for CabalMacros-0.1..
+Preprocessing library for CabalMacros-0.1...
+Building library for CabalMacros-0.1...
 # cabal_macros.h
 #ifndef CURRENT_PACKAGE_KEY
 #define CURRENT_PACKAGE_KEY "CabalMacros-0.1"

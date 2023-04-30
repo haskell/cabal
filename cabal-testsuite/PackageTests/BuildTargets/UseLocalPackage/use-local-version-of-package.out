@@ -6,8 +6,8 @@ Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
  - pkg-1.0 (exe:my-exe) (first run)
 Configuring pkg-1.0...
-Preprocessing executable 'my-exe' for pkg-1.0..
-Building executable 'my-exe' for pkg-1.0..
+Preprocessing executable 'my-exe' for pkg-1.0...
+Building executable 'my-exe' for pkg-1.0...
 # pkg my-exe
 local pkg-1.0
 # cabal v2-build

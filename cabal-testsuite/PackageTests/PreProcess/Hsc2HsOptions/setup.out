@@ -1,8 +1,8 @@
 # Setup configure
 Configuring Hsc2HsOptions-0.1...
 # Setup build
-Preprocessing executable 'my-executable' for Hsc2HsOptions-0.1..
-Building executable 'my-executable' for Hsc2HsOptions-0.1..
+Preprocessing executable 'my-executable' for Hsc2HsOptions-0.1...
+Building executable 'my-executable' for Hsc2HsOptions-0.1...
 # my-executable
 hsc2hs value: 42
 ghc value: 0
