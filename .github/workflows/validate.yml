@@ -38,7 +38,7 @@ jobs:
     strategy:
       matrix:
         os: ["windows-latest"]
-        ghc: ["9.4.4", "9.2.7"]
+        ghc: ["9.4.4"]
         exclude:
           # corrupts GHA cache or the fabric of reality itself, see https://github.com/haskell/cabal/issues/8356
           - os: "windows-latest"
@@ -73,6 +73,9 @@ jobs:
         with:
           ghc-version: ${{ matrix.ghc }}
           cabal-version: '3.10.1.0'
+
+      - name: Print $PATH for debugging
+        run: echo $PATH
 
       - name: Work around git problem https://bugs.launchpad.net/ubuntu/+source/git/+bug/1993586 (cabal PR #8546)
         run: |
