@@ -357,10 +357,7 @@ installAction flags@NixStyleFlags { extraFlags = clientInstallFlags', .. } targe
   envFile <- getEnvFile clientInstallFlags platform compilerVersion
   existingEnvEntries <-
     getExistingEnvEntries verbosity compilerFlavor supportsPkgEnvFiles envFile
-  packageDbs' <- getPackageDbStack compilerId projectConfigStoreDir projectConfigLogsDir
-  let validDb (SpecificPackageDB fp) = doesFileExist fp
-      validDb _ = pure True
-  packageDbs <- filterM validDb packageDbs'
+  packageDbs <- getPackageDbStack compilerId projectConfigStoreDir projectConfigLogsDir
   installedIndex <- getInstalledPackages verbosity compiler packageDbs progDb
 
   let
@@ -699,9 +696,14 @@ installLibraries
   -> [GhcEnvironmentFileEntry]
   -> IO ()
 installLibraries verbosity buildCtx installedIndex compiler
-                 packageDbs envFile envEntries = do
+                 packageDbs' envFile envEntries = do
   if supportsPkgEnvFiles $ getImplInfo compiler
     then do
+      let validDb (SpecificPackageDB fp) = doesPathExist fp
+          validDb _ = pure True
+      -- if a user "installs" a global package and no existing cabal db exists, none will be created.
+      -- this ensures we don't add the "phantom" path to the file.
+      packageDbs <- filterM validDb packageDbs'
       let
         getLatest = (=<<) (maybeToList . safeHead . snd) . take 1 . sortBy (comparing (Down . fst))
                   . PI.lookupPackageName installedIndex
