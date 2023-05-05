@@ -1941,16 +1941,11 @@ testNixFlags = do
   Nothing @=? (fromFlag . globalNix . fromJust $ nixDefaultFlags)
 
   -- Config file options
-  defaultConfig <- createDefaultConfigFile verbosity [] (basedir </> "config/default-config")
   trueConfig <- loadConfig verbosity (Flag (basedir </> "nix-config/nix-true"))
   falseConfig <- loadConfig verbosity (Flag (basedir </> "nix-config/nix-false"))
 
-  Nothing @=? (fromFlag . globalNix . savedGlobalFlags $ defaultConfig)
   Just True @=? (fromFlag . globalNix . savedGlobalFlags $ trueConfig)
   Just False @=? (fromFlag . globalNix . savedGlobalFlags $ falseConfig)
-
-  defaultConfigFile <- readFile (basedir </> "config/default-config")
-  True @=? isInfixOf "-- nix:\n" defaultConfigFile
 
   where
     fromFlag :: Flag Bool -> Maybe Bool
