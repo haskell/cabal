@@ -725,10 +725,10 @@ installLibraries verbosity buildCtx installedIndex compiler
         ++ "supported on GHC 8.0+ only)"
 
 -- See ticket #8894. This is safe to include any nonreinstallable boot pkg,
--- but the particular package users will always expect to be in scope without specific installstion
+-- but the particular package users will always expect to be in scope without specific installation
 -- is base, so that they can access prelude, regardles of if they specifically asked for it.
 globalPackages :: [PackageName]
-globalPackages = mkPackageName <$> [ "base" ] 
+globalPackages = mkPackageName <$> [ "base" ]
 
 warnIfNoExes :: Verbosity -> ProjectBuildContext -> IO ()
 warnIfNoExes verbosity buildCtx =
