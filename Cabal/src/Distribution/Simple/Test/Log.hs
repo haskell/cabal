@@ -149,9 +149,12 @@ summarizeTest :: Verbosity -> TestShowDetails -> TestLogs -> IO ()
 summarizeTest _ _ (GroupLogs {}) = return ()
 summarizeTest verbosity details t =
     when shouldPrint $ notice verbosity $ "Test case " ++ testName t
-        ++ ": " ++ show (testResult t)
+        ++ ": " ++ result (testResult t)
     where shouldPrint = (details > Never) && (notPassed || details == Always)
           notPassed = testResult t /= Pass
+          result Pass = "Pass"
+          result (Fail msg) = "Fail "++msg
+          result (Error msg) = "Error "++msg
 
 -- | Print a summary of the test suite's results on the console, suppressing
 -- output for certain verbosity or test filter levels.
