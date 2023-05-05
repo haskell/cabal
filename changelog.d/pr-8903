@@ -1,0 +1,9 @@
+synopsis: add base to cabal install --lib default env file
+packages: cabal-install
+prs: #8903
+
+description: {
+
+This adds base by default to the env file created by `cabal install --lib`. Further it ensures that packagedbs have been created before adding them to the env file.
+
+}
