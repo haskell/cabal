@@ -660,6 +660,7 @@ instance Arbitrary PackageConfig where
         <*> arbitrary
         <*> arbitraryFlag arbitraryShortToken
         <*> arbitraryFlag arbitraryShortToken
+        <*> arbitraryFlag arbitraryShortToken
         <*> arbitrary
         <*> arbitrary
         <*> arbitrary
@@ -727,6 +728,7 @@ instance Arbitrary PackageConfig where
                          , packageConfigHaddockIndex = x54
                          , packageConfigHaddockBaseUrl = x55
                          , packageConfigHaddockLib = x56
+                         , packageConfigHaddockOutputDir = x57
                          , packageConfigTestHumanLog = x44
                          , packageConfigTestMachineLog = x45
                          , packageConfigTestShowDetails = x46
@@ -787,6 +789,7 @@ instance Arbitrary PackageConfig where
                       , packageConfigHaddockIndex = x54'
                       , packageConfigHaddockBaseUrl = x55'
                       , packageConfigHaddockLib = x56'
+                      , packageConfigHaddockOutputDir = x57'
                       , packageConfigTestHumanLog = x44'
                       , packageConfigTestMachineLog = x45'
                       , packageConfigTestShowDetails = x46'
@@ -805,7 +808,7 @@ instance Arbitrary PackageConfig where
           (x35', x36', x37', x38', x43', x39'),
           (x40', x41'),
           (x44', x45', x46', x47', x48', x49', x51', x52', x54', x55'),
-          x56'))
+          x56', x57'))
           <- shrink
              (((preShrink_Paths x00, preShrink_Args x01, x02, x03, x04),
                 (x05, x42, x06, x50, x07, x08, x09),
@@ -819,7 +822,7 @@ instance Arbitrary PackageConfig where
                  (x30, x31, x32, (x33, x33_1), x34),
                  (x35, x36, fmap NonEmpty x37, x38, x43, fmap NonEmpty x39),
                  (x40, x41),
-                 (x44, x45, x46, x47, x48, x49, x51, x52, x54, x55), x56))
+                 (x44, x45, x46, x47, x48, x49, x51, x52, x54, x55), x56, x57))
       ]
       where
         preShrink_Paths  = Map.map NonEmpty

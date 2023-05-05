@@ -1,0 +1,3 @@
+module Lib where
+
+bar = ()

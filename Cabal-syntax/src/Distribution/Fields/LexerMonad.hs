@@ -27,6 +27,7 @@ module Distribution.Fields.LexerMonad (
     LexWarning(..),
     LexWarningType(..),
     addWarning,
+    addWarningAt,
     toPWarnings,
 
   ) where
@@ -152,4 +153,9 @@ setStartCode c = Lex $ \s -> LexResult s{ curCode = c } ()
 -- | Add warning at the current position
 addWarning :: LexWarningType -> Lex ()
 addWarning wt = Lex $ \s@LexState{ curPos = pos, warnings = ws  } ->
+    LexResult s{ warnings = LexWarning wt pos : ws } ()
+
+-- | Add warning at specific position
+addWarningAt :: Position -> LexWarningType -> Lex ()
+addWarningAt pos wt = Lex $ \s@LexState{ warnings = ws  } ->
     LexResult s{ warnings = LexWarning wt pos : ws } ()

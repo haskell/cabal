@@ -223,7 +223,8 @@ establishProjectBaseContextWithRoot
     -> CurrentCommand
     -> IO ProjectBaseContext
 establishProjectBaseContextWithRoot verbosity cliConfig projectRoot currentCommand = do
-    let distDirLayout  = defaultDistDirLayout projectRoot mdistDirectory
+    let haddockOutputDir = flagToMaybe (packageConfigHaddockOutputDir (projectConfigLocalPackages cliConfig))
+    let distDirLayout = defaultDistDirLayout projectRoot mdistDirectory haddockOutputDir
 
     httpTransport <- configureTransport verbosity
                      (fromNubList . projectConfigProgPathExtra $ projectConfigShared cliConfig)
@@ -1359,7 +1360,7 @@ establishDummyProjectBaseContext verbosity projectConfig distDirLayout localPack
 
 establishDummyDistDirLayout :: Verbosity -> ProjectConfig -> FilePath -> IO DistDirLayout
 establishDummyDistDirLayout verbosity cliConfig tmpDir = do
-    let distDirLayout = defaultDistDirLayout projectRoot mdistDirectory
+    let distDirLayout = defaultDistDirLayout projectRoot mdistDirectory Nothing
 
     -- Create the dist directories
     createDirectoryIfMissingVerbose verbosity True $ distDirectory distDirLayout

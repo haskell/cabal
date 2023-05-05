@@ -2,4 +2,4 @@ import Test.Cabal.Prelude
 
 -- Deprecated extension.
 main = cabalTest $
-  fails $ cabal "check" []
+  cabal "check" []

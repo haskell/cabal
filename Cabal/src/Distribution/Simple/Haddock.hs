@@ -243,7 +243,12 @@ haddock pkg_descr lbi suffixes flags' = do
           fromFlagOrDefault ForDevelopment (haddockForHackage flags')
 
     libdirArgs <- getGhcLibDir  verbosity lbi
-    let commonArgs = mconcat
+    -- The haddock-output-dir flag overrides any other documentation placement concerns.
+    -- The point is to give the user full freedom over the location if they need it.
+    let overrideWithOutputDir args = case haddockOutputDir flags of
+          NoFlag -> args
+          Flag dir -> args { argOutputDir = Dir dir }
+    let commonArgs = overrideWithOutputDir $ mconcat
             [ libdirArgs
             , fromFlags (haddockTemplateEnv lbi (packageId pkg_descr)) flags
             , fromPackageDescription haddockTarget pkg_descr ]

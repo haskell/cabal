@@ -1665,7 +1665,7 @@ configureProject testdir cliConfig = do
     let projectRoot
           | isexplict = ProjectRootExplicit projectRootDir defaultProjectFile
           | otherwise = ProjectRootImplicit projectRootDir
-        distDirLayout = defaultDistDirLayout projectRoot Nothing
+        distDirLayout = defaultDistDirLayout projectRoot Nothing Nothing
 
     -- Clear state between test runs. The state remains if the previous run
     -- ended in an exception (as we leave the files to help with debugging).
@@ -1758,7 +1758,7 @@ cleanProject testdir = do
     when alreadyExists $ removePathForcibly distDir
   where
     projectRoot    = ProjectRootImplicit (basedir </> testdir)
-    distDirLayout  = defaultDistDirLayout projectRoot Nothing
+    distDirLayout  = defaultDistDirLayout projectRoot Nothing Nothing
     distDir        = distDirectory distDirLayout
 
 
