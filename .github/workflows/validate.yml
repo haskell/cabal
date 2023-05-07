@@ -188,8 +188,8 @@ jobs:
     # the required old ghcs using the `-dyn` flavour
     # are not installable from ppa/hvr in newer ones
     # see https://github.com/haskell/cabal/issues/8011
-    #container:
-    #  image: phadej/ghc:8.8.4-xenial
+    container:
+      image: phadej/ghc:8.8.4-xenial
 
     strategy:
       matrix:
