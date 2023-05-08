@@ -106,7 +106,7 @@ import Distribution.Simple.Configure
          ( configCompilerEx )
 import Distribution.Simple.Compiler
          ( Compiler(..), CompilerId(..), CompilerFlavor(..)
-         , PackageDBStack )
+         , PackageDBStack, PackageDB(..) )
 import Distribution.Simple.GHC
          ( ghcPlatformAndVersionString, getGhcAppDir
          , GhcImplInfo(..), getImplInfo
@@ -123,11 +123,13 @@ import Distribution.Verbosity
 import Distribution.Simple.Utils
          ( wrapText, die', notice, warn
          , withTempDirectory, createDirectoryIfMissingVerbose
-         , ordNub )
+         , ordNub, safeHead )
 import Distribution.Utils.Generic
          ( writeFileAtomic )
 
 import qualified Data.ByteString.Lazy.Char8 as BS
+import Data.Ord
+         ( Down(..) )
 import qualified Data.Map as Map
 import qualified Data.Set as S
 import qualified Data.List.NonEmpty as NE
@@ -424,7 +426,7 @@ installAction flags@NixStyleFlags { extraFlags = clientInstallFlags', .. } targe
     unless dryRun $
       if installLibs
       then installLibraries verbosity
-           buildCtx compiler packageDbs envFile nonGlobalEnvEntries'
+           buildCtx installedIndex compiler packageDbs envFile nonGlobalEnvEntries'
       else installExes verbosity
            baseCtx buildCtx platform compiler configFlags clientInstallFlags
   where
@@ -687,20 +689,31 @@ installExes verbosity baseCtx buildCtx platform compiler
 installLibraries
   :: Verbosity
   -> ProjectBuildContext
+  -> PI.PackageIndex InstalledPackageInfo
   -> Compiler
   -> PackageDBStack
   -> FilePath -- ^ Environment file
   -> [GhcEnvironmentFileEntry]
   -> IO ()
-installLibraries verbosity buildCtx compiler
-                 packageDbs envFile envEntries = do
+installLibraries verbosity buildCtx installedIndex compiler
+                 packageDbs' envFile envEntries = do
   if supportsPkgEnvFiles $ getImplInfo compiler
     then do
+      let validDb (SpecificPackageDB fp) = doesPathExist fp
+          validDb _ = pure True
+      -- if a user "installs" a global package and no existing cabal db exists, none will be created.
+      -- this ensures we don't add the "phantom" path to the file.
+      packageDbs <- filterM validDb packageDbs'
       let
+        getLatest = (=<<) (maybeToList . safeHead . snd) . take 1 . sortBy (comparing (Down . fst))
+                  . PI.lookupPackageName installedIndex
+        globalLatest = concat (getLatest <$> globalPackages)
+        globalEntries = GhcEnvFilePackageId . installedUnitId <$> globalLatest
         baseEntries =
           GhcEnvFileClearPackageDbStack : fmap GhcEnvFilePackageDb packageDbs
         pkgEntries = ordNub $
-             envEntries
+             globalEntries
+          ++ envEntries
           ++ entriesForLibraryComponents (targetsMap buildCtx)
         contents' = renderGhcEnvironmentFile (baseEntries ++ pkgEntries)
       createDirectoryIfMissing True (takeDirectory envFile)
@@ -710,6 +723,12 @@ installLibraries verbosity buildCtx compiler
           "The current compiler doesn't support safely installing libraries, "
         ++ "so only executables will be available. (Library installation is "
         ++ "supported on GHC 8.0+ only)"
+
+-- See ticket #8894. This is safe to include any nonreinstallable boot pkg,
+-- but the particular package users will always expect to be in scope without specific installation
+-- is base, so that they can access prelude, regardles of if they specifically asked for it.
+globalPackages :: [PackageName]
+globalPackages = mkPackageName <$> [ "base" ]
 
 warnIfNoExes :: Verbosity -> ProjectBuildContext -> IO ()
 warnIfNoExes verbosity buildCtx =
