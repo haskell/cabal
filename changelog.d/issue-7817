@@ -1,0 +1,15 @@
+synopsis: Make --(test-)show-details=direct the default
+packages: Cabal cabal-install
+prs: #8942
+
+description: {
+
+This option leaves it up to the testing framework to decide what and how to print out,
+potentially leading to a prettier output. For example, most of the testing frameworks
+use colors, which wouldn't be seen with any other option.
+
+This comes with a tradeoff, though: Cabal will not create a log file with this option.
+If you prefer a log file, consider setting `--test-show-details=streaming` (or something
+else) manually.
+
+}
