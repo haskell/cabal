@@ -57,6 +57,7 @@ import Distribution.Utils.Path
 
 import qualified Distribution.Compat.CharParsing as P
 
+import Control.Arrow ( (&&&) )
 import Control.Monad ( msum )
 import Data.List ( stripPrefix, groupBy )
 import qualified Data.List.NonEmpty as NE
@@ -320,7 +321,8 @@ resolveBuildTarget pkg userTarget fexists =
   where
     classifyMatchErrors errs
       | Just expected' <- NE.nonEmpty expected
-                            = let (things, got:|_) = NE.unzip expected' in
+                            = let unzip' = fmap fst &&& fmap snd
+                                  (things, got:|_) = unzip' expected' in
                               BuildTargetExpected userTarget (NE.toList things) got
       | not (null nosuch)   = BuildTargetNoSuch   userTarget nosuch
       | otherwise = error $ "resolveBuildTarget: internal error in matching"
