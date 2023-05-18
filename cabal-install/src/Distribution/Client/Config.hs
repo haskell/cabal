@@ -699,7 +699,6 @@ initialSavedConfig :: IO SavedConfig
 initialSavedConfig = do
   cacheDir <- defaultCacheDir
   logsDir <- defaultLogsDir
-  extraPath <- defaultExtraPath
   installPath <- defaultInstallPath
   return
     mempty
@@ -707,10 +706,6 @@ initialSavedConfig = do
           mempty
             { globalCacheDir = toFlag cacheDir
             , globalRemoteRepos = toNubList [defaultRemoteRepo]
-            }
-      , savedConfigureFlags =
-          mempty
-            { configProgramPathExtra = toNubList extraPath
             }
       , savedInstallFlags =
           mempty
@@ -809,16 +804,6 @@ defaultLogsDir =
 defaultReportsDir :: IO FilePath
 defaultReportsDir =
   getDefaultDir XdgCache "reports"
-
-defaultExtraPath :: IO [FilePath]
-defaultExtraPath = do
-  mDir <- maybeGetCabalDir
-  case mDir of
-    Just dir ->
-      return [dir </> "bin"]
-    Nothing -> do
-      dir <- getHomeDirectory
-      return [dir </> ".local" </> "bin"]
 
 defaultInstallPath :: IO FilePath
 defaultInstallPath = do
