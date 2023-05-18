@@ -1385,7 +1385,8 @@ checkGhcOptions fieldName getOptions pkg =
   , checkFlags ["-prof"] $
       PackageBuildWarning (OptProf fieldName)
 
-  , unlessScript . checkFlags ["-o"] $
+  , checkFlags ["-o"] $
+  -- , unlessScript . checkFlags ["-o"] $
       PackageBuildWarning (OptO fieldName)
 
   , checkFlags ["-hide-package"] $
