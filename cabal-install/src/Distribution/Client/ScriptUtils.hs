@@ -316,7 +316,7 @@ scriptDistDirParams scriptPath ctx compiler platform = DistDirParams
       optimization = (packageConfigOptimization . projectConfigLocalPackages . projectConfig) ctx
 
 setExePath :: FilePath -> [String] -> [String]
-setExePath exePath options
+setExePath _exePath options
   -- | "-o" `notElem` options = "-o" : exePath : options
   | "-o" `notElem` options = options
   | otherwise              = options
