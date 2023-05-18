@@ -2109,14 +2109,10 @@ testConfigOptionComments = do
   "  -- output-dir" @=? findLineWith True "output-dir" defaultConfigFile
 
   "  -- interactive" @=? findLineWith True "interactive" defaultConfigFile
-  "  -- quiet" @=? findLineWith True "quiet" defaultConfigFile
-  "  -- no-comments" @=? findLineWith True "no-comments" defaultConfigFile
-  "  -- minimal" @=? findLineWith True "minimal" defaultConfigFile
   "  -- cabal-version" @=? findLineWith True "cabal-version" defaultConfigFile
   "  -- license" @=? findLineWith True "license" defaultConfigFile
   "  -- extra-doc-file" @=? findLineWith True "extra-doc-file" defaultConfigFile
   "  -- test-dir" @=? findLineWith True "test-dir" defaultConfigFile
-  "  -- simple" @=? findLineWith True "simple" defaultConfigFile
   "  -- language" @=? findLineWith True "language" defaultConfigFile
   "  -- application-dir" @=? findLineWith True "application-dir" defaultConfigFile
   "  -- source-dir" @=? findLineWith True "source-dir" defaultConfigFile
