@@ -1292,8 +1292,14 @@ the package.
 
     Determines if the results of individual test cases are shown on the
     terminal. May be ``always`` (always show), ``never`` (never show),
-    ``failures`` (show only failed results), or ``streaming`` (show all
-    results in real time).
+    ``failures`` (show only failed results), ``streaming`` (show all
+    results in real time) and ``direct`` (same as ``streaming`` but no log
+    file and possibly prettier).
+
+    Default value is ``direct``: it leaves test output untouched and does not
+    produce a log. This allows for colored output, which is popular with testing
+    frameworks. (On the other hand, ``streaming`` creates a log but looses
+    coloring.)
 
 .. option:: --test-options=options
 

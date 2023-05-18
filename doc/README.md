@@ -11,10 +11,15 @@ http://cabal.readthedocs.io/
 
 ### How to build it
 
-Building the documentation requires Python 3 be installed
-* `> make users-guide`
-* Python on Mac OS X dislikes `LC_CTYPE=UTF-8`, unset the env var in
-terminal preferences and instead set `LC_ALL=en_US.UTF-8` or something
+Building the documentation requires Python 3 and PIP. From the root of cabal
+repository run:
+
+``` console
+make users-guide
+```
+
+Note: Python on Mac OS X dislikes `LC_CTYPE=UTF-8`, so unset the variable
+and instead set `LC_ALL=en_US.UTF-8`.
 
 ### Gitpod workflow
 
