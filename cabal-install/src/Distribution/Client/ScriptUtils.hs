@@ -317,7 +317,8 @@ scriptDistDirParams scriptPath ctx compiler platform = DistDirParams
 
 setExePath :: FilePath -> [String] -> [String]
 setExePath exePath options
-  | "-o" `notElem` options = "-o" : exePath : options
+  -- | "-o" `notElem` options = "-o" : exePath : options
+  | "-o" `notElem` options = options
   | otherwise              = options
 
 -- | Add the 'SourcePackage' to the context and use it to write a .cabal file.
