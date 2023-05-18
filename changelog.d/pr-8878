@@ -1,0 +1,9 @@
+synopsis: Fix default Nix configuration option in generated ~/.cabal/config file
+packages: cabal-install
+prs: #8878
+
+description: {
+
+Fixes the default for ~/.cabal/config file. The nix option should now be commented out by default.
+
+}

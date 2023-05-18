@@ -50,7 +50,7 @@ import Distribution.PackageDescription
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import Distribution.Simple.Setup (toFlag, HaddockFlags(..), defaultHaddockFlags)
 import Distribution.Client.Setup (globalCommand)
-import Distribution.Client.Config (loadConfig, SavedConfig(savedGlobalFlags))
+import Distribution.Client.Config (loadConfig, SavedConfig(savedGlobalFlags), createDefaultConfigFile)
 import Distribution.Simple.Compiler
 import Distribution.Simple.Command
 import qualified Distribution.Simple.Flag as Flag
@@ -62,6 +62,8 @@ import Distribution.Utils.Path
 
 import qualified Data.Map as Map
 import qualified Data.Set as Set
+import Data.List (isInfixOf)
+
 import Control.Monad
 import Control.Concurrent (threadDelay)
 import Control.Exception hiding (assert)
@@ -73,6 +75,7 @@ import Test.Tasty
 import Test.Tasty.HUnit
 import Test.Tasty.Options
 import Data.Tagged (Tagged(..))
+import qualified Data.List as L
 
 import qualified Data.ByteString as BS
 import Distribution.Client.GlobalFlags (GlobalFlags, globalNix)
@@ -147,6 +150,7 @@ tests config =
   , testGroup "Flag tests" $
     [
       testCase "Test Nix Flag" testNixFlags,
+      testCase "Test Config options for commented options" testConfigOptionComments,
       testCase "Test Ignore Project Flag" testIgnoreProjectFlag
     ]
   ]
@@ -1938,13 +1942,12 @@ testNixFlags = do
   Nothing @=? (fromFlag . globalNix . fromJust $ nixDefaultFlags)
 
   -- Config file options
-  defaultConfig <- loadConfig verbosity (Flag (basedir </> "nix-config/default-config"))
   trueConfig <- loadConfig verbosity (Flag (basedir </> "nix-config/nix-true"))
   falseConfig <- loadConfig verbosity (Flag (basedir </> "nix-config/nix-false"))
 
-  Nothing @=? (fromFlag . globalNix . savedGlobalFlags $ defaultConfig)
   Just True @=? (fromFlag . globalNix . savedGlobalFlags $ trueConfig)
   Just False @=? (fromFlag . globalNix . savedGlobalFlags $ falseConfig)
+
   where
     fromFlag :: Flag Bool -> Maybe Bool
     fromFlag (Flag x) = Just x
@@ -1952,6 +1955,230 @@ testNixFlags = do
     getFlags :: CommandUI GlobalFlags -> CommandParse (GlobalFlags -> GlobalFlags, [String]) -> Maybe GlobalFlags
     getFlags cui (CommandReadyToGo (mkflags, _)) = Just . mkflags . commandDefaultFlags $ cui
     getFlags _ _ = Nothing
+
+-- Tests whether config options are commented or not
+testConfigOptionComments :: Assertion
+testConfigOptionComments = do
+  _ <- createDefaultConfigFile verbosity [] (basedir </> "config/default-config")
+  defaultConfigFile <- readFile (basedir </> "config/default-config")
+
+  "  url" @=? findLineWith False "url" defaultConfigFile
+  "  -- secure" @=? findLineWith True "secure" defaultConfigFile
+  "  -- root-keys" @=? findLineWith True "root-keys" defaultConfigFile
+  "  -- key-threshold" @=? findLineWith True "key-threshold" defaultConfigFile
+
+  "-- ignore-expiry" @=? findLineWith True "ignore-expiry" defaultConfigFile
+  "-- http-transport" @=? findLineWith True "http-transport" defaultConfigFile
+  "-- nix" @=? findLineWith True "nix" defaultConfigFile
+  "-- store-dir" @=? findLineWith True "store-dir" defaultConfigFile
+  "-- active-repositories" @=? findLineWith True "active-repositories" defaultConfigFile
+  "-- local-no-index-repo" @=? findLineWith True "local-no-index-repo" defaultConfigFile
+  "remote-repo-cache"  @=? findLineWith False "remote-repo-cache" defaultConfigFile
+  "-- logs-dir"  @=? findLineWith True "logs-dir" defaultConfigFile
+  "-- default-user-config" @=? findLineWith True "default-user-config" defaultConfigFile
+  "-- verbose" @=? findLineWith True "verbose" defaultConfigFile
+  "-- compiler" @=? findLineWith True "compiler" defaultConfigFile
+  "-- cabal-file" @=? findLineWith True "cabal-file" defaultConfigFile
+  "-- with-compiler" @=? findLineWith True "with-compiler" defaultConfigFile
+  "-- with-hc-pkg" @=? findLineWith True "with-hc-pkg" defaultConfigFile
+  "-- program-prefix" @=? findLineWith True "program-prefix" defaultConfigFile
+  "-- program-suffix" @=? findLineWith True "program-suffix" defaultConfigFile
+  "-- library-vanilla" @=? findLineWith True "library-vanilla" defaultConfigFile
+  "-- library-profiling" @=? findLineWith True "library-profiling" defaultConfigFile
+  "-- shared" @=? findLineWith True "shared" defaultConfigFile
+  "-- static" @=? findLineWith True "static" defaultConfigFile
+  "-- executable-dynamic" @=? findLineWith True "executable-dynamic" defaultConfigFile
+  "-- executable-static" @=? findLineWith True "executable-static" defaultConfigFile
+  "-- profiling" @=? findLineWith True "profiling" defaultConfigFile
+  "-- executable-profiling" @=? findLineWith True "executable-profiling" defaultConfigFile
+  "-- profiling-detail" @=? findLineWith True "profiling-detail" defaultConfigFile
+  "-- library-profiling-detail" @=? findLineWith True "library-profiling-detail" defaultConfigFile
+  "-- optimization" @=? findLineWith True "optimization" defaultConfigFile
+  "-- debug-info" @=? findLineWith True "debug-info" defaultConfigFile
+  "-- build-info" @=? findLineWith True "build-info" defaultConfigFile
+  "-- library-for-ghci" @=? findLineWith True "library-for-ghci" defaultConfigFile
+  "-- split-sections" @=? findLineWith True "split-sections" defaultConfigFile
+  "-- split-objs" @=? findLineWith True "split-objs" defaultConfigFile
+  "-- executable-stripping" @=? findLineWith True "executable-stripping" defaultConfigFile
+  "-- library-stripping" @=? findLineWith True "library-stripping" defaultConfigFile
+  "-- configure-option" @=? findLineWith True "configure-option" defaultConfigFile
+  "-- user-install"  @=? findLineWith True "user-install" defaultConfigFile
+  "-- package-db"  @=? findLineWith True "package-db" defaultConfigFile
+  "-- flags" @=? findLineWith True "flags" defaultConfigFile
+  "-- extra-include-dirs" @=? findLineWith True "extra-include-dirs" defaultConfigFile
+  "-- deterministic" @=? findLineWith True "deterministic" defaultConfigFile
+  "-- cid" @=? findLineWith True "cid" defaultConfigFile
+  "-- extra-lib-dirs" @=? findLineWith True "extra-lib-dirs" defaultConfigFile
+  "-- extra-lib-dirs-static" @=? findLineWith True "extra-lib-dirs-static" defaultConfigFile
+  "-- extra-framework-dirs" @=? findLineWith True "extra-framework-dirs" defaultConfigFile
+  "extra-prog-path"  @=? findLineWith False "extra-prog-path" defaultConfigFile
+  "-- instantiate-with" @=? findLineWith True "instantiate-with" defaultConfigFile
+  "-- tests" @=? findLineWith True "tests" defaultConfigFile
+  "-- coverage" @=? findLineWith True "coverage" defaultConfigFile
+  "-- library-coverage" @=? findLineWith True "library-coverage" defaultConfigFile
+  "-- exact-configuration" @=? findLineWith True "exact-configuration" defaultConfigFile
+  "-- benchmarks" @=? findLineWith True "benchmarks" defaultConfigFile
+  "-- relocatable"  @=? findLineWith True "relocatable" defaultConfigFile
+  "-- response-files" @=? findLineWith True "response-files" defaultConfigFile
+  "-- allow-depending-on-private-libs" @=? findLineWith True "allow-depending-on-private-libs" defaultConfigFile
+  "-- cabal-lib-version" @=? findLineWith True "cabal-lib-version" defaultConfigFile
+  "-- append" @=? findLineWith True "append" defaultConfigFile
+  "-- backup" @=? findLineWith True "backup" defaultConfigFile
+  "-- constraint" @=? findLineWith True "constraint" defaultConfigFile
+  "-- preference" @=? findLineWith True "preference" defaultConfigFile
+  "-- solver"  @=? findLineWith True "solver" defaultConfigFile
+  "-- allow-older"  @=? findLineWith True "allow-older" defaultConfigFile
+  "-- allow-newer"  @=? findLineWith True "allow-newer" defaultConfigFile
+  "-- write-ghc-environment-files" @=? findLineWith True "write-ghc-environment-files" defaultConfigFile
+  "-- documentation"  @=? findLineWith True "documentation" defaultConfigFile
+  "-- doc-index-file"  @=? findLineWith True "doc-index-file" defaultConfigFile
+  "-- only-download"  @=? findLineWith True "only-download" defaultConfigFile
+  "-- target-package-db" @=? findLineWith True "target-package-db" defaultConfigFile
+  "-- max-backjumps"  @=? findLineWith True "max-backjumps" defaultConfigFile
+  "-- reorder-goals"  @=? findLineWith True "reorder-goals" defaultConfigFile
+  "-- count-conflicts"  @=? findLineWith True "count-conflicts" defaultConfigFile
+  "-- fine-grained-conflicts"  @=? findLineWith True "fine-grained-conflicts" defaultConfigFile
+  "-- minimize-conflict-set"  @=? findLineWith True "minimize-conflict-set" defaultConfigFile
+  "-- independent-goals"  @=? findLineWith True "independent-goals" defaultConfigFile
+  "-- prefer-oldest"  @=? findLineWith True "prefer-oldest" defaultConfigFile
+  "-- shadow-installed-packages"  @=? findLineWith True "shadow-installed-packages" defaultConfigFile
+  "-- strong-flags"  @=? findLineWith True "strong-flags" defaultConfigFile
+  "-- allow-boot-library-installs"  @=? findLineWith True "allow-boot-library-installs" defaultConfigFile
+  "-- reject-unconstrained-dependencies"  @=? findLineWith True "reject-unconstrained-dependencies" defaultConfigFile
+  "-- reinstall"  @=? findLineWith True "reinstall" defaultConfigFile
+  "-- avoid-reinstalls"  @=? findLineWith True "avoid-reinstalls" defaultConfigFile
+  "-- force-reinstalls"  @=? findLineWith True "force-reinstalls" defaultConfigFile
+  "-- upgrade-dependencies"  @=? findLineWith True "upgrade-dependencies" defaultConfigFile
+  "-- index-state" @=? findLineWith True "index-state" defaultConfigFile
+  "-- root-cmd" @=? findLineWith True "root-cmd" defaultConfigFile
+  "-- symlink-bindir" @=? findLineWith True "symlink-bindir" defaultConfigFile
+  "build-summary"  @=? findLineWith False "build-summary" defaultConfigFile
+  "-- build-log" @=? findLineWith True "build-log" defaultConfigFile
+  "remote-build-reporting"  @=? findLineWith False "remote-build-reporting" defaultConfigFile
+  "-- report-planning-failure"  @=? findLineWith True "report-planning-failure" defaultConfigFile
+  "-- per-component"  @=? findLineWith True "per-component" defaultConfigFile
+  "-- run-tests" @=? findLineWith True "run-tests" defaultConfigFile
+  "jobs"  @=? findLineWith False "jobs" defaultConfigFile
+  "-- keep-going"  @=? findLineWith True "keep-going" defaultConfigFile
+  "-- offline"  @=? findLineWith True "offline" defaultConfigFile
+  "-- lib" @=? findLineWith True "lib" defaultConfigFile
+  "-- package-env" @=? findLineWith True "package-env" defaultConfigFile
+  "-- overwrite-policy" @=? findLineWith True "overwrite-policy" defaultConfigFile
+  "-- install-method" @=? findLineWith True "install-method" defaultConfigFile
+  "installdir"  @=? findLineWith False "installdir" defaultConfigFile
+  "-- username" @=? findLineWith True "username" defaultConfigFile
+  "-- password" @=? findLineWith True "password" defaultConfigFile
+  "-- password-command" @=? findLineWith True "password-command" defaultConfigFile
+  "-- builddir" @=? findLineWith True "builddir" defaultConfigFile
+
+  "  -- keep-temp-files" @=? findLineWith True "keep-temp-files" defaultConfigFile
+  "  -- hoogle" @=? findLineWith True "hoogle" defaultConfigFile
+  "  -- html" @=? findLineWith True "html" defaultConfigFile
+  "  -- html-location" @=? findLineWith True "html-location" defaultConfigFile
+  "  -- executables" @=? findLineWith True "executables" defaultConfigFile
+  "  -- foreign-libraries" @=? findLineWith True "foreign-libraries" defaultConfigFile
+  "  -- all" @=? findLineWith True "all" defaultConfigFile
+  "  -- internal" @=? findLineWith True "internal" defaultConfigFile
+  "  -- css" @=? findLineWith True "css" defaultConfigFile
+  "  -- hyperlink-source" @=? findLineWith True "hyperlink-source" defaultConfigFile
+  "  -- quickjump" @=? findLineWith True "quickjump" defaultConfigFile
+  "  -- hscolour-css" @=? findLineWith True "hscolour-css" defaultConfigFile
+  "  -- contents-location" @=? findLineWith True "contents-location" defaultConfigFile
+  "  -- index-location" @=? findLineWith True "index-location" defaultConfigFile
+  "  -- base-url" @=? findLineWith True "base-url" defaultConfigFile
+  "  -- output-dir" @=? findLineWith True "output-dir" defaultConfigFile
+
+  "  -- interactive" @=? findLineWith True "interactive" defaultConfigFile
+  "  -- quiet" @=? findLineWith True "quiet" defaultConfigFile
+  "  -- no-comments" @=? findLineWith True "no-comments" defaultConfigFile
+  "  -- minimal" @=? findLineWith True "minimal" defaultConfigFile
+  "  -- cabal-version" @=? findLineWith True "cabal-version" defaultConfigFile
+  "  -- license" @=? findLineWith True "license" defaultConfigFile
+  "  -- extra-doc-file" @=? findLineWith True "extra-doc-file" defaultConfigFile
+  "  -- test-dir" @=? findLineWith True "test-dir" defaultConfigFile
+  "  -- simple" @=? findLineWith True "simple" defaultConfigFile
+  "  -- language" @=? findLineWith True "language" defaultConfigFile
+  "  -- application-dir" @=? findLineWith True "application-dir" defaultConfigFile
+  "  -- source-dir" @=? findLineWith True "source-dir" defaultConfigFile
+
+  "  -- prefix"  @=? findLineWith True "prefix" defaultConfigFile
+  "  -- bindir"@=? findLineWith True "bindir" defaultConfigFile
+  "  -- libdir" @=? findLineWith True "libdir" defaultConfigFile
+  "  -- libsubdir" @=? findLineWith True "libsubdir" defaultConfigFile
+  "  -- dynlibdir" @=? findLineWith True "dynlibdir" defaultConfigFile
+  "  -- libexecdir" @=? findLineWith True "libexecdir" defaultConfigFile
+  "  -- libexecsubdir" @=? findLineWith True "libexecsubdir" defaultConfigFile
+  "  -- datadir" @=? findLineWith True "datadir" defaultConfigFile
+  "  -- datasubdir" @=? findLineWith True "datasubdir" defaultConfigFile
+  "  -- docdir" @=? findLineWith True "docdir" defaultConfigFile
+  "  -- htmldir" @=? findLineWith True "htmldir" defaultConfigFile
+  "  -- haddockdir" @=? findLineWith True "haddockdir" defaultConfigFile
+  "  -- sysconfdir" @=? findLineWith True "sysconfdir" defaultConfigFile
+
+  "  -- alex-location" @=? findLineWith True "alex-location" defaultConfigFile
+  "  -- ar-location" @=? findLineWith True "ar-location" defaultConfigFile
+  "  -- c2hs-location" @=? findLineWith True "c2hs-location" defaultConfigFile
+  "  -- cpphs-location" @=? findLineWith True "cpphs-location" defaultConfigFile
+  "  -- doctest-location" @=? findLineWith True "doctest-location" defaultConfigFile
+  "  -- gcc-location" @=? findLineWith True "gcc-location" defaultConfigFile
+  "  -- ghc-location" @=? findLineWith True "ghc-location" defaultConfigFile
+  "  -- ghc-pkg-location" @=? findLineWith True "ghc-pkg-location" defaultConfigFile
+  "  -- ghcjs-location" @=? findLineWith True "ghcjs-location" defaultConfigFile
+  "  -- ghcjs-pkg-location" @=? findLineWith True "ghcjs-pkg-location" defaultConfigFile
+  "  -- greencard-location" @=? findLineWith True "greencard-location" defaultConfigFile
+  "  -- haddock-location" @=? findLineWith True "haddock-location" defaultConfigFile
+  "  -- happy-location" @=? findLineWith True "happy-location" defaultConfigFile
+  "  -- haskell-suite-location" @=? findLineWith True "haskell-suite-location" defaultConfigFile
+  "  -- haskell-suite-pkg-location" @=? findLineWith True "haskell-suite-pkg-location" defaultConfigFile
+  "  -- hmake-location" @=? findLineWith True "hmake-location" defaultConfigFile
+  "  -- hpc-location" @=? findLineWith True "hpc-location" defaultConfigFile
+  "  -- hscolour-location" @=? findLineWith True "hscolour-location" defaultConfigFile
+  "  -- jhc-location" @=? findLineWith True "jhc-location" defaultConfigFile
+  "  -- ld-location" @=? findLineWith True "ld-location" defaultConfigFile
+  "  -- pkg-config-location" @=? findLineWith True "pkg-config-location" defaultConfigFile
+  "  -- runghc-location" @=? findLineWith True "runghc-location" defaultConfigFile
+  "  -- strip-location" @=? findLineWith True "strip-location" defaultConfigFile
+  "  -- tar-location" @=? findLineWith True "tar-location" defaultConfigFile
+  "  -- uhc-location" @=? findLineWith True "uhc-location" defaultConfigFile
+
+  "  -- alex-options" @=? findLineWith True "alex-options" defaultConfigFile
+  "  -- ar-options" @=? findLineWith True "ar-options" defaultConfigFile
+  "  -- c2hs-options" @=? findLineWith True "c2hs-options" defaultConfigFile
+  "  -- cpphs-options" @=? findLineWith True "cpphs-options" defaultConfigFile
+  "  -- doctest-options" @=? findLineWith True "doctest-options" defaultConfigFile
+  "  -- gcc-options" @=? findLineWith True "gcc-options" defaultConfigFile
+  "  -- ghc-options" @=? findLineWith True "ghc-options" defaultConfigFile
+  "  -- ghc-pkg-options" @=? findLineWith True "ghc-pkg-options" defaultConfigFile
+  "  -- ghcjs-options" @=? findLineWith True "ghcjs-options" defaultConfigFile
+  "  -- ghcjs-pkg-options" @=? findLineWith True "ghcjs-pkg-options" defaultConfigFile
+  "  -- greencard-options" @=? findLineWith True "greencard-options" defaultConfigFile
+  "  -- haddock-options" @=? findLineWith True "haddock-options" defaultConfigFile
+  "  -- happy-options" @=? findLineWith True "happy-options" defaultConfigFile
+  "  -- haskell-suite-options" @=? findLineWith True "haskell-suite-options" defaultConfigFile
+  "  -- haskell-suite-pkg-options" @=? findLineWith True "haskell-suite-pkg-options" defaultConfigFile
+  "  -- hmake-options" @=? findLineWith True "hmake-options" defaultConfigFile
+  "  -- hpc-options" @=? findLineWith True "hpc-options" defaultConfigFile
+  "  -- hsc2hs-options" @=? findLineWith True "hsc2hs-options" defaultConfigFile
+  "  -- hscolour-options" @=? findLineWith True "hscolour-options" defaultConfigFile
+  "  -- jhc-options" @=? findLineWith True "jhc-options" defaultConfigFile
+  "  -- ld-options" @=? findLineWith True "ld-options" defaultConfigFile
+  "  -- pkg-config-options" @=? findLineWith True "pkg-config-options" defaultConfigFile
+  "  -- runghc-options" @=? findLineWith True "runghc-options" defaultConfigFile
+  "  -- strip-options" @=? findLineWith True "strip-options" defaultConfigFile
+  "  -- tar-options" @=? findLineWith True "tar-options" defaultConfigFile
+  "  -- uhc-options" @=? findLineWith True "uhc-options" defaultConfigFile
+  where
+    -- | Find lines containing a target string.
+    findLineWith :: Bool -> String -> String -> String
+    findLineWith isComment target text
+      | not . null $ findLinesWith isComment target text = removeCommentValue . L.head $ findLinesWith isComment target text
+      | otherwise  = ""
+    findLinesWith :: Bool -> String -> String -> [String]
+    findLinesWith isComment target
+      | isComment = filter (isInfixOf (" " ++ target ++ ":")) . lines
+      | otherwise = filter (isInfixOf (target ++ ":")) . lines
+    removeCommentValue :: String -> String
+    removeCommentValue = takeWhile (/= ':')
 
 testIgnoreProjectFlag :: Assertion
 testIgnoreProjectFlag = do
