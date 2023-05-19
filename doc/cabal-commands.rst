@@ -1009,9 +1009,10 @@ Run ``cabal check`` in the folder where your ``.cabal`` package file is.
 
     Set verbosity level (0–3, default is 1).
 
-``cabal check`` mimics Hackage's requirements: if no error or warning
-is reported, Hackage should accept your package. If errors are present
-``cabal check`` exits with ``1`` and Hackage will refuse the package.
+Issues are classified as ``Warning``\s and ``Error``\s. The latter correspond
+to Hackage requirements for uploaded packages: if no error is reported,
+Hackage should accept your package. If errors are present ``cabal check``
+exits with ``1`` and Hackage will refuse the package.
 
 cabal sdist
 ^^^^^^^^^^^

@@ -1200,8 +1200,8 @@ checkCommand = CommandUI {
     commandDescription  = Just $ \_ -> wrapText $
          "Expects a .cabal package file in the current directory.\n"
       ++ "\n"
-      ++ "The checks correspond to the requirements to packages on Hackage. "
-      ++ "If no errors and warnings are reported, Hackage should accept the "
+      ++ "Some checks correspond to the requirements to packages on Hackage. "
+      ++ "If no `Error` is reported, Hackage should accept the "
       ++ "package. If errors are present, `check` exits with 1 and Hackage "
       ++ "will refuse the package.\n",
     commandNotes        = Nothing,
