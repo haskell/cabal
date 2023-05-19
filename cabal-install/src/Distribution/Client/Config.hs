@@ -900,7 +900,8 @@ commentSavedConfig = do
   globalInstallDirs <- defaultInstallDirs defaultCompiler False True
   let conf0 = mempty {
         savedGlobalFlags       = defaultGlobalFlags {
-            globalRemoteRepos = toNubList [defaultRemoteRepo]
+            globalRemoteRepos = toNubList [defaultRemoteRepo],
+            globalNix         = mempty
             },
         savedInitFlags       = mempty {
             IT.interactive     = toFlag False,

@@ -9,8 +9,8 @@
 --
 -- This config file was generated using the following versions
 -- of Cabal and cabal-install:
--- Cabal library version: 3.6.2.0
--- cabal-install version: 3.6.2.0
+-- Cabal library version: 3.11.0.0
+-- cabal-install version: 3.11
 
 
 repository hackage.haskell.org
@@ -19,15 +19,15 @@ repository hackage.haskell.org
   -- root-keys:
   -- key-threshold: 3
 
--- default-user-config:
 -- ignore-expiry: False
 -- http-transport:
--- nix: False
--- local-no-index-repo:
-
---debug-info: 1
+-- nix:
 -- store-dir:
 -- active-repositories:
+-- local-no-index-repo:
+remote-repo-cache: /home/colton/.cabal/packages
+-- logs-dir: /home/colton/.cabal/logs
+-- default-user-config:
 -- verbose: 1
 -- compiler: ghc
 -- cabal-file:
@@ -47,6 +47,7 @@ repository hackage.haskell.org
 -- library-profiling-detail:
 -- optimization: True
 -- debug-info: False
+-- build-info:
 -- library-for-ghci:
 -- split-sections: False
 -- split-objs: False
@@ -60,7 +61,9 @@ repository hackage.haskell.org
 -- deterministic:
 -- cid:
 -- extra-lib-dirs:
+-- extra-lib-dirs-static:
 -- extra-framework-dirs:
+extra-prog-path: /home/colton/.cabal/bin
 -- instantiate-with:
 -- tests: False
 -- coverage: False
@@ -71,6 +74,8 @@ repository hackage.haskell.org
 -- response-files:
 -- allow-depending-on-private-libs:
 -- cabal-lib-version:
+-- append:
+-- backup:
 -- constraint:
 -- preference:
 -- solver: modular
@@ -87,6 +92,7 @@ repository hackage.haskell.org
 -- fine-grained-conflicts: True
 -- minimize-conflict-set: False
 -- independent-goals: False
+-- prefer-oldest: False
 -- shadow-installed-packages: False
 -- strong-flags: False
 -- allow-boot-library-installs: False
@@ -98,11 +104,11 @@ repository hackage.haskell.org
 -- index-state:
 -- root-cmd:
 -- symlink-bindir:
+build-summary: /home/colton/.cabal/logs/build.log
 -- build-log:
 remote-build-reporting: none
 -- report-planning-failure: False
 -- per-component: True
--- one-shot: False
 -- run-tests:
 jobs: $ncpus
 -- keep-going: False
@@ -111,6 +117,7 @@ jobs: $ncpus
 -- package-env:
 -- overwrite-policy:
 -- install-method:
+installdir: /home/colton/.cabal/bin
 -- username:
 -- password:
 -- password-command:
@@ -132,18 +139,28 @@ haddock
   -- quickjump: False
   -- hscolour-css:
   -- contents-location:
+  -- index-location:
+  -- base-url:
+  -- lib:
+  -- output-dir:
 
 init
   -- interactive: False
-  -- cabal-version: 2.4
+  -- quiet: False
+  -- no-comments: False
+  -- minimal: False
+  -- cabal-version: 3.0
   -- license:
+  -- extra-doc-file:
   -- tests:
   -- test-dir:
+  -- simple: False
   -- language: Haskell2010
   -- application-dir: app
   -- source-dir: src
 
 install-dirs user
+  -- prefix: /home/colton/.cabal
   -- bindir: $prefix/bin
   -- libdir: $prefix/lib
   -- libsubdir: $abi/$libname
