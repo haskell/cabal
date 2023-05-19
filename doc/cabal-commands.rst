@@ -26,7 +26,7 @@ legacy sections. We talk in detail about some global and package commands.
 
     run               Run an executable.
     repl              Open an interactive session for the given component.
-    test              Run test-suites.
+    test              Run test suites.
     bench             Run benchmarks.
 
     sdist             Generate a source distribution file (.tar.gz).
@@ -970,12 +970,21 @@ cabal bench
 (all the benchmarks in the current package by default), first ensuring
 they are up to date.
 
+``cabal bench`` inherits flags of the ``bench`` subcommand of ``Setup.hs``,
+:ref:`see the corresponding section <setup-bench>`.
+
 cabal test
 ^^^^^^^^^^
 
 ``cabal test [TARGETS] [OPTIONS]`` runs the specified test suites
 (all the test suites in the current package by default), first ensuring
 they are up to date.
+
+``cabal test`` inherits flags of the ``test`` subcommand of ``Setup.hs``
+(:ref:`see the corresponding section <setup-test>`) with one caveat: every
+``Setup.hs test`` flag receives the ``test-`` prefix if it already does
+not have one; e.g. ``--show-details`` becomes ``--test-show-details`` but
+``--test-wrapper`` remains the same.
 
 cabal exec
 ^^^^^^^^^^
