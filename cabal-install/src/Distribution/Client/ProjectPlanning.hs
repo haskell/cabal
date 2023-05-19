@@ -326,9 +326,17 @@ rebuildProjectConfig verbosity
                      }
                      cliConfig = do
 
+    progsearchpath <- liftIO $ getSystemSearchPath
+
+    let fileMonitorProjectConfig = newFileMonitor (distProjectCacheFile "config")
+
     fileMonitorProjectConfigKey <- do
       configPath <- getConfigFilePath projectConfigConfigFile
-      return (configPath, distProjectFile "")
+      return (configPath, distProjectFile "",
+                        (projectConfigHcFlavor, projectConfigHcPath, projectConfigHcPkg),
+                        progsearchpath,
+                        packageConfigProgramPaths,
+                        packageConfigProgramPathExtra)
 
     (projectConfig, localPackages) <-
       runRebuild distProjectRootDirectory
@@ -359,18 +367,11 @@ rebuildProjectConfig verbosity
 
   where
 
-    ProjectConfigShared { projectConfigConfigFile } =
+    ProjectConfigShared { projectConfigHcFlavor, projectConfigHcPath, projectConfigHcPkg, projectConfigIgnoreProject, projectConfigConfigFile } =
       projectConfigShared cliConfig
 
-    ProjectConfigShared { projectConfigIgnoreProject } =
-      projectConfigShared cliConfig
-
-    fileMonitorProjectConfig ::
-      FileMonitor
-        (FilePath, FilePath)
-        (ProjectConfig, [PackageSpecifier UnresolvedSourcePackage])
-    fileMonitorProjectConfig =
-      newFileMonitor (distProjectCacheFile "config")
+    PackageConfig { packageConfigProgramPaths, packageConfigProgramPathExtra } =
+      projectConfigLocalPackages cliConfig
 
     -- Read the cabal.project (or implicit config) and combine it with
     -- arguments from the command line
