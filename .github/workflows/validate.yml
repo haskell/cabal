@@ -136,8 +136,8 @@ jobs:
              # see https://github.com/actions/virtual-environments/issues/2619#issuecomment-788397841
              sudo /usr/sbin/purge
           fi
-          export CABAL_EXEC_TAR="cabal-head-${{ runner.os }}-x86_64.tar"
-          tar -cvf $CABAL_EXEC_TAR -C $(dirname "$CABAL_EXEC") $(basename "$CABAL_EXEC")
+          export CABAL_EXEC_TAR="cabal-head-${{ runner.os }}-x86_64.tar.gz"
+          tar -czvf $CABAL_EXEC_TAR -C $(dirname "$CABAL_EXEC") $(basename "$CABAL_EXEC")
           echo "CABAL_EXEC_TAR=$CABAL_EXEC_TAR" >> $GITHUB_ENV
 
       # We upload the cabal executable built with the ghc used in the release for:
@@ -276,7 +276,7 @@ jobs:
           path: cabal-head
 
       - name: Untar the cabal executable
-        run: tar -xf ./cabal-head/cabal-head-${{ runner.os }}-x86_64.tar -C cabal-head
+        run: tar -xzf ./cabal-head/cabal-head-${{ runner.os }}-x86_64.tar.gz -C cabal-head
 
       - name: print-config using cabal HEAD
         run: sh validate.sh ${{ env.COMMON_FLAGS }} --with-cabal ./cabal-head/cabal -s print-config
@@ -315,9 +315,9 @@ jobs:
         prerelease: true
         title: "cabal-head"
         files: |
-          cabal-head-Windows-x86_64.tar
-          cabal-head-Linux-x86_64.tar
-          cabal-head-macOS-x86_64.tar
+          cabal-head-Windows-x86_64.tar.gz
+          cabal-head-Linux-x86_64.tar.gz
+          cabal-head-macOS-x86_64.tar.gz
 
   # We use this job as a summary of the workflow
   # It will fail if any of the previous jobs does it
