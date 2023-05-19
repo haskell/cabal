@@ -1,4 +1,4 @@
 # cabal check
-The following warnings are likely to affect your build negatively:
+The following errors are likely to affect your build negatively:
 Error: Instead of 'cxx-options: -lgame' use 'extra-libraries: game'
 Error: Hackage would reject this package.

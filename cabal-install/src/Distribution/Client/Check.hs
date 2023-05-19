@@ -111,7 +111,7 @@ groupChecks ds = NE.groupBy (F.on (==) constInt)
 
 groupExplanation :: PackageCheck -> String
 groupExplanation (PackageBuildImpossible {}) = "The package will not build sanely due to these errors:"
-groupExplanation (PackageBuildWarning {}) = "The following warnings are likely to affect your build negatively:"
+groupExplanation (PackageBuildWarning {}) = "The following errors are likely to affect your build negatively:"
 groupExplanation (PackageDistSuspicious {}) = "These warnings will likely cause trouble when distributing the package:"
 groupExplanation (PackageDistSuspiciousWarn {}) = "These warnings may cause trouble when distributing the package:"
 groupExplanation (PackageDistInexcusable {}) = "The following errors will cause portability problems on other environments:"

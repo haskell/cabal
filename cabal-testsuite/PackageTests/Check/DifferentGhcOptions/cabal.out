@@ -1,5 +1,5 @@
 # cabal check
-The following warnings are likely to affect your build negatively:
+The following errors are likely to affect your build negatively:
 Error: 'ghc-shared-options: -hide-package' is never needed. Cabal hides all packages.
 The following errors will cause portability problems on other environments:
 Error: 'ghc-options: -fasm' is unnecessary and will not work on CPU architectures other than x86, x86-64, ppc or sparc.
