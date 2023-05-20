@@ -217,6 +217,7 @@ haddockProjectAction flags _extraArgs globalFlags = do
           , haddockOutputDir = haddockProjectOutputDir flags
 >>>>>>> 1b89c1bf5 (Removed some haddock-project options)
           }
+<<<<<<< HEAD
         nixFlags = (commandDefaultFlags CmdHaddock.haddockCommand)
                    { NixStyleOptions.haddockFlags = haddockFlags
                    , NixStyleOptions.configFlags  =
@@ -227,6 +228,95 @@ haddockProjectAction flags _extraArgs globalFlags = do
     --
     -- Construct the build plan and infer the list of packages which haddocks
     -- we need.
+=======
+      nixFlags =
+        (commandDefaultFlags CmdHaddock.haddockCommand)
+          { NixStyleOptions.haddockFlags = haddockFlags
+          , NixStyleOptions.configFlags =
+              (NixStyleOptions.configFlags (commandDefaultFlags CmdBuild.buildCommand))
+                { configVerbosity = haddockProjectVerbosity flags
+                }
+          }
+
+  --
+  -- Construct the build plan and infer the list of packages which haddocks
+  -- we need.
+  --
+
+  withContextAndSelectors RejectNoTargets Nothing
+                          (commandDefaultFlags CmdBuild.buildCommand)
+                          ["all"] globalFlags HaddockCommand
+                          $ \targetCtx ctx targetSelectors -> do
+    baseCtx <- case targetCtx of
+      ProjectContext -> return ctx
+      GlobalContext -> return ctx
+      ScriptContext path exemeta -> updateContextAndWriteProjectFile ctx path exemeta
+    let distLayout = distDirLayout baseCtx
+        cabalLayout = cabalDirLayout baseCtx
+    buildCtx <-
+      runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
+        -- Interpret the targets on the command line as build targets
+        -- (as opposed to say repl or haddock targets).
+        targets <-
+          either reportTargetProblems return $
+            resolveTargets
+              selectPackageTargets
+              selectComponentTargetBasic
+              elaboratedPlan
+              Nothing
+              targetSelectors
+
+        let elaboratedPlan' =
+              pruneInstallPlanToTargets
+                TargetActionBuild
+                targets
+                elaboratedPlan
+        return (elaboratedPlan', targets)
+
+    printPlan verbosity baseCtx buildCtx
+
+    let elaboratedPlan :: ElaboratedInstallPlan
+        elaboratedPlan = elaboratedPlanOriginal buildCtx
+
+        sharedConfig :: ElaboratedSharedConfig
+        sharedConfig = elaboratedShared buildCtx
+
+        pkgs :: [Either InstalledPackageInfo ElaboratedConfiguredPackage]
+        pkgs = matchingPackages elaboratedPlan
+
+    progs <-
+      reconfigurePrograms
+        verbosity
+        (haddockProjectProgramPaths flags)
+        (haddockProjectProgramArgs flags)
+        -- we need to insert 'haddockProgram' before we reconfigure it,
+        -- otherwise 'set
+        . addKnownProgram haddockProgram
+        . pkgConfigCompilerProgs
+        $ sharedConfig
+    let sharedConfig' = sharedConfig{pkgConfigCompilerProgs = progs}
+
+    _ <-
+      requireProgramVersion
+        verbosity
+        haddockProgram
+        (orLaterVersion (mkVersion [2, 26, 1]))
+        progs
+
+    --
+    -- Build project; we need to build dependencies.
+    -- Issue #8958.
+    --
+    
+    when localStyle $
+      CmdBuild.buildAction
+        (commandDefaultFlags CmdBuild.buildCommand)
+        ["all"]
+        globalFlags
+
+    --
+    -- Build haddocks of each components
+>>>>>>> 2c597e8c9 (Build dependencies with haddock-project)
     --
 
     withContextAndSelectors RejectNoTargets Nothing nixFlags ["all"] globalFlags HaddockCommand $ \targetCtx ctx targetSelectors -> do
@@ -317,8 +407,8 @@ haddockProjectAction flags _extraArgs globalFlags = do
           | not localStyle ->
               return []
         Left package -> do
-          -- TODO: this might not work for public packages with sublibraries
-          -- (which will be visible if one is using `--local` switch).
+          -- TODO: this might not work for public packages with sublibraries.
+          -- Issue #9026.
           let packageName = unPackageName (pkgName $ sourcePackageId package)
               destDir = outputDir </> packageName
           fmap catMaybes $ for (haddockInterfaces package) $ \interfacePath -> do
@@ -363,7 +453,12 @@ haddockProjectAction flags _extraArgs globalFlags = do
                         , Visible
                         )
                       ]
-                False -> return []
+                False -> do
+                  warn verbosity
+                       ("haddocks of "
+                        ++ show unitId
+                        ++ " not found in the store")
+                  return []
             False
               | not localStyle ->
                   return []
@@ -394,8 +489,17 @@ haddockProjectAction flags _extraArgs globalFlags = do
                         , Hidden
                         )
                       ]
+<<<<<<< HEAD
                 False -> return []
 >>>>>>> 1840bca4b (haddock-project: use UnitId instead of package names)
+=======
+                False -> do
+                  warn verbosity
+                       ("haddocks of "
+                        ++ show unitId
+                        ++ " not found in the store")
+                  return []
+>>>>>>> 2c597e8c9 (Build dependencies with haddock-project)
 
           Right package ->
             case elabLocalToProject package of
