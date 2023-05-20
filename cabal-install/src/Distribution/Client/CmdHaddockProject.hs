@@ -4,7 +4,6 @@ module Distribution.Client.CmdHaddockProject
   ) where
 
 import Prelude ()
-import Data.Bool (bool)
 import Distribution.Client.Compat.Prelude hiding (get)
 
 import qualified Distribution.Client.CmdBuild   as CmdBuild
@@ -54,8 +53,6 @@ import Distribution.Simple.Compiler
          ( Compiler (..) )
 import Distribution.Simple.Flag
         ( Flag(..)
-        , flagElim
-        , flagToList
         , fromFlag
         , fromFlagOrDefault
         )
@@ -132,7 +129,7 @@ haddockProjectAction flags _extraArgs globalFlags = do
     -- we need.
     --
 
-    withContextAndSelectors RejectNoTargets Nothing nixFlags ["all"] globalFlags HaddockCommand $ \targetCtx ctx targetSelectors -> do
+    withContextAndSelectors RejectNoTargets Nothing (commandDefaultFlags CmdBuild.buildCommand) ["all"] globalFlags HaddockCommand $ \targetCtx ctx targetSelectors -> do
       baseCtx <- case targetCtx of
         ProjectContext             -> return ctx
         GlobalContext              -> return ctx
@@ -183,6 +180,16 @@ haddockProjectAction flags _extraArgs globalFlags = do
              (orLaterVersion (mkVersion [2,26,1])) progs
 
       --
+      -- Build project; we need to build dependencies.
+      -- Issue #8958.
+      --
+
+      when localStyle $
+        CmdBuild.buildAction
+          (commandDefaultFlags CmdBuild.buildCommand)
+          ["all"]
+          globalFlags
+      --
       -- Build haddocks of each components
       --
 
@@ -200,8 +207,8 @@ haddockProjectAction flags _extraArgs globalFlags = do
           Left _ | not localStyle ->
             return []
           Left package -> do
-            -- TODO: this might not work for public packages with sublibraries
-            -- (which will be visible if one is using `--local` switch).
+            -- TODO: this might not work for public packages with sublibraries.
+            -- Issue #9026.
             let packageName = unPackageName (pkgName $ sourcePackageId package)
                 destDir = outputDir </> packageName
             fmap catMaybes $ for (haddockInterfaces package) $ \interfacePath -> do
@@ -235,7 +242,12 @@ haddockProjectAction flags _extraArgs globalFlags = do
                                    , interfacePath
                                    , Visible
                                    )]
-                  False -> return []
+                  False -> do
+                    warn verbosity
+                         ("haddocks of "
+                          ++ show unitId
+                          ++ " not found in the store")
+                    return []
               False | not localStyle ->
                 return []
               False -> do
@@ -257,7 +269,12 @@ haddockProjectAction flags _extraArgs globalFlags = do
                                    , interfacePath
                                    , Hidden
                                    )]
-                  False -> return []
+                  False -> do
+                    warn verbosity
+                         ("haddocks of "
+                          ++ show unitId
+                          ++ " not found in the store")
+                    return []
 
       --
       -- generate index, content, etc.
