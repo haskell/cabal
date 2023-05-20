@@ -161,7 +161,10 @@ haddockProjectAction flags _extraArgs globalFlags = do
   -- we need.
   --
 
-  withContextAndSelectors RejectNoTargets Nothing nixFlags ["all"] globalFlags HaddockCommand $ \targetCtx ctx targetSelectors -> do
+  withContextAndSelectors RejectNoTargets Nothing
+                          (commandDefaultFlags CmdBuild.buildCommand)
+                          ["all"] globalFlags HaddockCommand
+                          $ \targetCtx ctx targetSelectors -> do
     baseCtx <- case targetCtx of
       ProjectContext -> return ctx
       GlobalContext -> return ctx
@@ -219,6 +222,17 @@ haddockProjectAction flags _extraArgs globalFlags = do
         progs
 
     --
+    -- Build project; we need to build dependencies.
+    -- Issue #8958.
+    --
+    
+    when localStyle $
+      CmdBuild.buildAction
+        (commandDefaultFlags CmdBuild.buildCommand)
+        ["all"]
+        globalFlags
+
+    --
     -- Build haddocks of each components
     --
 
@@ -237,8 +251,8 @@ haddockProjectAction flags _extraArgs globalFlags = do
           | not localStyle ->
               return []
         Left package -> do
-          -- TODO: this might not work for public packages with sublibraries
-          -- (which will be visible if one is using `--local` switch).
+          -- TODO: this might not work for public packages with sublibraries.
+          -- Issue #9026.
           let packageName = unPackageName (pkgName $ sourcePackageId package)
               destDir = outputDir </> packageName
           fmap catMaybes $ for (haddockInterfaces package) $ \interfacePath -> do
@@ -283,7 +297,12 @@ haddockProjectAction flags _extraArgs globalFlags = do
                         , Visible
                         )
                       ]
-                False -> return []
+                False -> do
+                  warn verbosity
+                       ("haddocks of "
+                        ++ show unitId
+                        ++ " not found in the store")
+                  return []
             False
               | not localStyle ->
                   return []
@@ -314,7 +333,12 @@ haddockProjectAction flags _extraArgs globalFlags = do
                         , Hidden
                         )
                       ]
-                False -> return []
+                False -> do
+                  warn verbosity
+                       ("haddocks of "
+                        ++ show unitId
+                        ++ " not found in the store")
+                  return []
 
     --
     -- generate index, content, etc.
