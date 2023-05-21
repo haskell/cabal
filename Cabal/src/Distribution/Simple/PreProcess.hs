@@ -31,6 +31,7 @@ module Distribution.Simple.PreProcess (preprocessComponent, preprocessExtras,
     where
 
 import Prelude ()
+import Data.List as List
 import Distribution.Compat.Prelude
 import Distribution.Compat.Stack
 
@@ -44,6 +45,7 @@ import qualified Distribution.InstalledPackageInfo as Installed
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.CCompiler
 import Distribution.Simple.Compiler
+import Distribution.Simple.Command (editDistance)
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Utils
@@ -61,7 +63,7 @@ import System.Directory (doesFileExist, doesDirectoryExist)
 import System.Info (os, arch)
 import System.FilePath (splitExtension, dropExtensions, (</>), (<.>),
                         takeDirectory, normalise, replaceExtension,
-                        takeExtensions)
+                        takeExtensions, takeFileName)
 
 -- |The interface to a preprocessor, which may be implemented using an
 -- external program, but need not be.  The arguments are the name of
@@ -296,12 +298,11 @@ preprocessFile searchLoc buildLoc forSDist baseFile verbosity builtinSuffixes ha
         -- files generate source modules directly into the build dir without
         -- the rest of the build system being aware of it (somewhat dodgy)
       Nothing -> do
-                 bsrcFiles <- findFileWithExtension builtinSuffixes (buildLoc : map getSymbolicPath searchLoc) baseFile
-                 case (bsrcFiles, failOnMissing) of
-                  (Nothing, True) ->
-                    die' verbosity $ "can't find source for " ++ baseFile
-                                  ++ " in " ++ intercalate ", " (map getSymbolicPath searchLoc)
-                  _       -> return ()
+            bsrcFiles <- findFileWithExtension builtinSuffixes (buildLoc : map getSymbolicPath searchLoc) baseFile
+            case (bsrcFiles, failOnMissing) of
+              (Nothing, True) -> 
+                 die' verbosity $ "can't find source for " ++ baseFile ++ " in " ++ intercalate ", " (map getSymbolicPath searchLoc) ++ "\nIs it possible that you renamed or moved the module and forgot to update the project file?"
+              _       -> return ()
         -- found a pre-processable file in one of the source dirs
       Just (psrcLoc, psrcRelFile) -> do
             let (srcStem, ext) = splitExtension psrcRelFile
