@@ -300,7 +300,7 @@ preprocessFile searchLoc buildLoc forSDist baseFile verbosity builtinSuffixes ha
       Nothing -> do
             bsrcFiles <- findFileWithExtension builtinSuffixes (buildLoc : map getSymbolicPath searchLoc) baseFile
             case (bsrcFiles, failOnMissing) of
-              (Nothing, True) -> 
+              (Nothing, True) ->
                  die' verbosity $ "can't find source for " ++ baseFile ++ " in " ++ intercalate ", " (map getSymbolicPath searchLoc) ++ "\nIs it possible that you renamed or moved the module and forgot to update the project file?"
               _       -> return ()
         -- found a pre-processable file in one of the source dirs

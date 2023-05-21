@@ -59,7 +59,7 @@ import Distribution.Simple.Utils
 import Distribution.Utils.Path
 
 import Data.List (stripPrefix)
-import Data.List as List 
+import Data.List as List
 import System.FilePath ((</>), (<.>), normalise, dropExtensions, takeFileName)
 
 -- ---------------------------------------------------------------------------
