@@ -48,6 +48,7 @@ import Distribution.Package
 import Distribution.ModuleName as ModuleName
 import Distribution.Compiler
 import Distribution.PackageDescription
+import Distribution.Simple.Command (editDistance)
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Setup.Haddock (HaddockTarget(..))
 import Distribution.Simple.Setup.Common (defaultDistPref)
@@ -58,7 +59,8 @@ import Distribution.Simple.Utils
 import Distribution.Utils.Path
 
 import Data.List (stripPrefix)
-import System.FilePath ((</>), (<.>), normalise)
+import Data.List as List
+import System.FilePath ((</>), (<.>), normalise, dropExtensions, takeFileName)
 
 -- ---------------------------------------------------------------------------
 -- Build directories and files
@@ -170,7 +172,19 @@ getSourceFiles verbosity dirs modules = flip traverse modules $ \m -> fmap ((,) 
     findFileWithExtension ["hs", "lhs", "hsig", "lhsig"] dirs (ModuleName.toFilePath m)
       >>= maybe (notFound m) (return . normalise)
   where
-    notFound module_ = die' verbosity $ "can't find source for module " ++ prettyShow module_
+    notFound :: ModuleName.ModuleName -> IO FilePath
+    notFound module_ = do
+      possibleFilePaths <- concat <$> (traverse getDirectoryContentsRecursive dirs)
+      let
+          similarFiles :: [FilePath]
+          similarFiles = map fst . List.sortBy (comparing snd) $
+                          [ (fpath, dist)
+                          | fpath <- possibleFilePaths
+                          , let fname = dropExtensions $ takeFileName fpath
+                                dist = editDistance fname $ takeFileName $ ModuleName.toFilePath module_
+                          , dist < 5 && dist < length fname]
+      die' verbosity $ "can't find source for module " ++ prettyShow module_ ++
+        "\nclosest matches for possible source files for module were " ++ intercalate ", " similarFiles
 
 -- | The directory where we put build results for an executable
 exeBuildDir :: LocalBuildInfo -> Executable -> FilePath

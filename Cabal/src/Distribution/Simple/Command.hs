@@ -49,6 +49,9 @@ module Distribution.Simple.Command (
   -- ** Running commands
   commandsRun,
 
+-- * Calculating edit distance
+  editDistance,
+
 -- * Option Fields
   OptionField(..), Name,
 
