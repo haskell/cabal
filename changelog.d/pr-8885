@@ -1,0 +1,9 @@
+synopsis: Update the SPDX License List to version 3.20
+ packages: Cabal-syntax
+ prs: #8885
+ issues: #8808
+ description: {
+
+ The LicenseId and LicenseExceptionId types are updated to reflect the SPDX License List version 3.20.
+
+ }
