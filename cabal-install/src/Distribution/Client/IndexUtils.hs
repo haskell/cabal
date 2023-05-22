@@ -275,7 +275,7 @@ getSourcePackagesAtIndexState verbosity repoCtxt mb_idxState mb_activeRepos = do
             return ()
         IndexStateTime ts0 -> do
             when (isiMaxTime isi /= ts0) $
-                if ts0 > isiMaxTime isi
+                if ts0 > isiHeadTime isi
                     then warn verbosity $
                                    "Requested index-state " ++ prettyShow ts0
                                 ++ " is newer than '" ++ unRepoName rname ++ "'!"
