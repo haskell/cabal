@@ -9,6 +9,7 @@ module UnitTests.Distribution.Client.ArbitraryInstances (
     arbitraryFlag,
     ShortToken(..),
     arbitraryShortToken,
+    arbitraryAbsoluteFilePath,
     NonMEmpty(..),
     NoShrink(..),
     -- * Shrinker
@@ -21,6 +22,7 @@ module UnitTests.Distribution.Client.ArbitraryInstances (
 
 import Distribution.Client.Compat.Prelude
 import Prelude ()
+import Control.Monad (replicateM)
 
 import Data.Char (isLetter)
 import Data.List ((\\))
@@ -126,6 +128,21 @@ shortListOf1 bound gen =
     sized $ \n -> do
       k <- choose (1, 1 `max` ((n `div` 2) `min` bound))
       vectorOf k gen
+
+newtype ArbitraryAbsoluteFilePath = ArbitraryAbsoluteFilePath { getAbsoluteFilePath :: String }
+  deriving Show
+
+instance Arbitrary ArbitraryAbsoluteFilePath where
+  arbitrary = do
+    names <- replicateM 5 arbitrary
+    let pathParts = map ('/':) names
+    let path = intercalate "" pathParts
+    pure $ ArbitraryAbsoluteFilePath path
+
+  shrink a = [a]
+
+arbitraryAbsoluteFilePath :: Gen String
+arbitraryAbsoluteFilePath = getAbsoluteFilePath <$> arbitrary
 
 newtype ShortToken = ShortToken { getShortToken :: String }
   deriving Show

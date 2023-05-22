@@ -53,7 +53,7 @@ module Distribution.Client.Setup
     , yesNoOpt
     ) where
 
-import Prelude ()
+import Prelude (mapM)
 import Distribution.Client.Compat.Prelude hiding (get)
 
 import Distribution.Client.Types.Credentials (Username (..), Password (..))
@@ -133,7 +133,13 @@ import Distribution.Parsec
 import Data.List
          ( deleteFirstsBy )
 import System.FilePath
-         ( (</>) )
+         ( (</>), isAbsolute )
+
+type AbsoluteFilePath = FilePath
+readAbsoluteFilePath :: FilePath -> Maybe AbsoluteFilePath
+readAbsoluteFilePath filePath
+    | isAbsolute filePath || "${pkgroot}" `isPrefixOf` filePath = Just filePath
+    | otherwise = Nothing
 
 globalCommand :: [Command action] -> CommandUI GlobalFlags
 globalCommand commands = CommandUI {
@@ -379,7 +385,11 @@ globalCommand commands = CommandUI {
 
       ,option [] ["store-dir", "storedir"]
          "The location of the build store"
-         globalStoreDir (\v flags -> flags { globalStoreDir = v })
+         globalStoreDir (\v flags ->
+            case mapM readAbsoluteFilePath v of
+                Just flag -> flags { globalStoreDir = flag }
+                Nothing -> error "expected an absolute directory name for --store-dir"
+         )
          (reqArgFlag "DIR")
 
       , option [] ["active-repositories"]
