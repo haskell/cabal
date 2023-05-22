@@ -4,7 +4,7 @@ import Distribution.Client.Compat.Prelude
 import qualified Prelude as Unsafe (tail, head, read)
 
 import Distribution.Client.Types.Credentials ( Username(..), Password(..) )
-import Distribution.Client.Types.Repo (Repo, RemoteRepo(..), maybeRepoRemote)
+import Distribution.Client.Types.Repo (RemoteRepo(..), maybeRepoRemote)
 import Distribution.Client.Types.RepoName (unRepoName)
 import Distribution.Client.HttpUtils
          ( HttpTransport(..), remoteRepoTryUpgradeToHttps )
@@ -22,6 +22,7 @@ import qualified Distribution.Client.BuildReports.Upload as BuildReport
 import Network.URI (URI(uriPath, uriAuthority), URIAuth(uriRegName))
 import Network.HTTP (Header(..), HeaderName(..))
 
+import Data.Foldable (forM_)
 import System.IO        (hFlush, stdout)
 import System.IO.Echo   (withoutInputEcho)
 import System.FilePath  ((</>), takeExtension, takeFileName, dropExtension)
@@ -41,21 +42,27 @@ stripExtensions exts path = foldM f path (reverse exts)
     | takeExtension p == '.':e = Just (dropExtension p)
     | otherwise = Nothing
 
+uploadEndpoint :: Verbosity -> RepoContext -> Maybe Username -> Maybe Password -> IO (RemoteRepo, Auth)
+uploadEndpoint verbosity repoContext mUsername mPassword = do
+  transport  <- repoContextGetTransport repoContext
+  targetRepo <-
+    case [ remoteRepo | Just remoteRepo <- map maybeRepoRemote (repoContextRepos repoContext) ] of
+      [] -> die' verbosity "Cannot upload. No remote repositories are configured."
+      (r:rs) -> remoteRepoTryUpgradeToHttps verbosity transport (last (r :| rs))
+  let targetRepoURI = remoteRepoURI targetRepo
+      domain = maybe "Hackage" uriRegName $ uriAuthority targetRepoURI
+  Username username <- maybe (promptUsername domain) return mUsername
+  Password password <- maybe (promptPassword domain) return mPassword
+  return (targetRepo, Just (username, password))
+
 upload :: Verbosity -> RepoContext
        -> Maybe Username -> Maybe Password -> IsCandidate -> [FilePath]
        -> IO ()
 upload verbosity repoCtxt mUsername mPassword isCandidate paths = do
-    let repos :: [Repo]
-        repos = repoContextRepos repoCtxt
     transport  <- repoContextGetTransport repoCtxt
-    targetRepo <-
-      case [ remoteRepo | Just remoteRepo <- map maybeRepoRemote repos ] of
-        [] -> die' verbosity "Cannot upload. No remote repositories are configured."
-        (r:rs) -> remoteRepoTryUpgradeToHttps verbosity transport (last (r:|rs))
+    (targetRepo, auth) <- uploadEndpoint verbosity repoCtxt mUsername mPassword
     let targetRepoURI :: URI
         targetRepoURI = remoteRepoURI targetRepo
-        domain :: String
-        domain = maybe "Hackage" uriRegName $ uriAuthority targetRepoURI
         rootIfEmpty x = if null x then "/" else x
         uploadURI :: URI
         uploadURI = targetRepoURI {
@@ -73,9 +80,6 @@ upload verbosity repoCtxt mUsername mPassword isCandidate paths = do
                   IsPublished -> ""
               ]
         }
-    Username username <- maybe (promptUsername domain) return mUsername
-    Password password <- maybe (promptPassword domain) return mPassword
-    let auth = Just (username,password)
     for_ paths $ \path -> do
       notice verbosity $ "Uploading " ++ path ++ "... "
       case fmap takeFileName (stripExtensions ["tar", "gz"] path) of
@@ -89,14 +93,9 @@ uploadDoc :: Verbosity -> RepoContext
           -> Maybe Username -> Maybe Password -> IsCandidate -> FilePath
           -> IO ()
 uploadDoc verbosity repoCtxt mUsername mPassword isCandidate path = do
-    let repos = repoContextRepos repoCtxt
     transport  <- repoContextGetTransport repoCtxt
-    targetRepo <-
-      case [ remoteRepo | Just remoteRepo <- map maybeRepoRemote repos ] of
-        [] -> die' verbosity $ "Cannot upload. No remote repositories are configured."
-        (r:rs) -> remoteRepoTryUpgradeToHttps verbosity transport (last (r:|rs))
+    (targetRepo, auth) <- uploadEndpoint verbosity repoCtxt mUsername mPassword
     let targetRepoURI = remoteRepoURI targetRepo
-        domain = maybe "Hackage" uriRegName $ uriAuthority targetRepoURI
         rootIfEmpty x = if null x then "/" else x
         uploadURI = targetRepoURI {
             uriPath = rootIfEmpty (uriPath targetRepoURI)
@@ -123,11 +122,8 @@ uploadDoc verbosity repoCtxt mUsername mPassword isCandidate path = do
     when (reverse reverseSuffix /= "docs.tar.gz"
           || null reversePkgid || Unsafe.head reversePkgid /= '-') $
       die' verbosity "Expected a file name matching the pattern <pkgid>-docs.tar.gz"
-    Username username <- maybe (promptUsername domain) return mUsername
-    Password password <- maybe (promptPassword domain) return mPassword
 
-    let auth = Just (username,password)
-        headers =
+    let headers =
           [ Header HdrContentType "application/x-tar"
           , Header HdrContentEncoding "gzip"
           ]
@@ -172,36 +168,28 @@ promptPassword domain = do
 
 report :: Verbosity -> RepoContext -> Maybe Username -> Maybe Password -> IO ()
 report verbosity repoCtxt mUsername mPassword = do
-  let repos       :: [Repo]
-      repos       = repoContextRepos repoCtxt
-      remoteRepos :: [RemoteRepo]
-      remoteRepos = mapMaybe maybeRepoRemote repos
-  for_ remoteRepos $ \remoteRepo -> do
-      let domain = maybe "Hackage" uriRegName $ uriAuthority (remoteRepoURI remoteRepo)
-      Username username <- maybe (promptUsername domain) return mUsername
-      Password password <- maybe (promptPassword domain) return mPassword
-      let auth        :: (String, String)
-          auth        = (username, password)
+  (targetRepo, auth) <- uploadEndpoint verbosity repoCtxt mUsername mPassword
 
-      reportsDir <- defaultReportsDir
-      let srcDir :: FilePath
-          srcDir = reportsDir </> unRepoName (remoteRepoName remoteRepo)
-      -- We don't want to bomb out just because we haven't built any packages
-      -- from this repo yet.
-      srcExists <- doesDirectoryExist srcDir
-      when srcExists $ do
-        contents <- getDirectoryContents srcDir
-        for_ (filter (\c -> takeExtension c ==".log") contents) $ \logFile ->
-          do inp <- readFile (srcDir </> logFile)
-             let (reportStr, buildLog) = Unsafe.read inp :: (String,String) -- TODO: eradicateNoParse
-             case parseBuildReport (toUTF8BS reportStr) of
-               Left errs -> warn verbosity $ "Errors: " ++ errs -- FIXME
-               Right report' ->
-                 do info verbosity $ "Uploading report for "
-                      ++ prettyShow (BuildReport.package report')
-                    BuildReport.uploadReports verbosity repoCtxt auth
-                      (remoteRepoURI remoteRepo) [(report', Just buildLog)]
-                    return ()
+  reportsDir <- defaultReportsDir
+  let srcDir :: FilePath
+      srcDir = reportsDir </> unRepoName (remoteRepoName targetRepo)
+
+  -- We don't want to bomb out just because we haven't built any packages
+  -- from this repo yet.
+  srcExists <- doesDirectoryExist srcDir
+  when srcExists $ do
+    contents <- getDirectoryContents srcDir
+    forM_ (filter (\c -> takeExtension c ==".log") contents) $ \logFile -> do
+      inp <- readFile (srcDir </> logFile)
+      let (reportStr, buildLog) = Unsafe.read inp :: (String,String) -- TODO: eradicateNoParse
+      case parseBuildReport (toUTF8BS reportStr) of
+        Left errs -> warn verbosity $ "Errors: " ++ errs -- FIXME
+        Right report' -> do
+          info verbosity $ "Uploading report for "
+            ++ prettyShow (BuildReport.package report')
+          BuildReport.uploadReports verbosity repoCtxt auth
+            (remoteRepoURI targetRepo) [(report', Just buildLog)]
+          return ()
 
 handlePackage :: HttpTransport -> Verbosity -> URI -> URI -> Auth
               -> IsCandidate -> FilePath -> IO ()
