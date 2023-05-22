@@ -302,7 +302,7 @@ getSourcePackagesAtIndexState verbosity repoCtxt mb_idxState mb_activeRepos = do
 
   pkgss' <- case organizeByRepos activeRepos rdRepoName pkgss of
     Right x  -> return x
-    Left err -> warn verbosity err >> return (map (\x -> (x, CombineStrategyMerge)) pkgss)
+    Left err -> die' verbosity err
 
   let activeRepos' :: ActiveRepos
       activeRepos' = ActiveRepos
