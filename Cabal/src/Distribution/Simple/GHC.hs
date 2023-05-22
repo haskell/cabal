@@ -2080,7 +2080,7 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir pkg lib clbi = do
 
     copyModuleFiles ext =
       findModuleFilesEx verbosity [builtDir] [ext] (allLibModules lib clbi)
-      >>= installOrdinaryFiles verbosity targetDir
+      >>= installDirectoriesContents verbosity targetDir
 
     copyDirectoryIfExists dirName = do
       let src = builtDir  </> dirName
