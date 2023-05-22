@@ -339,7 +339,7 @@ configureProgram verbosity prog progdb = do
       if absolute
         then return (Just (UserSpecified path, []))
         else findProgramOnSearchPath verbosity (progSearchPath progdb) path
-             >>= maybe (die' verbosity notFound)
+             >>= maybe (dieAll verbosity notFound (Just path) 77)
                        (return . Just . swap . fmap UserSpecified . swap)
       where notFound = "Cannot find the program '" ++ name
                      ++ "'. User-specified path '"
