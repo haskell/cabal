@@ -1,0 +1,3 @@
+synopsis: Do not pass -rpath to GHC, but let GHC figure it out on its own.
+prs: 7076
+description: To reduce Load Command Sizes for dynamic libraries/executables together with https://gitlab.haskell.org/ghc/ghc/-/commit/4ff93292243888545da452ea4d4c1987f2343591

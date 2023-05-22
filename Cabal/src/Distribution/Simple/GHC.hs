@@ -1805,6 +1805,12 @@ getRPaths lbi clbi | supportRPaths hostOS = do
     (Platform _ hostOS) = hostPlatform lbi
     compid              = compilerId . compiler $ lbi
 
+    ghcInfoMap          = compilerProperties . compiler $ lbi
+    hasInstallNameTool  =
+      case Map.lookup "install_name_tool command" ghcInfoMap of
+        Just path -> not (null path)
+        Nothing   -> False
+
     -- The list of RPath-supported operating systems below reflects the
     -- platforms on which Cabal's RPATH handling is tested. It does _NOT_
     -- reflect whether the OS supports RPATH.
@@ -1814,7 +1820,23 @@ getRPaths lbi clbi | supportRPaths hostOS = do
     -- 'False', while those operating systems themselves do support RPATH.
     supportRPaths Linux       = True
     supportRPaths Windows     = False
-    supportRPaths OSX         = True
+    -- While macOS fundamentally supports RPaths, this flag will produce
+    -- linker -rpath flags for each dependency and pass them to GHC which will
+    -- in turn pass them verbatim to ld64.  This is not desirable as we need to
+    -- use dead_strip_dylibs on macOS to prevent the Load Commands to exceed the
+    -- Load Command Size Limit (32K) on macOS.  In GHC this was reworked in
+    -- ghc/ghc:4ff93292 (https://gitlab.haskell.org/ghc/ghc/-/commit/4ff93292243888545da452ea4d4c1987f2343591)
+    -- to patch the -rpath's into the library *after* linking them
+    -- with dead_strip_dylib. GHC relies on proper passing of -L values to find
+    -- the referenced libraries and subsequently produce the correct -rpath entries
+    -- in the library.  This will be backported to GHC 8.8, 8.10, and 9.0, as
+    -- well as being part of GHC 9.2 onwards.
+    --
+    -- We know the GHC in question supports this if it knows about
+    -- `install_name_tool` or `otool`. Thus in those cases, we do not
+    -- want RPaths support in Cabal, but have this handeled completely in GHC in
+    -- a post processing step.
+    supportRPaths OSX         = not hasInstallNameTool
     supportRPaths FreeBSD     =
       case compid of
         CompilerId GHC ver | ver >= mkVersion [7,10,2] -> True
