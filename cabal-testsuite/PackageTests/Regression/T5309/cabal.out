@@ -1,4 +1,6 @@
 # cabal v2-build
+This build is affected by the following project file(s):
+- <ROOT>/cabal.project
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
@@ -15,6 +17,8 @@ Configuring executable 'exe-with-lib' for T5309-1.0.0.0..
 Preprocessing executable 'exe-with-lib' for T5309-1.0.0.0..
 Building executable 'exe-with-lib' for T5309-1.0.0.0..
 # cabal v2-test
+This build is affected by the following project file(s):
+- <ROOT>/cabal.project
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
  - T5309-1.0.0.0 (test:test-no-lib) (first run)
@@ -36,6 +40,8 @@ Test suite test-with-lib: PASS
 Test suite logged to: <ROOT>/cabal.dist/work/./dist/build/<ARCH>/ghc-<GHCVER>/T5309-1.0.0.0/t/test-with-lib/test/T5309-1.0.0.0-test-with-lib.log
 1 of 1 test suites (1 of 1 test cases) passed.
 # cabal v2-bench
+This build is affected by the following project file(s):
+- <ROOT>/cabal.project
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
  - T5309-1.0.0.0 (bench:bench-no-lib) (first run)

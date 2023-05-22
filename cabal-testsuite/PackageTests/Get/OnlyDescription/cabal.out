@@ -1,6 +1,10 @@
 # cabal v2-update
+This build is affected by the following project file(s):
+- /home/pigs/git/cabal/cabal.project
 Downloading the latest package list from test-local-repo
 # cabal update
+This build is affected by the following project file(s):
+- /home/pigs/git/cabal/cabal.project
 Downloading the latest package list from test-local-repo
 # cabal get
 Writing package description to criterion-1.1.4.0.cabal

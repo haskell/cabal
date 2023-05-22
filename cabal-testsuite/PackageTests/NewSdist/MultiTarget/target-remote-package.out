@@ -1,2 +1,4 @@
 # cabal v2-sdist
+This build is affected by the following project file(s):
+- <ROOT>/target-remote-package.dist/source/cabal.project
 Error: cabal: The package base cannot be packaged for distribution, because it is not local to this project.

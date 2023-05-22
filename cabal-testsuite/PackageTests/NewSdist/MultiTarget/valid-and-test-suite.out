@@ -1,2 +1,4 @@
 # cabal v2-sdist
+This build is affected by the following project file(s):
+- <ROOT>/valid-and-test-suite.dist/source/cabal.project
 Error: cabal: The component test suite 'a-tests' cannot be packaged for distribution on its own. Only entire packages may be packaged for distribution.

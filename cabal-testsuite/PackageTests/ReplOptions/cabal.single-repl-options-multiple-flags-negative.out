@@ -1,5 +1,7 @@
 # cabal clean
 # cabal v2-repl
+This build is affected by the following project file(s):
+- <ROOT>/cabal.project
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
@@ -7,4 +9,3 @@ In order, the following will be built:
 Configuring library for cabal-repl-options-0.1..
 Preprocessing library for cabal-repl-options-0.1..
 Error: cabal: repl failed for cabal-repl-options-0.1-inplace.
-

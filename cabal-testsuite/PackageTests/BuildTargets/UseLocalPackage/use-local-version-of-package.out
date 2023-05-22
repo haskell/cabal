@@ -1,6 +1,10 @@
 # cabal v2-update
+This build is affected by the following project file(s):
+- <ROOT>/cabal.project
 Downloading the latest package list from test-local-repo
 # cabal v2-build
+This build is affected by the following project file(s):
+- <ROOT>/cabal.project
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
@@ -11,6 +15,8 @@ Building executable 'my-exe' for pkg-1.0..
 # pkg my-exe
 local pkg-1.0
 # cabal v2-build
+This build is affected by the following project file(s):
+- <ROOT>/cabal.project
 Resolving dependencies...
 Error: cabal: Could not resolve dependencies:
 [__0] next goal: pkg (user goal)

@@ -1,2 +1,4 @@
 # cabal v2-sdist
+This build is affected by the following project file(s):
+- <ROOT>/cabal.project
 Error: cabal: sdist of t5195-0: filepath wildcard './actually-a-directory' does not match any files.

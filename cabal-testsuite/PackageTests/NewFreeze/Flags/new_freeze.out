@@ -1,6 +1,10 @@
 # cabal v2-update
+This build is affected by the following project file(s):
+- <ROOT>/new_freeze.dist/source/cabal.project
 Downloading the latest package list from test-local-repo
 # cabal v2-build
+This build is affected by the following project file(s):
+- <ROOT>/new_freeze.dist/source/cabal.project
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following would be built:
@@ -8,9 +12,14 @@ In order, the following would be built:
  - my-library-dep-1.0 (lib) (requires build)
  - my-local-package-1.0 (lib) (first run)
 # cabal v2-freeze
+This build is affected by the following project file(s):
+- <ROOT>/new_freeze.dist/source/cabal.project
 Resolving dependencies...
 Wrote freeze file: <ROOT>/new_freeze.dist/source/cabal.project.freeze
 # cabal v2-build
+This build is affected by the following project file(s):
+- <ROOT>/new_freeze.dist/source/cabal.project
+- <ROOT>/new_freeze.dist/source/cabal.project.freeze
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following would be built:

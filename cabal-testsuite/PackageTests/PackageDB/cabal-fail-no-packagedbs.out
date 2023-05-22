@@ -1,2 +1,4 @@
 # cabal v2-build
+This build is affected by the following project file(s):
+- <ROOT>/p-no-package-dbs/cabal.project
 Error: cabal: No package databases have been specified. If you use --package-db=clear, you must follow it with --package-db= with 'global', 'user' or a specific file.

@@ -1,3 +1,5 @@
 # cabal v2-sdist
+This build is affected by the following project file(s):
+- <ROOT>/cabal.project
 Wrote tarball sdist to <TMPDIR>/pkg-a-0.tar.gz
 Error: cabal: sdist of pkg-b-0: filepath wildcard './data.txt' does not match any files.

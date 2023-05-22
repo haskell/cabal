@@ -1,4 +1,6 @@
 # cabal v2-build
+This build is affected by the following project file(s):
+- <ROOT>/cabal.project
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:

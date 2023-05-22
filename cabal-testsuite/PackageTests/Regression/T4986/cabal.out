@@ -1,1 +1,3 @@
 # cabal v2-configure
+This build is affected by the following project file(s):
+- <ROOT>/cabal.dist/source/cabal.project

@@ -1,2 +1,4 @@
 # cabal v2-sdist
+This build is affected by the following project file(s):
+- <ROOT>/cabal.project
 Wrote source list to <TMPDIR>/t7028-0.list
