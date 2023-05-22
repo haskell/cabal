@@ -1,0 +1,4 @@
+# cabal v2-build
+Error: cabal: Multiple packages have been found:
+multiple-cabal-files-0.1.0.0 defined in: ./multiple-cabal-files.cabal
+multiple-cabal-files-0.1.0.0 defined in: ./multiple-cabal-files2.cabal

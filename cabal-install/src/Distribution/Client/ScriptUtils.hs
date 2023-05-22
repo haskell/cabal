@@ -384,7 +384,7 @@ fakeProjectSourcePackage projectRoot = sourcePackage
     sourcePackage = SourcePackage
       { srcpkgPackageId     = fakePackageId
       , srcpkgDescription   = genericPackageDescription
-      , srcpkgSource        = LocalUnpackedPackage projectRoot
+      , srcpkgSource        = LocalUnpackedPackage projectRoot Nothing
       , srcpkgDescrOverride = Nothing
       }
     genericPackageDescription = emptyGenericPackageDescription

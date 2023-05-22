@@ -24,8 +24,15 @@ type ResolvedPkgLoc = PackageLocation FilePath
 
 data PackageLocation local =
 
-    -- | An unpacked package in the given dir, or current dir
-    LocalUnpackedPackage FilePath
+    -- | An unpacked package in the given directory.
+    -- @'LocalUnpackedPackage' directory mCabalFile@, where @directory@ is an
+    -- absolute filepath which points to the root of the *package*.
+    -- I.e., the filepath points to the directory where the '.cabal' file of
+    -- this package can be found.
+    -- If @mCabalFile@ is 'Nothing', then the '.cabal' file can be assumed to
+    -- be '<package-name>.cabal'.
+    -- Otherwise, @mCabalFile@ points to the '.cabal' file within @directory@.
+    LocalUnpackedPackage FilePath (Maybe FilePath)
 
     -- | A package as a tarball that's available as a local tarball
   | LocalTarballPackage FilePath

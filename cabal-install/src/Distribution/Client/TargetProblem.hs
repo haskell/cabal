@@ -44,6 +44,7 @@ data TargetProblem a
     -- directly then of course it can.
     | TargetProblemNoSuchPackage           PackageId
     | TargetProblemNoSuchComponent         PackageId ComponentName
+    | TargetProblemNotSinglePackage        [PackageId]
 
       -- | A custom target problem
     | CustomTargetProblem a

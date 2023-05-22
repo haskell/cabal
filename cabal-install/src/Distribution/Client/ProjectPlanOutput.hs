@@ -195,7 +195,7 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
       packageLocationToJ :: PackageLocation (Maybe FilePath) -> J.Value
       packageLocationToJ pkgloc =
         case pkgloc of
-          LocalUnpackedPackage local ->
+          LocalUnpackedPackage local _cabalFile ->
             J.object [ "type" J..= J.String "local"
                      , "path" J..= J.String local
                      ]

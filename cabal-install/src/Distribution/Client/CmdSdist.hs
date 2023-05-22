@@ -221,7 +221,7 @@ packageToSdist :: Verbosity -> FilePath -> OutputFormat -> FilePath -> Unresolve
 packageToSdist verbosity projectRootDir format outputFile pkg = do
     let death = die' verbosity ("The impossible happened: a local package isn't local" <> (show pkg))
     dir0 <- case srcpkgSource pkg of
-             LocalUnpackedPackage path             -> pure (Right path)
+             LocalUnpackedPackage path _           -> pure (Right path)
              RemoteSourceRepoPackage _ (Just tgz)  -> pure (Left tgz)
              RemoteSourceRepoPackage {}            -> death
              LocalTarballPackage tgz               -> pure (Left tgz)

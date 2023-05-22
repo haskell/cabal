@@ -590,12 +590,7 @@ resolveTargets selectPackageTargets selectComponentTarget
       = Left (TargetProblemNoSuchPackage pkgid)
 
     checkTarget (TargetPackage _ pkgids _)
-      = error ("TODO: add support for multiple packages in a directory.  Got\n"
-              ++ unlines (map prettyShow pkgids))
-      -- For the moment this error cannot happen here, because it gets
-      -- detected when the package config is being constructed. This case
-      -- will need handling properly when we do add support.
-      --
+      = Left (TargetProblemNotSinglePackage pkgids)
       -- TODO: how should this use case play together with the
       -- '--cabal-file' option of 'configure' which allows using multiple
       -- .cabal files for a single package?

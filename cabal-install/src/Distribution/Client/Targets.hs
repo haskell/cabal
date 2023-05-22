@@ -93,7 +93,7 @@ import qualified Data.ByteString.Lazy as BS
 import qualified Distribution.Client.GZipUtils as GZipUtils
 import qualified Distribution.Compat.CharParsing as P
 import System.FilePath
-         ( takeExtension, dropExtension, takeDirectory, splitPath )
+         ( takeExtension, dropExtension, takeDirectory, splitPath, takeFileName )
 import System.Directory
          ( doesFileExist, doesDirectoryExist )
 import Network.URI
@@ -348,12 +348,12 @@ expandUserTarget verbosity userTarget = case userTarget of
       in  return [PackageTargetNamedFuzzy name props userTarget]
 
     UserTargetLocalDir dir ->
-      return [ PackageTargetLocation (LocalUnpackedPackage dir) ]
+      return [ PackageTargetLocation (LocalUnpackedPackage dir Nothing) ]
 
     UserTargetLocalCabalFile file -> do
       let dir = takeDirectory file
       _   <- tryFindPackageDesc verbosity dir (localPackageError dir) -- just as a check
-      return [ PackageTargetLocation (LocalUnpackedPackage dir) ]
+      return [ PackageTargetLocation (LocalUnpackedPackage dir (Just $ takeFileName file)) ]
 
     UserTargetLocalTarball tarballFile ->
       return [ PackageTargetLocation (LocalTarballPackage tarballFile) ]
@@ -392,7 +392,7 @@ readPackageTarget verbosity = traverse modifyLocation
     modifyLocation :: ResolvedPkgLoc -> IO UnresolvedSourcePackage
     modifyLocation location = case location of
 
-      LocalUnpackedPackage dir -> do
+      LocalUnpackedPackage dir _cabalFile -> do
         pkg <- tryFindPackageDesc verbosity dir (localPackageError dir) >>=
                  readGenericPackageDescription verbosity
         return SourcePackage
