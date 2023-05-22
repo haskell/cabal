@@ -33,10 +33,10 @@ Ways to get the `cabal-install` binary
 _Getting unreleased versions of `cabal-install`_: gives you a chance to try out yet-unreleased features.
 Currently, we only provide binaries for `x86_64` platforms.
 
-1. _[GitHub preview release built from the tip of the `master branch](https://github.com/haskell/cabal/releases/tag/cabal-head)_:
+1. _[GitHub preview release built from the tip of the `master` branch](https://github.com/haskell/cabal/releases/tag/cabal-head)_:
 
 2. Even more cutting-edge binaries built from pull requests are always available
-   from the `Validate` worklow page on GitHub at the very bottom of the page.
+   from the `Validate` worklow page on GitHub, at the very bottom of the page.
 
 Ways to build `cabal-install` for everyday use
 --------------------------------------------
