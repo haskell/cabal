@@ -1,0 +1,3 @@
+synopsis: Enable Cabal's own RPATH handling on *BSD and Solaris
+packages: Cabal
+prs: #7382
