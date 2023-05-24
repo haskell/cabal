@@ -14,6 +14,19 @@ lib : $(LEXER_HS)
 exe : $(LEXER_HS)
 	$(CABALBUILD) cabal-install:exes
 
+init: ## Set up git hooks and ignored revisions
+	@git config core.hooksPath .githooks
+	## TODO
+
+style: ## Run the code styler
+	@find Cabal Cabal-syntax cabal-install -name '*.hs' \
+		! -path Cabal-syntax/src/Distribution/Fields/Lexer.hs \
+		! -path Cabal-syntax/src/Distribution/SPDX/LicenseExceptionId.hs \
+		! -path Cabal-syntax/src/Distribution/SPDX/LicenseId.hs \
+		! -path Cabal/src/Distribution/Simple/Build/Macros/Z.hs \
+		! -path Cabal/src/Distribution/Simple/Build/PathsModule/Z.hs \
+		| xargs -P $(PROCS) -I {} fourmolu -q -i {}
+
 # source generation: Lexer
 
 LEXER_HS:=Cabal-syntax/src/Distribution/Fields/Lexer.hs
@@ -227,3 +240,9 @@ users-guide-requirements: doc/requirements.txt
 doc/requirements.txt: .python-sphinx-virtualenv
 	. .python-sphinx-virtualenv/bin/activate \
 	  && make -C doc build-and-check-requirements
+
+ifeq ($(UNAME), Darwin)
+    PROCS := $(shell sysctl -n hw.logicalcpu)
+else
+    PROCS := $(shell nproc)
+endif
