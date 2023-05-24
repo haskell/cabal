@@ -5,13 +5,13 @@
 -- the functions contained to access those fields directly.
 module Distribution.Simple.BuildToolDepends where
 
-import           Prelude ()
-import           Distribution.Compat.Prelude
+import Distribution.Compat.Prelude
+import Prelude ()
 
 import qualified Data.Map as Map
 
-import           Distribution.Package
-import           Distribution.PackageDescription
+import Distribution.Package
+import Distribution.PackageDescription
 
 -- | Desugar a "build-tools" entry into proper a executable dependency if
 -- possible.
@@ -26,21 +26,30 @@ import           Distribution.PackageDescription
 --    the same, but the hard-coding could just as well be per-key.
 --
 -- The first cases matches first.
-desugarBuildTool :: PackageDescription
-                 -> LegacyExeDependency
-                 -> Maybe ExeDependency
+desugarBuildTool
+  :: PackageDescription
+  -> LegacyExeDependency
+  -> Maybe ExeDependency
 desugarBuildTool pkg led =
   if foundLocal
-  then Just $ ExeDependency (packageName pkg) toolName reqVer
-  else Map.lookup name whiteMap
+    then Just $ ExeDependency (packageName pkg) toolName reqVer
+    else Map.lookup name whiteMap
   where
     LegacyExeDependency name reqVer = led
     toolName = mkUnqualComponentName name
     foundLocal = toolName `elem` map exeName (executables pkg)
-    whitelist = [ "hscolour", "haddock", "happy", "alex", "hsc2hs", "c2hs"
-                , "cpphs", "greencard", "hspec-discover"
-                ]
-    whiteMap  = Map.fromList $ flip map whitelist $ \n ->
+    whitelist =
+      [ "hscolour"
+      , "haddock"
+      , "happy"
+      , "alex"
+      , "hsc2hs"
+      , "c2hs"
+      , "cpphs"
+      , "greencard"
+      , "hspec-discover"
+      ]
+    whiteMap = Map.fromList $ flip map whitelist $ \n ->
       (n, ExeDependency (mkPackageName n) (mkUnqualComponentName n) reqVer)
 
 -- | Get everything from "build-tool-depends", along with entries from
@@ -48,9 +57,10 @@ desugarBuildTool pkg led =
 --
 -- This should almost always be used instead of just accessing the
 -- `buildToolDepends` field directly.
-getAllToolDependencies :: PackageDescription
-                       -> BuildInfo
-                       -> [ExeDependency]
+getAllToolDependencies
+  :: PackageDescription
+  -> BuildInfo
+  -> [ExeDependency]
 getAllToolDependencies pkg bi =
   buildToolDepends bi ++ mapMaybe (desugarBuildTool pkg) (buildTools bi)
 
@@ -78,14 +88,14 @@ getAllToolDependencies pkg bi =
 isInternal :: PackageDescription -> ExeDependency -> Bool
 isInternal pkg (ExeDependency n _ _) = n == packageName pkg
 
-
 -- | Get internal "build-tool-depends", along with internal "build-tools"
 --
 -- This is a tiny function, but used in a number of places. The same
 -- restrictions that apply to `isInternal` also apply to this function.
-getAllInternalToolDependencies :: PackageDescription
-                               -> BuildInfo
-                               -> [UnqualComponentName]
+getAllInternalToolDependencies
+  :: PackageDescription
+  -> BuildInfo
+  -> [UnqualComponentName]
 getAllInternalToolDependencies pkg bi =
   [ toolname
   | dep@(ExeDependency _ toolname _) <- getAllToolDependencies pkg bi

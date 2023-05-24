@@ -1,24 +1,26 @@
-module Distribution.Utils.MD5 (
-    MD5,
-    showMD5,
-    md5,
-    -- * Helpers
-    md5FromInteger,
-    -- * Binary
-    binaryPutMD5,
-    binaryGetMD5,
-    ) where
+module Distribution.Utils.MD5
+  ( MD5
+  , showMD5
+  , md5
 
-import Data.Binary      (Get, Put)
-import Data.Binary.Get  (getWord64le)
-import Data.Binary.Put  (putWord64le)
-import Data.Bits        (complement, shiftR, (.&.))
-import Foreign.Ptr      (castPtr)
-import GHC.Fingerprint  (Fingerprint (..), fingerprintData)
-import Numeric          (showHex)
+    -- * Helpers
+  , md5FromInteger
+
+    -- * Binary
+  , binaryPutMD5
+  , binaryGetMD5
+  ) where
+
+import Data.Binary (Get, Put)
+import Data.Binary.Get (getWord64le)
+import Data.Binary.Put (putWord64le)
+import Data.Bits (complement, shiftR, (.&.))
+import Foreign.Ptr (castPtr)
+import GHC.Fingerprint (Fingerprint (..), fingerprintData)
+import Numeric (showHex)
 import System.IO.Unsafe (unsafeDupablePerformIO)
 
-import qualified Data.ByteString        as BS
+import qualified Data.ByteString as BS
 import qualified Data.ByteString.Unsafe as BS
 
 type MD5 = Fingerprint
@@ -33,7 +35,8 @@ type MD5 = Fingerprint
 --
 -- @since  3.2.0.0
 showMD5 :: MD5 -> String
-showMD5 (Fingerprint a b) = pad a' ++ pad b' where
+showMD5 (Fingerprint a b) = pad a' ++ pad b'
+  where
     a' = showHex a ""
     b' = showHex b ""
     pad s = replicate (16 - length s) '0' ++ s
@@ -41,20 +44,20 @@ showMD5 (Fingerprint a b) = pad a' ++ pad b' where
 -- | @since  3.2.0.0
 md5 :: BS.ByteString -> MD5
 md5 bs = unsafeDupablePerformIO $ BS.unsafeUseAsCStringLen bs $ \(ptr, len) ->
-    fingerprintData (castPtr ptr) len
+  fingerprintData (castPtr ptr) len
 
 -- | @since  3.2.0.0
 binaryPutMD5 :: MD5 -> Put
 binaryPutMD5 (Fingerprint a b) = do
-    putWord64le a
-    putWord64le b
+  putWord64le a
+  putWord64le b
 
 -- | @since  3.2.0.0
 binaryGetMD5 :: Get MD5
 binaryGetMD5 = do
-    a <- getWord64le
-    b <- getWord64le
-    return (Fingerprint a b)
+  a <- getWord64le
+  b <- getWord64le
+  return (Fingerprint a b)
 
 -- |
 --
@@ -73,7 +76,8 @@ binaryGetMD5 = do
 --
 -- @since 3.4.0.0
 md5FromInteger :: Integer -> MD5
-md5FromInteger i = Fingerprint hi lo where
+md5FromInteger i = Fingerprint hi lo
+  where
     mask = complement 0
-    lo   = mask .&. fromInteger i
-    hi   = mask .&. fromInteger (i `shiftR` 64)
+    lo = mask .&. fromInteger i
+    hi = mask .&. fromInteger (i `shiftR` 64)

@@ -1,32 +1,33 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Distribution.Compat.Time
-       ( ModTime(..) -- Needed for testing
-       , getModTime, getFileAge, getCurTime
-       , posixSecondsToModTime
-       , calibrateMtimeChangeDelay )
-       where
+  ( ModTime (..) -- Needed for testing
+  , getModTime
+  , getFileAge
+  , getCurTime
+  , posixSecondsToModTime
+  , calibrateMtimeChangeDelay
+  )
+where
 
-import Prelude ()
 import Distribution.Compat.Prelude
+import Prelude ()
 
-import System.Directory ( getModificationTime )
+import System.Directory (getModificationTime)
 
-import Distribution.Simple.Utils ( withTempDirectory )
-import Distribution.Verbosity ( silent )
+import Distribution.Simple.Utils (withTempDirectory)
+import Distribution.Verbosity (silent)
 
 import System.FilePath
 
-import Data.Time.Clock.POSIX ( POSIXTime, getPOSIXTime )
-import Data.Time             ( diffUTCTime, getCurrentTime )
-import Data.Time.Clock.POSIX ( posixDayLength )
-
+import Data.Time (diffUTCTime, getCurrentTime)
+import Data.Time.Clock.POSIX (POSIXTime, getPOSIXTime, posixDayLength)
 
 #if defined mingw32_HOST_OS
 
@@ -57,7 +58,7 @@ import System.Posix.Files ( modificationTime )
 -- | An opaque type representing a file's modification time, represented
 -- internally as a 64-bit unsigned integer in the Windows UTC format.
 newtype ModTime = ModTime Word64
-                deriving (Binary, Generic, Bounded, Eq, Ord, Typeable)
+  deriving (Binary, Generic, Bounded, Eq, Ord, Typeable)
 
 instance Structured ModTime
 
@@ -101,6 +102,7 @@ getModTime path = allocaBytes size_WIN32_FILE_ATTRIBUTE_DATA $ \info -> do
 #endif
       return $! ModTime (qwTime :: Word64)
 
+{- FOURMOLU_DISABLE -}
 #ifdef x86_64_HOST_ARCH
 #define CALLCONV ccall
 #else
@@ -138,9 +140,10 @@ extractFileTime :: FileStatus -> ModTime
 extractFileTime x = posixTimeToModTime (modificationTimeHiRes x)
 
 #endif
+{- FOURMOLU_ENABLE -}
 
 windowsTick, secToUnixEpoch :: Word64
-windowsTick    = 10000000
+windowsTick = 10000000
 secToUnixEpoch = 11644473600
 
 -- | Convert POSIX seconds to ModTime.
@@ -150,8 +153,10 @@ posixSecondsToModTime s =
 
 -- | Convert 'POSIXTime' to 'ModTime'.
 posixTimeToModTime :: POSIXTime -> ModTime
-posixTimeToModTime p = ModTime $ (ceiling $ p * 1e7) -- 100 ns precision
-                       + (secToUnixEpoch * windowsTick)
+posixTimeToModTime p =
+  ModTime $
+    (ceiling $ p * 1e7) -- 100 ns precision
+      + (secToUnixEpoch * windowsTick)
 
 -- | Return age of given file in days.
 getFileAge :: FilePath -> IO Double
@@ -174,15 +179,15 @@ calibrateMtimeChangeDelay :: IO (Int, Int)
 calibrateMtimeChangeDelay =
   withTempDirectory silent "." "calibration-" $ \dir -> do
     let fileName = dir </> "probe"
-    mtimes <- for [1..25] $ \(i::Int) -> time $ do
+    mtimes <- for [1 .. 25] $ \(i :: Int) -> time $ do
       writeFile fileName $ show i
       t0 <- getModTime fileName
       let spin j = do
-            writeFile fileName $ show (i,j)
+            writeFile fileName $ show (i, j)
             t1 <- getModTime fileName
             unless (t0 < t1) (spin $ j + 1)
-      spin (0::Int)
-    let mtimeChange  = maximum mtimes
+      spin (0 :: Int)
+    let mtimeChange = maximum mtimes
         mtimeChange' = min 1000000 $ (max 10000 mtimeChange) * 2
     return (mtimeChange, mtimeChange')
   where

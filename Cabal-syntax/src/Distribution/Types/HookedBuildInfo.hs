@@ -1,9 +1,9 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 
-module Distribution.Types.HookedBuildInfo (
-    HookedBuildInfo,
-    emptyHookedBuildInfo,
+module Distribution.Types.HookedBuildInfo
+  ( HookedBuildInfo
+  , emptyHookedBuildInfo
   ) where
 
 -- import Distribution.Compat.Prelude

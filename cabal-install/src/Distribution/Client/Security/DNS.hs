@@ -1,14 +1,14 @@
 {-# LANGUAGE CPP #-}
 
 module Distribution.Client.Security.DNS
-    ( queryBootstrapMirrors
-    ) where
+  ( queryBootstrapMirrors
+  ) where
 
-import Prelude ()
-import Distribution.Client.Compat.Prelude
-import Network.URI (URI(..), URIAuth(..), parseURI)
 import Control.Exception (try)
+import Distribution.Client.Compat.Prelude
 import Distribution.Simple.Utils
+import Network.URI (URI (..), URIAuth (..), parseURI)
+import Prelude ()
 
 #if defined(MIN_VERSION_resolv) || defined(MIN_VERSION_windns)
 import Network.DNS (queryTXT, Name(..), CharStr(..))
@@ -42,7 +42,6 @@ import Distribution.Simple.Program
 -- @hackage.haskell.org@ DNS entry, so an the additional
 -- @_mirrors.hackage.haskell.org@ DNS entry in the same SOA doesn't
 -- constitute a significant new attack vector anyway.
---
 queryBootstrapMirrors :: Verbosity -> URI -> IO [URI]
 
 #if defined(MIN_VERSION_resolv) || defined(MIN_VERSION_windns)
@@ -176,17 +175,17 @@ isUrlBase s
 
 -- | Split a TXT string into key and value according to RFC1464.
 -- Returns 'Nothing' if parsing fails.
-splitRfc1464 :: String -> Maybe (String,String)
+splitRfc1464 :: String -> Maybe (String, String)
 splitRfc1464 = go ""
   where
     go _ [] = Nothing
-    go acc ('`':c:cs) = go (c:acc) cs
-    go acc ('=':cs)   = go2 (reverse acc) "" cs
-    go acc (c:cs)
+    go acc ('`' : c : cs) = go (c : acc) cs
+    go acc ('=' : cs) = go2 (reverse acc) "" cs
+    go acc (c : cs)
       | isSpace c = go acc cs
-      | otherwise = go (c:acc) cs
+      | otherwise = go (c : acc) cs
 
-    go2 k acc [] = Just (k,reverse acc)
-    go2 _ _   ['`'] = Nothing
-    go2 k acc ('`':c:cs) = go2 k (c:acc) cs
-    go2 k acc (c:cs) = go2 k (c:acc) cs
+    go2 k acc [] = Just (k, reverse acc)
+    go2 _ _ ['`'] = Nothing
+    go2 k acc ('`' : c : cs) = go2 k (c : acc) cs
+    go2 k acc (c : cs) = go2 k (c : acc) cs

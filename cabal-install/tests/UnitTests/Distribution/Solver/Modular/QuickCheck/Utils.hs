@@ -1,5 +1,5 @@
-module UnitTests.Distribution.Solver.Modular.QuickCheck.Utils (
-    testPropertyWithSeed
+module UnitTests.Distribution.Solver.Modular.QuickCheck.Utils
+  ( testPropertyWithSeed
   ) where
 
 import Data.Tagged (Tagged, retag)
@@ -9,7 +9,11 @@ import Test.Tasty (TestTree)
 import Test.Tasty.Options (OptionDescription, lookupOption, setOption)
 import Test.Tasty.Providers (IsTest (..), singleTest)
 import Test.Tasty.QuickCheck
-    ( QC (..), QuickCheckReplay (..), Testable, property )
+  ( QC (..)
+  , QuickCheckReplay (..)
+  , Testable
+  , property
+  )
 
 import Distribution.Simple.Utils
 import Distribution.Verbosity
@@ -27,7 +31,7 @@ instance IsTest QCWithSeed where
 
   run options (QCWithSeed test) progress = do
     replay <- case lookupOption options of
-                 QuickCheckReplay (Just override) -> return override
-                 QuickCheckReplay Nothing         -> getStdRandom random
+      QuickCheckReplay (Just override) -> return override
+      QuickCheckReplay Nothing -> getStdRandom random
     notice normal $ "Using --quickcheck-replay=" ++ show replay
     run (setOption (QuickCheckReplay (Just replay)) options) test progress

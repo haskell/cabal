@@ -1,21 +1,23 @@
 {-# LANGUAGE DeriveGeneric #-}
-module Distribution.Parsec.Position (
-    Position (..),
-    incPos,
-    retPos,
-    showPos,
-    zeroPos,
-    positionCol,
-    positionRow,
-    ) where
+
+module Distribution.Parsec.Position
+  ( Position (..)
+  , incPos
+  , retPos
+  , showPos
+  , zeroPos
+  , positionCol
+  , positionRow
+  ) where
 
 import Distribution.Compat.Prelude
 import Prelude ()
 
 -- | 1-indexed row and column positions in a file.
-data Position = Position
-    {-# UNPACK #-}  !Int           -- row
-    {-# UNPACK #-}  !Int           -- column
+data Position
+  = Position
+      {-# UNPACK #-} !Int -- row
+      {-# UNPACK #-} !Int -- column
   deriving (Eq, Ord, Show, Generic)
 
 instance Binary Position

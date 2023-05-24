@@ -1,13 +1,12 @@
 {-# LANGUAGE CPP #-}
-
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
 
 module Distribution.Compat.FilePath
-( isExtensionOf
-, stripExtension
-) where
+  ( isExtensionOf
+  , stripExtension
+  ) where
 
-import Data.List ( isSuffixOf, stripPrefix )
+import Data.List (isSuffixOf, stripPrefix)
 import System.FilePath
 
 #if !MIN_VERSION_filepath(1,4,2)

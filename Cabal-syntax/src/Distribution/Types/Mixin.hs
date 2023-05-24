@@ -1,11 +1,11 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric      #-}
+{-# LANGUAGE DeriveGeneric #-}
 
-module Distribution.Types.Mixin (
-    Mixin(..),
-    mkMixin,
-    normaliseMixin,
-) where
+module Distribution.Types.Mixin
+  ( Mixin (..)
+  , mkMixin
+  , normaliseMixin
+  ) where
 
 import Distribution.Compat.Prelude
 import Prelude ()
@@ -19,18 +19,19 @@ import Distribution.Types.PackageName
 import Distribution.Types.UnqualComponentName
 
 import qualified Distribution.Compat.CharParsing as P
-import qualified Text.PrettyPrint                as PP
+import qualified Text.PrettyPrint as PP
 
 -- |
 --
 -- /Invariant:/ if 'mixinLibraryName' is 'LSubLibName', it's not
 -- the same as 'mixinPackageName'. In other words,
 -- the same invariant as 'Dependency' has.
---
-data Mixin = Mixin { mixinPackageName :: PackageName
-                   , mixinLibraryName :: LibraryName
-                   , mixinIncludeRenaming :: IncludeRenaming }
-    deriving (Show, Read, Eq, Ord, Typeable, Data, Generic)
+data Mixin = Mixin
+  { mixinPackageName :: PackageName
+  , mixinLibraryName :: LibraryName
+  , mixinIncludeRenaming :: IncludeRenaming
+  }
+  deriving (Show, Read, Eq, Ord, Typeable, Data, Generic)
 
 instance Binary Mixin
 instance Structured Mixin
@@ -38,8 +39,8 @@ instance Structured Mixin
 instance NFData Mixin where rnf = genericRnf
 
 instance Pretty Mixin where
-    pretty (Mixin pn LMainLibName incl)     = pretty pn <+> pretty incl
-    pretty (Mixin pn (LSubLibName ln) incl) = pretty pn <<>> PP.colon <<>> pretty ln <+> pretty incl
+  pretty (Mixin pn LMainLibName incl) = pretty pn <+> pretty incl
+  pretty (Mixin pn (LSubLibName ln) incl) = pretty pn <<>> PP.colon <<>> pretty ln <+> pretty incl
 
 -- |
 --
@@ -56,36 +57,37 @@ instance Pretty Mixin where
 --
 -- >>> map (`simpleParsec'` "mylib:sub") [CabalSpecV3_0, CabalSpecV3_4] :: [Maybe Mixin]
 -- [Nothing,Just (Mixin {mixinPackageName = PackageName "mylib", mixinLibraryName = LSubLibName (UnqualComponentName "sub"), mixinIncludeRenaming = IncludeRenaming {includeProvidesRn = DefaultRenaming, includeRequiresRn = DefaultRenaming}})]
---
 instance Parsec Mixin where
-    parsec = do
-        pn <- parsec
-        ln <- P.option LMainLibName $ do
-            _ <- P.char ':'
-            versionGuardMultilibs
-            LSubLibName <$> parsec
-        P.spaces
-        incl <- parsec
-        return (mkMixin pn ln incl)
-      where
+  parsec = do
+    pn <- parsec
+    ln <- P.option LMainLibName $ do
+      _ <- P.char ':'
+      versionGuardMultilibs
+      LSubLibName <$> parsec
+    P.spaces
+    incl <- parsec
+    return (mkMixin pn ln incl)
+    where
 
 versionGuardMultilibs :: CabalParsing m => m ()
 versionGuardMultilibs = do
   csv <- askCabalSpecVersion
-  when (csv < CabalSpecV3_4) $ fail $ unwords
-    [ "Sublibrary mixin syntax used."
-    , "To use this syntax the package needs to specify at least 'cabal-version: 3.4'."
-    ]
+  when (csv < CabalSpecV3_4) $
+    fail $
+      unwords
+        [ "Sublibrary mixin syntax used."
+        , "To use this syntax the package needs to specify at least 'cabal-version: 3.4'."
+        ]
 
 -- | Smart constructor of 'Mixin', enforces invariant.
 --
 -- @since 3.4.0.0
 mkMixin :: PackageName -> LibraryName -> IncludeRenaming -> Mixin
 mkMixin pn (LSubLibName uqn) incl
-    | packageNameToUnqualComponentName pn == uqn
-    = Mixin pn LMainLibName incl
-mkMixin pn ln incl
-    = Mixin pn ln incl
+  | packageNameToUnqualComponentName pn == uqn =
+      Mixin pn LMainLibName incl
+mkMixin pn ln incl =
+  Mixin pn ln incl
 
 -- | Restore invariant
 normaliseMixin :: Mixin -> Mixin

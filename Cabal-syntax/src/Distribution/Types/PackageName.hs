@@ -1,19 +1,22 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+
 module Distribution.Types.PackageName
   ( PackageName
-  , unPackageName, mkPackageName
-  , unPackageNameST, mkPackageNameST
+  , unPackageName
+  , mkPackageName
+  , unPackageNameST
+  , mkPackageNameST
   ) where
 
-import Prelude ()
 import Distribution.Compat.Prelude
 import Distribution.Utils.ShortText
+import Prelude ()
 
-import qualified Text.PrettyPrint as Disp
-import Distribution.Pretty
 import Distribution.Parsec
+import Distribution.Pretty
+import qualified Text.PrettyPrint as Disp
 
 -- | A package name.
 --
@@ -24,7 +27,7 @@ import Distribution.Parsec
 --
 -- @since 2.0.0.2
 newtype PackageName = PackageName ShortText
-    deriving (Generic, Read, Show, Eq, Ord, Typeable, Data)
+  deriving (Generic, Read, Show, Eq, Ord, Typeable, Data)
 
 -- | Convert 'PackageName' to 'String'
 unPackageName :: PackageName -> String
@@ -70,4 +73,4 @@ instance Parsec PackageName where
   parsec = mkPackageName <$> parsecUnqualComponentName
 
 instance NFData PackageName where
-    rnf (PackageName pkg) = rnf pkg
+  rnf (PackageName pkg) = rnf pkg

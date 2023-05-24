@@ -1,17 +1,17 @@
-{-# LANGUAGE DeriveDataTypeable  #-}
-{-# LANGUAGE DeriveGeneric       #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-module Distribution.Utils.NubList
-    ( NubList    -- opaque
-    , toNubList  -- smart constructor
-    , fromNubList
-    , overNubList
 
-    , NubListR
-    , toNubListR
-    , fromNubListR
-    , overNubListR
-    ) where
+module Distribution.Utils.NubList
+  ( NubList -- opaque
+  , toNubList -- smart constructor
+  , fromNubList
+  , overNubList
+  , NubListR
+  , toNubListR
+  , fromNubListR
+  , overNubListR
+  ) where
 
 import Distribution.Compat.Prelude
 import Prelude ()
@@ -21,9 +21,8 @@ import Distribution.Simple.Utils
 import qualified Text.Read as R
 
 -- | NubList : A de-duplicated list that maintains the original order.
-newtype NubList a =
-    NubList { fromNubList :: [a] }
-    deriving (Eq, Generic, Typeable)
+newtype NubList a = NubList {fromNubList :: [a]}
+  deriving (Eq, Generic, Typeable)
 
 -- NubList assumes that nub retains the list order while removing duplicate
 -- elements (keeping the first occurrence). Documentation for "Data.List.nub"
@@ -51,30 +50,29 @@ overNubList f (NubList list) = toNubList . f $ list
 --
 -- Closure : appending two lists of type a and removing duplicates obviously
 -- does not change the type.
-
 instance Ord a => Monoid (NubList a) where
-    mempty = NubList []
-    mappend = (<>)
+  mempty = NubList []
+  mappend = (<>)
 
 instance Ord a => Semigroup (NubList a) where
-    (NubList xs) <> (NubList ys) = NubList $ xs `listUnion` ys
+  (NubList xs) <> (NubList ys) = NubList $ xs `listUnion` ys
 
 instance Show a => Show (NubList a) where
-    show (NubList list) = show list
+  show (NubList list) = show list
 
 instance (Ord a, Read a) => Read (NubList a) where
-    readPrec = readNubList toNubList
+  readPrec = readNubList toNubList
 
 -- | Helper used by NubList/NubListR's Read instances.
-readNubList :: (Read a) => ([a] -> l a) -> R.ReadPrec (l a)
+readNubList :: Read a => ([a] -> l a) -> R.ReadPrec (l a)
 readNubList listToL = R.parens . R.prec 10 $ fmap listToL R.readPrec
 
 -- | Binary instance for 'NubList a' is the same as for '[a]'. For 'put', we
 -- just pull off constructor and put the list. For 'get', we get the list and
 -- make a 'NubList' out of it using 'toNubList'.
 instance (Ord a, Binary a) => Binary (NubList a) where
-    put (NubList l) = put l
-    get = fmap toNubList get
+  put (NubList l) = put l
+  get = fmap toNubList get
 
 instance Structured a => Structured (NubList a)
 
@@ -82,9 +80,8 @@ instance Structured a => Structured (NubList a)
 -- ["-XNoFoo", "-XFoo", "-XNoFoo"]@ will result in @["-XFoo", "-XNoFoo"]@,
 -- unlike the normal 'NubList', which is left-biased. Built on top of
 -- 'ordNubRight' and 'listUnionRight'.
-newtype NubListR a =
-    NubListR { fromNubListR :: [a] }
-    deriving Eq
+newtype NubListR a = NubListR {fromNubListR :: [a]}
+  deriving (Eq)
 
 -- | Smart constructor for the NubListR type.
 toNubListR :: Ord a => [a] -> NubListR a
@@ -105,4 +102,4 @@ instance Show a => Show (NubListR a) where
   show (NubListR list) = show list
 
 instance (Ord a, Read a) => Read (NubListR a) where
-    readPrec = readNubList toNubListR
+  readPrec = readNubList toNubListR

@@ -1,7 +1,10 @@
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 -----------------------------------------------------------------------------
+
+-----------------------------------------------------------------------------
+
 -- |
 -- Module      :  Distribution.Client.GZipUtils
 -- Copyright   :  (c) Dmitry Astapov 2010
@@ -13,16 +16,15 @@
 --
 -- Provides a convenience functions for working with files that may or may not
 -- be zipped.
------------------------------------------------------------------------------
-module Distribution.Client.GZipUtils (
-    maybeDecompress,
+module Distribution.Client.GZipUtils
+  ( maybeDecompress
   ) where
 
-import Prelude ()
 import Distribution.Client.Compat.Prelude
+import Prelude ()
 
 import Codec.Compression.Zlib.Internal
-import Data.ByteString.Lazy.Internal as BS (ByteString(Empty, Chunk))
+import Data.ByteString.Lazy.Internal as BS (ByteString (Chunk, Empty))
 
 #ifndef MIN_VERSION_zlib
 #define MIN_VERSION_zlib(x,y,z) 1
@@ -42,7 +44,6 @@ import qualified Data.ByteString as Strict
 -- This is to deal with http proxies that lie to us and transparently
 -- decompress without removing the content-encoding header. See:
 -- <https://github.com/haskell/cabal/issues/678>
---
 maybeDecompress :: ByteString -> ByteString
 #if MIN_VERSION_zlib(0,6,0)
 maybeDecompress bytes = runST (go bytes decompressor)

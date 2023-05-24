@@ -1,34 +1,38 @@
-{-# LANGUAGE FlexibleContexts    #-}
-{-# LANGUAGE FlexibleInstances   #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+
 -- | This module provides a way to specify a grammar of @.cabal@ -like files.
-module Distribution.FieldGrammar  (
-    -- * Field grammar type
-    FieldGrammar (..),
-    uniqueField,
-    optionalField,
-    optionalFieldDef,
-    monoidalField,
+module Distribution.FieldGrammar
+  ( -- * Field grammar type
+    FieldGrammar (..)
+  , uniqueField
+  , optionalField
+  , optionalFieldDef
+  , monoidalField
+
     -- * Concrete grammar implementations
-    ParsecFieldGrammar,
-    ParsecFieldGrammar',
-    parseFieldGrammar,
-    fieldGrammarKnownFieldList,
-    PrettyFieldGrammar,
-    PrettyFieldGrammar',
-    prettyFieldGrammar,
+  , ParsecFieldGrammar
+  , ParsecFieldGrammar'
+  , parseFieldGrammar
+  , fieldGrammarKnownFieldList
+  , PrettyFieldGrammar
+  , PrettyFieldGrammar'
+  , prettyFieldGrammar
+
     -- * Auxiliary
-    (^^^),
-    Section(..),
-    Fields,
-    partitionFields,
-    takeFields,
-    runFieldParser,
-    runFieldParser',
-    defaultFreeTextFieldDefST,
+  , (^^^)
+  , Section (..)
+  , Fields
+  , partitionFields
+  , takeFields
+  , runFieldParser
+  , runFieldParser'
+  , defaultFreeTextFieldDefST
+
     -- * Newtypes
-    module Distribution.FieldGrammar.Newtypes,
-    )  where
+  , module Distribution.FieldGrammar.Newtypes
+  ) where
 
 import Distribution.Compat.Prelude
 import Prelude ()
@@ -40,7 +44,7 @@ import Distribution.FieldGrammar.Newtypes
 import Distribution.FieldGrammar.Parsec
 import Distribution.FieldGrammar.Pretty
 import Distribution.Fields.Field
-import Distribution.Utils.Generic         (spanMaybe)
+import Distribution.Utils.Generic (spanMaybe)
 
 type ParsecFieldGrammar' a = ParsecFieldGrammar a a
 type PrettyFieldGrammar' a = PrettyFieldGrammar a a
@@ -66,17 +70,18 @@ partitionFields = finalize . foldl' f (PS mempty mempty mempty)
   where
     finalize :: PS ann -> (Fields ann, [[Section ann]])
     finalize (PS fs s ss)
-        | null s    = (fs, reverse ss)
-        | otherwise = (fs, reverse (reverse s : ss))
+      | null s = (fs, reverse ss)
+      | otherwise = (fs, reverse (reverse s : ss))
 
     f :: PS ann -> Field ann -> PS ann
     f (PS fs s ss) (Field (Name ann name) fss) =
-        PS (Map.insertWith (flip (++)) name [MkNamelessField ann fss] fs) [] ss'
+      PS (Map.insertWith (flip (++)) name [MkNamelessField ann fss] fs) [] ss'
       where
-        ss' | null s    = ss
-            | otherwise = reverse s : ss
+        ss'
+          | null s = ss
+          | otherwise = reverse s : ss
     f (PS fs s ss) (Section name sargs sfields) =
-        PS fs (MkSection name sargs sfields : s) ss
+      PS fs (MkSection name sargs sfields : s) ss
 
 -- | Take all fields from the front.
 takeFields :: [Field ann] -> (Fields ann, [Field ann])

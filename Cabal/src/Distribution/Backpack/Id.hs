@@ -1,74 +1,86 @@
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE PatternGuards #-}
+{-# LANGUAGE RankNTypes #-}
+
 -- | See <https://github.com/ezyang/ghc-proposals/blob/backpack/proposals/0000-backpack.rst>
-module Distribution.Backpack.Id(
-    computeComponentId,
-    computeCompatPackageKey,
-) where
+module Distribution.Backpack.Id
+  ( computeComponentId
+  , computeCompatPackageKey
+  ) where
 
-import Prelude ()
 import Distribution.Compat.Prelude
+import Prelude ()
 
-import Distribution.Types.UnqualComponentName
-import Distribution.Simple.Compiler
 import Distribution.PackageDescription
-import Distribution.Simple.Flag ( Flag(..) )
+import Distribution.Simple.Compiler
+import Distribution.Simple.Flag (Flag (..))
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Types.ComponentId
-import Distribution.Types.UnitId
 import Distribution.Types.MungedPackageName
+import Distribution.Types.UnitId
 import Distribution.Utils.Base62
 import Distribution.Version
 
+import Distribution.Parsec (simpleParsec)
 import Distribution.Pretty
-    ( prettyShow )
-import Distribution.Parsec ( simpleParsec )
+  ( prettyShow
+  )
 
 -- | This method computes a default, "good enough" 'ComponentId'
 -- for a package.  The intent is that cabal-install (or the user) will
 -- specify a more detailed IPID via the @--ipid@ flag if necessary.
 computeComponentId
-    :: Bool -- deterministic mode
-    -> Flag String
-    -> Flag ComponentId
-    -> PackageIdentifier
-    -> ComponentName
-    -- This is used by cabal-install's legacy codepath
-    -> Maybe ([ComponentId], FlagAssignment)
-    -> ComponentId
+  :: Bool -- deterministic mode
+  -> Flag String
+  -> Flag ComponentId
+  -> PackageIdentifier
+  -> ComponentName
+  -- This is used by cabal-install's legacy codepath
+  -> Maybe ([ComponentId], FlagAssignment)
+  -> ComponentId
 computeComponentId deterministic mb_ipid mb_cid pid cname mb_details =
-    -- show is found to be faster than intercalate and then replacement of
-    -- special character used in intercalating. We cannot simply hash by
-    -- doubly concatenating list, as it just flatten out the nested list, so
-    -- different sources can produce same hash
-    let hash_suffix
-            | Just (dep_ipids, flags) <- mb_details
-            = "-" ++ hashToBase62
+  -- show is found to be faster than intercalate and then replacement of
+  -- special character used in intercalating. We cannot simply hash by
+  -- doubly concatenating list, as it just flatten out the nested list, so
+  -- different sources can produce same hash
+  let hash_suffix
+        | Just (dep_ipids, flags) <- mb_details =
+            "-"
+              ++ hashToBase62
                 -- For safety, include the package + version here
                 -- for GHC 7.10, where just the hash is used as
                 -- the package key
-                    (    prettyShow pid
-                      ++ show dep_ipids
-                      ++ show flags     )
-            | otherwise = ""
-        generated_base = prettyShow pid ++ hash_suffix
-        explicit_base cid0 = fromPathTemplate (InstallDirs.substPathTemplate env
-                                                    (toPathTemplate cid0))
-            -- Hack to reuse install dirs machinery
-            -- NB: no real IPID available at this point
-          where env = packageTemplateEnv pid (mkUnitId "")
-        actual_base = case mb_ipid of
-                        Flag ipid0 -> explicit_base ipid0
-                        NoFlag | deterministic -> prettyShow pid
-                               | otherwise     -> generated_base
-    in case mb_cid of
-          Flag cid -> cid
-          NoFlag -> mkComponentId $ actual_base
-                        ++ (case componentNameString cname of
-                                Nothing -> ""
-                                Just s -> "-" ++ unUnqualComponentName s)
+                ( prettyShow pid
+                    ++ show dep_ipids
+                    ++ show flags
+                )
+        | otherwise = ""
+      generated_base = prettyShow pid ++ hash_suffix
+      explicit_base cid0 =
+        fromPathTemplate
+          ( InstallDirs.substPathTemplate
+              env
+              (toPathTemplate cid0)
+          )
+        where
+          -- Hack to reuse install dirs machinery
+          -- NB: no real IPID available at this point
+          env = packageTemplateEnv pid (mkUnitId "")
+      actual_base = case mb_ipid of
+        Flag ipid0 -> explicit_base ipid0
+        NoFlag
+          | deterministic -> prettyShow pid
+          | otherwise -> generated_base
+   in case mb_cid of
+        Flag cid -> cid
+        NoFlag ->
+          mkComponentId $
+            actual_base
+              ++ ( case componentNameString cname of
+                    Nothing -> ""
+                    Just s -> "-" ++ unUnqualComponentName s
+                 )
 
 -- | In GHC 8.0, the string we pass to GHC to use for symbol
 -- names for a package can be an arbitrary, IPID-compatible string.
@@ -116,30 +128,29 @@ computeComponentId deterministic mb_ipid mb_cid pid cname mb_details =
 --
 --      * For sub-components, we rehash the IPID into the correct format
 --        and pass that.
---
 computeCompatPackageKey
-    :: Compiler
-    -> MungedPackageName
-    -> Version
-    -> UnitId
-    -> String
+  :: Compiler
+  -> MungedPackageName
+  -> Version
+  -> UnitId
+  -> String
 computeCompatPackageKey comp pkg_name pkg_version uid
-    | not (packageKeySupported comp || unitIdSupported comp)
-    = prettyShow pkg_name ++ "-" ++ prettyShow pkg_version
-    | not (unifiedIPIDRequired comp) =
-        let str = unUnitId uid -- assume no Backpack support
-            mb_verbatim_key
-                = case simpleParsec str :: Maybe PackageId of
-                    -- Something like 'foo-0.1', use it verbatim.
-                    -- (NB: hash tags look like tags, so they are parsed,
-                    -- so the extra equality check tests if a tag was dropped.)
-                    Just pid0 | prettyShow pid0 == str -> Just str
-                    _ -> Nothing
-            mb_truncated_key
-                = let cand = reverse (takeWhile isAlphaNum (reverse str))
-                  in if length cand == 22 && all isAlphaNum cand
-                        then Just cand
-                        else Nothing
-            rehashed_key = hashToBase62 str
-        in fromMaybe rehashed_key (mb_verbatim_key `mplus` mb_truncated_key)
-    | otherwise = prettyShow uid
+  | not (packageKeySupported comp || unitIdSupported comp) =
+      prettyShow pkg_name ++ "-" ++ prettyShow pkg_version
+  | not (unifiedIPIDRequired comp) =
+      let str = unUnitId uid -- assume no Backpack support
+          mb_verbatim_key =
+            case simpleParsec str :: Maybe PackageId of
+              -- Something like 'foo-0.1', use it verbatim.
+              -- (NB: hash tags look like tags, so they are parsed,
+              -- so the extra equality check tests if a tag was dropped.)
+              Just pid0 | prettyShow pid0 == str -> Just str
+              _ -> Nothing
+          mb_truncated_key =
+            let cand = reverse (takeWhile isAlphaNum (reverse str))
+             in if length cand == 22 && all isAlphaNum cand
+                  then Just cand
+                  else Nothing
+          rehashed_key = hashToBase62 str
+       in fromMaybe rehashed_key (mb_verbatim_key `mplus` mb_truncated_key)
+  | otherwise = prettyShow uid

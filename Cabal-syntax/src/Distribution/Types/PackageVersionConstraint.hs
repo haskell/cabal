@@ -1,10 +1,11 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric      #-}
-module Distribution.Types.PackageVersionConstraint (
-    PackageVersionConstraint(..),
-    thisPackageVersionConstraint,
-    simplifyPackageVersionConstraint,
-) where
+{-# LANGUAGE DeriveGeneric #-}
+
+module Distribution.Types.PackageVersionConstraint
+  ( PackageVersionConstraint (..)
+  , thisPackageVersionConstraint
+  , simplifyPackageVersionConstraint
+  ) where
 
 import Distribution.Compat.Prelude
 import Prelude ()
@@ -15,7 +16,7 @@ import Distribution.Types.PackageId
 import Distribution.Types.PackageName
 import Distribution.Types.Version
 import Distribution.Types.VersionRange.Internal
-import Distribution.Version                     (simplifyVersionRange)
+import Distribution.Version (simplifyVersionRange)
 
 import qualified Distribution.Compat.CharParsing as P
 
@@ -25,7 +26,7 @@ import qualified Distribution.Compat.CharParsing as P
 -- There are a few places in the codebase where 'Dependency' was used where
 -- 'PackageVersionConstraint' is not used instead (#5570).
 data PackageVersionConstraint = PackageVersionConstraint PackageName VersionRange
-                  deriving (Generic, Read, Show, Eq, Typeable, Data)
+  deriving (Generic, Read, Show, Eq, Typeable, Data)
 
 instance Binary PackageVersionConstraint
 instance Structured PackageVersionConstraint
@@ -38,7 +39,7 @@ instance Pretty PackageVersionConstraint where
   -- pretty (PackageVersionConstraint name (ThisVersion ver)) =
   --     pretty (PackageIdentifier name ver)
   pretty (PackageVersionConstraint name ver) =
-      pretty name <+> pretty ver
+    pretty name <+> pretty ver
 
 -- |
 --
@@ -50,25 +51,23 @@ instance Pretty PackageVersionConstraint where
 --
 -- >>> simpleParsec "foo-2.0" :: Maybe PackageVersionConstraint
 -- Just (PackageVersionConstraint (PackageName "foo") (ThisVersion (mkVersion [2,0])))
---
 instance Parsec PackageVersionConstraint where
   parsec = do
-      PackageIdentifier name ver <- parsec
-      if ver == nullVersion
+    PackageIdentifier name ver <- parsec
+    if ver == nullVersion
       then do
-          P.spaces
-          vr <- parsec <|> return anyVersion
-          P.spaces
-          return (PackageVersionConstraint name vr)
-      else
-          pure (PackageVersionConstraint name (thisVersion ver))
+        P.spaces
+        vr <- parsec <|> return anyVersion
+        P.spaces
+        return (PackageVersionConstraint name vr)
+      else pure (PackageVersionConstraint name (thisVersion ver))
 
 -- | @since 3.4.0.0
 thisPackageVersionConstraint :: PackageIdentifier -> PackageVersionConstraint
 thisPackageVersionConstraint (PackageIdentifier pn vr) =
-    PackageVersionConstraint pn (thisVersion vr)
+  PackageVersionConstraint pn (thisVersion vr)
 
 -- | @since 3.4.0.0
 simplifyPackageVersionConstraint :: PackageVersionConstraint -> PackageVersionConstraint
 simplifyPackageVersionConstraint (PackageVersionConstraint pn vr) =
-    PackageVersionConstraint pn (simplifyVersionRange vr)
+  PackageVersionConstraint pn (simplifyVersionRange vr)

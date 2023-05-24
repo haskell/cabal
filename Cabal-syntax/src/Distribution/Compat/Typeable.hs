@@ -1,10 +1,11 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-module Distribution.Compat.Typeable (
-    Typeable,
-    TypeRep,
-    typeRep,
-    ) where
+
+module Distribution.Compat.Typeable
+  ( Typeable
+  , TypeRep
+  , typeRep
+  ) where
 
 #if MIN_VERSION_base(4,7,0)
 import Data.Typeable (Typeable, TypeRep, typeRep)

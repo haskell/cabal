@@ -1,12 +1,14 @@
 {-# LANGUAGE CPP #-}
-module Distribution.Compat.Process (
-    -- * Redefined functions
-    proc,
-    -- * Additions
-    enableProcessJobs,
-    ) where
 
-import           System.Process (CreateProcess)
+module Distribution.Compat.Process
+  ( -- * Redefined functions
+    proc
+
+    -- * Additions
+  , enableProcessJobs
+  ) where
+
+import System.Process (CreateProcess)
 import qualified System.Process as Process
 
 #if defined(mingw32_HOST_OS) && MIN_VERSION_process(1,6,9)
@@ -58,4 +60,4 @@ enableProcessJobs cp = cp
 -- | 'System.Process.proc' with process jobs enabled when appropriate,
 -- and defaulting 'delegate_ctlc' to 'True'.
 proc :: FilePath -> [String] -> CreateProcess
-proc path args = enableProcessJobs (Process.proc path args) { Process.delegate_ctlc = True }
+proc path args = enableProcessJobs (Process.proc path args){Process.delegate_ctlc = True}

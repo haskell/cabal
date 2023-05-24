@@ -1,4 +1,6 @@
-{-# LANGUAGE CPP, RankNTypes, FlexibleContexts #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE RankNTypes #-}
 
 -- Compatibility layer for GHC.ResponseFile
 -- Implementation from base 4.12.0 is used.
@@ -56,11 +58,11 @@ expandResponse = go recursionLimit "."
 
     go :: Int -> FilePath -> [String] -> IO [String]
     go n dir
-      | n >= 0    = fmap concat . traverse (expand n dir)
+      | n >= 0 = fmap concat . traverse (expand n dir)
       | otherwise = const $ hPutStrLn stderr "Error: response file recursion limit exceeded." >> exitFailure
 
     expand :: Int -> FilePath -> String -> IO [String]
-    expand n dir arg@('@':f) = readRecursively n (dir </> f) `catchIOError` (const $ print "?" >> return [arg])
+    expand n dir arg@('@' : f) = readRecursively n (dir </> f) `catchIOError` (const $ print "?" >> return [arg])
     expand _n _dir x = return [x]
 
     readRecursively :: Int -> FilePath -> IO [String]

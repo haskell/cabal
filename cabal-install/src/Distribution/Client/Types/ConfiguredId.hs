@@ -1,20 +1,21 @@
 {-# LANGUAGE DeriveGeneric #-}
-module Distribution.Client.Types.ConfiguredId (
-    InstalledPackageId,
-    ConfiguredId (..),
-    annotatedIdToConfiguredId,
-    HasConfiguredId (..),
-) where
+
+module Distribution.Client.Types.ConfiguredId
+  ( InstalledPackageId
+  , ConfiguredId (..)
+  , annotatedIdToConfiguredId
+  , HasConfiguredId (..)
+  ) where
 
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
-import Distribution.InstalledPackageInfo (InstalledPackageInfo, sourceComponentName, installedComponentId)
-import Distribution.Package              (Package (..))
-import Distribution.Types.AnnotatedId    (AnnotatedId (..))
-import Distribution.Types.ComponentId    (ComponentId)
-import Distribution.Types.ComponentName  (ComponentName)
-import Distribution.Types.PackageId      (PackageId)
+import Distribution.InstalledPackageInfo (InstalledPackageInfo, installedComponentId, sourceComponentName)
+import Distribution.Package (Package (..))
+import Distribution.Types.AnnotatedId (AnnotatedId (..))
+import Distribution.Types.ComponentId (ComponentId)
+import Distribution.Types.ComponentName (ComponentName)
+import Distribution.Types.PackageId (PackageId)
 
 -------------------------------------------------------------------------------
 -- InstalledPackageId
@@ -30,7 +31,6 @@ import Distribution.Types.PackageId      (PackageId)
 -- their primary library, which is a unit id. In future this may change
 -- slightly and we may distinguish these two types and have an explicit
 -- conversion when we register units with the compiler.
---
 type InstalledPackageId = ComponentId
 
 -------------------------------------------------------------------------------
@@ -45,18 +45,19 @@ type InstalledPackageId = ComponentId
 --
 -- An already installed package of course is also "configured" (all its
 -- configuration parameters and dependencies have been specified).
-data ConfiguredId = ConfiguredId {
-    confSrcId  :: PackageId
+data ConfiguredId = ConfiguredId
+  { confSrcId :: PackageId
   , confCompName :: Maybe ComponentName
   , confInstId :: ComponentId
   }
   deriving (Eq, Ord, Generic)
 
 annotatedIdToConfiguredId :: AnnotatedId ComponentId -> ConfiguredId
-annotatedIdToConfiguredId aid = ConfiguredId {
-        confSrcId    = ann_pid aid,
-        confCompName = Just (ann_cname aid),
-        confInstId   = ann_id aid
+annotatedIdToConfiguredId aid =
+  ConfiguredId
+    { confSrcId = ann_pid aid
+    , confCompName = Just (ann_cname aid)
+    , confInstId = ann_id aid
     }
 
 instance Binary ConfiguredId
@@ -73,11 +74,13 @@ instance Package ConfiguredId where
 -------------------------------------------------------------------------------
 
 class HasConfiguredId a where
-    configuredId :: a -> ConfiguredId
+  configuredId :: a -> ConfiguredId
 
 -- NB: This instance is slightly dangerous, in that you'll lose
 -- information about the specific UnitId you depended on.
 instance HasConfiguredId InstalledPackageInfo where
-    configuredId ipkg = ConfiguredId (packageId ipkg)
-                            (Just (sourceComponentName ipkg))
-                            (installedComponentId ipkg)
+  configuredId ipkg =
+    ConfiguredId
+      (packageId ipkg)
+      (Just (sourceComponentName ipkg))
+      (installedComponentId ipkg)

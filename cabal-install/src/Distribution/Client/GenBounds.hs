@@ -1,5 +1,9 @@
 {-# LANGUAGE CPP #-}
+
 -----------------------------------------------------------------------------
+
+-----------------------------------------------------------------------------
+
 -- |
 -- Module      :  Distribution.Client.GenBounds
 -- Copyright   :  (c) Doug Beardsley 2015
@@ -10,45 +14,75 @@
 -- Portability :  portable
 --
 -- The cabal gen-bounds command for generating PVP-compliant version bounds.
------------------------------------------------------------------------------
-module Distribution.Client.GenBounds (
-    genBounds
+module Distribution.Client.GenBounds
+  ( genBounds
   ) where
 
-import Prelude ()
 import Distribution.Client.Compat.Prelude
+import Prelude ()
 
-import Distribution.Client.Utils
-         ( hasElem, incVersion )
 import Distribution.Client.Freeze
-         ( getFreezePkgs )
+  ( getFreezePkgs
+  )
 import Distribution.Client.Setup
-         ( GlobalFlags(..), FreezeFlags(..), RepoContext )
+  ( FreezeFlags (..)
+  , GlobalFlags (..)
+  , RepoContext
+  )
+import Distribution.Client.Utils
+  ( hasElem
+  , incVersion
+  )
 import Distribution.Package
-         ( Package(..), unPackageName, packageName, packageVersion )
+  ( Package (..)
+  , packageName
+  , packageVersion
+  , unPackageName
+  )
 import Distribution.PackageDescription
-         ( enabledBuildDepends )
+  ( enabledBuildDepends
+  )
 import Distribution.PackageDescription.Configuration
-         ( finalizePD )
-import Distribution.Types.ComponentRequestedSpec
-         ( defaultComponentRequestedSpec )
-import Distribution.Types.Dependency
+  ( finalizePD
+  )
 import Distribution.Simple.Compiler
-         ( Compiler, PackageDBStack, compilerInfo )
+  ( Compiler
+  , PackageDBStack
+  , compilerInfo
+  )
 import Distribution.Simple.PackageDescription
-         ( readGenericPackageDescription )
+  ( readGenericPackageDescription
+  )
 import Distribution.Simple.Program
-         ( ProgramDb )
+  ( ProgramDb
+  )
 import Distribution.Simple.Utils
-         ( notice, tryFindPackageDesc )
+  ( notice
+  , tryFindPackageDesc
+  )
 import Distribution.System
-         ( Platform )
+  ( Platform
+  )
+import Distribution.Types.ComponentRequestedSpec
+  ( defaultComponentRequestedSpec
+  )
+import Distribution.Types.Dependency
 import Distribution.Version
-         ( Version, alterVersion, VersionInterval (..)
-         , LowerBound(..), UpperBound(..), VersionRange, asVersionIntervals
-         , orLaterVersion, earlierVersion, intersectVersionRanges, hasUpperBound)
+  ( LowerBound (..)
+  , UpperBound (..)
+  , Version
+  , VersionInterval (..)
+  , VersionRange
+  , alterVersion
+  , asVersionIntervals
+  , earlierVersion
+  , hasUpperBound
+  , intersectVersionRanges
+  , orLaterVersion
+  )
 import System.Directory
-         ( getCurrentDirectory )
+  ( getCurrentDirectory
+  )
 
 -- | Given a version, return an API-compatible (according to PVP) version range.
 --
@@ -59,19 +93,21 @@ import System.Directory
 -- the user could be using a new function introduced in a.b.c which would make
 -- ">= a.b" incorrect.
 pvpize :: Version -> VersionRange
-pvpize v = orLaterVersion (vn 3)
-           `intersectVersionRanges`
-           earlierVersion (incVersion 1 (vn 2))
+pvpize v =
+  orLaterVersion (vn 3)
+    `intersectVersionRanges` earlierVersion (incVersion 1 (vn 2))
   where
     vn n = alterVersion (take n) v
 
 -- | Show the PVP-mandated version range for this package. The @padTo@ parameter
 -- specifies the width of the package name column.
 showBounds :: Package pkg => Int -> pkg -> String
-showBounds padTo p = unwords $
-    (padAfter padTo $ unPackageName $ packageName p) :
-    -- TODO: use normaliseVersionRange
-    map showInterval (asVersionIntervals $ pvpize $ packageVersion p)
+showBounds padTo p =
+  unwords $
+    (padAfter padTo $ unPackageName $ packageName p)
+      :
+      -- TODO: use normaliseVersionRange
+      map showInterval (asVersionIntervals $ pvpize $ packageVersion p)
   where
     padAfter :: Int -> String -> String
     padAfter n str = str ++ replicate (n - length str) ' '
@@ -84,45 +120,64 @@ showBounds padTo p = unwords $
 
 -- | Entry point for the @gen-bounds@ command.
 genBounds
-    :: Verbosity
-    -> PackageDBStack
-    -> RepoContext
-    -> Compiler
-    -> Platform
-    -> ProgramDb
-    -> GlobalFlags
-    -> FreezeFlags
-    -> IO ()
+  :: Verbosity
+  -> PackageDBStack
+  -> RepoContext
+  -> Compiler
+  -> Platform
+  -> ProgramDb
+  -> GlobalFlags
+  -> FreezeFlags
+  -> IO ()
 genBounds verbosity packageDBs repoCtxt comp platform progdb globalFlags freezeFlags = do
-    let cinfo = compilerInfo comp
+  let cinfo = compilerInfo comp
 
-    cwd <- getCurrentDirectory
-    path <- tryFindPackageDesc verbosity cwd
-    gpd <- readGenericPackageDescription verbosity path
-    -- NB: We don't enable tests or benchmarks, since often they
-    -- don't really have useful bounds.
-    let epd = finalizePD mempty defaultComponentRequestedSpec
-                    (const True) platform cinfo [] gpd
-    case epd of
-      Left _ -> putStrLn "finalizePD failed"
-      Right (pd,_) -> do
-       let needBounds = map depName $ filter (not . hasUpperBound . depVersion) $
-                         enabledBuildDepends pd defaultComponentRequestedSpec
+  cwd <- getCurrentDirectory
+  path <- tryFindPackageDesc verbosity cwd
+  gpd <- readGenericPackageDescription verbosity path
+  -- NB: We don't enable tests or benchmarks, since often they
+  -- don't really have useful bounds.
+  let epd =
+        finalizePD
+          mempty
+          defaultComponentRequestedSpec
+          (const True)
+          platform
+          cinfo
+          []
+          gpd
+  case epd of
+    Left _ -> putStrLn "finalizePD failed"
+    Right (pd, _) -> do
+      let needBounds =
+            map depName $
+              filter (not . hasUpperBound . depVersion) $
+                enabledBuildDepends pd defaultComponentRequestedSpec
 
-       pkgs  <- getFreezePkgs
-                  verbosity packageDBs repoCtxt comp platform progdb
-                  globalFlags freezeFlags
+      pkgs <-
+        getFreezePkgs
+          verbosity
+          packageDBs
+          repoCtxt
+          comp
+          platform
+          progdb
+          globalFlags
+          freezeFlags
 
-       let isNeeded = hasElem needBounds . unPackageName . packageName
-       let thePkgs = filter isNeeded pkgs
+      let isNeeded = hasElem needBounds . unPackageName . packageName
+      let thePkgs = filter isNeeded pkgs
 
-       let padTo = maximum $ map (length . unPackageName . packageName) pkgs
+      let padTo = maximum $ map (length . unPackageName . packageName) pkgs
 
-       if null thePkgs then notice verbosity
-         "Congratulations, all your dependencies have upper bounds!"
+      if null thePkgs
+        then
+          notice
+            verbosity
+            "Congratulations, all your dependencies have upper bounds!"
         else do
-         notice verbosity boundsNeededMsg
-         traverse_ (notice verbosity . (++",") . showBounds padTo) thePkgs
+          notice verbosity boundsNeededMsg
+          traverse_ (notice verbosity . (++ ",") . showBounds padTo) thePkgs
 
 depName :: Dependency -> String
 depName (Dependency pn _ _) = unPackageName pn
@@ -133,18 +188,19 @@ depVersion (Dependency _ vr _) = vr
 -- | The message printed when some dependencies are found to be lacking proper
 -- PVP-mandated bounds.
 boundsNeededMsg :: String
-boundsNeededMsg = unlines
-  [ ""
-  , "The following packages need bounds and here is a suggested starting point."
-  , "You can copy and paste this into the build-depends section in your .cabal"
-  , "file and it should work (with the appropriate removal of commas)."
-  , ""
-  , "Note that version bounds are a statement that you've successfully built and"
-  , "tested your package and expect it to work with any of the specified package"
-  , "versions (PROVIDED that those packages continue to conform with the PVP)."
-  , "Therefore, the version bounds generated here are the most conservative"
-  , "based on the versions that you are currently building with.  If you know"
-  , "your package will work with versions outside the ranges generated here,"
-  , "feel free to widen them."
-  , ""
-  ]
+boundsNeededMsg =
+  unlines
+    [ ""
+    , "The following packages need bounds and here is a suggested starting point."
+    , "You can copy and paste this into the build-depends section in your .cabal"
+    , "file and it should work (with the appropriate removal of commas)."
+    , ""
+    , "Note that version bounds are a statement that you've successfully built and"
+    , "tested your package and expect it to work with any of the specified package"
+    , "versions (PROVIDED that those packages continue to conform with the PVP)."
+    , "Therefore, the version bounds generated here are the most conservative"
+    , "based on the versions that you are currently building with.  If you know"
+    , "your package will work with versions outside the ranges generated here,"
+    , "feel free to widen them."
+    , ""
+    ]

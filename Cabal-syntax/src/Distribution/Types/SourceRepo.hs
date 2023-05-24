@@ -1,31 +1,33 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 
-module Distribution.Types.SourceRepo (
-    SourceRepo(..),
-    RepoKind(..),
-    RepoType(..),
-    KnownRepoType (..),
-    knownRepoTypes,
-    emptySourceRepo,
-    classifyRepoType,
-    classifyRepoKind,
+module Distribution.Types.SourceRepo
+  ( SourceRepo (..)
+  , RepoKind (..)
+  , RepoType (..)
+  , KnownRepoType (..)
+  , knownRepoTypes
+  , emptySourceRepo
+  , classifyRepoType
+  , classifyRepoKind
   ) where
 
-import Prelude ()
 import Distribution.Compat.Prelude
+import Prelude ()
 
 import Distribution.Utils.Generic (lowercase)
 
-import Distribution.Pretty
 import Distribution.Parsec
+import Distribution.Pretty
 
+import qualified Data.Map.Strict as M
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
-import qualified Data.Map.Strict as M
 
 -- ------------------------------------------------------------
+
 -- * Source repos
+
 -- ------------------------------------------------------------
 
 -- | Information about the source revision control system for a package.
@@ -43,57 +45,50 @@ import qualified Data.Map.Strict as M
 -- The required information is the 'RepoType' which tells us if it's using
 -- 'Darcs', 'Git' for example. The 'repoLocation' and other details are
 -- interpreted according to the repo type.
---
-data SourceRepo = SourceRepo {
-  -- | The kind of repo. This field is required.
-  repoKind     :: RepoKind,
-
-  -- | The type of the source repository system for this repo, eg 'Darcs' or
+data SourceRepo = SourceRepo
+  { repoKind :: RepoKind
+  -- ^ The kind of repo. This field is required.
+  , repoType :: Maybe RepoType
+  -- ^ The type of the source repository system for this repo, eg 'Darcs' or
   -- 'Git'. This field is required.
-  repoType     :: Maybe RepoType,
-
-  -- | The location of the repository. For most 'RepoType's this is a URL.
+  , repoLocation :: Maybe String
+  -- ^ The location of the repository. For most 'RepoType's this is a URL.
   -- This field is required.
-  repoLocation :: Maybe String,
-
-  -- | 'CVS' can put multiple \"modules\" on one server and requires a
+  , repoModule :: Maybe String
+  -- ^ 'CVS' can put multiple \"modules\" on one server and requires a
   -- module name in addition to the location to identify a particular repo.
   -- Logically this is part of the location but unfortunately has to be
   -- specified separately. This field is required for the 'CVS' 'RepoType' and
   -- should not be given otherwise.
-  repoModule   :: Maybe String,
-
-  -- | The name or identifier of the branch, if any. Many source control
+  , repoBranch :: Maybe String
+  -- ^ The name or identifier of the branch, if any. Many source control
   -- systems have the notion of multiple branches in a repo that exist in the
   -- same location. For example 'Git' and 'CVS' use this while systems like
   -- 'Darcs' use different locations for different branches. This field is
   -- optional but should be used if necessary to identify the sources,
   -- especially for the 'RepoThis' repo kind.
-  repoBranch   :: Maybe String,
-
-  -- | The tag identify a particular state of the repository. This should be
+  , repoTag :: Maybe String
+  -- ^ The tag identify a particular state of the repository. This should be
   -- given for the 'RepoThis' repo kind and not for 'RepoHead' kind.
-  --
-  repoTag      :: Maybe String,
-
-  -- | Some repositories contain multiple projects in different subdirectories
+  , repoSubdir :: Maybe FilePath
+  -- ^ Some repositories contain multiple projects in different subdirectories
   -- This field specifies the subdirectory where this packages sources can be
   -- found, eg the subdirectory containing the @.cabal@ file. It is interpreted
   -- relative to the root of the repository. This field is optional. If not
   -- given the default is \".\" ie no subdirectory.
-  repoSubdir   :: Maybe FilePath
-}
+  }
   deriving (Eq, Ord, Generic, Read, Show, Typeable, Data)
 
 emptySourceRepo :: RepoKind -> SourceRepo
-emptySourceRepo kind = SourceRepo
-    { repoKind     = kind
-    , repoType     = Nothing
+emptySourceRepo kind =
+  SourceRepo
+    { repoKind = kind
+    , repoType = Nothing
     , repoLocation = Nothing
-    , repoModule   = Nothing
-    , repoBranch   = Nothing
-    , repoTag      = Nothing
-    , repoSubdir   = Nothing
+    , repoModule = Nothing
+    , repoBranch = Nothing
+    , repoTag = Nothing
+    , repoSubdir = Nothing
     }
 
 instance Binary SourceRepo
@@ -101,18 +96,15 @@ instance Structured SourceRepo
 instance NFData SourceRepo where rnf = genericRnf
 
 -- | What this repo info is for, what it represents.
---
-data RepoKind =
-    -- | The repository for the \"head\" or development version of the project.
+data RepoKind
+  = -- | The repository for the \"head\" or development version of the project.
     -- This repo is where we should track the latest development activity or
     -- the usual repo people should get to contribute patches.
     RepoHead
-
-    -- | The repository containing the sources for this exact package version
+  | -- | The repository containing the sources for this exact package version
     -- or release. For this kind of repo a tag should be given to give enough
     -- information to re-create the exact sources.
-  | RepoThis
-
+    RepoThis
   | RepoKindUnknown String
   deriving (Eq, Generic, Ord, Read, Show, Typeable, Data)
 
@@ -123,10 +115,17 @@ instance NFData RepoKind where rnf = genericRnf
 -- | An enumeration of common source control systems. The fields used in the
 -- 'SourceRepo' depend on the type of repo. The tools and methods used to
 -- obtain and track the repo depend on the repo type.
---
-data KnownRepoType = Darcs | Git | SVN | CVS
-                   | Mercurial | GnuArch | Bazaar | Monotone
-                   | Pijul -- ^ @since 3.4.0.0
+data KnownRepoType
+  = Darcs
+  | Git
+  | SVN
+  | CVS
+  | Mercurial
+  | GnuArch
+  | Bazaar
+  | Monotone
+  | -- | @since 3.4.0.0
+    Pijul
   deriving (Eq, Generic, Ord, Read, Show, Typeable, Data, Enum, Bounded)
 
 instance Binary KnownRepoType
@@ -144,8 +143,9 @@ instance Parsec KnownRepoType where
 instance Pretty KnownRepoType where
   pretty = Disp.text . lowercase . show
 
-data RepoType = KnownRepoType KnownRepoType
-              | OtherRepoType String
+data RepoType
+  = KnownRepoType KnownRepoType
+  | OtherRepoType String
   deriving (Eq, Generic, Ord, Read, Show, Typeable, Data)
 
 instance Binary RepoType
@@ -156,14 +156,14 @@ knownRepoTypes :: [KnownRepoType]
 knownRepoTypes = [minBound .. maxBound]
 
 repoTypeAliases :: KnownRepoType -> [String]
-repoTypeAliases Bazaar    = ["bzr"]
+repoTypeAliases Bazaar = ["bzr"]
 repoTypeAliases Mercurial = ["hg"]
-repoTypeAliases GnuArch   = ["arch"]
-repoTypeAliases _         = []
+repoTypeAliases GnuArch = ["arch"]
+repoTypeAliases _ = []
 
 instance Pretty RepoKind where
-  pretty RepoHead                = Disp.text "head"
-  pretty RepoThis                = Disp.text "this"
+  pretty RepoHead = Disp.text "head"
+  pretty RepoThis = Disp.text "this"
   pretty (RepoKindUnknown other) = Disp.text other
 
 instance Parsec RepoKind where
@@ -173,7 +173,7 @@ classifyRepoKind :: String -> RepoKind
 classifyRepoKind name = case lowercase name of
   "head" -> RepoHead
   "this" -> RepoThis
-  _      -> RepoKindUnknown name
+  _ -> RepoKindUnknown name
 
 instance Parsec RepoType where
   parsec = classifyRepoType <$> P.munch1 isIdent
@@ -193,8 +193,8 @@ knownRepoTypeMap :: Map String KnownRepoType
 knownRepoTypeMap =
   M.fromList
     [ (name, repoType')
-      | repoType' <- knownRepoTypes
-      , name <- prettyShow repoType' : repoTypeAliases repoType'
+    | repoType' <- knownRepoTypes
+    , name <- prettyShow repoType' : repoTypeAliases repoType'
     ]
 
 isIdent :: Char -> Bool

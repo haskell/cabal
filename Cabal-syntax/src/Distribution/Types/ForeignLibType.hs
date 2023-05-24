@@ -2,37 +2,37 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Distribution.Types.ForeignLibType(
-    ForeignLibType(..),
-    knownForeignLibTypes,
-    foreignLibTypeIsShared,
-) where
+module Distribution.Types.ForeignLibType
+  ( ForeignLibType (..)
+  , knownForeignLibTypes
+  , foreignLibTypeIsShared
+  ) where
 
-import Prelude ()
 import Distribution.Compat.Prelude
 import Distribution.PackageDescription.Utils
+import Prelude ()
 
-import Distribution.Pretty
 import Distribution.Parsec
+import Distribution.Pretty
 
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
 
 -- | What kind of foreign library is to be built?
-data ForeignLibType =
-      -- | A native shared library (@.so@ on Linux, @.dylib@ on OSX, or
-      -- @.dll@ on Windows).
-      ForeignLibNativeShared
-      -- | A native static library (not currently supported.)
-    | ForeignLibNativeStatic
-      -- TODO: Maybe this should record a string?
-    | ForeignLibTypeUnknown
-    deriving (Generic, Show, Read, Eq, Ord, Typeable, Data)
+data ForeignLibType
+  = -- | A native shared library (@.so@ on Linux, @.dylib@ on OSX, or
+    -- @.dll@ on Windows).
+    ForeignLibNativeShared
+  | -- | A native static library (not currently supported.)
+    ForeignLibNativeStatic
+  | -- TODO: Maybe this should record a string?
+    ForeignLibTypeUnknown
+  deriving (Generic, Show, Read, Eq, Ord, Typeable, Data)
 
 instance Pretty ForeignLibType where
   pretty ForeignLibNativeShared = Disp.text "native-shared"
   pretty ForeignLibNativeStatic = Disp.text "native-static"
-  pretty ForeignLibTypeUnknown  = Disp.text "unknown"
+  pretty ForeignLibTypeUnknown = Disp.text "unknown"
 
 instance Parsec ForeignLibType where
   parsec = do
@@ -40,7 +40,7 @@ instance Parsec ForeignLibType where
     return $ case name of
       "native-shared" -> ForeignLibNativeShared
       "native-static" -> ForeignLibNativeStatic
-      _               -> ForeignLibTypeUnknown
+      _ -> ForeignLibTypeUnknown
 
 instance Binary ForeignLibType
 instance Structured ForeignLibType
@@ -56,14 +56,14 @@ instance Monoid ForeignLibType where
   mappend = (<>)
 
 knownForeignLibTypes :: [ForeignLibType]
-knownForeignLibTypes = [
-      ForeignLibNativeShared
-    , ForeignLibNativeStatic
-    ]
+knownForeignLibTypes =
+  [ ForeignLibNativeShared
+  , ForeignLibNativeStatic
+  ]
 
 foreignLibTypeIsShared :: ForeignLibType -> Bool
 foreignLibTypeIsShared t =
-    case t of
-      ForeignLibNativeShared -> True
-      ForeignLibNativeStatic -> False
-      ForeignLibTypeUnknown  -> cabalBug "Unknown foreign library type"
+  case t of
+    ForeignLibNativeShared -> True
+    ForeignLibNativeStatic -> False
+    ForeignLibTypeUnknown -> cabalBug "Unknown foreign library type"
