@@ -31,6 +31,7 @@ module Distribution.Client.ProjectConfig (
     readProjectLocalFreezeConfig,
     reportParseResult,
     showProjectConfig,
+    withGlobalConfig,
     withProjectOrGlobalConfig,
     writeProjectLocalExtraConfig,
     writeProjectLocalFreezeConfig,
@@ -506,6 +507,15 @@ renderBadProjectRoot = \case
 
   BadProjectRootDirFile dir file ->
     "The given project directory/file combination '" <> dir </> file <> "' does not exist."
+
+withGlobalConfig
+    :: Verbosity                  -- ^ verbosity
+    -> Flag FilePath              -- ^ @--cabal-config@
+    -> (ProjectConfig -> IO a)    -- ^ with global
+    -> IO a
+withGlobalConfig verbosity gcf with = do
+    globalConfig <- runRebuild "" $ readGlobalConfig verbosity gcf
+    with globalConfig
 
 withProjectOrGlobalConfig
     :: Verbosity                  -- ^ verbosity

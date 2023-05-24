@@ -52,7 +52,7 @@ import Control.Monad (unless, when, void, forM_, liftM2, liftM4)
 import Control.Monad.Trans.Reader (withReaderT, runReaderT)
 import Control.Monad.IO.Class (MonadIO (..))
 import qualified Crypto.Hash.SHA256 as SHA256
-import qualified Data.ByteString.Base16 as Base16
+import qualified Data.ByteString.Base64 as Base64
 import qualified Data.ByteString.Char8 as C
 import Data.List (isInfixOf, stripPrefix, isPrefixOf, intercalate)
 import Data.List.NonEmpty (NonEmpty (..))
@@ -837,7 +837,8 @@ getScriptCacheDirectory :: FilePath -> TestM FilePath
 getScriptCacheDirectory script = do
     cabalDir <- testCabalDir `fmap` getTestEnv
     hashinput <- liftIO $ canonicalizePath script
-    let hash = C.unpack . Base16.encode . SHA256.hash . C.pack $ hashinput
+    let hash = map (\c -> if c == '/' then '%' else c) . take 26
+             . C.unpack . Base64.encode . SHA256.hash . C.pack $ hashinput
     return $ cabalDir </> "script-builds" </> hash
 
 ------------------------------------------------------------------------

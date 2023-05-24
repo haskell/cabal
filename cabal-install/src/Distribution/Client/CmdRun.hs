@@ -22,57 +22,56 @@ module Distribution.Client.CmdRun (
 import Prelude ()
 import Distribution.Client.Compat.Prelude hiding (toList)
 
-import Distribution.Client.ProjectOrchestration
 import Distribution.Client.CmdErrorMessages
          ( renderTargetSelector, showTargetSelector,
            renderTargetProblem,
            renderTargetProblemNoTargets, plural, targetSelectorPluralPkgs,
            targetSelectorFilter, renderListCommaAnd,
            renderListPretty )
-import Distribution.Client.TargetProblem
-         ( TargetProblem (..) )
-
-import Distribution.Client.NixStyleOptions
-         ( NixStyleFlags (..), nixStyleOptions, defaultNixStyleFlags )
-import Distribution.Client.Setup
-         ( GlobalFlags(..), ConfigFlags(..) )
 import Distribution.Client.GlobalFlags
          ( defaultGlobalFlags )
-import Distribution.Simple.Flag
-         ( fromFlagOrDefault )
-import Distribution.Simple.Command
-         ( CommandUI(..), usageAlternatives )
-import Distribution.Types.ComponentName
-         ( componentNameRaw )
-import Distribution.Verbosity
-         ( normal, silent )
-import Distribution.Simple.Utils
-         ( wrapText, die', info, notice, safeHead, warn )
+import Distribution.Client.InstallPlan
+         ( toList, foldPlanPackage )
+import Distribution.Client.NixStyleOptions
+         ( NixStyleFlags (..), nixStyleOptions, defaultNixStyleFlags )
+import Distribution.Client.ProjectOrchestration
 import Distribution.Client.ProjectPlanning
          ( ElaboratedConfiguredPackage(..)
          , ElaboratedInstallPlan, binDirectoryFor )
 import Distribution.Client.ProjectPlanning.Types
          ( dataDirsEnvironmentForPlan )
-import Distribution.Client.InstallPlan
-         ( toList, foldPlanPackage )
-import Distribution.Types.UnqualComponentName
-         ( UnqualComponentName, unUnqualComponentName )
+import Distribution.Client.ScriptUtils
+         ( AcceptNoTargets(..), TargetContext(..)
+         , updateContextAndWriteProjectFile, withContextAndSelectors
+         , movedExePath )
+import Distribution.Client.Setup
+         ( GlobalFlags(..), ConfigFlags(..) )
+import Distribution.Client.TargetProblem
+         ( TargetProblem (..) )
+import Distribution.Client.Utils
+         ( occursOnlyOrBefore, giveRTSWarning )
+import Distribution.Simple.Command
+         ( CommandUI(..), usageAlternatives )
+import Distribution.Simple.Flag
+         ( fromFlagOrDefault )
 import Distribution.Simple.Program.Run
          ( runProgramInvocation, ProgramInvocation(..),
            emptyProgramInvocation )
+import Distribution.Simple.Utils
+         ( wrapText, die', info, notice, safeHead, warn )
+import Distribution.Types.ComponentName
+         ( componentNameRaw )
 import Distribution.Types.UnitId
          ( UnitId )
-import Distribution.Client.ScriptUtils
-         ( AcceptNoTargets(..), withContextAndSelectors, updateContextAndWriteProjectFile, TargetContext(..) )
-import Distribution.Client.Utils
-         ( occursOnlyOrBefore, giveRTSWarning )
+import Distribution.Types.UnqualComponentName
+         ( UnqualComponentName, unUnqualComponentName )
+import Distribution.Verbosity
+         ( normal, silent )
 
 import Data.List ( group )
 import qualified Data.Set as Set
-
 import GHC.Environment
          ( getFullArgs )
-
 import System.Directory
          ( doesFileExist )
 import System.FilePath
@@ -226,11 +225,15 @@ runAction flags@NixStyleFlags {..} targetAndArgs globalFlags
         ++ exeName
         ++ ":\n"
         ++ unlines (fmap (\p -> " - in package " ++ prettyShow (elabUnitId p)) elabPkgs)
-    let exePath = binDirectoryFor (distDirLayout baseCtx)
-                                  (elaboratedShared buildCtx)
-                                  pkg
-                                  exeName
-               </> exeName
+
+    let defaultExePath = binDirectoryFor
+                            (distDirLayout baseCtx)
+                            (elaboratedShared buildCtx)
+                             pkg
+                             exeName
+                       </> exeName
+        exePath = fromMaybe defaultExePath (movedExePath selectedComponent (distDirLayout baseCtx) (elaboratedShared buildCtx) pkg)
+
     let dryRun = buildSettingDryRun (buildSettings baseCtx)
               || buildSettingOnlyDownload (buildSettings baseCtx)
 
