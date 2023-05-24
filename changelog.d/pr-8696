@@ -1,0 +1,10 @@
+synopsis: Extend the InstalledPackageInfo record with fields for artifacts.
+packages: Cabal-syntax Cabal Cabal-tests
+prs: #8696
+description: {
+    Extend the InstalledPackageInfo record with new fields involving build
+    artifact configuration.  The moduler resolver could then (in a separate set
+    of changes) use these new fields to avoid selecting installed package
+    options missing required artifacts and producing build plans that would
+    fail, even if alternatives would succeed.
+}
