@@ -133,7 +133,7 @@ import Text.PrettyPrint
 import Text.PrettyPrint.HughesPJ
          ( text, Doc )
 import System.Directory
-         ( createDirectoryIfMissing, getHomeDirectory, getXdgDirectory, XdgDirectory(XdgCache, XdgConfig, XdgState), renameFile, getAppUserDataDirectory, doesDirectoryExist )
+         ( createDirectoryIfMissing, getHomeDirectory, getXdgDirectory, XdgDirectory(XdgCache, XdgConfig, XdgState), renameFile, getAppUserDataDirectory, doesDirectoryExist, doesFileExist )
 import Network.URI
          ( URI(..), URIAuth(..), parseURI )
 import System.FilePath
@@ -592,12 +592,28 @@ initialSavedConfig = do
     }
   }
 
--- | If @CABAL\_DIR@ is set or @~/.cabal@ exists, return that
--- directory.  Otherwise returns Nothing.  If this function returns
--- Nothing, then it implies that we are not using a single directory
--- for everything, but instead use XDG paths.  Fundamentally, this
--- function is used to implement transparent backwards compatibility
--- with pre-XDG versions of cabal-install.
+-- | Issue a warning if both @$XDG_CONFIG_HOME/cabal/config@ and
+-- @~/.cabal@ exists.
+warnOnTwoConfigs :: Verbosity -> IO ()
+warnOnTwoConfigs verbosity = do
+  defaultDir <- getAppUserDataDirectory "cabal"
+  dotCabalExists <- doesDirectoryExist defaultDir
+  xdgCfg <- getXdgDirectory XdgConfig ("cabal" </> "config")
+  xdgCfgExists <- doesFileExist xdgCfg
+  when (dotCabalExists && xdgCfgExists) $
+    warn verbosity $
+    "Both " <> defaultDir <>
+    " and " <> xdgCfg <>
+    " exist - ignoring the former.\n" <>
+    "It is advisable to remove one of them. In that case, we will use the remaining one by default (unless '$CABAL_DIR' is explicitly set)."
+
+-- | If @CABAL\_DIR@ is set, return @Just@ its value. Otherwise, if
+-- @~/.cabal@ exists and @$XDG_CONFIG_HOME/cabal/config@ does not
+-- exist, return @Just "~/.cabal"@.  Otherwise, return @Nothing@.  If
+-- this function returns Nothing, then it implies that we are not
+-- using a single directory for everything, but instead use XDG paths.
+-- Fundamentally, this function is used to implement transparent
+-- backwards compatibility with pre-XDG versions of cabal-install.
 maybeGetCabalDir :: IO (Maybe FilePath)
 maybeGetCabalDir = do
   mDir <- lookupEnv "CABAL_DIR"
@@ -606,9 +622,11 @@ maybeGetCabalDir = do
     Nothing -> do
       defaultDir <- getAppUserDataDirectory "cabal"
       dotCabalExists <- doesDirectoryExist defaultDir
-      return $ if dotCabalExists
-               then Just defaultDir
-               else Nothing
+      xdgCfg <- getXdgDirectory XdgConfig ("cabal" </> "config")
+      xdgCfgExists <- doesFileExist xdgCfg
+      if dotCabalExists && not xdgCfgExists
+        then return $ Just defaultDir
+        else return Nothing
 
 -- | The default behaviour of cabal-install is to use the XDG
 -- directory standard.  However, if @CABAL_DIR@ is set, we instead use
@@ -774,6 +792,7 @@ defaultHackageRemoteRepoKeyThreshold = 3
 --
 loadConfig :: Verbosity -> Flag FilePath -> IO SavedConfig
 loadConfig verbosity configFileFlag = do
+  warnOnTwoConfigs verbosity
   config <- loadRawConfig verbosity configFileFlag
   extendToEffectiveConfig config
 
