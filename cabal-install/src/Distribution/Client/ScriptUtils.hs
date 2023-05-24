@@ -9,7 +9,8 @@ module Distribution.Client.ScriptUtils (
     getScriptHash, getScriptCacheDirectory, ensureScriptCacheDirectory,
     withContextAndSelectors, AcceptNoTargets(..), TargetContext(..),
     updateContextAndWriteProjectFile, updateContextAndWriteProjectFile',
-    fakeProjectSourcePackage, lSrcpkgDescription
+    fakeProjectSourcePackage, lSrcpkgDescription,
+    movedExePath
   ) where
 
 import Prelude ()
@@ -24,22 +25,24 @@ import Distribution.Client.ProjectOrchestration
 import Distribution.Client.Config
     ( defaultScriptBuildsDir )
 import Distribution.Client.DistDirLayout
-    ( DistDirLayout(..) )
+    ( DistDirLayout(..), DistDirParams(..) )
 import Distribution.Client.HashValue
-    ( hashValue, showHashValue )
+    ( hashValue, showHashValueBase64 )
 import Distribution.Client.HttpUtils
          ( HttpTransport, configureTransport )
 import Distribution.Client.NixStyleOptions
     ( NixStyleFlags (..) )
 import Distribution.Client.ProjectConfig
-    ( ProjectConfig(..), ProjectConfigShared(..)
-    , reportParseResult, withProjectOrGlobalConfig
+    ( ProjectConfig(..), ProjectConfigShared(..), PackageConfig(..)
+    , reportParseResult, withGlobalConfig, withProjectOrGlobalConfig
     , projectConfigHttpTransport )
 import Distribution.Client.ProjectConfig.Legacy
     ( ProjectConfigSkeleton
     , parseProjectSkeleton, instantiateProjectConfigSkeletonFetchingCompiler )
 import Distribution.Client.ProjectFlags
     ( flagIgnoreProject )
+import Distribution.Client.ProjectPlanning
+    ( ElaboratedSharedConfig(..), ElaboratedConfiguredPackage(..) )
 import Distribution.Client.RebuildMonad
     ( runRebuild )
 import Distribution.Client.Setup
@@ -48,6 +51,8 @@ import Distribution.Client.TargetSelector
     ( TargetSelectorProblem(..), TargetString(..) )
 import Distribution.Client.Types
     ( PackageLocation(..), PackageSpecifier(..), UnresolvedSourcePackage )
+import Distribution.Compiler
+    ( CompilerId(..), perCompilerFlavorToList )
 import Distribution.FieldGrammar
     ( parseFieldGrammar, takeFields )
 import Distribution.Fields
@@ -67,7 +72,7 @@ import Distribution.Simple.PackageDescription
 import Distribution.Simple.Setup
     ( Flag(..) )
 import Distribution.Simple.Compiler
-    ( compilerInfo )
+    ( Compiler(..), OptimisationLevel(..), compilerInfo )
 import Distribution.Simple.Utils
     ( createDirectoryIfMissingVerbose, createTempDirectory, die', handleDoesNotExist, readUTF8File, warn, writeUTF8File )
 import qualified Distribution.SPDX.License as SPDX
@@ -77,6 +82,8 @@ import Distribution.System
     ( Platform(..) )
 import Distribution.Types.BuildInfo
     ( BuildInfo(..) )
+import Distribution.Types.ComponentId
+    ( mkComponentId )
 import Distribution.Types.CondTree
     ( CondTree(..) )
 import Distribution.Types.Executable
@@ -87,6 +94,10 @@ import Distribution.Types.PackageDescription
     ( PackageDescription(..), emptyPackageDescription )
 import Distribution.Types.PackageName.Magic
     ( fakePackageCabalFileName, fakePackageId )
+import Distribution.Types.UnitId
+    ( newSimpleUnitId )
+import Distribution.Types.UnqualComponentName
+    ( UnqualComponentName )
 import Distribution.Utils.NubList
     ( fromNubList )
 import Distribution.Client.ProjectPlanning
@@ -106,7 +117,7 @@ import qualified Data.Set as S
 import System.Directory
     ( canonicalizePath, doesFileExist, getTemporaryDirectory, removeDirectoryRecursive )
 import System.FilePath
-    ( (</>), takeFileName )
+    ( (</>), makeRelative, takeDirectory, takeFileName )
 import qualified Text.Parsec as P
 
 -- A note on multi-module script support #6787:
@@ -125,7 +136,12 @@ import qualified Text.Parsec as P
 -- Two hashes will be the same as long as the absolute paths
 -- are the same.
 getScriptHash :: FilePath -> IO String
-getScriptHash script = showHashValue . hashValue . fromString <$> canonicalizePath script
+getScriptHash script
+  -- Base64 is shorter than Base16, which helps avoid long path issues on windows
+  -- but it can contain /'s which aren't valid in file paths so replace them with
+  -- %'s. 26 chars / 130 bits is enough to practically avoid collisions.
+  = map (\c -> if c == '/' then '%' else c) . take 26
+  . showHashValueBase64 . hashValue . fromString <$> canonicalizePath script
 
 -- | Get the directory for caching a script build.
 --
@@ -177,7 +193,7 @@ withContextAndSelectors
   -> IO b
 withContextAndSelectors noTargets kind flags@NixStyleFlags {..} targetStrings globalFlags cmd act
   = withTemporaryTempDirectory $ \mkTmpDir -> do
-    (tc, ctx) <- withProjectOrGlobalConfig verbosity ignoreProject globalConfigFlag with (without mkTmpDir)
+    (tc, ctx) <- withProjectOrGlobalConfig verbosity ignoreProject globalConfigFlag withProject (withoutProject mkTmpDir)
 
     (tc', ctx', sels) <- case targetStrings of
       -- Only script targets may contain spaces and or end with ':'.
@@ -209,19 +225,25 @@ withContextAndSelectors noTargets kind flags@NixStyleFlags {..} targetStrings gl
     globalConfigFlag = projectConfigConfigFile (projectConfigShared cliConfig)
     defaultTarget = [TargetPackage TargetExplicitNamed [fakePackageId] Nothing]
 
-    with = do
+    withProject = do
       ctx <- establishProjectBaseContext verbosity cliConfig cmd
       return (ProjectContext, ctx)
-    without mkDir globalConfig = do
-      distDirLayout <- establishDummyDistDirLayout verbosity (globalConfig <> cliConfig) =<< mkDir
+    withoutProject mkTmpDir globalConfig = do
+      distDirLayout <- establishDummyDistDirLayout verbosity (globalConfig <> cliConfig) =<< mkTmpDir
       ctx <- establishDummyProjectBaseContext verbosity (globalConfig <> cliConfig) distDirLayout [] cmd
       return (GlobalContext, ctx)
+
+    scriptBaseCtx script globalConfig = do
+      let noDistDir = mempty { projectConfigShared = mempty { projectConfigDistDir = Flag "" } }
+      let cfg = noDistDir <> globalConfig <> cliConfig
+      rootDir <- ensureScriptCacheDirectory verbosity script
+      distDirLayout <- establishDummyDistDirLayout verbosity cfg rootDir
+      establishDummyProjectBaseContext verbosity cfg distDirLayout [] cmd
+
     scriptOrError script err = do
       exists <- doesFileExist script
       if exists then do
-        -- In the script case we always want a dummy context even when ignoreProject is False
-        let mkCacheDir = ensureScriptCacheDirectory verbosity script
-        (_, ctx) <- withProjectOrGlobalConfig verbosity (Flag True) globalConfigFlag with (without mkCacheDir)
+        ctx <- withGlobalConfig verbosity globalConfigFlag (scriptBaseCtx script)
 
         let projectRoot = distProjectRootDirectory $ distDirLayout ctx
         writeFile (projectRoot </> "scriptlocation") =<< canonicalizePath script
@@ -236,14 +258,22 @@ withContextAndSelectors noTargets kind flags@NixStyleFlags {..} targetStrings gl
 
         projectCfgSkeleton <- readProjectBlockFromScript verbosity httpTransport (distDirLayout ctx) (takeFileName script) scriptContents
 
-        let fetchCompiler = do
-               (compiler, Platform arch os, _) <- runRebuild (distProjectRootDirectory . distDirLayout $ ctx) $ configureCompiler verbosity (distDirLayout ctx) ((fst $ ignoreConditions projectCfgSkeleton) <> projectConfig ctx)
-               pure (os, arch, compilerInfo compiler)
+        createDirectoryIfMissingVerbose verbosity True (distProjectCacheDirectory $ distDirLayout ctx)
+        (compiler, platform@(Platform arch os), _) <- runRebuild projectRoot $ configureCompiler verbosity (distDirLayout ctx) (fst (ignoreConditions projectCfgSkeleton) <> projectConfig ctx)
 
-        projectCfg <- instantiateProjectConfigSkeletonFetchingCompiler fetchCompiler mempty projectCfgSkeleton
+        projectCfg <- instantiateProjectConfigSkeletonFetchingCompiler (pure (os, arch, compilerInfo compiler)) mempty projectCfgSkeleton
 
-        let executable' = executable & L.buildInfo . L.defaultLanguage %~ maybe (Just Haskell2010) Just
-            ctx'        = ctx & lProjectConfig %~ (<> projectCfg)
+        let ctx' = ctx & lProjectConfig %~ (<> projectCfg)
+
+            build_dir = distBuildDirectory (distDirLayout ctx') $ (scriptDistDirParams script) ctx' compiler platform
+            exePath = build_dir </> "bin" </> scriptExeFileName script
+            exePathRel = makeRelative projectRoot exePath
+
+            executable' = executable & L.buildInfo . L.defaultLanguage %~ maybe (Just Haskell2010) Just
+                                     & L.buildInfo . L.options %~ fmap (setExePath exePathRel)
+
+        createDirectoryIfMissingVerbose verbosity True (takeDirectory exePath)
+
         return (ScriptContext script executable', ctx', defaultTarget)
       else reportTargetSelectorProblems verbosity err
 
@@ -259,6 +289,36 @@ withTemporaryTempDirectory act = newEmptyMVar >>= \m -> bracket (getMkTmp m) (rm
       putMVar m tmpDir
       return tmpDir
     rmTmp m _ = tryTakeMVar m >>= maybe (return ()) (handleDoesNotExist () . removeDirectoryRecursive)
+
+scriptComponenetName :: IsString s => FilePath -> s
+scriptComponenetName scriptPath = fromString cname
+  where
+    cname = "script-" ++ map censor (takeFileName scriptPath)
+    censor c | c `S.member` ccNamecore = c
+             | otherwise               = '_'
+
+scriptExeFileName :: FilePath -> FilePath
+scriptExeFileName scriptPath = "cabal-script-" ++ takeFileName scriptPath
+
+scriptDistDirParams :: FilePath -> ProjectBaseContext -> Compiler -> Platform -> DistDirParams
+scriptDistDirParams scriptPath ctx compiler platform = DistDirParams
+  { distParamUnitId         = newSimpleUnitId cid
+  , distParamPackageId      = fakePackageId
+  , distParamComponentId    = cid
+  , distParamComponentName  = Just $ CExeName cn
+  , distParamCompilerId     = compilerId compiler
+  , distParamPlatform       = platform
+  , distParamOptimization   = fromFlagOrDefault NormalOptimisation optimization
+  }
+  where
+      cn = scriptComponenetName scriptPath
+      cid = mkComponentId $ prettyShow fakePackageId <> "-inplace-" <> prettyShow cn
+      optimization = (packageConfigOptimization . projectConfigLocalPackages . projectConfig) ctx
+
+setExePath :: FilePath -> [String] -> [String]
+setExePath exePath options
+  | "-o" `notElem` options = "-o" : exePath : options
+  | otherwise              = options
 
 -- | Add the 'SourcePackage' to the context and use it to write a .cabal file.
 updateContextAndWriteProjectFile' :: ProjectBaseContext -> SourcePackage (PackageLocation (Maybe FilePath)) -> IO ProjectBaseContext
@@ -284,15 +344,9 @@ updateContextAndWriteProjectFile ctx scriptPath scriptExecutable = do
 
   absScript <- canonicalizePath scriptPath
   let
-    -- Replace characters which aren't allowed in the executable component name with '_'
-    -- Prefix with "cabal-script-" to make it clear to end users that the name may be mangled
-    scriptExeName = "cabal-script-" ++ map censor (takeFileName scriptPath)
-    censor c | c `S.member` ccNamecore = c
-             | otherwise               = '_'
-
     sourcePackage = fakeProjectSourcePackage projectRoot
       & lSrcpkgDescription . L.condExecutables
-      .~ [(fromString scriptExeName, CondNode executable (targetBuildDepends $ buildInfo executable) [])]
+      .~ [(scriptComponenetName scriptPath, CondNode executable (targetBuildDepends $ buildInfo executable) [])]
     executable = scriptExecutable
       & L.modulePath .~ absScript
 
@@ -394,6 +448,15 @@ fakeProjectSourcePackage projectRoot = sourcePackage
       , specVersion = CabalSpecV2_2
       , licenseRaw = Left SPDX.NONE
       }
+
+-- | Find the path of an exe that has been relocated with a "-o" option
+movedExePath :: UnqualComponentName -> DistDirLayout -> ElaboratedSharedConfig -> ElaboratedConfiguredPackage -> Maybe FilePath
+movedExePath selectedComponent distDirLayout elabShared elabConfigured = do
+  exe <- find ((== selectedComponent) . exeName) . executables $ elabPkgDescription elabConfigured
+  let CompilerId flavor _ = (compilerId . pkgConfigCompiler) elabShared
+  opts <- lookup flavor (perCompilerFlavorToList . options $ buildInfo exe)
+  let projectRoot = distProjectRootDirectory distDirLayout
+  fmap (projectRoot </>) . lookup "-o" $ reverse (zip opts (drop 1 opts))
 
 -- Lenses
 -- | A lens for the 'srcpkgDescription' field of 'SourcePackage'

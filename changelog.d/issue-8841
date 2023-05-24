@@ -1,0 +1,15 @@
+synopsis: Shorten script-builds paths
+packages: Cabal cabal-install
+prs: #8898
+issues: #8841
+
+description: {
+
+- Use Base64 hash truncated to 26 chars for script-build cache directories.
+- Use the cache directory as the dist directory.
+- Use script-<your-sanitized-script-name> as the component name instead of cabal-script-<...>.
+- Use cabal-script-<your-actual-script-name> for the executable name.
+- This change is incompatible with previous cabal versions in terms of cache location,
+  you should manually remove your old caches once you no longer need them.
+
+}
