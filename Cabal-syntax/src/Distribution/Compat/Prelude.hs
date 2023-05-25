@@ -130,10 +130,9 @@ module Distribution.Compat.Prelude (
 
 -- We also could hide few partial function
 import Prelude                       as BasePrelude hiding
-    ( mapM, mapM_, sequence, null, length, foldr, any, all, head, tail, last, init
+    ( mapM, mapM_, sequence, any, all, head, tail, last, init
     -- partial functions
     , read
-    , foldr1, foldl1
 #if MINVER_base_411
     -- As of base 4.11.0.0 Prelude exports part of Semigroup(..).
     -- Hide this so we instead rely on Distribution.Compat.Semigroup.
@@ -142,8 +141,9 @@ import Prelude                       as BasePrelude hiding
     , Word
     -- We hide them, as we import only some members
     , Traversable, traverse, sequenceA
-    , Foldable, foldMap
+    , Foldable(..)
     )
+import Data.Foldable as BasePrelude (foldl, elem, sum, product, maximum, minimum)
 
 -- AMP
 import Data.Foldable
