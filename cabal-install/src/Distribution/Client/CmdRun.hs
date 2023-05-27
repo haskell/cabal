@@ -30,24 +30,11 @@ import Distribution.Client.CmdErrorMessages
            renderListPretty )
 import Distribution.Client.GlobalFlags
          ( defaultGlobalFlags )
-<<<<<<< HEAD
-import Distribution.Simple.Flag
-         ( fromFlagOrDefault )
-import Distribution.Simple.Command
-         ( CommandUI(..), usageAlternatives )
-import Distribution.Types.ComponentName
-         ( componentNameRaw )
-import Distribution.Verbosity
-         ( normal, silent )
-import Distribution.Simple.Utils
-         ( wrapText, die', info, notice, safeHead )
-=======
 import Distribution.Client.InstallPlan
          ( toList, foldPlanPackage )
 import Distribution.Client.NixStyleOptions
          ( NixStyleFlags (..), nixStyleOptions, defaultNixStyleFlags )
 import Distribution.Client.ProjectOrchestration
->>>>>>> a482a63c1 (Shorten script-builds paths (#8898))
 import Distribution.Client.ProjectPlanning
          ( ElaboratedConfiguredPackage(..)
          , ElaboratedInstallPlan, binDirectoryFor )
@@ -61,8 +48,6 @@ import Distribution.Client.Setup
          ( GlobalFlags(..), ConfigFlags(..) )
 import Distribution.Client.TargetProblem
          ( TargetProblem (..) )
-import Distribution.Client.Utils
-         ( occursOnlyOrBefore, giveRTSWarning )
 import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives )
 import Distribution.Simple.Flag
@@ -71,28 +56,19 @@ import Distribution.Simple.Program.Run
          ( runProgramInvocation, ProgramInvocation(..),
            emptyProgramInvocation )
 import Distribution.Simple.Utils
-         ( wrapText, die', info, notice, safeHead, warn )
+         ( wrapText, die', info, notice, safeHead )
 import Distribution.Types.ComponentName
          ( componentNameRaw )
 import Distribution.Types.UnitId
          ( UnitId )
-<<<<<<< HEAD
-import Distribution.Client.ScriptUtils
-         ( AcceptNoTargets(..), withContextAndSelectors, updateContextAndWriteProjectFile, TargetContext(..) )
-=======
+
 import Distribution.Types.UnqualComponentName
          ( UnqualComponentName, unUnqualComponentName )
 import Distribution.Verbosity
          ( normal, silent )
->>>>>>> a482a63c1 (Shorten script-builds paths (#8898))
 
 import Data.List (group)
 import qualified Data.Set as Set
-<<<<<<< HEAD
-=======
-import GHC.Environment
-         ( getFullArgs )
->>>>>>> a482a63c1 (Shorten script-builds paths (#8898))
 import System.Directory
          ( doesFileExist )
 import System.FilePath

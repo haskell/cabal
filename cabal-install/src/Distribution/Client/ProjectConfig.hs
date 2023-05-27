@@ -463,17 +463,6 @@ renderBadProjectRoot :: BadProjectRoot -> String
 renderBadProjectRoot (BadProjectRootExplicitFile projectFile) =
     "The given project file '" ++ projectFile ++ "' does not exist."
 
-<<<<<<< HEAD
-=======
-  BadProjectRootDir dir ->
-    "The given project directory '" <> dir <> "' does not exist."
-
-  BadProjectRootAbsoluteFile file ->
-    "The given project file '" <> file <> "' does not exist."
-
-  BadProjectRootDirFile dir file ->
-    "The given project directory/file combination '" <> dir </> file <> "' does not exist."
-
 withGlobalConfig
     :: Verbosity                  -- ^ verbosity
     -> Flag FilePath              -- ^ @--cabal-config@
@@ -483,7 +472,6 @@ withGlobalConfig verbosity gcf with = do
     globalConfig <- runRebuild "" $ readGlobalConfig verbosity gcf
     with globalConfig
 
->>>>>>> a482a63c1 (Shorten script-builds paths (#8898))
 withProjectOrGlobalConfig
     :: Verbosity                  -- ^ verbosity
     -> Flag Bool                  -- ^ whether to ignore local project (--ignore-project flag)
