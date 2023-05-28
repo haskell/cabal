@@ -23,17 +23,18 @@ module Distribution.Client.ProjectConfig
   , BadProjectRoot
 
     -- * Project config files
-  , readProjectConfig
-  , readGlobalConfig
-  , readProjectLocalExtraConfig
-  , readProjectLocalFreezeConfig
-  , reportParseResult
-  , showProjectConfig
-  , withProjectOrGlobalConfig
-  , writeProjectLocalExtraConfig
-  , writeProjectLocalFreezeConfig
-  , writeProjectConfigFile
-  , commandLineFlagsToProjectConfig
+    readProjectConfig,
+    readGlobalConfig,
+    readProjectLocalExtraConfig,
+    readProjectLocalFreezeConfig,
+    reportParseResult,
+    showProjectConfig,
+    withGlobalConfig,
+    withProjectOrGlobalConfig,
+    writeProjectLocalExtraConfig,
+    writeProjectLocalFreezeConfig,
+    writeProjectConfigFile,
+    commandLineFlagsToProjectConfig,
 
     -- * Packages within projects
   , ProjectPackageLocation (..)
@@ -604,6 +605,15 @@ renderBadProjectRoot = \case
     "The given project file '" <> file <> "' does not exist."
   BadProjectRootDirFile dir file ->
     "The given project directory/file combination '" <> dir </> file <> "' does not exist."
+
+withGlobalConfig
+    :: Verbosity                  -- ^ verbosity
+    -> Flag FilePath              -- ^ @--cabal-config@
+    -> (ProjectConfig -> IO a)    -- ^ with global
+    -> IO a
+withGlobalConfig verbosity gcf with = do
+    globalConfig <- runRebuild "" $ readGlobalConfig verbosity gcf
+    with globalConfig
 
 withProjectOrGlobalConfig
   :: Verbosity

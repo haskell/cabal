@@ -195,46 +195,26 @@ import Distribution.Verbosity
   ( normal
   )
 
-import qualified Data.ByteString as BS
-import qualified Data.Map as M
-import Distribution.Compat.Environment
-  ( getEnvironment
-  )
-import Distribution.Parsec (ParsecParser, parsecFilePath, parsecOptCommaList, parsecToken)
-import Network.URI
-  ( URI (..)
-  , URIAuth (..)
-  , parseURI
-  )
-import System.Directory
-  ( XdgDirectory (XdgCache, XdgConfig, XdgState)
-  , createDirectoryIfMissing
-  , doesDirectoryExist
-  , getAppUserDataDirectory
-  , getHomeDirectory
-  , getXdgDirectory
-  , renameFile
-  )
-import System.FilePath
-  ( takeDirectory
-  , (<.>)
-  , (</>)
-  )
-import System.IO.Error
-  ( isDoesNotExistError
-  )
-import Text.PrettyPrint
-  ( ($+$)
-  )
 import qualified Text.PrettyPrint as Disp
-  ( empty
-  , render
-  , text
-  )
+         ( render, text, empty )
+import Distribution.Parsec (parsecOptCommaList, ParsecParser, parsecToken, parsecFilePath)
+import Text.PrettyPrint
+         ( ($+$) )
 import Text.PrettyPrint.HughesPJ
-  ( Doc
-  , text
-  )
+         ( text, Doc )
+import System.Directory
+         ( createDirectoryIfMissing, getHomeDirectory, getXdgDirectory, XdgDirectory(XdgCache, XdgConfig, XdgState), renameFile, getAppUserDataDirectory, doesDirectoryExist, doesFileExist )
+import Network.URI
+         ( URI(..), URIAuth(..), parseURI )
+import System.FilePath
+         ( (<.>), (</>), takeDirectory )
+import System.IO.Error
+         ( isDoesNotExistError )
+import Distribution.Compat.Environment
+         ( getEnvironment )
+import qualified Data.Map as M
+import qualified Data.ByteString as BS
+import Distribution.Client.ReplFlags
 
 --
 
@@ -243,45 +223,45 @@ import Text.PrettyPrint.HughesPJ
 --
 
 data SavedConfig = SavedConfig
-  { savedGlobalFlags :: GlobalFlags
-  , savedInitFlags :: IT.InitFlags
-  , savedInstallFlags :: InstallFlags
-  , savedClientInstallFlags :: ClientInstallFlags
-  , savedConfigureFlags :: ConfigFlags
-  , savedConfigureExFlags :: ConfigExFlags
-  , savedUserInstallDirs :: InstallDirs (Flag PathTemplate)
-  , savedGlobalInstallDirs :: InstallDirs (Flag PathTemplate)
-  , savedUploadFlags :: UploadFlags
-  , savedReportFlags :: ReportFlags
-  , savedHaddockFlags :: HaddockFlags
-  , savedTestFlags :: TestFlags
-  , savedBenchmarkFlags :: BenchmarkFlags
-  , savedProjectFlags :: ProjectFlags
-  }
-  deriving (Generic)
+    { savedGlobalFlags        :: GlobalFlags
+    , savedInitFlags          :: IT.InitFlags
+    , savedInstallFlags       :: InstallFlags
+    , savedClientInstallFlags :: ClientInstallFlags
+    , savedConfigureFlags     :: ConfigFlags
+    , savedConfigureExFlags   :: ConfigExFlags
+    , savedUserInstallDirs    :: InstallDirs (Flag PathTemplate)
+    , savedGlobalInstallDirs  :: InstallDirs (Flag PathTemplate)
+    , savedUploadFlags        :: UploadFlags
+    , savedReportFlags        :: ReportFlags
+    , savedHaddockFlags       :: HaddockFlags
+    , savedTestFlags          :: TestFlags
+    , savedBenchmarkFlags     :: BenchmarkFlags
+    , savedProjectFlags       :: ProjectFlags
+    , savedReplMulti          :: Flag Bool
+    } deriving Generic
 
 instance Monoid SavedConfig where
   mempty = gmempty
   mappend = (<>)
 
 instance Semigroup SavedConfig where
-  a <> b =
-    SavedConfig
-      { savedGlobalFlags = combinedSavedGlobalFlags
-      , savedInitFlags = combinedSavedInitFlags
-      , savedInstallFlags = combinedSavedInstallFlags
-      , savedClientInstallFlags = combinedSavedClientInstallFlags
-      , savedConfigureFlags = combinedSavedConfigureFlags
-      , savedConfigureExFlags = combinedSavedConfigureExFlags
-      , savedUserInstallDirs = combinedSavedUserInstallDirs
-      , savedGlobalInstallDirs = combinedSavedGlobalInstallDirs
-      , savedUploadFlags = combinedSavedUploadFlags
-      , savedReportFlags = combinedSavedReportFlags
-      , savedHaddockFlags = combinedSavedHaddockFlags
-      , savedTestFlags = combinedSavedTestFlags
-      , savedBenchmarkFlags = combinedSavedBenchmarkFlags
-      , savedProjectFlags = combinedSavedProjectFlags
-      }
+  a <> b = SavedConfig {
+    savedGlobalFlags       = combinedSavedGlobalFlags,
+    savedInitFlags         = combinedSavedInitFlags,
+    savedInstallFlags      = combinedSavedInstallFlags,
+    savedClientInstallFlags = combinedSavedClientInstallFlags,
+    savedConfigureFlags    = combinedSavedConfigureFlags,
+    savedConfigureExFlags  = combinedSavedConfigureExFlags,
+    savedUserInstallDirs   = combinedSavedUserInstallDirs,
+    savedGlobalInstallDirs = combinedSavedGlobalInstallDirs,
+    savedUploadFlags       = combinedSavedUploadFlags,
+    savedReportFlags       = combinedSavedReportFlags,
+    savedHaddockFlags      = combinedSavedHaddockFlags,
+    savedTestFlags         = combinedSavedTestFlags,
+    savedBenchmarkFlags    = combinedSavedBenchmarkFlags,
+    savedProjectFlags      = combinedSavedProjectFlags,
+    savedReplMulti         = combinedSavedReplMulti
+  }
     where
       -- This is ugly, but necessary. If we're mappending two config files, we
       -- want the values of the *non-empty* list fields from the second one to
@@ -449,79 +429,79 @@ instance Semigroup SavedConfig where
         where
           combine = combine' savedClientInstallFlags
 
-      combinedSavedConfigureFlags =
-        ConfigFlags
-          { configArgs = lastNonEmpty configArgs
-          , configPrograms_ = configPrograms_ . savedConfigureFlags $ b
-          , -- TODO: NubListify
-            configProgramPaths = lastNonEmpty configProgramPaths
-          , -- TODO: NubListify
-            configProgramArgs = lastNonEmpty configProgramArgs
-          , configProgramPathExtra = lastNonEmptyNL configProgramPathExtra
-          , configInstantiateWith = lastNonEmpty configInstantiateWith
-          , configHcFlavor = combine configHcFlavor
-          , configHcPath = combine configHcPath
-          , configHcPkg = combine configHcPkg
-          , configVanillaLib = combine configVanillaLib
-          , configProfLib = combine configProfLib
-          , configProf = combine configProf
-          , configSharedLib = combine configSharedLib
-          , configStaticLib = combine configStaticLib
-          , configDynExe = combine configDynExe
-          , configFullyStaticExe = combine configFullyStaticExe
-          , configProfExe = combine configProfExe
-          , configProfDetail = combine configProfDetail
-          , configProfLibDetail = combine configProfLibDetail
-          , -- TODO: NubListify
-            configConfigureArgs = lastNonEmpty configConfigureArgs
-          , configOptimization = combine configOptimization
-          , configDebugInfo = combine configDebugInfo
-          , configProgPrefix = combine configProgPrefix
-          , configProgSuffix = combine configProgSuffix
-          , -- Parametrised by (Flag PathTemplate), so safe to use 'mappend'.
-            configInstallDirs =
-              (configInstallDirs . savedConfigureFlags $ a)
-                `mappend` (configInstallDirs . savedConfigureFlags $ b)
-          , configScratchDir = combine configScratchDir
-          , -- TODO: NubListify
-            configExtraLibDirs = lastNonEmpty configExtraLibDirs
-          , configExtraLibDirsStatic = lastNonEmpty configExtraLibDirsStatic
-          , -- TODO: NubListify
-            configExtraFrameworkDirs = lastNonEmpty configExtraFrameworkDirs
-          , -- TODO: NubListify
-            configExtraIncludeDirs = lastNonEmpty configExtraIncludeDirs
-          , configDeterministic = combine configDeterministic
-          , configIPID = combine configIPID
-          , configCID = combine configCID
-          , configDistPref = combine configDistPref
-          , configCabalFilePath = combine configCabalFilePath
-          , configVerbosity = combine configVerbosity
-          , configUserInstall = combine configUserInstall
-          , -- TODO: NubListify
-            configPackageDBs = lastNonEmpty configPackageDBs
-          , configGHCiLib = combine configGHCiLib
-          , configSplitSections = combine configSplitSections
-          , configSplitObjs = combine configSplitObjs
-          , configStripExes = combine configStripExes
-          , configStripLibs = combine configStripLibs
-          , -- TODO: NubListify
-            configConstraints = lastNonEmpty configConstraints
-          , -- TODO: NubListify
-            configDependencies = lastNonEmpty configDependencies
-          , -- TODO: NubListify
-            configConfigurationsFlags = lastNonMempty configConfigurationsFlags
-          , configTests = combine configTests
-          , configBenchmarks = combine configBenchmarks
-          , configCoverage = combine configCoverage
-          , configLibCoverage = combine configLibCoverage
-          , configExactConfiguration = combine configExactConfiguration
-          , configFlagError = combine configFlagError
-          , configRelocatable = combine configRelocatable
-          , configUseResponseFiles = combine configUseResponseFiles
-          , configDumpBuildInfo = combine configDumpBuildInfo
-          , configAllowDependingOnPrivateLibs =
-              combine configAllowDependingOnPrivateLibs
-          }
+      combinedSavedConfigureFlags = ConfigFlags {
+        configArgs                = lastNonEmpty configArgs,
+        configPrograms_           = configPrograms_ . savedConfigureFlags $ b,
+        -- TODO: NubListify
+        configProgramPaths        = lastNonEmpty configProgramPaths,
+        -- TODO: NubListify
+        configProgramArgs         = lastNonEmpty configProgramArgs,
+        configProgramPathExtra    = lastNonEmptyNL configProgramPathExtra,
+        configInstantiateWith     = lastNonEmpty configInstantiateWith,
+        configHcFlavor            = combine configHcFlavor,
+        configHcPath              = combine configHcPath,
+        configHcPkg               = combine configHcPkg,
+        configVanillaLib          = combine configVanillaLib,
+        configProfLib             = combine configProfLib,
+        configProf                = combine configProf,
+        configSharedLib           = combine configSharedLib,
+        configStaticLib           = combine configStaticLib,
+        configDynExe              = combine configDynExe,
+        configFullyStaticExe      = combine configFullyStaticExe,
+        configProfExe             = combine configProfExe,
+        configProfDetail          = combine configProfDetail,
+        configProfLibDetail       = combine configProfLibDetail,
+        -- TODO: NubListify
+        configConfigureArgs       = lastNonEmpty configConfigureArgs,
+        configOptimization        = combine configOptimization,
+        configDebugInfo           = combine configDebugInfo,
+        configProgPrefix          = combine configProgPrefix,
+        configProgSuffix          = combine configProgSuffix,
+        -- Parametrised by (Flag PathTemplate), so safe to use 'mappend'.
+        configInstallDirs         =
+          (configInstallDirs . savedConfigureFlags $ a)
+          `mappend` (configInstallDirs . savedConfigureFlags $ b),
+        configScratchDir          = combine configScratchDir,
+        -- TODO: NubListify
+        configExtraLibDirs        = lastNonEmpty configExtraLibDirs,
+        configExtraLibDirsStatic  = lastNonEmpty configExtraLibDirsStatic,
+        -- TODO: NubListify
+        configExtraFrameworkDirs  = lastNonEmpty configExtraFrameworkDirs,
+        -- TODO: NubListify
+        configExtraIncludeDirs    = lastNonEmpty configExtraIncludeDirs,
+        configDeterministic       = combine configDeterministic,
+        configIPID                = combine configIPID,
+        configCID                 = combine configCID,
+        configDistPref            = combine configDistPref,
+        configCabalFilePath       = combine configCabalFilePath,
+        configVerbosity           = combine configVerbosity,
+        configUserInstall         = combine configUserInstall,
+        -- TODO: NubListify
+        configPackageDBs          = lastNonEmpty configPackageDBs,
+        configGHCiLib             = combine configGHCiLib,
+        configSplitSections       = combine configSplitSections,
+        configSplitObjs           = combine configSplitObjs,
+        configStripExes           = combine configStripExes,
+        configStripLibs           = combine configStripLibs,
+        -- TODO: NubListify
+        configConstraints         = lastNonEmpty configConstraints,
+        -- TODO: NubListify
+        configDependencies        = lastNonEmpty configDependencies,
+        configPromisedDependencies = lastNonEmpty configPromisedDependencies,
+        -- TODO: NubListify
+        configConfigurationsFlags = lastNonMempty configConfigurationsFlags,
+        configTests               = combine configTests,
+        configBenchmarks          = combine configBenchmarks,
+        configCoverage            = combine configCoverage,
+        configLibCoverage         = combine configLibCoverage,
+        configExactConfiguration  = combine configExactConfiguration,
+        configFlagError           = combine configFlagError,
+        configRelocatable         = combine configRelocatable,
+        configUseResponseFiles    = combine configUseResponseFiles,
+        configDumpBuildInfo       = combine configDumpBuildInfo,
+        configAllowDependingOnPrivateLibs =
+            combine configAllowDependingOnPrivateLibs
+        }
         where
           combine = combine' savedConfigureFlags
           lastNonEmpty = lastNonEmpty' savedConfigureFlags
@@ -640,12 +620,13 @@ instance Semigroup SavedConfig where
           combine = combine' savedBenchmarkFlags
           lastNonEmpty = lastNonEmpty' savedBenchmarkFlags
 
-      combinedSavedProjectFlags =
-        ProjectFlags
-          { flagProjectDir = combine flagProjectDir
-          , flagProjectFile = combine flagProjectFile
-          , flagIgnoreProject = combine flagIgnoreProject
-          }
+      combinedSavedReplMulti = combine' savedReplMulti id
+
+      combinedSavedProjectFlags = ProjectFlags
+        { flagProjectDir      = combine flagProjectDir
+        , flagProjectFile     = combine flagProjectFile
+        , flagIgnoreProject   = combine flagIgnoreProject
+        }
         where
           combine = combine' savedProjectFlags
 
@@ -717,12 +698,28 @@ initialSavedConfig = do
             }
       }
 
--- | If @CABAL\_DIR@ is set or @~/.cabal@ exists, return that
--- directory.  Otherwise returns Nothing.  If this function returns
--- Nothing, then it implies that we are not using a single directory
--- for everything, but instead use XDG paths.  Fundamentally, this
--- function is used to implement transparent backwards compatibility
--- with pre-XDG versions of cabal-install.
+-- | Issue a warning if both @$XDG_CONFIG_HOME/cabal/config@ and
+-- @~/.cabal@ exists.
+warnOnTwoConfigs :: Verbosity -> IO ()
+warnOnTwoConfigs verbosity = do
+  defaultDir <- getAppUserDataDirectory "cabal"
+  dotCabalExists <- doesDirectoryExist defaultDir
+  xdgCfg <- getXdgDirectory XdgConfig ("cabal" </> "config")
+  xdgCfgExists <- doesFileExist xdgCfg
+  when (dotCabalExists && xdgCfgExists) $
+    warn verbosity $
+    "Both " <> defaultDir <>
+    " and " <> xdgCfg <>
+    " exist - ignoring the former.\n" <>
+    "It is advisable to remove one of them. In that case, we will use the remaining one by default (unless '$CABAL_DIR' is explicitly set)."
+
+-- | If @CABAL\_DIR@ is set, return @Just@ its value. Otherwise, if
+-- @~/.cabal@ exists and @$XDG_CONFIG_HOME/cabal/config@ does not
+-- exist, return @Just "~/.cabal"@.  Otherwise, return @Nothing@.  If
+-- this function returns Nothing, then it implies that we are not
+-- using a single directory for everything, but instead use XDG paths.
+-- Fundamentally, this function is used to implement transparent
+-- backwards compatibility with pre-XDG versions of cabal-install.
 maybeGetCabalDir :: IO (Maybe FilePath)
 maybeGetCabalDir = do
   mDir <- lookupEnv "CABAL_DIR"
@@ -731,10 +728,11 @@ maybeGetCabalDir = do
     Nothing -> do
       defaultDir <- getAppUserDataDirectory "cabal"
       dotCabalExists <- doesDirectoryExist defaultDir
-      return $
-        if dotCabalExists
-          then Just defaultDir
-          else Nothing
+      xdgCfg <- getXdgDirectory XdgConfig ("cabal" </> "config")
+      xdgCfgExists <- doesFileExist xdgCfg
+      if dotCabalExists && not xdgCfgExists
+        then return $ Just defaultDir
+        else return Nothing
 
 -- | The default behaviour of cabal-install is to use the XDG
 -- directory standard.  However, if @CABAL_DIR@ is set, we instead use
@@ -905,6 +903,7 @@ defaultHackageRemoteRepoKeyThreshold = 3
 -- use 'loadRawConfig'.
 loadConfig :: Verbosity -> Flag FilePath -> IO SavedConfig
 loadConfig verbosity configFileFlag = do
+  warnOnTwoConfigs verbosity
   config <- loadRawConfig verbosity configFileFlag
   extendToEffectiveConfig config
 
@@ -1114,27 +1113,24 @@ commentSavedConfig = do
 -- | All config file fields.
 configFieldDescriptions :: ConstraintSource -> [FieldDescr SavedConfig]
 configFieldDescriptions src =
-  toSavedConfig
-    liftGlobalFlag
-    (commandOptions (globalCommand []) ParseArgs)
-    ["version", "numeric-version", "config-file"]
-    []
-    ++ toSavedConfig
-      liftConfigFlag
-      (configureOptions ParseArgs)
-      ( ["builddir", "constraint", "dependency", "ipid"]
-          ++ map fieldName installDirsFields
-      )
-      -- This is only here because viewAsFieldDescr gives us a parser
-      -- that only recognises 'ghc' etc, the case-sensitive flag names, not
-      -- what the normal case-insensitive parser gives us.
-      [ simpleFieldParsec
-          "compiler"
-          (fromFlagOrDefault Disp.empty . fmap pretty)
-          (Flag <$> parsec <|> pure NoFlag)
-          configHcFlavor
-          (\v flags -> flags{configHcFlavor = v})
-      , -- TODO: The following is a temporary fix. The "optimization"
+
+     toSavedConfig liftGlobalFlag
+       (commandOptions (globalCommand []) ParseArgs)
+       ["version", "numeric-version", "config-file"] []
+
+  ++ toSavedConfig liftConfigFlag
+       (configureOptions ParseArgs)
+       (["builddir", "constraint", "dependency", "promised-dependency", "ipid"]
+        ++ map fieldName installDirsFields)
+
+        -- This is only here because viewAsFieldDescr gives us a parser
+        -- that only recognises 'ghc' etc, the case-sensitive flag names, not
+        -- what the normal case-insensitive parser gives us.
+       [simpleFieldParsec "compiler"
+          (fromFlagOrDefault Disp.empty . fmap pretty) (Flag <$> parsec <|> pure NoFlag)
+          configHcFlavor (\v flags -> flags { configHcFlavor = v })
+
+        -- TODO: The following is a temporary fix. The "optimization"
         -- and "debug-info" fields are OptArg, and viewAsFieldDescr
         -- fails on that. Instead of a hand-written hackaged parser
         -- and printer, we should handle this case properly in the
@@ -1280,6 +1276,65 @@ configFieldDescriptions src =
             )
             ParseArgs
        ]
+
+  ++ toSavedConfig liftConfigExFlag
+       (configureExOptions ParseArgs src)
+       []
+       [let pkgs            = (Just . AllowOlder . RelaxDepsSome)
+                              `fmap` parsecOptCommaList parsec
+            parseAllowOlder = ((Just . AllowOlder . toRelaxDeps)
+                               `fmap` parsec) <|> pkgs
+         in simpleFieldParsec "allow-older"
+            (showRelaxDeps . fmap unAllowOlder) parseAllowOlder
+            configAllowOlder (\v flags -> flags { configAllowOlder = v })
+       ,let pkgs            = (Just . AllowNewer . RelaxDepsSome)
+                              `fmap` parsecOptCommaList parsec
+            parseAllowNewer = ((Just . AllowNewer . toRelaxDeps)
+                               `fmap` parsec) <|> pkgs
+         in simpleFieldParsec "allow-newer"
+            (showRelaxDeps . fmap unAllowNewer) parseAllowNewer
+            configAllowNewer (\v flags -> flags { configAllowNewer = v })
+       ]
+
+  ++ toSavedConfig liftInstallFlag
+       (installOptions ParseArgs)
+       ["dry-run", "only", "only-dependencies", "dependencies-only"] []
+
+  ++ toSavedConfig liftClientInstallFlag
+       (clientInstallOptions ParseArgs)
+       [] []
+
+  ++ toSavedConfig liftUploadFlag
+       (commandOptions uploadCommand ParseArgs)
+       ["verbose", "check", "documentation", "publish"] []
+
+  ++ toSavedConfig liftReportFlag
+       (commandOptions reportCommand ParseArgs)
+       ["verbose", "username", "password"] []
+       --FIXME: this is a hack, hiding the user name and password.
+       -- But otherwise it masks the upload ones. Either need to
+       -- share the options or make then distinct. In any case
+       -- they should probably be per-server.
+
+  ++ toSavedConfig liftReplFlag
+      [multiReplOption]
+      [] []
+
+  ++ [ viewAsFieldDescr
+       $ optionDistPref
+       (configDistPref . savedConfigureFlags)
+       (\distPref config ->
+          config
+          { savedConfigureFlags = (savedConfigureFlags config) {
+               configDistPref = distPref }
+          , savedHaddockFlags = (savedHaddockFlags config) {
+               haddockDistPref = distPref }
+          }
+       )
+       ParseArgs
+     ]
+
+
   where
     toSavedConfig lift options exclusions replacements =
       [ lift (fromMaybe field replacement)
@@ -1409,11 +1464,14 @@ liftReportFlag =
     savedReportFlags
     (\flags conf -> conf{savedReportFlags = flags})
 
-parseConfig
-  :: ConstraintSource
-  -> SavedConfig
-  -> BS.ByteString
-  -> ParseResult SavedConfig
+liftReplFlag :: FieldDescr (Flag Bool) -> FieldDescr SavedConfig
+liftReplFlag = liftField
+  savedReplMulti (\flags conf -> conf { savedReplMulti = flags })
+
+parseConfig :: ConstraintSource
+            -> SavedConfig
+            -> BS.ByteString
+            -> ParseResult SavedConfig
 parseConfig src initial = \str -> do
   fields <- readFields str
   let (knownSections, others) = partition isKnownSection fields

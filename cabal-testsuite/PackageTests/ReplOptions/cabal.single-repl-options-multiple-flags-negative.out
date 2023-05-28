@@ -3,8 +3,7 @@
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
- - cabal-repl-options-0.1 (lib) (first run)
+ - cabal-repl-options-0.1 (interactive) (lib) (first run)
 Configuring library for cabal-repl-options-0.1..
 Preprocessing library for cabal-repl-options-0.1..
 Error: cabal: repl failed for cabal-repl-options-0.1-inplace.
-

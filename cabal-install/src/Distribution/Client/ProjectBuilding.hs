@@ -242,8 +242,8 @@ rebuildTargetsDryRun distDirLayout@DistDirLayout{..} shared =
       -> IO BuildStatus
     dryRunTarballPkg pkg depsBuildStatus tarball =
       case elabBuildStyle pkg of
-        BuildAndInstall -> return (BuildStatusUnpack tarball)
-        BuildInplaceOnly -> do
+        BuildAndInstall  -> return (BuildStatusUnpack tarball)
+        BuildInplaceOnly {} -> do
           -- TODO: [nice to have] use a proper file monitor rather
           -- than this dir exists test
           exists <- doesDirectoryExist srcdir
@@ -418,19 +418,20 @@ packageFileMonitorKeyValues elab =
 
     elab_config :: ElaboratedConfiguredPackage
     elab_config =
-      elab
-        { elabBuildTargets = []
-        , elabTestTargets = []
-        , elabBenchTargets = []
-        , elabReplTarget = Nothing
-        , elabHaddockTargets = []
-        , elabBuildHaddocks = False
-        , elabTestMachineLog = Nothing
-        , elabTestHumanLog = Nothing
-        , elabTestShowDetails = Nothing
-        , elabTestKeepTix = False
-        , elabTestTestOptions = []
-        , elabBenchmarkOptions = []
+        elab {
+            elabBuildTargets   = [],
+            elabTestTargets    = [],
+            elabBenchTargets   = [],
+            elabReplTarget     = [],
+            elabHaddockTargets = [],
+            elabBuildHaddocks  = False,
+
+            elabTestMachineLog   = Nothing,
+            elabTestHumanLog     = Nothing,
+            elabTestShowDetails  = Nothing,
+            elabTestKeepTix      = False,
+            elabTestTestOptions  = [],
+            elabBenchmarkOptions = []
         }
 
     -- The second part is the value used to guard the build step. So this is
@@ -669,9 +670,26 @@ rebuildTargets
         createDirectoryIfMissingVerbose verbosity True distTempDirectory
         traverse_ (createPackageDBIfMissing verbosity compiler progdb) packageDBsToUse
 
-        -- Before traversing the install plan, preemptively find all packages that
-        -- will need to be downloaded and start downloading them.
-        asyncDownloadPackages
+    createDirectoryIfMissingVerbose verbosity True distBuildRootDirectory
+    createDirectoryIfMissingVerbose verbosity True distTempDirectory
+    traverse_ (createPackageDBIfMissing verbosity compiler progdb) packageDBsToUse
+
+    -- Before traversing the install plan, preemptively find all packages that
+    -- will need to be downloaded and start downloading them.
+    asyncDownloadPackages verbosity withRepoCtx
+                          installPlan pkgsBuildStatus $ \downloadMap ->
+
+      -- For each package in the plan, in dependency order, but in parallel...
+      InstallPlan.execute jobControl keepGoing
+                          (BuildFailure Nothing . DependentFailed . packageId)
+                          installPlan $ \pkg ->
+        --TODO: review exception handling
+        handle (\(e :: BuildFailure) -> return (Left e)) $ fmap Right $ do
+
+        let uid = installedUnitId pkg
+            pkgBuildStatus = Map.findWithDefault (error "rebuildTargets") uid pkgsBuildStatus
+
+        rebuildTarget
           verbosity
           withRepoCtx
           installPlan
@@ -846,20 +864,22 @@ rebuildTarget
           (packageId pkg)
           (elabDistDirParams sharedPackageConfig pkg)
           (elabBuildStyle pkg)
-          (elabPkgDescriptionOverride pkg)
-          $ case elabBuildStyle pkg of
-            BuildAndInstall -> buildAndInstall
-            BuildInplaceOnly -> buildInplace buildStatus
+          (elabPkgDescriptionOverride pkg) $
+
+          case elabBuildStyle pkg of
+            BuildAndInstall  -> buildAndInstall
+            BuildInplaceOnly {} -> buildInplace buildStatus
               where
                 buildStatus = BuildStatusConfigure MonitorFirstRun
 
-      -- Note that this really is rebuild, not build. It can only happen for
-      -- 'BuildInplaceOnly' style packages. 'BuildAndInstall' style packages
-      -- would only start from download or unpack phases.
-      --
-      rebuildPhase :: BuildStatusRebuild -> FilePath -> IO BuildResult
-      rebuildPhase buildStatus srcdir =
-        assert (elabBuildStyle pkg == BuildInplaceOnly) $
+    -- Note that this really is rebuild, not build. It can only happen for
+    -- 'BuildInplaceOnly' style packages. 'BuildAndInstall' style packages
+    -- would only start from download or unpack phases.
+    --
+    rebuildPhase :: BuildStatusRebuild -> FilePath -> IO BuildResult
+    rebuildPhase buildStatus srcdir =
+        assert (isInplaceBuildStyle $ elabBuildStyle pkg)
+
           buildInplace buildStatus srcdir builddir
         where
           builddir =
@@ -1015,31 +1035,23 @@ withTarballLocalDirectory
                   builddir = srcdir </> "dist"
               buildPkg srcdir builddir
 
-      -- In this case we make sure the tarball has been unpacked to the
-      -- appropriate location under the shared dist dir, and then build it
-      -- inplace there
-      BuildInplaceOnly -> do
-        let srcrootdir = distUnpackedSrcRootDirectory
-            srcdir = distUnpackedSrcDirectory pkgid
-            builddir = distBuildDirectory dparams
-        -- TODO: [nice to have] use a proper file monitor rather
-        -- than this dir exists test
-        exists <- doesDirectoryExist srcdir
-        unless exists $ do
-          createDirectoryIfMissingVerbose verbosity True srcrootdir
-          unpackPackageTarball
-            verbosity
-            tarball
-            srcrootdir
-            pkgid
-            pkgTextOverride
-          moveTarballShippedDistDirectory
-            verbosity
-            distDirLayout
-            srcrootdir
-            pkgid
-            dparams
-        buildPkg srcdir builddir
+        -- In this case we make sure the tarball has been unpacked to the
+        -- appropriate location under the shared dist dir, and then build it
+        -- inplace there
+        BuildInplaceOnly {} -> do
+          let srcrootdir = distUnpackedSrcRootDirectory
+              srcdir     = distUnpackedSrcDirectory pkgid
+              builddir   = distBuildDirectory dparams
+          -- TODO: [nice to have] use a proper file monitor rather
+          -- than this dir exists test
+          exists <- doesDirectoryExist srcdir
+          unless exists $ do
+            createDirectoryIfMissingVerbose verbosity True srcrootdir
+            unpackPackageTarball verbosity tarball srcrootdir
+                                 pkgid pkgTextOverride
+            moveTarballShippedDistDirectory verbosity distDirLayout
+                                            srcrootdir pkgid dparams
+          buildPkg srcdir builddir
 
 unpackPackageTarball
   :: Verbosity
@@ -1435,12 +1447,8 @@ hasValidHaddockTargets ElaboratedConfiguredPackage{..}
   | otherwise = any componentHasHaddocks components
   where
     components :: [ComponentTarget]
-    components =
-      elabBuildTargets
-        ++ elabTestTargets
-        ++ elabBenchTargets
-        ++ maybeToList elabReplTarget
-        ++ elabHaddockTargets
+    components = elabBuildTargets ++ elabTestTargets ++ elabBenchTargets
+              ++ elabReplTarget ++ elabHaddockTargets
 
     componentHasHaddocks :: ComponentTarget -> Bool
     componentHasHaddocks (ComponentTarget name _) =
@@ -1601,20 +1609,11 @@ buildInplaceUnpackedPackage
       annotateFailureNoLog ReplFailed $
         setupInteractive replCommand replFlags replArgs
 
-    -- Haddock phase
-    whenHaddock $
-      annotateFailureNoLog HaddocksFailed $ do
-        setup haddockCommand haddockFlags haddockArgs
-        let haddockTarget = elabHaddockForHackage pkg
-        when (haddockTarget == Cabal.ForHackage) $ do
-          let dest = distDirectory </> name <.> "tar.gz"
-              name = haddockDirName haddockTarget (elabPkgDescription pkg)
-              docDir =
-                distBuildDirectory distDirLayout dparams
-                  </> "doc"
-                  </> "html"
-          Tar.createTarGzFile dest docDir name
-          notice verbosity $ "Documentation tarball created: " ++ dest
+        -- Repl phase
+        --
+        whenRepl $
+          annotateFailureNoLog ReplFailed $
+            setupInteractive replCommand replFlags replArgs
 
         when (buildSettingHaddockOpen && haddockTarget /= Cabal.ForHackage) $ do
           let dest = docDir </> "index.html"
@@ -1665,9 +1664,9 @@ buildInplaceUnpackedPackage
         | isNothing (elabReplTarget pkg) = return ()
         | otherwise = action
 
-      whenHaddock action
-        | hasValidHaddockTargets pkg = action
-        | otherwise = return ()
+    whenRepl action
+      | null (elabReplTarget pkg) = return ()
+      | otherwise                 = action
 
       whenReRegister action =
         case buildStatus of

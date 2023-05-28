@@ -983,23 +983,24 @@ printPlan
         | buildSettingDryRun = "would"
         | otherwise = "will"
 
-      showPkgAndReason :: ElaboratedReadyPackage -> String
-      showPkgAndReason (ReadyPackage elab) =
-        unwords $
-          filter (not . null) $
-            [ " -"
-            , if verbosity >= deafening
-                then prettyShow (installedUnitId elab)
-                else prettyShow (packageId elab)
-            , case elabPkgOrComp elab of
-                ElabPackage pkg -> showTargets elab ++ ifVerbose (showStanzas (pkgStanzasEnabled pkg))
-                ElabComponent comp ->
-                  "(" ++ showComp elab comp ++ ")"
-            , showFlagAssignment (nonDefaultFlags elab)
-            , showConfigureFlags elab
-            , let buildStatus = pkgsBuildStatus Map.! installedUnitId elab
-               in "(" ++ showBuildStatus buildStatus ++ ")"
-            ]
+    showPkgAndReason :: ElaboratedReadyPackage -> String
+    showPkgAndReason (ReadyPackage elab) = unwords $ filter (not . null) $
+      [ " -"
+      , if verbosity >= deafening
+        then prettyShow (installedUnitId elab)
+        else prettyShow (packageId elab)
+      , case elabBuildStyle elab of
+          BuildInplaceOnly InMemory -> "(interactive)"
+          _ -> ""
+      , case elabPkgOrComp elab of
+          ElabPackage pkg -> showTargets elab ++ ifVerbose (showStanzas (pkgStanzasEnabled pkg))
+          ElabComponent comp ->
+            "(" ++ showComp elab comp ++ ")"
+      , showFlagAssignment (nonDefaultFlags elab)
+      , showConfigureFlags elab
+      , let buildStatus = pkgsBuildStatus Map.! installedUnitId elab
+        in "(" ++ showBuildStatus buildStatus ++ ")"
+      ]
 
       showComp :: ElaboratedConfiguredPackage -> ElaboratedComponent -> String
       showComp elab comp =
@@ -1136,14 +1137,26 @@ writeBuildReports settings buildContext plan buildOutcomes = do
                 DocsFailed -> BuildReports.Failed
                 DocsOk -> BuildReports.Ok
 
-            testsOutcome = case result of
-              Left bf -> case buildFailureReason bf of
-                TestsFailed _ -> BuildReports.Failed
-                _ -> BuildReports.NotTried
-              Right br -> case buildResultTests br of
-                TestsNotTried -> BuildReports.NotTried
-                TestsOk -> BuildReports.Ok
-         in Just $ (BuildReports.BuildReport (packageId pkg) os arch (compilerId comp) cabalInstallID (elabFlagAssignment pkg) (map packageId $ elabLibDependencies pkg) installOutcome docsOutcome testsOutcome, getRepo . elabPkgSourceLocation $ pkg) -- TODO handle failure log files?
+                   Right _br -> BuildReports.InstallOk
+
+                docsOutcome = case result of
+                   Left bf -> case buildFailureReason bf of
+                      HaddocksFailed _ -> BuildReports.Failed
+                      _ -> BuildReports.NotTried
+                   Right br -> case buildResultDocs br of
+                      DocsNotTried -> BuildReports.NotTried
+                      DocsFailed -> BuildReports.Failed
+                      DocsOk -> BuildReports.Ok
+
+                testsOutcome = case result of
+                   Left bf -> case buildFailureReason bf of
+                      TestsFailed _ -> BuildReports.Failed
+                      _ -> BuildReports.NotTried
+                   Right br -> case buildResultTests br of
+                      TestsNotTried -> BuildReports.NotTried
+                      TestsOk -> BuildReports.Ok
+
+            in Just $ (BuildReports.BuildReport (packageId pkg) os arch (compilerId comp) cabalInstallID (elabFlagAssignment pkg) (map (packageId . fst) $ elabLibDependencies pkg) installOutcome docsOutcome testsOutcome, getRepo . elabPkgSourceLocation $ pkg) -- TODO handle failure log files?
       fromPlanPackage _ _ = Nothing
       buildReports = mapMaybe (\x -> fromPlanPackage x (InstallPlan.lookupBuildOutcome x buildOutcomes)) $ InstallPlan.toList plan
 

@@ -1526,88 +1526,94 @@ checkAllGhcOptions pkg =
 -- or non-portable flags
 checkGhcOptions :: String -> (BuildInfo -> [String]) -> PackageDescription -> [PackageCheck]
 checkGhcOptions fieldName getOptions pkg =
-  catMaybes
-    [ checkFlags ["-fasm"] $
-        PackageDistInexcusable (OptFasm fieldName)
-    , checkFlags ["-fvia-C"] $
-        PackageDistSuspicious (OptViaC fieldName)
-    , checkFlags ["-fhpc"] $
-        PackageDistInexcusable (OptHpc fieldName)
-    , checkFlags ["-prof"] $
-        PackageBuildWarning (OptProf fieldName)
-    , checkFlags ["-o"] $
-        PackageBuildWarning (OptO fieldName)
-    , checkFlags ["-hide-package"] $
-        PackageBuildWarning (OptHide fieldName)
-    , checkFlags ["--make"] $
-        PackageBuildWarning (OptMake fieldName)
-    , checkNonTestAndBenchmarkFlags ["-O0", "-Onot"] $
-        PackageDistSuspicious (OptONot fieldName)
-    , checkTestAndBenchmarkFlags ["-O0", "-Onot"] $
-        PackageDistSuspiciousWarn (OptONot fieldName)
-    , checkFlags ["-O", "-O1"] $
-        PackageDistInexcusable (OptOOne fieldName)
-    , checkFlags ["-O2"] $
-        PackageDistSuspiciousWarn (OptOTwo fieldName)
-    , checkFlags ["-split-sections"] $
-        PackageBuildWarning (OptSplitSections fieldName)
-    , checkFlags ["-split-objs"] $
-        PackageBuildWarning (OptSplitObjs fieldName)
-    , checkFlags ["-optl-Wl,-s", "-optl-s"] $
-        PackageDistInexcusable (OptWls fieldName)
-    , checkFlags ["-fglasgow-exts"] $
-        PackageDistSuspicious (OptExts fieldName)
-    , check ("-rtsopts" `elem` lib_ghc_options) $
-        PackageBuildWarning (OptRts fieldName)
-    , check (any (\opt -> "-with-rtsopts" `isPrefixOf` opt) lib_ghc_options) $
-        PackageBuildWarning (OptWithRts fieldName)
-    , checkAlternatives
-        fieldName
-        "extensions"
-        [ (flag, prettyShow extension) | flag <- ghc_options_no_rtsopts, Just extension <- [ghcExtension flag]
-        ]
-    , checkAlternatives
-        fieldName
-        "extensions"
-        [(flag, extension) | flag@('-' : 'X' : extension) <- ghc_options_no_rtsopts]
-    , checkAlternatives fieldName "cpp-options" $
-        [(flag, flag) | flag@('-' : 'D' : _) <- ghc_options_no_rtsopts]
-          ++ [(flag, flag) | flag@('-' : 'U' : _) <- ghc_options_no_rtsopts]
-    , checkAlternatives
-        fieldName
-        "include-dirs"
-        [(flag, dir) | flag@('-' : 'I' : dir) <- ghc_options_no_rtsopts]
-    , checkAlternatives
-        fieldName
-        "extra-libraries"
-        [(flag, lib) | flag@('-' : 'l' : lib) <- ghc_options_no_rtsopts]
-    , checkAlternatives
-        fieldName
-        "extra-libraries-static"
-        [(flag, lib) | flag@('-' : 'l' : lib) <- ghc_options_no_rtsopts]
-    , checkAlternatives
-        fieldName
-        "extra-lib-dirs"
-        [(flag, dir) | flag@('-' : 'L' : dir) <- ghc_options_no_rtsopts]
-    , checkAlternatives
-        fieldName
-        "extra-lib-dirs-static"
-        [(flag, dir) | flag@('-' : 'L' : dir) <- ghc_options_no_rtsopts]
-    , checkAlternatives
-        fieldName
-        "frameworks"
-        [ (flag, fmwk)
-        | (flag@"-framework", fmwk) <-
-            zip ghc_options_no_rtsopts (safeTail ghc_options_no_rtsopts)
-        ]
-    , checkAlternatives
-        fieldName
-        "extra-framework-dirs"
-        [ (flag, dir)
-        | (flag@"-framework-path", dir) <-
-            zip ghc_options_no_rtsopts (safeTail ghc_options_no_rtsopts)
-        ]
-    ]
+  catMaybes [
+
+    checkFlags ["-fasm"] $
+      PackageDistInexcusable (OptFasm fieldName)
+
+  , checkFlags ["-fvia-C"] $
+      PackageDistSuspicious (OptViaC fieldName)
+
+  , checkFlags ["-fhpc"] $
+      PackageDistInexcusable (OptHpc fieldName)
+
+  , checkFlags ["-prof"] $
+      PackageBuildWarning (OptProf fieldName)
+
+  , unlessScript . checkFlags ["-o"] $
+      PackageBuildWarning (OptO fieldName)
+
+  , checkFlags ["-hide-package"] $
+      PackageBuildWarning (OptHide fieldName)
+
+  , checkFlags ["--make"] $
+      PackageBuildWarning (OptMake fieldName)
+
+  , checkNonTestAndBenchmarkFlags ["-O0", "-Onot"] $
+      PackageDistSuspicious (OptONot fieldName)
+
+  , checkTestAndBenchmarkFlags ["-O0", "-Onot"] $
+      PackageDistSuspiciousWarn (OptONot fieldName)
+
+  , checkFlags [ "-O", "-O1"] $
+      PackageDistInexcusable (OptOOne fieldName)
+
+  , checkFlags ["-O2"] $
+      PackageDistSuspiciousWarn (OptOTwo fieldName)
+
+  , checkFlags ["-split-sections"] $
+      PackageBuildWarning (OptSplitSections fieldName)
+
+  , checkFlags ["-split-objs"] $
+      PackageBuildWarning (OptSplitObjs fieldName)
+
+  , checkFlags ["-optl-Wl,-s", "-optl-s"] $
+      PackageDistInexcusable (OptWls fieldName)
+
+  , checkFlags ["-fglasgow-exts"] $
+      PackageDistSuspicious (OptExts fieldName)
+
+  , check ("-rtsopts" `elem` lib_ghc_options) $
+      PackageBuildWarning (OptRts fieldName)
+
+  , check (any (\opt -> "-with-rtsopts" `isPrefixOf` opt) lib_ghc_options) $
+      PackageBuildWarning (OptWithRts fieldName)
+
+  , checkAlternatives fieldName "extensions"
+      [ (flag, prettyShow extension) | flag <- ghc_options_no_rtsopts
+                                  , Just extension <- [ghcExtension flag] ]
+
+  , checkAlternatives fieldName "extensions"
+      [ (flag, extension) | flag@('-':'X':extension) <- ghc_options_no_rtsopts ]
+
+  , checkAlternatives fieldName "cpp-options" $
+         [ (flag, flag) | flag@('-':'D':_) <- ghc_options_no_rtsopts ]
+      ++ [ (flag, flag) | flag@('-':'U':_) <- ghc_options_no_rtsopts ]
+
+  , checkAlternatives fieldName "include-dirs"
+      [ (flag, dir) | flag@('-':'I':dir) <- ghc_options_no_rtsopts ]
+
+  , checkAlternatives fieldName "extra-libraries"
+      [ (flag, lib) | flag@('-':'l':lib) <- ghc_options_no_rtsopts ]
+
+  , checkAlternatives fieldName "extra-libraries-static"
+      [ (flag, lib) | flag@('-':'l':lib) <- ghc_options_no_rtsopts ]
+
+  , checkAlternatives fieldName "extra-lib-dirs"
+      [ (flag, dir) | flag@('-':'L':dir) <- ghc_options_no_rtsopts ]
+
+  , checkAlternatives fieldName "extra-lib-dirs-static"
+      [ (flag, dir) | flag@('-':'L':dir) <- ghc_options_no_rtsopts ]
+
+  , checkAlternatives fieldName "frameworks"
+      [ (flag, fmwk) | (flag@"-framework", fmwk) <-
+           zip ghc_options_no_rtsopts (safeTail ghc_options_no_rtsopts) ]
+
+  , checkAlternatives fieldName "extra-framework-dirs"
+      [ (flag, dir) | (flag@"-framework-path", dir) <-
+           zip ghc_options_no_rtsopts (safeTail ghc_options_no_rtsopts) ]
+  ]
+
   where
     all_ghc_options = concatMap getOptions (allBuildInfo pkg)
     ghc_options_no_rtsopts = rmRtsOpts all_ghc_options
@@ -1639,6 +1645,10 @@ checkGhcOptions fieldName getOptions pkg =
 
     checkFlags :: [String] -> PackageCheck -> Maybe PackageCheck
     checkFlags flags = check (any (`elem` flags) all_ghc_options)
+
+    unlessScript :: Maybe PackageCheck -> Maybe PackageCheck
+    unlessScript pc | packageId pkg == fakePackageId = Nothing
+                    | otherwise                      = pc
 
     checkTestAndBenchmarkFlags :: [String] -> PackageCheck -> Maybe PackageCheck
     checkTestAndBenchmarkFlags flags = check (any (`elem` flags) test_and_benchmark_ghc_options)

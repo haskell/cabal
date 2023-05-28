@@ -184,44 +184,49 @@ data ProjectConfigShared = ProjectConfigShared
     -- too much control!
     -- projectConfigUserInstall       :: Flag Bool,
 
-    projectConfigInstallDirs :: InstallDirs (Flag PathTemplate)
-  , projectConfigPackageDBs :: [Maybe PackageDB]
-  , -- configuration used both by the solver and other phases
-    projectConfigRemoteRepos :: NubList RemoteRepo
-  -- ^ Available Hackage servers.
-  , projectConfigLocalNoIndexRepos :: NubList LocalRepo
-  , projectConfigActiveRepos :: Flag ActiveRepos
-  , projectConfigIndexState :: Flag TotalIndexState
-  , projectConfigStoreDir :: Flag FilePath
-  , -- solver configuration
-    projectConfigConstraints :: [(UserConstraint, ConstraintSource)]
-  , projectConfigPreferences :: [PackageVersionConstraint]
-  , projectConfigCabalVersion :: Flag Version -- TODO: [required eventually] unused
-  , projectConfigSolver :: Flag PreSolver
-  , projectConfigAllowOlder :: Maybe AllowOlder
-  , projectConfigAllowNewer :: Maybe AllowNewer
-  , projectConfigWriteGhcEnvironmentFilesPolicy
-      :: Flag WriteGhcEnvironmentFilesPolicy
-  , projectConfigMaxBackjumps :: Flag Int
-  , projectConfigReorderGoals :: Flag ReorderGoals
-  , projectConfigCountConflicts :: Flag CountConflicts
-  , projectConfigFineGrainedConflicts :: Flag FineGrainedConflicts
-  , projectConfigMinimizeConflictSet :: Flag MinimizeConflictSet
-  , projectConfigStrongFlags :: Flag StrongFlags
-  , projectConfigAllowBootLibInstalls :: Flag AllowBootLibInstalls
-  , projectConfigOnlyConstrained :: Flag OnlyConstrained
-  , projectConfigPerComponent :: Flag Bool
-  , projectConfigIndependentGoals :: Flag IndependentGoals
-  , projectConfigPreferOldest :: Flag PreferOldest
-  , projectConfigProgPathExtra :: NubList FilePath
-  -- More things that only make sense for manual mode, not --local mode
-  -- too much control!
-  -- projectConfigShadowPkgs        :: Flag Bool,
-  -- projectConfigReinstall         :: Flag Bool,
-  -- projectConfigAvoidReinstalls   :: Flag Bool,
-  -- projectConfigOverrideReinstall :: Flag Bool,
-  -- projectConfigUpgradeDeps       :: Flag Bool
-  }
+       projectConfigInstallDirs       :: InstallDirs (Flag PathTemplate),
+       projectConfigPackageDBs        :: [Maybe PackageDB],
+
+       -- configuration used both by the solver and other phases
+       projectConfigRemoteRepos       :: NubList RemoteRepo,     -- ^ Available Hackage servers.
+       projectConfigLocalNoIndexRepos :: NubList LocalRepo,
+       projectConfigActiveRepos       :: Flag ActiveRepos,
+       projectConfigIndexState        :: Flag TotalIndexState,
+       projectConfigStoreDir          :: Flag FilePath,
+
+       -- solver configuration
+       projectConfigConstraints       :: [(UserConstraint, ConstraintSource)],
+       projectConfigPreferences       :: [PackageVersionConstraint],
+       projectConfigCabalVersion      :: Flag Version,  --TODO: [required eventually] unused
+       projectConfigSolver            :: Flag PreSolver,
+       projectConfigAllowOlder        :: Maybe AllowOlder,
+       projectConfigAllowNewer        :: Maybe AllowNewer,
+       projectConfigWriteGhcEnvironmentFilesPolicy
+                                      :: Flag WriteGhcEnvironmentFilesPolicy,
+       projectConfigMaxBackjumps      :: Flag Int,
+       projectConfigReorderGoals      :: Flag ReorderGoals,
+       projectConfigCountConflicts    :: Flag CountConflicts,
+       projectConfigFineGrainedConflicts :: Flag FineGrainedConflicts,
+       projectConfigMinimizeConflictSet :: Flag MinimizeConflictSet,
+       projectConfigStrongFlags       :: Flag StrongFlags,
+       projectConfigAllowBootLibInstalls :: Flag AllowBootLibInstalls,
+       projectConfigOnlyConstrained   :: Flag OnlyConstrained,
+       projectConfigPerComponent      :: Flag Bool,
+       projectConfigIndependentGoals  :: Flag IndependentGoals,
+       projectConfigPreferOldest      :: Flag PreferOldest,
+
+       projectConfigProgPathExtra     :: NubList FilePath,
+
+       projectConfigMultiRepl         :: Flag Bool
+
+       -- More things that only make sense for manual mode, not --local mode
+       -- too much control!
+     --projectConfigShadowPkgs        :: Flag Bool,
+     --projectConfigReinstall         :: Flag Bool,
+     --projectConfigAvoidReinstalls   :: Flag Bool,
+     --projectConfigOverrideReinstall :: Flag Bool,
+     --projectConfigUpgradeDeps       :: Flag Bool
+     }
   deriving (Eq, Show, Generic)
 
 -- | Specifies the provenance of project configuration, whether defaults were

@@ -82,138 +82,100 @@ data ConfigFlags = ConfigFlags
     -- because the type of configure is constrained by the UserHooks.
     -- when we change UserHooks next we should pass the initial
     -- ProgramDb directly and not via ConfigFlags
-    configPrograms_ :: Option' (Last' ProgramDb)
-  -- ^ All programs that
-  --  @cabal@ may run
-  , configProgramPaths :: [(String, FilePath)]
-  -- ^ user specified programs paths
-  , configProgramArgs :: [(String, [String])]
-  -- ^ user specified programs args
-  , configProgramPathExtra :: NubList FilePath
-  -- ^ Extend the $PATH
-  , configHcFlavor :: Flag CompilerFlavor
-  -- ^ The \"flavor\" of the
-  --  compiler, e.g. GHC.
-  , configHcPath :: Flag FilePath
-  -- ^ given compiler location
-  , configHcPkg :: Flag FilePath
-  -- ^ given hc-pkg location
-  , configVanillaLib :: Flag Bool
-  -- ^ Enable vanilla library
-  , configProfLib :: Flag Bool
-  -- ^ Enable profiling in the library
-  , configSharedLib :: Flag Bool
-  -- ^ Build shared library
-  , configStaticLib :: Flag Bool
-  -- ^ Build static library
-  , configDynExe :: Flag Bool
-  -- ^ Enable dynamic linking of the
-  --  executables.
-  , configFullyStaticExe :: Flag Bool
-  -- ^ Enable fully static linking of the
-  --  executables.
-  , configProfExe :: Flag Bool
-  -- ^ Enable profiling in the
-  --  executables.
-  , configProf :: Flag Bool
-  -- ^ Enable profiling in the library
-  --  and executables.
-  , configProfDetail :: Flag ProfDetailLevel
-  -- ^ Profiling detail level
-  --   in the library and executables.
-  , configProfLibDetail :: Flag ProfDetailLevel
-  -- ^ Profiling  detail level
-  --  in the library
-  , configConfigureArgs :: [String]
-  -- ^ Extra arguments to @configure@
-  , configOptimization :: Flag OptimisationLevel
-  -- ^ Enable optimization.
-  , configProgPrefix :: Flag PathTemplate
-  -- ^ Installed executable prefix.
-  , configProgSuffix :: Flag PathTemplate
-  -- ^ Installed executable suffix.
-  , configInstallDirs :: InstallDirs (Flag PathTemplate)
-  -- ^ Installation
-  --  paths
-  , configScratchDir :: Flag FilePath
-  , configExtraLibDirs :: [FilePath]
-  -- ^ path to search for extra libraries
-  , configExtraLibDirsStatic :: [FilePath]
-  -- ^ path to search for extra
-  --   libraries when linking
-  --   fully static executables
-  , configExtraFrameworkDirs :: [FilePath]
-  -- ^ path to search for extra
-  -- frameworks (OS X only)
-  , configExtraIncludeDirs :: [FilePath]
-  -- ^ path to search for header files
-  , configIPID :: Flag String
-  -- ^ explicit IPID to be used
-  , configCID :: Flag ComponentId
-  -- ^ explicit CID to be used
-  , configDeterministic :: Flag Bool
-  -- ^ be as deterministic as possible
-  -- (e.g., invariant over GHC, database,
-  -- etc).  Used by the test suite
-  , configDistPref :: Flag FilePath
-  -- ^ "dist" prefix
-  , configCabalFilePath :: Flag FilePath
-  -- ^ Cabal file to use
-  , configVerbosity :: Flag Verbosity
-  -- ^ verbosity level
-  , configUserInstall :: Flag Bool
-  -- ^ The --user\/--global flag
-  , configPackageDBs :: [Maybe PackageDB]
-  -- ^ Which package DBs to use
-  , configGHCiLib :: Flag Bool
-  -- ^ Enable compiling library for GHCi
-  , configSplitSections :: Flag Bool
-  -- ^ Enable -split-sections with GHC
-  , configSplitObjs :: Flag Bool
-  -- ^ Enable -split-objs with GHC
-  , configStripExes :: Flag Bool
-  -- ^ Enable executable stripping
-  , configStripLibs :: Flag Bool
-  -- ^ Enable library stripping
-  , configConstraints :: [PackageVersionConstraint]
-  -- ^ Additional constraints for
-  --  dependencies.
-  , configDependencies :: [GivenComponent]
-  -- ^ The packages depended on.
-  , configInstantiateWith :: [(ModuleName, Module)]
-  -- ^ The requested Backpack instantiation.  If empty, either this
-  -- package does not use Backpack, or we just want to typecheck
-  -- the indefinite package.
-  , configConfigurationsFlags :: FlagAssignment
-  , configTests :: Flag Bool
-  -- ^ Enable test suite compilation
-  , configBenchmarks :: Flag Bool
-  -- ^ Enable benchmark compilation
-  , configCoverage :: Flag Bool
-  -- ^ Enable program coverage
-  , configLibCoverage :: Flag Bool
-  -- ^ Enable program coverage (deprecated)
-  , configExactConfiguration :: Flag Bool
-  -- ^ All direct dependencies and flags are provided on the command line by
-  --  the user via the '--dependency' and '--flags' options.
-  , configFlagError :: Flag String
-  -- ^ Halt and show an error message indicating an error in flag assignment
-  , configRelocatable :: Flag Bool
-  -- ^ Enable relocatable package built
-  , configDebugInfo :: Flag DebugInfoLevel
-  -- ^ Emit debug info.
-  , configDumpBuildInfo :: Flag DumpBuildInfo
-  -- ^ Should we dump available build information on build?
-  -- Dump build information to disk before attempting to build,
-  -- tooling can parse these files and use them to compile the
-  -- source files themselves.
-  , configUseResponseFiles :: Flag Bool
-  -- ^ Whether to use response files at all. They're used for such tools
-  -- as haddock, or ld.
-  , configAllowDependingOnPrivateLibs :: Flag Bool
-  -- ^ Allow depending on private sublibraries. This is used by external
-  -- tools (like cabal-install) so they can add multiple-public-libraries
-  -- compatibility to older ghcs by checking visibility externally.
+    configPrograms_     :: Option' (Last' ProgramDb), -- ^All programs that
+                                                      -- @cabal@ may run
+    configProgramPaths  :: [(String, FilePath)], -- ^user specified programs paths
+    configProgramArgs   :: [(String, [String])], -- ^user specified programs args
+    configProgramPathExtra :: NubList FilePath,  -- ^Extend the $PATH
+    configHcFlavor      :: Flag CompilerFlavor, -- ^The \"flavor\" of the
+                                                -- compiler, e.g. GHC.
+    configHcPath        :: Flag FilePath, -- ^given compiler location
+    configHcPkg         :: Flag FilePath, -- ^given hc-pkg location
+    configVanillaLib    :: Flag Bool,     -- ^Enable vanilla library
+    configProfLib       :: Flag Bool,     -- ^Enable profiling in the library
+    configSharedLib     :: Flag Bool,     -- ^Build shared library
+    configStaticLib     :: Flag Bool,     -- ^Build static library
+    configDynExe        :: Flag Bool,     -- ^Enable dynamic linking of the
+                                          -- executables.
+    configFullyStaticExe :: Flag Bool,     -- ^Enable fully static linking of the
+                                          -- executables.
+    configProfExe       :: Flag Bool,     -- ^Enable profiling in the
+                                          -- executables.
+    configProf          :: Flag Bool,     -- ^Enable profiling in the library
+                                          -- and executables.
+    configProfDetail    :: Flag ProfDetailLevel, -- ^Profiling detail level
+                                          --  in the library and executables.
+    configProfLibDetail :: Flag ProfDetailLevel, -- ^Profiling  detail level
+                                                 -- in the library
+    configConfigureArgs :: [String],      -- ^Extra arguments to @configure@
+    configOptimization  :: Flag OptimisationLevel,  -- ^Enable optimization.
+    configProgPrefix    :: Flag PathTemplate, -- ^Installed executable prefix.
+    configProgSuffix    :: Flag PathTemplate, -- ^Installed executable suffix.
+    configInstallDirs   :: InstallDirs (Flag PathTemplate), -- ^Installation
+                                                            -- paths
+    configScratchDir    :: Flag FilePath,
+    configExtraLibDirs  :: [FilePath],   -- ^ path to search for extra libraries
+    configExtraLibDirsStatic :: [FilePath],   -- ^ path to search for extra
+                                              --   libraries when linking
+                                              --   fully static executables
+    configExtraFrameworkDirs :: [FilePath],   -- ^ path to search for extra
+                                              -- frameworks (OS X only)
+    configExtraIncludeDirs :: [FilePath],   -- ^ path to search for header files
+    configIPID          :: Flag String, -- ^ explicit IPID to be used
+    configCID           :: Flag ComponentId, -- ^ explicit CID to be used
+    configDeterministic :: Flag Bool, -- ^ be as deterministic as possible
+                                      -- (e.g., invariant over GHC, database,
+                                      -- etc).  Used by the test suite
+
+    configDistPref :: Flag FilePath, -- ^"dist" prefix
+    configCabalFilePath :: Flag FilePath, -- ^ Cabal file to use
+    configVerbosity :: Flag Verbosity, -- ^verbosity level
+    configUserInstall :: Flag Bool,    -- ^The --user\/--global flag
+    configPackageDBs :: [Maybe PackageDB], -- ^Which package DBs to use
+    configGHCiLib   :: Flag Bool,      -- ^Enable compiling library for GHCi
+    configSplitSections :: Flag Bool,      -- ^Enable -split-sections with GHC
+    configSplitObjs :: Flag Bool,      -- ^Enable -split-objs with GHC
+    configStripExes :: Flag Bool,      -- ^Enable executable stripping
+    configStripLibs :: Flag Bool,      -- ^Enable library stripping
+    configConstraints :: [PackageVersionConstraint], -- ^Additional constraints for
+                                                     -- dependencies.
+    configDependencies :: [GivenComponent],
+      -- ^The packages depended on which already exist
+    configPromisedDependencies :: [GivenComponent],
+      -- ^The packages depended on which doesn't yet exist (i.e. promised).
+      -- Promising dependencies enables us to configure components in parallel,
+      -- and avoids expensive builds if they are not necessary.
+      -- For example, in multi-repl mode, we don't want to build dependencies that
+      -- are loaded into the interactive session, since we have to build them again.
+
+    configInstantiateWith :: [(ModuleName, Module)],
+      -- ^ The requested Backpack instantiation.  If empty, either this
+      -- package does not use Backpack, or we just want to typecheck
+      -- the indefinite package.
+    configConfigurationsFlags :: FlagAssignment,
+    configTests               :: Flag Bool, -- ^Enable test suite compilation
+    configBenchmarks          :: Flag Bool, -- ^Enable benchmark compilation
+    configCoverage :: Flag Bool, -- ^Enable program coverage
+    configLibCoverage :: Flag Bool, -- ^Enable program coverage (deprecated)
+    configExactConfiguration  :: Flag Bool,
+      -- ^All direct dependencies and flags are provided on the command line by
+      -- the user via the '--dependency' and '--flags' options.
+    configFlagError :: Flag String,
+      -- ^Halt and show an error message indicating an error in flag assignment
+    configRelocatable :: Flag Bool, -- ^ Enable relocatable package built
+    configDebugInfo :: Flag DebugInfoLevel,  -- ^ Emit debug info.
+    configDumpBuildInfo :: Flag DumpBuildInfo,
+      -- ^ Should we dump available build information on build?
+      -- Dump build information to disk before attempting to build,
+      -- tooling can parse these files and use them to compile the
+      -- source files themselves.
+    configUseResponseFiles :: Flag Bool,
+      -- ^ Whether to use response files at all. They're used for such tools
+      -- as haddock, or ld.
+    configAllowDependingOnPrivateLibs :: Flag Bool
+      -- ^ Allow depending on private sublibraries. This is used by external
+      -- tools (like cabal-install) so they can add multiple-public-libraries
+      -- compatibility to older ghcs by checking visibility externally.
   }
   deriving (Generic, Read, Show, Typeable)
 
@@ -233,54 +195,55 @@ instance Eq ConfigFlags where
   (==) a b =
     -- configPrograms skipped: not user specified, has no Eq instance
     equal configProgramPaths
-      && equal configProgramArgs
-      && equal configProgramPathExtra
-      && equal configHcFlavor
-      && equal configHcPath
-      && equal configHcPkg
-      && equal configVanillaLib
-      && equal configProfLib
-      && equal configSharedLib
-      && equal configStaticLib
-      && equal configDynExe
-      && equal configFullyStaticExe
-      && equal configProfExe
-      && equal configProf
-      && equal configProfDetail
-      && equal configProfLibDetail
-      && equal configConfigureArgs
-      && equal configOptimization
-      && equal configProgPrefix
-      && equal configProgSuffix
-      && equal configInstallDirs
-      && equal configScratchDir
-      && equal configExtraLibDirs
-      && equal configExtraLibDirsStatic
-      && equal configExtraIncludeDirs
-      && equal configIPID
-      && equal configDeterministic
-      && equal configDistPref
-      && equal configVerbosity
-      && equal configUserInstall
-      && equal configPackageDBs
-      && equal configGHCiLib
-      && equal configSplitSections
-      && equal configSplitObjs
-      && equal configStripExes
-      && equal configStripLibs
-      && equal configConstraints
-      && equal configDependencies
-      && equal configConfigurationsFlags
-      && equal configTests
-      && equal configBenchmarks
-      && equal configCoverage
-      && equal configLibCoverage
-      && equal configExactConfiguration
-      && equal configFlagError
-      && equal configRelocatable
-      && equal configDebugInfo
-      && equal configDumpBuildInfo
-      && equal configUseResponseFiles
+    && equal configProgramArgs
+    && equal configProgramPathExtra
+    && equal configHcFlavor
+    && equal configHcPath
+    && equal configHcPkg
+    && equal configVanillaLib
+    && equal configProfLib
+    && equal configSharedLib
+    && equal configStaticLib
+    && equal configDynExe
+    && equal configFullyStaticExe
+    && equal configProfExe
+    && equal configProf
+    && equal configProfDetail
+    && equal configProfLibDetail
+    && equal configConfigureArgs
+    && equal configOptimization
+    && equal configProgPrefix
+    && equal configProgSuffix
+    && equal configInstallDirs
+    && equal configScratchDir
+    && equal configExtraLibDirs
+    && equal configExtraLibDirsStatic
+    && equal configExtraIncludeDirs
+    && equal configIPID
+    && equal configDeterministic
+    && equal configDistPref
+    && equal configVerbosity
+    && equal configUserInstall
+    && equal configPackageDBs
+    && equal configGHCiLib
+    && equal configSplitSections
+    && equal configSplitObjs
+    && equal configStripExes
+    && equal configStripLibs
+    && equal configConstraints
+    && equal configDependencies
+    && equal configPromisedDependencies
+    && equal configConfigurationsFlags
+    && equal configTests
+    && equal configBenchmarks
+    && equal configCoverage
+    && equal configLibCoverage
+    && equal configExactConfiguration
+    && equal configFlagError
+    && equal configRelocatable
+    && equal configDebugInfo
+    && equal configDumpBuildInfo
+    && equal configUseResponseFiles
     where
       equal f = on (==) f a b
 
@@ -661,165 +624,121 @@ configureOptions showOrParseArgs =
           ( reqArg
               "FLAGS"
               (parsecToReadE (\err -> "Invalid flag assignment: " ++ err) legacyParsecFlagAssignment)
-              legacyShowFlagAssignment'
-          )
-       , option
-          ""
-          ["extra-include-dirs"]
-          "A list of directories to search for header files"
-          configExtraIncludeDirs
-          (\v flags -> flags{configExtraIncludeDirs = v})
-          (reqArg' "PATH" (\x -> [x]) id)
-       , option
-          ""
-          ["deterministic"]
-          "Try to be as deterministic as possible (used by the test suite)"
-          configDeterministic
-          (\v flags -> flags{configDeterministic = v})
-          (boolOpt [] [])
-       , option
-          ""
-          ["ipid"]
-          "Installed package ID to compile this package as"
-          configIPID
-          (\v flags -> flags{configIPID = v})
-          (reqArgFlag "IPID")
-       , option
-          ""
-          ["cid"]
-          "Installed component ID to compile this component as"
-          (fmap prettyShow . configCID)
-          (\v flags -> flags{configCID = fmap mkComponentId v})
-          (reqArgFlag "CID")
-       , option
-          ""
-          ["extra-lib-dirs"]
-          "A list of directories to search for external libraries"
-          configExtraLibDirs
-          (\v flags -> flags{configExtraLibDirs = v})
-          (reqArg' "PATH" (\x -> [x]) id)
-       , option
-          ""
-          ["extra-lib-dirs-static"]
-          "A list of directories to search for external libraries when linking fully static executables"
-          configExtraLibDirsStatic
-          (\v flags -> flags{configExtraLibDirsStatic = v})
-          (reqArg' "PATH" (\x -> [x]) id)
-       , option
-          ""
-          ["extra-framework-dirs"]
-          "A list of directories to search for external frameworks (OS X only)"
-          configExtraFrameworkDirs
-          (\v flags -> flags{configExtraFrameworkDirs = v})
-          (reqArg' "PATH" (\x -> [x]) id)
-       , option
-          ""
-          ["extra-prog-path"]
-          "A list of directories to search for required programs (in addition to the normal search locations)"
-          configProgramPathExtra
-          (\v flags -> flags{configProgramPathExtra = v})
-          (reqArg' "PATH" (\x -> toNubList [x]) fromNubList)
-       , option
-          ""
-          ["constraint"]
-          "A list of additional constraints on the dependencies."
-          configConstraints
-          (\v flags -> flags{configConstraints = v})
-          ( reqArg
-              "DEPENDENCY"
-              (parsecToReadE (const "dependency expected") ((\x -> [x]) `fmap` parsec))
-              (map prettyShow)
-          )
-       , option
-          ""
-          ["dependency"]
-          "A list of exact dependencies. E.g., --dependency=\"void=void-0.5.8-177d5cdf20962d0581fe2e4932a6c309\""
-          configDependencies
-          (\v flags -> flags{configDependencies = v})
-          ( reqArg
-              "NAME[:COMPONENT_NAME]=CID"
-              (parsecToReadE (const "dependency expected") ((\x -> [x]) `fmap` parsecGivenComponent))
-              ( map
-                  ( \(GivenComponent pn cn cid) ->
-                      prettyShow pn
-                        ++ case cn of
-                          LMainLibName -> ""
-                          LSubLibName n -> ":" ++ prettyShow n
-                        ++ "="
-                        ++ prettyShow cid
-                  )
-              )
-          )
-       , option
-          ""
-          ["instantiate-with"]
-          "A mapping of signature names to concrete module instantiations."
-          configInstantiateWith
-          (\v flags -> flags{configInstantiateWith = v})
-          ( reqArg
-              "NAME=MOD"
-              (parsecToReadE ("Cannot parse module substitution: " ++) (fmap (: []) parsecModSubstEntry))
-              (map (Disp.renderStyle defaultStyle . dispModSubstEntry))
-          )
-       , option
-          ""
-          ["tests"]
-          "dependency checking and compilation for test suites listed in the package description file."
-          configTests
-          (\v flags -> flags{configTests = v})
-          (boolOpt [] [])
-       , option
-          ""
-          ["coverage"]
-          "build package with Haskell Program Coverage. (GHC only)"
-          configCoverage
-          (\v flags -> flags{configCoverage = v})
-          (boolOpt [] [])
-       , option
-          ""
-          ["library-coverage"]
-          "build package with Haskell Program Coverage. (GHC only) (DEPRECATED)"
-          configLibCoverage
-          (\v flags -> flags{configLibCoverage = v})
-          (boolOpt [] [])
-       , option
-          ""
-          ["exact-configuration"]
-          "All direct dependencies and flags are provided on the command line."
-          configExactConfiguration
-          (\v flags -> flags{configExactConfiguration = v})
-          trueArg
-       , option
-          ""
-          ["benchmarks"]
-          "dependency checking and compilation for benchmarks listed in the package description file."
-          configBenchmarks
-          (\v flags -> flags{configBenchmarks = v})
-          (boolOpt [] [])
-       , option
-          ""
-          ["relocatable"]
-          "building a package that is relocatable. (GHC only)"
-          configRelocatable
-          (\v flags -> flags{configRelocatable = v})
-          (boolOpt [] [])
-       , option
-          ""
-          ["response-files"]
-          "enable workaround for old versions of programs like \"ar\" that do not support @file arguments"
-          configUseResponseFiles
-          (\v flags -> flags{configUseResponseFiles = v})
-          (boolOpt' ([], ["disable-response-files"]) ([], []))
-       , option
-          ""
-          ["allow-depending-on-private-libs"]
-          ( "Allow depending on private libraries. "
-              ++ "If set, the library visibility check MUST be done externally."
-          )
-          configAllowDependingOnPrivateLibs
-          (\v flags -> flags{configAllowDependingOnPrivateLibs = v})
-          trueArg
-       ]
+              legacyShowFlagAssignment')
+
+      ,option "" ["extra-include-dirs"]
+         "A list of directories to search for header files"
+         configExtraIncludeDirs (\v flags -> flags {configExtraIncludeDirs = v})
+         (reqArg' "PATH" (\x -> [x]) id)
+
+      ,option "" ["deterministic"]
+         "Try to be as deterministic as possible (used by the test suite)"
+         configDeterministic (\v flags -> flags {configDeterministic = v})
+         (boolOpt [] [])
+
+      ,option "" ["ipid"]
+         "Installed package ID to compile this package as"
+         configIPID (\v flags -> flags {configIPID = v})
+         (reqArgFlag "IPID")
+
+      ,option "" ["cid"]
+         "Installed component ID to compile this component as"
+         (fmap prettyShow . configCID) (\v flags -> flags {configCID = fmap mkComponentId v})
+         (reqArgFlag "CID")
+
+      ,option "" ["extra-lib-dirs"]
+         "A list of directories to search for external libraries"
+         configExtraLibDirs (\v flags -> flags {configExtraLibDirs = v})
+         (reqArg' "PATH" (\x -> [x]) id)
+
+      ,option "" ["extra-lib-dirs-static"]
+         "A list of directories to search for external libraries when linking fully static executables"
+         configExtraLibDirsStatic (\v flags -> flags {configExtraLibDirsStatic = v})
+         (reqArg' "PATH" (\x -> [x]) id)
+
+      ,option "" ["extra-framework-dirs"]
+         "A list of directories to search for external frameworks (OS X only)"
+         configExtraFrameworkDirs
+         (\v flags -> flags {configExtraFrameworkDirs = v})
+         (reqArg' "PATH" (\x -> [x]) id)
+
+      ,option "" ["extra-prog-path"]
+         "A list of directories to search for required programs (in addition to the normal search locations)"
+         configProgramPathExtra (\v flags -> flags {configProgramPathExtra = v})
+         (reqArg' "PATH" (\x -> toNubList [x]) fromNubList)
+
+      ,option "" ["constraint"]
+         "A list of additional constraints on the dependencies."
+         configConstraints (\v flags -> flags { configConstraints = v})
+         (reqArg "DEPENDENCY"
+                 (parsecToReadE (const "dependency expected") ((\x -> [x]) `fmap` parsec))
+                 (map prettyShow))
+
+      ,option "" ["dependency"]
+         "A list of exact dependencies. E.g., --dependency=\"void=void-0.5.8-177d5cdf20962d0581fe2e4932a6c309\""
+         configDependencies (\v flags -> flags { configDependencies = v})
+         (reqArg "NAME[:COMPONENT_NAME]=CID"
+                 (parsecToReadE (const "dependency expected") ((\x -> [x]) `fmap` parsecGivenComponent))
+                 (map prettyGivenComponent))
+
+      ,option "" ["promised-dependency"]
+         "A list of promised dependencies. E.g., --promised-dependency=\"void=void-0.5.8-177d5cdf20962d0581fe2e4932a6c309\""
+         configPromisedDependencies (\v flags -> flags { configPromisedDependencies = v})
+         (reqArg "NAME[:COMPONENT_NAME]=CID"
+                 (parsecToReadE (const "dependency expected") ((\x -> [x]) `fmap` parsecGivenComponent))
+                 (map prettyGivenComponent))
+
+      ,option "" ["instantiate-with"]
+        "A mapping of signature names to concrete module instantiations."
+        configInstantiateWith (\v flags -> flags { configInstantiateWith = v  })
+        (reqArg "NAME=MOD"
+            (parsecToReadE ("Cannot parse module substitution: " ++) (fmap (:[]) parsecModSubstEntry))
+            (map (Disp.renderStyle defaultStyle . dispModSubstEntry)))
+
+      ,option "" ["tests"]
+         "dependency checking and compilation for test suites listed in the package description file."
+         configTests (\v flags -> flags { configTests = v })
+         (boolOpt [] [])
+
+      ,option "" ["coverage"]
+         "build package with Haskell Program Coverage. (GHC only)"
+         configCoverage (\v flags -> flags { configCoverage = v })
+         (boolOpt [] [])
+
+      ,option "" ["library-coverage"]
+         "build package with Haskell Program Coverage. (GHC only) (DEPRECATED)"
+         configLibCoverage (\v flags -> flags { configLibCoverage = v })
+         (boolOpt [] [])
+
+      ,option "" ["exact-configuration"]
+         "All direct dependencies and flags are provided on the command line."
+         configExactConfiguration
+         (\v flags -> flags { configExactConfiguration = v })
+         trueArg
+
+      ,option "" ["benchmarks"]
+         "dependency checking and compilation for benchmarks listed in the package description file."
+         configBenchmarks (\v flags -> flags { configBenchmarks = v })
+         (boolOpt [] [])
+
+      ,option "" ["relocatable"]
+         "building a package that is relocatable. (GHC only)"
+         configRelocatable (\v flags -> flags { configRelocatable = v})
+         (boolOpt [] [])
+
+      ,option "" ["response-files"]
+         "enable workaround for old versions of programs like \"ar\" that do not support @file arguments"
+         configUseResponseFiles
+         (\v flags -> flags { configUseResponseFiles = v })
+         (boolOpt' ([], ["disable-response-files"]) ([], []))
+
+      ,option "" ["allow-depending-on-private-libs"]
+         (  "Allow depending on private libraries. "
+         ++ "If set, the library visibility check MUST be done externally." )
+         configAllowDependingOnPrivateLibs
+         (\v flags -> flags { configAllowDependingOnPrivateLibs = v })
+         trueArg
+      ]
   where
     liftInstallDirs =
       liftOption configInstallDirs (\v flags -> flags{configInstallDirs = v})
@@ -874,6 +793,13 @@ parsecGivenComponent = do
   _ <- P.char '='
   cid <- parsec
   return $ GivenComponent pn ln cid
+
+prettyGivenComponent :: GivenComponent -> String
+prettyGivenComponent (GivenComponent pn cn cid) =
+  prettyShow pn
+  ++ case cn of LMainLibName -> ""
+                LSubLibName n -> ":" ++ prettyShow n
+  ++ "=" ++ prettyShow cid
 
 installDirsOptions :: [OptionField (InstallDirs (Flag PathTemplate))]
 installDirsOptions =

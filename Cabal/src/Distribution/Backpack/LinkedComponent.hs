@@ -112,24 +112,20 @@ instance Package LinkedComponent where
   packageId = lc_pkgid
 
 toLinkedComponent
-  :: Verbosity
-  -> FullDb
-  -> PackageId
-  -> LinkedComponentMap
-  -> ConfiguredComponent
-  -> LogProgress LinkedComponent
-toLinkedComponent
-  verbosity
-  db
-  this_pid
-  pkg_map
-  ConfiguredComponent
-    { cc_ann_id = aid@AnnotatedId{ann_id = this_cid}
-    , cc_component = component
-    , cc_exe_deps = exe_deps
-    , cc_public = is_public
-    , cc_includes = cid_includes
-    } = do
+    :: Verbosity
+    -> Bool -- ^ Whether there are any "promised" package dependencies which we won't find already installed.
+    -> FullDb
+    -> PackageId
+    -> LinkedComponentMap
+    -> ConfiguredComponent
+    -> LogProgress LinkedComponent
+toLinkedComponent verbosity anyPromised db this_pid pkg_map ConfiguredComponent {
+    cc_ann_id = aid@AnnotatedId { ann_id = this_cid },
+    cc_component = component,
+    cc_exe_deps = exe_deps,
+    cc_public = is_public,
+    cc_includes = cid_includes
+   } = do
     let
       -- The explicitly specified requirements, provisions and
       -- reexports from the Cabal file.  These are only non-empty for
@@ -307,23 +303,45 @@ toLinkedComponent
           case filter (\x' -> unWithSource x /= unWithSource x') xs of
             [] -> return ()
             _ -> Left $ ambiguousReexportMsg reex x xs
-          return (to, unWithSource x)
+          return (to, Just (unWithSource x))
         _ ->
-          Left (brokenReexportMsg reex)
+          -- Can't resolve it right now.. carry on with the assumption it will be resolved
+          -- dynamically later by an in-memory package which hasn't been installed yet.
+          if anyPromised
+            then return (to, Nothing)
+            -- But if nothing is promised, eagerly report an error, as we already know everything.
+            else Left (brokenReexportMsg reex)
 
     -- TODO: maybe check this earlier; it's syntactically obvious.
     let build_reexports m (k, v)
-          | Map.member k m =
-              dieProgress $
-                hsep
-                  [text "Module name ", pretty k, text " is exported multiple times."]
-          | otherwise = return (Map.insert k v m)
-    provs <-
-      foldM build_reexports Map.empty $
-        -- TODO: doublecheck we have checked for
-        -- src_provs duplicates already!
-        [(mod_name, OpenModule this_uid mod_name) | mod_name <- src_provs]
-          ++ reexports_list
+            | Map.member k m =
+                dieProgress $ hsep
+                    [ text "Module name ", pretty k, text " is exported multiple times." ]
+            | otherwise = return (Map.insert k v m)
+    provs <- foldM build_reexports Map.empty $
+                -- TODO: doublecheck we have checked for
+                -- src_provs duplicates already!
+                -- These are normal module exports.
+                [ (mod_name, (OpenModule this_uid mod_name)) | mod_name <- src_provs ]
+                ++
+                 -- These are reexports, which we managed to resolve to something in an external package.
+                 [(mn_new, om) | (mn_new, Just om) <- reexports_list ]
+                ++
+                -- These ones.. we didn't resolve but also we might not have to
+                -- resolve them because they could come from a promised unit,
+                -- which we don't know anything about yet. GHC will resolve
+                -- these itself when it is dealing with the multi-session.
+                -- These ones will not be built, registered and put
+                -- into a package database, we only need them to make it as far
+                -- as generating GHC options where the info will be used to
+                -- pass the reexported-module option to GHC.
+
+                -- We also know that in the case there are promised units that
+                -- we will not be doing anything to do with backpack like
+                -- unification etc..
+                 [ (mod_name, OpenModule (DefiniteUnitId (unsafeMkDefUnitId
+                                          (mkUnitId "fake"))) mod_name)
+                 | (mod_name, Nothing) <- reexports_list ]
 
     let final_linked_shape = ModuleShape provs (Map.keysSet (modScopeRequires linked_shape))
 
@@ -370,24 +388,24 @@ toLinkedComponent
 -- Handle mix-in linking for components.  In the absence of Backpack,
 -- every ComponentId gets converted into a UnitId by way of SimpleUnitId.
 toLinkedComponents
-  :: Verbosity
-  -> FullDb
-  -> PackageId
-  -> LinkedComponentMap
-  -> [ConfiguredComponent]
-  -> LogProgress [LinkedComponent]
-toLinkedComponents verbosity db this_pid lc_map0 comps =
-  fmap snd (mapAccumM go lc_map0 comps)
-  where
-    go
-      :: Map ComponentId (OpenUnitId, ModuleShape)
-      -> ConfiguredComponent
-      -> LogProgress (Map ComponentId (OpenUnitId, ModuleShape), LinkedComponent)
-    go lc_map cc = do
-      lc <-
-        addProgressCtx (text "In the stanza" <+> text (componentNameStanza (cc_name cc))) $
-          toLinkedComponent verbosity db this_pid lc_map cc
-      return (extendLinkedComponentMap lc lc_map, lc)
+    :: Verbosity
+    -> Bool -- ^ Whether there are any "promised" package dependencies which we won't
+            -- find already installed.
+    -> FullDb
+    -> PackageId
+    -> LinkedComponentMap
+    -> [ConfiguredComponent]
+    -> LogProgress [LinkedComponent]
+toLinkedComponents verbosity anyPromised db this_pid lc_map0 comps
+   = fmap snd (mapAccumM go lc_map0 comps)
+ where
+  go :: Map ComponentId (OpenUnitId, ModuleShape)
+     -> ConfiguredComponent
+     -> LogProgress (Map ComponentId (OpenUnitId, ModuleShape), LinkedComponent)
+  go lc_map cc = do
+    lc <- addProgressCtx (text "In the stanza" <+> text (componentNameStanza (cc_name cc))) $
+            toLinkedComponent verbosity anyPromised db this_pid lc_map cc
+    return (extendLinkedComponentMap lc lc_map, lc)
 
 type LinkedComponentMap = Map ComponentId (OpenUnitId, ModuleShape)
 

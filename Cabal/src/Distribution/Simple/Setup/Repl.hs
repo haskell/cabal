@@ -43,9 +43,10 @@ import Distribution.Simple.Setup.Common
 
 -- ------------------------------------------------------------
 
-data ReplOptions = ReplOptions
-  { replOptionsFlags :: [String]
-  , replOptionsNoLoad :: Flag Bool
+data ReplOptions = ReplOptions {
+    replOptionsFlags :: [String],
+    replOptionsNoLoad :: Flag Bool,
+    replOptionsFlagOutput :: Flag FilePath
   }
   deriving (Show, Generic, Typeable)
 
@@ -53,7 +54,7 @@ instance Binary ReplOptions
 instance Structured ReplOptions
 
 instance Monoid ReplOptions where
-  mempty = ReplOptions mempty (Flag False)
+  mempty = ReplOptions mempty (Flag False) NoFlag
   mappend = (<>)
 
 instance Semigroup ReplOptions where
@@ -177,18 +178,16 @@ replCommand progDb =
 
 replOptions :: ShowOrParseArgs -> [OptionField ReplOptions]
 replOptions _ =
-  [ option
-      []
-      ["repl-no-load"]
-      "Disable loading of project modules at REPL startup."
-      replOptionsNoLoad
-      (\p flags -> flags{replOptionsNoLoad = p})
-      trueArg
-  , option
-      []
-      ["repl-options"]
-      "Use the option(s) for the repl"
-      replOptionsFlags
-      (\p flags -> flags{replOptionsFlags = p})
-      (reqArg "FLAG" (succeedReadE words) id)
+  [ option [] ["repl-no-load"]
+    "Disable loading of project modules at REPL startup."
+    replOptionsNoLoad (\p flags -> flags { replOptionsNoLoad = p })
+    trueArg
+  , option [] ["repl-options"]
+    "Use the option(s) for the repl"
+    replOptionsFlags (\p flags -> flags { replOptionsFlags = p })
+    (reqArg "FLAG" (succeedReadE words) id)
+  , option [] ["repl-multi-file"]
+    "Write repl options to this directory rather than starting repl mode"
+    replOptionsFlagOutput (\p flags -> flags { replOptionsFlagOutput = p })
+    (reqArg "DIR" (succeedReadE Flag) flagToList)
   ]
