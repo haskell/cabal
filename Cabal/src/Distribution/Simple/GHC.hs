@@ -92,7 +92,7 @@ import Distribution.PackageDescription.Utils (cabalBug)
 import Distribution.Pretty
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Compiler
-import Distribution.Simple.Flag (Flag (Flag), fromFlag, fromFlagOrDefault, toFlag)
+import Distribution.Simple.Flag (Flag (..), fromFlag, fromFlagOrDefault, toFlag)
 import Distribution.Simple.GHC.EnvironmentParser
 import Distribution.Simple.GHC.ImplInfo
 import qualified Distribution.Simple.GHC.Internal as Internal
@@ -104,7 +104,9 @@ import Distribution.Simple.Program
 import qualified Distribution.Simple.Program.Ar as Ar
 import Distribution.Simple.Program.Builtin (runghcProgram)
 import Distribution.Simple.Program.GHC
-import Distribution.Simple.Flag ( Flag(..), fromFlag, fromFlagOrDefault, toFlag )
+import qualified Distribution.Simple.Program.HcPkg as HcPkg
+import qualified Distribution.Simple.Program.Ld as Ld
+import qualified Distribution.Simple.Program.Strip as Strip
 import Distribution.Simple.Setup.Config
 import Distribution.Simple.Setup.Repl
 import Distribution.Simple.Utils
@@ -121,21 +123,33 @@ import Control.Monad (forM_, msum)
 import Data.Char (isLower)
 import qualified Data.Map as Map
 import System.Directory
-         ( doesFileExist, doesDirectoryExist
-         , getAppUserDataDirectory, createDirectoryIfMissing
-         , canonicalizePath, removeFile, renameFile, getDirectoryContents
-         , makeRelativeToCurrentDirectory, doesDirectoryExist )
-import System.FilePath          ( (</>), (<.>), takeExtension
-                                , takeDirectory, replaceExtension
-                                ,isRelative )
+  ( canonicalizePath
+  , createDirectoryIfMissing
+  , doesDirectoryExist
+  , doesFileExist
+  , getAppUserDataDirectory
+  , getCurrentDirectory
+  , getDirectoryContents
+  , makeRelativeToCurrentDirectory
+  , removeFile
+  , renameFile
+  )
+import System.FilePath
+  ( isRelative
+  , replaceExtension
+  , takeDirectory
+  , takeExtension
+  , (<.>)
+  , (</>)
+  )
 import qualified System.Info
 #ifndef mingw32_HOST_OS
 import System.Posix (createSymbolicLink)
 #endif /* mingw32_HOST_OS */
 import qualified Data.ByteString.Lazy.Char8 as BS
+import Distribution.Compat.Binary (encode)
 import Distribution.Compat.ResponseFile (escapeArgs)
 import qualified Distribution.InstalledPackageInfo as IPI
-import Distribution.Compat.Binary (encode)
 
 -- -----------------------------------------------------------------------------
 -- Configuring
@@ -695,55 +709,71 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
             , ghcOptHPCDir = hpcdir Hpc.Prof
             }
 
-      sharedOpts  = vanillaOpts `mappend` mempty {
-                      ghcOptDynLinkMode = toFlag GhcDynamicOnly,
-                      ghcOptFPic        = toFlag True,
-                      ghcOptHiSuffix    = toFlag "dyn_hi",
-                      ghcOptObjSuffix   = toFlag "dyn_o",
-                      ghcOptExtra       = hcSharedOptions GHC libBi,
-                      ghcOptHPCDir      = hpcdir Hpc.Dyn
-                    }
-      linkerOpts = mempty {
-                      ghcOptLinkOptions       = PD.ldOptions libBi
-                                                ++ [ "-static"
-                                                   | withFullyStaticExe lbi ]
-                                                -- Pass extra `ld-options` given
-                                                -- through to GHC's linker.
-                                                ++ maybe [] programOverrideArgs
-                                                     (lookupProgram ldProgram (withPrograms lbi)),
-                      ghcOptLinkLibs          = if withFullyStaticExe lbi
-                                                  then extraLibsStatic libBi
-                                                  else extraLibs libBi,
-                      ghcOptLinkLibPath       = toNubListR $
-                                                  if withFullyStaticExe lbi
-                                                    then cleanedExtraLibDirsStatic
-                                                    else cleanedExtraLibDirs,
-                      ghcOptLinkFrameworks    = toNubListR $ PD.frameworks libBi,
-                      ghcOptLinkFrameworkDirs = toNubListR $
-                                                PD.extraFrameworkDirs libBi,
-                      ghcOptInputFiles     = toNubListR
-                                             [relLibTargetDir </> x | x <- cLikeObjs]
-                   }
-      replOpts    = vanillaOpts {
-                      ghcOptExtra        = Internal.filterGhciFlags
-                                           (ghcOptExtra vanillaOpts)
-                                           <> replOptionsFlags replFlags,
-                      ghcOptNumJobs      = mempty,
-                      ghcOptInputModules = replNoLoad replFlags (ghcOptInputModules vanillaOpts)
-                    }
-                    `mappend` linkerOpts
-                    `mappend` mempty {
-                      ghcOptMode         = isInteractive,
-                      ghcOptOptimisation = toFlag GhcNoOptimisation
-                    }
+      sharedOpts =
+        vanillaOpts
+          `mappend` mempty
+            { ghcOptDynLinkMode = toFlag GhcDynamicOnly
+            , ghcOptFPic = toFlag True
+            , ghcOptHiSuffix = toFlag "dyn_hi"
+            , ghcOptObjSuffix = toFlag "dyn_o"
+            , ghcOptExtra = hcSharedOptions GHC libBi
+            , ghcOptHPCDir = hpcdir Hpc.Dyn
+            }
+      linkerOpts =
+        mempty
+          { ghcOptLinkOptions =
+              PD.ldOptions libBi
+                ++ [ "-static"
+                   | withFullyStaticExe lbi
+                   ]
+                -- Pass extra `ld-options` given
+                -- through to GHC's linker.
+                ++ maybe
+                  []
+                  programOverrideArgs
+                  (lookupProgram ldProgram (withPrograms lbi))
+          , ghcOptLinkLibs =
+              if withFullyStaticExe lbi
+                then extraLibsStatic libBi
+                else extraLibs libBi
+          , ghcOptLinkLibPath =
+              toNubListR $
+                if withFullyStaticExe lbi
+                  then cleanedExtraLibDirsStatic
+                  else cleanedExtraLibDirs
+          , ghcOptLinkFrameworks = toNubListR $ PD.frameworks libBi
+          , ghcOptLinkFrameworkDirs =
+              toNubListR $
+                PD.extraFrameworkDirs libBi
+          , ghcOptInputFiles =
+              toNubListR
+                [relLibTargetDir </> x | x <- cLikeObjs]
+          }
+      replOpts =
+        vanillaOpts
+          { ghcOptExtra =
+              Internal.filterGhciFlags
+                (ghcOptExtra vanillaOpts)
+                <> replOptionsFlags replFlags
+          , ghcOptNumJobs = mempty
+          , ghcOptInputModules = replNoLoad replFlags (ghcOptInputModules vanillaOpts)
+          }
+          `mappend` linkerOpts
+          `mappend` mempty
+            { ghcOptMode = isInteractive
+            , ghcOptOptimisation = toFlag GhcNoOptimisation
+            }
+
       isInteractive = toFlag GhcModeInteractive
 
-      vanillaSharedOpts = vanillaOpts `mappend` mempty {
-                      ghcOptDynLinkMode  = toFlag GhcStaticAndDynamic,
-                      ghcOptDynHiSuffix  = toFlag "dyn_hi",
-                      ghcOptDynObjSuffix = toFlag "dyn_o",
-                      ghcOptHPCDir       = hpcdir Hpc.Dyn
-                    }
+      vanillaSharedOpts =
+        vanillaOpts
+          `mappend` mempty
+            { ghcOptDynLinkMode = toFlag GhcStaticAndDynamic
+            , ghcOptDynHiSuffix = toFlag "dyn_hi"
+            , ghcOptDynObjSuffix = toFlag "dyn_o"
+            , ghcOptHPCDir = hpcdir Hpc.Dyn
+            }
 
   unless (forRepl || null (allLibModules lib clbi)) $
     do
@@ -1117,67 +1147,74 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
               , -- For dynamic libs, Mac OS/X needs to know the install location
                 -- at build time. This only applies to GHC < 7.8 - see the
                 -- discussion in #1660.
-                ghcOptDylibName          = if hostOS == OSX
-                                              && ghcVersion < mkVersion [7,8]
-                                            then toFlag sharedLibInstallPath
-                                            else mempty,
-                ghcOptHideAllPackages    = toFlag True,
-                ghcOptNoAutoLinkPackages = toFlag True,
-                ghcOptPackageDBs         = withPackageDB lbi,
-                ghcOptThisUnitId = case clbi of
-                    LibComponentLocalBuildInfo { componentCompatPackageKey = pk }
-                      -> toFlag pk
-                    _ -> mempty,
-                ghcOptThisComponentId = case clbi of
-                    LibComponentLocalBuildInfo
-                      { componentInstantiatedWith = insts } ->
-                        if null insts
-                            then mempty
-                            else toFlag (componentComponentId clbi)
-                    _ -> mempty,
-                ghcOptInstantiatedWith = case clbi of
-                    LibComponentLocalBuildInfo
-                      { componentInstantiatedWith = insts }
-                      -> insts
-                    _ -> [],
-                ghcOptPackages           = toNubListR $
-                                           Internal.mkGhcOptPackages mempty clbi ,
-                ghcOptLinkLibs           = extraLibs libBi,
-                ghcOptLinkLibPath        = toNubListR $ cleanedExtraLibDirs,
-                ghcOptLinkFrameworks     = toNubListR $ PD.frameworks libBi,
-                ghcOptLinkFrameworkDirs  =
-                  toNubListR $ PD.extraFrameworkDirs libBi,
-                ghcOptRPaths             = rpaths
+                ghcOptDylibName =
+                  if hostOS == OSX
+                    && ghcVersion < mkVersion [7, 8]
+                    then toFlag sharedLibInstallPath
+                    else mempty
+              , ghcOptHideAllPackages = toFlag True
+              , ghcOptNoAutoLinkPackages = toFlag True
+              , ghcOptPackageDBs = withPackageDB lbi
+              , ghcOptThisUnitId = case clbi of
+                  LibComponentLocalBuildInfo{componentCompatPackageKey = pk} ->
+                    toFlag pk
+                  _ -> mempty
+              , ghcOptThisComponentId = case clbi of
+                  LibComponentLocalBuildInfo
+                    { componentInstantiatedWith = insts
+                    } ->
+                      if null insts
+                        then mempty
+                        else toFlag (componentComponentId clbi)
+                  _ -> mempty
+              , ghcOptInstantiatedWith = case clbi of
+                  LibComponentLocalBuildInfo
+                    { componentInstantiatedWith = insts
+                    } ->
+                      insts
+                  _ -> []
+              , ghcOptPackages =
+                  toNubListR $
+                    Internal.mkGhcOptPackages mempty clbi
+              , ghcOptLinkLibs = extraLibs libBi
+              , ghcOptLinkLibPath = toNubListR $ cleanedExtraLibDirs
+              , ghcOptLinkFrameworks = toNubListR $ PD.frameworks libBi
+              , ghcOptLinkFrameworkDirs =
+                  toNubListR $ PD.extraFrameworkDirs libBi
+              , ghcOptRPaths = rpaths
               }
           ghcStaticLinkArgs =
-              mempty {
-                ghcOptStaticLib          = toFlag True,
-                ghcOptInputFiles         = toNubListR staticObjectFiles,
-                ghcOptOutputFile         = toFlag staticLibFilePath,
-                ghcOptExtra              = hcStaticOptions GHC libBi,
-                ghcOptHideAllPackages    = toFlag True,
-                ghcOptNoAutoLinkPackages = toFlag True,
-                ghcOptPackageDBs         = withPackageDB lbi,
-                ghcOptThisUnitId = case clbi of
-                    LibComponentLocalBuildInfo { componentCompatPackageKey = pk }
-                      -> toFlag pk
-                    _ -> mempty,
-                ghcOptThisComponentId = case clbi of
-                    LibComponentLocalBuildInfo
-                      { componentInstantiatedWith = insts } ->
-                        if null insts
-                            then mempty
-                            else toFlag (componentComponentId clbi)
-                    _ -> mempty,
-                ghcOptInstantiatedWith = case clbi of
-                    LibComponentLocalBuildInfo
-                      { componentInstantiatedWith = insts }
-                      -> insts
-                    _ -> [],
-                ghcOptPackages           = toNubListR $
-                                           Internal.mkGhcOptPackages mempty clbi ,
-                ghcOptLinkLibs           = extraLibs libBi,
-                ghcOptLinkLibPath        = toNubListR $ cleanedExtraLibDirs
+            mempty
+              { ghcOptStaticLib = toFlag True
+              , ghcOptInputFiles = toNubListR staticObjectFiles
+              , ghcOptOutputFile = toFlag staticLibFilePath
+              , ghcOptExtra = hcStaticOptions GHC libBi
+              , ghcOptHideAllPackages = toFlag True
+              , ghcOptNoAutoLinkPackages = toFlag True
+              , ghcOptPackageDBs = withPackageDB lbi
+              , ghcOptThisUnitId = case clbi of
+                  LibComponentLocalBuildInfo{componentCompatPackageKey = pk} ->
+                    toFlag pk
+                  _ -> mempty
+              , ghcOptThisComponentId = case clbi of
+                  LibComponentLocalBuildInfo
+                    { componentInstantiatedWith = insts
+                    } ->
+                      if null insts
+                        then mempty
+                        else toFlag (componentComponentId clbi)
+                  _ -> mempty
+              , ghcOptInstantiatedWith = case clbi of
+                  LibComponentLocalBuildInfo
+                    { componentInstantiatedWith = insts
+                    } ->
+                      insts
+                  _ -> []
+              , ghcOptPackages =
+                  toNubListR $
+                    Internal.mkGhcOptPackages mempty clbi
+              , ghcOptLinkLibs = extraLibs libBi
+              , ghcOptLinkLibPath = toNubListR $ cleanedExtraLibDirs
               }
 
       info verbosity (show (ghcOptPackages ghcSharedLinkArgs))
@@ -1228,7 +1265,6 @@ startInterpreter verbosity progdb comp platform packageDBs = do
   (ghcProg, _) <- requireProgram verbosity ghcProgram progdb
   runGHC verbosity ghcProg comp platform replOpts
 
-
 runReplOrWriteFlags
   :: Verbosity
   -> ConfiguredProgram
@@ -1247,16 +1283,17 @@ runReplOrWriteFlags verbosity ghcProg comp platform rflags replOpts bi clbi pkg_
       src_dir <- getCurrentDirectory
       let uid = componentUnitId clbi
           this_unit = prettyShow uid
-          reexported_modules = [mn | LibComponentLocalBuildInfo {} <- [clbi], IPI.ExposedModule mn (Just {}) <- componentExposedModules clbi]
+          reexported_modules = [mn | LibComponentLocalBuildInfo{} <- [clbi], IPI.ExposedModule mn (Just{}) <- componentExposedModules clbi]
           hidden_modules = otherModules bi
-          extra_opts = concat $
-                      [ ["-this-package-name", prettyShow pkg_name]
-                      , ["-working-dir"      , src_dir]
-                      ] ++
-                      [ ["-reexported-module", prettyShow m] | m <- reexported_modules
-                      ] ++
-                      [ ["-hidden-module", prettyShow m] | m <- hidden_modules
-                      ]
+          extra_opts =
+            concat $
+              [ ["-this-package-name", prettyShow pkg_name]
+              , ["-working-dir", src_dir]
+              ]
+                ++ [ ["-reexported-module", prettyShow m] | m <- reexported_modules
+                   ]
+                ++ [ ["-hidden-module", prettyShow m] | m <- hidden_modules
+                   ]
       -- Create "paths" subdirectory if it doesn't exist. This is where we write
       -- information about how the PATH was augmented.
       createDirectoryIfMissing False (out_dir </> "paths")
@@ -1264,8 +1301,10 @@ runReplOrWriteFlags verbosity ghcProg comp platform rflags replOpts bi clbi pkg_
       writeFileAtomic (out_dir </> "paths" </> this_unit) (encode ghcProg)
       -- Write out options for this component into a file ready for loading into
       -- the multi-repl
-      writeFileAtomic (out_dir </> this_unit) $ BS.pack $ escapeArgs
-        $ extra_opts ++ renderGhcOptions comp platform (replOpts { ghcOptMode = NoFlag })
+      writeFileAtomic (out_dir </> this_unit) $
+        BS.pack $
+          escapeArgs $
+            extra_opts ++ renderGhcOptions comp platform (replOpts{ghcOptMode = NoFlag})
 
 -- -----------------------------------------------------------------------------
 -- Building an executable or foreign library
@@ -1929,7 +1968,7 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
   -- with ghci, but .c files can depend on .h files generated by ghc by ffi
   -- exports.
   case bm of
-    GReplExe  _ _ -> runReplOrWriteFlags verbosity ghcProg comp platform replFlags replOpts bnfo clbi (pkgName (PD.package pkg_descr))
+    GReplExe _ _ -> runReplOrWriteFlags verbosity ghcProg comp platform replFlags replOpts bnfo clbi (pkgName (PD.package pkg_descr))
     GReplFLib _ _ -> runReplOrWriteFlags verbosity ghcProg comp platform replFlags replOpts bnfo clbi (pkgName (PD.package pkg_descr))
     GBuildExe _ -> do
       let linkOpts =

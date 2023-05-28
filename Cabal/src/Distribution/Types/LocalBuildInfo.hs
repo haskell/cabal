@@ -76,90 +76,113 @@ import qualified Distribution.Compat.Graph as Graph
 
 -- | Data cached after configuration step.  See also
 -- 'Distribution.Simple.Setup.ConfigFlags'.
-data LocalBuildInfo = LocalBuildInfo {
-        configFlags   :: ConfigFlags,
-        -- ^ Options passed to the configuration step.
-        -- Needed to re-run configuration when .cabal is out of date
-        flagAssignment :: FlagAssignment,
-        -- ^ The final set of flags which were picked for this package
-        componentEnabledSpec :: ComponentRequestedSpec,
-        -- ^ What components were enabled during configuration, and why.
-        extraConfigArgs     :: [String],
-        -- ^ Extra args on the command line for the configuration step.
-        -- Needed to re-run configuration when .cabal is out of date
-        installDirTemplates :: InstallDirTemplates,
-                -- ^ The installation directories for the various different
-                -- kinds of files
-        --TODO: inplaceDirTemplates :: InstallDirs FilePath
-        compiler      :: Compiler,
-                -- ^ The compiler we're building with
-        hostPlatform  :: Platform,
-                -- ^ The platform we're building for
-        buildDir      :: FilePath,
-                -- ^ Where to build the package.
-        cabalFilePath :: Maybe FilePath,
-                -- ^ Path to the cabal file, if given during configuration.
-        componentGraph :: Graph ComponentLocalBuildInfo,
-                -- ^ All the components to build, ordered by topological
-                -- sort, and with their INTERNAL dependencies over the
-                -- intrapackage dependency graph.
-                -- TODO: this is assumed to be short; otherwise we want
-                -- some sort of ordered map.
-        componentNameMap :: Map ComponentName [ComponentLocalBuildInfo],
-                -- ^ A map from component name to all matching
-                -- components.  These coincide with 'componentGraph'
-        promisedPkgs  :: Map (PackageName, ComponentName) ComponentId,
-                -- ^ The packages we were promised, but aren't already installed.
-                -- MP: Perhaps this just needs to be a Set UnitId at this stage.
-        installedPkgs :: InstalledPackageIndex,
-                -- ^ All the info about the installed packages that the
-                -- current package depends on (directly or indirectly).
-                -- The copy saved on disk does NOT include internal
-                -- dependencies (because we just don't have enough
-                -- information at this point to have an
-                -- 'InstalledPackageInfo' for an internal dep), but we
-                -- will often update it with the internal dependencies;
-                -- see for example 'Distribution.Simple.Build.build'.
-                -- (This admonition doesn't apply for per-component builds.)
-        pkgDescrFile  :: Maybe FilePath,
-                -- ^ the filename containing the .cabal file, if available
-        localPkgDescr :: PackageDescription,
-                -- ^ WARNING WARNING WARNING Be VERY careful about using
-                -- this function; we haven't deprecated it but using it
-                -- could introduce subtle bugs related to
-                -- 'HookedBuildInfo'.
-                --
-                -- In principle, this is supposed to contain the
-                -- resolved package description, that does not contain
-                -- any conditionals.  However, it MAY NOT contain
-                -- the description with a 'HookedBuildInfo' applied
-                -- to it; see 'HookedBuildInfo' for the whole sordid saga.
-                -- As much as possible, Cabal library should avoid using
-                -- this parameter.
-        withPrograms  :: ProgramDb, -- ^Location and args for all programs
-        withPackageDB :: PackageDBStack,  -- ^What package database to use, global\/user
-        withVanillaLib:: Bool,  -- ^Whether to build normal libs.
-        withProfLib   :: Bool,  -- ^Whether to build profiling versions of libs.
-        withSharedLib :: Bool,  -- ^Whether to build shared versions of libs.
-        withStaticLib :: Bool,  -- ^Whether to build static versions of libs (with all other libs rolled in)
-        withDynExe    :: Bool,  -- ^Whether to link executables dynamically
-        withFullyStaticExe :: Bool,  -- ^Whether to link executables fully statically
-        withProfExe   :: Bool,  -- ^Whether to build executables for profiling.
-        withProfLibDetail :: ProfDetailLevel, -- ^Level of automatic profile detail.
-        withProfExeDetail :: ProfDetailLevel, -- ^Level of automatic profile detail.
-        withOptimization :: OptimisationLevel, -- ^Whether to build with optimization (if available).
-        withDebugInfo :: DebugInfoLevel, -- ^Whether to emit debug info (if available).
-        withGHCiLib   :: Bool,  -- ^Whether to build libs suitable for use with GHCi.
-        splitSections :: Bool,  -- ^Use -split-sections with GHC, if available
-        splitObjs     :: Bool,  -- ^Use -split-objs with GHC, if available
-        stripExes     :: Bool,  -- ^Whether to strip executables during install
-        stripLibs     :: Bool,  -- ^Whether to strip libraries during install
-        exeCoverage :: Bool,  -- ^Whether to enable executable program coverage
-        libCoverage :: Bool,  -- ^Whether to enable library program coverage
-        progPrefix    :: PathTemplate, -- ^Prefix to be prepended to installed executables
-        progSuffix    :: PathTemplate, -- ^Suffix to be appended to installed executables
-        relocatable   :: Bool --  ^Whether to build a relocatable package
-  } deriving (Generic, Read, Show, Typeable)
+data LocalBuildInfo = LocalBuildInfo
+  { configFlags :: ConfigFlags
+  -- ^ Options passed to the configuration step.
+  -- Needed to re-run configuration when .cabal is out of date
+  , flagAssignment :: FlagAssignment
+  -- ^ The final set of flags which were picked for this package
+  , componentEnabledSpec :: ComponentRequestedSpec
+  -- ^ What components were enabled during configuration, and why.
+  , extraConfigArgs :: [String]
+  -- ^ Extra args on the command line for the configuration step.
+  -- Needed to re-run configuration when .cabal is out of date
+  , installDirTemplates :: InstallDirTemplates
+  -- ^ The installation directories for the various different
+  -- kinds of files
+  -- TODO: inplaceDirTemplates :: InstallDirs FilePath
+  , compiler :: Compiler
+  -- ^ The compiler we're building with
+  , hostPlatform :: Platform
+  -- ^ The platform we're building for
+  , buildDir :: FilePath
+  -- ^ Where to build the package.
+  , cabalFilePath :: Maybe FilePath
+  -- ^ Path to the cabal file, if given during configuration.
+  , componentGraph :: Graph ComponentLocalBuildInfo
+  -- ^ All the components to build, ordered by topological
+  -- sort, and with their INTERNAL dependencies over the
+  -- intrapackage dependency graph.
+  -- TODO: this is assumed to be short; otherwise we want
+  -- some sort of ordered map.
+  , componentNameMap :: Map ComponentName [ComponentLocalBuildInfo]
+  -- ^ A map from component name to all matching
+  -- components.  These coincide with 'componentGraph'
+  , promisedPkgs :: Map (PackageName, ComponentName) ComponentId
+  -- ^ The packages we were promised, but aren't already installed.
+  -- MP: Perhaps this just needs to be a Set UnitId at this stage.
+  , installedPkgs :: InstalledPackageIndex
+  -- ^ All the info about the installed packages that the
+  -- current package depends on (directly or indirectly).
+  -- The copy saved on disk does NOT include internal
+  -- dependencies (because we just don't have enough
+  -- information at this point to have an
+  -- 'InstalledPackageInfo' for an internal dep), but we
+  -- will often update it with the internal dependencies;
+  -- see for example 'Distribution.Simple.Build.build'.
+  -- (This admonition doesn't apply for per-component builds.)
+  , pkgDescrFile :: Maybe FilePath
+  -- ^ the filename containing the .cabal file, if available
+  , localPkgDescr :: PackageDescription
+  -- ^ WARNING WARNING WARNING Be VERY careful about using
+  -- this function; we haven't deprecated it but using it
+  -- could introduce subtle bugs related to
+  -- 'HookedBuildInfo'.
+  --
+  -- In principle, this is supposed to contain the
+  -- resolved package description, that does not contain
+  -- any conditionals.  However, it MAY NOT contain
+  -- the description with a 'HookedBuildInfo' applied
+  -- to it; see 'HookedBuildInfo' for the whole sordid saga.
+  -- As much as possible, Cabal library should avoid using
+  -- this parameter.
+  , withPrograms :: ProgramDb
+  -- ^ Location and args for all programs
+  , withPackageDB :: PackageDBStack
+  -- ^ What package database to use, global\/user
+  , withVanillaLib :: Bool
+  -- ^ Whether to build normal libs.
+  , withProfLib :: Bool
+  -- ^ Whether to build profiling versions of libs.
+  , withSharedLib :: Bool
+  -- ^ Whether to build shared versions of libs.
+  , withStaticLib :: Bool
+  -- ^ Whether to build static versions of libs (with all other libs rolled in)
+  , withDynExe :: Bool
+  -- ^ Whether to link executables dynamically
+  , withFullyStaticExe :: Bool
+  -- ^ Whether to link executables fully statically
+  , withProfExe :: Bool
+  -- ^ Whether to build executables for profiling.
+  , withProfLibDetail :: ProfDetailLevel
+  -- ^ Level of automatic profile detail.
+  , withProfExeDetail :: ProfDetailLevel
+  -- ^ Level of automatic profile detail.
+  , withOptimization :: OptimisationLevel
+  -- ^ Whether to build with optimization (if available).
+  , withDebugInfo :: DebugInfoLevel
+  -- ^ Whether to emit debug info (if available).
+  , withGHCiLib :: Bool
+  -- ^ Whether to build libs suitable for use with GHCi.
+  , splitSections :: Bool
+  -- ^ Use -split-sections with GHC, if available
+  , splitObjs :: Bool
+  -- ^ Use -split-objs with GHC, if available
+  , stripExes :: Bool
+  -- ^ Whether to strip executables during install
+  , stripLibs :: Bool
+  -- ^ Whether to strip libraries during install
+  , exeCoverage :: Bool
+  -- ^ Whether to enable executable program coverage
+  , libCoverage :: Bool
+  -- ^ Whether to enable library program coverage
+  , progPrefix :: PathTemplate
+  -- ^ Prefix to be prepended to installed executables
+  , progSuffix :: PathTemplate
+  -- ^ Suffix to be appended to installed executables
+  , relocatable :: Bool --  ^Whether to build a relocatable package
+  }
+  deriving (Generic, Read, Show, Typeable)
 
 instance Binary LocalBuildInfo
 instance Structured LocalBuildInfo

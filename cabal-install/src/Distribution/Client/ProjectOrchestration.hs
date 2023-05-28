@@ -983,24 +983,26 @@ printPlan
         | buildSettingDryRun = "would"
         | otherwise = "will"
 
-    showPkgAndReason :: ElaboratedReadyPackage -> String
-    showPkgAndReason (ReadyPackage elab) = unwords $ filter (not . null) $
-      [ " -"
-      , if verbosity >= deafening
-        then prettyShow (installedUnitId elab)
-        else prettyShow (packageId elab)
-      , case elabBuildStyle elab of
-          BuildInplaceOnly InMemory -> "(interactive)"
-          _ -> ""
-      , case elabPkgOrComp elab of
-          ElabPackage pkg -> showTargets elab ++ ifVerbose (showStanzas (pkgStanzasEnabled pkg))
-          ElabComponent comp ->
-            "(" ++ showComp elab comp ++ ")"
-      , showFlagAssignment (nonDefaultFlags elab)
-      , showConfigureFlags elab
-      , let buildStatus = pkgsBuildStatus Map.! installedUnitId elab
-        in "(" ++ showBuildStatus buildStatus ++ ")"
-      ]
+      showPkgAndReason :: ElaboratedReadyPackage -> String
+      showPkgAndReason (ReadyPackage elab) =
+        unwords $
+          filter (not . null) $
+            [ " -"
+            , if verbosity >= deafening
+                then prettyShow (installedUnitId elab)
+                else prettyShow (packageId elab)
+            , case elabBuildStyle elab of
+                BuildInplaceOnly InMemory -> "(interactive)"
+                _ -> ""
+            , case elabPkgOrComp elab of
+                ElabPackage pkg -> showTargets elab ++ ifVerbose (showStanzas (pkgStanzasEnabled pkg))
+                ElabComponent comp ->
+                  "(" ++ showComp elab comp ++ ")"
+            , showFlagAssignment (nonDefaultFlags elab)
+            , showConfigureFlags elab
+            , let buildStatus = pkgsBuildStatus Map.! installedUnitId elab
+               in "(" ++ showBuildStatus buildStatus ++ ")"
+            ]
 
       showComp :: ElaboratedConfiguredPackage -> ElaboratedComponent -> String
       showComp elab comp =
@@ -1137,26 +1139,14 @@ writeBuildReports settings buildContext plan buildOutcomes = do
                 DocsFailed -> BuildReports.Failed
                 DocsOk -> BuildReports.Ok
 
-                   Right _br -> BuildReports.InstallOk
-
-                docsOutcome = case result of
-                   Left bf -> case buildFailureReason bf of
-                      HaddocksFailed _ -> BuildReports.Failed
-                      _ -> BuildReports.NotTried
-                   Right br -> case buildResultDocs br of
-                      DocsNotTried -> BuildReports.NotTried
-                      DocsFailed -> BuildReports.Failed
-                      DocsOk -> BuildReports.Ok
-
-                testsOutcome = case result of
-                   Left bf -> case buildFailureReason bf of
-                      TestsFailed _ -> BuildReports.Failed
-                      _ -> BuildReports.NotTried
-                   Right br -> case buildResultTests br of
-                      TestsNotTried -> BuildReports.NotTried
-                      TestsOk -> BuildReports.Ok
-
-            in Just $ (BuildReports.BuildReport (packageId pkg) os arch (compilerId comp) cabalInstallID (elabFlagAssignment pkg) (map (packageId . fst) $ elabLibDependencies pkg) installOutcome docsOutcome testsOutcome, getRepo . elabPkgSourceLocation $ pkg) -- TODO handle failure log files?
+            testsOutcome = case result of
+              Left bf -> case buildFailureReason bf of
+                TestsFailed _ -> BuildReports.Failed
+                _ -> BuildReports.NotTried
+              Right br -> case buildResultTests br of
+                TestsNotTried -> BuildReports.NotTried
+                TestsOk -> BuildReports.Ok
+         in Just $ (BuildReports.BuildReport (packageId pkg) os arch (compilerId comp) cabalInstallID (elabFlagAssignment pkg) (map (packageId . fst) $ elabLibDependencies pkg) installOutcome docsOutcome testsOutcome, getRepo . elabPkgSourceLocation $ pkg) -- TODO handle failure log files?
       fromPlanPackage _ _ = Nothing
       buildReports = mapMaybe (\x -> fromPlanPackage x (InstallPlan.lookupBuildOutcome x buildOutcomes)) $ InstallPlan.toList plan
 
@@ -1366,9 +1356,10 @@ dieOnBuildFailures verbosity currentCommand plan buildOutcomes
             ++ elabPlanPackageName verbosity p2
             ++ " and others)"
 
-{- FOURMOLU_DISABLE -}
     showException e = case fromException e of
       Just (ExitFailure 1) -> ""
+
+{- FOURMOLU_DISABLE -}
 #ifdef MIN_VERSION_unix
       -- Note [Positive "signal" exit code]
       -- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1386,46 +1377,46 @@ dieOnBuildFailures verbosity currentCommand plan buildOutcomes
       Just (ExitFailure n)
         | -n == fromIntegral sigSEGV ->
             " The build process segfaulted (i.e. SIGSEGV)."
-        | n == fromIntegral sigSEGV ->
-            " The build process terminated with exit code "
-              ++ show n
-              ++ " which may be because some part of it segfaulted. (i.e. SIGSEGV)."
+
+        |  n == fromIntegral sigSEGV ->
+            " The build process terminated with exit code " ++ show n
+         ++ " which may be because some part of it segfaulted. (i.e. SIGSEGV)."
+
         | -n == fromIntegral sigKILL ->
             " The build process was killed (i.e. SIGKILL). " ++ explanation
-        | n == fromIntegral sigKILL ->
-            " The build process terminated with exit code "
-              ++ show n
-              ++ " which may be because some part of it was killed "
-              ++ "(i.e. SIGKILL). "
-              ++ explanation
+
+        |  n == fromIntegral sigKILL ->
+            " The build process terminated with exit code " ++ show n
+         ++ " which may be because some part of it was killed "
+         ++ "(i.e. SIGKILL). " ++ explanation
         where
           explanation =
             "The typical reason for this is that there is not "
-              ++ "enough memory available (e.g. the OS killed a process "
-              ++ "using lots of memory)."
+            ++ "enough memory available (e.g. the OS killed a process "
+            ++ "using lots of memory)."
 #endif
       Just (ExitFailure n) ->
         " The build process terminated with exit code " ++ show n
-      _ ->
-        " The exception was:\n  "
+
+      _ -> " The exception was:\n  "
 #if MIN_VERSION_base(4,8,0)
-          ++ displayException e
+             ++ displayException e
 #else
-          ++ show e
+             ++ show e
 #endif
 
     buildFailureException :: BuildFailureReason -> Maybe SomeException
     buildFailureException reason =
       case reason of
-        DownloadFailed e -> Just e
-        UnpackFailed e -> Just e
+        DownloadFailed  e -> Just e
+        UnpackFailed    e -> Just e
         ConfigureFailed e -> Just e
-        BuildFailed e -> Just e
-        ReplFailed e -> Just e
-        HaddocksFailed e -> Just e
-        TestsFailed e -> Just e
-        BenchFailed e -> Just e
-        InstallFailed e -> Just e
+        BuildFailed     e -> Just e
+        ReplFailed      e -> Just e
+        HaddocksFailed  e -> Just e
+        TestsFailed     e -> Just e
+        BenchFailed     e -> Just e
+        InstallFailed   e -> Just e
         GracefulFailure _ -> Nothing
         DependentFailed _ -> Nothing
 {- FOURMOLU_ENABLE -}

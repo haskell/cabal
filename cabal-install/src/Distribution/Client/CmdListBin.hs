@@ -39,21 +39,24 @@ import Distribution.Client.NixStyleOptions
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.ProjectPlanning.Types
 import Distribution.Client.ScriptUtils
-       ( AcceptNoTargets(..), TargetContext(..)
-       , updateContextAndWriteProjectFile, withContextAndSelectors
-       , movedExePath )
-import Distribution.Client.Setup                 (GlobalFlags (..))
-import Distribution.Client.TargetProblem         (TargetProblem (..))
-import Distribution.Simple.BuildPaths            (dllExtension, exeExtension)
-import Distribution.Simple.Command               (CommandUI (..))
-import Distribution.Simple.Setup                 (configVerbosity, fromFlagOrDefault)
-import Distribution.Simple.Utils                 (die', withOutputMarker, wrapText)
-import Distribution.System                       (Platform)
-import Distribution.Types.ComponentName          (showComponentName)
-import Distribution.Types.UnitId                 (UnitId)
-import Distribution.Types.UnqualComponentName    (UnqualComponentName)
-import Distribution.Verbosity                    (silent, verboseStderr)
-import System.FilePath                           ((<.>), (</>))
+  ( AcceptNoTargets (..)
+  , TargetContext (..)
+  , movedExePath
+  , updateContextAndWriteProjectFile
+  , withContextAndSelectors
+  )
+import Distribution.Client.Setup (GlobalFlags (..))
+import Distribution.Client.TargetProblem (TargetProblem (..))
+import Distribution.Simple.BuildPaths (dllExtension, exeExtension)
+import Distribution.Simple.Command (CommandUI (..))
+import Distribution.Simple.Setup (configVerbosity, fromFlagOrDefault)
+import Distribution.Simple.Utils (die', withOutputMarker, wrapText)
+import Distribution.System (Platform)
+import Distribution.Types.ComponentName (showComponentName)
+import Distribution.Types.UnitId (UnitId)
+import Distribution.Types.UnqualComponentName (UnqualComponentName)
+import Distribution.Verbosity (silent, verboseStderr)
+import System.FilePath ((<.>), (</>))
 
 import qualified Data.Map as Map
 import qualified Data.Set as Set
@@ -195,15 +198,15 @@ listbinAction flags@NixStyleFlags{..} args globalFlags = do
         dist_dir = distBuildDirectory distDirLayout (elabDistDirParams elaboratedSharedConfig elab)
 
         bin_file c = case c of
-            CD.ComponentExe s
-               | s == selectedComponent -> [moved_bin_file s]
-            CD.ComponentTest s
-               | s == selectedComponent -> [bin_file' s]
-            CD.ComponentBench s
-               | s == selectedComponent -> [bin_file' s]
-            CD.ComponentFLib s
-               | s == selectedComponent -> [flib_file' s]
-            _ -> []
+          CD.ComponentExe s
+            | s == selectedComponent -> [moved_bin_file s]
+          CD.ComponentTest s
+            | s == selectedComponent -> [bin_file' s]
+          CD.ComponentBench s
+            | s == selectedComponent -> [bin_file' s]
+          CD.ComponentFLib s
+            | s == selectedComponent -> [flib_file' s]
+          _ -> []
 
         plat :: Platform
         plat = pkgConfigPlatform elaboratedSharedConfig
@@ -211,12 +214,12 @@ listbinAction flags@NixStyleFlags{..} args globalFlags = do
         -- here and in PlanOutput,
         -- use binDirectoryFor?
         bin_file' s =
-            if isInplaceBuildStyle (elabBuildStyle elab)
+          if isInplaceBuildStyle (elabBuildStyle elab)
             then dist_dir </> "build" </> prettyShow s </> prettyShow s <.> exeExtension plat
             else InstallDirs.bindir (elabInstallDirs elab) </> prettyShow s <.> exeExtension plat
 
         flib_file' s =
-            if isInplaceBuildStyle (elabBuildStyle elab)
+          if isInplaceBuildStyle (elabBuildStyle elab)
             then dist_dir </> "build" </> prettyShow s </> ("lib" ++ prettyShow s) <.> dllExtension plat
             else InstallDirs.bindir (elabInstallDirs elab) </> ("lib" ++ prettyShow s) <.> dllExtension plat
 

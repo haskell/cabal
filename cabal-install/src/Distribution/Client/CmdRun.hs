@@ -23,55 +23,95 @@ import Distribution.Client.Compat.Prelude hiding (toList)
 import Prelude ()
 
 import Distribution.Client.CmdErrorMessages
-         ( renderTargetSelector, showTargetSelector,
-           renderTargetProblem,
-           renderTargetProblemNoTargets, plural, targetSelectorPluralPkgs,
-           targetSelectorFilter, renderListCommaAnd,
-           renderListPretty )
+  ( plural
+  , renderListCommaAnd
+  , renderListPretty
+  , renderTargetProblem
+  , renderTargetProblemNoTargets
+  , renderTargetSelector
+  , showTargetSelector
+  , targetSelectorFilter
+  , targetSelectorPluralPkgs
+  )
 import Distribution.Client.GlobalFlags
-         ( defaultGlobalFlags )
+  ( defaultGlobalFlags
+  )
 import Distribution.Client.InstallPlan
-         ( toList, foldPlanPackage )
+  ( foldPlanPackage
+  , toList
+  )
 import Distribution.Client.NixStyleOptions
-         ( NixStyleFlags (..), nixStyleOptions, defaultNixStyleFlags )
+  ( NixStyleFlags (..)
+  , defaultNixStyleFlags
+  , nixStyleOptions
+  )
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.ProjectPlanning
-         ( ElaboratedConfiguredPackage(..)
-         , ElaboratedInstallPlan, binDirectoryFor )
+  ( ElaboratedConfiguredPackage (..)
+  , ElaboratedInstallPlan
+  , binDirectoryFor
+  )
 import Distribution.Client.ProjectPlanning.Types
-         ( dataDirsEnvironmentForPlan )
+  ( dataDirsEnvironmentForPlan
+  )
 import Distribution.Client.ScriptUtils
-         ( AcceptNoTargets(..), TargetContext(..)
-         , updateContextAndWriteProjectFile, withContextAndSelectors
-         , movedExePath )
+  ( AcceptNoTargets (..)
+  , TargetContext (..)
+  , movedExePath
+  , updateContextAndWriteProjectFile
+  , withContextAndSelectors
+  )
 import Distribution.Client.Setup
-         ( GlobalFlags(..), ConfigFlags(..) )
+  ( ConfigFlags (..)
+  , GlobalFlags (..)
+  )
 import Distribution.Client.TargetProblem
-         ( TargetProblem (..) )
+  ( TargetProblem (..)
+  )
 import Distribution.Client.Utils
-         ( occursOnlyOrBefore, giveRTSWarning )
+  ( giveRTSWarning
+  , occursOnlyOrBefore
+  )
 import Distribution.Simple.Command
-         ( CommandUI(..), usageAlternatives )
+  ( CommandUI (..)
+  , usageAlternatives
+  )
 import Distribution.Simple.Flag
-         ( fromFlagOrDefault )
+  ( fromFlagOrDefault
+  )
 import Distribution.Simple.Program.Run
-         ( runProgramInvocation, ProgramInvocation(..),
-           emptyProgramInvocation )
+  ( ProgramInvocation (..)
+  , emptyProgramInvocation
+  , runProgramInvocation
+  )
 import Distribution.Simple.Utils
-         ( wrapText, die', info, notice, safeHead, warn )
+  ( die'
+  , info
+  , notice
+  , safeHead
+  , warn
+  , wrapText
+  )
 import Distribution.Types.ComponentName
-         ( componentNameRaw )
+  ( componentNameRaw
+  )
 import Distribution.Types.UnitId
-         ( UnitId )
+  ( UnitId
+  )
 import Distribution.Types.UnqualComponentName
-         ( UnqualComponentName, unUnqualComponentName )
+  ( UnqualComponentName
+  , unUnqualComponentName
+  )
 import Distribution.Verbosity
-         ( normal, silent )
+  ( normal
+  , silent
+  )
 
 import Data.List (group)
 import qualified Data.Set as Set
 import GHC.Environment
-         ( getFullArgs )
+  ( getFullArgs
+  )
 import System.Directory
   ( doesFileExist
   )
@@ -241,22 +281,25 @@ runAction flags@NixStyleFlags{..} targetAndArgs globalFlags =
             ++ " to supply "
             ++ exeName
         return elabPkg
-      elabPkgs -> die' verbosity
-        $ "Multiple matching executables found matching "
-        ++ exeName
-        ++ ":\n"
-        ++ unlines (fmap (\p -> " - in package " ++ prettyShow (elabUnitId p)) elabPkgs)
+      elabPkgs ->
+        die' verbosity $
+          "Multiple matching executables found matching "
+            ++ exeName
+            ++ ":\n"
+            ++ unlines (fmap (\p -> " - in package " ++ prettyShow (elabUnitId p)) elabPkgs)
 
-    let defaultExePath = binDirectoryFor
-                            (distDirLayout baseCtx)
-                            (elaboratedShared buildCtx)
-                             pkg
-                             exeName
-                       </> exeName
+    let defaultExePath =
+          binDirectoryFor
+            (distDirLayout baseCtx)
+            (elaboratedShared buildCtx)
+            pkg
+            exeName
+            </> exeName
         exePath = fromMaybe defaultExePath (movedExePath selectedComponent (distDirLayout baseCtx) (elaboratedShared buildCtx) pkg)
 
-    let dryRun = buildSettingDryRun (buildSettings baseCtx)
-              || buildSettingOnlyDownload (buildSettings baseCtx)
+    let dryRun =
+          buildSettingDryRun (buildSettings baseCtx)
+            || buildSettingOnlyDownload (buildSettings baseCtx)
 
     if dryRun
       then notice verbosity "Running of executable suppressed by flag(s)"

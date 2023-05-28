@@ -167,55 +167,65 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
         , "id" J..= (jdisplay . installedUnitId) elab
         , "pkg-name" J..= (jdisplay . pkgName . packageId) elab
         , "pkg-version" J..= (jdisplay . pkgVersion . packageId) elab
-        , "flags"      J..= J.object [ PD.unFlagName fn J..= v
-                                     | (fn,v) <- PD.unFlagAssignment (elabFlagAssignment elab) ]
-        , "style"      J..= J.String (style2str (elabLocalToProject elab) (elabBuildStyle elab))
-        , "pkg-src"    J..= packageLocationToJ (elabPkgSourceLocation elab)
-        ] ++
-        [ "pkg-cabal-sha256" J..= J.String (showHashValue hash)
-        | Just hash <- [ fmap hashValue (elabPkgDescriptionOverride elab) ] ] ++
-        [ "pkg-src-sha256" J..= J.String (showHashValue hash)
-        | Just hash <- [elabPkgSourceHash elab] ] ++
-        (case elabBuildStyle elab of
-            BuildInplaceOnly {} ->
-                ["dist-dir"   J..= J.String dist_dir] ++ [buildInfoFileLocation]
-            BuildAndInstall ->
-                -- TODO: install dirs?
-                []
-            ) ++
-        case elabPkgOrComp elab of
-          ElabPackage pkg ->
-            let components = J.object $
-                  [ comp2str c J..= (J.object $
-                    [ "depends"     J..= map (jdisplay . confInstId) (map fst ldeps)
-                    , "exe-depends" J..= map (jdisplay . confInstId) edeps
-                    ] ++
-                    bin_file c)
-                  | (c,(ldeps,edeps))
-                      <- ComponentDeps.toList $
-                         ComponentDeps.zip (pkgLibDependencies pkg)
-                                           (pkgExeDependencies pkg) ]
-            in ["components" J..= components]
-          ElabComponent comp ->
-            ["depends"     J..= map (jdisplay . confInstId) (map fst $ elabLibDependencies elab)
-            ,"exe-depends" J..= map jdisplay (elabExeDependencies elab)
-            ,"component-name" J..= J.String (comp2str (compSolverName comp))
-            ] ++
-            bin_file (compSolverName comp)
-     where
-      -- | Only add build-info file location if the Setup.hs CLI
-      -- is recent enough to be able to generate build info files.
-      -- Otherwise, write 'null'.
-      --
-      -- Consumers of `plan.json` can use the nullability of this file location
-      -- to indicate that the given component uses `build-type: Custom`
-      -- with an old lib:Cabal version.
-      buildInfoFileLocation :: J.Pair
-      buildInfoFileLocation
-        | elabSetupScriptCliVersion elab < mkVersion [3, 7, 0, 0]
-        = "build-info" J..= J.Null
-        | otherwise
-        = "build-info" J..= J.String (buildInfoPref dist_dir)
+        , "flags"
+            J..= J.object
+              [ PD.unFlagName fn J..= v
+              | (fn, v) <- PD.unFlagAssignment (elabFlagAssignment elab)
+              ]
+        , "style" J..= J.String (style2str (elabLocalToProject elab) (elabBuildStyle elab))
+        , "pkg-src" J..= packageLocationToJ (elabPkgSourceLocation elab)
+        ]
+          ++ [ "pkg-cabal-sha256" J..= J.String (showHashValue hash)
+             | Just hash <- [fmap hashValue (elabPkgDescriptionOverride elab)]
+             ]
+          ++ [ "pkg-src-sha256" J..= J.String (showHashValue hash)
+             | Just hash <- [elabPkgSourceHash elab]
+             ]
+          ++ ( case elabBuildStyle elab of
+                BuildInplaceOnly{} ->
+                  ["dist-dir" J..= J.String dist_dir] ++ [buildInfoFileLocation]
+                BuildAndInstall ->
+                  -- TODO: install dirs?
+                  []
+             )
+          ++ case elabPkgOrComp elab of
+            ElabPackage pkg ->
+              let components =
+                    J.object $
+                      [ comp2str c
+                        J..= ( J.object $
+                                [ "depends" J..= map (jdisplay . confInstId) (map fst ldeps)
+                                , "exe-depends" J..= map (jdisplay . confInstId) edeps
+                                ]
+                                  ++ bin_file c
+                             )
+                      | (c, (ldeps, edeps)) <-
+                          ComponentDeps.toList $
+                            ComponentDeps.zip
+                              (pkgLibDependencies pkg)
+                              (pkgExeDependencies pkg)
+                      ]
+               in ["components" J..= components]
+            ElabComponent comp ->
+              [ "depends" J..= map (jdisplay . confInstId) (map fst $ elabLibDependencies elab)
+              , "exe-depends" J..= map jdisplay (elabExeDependencies elab)
+              , "component-name" J..= J.String (comp2str (compSolverName comp))
+              ]
+                ++ bin_file (compSolverName comp)
+      where
+        -- \| Only add build-info file location if the Setup.hs CLI
+        -- is recent enough to be able to generate build info files.
+        -- Otherwise, write 'null'.
+        --
+        -- Consumers of `plan.json` can use the nullability of this file location
+        -- to indicate that the given component uses `build-type: Custom`
+        -- with an old lib:Cabal version.
+        buildInfoFileLocation :: J.Pair
+        buildInfoFileLocation
+          | elabSetupScriptCliVersion elab < mkVersion [3, 7, 0, 0] =
+              "build-info" J..= J.Null
+          | otherwise =
+              "build-info" J..= J.String (buildInfoPref dist_dir)
 
         packageLocationToJ :: PackageLocation (Maybe FilePath) -> J.Value
         packageLocationToJ pkgloc =
@@ -282,36 +292,38 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
             distDirLayout
             (elabDistDirParams elaboratedSharedConfig elab)
 
-      bin_file :: ComponentDeps.Component -> [J.Pair]
-      bin_file c = case c of
-        ComponentDeps.ComponentExe s   -> bin_file' s
-        ComponentDeps.ComponentTest s  -> bin_file' s
-        ComponentDeps.ComponentBench s -> bin_file' s
-        ComponentDeps.ComponentFLib s  -> flib_file' s
-        _ -> []
-      bin_file' s =
-        ["bin-file" J..= J.String bin]
-       where
-        bin = if isInplaceBuildStyle (elabBuildStyle elab)
-               then dist_dir </> "build" </> prettyShow s </> prettyShow s <.> exeExtension plat
-               else InstallDirs.bindir (elabInstallDirs elab) </> prettyShow s <.> exeExtension plat
+        bin_file :: ComponentDeps.Component -> [J.Pair]
+        bin_file c = case c of
+          ComponentDeps.ComponentExe s -> bin_file' s
+          ComponentDeps.ComponentTest s -> bin_file' s
+          ComponentDeps.ComponentBench s -> bin_file' s
+          ComponentDeps.ComponentFLib s -> flib_file' s
+          _ -> []
+        bin_file' s =
+          ["bin-file" J..= J.String bin]
+          where
+            bin =
+              if isInplaceBuildStyle (elabBuildStyle elab)
+                then dist_dir </> "build" </> prettyShow s </> prettyShow s <.> exeExtension plat
+                else InstallDirs.bindir (elabInstallDirs elab) </> prettyShow s <.> exeExtension plat
 
-      flib_file' :: (Pretty a, Show a) => a -> [J.Pair]
-      flib_file' s =
-        ["bin-file" J..= J.String bin]
-       where
-        bin = if isInplaceBuildStyle (elabBuildStyle elab)
-               then dist_dir </> "build" </> prettyShow s </> ("lib" ++ prettyShow s) <.> dllExtension plat
-               else InstallDirs.bindir (elabInstallDirs elab) </> ("lib" ++ prettyShow s) <.> dllExtension plat
+        flib_file' :: (Pretty a, Show a) => a -> [J.Pair]
+        flib_file' s =
+          ["bin-file" J..= J.String bin]
+          where
+            bin =
+              if isInplaceBuildStyle (elabBuildStyle elab)
+                then dist_dir </> "build" </> prettyShow s </> ("lib" ++ prettyShow s) <.> dllExtension plat
+                else InstallDirs.bindir (elabInstallDirs elab) </> ("lib" ++ prettyShow s) <.> dllExtension plat
 
     comp2str :: ComponentDeps.Component -> String
     comp2str = prettyShow
 
     style2str :: Bool -> BuildStyle -> String
-    style2str True  _                = "local"
+    style2str True _ = "local"
     style2str False (BuildInplaceOnly OnDisk) = "inplace"
     style2str False (BuildInplaceOnly InMemory) = "interactive"
-    style2str False BuildAndInstall  = "global"
+    style2str False BuildAndInstall = "global"
 
     jdisplay :: Pretty a => a -> J.Value
     jdisplay = J.String . prettyShow
@@ -621,8 +633,8 @@ postBuildProjectStatus
                   InstallPlan.Installed srcpkg -> elabLibDeps srcpkg
           ]
 
-    elabLibDeps :: ElaboratedConfiguredPackage -> [UnitId]
-    elabLibDeps = map (newSimpleUnitId . confInstId) . map fst . elabLibDependencies
+      elabLibDeps :: ElaboratedConfiguredPackage -> [UnitId]
+      elabLibDeps = map (newSimpleUnitId . confInstId) . map fst . elabLibDependencies
 
       -- Was a build was attempted for this package?
       -- If it doesn't have both a build status and outcome then the answer is no.
@@ -659,9 +671,8 @@ postBuildProjectStatus
           case pkg of
             InstallPlan.PreExisting _ -> False
             InstallPlan.Installed _ -> False
-            InstallPlan.Configured srcpkg ->
-              elabBuildStyle srcpkg
-                == BuildInplaceOnly
+            InstallPlan.Configured srcpkg -> isInplaceBuildStyle (elabBuildStyle srcpkg)
+
       packagesAlreadyInStore :: Set UnitId
       packagesAlreadyInStore =
         selectPlanPackageIdSet $ \pkg ->
@@ -670,49 +681,15 @@ postBuildProjectStatus
             InstallPlan.Installed _ -> True
             InstallPlan.Configured _ -> False
 
-    packagesBuildLocal :: Set UnitId
-    packagesBuildLocal =
-      selectPlanPackageIdSet $ \pkg ->
-        case pkg of
-          InstallPlan.PreExisting _     -> False
-          InstallPlan.Installed   _     -> False
-          InstallPlan.Configured srcpkg -> elabLocalToProject srcpkg
-
-    packagesBuildInplace :: Set UnitId
-    packagesBuildInplace =
-      selectPlanPackageIdSet $ \pkg ->
-        case pkg of
-          InstallPlan.PreExisting _     -> False
-          InstallPlan.Installed   _     -> False
-          InstallPlan.Configured srcpkg -> isInplaceBuildStyle (elabBuildStyle srcpkg)
-
-    packagesAlreadyInStore :: Set UnitId
-    packagesAlreadyInStore =
-      selectPlanPackageIdSet $ \pkg ->
-        case pkg of
-          InstallPlan.PreExisting _ -> True
-          InstallPlan.Installed   _ -> True
-          InstallPlan.Configured  _ -> False
-
-    selectPlanPackageIdSet
-      :: (InstallPlan.GenericPlanPackage InstalledPackageInfo ElaboratedConfiguredPackage
-          -> Bool)
-      -> Set UnitId
-    selectPlanPackageIdSet p = Map.keysSet
-                             . Map.filter p
-                             $ InstallPlan.toMap plan
-
-
-
-updatePostBuildProjectStatus :: Verbosity
-                             -> DistDirLayout
-                             -> ElaboratedInstallPlan
-                             -> BuildStatusMap
-                             -> BuildOutcomes
-                             -> IO PostBuildProjectStatus
-updatePostBuildProjectStatus verbosity distDirLayout
-                             elaboratedInstallPlan
-                             pkgsBuildStatus buildOutcomes = do
+      selectPlanPackageIdSet
+        :: ( InstallPlan.GenericPlanPackage InstalledPackageInfo ElaboratedConfiguredPackage
+             -> Bool
+           )
+        -> Set UnitId
+      selectPlanPackageIdSet p =
+        Map.keysSet
+          . Map.filter p
+          $ InstallPlan.toMap plan
 
 updatePostBuildProjectStatus
   :: Verbosity
@@ -1024,7 +1001,8 @@ selectGhcEnvironmentFilePackageDbs elaboratedInstallPlan =
     inplacePackages =
       [ srcpkg
       | srcpkg <- sourcePackages
-      , isInplaceBuildStyle (elabBuildStyle srcpkg) ]
+      , isInplaceBuildStyle (elabBuildStyle srcpkg)
+      ]
 
     sourcePackages :: [ElaboratedConfiguredPackage]
     sourcePackages =

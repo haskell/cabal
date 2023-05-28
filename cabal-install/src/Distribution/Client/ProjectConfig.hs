@@ -1,7 +1,5 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -23,18 +21,18 @@ module Distribution.Client.ProjectConfig
   , BadProjectRoot
 
     -- * Project config files
-    readProjectConfig,
-    readGlobalConfig,
-    readProjectLocalExtraConfig,
-    readProjectLocalFreezeConfig,
-    reportParseResult,
-    showProjectConfig,
-    withGlobalConfig,
-    withProjectOrGlobalConfig,
-    writeProjectLocalExtraConfig,
-    writeProjectLocalFreezeConfig,
-    writeProjectConfigFile,
-    commandLineFlagsToProjectConfig,
+  , readProjectConfig
+  , readGlobalConfig
+  , readProjectLocalExtraConfig
+  , readProjectLocalFreezeConfig
+  , reportParseResult
+  , showProjectConfig
+  , withGlobalConfig
+  , withProjectOrGlobalConfig
+  , writeProjectLocalExtraConfig
+  , writeProjectLocalFreezeConfig
+  , writeProjectConfigFile
+  , commandLineFlagsToProjectConfig
 
     -- * Packages within projects
   , ProjectPackageLocation (..)
@@ -588,12 +586,12 @@ instance Show BadProjectRoot where
   show = renderBadProjectRoot
 #endif
 
-{- FOURMOLU_DISABLE -}
-instance Exception BadProjectRoot where
 #if MIN_VERSION_base(4,8,0)
+instance Exception BadProjectRoot where
   displayException = renderBadProjectRoot
+#else
+instance Exception BadProjectRoot
 #endif
-{- FOURMOLU_ENABLE -}
 
 renderBadProjectRoot :: BadProjectRoot -> String
 renderBadProjectRoot = \case
@@ -607,13 +605,16 @@ renderBadProjectRoot = \case
     "The given project directory/file combination '" <> dir </> file <> "' does not exist."
 
 withGlobalConfig
-    :: Verbosity                  -- ^ verbosity
-    -> Flag FilePath              -- ^ @--cabal-config@
-    -> (ProjectConfig -> IO a)    -- ^ with global
-    -> IO a
+  :: Verbosity
+  -- ^ verbosity
+  -> Flag FilePath
+  -- ^ @--cabal-config@
+  -> (ProjectConfig -> IO a)
+  -- ^ with global
+  -> IO a
 withGlobalConfig verbosity gcf with = do
-    globalConfig <- runRebuild "" $ readGlobalConfig verbosity gcf
-    with globalConfig
+  globalConfig <- runRebuild "" $ readGlobalConfig verbosity gcf
+  with globalConfig
 
 withProjectOrGlobalConfig
   :: Verbosity
@@ -664,19 +665,17 @@ readProjectConfig
   -> DistDirLayout
   -> Rebuild ProjectConfigSkeleton
 readProjectConfig verbosity httpTransport ignoreProjectFlag configFileFlag distDirLayout = do
+  let defaultProject =
+        mempty
+          { projectPackages = ["./"]
+          }
   global <- singletonProjectConfigSkeleton <$> readGlobalConfig verbosity configFileFlag
   local <- readProjectLocalConfigOrDefault verbosity httpTransport distDirLayout
   freeze <- readProjectLocalFreezeConfig verbosity httpTransport distDirLayout
   extra <- readProjectLocalExtraConfig verbosity httpTransport distDirLayout
   if ignoreProjectFlag == Flag True
-    then return (global <> (singletonProjectConfigSkeleton defaultProject))
+    then return (global <> singletonProjectConfigSkeleton defaultProject)
     else return (global <> local <> freeze <> extra)
-  where
-    defaultProject :: ProjectConfig
-    defaultProject =
-      mempty
-        { projectPackages = ["./"]
-        }
 
 -- | Reads an explicit @cabal.project@ file in the given project root dir,
 -- or returns the default project config for an implicitly defined project.
@@ -686,23 +685,20 @@ readProjectLocalConfigOrDefault
   -> DistDirLayout
   -> Rebuild ProjectConfigSkeleton
 readProjectLocalConfigOrDefault verbosity httpTransport distDirLayout = do
+  let projectFile = distProjectFile distDirLayout ""
   usesExplicitProjectRoot <- liftIO $ doesFileExist projectFile
+  let defaultImplicitProjectConfig =
+        mempty
+          { -- We expect a package in the current directory.
+            projectPackages = ["./*.cabal"]
+          , projectConfigProvenance = Set.singleton Implicit
+          }
   if usesExplicitProjectRoot
     then do
       readProjectFileSkeleton verbosity httpTransport distDirLayout "" "project file"
     else do
       monitorFiles [monitorNonExistentFile projectFile]
       return (singletonProjectConfigSkeleton defaultImplicitProjectConfig)
-  where
-    projectFile :: FilePath
-    projectFile = distProjectFile distDirLayout ""
-    defaultImplicitProjectConfig :: ProjectConfig
-    defaultImplicitProjectConfig =
-      mempty
-        { -- We expect a package in the current directory.
-          projectPackages = ["./*.cabal"]
-        , projectConfigProvenance = Set.singleton Implicit
-        }
 
 -- | Reads a @cabal.project.local@ file in the given project root dir,
 -- or returns empty. This file gets written by @cabal configure@, or in
@@ -838,12 +834,12 @@ instance Show BadPackageLocations where
   show = renderBadPackageLocations
 #endif
 
-{- FOURMOLU_DISABLE -}
-instance Exception BadPackageLocations where
 #if MIN_VERSION_base(4,8,0)
+instance Exception BadPackageLocations where
   displayException = renderBadPackageLocations
+#else
+instance Exception BadPackageLocations
 #endif
-{- FOURMOLU_ENABLE -}
 -- TODO: [nice to have] custom exception subclass for Doc rendering, colour etc
 
 data BadPackageLocation
@@ -1672,12 +1668,12 @@ instance Show BadPerPackageCompilerPaths where
   show = renderBadPerPackageCompilerPaths
 #endif
 
-{- FOURMOLU_DISABLE -}
-instance Exception BadPerPackageCompilerPaths where
 #if MIN_VERSION_base(4,8,0)
+instance Exception BadPerPackageCompilerPaths where
   displayException = renderBadPerPackageCompilerPaths
+#else
+instance Exception BadPerPackageCompilerPaths
 #endif
-{- FOURMOLU_ENABLE -}
 -- TODO: [nice to have] custom exception subclass for Doc rendering, colour etc
 
 renderBadPerPackageCompilerPaths :: BadPerPackageCompilerPaths -> String

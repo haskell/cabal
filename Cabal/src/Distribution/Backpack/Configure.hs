@@ -27,6 +27,7 @@ import Distribution.Backpack.LinkedComponent
 import Distribution.Backpack.PreExistingComponent
 import Distribution.Backpack.ReadyComponent
 
+import Distribution.Backpack.ModuleShape
 import Distribution.Compat.Graph (Graph, IsNode (..))
 import qualified Distribution.Compat.Graph as Graph
 import Distribution.InstalledPackageInfo
@@ -48,7 +49,6 @@ import Distribution.Types.ComponentRequestedSpec
 import Distribution.Types.MungedPackageName
 import Distribution.Utils.LogProgress
 import Distribution.Verbosity
-import Distribution.Backpack.ModuleShape
 
 import Data.Either
   ( lefts
@@ -63,19 +63,19 @@ import Text.PrettyPrint
 ------------------------------------------------------------------------------
 
 configureComponentLocalBuildInfos
-    :: Verbosity
-    -> Bool                   -- use_external_internal_deps
-    -> ComponentRequestedSpec
-    -> Bool                   -- deterministic
-    -> Flag String            -- configIPID
-    -> Flag ComponentId       -- configCID
-    -> PackageDescription
-    -> ([PreExistingComponent], [PromisedComponent])
-    -> FlagAssignment         -- configConfigurationsFlags
-    -> [(ModuleName, Module)] -- configInstantiateWith
-    -> InstalledPackageIndex
-    -> Compiler
-    -> LogProgress ([ComponentLocalBuildInfo], InstalledPackageIndex)
+  :: Verbosity
+  -> Bool -- use_external_internal_deps
+  -> ComponentRequestedSpec
+  -> Bool -- deterministic
+  -> Flag String -- configIPID
+  -> Flag ComponentId -- configCID
+  -> PackageDescription
+  -> ([PreExistingComponent], [PromisedComponent])
+  -> FlagAssignment -- configConfigurationsFlags
+  -> [(ModuleName, Module)] -- configInstantiateWith
+  -> InstalledPackageIndex
+  -> Compiler
+  -> LogProgress ([ComponentLocalBuildInfo], InstalledPackageIndex)
 configureComponentLocalBuildInfos
   verbosity
   use_external_internal_deps
@@ -84,7 +84,7 @@ configureComponentLocalBuildInfos
   ipid_flag
   cid_flag
   pkg_descr
-  prePkgDeps
+  (prePkgDeps, promisedPkgDeps)
   flagAssignment
   instantiate_with
   installedPackageSet
@@ -100,44 +100,75 @@ configureComponentLocalBuildInfos
         4
         (dispComponentsWithDeps graph0)
 
-    let conf_pkg_map = Map.fromListWith Map.union
-            [(pc_pkgname pkg,
-                Map.singleton (pc_compname pkg)
-                              (AnnotatedId {
-                                ann_id = pc_cid pkg,
-                                ann_pid = packageId pkg,
-                                ann_cname = pc_compname pkg
-                              }))
-            | pkg <- prePkgDeps]
-            `Map.union`
-            Map.fromListWith Map.union
-            [ (pkg, Map.singleton (ann_cname aid) aid)
-            | PromisedComponent pkg aid <- promisedPkgDeps]
-    graph1 <- toConfiguredComponents use_external_internal_deps
-                    flagAssignment
-                    deterministic ipid_flag cid_flag pkg_descr
-                    conf_pkg_map (map fst graph0)
-    infoProgress $ hang (text "Configured component graph:") 4
-                        (vcat (map dispConfiguredComponent graph1))
+    let conf_pkg_map =
+          Map.fromListWith
+            Map.union
+            [ ( pc_pkgname pkg
+              , Map.singleton
+                  (pc_compname pkg)
+                  ( AnnotatedId
+                      { ann_id = pc_cid pkg
+                      , ann_pid = packageId pkg
+                      , ann_cname = pc_compname pkg
+                      }
+                  )
+              )
+            | pkg <- prePkgDeps
+            ]
+            `Map.union` Map.fromListWith
+              Map.union
+              [ (pkg, Map.singleton (ann_cname aid) aid)
+              | PromisedComponent pkg aid <- promisedPkgDeps
+              ]
+    graph1 <-
+      toConfiguredComponents
+        use_external_internal_deps
+        flagAssignment
+        deterministic
+        ipid_flag
+        cid_flag
+        pkg_descr
+        conf_pkg_map
+        (map fst graph0)
+    infoProgress $
+      hang
+        (text "Configured component graph:")
+        4
+        (vcat (map dispConfiguredComponent graph1))
 
     let shape_pkg_map =
           Map.fromList
             [ (pc_cid pkg, (pc_open_uid pkg, pc_shape pkg))
-            | pkg <- prePkgDeps]
-            `Map.union`
-            Map.fromList
-            [ (ann_id aid, (DefiniteUnitId (unsafeMkDefUnitId
-                            (mkUnitId (unComponentId (ann_id aid) )))
-                           ,  emptyModuleShape))
-            | PromisedComponent _ aid <- promisedPkgDeps]
+            | pkg <- prePkgDeps
+            ]
+            `Map.union` Map.fromList
+              [ ( ann_id aid
+                ,
+                  ( DefiniteUnitId
+                      ( unsafeMkDefUnitId
+                          (mkUnitId (unComponentId (ann_id aid)))
+                      )
+                  , emptyModuleShape
+                  )
+                )
+              | PromisedComponent _ aid <- promisedPkgDeps
+              ]
         uid_lookup def_uid
-            | Just pkg <- PackageIndex.lookupUnitId installedPackageSet uid
-            = FullUnitId (Installed.installedComponentId pkg)
-                 (Map.fromList (Installed.instantiatedWith pkg))
-            | otherwise = error ("uid_lookup: " ++ prettyShow uid)
-          where uid = unDefUnitId def_uid
-    graph2 <- toLinkedComponents verbosity (not (null promisedPkgDeps)) uid_lookup
-                    (package pkg_descr) shape_pkg_map graph1
+          | Just pkg <- PackageIndex.lookupUnitId installedPackageSet uid =
+              FullUnitId
+                (Installed.installedComponentId pkg)
+                (Map.fromList (Installed.instantiatedWith pkg))
+          | otherwise = error ("uid_lookup: " ++ prettyShow uid)
+          where
+            uid = unDefUnitId def_uid
+    graph2 <-
+      toLinkedComponents
+        verbosity
+        (not (null promisedPkgDeps))
+        uid_lookup
+        (package pkg_descr)
+        shape_pkg_map
+        graph1
 
     infoProgress $
       hang
@@ -175,74 +206,90 @@ configureComponentLocalBuildInfos
 ------------------------------------------------------------------------------
 
 toComponentLocalBuildInfos
-    :: Compiler
-    -> InstalledPackageIndex -- FULL set
-    -> [PromisedComponent]
-    -> PackageDescription
-    -> [PreExistingComponent] -- external package deps
-    -> [ReadyComponent]
-    -> LogProgress ([ComponentLocalBuildInfo],
-                    InstalledPackageIndex) -- only relevant packages
+  :: Compiler
+  -> InstalledPackageIndex -- FULL set
+  -> [PromisedComponent]
+  -> PackageDescription
+  -> [PreExistingComponent] -- external package deps
+  -> [ReadyComponent]
+  -> LogProgress
+      ( [ComponentLocalBuildInfo]
+      , InstalledPackageIndex -- only relevant packages
+      )
 toComponentLocalBuildInfos
-    comp installedPackageSet promisedPkgDeps pkg_descr externalPkgDeps graph = do
+  comp
+  installedPackageSet
+  promisedPkgDeps
+  pkg_descr
+  externalPkgDeps
+  graph = do
     -- Check and make sure that every instantiated component exists.
     -- We have to do this now, because prior to linking/instantiating
     -- we don't actually know what the full set of 'UnitId's we need
     -- are.
-    let -- TODO: This is actually a bit questionable performance-wise,
-        -- since we will pay for the ALL installed packages even if
-        -- they are not related to what we are building.  This was true
-        -- in the old configure code.
-        external_graph :: Graph (Either InstalledPackageInfo ReadyComponent)
-        external_graph = Graph.fromDistinctList
-                       . map Left
-                       $ PackageIndex.allPackages installedPackageSet
-        internal_graph :: Graph (Either InstalledPackageInfo ReadyComponent)
-        internal_graph = Graph.fromDistinctList
-                       . map Right
-                       $ graph
-        combined_graph = Graph.unionRight external_graph internal_graph
-        local_graph = fromMaybe (error "toComponentLocalBuildInfos: closure returned Nothing")
-                    $ Graph.closure combined_graph (map nodeKey graph)
-        -- The database of transitively reachable installed packages that the
-        -- external components the package (as a whole) depends on.  This will be
-        -- used in several ways:
-        --
-        --      * We'll use it to do a consistency check so we're not depending
-        --        on multiple versions of the same package (TODO: someday relax
-        --        this for private dependencies.)  See right below.
-        --
-        --      * We'll pass it on in the LocalBuildInfo, where preprocessors
-        --        and other things will incorrectly use it to determine what
-        --        the include paths and everything should be.
-        --
-        packageDependsIndex = PackageIndex.fromList (lefts local_graph)
-        fullIndex = Graph.fromDistinctList local_graph
+    let
+      -- TODO: This is actually a bit questionable performance-wise,
+      -- since we will pay for the ALL installed packages even if
+      -- they are not related to what we are building.  This was true
+      -- in the old configure code.
+      external_graph :: Graph (Either InstalledPackageInfo ReadyComponent)
+      external_graph =
+        Graph.fromDistinctList
+          . map Left
+          $ PackageIndex.allPackages installedPackageSet
+      internal_graph :: Graph (Either InstalledPackageInfo ReadyComponent)
+      internal_graph =
+        Graph.fromDistinctList
+          . map Right
+          $ graph
+      combined_graph = Graph.unionRight external_graph internal_graph
+      local_graph =
+        fromMaybe (error "toComponentLocalBuildInfos: closure returned Nothing") $
+          Graph.closure combined_graph (map nodeKey graph)
+      -- The database of transitively reachable installed packages that the
+      -- external components the package (as a whole) depends on.  This will be
+      -- used in several ways:
+      --
+      --      * We'll use it to do a consistency check so we're not depending
+      --        on multiple versions of the same package (TODO: someday relax
+      --        this for private dependencies.)  See right below.
+      --
+      --      * We'll pass it on in the LocalBuildInfo, where preprocessors
+      --        and other things will incorrectly use it to determine what
+      --        the include paths and everything should be.
+      --
+      packageDependsIndex = PackageIndex.fromList (lefts local_graph)
+      fullIndex = Graph.fromDistinctList local_graph
 
     case Graph.broken fullIndex of
-        [] -> return ()
-        -- If there are promised dependencies, we don't know what the dependencies
-        -- of these are and that can easily lead to a broken graph. So assume that
-        -- any promised package is not broken (ie all its dependencies, transitively,
-        -- will be there). That's a promise.
-        broken | not (null promisedPkgDeps) -> return ()
-               | otherwise ->
-          -- TODO: ppr this
-          dieProgress . text $
-                "The following packages are broken because other"
-             ++ " packages they depend on are missing. These broken "
-             ++ "packages must be rebuilt before they can be used.\n"
-             -- TODO: Undupe.
-             ++ unlines [ "installed package "
-                       ++ prettyShow (packageId pkg)
-                       ++ " is broken due to missing package "
-                       ++ intercalate ", " (map prettyShow deps)
-                        | (Left pkg, deps) <- broken ]
-             ++ unlines [ "planned package "
-                       ++ prettyShow (packageId pkg)
-                       ++ " is broken due to missing package "
-                       ++ intercalate ", " (map prettyShow deps)
-                        | (Right pkg, deps) <- broken ]
+      [] -> return ()
+      -- If there are promised dependencies, we don't know what the dependencies
+      -- of these are and that can easily lead to a broken graph. So assume that
+      -- any promised package is not broken (ie all its dependencies, transitively,
+      -- will be there). That's a promise.
+      broken
+        | not (null promisedPkgDeps) -> return ()
+        | otherwise ->
+            -- TODO: ppr this
+            dieProgress . text $
+              "The following packages are broken because other"
+                ++ " packages they depend on are missing. These broken "
+                ++ "packages must be rebuilt before they can be used.\n"
+                -- TODO: Undupe.
+                ++ unlines
+                  [ "installed package "
+                    ++ prettyShow (packageId pkg)
+                    ++ " is broken due to missing package "
+                    ++ intercalate ", " (map prettyShow deps)
+                  | (Left pkg, deps) <- broken
+                  ]
+                ++ unlines
+                  [ "planned package "
+                    ++ prettyShow (packageId pkg)
+                    ++ " is broken due to missing package "
+                    ++ intercalate ", " (map prettyShow deps)
+                  | (Right pkg, deps) <- broken
+                  ]
 
     -- In this section, we'd like to look at the 'packageDependsIndex'
     -- and see if we've picked multiple versions of the same

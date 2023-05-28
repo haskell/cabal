@@ -780,64 +780,66 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
               , -- For dynamic libs, Mac OS/X needs to know the install location
                 -- at build time. This only applies to GHC < 7.8 - see the
                 -- discussion in #1660.
-            {-
-                ghcOptDylibName          = if hostOS == OSX
-                                              && ghcVersion < mkVersion [7,8]
-                                            then toFlag sharedLibInstallPath
-                                            else mempty, -}
-                ghcOptHideAllPackages    = toFlag True,
-                ghcOptNoAutoLinkPackages = toFlag True,
-                ghcOptPackageDBs         = withPackageDB lbi,
-                ghcOptThisUnitId = case clbi of
-                    LibComponentLocalBuildInfo { componentCompatPackageKey = pk }
-                      -> toFlag pk
-                    _ -> mempty,
-                ghcOptThisComponentId = case clbi of
-                    LibComponentLocalBuildInfo { componentInstantiatedWith = insts } ->
-                        if null insts
-                            then mempty
-                            else toFlag (componentComponentId clbi)
-                    _ -> mempty,
-                ghcOptInstantiatedWith = case clbi of
-                    LibComponentLocalBuildInfo { componentInstantiatedWith = insts }
-                      -> insts
-                    _ -> [],
-                ghcOptPackages           = toNubListR $
-                                           Internal.mkGhcOptPackages mempty clbi ,
-                ghcOptLinkLibs           = extraLibs libBi,
-                ghcOptLinkLibPath        = toNubListR $ extraLibDirs libBi,
-                ghcOptLinkFrameworks     = toNubListR $ PD.frameworks libBi,
-                ghcOptLinkFrameworkDirs  =
-                  toNubListR $ PD.extraFrameworkDirs libBi,
-                ghcOptRPaths             = rpaths
+                {-
+                    ghcOptDylibName          = if hostOS == OSX
+                                                  && ghcVersion < mkVersion [7,8]
+                                                then toFlag sharedLibInstallPath
+                                                else mempty, -}
+                ghcOptHideAllPackages = toFlag True
+              , ghcOptNoAutoLinkPackages = toFlag True
+              , ghcOptPackageDBs = withPackageDB lbi
+              , ghcOptThisUnitId = case clbi of
+                  LibComponentLocalBuildInfo{componentCompatPackageKey = pk} ->
+                    toFlag pk
+                  _ -> mempty
+              , ghcOptThisComponentId = case clbi of
+                  LibComponentLocalBuildInfo{componentInstantiatedWith = insts} ->
+                    if null insts
+                      then mempty
+                      else toFlag (componentComponentId clbi)
+                  _ -> mempty
+              , ghcOptInstantiatedWith = case clbi of
+                  LibComponentLocalBuildInfo{componentInstantiatedWith = insts} ->
+                    insts
+                  _ -> []
+              , ghcOptPackages =
+                  toNubListR $
+                    Internal.mkGhcOptPackages mempty clbi
+              , ghcOptLinkLibs = extraLibs libBi
+              , ghcOptLinkLibPath = toNubListR $ extraLibDirs libBi
+              , ghcOptLinkFrameworks = toNubListR $ PD.frameworks libBi
+              , ghcOptLinkFrameworkDirs =
+                  toNubListR $ PD.extraFrameworkDirs libBi
+              , ghcOptRPaths = rpaths
               }
           ghcStaticLinkArgs =
-              mempty {
-                ghcOptStaticLib          = toFlag True,
-                ghcOptInputFiles         = toNubListR staticObjectFiles,
-                ghcOptOutputFile         = toFlag staticLibFilePath,
-                ghcOptExtra              = hcStaticOptions GHC libBi,
-                ghcOptHideAllPackages    = toFlag True,
-                ghcOptNoAutoLinkPackages = toFlag True,
-                ghcOptPackageDBs         = withPackageDB lbi,
-                ghcOptThisUnitId = case clbi of
-                    LibComponentLocalBuildInfo { componentCompatPackageKey = pk }
-                      -> toFlag pk
-                    _ -> mempty,
-                ghcOptThisComponentId = case clbi of
-                    LibComponentLocalBuildInfo { componentInstantiatedWith = insts } ->
-                        if null insts
-                            then mempty
-                            else toFlag (componentComponentId clbi)
-                    _ -> mempty,
-                ghcOptInstantiatedWith = case clbi of
-                    LibComponentLocalBuildInfo { componentInstantiatedWith = insts }
-                      -> insts
-                    _ -> [],
-                ghcOptPackages           = toNubListR $
-                                           Internal.mkGhcOptPackages mempty clbi ,
-                ghcOptLinkLibs           = extraLibs libBi,
-                ghcOptLinkLibPath        = toNubListR $ extraLibDirs libBi
+            mempty
+              { ghcOptStaticLib = toFlag True
+              , ghcOptInputFiles = toNubListR staticObjectFiles
+              , ghcOptOutputFile = toFlag staticLibFilePath
+              , ghcOptExtra = hcStaticOptions GHC libBi
+              , ghcOptHideAllPackages = toFlag True
+              , ghcOptNoAutoLinkPackages = toFlag True
+              , ghcOptPackageDBs = withPackageDB lbi
+              , ghcOptThisUnitId = case clbi of
+                  LibComponentLocalBuildInfo{componentCompatPackageKey = pk} ->
+                    toFlag pk
+                  _ -> mempty
+              , ghcOptThisComponentId = case clbi of
+                  LibComponentLocalBuildInfo{componentInstantiatedWith = insts} ->
+                    if null insts
+                      then mempty
+                      else toFlag (componentComponentId clbi)
+                  _ -> mempty
+              , ghcOptInstantiatedWith = case clbi of
+                  LibComponentLocalBuildInfo{componentInstantiatedWith = insts} ->
+                    insts
+                  _ -> []
+              , ghcOptPackages =
+                  toNubListR $
+                    Internal.mkGhcOptPackages mempty clbi
+              , ghcOptLinkLibs = extraLibs libBi
+              , ghcOptLinkLibPath = toNubListR $ extraLibDirs libBi
               }
 
       info verbosity (show (ghcOptPackages ghcSharedLinkArgs))

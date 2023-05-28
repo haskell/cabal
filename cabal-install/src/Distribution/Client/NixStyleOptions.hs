@@ -51,32 +51,58 @@ nixStyleOptions
   -> ShowOrParseArgs
   -> [OptionField (NixStyleFlags a)]
 nixStyleOptions commandOptions showOrParseArgs =
-        liftOptions configFlags     set1
-        -- Note: [Hidden Flags]
-        -- hide "constraint", "dependency", "promised-dependency" and
-        -- "exact-configuration" from the configure options.
-        (filter ((`notElem` ["constraint", "dependency", "promised-dependency"
-                            , "exact-configuration"])
-                 . optionName) $ configureOptions showOrParseArgs)
-     ++ liftOptions configExFlags   set2 (configureExOptions showOrParseArgs
-                               ConstraintSourceCommandlineFlag)
-     ++ liftOptions installFlags   set3
-        -- hide "target-package-db" and "symlink-bindir" flags from the
-        -- install options.
-        -- "symlink-bindir" is obsoleted by "installdir" in ClientInstallFlags
-        (filter ((`notElem` ["target-package-db", "symlink-bindir"])
-                 . optionName) $
-                               installOptions showOrParseArgs)
-       ++ liftOptions haddockFlags set4
-          -- hide "verbose" and "builddir" flags from the
-          -- haddock options.
-          (filter ((`notElem` ["v", "verbose", "builddir"])
-                  . optionName) $
-                                haddockOptions showOrParseArgs)
-     ++ liftOptions testFlags      set5 (testOptions showOrParseArgs)
-     ++ liftOptions benchmarkFlags set6 (benchmarkOptions showOrParseArgs)
-     ++ liftOptions projectFlags   set7 (projectFlagsOptions showOrParseArgs)
-     ++ liftOptions extraFlags     set8 (commandOptions showOrParseArgs)
+  liftOptions
+    configFlags
+    set1
+    -- Note: [Hidden Flags]
+    -- hide "constraint", "dependency", "promised-dependency" and
+    -- "exact-configuration" from the configure options.
+    ( filter
+        ( ( `notElem`
+              [ "constraint"
+              , "dependency"
+              , "promised-dependency"
+              , "exact-configuration"
+              ]
+          )
+            . optionName
+        )
+        $ configureOptions showOrParseArgs
+    )
+    ++ liftOptions
+      configExFlags
+      set2
+      ( configureExOptions
+          showOrParseArgs
+          ConstraintSourceCommandlineFlag
+      )
+    ++ liftOptions
+      installFlags
+      set3
+      -- hide "target-package-db" and "symlink-bindir" flags from the
+      -- install options.
+      -- "symlink-bindir" is obsoleted by "installdir" in ClientInstallFlags
+      ( filter
+          ( (`notElem` ["target-package-db", "symlink-bindir"])
+              . optionName
+          )
+          $ installOptions showOrParseArgs
+      )
+    ++ liftOptions
+      haddockFlags
+      set4
+      -- hide "verbose" and "builddir" flags from the
+      -- haddock options.
+      ( filter
+          ( (`notElem` ["v", "verbose", "builddir"])
+              . optionName
+          )
+          $ haddockOptions showOrParseArgs
+      )
+    ++ liftOptions testFlags set5 (testOptions showOrParseArgs)
+    ++ liftOptions benchmarkFlags set6 (benchmarkOptions showOrParseArgs)
+    ++ liftOptions projectFlags set7 (projectFlagsOptions showOrParseArgs)
+    ++ liftOptions extraFlags set8 (commandOptions showOrParseArgs)
   where
     set1 x flags = flags{configFlags = x}
     set2 x flags = flags{configExFlags = x}

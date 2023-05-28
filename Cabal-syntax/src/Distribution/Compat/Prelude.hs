@@ -205,7 +205,7 @@ import Prelude                       as BasePrelude hiding
     , Foldable(..)
     )
 {- FOURMOLU_ENABLE -}
-import Data.Foldable as BasePrelude (foldl, elem, sum, product, maximum, minimum)
+import Data.Foldable as BasePrelude (elem, foldl, maximum, minimum, product, sum)
 
 -- AMP
 import Data.Foldable
