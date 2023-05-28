@@ -2,9 +2,6 @@ import Test.Cabal.Prelude
 import System.Directory (copyFile, removeFile)
 
 main = cabalTest . void $ do
-  isWin <- isWindows
-  ghc94 <- isGhcVersion "== 9.4.*"
-  expectBrokenIf (isWin && ghc94) 8451 $ do
     env <- getTestEnv
     let td = testCurrentDir env
 
