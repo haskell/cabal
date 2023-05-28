@@ -205,7 +205,9 @@ data ProjectConfigShared
        projectConfigIndependentGoals  :: Flag IndependentGoals,
        projectConfigPreferOldest      :: Flag PreferOldest,
 
-       projectConfigProgPathExtra     :: NubList FilePath
+       projectConfigProgPathExtra     :: NubList FilePath,
+
+       projectConfigMultiRepl         :: Flag Bool
 
        -- More things that only make sense for manual mode, not --local mode
        -- too much control!

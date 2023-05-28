@@ -1,6 +1,7 @@
 -- | See <https://github.com/ezyang/ghc-proposals/blob/backpack/proposals/0000-backpack.rst>
 module Distribution.Backpack.PreExistingComponent (
     PreExistingComponent(..),
+    PromisedComponent(..),
     ipiToPreExistingComponent,
 ) where
 
@@ -20,6 +21,21 @@ import Distribution.Package
 import qualified Data.Map as Map
 import qualified Distribution.InstalledPackageInfo as Installed
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
+import Distribution.Types.AnnotatedId
+
+-- | A /promised/ component.
+--
+-- These components are promised to @configure@ but are not yet built.
+--
+-- In other words this is 'PreExistingComponent' which doesn't yet exist.
+--
+data PromisedComponent = PromisedComponent
+    { pr_pkgname :: PackageName
+    , pr_cid     :: AnnotatedId ComponentId
+    }
+
+instance Package PromisedComponent where
+  packageId = packageId . pr_cid
 
 -- | Stripped down version of 'LinkedComponent' for things
 -- we don't need to know how to build.

@@ -46,6 +46,7 @@ import Distribution.Verbosity
 import qualified Distribution.Compat.Graph as Graph
 import Distribution.Compat.Graph (Graph, IsNode(..))
 import Distribution.Utils.LogProgress
+import Distribution.Backpack.ModuleShape
 
 import Data.Either
     ( lefts )
@@ -66,7 +67,7 @@ configureComponentLocalBuildInfos
     -> Flag String            -- configIPID
     -> Flag ComponentId       -- configCID
     -> PackageDescription
-    -> [PreExistingComponent]
+    -> ([PreExistingComponent], [PromisedComponent])
     -> FlagAssignment         -- configConfigurationsFlags
     -> [(ModuleName, Module)] -- configInstantiateWith
     -> InstalledPackageIndex
@@ -74,7 +75,7 @@ configureComponentLocalBuildInfos
     -> LogProgress ([ComponentLocalBuildInfo], InstalledPackageIndex)
 configureComponentLocalBuildInfos
     verbosity use_external_internal_deps enabled deterministic ipid_flag cid_flag pkg_descr
-    prePkgDeps flagAssignment instantiate_with installedPackageSet comp = do
+    (prePkgDeps, promisedPkgDeps) flagAssignment instantiate_with installedPackageSet comp = do
     -- NB: In single component mode, this returns a *single* component.
     -- In this graph, the graph is NOT closed.
     graph0 <- case mkComponentsGraph enabled pkg_descr of
@@ -92,6 +93,10 @@ configureComponentLocalBuildInfos
                                 ann_cname = pc_compname pkg
                               }))
             | pkg <- prePkgDeps]
+            `Map.union`
+            Map.fromListWith Map.union
+            [ (pkg, Map.singleton (ann_cname aid) aid)
+            | PromisedComponent pkg aid <- promisedPkgDeps]
     graph1 <- toConfiguredComponents use_external_internal_deps
                     flagAssignment
                     deterministic ipid_flag cid_flag pkg_descr
@@ -102,13 +107,19 @@ configureComponentLocalBuildInfos
     let shape_pkg_map = Map.fromList
             [ (pc_cid pkg, (pc_open_uid pkg, pc_shape pkg))
             | pkg <- prePkgDeps]
+            `Map.union`
+            Map.fromList
+            [ (ann_id aid, (DefiniteUnitId (unsafeMkDefUnitId
+                            (mkUnitId (unComponentId (ann_id aid) )))
+                           ,  emptyModuleShape))
+            | PromisedComponent _ aid <- promisedPkgDeps]
         uid_lookup def_uid
             | Just pkg <- PackageIndex.lookupUnitId installedPackageSet uid
             = FullUnitId (Installed.installedComponentId pkg)
                  (Map.fromList (Installed.instantiatedWith pkg))
             | otherwise = error ("uid_lookup: " ++ prettyShow uid)
           where uid = unDefUnitId def_uid
-    graph2 <- toLinkedComponents verbosity uid_lookup
+    graph2 <- toLinkedComponents verbosity (not (null promisedPkgDeps)) uid_lookup
                     (package pkg_descr) shape_pkg_map graph1
 
     infoProgress $
@@ -129,7 +140,7 @@ configureComponentLocalBuildInfos
     infoProgress $ hang (text "Ready component graph:") 4
                         (vcat (map dispReadyComponent graph4))
 
-    toComponentLocalBuildInfos comp installedPackageSet pkg_descr prePkgDeps graph4
+    toComponentLocalBuildInfos comp installedPackageSet promisedPkgDeps pkg_descr prePkgDeps graph4
 
 ------------------------------------------------------------------------------
 -- ComponentLocalBuildInfo
@@ -138,13 +149,14 @@ configureComponentLocalBuildInfos
 toComponentLocalBuildInfos
     :: Compiler
     -> InstalledPackageIndex -- FULL set
+    -> [PromisedComponent]
     -> PackageDescription
     -> [PreExistingComponent] -- external package deps
     -> [ReadyComponent]
     -> LogProgress ([ComponentLocalBuildInfo],
                     InstalledPackageIndex) -- only relevant packages
 toComponentLocalBuildInfos
-    comp installedPackageSet pkg_descr externalPkgDeps graph = do
+    comp installedPackageSet promisedPkgDeps pkg_descr externalPkgDeps graph = do
     -- Check and make sure that every instantiated component exists.
     -- We have to do this now, because prior to linking/instantiating
     -- we don't actually know what the full set of 'UnitId's we need
@@ -178,9 +190,15 @@ toComponentLocalBuildInfos
         --
         packageDependsIndex = PackageIndex.fromList (lefts local_graph)
         fullIndex = Graph.fromDistinctList local_graph
+
     case Graph.broken fullIndex of
         [] -> return ()
-        broken ->
+        -- If there are promised dependencies, we don't know what the dependencies
+        -- of these are and that can easily lead to a broken graph. So assume that
+        -- any promised package is not broken (ie all its dependencies, transitively,
+        -- will be there). That's a promise.
+        broken | not (null promisedPkgDeps) -> return ()
+               | otherwise ->
           -- TODO: ppr this
           dieProgress . text $
                 "The following packages are broken because other"

@@ -226,7 +226,7 @@ rebuildTargetsDryRun distDirLayout@DistDirLayout{..} shared =
     dryRunTarballPkg pkg depsBuildStatus tarball =
       case elabBuildStyle pkg of
         BuildAndInstall  -> return (BuildStatusUnpack tarball)
-        BuildInplaceOnly -> do
+        BuildInplaceOnly {} -> do
           -- TODO: [nice to have] use a proper file monitor rather
           -- than this dir exists test
           exists <- doesDirectoryExist srcdir
@@ -395,7 +395,7 @@ packageFileMonitorKeyValues elab =
             elabBuildTargets   = [],
             elabTestTargets    = [],
             elabBenchTargets   = [],
-            elabReplTarget     = Nothing,
+            elabReplTarget     = [],
             elabHaddockTargets = [],
             elabBuildHaddocks  = False,
 
@@ -617,10 +617,10 @@ rebuildTargets verbosity
                           (BuildFailure Nothing . DependentFailed . packageId)
                           installPlan $ \pkg ->
         --TODO: review exception handling
-        handle (\(e :: BuildFailure) -> return (Left e)) $ fmap Right $
+        handle (\(e :: BuildFailure) -> return (Left e)) $ fmap Right $ do
 
         let uid = installedUnitId pkg
-            pkgBuildStatus = Map.findWithDefault (error "rebuildTargets") uid pkgsBuildStatus in
+            pkgBuildStatus = Map.findWithDefault (error "rebuildTargets") uid pkgsBuildStatus
 
         rebuildTarget
           verbosity
@@ -754,7 +754,7 @@ rebuildTarget verbosity
 
           case elabBuildStyle pkg of
             BuildAndInstall  -> buildAndInstall
-            BuildInplaceOnly -> buildInplace buildStatus
+            BuildInplaceOnly {} -> buildInplace buildStatus
               where
                 buildStatus = BuildStatusConfigure MonitorFirstRun
 
@@ -764,7 +764,7 @@ rebuildTarget verbosity
     --
     rebuildPhase :: BuildStatusRebuild -> FilePath -> IO BuildResult
     rebuildPhase buildStatus srcdir =
-        assert (elabBuildStyle pkg == BuildInplaceOnly) $
+        assert (isInplaceBuildStyle $ elabBuildStyle pkg)
 
           buildInplace buildStatus srcdir builddir
       where
@@ -898,7 +898,7 @@ withTarballLocalDirectory verbosity distDirLayout@DistDirLayout{..}
         -- In this case we make sure the tarball has been unpacked to the
         -- appropriate location under the shared dist dir, and then build it
         -- inplace there
-        BuildInplaceOnly -> do
+        BuildInplaceOnly {} -> do
           let srcrootdir = distUnpackedSrcRootDirectory
               srcdir     = distUnpackedSrcDirectory pkgid
               builddir   = distBuildDirectory dparams
@@ -1238,7 +1238,7 @@ hasValidHaddockTargets ElaboratedConfiguredPackage{..}
   where
     components :: [ComponentTarget]
     components = elabBuildTargets ++ elabTestTargets ++ elabBenchTargets
-              ++ maybeToList elabReplTarget ++ elabHaddockTargets
+              ++ elabReplTarget ++ elabHaddockTargets
 
     componentHasHaddocks :: ComponentTarget -> Bool
     componentHasHaddocks (ComponentTarget name _) =
@@ -1375,7 +1375,7 @@ buildInplaceUnpackedPackage verbosity
         --
         whenRepl $
           annotateFailureNoLog ReplFailed $
-          setupInteractive replCommand replFlags replArgs
+            setupInteractive replCommand replFlags replArgs
 
         -- Haddock phase
         whenHaddock $
@@ -1436,8 +1436,8 @@ buildInplaceUnpackedPackage verbosity
       | otherwise                   = action
 
     whenRepl action
-      | isNothing (elabReplTarget pkg) = return ()
-      | otherwise                     = action
+      | null (elabReplTarget pkg) = return ()
+      | otherwise                 = action
 
     whenHaddock action
       | hasValidHaddockTargets pkg = action

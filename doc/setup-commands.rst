@@ -870,6 +870,16 @@ Miscellaneous options
     *pkgname* in a :pkg-field:`build-depends` should be resolved to
     *ipid*.
 
+.. option:: --promised-dependency[=pkgname=ipid]
+
+    Very much like ``--dependency`` but the package doesn't need to already
+    be installed. This is useful when attempting to start multiple component
+    sessions with cabal's multi-repl or projects such as Haskell Language Server.
+
+    Several checks which are enabled for ``--dependency``s are disabled for promised
+    dependencies, so prefer to use ``--dependency`` if you know that the dependency
+    is already installed.
+
 .. option:: --exact-configuration
 
     This changes Cabal to require every dependency be explicitly

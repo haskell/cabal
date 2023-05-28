@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveFunctor #-}
 module Distribution.Types.AnnotatedId (
     AnnotatedId(..)
 ) where
@@ -19,7 +20,7 @@ data AnnotatedId id = AnnotatedId {
         ann_cname :: ComponentName,
         ann_id    :: id
     }
-    deriving (Show)
+    deriving (Show, Functor)
 
 instance Eq id => Eq (AnnotatedId id) where
     x == y = ann_id x == ann_id y
@@ -29,6 +30,3 @@ instance Ord id => Ord (AnnotatedId id) where
 
 instance Package (AnnotatedId id) where
     packageId = ann_pid
-
-instance Functor AnnotatedId where
-    fmap f (AnnotatedId pid cn x) = AnnotatedId pid cn (f x)

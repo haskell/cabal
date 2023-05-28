@@ -124,8 +124,8 @@ import           Distribution.Types.ComponentName
 import           Distribution.Types.DumpBuildInfo
                    ( DumpBuildInfo (..) )
 import           Distribution.Types.LibraryName
-import           Distribution.Types.GivenComponent
-  (GivenComponent(..))
+import Distribution.Types.GivenComponent
+    ( GivenComponent(GivenComponent) )
 import           Distribution.Types.PackageVersionConstraint
 import           Distribution.Types.PkgconfigDependency
 import           Distribution.Types.UnqualComponentName
@@ -250,7 +250,7 @@ sanityCheckElaboratedConfiguredPackage _sharedConfig
     -- 'installedPackageId' we assigned is consistent with
     -- the 'hashedInstalledPackageId' we would compute from
     -- the elaborated configured package
-  -- . assert (elabBuildStyle == BuildInplaceOnly ||
+  -- . assert (isInplaceBuildStyle elabBuildStyle ||
   --    elabComponentId == hashedInstalledPackageId
   --                           (packageHashInputs sharedConfig elab))
 
@@ -261,7 +261,7 @@ sanityCheckElaboratedConfiguredPackage _sharedConfig
     -- either a package is built inplace, or we are not attempting to
     -- build any test suites or benchmarks (we never build these
     -- for remote packages!)
-  . assert (elabBuildStyle == BuildInplaceOnly ||
+  . assert (isInplaceBuildStyle elabBuildStyle ||
      optStanzaSetNull elabStanzasAvailable)
 
 sanityCheckElaboratedComponent
@@ -273,7 +273,7 @@ sanityCheckElaboratedComponent ElaboratedConfiguredPackage{..}
                                ElaboratedComponent{..} =
 
     -- Should not be building bench or test if not inplace.
-    assert (elabBuildStyle == BuildInplaceOnly ||
+    assert (isInplaceBuildStyle elabBuildStyle ||
      case compComponentName of
         Nothing              -> True
         Just (CLibName _)    -> True
@@ -713,7 +713,7 @@ rebuildInstallPlan verbosity
                   installDirs
                   elaboratedShared
                   elaboratedPlan
-        liftIO $ debugNoWrap verbosity (InstallPlan.showInstallPlan instantiatedPlan)
+        liftIO $ debugNoWrap verbosity (showElaboratedInstallPlan instantiatedPlan)
         return (instantiatedPlan, elaboratedShared)
       where
         withRepoCtx = projectConfigWithSolverRepoContext verbosity
@@ -755,7 +755,7 @@ rebuildInstallPlan verbosity
         let improvedPlan = improveInstallPlanWithInstalledPackages
                              storePkgIdSet
                              elaboratedPlan
-        liftIO $ debugNoWrap verbosity (InstallPlan.showInstallPlan improvedPlan)
+        liftIO $ debugNoWrap verbosity (showElaboratedInstallPlan improvedPlan)
         -- TODO: [nice to have] having checked which packages from the store
         -- we're using, it may be sensible to sanity check those packages
         -- by loading up the compiler package db and checking everything
@@ -1532,7 +1532,8 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
             compComponentName   = Nothing
             dep_pkgs = elaborateLibSolverId mapDep =<< CD.setupDeps deps0
             compLibDependencies
-                = map configuredId dep_pkgs
+            -- MP: No idea what this function does
+                = map (\cid -> (configuredId cid, False)) dep_pkgs
             compLinkedLibDependencies = notImpl "compLinkedLibDependencies"
             compOrderLibDependencies = notImpl "compOrderLibDependencies"
             -- Not supported:
@@ -1567,11 +1568,13 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                     (Map.unionWith Map.union external_exe_cc_map cc_map)
                     comp
 
-
+            let do_ cid =
+                  let cid' = annotatedIdToConfiguredId . ci_ann_id $ cid
+                  in (cid', False) -- filled in later in pruneInstallPlanPhase2)
             -- 2. Read out the dependencies from the ConfiguredComponent cc0
             let compLibDependencies =
                     -- Nub because includes can show up multiple times
-                    ordNub (map (annotatedIdToConfiguredId . ci_ann_id)
+                    ordNub (map (\cid -> do_ cid )
                                 (cc_includes cc0))
                 compExeDependencies =
                     map annotatedIdToConfiguredId
@@ -1590,7 +1593,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                         elabPkgOrComp = ElabComponent $ elab_comp
                      }
                 cid = case elabBuildStyle elab0 of
-                        BuildInplaceOnly ->
+                        BuildInplaceOnly {} ->
                           mkComponentId $
                             prettyShow pkgid ++ "-inplace" ++
                               (case Cabal.componentNameString cname of
@@ -1609,7 +1612,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                     case Map.lookup (unDefUnitId def_uid) preexistingInstantiatedPkgs of
                         Just full -> full
                         Nothing -> error ("lookup_uid: " ++ prettyShow def_uid)
-            lc <- toLinkedComponent verbosity lookup_uid (elabPkgSourceId elab0)
+            lc <- toLinkedComponent verbosity False lookup_uid (elabPkgSourceId elab0)
                         (Map.union external_lc_map lc_map) cc
             infoProgress $ dispLinkedComponent lc
             -- NB: elab is setup to be the correct form for an
@@ -1790,7 +1793,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
         filterExt' = filter (isExt . fst)
 
         pkgLibDependencies
-            = buildComponentDeps (filterExt  . compLibDependencies)
+            = buildComponentDeps (filterExt'  . compLibDependencies)
         pkgExeDependencies
             = buildComponentDeps (filterExt  . compExeDependencies)
         pkgExeDependencyPaths
@@ -1886,7 +1889,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
         elabBuildTargets    = []
         elabTestTargets     = []
         elabBenchTargets    = []
-        elabReplTarget      = Nothing
+        elabReplTarget      = []
         elabHaddockTargets  = []
 
         elabBuildHaddocks   =
@@ -1896,7 +1899,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
         elabPkgSourceHash   = Map.lookup pkgid sourcePackageHashes
         elabLocalToProject  = isLocalToProject pkg
         elabBuildStyle      = if shouldBuildInplaceOnly pkg
-                                then BuildInplaceOnly else BuildAndInstall
+                                then BuildInplaceOnly OnDisk else BuildAndInstall
         elabPackageDbs             = projectConfigPackageDBs sharedPackageConfig
         elabBuildPackageDBStack    = buildAndRegisterDbs
         elabRegisterPackageDBStack = buildAndRegisterDbs
@@ -2220,7 +2223,7 @@ binDirectories layout config package = case elabBuildStyle package of
   -- to put any executables in it, that will just clog up the PATH
   _ | noExecutables -> []
   BuildAndInstall -> [installedBinDirectory package]
-  BuildInplaceOnly -> map (root</>) $ case elabPkgOrComp package of
+  BuildInplaceOnly {} -> map (root</>) $ case elabPkgOrComp package of
     ElabComponent comp -> case compSolverName comp of
       CD.ComponentExe n -> [prettyShow n]
       _ -> []
@@ -2445,9 +2448,9 @@ instantiateInstallPlan storeDirLayout defaultInstallDirs elaboratedShared plan =
       | otherwise = error ("indefiniteComponent: " ++ prettyShow cid)
 
     fixupBuildStyle BuildAndInstall elab = elab
-    fixupBuildStyle _ (elab@ElaboratedConfiguredPackage { elabBuildStyle = BuildInplaceOnly }) = elab
-    fixupBuildStyle BuildInplaceOnly elab = elab {
-      elabBuildStyle = BuildInplaceOnly,
+    fixupBuildStyle _ (elab@ElaboratedConfiguredPackage { elabBuildStyle = BuildInplaceOnly {} }) = elab
+    fixupBuildStyle t@(BuildInplaceOnly {}) elab = elab {
+      elabBuildStyle = t,
       elabBuildPackageDBStack = elabInplaceBuildPackageDBStack elab,
       elabRegisterPackageDBStack = elabInplaceRegisterPackageDBStack elab,
       elabSetupPackageDBStack = elabInplaceSetupPackageDBStack elab
@@ -2733,7 +2736,7 @@ nubComponentTargets =
 
 pkgHasEphemeralBuildTargets :: ElaboratedConfiguredPackage -> Bool
 pkgHasEphemeralBuildTargets elab =
-    isJust (elabReplTarget elab)
+    (not . null) (elabReplTarget elab)
  || (not . null) (elabTestTargets elab)
  || (not . null) (elabBenchTargets elab)
  || (not . null) (elabHaddockTargets elab)
@@ -2837,13 +2840,12 @@ setRootTargets targetAction perPkgTargetsMap =
         (Just tgts,  TargetActionBuild)   -> elab { elabBuildTargets = tgts }
         (Just tgts,  TargetActionTest)    -> elab { elabTestTargets  = tgts }
         (Just tgts,  TargetActionBench)   -> elab { elabBenchTargets  = tgts }
-        (Just [tgt], TargetActionRepl)    -> elab { elabReplTarget = Just tgt
-                                                  , elabBuildHaddocks = False }
+        (Just tgts, TargetActionRepl)     -> elab { elabReplTarget = tgts
+                                                  , elabBuildHaddocks = False
+                                                  , elabBuildStyle = BuildInplaceOnly InMemory }
         (Just tgts,  TargetActionHaddock) ->
           foldr setElabHaddockTargets (elab { elabHaddockTargets = tgts
                                             , elabBuildHaddocks = True }) tgts
-        (Just _,     TargetActionRepl)    ->
-          error "pruneInstallPlanToTargets: multiple repl targets"
 
     setElabHaddockTargets tgt elab
       | isTestComponentTarget tgt       = elab { elabHaddockTestSuites  = True }
@@ -2852,6 +2854,9 @@ setRootTargets targetAction perPkgTargetsMap =
       | isExeComponentTarget tgt        = elab { elabHaddockExecutables = True }
       | isSubLibComponentTarget tgt     = elab { elabHaddockInternal    = True }
       | otherwise                       = elab
+
+minVersionReplFlagFile :: Version
+minVersionReplFlagFile = mkVersion [3,9]
 
 -- | Assuming we have previously set the root build targets (i.e. the user
 -- targets but not rev deps yet), the first pruning pass does two things:
@@ -2864,18 +2869,99 @@ setRootTargets targetAction perPkgTargetsMap =
 --
 pruneInstallPlanPass1 :: [ElaboratedPlanPackage]
                       -> [ElaboratedPlanPackage]
-pruneInstallPlanPass1 pkgs =
-    map (mapConfiguredPackage fromPrunedPackage)
-        (fromMaybe [] $ Graph.closure graph roots)
-  where
-    pkgs' = map (mapConfiguredPackage prune) pkgs
-    graph = Graph.fromDistinctList pkgs'
-    roots = mapMaybe find_root pkgs'
+pruneInstallPlanPass1 pkgs
+    -- if there are repl targets, we need to do a bit more work
+    -- See Note [Pruning for Multi Repl]
+    | anyReplTarget = final_final_graph
 
+    -- otherwise we'll do less
+    | otherwise     = pruned_packages
+  where
+    pkgs' :: [InstallPlan.GenericPlanPackage IPI.InstalledPackageInfo PrunedPackage]
+    pkgs' = map (mapConfiguredPackage prune) pkgs
+
+    prune :: ElaboratedConfiguredPackage -> PrunedPackage
     prune elab = PrunedPackage elab' (pruneOptionalDependencies elab')
       where elab' =
                 setDocumentation
               $ addOptionalStanzas elab
+
+    graph = Graph.fromDistinctList pkgs'
+
+    roots :: [UnitId]
+    roots = mapMaybe find_root pkgs'
+
+    -- Make a closed graph by calculating the closure from the roots
+    pruned_packages :: [ElaboratedPlanPackage]
+    pruned_packages =  map (mapConfiguredPackage fromPrunedPackage) (fromMaybe [] $ Graph.closure graph roots)
+
+    closed_graph :: Graph.Graph ElaboratedPlanPackage
+    closed_graph = Graph.fromDistinctList pruned_packages
+
+    -- whether any package has repl targets enabled.
+    anyReplTarget :: Bool
+    anyReplTarget = any is_repl_gpp pkgs' where
+      is_repl_gpp (InstallPlan.Configured pkg) = is_repl_pp pkg
+      is_repl_gpp _                            = False
+
+      is_repl_pp (PrunedPackage elab _) = not (null (elabReplTarget elab))
+
+    -- Anything which is inplace and left after pruning could be a repl target, then just need to check the
+    -- reverse closure after calculating roots to capture dependencies which are on the path between roots.
+    -- In order to start a multi-repl session with all the desired targets we need to load all these components into
+    -- the repl at once to satisfy the closure property.
+    all_desired_repl_targets = Set.fromList [elabUnitId cp | InstallPlan.Configured cp <- fromMaybe [] $ Graph.revClosure closed_graph roots]
+
+    add_repl_target :: ElaboratedConfiguredPackage -> ElaboratedConfiguredPackage
+    add_repl_target ecp | elabUnitId ecp `Set.member` all_desired_repl_targets
+      = ecp { elabReplTarget = maybeToList (ComponentTarget <$> (elabComponentName ecp) <*> pure WholeComponent)
+            , elabBuildStyle = BuildInplaceOnly InMemory }
+                        | otherwise = ecp
+
+    -- Add the repl target information to the ElaboratedPlanPackages
+    graph_with_repl_targets
+      | anyReplTarget = map (mapConfiguredPackage add_repl_target) (Graph.toList closed_graph)
+      | otherwise     = Graph.toList closed_graph
+
+    -- But check that all the InMemory targets have a new enough version of Cabal,
+    -- otherwise we will confuse Setup.hs by passing new arguments which it doesn't understand
+    -- later down the line. We try to remove just these edges, if it doesn't break the overall structure
+    -- then we just report to the user that their target will not be loaded for this reason.
+
+    (bad -- Nodes which we wanted to build InMemory but lack new enough version of Cabal
+      , _good -- Nodes we want to build in memory.
+      ) = partitionEithers (map go graph_with_repl_targets)
+      where
+        go :: ElaboratedPlanPackage -> Either UnitId ElaboratedPlanPackage
+        go (InstallPlan.Configured cp)
+          | BuildInplaceOnly InMemory <- elabBuildStyle cp
+          , elabSetupScriptCliVersion cp < minVersionReplFlagFile = Left (elabUnitId cp)
+        go (InstallPlan.Configured c) = Right (InstallPlan.Configured c)
+        go c = Right c
+
+    -- Now take the upwards closure from the bad nodes, and find the other `BuildInplaceOnly InMemory` packages that clobbers,
+    -- disables those and issue a warning to the user. Because we aren't going to be able to load those into memory as well
+    -- because the thing it depends on is not going to be in memory.
+
+    disabled_repl_targets =
+      [ c | InstallPlan.Configured c <- fromMaybe [] $ Graph.revClosure (Graph.fromDistinctList graph_with_repl_targets) bad
+          , BuildInplaceOnly InMemory <- [elabBuildStyle c]  ]
+
+    remove_repl_target :: ElaboratedConfiguredPackage -> ElaboratedConfiguredPackage
+    remove_repl_target ecp | ecp `elem` disabled_repl_targets = ecp { elabReplTarget = []
+                                                                    , elabBuildStyle = BuildInplaceOnly OnDisk }
+                           | otherwise = ecp
+
+    final_graph_with_repl_targets = map (mapConfiguredPackage remove_repl_target) graph_with_repl_targets
+
+    -- Now find what the new roots are after we have disabled things which we can't build (and the things above that)
+    new_roots :: [UnitId]
+    new_roots = mapMaybe find_root (map (mapConfiguredPackage prune) final_graph_with_repl_targets)
+
+    -- Then take the final closure from these new roots to remove these things
+    -- TODO: Can probably just remove them directly in remove_repl_target.
+    final_final_graph = fromMaybe [] $ Graph.closure (Graph.fromDistinctList final_graph_with_repl_targets) new_roots
+
 
     is_root :: PrunedPackage -> Maybe UnitId
     is_root (PrunedPackage elab _) =
@@ -2883,7 +2969,7 @@ pruneInstallPlanPass1 pkgs =
                    , null (elabBuildTargets elab)
                    , null (elabTestTargets elab)
                    , null (elabBenchTargets elab)
-                   , isNothing (elabReplTarget elab)
+                   , null (elabReplTarget elab)
                    , null (elabHaddockTargets elab)
                    ]
           then Just (installedUnitId elab)
@@ -2981,7 +3067,7 @@ pruneInstallPlanPass1 pkgs =
         | ComponentTarget cname _ <- elabBuildTargets pkg
                                   ++ elabTestTargets pkg
                                   ++ elabBenchTargets pkg
-                                  ++ maybeToList (elabReplTarget pkg)
+                                  ++ elabReplTarget pkg
                                   ++ elabHaddockTargets pkg
         , stanza <- maybeToList $
                     componentOptionalStanza $
@@ -2992,6 +3078,38 @@ pruneInstallPlanPass1 pkgs =
       Set.fromList
         [ installedUnitId pkg
         | InstallPlan.PreExisting pkg <- pkgs ]
+
+{-
+Note [Pruning for Multi Repl]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+For a multi-repl session, where we load more than one component into a GHCi repl,
+it is required to uphold the so-called *closure property*.
+This property, whose exact Note you can read in the GHC codebase, states
+roughly:
+
+* If a component you want to load into a repl session transitively depends on a
+  component which transitively depends on another component you want to
+  load into the repl, then this component needs to be loaded
+  into the repl session as well.
+
+We make sure here, that this property is upheld, by calculating the
+graph of components that we need to load into the repl given the set of 'roots' which
+are the targets specified by the user.
+
+Practically, this is simply achieved by traversing all dependencies of
+our roots (graph closure), and then from this closed graph, we calculate
+the reverse closure, which gives us all components that depend on
+'roots'. Thus, the result is a list of components that we need to load
+into the repl to uphold the closure property.
+
+Further to this, we then check that all the enabled components are using a new enough
+version of Cabal which understands the repl option to write the arguments to a file.
+
+If there is a package using a custom Setup.hs which is linked against a too old version
+of Cabal then we need to disable that as otherwise we will end up passing unknown
+arguments to `./Setup`.
+-}
 
 -- | Given a set of already installed packages @availablePkgs@,
 -- determine the set of available optional stanzas from @pkg@
@@ -3053,6 +3171,7 @@ pruneInstallPlanPass2 pkgs =
     map (mapConfiguredPackage setStanzasDepsAndTargets) pkgs
   where
     setStanzasDepsAndTargets elab =
+
         elab {
           elabBuildTargets = ordNub
                            $ elabBuildTargets elab
@@ -3066,18 +3185,27 @@ pruneInstallPlanPass2 pkgs =
                     keepNeeded (CD.ComponentTest  _) _ = TestStanzas  `optStanzaSetMember` stanzas
                     keepNeeded (CD.ComponentBench _) _ = BenchStanzas `optStanzaSetMember` stanzas
                     keepNeeded _                     _ = True
+
                 in ElabPackage $ pkg {
                   pkgStanzasEnabled = stanzas,
-                  pkgLibDependencies   = CD.filterDeps keepNeeded (pkgLibDependencies pkg),
+                  pkgLibDependencies   = CD.mapDeps (\_ -> map addInternal) $ CD.filterDeps keepNeeded (pkgLibDependencies pkg),
                   pkgExeDependencies   = CD.filterDeps keepNeeded (pkgExeDependencies pkg),
                   pkgExeDependencyPaths = CD.filterDeps keepNeeded (pkgExeDependencyPaths pkg)
                 }
-              r@(ElabComponent _) -> r
+              (ElabComponent comp) ->
+                ElabComponent $ comp { compLibDependencies = map addInternal (compLibDependencies comp) }
         }
       where
+        -- We initially assume that all the dependencies are external (hence the boolean is always
+        -- False) and here we correct the dependencies so the right packages are marked promised.
+        addInternal (cid, _) = (cid, (cid `Set.member` inMemoryTargets))
+
         libTargetsRequiredForRevDeps =
-          [ ComponentTarget (CLibName Cabal.defaultLibName) WholeComponent
+          [ c
           | installedUnitId elab `Set.member` hasReverseLibDeps
+          , let c = ComponentTarget (CLibName Cabal.defaultLibName) WholeComponent
+          -- Don't enable building for anything which is being build in memory
+          , elabBuildStyle elab /= BuildInplaceOnly InMemory
           ]
         exeTargetsRequiredForRevDeps =
           -- TODO: allow requesting executable with different name
@@ -3092,6 +3220,13 @@ pruneInstallPlanPass2 pkgs =
 
     availablePkgs :: Set UnitId
     availablePkgs = Set.fromList (map installedUnitId pkgs)
+
+    inMemoryTargets :: Set ConfiguredId
+    inMemoryTargets = do
+      Set.fromList [ configuredId pkg
+                   | InstallPlan.Configured pkg <- pkgs
+                   , BuildInplaceOnly InMemory <- [elabBuildStyle pkg] ]
+
 
     hasReverseLibDeps :: Set UnitId
     hasReverseLibDeps =
@@ -3393,7 +3528,7 @@ setupHsScriptOptions (ReadyPackage elab@ElaboratedConfiguredPackage{..})
       usePackageDB             = elabSetupPackageDBStack,
       usePackageIndex          = Nothing,
       useDependencies          = [ (uid, srcid)
-                                 | ConfiguredId srcid (Just (CLibName LMainLibName)) uid
+                                 | (ConfiguredId srcid (Just (CLibName LMainLibName)) uid, _)
                                  <- elabSetupDependencies elab ],
       useDependenciesExclusive = True,
       useVersionMacros         = elabSetupScriptStyle == SetupCustomExplicitDeps,
@@ -3468,7 +3603,7 @@ computeInstallDirs :: StoreDirLayout
                    -> ElaboratedConfiguredPackage
                    -> InstallDirs.InstallDirs FilePath
 computeInstallDirs storeDirLayout defaultInstallDirs elaboratedShared elab
-  | elabBuildStyle elab == BuildInplaceOnly
+  | isInplaceBuildStyle (elabBuildStyle elab)
   -- use the ordinary default install dirs
   = (InstallDirs.absoluteInstallDirs
        (elabPkgSourceId elab)
@@ -3592,21 +3727,22 @@ setupHsConfigureFlags (ReadyPackage elab@ElaboratedConfiguredPackage{..})
     -- NB: This does NOT use InstallPlan.depends, which includes executable
     -- dependencies which should NOT be fed in here (also you don't have
     -- enough info anyway)
-    configDependencies        = [ GivenComponent
-                                    (packageName srcid)
-                                    ln
-                                    cid
-                                | ConfiguredId srcid mb_cn cid <- elabLibDependencies elab
-                                , let ln = case mb_cn
-                                           of Just (CLibName lname) -> lname
-                                              Just _ -> error "non-library dependency"
-                                              Nothing -> LMainLibName
+    --
+    configDependencies        = [ cidToGivenComponent cid
+                                | (cid, is_internal) <- elabLibDependencies elab
+                                , not is_internal
                                 ]
+
+    configPromisedDependencies= [ cidToGivenComponent cid
+                                | (cid, is_internal) <- elabLibDependencies elab
+                                , is_internal
+                                ]
+
     configConstraints         =
         case elabPkgOrComp of
             ElabPackage _ ->
                 [ thisPackageVersionConstraint srcid
-                | ConfiguredId srcid _ _uid <- elabLibDependencies elab ]
+                | (ConfiguredId srcid _ _uid, _) <- elabLibDependencies elab ]
             ElabComponent _ -> []
 
 
@@ -3629,6 +3765,14 @@ setupHsConfigureFlags (ReadyPackage elab@ElaboratedConfiguredPackage{..})
     configPrograms_           = mempty -- never use, shouldn't exist
     configUseResponseFiles    = mempty
     configAllowDependingOnPrivateLibs = Flag $ not $ libraryVisibilitySupported pkgConfigCompiler
+
+    cidToGivenComponent :: ConfiguredId -> GivenComponent
+    cidToGivenComponent (ConfiguredId srcid mb_cn cid) = GivenComponent (packageName srcid) ln cid
+      where
+        ln = case mb_cn of
+          Just (CLibName lname) -> lname
+          Just _                -> error "non-library dependency"
+          Nothing               -> LMainLibName
 
 setupHsConfigureArgs :: ElaboratedConfiguredPackage
                      -> [String]
@@ -3724,9 +3868,7 @@ setupHsReplFlags _ sharedConfig verbosity builddir =
 
 setupHsReplArgs :: ElaboratedConfiguredPackage -> [String]
 setupHsReplArgs elab =
-    maybe [] (\t -> [showComponentTarget (packageId elab) t]) (elabReplTarget elab)
-    --TODO: should be able to give multiple modules in one component
-
+    map (\t -> showComponentTarget (packageId elab) t) (elabReplTarget elab)
 
 setupHsCopyFlags :: ElaboratedConfiguredPackage
                  -> ElaboratedSharedConfig
@@ -3756,8 +3898,8 @@ setupHsRegisterFlags ElaboratedConfiguredPackage{..} _
       regGenScript   = mempty,  -- never use
       regGenPkgConf  = toFlag (Just pkgConfFile),
       regInPlace     = case elabBuildStyle of
-                         BuildInplaceOnly -> toFlag True
-                         _                -> toFlag False,
+                         BuildInplaceOnly {} -> toFlag True
+                         BuildAndInstall  -> toFlag False,
       regPrintId     = mempty,  -- never use
       regDistPref    = toFlag builddir,
       regArgs        = [],
@@ -3882,11 +4024,11 @@ packageHashInputs
           ElabPackage (ElaboratedPackage{..}) ->
             Set.fromList $
              [ confInstId dep
-             | dep <- CD.select relevantDeps pkgLibDependencies ] ++
+             | (dep, _) <- CD.select relevantDeps pkgLibDependencies ] ++
              [ confInstId dep
              | dep <- CD.select relevantDeps pkgExeDependencies ]
           ElabComponent comp ->
-            Set.fromList (map confInstId (compLibDependencies comp
+            Set.fromList (map confInstId ((map fst $ compLibDependencies comp)
                                        ++ compExeDependencies comp)),
       pkgHashOtherConfig = packageHashConfigInputs pkgshared elab
     }
@@ -4000,7 +4142,7 @@ binDirectoryFor
   -> FilePath
 binDirectoryFor layout config package exe = case elabBuildStyle package of
   BuildAndInstall -> installedBinDirectory package
-  BuildInplaceOnly -> inplaceBinRoot layout config package </> exe
+  BuildInplaceOnly {} -> inplaceBinRoot layout config package </> exe
 
 -- package has been built and installed.
 installedBinDirectory :: ElaboratedConfiguredPackage -> FilePath

@@ -46,6 +46,7 @@ data GhcImplInfo = GhcImplInfo
   , supportsDebugLevels  :: Bool -- ^ supports numeric @-g@ levels
   , supportsPkgEnvFiles  :: Bool -- ^ picks up @.ghc.environment@ files
   , flagWarnMissingHomeModules :: Bool -- ^ -Wmissing-home-modules is supported
+  , unitIdForExes        :: Bool -- ^ Pass -this-unit-id flag when building executables
   }
 
 getImplInfo :: Compiler -> GhcImplInfo
@@ -74,6 +75,7 @@ ghcVersionImplInfo ver = GhcImplInfo
   , supportsDebugLevels  = v >= [8,0]
   , supportsPkgEnvFiles  = v >= [8,0,1,20160901] -- broken in 8.0.1, fixed in 8.0.2
   , flagWarnMissingHomeModules = v >= [8,2]
+  , unitIdForExes = v >= [9,2]
   }
   where
     v = versionNumbers ver
@@ -94,6 +96,7 @@ ghcjsVersionImplInfo _ghcjsver ghcver = GhcImplInfo
   , supportsDebugLevels  = ghcv >= [8,0]
   , supportsPkgEnvFiles  = ghcv >= [8,0,2] --TODO: check this works in ghcjs
   , flagWarnMissingHomeModules = ghcv >= [8,2]
+  , unitIdForExes        = ghcv >= [9,2]
   }
   where
     ghcv = versionNumbers ghcver

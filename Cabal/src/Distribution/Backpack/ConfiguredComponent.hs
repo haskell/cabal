@@ -177,22 +177,22 @@ toConfiguredComponent pkg_descr this_cid lib_dep_map exe_dep_map component = do
         if newPackageDepsBehaviour pkg_descr
             then fmap concat $ forM (targetBuildDepends bi) $
                  \(Dependency name _ sublibs) -> do
-                    pkg <- case Map.lookup name lib_dep_map of
+                    case Map.lookup name lib_dep_map of
                         Nothing ->
                             dieProgress $
                                 text "Dependency on unbuildable" <+>
                                 text "package" <+> pretty name
-                        Just p -> return p
-                    -- Return all library components
-                    forM (NonEmptySet.toList sublibs) $ \lib ->
-                        let comp = CLibName lib in
-                        case Map.lookup comp pkg of
-                            Nothing ->
-                                dieProgress $
-                                    text "Dependency on unbuildable" <+>
-                                    text (showLibraryName lib) <+>
-                                    text "from" <+> pretty name
-                            Just v -> return v
+                        Just pkg -> do
+                          -- Return all library components
+                         forM (NonEmptySet.toList sublibs) $ \lib ->
+                             let comp = CLibName lib in
+                             case Map.lookup comp pkg of
+                                 Nothing ->
+                                     dieProgress $
+                                         text "Dependency on unbuildable" <+>
+                                         text (showLibraryName lib) <+>
+                                         text "from" <+> pretty name
+                                 Just v -> return v
             else return old_style_lib_deps
     mkConfiguredComponent
        pkg_descr this_cid

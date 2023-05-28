@@ -40,9 +40,9 @@ nixStyleOptions
 nixStyleOptions commandOptions showOrParseArgs =
         liftOptions configFlags     set1
         -- Note: [Hidden Flags]
-        -- hide "constraint", "dependency", and
+        -- hide "constraint", "dependency", "promised-dependency" and
         -- "exact-configuration" from the configure options.
-        (filter ((`notElem` ["constraint", "dependency"
+        (filter ((`notElem` ["constraint", "dependency", "promised-dependency"
                             , "exact-configuration"])
                  . optionName) $ configureOptions showOrParseArgs)
      ++ liftOptions configExFlags   set2 (configureExOptions showOrParseArgs

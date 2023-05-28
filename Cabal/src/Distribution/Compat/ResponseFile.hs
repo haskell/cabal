@@ -3,7 +3,7 @@
 -- Compatibility layer for GHC.ResponseFile
 -- Implementation from base 4.12.0 is used.
 -- http://hackage.haskell.org/package/base-4.12.0.0/src/LICENSE
-module Distribution.Compat.ResponseFile (expandResponse) where
+module Distribution.Compat.ResponseFile (expandResponse, escapeArgs) where
 
 import Distribution.Compat.Prelude
 import Prelude ()
@@ -13,7 +13,7 @@ import System.IO (hPutStrLn, stderr)
 import System.IO.Error
 
 #if MIN_VERSION_base(4,12,0)
-import GHC.ResponseFile (unescapeArgs)
+import GHC.ResponseFile (unescapeArgs, escapeArgs)
 #else
 
 unescapeArgs :: String -> [String]
@@ -46,6 +46,20 @@ unescape args = reverse . map reverse $ go args NoneQ False [] []
         | '\'' == c              = go cs SngQ  False a     as
         | '"'  == c              = go cs DblQ  False a     as
         | otherwise              = go cs NoneQ False (c:a) as
+
+escapeArgs :: [String] -> String
+escapeArgs = unlines . map escapeArg
+
+escapeArg :: String -> String
+escapeArg = reverse . foldl' escape []
+
+escape :: String -> Char -> String
+escape cs c
+  |    isSpace c
+    || '\\' == c
+    || '\'' == c
+    || '"'  == c = c:'\\':cs -- n.b., our caller must reverse the result
+  | otherwise    = c:cs
 
 #endif
 

@@ -133,6 +133,7 @@ import Distribution.Compat.Environment ( lookupEnv )
 import qualified Data.Maybe as M
 import qualified Data.Set as Set
 import qualified Distribution.Compat.NonEmptySet as NES
+import Distribution.Types.AnnotatedId
 
 
 type UseExternalInternalDeps = Bool
@@ -440,6 +441,8 @@ configure (pkg_descr0, pbi) cfg = do
                                   (configDependencies cfg)
                                   installedPackageSet
 
+    let promisedDepsSet = mkPromisedDepsSet (configPromisedDependencies cfg)
+
     -- pkg_descr:   The resolved package description, that does not contain any
     --              conditionals, because we have an assignment for
     --              every flag, either picking them ourselves using a
@@ -466,6 +469,7 @@ configure (pkg_descr0, pbi) cfg = do
                     (packageName pkg_descr0)
                     installedPackageSet
                     internalPackageSet
+                    promisedDepsSet
                     requiredDepsMap)
                 comp
                 compPlatform
@@ -501,11 +505,12 @@ configure (pkg_descr0, pbi) cfg = do
     -- For one it's deterministic; for two, we need to associate
     -- them with renamings which would require a far more complicated
     -- input scheme than what we have today.)
-    externalPkgDeps :: [PreExistingComponent]
+    externalPkgDeps :: ([PreExistingComponent], [PromisedComponent])
         <- configureDependencies
                 verbosity
                 use_external_internal_deps
                 internalPackageSet
+                promisedDepsSet
                 installedPackageSet
                 requiredDepsMap
                 pkg_descr
@@ -761,6 +766,7 @@ configure (pkg_descr0, pbi) cfg = do
                 componentGraph      = Graph.fromDistinctList buildComponents,
                 componentNameMap    = buildComponentsMap,
                 installedPkgs       = packageDependsIndex,
+                promisedPkgs        = promisedDepsSet,
                 pkgDescrFile        = Nothing,
                 localPkgDescr       = pkg_descr',
                 withPrograms        = programDb'',
@@ -844,6 +850,9 @@ configure (pkg_descr0, pbi) cfg = do
     where
       verbosity = fromFlag (configVerbosity cfg)
 
+mkPromisedDepsSet :: [GivenComponent] -> Map (PackageName, ComponentName) ComponentId
+mkPromisedDepsSet comps = Map.fromList [ ((pn, CLibName ln), cid) | GivenComponent pn ln cid <- comps ]
+
 mkProgramDb :: ConfigFlags -> ProgramDb -> ProgramDb
 mkProgramDb cfg initialProgramDb = programDb
   where
@@ -915,6 +924,7 @@ dependencySatisfiable
     -> PackageName
     -> InstalledPackageIndex -- ^ installed set
     -> Set LibraryName -- ^ library components
+    -> Map (PackageName, ComponentName) ComponentId
     -> Map (PackageName, ComponentName) InstalledPackageInfo
        -- ^ required dependencies
     -> (Dependency -> Bool)
@@ -922,7 +932,7 @@ dependencySatisfiable
   use_external_internal_deps
   exact_config
   allow_private_deps
-  pn installedPackageSet packageLibraries requiredDepsMap
+  pn installedPackageSet packageLibraries promisedDeps requiredDepsMap
   (Dependency depName vr sublibs)
     | exact_config
     -- When we're given '--exact-configuration', we assume that all
@@ -988,7 +998,10 @@ dependencySatisfiable
                           -- cabal-testsuite/PackageTests/ConfigureComponent/SubLib/setup-explicit.test.hs
                           || pkgName (IPI.sourcePackageId ipi) == pn)
                     maybeIPI
+                  -- Don't check if it's visible, we promise to build it before we need it.
+                  || promised
       where maybeIPI = Map.lookup (depName, CLibName lib) requiredDepsMap
+            promised = isJust $ Map.lookup (depName, CLibName lib) promisedDeps
 
 -- | Finalize a generic package description.  The workhorse is
 -- 'finalizePD' but there's a bit of other nattering
@@ -1090,20 +1103,21 @@ configureDependencies
     :: Verbosity
     -> UseExternalInternalDeps
     -> Set LibraryName
+    -> Map (PackageName, ComponentName) ComponentId
     -> InstalledPackageIndex -- ^ installed packages
     -> Map (PackageName, ComponentName) InstalledPackageInfo -- ^ required deps
     -> PackageDescription
     -> ComponentRequestedSpec
-    -> IO [PreExistingComponent]
+    -> IO ([PreExistingComponent], [PromisedComponent])
 configureDependencies verbosity use_external_internal_deps
-  packageLibraries installedPackageSet requiredDepsMap pkg_descr enableSpec = do
+  packageLibraries promisedDeps installedPackageSet requiredDepsMap pkg_descr enableSpec = do
     let failedDeps :: [FailedDependency]
         allPkgDeps :: [ResolvedDependency]
         (failedDeps, allPkgDeps) = partitionEithers $ concat
           [ fmap (\s -> (dep, s)) <$> status
           | dep <- enabledBuildDepends pkg_descr enableSpec
           , let status = selectDependency (package pkg_descr)
-                  packageLibraries installedPackageSet
+                  packageLibraries promisedDeps installedPackageSet
                   requiredDepsMap use_external_internal_deps dep ]
 
         internalPkgDeps = [ pkgid
@@ -1113,6 +1127,9 @@ configureDependencies verbosity use_external_internal_deps
         -- description.
         externalPkgDeps = [ pec
                           | (_, ExternalDependency pec)   <- allPkgDeps ]
+
+        promisedPkgDeps = [ fpec
+                          | (_, PromisedDependency fpec)  <- allPkgDeps ]
 
     when (not (null internalPkgDeps)
           && not (newPackageDepsBehaviour pkg_descr)) $
@@ -1125,7 +1142,7 @@ configureDependencies verbosity use_external_internal_deps
     reportFailedDependencies verbosity failedDeps
     reportSelectedDependencies verbosity allPkgDeps
 
-    return externalPkgDeps
+    return (externalPkgDeps, promisedPkgDeps)
 
 -- | Select and apply coverage settings for the build based on the
 -- 'ConfigFlags' and 'Compiler'.
@@ -1251,6 +1268,18 @@ data DependencyResolution
     -- internal dependency which we are getting from the package
     -- database.
     = ExternalDependency PreExistingComponent
+
+    -- | A promised dependency, which doesn't yet exist, but should be provided
+    -- at the build time.
+    --
+    -- We have these such that we can configure components without actually
+    -- building its dependencies, if these dependencies need to be built later
+    -- again. For example, when launching a multi-repl,
+    -- we need to build packages in the interactive ghci session, no matter
+    -- whether they have been built before.
+    -- Building them in the configure phase is then redundant and costs time.
+    | PromisedDependency PromisedComponent
+
     -- | An internal dependency ('PackageId' should be a library name)
     -- which we are going to have to build.  (The
     -- 'PackageId' here is a hack to get a modest amount of
@@ -1264,6 +1293,7 @@ data FailedDependency = DependencyNotExists PackageName
 -- | Test for a package dependency and record the version we have installed.
 selectDependency :: PackageId -- ^ Package id of current package
                  -> Set LibraryName -- ^ package libraries
+                 -> Map (PackageName, ComponentName) ComponentId -- ^ Set of components that are promised, i.e. are not installed already. See 'PromisedDependency' for more details.
                  -> InstalledPackageIndex  -- ^ Installed packages
                  -> Map (PackageName, ComponentName) InstalledPackageInfo
                     -- ^ Packages for which we have been given specific deps to
@@ -1272,7 +1302,7 @@ selectDependency :: PackageId -- ^ Package id of current package
                                             -- single component?
                  -> Dependency
                  -> [Either FailedDependency DependencyResolution]
-selectDependency pkgid internalIndex installedIndex requiredDepsMap
+selectDependency pkgid internalIndex promisedIndex installedIndex requiredDepsMap
   use_external_internal_deps
   (Dependency dep_pkgname vr libs) =
   -- If the dependency specification matches anything in the internal package
@@ -1303,11 +1333,14 @@ selectDependency pkgid internalIndex installedIndex requiredDepsMap
         | Set.member lib internalIndex
         = Right $ InternalDependency $ PackageIdentifier dep_pkgname $ packageVersion pkgid
 
+
         | otherwise
         = Left $ DependencyMissingInternal dep_pkgname lib
 
     -- We have to look it up externally
     do_external_external :: LibraryName -> Either FailedDependency DependencyResolution
+    do_external_external lib | Just cid <- Map.lookup (dep_pkgname, CLibName lib) promisedIndex =
+      return $ PromisedDependency (PromisedComponent dep_pkgname (AnnotatedId currentCabalId (CLibName lib) cid ))
     do_external_external lib = do
       ipi <- case Map.lookup (dep_pkgname, CLibName lib) requiredDepsMap of
         -- If we know the exact pkg to use, then use it.
@@ -1319,6 +1352,8 @@ selectDependency pkgid internalIndex installedIndex requiredDepsMap
       return $ ExternalDependency $ ipiToPreExistingComponent ipi
 
     do_external_internal :: LibraryName -> Either FailedDependency DependencyResolution
+    do_external_internal lib | Just cid <- Map.lookup (dep_pkgname, CLibName lib) promisedIndex =
+      return $ PromisedDependency (PromisedComponent dep_pkgname (AnnotatedId currentCabalId (CLibName lib) cid ))
     do_external_internal lib = do
       ipi <- case Map.lookup (dep_pkgname, CLibName lib) requiredDepsMap of
         -- If we know the exact pkg to use, then use it.
@@ -1341,7 +1376,9 @@ reportSelectedDependencies verbosity deps =
     | (dep, resolution) <- deps
     , let pkgid = case resolution of
             ExternalDependency pkg'   -> packageId pkg'
-            InternalDependency pkgid' -> pkgid' ]
+            InternalDependency pkgid' -> pkgid'
+            PromisedDependency promisedComp -> packageId promisedComp
+    ]
 
 reportFailedDependencies :: Verbosity -> [FailedDependency] -> IO ()
 reportFailedDependencies _ []     = return ()
@@ -1461,7 +1498,7 @@ interpretPackageDbFlags userInstall specificDBs =
 -- pick.
 combinedConstraints
   :: [PackageVersionConstraint]
-  -> [GivenComponent]
+  -> [GivenComponent]  -- ^ installed dependencies
   -> InstalledPackageIndex
   -> Either String ([PackageVersionConstraint],
                      Map (PackageName, ComponentName) InstalledPackageInfo)
@@ -1490,8 +1527,7 @@ combinedConstraints constraints dependencies installedPackages = do
                         | (pn, cname, _, Just pkg) <- dependenciesPkgInfo ]
 
     -- The dependencies along with the installed package info, if it exists
-    dependenciesPkgInfo :: [(PackageName, ComponentName, ComponentId,
-                             Maybe InstalledPackageInfo)]
+    dependenciesPkgInfo :: [(PackageName, ComponentName, ComponentId, Maybe InstalledPackageInfo)]
     dependenciesPkgInfo =
       [ (pkgname, CLibName lname, cid, mpkg)
       | GivenComponent pkgname lname cid <- dependencies

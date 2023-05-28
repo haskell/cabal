@@ -130,7 +130,14 @@ data ConfigFlags = ConfigFlags {
     configConstraints :: [PackageVersionConstraint], -- ^Additional constraints for
                                                      -- dependencies.
     configDependencies :: [GivenComponent],
-      -- ^The packages depended on.
+      -- ^The packages depended on which already exist
+    configPromisedDependencies :: [GivenComponent],
+      -- ^The packages depended on which doesn't yet exist (i.e. promised).
+      -- Promising dependencies enables us to configure components in parallel,
+      -- and avoids expensive builds if they are not necessary.
+      -- For example, in multi-repl mode, we don't want to build dependencies that
+      -- are loaded into the interactive session, since we have to build them again.
+
     configInstantiateWith :: [(ModuleName, Module)],
       -- ^ The requested Backpack instantiation.  If empty, either this
       -- package does not use Backpack, or we just want to typecheck
@@ -212,6 +219,7 @@ instance Eq ConfigFlags where
     && equal configStripLibs
     && equal configConstraints
     && equal configDependencies
+    && equal configPromisedDependencies
     && equal configConfigurationsFlags
     && equal configTests
     && equal configBenchmarks
@@ -557,11 +565,14 @@ configureOptions showOrParseArgs =
          configDependencies (\v flags -> flags { configDependencies = v})
          (reqArg "NAME[:COMPONENT_NAME]=CID"
                  (parsecToReadE (const "dependency expected") ((\x -> [x]) `fmap` parsecGivenComponent))
-                 (map (\(GivenComponent pn cn cid) ->
-                     prettyShow pn
-                     ++ case cn of LMainLibName -> ""
-                                   LSubLibName n -> ":" ++ prettyShow n
-                     ++ "=" ++ prettyShow cid)))
+                 (map prettyGivenComponent))
+
+      ,option "" ["promised-dependency"]
+         "A list of promised dependencies. E.g., --promised-dependency=\"void=void-0.5.8-177d5cdf20962d0581fe2e4932a6c309\""
+         configPromisedDependencies (\v flags -> flags { configPromisedDependencies = v})
+         (reqArg "NAME[:COMPONENT_NAME]=CID"
+                 (parsecToReadE (const "dependency expected") ((\x -> [x]) `fmap` parsecGivenComponent))
+                 (map prettyGivenComponent))
 
       ,option "" ["instantiate-with"]
         "A mapping of signature names to concrete module instantiations."
@@ -662,6 +673,13 @@ parsecGivenComponent = do
   _ <- P.char '='
   cid <- parsec
   return $ GivenComponent pn ln cid
+
+prettyGivenComponent :: GivenComponent -> String
+prettyGivenComponent (GivenComponent pn cn cid) =
+  prettyShow pn
+  ++ case cn of LMainLibName -> ""
+                LSubLibName n -> ":" ++ prettyShow n
+  ++ "=" ++ prettyShow cid
 
 installDirsOptions :: [OptionField (InstallDirs (Flag PathTemplate))]
 installDirsOptions =

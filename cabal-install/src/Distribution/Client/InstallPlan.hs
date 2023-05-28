@@ -59,7 +59,10 @@ module Distribution.Client.InstallPlan (
 
   -- * Display
   showPlanGraph,
+  ShowPlanNode(..),
   showInstallPlan,
+  showInstallPlan_gen,
+  showPlanPackageTag,
 
   -- * Graph-like operations
   dependencyClosure,
@@ -278,21 +281,31 @@ instance (IsNode ipkg, Key ipkg ~ UnitId, IsNode srcpkg, Key srcpkg ~ UnitId,
       indepGoals <- get
       return $! mkInstallPlan "(instance Binary)" graph indepGoals
 
-showPlanGraph :: (Package ipkg, Package srcpkg,
-                  IsUnit ipkg, IsUnit srcpkg)
-              => Graph (GenericPlanPackage ipkg srcpkg) -> String
-showPlanGraph graph = renderStyle defaultStyle $
-    vcat (map dispPlanPackage (Foldable.toList graph))
-  where dispPlanPackage p =
-            hang (hsep [ text (showPlanPackageTag p)
-                       , pretty (packageId p)
-                       , parens (pretty (nodeKey p))]) 2
-                 (vcat (map pretty (nodeNeighbors p)))
 
-showInstallPlan :: (Package ipkg, Package srcpkg,
-                    IsUnit ipkg, IsUnit srcpkg)
+data ShowPlanNode = ShowPlanNode { showPlanHerald :: Doc
+                                 , showPlanNeighbours :: [Doc]
+                                 }
+
+showPlanGraph :: [ShowPlanNode] -> String
+showPlanGraph graph = renderStyle defaultStyle $
+    vcat (map dispPlanPackage graph)
+  where dispPlanPackage (ShowPlanNode herald neighbours) =
+            hang herald 2 (vcat neighbours)
+
+-- | Generic way to show a 'GenericInstallPlan' which elicits quite a lot of information
+showInstallPlan_gen :: forall ipkg srcpkg .
+                (GenericPlanPackage ipkg srcpkg -> ShowPlanNode) -> GenericInstallPlan ipkg srcpkg -> String
+showInstallPlan_gen toShow = showPlanGraph . fmap toShow . Foldable.toList . planGraph
+
+showInstallPlan :: forall ipkg srcpkg . (Package ipkg, Package srcpkg, IsUnit ipkg, IsUnit srcpkg)
                 => GenericInstallPlan ipkg srcpkg -> String
-showInstallPlan = showPlanGraph . planGraph
+showInstallPlan = showInstallPlan_gen toShow
+  where
+    toShow :: GenericPlanPackage ipkg srcpkg -> ShowPlanNode
+    toShow p = ShowPlanNode (hsep [ text (showPlanPackageTag p)
+                                 , pretty (packageId p)
+                                 , parens (pretty (nodeKey p))])
+                            (map pretty (nodeNeighbors p))
 
 showPlanPackageTag :: GenericPlanPackage ipkg srcpkg -> String
 showPlanPackageTag (PreExisting _)   = "PreExisting"
