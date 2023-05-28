@@ -3,6 +3,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 -----------------------------------------------------------------------------
+
 -- |
 -- Module      :  Distribution.Package
 -- Copyright   :  Isaac Jones 2003-2004
@@ -15,7 +16,6 @@
 -- 'PackageIdentifier's consist of a name and an exact version. It also defines
 -- a 'Dependency' data type. A dependency is a package name and a version
 -- range, like @\"foo >= 1.2 && < 2\"@.
-
 module Distribution.Package
   ( module Distribution.Types.AbiHash
   , module Distribution.Types.ComponentId
@@ -25,28 +25,33 @@ module Distribution.Package
   , module Distribution.Types.PackageName
   , module Distribution.Types.PkgconfigName
   , module Distribution.Types.Dependency
-  , Package(..), packageName, packageVersion
-  , HasMungedPackageId(..), mungedName', mungedVersion'
-  , HasUnitId(..)
-  , PackageInstalled(..)
+  , Package (..)
+  , packageName
+  , packageVersion
+  , HasMungedPackageId (..)
+  , mungedName'
+  , mungedVersion'
+  , HasUnitId (..)
+  , PackageInstalled (..)
   ) where
 
-import Prelude ()
 import Distribution.Compat.Prelude
+import Prelude ()
 
 import Distribution.Version
-         ( Version )
+  ( Version
+  )
 
 import Distribution.Types.AbiHash
 import Distribution.Types.ComponentId
 import Distribution.Types.Dependency
-import Distribution.Types.MungedPackageId
-import Distribution.Types.PackageId
-import Distribution.Types.UnitId
 import Distribution.Types.Module
+import Distribution.Types.MungedPackageId
 import Distribution.Types.MungedPackageName
+import Distribution.Types.PackageId
 import Distribution.Types.PackageName
 import Distribution.Types.PkgconfigName
+import Distribution.Types.UnitId
 
 -- | Class of things that have a 'PackageIdentifier'
 --
@@ -57,15 +62,14 @@ import Distribution.Types.PkgconfigName
 -- Not all kinds of packages can be uniquely identified by a
 -- 'PackageIdentifier'. In particular, installed packages cannot, there may be
 -- many installed instances of the same source package.
---
 class Package pkg where
-  packageId  :: pkg -> PackageIdentifier
+  packageId :: pkg -> PackageIdentifier
 
-mungedName'    :: HasMungedPackageId pkg => pkg -> MungedPackageName
-mungedName'     = mungedName    . mungedId
+mungedName' :: HasMungedPackageId pkg => pkg -> MungedPackageName
+mungedName' = mungedName . mungedId
 
 mungedVersion' :: HasMungedPackageId munged => munged -> Version
-mungedVersion'  = mungedVersion . mungedId
+mungedVersion' = mungedVersion . mungedId
 
 class HasMungedPackageId pkg where
   mungedId :: pkg -> MungedPackageId
@@ -73,11 +77,11 @@ class HasMungedPackageId pkg where
 instance Package PackageIdentifier where
   packageId = id
 
-packageName    :: Package pkg => pkg -> PackageName
-packageName     = pkgName    . packageId
+packageName :: Package pkg => pkg -> PackageName
+packageName = pkgName . packageId
 
 packageVersion :: Package pkg => pkg -> Version
-packageVersion  = pkgVersion . packageId
+packageVersion = pkgVersion . packageId
 
 instance HasMungedPackageId MungedPackageId where
   mungedId = id
@@ -92,5 +96,5 @@ class Package pkg => HasUnitId pkg where
 -- 'InstalledPackageInfo', but when we are doing install plans in Cabal install
 -- we may have other, installed package-like things which contain more metadata.
 -- Installed packages have exact dependencies 'installedDepends'.
-class (HasUnitId pkg) => PackageInstalled pkg where
+class HasUnitId pkg => PackageInstalled pkg where
   installedDepends :: pkg -> [UnitId]

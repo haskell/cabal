@@ -1,67 +1,66 @@
 {-# LANGUAGE LambdaCase #-}
+
 module Distribution.Client.Init.FlagExtractors
-( -- * Flag extractors
-  getPackageDir
-, getSimpleProject
-, getMinimal
-, getCabalVersion
-, getCabalVersionNoPrompt
-, getPackageName
-, getVersion
-, getLicense
-, getAuthor
-, getEmail
-, getHomepage
-, getSynopsis
-, getCategory
-, getExtraSrcFiles
-, getExtraDocFiles
-, getPackageType
-, getMainFile
-, getInitializeTestSuite
-, getTestDirs
-, getLanguage
-, getNoComments
-, getAppDirs
-, getSrcDirs
-, getExposedModules
-, getBuildTools
-, getDependencies
-, getOtherExts
-, getOverwrite
-, getOtherModules
-  -- * Shared prompts
-, simpleProjectPrompt
-, initializeTestSuitePrompt
-, packageTypePrompt
-, testMainPrompt
-, dependenciesPrompt
-) where
+  ( -- * Flag extractors
+    getPackageDir
+  , getSimpleProject
+  , getMinimal
+  , getCabalVersion
+  , getCabalVersionNoPrompt
+  , getPackageName
+  , getVersion
+  , getLicense
+  , getAuthor
+  , getEmail
+  , getHomepage
+  , getSynopsis
+  , getCategory
+  , getExtraSrcFiles
+  , getExtraDocFiles
+  , getPackageType
+  , getMainFile
+  , getInitializeTestSuite
+  , getTestDirs
+  , getLanguage
+  , getNoComments
+  , getAppDirs
+  , getSrcDirs
+  , getExposedModules
+  , getBuildTools
+  , getDependencies
+  , getOtherExts
+  , getOverwrite
+  , getOtherModules
 
+    -- * Shared prompts
+  , simpleProjectPrompt
+  , initializeTestSuitePrompt
+  , packageTypePrompt
+  , testMainPrompt
+  , dependenciesPrompt
+  ) where
 
+import Distribution.Client.Compat.Prelude hiding (getLine, last, putStr, putStrLn)
 import Prelude ()
-import Distribution.Client.Compat.Prelude hiding (putStr, putStrLn, getLine, last)
 
 import qualified Data.List.NonEmpty as NEL
 
-import Distribution.CabalSpecVersion (CabalSpecVersion(..))
-import Distribution.Version (Version)
-import Distribution.ModuleName (ModuleName)
-import Distribution.Types.Dependency (Dependency(..))
-import Distribution.Types.PackageName (PackageName)
+import Distribution.CabalSpecVersion (CabalSpecVersion (..))
 import Distribution.Client.Init.Defaults
-import Distribution.FieldGrammar.Newtypes (SpecLicense)
 import Distribution.Client.Init.Types
-import Distribution.Simple.Setup (Flag(..), fromFlagOrDefault, flagToMaybe)
+import Distribution.FieldGrammar.Newtypes (SpecLicense)
+import Distribution.ModuleName (ModuleName)
 import Distribution.Simple.Flag (flagElim)
+import Distribution.Simple.Setup (Flag (..), flagToMaybe, fromFlagOrDefault)
+import Distribution.Types.Dependency (Dependency (..))
+import Distribution.Types.PackageName (PackageName)
+import Distribution.Version (Version)
 
-import Language.Haskell.Extension (Language(..), Extension(..))
-import Distribution.Client.Init.Prompt
 import qualified Data.Set as Set
-import Distribution.Simple.PackageIndex
+import Distribution.Client.Init.Prompt
 import Distribution.Client.Init.Utils
-
-
+import Distribution.Simple.PackageIndex
+import Language.Haskell.Extension (Extension (..), Language (..))
 
 -- -------------------------------------------------------------------- --
 -- Flag extraction
@@ -135,25 +134,28 @@ getExtraSrcFiles = pure . flagElim mempty Set.fromList . extraSrc
 
 -- | Try to guess extra source files (don't prompt the user).
 getExtraDocFiles :: Interactive m => InitFlags -> m (Maybe (Set String))
-getExtraDocFiles = pure
-  . Just
-  . flagElim (Set.singleton defaultChangelog) Set.fromList
-  . extraDoc
+getExtraDocFiles =
+  pure
+    . Just
+    . flagElim (Set.singleton defaultChangelog) Set.fromList
+    . extraDoc
 
 -- | Ask whether the project builds a library or executable.
 getPackageType :: Interactive m => InitFlags -> m PackageType -> m PackageType
-getPackageType InitFlags
-  { initializeTestSuite = Flag True
-  , packageType         = NoFlag
-  } _ = return TestSuite
+getPackageType
+  InitFlags
+    { initializeTestSuite = Flag True
+    , packageType = NoFlag
+    }
+  _ = return TestSuite
 getPackageType flags act = fromFlagOrPrompt (packageType flags) act
 
 getMainFile :: Interactive m => InitFlags -> m HsFilePath -> m HsFilePath
 getMainFile flags act = case mainIs flags of
-    Flag a
-      | isHsFilePath a -> return $ toHsFilePath a
-      | otherwise -> act
-    NoFlag -> act
+  Flag a
+    | isHsFilePath a -> return $ toHsFilePath a
+    | otherwise -> act
+  NoFlag -> act
 
 getInitializeTestSuite :: Interactive m => InitFlags -> m Bool -> m Bool
 getInitializeTestSuite flags = fromFlagOrPrompt (initializeTestSuite flags)
@@ -179,7 +181,8 @@ getSrcDirs flags = fromFlagOrPrompt (sourceDirs flags)
 
 -- | Retrieve the list of exposed modules
 getExposedModules :: Interactive m => InitFlags -> m (NonEmpty ModuleName)
-getExposedModules = return
+getExposedModules =
+  return
     . fromMaybe (myLibModule NEL.:| [])
     . join
     . flagToMaybe
@@ -204,46 +207,48 @@ getBuildTools = flagElim (return []) (foldM go []) . buildTools
 
 -- | Retrieve the list of dependencies
 getDependencies
-    :: Interactive m
-    => InitFlags
-    -> m [Dependency]
-    -> m [Dependency]
+  :: Interactive m
+  => InitFlags
+  -> m [Dependency]
+  -> m [Dependency]
 getDependencies flags = fromFlagOrPrompt (dependencies flags)
-
 
 -- | Retrieve the list of extensions
 getOtherExts :: Interactive m => InitFlags -> m [Extension]
-getOtherExts = return . fromFlagOrDefault [] .  otherExts
+getOtherExts = return . fromFlagOrDefault [] . otherExts
 
 -- | Tell whether to overwrite files on write
---
 getOverwrite :: Interactive m => InitFlags -> m Bool
-getOverwrite = return . fromFlagOrDefault False .  overwrite
+getOverwrite = return . fromFlagOrDefault False . overwrite
 
 -- -------------------------------------------------------------------- --
 -- Shared prompts
 
 simpleProjectPrompt :: Interactive m => InitFlags -> m Bool
-simpleProjectPrompt flags = getSimpleProject flags $
+simpleProjectPrompt flags =
+  getSimpleProject flags $
     promptYesNo
       "Should I generate a simple project with sensible defaults"
       (DefaultPrompt True)
 
 initializeTestSuitePrompt :: Interactive m => InitFlags -> m Bool
-initializeTestSuitePrompt flags = getInitializeTestSuite flags $
+initializeTestSuitePrompt flags =
+  getInitializeTestSuite flags $
     promptYesNo
       "Should I generate a test suite for the library"
       (DefaultPrompt True)
 
 packageTypePrompt :: Interactive m => InitFlags -> m PackageType
 packageTypePrompt flags = getPackageType flags $ do
-    pt <- promptList "What does the package build"
+  pt <-
+    promptList
+      "What does the package build"
       packageTypes
       (DefaultPrompt "Executable")
       Nothing
       False
 
-    return $ fromMaybe Executable (parsePackageType pt)
+  return $ fromMaybe Executable (parsePackageType pt)
   where
     packageTypes =
       [ "Library"
@@ -261,31 +266,34 @@ packageTypePrompt flags = getPackageType flags $ do
 
 testMainPrompt :: Interactive m => m HsFilePath
 testMainPrompt = do
-    fp <- promptList "What is the main module of the test suite?"
+  fp <-
+    promptList
+      "What is the main module of the test suite?"
       [defaultMainIs', "Main.lhs"]
       (DefaultPrompt defaultMainIs')
       Nothing
       True
 
-    let hs = toHsFilePath fp
+  let hs = toHsFilePath fp
 
-    case _hsFileType hs of
-      InvalidHsPath -> do
-        putStrLn $ concat
+  case _hsFileType hs of
+    InvalidHsPath -> do
+      putStrLn $
+        concat
           [ "Main file "
           , show hs
           , " is not a valid haskell file. Source files must end in .hs or .lhs."
           ]
-        testMainPrompt
-      _ -> return hs
+      testMainPrompt
+    _ -> return hs
   where
     defaultMainIs' = show defaultMainIs
 
 dependenciesPrompt
-    :: Interactive m
-    => InstalledPackageIndex
-    -> InitFlags
-    -> m [Dependency]
+  :: Interactive m
+  => InstalledPackageIndex
+  -> InitFlags
+  -> m [Dependency]
 dependenciesPrompt pkgIx flags = getDependencies flags (getBaseDep pkgIx flags)
 
 -- -------------------------------------------------------------------- --
@@ -293,10 +301,9 @@ dependenciesPrompt pkgIx flags = getDependencies flags (getBaseDep pkgIx flags)
 
 -- | If a flag is defined, return its value or else execute
 -- an interactive action.
---
 fromFlagOrPrompt
-    :: Interactive m
-    => Flag a
-    -> m a
-    -> m a
+  :: Interactive m
+  => Flag a
+  -> m a
+  -> m a
 fromFlagOrPrompt flag action = flagElim action return flag

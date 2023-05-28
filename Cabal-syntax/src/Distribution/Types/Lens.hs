@@ -1,16 +1,16 @@
-module Distribution.Types.Lens (
-    module Distribution.Types.Benchmark.Lens,
-    module Distribution.Types.BuildInfo.Lens,
-    module Distribution.Types.Executable.Lens,
-    module Distribution.Types.ForeignLib.Lens,
-    module Distribution.Types.GenericPackageDescription.Lens,
-    module Distribution.Types.Library.Lens,
-    module Distribution.Types.PackageDescription.Lens,
-    module Distribution.Types.PackageId.Lens,
-    module Distribution.Types.SetupBuildInfo.Lens,
-    module Distribution.Types.SourceRepo.Lens,
-    module Distribution.Types.TestSuite.Lens,
-    ) where
+module Distribution.Types.Lens
+  ( module Distribution.Types.Benchmark.Lens
+  , module Distribution.Types.BuildInfo.Lens
+  , module Distribution.Types.Executable.Lens
+  , module Distribution.Types.ForeignLib.Lens
+  , module Distribution.Types.GenericPackageDescription.Lens
+  , module Distribution.Types.Library.Lens
+  , module Distribution.Types.PackageDescription.Lens
+  , module Distribution.Types.PackageId.Lens
+  , module Distribution.Types.SetupBuildInfo.Lens
+  , module Distribution.Types.SourceRepo.Lens
+  , module Distribution.Types.TestSuite.Lens
+  ) where
 
 import Distribution.Types.Benchmark.Lens
 import Distribution.Types.BuildInfo.Lens

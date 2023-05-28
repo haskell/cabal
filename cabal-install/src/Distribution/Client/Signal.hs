@@ -1,7 +1,8 @@
 {-# LANGUAGE CPP #-}
+
 module Distribution.Client.Signal
   ( installTerminationHandler
-  , Terminated(..)
+  , Terminated (..)
   )
 where
 
@@ -30,7 +31,6 @@ instance Show Terminated where
 -- called from the main thread.
 --
 -- It is a noop on Windows.
---
 installTerminationHandler :: IO ()
 
 #ifdef mingw32_HOST_OS

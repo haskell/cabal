@@ -1,20 +1,18 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
-module Distribution.Types.ComponentRequestedSpec (
-    -- $buildable_vs_enabled_components
 
-    ComponentRequestedSpec(..),
-    ComponentDisabledReason(..),
+module Distribution.Types.ComponentRequestedSpec
+  ( -- $buildable_vs_enabled_components
+    ComponentRequestedSpec (..)
+  , ComponentDisabledReason (..)
+  , defaultComponentRequestedSpec
+  , componentNameRequested
+  , componentEnabled
+  , componentDisabledReason
+  ) where
 
-    defaultComponentRequestedSpec,
-    componentNameRequested,
-
-    componentEnabled,
-    componentDisabledReason,
-) where
-
-import Prelude ()
 import Distribution.Compat.Prelude
+import Prelude ()
 
 import Distribution.Types.Component -- TODO: maybe remove me?
 import Distribution.Types.ComponentName
@@ -64,9 +62,11 @@ import Distribution.Pretty (prettyShow)
 --
 -- @since 2.0.0.2
 data ComponentRequestedSpec
-    = ComponentRequestedSpec { testsRequested      :: Bool
-                             , benchmarksRequested :: Bool }
-    | OneComponentRequestedSpec ComponentName
+  = ComponentRequestedSpec
+      { testsRequested :: Bool
+      , benchmarksRequested :: Bool
+      }
+  | OneComponentRequestedSpec ComponentName
   deriving (Generic, Read, Show, Eq, Typeable)
 
 instance Binary ComponentRequestedSpec
@@ -96,32 +96,39 @@ componentNameRequested enabled = isNothing . componentNameNotRequestedReason ena
 -- | Is this component disabled, and if so, why?
 --
 -- @since 2.0.0.2
-componentDisabledReason :: ComponentRequestedSpec -> Component
-                        -> Maybe ComponentDisabledReason
+componentDisabledReason
+  :: ComponentRequestedSpec
+  -> Component
+  -> Maybe ComponentDisabledReason
 componentDisabledReason enabled comp
-    | not (componentBuildable comp) = Just DisabledComponent
-    | otherwise = componentNameNotRequestedReason enabled (componentName comp)
+  | not (componentBuildable comp) = Just DisabledComponent
+  | otherwise = componentNameNotRequestedReason enabled (componentName comp)
 
 -- | Is this component name disabled, and if so, why?
 --
 -- @since 2.0.0.2
-componentNameNotRequestedReason :: ComponentRequestedSpec -> ComponentName
-                            -> Maybe ComponentDisabledReason
 componentNameNotRequestedReason
-    ComponentRequestedSpec{ testsRequested      = False } (CTestName _)
-    = Just DisabledAllTests
+  :: ComponentRequestedSpec
+  -> ComponentName
+  -> Maybe ComponentDisabledReason
 componentNameNotRequestedReason
-    ComponentRequestedSpec{ benchmarksRequested = False } (CBenchName _)
-    = Just DisabledAllBenchmarks
+  ComponentRequestedSpec{testsRequested = False}
+  (CTestName _) =
+    Just DisabledAllTests
+componentNameNotRequestedReason
+  ComponentRequestedSpec{benchmarksRequested = False}
+  (CBenchName _) =
+    Just DisabledAllBenchmarks
 componentNameNotRequestedReason ComponentRequestedSpec{} _ = Nothing
 componentNameNotRequestedReason (OneComponentRequestedSpec cname) c
-    | c == cname = Nothing
-    | otherwise = Just (DisabledAllButOne (prettyShow cname))
+  | c == cname = Nothing
+  | otherwise = Just (DisabledAllButOne (prettyShow cname))
 
 -- | A reason explaining why a component is disabled.
 --
 -- @since 2.0.0.2
-data ComponentDisabledReason = DisabledComponent
-                             | DisabledAllTests
-                             | DisabledAllBenchmarks
-                             | DisabledAllButOne String
+data ComponentDisabledReason
+  = DisabledComponent
+  | DisabledAllTests
+  | DisabledAllBenchmarks
+  | DisabledAllButOne String

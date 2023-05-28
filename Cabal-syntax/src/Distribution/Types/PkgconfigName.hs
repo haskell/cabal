@@ -1,16 +1,19 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+
 module Distribution.Types.PkgconfigName
-  ( PkgconfigName, unPkgconfigName, mkPkgconfigName
+  ( PkgconfigName
+  , unPkgconfigName
+  , mkPkgconfigName
   ) where
 
-import Prelude ()
 import Distribution.Compat.Prelude
 import Distribution.Utils.ShortText
+import Prelude ()
 
-import Distribution.Pretty
 import Distribution.Parsec
+import Distribution.Pretty
 
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
@@ -21,7 +24,7 @@ import qualified Text.PrettyPrint as Disp
 --
 -- @since 2.0.0.2
 newtype PkgconfigName = PkgconfigName ShortText
-    deriving (Generic, Read, Show, Eq, Ord, Typeable, Data)
+  deriving (Generic, Read, Show, Eq, Ord, Typeable, Data)
 
 -- | Convert 'PkgconfigName' to 'String'
 --
@@ -44,7 +47,7 @@ mkPkgconfigName = PkgconfigName . toShortText
 --
 -- @since 2.0.0.2
 instance IsString PkgconfigName where
-    fromString = mkPkgconfigName
+  fromString = mkPkgconfigName
 
 instance Binary PkgconfigName
 instance Structured PkgconfigName
@@ -56,13 +59,14 @@ instance Pretty PkgconfigName where
   pretty = Disp.text . unPkgconfigName
 
 instance Parsec PkgconfigName where
-    parsec = mkPkgconfigName <$> P.munch1 isNameChar where
-        -- https://gitlab.haskell.org/ghc/ghc/issues/17752
-        isNameChar '-' = True
-        isNameChar '_' = True
-        isNameChar '.' = True
-        isNameChar '+' = True
-        isNameChar c   = isAlphaNum c
+  parsec = mkPkgconfigName <$> P.munch1 isNameChar
+    where
+      -- https://gitlab.haskell.org/ghc/ghc/issues/17752
+      isNameChar '-' = True
+      isNameChar '_' = True
+      isNameChar '.' = True
+      isNameChar '+' = True
+      isNameChar c = isAlphaNum c
 
 instance NFData PkgconfigName where
-    rnf (PkgconfigName pkg) = rnf pkg
+  rnf (PkgconfigName pkg) = rnf pkg

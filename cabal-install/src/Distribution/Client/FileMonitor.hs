@@ -1,106 +1,111 @@
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE DeriveGeneric, DeriveFunctor, GeneralizedNewtypeDeriving,
-             NamedFieldPuns, BangPatterns, ScopedTypeVariables #-}
-{-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- | An abstraction to help with re-running actions when files or other
 -- input values they depend on have changed.
---
-module Distribution.Client.FileMonitor (
+module Distribution.Client.FileMonitor
+  ( -- * Declaring files to monitor
+    MonitorFilePath (..)
+  , MonitorKindFile (..)
+  , MonitorKindDir (..)
+  , FilePathGlob (..)
+  , monitorFile
+  , monitorFileHashed
+  , monitorNonExistentFile
+  , monitorFileExistence
+  , monitorDirectory
+  , monitorNonExistentDirectory
+  , monitorDirectoryExistence
+  , monitorFileOrDirectory
+  , monitorFileGlob
+  , monitorFileGlobExistence
+  , monitorFileSearchPath
+  , monitorFileHashedSearchPath
 
-  -- * Declaring files to monitor
-  MonitorFilePath(..),
-  MonitorKindFile(..),
-  MonitorKindDir(..),
-  FilePathGlob(..),
-  monitorFile,
-  monitorFileHashed,
-  monitorNonExistentFile,
-  monitorFileExistence,
-  monitorDirectory,
-  monitorNonExistentDirectory,
-  monitorDirectoryExistence,
-  monitorFileOrDirectory,
-  monitorFileGlob,
-  monitorFileGlobExistence,
-  monitorFileSearchPath,
-  monitorFileHashedSearchPath,
+    -- * Creating and checking sets of monitored files
+  , FileMonitor (..)
+  , newFileMonitor
+  , MonitorChanged (..)
+  , MonitorChangedReason (..)
+  , checkFileMonitorChanged
+  , updateFileMonitor
+  , MonitorTimestamp
+  , beginUpdateFileMonitor
 
-  -- * Creating and checking sets of monitored files
-  FileMonitor(..),
-  newFileMonitor,
-  MonitorChanged(..),
-  MonitorChangedReason(..),
-  checkFileMonitorChanged,
-  updateFileMonitor,
-  MonitorTimestamp,
-  beginUpdateFileMonitor,
-
-  -- * Internal
-  MonitorStateFileSet,
-  MonitorStateFile,
-  MonitorStateGlob,
+    -- * Internal
+  , MonitorStateFileSet
+  , MonitorStateFile
+  , MonitorStateGlob
   ) where
 
-import Prelude ()
 import Distribution.Client.Compat.Prelude
 import qualified Distribution.Compat.Binary as Binary
+import Prelude ()
 
-import qualified Data.Map.Strict as Map
 import Data.Binary.Get (runGetOrFail)
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.Hashable as Hashable
+import qualified Data.Map.Strict as Map
 
-import           Control.Monad
-import           Control.Monad.Trans (MonadIO, liftIO)
-import           Control.Monad.State (StateT, mapStateT)
+import Control.Exception
+import Control.Monad
+import Control.Monad.Except
+  ( ExceptT
+  , runExceptT
+  , throwError
+  , withExceptT
+  )
+import Control.Monad.State (StateT, mapStateT)
 import qualified Control.Monad.State as State
-import           Control.Monad.Except (ExceptT, runExceptT, withExceptT,
-                                       throwError)
-import           Control.Exception
+import Control.Monad.Trans (MonadIO, liftIO)
 
-import           Distribution.Compat.Time
-import           Distribution.Client.Glob
-import           Distribution.Simple.Utils (handleDoesNotExist, writeFileAtomic)
-import           Distribution.Client.Utils (mergeBy, MergeResult(..))
-import           Distribution.Utils.Structured (structuredEncode, Tag (..))
-import           System.FilePath
-import           System.Directory
-import           System.IO
+import Distribution.Client.Glob
+import Distribution.Client.Utils (MergeResult (..), mergeBy)
+import Distribution.Compat.Time
+import Distribution.Simple.Utils (handleDoesNotExist, writeFileAtomic)
+import Distribution.Utils.Structured (Tag (..), structuredEncode)
+import System.Directory
+import System.FilePath
+import System.IO
 
 ------------------------------------------------------------------------------
 -- Types for specifying files to monitor
 --
 
-
 -- | A description of a file (or set of files) to monitor for changes.
 --
 -- Where file paths are relative they are relative to a common directory
 -- (e.g. project root), not necessarily the process current directory.
---
-data MonitorFilePath =
-     MonitorFile {
-       monitorKindFile :: !MonitorKindFile,
-       monitorKindDir  :: !MonitorKindDir,
-       monitorPath     :: !FilePath
-     }
-   | MonitorFileGlob {
-       monitorKindFile :: !MonitorKindFile,
-       monitorKindDir  :: !MonitorKindDir,
-       monitorPathGlob :: !FilePathGlob
-     }
+data MonitorFilePath
+  = MonitorFile
+      { monitorKindFile :: !MonitorKindFile
+      , monitorKindDir :: !MonitorKindDir
+      , monitorPath :: !FilePath
+      }
+  | MonitorFileGlob
+      { monitorKindFile :: !MonitorKindFile
+      , monitorKindDir :: !MonitorKindDir
+      , monitorPathGlob :: !FilePathGlob
+      }
   deriving (Eq, Show, Generic)
 
-data MonitorKindFile = FileExists
-                     | FileModTime
-                     | FileHashed
-                     | FileNotExists
+data MonitorKindFile
+  = FileExists
+  | FileModTime
+  | FileHashed
+  | FileNotExists
   deriving (Eq, Show, Generic)
 
-data MonitorKindDir  = DirExists
-                     | DirModTime
-                     | DirNotExists
+data MonitorKindDir
+  = DirExists
+  | DirModTime
+  | DirNotExists
   deriving (Eq, Show, Generic)
 
 instance Binary MonitorFilePath
@@ -114,7 +119,6 @@ instance Structured MonitorKindDir
 -- | Monitor a single file for changes, based on its modification time.
 -- The monitored file is considered to have changed if it no longer
 -- exists or if its modification time has changed.
---
 monitorFile :: FilePath -> MonitorFilePath
 monitorFile = MonitorFile FileModTime DirNotExists
 
@@ -122,32 +126,27 @@ monitorFile = MonitorFile FileModTime DirNotExists
 -- and content hash. The monitored file is considered to have changed if
 -- it no longer exists or if its modification time and content hash have
 -- changed.
---
 monitorFileHashed :: FilePath -> MonitorFilePath
 monitorFileHashed = MonitorFile FileHashed DirNotExists
 
 -- | Monitor a single non-existent file for changes. The monitored file
 -- is considered to have changed if it exists.
---
 monitorNonExistentFile :: FilePath -> MonitorFilePath
 monitorNonExistentFile = MonitorFile FileNotExists DirNotExists
 
 -- | Monitor a single file for existence only. The monitored file is
 -- considered to have changed if it no longer exists.
---
 monitorFileExistence :: FilePath -> MonitorFilePath
 monitorFileExistence = MonitorFile FileExists DirNotExists
 
 -- | Monitor a single directory for changes, based on its modification
 -- time. The monitored directory is considered to have changed if it no
 -- longer exists or if its modification time has changed.
---
 monitorDirectory :: FilePath -> MonitorFilePath
 monitorDirectory = MonitorFile FileNotExists DirModTime
 
 -- | Monitor a single non-existent directory for changes.  The monitored
 -- directory is considered to have changed if it exists.
---
 monitorNonExistentDirectory :: FilePath -> MonitorFilePath
 -- Just an alias for monitorNonExistentFile, since you can't
 -- tell the difference between a non-existent directory and
@@ -156,14 +155,12 @@ monitorNonExistentDirectory = monitorNonExistentFile
 
 -- | Monitor a single directory for existence. The monitored directory is
 -- considered to have changed only if it no longer exists.
---
 monitorDirectoryExistence :: FilePath -> MonitorFilePath
 monitorDirectoryExistence = MonitorFile FileNotExists DirExists
 
 -- | Monitor a single file or directory for changes, based on its modification
 -- time. The monitored file is considered to have changed if it no longer
 -- exists or if its modification time has changed.
---
 monitorFileOrDirectory :: FilePath -> MonitorFilePath
 monitorFileOrDirectory = MonitorFile FileModTime DirModTime
 
@@ -171,14 +168,12 @@ monitorFileOrDirectory = MonitorFile FileModTime DirModTime
 -- The monitored glob is considered to have changed if the set of files
 -- matching the glob changes (i.e. creations or deletions), or for files if the
 -- modification time and content hash of any matching file has changed.
---
 monitorFileGlob :: FilePathGlob -> MonitorFilePath
 monitorFileGlob = MonitorFileGlob FileHashed DirExists
 
 -- | Monitor a set of files (or directories) identified by a file glob for
 -- existence only. The monitored glob is considered to have changed if the set
 -- of files matching the glob changes (i.e. creations or deletions).
---
 monitorFileGlobExistence :: FilePathGlob -> MonitorFilePath
 monitorFileGlobExistence = MonitorFileGlob FileExists DirExists
 
@@ -187,16 +182,15 @@ monitorFileGlobExistence = MonitorFileGlob FileExists DirExists
 -- @foundAtPath@.
 monitorFileSearchPath :: [FilePath] -> FilePath -> [MonitorFilePath]
 monitorFileSearchPath notFoundAtPaths foundAtPath =
-    monitorFile foundAtPath
-  : map monitorNonExistentFile notFoundAtPaths
+  monitorFile foundAtPath
+    : map monitorNonExistentFile notFoundAtPaths
 
 -- | Similar to 'monitorFileSearchPath', but also instructs us to
 -- monitor the hash of the found file.
 monitorFileHashedSearchPath :: [FilePath] -> FilePath -> [MonitorFilePath]
 monitorFileHashedSearchPath notFoundAtPaths foundAtPath =
-    monitorFileHashed foundAtPath
-  : map monitorNonExistentFile notFoundAtPaths
-
+  monitorFileHashed foundAtPath
+    : map monitorNonExistentFile notFoundAtPaths
 
 ------------------------------------------------------------------------------
 -- Implementation types, files status
@@ -207,13 +201,14 @@ monitorFileHashedSearchPath notFoundAtPaths foundAtPath =
 -- files to be monitored (index by their path), and a list of
 -- globs, which monitor may files at once.
 data MonitorStateFileSet
-   = MonitorStateFileSet ![MonitorStateFile]
-                         ![MonitorStateGlob]
-     -- Morally this is not actually a set but a bag (represented by lists).
-     -- There is no principled reason to use a bag here rather than a set, but
-     -- there is also no particular gain either. That said, we do preserve the
-     -- order of the lists just to reduce confusion (and have predictable I/O
-     -- patterns).
+  = MonitorStateFileSet
+      ![MonitorStateFile]
+      ![MonitorStateGlob]
+  -- Morally this is not actually a set but a bag (represented by lists).
+  -- There is no principled reason to use a bag here rather than a set, but
+  -- there is also no particular gain either. That said, we do preserve the
+  -- order of the lists just to reduce confusion (and have predictable I/O
+  -- patterns).
   deriving (Show, Generic)
 
 instance Binary MonitorStateFileSet
@@ -230,19 +225,25 @@ type Hash = Int
 -- file to have changed, either because it had already changed by the time we
 -- did the snapshot (i.e. too new, changed since start of update process) or it
 -- no longer exists at all.
---
-data MonitorStateFile = MonitorStateFile !MonitorKindFile !MonitorKindDir
-                                         !FilePath !MonitorStateFileStatus
+data MonitorStateFile
+  = MonitorStateFile
+      !MonitorKindFile
+      !MonitorKindDir
+      !FilePath
+      !MonitorStateFileStatus
   deriving (Show, Generic)
 
 data MonitorStateFileStatus
-   = MonitorStateFileExists
-   | MonitorStateFileModTime !ModTime        -- ^ cached file mtime
-   | MonitorStateFileHashed  !ModTime !Hash  -- ^ cached mtime and content hash
-   | MonitorStateDirExists
-   | MonitorStateDirModTime  !ModTime        -- ^ cached dir mtime
-   | MonitorStateNonExistent
-   | MonitorStateAlreadyChanged
+  = MonitorStateFileExists
+  | -- | cached file mtime
+    MonitorStateFileModTime !ModTime
+  | -- | cached mtime and content hash
+    MonitorStateFileHashed !ModTime !Hash
+  | MonitorStateDirExists
+  | -- | cached dir mtime
+    MonitorStateDirModTime !ModTime
+  | MonitorStateNonExistent
+  | MonitorStateAlreadyChanged
   deriving (Show, Generic)
 
 instance Binary MonitorStateFile
@@ -252,23 +253,25 @@ instance Structured MonitorStateFileStatus
 
 -- | The state necessary to determine whether the files matched by a globbing
 -- match have changed.
---
-data MonitorStateGlob = MonitorStateGlob !MonitorKindFile !MonitorKindDir
-                                         !FilePathRoot !MonitorStateGlobRel
+data MonitorStateGlob
+  = MonitorStateGlob
+      !MonitorKindFile
+      !MonitorKindDir
+      !FilePathRoot
+      !MonitorStateGlobRel
   deriving (Show, Generic)
 
 data MonitorStateGlobRel
-   = MonitorStateGlobDirs
-       !Glob !FilePathGlobRel
-       !ModTime
-       ![(FilePath, MonitorStateGlobRel)] -- invariant: sorted
-
-   | MonitorStateGlobFiles
-       !Glob
-       !ModTime
-       ![(FilePath, MonitorStateFileStatus)] -- invariant: sorted
-
-   | MonitorStateGlobDirTrailing
+  = MonitorStateGlobDirs
+      !Glob
+      !FilePathGlobRel
+      !ModTime
+      ![(FilePath, MonitorStateGlobRel)] -- invariant: sorted
+  | MonitorStateGlobFiles
+      !Glob
+      !ModTime
+      ![(FilePath, MonitorStateFileStatus)] -- invariant: sorted
+  | MonitorStateGlobDirTrailing
   deriving (Show, Generic)
 
 instance Binary MonitorStateGlob
@@ -280,7 +283,6 @@ instance Structured MonitorStateGlobRel
 -- | We can build a 'MonitorStateFileSet' from a set of 'MonitorFilePath' by
 -- inspecting the state of the file system, and we can go in the reverse
 -- direction by just forgetting the extra info.
---
 reconstructMonitorFilePaths :: MonitorStateFileSet -> [MonitorFilePath]
 reconstructMonitorFilePaths (MonitorStateFileSet singlePaths globPaths) =
   map getSinglePath singlePaths ++ map getGlobPath globPaths
@@ -291,11 +293,12 @@ reconstructMonitorFilePaths (MonitorStateFileSet singlePaths globPaths) =
 
     getGlobPath :: MonitorStateGlob -> MonitorFilePath
     getGlobPath (MonitorStateGlob kindfile kinddir root gstate) =
-      MonitorFileGlob kindfile kinddir $ FilePathGlob root $
-        case gstate of
-          MonitorStateGlobDirs  glob globs _ _ -> GlobDir  glob globs
-          MonitorStateGlobFiles glob       _ _ -> GlobFile glob
-          MonitorStateGlobDirTrailing          -> GlobDirTrailing
+      MonitorFileGlob kindfile kinddir $
+        FilePathGlob root $
+          case gstate of
+            MonitorStateGlobDirs glob globs _ _ -> GlobDir glob globs
+            MonitorStateGlobFiles glob _ _ -> GlobFile glob
+            MonitorStateGlobDirTrailing -> GlobDirTrailing
 
 ------------------------------------------------------------------------------
 -- Checking the status of monitored files
@@ -327,31 +330,23 @@ reconstructMonitorFilePaths (MonitorStateFileSet singlePaths globPaths) =
 -- The typical occurrence of this pattern is captured by 'rerunIfChanged'
 -- and the 'Rebuild' monad. More complicated cases may need to use
 -- 'checkFileMonitorChanged' and 'updateFileMonitor' directly.
---
-data FileMonitor a b
-   = FileMonitor {
-
-       -- | The file where this 'FileMonitor' should store its state.
-       --
-       fileMonitorCacheFile :: FilePath,
-
-       -- | Compares a new cache key with old one to determine if a
-       -- corresponding cached value is still valid.
-       --
-       -- Typically this is just an equality test, but in some
-       -- circumstances it can make sense to do things like subset
-       -- comparisons.
-       --
-       -- The first arg is the new value, the second is the old cached value.
-       --
-       fileMonitorKeyValid :: a -> a -> Bool,
-
-       -- | When this mode is enabled, if 'checkFileMonitorChanged' returns
-       -- 'MonitoredValueChanged' then we have the guarantee that no files
-       -- changed, that the value change was the only change. In the default
-       -- mode no such guarantee is provided which is slightly faster.
-       --
-       fileMonitorCheckIfOnlyValueChanged :: Bool
+data FileMonitor a b = FileMonitor
+  { fileMonitorCacheFile :: FilePath
+  -- ^ The file where this 'FileMonitor' should store its state.
+  , fileMonitorKeyValid :: a -> a -> Bool
+  -- ^ Compares a new cache key with old one to determine if a
+  -- corresponding cached value is still valid.
+  --
+  -- Typically this is just an equality test, but in some
+  -- circumstances it can make sense to do things like subset
+  -- comparisons.
+  --
+  -- The first arg is the new value, the second is the old cached value.
+  , fileMonitorCheckIfOnlyValueChanged :: Bool
+  -- ^ When this mode is enabled, if 'checkFileMonitorChanged' returns
+  -- 'MonitoredValueChanged' then we have the guarantee that no files
+  -- changed, that the value change was the only change. In the default
+  -- mode no such guarantee is provided which is slightly faster.
   }
 
 -- | Define a new file monitor.
@@ -362,145 +357,141 @@ data FileMonitor a b
 --
 -- The path of the file monitor itself must be unique because it keeps state
 -- on disk and these would clash.
---
-newFileMonitor :: Eq a => FilePath -- ^ The file to cache the state of the
-                                   -- file monitor. Must be unique.
-                       -> FileMonitor a b
+newFileMonitor
+  :: Eq a
+  => FilePath
+  -- ^ The file to cache the state of the
+  -- file monitor. Must be unique.
+  -> FileMonitor a b
 newFileMonitor path = FileMonitor path (==) False
 
 -- | The result of 'checkFileMonitorChanged': either the monitored files or
 -- value changed (and it tells us which it was) or nothing changed and we get
 -- the cached result.
---
-data MonitorChanged a b =
-     -- | The monitored files and value did not change. The cached result is
-     -- @b@.
-     --
-     -- The set of monitored files is also returned. This is useful
-     -- for composing or nesting 'FileMonitor's.
-     MonitorUnchanged b [MonitorFilePath]
-
-     -- | The monitor found that something changed. The reason is given.
-     --
-   | MonitorChanged (MonitorChangedReason a)
-  deriving Show
+data MonitorChanged a b
+  = -- | The monitored files and value did not change. The cached result is
+    -- @b@.
+    --
+    -- The set of monitored files is also returned. This is useful
+    -- for composing or nesting 'FileMonitor's.
+    MonitorUnchanged b [MonitorFilePath]
+  | -- | The monitor found that something changed. The reason is given.
+    MonitorChanged (MonitorChangedReason a)
+  deriving (Show)
 
 -- | What kind of change 'checkFileMonitorChanged' detected.
---
-data MonitorChangedReason a =
-
-     -- | One of the files changed (existence, file type, mtime or file
-     -- content, depending on the 'MonitorFilePath' in question)
-     MonitoredFileChanged FilePath
-
-     -- | The pure input value changed.
-     --
-     -- The previous cached key value is also returned. This is sometimes
-     -- useful when using a 'fileMonitorKeyValid' function that is not simply
-     -- '(==)', when invalidation can be partial. In such cases it can make
-     -- sense to 'updateFileMonitor' with a key value that's a combination of
-     -- the new and old (e.g. set union).
-   | MonitoredValueChanged a
-
-     -- | There was no saved monitor state, cached value etc. Ie the file
-     -- for the 'FileMonitor' does not exist.
-   | MonitorFirstRun
-
-     -- | There was existing state, but we could not read it. This typically
-     -- happens when the code has changed compared to an existing 'FileMonitor'
-     -- cache file and type of the input value or cached value has changed such
-     -- that we cannot decode the values. This is completely benign as we can
-     -- treat is just as if there were no cache file and re-run.
-   | MonitorCorruptCache
+data MonitorChangedReason a
+  = -- | One of the files changed (existence, file type, mtime or file
+    -- content, depending on the 'MonitorFilePath' in question)
+    MonitoredFileChanged FilePath
+  | -- | The pure input value changed.
+    --
+    -- The previous cached key value is also returned. This is sometimes
+    -- useful when using a 'fileMonitorKeyValid' function that is not simply
+    -- '(==)', when invalidation can be partial. In such cases it can make
+    -- sense to 'updateFileMonitor' with a key value that's a combination of
+    -- the new and old (e.g. set union).
+    MonitoredValueChanged a
+  | -- | There was no saved monitor state, cached value etc. Ie the file
+    -- for the 'FileMonitor' does not exist.
+    MonitorFirstRun
+  | -- | There was existing state, but we could not read it. This typically
+    -- happens when the code has changed compared to an existing 'FileMonitor'
+    -- cache file and type of the input value or cached value has changed such
+    -- that we cannot decode the values. This is completely benign as we can
+    -- treat is just as if there were no cache file and re-run.
+    MonitorCorruptCache
   deriving (Eq, Show, Functor)
 
 -- | Test if the input value or files monitored by the 'FileMonitor' have
 -- changed. If not, return the cached value.
 --
 -- See 'FileMonitor' for a full explanation.
---
 checkFileMonitorChanged
-  :: forall a b. (Binary a, Structured a, Binary b, Structured b)
-  => FileMonitor a b            -- ^ cache file path
-  -> FilePath                   -- ^ root directory
-  -> a                          -- ^ guard or key value
-  -> IO (MonitorChanged a b)    -- ^ did the key or any paths change?
+  :: forall a b
+   . (Binary a, Structured a, Binary b, Structured b)
+  => FileMonitor a b
+  -- ^ cache file path
+  -> FilePath
+  -- ^ root directory
+  -> a
+  -- ^ guard or key value
+  -> IO (MonitorChanged a b)
+  -- ^ did the key or any paths change?
 checkFileMonitorChanged
-    monitor@FileMonitor { fileMonitorKeyValid,
-                          fileMonitorCheckIfOnlyValueChanged }
-    root currentKey =
-
+  monitor@FileMonitor
+    { fileMonitorKeyValid
+    , fileMonitorCheckIfOnlyValueChanged
+    }
+  root
+  currentKey =
     -- Consider it a change if the cache file does not exist,
     -- or we cannot decode it. Sadly ErrorCall can still happen, despite
     -- using decodeFileOrFail, e.g. Data.Char.chr errors
 
     handleDoesNotExist (MonitorChanged MonitorFirstRun) $
-    handleErrorCall    (MonitorChanged MonitorCorruptCache) $
-    withCacheFile monitor $
-        either (\_ -> return (MonitorChanged MonitorCorruptCache))
-               checkStatusCache
-
-  where
-    checkStatusCache :: (MonitorStateFileSet, a, Either String b) -> IO (MonitorChanged a b)
-    checkStatusCache (cachedFileStatus, cachedKey, cachedResult) = do
+      handleErrorCall (MonitorChanged MonitorCorruptCache) $
+        withCacheFile monitor $
+          either
+            (\_ -> return (MonitorChanged MonitorCorruptCache))
+            checkStatusCache
+    where
+      checkStatusCache :: (MonitorStateFileSet, a, Either String b) -> IO (MonitorChanged a b)
+      checkStatusCache (cachedFileStatus, cachedKey, cachedResult) = do
         change <- checkForChanges
         case change of
           Just reason -> return (MonitorChanged reason)
-          Nothing     -> case cachedResult of
-                            Left _ -> pure (MonitorChanged MonitorCorruptCache)
-                            Right cr -> return (MonitorUnchanged cr monitorFiles)
-            where monitorFiles = reconstructMonitorFilePaths cachedFileStatus
-      where
-        -- In fileMonitorCheckIfOnlyValueChanged mode we want to guarantee that
-        -- if we return MonitoredValueChanged that only the value changed.
-        -- We do that by checking for file changes first. Otherwise it makes
-        -- more sense to do the cheaper test first.
-        checkForChanges :: IO (Maybe (MonitorChangedReason a))
-        checkForChanges
-          | fileMonitorCheckIfOnlyValueChanged
-          = checkFileChange cachedFileStatus cachedKey cachedResult
-              `mplusMaybeT`
-            checkValueChange cachedKey
+          Nothing -> case cachedResult of
+            Left _ -> pure (MonitorChanged MonitorCorruptCache)
+            Right cr -> return (MonitorUnchanged cr monitorFiles)
+            where
+              monitorFiles = reconstructMonitorFilePaths cachedFileStatus
+        where
+          -- In fileMonitorCheckIfOnlyValueChanged mode we want to guarantee that
+          -- if we return MonitoredValueChanged that only the value changed.
+          -- We do that by checking for file changes first. Otherwise it makes
+          -- more sense to do the cheaper test first.
+          checkForChanges :: IO (Maybe (MonitorChangedReason a))
+          checkForChanges
+            | fileMonitorCheckIfOnlyValueChanged =
+                checkFileChange cachedFileStatus cachedKey cachedResult
+                  `mplusMaybeT` checkValueChange cachedKey
+            | otherwise =
+                checkValueChange cachedKey
+                  `mplusMaybeT` checkFileChange cachedFileStatus cachedKey cachedResult
 
-          | otherwise
-          = checkValueChange cachedKey
-              `mplusMaybeT`
-            checkFileChange cachedFileStatus cachedKey cachedResult
+      mplusMaybeT :: Monad m => m (Maybe a1) -> m (Maybe a1) -> m (Maybe a1)
+      mplusMaybeT ma mb = do
+        mx <- ma
+        case mx of
+          Nothing -> mb
+          Just x -> return (Just x)
 
-    mplusMaybeT :: Monad m => m (Maybe a1) -> m (Maybe a1) -> m (Maybe a1)
-    mplusMaybeT ma mb = do
-      mx <- ma
-      case mx of
-        Nothing -> mb
-        Just x  -> return (Just x)
+      -- Check if the guard value has changed
+      checkValueChange :: a -> IO (Maybe (MonitorChangedReason a))
+      checkValueChange cachedKey
+        | not (fileMonitorKeyValid currentKey cachedKey) =
+            return (Just (MonitoredValueChanged cachedKey))
+        | otherwise =
+            return Nothing
 
-    -- Check if the guard value has changed
-    checkValueChange :: a -> IO (Maybe (MonitorChangedReason a))
-    checkValueChange cachedKey
-      | not (fileMonitorKeyValid currentKey cachedKey)
-      = return (Just (MonitoredValueChanged cachedKey))
-      | otherwise
-      = return Nothing
+      -- Check if any file has changed
+      checkFileChange :: MonitorStateFileSet -> a -> Either String b -> IO (Maybe (MonitorChangedReason a))
+      checkFileChange cachedFileStatus cachedKey cachedResult = do
+        res <- probeFileSystem root cachedFileStatus
+        case res of
+          -- Some monitored file has changed
+          Left changedPath ->
+            return (Just (MonitoredFileChanged (normalise changedPath)))
+          -- No monitored file has changed
+          Right (cachedFileStatus', cacheStatus) -> do
+            -- But we might still want to update the cache
+            whenCacheChanged cacheStatus $
+              case cachedResult of
+                Left _ -> pure ()
+                Right cr -> rewriteCacheFile monitor cachedFileStatus' cachedKey cr
 
-    -- Check if any file has changed
-    checkFileChange :: MonitorStateFileSet -> a -> Either String b -> IO (Maybe (MonitorChangedReason a))
-    checkFileChange cachedFileStatus cachedKey cachedResult = do
-      res <- probeFileSystem root cachedFileStatus
-      case res of
-        -- Some monitored file has changed
-        Left changedPath ->
-          return (Just (MonitoredFileChanged (normalise changedPath)))
-
-        -- No monitored file has changed
-        Right (cachedFileStatus', cacheStatus) -> do
-
-          -- But we might still want to update the cache
-          whenCacheChanged cacheStatus $
-            case cachedResult of
-              Left _ -> pure ()
-              Right cr -> rewriteCacheFile monitor cachedFileStatus' cachedKey cr
-
-          return Nothing
+            return Nothing
 
 -- | Lazily decode a triple, parsing the first two fields strictly and
 -- returning a lazy value containing either the last one or an error.
@@ -512,45 +503,49 @@ checkFileMonitorChanged
 -- Distribution.Utils.Structured because it depends on a newer version of
 -- binary than supported in the Cabal library proper.
 structuredDecodeTriple
-  :: forall a b c. (Structured a, Structured b, Structured c, Binary.Binary a, Binary.Binary b, Binary.Binary c)
-  => BS.ByteString -> Either String (a, b, Either String c)
+  :: forall a b c
+   . (Structured a, Structured b, Structured c, Binary.Binary a, Binary.Binary b, Binary.Binary c)
+  => BS.ByteString
+  -> Either String (a, b, Either String c)
 structuredDecodeTriple lbs =
   let partialDecode =
-         (`runGetOrFail` lbs) $ do
-            (_ :: Tag (a,b,c)) <- Binary.get
-            (a :: a) <- Binary.get
-            (b :: b) <- Binary.get
-            pure (a, b)
+        (`runGetOrFail` lbs) $ do
+          (_ :: Tag (a, b, c)) <- Binary.get
+          (a :: a) <- Binary.get
+          (b :: b) <- Binary.get
+          pure (a, b)
       cleanEither (Left (_, pos, msg)) = Left ("Data.Binary.Get.runGet at position " ++ show pos ++ ": " ++ msg)
-      cleanEither (Right (_,_,v))     = Right v
-
-  in case partialDecode of
-       Left (_, pos, msg) ->  Left ("Data.Binary.Get.runGet at position " ++ show pos ++ ": " ++ msg)
-       Right (lbs', _, (x,y)) -> Right (x, y, cleanEither $ runGetOrFail (Binary.get :: Binary.Get c) lbs')
+      cleanEither (Right (_, _, v)) = Right v
+   in case partialDecode of
+        Left (_, pos, msg) -> Left ("Data.Binary.Get.runGet at position " ++ show pos ++ ": " ++ msg)
+        Right (lbs', _, (x, y)) -> Right (x, y, cleanEither $ runGetOrFail (Binary.get :: Binary.Get c) lbs')
 
 -- | Helper for reading the cache file.
 --
 -- This determines the type and format of the binary cache file.
---
-withCacheFile :: (Binary a, Structured a, Binary b, Structured b)
-              => FileMonitor a b
-              -> (Either String (MonitorStateFileSet, a, Either String b) -> IO r)
-              -> IO r
-withCacheFile (FileMonitor {fileMonitorCacheFile}) k =
-    withBinaryFile fileMonitorCacheFile ReadMode $ \hnd -> do
-        contents <- structuredDecodeTriple <$> BS.hGetContents hnd
-        k contents
+withCacheFile
+  :: (Binary a, Structured a, Binary b, Structured b)
+  => FileMonitor a b
+  -> (Either String (MonitorStateFileSet, a, Either String b) -> IO r)
+  -> IO r
+withCacheFile (FileMonitor{fileMonitorCacheFile}) k =
+  withBinaryFile fileMonitorCacheFile ReadMode $ \hnd -> do
+    contents <- structuredDecodeTriple <$> BS.hGetContents hnd
+    k contents
 
 -- | Helper for writing the cache file.
 --
 -- This determines the type and format of the binary cache file.
---
-rewriteCacheFile :: (Binary a, Structured a, Binary b, Structured b)
-                 => FileMonitor a b
-                 -> MonitorStateFileSet -> a -> b -> IO ()
-rewriteCacheFile FileMonitor {fileMonitorCacheFile} fileset key result =
-    writeFileAtomic fileMonitorCacheFile $
-        structuredEncode (fileset, key, result)
+rewriteCacheFile
+  :: (Binary a, Structured a, Binary b, Structured b)
+  => FileMonitor a b
+  -> MonitorStateFileSet
+  -> a
+  -> b
+  -> IO ()
+rewriteCacheFile FileMonitor{fileMonitorCacheFile} fileset key result =
+  writeFileAtomic fileMonitorCacheFile $
+    structuredEncode (fileset, key, result)
 
 -- | Probe the file system to see if any of the monitored files have changed.
 --
@@ -566,21 +561,23 @@ rewriteCacheFile FileMonitor {fileMonitorCacheFile} fileset key result =
 -- we want to update the cache despite no changes in our relevant file set.
 -- Specifically, we should add an mtime for this directory so we can avoid
 -- re-traversing the directory in future runs.
---
-probeFileSystem :: FilePath -> MonitorStateFileSet
-                -> IO (Either FilePath (MonitorStateFileSet, CacheChanged))
+probeFileSystem
+  :: FilePath
+  -> MonitorStateFileSet
+  -> IO (Either FilePath (MonitorStateFileSet, CacheChanged))
 probeFileSystem root (MonitorStateFileSet singlePaths globPaths) =
   runChangedM $ do
     sequence_
       [ probeMonitorStateFileStatus root file status
-      | MonitorStateFile _ _ file status <- singlePaths ]
+      | MonitorStateFile _ _ file status <- singlePaths
+      ]
     -- The glob monitors can require state changes
     globPaths' <-
       sequence
         [ probeMonitorStateGlob root globPath
-        | globPath <- globPaths ]
+        | globPath <- globPaths
+        ]
     return (MonitorStateFileSet singlePaths globPaths')
-
 
 -----------------------------------------------
 -- Monad for checking for file system changes
@@ -606,181 +603,216 @@ cacheChanged = ChangedM $ State.put CacheChanged
 
 mapChangedFile :: (FilePath -> FilePath) -> ChangedM a -> ChangedM a
 mapChangedFile adjust (ChangedM a) =
-    ChangedM (mapStateT (withExceptT adjust) a)
+  ChangedM (mapStateT (withExceptT adjust) a)
 
 data CacheChanged = CacheChanged | CacheUnchanged
 
 whenCacheChanged :: Monad m => CacheChanged -> m () -> m ()
 whenCacheChanged CacheChanged action = action
-whenCacheChanged CacheUnchanged _    = return ()
+whenCacheChanged CacheUnchanged _ = return ()
 
 ----------------------
 
 -- | Probe the file system to see if a single monitored file has changed.
---
-probeMonitorStateFileStatus :: FilePath -> FilePath
-                            -> MonitorStateFileStatus
-                            -> ChangedM ()
+probeMonitorStateFileStatus
+  :: FilePath
+  -> FilePath
+  -> MonitorStateFileStatus
+  -> ChangedM ()
 probeMonitorStateFileStatus root file status =
-    case status of
-      MonitorStateFileExists ->
-        probeFileExistence root file
-
-      MonitorStateFileModTime mtime ->
-        probeFileModificationTime root file mtime
-
-      MonitorStateFileHashed  mtime hash ->
-        probeFileModificationTimeAndHash root file mtime hash
-
-      MonitorStateDirExists ->
-        probeDirExistence root file
-
-      MonitorStateDirModTime mtime ->
-        probeFileModificationTime root file mtime
-
-      MonitorStateNonExistent ->
-        probeFileNonExistence root file
-
-      MonitorStateAlreadyChanged ->
-        somethingChanged file
-
+  case status of
+    MonitorStateFileExists ->
+      probeFileExistence root file
+    MonitorStateFileModTime mtime ->
+      probeFileModificationTime root file mtime
+    MonitorStateFileHashed mtime hash ->
+      probeFileModificationTimeAndHash root file mtime hash
+    MonitorStateDirExists ->
+      probeDirExistence root file
+    MonitorStateDirModTime mtime ->
+      probeFileModificationTime root file mtime
+    MonitorStateNonExistent ->
+      probeFileNonExistence root file
+    MonitorStateAlreadyChanged ->
+      somethingChanged file
 
 -- | Probe the file system to see if a monitored file glob has changed.
---
-probeMonitorStateGlob :: FilePath      -- ^ root path
-                      -> MonitorStateGlob
-                      -> ChangedM MonitorStateGlob
-probeMonitorStateGlob relroot
-                      (MonitorStateGlob kindfile kinddir globroot glob) = do
+probeMonitorStateGlob
+  :: FilePath
+  -- ^ root path
+  -> MonitorStateGlob
+  -> ChangedM MonitorStateGlob
+probeMonitorStateGlob
+  relroot
+  (MonitorStateGlob kindfile kinddir globroot glob) = do
     root <- liftIO $ getFilePathRootDirectory globroot relroot
     case globroot of
       FilePathRelative ->
-        MonitorStateGlob kindfile kinddir globroot <$>
-        probeMonitorStateGlobRel kindfile kinddir root "." glob
-
+        MonitorStateGlob kindfile kinddir globroot
+          <$> probeMonitorStateGlobRel kindfile kinddir root "." glob
       -- for absolute cases, make the changed file we report absolute too
       _ ->
         mapChangedFile (root </>) $
-        MonitorStateGlob kindfile kinddir globroot <$>
-        probeMonitorStateGlobRel kindfile kinddir root "" glob
+          MonitorStateGlob kindfile kinddir globroot
+            <$> probeMonitorStateGlobRel kindfile kinddir root "" glob
 
-probeMonitorStateGlobRel :: MonitorKindFile -> MonitorKindDir
-                         -> FilePath      -- ^ root path
-                         -> FilePath      -- ^ path of the directory we are
-                                          --   looking in relative to @root@
-                         -> MonitorStateGlobRel
-                         -> ChangedM MonitorStateGlobRel
-probeMonitorStateGlobRel kindfile kinddir root dirName
-                        (MonitorStateGlobDirs glob globPath mtime children) = do
+probeMonitorStateGlobRel
+  :: MonitorKindFile
+  -> MonitorKindDir
+  -> FilePath
+  -- ^ root path
+  -> FilePath
+  -- ^ path of the directory we are
+  --   looking in relative to @root@
+  -> MonitorStateGlobRel
+  -> ChangedM MonitorStateGlobRel
+probeMonitorStateGlobRel
+  kindfile
+  kinddir
+  root
+  dirName
+  (MonitorStateGlobDirs glob globPath mtime children) = do
     change <- liftIO $ checkDirectoryModificationTime (root </> dirName) mtime
     case change of
       Nothing -> do
-        children' <- sequence
-          [ do fstate' <- probeMonitorStateGlobRel
-                            kindfile kinddir root
-                            (dirName </> fname) fstate
-               return (fname, fstate')
-          | (fname, fstate) <- children ]
+        children' <-
+          sequence
+            [ do
+              fstate' <-
+                probeMonitorStateGlobRel
+                  kindfile
+                  kinddir
+                  root
+                  (dirName </> fname)
+                  fstate
+              return (fname, fstate')
+            | (fname, fstate) <- children
+            ]
         return $! MonitorStateGlobDirs glob globPath mtime children'
-
       Just mtime' -> do
         -- directory modification time changed:
         -- a matching subdir may have been added or deleted
-        matches <- filterM (\entry -> let subdir = root </> dirName </> entry
-                                       in liftIO $ doesDirectoryExist subdir)
-                 . filter (matchGlob glob)
-               =<< liftIO (getDirectoryContents (root </> dirName))
+        matches <-
+          filterM
+            ( \entry ->
+                let subdir = root </> dirName </> entry
+                 in liftIO $ doesDirectoryExist subdir
+            )
+            . filter (matchGlob glob)
+            =<< liftIO (getDirectoryContents (root </> dirName))
 
-        children' <- traverse probeMergeResult $
-                          mergeBy (\(path1,_) path2 -> compare path1 path2)
-                                  children
-                                  (sort matches)
+        children' <-
+          traverse probeMergeResult $
+            mergeBy
+              (\(path1, _) path2 -> compare path1 path2)
+              children
+              (sort matches)
         return $! MonitorStateGlobDirs glob globPath mtime' children'
-        -- Note that just because the directory has changed, we don't force
-        -- a cache rewrite with 'cacheChanged' since that has some cost, and
-        -- all we're saving is scanning the directory. But we do rebuild the
-        -- cache with the new mtime', so that if the cache is rewritten for
-        -- some other reason, we'll take advantage of that.
+    where
+      -- Note that just because the directory has changed, we don't force
+      -- a cache rewrite with 'cacheChanged' since that has some cost, and
+      -- all we're saving is scanning the directory. But we do rebuild the
+      -- cache with the new mtime', so that if the cache is rewritten for
+      -- some other reason, we'll take advantage of that.
 
-  where
-    probeMergeResult :: MergeResult (FilePath, MonitorStateGlobRel) FilePath
-                     -> ChangedM (FilePath, MonitorStateGlobRel)
+      probeMergeResult
+        :: MergeResult (FilePath, MonitorStateGlobRel) FilePath
+        -> ChangedM (FilePath, MonitorStateGlobRel)
 
-    -- Only in cached (directory deleted)
-    probeMergeResult (OnlyInLeft (path, fstate)) = do
-      case allMatchingFiles (dirName </> path) fstate of
-        [] -> return (path, fstate)
-        -- Strictly speaking we should be returning 'CacheChanged' above
-        -- as we should prune the now-missing 'MonitorStateGlobRel'. However
-        -- we currently just leave these now-redundant entries in the
-        -- cache as they cost no IO and keeping them allows us to avoid
-        -- rewriting the cache.
-        (file:_) -> somethingChanged file
+      -- Only in cached (directory deleted)
+      probeMergeResult (OnlyInLeft (path, fstate)) = do
+        case allMatchingFiles (dirName </> path) fstate of
+          [] -> return (path, fstate)
+          -- Strictly speaking we should be returning 'CacheChanged' above
+          -- as we should prune the now-missing 'MonitorStateGlobRel'. However
+          -- we currently just leave these now-redundant entries in the
+          -- cache as they cost no IO and keeping them allows us to avoid
+          -- rewriting the cache.
+          (file : _) -> somethingChanged file
 
-    -- Only in current filesystem state (directory added)
-    probeMergeResult (OnlyInRight path) = do
-      fstate <- liftIO $ buildMonitorStateGlobRel Nothing Map.empty
-                           kindfile kinddir root (dirName </> path) globPath
-      case allMatchingFiles (dirName </> path) fstate of
-        (file:_) -> somethingChanged file
-        -- This is the only case where we use 'cacheChanged' because we can
-        -- have a whole new dir subtree (of unbounded size and cost), so we
-        -- need to save the state of that new subtree in the cache.
-        [] -> cacheChanged >> return (path, fstate)
+      -- Only in current filesystem state (directory added)
+      probeMergeResult (OnlyInRight path) = do
+        fstate <-
+          liftIO $
+            buildMonitorStateGlobRel
+              Nothing
+              Map.empty
+              kindfile
+              kinddir
+              root
+              (dirName </> path)
+              globPath
+        case allMatchingFiles (dirName </> path) fstate of
+          (file : _) -> somethingChanged file
+          -- This is the only case where we use 'cacheChanged' because we can
+          -- have a whole new dir subtree (of unbounded size and cost), so we
+          -- need to save the state of that new subtree in the cache.
+          [] -> cacheChanged >> return (path, fstate)
 
-    -- Found in path
-    probeMergeResult (InBoth (path, fstate) _) = do
-      fstate' <- probeMonitorStateGlobRel kindfile kinddir
-                                          root (dirName </> path) fstate
-      return (path, fstate')
+      -- Found in path
+      probeMergeResult (InBoth (path, fstate) _) = do
+        fstate' <-
+          probeMonitorStateGlobRel
+            kindfile
+            kinddir
+            root
+            (dirName </> path)
+            fstate
+        return (path, fstate')
 
-    -- | Does a 'MonitorStateGlob' have any relevant files within it?
-    allMatchingFiles :: FilePath -> MonitorStateGlobRel -> [FilePath]
-    allMatchingFiles dir (MonitorStateGlobFiles _ _   entries) =
-      [ dir </> fname | (fname, _) <- entries ]
-    allMatchingFiles dir (MonitorStateGlobDirs  _ _ _ entries) =
-      [ res
-      | (subdir, fstate) <- entries
-      , res <- allMatchingFiles (dir </> subdir) fstate ]
-    allMatchingFiles dir MonitorStateGlobDirTrailing =
-      [dir]
-
-probeMonitorStateGlobRel _ _ root dirName
-                         (MonitorStateGlobFiles glob mtime children) = do
+      -- \| Does a 'MonitorStateGlob' have any relevant files within it?
+      allMatchingFiles :: FilePath -> MonitorStateGlobRel -> [FilePath]
+      allMatchingFiles dir (MonitorStateGlobFiles _ _ entries) =
+        [dir </> fname | (fname, _) <- entries]
+      allMatchingFiles dir (MonitorStateGlobDirs _ _ _ entries) =
+        [ res
+        | (subdir, fstate) <- entries
+        , res <- allMatchingFiles (dir </> subdir) fstate
+        ]
+      allMatchingFiles dir MonitorStateGlobDirTrailing =
+        [dir]
+probeMonitorStateGlobRel
+  _
+  _
+  root
+  dirName
+  (MonitorStateGlobFiles glob mtime children) = do
     change <- liftIO $ checkDirectoryModificationTime (root </> dirName) mtime
     mtime' <- case change of
-      Nothing     -> return mtime
+      Nothing -> return mtime
       Just mtime' -> do
         -- directory modification time changed:
         -- a matching file may have been added or deleted
-        matches <- return . filter (matchGlob glob)
-               =<< liftIO (getDirectoryContents (root </> dirName))
+        matches <-
+          return . filter (matchGlob glob)
+            =<< liftIO (getDirectoryContents (root </> dirName))
 
         traverse_ probeMergeResult $
-              mergeBy (\(path1,_) path2 -> compare path1 path2)
-                      children
-                      (sort matches)
+          mergeBy
+            (\(path1, _) path2 -> compare path1 path2)
+            children
+            (sort matches)
         return mtime'
 
     -- Check that none of the children have changed
     for_ children $ \(file, status) ->
       probeMonitorStateFileStatus root (dirName </> file) status
 
-
     return (MonitorStateGlobFiles glob mtime' children)
-    -- Again, we don't force a cache rewrite with 'cacheChanged', but we do use
-    -- the new mtime' if any.
-  where
-    probeMergeResult :: MergeResult (FilePath, MonitorStateFileStatus) FilePath
-                     -> ChangedM ()
-    probeMergeResult mr = case mr of
-      InBoth _ _            -> return ()
-    -- this is just to be able to accurately report which file changed:
-      OnlyInLeft  (path, _) -> somethingChanged (dirName </> path)
-      OnlyInRight path      -> somethingChanged (dirName </> path)
+    where
+      -- Again, we don't force a cache rewrite with 'cacheChanged', but we do use
+      -- the new mtime' if any.
 
+      probeMergeResult
+        :: MergeResult (FilePath, MonitorStateFileStatus) FilePath
+        -> ChangedM ()
+      probeMergeResult mr = case mr of
+        InBoth _ _ -> return ()
+        -- this is just to be able to accurately report which file changed:
+        OnlyInLeft (path, _) -> somethingChanged (dirName </> path)
+        OnlyInRight path -> somethingChanged (dirName </> path)
 probeMonitorStateGlobRel _ _ _ _ MonitorStateGlobDirTrailing =
-    return MonitorStateGlobDirTrailing
+  return MonitorStateGlobDirTrailing
 
 ------------------------------------------------------------------------------
 
@@ -809,31 +841,39 @@ probeMonitorStateGlobRel _ _ _ _ MonitorStateGlobDirTrailing =
 -- 'beginUpdateFileMonitor' to get a timestamp and pass that. Alternatively,
 -- if you take the snapshot in advance of the action, or you're not monitoring
 -- any files then you can use @Nothing@ for the timestamp parameter.
---
 updateFileMonitor
   :: (Binary a, Structured a, Binary b, Structured b)
-  => FileMonitor a b          -- ^ cache file path
-  -> FilePath                 -- ^ root directory
-  -> Maybe MonitorTimestamp   -- ^ timestamp when the update action started
-  -> [MonitorFilePath]        -- ^ files of interest relative to root
-  -> a                        -- ^ the current key value
-  -> b                        -- ^ the current result value
+  => FileMonitor a b
+  -- ^ cache file path
+  -> FilePath
+  -- ^ root directory
+  -> Maybe MonitorTimestamp
+  -- ^ timestamp when the update action started
+  -> [MonitorFilePath]
+  -- ^ files of interest relative to root
+  -> a
+  -- ^ the current key value
+  -> b
+  -- ^ the current result value
   -> IO ()
-updateFileMonitor monitor root startTime monitorFiles
-                  cachedKey cachedResult = do
+updateFileMonitor
+  monitor
+  root
+  startTime
+  monitorFiles
+  cachedKey
+  cachedResult = do
     hashcache <- readCacheFileHashes monitor
     msfs <- buildMonitorStateFileSet startTime hashcache root monitorFiles
     rewriteCacheFile monitor msfs cachedKey cachedResult
 
 -- | A timestamp to help with the problem of file changes during actions.
 -- See 'updateFileMonitor' for details.
---
 newtype MonitorTimestamp = MonitorTimestamp ModTime
 
 -- | Record a timestamp at the beginning of an action, and when the action
 -- completes call 'updateFileMonitor' passing it the timestamp.
 -- See 'updateFileMonitor' for details.
---
 beginUpdateFileMonitor :: IO MonitorTimestamp
 beginUpdateFileMonitor = MonitorTimestamp <$> getCurTime
 
@@ -841,92 +881,110 @@ beginUpdateFileMonitor = MonitorTimestamp <$> getCurTime
 -- specification of the set of files we need to monitor, inspect the state
 -- of the file system now and collect the information we'll need later to
 -- determine if anything has changed.
---
-buildMonitorStateFileSet :: Maybe MonitorTimestamp -- ^ optional: timestamp
-                                              -- of the start of the action
-                         -> FileHashCache     -- ^ existing file hashes
-                         -> FilePath          -- ^ root directory
-                         -> [MonitorFilePath] -- ^ patterns of interest
-                                              --   relative to root
-                         -> IO MonitorStateFileSet
+buildMonitorStateFileSet
+  :: Maybe MonitorTimestamp
+  -- ^ optional: timestamp
+  -- of the start of the action
+  -> FileHashCache
+  -- ^ existing file hashes
+  -> FilePath
+  -- ^ root directory
+  -> [MonitorFilePath]
+  -- ^ patterns of interest
+  --   relative to root
+  -> IO MonitorStateFileSet
 buildMonitorStateFileSet mstartTime hashcache root =
-    go [] []
+  go [] []
   where
-    go :: [MonitorStateFile] -> [MonitorStateGlob]
-       -> [MonitorFilePath] -> IO MonitorStateFileSet
+    go
+      :: [MonitorStateFile]
+      -> [MonitorStateGlob]
+      -> [MonitorFilePath]
+      -> IO MonitorStateFileSet
     go !singlePaths !globPaths [] =
       return (MonitorStateFileSet (reverse singlePaths) (reverse globPaths))
+    go
+      !singlePaths
+      !globPaths
+      (MonitorFile kindfile kinddir path : monitors) = do
+        monitorState <-
+          MonitorStateFile kindfile kinddir path
+            <$> buildMonitorStateFile
+              mstartTime
+              hashcache
+              kindfile
+              kinddir
+              root
+              path
+        go (monitorState : singlePaths) globPaths monitors
+    go
+      !singlePaths
+      !globPaths
+      (MonitorFileGlob kindfile kinddir globPath : monitors) = do
+        monitorState <-
+          buildMonitorStateGlob
+            mstartTime
+            hashcache
+            kindfile
+            kinddir
+            root
+            globPath
+        go singlePaths (monitorState : globPaths) monitors
 
-    go !singlePaths !globPaths
-       (MonitorFile kindfile kinddir path : monitors) = do
-      monitorState <- MonitorStateFile kindfile kinddir path
-                  <$> buildMonitorStateFile mstartTime hashcache
-                                            kindfile kinddir root path
-      go (monitorState : singlePaths) globPaths monitors
-
-    go !singlePaths !globPaths
-       (MonitorFileGlob kindfile kinddir globPath : monitors) = do
-      monitorState <- buildMonitorStateGlob mstartTime hashcache
-                                            kindfile kinddir root globPath
-      go singlePaths (monitorState : globPaths) monitors
-
-
-buildMonitorStateFile :: Maybe MonitorTimestamp -- ^ start time of update
-                      -> FileHashCache          -- ^ existing file hashes
-                      -> MonitorKindFile -> MonitorKindDir
-                      -> FilePath               -- ^ the root directory
-                      -> FilePath
-                      -> IO MonitorStateFileStatus
+buildMonitorStateFile
+  :: Maybe MonitorTimestamp
+  -- ^ start time of update
+  -> FileHashCache
+  -- ^ existing file hashes
+  -> MonitorKindFile
+  -> MonitorKindDir
+  -> FilePath
+  -- ^ the root directory
+  -> FilePath
+  -> IO MonitorStateFileStatus
 buildMonitorStateFile mstartTime hashcache kindfile kinddir root path = do
-    let abspath = root </> path
-    isFile <- doesFileExist abspath
-    isDir  <- doesDirectoryExist abspath
-    case (isFile, kindfile, isDir, kinddir) of
-      (_, FileNotExists, _, DirNotExists) ->
-        -- we don't need to care if it exists now, since we check at probe time
-        return MonitorStateNonExistent
-
-      (False, _, False, _) ->
-        return MonitorStateAlreadyChanged
-
-      (True, FileExists, _, _)  ->
-        return MonitorStateFileExists
-
-      (True, FileModTime, _, _) ->
-        handleIOException MonitorStateAlreadyChanged $ do
-          mtime <- getModTime abspath
-          if changedDuringUpdate mstartTime mtime
-            then return MonitorStateAlreadyChanged
-            else return (MonitorStateFileModTime mtime)
-
-      (True, FileHashed, _, _) ->
-        handleIOException MonitorStateAlreadyChanged $ do
-          mtime <- getModTime abspath
-          if changedDuringUpdate mstartTime mtime
-            then return MonitorStateAlreadyChanged
-            else do hash <- getFileHash hashcache abspath abspath mtime
-                    return (MonitorStateFileHashed mtime hash)
-
-      (_, _, True, DirExists) ->
-        return MonitorStateDirExists
-
-      (_, _, True, DirModTime) ->
-        handleIOException MonitorStateAlreadyChanged $ do
-          mtime <- getModTime abspath
-          if changedDuringUpdate mstartTime mtime
-            then return MonitorStateAlreadyChanged
-            else return (MonitorStateDirModTime mtime)
-
-      (False, _, True,  DirNotExists) -> return MonitorStateAlreadyChanged
-      (True, FileNotExists, False, _) -> return MonitorStateAlreadyChanged
+  let abspath = root </> path
+  isFile <- doesFileExist abspath
+  isDir <- doesDirectoryExist abspath
+  case (isFile, kindfile, isDir, kinddir) of
+    (_, FileNotExists, _, DirNotExists) ->
+      -- we don't need to care if it exists now, since we check at probe time
+      return MonitorStateNonExistent
+    (False, _, False, _) ->
+      return MonitorStateAlreadyChanged
+    (True, FileExists, _, _) ->
+      return MonitorStateFileExists
+    (True, FileModTime, _, _) ->
+      handleIOException MonitorStateAlreadyChanged $ do
+        mtime <- getModTime abspath
+        if changedDuringUpdate mstartTime mtime
+          then return MonitorStateAlreadyChanged
+          else return (MonitorStateFileModTime mtime)
+    (True, FileHashed, _, _) ->
+      handleIOException MonitorStateAlreadyChanged $ do
+        mtime <- getModTime abspath
+        if changedDuringUpdate mstartTime mtime
+          then return MonitorStateAlreadyChanged
+          else do
+            hash <- getFileHash hashcache abspath abspath mtime
+            return (MonitorStateFileHashed mtime hash)
+    (_, _, True, DirExists) ->
+      return MonitorStateDirExists
+    (_, _, True, DirModTime) ->
+      handleIOException MonitorStateAlreadyChanged $ do
+        mtime <- getModTime abspath
+        if changedDuringUpdate mstartTime mtime
+          then return MonitorStateAlreadyChanged
+          else return (MonitorStateDirModTime mtime)
+    (False, _, True, DirNotExists) -> return MonitorStateAlreadyChanged
+    (True, FileNotExists, False, _) -> return MonitorStateAlreadyChanged
 
 -- | If we have a timestamp for the beginning of the update, then any file
 -- mtime later than this means that it changed during the update and we ought
 -- to consider the file as already changed.
---
 changedDuringUpdate :: Maybe MonitorTimestamp -> ModTime -> Bool
-changedDuringUpdate (Just (MonitorTimestamp startTime)) mtime
-                        = mtime > startTime
+changedDuringUpdate (Just (MonitorTimestamp startTime)) mtime =
+  mtime > startTime
 changedDuringUpdate _ _ = False
 
 -- | Much like 'buildMonitorStateFileSet' but for the somewhat complicated case
@@ -935,58 +993,96 @@ changedDuringUpdate _ _ = False
 -- This gets used both by 'buildMonitorStateFileSet' when we're taking the
 -- file system snapshot, but also by 'probeGlobStatus' as part of checking
 -- the monitored (globed) files for changes when we find a whole new subtree.
---
-buildMonitorStateGlob :: Maybe MonitorTimestamp -- ^ start time of update
-                      -> FileHashCache     -- ^ existing file hashes
-                      -> MonitorKindFile -> MonitorKindDir
-                      -> FilePath     -- ^ the root directory
-                      -> FilePathGlob -- ^ the matching glob
-                      -> IO MonitorStateGlob
-buildMonitorStateGlob mstartTime hashcache kindfile kinddir relroot
-                      (FilePathGlob globroot globPath) = do
+buildMonitorStateGlob
+  :: Maybe MonitorTimestamp
+  -- ^ start time of update
+  -> FileHashCache
+  -- ^ existing file hashes
+  -> MonitorKindFile
+  -> MonitorKindDir
+  -> FilePath
+  -- ^ the root directory
+  -> FilePathGlob
+  -- ^ the matching glob
+  -> IO MonitorStateGlob
+buildMonitorStateGlob
+  mstartTime
+  hashcache
+  kindfile
+  kinddir
+  relroot
+  (FilePathGlob globroot globPath) = do
     root <- liftIO $ getFilePathRootDirectory globroot relroot
-    MonitorStateGlob kindfile kinddir globroot <$>
-      buildMonitorStateGlobRel
-        mstartTime hashcache kindfile kinddir root "." globPath
+    MonitorStateGlob kindfile kinddir globroot
+      <$> buildMonitorStateGlobRel
+        mstartTime
+        hashcache
+        kindfile
+        kinddir
+        root
+        "."
+        globPath
 
-buildMonitorStateGlobRel :: Maybe MonitorTimestamp -- ^ start time of update
-                         -> FileHashCache   -- ^ existing file hashes
-                         -> MonitorKindFile -> MonitorKindDir
-                         -> FilePath        -- ^ the root directory
-                         -> FilePath        -- ^ directory we are examining
-                                            --   relative to the root
-                         -> FilePathGlobRel -- ^ the matching glob
-                         -> IO MonitorStateGlobRel
-buildMonitorStateGlobRel mstartTime hashcache kindfile kinddir root
-                         dir globPath = do
+buildMonitorStateGlobRel
+  :: Maybe MonitorTimestamp
+  -- ^ start time of update
+  -> FileHashCache
+  -- ^ existing file hashes
+  -> MonitorKindFile
+  -> MonitorKindDir
+  -> FilePath
+  -- ^ the root directory
+  -> FilePath
+  -- ^ directory we are examining
+  --   relative to the root
+  -> FilePathGlobRel
+  -- ^ the matching glob
+  -> IO MonitorStateGlobRel
+buildMonitorStateGlobRel
+  mstartTime
+  hashcache
+  kindfile
+  kinddir
+  root
+  dir
+  globPath = do
     let absdir = root </> dir
     dirEntries <- getDirectoryContents absdir
-    dirMTime   <- getModTime absdir
+    dirMTime <- getModTime absdir
     case globPath of
       GlobDir glob globPath' -> do
-        subdirs <- filterM (\subdir -> doesDirectoryExist (absdir </> subdir))
-                 $ filter (matchGlob glob) dirEntries
+        subdirs <-
+          filterM (\subdir -> doesDirectoryExist (absdir </> subdir)) $
+            filter (matchGlob glob) dirEntries
         subdirStates <-
           for (sort subdirs) $ \subdir -> do
-            fstate <- buildMonitorStateGlobRel
-                        mstartTime hashcache kindfile kinddir root
-                        (dir </> subdir) globPath'
+            fstate <-
+              buildMonitorStateGlobRel
+                mstartTime
+                hashcache
+                kindfile
+                kinddir
+                root
+                (dir </> subdir)
+                globPath'
             return (subdir, fstate)
         return $! MonitorStateGlobDirs glob globPath' dirMTime subdirStates
-
       GlobFile glob -> do
         let files = filter (matchGlob glob) dirEntries
         filesStates <-
           for (sort files) $ \file -> do
-            fstate <- buildMonitorStateFile
-                        mstartTime hashcache kindfile kinddir root
-                        (dir </> file)
+            fstate <-
+              buildMonitorStateFile
+                mstartTime
+                hashcache
+                kindfile
+                kinddir
+                root
+                (dir </> file)
             return (file, fstate)
         return $! MonitorStateGlobFiles glob dirMTime filesStates
-
       GlobDirTrailing ->
         return MonitorStateGlobDirTrailing
-
 
 -- | We really want to avoid re-hashing files all the time. We already make
 -- the assumption that if a file mtime has not changed then we don't need to
@@ -995,69 +1091,75 @@ buildMonitorStateGlobRel mstartTime hashcache kindfile kinddir root
 -- updating a file monitor the set of files is the same or largely the same so
 -- we can grab the previously known content hashes with their corresponding
 -- mtimes.
---
 type FileHashCache = Map FilePath (ModTime, Hash)
 
 -- | We declare it a cache hit if the mtime of a file is the same as before.
---
 lookupFileHashCache :: FileHashCache -> FilePath -> ModTime -> Maybe Hash
 lookupFileHashCache hashcache file mtime = do
-    (mtime', hash) <- Map.lookup file hashcache
-    guard (mtime' == mtime)
-    return hash
+  (mtime', hash) <- Map.lookup file hashcache
+  guard (mtime' == mtime)
+  return hash
 
 -- | Either get it from the cache or go read the file
 getFileHash :: FileHashCache -> FilePath -> FilePath -> ModTime -> IO Hash
 getFileHash hashcache relfile absfile mtime =
-    case lookupFileHashCache hashcache relfile mtime of
-      Just hash -> return hash
-      Nothing   -> readFileHash absfile
+  case lookupFileHashCache hashcache relfile mtime of
+    Just hash -> return hash
+    Nothing -> readFileHash absfile
 
 -- | Build a 'FileHashCache' from the previous 'MonitorStateFileSet'. While
 -- in principle we could preserve the structure of the previous state, given
 -- that the set of files to monitor can change then it's simpler just to throw
 -- away the structure and use a finite map.
---
-readCacheFileHashes :: (Binary a, Structured a, Binary b, Structured b)
-                    => FileMonitor a b -> IO FileHashCache
+readCacheFileHashes
+  :: (Binary a, Structured a, Binary b, Structured b)
+  => FileMonitor a b
+  -> IO FileHashCache
 readCacheFileHashes monitor =
-    handleDoesNotExist Map.empty $
-    handleErrorCall    Map.empty $
-    withCacheFile monitor $ \res ->
-      case res of
-        Left _             -> return Map.empty
-        Right (msfs, _, _) -> return (mkFileHashCache msfs)
+  handleDoesNotExist Map.empty $
+    handleErrorCall Map.empty $
+      withCacheFile monitor $ \res ->
+        case res of
+          Left _ -> return Map.empty
+          Right (msfs, _, _) -> return (mkFileHashCache msfs)
   where
     mkFileHashCache :: MonitorStateFileSet -> FileHashCache
     mkFileHashCache (MonitorStateFileSet singlePaths globPaths) =
-                    collectAllFileHashes singlePaths
+      collectAllFileHashes singlePaths
         `Map.union` collectAllGlobHashes globPaths
 
     collectAllFileHashes :: [MonitorStateFile] -> Map FilePath (ModTime, Hash)
     collectAllFileHashes singlePaths =
-      Map.fromList [ (fpath, (mtime, hash))
-                   | MonitorStateFile _ _ fpath
-                       (MonitorStateFileHashed mtime hash) <- singlePaths ]
+      Map.fromList
+        [ (fpath, (mtime, hash))
+        | MonitorStateFile
+            _
+            _
+            fpath
+            (MonitorStateFileHashed mtime hash) <-
+            singlePaths
+        ]
 
     collectAllGlobHashes :: [MonitorStateGlob] -> Map FilePath (ModTime, Hash)
     collectAllGlobHashes globPaths =
-      Map.fromList [ (fpath, (mtime, hash))
-                   | MonitorStateGlob _ _ _ gstate <- globPaths
-                   , (fpath, (mtime, hash)) <- collectGlobHashes "" gstate ]
+      Map.fromList
+        [ (fpath, (mtime, hash))
+        | MonitorStateGlob _ _ _ gstate <- globPaths
+        , (fpath, (mtime, hash)) <- collectGlobHashes "" gstate
+        ]
 
     collectGlobHashes :: FilePath -> MonitorStateGlobRel -> [(FilePath, (ModTime, Hash))]
     collectGlobHashes dir (MonitorStateGlobDirs _ _ _ entries) =
       [ res
       | (subdir, fstate) <- entries
-      , res <- collectGlobHashes (dir </> subdir) fstate ]
-
-    collectGlobHashes dir (MonitorStateGlobFiles  _ _ entries) =
+      , res <- collectGlobHashes (dir </> subdir) fstate
+      ]
+    collectGlobHashes dir (MonitorStateGlobFiles _ _ entries) =
       [ (dir </> fname, (mtime, hash))
-      | (fname, MonitorStateFileHashed mtime hash) <- entries ]
-
+      | (fname, MonitorStateFileHashed mtime hash) <- entries
+      ]
     collectGlobHashes _dir MonitorStateGlobDirTrailing =
       []
-
 
 ------------------------------------------------------------------------------
 -- Utils
@@ -1067,45 +1169,53 @@ readCacheFileHashes monitor =
 -- the same as @mtime@, short-circuiting if it is different.
 probeFileModificationTime :: FilePath -> FilePath -> ModTime -> ChangedM ()
 probeFileModificationTime root file mtime = do
-    unchanged <- liftIO $ checkModificationTimeUnchanged root file mtime
-    unless unchanged (somethingChanged file)
+  unchanged <- liftIO $ checkModificationTimeUnchanged root file mtime
+  unless unchanged (somethingChanged file)
 
 -- | Within the @root@ directory, check if @file@ has its 'ModTime' and
 -- 'Hash' is the same as @mtime@ and @hash@, short-circuiting if it is
 -- different.
-probeFileModificationTimeAndHash :: FilePath -> FilePath -> ModTime -> Hash
-                                 -> ChangedM ()
+probeFileModificationTimeAndHash
+  :: FilePath
+  -> FilePath
+  -> ModTime
+  -> Hash
+  -> ChangedM ()
 probeFileModificationTimeAndHash root file mtime hash = do
-    unchanged <- liftIO $
+  unchanged <-
+    liftIO $
       checkFileModificationTimeAndHashUnchanged root file mtime hash
-    unless unchanged (somethingChanged file)
+  unless unchanged (somethingChanged file)
 
 -- | Within the @root@ directory, check if @file@ still exists as a file.
 -- If it *does not* exist, short-circuit.
 probeFileExistence :: FilePath -> FilePath -> ChangedM ()
 probeFileExistence root file = do
-    existsFile <- liftIO $ doesFileExist (root </> file)
-    unless existsFile (somethingChanged file)
+  existsFile <- liftIO $ doesFileExist (root </> file)
+  unless existsFile (somethingChanged file)
 
 -- | Within the @root@ directory, check if @dir@ still exists.
 -- If it *does not* exist, short-circuit.
 probeDirExistence :: FilePath -> FilePath -> ChangedM ()
 probeDirExistence root dir = do
-    existsDir  <- liftIO $ doesDirectoryExist (root </> dir)
-    unless existsDir (somethingChanged dir)
+  existsDir <- liftIO $ doesDirectoryExist (root </> dir)
+  unless existsDir (somethingChanged dir)
 
 -- | Within the @root@ directory, check if @file@ still does not exist.
 -- If it *does* exist, short-circuit.
 probeFileNonExistence :: FilePath -> FilePath -> ChangedM ()
 probeFileNonExistence root file = do
-    existsFile <- liftIO $ doesFileExist (root </> file)
-    existsDir  <- liftIO $ doesDirectoryExist (root </> file)
-    when (existsFile || existsDir) (somethingChanged file)
+  existsFile <- liftIO $ doesFileExist (root </> file)
+  existsDir <- liftIO $ doesDirectoryExist (root </> file)
+  when (existsFile || existsDir) (somethingChanged file)
 
 -- | Returns @True@ if, inside the @root@ directory, @file@ has the same
 -- 'ModTime' as @mtime@.
-checkModificationTimeUnchanged :: FilePath -> FilePath
-                               -> ModTime -> IO Bool
+checkModificationTimeUnchanged
+  :: FilePath
+  -> FilePath
+  -> ModTime
+  -> IO Bool
 checkModificationTimeUnchanged root file mtime =
   handleIOException False $ do
     mtime' <- getModTime (root </> file)
@@ -1113,8 +1223,12 @@ checkModificationTimeUnchanged root file mtime =
 
 -- | Returns @True@ if, inside the @root@ directory, @file@ has the
 -- same 'ModTime' and 'Hash' as @mtime and @chash@.
-checkFileModificationTimeAndHashUnchanged :: FilePath -> FilePath
-                                          -> ModTime -> Hash -> IO Bool
+checkFileModificationTimeAndHashUnchanged
+  :: FilePath
+  -> FilePath
+  -> ModTime
+  -> Hash
+  -> IO Bool
 checkFileModificationTimeAndHashUnchanged root file mtime chash =
   handleIOException False $ do
     mtime' <- getModTime (root </> file)
@@ -1127,8 +1241,8 @@ checkFileModificationTimeAndHashUnchanged root file mtime chash =
 -- | Read a non-cryptographic hash of a @file@.
 readFileHash :: FilePath -> IO Hash
 readFileHash file =
-    withBinaryFile file ReadMode $ \hnd ->
-      evaluate . Hashable.hash =<< BS.hGetContents hnd
+  withBinaryFile file ReadMode $ \hnd ->
+    evaluate . Hashable.hash =<< BS.hGetContents hnd
 
 -- | Given a directory @dir@, return @Nothing@ if its 'ModTime'
 -- is the same as @mtime@, and the new 'ModTime' if it is not.
@@ -1150,21 +1264,18 @@ handleErrorCall e = handle handler where
     handler (ErrorCall _) = return e
 #endif
 
-
 -- | Run an IO computation, returning @e@ if there is any 'IOException'.
 --
 -- This policy is OK in the file monitor code because it just causes the
 -- monitor to report that something changed, and then code reacting to that
 -- will normally encounter the same IO exception when it re-runs the action
 -- that uses the file.
---
 handleIOException :: a -> IO a -> IO a
 handleIOException e =
-    handle (anyIOException e)
+  handle (anyIOException e)
   where
     anyIOException :: a -> IOException -> IO a
     anyIOException x _ = return x
-
 
 ------------------------------------------------------------------------------
 -- Instances

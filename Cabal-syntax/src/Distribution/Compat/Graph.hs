@@ -1,12 +1,16 @@
-{-# LANGUAGE BangPatterns         #-}
-{-# LANGUAGE CPP                  #-}
-{-# LANGUAGE DeriveDataTypeable   #-}
-{-# LANGUAGE FlexibleContexts     #-}
-{-# LANGUAGE ScopedTypeVariables  #-}
-{-# LANGUAGE TypeFamilies         #-}
-{-# LANGUAGE TypeOperators        #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
+
 -----------------------------------------------------------------------------
+
+-----------------------------------------------------------------------------
+
 -- |
 -- Module      :  Distribution.Compat.Graph
 -- Copyright   :  (c) Edward Z. Yang 2016
@@ -38,81 +42,87 @@
 -- vertices of a graph using 'broken' (and should, e.g., to ensure that
 -- a closure of a graph is well-formed.)  It's possible to take a closed
 -- subset of a broken graph and get a well-formed graph.
---
------------------------------------------------------------------------------
+module Distribution.Compat.Graph
+  ( -- * Graph type
+    Graph
+  , IsNode (..)
 
-module Distribution.Compat.Graph (
-    -- * Graph type
-    Graph,
-    IsNode(..),
     -- * Query
-    null,
-    size,
-    member,
-    lookup,
+  , null
+  , size
+  , member
+  , lookup
+
     -- * Construction
-    empty,
-    insert,
-    deleteKey,
-    deleteLookup,
+  , empty
+  , insert
+  , deleteKey
+  , deleteLookup
+
     -- * Combine
-    unionLeft,
-    unionRight,
+  , unionLeft
+  , unionRight
+
     -- * Graph algorithms
-    stronglyConnComp,
-    SCC(..),
-    cycles,
-    broken,
-    neighbors,
-    revNeighbors,
-    closure,
-    revClosure,
-    topSort,
-    revTopSort,
+  , stronglyConnComp
+  , SCC (..)
+  , cycles
+  , broken
+  , neighbors
+  , revNeighbors
+  , closure
+  , revClosure
+  , topSort
+  , revTopSort
+
     -- * Conversions
+
     -- ** Maps
-    toMap,
+  , toMap
+
     -- ** Lists
-    fromDistinctList,
-    toList,
-    keys,
+  , fromDistinctList
+  , toList
+  , keys
+
     -- ** Sets
-    keysSet,
+  , keysSet
+
     -- ** Graphs
-    toGraph,
+  , toGraph
+
     -- * Node type
-    Node(..),
-    nodeValue,
-) where
+  , Node (..)
+  , nodeValue
+  ) where
 
 import Distribution.Compat.Prelude hiding (empty, lookup, null, toList)
 import Prelude ()
 
-import Data.Array                    ((!))
-import Data.Graph                    (SCC (..))
+import Data.Array ((!))
+import Data.Graph (SCC (..))
 import Distribution.Utils.Structured (Structure (..), Structured (..))
 
-import qualified Data.Array                  as Array
-import qualified Data.Foldable               as Foldable
-import qualified Data.Graph                  as G
-import qualified Data.Map.Strict             as Map
-import qualified Data.Set                    as Set
-import qualified Data.Tree                   as Tree
+import qualified Data.Array as Array
+import qualified Data.Foldable as Foldable
+import qualified Data.Graph as G
+import qualified Data.Map.Strict as Map
+import qualified Data.Set as Set
+import qualified Data.Tree as Tree
 import qualified Distribution.Compat.Prelude as Prelude
 
 -- | A graph of nodes @a@.  The nodes are expected to have instance
 -- of class 'IsNode'.
-data Graph a
-    = Graph {
-        graphMap          :: !(Map (Key a) a),
-        -- Lazily cached graph representation
-        graphForward      :: G.Graph,
-        graphAdjoint      :: G.Graph,
-        graphVertexToNode :: G.Vertex -> a,
-        graphKeyToVertex  :: Key a -> Maybe G.Vertex,
-        graphBroken       :: [(a, [Key a])]
-    }
-    deriving (Typeable)
+data Graph a = Graph
+  { graphMap :: !(Map (Key a) a)
+  , -- Lazily cached graph representation
+    graphForward :: G.Graph
+  , graphAdjoint :: G.Graph
+  , graphVertexToNode :: G.Vertex -> a
+  , graphKeyToVertex :: Key a -> Maybe G.Vertex
+  , graphBroken :: [(a, [Key a])]
+  }
+  deriving (Typeable)
 
 -- NB: Not a Functor! (or Traversable), because you need
 -- to restrict Key a ~ Key b.  We provide our own mapping
@@ -122,50 +132,51 @@ data Graph a
 -- Map representation.
 
 instance Show a => Show (Graph a) where
-    show = show . toList
+  show = show . toList
 
 instance (IsNode a, Read a, Show (Key a)) => Read (Graph a) where
-    readsPrec d s = map (\(a,r) -> (fromDistinctList a, r)) (readsPrec d s)
+  readsPrec d s = map (\(a, r) -> (fromDistinctList a, r)) (readsPrec d s)
 
 instance (IsNode a, Binary a, Show (Key a)) => Binary (Graph a) where
-    put x = put (toList x)
-    get = fmap fromDistinctList get
+  put x = put (toList x)
+  get = fmap fromDistinctList get
 
 instance Structured a => Structured (Graph a) where
-    structure p = Nominal (typeRep p) 0 "Graph" [structure (Proxy :: Proxy a)]
+  structure p = Nominal (typeRep p) 0 "Graph" [structure (Proxy :: Proxy a)]
 
 instance (Eq (Key a), Eq a) => Eq (Graph a) where
-    g1 == g2 = graphMap g1 == graphMap g2
+  g1 == g2 = graphMap g1 == graphMap g2
 
 instance Foldable.Foldable Graph where
-    fold = Foldable.fold . graphMap
-    foldr f z = Foldable.foldr f z . graphMap
-    foldl f z = Foldable.foldl f z . graphMap
-    foldMap f = Foldable.foldMap f . graphMap
-    foldl' f z = Foldable.foldl' f z . graphMap
-    foldr' f z = Foldable.foldr' f z . graphMap
+  fold = Foldable.fold . graphMap
+  foldr f z = Foldable.foldr f z . graphMap
+  foldl f z = Foldable.foldl f z . graphMap
+  foldMap f = Foldable.foldMap f . graphMap
+  foldl' f z = Foldable.foldl' f z . graphMap
+  foldr' f z = Foldable.foldr' f z . graphMap
 #ifdef MIN_VERSION_base
 #if MIN_VERSION_base(4,8,0)
-    length = Foldable.length . graphMap
-    null   = Foldable.null   . graphMap
-    toList = Foldable.toList . graphMap
-    elem x = Foldable.elem x . graphMap
-    maximum = Foldable.maximum . graphMap
-    minimum = Foldable.minimum . graphMap
-    sum     = Foldable.sum     . graphMap
-    product = Foldable.product . graphMap
+  length = Foldable.length . graphMap
+  null   = Foldable.null   . graphMap
+  toList = Foldable.toList . graphMap
+  elem x = Foldable.elem x . graphMap
+  maximum = Foldable.maximum . graphMap
+  minimum = Foldable.minimum . graphMap
+  sum     = Foldable.sum     . graphMap
+  product = Foldable.product . graphMap
 #endif
 #endif
 
 instance (NFData a, NFData (Key a)) => NFData (Graph a) where
-    rnf Graph {
-        graphMap = m,
-        graphForward = gf,
-        graphAdjoint = ga,
-        graphVertexToNode = vtn,
-        graphKeyToVertex = ktv,
-        graphBroken = b
-    } = gf `seq` ga `seq` vtn `seq` ktv `seq` b `seq` rnf m
+  rnf
+    Graph
+      { graphMap = m
+      , graphForward = gf
+      , graphAdjoint = ga
+      , graphVertexToNode = vtn
+      , graphKeyToVertex = ktv
+      , graphBroken = b
+      } = gf `seq` ga `seq` vtn `seq` ktv `seq` b `seq` rnf m
 
 -- TODO: Data instance?
 
@@ -174,32 +185,32 @@ instance (NFData a, NFData (Key a)) => NFData (Graph a) where
 -- type @'Key' a@; given a node we can determine its key ('nodeKey')
 -- and the keys of its neighbors ('nodeNeighbors').
 class Ord (Key a) => IsNode a where
-    type Key a
-    nodeKey :: a -> Key a
-    nodeNeighbors :: a -> [Key a]
+  type Key a
+  nodeKey :: a -> Key a
+  nodeNeighbors :: a -> [Key a]
 
 instance (IsNode a, IsNode b, Key a ~ Key b) => IsNode (Either a b) where
-    type Key (Either a b) = Key a
-    nodeKey (Left x)  = nodeKey x
-    nodeKey (Right x) = nodeKey x
-    nodeNeighbors (Left x)  = nodeNeighbors x
-    nodeNeighbors (Right x) = nodeNeighbors x
+  type Key (Either a b) = Key a
+  nodeKey (Left x) = nodeKey x
+  nodeKey (Right x) = nodeKey x
+  nodeNeighbors (Left x) = nodeNeighbors x
+  nodeNeighbors (Right x) = nodeNeighbors x
 
 -- | A simple, trivial data type which admits an 'IsNode' instance.
 data Node k a = N a k [k]
-    deriving (Show, Eq)
+  deriving (Show, Eq)
 
 -- | Get the value from a 'Node'.
 nodeValue :: Node k a -> a
 nodeValue (N a _ _) = a
 
 instance Functor (Node k) where
-    fmap f (N a k ks) = N (f a) k ks
+  fmap f (N a k ks) = N (f a) k ks
 
 instance Ord k => IsNode (Node k a) where
-    type Key (Node k a) = k
-    nodeKey (N _ k _) = k
-    nodeNeighbors (N _ _ ks) = ks
+  type Key (Node k a) = k
+  nodeKey (N _ k _) = k
+  nodeNeighbors (N _ _ ks) = ks
 
 -- TODO: Maybe introduce a typeclass for items which just
 -- keys (so, Key associated type, and nodeKey method).  But
@@ -241,8 +252,8 @@ deleteKey k g = fromMap (Map.delete k (toMap g))
 -- value if it existed.
 deleteLookup :: IsNode a => Key a -> Graph a -> (Maybe a, Graph a)
 deleteLookup k g =
-    let (r, m') = Map.updateLookupWithKey (\_ _ -> Nothing) k (toMap g)
-    in (r, fromMap m')
+  let (r, m') = Map.updateLookupWithKey (\_ _ -> Nothing) k (toMap g)
+   in (r, fromMap m')
 
 -- Combining
 
@@ -266,18 +277,20 @@ stronglyConnComp g = map decode forest
   where
     forest = G.scc (graphForward g)
     decode (Tree.Node v [])
-        | mentions_itself v = CyclicSCC  [graphVertexToNode g v]
-        | otherwise         = AcyclicSCC (graphVertexToNode g v)
+      | mentions_itself v = CyclicSCC [graphVertexToNode g v]
+      | otherwise = AcyclicSCC (graphVertexToNode g v)
     decode other = CyclicSCC (dec other [])
-        where dec (Tree.Node v ts) vs
-                = graphVertexToNode g v : foldr dec vs ts
+      where
+        dec (Tree.Node v ts) vs =
+          graphVertexToNode g v : foldr dec vs ts
     mentions_itself v = v `elem` (graphForward g ! v)
+
 -- Implementation copied from 'stronglyConnCompR' in 'Data.Graph'.
 
 -- | /Ω(V + E)/. Compute the cycles of a graph.
 -- Requires amortized construction of graph.
 cycles :: Graph a -> [[a]]
-cycles g = [ vs | CyclicSCC vs <- stronglyConnComp g ]
+cycles g = [vs | CyclicSCC vs <- stronglyConnComp g]
 
 -- | /O(1)/.  Return a list of nodes paired with their broken
 -- neighbors (i.e., neighbor keys which are not in the graph).
@@ -289,15 +302,15 @@ broken g = graphBroken g
 -- Requires amortized construction of graph.
 neighbors :: Graph a -> Key a -> Maybe [a]
 neighbors g k = do
-    v <- graphKeyToVertex g k
-    return (map (graphVertexToNode g) (graphForward g ! v))
+  v <- graphKeyToVertex g k
+  return (map (graphVertexToNode g) (graphForward g ! v))
 
 -- | Lookup the immediate reverse neighbors from a key in the graph.
 -- Requires amortized construction of graph.
 revNeighbors :: Graph a -> Key a -> Maybe [a]
 revNeighbors g k = do
-    v <- graphKeyToVertex g k
-    return (map (graphVertexToNode g) (graphAdjoint g ! v))
+  v <- graphKeyToVertex g k
+  return (map (graphVertexToNode g) (graphAdjoint g ! v))
 
 -- | Compute the subgraph which is the closure of some set of keys.
 -- Returns @Nothing@ if one (or more) keys are not present in
@@ -305,8 +318,8 @@ revNeighbors g k = do
 -- Requires amortized construction of graph.
 closure :: Graph a -> [Key a] -> Maybe [a]
 closure g ks = do
-    vs <- traverse (graphKeyToVertex g) ks
-    return (decodeVertexForest g (G.dfs (graphForward g) vs))
+  vs <- traverse (graphKeyToVertex g) ks
+  return (decodeVertexForest g (G.dfs (graphForward g) vs))
 
 -- | Compute the reverse closure of a graph from some set
 -- of keys.  Returns @Nothing@ if one (or more) keys are not present in
@@ -314,8 +327,8 @@ closure g ks = do
 -- Requires amortized construction of graph.
 revClosure :: Graph a -> [Key a] -> Maybe [a]
 revClosure g ks = do
-    vs <- traverse (graphKeyToVertex g) ks
-    return (decodeVertexForest g (G.dfs (graphAdjoint g) vs))
+  vs <- traverse (graphKeyToVertex g) ks
+  return (decodeVertexForest g (G.dfs (graphAdjoint g) vs))
 
 flattenForest :: Tree.Forest a -> [a]
 flattenForest = concatMap Tree.flatten
@@ -342,44 +355,49 @@ revTopSort g = map (graphVertexToNode g) $ G.topSort (graphAdjoint g)
 -- instead.  The values of the map are assumed to already
 -- be in WHNF.
 fromMap :: IsNode a => Map (Key a) a -> Graph a
-fromMap m
-    = Graph { graphMap = m
-            -- These are lazily computed!
-            , graphForward = g
-            , graphAdjoint = G.transposeG g
-            , graphVertexToNode = vertex_to_node
-            , graphKeyToVertex = key_to_vertex
-            , graphBroken = broke
-            }
+fromMap m =
+  Graph
+    { graphMap = m
+    , -- These are lazily computed!
+      graphForward = g
+    , graphAdjoint = G.transposeG g
+    , graphVertexToNode = vertex_to_node
+    , graphKeyToVertex = key_to_vertex
+    , graphBroken = broke
+    }
   where
     try_key_to_vertex k = maybe (Left k) Right (key_to_vertex k)
 
-    (brokenEdges, edges)
-        = unzip
-        $ [ partitionEithers (map try_key_to_vertex (nodeNeighbors n))
-          | n <- ns ]
+    (brokenEdges, edges) =
+      unzip $
+        [ partitionEithers (map try_key_to_vertex (nodeNeighbors n))
+        | n <- ns
+        ]
     broke = filter (not . Prelude.null . snd) (zip ns brokenEdges)
 
     g = Array.listArray bounds edges
 
-    ns              = Map.elems m -- sorted ascending
-    vertices        = zip (map nodeKey ns) [0..]
-    vertex_map      = Map.fromAscList vertices
+    ns = Map.elems m -- sorted ascending
+    vertices = zip (map nodeKey ns) [0 ..]
+    vertex_map = Map.fromAscList vertices
     key_to_vertex k = Map.lookup k vertex_map
 
     vertex_to_node vertex = nodeTable ! vertex
 
-    nodeTable   = Array.listArray bounds ns
+    nodeTable = Array.listArray bounds ns
     bounds = (0, Map.size m - 1)
 
 -- | /O(V log V)/. Convert a list of nodes (with distinct keys) into a graph.
 fromDistinctList :: (IsNode a, Show (Key a)) => [a] -> Graph a
-fromDistinctList = fromMap
-                 . Map.fromListWith (\_ -> duplicateError)
-                 . map (\n -> n `seq` (nodeKey n, n))
+fromDistinctList =
+  fromMap
+    . Map.fromListWith (\_ -> duplicateError)
+    . map (\n -> n `seq` (nodeKey n, n))
   where
-    duplicateError n = error $ "Graph.fromDistinctList: duplicate key: "
-                            ++ show (nodeKey n)
+    duplicateError n =
+      error $
+        "Graph.fromDistinctList: duplicate key: "
+          ++ show (nodeKey n)
 
 -- Map-like operations
 

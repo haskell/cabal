@@ -1,26 +1,32 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# OPTIONS_GHC -funbox-strict-fields #-}
+
 module Distribution.Client.Compat.Semaphore
-    ( QSem
-    , newQSem
-    , waitQSem
-    , signalQSem
-    ) where
+  ( QSem
+  , newQSem
+  , waitQSem
+  , signalQSem
+  ) where
 
-import Prelude (IO, return, Eq (..), Int, Bool (..), ($), ($!), Num (..), flip)
+import Prelude (Bool (..), Eq (..), IO, Int, Num (..), flip, return, ($), ($!))
 
-import Control.Concurrent.STM (TVar, atomically, newTVar, readTVar, retry,
-                               writeTVar)
+import Control.Concurrent.STM
+  ( TVar
+  , atomically
+  , newTVar
+  , readTVar
+  , retry
+  , writeTVar
+  )
 import Control.Exception (mask_, onException)
 import Control.Monad (join, unless)
-import Data.Typeable (Typeable)
 import Data.List.NonEmpty (NonEmpty (..))
 import qualified Data.List.NonEmpty as NE
+import Data.Typeable (Typeable)
 
 -- | 'QSem' is a quantity semaphore in which the resource is acquired
 -- and released in units of one. It provides guaranteed FIFO ordering
 -- for satisfying blocked `waitQSem` calls.
---
 data QSem = QSem !(TVar Int) !(TVar [TVar Bool]) !(TVar [TVar Bool])
   deriving (Eq, Typeable)
 
@@ -34,18 +40,20 @@ newQSem i = atomically $ do
 waitQSem :: QSem -> IO ()
 waitQSem s@(QSem q _b1 b2) =
   mask_ $ join $ atomically $ do
-        -- join, because if we need to block, we have to add a TVar to
-        -- the block queue.
-        -- mask_, because we need a chance to set up an exception handler
-        -- after the join returns.
-     v <- readTVar q
-     if v == 0
-        then do b <- newTVar False
-                ys <- readTVar b2
-                writeTVar b2 (b:ys)
-                return (wait b)
-        else do writeTVar q $! v - 1
-                return (return ())
+    -- join, because if we need to block, we have to add a TVar to
+    -- the block queue.
+    -- mask_, because we need a chance to set up an exception handler
+    -- after the join returns.
+    v <- readTVar q
+    if v == 0
+      then do
+        b <- newTVar False
+        ys <- readTVar b2
+        writeTVar b2 (b : ys)
+        return (wait b)
+      else do
+        writeTVar q $! v - 1
+        return (return ())
   where
     --
     -- very careful here: if we receive an exception, then we need to
@@ -59,17 +67,18 @@ waitQSem s@(QSem q _b1 b2) =
     --
     wait t =
       flip onException (wake s t) $
-      atomically $ do
-        b <- readTVar t
-        unless b retry
-
+        atomically $ do
+          b <- readTVar t
+          unless b retry
 
 wake :: QSem -> TVar Bool -> IO ()
 wake s x = join $ atomically $ do
-      b <- readTVar x
-      if b then return (signalQSem s)
-           else do writeTVar x True
-                   return (return ())
+  b <- readTVar x
+  if b
+    then return (signalQSem s)
+    else do
+      writeTVar x True
+      return (return ())
 
 {-
  property we want:
@@ -82,27 +91,29 @@ wake s x = join $ atomically $ do
 signalQSem :: QSem -> IO ()
 signalQSem s@(QSem q b1 b2) =
   mask_ $ join $ atomically $ do
-      -- join, so we don't force the reverse inside the txn
-      -- mask_ is needed so we don't lose a wakeup
+    -- join, so we don't force the reverse inside the txn
+    -- mask_ is needed so we don't lose a wakeup
     v <- readTVar q
     if v /= 0
-       then do writeTVar q $! v + 1
-               return (return ())
-       else do xs <- readTVar b1
-               checkwake1 xs
+      then do
+        writeTVar q $! v + 1
+        return (return ())
+      else do
+        xs <- readTVar b1
+        checkwake1 xs
   where
     checkwake1 [] = do
       ys <- readTVar b2
       checkwake2 ys
-    checkwake1 (x:xs) = do
+    checkwake1 (x : xs) = do
       writeTVar b1 xs
       return (wake s x)
 
     checkwake2 [] = do
       writeTVar q 1
       return (return ())
-    checkwake2 (y:ys) = do
-      let (z:|zs) = NE.reverse (y:|ys)
+    checkwake2 (y : ys) = do
+      let (z :| zs) = NE.reverse (y :| ys)
       writeTVar b1 zs
       writeTVar b2 []
       return (wake s z)

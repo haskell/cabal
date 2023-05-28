@@ -4,6 +4,7 @@
 {-# LANGUAGE RankNTypes #-}
 
 -----------------------------------------------------------------------------
+
 -- |
 -- Module      :  Distribution.Types.PackageDescription
 -- Copyright   :  Isaac Jones 2003-2005
@@ -25,70 +26,70 @@
 -- It was done this way initially to avoid breaking too much stuff when the
 -- feature was introduced. It could probably do with being rationalised at some
 -- point to make it simpler.
-
-module Distribution.Types.PackageDescription (
-    PackageDescription(..),
-    license,
-    license',
-    buildType,
-    emptyPackageDescription,
-    hasPublicLib,
-    hasLibs,
-    allLibraries,
-    withLib,
-    hasExes,
-    withExe,
-    hasTests,
-    withTest,
-    hasBenchmarks,
-    withBenchmark,
-    hasForeignLibs,
-    withForeignLib,
-    allBuildInfo,
-    enabledBuildInfos,
-    allBuildDepends,
-    enabledBuildDepends,
-    updatePackageDescription,
-    pkgComponents,
-    pkgBuildableComponents,
-    enabledComponents,
-    lookupComponent,
-    getComponent,
+module Distribution.Types.PackageDescription
+  ( PackageDescription (..)
+  , license
+  , license'
+  , buildType
+  , emptyPackageDescription
+  , hasPublicLib
+  , hasLibs
+  , allLibraries
+  , withLib
+  , hasExes
+  , withExe
+  , hasTests
+  , withTest
+  , hasBenchmarks
+  , withBenchmark
+  , hasForeignLibs
+  , withForeignLib
+  , allBuildInfo
+  , enabledBuildInfos
+  , allBuildDepends
+  , enabledBuildDepends
+  , updatePackageDescription
+  , pkgComponents
+  , pkgBuildableComponents
+  , enabledComponents
+  , lookupComponent
+  , getComponent
   ) where
 
-import Prelude ()
 import Distribution.Compat.Prelude
+import Prelude ()
 
 import Control.Monad ((<=<))
 
 -- lens
-import qualified Distribution.Types.BuildInfo.Lens  as L
+
+import Distribution.Types.Benchmark
+import qualified Distribution.Types.BuildInfo.Lens as L
+import Distribution.Types.Executable
+import Distribution.Types.ForeignLib
 import Distribution.Types.Library
 import Distribution.Types.TestSuite
-import Distribution.Types.Executable
-import Distribution.Types.Benchmark
-import Distribution.Types.ForeignLib
 
-import Distribution.Types.Component
-import Distribution.Types.ComponentRequestedSpec
-import Distribution.Types.Dependency
-import Distribution.Types.PackageId
-import Distribution.Types.ComponentName
-import Distribution.Types.PackageName
-import Distribution.Types.UnqualComponentName
-import Distribution.Types.SetupBuildInfo
 import Distribution.Types.BuildInfo
 import Distribution.Types.BuildType
-import Distribution.Types.SourceRepo
+import Distribution.Types.Component
+import Distribution.Types.ComponentName
+import Distribution.Types.ComponentRequestedSpec
+import Distribution.Types.Dependency
 import Distribution.Types.HookedBuildInfo
+import Distribution.Types.PackageId
+import Distribution.Types.PackageName
+import Distribution.Types.SetupBuildInfo
+import Distribution.Types.SourceRepo
+import Distribution.Types.UnqualComponentName
 
 import Distribution.CabalSpecVersion
 import Distribution.Compiler
 import Distribution.License
 import Distribution.Package
-import Distribution.Version
 import Distribution.Utils.Path
 import Distribution.Utils.ShortText
+import Distribution.Version
 
 import qualified Distribution.SPDX as SPDX
 
@@ -100,53 +101,53 @@ import qualified Distribution.SPDX as SPDX
 -- which is needed for all packages, such as the package name and version, and
 -- information which is needed for the simple build system only, such as
 -- the compiler options and library name.
---
-data PackageDescription
-    =  PackageDescription {
-        -- the following are required by all packages:
+data PackageDescription = PackageDescription
+  { -- the following are required by all packages:
 
-        -- | The version of the Cabal spec that this package description uses.
-        specVersion    :: CabalSpecVersion,
-        package        :: PackageIdentifier,
-        licenseRaw     :: Either SPDX.License License,
-        licenseFiles   :: [SymbolicPath PackageDir LicenseFile],
-        copyright      :: !ShortText,
-        maintainer     :: !ShortText,
-        author         :: !ShortText,
-        stability      :: !ShortText,
-        testedWith     :: [(CompilerFlavor,VersionRange)],
-        homepage       :: !ShortText,
-        pkgUrl         :: !ShortText,
-        bugReports     :: !ShortText,
-        sourceRepos    :: [SourceRepo],
-        synopsis       :: !ShortText, -- ^A one-line summary of this package
-        description    :: !ShortText, -- ^A more verbose description of this package
-        category       :: !ShortText,
-        customFieldsPD :: [(String,String)], -- ^Custom fields starting
-                                             -- with x-, stored in a
-                                             -- simple assoc-list.
-
-        -- | The original @build-type@ value as parsed from the
-        -- @.cabal@ file without defaulting. See also 'buildType'.
-        --
-        -- @since 2.2
-        buildTypeRaw   :: Maybe BuildType,
-        setupBuildInfo :: Maybe SetupBuildInfo,
-        -- components
-        library        :: Maybe Library,
-        subLibraries   :: [Library],
-        executables    :: [Executable],
-        foreignLibs    :: [ForeignLib],
-        testSuites     :: [TestSuite],
-        benchmarks     :: [Benchmark],
-        -- files
-        dataFiles      :: [FilePath],
-        dataDir        :: FilePath,
-        extraSrcFiles  :: [FilePath],
-        extraTmpFiles  :: [FilePath],
-        extraDocFiles  :: [FilePath]
-    }
-    deriving (Generic, Show, Read, Eq, Ord, Typeable, Data)
+    specVersion :: CabalSpecVersion
+  -- ^ The version of the Cabal spec that this package description uses.
+  , package :: PackageIdentifier
+  , licenseRaw :: Either SPDX.License License
+  , licenseFiles :: [SymbolicPath PackageDir LicenseFile]
+  , copyright :: !ShortText
+  , maintainer :: !ShortText
+  , author :: !ShortText
+  , stability :: !ShortText
+  , testedWith :: [(CompilerFlavor, VersionRange)]
+  , homepage :: !ShortText
+  , pkgUrl :: !ShortText
+  , bugReports :: !ShortText
+  , sourceRepos :: [SourceRepo]
+  , synopsis :: !ShortText
+  -- ^ A one-line summary of this package
+  , description :: !ShortText
+  -- ^ A more verbose description of this package
+  , category :: !ShortText
+  , customFieldsPD :: [(String, String)]
+  -- ^ Custom fields starting
+  --  with x-, stored in a
+  --  simple assoc-list.
+  , buildTypeRaw :: Maybe BuildType
+  -- ^ The original @build-type@ value as parsed from the
+  -- @.cabal@ file without defaulting. See also 'buildType'.
+  --
+  -- @since 2.2
+  , setupBuildInfo :: Maybe SetupBuildInfo
+  , -- components
+    library :: Maybe Library
+  , subLibraries :: [Library]
+  , executables :: [Executable]
+  , foreignLibs :: [ForeignLib]
+  , testSuites :: [TestSuite]
+  , benchmarks :: [Benchmark]
+  , -- files
+    dataFiles :: [FilePath]
+  , dataDir :: FilePath
+  , extraSrcFiles :: [FilePath]
+  , extraTmpFiles :: [FilePath]
+  , extraDocFiles :: [FilePath]
+  }
+  deriving (Generic, Show, Read, Eq, Ord, Typeable, Data)
 
 instance Binary PackageDescription
 instance Structured PackageDescription
@@ -185,49 +186,53 @@ license' = either id licenseToSPDX
 -- @since 2.2
 buildType :: PackageDescription -> BuildType
 buildType pkg
-  | specVersion pkg >= CabalSpecV2_2
-    = fromMaybe newDefault (buildTypeRaw pkg)
+  | specVersion pkg >= CabalSpecV2_2 =
+      fromMaybe newDefault (buildTypeRaw pkg)
   | otherwise -- cabal-version < 2.1
-    = fromMaybe Custom (buildTypeRaw pkg)
+    =
+      fromMaybe Custom (buildTypeRaw pkg)
   where
-    newDefault | isNothing (setupBuildInfo pkg) = Simple
-               | otherwise                      = Custom
+    newDefault
+      | isNothing (setupBuildInfo pkg) = Simple
+      | otherwise = Custom
 
 emptyPackageDescription :: PackageDescription
-emptyPackageDescription
-    =  PackageDescription {
-                      package      = PackageIdentifier (mkPackageName "")
-                                                       nullVersion,
-                      licenseRaw   = Right UnspecifiedLicense, -- TODO:
-                      licenseFiles = [],
-                      specVersion  = CabalSpecV1_0,
-                      buildTypeRaw = Nothing,
-                      copyright    = mempty,
-                      maintainer   = mempty,
-                      author       = mempty,
-                      stability    = mempty,
-                      testedWith   = [],
-                      homepage     = mempty,
-                      pkgUrl       = mempty,
-                      bugReports   = mempty,
-                      sourceRepos  = [],
-                      synopsis     = mempty,
-                      description  = mempty,
-                      category     = mempty,
-                      customFieldsPD = [],
-                      setupBuildInfo = Nothing,
-                      library      = Nothing,
-                      subLibraries = [],
-                      foreignLibs  = [],
-                      executables  = [],
-                      testSuites   = [],
-                      benchmarks   = [],
-                      dataFiles    = [],
-                      dataDir      = ".",
-                      extraSrcFiles = [],
-                      extraTmpFiles = [],
-                      extraDocFiles = []
-                     }
+emptyPackageDescription =
+  PackageDescription
+    { package =
+        PackageIdentifier
+          (mkPackageName "")
+          nullVersion
+    , licenseRaw = Right UnspecifiedLicense -- TODO:
+    , licenseFiles = []
+    , specVersion = CabalSpecV1_0
+    , buildTypeRaw = Nothing
+    , copyright = mempty
+    , maintainer = mempty
+    , author = mempty
+    , stability = mempty
+    , testedWith = []
+    , homepage = mempty
+    , pkgUrl = mempty
+    , bugReports = mempty
+    , sourceRepos = []
+    , synopsis = mempty
+    , description = mempty
+    , category = mempty
+    , customFieldsPD = []
+    , setupBuildInfo = Nothing
+    , library = Nothing
+    , subLibraries = []
+    , foreignLibs = []
+    , executables = []
+    , testSuites = []
+    , benchmarks = []
+    , dataFiles = []
+    , dataDir = "."
+    , extraSrcFiles = []
+    , extraTmpFiles = []
+    , extraDocFiles = []
+    }
 
 -- ---------------------------------------------------------------------------
 -- The Library type
@@ -235,9 +240,9 @@ emptyPackageDescription
 -- | Does this package have a buildable PUBLIC library?
 hasPublicLib :: PackageDescription -> Bool
 hasPublicLib p =
-    case library p of
-        Just lib -> buildable (libBuildInfo lib)
-        Nothing  -> False
+  case library p of
+    Just lib -> buildable (libBuildInfo lib)
+    Nothing -> False
 
 -- | Does this package have any libraries?
 hasLibs :: PackageDescription -> Bool
@@ -254,12 +259,12 @@ allLibraries p = maybeToList (library p) ++ subLibraries p
 -- for more information.
 withLib :: PackageDescription -> (Library -> IO ()) -> IO ()
 withLib pkg_descr f =
-   sequence_ [f lib | lib <- allLibraries pkg_descr, buildable (libBuildInfo lib)]
+  sequence_ [f lib | lib <- allLibraries pkg_descr, buildable (libBuildInfo lib)]
 
 -- ---------------------------------------------------------------------------
 -- The Executable type
 
--- |does this package have any executables?
+-- | does this package have any executables?
 hasExes :: PackageDescription -> Bool
 hasExes p = any (buildable . buildInfo) (executables p)
 
@@ -283,10 +288,9 @@ hasTests = any (buildable . testBuildInfo) . testSuites
 -- You probably want 'withTestLBI' if you have a 'LocalBuildInfo', see the note in
 -- "Distribution.Types.ComponentRequestedSpec#buildable_vs_enabled_components"
 -- for more information.
-
 withTest :: PackageDescription -> (TestSuite -> IO ()) -> IO ()
 withTest pkg_descr f =
-    sequence_ [ f test | test <- testSuites pkg_descr, buildable (testBuildInfo test) ]
+  sequence_ [f test | test <- testSuites pkg_descr, buildable (testBuildInfo test)]
 
 -- ---------------------------------------------------------------------------
 -- The Benchmark type
@@ -299,10 +303,9 @@ hasBenchmarks = any (buildable . benchmarkBuildInfo) . benchmarks
 -- You probably want 'withBenchLBI' if you have a 'LocalBuildInfo', see the note in
 -- "Distribution.Types.ComponentRequestedSpec#buildable_vs_enabled_components"
 -- for more information.
-
 withBenchmark :: PackageDescription -> (Benchmark -> IO ()) -> IO ()
 withBenchmark pkg_descr f =
-    sequence_ [f bench | bench <- benchmarks pkg_descr, buildable (benchmarkBuildInfo bench)]
+  sequence_ [f bench | bench <- benchmarks pkg_descr, buildable (benchmarkBuildInfo bench)]
 
 -- ---------------------------------------------------------------------------
 -- The ForeignLib type
@@ -315,10 +318,11 @@ hasForeignLibs p = any (buildable . foreignLibBuildInfo) (foreignLibs p)
 -- description.
 withForeignLib :: PackageDescription -> (ForeignLib -> IO ()) -> IO ()
 withForeignLib pkg_descr f =
-  sequence_ [ f flib
-            | flib <- foreignLibs pkg_descr
-            , buildable (foreignLibBuildInfo flib)
-            ]
+  sequence_
+    [ f flib
+    | flib <- foreignLibs pkg_descr
+    , buildable (foreignLibBuildInfo flib)
+    ]
 
 -- ---------------------------------------------------------------------------
 -- The BuildInfo type
@@ -328,27 +332,30 @@ withForeignLib pkg_descr f =
 --
 -- Useful for implementing package checks.
 allBuildInfo :: PackageDescription -> [BuildInfo]
-allBuildInfo pkg_descr = [ bi | lib <- allLibraries pkg_descr
-                               , let bi = libBuildInfo lib ]
-                       ++ [ bi | flib <- foreignLibs pkg_descr
-                               , let bi = foreignLibBuildInfo flib ]
-                       ++ [ bi | exe <- executables pkg_descr
-                               , let bi = buildInfo exe ]
-                       ++ [ bi | tst <- testSuites pkg_descr
-                               , let bi = testBuildInfo tst ]
-                       ++ [ bi | tst <- benchmarks pkg_descr
-                               , let bi = benchmarkBuildInfo tst ]
+allBuildInfo pkg_descr =
+  [ bi | lib <- allLibraries pkg_descr, let bi = libBuildInfo lib
+  ]
+    ++ [ bi | flib <- foreignLibs pkg_descr, let bi = foreignLibBuildInfo flib
+       ]
+    ++ [ bi | exe <- executables pkg_descr, let bi = buildInfo exe
+       ]
+    ++ [ bi | tst <- testSuites pkg_descr, let bi = testBuildInfo tst
+       ]
+    ++ [ bi | tst <- benchmarks pkg_descr, let bi = benchmarkBuildInfo tst
+       ]
 
 -- | Return all of the 'BuildInfo's of enabled components, i.e., all of
 -- the ones that would be built if you run @./Setup build@.
 enabledBuildInfos :: PackageDescription -> ComponentRequestedSpec -> [BuildInfo]
 enabledBuildInfos pkg enabled =
-    [ componentBuildInfo comp
-    | comp <- enabledComponents pkg enabled ]
-
+  [ componentBuildInfo comp
+  | comp <- enabledComponents pkg enabled
+  ]
 
 -- ------------------------------------------------------------
+
 -- * Utils
+
 -- ------------------------------------------------------------
 
 -- | Get the combined build-depends entries of all components.
@@ -360,42 +367,50 @@ allBuildDepends = targetBuildDepends <=< allBuildInfo
 enabledBuildDepends :: PackageDescription -> ComponentRequestedSpec -> [Dependency]
 enabledBuildDepends spec pd = targetBuildDepends =<< enabledBuildInfos spec pd
 
-
 updatePackageDescription :: HookedBuildInfo -> PackageDescription -> PackageDescription
-updatePackageDescription (mb_lib_bi, exe_bi) p
-    = p{ executables = updateExecutables exe_bi    (executables p)
-       , library     = updateLibrary     mb_lib_bi (library     p) }
-    where
-      updateLibrary :: Maybe BuildInfo -> Maybe Library -> Maybe Library
-      updateLibrary (Just bi) (Just lib) = Just (lib{libBuildInfo = bi `mappend` libBuildInfo lib})
-      updateLibrary Nothing   mb_lib     = mb_lib
-      updateLibrary (Just _)  Nothing    = Nothing
+updatePackageDescription (mb_lib_bi, exe_bi) p =
+  p
+    { executables = updateExecutables exe_bi (executables p)
+    , library = updateLibrary mb_lib_bi (library p)
+    }
+  where
+    updateLibrary :: Maybe BuildInfo -> Maybe Library -> Maybe Library
+    updateLibrary (Just bi) (Just lib) = Just (lib{libBuildInfo = bi `mappend` libBuildInfo lib})
+    updateLibrary Nothing mb_lib = mb_lib
+    updateLibrary (Just _) Nothing = Nothing
 
-      updateExecutables :: [(UnqualComponentName, BuildInfo)] -- ^[(exeName, new buildinfo)]
-        -> [Executable]                                       -- ^list of executables to update
-        -> [Executable]                                       -- ^list with exeNames updated
-      updateExecutables exe_bi' executables' = foldr updateExecutable executables' exe_bi'
+    updateExecutables
+      :: [(UnqualComponentName, BuildInfo)]
+      -- \^[(exeName, new buildinfo)]
+      -> [Executable]
+      -- \^list of executables to update
+      -> [Executable]
+    -- \^list with exeNames updated
+    updateExecutables exe_bi' executables' = foldr updateExecutable executables' exe_bi'
 
-      updateExecutable :: (UnqualComponentName, BuildInfo) -- ^(exeName, new buildinfo)
-                       -> [Executable]                     -- ^list of executables to update
-                       -> [Executable]                     -- ^list with exeName updated
-      updateExecutable _                 []         = []
-      updateExecutable exe_bi'@(name,bi) (exe:exes)
-        | exeName exe == name = exe{buildInfo = bi `mappend` buildInfo exe} : exes
-        | otherwise           = exe : updateExecutable exe_bi' exes
+    updateExecutable
+      :: (UnqualComponentName, BuildInfo)
+      -- \^(exeName, new buildinfo)
+      -> [Executable]
+      -- \^list of executables to update
+      -> [Executable]
+    -- \^list with exeName updated
+    updateExecutable _ [] = []
+    updateExecutable exe_bi'@(name, bi) (exe : exes)
+      | exeName exe == name = exe{buildInfo = bi `mappend` buildInfo exe} : exes
+      | otherwise = exe : updateExecutable exe_bi' exes
 
 -- -----------------------------------------------------------------------------
 -- Source-representation of buildable components
 
 -- | All the components in the package.
---
 pkgComponents :: PackageDescription -> [Component]
 pkgComponents pkg =
-    [ CLib  lib | lib <- allLibraries pkg ]
- ++ [ CFLib flib | flib <- foreignLibs pkg ]
- ++ [ CExe  exe | exe <- executables pkg ]
- ++ [ CTest tst | tst <- testSuites  pkg ]
- ++ [ CBench bm | bm  <- benchmarks  pkg ]
+  [CLib lib | lib <- allLibraries pkg]
+    ++ [CFLib flib | flib <- foreignLibs pkg]
+    ++ [CExe exe | exe <- executables pkg]
+    ++ [CTest tst | tst <- testSuites pkg]
+    ++ [CBench bm | bm <- benchmarks pkg]
 
 -- | A list of all components in the package that are buildable,
 -- i.e., were not marked with @buildable: False@.  This does NOT
@@ -403,55 +418,86 @@ pkgComponents pkg =
 -- see 'enabledComponents' instead.
 --
 -- @since 2.0.0.2
---
 pkgBuildableComponents :: PackageDescription -> [Component]
 pkgBuildableComponents = filter componentBuildable . pkgComponents
 
 -- | A list of all components in the package that are enabled.
 --
 -- @since 2.0.0.2
---
 enabledComponents :: PackageDescription -> ComponentRequestedSpec -> [Component]
 enabledComponents pkg enabled = filter (componentEnabled enabled) $ pkgBuildableComponents pkg
 
 lookupComponent :: PackageDescription -> ComponentName -> Maybe Component
 lookupComponent pkg (CLibName name) =
-    fmap CLib $ find ((name ==) . libName) (allLibraries pkg)
+  fmap CLib $ find ((name ==) . libName) (allLibraries pkg)
 lookupComponent pkg (CFLibName name) =
-    fmap CFLib $ find ((name ==) . foreignLibName) (foreignLibs pkg)
+  fmap CFLib $ find ((name ==) . foreignLibName) (foreignLibs pkg)
 lookupComponent pkg (CExeName name) =
-    fmap CExe $ find ((name ==) . exeName) (executables pkg)
+  fmap CExe $ find ((name ==) . exeName) (executables pkg)
 lookupComponent pkg (CTestName name) =
-    fmap CTest $ find ((name ==) . testName) (testSuites pkg)
+  fmap CTest $ find ((name ==) . testName) (testSuites pkg)
 lookupComponent pkg (CBenchName name) =
-    fmap CBench $ find ((name ==) . benchmarkName) (benchmarks pkg)
+  fmap CBench $ find ((name ==) . benchmarkName) (benchmarks pkg)
 
 getComponent :: PackageDescription -> ComponentName -> Component
 getComponent pkg cname =
-    case lookupComponent pkg cname of
-      Just cpnt -> cpnt
-      Nothing   -> missingComponent
+  case lookupComponent pkg cname of
+    Just cpnt -> cpnt
+    Nothing -> missingComponent
   where
     missingComponent =
-      error $ "internal error: the package description contains no "
-           ++ "component corresponding to " ++ show cname
+      error $
+        "internal error: the package description contains no "
+          ++ "component corresponding to "
+          ++ show cname
 
 -- -----------------------------------------------------------------------------
 -- Traversal Instances
 
 instance L.HasBuildInfos PackageDescription where
-  traverseBuildInfos f (PackageDescription a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17 a18 a19
-                                   x1 x2 x3 x4 x5 x6
-                                   a20 a21 a22 a23 a24) =
-    PackageDescription a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17 a18 a19
+  traverseBuildInfos
+    f
+    ( PackageDescription
+        a1
+        a2
+        a3
+        a4
+        a5
+        a6
+        a7
+        a8
+        a9
+        a10
+        a11
+        a12
+        a13
+        a14
+        a15
+        a16
+        a17
+        a18
+        a19
+        x1
+        x2
+        x3
+        x4
+        x5
+        x6
+        a20
+        a21
+        a22
+        a23
+        a24
+      ) =
+      PackageDescription a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17 a18 a19
         <$> (traverse . L.buildInfo) f x1 -- library
         <*> (traverse . L.buildInfo) f x2 -- sub libraries
         <*> (traverse . L.buildInfo) f x3 -- executables
         <*> (traverse . L.buildInfo) f x4 -- foreign libs
         <*> (traverse . L.buildInfo) f x5 -- test suites
         <*> (traverse . L.buildInfo) f x6 -- benchmarks
-        <*> pure a20                      -- data files
-        <*> pure a21                      -- data dir
-        <*> pure a22                      -- extra src files
-        <*> pure a23                      -- extra temp files
-        <*> pure a24                      -- extra doc files
+        <*> pure a20 -- data files
+        <*> pure a21 -- data dir
+        <*> pure a22 -- extra src files
+        <*> pure a23 -- extra temp files
+        <*> pure a24 -- extra doc files

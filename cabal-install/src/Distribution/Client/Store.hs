@@ -1,44 +1,47 @@
-{-# LANGUAGE CPP, RecordWildCards, NamedFieldPuns #-}
-
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE RecordWildCards #-}
 
 -- | Management for the installed package store.
---
-module Distribution.Client.Store (
-
-    -- * The store layout
-    StoreDirLayout(..),
-    defaultStoreDirLayout,
+module Distribution.Client.Store
+  ( -- * The store layout
+    StoreDirLayout (..)
+  , defaultStoreDirLayout
 
     -- * Reading store entries
-    getStoreEntries,
-    doesStoreEntryExist,
+  , getStoreEntries
+  , doesStoreEntryExist
 
     -- * Creating store entries
-    newStoreEntry,
-    NewStoreEntryOutcome(..),
+  , newStoreEntry
+  , NewStoreEntryOutcome (..)
 
     -- * Concurrency strategy
     -- $concurrency
   ) where
 
-import Prelude ()
 import Distribution.Client.Compat.Prelude
+import Prelude ()
 
-import           Distribution.Client.DistDirLayout
-import           Distribution.Client.RebuildMonad
+import Distribution.Client.DistDirLayout
+import Distribution.Client.RebuildMonad
 
-import           Distribution.Package (UnitId, mkUnitId)
-import           Distribution.Compiler (CompilerId)
+import Distribution.Compiler (CompilerId)
+import Distribution.Package (UnitId, mkUnitId)
 
-import           Distribution.Simple.Utils
-                   ( withTempDirectory, debug, info )
-import           Distribution.Verbosity
-                   ( silent )
+import Distribution.Simple.Utils
+  ( debug
+  , info
+  , withTempDirectory
+  )
+import Distribution.Verbosity
+  ( silent
+  )
 
+import Control.Exception
 import qualified Data.Set as Set
-import           Control.Exception
-import           System.FilePath
-import           System.Directory
+import System.Directory
+import System.FilePath
 
 #ifdef MIN_VERSION_lukko
 import Lukko
@@ -125,37 +128,33 @@ import GHC.IO.Handle.Lock (hUnlock)
 -- for cabal. It does mean however that the package db update should be insert
 -- or replace, i.e. not failing if the db entry already exists.
 
-
 -- | Check if a particular 'UnitId' exists in the store.
---
 doesStoreEntryExist :: StoreDirLayout -> CompilerId -> UnitId -> IO Bool
 doesStoreEntryExist StoreDirLayout{storePackageDirectory} compid unitid =
-    doesDirectoryExist (storePackageDirectory compid unitid)
-
+  doesDirectoryExist (storePackageDirectory compid unitid)
 
 -- | Return the 'UnitId's of all packages\/components already installed in the
 -- store.
---
 getStoreEntries :: StoreDirLayout -> CompilerId -> Rebuild (Set UnitId)
 getStoreEntries StoreDirLayout{storeDirectory} compid = do
-    paths <- getDirectoryContentsMonitored (storeDirectory compid)
-    return $! mkEntries paths
+  paths <- getDirectoryContentsMonitored (storeDirectory compid)
+  return $! mkEntries paths
   where
-    mkEntries     = Set.delete (mkUnitId "package.db")
-                  . Set.delete (mkUnitId "incoming")
-                  . Set.fromList
-                  . map mkUnitId
-                  . filter valid
-    valid ('.':_) = False
-    valid _       = True
-
+    mkEntries =
+      Set.delete (mkUnitId "package.db")
+        . Set.delete (mkUnitId "incoming")
+        . Set.fromList
+        . map mkUnitId
+        . filter valid
+    valid ('.' : _) = False
+    valid _ = True
 
 -- | The outcome of 'newStoreEntry': either the store entry was newly created
 -- or it existed already. The latter case happens if there was a race between
 -- two builds of the same store entry.
---
-data NewStoreEntryOutcome = UseNewStoreEntry
-                          | UseExistingStoreEntry
+data NewStoreEntryOutcome
+  = UseNewStoreEntry
+  | UseExistingStoreEntry
   deriving (Eq, Show)
 
 -- | Place a new entry into the store. See the concurrency strategy description
@@ -172,42 +171,46 @@ data NewStoreEntryOutcome = UseNewStoreEntry
 -- /must/ check the 'NewStoreEntryOutcome' and if it's'UseExistingStoreEntry'
 -- then you must read the existing registration information (unless your
 -- registration information is constructed fully deterministically).
---
-newStoreEntry :: Verbosity
-              -> StoreDirLayout
-              -> CompilerId
-              -> UnitId
-              -> (FilePath -> IO (FilePath, [FilePath])) -- ^ Action to place files.
-              -> IO ()                     -- ^ Register action, if necessary.
-              -> IO NewStoreEntryOutcome
-newStoreEntry verbosity storeDirLayout@StoreDirLayout{..}
-              compid unitid
-              copyFiles register =
+newStoreEntry
+  :: Verbosity
+  -> StoreDirLayout
+  -> CompilerId
+  -> UnitId
+  -> (FilePath -> IO (FilePath, [FilePath]))
+  -- ^ Action to place files.
+  -> IO ()
+  -- ^ Register action, if necessary.
+  -> IO NewStoreEntryOutcome
+newStoreEntry
+  verbosity
+  storeDirLayout@StoreDirLayout{..}
+  compid
+  unitid
+  copyFiles
+  register =
     -- See $concurrency above for an explanation of the concurrency protocol
 
     withTempIncomingDir storeDirLayout compid $ \incomingTmpDir -> do
-
       -- Write all store entry files within the temp dir and return the prefix.
       (incomingEntryDir, otherFiles) <- copyFiles incomingTmpDir
 
       -- Take a lock named after the 'UnitId' in question.
       withIncomingUnitIdLock verbosity storeDirLayout compid unitid $ do
-
         -- Check for the existence of the final store entry directory.
         exists <- doesStoreEntryExist storeDirLayout compid unitid
 
         if exists
-          -- If the entry exists then we lost the race and we must abandon,
+          then -- If the entry exists then we lost the race and we must abandon,
           -- unlock and re-use the existing store entry.
-          then do
+          do
             info verbosity $
-                "Concurrent build race: abandoning build in favour of existing "
-             ++ "store entry " ++ prettyShow compid </> prettyShow unitid
+              "Concurrent build race: abandoning build in favour of existing "
+                ++ "store entry "
+                ++ prettyShow compid
+                </> prettyShow unitid
             return UseExistingStoreEntry
-
-          -- If the entry does not exist then we won the race and can proceed.
-          else do
-
+          else -- If the entry does not exist then we won the race and can proceed.
+          do
             -- Register the package into the package db (if appropriate).
             register
 
@@ -221,26 +224,35 @@ newStoreEntry verbosity storeDirLayout@StoreDirLayout{..}
             debug verbosity $
               "Installed store entry " ++ prettyShow compid </> prettyShow unitid
             return UseNewStoreEntry
-  where
-    finalEntryDir = storePackageDirectory compid unitid
+    where
+      finalEntryDir = storePackageDirectory compid unitid
 
-
-withTempIncomingDir :: StoreDirLayout -> CompilerId
-                    -> (FilePath -> IO a) -> IO a
+withTempIncomingDir
+  :: StoreDirLayout
+  -> CompilerId
+  -> (FilePath -> IO a)
+  -> IO a
 withTempIncomingDir StoreDirLayout{storeIncomingDirectory} compid action = do
-    createDirectoryIfMissing True incomingDir
-    withTempDirectory silent incomingDir "new" action
+  createDirectoryIfMissing True incomingDir
+  withTempDirectory silent incomingDir "new" action
   where
     incomingDir = storeIncomingDirectory compid
 
-
-withIncomingUnitIdLock :: Verbosity -> StoreDirLayout
-                       -> CompilerId -> UnitId
-                       -> IO a -> IO a
-withIncomingUnitIdLock verbosity StoreDirLayout{storeIncomingLock}
-                       compid unitid action =
+withIncomingUnitIdLock
+  :: Verbosity
+  -> StoreDirLayout
+  -> CompilerId
+  -> UnitId
+  -> IO a
+  -> IO a
+withIncomingUnitIdLock
+  verbosity
+  StoreDirLayout{storeIncomingLock}
+  compid
+  unitid
+  action =
     bracket takeLock releaseLock (\_hnd -> action)
-  where
+    where
 #ifdef MIN_VERSION_lukko
     takeLock
         | fileLockingSupported = do

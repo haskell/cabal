@@ -1,4 +1,5 @@
 -----------------------------------------------------------------------------
+
 -- |
 -- Module      :  Distribution.Simple.Program.Internal
 --
@@ -6,14 +7,13 @@
 -- Portability :  portable
 --
 -- Internal utilities used by Distribution.Simple.Program.*.
-
-module Distribution.Simple.Program.Internal (
-    stripExtractVersion,
+module Distribution.Simple.Program.Internal
+  ( stripExtractVersion
   ) where
 
-import Prelude ()
 import Distribution.Compat.Prelude
-import Distribution.Utils.Generic(safeTail)
+import Distribution.Utils.Generic (safeTail)
+import Prelude ()
 
 -- | Extract the version number from the output of 'strip --version'.
 --
@@ -23,25 +23,24 @@ import Distribution.Utils.Generic(safeTail)
 -- 'strip' doesn't appear to have a version flag.
 stripExtractVersion :: String -> String
 stripExtractVersion str =
-  let numeric ""    = False
-      numeric (x:_) = isDigit x
+  let numeric "" = False
+      numeric (x : _) = isDigit x
 
       -- Filter out everything in parentheses.
       filterPar' :: Int -> [String] -> [String]
-      filterPar' _ []                   = []
-      filterPar' n (x:xs)
-        | n >= 0 && "(" `isPrefixOf` x = filterPar' (n+1) ((safeTail x):xs)
-        | n >  0 && ")" `isSuffixOf` x = filterPar' (n-1) xs
-        | n >  0                       = filterPar' n xs
-        | otherwise                    = x:filterPar' n xs
+      filterPar' _ [] = []
+      filterPar' n (x : xs)
+        | n >= 0 && "(" `isPrefixOf` x = filterPar' (n + 1) ((safeTail x) : xs)
+        | n > 0 && ")" `isSuffixOf` x = filterPar' (n - 1) xs
+        | n > 0 = filterPar' n xs
+        | otherwise = x : filterPar' n xs
 
       filterPar = filterPar' 0
-
-  in case dropWhile (not . numeric) (filterPar . words $ str) of
-    (ver:_) ->
-      -- take the first two version components
-      let isDot         = (== '.')
-          (major, rest) = break isDot ver
-          minor         = takeWhile isDigit (dropWhile isDot rest)
-      in major ++ "." ++ minor
-    _ -> ""
+   in case dropWhile (not . numeric) (filterPar . words $ str) of
+        (ver : _) ->
+          -- take the first two version components
+          let isDot = (== '.')
+              (major, rest) = break isDot ver
+              minor = takeWhile isDigit (dropWhile isDot rest)
+           in major ++ "." ++ minor
+        _ -> ""

@@ -35,8 +35,8 @@ nubComponentTargetsTests =
         @?= [(mainLibWholeCompTarget, 1 :| [2])]
   , testCase "Merges whole component targets" $
       nubComponentTargets [(mainLibFileTarget, 2), (mainLibWholeCompTarget, 1 :: Int)]
-        @?= [(mainLibWholeCompTarget, 2 :| [1])],
-    testCase "Don't merge unrelated targets" $
+        @?= [(mainLibWholeCompTarget, 2 :| [1])]
+  , testCase "Don't merge unrelated targets" $
       nubComponentTargets
         [ (mainLibWholeCompTarget, 1 :: Int)
         , (exeWholeCompTarget, 2)
@@ -58,11 +58,10 @@ nubComponentTargetsTests =
         , (exeFileTarget, 3)
         , (exe2FileTarget, 5)
         ]
-        @?=
-          [ (mainLibWholeCompTarget, 1 :| [4])
-          , (exeWholeCompTarget, 2 :| [3])
-          , (exe2WholeCompTarget, 5 :| [])
-          ]
+        @?= [ (mainLibWholeCompTarget, 1 :| [4])
+            , (exeWholeCompTarget, 2 :| [3])
+            , (exe2WholeCompTarget, 5 :| [])
+            ]
   ]
 
 -- ----------------------------------------------------------------------------

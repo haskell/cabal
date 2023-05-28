@@ -7,13 +7,13 @@ import UnitTests.Distribution.Solver.Modular.DSL
 import UnitTests.Distribution.Solver.Modular.DSL.TestCaseUtils
 
 tests :: [TestTree]
-tests = [
-      runTest $ basicTest "basic space leak test"
-    , runTest $ flagsTest "package with many flags"
-    , runTest $ issue2899 "issue #2899"
-    , runTest $ duplicateDependencies "duplicate dependencies"
-    , runTest $ duplicateFlaggedDependencies "duplicate flagged dependencies"
-    ]
+tests =
+  [ runTest $ basicTest "basic space leak test"
+  , runTest $ flagsTest "package with many flags"
+  , runTest $ issue2899 "issue #2899"
+  , runTest $ duplicateDependencies "duplicate dependencies"
+  , runTest $ duplicateFlaggedDependencies "duplicate flagged dependencies"
+  ]
 
 -- | This test solves for n packages that each have two versions. There is no
 -- solution, because the nth package depends on another package that doesn't fit
@@ -22,19 +22,22 @@ tests = [
 -- memory usage is proportional to the size of the tree.
 basicTest :: String -> SolverTest
 basicTest name =
-    disableBackjumping $
+  disableBackjumping $
     disableFineGrainedConflicts $
-    mkTest pkgs name ["target"] anySolverFailure
+      mkTest pkgs name ["target"] anySolverFailure
   where
     n :: Int
     n = 18
 
     pkgs :: ExampleDb
-    pkgs = map Right $
-           [ exAv "target" 1 [ExAny $ pkgName 1]]
-        ++ [ exAv (pkgName i) v [ExRange (pkgName $ i + 1) 2 4]
-           | i <- [1..n], v <- [2, 3]]
-        ++ [exAv (pkgName $ n + 1) 1 []]
+    pkgs =
+      map Right $
+        [exAv "target" 1 [ExAny $ pkgName 1]]
+          ++ [ exAv (pkgName i) v [ExRange (pkgName $ i + 1) 2 4]
+             | i <- [1 .. n]
+             , v <- [2, 3]
+             ]
+          ++ [exAv (pkgName $ n + 1) 1 []]
 
     pkgName :: Int -> ExamplePkgName
     pkgName x = "pkg-" ++ show x
@@ -45,23 +48,25 @@ basicTest name =
 -- all of the flags. It has to explore the whole search tree.
 flagsTest :: String -> SolverTest
 flagsTest name =
-    disableBackjumping $
+  disableBackjumping $
     disableFineGrainedConflicts $
-    goalOrder orderedFlags $ mkTest pkgs name ["pkg"] anySolverFailure
+      goalOrder orderedFlags $
+        mkTest pkgs name ["pkg"] anySolverFailure
   where
     n :: Int
     n = 16
 
     pkgs :: ExampleDb
-    pkgs = [Right $ exAv "pkg" 1 $
-                [exFlagged (numberedFlag n) [ExAny "unknown1"] [ExAny "unknown2"]]
-
-                -- The remaining flags have no effect:
-             ++ [exFlagged (numberedFlag i) [] [] | i <- [1..n - 1]]
-           ]
+    pkgs =
+      [ Right $
+          exAv "pkg" 1 $
+            [exFlagged (numberedFlag n) [ExAny "unknown1"] [ExAny "unknown2"]]
+              -- The remaining flags have no effect:
+              ++ [exFlagged (numberedFlag i) [] [] | i <- [1 .. n - 1]]
+      ]
 
     orderedFlags :: [ExampleVar]
-    orderedFlags = [F QualNone "pkg" (numberedFlag i) | i <- [1..n]]
+    orderedFlags = [F QualNone "pkg" (numberedFlag i) | i <- [1 .. n]]
 
 -- | Test for a space leak caused by sharing of search trees under packages with
 -- link choices (issue #2899).
@@ -80,19 +85,24 @@ flagsTest name =
 -- trees are shared, memory usage spikes.
 issue2899 :: String -> SolverTest
 issue2899 name =
-    disableBackjumping $
+  disableBackjumping $
     disableFineGrainedConflicts $
-    goalOrder goals $ mkTest pkgs name ["target"] anySolverFailure
+      goalOrder goals $
+        mkTest pkgs name ["target"] anySolverFailure
   where
     n :: Int
     n = 16
 
     pkgs :: ExampleDb
-    pkgs = map Right $
-           [ exAv "target" 1 [ExAny "setup-dep"] `withSetupDeps` [ExAny "setup-dep"]
-           , exAv "setup-dep" 1 [ExAny $ pkgName 1]]
-        ++ [ exAv (pkgName i) v [ExAny $ pkgName (i + 1)]
-           | i <- [1..n], v <- [1, 2]]
+    pkgs =
+      map Right $
+        [ exAv "target" 1 [ExAny "setup-dep"] `withSetupDeps` [ExAny "setup-dep"]
+        , exAv "setup-dep" 1 [ExAny $ pkgName 1]
+        ]
+          ++ [ exAv (pkgName i) v [ExAny $ pkgName (i + 1)]
+             | i <- [1 .. n]
+             , v <- [1, 2]
+             ]
 
     pkgName :: Int -> ExamplePkgName
     pkgName x = "pkg-" ++ show x
@@ -141,26 +151,31 @@ issue2899 name =
 -- build-tool dependencies.
 duplicateDependencies :: String -> SolverTest
 duplicateDependencies name =
-    mkTest pkgs name ["A"] $ solverSuccess [("A", 1), ("B", 1)]
+  mkTest pkgs name ["A"] $ solverSuccess [("A", 1), ("B", 1)]
   where
     copies, depth :: Int
     copies = 50
     depth = 50
 
     pkgs :: ExampleDb
-    pkgs = [
-        Right $ exAv "A" 1 (dependencyTree 1)
+    pkgs =
+      [ Right $ exAv "A" 1 (dependencyTree 1)
       , Right $ exAv "B" 1 [] `withExe` exExe "exe" []
       ]
 
     dependencyTree :: Int -> [ExampleDependency]
     dependencyTree n
-        | n > depth = buildDepends
-        | otherwise = [exFlagged (numberedFlag n) buildDepends
-                                                  (dependencyTree (n + 1))]
+      | n > depth = buildDepends
+      | otherwise =
+          [ exFlagged
+              (numberedFlag n)
+              buildDepends
+              (dependencyTree (n + 1))
+          ]
       where
-        buildDepends = replicate copies (ExFix "B" 1)
-                    ++ replicate copies (ExBuildToolFix "B" "exe" 1)
+        buildDepends =
+          replicate copies (ExFix "B" 1)
+            ++ replicate copies (ExBuildToolFix "B" "exe" 1)
 
 -- | This test is similar to duplicateDependencies, except that every dependency
 -- on B is replaced by a conditional that contains B in both branches. It tests
@@ -169,27 +184,34 @@ duplicateDependencies name =
 -- are lifted out of conditionals.
 duplicateFlaggedDependencies :: String -> SolverTest
 duplicateFlaggedDependencies name =
-    mkTest pkgs name ["A"] $ solverSuccess [("A", 1), ("B", 1)]
+  mkTest pkgs name ["A"] $ solverSuccess [("A", 1), ("B", 1)]
   where
     copies, depth :: Int
     copies = 15
     depth = 15
 
     pkgs :: ExampleDb
-    pkgs = [
-        Right $ exAv "A" 1 (dependencyTree 1)
+    pkgs =
+      [ Right $ exAv "A" 1 (dependencyTree 1)
       , Right $ exAv "B" 1 [] `withExe` exExe "exe" []
       ]
 
     dependencyTree :: Int -> [ExampleDependency]
     dependencyTree n
-        | n > depth = flaggedDeps
-        | otherwise = [exFlagged (numberedFlag n) flaggedDeps
-                                                  (dependencyTree (n + 1))]
+      | n > depth = flaggedDeps
+      | otherwise =
+          [ exFlagged
+              (numberedFlag n)
+              flaggedDeps
+              (dependencyTree (n + 1))
+          ]
       where
         flaggedDeps = zipWith ($) (replicate copies flaggedDep) [0 :: Int ..]
-        flaggedDep m = exFlagged (numberedFlag n ++ "-" ++ show m) buildDepends
-                                                                   buildDepends
+        flaggedDep m =
+          exFlagged
+            (numberedFlag n ++ "-" ++ show m)
+            buildDepends
+            buildDepends
         buildDepends = [ExFix "B" 1, ExBuildToolFix "B" "exe" 1]
 
 numberedFlag :: Int -> ExampleFlagName

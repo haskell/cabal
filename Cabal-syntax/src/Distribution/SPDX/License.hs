@@ -1,14 +1,15 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
-module Distribution.SPDX.License (
-    License (..),
-    ) where
 
-import Prelude ()
+module Distribution.SPDX.License
+  ( License (..)
+  ) where
+
 import Distribution.Compat.Prelude
+import Prelude ()
 
-import Distribution.Pretty
 import Distribution.Parsec
+import Distribution.Pretty
 import Distribution.SPDX.LicenseExpression
 
 import qualified Distribution.Compat.CharParsing as P
@@ -35,24 +36,23 @@ import qualified Text.PrettyPrint as Disp
 -- * @PublicDomain@ isn't covered. Consider using CC0.
 --   See <https://wiki.spdx.org/view/Legal_Team/Decisions/Dealing_with_Public_Domain_within_SPDX_Files>
 --   for more information.
---
 data License
-    = NONE
-      -- ^ if the package contains no license information whatsoever; or
-    | License LicenseExpression
-      -- ^ A valid SPDX License Expression as defined in Appendix IV.
+  = -- | if the package contains no license information whatsoever; or
+    NONE
+  | -- | A valid SPDX License Expression as defined in Appendix IV.
+    License LicenseExpression
   deriving (Show, Read, Eq, Ord, Typeable, Data, Generic)
 
 instance Binary License
 instance Structured License
 
 instance NFData License where
-    rnf NONE        = ()
-    rnf (License l) = rnf l
+  rnf NONE = ()
+  rnf (License l) = rnf l
 
 instance Pretty License where
-    pretty NONE        = Disp.text "NONE"
-    pretty (License l) = pretty l
+  pretty NONE = Disp.text "NONE"
+  pretty (License l) = pretty l
 
 -- |
 -- >>> eitherParsec "BSD-3-Clause AND MIT" :: Either String License
@@ -60,6 +60,5 @@ instance Pretty License where
 --
 -- >>> eitherParsec "NONE" :: Either String License
 -- Right NONE
---
 instance Parsec License where
-    parsec = NONE <$ P.try (P.string "NONE") <|> License <$> parsec
+  parsec = NONE <$ P.try (P.string "NONE") <|> License <$> parsec

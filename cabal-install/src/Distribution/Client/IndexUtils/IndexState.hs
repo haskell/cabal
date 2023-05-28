@@ -1,31 +1,32 @@
-{-# LANGUAGE DeriveGeneric     #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
+
 -----------------------------------------------------------------------------
+
 -- |
 -- Module      :  Distribution.Client.IndexUtils.IndexUtils
 -- Copyright   :  (c) 2016 Herbert Valerio Riedel
 -- License     :  BSD3
 --
 -- Package repositories index state.
---
-module Distribution.Client.IndexUtils.IndexState (
-    RepoIndexState(..),
-    TotalIndexState,
-    headTotalIndexState,
-    makeTotalIndexState,
-    lookupIndexState,
-    insertIndexState,
-) where
+module Distribution.Client.IndexUtils.IndexState
+  ( RepoIndexState (..)
+  , TotalIndexState
+  , headTotalIndexState
+  , makeTotalIndexState
+  , lookupIndexState
+  , insertIndexState
+  ) where
 
 import Distribution.Client.Compat.Prelude
 import Distribution.Client.IndexUtils.Timestamp (Timestamp)
-import Distribution.Client.Types.RepoName       (RepoName (..))
+import Distribution.Client.Types.RepoName (RepoName (..))
 
 import Distribution.Parsec (parsecLeadingCommaNonEmpty)
 
-import qualified Data.Map.Strict                 as Map
+import qualified Data.Map.Strict as Map
 import qualified Distribution.Compat.CharParsing as P
-import qualified Text.PrettyPrint                as Disp
+import qualified Text.PrettyPrint as Disp
 
 -- $setup
 -- >>> import Distribution.Parsec
@@ -43,14 +44,17 @@ instance Structured TotalIndexState
 instance NFData TotalIndexState
 
 instance Pretty TotalIndexState where
-    pretty (TIS IndexStateHead m)
-        | not (Map.null m)
-        = Disp.hsep $ Disp.punctuate Disp.comma
+  pretty (TIS IndexStateHead m)
+    | not (Map.null m) =
+        Disp.hsep $
+          Disp.punctuate
+            Disp.comma
             [ pretty rn Disp.<+> pretty idx
             | (rn, idx) <- Map.toList m
             ]
-    pretty (TIS def m) = foldl' go (pretty def) (Map.toList m) where
-        go doc (rn, idx) = doc <<>> Disp.comma Disp.<+> pretty rn Disp.<+> pretty idx
+  pretty (TIS def m) = foldl' go (pretty def) (Map.toList m)
+    where
+      go doc (rn, idx) = doc <<>> Disp.comma Disp.<+> pretty rn Disp.<+> pretty idx
 
 -- |
 --
@@ -68,29 +72,29 @@ instance Pretty TotalIndexState where
 --
 -- >>> simpleParsec "hackage.haskell.org 2020-02-04T12:34:56Z" :: Maybe TotalIndexState
 -- Just (TIS IndexStateHead (fromList [(RepoName "hackage.haskell.org",IndexStateTime (TS 1580819696))]))
---
 instance Parsec TotalIndexState where
-    parsec = normalise . foldl' add headTotalIndexState <$> parsecLeadingCommaNonEmpty single0 where
-        single0 = startsWithRepoName <|> TokTimestamp <$> parsec
-        startsWithRepoName = do
-            reponame <- parsec
-            -- the "HEAD" is technically a valid reponame...
-            if reponame == RepoName "HEAD"
-            then return TokHead
-            else do
-                P.spaces
-                TokRepo reponame <$> parsec
+  parsec = normalise . foldl' add headTotalIndexState <$> parsecLeadingCommaNonEmpty single0
+    where
+      single0 = startsWithRepoName <|> TokTimestamp <$> parsec
+      startsWithRepoName = do
+        reponame <- parsec
+        -- the "HEAD" is technically a valid reponame...
+        if reponame == RepoName "HEAD"
+          then return TokHead
+          else do
+            P.spaces
+            TokRepo reponame <$> parsec
 
-        add :: TotalIndexState -> Tok -> TotalIndexState
-        add _           TokHead           = headTotalIndexState
-        add _           (TokTimestamp ts) = TIS (IndexStateTime ts) Map.empty
-        add (TIS def m) (TokRepo rn idx)  = TIS def (Map.insert rn idx m)
+      add :: TotalIndexState -> Tok -> TotalIndexState
+      add _ TokHead = headTotalIndexState
+      add _ (TokTimestamp ts) = TIS (IndexStateTime ts) Map.empty
+      add (TIS def m) (TokRepo rn idx) = TIS def (Map.insert rn idx m)
 
 -- used in Parsec TotalIndexState implementation
 data Tok
-    = TokRepo RepoName RepoIndexState
-    | TokTimestamp Timestamp
-    | TokHead
+  = TokRepo RepoName RepoIndexState
+  | TokTimestamp Timestamp
+  | TokHead
 
 -- | Remove non-default values from 'TotalIndexState'.
 normalise :: TotalIndexState -> TotalIndexState
@@ -111,8 +115,8 @@ lookupIndexState rn (TIS def m) = Map.findWithDefault def rn m
 -- | Insert a 'RepoIndexState' to 'TotalIndexState'.
 insertIndexState :: RepoName -> RepoIndexState -> TotalIndexState -> TotalIndexState
 insertIndexState rn idx (TIS def m)
-    | idx == def = TIS def (Map.delete rn m)
-    | otherwise  = TIS def (Map.insert rn idx m)
+  | idx == def = TIS def (Map.delete rn m)
+  | otherwise = TIS def (Map.insert rn idx m)
 
 -------------------------------------------------------------------------------
 -- Repository index state
@@ -120,19 +124,22 @@ insertIndexState rn idx (TIS def m)
 
 -- | Specification of the state of a specific repo package index
 data RepoIndexState
-    = IndexStateHead -- ^ Use all available entries
-    | IndexStateTime !Timestamp -- ^ Use all entries that existed at the specified time
-    deriving (Eq,Generic,Show)
+  = -- | Use all available entries
+    IndexStateHead
+  | -- | Use all entries that existed at the specified time
+    IndexStateTime !Timestamp
+  deriving (Eq, Generic, Show)
 
 instance Binary RepoIndexState
 instance Structured RepoIndexState
 instance NFData RepoIndexState
 
 instance Pretty RepoIndexState where
-    pretty IndexStateHead = Disp.text "HEAD"
-    pretty (IndexStateTime ts) = pretty ts
+  pretty IndexStateHead = Disp.text "HEAD"
+  pretty (IndexStateTime ts) = pretty ts
 
 instance Parsec RepoIndexState where
-    parsec = parseHead <|> parseTime where
-        parseHead = IndexStateHead <$ P.string "HEAD"
-        parseTime = IndexStateTime <$> parsec
+  parsec = parseHead <|> parseTime
+    where
+      parseHead = IndexStateHead <$ P.string "HEAD"
+      parseTime = IndexStateTime <$> parsec

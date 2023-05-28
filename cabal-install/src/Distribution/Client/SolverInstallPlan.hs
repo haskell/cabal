@@ -1,7 +1,11 @@
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE TypeFamilies #-}
+
 -----------------------------------------------------------------------------
+
+-----------------------------------------------------------------------------
+
 -- |
 -- Module      :  Distribution.Client.SolverInstallPlan
 -- Copyright   :  (c) Duncan Coutts 2008
@@ -16,74 +20,78 @@
 -- things are going to be installed.  To put it another way: the
 -- dependency solver produces a 'SolverInstallPlan', which is then
 -- consumed by various other parts of Cabal.
---
------------------------------------------------------------------------------
-module Distribution.Client.SolverInstallPlan(
-  SolverInstallPlan(..),
-  SolverPlanPackage,
-  ResolverPackage(..),
+module Distribution.Client.SolverInstallPlan
+  ( SolverInstallPlan (..)
+  , SolverPlanPackage
+  , ResolverPackage (..)
 
-  -- * Operations on 'SolverInstallPlan's
-  new,
-  toList,
-  toMap,
+    -- * Operations on 'SolverInstallPlan's
+  , new
+  , toList
+  , toMap
+  , remove
+  , showPlanIndex
+  , showInstallPlan
 
-  remove,
+    -- * Checking validity of plans
+  , valid
+  , closed
+  , consistent
+  , acyclic
 
-  showPlanIndex,
-  showInstallPlan,
+    -- ** Details on invalid plans
+  , SolverPlanProblem (..)
+  , showPlanProblem
+  , problems
 
-  -- * Checking validity of plans
-  valid,
-  closed,
-  consistent,
-  acyclic,
-
-  -- ** Details on invalid plans
-  SolverPlanProblem(..),
-  showPlanProblem,
-  problems,
-
-  -- ** Querying the install plan
-  dependencyClosure,
-  reverseDependencyClosure,
-  topologicalOrder,
-  reverseTopologicalOrder,
-) where
+    -- ** Querying the install plan
+  , dependencyClosure
+  , reverseDependencyClosure
+  , topologicalOrder
+  , reverseTopologicalOrder
+  ) where
 
 import Distribution.Client.Compat.Prelude hiding (toList)
 import Prelude ()
 
 import Distribution.Package
-         ( PackageIdentifier(..), Package(..), PackageName
-         , HasUnitId(..), PackageId, packageVersion, packageName )
-import Distribution.Types.Flag (nullFlagAssignment)
+  ( HasUnitId (..)
+  , Package (..)
+  , PackageId
+  , PackageIdentifier (..)
+  , PackageName
+  , packageName
+  , packageVersion
+  )
 import qualified Distribution.Solver.Types.ComponentDeps as CD
+import Distribution.Types.Flag (nullFlagAssignment)
 
 import Distribution.Client.Types
-         ( UnresolvedPkgLoc )
+  ( UnresolvedPkgLoc
+  )
 import Distribution.Version
-         ( Version )
+  ( Version
+  )
 
-import           Distribution.Solver.Types.Settings
-import           Distribution.Solver.Types.ResolverPackage
-import           Distribution.Solver.Types.SolverId
-import           Distribution.Solver.Types.SolverPackage
+import Distribution.Solver.Types.ResolverPackage
+import Distribution.Solver.Types.Settings
+import Distribution.Solver.Types.SolverId
+import Distribution.Solver.Types.SolverPackage
 
-import Distribution.Compat.Graph (Graph, IsNode(..))
+import Data.Array ((!))
 import qualified Data.Foldable as Foldable
 import qualified Data.Graph as OldGraph
-import qualified Distribution.Compat.Graph as Graph
 import qualified Data.Map as Map
-import Data.Array ((!))
+import Distribution.Compat.Graph (Graph, IsNode (..))
+import qualified Distribution.Compat.Graph as Graph
 
 type SolverPlanPackage = ResolverPackage UnresolvedPkgLoc
 
 type SolverPlanIndex = Graph SolverPlanPackage
 
-data SolverInstallPlan = SolverInstallPlan {
-    planIndex      :: !SolverPlanIndex,
-    planIndepGoals :: !IndependentGoals
+data SolverInstallPlan = SolverInstallPlan
+  { planIndex :: !SolverPlanIndex
+  , planIndepGoals :: !IndependentGoals
   }
   deriving (Typeable, Generic)
 
@@ -99,8 +107,6 @@ planPkgOf plan v =
       Nothing  -> error "InstallPlan: internal error: planPkgOf lookup failed"
 -}
 
-
-
 instance Binary SolverInstallPlan
 instance Structured SolverInstallPlan
 
@@ -111,33 +117,38 @@ showInstallPlan :: SolverInstallPlan -> String
 showInstallPlan = showPlanIndex . toList
 
 showPlanPackage :: SolverPlanPackage -> String
-showPlanPackage (PreExisting ipkg) = "PreExisting " ++ prettyShow (packageId ipkg)
-                                            ++ " (" ++ prettyShow (installedUnitId ipkg)
-                                            ++ ")"
-showPlanPackage (Configured  spkg) =
-    "Configured " ++ prettyShow (packageId spkg) ++ flags ++ comps
+showPlanPackage (PreExisting ipkg) =
+  "PreExisting "
+    ++ prettyShow (packageId ipkg)
+    ++ " ("
+    ++ prettyShow (installedUnitId ipkg)
+    ++ ")"
+showPlanPackage (Configured spkg) =
+  "Configured " ++ prettyShow (packageId spkg) ++ flags ++ comps
   where
     flags
-        | nullFlagAssignment fa = ""
-        | otherwise             = " " ++ prettyShow (solverPkgFlags spkg)
+      | nullFlagAssignment fa = ""
+      | otherwise = " " ++ prettyShow (solverPkgFlags spkg)
       where
         fa = solverPkgFlags spkg
 
-    comps | null deps = ""
-          | otherwise = " " ++ unwords (map prettyShow $ Foldable.toList deps)
+    comps
+      | null deps = ""
+      | otherwise = " " ++ unwords (map prettyShow $ Foldable.toList deps)
       where
         deps :: Set CD.Component
-        deps = CD.components (solverPkgLibDeps spkg)
-             <> CD.components (solverPkgExeDeps spkg)
+        deps =
+          CD.components (solverPkgLibDeps spkg)
+            <> CD.components (solverPkgExeDeps spkg)
 
 -- | Build an installation plan from a valid set of resolved packages.
---
-new :: IndependentGoals
-    -> SolverPlanIndex
-    -> Either [SolverPlanProblem] SolverInstallPlan
+new
+  :: IndependentGoals
+  -> SolverPlanIndex
+  -> Either [SolverPlanProblem] SolverInstallPlan
 new indepGoals index =
   case problems indepGoals index of
-    []    -> Right (SolverInstallPlan index indepGoals)
+    [] -> Right (SolverInstallPlan index indepGoals)
     probs -> Left probs
 
 toList :: SolverInstallPlan -> [SolverPlanPackage]
@@ -151,19 +162,23 @@ toMap = Graph.toMap . planIndex
 -- package. This is primarily useful for obtaining an install plan for
 -- the dependencies of a package or set of packages without actually
 -- installing the package itself, as when doing development.
---
-remove :: (SolverPlanPackage -> Bool)
-       -> SolverInstallPlan
-       -> Either [SolverPlanProblem]
-                 (SolverInstallPlan)
+remove
+  :: (SolverPlanPackage -> Bool)
+  -> SolverInstallPlan
+  -> Either
+      [SolverPlanProblem]
+      (SolverInstallPlan)
 remove shouldRemove plan =
-    new (planIndepGoals plan) newIndex
+  new (planIndepGoals plan) newIndex
   where
-    newIndex = Graph.fromDistinctList $
-                 filter (not . shouldRemove) (toList plan)
+    newIndex =
+      Graph.fromDistinctList $
+        filter (not . shouldRemove) (toList plan)
 
 -- ------------------------------------------------------------
+
 -- * Checking validity of plans
+
 -- ------------------------------------------------------------
 
 -- | A valid installation plan is a set of packages that is 'acyclic',
@@ -171,76 +186,87 @@ remove shouldRemove plan =
 -- plan has to have a valid configuration (see 'configuredPackageValid').
 --
 -- * if the result is @False@ use 'problems' to get a detailed list.
---
-valid :: IndependentGoals
-      -> SolverPlanIndex
-      -> Bool
+valid
+  :: IndependentGoals
+  -> SolverPlanIndex
+  -> Bool
 valid indepGoals index =
-    null $ problems indepGoals index
+  null $ problems indepGoals index
 
-data SolverPlanProblem =
-     PackageMissingDeps   SolverPlanPackage
-                          [PackageIdentifier]
-   | PackageCycle         [SolverPlanPackage]
-   | PackageInconsistency PackageName [(PackageIdentifier, Version)]
-   | PackageStateInvalid  SolverPlanPackage SolverPlanPackage
+data SolverPlanProblem
+  = PackageMissingDeps
+      SolverPlanPackage
+      [PackageIdentifier]
+  | PackageCycle [SolverPlanPackage]
+  | PackageInconsistency PackageName [(PackageIdentifier, Version)]
+  | PackageStateInvalid SolverPlanPackage SolverPlanPackage
 
 showPlanProblem :: SolverPlanProblem -> String
 showPlanProblem (PackageMissingDeps pkg missingDeps) =
-     "Package " ++ prettyShow (packageId pkg)
-  ++ " depends on the following packages which are missing from the plan: "
-  ++ intercalate ", " (map prettyShow missingDeps)
-
+  "Package "
+    ++ prettyShow (packageId pkg)
+    ++ " depends on the following packages which are missing from the plan: "
+    ++ intercalate ", " (map prettyShow missingDeps)
 showPlanProblem (PackageCycle cycleGroup) =
-     "The following packages are involved in a dependency cycle "
-  ++ intercalate ", " (map (prettyShow.packageId) cycleGroup)
-
+  "The following packages are involved in a dependency cycle "
+    ++ intercalate ", " (map (prettyShow . packageId) cycleGroup)
 showPlanProblem (PackageInconsistency name inconsistencies) =
-     "Package " ++ prettyShow name
-  ++ " is required by several packages,"
-  ++ " but they require inconsistent versions:\n"
-  ++ unlines [ "  package " ++ prettyShow pkg ++ " requires "
-                            ++ prettyShow (PackageIdentifier name ver)
-             | (pkg, ver) <- inconsistencies ]
-
+  "Package "
+    ++ prettyShow name
+    ++ " is required by several packages,"
+    ++ " but they require inconsistent versions:\n"
+    ++ unlines
+      [ "  package "
+        ++ prettyShow pkg
+        ++ " requires "
+        ++ prettyShow (PackageIdentifier name ver)
+      | (pkg, ver) <- inconsistencies
+      ]
 showPlanProblem (PackageStateInvalid pkg pkg') =
-     "Package " ++ prettyShow (packageId pkg)
-  ++ " is in the " ++ showPlanState pkg
-  ++ " state but it depends on package " ++ prettyShow (packageId pkg')
-  ++ " which is in the " ++ showPlanState pkg'
-  ++ " state"
+  "Package "
+    ++ prettyShow (packageId pkg)
+    ++ " is in the "
+    ++ showPlanState pkg
+    ++ " state but it depends on package "
+    ++ prettyShow (packageId pkg')
+    ++ " which is in the "
+    ++ showPlanState pkg'
+    ++ " state"
   where
     showPlanState (PreExisting _) = "pre-existing"
-    showPlanState (Configured  _)   = "configured"
+    showPlanState (Configured _) = "configured"
 
 -- | For an invalid plan, produce a detailed list of problems as human readable
 -- error messages. This is mainly intended for debugging purposes.
 -- Use 'showPlanProblem' for a human readable explanation.
---
-problems :: IndependentGoals
-         -> SolverPlanIndex
-         -> [SolverPlanProblem]
+problems
+  :: IndependentGoals
+  -> SolverPlanIndex
+  -> [SolverPlanProblem]
 problems indepGoals index =
-
-     [ PackageMissingDeps pkg
-       (mapMaybe
-         (fmap packageId . flip Graph.lookup index)
-         missingDeps)
-     | (pkg, missingDeps) <- Graph.broken index ]
-
-  ++ [ PackageCycle cycleGroup
-     | cycleGroup <- Graph.cycles index ]
-
-  ++ [ PackageInconsistency name inconsistencies
-     | (name, inconsistencies) <-
-       dependencyInconsistencies indepGoals index ]
-
-  ++ [ PackageStateInvalid pkg pkg'
-     | pkg <- Foldable.toList index
-     , Just pkg' <- map (flip Graph.lookup index)
-                    (nodeNeighbors pkg)
-     , not (stateDependencyRelation pkg pkg') ]
-
+  [ PackageMissingDeps
+    pkg
+    ( mapMaybe
+        (fmap packageId . flip Graph.lookup index)
+        missingDeps
+    )
+  | (pkg, missingDeps) <- Graph.broken index
+  ]
+    ++ [ PackageCycle cycleGroup
+       | cycleGroup <- Graph.cycles index
+       ]
+    ++ [ PackageInconsistency name inconsistencies
+       | (name, inconsistencies) <-
+          dependencyInconsistencies indepGoals index
+       ]
+    ++ [ PackageStateInvalid pkg pkg'
+       | pkg <- Foldable.toList index
+       , Just pkg' <-
+          map
+            (flip Graph.lookup index)
+            (nodeNeighbors pkg)
+       , not (stateDependencyRelation pkg pkg')
+       ]
 
 -- | Compute all roots of the install plan, and verify that the transitive
 -- plans from those roots are all consistent.
@@ -249,16 +275,19 @@ problems indepGoals index =
 -- may be absent from the subplans even if the larger plan contains a dependency
 -- cycle. Such cycles may or may not be an issue; either way, we don't check
 -- for them here.
-dependencyInconsistencies :: IndependentGoals
-                          -> SolverPlanIndex
-                          -> [(PackageName, [(PackageIdentifier, Version)])]
-dependencyInconsistencies indepGoals index  =
-    concatMap dependencyInconsistencies' subplans
+dependencyInconsistencies
+  :: IndependentGoals
+  -> SolverPlanIndex
+  -> [(PackageName, [(PackageIdentifier, Version)])]
+dependencyInconsistencies indepGoals index =
+  concatMap dependencyInconsistencies' subplans
   where
     subplans :: [SolverPlanIndex]
-    subplans = -- Not Graph.closure!!
-               map (nonSetupClosure index)
-                   (rootSets indepGoals index)
+    subplans =
+      -- Not Graph.closure!!
+      map
+        (nonSetupClosure index)
+        (rootSets indepGoals index)
 
 -- NB: When we check for inconsistencies, packages from the setup
 -- scripts don't count as part of the closure (this way, we
@@ -267,22 +296,24 @@ dependencyInconsistencies indepGoals index  =
 --
 -- This is a best effort function that swallows any non-existent
 -- SolverIds.
-nonSetupClosure :: SolverPlanIndex
-                -> [SolverId]
-                -> SolverPlanIndex
+nonSetupClosure
+  :: SolverPlanIndex
+  -> [SolverId]
+  -> SolverPlanIndex
 nonSetupClosure index pkgids0 = closure Graph.empty pkgids0
- where
+  where
     closure :: Graph SolverPlanPackage -> [SolverId] -> SolverPlanIndex
-    closure completed []             = completed
-    closure completed (pkgid:pkgids) =
+    closure completed [] = completed
+    closure completed (pkgid : pkgids) =
       case Graph.lookup pkgid index of
-        Nothing   -> closure completed pkgids
-        Just pkg  ->
+        Nothing -> closure completed pkgids
+        Just pkg ->
           case Graph.lookup (nodeKey pkg) completed of
-            Just _  -> closure completed  pkgids
+            Just _ -> closure completed pkgids
             Nothing -> closure completed' pkgids'
-              where completed' = Graph.insert pkg completed
-                    pkgids'    = CD.nonSetupDeps (resolverPackageLibDeps pkg) ++ pkgids
+              where
+                completed' = Graph.insert pkg completed
+                pkgids' = CD.nonSetupDeps (resolverPackageLibDeps pkg) ++ pkgids
 
 -- | Compute the root sets of a plan
 --
@@ -292,8 +323,11 @@ nonSetupClosure index pkgids0 = closure Graph.empty pkgids0
 -- with all setup dependencies of all packages.
 rootSets :: IndependentGoals -> SolverPlanIndex -> [[SolverId]]
 rootSets (IndependentGoals indepGoals) index =
-       if indepGoals then map (:[]) libRoots else [libRoots]
-    ++ setupRoots index
+  if indepGoals
+    then map (: []) libRoots
+    else
+      [libRoots]
+        ++ setupRoots index
   where
     libRoots :: [SolverId]
     libRoots = libraryRoots index
@@ -304,18 +338,19 @@ rootSets (IndependentGoals indepGoals) index =
 -- (no reverse library dependencies but also no reverse setup dependencies).
 libraryRoots :: SolverPlanIndex -> [SolverId]
 libraryRoots index =
-    map (nodeKey . toPkgId) roots
+  map (nodeKey . toPkgId) roots
   where
     (graph, toPkgId, _) = Graph.toGraph index
     indegree = OldGraph.indegree graph
-    roots    = filter isRoot (OldGraph.vertices graph)
+    roots = filter isRoot (OldGraph.vertices graph)
     isRoot v = indegree ! v == 0
 
 -- | The setup dependencies of each package in the plan
 setupRoots :: SolverPlanIndex -> [[SolverId]]
-setupRoots = filter (not . null)
-           . map (CD.setupDeps . resolverPackageLibDeps)
-           . Foldable.toList
+setupRoots =
+  filter (not . null)
+    . map (CD.setupDeps . resolverPackageLibDeps)
+    . Foldable.toList
 
 -- | Given a package index where we assume we want to use all the packages
 -- (use 'dependencyClosure' if you need to get such a index subset) find out
@@ -326,30 +361,32 @@ setupRoots = filter (not . null)
 -- Each element in the result is a package name along with the packages that
 -- depend on it and the versions they require. These are guaranteed to be
 -- distinct.
---
-dependencyInconsistencies' :: SolverPlanIndex
-                           -> [(PackageName, [(PackageIdentifier, Version)])]
+dependencyInconsistencies'
+  :: SolverPlanIndex
+  -> [(PackageName, [(PackageIdentifier, Version)])]
 dependencyInconsistencies' index =
-    [ (name, [ (pid, packageVersion dep) | (dep,pids) <- uses, pid <- pids])
-    | (name, ipid_map) <- Map.toList inverseIndex
-    , let uses = Map.elems ipid_map
-    , reallyIsInconsistent (map fst uses)
-    ]
+  [ (name, [(pid, packageVersion dep) | (dep, pids) <- uses, pid <- pids])
+  | (name, ipid_map) <- Map.toList inverseIndex
+  , let uses = Map.elems ipid_map
+  , reallyIsInconsistent (map fst uses)
+  ]
   where
     -- For each package name (of a dependency, somewhere)
     --   and each installed ID of that package
     --     the associated package instance
     --     and a list of reverse dependencies (as source IDs)
     inverseIndex :: Map PackageName (Map SolverId (SolverPlanPackage, [PackageId]))
-    inverseIndex = Map.fromListWith (Map.unionWith (\(a,b) (_,b') -> (a,b++b')))
-      [ (packageName dep, Map.fromList [(sid,(dep,[packageId pkg]))])
-      | -- For each package @pkg@
+    inverseIndex =
+      Map.fromListWith
+        (Map.unionWith (\(a, b) (_, b') -> (a, b ++ b')))
+        [ (packageName dep, Map.fromList [(sid, (dep, [packageId pkg]))])
+        | -- For each package @pkg@
         pkg <- Foldable.toList index
-        -- Find out which @sid@ @pkg@ depends on
-      , sid <- CD.nonSetupDeps (resolverPackageLibDeps pkg)
-        -- And look up those @sid@ (i.e., @sid@ is the ID of @dep@)
-      , Just dep <- [Graph.lookup sid index]
-      ]
+        , -- Find out which @sid@ @pkg@ depends on
+        sid <- CD.nonSetupDeps (resolverPackageLibDeps pkg)
+        , -- And look up those @sid@ (i.e., @sid@ is the ID of @dep@)
+        Just dep <- [Graph.lookup sid index]
+        ]
 
     -- If, in a single install plan, we depend on more than one version of a
     -- package, then this is ONLY okay in the (rather special) case that we
@@ -357,21 +394,19 @@ dependencyInconsistencies' index =
     -- depends on the other. This is necessary for example for the base where
     -- we have base-3 depending on base-4.
     reallyIsInconsistent :: [SolverPlanPackage] -> Bool
-    reallyIsInconsistent []       = False
-    reallyIsInconsistent [_p]     = False
+    reallyIsInconsistent [] = False
+    reallyIsInconsistent [_p] = False
     reallyIsInconsistent [p1, p2] =
       let pid1 = nodeKey p1
           pid2 = nodeKey p2
-      in pid1 `notElem` CD.nonSetupDeps (resolverPackageLibDeps p2)
-      && pid2 `notElem` CD.nonSetupDeps (resolverPackageLibDeps p1)
+       in pid1 `notElem` CD.nonSetupDeps (resolverPackageLibDeps p2)
+            && pid2 `notElem` CD.nonSetupDeps (resolverPackageLibDeps p1)
     reallyIsInconsistent _ = True
-
 
 -- | The graph of packages (nodes) and dependencies (edges) must be acyclic.
 --
 -- * if the result is @False@ use 'PackageIndex.dependencyCycles' to find out
 --   which packages are involved in dependency cycles.
---
 acyclic :: SolverPlanIndex -> Bool
 acyclic = null . Graph.cycles
 
@@ -381,7 +416,6 @@ acyclic = null . Graph.cycles
 --
 -- * if the result is @False@ use 'PackageIndex.brokenPackages' to find out
 --   which packages depend on packages not in the index.
---
 closed :: SolverPlanIndex -> Bool
 closed = null . Graph.broken
 
@@ -400,44 +434,40 @@ closed = null . Graph.broken
 --
 -- * if the result is @False@ use 'PackageIndex.dependencyInconsistencies' to
 --   find out which packages are.
---
 consistent :: SolverPlanIndex -> Bool
 consistent = null . dependencyInconsistencies (IndependentGoals False)
 
 -- | The states of packages have that depend on each other must respect
 -- this relation. That is for very case where package @a@ depends on
 -- package @b@ we require that @dependencyStatesOk a b = True@.
---
-stateDependencyRelation :: SolverPlanPackage
-                        -> SolverPlanPackage
-                        -> Bool
-stateDependencyRelation PreExisting{}   PreExisting{}     = True
-
-stateDependencyRelation (Configured  _) PreExisting{}     = True
-stateDependencyRelation (Configured  _) (Configured  _)   = True
-
-stateDependencyRelation _               _                 = False
-
+stateDependencyRelation
+  :: SolverPlanPackage
+  -> SolverPlanPackage
+  -> Bool
+stateDependencyRelation PreExisting{} PreExisting{} = True
+stateDependencyRelation (Configured _) PreExisting{} = True
+stateDependencyRelation (Configured _) (Configured _) = True
+stateDependencyRelation _ _ = False
 
 -- | Compute the dependency closure of a package in a install plan
---
-dependencyClosure :: SolverInstallPlan
-                  -> [SolverId]
-                  -> [SolverPlanPackage]
+dependencyClosure
+  :: SolverInstallPlan
+  -> [SolverId]
+  -> [SolverPlanPackage]
 dependencyClosure plan = fromMaybe [] . Graph.closure (planIndex plan)
 
-
-reverseDependencyClosure :: SolverInstallPlan
-                         -> [SolverId]
-                         -> [SolverPlanPackage]
+reverseDependencyClosure
+  :: SolverInstallPlan
+  -> [SolverId]
+  -> [SolverPlanPackage]
 reverseDependencyClosure plan = fromMaybe [] . Graph.revClosure (planIndex plan)
 
-
-topologicalOrder :: SolverInstallPlan
-                 -> [SolverPlanPackage]
+topologicalOrder
+  :: SolverInstallPlan
+  -> [SolverPlanPackage]
 topologicalOrder plan = Graph.topSort (planIndex plan)
 
-
-reverseTopologicalOrder :: SolverInstallPlan
-                        -> [SolverPlanPackage]
+reverseTopologicalOrder
+  :: SolverInstallPlan
+  -> [SolverPlanPackage]
 reverseTopologicalOrder plan = Graph.revTopSort (planIndex plan)

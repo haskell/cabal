@@ -1,33 +1,33 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 
-module Distribution.Types.Executable (
-    Executable(..),
-    emptyExecutable,
-    exeModules,
-    exeModulesAutogen
-) where
+module Distribution.Types.Executable
+  ( Executable (..)
+  , emptyExecutable
+  , exeModules
+  , exeModulesAutogen
+  ) where
 
-import Prelude ()
 import Distribution.Compat.Prelude
+import Prelude ()
 
-import Distribution.Types.BuildInfo
-import Distribution.Types.UnqualComponentName
-import Distribution.Types.ExecutableScope
 import Distribution.ModuleName
+import Distribution.Types.BuildInfo
+import Distribution.Types.ExecutableScope
+import Distribution.Types.UnqualComponentName
 
 import qualified Distribution.Types.BuildInfo.Lens as L
 
-data Executable = Executable {
-        exeName    :: UnqualComponentName,
-        modulePath :: FilePath,
-        exeScope   :: ExecutableScope,
-        buildInfo  :: BuildInfo
-    }
-    deriving (Generic, Show, Read, Eq, Ord, Typeable, Data)
+data Executable = Executable
+  { exeName :: UnqualComponentName
+  , modulePath :: FilePath
+  , exeScope :: ExecutableScope
+  , buildInfo :: BuildInfo
+  }
+  deriving (Generic, Show, Read, Eq, Ord, Typeable, Data)
 
 instance L.HasBuildInfo Executable where
-    buildInfo f l = (\x -> l { buildInfo = x }) <$> f (buildInfo l)
+  buildInfo f l = (\x -> l{buildInfo = x}) <$> f (buildInfo l)
 
 instance Binary Executable
 instance Structured Executable
@@ -38,19 +38,27 @@ instance Monoid Executable where
   mappend = (<>)
 
 instance Semigroup Executable where
-  a <> b = Executable{
-    exeName    = combine' exeName,
-    modulePath = combine modulePath,
-    exeScope   = combine exeScope,
-    buildInfo  = combine buildInfo
-  }
-    where combine field = field a `mappend` field b
-          combine' field = case ( unUnqualComponentName $ field a
-                                , unUnqualComponentName $ field b) of
-                      ("", _) -> field b
-                      (_, "") -> field a
-                      (x, y) -> error $ "Ambiguous values for executable field: '"
-                                  ++ x ++ "' and '" ++ y ++ "'"
+  a <> b =
+    Executable
+      { exeName = combine' exeName
+      , modulePath = combine modulePath
+      , exeScope = combine exeScope
+      , buildInfo = combine buildInfo
+      }
+    where
+      combine field = field a `mappend` field b
+      combine' field = case ( unUnqualComponentName $ field a
+                            , unUnqualComponentName $ field b
+                            ) of
+        ("", _) -> field b
+        (_, "") -> field a
+        (x, y) ->
+          error $
+            "Ambiguous values for executable field: '"
+              ++ x
+              ++ "' and '"
+              ++ y
+              ++ "'"
 
 emptyExecutable :: Executable
 emptyExecutable = mempty

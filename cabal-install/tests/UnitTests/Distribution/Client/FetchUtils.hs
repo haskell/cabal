@@ -1,6 +1,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
+
 module UnitTests.Distribution.Client.FetchUtils
-  ( tests,
+  ( tests
   )
 where
 
@@ -26,13 +27,13 @@ tests :: [TestTree]
 tests =
   [ testGroup
       "asyncFetchPackages"
-      [ testCase "handles an empty package list" testEmpty,
-        testCase "passes an unpacked local package through" testPassLocalPackage,
-        testCase "handles http" testHttp,
-        testCase "aborts on interrupt in GET" $ testGetInterrupt,
-        testCase "aborts on other exception in GET" $ testGetException,
-        testCase "aborts on interrupt in GET (uncollected download)" $ testUncollectedInterrupt,
-        testCase "continues on other exception in GET (uncollected download)" $ testUncollectedException
+      [ testCase "handles an empty package list" testEmpty
+      , testCase "passes an unpacked local package through" testPassLocalPackage
+      , testCase "handles http" testHttp
+      , testCase "aborts on interrupt in GET" $ testGetInterrupt
+      , testCase "aborts on other exception in GET" $ testGetException
+      , testCase "aborts on interrupt in GET (uncollected download)" $ testUncollectedInterrupt
+      , testCase "continues on other exception in GET (uncollected download)" $ testUncollectedException
       ]
   ]
 
@@ -175,24 +176,24 @@ mkPkgId :: String -> PackageIdentifier
 mkPkgId name = PackageIdentifier (mkPackageName name) (mkVersion [1, 0])
 
 -- | Provide a repo and a repo context with the given GET handler.
-withFakeRepoCtxt ::
-  (URI -> IO HttpCode) ->
-  (RepoContext -> Repo -> IO a) ->
-  IO a
+withFakeRepoCtxt
+  :: (URI -> IO HttpCode)
+  -> (RepoContext -> Repo -> IO a)
+  -> IO a
 withFakeRepoCtxt handleGet action =
   withTestDir verbosity "fake repo" $ \tmpDir ->
     let repo =
           RepoRemote
-            { repoRemote = emptyRemoteRepo $ RepoName "fake",
-              repoLocalDir = tmpDir
+            { repoRemote = emptyRemoteRepo $ RepoName "fake"
+            , repoLocalDir = tmpDir
             }
         repoCtxt =
           RepoContext
-            { repoContextRepos = [repo],
-              repoContextGetTransport = return httpTransport,
-              repoContextWithSecureRepo = \_ _ ->
-                error "fake repo ctxt: repoContextWithSecureRepo not implemented",
-              repoContextIgnoreExpiry = error "fake repo ctxt: repoContextIgnoreExpiry not implemented"
+            { repoContextRepos = [repo]
+            , repoContextGetTransport = return httpTransport
+            , repoContextWithSecureRepo = \_ _ ->
+                error "fake repo ctxt: repoContextWithSecureRepo not implemented"
+            , repoContextIgnoreExpiry = error "fake repo ctxt: repoContextIgnoreExpiry not implemented"
             }
      in action repoCtxt repo
   where
@@ -200,10 +201,10 @@ withFakeRepoCtxt handleGet action =
       HttpTransport
         { getHttp = \_verbosity uri _etag _filepath _headers -> do
             code <- handleGet uri
-            return (code, Nothing),
-          postHttp = error "fake transport: postHttp not implemented",
-          postHttpFile = error "fake transport: postHttpFile not implemented",
-          putHttpFile = error "fake transport: putHttp not implemented",
-          transportSupportsHttps = error "fake transport: transportSupportsHttps not implemented",
-          transportManuallySelected = True
+            return (code, Nothing)
+        , postHttp = error "fake transport: postHttp not implemented"
+        , postHttpFile = error "fake transport: postHttpFile not implemented"
+        , putHttpFile = error "fake transport: putHttp not implemented"
+        , transportSupportsHttps = error "fake transport: transportSupportsHttps not implemented"
+        , transportManuallySelected = True
         }

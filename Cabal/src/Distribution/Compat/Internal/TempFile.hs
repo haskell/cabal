@@ -1,17 +1,18 @@
 {-# LANGUAGE CPP #-}
 {-# OPTIONS_HADDOCK hide #-}
-module Distribution.Compat.Internal.TempFile (
-  openTempFile,
-  openBinaryTempFile,
-  openNewBinaryFile,
-  createTempDirectory,
+
+module Distribution.Compat.Internal.TempFile
+  ( openTempFile
+  , openBinaryTempFile
+  , openNewBinaryFile
+  , createTempDirectory
   ) where
 
 import Distribution.Compat.Exception
 
-import System.FilePath        ((</>))
+import System.FilePath ((</>))
 
-import System.IO              (Handle, openTempFile, openBinaryTempFile)
+import System.IO (Handle, openBinaryTempFile, openTempFile)
 #if defined(__IO_MANAGER_WINIO__)
 import System.IO              (openBinaryTempFileWithDefaultPermissions)
 #else
@@ -23,8 +24,8 @@ import System.Posix.Internals (c_open, c_close, o_EXCL, o_BINARY, withFilePath,
                                o_CREAT, o_RDWR, o_NONBLOCK, o_NOCTTY)
 #endif
 
+import System.IO.Error (isAlreadyExistsError)
 import System.Posix.Internals (c_getpid)
-import System.IO.Error        (isAlreadyExistsError)
 
 #if defined(mingw32_HOST_OS) || defined(ghcjs_HOST_OS)
 import System.Directory       ( createDirectory )
@@ -33,7 +34,9 @@ import qualified System.Posix
 #endif
 
 -- ------------------------------------------------------------
+
 -- * temporary files
+
 -- ------------------------------------------------------------
 
 -- This is here for Haskell implementations that do not come with
@@ -46,9 +49,10 @@ import qualified System.Posix
 -- Windows when the new IO manager is used.
 openNewBinaryFile :: FilePath -> String -> IO (FilePath, Handle)
 openNewBinaryFile dir template = do
-  -- This method can't be used under WINIO. Also the current implementation has
-  -- thread safety issues depending on which GHC is used.  On newer GHC's let's
-  -- use the built in one.
+
+-- This method can't be used under WINIO. Also the current implementation has
+-- thread safety issues depending on which GHC is used.  On newer GHC's let's
+-- use the built in one.
 #if defined(__IO_MANAGER_WINIO__)
   openBinaryTempFileWithDefaultPermissions dir template
 #else
@@ -126,8 +130,9 @@ createTempDirectory dir template = do
       r <- tryIO $ mkPrivateDir dirpath
       case r of
         Right _ -> return dirpath
-        Left  e | isAlreadyExistsError e -> findTempName (x+1)
-                | otherwise              -> ioError e
+        Left e
+          | isAlreadyExistsError e -> findTempName (x + 1)
+          | otherwise -> ioError e
 
 mkPrivateDir :: String -> IO ()
 #if defined(mingw32_HOST_OS) || defined(ghcjs_HOST_OS)

@@ -1,36 +1,43 @@
-{-# LANGUAGE CPP                #-}
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveDataTypeable #-}
-module Distribution.Compat.NonEmptySet (
-    NonEmptySet,
+
+module Distribution.Compat.NonEmptySet
+  ( NonEmptySet
+
     -- * Construction
-    singleton,
+  , singleton
+
     -- * Insertion
-    insert,
+  , insert
+
     -- * Deletion
-    delete,
+  , delete
+
     -- * Conversions
-    toNonEmpty,
-    fromNonEmpty,
-    toList,
-    toSet,
+  , toNonEmpty
+  , fromNonEmpty
+  , toList
+  , toSet
+
     -- * Query
-    member,
+  , member
+
     -- * Map
-    map,
-) where
+  , map
+  ) where
 
 import Prelude (Bool (..), Eq, Maybe (..), Ord (..), Read, Show (..), String, error, otherwise, return, showParen, showString, ($), (++), (.))
 
-import Control.DeepSeq    (NFData (..))
-import Data.Data          (Data)
+import Control.DeepSeq (NFData (..))
+import Data.Data (Data)
 import Data.List.NonEmpty (NonEmpty (..))
-import Data.Semigroup     (Semigroup (..))
-import Data.Typeable      (Typeable)
+import Data.Semigroup (Semigroup (..))
+import Data.Typeable (Typeable)
 
 import qualified Data.Foldable as F
-import qualified Data.Set      as Set
+import qualified Data.Set as Set
 
-import Distribution.Compat.Binary    (Binary (..))
+import Distribution.Compat.Binary (Binary (..))
 import Distribution.Utils.Structured
 
 #if MIN_VERSION_binary(0,6,0)
@@ -48,40 +55,43 @@ newtype NonEmptySet a = NES (Set.Set a)
 -------------------------------------------------------------------------------
 
 instance Show a => Show (NonEmptySet a) where
-    showsPrec d s = showParen (d > 10)
-        $ showString "fromNonEmpty "
+  showsPrec d s =
+    showParen (d > 10) $
+      showString "fromNonEmpty "
         . showsPrec 11 (toNonEmpty s)
 
+{- FOURMOLU_DISABLE -}
 instance Binary a => Binary (NonEmptySet a) where
-    put (NES s) = put s
-    get = do
-        xs <- get
-        if Set.null xs
+  put (NES s) = put s
+  get = do
+      xs <- get
+      if Set.null xs
 #if MIN_VERSION_binary(0,6,0)
-        then empty
+      then empty
 #else
-        then fail "NonEmptySet: empty"
+      then fail "NonEmptySet: empty"
 #endif
-        else return (NES xs)
+      else return (NES xs)
+{- FOURMOLU_ENABLE -}
 
 instance Structured a => Structured (NonEmptySet a) where
-    structure = containerStructure
+  structure = containerStructure
 
 instance NFData a => NFData (NonEmptySet a) where
-    rnf (NES x) = rnf x
+  rnf (NES x) = rnf x
 
 -- | Note: there aren't @Monoid@ instance.
 instance Ord a => Semigroup (NonEmptySet a) where
-    NES x <> NES y = NES (Set.union x y)
+  NES x <> NES y = NES (Set.union x y)
 
 instance F.Foldable NonEmptySet where
-    foldMap f (NES s) = F.foldMap f s
-    foldr f z (NES s) = F.foldr f z s
+  foldMap f (NES s) = F.foldMap f s
+  foldr f z (NES s) = F.foldr f z s
 
 #if MIN_VERSION_base(4,8,0)
-    toList         = toList
-    null _         = False
-    length (NES s) = F.length s
+  toList         = toList
+  null _         = False
+  length (NES s) = F.length s
 #endif
 
 -------------------------------------------------------------------------------
@@ -104,8 +114,8 @@ insert x (NES xs) = NES (Set.insert x xs)
 
 delete :: Ord a => a -> NonEmptySet a -> Maybe (NonEmptySet a)
 delete x (NES xs)
-    | Set.null res = Nothing
-    | otherwise    = Just (NES xs)
+  | Set.null res = Nothing
+  | otherwise = Just (NES xs)
   where
     res = Set.delete x xs
 
@@ -118,8 +128,8 @@ fromNonEmpty (x :| xs) = NES (Set.fromList (x : xs))
 
 toNonEmpty :: NonEmptySet a -> NonEmpty a
 toNonEmpty (NES s) = case Set.toList s of
-    []   -> panic "toNonEmpty"
-    x:xs -> x :| xs
+  [] -> panic "toNonEmpty"
+  x : xs -> x :| xs
 
 toList :: NonEmptySet a -> [a]
 toList (NES s) = Set.toList s
@@ -138,6 +148,7 @@ member x (NES xs) = Set.member x xs
 -- Map
 -------------------------------------------------------------------------------
 
+{- FOURMOLU_DISABLE -}
 map
     :: ( Ord b
 #if !MIN_VERSION_containers(0,5,2)
@@ -146,6 +157,7 @@ map
        )
     => (a -> b) -> NonEmptySet a -> NonEmptySet b
 map f (NES x) = NES (Set.map f x)
+{- FOURMOLU_ENABLE -}
 
 -------------------------------------------------------------------------------
 -- Internal

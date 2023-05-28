@@ -1,13 +1,14 @@
 {-# LANGUAGE DeriveGeneric #-}
-module Distribution.Client.Types.RepoName (
-    RepoName (..),
-) where
+
+module Distribution.Client.Types.RepoName
+  ( RepoName (..)
+  ) where
 
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
 import qualified Distribution.Compat.CharParsing as P
-import qualified Text.PrettyPrint                as Disp
+import qualified Text.PrettyPrint as Disp
 
 -- $setup
 -- >>> import Distribution.Parsec
@@ -15,8 +16,7 @@ import qualified Text.PrettyPrint                as Disp
 -- | Repository name.
 --
 -- May be used as path segment.
---
-newtype RepoName = RepoName { unRepoName :: String }
+newtype RepoName = RepoName {unRepoName :: String}
   deriving (Show, Eq, Ord, Generic)
 
 instance Binary RepoName
@@ -24,7 +24,7 @@ instance Structured RepoName
 instance NFData RepoName
 
 instance Pretty RepoName where
-    pretty = Disp.text . unRepoName
+  pretty = Disp.text . unRepoName
 
 -- |
 --
@@ -33,9 +33,9 @@ instance Pretty RepoName where
 --
 -- >>> simpleParsec "0123" :: Maybe RepoName
 -- Nothing
---
 instance Parsec RepoName where
-    parsec = RepoName <$> parser where
-        parser = (:) <$> lead <*> rest
-        lead = P.satisfy (\c -> isAlpha    c || c == '_' || c == '-' || c == '.')
-        rest = P.munch   (\c -> isAlphaNum c || c == '_' || c == '-' || c == '.')
+  parsec = RepoName <$> parser
+    where
+      parser = (:) <$> lead <*> rest
+      lead = P.satisfy (\c -> isAlpha c || c == '_' || c == '-' || c == '.')
+      rest = P.munch (\c -> isAlphaNum c || c == '_' || c == '-' || c == '.')

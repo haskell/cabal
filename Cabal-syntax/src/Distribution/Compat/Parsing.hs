@@ -1,5 +1,10 @@
-{-# LANGUAGE GADTs, UndecidableInstances #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE UndecidableInstances #-}
+
 -----------------------------------------------------------------------------
+
+-----------------------------------------------------------------------------
+
 -- |
 -- Module      :  Distribution.Compat.Parsing
 -- Copyright   :  (c) Edward Kmett 2011-2012
@@ -12,18 +17,15 @@
 -- Alternative parser combinators.
 --
 -- Originally in @parsers@ package.
---
------------------------------------------------------------------------------
 module Distribution.Compat.Parsing
-  (
-  -- * Parsing Combinators
+  ( -- * Parsing Combinators
     choice
   , option
   , optional -- from Control.Applicative, parsec optionMaybe
   , skipOptional -- parsec optional
   , between
-  , some     -- from Control.Applicative, parsec many1
-  , many     -- from Control.Applicative
+  , some -- from Control.Applicative, parsec many1
+  , many -- from Control.Applicative
   , sepBy
   , sepByNonEmpty
   , sepEndByNonEmpty
@@ -36,23 +38,24 @@ module Distribution.Compat.Parsing
   , chainl1
   , chainr1
   , manyTill
-  -- * Parsing Class
-  , Parsing(..)
+
+    -- * Parsing Class
+  , Parsing (..)
   ) where
 
-import Prelude ()
 import Distribution.Compat.Prelude
+import Prelude ()
 
-import Control.Applicative ((<**>), optional)
+import Control.Applicative (optional, (<**>))
 import Control.Monad.Trans.Class (lift)
+import Control.Monad.Trans.Identity (IdentityT (..))
+import Control.Monad.Trans.RWS.Lazy as Lazy
+import Control.Monad.Trans.RWS.Strict as Strict
+import Control.Monad.Trans.Reader (ReaderT (..))
 import Control.Monad.Trans.State.Lazy as Lazy
 import Control.Monad.Trans.State.Strict as Strict
 import Control.Monad.Trans.Writer.Lazy as Lazy
 import Control.Monad.Trans.Writer.Strict as Strict
-import Control.Monad.Trans.RWS.Lazy as Lazy
-import Control.Monad.Trans.RWS.Strict as Strict
-import Control.Monad.Trans.Reader (ReaderT (..))
-import Control.Monad.Trans.Identity (IdentityT (..))
 import Data.Foldable (asum)
 
 import qualified Data.List.NonEmpty as NE
@@ -136,8 +139,9 @@ endBy p sep = many (p <* sep)
 -- equal to zero, the parser equals to @return []@. Returns a list of
 -- @n@ values returned by @p@.
 count :: Applicative m => Int -> m a -> m [a]
-count n p | n <= 0    = pure []
-          | otherwise = sequenceA (replicate n p)
+count n p
+  | n <= 0 = pure []
+  | otherwise = sequenceA (replicate n p)
 {-# INLINE count #-}
 
 -- | @chainr p op x@ parses /zero/ or more occurrences of @p@,
@@ -174,9 +178,10 @@ chainl p op x = chainl1 p op <|> pure x
 -- >  addop  = (+) <$ symbol "+"
 -- >       <|> (-) <$ symbol "-"
 chainl1 :: Alternative m => m a -> m (a -> a -> a) -> m a
-chainl1 p op = scan where
-  scan = p <**> rst
-  rst = (\f y g x -> g (f x y)) <$> op <*> p <*> rst <|> pure id
+chainl1 p op = scan
+  where
+    scan = p <**> rst
+    rst = (\f y g x -> g (f x y)) <$> op <*> p <*> rst <|> pure id
 {-# INLINE chainl1 #-}
 
 -- | @chainr1 p op x@ parses /one/ or more occurrences of @p@,
@@ -184,9 +189,10 @@ chainl1 p op = scan where
 -- application of all functions returned by @op@ to the values returned
 -- by @p@.
 chainr1 :: Alternative m => m a -> m (a -> a -> a) -> m a
-chainr1 p op = scan where
-  scan = p <**> rst
-  rst = (flip <$> op <*> scan) <|> pure id
+chainr1 p op = scan
+  where
+    scan = p <**> rst
+    rst = (flip <$> op <*> scan) <|> pure id
 {-# INLINE chainr1 #-}
 
 -- | @manyTill p end@ applies parser @p@ /zero/ or more times until
@@ -255,8 +261,8 @@ instance (Parsing m, MonadPlus m) => Parsing (Lazy.StateT s m) where
   {-# INLINE unexpected #-}
   eof = lift eof
   {-# INLINE eof #-}
-  notFollowedBy (Lazy.StateT m) = Lazy.StateT
-    $ \s -> notFollowedBy (fst <$> m s) >> return ((),s)
+  notFollowedBy (Lazy.StateT m) = Lazy.StateT $
+    \s -> notFollowedBy (fst <$> m s) >> return ((), s)
   {-# INLINE notFollowedBy #-}
 
 instance (Parsing m, MonadPlus m) => Parsing (Strict.StateT s m) where
@@ -268,8 +274,8 @@ instance (Parsing m, MonadPlus m) => Parsing (Strict.StateT s m) where
   {-# INLINE unexpected #-}
   eof = lift eof
   {-# INLINE eof #-}
-  notFollowedBy (Strict.StateT m) = Strict.StateT
-    $ \s -> notFollowedBy (fst <$> m s) >> return ((),s)
+  notFollowedBy (Strict.StateT m) = Strict.StateT $
+    \s -> notFollowedBy (fst <$> m s) >> return ((), s)
   {-# INLINE notFollowedBy #-}
 
 instance (Parsing m, MonadPlus m) => Parsing (ReaderT e m) where
@@ -295,8 +301,9 @@ instance (Parsing m, MonadPlus m, Monoid w) => Parsing (Strict.WriterT w m) wher
   {-# INLINE unexpected #-}
   eof = lift eof
   {-# INLINE eof #-}
-  notFollowedBy (Strict.WriterT m) = Strict.WriterT
-    $ notFollowedBy (fst <$> m) >>= \x -> return (x, mempty)
+  notFollowedBy (Strict.WriterT m) =
+    Strict.WriterT $
+      notFollowedBy (fst <$> m) >>= \x -> return (x, mempty)
   {-# INLINE notFollowedBy #-}
 
 instance (Parsing m, MonadPlus m, Monoid w) => Parsing (Lazy.WriterT w m) where
@@ -308,8 +315,9 @@ instance (Parsing m, MonadPlus m, Monoid w) => Parsing (Lazy.WriterT w m) where
   {-# INLINE unexpected #-}
   eof = lift eof
   {-# INLINE eof #-}
-  notFollowedBy (Lazy.WriterT m) = Lazy.WriterT
-    $ notFollowedBy (fst <$> m) >>= \x -> return (x, mempty)
+  notFollowedBy (Lazy.WriterT m) =
+    Lazy.WriterT $
+      notFollowedBy (fst <$> m) >>= \x -> return (x, mempty)
   {-# INLINE notFollowedBy #-}
 
 instance (Parsing m, MonadPlus m, Monoid w) => Parsing (Lazy.RWST r w s m) where
@@ -321,8 +329,8 @@ instance (Parsing m, MonadPlus m, Monoid w) => Parsing (Lazy.RWST r w s m) where
   {-# INLINE unexpected #-}
   eof = lift eof
   {-# INLINE eof #-}
-  notFollowedBy (Lazy.RWST m) = Lazy.RWST
-    $ \r s -> notFollowedBy ((\(a,_,_) -> a) <$> m r s) >>= \x -> return (x, s, mempty)
+  notFollowedBy (Lazy.RWST m) = Lazy.RWST $
+    \r s -> notFollowedBy ((\(a, _, _) -> a) <$> m r s) >>= \x -> return (x, s, mempty)
   {-# INLINE notFollowedBy #-}
 
 instance (Parsing m, MonadPlus m, Monoid w) => Parsing (Strict.RWST r w s m) where
@@ -334,8 +342,8 @@ instance (Parsing m, MonadPlus m, Monoid w) => Parsing (Strict.RWST r w s m) whe
   {-# INLINE unexpected #-}
   eof = lift eof
   {-# INLINE eof #-}
-  notFollowedBy (Strict.RWST m) = Strict.RWST
-    $ \r s -> notFollowedBy ((\(a,_,_) -> a) <$> m r s) >>= \x -> return (x, s, mempty)
+  notFollowedBy (Strict.RWST m) = Strict.RWST $
+    \r s -> notFollowedBy ((\(a, _, _) -> a) <$> m r s) >>= \x -> return (x, s, mempty)
   {-# INLINE notFollowedBy #-}
 
 instance (Parsing m, Monad m) => Parsing (IdentityT m) where
@@ -353,10 +361,10 @@ instance (Parsing m, Monad m) => Parsing (IdentityT m) where
   {-# INLINE notFollowedBy #-}
 
 instance (Parsec.Stream s m t, Show t) => Parsing (Parsec.ParsecT s u m) where
-  try           = Parsec.try
-  (<?>)         = (Parsec.<?>)
-  skipMany      = Parsec.skipMany
-  skipSome      = Parsec.skipMany1
-  unexpected    = Parsec.unexpected
-  eof           = Parsec.eof
+  try = Parsec.try
+  (<?>) = (Parsec.<?>)
+  skipMany = Parsec.skipMany
+  skipSome = Parsec.skipMany1
+  unexpected = Parsec.unexpected
+  eof = Parsec.eof
   notFollowedBy = Parsec.notFollowedBy

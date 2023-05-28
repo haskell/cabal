@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+
+set -euxo pipefail
+
+if [[ $(uname -s) != "Linux" ]]
+then
+  PROCS=$(sysctl -n hw.logicalcpu)
+else
+  PROCS=$(nproc)
+fi
+
+if which fourmolu > /dev/null ; then
+  find Cabal Cabal-syntax cabal-install -name '*.hs' -print0 \
+    ! -path Cabal-syntax/src/Distribution/Fields/Lexer.hs \
+    ! -path Cabal-syntax/src/Distribution/SPDX/LicenseExceptionId.hs \
+    ! -path Cabal-syntax/src/Distribution/SPDX/LicenseId.hs \
+    ! -path Cabal/src/Distribution/Simple/Build/Macros/Z.hs \
+    ! -path Cabal/src/Distribution/Simple/Build/PathsModule/Z.hs \
+    | xargs -P "${PROCS}" -I {} fourmolu -q --mode check {}
+else
+  echo "Fourmolu not found, aborting."
+  exit 1
+fi

@@ -5,23 +5,23 @@ module Distribution.Simple.Build.PackageInfoModule.Z (render, Z (..)) where
 import Distribution.ZinzaPrelude
 
 data Z = Z
-  { zPackageName :: String,
-    zVersionDigits :: String,
-    zSynopsis :: String,
-    zCopyright :: String,
-    zHomepage :: String,
-    zSupportsNoRebindableSyntax :: Bool
+  { zPackageName :: String
+  , zVersionDigits :: String
+  , zSynopsis :: String
+  , zCopyright :: String
+  , zHomepage :: String
+  , zSupportsNoRebindableSyntax :: Bool
   }
   deriving (Generic)
 
 render :: Z -> String
 render z_root = execWriter $ do
   if (zSupportsNoRebindableSyntax z_root)
-  then do
-    tell "{-# LANGUAGE NoRebindableSyntax #-}\n"
-    return ()
-  else do
-    return ()
+    then do
+      tell "{-# LANGUAGE NoRebindableSyntax #-}\n"
+      return ()
+    else do
+      return ()
   tell "{-# OPTIONS_GHC -fno-warn-missing-import-lists #-}\n"
   tell "{-# OPTIONS_GHC -w #-}\n"
   tell "module PackageInfo_"

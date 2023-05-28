@@ -1,6 +1,7 @@
 {-# LANGUAGE CPP #-}
 
 -----------------------------------------------------------------------------
+
 -- |
 -- Module      :  Distribution.Compat.GetShortPathName
 --
@@ -8,12 +9,11 @@
 -- Portability :  Windows-only
 --
 -- Win32 API 'GetShortPathName' function.
+module Distribution.Compat.GetShortPathName (getShortPathName)
+where
 
-module Distribution.Compat.GetShortPathName ( getShortPathName )
-    where
-
-import Prelude ()
 import Distribution.Compat.Prelude
+import Prelude ()
 
 #ifdef mingw32_HOST_OS
 
@@ -22,6 +22,7 @@ import qualified System.Win32 as Win32
 import System.Win32          (LPCTSTR, LPTSTR, DWORD)
 import Foreign.Marshal.Array (allocaArray)
 
+{- FOURMOLU_DISABLE -}
 #ifdef x86_64_HOST_ARCH
 #define WINAPI ccall
 #else
@@ -57,3 +58,4 @@ getShortPathName :: FilePath -> IO FilePath
 getShortPathName path = return path
 
 #endif
+{- FOURMOLU_ENABLE -}

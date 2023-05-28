@@ -5,15 +5,17 @@
 -- The API is heavily inspired by @aeson@'s API but puts emphasis on
 -- simplicity rather than performance. The 'ToJSON' instances are
 -- intended to have an encoding compatible with @aeson@'s encoding.
---
 module Distribution.Client.Utils.Json
-    ( Value(..)
-    , Object, object, Pair, (.=)
-    , encodeToString
-    , encodeToBuilder
-    , ToJSON(toJSON)
-    )
-    where
+  ( Value (..)
+  , Object
+  , object
+  , Pair
+  , (.=)
+  , encodeToString
+  , encodeToBuilder
+  , ToJSON (toJSON)
+  )
+where
 
 import Distribution.Client.Compat.Prelude
 
@@ -25,13 +27,14 @@ import qualified Data.ByteString.Builder as BB
 -- TODO: We may want to replace 'String' with 'Text' or 'ByteString'
 
 -- | A JSON value represented as a Haskell value.
-data Value = Object !Object
-           | Array  [Value]
-           | String  String
-           | Number !Double
-           | Bool   !Bool
-           | Null
-           deriving (Eq, Read, Show)
+data Value
+  = Object !Object
+  | Array [Value]
+  | String String
+  | Number !Double
+  | Bool !Bool
+  | Null
+  deriving (Eq, Read, Show)
 
 -- | A key\/value pair for an 'Object'
 type Pair = (String, Value)
@@ -43,7 +46,7 @@ infixr 8 .=
 
 -- | A key-value pair for encoding a JSON object.
 (.=) :: ToJSON v => String -> v -> Pair
-k .= v  = (k, toJSON v)
+k .= v = (k, toJSON v)
 
 -- | Create a 'Value' from a list of name\/value 'Pair's.
 object :: [Pair] -> Value
@@ -51,7 +54,6 @@ object = Object
 
 instance IsString Value where
   fromString = String
-
 
 -- | A type that can be converted to JSON.
 class ToJSON a where
@@ -71,17 +73,17 @@ instance ToJSON a => ToJSON [a] where
   toJSON = Array . map toJSON
 
 instance ToJSON a => ToJSON (Maybe a) where
-  toJSON Nothing  = Null
+  toJSON Nothing = Null
   toJSON (Just a) = toJSON a
 
-instance (ToJSON a,ToJSON b) => ToJSON (a,b) where
-  toJSON (a,b) = Array [toJSON a, toJSON b]
+instance (ToJSON a, ToJSON b) => ToJSON (a, b) where
+  toJSON (a, b) = Array [toJSON a, toJSON b]
 
-instance (ToJSON a,ToJSON b,ToJSON c) => ToJSON (a,b,c) where
-  toJSON (a,b,c) = Array [toJSON a, toJSON b, toJSON c]
+instance (ToJSON a, ToJSON b, ToJSON c) => ToJSON (a, b, c) where
+  toJSON (a, b, c) = Array [toJSON a, toJSON b, toJSON c]
 
-instance (ToJSON a,ToJSON b,ToJSON c, ToJSON d) => ToJSON (a,b,c,d) where
-  toJSON (a,b,c,d) = Array [toJSON a, toJSON b, toJSON c, toJSON d]
+instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d) => ToJSON (a, b, c, d) where
+  toJSON (a, b, c, d) = Array [toJSON a, toJSON b, toJSON c, toJSON d]
 
 instance ToJSON Float where
   toJSON = Number . realToFrac
@@ -89,21 +91,21 @@ instance ToJSON Float where
 instance ToJSON Double where
   toJSON = Number
 
-instance ToJSON Int    where  toJSON = Number . realToFrac
-instance ToJSON Int8   where  toJSON = Number . realToFrac
-instance ToJSON Int16  where  toJSON = Number . realToFrac
-instance ToJSON Int32  where  toJSON = Number . realToFrac
+instance ToJSON Int where toJSON = Number . realToFrac
+instance ToJSON Int8 where toJSON = Number . realToFrac
+instance ToJSON Int16 where toJSON = Number . realToFrac
+instance ToJSON Int32 where toJSON = Number . realToFrac
 
-instance ToJSON Word   where  toJSON = Number . realToFrac
-instance ToJSON Word8  where  toJSON = Number . realToFrac
-instance ToJSON Word16 where  toJSON = Number . realToFrac
-instance ToJSON Word32 where  toJSON = Number . realToFrac
-
--- | Possibly lossy due to conversion to 'Double'
-instance ToJSON Int64  where  toJSON = Number . realToFrac
+instance ToJSON Word where toJSON = Number . realToFrac
+instance ToJSON Word8 where toJSON = Number . realToFrac
+instance ToJSON Word16 where toJSON = Number . realToFrac
+instance ToJSON Word32 where toJSON = Number . realToFrac
 
 -- | Possibly lossy due to conversion to 'Double'
-instance ToJSON Word64 where  toJSON = Number . realToFrac
+instance ToJSON Int64 where toJSON = Number . realToFrac
+
+-- | Possibly lossy due to conversion to 'Double'
+instance ToJSON Word64 where toJSON = Number . realToFrac
 
 -- | Possibly lossy due to conversion to 'Double'
 instance ToJSON Integer where toJSON = Number . fromInteger
@@ -117,14 +119,14 @@ encodeToBuilder = encodeValueBB . toJSON
 
 encodeValueBB :: Value -> Builder
 encodeValueBB jv = case jv of
-  Bool True  -> "true"
+  Bool True -> "true"
   Bool False -> "false"
-  Null       -> "null"
+  Null -> "null"
   Number n
-    | isNaN n || isInfinite n   -> encodeValueBB Null
+    | isNaN n || isInfinite n -> encodeValueBB Null
     | Just i <- doubleToInt64 n -> BB.int64Dec i
-    | otherwise                 -> BB.doubleDec n
-  Array a  -> encodeArrayBB a
+    | otherwise -> BB.doubleDec n
+  Array a -> encodeArrayBB a
   String s -> encodeStringBB s
   Object o -> encodeObjectBB o
 
@@ -139,7 +141,7 @@ encodeObjectBB [] = "{}"
 encodeObjectBB jvs = BB.char8 '{' <> go jvs <> BB.char8 '}'
   where
     go = mconcat . intersperse (BB.char8 ',') . map encPair
-    encPair (l,x) = encodeStringBB l <> BB.char8 ':' <> encodeValueBB x
+    encPair (l, x) = encodeStringBB l <> BB.char8 ':' <> encodeValueBB x
 
 encodeStringBB :: String -> Builder
 encodeStringBB str = BB.char8 '"' <> go str <> BB.char8 '"'
@@ -155,34 +157,34 @@ encodeToString jv = encodeValue (toJSON jv) []
 
 encodeValue :: Value -> ShowS
 encodeValue jv = case jv of
-  Bool b   -> showString (if b then "true" else "false")
-  Null     -> showString "null"
+  Bool b -> showString (if b then "true" else "false")
+  Null -> showString "null"
   Number n
-    | isNaN n || isInfinite n    -> encodeValue Null
+    | isNaN n || isInfinite n -> encodeValue Null
     | Just i <- doubleToInt64 n -> shows i
-    | otherwise                 -> shows n
+    | otherwise -> shows n
   Array a -> encodeArray a
   String s -> encodeString s
   Object o -> encodeObject o
 
 encodeArray :: [Value] -> ShowS
 encodeArray [] = showString "[]"
-encodeArray jvs = ('[':) . go jvs . (']':)
+encodeArray jvs = ('[' :) . go jvs . (']' :)
   where
-    go []     = id
-    go [x]    = encodeValue x
-    go (x:xs) = encodeValue x . (',':) . go xs
+    go [] = id
+    go [x] = encodeValue x
+    go (x : xs) = encodeValue x . (',' :) . go xs
 
 encodeObject :: Object -> ShowS
 encodeObject [] = showString "{}"
-encodeObject jvs = ('{':) . go jvs . ('}':)
+encodeObject jvs = ('{' :) . go jvs . ('}' :)
   where
-    go []          = id
-    go [(l,x)]     = encodeString l . (':':) . encodeValue x
-    go ((l,x):lxs) = encodeString l . (':':) . encodeValue x . (',':) . go lxs
+    go [] = id
+    go [(l, x)] = encodeString l . (':' :) . encodeValue x
+    go ((l, x) : lxs) = encodeString l . (':' :) . encodeValue x . (',' :) . go lxs
 
 encodeString :: String -> ShowS
-encodeString str = ('"':) . showString (escapeString str) . ('"':)
+encodeString str = ('"' :) . showString (escapeString str) . ('"' :)
 
 ------------------------------------------------------------------------------
 -- helpers
@@ -193,8 +195,8 @@ doubleToInt64 :: Double -> Maybe Int64
 doubleToInt64 x
   | fromInteger x' == x
   , x' <= toInteger (maxBound :: Int64)
-  , x' >= toInteger (minBound :: Int64)
-    = Just (fromIntegral x')
+  , x' >= toInteger (minBound :: Int64) =
+      Just (fromIntegral x')
   | otherwise = Nothing
   where
     x' = round x
@@ -203,20 +205,21 @@ doubleToInt64 x
 escapeString :: String -> String
 escapeString s
   | not (any needsEscape s) = s
-  | otherwise               = escape s
+  | otherwise = escape s
   where
     escape [] = []
-    escape (x:xs) = case x of
-      '\\' -> '\\':'\\':escape xs
-      '"'  -> '\\':'"':escape xs
-      '\b' -> '\\':'b':escape xs
-      '\f' -> '\\':'f':escape xs
-      '\n' -> '\\':'n':escape xs
-      '\r' -> '\\':'r':escape xs
-      '\t' -> '\\':'t':escape xs
-      c | ord c < 0x10 -> '\\':'u':'0':'0':'0':intToDigit (ord c):escape xs
-        | ord c < 0x20 -> '\\':'u':'0':'0':'1':intToDigit (ord c - 0x10):escape xs
-        | otherwise    -> c : escape xs
+    escape (x : xs) = case x of
+      '\\' -> '\\' : '\\' : escape xs
+      '"' -> '\\' : '"' : escape xs
+      '\b' -> '\\' : 'b' : escape xs
+      '\f' -> '\\' : 'f' : escape xs
+      '\n' -> '\\' : 'n' : escape xs
+      '\r' -> '\\' : 'r' : escape xs
+      '\t' -> '\\' : 't' : escape xs
+      c
+        | ord c < 0x10 -> '\\' : 'u' : '0' : '0' : '0' : intToDigit (ord c) : escape xs
+        | ord c < 0x20 -> '\\' : 'u' : '0' : '0' : '1' : intToDigit (ord c - 0x10) : escape xs
+        | otherwise -> c : escape xs
 
     -- unescaped = %x20-21 / %x23-5B / %x5D-10FFFF
-    needsEscape c = ord c < 0x20 || c `elem` ['\\','"']
+    needsEscape c = ord c < 0x20 || c `elem` ['\\', '"']

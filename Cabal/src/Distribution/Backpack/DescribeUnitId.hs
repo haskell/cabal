@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE Rank2Types       #-}
+{-# LANGUAGE Rank2Types #-}
+
 module Distribution.Backpack.DescribeUnitId where
 
 import Distribution.Compat.Prelude
@@ -36,26 +37,36 @@ import Text.PrettyPrint
 -- | Print a Setup message stating (1) what operation we are doing,
 -- for (2) which component (with enough details to uniquely identify
 -- the build in question.)
---
-setupMessage' :: Pretty a => Verbosity
-             -> String            -- ^ Operation being done (capitalized), on:
-             -> PackageIdentifier -- ^ Package
-             -> ComponentName     -- ^ Component name
-             -> Maybe [(ModuleName, a)] -- ^ Instantiation, if available.
-                                        -- Polymorphic to take
-                                        -- 'OpenModule' or 'Module'
-             -> IO ()
+setupMessage'
+  :: Pretty a
+  => Verbosity
+  -> String
+  -- ^ Operation being done (capitalized), on:
+  -> PackageIdentifier
+  -- ^ Package
+  -> ComponentName
+  -- ^ Component name
+  -> Maybe [(ModuleName, a)]
+  -- ^ Instantiation, if available.
+  -- Polymorphic to take
+  -- 'OpenModule' or 'Module'
+  -> IO ()
 setupMessage' verbosity msg pkgid cname mb_insts = withFrozenCallStack $ do
-    noticeDoc verbosity $
-      case mb_insts of
-        Just insts | not (null insts) ->
-          hang (msg_doc <+> text "instantiated with") 2
-               (vcat [ pretty k <+> text "=" <+> pretty v
-                     | (k,v) <- insts ]) $$
-          for_doc
-        _ ->
-          msg_doc <+> for_doc
-
+  noticeDoc verbosity $
+    case mb_insts of
+      Just insts
+        | not (null insts) ->
+            hang
+              (msg_doc <+> text "instantiated with")
+              2
+              ( vcat
+                  [ pretty k <+> text "=" <+> pretty v
+                  | (k, v) <- insts
+                  ]
+              )
+              $$ for_doc
+      _ ->
+        msg_doc <+> for_doc
   where
     msg_doc = text msg <+> text (showComponentName cname)
     for_doc = text "for" <+> pretty pkgid <<>> text ".."

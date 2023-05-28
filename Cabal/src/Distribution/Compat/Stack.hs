@@ -1,16 +1,17 @@
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ImplicitParams #-}
-module Distribution.Compat.Stack (
-    WithCallStack,
-    CallStack,
-    annotateCallStackIO,
-    withFrozenCallStack,
-    withLexicalCallStack,
-    callStack,
-    prettyCallStack,
-    parentSrcLocPrefix
-) where
+{-# LANGUAGE RankNTypes #-}
+
+module Distribution.Compat.Stack
+  ( WithCallStack
+  , CallStack
+  , annotateCallStackIO
+  , withFrozenCallStack
+  , withLexicalCallStack
+  , callStack
+  , prettyCallStack
+  , parentSrcLocPrefix
+  ) where
 
 import System.IO.Error
 
@@ -106,8 +107,9 @@ withLexicalCallStack f = f
 annotateCallStackIO :: WithCallStack (IO a -> IO a)
 annotateCallStackIO = modifyIOError f
   where
-    f ioe = ioeSetErrorString ioe
-          . wrapCallStack
-          $ ioeGetErrorString ioe
+    f ioe =
+      ioeSetErrorString ioe
+        . wrapCallStack
+        $ ioeGetErrorString ioe
     wrapCallStack s =
-        prettyCallStack callStack ++ "\n" ++ s
+      prettyCallStack callStack ++ "\n" ++ s

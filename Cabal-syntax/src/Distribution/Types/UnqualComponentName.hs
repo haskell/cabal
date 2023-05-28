@@ -1,9 +1,14 @@
-{-# LANGUAGE DeriveDataTypeable         #-}
-{-# LANGUAGE DeriveGeneric              #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+
 module Distribution.Types.UnqualComponentName
-  ( UnqualComponentName, unUnqualComponentName, unUnqualComponentNameST, mkUnqualComponentName
-  , packageNameToUnqualComponentName, unqualComponentNameToPackageName
+  ( UnqualComponentName
+  , unUnqualComponentName
+  , unUnqualComponentNameST
+  , mkUnqualComponentName
+  , packageNameToUnqualComponentName
+  , unqualComponentNameToPackageName
   ) where
 
 import Distribution.Compat.Prelude
@@ -22,8 +27,17 @@ import Distribution.Types.PackageName
 --
 -- @since 2.0.0.2
 newtype UnqualComponentName = UnqualComponentName ShortText
-  deriving (Generic, Read, Show, Eq, Ord, Typeable, Data,
-            Semigroup, Monoid) -- TODO: bad enabler of bad monoids
+  deriving
+    ( Generic
+    , Read
+    , Show
+    , Eq
+    , Ord
+    , Typeable
+    , Data
+    , Semigroup
+    , Monoid -- TODO: bad enabler of bad monoids
+    )
 
 -- | Convert 'UnqualComponentName' to 'String'
 --
