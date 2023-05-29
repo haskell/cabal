@@ -432,7 +432,7 @@ createHaddockIndex
 createHaddockIndex verbosity programDb comp platform flags = do
   let args = fromHaddockProjectFlags flags
   (haddockProg, _version) <-
-    getHaddockProg verbosity programDb comp args (haddockProjectQuickJump flags)
+    getHaddockProg verbosity programDb comp args (Flag True)
   runHaddock verbosity defaultTempFileOptions comp platform haddockProg False args
 
 -- ------------------------------------------------------------------------------
@@ -489,12 +489,12 @@ fromHaddockProjectFlags :: HaddockProjectFlags -> HaddockArgs
 fromHaddockProjectFlags flags =
   mempty
     { argOutputDir = Dir (fromFlag $ haddockProjectDir flags)
-    , argQuickJump = haddockProjectQuickJump flags
-    , argGenContents = haddockProjectGenContents flags
-    , argGenIndex = haddockProjectGenIndex flags
+    , argQuickJump = Flag True
+    , argGenContents = Flag True
+    , argGenIndex = Flag True
     , argPrologueFile = haddockProjectPrologue flags
     , argInterfaces = fromFlagOrDefault [] (haddockProjectInterfaces flags)
-    , argLinkedSource = haddockProjectLinkedSource flags
+    , argLinkedSource = Flag True
     , argLib = haddockProjectLib flags
     }
 
@@ -835,7 +835,12 @@ renderArgs verbosity tmpFileOpts version comp platform args k = do
           ( \o ->
               outputDir
                 </> case o of
-                  Html -> "index.html"
+                  Html
+                    | fromFlagOrDefault False (argGenIndex args) ->
+                        "index.html"
+                  Html
+                    | otherwise ->
+                        mempty
                   Hoogle -> pkgstr <.> "txt"
           )
         . fromFlagOrDefault [Html]
