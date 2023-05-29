@@ -172,7 +172,7 @@ alex_actions = array (0 :: Int, 31)
   , (0,alex_action_9)
   ]
 
-{-# LINE 151 "templates/Lexer.x" #-}
+{-# LINE 163 "templates/Lexer.x" #-}
 -- | Tokens of outer cabal file structure. Field values are treated opaquely.
 data Token = TokSym   !ByteString       -- ^ Haskell-like identifier, number or operator
            | TokStr   !ByteString       -- ^ String in quotes
@@ -204,6 +204,9 @@ checkLeadingWhitespace pos len bs
 
 checkWhitespace :: Position -> Int -> ByteString -> Lex Int
 checkWhitespace pos len bs
+    -- UTF8 NBSP is 194 160. This function is called on whitespace bytestrings,
+    -- therefore counting 194 bytes is enough to count non-breaking spaces.
+    -- We subtract the amount of 194 bytes to convert bytes length into char length
     | B.any (== 194) (B.take len bs) = do
         addWarningAt pos LexWarningNBSP
         return $ len - B.count 194 (B.take len bs)
@@ -315,14 +318,21 @@ in_field_layout = 5
 in_section = 6
 alex_action_0 = \pos len _ -> do
               when (len /= 0) $ addWarningAt pos LexWarningBOM
+              setPos pos -- reset position as if BOM didn't exist
               setStartCode bol_section
               lexToken
 alex_action_1 = \pos len inp -> checkWhitespace pos len inp >> adjustPos retPos >> lexToken
-alex_action_3 = \pos len inp -> checkLeadingWhitespace pos len inp >>
+alex_action_3 = \pos len inp -> checkLeadingWhitespace pos len inp >>= \len' ->
+                                     -- len' is character whitespace length (counting nbsp as one)
                                      if B.length inp == len
                                        then return (L pos EOF)
-                                       else setStartCode in_section
-                                         >> return (L pos (Indent len))
+                                       else do
+                                        -- Small hack: if char and byte length mismatch
+                                        -- subtract the difference, so lexToken will count position correctly.
+                                        -- Proper (and slower) fix is to count utf8 length in lexToken
+                                        when (len' /= len) $ adjustPos (incPos (len' - len))
+                                        setStartCode in_section
+                                        return (L pos (Indent len'))
 alex_action_4 = tok  OpenBrace
 alex_action_5 = tok  CloseBrace
 alex_action_8 = toki TokSym
@@ -336,8 +346,13 @@ alex_action_15 = \_ _ _ -> adjustPos retPos >> setStartCode bol_section >> lexTo
 alex_action_16 = \pos len inp -> checkLeadingWhitespace pos len inp >>= \len' ->
                                   if B.length inp == len
                                     then return (L pos EOF)
-                                    else setStartCode in_field_layout
-                                      >> return (L pos (Indent len'))
+                                    else do
+                                      -- Small hack: if char and byte length mismatch
+                                      -- subtract the difference, so lexToken will count position correctly.
+                                      -- Proper (and slower) fix is to count utf8 length in lexToken
+                                      when (len' /= len) $ adjustPos (incPos (len' - len))
+                                      setStartCode in_field_layout
+                                      return (L pos (Indent len'))
 alex_action_18 = toki TokFieldLine
 alex_action_19 = \_ _ _ -> adjustPos retPos >> setStartCode bol_field_layout >> lexToken
 alex_action_20 = \_ _ _ -> setStartCode in_field_braces >> lexToken
