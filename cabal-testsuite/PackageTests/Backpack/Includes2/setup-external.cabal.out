@@ -7,8 +7,13 @@ for mylib-0.1.0.0..
 # Setup haddock
 Preprocessing library for mylib-0.1.0.0..
 Running Haddock on library instantiated with Database = <Database>
+<<<<<<< HEAD
 for mylib-0.1.0.0..
 Documentation created: ../setup-external.cabal.dist/work/mylib/dist/doc/html/mylib/index.html
+=======
+for mylib-0.1.0.0...
+Documentation created: ../setup-external.cabal.dist/work/mylib/dist/doc/html/mylib/
+>>>>>>> 1b89c1bf5 (Removed some haddock-project options)
 # Setup copy
 Installing library in <PATH>
 # Setup register
@@ -20,9 +25,15 @@ Configuring mysql-0.1.0.0...
 Preprocessing library for mysql-0.1.0.0..
 Building library for mysql-0.1.0.0..
 # Setup haddock
+<<<<<<< HEAD
 Preprocessing library for mysql-0.1.0.0..
 Running Haddock on library for mysql-0.1.0.0..
 Documentation created: ../setup-external.cabal.dist/work/mysql/dist/doc/html/mysql/index.html
+=======
+Preprocessing library for mysql-0.1.0.0...
+Running Haddock on library for mysql-0.1.0.0...
+Documentation created: ../setup-external.cabal.dist/work/mysql/dist/doc/html/mysql/
+>>>>>>> 1b89c1bf5 (Removed some haddock-project options)
 # Setup copy
 Installing library in <PATH>
 # Setup register
@@ -33,9 +44,15 @@ Configuring postgresql-0.1.0.0...
 Preprocessing library for postgresql-0.1.0.0..
 Building library for postgresql-0.1.0.0..
 # Setup haddock
+<<<<<<< HEAD
 Preprocessing library for postgresql-0.1.0.0..
 Running Haddock on library for postgresql-0.1.0.0..
 Documentation created: ../setup-external.cabal.dist/work/postgresql/dist/doc/html/postgresql/index.html
+=======
+Preprocessing library for postgresql-0.1.0.0...
+Running Haddock on library for postgresql-0.1.0.0...
+Documentation created: ../setup-external.cabal.dist/work/postgresql/dist/doc/html/postgresql/
+>>>>>>> 1b89c1bf5 (Removed some haddock-project options)
 # Setup copy
 Installing library in <PATH>
 # Setup register
@@ -50,8 +67,13 @@ for mylib-0.1.0.0..
 Preprocessing library for mylib-0.1.0.0..
 Running Haddock on library instantiated with
   Database = mysql-0.1.0.0:Database.MySQL
+<<<<<<< HEAD
 for mylib-0.1.0.0..
 Documentation created: ../setup-external.cabal.dist/work/mylib/dist/doc/html/mylib/index.html
+=======
+for mylib-0.1.0.0...
+Documentation created: ../setup-external.cabal.dist/work/mylib/dist/doc/html/mylib/
+>>>>>>> 1b89c1bf5 (Removed some haddock-project options)
 # Setup copy
 Installing library in <PATH>
 # Setup register
@@ -68,8 +90,13 @@ for mylib-0.1.0.0..
 Preprocessing library for mylib-0.1.0.0..
 Running Haddock on library instantiated with
   Database = postgresql-0.1.0.0:Database.PostgreSQL
+<<<<<<< HEAD
 for mylib-0.1.0.0..
 Documentation created: ../setup-external.cabal.dist/work/mylib/dist/doc/html/mylib/index.html
+=======
+for mylib-0.1.0.0...
+Documentation created: ../setup-external.cabal.dist/work/mylib/dist/doc/html/mylib/
+>>>>>>> 1b89c1bf5 (Removed some haddock-project options)
 # Setup copy
 Installing library in <PATH>
 # Setup register
@@ -82,9 +109,15 @@ Configuring src-0.1.0.0...
 Preprocessing library for src-0.1.0.0..
 Building library for src-0.1.0.0..
 # Setup haddock
+<<<<<<< HEAD
 Preprocessing library for src-0.1.0.0..
 Running Haddock on library for src-0.1.0.0..
 Documentation created: ../setup-external.cabal.dist/work/src/dist/doc/html/src/index.html
+=======
+Preprocessing library for src-0.1.0.0...
+Running Haddock on library for src-0.1.0.0...
+Documentation created: ../setup-external.cabal.dist/work/src/dist/doc/html/src/
+>>>>>>> 1b89c1bf5 (Removed some haddock-project options)
 # Setup copy
 Installing library in <PATH>
 # Setup register

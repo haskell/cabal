@@ -3,8 +3,11 @@ module Distribution.Client.CmdHaddockProject
   , haddockProjectAction
   ) where
 
+<<<<<<< HEAD
 import Prelude ()
 import Data.Bool (bool)
+=======
+>>>>>>> 1b89c1bf5 (Removed some haddock-project options)
 import Distribution.Client.Compat.Prelude hiding (get)
 
 import qualified Distribution.Client.CmdBuild   as CmdBuild
@@ -42,6 +45,46 @@ import Distribution.Client.ScriptUtils        (AcceptNoTargets(..)
                                               ,withContextAndSelectors)
 import Distribution.Client.TargetProblem      (TargetProblem(..))
 
+<<<<<<< HEAD
+=======
+import Distribution.Simple.Command
+  ( CommandUI (..)
+  )
+import Distribution.Simple.Compiler
+  ( Compiler (..)
+  )
+import Distribution.Simple.Flag
+  ( Flag (..)
+  , fromFlag
+  , fromFlagOrDefault
+  )
+import Distribution.Simple.Haddock (createHaddockIndex)
+import Distribution.Simple.InstallDirs
+  ( toPathTemplate
+  )
+import Distribution.Simple.Program.Builtin
+  ( haddockProgram
+  )
+import Distribution.Simple.Program.Db
+  ( addKnownProgram
+  , reconfigurePrograms
+  , requireProgramVersion
+  )
+import Distribution.Simple.Setup
+  ( HaddockFlags (..)
+  , HaddockProjectFlags (..)
+  , Visibility (..)
+  , defaultHaddockFlags
+  , haddockProjectCommand
+  )
+import Distribution.Simple.Utils
+  ( copyDirectoryRecursive
+  , createDirectoryIfMissingVerbose
+  , die'
+  , warn
+  )
+import Distribution.Types.InstalledPackageInfo (InstalledPackageInfo (..))
+>>>>>>> 1b89c1bf5 (Removed some haddock-project options)
 import Distribution.Types.PackageId (pkgName)
 import Distribution.Types.PackageName (unPackageName)
 import Distribution.Types.UnitId (unUnitId)
@@ -87,6 +130,7 @@ haddockProjectAction flags _extraArgs globalFlags = do
     let outputDir = normalise $ fromFlag (haddockProjectDir flags)
     createDirectoryIfMissingVerbose verbosity True outputDir
 
+<<<<<<< HEAD
     when ((2::Int) <=
             ( flagElim 0 (bool 0 1) (haddockProjectHackage flags)
             + flagElim 0 (bool 0 1) (haddockProjectLocal flags)
@@ -130,6 +174,48 @@ haddockProjectAction flags _extraArgs globalFlags = do
           , haddockKeepTempFiles= haddockProjectKeepTempFiles flags
           , haddockVerbosity    = haddockProjectVerbosity     flags
           , haddockLib          = haddockProjectLib           flags
+=======
+  warn verbosity "haddock-project command is experimental, it might break in the future"
+
+  -- build all packages with appropriate haddock flags
+  let haddockFlags =
+        defaultHaddockFlags
+          { haddockHtml = Flag True
+          , -- one can either use `--haddock-base-url` or
+            -- `--haddock-html-location`.
+            haddockBaseUrl =
+              if localStyle
+                then Flag ".."
+                else NoFlag
+          , haddockProgramPaths = haddockProjectProgramPaths flags
+          , haddockProgramArgs = haddockProjectProgramArgs flags
+          , haddockHtmlLocation =
+              if fromFlagOrDefault False (haddockProjectHackage flags)
+                then Flag "https://hackage.haskell.org/package/$pkg-$version/docs"
+                else haddockProjectHtmlLocation flags
+          , haddockHoogle = haddockProjectHoogle flags
+          , haddockExecutables = haddockProjectExecutables flags
+          , haddockTestSuites = haddockProjectTestSuites flags
+          , haddockBenchmarks = haddockProjectBenchmarks flags
+          , haddockForeignLibs = haddockProjectForeignLibs flags
+          , haddockInternal = haddockProjectInternal flags
+          , haddockCss = haddockProjectCss flags
+          , haddockLinkedSource = Flag True
+          , haddockQuickJump = Flag True
+          , haddockHscolourCss = haddockProjectHscolourCss flags
+          , haddockContents =
+              if localStyle
+                then Flag (toPathTemplate "../index.html")
+                else NoFlag
+          , haddockIndex =
+              if localStyle
+                then Flag (toPathTemplate "../doc-index.html")
+                else NoFlag
+          , haddockKeepTempFiles = haddockProjectKeepTempFiles flags
+          , haddockVerbosity = haddockProjectVerbosity flags
+          , haddockLib = haddockProjectLib flags
+          , haddockOutputDir = haddockProjectOutputDir flags
+>>>>>>> 1b89c1bf5 (Removed some haddock-project options)
           }
         nixFlags = (commandDefaultFlags CmdHaddock.haddockCommand)
                    { NixStyleOptions.haddockFlags = haddockFlags
@@ -353,6 +439,7 @@ haddockProjectAction flags _extraArgs globalFlags = do
                                    )]
                   False -> return []
 
+<<<<<<< HEAD
       --
       -- generate index, content, etc.
       --
@@ -379,6 +466,11 @@ haddockProjectAction flags _extraArgs globalFlags = do
                 | (packageName, interfacePath, visibility) <- packageInfos
                 ]
 =======
+=======
+    let flags' =
+          flags
+            { haddockProjectDir = Flag outputDir
+>>>>>>> 1b89c1bf5 (Removed some haddock-project options)
             , haddockProjectInterfaces =
                 Flag
                   [ ( interfacePath
@@ -402,6 +494,7 @@ haddockProjectAction flags _extraArgs globalFlags = do
     -- transitive dependencies; or depend on `--haddocks-html-location` to
     -- provide location of the documentation of dependencies.
     localStyle =
+<<<<<<< HEAD
       let local    = fromFlagOrDefault False (haddockProjectLocal flags)
           hackage  = fromFlagOrDefault False (haddockProjectHackage flags)
           location = fromFlagOrDefault False (const True <$> haddockProjectHtmlLocation flags)
@@ -413,6 +506,11 @@ haddockProjectAction flags _extraArgs globalFlags = do
     localOrHackage =
       any id $ flagToList (haddockProjectLocal flags)
             ++ flagToList (haddockProjectHackage flags)
+=======
+      let hackage = fromFlagOrDefault False (haddockProjectHackage flags)
+          location = fromFlagOrDefault False (const True <$> haddockProjectHtmlLocation flags)
+       in not hackage && not location
+>>>>>>> 1b89c1bf5 (Removed some haddock-project options)
 
     reportTargetProblems :: Show x => [x] -> IO a
     reportTargetProblems =

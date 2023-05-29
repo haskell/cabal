@@ -7,8 +7,13 @@ for Includes2-0.1.0.0..
 # Setup haddock
 Preprocessing library 'mylib' for Includes2-0.1.0.0..
 Running Haddock on library 'mylib' instantiated with Database = <Database>
+<<<<<<< HEAD
 for Includes2-0.1.0.0..
 Documentation created: setup-per-component.dist/work/dist/doc/html/Includes2/index.html
+=======
+for Includes2-0.1.0.0...
+Documentation created: setup-per-component.dist/work/dist/doc/html/Includes2/
+>>>>>>> 1b89c1bf5 (Removed some haddock-project options)
 # Setup copy
 Installing internal library mylib in <PATH>
 # Setup register
@@ -20,9 +25,15 @@ Configuring library 'mysql' for Includes2-0.1.0.0..
 Preprocessing library 'mysql' for Includes2-0.1.0.0..
 Building library 'mysql' for Includes2-0.1.0.0..
 # Setup haddock
+<<<<<<< HEAD
 Preprocessing library 'mysql' for Includes2-0.1.0.0..
 Running Haddock on library 'mysql' for Includes2-0.1.0.0..
 Documentation created: setup-per-component.dist/work/dist/doc/html/Includes2/index.html
+=======
+Preprocessing library 'mysql' for Includes2-0.1.0.0...
+Running Haddock on library 'mysql' for Includes2-0.1.0.0...
+Documentation created: setup-per-component.dist/work/dist/doc/html/Includes2/
+>>>>>>> 1b89c1bf5 (Removed some haddock-project options)
 # Setup copy
 Installing internal library mysql in <PATH>
 # Setup register
@@ -33,9 +44,15 @@ Configuring library 'postgresql' for Includes2-0.1.0.0..
 Preprocessing library 'postgresql' for Includes2-0.1.0.0..
 Building library 'postgresql' for Includes2-0.1.0.0..
 # Setup haddock
+<<<<<<< HEAD
 Preprocessing library 'postgresql' for Includes2-0.1.0.0..
 Running Haddock on library 'postgresql' for Includes2-0.1.0.0..
 Documentation created: setup-per-component.dist/work/dist/doc/html/Includes2/index.html
+=======
+Preprocessing library 'postgresql' for Includes2-0.1.0.0...
+Running Haddock on library 'postgresql' for Includes2-0.1.0.0...
+Documentation created: setup-per-component.dist/work/dist/doc/html/Includes2/
+>>>>>>> 1b89c1bf5 (Removed some haddock-project options)
 # Setup copy
 Installing internal library postgresql in <PATH>
 # Setup register
@@ -53,8 +70,13 @@ for Includes2-0.1.0.0..
 Preprocessing library 'mylib' for Includes2-0.1.0.0..
 Running Haddock on library 'mylib' instantiated with
   Database = mysql-0.1.0.0:Database.MySQL
+<<<<<<< HEAD
 for Includes2-0.1.0.0..
 Documentation created: setup-per-component.dist/work/dist/doc/html/Includes2/index.html
+=======
+for Includes2-0.1.0.0...
+Documentation created: setup-per-component.dist/work/dist/doc/html/Includes2/
+>>>>>>> 1b89c1bf5 (Removed some haddock-project options)
 # Setup copy
 Installing internal library mylib in <PATH>
 # Setup register
@@ -74,8 +96,13 @@ for Includes2-0.1.0.0..
 Preprocessing library 'mylib' for Includes2-0.1.0.0..
 Running Haddock on library 'mylib' instantiated with
   Database = postgresql-0.1.0.0:Database.PostgreSQL
+<<<<<<< HEAD
 for Includes2-0.1.0.0..
 Documentation created: setup-per-component.dist/work/dist/doc/html/Includes2/index.html
+=======
+for Includes2-0.1.0.0...
+Documentation created: setup-per-component.dist/work/dist/doc/html/Includes2/
+>>>>>>> 1b89c1bf5 (Removed some haddock-project options)
 # Setup copy
 Installing internal library mylib in <PATH>
 # Setup register
@@ -88,9 +115,15 @@ Configuring library for Includes2-0.1.0.0..
 Preprocessing library for Includes2-0.1.0.0..
 Building library for Includes2-0.1.0.0..
 # Setup haddock
+<<<<<<< HEAD
 Preprocessing library for Includes2-0.1.0.0..
 Running Haddock on library for Includes2-0.1.0.0..
 Documentation created: setup-per-component.dist/work/dist/doc/html/Includes2/index.html
+=======
+Preprocessing library for Includes2-0.1.0.0...
+Running Haddock on library for Includes2-0.1.0.0...
+Documentation created: setup-per-component.dist/work/dist/doc/html/Includes2/
+>>>>>>> 1b89c1bf5 (Removed some haddock-project options)
 # Setup copy
 Installing library in <PATH>
 # Setup register

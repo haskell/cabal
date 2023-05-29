@@ -705,12 +705,8 @@ By default the documentation will be put in ``./haddocks`` folder, this can be
 modified with the ``--output`` flag.
 
 This command supports two primary modes: building a self contained directory
-(by specifying ``--local`` flag) or documentation that links to hackage (with
-``--hackage`` flag).  Both options imply: ``--quickjump``, ``--gen-index``,
-``--gen-contents`` and ``--hyperlinked-source``.
-
-If neither ``--local`` nor ``--hackage`` option is specified a self contained
-directory will only be build if ``--html-location`` is not specified.
+(which is the default mode) or documentation that links to hackage (with
+``--hackage`` flag).
 
 In both cases the html index as well as quickjump index will include all terms
 and types defined in any of the local packages, but not ones that are included
