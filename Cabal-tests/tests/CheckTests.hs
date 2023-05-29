@@ -57,6 +57,7 @@ checkTests = testGroup "regressions"
     , checkTest "issue-7776-b.cabal"
     , checkTest "issue-7776-c.cabal"
     , checkTest "issue-8646.cabal"
+    , checkTest "decreasing-indentation.cabal"
     ]
 
 checkTest :: FilePath -> TestTree

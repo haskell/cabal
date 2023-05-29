@@ -42,9 +42,10 @@ import Distribution.Fields.LexerMonad
   ( LexResult (..)
   , LexState (..)
   , LexWarning (..)
+  , LexWarningType (..)
   , unLex
   )
-import Distribution.Parsec.Position (Position (..))
+import Distribution.Parsec.Position (Position (..), positionCol)
 import Text.Parsec.Combinator hiding (eof, notFollowedBy)
 import Text.Parsec.Error
 import Text.Parsec.Pos
@@ -340,10 +341,35 @@ readFields' s = do
   where
     parser = do
       fields <- cabalStyleFile
-      ws <- getLexerWarnings
-      pure (fields, ws)
+      ws <- getLexerWarnings -- lexer accumulates warnings in reverse (consing them to the list)
+      pure (fields, reverse ws ++ checkIndentation fields [])
 
     lexSt = mkLexState' (mkLexState s)
+
+-- | Check (recursively) that all fields inside a block are indented the same.
+--
+-- We have to do this as a post-processing check.
+-- As the parser uses indentOfAtLeast approach, we don't know what is the "correct"
+-- indentation for following fields.
+--
+-- To catch during parsing we would need to parse first field/section of a section
+-- and then parse the following ones (softly) requiring the exactly the same indentation.
+checkIndentation :: [Field Position] -> [LexWarning] -> [LexWarning]
+checkIndentation [] = id
+checkIndentation (Field name _ : fs') = checkIndentation' (nameAnn name) fs'
+checkIndentation (Section name _ fs : fs') = checkIndentation fs . checkIndentation' (nameAnn name) fs'
+
+-- | We compare adjacent fields to reduce the amount of reported indentation warnings.
+checkIndentation' :: Position -> [Field Position] -> [LexWarning] -> [LexWarning]
+checkIndentation' _ [] = id
+checkIndentation' pos (Field name _ : fs') = checkIndentation'' pos (nameAnn name) . checkIndentation' (nameAnn name) fs'
+checkIndentation' pos (Section name _ fs : fs') = checkIndentation'' pos (nameAnn name) . checkIndentation fs . checkIndentation' (nameAnn name) fs'
+
+-- | Check that positions' columns are the same.
+checkIndentation'' :: Position -> Position -> [LexWarning] -> [LexWarning]
+checkIndentation'' a b
+  | positionCol a == positionCol b = id
+  | otherwise = (LexWarning LexInconsistentIndentation b :)
 
 #ifdef CABAL_PARSEC_DEBUG
 parseTest' :: Show a => Parsec LexState' () a -> SourceName -> B8.ByteString -> IO ()
