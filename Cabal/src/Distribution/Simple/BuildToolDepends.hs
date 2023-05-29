@@ -15,20 +15,29 @@ import Distribution.PackageDescription
 
 -- | Same as 'desugarBuildTool', but requires atomic informations (package
 -- name, executable names) instead of a whole 'PackageDescription'.
-desugarBuildToolSimple :: PackageName
-                          -> [UnqualComponentName]
-                          -> LegacyExeDependency
-                          -> Maybe ExeDependency
+desugarBuildToolSimple
+  :: PackageName
+  -> [UnqualComponentName]
+  -> LegacyExeDependency
+  -> Maybe ExeDependency
 desugarBuildToolSimple pname exeNames (LegacyExeDependency name reqVer)
-        | foundLocal = Just $ ExeDependency pname toolName reqVer
-        | otherwise = Map.lookup name allowMap
+  | foundLocal = Just $ ExeDependency pname toolName reqVer
+  | otherwise = Map.lookup name allowMap
   where
     toolName = mkUnqualComponentName name
     foundLocal = toolName `elem` exeNames
-    allowlist = [ "hscolour", "haddock", "happy", "alex", "hsc2hs", "c2hs"
-                , "cpphs", "greencard", "hspec-discover"
-                ]
-    allowMap  = Map.fromList $ flip map allowlist $ \n ->
+    allowlist =
+      [ "hscolour"
+      , "haddock"
+      , "happy"
+      , "alex"
+      , "hsc2hs"
+      , "c2hs"
+      , "cpphs"
+      , "greencard"
+      , "hspec-discover"
+      ]
+    allowMap = Map.fromList $ flip map allowlist $ \n ->
       (n, ExeDependency (mkPackageName n) (mkUnqualComponentName n) reqVer)
 
 -- | Desugar a "build-tools" entry into a proper executable dependency if
@@ -48,10 +57,11 @@ desugarBuildTool
   :: PackageDescription
   -> LegacyExeDependency
   -> Maybe ExeDependency
-desugarBuildTool pkg led = desugarBuildToolSimple
-                             (packageName pkg)
-                             (map exeName $ executables pkg)
-                             led
+desugarBuildTool pkg led =
+  desugarBuildToolSimple
+    (packageName pkg)
+    (map exeName $ executables pkg)
+    led
 
 -- | Get everything from "build-tool-depends", along with entries from
 -- "build-tools" that we know how to desugar.
