@@ -306,7 +306,7 @@ cabalVersionPrompt flags = getCabalVersion flags $ do
     parseCabalVersion "2.4" = CabalSpecV2_4
     parseCabalVersion "3.0" = CabalSpecV3_0
     parseCabalVersion "3.4" = CabalSpecV3_4
-    parseCabalVersion _ = defaultCabalVersion -- 2.4
+    parseCabalVersion _ = defaultCabalVersion -- 3.4
     displayCabalVersion :: CabalSpecVersion -> String
     displayCabalVersion v = case v of
       CabalSpecV2_0 -> "2.0   (support for Backpack, internal sub-libs, '^>=' operator)"
