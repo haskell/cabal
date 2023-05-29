@@ -288,7 +288,7 @@ package, and thus apply globally:
     to the root of the project (i.e., where the ``cabal.project``
     file lives.)
 
-    This option cannot be specified via a ``cabal.project`` file.
+    This option can only be specified from the command line.
 
 .. _cmdoption-project-dir:
 .. option:: --project-dir=DIR

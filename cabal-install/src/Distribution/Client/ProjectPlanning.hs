@@ -390,6 +390,9 @@ rebuildProjectConfig
                 pure (os, arch, compilerInfo compiler)
 
           projectConfig <- instantiateProjectConfigSkeletonFetchingCompiler fetchCompiler mempty projectConfigSkeleton
+          when (projectConfigDistDir (projectConfigShared $ projectConfig) /= NoFlag) $
+            liftIO $
+              warn verbosity "The builddir option is not supported in project and config files. It will be ignored."
           localPackages <- phaseReadLocalPackages (projectConfig <> cliConfig)
           return (projectConfig, localPackages)
 
