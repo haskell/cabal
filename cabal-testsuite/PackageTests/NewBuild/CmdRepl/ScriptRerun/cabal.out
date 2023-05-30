@@ -2,9 +2,9 @@
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
- - fake-package-0 (exe:cabal-script-script.hs) (first run)
-Configuring executable 'cabal-script-script.hs' for fake-package-0..
+ - fake-package-0 (interactive) (exe:script-script.hs) (first run)
+Configuring executable 'script-script.hs' for fake-package-0..
 # cabal v2-repl
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
- - fake-package-0 (exe:cabal-script-script.hs) (first run)
+ - fake-package-0 (interactive) (exe:script-script.hs) (first run)

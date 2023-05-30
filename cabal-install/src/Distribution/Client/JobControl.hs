@@ -1,5 +1,9 @@
 {-# LANGUAGE FlexibleContexts #-}
+
 -----------------------------------------------------------------------------
+
+-----------------------------------------------------------------------------
+
 -- |
 -- Module      :  Distribution.Client.JobControl
 -- Copyright   :  (c) Duncan Coutts 2012
@@ -10,74 +14,65 @@
 -- Portability :  portable
 --
 -- A job control concurrency abstraction
------------------------------------------------------------------------------
-module Distribution.Client.JobControl (
-    JobControl,
-    newSerialJobControl,
-    newParallelJobControl,
-    spawnJob,
-    collectJob,
-    remainingJobs,
-    cancelJobs,
-
-    JobLimit,
-    newJobLimit,
-    withJobLimit,
-
-    Lock,
-    newLock,
-    criticalSection
+module Distribution.Client.JobControl
+  ( JobControl
+  , newSerialJobControl
+  , newParallelJobControl
+  , spawnJob
+  , collectJob
+  , remainingJobs
+  , cancelJobs
+  , JobLimit
+  , newJobLimit
+  , withJobLimit
+  , Lock
+  , newLock
+  , criticalSection
   ) where
 
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
-import Control.Monad (forever, replicateM_)
 import Control.Concurrent (forkIO)
 import Control.Concurrent.MVar
 import Control.Concurrent.STM (STM, atomically)
-import Control.Concurrent.STM.TVar
 import Control.Concurrent.STM.TChan
+import Control.Concurrent.STM.TVar
 import Control.Exception (bracket_, try)
-import Distribution.Compat.Stack
+import Control.Monad (forever, replicateM_)
 import Distribution.Client.Compat.Semaphore
-
+import Distribution.Compat.Stack
 
 -- | A simple concurrency abstraction. Jobs can be spawned and can complete
 -- in any order. This allows both serial and parallel implementations.
---
-data JobControl m a = JobControl {
-       -- | Add a new job to the pool of jobs
-       spawnJob    :: m a -> m (),
-
-       -- | Wait until one job is complete
-       collectJob  :: m a,
-
-       -- | Returns True if there are any outstanding jobs
-       -- (ie spawned but yet to be collected)
-       remainingJobs :: m Bool,
-
-       -- | Try to cancel any outstanding but not-yet-started jobs.
-       -- Call 'remainingJobs' after this to find out if any jobs are left
-       -- (ie could not be cancelled).
-       cancelJobs  :: m ()
-     }
-
+data JobControl m a = JobControl
+  { spawnJob :: m a -> m ()
+  -- ^ Add a new job to the pool of jobs
+  , collectJob :: m a
+  -- ^ Wait until one job is complete
+  , remainingJobs :: m Bool
+  -- ^ Returns True if there are any outstanding jobs
+  -- (ie spawned but yet to be collected)
+  , cancelJobs :: m ()
+  -- ^ Try to cancel any outstanding but not-yet-started jobs.
+  -- Call 'remainingJobs' after this to find out if any jobs are left
+  -- (ie could not be cancelled).
+  }
 
 -- | Make a 'JobControl' that executes all jobs serially and in order.
 -- It only executes jobs on demand when they are collected, not eagerly.
 --
 -- Cancelling will cancel /all/ jobs that have not been collected yet.
---
 newSerialJobControl :: IO (JobControl IO a)
 newSerialJobControl = do
-    qVar <- newTChanIO
-    return JobControl {
-      spawnJob      = spawn     qVar,
-      collectJob    = collect   qVar,
-      remainingJobs = remaining qVar,
-      cancelJobs    = cancel    qVar
-    }
+  qVar <- newTChanIO
+  return
+    JobControl
+      { spawnJob = spawn qVar
+      , collectJob = collect qVar
+      , remainingJobs = remaining qVar
+      , cancelJobs = cancel qVar
+      }
   where
     spawn :: TChan (IO a) -> IO a -> IO ()
     spawn qVar job = atomically $ writeTChan qVar job
@@ -87,7 +82,7 @@ newSerialJobControl = do
       join $ atomically $ readTChan qVar
 
     remaining :: TChan (IO a) -> IO Bool
-    remaining qVar  = fmap not $ atomically $ isEmptyTChan qVar
+    remaining qVar = fmap not $ atomically $ isEmptyTChan qVar
 
     cancel :: TChan (IO a) -> IO ()
     cancel qVar = do
@@ -100,25 +95,26 @@ newSerialJobControl = do
 -- Cancelling will cancel jobs that have not yet begun executing, but jobs
 -- that have already been executed or are currently executing cannot be
 -- cancelled.
---
 newParallelJobControl :: WithCallStack (Int -> IO (JobControl IO a))
-newParallelJobControl n | n < 1 || n > 1000 =
-  error $ "newParallelJobControl: not a sensible number of jobs: " ++ show n
+newParallelJobControl n
+  | n < 1 || n > 1000 =
+      error $ "newParallelJobControl: not a sensible number of jobs: " ++ show n
 newParallelJobControl maxJobLimit = do
-    inqVar   <- newTChanIO
-    outqVar  <- newTChanIO
-    countVar <- newTVarIO 0
-    replicateM_ maxJobLimit $
-      forkIO $
-        worker inqVar outqVar
-    return JobControl {
-      spawnJob      = spawn   inqVar  countVar,
-      collectJob    = collect outqVar countVar,
-      remainingJobs = remaining       countVar,
-      cancelJobs    = cancel  inqVar  countVar
-    }
+  inqVar <- newTChanIO
+  outqVar <- newTChanIO
+  countVar <- newTVarIO 0
+  replicateM_ maxJobLimit $
+    forkIO $
+      worker inqVar outqVar
+  return
+    JobControl
+      { spawnJob = spawn inqVar countVar
+      , collectJob = collect outqVar countVar
+      , remainingJobs = remaining countVar
+      , cancelJobs = cancel inqVar countVar
+      }
   where
-    worker ::  TChan (IO a) -> TChan (Either SomeException a) -> IO ()
+    worker :: TChan (IO a) -> TChan (Either SomeException a) -> IO ()
     worker inqVar outqVar =
       forever $ do
         job <- atomically $ readTChan inqVar
@@ -128,7 +124,7 @@ newParallelJobControl maxJobLimit = do
     spawn :: TChan (IO a) -> TVar Int -> IO a -> IO ()
     spawn inqVar countVar job =
       atomically $ do
-        modifyTVar' countVar (+1)
+        modifyTVar' countVar (+ 1)
         writeTChan inqVar job
 
     collect :: TChan (Either SomeException a) -> TVar Int -> IO a
@@ -139,7 +135,7 @@ newParallelJobControl maxJobLimit = do
       either throwIO return res
 
     remaining :: TVar Int -> IO Bool
-    remaining countVar = fmap (/=0) $ atomically $ readTVar countVar
+    remaining countVar = fmap (/= 0) $ atomically $ readTVar countVar
 
     cancel :: TChan (IO a) -> TVar Int -> IO ()
     cancel inqVar countVar =
@@ -154,7 +150,7 @@ readAllTChan qvar = go []
       mx <- tryReadTChan qvar
       case mx of
         Nothing -> return (reverse xs)
-        Just x  -> go (x:xs)
+        Just x -> go (x : xs)
 
 -------------------------
 -- Job limits and locks

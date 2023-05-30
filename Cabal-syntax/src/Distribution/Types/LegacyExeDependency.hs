@@ -1,7 +1,8 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric      #-}
+{-# LANGUAGE DeriveGeneric #-}
+
 module Distribution.Types.LegacyExeDependency
-  ( LegacyExeDependency(..)
+  ( LegacyExeDependency (..)
   ) where
 
 import Distribution.Compat.Prelude
@@ -12,7 +13,7 @@ import Distribution.Pretty
 import Distribution.Version (VersionRange, anyVersion)
 
 import qualified Distribution.Compat.CharParsing as P
-import qualified Text.PrettyPrint                as Disp
+import qualified Text.PrettyPrint as Disp
 
 -- | Describes a legacy `build-tools`-style dependency on an executable
 --
@@ -21,27 +22,28 @@ import qualified Text.PrettyPrint                as Disp
 -- executable (UnqualComponentName). Thus the name is stringly typed.
 --
 -- @since 2.0.0.2
-data LegacyExeDependency = LegacyExeDependency
-                           String
-                           VersionRange
-                         deriving (Generic, Read, Show, Eq, Ord, Typeable, Data)
+data LegacyExeDependency
+  = LegacyExeDependency
+      String
+      VersionRange
+  deriving (Generic, Read, Show, Eq, Ord, Typeable, Data)
 
 instance Binary LegacyExeDependency
 instance Structured LegacyExeDependency
 instance NFData LegacyExeDependency where rnf = genericRnf
 
 instance Pretty LegacyExeDependency where
-    pretty (LegacyExeDependency name ver) =
-        Disp.text name <+> pretty ver
+  pretty (LegacyExeDependency name ver) =
+    Disp.text name <+> pretty ver
 
 instance Parsec LegacyExeDependency where
-    parsec = do
-        name <- parsecMaybeQuoted nameP
-        P.spaces
-        verRange <- parsecMaybeQuoted parsec <|> pure anyVersion
-        pure $ LegacyExeDependency name verRange
-      where
-        nameP = intercalate "-" <$> toList <$> P.sepByNonEmpty component (P.char '-')
-        component = do
-            cs <- P.munch1 (\c -> isAlphaNum c || c == '+' || c == '_')
-            if all isDigit cs then fail "invalid component" else return cs
+  parsec = do
+    name <- parsecMaybeQuoted nameP
+    P.spaces
+    verRange <- parsecMaybeQuoted parsec <|> pure anyVersion
+    pure $ LegacyExeDependency name verRange
+    where
+      nameP = intercalate "-" <$> toList <$> P.sepByNonEmpty component (P.char '-')
+      component = do
+        cs <- P.munch1 (\c -> isAlphaNum c || c == '+' || c == '_')
+        if all isDigit cs then fail "invalid component" else return cs

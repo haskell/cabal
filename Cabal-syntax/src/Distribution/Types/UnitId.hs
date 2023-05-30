@@ -1,10 +1,12 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Distribution.Types.UnitId
-  ( UnitId, unUnitId, mkUnitId
+  ( UnitId
+  , unUnitId
+  , mkUnitId
   , DefUnitId
   , unsafeMkDefUnitId
   , unDefUnitId
@@ -13,13 +15,13 @@ module Distribution.Types.UnitId
   , getHSLibraryName
   ) where
 
-import Prelude ()
 import Distribution.Compat.Prelude
 import Distribution.Utils.ShortText
+import Prelude ()
 
 import qualified Distribution.Compat.CharParsing as P
-import Distribution.Pretty
 import Distribution.Parsec
+import Distribution.Pretty
 import Distribution.Types.ComponentId
 import Distribution.Types.PackageId
 
@@ -61,7 +63,6 @@ import Text.PrettyPrint (text)
 -- representation of a UnitId to pass, e.g., as a @-package-id@
 -- flag, use the 'display' function, which will work on all
 -- versions of Cabal.
---
 newtype UnitId = UnitId ShortText
   deriving (Generic, Read, Show, Eq, Ord, Typeable, Data, NFData)
 
@@ -70,25 +71,23 @@ instance Structured UnitId
 
 -- | The textual format for 'UnitId' coincides with the format
 -- GHC accepts for @-package-id@.
---
 instance Pretty UnitId where
-    pretty = text . unUnitId
+  pretty = text . unUnitId
 
 -- | The textual format for 'UnitId' coincides with the format
 -- GHC accepts for @-package-id@.
---
 instance Parsec UnitId where
-    parsec = mkUnitId <$> P.munch1 isUnitChar where
-        -- https://gitlab.haskell.org/ghc/ghc/issues/17752
-        isUnitChar '-' = True
-        isUnitChar '_' = True
-        isUnitChar '.' = True
-        isUnitChar '+' = True
-        isUnitChar c   = isAlphaNum c
+  parsec = mkUnitId <$> P.munch1 isUnitChar
+    where
+      -- https://gitlab.haskell.org/ghc/ghc/issues/17752
+      isUnitChar '-' = True
+      isUnitChar '_' = True
+      isUnitChar '.' = True
+      isUnitChar '+' = True
+      isUnitChar c = isAlphaNum c
 
 -- | If you need backwards compatibility, consider using 'display'
 -- instead, which is supported by all versions of Cabal.
---
 unUnitId :: UnitId -> String
 unUnitId (UnitId s) = fromShortText s
 
@@ -99,7 +98,7 @@ mkUnitId = UnitId . toShortText
 --
 -- @since 2.0.0.2
 instance IsString UnitId where
-    fromString = mkUnitId
+  fromString = mkUnitId
 
 -- | Create a unit identity with no associated hash directly
 -- from a 'ComponentId'.
@@ -118,7 +117,7 @@ getHSLibraryName uid = "HS" ++ prettyShow uid
 -- | A 'UnitId' for a definite package.  The 'DefUnitId' invariant says
 -- that a 'UnitId' identified this way is definite; i.e., it has no
 -- unfilled holes.
-newtype DefUnitId = DefUnitId { unDefUnitId :: UnitId }
+newtype DefUnitId = DefUnitId {unDefUnitId :: UnitId}
   deriving (Generic, Read, Show, Eq, Ord, Typeable, Data, Binary, NFData, Pretty)
 
 instance Structured DefUnitId

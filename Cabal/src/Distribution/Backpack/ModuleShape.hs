@@ -1,21 +1,22 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
+
 -- | See <https://github.com/ezyang/ghc-proposals/blob/backpack/proposals/0000-backpack.rst>
-module Distribution.Backpack.ModuleShape (
-    -- * Module shapes
-    ModuleShape(..),
-    emptyModuleShape,
-    shapeInstalledPackage,
-) where
+module Distribution.Backpack.ModuleShape
+  ( -- * Module shapes
+    ModuleShape (..)
+  , emptyModuleShape
+  , shapeInstalledPackage
+  ) where
 
-import Prelude ()
 import Distribution.Compat.Prelude hiding (mod)
+import Prelude ()
 
-import Distribution.ModuleName
 import Distribution.InstalledPackageInfo as IPI
+import Distribution.ModuleName
 
-import Distribution.Backpack.ModSubst
 import Distribution.Backpack
+import Distribution.Backpack.ModSubst
 
 import qualified Data.Map as Map
 import qualified Data.Set as Set
@@ -26,18 +27,18 @@ import qualified Data.Set as Set
 -- | A 'ModuleShape' describes the provisions and requirements of
 -- a library.  We can extract a 'ModuleShape' from an
 -- 'InstalledPackageInfo'.
-data ModuleShape = ModuleShape {
-    modShapeProvides :: OpenModuleSubst,
-    modShapeRequires :: Set ModuleName
-    }
-    deriving (Eq, Show, Generic, Typeable)
+data ModuleShape = ModuleShape
+  { modShapeProvides :: OpenModuleSubst
+  , modShapeRequires :: Set ModuleName
+  }
+  deriving (Eq, Show, Generic, Typeable)
 
 instance Binary ModuleShape
 instance Structured ModuleShape
 
 instance ModSubst ModuleShape where
-    modSubst subst (ModuleShape provs reqs)
-        = ModuleShape (modSubst subst provs) (modSubst subst reqs)
+  modSubst subst (ModuleShape provs reqs) =
+    ModuleShape (modSubst subst provs) (modSubst subst reqs)
 
 -- | The default module shape, with no provisions and no requirements.
 emptyModuleShape :: ModuleShape
@@ -78,7 +79,7 @@ shapeInstalledPackage ipi = ModuleShape (Map.fromList provs) reqs
     uid = installedOpenUnitId ipi
     provs = map shapeExposedModule (IPI.exposedModules ipi)
     reqs = requiredSignatures ipi
-    shapeExposedModule (IPI.ExposedModule mod_name Nothing)
-        = (mod_name, OpenModule uid mod_name)
-    shapeExposedModule (IPI.ExposedModule mod_name (Just mod))
-        = (mod_name, mod)
+    shapeExposedModule (IPI.ExposedModule mod_name Nothing) =
+      (mod_name, OpenModule uid mod_name)
+    shapeExposedModule (IPI.ExposedModule mod_name (Just mod)) =
+      (mod_name, mod)

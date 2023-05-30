@@ -1,4 +1,5 @@
 -----------------------------------------------------------------------------
+
 -- |
 -- Module      :  Distribution.PackageDescription
 -- Copyright   :  Isaac Jones 2003-2005
@@ -9,67 +10,81 @@
 --
 -- Backwards compatibility reexport of most things you need to know
 -- about @.cabal@ files.
+module Distribution.PackageDescription
+  ( -- * PD and GPD
+      module Distribution.Types.PackageDescription
+  , module Distribution.Types.GenericPackageDescription
 
-module Distribution.PackageDescription (
-    -- * PD and GPD
-    module Distribution.Types.PackageDescription,
-    module Distribution.Types.GenericPackageDescription,
     -- * Components
-    module Distribution.Types.ComponentName,
+  , module Distribution.Types.ComponentName
+
     -- ** Library
-    module Distribution.Types.Library,
-    module Distribution.Types.LibraryName,
-    module Distribution.Types.LibraryVisibility,
+  , module Distribution.Types.Library
+  , module Distribution.Types.LibraryName
+  , module Distribution.Types.LibraryVisibility
+
     -- ** Executable
-    module Distribution.Types.Executable,
-    module Distribution.Types.ExecutableScope,
+  , module Distribution.Types.Executable
+  , module Distribution.Types.ExecutableScope
+
     -- ** TestSuite
-    module Distribution.Types.TestSuite,
-    module Distribution.Types.TestType,
-    module Distribution.Types.TestSuiteInterface,
+  , module Distribution.Types.TestSuite
+  , module Distribution.Types.TestType
+  , module Distribution.Types.TestSuiteInterface
+
     -- ** Benchmark
-    module Distribution.Types.Benchmark,
-    module Distribution.Types.BenchmarkType,
-    module Distribution.Types.BenchmarkInterface,
+  , module Distribution.Types.Benchmark
+  , module Distribution.Types.BenchmarkType
+  , module Distribution.Types.BenchmarkInterface
+
     -- ** Foreign library
-    module Distribution.Types.ForeignLib,
-    module Distribution.Types.ForeignLibType,
-    module Distribution.Types.ForeignLibOption,
+  , module Distribution.Types.ForeignLib
+  , module Distribution.Types.ForeignLibType
+  , module Distribution.Types.ForeignLibOption
+
     -- * BuildInfo
-    module Distribution.Types.BuildType,
-    module Distribution.Types.BuildInfo,
-    module Distribution.Types.HookedBuildInfo,
-    module Distribution.Types.SetupBuildInfo,
+  , module Distribution.Types.BuildType
+  , module Distribution.Types.BuildInfo
+  , module Distribution.Types.HookedBuildInfo
+  , module Distribution.Types.SetupBuildInfo
+
     -- * Flags
-    module Distribution.Types.Flag,
+  , module Distribution.Types.Flag
+
     -- * Identifiers
-    module Distribution.Types.PackageId,
-    module Distribution.Types.PackageName,
-    module Distribution.Types.UnqualComponentName,
+  , module Distribution.Types.PackageId
+  , module Distribution.Types.PackageName
+  , module Distribution.Types.UnqualComponentName
+
     -- * Pkgconfig
-    module Distribution.Types.PkgconfigName,
-    module Distribution.Types.PkgconfigVersion,
-    module Distribution.Types.PkgconfigVersionRange,
+  , module Distribution.Types.PkgconfigName
+  , module Distribution.Types.PkgconfigVersion
+  , module Distribution.Types.PkgconfigVersionRange
+
     -- * Dependencies
-    module Distribution.Types.Dependency,
-    module Distribution.Types.ExeDependency,
-    module Distribution.Types.LegacyExeDependency,
-    module Distribution.Types.PkgconfigDependency,
+  , module Distribution.Types.Dependency
+  , module Distribution.Types.ExeDependency
+  , module Distribution.Types.LegacyExeDependency
+  , module Distribution.Types.PkgconfigDependency
+
     -- * Condition trees
-    module Distribution.Types.CondTree,
-    module Distribution.Types.Condition,
-    module Distribution.Types.ConfVar,
+  , module Distribution.Types.CondTree
+  , module Distribution.Types.Condition
+  , module Distribution.Types.ConfVar
+
     -- * Mixin
-   module Distribution.Types.IncludeRenaming,
-   module Distribution.Types.Mixin,
-   module Distribution.Types.ModuleReexport,
-   module Distribution.Types.ModuleRenaming,
+  , module Distribution.Types.IncludeRenaming
+  , module Distribution.Types.Mixin
+  , module Distribution.Types.ModuleReexport
+  , module Distribution.Types.ModuleRenaming
+
     -- * Source repository
-    module Distribution.Types.SourceRepo,
+  , module Distribution.Types.SourceRepo
   ) where
 
 import Prelude ()
---import Distribution.Compat.Prelude
+
+-- import Distribution.Compat.Prelude
 
 import Distribution.Types.Benchmark
 import Distribution.Types.BenchmarkInterface
@@ -77,13 +92,13 @@ import Distribution.Types.BenchmarkType
 import Distribution.Types.BuildInfo
 import Distribution.Types.BuildType
 import Distribution.Types.ComponentName
-import Distribution.Types.Condition
 import Distribution.Types.CondTree
+import Distribution.Types.Condition
 import Distribution.Types.ConfVar
 import Distribution.Types.Dependency
+import Distribution.Types.ExeDependency
 import Distribution.Types.Executable
 import Distribution.Types.ExecutableScope
-import Distribution.Types.ExeDependency
 import Distribution.Types.Flag
 import Distribution.Types.ForeignLib
 import Distribution.Types.ForeignLibOption

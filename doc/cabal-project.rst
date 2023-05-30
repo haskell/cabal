@@ -880,6 +880,21 @@ feature was added.
     The command line variant of this flag is ``--enable-benchmarks`` and
     ``--disable-benchmarks``.
 
+.. cfg-field:: multi-repl: boolean
+               --enable-multi-repl
+               --disable-multi-repl
+    :synopsis: Enable starting a repl with multiple targets.
+
+    :default: ``False``
+
+    Allow starting GHCi with multiple targets. This requires GHC with multiple
+    home unit support (GHC-9.4+).
+
+    The closure of required components will be loaded.
+
+    The command line variant of this flag is ``--enable-multi-repl`` and
+    ``--disable-multi-repl``.
+
 .. cfg-field:: extra-prog-path: paths (newline or comma separated)
                --extra-prog-path=PATH
     :synopsis: Add directories to program search path.

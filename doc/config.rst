@@ -61,9 +61,10 @@ Various environment variables affect ``cabal-install``.
    .. note::
 
        For backwards compatibility, if the directory ``~/.cabal`` on
-       Unix or ``%APPDATA%\cabal`` on Windows exist and ``CABAL_DIR``
-       is unset, ``cabal-install`` will behave as if ``CABAL_DIR`` was
-       set to point at this directory.
+       Unix or ``%APPDATA%\cabal`` on Windows exists, and
+       ``$XDG_CONFIG_HOME/cabal/config`` does not exist, and
+       ``CABAL_DIR`` is unset, ``cabal-install`` will behave as if
+       ``CABAL_DIR`` was set to point at this directory.
 
 ``CABAL_BUILDDIR``
 

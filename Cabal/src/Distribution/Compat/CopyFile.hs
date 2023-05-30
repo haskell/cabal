@@ -1,18 +1,19 @@
 {-# LANGUAGE CPP #-}
 {-# OPTIONS_HADDOCK hide #-}
-module Distribution.Compat.CopyFile (
-  copyFile,
-  copyFileChanged,
-  filesEqual,
-  copyOrdinaryFile,
-  copyExecutableFile,
-  setFileOrdinary,
-  setFileExecutable,
-  setDirOrdinary,
+
+module Distribution.Compat.CopyFile
+  ( copyFile
+  , copyFileChanged
+  , filesEqual
+  , copyOrdinaryFile
+  , copyExecutableFile
+  , setFileOrdinary
+  , setFileExecutable
+  , setDirOrdinary
   ) where
 
-import Prelude ()
 import Distribution.Compat.Prelude
+import Prelude ()
 
 #ifndef mingw32_HOST_OS
 import Distribution.Compat.Internal.TempFile
@@ -66,7 +67,7 @@ import qualified System.Win32.File as Win32 ( copyFile )
 #endif /* mingw32_HOST_OS */
 
 copyOrdinaryFile, copyExecutableFile :: FilePath -> FilePath -> IO ()
-copyOrdinaryFile   src dest = copyFile src dest >> setFileOrdinary   dest
+copyOrdinaryFile src dest = copyFile src dest >> setFileOrdinary dest
 copyExecutableFile src dest = copyFile src dest >> setFileExecutable dest
 
 setFileOrdinary, setFileExecutable, setDirOrdinary :: FilePath -> IO ()
@@ -93,7 +94,7 @@ copyFile :: FilePath -> FilePath -> IO ()
 copyFile fromFPath toFPath =
   copy
     `catchIO` (\ioe -> throwIO (ioeSetLocation ioe "copyFile"))
-    where
+  where
 #ifndef mingw32_HOST_OS
       copy = withBinaryFile fromFPath ReadMode $ \hFrom ->
              bracketOnError openTmp cleanTmp $ \(tmpFPath, hTmp) ->
@@ -239,8 +240,9 @@ filesEqual :: FilePath -> FilePath -> IO Bool
 filesEqual f1 f2 = do
   ex1 <- doesFileExist f1
   ex2 <- doesFileExist f2
-  if not (ex1 && ex2) then return False else
-    withBinaryFile f1 ReadMode $ \h1 ->
+  if not (ex1 && ex2)
+    then return False
+    else withBinaryFile f1 ReadMode $ \h1 ->
       withBinaryFile f2 ReadMode $ \h2 -> do
         s1 <- hFileSize h1
         s2 <- hFileSize h2

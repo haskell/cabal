@@ -36,6 +36,10 @@ data ConstraintSource =
   -- target, when a more specific source is not known.
   | ConstraintSourceConfigFlagOrTarget
 
+  -- | Constraint introduced by --enable-multi-repl, which requires features
+  -- from Cabal >= 3.11
+  | ConstraintSourceMultiRepl
+
   -- | The source of the constraint is not specified.
   | ConstraintSourceUnknown
 
@@ -65,6 +69,8 @@ showConstraintSource ConstraintSourceNonUpgradeablePackage =
 showConstraintSource ConstraintSourceFreeze = "cabal freeze"
 showConstraintSource ConstraintSourceConfigFlagOrTarget =
     "config file, command line flag, or user target"
+showConstraintSource ConstraintSourceMultiRepl =
+    "--enable-multi-repl"
 showConstraintSource ConstraintSourceUnknown = "unknown source"
 showConstraintSource ConstraintSetupCabalMinVersion =
     "minimum version of Cabal used by Setup.hs"

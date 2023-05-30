@@ -3,16 +3,15 @@
 {-# LANGUAGE RankNTypes #-}
 {-# OPTIONS_HADDOCK hide #-}
 
-module Distribution.Compat.Environment
-       ( getEnvironment, lookupEnv, setEnv, unsetEnv )
-       where
+module Distribution.Compat.Environment (getEnvironment, lookupEnv, setEnv, unsetEnv)
+where
 
+import Distribution.Compat.Prelude
 import Prelude ()
 import qualified Prelude
-import Distribution.Compat.Prelude
 
-import qualified System.Environment as System
 import System.Environment (lookupEnv, unsetEnv)
+import qualified System.Environment as System
 
 import Distribution.Compat.Stack
 
@@ -61,6 +60,7 @@ setEnv_ key value = withCWString key $ \k -> withCWString value $ \v -> do
  where
   _ = callStack -- TODO: attach CallStack to exception
 
+{- FOURMOLU_DISABLE -}
 # if defined(i386_HOST_ARCH)
 #  define WINDOWS_CCONV stdcall
 # elif defined(x86_64_HOST_ARCH)
@@ -83,3 +83,4 @@ setEnv_ key value = do
 foreign import ccall unsafe "setenv"
    c_setenv :: CString -> CString -> CInt -> Prelude.IO CInt
 #endif /* mingw32_HOST_OS */
+{- FOURMOLU_ENABLE -}

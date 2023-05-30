@@ -1,82 +1,81 @@
 {-# LANGUAGE LambdaCase #-}
+
 module Distribution.Client.Init.NonInteractive.Command
-( genPkgDescription
-, genLibTarget
-, genExeTarget
-, genTestTarget
-, createProject
-, packageTypeHeuristics
-, authorHeuristics
-, emailHeuristics
-, cabalVersionHeuristics
-, packageNameHeuristics
-, versionHeuristics
-, mainFileHeuristics
-, testDirsHeuristics
-, initializeTestSuiteHeuristics
-, exposedModulesHeuristics
-, libOtherModulesHeuristics
-, exeOtherModulesHeuristics
-, testOtherModulesHeuristics
-, buildToolsHeuristics
-, dependenciesHeuristics
-, otherExtsHeuristics
-, licenseHeuristics
-, homepageHeuristics
-, synopsisHeuristics
-, categoryHeuristics
-, extraDocFileHeuristics
-, appDirsHeuristics
-, srcDirsHeuristics
-, languageHeuristics
-, noCommentsHeuristics
-, minimalHeuristics
-, overwriteHeuristics
-) where
+  ( genPkgDescription
+  , genLibTarget
+  , genExeTarget
+  , genTestTarget
+  , createProject
+  , packageTypeHeuristics
+  , authorHeuristics
+  , emailHeuristics
+  , cabalVersionHeuristics
+  , packageNameHeuristics
+  , versionHeuristics
+  , mainFileHeuristics
+  , testDirsHeuristics
+  , initializeTestSuiteHeuristics
+  , exposedModulesHeuristics
+  , libOtherModulesHeuristics
+  , exeOtherModulesHeuristics
+  , testOtherModulesHeuristics
+  , buildToolsHeuristics
+  , dependenciesHeuristics
+  , otherExtsHeuristics
+  , licenseHeuristics
+  , homepageHeuristics
+  , synopsisHeuristics
+  , categoryHeuristics
+  , extraDocFileHeuristics
+  , appDirsHeuristics
+  , srcDirsHeuristics
+  , languageHeuristics
+  , noCommentsHeuristics
+  , minimalHeuristics
+  , overwriteHeuristics
+  ) where
+
 import Distribution.Client.Init.Types
 
+import Distribution.Client.Compat.Prelude hiding (getLine, head, last, putStr, putStrLn)
 import Prelude ()
-import Distribution.Client.Compat.Prelude hiding (putStr, putStrLn, getLine, last, head)
 
-import Data.List (last, head)
+import Data.List (head, last)
 import qualified Data.List.NonEmpty as NEL
 
-import Distribution.CabalSpecVersion (CabalSpecVersion(..))
-import Distribution.Version (Version)
-import Distribution.ModuleName (ModuleName, components)
-import Distribution.Types.Dependency (Dependency(..))
-import Distribution.Types.PackageName (PackageName, unPackageName)
+import Distribution.CabalSpecVersion (CabalSpecVersion (..))
 import Distribution.Client.Init.Defaults
+import Distribution.Client.Init.FlagExtractors
 import Distribution.Client.Init.NonInteractive.Heuristics
 import Distribution.Client.Init.Utils
-import Distribution.Client.Init.FlagExtractors
-import Distribution.Simple.Setup (Flag(..), fromFlagOrDefault)
+import Distribution.Client.Types (SourcePackageDb (..))
+import Distribution.ModuleName (ModuleName, components)
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
-import Distribution.Client.Types (SourcePackageDb(..))
+import Distribution.Simple.Setup (Flag (..), fromFlagOrDefault)
 import Distribution.Solver.Types.PackageIndex (elemByPackageName)
+import Distribution.Types.Dependency (Dependency (..))
+import Distribution.Types.PackageName (PackageName, unPackageName)
 import Distribution.Utils.Generic (safeHead)
 import Distribution.Verbosity
+import Distribution.Version (Version)
 
-import Language.Haskell.Extension (Language(..), Extension(..))
+import Language.Haskell.Extension (Extension (..), Language (..))
 
-import System.FilePath (splitDirectories, (</>))
-import Distribution.Simple.Compiler
 import qualified Data.Set as Set
 import Distribution.FieldGrammar.Newtypes
-
+import Distribution.Simple.Compiler
+import System.FilePath (splitDirectories, (</>))
 
 -- | Main driver for interactive prompt code.
---
 createProject
-    :: Interactive m
-    => Compiler
-    -> Verbosity
-    -> InstalledPackageIndex
-    -> SourcePackageDb
-    -> InitFlags
-    -> m ProjectSettings
+  :: Interactive m
+  => Compiler
+  -> Verbosity
+  -> InstalledPackageIndex
+  -> SourcePackageDb
+  -> InitFlags
+  -> m ProjectSettings
 createProject comp v pkgIx srcDb initFlags = do
-
   -- The workflow is as follows:
   --
   --  1. Get the package type, supplied as either a program input or
@@ -108,62 +107,85 @@ createProject comp v pkgIx srcDb initFlags = do
 
   let pkgName = _pkgName pkgDesc
       cabalSpec = _pkgCabalVersion pkgDesc
-      mkOpts cs = WriteOpts
-        doOverwrite isMinimal cs
-        v pkgDir pkgType pkgName
+      mkOpts cs =
+        WriteOpts
+          doOverwrite
+          isMinimal
+          cs
+          v
+          pkgDir
+          pkgType
+          pkgName
 
   case pkgType of
     Library -> do
       libTarget <- genLibTarget initFlags comp pkgIx cabalSpec
-      testTarget <- addLibDepToTest pkgName <$>
-        genTestTarget initFlags comp pkgIx cabalSpec
+      testTarget <-
+        addLibDepToTest pkgName
+          <$> genTestTarget initFlags comp pkgIx cabalSpec
 
-      return $ ProjectSettings
-        (mkOpts comments cabalSpec) pkgDesc
-        (Just libTarget) Nothing testTarget
-
+      return $
+        ProjectSettings
+          (mkOpts comments cabalSpec)
+          pkgDesc
+          (Just libTarget)
+          Nothing
+          testTarget
     Executable -> do
       exeTarget <- genExeTarget initFlags comp pkgIx cabalSpec
 
-      return $ ProjectSettings
-        (mkOpts comments cabalSpec) pkgDesc Nothing
-        (Just exeTarget) Nothing
-
+      return $
+        ProjectSettings
+          (mkOpts comments cabalSpec)
+          pkgDesc
+          Nothing
+          (Just exeTarget)
+          Nothing
     LibraryAndExecutable -> do
       libTarget <- genLibTarget initFlags comp pkgIx cabalSpec
-      exeTarget <- addLibDepToExe pkgName <$>
-        genExeTarget initFlags comp pkgIx cabalSpec
-      testTarget <- addLibDepToTest pkgName <$>
-        genTestTarget initFlags comp pkgIx cabalSpec
+      exeTarget <-
+        addLibDepToExe pkgName
+          <$> genExeTarget initFlags comp pkgIx cabalSpec
+      testTarget <-
+        addLibDepToTest pkgName
+          <$> genTestTarget initFlags comp pkgIx cabalSpec
 
-      return $ ProjectSettings
-        (mkOpts comments cabalSpec) pkgDesc (Just libTarget)
-        (Just exeTarget) testTarget
-
+      return $
+        ProjectSettings
+          (mkOpts comments cabalSpec)
+          pkgDesc
+          (Just libTarget)
+          (Just exeTarget)
+          testTarget
     TestSuite -> do
       testTarget <- genTestTarget initFlags comp pkgIx cabalSpec
 
-      return $ ProjectSettings
-        (mkOpts comments cabalSpec) pkgDesc
-        Nothing Nothing testTarget
+      return $
+        ProjectSettings
+          (mkOpts comments cabalSpec)
+          pkgDesc
+          Nothing
+          Nothing
+          testTarget
 
 genPkgDescription
   :: Interactive m
   => InitFlags
   -> SourcePackageDb
   -> m PkgDescription
-genPkgDescription flags srcDb = PkgDescription
-  <$> cabalVersionHeuristics flags
-  <*> packageNameHeuristics srcDb flags
-  <*> versionHeuristics flags
-  <*> licenseHeuristics flags
-  <*> authorHeuristics flags
-  <*> emailHeuristics flags
-  <*> homepageHeuristics flags
-  <*> synopsisHeuristics flags
-  <*> categoryHeuristics flags
-  <*> getExtraSrcFiles flags
-  <*> extraDocFileHeuristics flags
+genPkgDescription flags srcDb =
+  PkgDescription
+    <$> cabalVersionHeuristics flags
+    <*> packageNameHeuristics srcDb flags
+    <*> versionHeuristics flags
+    <*> licenseHeuristics flags
+    <*> authorHeuristics flags
+    <*> emailHeuristics flags
+    <*> homepageHeuristics flags
+    <*> synopsisHeuristics flags
+    <*> categoryHeuristics flags
+    <*> getExtraSrcFiles flags
+    <*> extraDocFileHeuristics flags
 
 genLibTarget
   :: Interactive m
@@ -173,7 +195,7 @@ genLibTarget
   -> CabalSpecVersion
   -> m LibTarget
 genLibTarget flags comp pkgs v = do
-  srcDirs   <- srcDirsHeuristics flags
+  srcDirs <- srcDirsHeuristics flags
   let srcDir = fromMaybe defaultSourceDir $ safeHead srcDirs
   LibTarget srcDirs
     <$> languageHeuristics flags comp
@@ -191,7 +213,7 @@ genExeTarget
   -> CabalSpecVersion
   -> m ExeTarget
 genExeTarget flags comp pkgs v = do
-  appDirs  <- appDirsHeuristics flags
+  appDirs <- appDirsHeuristics flags
   let appDir = fromMaybe defaultApplicationDir $ safeHead appDirs
   ExeTarget
     <$> mainFileHeuristics flags
@@ -214,15 +236,17 @@ genTestTarget flags comp pkgs v = do
   testDirs' <- testDirsHeuristics flags
   let testDir = fromMaybe defaultTestDir $ safeHead testDirs'
   if not initialized
-  then return Nothing
-  else fmap Just $ TestTarget
-    <$> testMainHeuristics flags
-    <*> pure testDirs'
-    <*> languageHeuristics flags comp
-    <*> testOtherModulesHeuristics flags
-    <*> otherExtsHeuristics flags testDir
-    <*> dependenciesHeuristics flags testDir pkgs
-    <*> buildToolsHeuristics flags testDir v
+    then return Nothing
+    else
+      fmap Just $
+        TestTarget
+          <$> testMainHeuristics flags
+          <*> pure testDirs'
+          <*> languageHeuristics flags comp
+          <*> testOtherModulesHeuristics flags
+          <*> otherExtsHeuristics flags testDir
+          <*> dependenciesHeuristics flags testDir pkgs
+          <*> buildToolsHeuristics flags testDir v
 
 -- -------------------------------------------------------------------- --
 -- Get flags from init config
@@ -247,21 +271,22 @@ cabalVersionHeuristics flags = getCabalVersion flags guessCabalSpecVersion
 --   using an existing package name.
 packageNameHeuristics :: Interactive m => SourcePackageDb -> InitFlags -> m PackageName
 packageNameHeuristics sourcePkgDb flags = getPackageName flags $ do
-    defName <- guessPackageName =<< case packageDir flags of
+  defName <-
+    guessPackageName =<< case packageDir flags of
       Flag a -> return a
       NoFlag -> last . splitDirectories <$> getCurrentDirectory
 
-    when (isPkgRegistered defName)
-      $ putStrLn (inUseMsg defName)
+  when (isPkgRegistered defName) $
+    putStrLn (inUseMsg defName)
 
-    return defName
-
+  return defName
   where
     isPkgRegistered = elemByPackageName (packageIndex sourcePkgDb)
 
-    inUseMsg pn = "The name "
-      ++ unPackageName pn
-      ++ " is already in use by another package on Hackage."
+    inUseMsg pn =
+      "The name "
+        ++ unPackageName pn
+        ++ " is already in use by another package on Hackage."
 
 -- | Package version: use 0.1.0.0 as a last resort
 versionHeuristics :: Interactive m => InitFlags -> m Version
@@ -276,14 +301,16 @@ licenseHeuristics flags = getLicense flags $ guessLicense flags
 -- | The author's name. Prompt, or try to guess from an existing
 --   git repo.
 authorHeuristics :: Interactive m => InitFlags -> m String
-authorHeuristics flags = guessAuthorName >>=
-  maybe (getAuthor flags $ return "Unknown") (getAuthor flags . return)
+authorHeuristics flags =
+  guessAuthorName
+    >>= maybe (getAuthor flags $ return "Unknown") (getAuthor flags . return)
 
 -- | The author's email. Prompt, or try to guess from an existing
 --   git repo.
 emailHeuristics :: Interactive m => InitFlags -> m String
-emailHeuristics flags = guessAuthorEmail >>=
-  maybe (getEmail flags $ return "Unknown") (getEmail flags . return)
+emailHeuristics flags =
+  guessAuthorEmail
+    >>= maybe (getEmail flags $ return "Unknown") (getEmail flags . return)
 
 -- | Prompt for a homepage URL for the package.
 homepageHeuristics :: Interactive m => InitFlags -> m String
@@ -355,18 +382,17 @@ exposedModulesHeuristics flags = do
 
       if exists
         then do
-          modules      <- filter isHaskell <$> listFilesRecursive srcDir
+          modules <- filter isHaskell <$> listFilesRecursive srcDir
           modulesNames <- catMaybes <$> traverse retrieveModuleName modules
 
           otherModules' <- libOtherModulesHeuristics flags
           return $ filter (`notElem` otherModules') modulesNames
+        else return []
 
-        else
-          return []
-
-  return $ if null mods
-    then myLibModule NEL.:| []
-    else NEL.fromList mods
+  return $
+    if null mods
+      then myLibModule NEL.:| []
+      else NEL.fromList mods
 
 -- | Retrieve the list of other modules for Libraries, filtering them
 --   based on the last component of the module name
@@ -379,16 +405,18 @@ libOtherModulesHeuristics flags = case otherModules flags of
           Flag x -> fromMaybe defaultSourceDir $ safeHead x
           NoFlag -> defaultSourceDir
 
-    libDir <- (</> srcDir) <$> case packageDir flags of
-      Flag x -> return x
-      NoFlag -> getCurrentDirectory
+    libDir <-
+      (</> srcDir) <$> case packageDir flags of
+        Flag x -> return x
+        NoFlag -> getCurrentDirectory
 
     exists <- doesDirectoryExist libDir
     if exists
       then do
         otherModules' <- filter isHaskell <$> listFilesRecursive libDir
         filter ((`elem` otherCandidates) . last . components)
-          . catMaybes <$> traverse retrieveModuleName otherModules'
+          . catMaybes
+          <$> traverse retrieveModuleName otherModules'
       else return []
 
 -- | Retrieve the list of other modules for Executables, it lists everything
@@ -401,15 +429,17 @@ exeOtherModulesHeuristics flags = case otherModules flags of
           Flag x -> fromMaybe defaultApplicationDir $ safeHead x
           NoFlag -> defaultApplicationDir
 
-    exeDir <- (</> appDir) <$> case packageDir flags of
-      Flag x -> return x
-      NoFlag -> getCurrentDirectory
+    exeDir <-
+      (</> appDir) <$> case packageDir flags of
+        Flag x -> return x
+        NoFlag -> getCurrentDirectory
 
     exists <- doesDirectoryExist exeDir
     if exists
       then do
-        otherModules' <- filter (\f -> not (isMain f) && isHaskell f)
-          <$> listFilesRecursive exeDir
+        otherModules' <-
+          filter (\f -> not (isMain f) && isHaskell f)
+            <$> listFilesRecursive exeDir
         catMaybes <$> traverse retrieveModuleName otherModules'
       else return []
 
@@ -423,25 +453,27 @@ testOtherModulesHeuristics flags = case otherModules flags of
           Flag x -> fromMaybe defaultTestDir $ safeHead x
           NoFlag -> defaultTestDir
 
-    testDir' <- (</> testDir) <$> case packageDir flags of
-      Flag x -> return x
-      NoFlag -> getCurrentDirectory
+    testDir' <-
+      (</> testDir) <$> case packageDir flags of
+        Flag x -> return x
+        NoFlag -> getCurrentDirectory
 
     exists <- doesDirectoryExist testDir'
     if exists
       then do
-        otherModules' <- filter (\f -> not (isMain f) && isHaskell f)
-          <$> listFilesRecursive testDir'
+        otherModules' <-
+          filter (\f -> not (isMain f) && isHaskell f)
+            <$> listFilesRecursive testDir'
         catMaybes <$> traverse retrieveModuleName otherModules'
       else return []
 
 -- | Retrieve the list of build tools
 buildToolsHeuristics
-    :: Interactive m
-    => InitFlags
-    -> FilePath
-    -> CabalSpecVersion
-    -> m [Dependency]
+  :: Interactive m
+  => InitFlags
+  -> FilePath
+  -> CabalSpecVersion
+  -> m [Dependency]
 buildToolsHeuristics flags fp v = case buildTools flags of
   Flag{} -> getBuildTools flags
   NoFlag -> retrieveBuildTools v fp
@@ -455,9 +487,9 @@ dependenciesHeuristics flags fp pkgIx = getDependencies flags $ do
         Flag x -> x
         NoFlag -> map moduleName sources
 
-      groupedDeps  = concatMap (\s -> map (\i -> (moduleName s, i)) (imports s)) sources
+      groupedDeps = concatMap (\s -> map (\i -> (moduleName s, i)) (imports s)) sources
       filteredDeps = filter ((`notElem` mods) . snd) groupedDeps
-      preludeNub   = nubBy (\a b -> snd a == snd b) $ (fromString "Prelude", fromString "Prelude") : filteredDeps
+      preludeNub = nubBy (\a b -> snd a == snd b) $ (fromString "Prelude", fromString "Prelude") : filteredDeps
 
   retrieveDependencies (fromFlagOrDefault normal $ initVerbosity flags) flags preludeNub pkgIx
 
@@ -469,9 +501,8 @@ otherExtsHeuristics flags fp = case otherExts flags of
     exists <- doesDirectoryExist fp
     if exists
       then do
-        sources     <- listFilesRecursive fp
+        sources <- listFilesRecursive fp
         extensions' <- traverse retrieveModuleExtensions . filter isHaskell $ sources
 
         return $ nub . join $ extensions'
-      else
-        return []
+      else return []

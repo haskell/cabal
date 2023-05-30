@@ -1,6 +1,6 @@
-{-# LANGUAGE CPP                #-}
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric      #-}
+{-# LANGUAGE DeriveGeneric #-}
 
 -- | Compact representation of short 'Strings'
 --
@@ -11,25 +11,25 @@
 -- import qualified Distribution.Utils.ShortText as ShortText
 -- @
 module Distribution.Utils.ShortText
-    ( -- * 'ShortText' type
-      ShortText
-    , toShortText
-    , fromShortText
-    , unsafeFromUTF8BS
+  ( -- * 'ShortText' type
+    ShortText
+  , toShortText
+  , fromShortText
+  , unsafeFromUTF8BS
 
-      -- * Operations
-    , null
-    , length
+    -- * Operations
+  , null
+  , length
 
-      -- * internal utilities
-    , decodeStringUtf8
-    , encodeStringUtf8
-    ) where
+    -- * internal utilities
+  , decodeStringUtf8
+  , encodeStringUtf8
+  ) where
 
 import Distribution.Compat.Prelude hiding (length, null)
 import Prelude ()
 
-import Distribution.Utils.String     (decodeStringUtf8, encodeStringUtf8)
+import Distribution.Utils.String (decodeStringUtf8, encodeStringUtf8)
 import Distribution.Utils.Structured (Structured (..), nominalStructure)
 
 #if defined(MIN_VERSION_bytestring)
@@ -56,7 +56,7 @@ import Distribution.Utils.Structured (Structured (..), nominalStructure)
 #endif
 
 import qualified Data.ByteString as BS
-import qualified Data.List       as List
+import qualified Data.List as List
 
 #if HAVE_SHORTBYTESTRING
 import qualified Data.ByteString.Short as BS.Short
@@ -133,27 +133,28 @@ null = List.null . unST
 instance Structured ShortText where structure = nominalStructure
 
 instance NFData ShortText where
-    rnf = rnf . unST
+  rnf = rnf . unST
 
 instance Show ShortText where
-    show = show . fromShortText
+  show = show . fromShortText
 
 instance Read ShortText where
-    readsPrec p = map (first toShortText) . readsPrec p
+  readsPrec p = map (first toShortText) . readsPrec p
 
 instance Semigroup ShortText where
-    ST a <> ST b = ST (mappend a b)
+  ST a <> ST b = ST (mappend a b)
 
 instance Monoid ShortText where
-    mempty = ST mempty
-    mappend = (<>)
+  mempty = ST mempty
+  mappend = (<>)
 
 instance IsString ShortText where
-    fromString = toShortText
+  fromString = toShortText
 
 -- | /O(n)/. Length in characters. /Slow/ as converts to string.
 --
 -- @since 3.2.0.0
 length :: ShortText -> Int
 length = List.length . fromShortText
+
 -- Note: avoid using it, we use it @cabal check@ implementation, where it's ok.

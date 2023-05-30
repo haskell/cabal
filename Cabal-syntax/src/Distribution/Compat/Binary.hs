@@ -2,10 +2,10 @@
 {-# LANGUAGE PatternSynonyms #-}
 
 module Distribution.Compat.Binary
-       ( decodeOrFailIO
-       , decodeFileOrFail'
-       , module Data.Binary
-       ) where
+  ( decodeOrFailIO
+  , decodeFileOrFail'
+  , module Data.Binary
+  ) where
 
 import Control.Exception (ErrorCall (..), catch, evaluate)
 import Data.ByteString.Lazy (ByteString)
@@ -18,6 +18,6 @@ decodeFileOrFail' f = either (Left . snd) Right `fmap` decodeFileOrFail f
 
 decodeOrFailIO :: Binary a => ByteString -> IO (Either String a)
 decodeOrFailIO bs =
-    catch (evaluate (decode bs) >>= return . Right) handler
+  catch (evaluate (decode bs) >>= return . Right) handler
   where
     handler (ErrorCallWithLocation str _) = return $ Left str

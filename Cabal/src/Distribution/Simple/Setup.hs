@@ -5,6 +5,7 @@
 {-# LANGUAGE RankNTypes #-}
 
 -----------------------------------------------------------------------------
+
 -- |
 -- Module      :  Distribution.Simple.Setup
 -- Copyright   :  Isaac Jones 2003-2004
@@ -31,53 +32,107 @@
 -- needs is to unify it with the code for managing sets of fields that can be
 -- read and written from files. This would allow us to save configure flags in
 -- config files.
-
-module Distribution.Simple.Setup (
-
-  GlobalFlags(..),   emptyGlobalFlags,   defaultGlobalFlags,   globalCommand,
-  ConfigFlags(..),   emptyConfigFlags,   defaultConfigFlags,   configureCommand,
-  configPrograms,
-  configAbsolutePaths, readPackageDb, readPackageDbList, showPackageDb, showPackageDbList,
-  CopyFlags(..),     emptyCopyFlags,     defaultCopyFlags,     copyCommand,
-  InstallFlags(..),  emptyInstallFlags,  defaultInstallFlags,  installCommand,
-  HaddockTarget(..),
-  HaddockFlags(..),  emptyHaddockFlags,  defaultHaddockFlags,  haddockCommand,
-  Visibility(..),
-  HaddockProjectFlags(..), emptyHaddockProjectFlags, defaultHaddockProjectFlags, haddockProjectCommand,
-  HscolourFlags(..), emptyHscolourFlags, defaultHscolourFlags, hscolourCommand,
-  BuildFlags(..),    emptyBuildFlags,    defaultBuildFlags,    buildCommand,
-  DumpBuildInfo(..),
-  ReplFlags(..),                         defaultReplFlags,     replCommand,
-  ReplOptions(..),
-  CleanFlags(..),    emptyCleanFlags,    defaultCleanFlags,    cleanCommand,
-  RegisterFlags(..), emptyRegisterFlags, defaultRegisterFlags, registerCommand,
-                                                               unregisterCommand,
-  SDistFlags(..),    emptySDistFlags,    defaultSDistFlags,    sdistCommand,
-  TestFlags(..),     emptyTestFlags,     defaultTestFlags,     testCommand,
-  TestShowDetails(..),
-  BenchmarkFlags(..), emptyBenchmarkFlags,
-  defaultBenchmarkFlags, benchmarkCommand,
-  CopyDest(..),
-  configureArgs, configureOptions, configureCCompiler, configureLinker,
-  buildOptions, haddockOptions, haddockProjectOptions, installDirsOptions,
-  testOptions', benchmarkOptions',
-  programDbOptions, programDbPaths',
-  programFlagsDescription,
-  replOptions,
-  splitArgs,
-
-  defaultDistPref, optionDistPref,
-
-  Flag(..),
-  toFlag,
-  fromFlag,
-  fromFlagOrDefault,
-  flagToMaybe,
-  flagToList,
-  maybeToFlag,
-  BooleanFlag(..),
-  boolOpt, boolOpt', trueArg, falseArg,
-  optionVerbosity, optionNumJobs) where
+module Distribution.Simple.Setup
+  ( GlobalFlags (..)
+  , emptyGlobalFlags
+  , defaultGlobalFlags
+  , globalCommand
+  , ConfigFlags (..)
+  , emptyConfigFlags
+  , defaultConfigFlags
+  , configureCommand
+  , configPrograms
+  , configAbsolutePaths
+  , readPackageDb
+  , readPackageDbList
+  , showPackageDb
+  , showPackageDbList
+  , CopyFlags (..)
+  , emptyCopyFlags
+  , defaultCopyFlags
+  , copyCommand
+  , InstallFlags (..)
+  , emptyInstallFlags
+  , defaultInstallFlags
+  , installCommand
+  , HaddockTarget (..)
+  , HaddockFlags (..)
+  , emptyHaddockFlags
+  , defaultHaddockFlags
+  , haddockCommand
+  , Visibility (..)
+  , HaddockProjectFlags (..)
+  , emptyHaddockProjectFlags
+  , defaultHaddockProjectFlags
+  , haddockProjectCommand
+  , HscolourFlags (..)
+  , emptyHscolourFlags
+  , defaultHscolourFlags
+  , hscolourCommand
+  , BuildFlags (..)
+  , emptyBuildFlags
+  , defaultBuildFlags
+  , buildCommand
+  , DumpBuildInfo (..)
+  , ReplFlags (..)
+  , defaultReplFlags
+  , replCommand
+  , ReplOptions (..)
+  , CleanFlags (..)
+  , emptyCleanFlags
+  , defaultCleanFlags
+  , cleanCommand
+  , RegisterFlags (..)
+  , emptyRegisterFlags
+  , defaultRegisterFlags
+  , registerCommand
+  , unregisterCommand
+  , SDistFlags (..)
+  , emptySDistFlags
+  , defaultSDistFlags
+  , sdistCommand
+  , TestFlags (..)
+  , emptyTestFlags
+  , defaultTestFlags
+  , testCommand
+  , TestShowDetails (..)
+  , BenchmarkFlags (..)
+  , emptyBenchmarkFlags
+  , defaultBenchmarkFlags
+  , benchmarkCommand
+  , CopyDest (..)
+  , configureArgs
+  , configureOptions
+  , configureCCompiler
+  , configureLinker
+  , buildOptions
+  , haddockOptions
+  , haddockProjectOptions
+  , installDirsOptions
+  , testOptions'
+  , benchmarkOptions'
+  , programDbOptions
+  , programDbPaths'
+  , programFlagsDescription
+  , replOptions
+  , splitArgs
+  , defaultDistPref
+  , optionDistPref
+  , Flag (..)
+  , toFlag
+  , fromFlag
+  , fromFlagOrDefault
+  , flagToMaybe
+  , flagToList
+  , maybeToFlag
+  , BooleanFlag (..)
+  , boolOpt
+  , boolOpt'
+  , trueArg
+  , falseArg
+  , optionVerbosity
+  , optionNumJobs
+  ) where
 
 import Prelude ()
 
@@ -101,8 +156,8 @@ import Distribution.Simple.Setup.SDist
 import Distribution.Simple.Setup.Test
 
 -- The test cases kinda have to be rewritten from the ground up... :/
---hunitTests :: [Test]
---hunitTests =
+-- hunitTests :: [Test]
+-- hunitTests =
 --    let m = [("ghc", GHC), ("nhc98", NHC), ("hugs", Hugs)]
 --        (flags, commands', unkFlags, ers)
 --               = getOpt Permute options ["configure", "foobar", "--prefix=/foo", "--ghc", "--nhc98", "--hugs", "--with-compiler=/comp", "--unknown1", "--unknown2", "--install-prefix=/foo", "--user", "--global"]

@@ -1,78 +1,95 @@
 {-# LANGUAGE RankNTypes #-}
+
 -- | This module provides very basic lens functionality, without extra dependencies.
 --
 -- For the documentation of the combinators see <http://hackage.haskell.org/package/lens lens> package.
 -- This module uses the same vocabulary.
-module Distribution.Compat.Lens (
-    -- * Types
-    Lens,
-    Lens',
-    Traversal,
-    Traversal',
+module Distribution.Compat.Lens
+  ( -- * Types
+    Lens
+  , Lens'
+  , Traversal
+  , Traversal'
+
     -- ** LensLike
-    LensLike,
-    LensLike',
+  , LensLike
+  , LensLike'
+
     -- ** rank-1 types
-    Getting,
-    AGetter,
-    ASetter,
-    ALens,
-    ALens',
+  , Getting
+  , AGetter
+  , ASetter
+  , ALens
+  , ALens'
+
     -- * Getter
-    view,
-    use,
-    getting,
+  , view
+  , use
+  , getting
+
     -- * Setter
-    set,
-    over,
+  , set
+  , over
+
     -- * Fold
-    toDListOf,
-    toListOf,
-    toSetOf,
+  , toDListOf
+  , toListOf
+  , toSetOf
+
     -- * Lens
-    cloneLens,
-    aview,
+  , cloneLens
+  , aview
+
     -- * Common lenses
-    _1, _2,
+  , _1
+  , _2
+
     -- * Operators
-    (&),
-    (^.),
-    (.~), (?~), (%~),
-    (.=), (?=), (%=),
-    (^#),
-    (#~), (#%~),
+  , (&)
+  , (^.)
+  , (.~)
+  , (?~)
+  , (%~)
+  , (.=)
+  , (?=)
+  , (%=)
+  , (^#)
+  , (#~)
+  , (#%~)
+
     -- * Internal Comonads
-    Pretext (..),
+  , Pretext (..)
+
     -- * Cabal developer info
     -- $development
-    ) where
+  ) where
 
-import Prelude()
 import Distribution.Compat.Prelude
+import Prelude ()
 
 import Control.Monad.State.Class (MonadState (..), gets, modify)
 
-import qualified Distribution.Compat.DList as DList
 import qualified Data.Set as Set
+import qualified Distribution.Compat.DList as DList
 
 -------------------------------------------------------------------------------
 -- Types
 -------------------------------------------------------------------------------
 
-type LensLike  f s t a b = (a -> f b) -> s -> f t
-type LensLike' f s   a   = (a -> f a) -> s -> f s
+type LensLike f s t a b = (a -> f b) -> s -> f t
+type LensLike' f s a = (a -> f a) -> s -> f s
 
-type Lens      s t a b = forall f. Functor f     => LensLike f s t a b
+type Lens s t a b = forall f. Functor f => LensLike f s t a b
 type Traversal s t a b = forall f. Applicative f => LensLike f s t a b
 
-type Lens'      s a = Lens s s a a
+type Lens' s a = Lens s s a a
 type Traversal' s a = Traversal s s a a
 
 type Getting r s a = LensLike (Const r) s s a a
 
-type AGetter s   a   = LensLike (Const a)     s s a a  -- this doesn't exist in 'lens'
-type ASetter s t a b = LensLike Identity      s t a b
-type ALens   s t a b = LensLike (Pretext a b) s t a b
+type AGetter s a = LensLike (Const a) s s a a -- this doesn't exist in 'lens'
+type ASetter s t a b = LensLike Identity s t a b
+type ALens s t a b = LensLike (Pretext a b) s t a b
 
 type ALens' s a = ALens s s a a
 
@@ -80,7 +97,7 @@ type ALens' s a = ALens s s a a
 -- Getter
 -------------------------------------------------------------------------------
 
-view :: Getting a s a -> s ->  a
+view :: Getting a s a -> s -> a
 view l s = getConst (l Const s)
 {-# INLINE view #-}
 
@@ -100,7 +117,7 @@ getting k f = Const . getConst . f . k
 -- Setter
 -------------------------------------------------------------------------------
 
-set :: ASetter s t a  b -> b -> s -> t
+set :: ASetter s t a b -> b -> s -> t
 set l x = over l (const x)
 
 over :: ASetter s t a b -> (a -> b) -> s -> t
@@ -116,7 +133,7 @@ toDListOf l s = getConst (l (\x -> Const (DList.singleton x)) s)
 toListOf :: Getting (DList.DList a) s a -> s -> [a]
 toListOf l = DList.runDList . toDListOf l
 
-toSetOf  :: Getting (Set.Set a) s a -> s -> Set.Set a
+toSetOf :: Getting (Set.Set a) s a -> s -> Set.Set a
 toSetOf l s = getConst (l (\x -> Const (Set.singleton x)) s)
 
 -------------------------------------------------------------------------------
@@ -124,7 +141,7 @@ toSetOf l s = getConst (l (\x -> Const (Set.singleton x)) s)
 -------------------------------------------------------------------------------
 
 aview :: ALens s t a b -> s -> a
-aview l = pretextPos  . l pretextSell
+aview l = pretextPos . l pretextSell
 {-# INLINE aview #-}
 
 {-
@@ -136,10 +153,10 @@ lens sa sbt afb s = sbt s <$> afb (sa s)
 -- Common
 -------------------------------------------------------------------------------
 
-_1 ::  Lens (a, c) (b, c) a b
+_1 :: Lens (a, c) (b, c) a b
 _1 f (a, c) = flip (,) c <$> f a
 
-_2 ::  Lens (c, a) (c, b) a b
+_2 :: Lens (c, a) (c, b) a b
 _2 f (c, a) = (,) c <$> f a
 
 -------------------------------------------------------------------------------
@@ -150,6 +167,7 @@ _2 f (c, a) = (,) c <$> f a
 (&) :: a -> (a -> b) -> b
 (&) = flip ($)
 {-# INLINE (&) #-}
+
 infixl 1 &
 
 infixl 8 ^., ^#
@@ -221,10 +239,10 @@ cloneLens l f s = runPretext (l pretextSell s) f
 -------------------------------------------------------------------------------
 
 -- | @lens@ variant is also parametrised by profunctor.
-data Pretext a b t = Pretext { runPretext :: forall f. Functor f => (a -> f b) -> f t }
+data Pretext a b t = Pretext {runPretext :: forall f. Functor f => (a -> f b) -> f t}
 
 instance Functor (Pretext a b) where
-    fmap f (Pretext pretext) = Pretext (\afb -> fmap f (pretext afb))
+  fmap f (Pretext pretext) = Pretext (\afb -> fmap f (pretext afb))
 
 -------------------------------------------------------------------------------
 -- Documentation

@@ -1,8 +1,9 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
+
 module Distribution.Types.DumpBuildInfo
-    ( DumpBuildInfo(..)
-    ) where
+  ( DumpBuildInfo (..)
+  ) where
 
 import Distribution.Compat.Prelude
 

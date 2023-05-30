@@ -1256,6 +1256,25 @@ the :pkg-field:`test-module` field.
 
     The module exporting the ``tests`` symbol.
 
+.. pkg-field:: code-generators
+
+    An optional list of preprocessors which can generate new modules
+    for use in the test-suite.
+
+ A list of executabes (possibly brought into scope by
+ :pkg-field:`build-tool-depends`) that are run after all other
+ preprocessors. These executables are invoked as so: ``exe-name
+ TARGETDIR [SOURCEDIRS] -- [GHCOPTIONS]``. The arguments are, in order a target dir for
+ output, a sequence of all source directories with source files of
+ local lib components that the given test stanza dependens on, and
+ following a double dash, all options cabal would pass to ghc for a
+ build. They are expected to output a newline-seperated list of
+ generated modules which have been written to the targetdir
+ (excepting, if written, the main module). This can
+ be used for driving doctests and other discover-style tests generated
+ from source code.
+
+
 Example: Package using ``exitcode-stdio-1.0`` interface
 """""""""""""""""""""""""""""""""""""""""""""""""""""""
 

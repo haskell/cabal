@@ -24,6 +24,7 @@ module Distribution.Solver.Types.ComponentDeps (
   , insert
   , zip
   , filterDeps
+  , mapDeps
   , fromLibraryDeps
   , fromSetupDeps
   , fromInstalled
@@ -148,6 +149,10 @@ zip (ComponentDeps d1) (ComponentDeps d2) =
 -- | Keep only selected components (and their associated deps info).
 filterDeps :: (Component -> a -> Bool) -> ComponentDeps a -> ComponentDeps a
 filterDeps p = ComponentDeps . Map.filterWithKey p . unComponentDeps
+
+-- | Keep only selected components (and their associated deps info).
+mapDeps :: (Component -> a -> b) -> ComponentDeps a -> ComponentDeps b
+mapDeps p = ComponentDeps . Map.mapWithKey p . unComponentDeps
 
 -- | ComponentDeps containing library dependencies only
 fromLibraryDeps :: a -> ComponentDeps a

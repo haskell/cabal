@@ -1,139 +1,199 @@
-{-# LANGUAGE CPP              #-}
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE RankNTypes       #-}
-{-# LANGUAGE Trustworthy      #-}
-{-# LANGUAGE TypeOperators    #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE Trustworthy #-}
+{-# LANGUAGE TypeOperators #-}
 
+{- FOURMOLU_DISABLE -}
 #ifdef MIN_VERSION_base
 #define MINVER_base_411 MIN_VERSION_base(4,11,0)
 #else
 #define MINVER_base_411 (__GLASGOW_HASKELL__ >= 804)
 #endif
+{- FOURMOLU_ENABLE -}
 
 -- | This module does two things:
 --
 -- * Acts as a compatibility layer, like @base-compat@.
 --
 -- * Provides commonly used imports.
-module Distribution.Compat.Prelude (
-    -- * Prelude
-    --
-    -- Prelude is re-exported, following is hidden:
-    module BasePrelude,
+module Distribution.Compat.Prelude
+  ( -- * Prelude
+
+  --
+  -- Prelude is re-exported, following is hidden:
+      module BasePrelude
 
     -- * Common type-classes
-    Semigroup (..),
-    gmappend, gmempty,
-    Typeable, TypeRep, typeRep,
-    Data,
-    Generic,
-    NFData (..), genericRnf,
-    Binary (..),
-    Structured,
-    Alternative (..),
-    MonadPlus (..),
-    IsString (..),
+  , Semigroup (..)
+  , gmappend
+  , gmempty
+  , Typeable
+  , TypeRep
+  , typeRep
+  , Data
+  , Generic
+  , NFData (..)
+  , genericRnf
+  , Binary (..)
+  , Structured
+  , Alternative (..)
+  , MonadPlus (..)
+  , IsString (..)
 
     -- * Some types
-    Map,
-    Set,
-    NonEmptySet,
-    Identity (..),
-    Proxy (..),
-    Const (..),
-    Void,
+  , Map
+  , Set
+  , NonEmptySet
+  , Identity (..)
+  , Proxy (..)
+  , Const (..)
+  , Void
 
     -- * Data.Either
-    partitionEithers,
+  , partitionEithers
 
     -- * Data.Maybe
-    catMaybes, mapMaybe,
-    fromMaybe,
-    maybeToList, listToMaybe,
-    isNothing, isJust,
+  , catMaybes
+  , mapMaybe
+  , fromMaybe
+  , maybeToList
+  , listToMaybe
+  , isNothing
+  , isJust
 
     -- * Data.List
-    unfoldr,
-    isPrefixOf, isSuffixOf,
-    intercalate, intersperse,
-    sort, sortBy,
-    nub, nubBy,
-    partition,
-    dropWhileEnd,
+  , unfoldr
+  , isPrefixOf
+  , isSuffixOf
+  , intercalate
+  , intersperse
+  , sort
+  , sortBy
+  , nub
+  , nubBy
+  , partition
+  , dropWhileEnd
 
     -- * Data.List.NonEmpty
-    NonEmpty((:|)), nonEmpty, foldl1, foldr1,
-    head, tail, last, init,
+  , NonEmpty ((:|))
+  , nonEmpty
+  , foldl1
+  , foldr1
+  , head
+  , tail
+  , last
+  , init
 
     -- * Data.Foldable
-    Foldable, foldMap, foldr,
-    null, length,
-    find, foldl',
-    traverse_, for_,
-    any, all,
-    toList,
+  , Foldable
+  , foldMap
+  , foldr
+  , null
+  , length
+  , find
+  , foldl'
+  , traverse_
+  , for_
+  , any
+  , all
+  , toList
 
     -- * Data.Traversable
-    Traversable, traverse, sequenceA,
-    for,
+  , Traversable
+  , traverse
+  , sequenceA
+  , for
 
     -- * Data.Function
-    on,
+  , on
 
     -- * Data.Ord
-    comparing,
+  , comparing
 
     -- * Control.Arrow
-    first,
+  , first
 
     -- * Control.Monad
-    liftM, liftM2,
-    unless, when,
-    ap, void,
-    foldM, filterM,
-    join, guard,
+  , liftM
+  , liftM2
+  , unless
+  , when
+  , ap
+  , void
+  , foldM
+  , filterM
+  , join
+  , guard
 
     -- * Control.Exception
-    catch, throwIO, evaluate,
-    Exception (..), IOException, SomeException (..),
-    tryIO, catchIO, catchExit,
+  , catch
+  , throwIO
+  , evaluate
+  , Exception (..)
+  , IOException
+  , SomeException (..)
+  , tryIO
+  , catchIO
+  , catchExit
 
     -- * Control.DeepSeq
-    deepseq, force,
+  , deepseq
+  , force
 
     -- * Data.Char
-    isSpace, isDigit, isUpper, isAlpha, isAlphaNum,
-    chr, ord,
-    toLower, toUpper,
+  , isSpace
+  , isDigit
+  , isUpper
+  , isAlpha
+  , isAlphaNum
+  , chr
+  , ord
+  , toLower
+  , toUpper
 
     -- * Data.Void
-    absurd, vacuous,
+  , absurd
+  , vacuous
 
     -- * Data.Word & Data.Int
-    Word,
-    Word8, Word16, Word32, Word64,
-    Int8, Int16, Int32, Int64,
+  , Word
+  , Word8
+  , Word16
+  , Word32
+  , Word64
+  , Int8
+  , Int16
+  , Int32
+  , Int64
 
     -- * Text.PrettyPrint
-    (<<>>), (Disp.<+>),
+  , (<<>>)
+  , (Disp.<+>)
 
     -- * System.Exit
-    ExitCode (..),
-    exitWith, exitSuccess, exitFailure,
+  , ExitCode (..)
+  , exitWith
+  , exitSuccess
+  , exitFailure
 
     -- * Text.Read
-    readMaybe,
+  , readMaybe
 
     -- * Debug.Trace (as deprecated functions)
-    trace, traceShow, traceShowId, traceM, traceShowM
-    ) where
+  , trace
+  , traceShow
+  , traceShowId
+  , traceM
+  , traceShowM
+  ) where
 
 -- We also could hide few partial function
+{- FOURMOLU_DISABLE -}
 import Prelude                       as BasePrelude hiding
-    ( mapM, mapM_, sequence, null, length, foldr, any, all, head, tail, last, init
+    ( mapM, mapM_, sequence, any, all, head, tail, last, init
     -- partial functions
     , read
-    , foldr1, foldl1
 #if MINVER_base_411
     -- As of base 4.11.0.0 Prelude exports part of Semigroup(..).
     -- Hide this so we instead rely on Distribution.Compat.Semigroup.
@@ -142,59 +202,61 @@ import Prelude                       as BasePrelude hiding
     , Word
     -- We hide them, as we import only some members
     , Traversable, traverse, sequenceA
-    , Foldable, foldMap
+    , Foldable(..)
     )
+{- FOURMOLU_ENABLE -}
+import Data.Foldable as BasePrelude (elem, foldl, maximum, minimum, product, sum)
 
 -- AMP
 import Data.Foldable
-    ( Foldable(toList),
-      length,
-      null,
-      Foldable(foldMap, foldr),
-      all,
-      any,
-      find,
-      foldl',
-      for_,
-      traverse_ )
+  ( Foldable (foldMap, foldr, toList)
+  , all
+  , any
+  , find
+  , foldl'
+  , for_
+  , length
+  , null
+  , traverse_
+  )
 import Data.Traversable (Traversable (sequenceA, traverse), for)
 
 import qualified Data.Foldable
 
 -- Extra exports
-import Control.Applicative           (Alternative (..), Const(..))
-import Control.Arrow                 (first)
-import Control.DeepSeq               (NFData (..), deepseq, force)
-import Control.Exception             (Exception (..), IOException, SomeException (..), catch, evaluate, throwIO)
-import Control.Monad                 (MonadPlus (..), ap, filterM, foldM, guard, join, liftM, liftM2, unless, void, when)
-import Data.Char                     (chr, isAlpha, isAlphaNum, isDigit, isSpace, isUpper, ord, toLower, toUpper)
-import Data.Data                     (Data)
-import Data.Either                   (partitionEithers)
-import Data.Function                 (on)
-import Data.Functor.Identity         (Identity (..))
-import Data.Int                      (Int16, Int32, Int64, Int8)
-import Data.List                     (dropWhileEnd, intercalate, intersperse, isPrefixOf, isSuffixOf, nub, nubBy, partition, sort, sortBy, unfoldr)
-import Data.List.NonEmpty            (NonEmpty ((:|)), nonEmpty, head, init, last, tail)
-import Data.Map                      (Map)
-import Data.Maybe                    (catMaybes, fromMaybe, isJust, isNothing, listToMaybe, mapMaybe, maybeToList)
-import Data.Ord                      (comparing)
-import Data.Proxy                    (Proxy (..))
-import Data.Set                      (Set)
-import Data.String                   (IsString (..))
-import Data.Void                     (Void, absurd, vacuous)
-import Data.Word                     (Word, Word16, Word32, Word64, Word8)
-import Distribution.Compat.Binary    (Binary (..))
+import Control.Applicative (Alternative (..), Const (..))
+import Control.Arrow (first)
+import Control.DeepSeq (NFData (..), deepseq, force)
+import Control.Exception (Exception (..), IOException, SomeException (..), catch, evaluate, throwIO)
+import Control.Monad (MonadPlus (..), ap, filterM, foldM, guard, join, liftM, liftM2, unless, void, when)
+import Data.Char (chr, isAlpha, isAlphaNum, isDigit, isSpace, isUpper, ord, toLower, toUpper)
+import Data.Data (Data)
+import Data.Either (partitionEithers)
+import Data.Function (on)
+import Data.Functor.Identity (Identity (..))
+import Data.Int (Int16, Int32, Int64, Int8)
+import Data.List (dropWhileEnd, intercalate, intersperse, isPrefixOf, isSuffixOf, nub, nubBy, partition, sort, sortBy, unfoldr)
+import Data.List.NonEmpty (NonEmpty ((:|)), head, init, last, nonEmpty, tail)
+import Data.Map (Map)
+import Data.Maybe (catMaybes, fromMaybe, isJust, isNothing, listToMaybe, mapMaybe, maybeToList)
+import Data.Ord (comparing)
+import Data.Proxy (Proxy (..))
+import Data.Set (Set)
+import Data.String (IsString (..))
+import Data.Void (Void, absurd, vacuous)
+import Data.Word (Word, Word16, Word32, Word64, Word8)
+import Distribution.Compat.Binary (Binary (..))
 import Distribution.Compat.Semigroup (Semigroup (..), gmappend, gmempty)
-import Distribution.Compat.Typeable  (TypeRep, Typeable, typeRep)
-import GHC.Generics                  ((:*:) ((:*:)), (:+:) (L1, R1), Generic, K1 (unK1), M1 (unM1), Rep (..), U1 (U1), V1)
-import System.Exit                   (ExitCode (..), exitFailure, exitSuccess, exitWith)
-import Text.Read                     (readMaybe)
+import Distribution.Compat.Typeable (TypeRep, Typeable, typeRep)
+import GHC.Generics (Generic, K1 (unK1), M1 (unM1), Rep (..), U1 (U1), V1, (:*:) ((:*:)), (:+:) (L1, R1))
+import System.Exit (ExitCode (..), exitFailure, exitSuccess, exitWith)
+import Text.Read (readMaybe)
 
 import qualified Text.PrettyPrint as Disp
 
 import Distribution.Compat.Exception
 import Distribution.Compat.NonEmptySet (NonEmptySet)
-import Distribution.Utils.Structured   (Structured)
+import Distribution.Utils.Structured (Structured)
 
 import qualified Debug.Trace
 
@@ -242,7 +304,6 @@ instance (GNFData a, GNFData b) => GNFData (a :+: b) where
   grnf (L1 x) = grnf x
   grnf (R1 x) = grnf x
   {-# INLINEABLE grnf #-}
-
 
 -- TODO: if we want foldr1/foldl1 to work on more than NonEmpty, we
 -- can define a local typeclass 'Foldable1', e.g.

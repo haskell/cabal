@@ -9,32 +9,31 @@
 -- The current module "Distribution.Types.VersionInterval" (refurbished since
 -- @Cabal >= 3.6@) makes some effort to preserve the caret operator,
 -- but so far does not expose the Boolean algebra structure.
---
-module Distribution.Types.VersionInterval.Legacy (
-    -- * Version intervals
-    VersionIntervals,
-    toVersionIntervals,
-    fromVersionIntervals,
-    withinIntervals,
-    versionIntervals,
-    mkVersionIntervals,
-    unionVersionIntervals,
-    intersectVersionIntervals,
-    invertVersionIntervals,
-    relaxLastInterval,
-    relaxHeadInterval,
+module Distribution.Types.VersionInterval.Legacy
+  ( -- * Version intervals
+    VersionIntervals
+  , toVersionIntervals
+  , fromVersionIntervals
+  , withinIntervals
+  , versionIntervals
+  , mkVersionIntervals
+  , unionVersionIntervals
+  , intersectVersionIntervals
+  , invertVersionIntervals
+  , relaxLastInterval
+  , relaxHeadInterval
 
     -- * Version intervals view
-    asVersionIntervals,
-    VersionInterval,
-    LowerBound(..),
-    UpperBound(..),
-    Bound(..),
-    ) where
+  , asVersionIntervals
+  , VersionInterval
+  , LowerBound (..)
+  , UpperBound (..)
+  , Bound (..)
+  ) where
 
-import Prelude ()
-import Distribution.Compat.Prelude
 import Control.Exception (assert)
+import Distribution.Compat.Prelude
+import Prelude ()
 
 import Distribution.Types.Version
 import Distribution.Types.VersionRange.Internal
@@ -72,10 +71,8 @@ import qualified Prelude (foldr1)
 -- >       ,UpperBound v' InclusiveBound)] <- asVersionIntervals vr
 -- >    , v == v'   = Just v
 -- >    | otherwise = Nothing
---
 asVersionIntervals :: VersionRange -> [VersionInterval]
 asVersionIntervals = versionIntervals . toVersionIntervals
-
 
 -------------------------------------------------------------------------------
 -- VersionInterval
@@ -98,12 +95,10 @@ asVersionIntervals = versionIntervals . toVersionIntervals
 -- or containment. It also makes it easier to identify \'simple\' version
 -- predicates for translation into foreign packaging systems that do not
 -- support complex version range expressions.
---
 newtype VersionIntervals = VersionIntervals [VersionInterval]
   deriving (Eq, Show, Typeable)
 
 -- | Inspect the list of version intervals.
---
 versionIntervals :: VersionIntervals -> [VersionInterval]
 versionIntervals (VersionIntervals is) = is
 
@@ -115,21 +110,25 @@ versionIntervals (VersionIntervals is) = is
 -- 4. \( [lb,ub] \) meaning \( lb ≤ \_ < ub \).
 --
 -- The upper bound can also be missing, meaning "\( ..,∞) \)".
---
 type VersionInterval = (LowerBound, UpperBound)
 
 data LowerBound
-  = LowerBound Version !Bound  -- ^ Either exclusive @(v,..@ or inclusive @[v,..@.
+  = -- | Either exclusive @(v,..@ or inclusive @[v,..@.
+    LowerBound Version !Bound
   deriving (Eq, Show)
 
 data UpperBound
-  = NoUpperBound               -- ^ @..,∞)@
-  | UpperBound Version !Bound  -- ^ Either exclusive @..,v)@ or inclusive @..,v]@.
+  = -- | @..,∞)@
+    NoUpperBound
+  | -- | Either exclusive @..,v)@ or inclusive @..,v]@.
+    UpperBound Version !Bound
   deriving (Eq, Show)
 
 data Bound
-  = ExclusiveBound   -- ^ @(v,..@ if used as lower bound, @..,v)@ if used as upper bound.
-  | InclusiveBound   -- ^ @[v,..@ if used as lower bound, @..,v]@ if used as upper bound.
+  = -- | @(v,..@ if used as lower bound, @..,v)@ if used as upper bound.
+    ExclusiveBound
+  | -- | @[v,..@ if used as lower bound, @..,v]@ if used as upper bound.
+    InclusiveBound
   deriving (Eq, Show)
 
 -- | @[0,..@.
@@ -140,7 +139,6 @@ isVersion0 :: Version -> Bool
 isVersion0 = (==) version0
 
 -- | @lb1 <= lb2@ holds iff interval @lb1..@ is contained in interval @lb2..@.
---
 instance Ord LowerBound where
   LowerBound ver bound <= LowerBound ver' bound' = case compare ver ver' of
     LT -> True
@@ -148,9 +146,8 @@ instance Ord LowerBound where
     GT -> False
 
 -- | @ub1 <= ub2@ holds iff interval @0..ub1@ is contained in interval @0..ub2@.
---
 instance Ord UpperBound where
-  _            <= NoUpperBound   = True
+  _ <= NoUpperBound = True
   NoUpperBound <= UpperBound _ _ = False
   UpperBound ver bound <= UpperBound ver' bound' = case compare ver ver' of
     LT -> True
@@ -160,54 +157,49 @@ instance Ord UpperBound where
 -- | Check that the sequence is ordered,
 -- adjacent intervals are separated (do not overlap),
 -- an no interval is empty (which would be a redundant entry).
---
 invariant :: VersionIntervals -> Bool
-invariant (VersionIntervals intervals) = all validInterval intervals
-                                      && all doesNotTouch' adjacentIntervals
+invariant (VersionIntervals intervals) =
+  all validInterval intervals
+    && all doesNotTouch' adjacentIntervals
   where
     doesNotTouch' :: (VersionInterval, VersionInterval) -> Bool
-    doesNotTouch' ((_,u), (l',_)) = doesNotTouch u l'
+    doesNotTouch' ((_, u), (l', _)) = doesNotTouch u l'
 
     -- adjacentIntervals = zip intervals (tail intervals)
     adjacentIntervals :: [(VersionInterval, VersionInterval)]
     adjacentIntervals = case intervals of
-      []     -> []
-      (_:tl) -> zip intervals tl
+      [] -> []
+      (_ : tl) -> zip intervals tl
 
 -- | The partial identity function, erroring out on illformed 'VersionIntervals'.
---
 checkInvariant :: VersionIntervals -> VersionIntervals
 checkInvariant is = assert (invariant is) is
 
 -- | Directly construct a 'VersionIntervals' from a list of intervals.
---
 mkVersionIntervals :: [VersionInterval] -> VersionIntervals
 mkVersionIntervals intervals
-    | invariant (VersionIntervals intervals) = VersionIntervals intervals
-    | otherwise
-        = checkInvariant
+  | invariant (VersionIntervals intervals) = VersionIntervals intervals
+  | otherwise =
+      checkInvariant
         . foldl' (flip insertInterval) (VersionIntervals [])
         . filter validInterval
         $ intervals
 
 -- | Add an interval to the sequence, fusing with existing intervals if necessary.
---
 insertInterval :: VersionInterval -> VersionIntervals -> VersionIntervals
 insertInterval i is = unionVersionIntervals (VersionIntervals [i]) is
 
 -- | A valid interval is non-empty.
---
 validInterval :: (LowerBound, UpperBound) -> Bool
 validInterval i@(l, u) = validLower l && validUpper u && nonEmptyVI i
   where
     validLower (LowerBound v _) = validVersion v
-    validUpper NoUpperBound     = True
+    validUpper NoUpperBound = True
     validUpper (UpperBound v _) = validVersion v
 
 -- | Check that an interval is non-empty.
---
 nonEmptyVI :: VersionInterval -> Bool
-nonEmptyVI (_,               NoUpperBound   ) = True
+nonEmptyVI (_, NoUpperBound) = True
 nonEmptyVI (LowerBound l lb, UpperBound u ub) =
   (l < u) || (l == u && lb == InclusiveBound && ub == InclusiveBound)
 
@@ -222,8 +214,8 @@ nonEmptyVI (LowerBound l lb, UpperBound u ub) =
 doesNotTouch :: UpperBound -> LowerBound -> Bool
 doesNotTouch NoUpperBound _ = False
 doesNotTouch (UpperBound u ub) (LowerBound l lb) =
-      u <  l
-  || (u == l && ub == ExclusiveBound && lb == ExclusiveBound)
+  u < l
+    || (u == l && ub == ExclusiveBound && lb == ExclusiveBound)
 
 -- | Check an upper bound does not intersect a lower bound:
 --
@@ -233,12 +225,11 @@ doesNotTouch (UpperBound u ub) (LowerBound l lb) =
 --       |---         (---         (---         [---              [---
 --
 -- @
---
 doesNotIntersect :: UpperBound -> LowerBound -> Bool
 doesNotIntersect NoUpperBound _ = False
 doesNotIntersect (UpperBound u ub) (LowerBound l lb) =
-      u <  l
-  || (u == l && not (ub == InclusiveBound && lb == InclusiveBound))
+  u < l
+    || (u == l && not (ub == InclusiveBound && lb == InclusiveBound))
 
 -- | Test if a version falls within the version intervals.
 --
@@ -247,39 +238,39 @@ doesNotIntersect (UpperBound u ub) (LowerBound l lb) =
 --
 -- > withinIntervals v (toVersionIntervals vr) = withinRange v vr
 -- > withinIntervals v ivs = withinRange v (fromVersionIntervals ivs)
---
 withinIntervals :: Version -> VersionIntervals -> Bool
 withinIntervals v (VersionIntervals intervals) = any withinInterval intervals
   where
-    withinInterval (lowerBound, upperBound)    = withinLower lowerBound
-                                              && withinUpper upperBound
-    withinLower (LowerBound v' ExclusiveBound) = v' <  v
+    withinInterval (lowerBound, upperBound) =
+      withinLower lowerBound
+        && withinUpper upperBound
+    withinLower (LowerBound v' ExclusiveBound) = v' < v
     withinLower (LowerBound v' InclusiveBound) = v' <= v
 
-    withinUpper NoUpperBound                   = True
-    withinUpper (UpperBound v' ExclusiveBound) = v' >  v
+    withinUpper NoUpperBound = True
+    withinUpper (UpperBound v' ExclusiveBound) = v' > v
     withinUpper (UpperBound v' InclusiveBound) = v' >= v
 
 -- | Convert a 'VersionRange' to a sequence of version intervals.
---
 toVersionIntervals :: VersionRange -> VersionIntervals
-toVersionIntervals = cataVersionRange alg where
+toVersionIntervals = cataVersionRange alg
+  where
     -- @== v@
-    alg (ThisVersionF v)                = chkIvl (LowerBound v InclusiveBound, UpperBound v InclusiveBound)
+    alg (ThisVersionF v) = chkIvl (LowerBound v InclusiveBound, UpperBound v InclusiveBound)
     -- @>  v@
-    alg (LaterVersionF v)               = chkIvl (LowerBound v ExclusiveBound, NoUpperBound)
+    alg (LaterVersionF v) = chkIvl (LowerBound v ExclusiveBound, NoUpperBound)
     -- @>= v@
-    alg (OrLaterVersionF v)             = chkIvl (LowerBound v InclusiveBound, NoUpperBound)
+    alg (OrLaterVersionF v) = chkIvl (LowerBound v InclusiveBound, NoUpperBound)
     -- @<  v@
     alg (EarlierVersionF v)
-        | isVersion0 v                  = VersionIntervals []
-        | otherwise                     = chkIvl (minLowerBound,               UpperBound v ExclusiveBound)
+      | isVersion0 v = VersionIntervals []
+      | otherwise = chkIvl (minLowerBound, UpperBound v ExclusiveBound)
     -- @<= v@
-    alg (OrEarlierVersionF v)           = chkIvl (minLowerBound,               UpperBound v InclusiveBound)
+    alg (OrEarlierVersionF v) = chkIvl (minLowerBound, UpperBound v InclusiveBound)
     -- @^>= v@
-    alg (MajorBoundVersionF v)          = chkIvl (LowerBound v InclusiveBound, UpperBound (majorUpperBound v) ExclusiveBound)
+    alg (MajorBoundVersionF v) = chkIvl (LowerBound v InclusiveBound, UpperBound (majorUpperBound v) ExclusiveBound)
     -- @r || r'@
-    alg (UnionVersionRangesF v1 v2)     = unionVersionIntervals v1 v2
+    alg (UnionVersionRangesF v1 v2) = unionVersionIntervals v1 v2
     -- @r && r'@
     alg (IntersectVersionRangesF v1 v2) = intersectVersionIntervals v1 v2
 
@@ -287,55 +278,52 @@ toVersionIntervals = cataVersionRange alg where
 
 -- | Convert a 'VersionIntervals' value back into a 'VersionRange' expression
 -- representing the version intervals.
---
 fromVersionIntervals :: VersionIntervals -> VersionRange
 fromVersionIntervals (VersionIntervals []) = noVersion
 fromVersionIntervals (VersionIntervals intervals) =
-    Prelude.foldr1 unionVersionRanges [ interval l u | (l, u) <- intervals ]
-
+  Prelude.foldr1 unionVersionRanges [interval l u | (l, u) <- intervals]
   where
-    interval (LowerBound v  InclusiveBound)
-             (UpperBound v' InclusiveBound) | v == v'
-                 = thisVersion v
+    interval
+      (LowerBound v InclusiveBound)
+      (UpperBound v' InclusiveBound)
+        | v == v' =
+            thisVersion v
     interval l u = lowerBound l `intersectVersionRanges'` upperBound u
 
     lowerBound (LowerBound v InclusiveBound)
-                              | isVersion0 v = Nothing
-                              | otherwise    = Just (orLaterVersion v)
+      | isVersion0 v = Nothing
+      | otherwise = Just (orLaterVersion v)
     lowerBound (LowerBound v ExclusiveBound) = Just (laterVersion v)
 
-    upperBound NoUpperBound                  = Nothing
+    upperBound NoUpperBound = Nothing
     upperBound (UpperBound v InclusiveBound) = Just (orEarlierVersion v)
     upperBound (UpperBound v ExclusiveBound) = Just (earlierVersion v)
 
-    intersectVersionRanges' Nothing Nothing      = anyVersion
-    intersectVersionRanges' (Just vr) Nothing    = vr
-    intersectVersionRanges' Nothing (Just vr)    = vr
+    intersectVersionRanges' Nothing Nothing = anyVersion
+    intersectVersionRanges' (Just vr) Nothing = vr
+    intersectVersionRanges' Nothing (Just vr) = vr
     intersectVersionRanges' (Just vr) (Just vr') = intersectVersionRanges vr vr'
 
 -- | Union two interval sequences, fusing intervals where necessary.
 -- Computed \( O(n+m) \) time, resulting in sequence of length \( ≤ n+m \).
---
-unionVersionIntervals :: VersionIntervals -> VersionIntervals
-                      -> VersionIntervals
+unionVersionIntervals
+  :: VersionIntervals
+  -> VersionIntervals
+  -> VersionIntervals
 unionVersionIntervals (VersionIntervals is0) (VersionIntervals is'0) =
   checkInvariant (VersionIntervals (union is0 is'0))
   where
-    union is []  = is
+    union is [] = is
     union [] is' = is'
-    union (i:is) (i':is') = case unionInterval i i' of
-
+    union (i : is) (i' : is') = case unionInterval i i' of
       -- @i < i'@ and separated: keep @i@.
-      Left  Nothing    -> i  : union      is  (i' :is')
-
+      Left Nothing -> i : union is (i' : is')
       -- @i'' = i ∪ i'@ and @i@ ends first: drop @i@, replace @i'@ by @i''@.
-      Left  (Just i'') ->      union      is  (i'':is')
-
+      Left (Just i'') -> union is (i'' : is')
       -- @i' < i@ and separated: keep @i'@.
-      Right Nothing    -> i' : union (i  :is)      is'
-
+      Right Nothing -> i' : union (i : is) is'
       -- @i'' = i ∪ i'@ and @i'@ ends first: drop @i'@, replace @i@ by @i''@.
-      Right (Just i'') ->      union (i'':is)      is'
+      Right (Just i'') -> union (i'' : is) is'
 
 -- | Given two version intervals @i1@ and @i2@, return one of the following:
 --
@@ -346,24 +334,23 @@ unionVersionIntervals (VersionIntervals is0) (VersionIntervals is'0) =
 --
 -- Herein, @i < i'@ means that the whole of the interval @i@ is strictly left of the whole of @i'@,
 -- and @ub(i)@ returns the right boundary of interval @i@ which could be inclusive or exclusive.
---
-unionInterval :: VersionInterval -> VersionInterval
-              -> Either (Maybe VersionInterval) (Maybe VersionInterval)
-unionInterval (lower , upper ) (lower', upper')
-
+unionInterval
+  :: VersionInterval
+  -> VersionInterval
+  -> Either (Maybe VersionInterval) (Maybe VersionInterval)
+unionInterval (lower, upper) (lower', upper')
   -- Non-intersecting intervals with the left interval ending first
   | upper `doesNotTouch` lower' = Left Nothing
-
   -- Non-intersecting intervals with the right interval first
   | upper' `doesNotTouch` lower = Right Nothing
-
   -- Complete or partial overlap, with the left interval ending first
-  | upper <= upper' = lowerBound `seq`
-                      Left (Just (lowerBound, upper'))
-
+  | upper <= upper' =
+      lowerBound `seq`
+        Left (Just (lowerBound, upper'))
   -- Complete or partial overlap, with the left interval ending first
-  | otherwise = lowerBound `seq`
-                Right (Just (lowerBound, upper))
+  | otherwise =
+      lowerBound `seq`
+        Right (Just (lowerBound, upper))
   where
     lowerBound = min lower lower'
 
@@ -374,27 +361,24 @@ unionInterval (lower , upper ) (lower', upper')
 -- (rather than the naive \( O(nm) \).
 --
 -- The length of \( is \cap is' \) is \( ≤ \min(n,m) \).
---
-intersectVersionIntervals :: VersionIntervals -> VersionIntervals
-                          -> VersionIntervals
+intersectVersionIntervals
+  :: VersionIntervals
+  -> VersionIntervals
+  -> VersionIntervals
 intersectVersionIntervals (VersionIntervals is0) (VersionIntervals is'0) =
   checkInvariant (VersionIntervals (intersect is0 is'0))
   where
-    intersect _  [] = []
-    intersect [] _  = []
-    intersect (i:is) (i':is') = case intersectInterval i i' of
-
+    intersect _ [] = []
+    intersect [] _ = []
+    intersect (i : is) (i' : is') = case intersectInterval i i' of
       -- @i < i'@: throw out @i@
-      Left  Nothing    ->       intersect is (i':is')
-
+      Left Nothing -> intersect is (i' : is')
       -- @i'' = i /\ i'@ and @i@ ends first: replace @i@ by @i''@.
-      Left  (Just i'') -> i'' : intersect is (i':is')
-
+      Left (Just i'') -> i'' : intersect is (i' : is')
       -- @i' < i@: throw out @i'@
-      Right Nothing    ->       intersect (i:is) is'
-
+      Right Nothing -> intersect (i : is) is'
       -- @i'' = i /\ i'@ and @i'@ ends first: replace @i'@ by @i''@.
-      Right (Just i'') -> i'' : intersect (i:is) is'
+      Right (Just i'') -> i'' : intersect (i : is) is'
 
 -- | Given two version intervals @i1@ and @i2@, return one of the following:
 --
@@ -405,69 +389,72 @@ intersectVersionIntervals (VersionIntervals is0) (VersionIntervals is'0) =
 --
 -- Herein, @i < i'@ means that the whole of the interval @i@ is strictly left of the whole of @i'@,
 -- and @ub(i)@ returns the right boundary of interval @i@ which could be inclusive or exclusive.
---
-intersectInterval :: VersionInterval -> VersionInterval
-                  -> Either (Maybe VersionInterval) (Maybe VersionInterval)
-intersectInterval (lower , upper ) (lower', upper')
-
+intersectInterval
+  :: VersionInterval
+  -> VersionInterval
+  -> Either (Maybe VersionInterval) (Maybe VersionInterval)
+intersectInterval (lower, upper) (lower', upper')
   -- Non-intersecting intervals with the left interval ending first
   | upper `doesNotIntersect` lower' = Left Nothing
-
   -- Non-intersecting intervals with the right interval first
   | upper' `doesNotIntersect` lower = Right Nothing
-
   -- Complete or partial overlap, with the left interval ending first
-  | upper <= upper' = lowerBound `seq`
-                      Left (Just (lowerBound, upper))
-
+  | upper <= upper' =
+      lowerBound `seq`
+        Left (Just (lowerBound, upper))
   -- Complete or partial overlap, with the right interval ending first
-  | otherwise = lowerBound `seq`
-                Right (Just (lowerBound, upper'))
+  | otherwise =
+      lowerBound `seq`
+        Right (Just (lowerBound, upper'))
   where
     lowerBound = max lower lower'
 
 -- | Compute the complement.
 -- \( O(n) \).
-invertVersionIntervals :: VersionIntervals
-                       -> VersionIntervals
+invertVersionIntervals
+  :: VersionIntervals
+  -> VersionIntervals
 invertVersionIntervals (VersionIntervals xs) =
-    case xs of
-      -- Empty interval set
-      [] -> VersionIntervals [(noLowerBound, NoUpperBound)]
-      -- Interval with no lower bound
-      ((lb, ub) : more) | lb == noLowerBound ->
-        VersionIntervals $ invertVersionIntervals' ub more
-      -- Interval with a lower bound
-      ((lb, ub) : more) ->
-          VersionIntervals $ (noLowerBound, invertLowerBound lb)
+  case xs of
+    -- Empty interval set
+    [] -> VersionIntervals [(noLowerBound, NoUpperBound)]
+    -- Interval with no lower bound
+    ((lb, ub) : more)
+      | lb == noLowerBound ->
+          VersionIntervals $ invertVersionIntervals' ub more
+    -- Interval with a lower bound
+    ((lb, ub) : more) ->
+      VersionIntervals $
+        (noLowerBound, invertLowerBound lb)
           : invertVersionIntervals' ub more
-    where
-      -- Invert subsequent version intervals given the upper bound of
-      -- the intervals already inverted.
-      invertVersionIntervals' :: UpperBound
-                              -> [(LowerBound, UpperBound)]
-                              -> [(LowerBound, UpperBound)]
-      invertVersionIntervals' NoUpperBound [] = []
-      invertVersionIntervals' ub0 [] = [(invertUpperBound ub0, NoUpperBound)]
-      invertVersionIntervals' ub0 [(lb, NoUpperBound)] =
-          [(invertUpperBound ub0, invertLowerBound lb)]
-      invertVersionIntervals' ub0 ((lb, ub1) : more) =
-          (invertUpperBound ub0, invertLowerBound lb)
-            : invertVersionIntervals' ub1 more
+  where
+    -- Invert subsequent version intervals given the upper bound of
+    -- the intervals already inverted.
+    invertVersionIntervals'
+      :: UpperBound
+      -> [(LowerBound, UpperBound)]
+      -> [(LowerBound, UpperBound)]
+    invertVersionIntervals' NoUpperBound [] = []
+    invertVersionIntervals' ub0 [] = [(invertUpperBound ub0, NoUpperBound)]
+    invertVersionIntervals' ub0 [(lb, NoUpperBound)] =
+      [(invertUpperBound ub0, invertLowerBound lb)]
+    invertVersionIntervals' ub0 ((lb, ub1) : more) =
+      (invertUpperBound ub0, invertLowerBound lb)
+        : invertVersionIntervals' ub1 more
 
-      invertLowerBound :: LowerBound -> UpperBound
-      invertLowerBound (LowerBound v b) = UpperBound v (invertBound b)
+    invertLowerBound :: LowerBound -> UpperBound
+    invertLowerBound (LowerBound v b) = UpperBound v (invertBound b)
 
-      invertUpperBound :: UpperBound -> LowerBound
-      invertUpperBound (UpperBound v b) = LowerBound v (invertBound b)
-      invertUpperBound NoUpperBound = error "NoUpperBound: unexpected"
+    invertUpperBound :: UpperBound -> LowerBound
+    invertUpperBound (UpperBound v b) = LowerBound v (invertBound b)
+    invertUpperBound NoUpperBound = error "NoUpperBound: unexpected"
 
-      invertBound :: Bound -> Bound
-      invertBound ExclusiveBound = InclusiveBound
-      invertBound InclusiveBound = ExclusiveBound
+    invertBound :: Bound -> Bound
+    invertBound ExclusiveBound = InclusiveBound
+    invertBound InclusiveBound = ExclusiveBound
 
-      noLowerBound :: LowerBound
-      noLowerBound = LowerBound (mkVersion [0]) InclusiveBound
+    noLowerBound :: LowerBound
+    noLowerBound = LowerBound (mkVersion [0]) InclusiveBound
 
 -- | Remove the last upper bound, enlarging the range.
 -- But empty ranges stay empty.
@@ -475,9 +462,9 @@ invertVersionIntervals (VersionIntervals xs) =
 relaxLastInterval :: VersionIntervals -> VersionIntervals
 relaxLastInterval (VersionIntervals xs) = VersionIntervals (relaxLastInterval' xs)
   where
-    relaxLastInterval' []      = []
-    relaxLastInterval' [(l,_)] = [(l, NoUpperBound)]
-    relaxLastInterval' (i:is)  = i : relaxLastInterval' is
+    relaxLastInterval' [] = []
+    relaxLastInterval' [(l, _)] = [(l, NoUpperBound)]
+    relaxLastInterval' (i : is) = i : relaxLastInterval' is
 
 -- | Remove the first lower bound (i.e, make it \( [0 \).
 -- Empty ranges stay empty.
@@ -485,5 +472,5 @@ relaxLastInterval (VersionIntervals xs) = VersionIntervals (relaxLastInterval' x
 relaxHeadInterval :: VersionIntervals -> VersionIntervals
 relaxHeadInterval (VersionIntervals xs) = VersionIntervals (relaxHeadInterval' xs)
   where
-    relaxHeadInterval' []         = []
-    relaxHeadInterval' ((_,u):is) = (minLowerBound,u) : is
+    relaxHeadInterval' [] = []
+    relaxHeadInterval' ((_, u) : is) = (minLowerBound, u) : is

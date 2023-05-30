@@ -3,15 +3,17 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Distribution.Types.ComponentId
-  ( ComponentId, unComponentId, mkComponentId
+  ( ComponentId
+  , unComponentId
+  , mkComponentId
   ) where
 
-import Prelude ()
 import Distribution.Compat.Prelude
 import Distribution.Utils.ShortText
+import Prelude ()
 
-import Distribution.Pretty
 import Distribution.Parsec
+import Distribution.Pretty
 
 import qualified Distribution.Compat.CharParsing as P
 import Text.PrettyPrint (text)
@@ -30,7 +32,7 @@ import Text.PrettyPrint (text)
 --
 -- @since 2.0.0.2
 newtype ComponentId = ComponentId ShortText
-    deriving (Generic, Read, Show, Eq, Ord, Typeable, Data)
+  deriving (Generic, Read, Show, Eq, Ord, Typeable, Data)
 
 -- | Construct a 'ComponentId' from a 'String'
 --
@@ -53,7 +55,7 @@ unComponentId (ComponentId s) = fromShortText s
 --
 -- @since 2.0.0.2
 instance IsString ComponentId where
-    fromString = mkComponentId
+  fromString = mkComponentId
 
 instance Binary ComponentId
 instance Structured ComponentId
@@ -63,7 +65,8 @@ instance Pretty ComponentId where
 
 instance Parsec ComponentId where
   parsec = mkComponentId `fmap` P.munch1 abi_char
-   where abi_char c = isAlphaNum c || c `elem` "-_."
+    where
+      abi_char c = isAlphaNum c || c `elem` "-_."
 
 instance NFData ComponentId where
-    rnf = rnf . unComponentId
+  rnf = rnf . unComponentId

@@ -1,5 +1,6 @@
-{-# LANGUAGE CPP                #-}
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveDataTypeable #-}
+
 -- | 'Async', yet using 'MVar's.
 --
 -- Adopted from @async@ library
@@ -7,24 +8,38 @@
 -- Licensed under BSD-3-Clause
 --
 -- @since 3.2.0.0
---
-module Distribution.Compat.Async (
-    AsyncM,
-    withAsync, waitCatch,
-    wait, asyncThreadId,
-    cancel, uninterruptibleCancel, AsyncCancelled (..),
-    -- * Cabal extras
-    withAsyncNF,
-    ) where
+module Distribution.Compat.Async
+  ( AsyncM
+  , withAsync
+  , waitCatch
+  , wait
+  , asyncThreadId
+  , cancel
+  , uninterruptibleCancel
+  , AsyncCancelled (..)
 
-import Control.Concurrent      (ThreadId, forkIO)
+    -- * Cabal extras
+  , withAsyncNF
+  ) where
+
+import Control.Concurrent (ThreadId, forkIO)
 import Control.Concurrent.MVar (MVar, newEmptyMVar, putMVar, readMVar)
-import Control.DeepSeq         (NFData, force)
+import Control.DeepSeq (NFData, force)
 import Control.Exception
-       (BlockedIndefinitelyOnMVar (..), Exception (..), SomeException (..), catch, evaluate, mask, throwIO, throwTo, try, uninterruptibleMask_)
-import Control.Monad           (void)
-import Data.Typeable           (Typeable)
-import GHC.Exts                (inline)
+  ( BlockedIndefinitelyOnMVar (..)
+  , Exception (..)
+  , SomeException (..)
+  , catch
+  , evaluate
+  , mask
+  , throwIO
+  , throwTo
+  , try
+  , uninterruptibleMask_
+  )
+import Control.Monad (void)
+import Data.Typeable (Typeable)
+import GHC.Exts (inline)
 
 #if MIN_VERSION_base(4,7,0)
 import Control.Exception (asyncExceptionFromException, asyncExceptionToException)
@@ -33,9 +48,9 @@ import Control.Exception (asyncExceptionFromException, asyncExceptionToException
 -- | Async, but based on 'MVar', as we don't depend on @stm@.
 data AsyncM a = Async
   { asyncThreadId :: {-# UNPACK #-} !ThreadId
-                  -- ^ Returns the 'ThreadId' of the thread running
-                  -- the given 'Async'.
-  , _asyncMVar    :: MVar (Either SomeException a)
+  -- ^ Returns the 'ThreadId' of the thread running
+  -- the given 'Async'.
+  , _asyncMVar :: MVar (Either SomeException a)
   }
 
 -- | Spawn an asynchronous action in a separate thread, and pass its
@@ -52,12 +67,12 @@ data AsyncM a = Async
 -- Note: a reference to the child thread is kept alive until the call
 -- to `withAsync` returns, so nesting many `withAsync` calls requires
 -- linear memory.
---
 withAsync :: IO a -> (AsyncM a -> IO b) -> IO b
 withAsync = inline withAsyncUsing forkIO
 
 withAsyncNF :: NFData a => IO a -> (AsyncM a -> IO b) -> IO b
-withAsyncNF m = inline withAsyncUsing forkIO (m >>= evaluateNF) where
+withAsyncNF m = inline withAsyncUsing forkIO (m >>= evaluateNF)
+  where
     evaluateNF = evaluate . force
 
 withAsyncUsing :: (IO () -> IO ThreadId) -> IO a -> (AsyncM a -> IO b) -> IO b
@@ -68,7 +83,8 @@ withAsyncUsing doFork = \action inner -> do
   mask $ \restore -> do
     t <- doFork $ try (restore action) >>= putMVar var
     let a = Async t var
-    r <- restore (inner a) `catchAll` \e -> do
+    r <-
+      restore (inner a) `catchAll` \e -> do
         uninterruptibleCancel a
         throwIO e
     uninterruptibleCancel a
@@ -79,21 +95,19 @@ withAsyncUsing doFork = \action inner -> do
 -- exception is re-thrown by 'wait'.
 --
 -- > wait = atomically . waitSTM
---
 {-# INLINE wait #-}
 wait :: AsyncM a -> IO a
 wait a = do
-    res <- waitCatch a
-    case res of
-        Left (SomeException e) -> throwIO e
-        Right x                -> return x
+  res <- waitCatch a
+  case res of
+    Left (SomeException e) -> throwIO e
+    Right x -> return x
 
 -- | Wait for an asynchronous action to complete, and return either
 -- @Left e@ if the action raised an exception @e@, or @Right a@ if it
 -- returned a value @a@.
 --
 -- > waitCatch = atomically . waitCatchSTM
---
 {-# INLINE waitCatch #-}
 waitCatch :: AsyncM a -> IO (Either SomeException a)
 waitCatch (Async _ var) = tryAgain (readMVar var)
@@ -123,15 +137,18 @@ catchAll = catch
 {-# INLINE cancel #-}
 cancel :: AsyncM a -> IO ()
 cancel a@(Async t _) = do
-    throwTo t AsyncCancelled
-    void (waitCatch a)
+  throwTo t AsyncCancelled
+  void (waitCatch a)
 
 -- | The exception thrown by `cancel` to terminate a thread.
 data AsyncCancelled = AsyncCancelled
-  deriving (Show, Eq
+  deriving
+    ( Show
+    , Eq
     , Typeable
     )
 
+{- FOURMOLU_DISABLE -}
 instance Exception AsyncCancelled where
 #if MIN_VERSION_base(4,7,0)
   -- wraps in SomeAsyncException
@@ -139,6 +156,7 @@ instance Exception AsyncCancelled where
   fromException = asyncExceptionFromException
   toException = asyncExceptionToException
 #endif
+{- FOURMOLU_ENABLE -}
 
 -- | Cancel an asynchronous action
 --

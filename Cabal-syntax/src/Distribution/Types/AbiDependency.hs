@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
+
 module Distribution.Types.AbiDependency where
 
 import Distribution.Compat.Prelude
@@ -9,8 +10,8 @@ import Distribution.Parsec
 import Distribution.Pretty
 
 import qualified Distribution.Compat.CharParsing as P
-import qualified Distribution.Package            as Package
-import qualified Text.PrettyPrint                as Disp
+import qualified Distribution.Package as Package
+import qualified Text.PrettyPrint as Disp
 
 -- | An ABI dependency is a dependency on a library which also
 -- records the ABI hash ('abiHash') of the library it depends
@@ -22,22 +23,22 @@ import qualified Text.PrettyPrint                as Disp
 -- is critical if we are shadowing libraries; differences in the
 -- ABI hash let us know what packages get shadowed by the new version
 -- of a package.
-data AbiDependency = AbiDependency {
-        depUnitId  :: Package.UnitId,
-        depAbiHash :: Package.AbiHash
-    }
+data AbiDependency = AbiDependency
+  { depUnitId :: Package.UnitId
+  , depAbiHash :: Package.AbiHash
+  }
   deriving (Eq, Generic, Read, Show, Typeable)
 
 instance Pretty AbiDependency where
-    pretty (AbiDependency uid abi) =
-        pretty uid <<>> Disp.char '=' <<>> pretty abi
+  pretty (AbiDependency uid abi) =
+    pretty uid <<>> Disp.char '=' <<>> pretty abi
 
-instance  Parsec AbiDependency where
-    parsec = do
-        uid <- parsec
-        _ <- P.char '='
-        abi <- parsec
-        return (AbiDependency uid abi)
+instance Parsec AbiDependency where
+  parsec = do
+    uid <- parsec
+    _ <- P.char '='
+    abi <- parsec
+    return (AbiDependency uid abi)
 
 instance Binary AbiDependency
 instance Structured AbiDependency

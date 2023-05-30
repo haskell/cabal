@@ -1,51 +1,50 @@
-{-# LANGUAGE DeriveDataTypeable         #-}
-{-# LANGUAGE DeriveGeneric              #-}
-{-# LANGUAGE FlexibleInstances          #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE PatternGuards              #-}
-{-# LANGUAGE RankNTypes                 #-}
+{-# LANGUAGE PatternGuards #-}
+{-# LANGUAGE RankNTypes #-}
 
 -- | This module defines the core data types for Backpack.  For more
 -- details, see:
 --
 --  <https://github.com/ezyang/ghc-proposals/blob/backpack/proposals/0000-backpack.rst>
-
-module Distribution.Backpack (
-    -- * OpenUnitId
-    OpenUnitId(..),
-    openUnitIdFreeHoles,
-    mkOpenUnitId,
+module Distribution.Backpack
+  ( -- * OpenUnitId
+    OpenUnitId (..)
+  , openUnitIdFreeHoles
+  , mkOpenUnitId
 
     -- * DefUnitId
-    DefUnitId,
-    unDefUnitId,
-    mkDefUnitId,
+  , DefUnitId
+  , unDefUnitId
+  , mkDefUnitId
 
     -- * OpenModule
-    OpenModule(..),
-    openModuleFreeHoles,
+  , OpenModule (..)
+  , openModuleFreeHoles
 
     -- * OpenModuleSubst
-    OpenModuleSubst,
-    dispOpenModuleSubst,
-    dispOpenModuleSubstEntry,
-    parsecOpenModuleSubst,
-    parsecOpenModuleSubstEntry,
-    openModuleSubstFreeHoles,
+  , OpenModuleSubst
+  , dispOpenModuleSubst
+  , dispOpenModuleSubstEntry
+  , parsecOpenModuleSubst
+  , parsecOpenModuleSubstEntry
+  , openModuleSubstFreeHoles
 
     -- * Conversions to 'UnitId'
-    abstractUnitId,
-    hashModuleSubst,
-) where
+  , abstractUnitId
+  , hashModuleSubst
+  ) where
 
 import Distribution.Compat.Prelude hiding (mod)
 import Distribution.Parsec
 import Distribution.Pretty
+import Text.PrettyPrint (hcat)
 import Prelude ()
-import Text.PrettyPrint            (hcat)
 
 import qualified Distribution.Compat.CharParsing as P
-import qualified Text.PrettyPrint                as Disp
+import qualified Text.PrettyPrint as Disp
 
 import Distribution.ModuleName
 import Distribution.Types.ComponentId
@@ -81,52 +80,53 @@ import qualified Data.Set as Set
 --
 -- For more details see the Backpack spec
 -- <https://github.com/ezyang/ghc-proposals/blob/backpack/proposals/0000-backpack.rst>
---
-
 data OpenUnitId
-    -- | Identifies a component which may have some unfilled holes;
+  = -- | Identifies a component which may have some unfilled holes;
     -- specifying its 'ComponentId' and its 'OpenModuleSubst'.
     -- TODO: Invariant that 'OpenModuleSubst' is non-empty?
     -- See also the Text instance.
-    = IndefFullUnitId ComponentId OpenModuleSubst
-    -- | Identifies a fully instantiated component, which has
+    IndefFullUnitId ComponentId OpenModuleSubst
+  | -- | Identifies a fully instantiated component, which has
     -- been compiled and abbreviated as a hash.  The embedded 'UnitId'
     -- MUST NOT be for an indefinite component; an 'OpenUnitId'
     -- is guaranteed not to have any holes.
-    | DefiniteUnitId DefUnitId
+    DefiniteUnitId DefUnitId
   deriving (Generic, Read, Show, Eq, Ord, Typeable, Data)
+
 -- TODO: cache holes?
 
 instance Binary OpenUnitId
 instance Structured OpenUnitId
 instance NFData OpenUnitId where
-    rnf (IndefFullUnitId cid subst) = rnf cid `seq` rnf subst
-    rnf (DefiniteUnitId uid) = rnf uid
+  rnf (IndefFullUnitId cid subst) = rnf cid `seq` rnf subst
+  rnf (DefiniteUnitId uid) = rnf uid
 
 instance Pretty OpenUnitId where
-    pretty (IndefFullUnitId cid insts)
-        -- TODO: arguably a smart constructor to enforce invariant would be
-        -- better
-        | Map.null insts = pretty cid
-        | otherwise      = pretty cid <<>> Disp.brackets (dispOpenModuleSubst insts)
-    pretty (DefiniteUnitId uid) = pretty uid
+  pretty (IndefFullUnitId cid insts)
+    -- TODO: arguably a smart constructor to enforce invariant would be
+    -- better
+    | Map.null insts = pretty cid
+    | otherwise = pretty cid <<>> Disp.brackets (dispOpenModuleSubst insts)
+  pretty (DefiniteUnitId uid) = pretty uid
 
 -- |
 --
 -- >>> eitherParsec "foobar" :: Either String OpenUnitId
---Right (DefiniteUnitId (DefUnitId {unDefUnitId = UnitId "foobar"}))
+-- Right (DefiniteUnitId (DefUnitId {unDefUnitId = UnitId "foobar"}))
 --
 -- >>> eitherParsec "foo[Str=text-1.2.3:Data.Text.Text]" :: Either String OpenUnitId
 -- Right (IndefFullUnitId (ComponentId "foo") (fromList [(ModuleName "Str",OpenModule (DefiniteUnitId (DefUnitId {unDefUnitId = UnitId "text-1.2.3"})) (ModuleName "Data.Text.Text"))]))
---
 instance Parsec OpenUnitId where
-    parsec = P.try parseOpenUnitId <|> fmap DefiniteUnitId parsec
-      where
-        parseOpenUnitId = do
-            cid <- parsec
-            insts <- P.between (P.char '[') (P.char ']')
-                       parsecOpenModuleSubst
-            return (IndefFullUnitId cid insts)
+  parsec = P.try parseOpenUnitId <|> fmap DefiniteUnitId parsec
+    where
+      parseOpenUnitId = do
+        cid <- parsec
+        insts <-
+          P.between
+            (P.char '[')
+            (P.char ']')
+            parsecOpenModuleSubst
+        return (IndefFullUnitId cid insts)
 
 -- | Get the set of holes ('ModuleVar') embedded in a 'UnitId'.
 openUnitIdFreeHoles :: OpenUnitId -> Set ModuleName
@@ -137,9 +137,9 @@ openUnitIdFreeHoles _ = Set.empty
 -- is if the instantiation is provided.
 mkOpenUnitId :: UnitId -> ComponentId -> OpenModuleSubst -> OpenUnitId
 mkOpenUnitId uid cid insts =
-    if Set.null (openModuleSubstFreeHoles insts)
-        then DefiniteUnitId (unsafeMkDefUnitId uid) -- invariant holds!
-        else IndefFullUnitId cid insts
+  if Set.null (openModuleSubstFreeHoles insts)
+    then DefiniteUnitId (unsafeMkDefUnitId uid) -- invariant holds!
+    else IndefFullUnitId cid insts
 
 -----------------------------------------------------------------------
 -- DefUnitId
@@ -148,9 +148,12 @@ mkOpenUnitId uid cid insts =
 -- with no holes.
 mkDefUnitId :: ComponentId -> Map ModuleName Module -> DefUnitId
 mkDefUnitId cid insts =
-    unsafeMkDefUnitId (mkUnitId
-        (unComponentId cid ++ maybe "" ("+"++) (hashModuleSubst insts)))
-        -- impose invariant!
+  unsafeMkDefUnitId
+    ( mkUnitId
+        (unComponentId cid ++ maybe "" ("+" ++) (hashModuleSubst insts))
+    )
+
+-- impose invariant!
 
 -----------------------------------------------------------------------
 -- OpenModule
@@ -160,42 +163,41 @@ mkDefUnitId cid insts =
 -- hole that needs to be filled in.  Substitutions are over
 -- module variables.
 data OpenModule
-    = OpenModule OpenUnitId ModuleName
-    | OpenModuleVar ModuleName
+  = OpenModule OpenUnitId ModuleName
+  | OpenModuleVar ModuleName
   deriving (Generic, Read, Show, Eq, Ord, Typeable, Data)
 
 instance Binary OpenModule
 instance Structured OpenModule
 
 instance NFData OpenModule where
-    rnf (OpenModule uid mod_name) = rnf uid `seq` rnf mod_name
-    rnf (OpenModuleVar mod_name) = rnf mod_name
+  rnf (OpenModule uid mod_name) = rnf uid `seq` rnf mod_name
+  rnf (OpenModuleVar mod_name) = rnf mod_name
 
 instance Pretty OpenModule where
-    pretty (OpenModule uid mod_name) =
-        hcat [pretty uid, Disp.text ":", pretty mod_name]
-    pretty (OpenModuleVar mod_name) =
-        hcat [Disp.char '<', pretty mod_name, Disp.char '>']
+  pretty (OpenModule uid mod_name) =
+    hcat [pretty uid, Disp.text ":", pretty mod_name]
+  pretty (OpenModuleVar mod_name) =
+    hcat [Disp.char '<', pretty mod_name, Disp.char '>']
 
 -- |
 --
 -- >>> eitherParsec "Includes2-0.1.0.0-inplace-mysql:Database.MySQL" :: Either String OpenModule
 -- Right (OpenModule (DefiniteUnitId (DefUnitId {unDefUnitId = UnitId "Includes2-0.1.0.0-inplace-mysql"})) (ModuleName "Database.MySQL"))
---
 instance Parsec OpenModule where
-    parsec = parsecModuleVar <|> parsecOpenModule
-      where
-        parsecOpenModule = do
-            uid <- parsec
-            _ <- P.char ':'
-            mod_name <- parsec
-            return (OpenModule uid mod_name)
+  parsec = parsecModuleVar <|> parsecOpenModule
+    where
+      parsecOpenModule = do
+        uid <- parsec
+        _ <- P.char ':'
+        mod_name <- parsec
+        return (OpenModule uid mod_name)
 
-        parsecModuleVar = do
-            _ <- P.char '<'
-            mod_name <- parsec
-            _ <- P.char '>'
-            return (OpenModuleVar mod_name)
+      parsecModuleVar = do
+        _ <- P.char '<'
+        mod_name <- parsec
+        _ <- P.char '>'
+        return (OpenModuleVar mod_name)
 
 -- | Get the set of holes ('ModuleVar') embedded in a 'Module'.
 openModuleFreeHoles :: OpenModule -> Set ModuleName
@@ -214,8 +216,8 @@ type OpenModuleSubst = Map ModuleName OpenModule
 -- | Pretty-print the entries of a module substitution, suitable
 -- for embedding into a 'OpenUnitId' or passing to GHC via @--instantiate-with@.
 dispOpenModuleSubst :: OpenModuleSubst -> Disp.Doc
-dispOpenModuleSubst subst
-    = Disp.hcat
+dispOpenModuleSubst subst =
+  Disp.hcat
     . Disp.punctuate Disp.comma
     $ map dispOpenModuleSubstEntry (Map.toAscList subst)
 
@@ -227,19 +229,21 @@ dispOpenModuleSubstEntry (k, v) = pretty k <<>> Disp.char '=' <<>> pretty v
 --
 -- @since 2.2
 parsecOpenModuleSubst :: CabalParsing m => m OpenModuleSubst
-parsecOpenModuleSubst = fmap Map.fromList
-      . flip P.sepBy (P.char ',')
-      $ parsecOpenModuleSubstEntry
+parsecOpenModuleSubst =
+  fmap Map.fromList
+    . flip P.sepBy (P.char ',')
+    $ parsecOpenModuleSubstEntry
 
 -- | Inverse to 'dispModSubstEntry'.
 --
 -- @since 2.2
 parsecOpenModuleSubstEntry :: CabalParsing m => m (ModuleName, OpenModule)
 parsecOpenModuleSubstEntry =
-    do k <- parsec
-       _ <- P.char '='
-       v <- parsec
-       return (k, v)
+  do
+    k <- parsec
+    _ <- P.char '='
+    v <- parsec
+    return (k, v)
 
 -- | Get the set of holes ('ModuleVar') embedded in a 'OpenModuleSubst'.
 -- This is NOT the domain of the substitution.
@@ -265,5 +269,7 @@ hashModuleSubst subst
   | Map.null subst = Nothing
   | otherwise =
       Just . hashToBase62 $
-        concat [ prettyShow mod_name ++ "=" ++ prettyShow m ++ "\n"
-               | (mod_name, m) <- Map.toList subst]
+        concat
+          [ prettyShow mod_name ++ "=" ++ prettyShow m ++ "\n"
+          | (mod_name, m) <- Map.toList subst
+          ]

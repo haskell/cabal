@@ -1,45 +1,49 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-module Distribution.Types.Flag (
-    -- * Package flag
-    PackageFlag(..),
-    emptyFlag,
-    -- * Flag name
-    FlagName,
-    mkFlagName,
-    unFlagName,
-    -- * Flag assignment
-    FlagAssignment,
-    mkFlagAssignment,
-    unFlagAssignment,
-    lookupFlagAssignment,
-    insertFlagAssignment,
-    diffFlagAssignment,
-    findDuplicateFlagAssignments,
-    nullFlagAssignment,
-    showFlagValue,
-    dispFlagAssignment,
-    showFlagAssignment,
-    parsecFlagAssignment,
-    parsecFlagAssignmentNonEmpty,
-    -- ** Legacy formats
-    legacyShowFlagAssignment,
-    legacyShowFlagAssignment',
-    legacyParsecFlagAssignment,
-    ) where
 
-import Prelude ()
+module Distribution.Types.Flag
+  ( -- * Package flag
+    PackageFlag (..)
+  , emptyFlag
+
+    -- * Flag name
+  , FlagName
+  , mkFlagName
+  , unFlagName
+
+    -- * Flag assignment
+  , FlagAssignment
+  , mkFlagAssignment
+  , unFlagAssignment
+  , lookupFlagAssignment
+  , insertFlagAssignment
+  , diffFlagAssignment
+  , findDuplicateFlagAssignments
+  , nullFlagAssignment
+  , showFlagValue
+  , dispFlagAssignment
+  , showFlagAssignment
+  , parsecFlagAssignment
+  , parsecFlagAssignmentNonEmpty
+
+    -- ** Legacy formats
+  , legacyShowFlagAssignment
+  , legacyShowFlagAssignment'
+  , legacyParsecFlagAssignment
+  ) where
+
 import Distribution.Compat.Prelude
-import Distribution.Utils.ShortText
 import Distribution.Utils.Generic (lowercase)
+import Distribution.Utils.ShortText
+import Prelude ()
 
 import Distribution.Parsec
 import Distribution.Pretty
 
 import qualified Data.Map as Map
-import qualified Text.PrettyPrint as Disp
 import qualified Distribution.Compat.CharParsing as P
+import qualified Text.PrettyPrint as Disp
 
 -- -----------------------------------------------------------------------------
 -- The Flag' type
@@ -47,12 +51,12 @@ import qualified Distribution.Compat.CharParsing as P
 -- | A flag can represent a feature to be included, or a way of linking
 --   a target against its dependencies, or in fact whatever you can think of.
 data PackageFlag = MkPackageFlag
-    { flagName        :: FlagName
-    , flagDescription :: String
-    , flagDefault     :: Bool
-    , flagManual      :: Bool
-    }
-    deriving (Show, Eq, Typeable, Data, Generic)
+  { flagName :: FlagName
+  , flagDescription :: String
+  , flagDefault :: Bool
+  , flagManual :: Bool
+  }
+  deriving (Show, Eq, Typeable, Data, Generic)
 
 instance Binary PackageFlag
 instance Structured PackageFlag
@@ -60,11 +64,12 @@ instance NFData PackageFlag where rnf = genericRnf
 
 -- | A 'PackageFlag' initialized with default parameters.
 emptyFlag :: FlagName -> PackageFlag
-emptyFlag name = MkPackageFlag
-    { flagName        = name
+emptyFlag name =
+  MkPackageFlag
+    { flagName = name
     , flagDescription = ""
-    , flagDefault     = True
-    , flagManual      = False
+    , flagDefault = True
+    , flagManual = False
     }
 
 -- | A 'FlagName' is the name of a user-defined configuration flag
@@ -75,7 +80,7 @@ emptyFlag name = MkPackageFlag
 --
 -- @since 2.0.0.2
 newtype FlagName = FlagName ShortText
-    deriving (Eq, Generic, Ord, Show, Read, Typeable, Data, NFData)
+  deriving (Eq, Generic, Ord, Show, Read, Typeable, Data, NFData)
 
 -- | Construct a 'FlagName' from a 'String'
 --
@@ -92,7 +97,7 @@ mkFlagName = FlagName . toShortText
 --
 -- @since 2.0.0.2
 instance IsString FlagName where
-    fromString = mkFlagName
+  fromString = mkFlagName
 
 -- | Convert 'FlagName' to 'String'
 --
@@ -104,16 +109,16 @@ instance Binary FlagName
 instance Structured FlagName
 
 instance Pretty FlagName where
-    pretty = Disp.text . unFlagName
+  pretty = Disp.text . unFlagName
 
 instance Parsec FlagName where
-    -- Note:  we don't check that FlagName doesn't have leading dash,
-    -- cabal check will do that.
-    parsec = mkFlagName . lowercase <$> parsec'
-      where
-        parsec' = (:) <$> lead <*> rest
-        lead = P.satisfy (\c ->  isAlphaNum c || c == '_')
-        rest = P.munch (\c -> isAlphaNum c ||  c == '_' || c == '-')
+  -- Note:  we don't check that FlagName doesn't have leading dash,
+  -- cabal check will do that.
+  parsec = mkFlagName . lowercase <$> parsec'
+    where
+      parsec' = (:) <$> lead <*> rest
+      lead = P.satisfy (\c -> isAlphaNum c || c == '_')
+      rest = P.munch (\c -> isAlphaNum c || c == '_' || c == '-')
 
 -- | A 'FlagAssignment' is a total or partial mapping of 'FlagName's to
 -- 'Bool' flag values. It represents the flags chosen by the user or
@@ -121,26 +126,23 @@ instance Parsec FlagName where
 -- becomes @[("foo", True), ("bar", False)]@
 --
 -- TODO: Why we record the multiplicity of the flag?
---
-newtype FlagAssignment
-  = FlagAssignment { getFlagAssignment :: Map.Map FlagName (Int, Bool) }
+newtype FlagAssignment = FlagAssignment {getFlagAssignment :: Map.Map FlagName (Int, Bool)}
   deriving (Binary, Generic, NFData, Typeable)
 
 instance Structured FlagAssignment
 
 instance Eq FlagAssignment where
-  (==) (FlagAssignment m1) (FlagAssignment m2)
-    = fmap snd m1 == fmap snd m2
+  (==) (FlagAssignment m1) (FlagAssignment m2) =
+    fmap snd m1 == fmap snd m2
 
 instance Ord FlagAssignment where
-  compare (FlagAssignment m1) (FlagAssignment m2)
-    = fmap snd m1 `compare` fmap snd m2
+  compare (FlagAssignment m1) (FlagAssignment m2) =
+    fmap snd m1 `compare` fmap snd m2
 
 -- | Combines pairs of values contained in the 'FlagAssignment' Map.
 --
 -- The last flag specified takes precedence, and we record the number
 -- of times we have seen the flag.
---
 combineFlagValues :: (Int, Bool) -> (Int, Bool) -> (Int, Bool)
 combineFlagValues (c1, _) (c2, b2) = (c1 + c2, b2)
 
@@ -151,8 +153,8 @@ combineFlagValues (c1, _) (c2, b2) = (c1 + c2, b2)
 -- specified so that we have the option of warning the user about
 -- supplying duplicate flags.
 instance Semigroup FlagAssignment where
-  (<>) (FlagAssignment m1) (FlagAssignment m2)
-    = FlagAssignment (Map.unionWith combineFlagValues m1 m2)
+  (<>) (FlagAssignment m1) (FlagAssignment m2) =
+    FlagAssignment (Map.unionWith combineFlagValues m1 m2)
 
 instance Monoid FlagAssignment where
   mempty = FlagAssignment Map.empty
@@ -166,8 +168,9 @@ instance Monoid FlagAssignment where
 -- @since 2.2.0
 mkFlagAssignment :: [(FlagName, Bool)] -> FlagAssignment
 mkFlagAssignment =
-  FlagAssignment .
-  Map.fromListWith (flip combineFlagValues) . fmap (fmap (\b -> (1, b)))
+  FlagAssignment
+    . Map.fromListWith (flip combineFlagValues)
+    . fmap (fmap (\b -> (1, b)))
 
 -- | Deconstruct a 'FlagAssignment' into a list of flag/value pairs.
 --
@@ -204,8 +207,9 @@ insertFlagAssignment :: FlagName -> Bool -> FlagAssignment -> FlagAssignment
 -- flag; rather than enforcing uniqueness at construction, it's
 -- verified later on via `D.C.Dependency.configuredPackageProblems`
 insertFlagAssignment flag val =
-  FlagAssignment .
-  Map.insertWith (flip combineFlagValues) flag (1, val) .  getFlagAssignment
+  FlagAssignment
+    . Map.insertWith (flip combineFlagValues) flag (1, val)
+    . getFlagAssignment
 
 -- | Remove all flag-assignments from the first 'FlagAssignment' that
 -- are contained in the second 'FlagAssignment'
@@ -217,8 +221,9 @@ insertFlagAssignment flag val =
 --
 -- @since 2.2.0
 diffFlagAssignment :: FlagAssignment -> FlagAssignment -> FlagAssignment
-diffFlagAssignment fa1 fa2 = FlagAssignment
-  (Map.difference (getFlagAssignment fa1) (getFlagAssignment fa2))
+diffFlagAssignment fa1 fa2 =
+  FlagAssignment
+    (Map.difference (getFlagAssignment fa1) (getFlagAssignment fa2))
 
 -- | Find the 'FlagName's that have been listed more than once.
 --
@@ -229,20 +234,20 @@ findDuplicateFlagAssignments =
 
 -- | @since 2.2.0
 instance Read FlagAssignment where
-    readsPrec p s = [ (FlagAssignment x, rest) | (x,rest) <- readsPrec p s ]
+  readsPrec p s = [(FlagAssignment x, rest) | (x, rest) <- readsPrec p s]
 
 -- | @since 2.2.0
 instance Show FlagAssignment where
-    showsPrec p (FlagAssignment xs) = showsPrec p xs
+  showsPrec p (FlagAssignment xs) = showsPrec p xs
 
 -- | String representation of a flag-value pair.
 showFlagValue :: (FlagName, Bool) -> String
-showFlagValue (f, True)   = '+' : unFlagName f
-showFlagValue (f, False)  = '-' : unFlagName f
+showFlagValue (f, True) = '+' : unFlagName f
+showFlagValue (f, False) = '-' : unFlagName f
 
 -- | @since 3.4.0.0
 instance Pretty FlagAssignment where
-    pretty = dispFlagAssignment
+  pretty = dispFlagAssignment
 
 -- |
 --
@@ -273,33 +278,31 @@ instance Pretty FlagAssignment where
 -- Nothing
 --
 -- @since 3.4.0.0
---
 instance Parsec FlagAssignment where
-    parsec = parsecFlagAssignment
+  parsec = parsecFlagAssignment
 
 -- | Pretty-prints a flag assignment.
 dispFlagAssignment :: FlagAssignment -> Disp.Doc
 dispFlagAssignment = Disp.hsep . map (Disp.text . showFlagValue) . unFlagAssignment
-
-
 
 -- | Parses a flag assignment.
 parsecFlagAssignment :: CabalParsing m => m FlagAssignment
 parsecFlagAssignment = mkFlagAssignment <$> sepByEnding (onFlag <|> offFlag) P.skipSpaces1
   where
     onFlag = do
-        _ <- P.char '+'
-        f <- parsec
-        return (f, True)
+      _ <- P.char '+'
+      f <- parsec
+      return (f, True)
     offFlag = do
-        _ <- P.char '-'
-        f <- parsec
-        return (f, False)
+      _ <- P.char '-'
+      f <- parsec
+      return (f, False)
 
     sepByEnding :: CabalParsing m => m a -> m b -> m [a]
-    sepByEnding p sep = afterSeparator where
-        element        = (:) <$> p <*> afterElement
-        afterElement   = sep *> afterSeparator <|> pure []
+    sepByEnding p sep = afterSeparator
+      where
+        element = (:) <$> p <*> afterElement
+        afterElement = sep *> afterSeparator <|> pure []
         afterSeparator = element <|> pure []
 
 -- | Parse a non-empty flag assignment
@@ -311,18 +314,19 @@ parsecFlagAssignmentNonEmpty :: CabalParsing m => m FlagAssignment
 parsecFlagAssignmentNonEmpty = mkFlagAssignment <$> sepByEnding1 (onFlag <|> offFlag) P.skipSpaces1
   where
     onFlag = do
-        _ <- P.char '+'
-        f <- parsec
-        return (f, True)
+      _ <- P.char '+'
+      f <- parsec
+      return (f, True)
     offFlag = do
-        _ <- P.char '-'
-        f <- parsec
-        return (f, False)
+      _ <- P.char '-'
+      f <- parsec
+      return (f, False)
 
     sepByEnding1 :: CabalParsing m => m a -> m b -> m [a]
-    sepByEnding1 p sep = element where
-        element        = (:) <$> p <*> afterElement
-        afterElement   = sep *> afterSeparator <|> pure []
+    sepByEnding1 p sep = element
+      where
+        element = (:) <$> p <*> afterElement
+        afterElement = sep *> afterSeparator <|> pure []
         afterSeparator = element <|> pure []
 
 -- | Show flag assignment.
@@ -340,7 +344,7 @@ showFlagAssignment = prettyShow . dispFlagAssignment
 -- @since 3.4.0.0
 legacyShowFlagAssignment :: FlagAssignment -> String
 legacyShowFlagAssignment =
-    prettyShow .  Disp.hsep . map Disp.text . legacyShowFlagAssignment'
+  prettyShow . Disp.hsep . map Disp.text . legacyShowFlagAssignment'
 
 -- | @since 3.4.0.0
 legacyShowFlagAssignment' :: FlagAssignment -> [String]
@@ -348,22 +352,23 @@ legacyShowFlagAssignment' = map legacyShowFlagValue . unFlagAssignment
 
 -- | @since 3.4.0.0
 legacyShowFlagValue :: (FlagName, Bool) -> String
-legacyShowFlagValue (f, True)   =       unFlagName f
-legacyShowFlagValue (f, False)  = '-' : unFlagName f
+legacyShowFlagValue (f, True) = unFlagName f
+legacyShowFlagValue (f, False) = '-' : unFlagName f
 
 -- |
 -- We need this as far as we support custom setups older than 2.2.0.0
 --
 -- @since 3.4.0.0
 legacyParsecFlagAssignment :: CabalParsing m => m FlagAssignment
-legacyParsecFlagAssignment = mkFlagAssignment <$>
-                       P.sepBy (onFlag <|> offFlag) P.skipSpaces1
+legacyParsecFlagAssignment =
+  mkFlagAssignment
+    <$> P.sepBy (onFlag <|> offFlag) P.skipSpaces1
   where
     onFlag = do
-        _ <- P.optional (P.char '+')
-        f <- parsec
-        return (f, True)
+      _ <- P.optional (P.char '+')
+      f <- parsec
+      return (f, True)
     offFlag = do
-        _ <- P.char '-'
-        f <- parsec
-        return (f, False)
+      _ <- P.char '-'
+      f <- parsec
+      return (f, False)

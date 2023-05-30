@@ -2,6 +2,7 @@
 {-# LANGUAGE RankNTypes #-}
 
 -----------------------------------------------------------------------------
+
 -- |
 -- Module      :  Distribution.Simple.Program
 -- Copyright   :  Isaac Jones 2006, Duncan Coutts 2007-2009
@@ -34,150 +35,166 @@
 -- hookedPrograms in 'Distribution.Simple.UserHooks'.  This gives a
 -- hook user the ability to get the above flags and such so that they
 -- don't have to write all the PATH logic inside Setup.lhs.
-
-module Distribution.Simple.Program (
-    -- * Program and functions for constructing them
-      Program(..)
-    , ProgramSearchPath
-    , ProgramSearchPathEntry(..)
-    , simpleProgram
-    , findProgramOnSearchPath
-    , defaultProgramSearchPath
-    , findProgramVersion
+module Distribution.Simple.Program
+  ( -- * Program and functions for constructing them
+    Program (..)
+  , ProgramSearchPath
+  , ProgramSearchPathEntry (..)
+  , simpleProgram
+  , findProgramOnSearchPath
+  , defaultProgramSearchPath
+  , findProgramVersion
 
     -- * Configured program and related functions
-    , ConfiguredProgram(..)
-    , programPath
-    , ProgArg
-    , ProgramLocation(..)
-    , runProgram
-    , getProgramOutput
-    , suppressOverrideArgs
+  , ConfiguredProgram (..)
+  , programPath
+  , ProgArg
+  , ProgramLocation (..)
+  , runProgram
+  , getProgramOutput
+  , suppressOverrideArgs
 
     -- * Program invocations
-    , ProgramInvocation(..)
-    , emptyProgramInvocation
-    , simpleProgramInvocation
-    , programInvocation
-    , runProgramInvocation
-    , getProgramInvocationOutput
-    , getProgramInvocationLBS
+  , ProgramInvocation (..)
+  , emptyProgramInvocation
+  , simpleProgramInvocation
+  , programInvocation
+  , runProgramInvocation
+  , getProgramInvocationOutput
+  , getProgramInvocationLBS
 
     -- * The collection of unconfigured and configured programs
-    , builtinPrograms
+  , builtinPrograms
 
     -- * The collection of configured programs we can run
-    , ProgramDb
-    , defaultProgramDb
-    , emptyProgramDb
-    , restoreProgramDb
-    , addKnownProgram
-    , addKnownPrograms
-    , lookupKnownProgram
-    , knownPrograms
-    , getProgramSearchPath
-    , setProgramSearchPath
-    , userSpecifyPath
-    , userSpecifyPaths
-    , userMaybeSpecifyPath
-    , userSpecifyArgs
-    , userSpecifyArgss
-    , userSpecifiedArgs
-    , lookupProgram
-    , lookupProgramVersion
-    , updateProgram
-    , configureProgram
-    , configureAllKnownPrograms
-    , reconfigurePrograms
-    , requireProgram
-    , requireProgramVersion
-    , needProgram
-    , runDbProgram
-    , getDbProgramOutput
+  , ProgramDb
+  , defaultProgramDb
+  , emptyProgramDb
+  , restoreProgramDb
+  , addKnownProgram
+  , addKnownPrograms
+  , lookupKnownProgram
+  , knownPrograms
+  , getProgramSearchPath
+  , setProgramSearchPath
+  , userSpecifyPath
+  , userSpecifyPaths
+  , userMaybeSpecifyPath
+  , userSpecifyArgs
+  , userSpecifyArgss
+  , userSpecifiedArgs
+  , lookupProgram
+  , lookupProgramVersion
+  , updateProgram
+  , configureProgram
+  , configureAllKnownPrograms
+  , reconfigurePrograms
+  , requireProgram
+  , requireProgramVersion
+  , needProgram
+  , runDbProgram
+  , getDbProgramOutput
 
     -- * Programs that Cabal knows about
-    , ghcProgram
-    , ghcPkgProgram
-    , ghcjsProgram
-    , ghcjsPkgProgram
-    , hmakeProgram
-    , jhcProgram
-    , uhcProgram
-    , gccProgram
-    , arProgram
-    , stripProgram
-    , happyProgram
-    , alexProgram
-    , hsc2hsProgram
-    , c2hsProgram
-    , cpphsProgram
-    , hscolourProgram
-    , doctestProgram
-    , haddockProgram
-    , greencardProgram
-    , ldProgram
-    , tarProgram
-    , cppProgram
-    , pkgConfigProgram
-    , hpcProgram
-    ) where
+  , ghcProgram
+  , ghcPkgProgram
+  , ghcjsProgram
+  , ghcjsPkgProgram
+  , hmakeProgram
+  , jhcProgram
+  , uhcProgram
+  , gccProgram
+  , arProgram
+  , stripProgram
+  , happyProgram
+  , alexProgram
+  , hsc2hsProgram
+  , c2hsProgram
+  , cpphsProgram
+  , hscolourProgram
+  , doctestProgram
+  , haddockProgram
+  , greencardProgram
+  , ldProgram
+  , tarProgram
+  , cppProgram
+  , pkgConfigProgram
+  , hpcProgram
+  ) where
 
-import Prelude ()
 import Distribution.Compat.Prelude
+import Prelude ()
 
-import Distribution.Simple.Program.Types
-import Distribution.Simple.Program.Run
-import Distribution.Simple.Program.Db
 import Distribution.Simple.Program.Builtin
+import Distribution.Simple.Program.Db
 import Distribution.Simple.Program.Find
+import Distribution.Simple.Program.Run
+import Distribution.Simple.Program.Types
 import Distribution.Simple.Utils
 import Distribution.Verbosity
 
 -- | Runs the given configured program.
-runProgram :: Verbosity          -- ^Verbosity
-           -> ConfiguredProgram  -- ^The program to run
-           -> [ProgArg]          -- ^Any /extra/ arguments to add
-           -> IO ()
+runProgram
+  :: Verbosity
+  -- ^ Verbosity
+  -> ConfiguredProgram
+  -- ^ The program to run
+  -> [ProgArg]
+  -- ^ Any /extra/ arguments to add
+  -> IO ()
 runProgram verbosity prog args =
   runProgramInvocation verbosity (programInvocation prog args)
 
-
 -- | Runs the given configured program and gets the output.
---
-getProgramOutput :: Verbosity          -- ^Verbosity
-                 -> ConfiguredProgram  -- ^The program to run
-                 -> [ProgArg]          -- ^Any /extra/ arguments to add
-                 -> IO String
+getProgramOutput
+  :: Verbosity
+  -- ^ Verbosity
+  -> ConfiguredProgram
+  -- ^ The program to run
+  -> [ProgArg]
+  -- ^ Any /extra/ arguments to add
+  -> IO String
 getProgramOutput verbosity prog args =
   getProgramInvocationOutput verbosity (programInvocation prog args)
 
-
 -- | Looks up the given program in the program database and runs it.
---
-runDbProgram :: Verbosity  -- ^verbosity
-             -> Program    -- ^The program to run
-             -> ProgramDb  -- ^look up the program here
-             -> [ProgArg]  -- ^Any /extra/ arguments to add
-             -> IO ()
+runDbProgram
+  :: Verbosity
+  -- ^ verbosity
+  -> Program
+  -- ^ The program to run
+  -> ProgramDb
+  -- ^ look up the program here
+  -> [ProgArg]
+  -- ^ Any /extra/ arguments to add
+  -> IO ()
 runDbProgram verbosity prog programDb args =
   case lookupProgram prog programDb of
-    Nothing             -> die' verbosity notFound
+    Nothing -> die' verbosity notFound
     Just configuredProg -> runProgram verbosity configuredProg args
- where
-   notFound = "The program '" ++ programName prog
-           ++ "' is required but it could not be found"
+  where
+    notFound =
+      "The program '"
+        ++ programName prog
+        ++ "' is required but it could not be found"
 
 -- | Looks up the given program in the program database and runs it.
---
-getDbProgramOutput :: Verbosity  -- ^verbosity
-                   -> Program    -- ^The program to run
-                   -> ProgramDb  -- ^look up the program here
-                   -> [ProgArg]  -- ^Any /extra/ arguments to add
-                   -> IO String
+getDbProgramOutput
+  :: Verbosity
+  -- ^ verbosity
+  -> Program
+  -- ^ The program to run
+  -> ProgramDb
+  -- ^ look up the program here
+  -> [ProgArg]
+  -- ^ Any /extra/ arguments to add
+  -> IO String
 getDbProgramOutput verbosity prog programDb args =
   case lookupProgram prog programDb of
-    Nothing             -> die' verbosity notFound
+    Nothing -> die' verbosity notFound
     Just configuredProg -> getProgramOutput verbosity configuredProg args
- where
-   notFound = "The program '" ++ programName prog
-           ++ "' is required but it could not be found"
+  where
+    notFound =
+      "The program '"
+        ++ programName prog
+        ++ "' is required but it could not be found"

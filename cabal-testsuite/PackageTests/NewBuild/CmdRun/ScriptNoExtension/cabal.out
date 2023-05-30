@@ -2,6 +2,6 @@
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
- - fake-package-0 (exe:cabal-script-with_sp) (first run)
-Configuring executable 'cabal-script-with_sp' for fake-package-0..
-Building executable 'cabal-script-with_sp' for fake-package-0..
+ - fake-package-0 (exe:script-with_sp) (first run)
+Configuring executable 'script-with_sp' for fake-package-0..
+Building executable 'script-with_sp' for fake-package-0..
