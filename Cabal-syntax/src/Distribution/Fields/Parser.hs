@@ -58,6 +58,10 @@ import qualified Data.Text.Encoding       as T
 import qualified Data.Text.Encoding.Error as T
 #endif
 
+-- $setup
+-- >>> :set -XOverloadedStrings
+-- >>> import Data.Either (isLeft)
+
 -- | The 'LexState'' (with a prime) is an instance of parsec's 'Stream'
 -- wrapped around lexer's 'LexState' (without a prime)
 data LexState' = LexState' !LexState (LToken, LexState')
@@ -331,10 +335,35 @@ fieldInlineOrBraces name =
         )
 
 -- | Parse cabal style 'B8.ByteString' into list of 'Field's, i.e. the cabal AST.
+--
+-- 'readFields' assumes that input 'B8.ByteString' is valid UTF8, specifically it doesn't validate that file is valid UTF8.
+-- Therefore bytestrings inside returned 'Field' will be invalid as UTF8 if the input were.
+--
+-- >>> readFields "foo: \223"
+-- Right [Field (Name (Position 1 1) "foo") [FieldLine (Position 1 6) "\223"]]
+--
+-- 'readFields' won't (necessarily) fail on invalid UTF8 data, but the reported positions may be off.
+--
+-- __You may get weird errors on non-UTF8 input__, for example 'readFields' will fail on latin1 encoded non-breaking space:
+--
+-- >>> isLeft (readFields "\xa0 foo: bar")
+-- True
+--
+-- That is rejected because parser thinks @\\xa0@ is a section name,
+-- and section arguments may not contain colon.
+-- If there are just latin1 non-breaking spaces, they become part of the name:
+--
+-- >>> readFields "\xa0\&foo: bar"
+-- Right [Field (Name (Position 1 1) "\160foo") [FieldLine (Position 1 7) "bar"]]
+--
+-- The UTF8 non-breaking space is accepted as an indentation character (but warned about by 'readFields'').
+--
+-- >>> readFields' "\xc2\xa0 foo: bar"
+-- Right ([Field (Name (Position 1 3) "foo") [FieldLine (Position 1 8) "bar"]],[LexWarning LexWarningNBSP (Position 1 1)])
 readFields :: B8.ByteString -> Either ParseError [Field Position]
 readFields s = fmap fst (readFields' s)
 
--- | Like 'readFields' but also return lexer warnings
+-- | Like 'readFields' but also return lexer warnings.
 readFields' :: B8.ByteString -> Either ParseError ([Field Position], [LexWarning])
 readFields' s = do
   parse parser "the input" lexSt
