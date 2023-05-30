@@ -31,6 +31,7 @@ module Distribution.Client.ProjectConfig (
     readProjectLocalFreezeConfig,
     reportParseResult,
     showProjectConfig,
+    withGlobalConfig,
     withProjectOrGlobalConfig,
     writeProjectLocalExtraConfig,
     writeProjectLocalFreezeConfig,
@@ -461,6 +462,15 @@ instance Exception BadProjectRoot where
 renderBadProjectRoot :: BadProjectRoot -> String
 renderBadProjectRoot (BadProjectRootExplicitFile projectFile) =
     "The given project file '" ++ projectFile ++ "' does not exist."
+
+withGlobalConfig
+    :: Verbosity                  -- ^ verbosity
+    -> Flag FilePath              -- ^ @--cabal-config@
+    -> (ProjectConfig -> IO a)    -- ^ with global
+    -> IO a
+withGlobalConfig verbosity gcf with = do
+    globalConfig <- runRebuild "" $ readGlobalConfig verbosity gcf
+    with globalConfig
 
 withProjectOrGlobalConfig
     :: Verbosity                  -- ^ verbosity

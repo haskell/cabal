@@ -1385,7 +1385,7 @@ checkGhcOptions fieldName getOptions pkg =
   , checkFlags ["-prof"] $
       PackageBuildWarning (OptProf fieldName)
 
-  , checkFlags ["-o"] $
+  , unlessScript . checkFlags ["-o"] $
       PackageBuildWarning (OptO fieldName)
 
   , checkFlags ["-hide-package"] $
@@ -1477,6 +1477,10 @@ checkGhcOptions fieldName getOptions pkg =
 
     checkFlags :: [String] -> PackageCheck -> Maybe PackageCheck
     checkFlags flags = check (any (`elem` flags) all_ghc_options)
+
+    unlessScript :: Maybe PackageCheck -> Maybe PackageCheck
+    unlessScript pc | packageId pkg == fakePackageId = Nothing
+                    | otherwise                      = pc
 
     checkTestAndBenchmarkFlags :: [String] -> PackageCheck -> Maybe PackageCheck
     checkTestAndBenchmarkFlags flags = check (any (`elem` flags) test_and_benchmark_ghc_options)
