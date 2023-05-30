@@ -232,7 +232,7 @@ configure verbosity hcPath hcPkgPath conf0 = do
 
   ghcInfo <- Internal.getGhcInfo verbosity implInfo ghcProg
   let ghcInfoMap = Map.fromList ghcInfo
-      filterJS = if ghcVersion < mkVersion [9,10] then filterExt JavaScriptFFI else id
+      filterJS = if ghcVersion < mkVersion [9, 10] then filterExt JavaScriptFFI else id
       extensions =
         -- workaround https://gitlab.haskell.org/ghc/ghc/-/issues/11214
         filterJS $
