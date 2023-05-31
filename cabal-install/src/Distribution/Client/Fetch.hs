@@ -10,223 +10,267 @@
 --
 -- The cabal fetch command
 -----------------------------------------------------------------------------
-module Distribution.Client.Fetch (
-    fetch,
+module Distribution.Client.Fetch
+  ( fetch
   ) where
 
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
-import Distribution.Client.Types
-import Distribution.Client.Targets
-import Distribution.Client.FetchUtils hiding (fetchPackage)
 import Distribution.Client.Dependency
+import Distribution.Client.FetchUtils hiding (fetchPackage)
 import Distribution.Client.IndexUtils as IndexUtils
-         ( getSourcePackages, getInstalledPackages )
-import qualified Distribution.Client.SolverInstallPlan as SolverInstallPlan
+  ( getInstalledPackages
+  , getSourcePackages
+  )
 import Distribution.Client.Setup
-         ( GlobalFlags(..), FetchFlags(..), RepoContext(..) )
+  ( FetchFlags (..)
+  , GlobalFlags (..)
+  , RepoContext (..)
+  )
+import qualified Distribution.Client.SolverInstallPlan as SolverInstallPlan
+import Distribution.Client.Targets
+import Distribution.Client.Types
 
 import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.LabeledPackageConstraint
 import Distribution.Solver.Types.OptionalStanza
-import Distribution.Solver.Types.PkgConfigDb ( PkgConfigDb, readPkgConfigDb )
+import Distribution.Solver.Types.PkgConfigDb (PkgConfigDb, readPkgConfigDb)
 import Distribution.Solver.Types.SolverPackage
 import Distribution.Solver.Types.SourcePackage
 
 import Distribution.Package
-         ( packageId )
+  ( packageId
+  )
 import Distribution.Simple.Compiler
-         ( Compiler, compilerInfo, PackageDBStack )
+  ( Compiler
+  , PackageDBStack
+  , compilerInfo
+  )
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import Distribution.Simple.Program
-         ( ProgramDb )
+  ( ProgramDb
+  )
 import Distribution.Simple.Setup
-         ( fromFlag, fromFlagOrDefault )
+  ( fromFlag
+  , fromFlagOrDefault
+  )
 import Distribution.Simple.Utils
-         ( die', notice, debug )
+  ( debug
+  , die'
+  , notice
+  )
 import Distribution.System
-         ( Platform )
+  ( Platform
+  )
 
 -- ------------------------------------------------------------
+
 -- * The fetch command
+
 -- ------------------------------------------------------------
 
---TODO:
+-- TODO:
+
 -- * add fetch -o support
+
 -- * support tarball URLs via ad-hoc download cache (or in -o mode?)
+
 -- * suggest using --no-deps, unpack or fetch -o if deps cannot be satisfied
+
 -- * Port various flags from install:
+
 --   * --upgrade-dependencies
 --   * --constraint and --preference
 --   * --only-dependencies, but note it conflicts with --no-deps
 
-
 -- | Fetch a list of packages and their dependencies.
---
-fetch :: Verbosity
-      -> PackageDBStack
-      -> RepoContext
-      -> Compiler
-      -> Platform
-      -> ProgramDb
-      -> GlobalFlags
-      -> FetchFlags
-      -> [UserTarget]
-      -> IO ()
+fetch
+  :: Verbosity
+  -> PackageDBStack
+  -> RepoContext
+  -> Compiler
+  -> Platform
+  -> ProgramDb
+  -> GlobalFlags
+  -> FetchFlags
+  -> [UserTarget]
+  -> IO ()
 fetch verbosity _ _ _ _ _ _ _ [] =
-    notice verbosity "No packages requested. Nothing to do."
-
-fetch verbosity packageDBs repoCtxt comp platform progdb
-      _ fetchFlags userTargets = do
-
+  notice verbosity "No packages requested. Nothing to do."
+fetch
+  verbosity
+  packageDBs
+  repoCtxt
+  comp
+  platform
+  progdb
+  _
+  fetchFlags
+  userTargets = do
     traverse_ (checkTarget verbosity) userTargets
 
     installedPkgIndex <- getInstalledPackages verbosity comp packageDBs progdb
-    sourcePkgDb       <- getSourcePackages    verbosity repoCtxt
-    pkgConfigDb       <- readPkgConfigDb      verbosity progdb
+    sourcePkgDb <- getSourcePackages verbosity repoCtxt
+    pkgConfigDb <- readPkgConfigDb verbosity progdb
 
-    pkgSpecifiers <- resolveUserTargets verbosity repoCtxt
-                       (packageIndex sourcePkgDb)
-                       userTargets
+    pkgSpecifiers <-
+      resolveUserTargets
+        verbosity
+        repoCtxt
+        (packageIndex sourcePkgDb)
+        userTargets
 
-    pkgs  <- planPackages
-               verbosity comp platform fetchFlags
-               installedPkgIndex sourcePkgDb pkgConfigDb pkgSpecifiers
+    pkgs <-
+      planPackages
+        verbosity
+        comp
+        platform
+        fetchFlags
+        installedPkgIndex
+        sourcePkgDb
+        pkgConfigDb
+        pkgSpecifiers
 
     pkgs' <- filterM (fmap not . isFetched . srcpkgSource) pkgs
     if null pkgs'
-      --TODO: when we add support for remote tarballs then this message
+      then -- TODO: when we add support for remote tarballs then this message
       -- will need to be changed because for remote tarballs we fetch them
       -- at the earlier phase.
-      then notice verbosity $ "No packages need to be fetched. "
-                           ++ "All the requested packages are already local "
-                           ++ "or cached locally."
-      else if dryRun
-             then notice verbosity $ unlines $
-                     "The following packages would be fetched:"
-                   : map (prettyShow . packageId) pkgs'
 
-             else traverse_ (fetchPackage verbosity repoCtxt . srcpkgSource) pkgs'
+        notice verbosity $
+          "No packages need to be fetched. "
+            ++ "All the requested packages are already local "
+            ++ "or cached locally."
+      else
+        if dryRun
+          then
+            notice verbosity $
+              unlines $
+                "The following packages would be fetched:"
+                  : map (prettyShow . packageId) pkgs'
+          else traverse_ (fetchPackage verbosity repoCtxt . srcpkgSource) pkgs'
+    where
+      dryRun = fromFlag (fetchDryRun fetchFlags)
 
-  where
-    dryRun = fromFlag (fetchDryRun fetchFlags)
+planPackages
+  :: Verbosity
+  -> Compiler
+  -> Platform
+  -> FetchFlags
+  -> InstalledPackageIndex
+  -> SourcePackageDb
+  -> PkgConfigDb
+  -> [PackageSpecifier UnresolvedSourcePackage]
+  -> IO [UnresolvedSourcePackage]
+planPackages
+  verbosity
+  comp
+  platform
+  fetchFlags
+  installedPkgIndex
+  sourcePkgDb
+  pkgConfigDb
+  pkgSpecifiers
+    | includeDependencies = do
+        solver <-
+          chooseSolver
+            verbosity
+            (fromFlag (fetchSolver fetchFlags))
+            (compilerInfo comp)
+        notice verbosity "Resolving dependencies..."
+        installPlan <-
+          foldProgress logMsg (die' verbosity) return $
+            resolveDependencies
+              platform
+              (compilerInfo comp)
+              pkgConfigDb
+              solver
+              resolverParams
 
-planPackages :: Verbosity
-             -> Compiler
-             -> Platform
-             -> FetchFlags
-             -> InstalledPackageIndex
-             -> SourcePackageDb
-             -> PkgConfigDb
-             -> [PackageSpecifier UnresolvedSourcePackage]
-             -> IO [UnresolvedSourcePackage]
-planPackages verbosity comp platform fetchFlags
-             installedPkgIndex sourcePkgDb pkgConfigDb pkgSpecifiers
+        -- The packages we want to fetch are those packages the 'InstallPlan'
+        -- that are in the 'InstallPlan.Configured' state.
+        return
+          [ solverPkgSource cpkg
+          | (SolverInstallPlan.Configured cpkg) <-
+              SolverInstallPlan.toList installPlan
+          ]
+    | otherwise =
+        either (die' verbosity . unlines . map show) return $
+          resolveWithoutDependencies resolverParams
+    where
+      resolverParams :: DepResolverParams
+      resolverParams =
+        setMaxBackjumps
+          ( if maxBackjumps < 0
+              then Nothing
+              else Just maxBackjumps
+          )
+          . setIndependentGoals independentGoals
+          . setReorderGoals reorderGoals
+          . setCountConflicts countConflicts
+          . setFineGrainedConflicts fineGrainedConflicts
+          . setMinimizeConflictSet minimizeConflictSet
+          . setShadowPkgs shadowPkgs
+          . setStrongFlags strongFlags
+          . setAllowBootLibInstalls allowBootLibInstalls
+          . setOnlyConstrained onlyConstrained
+          . setSolverVerbosity verbosity
+          . addConstraints
+            [ let pc =
+                    PackageConstraint
+                      (scopeToplevel $ pkgSpecifierTarget pkgSpecifier)
+                      (PackagePropertyStanzas stanzas)
+               in LabeledPackageConstraint pc ConstraintSourceConfigFlagOrTarget
+            | pkgSpecifier <- pkgSpecifiers
+            ]
+          -- Reinstall the targets given on the command line so that the dep
+          -- resolver will decide that they need fetching, even if they're
+          -- already installed. Since we want to get the source packages of
+          -- things we might have installed (but not have the sources for).
+          . reinstallTargets
+          $ standardInstallPolicy installedPkgIndex sourcePkgDb pkgSpecifiers
 
-  | includeDependencies = do
-      solver <- chooseSolver verbosity
-                (fromFlag (fetchSolver fetchFlags)) (compilerInfo comp)
-      notice verbosity "Resolving dependencies..."
-      installPlan <- foldProgress logMsg (die' verbosity) return $
-                       resolveDependencies
-                         platform (compilerInfo comp) pkgConfigDb
-                         solver
-                         resolverParams
+      includeDependencies = fromFlag (fetchDeps fetchFlags)
+      logMsg message rest = debug verbosity message >> rest
 
-      -- The packages we want to fetch are those packages the 'InstallPlan'
-      -- that are in the 'InstallPlan.Configured' state.
-      return
-        [ solverPkgSource cpkg
-        | (SolverInstallPlan.Configured cpkg)
-            <- SolverInstallPlan.toList installPlan ]
+      stanzas =
+        [TestStanzas | testsEnabled]
+          ++ [BenchStanzas | benchmarksEnabled]
+      testsEnabled = fromFlagOrDefault False $ fetchTests fetchFlags
+      benchmarksEnabled = fromFlagOrDefault False $ fetchBenchmarks fetchFlags
 
-  | otherwise =
-      either (die' verbosity . unlines . map show) return $
-        resolveWithoutDependencies resolverParams
-
-  where
-    resolverParams :: DepResolverParams
-    resolverParams =
-
-        setMaxBackjumps (if maxBackjumps < 0 then Nothing
-                                             else Just maxBackjumps)
-
-      . setIndependentGoals independentGoals
-
-      . setReorderGoals reorderGoals
-
-      . setCountConflicts countConflicts
-
-      . setFineGrainedConflicts fineGrainedConflicts
-
-      . setMinimizeConflictSet minimizeConflictSet
-
-      . setShadowPkgs shadowPkgs
-
-      . setStrongFlags strongFlags
-
-      . setAllowBootLibInstalls allowBootLibInstalls
-
-      . setOnlyConstrained onlyConstrained
-
-      . setSolverVerbosity verbosity
-
-      . addConstraints
-          [ let pc = PackageConstraint
-                     (scopeToplevel $ pkgSpecifierTarget pkgSpecifier)
-                     (PackagePropertyStanzas stanzas)
-            in LabeledPackageConstraint pc ConstraintSourceConfigFlagOrTarget
-          | pkgSpecifier <- pkgSpecifiers ]
-
-        -- Reinstall the targets given on the command line so that the dep
-        -- resolver will decide that they need fetching, even if they're
-        -- already installed. Since we want to get the source packages of
-        -- things we might have installed (but not have the sources for).
-      . reinstallTargets
-
-      $ standardInstallPolicy installedPkgIndex sourcePkgDb pkgSpecifiers
-
-    includeDependencies = fromFlag (fetchDeps fetchFlags)
-    logMsg message rest = debug verbosity message >> rest
-
-    stanzas           = [ TestStanzas | testsEnabled ]
-                     ++ [ BenchStanzas | benchmarksEnabled ]
-    testsEnabled      = fromFlagOrDefault False $ fetchTests fetchFlags
-    benchmarksEnabled = fromFlagOrDefault False $ fetchBenchmarks fetchFlags
-
-    reorderGoals     = fromFlag (fetchReorderGoals     fetchFlags)
-    countConflicts   = fromFlag (fetchCountConflicts   fetchFlags)
-    fineGrainedConflicts = fromFlag (fetchFineGrainedConflicts fetchFlags)
-    minimizeConflictSet = fromFlag (fetchMinimizeConflictSet fetchFlags)
-    independentGoals = fromFlag (fetchIndependentGoals fetchFlags)
-    shadowPkgs       = fromFlag (fetchShadowPkgs       fetchFlags)
-    strongFlags      = fromFlag (fetchStrongFlags      fetchFlags)
-    maxBackjumps     = fromFlag (fetchMaxBackjumps     fetchFlags)
-    allowBootLibInstalls = fromFlag (fetchAllowBootLibInstalls fetchFlags)
-    onlyConstrained  = fromFlag (fetchOnlyConstrained  fetchFlags)
-
+      reorderGoals = fromFlag (fetchReorderGoals fetchFlags)
+      countConflicts = fromFlag (fetchCountConflicts fetchFlags)
+      fineGrainedConflicts = fromFlag (fetchFineGrainedConflicts fetchFlags)
+      minimizeConflictSet = fromFlag (fetchMinimizeConflictSet fetchFlags)
+      independentGoals = fromFlag (fetchIndependentGoals fetchFlags)
+      shadowPkgs = fromFlag (fetchShadowPkgs fetchFlags)
+      strongFlags = fromFlag (fetchStrongFlags fetchFlags)
+      maxBackjumps = fromFlag (fetchMaxBackjumps fetchFlags)
+      allowBootLibInstalls = fromFlag (fetchAllowBootLibInstalls fetchFlags)
+      onlyConstrained = fromFlag (fetchOnlyConstrained fetchFlags)
 
 checkTarget :: Verbosity -> UserTarget -> IO ()
 checkTarget verbosity target = case target of
-    UserTargetRemoteTarball _uri
-      -> die' verbosity $ "The 'fetch' command does not yet support remote tarballs. "
-            ++ "In the meantime you can use the 'unpack' commands."
-    _ -> return ()
+  UserTargetRemoteTarball _uri ->
+    die' verbosity $
+      "The 'fetch' command does not yet support remote tarballs. "
+        ++ "In the meantime you can use the 'unpack' commands."
+  _ -> return ()
 
 fetchPackage :: Verbosity -> RepoContext -> PackageLocation a -> IO ()
 fetchPackage verbosity repoCtxt pkgsrc = case pkgsrc of
-    LocalUnpackedPackage _dir  -> return ()
-    LocalTarballPackage  _file -> return ()
-
-    RemoteTarballPackage _uri _ ->
-      die' verbosity $ "The 'fetch' command does not yet support remote tarballs. "
-         ++ "In the meantime you can use the 'unpack' commands."
-
-    RemoteSourceRepoPackage _repo _ ->
-      die' verbosity $ "The 'fetch' command does not yet support remote "
-         ++ "source repositories."
-
-    RepoTarballPackage repo pkgid _ -> do
-      _ <- fetchRepoTarball verbosity repoCtxt repo pkgid
-      return ()
+  LocalUnpackedPackage _dir -> return ()
+  LocalTarballPackage _file -> return ()
+  RemoteTarballPackage _uri _ ->
+    die' verbosity $
+      "The 'fetch' command does not yet support remote tarballs. "
+        ++ "In the meantime you can use the 'unpack' commands."
+  RemoteSourceRepoPackage _repo _ ->
+    die' verbosity $
+      "The 'fetch' command does not yet support remote "
+        ++ "source repositories."
+  RepoTarballPackage repo pkgid _ -> do
+    _ <- fetchRepoTarball verbosity repoCtxt repo pkgid
+    return ()

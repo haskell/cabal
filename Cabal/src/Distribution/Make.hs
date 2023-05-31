@@ -2,6 +2,11 @@
 {-# LANGUAGE RankNTypes #-}
 
 -----------------------------------------------------------------------------
+
+--                      copy :
+--                              $(MAKE) install prefix=$(destdir)/$(prefix) \
+--                                              bindir=$(destdir)/$(bindir) \
+
 -- |
 -- Module      :  Distribution.Make
 -- Copyright   :  Martin Sj&#xF6;gren 2004
@@ -51,32 +56,28 @@
 -- [UnregisterCmd] We assume there is an @unregister@ target.
 --
 -- [HaddockCmd] We assume there is a @docs@ or @doc@ target.
-
-
---                      copy :
---                              $(MAKE) install prefix=$(destdir)/$(prefix) \
---                                              bindir=$(destdir)/$(bindir) \
-
-module Distribution.Make (
-        module Distribution.Package,
-        License(..), Version,
-        defaultMain, defaultMainArgs
+module Distribution.Make
+  ( module Distribution.Package
+  , License (..)
+  , Version
+  , defaultMain
+  , defaultMainArgs
   ) where
 
-import Prelude ()
 import Distribution.Compat.Prelude
+import Prelude ()
 
 -- local
 import Distribution.Package
+import Distribution.Simple.Command
 import Distribution.Simple.Program
 import Distribution.Simple.Setup
-import Distribution.Simple.Command
 
 import Distribution.Simple.Utils
 
 import Distribution.License
-import Distribution.Version
 import Distribution.Pretty
+import Distribution.Version
 
 import System.Environment (getArgs, getProgName)
 
@@ -89,18 +90,18 @@ defaultMainArgs = defaultMainHelper
 defaultMainHelper :: [String] -> IO ()
 defaultMainHelper args =
   case commandsRun (globalCommand commands) commands args of
-    CommandHelp   help                 -> printHelp help
-    CommandList   opts                 -> printOptionsList opts
-    CommandErrors errs                 -> printErrors errs
-    CommandReadyToGo (flags, commandParse)  ->
+    CommandHelp help -> printHelp help
+    CommandList opts -> printOptionsList opts
+    CommandErrors errs -> printErrors errs
+    CommandReadyToGo (flags, commandParse) ->
       case commandParse of
-        _ | fromFlag (globalVersion flags)        -> printVersion
+        _
+          | fromFlag (globalVersion flags) -> printVersion
           | fromFlag (globalNumericVersion flags) -> printNumericVersion
-        CommandHelp     help           -> printHelp help
-        CommandList     opts           -> printOptionsList opts
-        CommandErrors   errs           -> printErrors errs
-        CommandReadyToGo action        -> action
-
+        CommandHelp help -> printHelp help
+        CommandList opts -> printOptionsList opts
+        CommandErrors errs -> printErrors errs
+        CommandReadyToGo action -> action
   where
     printHelp help = getProgName >>= putStr . help
     printOptionsList = putStr . unlines
@@ -108,20 +109,22 @@ defaultMainHelper args =
       putStr (intercalate "\n" errs)
       exitWith (ExitFailure 1)
     printNumericVersion = putStrLn $ prettyShow cabalVersion
-    printVersion        = putStrLn $ "Cabal library version "
-                                  ++ prettyShow cabalVersion
+    printVersion =
+      putStrLn $
+        "Cabal library version "
+          ++ prettyShow cabalVersion
 
     progs = defaultProgramDb
     commands =
-      [configureCommand progs `commandAddAction` configureAction
-      ,buildCommand     progs `commandAddAction` buildAction
-      ,installCommand         `commandAddAction` installAction
-      ,copyCommand            `commandAddAction` copyAction
-      ,haddockCommand         `commandAddAction` haddockAction
-      ,cleanCommand           `commandAddAction` cleanAction
-      ,sdistCommand           `commandAddAction` sdistAction
-      ,registerCommand        `commandAddAction` registerAction
-      ,unregisterCommand      `commandAddAction` unregisterAction
+      [ configureCommand progs `commandAddAction` configureAction
+      , buildCommand progs `commandAddAction` buildAction
+      , installCommand `commandAddAction` installAction
+      , copyCommand `commandAddAction` copyAction
+      , haddockCommand `commandAddAction` haddockAction
+      , cleanCommand `commandAddAction` cleanAction
+      , sdistCommand `commandAddAction` sdistAction
+      , registerCommand `commandAddAction` registerAction
+      , unregisterCommand `commandAddAction` unregisterAction
       ]
 
 configureAction :: ConfigFlags -> [String] -> IO ()
@@ -130,16 +133,17 @@ configureAction flags args = do
   let verbosity = fromFlag (configVerbosity flags)
   rawSystemExit verbosity "sh" $
     "configure"
-    : configureArgs backwardsCompatHack flags
-  where backwardsCompatHack = True
+      : configureArgs backwardsCompatHack flags
+  where
+    backwardsCompatHack = True
 
 copyAction :: CopyFlags -> [String] -> IO ()
 copyAction flags args = do
   noExtraFlags args
   let destArgs = case fromFlag $ copyDest flags of
-        NoCopyDest      -> ["install"]
-        CopyTo path     -> ["copy", "destdir=" ++ path]
-        CopyToDb _      -> error "CopyToDb not supported via Make"
+        NoCopyDest -> ["install"]
+        CopyTo path -> ["copy", "destdir=" ++ path]
+        CopyToDb _ -> error "CopyToDb not supported via Make"
 
   rawSystemExit (fromFlag $ copyVerbosity flags) "make" destArgs
 
@@ -154,7 +158,7 @@ haddockAction flags args = do
   noExtraFlags args
   rawSystemExit (fromFlag $ haddockVerbosity flags) "make" ["docs"]
     `catchIO` \_ ->
-    rawSystemExit (fromFlag $ haddockVerbosity flags) "make" ["doc"]
+      rawSystemExit (fromFlag $ haddockVerbosity flags) "make" ["doc"]
 
 buildAction :: BuildFlags -> [String] -> IO ()
 buildAction flags args = do
@@ -172,7 +176,7 @@ sdistAction flags args = do
   rawSystemExit (fromFlag $ sDistVerbosity flags) "make" ["dist"]
 
 registerAction :: RegisterFlags -> [String] -> IO ()
-registerAction  flags args = do
+registerAction flags args = do
   noExtraFlags args
   rawSystemExit (fromFlag $ regVerbosity flags) "make" ["register"]
 

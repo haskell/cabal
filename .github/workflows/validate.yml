@@ -136,8 +136,9 @@ jobs:
              # see https://github.com/actions/virtual-environments/issues/2619#issuecomment-788397841
              sudo /usr/sbin/purge
           fi
-          tar -cvf cabal-head.tar -C $(dirname "$CABAL_EXEC") $(basename "$CABAL_EXEC")
-          echo "CABAL_EXEC_TAR=cabal-head.tar" >> $GITHUB_ENV
+          export CABAL_EXEC_TAR="cabal-head-${{ runner.os }}-x86_64.tar.gz"
+          tar -czvf $CABAL_EXEC_TAR -C $(dirname "$CABAL_EXEC") $(basename "$CABAL_EXEC")
+          echo "CABAL_EXEC_TAR=$CABAL_EXEC_TAR" >> $GITHUB_ENV
 
       # We upload the cabal executable built with the ghc used in the release for:
       # - Reuse it in the dogfooding job (although we could use the cached build dir)
@@ -146,7 +147,7 @@ jobs:
         if: matrix.ghc == env.GHC_FOR_RELEASE
         uses: actions/upload-artifact@v3
         with:
-          name: cabal-${{ runner.os }}-${{ matrix.ghc }}
+          name: cabal-${{ runner.os }}-x86_64
           path: ${{ env.CABAL_EXEC_TAR }}
 
       - name: Validate lib-tests
@@ -271,11 +272,11 @@ jobs:
       - name: Download cabal executable from workflow artifacts
         uses: actions/download-artifact@v3
         with:
-          name: cabal-${{ runner.os }}-${{ matrix.ghc }}
+          name: cabal-${{ runner.os }}-x86_64
           path: cabal-head
 
       - name: Untar the cabal executable
-        run: tar -xf ./cabal-head/cabal-head.tar -C ./cabal-head
+        run: tar -xzf ./cabal-head/cabal-head-${{ runner.os }}-x86_64.tar.gz -C cabal-head
 
       - name: print-config using cabal HEAD
         run: sh validate.sh ${{ env.COMMON_FLAGS }} --with-cabal ./cabal-head/cabal -s print-config
@@ -284,6 +285,39 @@ jobs:
       # This way we check cabal can build all its dependencies
       - name: Build using cabal HEAD
         run: sh validate.sh ${{ env.COMMON_FLAGS }} --with-cabal ./cabal-head/cabal -s build
+
+  prerelease-head:
+    name: Create a GitHub prerelease with the binary artifacts
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/master'
+
+    # IMPORTANT! Any job added to the workflow should be added here too
+    needs: [validate, validate-old-ghcs, dogfooding]
+
+    steps:
+    - uses: actions/download-artifact@v2
+      with:
+        name: cabal-Windows-x86_64
+
+    - uses: actions/download-artifact@v2
+      with:
+        name: cabal-Linux-x86_64
+
+    - uses: actions/download-artifact@v2
+      with:
+        name: cabal-macOS-x86_64
+
+    - name: Create GitHub prerelease
+      uses: "marvinpinto/action-automatic-releases@v1.2.1"
+      with:
+        repo_token: "${{ secrets.GITHUB_TOKEN }}"
+        automatic_release_tag: "cabal-head"
+        prerelease: true
+        title: "cabal-head"
+        files: |
+          cabal-head-Windows-x86_64.tar.gz
+          cabal-head-Linux-x86_64.tar.gz
+          cabal-head-macOS-x86_64.tar.gz
 
   # We use this job as a summary of the workflow
   # It will fail if any of the previous jobs does it

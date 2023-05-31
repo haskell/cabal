@@ -3,16 +3,18 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Distribution.Types.AbiHash
-  ( AbiHash, unAbiHash, mkAbiHash
+  ( AbiHash
+  , unAbiHash
+  , mkAbiHash
   ) where
 
-import Prelude ()
 import Distribution.Compat.Prelude
 import Distribution.Utils.ShortText
+import Prelude ()
 
 import qualified Distribution.Compat.CharParsing as P
-import Distribution.Pretty
 import Distribution.Parsec
+import Distribution.Pretty
 
 import Text.PrettyPrint (text)
 
@@ -25,7 +27,7 @@ import Text.PrettyPrint (text)
 --
 -- @since 2.0.0.2
 newtype AbiHash = AbiHash ShortText
-    deriving (Eq, Show, Read, Generic, Typeable)
+  deriving (Eq, Show, Read, Generic, Typeable)
 
 -- | Convert 'AbiHash' to 'String'
 --
@@ -48,14 +50,14 @@ mkAbiHash = AbiHash . toShortText
 --
 -- @since 2.0.0.2
 instance IsString AbiHash where
-    fromString = mkAbiHash
+  fromString = mkAbiHash
 
 instance Binary AbiHash
 instance Structured AbiHash
 instance NFData AbiHash where rnf = genericRnf
 
 instance Pretty AbiHash where
-    pretty = text . unAbiHash
+  pretty = text . unAbiHash
 
 instance Parsec AbiHash where
-    parsec = fmap mkAbiHash (P.munch isAlphaNum)
+  parsec = fmap mkAbiHash (P.munch isAlphaNum)

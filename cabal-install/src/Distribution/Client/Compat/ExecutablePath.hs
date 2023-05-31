@@ -1,11 +1,11 @@
-{-# LANGUAGE ForeignFunctionInterface #-}
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE ForeignFunctionInterface #-}
 
 -- Copied verbatim from base-4.6.0.0. We can't simply import
 -- System.Environment.getExecutablePath because we need compatibility with older
 -- GHCs.
 
-module Distribution.Client.Compat.ExecutablePath ( getExecutablePath ) where
+module Distribution.Client.Compat.ExecutablePath (getExecutablePath) where
 
 import Prelude
 
@@ -118,6 +118,7 @@ getExecutablePath = readSymbolicLink $ "/proc/self/exe"
 --------------------------------------------------------------------------------
 -- Windows
 
+{- FOURMOLU_DISABLE -}
 #elif defined(mingw32_HOST_OS)
 
 # if defined(i386_HOST_ARCH)
@@ -164,3 +165,4 @@ getExecutablePath =
 --------------------------------------------------------------------------------
 
 #endif
+{- FOURMOLU_ENABLE -}

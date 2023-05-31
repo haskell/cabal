@@ -1,8 +1,12 @@
-{-# LANGUAGE GADTs #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -fspec-constr -fspec-constr-count=8 #-}
+
 -----------------------------------------------------------------------------
+
+-----------------------------------------------------------------------------
+
 -- |
 -- Module      :  Distribution.Compat.CharParsing
 -- Copyright   :  (c) Edward Kmett 2011
@@ -15,28 +19,27 @@
 -- Parsers for character streams
 --
 -- Originally in @parsers@ package.
---
------------------------------------------------------------------------------
 module Distribution.Compat.CharParsing
-  (
-  -- * Combinators
-    oneOf        -- :: CharParsing m => [Char] -> m Char
-  , noneOf       -- :: CharParsing m => [Char] -> m Char
-  , spaces       -- :: CharParsing m => m ()
-  , space        -- :: CharParsing m => m Char
-  , newline      -- :: CharParsing m => m Char
-  , tab          -- :: CharParsing m => m Char
-  , upper        -- :: CharParsing m => m Char
-  , lower        -- :: CharParsing m => m Char
-  , alphaNum     -- :: CharParsing m => m Char
-  , letter       -- :: CharParsing m => m Char
-  , digit        -- :: CharParsing m => m Char
-  , hexDigit     -- :: CharParsing m => m Char
-  , octDigit     -- :: CharParsing m => m Char
+  ( -- * Combinators
+    oneOf -- :: CharParsing m => [Char] -> m Char
+  , noneOf -- :: CharParsing m => [Char] -> m Char
+  , spaces -- :: CharParsing m => m ()
+  , space -- :: CharParsing m => m Char
+  , newline -- :: CharParsing m => m Char
+  , tab -- :: CharParsing m => m Char
+  , upper -- :: CharParsing m => m Char
+  , lower -- :: CharParsing m => m Char
+  , alphaNum -- :: CharParsing m => m Char
+  , letter -- :: CharParsing m => m Char
+  , digit -- :: CharParsing m => m Char
+  , hexDigit -- :: CharParsing m => m Char
+  , octDigit -- :: CharParsing m => m Char
   , satisfyRange -- :: CharParsing m => Char -> Char -> m Char
-  -- * Class
-  , CharParsing(..)
-  -- * Cabal additions
+
+    -- * Class
+  , CharParsing (..)
+
+    -- * Cabal additions
   , integral
   , signedIntegral
   , munch1
@@ -45,18 +48,18 @@ module Distribution.Compat.CharParsing
   , module Distribution.Compat.Parsing
   ) where
 
-import Prelude ()
 import Distribution.Compat.Prelude
+import Prelude ()
 
 import Control.Monad.Trans.Class (lift)
+import Control.Monad.Trans.Identity (IdentityT (..))
+import Control.Monad.Trans.RWS.Lazy as Lazy
+import Control.Monad.Trans.RWS.Strict as Strict
+import Control.Monad.Trans.Reader (ReaderT (..))
 import Control.Monad.Trans.State.Lazy as Lazy
 import Control.Monad.Trans.State.Strict as Strict
 import Control.Monad.Trans.Writer.Lazy as Lazy
 import Control.Monad.Trans.Writer.Strict as Strict
-import Control.Monad.Trans.RWS.Lazy as Lazy
-import Control.Monad.Trans.RWS.Strict as Strict
-import Control.Monad.Trans.Reader (ReaderT (..))
-import Control.Monad.Trans.Identity (IdentityT (..))
 import Data.Char
 import Data.Text (Text, unpack)
 
@@ -194,13 +197,13 @@ class Parsing m => CharParsing m where
 instance (CharParsing m, MonadPlus m) => CharParsing (Lazy.StateT s m) where
   satisfy = lift . satisfy
   {-# INLINE satisfy #-}
-  char    = lift . char
+  char = lift . char
   {-# INLINE char #-}
   notChar = lift . notChar
   {-# INLINE notChar #-}
   anyChar = lift anyChar
   {-# INLINE anyChar #-}
-  string  = lift . string
+  string = lift . string
   {-# INLINE string #-}
   text = lift . text
   {-# INLINE text #-}
@@ -208,13 +211,13 @@ instance (CharParsing m, MonadPlus m) => CharParsing (Lazy.StateT s m) where
 instance (CharParsing m, MonadPlus m) => CharParsing (Strict.StateT s m) where
   satisfy = lift . satisfy
   {-# INLINE satisfy #-}
-  char    = lift . char
+  char = lift . char
   {-# INLINE char #-}
   notChar = lift . notChar
   {-# INLINE notChar #-}
   anyChar = lift anyChar
   {-# INLINE anyChar #-}
-  string  = lift . string
+  string = lift . string
   {-# INLINE string #-}
   text = lift . text
   {-# INLINE text #-}
@@ -222,13 +225,13 @@ instance (CharParsing m, MonadPlus m) => CharParsing (Strict.StateT s m) where
 instance (CharParsing m, MonadPlus m) => CharParsing (ReaderT e m) where
   satisfy = lift . satisfy
   {-# INLINE satisfy #-}
-  char    = lift . char
+  char = lift . char
   {-# INLINE char #-}
   notChar = lift . notChar
   {-# INLINE notChar #-}
   anyChar = lift anyChar
   {-# INLINE anyChar #-}
-  string  = lift . string
+  string = lift . string
   {-# INLINE string #-}
   text = lift . text
   {-# INLINE text #-}
@@ -236,13 +239,13 @@ instance (CharParsing m, MonadPlus m) => CharParsing (ReaderT e m) where
 instance (CharParsing m, MonadPlus m, Monoid w) => CharParsing (Strict.WriterT w m) where
   satisfy = lift . satisfy
   {-# INLINE satisfy #-}
-  char    = lift . char
+  char = lift . char
   {-# INLINE char #-}
   notChar = lift . notChar
   {-# INLINE notChar #-}
   anyChar = lift anyChar
   {-# INLINE anyChar #-}
-  string  = lift . string
+  string = lift . string
   {-# INLINE string #-}
   text = lift . text
   {-# INLINE text #-}
@@ -250,13 +253,13 @@ instance (CharParsing m, MonadPlus m, Monoid w) => CharParsing (Strict.WriterT w
 instance (CharParsing m, MonadPlus m, Monoid w) => CharParsing (Lazy.WriterT w m) where
   satisfy = lift . satisfy
   {-# INLINE satisfy #-}
-  char    = lift . char
+  char = lift . char
   {-# INLINE char #-}
   notChar = lift . notChar
   {-# INLINE notChar #-}
   anyChar = lift anyChar
   {-# INLINE anyChar #-}
-  string  = lift . string
+  string = lift . string
   {-# INLINE string #-}
   text = lift . text
   {-# INLINE text #-}
@@ -264,13 +267,13 @@ instance (CharParsing m, MonadPlus m, Monoid w) => CharParsing (Lazy.WriterT w m
 instance (CharParsing m, MonadPlus m, Monoid w) => CharParsing (Lazy.RWST r w s m) where
   satisfy = lift . satisfy
   {-# INLINE satisfy #-}
-  char    = lift . char
+  char = lift . char
   {-# INLINE char #-}
   notChar = lift . notChar
   {-# INLINE notChar #-}
   anyChar = lift anyChar
   {-# INLINE anyChar #-}
-  string  = lift . string
+  string = lift . string
   {-# INLINE string #-}
   text = lift . text
   {-# INLINE text #-}
@@ -278,13 +281,13 @@ instance (CharParsing m, MonadPlus m, Monoid w) => CharParsing (Lazy.RWST r w s 
 instance (CharParsing m, MonadPlus m, Monoid w) => CharParsing (Strict.RWST r w s m) where
   satisfy = lift . satisfy
   {-# INLINE satisfy #-}
-  char    = lift . char
+  char = lift . char
   {-# INLINE char #-}
   notChar = lift . notChar
   {-# INLINE notChar #-}
   anyChar = lift anyChar
   {-# INLINE anyChar #-}
-  string  = lift . string
+  string = lift . string
   {-# INLINE string #-}
   text = lift . text
   {-# INLINE text #-}
@@ -292,23 +295,23 @@ instance (CharParsing m, MonadPlus m, Monoid w) => CharParsing (Strict.RWST r w 
 instance (CharParsing m, MonadPlus m) => CharParsing (IdentityT m) where
   satisfy = lift . satisfy
   {-# INLINE satisfy #-}
-  char    = lift . char
+  char = lift . char
   {-# INLINE char #-}
   notChar = lift . notChar
   {-# INLINE notChar #-}
   anyChar = lift anyChar
   {-# INLINE anyChar #-}
-  string  = lift . string
+  string = lift . string
   {-# INLINE string #-}
   text = lift . text
   {-# INLINE text #-}
 
 instance Parsec.Stream s m Char => CharParsing (Parsec.ParsecT s u m) where
-  satisfy   = Parsec.satisfy
-  char      = Parsec.char
+  satisfy = Parsec.satisfy
+  char = Parsec.char
   notChar c = Parsec.satisfy (/= c)
-  anyChar   = Parsec.anyChar
-  string    = Parsec.string
+  anyChar = Parsec.anyChar
+  string = Parsec.string
 
 -------------------------------------------------------------------------------
 -- Our additions
@@ -329,7 +332,7 @@ integral = toNumber <$> some d <?> "integral"
     f '7' = 7
     f '8' = 8
     f '9' = 9
-    f _   = error "panic! integral"
+    f _ = error "panic! integral"
 {-# INLINE integral #-}
 
 -- | Accepts negative (starting with @-@) and positive (without sign) integral

@@ -1,14 +1,15 @@
 {-# LANGUAGE CPP #-}
-module Distribution.Compat.Exception (
-  catchIO,
-  catchExit,
-  tryIO,
-  displayException,
+
+module Distribution.Compat.Exception
+  ( catchIO
+  , catchExit
+  , tryIO
+  , displayException
   ) where
 
-import System.Exit
-import qualified Control.Exception as Exception
 import Control.Exception (displayException)
+import qualified Control.Exception as Exception
+import System.Exit
 
 -- | Try 'IOException'.
 tryIO :: IO a -> IO (Either Exception.IOException a)

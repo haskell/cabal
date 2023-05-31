@@ -1,10 +1,11 @@
 {-# LANGUAGE CPP #-}
-module Distribution.Client.Compat.Directory (
-    setModificationTime,
-    createFileLink,
-    pathIsSymbolicLink,
-    getSymbolicLinkTarget,
-    ) where
+
+module Distribution.Client.Compat.Directory
+  ( setModificationTime
+  , createFileLink
+  , pathIsSymbolicLink
+  , getSymbolicLinkTarget
+  ) where
 
 #if MIN_VERSION_directory(1,2,3)
 import System.Directory (setModificationTime)

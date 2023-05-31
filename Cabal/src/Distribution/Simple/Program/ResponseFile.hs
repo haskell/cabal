@@ -1,6 +1,10 @@
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE RankNTypes       #-}
+{-# LANGUAGE RankNTypes #-}
+
 ----------------------------------------------------------------------------
+
+----------------------------------------------------------------------------
+
 -- |
 -- Module      :  Distribution.Simple.Program.ResponseFile
 -- Copyright   :  (c) Sergey Vinokurov 2017
@@ -8,24 +12,26 @@
 --
 -- Maintainer  :  cabal-devel@haskell.org
 -- Created     :  23 July 2017
-----------------------------------------------------------------------------
-
 module Distribution.Simple.Program.ResponseFile (withResponseFile) where
 
+import System.IO (TextEncoding, hClose, hPutStr, hSetEncoding)
 import Prelude ()
-import System.IO (TextEncoding, hSetEncoding, hPutStr, hClose)
 
 import Distribution.Compat.Prelude
-import Distribution.Simple.Utils (TempFileOptions, withTempFileEx, debug)
+import Distribution.Simple.Utils (TempFileOptions, debug, withTempFileEx)
 import Distribution.Verbosity
 
 withResponseFile
   :: Verbosity
   -> TempFileOptions
-  -> FilePath           -- ^ Working directory to create response file in.
-  -> FilePath           -- ^ Template for response file name.
-  -> Maybe TextEncoding -- ^ Encoding to use for response file contents.
-  -> [String]           -- ^ Arguments to put into response file.
+  -> FilePath
+  -- ^ Working directory to create response file in.
+  -> FilePath
+  -- ^ Template for response file name.
+  -> Maybe TextEncoding
+  -- ^ Encoding to use for response file contents.
+  -> [String]
+  -- ^ Arguments to put into response file.
   -> (FilePath -> IO a)
   -> IO a
 withResponseFile verbosity tmpFileOpts workDir fileNameTemplate encoding arguments f =
@@ -51,9 +57,9 @@ escapeResponseFileArg = reverse . foldl' escape []
     escape :: String -> Char -> String
     escape cs c =
       case c of
-        '\\'          -> c:'\\':cs
-        '\''          -> c:'\\':cs
-        '"'           -> c:'\\':cs
-        _ | isSpace c -> c:'\\':cs
-          | otherwise -> c:cs
-
+        '\\' -> c : '\\' : cs
+        '\'' -> c : '\\' : cs
+        '"' -> c : '\\' : cs
+        _
+          | isSpace c -> c : '\\' : cs
+          | otherwise -> c : cs

@@ -1,0 +1,13 @@
+# cabal v2-repl
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following will be built:
+ - pkg-a-0 (interactive) (lib) (first run)
+ - pkg-b-0 (interactive) (lib) (first run)
+ - pkg-c-0 (interactive) (lib) (first run)
+Configuring library for pkg-a-0..
+Preprocessing library for pkg-a-0..
+Configuring library for pkg-b-0..
+Preprocessing library for pkg-b-0..
+Configuring library for pkg-c-0..
+Preprocessing library for pkg-c-0..

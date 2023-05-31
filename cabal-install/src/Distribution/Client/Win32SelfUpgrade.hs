@@ -1,5 +1,10 @@
-{-# LANGUAGE CPP, ForeignFunctionInterface #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE ForeignFunctionInterface #-}
+
 -----------------------------------------------------------------------------
+
+-----------------------------------------------------------------------------
+
 -- |
 -- Module      :  Distribution.Client.Win32SelfUpgrade
 -- Copyright   :  (c) Duncan Coutts 2008
@@ -10,36 +15,35 @@
 -- Portability :  portable
 --
 -- Support for self-upgrading executables on Windows platforms.
------------------------------------------------------------------------------
-module Distribution.Client.Win32SelfUpgrade (
--- * Explanation
---
--- | Windows inherited a design choice from DOS that while initially innocuous
--- has rather unfortunate consequences. It maintains the invariant that every
--- open file has a corresponding name on disk. One positive consequence of this
--- is that an executable can always find its own executable file. The downside
--- is that a program cannot be deleted or upgraded while it is running without
--- hideous workarounds. This module implements one such hideous workaround.
---
--- The basic idea is:
---
--- * Move our own exe file to a new name
--- * Copy a new exe file to the previous name
--- * Run the new exe file, passing our own PID and new path
--- * Wait for the new process to start
--- * Close the new exe file
--- * Exit old process
---
--- Then in the new process:
---
--- * Inform the old process that we've started
--- * Wait for the old process to die
--- * Delete the old exe file
--- * Exit new process
---
+module Distribution.Client.Win32SelfUpgrade
+  ( -- * Explanation
 
-    possibleSelfUpgrade,
-    deleteOldExeFile,
+  --
+
+    -- | Windows inherited a design choice from DOS that while initially innocuous
+    -- has rather unfortunate consequences. It maintains the invariant that every
+    -- open file has a corresponding name on disk. One positive consequence of this
+    -- is that an executable can always find its own executable file. The downside
+    -- is that a program cannot be deleted or upgraded while it is running without
+    -- hideous workarounds. This module implements one such hideous workaround.
+    --
+    -- The basic idea is:
+    --
+    -- * Move our own exe file to a new name
+    -- * Copy a new exe file to the previous name
+    -- * Run the new exe file, passing our own PID and new path
+    -- * Wait for the new process to start
+    -- * Close the new exe file
+    -- * Exit old process
+    --
+    -- Then in the new process:
+    --
+    -- * Inform the old process that we've started
+    -- * Wait for the old process to die
+    -- * Delete the old exe file
+    -- * Exit new process
+    possibleSelfUpgrade
+  , deleteOldExeFile
   ) where
 
 import Distribution.Client.Compat.Prelude hiding (log)
@@ -162,6 +166,7 @@ deleteOldExeFile verbosity oldPID tmpPath = do
 
 -- A bunch of functions sadly not provided by the Win32 package.
 
+{- FOURMOLU_DISABLE -}
 #ifdef x86_64_HOST_ARCH
 #define CALLCONV ccall
 #else
@@ -224,3 +229,4 @@ deleteOldExeFile :: Verbosity -> Int -> FilePath -> IO ()
 deleteOldExeFile verbosity _ _ = die' verbosity "win32selfupgrade not needed except on win32"
 
 #endif
+{- FOURMOLU_ENABLE -}

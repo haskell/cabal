@@ -1,10 +1,10 @@
 {-# LANGUAGE CPP #-}
 
 module Distribution.Compat.Directory
-( listDirectory
-, makeAbsolute
-, doesPathExist
-) where
+  ( listDirectory
+  , makeAbsolute
+  , doesPathExist
+  ) where
 
 #if MIN_VERSION_directory(1,2,7)
 import System.Directory as Dir hiding (doesPathExist)
@@ -46,4 +46,3 @@ doesPathExist path = do
     else doesFileExist path
 
 #endif
-

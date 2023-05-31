@@ -1,43 +1,39 @@
 {-# LANGUAGE CPP #-}
+
 -----------------------------------------------------------------------------
+
 -- |
 -- Module      :  Distribution.Fields.LexerMonad
 -- License     :  BSD3
 --
 -- Maintainer  :  cabal-devel@haskell.org
 -- Portability :  portable
-module Distribution.Fields.LexerMonad (
-    InputStream,
-    LexState(..),
-    LexResult(..),
-
-    Lex(..),
-    execLexer,
-
-    getPos,
-    setPos,
-    adjustPos,
-
-    getInput,
-    setInput,
-
-    getStartCode,
-    setStartCode,
-
-    LexWarning(..),
-    LexWarningType(..),
-    addWarning,
-    addWarningAt,
-    toPWarnings,
-
+module Distribution.Fields.LexerMonad
+  ( InputStream
+  , LexState (..)
+  , LexResult (..)
+  , Lex (..)
+  , execLexer
+  , getPos
+  , setPos
+  , adjustPos
+  , getInput
+  , setInput
+  , getStartCode
+  , setStartCode
+  , LexWarning (..)
+  , LexWarningType (..)
+  , addWarning
+  , addWarningAt
+  , toPWarnings
   ) where
 
-import qualified Data.ByteString              as B
-import qualified Data.List.NonEmpty           as NE
-import           Distribution.Compat.Prelude
-import           Distribution.Parsec.Position (Position (..), showPos)
-import           Distribution.Parsec.Warning  (PWarnType (..), PWarning (..))
-import           Prelude ()
+import qualified Data.ByteString as B
+import qualified Data.List.NonEmpty as NE
+import Distribution.Compat.Prelude
+import Distribution.Parsec.Position (Position (..), showPos)
+import Distribution.Parsec.Warning (PWarnType (..), PWarning (..))
+import Prelude ()
 
 import qualified Data.Map.Strict as Map
 
@@ -49,7 +45,7 @@ import qualified Data.Vector        as V
 #endif
 
 -- simple state monad
-newtype Lex a = Lex { unLex :: LexState -> LexResult a }
+newtype Lex a = Lex {unLex :: LexState -> LexResult a}
 
 instance Functor Lex where
   fmap = liftM
@@ -60,66 +56,83 @@ instance Applicative Lex where
 
 instance Monad Lex where
   return = pure
-  (>>=)  = thenLex
+  (>>=) = thenLex
 
 data LexResult a = LexResult {-# UNPACK #-} !LexState a
 
 data LexWarningType
-    = LexWarningNBSP  -- ^ Encountered non breaking space
-    | LexWarningBOM   -- ^ BOM at the start of the cabal file
-    | LexWarningTab   -- ^ Leading tags
+  = -- | Encountered non breaking space
+    LexWarningNBSP
+  | -- | BOM at the start of the cabal file
+    LexWarningBOM
+  | -- | Leading tags
+    LexWarningTab
   deriving (Eq, Ord, Show)
 
-data LexWarning = LexWarning                !LexWarningType
-                             {-# UNPACK #-} !Position
+data LexWarning
+  = LexWarning
+      !LexWarningType
+      {-# UNPACK #-} !Position
   deriving (Show)
 
 toPWarnings :: [LexWarning] -> [PWarning]
-toPWarnings
-    = map (uncurry toWarning)
+toPWarnings =
+  map (uncurry toWarning)
     . Map.toList
     . Map.fromListWith (<>)
     . map (\(LexWarning t p) -> (t, pure p))
   where
     toWarning LexWarningBOM poss =
-        PWarning PWTLexBOM (NE.head poss) "Byte-order mark found at the beginning of the file"
+      PWarning PWTLexBOM (NE.head poss) "Byte-order mark found at the beginning of the file"
     toWarning LexWarningNBSP poss =
-        PWarning PWTLexNBSP (NE.head poss) $ "Non breaking spaces at " ++ intercalate ", " (NE.toList $ fmap showPos poss)
+      PWarning PWTLexNBSP (NE.head poss) $ "Non breaking spaces at " ++ intercalate ", " (NE.toList $ fmap showPos poss)
     toWarning LexWarningTab poss =
-        PWarning PWTLexTab (NE.head poss) $ "Tabs used as indentation at " ++ intercalate ", " (NE.toList $ fmap showPos poss)
+      PWarning PWTLexTab (NE.head poss) $ "Tabs used as indentation at " ++ intercalate ", " (NE.toList $ fmap showPos poss)
 
-data LexState = LexState {
-        curPos   :: {-# UNPACK #-} !Position,        -- ^ position at current input location
-        curInput :: {-# UNPACK #-} !InputStream,     -- ^ the current input
-        curCode  :: {-# UNPACK #-} !StartCode,       -- ^ lexer code
-        warnings :: [LexWarning]
+{- FOURMOLU_DISABLE -}
+data LexState = LexState
+  { curPos :: {-# UNPACK #-} !Position
+  -- ^ position at current input location
+  , curInput :: {-# UNPACK #-} !InputStream
+  -- ^ the current input
+  , curCode :: {-# UNPACK #-} !StartCode
+  -- ^ lexer code
+  , warnings :: [LexWarning]
 #ifdef CABAL_PARSEC_DEBUG
-        , dbgText  :: V.Vector T.Text                -- ^ input lines, to print pretty debug info
+  ,  dbgText :: V.Vector T.Text
+  -- ^ input lines, to print pretty debug info
 #endif
-     } --TODO: check if we should cache the first token
-       -- since it looks like parsec's uncons can be called many times on the same input
+  }
+{- FOURMOLU_ENABLE -}
 
-type StartCode   = Int    -- ^ An @alex@ lexer start code
+-- TODO: check if we should cache the first token
+-- since it looks like parsec's uncons can be called many times on the same input
+
+type StartCode =
+  Int
+  -- ^ An @alex@ lexer start code
+
 type InputStream = B.ByteString
 
-
-
 -- | Execute the given lexer on the supplied input stream.
+{- FOURMOLU_DISABLE -}
 execLexer :: Lex a -> InputStream -> ([LexWarning], a)
 execLexer (Lex lexer) input =
-    case lexer initialState of
-      LexResult LexState{ warnings = ws } result -> (ws, result)
+  case lexer initialState of
+    LexResult LexState{warnings = ws} result -> (ws, result)
   where
-    initialState = LexState
-      -- TODO: add 'startPosition'
-      { curPos   = Position 1 1
-      , curInput = input
-      , curCode  = 0
-      , warnings = []
+    initialState =
+      LexState
+        { -- TODO: add 'startPosition'
+          curPos = Position 1 1
+        , curInput = input
+        , curCode = 0
+        , warnings = []
 #ifdef CABAL_PARSEC_DEBUG
-      , dbgText  = V.fromList . T.lines . T.decodeUtf8 $ input
+        ,  dbgText = V.fromList . T.lines . T.decodeUtf8 $ input
 #endif
-      }
+        }
+{- FOURMOLU_ENABLE -}
 
 {-# INLINE returnLex #-}
 returnLex :: a -> Lex a
@@ -130,32 +143,32 @@ thenLex :: Lex a -> (a -> Lex b) -> Lex b
 (Lex m) `thenLex` k = Lex $ \s -> case m s of LexResult s' a -> (unLex (k a)) s'
 
 setPos :: Position -> Lex ()
-setPos pos = Lex $ \s -> LexResult s{ curPos = pos } ()
+setPos pos = Lex $ \s -> LexResult s{curPos = pos} ()
 
 getPos :: Lex Position
-getPos = Lex $ \s@LexState{ curPos = pos } -> LexResult s pos
+getPos = Lex $ \s@LexState{curPos = pos} -> LexResult s pos
 
 adjustPos :: (Position -> Position) -> Lex ()
-adjustPos f = Lex $ \s@LexState{ curPos = pos } -> LexResult s{ curPos = f pos } ()
+adjustPos f = Lex $ \s@LexState{curPos = pos} -> LexResult s{curPos = f pos} ()
 
 getInput :: Lex InputStream
-getInput = Lex $ \s@LexState{ curInput = i } -> LexResult s i
+getInput = Lex $ \s@LexState{curInput = i} -> LexResult s i
 
 setInput :: InputStream -> Lex ()
-setInput i = Lex $ \s -> LexResult s{ curInput = i } ()
+setInput i = Lex $ \s -> LexResult s{curInput = i} ()
 
 getStartCode :: Lex Int
-getStartCode = Lex $ \s@LexState{ curCode = c } -> LexResult s c
+getStartCode = Lex $ \s@LexState{curCode = c} -> LexResult s c
 
 setStartCode :: Int -> Lex ()
-setStartCode c = Lex $ \s -> LexResult s{ curCode = c } ()
+setStartCode c = Lex $ \s -> LexResult s{curCode = c} ()
 
 -- | Add warning at the current position
 addWarning :: LexWarningType -> Lex ()
-addWarning wt = Lex $ \s@LexState{ curPos = pos, warnings = ws  } ->
-    LexResult s{ warnings = LexWarning wt pos : ws } ()
+addWarning wt = Lex $ \s@LexState{curPos = pos, warnings = ws} ->
+  LexResult s{warnings = LexWarning wt pos : ws} ()
 
 -- | Add warning at specific position
 addWarningAt :: Position -> LexWarningType -> Lex ()
-addWarningAt pos wt = Lex $ \s@LexState{ warnings = ws  } ->
-    LexResult s{ warnings = LexWarning wt pos : ws } ()
+addWarningAt pos wt = Lex $ \s@LexState{warnings = ws} ->
+  LexResult s{warnings = LexWarning wt pos : ws} ()

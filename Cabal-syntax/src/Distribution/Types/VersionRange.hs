@@ -1,42 +1,48 @@
-module Distribution.Types.VersionRange (
-    -- * Version ranges
-    VersionRange,
+module Distribution.Types.VersionRange
+  ( -- * Version ranges
+    VersionRange
 
     -- ** Constructing
-    anyVersion, noVersion,
-    thisVersion, notThisVersion,
-    laterVersion, earlierVersion,
-    orLaterVersion, orEarlierVersion,
-    unionVersionRanges, intersectVersionRanges,
-    withinVersion,
-    majorBoundVersion,
+  , anyVersion
+  , noVersion
+  , thisVersion
+  , notThisVersion
+  , laterVersion
+  , earlierVersion
+  , orLaterVersion
+  , orEarlierVersion
+  , unionVersionRanges
+  , intersectVersionRanges
+  , withinVersion
+  , majorBoundVersion
 
     -- ** Inspection
-    --
-    -- See "Distribution.Version" for more utilities.
-    withinRange,
-    foldVersionRange,
-    normaliseVersionRange,
-    stripParensVersionRange,
-    hasUpperBound,
-    hasLowerBound,
+
+  --
+  -- See "Distribution.Version" for more utilities.
+  , withinRange
+  , foldVersionRange
+  , normaliseVersionRange
+  , stripParensVersionRange
+  , hasUpperBound
+  , hasLowerBound
 
     -- ** Cata & ana
-    VersionRangeF (..),
-    cataVersionRange,
-    anaVersionRange,
-    hyloVersionRange,
-    projectVersionRange,
-    embedVersionRange,
+  , VersionRangeF (..)
+  , cataVersionRange
+  , anaVersionRange
+  , hyloVersionRange
+  , projectVersionRange
+  , embedVersionRange
 
     -- ** Utilities
-    isAnyVersion,
-    isAnyVersionLight,
-    wildcardUpperBound,
-    majorUpperBound,
-    isWildcardRange,
-    versionRangeParser,
-    ) where
+  , isAnyVersion
+  , isAnyVersionLight
+  , wildcardUpperBound
+  , majorUpperBound
+  , isWildcardRange
+  , versionRangeParser
+  ) where
 
 import Distribution.Compat.Prelude
 import Distribution.Types.Version
@@ -51,30 +57,38 @@ import Prelude ()
 -- in terms of the other basic syntax.
 --
 -- For a semantic view use 'asVersionIntervals'.
---
-foldVersionRange :: a                         -- ^ @\"-any\"@ version
-                 -> (Version -> a)            -- ^ @\"== v\"@
-                 -> (Version -> a)            -- ^ @\"> v\"@
-                 -> (Version -> a)            -- ^ @\"< v\"@
-                 -> (a -> a -> a)             -- ^ @\"_ || _\"@ union
-                 -> (a -> a -> a)             -- ^ @\"_ && _\"@ intersection
-                 -> VersionRange -> a
+foldVersionRange
+  :: a
+  -- ^ @\"-any\"@ version
+  -> (Version -> a)
+  -- ^ @\"== v\"@
+  -> (Version -> a)
+  -- ^ @\"> v\"@
+  -> (Version -> a)
+  -- ^ @\"< v\"@
+  -> (a -> a -> a)
+  -- ^ @\"_ || _\"@ union
+  -> (a -> a -> a)
+  -- ^ @\"_ && _\"@ intersection
+  -> VersionRange
+  -> a
 foldVersionRange _any this later earlier union intersect = fold
   where
     fold = cataVersionRange alg
 
-    alg (ThisVersionF v)                = this v
-    alg (LaterVersionF v)               = later v
-    alg (OrLaterVersionF v)             = union (this v) (later v)
-    alg (EarlierVersionF v)             = earlier v
-    alg (OrEarlierVersionF v)           = union (this v) (earlier v)
-    alg (MajorBoundVersionF v)          = fold (majorBound v)
-    alg (UnionVersionRangesF v1 v2)     = union v1 v2
+    alg (ThisVersionF v) = this v
+    alg (LaterVersionF v) = later v
+    alg (OrLaterVersionF v) = union (this v) (later v)
+    alg (EarlierVersionF v) = earlier v
+    alg (OrEarlierVersionF v) = union (this v) (earlier v)
+    alg (MajorBoundVersionF v) = fold (majorBound v)
+    alg (UnionVersionRangesF v1 v2) = union v1 v2
     alg (IntersectVersionRangesF v1 v2) = intersect v1 v2
 
-    majorBound v = intersectVersionRanges
-                     (orLaterVersion v)
-                     (earlierVersion (majorUpperBound v))
+    majorBound v =
+      intersectVersionRanges
+        (orLaterVersion v)
+        (earlierVersion (majorUpperBound v))
 
 -- | Normalise 'VersionRange'.
 --
@@ -83,17 +97,19 @@ normaliseVersionRange :: VersionRange -> VersionRange
 normaliseVersionRange = hyloVersionRange embed projectVersionRange
   where
     -- == v || > v, > v || == v  ==>  >= v
-    embed (UnionVersionRangesF (ThisVersion v) (LaterVersion v')) | v == v' =
-        orLaterVersion v
-    embed (UnionVersionRangesF (LaterVersion v) (ThisVersion v')) | v == v' =
-        orLaterVersion v
-
+    embed (UnionVersionRangesF (ThisVersion v) (LaterVersion v'))
+      | v == v' =
+          orLaterVersion v
+    embed (UnionVersionRangesF (LaterVersion v) (ThisVersion v'))
+      | v == v' =
+          orLaterVersion v
     -- == v || < v, < v || == v  ==>  <= v
-    embed (UnionVersionRangesF (ThisVersion v) (EarlierVersion v')) | v == v' =
-        orEarlierVersion v
-    embed (UnionVersionRangesF (EarlierVersion v) (ThisVersion v')) | v == v' =
-        orEarlierVersion v
-
+    embed (UnionVersionRangesF (ThisVersion v) (EarlierVersion v'))
+      | v == v' =
+          orEarlierVersion v
+    embed (UnionVersionRangesF (EarlierVersion v) (ThisVersion v'))
+      | v == v' =
+          orEarlierVersion v
     -- otherwise embed normally
     embed vr = embedVersionRange vr
 
@@ -108,15 +124,15 @@ stripParensVersionRange = id
 -- | Does this version fall within the given range?
 --
 -- This is the evaluation function for the 'VersionRange' type.
---
 withinRange :: Version -> VersionRange -> Bool
-withinRange v = foldVersionRange
-                   True
-                   (\v'  -> v == v')
-                   (\v'  -> v >  v')
-                   (\v'  -> v <  v')
-                   (||)
-                   (&&)
+withinRange v =
+  foldVersionRange
+    True
+    (\v' -> v == v')
+    (\v' -> v > v')
+    (\v' -> v < v')
+    (||)
+    (&&)
 
 -- | Does this 'VersionRange' place any restriction on the 'Version' or is it
 -- in fact equivalent to 'AnyVersion'.
@@ -125,11 +141,10 @@ withinRange v = foldVersionRange
 -- the following is @True@ (for all @v@).
 --
 -- > isAnyVersion (EarlierVersion v `UnionVersionRanges` orLaterVersion v)
---
 isAnyVersion :: VersionRange -> Bool
 isAnyVersion vr = case asVersionIntervals vr of
-    [VersionInterval (LowerBound v InclusiveBound) NoUpperBound] -> v == version0
-    _                                                            -> False
+  [VersionInterval (LowerBound v InclusiveBound) NoUpperBound] -> v == version0
+  _ -> False
 
 -- A fast and non-precise version of 'isAnyVersion',
 -- returns 'True' only for @>= 0@ 'VersionRange's.
@@ -141,29 +156,31 @@ isAnyVersion vr = case asVersionIntervals vr of
 --
 isAnyVersionLight :: VersionRange -> Bool
 isAnyVersionLight (OrLaterVersion v) = v == version0
-isAnyVersionLight _vr                = False
+isAnyVersionLight _vr = False
 
 ----------------------------
 -- Wildcard range utilities
 --
 
-
 isWildcardRange :: Version -> Version -> Bool
 isWildcardRange ver1 ver2 = check (versionNumbers ver1) (versionNumbers ver2)
-  where check (n:[]) (m:[]) | n+1 == m = True
-        check (n:ns) (m:ms) | n   == m = check ns ms
-        check _      _                 = False
+  where
+    check (n : []) (m : []) | n + 1 == m = True
+    check (n : ns) (m : ms) | n == m = check ns ms
+    check _ _ = False
 
 -- | Does the version range have an upper bound?
 --
 -- @since 1.24.0.0
 hasUpperBound :: VersionRange -> Bool
-hasUpperBound = foldVersionRange
-                False
-                (const True)
-                (const False)
-                (const True)
-                (&&) (||)
+hasUpperBound =
+  foldVersionRange
+    False
+    (const True)
+    (const False)
+    (const True)
+    (&&)
+    (||)
 
 -- | Does the version range have an explicit lower bound?
 --
@@ -172,9 +189,11 @@ hasUpperBound = foldVersionRange
 --
 -- @since 1.24.0.0
 hasLowerBound :: VersionRange -> Bool
-hasLowerBound = foldVersionRange
-                False
-                (const True)
-                (const True)
-                (const False)
-                (&&) (||)
+hasLowerBound =
+  foldVersionRange
+    False
+    (const True)
+    (const True)
+    (const False)
+    (&&)
+    (||)

@@ -137,37 +137,15 @@ For instance:
 Manual QA is not expected to find every possible bug, but to really challenge the assumptions of the contributor, and to verify that their own testing
 of their patch is not influenced by their setup or implicit knowledge of the system.
 
-Whitespace Conventions
-----------------------
 
-* No tab characters allowed.
-* No trailing whitespace allowed.
-* File needs to be terminated by a newline character.
+Code Style
+---------------
 
-These conventions are enforced by the
-[fix-whitespace](https://hackage.haskell.org/package/fix-whitespace)
-tool.  Install it from hackage as usual (`cabal install fix-whitespace`)
-and run it in the project root to fix whitespace violations.
-
-The files included in the automatic whitespace check are specified in
-`fix-whitespace.yaml`.  Please add to this file if you add textfiles
-to this repository that are not included by the rules given there.
-Note that files that make essential use of tab characters (like `Makefile`)
-should _not_ be included in the automatic check.
-
-Whitespace conventions are enforced by
-[CI](https://github.com/haskell/cabal/actions/workflows/whitespace.yml).
-If you push a fix of a whitespace violation, please do so in a
-_separate commit_.
-
-
-
+We use automated formatting with Fourmolu to enforce a unified style across the code bases. It is checked in the CI process.
+You can automatically format the code bases with `make style` at the top level of the project.
 
 Other Conventions
 -----------------
-
-* Try to follow style conventions of a file you are modifying, and
-  avoid gratuitous reformatting (it makes merges harder!)
 
 * Format your commit messages [in the standard way](https://chris.beams.io/posts/git-commit/#seven-rules).
 
@@ -226,10 +204,6 @@ Other Conventions
   f = (+2)
   #endif
   ```
-
-We like [this style guide][guide].
-
-[guide]: https://github.com/tibbe/haskell-style-guide/blob/master/haskell-style.md
 
 GitHub Ticket Conventions
 -------------------

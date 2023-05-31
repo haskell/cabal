@@ -17,10 +17,10 @@ import Distribution.Client.IndexUtils.Timestamp
 import Distribution.Client.ProjectConfig.Types
 import Distribution.Client.Targets
 import Distribution.Client.Types
-import Distribution.Client.Types.OverwritePolicy         (OverwritePolicy)
-import Distribution.Client.Types.SourceRepo              (SourceRepositoryPackage)
+import Distribution.Client.Types.OverwritePolicy (OverwritePolicy)
+import Distribution.Client.Types.SourceRepo (SourceRepositoryPackage)
 
-import Distribution.Simple.Compiler                      (PackageDB)
+import Distribution.Simple.Compiler (PackageDB)
 
 import Data.TreeDiff.Class
 import Data.TreeDiff.Instances.Cabal ()

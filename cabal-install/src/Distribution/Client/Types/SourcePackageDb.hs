@@ -1,29 +1,29 @@
 {-# LANGUAGE DeriveGeneric #-}
-module Distribution.Client.Types.SourcePackageDb (
-    SourcePackageDb (..),
-    lookupDependency,
-    lookupPackageName,
-) where
+
+module Distribution.Client.Types.SourcePackageDb
+  ( SourcePackageDb (..)
+  , lookupDependency
+  , lookupPackageName
+  ) where
 
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
-import Distribution.Types.PackageName  (PackageName)
+import Distribution.Package (packageVersion)
+import Distribution.Types.PackageName (PackageName)
 import Distribution.Types.VersionRange (VersionRange, withinRange)
-import Distribution.Package            (packageVersion)
 
 import Distribution.Client.Types.PackageLocation (UnresolvedSourcePackage)
+import Distribution.Solver.Types.PackageIndex (PackageIndex)
 import qualified Distribution.Solver.Types.PackageIndex as PackageIndex
-import Distribution.Solver.Types.PackageIndex    (PackageIndex)
 
 import qualified Data.Map as Map
 
 -- | This is the information we get from a @00-index.tar.gz@ hackage index.
---
 data SourcePackageDb = SourcePackageDb
-    { packageIndex       :: PackageIndex UnresolvedSourcePackage
-    , packagePreferences :: Map PackageName VersionRange
-    }
+  { packageIndex :: PackageIndex UnresolvedSourcePackage
+  , packagePreferences :: Map PackageName VersionRange
+  }
   deriving (Eq, Generic)
 
 instance Binary SourcePackageDb
@@ -41,7 +41,6 @@ lookupDependency sourceDb pname version =
   filterPreferredVersions pref $ PackageIndex.lookupDependency (packageIndex sourceDb) pname version
   where
     pref = Map.lookup pname (packagePreferences sourceDb)
-
 
 -- | Does a case-sensitive search by package name.
 --

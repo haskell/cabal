@@ -5,8 +5,9 @@
 #endif
 module UnitTests.Distribution.Utils.CharSet where
 
+import Prelude hiding (Foldable(..))
 import Data.Char        (isAlpha, isAlphaNum)
-import Data.List        (foldl')
+import Data.Foldable    (foldl')
 import Test.Tasty       (TestTree, testGroup)
 import Test.Tasty.HUnit (testCase, (@?=))
 

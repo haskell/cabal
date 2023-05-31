@@ -1,0 +1,9 @@
+# cabal v2-repl
+Resolving dependencies...
+Error: cabal: Cannot open a repl for multiple components at once. The targets 'pkg-a' and 'pkg-b' refer to different components..
+
+Your compiler supports a multiple component repl but support is not enabled.
+The experimental multi repl can be enabled by
+  * Globally: Setting multi-repl: True in your .cabal/config
+  * Project Wide: Setting multi-repl: True in your cabal.project file
+  * Per Invocation: By passing --enable-multi-repl when starting the repl

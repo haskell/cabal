@@ -1,4 +1,5 @@
 -----------------------------------------------------------------------------
+
 -- |
 -- Module      :  Distribution.Compat.SnocList
 -- License     :  BSD3
@@ -8,14 +9,14 @@
 -- Portability :  portable
 --
 -- A very reversed list. Has efficient `snoc`
-module Distribution.Compat.SnocList (
-    SnocList,
-    runSnocList,
-    snoc,
-) where
+module Distribution.Compat.SnocList
+  ( SnocList
+  , runSnocList
+  , snoc
+  ) where
 
-import Prelude ()
 import Distribution.Compat.Prelude
+import Prelude ()
 
 newtype SnocList a = SnocList [a]
 
@@ -26,8 +27,8 @@ runSnocList :: SnocList a -> [a]
 runSnocList (SnocList xs) = reverse xs
 
 instance Semigroup (SnocList a) where
-    SnocList xs <> SnocList ys = SnocList (ys <> xs)
+  SnocList xs <> SnocList ys = SnocList (ys <> xs)
 
 instance Monoid (SnocList a) where
-    mempty = SnocList []
-    mappend = (<>)
+  mempty = SnocList []
+  mappend = (<>)

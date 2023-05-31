@@ -1,7 +1,7 @@
 module Main (main) where
 
-import Prelude ()
 import Distribution.Client.Compat.Prelude
+import Prelude ()
 
 import System.Environment (getArgs)
 
