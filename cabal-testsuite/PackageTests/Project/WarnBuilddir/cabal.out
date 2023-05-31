@@ -1,0 +1,6 @@
+# cabal v2-build
+Warning: The builddir option is not supported in project and config files. It will be ignored.
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following would be built:
+ - main-0.1 (lib) (first run)

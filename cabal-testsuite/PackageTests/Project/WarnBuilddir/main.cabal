@@ -1,0 +1,14 @@
+cabal-version: 3.0
+
+name: main
+version: 0.1
+build-type: Simple
+category: Test
+maintainer: Joe
+synopsis: Test input
+description: Test input
+license: BSD-3-Clause
+
+library
+  build-depends: base
+  default-language: Haskell2010
