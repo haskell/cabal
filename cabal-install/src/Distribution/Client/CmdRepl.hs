@@ -31,7 +31,7 @@ import Distribution.Client.CmdErrorMessages
          ( renderTargetSelector, showTargetSelector,
            renderTargetProblem,
            targetSelectorRefersToPkgs,
-           renderComponentKind, renderListCommaAnd, renderListSemiAnd,
+           renderComponentKind, renderListPretty, renderListSemiAnd, 
            componentKind, sortGroupOn, Plural(..) )
 import Distribution.Client.TargetProblem
          ( TargetProblem(..) )
@@ -509,7 +509,7 @@ renderReplProblem (TargetProblemMatchesMultiple targetSelector targets) =
  ++ (if targetSelectorRefersToPkgs targetSelector then "includes " else "are ")
  ++ renderListSemiAnd
       [ "the " ++ renderComponentKind Plural ckind ++ " " ++
-        renderListCommaAnd
+        renderListPretty
           [ maybe (prettyShow pkgname) prettyShow (componentNameString cname)
           | t <- ts
           , let cname   = availableTargetComponentName t
@@ -524,7 +524,7 @@ renderReplProblem (TargetProblemMatchesMultiple targetSelector targets) =
 
 renderReplProblem (TargetProblemMultipleTargets selectorMap) =
     "Cannot open a repl for multiple components at once. The targets "
- ++ renderListCommaAnd
+ ++ renderListPretty
       [ "'" ++ showTargetSelector ts ++ "'"
       | ts <- uniqueTargetSelectors selectorMap ]
  ++ " refer to different components."

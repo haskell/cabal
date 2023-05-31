@@ -446,8 +446,8 @@ renderRunProblem (TargetProblemMatchesMultiple targetSelector targets) =
 
 renderRunProblem (TargetProblemMultipleTargets selectorMap) =
     "The run command is for running a single executable at once. The targets "
- ++ renderListCommaAnd [ "'" ++ showTargetSelector ts ++ "'"
-                       | ts <- uniqueTargetSelectors selectorMap ]
+ ++ renderListPretty [ "'" ++ showTargetSelector ts ++ "'"
+                     | ts <- uniqueTargetSelectors selectorMap ]
  ++ " refer to different executables."
 
 renderRunProblem (TargetProblemComponentNotExe pkgid cname) =

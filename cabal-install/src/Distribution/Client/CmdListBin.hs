@@ -20,7 +20,7 @@ import Distribution.Client.Compat.Prelude
 import Prelude ()
 
 import Distribution.Client.CmdErrorMessages
-       (plural, renderListCommaAnd, renderTargetProblem, renderTargetProblemNoTargets,
+       (plural, renderListPretty, renderTargetProblem, renderTargetProblemNoTargets,
        renderTargetSelector, showTargetSelector, targetSelectorFilter, targetSelectorPluralPkgs)
 import Distribution.Client.DistDirLayout         (DistDirLayout (..))
 import Distribution.Client.NixStyleOptions
@@ -347,7 +347,7 @@ renderListBinProblem (TargetProblemMatchesMultiple targetSelector targets) =
     "The list-bin command is for finding a single binary at once. The target '"
  ++ showTargetSelector targetSelector ++ "' refers to "
  ++ renderTargetSelector targetSelector ++ " which includes "
- ++ renderListCommaAnd ( ("the "++) <$>
+ ++ renderListPretty ( ("the "++) <$>
                          showComponentName <$>
                          availableTargetComponentName <$>
                          foldMap
@@ -357,8 +357,8 @@ renderListBinProblem (TargetProblemMatchesMultiple targetSelector targets) =
 
 renderListBinProblem (TargetProblemMultipleTargets selectorMap) =
     "The list-bin command is for finding a single binary at once. The targets "
- ++ renderListCommaAnd [ "'" ++ showTargetSelector ts ++ "'"
-                       | ts <- uniqueTargetSelectors selectorMap ]
+ ++ renderListPretty [ "'" ++ showTargetSelector ts ++ "'"
+                     | ts <- uniqueTargetSelectors selectorMap ]
  ++ " refer to different executables."
 
 renderListBinProblem (TargetProblemComponentNotRightKind pkgid cname) =
