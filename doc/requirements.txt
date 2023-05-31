@@ -4,63 +4,62 @@
 #
 #    pip-compile requirements.in
 #
-alabaster==0.7.12
+alabaster==0.7.13
     # via sphinx
-babel==2.9.1
+babel==2.12.1
     # via sphinx
-certifi==2022.12.7
+certifi==2023.5.7
     # via
     #   -r requirements.in
     #   requests
-charset-normalizer==2.0.7
+charset-normalizer==3.1.0
     # via requests
 docutils==0.18.1
     # via
     #   sphinx
     #   sphinx-jsonschema
     #   sphinx-rtd-theme
-idna==2.10
+idna==3.4
     # via requests
 imagesize==1.4.1
     # via sphinx
 jinja2==3.1.2
     # via sphinx
-jsonpointer==2.1
+jsonpointer==2.3
     # via sphinx-jsonschema
 markupsafe==2.1.2
     # via jinja2
-packaging==23.0
+packaging==23.1
     # via sphinx
-pygments==2.14.0
+pygments==2.15.1
     # via
     #   -r requirements.in
     #   sphinx
-pytz==2021.3
-    # via babel
-pyyaml==5.4.1
+pyyaml==6.0
     # via sphinx-jsonschema
-requests==2.26.0
+requests==2.31.0
     # via
     #   sphinx
     #   sphinx-jsonschema
-snowballstemmer==2.1.0
+snowballstemmer==2.2.0
     # via sphinx
 sphinx==5.3.0
     # via
     #   -r requirements.in
     #   sphinx-rtd-theme
+    #   sphinxcontrib-jquery
     #   sphinxnotes-strike
-sphinx-jsonschema==1.16.11
+sphinx-jsonschema==1.19.1
     # via -r requirements.in
-sphinx-rtd-theme==1.2.0
+sphinx-rtd-theme==1.2.1
     # via -r requirements.in
-sphinxcontrib-applehelp==1.0.2
+sphinxcontrib-applehelp==1.0.4
     # via sphinx
 sphinxcontrib-devhelp==1.0.2
     # via sphinx
-sphinxcontrib-htmlhelp==2.0.0
+sphinxcontrib-htmlhelp==2.0.1
     # via sphinx
-sphinxcontrib-jquery==2.0.0
+sphinxcontrib-jquery==4.1
     # via sphinx-rtd-theme
 sphinxcontrib-jsmath==1.0.1
     # via sphinx
@@ -68,10 +67,7 @@ sphinxcontrib-qthelp==1.0.3
     # via sphinx
 sphinxcontrib-serializinghtml==1.1.5
     # via sphinx
-sphinxnotes-strike==1.1
+sphinxnotes-strike==1.2
     # via -r requirements.in
-urllib3==1.26.7
+urllib3==2.0.2
     # via requests
-
-# The following packages are considered to be unsafe in a requirements file:
-# setuptools

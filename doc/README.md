@@ -21,6 +21,40 @@ make users-guide
 Note: Python on Mac OS X dislikes `LC_CTYPE=UTF-8`, so unset the variable
 and instead set `LC_ALL=en_US.UTF-8`.
 
+### How to update dependencies
+
+Once in a while you need to update Python dependencies (for instance,
+when Dependabot alerts about possible security flaw). The list of
+transitive dependencies (`requirements.txt`) is generated from the
+list of direct dependencies in `requirements.in`. To perform the
+generation step run
+
+```console
+> make users-guide-requirements
+```
+
+in the root of the repository.
+
+Note that generating `requirements.txt` is sensitive to the Python version.
+The version currently used is stamped at the top of `requirements.txt`.
+Normally, we would expect the same version of Python to be used for
+regeneration. An easy way to enforce a particular version is to perform
+regeneration in a Docker container, e.g. (from the root of repository):
+
+```console
+> docker run -itv $PWD:/cabal python:3.10-alpine sh
+...
+# apk add make
+...
+# cd cabal
+# make users-guide-requirements
+```
+
+One way to make sure the dependencies are reasonably up to date
+is to remove `requirements.txt` and regenerate it as described
+above. But in some cases you may have to add a bound manually
+to `requirements.in`, e.g. `requests >= 2.31.0`.
+
 ### Gitpod workflow
 
 From a fork of cabal, these docs can be edited online with
