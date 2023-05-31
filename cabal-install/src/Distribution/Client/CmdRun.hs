@@ -24,7 +24,6 @@ import Prelude ()
 
 import Distribution.Client.CmdErrorMessages
   ( plural
-  , renderListCommaAnd
   , renderListPretty
   , renderTargetProblem
   , renderTargetProblemNoTargets
