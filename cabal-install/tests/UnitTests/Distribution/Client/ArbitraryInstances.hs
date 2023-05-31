@@ -45,8 +45,10 @@ import Distribution.Solver.Types.PackageConstraint (PackageProperty (..))
 
 import Data.Coerce (Coercible, coerce)
 import Network.URI (URI (..), URIAuth (..), isUnreserved)
-import Test.QuickCheck
-import Test.QuickCheck.GenericArbitrary
+import Test.QuickCheck (Arbitrary(..), Gen, NonEmptyList(..),
+                        arbitraryBoundedEnum, choose, elements, frequency, genericShrink,
+                        liftArbitrary, listOf, oneof, resize, sized, shrinkBoundedEnum, suchThat, vectorOf)
+import Test.QuickCheck.GenericArbitrary (genericArbitrary)
 import Test.QuickCheck.Instances.Cabal ()
 
 -- note: there are plenty of instances defined in ProjectConfig test file.
@@ -110,11 +112,6 @@ arbitraryURIPort =
 -------------------------------------------------------------------------------
 -- cabal-install (and Cabal) types
 -------------------------------------------------------------------------------
-
-shrinkBoundedEnum :: (Eq a, Enum a, Bounded a) => a -> [a]
-shrinkBoundedEnum x
-  | x == minBound = []
-  | otherwise = [pred x]
 
 adjustSize :: (Int -> Int) -> Gen a -> Gen a
 adjustSize adjust gen = sized (\n -> resize (adjust n) gen)
