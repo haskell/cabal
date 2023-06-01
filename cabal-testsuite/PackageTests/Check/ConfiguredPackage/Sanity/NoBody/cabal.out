@@ -1,6 +1,6 @@
 # cabal check
-Warning: The package will not build sanely due to these errors:
-Warning: No executables, libraries, tests, or benchmarks found. Nothing to do.
-Warning: These warnings may cause trouble when distributing the package:
+The package will not build sanely due to these errors:
+Error: No executables, libraries, tests, or benchmarks found. Nothing to do.
+These warnings will likely cause trouble when distributing the package:
 Warning: pkg.cabal:0:0: A package using 'cabal-version: 2.2' must use section syntax. See the Cabal user guide for details.
-Warning: Hackage would reject this package.
+Error: Hackage would reject this package.

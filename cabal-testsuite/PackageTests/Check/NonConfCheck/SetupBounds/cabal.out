@@ -1,4 +1,4 @@
 # cabal check
-Warning: The following errors will cause portability problems on other environments:
-Warning: The dependency 'setup-depends: 'base' does not specify an upper bound on the version number. Each major release of the 'base' package changes the API in various ways and most packages will need some changes to compile with it. If you are not sure what upper bound to use then use the next major version.
-Warning: Hackage would reject this package.
+The following errors will cause portability problems on other environments:
+Error: The dependency 'setup-depends: 'base' does not specify an upper bound on the version number. Each major release of the 'base' package changes the API in various ways and most packages will need some changes to compile with it. If you are not sure what upper bound to use then use the next major version.
+Error: Hackage would reject this package.

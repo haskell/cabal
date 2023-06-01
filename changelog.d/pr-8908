@@ -1,0 +1,11 @@
+synopsis: `cabal check`: clearly mark Errors
+packages: cabal-install
+prs: #8908
+
+description: {
+
+- `cabal check` will now mark errors (which make the program return 1 and
+  Hackage refuse the package) by prepending them with an "Error: " string
+  in the output.
+
+}

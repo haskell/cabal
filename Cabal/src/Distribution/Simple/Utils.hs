@@ -23,8 +23,31 @@
 -- has low level functions for running programs, a bunch of wrappers for
 -- various directory and file functions that do extra logging.
 
+<<<<<<< HEAD
 module Distribution.Simple.Utils (
         cabalVersion,
+=======
+    -- * logging and errors
+  , dieNoVerbosity
+  , die'
+  , dieWithLocation'
+  , dieNoWrap
+  , topHandler
+  , topHandlerWith
+  , warn
+  , warnError
+  , notice
+  , noticeNoWrap
+  , noticeDoc
+  , setupMessage
+  , info
+  , infoNoWrap
+  , debug
+  , debugNoWrap
+  , chattyTry
+  , annotateIO
+  , withOutputMarker
+>>>>>>> aee92c973 (`cabal check`: clearly mark Errors (#8908))
 
         -- * logging and errors
         dieNoVerbosity,
@@ -452,13 +475,30 @@ verbosityHandle verbosity
 -- We display these at the 'normal' verbosity level.
 --
 warn :: Verbosity -> String -> IO ()
-warn verbosity msg = withFrozenCallStack $ do
+warn verbosity msg = warnMessage "Warning" verbosity msg
+
+-- | Like 'warn', but prepend @Error: …@ instead of @Waring: …@ before the
+-- the message. Useful when you want to highlight the condition is an error
+-- but do not want to quit the program yet.
+warnError :: Verbosity -> String -> IO ()
+warnError verbosity message = warnMessage "Error" verbosity message
+
+-- | Warning message, with a custom label.
+warnMessage :: String -> Verbosity -> String -> IO ()
+warnMessage l verbosity msg = withFrozenCallStack $ do
   when ((verbosity >= normal) && not (isVerboseNoWarn verbosity)) $ do
     ts <- getPOSIXTime
     hFlush stdout
+<<<<<<< HEAD
     hPutStr stderr . withMetadata ts NormalMark FlagTrace verbosity
                    . wrapTextVerbosity verbosity
                    $ "Warning: " ++ msg
+=======
+    hPutStr stderr
+      . withMetadata ts NormalMark FlagTrace verbosity
+      . wrapTextVerbosity verbosity
+      $ l ++ ": " ++ msg
+>>>>>>> aee92c973 (`cabal check`: clearly mark Errors (#8908))
 
 -- | Useful status messages.
 --

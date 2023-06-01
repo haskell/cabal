@@ -1,3 +1,1 @@
 # cabal check
-Warning: The package will not build sanely due to these errors:
-Warning: Duplicate sections: dup. The name of every library, executable, test suite, and benchmark section in the package must be unique.

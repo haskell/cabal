@@ -1,4 +1,4 @@
 # cabal check
-Warning: The following errors will cause portability problems on other environments:
-Warning: 'ghc-prof-options: -Werror' makes the package easy to break with future GHC versions because new GHC versions often add new warnings. Alternatively, if you want to use this, make it conditional based on a Cabal configuration flag (with 'manual: True' and 'default: False') and enable that flag during development.
-Warning: Hackage would reject this package.
+The following errors will cause portability problems on other environments:
+Error: 'ghc-prof-options: -Werror' makes the package easy to break with future GHC versions because new GHC versions often add new warnings. Alternatively, if you want to use this, make it conditional based on a Cabal configuration flag (with 'manual: True' and 'default: False') and enable that flag during development.
+Error: Hackage would reject this package.
