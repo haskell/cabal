@@ -1,4 +1,4 @@
 # cabal check
-Warning: The following warnings are likely to affect your build negatively:
-Warning: Ignoring the 'custom-setup' section because the 'build-type' is not 'Custom'. Use 'build-type: Custom' if you need to use a custom Setup.hs script.
-Warning: Hackage would reject this package.
+The following errors are likely to affect your build negatively:
+Error: Ignoring the 'custom-setup' section because the 'build-type' is not 'Custom'. Use 'build-type: Custom' if you need to use a custom Setup.hs script.
+Error: Hackage would reject this package.

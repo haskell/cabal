@@ -1,5 +1,5 @@
 # cabal check
-Warning: These warnings may cause trouble when distributing the package:
+These warnings may cause trouble when distributing the package:
 Warning: In 'data-files': the pattern 'another-non-existent-directory/**/*.dat' attempts to match files in the directory 'another-non-existent-directory', but there is no directory by that name.
 Warning: In 'extra-doc-files': the pattern 'non-existent-directory/*.html' attempts to match files in the directory 'non-existent-directory', but there is no directory by that name.
 Warning: In 'extra-doc-files': the pattern 'present/present/missing/*.tex' attempts to match files in the directory 'present/present/missing', but there is no directory by that name.

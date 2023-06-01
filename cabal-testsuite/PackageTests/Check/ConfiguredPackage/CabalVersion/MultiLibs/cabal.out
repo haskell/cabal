@@ -1,4 +1,4 @@
 # cabal check
-Warning: The following errors will cause portability problems on other environments:
-Warning: To use multiple 'library' sections or a named library section the package needs to specify at least 'cabal-version: 2.0'.
-Warning: Hackage would reject this package.
+The following errors will cause portability problems on other environments:
+Error: To use multiple 'library' sections or a named library section the package needs to specify at least 'cabal-version: 2.0'.
+Error: Hackage would reject this package.

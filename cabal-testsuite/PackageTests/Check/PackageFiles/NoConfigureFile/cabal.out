@@ -1,4 +1,4 @@
 # cabal check
-Warning: The following warnings are likely to affect your build negatively:
-Warning: The 'build-type' is 'Configure' but there is no 'configure' script. You probably need to run 'autoreconf -i' to generate it.
-Warning: Hackage would reject this package.
+The following errors are likely to affect your build negatively:
+Error: The 'build-type' is 'Configure' but there is no 'configure' script. You probably need to run 'autoreconf -i' to generate it.
+Error: Hackage would reject this package.

@@ -288,7 +288,7 @@ package, and thus apply globally:
     to the root of the project (i.e., where the ``cabal.project``
     file lives.)
 
-    This option cannot be specified via a ``cabal.project`` file.
+    This option can only be specified from the command line.
 
 .. _cmdoption-project-dir:
 .. option:: --project-dir=DIR
@@ -297,9 +297,9 @@ package, and thus apply globally:
     :ref:`project-file<cmdoption-project-file>` path is also specified,
     it will be resolved relative to this directory.
 
-    The project directory need not contain a ``cabal.project`` file.
+    The project directory does not need to contain a ``cabal.project`` file.
 
-    This option cannot be specified via a ``cabal.project`` file.
+    This option can only be specified from the command line.
 
 .. _cmdoption-project-file:
 .. option:: --project-file=FILE
@@ -318,7 +318,7 @@ package, and thus apply globally:
     and then for the parent directory, until the project file is
     found or we have hit the top of the user's home directory.
 
-    This option cannot be specified via a ``cabal.project`` file.
+    This option can only be specified from the command line.
 
 .. option:: --ignore-project
 
@@ -880,21 +880,7 @@ feature was added.
     The command line variant of this flag is ``--enable-benchmarks`` and
     ``--disable-benchmarks``.
 
-.. cfg-field:: multi-repl: boolean
-               --enable-multi-repl
-               --disable-multi-repl
-    :synopsis: Enable starting a repl with multiple targets.
-
-    :default: ``False``
-
-    Allow starting GHCi with multiple targets. This requires GHC with multiple
-    home unit support (GHC-9.4+).
-
-    The closure of required components will be loaded.
-
-    The command line variant of this flag is ``--enable-multi-repl`` and
-    ``--disable-multi-repl``.
-
+.. _cmdoption-extra-prog-path:
 .. cfg-field:: extra-prog-path: paths (newline or comma separated)
                --extra-prog-path=PATH
     :synopsis: Add directories to program search path.
@@ -908,6 +894,10 @@ feature was added.
 
     The command line variant of this flag is ``--extra-prog-path=PATH``,
     which can be specified multiple times.
+
+    When specifying :ref:`--http-transport<cmdoption-http-transport>` from the
+    command line, only extra-prog-path from the command line are added to the
+    program search path.
 
 .. cfg-field:: run-tests: boolean
                --run-tests
@@ -1587,7 +1577,7 @@ Advanced global configuration options
         The format and fields of the generated build information is currently experimental,
         in the future we might add or remove fields, depending on the needs of other tooling.
 
-
+.. _cmdoption-http-transport:
 .. cfg-field:: http-transport: curl, wget, powershell, or plain-http
                --http-transport=transport
     :synopsis: Transport to use with http(s) requests.
@@ -1597,6 +1587,12 @@ Advanced global configuration options
     Set a transport to be used when making http(s) requests.
 
     The command line variant of this field is ``--http-transport=curl``.
+
+    If the project configuration imports remote urls, the user can only specify
+    the http-transport option from the command line.
+
+    When specifying the http-transport from the command line, the program
+    search path can only be influenced using :ref:`--extra-prog-path<cmdoption-extra-prog-path>`.
 
 .. cfg-field:: ignore-expiry: boolean
                --ignore-expiry

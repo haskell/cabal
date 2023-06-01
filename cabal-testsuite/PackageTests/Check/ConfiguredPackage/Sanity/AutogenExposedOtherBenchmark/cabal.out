@@ -1,4 +1,4 @@
 # cabal check
-Warning: The package will not build sanely due to these errors:
-Warning: On benchmark 'benchmark' an 'autogen-module' is not on 'other-modules'
-Warning: Hackage would reject this package.
+The package will not build sanely due to these errors:
+Error: On benchmark 'benchmark' an 'autogen-module' is not on 'other-modules'
+Error: Hackage would reject this package.

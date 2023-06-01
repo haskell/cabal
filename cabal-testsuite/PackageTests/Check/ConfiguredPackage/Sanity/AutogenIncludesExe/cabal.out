@@ -1,4 +1,4 @@
 # cabal check
-Warning: The package will not build sanely due to these errors:
-Warning: An include in 'autogen-includes' is not in 'includes'.
-Warning: Hackage would reject this package.
+The package will not build sanely due to these errors:
+Error: An include in 'autogen-includes' is not in 'includes'.
+Error: Hackage would reject this package.

@@ -1,6 +1,6 @@
 # cabal check
-Warning: The following warnings are likely to affect your build negatively:
-Warning: For packages using 'cabal-version: >= 1.10' the 'extensions' field is deprecated. The new 'default-extensions' field lists extensions that are used in all modules in the component, while the 'other-extensions' field lists extensions that are used in some modules, e.g. via the {-# LANGUAGE #-} pragma.
-Warning: These warnings may cause trouble when distributing the package:
+The following errors are likely to affect your build negatively:
+Error: For packages using 'cabal-version: >= 1.10' the 'extensions' field is deprecated. The new 'default-extensions' field lists extensions that are used in all modules in the component, while the 'other-extensions' field lists extensions that are used in some modules, e.g. via the {-# LANGUAGE #-} pragma.
+These warnings will likely cause trouble when distributing the package:
 Warning: pkg.cabal:14:3: The field "extensions" is deprecated in the Cabal specification version 1.12. Please use 'default-extensions' or 'other-extensions' fields.
-Warning: Hackage would reject this package.
+Error: Hackage would reject this package.

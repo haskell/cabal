@@ -1,4 +1,4 @@
 # cabal check
-Warning: The following errors will cause portability problems on other environments:
-Warning: 'tail' is not a recognised kind of source-repository. The repo kind is usually 'head' or 'this'
-Warning: Hackage would reject this package.
+The following errors will cause portability problems on other environments:
+Error: 'tail' is not a recognised kind of source-repository. The repo kind is usually 'head' or 'this'
+Error: Hackage would reject this package.

@@ -34,6 +34,7 @@ module Distribution.Simple.Utils
   , topHandler
   , topHandlerWith
   , warn
+  , warnError
   , notice
   , noticeNoWrap
   , noticeDoc
@@ -493,14 +494,24 @@ verbosityHandle verbosity
 --
 -- We display these at the 'normal' verbosity level.
 warn :: Verbosity -> String -> IO ()
-warn verbosity msg = withFrozenCallStack $ do
+warn verbosity msg = warnMessage "Warning" verbosity msg
+
+-- | Like 'warn', but prepend @Error: …@ instead of @Waring: …@ before the
+-- the message. Useful when you want to highlight the condition is an error
+-- but do not want to quit the program yet.
+warnError :: Verbosity -> String -> IO ()
+warnError verbosity message = warnMessage "Error" verbosity message
+
+-- | Warning message, with a custom label.
+warnMessage :: String -> Verbosity -> String -> IO ()
+warnMessage l verbosity msg = withFrozenCallStack $ do
   when ((verbosity >= normal) && not (isVerboseNoWarn verbosity)) $ do
     ts <- getPOSIXTime
     hFlush stdout
     hPutStr stderr
       . withMetadata ts NormalMark FlagTrace verbosity
       . wrapTextVerbosity verbosity
-      $ "Warning: " ++ msg
+      $ l ++ ": " ++ msg
 
 -- | Useful status messages.
 --
