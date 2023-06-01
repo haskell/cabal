@@ -309,7 +309,7 @@ checkGenericPackageDescription
       mapM_
         ( checkCondTarget
             genPackageFlags_
-            (checkExecutable (package packageDescription_) ads)
+            (checkExecutable ads)
             (const id)
         )
         condExecutables_

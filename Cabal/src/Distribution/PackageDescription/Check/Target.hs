@@ -129,12 +129,10 @@ checkForeignLib
 
 checkExecutable
   :: Monad m
-  => PackageId
-  -> [AssocDep] -- “Inherited” dependencies for PVP checks.
+  => [AssocDep] -- “Inherited” dependencies for PVP checks.
   -> Executable
   -> CheckM m ()
 checkExecutable
-  pid
   ads
   exe@( Executable
           exeName_
@@ -150,6 +148,7 @@ checkExecutable
       (null modulePath_)
       (PackageBuildImpossible (NoMainIs exeName_))
     -- This check does not apply to scripts.
+    pid <- asksCM (pnPackageId . ccNames)
     checkP
       ( pid /= fakePackageId
           && not (null modulePath_)
