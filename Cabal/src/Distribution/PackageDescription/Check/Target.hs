@@ -796,9 +796,13 @@ checkGHCOptions title t opts = do
       checkFlags
         ["-prof"]
         (PackageBuildWarning $ OptProf title)
-      checkFlags
-        ["-o"]
-        (PackageBuildWarning $ OptO title)
+      -- Does not apply to scripts.
+      -- Why do we need this? See #8963.
+      pid <- asksCM (pnPackageId . ccNames)
+      unless (pid == fakePackageId) $
+        checkFlags
+          ["-o"]
+          (PackageBuildWarning $ OptO title)
       checkFlags
         ["-hide-package"]
         (PackageBuildWarning $ OptHide title)
