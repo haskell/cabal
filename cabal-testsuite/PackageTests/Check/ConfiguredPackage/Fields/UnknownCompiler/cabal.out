@@ -1,4 +1,4 @@
 # cabal check
-Warning: The following warnings are likely to affect your build negatively:
-Warning: Unknown compiler 'figforth' in 'tested-with' field.
-Warning: Hackage would reject this package.
+The following errors are likely to affect your build negatively:
+Error: Unknown compiler 'figforth' in 'tested-with' field.
+Error: Hackage would reject this package.

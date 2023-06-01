@@ -1,5 +1,5 @@
 import Test.Cabal.Prelude
 
--- `licence-file` missing.
+-- `license-file` missing.
 main = cabalTest $
   cabal "check" []

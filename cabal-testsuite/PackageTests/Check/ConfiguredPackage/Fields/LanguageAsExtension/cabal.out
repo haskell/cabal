@@ -1,4 +1,4 @@
 # cabal check
-Warning: The following warnings are likely to affect your build negatively:
-Warning: Languages listed as extensions: Haskell98. Languages must be specified in either the 'default-language'  or the 'other-languages' field.
-Warning: Hackage would reject this package.
+The following errors are likely to affect your build negatively:
+Error: Languages listed as extensions: Haskell98. Languages must be specified in either the 'default-language'  or the 'other-languages' field.
+Error: Hackage would reject this package.

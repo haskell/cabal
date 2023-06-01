@@ -1,3 +1,3 @@
 # cabal check
-Warning: These warnings may cause trouble when distributing the package:
+These warnings will likely cause trouble when distributing the package:
 Warning: 'ghc-shared-options: -fprof*' profiling flags are typically not appropriate for a distributed library package. These flags are useful to profile this package, but when profiling other packages that use this one these flags clutter the profile output with excessive detail. If you think other packages really want to see cost centres from this package then use '-fprof-auto-exported' which puts cost centres only on exported functions. Alternatively, if you want to use this, make it conditional based on a Cabal configuration flag (with 'manual: True' and 'default: False') and enable that flag during development.
