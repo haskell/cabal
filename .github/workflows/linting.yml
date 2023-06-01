@@ -15,7 +15,7 @@ jobs:
         pattern: |
           Cabal/**/*.hs
           Cabal-syntax/**/*.hs
-          Cabal-install/**/*.hs
+          cabal-install/**/*.hs
           !Cabal-syntax/src/Distribution/Fields/Lexer.hs
           !Cabal-syntax/src/Distribution/SPDX/LicenseExceptionId.hs
           !Cabal-syntax/src/Distribution/SPDX/LicenseId.hs
