@@ -181,6 +181,7 @@ syn keyword cabalExtension contained
   \ ExplicitForAll
   \ ExplicitNamespaces
   \ ExtendedDefaultRules
+  \ ExtendedLiterals
   \ ExtensibleRecords
   \ ExtendedLiterals
   \ FieldSelectors

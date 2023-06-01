@@ -677,6 +677,9 @@ data KnownExtension =
   -- | Enable data types for which an unlifted or levity-polymorphic result kind is inferred.
   | UnliftedDatatypes
 
+  | -- | Enable syntax for primitive numeric literals, e.g. @3#Int8@
+    ExtendedLiterals
+
   -- | Enable syntax for primitive numeric literals, e.g. @3#Int8@
   | ExtendedLiterals
 
