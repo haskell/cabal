@@ -716,6 +716,7 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
         , concat [["-outputdir", dir] | dir <- flag ghcOptOutputDir]
         , concat [["-odir", dir] | dir <- flag ghcOptObjDir]
         , concat [["-hidir", dir] | dir <- flag ghcOptHiDir]
+        , concat [["-hiedir", dir] | dir <- flag ghcOptHiDir]
         , concat [["-stubdir", dir] | dir <- flag ghcOptStubDir]
         , -----------------------
           -- Source search path
