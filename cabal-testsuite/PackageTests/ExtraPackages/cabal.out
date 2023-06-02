@@ -6,7 +6,7 @@ Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
  - some-exe-0.0.1.0 (exe:some-exe) (requires build)
 Configuring some-exe-0.0.1.0...
-Preprocessing executable 'some-exe' for some-exe-0.0.1.0..
-Building executable 'some-exe' for some-exe-0.0.1.0..
+Preprocessing executable 'some-exe' for some-exe-0.0.1.0...
+Building executable 'some-exe' for some-exe-0.0.1.0...
 Installing executable some-exe in <PATH>
 Warning: The directory <ROOT>/cabal.dist/home/.cabal/store/ghc-<GHCVER>/incoming/new-<RAND><ROOT>/cabal.dist/home/.cabal/store/ghc-<GHCVER>/<PACKAGE>-<HASH>/bin is not in the system search path.

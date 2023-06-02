@@ -1,8 +1,8 @@
 # Setup configure
-Configuring executable 'goodexe' for Exe-0.1.0.0..
+Configuring executable 'goodexe' for Exe-0.1.0.0...
 # Setup build
-Preprocessing executable 'goodexe' for Exe-0.1.0.0..
-Building executable 'goodexe' for Exe-0.1.0.0..
+Preprocessing executable 'goodexe' for Exe-0.1.0.0...
+Building executable 'goodexe' for Exe-0.1.0.0...
 # Setup copy
 Installing executable goodexe in <PATH>
 Warning: The directory <ROOT>/setup.cabal.dist/usr/bin is not in the system search path.
