@@ -69,4 +69,4 @@ setupMessage' verbosity msg pkgid cname mb_insts = withFrozenCallStack $ do
         msg_doc <+> for_doc
   where
     msg_doc = text msg <+> text (showComponentName cname)
-    for_doc = text "for" <+> pretty pkgid <<>> text ".."
+    for_doc = text "for" <+> pretty pkgid <<>> text "..."
