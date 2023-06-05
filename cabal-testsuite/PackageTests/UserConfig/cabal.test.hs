@@ -15,3 +15,9 @@ main = cabalTest $ do
     assertFileDoesContain conf "foo,bar"
     cabalG ["--config-file", conf] "user-config" ["update", "-f", "-a", "extra-prog-path: foo, bar"]
     assertFileDoesContain conf "foo,bar"
+
+    -- regression test for #6268 (password-command parsing)
+    cabalG ["--config-file", conf]
+        "user-config" ["update", "-f", "-a", "password-command: sh -c \"echo secret\""]
+    -- non-quoted tokens do get quoted when writing, but this is expected
+    assertFileDoesContain conf "password-command: \"sh\" \"-c\" \"echo secret\""
