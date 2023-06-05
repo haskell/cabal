@@ -16,6 +16,7 @@
 -- couple others. It has the parsing framework code and also little parsers for
 -- many of the formats we get in various @.cabal@ file fields, like module
 -- names, comma separated lists etc.
+<<<<<<< HEAD
 
 -- This module is meant to be local-only to Distribution...
 
@@ -40,6 +41,45 @@ module Distribution.Deprecated.ParseUtils (
         commaNewLineListFieldParsec,
 
         UnrecFieldParser,
+=======
+module Distribution.Deprecated.ParseUtils
+  ( LineNo
+  , PError (..)
+  , PWarning (..)
+  , locatedErrorMsg
+  , syntaxError
+  , warning
+  , runP
+  , runE
+  , ParseResult (..)
+  , parseFail
+  , showPWarning
+  , Field (..)
+  , lineNo
+  , FieldDescr (..)
+  , readFields
+  , parseHaskellString
+  , parseTokenQ
+  , parseSpaceList
+  , parseOptCommaList
+  , showFilePath
+  , showToken
+  , showFreeText
+  , field
+  , simpleField
+  , listField
+  , listFieldWithSep
+  , spaceListField
+  , newLineListField
+  , liftField
+  , readPToMaybe
+  , fieldParsec
+  , simpleFieldParsec
+  , listFieldParsec
+  , commaListFieldParsec
+  , commaNewLineListFieldParsec
+  , UnrecFieldParser
+>>>>>>> 95f48ad71 (Fix parsing of password-command option (#6268))
   ) where
 
 import Distribution.Client.Compat.Prelude hiding (get)
