@@ -338,7 +338,9 @@ checkBuildInfo cet ams ads bi = do
   let ick = const (PackageDistInexcusable BaseNoUpperBounds)
       rck = PackageDistSuspiciousWarn . MissingUpperBounds cet
   checkPVP ick ids
-  checkPVPs rck rds
+  unless
+    (isInternalTarget cet)
+    (checkPVPs rck rds)
 
   -- Custom fields well-formedness (ASCII).
   mapM_ checkCustomField (customFieldsBI bi)
@@ -727,6 +729,16 @@ mergeDependencies l@(d : _) =
   where
     depName :: Dependency -> String
     depName wd = unPackageName . depPkgName $ wd
+
+-- Is this an internal target? We do not perform PVP checks on those,
+-- see https://github.com/haskell/cabal/pull/8361#issuecomment-1577547091
+isInternalTarget :: CEType -> Bool
+isInternalTarget (CETLibrary{}) = False
+isInternalTarget (CETForeignLibrary{}) = False
+isInternalTarget (CETExecutable{}) = False
+isInternalTarget (CETTest{}) = True
+isInternalTarget (CETBenchmark{}) = True
+isInternalTarget (CETSetup{}) = False
 
 -- ------------------------------------------------------------
 -- Options

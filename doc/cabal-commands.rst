@@ -1258,7 +1258,7 @@ A list of all warnings with their constructor:
 - UnknownArch: unknown architecture in condition.
 - UnknownCompiler: unknown compiler in condition.
 - BaseNoUpperBounds: missing upper bounds for important dependencies (``base``, and for ``custom-setup`` ``Cabal`` too).
-- MissingUpperBounds: missing upper bound in dependency.
+- MissingUpperBounds: missing upper bound in dependency (excluding test-suites and benchmarks).
 - SuspiciousFlagName: troublesome flag name (e.g. starting with a dash).
 - DeclaredUsedFlags: unused user flags.
 - NonASCIICustomField: non-ASCII characters in custom field.
