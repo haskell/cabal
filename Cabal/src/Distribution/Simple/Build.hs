@@ -149,7 +149,7 @@ build pkg_descr lbi flags suffixes = do
     par_strat <- toFlag <$> case buildUseSemaphore flags of
                   Flag sem_name -> case buildNumJobs flags of
                                     Flag {} -> do
-                                      warn verbosity $ "Ignoring -j due to -semaphore"
+                                      warn verbosity $ "Ignoring -j due to --semaphore"
                                       return $ UseSem sem_name
                                     NoFlag -> return $ UseSem sem_name
                   NoFlag -> return $ case buildNumJobs flags of
@@ -171,7 +171,7 @@ checkBuildProblems verbosity comp flags = do
     unless (jsemSupported comp || not (isJust (flagToMaybe (buildUseSemaphore flags))) ) $
         die' verbosity $
               "Your compiler does not support the -jsem flag. "
-           ++ "To use this feature you must use GHC 9.7 or later."
+           ++ "To use this feature you must use GHC 9.8 or later."
 
 
 -- | Write available build information for 'LocalBuildInfo' to disk.
