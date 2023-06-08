@@ -2474,7 +2474,7 @@ installLib
 installLib verbosity lbi targetDir dynlibTargetDir _builtDir pkg lib clbi = do
   -- copy .hi files over:
   whenVanilla $ copyModuleFiles "hi"
-  whenVanilla $ copyModuleFiles "hie"
+  whenVanilla $ copyAvailableModuleFiles "hie"
   whenProf $ copyModuleFiles "p_hi"
   whenShared $ copyModuleFiles "dyn_hi"
 
@@ -2567,6 +2567,10 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir pkg lib clbi = do
 
     copyModuleFiles ext =
       findModuleFilesEx verbosity [builtDir] [ext] (allLibModules lib clbi)
+        >>= installOrdinaryFiles verbosity targetDir
+
+    copyAvailableModuleFiles ext =
+      findAvailableModuleFilesEx [builtDir] [ext] (allLibModules lib clbi)
         >>= installOrdinaryFiles verbosity targetDir
 
     copyDirectoryIfExists dirName = do

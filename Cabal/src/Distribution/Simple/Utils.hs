@@ -114,6 +114,8 @@ module Distribution.Simple.Utils
   , findAllFilesCwdWithExtension
   , findModuleFileEx
   , findModuleFilesEx
+  , findAvailableModuleFileEx
+  , findAvailableModuleFilesEx
   , getDirectoryContentsRecursive
 
     -- * environment variables
@@ -1290,6 +1292,40 @@ findModuleFileEx verbosity searchPath extensions mod_name =
           ++ show extensions
           ++ " in the search path: "
           ++ show searchPath
+
+-- | Finds the files corresponding to a list of Haskell module names.
+-- | The list can be empty.
+--
+-- As 'findAvailableModuleFile' but for a list of module names.
+findAvailableModuleFilesEx
+  :: [FilePath]
+  -- ^ build prefix (location of objects)
+  -> [String]
+  -- ^ search suffixes
+  -> [ModuleName]
+  -- ^ modules
+  -> IO [(FilePath, FilePath)]
+findAvailableModuleFilesEx searchPath extensions moduleNames =
+  fmap catMaybes
+  $ traverse (findAvailableModuleFileEx searchPath extensions) moduleNames
+
+-- | Find the file corresponding to a Haskell module name.
+--
+-- This is similar to 'findModuleFileEx' but doesn't fail if the file
+-- corresponding to the module is missing, instead returning Nothing.
+findAvailableModuleFileEx
+  :: [FilePath]
+  -- ^ build prefix (location of objects)
+  -> [String]
+  -- ^ search suffixes
+  -> ModuleName
+  -- ^ module
+  -> IO (Maybe (FilePath, FilePath))
+findAvailableModuleFileEx searchPath extensions mod_name =
+  findFileWithExtension'
+    extensions
+    searchPath
+    (ModuleName.toFilePath mod_name)
 
 -- | List all the files in a directory and all subdirectories.
 --
