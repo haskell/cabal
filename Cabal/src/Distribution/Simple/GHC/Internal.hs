@@ -576,6 +576,7 @@ componentGhcOptions verbosity implInfo lbi bi clbi odir =
     , ghcOptFfiIncludes = toNubListR $ includes bi
     , ghcOptObjDir = toFlag odir
     , ghcOptHiDir = toFlag odir
+    , ghcOptHieDir = toFlag odir
     , ghcOptStubDir = toFlag odir
     , ghcOptOutputDir = toFlag odir
     , ghcOptOptimisation = toGhcOptimisation (withOptimization lbi)
