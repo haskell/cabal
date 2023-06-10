@@ -10,19 +10,21 @@ import Distribution.Simple.Utils
 import Distribution.Types.LocalBuildInfo
 import Distribution.Types.ModuleRenaming
 import Distribution.Types.UnqualComponentName
+import Distribution.Verbosity
 
 import System.Directory
 import System.FilePath
 
 main :: IO ()
 main = defaultMainWithHooks simpleUserHooks
-    { buildHook = \pkg lbi hooks flags -> do
-        generateScriptEnvModule lbi flags
-        buildHook simpleUserHooks pkg lbi hooks flags
+    { confHook = \args flags -> do
+        lbi <- confHook simpleUserHooks args flags
+        generateScriptEnvModule lbi (fromFlagOrDefault minBound (configVerbosity flags))
+        pure lbi
     }
 
-generateScriptEnvModule :: LocalBuildInfo -> BuildFlags -> IO ()
-generateScriptEnvModule lbi flags = do
+generateScriptEnvModule :: LocalBuildInfo -> Verbosity -> IO ()
+generateScriptEnvModule lbi verbosity = do
     lbiPackageDbStack <- mapM canonicalizePackageDB (withPackageDB lbi)
 
     createDirectoryIfMissing True moduledir
@@ -55,7 +57,6 @@ generateScriptEnvModule lbi flags = do
       , "lbiWithSharedLib = " ++ show (withSharedLib lbi)
       ]
   where
-    verbosity = fromFlagOrDefault minBound (buildVerbosity flags)
     moduledir = libAutogenDir </> "Test" </> "Cabal"
     -- fixme: use component-specific folder
     libAutogenDir = autogenPackageModulesDir lbi
