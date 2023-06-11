@@ -242,9 +242,9 @@ and concatenate the commit messages of the commits before merging.
 Changelog
 ---------
 
-When opening a pull request with a user-visible change, you should write a changelog entry
-(or more in case of multiple independent changes) -- the desciption will end up in
-release notes.
+When opening a pull request with a user-visible change, you should write one changelog entry
+(or more in case of multiple independent changes) — the information will end up in
+our release notes.
 
 Changelogs for the next release are stored in the `changelog.d` directory.
 The files follow a simple key-value format similar to the one for `.cabal` files.
