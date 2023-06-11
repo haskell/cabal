@@ -1,0 +1,11 @@
+synopsis: Do not check PVP on internal targets
+packages: cabal-install
+prs: #9004
+issues: #8361
+
+description: {
+
+- `cabal check` will not check for dependencies upper bounds in internal
+  targets (i.e. test-suites and benchmarks)
+
+}

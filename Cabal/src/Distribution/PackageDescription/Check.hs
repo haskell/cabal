@@ -68,8 +68,14 @@ import System.FilePath
        ( makeRelative, normalise, splitDirectories, splitExtension, splitPath
        , takeExtension, takeFileName, (<.>), (</>))
 
+<<<<<<< HEAD
 import qualified Data.ByteString.Lazy      as BS
 import qualified Data.Map                  as Map
+=======
+import qualified Control.Monad as CM
+import qualified Data.ByteString.Lazy as BS
+import qualified Data.Map as Map
+>>>>>>> 1cb92a38c (Do not check PVP on internal targets (#9004))
 import qualified Distribution.Compat.DList as DList
 import qualified Distribution.SPDX         as SPDX
 import qualified System.Directory          as System
@@ -1899,13 +1905,23 @@ checkPackageVersions pkg =
     baseErrors
   where
     baseErrors = PackageDistInexcusable BaseNoUpperBounds <$ bases
-    deps = toDependencyVersionsMap allBuildDepends pkg
+    deps = toDependencyVersionsMap allNonInternalBuildDepends pkg
     -- base gets special treatment (it's more critical)
     (bases, others) = partition (("base" ==) . unPackageName) $
       [ name
       | (name, vr) <- Map.toList deps
       , not (hasUpperBound vr)
       ]
+
+    -- Get the combined build-depends entries of all components.
+    allNonInternalBuildDepends :: PackageDescription -> [Dependency]
+    allNonInternalBuildDepends = targetBuildDepends CM.<=< allNonInternalBuildInfo
+
+    allNonInternalBuildInfo :: PackageDescription -> [BuildInfo]
+    allNonInternalBuildInfo pkg_descr =
+      [bi | lib <- allLibraries pkg_descr, let bi = libBuildInfo lib]
+        ++ [bi | flib <- foreignLibs pkg_descr, let bi = foreignLibBuildInfo flib]
+        ++ [bi | exe <- executables pkg_descr, let bi = buildInfo exe]
 
 checkConditionals :: GenericPackageDescription -> [PackageCheck]
 checkConditionals pkg =
