@@ -191,7 +191,7 @@ Target Forms
 
 A cabal command target can take any of the following forms:
 
--  A package target: ``package``, which specifies that all enabled
+-  A package target: ``[pkg:]package``, which specifies that all enabled
    components of a package to be built. By default, test suites and
    benchmarks are *not* enabled, unless they are explicitly requested
    (e.g., via ``--enable-tests``.)
