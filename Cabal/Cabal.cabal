@@ -60,6 +60,7 @@ library
     ghc-options: -Wnoncanonical-monadfail-instances
 
   exposed-modules:
+    Distribution.AllowNewer
     Distribution.Backpack.Configure
     Distribution.Backpack.ComponentsGraph
     Distribution.Backpack.ConfiguredComponent
