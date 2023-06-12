@@ -5,7 +5,7 @@ main = do
     skipUnlessGhcVersion ">= 9.4"
     -- Note: only the last package is interactive.
     -- this test should load pkg-b too.
-    res <- cabalWithStdin "v2-repl" ["--enable-multi-repl","pkg-a", "pkg-c"] ""
+    res <- cabalWithStdin "v2-repl" ["--enable-multi-repl", "pkg-a", "pkg-c"] ""
 
     -- we should check that pkg-c is indeed loaded,
     -- but currently the unit order is non-deterministic

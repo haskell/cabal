@@ -26,13 +26,15 @@ main = do
     assertOutputContains "did you mean one of:" res
   cabalTest' "multiple-repl-options-multiple-flags" $ do
     cabal' "clean" []
-    res <- cabalWithStdin "v2-repl" [
-      "--repl-options=-fforce-recomp -fwrite-interface",
-        "--repl-options=-fdefer-type-errors -fdefer-typed-holes"
-      ] ":set"
+    res <-
+      cabalWithStdin
+        "v2-repl"
+        [ "--repl-options=-fforce-recomp -fwrite-interface"
+        , "--repl-options=-fdefer-type-errors -fdefer-typed-holes"
+        ]
+        ":set"
     assertOutputContains "Ok, two modules loaded." res
     assertOutputContains "  -fwrite-interface" res
     assertOutputContains "  -fforce-recomp" res
     assertOutputContains "  -fdefer-typed-holes" res
     assertOutputContains "  -fdefer-type-errors" res
-

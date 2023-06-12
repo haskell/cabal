@@ -1,6 +1,7 @@
 {-# LANGUAGE CPP #-}
-{-# OPTIONS_GHC -freduction-depth=0 #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# OPTIONS_GHC -freduction-depth=0 #-}
+
 module Data.TreeDiff.Instances.Cabal () where
 
 import Data.TreeDiff
@@ -11,26 +12,26 @@ import Data.TreeDiff.Instances.CabalVersion ()
 
 -------------------------------------------------------------------------------
 
-import Distribution.Backpack                       (OpenModule, OpenUnitId)
-import Distribution.CabalSpecVersion               (CabalSpecVersion)
-import Distribution.Compiler                       (CompilerFlavor, CompilerId, PerCompilerFlavor)
-import Distribution.InstalledPackageInfo           (AbiDependency, ExposedModule, InstalledPackageInfo)
-import Distribution.ModuleName                     (ModuleName)
+import Distribution.Backpack (OpenModule, OpenUnitId)
+import Distribution.CabalSpecVersion (CabalSpecVersion)
+import Distribution.Compiler (CompilerFlavor, CompilerId, PerCompilerFlavor)
+import Distribution.InstalledPackageInfo (AbiDependency, ExposedModule, InstalledPackageInfo)
+import Distribution.ModuleName (ModuleName)
 import Distribution.PackageDescription
-import Distribution.Simple.Compiler                (DebugInfoLevel, OptimisationLevel, ProfDetailLevel)
-import Distribution.Simple.Flag                    (Flag)
+import Distribution.Simple.Compiler (DebugInfoLevel, OptimisationLevel, ProfDetailLevel)
+import Distribution.Simple.Flag (Flag)
 import Distribution.Simple.InstallDirs
 import Distribution.Simple.InstallDirs.Internal
-import Distribution.Simple.Setup                   (HaddockTarget, TestShowDetails)
+import Distribution.Simple.Setup (HaddockTarget, TestShowDetails)
 import Distribution.System
-import Distribution.Types.AbiHash                  (AbiHash)
-import Distribution.Types.ComponentId              (ComponentId)
-import Distribution.Types.DumpBuildInfo            (DumpBuildInfo)
+import Distribution.Types.AbiHash (AbiHash)
+import Distribution.Types.ComponentId (ComponentId)
+import Distribution.Types.DumpBuildInfo (DumpBuildInfo)
 import Distribution.Types.PackageVersionConstraint
-import Distribution.Types.UnitId                   (DefUnitId, UnitId)
-import Distribution.Utils.NubList                  (NubList)
-import Distribution.Utils.Path                     (SymbolicPath)
-import Distribution.Utils.ShortText                (ShortText, fromShortText)
+import Distribution.Types.UnitId (DefUnitId, UnitId)
+import Distribution.Utils.NubList (NubList)
+import Distribution.Utils.Path (SymbolicPath)
+import Distribution.Utils.ShortText (ShortText, fromShortText)
 import Distribution.Verbosity
 import Distribution.Verbosity.Internal
 
@@ -43,17 +44,17 @@ import qualified Distribution.Compat.NonEmptySet as NES
 instance (Eq a, Show a) => ToExpr (Condition a) where toExpr = defaultExprViaShow
 instance (Show a, ToExpr b, ToExpr c, Show b, Show c, Eq a, Eq c, Eq b) => ToExpr (CondTree a b c)
 instance (Show a, ToExpr b, ToExpr c, Show b, Show c, Eq a, Eq c, Eq b) => ToExpr (CondBranch a b c)
-instance (ToExpr a) => ToExpr (NubList a)
-instance (ToExpr a) => ToExpr (Flag a)
+instance ToExpr a => ToExpr (NubList a)
+instance ToExpr a => ToExpr (Flag a)
 instance ToExpr a => ToExpr (NES.NonEmptySet a) where
-    toExpr xs = App "NonEmptySet.fromNonEmpty" [toExpr $ NES.toNonEmpty xs]
+  toExpr xs = App "NonEmptySet.fromNonEmpty" [toExpr $ NES.toNonEmpty xs]
 
 instance ToExpr a => ToExpr (PerCompilerFlavor a)
 
 instance ToExpr Dependency where
-    toExpr d@(Dependency pn vr cs)
-        | cs == mainLibSet = App "Dependency" [toExpr pn, toExpr vr, App "mainLibSet" []]
-        | otherwise        = genericToExpr d
+  toExpr d@(Dependency pn vr cs)
+    | cs == mainLibSet = App "Dependency" [toExpr pn, toExpr vr, App "mainLibSet" []]
+    | otherwise = genericToExpr d
 
 instance ToExpr (SymbolicPath from to)
 

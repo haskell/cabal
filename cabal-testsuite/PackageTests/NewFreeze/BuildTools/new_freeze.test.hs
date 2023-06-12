@@ -1,6 +1,6 @@
-import Test.Cabal.Prelude
 import Control.Monad.IO.Class
 import System.Directory
+import Test.Cabal.Prelude
 
 -- Test that 'cabal v2-freeze' works with multiple versions of a build tool
 -- dependency.

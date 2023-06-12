@@ -1,8 +1,9 @@
 {-# LANGUAGE ScopedTypeVariables #-}
-import Test.Cabal.Prelude
-import Data.IORef
-import Control.Monad.IO.Class
+
 import Control.Exception (ErrorCall)
+import Control.Monad.IO.Class
+import Data.IORef
+import Test.Cabal.Prelude
 
 import qualified Control.Monad.Catch as Catch
 

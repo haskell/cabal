@@ -1,6 +1,5 @@
 -- This is Distribution.Extra.Doctest module from cabal-doctest-1.0.4
 -- This isn't technically a Custom-Setup script, but it /was/.
-
 {-
 
 Copyright (c) 2017, Oleg Grenrus
@@ -35,9 +34,9 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 -}
-
-{-# LANGUAGE CPP               #-}
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
+
 -- | The provided 'generateBuildModule' generates 'Build_doctests' module.
 -- That module exports enough configuration, so your doctests could be simply
 --
@@ -68,14 +67,13 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 --
 -- /Note:/ you don't need to depend on @Cabal@  if you use only
 -- 'defaultMainWithDoctests' in the @Setup.hs@.
---
-module CabalDoctestSetup (
-    defaultMainWithDoctests,
-    defaultMainAutoconfWithDoctests,
-    addDoctestsUserHook,
-    doctestsUserHooks,
-    generateBuildModule,
-    ) where
+module CabalDoctestSetup
+  ( defaultMainWithDoctests
+  , defaultMainAutoconfWithDoctests
+  , addDoctestsUserHook
+  , doctestsUserHooks
+  , generateBuildModule
+  ) where
 
 -- Hacky way to suppress few deprecation warnings.
 #if MIN_VERSION_Cabal(1,24,0)
@@ -83,43 +81,79 @@ module CabalDoctestSetup (
 #endif
 
 import Control.Monad
-       (when)
+  ( when
+  )
 import Data.IORef
-       (modifyIORef, newIORef, readIORef)
+  ( modifyIORef
+  , newIORef
+  , readIORef
+  )
 import Data.List
-       (nub)
+  ( nub
+  )
 import Data.Maybe
-       (mapMaybe, maybeToList)
+  ( mapMaybe
+  , maybeToList
+  )
 import Data.String
-       (fromString)
+  ( fromString
+  )
 import Distribution.Package
-       (InstalledPackageId, Package (..))
+  ( InstalledPackageId
+  , Package (..)
+  )
 import Distribution.PackageDescription
-       (BuildInfo (..), Executable (..), GenericPackageDescription,
-       Library (..), PackageDescription, TestSuite (..))
+  ( BuildInfo (..)
+  , Executable (..)
+  , GenericPackageDescription
+  , Library (..)
+  , PackageDescription
+  , TestSuite (..)
+  )
 import Distribution.Simple
-       (UserHooks (..), autoconfUserHooks, defaultMainWithHooks,
-       simpleUserHooks)
+  ( UserHooks (..)
+  , autoconfUserHooks
+  , defaultMainWithHooks
+  , simpleUserHooks
+  )
 import Distribution.Simple.Compiler
-       (CompilerFlavor (GHC), CompilerId (..), PackageDB (..), compilerId)
+  ( CompilerFlavor (GHC)
+  , CompilerId (..)
+  , PackageDB (..)
+  , compilerId
+  )
 import Distribution.Simple.LocalBuildInfo
-       (ComponentLocalBuildInfo (componentPackageDeps), LocalBuildInfo,
-       compiler, withExeLBI, withLibLBI, withPackageDB, withTestLBI)
+  ( ComponentLocalBuildInfo (componentPackageDeps)
+  , LocalBuildInfo
+  , compiler
+  , withExeLBI
+  , withLibLBI
+  , withPackageDB
+  , withTestLBI
+  )
 import Distribution.Simple.Setup
-       (BuildFlags (buildDistPref, buildVerbosity),
-       HaddockFlags (haddockDistPref, haddockVerbosity), emptyBuildFlags,
-       fromFlag)
+  ( BuildFlags (buildDistPref, buildVerbosity)
+  , HaddockFlags (haddockDistPref, haddockVerbosity)
+  , emptyBuildFlags
+  , fromFlag
+  )
 import Distribution.Simple.Utils
-       (createDirectoryIfMissingVerbose, info)
+  ( createDirectoryIfMissingVerbose
+  , info
+  )
 import Distribution.Text
-       (display)
+  ( display
+  )
 import System.FilePath
-       ((</>))
+  ( (</>)
+  )
 
-import qualified Data.Foldable    as F
-                 (for_)
+import qualified Data.Foldable as F
+  ( for_
+  )
 import qualified Data.Traversable as T
-                 (traverse)
+  ( traverse
+  )
 
 #if MIN_VERSION_Cabal(1,25,0)
 import Distribution.Simple.BuildPaths
@@ -213,38 +247,42 @@ getSymbolicPath = id
 -- main = defaultMainWithDoctests "doctests"
 -- @
 defaultMainWithDoctests
-    :: String  -- ^ doctests test-suite name
-    -> IO ()
+  :: String
+  -- ^ doctests test-suite name
+  -> IO ()
 defaultMainWithDoctests = defaultMainWithHooks . doctestsUserHooks
 
 -- | Like 'defaultMainWithDoctests', for 'build-type: Configure' packages.
 --
 -- @since 1.0.2
 defaultMainAutoconfWithDoctests
-    :: String  -- ^ doctests test-suite name
-    -> IO ()
+  :: String
+  -- ^ doctests test-suite name
+  -> IO ()
 defaultMainAutoconfWithDoctests n =
-    defaultMainWithHooks (addDoctestsUserHook n autoconfUserHooks)
+  defaultMainWithHooks (addDoctestsUserHook n autoconfUserHooks)
 
 -- | 'simpleUserHooks' with 'generateBuildModule' prepended to the 'buildHook'.
 doctestsUserHooks
-    :: String  -- ^ doctests test-suite name
-    -> UserHooks
+  :: String
+  -- ^ doctests test-suite name
+  -> UserHooks
 doctestsUserHooks testsuiteName =
-    addDoctestsUserHook testsuiteName simpleUserHooks
+  addDoctestsUserHook testsuiteName simpleUserHooks
 
 -- |
 --
 -- @since 1.0.2
 addDoctestsUserHook :: String -> UserHooks -> UserHooks
-addDoctestsUserHook testsuiteName uh = uh
+addDoctestsUserHook testsuiteName uh =
+  uh
     { buildHook = \pkg lbi hooks flags -> do
         generateBuildModule testsuiteName flags pkg lbi
         buildHook uh pkg lbi hooks flags
-    -- We use confHook to add "Build_Doctests" to otherModules and autogenModules.
-    --
-    -- We cannot use HookedBuildInfo as it let's alter only the library and executables.
-    , confHook = \(gpd, hbi) flags ->
+    , -- We use confHook to add "Build_Doctests" to otherModules and autogenModules.
+      --
+      -- We cannot use HookedBuildInfo as it let's alter only the library and executables.
+      confHook = \(gpd, hbi) flags ->
         confHook uh (amendGPD testsuiteName gpd, hbi) flags
     , haddockHook = \pkg lbi hooks flags -> do
         generateBuildModule testsuiteName (haddockToBuildFlags flags) pkg lbi
@@ -253,9 +291,10 @@ addDoctestsUserHook testsuiteName uh = uh
 
 -- | Convert only flags used by 'generateBuildModule'.
 haddockToBuildFlags :: HaddockFlags -> BuildFlags
-haddockToBuildFlags f = emptyBuildFlags
+haddockToBuildFlags f =
+  emptyBuildFlags
     { buildVerbosity = haddockVerbosity f
-    , buildDistPref  = haddockDistPref f
+    , buildDistPref = haddockDistPref f
     }
 
 data Name = NameLib (Maybe String) | NameExe String deriving (Eq, Show)
@@ -272,10 +311,10 @@ nameToString n = case n of
     -- allowed in Haskell identifier names.
     fixchar :: Char -> Char
     fixchar '-' = '_'
-    fixchar c   = c
+    fixchar c = c
 
 data Component = Component Name [String] [String] [String]
-  deriving Show
+  deriving (Show)
 
 -- | Generate a build module for the test suite.
 --
@@ -292,18 +331,23 @@ data Component = Component Name [String] [String] [String]
 --         buildHook simpleUserHooks pkg lbi hooks flags
 --     }
 -- @
+{- FOURMOLU_DISABLE -}
 generateBuildModule
-    :: String -- ^ doctests test-suite name
-    -> BuildFlags -> PackageDescription -> LocalBuildInfo -> IO ()
+  :: String
+  -- ^ doctests test-suite name
+  -> BuildFlags
+  -> PackageDescription
+  -> LocalBuildInfo
+  -> IO ()
 generateBuildModule testSuiteName flags pkg lbi = do
   let verbosity = fromFlag (buildVerbosity flags)
   let distPref = fromFlag (buildDistPref flags)
 
   -- Package DBs & environments
-  let dbStack = withPackageDB lbi ++ [ SpecificPackageDB $ distPref </> "package.conf.inplace" ]
+  let dbStack = withPackageDB lbi ++ [SpecificPackageDB $ distPref </> "package.conf.inplace"]
   let dbFlags = "-hide-all-packages" : packageDbArgs dbStack
   let envFlags
-        | ghcCanBeToldToIgnorePkgEnvs = [ "-package-env=-" ]
+        | ghcCanBeToldToIgnorePkgEnvs = ["-package-env=-"]
         | otherwise = []
 
   withTestLBI pkg lbi $ \suite suitecfg -> when (testName suite == fromString testSuiteName) $ do
@@ -312,7 +356,6 @@ generateBuildModule testSuiteName flags pkg lbi = do
 #else
     let testAutogenDir = autogenModulesDir lbi
 #endif
-
     createDirectoryIfMissingVerbose verbosity True testAutogenDir
 
     let buildDoctestsFile = testAutogenDir </> "Build_doctests.hs"
@@ -320,15 +363,16 @@ generateBuildModule testSuiteName flags pkg lbi = do
     -- First, we create the autogen'd module Build_doctests.
     -- Initially populate Build_doctests with a simple preamble.
     info verbosity $ "cabal-doctest: writing Build_doctests to " ++ buildDoctestsFile
-    writeFile buildDoctestsFile $ unlines
-      [ "module Build_doctests where"
-      , ""
-      , "import Prelude"
-      , ""
-      , "data Name = NameLib (Maybe String) | NameExe String deriving (Eq, Show)"
-      , "data Component = Component Name [String] [String] [String] deriving (Eq, Show)"
-      , ""
-      ]
+    writeFile buildDoctestsFile $
+      unlines
+        [ "module Build_doctests where"
+        , ""
+        , "import Prelude"
+        , ""
+        , "data Name = NameLib (Maybe String) | NameExe String deriving (Eq, Show)"
+        , "data Component = Component Name [String] [String] [String] deriving (Eq, Show)"
+        , ""
+        ]
 
     -- we cannot traverse, only traverse_
     -- so we use IORef to collect components
@@ -337,85 +381,83 @@ generateBuildModule testSuiteName flags pkg lbi = do
     let testBI = testBuildInfo suite
 
     -- TODO: `words` is not proper parser (no support for quotes)
-    let additionalFlags = maybe [] words
-          $ lookup "x-doctest-options"
-          $ customFieldsBI testBI
+    let additionalFlags =
+          maybe [] words $
+            lookup "x-doctest-options" $
+              customFieldsBI testBI
 
-    let additionalModules = maybe [] words
-          $ lookup "x-doctest-modules"
-          $ customFieldsBI testBI
+    let additionalModules =
+          maybe [] words $
+            lookup "x-doctest-modules" $
+              customFieldsBI testBI
 
-    let additionalDirs' = maybe [] words
-          $ lookup "x-doctest-source-dirs"
-          $ customFieldsBI testBI
+    let additionalDirs' =
+          maybe [] words $
+            lookup "x-doctest-source-dirs" $
+              customFieldsBI testBI
 
     additionalDirs <- mapM (fmap ("-i" ++) . makeAbsolute) additionalDirs'
 
     -- Next, for each component (library or executable), we get to Build_doctests
     -- the sets of flags needed to run doctest on that component.
     let getBuildDoctests withCompLBI mbCompName compExposedModules compMainIs compBuildInfo =
-         withCompLBI pkg lbi $ \comp compCfg -> do
-           let compBI = compBuildInfo comp
+          withCompLBI pkg lbi $ \comp compCfg -> do
+              let compBI = compBuildInfo comp
 
-           -- modules
-           let modules = compExposedModules comp ++ otherModules compBI
-           -- it seems that doctest is happy to take in module names, not actual files!
-           let module_sources = modules
+              -- modules
+              let modules = compExposedModules comp ++ otherModules compBI
+              -- it seems that doctest is happy to take in module names, not actual files!
+              let module_sources = modules
 
-           -- We need the directory with the component's cabal_macros.h!
-#if MIN_VERSION_Cabal(1,25,0)
-           let compAutogenDir = autogenComponentModulesDir lbi compCfg
-#else
-           let compAutogenDir = autogenModulesDir lbi
-#endif
+              -- We need the directory with the component's cabal_macros.h!
 
-           -- Lib sources and includes
-           iArgsNoPrefix
-              <- mapM makeAbsolute
-               $ compAutogenDir           -- autogenerated files
-               : (distPref ++ "/build")   -- preprocessed files (.hsc -> .hs); "build" is hardcoded in Cabal.
-               : map getSymbolicPath (hsSourceDirs compBI)
-           includeArgs <- mapM (fmap ("-I"++) . makeAbsolute) $ includeDirs compBI
-           -- We clear all includes, so the CWD isn't used.
-           let iArgs' = map ("-i"++) iArgsNoPrefix
-               iArgs  = "-i" : iArgs'
-
-           -- default-extensions
-           let extensionArgs = map (("-X"++) . display) $ defaultExtensions compBI
-
-           -- CPP includes, i.e. include cabal_macros.h
-           let cppFlags = map ("-optP"++) $
-                   [ "-include", compAutogenDir ++ "/cabal_macros.h" ]
-                   ++ cppOptions compBI
-
-           -- Unlike other modules, the main-is module of an executable is not
-           -- guaranteed to share a module name with its filepath name. That is,
-           -- even though the main-is module is named Main, its filepath might
-           -- actually be Something.hs. To account for this possibility, we simply
-           -- pass the full path to the main-is module instead.
-           mainIsPath <- T.traverse (findFileEx verbosity iArgsNoPrefix) (compMainIs comp)
-
-           let all_sources = map display module_sources
-                             ++ additionalModules
-                             ++ maybeToList mainIsPath
-
-           let component = Component
-                (mbCompName comp)
-                (formatDeps $ testDeps compCfg suitecfg)
-                (concat
-                  [ iArgs
-                  , additionalDirs
-                  , includeArgs
-                  , envFlags
-                  , dbFlags
-                  , cppFlags
-                  , extensionArgs
-                  , additionalFlags
-                  ])
-                all_sources
-
-           -- modify IORef, append component
-           modifyIORef componentsRef (\cs -> cs ++ [component])
+              let compAutogenDir = autogenComponentModulesDir lbi compCfg
+              -- Lib sources and includes
+              iArgsNoPrefix <- mapM makeAbsolute
+                 $ compAutogenDir           -- autogenerated files
+                 : (distPref ++ "/build")   -- preprocessed files (.hsc -> .hs); "build" is hardcoded in Cabal.
+                 : map getSymbolicPath (hsSourceDirs compBI)
+              includeArgs <- mapM (fmap ("-I"++) . makeAbsolute) $ includeDirs compBI
+              -- We clear all includes, so the CWD isn't used.
+              let iArgs' = map ("-i"++) iArgsNoPrefix
+                  iArgs  = "-i" : iArgs'
+              
+              -- default-extensions
+              let extensionArgs = map (("-X"++) . display) $ defaultExtensions compBI
+              
+              -- CPP includes, i.e. include cabal_macros.h
+              let cppFlags = map ("-optP"++) $
+                     [ "-include", compAutogenDir ++ "/cabal_macros.h" ]
+                     ++ cppOptions compBI
+              
+              -- Unlike other modules, the main-is module of an executable is not
+              -- guaranteed to share a module name with its filepath name. That is,
+              -- even though the main-is module is named Main, its filepath might
+              -- actually be Something.hs. To account for this possibility, we simply
+              -- pass the full path to the main-is module instead.
+              mainIsPath <- T.traverse (findFileEx verbosity iArgsNoPrefix) (compMainIs comp)
+              
+              let all_sources = map display module_sources
+                               ++ additionalModules
+                               ++ maybeToList mainIsPath
+              
+              let component = Component
+                    (mbCompName comp)
+                    (formatDeps $ testDeps compCfg suitecfg)
+                    (concat
+                      [ iArgs
+                      , additionalDirs
+                      , includeArgs
+                      , envFlags
+                      , dbFlags
+                      , cppFlags
+                      , extensionArgs
+                      , additionalFlags
+                      ])
+                    all_sources
+              
+              -- modify IORef, append component
+              modifyIORef componentsRef (\cs -> cs ++ [component])
 
     -- For now, we only check for doctests in libraries and executables.
     getBuildDoctests withLibLBI mbLibraryName           exposedModules (const Nothing)     libBuildInfo

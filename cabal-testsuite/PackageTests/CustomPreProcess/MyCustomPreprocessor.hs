@@ -5,5 +5,5 @@ import System.Environment
 
 main :: IO ()
 main = do
-  (source:target:_) <- getArgs
+  (source : target : _) <- getArgs
   copyFile source target

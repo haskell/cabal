@@ -1,5 +1,6 @@
 import Test.Cabal.Prelude
 
 -- No synopsis.
-main = cabalTest $
-  cabal "check" []
+main =
+  cabalTest $
+    cabal "check" []

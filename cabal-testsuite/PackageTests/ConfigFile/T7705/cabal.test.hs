@@ -18,6 +18,7 @@ import Test.Cabal.Prelude
 
 main = cabalTest $ do
   fails $
-    cabalG [ "--config-file", "does.not.exist" ] "info" [ "happy" ]
-  fails $ withEnv [("CABAL_CONFIG", Just "absent.file")] $
-    cabal "info" [ "alex" ]
+    cabalG ["--config-file", "does.not.exist"] "info" ["happy"]
+  fails $
+    withEnv [("CABAL_CONFIG", Just "absent.file")] $
+      cabal "info" ["alex"]

@@ -28,7 +28,7 @@ import Test.Cabal.Prelude
 --
 -- Based on the UniqueIPID test.
 
-import Control.Monad (forM, foldM_)
+import Control.Monad (foldM_, forM)
 import Data.List (isPrefixOf, tails)
 
 data Linking = Static | Dynamic deriving (Eq, Ord, Show)
@@ -37,68 +37,65 @@ links :: [Linking]
 links = [Static, Dynamic]
 
 linkConfigFlags :: Linking -> [String]
-linkConfigFlags Static  =
-    [
-    ]
+linkConfigFlags Static =
+  []
 linkConfigFlags Dynamic =
-    [
-        "--enable-shared",
-        "--enable-executable-dynamic",
-        "--disable-library-vanilla"
-    ]
+  [ "--enable-shared"
+  , "--enable-executable-dynamic"
+  , "--disable-library-vanilla"
+  ]
 
 lrun :: [Linking]
 lrun = [Static, Dynamic, Static, Dynamic]
 
 main = cabalTest $ do
-    -- Skip if on Windows, since my default Chocolatey Windows setup (and the CI
-    -- server setup at the time, presumably) lacks support for dynamic builds
-    -- since the base package appears to be static only, lacking e.g. ‘.dyn_o’
-    -- files.  Normal Windows installations would need support for dynamic
-    -- builds, or else this test would fail when it tries to build with the
-    -- dynamic flags.
-    skipIfWindows
+  -- Skip if on Windows, since my default Chocolatey Windows setup (and the CI
+  -- server setup at the time, presumably) lacks support for dynamic builds
+  -- since the base package appears to be static only, lacking e.g. ‘.dyn_o’
+  -- files.  Normal Windows installations would need support for dynamic
+  -- builds, or else this test would fail when it tries to build with the
+  -- dynamic flags.
+  skipIfWindows
 
-    withPackageDb $ do
-        -- Phase 1: get 4 hashes according to config flags.
-        results <- forM (zip [0..] lrun) $ \(idx, linking) -> do
-            withDirectory "basic" $ do
-                withSourceCopyDir ("basic" ++ show idx) $ do
-                    -- (Now do ‘cd ..’, since withSourceCopyDir made our previous
-                    -- previous such withDirectories now accumulate to be
-                    -- relative to setup.dist/basic0, not testSourceDir
-                    -- (see 'testCurrentDir').)
-                    withDirectory ".." $ do
-                        packageEnv <- (</> ("basic" ++ show idx ++ ".env")) . testWorkDir <$> getTestEnv
-                        cabal "v2-install" $ ["--disable-deterministic", "--lib", "--package-env=" ++ packageEnv] ++ linkConfigFlags linking ++ ["basic"]
-                        let exIPID s = takeWhile (/= '\n') . head . filter (\t -> any (`isPrefixOf` t) ["basic-0.1-", "bsc-0.1-"]) $ tails s
-                        hashedIpid <- exIPID <$> liftIO (readFile packageEnv)
-                        return $ ((idx, linking), hashedIpid)
-        -- Phase 2: make sure we have different hashes iff we have different config flags.
-        -- In particular make sure the dynamic config flags weren't silently
-        -- dropped and ignored, since this is the bug that prompted this test.
-        (\step -> foldM_ step (const $ return ()) results) $ \acc x -> do
-            acc x
-            return $ \future -> acc future >> do
-                let
-                    ((thisIdx,   thisLinking),   thisHashedIpid)   = x
-                    ((futureIdx, futureLinking), futureHashedIpid) = future
-                when ((thisHashedIpid == futureHashedIpid) /= (thisLinking == futureLinking)) $ do
-                    assertFailure . unlines $
-                        if thisLinking /= futureLinking
-                            then
-                                -- What we are primarily concerned with testing
-                                -- here.
-                                [
-                                    "Error: static and dynamic config flags produced an IPID with the same hash; were the dynamic flags silently dropped?",
-                                    "\thashed IPID: " ++ thisHashedIpid
-                                ]
-                            else
-                                -- Help test our test can also make equal
-                                -- hashes.
-                                [
-                                    "Error: config flags were equal, yet a different IPID hash was produced.",
-                                    "\thashed IPID 1 : " ++ thisHashedIpid,
-                                    "\thashed IPID 2 : " ++ futureHashedIpid,
-                                    "\tlinking flags : " ++ show thisLinking
-                                ]
+  withPackageDb $ do
+    -- Phase 1: get 4 hashes according to config flags.
+    results <- forM (zip [0 ..] lrun) $ \(idx, linking) -> do
+      withDirectory "basic" $ do
+        withSourceCopyDir ("basic" ++ show idx) $ do
+          -- (Now do ‘cd ..’, since withSourceCopyDir made our previous
+          -- previous such withDirectories now accumulate to be
+          -- relative to setup.dist/basic0, not testSourceDir
+          -- (see 'testCurrentDir').)
+          withDirectory ".." $ do
+            packageEnv <- (</> ("basic" ++ show idx ++ ".env")) . testWorkDir <$> getTestEnv
+            cabal "v2-install" $ ["--disable-deterministic", "--lib", "--package-env=" ++ packageEnv] ++ linkConfigFlags linking ++ ["basic"]
+            let exIPID s = takeWhile (/= '\n') . head . filter (\t -> any (`isPrefixOf` t) ["basic-0.1-", "bsc-0.1-"]) $ tails s
+            hashedIpid <- exIPID <$> liftIO (readFile packageEnv)
+            return $ ((idx, linking), hashedIpid)
+    -- Phase 2: make sure we have different hashes iff we have different config flags.
+    -- In particular make sure the dynamic config flags weren't silently
+    -- dropped and ignored, since this is the bug that prompted this test.
+    (\step -> foldM_ step (const $ return ()) results) $ \acc x -> do
+      acc x
+      return $ \future ->
+        acc future >> do
+          let
+            ((thisIdx, thisLinking), thisHashedIpid) = x
+            ((futureIdx, futureLinking), futureHashedIpid) = future
+          when ((thisHashedIpid == futureHashedIpid) /= (thisLinking == futureLinking)) $ do
+            assertFailure . unlines $
+              if thisLinking /= futureLinking
+                then -- What we are primarily concerned with testing
+                -- here.
+
+                  [ "Error: static and dynamic config flags produced an IPID with the same hash; were the dynamic flags silently dropped?"
+                  , "\thashed IPID: " ++ thisHashedIpid
+                  ]
+                else -- Help test our test can also make equal
+                -- hashes.
+
+                  [ "Error: config flags were equal, yet a different IPID hash was produced."
+                  , "\thashed IPID 1 : " ++ thisHashedIpid
+                  , "\thashed IPID 2 : " ++ futureHashedIpid
+                  , "\tlinking flags : " ++ show thisLinking
+                  ]

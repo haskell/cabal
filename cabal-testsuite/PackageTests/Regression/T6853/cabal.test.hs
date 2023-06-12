@@ -1,3 +1,5 @@
 import Test.Cabal.Prelude
-main = cabalTest $
-  cabal "v2-build" ["all"]
+
+main =
+  cabalTest $
+    cabal "v2-build" ["all"]

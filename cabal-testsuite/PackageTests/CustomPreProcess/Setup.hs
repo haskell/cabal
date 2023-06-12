@@ -1,5 +1,6 @@
 {-# LANGUAGE CPP #-}
 {-# OPTIONS_GHC -Wall #-}
+{- FOURMOLU_DISABLE -}
 
 -- The logic here is tricky.
 -- If this is compiled by cabal-install, then the MIN_VERSION_Cabal is set

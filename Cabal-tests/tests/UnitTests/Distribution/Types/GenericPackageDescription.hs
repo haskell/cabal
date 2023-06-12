@@ -1,14 +1,15 @@
-{-# OPTIONS_GHC -fno-warn-deprecations #-}   -- for importing "Distribution.Compat.Prelude.Internal"
+-- for importing "Distribution.Compat.Prelude.Internal"
+{-# OPTIONS_GHC -fno-warn-deprecations #-}
 
 module UnitTests.Distribution.Types.GenericPackageDescription where
 
-import Prelude ()
 import Distribution.Compat.Prelude.Internal
 import Distribution.Types.GenericPackageDescription
+import Prelude ()
 
+import qualified Control.Exception as C
 import Test.Tasty
 import Test.Tasty.HUnit
-import qualified Control.Exception as C
 
 tests :: [TestTree]
 tests =
@@ -17,21 +18,23 @@ tests =
 
 gpdFields :: [(String, GenericPackageDescription -> GenericPackageDescription)]
 gpdFields =
-  [ ("packageDescription", \gpd -> gpd { packageDescription = undefined })
-  , ("genPackageFlags",    \gpd -> gpd { genPackageFlags    = undefined })
-  , ("condLibrary",        \gpd -> gpd { condLibrary        = undefined })
-  , ("condSubLibraries",   \gpd -> gpd { condSubLibraries   = undefined })
-  , ("condForeignLibs",    \gpd -> gpd { condForeignLibs    = undefined })
-  , ("condExecutables",    \gpd -> gpd { condExecutables    = undefined })
-  , ("condTestSuites",     \gpd -> gpd { condTestSuites     = undefined })
-  , ("condBenchmarks",     \gpd -> gpd { condBenchmarks     = undefined })
+  [ ("packageDescription", \gpd -> gpd{packageDescription = undefined})
+  , ("genPackageFlags", \gpd -> gpd{genPackageFlags = undefined})
+  , ("condLibrary", \gpd -> gpd{condLibrary = undefined})
+  , ("condSubLibraries", \gpd -> gpd{condSubLibraries = undefined})
+  , ("condForeignLibs", \gpd -> gpd{condForeignLibs = undefined})
+  , ("condExecutables", \gpd -> gpd{condExecutables = undefined})
+  , ("condTestSuites", \gpd -> gpd{condTestSuites = undefined})
+  , ("condBenchmarks", \gpd -> gpd{condBenchmarks = undefined})
   ]
 
 gpdDeepseq :: Assertion
-gpdDeepseq = sequence_
-  [ throwsUndefined msg (f emptyGenericPackageDescription) | (msg, f) <- gpdFields ]
+gpdDeepseq =
+  sequence_
+    [throwsUndefined msg (f emptyGenericPackageDescription) | (msg, f) <- gpdFields]
 
 throwsUndefined :: NFData a => String -> a -> Assertion
 throwsUndefined field a =
-  C.catch (C.evaluate (rnf a) >> assertFailure ("Deepseq failed to evaluate " ++ show field))
-          (\(C.ErrorCall _) -> return ())
+  C.catch
+    (C.evaluate (rnf a) >> assertFailure ("Deepseq failed to evaluate " ++ show field))
+    (\(C.ErrorCall _) -> return ())

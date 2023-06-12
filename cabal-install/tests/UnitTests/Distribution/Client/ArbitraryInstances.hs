@@ -45,9 +45,24 @@ import Distribution.Solver.Types.PackageConstraint (PackageProperty (..))
 
 import Data.Coerce (Coercible, coerce)
 import Network.URI (URI (..), URIAuth (..), isUnreserved)
-import Test.QuickCheck (Arbitrary(..), Gen, NonEmptyList(..),
-                        arbitraryBoundedEnum, choose, elements, frequency, genericShrink,
-                        liftArbitrary, listOf, oneof, resize, sized, shrinkBoundedEnum, suchThat, vectorOf)
+import Test.QuickCheck
+  ( Arbitrary (..)
+  , Gen
+  , NonEmptyList (..)
+  , arbitraryBoundedEnum
+  , choose
+  , elements
+  , frequency
+  , genericShrink
+  , liftArbitrary
+  , listOf
+  , oneof
+  , resize
+  , shrinkBoundedEnum
+  , sized
+  , suchThat
+  , vectorOf
+  )
 import Test.QuickCheck.GenericArbitrary (genericArbitrary)
 import Test.QuickCheck.Instances.Cabal ()
 

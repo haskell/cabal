@@ -9,34 +9,34 @@ import qualified Distribution.Verbosity as Verbosity
 import Test.Cabal.Prelude
 
 main = cabalTest $ do
-    skipIf "osx" =<< isOSX -- TODO: re-enable this once the macOS CI
-                           -- issues are resolved, see discussion in #4902.
+  skipIf "osx" =<< isOSX -- TODO: re-enable this once the macOS CI
+  -- issues are resolved, see discussion in #4902.
+  hasShared <- hasSharedLibraries
+  hasProfiled <- hasProfiledLibraries
+  hpcOk <- correctHpcVersion
 
-    hasShared   <- hasSharedLibraries
-    hasProfiled <- hasProfiledLibraries
-    hpcOk       <- correctHpcVersion
-
-    forM_ (choose4 [True, False]) $ \(libProf, exeProf, exeDyn, shared) ->
-      do
+  forM_ (choose4 [True, False]) $ \(libProf, exeProf, exeDyn, shared) ->
+    do
+      let
+        opts =
+          catMaybes
+            [ enable libProf "library-profiling"
+            , enable exeProf "profiling"
+            , enable exeDyn "executable-dynamic"
+            , enable shared "shared"
+            ]
+          where
+            enable cond flag
+              | cond = Just $ "--enable-" ++ flag
+              | otherwise = Nothing
+        args = "test-Short" : "--enable-coverage" : opts
+      recordMode DoNotRecord $ do
         let
-          opts = catMaybes
-              [ enable libProf "library-profiling"
-              , enable exeProf "profiling"
-              , enable exeDyn "executable-dynamic"
-              , enable shared "shared"
-              ]
-            where
-              enable cond flag
-                | cond = Just $ "--enable-" ++ flag
-                | otherwise = Nothing
-          args = "test-Short" : "--enable-coverage" : opts
-        recordMode DoNotRecord $ do
-          let
-            skip =
-                not hpcOk
-                || (not hasShared && (exeDyn || shared))
-                || (not hasProfiled && (libProf || exeProf))
-          unless skip $ cabal "v2-test" args
+          skip =
+            not hpcOk
+              || (not hasShared && (exeDyn || shared))
+              || (not hasProfiled && (libProf || exeProf))
+        unless skip $ cabal "v2-test" args
   where
     choose4 :: [a] -> [(a, a, a, a)]
     choose4 xs = liftM4 (,,,) xs xs xs xs
@@ -44,11 +44,14 @@ main = cabalTest $ do
 -- | Checks for a suitable HPC version for testing.
 correctHpcVersion :: TestM Bool
 correctHpcVersion = do
-    let verbosity = Verbosity.normal
-        verRange  = orLaterVersion (mkVersion [0,7])
-    progDB <- testProgramDb `fmap` ask
-    liftIO $ (requireProgramVersion verbosity hpcProgram verRange progDB
-              >> return True) `catchIO` (\_ -> return False)
+  let verbosity = Verbosity.normal
+      verRange = orLaterVersion (mkVersion [0, 7])
+  progDB <- testProgramDb `fmap` ask
+  liftIO $
+    ( requireProgramVersion verbosity hpcProgram verRange progDB
+        >> return True
+    )
+      `catchIO` (\_ -> return False)
   where
     -- Distribution.Compat.Exception is hidden.
     catchIO :: IO a -> (E.IOException -> IO a) -> IO a

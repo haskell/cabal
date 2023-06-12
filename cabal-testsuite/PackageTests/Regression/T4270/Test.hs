@@ -7,7 +7,8 @@ import Distribution.TestSuite
 tests :: IO [Test]
 tests = return [Test bar]
   where
-    bar = TestInstance
+    bar =
+      TestInstance
         { run = return $ Finished run
         , name = "test"
         , tags = []

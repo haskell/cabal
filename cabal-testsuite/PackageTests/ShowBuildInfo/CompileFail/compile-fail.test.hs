@@ -1,8 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
-import           Test.Cabal.Prelude
-import           Test.Cabal.DecodeShowBuildInfo
-import           Test.Cabal.Plan
-import           Control.Monad.Trans.Reader
+
+import Control.Monad.Trans.Reader
+import Test.Cabal.DecodeShowBuildInfo
+import Test.Cabal.Plan
+import Test.Cabal.Prelude
 
 main = cabalTest $ do
   -- Leaf component fails to compile, should still dump
@@ -10,14 +11,18 @@ main = cabalTest $ do
   fails $ runShowBuildInfo ["test:CompileFail-test"]
   withPlan $ do
     -- Lib has to be built, thus info is dumped
-    assertComponent "CompileFail" mainLib
+    assertComponent
+      "CompileFail"
+      mainLib
       defCompAssertion
         { modules = ["MyLib"]
         , sourceDirs = ["src"]
         }
 
     -- Build Info is still dumped, although compilation failed
-    assertComponent "CompileFail" (test "CompileFail-test")
+    assertComponent
+      "CompileFail"
+      (test "CompileFail-test")
       defCompAssertion
         { sourceFiles = ["Main.hs"]
         , sourceDirs = ["test"]
@@ -26,7 +31,9 @@ main = cabalTest $ do
   fails $ runShowBuildInfo ["exe:CompileFail-exe"]
   withPlan $ do
     -- Internal Lib has to be built, thus info is dumped
-    assertComponent "CompileFail" (lib "failing")
+    assertComponent
+      "CompileFail"
+      (lib "failing")
       defCompAssertion
         { modules = ["MyLib2"]
         , sourceDirs = ["src"]

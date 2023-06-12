@@ -1,4 +1,5 @@
 import Test.Cabal.Prelude
+
 main = setupAndCabalTest $
   withPackageDb $ do
     withDirectory "dep" $ setup_install []

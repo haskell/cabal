@@ -8,4 +8,4 @@ main = do
 
 buildToolExeVersion :: Int
 buildToolExeVersion =
-    BUILD_TOOL_VERSION
+  BUILD_TOOL_VERSION

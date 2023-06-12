@@ -1,2 +1,3 @@
 import InplaceDep
+
 main = f

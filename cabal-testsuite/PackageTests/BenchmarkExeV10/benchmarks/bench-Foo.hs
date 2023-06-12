@@ -4,5 +4,6 @@ import Foo
 import System.Exit
 
 main :: IO ()
-main | fooTest [] = exitSuccess
-     | otherwise = exitFailure
+main
+  | fooTest [] = exitSuccess
+  | otherwise = exitFailure

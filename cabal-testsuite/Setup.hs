@@ -1,4 +1,5 @@
 {-# LANGUAGE Haskell2010 #-}
+
 module Main (main) where
 
 import Distribution.Backpack
@@ -27,8 +28,9 @@ generateScriptEnvModule :: LocalBuildInfo -> Verbosity -> IO ()
 generateScriptEnvModule lbi verbosity = do
     lbiPackageDbStack <- mapM canonicalizePackageDB (withPackageDB lbi)
 
-    createDirectoryIfMissing True moduledir
-    rewriteFileEx verbosity (moduledir </> "ScriptEnv0.hs") $ unlines
+  createDirectoryIfMissing True moduledir
+  rewriteFileEx verbosity (moduledir </> "ScriptEnv0.hs") $
+    unlines
       [ "module Test.Cabal.ScriptEnv0 where"
       , ""
       , "import Distribution.Simple"
@@ -64,8 +66,8 @@ generateScriptEnvModule lbi verbosity = do
 -- | Convert package database into absolute path, so that
 -- if we change working directories in a subprocess we get the correct database.
 canonicalizePackageDB :: PackageDB -> IO PackageDB
-canonicalizePackageDB (SpecificPackageDB path)
-    = SpecificPackageDB `fmap` canonicalizePath path
+canonicalizePackageDB (SpecificPackageDB path) =
+  SpecificPackageDB `fmap` canonicalizePath path
 canonicalizePackageDB x = return x
 
 -- | Compute the set of @-package-id@ flags which would be passed when
@@ -73,7 +75,8 @@ canonicalizePackageDB x = return x
 -- non-Backpack.
 cabalTestsPackages :: LocalBuildInfo -> [(OpenUnitId, ModuleRenaming)]
 cabalTestsPackages lbi =
-    case componentNameCLBIs lbi (CExeName (mkUnqualComponentName "cabal-tests")) of
-        [clbi] -> -- [ (unUnitId $ unDefUnitId duid,rn) | (DefiniteUnitId duid, rn) <- componentIncludes clbi ]
-                  componentIncludes clbi
-        _ -> error "cabalTestsPackages"
+  case componentNameCLBIs lbi (CExeName (mkUnqualComponentName "cabal-tests")) of
+    [clbi] ->
+      -- [ (unUnitId $ unDefUnitId duid,rn) | (DefiniteUnitId duid, rn) <- componentIncludes clbi ]
+      componentIncludes clbi
+    _ -> error "cabalTestsPackages"

@@ -1,5 +1,6 @@
-import Test.Cabal.Prelude
 import Data.Foldable (traverse_)
+import Test.Cabal.Prelude
+
 main = cabalTest $ do
   -- Test the forbidden characters except NUL. Reference:
   -- https://www.gnu.org/software/autoconf/manual/autoconf.html#File-System-Conventions
@@ -8,7 +9,8 @@ main = cabalTest $ do
   -- Note: we bundle the configure script so no need to autoreconf
   -- while building
   skipIfWindows
-  traverse_ check
+  traverse_
+    check
     [ "foo bar"
     , "foo\tbar"
     , "foo\nbar"
@@ -45,9 +47,13 @@ main = cabalTest $ do
               , testDistDir env
               ]
         configured_prog <- requireProgramM cabalProgram
-        r <- liftIO $ run (testVerbosity env)
-                      (Just (testCurrentDir env))
-                      (testEnvironment env)
-                      (programPath configured_prog)
-                      args Nothing
+        r <-
+          liftIO $
+            run
+              (testVerbosity env)
+              (Just (testCurrentDir env))
+              (testEnvironment env)
+              (programPath configured_prog)
+              args
+              Nothing
         recordLog r

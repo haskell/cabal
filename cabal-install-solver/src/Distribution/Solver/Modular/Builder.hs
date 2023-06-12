@@ -1,6 +1,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
-module Distribution.Solver.Modular.Builder (
-    buildTree
+
+module Distribution.Solver.Modular.Builder
+  ( buildTree
   , splits -- for testing
   ) where
 
@@ -28,8 +29,8 @@ import qualified Distribution.Solver.Modular.ConflictSet as CS
 import Distribution.Solver.Modular.Dependency
 import Distribution.Solver.Modular.Flag
 import Distribution.Solver.Modular.Index
-import Distribution.Solver.Modular.Package
 import qualified Distribution.Solver.Modular.PSQ as P
+import Distribution.Solver.Modular.Package
 import Distribution.Solver.Modular.Tree
 import qualified Distribution.Solver.Modular.WeightedPSQ as W
 
@@ -40,19 +41,24 @@ import Distribution.Solver.Types.Settings
 -- | All state needed to build and link the search tree. It has a type variable
 -- because the linking phase doesn't need to know about the state used to build
 -- the tree.
-data Linker a = Linker {
-  buildState   :: a,
-  linkingState :: LinkingState
-}
+data Linker a = Linker
+  { buildState :: a
+  , linkingState :: LinkingState
+  }
 
 -- | The state needed to build the search tree without creating any linked nodes.
-data BuildState = BS {
-  index :: Index,                   -- ^ information about packages and their dependencies
-  rdeps :: RevDepMap,               -- ^ set of all package goals, completed and open, with reverse dependencies
-  open  :: [OpenGoal],              -- ^ set of still open goals (flag and package goals)
-  next  :: BuildType,               -- ^ kind of node to generate next
-  qualifyOptions :: QualifyOptions  -- ^ qualification options
-}
+data BuildState = BS
+  { index :: Index
+  -- ^ information about packages and their dependencies
+  , rdeps :: RevDepMap
+  -- ^ set of all package goals, completed and open, with reverse dependencies
+  , open :: [OpenGoal]
+  -- ^ set of still open goals (flag and package goals)
+  , next :: BuildType
+  -- ^ kind of node to generate next
+  , qualifyOptions :: QualifyOptions
+  -- ^ qualification options
+  }
 
 -- | Map of available linking targets.
 type LinkingState = M.Map (PN, I) [PackagePath]
@@ -62,33 +68,33 @@ type LinkingState = M.Map (PN, I) [PackagePath]
 -- We also adjust the map of overall goals, and keep track of the
 -- reverse dependencies of each of the goals.
 extendOpen :: QPN -> [FlaggedDep QPN] -> BuildState -> BuildState
-extendOpen qpn' gs s@(BS { rdeps = gs', open = o' }) = go gs' o' gs
+extendOpen qpn' gs s@(BS{rdeps = gs', open = o'}) = go gs' o' gs
   where
     go :: RevDepMap -> [OpenGoal] -> [FlaggedDep QPN] -> BuildState
-    go g o []                                             = s { rdeps = g, open = o }
-    go g o ((Flagged fn@(FN qpn _) fInfo t f)  : ngs) =
-        go g (FlagGoal fn fInfo t f (flagGR qpn) : o) ngs
-      -- Note: for 'Flagged' goals, we always insert, so later additions win.
-      -- This is important, because in general, if a goal is inserted twice,
-      -- the later addition will have better dependency information.
-    go g o ((Stanza sn@(SN qpn _) t)           : ngs) =
-        go g (StanzaGoal sn t (flagGR qpn) : o) ngs
+    go g o [] = s{rdeps = g, open = o}
+    go g o ((Flagged fn@(FN qpn _) fInfo t f) : ngs) =
+      go g (FlagGoal fn fInfo t f (flagGR qpn) : o) ngs
+    -- Note: for 'Flagged' goals, we always insert, so later additions win.
+    -- This is important, because in general, if a goal is inserted twice,
+    -- the later addition will have better dependency information.
+    go g o ((Stanza sn@(SN qpn _) t) : ngs) =
+      go g (StanzaGoal sn t (flagGR qpn) : o) ngs
     go g o ((Simple (LDep dr (Dep (PkgComponent qpn _) _)) c) : ngs)
-      | qpn == qpn'       =
-            -- We currently only add a self-dependency to the graph if it is
-            -- between a package and its setup script. The edge creates a cycle
-            -- and causes the solver to backtrack and choose a different
-            -- instance for the setup script. We may need to track other
-            -- self-dependencies once we implement component-based solving.
+      | qpn == qpn' =
+          -- We currently only add a self-dependency to the graph if it is
+          -- between a package and its setup script. The edge creates a cycle
+          -- and causes the solver to backtrack and choose a different
+          -- instance for the setup script. We may need to track other
+          -- self-dependencies once we implement component-based solving.
           case c of
             ComponentSetup -> go (M.adjust (addIfAbsent (ComponentSetup, qpn')) qpn g) o ngs
-            _              -> go                                                    g  o ngs
-      | qpn `M.member` g  = go (M.adjust (addIfAbsent (c, qpn')) qpn g)   o  ngs
-      | otherwise         = go (M.insert qpn [(c, qpn')]  g) (PkgGoal qpn (DependencyGoal dr) : o) ngs
-          -- code above is correct; insert/adjust have different arg order
-    go g o ((Simple (LDep _dr (Ext _ext )) _)  : ngs) = go g o ngs
-    go g o ((Simple (LDep _dr (Lang _lang))_)  : ngs) = go g o ngs
-    go g o ((Simple (LDep _dr (Pkg _pn _vr))_) : ngs) = go g o ngs
+            _ -> go g o ngs
+      | qpn `M.member` g = go (M.adjust (addIfAbsent (c, qpn')) qpn g) o ngs
+      | otherwise = go (M.insert qpn [(c, qpn')] g) (PkgGoal qpn (DependencyGoal dr) : o) ngs
+    -- code above is correct; insert/adjust have different arg order
+    go g o ((Simple (LDep _dr (Ext _ext)) _) : ngs) = go g o ngs
+    go g o ((Simple (LDep _dr (Lang _lang)) _) : ngs) = go g o ngs
+    go g o ((Simple (LDep _dr (Pkg _pn _vr)) _) : ngs) = go g o ngs
 
     addIfAbsent :: Eq a => a -> [a] -> [a]
     addIfAbsent x xs = if x `elem` xs then xs else x : xs
@@ -100,26 +106,34 @@ extendOpen qpn' gs s@(BS { rdeps = gs', open = o' }) = go gs' o' gs
 
 -- | Given the current scope, qualify all the package names in the given set of
 -- dependencies and then extend the set of open goals accordingly.
-scopedExtendOpen :: QPN -> FlaggedDeps PN -> FlagInfo ->
-                    BuildState -> BuildState
+scopedExtendOpen
+  :: QPN
+  -> FlaggedDeps PN
+  -> FlagInfo
+  -> BuildState
+  -> BuildState
 scopedExtendOpen qpn fdeps fdefs s = extendOpen qpn gs s
   where
     -- Qualify all package names
     qfdeps = qualifyDeps (qualifyOptions s) qpn fdeps
     -- Introduce all package flags
-    qfdefs = L.map (\ (fn, b) -> Flagged (FN qpn fn) b [] []) $ M.toList fdefs
+    qfdefs = L.map (\(fn, b) -> Flagged (FN qpn fn) b [] []) $ M.toList fdefs
     -- Combine new package and flag goals
-    gs     = qfdefs ++ qfdeps
-    -- NOTE:
-    --
-    -- In the expression @qfdefs ++ qfdeps@ above, flags occur potentially
-    -- multiple times, both via the flag declaration and via dependencies.
+    gs = qfdefs ++ qfdeps
+
+-- NOTE:
+--
+-- In the expression @qfdefs ++ qfdeps@ above, flags occur potentially
+-- multiple times, both via the flag declaration and via dependencies.
 
 -- | Datatype that encodes what to build next
-data BuildType =
-    Goals              -- ^ build a goal choice node
-  | OneGoal OpenGoal   -- ^ build a node for this goal
-  | Instance QPN PInfo -- ^ build a tree for a concrete instance
+data BuildType
+  = -- | build a goal choice node
+    Goals
+  | -- | build a node for this goal
+    OneGoal OpenGoal
+  | -- | build a tree for a concrete instance
+    Instance QPN PInfo
 
 build :: Linker BuildState -> Tree () QGoalReason
 build = ana go
@@ -128,37 +142,57 @@ build = ana go
     go s = addLinking (linkingState s) $ addChildren (buildState s)
 
 addChildren :: BuildState -> TreeF () QGoalReason BuildState
-
 -- If we have a choice between many goals, we just record the choice in
 -- the tree. We select each open goal in turn, and before we descend, remove
 -- it from the queue of open goals.
-addChildren bs@(BS { rdeps = rdm, open = gs, next = Goals })
+addChildren bs@(BS{rdeps = rdm, open = gs, next = Goals})
   | L.null gs = DoneF rdm ()
-  | otherwise = GoalChoiceF rdm $ P.fromList
-                                $ L.map (\ (g, gs') -> (close g, bs { next = OneGoal g, open = gs' }))
-                                $ splits gs
-
+  | otherwise =
+      GoalChoiceF rdm $
+        P.fromList $
+          L.map (\(g, gs') -> (close g, bs{next = OneGoal g, open = gs'})) $
+            splits gs
 -- If we have already picked a goal, then the choice depends on the kind
 -- of goal.
 --
 -- For a package, we look up the instances available in the global info,
 -- and then handle each instance in turn.
-addChildren bs@(BS { rdeps = rdm, index = idx, next = OneGoal (PkgGoal qpn@(Q _ pn) gr) }) =
+addChildren bs@(BS{rdeps = rdm, index = idx, next = OneGoal (PkgGoal qpn@(Q _ pn) gr)}) =
   case M.lookup pn idx of
-    Nothing  -> FailF
-                (varToConflictSet (P qpn) `CS.union` goalReasonToConflictSetWithConflict qpn gr)
-                UnknownPackage
-    Just pis -> PChoiceF qpn rdm gr (W.fromList (L.map (\ (i, info) ->
-                                                       ([], POption i Nothing, bs { next = Instance qpn info }))
-                                                     (M.toList pis)))
-      -- TODO: data structure conversion is rather ugly here
+    Nothing ->
+      FailF
+        (varToConflictSet (P qpn) `CS.union` goalReasonToConflictSetWithConflict qpn gr)
+        UnknownPackage
+    Just pis ->
+      PChoiceF
+        qpn
+        rdm
+        gr
+        ( W.fromList
+            ( L.map
+                ( \(i, info) ->
+                    ([], POption i Nothing, bs{next = Instance qpn info})
+                )
+                (M.toList pis)
+            )
+        )
+-- TODO: data structure conversion is rather ugly here
 
 -- For a flag, we create only two subtrees, and we create them in the order
 -- that is indicated by the flag default.
-addChildren bs@(BS { rdeps = rdm, next = OneGoal (FlagGoal qfn@(FN qpn _) (FInfo b m w) t f gr) }) =
-  FChoiceF qfn rdm gr weak m b (W.fromList
-    [([if b then 0 else 1], True,  (extendOpen qpn t bs) { next = Goals }),
-     ([if b then 1 else 0], False, (extendOpen qpn f bs) { next = Goals })])
+addChildren bs@(BS{rdeps = rdm, next = OneGoal (FlagGoal qfn@(FN qpn _) (FInfo b m w) t f gr)}) =
+  FChoiceF
+    qfn
+    rdm
+    gr
+    weak
+    m
+    b
+    ( W.fromList
+        [ ([if b then 0 else 1], True, (extendOpen qpn t bs){next = Goals})
+        , ([if b then 1 else 0], False, (extendOpen qpn f bs){next = Goals})
+        ]
+    )
   where
     trivial = L.null t && L.null f
     weak = WeakOrTrivial $ unWeakOrTrivial w || trivial
@@ -168,10 +202,17 @@ addChildren bs@(BS { rdeps = rdm, next = OneGoal (FlagGoal qfn@(FN qpn _) (FInfo
 -- the stanza by replacing the False branch with failure) or preferences
 -- (try enabling the stanza if possible by moving the True branch first).
 
-addChildren bs@(BS { rdeps = rdm, next = OneGoal (StanzaGoal qsn@(SN qpn _) t gr) }) =
-  SChoiceF qsn rdm gr trivial (W.fromList
-    [([0], False,                                                                  bs  { next = Goals }),
-     ([1], True,  (extendOpen qpn t bs) { next = Goals })])
+addChildren bs@(BS{rdeps = rdm, next = OneGoal (StanzaGoal qsn@(SN qpn _) t gr)}) =
+  SChoiceF
+    qsn
+    rdm
+    gr
+    trivial
+    ( W.fromList
+        [ ([0], False, bs{next = Goals})
+        , ([1], True, (extendOpen qpn t bs){next = Goals})
+        ]
+    )
   where
     trivial = WeakOrTrivial (L.null t)
 
@@ -179,9 +220,12 @@ addChildren bs@(BS { rdeps = rdm, next = OneGoal (StanzaGoal qsn@(SN qpn _) t gr
 -- and furthermore we update the set of goals.
 --
 -- TODO: We could inline this above.
-addChildren bs@(BS { next = Instance qpn (PInfo fdeps _ fdefs _) }) =
-  addChildren ((scopedExtendOpen qpn fdeps fdefs bs)
-         { next = Goals })
+addChildren bs@(BS{next = Instance qpn (PInfo fdeps _ fdefs _)}) =
+  addChildren
+    ( (scopedExtendOpen qpn fdeps fdefs bs)
+        { next = Goals
+        }
+    )
 
 {-------------------------------------------------------------------------------
   Add linking
@@ -215,8 +259,10 @@ addChildren bs@(BS { next = Instance qpn (PInfo fdeps _ fdefs _) }) =
 addLinking :: LinkingState -> TreeF () c a -> TreeF () c (Linker a)
 -- The only nodes of interest are package nodes
 addLinking ls (PChoiceF qpn@(Q pp pn) rdm gr cs) =
-  let linkedCs = fmap (\bs -> Linker bs ls) $
-                 W.fromList $ concatMap (linkChoices ls qpn) (W.toList cs)
+  let linkedCs =
+        fmap (\bs -> Linker bs ls) $
+          W.fromList $
+            concatMap (linkChoices ls qpn) (W.toList cs)
       unlinkedCs = W.mapWithKey goP cs
       allCs = unlinkedCs `W.union` linkedCs
 
@@ -224,21 +270,23 @@ addLinking ls (PChoiceF qpn@(Q pp pn) rdm gr cs) =
       -- that we record the package choice so that it is available below
       goP :: POption -> a -> Linker a
       goP (POption i Nothing) bs = Linker bs $ M.insertWith (++) (pn, i) [pp] ls
-      goP _                   _  = alreadyLinked
-  in PChoiceF qpn rdm gr allCs
+      goP _ _ = alreadyLinked
+   in PChoiceF qpn rdm gr allCs
 addLinking ls t = fmap (\bs -> Linker bs ls) t
 
-linkChoices :: forall a w . LinkingState
-            -> QPN
-            -> (w, POption, a)
-            -> [(w, POption, a)]
+linkChoices
+  :: forall a w
+   . LinkingState
+  -> QPN
+  -> (w, POption, a)
+  -> [(w, POption, a)]
 linkChoices related (Q _pp pn) (weight, POption i Nothing, subtree) =
-    L.map aux (M.findWithDefault [] (pn, i) related)
+  L.map aux (M.findWithDefault [] (pn, i) related)
   where
     aux :: PackagePath -> (w, POption, a)
     aux pp = (weight, POption i (Just pp), subtree)
 linkChoices _ _ (_, POption _ (Just _), _) =
-    alreadyLinked
+  alreadyLinked
 
 alreadyLinked :: a
 alreadyLinked = error "addLinking called on tree that already contains linked nodes"
@@ -249,38 +297,41 @@ alreadyLinked = error "addLinking called on tree that already contains linked no
 -- and computes the initial state and then the tree from there.
 buildTree :: Index -> IndependentGoals -> [PN] -> Tree () QGoalReason
 buildTree idx (IndependentGoals ind) igs =
-    build Linker {
-        buildState = BS {
-            index = idx
-          , rdeps = M.fromList (L.map (\ qpn -> (qpn, []))              qpns)
-          , open  = L.map topLevelGoal qpns
-          , next  = Goals
-          , qualifyOptions = defaultQualifyOptions idx
-          }
+  build
+    Linker
+      { buildState =
+          BS
+            { index = idx
+            , rdeps = M.fromList (L.map (\qpn -> (qpn, [])) qpns)
+            , open = L.map topLevelGoal qpns
+            , next = Goals
+            , qualifyOptions = defaultQualifyOptions idx
+            }
       , linkingState = M.empty
       }
   where
     topLevelGoal qpn = PkgGoal qpn UserGoal
 
-    qpns | ind       = L.map makeIndependent igs
-         | otherwise = L.map (Q (PackagePath DefaultNamespace QualToplevel)) igs
+    qpns
+      | ind = L.map makeIndependent igs
+      | otherwise = L.map (Q (PackagePath DefaultNamespace QualToplevel)) igs
 
 {-------------------------------------------------------------------------------
   Goals
 -------------------------------------------------------------------------------}
 
 -- | Information needed about a dependency before it is converted into a Goal.
-data OpenGoal =
-    FlagGoal   (FN QPN) FInfo (FlaggedDeps QPN) (FlaggedDeps QPN) QGoalReason
-  | StanzaGoal (SN QPN)       (FlaggedDeps QPN)                   QGoalReason
-  | PkgGoal    QPN                                                QGoalReason
+data OpenGoal
+  = FlagGoal (FN QPN) FInfo (FlaggedDeps QPN) (FlaggedDeps QPN) QGoalReason
+  | StanzaGoal (SN QPN) (FlaggedDeps QPN) QGoalReason
+  | PkgGoal QPN QGoalReason
 
 -- | Closes a goal, i.e., removes all the extraneous information that we
 -- need only during the build phase.
 close :: OpenGoal -> Goal QPN
-close (FlagGoal   qfn _ _ _ gr) = Goal (F qfn) gr
-close (StanzaGoal qsn _     gr) = Goal (S qsn) gr
-close (PkgGoal    qpn       gr) = Goal (P qpn) gr
+close (FlagGoal qfn _ _ _ gr) = Goal (F qfn) gr
+close (StanzaGoal qsn _ gr) = Goal (S qsn) gr
+close (PkgGoal qpn gr) = Goal (P qpn) gr
 
 {-------------------------------------------------------------------------------
   Auxiliary

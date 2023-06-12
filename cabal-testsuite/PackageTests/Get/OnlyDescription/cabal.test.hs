@@ -4,8 +4,9 @@
 -- Make sure that `cabal get --only-package-description` works
 
 import Test.Cabal.Prelude
+
 main = cabalTest $ withRepo "repo" $ do
   cabal "update" []
   cabal
     "get"
-    [ "criterion", "--only-package-description" ]
+    ["criterion", "--only-package-description"]

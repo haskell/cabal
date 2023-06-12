@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -F -pgmF zero-to-one #-}
+
 module Main where
 
 a :: String

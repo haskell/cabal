@@ -1,27 +1,28 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+
 module Distribution.Solver.Types.Settings
-    ( ReorderGoals(..)
-    , IndependentGoals(..)
-    , PreferOldest(..)
-    , MinimizeConflictSet(..)
-    , AvoidReinstalls(..)
-    , ShadowPkgs(..)
-    , StrongFlags(..)
-    , AllowBootLibInstalls(..)
-    , OnlyConstrained(..)
-    , EnableBackjumping(..)
-    , CountConflicts(..)
-    , FineGrainedConflicts(..)
-    , SolveExecutables(..)
-    ) where
+  ( ReorderGoals (..)
+  , IndependentGoals (..)
+  , PreferOldest (..)
+  , MinimizeConflictSet (..)
+  , AvoidReinstalls (..)
+  , ShadowPkgs (..)
+  , StrongFlags (..)
+  , AllowBootLibInstalls (..)
+  , OnlyConstrained (..)
+  , EnableBackjumping (..)
+  , CountConflicts (..)
+  , FineGrainedConflicts (..)
+  , SolveExecutables (..)
+  ) where
 
 import Distribution.Solver.Compat.Prelude
 import Prelude ()
 
-import Distribution.Simple.Setup ( BooleanFlag(..) )
-import Distribution.Pretty ( Pretty(pretty) )
-import Distribution.Parsec ( Parsec(parsec) )
+import Distribution.Parsec (Parsec (parsec))
+import Distribution.Pretty (Pretty (pretty))
+import Distribution.Simple.Setup (BooleanFlag (..))
 
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as PP
@@ -96,12 +97,12 @@ instance Structured OnlyConstrained
 instance Structured SolveExecutables
 
 instance Pretty OnlyConstrained where
-  pretty OnlyConstrainedAll  = PP.text "all"
+  pretty OnlyConstrainedAll = PP.text "all"
   pretty OnlyConstrainedNone = PP.text "none"
 
 instance Parsec OnlyConstrained where
-  parsec = P.choice
-    [ P.string "all"  >> return OnlyConstrainedAll
-    , P.string "none" >> return OnlyConstrainedNone
-    ]
-
+  parsec =
+    P.choice
+      [ P.string "all" >> return OnlyConstrainedAll
+      , P.string "none" >> return OnlyConstrainedNone
+      ]

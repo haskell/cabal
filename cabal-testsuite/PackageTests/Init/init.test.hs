@@ -9,7 +9,7 @@ main = cabalTest $
       setup "configure" []
       setup' "build" ["app"]
 
-    assertFileDoesContain (cwd </> "app.cabal")   "Simple"
-    assertFileDoesContain (cwd </> "app.cabal")   "base ^>="
+    assertFileDoesContain (cwd </> "app.cabal") "Simple"
+    assertFileDoesContain (cwd </> "app.cabal") "base ^>="
     assertFileDoesContain (cwd </> "app/Main.hs") "This should remain as is!"
     assertOutputContains "Linking" buildOut

@@ -1,22 +1,24 @@
 {-# LANGUAGE CPP #-}
+
 module UnitTests.Distribution.Utils.Structured (tests) where
 
-import Data.Proxy                    (Proxy (..))
-import Distribution.Utils.MD5        (md5FromInteger)
-import Distribution.Utils.Structured (structureHash, Structured)
-import Test.Tasty                    (TestTree, testGroup)
-import Test.Tasty.HUnit              (testCase, (@?=), Assertion)
+import Data.Proxy (Proxy (..))
+import Distribution.Utils.MD5 (md5FromInteger)
+import Distribution.Utils.Structured (Structured, structureHash)
+import Test.Tasty (TestTree, testGroup)
+import Test.Tasty.HUnit (Assertion, testCase, (@?=))
 
-import Distribution.SPDX.License       (License)
+import Distribution.SPDX.License (License)
 import Distribution.Types.VersionRange (VersionRange)
 
 #if MIN_VERSION_base(4,7,0)
 import Distribution.Types.GenericPackageDescription (GenericPackageDescription)
-import Distribution.Types.LocalBuildInfo            (LocalBuildInfo)
+import Distribution.Types.LocalBuildInfo (LocalBuildInfo)
 #endif
 
 import UnitTests.Orphans ()
 
+{- FOURMOLU_DISABLE -}
 tests :: TestTree
 tests = testGroup "Distribution.Utils.Structured"
     -- This test also verifies that structureHash doesn't loop.
@@ -32,6 +34,7 @@ tests = testGroup "Distribution.Utils.Structured"
       md5Check (Proxy :: Proxy LocalBuildInfo) 0x0324f420f9fb98417098127a414cc7c0
 #endif
     ]
+{- FOURMOLU_ENABLE -}
 
 -- -------------------------------------------------------------------- --
 -- utils

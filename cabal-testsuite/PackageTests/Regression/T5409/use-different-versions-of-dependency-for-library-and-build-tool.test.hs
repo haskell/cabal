@@ -14,10 +14,12 @@ main = withShorterPathForNewBuildStore $ \storeDir ->
   cabalTest $ do
     skipUnless "not v2-build compatible boot Cabal" =<< hasNewBuildCompatBootCabal
     withRepo "repo" $ do
-      r1 <- recordMode DoNotRecord $
-            cabalG' ["--store-dir=" ++ storeDir] "v2-build" ["pkg:my-exe"]
+      r1 <-
+        recordMode DoNotRecord $
+          cabalG' ["--store-dir=" ++ storeDir] "v2-build" ["pkg:my-exe"]
 
-      let msg = concat
+      let msg =
+            concat
               [ "In order, the following will be built:"
               , "  - build-tool-pkg-1 (lib) (requires build)"
               , "  - build-tool-pkg-2 (lib) (requires build)"
@@ -29,4 +31,5 @@ main = withShorterPathForNewBuildStore $ \storeDir ->
       withPlan $ do
         r2 <- runPlanExe' "pkg" "my-exe" []
         assertOutputContains
-            "build-tool library version: 1, build-tool exe version: 2" r2
+          "build-tool library version: 1, build-tool exe version: 2"
+          r2

@@ -4,7 +4,9 @@ import System.Directory
 import System.FilePath
 
 main = withShorterPathForNewBuildStore $ \storeDir -> cabalTest $ withRepo "repo" $ do
-  cabalG ["--store-dir=" ++ storeDir] "v2-build"
+  cabalG
+    ["--store-dir=" ++ storeDir]
+    "v2-build"
     [ "example"
     , "--enable-documentation"
     , "--haddock-quickjump"

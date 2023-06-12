@@ -1,4 +1,5 @@
 import Test.Cabal.Prelude
+
 main = cabalTest $ do
   tmpdir <- fmap testTmpDir getTestEnv
   res <- fails $ cabal' "v2-sdist" ["--list-only", "--output-directory", tmpdir]

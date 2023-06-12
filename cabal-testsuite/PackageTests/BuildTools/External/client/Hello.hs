@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -F -pgmF happy #-}
+
 module Main where
 
 a :: String

@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+
 module Main where
 
 import Foo
@@ -12,5 +13,5 @@ bar = 0
 
 main :: IO ()
 main = do
-    putStrLn $ "hsc2hs value: " ++ show foo
-    putStrLn $ "ghc value: " ++ show bar
+  putStrLn $ "hsc2hs value: " ++ show foo
+  putStrLn $ "ghc value: " ++ show bar

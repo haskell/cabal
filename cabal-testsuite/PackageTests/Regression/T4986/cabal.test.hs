@@ -1,4 +1,6 @@
 import Test.Cabal.Prelude
-main = cabalTest $
+
+main =
+  cabalTest $
     withSourceCopy $
-        cabal "v2-configure" []
+      cabal "v2-configure" []

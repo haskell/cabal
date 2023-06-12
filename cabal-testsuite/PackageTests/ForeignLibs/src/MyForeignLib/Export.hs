@@ -1,6 +1,6 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
-module MyForeignLib.Export
-  ( foo ) where
+
+module MyForeignLib.Export (foo) where
 
 foo :: Int -> Int
 foo x = x + 1

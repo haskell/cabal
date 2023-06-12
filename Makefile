@@ -19,13 +19,18 @@ init: ## Set up git hooks and ignored revisions
 	## TODO
 
 style: ## Run the code styler
-	@find Cabal Cabal-syntax cabal-install -name '*.hs' \
-		! -path Cabal-syntax/src/Distribution/Fields/Lexer.hs \
-		! -path Cabal-syntax/src/Distribution/SPDX/LicenseExceptionId.hs \
-		! -path Cabal-syntax/src/Distribution/SPDX/LicenseId.hs \
-		! -path Cabal/src/Distribution/Simple/Build/Macros/Z.hs \
-		! -path Cabal/src/Distribution/Simple/Build/PathsModule/Z.hs \
-		| xargs -P $(PROCS) -I {} fourmolu -q -i {}
+	@find Cabal Cabal-syntax cabal-install Cabal-syntax \
+          Cabal-QuickCheck Cabal-described \
+          Cabal-tests Cabal-tree-diff cabal-benchmarks \
+          cabal-dev-scripts cabal-install-solver \
+          solver-benchmarks -name '*.hs' \
+	  ! -path Cabal-syntax/src/Distribution/Fields/Lexer.hs \
+	  ! -path Cabal-syntax/src/Distribution/SPDX/LicenseExceptionId.hs \
+	  ! -path Cabal-syntax/src/Distribution/SPDX/LicenseId.hs \
+	  ! -path Cabal/src/Distribution/Simple/Build/Macros/Z.hs \
+	  ! -path Cabal/src/Distribution/Simple/Build/PathsModule/Z.hs \
+	  ! -path cabal-testsuite \
+	  | xargs -P $(PROCS) -I {} fourmolu -q -i {}
 
 # source generation: Lexer
 

@@ -1,17 +1,17 @@
 module UnitTests.Distribution.Simple.Glob
-    ( tests
-    ) where
+  ( tests
+  ) where
 
 import Control.Monad
 import Data.Foldable (for_)
 import Data.Function (on)
 import Data.List (sort)
 import Data.Maybe (mapMaybe)
+import Distribution.CabalSpecVersion
 import Distribution.Simple.Glob
 import qualified Distribution.Verbosity as Verbosity
-import Distribution.CabalSpecVersion
 import System.Directory (createDirectoryIfMissing)
-import System.FilePath ((</>), splitFileName, normalise)
+import System.FilePath (normalise, splitFileName, (</>))
 import System.IO.Temp (withSystemTempDirectory)
 import Test.Tasty
 import Test.Tasty.HUnit
@@ -103,19 +103,23 @@ testMatchesVersion version pat expected = do
     checkPure globPat = do
       let actual = mapMaybe (fileGlobMatches globPat) sampleFileNames
       unless (sort expected == sort actual) $
-        assertFailure $ "Unexpected result (pure matcher): " ++ show actual
+        assertFailure $
+          "Unexpected result (pure matcher): " ++ show actual
     checkIO globPat =
       withSystemTempDirectory "globstar-sample" $ \tmpdir -> do
         makeSampleFiles tmpdir
         actual <- runDirFileGlob Verbosity.normal tmpdir globPat
         unless (isEqual actual expected) $
-          assertFailure $ "Unexpected result (impure matcher): " ++ show actual
+          assertFailure $
+            "Unexpected result (impure matcher): " ++ show actual
 
 testFailParseVersion :: CabalSpecVersion -> FilePath -> GlobSyntaxError -> Assertion
 testFailParseVersion version pat expected =
   case parseFileGlob version pat of
-    Left err -> unless (expected == err) $
-      assertFailure $ "Unexpected error: " ++ show err
+    Left err ->
+      unless (expected == err) $
+        assertFailure $
+          "Unexpected error: " ++ show err
     Right _ -> assertFailure "Unexpected success in parsing."
 
 globstarTests :: [TestTree]

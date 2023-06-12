@@ -14,7 +14,7 @@ import Test.Tasty.HUnit
 tests :: Int -> [TestTree]
 tests mtimeChange =
   [ testCase "getModTime has sub-second resolution" $ getModTimeTest mtimeChange
-  , testCase "getCurTime works as expected"         $ getCurTimeTest mtimeChange
+  , testCase "getCurTime works as expected" $ getCurTimeTest mtimeChange
   ]
 
 getModTimeTest :: Int -> Assertion
@@ -28,7 +28,6 @@ getModTimeTest mtimeChange =
     t1 <- getModTime fileName
     assertBool "expected different file mtimes" (t1 > t0)
 
-
 getCurTimeTest :: Int -> Assertion
 getCurTimeTest mtimeChange =
   withTempDirectory silent "." "getmodtime-" $ \dir -> do
@@ -37,13 +36,23 @@ getCurTimeTest mtimeChange =
     t0 <- getModTime fileName
     threadDelay mtimeChange
     t1 <- getCurTime
-    assertBool("expected file mtime (" ++ show t0
-               ++ ") to be earlier than current time (" ++ show t1 ++ ")")
+    assertBool
+      ( "expected file mtime ("
+          ++ show t0
+          ++ ") to be earlier than current time ("
+          ++ show t1
+          ++ ")"
+      )
       (t0 < t1)
 
     threadDelay mtimeChange
     writeFile fileName "baz"
     t2 <- getModTime fileName
-    assertBool ("expected current time (" ++ show t1
-                ++ ") to be earlier than file mtime (" ++ show t2 ++ ")")
+    assertBool
+      ( "expected current time ("
+          ++ show t1
+          ++ ") to be earlier than file mtime ("
+          ++ show t2
+          ++ ")"
+      )
       (t1 < t2)

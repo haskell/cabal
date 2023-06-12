@@ -11,7 +11,8 @@ main = cabalTest $ do
   r <- recordMode DoNotRecord $ cabal' "v2-build" ["T4288"]
   assertOutputContains "This is setup-helper-1.0." r
   assertOutputContains
-      ("In order, the following will be built: "
-       ++ " - setup-helper-1.0 (lib:setup-helper) (first run) "
-       ++ " - T4288-1.0 (lib:T4288) (first run)")
-      r
+    ( "In order, the following will be built: "
+        ++ " - setup-helper-1.0 (lib:setup-helper) (first run) "
+        ++ " - T4288-1.0 (lib:T4288) (first run)"
+    )
+    r
