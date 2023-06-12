@@ -336,7 +336,7 @@ test-suite unit-tests
           tasty-quickcheck,
           tasty-hunit >= 0.10,
           tree-diff,
-          QuickCheck >= 2.14 && <2.15
+          QuickCheck >= 2.14.3 && <2.15
 
 
 -- Tests to run with a limited stack and heap size

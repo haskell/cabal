@@ -70,7 +70,7 @@ import System.FilePath
 
 import qualified Data.ByteString.Lazy      as BS
 import qualified Data.Map                  as Map
-import qualified Control.Monad as CM
+import qualified Control.Monad             as CM
 import qualified Distribution.Compat.DList as DList
 import qualified Distribution.SPDX         as SPDX
 import qualified System.Directory          as System
