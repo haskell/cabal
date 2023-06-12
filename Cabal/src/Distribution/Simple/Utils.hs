@@ -1306,8 +1306,8 @@ findAvailableModuleFilesEx
   -- ^ modules
   -> IO [(FilePath, FilePath)]
 findAvailableModuleFilesEx searchPath extensions moduleNames =
-  fmap catMaybes
-  $ traverse (findAvailableModuleFileEx searchPath extensions) moduleNames
+  fmap catMaybes $
+    traverse (findAvailableModuleFileEx searchPath extensions) moduleNames
 
 -- | Find the file corresponding to a Haskell module name.
 --
