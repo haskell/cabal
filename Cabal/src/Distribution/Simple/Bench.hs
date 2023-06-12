@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
+{-# OPTIONS_GHC -Wno-deferred-out-of-scope-variables #-}
 
 -----------------------------------------------------------------------------
 
@@ -30,7 +31,7 @@ import Distribution.Simple.InstallDirs
 import qualified Distribution.Simple.LocalBuildInfo as LBI
 import Distribution.Simple.Setup.Benchmark
 import Distribution.Simple.UserHooks
-import Distribution.Simple.Utils
+import Distribution.Simple.Utils 
 import Distribution.Types.UnqualComponentName
 
 import System.Directory (doesFileExist)
@@ -65,10 +66,10 @@ bench args pkg_descr lbi flags = do
             -- Check that the benchmark executable exists.
             exists <- doesFileExist cmd
             unless exists $
-              die' verbosity $
-                "Could not find benchmark program \""
+              dieWithException verbosity $ BenchMarkException
+                ( "Could not find benchmark program \""
                   ++ cmd
-                  ++ "\". Did you build the package first?"
+                  ++ "\". Did you build the package first?" )
 
             notice verbosity $ startMessage name
             -- This will redirect the child process
@@ -92,9 +93,9 @@ bench args pkg_descr lbi flags = do
     exitSuccess
 
   when (PD.hasBenchmarks pkg_descr && null enabledBenchmarks) $
-    die' verbosity $
-      "No benchmarks enabled. Did you remember to configure with "
-        ++ "\'--enable-benchmarks\'?"
+    dieWithException verbosity $ BenchMarkException 
+      ("No benchmarks enabled. Did you remember to configure with "
+        ++ "\'--enable-benchmarks\'?")
 
   bmsToRun <- case benchmarkNames of
     [] -> return enabledBenchmarks
@@ -106,11 +107,11 @@ bench args pkg_descr lbi flags = do
             Just t -> return t
             _
               | mkUnqualComponentName bmName `elem` allNames ->
-                  die' verbosity $
-                    "Package configured with benchmark "
+                  dieWithException verbosity $ BenchMarkException 
+                    ("Package configured with benchmark "
                       ++ bmName
-                      ++ " disabled."
-              | otherwise -> die' verbosity $ "no such benchmark: " ++ bmName
+                      ++ " disabled.")
+              | otherwise -> dieWithException verbosity $ BenchMarkException ("no such benchmark: " ++ bmName)
 
   let totalBenchmarks = length bmsToRun
   notice verbosity $ "Running " ++ show totalBenchmarks ++ " benchmarks..."
