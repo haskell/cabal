@@ -130,6 +130,7 @@ import Distribution.Version
   )
 
 import System.FilePath ((</>))
+import Distribution.Types.AllowNewer (AllowOlder(..), AllowNewer (..))
 
 -- | Choose the Cabal version such that the setup scripts compiled against this
 -- version will support the given command-line flags. Currently, it implements no
@@ -430,9 +431,9 @@ planLocalPackage
       resolverParams :: DepResolverParams
       resolverParams =
         removeLowerBounds
-          (fromMaybe (AllowOlder mempty) $ configAllowOlder configExFlags)
+          (fromMaybe (AllowOlder mempty) $ configAllowOlder configFlags)
           . removeUpperBounds
-            (fromMaybe (AllowNewer mempty) $ configAllowNewer configExFlags)
+            (fromMaybe (AllowNewer mempty) $ configAllowNewer configFlags)
           . addPreferences
             -- preferences from the config file or command line
             [ PackageVersionPreference name ver

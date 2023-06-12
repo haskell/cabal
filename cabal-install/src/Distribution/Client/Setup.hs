@@ -92,7 +92,6 @@ module Distribution.Client.Setup
 import Distribution.Client.Compat.Prelude hiding (get)
 import Prelude ()
 
-import Distribution.Client.Types.AllowNewer (AllowNewer (..), AllowOlder (..), RelaxDeps (..))
 import Distribution.Client.Types.Credentials (Password (..), Username (..))
 import Distribution.Client.Types.Repo (LocalRepo (..), RemoteRepo (..))
 import Distribution.Client.Types.WriteGhcEnvironmentFilesPolicy
@@ -148,9 +147,7 @@ import Distribution.Parsec
 import Distribution.ReadE
   ( ReadE (..)
   , parsecToReadE
-  , parsecToReadEErr
   , succeedReadE
-  , unexpectMsgString
   )
 import Distribution.Simple.Command hiding (boolOpt, boolOpt')
 import qualified Distribution.Simple.Command as Command
@@ -662,7 +659,9 @@ filterConfigureFlags flags cabalLibVersion
           -- Note: this is not in the wrong place. configConstraints gets
           -- repopulated in flags_1_19_1 but it needs to be set to empty for
           -- newer versions first.
-          configConstraints = []
+          configConstraints = [],
+          configAllowNewer = Nothing,
+          configAllowOlder = Nothing
         }
 
     flags_3_11_0 =
@@ -831,8 +830,6 @@ data ConfigExFlags = ConfigExFlags
   , configExConstraints :: [(UserConstraint, ConstraintSource)]
   , configPreferences :: [PackageVersionConstraint]
   , configSolver :: Flag PreSolver
-  , configAllowNewer :: Maybe AllowNewer
-  , configAllowOlder :: Maybe AllowOlder
   , configWriteGhcEnvironmentFilesPolicy
       :: Flag WriteGhcEnvironmentFilesPolicy
   }
@@ -927,30 +924,6 @@ configureExOptions _showOrParseArgs src =
   , optionSolver configSolver (\v flags -> flags{configSolver = v})
   , option
       []
-      ["allow-older"]
-      ("Ignore lower bounds in all dependencies or DEPS")
-      (fmap unAllowOlder . configAllowOlder)
-      (\v flags -> flags{configAllowOlder = fmap AllowOlder v})
-      ( optArg
-          "DEPS"
-          (parsecToReadEErr unexpectMsgString relaxDepsParser)
-          (Just RelaxDepsAll)
-          relaxDepsPrinter
-      )
-  , option
-      []
-      ["allow-newer"]
-      ("Ignore upper bounds in all dependencies or DEPS")
-      (fmap unAllowNewer . configAllowNewer)
-      (\v flags -> flags{configAllowNewer = fmap AllowNewer v})
-      ( optArg
-          "DEPS"
-          (parsecToReadEErr unexpectMsgString relaxDepsParser)
-          (Just RelaxDepsAll)
-          relaxDepsPrinter
-      )
-  , option
-      []
       ["write-ghc-environment-files"]
       ( "Whether to create a .ghc.environment file after a successful build"
           ++ " (v2-build only)"
@@ -982,22 +955,6 @@ writeGhcEnvironmentFilesPolicyPrinter = \case
   (Flag NeverWriteGhcEnvironmentFiles) -> ["never"]
   (Flag WriteGhcEnvironmentFilesOnlyForGhc844AndNewer) -> ["ghc8.4.4+"]
   NoFlag -> []
-
-relaxDepsParser :: CabalParsing m => m (Maybe RelaxDeps)
-relaxDepsParser = do
-  rs <- P.sepBy parsec (P.char ',')
-  if null rs
-    then
-      fail $
-        "empty argument list is not allowed. "
-          ++ "Note: use --allow-newer without the equals sign to permit all "
-          ++ "packages to use newer versions."
-    else return . Just . RelaxDepsSome . toList $ rs
-
-relaxDepsPrinter :: (Maybe RelaxDeps) -> [Maybe String]
-relaxDepsPrinter Nothing = []
-relaxDepsPrinter (Just RelaxDepsAll) = [Nothing]
-relaxDepsPrinter (Just (RelaxDepsSome pkgs)) = map (Just . prettyShow) $ pkgs
 
 instance Monoid ConfigExFlags where
   mempty = gmempty

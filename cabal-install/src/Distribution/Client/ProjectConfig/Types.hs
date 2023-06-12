@@ -32,7 +32,7 @@ import Distribution.Client.Dependency.Types
 import Distribution.Client.Targets
   ( UserConstraint
   )
-import Distribution.Client.Types.AllowNewer (AllowNewer (..), AllowOlder (..))
+import Distribution.Types.AllowNewer (AllowNewer (..), AllowOlder (..))
 import Distribution.Client.Types.Repo (LocalRepo, RemoteRepo)
 import Distribution.Client.Types.SourceRepo (SourceRepoList)
 import Distribution.Client.Types.WriteGhcEnvironmentFilesPolicy (WriteGhcEnvironmentFilesPolicy)

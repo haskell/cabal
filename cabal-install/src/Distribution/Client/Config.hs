@@ -84,15 +84,17 @@ import Distribution.Client.Setup
   , reportCommand
   , uploadCommand
   )
-import Distribution.Client.Types
+import Distribution.Types.AllowNewer
   ( AllowNewer (..)
   , AllowOlder (..)
-  , LocalRepo (..)
   , RelaxDeps (..)
+  , isRelaxDeps
+  )
+import Distribution.Client.Types
+  ( LocalRepo (..)
   , RemoteRepo (..)
   , RepoName (..)
   , emptyRemoteRepo
-  , isRelaxDeps
   , unRepoName
   )
 import Distribution.Client.Types.Credentials (Password (..), Username (..))
@@ -526,6 +528,8 @@ instance Semigroup SavedConfig where
           , configDumpBuildInfo = combine configDumpBuildInfo
           , configAllowDependingOnPrivateLibs =
               combine configAllowDependingOnPrivateLibs
+          , configAllowNewer = combineMonoid savedConfigureFlags configAllowNewer
+          , configAllowOlder = combineMonoid savedConfigureFlags configAllowOlder
           }
         where
           combine = combine' savedConfigureFlags
@@ -543,10 +547,6 @@ instance Semigroup SavedConfig where
           , -- TODO: NubListify
             configPreferences = lastNonEmpty configPreferences
           , configSolver = combine configSolver
-          , configAllowNewer =
-              combineMonoid savedConfigureExFlags configAllowNewer
-          , configAllowOlder =
-              combineMonoid savedConfigureExFlags configAllowOlder
           , configWriteGhcEnvironmentFilesPolicy =
               combine configWriteGhcEnvironmentFilesPolicy
           }
@@ -1103,14 +1103,12 @@ commentSavedConfig = do
                 }
           , savedInstallFlags = defaultInstallFlags
           , savedClientInstallFlags = defaultClientInstallFlags
-          , savedConfigureExFlags =
-              defaultConfigExFlags
-                { configAllowNewer = Just (AllowNewer mempty)
-                , configAllowOlder = Just (AllowOlder mempty)
-                }
+          , savedConfigureExFlags = defaultConfigExFlags
           , savedConfigureFlags =
               (defaultConfigFlags defaultProgramDb)
                 { configUserInstall = toFlag defaultUserInstall
+                , configAllowNewer = Just (AllowNewer mempty)
+                , configAllowOlder = Just (AllowOlder mempty)
                 }
           , savedUserInstallDirs = fmap toFlag userInstallDirs
           , savedGlobalInstallDirs = fmap toFlag globalInstallDirs
@@ -1231,12 +1229,7 @@ configFieldDescriptions src =
                               ++ name
                               ++ "' field is case sensitive, use 'True' or 'False'."
                 )
-      ]
-    ++ toSavedConfig
-      liftConfigExFlag
-      (configureExOptions ParseArgs src)
-      []
-      [ let pkgs =
+      , let pkgs =
               (Just . AllowOlder . RelaxDepsSome)
                 `fmap` parsecOptCommaList parsec
             parseAllowOlder =
@@ -1265,6 +1258,11 @@ configFieldDescriptions src =
               configAllowNewer
               (\v flags -> flags{configAllowNewer = v})
       ]
+    ++ toSavedConfig
+      liftConfigExFlag
+      (configureExOptions ParseArgs src)
+      []
+      []
     ++ toSavedConfig
       liftInstallFlag
       (installOptions ParseArgs)

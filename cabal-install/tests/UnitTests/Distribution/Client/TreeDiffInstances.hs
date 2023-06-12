@@ -20,6 +20,7 @@ import Distribution.Client.Types
 import Distribution.Client.Types.OverwritePolicy (OverwritePolicy)
 import Distribution.Client.Types.SourceRepo (SourceRepositoryPackage)
 
+import Distribution.Types.AllowNewer
 import Distribution.Simple.Compiler (PackageDB)
 
 import Data.TreeDiff.Class
