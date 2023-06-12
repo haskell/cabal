@@ -30,6 +30,7 @@ module Test.Cabal.Monad (
     testCurrentDir,
     testWorkDir,
     testPrefixDir,
+    testLibInstallDir,
     testDistDir,
     testPackageDbDir,
     testRepoDir,
@@ -59,9 +60,10 @@ import Test.Cabal.Plan
 import Test.Cabal.OutputNormalizer
 import Test.Cabal.TestCode
 
+import Distribution.Pretty (prettyShow)
 import Distribution.Simple.Compiler
     ( PackageDBStack, PackageDB(..), compilerFlavor
-    , Compiler, compilerVersion )
+    , Compiler, compilerVersion, showCompilerId )
 import Distribution.System
 import Distribution.Simple.Program.Db
 import Distribution.Simple.Program
@@ -568,6 +570,12 @@ testWorkDir env =
 -- | The absolute prefix where installs go.
 testPrefixDir :: TestEnv -> FilePath
 testPrefixDir env = testWorkDir env </> "usr"
+
+-- | The absolute path where library installs go.
+testLibInstallDir :: TestEnv -> FilePath
+testLibInstallDir env = testPrefixDir env </> "lib" </> compilerDir
+  where
+    compilerDir = prettyShow (testPlatform env) ++ "-" ++ showCompilerId (testCompiler env)
 
 -- | The absolute path to the build directory that should be used
 -- for the current package in a test.
