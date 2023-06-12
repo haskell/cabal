@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
+{-# OPTIONS_GHC -Wno-deferred-out-of-scope-variables #-}
 
 -----------------------------------------------------------------------------
 
@@ -49,8 +50,9 @@ import Distribution.Simple.Setup.Haddock
   ( HaddockTarget (ForDevelopment)
   )
 import Distribution.Simple.Utils
+
   ( createDirectoryIfMissingVerbose
-  , die'
+  , dieWithException
   , info
   , installDirectoryContents
   , installOrdinaryFile
@@ -113,7 +115,7 @@ install pkg_descr lbi flags = do
 
     checkHasLibsOrExes =
       unless (hasLibs pkg_descr || hasForeignLibs pkg_descr || hasExes pkg_descr) $
-        die' verbosity "No executables and no library found. Nothing to do."
+        dieWithException verbosity $ InstallException ("No executables and no library found. Nothing to do.")
 
 -- | Copy package global files.
 copyPackage
@@ -223,10 +225,10 @@ copyComponent verbosity pkg_descr lbi (CLib lib) clbi copydest = do
         lib
         clbi
     _ ->
-      die' verbosity $
-        "installing with "
+      dieWithException verbosity $ InstallException 
+        ("installing with "
           ++ prettyShow (compilerFlavor (compiler lbi))
-          ++ " is not implemented"
+          ++ " is not implemented")
 copyComponent verbosity pkg_descr lbi (CFLib flib) clbi copydest = do
   let InstallDirs
         { flibdir = flibPref
@@ -241,10 +243,10 @@ copyComponent verbosity pkg_descr lbi (CFLib flib) clbi copydest = do
     GHC -> GHC.installFLib verbosity lbi flibPref buildPref pkg_descr flib
     GHCJS -> GHCJS.installFLib verbosity lbi flibPref buildPref pkg_descr flib
     _ ->
-      die' verbosity $
-        "installing foreign lib with "
+      dieWithException verbosity $ InstallException 
+        ("installing foreign lib with "
           ++ prettyShow (compilerFlavor (compiler lbi))
-          ++ " is not implemented"
+          ++ " is not implemented")
 copyComponent verbosity pkg_descr lbi (CExe exe) clbi copydest = do
   let installDirs = absoluteComponentInstallDirs pkg_descr lbi (componentUnitId clbi) copydest
       -- the installers know how to find the actual location of the
@@ -279,10 +281,10 @@ copyComponent verbosity pkg_descr lbi (CExe exe) clbi copydest = do
     UHC -> return ()
     HaskellSuite{} -> return ()
     _ ->
-      die' verbosity $
-        "installing with "
+      dieWithException verbosity $ InstallException 
+        ("installing with "
           ++ prettyShow (compilerFlavor (compiler lbi))
-          ++ " is not implemented"
+          ++ " is not implemented")
 
 -- Nothing to do for benchmark/testsuite
 copyComponent _ _ _ (CBench _) _ _ = return ()
@@ -322,7 +324,7 @@ installIncludeFiles verbosity libBi lbi buildPref destIncludeDir = do
     ]
   where
     baseDir lbi' = fromMaybe "" (takeDirectory <$> cabalFilePath lbi')
-    findInc [] file = die' verbosity ("can't find include file " ++ file)
+    findInc [] file = dieWithException verbosity $ InstallException ("can't find include file " ++ file)
     findInc (dir : dirs) file = do
       let path = dir </> file
       exists <- doesFileExist path
