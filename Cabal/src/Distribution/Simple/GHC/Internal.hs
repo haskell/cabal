@@ -78,11 +78,11 @@ import Distribution.Verbosity
 import Distribution.Version (Version)
 import Language.Haskell.Extension
 
+import Data.Bool (bool)
 import qualified Data.ByteString.Lazy.Char8 as BS
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Distribution.Types.ComponentId (ComponentId)
-import Data.Bool (bool)
 import System.Directory (getDirectoryContents, getTemporaryDirectory)
 import System.Environment (getEnv)
 import System.FilePath
