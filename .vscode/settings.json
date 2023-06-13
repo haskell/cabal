@@ -1,0 +1,3 @@
+{
+    "haskell.formattingProvider": "fourmolu"
+}

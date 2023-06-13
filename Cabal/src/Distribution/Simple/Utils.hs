@@ -48,11 +48,14 @@ module Distribution.Simple.Utils
   , chattyTry
   , annotateIO
   , withOutputMarker
+  , exceptionCode
+ 
 
     -- * exceptions
   , handleDoesNotExist
   , ignoreSigPipe
-
+  , CabalException(..)
+  
     -- * running programs
   , rawSystemExit
   , rawSystemExitCode
@@ -186,6 +189,7 @@ module Distribution.Simple.Utils
     -- * FilePath stuff
   , isAbsoluteOnAnyPlatform
   , isRelativeOnAnyPlatform
+  
   ) where
 
 import Distribution.Compat.Prelude
@@ -378,30 +382,25 @@ die' verbosity msg = withFrozenCallStack $ do
 
 -- Types representing exceptions thrown by functions in "bench" and "install" modules
 
-data CabalException = BenchMarkException String
-                    | InstallException String
- deriving Show
+data CabalException = BenchMarkException String             
+                     | InstallException String
+ deriving (Show,Typeable)
 
 -- Type which is going to be wrapper for cabal -expection and cabal-install exceptions
 
 data VerboseException a  = VerboseException CallStack POSIXTime Verbosity a
-
  deriving (Show, Typeable)
 
 -- new die' function which will replace the existing die' call sites
 
-dieWithException :: Verbosity -> CabalException -> IO a 
-dieWithException verbosity (BenchMarkException msg) = do
+dieWithException :: Verbosity -> CabalException -> IO a
+dieWithException verbosity exception = do
   ts <- getPOSIXTime
-  throwIO $ VerboseException call ts verbosity (BenchMarkException msg)
-      where call = withFrozenCallStack callStack
-
-dieWithException verbosity (InstallException msg) = do
-  ts <- getPOSIXTime
-  throwIO $ VerboseException call ts verbosity (InstallException msg)
-      where call = withFrozenCallStack callStack
-
--- Function to generate the Error Code based on the Error types.
+  let call = withFrozenCallStack callStack
+  case exception of
+    BenchMarkException msg -> throwIO $ VerboseException call ts verbosity (BenchMarkException msg)
+    InstallException msg   -> throwIO $ VerboseException call ts verbosity (InstallException msg)
+    
 
 exceptionCode :: CabalException -> Int
 exceptionCode (BenchMarkException _) = 2134
@@ -409,11 +408,14 @@ exceptionCode (InstallException _) = 2546
 
 
 instance (Show a ,Typeable a) => Exception (VerboseException a) where
-displayException :: VerboseException CabalException -> String
-displayException (VerboseException call timestamp verb (BenchMarkException errorStr)) =  "Error: [C-" <> show (exceptionCode $ BenchMarkException errorStr) <> "]\n"
-                                                                                <> withMetadata timestamp AlwaysMark VerboseTrace verb errorStr
-displayException (VerboseException call timestamp verb (InstallException errorStr)) =  "Error: [C-" <> show (exceptionCode $ InstallException errorStr) <> "]\n"
-                                                                                <> withMetadata timestamp AlwaysMark VerboseTrace verb errorStr                                                                              
+_displayException :: VerboseException CabalException -> [Char]
+_displayException (VerboseException _call timestamp verb (BenchMarkException errorStr)) =  
+    concat ["Error: [C-" , show (exceptionCode $ BenchMarkException errorStr), "]\n"
+                , withMetadata timestamp AlwaysMark VerboseTrace verb errorStr]  
+_displayException (VerboseException _call timestamp verb (InstallException errorStr))  = 
+    concat ["Error: [C-" , show (exceptionCode $ InstallException errorStr) ,"]\n"
+                 ,withMetadata timestamp AlwaysMark VerboseTrace verb errorStr]   
+                                                                         
 
 dieNoWrap :: Verbosity -> String -> IO a
 dieNoWrap verbosity msg = withFrozenCallStack $ do

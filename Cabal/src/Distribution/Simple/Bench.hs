@@ -1,6 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
-{-# OPTIONS_GHC -Wno-deferred-out-of-scope-variables #-}
 
 -----------------------------------------------------------------------------
 
@@ -32,6 +31,7 @@ import qualified Distribution.Simple.LocalBuildInfo as LBI
 import Distribution.Simple.Setup.Benchmark
 import Distribution.Simple.UserHooks
 import Distribution.Simple.Utils 
+
 import Distribution.Types.UnqualComponentName
 
 import System.Directory (doesFileExist)
