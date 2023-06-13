@@ -82,6 +82,7 @@ import qualified Data.ByteString.Lazy.Char8 as BS
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Distribution.Types.ComponentId (ComponentId)
+import Data.Bool (bool)
 import System.Directory (getDirectoryContents, getTemporaryDirectory)
 import System.Environment (getEnv)
 import System.FilePath
@@ -576,7 +577,7 @@ componentGhcOptions verbosity implInfo lbi bi clbi odir =
     , ghcOptFfiIncludes = toNubListR $ includes bi
     , ghcOptObjDir = toFlag odir
     , ghcOptHiDir = toFlag odir
-    , ghcOptHieDir = toFlag $ odir </> "extra-compilation-artifacts"
+    , ghcOptHieDir = toFlag $ bool Nothing (Just $ odir </> "extra-compilation-artifacts") $ flagHie implInfo
     , ghcOptStubDir = toFlag odir
     , ghcOptOutputDir = toFlag odir
     , ghcOptOptimisation = toGhcOptimisation (withOptimization lbi)
