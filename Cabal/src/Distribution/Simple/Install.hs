@@ -1,6 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
-{-# OPTIONS_GHC -Wno-deferred-out-of-scope-variables #-}
 
 -----------------------------------------------------------------------------
 
@@ -59,6 +58,7 @@ import Distribution.Simple.Utils
   , isInSearchPath
   , noticeNoWrap
   , warn
+  , CabalException (..)
   )
 import Distribution.Utils.Path (getSymbolicPath)
 
@@ -115,7 +115,7 @@ install pkg_descr lbi flags = do
 
     checkHasLibsOrExes =
       unless (hasLibs pkg_descr || hasForeignLibs pkg_descr || hasExes pkg_descr) $
-        dieWithException verbosity $ InstallException ("No executables and no library found. Nothing to do.")
+        dieWithException verbosity $ InstallException "No executables and no library found. Nothing to do."
 
 -- | Copy package global files.
 copyPackage
