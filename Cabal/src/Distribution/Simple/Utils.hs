@@ -401,11 +401,9 @@ dieWithException verbosity exception = do
     BenchMarkException msg -> throwIO $ VerboseException call ts verbosity (BenchMarkException msg)
     InstallException msg   -> throwIO $ VerboseException call ts verbosity (InstallException msg)
     
-
 exceptionCode :: CabalException -> Int
 exceptionCode (BenchMarkException _) = 2134
 exceptionCode (InstallException _) = 2546
-
 
 instance (Show a ,Typeable a) => Exception (VerboseException a) where
 _displayException :: VerboseException CabalException -> [Char]
