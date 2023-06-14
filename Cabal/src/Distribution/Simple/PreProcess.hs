@@ -848,6 +848,7 @@ platformDefines lbi =
       Ghcjs -> ["ghcjs"]
       Wasi -> ["wasi"]
       Hurd -> ["hurd"]
+      Haiku -> ["haiku"]
       OtherOS _ -> []
     archStr = case hostArch of
       I386 -> ["i386"]
