@@ -142,7 +142,7 @@ Code Style
 ---------------
 
 We use automated formatting with Fourmolu to enforce a unified style across the code bases. It is checked in the CI process.
-You can automatically format the code bases with `make style` at the top level of the project.
+After installing Fourmolu ≥ 0.12, you can automatically format the code bases with `make style` at the top level of the project.
 
 Other Conventions
 -----------------
