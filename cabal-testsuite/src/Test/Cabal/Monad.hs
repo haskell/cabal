@@ -573,9 +573,13 @@ testPrefixDir env = testWorkDir env </> "usr"
 
 -- | The absolute path where library installs go.
 testLibInstallDir :: TestEnv -> FilePath
-testLibInstallDir env = testPrefixDir env </> "lib" </> compilerDir
+testLibInstallDir env = libDir </> compilerDir
   where
-    compilerDir = prettyShow (testPlatform env) ++ "-" ++ showCompilerId (testCompiler env)
+    platform@(Platform _ os) = testPlatform env
+    libDir = case os of
+      Windows -> testPrefixDir env
+      _ -> testPrefixDir env </> "lib"
+    compilerDir = prettyShow platform ++ "-" ++ showCompilerId (testCompiler env)
 
 -- | The absolute path to the build directory that should be used
 -- for the current package in a test.
