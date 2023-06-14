@@ -242,13 +242,16 @@ and concatenate the commit messages of the commits before merging.
 Changelog
 ---------
 
-When opening a pull request, you should write a changelog entry
-(or more in case of multiple independent changes).
-This is done by adding files in the `changelog.d` directory.
+When opening a pull request with a user-visible change, you should write one changelog entry
+(or more in case of multiple independent changes) — the information will end up in
+our release notes.
 
-The files follow a simple key-value format similar to the one for .cabal files.
+Changelogs for the next release are stored in the `changelog.d` directory.
+The files follow a simple key-value format similar to the one for `.cabal` files.
+Free-form text fields (`synopsis` and `description`) allow Markdown markup — please,
+use markup to make our release notes more readable.
 
-Here's an exhaustive example:
+Here's an example:
 
 ```cabal
 synopsis: Add feature xyz
@@ -282,7 +285,7 @@ You can find a large number of real-world examples of changelog files
 At release time, the entries will be merged with
 [this tool](https://github.com/fgaz/changelog-d).
 
-In addition, if you're changing the .cabal file format specification you should
+In addition, if you're changing the `.cabal` file format specification you should
 add an entry in `doc/file-format-changelog.rst`.
 
 Communicating
