@@ -66,6 +66,7 @@ import Distribution.Simple.GHC.ImplInfo
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Program
 import Distribution.Simple.Program.GHC
+import Distribution.Simple.Setup.Common (extraCompilationArtifacts)
 import Distribution.Simple.Utils
 import Distribution.System
 import Distribution.Types.ComponentLocalBuildInfo
@@ -577,7 +578,7 @@ componentGhcOptions verbosity implInfo lbi bi clbi odir =
     , ghcOptFfiIncludes = toNubListR $ includes bi
     , ghcOptObjDir = toFlag odir
     , ghcOptHiDir = toFlag odir
-    , ghcOptHieDir = toFlag $ bool Nothing (Just $ odir </> "extra-compilation-artifacts") $ flagHie implInfo
+    , ghcOptHieDir = toFlag $ bool Nothing (Just $ odir </> extraCompilationArtifacts) $ flagHie implInfo
     , ghcOptStubDir = toFlag odir
     , ghcOptOutputDir = toFlag odir
     , ghcOptOptimisation = toGhcOptimisation (withOptimization lbi)
