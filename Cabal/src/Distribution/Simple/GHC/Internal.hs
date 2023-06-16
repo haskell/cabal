@@ -61,7 +61,7 @@ import Distribution.Parsec (simpleParsec)
 import Distribution.Pretty (prettyShow)
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Compiler
-import Distribution.Simple.Flag (Flag, maybeToFlag, toFlag)
+import Distribution.Simple.Flag (Flag (NoFlag), maybeToFlag, toFlag)
 import Distribution.Simple.GHC.ImplInfo
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Program
@@ -578,7 +578,7 @@ componentGhcOptions verbosity implInfo lbi bi clbi odir =
     , ghcOptFfiIncludes = toNubListR $ includes bi
     , ghcOptObjDir = toFlag odir
     , ghcOptHiDir = toFlag odir
-    , ghcOptHieDir = toFlag $ bool Nothing (Just $ odir </> extraCompilationArtifacts) $ flagHie implInfo
+    , ghcOptHieDir = bool NoFlag (toFlag $ odir </> extraCompilationArtifacts) $ flagHie implInfo
     , ghcOptStubDir = toFlag odir
     , ghcOptOutputDir = toFlag odir
     , ghcOptOptimisation = toGhcOptimisation (withOptimization lbi)
