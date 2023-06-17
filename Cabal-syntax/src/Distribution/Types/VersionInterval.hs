@@ -12,6 +12,7 @@ module Distribution.Types.VersionInterval
   ( -- * Version intervals
     VersionIntervals
   , unVersionIntervals
+  , mkVersionIntervals
 
     -- * Conversions
   , toVersionIntervals
@@ -69,6 +70,12 @@ newtype VersionIntervals = VersionIntervals [VersionInterval]
 -- | Inspect the list of version intervals.
 unVersionIntervals :: VersionIntervals -> [VersionInterval]
 unVersionIntervals (VersionIntervals is) = is
+
+-- | Directly construct a 'VersionIntervals' from a list of intervals.
+mkVersionIntervals :: [VersionInterval] -> Maybe VersionIntervals
+mkVersionIntervals intervals
+  | invariantVersionIntervals (VersionIntervals intervals) = Just . VersionIntervals $ intervals
+  | otherwise = Nothing
 
 data VersionInterval = VersionInterval !LowerBound !UpperBound deriving (Eq, Show)
 data LowerBound = LowerBound !Version !Bound deriving (Eq, Show)
