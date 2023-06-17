@@ -1,0 +1,7 @@
+synopsis: Update SPDX license Ids & exceptions to 3.20
+packages: cabal-syntax
+prs: #9028
+
+description: {
+  Integrate the SPDX License Ids & Exceptions index v3.20
+}
