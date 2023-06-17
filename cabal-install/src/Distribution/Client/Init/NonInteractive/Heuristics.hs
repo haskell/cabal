@@ -151,18 +151,23 @@ guessSourceDirectories flags = do
     True  -> ["src"]
 
 -- | Guess author and email using git configuration options.
-guessAuthorName :: Interactive m => m String
+guessAuthorName :: Interactive m => m (Maybe String)
 guessAuthorName = guessGitInfo "user.name"
 
-guessAuthorEmail :: Interactive m => m String
+guessAuthorEmail :: Interactive m => m (Maybe String)
 guessAuthorEmail = guessGitInfo "user.email"
 
-guessGitInfo :: Interactive m => String -> m String
+guessGitInfo :: Interactive m => String -> m (Maybe String)
 guessGitInfo target = do
-  info <- readProcessWithExitCode "git" ["config", "--local", target] ""
-  if null $ snd' info
-    then trim . snd' <$> readProcessWithExitCode "git" ["config", "--global", target] ""
-    else return . trim $ snd' info
+  localInfo <- readProcessWithExitCode "git" ["config", "--local", target] ""
+  if null $ snd' localInfo
+    then do
+      globalInfo <- readProcessWithExitCode "git" ["config", "--global", target] ""
+      case fst' globalInfo of
+        ExitSuccess -> return $  Just (trim $ snd' globalInfo)
+        _           -> return Nothing
+    else return $  Just (trim $ snd' localInfo)
 
   where
+    fst' (x, _, _) = x
     snd' (_, x, _) = x
