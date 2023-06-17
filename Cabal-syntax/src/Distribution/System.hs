@@ -112,6 +112,7 @@ data OS
   | Android -- mobile OSs
   | Ghcjs
   | Wasi
+  | Haiku
   | OtherOS String
   deriving (Eq, Generic, Ord, Show, Read, Typeable, Data)
 
@@ -138,6 +139,7 @@ knownOSs =
   , Android
   , Ghcjs
   , Wasi
+  , Haiku
   ]
 
 osAliases :: ClassificationStrictness -> OS -> [String]

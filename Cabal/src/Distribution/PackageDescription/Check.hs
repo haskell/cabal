@@ -79,6 +79,7 @@ import System.FilePath
   , (</>)
   )
 
+import qualified Control.Monad as CM
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.Map as Map
 import qualified Distribution.Compat.DList as DList
@@ -2109,7 +2110,7 @@ checkPackageVersions pkg =
     else baseErrors
   where
     baseErrors = PackageDistInexcusable BaseNoUpperBounds <$ bases
-    deps = toDependencyVersionsMap allBuildDepends pkg
+    deps = toDependencyVersionsMap allNonInternalBuildDepends pkg
     -- base gets special treatment (it's more critical)
     (bases, others) =
       partition (("base" ==) . unPackageName) $
@@ -2117,6 +2118,16 @@ checkPackageVersions pkg =
         | (name, vr) <- Map.toList deps
         , not (hasUpperBound vr)
         ]
+
+    -- Get the combined build-depends entries of all components.
+    allNonInternalBuildDepends :: PackageDescription -> [Dependency]
+    allNonInternalBuildDepends = targetBuildDepends CM.<=< allNonInternalBuildInfo
+
+    allNonInternalBuildInfo :: PackageDescription -> [BuildInfo]
+    allNonInternalBuildInfo pkg_descr =
+      [bi | lib <- allLibraries pkg_descr, let bi = libBuildInfo lib]
+        ++ [bi | flib <- foreignLibs pkg_descr, let bi = foreignLibBuildInfo flib]
+        ++ [bi | exe <- executables pkg_descr, let bi = buildInfo exe]
 
 checkConditionals :: GenericPackageDescription -> [PackageCheck]
 checkConditionals pkg =
