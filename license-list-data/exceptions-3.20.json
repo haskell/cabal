@@ -1,0 +1,558 @@
+{
+  "licenseListVersion": "3.20",
+  "exceptions": [
+    {
+      "reference": "./389-exception.json",
+      "isDeprecatedLicenseId": false,
+      "detailsUrl": "./389-exception.html",
+      "referenceNumber": 35,
+      "name": "389 Directory Server Exception",
+      "licenseExceptionId": "389-exception",
+      "seeAlso": [
+        "http://directory.fedoraproject.org/wiki/GPL_Exception_License_Text",
+        "https://web.archive.org/web/20080828121337/http://directory.fedoraproject.org/wiki/GPL_Exception_License_Text"
+      ]
+    },
+    {
+      "reference": "./Autoconf-exception-2.0.json",
+      "isDeprecatedLicenseId": false,
+      "detailsUrl": "./Autoconf-exception-2.0.html",
+      "referenceNumber": 9,
+      "name": "Autoconf exception 2.0",
+      "licenseExceptionId": "Autoconf-exception-2.0",
+      "seeAlso": [
+        "http://ac-archive.sourceforge.net/doc/copyright.html",
+        "http://ftp.gnu.org/gnu/autoconf/autoconf-2.59.tar.gz"
+      ]
+    },
+    {
+      "reference": "./Autoconf-exception-3.0.json",
+      "isDeprecatedLicenseId": false,
+      "detailsUrl": "./Autoconf-exception-3.0.html",
+      "referenceNumber": 8,
+      "name": "Autoconf exception 3.0",
+      "licenseExceptionId": "Autoconf-exception-3.0",
+      "seeAlso": [
+        "http://www.gnu.org/licenses/autoconf-exception-3.0.html"
+      ]
+    },
+    {
+      "reference": "./Autoconf-exception-generic.json",
+      "isDeprecatedLicenseId": false,
+      "detailsUrl": "./Autoconf-exception-generic.html",
+      "referenceNumber": 39,
+      "name": "Autoconf generic exception",
+      "licenseExceptionId": "Autoconf-exception-generic",
+      "seeAlso": [
+        "https://launchpad.net/ubuntu/precise/+source/xmltooling/+copyright",
+        "https://tracker.debian.org/media/packages/s/sipwitch/copyright-1.9.15-3",
+        "https://opensource.apple.com/source/launchd/launchd-258.1/launchd/compile.auto.html"
+      ]
+    },
+    {
+      "reference": "./Bison-exception-2.2.json",
+      "isDeprecatedLicenseId": false,
+      "detailsUrl": "./Bison-exception-2.2.html",
+      "referenceNumber": 37,
+      "name": "Bison exception 2.2",
+      "licenseExceptionId": "Bison-exception-2.2",
+      "seeAlso": [
+        "http://git.savannah.gnu.org/cgit/bison.git/tree/data/yacc.c?id\u003d193d7c7054ba7197b0789e14965b739162319b5e#n141"
+      ]
+    },
+    {
+      "reference": "./Bootloader-exception.json",
+      "isDeprecatedLicenseId": false,
+      "detailsUrl": "./Bootloader-exception.html",
+      "referenceNumber": 20,
+      "name": "Bootloader Distribution Exception",
+      "licenseExceptionId": "Bootloader-exception",
+      "seeAlso": [
+        "https://github.com/pyinstaller/pyinstaller/blob/develop/COPYING.txt"
+      ]
+    },
+    {
+      "reference": "./Classpath-exception-2.0.json",
+      "isDeprecatedLicenseId": false,
+      "detailsUrl": "./Classpath-exception-2.0.html",
+      "referenceNumber": 36,
+      "name": "Classpath exception 2.0",
+      "licenseExceptionId": "Classpath-exception-2.0",
+      "seeAlso": [
+        "http://www.gnu.org/software/classpath/license.html",
+        "https://fedoraproject.org/wiki/Licensing/GPL_Classpath_Exception"
+      ]
+    },
+    {
+      "reference": "./CLISP-exception-2.0.json",
+      "isDeprecatedLicenseId": false,
+      "detailsUrl": "./CLISP-exception-2.0.html",
+      "referenceNumber": 5,
+      "name": "CLISP exception 2.0",
+      "licenseExceptionId": "CLISP-exception-2.0",
+      "seeAlso": [
+        "http://sourceforge.net/p/clisp/clisp/ci/default/tree/COPYRIGHT"
+      ]
+    },
+    {
+      "reference": "./DigiRule-FOSS-exception.json",
+      "isDeprecatedLicenseId": false,
+      "detailsUrl": "./DigiRule-FOSS-exception.html",
+      "referenceNumber": 34,
+      "name": "DigiRule FOSS License Exception",
+      "licenseExceptionId": "DigiRule-FOSS-exception",
+      "seeAlso": [
+        "http://www.digirulesolutions.com/drupal/foss"
+      ]
+    },
+    {
+      "reference": "./eCos-exception-2.0.json",
+      "isDeprecatedLicenseId": false,
+      "detailsUrl": "./eCos-exception-2.0.html",
+      "referenceNumber": 31,
+      "name": "eCos exception 2.0",
+      "licenseExceptionId": "eCos-exception-2.0",
+      "seeAlso": [
+        "http://ecos.sourceware.org/license-overview.html"
+      ]
+    },
+    {
+      "reference": "./Fawkes-Runtime-exception.json",
+      "isDeprecatedLicenseId": false,
+      "detailsUrl": "./Fawkes-Runtime-exception.html",
+      "referenceNumber": 22,
+      "name": "Fawkes Runtime Exception",
+      "licenseExceptionId": "Fawkes-Runtime-exception",
+      "seeAlso": [
+        "http://www.fawkesrobotics.org/about/license/"
+      ]
+    },
+    {
+      "reference": "./FLTK-exception.json",
+      "isDeprecatedLicenseId": false,
+      "detailsUrl": "./FLTK-exception.html",
+      "referenceNumber": 42,
+      "name": "FLTK exception",
+      "licenseExceptionId": "FLTK-exception",
+      "seeAlso": [
+        "http://www.fltk.org/COPYING.php"
+      ]
+    },
+    {
+      "reference": "./Font-exception-2.0.json",
+      "isDeprecatedLicenseId": false,
+      "detailsUrl": "./Font-exception-2.0.html",
+      "referenceNumber": 29,
+      "name": "Font exception 2.0",
+      "licenseExceptionId": "Font-exception-2.0",
+      "seeAlso": [
+        "http://www.gnu.org/licenses/gpl-faq.html#FontException"
+      ]
+    },
+    {
+      "reference": "./freertos-exception-2.0.json",
+      "isDeprecatedLicenseId": false,
+      "detailsUrl": "./freertos-exception-2.0.html",
+      "referenceNumber": 25,
+      "name": "FreeRTOS Exception 2.0",
+      "licenseExceptionId": "freertos-exception-2.0",
+      "seeAlso": [
+        "https://web.archive.org/web/20060809182744/http://www.freertos.org/a00114.html"
+      ]
+    },
+    {
+      "reference": "./GCC-exception-2.0.json",
+      "isDeprecatedLicenseId": false,
+      "detailsUrl": "./GCC-exception-2.0.html",
+      "referenceNumber": 24,
+      "name": "GCC Runtime Library exception 2.0",
+      "licenseExceptionId": "GCC-exception-2.0",
+      "seeAlso": [
+        "https://gcc.gnu.org/git/?p\u003dgcc.git;a\u003dblob;f\u003dgcc/libgcc1.c;h\u003d762f5143fc6eed57b6797c82710f3538aa52b40b;hb\u003dcb143a3ce4fb417c68f5fa2691a1b1b1053dfba9#l10"
+      ]
+    },
+    {
+      "reference": "./GCC-exception-3.1.json",
+      "isDeprecatedLicenseId": false,
+      "detailsUrl": "./GCC-exception-3.1.html",
+      "referenceNumber": 11,
+      "name": "GCC Runtime Library exception 3.1",
+      "licenseExceptionId": "GCC-exception-3.1",
+      "seeAlso": [
+        "http://www.gnu.org/licenses/gcc-exception-3.1.html"
+      ]
+    },
+    {
+      "reference": "./GNAT-exception.json",
+      "isDeprecatedLicenseId": false,
+      "detailsUrl": "./GNAT-exception.html",
+      "referenceNumber": 16,
+      "name": "GNAT exception",
+      "licenseExceptionId": "GNAT-exception",
+      "seeAlso": [
+        "https://github.com/AdaCore/florist/blob/master/libsrc/posix-configurable_file_limits.adb"
+      ]
+    },
+    {
+      "reference": "./gnu-javamail-exception.json",
+      "isDeprecatedLicenseId": false,
+      "detailsUrl": "./gnu-javamail-exception.html",
+      "referenceNumber": 26,
+      "name": "GNU JavaMail exception",
+      "licenseExceptionId": "gnu-javamail-exception",
+      "seeAlso": [
+        "http://www.gnu.org/software/classpathx/javamail/javamail.html"
+      ]
+    },
+    {
+      "reference": "./GPL-3.0-linking-exception.json",
+      "isDeprecatedLicenseId": false,
+      "detailsUrl": "./GPL-3.0-linking-exception.html",
+      "referenceNumber": 6,
+      "name": "GPL-3.0 Linking Exception",
+      "licenseExceptionId": "GPL-3.0-linking-exception",
+      "seeAlso": [
+        "https://www.gnu.org/licenses/gpl-faq.en.html#GPLIncompatibleLibs"
+      ]
+    },
+    {
+      "reference": "./GPL-3.0-linking-source-exception.json",
+      "isDeprecatedLicenseId": false,
+      "detailsUrl": "./GPL-3.0-linking-source-exception.html",
+      "referenceNumber": 32,
+      "name": "GPL-3.0 Linking Exception (with Corresponding Source)",
+      "licenseExceptionId": "GPL-3.0-linking-source-exception",
+      "seeAlso": [
+        "https://www.gnu.org/licenses/gpl-faq.en.html#GPLIncompatibleLibs",
+        "https://github.com/mirror/wget/blob/master/src/http.c#L20"
+      ]
+    },
+    {
+      "reference": "./GPL-CC-1.0.json",
+      "isDeprecatedLicenseId": false,
+      "detailsUrl": "./GPL-CC-1.0.html",
+      "referenceNumber": 41,
+      "name": "GPL Cooperation Commitment 1.0",
+      "licenseExceptionId": "GPL-CC-1.0",
+      "seeAlso": [
+        "https://github.com/gplcc/gplcc/blob/master/Project/COMMITMENT",
+        "https://gplcc.github.io/gplcc/Project/README-PROJECT.html"
+      ]
+    },
+    {
+      "reference": "./GStreamer-exception-2005.json",
+      "isDeprecatedLicenseId": false,
+      "detailsUrl": "./GStreamer-exception-2005.html",
+      "referenceNumber": 33,
+      "name": "GStreamer Exception (2005)",
+      "licenseExceptionId": "GStreamer-exception-2005",
+      "seeAlso": [
+        "https://gstreamer.freedesktop.org/documentation/frequently-asked-questions/licensing.html?gi-language\u003dc#licensing-of-applications-using-gstreamer"
+      ]
+    },
+    {
+      "reference": "./GStreamer-exception-2008.json",
+      "isDeprecatedLicenseId": false,
+      "detailsUrl": "./GStreamer-exception-2008.html",
+      "referenceNumber": 27,
+      "name": "GStreamer Exception (2008)",
+      "licenseExceptionId": "GStreamer-exception-2008",
+      "seeAlso": [
+        "https://gstreamer.freedesktop.org/documentation/frequently-asked-questions/licensing.html?gi-language\u003dc#licensing-of-applications-using-gstreamer"
+      ]
+    },
+    {
+      "reference": "./i2p-gpl-java-exception.json",
+      "isDeprecatedLicenseId": false,
+      "detailsUrl": "./i2p-gpl-java-exception.html",
+      "referenceNumber": 2,
+      "name": "i2p GPL+Java Exception",
+      "licenseExceptionId": "i2p-gpl-java-exception",
+      "seeAlso": [
+        "http://geti2p.net/en/get-involved/develop/licenses#java_exception"
+      ]
+    },
+    {
+      "reference": "./KiCad-libraries-exception.json",
+      "isDeprecatedLicenseId": false,
+      "detailsUrl": "./KiCad-libraries-exception.html",
+      "referenceNumber": 47,
+      "name": "KiCad Libraries Exception",
+      "licenseExceptionId": "KiCad-libraries-exception",
+      "seeAlso": [
+        "https://www.kicad.org/libraries/license/"
+      ]
+    },
+    {
+      "reference": "./LGPL-3.0-linking-exception.json",
+      "isDeprecatedLicenseId": false,
+      "detailsUrl": "./LGPL-3.0-linking-exception.html",
+      "referenceNumber": 7,
+      "name": "LGPL-3.0 Linking Exception",
+      "licenseExceptionId": "LGPL-3.0-linking-exception",
+      "seeAlso": [
+        "https://raw.githubusercontent.com/go-xmlpath/xmlpath/v2/LICENSE",
+        "https://github.com/goamz/goamz/blob/master/LICENSE",
+        "https://github.com/juju/errors/blob/master/LICENSE"
+      ]
+    },
+    {
+      "reference": "./Libtool-exception.json",
+      "isDeprecatedLicenseId": false,
+      "detailsUrl": "./Libtool-exception.html",
+      "referenceNumber": 38,
+      "name": "Libtool Exception",
+      "licenseExceptionId": "Libtool-exception",
+      "seeAlso": [
+        "http://git.savannah.gnu.org/cgit/libtool.git/tree/m4/libtool.m4"
+      ]
+    },
+    {
+      "reference": "./Linux-syscall-note.json",
+      "isDeprecatedLicenseId": false,
+      "detailsUrl": "./Linux-syscall-note.html",
+      "referenceNumber": 15,
+      "name": "Linux Syscall Note",
+      "licenseExceptionId": "Linux-syscall-note",
+      "seeAlso": [
+        "https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/COPYING"
+      ]
+    },
+    {
+      "reference": "./LLVM-exception.json",
+      "isDeprecatedLicenseId": false,
+      "detailsUrl": "./LLVM-exception.html",
+      "referenceNumber": 17,
+      "name": "LLVM Exception",
+      "licenseExceptionId": "LLVM-exception",
+      "seeAlso": [
+        "http://llvm.org/foundation/relicensing/LICENSE.txt"
+      ]
+    },
+    {
+      "reference": "./LZMA-exception.json",
+      "isDeprecatedLicenseId": false,
+      "detailsUrl": "./LZMA-exception.html",
+      "referenceNumber": 10,
+      "name": "LZMA exception",
+      "licenseExceptionId": "LZMA-exception",
+      "seeAlso": [
+        "http://nsis.sourceforge.net/Docs/AppendixI.html#I.6"
+      ]
+    },
+    {
+      "reference": "./mif-exception.json",
+      "isDeprecatedLicenseId": false,
+      "detailsUrl": "./mif-exception.html",
+      "referenceNumber": 49,
+      "name": "Macros and Inline Functions Exception",
+      "licenseExceptionId": "mif-exception",
+      "seeAlso": [
+        "http://www.scs.stanford.edu/histar/src/lib/cppsup/exception",
+        "http://dev.bertos.org/doxygen/",
+        "https://www.threadingbuildingblocks.org/licensing"
+      ]
+    },
+    {
+      "reference": "./Nokia-Qt-exception-1.1.json",
+      "isDeprecatedLicenseId": true,
+      "detailsUrl": "./Nokia-Qt-exception-1.1.html",
+      "referenceNumber": 23,
+      "name": "Nokia Qt LGPL exception 1.1",
+      "licenseExceptionId": "Nokia-Qt-exception-1.1",
+      "seeAlso": [
+        "https://www.keepassx.org/dev/projects/keepassx/repository/revisions/b8dfb9cc4d5133e0f09cd7533d15a4f1c19a40f2/entry/LICENSE.NOKIA-LGPL-EXCEPTION"
+      ]
+    },
+    {
+      "reference": "./OCaml-LGPL-linking-exception.json",
+      "isDeprecatedLicenseId": false,
+      "detailsUrl": "./OCaml-LGPL-linking-exception.html",
+      "referenceNumber": 28,
+      "name": "OCaml LGPL Linking Exception",
+      "licenseExceptionId": "OCaml-LGPL-linking-exception",
+      "seeAlso": [
+        "https://caml.inria.fr/ocaml/license.en.html"
+      ]
+    },
+    {
+      "reference": "./OCCT-exception-1.0.json",
+      "isDeprecatedLicenseId": false,
+      "detailsUrl": "./OCCT-exception-1.0.html",
+      "referenceNumber": 43,
+      "name": "Open CASCADE Exception 1.0",
+      "licenseExceptionId": "OCCT-exception-1.0",
+      "seeAlso": [
+        "http://www.opencascade.com/content/licensing"
+      ]
+    },
+    {
+      "reference": "./OpenJDK-assembly-exception-1.0.json",
+      "isDeprecatedLicenseId": false,
+      "detailsUrl": "./OpenJDK-assembly-exception-1.0.html",
+      "referenceNumber": 44,
+      "name": "OpenJDK Assembly exception 1.0",
+      "licenseExceptionId": "OpenJDK-assembly-exception-1.0",
+      "seeAlso": [
+        "http://openjdk.java.net/legal/assembly-exception.html"
+      ]
+    },
+    {
+      "reference": "./openvpn-openssl-exception.json",
+      "isDeprecatedLicenseId": false,
+      "detailsUrl": "./openvpn-openssl-exception.html",
+      "referenceNumber": 13,
+      "name": "OpenVPN OpenSSL Exception",
+      "licenseExceptionId": "openvpn-openssl-exception",
+      "seeAlso": [
+        "http://openvpn.net/index.php/license.html"
+      ]
+    },
+    {
+      "reference": "./PS-or-PDF-font-exception-20170817.json",
+      "isDeprecatedLicenseId": false,
+      "detailsUrl": "./PS-or-PDF-font-exception-20170817.html",
+      "referenceNumber": 18,
+      "name": "PS/PDF font exception (2017-08-17)",
+      "licenseExceptionId": "PS-or-PDF-font-exception-20170817",
+      "seeAlso": [
+        "https://github.com/ArtifexSoftware/urw-base35-fonts/blob/65962e27febc3883a17e651cdb23e783668c996f/LICENSE"
+      ]
+    },
+    {
+      "reference": "./QPL-1.0-INRIA-2004-exception.json",
+      "isDeprecatedLicenseId": false,
+      "detailsUrl": "./QPL-1.0-INRIA-2004-exception.html",
+      "referenceNumber": 12,
+      "name": "INRIA QPL 1.0 2004 variant exception",
+      "licenseExceptionId": "QPL-1.0-INRIA-2004-exception",
+      "seeAlso": [
+        "https://git.frama-c.com/pub/frama-c/-/blob/master/licenses/Q_MODIFIED_LICENSE",
+        "https://github.com/maranget/hevea/blob/master/LICENSE"
+      ]
+    },
+    {
+      "reference": "./Qt-GPL-exception-1.0.json",
+      "isDeprecatedLicenseId": false,
+      "detailsUrl": "./Qt-GPL-exception-1.0.html",
+      "referenceNumber": 46,
+      "name": "Qt GPL exception 1.0",
+      "licenseExceptionId": "Qt-GPL-exception-1.0",
+      "seeAlso": [
+        "http://code.qt.io/cgit/qt/qtbase.git/tree/LICENSE.GPL3-EXCEPT"
+      ]
+    },
+    {
+      "reference": "./Qt-LGPL-exception-1.1.json",
+      "isDeprecatedLicenseId": false,
+      "detailsUrl": "./Qt-LGPL-exception-1.1.html",
+      "referenceNumber": 45,
+      "name": "Qt LGPL exception 1.1",
+      "licenseExceptionId": "Qt-LGPL-exception-1.1",
+      "seeAlso": [
+        "http://code.qt.io/cgit/qt/qtbase.git/tree/LGPL_EXCEPTION.txt"
+      ]
+    },
+    {
+      "reference": "./Qwt-exception-1.0.json",
+      "isDeprecatedLicenseId": false,
+      "detailsUrl": "./Qwt-exception-1.0.html",
+      "referenceNumber": 30,
+      "name": "Qwt exception 1.0",
+      "licenseExceptionId": "Qwt-exception-1.0",
+      "seeAlso": [
+        "http://qwt.sourceforge.net/qwtlicense.html"
+      ]
+    },
+    {
+      "reference": "./SHL-2.0.json",
+      "isDeprecatedLicenseId": false,
+      "detailsUrl": "./SHL-2.0.html",
+      "referenceNumber": 19,
+      "name": "Solderpad Hardware License v2.0",
+      "licenseExceptionId": "SHL-2.0",
+      "seeAlso": [
+        "https://solderpad.org/licenses/SHL-2.0/"
+      ]
+    },
+    {
+      "reference": "./SHL-2.1.json",
+      "isDeprecatedLicenseId": false,
+      "detailsUrl": "./SHL-2.1.html",
+      "referenceNumber": 21,
+      "name": "Solderpad Hardware License v2.1",
+      "licenseExceptionId": "SHL-2.1",
+      "seeAlso": [
+        "https://solderpad.org/licenses/SHL-2.1/"
+      ]
+    },
+    {
+      "reference": "./SWI-exception.json",
+      "isDeprecatedLicenseId": false,
+      "detailsUrl": "./SWI-exception.html",
+      "referenceNumber": 4,
+      "name": "SWI exception",
+      "licenseExceptionId": "SWI-exception",
+      "seeAlso": [
+        "https://github.com/SWI-Prolog/packages-clpqr/blob/bfa80b9270274f0800120d5b8e6fef42ac2dc6a5/clpqr/class.pl"
+      ]
+    },
+    {
+      "reference": "./Swift-exception.json",
+      "isDeprecatedLicenseId": false,
+      "detailsUrl": "./Swift-exception.html",
+      "referenceNumber": 3,
+      "name": "Swift Exception",
+      "licenseExceptionId": "Swift-exception",
+      "seeAlso": [
+        "https://swift.org/LICENSE.txt",
+        "https://github.com/apple/swift-package-manager/blob/7ab2275f447a5eb37497ed63a9340f8a6d1e488b/LICENSE.txt#L205"
+      ]
+    },
+    {
+      "reference": "./u-boot-exception-2.0.json",
+      "isDeprecatedLicenseId": false,
+      "detailsUrl": "./u-boot-exception-2.0.html",
+      "referenceNumber": 14,
+      "name": "U-Boot exception 2.0",
+      "licenseExceptionId": "u-boot-exception-2.0",
+      "seeAlso": [
+        "http://git.denx.de/?p\u003du-boot.git;a\u003dblob;f\u003dLicenses/Exceptions"
+      ]
+    },
+    {
+      "reference": "./Universal-FOSS-exception-1.0.json",
+      "isDeprecatedLicenseId": false,
+      "detailsUrl": "./Universal-FOSS-exception-1.0.html",
+      "referenceNumber": 40,
+      "name": "Universal FOSS Exception, Version 1.0",
+      "licenseExceptionId": "Universal-FOSS-exception-1.0",
+      "seeAlso": [
+        "https://oss.oracle.com/licenses/universal-foss-exception/"
+      ]
+    },
+    {
+      "reference": "./WxWindows-exception-3.1.json",
+      "isDeprecatedLicenseId": false,
+      "detailsUrl": "./WxWindows-exception-3.1.html",
+      "referenceNumber": 1,
+      "name": "WxWindows Library Exception 3.1",
+      "licenseExceptionId": "WxWindows-exception-3.1",
+      "seeAlso": [
+        "http://www.opensource.org/licenses/WXwindows"
+      ]
+    },
+    {
+      "reference": "./x11vnc-openssl-exception.json",
+      "isDeprecatedLicenseId": false,
+      "detailsUrl": "./x11vnc-openssl-exception.html",
+      "referenceNumber": 48,
+      "name": "x11vnc OpenSSL Exception",
+      "licenseExceptionId": "x11vnc-openssl-exception",
+      "seeAlso": [
+        "https://github.com/LibVNC/x11vnc/blob/master/src/8to24.c#L22"
+      ]
+    }
+  ],
+  "releaseDate": "2023-02-17"
+}
