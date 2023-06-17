@@ -1,0 +1,9 @@
+synopsis: Use compiler flags for caching project config
+packages: cabal-install
+prs: #8819
+
+description: {
+
+This ensures that cached project configs with conditionals re-execute the conditional logic when the compiler changes.
+
+}
