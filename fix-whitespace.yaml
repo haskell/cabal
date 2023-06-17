@@ -32,6 +32,7 @@ excluded-dirs:
   - .python-sphinx-virtualenv
   - .stack-work
   - .vscode
+  - license-list-data
 
 # Every matched filename is included unless it is matched by excluded-files.
 included-files:
