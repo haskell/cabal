@@ -131,6 +131,7 @@ and should be written in the body of the ticket or PR under their own heading, l
 For instance:
 
 > \#\# QA Notes
+> 
 > Calling `cabal haddock-project` should produce documentation for the whole cabal project with the following defaults enabled:
 > * Documentation lives in ./haddocks
 > * The file `./haddocks/index.html` should exist
