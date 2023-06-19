@@ -132,9 +132,15 @@ zipDefault _ bd (a : as) [] = (a, bd) : map (,bd) as
 zipDefault ad _ [] (b : bs) = (ad, b) : map (ad,) bs
 zipDefault ad bd (a : as) (b : bs) = (a, b) : zipDefault ad bd as bs
 
+-- | Don't abbreviate for required arguments, as it's confusing with no
+-- separator.  Go with option b.
+-- a) -wP, --with-compiler=PATH
+-- b) -wPATH, --with-compiler=PATH
+-- Abbreviate optional arguments, as it's clear with separators.
+-- -j[N], --jobs[=NUM]
 fmtShort :: ArgDescr a -> Char -> String
 fmtShort (NoArg _) so = "-" ++ [so]
-fmtShort (ReqArg _ ad) so = "-" ++ [so] ++ take 1 ad
+fmtShort (ReqArg _ ad) so = "-" ++ [so] ++ ad
 fmtShort (OptArg _ ad) so = "-" ++ [so] ++ (take 1 ad & \case
   "" -> ""
   abbreviation -> "[" ++ abbreviation ++ "]")
