@@ -543,7 +543,7 @@ configureOptions showOrParseArgs =
           (\v flags -> flags{configOptimization = v})
           [ optArgDef'
               "n"
-              (Just $ show NoOptimisation, Flag . flagToOptimisationLevel)
+              (show NoOptimisation, Flag . flagToOptimisationLevel)
               ( \f -> case f of
                   Flag NoOptimisation -> []
                   Flag NormalOptimisation -> [Nothing]

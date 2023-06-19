@@ -139,7 +139,7 @@ data OptDescr a
       OptFlags
       ArgPlaceHolder
       (ReadE (a -> a))
-      (Maybe String, a -> a)
+      (String, a -> a)
       (a -> [Maybe String])
   | ChoiceOpt [(Description, OptFlags, a -> a, a -> Bool)]
   | BoolOpt
@@ -232,7 +232,7 @@ optArg
   :: Monoid b
   => ArgPlaceHolder
   -> ReadE b
-  -> (Maybe String, b)
+  -> (String, b)
   -> (b -> [Maybe String])
   -> MkOptDescr (a -> b) (b -> a -> a) a
 optArg ad mkflag (dv, mkDef) showflag sf lf d get set =
@@ -262,12 +262,12 @@ optArg'
   -> (b -> [Maybe String])
   -> MkOptDescr (a -> b) (b -> a -> a) a
 optArg' ad mkflag showflag =
-  optArg ad (succeedReadE (mkflag . Just)) (Nothing, mkflag Nothing) showflag
+  optArg ad (succeedReadE (mkflag . Just)) ("", mkflag Nothing) showflag
 
 optArgDef'
   :: Monoid b
   => ArgPlaceHolder
-  -> (Maybe String, Maybe String -> b)
+  -> (String, Maybe String -> b)
   -> (b -> [Maybe String])
   -> MkOptDescr (a -> b) (b -> a -> a) a
 optArgDef' ad (dv, mkflag) showflag =

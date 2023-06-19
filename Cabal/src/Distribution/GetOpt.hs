@@ -68,7 +68,7 @@ data ArgDescr a
   | -- |   option requires argument
     ReqArg (String -> Either String a) String
   | -- |   optional argument
-    OptArg (Maybe String) (Maybe String -> Either String a) String
+    OptArg String (Maybe String -> Either String a) String
 
 instance Functor ArgDescr where
   fmap f (NoArg a) = NoArg (f a)
@@ -145,10 +145,7 @@ fmtShort (NoArg _) so = "-" ++ [so]
 fmtShort (ReqArg _ ad) so =
   let opt = "-" ++ [so]
    in opt ++ " " ++ ad ++ " or " ++ opt ++ ad
-fmtShort (OptArg Nothing _ ad) so =
-  let opt = "-" ++ [so]
-   in opt ++ " " ++ ad
-fmtShort (OptArg Just{} _ ad) so =
+fmtShort (OptArg _ _ ad) so =
   let opt = "-" ++ [so]
    in opt ++ "[" ++ ad ++ "]"
 

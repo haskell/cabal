@@ -281,7 +281,7 @@ outdatedOptions _showOrParseArgs =
       ( optArg
           "PKGS"
           ignoreMajorVersionBumpsParser
-          (Just "TODO", Just IgnoreMajorVersionBumpsAll)
+          ("", Just IgnoreMajorVersionBumpsAll)
           ignoreMajorVersionBumpsPrinter
       )
   ]
