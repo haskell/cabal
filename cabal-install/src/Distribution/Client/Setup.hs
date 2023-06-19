@@ -934,7 +934,7 @@ configureExOptions _showOrParseArgs src =
       ( optArg
           "DEPS"
           (parsecToReadEErr unexpectMsgString relaxDepsParser)
-          (Just RelaxDepsAll)
+          (Just $ show RelaxDepsAll, Just RelaxDepsAll)
           relaxDepsPrinter
       )
   , option
@@ -946,7 +946,7 @@ configureExOptions _showOrParseArgs src =
       ( optArg
           "DEPS"
           (parsecToReadEErr unexpectMsgString relaxDepsParser)
-          (Just RelaxDepsAll)
+          (Just $ show RelaxDepsAll, Just RelaxDepsAll)
           relaxDepsPrinter
       )
   , option
@@ -1766,7 +1766,7 @@ getCommand =
                     (const "invalid source-repository")
                     (fmap (toFlag . Just) parsec)
                 )
-                (Flag Nothing)
+                (Nothing, Flag Nothing)
                 (map (fmap show) . flagToList)
             )
         , option
