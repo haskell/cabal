@@ -4,9 +4,9 @@ Package Description
 The Cabal package is the unit of distribution. When installed, its
 purpose is to make available:
 
--  One or more Haskell programs.
+-  One or more Haskell programs (executables).
 
--  At most one library, exposing a number of Haskell modules.
+-  One or more libraries, exposing a number of Haskell modules.
 
 However having both a library and executables in a package does not work
 very well; if the executables depend on the library, they must
@@ -801,15 +801,16 @@ Library
 
     Build information for libraries.
 
-    Currently, there can only be one publicly exposed library in a
-    package, and its name is the same as package name set by global
-    :pkg-field:`name` field. In this case, the ``name`` argument to
-    the :pkg-section:`library` section must be omitted.
+    A package can have one default library, which is identified by omitting the
+    ``name`` argument.
 
-    Starting with Cabal 2.0, private internal sub-library components
-    can be defined by setting the ``name`` field to a name
-    different from the current package's name; see section on
-    :ref:`Internal Libraries <sublibs>` for more information.
+    Starting with Cabal 2.0, sub-library components can be defined by setting
+    the ``name`` field to a name different from the current package's name; see
+    section on :ref:`Internal Libraries <sublibs>` for more information. By
+    default, these sub-libraries are private and internal. Since Cabal 3.0,
+    these sub-libraries can also be exposed and used by other packages. See the
+    :pkg-field:`library:visibility` field and :ref:`Multiple Public Libraries
+    <publicsublibs>` for more information.
 
 The library section should contain the following fields:
 
@@ -1005,7 +1006,9 @@ a real-world use case:
     specify an internal library in a ``build-depends:`` section is
     ``package-name:internal-library-name``.
 
-**Multiple public libraries**
+.. _publicsublibs:
+
+**Multiple Public Libraries**
 
 Cabal 3.0 and later support exposing multiple libraries from a single package
 through the field :pkg-field:`library:visibility`.
@@ -1629,7 +1632,7 @@ system-dependent values for these fields.
     Multiple libraries from the same package can be specified with the shorthand
     syntax ``pkg:{lib1,lib2}```.
 
-    See section on :ref:`Internal Libraries <sublibs>` for examples and more
+    See section on :ref:`Multiple Public Libraries <publicsublibs>` for examples and more
     information.
 
     **Version Constraints**
