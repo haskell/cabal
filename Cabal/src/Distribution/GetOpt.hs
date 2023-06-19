@@ -132,8 +132,8 @@ zipDefault ad bd (a : as) (b : bs) = (a, b) : zipDefault ad bd as bs
 
 fmtShort :: ArgDescr a -> Char -> String
 fmtShort (NoArg _) so = "-" ++ [so]
-fmtShort (ReqArg _ _) so = "-" ++ [so]
-fmtShort (OptArg _ _) so = "-" ++ [so]
+fmtShort (ReqArg _ ad) so = "-" ++ [so] ++ take 1 ad
+fmtShort (OptArg _ ad) so = "-" ++ [so] ++ take 1 ad
 
 -- unlike upstream GetOpt we omit the arg name for short options
 
