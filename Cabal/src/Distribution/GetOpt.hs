@@ -1,4 +1,3 @@
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE TupleSections #-}
 
@@ -39,7 +38,6 @@ module Distribution.GetOpt
     -- | See "System.Console.GetOpt" for examples
   ) where
 
-import Data.Function ((&))
 import Distribution.Compat.Prelude
 import Prelude ()
 
@@ -142,13 +140,7 @@ zipDefault ad bd (a : as) (b : bs) = (a, b) : zipDefault ad bd as bs
 fmtShort :: ArgDescr a -> Char -> String
 fmtShort (NoArg _) so = "-" ++ [so]
 fmtShort (ReqArg _ ad) so = "-" ++ [so] ++ ad
-fmtShort (OptArg _ ad) so =
-  "-"
-    ++ [so]
-    ++ ( take 1 ad & \case
-          "" -> ""
-          abbreviation -> "[" ++ abbreviation ++ "]"
-       )
+fmtShort (OptArg _ ad) so = "-" ++ [so] ++ ad
 
 -- unlike upstream GetOpt we omit the arg name for short options
 
