@@ -1,6 +1,7 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
------------------------------------------------------------------------------
 {-# LANGUAGE TupleSections #-}
+-----------------------------------------------------------------------------
 
 -- |
 -- Module      :  Distribution.GetOpt
@@ -39,6 +40,7 @@ module Distribution.GetOpt
 
 import Distribution.Compat.Prelude
 import Prelude ()
+import Data.Function ((&))
 
 -- | What to do with options following non-options
 data ArgOrder a
@@ -133,7 +135,9 @@ zipDefault ad bd (a : as) (b : bs) = (a, b) : zipDefault ad bd as bs
 fmtShort :: ArgDescr a -> Char -> String
 fmtShort (NoArg _) so = "-" ++ [so]
 fmtShort (ReqArg _ ad) so = "-" ++ [so] ++ take 1 ad
-fmtShort (OptArg _ ad) so = "-" ++ [so] ++ take 1 ad
+fmtShort (OptArg _ ad) so = "-" ++ [so] ++ (take 1 ad & \case
+  "" -> ""
+  abbreviation -> "[" ++ abbreviation ++ "]")
 
 -- unlike upstream GetOpt we omit the arg name for short options
 
