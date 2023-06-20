@@ -27,6 +27,7 @@ import Distribution.Client.Types
   ( RemoteRepo (..)
   , unRepoName
   )
+import Distribution.Client.Types.Credentials (Auth)
 import Distribution.Client.Utils
   ( withTempFileName
   )
@@ -118,6 +119,7 @@ import System.IO.Error
   ( isDoesNotExistError
   )
 import System.Random (randomRIO)
+import Data.Either (lefts)
 
 import qualified Crypto.Hash.SHA256 as SHA256
 import qualified Data.ByteString as BS
@@ -386,13 +388,12 @@ data HttpTransport = HttpTransport
 
 type HttpCode = Int
 type ETag = String
-type Auth = (String, String)
 
 noPostYet
   :: Verbosity
   -> URI
   -> String
-  -> Maybe (String, String)
+  -> Maybe Auth
   -> IO (Int, String)
 noPostYet verbosity _ _ _ = die' verbosity "Posting (for report upload) is not implemented yet"
 
@@ -535,12 +536,13 @@ curlTransport prog =
             (Just (URIAuth u _ _)) | not (null u) -> Just $ filter (/= '@') u
             _ -> Nothing
       -- prefer passed in auth to auth derived from uri. If neither exist, then no auth
-      let mbAuthString = case (explicitAuth, uriDerivedAuth) of
-            (Just (uname, passwd), _) -> Just (uname ++ ":" ++ passwd)
-            (Nothing, Just a) -> Just a
-            (Nothing, Nothing) -> Nothing
-      case mbAuthString of
-        Just up ->
+      let mbAuthStringToken = case (explicitAuth, uriDerivedAuth) of
+            (Just (Right token), _) -> Just $ Right token
+            (Just (Left (uname, passwd)), _) -> Just $ Left (uname ++ ":" ++ passwd)
+            (_, Just a) -> Just $ Left a
+            (_, _) -> Nothing
+      case mbAuthStringToken of
+        Just (Left up) ->
           progInvocation
             { progInvokeInput =
                 Just . IODataText . unlines $
@@ -548,6 +550,11 @@ curlTransport prog =
                   , "--user " ++ up
                   ]
             , progInvokeArgs = ["--config", "-"] ++ progInvokeArgs progInvocation
+            }
+        Just (Right token) -> 
+          progInvocation
+            { progInvokeArgs = ["--header", "Authorization: X-ApiKey " ++ token]
+                ++ progInvokeArgs progInvocation
             }
         Nothing -> progInvocation
 
@@ -728,13 +735,13 @@ wgetTransport prog =
             resp <- hGetContents hnd
             evaluate $ force (code, resp)
 
-    addUriAuth Nothing uri = uri
-    addUriAuth (Just (user, pass)) uri =
+    addUriAuth (Just (Left (user, pass))) uri =
       uri
         { uriAuthority = Just a{uriUserInfo = user ++ ":" ++ pass ++ "@"}
         }
       where
         a = fromMaybe (URIAuth "" "" "") (uriAuthority uri)
+    addUriAuth _ uri = uri
 
     runWGet verbosity uri args = do
       -- We pass the URI via STDIN because it contains the users' credentials
@@ -921,7 +928,7 @@ powershellTransport prog =
         ++ ","
         ++ escape passwd
         ++ ",\"\");"
-      | (uname, passwd) <- maybeToList auth
+      | (uname, passwd) <- lefts $ maybeToList auth
       ]
 
     uploadFileAction method _uri fullPath =
@@ -1073,7 +1080,9 @@ plainHttpTransport =
           setOutHandler (debug verbosity)
           setUserAgent userAgent
           setAllowBasicAuth False
-          setAuthorityGen (\_ _ -> return auth)
+          case auth of
+            Just (Left x) -> setAuthorityGen (\_ _ -> return $ Just x)
+            _ -> setAuthorityGen (\_ _ -> return Nothing)
           act
 
     fixupEmptyProxy (Proxy uri _) | null uri = NoProxy

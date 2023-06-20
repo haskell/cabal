@@ -11,7 +11,12 @@ import Distribution.Client.Setup
   ( IsCandidate (..)
   , RepoContext (..)
   )
-import Distribution.Client.Types.Credentials (Password (..), Username (..))
+import Distribution.Client.Types.Credentials 
+  ( Auth
+  , Token (..)
+  , Password (..)
+  , Username (..)
+  )
 import Distribution.Client.Types.Repo (RemoteRepo (..), Repo, maybeRepoRemote)
 import Distribution.Client.Types.RepoName (unRepoName)
 
@@ -32,8 +37,6 @@ import qualified System.FilePath.Posix as FilePath.Posix ((</>))
 import System.IO (hFlush, stdout)
 import System.IO.Echo (withoutInputEcho)
 
-type Auth = Maybe (String, String)
-
 -- > stripExtensions ["tar", "gz"] "foo.tar.gz"
 -- Just "foo"
 -- > stripExtensions ["tar", "gz"] "foo.gz.tar"
@@ -48,12 +51,13 @@ stripExtensions exts path = foldM f path (reverse exts)
 upload
   :: Verbosity
   -> RepoContext
+  -> Maybe Token
   -> Maybe Username
   -> Maybe Password
   -> IsCandidate
   -> [FilePath]
   -> IO ()
-upload verbosity repoCtxt mUsername mPassword isCandidate paths = do
+upload verbosity repoCtxt mToken mUsername mPassword isCandidate paths = do
   let repos :: [Repo]
       repos = repoContextRepos repoCtxt
   transport <- repoContextGetTransport repoCtxt
@@ -87,9 +91,7 @@ upload verbosity repoCtxt mUsername mPassword isCandidate paths = do
                       IsPublished -> ""
                   ]
           }
-  Username username <- maybe (promptUsername domain) return mUsername
-  Password password <- maybe (promptPassword domain) return mPassword
-  let auth = Just (username, password)
+  auth <- Just <$> createAuth domain mToken mUsername mPassword
   for_ paths $ \path -> do
     notice verbosity $ "Uploading " ++ path ++ "... "
     case fmap takeFileName (stripExtensions ["tar", "gz"] path) of
@@ -109,12 +111,13 @@ upload verbosity repoCtxt mUsername mPassword isCandidate paths = do
 uploadDoc
   :: Verbosity
   -> RepoContext
+  -> Maybe Token
   -> Maybe Username
   -> Maybe Password
   -> IsCandidate
   -> FilePath
   -> IO ()
-uploadDoc verbosity repoCtxt mUsername mPassword isCandidate path = do
+uploadDoc verbosity repoCtxt mToken mUsername mPassword isCandidate path = do
   let repos = repoContextRepos repoCtxt
   transport <- repoContextGetTransport repoCtxt
   targetRepo <-
@@ -160,11 +163,10 @@ uploadDoc verbosity repoCtxt mUsername mPassword isCandidate path = do
         || Unsafe.head reversePkgid /= '-'
     )
     $ die' verbosity "Expected a file name matching the pattern <pkgid>-docs.tar.gz"
-  Username username <- maybe (promptUsername domain) return mUsername
-  Password password <- maybe (promptPassword domain) return mPassword
 
-  let auth = Just (username, password)
-      headers =
+  auth <- Just <$> createAuth domain mToken mUsername mPassword
+
+  let headers =
         [ Header HdrContentType "application/x-tar"
         , Header HdrContentEncoding "gzip"
         ]
@@ -247,7 +249,7 @@ report verbosity repoCtxt mUsername mPassword = do
                 BuildReport.uploadReports
                   verbosity
                   repoCtxt
-                  auth
+                  (Left auth)
                   (remoteRepoURI remoteRepo)
                   [(report', Just buildLog)]
                 return ()
@@ -257,7 +259,7 @@ handlePackage
   -> Verbosity
   -> URI
   -> URI
-  -> Auth
+  -> Maybe Auth
   -> IsCandidate
   -> FilePath
   -> IO ()
@@ -294,3 +296,17 @@ handlePackage transport verbosity uri packageUri auth isCandidate path =
 
 formatWarnings :: String -> String
 formatWarnings x = "Warnings:\n" ++ (unlines . map ("- " ++) . lines) x
+
+createAuth
+  :: String
+  -> Maybe Token
+  -> Maybe Username
+  -> Maybe Password
+  -> IO Auth
+createAuth domain mToken mUsername mPassword = case mToken of
+    Just token -> return $ Right $ unToken token
+    -- Use username and password if no token is provided
+    Nothing -> do
+      Username username <- maybe (promptUsername domain) return mUsername
+      Password password <- maybe (promptPassword domain) return mPassword
+      return $ Left (username, password)

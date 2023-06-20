@@ -95,7 +95,11 @@ import Distribution.Client.Types
   , isRelaxDeps
   , unRepoName
   )
-import Distribution.Client.Types.Credentials (Password (..), Username (..))
+import Distribution.Client.Types.Credentials 
+  ( Token (..)
+  , Password (..)
+  , Username (..)
+  )
 import Distribution.Utils.NubList
   ( NubList
   , fromNubList
@@ -568,6 +572,7 @@ instance Semigroup SavedConfig where
         UploadFlags
           { uploadCandidate = combine uploadCandidate
           , uploadDoc = combine uploadDoc
+          , uploadToken = combine uploadToken
           , uploadUsername = combine uploadUsername
           , uploadPassword = combine uploadPassword
           , uploadPasswordCmd = combine uploadPasswordCmd
@@ -1333,6 +1338,13 @@ deprecatedFieldDescriptions =
         (optionalFlag parsecFilePath)
         globalCacheDir
         (\d cfg -> cfg{globalCacheDir = d})
+  , liftUploadFlag $
+      simpleFieldParsec
+        "hackage-token"
+        (Disp.text . fromFlagOrDefault "" . fmap unToken)
+        (optionalFlag (fmap Token parsecToken))
+        uploadToken
+        (\d cfg -> cfg{uploadToken = d})
   , liftUploadFlag $
       simpleFieldParsec
         "hackage-username"

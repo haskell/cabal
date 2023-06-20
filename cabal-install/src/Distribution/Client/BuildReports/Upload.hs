@@ -28,6 +28,7 @@ import Distribution.Client.HttpUtils
 import Distribution.Client.Setup
   ( RepoContext (..)
   )
+import Distribution.Client.Types.Credentials (Auth)
 import Distribution.Simple.Utils (die')
 import System.FilePath.Posix
   ( (</>)
@@ -36,7 +37,7 @@ import System.FilePath.Posix
 type BuildReportId = URI
 type BuildLog = String
 
-uploadReports :: Verbosity -> RepoContext -> (String, String) -> URI -> [(BuildReport, Maybe BuildLog)] -> IO ()
+uploadReports :: Verbosity -> RepoContext -> Auth -> URI -> [(BuildReport, Maybe BuildLog)] -> IO ()
 uploadReports verbosity repoCtxt auth uri reports = do
   for_ reports $ \(report, mbBuildLog) -> do
     buildId <- postBuildReport verbosity repoCtxt auth uri report
@@ -44,7 +45,7 @@ uploadReports verbosity repoCtxt auth uri reports = do
       Just buildLog -> putBuildLog verbosity repoCtxt auth buildId buildLog
       Nothing -> return ()
 
-postBuildReport :: Verbosity -> RepoContext -> (String, String) -> URI -> BuildReport -> IO BuildReportId
+postBuildReport :: Verbosity -> RepoContext -> Auth -> URI -> BuildReport -> IO BuildReportId
 postBuildReport verbosity repoCtxt auth uri buildReport = do
   let fullURI = uri{uriPath = "/package" </> prettyShow (BuildReport.package buildReport) </> "reports"}
   transport <- repoContextGetTransport repoCtxt
@@ -87,7 +88,7 @@ postBuildReport verbosity repoCtxt auth uri buildReport = do
 putBuildLog
   :: Verbosity
   -> RepoContext
-  -> (String, String)
+  -> Auth
   -> BuildReportId
   -> BuildLog
   -> IO ()

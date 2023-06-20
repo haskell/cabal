@@ -93,7 +93,7 @@ import Distribution.Client.Compat.Prelude hiding (get)
 import Prelude ()
 
 import Distribution.Client.Types.AllowNewer (AllowNewer (..), AllowOlder (..), RelaxDeps (..))
-import Distribution.Client.Types.Credentials (Password (..), Username (..))
+import Distribution.Client.Types.Credentials (Token (..), Password (..), Username (..))
 import Distribution.Client.Types.Repo (LocalRepo (..), RemoteRepo (..))
 import Distribution.Client.Types.WriteGhcEnvironmentFilesPolicy
 
@@ -2628,6 +2628,7 @@ data IsCandidate = IsCandidate | IsPublished
 data UploadFlags = UploadFlags
   { uploadCandidate :: Flag IsCandidate
   , uploadDoc :: Flag Bool
+  , uploadToken :: Flag Token
   , uploadUsername :: Flag Username
   , uploadPassword :: Flag Password
   , uploadPasswordCmd :: Flag [String]
@@ -2640,6 +2641,7 @@ defaultUploadFlags =
   UploadFlags
     { uploadCandidate = toFlag IsCandidate
     , uploadDoc = toFlag False
+    , uploadToken = mempty
     , uploadUsername = mempty
     , uploadPassword = mempty
     , uploadPasswordCmd = mempty
@@ -2654,7 +2656,7 @@ uploadCommand =
     , commandDescription = Nothing
     , commandNotes = Just $ \_ ->
         "You can store your Hackage login in the ~/.config/cabal/config file\n"
-          ++ relevantConfigValuesText ["username", "password", "password-command"]
+          ++ relevantConfigValuesText ["token", "username", "password", "password-command"]
     , commandUsage = \pname ->
         "Usage: " ++ pname ++ " upload [FLAGS] TARFILES\n"
     , commandDefaultFlags = defaultUploadFlags
@@ -2680,6 +2682,17 @@ uploadCommand =
             uploadDoc
             (\v flags -> flags{uploadDoc = v})
             trueArg
+        , option
+            ['t']
+            ["token"]
+            "Hackage authentication token."
+            uploadToken
+            (\v flags -> flags{uploadToken = v})
+            ( reqArg'
+                "TOKEN"
+                (toFlag . Token)
+                (flagToList . fmap unToken)
+            )
         , option
             ['u']
             ["username"]
