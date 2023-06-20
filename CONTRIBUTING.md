@@ -125,11 +125,13 @@ are tested before being released. This allows us to catch UX regressions and put
 a human perspective into testing.
 
 Contributions that touch `cabal-install` are expected to include notes for the QA team.
-They are a description of an expected result upon calling `cabal-install` with certain parameters.
+They are a description of an expected result upon calling `cabal-install` with certain parameters,
+and should be written in the body of the ticket or PR under their own heading, like this:
 
 For instance:
 
-> ## QA Notes
+> \#\# QA Notes
+> 
 > Calling `cabal haddock-project` should produce documentation for the whole cabal project with the following defaults enabled:
 > * Documentation lives in ./haddocks
 > * The file `./haddocks/index.html` should exist

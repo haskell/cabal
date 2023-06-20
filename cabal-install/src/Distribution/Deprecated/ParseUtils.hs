@@ -38,6 +38,7 @@ module Distribution.Deprecated.ParseUtils
   , readFields
   , parseHaskellString
   , parseTokenQ
+  , parseSpaceList
   , parseOptCommaList
   , showFilePath
   , showToken
