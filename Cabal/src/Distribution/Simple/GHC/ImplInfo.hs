@@ -121,7 +121,7 @@ ghcjsVersionImplInfo _ghcjsver ghcver =
     , flagProfLate = True
     , flagPackageConf = False
     , flagDebugInfo = False
-    , flagHie = False
+    , flagHie = ghcv >= [8, 8]
     , supportsDebugLevels = ghcv >= [8, 0]
     , supportsPkgEnvFiles = ghcv >= [8, 0, 2] -- TODO: check this works in ghcjs
     , flagWarnMissingHomeModules = ghcv >= [8, 2]
