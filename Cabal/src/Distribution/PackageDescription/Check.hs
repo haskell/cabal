@@ -1932,7 +1932,7 @@ checkConditionals pkg =
       PackageDistInexcusable (UnknownCompiler unknownImpls)
   ]
   where
-    unknownOSs    = [ os   | OS   (OtherOS os)           <- conditions ]
+    unknownOSs    = [ os   | OS   (OtherOS os)           <- conditions, os /= "haiku" ]
     unknownArches = [ arch | Arch (OtherArch arch)       <- conditions ]
     unknownImpls  = [ impl | Impl (OtherCompiler impl) _ <- conditions ]
     conditions = concatMap fvs (maybeToList (condLibrary pkg))
