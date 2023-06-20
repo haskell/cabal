@@ -1086,7 +1086,19 @@ to Hackage.
 
 .. option:: -P, --password-command
 
-    Command to get your Hackage password.
+    Command to get your Hackage password.  Arguments with whitespace
+    must be quoted (double-quotes only).  For example:
+
+    ::
+
+        --password-command 'sh -c "grep hackage ~/secrets | cut -d : -f 2"'
+
+    Or in the config file:
+
+    ::
+
+        password-command: sh -c "grep hackage ~/secrets | cut -d : -f 2"
+
 
 cabal report
 ^^^^^^^^^^^^

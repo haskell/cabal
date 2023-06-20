@@ -12,3 +12,6 @@ Writing merged config to <ROOT>/cabal.dist/cabal-config.
 # cabal user-config
 Renaming <ROOT>/cabal.dist/cabal-config to <ROOT>/cabal.dist/cabal-config.backup.
 Writing merged config to <ROOT>/cabal.dist/cabal-config.
+# cabal user-config
+Renaming <ROOT>/cabal.dist/cabal-config to <ROOT>/cabal.dist/cabal-config.backup.
+Writing merged config to <ROOT>/cabal.dist/cabal-config.
