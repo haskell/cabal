@@ -88,8 +88,10 @@ defaultMainArgs :: [String] -> IO ()
 defaultMainArgs = defaultMainHelper
 
 defaultMainHelper :: [String] -> IO ()
-defaultMainHelper args =
-  case commandsRun (globalCommand commands) commands args of
+defaultMainHelper args = do
+  command <- commandsRun (globalCommand commands) commands args
+  case command of
+    CommandDelegate -> pure ()
     CommandHelp help -> printHelp help
     CommandList opts -> printOptionsList opts
     CommandErrors errs -> printErrors errs
@@ -98,6 +100,7 @@ defaultMainHelper args =
         _
           | fromFlag (globalVersion flags) -> printVersion
           | fromFlag (globalNumericVersion flags) -> printNumericVersion
+        CommandDelegate -> pure ()
         CommandHelp help -> printHelp help
         CommandList opts -> printOptionsList opts
         CommandErrors errs -> printErrors errs

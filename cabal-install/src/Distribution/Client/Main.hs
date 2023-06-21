@@ -322,8 +322,10 @@ warnIfAssertionsAreEnabled =
 -- into IO actions for execution.
 mainWorker :: [String] -> IO ()
 mainWorker args = do
-  topHandler $
-    case commandsRun (globalCommand commands) commands args of
+  topHandler $ do
+    command <- commandsRun (globalCommand commands) commands args
+    case command of
+      CommandDelegate -> pure ()
       CommandHelp help -> printGlobalHelp help
       CommandList opts -> printOptionsList opts
       CommandErrors errs -> printErrors errs
@@ -334,6 +336,7 @@ mainWorker args = do
                 printVersion
             | fromFlagOrDefault False (globalNumericVersion globalFlags) ->
                 printNumericVersion
+          CommandDelegate -> pure ()
           CommandHelp help -> printCommandHelp help
           CommandList opts -> printOptionsList opts
           CommandErrors errs -> do
