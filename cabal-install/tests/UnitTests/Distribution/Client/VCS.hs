@@ -16,6 +16,7 @@ import Distribution.Client.Types.SourceRepo (SourceRepoProxy, SourceRepositoryPa
 import Distribution.Client.VCS
 import Distribution.Simple.Program
 import Distribution.System (OS (Windows), buildOS)
+import Distribution.Utils.TempTestDir (removeDirectoryRecursiveHack, withTestDir)
 import Distribution.Verbosity as Verbosity
 
 import Data.List (mapAccumL)
@@ -37,7 +38,6 @@ import Test.Tasty
 import Test.Tasty.ExpectedFailure
 import Test.Tasty.QuickCheck
 import UnitTests.Distribution.Client.ArbitraryInstances
-import UnitTests.TempTestDir (removeDirectoryRecursiveHack, withTestDir)
 
 -- | These tests take the following approach: we generate a pure representation
 -- of a repository plus a corresponding real repository, and then run various

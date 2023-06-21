@@ -1,6 +1,6 @@
 {-# LANGUAGE CPP #-}
 
-module UnitTests.TempTestDir
+module Distribution.Utils.TempTestDir
   ( withTestDir
   , removeDirectoryRecursiveHack
   ) where
