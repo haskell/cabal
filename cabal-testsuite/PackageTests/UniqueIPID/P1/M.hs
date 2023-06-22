@@ -1,3 +1,3 @@
-module M(m) where
+module M (m) where
 
 m = print "1"

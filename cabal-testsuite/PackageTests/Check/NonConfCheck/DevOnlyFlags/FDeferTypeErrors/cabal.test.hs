@@ -1,5 +1,7 @@
 import Test.Cabal.Prelude
 
 -- -fdefer-type-errors
-main = cabalTest $
-  fails $ cabal "check" []
+main =
+  cabalTest $
+    fails $
+      cabal "check" []

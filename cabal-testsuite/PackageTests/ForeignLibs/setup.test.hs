@@ -1,5 +1,5 @@
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE RecordWildCards #-}
 
 import Control.Exception
 import Control.Monad.IO.Class
@@ -11,8 +11,8 @@ import System.Posix (readSymbolicLink)
 #endif /* mingw32_HOST_OS */
 
 import Distribution.Simple.LocalBuildInfo
-import Distribution.Simple.Program.Db
 import Distribution.Simple.Program.Builtin
+import Distribution.Simple.Program.Db
 import Distribution.Simple.Program.Types
 import Distribution.System
 import Distribution.Verbosity
@@ -30,35 +30,42 @@ main = setupAndCabalTest . recordMode DoNotRecord $ do
   ghc94 <- isGhcVersion "== 9.4.*"
   expectBrokenIf (win && ghc94) 8451 $
     withPackageDb $ do
-        setup_install []
-        setup "copy" [] -- regression test #4156
-        dist_dir <- fmap testDistDir getTestEnv
-        lbi <- getLocalBuildInfoM
-        let installDirs = absoluteInstallDirs (localPkgDescr lbi) lbi NoCopyDest
+      setup_install []
+      setup "copy" [] -- regression test #4156
+      dist_dir <- fmap testDistDir getTestEnv
+      lbi <- getLocalBuildInfoM
+      let installDirs = absoluteInstallDirs (localPkgDescr lbi) lbi NoCopyDest
 
-        -- Link a C program against the library
-        _ <- runProgramM gccProgram
-            [ "-std=c11", "-Wall"
-            , "-o", "uselib"
-            , "UseLib.c"
-            , "-l", "myforeignlib"
-            , "-L", flibdir installDirs ]
-            Nothing
+      -- Link a C program against the library
+      _ <-
+        runProgramM
+          gccProgram
+          [ "-std=c11"
+          , "-Wall"
+          , "-o"
+          , "uselib"
+          , "UseLib.c"
+          , "-l"
+          , "myforeignlib"
+          , "-L"
+          , flibdir installDirs
+          ]
+          Nothing
 
-        -- Run the C program
-        let ldPath = case hostPlatform lbi of
-                       Platform _ OSX     -> "DYLD_LIBRARY_PATH"
-                       Platform _ Windows -> "PATH"
-                       Platform _ _other  -> "LD_LIBRARY_PATH"
-        oldLdPath <- liftIO $ getEnv' ldPath
-        withEnv [ (ldPath, Just $ flibdir installDirs ++ [searchPathSeparator] ++ oldLdPath) ] $ do
-            cwd <- fmap testCurrentDir getTestEnv
-            result <- runM (cwd </> "uselib") [] Nothing
-            assertOutputContains "5678" result
-            assertOutputContains "189" result
+      -- Run the C program
+      let ldPath = case hostPlatform lbi of
+            Platform _ OSX -> "DYLD_LIBRARY_PATH"
+            Platform _ Windows -> "PATH"
+            Platform _ _other -> "LD_LIBRARY_PATH"
+      oldLdPath <- liftIO $ getEnv' ldPath
+      withEnv [(ldPath, Just $ flibdir installDirs ++ [searchPathSeparator] ++ oldLdPath)] $ do
+        cwd <- fmap testCurrentDir getTestEnv
+        result <- runM (cwd </> "uselib") [] Nothing
+        assertOutputContains "5678" result
+        assertOutputContains "189" result
 
-        -- If we're on Linux, we should have built a library with a
-        -- version. We will now check that it was installed correctly.
+-- If we're on Linux, we should have built a library with a
+-- version. We will now check that it was installed correctly.
 #ifndef mingw32_HOST_OS
         case hostPlatform lbi of
             Platform _ Linux -> do
@@ -84,6 +91,7 @@ main = setupAndCabalTest . recordMode DoNotRecord $ do
 getEnv' :: String -> IO String
 getEnv' = handle handler . getEnv
   where
-    handler e = if isDoesNotExistError e
-                  then return ""
-                  else throw e
+    handler e =
+      if isDoesNotExistError e
+        then return ""
+        else throw e

@@ -1,3 +1,3 @@
 module P where
-import Sig
 
+import Sig

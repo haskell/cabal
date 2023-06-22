@@ -5,6 +5,6 @@ import Text.PrettyPrint
 
 myLibFunc :: IO ()
 myLibFunc = do
-    putStrLn (render (text "foo"))
-    let text = "myLibFunc"
-    C.putStrLn $ C.pack text
+  putStrLn (render (text "foo"))
+  let text = "myLibFunc"
+  C.putStrLn $ C.pack text

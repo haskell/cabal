@@ -9,4 +9,3 @@ main = do
   putStrLn "-----BEGIN CABAL OUTPUT-----"
   putStrLn bar
   putStrLn "-----END CABAL OUTPUT-----"
-

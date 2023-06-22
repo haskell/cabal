@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+
 import C
 #ifdef VERSION_filepath
 #error "Should not see macro from library"
@@ -7,4 +8,4 @@ import C
 #error "Should not see macro from executable macros-a"
 #endif
 main = do
-    putStrLn CURRENT_COMPONENT_ID
+  putStrLn CURRENT_COMPONENT_ID

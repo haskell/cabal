@@ -1,7 +1,7 @@
 import Distribution.Simple.LocalBuildInfo
-import Test.Cabal.Prelude
 import System.Directory
 import System.FilePath
+import Test.Cabal.Prelude
 
 -- Test if extra-compilation-artifacts are installed
 main = setupAndCabalTest . recordMode DoNotRecord $ do
@@ -29,4 +29,3 @@ generateExtraCompArtifactsToBuildDir = do
   genArtifact $ "ghc-plugin-X" </> "data-dir" </> "content-A.txt"
   genArtifact $ "ghc-plugin-X" </> "data-dir" </> "content-B.txt"
   genArtifact $ "ghc-plugin-Y" </> "content-Y.txt"
-

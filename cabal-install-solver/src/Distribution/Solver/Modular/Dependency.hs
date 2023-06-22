@@ -1,34 +1,40 @@
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE RecordWildCards #-}
-module Distribution.Solver.Modular.Dependency (
-    -- * Variables
-    Var(..)
+
+module Distribution.Solver.Modular.Dependency
+  ( -- * Variables
+    Var (..)
   , showVar
   , varPN
+
     -- * Conflict sets
   , ConflictSet
   , ConflictMap
   , CS.showConflictSet
+
     -- * Constrained instances
-  , CI(..)
+  , CI (..)
+
     -- * Flagged dependencies
   , FlaggedDeps
-  , FlaggedDep(..)
-  , LDep(..)
-  , Dep(..)
-  , PkgComponent(..)
-  , ExposedComponent(..)
-  , DependencyReason(..)
+  , FlaggedDep (..)
+  , LDep (..)
+  , Dep (..)
+  , PkgComponent (..)
+  , ExposedComponent (..)
+  , DependencyReason (..)
   , showDependencyReason
   , flattenFlaggedDeps
-  , QualifyOptions(..)
+  , QualifyOptions (..)
   , qualifyDeps
   , unqualifyDeps
+
     -- * Reverse dependency map
   , RevDepMap
+
     -- * Goals
-  , Goal(..)
-  , GoalReason(..)
+  , Goal (..)
+  , GoalReason (..)
   , QGoalReason
   , goalToVar
   , varToConflictSet
@@ -39,21 +45,21 @@ module Distribution.Solver.Modular.Dependency (
   , dependencyReasonToConflictSetWithVersionConflict
   ) where
 
-import Prelude ()
 import qualified Data.Map as M
 import qualified Data.Set as S
 import Distribution.Solver.Compat.Prelude hiding (pi)
+import Prelude ()
 
-import Language.Haskell.Extension (Extension(..), Language(..))
+import Language.Haskell.Extension (Extension (..), Language (..))
 
-import Distribution.Solver.Modular.ConflictSet (ConflictSet, ConflictMap)
+import Distribution.Solver.Modular.ConflictSet (ConflictMap, ConflictSet)
+import qualified Distribution.Solver.Modular.ConflictSet as CS
 import Distribution.Solver.Modular.Flag
 import Distribution.Solver.Modular.Package
 import Distribution.Solver.Modular.Var
 import Distribution.Solver.Modular.Version
-import qualified Distribution.Solver.Modular.ConflictSet as CS
 
-import Distribution.Solver.Types.ComponentDeps (Component(..))
+import Distribution.Solver.Types.ComponentDeps (Component (..))
 import Distribution.Solver.Types.PackagePath
 import Distribution.Types.LibraryName
 import Distribution.Types.PkgconfigVersionRange
@@ -85,14 +91,14 @@ type FlaggedDeps qpn = [FlaggedDep qpn]
 
 -- | Flagged dependencies can either be plain dependency constraints,
 -- or flag-dependent dependency trees.
-data FlaggedDep qpn =
-    -- | Dependencies which are conditional on a flag choice.
+data FlaggedDep qpn
+  = -- | Dependencies which are conditional on a flag choice.
     Flagged (FN qpn) FInfo (TrueFlaggedDeps qpn) (FalseFlaggedDeps qpn)
-    -- | Dependencies which are conditional on whether or not a stanza
+  | -- | Dependencies which are conditional on whether or not a stanza
     -- (e.g., a test suite or benchmark) is enabled.
-  | Stanza  (SN qpn)       (TrueFlaggedDeps qpn)
-    -- | Dependencies which are always enabled, for the component 'comp'.
-  | Simple (LDep qpn) Component
+    Stanza (SN qpn) (TrueFlaggedDeps qpn)
+  | -- | Dependencies which are always enabled, for the component 'comp'.
+    Simple (LDep qpn) Component
 
 -- | Conservatively flatten out flagged dependencies
 --
@@ -102,10 +108,10 @@ flattenFlaggedDeps = concatMap aux
   where
     aux :: FlaggedDep qpn -> [(LDep qpn, Component)]
     aux (Flagged _ _ t f) = flattenFlaggedDeps t ++ flattenFlaggedDeps f
-    aux (Stanza  _   t)   = flattenFlaggedDeps t
-    aux (Simple d c)      = [(d, c)]
+    aux (Stanza _ t) = flattenFlaggedDeps t
+    aux (Simple d c) = [(d, c)]
 
-type TrueFlaggedDeps  qpn = FlaggedDeps qpn
+type TrueFlaggedDeps qpn = FlaggedDeps qpn
 type FalseFlaggedDeps qpn = FlaggedDeps qpn
 
 -- | A 'Dep' labeled with the reason it was introduced.
@@ -119,11 +125,16 @@ data LDep qpn = LDep (DependencyReason qpn) (Dep qpn)
 -- | A dependency (constraint) associates a package name with a constrained
 -- instance. It can also represent other types of dependencies, such as
 -- dependencies on language extensions.
-data Dep qpn = Dep (PkgComponent qpn) CI  -- ^ dependency on a package component
-             | Ext Extension              -- ^ dependency on a language extension
-             | Lang Language              -- ^ dependency on a language version
-             | Pkg PkgconfigName PkgconfigVersionRange  -- ^ dependency on a pkg-config package
-  deriving Functor
+data Dep qpn
+  = -- | dependency on a package component
+    Dep (PkgComponent qpn) CI
+  | -- | dependency on a language extension
+    Ext Extension
+  | -- | dependency on a language version
+    Lang Language
+  | -- | dependency on a pkg-config package
+    Pkg PkgconfigName PkgconfigVersionRange
+  deriving (Functor)
 
 -- | An exposed component within a package. This type is used to represent
 -- build-depends and build-tool-depends dependencies.
@@ -132,8 +143,8 @@ data PkgComponent qpn = PkgComponent qpn ExposedComponent
 
 -- | A component that can be depended upon by another package, i.e., a library
 -- or an executable.
-data ExposedComponent =
-    ExposedLib LibraryName
+data ExposedComponent
+  = ExposedLib LibraryName
   | ExposedExe UnqualComponentName
   deriving (Eq, Ord, Show)
 
@@ -147,22 +158,21 @@ data DependencyReason qpn = DependencyReason qpn (Map Flag FlagValue) (S.Set Sta
 -- | Print the reason that a dependency was introduced.
 showDependencyReason :: DependencyReason QPN -> String
 showDependencyReason (DependencyReason qpn flags stanzas) =
-    intercalate " " $
-        showQPN qpn
+  intercalate " " $
+    showQPN qpn
       : map (uncurry showFlagValue) (M.toList flags)
-     ++ map (\s -> showSBool s True) (S.toList stanzas)
+      ++ map (\s -> showSBool s True) (S.toList stanzas)
 
 -- | Options for goal qualification (used in 'qualifyDeps')
 --
 -- See also 'defaultQualifyOptions'
-data QualifyOptions = QO {
-    -- | Do we have a version of base relying on another version of base?
-    qoBaseShim :: Bool
-
-    -- Should dependencies of the setup script be treated as independent?
-  , qoSetupIndependent :: Bool
+data QualifyOptions = QO
+  { qoBaseShim :: Bool
+  -- ^ Do we have a version of base relying on another version of base?
+  , -- Should dependencies of the setup script be treated as independent?
+    qoSetupIndependent :: Bool
   }
-  deriving Show
+  deriving (Show)
 
 -- | Apply built-in rules for package qualifiers
 --
@@ -182,8 +192,8 @@ qualifyDeps QO{..} (Q pp@(PackagePath ns q) pn) = go
 
     go1 :: FlaggedDep PN -> FlaggedDep QPN
     go1 (Flagged fn nfo t f) = Flagged (fmap (Q pp) fn) nfo (go t) (go f)
-    go1 (Stanza  sn     t)   = Stanza  (fmap (Q pp) sn)     (go t)
-    go1 (Simple dep comp)    = Simple (goLDep dep comp) comp
+    go1 (Stanza sn t) = Stanza (fmap (Q pp) sn) (go t)
+    go1 (Simple dep comp) = Simple (goLDep dep comp) comp
 
     -- Suppose package B has a setup dependency on package A.
     -- This will be recorded as something like
@@ -197,15 +207,15 @@ qualifyDeps QO{..} (Q pp@(PackagePath ns q) pn) = go
     goLDep (LDep dr dep) comp = LDep (fmap (Q pp) dr) (goD dep comp)
 
     goD :: Dep PN -> Component -> Dep QPN
-    goD (Ext  ext)    _    = Ext  ext
-    goD (Lang lang)   _    = Lang lang
-    goD (Pkg pkn vr)  _    = Pkg pkn vr
+    goD (Ext ext) _ = Ext ext
+    goD (Lang lang) _ = Lang lang
+    goD (Pkg pkn vr) _ = Pkg pkn vr
     goD (Dep dep@(PkgComponent qpn (ExposedExe _)) ci) _ =
-        Dep (Q (PackagePath ns (QualExe pn qpn)) <$> dep) ci
+      Dep (Q (PackagePath ns (QualExe pn qpn)) <$> dep) ci
     goD (Dep dep@(PkgComponent qpn (ExposedLib _)) ci) comp
-      | qBase qpn   = Dep (Q (PackagePath ns (QualBase  pn)) <$> dep) ci
+      | qBase qpn = Dep (Q (PackagePath ns (QualBase pn)) <$> dep) ci
       | qSetup comp = Dep (Q (PackagePath ns (QualSetup pn)) <$> dep) ci
-      | otherwise   = Dep (Q (PackagePath ns inheritedQ    ) <$> dep) ci
+      | otherwise = Dep (Q (PackagePath ns inheritedQ) <$> dep) ci
 
     -- If P has a setup dependency on Q, and Q has a regular dependency on R, then
     -- we say that the 'Setup' qualifier is inherited: P has an (indirect) setup
@@ -216,10 +226,10 @@ qualifyDeps QO{..} (Q pp@(PackagePath ns q) pn) = go
     -- a detailed discussion.
     inheritedQ :: Qualifier
     inheritedQ = case q of
-                   QualSetup _  -> q
-                   QualExe _ _  -> q
-                   QualToplevel -> q
-                   QualBase _   -> QualToplevel
+      QualSetup _ -> q
+      QualExe _ _ -> q
+      QualToplevel -> q
+      QualBase _ -> QualToplevel
 
     -- Should we qualify this goal with the 'Base' package path?
     qBase :: PN -> Bool
@@ -244,8 +254,8 @@ unqualifyDeps = go
 
     go1 :: FlaggedDep QPN -> FlaggedDep PN
     go1 (Flagged fn nfo t f) = Flagged (fmap unq fn) nfo (go t) (go f)
-    go1 (Stanza  sn     t)   = Stanza  (fmap unq sn)     (go t)
-    go1 (Simple dep comp)    = Simple (goLDep dep) comp
+    go1 (Stanza sn t) = Stanza (fmap unq sn) (go t)
+    go1 (Simple dep comp) = Simple (goLDep dep) comp
 
     goLDep :: LDep QPN -> LDep PN
     goLDep (LDep dr dep) = LDep (fmap unq dr) (fmap unq dep)
@@ -271,8 +281,8 @@ data Goal qpn = Goal (Var qpn) (GoalReason qpn)
   deriving (Eq, Show, Functor)
 
 -- | Reason why a goal is being added to a goal set.
-data GoalReason qpn =
-    UserGoal                              -- introduced by a build target
+data GoalReason qpn
+  = UserGoal -- introduced by a build target
   | DependencyGoal (DependencyReason qpn) -- introduced by a package
   deriving (Eq, Show, Functor)
 
@@ -288,7 +298,7 @@ varToConflictSet = CS.singleton
 -- | Convert a 'GoalReason' to a 'ConflictSet' that can be used when the goal
 -- leads to a conflict.
 goalReasonToConflictSet :: GoalReason QPN -> ConflictSet
-goalReasonToConflictSet UserGoal            = CS.empty
+goalReasonToConflictSet UserGoal = CS.empty
 goalReasonToConflictSet (DependencyGoal dr) = dependencyReasonToConflictSet dr
 
 -- | Convert a 'GoalReason' to a 'ConflictSet' containing the reason that the
@@ -302,14 +312,14 @@ goalReasonToConflictSetWithConflict :: QPN -> GoalReason QPN -> ConflictSet
 goalReasonToConflictSetWithConflict goal (DependencyGoal (DependencyReason qpn flags stanzas))
   | M.null flags && S.null stanzas =
       CS.singletonWithConflict (P qpn) $ CS.GoalConflict goal
-goalReasonToConflictSetWithConflict _    gr = goalReasonToConflictSet gr
+goalReasonToConflictSetWithConflict _ gr = goalReasonToConflictSet gr
 
 -- | This function returns the solver variables responsible for the dependency.
 -- It drops the values chosen for flag and stanza variables, which are only
 -- needed for log messages.
 dependencyReasonToConflictSet :: DependencyReason QPN -> ConflictSet
 dependencyReasonToConflictSet (DependencyReason qpn flags stanzas) =
-    CS.fromList $ P qpn : flagVars ++ map stanzaToVar (S.toList stanzas)
+  CS.fromList $ P qpn : flagVars ++ map stanzaToVar (S.toList stanzas)
   where
     -- Filter out any flags that introduced the dependency with both values.
     -- They don't need to be included in the conflict set, because changing the
@@ -327,16 +337,19 @@ dependencyReasonToConflictSet (DependencyReason qpn flags stanzas) =
 -- This function currently only specifies the reason for the conflict in the
 -- simple case where the 'DependencyReason' does not involve any flags or
 -- stanzas. Otherwise, it falls back to calling 'dependencyReasonToConflictSet'.
-dependencyReasonToConflictSetWithVersionConstraintConflict :: QPN
-                                                           -> Ver
-                                                           -> DependencyReason QPN
-                                                           -> ConflictSet
 dependencyReasonToConflictSetWithVersionConstraintConflict
-    dependency excludedVersion dr@(DependencyReason qpn flags stanzas)
-  | M.null flags && S.null stanzas =
-    CS.singletonWithConflict (P qpn) $
-    CS.VersionConstraintConflict dependency excludedVersion
-  | otherwise = dependencyReasonToConflictSet dr
+  :: QPN
+  -> Ver
+  -> DependencyReason QPN
+  -> ConflictSet
+dependencyReasonToConflictSetWithVersionConstraintConflict
+  dependency
+  excludedVersion
+  dr@(DependencyReason qpn flags stanzas)
+    | M.null flags && S.null stanzas =
+        CS.singletonWithConflict (P qpn) $
+          CS.VersionConstraintConflict dependency excludedVersion
+    | otherwise = dependencyReasonToConflictSet dr
 
 -- | Convert a 'DependencyReason' to a 'ConflictSet' specifying that the
 -- conflict occurred because the conflict set variables introduced a version of
@@ -346,13 +359,16 @@ dependencyReasonToConflictSetWithVersionConstraintConflict
 -- This function currently only specifies the reason for the conflict in the
 -- simple case where the 'DependencyReason' does not involve any flags or
 -- stanzas. Otherwise, it falls back to calling 'dependencyReasonToConflictSet'.
-dependencyReasonToConflictSetWithVersionConflict :: QPN
-                                                 -> CS.OrderedVersionRange
-                                                 -> DependencyReason QPN
-                                                 -> ConflictSet
 dependencyReasonToConflictSetWithVersionConflict
-    pkgWithVersionConstraint constraint dr@(DependencyReason qpn flags stanzas)
-  | M.null flags && S.null stanzas =
-    CS.singletonWithConflict (P qpn) $
-    CS.VersionConflict pkgWithVersionConstraint constraint
-  | otherwise = dependencyReasonToConflictSet dr
+  :: QPN
+  -> CS.OrderedVersionRange
+  -> DependencyReason QPN
+  -> ConflictSet
+dependencyReasonToConflictSetWithVersionConflict
+  pkgWithVersionConstraint
+  constraint
+  dr@(DependencyReason qpn flags stanzas)
+    | M.null flags && S.null stanzas =
+        CS.singletonWithConflict (P qpn) $
+          CS.VersionConflict pkgWithVersionConstraint constraint
+    | otherwise = dependencyReasonToConflictSet dr

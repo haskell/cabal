@@ -7,9 +7,11 @@
 -- Needs to be checked manually whether it meets expectations.
 
 import Test.Cabal.Prelude
-main = cabalTest $
-  fails $
-  cabalG
-    [ "--config-file", "cabal.config" ]
-    "get"
-    [ "a-b-s-e-n-t" ]
+
+main =
+  cabalTest $
+    fails $
+      cabalG
+        ["--config-file", "cabal.config"]
+        "get"
+        ["a-b-s-e-n-t"]

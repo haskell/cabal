@@ -7,12 +7,13 @@ main = setupAndCabalTest $ do
   skipUnlessGhcVersion ">= 8.8"
   isWin <- isWindows
   ghc94 <- isGhcVersion "== 9.4.*"
-  env   <- getTestEnv
-  let pwd      = testCurrentDir env
+  env <- getTestEnv
+  let pwd = testCurrentDir env
       customCC = pwd ++ "/custom-cc" ++ if isWin then ".bat" else ""
 
   expectBrokenIf (isWin && ghc94) 8451 $ do
-    setup "configure"
+    setup
+      "configure"
       [ "--ghc-option=-DNOERROR1"
       , "--ghc-option=-optc=-DNOERROR2"
       , "--ghc-option=-optP=-DNOERROR3"

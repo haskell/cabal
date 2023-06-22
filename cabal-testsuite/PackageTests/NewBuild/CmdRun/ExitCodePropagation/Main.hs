@@ -1,4 +1,3 @@
-import System.Exit (exitWith, ExitCode(ExitFailure))
+import System.Exit (ExitCode (ExitFailure), exitWith)
 
 main = exitWith $ ExitFailure 42
-

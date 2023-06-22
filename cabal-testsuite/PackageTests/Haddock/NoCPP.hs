@@ -4,5 +4,6 @@ module NoCPP (Haystack) where
 data Haystack = Haystack
 
 -- | Causes a build failure if the CPP language extension is enabled.
-stringGap = "Foo\
-\Bar"
+stringGap =
+  "Foo\
+  \Bar"

@@ -1,9 +1,10 @@
 {-# LANGUAGE CPP #-}
+
 -- | Functions for interrogating the current working directory
 module Test.Cabal.Workdir where
 
-import Distribution.Simple.Setup
 import Distribution.Simple.Configure
+import Distribution.Simple.Setup
 
 import System.Directory
 import System.FilePath
@@ -26,5 +27,6 @@ guessDistDir = do
     let dist0 = error "no path"
         b = False
 #endif
-    if b then canonicalizePath dist0
-         else findDistPrefOrDefault NoFlag >>= canonicalizePath
+    if b
+      then canonicalizePath dist0
+      else findDistPrefOrDefault NoFlag >>= canonicalizePath

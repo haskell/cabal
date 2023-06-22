@@ -1,6 +1,6 @@
 module Distribution.Solver.Types.PackagePreferences
-    ( PackagePreferences(..)
-    ) where
+  ( PackagePreferences (..)
+  ) where
 
 import Distribution.Solver.Types.InstalledPreference
 import Distribution.Solver.Types.OptionalStanza
@@ -16,7 +16,8 @@ import Distribution.Version (VersionRange)
 --
 -- It is not specified if preferences on some packages are more important than
 -- others.
---
-data PackagePreferences = PackagePreferences [VersionRange]
-                                             InstalledPreference
-                                             [OptionalStanza]
+data PackagePreferences
+  = PackagePreferences
+      [VersionRange]
+      InstalledPreference
+      [OptionalStanza]

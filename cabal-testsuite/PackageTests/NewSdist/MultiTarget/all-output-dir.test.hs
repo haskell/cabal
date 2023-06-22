@@ -1,5 +1,6 @@
-import Test.Cabal.Prelude
 import System.Directory
+import Test.Cabal.Prelude
+
 main = cabalTest $ withSourceCopy $ do
   cwd <- fmap testCurrentDir getTestEnv
   liftIO $ createDirectoryIfMissing False $ cwd </> "archives"

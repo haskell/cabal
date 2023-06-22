@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+
 module Main (main) where
 
 -- Qualified due to https://gitlab.haskell.org/ghc/ghc/-/issues/19397

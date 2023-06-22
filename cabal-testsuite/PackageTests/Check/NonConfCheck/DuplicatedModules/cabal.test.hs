@@ -1,8 +1,10 @@
 import Test.Cabal.Prelude
 
 -- Duplicated module.
-main = cabalTest $
-  fails $ cabal "check" []
+main =
+  cabalTest $
+    fails $
+      cabal "check" []
 
-  -- TODO: note how conditional give a “potential duplicate”,
-  --       which is not true at all.
+-- TODO: note how conditional give a “potential duplicate”,
+--       which is not true at all.

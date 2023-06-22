@@ -347,7 +347,9 @@ sanityCheckElaboratedPackage
 -- readProjectConfig also loads the global configuration, which is read with
 -- loadConfig and convertd to a ProjectConfig with convertLegacyGlobalConfig.
 --
--- *Important*
+
+-- * Important*
+
 --
 -- You can notice how some project config options are needed to read the
 -- project config! This is evident by the fact that rebuildProjectConfig
@@ -539,9 +541,10 @@ configureCompiler
             )
           $ defaultProgramDb
 
-
 ------------------------------------------------------------------------------
+
 -- * Deciding what to do: making an 'ElaboratedInstallPlan'
+
 ------------------------------------------------------------------------------
 
 -- | Return an up-to-date elaborated install plan.

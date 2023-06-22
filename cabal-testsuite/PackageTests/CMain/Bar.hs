@@ -1,4 +1,5 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
+
 module Bar where
 
 bar :: IO ()

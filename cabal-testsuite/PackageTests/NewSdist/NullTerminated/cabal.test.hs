@@ -1,4 +1,6 @@
-import Test.Cabal.Prelude
 import Data.List
-main = cabalTest $
-  cabal "v2-sdist" ["--list-only", "--null"]
+import Test.Cabal.Prelude
+
+main =
+  cabalTest $
+    cabal "v2-sdist" ["--list-only", "--null"]

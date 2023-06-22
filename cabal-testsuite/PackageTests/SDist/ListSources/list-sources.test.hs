@@ -1,5 +1,6 @@
 import System.FilePath (normalise)
 import Test.Cabal.Prelude
+
 main = setupTest $ do
   tmpdir <- fmap testTmpDir getTestEnv
   let fn = tmpdir </> "sources"

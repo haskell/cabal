@@ -1,11 +1,11 @@
-import Test.Cabal.Prelude
-import qualified System.Process as Process
 import Control.Concurrent (threadDelay)
-import System.Directory (removeFile)
 import Control.Exception (catch, throwIO)
-import System.IO.Error (isDoesNotExistError)
 import qualified Data.Time.Clock as Time
 import qualified Data.Time.Format as Time
+import System.Directory (removeFile)
+import System.IO.Error (isDoesNotExistError)
+import qualified System.Process as Process
+import Test.Cabal.Prelude
 
 {-
 This test verifies that 'cabal run' terminates its
@@ -47,29 +47,32 @@ main = cabalTest $ do
   -- finishing its sleep
   assertOutputContains "exiting" r
   assertOutputDoesNotContain "done sleeping" r
-
   where
     catchNoExist action handle =
-      action `catch`
-        (\e -> if isDoesNotExistError e then handle else throwIO e)
+      action
+        `catch` (\e -> if isDoesNotExistError e then handle else throwIO e)
     waitFile totalWait f
       | totalWait <= 0 = error "waitFile timed out"
-      | otherwise      = readFile f `catchNoExist` do
-                           threadDelay delta
-                           waitFile (totalWait - delta) f
+      | otherwise =
+          readFile f `catchNoExist` do
+            threadDelay delta
+            waitFile (totalWait - delta) f
     delta = 50000 -- 0.05s
     total = 10000000 -- 10s
 
 cabal_raw_action :: [String] -> (Process.ProcessHandle -> IO ()) -> TestM Result
 cabal_raw_action args action = do
-    configured_prog <- requireProgramM cabalProgram
-    env <- getTestEnv
-    r <- liftIO $ runAction (testVerbosity env)
-                 (Just (testCurrentDir env))
-                 (testEnvironment env)
-                 (programPath configured_prog)
-                 args
-                 Nothing
-                 action
-    recordLog r
-    requireSuccess r
+  configured_prog <- requireProgramM cabalProgram
+  env <- getTestEnv
+  r <-
+    liftIO $
+      runAction
+        (testVerbosity env)
+        (Just (testCurrentDir env))
+        (testEnvironment env)
+        (programPath configured_prog)
+        args
+        Nothing
+        action
+  recordLog r
+  requireSuccess r

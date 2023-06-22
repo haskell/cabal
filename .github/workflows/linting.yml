@@ -16,8 +16,17 @@ jobs:
           Cabal/**/*.hs
           Cabal-syntax/**/*.hs
           Cabal-install/**/*.hs
+          Cabal-QuickCheck/**/*.hs
+          Cabal-described/**/*.hs
+          Cabal-tests/**/*.hs
+          Cabal-tree-diff/**/*.hs
+          cabal-benchmarks/**/*.hs
+          cabal-dev-scripts/**/*.hs
+          cabal-install-solver/**/*.hs
+          solver-benchmarks/**/*.hs
           !Cabal-syntax/src/Distribution/Fields/Lexer.hs
           !Cabal-syntax/src/Distribution/SPDX/LicenseExceptionId.hs
           !Cabal-syntax/src/Distribution/SPDX/LicenseId.hs
           !Cabal/src/Distribution/Simple/Build/Macros/Z.hs
           !Cabal/src/Distribution/Simple/Build/PathsModule/Z.hs
+          !cabal-testsuite

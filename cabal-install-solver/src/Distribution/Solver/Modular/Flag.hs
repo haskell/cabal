@@ -1,23 +1,24 @@
 {-# LANGUAGE DeriveFunctor #-}
+
 module Distribution.Solver.Modular.Flag
-    ( FInfo(..)
-    , Flag
-    , FlagInfo
-    , FN(..)
-    , QFN
-    , QSN
-    , Stanza
-    , SN(..)
-    , WeakOrTrivial(..)
-    , FlagValue(..)
-    , mkFlag
-    , showQFN
-    , showQFNBool
-    , showFlagValue
-    , showQSN
-    , showQSNBool
-    , showSBool
-    ) where
+  ( FInfo (..)
+  , Flag
+  , FlagInfo
+  , FN (..)
+  , QFN
+  , QSN
+  , Stanza
+  , SN (..)
+  , WeakOrTrivial (..)
+  , FlagValue (..)
+  , mkFlag
+  , showQFN
+  , showQFNBool
+  , showFlagValue
+  , showQSN
+  , showQSNBool
+  , showSBool
+  ) where
 
 import Data.Map as M
 import Prelude hiding (pi)
@@ -47,7 +48,7 @@ mkFlag = P.mkFlagName
 -- | Flag info. Default value, whether the flag is manual, and
 -- whether the flag is weak. Manual flags can only be set explicitly.
 -- Weak flags are typically deferred by the solver.
-data FInfo = FInfo { fdefault :: Bool, fmanual :: FlagType, fweak :: WeakOrTrivial }
+data FInfo = FInfo {fdefault :: Bool, fmanual :: FlagType, fweak :: WeakOrTrivial}
   deriving (Eq, Show)
 
 -- | Flag defaults.
@@ -74,7 +75,7 @@ type QSN = SN QPN
 -- A choice is called trivial if it clearly does not matter. The
 -- special case of triviality we actually consider is if there are no new
 -- dependencies introduced by the choice.
-newtype WeakOrTrivial = WeakOrTrivial { unWeakOrTrivial :: Bool }
+newtype WeakOrTrivial = WeakOrTrivial {unWeakOrTrivial :: Bool}
   deriving (Eq, Ord, Show)
 
 -- | Value shown for a flag in a solver log message. The message can refer to
@@ -93,12 +94,12 @@ showFBool (FN _ f) v = P.showFlagValue (f, v)
 
 -- | String representation of a flag-value pair.
 showFlagValue :: P.FlagName -> FlagValue -> String
-showFlagValue f FlagTrue  = '+' : unFlag f
+showFlagValue f FlagTrue = '+' : unFlag f
 showFlagValue f FlagFalse = '-' : unFlag f
-showFlagValue f FlagBoth  = "+/-" ++ unFlag f
+showFlagValue f FlagBoth = "+/-" ++ unFlag f
 
 showSBool :: Stanza -> Bool -> String
-showSBool s True  = "*" ++ showStanza s
+showSBool s True = "*" ++ showStanza s
 showSBool s False = "!" ++ showStanza s
 
 showQFN :: QFN -> String

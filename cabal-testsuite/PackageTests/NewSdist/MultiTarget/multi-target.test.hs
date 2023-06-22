@@ -1,4 +1,5 @@
 import Test.Cabal.Prelude
+
 main = cabalTest $ withSourceCopy $ do
   cwd <- fmap testCurrentDir getTestEnv
   cabal "v2-sdist" ["a", "b"]

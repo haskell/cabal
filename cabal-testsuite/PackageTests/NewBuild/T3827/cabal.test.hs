@@ -1,4 +1,5 @@
 import Test.Cabal.Prelude
+
 main = cabalTest $ do
   linux <- isLinux
   osx <- isOSX

@@ -11,12 +11,13 @@
 -- >   , ComponentDeps
 -- >   )
 -- > import qualified Distribution.Solver.Types.ComponentDeps as CD
-module Distribution.Solver.Types.ComponentDeps (
-    -- * Fine-grained package dependencies
-    Component(..)
+module Distribution.Solver.Types.ComponentDeps
+  ( -- * Fine-grained package dependencies
+    Component (..)
   , componentNameToComponent
   , ComponentDep
   , ComponentDeps -- opaque
+
     -- ** Constructing ComponentDeps
   , empty
   , fromList
@@ -28,6 +29,7 @@ module Distribution.Solver.Types.ComponentDeps (
   , fromLibraryDeps
   , fromSetupDeps
   , fromInstalled
+
     -- ** Deconstructing ComponentDeps
   , toList
   , flatDeps
@@ -38,31 +40,30 @@ module Distribution.Solver.Types.ComponentDeps (
   , components
   ) where
 
-import Prelude ()
+import Distribution.Solver.Compat.Prelude hiding (empty, toList, zip)
 import Distribution.Types.UnqualComponentName
-import Distribution.Solver.Compat.Prelude hiding (empty,toList,zip)
+import Prelude ()
 
-import qualified Data.Map as Map
 import Data.Foldable (fold)
+import qualified Data.Map as Map
 
 import Distribution.Pretty (Pretty (..))
 import qualified Distribution.Types.ComponentName as CN
 import qualified Distribution.Types.LibraryName as LN
 import qualified Text.PrettyPrint as PP
 
-
 {-------------------------------------------------------------------------------
   Types
 -------------------------------------------------------------------------------}
 
 -- | Component of a package.
-data Component =
-    ComponentLib
+data Component
+  = ComponentLib
   | ComponentSubLib UnqualComponentName
-  | ComponentFLib   UnqualComponentName
-  | ComponentExe    UnqualComponentName
-  | ComponentTest   UnqualComponentName
-  | ComponentBench  UnqualComponentName
+  | ComponentFLib UnqualComponentName
+  | ComponentExe UnqualComponentName
+  | ComponentTest UnqualComponentName
+  | ComponentBench UnqualComponentName
   | ComponentSetup
   deriving (Show, Eq, Ord, Generic)
 
@@ -70,13 +71,13 @@ instance Binary Component
 instance Structured Component
 
 instance Pretty Component where
-    pretty ComponentLib        = PP.text "lib"
-    pretty (ComponentSubLib n) = PP.text "lib:" <<>> pretty n
-    pretty (ComponentFLib n)   = PP.text "flib:" <<>> pretty n
-    pretty (ComponentExe n)    = PP.text "exe:" <<>> pretty n
-    pretty (ComponentTest n)   = PP.text "test:" <<>> pretty n
-    pretty (ComponentBench n)  = PP.text "bench:" <<>> pretty n
-    pretty ComponentSetup      = PP.text "setup"
+  pretty ComponentLib = PP.text "lib"
+  pretty (ComponentSubLib n) = PP.text "lib:" <<>> pretty n
+  pretty (ComponentFLib n) = PP.text "flib:" <<>> pretty n
+  pretty (ComponentExe n) = PP.text "exe:" <<>> pretty n
+  pretty (ComponentTest n) = PP.text "test:" <<>> pretty n
+  pretty (ComponentBench n) = PP.text "bench:" <<>> pretty n
+  pretty ComponentSetup = PP.text "setup"
 
 -- | Dependency for a single component.
 type ComponentDep a = (Component, a)
@@ -85,8 +86,7 @@ type ComponentDep a = (Component, a)
 --
 -- Typically used as @ComponentDeps [Dependency]@, to represent the list of
 -- dependencies for each named component within a package.
---
-newtype ComponentDeps a = ComponentDeps { unComponentDeps :: Map Component a }
+newtype ComponentDeps a = ComponentDeps {unComponentDeps :: Map Component a}
   deriving (Show, Functor, Eq, Ord, Generic)
 
 instance Semigroup a => Monoid (ComponentDeps a) where
@@ -95,7 +95,7 @@ instance Semigroup a => Monoid (ComponentDeps a) where
 
 instance Semigroup a => Semigroup (ComponentDeps a) where
   ComponentDeps d <> ComponentDeps d' =
-      ComponentDeps (Map.unionWith (<>) d d')
+    ComponentDeps (Map.unionWith (<>) d d')
 
 instance Foldable ComponentDeps where
   foldMap f = foldMap f . unComponentDeps
@@ -107,12 +107,12 @@ instance Binary a => Binary (ComponentDeps a)
 instance Structured a => Structured (ComponentDeps a)
 
 componentNameToComponent :: CN.ComponentName -> Component
-componentNameToComponent (CN.CLibName  LN.LMainLibName)   = ComponentLib
+componentNameToComponent (CN.CLibName LN.LMainLibName) = ComponentLib
 componentNameToComponent (CN.CLibName (LN.LSubLibName s)) = ComponentSubLib s
-componentNameToComponent (CN.CFLibName                s)  = ComponentFLib   s
-componentNameToComponent (CN.CExeName                 s)  = ComponentExe    s
-componentNameToComponent (CN.CTestName                s)  = ComponentTest   s
-componentNameToComponent (CN.CBenchName               s)  = ComponentBench  s
+componentNameToComponent (CN.CFLibName s) = ComponentFLib s
+componentNameToComponent (CN.CExeName s) = ComponentExe s
+componentNameToComponent (CN.CTestName s) = ComponentTest s
+componentNameToComponent (CN.CBenchName s) = ComponentBench s
 
 {-------------------------------------------------------------------------------
   Construction
@@ -130,21 +130,24 @@ singleton comp = ComponentDeps . Map.singleton comp
 insert :: Monoid a => Component -> a -> ComponentDeps a -> ComponentDeps a
 insert comp a = ComponentDeps . Map.alter aux comp . unComponentDeps
   where
-    aux Nothing   = Just a
+    aux Nothing = Just a
     aux (Just a') = Just $ a `mappend` a'
 
 -- | Zip two 'ComponentDeps' together by 'Component', using 'mempty'
 -- as the neutral element when a 'Component' is present only in one.
 zip
   :: (Monoid a, Monoid b)
-  => ComponentDeps a -> ComponentDeps b -> ComponentDeps (a, b)
+  => ComponentDeps a
+  -> ComponentDeps b
+  -> ComponentDeps (a, b)
 zip (ComponentDeps d1) (ComponentDeps d2) =
-    ComponentDeps $
-      Map.mergeWithKey
-        (\_ a b -> Just (a,b))
-        (fmap (\a -> (a, mempty)))
-        (fmap (\b -> (mempty, b)))
-        d1 d2
+  ComponentDeps $
+    Map.mergeWithKey
+      (\_ a b -> Just (a, b))
+      (fmap (\a -> (a, mempty)))
+      (fmap (\b -> (mempty, b)))
+      d1
+      d2
 
 -- | Keep only selected components (and their associated deps info).
 filterDeps :: (Component -> a -> Bool) -> ComponentDeps a -> ComponentDeps a
@@ -193,9 +196,13 @@ nonSetupDeps = select (/= ComponentSetup)
 -- | Library dependencies proper only.  (Includes dependencies
 -- of internal libraries.)
 libraryDeps :: Monoid a => ComponentDeps a -> a
-libraryDeps = select (\c -> case c of ComponentSubLib _ -> True
-                                      ComponentLib -> True
-                                      _ -> False)
+libraryDeps =
+  select
+    ( \c -> case c of
+        ComponentSubLib _ -> True
+        ComponentLib -> True
+        _ -> False
+    )
 
 -- | List components
 components :: ComponentDeps a -> Set Component

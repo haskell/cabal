@@ -1,4 +1,7 @@
 -----------------------------------------------------------------------------
+
+-----------------------------------------------------------------------------
+
 -- |
 -- Module      :  Data.TCM.Memoized
 -- Copyright   :  (c) 2015-2015 Ward Wheeler
@@ -7,9 +10,6 @@
 -- Maintainer  :  wheeler@amnh.org
 -- Stability   :  provisional
 -- Portability :  portable
---
------------------------------------------------------------------------------
-
 module Data.TCM.Memoized
   ( FFI.MemoizedCostMatrix
   , generateMemoizedTransitionCostMatrix
@@ -17,7 +17,6 @@ module Data.TCM.Memoized
   ) where
 
 import qualified Data.TCM.Memoized.FFI as FFI
-
 
 -- |
 -- /O(n^2)/ where @n@ is the alphabet size.
@@ -33,8 +32,10 @@ import qualified Data.TCM.Memoized.FFI as FFI
 -- the collection of unambiguous, singleton symbol sets. The lazy, memoization is
 -- a requisite for efficient computation on any non-trivial alphabet size.
 generateMemoizedTransitionCostMatrix
-  :: Word                   -- ^ Alphabet size
-  -> (Word -> Word -> Word) -- ^ Generating function
+  :: Word
+  -- ^ Alphabet size
+  -> (Word -> Word -> Word)
+  -- ^ Generating function
   -> FFI.MemoizedCostMatrix
 generateMemoizedTransitionCostMatrix = FFI.getMemoizedCostMatrix
 

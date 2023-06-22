@@ -1,6 +1,6 @@
-import Text.PrettyPrint
 import MyLibrary
+import Text.PrettyPrint
 
 main = do
-    putStrLn (render (text "foo"))
-    myLibFunc
+  putStrLn (render (text "foo"))
+  myLibFunc

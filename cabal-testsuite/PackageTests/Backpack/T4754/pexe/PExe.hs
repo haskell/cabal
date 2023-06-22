@@ -1,2 +1,3 @@
 import P
+
 main = return ()

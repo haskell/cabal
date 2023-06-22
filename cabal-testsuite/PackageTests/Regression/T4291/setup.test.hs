@@ -10,7 +10,8 @@ main = setupAndCabalTest $ withPackageDb $ do
   let pkgroot = takeDirectory $ testPackageDbDir env
       prefix = testTmpDir env </> "prefix"
   assertBool "we need a prefix that is not under pkgroot for this test" $
-    not $ pkgroot `isPrefixOf` prefix
+    not $
+      pkgroot `isPrefixOf` prefix
   withDirectory "dependee" $
     setup_install ["--enable-relocatable", "--prefix", prefix]
   withDirectory "depender" $

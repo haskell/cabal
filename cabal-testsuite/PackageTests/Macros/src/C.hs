@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+
 module C where
 #ifdef VERSION_directory
 #error "Should not see macro from executable macros-a"

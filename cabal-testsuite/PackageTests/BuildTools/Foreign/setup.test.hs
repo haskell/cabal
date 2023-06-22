@@ -7,9 +7,9 @@ import System.Environment
 -- Test PATH-munging
 -- TODO: Enable this test on Windows
 main = setupAndCabalTest $ do
-    skipIfWindows
-    path <- liftIO $ getEnv "PATH"
-    cwd <- testCurrentDir <$> getTestEnv
-    r <- withEnv [("PATH", Just $ cwd ++ ":" ++ path)] $ setup_build []
-    runExe' "hello-world" []
-        >>= assertOutputContains "1111"
+  skipIfWindows
+  path <- liftIO $ getEnv "PATH"
+  cwd <- testCurrentDir <$> getTestEnv
+  r <- withEnv [("PATH", Just $ cwd ++ ":" ++ path)] $ setup_build []
+  runExe' "hello-world" []
+    >>= assertOutputContains "1111"

@@ -1,8 +1,11 @@
-{-# LANGUAGE DeriveFunctor, DeriveFoldable, DeriveTraversable #-}
+{-# LANGUAGE DeriveFoldable #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections #-}
-module Distribution.Solver.Modular.WeightedPSQ (
-    WeightedPSQ
+
+module Distribution.Solver.Modular.WeightedPSQ
+  ( WeightedPSQ
   , fromList
   , toList
   , keys
@@ -36,9 +39,9 @@ filter p (WeightedPSQ xs) = WeightedPSQ (L.filter (p . triple_3) xs)
 
 -- | /O(1)/. Return @True@ if the @WeightedPSQ@ contains zero or one elements.
 isZeroOrOne :: WeightedPSQ w k v -> Bool
-isZeroOrOne (WeightedPSQ [])  = True
+isZeroOrOne (WeightedPSQ []) = True
 isZeroOrOne (WeightedPSQ [_]) = True
-isZeroOrOne _                 = False
+isZeroOrOne _ = False
 
 -- | /O(1)/. Return the elements in order.
 toList :: WeightedPSQ w k v -> [(w, k, v)]
@@ -62,17 +65,20 @@ lookup :: Eq k => k -> WeightedPSQ w k v -> Maybe v
 lookup k (WeightedPSQ xs) = triple_3 `fmap` L.find ((k ==) . triple_2) xs
 
 -- | /O(N log N)/. Update the weights.
-mapWeightsWithKey :: Ord w2
-                  => (k -> w1 -> w2)
-                  -> WeightedPSQ w1 k v
-                  -> WeightedPSQ w2 k v
-mapWeightsWithKey f (WeightedPSQ xs) = fromList $
-                                       L.map (\ (w, k, v) -> (f k w, k, v)) xs
+mapWeightsWithKey
+  :: Ord w2
+  => (k -> w1 -> w2)
+  -> WeightedPSQ w1 k v
+  -> WeightedPSQ w2 k v
+mapWeightsWithKey f (WeightedPSQ xs) =
+  fromList $
+    L.map (\(w, k, v) -> (f k w, k, v)) xs
 
 -- | /O(N)/. Update the values.
 mapWithKey :: (k -> v1 -> v2) -> WeightedPSQ w k v1 -> WeightedPSQ w k v2
-mapWithKey f (WeightedPSQ xs) = WeightedPSQ $
-                                L.map (\ (w, k, v) -> (w, k, f k v)) xs
+mapWithKey f (WeightedPSQ xs) =
+  WeightedPSQ $
+    L.map (\(w, k, v) -> (w, k, f k v)) xs
 
 -- | /O(N)/. Traverse and update values in some applicative functor.
 traverseWithKey
@@ -80,8 +86,9 @@ traverseWithKey
   => (k -> v -> f v')
   -> WeightedPSQ w k v
   -> f (WeightedPSQ w k v')
-traverseWithKey f (WeightedPSQ q) = WeightedPSQ <$>
-  traverse (\(w,k,v) -> (w,k,) <$> f k v) q
+traverseWithKey f (WeightedPSQ q) =
+  WeightedPSQ
+    <$> traverse (\(w, k, v) -> (w,k,) <$> f k v) q
 
 -- | /O((N + M) log (N + M))/. Combine two @WeightedPSQ@s, preserving all
 -- elements. Elements from the first @WeightedPSQ@ come before elements in the
@@ -95,7 +102,7 @@ takeUntil :: forall w k v. (v -> Bool) -> WeightedPSQ w k v -> WeightedPSQ w k v
 takeUntil p (WeightedPSQ xs) = WeightedPSQ (go xs)
   where
     go :: [(w, k, v)] -> [(w, k, v)]
-    go []       = []
+    go [] = []
     go (y : ys) = y : if p (triple_3 y) then [] else go ys
 
 triple_1 :: (x, y, z) -> x

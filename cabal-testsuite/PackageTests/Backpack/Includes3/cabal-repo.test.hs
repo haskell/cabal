@@ -1,4 +1,5 @@
 import Test.Cabal.Prelude
+
 main = withShorterPathForNewBuildStore $ \storeDir ->
   cabalTest $ do
     skipUnlessGhcVersion ">= 8.1"

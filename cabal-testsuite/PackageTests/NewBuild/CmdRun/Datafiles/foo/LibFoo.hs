@@ -1,4 +1,5 @@
 module LibFoo where
-import Paths_foo
-getData = readFile =<< getDataFileName "hello.txt"
 
+import Paths_foo
+
+getData = readFile =<< getDataFileName "hello.txt"

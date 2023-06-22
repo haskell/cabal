@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+
 module Main where
 
 import Foo

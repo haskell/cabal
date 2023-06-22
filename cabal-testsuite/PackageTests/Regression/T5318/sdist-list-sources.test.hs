@@ -1,4 +1,5 @@
 import Test.Cabal.Prelude
+
 main = cabalTest $ do
   tmpdir <- fmap testTmpDir getTestEnv
   let fn = tmpdir </> "empty-data-dir-0.list"

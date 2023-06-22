@@ -4,56 +4,54 @@
 -- solver. Multiple constraints for each package can be given, though obviously
 -- it is possible to construct conflicting constraints (eg impossible version
 -- range or inconsistent flag assignment).
---
-module Distribution.Solver.Types.PackageConstraint (
-    ConstraintScope(..),
-    scopeToplevel,
-    scopeToPackageName,
-    constraintScopeMatches,
-    PackageProperty(..),
-    dispPackageProperty,
-    PackageConstraint(..),
-    dispPackageConstraint,
-    showPackageConstraint,
-    packageConstraintToDependency
+module Distribution.Solver.Types.PackageConstraint
+  ( ConstraintScope (..)
+  , scopeToplevel
+  , scopeToPackageName
+  , constraintScopeMatches
+  , PackageProperty (..)
+  , dispPackageProperty
+  , PackageConstraint (..)
+  , dispPackageConstraint
+  , showPackageConstraint
+  , packageConstraintToDependency
   ) where
 
 import Distribution.Solver.Compat.Prelude
 import Prelude ()
 
-import Distribution.Package                        (PackageName)
-import Distribution.PackageDescription             (FlagAssignment, dispFlagAssignment)
-import Distribution.Pretty                         (flatStyle, pretty)
+import Distribution.Package (PackageName)
+import Distribution.PackageDescription (FlagAssignment, dispFlagAssignment)
+import Distribution.Pretty (flatStyle, pretty)
 import Distribution.Types.PackageVersionConstraint (PackageVersionConstraint (..))
-import Distribution.Version                        (VersionRange, simplifyVersionRange)
+import Distribution.Version (VersionRange, simplifyVersionRange)
 
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PackagePath
 
 import qualified Text.PrettyPrint as Disp
 
-
 -- | Determines to what packages and in what contexts a
 -- constraint applies.
 data ConstraintScope
-     -- | A scope that applies when the given package is used as a build target.
-     -- In other words, the scope applies iff a goal has a top-level qualifier
-     -- and its namespace matches the given package name. A namespace is
-     -- considered to match a package name when it is either the default
-     -- namespace (for --no-independent-goals) or it is an independent namespace
-     -- with the given package name (for --independent-goals).
+  = -- TODO: Try to generalize the ConstraintScopes once component-based
+    -- solving is implemented, and remove this special case for targets.
 
-     -- TODO: Try to generalize the ConstraintScopes once component-based
-     -- solving is implemented, and remove this special case for targets.
-   = ScopeTarget PackageName
-     -- | The package with the specified name and qualifier.
-   | ScopeQualified Qualifier PackageName
-     -- | The package with the specified name when it has a
-     -- setup qualifier.
-   | ScopeAnySetupQualifier PackageName
-     -- | The package with the specified name regardless of
-     -- qualifier.
-   | ScopeAnyQualifier PackageName
+    -- | A scope that applies when the given package is used as a build target.
+    -- In other words, the scope applies iff a goal has a top-level qualifier
+    -- and its namespace matches the given package name. A namespace is
+    -- considered to match a package name when it is either the default
+    -- namespace (for --no-independent-goals) or it is an independent namespace
+    -- with the given package name (for --independent-goals).
+    ScopeTarget PackageName
+  | -- | The package with the specified name and qualifier.
+    ScopeQualified Qualifier PackageName
+  | -- | The package with the specified name when it has a
+    -- setup qualifier.
+    ScopeAnySetupQualifier PackageName
+  | -- | The package with the specified name regardless of
+    -- qualifier.
+    ScopeAnyQualifier PackageName
   deriving (Eq, Show)
 
 -- | Constructor for a common use case: the constraint applies to
@@ -73,13 +71,13 @@ constraintScopeMatches :: ConstraintScope -> QPN -> Bool
 constraintScopeMatches (ScopeTarget pn) (Q (PackagePath ns q) pn') =
   let namespaceMatches DefaultNamespace = True
       namespaceMatches (Independent namespacePn) = pn == namespacePn
-  in namespaceMatches ns && q == QualToplevel && pn == pn'
+   in namespaceMatches ns && q == QualToplevel && pn == pn'
 constraintScopeMatches (ScopeQualified q pn) (Q (PackagePath _ q') pn') =
-    q == q' && pn == pn'
+  q == q' && pn == pn'
 constraintScopeMatches (ScopeAnySetupQualifier pn) (Q pp pn') =
   let setup (PackagePath _ (QualSetup _)) = True
-      setup _                             = False
-  in setup pp && pn == pn'
+      setup _ = False
+   in setup pp && pn == pn'
 constraintScopeMatches (ScopeAnyQualifier pn) (Q _ pn') = pn == pn'
 
 -- | Pretty-prints a constraint scope.
@@ -91,11 +89,11 @@ dispConstraintScope (ScopeAnyQualifier pn) = Disp.text "any." <<>> pretty pn
 
 -- | A package property is a logical predicate on packages.
 data PackageProperty
-   = PackagePropertyVersion   VersionRange
-   | PackagePropertyInstalled
-   | PackagePropertySource
-   | PackagePropertyFlags     FlagAssignment
-   | PackagePropertyStanzas   [OptionalStanza]
+  = PackagePropertyVersion VersionRange
+  | PackagePropertyInstalled
+  | PackagePropertySource
+  | PackagePropertyFlags FlagAssignment
+  | PackagePropertyStanzas [OptionalStanza]
   deriving (Eq, Show, Generic)
 
 instance Binary PackageProperty
@@ -104,10 +102,10 @@ instance Structured PackageProperty
 -- | Pretty-prints a package property.
 dispPackageProperty :: PackageProperty -> Disp.Doc
 dispPackageProperty (PackagePropertyVersion verrange) = pretty verrange
-dispPackageProperty PackagePropertyInstalled          = Disp.text "installed"
-dispPackageProperty PackagePropertySource             = Disp.text "source"
-dispPackageProperty (PackagePropertyFlags flags)      = dispFlagAssignment flags
-dispPackageProperty (PackagePropertyStanzas stanzas)  =
+dispPackageProperty PackagePropertyInstalled = Disp.text "installed"
+dispPackageProperty PackagePropertySource = Disp.text "source"
+dispPackageProperty (PackagePropertyFlags flags) = dispFlagAssignment flags
+dispPackageProperty (PackagePropertyStanzas stanzas) =
   Disp.hsep $ map (Disp.text . showStanza) stanzas
 
 -- | A package constraint consists of a scope plus a property
@@ -123,7 +121,6 @@ dispPackageConstraint (PackageConstraint scope prop) =
 -- | Alternative textual representation of a package constraint
 -- for debugging purposes (slightly more verbose than that
 -- produced by 'dispPackageConstraint').
---
 showPackageConstraint :: PackageConstraint -> String
 showPackageConstraint pc@(PackageConstraint scope prop) =
   Disp.renderStyle flatStyle . postprocess $ dispPackageConstraint pc2
@@ -142,7 +139,7 @@ packageConstraintToDependency :: PackageConstraint -> Maybe PackageVersionConstr
 packageConstraintToDependency (PackageConstraint scope prop) = toDep prop
   where
     toDep (PackagePropertyVersion vr) = Just $ PackageVersionConstraint (scopeToPackageName scope) vr
-    toDep (PackagePropertyInstalled)  = Nothing
-    toDep (PackagePropertySource)     = Nothing
-    toDep (PackagePropertyFlags _)    = Nothing
-    toDep (PackagePropertyStanzas _)  = Nothing
+    toDep (PackagePropertyInstalled) = Nothing
+    toDep (PackagePropertySource) = Nothing
+    toDep (PackagePropertyFlags _) = Nothing
+    toDep (PackagePropertyStanzas _) = Nothing

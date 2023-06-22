@@ -1,7 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
-import           Test.Cabal.Prelude
-import           Test.Cabal.DecodeShowBuildInfo
-import           Control.Monad.Trans.Reader
+
+import Control.Monad.Trans.Reader
+import Test.Cabal.DecodeShowBuildInfo
+import Test.Cabal.Prelude
 
 main = setupTest $ do
   -- No cabal test because per-component is broken with it
@@ -14,15 +15,18 @@ main = setupTest $ do
     assertCommonBuildInfo buildInfo
     let [libBI, exeBI] = components buildInfo
 
-    assertComponentPure libBI defCompAssertion
-      { modules = ["MyLib"]
-      , compType = "lib"
-      , sourceDirs = ["src"]
-      }
+    assertComponentPure
+      libBI
+      defCompAssertion
+        { modules = ["MyLib"]
+        , compType = "lib"
+        , sourceDirs = ["src"]
+        }
 
-    assertComponentPure exeBI defCompAssertion
-      { sourceFiles = ["Main.hs"]
-      , compType = "exe"
-      , sourceDirs = ["app"]
-      }
-
+    assertComponentPure
+      exeBI
+      defCompAssertion
+        { sourceFiles = ["Main.hs"]
+        , compType = "exe"
+        , sourceDirs = ["app"]
+        }

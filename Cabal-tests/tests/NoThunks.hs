@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP                 #-}
+{-# LANGUAGE CPP #-}
 #if !(__GLASGOW_HASKELL__ >= 806 && defined(MIN_VERSION_nothunks))
 module Main (main) where
 main :: IO ()

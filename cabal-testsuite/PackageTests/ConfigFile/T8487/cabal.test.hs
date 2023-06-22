@@ -4,4 +4,4 @@
 import Test.Cabal.Prelude
 
 main = cabalTest $ do
-  cabalG [ "--config-file", "config.file" ] "build" [ "test" ]
+  cabalG ["--config-file", "config.file"] "build" ["test"]

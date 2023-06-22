@@ -4,7 +4,6 @@ import Test.Cabal.Prelude
 -- setup dependency on remote-setup-dep-3.0.
 main = withShorterPathForNewBuildStore $ \storeDir ->
   cabalTest $ do
-
     -- TODO: Debug this failure on Windows.
     skipIfWindows
 

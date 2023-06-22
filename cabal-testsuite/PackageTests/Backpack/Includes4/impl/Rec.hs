@@ -1,3 +1,4 @@
-module Rec(A(..), B(..)) where
+module Rec (A (..), B (..)) where
+
 import A
 import B
