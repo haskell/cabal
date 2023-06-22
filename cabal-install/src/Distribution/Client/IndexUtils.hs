@@ -636,20 +636,18 @@ extractPkg verbosity entry blockNo = case Tar.entryContent entry of
         Just $ do
           let path = byteStringToFilePath content
           dirExists <- doesDirectoryExist path
-          result <-
-            if not dirExists
-              then return Nothing
-              else do
-                cabalFile <- tryFindAddSourcePackageDesc verbosity path "Error reading package index."
-                descr <- PackageDesc.Parse.readGenericPackageDescription normal cabalFile
-                return . Just $
-                  BuildTreeRef
-                    (refTypeFromTypeCode typeCode)
-                    (packageId descr)
-                    descr
-                    path
-                    blockNo
-          return result
+          if not dirExists
+            then return Nothing
+            else do
+              cabalFile <- tryFindAddSourcePackageDesc verbosity path "Error reading package index."
+              descr <- PackageDesc.Parse.readGenericPackageDescription normal cabalFile
+              return . Just $
+                BuildTreeRef
+                  (refTypeFromTypeCode typeCode)
+                  (packageId descr)
+                  descr
+                  path
+                  blockNo
   _ -> Nothing
   where
     fileName = Tar.entryPath entry
@@ -932,7 +930,7 @@ withIndexEntries verbosity (RepoIndex _repoCtxt (RepoLocalNoIndex (LocalRepo nam
       | filename == Tar.entryPath entry
       , Tar.NormalFile contents _ <- Tar.entryContent entry =
           let bs = BS.toStrict contents
-           in fmap (\gpd -> CacheGPD gpd bs) $ parseGenericPackageDescriptionMaybe bs
+           in ((`CacheGPD` bs) <$> parseGenericPackageDescriptionMaybe bs)
       where
         filename = prettyShow pkgId FilePath.Posix.</> prettyShow (packageName pkgId) ++ ".cabal"
     readCabalEntry _ _ x = x
@@ -1035,7 +1033,7 @@ packageListFromCache verbosity mkPkg hnd Cache{..} = accum mempty [] mempty cach
       -- We have to read the .cabal file eagerly here because we can't cache the
       -- package id for build tree references - the user might edit the .cabal
       -- file after the reference was added to the index.
-      path <- liftM byteStringToFilePath . getEntryContent $ blockno
+      path <- fmap byteStringToFilePath . getEntryContent $ blockno
       pkg <- do
         let err = "Error reading package index from cache."
         file <- tryFindAddSourcePackageDesc verbosity path err
@@ -1142,8 +1140,7 @@ readIndexCache' :: Index -> IO (Either String Cache)
 readIndexCache' index
   | is01Index index = structuredDecodeFileOrFail (cacheFile index)
   | otherwise =
-      liftM (Right . read00IndexCache) $
-        BSS.readFile (cacheFile index)
+      Right . read00IndexCache <$> BSS.readFile (cacheFile index)
 
 readNoIndexCache' :: Index -> IO (Either String NoIndexCache)
 readNoIndexCache' index = structuredDecodeFileOrFail (cacheFile index)
@@ -1299,8 +1296,7 @@ instance Binary NoIndexCacheEntry where
           Just gpd -> return (CacheGPD gpd bs)
           Nothing -> fail "Failed to parse GPD"
       1 -> do
-        dep <- get
-        pure $ NoIndexCachePreference dep
+        NoIndexCachePreference <$> get
       _ -> fail "Failed to parse NoIndexCacheEntry"
 
 instance Structured NoIndexCacheEntry where
