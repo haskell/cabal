@@ -1076,6 +1076,10 @@ to Hackage.
     documentation for a published package (and not a candidate), add
     ``--publish``.
 
+.. option:: -t, --token
+
+    Your Hackage authentication token.
+
 .. option:: -u, --username
 
     Your Hackage username.
