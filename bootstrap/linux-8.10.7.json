@@ -376,13 +376,13 @@
             "version": "0.96.0.1"
         },
         {
-            "cabal_sha256": "a1f7edb255edae85ccb9d8001b26fea760f846aee0c6302b177eb59d613214e2",
+            "cabal_sha256": "e38291367b2d81df910c221becf330f1fc91ce6b13e5c9032ed5a3669e0ce908",
             "flags": [],
             "package": "resolv",
-            "revision": 6,
+            "revision": 0,
             "source": "hackage",
-            "src_sha256": "81a2bafad484db123cf8d17a02d98bb388a127fd0f822fa022589468a0e64671",
-            "version": "0.1.2.0"
+            "src_sha256": "880d283df9132a7375fa28670f71e86480a4f49972256dc2a204c648274ae74b",
+            "version": "0.2.0.2"
         },
         {
             "cabal_sha256": "6e9b1b233af80cc0aa17ea858d2641ba146fb11cbcc5970a52649e89d77282e2",

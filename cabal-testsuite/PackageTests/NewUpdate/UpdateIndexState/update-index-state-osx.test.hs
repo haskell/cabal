@@ -1,7 +1,7 @@
 import Test.Cabal.Prelude
 
 main = cabalTest $ withRemoteRepo "repo" $ do
-  skipIf "osx" =<< isOSX
+  skipUnless "osx" =<< isOSX -- error is different to Linux
 
   -- This test causes a warning about missing mirrors, the warning is
   -- included in the expected output to make the test pass but it's not

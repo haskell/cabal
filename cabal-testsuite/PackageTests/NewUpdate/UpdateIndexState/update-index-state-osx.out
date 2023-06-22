@@ -1,5 +1,5 @@
 # cabal update
-Warning: Caught exception during _mirrors lookup:DnsNoData
+Warning: Caught exception during _mirrors lookup:DnsHostNotFound
 Warning: No mirrors found for http://localhost:8000/
 Downloading the latest package list from repository.localhost
 Package list of repository.localhost has been updated.
