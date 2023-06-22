@@ -314,7 +314,6 @@ test-suite unit-tests
       UnitTests.Distribution.Solver.Modular.WeightedPSQ
       UnitTests.Distribution.Solver.Types.OptionalStanza
       UnitTests.Options
-      UnitTests.TempTestDir
 
     build-depends:
           array,
@@ -403,7 +402,6 @@ test-suite long-tests
     UnitTests.Distribution.Solver.Modular.QuickCheck
     UnitTests.Distribution.Solver.Modular.QuickCheck.Utils
     UnitTests.Options
-    UnitTests.TempTestDir
 
   build-depends:
         Cabal-QuickCheck,

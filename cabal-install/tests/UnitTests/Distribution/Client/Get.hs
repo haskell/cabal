@@ -23,7 +23,7 @@ import System.IO.Error
 import Test.Tasty
 import Test.Tasty.HUnit
 import UnitTests.Options (RunNetworkTests (..))
-import UnitTests.TempTestDir (withTestDir)
+import Distribution.Utils.TempTestDir (withTestDir)
 
 tests :: [TestTree]
 tests =

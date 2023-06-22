@@ -151,6 +151,7 @@ library
     Distribution.Utils.Json
     Distribution.Utils.NubList
     Distribution.Utils.Progress
+    Distribution.Utils.TempTestDir
     Distribution.Verbosity
     Distribution.Verbosity.Internal
 
