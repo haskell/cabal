@@ -31,7 +31,7 @@ module Distribution.Fields.LexerMonad
 import qualified Data.ByteString as B
 import qualified Data.List.NonEmpty as NE
 import Distribution.Compat.Prelude
-import Distribution.Parsec.Position (Position (..), showPos)
+import Distribution.Parsec.Position (Position (..), positionRow, showPos)
 import Distribution.Parsec.Warning (PWarnType (..), PWarning (..))
 import Prelude ()
 
@@ -67,6 +67,8 @@ data LexWarningType
     LexWarningBOM
   | -- | Leading tags
     LexWarningTab
+  | -- | indentation decreases
+    LexInconsistentIndentation
   deriving (Eq, Ord, Show)
 
 data LexWarning
@@ -79,7 +81,7 @@ toPWarnings :: [LexWarning] -> [PWarning]
 toPWarnings =
   map (uncurry toWarning)
     . Map.toList
-    . Map.fromListWith (<>)
+    . Map.fromListWith (flip (<>)) -- fromListWith gives existing element first.
     . map (\(LexWarning t p) -> (t, pure p))
   where
     toWarning LexWarningBOM poss =
@@ -88,6 +90,8 @@ toPWarnings =
       PWarning PWTLexNBSP (NE.head poss) $ "Non breaking spaces at " ++ intercalate ", " (NE.toList $ fmap showPos poss)
     toWarning LexWarningTab poss =
       PWarning PWTLexTab (NE.head poss) $ "Tabs used as indentation at " ++ intercalate ", " (NE.toList $ fmap showPos poss)
+    toWarning LexInconsistentIndentation poss =
+      PWarning PWTInconsistentIndentation (NE.head poss) $ "Inconsistent indentation. Indentation jumps at lines " ++ intercalate ", " (NE.toList $ fmap (show . positionRow) poss)
 
 {- FOURMOLU_DISABLE -}
 data LexState = LexState
