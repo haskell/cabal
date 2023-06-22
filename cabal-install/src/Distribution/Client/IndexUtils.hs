@@ -142,7 +142,6 @@ import Distribution.Utils.Structured (Structured (..), nominalStructure, structu
 import System.Directory (doesDirectoryExist, doesFileExist)
 import System.FilePath
   ( normalise
-  , replaceExtension
   , splitDirectories
   , takeDirectory
   , takeExtension
@@ -758,21 +757,15 @@ lazyUnfold step = goLazy . Just
 data Index
   = -- | The main index for the specified repository
     RepoIndex RepoContext Repo
-  | -- | A sandbox-local repository
-    -- Argument is the location of the index file
-    SandboxIndex FilePath
 
 indexFile :: Index -> FilePath
 indexFile (RepoIndex _ctxt repo) = indexBaseName repo <.> "tar"
-indexFile (SandboxIndex index) = index
 
 cacheFile :: Index -> FilePath
 cacheFile (RepoIndex _ctxt repo) = indexBaseName repo <.> "cache"
-cacheFile (SandboxIndex index) = index `replaceExtension` "cache"
 
 timestampFile :: Index -> FilePath
 timestampFile (RepoIndex _ctxt repo) = indexBaseName repo <.> "timestamp"
-timestampFile (SandboxIndex index) = index `replaceExtension` "timestamp"
 
 -- | Return 'True' if 'Index' uses 01-index format (aka secure repo)
 is01Index :: Index -> Bool
@@ -780,7 +773,6 @@ is01Index (RepoIndex _ repo) = case repo of
   RepoSecure{} -> True
   RepoRemote{} -> False
   RepoLocalNoIndex{} -> True
-is01Index (SandboxIndex _) = False
 
 updatePackageIndexCacheFile :: Verbosity -> Index -> IO ()
 updatePackageIndexCacheFile verbosity index = do
