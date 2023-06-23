@@ -48,13 +48,11 @@ module Distribution.Simple.Utils
   , chattyTry
   , annotateIO
   , withOutputMarker
-  , exceptionCode
  
 
     -- * exceptions
   , handleDoesNotExist
   , ignoreSigPipe
-  , CabalException(..)
   
     -- * running programs
   , rawSystemExit
@@ -189,6 +187,7 @@ module Distribution.Simple.Utils
     -- * FilePath stuff
   , isAbsoluteOnAnyPlatform
   , isRelativeOnAnyPlatform
+  , exceptionWithCallStackPrefix
   
   ) where
 
@@ -209,6 +208,7 @@ import Distribution.Utils.IOData (IOData (..), IODataMode (..), KnownIODataMode 
 import qualified Distribution.Utils.IOData as IOData
 import Distribution.Verbosity
 import Distribution.Version
+import Distribution.Simple.Errors
 
 #ifdef CURRENT_PACKAGE_KEY
 #define BOOTSTRAPPED_CABAL 1
@@ -278,6 +278,7 @@ import Numeric (showFFloat)
 import qualified System.Process as Process
 
 import qualified Text.PrettyPrint as Disp
+import GHC.Stack (HasCallStack)
 
 -- We only get our own version number when we're building with ourselves
 cabalVersion :: Version
@@ -378,42 +379,61 @@ die' verbosity msg = withFrozenCallStack $ do
     =<< annotateErrorString verbosity
     =<< pure . wrapTextVerbosity verbosity
     =<< pure . addErrorPrefix
-    =<< prefixWithProgName msg
+    =<< prefixWithProgName msg      
 
--- Types representing exceptions thrown by functions in "bench" and "install" modules
-
-data CabalException = BenchMarkException String             
-                     | InstallException String
- deriving (Show,Typeable)
-
--- Type which is going to be wrapper for cabal -expection and cabal-install exceptions
-
+-- Type which will be a wrapper for cabal -expections and cabal-install exceptions
 data VerboseException a  = VerboseException CallStack POSIXTime Verbosity a
  deriving (Show, Typeable)
 
--- new die' function which will replace the existing die' call sites
-
-dieWithException :: Verbosity -> CabalException -> IO a
+-- A new dieWithException function which will replace the existing die' call sites
+dieWithException :: HasCallStack => Verbosity -> CabalException -> IO a
 dieWithException verbosity exception = do
   ts <- getPOSIXTime
-  let call = withFrozenCallStack callStack
   case exception of
-    BenchMarkException msg -> throwIO $ VerboseException call ts verbosity (BenchMarkException msg)
-    InstallException msg   -> throwIO $ VerboseException call ts verbosity (InstallException msg)
-    
-exceptionCode :: CabalException -> Int
-exceptionCode (BenchMarkException _) = 2134
-exceptionCode (InstallException _) = 2546
+    NoBenchMarkProgram path -> throwIO $ VerboseException callStack ts verbosity (NoBenchMarkProgram path)
+    EnableBenchMark -> throwIO $ VerboseException callStack ts verbosity EnableBenchMark
+    BenchMarkNameDisable bmName -> throwIO $ VerboseException callStack ts verbosity (BenchMarkNameDisable bmName)
+    NoBenchMark bmName -> throwIO $ VerboseException callStack ts verbosity (NoBenchMark bmName)
+    NoLibraryFound   -> throwIO $ VerboseException callStack ts verbosity NoLibraryFound
+    CompilerNotInstalled compilerFlavor -> throwIO $ VerboseException callStack ts verbosity (CompilerNotInstalled compilerFlavor)
+    CantFindIncludeFile file -> throwIO $ VerboseException callStack ts verbosity (CantFindIncludeFile file)
+    SourceDistException errormsg -> throwIO $ VerboseException callStack ts verbosity (SourceDistException errormsg) 
 
 instance (Show a ,Typeable a) => Exception (VerboseException a) where
 _displayException :: VerboseException CabalException -> [Char]
-_displayException (VerboseException _call timestamp verb (BenchMarkException errorStr)) =  
-    concat ["Error: [C-" , show (exceptionCode $ BenchMarkException errorStr), "]\n"
-                , withMetadata timestamp AlwaysMark VerboseTrace verb errorStr]  
-_displayException (VerboseException _call timestamp verb (InstallException errorStr))  = 
-    concat ["Error: [C-" , show (exceptionCode $ InstallException errorStr) ,"]\n"
-                 ,withMetadata timestamp AlwaysMark VerboseTrace verb errorStr]   
-                                                                         
+
+_displayException (VerboseException stack timestamp verb (NoBenchMarkProgram path)) =  
+    concat ["Error: [C-" , show (exceptionCode $ NoBenchMarkProgram path), "]\n"
+                , exceptionWithMetadata stack timestamp verb $ exceptionMessage (NoBenchMarkProgram path)]  
+
+_displayException (VerboseException stack timestamp verb EnableBenchMark) =  
+    concat ["Error: [C-" , show (exceptionCode EnableBenchMark), "]\n"
+                , exceptionWithMetadata stack timestamp verb $ exceptionMessage EnableBenchMark] 
+
+_displayException (VerboseException stack timestamp verb (BenchMarkNameDisable bmName)) =  
+    concat ["Error: [C-" , show (exceptionCode $ BenchMarkNameDisable bmName), "]\n"
+                , exceptionWithMetadata stack timestamp verb $ exceptionMessage (BenchMarkNameDisable bmName)] 
+
+_displayException (VerboseException stack timestamp verb (NoBenchMark bmName)) =  
+    concat ["Error: [C-" , show (exceptionCode $ NoBenchMark bmName), "]\n"
+                , exceptionWithMetadata stack timestamp verb $ exceptionMessage (NoBenchMark bmName)] 
+
+_displayException (VerboseException stack timestamp verb NoLibraryFound)  = 
+    concat ["Error: [C-" , show (exceptionCode NoLibraryFound) ,"]\n"
+                 ,exceptionWithMetadata stack timestamp verb $ exceptionMessage NoLibraryFound]   
+
+_displayException (VerboseException stack timestamp verb (CompilerNotInstalled compilerFlavor))  = 
+    concat ["Error: [C-" , show (exceptionCode $ CompilerNotInstalled compilerFlavor) ,"]\n"
+                 ,exceptionWithMetadata stack timestamp verb $ exceptionMessage (CompilerNotInstalled compilerFlavor)]  
+
+_displayException (VerboseException stack timestamp verb (CantFindIncludeFile file))  = 
+    concat ["Error: [C-" , show (exceptionCode $ CantFindIncludeFile file) ,"]\n"
+                 ,exceptionWithMetadata stack timestamp verb $ exceptionMessage (CantFindIncludeFile file)]                             
+
+_displayException (VerboseException _call timestamp verb (SourceDistException errorStr))  = 
+    concat ["Error: [C-" , show (exceptionCode $ SourceDistException errorStr) ,"]\n"
+                 ,withMetadata timestamp AlwaysMark VerboseTrace verb errorStr] 
+
 
 dieNoWrap :: Verbosity -> String -> IO a
 dieNoWrap verbosity msg = withFrozenCallStack $ do
@@ -790,6 +810,19 @@ withMetadata ts marker tracer verbosity x =
       . withTimestamp verbosity ts
     $ x
 
+-- | Add all necessary metadata to a logging message
+exceptionWithMetadata :: CallStack -> POSIXTime -> Verbosity -> String -> String
+exceptionWithMetadata stack ts verbosity x  =
+    -- NB: order matters.  Output marker first because we
+    -- don't want to capture call stacks.
+    withTrailingNewline
+      . exceptionWithCallStackPrefix stack verbosity
+      .  withOutputMarker verbosity
+      . clearMarkers
+      . withTimestamp verbosity ts
+      $  x
+    
+
 clearMarkers :: String -> String
 clearMarkers s = unlines . filter isMarker $ lines s
   where
@@ -797,6 +830,25 @@ clearMarkers s = unlines . filter isMarker $ lines s
     isMarker "-----END CABAL OUTPUT-----" = False
     isMarker _ = True
 
+-- | Prepend a call-site and/or call-stack based on Verbosity
+exceptionWithCallStackPrefix :: CallStack -> Verbosity -> String -> String
+exceptionWithCallStackPrefix stack verbosity s =
+  withFrozenCallStack $
+    ( if isVerboseCallSite verbosity
+        then
+          parentSrcLocPrefix
+            ++
+            -- Hack: need a newline before starting output marker :(
+            if isVerboseMarkOutput verbosity
+              then "\n"
+              else ""
+        else ""
+    )
+      ++ ( if verbosity >= verbose 
+              then prettyCallStack stack ++ "\n" 
+              else "" 
+         )
+      ++ s
 -- -----------------------------------------------------------------------------
 -- rawSystem variants
 --
