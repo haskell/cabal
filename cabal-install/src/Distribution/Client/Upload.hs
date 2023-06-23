@@ -11,7 +11,7 @@ import Distribution.Client.Setup
   ( IsCandidate (..)
   , RepoContext (..)
   )
-import Distribution.Client.Types.Credentials 
+import Distribution.Client.Types.Credentials
   ( Auth
   , Token (..)
   , Password (..)
@@ -214,18 +214,15 @@ promptPassword domain = do
   putStrLn ""
   return passwd
 
-report :: Verbosity -> RepoContext -> Maybe Username -> Maybe Password -> IO ()
-report verbosity repoCtxt mUsername mPassword = do
+report :: Verbosity -> RepoContext -> Maybe Token -> Maybe Username -> Maybe Password -> IO ()
+report verbosity repoCtxt mToken mUsername mPassword = do
   let repos :: [Repo]
       repos = repoContextRepos repoCtxt
       remoteRepos :: [RemoteRepo]
       remoteRepos = mapMaybe maybeRepoRemote repos
   for_ remoteRepos $ \remoteRepo -> do
     let domain = maybe "Hackage" uriRegName $ uriAuthority (remoteRepoURI remoteRepo)
-    Username username <- maybe (promptUsername domain) return mUsername
-    Password password <- maybe (promptPassword domain) return mPassword
-    let auth :: (String, String)
-        auth = (username, password)
+    auth <- createAuth domain mToken mUsername mPassword
 
     reportsDir <- defaultReportsDir
     let srcDir :: FilePath
@@ -249,7 +246,7 @@ report verbosity repoCtxt mUsername mPassword = do
                 BuildReport.uploadReports
                   verbosity
                   repoCtxt
-                  (Left auth)
+                  auth
                   (remoteRepoURI remoteRepo)
                   [(report', Just buildLog)]
                 return ()

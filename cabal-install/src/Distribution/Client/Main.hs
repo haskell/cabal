@@ -1201,6 +1201,7 @@ reportAction reportFlags extraArgs globalFlags = do
     Upload.report
       verbosity
       repoContext
+      (flagToMaybe $ reportToken reportFlags')
       (flagToMaybe $ reportUsername reportFlags')
       (flagToMaybe $ reportPassword reportFlags')
 

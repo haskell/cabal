@@ -1649,7 +1649,8 @@ runCommand =
 -- ------------------------------------------------------------
 
 data ReportFlags = ReportFlags
-  { reportUsername :: Flag Username
+  { reportToken :: Flag Token
+  , reportUsername :: Flag Username
   , reportPassword :: Flag Password
   , reportVerbosity :: Flag Verbosity
   }
@@ -1658,7 +1659,8 @@ data ReportFlags = ReportFlags
 defaultReportFlags :: ReportFlags
 defaultReportFlags =
   ReportFlags
-    { reportUsername = mempty
+    { reportToken = mempty
+    , reportUsername = mempty
     , reportPassword = mempty
     , reportVerbosity = toFlag normal
     }
@@ -1675,6 +1677,17 @@ reportCommand =
     , commandDefaultFlags = defaultReportFlags
     , commandOptions = \_ ->
         [ optionVerbosity reportVerbosity (\v flags -> flags{reportVerbosity = v})
+        , option
+            ['t']
+            ["token"]
+            "Hackage Token."
+            reportToken
+            (\v flags -> flags{reportToken = v})
+            ( reqArg'
+                "TOKEN"
+                (toFlag . Token)
+                (flagToList . fmap unToken)
+            )
         , option
             ['u']
             ["username"]

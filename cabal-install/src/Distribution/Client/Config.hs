@@ -583,7 +583,8 @@ instance Semigroup SavedConfig where
 
       combinedSavedReportFlags =
         ReportFlags
-          { reportUsername = combine reportUsername
+          { reportToken = combine reportToken
+          , reportUsername = combine reportUsername
           , reportPassword = combine reportPassword
           , reportVerbosity = combine reportVerbosity
           }
@@ -1273,7 +1274,7 @@ configFieldDescriptions src =
     ++ toSavedConfig
       liftReportFlag
       (commandOptions reportCommand ParseArgs)
-      ["verbose", "username", "password"]
+      ["verbose", "token", "username", "password"]
       []
     -- FIXME: this is a hack, hiding the user name and password.
     -- But otherwise it masks the upload ones. Either need to
