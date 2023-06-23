@@ -1550,6 +1550,9 @@ decodeMainIsArg arg
 data BuildSources = BuildSources
   { cSourcesFiles :: [FilePath]
   , cxxSourceFiles :: [FilePath]
+  , jsSourceFiles :: [FilePath]
+  , asmSourceFiles :: [FilePath]
+  , cmmSourceFiles :: [FilePath]
   , inputSourceFiles :: [FilePath]
   , inputSourceModules :: [ModuleName]
   }
@@ -1600,6 +1603,9 @@ gbuildSources verbosity pkgId specVer tmpDir bm =
                 BuildSources
                   { cSourcesFiles = cSources bnfo
                   , cxxSourceFiles = cxxSources bnfo
+                  , jsSourceFiles = jsSources bnfo 
+                  , asmSourceFiles = asmSources bnfo
+                  , cmmSourceFiles = cmmSources bnfo
                   , inputSourceFiles = [main]
                   , inputSourceModules =
                       filter (/= mainModName) $
@@ -1610,6 +1616,9 @@ gbuildSources verbosity pkgId specVer tmpDir bm =
                 BuildSources
                   { cSourcesFiles = cSources bnfo
                   , cxxSourceFiles = cxxSources bnfo
+                  , jsSourceFiles = jsSources bnfo 
+                  , asmSourceFiles = asmSources bnfo
+                  , cmmSourceFiles = cmmSources bnfo
                   , inputSourceFiles = [main]
                   , inputSourceModules = exeModules exe
                   }
@@ -1624,6 +1633,9 @@ gbuildSources verbosity pkgId specVer tmpDir bm =
                 BuildSources
                   { cSourcesFiles = csf
                   , cxxSourceFiles = cxxsf
+                  , jsSourceFiles = jsSources bnfo 
+                  , asmSourceFiles = asmSources bnfo
+                  , cmmSourceFiles = cmmSources bnfo
                   , inputSourceFiles = []
                   , inputSourceModules = exeModules exe
                   }
@@ -1633,6 +1645,9 @@ gbuildSources verbosity pkgId specVer tmpDir bm =
       BuildSources
         { cSourcesFiles = cSources bnfo
         , cxxSourceFiles = cxxSources bnfo
+        , jsSourceFiles = jsSources bnfo 
+        , asmSourceFiles = asmSources bnfo
+        , cmmSourceFiles = cmmSources bnfo
         , inputSourceFiles = []
         , inputSourceModules = foreignLibModules flib
         }
@@ -1964,6 +1979,127 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
         when needsRecomp $
           runGhcProg opts
       | filename <- cSrcs
+      ]
+
+  -- build any JS sources
+  unless (null $ jsSourceFiles buildSources) $ do
+    info verbosity "Building JS Sources..."
+    sequence_
+      [ do
+        let vanillaJsOpts =
+              Internal.componentJsGhcOptions
+                verbosity
+                implInfo
+                lbi
+                bnfo
+                clbi
+                tmpDir
+                filename
+            profJsOpts =
+              vanillaJsOpts
+                `mappend` mempty
+                  { ghcOptProfilingMode = toFlag True
+                  , ghcOptObjSuffix = toFlag "p_o"
+                  }
+            opts
+              | needProfiling = profJsOpts
+              | otherwise = vanillaJsOpts
+            odir = fromFlag (ghcOptObjDir vanillaJsOpts)
+        createDirectoryIfMissingVerbose verbosity True odir
+        needsRecomp <- checkNeedsRecompilation filename opts
+        when needsRecomp $
+          runGhcProg opts
+      | filename <- jsSourceFiles buildSources
+      ]
+
+  -- build any ASM sources
+  unless (null $ asmSourceFiles buildSources) $ do
+    info verbosity "Building Assembler Sources..."
+    sequence_
+      [ do
+        let baseAsmOpts =
+              Internal.componentAsmGhcOptions
+                verbosity
+                implInfo
+                lbi
+                bnfo
+                clbi
+                tmpDir
+                filename
+            vanillaAsmOpts =
+              if isGhcDynamic
+                then -- Dynamic GHC requires objects to be built
+                -- with -fPIC for REPL to work. See #2207.
+                  baseAsmOpts{ghcOptFPic = toFlag True}
+                else baseAsmOpts
+            profAsmOpts =
+              vanillaAsmOpts
+                `mappend` mempty
+                  { ghcOptProfilingMode = toFlag True
+                  , ghcOptObjSuffix = toFlag "p_o"
+                  }
+            sharedAsmOpts =
+              vanillaAsmOpts
+                `mappend` mempty
+                  { ghcOptFPic = toFlag True
+                  , ghcOptDynLinkMode = toFlag GhcDynamicOnly
+                  , ghcOptObjSuffix = toFlag "dyn_o"
+                  }
+            opts
+              | needProfiling = profAsmOpts
+              | needDynamic = sharedAsmOpts
+              | otherwise = vanillaAsmOpts
+            odir = fromFlag (ghcOptObjDir vanillaAsmOpts)
+        createDirectoryIfMissingVerbose verbosity True odir
+        needsRecomp <- checkNeedsRecompilation filename opts
+        when needsRecomp $
+          runGhcProg opts
+      | filename <- asmSourceFiles buildSources
+      ]
+
+  -- build any Cmm sources
+  unless (null $ cmmSourceFiles buildSources) $ do
+    info verbosity "Building C-- Sources..."
+    sequence_
+      [ do
+        let baseCmmOpts =
+              Internal.componentCmmGhcOptions
+                verbosity
+                implInfo
+                lbi
+                bnfo
+                clbi
+                tmpDir
+                filename
+            vanillaCmmOpts =
+              if isGhcDynamic
+                then -- Dynamic GHC requires C sources to be built
+                -- with -fPIC for REPL to work. See #2207.
+                  baseCmmOpts{ghcOptFPic = toFlag True}
+                else baseCmmOpts
+            profCmmOpts =
+              vanillaCmmOpts
+                `mappend` mempty
+                  { ghcOptProfilingMode = toFlag True
+                  , ghcOptObjSuffix = toFlag "p_o"
+                  }
+            sharedCmmOpts =
+              vanillaCmmOpts
+                `mappend` mempty
+                  { ghcOptFPic = toFlag True
+                  , ghcOptDynLinkMode = toFlag GhcDynamicOnly
+                  , ghcOptObjSuffix = toFlag "dyn_o"
+                  }
+            opts
+              | needProfiling = profCmmOpts
+              | needDynamic = sharedCmmOpts
+              | otherwise = vanillaCmmOpts
+            odir = fromFlag (ghcOptObjDir vanillaCmmOpts)
+        createDirectoryIfMissingVerbose verbosity True odir
+        needsRecomp <- checkNeedsRecompilation filename opts
+        when needsRecomp $
+          runGhcProg opts
+      | filename <- cmmSourceFiles buildSources
       ]
 
   -- TODO: problem here is we need the .c files built first, so we can load them
