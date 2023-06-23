@@ -36,6 +36,7 @@ import Distribution.Types.UnqualComponentName
 
 import System.Directory (doesFileExist)
 import System.FilePath ((<.>), (</>))
+import Distribution.Simple.Errors
 
 -- | Perform the \"@.\/setup bench@\" action.
 bench
@@ -66,11 +67,8 @@ bench args pkg_descr lbi flags = do
             -- Check that the benchmark executable exists.
             exists <- doesFileExist cmd
             unless exists $
-              dieWithException verbosity $ BenchMarkException
-                ( "Could not find benchmark program \""
-                  ++ cmd
-                  ++ "\". Did you build the package first?" )
-
+              dieWithException verbosity $ NoBenchMarkProgram cmd
+             
             notice verbosity $ startMessage name
             -- This will redirect the child process
             -- stdout/stderr to the parent process.
@@ -93,9 +91,8 @@ bench args pkg_descr lbi flags = do
     exitSuccess
 
   when (PD.hasBenchmarks pkg_descr && null enabledBenchmarks) $
-    dieWithException verbosity $ BenchMarkException 
-      ("No benchmarks enabled. Did you remember to configure with "
-        ++ "\'--enable-benchmarks\'?")
+    dieWithException verbosity EnableBenchMark 
+      
 
   bmsToRun <- case benchmarkNames of
     [] -> return enabledBenchmarks
@@ -107,11 +104,9 @@ bench args pkg_descr lbi flags = do
             Just t -> return t
             _
               | mkUnqualComponentName bmName `elem` allNames ->
-                  dieWithException verbosity $ BenchMarkException 
-                    ("Package configured with benchmark "
-                      ++ bmName
-                      ++ " disabled.")
-              | otherwise -> dieWithException verbosity $ BenchMarkException ("no such benchmark: " ++ bmName)
+                  dieWithException verbosity $ BenchMarkNameDisable bmName
+              | otherwise -> dieWithException verbosity $ NoBenchMark bmName
+              
 
   let totalBenchmarks = length bmsToRun
   notice verbosity $ "Running " ++ show totalBenchmarks ++ " benchmarks..."
