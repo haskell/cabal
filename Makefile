@@ -27,6 +27,15 @@ style: ## Run the code styler
 		! -path Cabal/src/Distribution/Simple/Build/PathsModule/Z.hs \
 		| xargs -P $(PROCS) -I {} fourmolu -q -i {}
 
+style-modified: ## Run the code styler on modified files
+	@git ls-files --modified Cabal Cabal-syntax cabal-install \
+		-X Cabal-syntax/src/Distribution/Fields/Lexer.hs \
+		-X Cabal-syntax/src/Distribution/SPDX/LicenseExceptionId.hs \
+		-X Cabal-syntax/src/Distribution/SPDX/LicenseId.hs \
+		-X Cabal/src/Distribution/Simple/Build/Macros/Z.hs \
+		-X Cabal/src/Distribution/Simple/Build/PathsModule/Z.hs \
+		| grep '.hs$$' | xargs -P $(PROCS) -I {} fourmolu -q -i {}
+
 # source generation: Lexer
 
 LEXER_HS:=Cabal-syntax/src/Distribution/Fields/Lexer.hs

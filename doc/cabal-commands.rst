@@ -191,7 +191,7 @@ Target Forms
 
 A cabal command target can take any of the following forms:
 
--  A package target: ``package``, which specifies that all enabled
+-  A package target: ``[pkg:]package``, which specifies that all enabled
    components of a package to be built. By default, test suites and
    benchmarks are *not* enabled, unless they are explicitly requested
    (e.g., via ``--enable-tests``.)
@@ -1086,7 +1086,19 @@ to Hackage.
 
 .. option:: -P, --password-command
 
-    Command to get your Hackage password.
+    Command to get your Hackage password.  Arguments with whitespace
+    must be quoted (double-quotes only).  For example:
+
+    ::
+
+        --password-command 'sh -c "grep hackage ~/secrets | cut -d : -f 2"'
+
+    Or in the config file:
+
+    ::
+
+        password-command: sh -c "grep hackage ~/secrets | cut -d : -f 2"
+
 
 cabal report
 ^^^^^^^^^^^^

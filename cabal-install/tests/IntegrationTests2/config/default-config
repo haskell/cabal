@@ -63,7 +63,7 @@ remote-repo-cache: /home/colton/.cabal/packages
 -- extra-lib-dirs:
 -- extra-lib-dirs-static:
 -- extra-framework-dirs:
-extra-prog-path: /home/colton/.cabal/bin
+-- extra-prog-path:
 -- instantiate-with:
 -- tests: False
 -- coverage: False

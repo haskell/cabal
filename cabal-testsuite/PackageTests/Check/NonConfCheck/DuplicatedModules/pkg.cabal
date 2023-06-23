@@ -16,4 +16,4 @@ library
 --   if !os(linux)
 --     exposed-modules: Bar
 
-  default-language: Haskell2010
+    default-language: Haskell2010

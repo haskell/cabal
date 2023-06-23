@@ -2012,7 +2012,7 @@ testConfigOptionComments = do
   "-- extra-lib-dirs" @=? findLineWith True "extra-lib-dirs" defaultConfigFile
   "-- extra-lib-dirs-static" @=? findLineWith True "extra-lib-dirs-static" defaultConfigFile
   "-- extra-framework-dirs" @=? findLineWith True "extra-framework-dirs" defaultConfigFile
-  "extra-prog-path"  @=? findLineWith False "extra-prog-path" defaultConfigFile
+  "-- extra-prog-path"  @=? findLineWith False "extra-prog-path" defaultConfigFile
   "-- instantiate-with" @=? findLineWith True "instantiate-with" defaultConfigFile
   "-- tests" @=? findLineWith True "tests" defaultConfigFile
   "-- coverage" @=? findLineWith True "coverage" defaultConfigFile
@@ -2173,7 +2173,7 @@ testConfigOptionComments = do
     findLineWith :: Bool -> String -> String -> String
     findLineWith isComment target text
       | not . null $ findLinesWith isComment target text = removeCommentValue . L.head $ findLinesWith isComment target text
-      | otherwise  = ""
+      | otherwise  = text
     findLinesWith :: Bool -> String -> String -> [String]
     findLinesWith isComment target
       | isComment = filter (isInfixOf (" " ++ target ++ ":")) . lines

@@ -21,7 +21,7 @@ import Distribution.Version (mkVersion)
 import Network.URI (URI, uriPath)
 import Test.Tasty
 import Test.Tasty.HUnit
-import UnitTests.TempTestDir (withTestDir)
+import Distribution.Utils.TempTestDir (withTestDir)
 
 tests :: [TestTree]
 tests =

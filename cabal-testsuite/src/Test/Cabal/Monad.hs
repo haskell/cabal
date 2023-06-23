@@ -70,6 +70,7 @@ import Distribution.Simple.Configure
 import qualified Distribution.Simple.Utils as U (cabalVersion)
 import Distribution.Text
 
+import Distribution.Utils.TempTestDir (removeDirectoryRecursiveHack)
 import Distribution.Verbosity
 import Distribution.Version
 
@@ -232,7 +233,6 @@ runTestM mode m = withSystemTempDirectory "cabal-testsuite" $ \tmp_dir -> do
         script_base = dropExtensions script_filename
     -- Canonicalize this so that it is stable across working directory changes
     script_dir <- canonicalizePath script_dir0
-    let verbosity = normal -- TODO: configurable
     senv <- mkScriptEnv verbosity
     -- Add test suite specific programs
     let program_db0 =
@@ -344,9 +344,11 @@ runTestM mode m = withSystemTempDirectory "cabal-testsuite" $ \tmp_dir -> do
                 return r
     runReaderT go env
   where
+    verbosity = normal -- TODO: configurable
+
     cleanup = do
         env <- getTestEnv
-        onlyIfExists . removeDirectoryRecursive $ testWorkDir env
+        onlyIfExists . removeDirectoryRecursiveHack verbosity $ testWorkDir env
         -- NB: it's important to initialize this ourselves, as
         -- the default configuration hardcodes Hackage, which we do
         -- NOT want to assume for these tests (no test should
