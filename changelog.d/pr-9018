@@ -1,6 +1,6 @@
 synopsis: Structured Errors and Error Codes for Cabal
 packages: cabal
-prs: # 9018
+prs: #9018
 issues: #8618 #8543
 
 
