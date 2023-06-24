@@ -1078,7 +1078,9 @@ to Hackage.
 
 .. option:: -t, --token
 
-    Your Hackage authentication token.
+    Your Hackage authentication token. You can create and delete 
+    authentication tokens on Hackage's `account management page 
+    <https://hackage.haskell.org/users/account-management>`__.
 
 .. option:: -u, --username
 
@@ -1108,6 +1110,12 @@ cabal report
 ^^^^^^^^^^^^
 
 ``cabal report [FLAGS]`` uploads build reports to Hackage.
+
+.. option:: -t, --token
+
+    Your Hackage authentication token. You can create and delete 
+    authentication tokens on Hackage's `account management page 
+    <https://hackage.haskell.org/users/account-management>`__.
 
 .. option:: -u, --username
 
