@@ -7,6 +7,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE FlexibleInstances #-}
 
 -----------------------------------------------------------------------------
 
@@ -391,11 +392,13 @@ dieWithException verbosity exception = do
   ts <- getPOSIXTime
   throwIO $ VerboseException callStack ts verbosity exception
 
-instance (Show a ,Typeable a) => Exception (VerboseException a) where
-_displayException :: VerboseException CabalException -> [Char]
-_displayException (VerboseException stack timestamp verb cabalexception) =  
-    concat ["Error: [C-" , show (exceptionCode cabalexception), "]\n"
-                , exceptionWithMetadata stack timestamp verb $ exceptionMessage cabalexception] 
+instance Exception (VerboseException CabalException) where
+  displayException :: VerboseException CabalException -> [Char]
+  displayException (VerboseException stack timestamp verb cabalexception) =  concat 
+    ["Error: [C-" 
+    , show (exceptionCode cabalexception)
+    , "]\n"
+    , exceptionWithMetadata stack timestamp verb $ exceptionMessage cabalexception] 
 
 dieNoWrap :: Verbosity -> String -> IO a
 dieNoWrap verbosity msg = withFrozenCallStack $ do
