@@ -1507,7 +1507,7 @@ gbuildSources verbosity pkgId specVer tmpDir bm =
       BuildSources
         { cSourcesFiles = cSources bnfo
         , cxxSourceFiles = cxxSources bnfo
-        , jsSourceFiles = jsSources bnfo 
+        , jsSourceFiles = jsSources bnfo
         , asmSourceFiles = asmSources bnfo
         , cmmSourceFiles = cmmSources bnfo
         , inputSourceFiles = []
