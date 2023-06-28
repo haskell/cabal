@@ -1861,7 +1861,13 @@ system-dependent values for these fields.
 .. pkg-field:: default-language: identifier
    :since: 1.12
 
-   TBW
+    Specifies a language standard or a group of language extensions to be activated for the project. In the case of GHC, `see here for details <https://downloads.haskell.org/ghc/latest/docs/users_guide/exts/control.html#controlling-extensions>`__.
+
+    The possible values are:
+
+    -  ``GHC2021`` (only available for GHC version newer than ``9.2``)
+    -  ``Haskell2010``
+    -  ``Haskell98``
 
 .. pkg-field:: other-languages: identifier
    :since: 1.12

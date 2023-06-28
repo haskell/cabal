@@ -61,11 +61,12 @@ import Distribution.Parsec (simpleParsec)
 import Distribution.Pretty (prettyShow)
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Compiler
-import Distribution.Simple.Flag (Flag, maybeToFlag, toFlag)
+import Distribution.Simple.Flag (Flag (NoFlag), maybeToFlag, toFlag)
 import Distribution.Simple.GHC.ImplInfo
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Program
 import Distribution.Simple.Program.GHC
+import Distribution.Simple.Setup.Common (extraCompilationArtifacts)
 import Distribution.Simple.Utils
 import Distribution.System
 import Distribution.Types.ComponentLocalBuildInfo
@@ -78,6 +79,7 @@ import Distribution.Verbosity
 import Distribution.Version (Version)
 import Language.Haskell.Extension
 
+import Data.Bool (bool)
 import qualified Data.ByteString.Lazy.Char8 as BS
 import qualified Data.Map as Map
 import qualified Data.Set as Set
@@ -576,6 +578,7 @@ componentGhcOptions verbosity implInfo lbi bi clbi odir =
     , ghcOptFfiIncludes = toNubListR $ includes bi
     , ghcOptObjDir = toFlag odir
     , ghcOptHiDir = toFlag odir
+    , ghcOptHieDir = bool NoFlag (toFlag $ odir </> extraCompilationArtifacts) $ flagHie implInfo
     , ghcOptStubDir = toFlag odir
     , ghcOptOutputDir = toFlag odir
     , ghcOptOptimisation = toGhcOptimisation (withOptimization lbi)

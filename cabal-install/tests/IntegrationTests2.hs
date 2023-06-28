@@ -2173,7 +2173,7 @@ testConfigOptionComments = do
     findLineWith :: Bool -> String -> String -> String
     findLineWith isComment target text
       | not . null $ findLinesWith isComment target text = removeCommentValue . L.head $ findLinesWith isComment target text
-      | otherwise  = ""
+      | otherwise  = text
     findLinesWith :: Bool -> String -> String -> [String]
     findLinesWith isComment target
       | isComment = filter (isInfixOf (" " ++ target ++ ":")) . lines

@@ -29,6 +29,7 @@ module Distribution.Simple.Setup.Common
   , splitArgs
   , testOrBenchmarkHelpText
   , defaultDistPref
+  , extraCompilationArtifacts
   , optionDistPref
   , Flag (..)
   , toFlag
@@ -62,6 +63,11 @@ import Distribution.Verbosity
 -- FIXME Not sure where this should live
 defaultDistPref :: FilePath
 defaultDistPref = "dist"
+
+-- | The name of the directory where optional compilation artifacts
+-- go, such as ghc plugins and .hie files.
+extraCompilationArtifacts :: FilePath
+extraCompilationArtifacts = "extra-compilation-artifacts"
 
 -- | Help text for @test@ and @bench@ commands.
 testOrBenchmarkHelpText

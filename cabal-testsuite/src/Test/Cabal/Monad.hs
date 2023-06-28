@@ -30,6 +30,7 @@ module Test.Cabal.Monad (
     testCurrentDir,
     testWorkDir,
     testPrefixDir,
+    testLibInstallDir,
     testDistDir,
     testPackageDbDir,
     testRepoDir,
@@ -59,9 +60,10 @@ import Test.Cabal.Plan
 import Test.Cabal.OutputNormalizer
 import Test.Cabal.TestCode
 
+import Distribution.Pretty (prettyShow)
 import Distribution.Simple.Compiler
     ( PackageDBStack, PackageDB(..), compilerFlavor
-    , Compiler, compilerVersion )
+    , Compiler, compilerVersion, showCompilerId )
 import Distribution.System
 import Distribution.Simple.Program.Db
 import Distribution.Simple.Program
@@ -70,6 +72,7 @@ import Distribution.Simple.Configure
 import qualified Distribution.Simple.Utils as U (cabalVersion)
 import Distribution.Text
 
+import Distribution.Utils.TempTestDir (removeDirectoryRecursiveHack)
 import Distribution.Verbosity
 import Distribution.Version
 
@@ -232,7 +235,6 @@ runTestM mode m = withSystemTempDirectory "cabal-testsuite" $ \tmp_dir -> do
         script_base = dropExtensions script_filename
     -- Canonicalize this so that it is stable across working directory changes
     script_dir <- canonicalizePath script_dir0
-    let verbosity = normal -- TODO: configurable
     senv <- mkScriptEnv verbosity
     -- Add test suite specific programs
     let program_db0 =
@@ -344,9 +346,11 @@ runTestM mode m = withSystemTempDirectory "cabal-testsuite" $ \tmp_dir -> do
                 return r
     runReaderT go env
   where
+    verbosity = normal -- TODO: configurable
+
     cleanup = do
         env <- getTestEnv
-        onlyIfExists . removeDirectoryRecursive $ testWorkDir env
+        onlyIfExists . removeDirectoryRecursiveHack verbosity $ testWorkDir env
         -- NB: it's important to initialize this ourselves, as
         -- the default configuration hardcodes Hackage, which we do
         -- NOT want to assume for these tests (no test should
@@ -566,6 +570,16 @@ testWorkDir env =
 -- | The absolute prefix where installs go.
 testPrefixDir :: TestEnv -> FilePath
 testPrefixDir env = testWorkDir env </> "usr"
+
+-- | The absolute path where library installs go.
+testLibInstallDir :: TestEnv -> FilePath
+testLibInstallDir env = libDir </> compilerDir
+  where
+    platform@(Platform _ os) = testPlatform env
+    libDir = case os of
+      Windows -> testPrefixDir env
+      _ -> testPrefixDir env </> "lib"
+    compilerDir = prettyShow platform ++ "-" ++ showCompilerId (testCompiler env)
 
 -- | The absolute path to the build directory that should be used
 -- for the current package in a test.
