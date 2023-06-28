@@ -829,15 +829,19 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
               runGhcProgIfNeeded opts = do
                 needsRecomp <- checkNeedsRecompilation filename opts
                 when needsRecomp $ runGhcProg opts
-              profSrcOpts = vanillaSrcOpts `mappend` mempty
-                { ghcOptProfilingMode = toFlag True
-                , ghcOptObjSuffix = toFlag "p_o"
-                }
-              sharedSrcOpts = vanillaSrcOpts `mappend` mempty
-                { ghcOptFPic = toFlag True
-                , ghcOptDynLinkMode = toFlag GhcDynamicOnly
-                , ghcOptObjSuffix = toFlag "dyn_o"
-                }
+              profSrcOpts =
+                vanillaSrcOpts
+                  `mappend` mempty
+                    { ghcOptProfilingMode = toFlag True
+                    , ghcOptObjSuffix = toFlag "p_o"
+                    }
+              sharedSrcOpts =
+                vanillaSrcOpts
+                  `mappend` mempty
+                    { ghcOptFPic = toFlag True
+                    , ghcOptDynLinkMode = toFlag GhcDynamicOnly
+                    , ghcOptObjSuffix = toFlag "dyn_o"
+                    }
               odir = fromFlag (ghcOptObjDir vanillaSrcOpts)
 
           createDirectoryIfMissingVerbose verbosity True odir
@@ -848,7 +852,7 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
             whenProfLib (runGhcProgIfNeeded profSrcOpts)
         | filename <- srcs
         ]
-  
+
   -- Build any C++ sources separately.
   unless (not has_code || null (cxxSources libBi)) $ do
     info verbosity "Building C++ Sources..."
@@ -1461,7 +1465,7 @@ gbuildSources verbosity pkgId specVer tmpDir bm =
                 BuildSources
                   { cSourcesFiles = cSources bnfo
                   , cxxSourceFiles = cxxSources bnfo
-                  , jsSourceFiles = jsSources bnfo 
+                  , jsSourceFiles = jsSources bnfo
                   , asmSourceFiles = asmSources bnfo
                   , cmmSourceFiles = cmmSources bnfo
                   , inputSourceFiles = [main]
@@ -1474,7 +1478,7 @@ gbuildSources verbosity pkgId specVer tmpDir bm =
                 BuildSources
                   { cSourcesFiles = cSources bnfo
                   , cxxSourceFiles = cxxSources bnfo
-                  , jsSourceFiles = jsSources bnfo 
+                  , jsSourceFiles = jsSources bnfo
                   , asmSourceFiles = asmSources bnfo
                   , cmmSourceFiles = cmmSources bnfo
                   , inputSourceFiles = [main]
@@ -1491,7 +1495,7 @@ gbuildSources verbosity pkgId specVer tmpDir bm =
                 BuildSources
                   { cSourcesFiles = csf
                   , cxxSourceFiles = cxxsf
-                  , jsSourceFiles = jsSources bnfo 
+                  , jsSourceFiles = jsSources bnfo
                   , asmSourceFiles = asmSources bnfo
                   , cmmSourceFiles = cmmSources bnfo
                   , inputSourceFiles = []
@@ -1770,9 +1774,8 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
                   filename
               vanillaSrcOpts =
                 if isGhcDynamic && wantDyn
-                  then
-                    -- Dynamic GHC requires C/C++ sources to be built
-                    -- with -fPIC for REPL to work. See #2207.
+                  then -- Dynamic GHC requires C/C++ sources to be built
+                  -- with -fPIC for REPL to work. See #2207.
                     baseSrcOpts{ghcOptFPic = toFlag True}
                   else baseSrcOpts
               profSrcOpts =
