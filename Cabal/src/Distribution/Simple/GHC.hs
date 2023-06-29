@@ -1586,11 +1586,14 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
       dynamicTooSupported = supportsDynamicToo comp
       cLikeObjs = map (`replaceExtension` objExtension) cSrcs
       cxxObjs = map (`replaceExtension` objExtension) cxxSrcs
-      jsObjs = map (`replaceExtension` objExtension) jsSrcs
+      jsObjs = if hasJsSupport then map (`replaceExtension` objExtension) jsSrcs else []
       asmObjs = map (`replaceExtension` objExtension) asmSrcs
       cmmObjs = map (`replaceExtension` objExtension) cmmSrcs
       needDynamic = gbuildNeedDynamic lbi bm
       needProfiling = withProfExe lbi
+      Platform hostArch _ = hostPlatform lbi
+      hasJsSupport = hostArch == JavaScript
+
 
       -- build executables
       baseOpts =
@@ -1816,7 +1819,7 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
     buildExtraSources Internal.componentCcGhcOptions True cSrcs
 
   -- build any JS sources
-  unless (null $ jsSourceFiles buildSources) $ do
+  unless (not hasJsSupport || null (jsSourceFiles buildSources)) $ do
     info verbosity "Building JS Sources..."
     buildExtraSources Internal.componentJsGhcOptions False jsSrcs
 
