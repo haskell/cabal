@@ -709,7 +709,7 @@ renderPureArgs version comp platform args = concat
     , [ "--since-qual=external" | isVersion 2 20 ]
 
     , [ "--quickjump" | isVersion 2 19
-                      , _ <- flagToList . argQuickJump $ args ]
+                      , True <- flagToList . argQuickJump $ args ]
 
     , [ "--hyperlinked-source" | isVersion 2 17
                                , True <- flagToList . argLinkedSource $ args ]
