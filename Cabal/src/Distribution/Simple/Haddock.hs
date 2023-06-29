@@ -82,6 +82,7 @@ import Data.Either (rights)
 import System.Directory (doesDirectoryExist, doesFileExist, getCurrentDirectory)
 import System.FilePath (isAbsolute, normalise, (<.>), (</>))
 import System.IO (hClose, hPutStrLn, hSetEncoding, utf8)
+import Distribution.Simple.Errors
 
 -- ------------------------------------------------------------------------------
 -- Types
@@ -180,13 +181,14 @@ getHaddockProg verbosity programDb comp args quickJumpFlag = do
 
   -- various sanity checks
   when (hoogle && version < mkVersion [2, 2]) $
-    die' verbosity "Haddock 2.0 and 2.1 do not support the --hoogle flag."
+    dieWithException verbosity NoSupportForHoogle 
+    -- "Haddock 2.0 and 2.1 do not support the --hoogle flag."
 
   when (fromFlag argQuickJump && version < mkVersion [2, 19]) $ do
     let msg = "Haddock prior to 2.19 does not support the --quickjump flag."
         alt = "The generated documentation won't have the QuickJump feature."
     if Flag True == quickJumpFlag
-      then die' verbosity msg
+      then dieWithException verbosity NoSupportForQuickJumpFlag
       else warn verbosity (msg ++ "\n" ++ alt)
 
   haddockGhcVersionStr <-
@@ -195,20 +197,12 @@ getHaddockProg verbosity programDb comp args quickJumpFlag = do
       haddockProg
       ["--ghc-version"]
   case (simpleParsec haddockGhcVersionStr, compilerCompatVersion GHC comp) of
-    (Nothing, _) -> die' verbosity "Could not get GHC version from Haddock"
-    (_, Nothing) -> die' verbosity "Could not get GHC version from compiler"
+    (Nothing, _) -> dieWithException verbosity NoGHCVersionFromHaddock
+    (_, Nothing) -> dieWithException verbosity NoGHCVersionFromCompiler
     (Just haddockGhcVersion, Just ghcVersion)
       | haddockGhcVersion == ghcVersion -> return ()
-      | otherwise ->
-          die' verbosity $
-            "Haddock's internal GHC version must match the configured "
-              ++ "GHC version.\n"
-              ++ "The GHC version is "
-              ++ prettyShow ghcVersion
-              ++ " but "
-              ++ "haddock is using GHC version "
-              ++ prettyShow haddockGhcVersion
-
+      | otherwise -> dieWithException verbosity $ HaddockAndGHCVersionDoesntMatch ghcVersion haddockGhcVersion
+       
   return (haddockProg, version)
 
 haddock
@@ -577,10 +571,8 @@ mkHaddockArgs verbosity tmp lbi clbi htmlTemplate haddockVersion inFiles bi = do
         if withSharedLib lbi
           then return sharedOpts
           else
-            die' verbosity $
-              "Must have vanilla or shared libraries "
-                ++ "enabled in order to run haddock"
-
+            dieWithException verbosity MustHaveSharedLibraries
+          
   return
     ifaceArgs
       { argGhcOptions = opts
@@ -1076,10 +1068,8 @@ haddockPackageFlags verbosity lbi clbi htmlTemplate = do
   transitiveDeps <- case PackageIndex.dependencyClosure allPkgs directDeps of
     Left x -> return x
     Right inf ->
-      die' verbosity $
-        "internal error when calculating transitive "
-          ++ "package dependencies.\nDebug info: "
-          ++ show inf
+      dieWithException verbosity $ HaddockPackageFlags inf
+      
   haddockPackagePaths (PackageIndex.allPackages transitiveDeps) mkHtmlPath
   where
     mkHtmlPath = fmap expandTemplateVars htmlTemplate

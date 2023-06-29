@@ -24,6 +24,12 @@ import Distribution.Pretty
   )
 import Distribution.Types.PackageId
 import Distribution.ModuleName
+import Distribution.Version
+import Distribution.InstalledPackageInfo
+import Distribution.Types.UnitId
+import Distribution.Types.TestType
+import Distribution.Types.BenchmarkType
+
 
 
 -- Types representing exceptions thrown by functions in all the modules of Cabal Package
@@ -47,6 +53,21 @@ data CabalException =  NoBenchMarkProgram FilePath
                     | FailedToParseOutputDump String
                     | ListFailed String
                     | FailedToParseOutputList String
+                    | ProgramNotFound String
+                    | NoSupportForHoogle
+                    | NoSupportForQuickJumpFlag
+                    | NoGHCVersionFromHaddock
+                    | NoGHCVersionFromCompiler
+                    | HaddockAndGHCVersionDoesntMatch Version Version
+                    | MustHaveSharedLibraries
+                    | HaddockPackageFlags [(InstalledPackageInfo, [UnitId])]
+                    | UnknownCompilerFlavor CompilerFlavor
+                    | FailedToDetermineTarget
+                    | NoMultipleTargets 
+                    | REPLNotSupported
+                    | NoSupportBuildingTestSuite TestType
+                    | NoSupportBuildingBenchMark BenchmarkType
+                    | BuildingNotSupportedWithCompiler
  deriving (Show,Typeable)
 
 exceptionCode :: CabalException -> Int
@@ -71,6 +92,21 @@ exceptionCode e = case e of
   FailedToParseOutputDump {}    -> 9076
   ListFailed{}                  -> 5109
   FailedToParseOutputList{}     -> 7650
+  ProgramNotFound{}             -> 4123
+  NoSupportForHoogle{}          -> 8706
+  NoSupportForQuickJumpFlag{}   -> 7086
+  NoGHCVersionFromHaddock       -> 5045
+  NoGHCVersionFromCompiler      -> 4098
+  HaddockAndGHCVersionDoesntMatch{}  -> 1998
+  MustHaveSharedLibraries{}     -> 6032
+  HaddockPackageFlags{}         -> 4567
+  UnknownCompilerFlavor{}       -> 3102
+  FailedToDetermineTarget{}     -> 5049
+  NoMultipleTargets{}           -> 6091
+  REPLNotSupported{}            -> 1098
+  NoSupportBuildingTestSuite{}  -> 4106
+  NoSupportBuildingBenchMark{}  -> 5320
+  BuildingNotSupportedWithCompiler{} -> 7077
 
 exceptionMessage :: CabalException -> String
 exceptionMessage e = case e of
@@ -96,5 +132,21 @@ exceptionMessage e = case e of
     FailedToParseOutputDump programId -> "failed to parse output of '" ++ programId ++ " dump'" 
     ListFailed programId            -> programId ++" list failed" 
     FailedToParseOutputList programId -> "failed to parse output of '" ++ programId ++ " list'" 
-     
-
+    ProgramNotFound progName        -> "The program '" ++ progName ++ "' is required but it could not be found"
+    NoSupportForHoogle              -> "Haddock 2.0 and 2.1 do not support the --hoogle flag."
+    NoSupportForQuickJumpFlag       -> "Haddock prior to 2.19 does not support the --quickjump flag."
+    NoGHCVersionFromHaddock         -> "Could not get GHC version from Haddock"
+    NoGHCVersionFromCompiler        -> "Could not get GHC version from compiler"
+    HaddockAndGHCVersionDoesntMatch ghcVersion haddockGhcVersion -> "Haddock's internal GHC version must match the configured "
+                                                                      ++ "GHC version.\n" ++ "The GHC version is " ++ prettyShow ghcVersion
+                                                                      ++ " but " ++ "haddock is using GHC version " ++ prettyShow haddockGhcVersion
+    MustHaveSharedLibraries         ->  "Must have vanilla or shared libraries " ++ "enabled in order to run haddock"    
+    HaddockPackageFlags inf         -> "internal error when calculating transitive "
+                                          ++ "package dependencies.\nDebug info: " ++ show inf     
+    UnknownCompilerFlavor compilerFlavor -> "dumpBuildInfo: Unknown compiler flavor: " ++ show compilerFlavor                                                                                                       
+    FailedToDetermineTarget         -> "Failed to determine target." 
+    NoMultipleTargets               -> "The 'repl' command does not support multiple targets at once."
+    REPLNotSupported                -> "A REPL is not supported with this compiler."
+    NoSupportBuildingTestSuite testType  ->"No support for building test suite type " ++ show testType
+    NoSupportBuildingBenchMark benchMarkType -> "No support for building benchmark type " ++ show benchMarkType
+    BuildingNotSupportedWithCompiler  -> "Building is not supported with this compiler."

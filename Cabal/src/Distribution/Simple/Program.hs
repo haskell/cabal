@@ -132,6 +132,7 @@ import Distribution.Simple.Program.Run
 import Distribution.Simple.Program.Types
 import Distribution.Simple.Utils
 import Distribution.Verbosity
+import Distribution.Simple.Errors
 
 -- | Runs the given configured program.
 runProgram
@@ -170,13 +171,8 @@ runDbProgram
   -> IO ()
 runDbProgram verbosity prog programDb args =
   case lookupProgram prog programDb of
-    Nothing -> die' verbosity notFound
+    Nothing -> dieWithException verbosity $ ProgramNotFound (programName prog)
     Just configuredProg -> runProgram verbosity configuredProg args
-  where
-    notFound =
-      "The program '"
-        ++ programName prog
-        ++ "' is required but it could not be found"
 
 -- | Looks up the given program in the program database and runs it.
 getDbProgramOutput
@@ -191,10 +187,5 @@ getDbProgramOutput
   -> IO String
 getDbProgramOutput verbosity prog programDb args =
   case lookupProgram prog programDb of
-    Nothing -> die' verbosity notFound
+    Nothing -> dieWithException verbosity $ ProgramNotFound (programName prog)
     Just configuredProg -> getProgramOutput verbosity configuredProg args
-  where
-    notFound =
-      "The program '"
-        ++ programName prog
-        ++ "' is required but it could not be found"

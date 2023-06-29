@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
 
+
 -----------------------------------------------------------------------------
 
 -- |
@@ -95,6 +96,7 @@ import Control.Monad
 import qualified Data.ByteString.Lazy as LBS
 import System.Directory (doesFileExist, getCurrentDirectory, removeFile)
 import System.FilePath (takeDirectory, (<.>), (</>))
+import Distribution.Simple.Errors
 
 -- -----------------------------------------------------------------------------
 
@@ -198,9 +200,7 @@ dumpBuildInfo verbosity distPref dumpBuildInfoFlag pkg_descr lbi flags = do
 
     (compilerProg, _) <- case flavorToProgram (compilerFlavor (compiler lbi)) of
       Nothing ->
-        die' verbosity $
-          "dumpBuildInfo: Unknown compiler flavor: "
-            ++ show (compilerFlavor (compiler lbi))
+        dieWithException verbosity $ UnknownCompilerFlavor (compilerFlavor (compiler lbi))
       Just program -> requireProgram verbosity program (withPrograms lbi)
 
     let (warns, json) = mkBuildInfo pwd pkg_descr lbi flags (compilerProg, compiler lbi) activeTargets
@@ -248,9 +248,9 @@ repl pkg_descr lbi flags suffixes args = do
       -- This seems DEEPLY questionable.
       [] -> case allTargetsInBuildOrder' pkg_descr lbi of
         (target : _) -> return target
-        [] -> die' verbosity $ "Failed to determine target."
+        [] -> dieWithException verbosity $ FailedToDetermineTarget 
       [target] -> return target
-      _ -> die' verbosity $ "The 'repl' command does not support multiple targets at once."
+      _ -> dieWithException verbosity $ NoMultipleTargets 
   let componentsToBuild = neededTargetsInBuildOrder' pkg_descr lbi [nodeKey target]
   debug verbosity $
     "Component build order: "
@@ -313,7 +313,7 @@ startInterpreter verbosity programDb comp platform packageDBs =
   case compilerFlavor comp of
     GHC -> GHC.startInterpreter verbosity programDb comp platform packageDBs
     GHCJS -> GHCJS.startInterpreter verbosity programDb comp platform packageDBs
-    _ -> die' verbosity "A REPL is not supported with this compiler."
+    _ -> dieWithException verbosity REPLNotSupported 
 
 buildComponent
   :: Verbosity
@@ -512,7 +512,8 @@ buildComponent
   (CTest TestSuite{testInterface = TestSuiteUnsupported tt})
   _
   _ =
-    die' verbosity $ "No support for building test suite type " ++ prettyShow tt
+    dieWithException verbosity $ NoSupportBuildingTestSuite tt
+
 buildComponent
   verbosity
   numJobs
@@ -544,7 +545,7 @@ buildComponent
   (CBench Benchmark{benchmarkInterface = BenchmarkUnsupported tt})
   _
   _ =
-    die' verbosity $ "No support for building benchmark type " ++ prettyShow tt
+    dieWithException verbosity $ NoSupportBuildingBenchMark tt
 
 generateCode
   :: [String]
@@ -717,7 +718,8 @@ replComponent
   (CTest TestSuite{testInterface = TestSuiteUnsupported tt})
   _
   _ =
-    die' verbosity $ "No support for building test suite type " ++ prettyShow tt
+    dieWithException verbosity $ NoSupportBuildingTestSuite tt
+  
 replComponent
   replFlags
   verbosity
@@ -742,7 +744,7 @@ replComponent
   (CBench Benchmark{benchmarkInterface = BenchmarkUnsupported tt})
   _
   _ =
-    die' verbosity $ "No support for building benchmark type " ++ prettyShow tt
+    dieWithException verbosity $ NoSupportBuildingBenchMark tt
 
 ----------------------------------------------------
 -- Shared code for buildComponent and replComponent
@@ -938,7 +940,7 @@ buildLib verbosity numJobs pkg_descr lbi lib clbi =
     GHCJS -> GHCJS.buildLib verbosity numJobs pkg_descr lbi lib clbi
     UHC -> UHC.buildLib verbosity pkg_descr lbi lib clbi
     HaskellSuite{} -> HaskellSuite.buildLib verbosity pkg_descr lbi lib clbi
-    _ -> die' verbosity "Building is not supported with this compiler."
+    _ -> dieWithException verbosity BuildingNotSupportedWithCompiler 
 
 -- | Build a foreign library
 --
@@ -955,7 +957,7 @@ buildFLib
 buildFLib verbosity numJobs pkg_descr lbi flib clbi =
   case compilerFlavor (compiler lbi) of
     GHC -> GHC.buildFLib verbosity numJobs pkg_descr lbi flib clbi
-    _ -> die' verbosity "Building is not supported with this compiler."
+    _ -> dieWithException verbosity BuildingNotSupportedWithCompiler  
 
 buildExe
   :: Verbosity
@@ -970,7 +972,7 @@ buildExe verbosity numJobs pkg_descr lbi exe clbi =
     GHC -> GHC.buildExe verbosity numJobs pkg_descr lbi exe clbi
     GHCJS -> GHCJS.buildExe verbosity numJobs pkg_descr lbi exe clbi
     UHC -> UHC.buildExe verbosity pkg_descr lbi exe clbi
-    _ -> die' verbosity "Building is not supported with this compiler."
+    _ -> dieWithException verbosity BuildingNotSupportedWithCompiler 
 
 replLib
   :: ReplOptions
@@ -986,7 +988,7 @@ replLib replFlags verbosity pkg_descr lbi lib clbi =
     -- NoFlag as the numJobs parameter.
     GHC -> GHC.replLib replFlags verbosity NoFlag pkg_descr lbi lib clbi
     GHCJS -> GHCJS.replLib (replOptionsFlags replFlags) verbosity NoFlag pkg_descr lbi lib clbi
-    _ -> die' verbosity "A REPL is not supported for this compiler."
+    _ -> dieWithException verbosity REPLNotSupported
 
 replExe
   :: ReplOptions
@@ -1000,7 +1002,7 @@ replExe replFlags verbosity pkg_descr lbi exe clbi =
   case compilerFlavor (compiler lbi) of
     GHC -> GHC.replExe replFlags verbosity NoFlag pkg_descr lbi exe clbi
     GHCJS -> GHCJS.replExe (replOptionsFlags replFlags) verbosity NoFlag pkg_descr lbi exe clbi
-    _ -> die' verbosity "A REPL is not supported for this compiler."
+    _ -> dieWithException verbosity REPLNotSupported
 
 replFLib
   :: ReplOptions
@@ -1013,7 +1015,7 @@ replFLib
 replFLib replFlags verbosity pkg_descr lbi exe clbi =
   case compilerFlavor (compiler lbi) of
     GHC -> GHC.replFLib replFlags verbosity NoFlag pkg_descr lbi exe clbi
-    _ -> die' verbosity "A REPL is not supported for this compiler."
+    _ -> dieWithException verbosity REPLNotSupported
 
 -- | Runs 'componentInitialBuildSteps' on every configured component.
 initialBuildSteps
