@@ -168,9 +168,9 @@ listPackageSourcesWithDie
   -- ^ extra preprocessors (include suffixes)
   -> IO [FilePath]
   -- ^ relative paths
-listPackageSourcesWithDie verbosity rip cwd pkg_descr0 pps = do
+listPackageSourcesWithDie verbosity _rip cwd pkg_descr0 pps = do
   -- Call helpers that actually do all work.
-  listPackageSources' verbosity rip cwd pkg_descr pps
+  listPackageSources' verbosity _rip cwd pkg_descr pps
   where
     pkg_descr = filterAutogenModules pkg_descr0
 
@@ -190,7 +190,7 @@ listPackageSources'
   -- ^ extra preprocessors (include suffixes)
   -> IO [FilePath]
   -- ^ relative paths
-listPackageSources' verbosity rip cwd pkg_descr pps =
+listPackageSources' verbosity _rip cwd pkg_descr pps =
   fmap concat . sequenceA $
     [ -- Library sources.
       fmap concat
@@ -200,19 +200,19 @@ listPackageSources' verbosity rip cwd pkg_descr pps =
             , signatures = sigs
             , libBuildInfo = libBi
             } ->
-            allSourcesBuildInfo verbosity rip cwd libBi pps (modules ++ sigs)
+            allSourcesBuildInfo verbosity _rip cwd libBi pps (modules ++ sigs)
     , -- Executables sources.
       fmap concat
         . withAllExe
         $ \Executable{modulePath = mainPath, buildInfo = exeBi} -> do
-          biSrcs <- allSourcesBuildInfo verbosity rip cwd exeBi pps []
+          biSrcs <- allSourcesBuildInfo verbosity _rip cwd exeBi pps []
           mainSrc <- findMainExeFile verbosity cwd exeBi pps mainPath
           return (mainSrc : biSrcs)
     , -- Foreign library sources
       fmap concat
         . withAllFLib
         $ \flib@(ForeignLib{foreignLibBuildInfo = flibBi}) -> do
-          biSrcs <- allSourcesBuildInfo verbosity rip cwd flibBi pps []
+          biSrcs <- allSourcesBuildInfo verbosity _rip cwd flibBi pps []
           defFiles <-
             traverse
               (findModDefFile verbosity cwd flibBi pps)
@@ -225,11 +225,11 @@ listPackageSources' verbosity rip cwd pkg_descr pps =
           let bi = testBuildInfo t
           case testInterface t of
             TestSuiteExeV10 _ mainPath -> do
-              biSrcs <- allSourcesBuildInfo verbosity rip cwd bi pps []
+              biSrcs <- allSourcesBuildInfo verbosity _rip cwd bi pps []
               srcMainFile <- findMainExeFile verbosity cwd bi pps mainPath
               return (srcMainFile : biSrcs)
             TestSuiteLibV09 _ m ->
-              allSourcesBuildInfo verbosity rip cwd bi pps [m]
+              allSourcesBuildInfo verbosity _rip cwd bi pps [m]
             TestSuiteUnsupported tp ->
               dieWithException verbosity $ UnsupportedTestSuite (show tp)
 
@@ -240,7 +240,7 @@ listPackageSources' verbosity rip cwd pkg_descr pps =
           let bi = benchmarkBuildInfo bm
           case benchmarkInterface bm of
             BenchmarkExeV10 _ mainPath -> do
-              biSrcs <- allSourcesBuildInfo verbosity rip cwd bi pps []
+              biSrcs <- allSourcesBuildInfo verbosity _rip cwd bi pps []
               srcMainFile <- findMainExeFile verbosity cwd bi pps mainPath
               return (srcMainFile : biSrcs)
             BenchmarkUnsupported tp ->
@@ -254,15 +254,15 @@ listPackageSources' verbosity rip cwd pkg_descr pps =
               srcDataDir
                 | null srcDataDirRaw = "."
                 | otherwise = srcDataDirRaw
-          matchDirFileGlobWithDie verbosity rip (specVersion pkg_descr) cwd (srcDataDir </> filename)
+          matchDirFileGlobWithDie verbosity _rip (specVersion pkg_descr) cwd (srcDataDir </> filename)
     , -- Extra source files.
       fmap concat . for (extraSrcFiles pkg_descr) $ \fpath ->
-        matchDirFileGlobWithDie verbosity rip (specVersion pkg_descr) cwd fpath
+        matchDirFileGlobWithDie verbosity _rip (specVersion pkg_descr) cwd fpath
     , -- Extra doc files.
       fmap concat
         . for (extraDocFiles pkg_descr)
         $ \filename ->
-          matchDirFileGlobWithDie verbosity rip (specVersion pkg_descr) cwd filename
+          matchDirFileGlobWithDie verbosity _rip (specVersion pkg_descr) cwd filename
     , -- License file(s).
       return (map getSymbolicPath $ licenseFiles pkg_descr)
     , -- Install-include files, without autogen-include files
@@ -509,7 +509,7 @@ allSourcesBuildInfo
   -> [ModuleName]
   -- ^ Exposed modules
   -> IO [FilePath]
-allSourcesBuildInfo verbosity rip cwd bi pps modules = do
+allSourcesBuildInfo verbosity _rip cwd bi pps modules = do
   let searchDirs = map getSymbolicPath (hsSourceDirs bi)
   sources <-
     fmap concat $
@@ -548,13 +548,14 @@ allSourcesBuildInfo verbosity rip cwd bi pps modules = do
     notFound :: ModuleName -> IO [FilePath]
     notFound m =
       -- dieWithException verbosity $ NoModuleFound m suffixes
-     rip verbosity $
+        _rip verbosity $
         "Could not find module: "
           ++ prettyShow m
           ++ " with any suffix: "
           ++ show suffixes
           ++ ". If the module "
-          ++ "is autogenerated it should be added to 'autogen-modules'."
+          ++ "is autogenerated it should be added to 'autogen-modules'."  
+     
 -- | Note: must be called with the CWD set to the directory containing
 -- the '.cabal' file.
 printPackageProblems :: Verbosity -> PackageDescription -> IO ()
