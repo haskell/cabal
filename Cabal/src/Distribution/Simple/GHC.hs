@@ -1594,7 +1594,6 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
       Platform hostArch _ = hostPlatform lbi
       hasJsSupport = hostArch == JavaScript
 
-
       -- build executables
       baseOpts =
         (componentGhcOptions verbosity lbi bnfo clbi tmpDir)
