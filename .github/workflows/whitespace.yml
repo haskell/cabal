@@ -49,7 +49,7 @@ jobs:
     - name: Install fix-whitespace
       if: ${{ !steps.cache.outputs.cache-hit }}
       run: |
-        cabal install --ignore-project --install-method=copy --installdir=$HOME/.local/bin fix-whitespace-${{ env.fix-whitespace-ver }}
+        cabal install --constraint=aeson==2.1.2.1 --ignore-project --install-method=copy --installdir=$HOME/.local/bin fix-whitespace-${{ env.fix-whitespace-ver }}
         strip $HOME/.local/bin/fix-whitespace
 
     - name: Check the whitespace issue
