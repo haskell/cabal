@@ -1,0 +1,12 @@
+synopsis: Add new Hackage root keys to bootstrap set
+packages: cabal-install
+prs: #9068
+
+description: {
+
+The two new [Hackage root keyholders](https://github.com/haskell-infra/hackage-root-keys/tree/master/root-keys) were added to the bootstrap set.
+
+- Added Hackage root key for Joachim Breitner
+- Added Hackage root key for Mathieu Boespflug
+
+}
