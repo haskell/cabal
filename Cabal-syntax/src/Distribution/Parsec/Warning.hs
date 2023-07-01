@@ -57,6 +57,8 @@ data PWarnType
     PWTSpecVersion
   | -- | Empty filepath, i.e. literally ""
     PWTEmptyFilePath
+  | -- | sections contents (sections and fields) are indented inconsistently
+    PWTInconsistentIndentation
   | -- | Experimental feature
     PWTExperimental
   deriving (Eq, Ord, Show, Enum, Bounded, Generic)

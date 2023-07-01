@@ -1,0 +1,13 @@
+synopsis: Do not always pass --quickjump to haddock #9049
+packages: Cabal
+prs: #9049
+issues: #9060
+description: {
+
+6d8adf13101 caused `cabal` to always pass the `--quickjump` flag to Haddock.
+Not only does this waste memory for a service that user hasn't asked for,
+but also leads to a failure with Haddocks shipped with GHC 9.0 and 9.2,
+which had a separate bug (fixed in later versions but not backported) when
+Haddock does not pass `--quickjump` recursively to the package dependencies.
+
+}

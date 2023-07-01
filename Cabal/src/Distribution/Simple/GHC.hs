@@ -107,6 +107,7 @@ import Distribution.Simple.Program.GHC
 import qualified Distribution.Simple.Program.HcPkg as HcPkg
 import qualified Distribution.Simple.Program.Ld as Ld
 import qualified Distribution.Simple.Program.Strip as Strip
+import Distribution.Simple.Setup.Common (extraCompilationArtifacts)
 import Distribution.Simple.Setup.Config
 import Distribution.Simple.Setup.Repl
 import Distribution.Simple.Utils
@@ -2478,7 +2479,7 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir pkg lib clbi = do
   whenShared $ copyModuleFiles "dyn_hi"
 
   -- copy extra compilation artifacts that ghc plugins may produce
-  copyDirectoryIfExists "extra-compilation-artifacts"
+  copyDirectoryIfExists extraCompilationArtifacts
 
   -- copy the built library files over:
   whenHasCode $ do
