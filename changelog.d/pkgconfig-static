@@ -1,0 +1,3 @@
+synopsis: pkg-config: Use --libs --static when building with using --enable-executable-static
+packages: Cabal
+prs: #6935
