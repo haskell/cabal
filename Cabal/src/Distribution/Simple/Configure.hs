@@ -1028,10 +1028,17 @@ mkProgramDb cfg initialProgramDb = programDb
         . setProgramSearchPath searchpath
         $ initialProgramDb
     searchpath =
-      map
-        ProgramSearchPathDir
-        (fromNubList $ configProgramPathExtra cfg)
-        ++ getProgramSearchPath initialProgramDb
+      getProgramSearchPath initialProgramDb
+        ++ map
+          ProgramSearchPathDir
+          (fromNubList $ configProgramPathExtra cfg)
+
+-- Note. We try as much as possible to _prepend_ rather than postpend the extra-prog-path
+-- so that we can override the system path. However, in a v2-build, at this point, the "system" path
+-- has already been extended by both the built-tools-depends paths, as well as the program-path-extra
+-- so for v2 builds adding it again is entirely unnecessary. However, it needs to get added again _anyway_
+-- so as to take effect for v1 builds or standalone calls to Setup.hs
+-- In this instance, the lesser evil is to not allow it to override the system path.
 
 -- -----------------------------------------------------------------------------
 -- Helper functions for configure

@@ -347,7 +347,9 @@ sanityCheckElaboratedPackage
 -- readProjectConfig also loads the global configuration, which is read with
 -- loadConfig and convertd to a ProjectConfig with convertLegacyGlobalConfig.
 --
--- *Important*
+
+-- * Important *
+
 --
 -- You can notice how some project config options are needed to read the
 -- project config! This is evident by the fact that rebuildProjectConfig
@@ -539,9 +541,10 @@ configureCompiler
             )
           $ defaultProgramDb
 
-
 ------------------------------------------------------------------------------
+
 -- * Deciding what to do: making an 'ElaboratedInstallPlan'
+
 ------------------------------------------------------------------------------
 
 -- | Return an up-to-date elaborated install plan.
@@ -4009,8 +4012,11 @@ setupHsScriptOptions
       , useDistPref = builddir
       , useLoggingHandle = Nothing -- this gets set later
       , useWorkingDir = Just srcdir
-      , useExtraPathEnv = elabExeDependencyPaths elab
-      , useExtraEnvOverrides = dataDirsEnvironmentForPlan distdir plan
+      , useExtraPathEnv = elabExeDependencyPaths elab ++ elabProgramPathExtra
+      , -- note that the above adds the extra-prog-path directly following the elaborated
+        -- dep paths, so that it overrides the normal path, but _not_ the elaborated extensions
+        -- for build-tools-depends.
+        useExtraEnvOverrides = dataDirsEnvironmentForPlan distdir plan
       , useWin32CleanHack = False -- TODO: [required eventually]
       , forceExternalSetupMethod = isParallelBuild
       , setupCacheLock = Just cacheLock
