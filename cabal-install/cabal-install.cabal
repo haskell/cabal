@@ -179,7 +179,6 @@ library
         Distribution.Client.TargetSelector
         Distribution.Client.Targets
         Distribution.Client.Types
-        Distribution.Client.Types.AllowNewer
         Distribution.Client.Types.BuildResults
         Distribution.Client.Types.ConfiguredId
         Distribution.Client.Types.ConfiguredPackage

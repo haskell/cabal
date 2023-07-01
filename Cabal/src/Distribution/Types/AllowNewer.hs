@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
 
-module Distribution.Client.Types.AllowNewer
+module Distribution.Types.AllowNewer
   ( AllowNewer (..)
   , AllowOlder (..)
   , RelaxDeps (..)
@@ -12,15 +12,15 @@ module Distribution.Client.Types.AllowNewer
   , isRelaxDeps
   ) where
 
-import Distribution.Client.Compat.Prelude
-import Prelude ()
+import Distribution.Compat.Prelude
 
-import Distribution.Parsec (parsecLeadingCommaNonEmpty)
+import Distribution.Parsec (CabalParsing, Parsec (parsec), parsecLeadingCommaNonEmpty)
 import Distribution.Types.PackageId (PackageId, PackageIdentifier (..))
 import Distribution.Types.PackageName (PackageName, mkPackageName)
 import Distribution.Types.Version (nullVersion)
 
 import qualified Distribution.Compat.CharParsing as P
+import Distribution.Pretty (Pretty (pretty))
 import qualified Text.PrettyPrint as Disp
 
 -- $setup

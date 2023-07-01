@@ -18,7 +18,7 @@ import Distribution.Client.IndexUtils.IndexState (RepoIndexState, TotalIndexStat
 import Distribution.Client.IndexUtils.Timestamp (Timestamp)
 import Distribution.Client.Targets (UserConstraint)
 import Distribution.Client.Types (RepoName)
-import Distribution.Client.Types.AllowNewer (RelaxDepSubject, RelaxDeps, RelaxedDep)
+import Distribution.Types.AllowNewer (RelaxDepSubject, RelaxDeps, RelaxedDep)
 
 tests :: TestTree
 tests =

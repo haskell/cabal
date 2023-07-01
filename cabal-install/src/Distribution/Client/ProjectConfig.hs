@@ -221,6 +221,7 @@ import System.IO
   ( IOMode (ReadMode)
   , withBinaryFile
   )
+import Distribution.Types.AllowNewer (AllowOlder(..), AllowNewer (..))
 
 ----------------------------------------
 -- Resolving configuration to settings

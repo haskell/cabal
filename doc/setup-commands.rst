@@ -987,6 +987,76 @@ Miscellaneous options
     Windows the ``cabal`` should do the right thing and hence should
     normally not require this flag.
 
+.. option:: --allow-newer[=pkgs], --allow-older[=pkgs]
+
+    Selectively relax upper or lower bounds in dependencies without
+    editing the package description respectively.
+
+    Note: These options work the same for ``./Setup.hs configure`` and
+    ``cabal``. Thus the following description uses the ``cabal`` command.
+    Some features  of these options are only necessary for the ``cabal``
+    command, but also exist in ``./Setup.hs configure`` for symmetry.
+
+    The following description focuses on upper bounds and the
+    :option:`--allow-newer` flag, but applies analogously to
+    :option:`--allow-older` and lower bounds. :option:`--allow-newer`
+    and :option:`--allow-older` can be used at the same time.
+
+    If you want to install a package A that depends on B >= 1.0 && <
+    2.0, but you have the version 2.0 of B installed, you can compile A
+    against B 2.0 by using ``cabal install --allow-newer=B A``. This
+    works for the whole package index: if A also depends on C that in
+    turn depends on B < 2.0, C's dependency on B will be also relaxed.
+
+    Example:
+
+    ::
+
+        $ cd foo
+        $ cabal configure
+        Resolving dependencies...
+        cabal: Could not resolve dependencies:
+        [...]
+        $ cabal configure --allow-newer
+        Resolving dependencies...
+        Configuring foo...
+
+    Additional examples:
+
+    ::
+
+        # Relax upper bounds in all dependencies.
+        $ cabal install --allow-newer foo
+
+        # Relax upper bounds only in dependencies on bar, baz and quux.
+        $ cabal install --allow-newer=bar,baz,quux foo
+
+        # Relax the upper bound on bar and force bar==2.1.
+        $ cabal install --allow-newer=bar --constraint="bar==2.1" foo
+
+    It's also possible to limit the scope of :option:`--allow-newer` to single
+    packages with the ``--allow-newer=scope:dep`` syntax. This means
+    that the dependency on ``dep`` will be relaxed only for the package
+    ``scope``.
+
+    Example:
+
+    ::
+
+        # Relax upper bound in foo's dependency on base; also relax upper bound in
+        # every package's dependency on lens.
+        $ cabal install --allow-newer=foo:base,lens
+
+        # Relax upper bounds in foo's dependency on base and bar's dependency
+        # on time; also relax the upper bound in the dependency on lens specified by
+        # any package.
+        $ cabal install --allow-newer=foo:base,lens --allow-newer=bar:time
+
+    Finally, one can enable :option:`--allow-newer` permanently by setting
+    ``allow-newer: True`` in the :ref:`config file <config-file-discovery>`. Enabling
+    'allow-newer' selectively is also supported in the config file
+    (``allow-newer: foo, bar, baz:base``).
+
 .. _setup-build:
 
 runhaskell Setup.hs build

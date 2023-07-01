@@ -62,6 +62,7 @@ import Distribution.Compat.Semigroup (Last' (..), Option' (..))
 import Distribution.Compat.Stack
 
 import Distribution.Simple.Setup.Common
+import Distribution.Types.AllowNewer (AllowNewer (..), AllowOlder (..), RelaxDeps (..))
 
 -- ------------------------------------------------------------
 
@@ -220,6 +221,12 @@ data ConfigFlags = ConfigFlags
   -- ^ Allow depending on private sublibraries. This is used by external
   -- tools (like cabal-install) so they can add multiple-public-libraries
   -- compatibility to older ghcs by checking visibility externally.
+  , configAllowNewer :: Maybe AllowNewer
+  -- ^ Ignore upper bounds on all or some dependencies.
+  -- Nothing means option not set.
+  , configAllowOlder :: Maybe AllowOlder
+  -- ^ Ignore lower bounds on all or some dependencies.
+  -- Nothing means option not set.
   }
   deriving (Generic, Read, Show, Typeable)
 
@@ -288,6 +295,8 @@ instance Eq ConfigFlags where
       && equal configDebugInfo
       && equal configDumpBuildInfo
       && equal configUseResponseFiles
+      && equal configAllowNewer
+      && equal configAllowOlder
     where
       equal f = on (==) f a b
 
@@ -342,6 +351,8 @@ defaultConfigFlags progDb =
     , configDebugInfo = Flag NoDebugInfo
     , configDumpBuildInfo = NoFlag
     , configUseResponseFiles = NoFlag
+    , configAllowNewer = Nothing
+    , configAllowOlder = Nothing
     }
 {- FOURMOLU_ENABLE -}
 
@@ -828,8 +839,58 @@ configureOptions showOrParseArgs =
           configAllowDependingOnPrivateLibs
           (\v flags -> flags{configAllowDependingOnPrivateLibs = v})
           trueArg
+       , option
+          ""
+          ["allow-older"]
+          ( "Ignore lower bounds in all dependencies or for the given DEPS."
+              ++ " DEPS is a comma or space separated list of DEP or PKG:DEP,"
+              ++ " where PKG or DEP can be *."
+          )
+          configAllowOlder
+          (\v flags -> flags{configAllowOlder = v})
+          ( optArg
+              "DEPS"
+              (fmap (Just . AllowOlder) parseRelaxDeps)
+              (Just $ AllowOlder RelaxDepsAll)
+              (relaxDepsPrinter . fmap unAllowOlder)
+          )
+       , option
+          ""
+          ["allow-newer"]
+          ( "Ignore upper bounds in all dependencies or for the given DEPS."
+              ++ " DEPS is a comma or space separated list of DEP or PKG:DEP,"
+              ++ " where PKG or DEP can be *."
+          )
+          configAllowNewer
+          (\v flags -> flags{configAllowNewer = v})
+          ( optArg
+              "DEPS"
+              (fmap (Just . AllowNewer) parseRelaxDeps)
+              (Just $ AllowNewer RelaxDepsAll)
+              (relaxDepsPrinter . fmap unAllowNewer)
+          )
        ]
   where
+    relaxDepsParser :: CabalParsing m => m RelaxDeps
+    relaxDepsParser = do
+      rs <- parsecOptCommaList parsec
+      if null rs
+        then -- This error is not displayed by the argument parser,
+        -- but its nice to have anyway.
+
+          fail $
+            "empty argument list is not allowed. "
+              ++ "Note: use --allow-newer/--allow-older without the equals sign to permit all "
+              ++ "packages to use newer versions."
+        else return . RelaxDepsSome $ rs
+
+    relaxDepsPrinter :: Maybe RelaxDeps -> [Maybe String]
+    relaxDepsPrinter Nothing = []
+    relaxDepsPrinter (Just RelaxDepsAll) = [Nothing]
+    relaxDepsPrinter (Just (RelaxDepsSome pkgs)) = map (Just . prettyShow) pkgs
+
+    parseRelaxDeps = parsecToReadE ("Not a valid list of DEPS: " ++) relaxDepsParser
+
     liftInstallDirs =
       liftOption configInstallDirs (\v flags -> flags{configInstallDirs = v})
 

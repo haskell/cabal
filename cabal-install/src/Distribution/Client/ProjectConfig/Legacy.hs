@@ -35,7 +35,7 @@ import Distribution.Client.Compat.Prelude
 import Distribution.Types.Flag (FlagName, parsecFlagAssignment)
 
 import Distribution.Client.ProjectConfig.Types
-import Distribution.Client.Types.AllowNewer (AllowNewer (..), AllowOlder (..))
+import Distribution.Types.AllowNewer (AllowNewer (..), AllowOlder (..))
 import Distribution.Client.Types.Repo (LocalRepo (..), RemoteRepo (..), emptyRemoteRepo)
 import Distribution.Client.Types.RepoName (RepoName (..), unRepoName)
 import Distribution.Client.Types.SourceRepo (SourceRepoList, sourceRepositoryPackageGrammar)
@@ -631,6 +631,8 @@ convertLegacyAllPackageFlags globalFlags configFlags configExFlags installFlags 
       , configHcFlavor = projectConfigHcFlavor
       , configHcPath = projectConfigHcPath
       , configHcPkg = projectConfigHcPkg
+      , configAllowOlder = projectConfigAllowOlder
+      , configAllowNewer = projectConfigAllowNewer
       , -- configProgramPathExtra    = projectConfigProgPathExtra DELETE ME
       configInstallDirs = projectConfigInstallDirs
       , -- configUserInstall         = projectConfigUserInstall,
@@ -642,8 +644,6 @@ convertLegacyAllPackageFlags globalFlags configFlags configExFlags installFlags 
       , configExConstraints = projectConfigConstraints
       , configPreferences = projectConfigPreferences
       , configSolver = projectConfigSolver
-      , configAllowOlder = projectConfigAllowOlder
-      , configAllowNewer = projectConfigAllowNewer
       , configWriteGhcEnvironmentFilesPolicy =
         projectConfigWriteGhcEnvironmentFilesPolicy
       } = configExFlags
@@ -901,6 +901,8 @@ convertToLegacySharedConfig
           , configDistPref = projectConfigDistDir
           , configPackageDBs = projectConfigPackageDBs
           , configInstallDirs = projectConfigInstallDirs
+          , configAllowOlder = projectConfigAllowOlder
+          , configAllowNewer = projectConfigAllowNewer
           }
 
       configExFlags =
@@ -911,8 +913,6 @@ convertToLegacySharedConfig
           , configExConstraints = projectConfigConstraints
           , configPreferences = projectConfigPreferences
           , configSolver = projectConfigSolver
-          , configAllowOlder = projectConfigAllowOlder
-          , configAllowNewer = projectConfigAllowNewer
           , configWriteGhcEnvironmentFilesPolicy =
               projectConfigWriteGhcEnvironmentFilesPolicy
           }
@@ -1035,6 +1035,8 @@ convertToLegacyAllPackageConfig
           , configUseResponseFiles = mempty
           , configDumpBuildInfo = mempty
           , configAllowDependingOnPrivateLibs = mempty
+          , configAllowNewer = Nothing
+          , configAllowOlder = Nothing
           }
 
       haddockFlags =
@@ -1111,6 +1113,8 @@ convertToLegacyPerPackageConfig PackageConfig{..} =
         , configUseResponseFiles = mempty
         , configDumpBuildInfo = packageConfigDumpBuildInfo
         , configAllowDependingOnPrivateLibs = mempty
+        , configAllowNewer = Nothing
+        , configAllowOlder = Nothing
         }
 
     installFlags =
@@ -1325,6 +1329,18 @@ legacySharedConfigFieldDescrs constraintSrc =
               (fmap readPackageDb parsecToken)
               configPackageDBs
               (\v conf -> conf{configPackageDBs = v})
+          , monoidFieldParsec
+              "allow-older"
+              (maybe mempty pretty)
+              (fmap Just parsec)
+              (fmap unAllowOlder . configAllowOlder)
+              (\v conf -> conf{configAllowOlder = fmap AllowOlder v})
+          , monoidFieldParsec
+              "allow-newer"
+              (maybe mempty pretty)
+              (fmap Just parsec)
+              (fmap unAllowNewer . configAllowNewer)
+              (\v conf -> conf{configAllowNewer = fmap AllowNewer v})
           ]
         . filterFields (["verbose", "builddir"] ++ map optionName installDirsOptions)
         . commandOptionsToFields
@@ -1345,18 +1361,6 @@ legacySharedConfigFieldDescrs constraintSrc =
               parsec
               configPreferences
               (\v conf -> conf{configPreferences = v})
-          , monoidFieldParsec
-              "allow-older"
-              (maybe mempty pretty)
-              (fmap Just parsec)
-              (fmap unAllowOlder . configAllowOlder)
-              (\v conf -> conf{configAllowOlder = fmap AllowOlder v})
-          , monoidFieldParsec
-              "allow-newer"
-              (maybe mempty pretty)
-              (fmap Just parsec)
-              (fmap unAllowNewer . configAllowNewer)
-              (\v conf -> conf{configAllowNewer = fmap AllowNewer v})
           ]
         . filterFields
           [ "cabal-lib-version"

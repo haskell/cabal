@@ -38,7 +38,7 @@ import Distribution.Client.IndexUtils.IndexState (RepoIndexState (..), TotalInde
 import Distribution.Client.IndexUtils.Timestamp (Timestamp, epochTimeToTimestamp)
 import Distribution.Client.Targets
 import Distribution.Client.Types (RepoName (..), WriteGhcEnvironmentFilesPolicy)
-import Distribution.Client.Types.AllowNewer
+import Distribution.Types.AllowNewer
 import Distribution.Client.Types.OverwritePolicy (OverwritePolicy)
 import Distribution.Solver.Types.OptionalStanza (OptionalStanza (..), OptionalStanzaMap, OptionalStanzaSet, optStanzaSetFromList, optStanzaTabulate)
 import Distribution.Solver.Types.PackageConstraint (PackageProperty (..))

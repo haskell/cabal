@@ -1,0 +1,14 @@
+synopsis: Add --allow-newer and --allow-older to ./Setup.hs configure
+packages: Cabal
+prs: #9016
+issues: #7445 #5407 #7859
+significance: significant
+
+description: {
+
+- --allow-newer and --allow-older flag are now again supported by ./Setup.hs configure
+- This feature can be used when dependencies have are provided externally,
+  it is desired to check if their versions match, but some checks should be ignored.
+- Historical note: These options where moved to Cabal in 2016 (#3165) and removed again in 2017 (#4527).
+
+}

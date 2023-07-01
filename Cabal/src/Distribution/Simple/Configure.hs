@@ -162,9 +162,12 @@ import Text.PrettyPrint
   , ($+$)
   )
 
+import Data.Coerce (coerce)
 import qualified Data.Maybe as M
 import qualified Data.Set as Set
+import Distribution.AllowNewer (RelaxKind (..), relaxPackageDeps)
 import qualified Distribution.Compat.NonEmptySet as NES
+import Distribution.Types.AllowNewer (AllowNewer (..), AllowOlder (..))
 import Distribution.Types.AnnotatedId
 
 type UseExternalInternalDeps = Bool
@@ -1234,7 +1237,13 @@ configureFinalizedPackage
   satisfies
   comp
   compPlatform
-  pkg_descr0 = do
+  pkg_descr_before_relaxed_bounds = do
+    let
+      relax relax_kind getter = relaxPackageDeps relax_kind . fromMaybe mempty . coerce $ getter cfg
+      pkg_descr0 =
+        relax RelaxLower configAllowOlder
+          . relax RelaxUpper configAllowNewer
+          $ pkg_descr_before_relaxed_bounds
     (pkg_descr0', flags) <-
       case finalizePD
         (configConfigurationsFlags cfg)

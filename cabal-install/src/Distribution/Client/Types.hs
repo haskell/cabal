@@ -21,8 +21,7 @@
 --
 -- Various common data types for the entire cabal-install system
 module Distribution.Client.Types
-  ( module Distribution.Client.Types.AllowNewer
-  , module Distribution.Client.Types.ConfiguredId
+  ( module Distribution.Client.Types.ConfiguredId
   , module Distribution.Client.Types.ConfiguredPackage
   , module Distribution.Client.Types.BuildResults
   , module Distribution.Client.Types.PackageLocation
@@ -34,7 +33,6 @@ module Distribution.Client.Types
   , module Distribution.Client.Types.WriteGhcEnvironmentFilesPolicy
   ) where
 
-import Distribution.Client.Types.AllowNewer
 import Distribution.Client.Types.BuildResults
 import Distribution.Client.Types.ConfiguredId
 import Distribution.Client.Types.ConfiguredPackage
