@@ -809,49 +809,46 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
       whenProfLib (runGhcProg profOpts)
 
   let
-    buildExtraSources mkSrcOpts wantDyn srcs =
-      sequence_
-        [ do
-          let baseSrcOpts =
-                mkSrcOpts
-                  verbosity
-                  implInfo
-                  lbi
-                  libBi
-                  clbi
-                  relLibTargetDir
-                  filename
-              vanillaSrcOpts
-                -- Dynamic GHC requires C sources to be built
-                -- with -fPIC for REPL to work. See #2207.
-                | isGhcDynamic && wantDyn = baseSrcOpts{ghcOptFPic = toFlag True}
-                | otherwise = baseSrcOpts
-              runGhcProgIfNeeded opts = do
-                needsRecomp <- checkNeedsRecompilation filename opts
-                when needsRecomp $ runGhcProg opts
-              profSrcOpts =
-                vanillaSrcOpts
-                  `mappend` mempty
-                    { ghcOptProfilingMode = toFlag True
-                    , ghcOptObjSuffix = toFlag "p_o"
-                    }
-              sharedSrcOpts =
-                vanillaSrcOpts
-                  `mappend` mempty
-                    { ghcOptFPic = toFlag True
-                    , ghcOptDynLinkMode = toFlag GhcDynamicOnly
-                    , ghcOptObjSuffix = toFlag "dyn_o"
-                    }
-              odir = fromFlag (ghcOptObjDir vanillaSrcOpts)
+    buildExtraSources mkSrcOpts wantDyn = traverse_ $ buildExtraSource mkSrcOpts wantDyn
+    buildExtraSource mkSrcOpts wantDyn filename = do
+      let baseSrcOpts =
+            mkSrcOpts
+              verbosity
+              implInfo
+              lbi
+              libBi
+              clbi
+              relLibTargetDir
+              filename
+          vanillaSrcOpts
+            -- Dynamic GHC requires C sources to be built
+            -- with -fPIC for REPL to work. See #2207.
+            | isGhcDynamic && wantDyn = baseSrcOpts{ghcOptFPic = toFlag True}
+            | otherwise = baseSrcOpts
+          runGhcProgIfNeeded opts = do
+            needsRecomp <- checkNeedsRecompilation filename opts
+            when needsRecomp $ runGhcProg opts
+          profSrcOpts =
+            vanillaSrcOpts
+              `mappend` mempty
+                { ghcOptProfilingMode = toFlag True
+                , ghcOptObjSuffix = toFlag "p_o"
+                }
+          sharedSrcOpts =
+            vanillaSrcOpts
+              `mappend` mempty
+                { ghcOptFPic = toFlag True
+                , ghcOptDynLinkMode = toFlag GhcDynamicOnly
+                , ghcOptObjSuffix = toFlag "dyn_o"
+                }
+          odir = fromFlag (ghcOptObjDir vanillaSrcOpts)
 
-          createDirectoryIfMissingVerbose verbosity True odir
-          runGhcProgIfNeeded vanillaSrcOpts
-          unless (forRepl || not wantDyn) $
-            whenSharedLib forceSharedLib (runGhcProgIfNeeded sharedSrcOpts)
-          unless forRepl $
-            whenProfLib (runGhcProgIfNeeded profSrcOpts)
-        | filename <- srcs
-        ]
+      createDirectoryIfMissingVerbose verbosity True odir
+      runGhcProgIfNeeded vanillaSrcOpts
+      unless (forRepl || not wantDyn) $
+        whenSharedLib forceSharedLib (runGhcProgIfNeeded sharedSrcOpts)
+      unless forRepl $
+        whenProfLib (runGhcProgIfNeeded profSrcOpts)
 
   -- Build any C++ sources separately.
   unless (not has_code || null (cxxSources libBi)) $ do
@@ -1762,50 +1759,48 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
         }
 
   let
-    buildExtraSources mkSrcOpts wantDyn srcs =
-      sequence_
-        [ do
-          let baseSrcOpts =
-                mkSrcOpts
-                  verbosity
-                  implInfo
-                  lbi
-                  bnfo
-                  clbi
-                  tmpDir
-                  filename
-              vanillaSrcOpts =
-                if isGhcDynamic && wantDyn
-                  then -- Dynamic GHC requires C/C++ sources to be built
-                  -- with -fPIC for REPL to work. See #2207.
-                    baseSrcOpts{ghcOptFPic = toFlag True}
-                  else baseSrcOpts
-              profSrcOpts =
-                vanillaSrcOpts
-                  `mappend` mempty
-                    { ghcOptProfilingMode = toFlag True
-                    }
-              sharedSrcOpts =
-                vanillaSrcOpts
-                  `mappend` mempty
-                    { ghcOptFPic = toFlag True
-                    , ghcOptDynLinkMode = toFlag GhcDynamicOnly
-                    }
-              opts
-                | needProfiling = profSrcOpts
-                | needDynamic && wantDyn = sharedSrcOpts
-                | otherwise = vanillaSrcOpts
-              -- TODO: Placing all Haskell, C, & C++ objects in a single directory
-              --       Has the potential for file collisions. In general we would
-              --       consider this a user error. However, we should strive to
-              --       add a warning if this occurs.
-              odir = fromFlag (ghcOptObjDir opts)
-          createDirectoryIfMissingVerbose verbosity True odir
-          needsRecomp <- checkNeedsRecompilation filename opts
-          when needsRecomp $
-            runGhcProg opts
-        | filename <- srcs
-        ]
+    buildExtraSources mkSrcOpts wantDyn = traverse_ $ buildExtraSource mkSrcOpts wantDyn
+    buildExtraSource mkSrcOpts wantDyn filename = do
+      let baseSrcOpts =
+            mkSrcOpts
+              verbosity
+              implInfo
+              lbi
+              bnfo
+              clbi
+              tmpDir
+              filename
+          vanillaSrcOpts =
+            if isGhcDynamic && wantDyn
+              then -- Dynamic GHC requires C/C++ sources to be built
+              -- with -fPIC for REPL to work. See #2207.
+                baseSrcOpts{ghcOptFPic = toFlag True}
+              else baseSrcOpts
+          profSrcOpts =
+            vanillaSrcOpts
+              `mappend` mempty
+                { ghcOptProfilingMode = toFlag True
+                }
+          sharedSrcOpts =
+            vanillaSrcOpts
+              `mappend` mempty
+                { ghcOptFPic = toFlag True
+                , ghcOptDynLinkMode = toFlag GhcDynamicOnly
+                }
+          opts
+            | needProfiling = profSrcOpts
+            | needDynamic && wantDyn = sharedSrcOpts
+            | otherwise = vanillaSrcOpts
+          -- TODO: Placing all Haskell, C, & C++ objects in a single directory
+          --       Has the potential for file collisions. In general we would
+          --       consider this a user error. However, we should strive to
+          --       add a warning if this occurs.
+          odir = fromFlag (ghcOptObjDir opts)
+
+      createDirectoryIfMissingVerbose verbosity True odir
+      needsRecomp <- checkNeedsRecompilation filename opts
+      when needsRecomp $
+        runGhcProg opts
 
   -- build any C++ sources
   unless (null cxxSrcs) $ do
@@ -1818,17 +1813,17 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
     buildExtraSources Internal.componentCcGhcOptions True cSrcs
 
   -- build any JS sources
-  unless (not hasJsSupport || null (jsSourceFiles buildSources)) $ do
+  unless (not hasJsSupport || null jsSrcs) $ do
     info verbosity "Building JS Sources..."
     buildExtraSources Internal.componentJsGhcOptions False jsSrcs
 
   -- build any ASM sources
-  unless (null $ asmSourceFiles buildSources) $ do
+  unless (null asmSrcs) $ do
     info verbosity "Building Assembler Sources..."
     buildExtraSources Internal.componentAsmGhcOptions True asmSrcs
 
   -- build any Cmm sources
-  unless (null $ cmmSourceFiles buildSources) $ do
+  unless (null cmmSrcs) $ do
     info verbosity "Building C-- Sources..."
     buildExtraSources Internal.componentCmmGhcOptions True cmmSrcs
 
