@@ -80,6 +80,7 @@ import Distribution.Utils.NubList
 import Distribution.Utils.Path
 import Distribution.Verbosity
 import Distribution.Version
+import Distribution.Simple.Errors
 
 import Control.Monad (msum)
 import Data.Char (isLower)
@@ -149,28 +150,13 @@ configure verbosity hcPath hcPkgPath conf0 = do
       verbosity
       (programPath ghcjsPkgProg)
 
-  when (ghcjsVersion /= ghcjsPkgGhcjsVersion) $
-    die' verbosity $
-      "Version mismatch between ghcjs and ghcjs-pkg: "
-        ++ programPath ghcjsProg
-        ++ " is version "
-        ++ prettyShow ghcjsVersion
-        ++ " "
-        ++ programPath ghcjsPkgProg
-        ++ " is version "
-        ++ prettyShow ghcjsPkgGhcjsVersion
-
+  when (ghcjsVersion /= ghcjsPkgGhcjsVersion) $ 
+    dieWithException verbosity $ VersionMisMatch (programPath ghcjsProg) 
+                                                    ghcjsVersion (programPath ghcjsPkgProg) ghcjsPkgGhcjsVersion
+    
   when (ghcjsGhcVersion /= ghcjsPkgVersion) $
-    die' verbosity $
-      "Version mismatch between ghcjs and ghcjs-pkg: "
-        ++ programPath ghcjsProg
-        ++ " was built with GHC version "
-        ++ prettyShow ghcjsGhcVersion
-        ++ " "
-        ++ programPath ghcjsPkgProg
-        ++ " was built with GHC version "
-        ++ prettyShow ghcjsPkgVersion
-
+    dieWithException verbosity $ VersionMisMatchGHC (programPath ghcjsProg) ghcjsGhcVersion (programPath ghcjsPkgProg) ghcjsPkgVersion
+   
   -- Likewise we try to find the matching hsc2hs and haddock programs.
   let hsc2hsProgram' =
         hsc2hsProgram
@@ -403,14 +389,9 @@ checkPackageDbStack _ (GlobalPackageDB : rest)
   | GlobalPackageDB `notElem` rest = return ()
 checkPackageDbStack verbosity rest
   | GlobalPackageDB `notElem` rest =
-      die' verbosity $
-        "With current ghc versions the global package db is always used "
-          ++ "and must be listed first. This ghc limitation may be lifted in "
-          ++ "future, see https://gitlab.haskell.org/ghc/ghc/-/issues/5977"
-checkPackageDbStack verbosity _ =
-  die' verbosity $
-    "If the global package db is specified, it must be "
-      ++ "specified first and cannot be specified multiple times"
+      dieWithException verbosity GlobalPackageDBLimitation 
+checkPackageDbStack verbosity _ = 
+  dieWithException verbosity GlobalPackageDBSpecifiedFirst
 
 getInstalledPackages'
   :: Verbosity

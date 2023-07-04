@@ -62,7 +62,7 @@ import Distribution.Simple.Utils
 import Distribution.System
 import Distribution.Utils.Path
 import Distribution.Verbosity
-
+import Distribution.Simple.Errors
 import Data.List (stripPrefix)
 import System.FilePath (normalise, (<.>), (</>))
 
@@ -192,7 +192,7 @@ getSourceFiles verbosity dirs modules = flip traverse modules $ \m ->
     findFileWithExtension ["hs", "lhs", "hsig", "lhsig"] dirs (ModuleName.toFilePath m)
       >>= maybe (notFound m) (return . normalise)
   where
-    notFound module_ = die' verbosity $ "can't find source for module " ++ prettyShow module_
+    notFound module_ = dieWithException verbosity $ CantFindSoureModule module_
 
 -- | The directory where we put build results for an executable
 exeBuildDir :: LocalBuildInfo -> Executable -> FilePath

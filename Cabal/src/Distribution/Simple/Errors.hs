@@ -68,6 +68,15 @@ data CabalException =  NoBenchMarkProgram FilePath
                     | NoSupportBuildingTestSuite TestType
                     | NoSupportBuildingBenchMark BenchmarkType
                     | BuildingNotSupportedWithCompiler
+                    | ProvideHaskellSuiteTool String
+                    | CannotDetermineCompilerVersion
+                    | PkgdumpFailed
+                    | FailedToParseOutput
+                    | CantFindSoureModule ModuleName
+                    | VersionMisMatch FilePath Version FilePath Version
+                    | VersionMisMatchGHC FilePath Version FilePath Version
+                    | GlobalPackageDBLimitation 
+                    | GlobalPackageDBSpecifiedFirst
  deriving (Show,Typeable)
 
 exceptionCode :: CabalException -> Int
@@ -107,6 +116,15 @@ exceptionCode e = case e of
   NoSupportBuildingTestSuite{}  -> 4106
   NoSupportBuildingBenchMark{}  -> 5320
   BuildingNotSupportedWithCompiler{} -> 7077
+  ProvideHaskellSuiteTool{}     -> 7509
+  CannotDetermineCompilerVersion{}  -> 4519
+  PkgdumpFailed{}                 -> 2290
+  FailedToParseOutput{}           -> 5500
+  CantFindSoureModule{}           -> 8870
+  VersionMisMatch{}               -> 9001
+  VersionMisMatchGHC{}            -> 4001
+  GlobalPackageDBLimitation{}     -> 5002
+  GlobalPackageDBSpecifiedFirst{} -> 3901
 
 exceptionMessage :: CabalException -> String
 exceptionMessage e = case e of
@@ -150,3 +168,31 @@ exceptionMessage e = case e of
     NoSupportBuildingTestSuite testType  ->"No support for building test suite type " ++ show testType
     NoSupportBuildingBenchMark benchMarkType -> "No support for building benchmark type " ++ show benchMarkType
     BuildingNotSupportedWithCompiler  -> "Building is not supported with this compiler."
+    ProvideHaskellSuiteTool msg        -> show msg
+    CannotDetermineCompilerVersion    ->"haskell-suite: couldn't determine compiler version"
+    PkgdumpFailed                     -> "pkg dump failed"
+    FailedToParseOutput               -> "failed to parse output of 'pkg dump'"
+    CantFindSoureModule moduleName    -> "can't find source for module " ++ prettyShow moduleName
+    VersionMisMatch ghcjsProgPath ghcjsVersion ghcjsPkgProgPath ghcjsPkgGhcjsVersion -> 
+      "Version mismatch between ghcjs and ghcjs-pkg: "
+        ++ show ghcjsProgPath
+        ++ " is version "
+        ++ prettyShow ghcjsVersion
+        ++ " "
+        ++ show ghcjsPkgProgPath
+        ++ " is version "
+        ++ prettyShow ghcjsPkgGhcjsVersion
+    VersionMisMatchGHC ghcjsProgPath ghcjsGhcVersion ghcjsPkgProgPath ghcjsPkgVersion ->
+      "Version mismatch between ghcjs and ghcjs-pkg: "
+        ++ show ghcjsProgPath
+        ++ " was built with GHC version "
+        ++ prettyShow ghcjsGhcVersion
+        ++ " "
+        ++ show ghcjsPkgProgPath
+        ++ " was built with GHC version "
+        ++ prettyShow ghcjsPkgVersion
+    GlobalPackageDBLimitation ->  "With current ghc versions the global package db is always used "
+          ++ "and must be listed first. This ghc limitation may be lifted in "
+          ++ "future, see https://gitlab.haskell.org/ghc/ghc/-/issues/5977"
+    GlobalPackageDBSpecifiedFirst -> "If the global package db is specified, it must be "
+      ++ "specified first and cannot be specified multiple times"
