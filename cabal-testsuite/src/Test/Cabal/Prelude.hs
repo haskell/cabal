@@ -294,6 +294,7 @@ cabalGArgs global_args cmd args input = do
               , "get", "unpack"
               , "info"
               , "init"
+              , "haddock-project"
               ]
           = [ ]
 

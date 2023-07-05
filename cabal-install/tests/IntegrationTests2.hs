@@ -38,13 +38,13 @@ import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.PackageConstraint
          ( PackageProperty(PackagePropertySource) )
 
-import qualified Distribution.Client.CmdBuild   as CmdBuild
-import qualified Distribution.Client.CmdRepl    as CmdRepl
-import qualified Distribution.Client.CmdRun     as CmdRun
-import qualified Distribution.Client.CmdTest    as CmdTest
-import qualified Distribution.Client.CmdBench   as CmdBench
-import qualified Distribution.Client.CmdHaddock as CmdHaddock
-import qualified Distribution.Client.CmdListBin as CmdListBin
+import qualified Distribution.Client.CmdBuild          as CmdBuild
+import qualified Distribution.Client.CmdRepl           as CmdRepl
+import qualified Distribution.Client.CmdRun            as CmdRun
+import qualified Distribution.Client.CmdTest           as CmdTest
+import qualified Distribution.Client.CmdBench          as CmdBench
+import qualified Distribution.Client.CmdHaddock        as CmdHaddock
+import qualified Distribution.Client.CmdListBin        as CmdListBin
 
 import Distribution.Package
 import Distribution.PackageDescription
@@ -60,6 +60,10 @@ import Distribution.Version
 import Distribution.ModuleName (ModuleName)
 import Distribution.Text
 import Distribution.Utils.Path
+import qualified Distribution.Client.CmdHaddockProject as CmdHaddockProject
+import Distribution.Client.Setup (globalStoreDir)
+import Distribution.Client.GlobalFlags (defaultGlobalFlags)
+import Distribution.Simple.Setup (HaddockProjectFlags(..), defaultHaddockProjectFlags)
 
 import qualified Data.Map as Map
 import qualified Data.Set as Set
@@ -153,6 +157,9 @@ tests config =
       testCase "Test Nix Flag" testNixFlags,
       testCase "Test Config options for commented options" testConfigOptionComments,
       testCase "Test Ignore Project Flag" testIgnoreProjectFlag
+    ]
+  , testGroup "haddock-project"
+    [ testCase "dependencies" (testHaddockProjectDependencies config)
     ]
   ]
 
@@ -2196,3 +2203,36 @@ testIgnoreProjectFlag = do
     emptyConfig = mempty
     ignoreSetConfig :: ProjectConfig
     ignoreSetConfig = mempty { projectConfigShared = mempty { projectConfigIgnoreProject = Flag True } }
+
+
+cleanHaddockProject :: FilePath -> IO ()
+cleanHaddockProject testdir = do
+    cleanProject testdir
+    let haddocksdir = basedir </> testdir </> "haddocks"
+    alreadyExists <- doesDirectoryExist haddocksdir
+    when alreadyExists $ removePathForcibly haddocksdir
+    let storedir = basedir </> testdir </> "store"
+    alreadyExists' <- doesDirectoryExist storedir
+    when alreadyExists' $ removePathForcibly storedir
+
+
+testHaddockProjectDependencies :: ProjectConfig -> Assertion
+testHaddockProjectDependencies config = do
+    (_,_,sharedConfig) <- planProject testdir config
+    -- `haddock-project` is only supported by `haddock-2.26.1` and above which is
+    -- shipped with `ghc-9.4`
+    when (compilerVersion (pkgConfigCompiler sharedConfig) > mkVersion [9,4]) $ do
+      let dir = basedir </> testdir
+      cleanHaddockProject testdir
+      withCurrentDirectory dir $ do
+        CmdHaddockProject.haddockProjectAction
+          defaultHaddockProjectFlags { haddockProjectVerbosity = Flag verbosity }
+          ["all"]
+          defaultGlobalFlags { globalStoreDir = Flag "store" }
+
+        let haddock = "haddocks" </> "async" </> "async.haddock"
+        hasHaddock <- doesFileExist haddock
+        unless hasHaddock $ assertFailure ("File `" ++ haddock ++ "` does not exist.")
+      cleanHaddockProject testdir
+  where
+    testdir = "haddock-project/dependencies"
