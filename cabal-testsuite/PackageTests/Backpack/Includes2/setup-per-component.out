@@ -8,7 +8,7 @@ for Includes2-0.1.0.0...
 Preprocessing library 'mylib' for Includes2-0.1.0.0...
 Running Haddock on library 'mylib' instantiated with Database = <Database>
 for Includes2-0.1.0.0...
-Documentation created: setup-per-component.dist/work/dist/doc/html/Includes2/index.html
+Documentation created: setup-per-component.dist/work/dist/doc/html/Includes2/
 # Setup copy
 Installing internal library mylib in <PATH>
 # Setup register
@@ -22,7 +22,7 @@ Building library 'mysql' for Includes2-0.1.0.0...
 # Setup haddock
 Preprocessing library 'mysql' for Includes2-0.1.0.0...
 Running Haddock on library 'mysql' for Includes2-0.1.0.0...
-Documentation created: setup-per-component.dist/work/dist/doc/html/Includes2/index.html
+Documentation created: setup-per-component.dist/work/dist/doc/html/Includes2/
 # Setup copy
 Installing internal library mysql in <PATH>
 # Setup register
@@ -35,7 +35,7 @@ Building library 'postgresql' for Includes2-0.1.0.0...
 # Setup haddock
 Preprocessing library 'postgresql' for Includes2-0.1.0.0...
 Running Haddock on library 'postgresql' for Includes2-0.1.0.0...
-Documentation created: setup-per-component.dist/work/dist/doc/html/Includes2/index.html
+Documentation created: setup-per-component.dist/work/dist/doc/html/Includes2/
 # Setup copy
 Installing internal library postgresql in <PATH>
 # Setup register
@@ -54,7 +54,7 @@ Preprocessing library 'mylib' for Includes2-0.1.0.0...
 Running Haddock on library 'mylib' instantiated with
   Database = mysql-0.1.0.0:Database.MySQL
 for Includes2-0.1.0.0...
-Documentation created: setup-per-component.dist/work/dist/doc/html/Includes2/index.html
+Documentation created: setup-per-component.dist/work/dist/doc/html/Includes2/
 # Setup copy
 Installing internal library mylib in <PATH>
 # Setup register
@@ -75,7 +75,7 @@ Preprocessing library 'mylib' for Includes2-0.1.0.0...
 Running Haddock on library 'mylib' instantiated with
   Database = postgresql-0.1.0.0:Database.PostgreSQL
 for Includes2-0.1.0.0...
-Documentation created: setup-per-component.dist/work/dist/doc/html/Includes2/index.html
+Documentation created: setup-per-component.dist/work/dist/doc/html/Includes2/
 # Setup copy
 Installing internal library mylib in <PATH>
 # Setup register
@@ -90,7 +90,7 @@ Building library for Includes2-0.1.0.0...
 # Setup haddock
 Preprocessing library for Includes2-0.1.0.0...
 Running Haddock on library for Includes2-0.1.0.0...
-Documentation created: setup-per-component.dist/work/dist/doc/html/Includes2/index.html
+Documentation created: setup-per-component.dist/work/dist/doc/html/Includes2/
 # Setup copy
 Installing library in <PATH>
 # Setup register

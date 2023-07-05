@@ -8,7 +8,7 @@ for sigs-0.1.0.0...
 Preprocessing library for sigs-0.1.0.0...
 Running Haddock on library instantiated with Data.Map = <Data.Map>
 for sigs-0.1.0.0...
-Documentation created: ../../setup-external-ok.dist/work/repo/sigs-0.1.0.0/dist/doc/html/sigs/index.html
+Documentation created: ../../setup-external-ok.dist/work/repo/sigs-0.1.0.0/dist/doc/html/sigs/
 # Setup copy
 Installing library in <PATH>
 # Setup register
@@ -24,7 +24,7 @@ for indef-0.1.0.0...
 Preprocessing library for indef-0.1.0.0...
 Running Haddock on library instantiated with Data.Map = <Data.Map>
 for indef-0.1.0.0...
-Documentation created: ../../setup-external-ok.dist/work/repo/indef-0.1.0.0/dist/doc/html/indef/index.html
+Documentation created: ../../setup-external-ok.dist/work/repo/indef-0.1.0.0/dist/doc/html/indef/
 # Setup copy
 Installing library in <PATH>
 # Setup register
@@ -41,7 +41,7 @@ Preprocessing library for sigs-0.1.0.0...
 Running Haddock on library instantiated with
   Data.Map = containers-<VERSION>:Data.Map
 for sigs-0.1.0.0...
-Documentation created: ../../setup-external-ok.dist/work/repo/sigs-0.1.0.0/dist/doc/html/sigs/index.html
+Documentation created: ../../setup-external-ok.dist/work/repo/sigs-0.1.0.0/dist/doc/html/sigs/
 # Setup copy
 Installing library in <PATH>
 # Setup register
@@ -58,7 +58,7 @@ Preprocessing library for indef-0.1.0.0...
 Running Haddock on library instantiated with
   Data.Map = containers-<VERSION>:Data.Map
 for indef-0.1.0.0...
-Documentation created: ../../setup-external-ok.dist/work/repo/indef-0.1.0.0/dist/doc/html/indef/index.html
+Documentation created: ../../setup-external-ok.dist/work/repo/indef-0.1.0.0/dist/doc/html/indef/
 # Setup copy
 Installing library in <PATH>
 # Setup register
