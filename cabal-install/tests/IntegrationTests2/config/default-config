@@ -118,6 +118,7 @@ jobs: $ncpus
 -- overwrite-policy:
 -- install-method:
 installdir: /home/colton/.cabal/bin
+-- token:
 -- username:
 -- password:
 -- password-command:
