@@ -194,10 +194,10 @@ are not currently built on a per-component basis.
 Where are my build products?
 ----------------------------
 
-A major deficiency in the current implementation of build is that
+A major deficiency in the current implementation of ``cabal build`` is that
 there is no programmatic way to access the location of build products.
 The location of the build products is intended to be an internal
-implementation detail of build, but we also understand that many
+implementation detail of ``cabal build``, but we also understand that many
 unimplemented features can only be reasonably worked around by
 accessing build products directly.
 
