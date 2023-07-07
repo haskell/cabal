@@ -218,10 +218,9 @@ import Network.URI
 import System.Directory
 import System.FilePath hiding (combine)
 import System.IO
-         ( withBinaryFile, IOMode(ReadMode) )
-import System.Directory
-import Network.URI
-         ( URI(..), URIAuth(..), parseAbsoluteURI, uriToString )
+  ( IOMode (ReadMode)
+  , withBinaryFile
+  )
 
 ----------------------------------------
 -- Resolving configuration to settings
@@ -366,64 +365,15 @@ resolveSolverSettings
 
 -- | Resolve the project configuration, with all its optional fields, into
 -- 'BuildTimeSettings' with no optional fields (by applying defaults).
---
-resolveBuildTimeSettings :: Verbosity
-                         -> CabalDirLayout
-                         -> ProjectConfig
-                         -> BuildTimeSettings
-resolveBuildTimeSettings verbosity
-                         CabalDirLayout {
-                           cabalLogsDirectory
-                         }
-                         ProjectConfig {
-                           projectConfigShared = ProjectConfigShared {
-                             projectConfigRemoteRepos,
-                             projectConfigLocalNoIndexRepos,
-                             projectConfigProgPathExtra
-                           },
-                           projectConfigBuildOnly
-                         } =
-    BuildTimeSettings {..}
-  where
-    buildSettingDryRun        = fromFlag    projectConfigDryRun
-    buildSettingOnlyDeps      = fromFlag    projectConfigOnlyDeps
-    buildSettingOnlyDownload  = fromFlag    projectConfigOnlyDownload
-    buildSettingSummaryFile   = fromNubList projectConfigSummaryFile
-    --buildSettingLogFile       -- defined below, more complicated
-    --buildSettingLogVerbosity  -- defined below, more complicated
-    buildSettingBuildReports  = fromFlag    projectConfigBuildReports
-    buildSettingSymlinkBinDir = flagToList  projectConfigSymlinkBinDir
-    buildSettingNumJobs       = if fromFlag projectConfigUseSemaphore
-                                  then UseSem (determineNumJobs projectConfigNumJobs)
-                                  else case (determineNumJobs projectConfigNumJobs) of
-                                          1 -> Serial
-                                          n -> NumJobs (Just n)
-    buildSettingKeepGoing     = fromFlag    projectConfigKeepGoing
-    buildSettingOfflineMode   = fromFlag    projectConfigOfflineMode
-    buildSettingKeepTempFiles = fromFlag    projectConfigKeepTempFiles
-    buildSettingRemoteRepos   = fromNubList projectConfigRemoteRepos
-    buildSettingLocalNoIndexRepos = fromNubList projectConfigLocalNoIndexRepos
-    buildSettingCacheDir      = fromFlag    projectConfigCacheDir
-    buildSettingHttpTransport = flagToMaybe projectConfigHttpTransport
-    buildSettingIgnoreExpiry  = fromFlag    projectConfigIgnoreExpiry
-    buildSettingReportPlanningFailure
-                              = fromFlag projectConfigReportPlanningFailure
-    buildSettingProgPathExtra = fromNubList projectConfigProgPathExtra
-    buildSettingHaddockOpen   = False
-
-    ProjectConfigBuildOnly{..} = defaults
-                              <> projectConfigBuildOnly
-
-    defaults = mempty {
-      projectConfigDryRun                = toFlag False,
-      projectConfigOnlyDeps              = toFlag False,
-      projectConfigOnlyDownload          = toFlag False,
-      projectConfigBuildReports          = toFlag NoReports,
-      projectConfigReportPlanningFailure = toFlag False,
-      projectConfigKeepGoing             = toFlag False,
-      projectConfigOfflineMode           = toFlag False,
-      projectConfigKeepTempFiles         = toFlag False,
-      projectConfigIgnoreExpiry          = toFlag False
+resolveBuildTimeSettings
+  :: Verbosity
+  -> CabalDirLayout
+  -> ProjectConfig
+  -> BuildTimeSettings
+resolveBuildTimeSettings
+  verbosity
+  CabalDirLayout
+    { cabalLogsDirectory
     }
   ProjectConfig
     { projectConfigShared =
@@ -444,7 +394,12 @@ resolveBuildTimeSettings verbosity
       -- buildSettingLogVerbosity  -- defined below, more complicated
       buildSettingBuildReports = fromFlag projectConfigBuildReports
       buildSettingSymlinkBinDir = flagToList projectConfigSymlinkBinDir
-      buildSettingNumJobs = determineNumJobs projectConfigNumJobs
+      buildSettingNumJobs =
+        if fromFlag projectConfigUseSemaphore
+          then UseSem (determineNumJobs projectConfigNumJobs)
+          else case (determineNumJobs projectConfigNumJobs) of
+            1 -> Serial
+            n -> NumJobs (Just n)
       buildSettingKeepGoing = fromFlag projectConfigKeepGoing
       buildSettingOfflineMode = fromFlag projectConfigOfflineMode
       buildSettingKeepTempFiles = fromFlag projectConfigKeepTempFiles
@@ -475,16 +430,47 @@ resolveBuildTimeSettings verbosity
           , projectConfigIgnoreExpiry = toFlag False
           }
 
-    useDefaultTemplate
-      | buildSettingBuildReports == DetailedReports = True
-      | isJust givenTemplate                        = False
-      | isParallelBuild buildSettingNumJobs         = True
-      | otherwise                                   = False
+      -- The logging logic: what log file to use and what verbosity.
+      --
+      -- If the user has specified --remote-build-reporting=detailed, use the
+      -- default log file location. If the --build-log option is set, use the
+      -- provided location. Otherwise don't use logging, unless building in
+      -- parallel (in which case the default location is used).
+      --
+      buildSettingLogFile
+        :: Maybe
+            ( Compiler
+              -> Platform
+              -> PackageId
+              -> UnitId
+              -> FilePath
+            )
+      buildSettingLogFile
+        | useDefaultTemplate = Just (substLogFileName defaultTemplate)
+        | otherwise = fmap substLogFileName givenTemplate
 
-    substLogFileName :: PathTemplate
-                     -> Compiler -> Platform
-                     -> PackageId -> UnitId -> FilePath
-    substLogFileName template compiler platform pkgid uid =
+      defaultTemplate =
+        toPathTemplate $
+          cabalLogsDirectory
+            </> "$compiler"
+            </> "$libname"
+            <.> "log"
+      givenTemplate = flagToMaybe projectConfigLogFile
+
+      useDefaultTemplate
+        | buildSettingBuildReports == DetailedReports = True
+        | isJust givenTemplate = False
+        | isParallelBuild buildSettingNumJobs = True
+        | otherwise = False
+
+      substLogFileName
+        :: PathTemplate
+        -> Compiler
+        -> Platform
+        -> PackageId
+        -> UnitId
+        -> FilePath
+      substLogFileName template compiler platform pkgid uid =
         fromPathTemplate (substPathTemplate env template)
         where
           env =
@@ -494,20 +480,20 @@ resolveBuildTimeSettings verbosity
               (compilerInfo compiler)
               platform
 
-    -- If the user has specified --remote-build-reporting=detailed or
-    -- --build-log, use more verbose logging.
-    --
-    buildSettingLogVerbosity :: Verbosity
-    buildSettingLogVerbosity
-      | overrideVerbosity = modifyVerbosity (max verbose) verbosity
-      | otherwise         = verbosity
+      -- If the user has specified --remote-build-reporting=detailed or
+      -- --build-log, use more verbose logging.
+      --
+      buildSettingLogVerbosity :: Verbosity
+      buildSettingLogVerbosity
+        | overrideVerbosity = modifyVerbosity (max verbose) verbosity
+        | otherwise = verbosity
 
-    overrideVerbosity :: Bool
-    overrideVerbosity
-      | buildSettingBuildReports == DetailedReports = True
-      | isJust givenTemplate                        = True
-      | isParallelBuild buildSettingNumJobs         = False
-      | otherwise                                   = False
+      overrideVerbosity :: Bool
+      overrideVerbosity
+        | buildSettingBuildReports == DetailedReports = True
+        | isJust givenTemplate = True
+        | isParallelBuild buildSettingNumJobs = False
+        | otherwise = False
 
 ---------------------------------------------
 -- Reading and writing project config files

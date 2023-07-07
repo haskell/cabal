@@ -76,9 +76,9 @@ import Distribution.Simple.Utils
 import Distribution.System
 import Distribution.Types.ComponentLocalBuildInfo
 import Distribution.Types.PackageName.Magic
+import Distribution.Types.ParStrat
 import Distribution.Utils.NubList
 import Distribution.Utils.Path
-import Distribution.Types.ParStrat
 
 import Control.Monad (msum)
 import Data.Char (isLower)
@@ -463,21 +463,36 @@ toJSLibName lib
 -- -----------------------------------------------------------------------------
 -- Building a library
 
-buildLib :: Verbosity -> Flag ParStrat -> PackageDescription
-         -> LocalBuildInfo -> Library -> ComponentLocalBuildInfo
-         -> IO ()
+buildLib
+  :: Verbosity
+  -> Flag ParStrat
+  -> PackageDescription
+  -> LocalBuildInfo
+  -> Library
+  -> ComponentLocalBuildInfo
+  -> IO ()
 buildLib = buildOrReplLib Nothing
 
-replLib :: [String]                -> Verbosity
-        -> Flag ParStrat  -> PackageDescription
-        -> LocalBuildInfo          -> Library
-        -> ComponentLocalBuildInfo -> IO ()
+replLib
+  :: [String]
+  -> Verbosity
+  -> Flag ParStrat
+  -> PackageDescription
+  -> LocalBuildInfo
+  -> Library
+  -> ComponentLocalBuildInfo
+  -> IO ()
 replLib = buildOrReplLib . Just
 
-buildOrReplLib :: Maybe [String] -> Verbosity
-               -> Flag ParStrat -> PackageDescription
-               -> LocalBuildInfo -> Library
-               -> ComponentLocalBuildInfo -> IO ()
+buildOrReplLib
+  :: Maybe [String]
+  -> Verbosity
+  -> Flag ParStrat
+  -> PackageDescription
+  -> LocalBuildInfo
+  -> Library
+  -> ComponentLocalBuildInfo
+  -> IO ()
 buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
   let uid = componentUnitId clbi
       libTargetDir = componentBuildDir lbi clbi
@@ -872,31 +887,47 @@ startInterpreter verbosity progdb comp platform packageDBs = do
 
 -- | Build a foreign library
 buildFLib
-  :: Verbosity          -> Flag ParStrat
-  -> PackageDescription -> LocalBuildInfo
-  -> ForeignLib         -> ComponentLocalBuildInfo -> IO ()
+  :: Verbosity
+  -> Flag ParStrat
+  -> PackageDescription
+  -> LocalBuildInfo
+  -> ForeignLib
+  -> ComponentLocalBuildInfo
+  -> IO ()
 buildFLib v njobs pkg lbi = gbuild v njobs pkg lbi . GBuildFLib
 
 replFLib
-  :: [String]                -> Verbosity
-  -> Flag ParStrat  -> PackageDescription
-  -> LocalBuildInfo          -> ForeignLib
-  -> ComponentLocalBuildInfo -> IO ()
-replFLib replFlags  v njobs pkg lbi =
+  :: [String]
+  -> Verbosity
+  -> Flag ParStrat
+  -> PackageDescription
+  -> LocalBuildInfo
+  -> ForeignLib
+  -> ComponentLocalBuildInfo
+  -> IO ()
+replFLib replFlags v njobs pkg lbi =
   gbuild v njobs pkg lbi . GReplFLib replFlags
 
 -- | Build an executable with GHC.
 buildExe
-  :: Verbosity          -> Flag ParStrat
-  -> PackageDescription -> LocalBuildInfo
-  -> Executable         -> ComponentLocalBuildInfo -> IO ()
+  :: Verbosity
+  -> Flag ParStrat
+  -> PackageDescription
+  -> LocalBuildInfo
+  -> Executable
+  -> ComponentLocalBuildInfo
+  -> IO ()
 buildExe v njobs pkg lbi = gbuild v njobs pkg lbi . GBuildExe
 
 replExe
-  :: [String]                -> Verbosity
-  -> Flag ParStrat  -> PackageDescription
-  -> LocalBuildInfo          -> Executable
-  -> ComponentLocalBuildInfo -> IO ()
+  :: [String]
+  -> Verbosity
+  -> Flag ParStrat
+  -> PackageDescription
+  -> LocalBuildInfo
+  -> Executable
+  -> ComponentLocalBuildInfo
+  -> IO ()
 replExe replFlags v njobs pkg lbi =
   gbuild v njobs pkg lbi . GReplExe replFlags
 
@@ -1184,9 +1215,14 @@ isHaskell :: FilePath -> Bool
 isHaskell fp = elem (takeExtension fp) [".hs", ".lhs"]
 
 -- | Generic build function. See comment for 'GBuildMode'.
-gbuild :: Verbosity          -> Flag ParStrat
-       -> PackageDescription -> LocalBuildInfo
-       -> GBuildMode         -> ComponentLocalBuildInfo -> IO ()
+gbuild
+  :: Verbosity
+  -> Flag ParStrat
+  -> PackageDescription
+  -> LocalBuildInfo
+  -> GBuildMode
+  -> ComponentLocalBuildInfo
+  -> IO ()
 gbuild verbosity numJobs pkg_descr lbi bm clbi = do
   (ghcjsProg, _) <- requireProgram verbosity ghcjsProgram (withPrograms lbi)
   let replFlags = case bm of

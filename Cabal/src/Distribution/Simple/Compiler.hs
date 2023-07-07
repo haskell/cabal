@@ -69,8 +69,8 @@ module Distribution.Simple.Compiler
   , libraryVisibilitySupported
   , jsemSupported
 
-  -- * Support for profiling detail levels
-  , ProfDetailLevel(..)
+    -- * Support for profiling detail levels
+  , ProfDetailLevel (..)
   , knownProfDetailLevels
   , flagToProfDetailLevel
   , showProfDetailLevel
@@ -367,10 +367,10 @@ backpackSupported = ghcSupported "Support Backpack"
 -- | Does this compiler support the -jsem option
 jsemSupported :: Compiler -> Bool
 jsemSupported comp = case compilerFlavor comp of
-  GHC -> v >= mkVersion [9,7]
-  _   -> False
- where
-  v = compilerVersion comp
+  GHC -> v >= mkVersion [9, 7]
+  _ -> False
+  where
+    v = compilerVersion comp
 
 -- | Does this compiler support a package database entry with:
 -- "dynamic-library-dirs"?

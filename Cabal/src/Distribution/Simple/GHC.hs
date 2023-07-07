@@ -114,12 +114,12 @@ import Distribution.Simple.Utils
 import Distribution.System
 import Distribution.Types.ComponentLocalBuildInfo
 import Distribution.Types.PackageName.Magic
+import Distribution.Types.ParStrat
 import Distribution.Utils.NubList
 import Distribution.Utils.Path
 import Distribution.Verbosity
 import Distribution.Version
 import Language.Haskell.Extension
-import Distribution.Types.ParStrat
 
 import Control.Monad (forM_, msum)
 import Data.Char (isLower)
@@ -586,21 +586,36 @@ getInstalledPackagesMonitorFiles verbosity platform progdb =
 -- -----------------------------------------------------------------------------
 -- Building a library
 
-buildLib :: Verbosity          -> Flag ParStrat
-         -> PackageDescription -> LocalBuildInfo
-         -> Library            -> ComponentLocalBuildInfo -> IO ()
+buildLib
+  :: Verbosity
+  -> Flag ParStrat
+  -> PackageDescription
+  -> LocalBuildInfo
+  -> Library
+  -> ComponentLocalBuildInfo
+  -> IO ()
 buildLib = buildOrReplLib Nothing
 
-replLib :: ReplOptions             -> Verbosity
-        -> Flag ParStrat  -> PackageDescription
-        -> LocalBuildInfo          -> Library
-        -> ComponentLocalBuildInfo -> IO ()
+replLib
+  :: ReplOptions
+  -> Verbosity
+  -> Flag ParStrat
+  -> PackageDescription
+  -> LocalBuildInfo
+  -> Library
+  -> ComponentLocalBuildInfo
+  -> IO ()
 replLib = buildOrReplLib . Just
 
-buildOrReplLib :: Maybe ReplOptions -> Verbosity
-               -> Flag ParStrat -> PackageDescription
-               -> LocalBuildInfo -> Library
-               -> ComponentLocalBuildInfo -> IO ()
+buildOrReplLib
+  :: Maybe ReplOptions
+  -> Verbosity
+  -> Flag ParStrat
+  -> PackageDescription
+  -> LocalBuildInfo
+  -> Library
+  -> ComponentLocalBuildInfo
+  -> IO ()
 buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
   let uid = componentUnitId clbi
       libTargetDir = componentBuildDir lbi clbi
@@ -1299,31 +1314,47 @@ runReplOrWriteFlags verbosity ghcProg comp platform rflags replOpts bi clbi pkg_
 
 -- | Build a foreign library
 buildFLib
-  :: Verbosity          -> Flag ParStrat
-  -> PackageDescription -> LocalBuildInfo
-  -> ForeignLib         -> ComponentLocalBuildInfo -> IO ()
+  :: Verbosity
+  -> Flag ParStrat
+  -> PackageDescription
+  -> LocalBuildInfo
+  -> ForeignLib
+  -> ComponentLocalBuildInfo
+  -> IO ()
 buildFLib v njobs pkg lbi = gbuild v njobs pkg lbi . GBuildFLib
 
 replFLib
-  :: ReplOptions             -> Verbosity
-  -> Flag ParStrat  -> PackageDescription
-  -> LocalBuildInfo          -> ForeignLib
-  -> ComponentLocalBuildInfo -> IO ()
-replFLib replFlags  v njobs pkg lbi =
+  :: ReplOptions
+  -> Verbosity
+  -> Flag ParStrat
+  -> PackageDescription
+  -> LocalBuildInfo
+  -> ForeignLib
+  -> ComponentLocalBuildInfo
+  -> IO ()
+replFLib replFlags v njobs pkg lbi =
   gbuild v njobs pkg lbi . GReplFLib replFlags
 
 -- | Build an executable with GHC.
 buildExe
-  :: Verbosity          -> Flag ParStrat
-  -> PackageDescription -> LocalBuildInfo
-  -> Executable         -> ComponentLocalBuildInfo -> IO ()
+  :: Verbosity
+  -> Flag ParStrat
+  -> PackageDescription
+  -> LocalBuildInfo
+  -> Executable
+  -> ComponentLocalBuildInfo
+  -> IO ()
 buildExe v njobs pkg lbi = gbuild v njobs pkg lbi . GBuildExe
 
 replExe
-  :: ReplOptions             -> Verbosity
-  -> Flag ParStrat  -> PackageDescription
-  -> LocalBuildInfo          -> Executable
-  -> ComponentLocalBuildInfo -> IO ()
+  :: ReplOptions
+  -> Verbosity
+  -> Flag ParStrat
+  -> PackageDescription
+  -> LocalBuildInfo
+  -> Executable
+  -> ComponentLocalBuildInfo
+  -> IO ()
 replExe replFlags v njobs pkg lbi =
   gbuild v njobs pkg lbi . GReplExe replFlags
 
@@ -1620,9 +1651,14 @@ replNoLoad replFlags l
   | otherwise = l
 
 -- | Generic build function. See comment for 'GBuildMode'.
-gbuild :: Verbosity          -> Flag ParStrat
-       -> PackageDescription -> LocalBuildInfo
-       -> GBuildMode         -> ComponentLocalBuildInfo -> IO ()
+gbuild
+  :: Verbosity
+  -> Flag ParStrat
+  -> PackageDescription
+  -> LocalBuildInfo
+  -> GBuildMode
+  -> ComponentLocalBuildInfo
+  -> IO ()
 gbuild verbosity numJobs pkg_descr lbi bm clbi = do
   (ghcProg, _) <- requireProgram verbosity ghcProgram (withPrograms lbi)
   let replFlags = case bm of
