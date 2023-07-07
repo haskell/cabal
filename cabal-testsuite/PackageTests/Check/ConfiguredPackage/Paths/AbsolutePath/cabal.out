@@ -1,7 +1,7 @@
 # cabal check
-Warning: These warnings may cause trouble when distributing the package:
+These warnings may cause trouble when distributing the package:
 Warning: In 'extra-source-files': the pattern '/home/user/file' does not match any files.
-Warning: The following errors will cause portability problems on other environments:
-Warning: 'extra-source-files: /home/user/file' specifies an absolute path, but the 'extra-source-files' field must use relative paths.
-Warning: 'extra-source-files: /home/user/file' is not a good relative path: "posix absolute path"
-Warning: Hackage would reject this package.
+The following errors will cause portability problems on other environments:
+Error: 'extra-source-files: /home/user/file' specifies an absolute path, but the 'extra-source-files' field must use relative paths.
+Error: 'extra-source-files: /home/user/file' is not a good relative path: "posix absolute path"
+Error: Hackage would reject this package.

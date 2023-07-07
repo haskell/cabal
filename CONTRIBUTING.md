@@ -125,11 +125,13 @@ are tested before being released. This allows us to catch UX regressions and put
 a human perspective into testing.
 
 Contributions that touch `cabal-install` are expected to include notes for the QA team.
-They are a description of an expected result upon calling `cabal-install` with certain parameters.
+They are a description of an expected result upon calling `cabal-install` with certain parameters,
+and should be written in the body of the ticket or PR under their own heading, like this:
 
 For instance:
 
-> ## QA Notes
+> \#\# QA Notes
+> 
 > Calling `cabal haddock-project` should produce documentation for the whole cabal project with the following defaults enabled:
 > * Documentation lives in ./haddocks
 > * The file `./haddocks/index.html` should exist
@@ -142,7 +144,8 @@ Code Style
 ---------------
 
 We use automated formatting with Fourmolu to enforce a unified style across the code bases. It is checked in the CI process.
-You can automatically format the code bases with `make style` at the top level of the project.
+After installing Fourmolu ≥ 0.12, you can automatically format the code bases with `make style` at the top level of the project.
+You can also use `make style-modified` to only format modified files.
 
 Other Conventions
 -----------------
@@ -242,13 +245,16 @@ and concatenate the commit messages of the commits before merging.
 Changelog
 ---------
 
-When opening a pull request, you should write a changelog entry
-(or more in case of multiple independent changes).
-This is done by adding files in the `changelog.d` directory.
+When opening a pull request with a user-visible change, you should write one changelog entry
+(or more in case of multiple independent changes) — the information will end up in
+our release notes.
 
-The files follow a simple key-value format similar to the one for .cabal files.
+Changelogs for the next release are stored in the `changelog.d` directory.
+The files follow a simple key-value format similar to the one for `.cabal` files.
+Free-form text fields (`synopsis` and `description`) allow Markdown markup — please,
+use markup to make our release notes more readable.
 
-Here's an exhaustive example:
+Here's an example:
 
 ```cabal
 synopsis: Add feature xyz
@@ -282,7 +288,7 @@ You can find a large number of real-world examples of changelog files
 At release time, the entries will be merged with
 [this tool](https://github.com/fgaz/changelog-d).
 
-In addition, if you're changing the .cabal file format specification you should
+In addition, if you're changing the `.cabal` file format specification you should
 add an entry in `doc/file-format-changelog.rst`.
 
 Communicating

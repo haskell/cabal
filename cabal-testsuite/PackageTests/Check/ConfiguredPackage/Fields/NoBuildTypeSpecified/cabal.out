@@ -1,4 +1,4 @@
 # cabal check
-Warning: The following warnings are likely to affect your build negatively:
-Warning: No 'build-type' specified. If you do not need a custom Setup.hs or ./configure script then use 'build-type: Simple'.
-Warning: Hackage would reject this package.
+The following errors are likely to affect your build negatively:
+Error: No 'build-type' specified. If you do not need a custom Setup.hs or ./configure script then use 'build-type: Simple'.
+Error: Hackage would reject this package.

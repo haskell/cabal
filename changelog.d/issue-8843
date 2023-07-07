@@ -1,0 +1,15 @@
+synopsis: changes to haddock-project command
+
+packages: cabal-install
+prs: #8919
+issues: #8843 #8958
+description: {
+
+- cabal haddock-project by default creates self contained
+  documentation (formerly it required `--local` switch, which is removed).
+- `--gen-contents`, `--gen-index`, `--quickjump` and `--hyperlinked-source`
+  options where removed as they are always passed to haddock.
+- Fixes a bug which prevented to use `haddock-project` with
+  packages containing sublibraries.
+
+}

@@ -331,11 +331,39 @@ sanityCheckElaboratedPackage
             `optStanzaSetIsSubset` pkgStanzasEnabled
         )
 
-------------------------------------------------------------------------------
+-- Note [reading project configuration]
+--
+-- The project configuration is assembled into a ProjectConfig as follows:
+--
+-- CLI arguments are converted using commandLineFlagsToProjectConfig in the
+-- v2 command entrypoints and passed to establishProjectBaseContext which
+-- then calls rebuildProjectConfig.
+--
+-- rebuildProjectConfig then calls readProjectConfig to read the project
+-- files. Because of conditionals, this output is in the form of a
+-- ProjectConfigSkeleton and will be resolved by rebuildProjectConfig using
+-- instantiateProjectConfigSkeletonFetchingCompiler.
+--
+-- readProjectConfig also loads the global configuration, which is read with
+-- loadConfig and convertd to a ProjectConfig with convertLegacyGlobalConfig.
+--
 
--- * Deciding what to do: making an 'ElaboratedInstallPlan'
+-- * Important *
 
-------------------------------------------------------------------------------
+--
+-- You can notice how some project config options are needed to read the
+-- project config! This is evident by the fact that rebuildProjectConfig
+-- takes HttpTransport and DistDirLayout as parameters. Two arguments are
+-- infact determined from the CLI alone (in establishProjectBaseContext).
+-- Consequently, project files (including global configuration) cannot
+-- affect those parameters.
+--
+-- Furthermore, the project configuration can specify a compiler to use,
+-- which we need to resolve the conditionals in the project configuration!
+-- To solve this, we configure the compiler from what is obtained by applying
+-- the CLI configuration over the the configuration obtained by "flattening"
+-- ProjectConfigSkeleton. This means collapsing all conditionals by taking
+-- both branches.
 
 -- | Return the up-to-date project config and information about the local
 -- packages within the project.
@@ -390,6 +418,9 @@ rebuildProjectConfig
                 pure (os, arch, compilerInfo compiler)
 
           projectConfig <- instantiateProjectConfigSkeletonFetchingCompiler fetchCompiler mempty projectConfigSkeleton
+          when (projectConfigDistDir (projectConfigShared $ projectConfig) /= NoFlag) $
+            liftIO $
+              warn verbosity "The builddir option is not supported in project and config files. It will be ignored."
           localPackages <- phaseReadLocalPackages (projectConfig <> cliConfig)
           return (projectConfig, localPackages)
 
@@ -509,6 +540,12 @@ configureCompiler
                 ++
             )
           $ defaultProgramDb
+
+------------------------------------------------------------------------------
+
+-- * Deciding what to do: making an 'ElaboratedInstallPlan'
+
+------------------------------------------------------------------------------
 
 -- | Return an up-to-date elaborated install plan.
 --
@@ -3975,8 +4012,11 @@ setupHsScriptOptions
       , useDistPref = builddir
       , useLoggingHandle = Nothing -- this gets set later
       , useWorkingDir = Just srcdir
-      , useExtraPathEnv = elabExeDependencyPaths elab
-      , useExtraEnvOverrides = dataDirsEnvironmentForPlan distdir plan
+      , useExtraPathEnv = elabExeDependencyPaths elab ++ elabProgramPathExtra
+      , -- note that the above adds the extra-prog-path directly following the elaborated
+        -- dep paths, so that it overrides the normal path, but _not_ the elaborated extensions
+        -- for build-tools-depends.
+        useExtraEnvOverrides = dataDirsEnvironmentForPlan distdir plan
       , useWin32CleanHack = False -- TODO: [required eventually]
       , forceExternalSetupMethod = isParallelBuild
       , setupCacheLock = Just cacheLock

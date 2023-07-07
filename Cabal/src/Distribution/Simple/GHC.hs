@@ -107,6 +107,7 @@ import Distribution.Simple.Program.GHC
 import qualified Distribution.Simple.Program.HcPkg as HcPkg
 import qualified Distribution.Simple.Program.Ld as Ld
 import qualified Distribution.Simple.Program.Strip as Strip
+import Distribution.Simple.Setup.Common (extraCompilationArtifacts)
 import Distribution.Simple.Setup.Config
 import Distribution.Simple.Setup.Repl
 import Distribution.Simple.Utils
@@ -232,9 +233,10 @@ configure verbosity hcPath hcPkgPath conf0 = do
 
   ghcInfo <- Internal.getGhcInfo verbosity implInfo ghcProg
   let ghcInfoMap = Map.fromList ghcInfo
+      filterJS = if ghcVersion < mkVersion [9, 8] then filterExt JavaScriptFFI else id
       extensions =
         -- workaround https://gitlab.haskell.org/ghc/ghc/-/issues/11214
-        filterExt JavaScriptFFI $
+        filterJS $
           -- see 'filterExtTH' comment below
           filterExtTH $
             extensions0
@@ -2257,6 +2259,7 @@ getRPaths lbi clbi | supportRPaths hostOS = do
     supportRPaths Ghcjs = False
     supportRPaths Wasi = False
     supportRPaths Hurd = False
+    supportRPaths Haiku = False
     supportRPaths (OtherOS _) = False
 -- Do _not_ add a default case so that we get a warning here when a new OS
 -- is added.
@@ -2476,7 +2479,7 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir pkg lib clbi = do
   whenShared $ copyModuleFiles "dyn_hi"
 
   -- copy extra compilation artifacts that ghc plugins may produce
-  copyDirectoryIfExists "extra-compilation-artifacts"
+  copyDirectoryIfExists extraCompilationArtifacts
 
   -- copy the built library files over:
   whenHasCode $ do

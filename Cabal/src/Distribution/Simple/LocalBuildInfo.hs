@@ -295,7 +295,10 @@ depLibraryPaths inplace relative lbi clbi = do
               allDepLibDirsC
         | otherwise = allDepLibDirsC
 
-  return libPaths
+  -- For some reason, this function returns lots of duplicates. Avoid
+  -- exceeding `ARG_MAX` (the result of this function is used to populate
+  -- `LD_LIBRARY_PATH`) by deduplicating the list.
+  return $ ordNub libPaths
   where
     -- 'canonicalizePath' fails on UNIX when the directory does not exists.
     -- So just don't canonicalize when it doesn't exist.

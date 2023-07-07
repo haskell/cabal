@@ -1,4 +1,4 @@
 # cabal check
-Warning: The following errors will cause portability problems on other environments:
-Warning: Package names with the prefix 'z-' are reserved by Cabal and cannot be used.
-Warning: Hackage would reject this package.
+The following errors will cause portability problems on other environments:
+Error: Package names with the prefix 'z-' are reserved by Cabal and cannot be used.
+Error: Hackage would reject this package.

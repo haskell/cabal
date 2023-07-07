@@ -238,7 +238,7 @@ library
       if os(windows)
         build-depends: windns      >= 0.1.0 && < 0.2
       else
-        build-depends: resolv      >= 0.1.1 && < 0.2
+        build-depends: resolv      >= 0.1.1 && < 0.3
 
     if os(windows)
       -- newer directory for symlinks
@@ -314,7 +314,6 @@ test-suite unit-tests
       UnitTests.Distribution.Solver.Modular.WeightedPSQ
       UnitTests.Distribution.Solver.Types.OptionalStanza
       UnitTests.Options
-      UnitTests.TempTestDir
 
     build-depends:
           array,
@@ -336,7 +335,7 @@ test-suite unit-tests
           tasty-quickcheck,
           tasty-hunit >= 0.10,
           tree-diff,
-          QuickCheck >= 2.14 && <2.15
+          QuickCheck >= 2.14.3 && <2.15
 
 
 -- Tests to run with a limited stack and heap size
@@ -403,7 +402,6 @@ test-suite long-tests
     UnitTests.Distribution.Solver.Modular.QuickCheck
     UnitTests.Distribution.Solver.Modular.QuickCheck.Utils
     UnitTests.Options
-    UnitTests.TempTestDir
 
   build-depends:
         Cabal-QuickCheck,

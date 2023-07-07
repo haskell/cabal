@@ -1,0 +1,3 @@
+synopsis: Add support for the 64-bit RISC-V architecture
+prs: #9062
+packages: Cabal Cabal-syntax

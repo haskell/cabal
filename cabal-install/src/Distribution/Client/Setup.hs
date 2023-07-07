@@ -116,6 +116,8 @@ import Distribution.Client.Targets
   ( UserConstraint
   , readUserConstraint
   )
+import Distribution.Deprecated.ParseUtils (parseSpaceList, parseTokenQ)
+import Distribution.Deprecated.ReadP (readP_to_E)
 import Distribution.Utils.NubList
   ( NubList
   , fromNubList
@@ -2706,7 +2708,14 @@ uploadCommand =
             "Command to get Hackage password."
             uploadPasswordCmd
             (\v flags -> flags{uploadPasswordCmd = v})
-            (reqArg' "PASSWORD" (Flag . words) (fromMaybe [] . flagToMaybe))
+            ( reqArg
+                "COMMAND"
+                ( readP_to_E
+                    ("Cannot parse command: " ++)
+                    (Flag <$> parseSpaceList parseTokenQ)
+                )
+                (flagElim [] (pure . unwords . fmap show))
+            )
         ]
     }
 

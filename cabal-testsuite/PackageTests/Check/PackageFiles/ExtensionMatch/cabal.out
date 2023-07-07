@@ -1,4 +1,4 @@
 # cabal check
-Warning: The following errors will cause portability problems on other environments:
-Warning: In the 'extra-doc-files' field: invalid file glob '***.html'. Wildcards '*' may only totally replace the file's base name, not only parts of it.
-Warning: Hackage would reject this package.
+The following errors will cause portability problems on other environments:
+Error: In the 'extra-doc-files' field: invalid file glob '***.html'. Wildcards '*' may only totally replace the file's base name, not only parts of it.
+Error: Hackage would reject this package.

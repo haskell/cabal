@@ -191,7 +191,7 @@ Target Forms
 
 A cabal command target can take any of the following forms:
 
--  A package target: ``package``, which specifies that all enabled
+-  A package target: ``[pkg:]package``, which specifies that all enabled
    components of a package to be built. By default, test suites and
    benchmarks are *not* enabled, unless they are explicitly requested
    (e.g., via ``--enable-tests``.)
@@ -705,12 +705,8 @@ By default the documentation will be put in ``./haddocks`` folder, this can be
 modified with the ``--output`` flag.
 
 This command supports two primary modes: building a self contained directory
-(by specifying ``--local`` flag) or documentation that links to hackage (with
-``--hackage`` flag).  Both options imply: ``--quickjump``, ``--gen-index``,
-``--gen-contents`` and ``--hyperlinked-source``.
-
-If neither ``--local`` nor ``--hackage`` option is specified a self contained
-directory will only be build if ``--html-location`` is not specified.
+(which is the default mode) or documentation that links to hackage (with
+``--hackage`` flag).
 
 In both cases the html index as well as quickjump index will include all terms
 and types defined in any of the local packages, but not ones that are included
@@ -1086,7 +1082,19 @@ to Hackage.
 
 .. option:: -P, --password-command
 
-    Command to get your Hackage password.
+    Command to get your Hackage password.  Arguments with whitespace
+    must be quoted (double-quotes only).  For example:
+
+    ::
+
+        --password-command 'sh -c "grep hackage ~/secrets | cut -d : -f 2"'
+
+    Or in the config file:
+
+    ::
+
+        password-command: sh -c "grep hackage ~/secrets | cut -d : -f 2"
+
 
 cabal report
 ^^^^^^^^^^^^

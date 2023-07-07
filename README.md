@@ -4,7 +4,7 @@
 [![Stackage version](https://www.stackage.org/package/Cabal/badge/lts?label=Stackage)](https://www.stackage.org/package/Cabal)
 [![Documentation Status](http://readthedocs.org/projects/cabal/badge/?version=latest)](http://cabal.readthedocs.io/en/latest/?badge=latest)
 [![IRC chat](https://img.shields.io/badge/chat-via%20libera-brightgreen.svg)](https://web.libera.chat/#hackage)
-[![Matrix chat](https://img.shields.io/badge/chat-via%20matrix-brightgreen.svg)](https://matrix.to/#/#hackage:libera.chat)
+[![Matrix chat](https://img.shields.io/badge/chat-via%20matrix-brightgreen.svg)](https://matrix.to/#/#hackage:matrix.org)
 
 <img src="https://www.haskell.org/cabal/images/Cabal-light.png" align="right">
 
@@ -33,7 +33,14 @@ Ways to get the `cabal-install` binary
 _Getting unreleased versions of `cabal-install`_: gives you a chance to try out yet-unreleased features.
 Currently, we only provide binaries for `x86_64` platforms.
 
-1. _[GitHub preview release built from the tip of the `master` branch](https://github.com/haskell/cabal/releases/tag/cabal-head)_:
+1. _GitHub preview release built from the tip of the `master` branch_: [download from GitHub](https://github.com/haskell/cabal/releases/tag/cabal-head) or use this GHCup command to install:
+
+    ```
+    ghcup install cabal -u https://github.com/haskell/cabal/releases/download/cabal-head/cabal-head-Linux-x86_64.tar.gz head
+    ```
+
+    Replace "Linux" with "Windows" or "macOS" as appropriate.
+
 
 2. Even more cutting-edge binaries built from pull requests are always available
    from the `Validate` worklow page on GitHub, at the very bottom of the page.

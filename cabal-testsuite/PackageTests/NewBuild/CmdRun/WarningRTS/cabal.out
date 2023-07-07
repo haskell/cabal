@@ -4,9 +4,9 @@ Warning: Your RTS options are applied to cabal, not the executable. Use '--' to 
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
  - WarningRTS-1.0 (exe:foo) (first run)
-Configuring executable 'foo' for WarningRTS-1.0..
-Preprocessing executable 'foo' for WarningRTS-1.0..
-Building executable 'foo' for WarningRTS-1.0..
+Configuring executable 'foo' for WarningRTS-1.0...
+Preprocessing executable 'foo' for WarningRTS-1.0...
+Building executable 'foo' for WarningRTS-1.0...
 # cabal run
 Warning: Your RTS options are applied to cabal, not the executable. Use '--' to separate cabal options from your executable options. For example, use 'cabal run -- +RTS -N to pass the '-N' RTS option to your executable.
 # cabal run

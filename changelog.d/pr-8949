@@ -1,0 +1,11 @@
+synopsis: Warn when project configuration options are going to be ignored.
+packages: cabal-install
+prs: #8949
+
+description: {
+
+Some project configuration options can only be specified from the command line.
+If the user specified those options from a project file, cabal-install would
+silently ignore them. Now cabal-install will emit a warning.
+
+}

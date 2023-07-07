@@ -1,4 +1,4 @@
 # cabal check
-Warning: The package will not build sanely due to these errors:
-Warning: No 'main-is' field found for executable exe
-Warning: Hackage would reject this package.
+The package will not build sanely due to these errors:
+Error: No 'main-is' field found for executable exe
+Error: Hackage would reject this package.

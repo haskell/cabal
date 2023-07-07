@@ -381,21 +381,10 @@ data HaddockProjectFlags = HaddockProjectFlags
   -- * `--gen-index`
   -- * `--gen-contents`
   -- * `--hyperlinked-source`
-  , haddockProjectLocal :: Flag Bool
-  -- ^ a shortcut option which builds self contained directory which contains
-  -- all the documentation, it implies:
-  -- * `--quickjump`
-  -- * `--gen-index`
-  -- * `--gen-contents`
-  -- * `--hyperlinked-source`
-  --
-  -- And it will also pass `--base-url` option to `haddock`.
   , -- options passed to @haddock@ via 'createHaddockIndex'
     haddockProjectDir :: Flag String
   -- ^ output directory of combined haddocks, the default is './haddocks'
   , haddockProjectPrologue :: Flag String
-  , haddockProjectGenIndex :: Flag Bool
-  , haddockProjectGenContents :: Flag Bool
   , haddockProjectInterfaces :: Flag [(FilePath, Maybe FilePath, Maybe FilePath, Visibility)]
   -- ^ 'haddocksInterfaces' is inferred by the 'haddocksAction'; currently not
   -- exposed to the user.
@@ -414,8 +403,6 @@ data HaddockProjectFlags = HaddockProjectFlags
   , haddockProjectForeignLibs :: Flag Bool
   , haddockProjectInternal :: Flag Bool
   , haddockProjectCss :: Flag FilePath
-  , haddockProjectLinkedSource :: Flag Bool
-  , haddockProjectQuickJump :: Flag Bool
   , haddockProjectHscolourCss :: Flag FilePath
   , -- haddockContent is not supported, a fixed value is provided
     -- haddockIndex is not supported, a fixed value is provided
@@ -432,11 +419,8 @@ defaultHaddockProjectFlags :: HaddockProjectFlags
 defaultHaddockProjectFlags =
   HaddockProjectFlags
     { haddockProjectHackage = Flag False
-    , haddockProjectLocal = Flag False
     , haddockProjectDir = Flag "./haddocks"
     , haddockProjectPrologue = NoFlag
-    , haddockProjectGenIndex = Flag False
-    , haddockProjectGenContents = Flag False
     , haddockProjectTestSuites = Flag False
     , haddockProjectProgramPaths = mempty
     , haddockProjectProgramArgs = mempty
@@ -447,8 +431,6 @@ defaultHaddockProjectFlags =
     , haddockProjectForeignLibs = Flag False
     , haddockProjectInternal = Flag False
     , haddockProjectCss = NoFlag
-    , haddockProjectLinkedSource = Flag False
-    , haddockProjectQuickJump = Flag False
     , haddockProjectHscolourCss = NoFlag
     , haddockProjectKeepTempFiles = Flag False
     , haddockProjectVerbosity = Flag normal
@@ -501,25 +483,11 @@ haddockProjectOptions _showOrParseArgs =
       ""
       ["hackage"]
       ( concat
-          [ "A short-cut option to build documentation linked to hackage; "
-          , "it implies --quickjump, --gen-index, --gen-contents, "
-          , "--hyperlinked-source and --html-location"
+          [ "A short-cut option to build documentation linked to hackage."
           ]
       )
       haddockProjectHackage
       (\v flags -> flags{haddockProjectHackage = v})
-      trueArg
-  , option
-      ""
-      ["local"]
-      ( concat
-          [ "A short-cut option to build self contained documentation; "
-          , "it implies  --quickjump, --gen-index, --gen-contents "
-          , "and --hyperlinked-source."
-          ]
-      )
-      haddockProjectLocal
-      (\v flags -> flags{haddockProjectLocal = v})
       trueArg
   , option
       ""
@@ -535,20 +503,6 @@ haddockProjectOptions _showOrParseArgs =
       haddockProjectPrologue
       (\v flags -> flags{haddockProjectPrologue = v})
       (optArg' "PATH" maybeToFlag (fmap Just . flagToList))
-  , option
-      ""
-      ["gen-index"]
-      "Generate index"
-      haddockProjectGenIndex
-      (\v flags -> flags{haddockProjectGenIndex = v})
-      trueArg
-  , option
-      ""
-      ["gen-contents"]
-      "Generate contents"
-      haddockProjectGenContents
-      (\v flags -> flags{haddockProjectGenContents = v})
-      trueArg
   , option
       ""
       ["hoogle"]
@@ -605,20 +559,6 @@ haddockProjectOptions _showOrParseArgs =
       haddockProjectCss
       (\v flags -> flags{haddockProjectCss = v})
       (reqArgFlag "PATH")
-  , option
-      ""
-      ["hyperlink-source", "hyperlink-sources", "hyperlinked-source"]
-      "Hyperlink the documentation to the source code"
-      haddockProjectLinkedSource
-      (\v flags -> flags{haddockProjectLinkedSource = v})
-      trueArg
-  , option
-      ""
-      ["quickjump"]
-      "Generate an index for interactive documentation navigation"
-      haddockProjectQuickJump
-      (\v flags -> flags{haddockProjectQuickJump = v})
-      trueArg
   , option
       ""
       ["hscolour-css"]

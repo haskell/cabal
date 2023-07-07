@@ -699,7 +699,6 @@ initialSavedConfig :: IO SavedConfig
 initialSavedConfig = do
   cacheDir <- defaultCacheDir
   logsDir <- defaultLogsDir
-  extraPath <- defaultExtraPath
   installPath <- defaultInstallPath
   return
     mempty
@@ -707,10 +706,6 @@ initialSavedConfig = do
           mempty
             { globalCacheDir = toFlag cacheDir
             , globalRemoteRepos = toNubList [defaultRemoteRepo]
-            }
-      , savedConfigureFlags =
-          mempty
-            { configProgramPathExtra = toNubList extraPath
             }
       , savedInstallFlags =
           mempty
@@ -810,16 +805,6 @@ defaultReportsDir :: IO FilePath
 defaultReportsDir =
   getDefaultDir XdgCache "reports"
 
-defaultExtraPath :: IO [FilePath]
-defaultExtraPath = do
-  mDir <- maybeGetCabalDir
-  case mDir of
-    Just dir ->
-      return [dir </> "bin"]
-    Nothing -> do
-      dir <- getHomeDirectory
-      return [dir </> ".local" </> "bin"]
-
 defaultInstallPath :: IO FilePath
 defaultInstallPath = do
   mDir <- maybeGetCabalDir
@@ -914,6 +899,10 @@ defaultHackageRemoteRepoKeys =
     "0a5c7ea47cd1b15f01f5f51a33adda7e655bc0f0b0615baa8e271f4c3351e21d"
   , -- Norman Ramsey (ZI8di3a9Un0s2RBrt5GwVRvfOXVuywADfXGPZfkiDb0=)
     "51f0161b906011b52c6613376b1ae937670da69322113a246a09f807c62f6921"
+  , -- Mathieu Boespflug (ydN1nGGQ79K1Q0nN+ul+Ln8MxikTB95w0YdGd3v3kmg=)
+    "be75553f3c7ba1dbe298da81f1d1b05c9d39dd8ed2616c9bddf1525ca8c03e48"
+  , -- Joachim Breitner (5iUgwqZCWrCJktqMx0bBMIuoIyT4A1RYGozzchRN9rA=)
+    "d26e46f3b631aae1433b89379a6c68bd417eb5d1c408f0643dcc07757fece522"
   ]
 
 -- | The required threshold of root key signatures for hackage.haskell.org

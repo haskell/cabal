@@ -204,6 +204,7 @@ defaultInstallDirs' False comp userInstall _hasLibs = do
         Windows -> do
           windowsProgramFilesDir <- getWindowsProgramFilesDir
           return (windowsProgramFilesDir </> "Haskell")
+        Haiku -> return "/boot/system/non-packaged"
         _ -> return "/usr/local"
   installLibDir <-
     case buildOS of
@@ -226,17 +227,27 @@ defaultInstallDirs' False comp userInstall _hasLibs = do
         , flibdir = "$libdir"
         , libexecdir = case buildOS of
             Windows -> "$prefix" </> "$libname"
+            Haiku -> "$libdir"
             _other -> "$prefix" </> "libexec"
-        , includedir = "$libdir" </> "$libsubdir" </> "include"
+        , includedir = case buildOS of
+            Haiku -> "$prefix" </> "develop" </> "headers"
+            _other -> "$libdir" </> "$libsubdir" </> "include"
         , datadir = case buildOS of
             Windows -> "$prefix"
+            Haiku -> "$prefix" </> "data"
             _other -> "$prefix" </> "share"
         , datasubdir = "$abi" </> "$pkgid"
-        , docdir = "$datadir" </> "doc" </> "$abi" </> "$pkgid"
-        , mandir = "$datadir" </> "man"
+        , docdir = case buildOS of
+            Haiku -> "$prefix" </> "documentation"
+            _other -> "$datadir" </> "doc" </> "$abi" </> "$pkgid"
+        , mandir = case buildOS of
+            Haiku -> "$docdir" </> "man"
+            _other -> "$datadir" </> "man"
         , htmldir = "$docdir" </> "html"
         , haddockdir = "$htmldir"
-        , sysconfdir = "$prefix" </> "etc"
+        , sysconfdir = case buildOS of
+            Haiku -> "boot" </> "system" </> "settings"
+            _other -> "$prefix" </> "etc"
         }
 
 -- ---------------------------------------------------------------------------

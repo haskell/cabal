@@ -1,4 +1,4 @@
 # cabal check
-Warning: The following warnings are likely to affect your build negatively:
-Warning: The 'license-file' field refers to the file 'LICENSE' which does not exist.
-Warning: Hackage would reject this package.
+The following errors are likely to affect your build negatively:
+Error: The 'license-file' field refers to the file 'LICENSE' which does not exist.
+Error: Hackage would reject this package.

@@ -295,15 +295,15 @@ jobs:
     needs: [validate, validate-old-ghcs, dogfooding]
 
     steps:
-    - uses: actions/download-artifact@v2
+    - uses: actions/download-artifact@v3
       with:
         name: cabal-Windows-x86_64
 
-    - uses: actions/download-artifact@v2
+    - uses: actions/download-artifact@v3
       with:
         name: cabal-Linux-x86_64
 
-    - uses: actions/download-artifact@v2
+    - uses: actions/download-artifact@v3
       with:
         name: cabal-macOS-x86_64
 
