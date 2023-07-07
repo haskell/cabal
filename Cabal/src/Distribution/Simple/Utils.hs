@@ -385,21 +385,24 @@ data VerboseException a = VerboseException CallStack POSIXTime Verbosity a
   deriving (Show, Typeable)
 
 -- A new dieWithException function which will replace the existing die' call sites
-
 dieWithException :: HasCallStack => Verbosity -> CabalException -> IO a
 dieWithException verbosity exception = do
   ts <- getPOSIXTime
   throwIO $ VerboseException callStack ts verbosity exception
 
+-- Instance for Cabal Exception which will display error code and error message with callStack info
 instance Exception (VerboseException CabalException) where
   displayException :: VerboseException CabalException -> [Char]
   displayException (VerboseException stack timestamp verb cabalexception) =
-    concat
-      [ "Error: [C-"
-      , show (exceptionCode cabalexception)
-      , "]\n"
-      , exceptionWithMetadata stack timestamp verb $ exceptionMessage cabalexception
-      ]
+    withOutputMarker
+      verb
+      ( concat
+          [ "Error: [C-"
+          , show (exceptionCode cabalexception)
+          , "]\n"
+          , exceptionWithMetadata stack timestamp verb $ exceptionMessage cabalexception
+          ]
+      )
 
 dieNoWrap :: Verbosity -> String -> IO a
 dieNoWrap verbosity msg = withFrozenCallStack $ do
@@ -779,11 +782,8 @@ withMetadata ts marker tracer verbosity x =
 -- | Add all necessary metadata to a logging message
 exceptionWithMetadata :: CallStack -> POSIXTime -> Verbosity -> String -> String
 exceptionWithMetadata stack ts verbosity x =
-  -- NB: order matters.  Output marker first because we
-  -- don't want to capture call stacks.
   withTrailingNewline
     . exceptionWithCallStackPrefix stack verbosity
-    . withOutputMarker verbosity
     . clearMarkers
     . withTimestamp verbosity ts
     $ x
@@ -795,25 +795,26 @@ clearMarkers s = unlines . filter isMarker $ lines s
     isMarker "-----END CABAL OUTPUT-----" = False
     isMarker _ = True
 
--- | Prepend a call-site and/or call-stack based on Verbosity
+-- | Append a call-site and/or call-stack based on Verbosity
 exceptionWithCallStackPrefix :: CallStack -> Verbosity -> String -> String
 exceptionWithCallStackPrefix stack verbosity s =
-  withFrozenCallStack $
-    ( if isVerboseCallSite verbosity
-        then
-          parentSrcLocPrefix
-            ++
-            -- Hack: need a newline before starting output marker :(
-            if isVerboseMarkOutput verbosity
-              then "\n"
-              else ""
-        else ""
-    )
-      ++ ( if verbosity >= verbose
-            then prettyCallStack stack ++ "\n"
+  s
+    ++ withFrozenCallStack
+      ( ( if isVerboseCallSite verbosity
+            then
+              parentSrcLocPrefix
+                ++
+                -- Hack: need a newline before starting output marker :(
+                if isVerboseMarkOutput verbosity
+                  then "\n"
+                  else ""
             else ""
-         )
-      ++ s
+        )
+          ++ ( if verbosity >= verbose
+                then prettyCallStack stack ++ "\n"
+                else ""
+             )
+      )
 
 -- -----------------------------------------------------------------------------
 -- rawSystem variants
