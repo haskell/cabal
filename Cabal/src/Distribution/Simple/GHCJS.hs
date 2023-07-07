@@ -59,6 +59,7 @@ import Distribution.PackageDescription.Utils (cabalBug)
 import Distribution.Pretty
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Compiler
+import Distribution.Simple.Errors
 import Distribution.Simple.Flag
 import Distribution.Simple.GHC.EnvironmentParser
 import Distribution.Simple.GHC.ImplInfo
@@ -80,7 +81,6 @@ import Distribution.Utils.NubList
 import Distribution.Utils.Path
 import Distribution.Verbosity
 import Distribution.Version
-import Distribution.Simple.Errors
 
 import Control.Monad (msum)
 import Data.Char (isLower)
@@ -150,13 +150,18 @@ configure verbosity hcPath hcPkgPath conf0 = do
       verbosity
       (programPath ghcjsPkgProg)
 
-  when (ghcjsVersion /= ghcjsPkgGhcjsVersion) $ 
-    dieWithException verbosity $ VersionMisMatch (programPath ghcjsProg) 
-                                                    ghcjsVersion (programPath ghcjsPkgProg) ghcjsPkgGhcjsVersion
-    
+  when (ghcjsVersion /= ghcjsPkgGhcjsVersion) $
+    dieWithException verbosity $
+      VersionMisMatch
+        (programPath ghcjsProg)
+        ghcjsVersion
+        (programPath ghcjsPkgProg)
+        ghcjsPkgGhcjsVersion
+
   when (ghcjsGhcVersion /= ghcjsPkgVersion) $
-    dieWithException verbosity $ VersionMisMatchGHC (programPath ghcjsProg) ghcjsGhcVersion (programPath ghcjsPkgProg) ghcjsPkgVersion
-   
+    dieWithException verbosity $
+      VersionMisMatchGHC (programPath ghcjsProg) ghcjsGhcVersion (programPath ghcjsPkgProg) ghcjsPkgVersion
+
   -- Likewise we try to find the matching hsc2hs and haddock programs.
   let hsc2hsProgram' =
         hsc2hsProgram
@@ -389,8 +394,8 @@ checkPackageDbStack _ (GlobalPackageDB : rest)
   | GlobalPackageDB `notElem` rest = return ()
 checkPackageDbStack verbosity rest
   | GlobalPackageDB `notElem` rest =
-      dieWithException verbosity GlobalPackageDBLimitation 
-checkPackageDbStack verbosity _ = 
+      dieWithException verbosity GlobalPackageDBLimitation
+checkPackageDbStack verbosity _ =
   dieWithException verbosity GlobalPackageDBSpecifiedFirst
 
 getInstalledPackages'

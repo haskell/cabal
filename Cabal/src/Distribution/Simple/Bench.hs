@@ -30,13 +30,13 @@ import Distribution.Simple.InstallDirs
 import qualified Distribution.Simple.LocalBuildInfo as LBI
 import Distribution.Simple.Setup.Benchmark
 import Distribution.Simple.UserHooks
-import Distribution.Simple.Utils 
+import Distribution.Simple.Utils
 
 import Distribution.Types.UnqualComponentName
 
+import Distribution.Simple.Errors
 import System.Directory (doesFileExist)
 import System.FilePath ((<.>), (</>))
-import Distribution.Simple.Errors
 
 -- | Perform the \"@.\/setup bench@\" action.
 bench
@@ -67,8 +67,9 @@ bench args pkg_descr lbi flags = do
             -- Check that the benchmark executable exists.
             exists <- doesFileExist cmd
             unless exists $
-              dieWithException verbosity $ NoBenchMarkProgram cmd
-             
+              dieWithException verbosity $
+                NoBenchMarkProgram cmd
+
             notice verbosity $ startMessage name
             -- This will redirect the child process
             -- stdout/stderr to the parent process.
@@ -91,8 +92,7 @@ bench args pkg_descr lbi flags = do
     exitSuccess
 
   when (PD.hasBenchmarks pkg_descr && null enabledBenchmarks) $
-    dieWithException verbosity EnableBenchMark 
-      
+    dieWithException verbosity EnableBenchMark
 
   bmsToRun <- case benchmarkNames of
     [] -> return enabledBenchmarks
@@ -106,7 +106,6 @@ bench args pkg_descr lbi flags = do
               | mkUnqualComponentName bmName `elem` allNames ->
                   dieWithException verbosity $ BenchMarkNameDisable bmName
               | otherwise -> dieWithException verbosity $ NoBenchMark bmName
-              
 
   let totalBenchmarks = length bmsToRun
   notice verbosity $ "Running " ++ show totalBenchmarks ++ " benchmarks..."

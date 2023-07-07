@@ -1,7 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
 
-
 -----------------------------------------------------------------------------
 
 -- |
@@ -94,9 +93,9 @@ import Distribution.Compat.Graph (IsNode (..))
 
 import Control.Monad
 import qualified Data.ByteString.Lazy as LBS
+import Distribution.Simple.Errors
 import System.Directory (doesFileExist, getCurrentDirectory, removeFile)
 import System.FilePath (takeDirectory, (<.>), (</>))
-import Distribution.Simple.Errors
 
 -- -----------------------------------------------------------------------------
 
@@ -248,9 +247,9 @@ repl pkg_descr lbi flags suffixes args = do
       -- This seems DEEPLY questionable.
       [] -> case allTargetsInBuildOrder' pkg_descr lbi of
         (target : _) -> return target
-        [] -> dieWithException verbosity $ FailedToDetermineTarget 
+        [] -> dieWithException verbosity $ FailedToDetermineTarget
       [target] -> return target
-      _ -> dieWithException verbosity $ NoMultipleTargets 
+      _ -> dieWithException verbosity $ NoMultipleTargets
   let componentsToBuild = neededTargetsInBuildOrder' pkg_descr lbi [nodeKey target]
   debug verbosity $
     "Component build order: "
@@ -313,7 +312,7 @@ startInterpreter verbosity programDb comp platform packageDBs =
   case compilerFlavor comp of
     GHC -> GHC.startInterpreter verbosity programDb comp platform packageDBs
     GHCJS -> GHCJS.startInterpreter verbosity programDb comp platform packageDBs
-    _ -> dieWithException verbosity REPLNotSupported 
+    _ -> dieWithException verbosity REPLNotSupported
 
 buildComponent
   :: Verbosity
@@ -513,7 +512,6 @@ buildComponent
   _
   _ =
     dieWithException verbosity $ NoSupportBuildingTestSuite tt
-
 buildComponent
   verbosity
   numJobs
@@ -719,7 +717,6 @@ replComponent
   _
   _ =
     dieWithException verbosity $ NoSupportBuildingTestSuite tt
-  
 replComponent
   replFlags
   verbosity
@@ -940,7 +937,7 @@ buildLib verbosity numJobs pkg_descr lbi lib clbi =
     GHCJS -> GHCJS.buildLib verbosity numJobs pkg_descr lbi lib clbi
     UHC -> UHC.buildLib verbosity pkg_descr lbi lib clbi
     HaskellSuite{} -> HaskellSuite.buildLib verbosity pkg_descr lbi lib clbi
-    _ -> dieWithException verbosity BuildingNotSupportedWithCompiler 
+    _ -> dieWithException verbosity BuildingNotSupportedWithCompiler
 
 -- | Build a foreign library
 --
@@ -957,7 +954,7 @@ buildFLib
 buildFLib verbosity numJobs pkg_descr lbi flib clbi =
   case compilerFlavor (compiler lbi) of
     GHC -> GHC.buildFLib verbosity numJobs pkg_descr lbi flib clbi
-    _ -> dieWithException verbosity BuildingNotSupportedWithCompiler  
+    _ -> dieWithException verbosity BuildingNotSupportedWithCompiler
 
 buildExe
   :: Verbosity
@@ -972,7 +969,7 @@ buildExe verbosity numJobs pkg_descr lbi exe clbi =
     GHC -> GHC.buildExe verbosity numJobs pkg_descr lbi exe clbi
     GHCJS -> GHCJS.buildExe verbosity numJobs pkg_descr lbi exe clbi
     UHC -> UHC.buildExe verbosity pkg_descr lbi exe clbi
-    _ -> dieWithException verbosity BuildingNotSupportedWithCompiler 
+    _ -> dieWithException verbosity BuildingNotSupportedWithCompiler
 
 replLib
   :: ReplOptions

@@ -3,7 +3,6 @@
 
 module Distribution.Simple.HaskellSuite where
 
-
 import Distribution.Compat.Prelude
 import Prelude ()
 
@@ -16,6 +15,7 @@ import Distribution.Parsec (simpleParsec)
 import Distribution.Pretty
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Compiler
+import Distribution.Simple.Errors
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.Program
@@ -26,7 +26,6 @@ import Distribution.Utils.Path
 import Distribution.Verbosity
 import Distribution.Version
 import Language.Haskell.Extension
-import Distribution.Simple.Errors
 
 configure
   :: Verbosity
@@ -39,7 +38,7 @@ configure verbosity mbHcPath hcPkgPath progdb0 = do
   -- least some information from the user.
   hcPath <-
     let msg = "You have to provide name or path of a haskell-suite tool (-w PATH)"
-     in maybe (dieWithException verbosity $ ProvideHaskellSuiteTool msg) return mbHcPath 
+     in maybe (dieWithException verbosity $ ProvideHaskellSuiteTool msg) return mbHcPath
 
   when (isJust hcPkgPath) $
     warn verbosity "--with-hc-pkg option is ignored for haskell-suite"
@@ -104,8 +103,10 @@ getCompilerVersion verbosity prog = do
     name = concat $ safeInit parts -- there shouldn't be any spaces in the name anyway
     versionStr = fromMaybe "" $ safeLast parts
   version <-
-    maybe ( dieWithException verbosity CannotDetermineCompilerVersion) return $
-      simpleParsec versionStr
+    maybe
+      (dieWithException verbosity CannotDetermineCompilerVersion)
+      return
+      $ simpleParsec versionStr
   return (name, version)
 
 getExtensions :: Verbosity -> ConfiguredProgram -> IO [(Extension, Maybe CompilerFlag)]

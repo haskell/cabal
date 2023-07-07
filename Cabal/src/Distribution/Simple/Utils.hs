@@ -2,12 +2,12 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE InstanceSigs #-}
-{-# LANGUAGE FlexibleInstances #-}
 
 -----------------------------------------------------------------------------
 
@@ -49,12 +49,11 @@ module Distribution.Simple.Utils
   , chattyTry
   , annotateIO
   , withOutputMarker
- 
 
     -- * exceptions
   , handleDoesNotExist
   , ignoreSigPipe
-  
+
     -- * running programs
   , rawSystemExit
   , rawSystemExitCode
@@ -189,7 +188,6 @@ module Distribution.Simple.Utils
   , isAbsoluteOnAnyPlatform
   , isRelativeOnAnyPlatform
   , exceptionWithCallStackPrefix
-  
   ) where
 
 import Distribution.Compat.Prelude
@@ -202,6 +200,7 @@ import Distribution.Compat.Internal.TempFile
 import Distribution.Compat.Lens (Lens', over)
 import Distribution.Compat.Stack
 import Distribution.ModuleName as ModuleName
+import Distribution.Simple.Errors
 import Distribution.System
 import Distribution.Types.PackageId
 import Distribution.Utils.Generic
@@ -209,7 +208,6 @@ import Distribution.Utils.IOData (IOData (..), IODataMode (..), KnownIODataMode 
 import qualified Distribution.Utils.IOData as IOData
 import Distribution.Verbosity
 import Distribution.Version
-import Distribution.Simple.Errors
 
 #ifdef CURRENT_PACKAGE_KEY
 #define BOOTSTRAPPED_CABAL 1
@@ -278,8 +276,8 @@ import qualified GHC.IO.Exception as GHC
 import Numeric (showFFloat)
 import qualified System.Process as Process
 
-import qualified Text.PrettyPrint as Disp
 import GHC.Stack (HasCallStack)
+import qualified Text.PrettyPrint as Disp
 
 -- We only get our own version number when we're building with ourselves
 cabalVersion :: Version
@@ -380,13 +378,14 @@ die' verbosity msg = withFrozenCallStack $ do
     =<< annotateErrorString verbosity
     =<< pure . wrapTextVerbosity verbosity
     =<< pure . addErrorPrefix
-    =<< prefixWithProgName msg      
+    =<< prefixWithProgName msg
 
 -- Type which will be a wrapper for cabal -expections and cabal-install exceptions
-data VerboseException a  = VerboseException CallStack POSIXTime Verbosity a
- deriving (Show, Typeable)
+data VerboseException a = VerboseException CallStack POSIXTime Verbosity a
+  deriving (Show, Typeable)
 
 -- A new dieWithException function which will replace the existing die' call sites
+
 dieWithException :: HasCallStack => Verbosity -> CabalException -> IO a
 dieWithException verbosity exception = do
   ts <- getPOSIXTime
@@ -394,11 +393,13 @@ dieWithException verbosity exception = do
 
 instance Exception (VerboseException CabalException) where
   displayException :: VerboseException CabalException -> [Char]
-  displayException (VerboseException stack timestamp verb cabalexception) =  concat 
-    ["Error: [C-" 
-    , show (exceptionCode cabalexception)
-    , "]\n"
-    , exceptionWithMetadata stack timestamp verb $ exceptionMessage cabalexception] 
+  displayException (VerboseException stack timestamp verb cabalexception) =
+    concat
+      [ "Error: [C-"
+      , show (exceptionCode cabalexception)
+      , "]\n"
+      , exceptionWithMetadata stack timestamp verb $ exceptionMessage cabalexception
+      ]
 
 dieNoWrap :: Verbosity -> String -> IO a
 dieNoWrap verbosity msg = withFrozenCallStack $ do
@@ -777,16 +778,15 @@ withMetadata ts marker tracer verbosity x =
 
 -- | Add all necessary metadata to a logging message
 exceptionWithMetadata :: CallStack -> POSIXTime -> Verbosity -> String -> String
-exceptionWithMetadata stack ts verbosity x  =
-    -- NB: order matters.  Output marker first because we
-    -- don't want to capture call stacks.
-    withTrailingNewline
-      . exceptionWithCallStackPrefix stack verbosity
-      .  withOutputMarker verbosity
-      . clearMarkers
-      . withTimestamp verbosity ts
-      $  x
-    
+exceptionWithMetadata stack ts verbosity x =
+  -- NB: order matters.  Output marker first because we
+  -- don't want to capture call stacks.
+  withTrailingNewline
+    . exceptionWithCallStackPrefix stack verbosity
+    . withOutputMarker verbosity
+    . clearMarkers
+    . withTimestamp verbosity ts
+    $ x
 
 clearMarkers :: String -> String
 clearMarkers s = unlines . filter isMarker $ lines s
@@ -809,11 +809,12 @@ exceptionWithCallStackPrefix stack verbosity s =
               else ""
         else ""
     )
-      ++ ( if verbosity >= verbose 
-              then prettyCallStack stack ++ "\n" 
-              else "" 
+      ++ ( if verbosity >= verbose
+            then prettyCallStack stack ++ "\n"
+            else ""
          )
       ++ s
+
 -- -----------------------------------------------------------------------------
 -- rawSystem variants
 --

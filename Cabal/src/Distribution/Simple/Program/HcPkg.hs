@@ -1,4 +1,3 @@
-
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -52,6 +51,7 @@ import Distribution.InstalledPackageInfo
 import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.Simple.Compiler
+import Distribution.Simple.Errors
 import Distribution.Simple.Program.Run
 import Distribution.Simple.Program.Types
 import Distribution.Simple.Utils
@@ -59,7 +59,6 @@ import Distribution.Types.ComponentId
 import Distribution.Types.PackageId
 import Distribution.Types.UnitId
 import Distribution.Verbosity
-import Distribution.Simple.Errors
 
 import Data.List (stripPrefix)
 import System.FilePath as FilePath (isPathSeparator, joinPath, splitDirectories, splitPath, (<.>), (</>))
@@ -149,12 +148,10 @@ register
 register hpi verbosity packagedbs pkgInfo registerOptions
   | registerMultiInstance registerOptions
   , not (nativeMultiInstance hpi || recacheMultiInstance hpi) =
-    dieWithException verbosity RegMultipleInstancePkg
-  
+      dieWithException verbosity RegMultipleInstancePkg
   | registerSuppressFilesCheck registerOptions
   , not (suppressFilesCheck hpi) =
-     dieWithException verbosity SuppressingChecksOnFile
-      
+      dieWithException verbosity SuppressingChecksOnFile
   -- This is a trick. Older versions of GHC do not support the
   -- --enable-multi-instance flag for ghc-pkg register but it turns out that
   -- the same ability is available by using ghc-pkg recache. The recache
@@ -187,13 +184,11 @@ writeRegistrationFileDirectly verbosity hpi (SpecificPackageDB dir) pkgInfo
         let pkgfile = dir </> prettyShow (installedUnitId pkgInfo) <.> "conf"
         writeUTF8File pkgfile (showInstalledPackageInfo pkgInfo)
   | otherwise =
-     dieWithException verbosity NoSupportDirStylePackageDb
-    
+      dieWithException verbosity NoSupportDirStylePackageDb
 writeRegistrationFileDirectly verbosity _ _ _ =
   -- We don't know here what the dir for the global or user dbs are,
   -- if that's needed it'll require a bit more plumbing to support.
-   dieWithException verbosity OnlySupportSpecificPackageDb 
-  
+  dieWithException verbosity OnlySupportSpecificPackageDb
 
 -- | Call @hc-pkg@ to unregister a package
 --
@@ -254,13 +249,13 @@ dump hpi verbosity packagedb = do
     getProgramInvocationLBS
       verbosity
       (dumpInvocation hpi verbosity packagedb)
-      `catchIO` \e -> 
+      `catchIO` \e ->
         dieWithException verbosity $ DumpFailed (programId (hcPkgProgram hpi)) (displayException e)
-         
+
   case parsePackages output of
     Left ok -> return ok
     _ -> dieWithException verbosity $ FailedToParseOutputDump (programId (hcPkgProgram hpi))
-      
+
 parsePackages :: LBS.ByteString -> Either [InstalledPackageInfo] [String]
 parsePackages lbs0 =
   case traverse parseInstalledPackageInfo $ splitPkgs lbs0 of
@@ -377,12 +372,10 @@ list hpi verbosity packagedb = do
       verbosity
       (listInvocation hpi verbosity packagedb)
       `catchIO` \_ -> dieWithException verbosity $ ListFailed (programId (hcPkgProgram hpi))
-        -- die' verbosity $ programId (hcPkgProgram hpi) ++ " list failed"
 
   case parsePackageIds output of
     Just ok -> return ok
     _ -> dieWithException verbosity $ FailedToParseOutputList (programId (hcPkgProgram hpi))
-      
   where
     parsePackageIds = traverse simpleParsec . words
 

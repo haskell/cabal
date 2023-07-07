@@ -125,6 +125,7 @@ module Distribution.Simple.Program
 import Distribution.Compat.Prelude
 import Prelude ()
 
+import Distribution.Simple.Errors
 import Distribution.Simple.Program.Builtin
 import Distribution.Simple.Program.Db
 import Distribution.Simple.Program.Find
@@ -132,7 +133,6 @@ import Distribution.Simple.Program.Run
 import Distribution.Simple.Program.Types
 import Distribution.Simple.Utils
 import Distribution.Verbosity
-import Distribution.Simple.Errors
 
 -- | Runs the given configured program.
 runProgram
@@ -171,7 +171,8 @@ runDbProgram
   -> IO ()
 runDbProgram verbosity prog programDb args =
   case lookupProgram prog programDb of
-    Nothing -> dieWithException verbosity $ ProgramNotFound (programName prog)
+    Nothing ->
+      dieWithException verbosity $ ProgramNotFound (programName prog)
     Just configuredProg -> runProgram verbosity configuredProg args
 
 -- | Looks up the given program in the program database and runs it.
