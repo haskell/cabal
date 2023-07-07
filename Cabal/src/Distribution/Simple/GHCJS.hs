@@ -79,6 +79,8 @@ import Distribution.Types.PackageName.Magic
 import Distribution.Types.ParStrat
 import Distribution.Utils.NubList
 import Distribution.Utils.Path
+import Distribution.Verbosity (Verbosity)
+import Distribution.Version
 
 import Control.Monad (msum)
 import Data.Char (isLower)
