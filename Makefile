@@ -250,8 +250,8 @@ doc/requirements.txt: .python-sphinx-virtualenv
 	. .python-sphinx-virtualenv/bin/activate \
 	  && make -C doc build-and-check-requirements
 
-ifeq ($(UNAME), Darwin)
-    PROCS := $(shell sysctl -n hw.logicalcpu)
+ifeq ($(shell uname), Darwin)
+PROCS := $(shell sysctl -n hw.logicalcpu)
 else
-    PROCS := $(shell nproc)
+PROCS := $(shell nproc)
 endif
