@@ -79,8 +79,8 @@ ipiFieldGrammar =
   mkInstalledPackageInfo
     -- Deprecated fields
     <$> monoidalFieldAla "hugs-options" (alaList' FSep Token) unitedList
-    --- https://github.com/haskell/cabal/commit/40f3601e17024f07e0da8e64d3dd390177ce908b
-    ^^^ deprecatedSince CabalSpecV1_22 "hugs isn't supported anymore"
+      --- https://github.com/haskell/cabal/commit/40f3601e17024f07e0da8e64d3dd390177ce908b
+      ^^^ deprecatedSince CabalSpecV1_22 "hugs isn't supported anymore"
     -- Very basic fields: name, version, package-name, lib-name and visibility
     <@> blurFieldGrammar basic basicFieldGrammar
     -- Basic fields

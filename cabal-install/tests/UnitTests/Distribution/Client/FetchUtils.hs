@@ -16,12 +16,12 @@ import Distribution.Client.Types.Repo (Repo (..), emptyRemoteRepo)
 import Distribution.Client.Types.RepoName (RepoName (..))
 import Distribution.Types.PackageId (PackageIdentifier (..))
 import Distribution.Types.PackageName (mkPackageName)
+import Distribution.Utils.TempTestDir (withTestDir)
 import qualified Distribution.Verbosity as Verbosity
 import Distribution.Version (mkVersion)
 import Network.URI (URI, uriPath)
 import Test.Tasty
 import Test.Tasty.HUnit
-import Distribution.Utils.TempTestDir (withTestDir)
 
 tests :: [TestTree]
 tests =
