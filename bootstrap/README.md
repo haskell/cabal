@@ -1,8 +1,8 @@
 # Bootstrapping cabal-install
 
 This utility is only intended for use in building `cabal-install`
-on a new platform. If you already have a functional (if dated) `cabal-install`,
-please, rather run `cabal install cabal-install`.
+on a new platform. If you already have a functional cabal-install, however old, then
+please instead run `cabal install cabal-install`.
 
 ## Bootstrapping on Linux
 
