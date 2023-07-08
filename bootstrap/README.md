@@ -43,7 +43,7 @@ in the same way as it is shown for Linux above. On a system with functional `cab
    ```
 
 3. You may need to tweak `bootstrap/$PLATFORM-$GHCVER.json` file manually,
-     for example toggle flags.
+     for example, to toggle flags.
 
 There are rules in the top-level `Makefile` for generation of these files.
 
