@@ -1,3 +1,4 @@
+{- FOURMOLU_DISABLE -}
 {-# OPTIONS_GHC -fno-warn-unused-binds -fno-warn-missing-signatures #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE MagicHash #-}

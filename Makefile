@@ -20,20 +20,10 @@ init: ## Set up git hooks and ignored revisions
 
 style: ## Run the code styler
 	@find Cabal Cabal-syntax cabal-install -name '*.hs' \
-		! -path Cabal-syntax/src/Distribution/Fields/Lexer.hs \
-		! -path Cabal-syntax/src/Distribution/SPDX/LicenseExceptionId.hs \
-		! -path Cabal-syntax/src/Distribution/SPDX/LicenseId.hs \
-		! -path Cabal/src/Distribution/Simple/Build/Macros/Z.hs \
-		! -path Cabal/src/Distribution/Simple/Build/PathsModule/Z.hs \
 		| xargs -P $(PROCS) -I {} fourmolu -q -i {}
 
 style-modified: ## Run the code styler on modified files
 	@git ls-files --modified Cabal Cabal-syntax cabal-install \
-		-X Cabal-syntax/src/Distribution/Fields/Lexer.hs \
-		-X Cabal-syntax/src/Distribution/SPDX/LicenseExceptionId.hs \
-		-X Cabal-syntax/src/Distribution/SPDX/LicenseId.hs \
-		-X Cabal/src/Distribution/Simple/Build/Macros/Z.hs \
-		-X Cabal/src/Distribution/Simple/Build/PathsModule/Z.hs \
 		| grep '.hs$$' | xargs -P $(PROCS) -I {} fourmolu -q -i {}
 
 # source generation: Lexer
@@ -44,7 +34,9 @@ lexer : $(LEXER_HS)
 
 $(LEXER_HS) : templates/Lexer.x
 	alex --latin1 --ghc -o $@ $^
-	cat -s $@ > Lexer.tmp
+	@rm -f Lexer.tmp
+	echo '{- FOURMOLU_DISABLE -}' >> Lexer.tmp
+	cat -s $@ >> Lexer.tmp
 	mv Lexer.tmp $@
 
 # source generation: SPDX

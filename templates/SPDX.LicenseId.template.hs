@@ -1,3 +1,4 @@
+{- FOURMOLU_DISABLE -}
 {-# LANGUAGE DeriveDataTypeable #-}
 module Distribution.SPDX.LicenseId (
     LicenseId (..),
