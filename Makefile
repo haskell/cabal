@@ -19,8 +19,7 @@ init: ## Set up git hooks and ignored revisions
 	## TODO
 
 style: ## Run the code styler
-	@find Cabal Cabal-syntax cabal-install -name '*.hs' \
-		| xargs -P $(PROCS) -I {} fourmolu -q -i {}
+	@fourmolu -q -i Cabal Cabal-syntax cabal-install
 
 style-modified: ## Run the code styler on modified files
 	@git ls-files --modified Cabal Cabal-syntax cabal-install \
