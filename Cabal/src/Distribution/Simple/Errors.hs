@@ -74,6 +74,8 @@ data CabalException
   | VersionMisMatchGHC FilePath Version FilePath Version
   | GlobalPackageDBLimitation
   | GlobalPackageDBSpecifiedFirst
+  | MatchDirFileGlob String
+  | MatchDirFileGlobErrors [String]
   deriving (Show, Typeable)
 
 exceptionCode :: CabalException -> Int
@@ -122,6 +124,8 @@ exceptionCode e = case e of
   VersionMisMatchGHC{} -> 4001
   GlobalPackageDBLimitation{} -> 5002
   GlobalPackageDBSpecifiedFirst{} -> 3901
+  MatchDirFileGlob{} -> 9760
+  MatchDirFileGlobErrors{} -> 6661
 
 exceptionMessage :: CabalException -> String
 exceptionMessage e = case e of
@@ -207,3 +211,5 @@ exceptionMessage e = case e of
   GlobalPackageDBSpecifiedFirst ->
     "If the global package db is specified, it must be "
       ++ "specified first and cannot be specified multiple times"
+  MatchDirFileGlob pathError -> pathError
+  MatchDirFileGlobErrors errors -> unlines errors

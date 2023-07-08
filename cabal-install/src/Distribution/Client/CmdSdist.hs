@@ -107,6 +107,7 @@ import Distribution.Simple.SrcDist
   )
 import Distribution.Simple.Utils
   ( die'
+  , dieWithException
   , notice
   , withOutputMarker
   , wrapText
@@ -240,9 +241,9 @@ sdistAction (pf@ProjectFlags{..}, SdistFlags{..}) targetStrings globalFlags = do
   let format :: OutputFormat
       format =
         if
-            | listSources, nulSeparated -> SourceList '\0'
-            | listSources -> SourceList '\n'
-            | otherwise -> TarGzArchive
+          | listSources, nulSeparated -> SourceList '\0'
+          | listSources -> SourceList '\n'
+          | otherwise -> TarGzArchive
 
       ext = case format of
         SourceList _ -> "list"
@@ -340,10 +341,10 @@ packageToSdist verbosity projectRootDir format outputFile pkg = do
         let gpd :: GenericPackageDescription
             gpd = srcpkgDescription pkg
 
-        let thisDie :: Verbosity -> String -> IO a
-            thisDie v s = die' v $ "sdist of " <> prettyShow (packageId gpd) ++ ": " ++ s
+        -- let thisDie :: Verbosity -> String -> IO a
+        --  thisDie v s = die' v $ "sdist of " <> prettyShow (packageId gpd) ++ ": " ++ s
 
-        files' <- listPackageSourcesWithDie verbosity thisDie dir (flattenPackageDescription gpd) knownSuffixHandlers
+        files' <- listPackageSourcesWithDie verbosity dieWithException dir (flattenPackageDescription gpd) knownSuffixHandlers
         let files = nub $ sort $ map normalise files'
         let prefix = makeRelative projectRootDir dir
         write $ concat [prefix </> i ++ [nulSep] | i <- files]
