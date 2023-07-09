@@ -3,6 +3,7 @@ import Test.Cabal.Prelude
 main = do
   cabalTest $ do
     skipUnlessGhcVersion ">= 9.4"
+    skipIfWindows -- heisenbug, see #9103
     -- the package order is non-deterministic.
     -- add Bar.Bar input to test that packages are trully loaded
     -- when GHC gets support for switching active units
