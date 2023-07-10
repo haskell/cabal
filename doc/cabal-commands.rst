@@ -60,7 +60,7 @@ Arguments and flags common to some or all commands are:
     users to peg themselves to stable package collections.
 
 
-.. option:: --allow-newer[=pkgs], --allow-older[=pkgs]
+.. option:: --allow-newer[=DEPS], --allow-older[=DEPS]
 
     Selectively relax upper or lower bounds in dependencies without
     editing the package description respectively.
@@ -125,7 +125,7 @@ Arguments and flags common to some or all commands are:
     'allow-newer' selectively is also supported in the config file
     (``allow-newer: foo, bar, baz:base``).
 
-.. option:: --preference=preference
+.. option:: --preference=CONSTRAINT
 
     Specify a soft constraint on versions of a package. The solver will
     attempt to satisfy these preferences on a "best-effort" basis.
@@ -248,11 +248,11 @@ cabal preferences. It is very useful when you are e.g. first configuring
 - ``cabal user-config update`` updates the user's config file with additional
   lines.
 
-  .. option:: -a, --augment=CONFIGLINE
+  .. option:: -a CONFIGLINE or -aCONFIGLINE, --augment=CONFIGLINE
 
       Pass additional configuration lines to be incorporated in the
       config file. e.g.
-      ``cabal user-config update --augment "offline: True"``.
+      ``cabal user-config update --augment="offline: True"``.
 
       Note how ``--augment`` syntax follows ``cabal user-config diff``
       output.
@@ -297,7 +297,7 @@ cabal list
     Append the given package database to the list of used package
     databases. See `cabal info`_ for a thorough explanation.
 
-.. option:: -w, --with-compiler=PATH
+.. option:: -w PATH or -wPATH, --with-compiler=PATH
 
     Path to specific compiler.
 
@@ -377,7 +377,7 @@ folder. By default the latest version of the package is downloaded, you can
 ask for a spefic one by adding version numbers
 (``cabal get random-1.0.0.1``).
 
-.. option:: -s, --source-repository[=head|this|...]]
+.. option:: -s[[head|this|...]], --source-repository[=[head|this|...]]
 
     Clone the package's source repository (Darcs, Git, etc.) instead
     of downloading the tarball. Only works if the package specifies
@@ -491,7 +491,7 @@ description file or freeze file.
 
 ``cabal outdated`` supports the following flags:
 
-.. option:: --v1-freeze-file
+.. option:: --freeze-file
 
     Read dependency version bounds from the freeze file.
 
@@ -507,7 +507,7 @@ description file or freeze file.
     description file. ``--new-freeze-file`` is an alias for this flag
     that can be used with pre-2.4 ``cabal``.
 
-.. option:: --project-file PROJECTFILE
+.. option:: --project-file=FILE
 
     :since: 2.4
 
@@ -529,11 +529,11 @@ description file or freeze file.
 
     Don't print any output. Implies ``-v0`` and ``--exit-code``.
 
-.. option:: --ignore PACKAGENAMES
+.. option:: --ignore=PKGS
 
     Don't warn about outdated dependency version bounds for the packages in this list.
 
-.. option:: --minor [PACKAGENAMES]
+.. option:: --minor[PKGS]
 
     Ignore major version bumps for these packages.
 
@@ -810,7 +810,7 @@ Examples:
 Configuration flags can be specified on the command line and these extend the project
 configuration from the 'cabal.project', 'cabal.project.local' and other files.
 
-.. option:: --repl-options
+.. option:: --repl-options=FLAG
 
     To avoid ``ghci``-specific flags from triggering unneeded global rebuilds, these
     flags are stripped from the internal configuration. As a result,
@@ -822,7 +822,7 @@ configuration from the 'cabal.project', 'cabal.project.local' and other files.
 
     Disables the loading of target modules at startup.
 
-.. option:: -b, --build-depends
+.. option:: -b DEPENDENCIES or -bDEPENDENCIES, --build-depends=DEPENDENCIES
 
     A way to experiment with libraries without needing to download
     them manually or to install them globally.
@@ -832,7 +832,7 @@ configuration from the 'cabal.project', 'cabal.project.local' and other files.
 
     ::
 
-        $ cabal repl --build-depends "vector >= 0.12 && < 0.13"
+        $ cabal repl --build-depends="vector >= 0.12 && < 0.13"
 
     Both of these commands do the same thing as the above, but only expose ``base``,
     ``vector``, and the ``vector`` package's transitive dependencies even if the user
@@ -840,8 +840,8 @@ configuration from the 'cabal.project', 'cabal.project.local' and other files.
 
     ::
 
-        $ cabal repl --ignore-project --build-depends "vector >= 0.12 && < 0.13"
-        $ cabal repl --project='' --build-depends "vector >= 0.12 && < 0.13"
+        $ cabal repl --ignore-project --build-depends="vector >= 0.12 && < 0.13"
+        $ cabal repl --project='' --build-depends="vector >= 0.12 && < 0.13"
 
     This command would add ``vector``, but not (for example) ``primitive``, because
     it only includes the packages specified on the command line (and ``base``, which
@@ -849,7 +849,7 @@ configuration from the 'cabal.project', 'cabal.project.local' and other files.
 
     ::
 
-        $ cabal repl --build-depends vector --no-transitive-deps
+        $ cabal repl --build-depends=vector --no-transitive-deps
 
 ``cabal repl`` can open scripts by passing the path to the script as the target.
 
@@ -879,9 +879,9 @@ See ``cabal run`` for more information on scripts.
 cabal run
 ^^^^^^^^^
 
-``cabal run [TARGET [ARGS]]`` runs the executable specified by the
-target, which can be a component, a package or can be left blank, as
-long as it can uniquely identify an executable within the project.
+``cabal run [TARGET] [FLAGS] [-- EXECUTABLE_FLAGS]`` runs the executable
+specified by the target, which can be a component, a package or can be left
+blank, as long as it can uniquely identify an executable within the project.
 Tests and benchmarks are also treated as executables.
 
 See `the build section <#cabal-build>`__ for the target syntax.
@@ -971,7 +971,7 @@ For more information see :cfg-field:`verbose`
 cabal bench
 ^^^^^^^^^^^
 
-``cabal bench [TARGETS] [OPTIONS]`` runs the specified benchmarks
+``cabal bench [TARGETS] [FLAGS]`` runs the specified benchmarks
 (all the benchmarks in the current package by default), first ensuring
 they are up to date.
 
@@ -981,7 +981,7 @@ they are up to date.
 cabal test
 ^^^^^^^^^^
 
-``cabal test [TARGETS] [OPTIONS]`` runs the specified test suites
+``cabal test [TARGETS] [FLAGS]`` runs the specified test suites
 (all the test suites in the current package by default), first ensuring
 they are up to date.
 
@@ -1010,9 +1010,9 @@ tricky GHC options, etc.).
 
 Run ``cabal check`` in the folder where your ``.cabal`` package file is.
 
-.. option:: -v, --verbose[=n]
+.. option:: -v[n], --verbose[=n]
 
-    Set verbosity level (0–3, default is 1).
+    Control verbosity (n is 0--3, default verbosity level is 1).
 
 Issues are classified as ``Warning``\s and ``Error``\s. The latter correspond
 to Hackage requirements for uploaded packages: if no error is reported,
@@ -1022,7 +1022,7 @@ exits with ``1`` and Hackage will refuse the package.
 cabal sdist
 ^^^^^^^^^^^
 
-``cabal sdist [FLAGS] [TARGETS]`` takes the crucial files needed to build ``TARGETS``
+``cabal sdist [FLAGS] [PACKAGES]`` takes the crucial files needed to build ``PACKAGES``
 and puts them into an archive format ready for upload to Hackage. These archives are stable
 and two archives of the same format built from the same source will hash to the same value.
 
@@ -1035,7 +1035,7 @@ and two archives of the same format built from the same source will hash to the 
     Output is to ``stdout`` by default. The file paths are relative to the project's root
     directory.
 
-.. option:: -o, --output-directory
+.. option:: -o PATH or -oPATH, --output-directory=PATH
 
     Sets the output dir, if a non-default one is desired. The default is
     ``dist-newstyle/sdist/``. ``--output-directory -`` will send output to ``stdout``
@@ -1072,22 +1072,22 @@ to Hackage.
     documentation for a published package (and not a candidate), add
     ``--publish``.
 
-.. option:: -u, --username
+.. option:: -u USERNAME or -uUSERNAME, --username=USERNAME
 
     Your Hackage username.
 
-.. option:: -p, --password
+.. option:: -p PASSWORD or -pPASSWORD, --password=PASSWORD
 
     Your Hackage password.
 
-.. option:: -P, --password-command
+.. option:: -P COMMAND or -PCOMMAND, --password-command=COMMAND
 
     Command to get your Hackage password.  Arguments with whitespace
     must be quoted (double-quotes only).  For example:
 
     ::
 
-        --password-command 'sh -c "grep hackage ~/secrets | cut -d : -f 2"'
+        --password-command='sh -c "grep hackage ~/secrets | cut -d : -f 2"'
 
     Or in the config file:
 
@@ -1101,10 +1101,10 @@ cabal report
 
 ``cabal report [FLAGS]`` uploads build reports to Hackage.
 
-.. option:: -u, --username
+.. option:: -u USERNAME or -uUSERNAME, --username=USERNAME
 
     Your Hackage username.
 
-.. option:: -p, --password
+.. option:: -p PASSWORD or -pPASSWORD, --password=PASSWORD
 
     Your Hackage password.
