@@ -354,7 +354,7 @@ data HttpTransport = HttpTransport
       -> String
       -> Maybe Auth
       -> IO (HttpCode, String)
-  -- ^ POST a resource to a URI, with optional auth (username, password)
+  -- ^ POST a resource to a URI, with optional 'Auth'
   -- and return the HTTP status code and any redirect URL.
   , postHttpFile
       :: Verbosity
@@ -363,7 +363,7 @@ data HttpTransport = HttpTransport
       -> Maybe Auth
       -> IO (HttpCode, String)
   -- ^ POST a file resource to a URI using multipart\/form-data encoding,
-  -- with optional auth (username, password) and return the HTTP status
+  -- with optional 'Auth' and return the HTTP status
   -- code and any error string.
   , putHttpFile
       :: Verbosity
@@ -372,8 +372,8 @@ data HttpTransport = HttpTransport
       -> Maybe Auth
       -> [Header]
       -> IO (HttpCode, String)
-  -- ^ PUT a file resource to a URI, with optional auth
-  -- (username, password), extra headers and return the HTTP status code
+  -- ^ PUT a file resource to a URI, with optional 'Auth',
+  -- extra headers and return the HTTP status code
   -- and any error string.
   , transportSupportsHttps :: Bool
   -- ^ Whether this transport supports https or just http.
@@ -539,8 +539,8 @@ curlTransport prog =
       let mbAuthStringToken = case (explicitAuth, uriDerivedAuth) of
             (Just (Right token), _) -> Just $ Right token
             (Just (Left (uname, passwd)), _) -> Just $ Left (uname ++ ":" ++ passwd)
-            (_, Just a) -> Just $ Left a
-            (_, _) -> Nothing
+            (Nothing, Just a) -> Just $ Left a
+            (Nothing, Nothing) -> Nothing
       case mbAuthStringToken of
         Just (Left up) ->
           progInvocation

@@ -1680,7 +1680,7 @@ reportCommand =
         , option
             ['t']
             ["token"]
-            "Hackage Token."
+            "Hackage authentication Token."
             reportToken
             (\v flags -> flags{reportToken = v})
             ( reqArg'
