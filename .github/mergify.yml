@@ -12,6 +12,7 @@ pull_request_rules:
       - or:
         - label=merge me
         - label=squash+merge me
+        - label=merge+no rebase
       - '#approved-reviews-by>=2'
 
   # rebase+merge strategy
@@ -41,6 +42,17 @@ pull_request_rules:
     conditions:
       - base=master
       - label=squash+merge me
+      - label=merge delay passed
+      - '#approved-reviews-by>=2'
+
+  # merge+no rebase strategy
+  - actions:
+      merge:
+        method: merge
+    name: Merge "merge+no rebase" pull requests directly (without a queue)
+    conditions:
+      - base=master
+      - label=merge+no rebase
       - label=merge delay passed
       - '#approved-reviews-by>=2'
 
