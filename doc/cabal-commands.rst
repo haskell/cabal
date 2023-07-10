@@ -1,8 +1,10 @@
 Commands
 ========
 
-``cabal help`` groups commands into global, package, new-style project and
-legacy sections. We talk in detail about some global and package commands.
+``cabal help`` groups commands into :ref:`global<command-group-global>`,
+:ref:`database<command-group-database>`, :ref:`init<command-group-init>`,
+:ref:`configure<command-group-config>`, :ref:`build<command-group-build>`,
+:ref:`run<command-group-run>` and :ref:`ship<command-group-ship>` sections.
 
 ::
 
@@ -14,35 +16,58 @@ legacy sections. We talk in detail about some global and package commands.
     Usage: cabal [GLOBAL FLAGS] [COMMAND [FLAGS]]
 
     Commands:
-    [global]
-    update            Updates list of known packages.
-    install           Install packages.
-    help              Help about commands.
+     [global]
+      user-config            Display and update the user's global cabal configuration.
+      help                   Help about commands.
 
-    [package]
-    configure         Add extra project configuration.
-    build             Compile targets within the project.
-    clean             Clean the package store and remove temporary files.
+     [package database]
+      update                 Updates list of known packages.
+      list                   List packages matching a search string.
+      info                   Display detailed information about a particular package.
 
-    run               Run an executable.
-    repl              Open an interactive session for the given component.
-    test              Run test suites.
-    bench             Run benchmarks.
+     [initialization and download]
+      init                   Create a new cabal package.
+      fetch                  Downloads packages for later installation.
+      get                    Download/Extract a package's source code (repository).
 
-    sdist             Generate a source distribution file (.tar.gz).
+     [project configuration]
+      configure              Add extra project configuration.
+      freeze                 Freeze dependencies.
+      gen-bounds             Generate dependency bounds.
+      outdated               Check for outdated dependencies.
 
-    freeze            Freeze dependencies.
-    haddock           Build Haddock documentation.
-    haddock-project   Build Haddock documentation of local packages.
-    exec              Give a command access to the store.
-    list-bin          List path to a single executable.
+     [project building and installing]
+      build                  Compile targets within the project.
+      install                Install packages.
+      haddock                Build Haddock documentation.
+      haddock-project        Generate Haddocks HTML documentation for the cabal project.
+      clean                  Clean the package store and remove temporary files.
 
-    [new-style projects (forwards-compatible aliases)]
-    Since cabal-install-3.0.0.0, all 'v2-' prefixed names of commands are just aliases for the simple unprefixed names.
-    So v2-build is an alias for build, v2-install for install and so on.
+     [running and testing]
+      list-bin               List the path to a single executable.
+      repl                   Open an interactive session for the given component.
+      run                    Run an executable.
+      bench                  Run benchmarks.
+      test                   Run test-suites.
+      exec                   Give a command access to the store.
 
-    [legacy command aliases]
-    No legacy commands are described.
+     [sanity checks and shipping]
+      check                  Check the package for common mistakes.
+      sdist                  Generate a source distribution file (.tar.gz).
+      upload                 Uploads source packages or documentation to Hackage.
+      report                 Upload build reports to a remote server.
+
+     [deprecated]
+      unpack                 Deprecated alias for 'get'.
+      hscolour               Generate HsColour colourised code, in HTML format.
+
+     [new-style projects (forwards-compatible aliases)]
+      Since cabal-install-3.0.0.0, all 'v2-' prefixed names of commands are just
+      aliases for the simple unprefixed names.  So v2-build is an alias for
+      build, v2-install for install and so on.
+
+     [legacy command aliases]
+      No legacy commands are described.
 
 Common Arguments and Flags
 --------------------------
@@ -222,6 +247,8 @@ A cabal command target can take any of the following forms:
    file. This is supported by ``build``, ``repl``, ``run``, and ``clean``.
    Script targets are not part of a package.
 
+.. _command-group-global:
+
 Global commands
 ---------------
 
@@ -257,6 +284,7 @@ cabal preferences. It is very useful when you are e.g. first configuring
       Note how ``--augment`` syntax follows ``cabal user-config diff``
       output.
 
+.. _command-group-database:
 
 Package database commands
 -------------------------
@@ -314,6 +342,7 @@ packages.
     file, ``global`` or ``user``. The initial list is ``['global'], ['global',
     'user']``, depending on context. Use ``clear`` to reset the list to empty.
 
+.. _command-group-init:
 
 Initialization and download
 ---------------------------
@@ -393,6 +422,8 @@ ask for a spefic one by adding version numbers
 .. option:: --pristine
 
     Unpacks the pristine tarball, i.e. disregarding any Hackage revision.
+
+.. _command-group-config:
 
 Project configuration
 ---------------------
@@ -545,6 +576,8 @@ description file or freeze file.
     all packages.
 
     See `the section on listing outdated dependency version bounds <cabal-package.html#listing-outdated-dependency-version-bounds>`__ for more details and examples.
+
+.. _command-group-build:
 
 Project building and installing
 -------------------------------
@@ -732,6 +765,8 @@ artifacts for the script, which are stored under the .cabal/script-builds direct
 
 In addition when clean is invoked it will remove all script build artifacts for
 which the corresponding script no longer exists.
+
+.. _command-group-run:
 
 Running and testing
 -------------------
@@ -997,6 +1032,8 @@ cabal exec
 ``cabal exec [FLAGS] [--] COMMAND [--] [ARGS]`` runs the specified command
 using the project's environment. That is, passing the right flags to compiler
 invocations and bringing the project's executables into scope.
+
+.. _command-group-ship:
 
 Sanity checks and shipping
 --------------------------
