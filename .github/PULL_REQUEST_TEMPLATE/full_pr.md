@@ -1,4 +1,5 @@
 ---
+about: This PR modifies `cabal` behaviour
 labels: ["attention: needs-review"]
 
 ---
