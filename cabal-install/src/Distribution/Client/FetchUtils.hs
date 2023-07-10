@@ -368,7 +368,7 @@ packageFile :: Repo -> PackageId -> FilePath
 packageFile repo pkgid =
   packageDir repo pkgid
     </> prettyShow pkgid
-    <.> "tar.gz"
+      <.> "tar.gz"
 
 -- | Generate the full path to the directory where the local cached copy of
 -- the tarball for a given @PackageIdentifier@ is stored.

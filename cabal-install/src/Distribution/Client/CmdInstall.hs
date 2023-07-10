@@ -1201,7 +1201,7 @@ getLocalEnv :: FilePath -> Platform -> Version -> FilePath
 getLocalEnv dir platform compilerVersion =
   dir
     </> ".ghc.environment."
-    <> ghcPlatformAndVersionString platform compilerVersion
+      <> ghcPlatformAndVersionString platform compilerVersion
 
 getPackageDbStack
   :: CompilerId

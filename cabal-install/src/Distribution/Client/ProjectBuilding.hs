@@ -1083,7 +1083,7 @@ unpackPackageTarball verbosity tarball parentdir pkgid pkgTextOverride =
       parentdir
         </> pkgsubdir
         </> prettyShow pkgname
-        <.> "cabal"
+          <.> "cabal"
     pkgsubdir = prettyShow pkgid
     pkgname = packageName pkgid
 

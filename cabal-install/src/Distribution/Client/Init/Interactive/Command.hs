@@ -459,10 +459,10 @@ languagePrompt flags pkgType = getLanguage flags $ do
       True
 
   if
-      | l == h2010 -> return Haskell2010
-      | l == h98 -> return Haskell98
-      | l == ghc2021 -> return GHC2021
-      | otherwise -> return $ UnknownLanguage l
+    | l == h2010 -> return Haskell2010
+    | l == h98 -> return Haskell98
+    | l == ghc2021 -> return GHC2021
+    | otherwise -> return $ UnknownLanguage l
 
 noCommentsPrompt :: Interactive m => InitFlags -> m Bool
 noCommentsPrompt flags = getNoComments flags $ do

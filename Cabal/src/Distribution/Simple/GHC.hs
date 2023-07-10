@@ -2501,47 +2501,47 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir pkg lib clbi = do
       whenGHCi $ installOrdinary builtDir targetDir ghciProfLibName
     whenShared $
       if
-          -- The behavior for "extra-bundled-libraries" changed in version 2.5.0.
-          -- See ghc issue #15837 and Cabal PR #5855.
-          | specVersion pkg < CabalSpecV3_0 -> do
-              sequence_
-                [ installShared
-                  builtDir
-                  dynlibTargetDir
-                  (mkGenericSharedLibName platform compiler_id (l ++ f))
-                | l <- getHSLibraryName uid : extraBundledLibs (libBuildInfo lib)
-                , f <- "" : extraDynLibFlavours (libBuildInfo lib)
-                ]
-          | otherwise -> do
-              sequence_
-                [ installShared
-                  builtDir
-                  dynlibTargetDir
-                  ( mkGenericSharedLibName
-                      platform
-                      compiler_id
-                      (getHSLibraryName uid ++ f)
-                  )
-                | f <- "" : extraDynLibFlavours (libBuildInfo lib)
-                ]
-              sequence_
-                [ do
-                  files <- getDirectoryContents builtDir
-                  let l' =
-                        mkGenericSharedBundledLibName
-                          platform
-                          compiler_id
-                          l
-                  forM_ files $ \file ->
-                    when (l' `isPrefixOf` file) $ do
-                      isFile <- doesFileExist (builtDir </> file)
-                      when isFile $ do
-                        installShared
-                          builtDir
-                          dynlibTargetDir
-                          file
-                | l <- extraBundledLibs (libBuildInfo lib)
-                ]
+        -- The behavior for "extra-bundled-libraries" changed in version 2.5.0.
+        -- See ghc issue #15837 and Cabal PR #5855.
+        | specVersion pkg < CabalSpecV3_0 -> do
+            sequence_
+              [ installShared
+                builtDir
+                dynlibTargetDir
+                (mkGenericSharedLibName platform compiler_id (l ++ f))
+              | l <- getHSLibraryName uid : extraBundledLibs (libBuildInfo lib)
+              , f <- "" : extraDynLibFlavours (libBuildInfo lib)
+              ]
+        | otherwise -> do
+            sequence_
+              [ installShared
+                builtDir
+                dynlibTargetDir
+                ( mkGenericSharedLibName
+                    platform
+                    compiler_id
+                    (getHSLibraryName uid ++ f)
+                )
+              | f <- "" : extraDynLibFlavours (libBuildInfo lib)
+              ]
+            sequence_
+              [ do
+                files <- getDirectoryContents builtDir
+                let l' =
+                      mkGenericSharedBundledLibName
+                        platform
+                        compiler_id
+                        l
+                forM_ files $ \file ->
+                  when (l' `isPrefixOf` file) $ do
+                    isFile <- doesFileExist (builtDir </> file)
+                    when isFile $ do
+                      installShared
+                        builtDir
+                        dynlibTargetDir
+                        file
+              | l <- extraBundledLibs (libBuildInfo lib)
+              ]
   where
     builtDir = componentBuildDir lbi clbi
 

@@ -1760,7 +1760,7 @@ installLocalTarballPackage
             descFilePath =
               absUnpackedPath
                 </> prettyShow (packageName pkgid)
-                <.> "cabal"
+                  <.> "cabal"
         info verbosity $
           "Extracting "
             ++ tarballPath
@@ -1857,7 +1857,7 @@ installUnpackedPackage
         let descFilePath =
               fromMaybe "." workingDir
                 </> prettyShow (packageName pkgid)
-                <.> "cabal"
+                  <.> "cabal"
         info verbosity $
           "Updating "
             ++ prettyShow (packageName pkgid) <.> "cabal"
