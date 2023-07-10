@@ -213,19 +213,19 @@ files of a package:
     embedded spaced need to be quoted, for example
     ``--foo-options='--bar="C:\Program File\Bar"'``. As an alternative
     that takes only one option at a time but avoids the need to quote,
-    use :option:`--prog-option` instead.
+    use :option:`--PROG-option` instead.
 
 .. option:: --PROG-option=OPT
 
     Specify a single additional option to the program *prog*. For
     passing an option that contains embedded spaces, such as a file name
-    with embedded spaces, using this rather than :option:`--prog-options`
+    with embedded spaces, using this rather than :option:`--PROG-options`
     means you do not need an additional level of quoting. Of course if you
     are using a command shell you may still need to quote, for example
     ``--foo-options="--bar=C:\Program File\Bar"``.
 
-All of the options passed with either :option:`--prog-options`
-or :option:`--prog-option` are passed in the order they were
+All of the options passed with either :option:`--PROG-options`
+or :option:`--PROG-option` are passed in the order they were
 specified on the configure command line.
 
 Installation paths
