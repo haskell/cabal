@@ -1031,6 +1031,7 @@ plainHttpTransport =
             , Header HdrContentLength (show (LBS8.length body))
             , Header HdrAccept ("text/plain")
             ]
+              ++ maybeToList (authTokenHeader auth)
           req =
             Request
               { rqURI = uri
@@ -1050,7 +1051,8 @@ plainHttpTransport =
               , rqHeaders =
                   Header HdrContentLength (show (LBS8.length body))
                     : Header HdrAccept "text/plain"
-                    : headers
+                    : maybeToList (authTokenHeader auth)
+                    ++ headers
               , rqBody = body
               }
       (_, resp) <- cabalBrowse verbosity auth (request req)
@@ -1084,6 +1086,10 @@ plainHttpTransport =
             Just (Left x) -> setAuthorityGen (\_ _ -> return $ Just x)
             _ -> setAuthorityGen (\_ _ -> return Nothing)
           act
+
+    authTokenHeader :: Maybe Auth -> Maybe Header
+    authTokenHeader (Just (Right token)) = Just $ Header HdrAuthorization ("X-ApiKey " ++ token)
+    authTokenHeader _ = Nothing
 
     fixupEmptyProxy (Proxy uri _) | null uri = NoProxy
     fixupEmptyProxy p = p
