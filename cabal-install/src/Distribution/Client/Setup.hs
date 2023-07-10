@@ -59,7 +59,6 @@ module Distribution.Client.Setup
   , InfoFlags (..)
   , fetchCommand
   , FetchFlags (..)
-  , freezeCommand
   , FreezeFlags (..)
   , genBoundsCommand
   , getCommand
@@ -409,7 +408,6 @@ globalCommand commands =
                 , addCmd "v1-run"
                 , addCmd "v1-test"
                 , addCmd "v1-bench"
-                , addCmd "v1-freeze"
                 , addCmd "v1-haddock"
                 , addCmd "v1-install"
                 , addCmd "v1-clean"
@@ -1428,82 +1426,6 @@ defaultFreezeFlags =
     , freezeAllowBootLibInstalls = Flag (AllowBootLibInstalls False)
     , freezeOnlyConstrained = Flag OnlyConstrainedNone
     , freezeVerbosity = toFlag normal
-    }
-
-freezeCommand :: CommandUI FreezeFlags
-freezeCommand =
-  CommandUI
-    { commandName = "freeze"
-    , commandSynopsis = "Freeze dependencies."
-    , commandDescription = Just $ \_ ->
-        wrapText $
-          "Calculates a valid set of dependencies and their exact versions. "
-            ++ "If successful, saves the result to the file `cabal.config`.\n"
-            ++ "\n"
-            ++ "The package versions specified in `cabal.config` will be used for "
-            ++ "any future installs.\n"
-            ++ "\n"
-            ++ "An existing `cabal.config` is ignored and overwritten.\n"
-    , commandNotes = Nothing
-    , commandUsage = usageFlags "freeze"
-    , commandDefaultFlags = defaultFreezeFlags
-    , commandOptions = \showOrParseArgs ->
-        [ optionVerbosity
-            freezeVerbosity
-            (\v flags -> flags{freezeVerbosity = v})
-        , option
-            []
-            ["dry-run"]
-            "Do not freeze anything, only print what would be frozen"
-            freezeDryRun
-            (\v flags -> flags{freezeDryRun = v})
-            trueArg
-        , option
-            []
-            ["tests"]
-            ( "freezing of the dependencies of any tests suites "
-                ++ "in the package description file."
-            )
-            freezeTests
-            (\v flags -> flags{freezeTests = v})
-            (boolOpt [] [])
-        , option
-            []
-            ["benchmarks"]
-            ( "freezing of the dependencies of any benchmarks suites "
-                ++ "in the package description file."
-            )
-            freezeBenchmarks
-            (\v flags -> flags{freezeBenchmarks = v})
-            (boolOpt [] [])
-        ]
-          ++ optionSolver
-            freezeSolver
-            (\v flags -> flags{freezeSolver = v})
-          : optionSolverFlags
-            showOrParseArgs
-            freezeMaxBackjumps
-            (\v flags -> flags{freezeMaxBackjumps = v})
-            freezeReorderGoals
-            (\v flags -> flags{freezeReorderGoals = v})
-            freezeCountConflicts
-            (\v flags -> flags{freezeCountConflicts = v})
-            freezeFineGrainedConflicts
-            (\v flags -> flags{freezeFineGrainedConflicts = v})
-            freezeMinimizeConflictSet
-            (\v flags -> flags{freezeMinimizeConflictSet = v})
-            freezeIndependentGoals
-            (\v flags -> flags{freezeIndependentGoals = v})
-            freezePreferOldest
-            (\v flags -> flags{freezePreferOldest = v})
-            freezeShadowPkgs
-            (\v flags -> flags{freezeShadowPkgs = v})
-            freezeStrongFlags
-            (\v flags -> flags{freezeStrongFlags = v})
-            freezeAllowBootLibInstalls
-            (\v flags -> flags{freezeAllowBootLibInstalls = v})
-            freezeOnlyConstrained
-            (\v flags -> flags{freezeOnlyConstrained = v})
     }
 
 -- ------------------------------------------------------------
