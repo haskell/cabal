@@ -547,8 +547,6 @@ data GhcOptions = GhcOptions
   , ghcOptDylibName :: Flag String
   , ghcOptRPaths :: NubListR FilePath
   , ---------------
-
-    ---------------
     -- Misc flags
 
     ghcOptVerbosity :: Flag Verbosity
@@ -698,74 +696,6 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
         , if parmakeSupported comp
             then case ghcOptNumJobs opts of
               NoFlag -> []
-              Flag n -> ["-j" ++ show n]
-            else []
-        , --------------------
-          -- Creating libraries
-
-          ["-staticlib" | flagBool ghcOptStaticLib]
-        , ["-shared" | flagBool ghcOptShared]
-        , case flagToMaybe (ghcOptDynLinkMode opts) of
-            Nothing -> []
-            Just GhcStaticOnly -> ["-static"]
-            Just GhcDynamicOnly -> ["-dynamic"]
-            Just GhcStaticAndDynamic -> ["-static", "-dynamic-too"]
-        , ["-fPIC" | flagBool ghcOptFPic]
-        , concat [["-dylib-install-name", libname] | libname <- flag ghcOptDylibName]
-        , ------------------------
-          -- Redirecting outputs
-
-          concat [["-osuf", suf] | suf <- flag ghcOptObjSuffix]
-        , concat [["-hisuf", suf] | suf <- flag ghcOptHiSuffix]
-        , concat [["-dynosuf", suf] | suf <- flag ghcOptDynObjSuffix]
-        , concat [["-dynhisuf", suf] | suf <- flag ghcOptDynHiSuffix]
-        , concat [["-outputdir", dir] | dir <- flag ghcOptOutputDir]
-        , concat [["-odir", dir] | dir <- flag ghcOptObjDir]
-        , concat [["-hidir", dir] | dir <- flag ghcOptHiDir]
-        , concat [["-hiedir", dir] | dir <- flag ghcOptHieDir]
-        , concat [["-stubdir", dir] | dir <- flag ghcOptStubDir]
-        , -----------------------
-          -- Source search path
-
-          ["-i" | flagBool ghcOptSourcePathClear]
-        , ["-i" ++ dir | dir <- flags ghcOptSourcePath]
-        , --------------------
-
-          --------------------
-          -- CPP, C, and C++ stuff
-
-          case flagToMaybe (ghcOptDebugInfo opts) of
-            Nothing -> []
-            Just NoDebugInfo -> []
-            Just MinimalDebugInfo -> ["-g1"]
-            Just NormalDebugInfo -> ["-g2"]
-            Just MaximalDebugInfo -> ["-g3"]
-        , ["-prof" | flagBool ghcOptProfilingMode]
-        , case flagToMaybe (ghcOptProfilingAuto opts) of
-            _
-              | not (flagBool ghcOptProfilingMode) ->
-                  []
-            Nothing -> []
-            Just GhcProfAutoAll
-              | flagProfAuto implInfo -> ["-fprof-auto"]
-              | otherwise -> ["-auto-all"] -- not the same, but close
-            Just GhcProfLate
-              | flagProfLate implInfo -> ["-fprof-late"]
-              | otherwise -> ["-fprof-auto-top"] -- not the same, not very close, but what we have.
-            Just GhcProfAutoToplevel
-              | flagProfAuto implInfo -> ["-fprof-auto-top"]
-              | otherwise -> ["-auto-all"]
-            Just GhcProfAutoExported
-              | flagProfAuto implInfo -> ["-fprof-auto-exported"]
-              | otherwise -> ["-auto"]
-        , ["-split-sections" | flagBool ghcOptSplitSections]
-        , ["-split-objs" | flagBool ghcOptSplitObjs]
-        , case flagToMaybe (ghcOptHPCDir opts) of
-            Nothing -> []
-            Just hpcdir -> ["-fhpc", "-hpcdir", hpcdir]
-        , if parmakeSupported comp
-            then case ghcOptNumJobs opts of
-              NoFlag -> []
               Flag Serial -> []
               Flag (UseSem name) ->
                 if jsemSupported comp
@@ -795,6 +725,7 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
         , concat [["-outputdir", dir] | dir <- flag ghcOptOutputDir]
         , concat [["-odir", dir] | dir <- flag ghcOptObjDir]
         , concat [["-hidir", dir] | dir <- flag ghcOptHiDir]
+        , concat [["-hiedir", dir] | dir <- flag ghcOptHieDir]
         , concat [["-stubdir", dir] | dir <- flag ghcOptStubDir]
         , -----------------------
           -- Source search path
