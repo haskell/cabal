@@ -1,8 +1,8 @@
 .PHONY : all lexer sdpx lib exe doctest
 .PHONY : phony
 
-CABALBUILD := cabal v2-build
-CABALRUN   := cabal v2-run
+CABALBUILD := cabal build
+CABALRUN   := cabal run
 
 # default rules
 
@@ -57,10 +57,10 @@ spdx : $(SPDX_LICENSE_HS) $(SPDX_EXCEPTION_HS)
 SPDX_LICENSE_VERSIONS:=3.0 3.2 3.6 3.9 3.10 3.16
 
 $(SPDX_LICENSE_HS) : templates/SPDX.LicenseId.template.hs cabal-dev-scripts/src/GenUtils.hs cabal-dev-scripts/src/GenSPDX.hs license-list-data/licenses-3.0.json license-list-data/licenses-3.2.json
-	cabal v2-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-spdx -- templates/SPDX.LicenseId.template.hs $(SPDX_LICENSE_VERSIONS:%=license-list-data/licenses-%.json) $(SPDX_LICENSE_HS)
+	cabal run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-spdx -- templates/SPDX.LicenseId.template.hs $(SPDX_LICENSE_VERSIONS:%=license-list-data/licenses-%.json) $(SPDX_LICENSE_HS)
 
 $(SPDX_EXCEPTION_HS) : templates/SPDX.LicenseExceptionId.template.hs cabal-dev-scripts/src/GenUtils.hs cabal-dev-scripts/src/GenSPDXExc.hs license-list-data/exceptions-3.0.json license-list-data/exceptions-3.2.json
-	cabal v2-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-spdx-exc -- templates/SPDX.LicenseExceptionId.template.hs $(SPDX_LICENSE_VERSIONS:%=license-list-data/exceptions-%.json) $(SPDX_EXCEPTION_HS)
+	cabal run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-spdx-exc -- templates/SPDX.LicenseExceptionId.template.hs $(SPDX_LICENSE_VERSIONS:%=license-list-data/exceptions-%.json) $(SPDX_EXCEPTION_HS)
 
 # source generation: templates
 
@@ -70,10 +70,10 @@ TEMPLATE_PATHS:=Cabal/src/Distribution/Simple/Build/PathsModule/Z.hs
 templates : phony $(TEMPLATE_MACROS) $(TEMPLATE_PATHS)
 
 $(TEMPLATE_MACROS) : templates/cabal_macros.template.h cabal-dev-scripts/src/GenCabalMacros.hs
-	cabal v2-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-cabal-macros -- $< $@
+	cabal run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-cabal-macros -- $< $@
 
 $(TEMPLATE_PATHS) : templates/Paths_pkg.template.hs cabal-dev-scripts/src/GenPathsModule.hs
-	cabal v2-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-paths-module -- $< $@
+	cabal run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-paths-module -- $< $@
 
 # generated docs
 
@@ -83,15 +83,15 @@ buildinfo-fields-reference : phony
 
 # analyse-imports
 analyse-imports : phony
-	find Cabal-syntax/src Cabal/src cabal-install/src -type f -name '*.hs' | xargs cabal v2-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta analyse-imports --
+	find Cabal-syntax/src Cabal/src cabal-install/src -type f -name '*.hs' | xargs cabal run --builddir=dist-newstyle-meta --project-file=cabal.project.meta analyse-imports --
 
 # ghcid
 
 ghcid-lib :
-	ghcid -c 'cabal v2-repl Cabal'
+	ghcid -c 'cabal repl Cabal'
 
 ghcid-cli :
-	ghcid -c 'cabal v2-repl cabal-install'
+	ghcid -c 'cabal repl cabal-install'
 
 # Artem, 2023-02-03, https://github.com/haskell/cabal/issues/8504
 # The new and prefered way to call the doctest tool (as of now) is based on cabal repl --with-ghc=doctest.
@@ -171,7 +171,7 @@ validate-dockerfiles : .docker/validate-8.4.4.dockerfile
 validate-dockerfiles : .docker/validate-8.2.2.dockerfile
 
 .docker/validate-%.dockerfile : .docker/validate.dockerfile.zinza cabal-dev-scripts/src/GenValidateDockerfile.hs
-	cabal v2-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-validate-dockerfile -- $* $< $@
+	cabal run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-validate-dockerfile -- $* $< $@
 
 # This is good idea anyway
 # and we have a test relying on this limit being sufficiently small
@@ -209,10 +209,10 @@ tags :
 ##############################################################################
 
 bootstrap-json-%: phony
-	cabal v2-build --project=cabal.project.release --with-compiler=ghc-$* --dry-run cabal-install:exe:cabal
+	cabal build --project=cabal.project.release --with-compiler=ghc-$* --dry-run cabal-install:exe:cabal
 	cp dist-newstyle/cache/plan.json bootstrap/linux-$*.plan.json
 	@# -v0 to avoid build output on stdout
-	cd bootstrap && cabal v2-run -v0 cabal-bootstrap-gen -- linux-$*.plan.json \
+	cd bootstrap && cabal run -v0 cabal-bootstrap-gen -- linux-$*.plan.json \
 		| python3 -m json.tool > linux-$*.json
 
 BOOTSTRAP_GHC_VERSIONS := 8.10.7 9.0.2 9.2.7 9.4.4

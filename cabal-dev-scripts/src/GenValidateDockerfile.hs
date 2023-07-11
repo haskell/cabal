@@ -19,7 +19,7 @@ withIO k = do
                 putStrLn $ "Exception: " ++ displayException e
                 exitFailure
         _         -> do
-            putStrLn "Usage cabal v2-run ... version"
+            putStrLn "Usage cabal run ... version"
             exitFailure
 
 main :: IO ()
