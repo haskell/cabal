@@ -395,21 +395,24 @@ haddock pkg_descr lbi suffixes flags' = do
 
             return $ PackageIndex.insert ipi index
       CFLib flib ->
-        when (flag haddockForeignLibs) (do
-            withTempDirectoryEx verbosity tmpFileOpts (buildDir lbi') "tmp" $
-              \tmp -> do
-                smsg
-                flibArgs <-
-                  fromForeignLib
-                    verbosity
-                    tmp
-                    lbi'
-                    clbi
-                    htmlTemplate
-                    version
-                    flib
-                let libArgs' = commonArgs `mappend` flibArgs
-                runHaddock verbosity tmpFileOpts comp platform haddockProg True libArgs')
+        when
+          (flag haddockForeignLibs)
+          ( do
+              withTempDirectoryEx verbosity tmpFileOpts (buildDir lbi') "tmp" $
+                \tmp -> do
+                  smsg
+                  flibArgs <-
+                    fromForeignLib
+                      verbosity
+                      tmp
+                      lbi'
+                      clbi
+                      htmlTemplate
+                      version
+                      flib
+                  let libArgs' = commonArgs `mappend` flibArgs
+                  runHaddock verbosity tmpFileOpts comp platform haddockProg True libArgs'
+          )
           >> return index
       CExe _ -> when (flag haddockExecutables) (smsg >> doExe component) >> return index
       CTest _ -> when (flag haddockTestSuites) (smsg >> doExe component) >> return index
@@ -936,31 +939,34 @@ renderPureArgs version comp platform args =
     renderInterface :: (FilePath, Maybe FilePath, Maybe FilePath, Visibility) -> String
     renderInterface (i, html, hypsrc, visibility) =
       "--read-interface="
-        ++ intercalate "," (concat
-                [ [fromMaybe "" html]
-                , -- only render hypsrc path if html path
-                  -- is given and hyperlinked-source is
-                  -- enabled
+        ++ intercalate
+          ","
+          ( concat
+              [ [fromMaybe "" html]
+              , -- only render hypsrc path if html path
+                -- is given and hyperlinked-source is
+                -- enabled
 
-                  [ case (html, hypsrc) of
-                      (Nothing, _) -> ""
-                      (_, Nothing) -> ""
-                      (_, Just x)
-                        | isVersion 2 17
-                        , fromFlagOrDefault False . argLinkedSource $ args ->
-                            x
-                        | otherwise ->
-                            ""
-                  ]
-                , if haddockSupportsVisibility
-                    then
-                      [ case visibility of
-                          Visible -> "visible"
-                          Hidden -> "hidden"
-                      ]
-                    else []
-                , [i]
-                ])
+                [ case (html, hypsrc) of
+                    (Nothing, _) -> ""
+                    (_, Nothing) -> ""
+                    (_, Just x)
+                      | isVersion 2 17
+                      , fromFlagOrDefault False . argLinkedSource $ args ->
+                          x
+                      | otherwise ->
+                          ""
+                ]
+              , if haddockSupportsVisibility
+                  then
+                    [ case visibility of
+                        Visible -> "visible"
+                        Hidden -> "hidden"
+                    ]
+                  else []
+              , [i]
+              ]
+          )
 
     bool a b c = if c then a else b
     isVersion major minor = version >= mkVersion [major, minor]
