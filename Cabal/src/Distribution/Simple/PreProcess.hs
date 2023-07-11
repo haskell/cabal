@@ -648,7 +648,7 @@ ppHsc2hs bi lbi clbi =
            | pkg <- pkgs
            , opt <-
               ["-I" ++ opt | opt <- Installed.includeDirs pkg]
-                ++ [opt | opt <- Installed.ccOptions pkg]
+                ++ Installed.ccOptions pkg
            ]
         ++ [ "--lflag=" ++ opt
            | pkg <- pkgs
@@ -662,7 +662,7 @@ ppHsc2hs bi lbi clbi =
                         then Installed.extraLibrariesStatic pkg
                         else Installed.extraLibraries pkg
                    ]
-                ++ [opt | opt <- Installed.ldOptions pkg]
+                ++ Installed.ldOptions pkg
            ]
         ++ preccldFlags
         ++ hsc2hsOptions bi
