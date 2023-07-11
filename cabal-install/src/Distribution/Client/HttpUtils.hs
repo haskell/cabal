@@ -119,7 +119,6 @@ import System.IO.Error
   ( isDoesNotExistError
   )
 import System.Random (randomRIO)
-import Data.Either (lefts)
 
 import qualified Crypto.Hash.SHA256 as SHA256
 import qualified Data.ByteString as BS
@@ -707,6 +706,7 @@ wgetTransport prog =
                         ++ "boundary="
                         ++ boundary
                     ]
+                      ++ maybeToList (authTokenHeader auth)
               out <- runWGet verbosity (addUriAuth auth uri) args
               (code, _etag) <- parseOutput verbosity uri out
               withFile responseFile ReadMode $ \hnd -> do
@@ -728,12 +728,16 @@ wgetTransport prog =
                   ++ [ "--header=" ++ show name ++ ": " ++ value
                      | Header name value <- headers
                      ]
+                  ++ maybeToList (authTokenHeader auth)
 
           out <- runWGet verbosity (addUriAuth auth uri) args
           (code, _etag) <- parseOutput verbosity uri out
           withFile responseFile ReadMode $ \hnd -> do
             resp <- hGetContents hnd
             evaluate $ force (code, resp)
+
+    authTokenHeader (Just (Right token)) = Just $ "--header=Authorization: X-ApiKey " ++ token
+    authTokenHeader _ = Nothing
 
     addUriAuth (Just (Left (user, pass))) uri =
       uri
@@ -922,14 +926,16 @@ powershellTransport prog =
                in "AddRange(\"bytes\", " ++ escape start ++ ", " ++ escape end ++ ");"
             name -> "Headers.Add(" ++ escape (show name) ++ "," ++ escape value ++ ");"
 
-    setupAuth auth =
+    setupAuth (Just (Left (uname, passwd))) =
       [ "$request.Credentials = new-object System.Net.NetworkCredential("
         ++ escape uname
         ++ ","
         ++ escape passwd
         ++ ",\"\");"
-      | (uname, passwd) <- lefts $ maybeToList auth
       ]
+    setupAuth (Just (Right token)) =
+      ["$request.Authorization = " ++ escape ("X-ApiKey " ++ token)]
+    setupAuth Nothing = []
 
     uploadFileAction method _uri fullPath =
       [ "$request.Method = " ++ show method
@@ -1087,7 +1093,6 @@ plainHttpTransport =
             _ -> setAuthorityGen (\_ _ -> return Nothing)
           act
 
-    authTokenHeader :: Maybe Auth -> Maybe Header
     authTokenHeader (Just (Right token)) = Just $ Header HdrAuthorization ("X-ApiKey " ++ token)
     authTokenHeader _ = Nothing
 
