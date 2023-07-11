@@ -769,7 +769,7 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
             [ ["-optl-Wl,-rpath," ++ dir]
             | dir <- flags ghcOptRPaths
             ]
-        , [modDefFile | modDefFile <- flags ghcOptLinkModDefFiles]
+        , flags ghcOptLinkModDefFiles
         , -------------
           -- Packages
 

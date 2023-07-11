@@ -22,7 +22,6 @@
 - ignore: {name: "Redundant guard"} # 2 hints
 - ignore: {name: "Redundant if"} # 1 hint
 - ignore: {name: "Redundant lambda"} # 22 hints
-- ignore: {name: "Redundant list comprehension"} # 3 hints
 - ignore: {name: "Redundant map"} # 1 hint
 - ignore: {name: "Redundant multi-way if"} # 1 hint
 - ignore: {name: "Redundant return"} # 4 hints
