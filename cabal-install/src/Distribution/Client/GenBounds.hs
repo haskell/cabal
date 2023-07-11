@@ -104,7 +104,7 @@ pvpize v =
 showBounds :: Package pkg => Int -> pkg -> String
 showBounds padTo p =
   unwords $
-    (padAfter padTo $ unPackageName $ packageName p)
+    padAfter padTo (unPackageName $ packageName p)
       :
       -- TODO: use normaliseVersionRange
       map showInterval (asVersionIntervals $ pvpize $ packageVersion p)

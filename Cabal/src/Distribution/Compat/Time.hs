@@ -155,7 +155,7 @@ posixSecondsToModTime s =
 posixTimeToModTime :: POSIXTime -> ModTime
 posixTimeToModTime p =
   ModTime $
-    (ceiling $ p * 1e7) -- 100 ns precision
+    ceiling (p * 1e7) -- 100 ns precision
       + (secToUnixEpoch * windowsTick)
 
 -- | Return age of given file in days.

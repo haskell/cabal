@@ -85,11 +85,11 @@ validateLinking index = (`runReader` initVS) . go
     go :: Tree d c -> Validate (Tree d c)
 
     go (PChoice qpn rdm gr       cs) =
-      PChoice qpn rdm gr       <$> (W.traverseWithKey (goP qpn) $ fmap go cs)
+      PChoice qpn rdm gr       <$> W.traverseWithKey (goP qpn) (fmap go cs)
     go (FChoice qfn rdm gr t m d cs) =
-      FChoice qfn rdm gr t m d <$> (W.traverseWithKey (goF qfn) $ fmap go cs)
+      FChoice qfn rdm gr t m d <$> W.traverseWithKey (goF qfn) (fmap go cs)
     go (SChoice qsn rdm gr t     cs) =
-      SChoice qsn rdm gr t     <$> (W.traverseWithKey (goS qsn) $ fmap go cs)
+      SChoice qsn rdm gr t     <$> W.traverseWithKey (goS qsn) (fmap go cs)
 
     -- For the other nodes we just recurse
     go (GoalChoice rdm           cs) = GoalChoice rdm <$> T.traverse go cs

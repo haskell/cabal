@@ -193,7 +193,8 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
               let components =
                     J.object $
                       [ comp2str c
-                        J..= ( J.object $
+                        J..= J.object
+                             (
                                 [ "depends" J..= map (jdisplay . confInstId) (map fst ldeps)
                                 , "exe-depends" J..= map (jdisplay . confInstId) edeps
                                 ]

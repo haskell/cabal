@@ -431,8 +431,7 @@ showPackageSummaryInfo pkginfo =
   renderStyle (style{lineLength = 80, ribbonsPerLine = 1}) $
     char '*'
       <+> pretty (pkgName pkginfo)
-      $+$ ( nest 4 $
-              vcat
+      $+$ nest 4 (vcat
                 [ maybeShowST (synopsis pkginfo) "Synopsis:" reflowParagraphs
                 , text "Default available version:"
                     <+> case selectedSourcePkg pkginfo of
@@ -450,8 +449,7 @@ showPackageSummaryInfo pkginfo =
                           versions
                 , maybeShowST (homepage pkginfo) "Homepage:" text
                 , text "License: " <+> either pretty pretty (license pkginfo)
-                ]
-          )
+                ])
       $+$ text ""
   where
     maybeShowST l s f
@@ -466,8 +464,7 @@ showPackageDetailedInfo pkginfo =
         <<>> maybe Disp.empty (\v -> char '-' Disp.<> pretty v) (selectedVersion pkginfo)
       <+> text (replicate (16 - length (prettyShow (pkgName pkginfo))) ' ')
         <<>> parens pkgkind
-      $+$ ( nest 4 $
-              vcat
+      $+$ nest 4 (vcat
                 [ entryST "Synopsis" synopsis hideIfNull reflowParagraphs
                 , entry
                     "Versions available"
@@ -501,8 +498,7 @@ showPackageDetailedInfo pkginfo =
                 , if not (hasLib pkginfo)
                     then mempty
                     else text "Modules:" $+$ nest 4 (vcat (map pretty . sort . modules $ pkginfo))
-                ]
-          )
+                ])
       $+$ text ""
   where
     entry fname field cond format = case cond (field pkginfo) of
