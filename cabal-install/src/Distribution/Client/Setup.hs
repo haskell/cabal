@@ -191,7 +191,6 @@ import Distribution.Simple.Setup
   , boolOpt
   , boolOpt'
   , falseArg
-  , optionNumJobs
   , optionVerbosity
   , readPackageDbList
   , showPackageDbList

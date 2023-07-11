@@ -40,7 +40,7 @@ import Prelude ()
 
 import Control.Concurrent (forkIO, forkIOWithUnmask, threadDelay)
 import Control.Concurrent.MVar
-import Control.Concurrent.STM (STM, atomically)
+import Control.Concurrent.STM (STM, TVar, atomically, modifyTVar', newTVarIO, readTVar)
 import Control.Concurrent.STM.TChan
 import Control.Exception (bracket_, mask_, try)
 import Control.Monad (forever, replicateM_)

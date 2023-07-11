@@ -182,7 +182,6 @@ import Network.URI (URI (..), parseURI)
 import Distribution.Fields.ConfVar (parseConditionConfVarFromClause)
 
 import Distribution.Client.HttpUtils
-import Distribution.Client.ReplFlags (multiReplOption)
 import System.Directory (createDirectoryIfMissing)
 import System.FilePath (isAbsolute, isPathSeparator, makeValid, takeDirectory, (</>))
 
@@ -951,6 +950,7 @@ convertToLegacySharedConfig
           , installSymlinkBinDir = projectConfigSymlinkBinDir
           , installPerComponent = projectConfigPerComponent
           , installNumJobs = projectConfigNumJobs
+          , installUseSemaphore = projectConfigUseSemaphore
           , installKeepGoing = projectConfigKeepGoing
           , installRunTests = mempty
           , installOfflineMode = projectConfigOfflineMode
