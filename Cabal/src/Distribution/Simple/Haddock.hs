@@ -395,7 +395,7 @@ haddock pkg_descr lbi suffixes flags' = do
 
             return $ PackageIndex.insert ipi index
       CFLib flib ->
-        ( when (flag haddockForeignLibs) $ do
+        when (flag haddockForeignLibs) (do
             withTempDirectoryEx verbosity tmpFileOpts (buildDir lbi') "tmp" $
               \tmp -> do
                 smsg
@@ -409,12 +409,11 @@ haddock pkg_descr lbi suffixes flags' = do
                     version
                     flib
                 let libArgs' = commonArgs `mappend` flibArgs
-                runHaddock verbosity tmpFileOpts comp platform haddockProg True libArgs'
-        )
+                runHaddock verbosity tmpFileOpts comp platform haddockProg True libArgs')
           >> return index
-      CExe _ -> (when (flag haddockExecutables) $ smsg >> doExe component) >> return index
-      CTest _ -> (when (flag haddockTestSuites) $ smsg >> doExe component) >> return index
-      CBench _ -> (when (flag haddockBenchmarks) $ smsg >> doExe component) >> return index
+      CExe _ -> when (flag haddockExecutables) (smsg >> doExe component) >> return index
+      CTest _ -> when (flag haddockTestSuites) (smsg >> doExe component) >> return index
+      CBench _ -> when (flag haddockBenchmarks) (smsg >> doExe component) >> return index
 
   for_ (extraDocFiles pkg_descr) $ \fpath -> do
     files <- matchDirFileGlob verbosity (specVersion pkg_descr) "." fpath
@@ -937,8 +936,7 @@ renderPureArgs version comp platform args =
     renderInterface :: (FilePath, Maybe FilePath, Maybe FilePath, Visibility) -> String
     renderInterface (i, html, hypsrc, visibility) =
       "--read-interface="
-        ++ ( intercalate "," $
-              concat
+        ++ intercalate "," (concat
                 [ [fromMaybe "" html]
                 , -- only render hypsrc path if html path
                   -- is given and hyperlinked-source is
@@ -962,8 +960,7 @@ renderPureArgs version comp platform args =
                       ]
                     else []
                 , [i]
-                ]
-           )
+                ])
 
     bool a b c = if c then a else b
     isVersion major minor = version >= mkVersion [major, minor]

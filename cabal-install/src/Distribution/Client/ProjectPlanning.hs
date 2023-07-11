@@ -414,7 +414,7 @@ rebuildProjectConfig
           let fetchCompiler = do
                 -- have to create the cache directory before configuring the compiler
                 liftIO $ createDirectoryIfMissingVerbose verbosity True distProjectCacheDirectory
-                (compiler, Platform arch os, _) <- configureCompiler verbosity distDirLayout ((fst $ PD.ignoreConditions projectConfigSkeleton) <> cliConfig)
+                (compiler, Platform arch os, _) <- configureCompiler verbosity distDirLayout (fst (PD.ignoreConditions projectConfigSkeleton) <> cliConfig)
                 pure (os, arch, compilerInfo compiler)
 
           projectConfig <- instantiateProjectConfigSkeletonFetchingCompiler fetchCompiler mempty projectConfigSkeleton
@@ -4545,7 +4545,7 @@ packageHashInputs
               Set.fromList
                 ( map
                     confInstId
-                    ( (map fst $ compLibDependencies comp)
+                    ( map fst (compLibDependencies comp)
                         ++ compExeDependencies comp
                     )
                 )

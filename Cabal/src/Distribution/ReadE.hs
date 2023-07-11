@@ -55,7 +55,7 @@ runParsecFromString p txt =
 
 parsecToReadE :: (String -> ErrorMsg) -> ParsecParser a -> ReadE a
 parsecToReadE err p = ReadE $ \txt ->
-  (const $ err txt) `Bi.first` runParsecFromString p txt
+  const (err txt) `Bi.first` runParsecFromString p txt
 
 parsecToReadEErr :: (Parsec.ParseError -> ErrorMsg) -> ParsecParser a -> ReadE a
 parsecToReadEErr err p =
