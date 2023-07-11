@@ -182,6 +182,7 @@ import Network.URI (URI (..), parseURI)
 import Distribution.Fields.ConfVar (parseConditionConfVarFromClause)
 
 import Distribution.Client.HttpUtils
+import Distribution.Client.ReplFlags (multiReplOption)
 import System.Directory (createDirectoryIfMissing)
 import System.FilePath (isAbsolute, isPathSeparator, makeValid, takeDirectory, (</>))
 
@@ -1415,6 +1416,7 @@ legacySharedConfigFieldDescrs constraintSrc =
         (\flags conf -> conf{legacyProjectFlags = flags})
         . commandOptionsToFields
         $ projectFlagsOptions ParseArgs
+    , [liftField legacyMultiRepl (\flags conf -> conf{legacyMultiRepl = flags}) (commandOptionToField multiReplOption)]
     ]
 
 legacyPackageConfigFieldDescrs :: [FieldDescr LegacyPackageConfig]
