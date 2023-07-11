@@ -11,19 +11,19 @@ local builds with this command (configuring is not necessary):
 
 ::
 
-    $ cabal v2-build
+    $ cabal build
 
 To open a GHCi shell with this package, use this command:
 
 ::
 
-    $ cabal v2-repl
+    $ cabal repl
 
 To run an executable defined in this package, use this command:
 
 ::
 
-    $ cabal v2-run <executable name> [executable args]
+    $ cabal run <executable name> [executable args]
 
 Developing multiple packages
 ----------------------------
@@ -51,29 +51,29 @@ directory, run the command: (using cabal-install-2.0 or greater.)
 
 ::
 
-    $ cabal v2-build all
+    $ cabal build all
 
-To build a specific package, you can either run ``v2-build`` from the
+To build a specific package, you can either run ``build`` from the
 directory of the package in question:
 
 ::
 
     $ cd cabal-install
-    $ cabal v2-build
+    $ cabal build
 
 or you can pass the name of the package as an argument to
-``cabal v2-build`` (this works in any subdirectory of the project):
+``cabal build`` (this works in any subdirectory of the project):
 
 ::
 
-    $ cabal v2-build cabal-install
+    $ cabal build cabal-install
 
 You can also specify a specific component of the package to build. For
 example, to build a test suite named ``package-tests``, use the command:
 
 ::
 
-    $ cabal v2-build package-tests
+    $ cabal build package-tests
 
 Targets can be qualified with package names. So to request
 ``package-tests`` *from* the ``Cabal`` package, use
@@ -81,7 +81,7 @@ Targets can be qualified with package names. So to request
 
 Unlike sandboxes, there is no need to setup a sandbox or ``add-source``
 projects; just check in ``cabal.project`` to your repository and
-``v2-build`` will just work.
+``build`` will just work.
 
 Cookbook
 ========
@@ -94,14 +94,14 @@ line::
 
     profiling: True
 
-Now, ``cabal v2-build`` will automatically build all libraries and
+Now, ``cabal build`` will automatically build all libraries and
 executables with profiling.  You can fine-tune the profiling settings
 for each package using :cfg-field:`profiling-detail`::
 
     package p
         profiling-detail: toplevel-functions
 
-Alternately, you can call ``cabal v2-build --enable-profiling`` to
+Alternately, you can call ``cabal build --enable-profiling`` to
 temporarily build with profiling.
 
 How can I have a reproducible set of versions for my dependencies?
@@ -173,13 +173,13 @@ built version.
 The global package store is ``~/.cabal/store`` (configurable via
 global `store-dir` option); if you need to clear your store for
 whatever reason (e.g., to reclaim disk space or because the global
-store is corrupted), deleting this directory is safe (``v2-build``
+store is corrupted), deleting this directory is safe (``build``
 will just rebuild everything it needs on its next invocation).
 
 This split motivates some of the UI choices for Nix-style local build
-commands. For example, flags passed to ``cabal v2-build`` are only
+commands. For example, flags passed to ``cabal build`` are only
 applied to *local* packages, so that adding a flag to
-``cabal v2-build`` doesn't necessitate a rebuild of *every* transitive
+``cabal build`` doesn't necessitate a rebuild of *every* transitive
 dependency in the global package store.
 
 In cabal-install 2.0 and above, Nix-style local builds also take advantage of a
@@ -194,10 +194,10 @@ are not currently built on a per-component basis.
 Where are my build products?
 ----------------------------
 
-A major deficiency in the current implementation of v2-build is that
+A major deficiency in the current implementation of ``cabal build`` is that
 there is no programmatic way to access the location of build products.
 The location of the build products is intended to be an internal
-implementation detail of v2-build, but we also understand that many
+implementation detail of ``cabal build``, but we also understand that many
 unimplemented features can only be reasonably worked around by
 accessing build products directly.
 
@@ -245,7 +245,7 @@ the time it takes to execute a rebuild cycle. While the details of how
 ``cabal-install`` does caching are an implementation detail and may
 change in the future, knowing what gets cached is helpful for
 understanding the performance characteristics of invocations to
-``v2-build``. The cached intermediate results are stored in
+``build``. The cached intermediate results are stored in
 ``dist-newstyle/cache``; this folder can be safely deleted to clear the
 cache.
 
@@ -261,7 +261,7 @@ this folder (the most important two are first):
     already available in the store.)
 ``source-hashes`` (binary)
     The hashes of all local source files. When all local source files of
-    a local package are unchanged, ``cabal v2-build`` will skip
+    a local package are unchanged, ``cabal build`` will skip
     invoking ``setup build`` entirely (saving us from a possibly
     expensive call to ``ghc --make``). The full list of source files
     participating in compilation is determined using

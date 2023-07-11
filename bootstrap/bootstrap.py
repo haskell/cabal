@@ -10,7 +10,7 @@ See bootstrap/README.md for usage instructions.
 USAGE = """
 This utility is only intended for use in building cabal-install
 on a new platform. If you already have a functional (if dated) cabal-install
-please rather run `cabal v2-install .`.
+please rather run `cabal install .`.
 """
 
 import argparse
@@ -458,7 +458,7 @@ def main() -> None:
 
         print(dedent(f'''
             You now should use this to build a full cabal-install distribution
-            using v2-build.
+            using 'cabal build'.
             '''))
 
 def subprocess_run(args, **kwargs):
