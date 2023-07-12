@@ -1,6 +1,11 @@
+---
+about: This PR modifies `cabal` behaviour
+labels: ["attention: needs-review"]
 
 ---
-Please include the following checklist in your PR:
+
+Read [Github PR Conventions](https://github.com/haskell/cabal/blob/master/CONTRIBUTING.md#github-pull-request-conventions)
+and please include the following checklist in your PR:
 
 * [ ] Patches conform to the [coding conventions](https://github.com/haskell/cabal/blob/master/CONTRIBUTING.md#other-conventions).
 * [ ] Any changes that could be relevant to users [have been recorded in the changelog](https://github.com/haskell/cabal/blob/master/CONTRIBUTING.md#changelog).
