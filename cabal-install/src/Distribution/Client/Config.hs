@@ -755,12 +755,29 @@ addInfoForKnownRepos other = other
 --
 defaultHackageRemoteRepoKeys :: [String]
 defaultHackageRemoteRepoKeys =
-    [ "fe331502606802feac15e514d9b9ea83fee8b6ffef71335479a2e68d84adc6b0",
-      "1ea9ba32c526d1cc91ab5e5bd364ec5e9e8cb67179a471872f6e26f0ae773d42",
-      "2c6c3627bd6c982990239487f1abd02e08a02e6cf16edb105a8012d444d870c3",
-      "0a5c7ea47cd1b15f01f5f51a33adda7e655bc0f0b0615baa8e271f4c3351e21d",
-      "51f0161b906011b52c6613376b1ae937670da69322113a246a09f807c62f6921"
-    ]
+  -- Key owners and public keys are provided as a convenience to readers.
+  -- The canonical source for this mapping data is the hackage-root-keys
+  -- repository and Hackage's root.json file.
+  --
+  -- Links:
+  --  * https://github.com/haskell-infra/hackage-root-keys
+  --  * https://hackage.haskell.org/root.json
+  -- Please consult root.json on Hackage to map key IDs to public keys,
+  -- and the hackage-root-keys repository to map public keys to their
+  -- owners.
+  [ -- Adam Gundry (uRPdSiL3/MNsk50z6NB55ABo0OrrNDXigtCul4vtzmw=)
+    "fe331502606802feac15e514d9b9ea83fee8b6ffef71335479a2e68d84adc6b0"
+  , -- Gershom Bazerman (bYoUXXQ9TtX10UriaMiQtTccuXPGnmldP68djzZ7cLo=)
+    "1ea9ba32c526d1cc91ab5e5bd364ec5e9e8cb67179a471872f6e26f0ae773d42"
+  , -- John Wiegley (zazm5w480r+zPO6Z0+8fjGuxZtb9pAuoVmQ+VkuCvgU=)
+    "0a5c7ea47cd1b15f01f5f51a33adda7e655bc0f0b0615baa8e271f4c3351e21d"
+  , -- Norman Ramsey (ZI8di3a9Un0s2RBrt5GwVRvfOXVuywADfXGPZfkiDb0=)
+    "51f0161b906011b52c6613376b1ae937670da69322113a246a09f807c62f6921"
+  , -- Mathieu Boespflug (ydN1nGGQ79K1Q0nN+ul+Ln8MxikTB95w0YdGd3v3kmg=)
+    "be75553f3c7ba1dbe298da81f1d1b05c9d39dd8ed2616c9bddf1525ca8c03e48"
+  , -- Joachim Breitner (5iUgwqZCWrCJktqMx0bBMIuoIyT4A1RYGozzchRN9rA=)
+    "d26e46f3b631aae1433b89379a6c68bd417eb5d1c408f0643dcc07757fece522"
+  ]
 
 -- | The required threshold of root key signatures for hackage.haskell.org
 --
