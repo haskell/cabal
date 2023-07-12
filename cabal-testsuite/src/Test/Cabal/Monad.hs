@@ -431,7 +431,6 @@ mkNormalizerEnv = do
         normalizerCabalVersion
             = cabalVersionLibrary
     }
-    where
 
 cabalVersionLibrary :: Version
 cabalVersionLibrary = U.cabalVersion
