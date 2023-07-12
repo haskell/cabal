@@ -66,8 +66,18 @@ import Distribution.Simple.Program.Run
 import Numeric (showHex)
 import System.Random (randomRIO)
 
+<<<<<<< HEAD
 import qualified Crypto.Hash.SHA256         as SHA256
 import qualified Data.ByteString.Base16     as Base16
+=======
+import qualified Crypto.Hash.SHA256 as SHA256
+import qualified Data.ByteString as BS
+import qualified Data.ByteString.Base16 as Base16
+import qualified Data.ByteString.Char8 as BS8
+import qualified Data.ByteString.Lazy as LBS
+import qualified Data.ByteString.Lazy.Char8 as LBS8
+import qualified Data.Char as Char
+>>>>>>> d4d17d015 (Use case insensitive match on ETag headers)
 import qualified Distribution.Compat.CharParsing as P
 import qualified Data.ByteString            as BS
 import qualified Data.ByteString.Char8      as BS8
@@ -477,10 +487,20 @@ curlTransport prog =
           mkErrstr = unlines . reverse . dropWhile (all isSpace)
 
           mb_etag :: Maybe ETag
+<<<<<<< HEAD
           mb_etag  = listToMaybe $ reverse
                      [ etag
                      | ["ETag:", etag] <- map words (lines headers) ]
 
+=======
+          mb_etag =
+            listToMaybe $
+              reverse
+                [ etag
+                | [name, etag] <- map words (lines headers)
+                , isETag name
+                ]
+>>>>>>> d4d17d015 (Use case insensitive match on ETag headers)
        in case codeerr of
             Just (i, err) -> return (i, err, mb_etag)
             _             -> statusParseFail verbosity uri resp
@@ -603,9 +623,18 @@ wgetTransport prog =
                      , "HTTP/" `isPrefixOf` protocol
                      , code <- maybeToList (readMaybe codestr) ]
           mb_etag :: Maybe ETag
+<<<<<<< HEAD
           mb_etag  = listToMaybe
                     [ etag
                     | ["ETag:", etag] <- map words (reverse (lines resp)) ]
+=======
+          mb_etag =
+            listToMaybe
+              [ etag
+              | [name, etag] <- map words (reverse (lines resp))
+              , isETag name
+              ]
+>>>>>>> d4d17d015 (Use case insensitive match on ETag headers)
        in case parsedCode of
             Just i -> return (i, mb_etag)
             _      -> statusParseFail verbosity uri resp
@@ -922,5 +951,13 @@ generateMultipartBody path = do
 
 genBoundary :: IO String
 genBoundary = do
+<<<<<<< HEAD
     i <- randomRIO (0x10000000000000,0xFFFFFFFFFFFFFF) :: IO Integer
     return $ showHex i ""
+=======
+  i <- randomRIO (0x10000000000000, 0xFFFFFFFFFFFFFF) :: IO Integer
+  return $ showHex i ""
+
+isETag :: String -> Bool
+isETag name = fmap Char.toLower name == "etag:"
+>>>>>>> d4d17d015 (Use case insensitive match on ETag headers)
