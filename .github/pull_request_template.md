@@ -1,8 +1,3 @@
----
-labels: ["attention: needs-review"]
-
----
-
 Please read [Github PR Conventions](https://github.com/haskell/cabal/blob/master/CONTRIBUTING.md#github-pull-request-conventions) and then fill in *one* of these two templates.
 
 ---
