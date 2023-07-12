@@ -1,2 +1,5 @@
 # cabal v2-sdist
-Error: cabal: sdist of t5195-0: filepath wildcard './actually-a-directory' does not match any files.
+Error: [C-6661]
+filepath wildcard './actually-a-directory' does not match any files.
+CallStack (from HasCallStack):
+  dieWithException, called at src/Distribution/Client/CmdSdist.hs:347:55 in cabal-install-3.11.0.0-inplace:Distribution.Client.CmdSdist

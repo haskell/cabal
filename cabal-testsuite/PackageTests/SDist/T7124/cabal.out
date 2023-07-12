@@ -1,3 +1,6 @@
 # cabal v2-sdist
 Wrote tarball sdist to <TMPDIR>/pkg-a-0.tar.gz
-Error: cabal: sdist of pkg-b-0: filepath wildcard './data.txt' does not match any files.
+Error: [C-6661]
+filepath wildcard './data.txt' does not match any files.
+CallStack (from HasCallStack):
+  dieWithException, called at src/Distribution/Client/SrcDist.hs:60:49 in cabal-install-3.11.0.0-inplace:Distribution.Client.SrcDist
