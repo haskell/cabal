@@ -125,6 +125,7 @@ import qualified Data.ByteString.Base16 as Base16
 import qualified Data.ByteString.Char8 as BS8
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString.Lazy.Char8 as LBS8
+import qualified Data.Char as Char
 import qualified Distribution.Compat.CharParsing as P
 
 ------------------------------------------------------------------------------
@@ -626,7 +627,8 @@ curlTransport prog =
             listToMaybe $
               reverse
                 [ etag
-                | ["ETag:", etag] <- map words (lines headers)
+                | [name, etag] <- map words (lines headers)
+                , isETag name
                 ]
        in case codeerr of
             Just (i, err) -> return (i, err, mb_etag)
@@ -776,7 +778,8 @@ wgetTransport prog =
           mb_etag =
             listToMaybe
               [ etag
-              | ["ETag:", etag] <- map words (reverse (lines resp))
+              | [name, etag] <- map words (reverse (lines resp))
+              , isETag name
               ]
        in case parsedCode of
             Just i -> return (i, mb_etag)
@@ -1146,3 +1149,6 @@ genBoundary :: IO String
 genBoundary = do
   i <- randomRIO (0x10000000000000, 0xFFFFFFFFFFFFFF) :: IO Integer
   return $ showHex i ""
+
+isETag :: String -> Bool
+isETag name = fmap Char.toLower name == "etag:"
