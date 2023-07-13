@@ -1,4 +1,7 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE LambdaCase #-}
+{-# OPTIONS_GHC -Wno-deferred-out-of-scope-variables #-}
 
 module Main (main) where
 
@@ -19,6 +22,8 @@ import qualified Data.Map.Strict                as Map
 import qualified Distribution.Types.PackageName as C
 import qualified Distribution.Types.Version as C
 import qualified Topograph                      as TG
+import Control.Exception
+import System.IO.Error (isDoesNotExistError)
 
 -------------------------------------------------------------------------------
 -- Main
@@ -28,8 +33,30 @@ main :: IO ()
 main = do
     args <- getArgs
     case args of
-        [fp] -> main1 fp
-        _    -> die "Usage: cabal-bootstrap-gen plan.json"
+        [fp] ->
+          handleJust
+            (\e -> if isDoesNotExistError e then Just e else Nothing)
+              (\e -> die $ unlines ["~~~ ERROR ~~~", "", displayException e, "", cabalDirWarning])
+              (main1 fp)
+        _ -> die "Usage: cabal-bootstrap-gen plan.json"
+
+cabalDirWarning :: String
+cabalDirWarning =
+  unlines [
+    "~~~ NOTE ~~~",
+    "",
+    "This script will look for cabal global config file in the following locations",
+    " - $CABAL_CONFIG",
+    " - $CABAL_DIR/config",
+    " - $HOME/.cabal/config (on Unix-like systems)",
+    " - %APPDATA%/cabal (on Windows)",
+    "",
+    "If you are using XDG paths or a entirely different location, you can set either",
+    "CABAL_CONFIG or CABAL_DIR to guide the script to the correct location.",
+    "",
+    "E.g.",
+    "  $ CABAL_DIR=$HOME/.config/cabal cabal-bootstrap-gen"
+    ]
 
 main1 :: FilePath -> IO ()
 main1 planPath = do
