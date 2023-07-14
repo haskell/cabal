@@ -1,6 +1,7 @@
 {-# LANGUAGE NamedFieldPuns #-}
------------------------------------------------------------------------------
 {-# LANGUAGE TupleSections #-}
+
+-----------------------------------------------------------------------------
 
 -- |
 -- Module      :  Distribution.GetOpt
@@ -67,12 +68,12 @@ data ArgDescr a
   | -- |   option requires argument
     ReqArg (String -> Either String a) String
   | -- |   optional argument
-    OptArg (Maybe String -> Either String a) String
+    OptArg String (Maybe String -> Either String a) String
 
 instance Functor ArgDescr where
   fmap f (NoArg a) = NoArg (f a)
   fmap f (ReqArg g s) = ReqArg (fmap f . g) s
-  fmap f (OptArg g s) = OptArg (fmap f . g) s
+  fmap f (OptArg dv g s) = OptArg dv (fmap f . g) s
 
 data OptKind a -- kind of cmd line arg (internal use only):
   = Opt a --    an option
@@ -130,17 +131,41 @@ zipDefault _ bd (a : as) [] = (a, bd) : map (,bd) as
 zipDefault ad _ [] (b : bs) = (ad, b) : map (ad,) bs
 zipDefault ad bd (a : as) (b : bs) = (a, b) : zipDefault ad bd as bs
 
+-- | Pretty printing of short options.
+-- * With required arguments can be given as:
+--    @-w PATH or -wPATH (but not -w=PATH)@
+--   This is dislayed as:
+--    @-w PATH or -wPATH@
+-- * With optional but default arguments can be given as:
+--    @-j or -jNUM (but not -j=NUM or -j NUM)@
+--   This is dislayed as:
+--    @-j[NUM]@
 fmtShort :: ArgDescr a -> Char -> String
 fmtShort (NoArg _) so = "-" ++ [so]
-fmtShort (ReqArg _ _) so = "-" ++ [so]
-fmtShort (OptArg _ _) so = "-" ++ [so]
+fmtShort (ReqArg _ ad) so =
+  let opt = "-" ++ [so]
+   in opt ++ " " ++ ad ++ " or " ++ opt ++ ad
+fmtShort (OptArg _ _ ad) so =
+  let opt = "-" ++ [so]
+   in opt ++ "[" ++ ad ++ "]"
 
--- unlike upstream GetOpt we omit the arg name for short options
-
+-- | Pretty printing of long options.
+-- * With required arguments can be given as:
+--    @--with-compiler=PATH (but not --with-compiler PATH)@
+--   This is dislayed as:
+--    @--with-compiler=PATH@
+-- * With optional but default arguments can be given as:
+--    @--jobs or --jobs=NUM (but not --jobs NUM)@
+--   This is dislayed as:
+--    @--jobs[=NUM]@
 fmtLong :: ArgDescr a -> String -> String
 fmtLong (NoArg _) lo = "--" ++ lo
-fmtLong (ReqArg _ ad) lo = "--" ++ lo ++ "=" ++ ad
-fmtLong (OptArg _ ad) lo = "--" ++ lo ++ "[=" ++ ad ++ "]"
+fmtLong (ReqArg _ ad) lo =
+  let opt = "--" ++ lo
+   in opt ++ "=" ++ ad
+fmtLong (OptArg _ _ ad) lo =
+  let opt = "--" ++ lo
+   in opt ++ "[=" ++ ad ++ "]"
 
 wrapText :: Int -> String -> [String]
 wrapText width = map unwords . wrap 0 [] . words
@@ -230,8 +255,8 @@ longOpt ls rs optDescr = long ads arg rs
     long [ReqArg _ d] [] [] = (errReq d optStr, [])
     long [ReqArg f _] [] (r : rest) = (fromRes (f r), rest)
     long [ReqArg f _] ('=' : xs) rest = (fromRes (f xs), rest)
-    long [OptArg f _] [] rest = (fromRes (f Nothing), rest)
-    long [OptArg f _] ('=' : xs) rest = (fromRes (f (Just xs)), rest)
+    long [OptArg _ f _] [] rest = (fromRes (f Nothing), rest)
+    long [OptArg _ f _] ('=' : xs) rest = (fromRes (f (Just xs)), rest)
     long _ _ rest = (UnreqOpt ("--" ++ ls), rest)
 
 -- handle short option
@@ -249,8 +274,8 @@ shortOpt y ys rs optDescr = short ads ys rs
     short (ReqArg _ d : _) [] [] = (errReq d optStr, [])
     short (ReqArg f _ : _) [] (r : rest) = (fromRes (f r), rest)
     short (ReqArg f _ : _) xs rest = (fromRes (f xs), rest)
-    short (OptArg f _ : _) [] rest = (fromRes (f Nothing), rest)
-    short (OptArg f _ : _) xs rest = (fromRes (f (Just xs)), rest)
+    short (OptArg _ f _ : _) [] rest = (fromRes (f Nothing), rest)
+    short (OptArg _ f _ : _) xs rest = (fromRes (f (Just xs)), rest)
     short [] [] rest = (UnreqOpt optStr, rest)
     short [] xs rest = (UnreqOpt (optStr ++ xs), rest)
 

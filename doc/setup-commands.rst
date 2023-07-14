@@ -166,14 +166,17 @@ Programs used for building
 The following options govern the programs used to process the source
 files of a package:
 
-.. option:: --ghc or -g, --jhc, --lhc, --uhc
+.. option:: -g, --ghc
+            --ghcjs
+            --uhc
+            --haskell-suite
 
     Specify which Haskell implementation to use to build the package. At
     most one of these flags may be given. If none is given, the
     implementation under which the setup script was compiled or
     interpreted is used.
 
-.. option:: --with-compiler=path or -w *path*
+.. option:: -w PATH or -wPATH, --with-compiler=PATH
 
     Specify the path to a particular compiler. If given, this must match
     the implementation selected above. The default is to search for the
@@ -184,14 +187,14 @@ files of a package:
     ``runhaskell Setup.hs configure -v`` to ensure that it finds the right package
     tool (or use :option:`--with-hc-pkg` explicitly).
 
-.. option:: --with-hc-pkg=path
+.. option:: --with-hc-pkg=PATH
 
     Specify the path to the package tool, e.g. ``ghc-pkg``. The package
     tool must be compatible with the compiler specified by
     :option:`--with-compiler`. If this option is omitted, the default value is
     determined from the compiler selected.
 
-.. option:: --with-prog=path
+.. option:: --with-PROG=PATH
 
     Specify the path to the program *prog*. Any program known to Cabal
     can be used in place of *prog*. It can either be a fully path or the
@@ -201,7 +204,7 @@ files of a package:
     programs is not enumerated in this user guide. Rather, run
     ``cabal install --help`` to view the list.
 
-.. option:: --prog-options=options
+.. option:: --PROG-options=OPTS
 
     Specify additional options to the program *prog*. Any program known
     to Cabal can be used in place of *prog*. For example:
@@ -210,19 +213,19 @@ files of a package:
     embedded spaced need to be quoted, for example
     ``--foo-options='--bar="C:\Program File\Bar"'``. As an alternative
     that takes only one option at a time but avoids the need to quote,
-    use :option:`--prog-option` instead.
+    use :option:`--PROG-option` instead.
 
-.. option:: --prog-option=option
+.. option:: --PROG-option=OPT
 
     Specify a single additional option to the program *prog*. For
     passing an option that contains embedded spaces, such as a file name
-    with embedded spaces, using this rather than :option:`--prog-options`
+    with embedded spaces, using this rather than :option:`--PROG-options`
     means you do not need an additional level of quoting. Of course if you
     are using a command shell you may still need to quote, for example
     ``--foo-options="--bar=C:\Program File\Bar"``.
 
-All of the options passed with either :option:`--prog-options`
-or :option:`--prog-option` are passed in the order they were
+All of the options passed with either :option:`--PROG-options`
+or :option:`--PROG-option` are passed in the order they were
 specified on the configure command line.
 
 Installation paths
@@ -231,7 +234,7 @@ Installation paths
 The following options govern the location of installed files from a
 package:
 
-.. option:: --prefix=dir
+.. option:: --prefix=DIR
 
     The root of the installation. For example for a global install you
     might use ``/usr/local`` on a Unix system, or ``C:\Program Files``
@@ -242,7 +245,7 @@ package:
     variables: ``$pkgid``, ``$pkg``, ``$version``, ``$compiler``,
     ``$os``, ``$arch``, ``$abi``, ``$abitag``
 
-.. option:: --bindir=dir
+.. option:: --bindir=DIR
 
     Executables that the user might invoke are installed here.
 
@@ -250,7 +253,7 @@ package:
     variables: ``$prefix``, ``$pkgid``, ``$pkg``, ``$version``,
     ``$compiler``, ``$os``, ``$arch``, ``$abi``, ``$abitag``
 
-.. option:: --libdir=dir
+.. option:: --libdir=DIR
 
     Object-code libraries are installed here.
 
@@ -259,7 +262,7 @@ package:
     ``$version``, ``$compiler``, ``$os``, ``$arch``, ``$abi``,
     ``$abitag``
 
-.. option:: --dynlibdir=dir
+.. option:: --dynlibdir=DIR
 
     Dynamic libraries are installed here.
 
@@ -271,7 +274,7 @@ package:
     ``$version``, ``$compiler``, ``$os``, ``$arch``, ``$abi``,
     ``$abitag``
 
-.. option:: --libexecdir=dir
+.. option:: --libexecdir=DIR
 
     Executables that are not expected to be invoked directly by the user
     are installed here.
@@ -281,7 +284,7 @@ package:
     ``$pkgid``, ``$pkg``, ``$version``, ``$compiler``, ``$os``,
     ``$arch``, ``$abi``, ``$abitag``
 
-.. option:: --datadir=dir
+.. option:: --datadir=DIR
 
     Architecture-independent data files are installed here.
 
@@ -290,7 +293,7 @@ package:
     ``$pkgid``, ``$pkg``, ``$version``, ``$compiler``, ``$os``,
     ``$arch``, ``$abi``, ``$abitag``
 
-.. option:: --sysconfdir=dir
+.. option:: --sysconfdir=DIR
 
     Installation directory for the configuration files.
 
@@ -302,7 +305,7 @@ package:
 In addition the simple build system supports the following installation
 path options:
 
-.. option:: --libsubdir=dir
+.. option:: --libsubdir=DIR
 
     A subdirectory of *libdir* in which libraries are actually installed. For
     example, in the simple build system on Unix, the default *libdir* is
@@ -316,7 +319,7 @@ path options:
     ``$pkg``, ``$version``, ``$compiler``, ``$os``, ``$arch``, ``$abi``,
     ``$abitag``
 
-.. option:: --libexecsubdir=dir
+.. option:: --libexecsubdir=DIR
 
     A subdirectory of *libexecdir* in which private executables are
     installed. For example, in the simple build system on Unix, the default
@@ -328,7 +331,7 @@ path options:
     ``$pkg``, ``$version``, ``$compiler``, ``$os``, ``$arch``, ``$abi``,
     ``$abitag``
 
-.. option:: --datasubdir=dir
+.. option:: --datasubdir=DIR
 
     A subdirectory of *datadir* in which data files are actually
     installed.
@@ -337,7 +340,7 @@ path options:
     ``$pkg``, ``$version``, ``$compiler``, ``$os``, ``$arch``, ``$abi``,
     ``$abitag``
 
-.. option:: --docdir=dir
+.. option:: --docdir=DIR
 
     Documentation files are installed relative to this directory.
 
@@ -346,7 +349,7 @@ path options:
     ``$datasubdir``, ``$pkgid``, ``$pkg``, ``$version``, ``$compiler``,
     ``$os``, ``$arch``, ``$abi``, ``$abitag``
 
-.. option:: --htmldir=dir
+.. option:: --htmldir=DIR
 
     HTML documentation files are installed relative to this directory.
 
@@ -355,7 +358,7 @@ path options:
     ``$datasubdir``, ``$docdir``, ``$pkgid``, ``$pkg``, ``$version``,
     ``$compiler``, ``$os``, ``$arch``, ``$abi``, ``$abitag``
 
-.. option:: --program-prefix=prefix
+.. option:: --program-prefix=PREFIX
 
     Prepend *prefix* to installed program names.
 
@@ -363,7 +366,7 @@ path options:
     ``$pkg``, ``$version``, ``$compiler``, ``$os``, ``$arch``, ``$abi``,
     ``$abitag``
 
-.. option:: --program-suffix=suffix
+.. option:: --program-suffix=SUFFIX
 
     Append *suffix* to installed program names. The most obvious use for
     this is to append the program's version number to make it possible
@@ -585,7 +588,7 @@ Miscellaneous options
     packages in the user's package database will be ignored. Typically
     the final installation step will require administrative privileges.
 
-.. option:: --package-db=db
+.. option:: --package-db=DB
 
     Allows package dependencies to be satisfied from this additional
     package database *db* in addition to the global package database.
@@ -603,7 +606,7 @@ Miscellaneous options
 
     To reset the stack, use ``--package-db=clear``.
 
-.. option:: --ipid=ipid
+.. option:: --ipid=IPID
 
     Specifies the *installed package identifier* of the package to be
     built; this identifier is passed on to GHC and serves as the basis
@@ -613,12 +616,12 @@ Miscellaneous options
     internal library ``foo`` from package ``p-0.1-abcd`` will get the
     identifier ``p-0.1-abcd-foo``.
 
-.. option:: --cid=cid
+.. option:: --cid=CID
 
     Specifies the *component identifier* of the component being built;
     this is only valid if you are configuring a single component.
 
-.. option:: --enable-optimization[=n] or -O [n]
+.. option:: -O[n], --enable-optimization[=n]
 
     (default) Build with optimization flags (if available). This is
     appropriate for production use, taking more time to build faster
@@ -659,7 +662,7 @@ Miscellaneous options
     (default) Do not enable profiling in generated libraries and
     executables.
 
-.. option:: --enable-library-profiling or -p
+.. option:: -p, --enable-library-profiling
 
     As with :option:`--enable-profiling` above, but it applies only for
     libraries. So this generates an additional profiling instance of the
@@ -674,7 +677,7 @@ Miscellaneous options
 
     (default) Do not generate an additional profiling version of the library.
 
-.. option:: --profiling-detail[=level]
+.. option:: --profiling-detail=level
 
     Some compilers that support profiling, notably GHC, can allocate
     costs to different parts of the program and there are different
@@ -711,7 +714,7 @@ Miscellaneous options
     This flag is new in Cabal-1.24. Prior versions used the equivalent
     of ``none`` above.
 
-.. option:: --library-profiling-detail[=level]
+.. option:: --library-profiling-detail=level
 
     As with :option:`--profiling-detail` above, but it applies only for
     libraries.
@@ -828,7 +831,7 @@ Miscellaneous options
     (see the section on :ref:`system-dependent parameters`).
     There can be several of these options.
 
-.. option:: --extra-include-dirs[=dir]
+.. option:: --extra-include-dirs=PATH
 
     An extra directory to search for C header files. You can use this
     flag multiple times to get a list of directories.
@@ -843,12 +846,12 @@ Miscellaneous options
     and for libraries it is also saved in the package registration
     information and used when compiling modules that use the library.
 
-.. option:: --extra-lib-dirs[=dir]
+.. option:: --extra-lib-dirs=PATH
 
     An extra directory to search for system libraries files. You can use
     this flag multiple times to get a list of directories.
 
-.. option:: --extra-framework-dirs[=dir]
+.. option:: --extra-framework-dirs=PATH
 
     An extra directory to search for frameworks (OS X only). You can use
     this flag multiple times to get a list of directories.
@@ -863,14 +866,14 @@ Miscellaneous options
     and for libraries it is also saved in the package registration
     information and used when compiling modules that use the library.
 
-.. option:: --dependency[=pkgname=ipid]
+.. option:: --dependency[=pkgname=IPID]
 
     Specify that a particular dependency should used for a particular
     package name. In particular, it declares that any reference to
     *pkgname* in a :pkg-field:`build-depends` should be resolved to
     *ipid*.
 
-.. option:: --promised-dependency[=pkgname=ipid]
+.. option:: --promised-dependency[=pkgname=IPID]
 
     Very much like ``--dependency`` but the package doesn't need to already
     be installed. This is useful when attempting to start multiple component
@@ -889,7 +892,7 @@ Miscellaneous options
     :option:`--dependency` flags.
 
 
-.. option:: --constraint=constraint
+.. option:: -c CONSTRAINT or -cCONSTRAINT, --constraint=CONSTRAINT
 
     Restrict solutions involving a package to given version
     bounds, flag settings, and other properties.
@@ -999,7 +1002,7 @@ This command takes the following options:
 
 .. program:: runhaskell Setup.hs build
 
-.. option:: --prog-options=options, --prog-option=option
+.. option:: --PROG-options=OPTS, --PROG-option=OPT
 
     These are mostly the same as the `options configure
     step <#setup-configure>`__. Unlike the options specified at the
@@ -1277,12 +1280,12 @@ the package.
 
 .. program:: runhaskell Setup.hs test
 
-.. option:: --builddir=dir
+.. option:: --builddir=DIR
 
     The directory where Cabal puts generated build files (default:
     ``dist``). Test logs will be located in the ``test`` subdirectory.
 
-.. option:: --human-log=path
+.. option:: --test-log=TEMPLATE
 
     The template used to name human-readable test logs; the path is
     relative to ``dist/test``. By default, logs are named according to
@@ -1291,14 +1294,14 @@ the package.
     variables allowed are: ``$pkgid``, ``$compiler``, ``$os``,
     ``$arch``, ``$abi``, ``$abitag``, ``$test-suite``, and ``$result``.
 
-.. option:: --machine-log=path
+.. option:: --test-machine-log=TEMPLATE
 
     The path to the machine-readable log, relative to ``dist/test``. The
     default template is ``$pkgid.log``. Template variables allowed are:
     ``$pkgid``, ``$compiler``, ``$os``, ``$arch``, ``$abi``, ``$abitag``
     and ``$result``.
 
-.. option:: --show-details=filter
+.. option:: --test-show-details=FILTER
 
     Determines if the results of individual test cases are shown on the
     terminal. May be ``always`` (always show), ``never`` (never show),
@@ -1311,17 +1314,17 @@ the package.
     frameworks. (On the other hand, ``streaming`` creates a log but looses
     coloring.)
 
-.. option:: --test-options=options
+.. option:: --test-options=TEMPLATES
 
     Give extra options to the test executables.
 
-.. option:: --test-option=option
+.. option:: --test-option=TEMPLATE
 
     Give an extra option to the test executables. There is no need to
     quote options containing spaces because a single option is assumed,
     so options will not be split on spaces.
 
-.. option:: --test-wrapper=path
+.. option:: --test-wrapper=FILE
 
    The wrapper script/application used to setup and tear down the test
    execution context. The text executable path and test arguments are
@@ -1339,11 +1342,11 @@ on the command line after ``bench``. When supplied, Cabal will run
 only the named benchmarks, otherwise, Cabal will run all benchmarks in
 the package.
 
-.. option:: --benchmark-options=options
+.. option:: --benchmark-options=TEMPLATES
 
     Give extra options to the benchmark executables.
 
-.. option:: --benchmark-option=option
+.. option:: --benchmark-option=TEMPLATE
 
     Give an extra option to the benchmark executables. There is no need to
     quote options containing spaces because a single option is assumed,

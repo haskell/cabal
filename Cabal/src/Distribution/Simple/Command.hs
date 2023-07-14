@@ -74,6 +74,7 @@ module Distribution.Simple.Command
   , reqArg'
   , optArg
   , optArg'
+  , optArgDef'
   , noArg
   , boolOpt
   , boolOpt'
@@ -138,7 +139,7 @@ data OptDescr a
       OptFlags
       ArgPlaceHolder
       (ReadE (a -> a))
-      (a -> a)
+      (String, a -> a)
       (a -> [Maybe String])
   | ChoiceOpt [(Description, OptFlags, a -> a, a -> Bool)]
   | BoolOpt
@@ -231,16 +232,16 @@ optArg
   :: Monoid b
   => ArgPlaceHolder
   -> ReadE b
-  -> b
+  -> (String, b)
   -> (b -> [Maybe String])
   -> MkOptDescr (a -> b) (b -> a -> a) a
-optArg ad mkflag def showflag sf lf d get set =
+optArg ad mkflag (dv, mkDef) showflag sf lf d get set =
   OptArg
     d
     (sf, lf)
     ad
     (fmap (\a b -> set (get b `mappend` a) b) mkflag)
-    (\b -> set (get b `mappend` def) b)
+    (dv, \b -> set (get b `mappend` mkDef) b)
     (showflag . get)
 
 -- | (String -> a) variant of "reqArg"
@@ -261,9 +262,16 @@ optArg'
   -> (b -> [Maybe String])
   -> MkOptDescr (a -> b) (b -> a -> a) a
 optArg' ad mkflag showflag =
-  optArg ad (succeedReadE (mkflag . Just)) def showflag
-  where
-    def = mkflag Nothing
+  optArg ad (succeedReadE (mkflag . Just)) ("", mkflag Nothing) showflag
+
+optArgDef'
+  :: Monoid b
+  => ArgPlaceHolder
+  -> (String, Maybe String -> b)
+  -> (b -> [Maybe String])
+  -> MkOptDescr (a -> b) (b -> a -> a) a
+optArgDef' ad (dv, mkflag) showflag =
+  optArg ad (succeedReadE (mkflag . Just)) (dv, mkflag Nothing) showflag
 
 noArg :: Eq b => b -> MkOptDescr (a -> b) (b -> a -> a) a
 noArg flag sf lf d = choiceOpt [(flag, (sf, lf), d)] sf lf d
@@ -339,8 +347,8 @@ viewAsGetOpt (OptionField _n aa) = concatMap optDescrToGetOpt aa
   where
     optDescrToGetOpt (ReqArg d (cs, ss) arg_desc set _) =
       [GetOpt.Option cs ss (GetOpt.ReqArg (runReadE set) arg_desc) d]
-    optDescrToGetOpt (OptArg d (cs, ss) arg_desc set def _) =
-      [GetOpt.Option cs ss (GetOpt.OptArg set' arg_desc) d]
+    optDescrToGetOpt (OptArg d (cs, ss) arg_desc set (dv, def) _) =
+      [GetOpt.Option cs ss (GetOpt.OptArg dv set' arg_desc) d]
       where
         set' Nothing = Right def
         set' (Just txt) = runReadE set txt
@@ -374,13 +382,13 @@ liftOptDescr get' set' (ChoiceOpt opts) =
     [ (d, ff, liftSet get' set' set, (get . get'))
     | (d, ff, set, get) <- opts
     ]
-liftOptDescr get' set' (OptArg d ff ad set def get) =
+liftOptDescr get' set' (OptArg d ff ad set (dv, mkDef) get) =
   OptArg
     d
     ff
     ad
     (liftSet get' set' `fmap` set)
-    (liftSet get' set' def)
+    (dv, liftSet get' set' mkDef)
     (get . get')
 liftOptDescr get' set' (ReqArg d ff ad set get) =
   ReqArg d ff ad (liftSet get' set' `fmap` set) (get . get')
