@@ -226,6 +226,12 @@ import Data.Typeable
   )
 
 import qualified Control.Exception as Exception
+import Data.Time.Clock.POSIX (POSIXTime, getPOSIXTime)
+import Distribution.Compat.Process (proc)
+import Foreign.C.Error (Errno (..), ePIPE)
+import qualified GHC.IO.Exception as GHC
+import GHC.Stack (HasCallStack)
+import Numeric (showFFloat)
 import System.Directory
   ( Permissions (executable)
   , createDirectory
@@ -268,15 +274,7 @@ import System.IO.Error
 import System.IO.Unsafe
   ( unsafeInterleaveIO
   )
-
-import Data.Time.Clock.POSIX (POSIXTime, getPOSIXTime)
-import Distribution.Compat.Process (proc)
-import Foreign.C.Error (Errno (..), ePIPE)
-import qualified GHC.IO.Exception as GHC
-import Numeric (showFFloat)
 import qualified System.Process as Process
-
-import GHC.Stack (HasCallStack)
 import qualified Text.PrettyPrint as Disp
 
 -- We only get our own version number when we're building with ourselves
@@ -400,9 +398,9 @@ instance Exception (VerboseException CabalException) where
           [ "Error: [C-"
           , show (exceptionCode cabalexception)
           , "]\n"
-          , exceptionWithMetadata stack timestamp verb $ exceptionMessage cabalexception
           ]
       )
+      ++ (exceptionWithMetadata stack timestamp verb $ exceptionMessage cabalexception)
 
 dieNoWrap :: Verbosity -> String -> IO a
 dieNoWrap verbosity msg = withFrozenCallStack $ do
@@ -784,6 +782,7 @@ exceptionWithMetadata :: CallStack -> POSIXTime -> Verbosity -> String -> String
 exceptionWithMetadata stack ts verbosity x =
   withTrailingNewline
     . exceptionWithCallStackPrefix stack verbosity
+    . withOutputMarker verbosity
     . clearMarkers
     . withTimestamp verbosity ts
     $ x
