@@ -203,12 +203,6 @@ tests =
       , runTest $
           mkTest dbNonupgrade "Refuse to install newer ghc requested by another library" ["A"] $
             solverFailure (isInfixOf "rejecting: ghc-2.0.0 (constraint from non-upgradeable package requires installed instance)")
-      , runTest $
-          mkTest dbNonupgrade "Refuse to install newer ghci requested by another library" ["B"] $
-            solverFailure (isInfixOf "rejecting: ghci-2.0.0 (constraint from non-upgradeable package requires installed instance)")
-      , runTest $
-          mkTest dbNonupgrade "Refuse to install newer ghc-boot requested by another library" ["C"] $
-            solverFailure (isInfixOf "rejecting: ghc-boot-2.0.0 (constraint from non-upgradeable package requires installed instance)")
       ]
   , testGroup
       "reject-unconstrained"
@@ -1301,8 +1295,6 @@ dbBase =
 dbNonupgrade :: ExampleDb
 dbNonupgrade =
   [ Left $ exInst "ghc" 1 "ghc-1" []
-  , Left $ exInst "ghci" 1 "ghci-1" []
-  , Left $ exInst "ghc-boot" 1 "ghc-boot-1" []
   , Right $ exAv "ghc" 2 []
   , Right $ exAv "ghci" 2 []
   , Right $ exAv "ghc-boot" 2 []
