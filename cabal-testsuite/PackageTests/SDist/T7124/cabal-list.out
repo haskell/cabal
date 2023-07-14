@@ -2,5 +2,3 @@
 Wrote source list to <TMPDIR>/pkg-a-0.list
 Error: [C-6661]
 filepath wildcard './data.txt' does not match any files.
-CallStack (from HasCallStack):
-  dieWithException, called at src/Distribution/Client/CmdSdist.hs:347:55 in cabal-install-3.11.0.0-inplace:Distribution.Client.CmdSdist
