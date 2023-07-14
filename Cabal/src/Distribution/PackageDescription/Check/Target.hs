@@ -355,8 +355,8 @@ checkBuildInfo cet ams ads bi = do
     (extraFrameworkDirs bi)
   mapM_ (checkLocalPathExist "include-dirs") (includeDirs bi)
   mapM_
-    (checkLocalPathExist "hs-source-dirs")
-    (map getSymbolicPath $ hsSourceDirs bi)
+    (checkLocalPathExist "hs-source-dirs" . getSymbolicPath)
+    (hsSourceDirs bi)
 
 -- Well formedness of BI contents (no `Haskell2015`, no deprecated
 -- extensions etc).
@@ -436,8 +436,8 @@ checkBuildInfoPathsWellFormedness bi = do
     (checkPath False "install-includes" PathKindFile)
     (installIncludes bi)
   mapM_
-    (checkPath False "hs-source-dirs" PathKindDirectory)
-    (map getSymbolicPath $ hsSourceDirs bi)
+    (checkPath False "hs-source-dirs" PathKindDirectory . getSymbolicPath)
+    (hsSourceDirs bi)
   -- Possibly absolute paths.
   mapM_ (checkPath True "includes" PathKindFile) (includes bi)
   mapM_
