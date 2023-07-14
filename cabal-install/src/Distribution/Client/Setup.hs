@@ -72,15 +72,11 @@ import Distribution.Client.IndexUtils.IndexState
 import qualified Distribution.Client.Init.Types as IT
 import qualified Distribution.Client.Init.Defaults as IT
 import Distribution.Client.Targets
-<<<<<<< HEAD
-         ( UserConstraint, readUserConstraint )
-=======
   ( UserConstraint
   , readUserConstraint
   )
 import Distribution.Deprecated.ParseUtils (parseSpaceList, parseTokenQ)
 import Distribution.Deprecated.ReadP (readP_to_E)
->>>>>>> 95f48ad71 (Fix parsing of password-command option (#6268))
 import Distribution.Utils.NubList
          ( NubList, toNubList, fromNubList)
 
@@ -2012,53 +2008,6 @@ defaultUploadFlags = UploadFlags {
   }
 
 uploadCommand :: CommandUI UploadFlags
-<<<<<<< HEAD
-uploadCommand = CommandUI {
-    commandName         = "upload",
-    commandSynopsis     = "Uploads source packages or documentation to Hackage.",
-    commandDescription  = Nothing,
-    commandNotes        = Just $ \_ ->
-         "You can store your Hackage login in the ~/.config/cabal/config file\n"
-      ++ relevantConfigValuesText ["username", "password", "password-command"],
-    commandUsage        = \pname ->
-         "Usage: " ++ pname ++ " upload [FLAGS] TARFILES\n",
-    commandDefaultFlags = defaultUploadFlags,
-    commandOptions      = \_ ->
-      [optionVerbosity uploadVerbosity
-       (\v flags -> flags { uploadVerbosity = v })
-
-      ,option [] ["publish"]
-        "Publish the package instead of uploading it as a candidate."
-        uploadCandidate (\v flags -> flags { uploadCandidate = v })
-        (noArg (Flag IsPublished))
-
-      ,option ['d'] ["documentation"]
-        ("Upload documentation instead of a source package. "
-        ++ "By default, this uploads documentation for a package candidate. "
-        ++ "To upload documentation for "
-        ++ "a published package, combine with --publish.")
-        uploadDoc (\v flags -> flags { uploadDoc = v })
-        trueArg
-
-      ,option ['u'] ["username"]
-        "Hackage username."
-        uploadUsername (\v flags -> flags { uploadUsername = v })
-        (reqArg' "USERNAME" (toFlag . Username)
-                            (flagToList . fmap unUsername))
-
-      ,option ['p'] ["password"]
-        "Hackage password."
-        uploadPassword (\v flags -> flags { uploadPassword = v })
-        (reqArg' "PASSWORD" (toFlag . Password)
-                            (flagToList . fmap unPassword))
-
-      ,option ['P'] ["password-command"]
-        "Command to get Hackage password."
-        uploadPasswordCmd (\v flags -> flags { uploadPasswordCmd = v })
-        (reqArg' "PASSWORD" (Flag . words) (fromMaybe [] . flagToMaybe))
-      ]
-  }
-=======
 uploadCommand =
   CommandUI
     { commandName = "upload"
@@ -2130,7 +2079,6 @@ uploadCommand =
             )
         ]
     }
->>>>>>> 95f48ad71 (Fix parsing of password-command option (#6268))
 
 instance Monoid UploadFlags where
   mempty = gmempty
