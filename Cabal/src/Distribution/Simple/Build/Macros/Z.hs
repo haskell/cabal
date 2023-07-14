@@ -1,3 +1,4 @@
+{- FOURMOLU_DISABLE -}
 {-# LANGUAGE DeriveGeneric #-}
 module Distribution.Simple.Build.Macros.Z (render, Z(..), ZPackage (..), ZTool (..)) where
 import Distribution.ZinzaPrelude

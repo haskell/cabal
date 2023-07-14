@@ -7,8 +7,21 @@ respectful: true # don't be too opinionated about newlines etc.
 haddock-style: single-line # '--' vs. '{-'
 haddock-style-module: single-line
 newlines-between-decls: 1 # number of newlines between top-level declarations
-fixities: []
 function-arrows: leading
 single-constraint-parens: never
 in-style: right-align
 let-style: auto
+
+fixities:
+  # Distribution.Compat.Parsing
+  - infixr 0 <?> 
+  # Distribution.FieldGrammar
+  - infixl 5 ^^^
+  # Distribution.Types.InstalledPackageInfo.FieldGrammar
+  - infixl 4 <@>
+
+reexports:
+  - module Distribution.Client.Compat.Prelude exports Distribution.Compat.Prelude.Internal
+  - module Distribution.Compat.Prelude.Internal exports Distribution.Compat.Prelude
+  - module Distribution.Compat.Prelude exports Prelude
+  - module Distribution.Compat.Prelude exports Control.Applicative

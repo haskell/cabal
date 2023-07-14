@@ -20,10 +20,10 @@ import System.Exit
 import System.FilePath
 import System.IO.Error
 
+import Distribution.Utils.TempTestDir (withTestDir)
 import Test.Tasty
 import Test.Tasty.HUnit
 import UnitTests.Options (RunNetworkTests (..))
-import Distribution.Utils.TempTestDir (withTestDir)
 
 tests :: [TestTree]
 tests =
