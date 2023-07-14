@@ -111,7 +111,7 @@ build
   -- ^ preprocessors to run before compiling
   -> IO ()
 build pkg_descr lbi flags suffixes = do
-  checkBuildProblems verbosity (compiler lbi) flags
+  checkSemaphoreSupport verbosity (compiler lbi) flags
   targets <- readTargetInfos verbosity pkg_descr lbi (buildArgs flags)
   let componentsToBuild = neededTargetsInBuildOrder' pkg_descr lbi (map nodeKey targets)
   info verbosity $
@@ -175,10 +175,11 @@ build pkg_descr lbi flags suffixes = do
     distPref = fromFlag (buildDistPref flags)
     verbosity = fromFlag (buildVerbosity flags)
 
-checkBuildProblems
+-- | Check for conditions that would prevent the build from succeeding.
+checkSemaphoreSupport
   :: Verbosity -> Compiler -> BuildFlags -> IO ()
-checkBuildProblems verbosity comp flags = do
-  unless (jsemSupported comp || not (isJust (flagToMaybe (buildUseSemaphore flags)))) $
+checkSemaphoreSupport verbosity comp flags = do
+  unless (jsemSupported comp || (isNothing (flagToMaybe (buildUseSemaphore flags)))) $
     die' verbosity $
       "Your compiler does not support the -jsem flag. "
         ++ "To use this feature you must use GHC 9.8 or later."

@@ -1,10 +1,10 @@
-synopsis: Add `--enable-semaphore` flag to enable interaction with GHC Job Server protocol
+synopsis: Add `--semaphore` flag to enable interaction with GHC Job Server protocol
 packages: cabal-install
 prs: #8557
 
 description: {
 
-When cabal-install is passed the `--enable-semaphore` flag it will now act as a job server
+When cabal-install is passed the `--semaphore` flag it will now act as a job server
 according to the GHC Jobserver Protocol.
 
 In particular this means that cabal-install will create a semaphore which it then

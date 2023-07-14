@@ -10,13 +10,15 @@ data ParStratX sem
     Serial
   deriving (Show)
 
--- Used by Cabal to indicate that we want to use this specific semaphore (created by cabal-install)
+-- | Used by Cabal to indicate that we want to use this specific semaphore (created by cabal-install)
 type ParStrat = ParStratX String
 
--- Used by cabal-install to say we want to create a semaphore with N slots.
+-- | Used by cabal-install to say we want to create a semaphore with N slots.
 type ParStratInstall = ParStratX Int
 
+-- | Determine if the parallelism strategy enables parallel builds.
 isParallelBuild :: ParStratX n -> Bool
 isParallelBuild Serial = False
-isParallelBuild NumJobs{} = True
+isParallelBuild (NumJobs (Just 1)) = False
+isParallelBuild (NumJobs _) = True
 isParallelBuild UseSem{} = True

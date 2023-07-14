@@ -364,7 +364,7 @@ unitIdSupported = ghcSupported "Uses unit IDs"
 backpackSupported :: Compiler -> Bool
 backpackSupported = ghcSupported "Support Backpack"
 
--- | Does this compiler support the -jsem option
+-- | Does this compiler support the -jsem option?
 jsemSupported :: Compiler -> Bool
 jsemSupported comp = case compilerFlavor comp of
   GHC -> v >= mkVersion [9, 7]
