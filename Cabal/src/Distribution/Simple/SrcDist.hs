@@ -53,9 +53,6 @@ import Distribution.PackageDescription
 import Distribution.PackageDescription.Check hiding (doesFileExist)
 import Distribution.Pretty
 import Distribution.Simple.BuildPaths
-  ( autogenPackageInfoModuleName
-  , autogenPathsModuleName
-  )
 import Distribution.Simple.Configure (findDistPrefOrDefault)
 import Distribution.Simple.Flag
 import Distribution.Simple.Glob (matchDirFileGlobWithDie)
