@@ -21,25 +21,43 @@
 
 {-# OPTIONS_HADDOCK hide #-}
 {-# LANGUAGE Rank2Types #-}
-module Distribution.Deprecated.ParseUtils (
-        LineNo, PError(..), PWarning(..), locatedErrorMsg, syntaxError, warning,
-        runP, runE, ParseResult(..), parseFail, showPWarning,
-        Field(..), lineNo,
-        FieldDescr(..), readFields,
-        parseHaskellString, parseTokenQ,
-        parseOptCommaList,
-        showFilePath, showToken, showFreeText,
-        field, simpleField, listField, listFieldWithSep, spaceListField,
-        newLineListField,
-        liftField,
-        readPToMaybe,
-
-        fieldParsec, simpleFieldParsec,
-        listFieldParsec,
-        commaListFieldParsec,
-        commaNewLineListFieldParsec,
-
-        UnrecFieldParser,
+module Distribution.Deprecated.ParseUtils
+  ( LineNo
+  , PError (..)
+  , PWarning (..)
+  , locatedErrorMsg
+  , syntaxError
+  , warning
+  , runP
+  , runE
+  , ParseResult (..)
+  , parseFail
+  , showPWarning
+  , Field (..)
+  , lineNo
+  , FieldDescr (..)
+  , readFields
+  , parseHaskellString
+  , parseTokenQ
+  , parseSpaceList
+  , parseOptCommaList
+  , showFilePath
+  , showToken
+  , showFreeText
+  , field
+  , simpleField
+  , listField
+  , listFieldWithSep
+  , spaceListField
+  , newLineListField
+  , liftField
+  , readPToMaybe
+  , fieldParsec
+  , simpleFieldParsec
+  , listFieldParsec
+  , commaListFieldParsec
+  , commaNewLineListFieldParsec
+  , UnrecFieldParser
   ) where
 
 import Distribution.Client.Compat.Prelude hiding (get)
