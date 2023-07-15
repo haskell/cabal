@@ -40,7 +40,7 @@ Usage: ./validate.sh [options]
   A script which runs all the tests.
 
 Available options:
-  -j, --jobs JOBS                   cabal v2-build -j argument (default:  $JOBS)
+  -j, --jobs JOBS                   cabal build -j argument (default:  $JOBS)
       --libonly                     Test only Cabal-the-library
       --cli                         Test both Cabal-the-library and cabal-install
       --(no-)run-lib-tests          Run library tests
@@ -307,7 +307,7 @@ BASEHC=ghc-$($HC --numeric-version)
 BUILDDIR=dist-newstyle-validate-$BASEHC
 CABAL_TESTSUITE_BDIR="$(pwd)/$BUILDDIR/build/$ARCH/$BASEHC/cabal-testsuite-3"
 
-CABALNEWBUILD="${CABAL} v2-build $JOBS -w $HC --builddir=$BUILDDIR --project-file=$PROJECTFILE"
+CABALNEWBUILD="${CABAL} build $JOBS -w $HC --builddir=$BUILDDIR --project-file=$PROJECTFILE"
 CABALLISTBIN="${CABAL} list-bin --builddir=$BUILDDIR --project-file=$PROJECTFILE"
 
 # header

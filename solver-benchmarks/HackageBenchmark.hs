@@ -240,7 +240,7 @@ runCabal timeoutSeconds cabalUnderTest cabal flags = do
           cabalCmd = unwords $
               [ cabal
 
-              , "v2-install"
+              , "install"
 
                 -- These flags prevent a Cabal project or package environment from
                 -- affecting the install plan.

@@ -4,7 +4,7 @@
 [![Stackage version](https://www.stackage.org/package/Cabal/badge/lts?label=Stackage)](https://www.stackage.org/package/Cabal)
 [![Documentation Status](http://readthedocs.org/projects/cabal/badge/?version=latest)](http://cabal.readthedocs.io/en/latest/?badge=latest)
 [![IRC chat](https://img.shields.io/badge/chat-via%20libera-brightgreen.svg)](https://web.libera.chat/#hackage)
-[![Matrix chat](https://img.shields.io/badge/chat-via%20matrix-brightgreen.svg)](https://matrix.to/#/#hackage:libera.chat)
+[![Matrix chat](https://img.shields.io/badge/chat-via%20matrix-brightgreen.svg)](https://matrix.to/#/#hackage:matrix.org)
 
 <img src="https://www.haskell.org/cabal/images/Cabal-light.png" align="right">
 
@@ -69,6 +69,16 @@ Ways to build `cabal-install` for everyday use
 3. _Bootstrapping_:
     if you don't have a pre-existing version of `cabal-install`,
     look into the [`bootstrap`](bootstrap) directory.
+
+Learn how to use `cabal` and get support
+----------------------------------------
+
+`cabal` comes with a thorough [User Manual](https://cabal.readthedocs.io).
+If you are new to `cabal` and want to quickly learn the basics, check
+[Getting Started With Haskell and Cabal](https://cabal.readthedocs.io/en/latest/getting-started.html).
+
+Got questions? Ask in [Haskell Matrix](https://matrix.to/#/#haskell:matrix.org)
+(online chat) or [Haskell Discourse](https://discourse.haskell.org).
 
 Build for hacking and contributing to cabal
 -------------------------------------------

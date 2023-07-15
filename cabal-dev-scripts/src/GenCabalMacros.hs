@@ -65,7 +65,7 @@ withIO k = do
             putStrLn $ "Exception: " ++ displayException e
             exitFailure
         _         -> do
-            putStrLn "Usage cabal v2-run ... source.temeplate.ext target.ext"
+            putStrLn "Usage cabal run ... source.temeplate.ext target.ext"
             exitFailure
 
 main :: IO ()
@@ -77,7 +77,8 @@ config :: ModuleConfig Z
 config = ModuleConfig
     { mcRender = "render"
     , mcHeader =
-        [ "{-# LANGUAGE DeriveGeneric #-}"
+        [ "{- FOURMOLU_DISABLE -}"
+        , "{-# LANGUAGE DeriveGeneric #-}"
         , "module Distribution.Simple.Build.Macros.Z (render, Z(..), ZPackage (..), ZTool (..)) where"
         , "import Distribution.ZinzaPrelude"
         , decls
