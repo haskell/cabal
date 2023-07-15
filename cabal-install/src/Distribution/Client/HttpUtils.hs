@@ -934,7 +934,7 @@ powershellTransport prog =
         ++ ",\"\");"
       ]
     setupAuth (Just (Right token)) =
-      ["$request.Authorization = " ++ escape ("X-ApiKey " ++ token)]
+      ["$request.Headers[\"Authorization\"] = " ++ escape ("X-ApiKey " ++ token)]
     setupAuth Nothing = []
 
     uploadFileAction method _uri fullPath =
