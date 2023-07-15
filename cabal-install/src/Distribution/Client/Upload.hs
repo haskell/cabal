@@ -13,8 +13,8 @@ import Distribution.Client.Setup
   )
 import Distribution.Client.Types.Credentials
   ( Auth
-  , Token (..)
   , Password (..)
+  , Token (..)
   , Username (..)
   )
 import Distribution.Client.Types.Repo (RemoteRepo (..), Repo, maybeRepoRemote)
@@ -301,9 +301,9 @@ createAuth
   -> Maybe Password
   -> IO Auth
 createAuth domain mToken mUsername mPassword = case mToken of
-    Just token -> return $ Right $ unToken token
-    -- Use username and password if no token is provided
-    Nothing -> do
-      Username username <- maybe (promptUsername domain) return mUsername
-      Password password <- maybe (promptPassword domain) return mPassword
-      return $ Left (username, password)
+  Just token -> return $ Right $ unToken token
+  -- Use username and password if no token is provided
+  Nothing -> do
+    Username username <- maybe (promptUsername domain) return mUsername
+    Password password <- maybe (promptPassword domain) return mPassword
+    return $ Left (username, password)

@@ -95,9 +95,9 @@ import Distribution.Client.Types
   , isRelaxDeps
   , unRepoName
   )
-import Distribution.Client.Types.Credentials 
-  ( Token (..)
-  , Password (..)
+import Distribution.Client.Types.Credentials
+  ( Password (..)
+  , Token (..)
   , Username (..)
   )
 import Distribution.Utils.NubList

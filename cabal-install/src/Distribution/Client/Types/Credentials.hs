@@ -5,7 +5,7 @@ module Distribution.Client.Types.Credentials
   , Password (..)
   ) where
 
-import Prelude (String, Either)
+import Prelude (Either, String)
 
 -- | Either (username, password) or authentacation token
 type Auth = Either (String, String) String

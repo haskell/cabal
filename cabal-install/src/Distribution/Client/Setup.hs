@@ -93,7 +93,7 @@ import Distribution.Client.Compat.Prelude hiding (get)
 import Prelude ()
 
 import Distribution.Client.Types.AllowNewer (AllowNewer (..), AllowOlder (..), RelaxDeps (..))
-import Distribution.Client.Types.Credentials (Token (..), Password (..), Username (..))
+import Distribution.Client.Types.Credentials (Password (..), Token (..), Username (..))
 import Distribution.Client.Types.Repo (LocalRepo (..), RemoteRepo (..))
 import Distribution.Client.Types.WriteGhcEnvironmentFilesPolicy
 

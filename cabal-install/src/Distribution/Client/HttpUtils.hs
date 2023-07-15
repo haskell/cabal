@@ -550,10 +550,11 @@ curlTransport prog =
                   ]
             , progInvokeArgs = ["--config", "-"] ++ progInvokeArgs progInvocation
             }
-        Just (Right token) -> 
+        Just (Right token) ->
           progInvocation
-            { progInvokeArgs = ["--header", "Authorization: X-ApiKey " ++ token]
-                ++ progInvokeArgs progInvocation
+            { progInvokeArgs =
+                ["--header", "Authorization: X-ApiKey " ++ token]
+                  ++ progInvokeArgs progInvocation
             }
         Nothing -> progInvocation
 
@@ -928,10 +929,10 @@ powershellTransport prog =
 
     setupAuth (Just (Left (uname, passwd))) =
       [ "$request.Credentials = new-object System.Net.NetworkCredential("
-        ++ escape uname
-        ++ ","
-        ++ escape passwd
-        ++ ",\"\");"
+          ++ escape uname
+          ++ ","
+          ++ escape passwd
+          ++ ",\"\");"
       ]
     setupAuth (Just (Right token)) =
       ["$request.Headers[\"Authorization\"] = " ++ escape ("X-ApiKey " ++ token)]
