@@ -32,7 +32,7 @@ import Distribution.Version
 data CabalException
   = NoBenchMarkProgram FilePath
   | EnableBenchMark
-  | BenchMarkNameDisable String
+  | BenchMarkNameDisabled String
   | NoBenchMark String
   | NoLibraryFound
   | CompilerNotInstalled CompilerFlavor
@@ -67,9 +67,9 @@ data CabalException
   | BuildingNotSupportedWithCompiler
   | ProvideHaskellSuiteTool String
   | CannotDetermineCompilerVersion
-  | PkgdumpFailed
+  | PkgDumpFailed
   | FailedToParseOutput
-  | CantFindSoureModule ModuleName
+  | CantFindSourceModule ModuleName
   | VersionMisMatch FilePath Version FilePath Version
   | VersionMisMatchGHC FilePath Version FilePath Version
   | GlobalPackageDBLimitation
@@ -82,7 +82,7 @@ exceptionCode :: CabalException -> Int
 exceptionCode e = case e of
   NoBenchMarkProgram{} -> 1678
   EnableBenchMark{} -> 1453
-  BenchMarkNameDisable{} -> 2781
+  BenchMarkNameDisabled{} -> 2781
   NoBenchMark{} -> 1654
   NoLibraryFound -> 2546
   CompilerNotInstalled{} -> 7465
@@ -117,9 +117,9 @@ exceptionCode e = case e of
   BuildingNotSupportedWithCompiler{} -> 7077
   ProvideHaskellSuiteTool{} -> 7509
   CannotDetermineCompilerVersion{} -> 4519
-  PkgdumpFailed{} -> 2290
+  PkgDumpFailed{} -> 2290
   FailedToParseOutput{} -> 5500
-  CantFindSoureModule{} -> 8870
+  CantFindSourceModule{} -> 8870
   VersionMisMatch{} -> 9001
   VersionMisMatchGHC{} -> 4001
   GlobalPackageDBLimitation{} -> 5002
@@ -131,7 +131,7 @@ exceptionMessage :: CabalException -> String
 exceptionMessage e = case e of
   NoBenchMarkProgram cmd -> "Could not find benchmark program \"" ++ cmd ++ "\". Did you build the package first?"
   EnableBenchMark -> "No benchmarks enabled. Did you remember to configure with " ++ "\'--enable-benchmarks\'?"
-  BenchMarkNameDisable bmName -> "Package configured with benchmark " ++ bmName ++ " disabled."
+  BenchMarkNameDisabled bmName -> "Package configured with benchmark " ++ bmName ++ " disabled."
   NoBenchMark bmName -> "no such benchmark: " ++ bmName
   NoLibraryFound -> "No executables and no library found. Nothing to do."
   CompilerNotInstalled compilerFlavor -> "installing with " ++ prettyShow compilerFlavor ++ "is not implemented"
@@ -183,9 +183,9 @@ exceptionMessage e = case e of
   BuildingNotSupportedWithCompiler -> "Building is not supported with this compiler."
   ProvideHaskellSuiteTool msg -> show msg
   CannotDetermineCompilerVersion -> "haskell-suite: couldn't determine compiler version"
-  PkgdumpFailed -> "pkg dump failed"
+  PkgDumpFailed -> "pkg dump failed"
   FailedToParseOutput -> "failed to parse output of 'pkg dump'"
-  CantFindSoureModule moduleName -> "can't find source for module " ++ prettyShow moduleName
+  CantFindSourceModule moduleName -> "can't find source for module " ++ prettyShow moduleName
   VersionMisMatch ghcjsProgPath ghcjsVersion ghcjsPkgProgPath ghcjsPkgGhcjsVersion ->
     "Version mismatch between ghcjs and ghcjs-pkg: "
       ++ show ghcjsProgPath

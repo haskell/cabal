@@ -193,7 +193,7 @@ getSourceFiles verbosity dirs modules = flip traverse modules $ \m ->
       >>= maybe (notFound m) (return . normalise)
   where
     notFound module_ =
-      dieWithException verbosity $ CantFindSoureModule module_
+      dieWithException verbosity $ CantFindSourceModule module_
 
 -- | The directory where we put build results for an executable
 exeBuildDir :: LocalBuildInfo -> Executable -> FilePath

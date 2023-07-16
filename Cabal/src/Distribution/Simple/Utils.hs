@@ -395,7 +395,7 @@ instance Exception (VerboseException CabalException) where
     withOutputMarker
       verb
       ( concat
-          [ "Error: [C-"
+          [ "Error: [Cabal-"
           , show (exceptionCode cabalexception)
           , "]\n"
           ]

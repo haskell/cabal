@@ -141,7 +141,7 @@ getInstalledPackages verbosity packagedbs progdb =
           haskellSuitePkgProgram
           progdb
           ["dump", packageDbOpt packagedb]
-          `catchExit` \_ -> dieWithException verbosity PkgdumpFailed
+          `catchExit` \_ -> dieWithException verbosity PkgDumpFailed
 
       case parsePackages str of
         Right ok -> return ok

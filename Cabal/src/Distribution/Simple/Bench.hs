@@ -104,7 +104,7 @@ bench args pkg_descr lbi flags = do
             Just t -> return t
             _
               | mkUnqualComponentName bmName `elem` allNames ->
-                  dieWithException verbosity $ BenchMarkNameDisable bmName
+                  dieWithException verbosity $ BenchMarkNameDisabled bmName
               | otherwise -> dieWithException verbosity $ NoBenchMark bmName
 
   let totalBenchmarks = length bmsToRun
