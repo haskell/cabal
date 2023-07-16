@@ -1,4 +1,4 @@
 # cabal v2-sdist
 Wrote source list to <TMPDIR>/pkg-a-0.list
-Error: [C-6661]
+Error: [Cabal-6661]
 filepath wildcard './data.txt' does not match any files.
