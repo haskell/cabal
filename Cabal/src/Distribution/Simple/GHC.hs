@@ -675,9 +675,52 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
             else do vanilla; shared
        whenProfLib (runGhcProg profOpts)
 
+  let
+    buildExtraSources mkSrcOpts wantDyn = traverse_ $ buildExtraSource mkSrcOpts wantDyn
+    buildExtraSource mkSrcOpts wantDyn filename = do
+      let baseSrcOpts =
+            mkSrcOpts
+              verbosity
+              implInfo
+              lbi
+              libBi
+              clbi
+              relLibTargetDir
+              filename
+          vanillaSrcOpts
+            -- Dynamic GHC requires C sources to be built
+            -- with -fPIC for REPL to work. See #2207.
+            | isGhcDynamic && wantDyn = baseSrcOpts{ghcOptFPic = toFlag True}
+            | otherwise = baseSrcOpts
+          runGhcProgIfNeeded opts = do
+            needsRecomp <- checkNeedsRecompilation filename opts
+            when needsRecomp $ runGhcProg opts
+          profSrcOpts =
+            vanillaSrcOpts
+              `mappend` mempty
+                { ghcOptProfilingMode = toFlag True
+                , ghcOptObjSuffix = toFlag "p_o"
+                }
+          sharedSrcOpts =
+            vanillaSrcOpts
+              `mappend` mempty
+                { ghcOptFPic = toFlag True
+                , ghcOptDynLinkMode = toFlag GhcDynamicOnly
+                , ghcOptObjSuffix = toFlag "dyn_o"
+                }
+          odir = fromFlag (ghcOptObjDir vanillaSrcOpts)
+
+      createDirectoryIfMissingVerbose verbosity True odir
+      runGhcProgIfNeeded vanillaSrcOpts
+      unless (forRepl || not wantDyn) $
+        whenSharedLib forceSharedLib (runGhcProgIfNeeded sharedSrcOpts)
+      unless forRepl $
+        whenProfLib (runGhcProgIfNeeded profSrcOpts)
+
   -- Build any C++ sources separately.
   unless (not has_code || null (cxxSources libBi)) $ do
     info verbosity "Building C++ Sources..."
+<<<<<<< HEAD
     sequence_
       [ do let baseCxxOpts    = Internal.componentCxxGhcOptions verbosity implInfo
                                 lbi libBi clbi relLibTargetDir filename
@@ -703,10 +746,14 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
              whenSharedLib forceSharedLib (runGhcProgIfNeeded sharedCxxOpts)
            unless forRepl $ whenProfLib   (runGhcProgIfNeeded   profCxxOpts)
       | filename <- cxxSources libBi]
+=======
+    buildExtraSources Internal.componentCxxGhcOptions True (cxxSources libBi)
+>>>>>>> 3350a6c8a (Support asm/cmm/js sources in executable components (#8639) (#9061))
 
   -- build any C sources
   unless (not has_code || null (cSources libBi)) $ do
     info verbosity "Building C Sources..."
+<<<<<<< HEAD
     sequence_
       [ do let baseCcOpts    = Internal.componentCcGhcOptions verbosity implInfo
                                lbi libBi clbi relLibTargetDir filename
@@ -734,10 +781,14 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
              whenSharedLib forceSharedLib (runGhcProgIfNeeded sharedCcOpts)
            unless forRepl $ whenProfLib (runGhcProgIfNeeded profCcOpts)
       | filename <- cSources libBi]
+=======
+    buildExtraSources Internal.componentCcGhcOptions True (cSources libBi)
+>>>>>>> 3350a6c8a (Support asm/cmm/js sources in executable components (#8639) (#9061))
 
   -- build any JS sources
   unless (not has_code || not hasJsSupport || null (jsSources libBi)) $ do
     info verbosity "Building JS Sources..."
+<<<<<<< HEAD
     sequence_
       [ do let vanillaJsOpts = Internal.componentJsGhcOptions verbosity implInfo
                                lbi libBi clbi relLibTargetDir filename
@@ -753,10 +804,14 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
            runGhcProgIfNeeded vanillaJsOpts
            unless forRepl $ whenProfLib (runGhcProgIfNeeded profJsOpts)
       | filename <- jsSources libBi]
+=======
+    buildExtraSources Internal.componentJsGhcOptions False (jsSources libBi)
+>>>>>>> 3350a6c8a (Support asm/cmm/js sources in executable components (#8639) (#9061))
 
   -- build any ASM sources
   unless (not has_code || null (asmSources libBi)) $ do
     info verbosity "Building Assembler Sources..."
+<<<<<<< HEAD
     sequence_
       [ do let baseAsmOpts    = Internal.componentAsmGhcOptions verbosity implInfo
                                 lbi libBi clbi relLibTargetDir filename
@@ -784,10 +839,14 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
              whenSharedLib forceSharedLib (runGhcProgIfNeeded sharedAsmOpts)
            unless forRepl $ whenProfLib (runGhcProgIfNeeded profAsmOpts)
       | filename <- asmSources libBi]
+=======
+    buildExtraSources Internal.componentAsmGhcOptions True (asmSources libBi)
+>>>>>>> 3350a6c8a (Support asm/cmm/js sources in executable components (#8639) (#9061))
 
   -- build any Cmm sources
   unless (not has_code || null (cmmSources libBi)) $ do
     info verbosity "Building C-- Sources..."
+<<<<<<< HEAD
     sequence_
       [ do let baseCmmOpts    = Internal.componentCmmGhcOptions verbosity implInfo
                                 lbi libBi clbi relLibTargetDir filename
@@ -815,6 +874,9 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
              whenSharedLib forceSharedLib (runGhcProgIfNeeded sharedCmmOpts)
            unless forRepl $ whenProfLib (runGhcProgIfNeeded profCmmOpts)
       | filename <- cmmSources libBi]
+=======
+    buildExtraSources Internal.componentCmmGhcOptions True (cmmSources libBi)
+>>>>>>> 3350a6c8a (Support asm/cmm/js sources in executable components (#8639) (#9061))
 
   -- TODO: problem here is we need the .c files built first, so we can load them
   -- with ghci, but .c files can depend on .h files generated by ghc by ffi
@@ -1218,12 +1280,24 @@ decodeMainIsArg arg
 --    * GHC input modules
 --
 -- Used to correctly build and link sources.
+<<<<<<< HEAD
 data BuildSources = BuildSources {
         cSourcesFiles      :: [FilePath],
         cxxSourceFiles     :: [FilePath],
         inputSourceFiles   :: [FilePath],
         inputSourceModules :: [ModuleName]
     }
+=======
+data BuildSources = BuildSources
+  { cSourcesFiles :: [FilePath]
+  , cxxSourceFiles :: [FilePath]
+  , jsSourceFiles :: [FilePath]
+  , asmSourceFiles :: [FilePath]
+  , cmmSourceFiles :: [FilePath]
+  , inputSourceFiles :: [FilePath]
+  , inputSourceModules :: [ModuleName]
+  }
+>>>>>>> 3350a6c8a (Support asm/cmm/js sources in executable components (#8639) (#9061))
 
 -- | Locate and return the 'BuildSources' required to build and link.
 gbuildSources :: Verbosity
@@ -1265,6 +1339,7 @@ gbuildSources verbosity pkgId specVer tmpDir bm =
                             ++ prettyShow mainModName
                             ++ "' listed in 'other-modules' illegally!"
 
+<<<<<<< HEAD
              return BuildSources {
                         cSourcesFiles      = cSources bnfo,
                         cxxSourceFiles     = cxxSources bnfo,
@@ -1300,6 +1375,59 @@ gbuildSources verbosity pkgId specVer tmpDir bm =
             cxxSourceFiles     = cxxSources bnfo,
             inputSourceFiles   = [],
             inputSourceModules = foreignLibModules flib
+=======
+              return
+                BuildSources
+                  { cSourcesFiles = cSources bnfo
+                  , cxxSourceFiles = cxxSources bnfo
+                  , jsSourceFiles = jsSources bnfo
+                  , asmSourceFiles = asmSources bnfo
+                  , cmmSourceFiles = cmmSources bnfo
+                  , inputSourceFiles = [main]
+                  , inputSourceModules =
+                      filter (/= mainModName) $
+                        exeModules exe
+                  }
+            else
+              return
+                BuildSources
+                  { cSourcesFiles = cSources bnfo
+                  , cxxSourceFiles = cxxSources bnfo
+                  , jsSourceFiles = jsSources bnfo
+                  , asmSourceFiles = asmSources bnfo
+                  , cmmSourceFiles = cmmSources bnfo
+                  , inputSourceFiles = [main]
+                  , inputSourceModules = exeModules exe
+                  }
+        else
+          let (csf, cxxsf)
+                | isCxx main = (cSources bnfo, main : cxxSources bnfo)
+                -- if main is not a Haskell source
+                -- and main is not a C++ source
+                -- then we assume that it is a C source
+                | otherwise = (main : cSources bnfo, cxxSources bnfo)
+           in return
+                BuildSources
+                  { cSourcesFiles = csf
+                  , cxxSourceFiles = cxxsf
+                  , jsSourceFiles = jsSources bnfo
+                  , asmSourceFiles = asmSources bnfo
+                  , cmmSourceFiles = cmmSources bnfo
+                  , inputSourceFiles = []
+                  , inputSourceModules = exeModules exe
+                  }
+
+    flibSources :: ForeignLib -> BuildSources
+    flibSources flib@ForeignLib{foreignLibBuildInfo = bnfo} =
+      BuildSources
+        { cSourcesFiles = cSources bnfo
+        , cxxSourceFiles = cxxSources bnfo
+        , jsSourceFiles = jsSources bnfo
+        , asmSourceFiles = asmSources bnfo
+        , cmmSourceFiles = cmmSources bnfo
+        , inputSourceFiles = []
+        , inputSourceModules = foreignLibModules flib
+>>>>>>> 3350a6c8a (Support asm/cmm/js sources in executable components (#8639) (#9061))
         }
 
     isCxx :: FilePath -> Bool
@@ -1358,6 +1486,7 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
   cleanedExtraLibDirs <- filterM doesDirectoryExist (extraLibDirs bnfo)
   cleanedExtraLibDirsStatic <- filterM doesDirectoryExist (extraLibDirsStatic bnfo)
 
+<<<<<<< HEAD
 
   let cSrcs               = cSourcesFiles buildSources
       cxxSrcs             = cxxSourceFiles buildSources
@@ -1459,6 +1588,147 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
                   | otherwise     = staticOpts
       compileOpts | useDynToo = dynTooOpts
                   | otherwise = commonOpts
+=======
+  let cSrcs = cSourcesFiles buildSources
+      cxxSrcs = cxxSourceFiles buildSources
+      jsSrcs = jsSourceFiles buildSources
+      asmSrcs = asmSourceFiles buildSources
+      cmmSrcs = cmmSourceFiles buildSources
+      inputFiles = inputSourceFiles buildSources
+      inputModules = inputSourceModules buildSources
+      isGhcDynamic = isDynamic comp
+      dynamicTooSupported = supportsDynamicToo comp
+      cLikeObjs = map (`replaceExtension` objExtension) cSrcs
+      cxxObjs = map (`replaceExtension` objExtension) cxxSrcs
+      jsObjs = if hasJsSupport then map (`replaceExtension` objExtension) jsSrcs else []
+      asmObjs = map (`replaceExtension` objExtension) asmSrcs
+      cmmObjs = map (`replaceExtension` objExtension) cmmSrcs
+      needDynamic = gbuildNeedDynamic lbi bm
+      needProfiling = withProfExe lbi
+      Platform hostArch _ = hostPlatform lbi
+      hasJsSupport = hostArch == JavaScript
+
+      -- build executables
+      baseOpts =
+        (componentGhcOptions verbosity lbi bnfo clbi tmpDir)
+          `mappend` mempty
+            { ghcOptMode = toFlag GhcModeMake
+            , ghcOptInputFiles =
+                toNubListR $
+                  if package pkg_descr == fakePackageId
+                    then filter isHaskell inputFiles
+                    else inputFiles
+            , ghcOptInputScripts =
+                toNubListR $
+                  if package pkg_descr == fakePackageId
+                    then filter (not . isHaskell) inputFiles
+                    else []
+            , ghcOptInputModules = toNubListR inputModules
+            }
+      staticOpts =
+        baseOpts
+          `mappend` mempty
+            { ghcOptDynLinkMode = toFlag GhcStaticOnly
+            , ghcOptHPCDir = hpcdir Hpc.Vanilla
+            }
+      profOpts =
+        baseOpts
+          `mappend` mempty
+            { ghcOptProfilingMode = toFlag True
+            , ghcOptProfilingAuto =
+                Internal.profDetailLevelFlag
+                  False
+                  (withProfExeDetail lbi)
+            , ghcOptHiSuffix = toFlag "p_hi"
+            , ghcOptObjSuffix = toFlag "p_o"
+            , ghcOptExtra = hcProfOptions GHC bnfo
+            , ghcOptHPCDir = hpcdir Hpc.Prof
+            }
+      dynOpts =
+        baseOpts
+          `mappend` mempty
+            { ghcOptDynLinkMode = toFlag GhcDynamicOnly
+            , -- TODO: Does it hurt to set -fPIC for executables?
+              ghcOptFPic = toFlag True
+            , ghcOptHiSuffix = toFlag "dyn_hi"
+            , ghcOptObjSuffix = toFlag "dyn_o"
+            , ghcOptExtra = hcSharedOptions GHC bnfo
+            , ghcOptHPCDir = hpcdir Hpc.Dyn
+            }
+      dynTooOpts =
+        staticOpts
+          `mappend` mempty
+            { ghcOptDynLinkMode = toFlag GhcStaticAndDynamic
+            , ghcOptDynHiSuffix = toFlag "dyn_hi"
+            , ghcOptDynObjSuffix = toFlag "dyn_o"
+            , ghcOptHPCDir = hpcdir Hpc.Dyn
+            }
+      linkerOpts =
+        mempty
+          { ghcOptLinkOptions =
+              PD.ldOptions bnfo
+                ++ [ "-static"
+                   | withFullyStaticExe lbi
+                   ]
+                -- Pass extra `ld-options` given
+                -- through to GHC's linker.
+                ++ maybe
+                  []
+                  programOverrideArgs
+                  (lookupProgram ldProgram (withPrograms lbi))
+          , ghcOptLinkLibs =
+              if withFullyStaticExe lbi
+                then extraLibsStatic bnfo
+                else extraLibs bnfo
+          , ghcOptLinkLibPath =
+              toNubListR $
+                if withFullyStaticExe lbi
+                  then cleanedExtraLibDirsStatic
+                  else cleanedExtraLibDirs
+          , ghcOptLinkFrameworks =
+              toNubListR $
+                PD.frameworks bnfo
+          , ghcOptLinkFrameworkDirs =
+              toNubListR $
+                PD.extraFrameworkDirs bnfo
+          , ghcOptInputFiles =
+              toNubListR
+                [tmpDir </> x | x <- cLikeObjs ++ cxxObjs ++ jsObjs ++ cmmObjs ++ asmObjs]
+          }
+      dynLinkerOpts =
+        mempty
+          { ghcOptRPaths = rpaths
+          , ghcOptInputFiles =
+              toNubListR
+                [tmpDir </> x | x <- cLikeObjs ++ cxxObjs ++ cmmObjs ++ asmObjs]
+          }
+      replOpts =
+        baseOpts
+          { ghcOptExtra =
+              Internal.filterGhciFlags
+                (ghcOptExtra baseOpts)
+                <> replOptionsFlags replFlags
+          , ghcOptInputModules = replNoLoad replFlags (ghcOptInputModules baseOpts)
+          , ghcOptInputFiles = replNoLoad replFlags (ghcOptInputFiles baseOpts)
+          }
+          -- For a normal compile we do separate invocations of ghc for
+          -- compiling as for linking. But for repl we have to do just
+          -- the one invocation, so that one has to include all the
+          -- linker stuff too, like -l flags and any .o files from C
+          -- files etc.
+          `mappend` linkerOpts
+          `mappend` mempty
+            { ghcOptMode = toFlag GhcModeInteractive
+            , ghcOptOptimisation = toFlag GhcNoOptimisation
+            }
+      commonOpts
+        | needProfiling = profOpts
+        | needDynamic = dynOpts
+        | otherwise = staticOpts
+      compileOpts
+        | useDynToo = dynTooOpts
+        | otherwise = commonOpts
+>>>>>>> 3350a6c8a (Support asm/cmm/js sources in executable components (#8639) (#9061))
       withStaticExe = not needProfiling && not needDynamic
 
       -- For building exe's that use TH with -prof or -dynamic we actually have
@@ -1494,8 +1764,53 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
     runGhcProg compileOpts { ghcOptNoLink  = toFlag True
                            , ghcOptNumJobs = numJobs }
 
+  let
+    buildExtraSources mkSrcOpts wantDyn = traverse_ $ buildExtraSource mkSrcOpts wantDyn
+    buildExtraSource mkSrcOpts wantDyn filename = do
+      let baseSrcOpts =
+            mkSrcOpts
+              verbosity
+              implInfo
+              lbi
+              bnfo
+              clbi
+              tmpDir
+              filename
+          vanillaSrcOpts =
+            if isGhcDynamic && wantDyn
+              then -- Dynamic GHC requires C/C++ sources to be built
+              -- with -fPIC for REPL to work. See #2207.
+                baseSrcOpts{ghcOptFPic = toFlag True}
+              else baseSrcOpts
+          profSrcOpts =
+            vanillaSrcOpts
+              `mappend` mempty
+                { ghcOptProfilingMode = toFlag True
+                }
+          sharedSrcOpts =
+            vanillaSrcOpts
+              `mappend` mempty
+                { ghcOptFPic = toFlag True
+                , ghcOptDynLinkMode = toFlag GhcDynamicOnly
+                }
+          opts
+            | needProfiling = profSrcOpts
+            | needDynamic && wantDyn = sharedSrcOpts
+            | otherwise = vanillaSrcOpts
+          -- TODO: Placing all Haskell, C, & C++ objects in a single directory
+          --       Has the potential for file collisions. In general we would
+          --       consider this a user error. However, we should strive to
+          --       add a warning if this occurs.
+          odir = fromFlag (ghcOptObjDir opts)
+
+      createDirectoryIfMissingVerbose verbosity True odir
+      needsRecomp <- checkNeedsRecompilation filename opts
+      when needsRecomp $
+        runGhcProg opts
+
   -- build any C++ sources
   unless (null cxxSrcs) $ do
+<<<<<<< HEAD
    info verbosity "Building C++ Sources..."
    sequence_
      [ do let baseCxxOpts    = Internal.componentCxxGhcOptions verbosity implInfo
@@ -1553,6 +1868,30 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
           when needsRecomp $
             runGhcProg opts
      | filename <- cSrcs ]
+=======
+    info verbosity "Building C++ Sources..."
+    buildExtraSources Internal.componentCxxGhcOptions True cxxSrcs
+
+  -- build any C sources
+  unless (null cSrcs) $ do
+    info verbosity "Building C Sources..."
+    buildExtraSources Internal.componentCcGhcOptions True cSrcs
+
+  -- build any JS sources
+  unless (not hasJsSupport || null jsSrcs) $ do
+    info verbosity "Building JS Sources..."
+    buildExtraSources Internal.componentJsGhcOptions False jsSrcs
+
+  -- build any ASM sources
+  unless (null asmSrcs) $ do
+    info verbosity "Building Assembler Sources..."
+    buildExtraSources Internal.componentAsmGhcOptions True asmSrcs
+
+  -- build any Cmm sources
+  unless (null cmmSrcs) $ do
+    info verbosity "Building C-- Sources..."
+    buildExtraSources Internal.componentCmmGhcOptions True cmmSrcs
+>>>>>>> 3350a6c8a (Support asm/cmm/js sources in executable components (#8639) (#9061))
 
   -- TODO: problem here is we need the .c files built first, so we can load them
   -- with ghci, but .c files can depend on .h files generated by ghc by ffi
