@@ -879,7 +879,7 @@ testSuiteLibV09AsLibAndExe
                 { hsSourceDirs = [unsafeMakeSymbolicPath testDir]
                 , targetBuildDepends =
                     testLibDep
-                      : (targetBuildDepends $ testBuildInfo test)
+                      : targetBuildDepends (testBuildInfo test)
                 }
           }
       -- \| The stub executable needs a new 'ComponentLocalBuildInfo'

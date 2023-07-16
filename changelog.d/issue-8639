@@ -1,0 +1,12 @@
+synopsis: Add support for asm, cmm, and js sources in executable components
+packages: Cabal
+prs: #9061
+issues: #8639
+significance: significant
+
+description: {
+
+Executable components now support the inclusion of asm, cmm, and js source files in a cabal file using the same syntax as is used for these sources in library components, similar to how c and c++ sources are supported in both types of components. This syntax was already parsed in cabal files, but was silently ignored in the build step, so no changes to syntax are made.
+
+}
+

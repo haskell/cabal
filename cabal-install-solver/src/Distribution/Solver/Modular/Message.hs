@@ -66,7 +66,7 @@ showMessages = go 0
     go !l (Step (Next (Goal (P _  ) gr)) (Step (TryP qpn' i) ms@(Step Enter (Step (Next _) _)))) =
         (atLevel l $ "trying: " ++ showQPNPOpt qpn' i ++ showGR gr) (go l ms)
     go !l (Step (Next (Goal (P qpn) gr)) (Step (Failure _c UnknownPackage) ms)) =
-        (atLevel l $ "unknown package: " ++ showQPN qpn ++ showGR gr) $ go l ms
+        atLevel l ("unknown package: " ++ showQPN qpn ++ showGR gr) $ go l ms
     -- standard display
     go !l (Step Enter                    ms) = go (l+1) ms
     go !l (Step Leave                    ms) = go (l-1) ms

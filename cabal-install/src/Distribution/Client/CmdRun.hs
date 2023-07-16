@@ -514,12 +514,13 @@ renderRunProblem (TargetProblemMatchesMultiple targetSelector targets) =
     ++ " which includes \n"
     ++ unlines
       ( (\(label, xs) -> "- " ++ label ++ ": " ++ renderListPretty xs)
-          <$> ( zip ["executables", "test-suites", "benchmarks"] $
-                  filter (not . null) . map removeDuplicates $
-                    map (componentNameRaw . availableTargetComponentName)
-                      <$> (flip filterTargetsKind $ targets)
-                      <$> [ExeKind, TestKind, BenchKind]
-              )
+          <$> zip
+            ["executables", "test-suites", "benchmarks"]
+            ( filter (not . null) . map removeDuplicates $
+                map (componentNameRaw . availableTargetComponentName)
+                  <$> (flip filterTargetsKind $ targets)
+                  <$> [ExeKind, TestKind, BenchKind]
+            )
       )
   where
     removeDuplicates = catMaybes . map safeHead . group . sort
