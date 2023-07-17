@@ -400,7 +400,7 @@ instance Exception (VerboseException CabalException) where
           , "]\n"
           ]
       )
-      ++ (exceptionWithMetadata stack timestamp verb $ exceptionMessage cabalexception)
+      ++ exceptionWithMetadata stack timestamp verb (exceptionMessage cabalexception)
 
 dieNoWrap :: Verbosity -> String -> IO a
 dieNoWrap verbosity msg = withFrozenCallStack $ do
