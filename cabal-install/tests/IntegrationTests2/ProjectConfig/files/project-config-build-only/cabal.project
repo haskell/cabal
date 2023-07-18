@@ -1,0 +1,13 @@
+verbose: 2
+build-summary: summaryFile
+build-log: myLog.log
+report-planning-failure: true
+symlink-bindir: some-bindir
+jobs: 4
+keep-going: true
+offline: true
+haddock-keep-temp-files:  true
+http-transport: wget
+ignore-expiry: true
+remote-repo-cache: some-cache-dir
+logs-dir: logs-directory

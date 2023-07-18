@@ -66,6 +66,7 @@ library
     exposed-modules:
         -- this modules are moved from Cabal
         -- they are needed for as long until cabal-install moves to parsec parser
+        -- TODO #6101 should probably be deleted too
         Distribution.Deprecated.ParseUtils
         Distribution.Deprecated.ReadP
         Distribution.Deprecated.ViewAsFieldDescr
@@ -150,7 +151,10 @@ library
         Distribution.Client.ProjectBuilding
         Distribution.Client.ProjectBuilding.Types
         Distribution.Client.ProjectConfig
+        Distribution.Client.ProjectConfig.FieldGrammar
         Distribution.Client.ProjectConfig.Legacy
+        Distribution.Client.ProjectConfig.Lens
+        Distribution.Client.ProjectConfig.Parsec
         Distribution.Client.ProjectConfig.Types
         Distribution.Client.ProjectFlags
         Distribution.Client.ProjectOrchestration
@@ -373,6 +377,9 @@ test-suite integration-tests2
   main-is: IntegrationTests2.hs
   hs-source-dirs: tests
   default-language: Haskell2010
+
+  other-modules:
+    IntegrationTests2.ProjectConfig.ParsecTests
 
   build-depends:
         bytestring,

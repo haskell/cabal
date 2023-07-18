@@ -1,16 +1,36 @@
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+
 module Distribution.Client.Utils.Parsec
   ( renderParseError
+
+    -- ** Flag
+  , alaFlag
+  , Flag'
+
+    -- ** NubList
+  , alaNubList
+  , alaNubList'
+  , NubList'
+  , NumJobs (..)
   ) where
 
 import Distribution.Client.Compat.Prelude
+import Distribution.Compat.Newtype
 import System.FilePath (normalise)
 import Prelude ()
 
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BS8
 
-import Distribution.Parsec (PError (..), PWarning (..), Position (..), showPos, zeroPos)
+import Distribution.FieldGrammar.Newtypes
+import Distribution.Parsec (PError (..), PWarning (..), Position (..), showPos, zeroPos, parsecWarning, PWarnType (..))
+import Distribution.Compat.CharParsing
+import Distribution.Simple.Flag
 import Distribution.Simple.Utils (fromUTF8BS)
+import Distribution.Utils.NubList (NubList (..))
+import qualified Distribution.Utils.NubList as NubList
 
 -- | Render parse error highlighting the part of the input file.
 renderParseError
@@ -103,3 +123,70 @@ advance n z@(Zipper xs ys)
   | otherwise = case ys of
       [] -> z
       (y : ys') -> advance (n - 1) $ Zipper (y : xs) ys'
+
+-- | Like 'List' for usage with a 'FieldGrammar', but for 'Flag'.
+-- This enables to parse type aliases such as 'FilePath' that do not have 'Parsec' instances
+-- by using newtype variants such as 'FilePathNT'.
+-- For example, if you need to parse a 'Flag FilePath', you can use 'alaFlag' FilePathNT'.
+newtype Flag' b a = Flag' {_getFlag :: Flag a}
+
+-- | 'Flag'' constructor, with additional phantom argument to constrain the resulting type
+alaFlag :: (a -> b) -> Flag a -> Flag' b a
+alaFlag _ = Flag'
+
+instance Newtype (Flag a) (Flag' wrapper a)
+
+instance (Newtype a b, Parsec b) => Parsec (Flag' b a) where
+  parsec = pack . toFlag . (unpack :: b -> a) <$> parsec
+
+instance (Newtype a b, Pretty b) => Pretty (Flag' b a) where
+  pretty = pretty . (pack :: a -> b) . fromFlag . unpack
+
+-- | Like 'List' for usage with a 'FieldGrammar', but for 'NubList'.
+newtype NubList' sep b a = NubList' {_getNubList :: NubList a}
+
+-- | 'alaNubList' and 'alaNubList'' are simply 'NubList'' constructor, with additional phantom
+-- arguments to constrain the resulting type
+--
+-- >>> :t alaNubList VCat
+-- alaNubList VCat :: NubList a -> NubList' VCat (Identity a) a
+--
+-- >>> :t alaNubList' FSep Token
+-- alaNubList' FSep Token :: NubList String -> NubList' FSep Token String
+--
+-- >>> unpack' (alaNubList' FSep Token) <$> eitherParsec "foo bar foo"
+-- Right (toNubList ["bar","foo"])
+alaNubList :: sep -> NubList a -> NubList' sep (Identity a) a
+alaNubList _ = NubList'
+
+-- | More general version of 'alaNubList'.
+alaNubList' :: sep -> (a -> b) -> NubList a -> NubList' sep b a
+alaNubList' _ _ = NubList'
+
+instance Newtype (NubList a) (NubList' sep wrapper a)
+
+instance (Newtype a b, Ord a, Sep sep, Parsec b) => Parsec (NubList' sep b a) where
+  parsec = pack . NubList.toNubList . map (unpack :: b -> a) <$> parseSep (Proxy :: Proxy sep) parsec
+
+instance (Newtype a b, Sep sep, Pretty b) => Pretty (NubList' sep b a) where
+  pretty = prettySep (Proxy :: Proxy sep) . map (pretty . (pack :: a -> b)) . NubList.fromNubList . unpack
+
+newtype NumJobs = NumJobs {getNumJobs :: Maybe Int}
+
+instance Newtype (Maybe Int) NumJobs
+
+instance Parsec NumJobs where
+  parsec = parsecNumJobs
+
+parsecNumJobs :: CabalParsing m => m NumJobs
+parsecNumJobs = ncpus <|> numJobs
+  where
+    ncpus = string "$ncpus" >> return (NumJobs Nothing)
+    numJobs = do
+      num <- integral
+      if num < (1 :: Int)
+        then do
+          parsecWarning PWTOther "The number of jobs should be 1 or more."
+          return (NumJobs Nothing)
+        else return (NumJobs $ Just num)
+
