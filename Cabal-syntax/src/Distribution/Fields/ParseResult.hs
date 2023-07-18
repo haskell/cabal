@@ -67,7 +67,8 @@ runParseResult :: ParseResult a -> ([PWarning], Either (Maybe Version, NonEmpty 
 runParseResult pr = unPR pr emptyPRState failure success
   where
     failure (PRState warns [] v) = (warns, Left (v, PError zeroPos "panic" :| []))
-    failure (PRState warns (err : errs) v) = (warns, Left (v, err :| errs)) where
+    failure (PRState warns (err : errs) v) = (warns, Left (v, err :| errs))
+
     success (PRState warns [] _) x = (warns, Right x)
     -- If there are any errors, don't return the result
     success (PRState warns (err : errs) v) _ = (warns, Left (v, err :| errs))
