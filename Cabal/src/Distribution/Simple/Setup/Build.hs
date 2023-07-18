@@ -50,6 +50,7 @@ data BuildFlags = BuildFlags
   , buildDistPref :: Flag FilePath
   , buildVerbosity :: Flag Verbosity
   , buildNumJobs :: Flag (Maybe Int)
+  , buildUseSemaphore :: Flag String
   , -- TODO: this one should not be here, it's just that the silly
     -- UserHooks stop us from passing extra info in other ways
     buildArgs :: [String]
@@ -65,6 +66,7 @@ defaultBuildFlags =
     , buildDistPref = mempty
     , buildVerbosity = Flag normal
     , buildNumJobs = mempty
+    , buildUseSemaphore = NoFlag
     , buildArgs = []
     , buildCabalFilePath = mempty
     }
@@ -125,6 +127,13 @@ buildOptions progDb showOrParseArgs =
   [ optionNumJobs
       buildNumJobs
       (\v flags -> flags{buildNumJobs = v})
+  , option
+      []
+      ["semaphore"]
+      "semaphore"
+      buildUseSemaphore
+      (\v flags -> flags{buildUseSemaphore = v})
+      (reqArg' "SEMAPHORE" Flag flagToList)
   ]
     ++ programDbPaths
       progDb

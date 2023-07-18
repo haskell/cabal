@@ -131,7 +131,6 @@ module Distribution.Simple.Setup
   , trueArg
   , falseArg
   , optionVerbosity
-  , optionNumJobs
   ) where
 
 import Prelude ()

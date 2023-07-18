@@ -114,6 +114,7 @@ import Distribution.Simple.Utils
 import Distribution.System
 import Distribution.Types.ComponentLocalBuildInfo
 import Distribution.Types.PackageName.Magic
+import Distribution.Types.ParStrat
 import Distribution.Utils.NubList
 import Distribution.Utils.Path
 import Distribution.Verbosity
@@ -587,7 +588,7 @@ getInstalledPackagesMonitorFiles verbosity platform progdb =
 
 buildLib
   :: Verbosity
-  -> Flag (Maybe Int)
+  -> Flag ParStrat
   -> PackageDescription
   -> LocalBuildInfo
   -> Library
@@ -598,7 +599,7 @@ buildLib = buildOrReplLib Nothing
 replLib
   :: ReplOptions
   -> Verbosity
-  -> Flag (Maybe Int)
+  -> Flag ParStrat
   -> PackageDescription
   -> LocalBuildInfo
   -> Library
@@ -609,7 +610,7 @@ replLib = buildOrReplLib . Just
 buildOrReplLib
   :: Maybe ReplOptions
   -> Verbosity
-  -> Flag (Maybe Int)
+  -> Flag ParStrat
   -> PackageDescription
   -> LocalBuildInfo
   -> Library
@@ -1173,7 +1174,7 @@ runReplOrWriteFlags verbosity ghcProg comp platform rflags replOpts bi clbi pkg_
 -- | Build a foreign library
 buildFLib
   :: Verbosity
-  -> Flag (Maybe Int)
+  -> Flag ParStrat
   -> PackageDescription
   -> LocalBuildInfo
   -> ForeignLib
@@ -1184,7 +1185,7 @@ buildFLib v njobs pkg lbi = gbuild v njobs pkg lbi . GBuildFLib
 replFLib
   :: ReplOptions
   -> Verbosity
-  -> Flag (Maybe Int)
+  -> Flag ParStrat
   -> PackageDescription
   -> LocalBuildInfo
   -> ForeignLib
@@ -1196,7 +1197,7 @@ replFLib replFlags v njobs pkg lbi =
 -- | Build an executable with GHC.
 buildExe
   :: Verbosity
-  -> Flag (Maybe Int)
+  -> Flag ParStrat
   -> PackageDescription
   -> LocalBuildInfo
   -> Executable
@@ -1207,7 +1208,7 @@ buildExe v njobs pkg lbi = gbuild v njobs pkg lbi . GBuildExe
 replExe
   :: ReplOptions
   -> Verbosity
-  -> Flag (Maybe Int)
+  -> Flag ParStrat
   -> PackageDescription
   -> LocalBuildInfo
   -> Executable
@@ -1526,7 +1527,7 @@ replNoLoad replFlags l
 -- | Generic build function. See comment for 'GBuildMode'.
 gbuild
   :: Verbosity
-  -> Flag (Maybe Int)
+  -> Flag ParStrat
   -> PackageDescription
   -> LocalBuildInfo
   -> GBuildMode

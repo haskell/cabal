@@ -14,6 +14,9 @@ module Distribution.Client.ProjectConfig.Types
     -- * Resolving configuration
   , SolverSettings (..)
   , BuildTimeSettings (..)
+  , ParStratX (..)
+  , isParallelBuild
+  , ParStrat
 
     -- * Extra useful Monoids
   , MapLast (..)
@@ -91,6 +94,7 @@ import Distribution.Version
   )
 
 import qualified Data.Map as Map
+import Distribution.Types.ParStrat
 
 -------------------------------
 -- Project config types
@@ -157,6 +161,7 @@ data ProjectConfigBuildOnly = ProjectConfigBuildOnly
   , projectConfigReportPlanningFailure :: Flag Bool
   , projectConfigSymlinkBinDir :: Flag FilePath
   , projectConfigNumJobs :: Flag (Maybe Int)
+  , projectConfigUseSemaphore :: Flag Bool
   , projectConfigKeepGoing :: Flag Bool
   , projectConfigOfflineMode :: Flag Bool
   , projectConfigKeepTempFiles :: Flag Bool
@@ -454,7 +459,7 @@ data BuildTimeSettings = BuildTimeSettings
   , buildSettingBuildReports :: ReportLevel
   , buildSettingReportPlanningFailure :: Bool
   , buildSettingSymlinkBinDir :: [FilePath]
-  , buildSettingNumJobs :: Int
+  , buildSettingNumJobs :: ParStratInstall
   , buildSettingKeepGoing :: Bool
   , buildSettingOfflineMode :: Bool
   , buildSettingKeepTempFiles :: Bool

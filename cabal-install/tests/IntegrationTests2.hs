@@ -85,6 +85,7 @@ import qualified Data.List as L
 import qualified Data.ByteString as BS
 import Distribution.Client.GlobalFlags (GlobalFlags, globalNix)
 import Distribution.Simple.Flag (Flag (Flag, NoFlag))
+import Distribution.Types.ParStrat
 import Data.Maybe (fromJust)
 
 #if !MIN_VERSION_directory(1,2,7)
@@ -1760,7 +1761,7 @@ executePlan ((distDirLayout, cabalDirLayout, config, _, buildSettings),
                      elaboratedShared
                      pkgsBuildStatus
                      -- Avoid trying to use act-as-setup mode:
-                     buildSettings { buildSettingNumJobs = 1 }
+                     buildSettings { buildSettingNumJobs = Serial }
 
     return (elaboratedPlan'', buildOutcomes)
 

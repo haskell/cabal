@@ -488,6 +488,7 @@ instance Arbitrary ProjectConfigBuildOnly where
       <*> arbitrary
       <*> arbitrary
       <*> arbitrary
+      <*> arbitrary
       <*> (fmap getShortToken <$> arbitrary)
       <*> arbitrary
       <*> (fmap getShortToken <$> arbitrary)
@@ -508,6 +509,7 @@ instance Arbitrary ProjectConfigBuildOnly where
       , projectConfigReportPlanningFailure = x06
       , projectConfigSymlinkBinDir = x07
       , projectConfigNumJobs = x09
+      , projectConfigUseSemaphore = x19
       , projectConfigKeepGoing = x10
       , projectConfigOfflineMode = x11
       , projectConfigKeepTempFiles = x12
@@ -528,6 +530,7 @@ instance Arbitrary ProjectConfigBuildOnly where
         , projectConfigReportPlanningFailure = x06'
         , projectConfigSymlinkBinDir = x07'
         , projectConfigNumJobs = postShrink_NumJobs x09'
+        , projectConfigUseSemaphore = x19'
         , projectConfigKeepGoing = x10'
         , projectConfigOfflineMode = x11'
         , projectConfigKeepTempFiles = x12'
@@ -540,13 +543,13 @@ instance Arbitrary ProjectConfigBuildOnly where
       | ( (x00', x01', x02', x03', x04')
           , (x05', x06', x07', x09')
           , (x10', x11', x12', x14')
-          , (x17', x18')
+          , (x17', x18', x19')
           ) <-
           shrink
             ( (x00, x01, x02, x03, x04)
             , (x05, x06, x07, preShrink_NumJobs x09)
             , (x10, x11, x12, x14)
-            , (x17, x18)
+            , (x17, x18, x19)
             )
       ]
       where

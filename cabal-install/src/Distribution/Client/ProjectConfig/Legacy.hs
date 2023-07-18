@@ -819,6 +819,7 @@ convertLegacyBuildOnlyFlags
         , installReportPlanningFailure = projectConfigReportPlanningFailure
         , installSymlinkBinDir = projectConfigSymlinkBinDir
         , installNumJobs = projectConfigNumJobs
+        , installUseSemaphore = projectConfigUseSemaphore
         , installKeepGoing = projectConfigKeepGoing
         , installOfflineMode = projectConfigOfflineMode
         } = installFlags
@@ -950,6 +951,7 @@ convertToLegacySharedConfig
           , installSymlinkBinDir = projectConfigSymlinkBinDir
           , installPerComponent = projectConfigPerComponent
           , installNumJobs = projectConfigNumJobs
+          , installUseSemaphore = projectConfigUseSemaphore
           , installKeepGoing = projectConfigKeepGoing
           , installRunTests = mempty
           , installOfflineMode = projectConfigOfflineMode
@@ -1385,6 +1387,7 @@ legacySharedConfigFieldDescrs constraintSrc =
           , "remote-build-reporting"
           , "report-planning-failure"
           , "jobs"
+          , "semaphore"
           , "keep-going"
           , "offline"
           , "per-component"

@@ -191,7 +191,6 @@ import Distribution.Simple.Setup
   , boolOpt
   , boolOpt'
   , falseArg
-  , optionNumJobs
   , optionVerbosity
   , readPackageDbList
   , showPackageDbList
@@ -2074,6 +2073,7 @@ data InstallFlags = InstallFlags
     installSymlinkBinDir :: Flag FilePath
   , installPerComponent :: Flag Bool
   , installNumJobs :: Flag (Maybe Int)
+  , installUseSemaphore :: Flag Bool
   , installKeepGoing :: Flag Bool
   , installRunTests :: Flag Bool
   , installOfflineMode :: Flag Bool
@@ -2116,6 +2116,7 @@ defaultInstallFlags =
     , installSymlinkBinDir = mempty
     , installPerComponent = Flag True
     , installNumJobs = mempty
+    , installUseSemaphore = Flag False
     , installKeepGoing = Flag False
     , installRunTests = mempty
     , installOfflineMode = Flag False
@@ -2577,6 +2578,13 @@ installOptions showOrParseArgs =
           installRunTests
           (\v flags -> flags{installRunTests = v})
           trueArg
+       , option
+          []
+          ["semaphore"]
+          "Use a semaphore so GHC can compile components in parallel"
+          installUseSemaphore
+          (\v flags -> flags{installUseSemaphore = v})
+          (yesNoOpt showOrParseArgs)
        , optionNumJobs
           installNumJobs
           (\v flags -> flags{installNumJobs = v})
@@ -2607,6 +2615,34 @@ installOptions showOrParseArgs =
             trueArg
         ]
       _ -> []
+
+optionNumJobs
+  :: (flags -> Flag (Maybe Int))
+  -> (Flag (Maybe Int) -> flags -> flags)
+  -> OptionField flags
+optionNumJobs get set =
+  option
+    "j"
+    ["jobs"]
+    "Run NUM jobs simultaneously (or '$ncpus' if no NUM is given)."
+    get
+    set
+    ( optArg
+        "NUM"
+        (fmap Flag numJobsParser)
+        ("", Flag Nothing)
+        (map (Just . maybe "$ncpus" show) . flagToList)
+    )
+  where
+    numJobsParser :: ReadE (Maybe Int)
+    numJobsParser = ReadE $ \s ->
+      case s of
+        "$ncpus" -> Right Nothing
+        _ -> case reads s of
+          [(n, "")]
+            | n < 1 -> Left "The number of jobs should be 1 or more."
+            | otherwise -> Right (Just n)
+          _ -> Left "The jobs value should be a number or '$ncpus'"
 
 instance Monoid InstallFlags where
   mempty = gmempty
