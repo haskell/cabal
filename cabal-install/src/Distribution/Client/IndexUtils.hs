@@ -420,9 +420,6 @@ readRepoIndex
   -> IO (PackageIndex UnresolvedSourcePackage, [Dependency], IndexStateInfo)
 readRepoIndex verbosity repoCtxt repo idxState =
   handleNotFound $ do
-    -- note that if this step fails due to a bad repo cache, the the procedure can still succeed by reading from the existing cache, which is updated regardless.
-    updateRepoIndexCache verbosity (RepoIndex repoCtxt repo)
-      `catchIO` (\e -> warn verbosity $ "unable to update the repo index cache -- " ++ displayException e)
     ret@(_, _, isi) <-
       readPackageIndexCacheFile
         verbosity
@@ -430,8 +427,8 @@ readRepoIndex verbosity repoCtxt repo idxState =
         (RepoIndex repoCtxt repo)
         idxState
     when (isRepoRemote repo) $ do
-      dieIfRequestedIdxIsNewer isi
       warnIfIndexIsOld =<< getIndexFileAge repo
+      dieIfRequestedIdxIsNewer isi
     pure ret
   where
     mkAvailablePackage pkgEntry =
