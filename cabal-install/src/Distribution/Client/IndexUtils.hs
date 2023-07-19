@@ -212,7 +212,7 @@ data IndexStateInfo = IndexStateInfo
   }
 
 emptyStateInfo :: IndexStateInfo
-emptyStateInfo = IndexStateInfo nullTimestamp nullTimestamp
+emptyStateInfo = IndexStateInfo NoTimestamp NoTimestamp
 
 -- | Filters a 'Cache' according to an 'IndexState'
 -- specification. Also returns 'IndexStateInfo' describing the
@@ -362,7 +362,7 @@ getSourcePackagesAtIndexState verbosity repoCtxt mb_idxState mb_activeRepos = do
             [ (n, IndexStateTime ts)
             | (RepoData n ts _idx _prefs, _strategy) <- pkgss'
             , -- e.g. file+noindex have nullTimestamp as their timestamp
-            ts /= nullTimestamp
+            ts /= NoTimestamp
             ]
 
   let addIndex
@@ -463,7 +463,6 @@ readRepoIndex verbosity repoCtxt repo idxState =
 
     isOldThreshold :: Double
     isOldThreshold = 15 -- days
-
     warnIfIndexIsOld dt = do
       when (dt >= isOldThreshold) $ case repo of
         RepoRemote{..} -> warn verbosity $ errOutdatedPackageList repoRemote dt
@@ -856,9 +855,8 @@ withIndexEntries _ (RepoIndex repoCtxt repo@RepoSecure{}) callback _ =
       where
         blockNo = Sec.directoryEntryBlockNo dirEntry
         timestamp =
-          fromMaybe (error "withIndexEntries: invalid timestamp") $
-            epochTimeToTimestamp $
-              Sec.indexEntryTime sie
+          epochTimeToTimestamp $
+            Sec.indexEntryTime sie
 withIndexEntries verbosity (RepoIndex _repoCtxt (RepoLocalNoIndex (LocalRepo name localDir _) _cacheDir)) _ callback = do
   dirContents <- listDirectory localDir
   let contentSet = Set.fromList dirContents
@@ -946,9 +944,9 @@ withIndexEntries verbosity index callback _ = do
     callback $ map toCache (catMaybes pkgsOrPrefs)
   where
     toCache :: PackageOrDep -> IndexCacheEntry
-    toCache (Pkg (NormalPackage pkgid _ _ blockNo)) = CachePackageId pkgid blockNo nullTimestamp
+    toCache (Pkg (NormalPackage pkgid _ _ blockNo)) = CachePackageId pkgid blockNo NoTimestamp
     toCache (Pkg (BuildTreeRef refType _ _ _ blockNo)) = CacheBuildTreeRef refType blockNo
-    toCache (Dep d) = CachePreference d 0 nullTimestamp
+    toCache (Dep d) = CachePreference d 0 NoTimestamp
 
 readPackageIndexCacheFile
   :: Package pkg
@@ -1263,7 +1261,7 @@ instance NFData NoIndexCacheEntry where
   rnf (NoIndexCachePreference dep) = rnf dep
 
 cacheEntryTimestamp :: IndexCacheEntry -> Timestamp
-cacheEntryTimestamp (CacheBuildTreeRef _ _) = nullTimestamp
+cacheEntryTimestamp (CacheBuildTreeRef _ _) = NoTimestamp
 cacheEntryTimestamp (CachePreference _ _ ts) = ts
 cacheEntryTimestamp (CachePackageId _ _ ts) = ts
 
@@ -1315,7 +1313,7 @@ preferredVersionKey = "pref-ver:"
 read00IndexCache :: BSS.ByteString -> Cache
 read00IndexCache bs =
   Cache
-    { cacheHeadTs = nullTimestamp
+    { cacheHeadTs = NoTimestamp
     , cacheEntries = mapMaybe read00IndexCacheEntry $ BSS.lines bs
     }
 
@@ -1333,7 +1331,7 @@ read00IndexCacheEntry = \line ->
                 ( CachePackageId
                     (PackageIdentifier pkgname pkgver)
                     blockno
-                    nullTimestamp
+                    NoTimestamp
                 )
             _ -> Nothing
     [key, typecodestr, blocknostr] | key == BSS.pack buildTreeRefKey ->
@@ -1343,7 +1341,7 @@ read00IndexCacheEntry = \line ->
         _ -> Nothing
     (key : remainder) | key == BSS.pack preferredVersionKey -> do
       pref <- simpleParsecBS (BSS.unwords remainder)
-      return $ CachePreference pref 0 nullTimestamp
+      return $ CachePreference pref 0 NoTimestamp
     _ -> Nothing
   where
     parseName str
