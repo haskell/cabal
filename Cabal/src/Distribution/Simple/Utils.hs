@@ -2,7 +2,9 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -29,6 +31,7 @@ module Distribution.Simple.Utils
     -- * logging and errors
   , dieNoVerbosity
   , die'
+  , dieWithException
   , dieWithLocation'
   , dieNoWrap
   , topHandler
@@ -184,6 +187,7 @@ module Distribution.Simple.Utils
     -- * FilePath stuff
   , isAbsoluteOnAnyPlatform
   , isRelativeOnAnyPlatform
+  , exceptionWithCallStackPrefix
   ) where
 
 import Distribution.Compat.Prelude
@@ -196,6 +200,7 @@ import Distribution.Compat.Internal.TempFile
 import Distribution.Compat.Lens (Lens', over)
 import Distribution.Compat.Stack
 import Distribution.ModuleName as ModuleName
+import Distribution.Simple.Errors
 import Distribution.System
 import Distribution.Types.PackageId
 import Distribution.Utils.Generic
@@ -221,6 +226,12 @@ import Data.Typeable
   )
 
 import qualified Control.Exception as Exception
+import Data.Time.Clock.POSIX (POSIXTime, getPOSIXTime)
+import Distribution.Compat.Process (proc)
+import Foreign.C.Error (Errno (..), ePIPE)
+import qualified GHC.IO.Exception as GHC
+import GHC.Stack (HasCallStack)
+import Numeric (showFFloat)
 import System.Directory
   ( Permissions (executable)
   , createDirectory
@@ -263,14 +274,7 @@ import System.IO.Error
 import System.IO.Unsafe
   ( unsafeInterleaveIO
   )
-
-import Data.Time.Clock.POSIX (POSIXTime, getPOSIXTime)
-import Distribution.Compat.Process (proc)
-import Foreign.C.Error (Errno (..), ePIPE)
-import qualified GHC.IO.Exception as GHC
-import Numeric (showFFloat)
 import qualified System.Process as Process
-
 import qualified Text.PrettyPrint as Disp
 
 -- We only get our own version number when we're building with ourselves
@@ -373,6 +377,30 @@ die' verbosity msg = withFrozenCallStack $ do
     =<< pure . wrapTextVerbosity verbosity
     =<< pure . addErrorPrefix
     =<< prefixWithProgName msg
+
+-- Type which will be a wrapper for cabal -expections and cabal-install exceptions
+data VerboseException a = VerboseException CallStack POSIXTime Verbosity a
+  deriving (Show, Typeable)
+
+-- A new dieWithException function which will replace the existing die' call sites
+dieWithException :: HasCallStack => Verbosity -> CabalException -> IO a
+dieWithException verbosity exception = do
+  ts <- getPOSIXTime
+  throwIO $ VerboseException callStack ts verbosity exception
+
+-- Instance for Cabal Exception which will display error code and error message with callStack info
+instance Exception (VerboseException CabalException) where
+  displayException :: VerboseException CabalException -> [Char]
+  displayException (VerboseException stack timestamp verb cabalexception) =
+    withOutputMarker
+      verb
+      ( concat
+          [ "Error: [Cabal-"
+          , show (exceptionCode cabalexception)
+          , "]\n"
+          ]
+      )
+      ++ exceptionWithMetadata stack timestamp verb (exceptionMessage cabalexception)
 
 dieNoWrap :: Verbosity -> String -> IO a
 dieNoWrap verbosity msg = withFrozenCallStack $ do
@@ -749,12 +777,43 @@ withMetadata ts marker tracer verbosity x =
       . withTimestamp verbosity ts
     $ x
 
+-- | Add all necessary metadata to a logging message
+exceptionWithMetadata :: CallStack -> POSIXTime -> Verbosity -> String -> String
+exceptionWithMetadata stack ts verbosity x =
+  withTrailingNewline
+    . exceptionWithCallStackPrefix stack verbosity
+    . withOutputMarker verbosity
+    . clearMarkers
+    . withTimestamp verbosity ts
+    $ x
+
 clearMarkers :: String -> String
 clearMarkers s = unlines . filter isMarker $ lines s
   where
     isMarker "-----BEGIN CABAL OUTPUT-----" = False
     isMarker "-----END CABAL OUTPUT-----" = False
     isMarker _ = True
+
+-- | Append a call-site and/or call-stack based on Verbosity
+exceptionWithCallStackPrefix :: CallStack -> Verbosity -> String -> String
+exceptionWithCallStackPrefix stack verbosity s =
+  s
+    ++ withFrozenCallStack
+      ( ( if isVerboseCallSite verbosity
+            then
+              parentSrcLocPrefix
+                ++
+                -- Hack: need a newline before starting output marker :(
+                if isVerboseMarkOutput verbosity
+                  then "\n"
+                  else ""
+            else ""
+        )
+          ++ ( if verbosity >= verbose
+                then prettyCallStack stack ++ "\n"
+                else ""
+             )
+      )
 
 -- -----------------------------------------------------------------------------
 -- rawSystem variants

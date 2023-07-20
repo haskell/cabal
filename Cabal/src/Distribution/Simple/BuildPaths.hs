@@ -50,11 +50,13 @@ module Distribution.Simple.BuildPaths
 import Distribution.Compat.Prelude
 import Prelude ()
 
+import Data.List (stripPrefix)
 import Distribution.Compiler
 import Distribution.ModuleName as ModuleName
 import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.Pretty
+import Distribution.Simple.Errors
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Setup.Common (defaultDistPref)
 import Distribution.Simple.Setup.Haddock (HaddockTarget (..))
@@ -62,8 +64,6 @@ import Distribution.Simple.Utils
 import Distribution.System
 import Distribution.Utils.Path
 import Distribution.Verbosity
-
-import Data.List (stripPrefix)
 import System.FilePath (normalise, (<.>), (</>))
 
 -- ---------------------------------------------------------------------------
@@ -192,7 +192,8 @@ getSourceFiles verbosity dirs modules = flip traverse modules $ \m ->
     findFileWithExtension ["hs", "lhs", "hsig", "lhsig"] dirs (ModuleName.toFilePath m)
       >>= maybe (notFound m) (return . normalise)
   where
-    notFound module_ = die' verbosity $ "can't find source for module " ++ prettyShow module_
+    notFound module_ =
+      dieWithException verbosity $ CantFindSourceModule module_
 
 -- | The directory where we put build results for an executable
 exeBuildDir :: LocalBuildInfo -> Executable -> FilePath

@@ -51,6 +51,7 @@ import Distribution.InstalledPackageInfo
 import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.Simple.Compiler
+import Distribution.Simple.Errors
 import Distribution.Simple.Program.Run
 import Distribution.Simple.Program.Types
 import Distribution.Simple.Utils
@@ -147,14 +148,10 @@ register
 register hpi verbosity packagedbs pkgInfo registerOptions
   | registerMultiInstance registerOptions
   , not (nativeMultiInstance hpi || recacheMultiInstance hpi) =
-      die' verbosity $
-        "HcPkg.register: the compiler does not support "
-          ++ "registering multiple instances of packages."
+      dieWithException verbosity RegMultipleInstancePkg
   | registerSuppressFilesCheck registerOptions
   , not (suppressFilesCheck hpi) =
-      die' verbosity $
-        "HcPkg.register: the compiler does not support "
-          ++ "suppressing checks on files."
+      dieWithException verbosity SuppressingChecksOnFile
   -- This is a trick. Older versions of GHC do not support the
   -- --enable-multi-instance flag for ghc-pkg register but it turns out that
   -- the same ability is available by using ghc-pkg recache. The recache
@@ -187,11 +184,11 @@ writeRegistrationFileDirectly verbosity hpi (SpecificPackageDB dir) pkgInfo
         let pkgfile = dir </> prettyShow (installedUnitId pkgInfo) <.> "conf"
         writeUTF8File pkgfile (showInstalledPackageInfo pkgInfo)
   | otherwise =
-      die' verbosity $ "HcPkg.writeRegistrationFileDirectly: compiler does not support dir style package dbs"
+      dieWithException verbosity NoSupportDirStylePackageDb
 writeRegistrationFileDirectly verbosity _ _ _ =
   -- We don't know here what the dir for the global or user dbs are,
   -- if that's needed it'll require a bit more plumbing to support.
-  die' verbosity $ "HcPkg.writeRegistrationFileDirectly: only supports SpecificPackageDB for now"
+  dieWithException verbosity OnlySupportSpecificPackageDb
 
 -- | Call @hc-pkg@ to unregister a package
 --
@@ -233,13 +230,7 @@ describe hpi verbosity packagedb pid = do
 
   case parsePackages output of
     Left ok -> return ok
-    _ ->
-      die' verbosity $
-        "failed to parse output of '"
-          ++ programId (hcPkgProgram hpi)
-          ++ " describe "
-          ++ prettyShow pid
-          ++ "'"
+    _ -> dieWithException verbosity $ FailedToParseOutputDescribe (programId (hcPkgProgram hpi)) pid
 
 -- | Call @hc-pkg@ to hide a package.
 --
@@ -259,18 +250,11 @@ dump hpi verbosity packagedb = do
       verbosity
       (dumpInvocation hpi verbosity packagedb)
       `catchIO` \e ->
-        die' verbosity $
-          programId (hcPkgProgram hpi)
-            ++ " dump failed: "
-            ++ displayException e
+        dieWithException verbosity $ DumpFailed (programId (hcPkgProgram hpi)) (displayException e)
 
   case parsePackages output of
     Left ok -> return ok
-    _ ->
-      die' verbosity $
-        "failed to parse output of '"
-          ++ programId (hcPkgProgram hpi)
-          ++ " dump'"
+    _ -> dieWithException verbosity $ FailedToParseOutputDump (programId (hcPkgProgram hpi))
 
 parsePackages :: LBS.ByteString -> Either [InstalledPackageInfo] [String]
 parsePackages lbs0 =
@@ -387,15 +371,11 @@ list hpi verbosity packagedb = do
     getProgramInvocationOutput
       verbosity
       (listInvocation hpi verbosity packagedb)
-      `catchIO` \_ -> die' verbosity $ programId (hcPkgProgram hpi) ++ " list failed"
+      `catchIO` \_ -> dieWithException verbosity $ ListFailed (programId (hcPkgProgram hpi))
 
   case parsePackageIds output of
     Just ok -> return ok
-    _ ->
-      die' verbosity $
-        "failed to parse output of '"
-          ++ programId (hcPkgProgram hpi)
-          ++ " list'"
+    _ -> dieWithException verbosity $ FailedToParseOutputList (programId (hcPkgProgram hpi))
   where
     parsePackageIds = traverse simpleParsec . words
 
