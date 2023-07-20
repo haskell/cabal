@@ -397,16 +397,7 @@ dontUpgradeNonUpgradeablePackages params =
       | Set.notMember (mkPackageName "base") (depResolverTargets params)
       -- If you change this enumeration, make sure to update the list in
       -- "Distribution.Solver.Modular.Solver" as well
-      , pkgname <- [ mkPackageName "base"
-                   , mkPackageName "ghc-bignum"
-                   , mkPackageName "ghc-prim"
-                   , mkPackageName "ghc-boot"
-                   , mkPackageName "ghc"
-                   , mkPackageName "ghci"
-                   , mkPackageName "integer-gmp"
-                   , mkPackageName "integer-simple"
-                   , mkPackageName "template-haskell"
-                   ]
+      , pkgname <- nonUpgradeablePackages
       , isInstalled pkgname ]
 
     isInstalled = not . null
