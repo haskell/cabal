@@ -26,42 +26,833 @@ import UnitTests.Distribution.Solver.Modular.DSL
 import UnitTests.Distribution.Solver.Modular.DSL.TestCaseUtils
 
 tests :: [TF.TestTree]
-tests = [
-      testGroup "Simple dependencies" [
-          runTest $         mkTest db1 "alreadyInstalled"   ["A"]      (solverSuccess [])
-        , runTest $         mkTest db1 "installLatest"      ["B"]      (solverSuccess [("B", 2)])
-        , runTest $ preferOldest
-                  $         mkTest db1 "installOldest"      ["B"]      (solverSuccess [("B", 1)])
-        , runTest $         mkTest db1 "simpleDep1"         ["C"]      (solverSuccess [("B", 1), ("C", 1)])
-        , runTest $         mkTest db1 "simpleDep2"         ["D"]      (solverSuccess [("B", 2), ("D", 1)])
-        , runTest $         mkTest db1 "failTwoVersions"    ["C", "D"] anySolverFailure
-        , runTest $ indep $ mkTest db1 "indepTwoVersions"   ["C", "D"] (solverSuccess [("B", 1), ("B", 2), ("C", 1), ("D", 1)])
-        , runTest $ indep $ mkTest db1 "aliasWhenPossible1" ["C", "E"] (solverSuccess [("B", 1), ("C", 1), ("E", 1)])
-        , runTest $ indep $ mkTest db1 "aliasWhenPossible2" ["D", "E"] (solverSuccess [("B", 2), ("D", 1), ("E", 1)])
-        , runTest $ indep $ mkTest db2 "aliasWhenPossible3" ["C", "D"] (solverSuccess [("A", 1), ("A", 2), ("B", 1), ("B", 2), ("C", 1), ("D", 1)])
-        , runTest $         mkTest db1 "buildDepAgainstOld" ["F"]      (solverSuccess [("B", 1), ("E", 1), ("F", 1)])
-        , runTest $         mkTest db1 "buildDepAgainstNew" ["G"]      (solverSuccess [("B", 2), ("E", 1), ("G", 1)])
-        , runTest $ indep $ mkTest db1 "multipleInstances"  ["F", "G"] anySolverFailure
-        , runTest $         mkTest db21 "unknownPackage1"   ["A"]      (solverSuccess [("A", 1), ("B", 1)])
-        , runTest $         mkTest db22 "unknownPackage2"   ["A"]      (solverFailure (isInfixOf "unknown package: C"))
-        , runTest $         mkTest db23 "unknownPackage3"   ["A"]      (solverFailure (isInfixOf "unknown package: B"))
-        , runTest $         mkTest []   "unknown target"    ["A"]      (solverFailure (isInfixOf "unknown package: A"))
-        ]
-    , testGroup "Flagged dependencies" [
-          runTest $         mkTest db3 "forceFlagOn"  ["C"]      (solverSuccess [("A", 1), ("B", 1), ("C", 1)])
-        , runTest $         mkTest db3 "forceFlagOff" ["D"]      (solverSuccess [("A", 2), ("B", 1), ("D", 1)])
-        , runTest $ indep $ mkTest db3 "linkFlags1"   ["C", "D"] anySolverFailure
-        , runTest $ indep $ mkTest db4 "linkFlags2"   ["C", "D"] anySolverFailure
-        , runTest $ indep $ mkTest db18 "linkFlags3"  ["A", "B"] (solverSuccess [("A", 1), ("B", 1), ("C", 1), ("D", 1), ("D", 2), ("F", 1)])
-        ]
-    , testGroup "Lifting dependencies out of conditionals" [
-          runTest $ commonDependencyLogMessage "common dependency log message"
-        , runTest $ twoLevelDeepCommonDependencyLogMessage "two level deep common dependency log message"
-        , runTest $ testBackjumpingWithCommonDependency "backjumping with common dependency"
-        ]
-    , testGroup "Manual flags" [
-          runTest $ mkTest dbManualFlags "Use default value for manual flag" ["pkg"] $
-          solverSuccess [("pkg", 1), ("true-dep", 1)]
+tests =
+  [ testGroup
+      "Simple dependencies"
+      [ runTest $ mkTest db1 "alreadyInstalled" ["A"] (solverSuccess [])
+      , runTest $ mkTest db1 "installLatest" ["B"] (solverSuccess [("B", 2)])
+      , runTest $
+          preferOldest $
+            mkTest db1 "installOldest" ["B"] (solverSuccess [("B", 1)])
+      , runTest $ mkTest db1 "simpleDep1" ["C"] (solverSuccess [("B", 1), ("C", 1)])
+      , runTest $ mkTest db1 "simpleDep2" ["D"] (solverSuccess [("B", 2), ("D", 1)])
+      , runTest $ mkTest db1 "failTwoVersions" ["C", "D"] anySolverFailure
+      , runTest $ indep $ mkTest db1 "indepTwoVersions" ["C", "D"] (solverSuccess [("B", 1), ("B", 2), ("C", 1), ("D", 1)])
+      , runTest $ indep $ mkTest db1 "aliasWhenPossible1" ["C", "E"] (solverSuccess [("B", 1), ("C", 1), ("E", 1)])
+      , runTest $ indep $ mkTest db1 "aliasWhenPossible2" ["D", "E"] (solverSuccess [("B", 2), ("D", 1), ("E", 1)])
+      , runTest $ indep $ mkTest db2 "aliasWhenPossible3" ["C", "D"] (solverSuccess [("A", 1), ("A", 2), ("B", 1), ("B", 2), ("C", 1), ("D", 1)])
+      , runTest $ mkTest db1 "buildDepAgainstOld" ["F"] (solverSuccess [("B", 1), ("E", 1), ("F", 1)])
+      , runTest $ mkTest db1 "buildDepAgainstNew" ["G"] (solverSuccess [("B", 2), ("E", 1), ("G", 1)])
+      , runTest $ indep $ mkTest db1 "multipleInstances" ["F", "G"] anySolverFailure
+      , runTest $ mkTest db21 "unknownPackage1" ["A"] (solverSuccess [("A", 1), ("B", 1)])
+      , runTest $ mkTest db22 "unknownPackage2" ["A"] (solverFailure (isInfixOf "unknown package: C"))
+      , runTest $ mkTest db23 "unknownPackage3" ["A"] (solverFailure (isInfixOf "unknown package: B"))
+      , runTest $ mkTest [] "unknown target" ["A"] (solverFailure (isInfixOf "unknown package: A"))
+      ]
+  , testGroup
+      "Flagged dependencies"
+      [ runTest $ mkTest db3 "forceFlagOn" ["C"] (solverSuccess [("A", 1), ("B", 1), ("C", 1)])
+      , runTest $ mkTest db3 "forceFlagOff" ["D"] (solverSuccess [("A", 2), ("B", 1), ("D", 1)])
+      , runTest $ indep $ mkTest db3 "linkFlags1" ["C", "D"] anySolverFailure
+      , runTest $ indep $ mkTest db4 "linkFlags2" ["C", "D"] anySolverFailure
+      , runTest $ indep $ mkTest db18 "linkFlags3" ["A", "B"] (solverSuccess [("A", 1), ("B", 1), ("C", 1), ("D", 1), ("D", 2), ("F", 1)])
+      ]
+  , testGroup
+      "Lifting dependencies out of conditionals"
+      [ runTest $ commonDependencyLogMessage "common dependency log message"
+      , runTest $ twoLevelDeepCommonDependencyLogMessage "two level deep common dependency log message"
+      , runTest $ testBackjumpingWithCommonDependency "backjumping with common dependency"
+      ]
+  , testGroup
+      "Manual flags"
+      [ runTest $
+          mkTest dbManualFlags "Use default value for manual flag" ["pkg"] $
+            solverSuccess [("pkg", 1), ("true-dep", 1)]
+      , let checkFullLog =
+              any $ isInfixOf "rejecting: pkg:-flag (manual flag can only be changed explicitly)"
+         in runTest $
+              setVerbose $
+                constraints [ExVersionConstraint (ScopeAnyQualifier "true-dep") V.noVersion] $
+                  mkTest dbManualFlags "Don't toggle manual flag to avoid conflict" ["pkg"] $
+                    -- TODO: We should check the summarized log instead of the full log
+                    -- for the manual flags error message, but it currently only
+                    -- appears in the full log.
+                    SolverResult checkFullLog (Left $ const True)
+      , let cs = [ExFlagConstraint (ScopeAnyQualifier "pkg") "flag" False]
+         in runTest $
+              constraints cs $
+                mkTest dbManualFlags "Toggle manual flag with flag constraint" ["pkg"] $
+                  solverSuccess [("false-dep", 1), ("pkg", 1)]
+      ]
+  , testGroup
+      "Qualified manual flag constraints"
+      [ let name = "Top-level flag constraint does not constrain setup dep's flag"
+            cs = [ExFlagConstraint (ScopeQualified P.QualToplevel "B") "flag" False]
+         in runTest $
+              constraints cs $
+                mkTest dbSetupDepWithManualFlag name ["A"] $
+                  solverSuccess
+                    [ ("A", 1)
+                    , ("B", 1)
+                    , ("B", 2)
+                    , ("b-1-false-dep", 1)
+                    , ("b-2-true-dep", 1)
+                    ]
+      , let name = "Solver can toggle setup dep's flag to match top-level constraint"
+            cs =
+              [ ExFlagConstraint (ScopeQualified P.QualToplevel "B") "flag" False
+              , ExVersionConstraint (ScopeAnyQualifier "b-2-true-dep") V.noVersion
+              ]
+         in runTest $
+              constraints cs $
+                mkTest dbSetupDepWithManualFlag name ["A"] $
+                  solverSuccess
+                    [ ("A", 1)
+                    , ("B", 1)
+                    , ("B", 2)
+                    , ("b-1-false-dep", 1)
+                    , ("b-2-false-dep", 1)
+                    ]
+      , let name = "User can constrain flags separately with qualified constraints"
+            cs =
+              [ ExFlagConstraint (ScopeQualified P.QualToplevel "B") "flag" True
+              , ExFlagConstraint (ScopeQualified (P.QualSetup "A") "B") "flag" False
+              ]
+         in runTest $
+              constraints cs $
+                mkTest dbSetupDepWithManualFlag name ["A"] $
+                  solverSuccess
+                    [ ("A", 1)
+                    , ("B", 1)
+                    , ("B", 2)
+                    , ("b-1-true-dep", 1)
+                    , ("b-2-false-dep", 1)
+                    ]
+      , -- Regression test for #4299
+        let name = "Solver can link deps when only one has constrained manual flag"
+            cs = [ExFlagConstraint (ScopeQualified P.QualToplevel "B") "flag" False]
+         in runTest $
+              constraints cs $
+                mkTest dbLinkedSetupDepWithManualFlag name ["A"] $
+                  solverSuccess [("A", 1), ("B", 1), ("b-1-false-dep", 1)]
+      , let name = "Solver cannot link deps that have conflicting manual flag constraints"
+            cs =
+              [ ExFlagConstraint (ScopeQualified P.QualToplevel "B") "flag" True
+              , ExFlagConstraint (ScopeQualified (P.QualSetup "A") "B") "flag" False
+              ]
+            failureReason = "(constraint from unknown source requires opposite flag selection)"
+            checkFullLog lns =
+              all
+                (\msg -> any (msg `isInfixOf`) lns)
+                [ "rejecting: B:-flag " ++ failureReason
+                , "rejecting: A:setup.B:+flag " ++ failureReason
+                ]
+         in runTest $
+              constraints cs $
+                setVerbose $
+                  mkTest dbLinkedSetupDepWithManualFlag name ["A"] $
+                    SolverResult checkFullLog (Left $ const True)
+      ]
+  , testGroup
+      "Stanzas"
+      [ runTest $ enableAllTests $ mkTest db5 "simpleTest1" ["C"] (solverSuccess [("A", 2), ("C", 1)])
+      , runTest $ enableAllTests $ mkTest db5 "simpleTest2" ["D"] anySolverFailure
+      , runTest $ enableAllTests $ mkTest db5 "simpleTest3" ["E"] (solverSuccess [("A", 1), ("E", 1)])
+      , runTest $ enableAllTests $ mkTest db5 "simpleTest4" ["F"] anySolverFailure -- TODO
+      , runTest $ enableAllTests $ mkTest db5 "simpleTest5" ["G"] (solverSuccess [("A", 2), ("G", 1)])
+      , runTest $ enableAllTests $ mkTest db5 "simpleTest6" ["E", "G"] anySolverFailure
+      , runTest $ indep $ enableAllTests $ mkTest db5 "simpleTest7" ["E", "G"] (solverSuccess [("A", 1), ("A", 2), ("E", 1), ("G", 1)])
+      , runTest $ enableAllTests $ mkTest db6 "depsWithTests1" ["C"] (solverSuccess [("A", 1), ("B", 1), ("C", 1)])
+      , runTest $ indep $ enableAllTests $ mkTest db6 "depsWithTests2" ["C", "D"] (solverSuccess [("A", 1), ("B", 1), ("C", 1), ("D", 1)])
+      , runTest $ testTestSuiteWithFlag "test suite with flag"
+      ]
+  , testGroup
+      "Setup dependencies"
+      [ runTest $ mkTest db7 "setupDeps1" ["B"] (solverSuccess [("A", 2), ("B", 1)])
+      , runTest $ mkTest db7 "setupDeps2" ["C"] (solverSuccess [("A", 2), ("C", 1)])
+      , runTest $ mkTest db7 "setupDeps3" ["D"] (solverSuccess [("A", 1), ("D", 1)])
+      , runTest $ mkTest db7 "setupDeps4" ["E"] (solverSuccess [("A", 1), ("A", 2), ("E", 1)])
+      , runTest $ mkTest db7 "setupDeps5" ["F"] (solverSuccess [("A", 1), ("A", 2), ("F", 1)])
+      , runTest $ mkTest db8 "setupDeps6" ["C", "D"] (solverSuccess [("A", 1), ("B", 1), ("B", 2), ("C", 1), ("D", 1)])
+      , runTest $ mkTest db9 "setupDeps7" ["F", "G"] (solverSuccess [("A", 1), ("B", 1), ("B", 2), ("C", 1), ("D", 1), ("E", 1), ("E", 2), ("F", 1), ("G", 1)])
+      , runTest $ mkTest db10 "setupDeps8" ["C"] (solverSuccess [("C", 1)])
+      , runTest $ indep $ mkTest dbSetupDeps "setupDeps9" ["A", "B"] (solverSuccess [("A", 1), ("B", 1), ("C", 1), ("D", 1), ("D", 2)])
+      ]
+  , testGroup
+      "Base shim"
+      [ runTest $ mkTest db11 "baseShim1" ["A"] (solverSuccess [("A", 1)])
+      , runTest $ mkTest db12 "baseShim2" ["A"] (solverSuccess [("A", 1)])
+      , runTest $ mkTest db12 "baseShim3" ["B"] (solverSuccess [("B", 1)])
+      , runTest $ mkTest db12 "baseShim4" ["C"] (solverSuccess [("A", 1), ("B", 1), ("C", 1)])
+      , runTest $ mkTest db12 "baseShim5" ["D"] anySolverFailure
+      , runTest $ mkTest db12 "baseShim6" ["E"] (solverSuccess [("E", 1), ("syb", 2)])
+      ]
+  , testGroup
+      "Base and Nonupgradable"
+      [ runTest $
+          mkTest dbBase "Refuse to install base without --allow-boot-library-installs" ["base"] $
+            solverFailure (isInfixOf "only already installed instances can be used")
+      , runTest $
+          allowBootLibInstalls $
+            mkTest dbBase "Install base with --allow-boot-library-installs" ["base"] $
+              solverSuccess [("base", 1), ("ghc-prim", 1), ("integer-gmp", 1), ("integer-simple", 1)]
+      , runTest $
+          mkTest dbNonupgrade "Refuse to install newer ghc requested by another library" ["A"] $
+            solverFailure (isInfixOf "rejecting: ghc-2.0.0 (constraint from non-upgradeable package requires installed instance)")
+      ]
+  , testGroup
+      "reject-unconstrained"
+      [ runTest $
+          onlyConstrained $
+            mkTest db12 "missing syb" ["E"] $
+              solverFailure (isInfixOf "not a user-provided goal")
+      , runTest $
+          onlyConstrained $
+            mkTest db12 "all goals" ["E", "syb"] $
+              solverSuccess [("E", 1), ("syb", 2)]
+      , runTest $
+          onlyConstrained $
+            mkTest db17 "backtracking" ["A", "B"] $
+              solverSuccess [("A", 2), ("B", 1)]
+      , runTest $
+          onlyConstrained $
+            mkTest db17 "failure message" ["A"] $
+              solverFailure $
+                isInfixOf $
+                  "Could not resolve dependencies:\n"
+                    ++ "[__0] trying: A-3.0.0 (user goal)\n"
+                    ++ "[__1] next goal: C (dependency of A)\n"
+                    ++ "[__1] fail (not a user-provided goal nor mentioned as a constraint, "
+                    ++ "but reject-unconstrained-dependencies was set)\n"
+                    ++ "[__1] fail (backjumping, conflict set: A, C)\n"
+                    ++ "After searching the rest of the dependency tree exhaustively, "
+                    ++ "these were the goals I've had most trouble fulfilling: A, C, B"
+      ]
+  , testGroup
+      "Cycles"
+      [ runTest $ mkTest db14 "simpleCycle1" ["A"] anySolverFailure
+      , runTest $ mkTest db14 "simpleCycle2" ["A", "B"] anySolverFailure
+      , runTest $ mkTest db14 "cycleWithFlagChoice1" ["C"] (solverSuccess [("C", 1), ("E", 1)])
+      , runTest $ mkTest db15 "cycleThroughSetupDep1" ["A"] anySolverFailure
+      , runTest $ mkTest db15 "cycleThroughSetupDep2" ["B"] anySolverFailure
+      , runTest $ mkTest db15 "cycleThroughSetupDep3" ["C"] (solverSuccess [("C", 2), ("D", 1)])
+      , runTest $ mkTest db15 "cycleThroughSetupDep4" ["D"] (solverSuccess [("D", 1)])
+      , runTest $ mkTest db15 "cycleThroughSetupDep5" ["E"] (solverSuccess [("C", 2), ("D", 1), ("E", 1)])
+      , runTest $ issue4161 "detect cycle between package and its setup script"
+      , runTest $ testCyclicDependencyErrorMessages "cyclic dependency error messages"
+      ]
+  , testGroup
+      "Extensions"
+      [ runTest $ mkTestExts [EnableExtension CPP] dbExts1 "unsupported" ["A"] anySolverFailure
+      , runTest $ mkTestExts [EnableExtension CPP] dbExts1 "unsupportedIndirect" ["B"] anySolverFailure
+      , runTest $ mkTestExts [EnableExtension RankNTypes] dbExts1 "supported" ["A"] (solverSuccess [("A", 1)])
+      , runTest $ mkTestExts (map EnableExtension [CPP, RankNTypes]) dbExts1 "supportedIndirect" ["C"] (solverSuccess [("A", 1), ("B", 1), ("C", 1)])
+      , runTest $ mkTestExts [EnableExtension CPP] dbExts1 "disabledExtension" ["D"] anySolverFailure
+      , runTest $ mkTestExts (map EnableExtension [CPP, RankNTypes]) dbExts1 "disabledExtension" ["D"] anySolverFailure
+      , runTest $ mkTestExts (UnknownExtension "custom" : map EnableExtension [CPP, RankNTypes]) dbExts1 "supportedUnknown" ["E"] (solverSuccess [("A", 1), ("B", 1), ("C", 1), ("E", 1)])
+      ]
+  , testGroup
+      "Languages"
+      [ runTest $ mkTestLangs [Haskell98] dbLangs1 "unsupported" ["A"] anySolverFailure
+      , runTest $ mkTestLangs [Haskell98, Haskell2010] dbLangs1 "supported" ["A"] (solverSuccess [("A", 1)])
+      , runTest $ mkTestLangs [Haskell98] dbLangs1 "unsupportedIndirect" ["B"] anySolverFailure
+      , runTest $ mkTestLangs [Haskell98, Haskell2010, UnknownLanguage "Haskell3000"] dbLangs1 "supportedUnknown" ["C"] (solverSuccess [("A", 1), ("B", 1), ("C", 1)])
+      ]
+  , testGroup
+      "Qualified Package Constraints"
+      [ runTest $
+          mkTest dbConstraints "install latest versions without constraints" ["A", "B", "C"] $
+            solverSuccess [("A", 7), ("B", 8), ("C", 9), ("D", 7), ("D", 8), ("D", 9)]
+      , let cs = [ExVersionConstraint (ScopeAnyQualifier "D") $ mkVersionRange 1 4]
+         in runTest $
+              constraints cs $
+                mkTest dbConstraints "force older versions with unqualified constraint" ["A", "B", "C"] $
+                  solverSuccess [("A", 1), ("B", 2), ("C", 3), ("D", 1), ("D", 2), ("D", 3)]
+      , let cs =
+              [ ExVersionConstraint (ScopeQualified P.QualToplevel "D") $ mkVersionRange 1 4
+              , ExVersionConstraint (ScopeQualified (P.QualSetup "B") "D") $ mkVersionRange 4 7
+              ]
+         in runTest $
+              constraints cs $
+                mkTest dbConstraints "force multiple versions with qualified constraints" ["A", "B", "C"] $
+                  solverSuccess [("A", 1), ("B", 5), ("C", 9), ("D", 1), ("D", 5), ("D", 9)]
+      , let cs = [ExVersionConstraint (ScopeAnySetupQualifier "D") $ mkVersionRange 1 4]
+         in runTest $
+              constraints cs $
+                mkTest dbConstraints "constrain package across setup scripts" ["A", "B", "C"] $
+                  solverSuccess [("A", 7), ("B", 2), ("C", 3), ("D", 2), ("D", 3), ("D", 7)]
+      ]
+  , testGroup
+      "Package Preferences"
+      [ runTest $ preferences [ExPkgPref "A" $ mkvrThis 1] $ mkTest db13 "selectPreferredVersionSimple" ["A"] (solverSuccess [("A", 1)])
+      , runTest $ preferences [ExPkgPref "A" $ mkvrOrEarlier 2] $ mkTest db13 "selectPreferredVersionSimple2" ["A"] (solverSuccess [("A", 2)])
+      , runTest
+          $ preferences
+            [ ExPkgPref "A" $ mkvrOrEarlier 2
+            , ExPkgPref "A" $ mkvrOrEarlier 1
+            ]
+          $ mkTest db13 "selectPreferredVersionMultiple" ["A"] (solverSuccess [("A", 1)])
+      , runTest
+          $ preferences
+            [ ExPkgPref "A" $ mkvrOrEarlier 1
+            , ExPkgPref "A" $ mkvrOrEarlier 2
+            ]
+          $ mkTest db13 "selectPreferredVersionMultiple2" ["A"] (solverSuccess [("A", 1)])
+      , runTest
+          $ preferences
+            [ ExPkgPref "A" $ mkvrThis 1
+            , ExPkgPref "A" $ mkvrThis 2
+            ]
+          $ mkTest db13 "selectPreferredVersionMultiple3" ["A"] (solverSuccess [("A", 2)])
+      , runTest
+          $ preferences
+            [ ExPkgPref "A" $ mkvrThis 1
+            , ExPkgPref "A" $ mkvrOrEarlier 2
+            ]
+          $ mkTest db13 "selectPreferredVersionMultiple4" ["A"] (solverSuccess [("A", 1)])
+      ]
+  , testGroup
+      "Stanza Preferences"
+      [ runTest $
+          mkTest dbStanzaPreferences1 "disable tests by default" ["pkg"] $
+            solverSuccess [("pkg", 1)]
+      , runTest $
+          preferences [ExStanzaPref "pkg" [TestStanzas]] $
+            mkTest dbStanzaPreferences1 "enable tests with testing preference" ["pkg"] $
+              solverSuccess [("pkg", 1), ("test-dep", 1)]
+      , runTest $
+          preferences [ExStanzaPref "pkg" [TestStanzas]] $
+            mkTest dbStanzaPreferences2 "disable testing when it's not possible" ["pkg"] $
+              solverSuccess [("pkg", 1)]
+      , testStanzaPreference "test stanza preference"
+      ]
+  , testGroup
+      "Buildable Field"
+      [ testBuildable "avoid building component with unknown dependency" (ExAny "unknown")
+      , testBuildable "avoid building component with unknown extension" (ExExt (UnknownExtension "unknown"))
+      , testBuildable "avoid building component with unknown language" (ExLang (UnknownLanguage "unknown"))
+      , runTest $ mkTest dbBuildable1 "choose flags that set buildable to false" ["pkg"] (solverSuccess [("flag1-false", 1), ("flag2-true", 1), ("pkg", 1)])
+      , runTest $ mkTest dbBuildable2 "choose version that sets buildable to false" ["A"] (solverSuccess [("A", 1), ("B", 2)])
+      ]
+  , testGroup
+      "Pkg-config dependencies"
+      [ runTest $ mkTestPCDepends (Just []) dbPC1 "noPkgs" ["A"] anySolverFailure
+      , runTest $ mkTestPCDepends (Just [("pkgA", "0")]) dbPC1 "tooOld" ["A"] anySolverFailure
+      , runTest $ mkTestPCDepends (Just [("pkgA", "1.0.0"), ("pkgB", "1.0.0")]) dbPC1 "pruneNotFound" ["C"] (solverSuccess [("A", 1), ("B", 1), ("C", 1)])
+      , runTest $ mkTestPCDepends (Just [("pkgA", "1.0.0"), ("pkgB", "2.0.0")]) dbPC1 "chooseNewest" ["C"] (solverSuccess [("A", 1), ("B", 2), ("C", 1)])
+      , runTest $ mkTestPCDepends Nothing dbPC1 "noPkgConfigFailure" ["A"] anySolverFailure
+      , runTest $ mkTestPCDepends Nothing dbPC1 "noPkgConfigSuccess" ["D"] (solverSuccess [("D", 1)])
+      ]
+  , testGroup
+      "Independent goals"
+      [ runTest $ indep $ mkTest db16 "indepGoals1" ["A", "B"] (solverSuccess [("A", 1), ("B", 1), ("C", 1), ("D", 1), ("D", 2), ("E", 1)])
+      , runTest $ testIndepGoals2 "indepGoals2"
+      , runTest $ testIndepGoals3 "indepGoals3"
+      , runTest $ testIndepGoals4 "indepGoals4"
+      , runTest $ testIndepGoals5 "indepGoals5 - fixed goal order" FixedGoalOrder
+      , runTest $ testIndepGoals5 "indepGoals5 - default goal order" DefaultGoalOrder
+      , runTest $ testIndepGoals6 "indepGoals6 - fixed goal order" FixedGoalOrder
+      , runTest $ testIndepGoals6 "indepGoals6 - default goal order" DefaultGoalOrder
+      ]
+  , -- Tests designed for the backjumping blog post
+    testGroup
+      "Backjumping"
+      [ runTest $ mkTest dbBJ1a "bj1a" ["A"] (solverSuccess [("A", 1), ("B", 1)])
+      , runTest $ mkTest dbBJ1b "bj1b" ["A"] (solverSuccess [("A", 1), ("B", 1)])
+      , runTest $ mkTest dbBJ1c "bj1c" ["A"] (solverSuccess [("A", 1), ("B", 1)])
+      , runTest $ mkTest dbBJ2 "bj2" ["A"] (solverSuccess [("A", 1), ("B", 1), ("C", 1)])
+      , runTest $ mkTest dbBJ3 "bj3" ["A"] (solverSuccess [("A", 1), ("Ba", 1), ("C", 1)])
+      , runTest $ mkTest dbBJ4 "bj4" ["A"] (solverSuccess [("A", 1), ("B", 1), ("C", 1)])
+      , runTest $ mkTest dbBJ5 "bj5" ["A"] (solverSuccess [("A", 1), ("B", 1), ("D", 1)])
+      , runTest $ mkTest dbBJ6 "bj6" ["A"] (solverSuccess [("A", 1), ("B", 1)])
+      , runTest $ mkTest dbBJ7 "bj7" ["A"] (solverSuccess [("A", 1), ("B", 1), ("C", 1)])
+      , runTest $ indep $ mkTest dbBJ8 "bj8" ["A", "B"] (solverSuccess [("A", 1), ("B", 1), ("C", 1)])
+      ]
+  , testGroup
+      "main library dependencies"
+      [ let db = [Right $ exAvNoLibrary "A" 1 `withExe` exExe "exe" []]
+         in runTest $
+              mkTest db "install build target without a library" ["A"] $
+                solverSuccess [("A", 1)]
+      , let db =
+              [ Right $ exAv "A" 1 [ExAny "B"]
+              , Right $ exAvNoLibrary "B" 1 `withExe` exExe "exe" []
+              ]
+         in runTest $
+              mkTest db "reject build-depends dependency with no library" ["A"] $
+                solverFailure (isInfixOf "rejecting: B-1.0.0 (does not contain library, which is required by A)")
+      , let exe = exExe "exe" []
+            db =
+              [ Right $ exAv "A" 1 [ExAny "B"]
+              , Right $ exAvNoLibrary "B" 2 `withExe` exe
+              , Right $ exAv "B" 1 [] `withExe` exe
+              ]
+         in runTest $
+              mkTest db "choose version of build-depends dependency that has a library" ["A"] $
+                solverSuccess [("A", 1), ("B", 1)]
+      ]
+  , testGroup
+      "sub-library dependencies"
+      [ let db =
+              [ Right $ exAv "A" 1 [ExSubLibAny "B" "sub-lib"]
+              , Right $ exAv "B" 1 []
+              ]
+         in runTest $
+              mkTest db "reject package that is missing required sub-library" ["A"] $
+                solverFailure $
+                  isInfixOf $
+                    "rejecting: B-1.0.0 (does not contain library 'sub-lib', which is required by A)"
+      , let db =
+              [ Right $ exAv "A" 1 [ExSubLibAny "B" "sub-lib"]
+              , Right $ exAvNoLibrary "B" 1 `withSubLibrary` exSubLib "sub-lib" []
+              ]
+         in runTest $
+              mkTest db "reject package with private but required sub-library" ["A"] $
+                solverFailure $
+                  isInfixOf $
+                    "rejecting: B-1.0.0 (library 'sub-lib' is private, but it is required by A)"
+      , let db =
+              [ Right $ exAv "A" 1 [ExSubLibAny "B" "sub-lib"]
+              , Right $
+                  exAvNoLibrary "B" 1
+                    `withSubLibrary` exSubLib "sub-lib" [ExFlagged "make-lib-private" (dependencies []) publicDependencies]
+              ]
+         in runTest $
+              constraints [ExFlagConstraint (ScopeAnyQualifier "B") "make-lib-private" True] $
+                mkTest db "reject package with sub-library made private by flag constraint" ["A"] $
+                  solverFailure $
+                    isInfixOf $
+                      "rejecting: B-1.0.0 (library 'sub-lib' is private, but it is required by A)"
+      , let db =
+              [ Right $ exAv "A" 1 [ExSubLibAny "B" "sub-lib"]
+              , Right $
+                  exAvNoLibrary "B" 1
+                    `withSubLibrary` exSubLib "sub-lib" [ExFlagged "make-lib-private" (dependencies []) publicDependencies]
+              ]
+         in runTest $
+              mkTest db "treat sub-library as visible even though flag choice could make it private" ["A"] $
+                solverSuccess [("A", 1), ("B", 1)]
+      , let db =
+              [ Right $ exAv "A" 1 [ExAny "B"]
+              , Right $ exAv "B" 1 [] `withSubLibrary` exSubLib "sub-lib" []
+              , Right $ exAv "C" 1 [ExSubLibAny "B" "sub-lib"]
+              ]
+            goals :: [ExampleVar]
+            goals =
+              [ P QualNone "A"
+              , P QualNone "B"
+              , P QualNone "C"
+              ]
+         in runTest $
+              goalOrder goals $
+                mkTest db "reject package that requires a private sub-library" ["A", "C"] $
+                  solverFailure $
+                    isInfixOf $
+                      "rejecting: C-1.0.0 (requires library 'sub-lib' from B, but the component is private)"
+      , let db =
+              [ Right $ exAv "A" 1 [ExSubLibAny "B" "sub-lib-v1"]
+              , Right $ exAv "B" 2 [] `withSubLibrary` ExSubLib "sub-lib-v2" publicDependencies
+              , Right $ exAv "B" 1 [] `withSubLibrary` ExSubLib "sub-lib-v1" publicDependencies
+              ]
+         in runTest $
+              mkTest db "choose version of package containing correct sub-library" ["A"] $
+                solverSuccess [("A", 1), ("B", 1)]
+      , let db =
+              [ Right $ exAv "A" 1 [ExSubLibAny "B" "sub-lib"]
+              , Right $ exAv "B" 2 [] `withSubLibrary` ExSubLib "sub-lib" (dependencies [])
+              , Right $ exAv "B" 1 [] `withSubLibrary` ExSubLib "sub-lib" publicDependencies
+              ]
+         in runTest $
+              mkTest db "choose version of package with public sub-library" ["A"] $
+                solverSuccess [("A", 1), ("B", 1)]
+      ]
+  , -- build-tool-depends dependencies
+    testGroup
+      "build-tool-depends"
+      [ runTest $ mkTest dbBuildTools "simple exe dependency" ["A"] (solverSuccess [("A", 1), ("bt-pkg", 2)])
+      , runTest $
+          disableSolveExecutables $
+            mkTest dbBuildTools "don't install build tool packages in legacy mode" ["A"] (solverSuccess [("A", 1)])
+      , runTest $ mkTest dbBuildTools "flagged exe dependency" ["B"] (solverSuccess [("B", 1), ("bt-pkg", 2)])
+      , runTest $
+          enableAllTests $
+            mkTest dbBuildTools "test suite exe dependency" ["C"] (solverSuccess [("C", 1), ("bt-pkg", 2)])
+      , runTest $
+          mkTest dbBuildTools "unknown exe" ["D"] $
+            solverFailure (isInfixOf "does not contain executable 'unknown-exe', which is required by D")
+      , runTest $
+          disableSolveExecutables $
+            mkTest dbBuildTools "don't check for build tool executables in legacy mode" ["D"] $
+              solverSuccess [("D", 1)]
+      , runTest $
+          mkTest dbBuildTools "unknown build tools package error mentions package, not exe" ["E"] $
+            solverFailure (isInfixOf "unknown package: E:unknown-pkg:exe.unknown-pkg (dependency of E)")
+      , runTest $
+          mkTest dbBuildTools "unknown flagged exe" ["F"] $
+            solverFailure (isInfixOf "does not contain executable 'unknown-exe', which is required by F +flagF")
+      , runTest $
+          enableAllTests $
+            mkTest dbBuildTools "unknown test suite exe" ["G"] $
+              solverFailure (isInfixOf "does not contain executable 'unknown-exe', which is required by G *test")
+      , runTest $
+          mkTest dbBuildTools "wrong exe for build tool package version" ["H"] $
+            solverFailure $
+              isInfixOf $
+                -- The solver reports the version conflict when a version conflict
+                -- and an executable conflict apply to the same package version.
+                "[__1] rejecting: H:bt-pkg:exe.bt-pkg-4.0.0 (conflict: H => H:bt-pkg:exe.bt-pkg (exe exe1)==3.0.0)\n"
+                  ++ "[__1] rejecting: H:bt-pkg:exe.bt-pkg-3.0.0 (does not contain executable 'exe1', which is required by H)\n"
+                  ++ "[__1] rejecting: H:bt-pkg:exe.bt-pkg-2.0.0 (conflict: H => H:bt-pkg:exe.bt-pkg (exe exe1)==3.0.0)"
+      , runTest $ chooseExeAfterBuildToolsPackage True "choose exe after choosing its package - success"
+      , runTest $ chooseExeAfterBuildToolsPackage False "choose exe after choosing its package - failure"
+      , runTest $ rejectInstalledBuildToolPackage "reject installed package for build-tool dependency"
+      , runTest $ requireConsistentBuildToolVersions "build tool versions must be consistent within one package"
+      ]
+  , -- build-tools dependencies
+    testGroup
+      "legacy build-tools"
+      [ runTest $ mkTest dbLegacyBuildTools1 "bt1" ["A"] (solverSuccess [("A", 1), ("alex", 1)])
+      , runTest $
+          disableSolveExecutables $
+            mkTest dbLegacyBuildTools1 "bt1 - don't install build tool packages in legacy mode" ["A"] (solverSuccess [("A", 1)])
+      , runTest $
+          mkTest dbLegacyBuildTools2 "bt2" ["A"] $
+            solverFailure (isInfixOf "does not contain executable 'alex', which is required by A")
+      , runTest $
+          disableSolveExecutables $
+            mkTest dbLegacyBuildTools2 "bt2 - don't check for build tool executables in legacy mode" ["A"] (solverSuccess [("A", 1)])
+      , runTest $ mkTest dbLegacyBuildTools3 "bt3" ["A"] (solverSuccess [("A", 1)])
+      , runTest $ mkTest dbLegacyBuildTools4 "bt4" ["C"] (solverSuccess [("A", 1), ("B", 1), ("C", 1), ("alex", 1), ("alex", 2)])
+      , runTest $ mkTest dbLegacyBuildTools5 "bt5" ["B"] (solverSuccess [("A", 1), ("A", 2), ("B", 1), ("alex", 1)])
+      , runTest $ mkTest dbLegacyBuildTools6 "bt6" ["A"] (solverSuccess [("A", 1), ("alex", 1), ("happy", 1)])
+      ]
+  , -- internal dependencies
+    testGroup
+      "internal dependencies"
+      [ runTest $ mkTest dbIssue3775 "issue #3775" ["B"] (solverSuccess [("A", 2), ("B", 2), ("warp", 1)])
+      ]
+  , -- tests for partial fix for issue #5325
+    testGroup "Components that are unbuildable in the current environment" $
+      let flagConstraint = ExFlagConstraint . ScopeAnyQualifier
+       in [ let db = [Right $ exAv "A" 1 [ExFlagged "build-lib" (dependencies []) unbuildableDependencies]]
+             in runTest $
+                  constraints [flagConstraint "A" "build-lib" False] $
+                    mkTest db "install unbuildable library" ["A"] $
+                      solverSuccess [("A", 1)]
+          , let db =
+                  [ Right $
+                      exAvNoLibrary "A" 1
+                        `withExe` exExe "exe" [ExFlagged "build-exe" (dependencies []) unbuildableDependencies]
+                  ]
+             in runTest $
+                  constraints [flagConstraint "A" "build-exe" False] $
+                    mkTest db "install unbuildable exe" ["A"] $
+                      solverSuccess [("A", 1)]
+          , let db =
+                  [ Right $ exAv "A" 1 [ExAny "B"]
+                  , Right $ exAv "B" 1 [ExFlagged "build-lib" (dependencies []) unbuildableDependencies]
+                  ]
+             in runTest $
+                  constraints [flagConstraint "B" "build-lib" False] $
+                    mkTest db "reject library dependency with unbuildable library" ["A"] $
+                      solverFailure $
+                        isInfixOf $
+                          "rejecting: B-1.0.0 (library is not buildable in the "
+                            ++ "current environment, but it is required by A)"
+          , let db =
+                  [ Right $ exAv "A" 1 [ExBuildToolAny "B" "bt"]
+                  , Right $
+                      exAv "B" 1 [ExFlagged "build-lib" (dependencies []) unbuildableDependencies]
+                        `withExe` exExe "bt" []
+                  ]
+             in runTest $
+                  constraints [flagConstraint "B" "build-lib" False] $
+                    mkTest db "allow build-tool dependency with unbuildable library" ["A"] $
+                      solverSuccess [("A", 1), ("B", 1)]
+          , let db =
+                  [ Right $ exAv "A" 1 [ExBuildToolAny "B" "bt"]
+                  , Right $
+                      exAv "B" 1 []
+                        `withExe` exExe "bt" [ExFlagged "build-exe" (dependencies []) unbuildableDependencies]
+                  ]
+             in runTest $
+                  constraints [flagConstraint "B" "build-exe" False] $
+                    mkTest db "reject build-tool dependency with unbuildable exe" ["A"] $
+                      solverFailure $
+                        isInfixOf $
+                          "rejecting: A:B:exe.B-1.0.0 (executable 'bt' is not "
+                            ++ "buildable in the current environment, but it is required by A)"
+          , runTest $
+              chooseUnbuildableExeAfterBuildToolsPackage
+                "choose unbuildable exe after choosing its package"
+          ]
+  , testGroup
+      "--fine-grained-conflicts"
+      [ -- Skipping a version because of a problematic dependency:
+        --
+        -- When the solver explores A-4, it finds that it cannot satisfy B's
+        -- dependencies. This allows the solver to skip the subsequent
+        -- versions of A that also depend on B.
+        runTest $
+          let db =
+                [ Right $ exAv "A" 4 [ExAny "B"]
+                , Right $ exAv "A" 3 [ExAny "B"]
+                , Right $ exAv "A" 2 [ExAny "B"]
+                , Right $ exAv "A" 1 []
+                , Right $ exAv "B" 2 [ExAny "unknown1"]
+                , Right $ exAv "B" 1 [ExAny "unknown2"]
+                ]
+              msg =
+                [ "[__0] trying: A-4.0.0 (user goal)"
+                , "[__1] trying: B-2.0.0 (dependency of A)"
+                , "[__2] unknown package: unknown1 (dependency of B)"
+                , "[__2] fail (backjumping, conflict set: B, unknown1)"
+                , "[__1] trying: B-1.0.0"
+                , "[__2] unknown package: unknown2 (dependency of B)"
+                , "[__2] fail (backjumping, conflict set: B, unknown2)"
+                , "[__1] fail (backjumping, conflict set: A, B, unknown1, unknown2)"
+                , "[__0] skipping: A-3.0.0, A-2.0.0 (has the same characteristics that "
+                    ++ "caused the previous version to fail: depends on 'B')"
+                , "[__0] trying: A-1.0.0"
+                , "[__1] done"
+                ]
+           in setVerbose $
+                mkTest db "skip version due to problematic dependency" ["A"] $
+                  SolverResult (isInfixOf msg) $
+                    Right [("A", 1)]
+      , -- Skipping a version because of a restrictive constraint on a
+        -- dependency:
+        --
+        -- The solver rejects A-4 because its constraint on B excludes B-1.
+        -- Then the solver is able to skip A-3 and A-2 because they also
+        -- exclude B-1, even though they don't have the exact same constraints
+        -- on B.
+        runTest $
+          let db =
+                [ Right $ exAv "A" 4 [ExFix "B" 14]
+                , Right $ exAv "A" 3 [ExFix "B" 13]
+                , Right $ exAv "A" 2 [ExFix "B" 12]
+                , Right $ exAv "A" 1 [ExFix "B" 11]
+                , Right $ exAv "B" 11 []
+                ]
+              msg =
+                [ "[__0] trying: A-4.0.0 (user goal)"
+                , "[__1] next goal: B (dependency of A)"
+                , "[__1] rejecting: B-11.0.0 (conflict: A => B==14.0.0)"
+                , "[__1] fail (backjumping, conflict set: A, B)"
+                , "[__0] skipping: A-3.0.0, A-2.0.0 (has the same characteristics that "
+                    ++ "caused the previous version to fail: depends on 'B' but excludes "
+                    ++ "version 11.0.0)"
+                , "[__0] trying: A-1.0.0"
+                , "[__1] next goal: B (dependency of A)"
+                , "[__1] trying: B-11.0.0"
+                , "[__2] done"
+                ]
+           in setVerbose $
+                mkTest db "skip version due to restrictive constraint on its dependency" ["A"] $
+                  SolverResult (isInfixOf msg) $
+                    Right [("A", 1), ("B", 11)]
+      , -- This test tests the case where the solver chooses a version for one
+        -- package, B, before choosing a version for one of its reverse
+        -- dependencies, C. While the solver is exploring the subtree rooted
+        -- at B-3, it finds that C-2's dependency on B conflicts with B-3.
+        -- Then the solver is able to skip C-1, because it also excludes B-3.
+        --
+        -- --fine-grained-conflicts could have a benefit in this case even
+        -- though the solver would have found the conflict between B-3 and C-1
+        -- immediately after trying C-1 anyway. It prevents C-1 from
+        -- introducing any other conflicts which could increase the size of
+        -- the conflict set.
+        runTest $
+          let db =
+                [ Right $ exAv "A" 1 [ExAny "B", ExAny "C"]
+                , Right $ exAv "B" 3 []
+                , Right $ exAv "B" 2 []
+                , Right $ exAv "B" 1 []
+                , Right $ exAv "C" 2 [ExFix "B" 2]
+                , Right $ exAv "C" 1 [ExFix "B" 1]
+                ]
+              goals = [P QualNone pkg | pkg <- ["A", "B", "C"]]
+              expectedMsg =
+                [ "[__0] trying: A-1.0.0 (user goal)"
+                , "[__1] trying: B-3.0.0 (dependency of A)"
+                , "[__2] next goal: C (dependency of A)"
+                , "[__2] rejecting: C-2.0.0 (conflict: B==3.0.0, C => B==2.0.0)"
+                , "[__2] skipping: C-1.0.0 (has the same characteristics that caused the "
+                    ++ "previous version to fail: excludes 'B' version 3.0.0)"
+                , "[__2] fail (backjumping, conflict set: A, B, C)"
+                , "[__1] trying: B-2.0.0"
+                , "[__2] next goal: C (dependency of A)"
+                , "[__2] trying: C-2.0.0"
+                , "[__3] done"
+                ]
+           in setVerbose $
+                goalOrder goals $
+                  mkTest db "skip version that excludes dependency that was already chosen" ["A"] $
+                    SolverResult (isInfixOf expectedMsg) $
+                      Right [("A", 1), ("B", 2), ("C", 2)]
+      , -- This test tests how the solver merges conflicts when it has
+        -- multiple reasons to add a variable to the conflict set. In this
+        -- case, package A conflicts with B and C. The solver should take the
+        -- union of the conflicts and then only skip a version if it does not
+        -- resolve any of the conflicts.
+        --
+        -- The solver rejects A-3 because it can't find consistent versions for
+        -- its two dependencies, B and C. Then it skips A-2 because A-2 also
+        -- depends on B and C. This test ensures that the solver considers
+        -- A-1 even though A-1 only resolves one of the conflicts (A-1 removes
+        -- the dependency on C).
+        runTest $
+          let db =
+                [ Right $ exAv "A" 3 [ExAny "B", ExAny "C"]
+                , Right $ exAv "A" 2 [ExAny "B", ExAny "C"]
+                , Right $ exAv "A" 1 [ExAny "B"]
+                , Right $ exAv "B" 1 [ExFix "D" 1]
+                , Right $ exAv "C" 1 [ExFix "D" 2]
+                , Right $ exAv "D" 1 []
+                , Right $ exAv "D" 2 []
+                ]
+              goals = [P QualNone pkg | pkg <- ["A", "B", "C", "D"]]
+              msg =
+                [ "[__0] trying: A-3.0.0 (user goal)"
+                , "[__1] trying: B-1.0.0 (dependency of A)"
+                , "[__2] trying: C-1.0.0 (dependency of A)"
+                , "[__3] next goal: D (dependency of B)"
+                , "[__3] rejecting: D-2.0.0 (conflict: B => D==1.0.0)"
+                , "[__3] rejecting: D-1.0.0 (conflict: C => D==2.0.0)"
+                , "[__3] fail (backjumping, conflict set: B, C, D)"
+                , "[__2] fail (backjumping, conflict set: A, B, C, D)"
+                , "[__1] fail (backjumping, conflict set: A, B, C, D)"
+                , "[__0] skipping: A-2.0.0 (has the same characteristics that caused the "
+                    ++ "previous version to fail: depends on 'B'; depends on 'C')"
+                , "[__0] trying: A-1.0.0"
+                , "[__1] trying: B-1.0.0 (dependency of A)"
+                , "[__2] next goal: D (dependency of B)"
+                , "[__2] rejecting: D-2.0.0 (conflict: B => D==1.0.0)"
+                , "[__2] trying: D-1.0.0"
+                , "[__3] done"
+                ]
+           in setVerbose $
+                goalOrder goals $
+                  mkTest db "only skip a version if it resolves none of the previous conflicts" ["A"] $
+                    SolverResult (isInfixOf msg) $
+                      Right [("A", 1), ("B", 1), ("D", 1)]
+      , -- This test ensures that the solver log doesn't show all conflicts
+        -- that the solver encountered in a subtree. The solver should only
+        -- show the conflicts that are contained in the current conflict set.
+        --
+        -- The goal order forces the solver to try A-4, encounter a conflict
+        -- with B-2, try B-1, and then try C. A-4 conflicts with the only
+        -- version of C, so the solver backjumps with a conflict set of
+        -- {A, C}. When the solver skips the next version of A, the log should
+        -- mention the conflict with C but not B.
+        runTest $
+          let db =
+                [ Right $ exAv "A" 4 [ExFix "B" 1, ExFix "C" 1]
+                , Right $ exAv "A" 3 [ExFix "B" 1, ExFix "C" 1]
+                , Right $ exAv "A" 2 [ExFix "C" 1]
+                , Right $ exAv "A" 1 [ExFix "C" 2]
+                , Right $ exAv "B" 2 []
+                , Right $ exAv "B" 1 []
+                , Right $ exAv "C" 2 []
+                ]
+              goals = [P QualNone pkg | pkg <- ["A", "B", "C"]]
+              msg =
+                [ "[__0] trying: A-4.0.0 (user goal)"
+                , "[__1] next goal: B (dependency of A)"
+                , "[__1] rejecting: B-2.0.0 (conflict: A => B==1.0.0)"
+                , "[__1] trying: B-1.0.0"
+                , "[__2] next goal: C (dependency of A)"
+                , "[__2] rejecting: C-2.0.0 (conflict: A => C==1.0.0)"
+                , "[__2] fail (backjumping, conflict set: A, C)"
+                , "[__0] skipping: A-3.0.0, A-2.0.0 (has the same characteristics that caused the "
+                    ++ "previous version to fail: depends on 'C' but excludes version 2.0.0)"
+                , "[__0] trying: A-1.0.0"
+                , "[__1] next goal: C (dependency of A)"
+                , "[__1] trying: C-2.0.0"
+                , "[__2] done"
+                ]
+           in setVerbose $
+                goalOrder goals $
+                  mkTest db "don't show conflicts that aren't part of the conflict set" ["A"] $
+                    SolverResult (isInfixOf msg) $
+                      Right [("A", 1), ("C", 2)]
+      , -- Tests that the conflict set is properly updated when a version is
+        -- skipped due to being excluded by one of its reverse dependencies'
+        -- constraints.
+        runTest $
+          let db =
+                [ Right $ exAv "A" 2 [ExFix "B" 3]
+                , Right $ exAv "A" 1 [ExFix "B" 1]
+                , Right $ exAv "B" 2 []
+                , Right $ exAv "B" 1 []
+                ]
+              msg =
+                [ "[__0] trying: A-2.0.0 (user goal)"
+                , "[__1] next goal: B (dependency of A)"
+                , -- During this step, the solver adds A and B to the
+                  -- conflict set, with the details of each package's
+                  -- conflict:
+                  --
+                  -- A: A's constraint rejected B-2.
+                  -- B: B was rejected by A's B==3 constraint
+                  "[__1] rejecting: B-2.0.0 (conflict: A => B==3.0.0)"
+                , -- When the solver skips B-1, it cannot simply reuse the
+                  -- previous conflict set. It also needs to update A's
+                  -- entry to say that A also rejected B-1. Otherwise, the
+                  -- solver wouldn't know that A-1 could resolve one of
+                  -- the conflicts encountered while exploring A-2. The
+                  -- solver would skip A-1, even though it leads to the
+                  -- solution.
+                  "[__1] skipping: B-1.0.0 (has the same characteristics that caused "
+                    ++ "the previous version to fail: excluded by constraint '==3.0.0' from 'A')"
+                , "[__1] fail (backjumping, conflict set: A, B)"
+                , "[__0] trying: A-1.0.0"
+                , "[__1] next goal: B (dependency of A)"
+                , "[__1] rejecting: B-2.0.0 (conflict: A => B==1.0.0)"
+                , "[__1] trying: B-1.0.0"
+                , "[__2] done"
+                ]
+           in setVerbose $
+                mkTest db "update conflict set after skipping version - 1" ["A"] $
+                  SolverResult (isInfixOf msg) $
+                    Right [("A", 1), ("B", 1)]
+      , -- Tests that the conflict set is properly updated when a version is
+        -- skipped due to excluding a version of one of its dependencies.
+        -- This test is similar the previous one, with the goal order reversed.
+        runTest $
+          let db =
+                [ Right $ exAv "A" 2 []
+                , Right $ exAv "A" 1 []
+                , Right $ exAv "B" 2 [ExFix "A" 3]
+                , Right $ exAv "B" 1 [ExFix "A" 1]
+                ]
+              goals = [P QualNone pkg | pkg <- ["A", "B"]]
+              msg =
+                [ "[__0] trying: A-2.0.0 (user goal)"
+                , "[__1] next goal: B (user goal)"
+                , "[__1] rejecting: B-2.0.0 (conflict: A==2.0.0, B => A==3.0.0)"
+                , "[__1] skipping: B-1.0.0 (has the same characteristics that caused "
+                    ++ "the previous version to fail: excludes 'A' version 2.0.0)"
+                , "[__1] fail (backjumping, conflict set: A, B)"
+                , "[__0] trying: A-1.0.0"
+                , "[__1] next goal: B (user goal)"
+                , "[__1] rejecting: B-2.0.0 (conflict: A==1.0.0, B => A==3.0.0)"
+                , "[__1] trying: B-1.0.0"
+                , "[__2] done"
+                ]
+           in setVerbose $
+                goalOrder goals $
+                  mkTest db "update conflict set after skipping version - 2" ["A", "B"] $
+                    SolverResult (isInfixOf msg) $
+                      Right [("A", 1), ("B", 1)]
+      ]
+  , -- Tests for the contents of the solver's log
+    testGroup
+      "Solver log"
+      [ -- See issue #3203. The solver should only choose a version for A once.
+        runTest $
+          let db = [Right $ exAv "A" 1 []]
 
         , let checkFullLog =
                   any $ isInfixOf "rejecting: pkg:-flag (manual flag can only be changed explicitly)"
@@ -1130,16 +1921,10 @@ dbBase = [
     ]
 
 dbNonupgrade :: ExampleDb
-dbNonupgrade = [
-    Left $ exInst "ghc" 1 "ghc-1" []
-  , Left $ exInst "ghci" 1 "ghci-1" []
-  , Left $ exInst "ghc-boot" 1 "ghc-boot-1" []
+dbNonupgrade =
+  [ Left $ exInst "ghc" 1 "ghc-1" []
   , Right $ exAv "ghc" 2 []
-  , Right $ exAv "ghci" 2 []
-  , Right $ exAv "ghc-boot" 2 []
   , Right $ exAv "A" 1 [ExFix "ghc" 2]
-  , Right $ exAv "B" 1 [ExFix "ghci" 2]
-  , Right $ exAv "C" 1 [ExFix "ghc-boot" 2]
   ]
 
 db13 :: ExampleDb
