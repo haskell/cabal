@@ -262,13 +262,14 @@ updateRepo verbosity _updateFlags repoCtxt (repo, indexState) = do
       -- NB: always update the timestamp, even if we didn't actually
       -- download anything
       writeIndexTimestamp index indexState
-      ce <-
-        if repoContextIgnoreExpiry repoCtxt
-          then Just `fmap` getCurrentTime
-          else return Nothing
-      updated <- Sec.uncheckClientErrors $ Sec.checkForUpdates repoSecure ce
-      -- this resolves indexState (which could be HEAD) into a timestamp
-      new_ts <- currentIndexTimestamp (lessVerbose verbosity) repoCtxt repo
+
+      updated <- do
+        ce <-
+          if repoContextIgnoreExpiry repoCtxt
+            then Just <$> getCurrentTime
+            else return Nothing
+        Sec.uncheckClientErrors $ Sec.checkForUpdates repoSecure ce
+
       let rname = remoteRepoName (repoRemote repo)
 
       -- Update cabal's internal index as well so that it's not out of sync
@@ -277,13 +278,19 @@ updateRepo verbosity _updateFlags repoCtxt (repo, indexState) = do
         Sec.NoUpdates -> do
           now <- getCurrentTime
           setModificationTime (indexBaseName repo <.> "tar") now
-            `catchIO` (\e -> warn verbosity $ "Could not set modification time of index tarball -- " ++ displayException e)
+            `catchIO` \e ->
+              warn verbosity $ "Could not set modification time of index tarball -- " ++ displayException e
           noticeNoWrap verbosity $
             "Package list of " ++ prettyShow rname ++ " is up to date."
         Sec.HasUpdates -> do
           updateRepoIndexCache verbosity index
           noticeNoWrap verbosity $
             "Package list of " ++ prettyShow rname ++ " has been updated."
+
+      -- This resolves indexState (which could be HEAD) into a timestamp
+      -- This could be null but should not be, since the above guarantees
+      -- we have an updated index.
+      new_ts <- currentIndexTimestamp (lessVerbose verbosity) index
 
       noticeNoWrap verbosity $
         "The index-state is set to " ++ prettyShow (IndexStateTime new_ts) ++ "."

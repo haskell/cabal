@@ -948,6 +948,10 @@ withIndexEntries verbosity index callback _ = do
     toCache (Pkg (BuildTreeRef refType _ _ _ blockNo)) = CacheBuildTreeRef refType blockNo
     toCache (Dep d) = CachePreference d 0 NoTimestamp
 
+-- | Read package data from a repository.
+-- Throws IOException if any arise while accessing the index
+-- (unless the repo is local+no-index) and dies if the cache
+-- is corrupted and cannot be regereated correctly.
 readPackageIndexCacheFile
   :: Package pkg
   => Verbosity
@@ -961,11 +965,17 @@ readPackageIndexCacheFile verbosity mkPkg index idxState
       (pkgs, prefs) <- packageNoIndexFromCache verbosity mkPkg cache0
       pure (pkgs, prefs, emptyStateInfo)
   | otherwise = do
-      cache0 <- readIndexCache verbosity index
+      (cache, isi) <- getIndexCache verbosity index idxState
       indexHnd <- openFile (indexFile index) ReadMode
-      let (cache, isi) = filterCache idxState cache0
       (pkgs, deps) <- packageIndexFromCache verbosity mkPkg indexHnd cache
       pure (pkgs, deps, isi)
+
+-- | Read 'Cache' and 'IndexStateInfo' from the repository index file.
+-- Throws IOException if any arise (e.g. the index or its cache are missing).
+-- Dies if the index cache is corrupted and cannot be regenerated correctly.
+getIndexCache :: Verbosity -> Index -> RepoIndexState -> IO (Cache, IndexStateInfo)
+getIndexCache verbosity index idxState =
+  filterCache idxState <$> readIndexCache verbosity index
 
 packageIndexFromCache
   :: Package pkg
@@ -1089,7 +1099,7 @@ packageListFromCache verbosity mkPkg hnd Cache{..} = accum mempty [] mempty cach
 ------------------------------------------------------------------------
 -- Index cache data structure --
 
--- | Read the 'Index' cache from the filesystem
+-- | Read a repository cache from the filesystem
 --
 -- If a corrupted index cache is detected this function regenerates
 -- the index cache and then reattempt to read the index once (and
@@ -1112,6 +1122,11 @@ readIndexCache verbosity index = do
       either (dieWithException verbosity . CorruptedIndexCache) (return . hashConsCache) =<< readIndexCache' index
     Right res -> return (hashConsCache res)
 
+-- | Read a no-index repository cache from the filesystem
+--
+-- If a corrupted index cache is detected this function regenerates
+-- the index cache and then reattempt to read the index once (and
+-- 'die's if it fails again). Throws IOException if any arise.
 readNoIndexCache :: Verbosity -> Index -> IO NoIndexCache
 readNoIndexCache verbosity index = do
   cacheOrFail <- readNoIndexCache' index
@@ -1132,11 +1147,12 @@ readNoIndexCache verbosity index = do
     -- we don't hash cons local repository cache, they are hopefully small
     Right res -> return res
 
--- | Read the 'Index' cache from the filesystem without attempting to
--- regenerate on parsing failures.
+-- | Read the 'Index' cache from the filesystem. Throws IO exceptions
+-- if any arise and returns Left on invalid input.
 readIndexCache' :: Index -> IO (Either String Cache)
 readIndexCache' index
-  | is01Index index = structuredDecodeFileOrFail (cacheFile index)
+  | is01Index index =
+      structuredDecodeFileOrFail (cacheFile index)
   | otherwise =
       Right . read00IndexCache <$> BSS.readFile (cacheFile index)
 
@@ -1161,15 +1177,27 @@ writeIndexTimestamp index st =
   writeFile (timestampFile index) (prettyShow st)
 
 -- | Read out the "current" index timestamp, i.e., what
--- timestamp you would use to revert to this version
-currentIndexTimestamp :: Verbosity -> RepoContext -> Repo -> IO Timestamp
-currentIndexTimestamp verbosity repoCtxt r = do
-  mb_is <- readIndexTimestamp verbosity (RepoIndex repoCtxt r)
+-- timestamp you would use to revert to this version.
+--
+-- Note: this is not the same as 'readIndexTimestamp'!
+-- This resolves HEAD to the the index isiHeadTime, i.e.
+-- the index latest known timestamp.
+--
+-- Return NoTimestamp if the index has never been updated.
+currentIndexTimestamp :: Verbosity -> Index -> IO Timestamp
+currentIndexTimestamp verbosity index = do
+  mb_is <- readIndexTimestamp verbosity index
   case mb_is of
-    Just (IndexStateTime ts) -> return ts
-    _ -> do
-      (_, _, isi) <- readRepoIndex verbosity repoCtxt r IndexStateHead
-      return (isiHeadTime isi)
+    -- If the index timestamp file specifies an index state time, use that
+    Just (IndexStateTime ts) ->
+      return ts
+    -- Otherwise used the head time as stored in the index cache
+    _otherwise ->
+      fmap (isiHeadTime . snd) (getIndexCache verbosity index IndexStateHead)
+        `catchIO` \e ->
+          if isDoesNotExistError e
+            then return NoTimestamp
+            else ioError e
 
 -- | Read the 'IndexState' from the filesystem
 readIndexTimestamp :: Verbosity -> Index -> IO (Maybe RepoIndexState)
