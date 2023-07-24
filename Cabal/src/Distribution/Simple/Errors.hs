@@ -70,12 +70,31 @@ data CabalException
   | PkgDumpFailed
   | FailedToParseOutput
   | CantFindSourceModule ModuleName
-  | VersionMisMatch FilePath Version FilePath Version
-  | VersionMisMatchGHC FilePath Version FilePath Version
+  | VersionMisMatchJS FilePath Version FilePath Version
+  | VersionMisMatchGHCJS FilePath Version FilePath Version
   | GlobalPackageDBLimitation
   | GlobalPackageDBSpecifiedFirst
   | MatchDirFileGlob String
   | MatchDirFileGlobErrors [String]
+  | ErrorParsingFileDoesntExist FilePath
+  | FailedParsing String
+  | NotFoundMsg
+  | UnrecognisedBuildTarget String
+  | ReportBuildTargetProblems String
+  | UnknownBuildTarget String
+  | AmbiguousBuildTarget String
+  | CheckBuildTargets String
+  | VersionMisMatchGHC FilePath Version FilePath Version
+  | CheckPackageDbStackPost76
+  | CheckPackageDbStackPre76
+  | GlobalPackageDbSpecifiedFirst
+  | CantInstallForeignLib
+  | NoSupportForPreProcessingTest TestType
+  | NoSupportForPreProcessingBenchmark BenchmarkType
+  | CantFindSourceForPreProcessFile String
+  | NoSupportPreProcessingTestExtras TestType
+  | NoSupportPreProcessingBenchmarkExtras BenchmarkType
+  | UnlitException String
   deriving (Show, Typeable)
 
 exceptionCode :: CabalException -> Int
@@ -120,12 +139,31 @@ exceptionCode e = case e of
   PkgDumpFailed{} -> 2290
   FailedToParseOutput{} -> 5500
   CantFindSourceModule{} -> 8870
-  VersionMisMatch{} -> 9001
-  VersionMisMatchGHC{} -> 4001
+  VersionMisMatchJS{} -> 9001
+  VersionMisMatchGHCJS{} -> 4001
   GlobalPackageDBLimitation{} -> 5002
   GlobalPackageDBSpecifiedFirst{} -> 3901
   MatchDirFileGlob{} -> 9760
   MatchDirFileGlobErrors{} -> 6661
+  ErrorParsingFileDoesntExist{} -> 1234
+  FailedParsing{} -> 6565
+  NotFoundMsg{} -> 8011
+  UnrecognisedBuildTarget{} -> 3410
+  ReportBuildTargetProblems{} -> 5504
+  UnknownBuildTarget{} -> 4444
+  AmbiguousBuildTarget{} -> 7865
+  CheckBuildTargets{} -> 4733
+  VersionMisMatchGHC{} -> 4000
+  CheckPackageDbStackPost76{} -> 3000
+  CheckPackageDbStackPre76{} -> 5640
+  GlobalPackageDbSpecifiedFirst{} -> 2345
+  CantInstallForeignLib{} -> 8221
+  NoSupportForPreProcessingTest{} -> 3008
+  NoSupportForPreProcessingBenchmark{} -> 6990
+  CantFindSourceForPreProcessFile{} -> 7554
+  NoSupportPreProcessingTestExtras{} -> 7886
+  NoSupportPreProcessingBenchmarkExtras{} -> 9999
+  UnlitException{} -> 5454
 
 exceptionMessage :: CabalException -> String
 exceptionMessage e = case e of
@@ -186,7 +224,7 @@ exceptionMessage e = case e of
   PkgDumpFailed -> "pkg dump failed"
   FailedToParseOutput -> "failed to parse output of 'pkg dump'"
   CantFindSourceModule moduleName -> "can't find source for module " ++ prettyShow moduleName
-  VersionMisMatch ghcjsProgPath ghcjsVersion ghcjsPkgProgPath ghcjsPkgGhcjsVersion ->
+  VersionMisMatchJS ghcjsProgPath ghcjsVersion ghcjsPkgProgPath ghcjsPkgGhcjsVersion ->
     "Version mismatch between ghcjs and ghcjs-pkg: "
       ++ show ghcjsProgPath
       ++ " is version "
@@ -195,7 +233,7 @@ exceptionMessage e = case e of
       ++ show ghcjsPkgProgPath
       ++ " is version "
       ++ prettyShow ghcjsPkgGhcjsVersion
-  VersionMisMatchGHC ghcjsProgPath ghcjsGhcVersion ghcjsPkgProgPath ghcjsPkgVersion ->
+  VersionMisMatchGHCJS ghcjsProgPath ghcjsGhcVersion ghcjsPkgProgPath ghcjsPkgVersion ->
     "Version mismatch between ghcjs and ghcjs-pkg: "
       ++ show ghcjsProgPath
       ++ " was built with GHC version "
@@ -213,3 +251,62 @@ exceptionMessage e = case e of
       ++ "specified first and cannot be specified multiple times"
   MatchDirFileGlob pathError -> pathError
   MatchDirFileGlobErrors errors -> unlines errors
+  ErrorParsingFileDoesntExist filePath -> "Error Parsing: file \"" ++ filePath ++ "\" doesn't exist. Cannot continue."
+  FailedParsing name -> "Failed parsing \"" ++ name ++ "\"."
+  NotFoundMsg ->
+    "The package has a './configure' script. "
+      ++ "If you are on Windows, This requires a "
+      ++ "Unix compatibility toolchain such as MinGW+MSYS or Cygwin. "
+      ++ "If you are not on Windows, ensure that an 'sh' command "
+      ++ "is discoverable in your path."
+  UnrecognisedBuildTarget nameTarget ->
+    nameTarget
+      ++ "Examples:\n"
+      ++ " - build foo          -- component name "
+      ++ "(library, executable, test-suite or benchmark)\n"
+      ++ " - build Data.Foo     -- module name\n"
+      ++ " - build Data/Foo.hsc -- file name\n"
+      ++ " - build lib:foo exe:foo   -- component qualified by kind\n"
+      ++ " - build foo:Data.Foo      -- module qualified by component\n"
+      ++ " - build foo:Data/Foo.hsc  -- file qualified by component"
+  ReportBuildTargetProblems errorStr -> errorStr
+  UnknownBuildTarget errorStr -> errorStr
+  AmbiguousBuildTarget errorStr -> errorStr
+  CheckBuildTargets errorStr -> errorStr
+  VersionMisMatchGHC ghcProgPath ghcVersion ghcPkgProgPath ghcPkgVersion ->
+    "Version mismatch between ghc and ghc-pkg: "
+      ++ ghcProgPath
+      ++ " is version "
+      ++ prettyShow ghcVersion
+      ++ " "
+      ++ ghcPkgProgPath
+      ++ " is version "
+      ++ prettyShow ghcPkgVersion
+  CheckPackageDbStackPost76 ->
+    "If the global package db is specified, it must be "
+      ++ "specified first and cannot be specified multiple times"
+  CheckPackageDbStackPre76 ->
+    "With current ghc versions the global package db is always used "
+      ++ "and must be listed first. This ghc limitation is lifted in GHC 7.6,"
+      ++ "see https://gitlab.haskell.org/ghc/ghc/-/issues/5977"
+  GlobalPackageDbSpecifiedFirst ->
+    "If the global package db is specified, it must be "
+      ++ "specified first and cannot be specified multiple times"
+  CantInstallForeignLib -> "Can't install foreign-library symlink on non-Linux OS"
+  NoSupportForPreProcessingTest tt ->
+    "No support for preprocessing test "
+      ++ "suite type "
+      ++ prettyShow tt
+  NoSupportForPreProcessingBenchmark tt ->
+    "No support for preprocessing benchmark "
+      ++ "type "
+      ++ prettyShow tt
+  CantFindSourceForPreProcessFile errorStr -> errorStr
+  NoSupportPreProcessingTestExtras tt ->
+    "No support for preprocessing test suite type "
+      ++ prettyShow tt
+  NoSupportPreProcessingBenchmarkExtras tt ->
+    "No support for preprocessing benchmark "
+      ++ "type "
+      ++ prettyShow tt
+  UnlitException str -> str
