@@ -153,7 +153,7 @@ configure verbosity hcPath hcPkgPath conf0 = do
 
   when (ghcjsVersion /= ghcjsPkgGhcjsVersion) $
     dieWithException verbosity $
-      VersionMisMatchJS
+      VersionMismatchJS
         (programPath ghcjsProg)
         ghcjsVersion
         (programPath ghcjsPkgProg)
@@ -161,7 +161,7 @@ configure verbosity hcPath hcPkgPath conf0 = do
 
   when (ghcjsGhcVersion /= ghcjsPkgVersion) $
     dieWithException verbosity $
-      VersionMisMatchGHCJS (programPath ghcjsProg) ghcjsGhcVersion (programPath ghcjsPkgProg) ghcjsPkgVersion
+      VersionMismatchGHCJS (programPath ghcjsProg) ghcjsGhcVersion (programPath ghcjsPkgProg) ghcjsPkgVersion
 
   -- Likewise we try to find the matching hsc2hs and haddock programs.
   let hsc2hsProgram' =

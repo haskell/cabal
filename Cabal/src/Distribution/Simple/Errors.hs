@@ -70,8 +70,8 @@ data CabalException
   | PkgDumpFailed
   | FailedToParseOutput
   | CantFindSourceModule ModuleName
-  | VersionMisMatchJS FilePath Version FilePath Version
-  | VersionMisMatchGHCJS FilePath Version FilePath Version
+  | VersionMismatchJS FilePath Version FilePath Version
+  | VersionMismatchGHCJS FilePath Version FilePath Version
   | GlobalPackageDBLimitation
   | GlobalPackageDBSpecifiedFirst
   | MatchDirFileGlob String
@@ -84,7 +84,7 @@ data CabalException
   | UnknownBuildTarget String
   | AmbiguousBuildTarget String
   | CheckBuildTargets String
-  | VersionMisMatchGHC FilePath Version FilePath Version
+  | VersionMismatchGHC FilePath Version FilePath Version
   | CheckPackageDbStackPost76
   | CheckPackageDbStackPre76
   | GlobalPackageDbSpecifiedFirst
@@ -139,8 +139,8 @@ exceptionCode e = case e of
   PkgDumpFailed{} -> 2290
   FailedToParseOutput{} -> 5500
   CantFindSourceModule{} -> 8870
-  VersionMisMatchJS{} -> 9001
-  VersionMisMatchGHCJS{} -> 4001
+  VersionMismatchJS{} -> 9001
+  VersionMismatchGHCJS{} -> 4001
   GlobalPackageDBLimitation{} -> 5002
   GlobalPackageDBSpecifiedFirst{} -> 3901
   MatchDirFileGlob{} -> 9760
@@ -153,7 +153,7 @@ exceptionCode e = case e of
   UnknownBuildTarget{} -> 4444
   AmbiguousBuildTarget{} -> 7865
   CheckBuildTargets{} -> 4733
-  VersionMisMatchGHC{} -> 4000
+  VersionMismatchGHC{} -> 4000
   CheckPackageDbStackPost76{} -> 3000
   CheckPackageDbStackPre76{} -> 5640
   GlobalPackageDbSpecifiedFirst{} -> 2345
@@ -224,7 +224,7 @@ exceptionMessage e = case e of
   PkgDumpFailed -> "pkg dump failed"
   FailedToParseOutput -> "failed to parse output of 'pkg dump'"
   CantFindSourceModule moduleName -> "can't find source for module " ++ prettyShow moduleName
-  VersionMisMatchJS ghcjsProgPath ghcjsVersion ghcjsPkgProgPath ghcjsPkgGhcjsVersion ->
+  VersionMismatchJS ghcjsProgPath ghcjsVersion ghcjsPkgProgPath ghcjsPkgGhcjsVersion ->
     "Version mismatch between ghcjs and ghcjs-pkg: "
       ++ show ghcjsProgPath
       ++ " is version "
@@ -233,7 +233,7 @@ exceptionMessage e = case e of
       ++ show ghcjsPkgProgPath
       ++ " is version "
       ++ prettyShow ghcjsPkgGhcjsVersion
-  VersionMisMatchGHCJS ghcjsProgPath ghcjsGhcVersion ghcjsPkgProgPath ghcjsPkgVersion ->
+  VersionMismatchGHCJS ghcjsProgPath ghcjsGhcVersion ghcjsPkgProgPath ghcjsPkgVersion ->
     "Version mismatch between ghcjs and ghcjs-pkg: "
       ++ show ghcjsProgPath
       ++ " was built with GHC version "
@@ -273,7 +273,7 @@ exceptionMessage e = case e of
   UnknownBuildTarget errorStr -> errorStr
   AmbiguousBuildTarget errorStr -> errorStr
   CheckBuildTargets errorStr -> errorStr
-  VersionMisMatchGHC ghcProgPath ghcVersion ghcPkgProgPath ghcPkgVersion ->
+  VersionMismatchGHC ghcProgPath ghcVersion ghcPkgProgPath ghcPkgVersion ->
     "Version mismatch between ghc and ghc-pkg: "
       ++ ghcProgPath
       ++ " is version "

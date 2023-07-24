@@ -197,7 +197,7 @@ configure verbosity hcPath hcPkgPath conf0 = do
 
   when (ghcVersion /= ghcPkgVersion) $
     dieWithException verbosity $
-      VersionMisMatchGHC (programPath ghcProg) ghcVersion (programPath ghcPkgProg) ghcPkgVersion
+      VersionMismatchGHC (programPath ghcProg) ghcVersion (programPath ghcPkgProg) ghcPkgVersion
   -- Likewise we try to find the matching hsc2hs and haddock programs.
   let hsc2hsProgram' =
         hsc2hsProgram
