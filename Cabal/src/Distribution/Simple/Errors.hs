@@ -79,7 +79,7 @@ data CabalException
   | ErrorParsingFileDoesntExist FilePath
   | FailedParsing String
   | NotFoundMsg
-  | UnrecognisedBuildTarget String
+  | UnrecognisedBuildTarget [String]
   | ReportBuildTargetProblems String
   | UnknownBuildTarget String
   | AmbiguousBuildTarget String
@@ -259,8 +259,11 @@ exceptionMessage e = case e of
       ++ "Unix compatibility toolchain such as MinGW+MSYS or Cygwin. "
       ++ "If you are not on Windows, ensure that an 'sh' command "
       ++ "is discoverable in your path."
-  UnrecognisedBuildTarget nameTarget ->
-    nameTarget
+  UnrecognisedBuildTarget target ->
+    unlines
+      [ "Unrecognised build target '" ++ name ++ "'."
+      | name <- target
+      ]
       ++ "Examples:\n"
       ++ " - build foo          -- component name "
       ++ "(library, executable, test-suite or benchmark)\n"

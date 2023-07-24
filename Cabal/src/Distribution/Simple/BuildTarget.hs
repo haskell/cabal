@@ -247,11 +247,7 @@ reportUserBuildTargetProblems verbosity problems = do
     [] -> return ()
     target ->
       dieWithException verbosity $
-        UnrecognisedBuildTarget $
-          unlines
-            [ "Unrecognised build target '" ++ name ++ "'."
-            | name <- target
-            ]
+        UnrecognisedBuildTarget target
 
 showUserBuildTarget :: UserBuildTarget -> String
 showUserBuildTarget = intercalate ":" . getComponents
