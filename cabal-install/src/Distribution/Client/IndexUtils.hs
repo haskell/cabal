@@ -951,7 +951,7 @@ withIndexEntries verbosity index callback _ = do
 -- | Read package data from a repository.
 -- Throws IOException if any arise while accessing the index
 -- (unless the repo is local+no-index) and dies if the cache
--- is corrupted and cannot be regereated correctly.
+-- is corrupted and cannot be regenerated correctly.
 readPackageIndexCacheFile
   :: Package pkg
   => Verbosity
@@ -1125,7 +1125,7 @@ readIndexCache verbosity index = do
 -- | Read a no-index repository cache from the filesystem
 --
 -- If a corrupted index cache is detected this function regenerates
--- the index cache and then reattempt to read the index once (and
+-- the index cache and then reattempts to read the index once (and
 -- 'die's if it fails again). Throws IOException if any arise.
 readNoIndexCache :: Verbosity -> Index -> IO NoIndexCache
 readNoIndexCache verbosity index = do
@@ -1180,7 +1180,7 @@ writeIndexTimestamp index st =
 -- timestamp you would use to revert to this version.
 --
 -- Note: this is not the same as 'readIndexTimestamp'!
--- This resolves HEAD to the the index isiHeadTime, i.e.
+-- This resolves HEAD to the index's 'isiHeadTime', i.e.
 -- the index latest known timestamp.
 --
 -- Return NoTimestamp if the index has never been updated.
