@@ -1,0 +1,6 @@
+cabal-version:      3.4
+name:               p
+Version:            2
+Build-Type:         Simple
+
+library
