@@ -12,7 +12,6 @@ module Distribution.Solver.Modular.Preference
     , preferLinked
     , preferPackagePreferences
     , preferReallyEasyGoalChoices
-    , requireInstalled
     , onlyConstrained
     , sortGoals
     , pruneAfterFirstSuccess
@@ -317,18 +316,6 @@ enforceManualFlags pcs = go
 
       in W.mapWithKey (restrictToggling d flagConstraintValues) ts
     go x                                                            = x
-
--- | Require installed packages.
-requireInstalled :: (PN -> Bool) -> EndoTreeTrav d c
-requireInstalled p = go
-  where
-    go (PChoiceF v@(Q _ pn) rdm gr cs)
-      | p pn      = PChoiceF v rdm gr (W.mapWithKey installed cs)
-      | otherwise = PChoiceF v rdm gr                         cs
-      where
-        installed (POption (I _ (Inst _)) _) x = x
-        installed _ _ = Fail (varToConflictSet (P v)) CannotInstall
-    go x          = x
 
 -- | Avoid reinstalls.
 --
