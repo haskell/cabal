@@ -364,7 +364,7 @@ checkBuildInfoPathsContent :: Monad m => BuildInfo -> CheckM m ()
 checkBuildInfoPathsContent bi = do
   mapM_ checkLang (allLanguages bi)
   mapM_ checkExt (allExtensions bi)
-  mapM_ checkDep (targetBuildDepends bi)
+  mapM_ checkIntDep (targetBuildDepends bi)
   df <- asksCM ccDesugar
   -- This way we can use the same function for legacy&non exedeps.
   let ds = buildToolDepends bi ++ catMaybes (map df $ buildTools bi)
@@ -387,8 +387,8 @@ checkBuildInfoPathsContent bi = do
         (not . null $ dss)
         (PackageDistSuspicious $ DeprecatedExtensions dss)
 
-    checkDep :: Monad m => Dependency -> CheckM m ()
-    checkDep d@(Dependency name vrange _) = do
+    checkIntDep :: Monad m => Dependency -> CheckM m ()
+    checkIntDep d@(Dependency name vrange _) = do
       mpn <-
         asksCM
           ( packageNameToUnqualComponentName
@@ -400,7 +400,11 @@ checkBuildInfoPathsContent bi = do
       pVer <- asksCM (pkgVersion . pnPackageId . ccNames)
       let allLibNs = mpn : lns
       when
-        (packageNameToUnqualComponentName name `elem` allLibNs)
+        ( mpn == packageNameToUnqualComponentName name
+            -- Make sure it is not a library with the
+            -- same name from another package.
+            && packageNameToUnqualComponentName name `elem` allLibNs
+        )
         ( checkP
             (not $ pVer `withinRange` vrange)
             (PackageBuildImpossible $ ImpossibleInternalDep [d])
