@@ -777,12 +777,6 @@ resolveDependencies
   -> Solver
   -> DepResolverParams
   -> Progress String String SolverInstallPlan
--- TODO: is this needed here? see dontInstallNonReinstallablePackages
-resolveDependencies platform comp _pkgConfigDB _solver params
-  | Set.null (depResolverTargets params) =
-      return (validateSolverResult platform comp indGoals [])
-  where
-    indGoals = depResolverIndependentGoals params
 resolveDependencies platform comp pkgConfigDB solver params =
   Step (showDepResolverParams finalparams) $
     fmap (validateSolverResult platform comp indGoals) $
