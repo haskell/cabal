@@ -2568,7 +2568,7 @@ Configuration Flags
 Conditional Blocks
 ^^^^^^^^^^^^^^^^^^
 
-Conditional blocks may appear anywhere inside a library or executable
+Conditional blocks may appear anywhere inside a component or common
 section. They have to follow rather strict formatting rules. Conditional
 blocks must always be of the shape
 
