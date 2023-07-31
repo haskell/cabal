@@ -9,6 +9,7 @@ data Z = Z
   , zVersionDigits :: String
   , zSynopsis :: String
   , zCopyright :: String
+  , zLicense :: String
   , zHomepage :: String
   , zSupportsNoRebindableSyntax :: Bool
   }
@@ -31,6 +32,7 @@ render z_root = execWriter $ do
   tell "    version,\n"
   tell "    synopsis,\n"
   tell "    copyright,\n"
+  tell "    license, \n"
   tell "    homepage,\n"
   tell "  ) where\n"
   tell "\n"
@@ -53,6 +55,10 @@ render z_root = execWriter $ do
   tell "copyright :: String\n"
   tell "copyright = "
   tell (show $ zCopyright z_root)
+  tell "\n"
+  tell "license :: String\n"
+  tell "license = "
+  tell (show $ zLicense z_root)
   tell "\n"
   tell "homepage :: String\n"
   tell "homepage = "
