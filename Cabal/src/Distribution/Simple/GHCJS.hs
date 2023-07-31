@@ -1556,13 +1556,6 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
                   , ghcOptFPic = toFlag True
                   , ghcOptLinkModDefFiles = toNubListR $ gbuildModDefFiles bm
                   }
-                -- See Note [RPATH]
-                `mappend` ifNeedsRPathWorkaround
-                  lbi
-                  mempty
-                    { ghcOptLinkOptions = ["-Wl,--no-as-needed"]
-                    , ghcOptLinkLibs = ["ffi"]
-                    }
             ForeignLibNativeStatic ->
               -- this should be caught by buildFLib
               -- (and if we do implement this, we probably don't even want to call
@@ -1577,82 +1570,6 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
       let buildName = flibBuildName lbi flib
       runGhcProg linkOpts{ghcOptOutputFile = toFlag (targetDir </> buildName)}
       renameFile (targetDir </> buildName) (targetDir </> targetName)
-
-{-
-Note [RPATH]
-~~~~~~~~~~~~
-
-Suppose that the dynamic library depends on `base`, but not (directly) on
-`integer-gmp` (which, however, is a dependency of `base`). We will link the
-library as
-
-    gcc ... -lHSbase-4.7.0.2-ghc7.8.4 -lHSinteger-gmp-0.5.1.0-ghc7.8.4 ...
-
-However, on systems (like Ubuntu) where the linker gets called with `-as-needed`
-by default, the linker will notice that `integer-gmp` isn't actually a direct
-dependency and hence omit the link.
-
-Then when we attempt to link a C program against this dynamic library, the
-_static_ linker will attempt to verify that all symbols can be resolved.  The
-dynamic library itself does not require any symbols from `integer-gmp`, but
-`base` does. In order to verify that the symbols used by `base` can be
-resolved, the static linker needs to be able to _find_ integer-gmp.
-
-Finding the `base` dependency is simple, because the dynamic elf header
-(`readelf -d`) for the library that we have created looks something like
-
-    (NEEDED) Shared library: [libHSbase-4.7.0.2-ghc7.8.4.so]
-    (RPATH)  Library rpath: [/path/to/base-4.7.0.2:...]
-
-However, when it comes to resolving the dependency on `integer-gmp`, it needs
-to look at the dynamic header for `base`. On modern ghc (7.8 and higher) this
-looks something like
-
-    (NEEDED) Shared library: [libHSinteger-gmp-0.5.1.0-ghc7.8.4.so]
-    (RPATH)  Library rpath: [$ORIGIN/../integer-gmp-0.5.1.0:...]
-
-This specifies the location of `integer-gmp` _in terms of_ the location of base
-(using the `$ORIGIN`) variable. But here's the crux: when the static linker
-attempts to verify that all symbols can be resolved, [**IT DOES NOT RESOLVE
-`$ORIGIN`**](http://stackoverflow.com/questions/6323603/ld-using-rpath-origin-inside-a-shared-library-recursive).
-As a consequence, it will not be able to resolve the symbols and report the
-missing symbols as errors, _even though the dynamic linker **would** be able to
-resolve these symbols_. We can tell the static linker not to report these
-errors by using `--unresolved-symbols=ignore-all` and all will be fine when we
-run the program ([(indeed, this is what the gold linker
-does)](https://sourceware.org/ml/binutils/2013-05/msg00038.html), but it makes
-the resulting library more difficult to use.
-
-Instead what we can do is make sure that the generated dynamic library has
-explicit top-level dependencies on these libraries. This means that the static
-linker knows where to find them, and when we have transitive dependencies on
-the same libraries the linker will only load them once, so we avoid needing to
-look at the `RPATH` of our dependencies. We can do this by passing
-`--no-as-needed` to the linker, so that it doesn't omit any libraries.
-
-Note that on older ghc (7.6 and before) the Haskell libraries don't have an
-RPATH set at all, which makes it even more important that we make these
-top-level dependencies.
-
-Finally, we have to explicitly link against `libffi` for the same reason. For
-newer ghc this _happens_ to be unnecessary on many systems because `libffi` is
-a library which is not specific to GHC, and when the static linker verifies
-that all symbols can be resolved it will find the `libffi` that is globally
-installed (completely independent from ghc). Of course, this may well be the
-_wrong_ version of `libffi`, but it's quite possible that symbol resolution
-happens to work. This is of course the wrong approach, which is why we link
-explicitly against `libffi` so that we will find the _right_ version of
-`libffi`.
--}
-
--- | Do we need the RPATH workaround?
---
--- See Note [RPATH].
-ifNeedsRPathWorkaround :: Monoid a => LocalBuildInfo -> a -> a
-ifNeedsRPathWorkaround lbi a =
-  case hostPlatform lbi of
-    Platform _ Linux -> a
-    _otherwise -> mempty
 
 data DynamicRtsInfo = DynamicRtsInfo
   { dynRtsVanillaLib :: FilePath
