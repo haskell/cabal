@@ -80,9 +80,9 @@ data CabalException
   | FailedParsing String
   | NotFoundMsg
   | UnrecognisedBuildTarget [String]
-  | ReportBuildTargetProblems String
-  | UnknownBuildTarget String
-  | AmbiguousBuildTarget String
+  | ReportBuildTargetProblems [(String, [String], String)]
+  | UnknownBuildTarget [(String, [(String, String)])]
+  | AmbiguousBuildTarget [(String, [(String, String)])]
   | CheckBuildTargets String
   | VersionMismatchGHC FilePath Version FilePath Version
   | CheckPackageDbStackPost76
@@ -272,9 +272,49 @@ exceptionMessage e = case e of
       ++ " - build lib:foo exe:foo   -- component qualified by kind\n"
       ++ " - build foo:Data.Foo      -- module qualified by component\n"
       ++ " - build foo:Data/Foo.hsc  -- file qualified by component"
-  ReportBuildTargetProblems errorStr -> errorStr
-  UnknownBuildTarget errorStr -> errorStr
-  AmbiguousBuildTarget errorStr -> errorStr
+  ReportBuildTargetProblems targets ->
+    unlines
+      [ "Unrecognised build target '"
+        ++ target
+        ++ "'.\n"
+        ++ "Expected a "
+        ++ intercalate " or " expected
+        ++ ", rather than '"
+        ++ got
+        ++ "'."
+      | (target, expected, got) <- targets
+      ]
+  UnknownBuildTarget targets ->
+    unlines
+      [ "Unknown build target '"
+        ++ target
+        ++ "'.\nThere is no "
+        ++ intercalate
+          " or "
+          [ mungeThing thing ++ " '" ++ got ++ "'"
+          | (thing, got) <- nosuch
+          ]
+        ++ "."
+      | (target, nosuch) <- targets
+      ]
+    where
+      mungeThing "file" = "file target"
+      mungeThing thing = thing
+  AmbiguousBuildTarget targets ->
+    unlines
+      [ "Ambiguous build target '"
+        ++ target
+        ++ "'. It could be:\n "
+        ++ unlines
+          [ "   "
+            ++ ut
+            ++ " ("
+            ++ bt
+            ++ ")"
+          | (ut, bt) <- amb
+          ]
+      | (target, amb) <- targets
+      ]
   CheckBuildTargets errorStr -> errorStr
   VersionMismatchGHC ghcProgPath ghcVersion ghcPkgProgPath ghcPkgVersion ->
     "Version mismatch between ghc and ghc-pkg: "

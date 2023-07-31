@@ -398,59 +398,27 @@ reportBuildTargetProblems verbosity problems = do
     targets ->
       dieWithException verbosity $
         ReportBuildTargetProblems $
-          unlines
-            [ "Unrecognised build target '"
-              ++ showUserBuildTarget target
-              ++ "'.\n"
-              ++ "Expected a "
-              ++ intercalate " or " expected
-              ++ ", rather than '"
-              ++ got
-              ++ "'."
-            | (target, expected, got) <- targets
-            ]
+          map (\(target, expected, got) -> (showUserBuildTarget target, expected, got)) targets
 
   case [(t, e) | BuildTargetNoSuch t e <- problems] of
     [] -> return ()
     targets ->
       dieWithException verbosity $
         UnknownBuildTarget $
-          -- die' verbosity $
-          unlines
-            [ "Unknown build target '"
-              ++ showUserBuildTarget target
-              ++ "'.\nThere is no "
-              ++ intercalate
-                " or "
-                [ mungeThing thing ++ " '" ++ got ++ "'"
-                | (thing, got) <- nosuch
-                ]
-              ++ "."
-            | (target, nosuch) <- targets
-            ]
-      where
-        mungeThing "file" = "file target"
-        mungeThing thing = thing
+          map (\(target, nosuch) -> (showUserBuildTarget target, nosuch)) targets
 
   case [(t, ts) | BuildTargetAmbiguous t ts <- problems] of
     [] -> return ()
     targets ->
       dieWithException verbosity $
         AmbiguousBuildTarget $
-          unlines
-            [ "Ambiguous build target '"
-              ++ showUserBuildTarget target
-              ++ "'. It could be:\n "
-              ++ unlines
-                [ "   "
-                  ++ showUserBuildTarget ut
-                  ++ " ("
-                  ++ showBuildTargetKind bt
-                  ++ ")"
-                | (ut, bt) <- amb
-                ]
-            | (target, amb) <- targets
-            ]
+          map
+            ( \(target, amb) ->
+                ( showUserBuildTarget target
+                , (map (\(ut, bt) -> (showUserBuildTarget ut, showBuildTargetKind bt)) amb)
+                )
+            )
+            targets
   where
     showBuildTargetKind (BuildTargetComponent _) = "component"
     showBuildTargetKind (BuildTargetModule _ _) = "module"
