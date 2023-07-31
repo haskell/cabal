@@ -22,6 +22,7 @@ import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.Simple.Compiler
 import Distribution.Simple.LocalBuildInfo
+import Distribution.Pretty ( prettyShow )
 import Distribution.Utils.ShortText
 import Distribution.Version
 
@@ -41,6 +42,7 @@ generatePackageInfoModule pkg_descr lbi =
       , Z.zVersionDigits = show $ versionNumbers $ packageVersion pkg_descr
       , Z.zSynopsis = fromShortText $ synopsis pkg_descr
       , Z.zCopyright = fromShortText $ copyright pkg_descr
+      , Z.zLicense = prettyShow $ license pkg_descr
       , Z.zHomepage = fromShortText $ homepage pkg_descr
       , Z.zSupportsNoRebindableSyntax = supports_rebindable_syntax
       }
