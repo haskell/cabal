@@ -25,6 +25,7 @@ $(capture "decls" [d|
     data Z = Z
         { zPackageName                :: PackageName
         , zVersionDigits              :: String
+        , zLicenseFiles               :: String
         , zSupportsCpp                :: Bool
         , zSupportsNoRebindableSyntax :: Bool
         , zAbsolute                   :: Bool
@@ -38,6 +39,7 @@ $(capture "decls" [d|
         , zLibdir     :: FilePath
         , zDynlibdir  :: FilePath
         , zDatadir    :: FilePath
+        , zDocdir     :: FilePath
         , zLibexecdir :: FilePath
         , zSysconfdir :: FilePath
 
