@@ -56,6 +56,8 @@ module Distribution.Verbosity
     -- * Line wrapping
   , verboseNoWrap
   , isVerboseNoWrap
+  , verboseWrap
+  , isVerboseWrap
 
     -- * Time stamps
   , verboseTimestamp
@@ -229,7 +231,9 @@ parsecVerbosity = parseIntVerbosity <|> parseStringVerbosity
       case token of
         "callsite" -> return verboseCallSite
         "callstack" -> return verboseCallStack
-        "nowrap" -> return verboseNoWrap
+        "nowrap" -> return verboseNoWrap -- This is the (new) default, but we
+        -- choose to not make the CLI break when using the legacy `+nowrap` arg.
+        "wrap" -> return verboseWrap
         "markoutput" -> return verboseMarkOutput
         "timestamp" -> return verboseTimestamp
         "stderr" -> return verboseStderr
@@ -257,7 +261,7 @@ showForCabal v
 
     showFlag VCallSite = ["+callsite"]
     showFlag VCallStack = ["+callstack"]
-    showFlag VNoWrap = ["+nowrap"]
+    showFlag VWrap = ["+wrap"]
     showFlag VMarkOutput = ["+markoutput"]
     showFlag VTimestamp = ["+timestamp"]
     showFlag VStderr = ["+stderr"]
@@ -289,7 +293,11 @@ verboseUnmarkOutput = verboseNoFlag VMarkOutput
 
 -- | Disable line-wrapping for log messages.
 verboseNoWrap :: Verbosity -> Verbosity
-verboseNoWrap = verboseFlag VNoWrap
+verboseNoWrap = verboseNoFlag VWrap
+
+-- | Enable line-wrapping for log messages.
+verboseWrap :: Verbosity -> Verbosity
+verboseWrap = verboseFlag VWrap
 
 -- | Mark the verbosity as quiet.
 verboseQuiet :: Verbosity -> Verbosity
@@ -348,7 +356,11 @@ isVerboseMarkOutput = isVerboseFlag VMarkOutput
 
 -- | Test if line-wrapping is disabled for log messages.
 isVerboseNoWrap :: Verbosity -> Bool
-isVerboseNoWrap = isVerboseFlag VNoWrap
+isVerboseNoWrap = not . isVerboseWrap
+
+-- | Test if line-wrapping is enabled for log messages.
+isVerboseWrap :: Verbosity -> Bool
+isVerboseWrap = isVerboseFlag VWrap
 
 -- | Test if we had called 'lessVerbose' on the verbosity.
 isVerboseQuiet :: Verbosity -> Bool

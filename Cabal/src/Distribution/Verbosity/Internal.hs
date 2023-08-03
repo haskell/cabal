@@ -18,12 +18,13 @@ instance Structured VerbosityLevel
 data VerbosityFlag
   = VCallStack
   | VCallSite
-  | VNoWrap
   | VMarkOutput
   | VTimestamp
   | -- | @since 3.4.0.0
     VStderr
   | VNoWarn
+  | -- | @since 3.12.1.0
+    VWrap
   deriving (Generic, Show, Read, Eq, Ord, Enum, Bounded, Typeable)
 
 instance Binary VerbosityFlag
