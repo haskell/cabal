@@ -1,34 +1,22 @@
-# Setup configure
+  # Setup configure
 Configuring p-0.1.0.0...
-# Setup build
+  # Setup build
 Preprocessing library for p-0.1.0.0..
 Building library for p-0.1.0.0..
-# Setup haddock
-<<<<<<< HEAD
+  # Setup haddock
 Preprocessing library for p-0.1.0.0..
 Running Haddock on library for p-0.1.0.0..
-Documentation created: ../setup.cabal.dist/work/p/dist/doc/html/p/index.html
-=======
-Preprocessing library for p-0.1.0.0...
-Running Haddock on library for p-0.1.0.0...
 Documentation created: ../setup.cabal.dist/work/p/dist/doc/html/p/
->>>>>>> 1b89c1bf5 (Removed some haddock-project options)
-# Setup copy
-Installing library in <PATH>
-# Setup register
+  # Setup copy
+  Installing library in <PATH>
+  # Setup register
 Registering library for p-0.1.0.0..
-# Setup configure
+  # Setup configure
 Configuring q-0.1.0.0...
-# Setup build
+  # Setup build
 Preprocessing library for q-0.1.0.0..
 Building library for q-0.1.0.0..
-# Setup haddock
-<<<<<<< HEAD
+  # Setup haddock
 Preprocessing library for q-0.1.0.0..
 Running Haddock on library for q-0.1.0.0..
-Documentation created: ../setup.cabal.dist/work/q/dist/doc/html/q/index.html
-=======
-Preprocessing library for q-0.1.0.0...
-Running Haddock on library for q-0.1.0.0...
 Documentation created: ../setup.cabal.dist/work/q/dist/doc/html/q/
->>>>>>> 1b89c1bf5 (Removed some haddock-project options)

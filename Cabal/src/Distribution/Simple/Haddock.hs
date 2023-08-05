@@ -358,17 +358,10 @@ createHaddockIndex :: Verbosity
                    -> HaddockProjectFlags
                    -> IO ()
 createHaddockIndex verbosity programDb comp platform flags = do
-<<<<<<< HEAD
-    let args = fromHaddockProjectFlags flags
-    (haddockProg, _version) <-
-      getHaddockProg verbosity programDb comp args (haddockProjectQuickJump flags)
-    runHaddock verbosity defaultTempFileOptions comp platform haddockProg False args
-=======
   let args = fromHaddockProjectFlags flags
   (haddockProg, _version) <-
     getHaddockProg verbosity programDb comp args (Flag True)
   runHaddock verbosity defaultTempFileOptions comp platform haddockProg False args
->>>>>>> 1b89c1bf5 (Removed some haddock-project options)
 
 -- ------------------------------------------------------------------------------
 -- Contributions to HaddockArgs (see also Doctest.hs for very similar code).
@@ -410,19 +403,6 @@ fromFlags env flags =
 
 fromHaddockProjectFlags :: HaddockProjectFlags -> HaddockArgs
 fromHaddockProjectFlags flags =
-<<<<<<< HEAD
-    mempty
-      { argOutputDir = Dir (fromFlag $ haddockProjectDir flags)
-      , argQuickJump = haddockProjectQuickJump flags
-      , argGenContents = haddockProjectGenContents flags
-      , argGenIndex = haddockProjectGenIndex flags
-      , argPrologueFile = haddockProjectPrologue flags
-      , argInterfaces = fromFlagOrDefault [] (haddockProjectInterfaces flags)
-      , argLinkedSource = haddockProjectLinkedSource flags
-      , argLib = haddockProjectLib flags
-      }
-
-=======
   mempty
     { argOutputDir = Dir (fromFlag $ haddockProjectDir flags)
     , argQuickJump = Flag True
@@ -433,7 +413,6 @@ fromHaddockProjectFlags flags =
     , argLinkedSource = Flag True
     , argLib = haddockProjectLib flags
     }
->>>>>>> 1b89c1bf5 (Removed some haddock-project options)
 
 fromPackageDescription :: HaddockTarget -> PackageDescription -> HaddockArgs
 fromPackageDescription haddockTarget pkg_descr = mempty
@@ -697,24 +676,6 @@ renderArgs verbosity tmpFileOpts version comp platform args k = do
             (if haddockSupportsUTF8 then Just utf8 else Nothing)
             renderedArgs
             (\responseFileName -> k (["@" ++ responseFileName], result))
-<<<<<<< HEAD
-        else
-          k (renderedArgs, result)
-    where
-      outputDir = (unDir $ argOutputDir args)
-      result = intercalate ", "
-             . map (\o -> outputDir </>
-                            case o of
-                              Html -> "index.html"
-                              Hoogle -> pkgstr <.> "txt")
-             . fromFlagOrDefault [Html]
-             . argOutput
-             $ args
-            where
-              pkgstr = prettyShow $ packageName pkgid
-              pkgid = arg argPackageName
-      arg f = fromFlag $ f args
-=======
         else k (renderedArgs, result)
   where
     outputDir = (unDir $ argOutputDir args)
@@ -739,7 +700,6 @@ renderArgs verbosity tmpFileOpts version comp platform args k = do
         pkgstr = prettyShow $ packageName pkgid
         pkgid = arg argPackageName
     arg f = fromFlag $ f args
->>>>>>> 1b89c1bf5 (Removed some haddock-project options)
 
 renderPureArgs :: Version -> Compiler -> Platform -> HaddockArgs -> [String]
 renderPureArgs version comp platform args = concat

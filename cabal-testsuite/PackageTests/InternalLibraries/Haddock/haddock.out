@@ -16,24 +16,12 @@ Registering library 'foo-internal-before' for foo-0.1.0.0..
 Registering library for foo-0.1.0.0..
 Registering library 'foo-internal-after' for foo-0.1.0.0..
 # Setup haddock
-<<<<<<< HEAD
 Preprocessing library 'foo-internal-before' for foo-0.1.0.0..
 Running Haddock on library 'foo-internal-before' for foo-0.1.0.0..
-Documentation created: haddock.dist/work/dist/doc/html/foo/index.html
+Documentation created: haddock.dist/work/dist/doc/html/foo/
 Preprocessing library for foo-0.1.0.0..
 Running Haddock on library for foo-0.1.0.0..
-Documentation created: haddock.dist/work/dist/doc/html/foo/index.html
+Documentation created: haddock.dist/work/dist/doc/html/foo/
 Preprocessing library 'foo-internal-after' for foo-0.1.0.0..
 Running Haddock on library 'foo-internal-after' for foo-0.1.0.0..
-Documentation created: haddock.dist/work/dist/doc/html/foo/index.html
-=======
-Preprocessing library 'foo-internal-before' for foo-0.1.0.0...
-Running Haddock on library 'foo-internal-before' for foo-0.1.0.0...
 Documentation created: haddock.dist/work/dist/doc/html/foo/
-Preprocessing library for foo-0.1.0.0...
-Running Haddock on library for foo-0.1.0.0...
-Documentation created: haddock.dist/work/dist/doc/html/foo/
-Preprocessing library 'foo-internal-after' for foo-0.1.0.0...
-Running Haddock on library 'foo-internal-after' for foo-0.1.0.0...
-Documentation created: haddock.dist/work/dist/doc/html/foo/
->>>>>>> 1b89c1bf5 (Removed some haddock-project options)

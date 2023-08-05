@@ -7,13 +7,8 @@ for sigs-0.1.0.0..
 # Setup haddock
 Preprocessing library for sigs-0.1.0.0..
 Running Haddock on library instantiated with Data.Map = <Data.Map>
-<<<<<<< HEAD
 for sigs-0.1.0.0..
-Documentation created: ../../setup-external-explicit.dist/work/repo/sigs-0.1.0.0/dist/doc/html/sigs/index.html
-=======
-for sigs-0.1.0.0...
 Documentation created: ../../setup-external-explicit.dist/work/repo/sigs-0.1.0.0/dist/doc/html/sigs/
->>>>>>> 1b89c1bf5 (Removed some haddock-project options)
 # Setup copy
 Installing library in <PATH>
 # Setup register
@@ -28,13 +23,8 @@ for indef-0.1.0.0..
 # Setup haddock
 Preprocessing library for indef-0.1.0.0..
 Running Haddock on library instantiated with Data.Map = <Data.Map>
-<<<<<<< HEAD
 for indef-0.1.0.0..
-Documentation created: ../../setup-external-explicit.dist/work/repo/indef-0.1.0.0/dist/doc/html/indef/index.html
-=======
-for indef-0.1.0.0...
 Documentation created: ../../setup-external-explicit.dist/work/repo/indef-0.1.0.0/dist/doc/html/indef/
->>>>>>> 1b89c1bf5 (Removed some haddock-project options)
 # Setup copy
 Installing library in <PATH>
 # Setup register

@@ -4,15 +4,9 @@ Configuring p-0.1.0.0...
 Preprocessing library for p-0.1.0.0..
 Building library for p-0.1.0.0..
 # Setup haddock
-<<<<<<< HEAD
 Preprocessing library for p-0.1.0.0..
 Running Haddock on library for p-0.1.0.0..
-Documentation created: ../setup.dist/work/p/dist/doc/html/p/index.html
-=======
-Preprocessing library for p-0.1.0.0...
-Running Haddock on library for p-0.1.0.0...
 Documentation created: ../setup.dist/work/p/dist/doc/html/p/
->>>>>>> 1b89c1bf5 (Removed some haddock-project options)
 # Setup copy
 Installing library in <PATH>
 # Setup register
@@ -23,12 +17,6 @@ Configuring q-0.1.0.0...
 Preprocessing library for q-0.1.0.0..
 Building library for q-0.1.0.0..
 # Setup haddock
-<<<<<<< HEAD
 Preprocessing library for q-0.1.0.0..
 Running Haddock on library for q-0.1.0.0..
-Documentation created: ../setup.dist/work/q/dist/doc/html/q/index.html
-=======
-Preprocessing library for q-0.1.0.0...
-Running Haddock on library for q-0.1.0.0...
 Documentation created: ../setup.dist/work/q/dist/doc/html/q/
->>>>>>> 1b89c1bf5 (Removed some haddock-project options)
