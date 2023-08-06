@@ -92,6 +92,7 @@ import Distribution.Pretty
 import Distribution.Simple.Bench
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.ConfigureScript
+import Distribution.Simple.Errors
 import Distribution.Simple.Haddock
 import Distribution.Simple.Install
 import Distribution.Simple.LocalBuildInfo
@@ -601,16 +602,10 @@ sanityCheckHookedBuildInfo
   verbosity
   (PackageDescription{library = Nothing})
   (Just _, _) =
-    die' verbosity $
-      "The buildinfo contains info for a library, "
-        ++ "but the package does not have a library."
+    dieWithException verbosity $ NoLibraryForPackage
 sanityCheckHookedBuildInfo verbosity pkg_descr (_, hookExes)
   | exe1 : _ <- nonExistant =
-      die' verbosity $
-        "The buildinfo contains info for an executable called '"
-          ++ prettyShow exe1
-          ++ "' but the package does not have a "
-          ++ "executable with that name."
+      dieWithException verbosity $ SanityCheckHookedBuildInfo exe1
   where
     pkgExeNames = nub (map exeName (executables pkg_descr))
     hookExeNames = nub (map fst hookExes)
@@ -777,7 +772,7 @@ autoconfUserHooks =
               verbosity
               flags
               lbi
-          else die' verbosity "configure script not found."
+          else dieWithException verbosity ConfigureScriptNotFound
 
         pbi <- getHookedBuildInfo verbosity (buildDir lbi)
         sanityCheckHookedBuildInfo verbosity pkg_descr pbi
