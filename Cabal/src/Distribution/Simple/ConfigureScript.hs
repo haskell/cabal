@@ -22,13 +22,13 @@ import Prelude ()
 
 -- local
 import Distribution.PackageDescription
+import Distribution.Pretty
+import Distribution.Simple.Errors
+import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Program
 import Distribution.Simple.Program.Db
 import Distribution.Simple.Setup.Common
 import Distribution.Simple.Setup.Config
-
-import Distribution.Pretty
-import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Utils
 import Distribution.System (buildPlatform)
 import Distribution.Utils.NubList
@@ -182,17 +182,10 @@ runConfigureScript verbosity flags lbi = do
         (programInvocation (sh{programOverrideEnv = overEnv}) args')
           { progInvokeCwd = Just (buildDir lbi)
           }
-    Nothing -> die' verbosity notFoundMsg
+    Nothing -> dieWithException verbosity NotFoundMsg
   where
     args = configureArgs backwardsCompatHack flags
     backwardsCompatHack = False
-
-    notFoundMsg =
-      "The package has a './configure' script. "
-        ++ "If you are on Windows, This requires a "
-        ++ "Unix compatibility toolchain such as MinGW+MSYS or Cygwin. "
-        ++ "If you are not on Windows, ensure that an 'sh' command "
-        ++ "is discoverable in your path."
 
 -- | Convert Windows path to Unix ones
 toUnix :: String -> String

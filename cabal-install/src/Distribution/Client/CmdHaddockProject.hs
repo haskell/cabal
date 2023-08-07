@@ -161,208 +161,216 @@ haddockProjectAction flags _extraArgs globalFlags = do
   -- we need.
   --
 
-  withContextAndSelectors RejectNoTargets Nothing
-                          (commandDefaultFlags CmdBuild.buildCommand)
-                          ["all"] globalFlags HaddockCommand
-                          $ \targetCtx ctx targetSelectors -> do
-    baseCtx <- case targetCtx of
-      ProjectContext -> return ctx
-      GlobalContext -> return ctx
-      ScriptContext path exemeta -> updateContextAndWriteProjectFile ctx path exemeta
-    let distLayout = distDirLayout baseCtx
-        cabalLayout = cabalDirLayout baseCtx
-    buildCtx <-
-      runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
-        -- Interpret the targets on the command line as build targets
-        -- (as opposed to say repl or haddock targets).
-        targets <-
-          either reportTargetProblems return $
-            resolveTargets
-              selectPackageTargets
-              selectComponentTargetBasic
-              elaboratedPlan
-              Nothing
-              targetSelectors
-
-        let elaboratedPlan' =
-              pruneInstallPlanToTargets
-                TargetActionBuild
-                targets
+  withContextAndSelectors
+    RejectNoTargets
+    Nothing
+    (commandDefaultFlags CmdBuild.buildCommand)
+    ["all"]
+    globalFlags
+    HaddockCommand
+    $ \targetCtx ctx targetSelectors -> do
+      baseCtx <- case targetCtx of
+        ProjectContext -> return ctx
+        GlobalContext -> return ctx
+        ScriptContext path exemeta -> updateContextAndWriteProjectFile ctx path exemeta
+      let distLayout = distDirLayout baseCtx
+          cabalLayout = cabalDirLayout baseCtx
+      buildCtx <-
+        runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
+          -- Interpret the targets on the command line as build targets
+          -- (as opposed to say repl or haddock targets).
+          targets <-
+            either reportTargetProblems return $
+              resolveTargets
+                selectPackageTargets
+                selectComponentTargetBasic
                 elaboratedPlan
-        return (elaboratedPlan', targets)
+                Nothing
+                targetSelectors
 
-    printPlan verbosity baseCtx buildCtx
+          let elaboratedPlan' =
+                pruneInstallPlanToTargets
+                  TargetActionBuild
+                  targets
+                  elaboratedPlan
+          return (elaboratedPlan', targets)
 
-    let elaboratedPlan :: ElaboratedInstallPlan
-        elaboratedPlan = elaboratedPlanOriginal buildCtx
+      printPlan verbosity baseCtx buildCtx
 
-        sharedConfig :: ElaboratedSharedConfig
-        sharedConfig = elaboratedShared buildCtx
+      let elaboratedPlan :: ElaboratedInstallPlan
+          elaboratedPlan = elaboratedPlanOriginal buildCtx
 
-        pkgs :: [Either InstalledPackageInfo ElaboratedConfiguredPackage]
-        pkgs = matchingPackages elaboratedPlan
+          sharedConfig :: ElaboratedSharedConfig
+          sharedConfig = elaboratedShared buildCtx
 
-    progs <-
-      reconfigurePrograms
-        verbosity
-        (haddockProjectProgramPaths flags)
-        (haddockProjectProgramArgs flags)
-        -- we need to insert 'haddockProgram' before we reconfigure it,
-        -- otherwise 'set
-        . addKnownProgram haddockProgram
-        . pkgConfigCompilerProgs
-        $ sharedConfig
-    let sharedConfig' = sharedConfig{pkgConfigCompilerProgs = progs}
+          pkgs :: [Either InstalledPackageInfo ElaboratedConfiguredPackage]
+          pkgs = matchingPackages elaboratedPlan
 
-    _ <-
-      requireProgramVersion
-        verbosity
-        haddockProgram
-        (orLaterVersion (mkVersion [2, 26, 1]))
-        progs
+      progs <-
+        reconfigurePrograms
+          verbosity
+          (haddockProjectProgramPaths flags)
+          (haddockProjectProgramArgs flags)
+          -- we need to insert 'haddockProgram' before we reconfigure it,
+          -- otherwise 'set
+          . addKnownProgram haddockProgram
+          . pkgConfigCompilerProgs
+          $ sharedConfig
+      let sharedConfig' = sharedConfig{pkgConfigCompilerProgs = progs}
 
-    --
-    -- Build project; we need to build dependencies.
-    -- Issue #8958.
-    --
-    
-    when localStyle $
-      CmdBuild.buildAction
-        (commandDefaultFlags CmdBuild.buildCommand)
+      _ <-
+        requireProgramVersion
+          verbosity
+          haddockProgram
+          (orLaterVersion (mkVersion [2, 26, 1]))
+          progs
+
+      --
+      -- Build project; we need to build dependencies.
+      -- Issue #8958.
+      --
+
+      when localStyle $
+        CmdBuild.buildAction
+          (commandDefaultFlags CmdBuild.buildCommand)
+          ["all"]
+          globalFlags
+
+      --
+      -- Build haddocks of each components
+      --
+
+      CmdHaddock.haddockAction
+        nixFlags
         ["all"]
         globalFlags
 
-    --
-    -- Build haddocks of each components
-    --
+      --
+      -- Copy haddocks to the destination folder
+      --
 
-    CmdHaddock.haddockAction
-      nixFlags
-      ["all"]
-      globalFlags
-
-    --
-    -- Copy haddocks to the destination folder
-    --
-
-    packageInfos <- fmap (nub . concat) $ for pkgs $ \pkg ->
-      case pkg of
-        Left _
-          | not localStyle ->
-              return []
-        Left package -> do
-          -- TODO: this might not work for public packages with sublibraries.
-          -- Issue #9026.
-          let packageName = unPackageName (pkgName $ sourcePackageId package)
-              destDir = outputDir </> packageName
-          fmap catMaybes $ for (haddockInterfaces package) $ \interfacePath -> do
-            let docDir = takeDirectory interfacePath
-            a <- doesFileExist interfacePath
-            case a of
-              True ->
-                copyDirectoryRecursive verbosity docDir destDir
-                  >> return
-                    ( Just
-                        ( packageName
-                        , interfacePath
-                        , Hidden
-                        )
-                    )
-              False -> return Nothing
-        Right package ->
-          case elabLocalToProject package of
-            True -> do
-              let distDirParams = elabDistDirParams sharedConfig' package
-                  unitId = unUnitId (elabUnitId package)
-                  buildDir = distBuildDirectory distLayout distDirParams
-                  packageName = unPackageName (pkgName $ elabPkgSourceId package)
-              let docDir =
-                    buildDir
-                      </> "doc"
-                      </> "html"
-                      </> packageName
-                  destDir = outputDir </> unitId
-                  interfacePath =
-                    destDir
-                      </> packageName
-                      <.> "haddock"
-              a <- doesDirectoryExist docDir
+      packageInfos <- fmap (nub . concat) $ for pkgs $ \pkg ->
+        case pkg of
+          Left _
+            | not localStyle ->
+                return []
+          Left package -> do
+            -- TODO: this might not work for public packages with sublibraries.
+            -- Issue #9026.
+            let packageName = unPackageName (pkgName $ sourcePackageId package)
+                destDir = outputDir </> packageName
+            fmap catMaybes $ for (haddockInterfaces package) $ \interfacePath -> do
+              let docDir = takeDirectory interfacePath
+              a <- doesFileExist interfacePath
               case a of
                 True ->
                   copyDirectoryRecursive verbosity docDir destDir
                     >> return
-                      [
-                        ( unitId
-                        , interfacePath
-                        , Visible
-                        )
-                      ]
-                False -> do
-                  warn verbosity
-                       ("haddocks of "
-                        ++ show unitId
-                        ++ " not found in the store")
-                  return []
-            False
-              | not localStyle ->
-                  return []
-            False -> do
-              let packageName = unPackageName (pkgName $ elabPkgSourceId package)
-                  unitId = unUnitId (elabUnitId package)
-                  packageDir =
-                    storePackageDirectory
-                      (cabalStoreDirLayout cabalLayout)
-                      (compilerId (pkgConfigCompiler sharedConfig'))
-                      (elabUnitId package)
-                  docDir = packageDir </> "share" </> "doc" </> "html"
-                  destDir = outputDir </> packageName
-                  interfacePath =
-                    destDir
-                      </> packageName
-                      <.> "haddock"
-              a <- doesDirectoryExist docDir
-              case a of
-                True ->
-                  copyDirectoryRecursive verbosity docDir destDir
-                    -- non local packages will be hidden in haddock's
-                    -- generated contents page
-                    >> return
-                      [
-                        ( unitId
-                        , interfacePath
-                        , Hidden
-                        )
-                      ]
-                False -> do
-                  warn verbosity
-                       ("haddocks of "
-                        ++ show unitId
-                        ++ " not found in the store")
-                  return []
+                      ( Just
+                          ( packageName
+                          , interfacePath
+                          , Hidden
+                          )
+                      )
+                False -> return Nothing
+          Right package ->
+            case elabLocalToProject package of
+              True -> do
+                let distDirParams = elabDistDirParams sharedConfig' package
+                    unitId = unUnitId (elabUnitId package)
+                    buildDir = distBuildDirectory distLayout distDirParams
+                    packageName = unPackageName (pkgName $ elabPkgSourceId package)
+                let docDir =
+                      buildDir
+                        </> "doc"
+                        </> "html"
+                        </> packageName
+                    destDir = outputDir </> unitId
+                    interfacePath =
+                      destDir
+                        </> packageName
+                        <.> "haddock"
+                a <- doesDirectoryExist docDir
+                case a of
+                  True ->
+                    copyDirectoryRecursive verbosity docDir destDir
+                      >> return
+                        [
+                          ( unitId
+                          , interfacePath
+                          , Visible
+                          )
+                        ]
+                  False -> do
+                    warn
+                      verbosity
+                      ( "haddocks of "
+                          ++ show unitId
+                          ++ " not found in the store"
+                      )
+                    return []
+              False
+                | not localStyle ->
+                    return []
+              False -> do
+                let packageName = unPackageName (pkgName $ elabPkgSourceId package)
+                    unitId = unUnitId (elabUnitId package)
+                    packageDir =
+                      storePackageDirectory
+                        (cabalStoreDirLayout cabalLayout)
+                        (compilerId (pkgConfigCompiler sharedConfig'))
+                        (elabUnitId package)
+                    docDir = packageDir </> "share" </> "doc" </> "html"
+                    destDir = outputDir </> packageName
+                    interfacePath =
+                      destDir
+                        </> packageName
+                        <.> "haddock"
+                a <- doesDirectoryExist docDir
+                case a of
+                  True ->
+                    copyDirectoryRecursive verbosity docDir destDir
+                      -- non local packages will be hidden in haddock's
+                      -- generated contents page
+                      >> return
+                        [
+                          ( unitId
+                          , interfacePath
+                          , Hidden
+                          )
+                        ]
+                  False -> do
+                    warn
+                      verbosity
+                      ( "haddocks of "
+                          ++ show unitId
+                          ++ " not found in the store"
+                      )
+                    return []
 
-    --
-    -- generate index, content, etc.
-    --
+      --
+      -- generate index, content, etc.
+      --
 
-    let flags' =
-          flags
-            { haddockProjectDir = Flag outputDir
-            , haddockProjectInterfaces =
-                Flag
-                  [ ( interfacePath
-                    , Just name
-                    , Just name
-                    , visibility
-                    )
-                  | (name, interfacePath, visibility) <- packageInfos
-                  ]
-            }
-    createHaddockIndex
-      verbosity
-      (pkgConfigCompilerProgs sharedConfig')
-      (pkgConfigCompiler sharedConfig')
-      (pkgConfigPlatform sharedConfig')
-      flags'
+      let flags' =
+            flags
+              { haddockProjectDir = Flag outputDir
+              , haddockProjectInterfaces =
+                  Flag
+                    [ ( interfacePath
+                      , Just name
+                      , Just name
+                      , visibility
+                      )
+                    | (name, interfacePath, visibility) <- packageInfos
+                    ]
+              }
+      createHaddockIndex
+        verbosity
+        (pkgConfigCompilerProgs sharedConfig')
+        (pkgConfigCompiler sharedConfig')
+        (pkgConfigPlatform sharedConfig')
+        flags'
   where
     verbosity = fromFlagOrDefault normal (haddockProjectVerbosity flags)
 

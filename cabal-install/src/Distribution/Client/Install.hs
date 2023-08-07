@@ -1790,7 +1790,7 @@ installLocalTarballPackage
         distDirExists <- doesDirectoryExist distDirPath
         when
           ( distDirExists
-              && (not $ distDirPath `equalFilePath` distDirPathNew)
+              && not (distDirPath `equalFilePath` distDirPathNew)
           )
           $ do
             -- NB: we need to handle the case when 'distDirPathNew' is a

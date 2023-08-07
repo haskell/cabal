@@ -1,2 +1,3 @@
 # cabal v2-sdist
-Error: cabal: sdist of t5195-0: filepath wildcard './actually-a-directory' does not match any files.
+Error: [Cabal-6661]
+filepath wildcard './actually-a-directory' does not match any files.

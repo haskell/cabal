@@ -59,6 +59,7 @@ import Distribution.PackageDescription.Utils (cabalBug)
 import Distribution.Pretty
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Compiler
+import Distribution.Simple.Errors
 import Distribution.Simple.Flag
 import Distribution.Simple.GHC.EnvironmentParser
 import Distribution.Simple.GHC.ImplInfo
@@ -76,9 +77,10 @@ import Distribution.Simple.Utils
 import Distribution.System
 import Distribution.Types.ComponentLocalBuildInfo
 import Distribution.Types.PackageName.Magic
+import Distribution.Types.ParStrat
 import Distribution.Utils.NubList
 import Distribution.Utils.Path
-import Distribution.Verbosity
+import Distribution.Verbosity (Verbosity)
 import Distribution.Version
 
 import Control.Monad (msum)
@@ -150,26 +152,16 @@ configure verbosity hcPath hcPkgPath conf0 = do
       (programPath ghcjsPkgProg)
 
   when (ghcjsVersion /= ghcjsPkgGhcjsVersion) $
-    die' verbosity $
-      "Version mismatch between ghcjs and ghcjs-pkg: "
-        ++ programPath ghcjsProg
-        ++ " is version "
-        ++ prettyShow ghcjsVersion
-        ++ " "
-        ++ programPath ghcjsPkgProg
-        ++ " is version "
-        ++ prettyShow ghcjsPkgGhcjsVersion
+    dieWithException verbosity $
+      VersionMismatchJS
+        (programPath ghcjsProg)
+        ghcjsVersion
+        (programPath ghcjsPkgProg)
+        ghcjsPkgGhcjsVersion
 
   when (ghcjsGhcVersion /= ghcjsPkgVersion) $
-    die' verbosity $
-      "Version mismatch between ghcjs and ghcjs-pkg: "
-        ++ programPath ghcjsProg
-        ++ " was built with GHC version "
-        ++ prettyShow ghcjsGhcVersion
-        ++ " "
-        ++ programPath ghcjsPkgProg
-        ++ " was built with GHC version "
-        ++ prettyShow ghcjsPkgVersion
+    dieWithException verbosity $
+      VersionMismatchGHCJS (programPath ghcjsProg) ghcjsGhcVersion (programPath ghcjsPkgProg) ghcjsPkgVersion
 
   -- Likewise we try to find the matching hsc2hs and haddock programs.
   let hsc2hsProgram' =
@@ -403,14 +395,9 @@ checkPackageDbStack _ (GlobalPackageDB : rest)
   | GlobalPackageDB `notElem` rest = return ()
 checkPackageDbStack verbosity rest
   | GlobalPackageDB `notElem` rest =
-      die' verbosity $
-        "With current ghc versions the global package db is always used "
-          ++ "and must be listed first. This ghc limitation may be lifted in "
-          ++ "future, see https://gitlab.haskell.org/ghc/ghc/-/issues/5977"
+      dieWithException verbosity GlobalPackageDBLimitation
 checkPackageDbStack verbosity _ =
-  die' verbosity $
-    "If the global package db is specified, it must be "
-      ++ "specified first and cannot be specified multiple times"
+  dieWithException verbosity GlobalPackageDBSpecifiedFirst
 
 getInstalledPackages'
   :: Verbosity
@@ -466,7 +453,7 @@ toJSLibName lib
 
 buildLib
   :: Verbosity
-  -> Flag (Maybe Int)
+  -> Flag ParStrat
   -> PackageDescription
   -> LocalBuildInfo
   -> Library
@@ -477,7 +464,7 @@ buildLib = buildOrReplLib Nothing
 replLib
   :: [String]
   -> Verbosity
-  -> Flag (Maybe Int)
+  -> Flag ParStrat
   -> PackageDescription
   -> LocalBuildInfo
   -> Library
@@ -488,7 +475,7 @@ replLib = buildOrReplLib . Just
 buildOrReplLib
   :: Maybe [String]
   -> Verbosity
-  -> Flag (Maybe Int)
+  -> Flag ParStrat
   -> PackageDescription
   -> LocalBuildInfo
   -> Library
@@ -889,7 +876,7 @@ startInterpreter verbosity progdb comp platform packageDBs = do
 -- | Build a foreign library
 buildFLib
   :: Verbosity
-  -> Flag (Maybe Int)
+  -> Flag ParStrat
   -> PackageDescription
   -> LocalBuildInfo
   -> ForeignLib
@@ -900,7 +887,7 @@ buildFLib v njobs pkg lbi = gbuild v njobs pkg lbi . GBuildFLib
 replFLib
   :: [String]
   -> Verbosity
-  -> Flag (Maybe Int)
+  -> Flag ParStrat
   -> PackageDescription
   -> LocalBuildInfo
   -> ForeignLib
@@ -912,7 +899,7 @@ replFLib replFlags v njobs pkg lbi =
 -- | Build an executable with GHC.
 buildExe
   :: Verbosity
-  -> Flag (Maybe Int)
+  -> Flag ParStrat
   -> PackageDescription
   -> LocalBuildInfo
   -> Executable
@@ -923,7 +910,7 @@ buildExe v njobs pkg lbi = gbuild v njobs pkg lbi . GBuildExe
 replExe
   :: [String]
   -> Verbosity
-  -> Flag (Maybe Int)
+  -> Flag ParStrat
   -> PackageDescription
   -> LocalBuildInfo
   -> Executable
@@ -1218,7 +1205,7 @@ isHaskell fp = elem (takeExtension fp) [".hs", ".lhs"]
 -- | Generic build function. See comment for 'GBuildMode'.
 gbuild
   :: Verbosity
-  -> Flag (Maybe Int)
+  -> Flag ParStrat
   -> PackageDescription
   -> LocalBuildInfo
   -> GBuildMode

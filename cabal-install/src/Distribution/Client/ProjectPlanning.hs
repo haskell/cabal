@@ -414,7 +414,7 @@ rebuildProjectConfig
           let fetchCompiler = do
                 -- have to create the cache directory before configuring the compiler
                 liftIO $ createDirectoryIfMissingVerbose verbosity True distProjectCacheDirectory
-                (compiler, Platform arch os, _) <- configureCompiler verbosity distDirLayout ((fst $ PD.ignoreConditions projectConfigSkeleton) <> cliConfig)
+                (compiler, Platform arch os, _) <- configureCompiler verbosity distDirLayout (fst (PD.ignoreConditions projectConfigSkeleton) <> cliConfig)
                 pure (os, arch, compilerInfo compiler)
 
           projectConfig <- instantiateProjectConfigSkeletonFetchingCompiler fetchCompiler mempty projectConfigSkeleton
@@ -4280,18 +4280,23 @@ setupHsConfigureArgs elab@(ElaboratedConfiguredPackage{elabPkgOrComp = ElabCompo
         (compComponentName comp)
 
 setupHsBuildFlags
-  :: ElaboratedConfiguredPackage
+  :: Flag String
+  -> ElaboratedConfiguredPackage
   -> ElaboratedSharedConfig
   -> Verbosity
   -> FilePath
   -> Cabal.BuildFlags
-setupHsBuildFlags _ _ verbosity builddir =
+setupHsBuildFlags par_strat elab _ verbosity builddir =
   Cabal.BuildFlags
     { buildProgramPaths = mempty -- unused, set at configure time
     , buildProgramArgs = mempty -- unused, set at configure time
     , buildVerbosity = toFlag verbosity
     , buildDistPref = toFlag builddir
     , buildNumJobs = mempty -- TODO: [nice to have] sometimes want to use toFlag (Just numBuildJobs),
+    , buildUseSemaphore =
+        if elabSetupScriptCliVersion elab >= mkVersion [3, 9, 0, 0]
+          then par_strat
+          else mempty
     , buildArgs = mempty -- unused, passed via args not flags
     , buildCabalFilePath = mempty
     }
@@ -4545,7 +4550,7 @@ packageHashInputs
               Set.fromList
                 ( map
                     confInstId
-                    ( (map fst $ compLibDependencies comp)
+                    ( map fst (compLibDependencies comp)
                         ++ compExeDependencies comp
                     )
                 )

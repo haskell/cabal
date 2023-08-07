@@ -20,7 +20,7 @@ import Distribution.PackageDescription.Configuration (flattenPackageDescription)
 import Distribution.Simple.PackageDescription (readGenericPackageDescription)
 import Distribution.Simple.PreProcess (knownSuffixHandlers)
 import Distribution.Simple.SrcDist (listPackageSourcesWithDie)
-import Distribution.Simple.Utils (die')
+import Distribution.Simple.Utils (die', dieWithException)
 import Distribution.Types.GenericPackageDescription (GenericPackageDescription)
 
 import qualified Codec.Archive.Tar as Tar
@@ -54,10 +54,10 @@ packageDirToSdist
   -> IO BSL.ByteString
   -- ^ resulting sdist tarball
 packageDirToSdist verbosity gpd dir = do
-  let thisDie :: Verbosity -> String -> IO a
-      thisDie v s = die' v $ "sdist of " <> prettyShow (packageId gpd) ++ ": " ++ s
+  -- let thisDie :: Verbosity -> String -> IO a
+  --    thisDie v s = die' v $ "sdist of " <> prettyShow (packageId gpd) ++ ": " ++ s
 
-  files' <- listPackageSourcesWithDie verbosity thisDie dir (flattenPackageDescription gpd) knownSuffixHandlers
+  files' <- listPackageSourcesWithDie verbosity dieWithException dir (flattenPackageDescription gpd) knownSuffixHandlers
   let files :: [FilePath]
       files = nub $ sort $ map normalise files'
 

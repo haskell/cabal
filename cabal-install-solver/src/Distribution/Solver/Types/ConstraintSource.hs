@@ -27,7 +27,7 @@ data ConstraintSource =
   | ConstraintSourceUserTarget
 
   -- | Internal requirement to use installed versions of packages like ghc-prim.
-  | ConstraintSourceNonUpgradeablePackage
+  | ConstraintSourceNonReinstallablePackage
 
   -- | Internal constraint used by @cabal freeze@.
   | ConstraintSourceFreeze
@@ -64,8 +64,8 @@ showConstraintSource (ConstraintSourceProjectConfig path) =
 showConstraintSource (ConstraintSourceUserConfig path)= "user config " ++ path
 showConstraintSource ConstraintSourceCommandlineFlag = "command line flag"
 showConstraintSource ConstraintSourceUserTarget = "user target"
-showConstraintSource ConstraintSourceNonUpgradeablePackage =
-    "non-upgradeable package"
+showConstraintSource ConstraintSourceNonReinstallablePackage =
+    "non-reinstallable package"
 showConstraintSource ConstraintSourceFreeze = "cabal freeze"
 showConstraintSource ConstraintSourceConfigFlagOrTarget =
     "config file, command line flag, or user target"

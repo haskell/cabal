@@ -1,0 +1,11 @@
+synopsis: Add `mkVersionIntervals` for creating a `VersionIntervals` from a list
+packages: Cabal-syntax
+prs: #9034
+
+description: {
+
+If external tools want to change the version intervals of dependencies, they
+need to be able to create a `VersionRange` from a `[VersionInterval]` list. Adding
+the function `mkVersionIntervals` makes this possible again.
+
+}

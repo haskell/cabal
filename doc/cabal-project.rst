@@ -243,7 +243,7 @@ package, and thus apply globally:
 
 
 .. cfg-field:: verbose: nat
-               --verbose=n, -vn
+               -v[n], --verbose[=n]
     :synopsis: Build verbosity level.
 
     :default: 1
@@ -255,7 +255,7 @@ package, and thus apply globally:
     form ``-v2`` is also supported.
 
 .. cfg-field:: jobs: nat or $ncpus
-               --jobs=n, -jn, --jobs=$ncpus
+               -j[NUM], --jobs[=NUM], --jobs=$ncpus
     :synopsis: Number of builds running in parallel.
 
     :default: 1
@@ -268,6 +268,22 @@ package, and thus apply globally:
     The command line variant of this field is ``--jobs=2``; a short form
     ``-j2`` is also supported; a bare ``--jobs`` or ``-j`` is equivalent
     to ``--jobs=$ncpus``.
+
+.. cfg-field::  semaphore: boolean
+                --semaphore
+                --no-semaphore
+    :synopsis: Use GHC's support for semaphore based parallelism.
+
+    :default: False
+
+    This option instructs cabal to control parallelism by creating a new system semaphore,
+    whose number of tokens is specified by ``--jobs`` (or ``-j``).
+    This semaphore is passed to GHC, which allows it to use any leftover parallelism
+    that ``cabal-install`` is not using.
+
+    Requires ``ghc >= 9.8``.
+
+    The command line variant of this field is ``--semaphore``.
 
 .. cfg-field::  keep-going: boolean
                 --keep-going
@@ -320,7 +336,7 @@ package, and thus apply globally:
 
     This option can only be specified from the command line.
 
-.. option:: --ignore-project
+.. option:: -z, --ignore-project
 
     Ignores the local ``cabal.project`` file and uses the default
     configuration with the local ``foo.cabal`` file. Note that
@@ -411,7 +427,8 @@ Solver configuration options
 
 The following settings control the behavior of the dependency solver:
 
-.. cfg-field:: constraints: constraints list (comma separated)
+.. cfg-field:: constraints: CONSTRAINT (comma separated list)
+               -c CONSTRAINT or -cCONSTRAINT, --constraint=CONSTRAINT
                --constraint="pkg >= 2.0", -c "pkg >= 2.0"
     :synopsis: Extra dependencies constraints.
 
@@ -438,7 +455,8 @@ The following settings control the behavior of the dependency solver:
     :option:`runhaskell Setup.hs configure --constraint`
     command line option.
 
-.. cfg-field:: preferences: preference (comma separated)
+.. cfg-field:: preferences: CONSTRAINT (comma separated list)
+               --preference=CONSTRAINT
                --preference="pkg >= 2.0"
     :synopsis: Preferred dependency versions.
 
@@ -717,6 +735,7 @@ scripts that require a version of the Cabal library older than when the
 feature was added.
 
 .. cfg-field:: flags: list of +flagname or -flagname (space separated)
+               -f FLAGS or -fFLAGS, --flags=FLAGS
                --flags="+foo -bar", -ffoo, -f-bar
     :synopsis: Enable or disable package flags.
 
@@ -746,8 +765,8 @@ feature was added.
     ``haskell-tor`` is the package you want this flag to apply to, try
     ``--constraint="haskell-tor +hans"`` instead.
 
-.. cfg-field:: with-compiler: executable
-               --with-compiler=executable
+.. cfg-field:: with-compiler: PATH
+               -w PATH or -wPATH, --with-compiler=PATH
     :synopsis: Path to compiler executable.
 
     Specify the path to a particular compiler to be used. If not an
@@ -777,9 +796,9 @@ feature was added.
     ``--with-compiler=ghc-7.8``; there is also a short version
     ``-w ghc-7.8``.
 
-.. cfg-field:: with-hc-pkg: executable
-               --with-hc-pkg=executable
-    :synopsis: Specifies package tool.
+.. cfg-field:: with-hc-pkg: PATH
+               --with-hc-pkg=PATH
+    :synopsis: Path to package tool.
 
     Specify the path to the package tool, e.g., ``ghc-pkg``. This
     package tool must be compatible with the compiler specified by
@@ -791,7 +810,7 @@ feature was added.
     ``--with-hc-pkg=ghc-pkg-7.8``.
 
 .. cfg-field:: optimization: nat
-               --enable-optimization
+               -O[n], --enable-optimization[=n]
                --disable-optimization
     :synopsis: Build with optimization.
 
@@ -823,8 +842,8 @@ feature was added.
     equivalent to ``-O``). There are also long-form variants
     ``--enable-optimization`` and ``--disable-optimization``.
 
-.. cfg-field:: configure-options: args (space separated)
-               --configure-option=arg
+.. cfg-field:: configure-options: OPT (space separated list)
+               --configure-option=OPT
     :synopsis: Options to pass to configure script.
 
     A list of extra arguments to pass to the external ``./configure``
@@ -881,7 +900,7 @@ feature was added.
     ``--disable-benchmarks``.
 
 .. _cmdoption-extra-prog-path:
-.. cfg-field:: extra-prog-path: paths (newline or comma separated)
+.. cfg-field:: extra-prog-path: PATH (newline or comma separated list)
                --extra-prog-path=PATH
     :synopsis: Add directories to program search path.
     :since: 1.18
@@ -901,11 +920,11 @@ feature was added.
 
 .. cfg-field:: run-tests: boolean
                --run-tests
-    :synopsis: Run package test suite upon installation.
+    :synopsis: Run package test suite during installation.
 
     :default: ``False``
 
-    Run the package test suite upon installation. This is useful for
+    Run the package test suite during installation. This is useful for
     saying "When this package is installed, check that the test suite
     passes, terminating the rest of the build if it is broken."
 
@@ -923,7 +942,7 @@ Object code options
 ^^^^^^^^^^^^^^^^^^^
 
 .. cfg-field:: debug-info: integer
-               --enable-debug-info=<n>
+               --enable-debug-info[=n]
                --disable-debug-info
     :synopsis: Build with debug info enabled.
     :since: 1.22
@@ -1020,8 +1039,8 @@ Object code options
 Executable options
 ^^^^^^^^^^^^^^^^^^
 
-.. cfg-field:: program-prefix: prefix
-               --program-prefix=prefix
+.. cfg-field:: program-prefix: PREFIX
+               --program-prefix=PREFIX
     :synopsis: Prepend prefix to program names.
 
     :strike:`Prepend *prefix* to installed program names.` (Currently
@@ -1034,8 +1053,8 @@ Executable options
 
     The command line variant of this flag is ``--program-prefix=foo-``.
 
-.. cfg-field:: program-suffix: suffix
-               --program-suffix=suffix
+.. cfg-field:: program-suffix: SUFFIX
+               --program-suffix=SUFFIX
     :synopsis: Append refix to program names.
 
     :strike:`Append *suffix* to installed program names.` (Currently
@@ -1412,9 +1431,9 @@ running ``setup haddock``.
     Generate an index for interactive documentation navigation.
     This is equivalent to running ``haddock`` with the ``--quickjump`` flag.
 
-.. cfg-field:: haddock-html-location: templated path
-               --haddock-html-location=TEMPLATE
-    :synopsis: Haddock HTML templates location.
+.. cfg-field:: haddock-html-location: URL (templated path)
+               --haddock-html-location=URL
+    :synopsis: Location of HTML documentation for prerequisite packages.
 
     Specify a template for the location of HTML documentation for
     prerequisite packages. The substitutions are applied to the template
@@ -1477,7 +1496,7 @@ running ``setup haddock``.
 
     Run haddock on all components.
 
-.. cfg-field:: haddock-css: path
+.. cfg-field:: haddock-css: PATH
                --haddock-css=PATH
     :synopsis: Location of Haddock CSS file.
 
@@ -1494,7 +1513,7 @@ running ``setup haddock``.
     Haddock documentation link to it.
     This is equivalent to running ``haddock`` with the ``--hyperlinked-source`` flag.
 
-.. cfg-field:: haddock-hscolour-css: path
+.. cfg-field:: haddock-hscolour-css: PATH
                --haddock-hscolour-css=PATH
     :synopsis: Location of CSS file for HsColour
 
@@ -1514,8 +1533,8 @@ running ``setup haddock``.
 
     There is no command line variant of this flag.
 
-.. cfg-field:: haddock-output-dir: path
-               --haddock-output-dir=PATH
+.. cfg-field:: haddock-output-dir: DIR
+               --haddock-output-dir=DIR
     :synopsis: Generate haddock documentation into this directory.
 
     Generate haddock documentation into this directory instead of the default
@@ -1536,7 +1555,7 @@ Advanced global configuration options
 -------------------------------------
 
 .. cfg-field:: write-ghc-environment-files: always, never, or ghc8.4.4+
-               --write-ghc-environment-files=policy
+               --write-ghc-environment-files=always\|never\|ghc8.4.4+
     :synopsis: Whether a ``.ghc.environment`` should be created after a successful build.
 
     :default: ``never``
@@ -1655,8 +1674,8 @@ Advanced solver options
 
 Most users generally won't need these.
 
-.. cfg-field:: solver: modular
-               --solver=modular
+.. cfg-field:: solver: SOLVER
+               --solver=SOLVER
     :synopsis: Which solver to use.
 
     This field is reserved to allow the specification of alternative
@@ -1763,8 +1782,8 @@ Most users generally won't need these.
     The command line variant of this field is
     ``--(no-)allow-boot-library-installs``.
 
-.. cfg-field:: cabal-lib-version: version
-               --cabal-lib-version=version
+.. cfg-field:: cabal-lib-version: VERSION
+               --cabal-lib-version=VERSION
     :synopsis: Version of Cabal library used to build package.
 
     This field selects the version of the Cabal library which should be

@@ -67,7 +67,6 @@ instance Parsec Mixin where
     P.spaces
     incl <- parsec
     return (mkMixin pn ln incl)
-    where
 
 versionGuardMultilibs :: CabalParsing m => m ()
 versionGuardMultilibs = do

@@ -15,6 +15,7 @@ import Distribution.Parsec (simpleParsec)
 import Distribution.Pretty
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Compiler
+import Distribution.Simple.Errors
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.Program
@@ -37,7 +38,7 @@ configure verbosity mbHcPath hcPkgPath progdb0 = do
   -- least some information from the user.
   hcPath <-
     let msg = "You have to provide name or path of a haskell-suite tool (-w PATH)"
-     in maybe (die' verbosity msg) return mbHcPath
+     in maybe (dieWithException verbosity $ ProvideHaskellSuiteTool msg) return mbHcPath
 
   when (isJust hcPkgPath) $
     warn verbosity "--with-hc-pkg option is ignored for haskell-suite"
@@ -102,8 +103,10 @@ getCompilerVersion verbosity prog = do
     name = concat $ safeInit parts -- there shouldn't be any spaces in the name anyway
     versionStr = fromMaybe "" $ safeLast parts
   version <-
-    maybe (die' verbosity "haskell-suite: couldn't determine compiler version") return $
-      simpleParsec versionStr
+    maybe
+      (dieWithException verbosity CannotDetermineCompilerVersion)
+      return
+      $ simpleParsec versionStr
   return (name, version)
 
 getExtensions :: Verbosity -> ConfiguredProgram -> IO [(Extension, Maybe CompilerFlag)]
@@ -138,10 +141,11 @@ getInstalledPackages verbosity packagedbs progdb =
           haskellSuitePkgProgram
           progdb
           ["dump", packageDbOpt packagedb]
-          `catchExit` \_ -> die' verbosity $ "pkg dump failed"
+          `catchExit` \_ -> dieWithException verbosity PkgDumpFailed
+
       case parsePackages str of
         Right ok -> return ok
-        _ -> die' verbosity "failed to parse output of 'pkg dump'"
+        _ -> dieWithException verbosity FailedToParseOutput
   where
     parsePackages str =
       case partitionEithers $ map (parseInstalledPackageInfo . toUTF8BS) (splitPkgs str) of

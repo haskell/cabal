@@ -12,6 +12,7 @@ pull_request_rules:
       - or:
         - label=merge me
         - label=squash+merge me
+        - label=merge+no rebase
       - '#approved-reviews-by>=2'
 
   # rebase+merge strategy
@@ -44,6 +45,17 @@ pull_request_rules:
       - label=merge delay passed
       - '#approved-reviews-by>=2'
 
+  # merge+no rebase strategy
+  - actions:
+      merge:
+        method: merge
+    name: Merge "merge+no rebase" pull requests directly (without a queue)
+    conditions:
+      - base=master
+      - label=merge+no rebase
+      - label=merge delay passed
+      - '#approved-reviews-by>=2'
+
   # rebase+merge strategy for backports: require 1 approver instead of 2
   - actions:
       queue:
@@ -70,4 +82,4 @@ pull_request_rules:
 
 queue_rules:
   - name: default
-    conditions: []
+    update_bot_account: Mikolaj

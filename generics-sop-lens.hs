@@ -64,13 +64,13 @@ genericClassyLenses p = case gdatatypeInfo p of
             , "   " ++ dn' ++ " :: Lens' a " ++ dn
             , ""
             ]] ++
-            (hcollapse $ hcmap (Proxy :: Proxy Typeable) deriveCls fis) ++
+            hcollapse (hcmap (Proxy :: Proxy Typeable) deriveCls fis) ++
             [[ ""
             , "instance Has" ++ dn ++ " " ++ dn ++ " where"
             , "    " ++ dn' ++ " = id"
             , "    {-# INLINE " ++ dn' ++ " #-}"
             ]] ++
-            (hcollapse $ hcmap (Proxy :: Proxy Typeable) deriveInst fis)
+            hcollapse (hcmap (Proxy :: Proxy Typeable) deriveInst fis)
       where
         dn' = case dn of
             []   -> []

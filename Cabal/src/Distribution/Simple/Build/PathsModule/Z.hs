@@ -1,3 +1,4 @@
+{- FOURMOLU_DISABLE -}
 {-# LANGUAGE DeriveGeneric #-}
 module Distribution.Simple.Build.PathsModule.Z (render, Z(..)) where
 import Distribution.ZinzaPrelude

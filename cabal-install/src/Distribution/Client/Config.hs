@@ -434,6 +434,7 @@ instance Semigroup SavedConfig where
           , installSymlinkBinDir = combine installSymlinkBinDir
           , installPerComponent = combine installPerComponent
           , installNumJobs = combine installNumJobs
+          , installUseSemaphore = combine installUseSemaphore
           , installKeepGoing = combine installKeepGoing
           , installRunTests = combine installRunTests
           , installOfflineMode = combine installOfflineMode

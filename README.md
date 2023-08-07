@@ -70,6 +70,16 @@ Ways to build `cabal-install` for everyday use
     if you don't have a pre-existing version of `cabal-install`,
     look into the [`bootstrap`](bootstrap) directory.
 
+Learn how to use `cabal` and get support
+----------------------------------------
+
+`cabal` comes with a thorough [User Manual](https://cabal.readthedocs.io).
+If you are new to `cabal` and want to quickly learn the basics, check
+[Getting Started With Haskell and Cabal](https://cabal.readthedocs.io/en/latest/getting-started.html).
+
+Got questions? Ask in [Haskell Matrix](https://matrix.to/#/#haskell:matrix.org)
+(online chat) or [Haskell Discourse](https://discourse.haskell.org).
+
 Build for hacking and contributing to cabal
 -------------------------------------------
 
