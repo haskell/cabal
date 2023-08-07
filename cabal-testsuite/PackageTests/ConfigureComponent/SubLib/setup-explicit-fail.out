@@ -9,5 +9,6 @@ Installing internal library sublib in <PATH>
 Registering library 'sublib' for Lib-0.1.0.0...
 # Setup configure
 Configuring executable 'exe' for Lib-0.1.0.0...
-Error: setup: Encountered missing or private dependencies:
+Error: [Cabal-8010]
+Encountered missing or private dependencies:
     Lib:sublib
