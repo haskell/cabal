@@ -76,7 +76,7 @@ createProjectTest pkgIx srcDb =
                     , dependencies = Flag []
                     }
 
-            case (_runPrompt $ createProject silent pkgIx srcDb dummyFlags') (fromList ["n", "3", "quxTest/Main.hs"]) of
+            case (_runPrompt $ createProject silent pkgIx srcDb dummyFlags') (fromList ["[]", "3", "quxTest/Main.hs"]) of
               Right (ProjectSettings opts desc (Just lib) (Just exe) (Just test), _) -> do
                 _optOverwrite opts @?= False
                 _optMinimal opts @?= False
@@ -134,8 +134,9 @@ createProjectTest pkgIx srcDb =
                   fromList
                     -- package type
                     [ "3"
-                    , -- overwrite
-                      "n"
+                    , -- overwrite (not asked, pristine folder)
+                      "test-package-dir"
+                    , "[]"
                     , -- package dir
                       "test-package"
                     , -- package description
@@ -240,8 +241,9 @@ createProjectTest pkgIx srcDb =
                   fromList
                     -- package type
                     [ "1"
-                    , -- overwrite
-                      "n"
+                    , -- overwrite (not asked, pristine folder)
+                      "test-package-dir"
+                    , "[]"
                     , -- package dir
                       "test-package"
                     , -- package description
@@ -331,8 +333,9 @@ createProjectTest pkgIx srcDb =
                   fromList
                     -- package type
                     [ "4"
-                    , -- overwrite
-                      "n"
+                    , -- overwrite (not asked, pristine folder)
+                      "test-package-dir"
+                    , "[]"
                     , -- package dir
                       "test-package"
                     , -- package description
@@ -411,8 +414,9 @@ createProjectTest pkgIx srcDb =
                   fromList
                     -- package type
                     [ "3"
-                    , -- overwrite
-                      "n"
+                    , -- overwrite (not asked, pristine folder)
+                      "test-package-dir"
+                    , "[]"
                     , -- package dir
                       "test-package"
                     , -- package description
@@ -503,8 +507,9 @@ createProjectTest pkgIx srcDb =
                   fromList
                     -- package type
                     [ "1"
-                    , -- overwrite
-                      "n"
+                    , -- overwrite (not asked, pristine folder)
+                      "test-package-dir"
+                    , "[]"
                     , -- package dir
                       "test-package"
                     , -- package description
@@ -580,8 +585,9 @@ createProjectTest pkgIx srcDb =
                   fromList
                     -- package type
                     [ "1"
-                    , -- overwrite
-                      "n"
+                    , -- overwrite (not asked, pristine folder)
+                      "test-package-dir"
+                    , "[]"
                     , -- package dir
                       "test-package"
                     , -- package description
@@ -664,8 +670,9 @@ createProjectTest pkgIx srcDb =
                   fromList
                     -- package type
                     [ "2"
-                    , -- overwrite
-                      "n"
+                    , -- overwrite (not asked, pristine folder)
+                      "test-package-dir"
+                    , "[]"
                     , -- package dir
                       "test-package"
                     , -- package description

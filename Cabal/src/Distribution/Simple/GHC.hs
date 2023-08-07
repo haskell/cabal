@@ -81,6 +81,9 @@ module Distribution.Simple.GHC
 import Distribution.Compat.Prelude
 import Prelude ()
 
+import Control.Monad (forM_, msum)
+import Data.Char (isLower)
+import qualified Data.Map as Map
 import Distribution.CabalSpecVersion
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
@@ -92,6 +95,7 @@ import Distribution.PackageDescription.Utils (cabalBug)
 import Distribution.Pretty
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Compiler
+import Distribution.Simple.Errors
 import Distribution.Simple.Flag (Flag (..), fromFlag, fromFlagOrDefault, toFlag)
 import Distribution.Simple.GHC.EnvironmentParser
 import Distribution.Simple.GHC.ImplInfo
@@ -120,10 +124,6 @@ import Distribution.Utils.Path
 import Distribution.Verbosity
 import Distribution.Version
 import Language.Haskell.Extension
-
-import Control.Monad (forM_, msum)
-import Data.Char (isLower)
-import qualified Data.Map as Map
 import System.Directory
   ( canonicalizePath
   , createDirectoryIfMissing
@@ -196,16 +196,8 @@ configure verbosity hcPath hcPkgPath conf0 = do
       (userMaybeSpecifyPath "ghc-pkg" hcPkgPath progdb1)
 
   when (ghcVersion /= ghcPkgVersion) $
-    die' verbosity $
-      "Version mismatch between ghc and ghc-pkg: "
-        ++ programPath ghcProg
-        ++ " is version "
-        ++ prettyShow ghcVersion
-        ++ " "
-        ++ programPath ghcPkgProg
-        ++ " is version "
-        ++ prettyShow ghcPkgVersion
-
+    dieWithException verbosity $
+      VersionMismatchGHC (programPath ghcProg) ghcVersion (programPath ghcPkgProg) ghcPkgVersion
   -- Likewise we try to find the matching hsc2hs and haddock programs.
   let hsc2hsProgram' =
         hsc2hsProgram
@@ -513,9 +505,7 @@ checkPackageDbStackPost76 _ (GlobalPackageDB : rest)
   | GlobalPackageDB `notElem` rest = return ()
 checkPackageDbStackPost76 verbosity rest
   | GlobalPackageDB `elem` rest =
-      die' verbosity $
-        "If the global package db is specified, it must be "
-          ++ "specified first and cannot be specified multiple times"
+      dieWithException verbosity CheckPackageDbStackPost76
 checkPackageDbStackPost76 _ _ = return ()
 
 checkPackageDbStackPre76 :: Verbosity -> PackageDBStack -> IO ()
@@ -523,14 +513,9 @@ checkPackageDbStackPre76 _ (GlobalPackageDB : rest)
   | GlobalPackageDB `notElem` rest = return ()
 checkPackageDbStackPre76 verbosity rest
   | GlobalPackageDB `notElem` rest =
-      die' verbosity $
-        "With current ghc versions the global package db is always used "
-          ++ "and must be listed first. This ghc limitation is lifted in GHC 7.6,"
-          ++ "see https://gitlab.haskell.org/ghc/ghc/-/issues/5977"
+      dieWithException verbosity CheckPackageDbStackPre76
 checkPackageDbStackPre76 verbosity _ =
-  die' verbosity $
-    "If the global package db is specified, it must be "
-      ++ "specified first and cannot be specified multiple times"
+  dieWithException verbosity GlobalPackageDbSpecifiedFirst
 
 -- GHC < 6.10 put "$topdir/include/mingw" in rts's installDirs. This
 -- breaks when you want to use a different gcc, so we need to filter
@@ -2296,10 +2281,8 @@ installFLib verbosity lbi targetDir builtDir _pkg flib =
       let (Platform _ os) = hostPlatform lbi
       when (not (null (foreignLibVersion flib os))) $ do
         when (os /= Linux) $
-          die'
-            verbosity
-            -- It should be impossible to get here.
-            "Can't install foreign-library symlink on non-Linux OS"
+          dieWithException verbosity $
+            CantInstallForeignLib
 #ifndef mingw32_HOST_OS
         -- 'createSymbolicLink file1 file2' creates a symbolic link
         -- named 'file2' which points to the file 'file1'.
