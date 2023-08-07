@@ -79,6 +79,7 @@ import Distribution.Simple.Setup.Register
 import Distribution.Simple.Utils
 import Distribution.System
 import Distribution.Utils.MapAccum
+import Distribution.Utils.Path
 import Distribution.Verbosity as Verbosity
 import Distribution.Version
 
@@ -511,6 +512,9 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
         if ghc84
           then Left $ either id licenseToSPDX $ licenseRaw pkg
           else Right $ either licenseFromSPDX id $ licenseRaw pkg
+    , IPI.licenseFiles =
+        let doc = docdir installDirs
+         in map ((doc </>) . getSymbolicPath) $ licenseFiles pkg
     , IPI.copyright = copyright pkg
     , IPI.maintainer = maintainer pkg
     , IPI.author = author pkg
