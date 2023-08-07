@@ -44,14 +44,18 @@ $(SPDX_EXCEPTION_HS) : templates/SPDX.LicenseExceptionId.template.hs cabal-dev-s
 
 TEMPLATE_MACROS:=Cabal/src/Distribution/Simple/Build/Macros/Z.hs
 TEMPLATE_PATHS:=Cabal/src/Distribution/Simple/Build/PathsModule/Z.hs
+TEMPLATE_PKGINFO:=Cabal/src/Distribution/Simple/Build/PackageInfoModule/Z.hs
 
-templates : phony $(TEMPLATE_MACROS) $(TEMPLATE_PATHS)
+templates : phony $(TEMPLATE_MACROS) $(TEMPLATE_PATHS) $(TEMPLATE_PKGINFO)
 
 $(TEMPLATE_MACROS) : templates/cabal_macros.template.h cabal-dev-scripts/src/GenCabalMacros.hs
 	cabal run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-cabal-macros -- $< $@
 
 $(TEMPLATE_PATHS) : templates/Paths_pkg.template.hs cabal-dev-scripts/src/GenPathsModule.hs
 	cabal run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-paths-module -- $< $@
+
+$(TEMPLATE_PKGINFO) : templates/PackageInfo_pkg.template.hs cabal-dev-scripts/src/GenPackageInfoModule.hs
+	cabal run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-pkg-info-module -- $< $@
 
 # generated docs
 
