@@ -1,3 +1,4 @@
 # Setup configure
 Configuring InternalLibrary0-0.1...
-Error: cabal: The field 'build-depends: InternalLibrary0' refers to a library which is defined within the same package. To use this feature the package must specify at least 'cabal-version: >= 1.8'.
+Error: [Cabal-7007]
+The field 'build-depends: InternalLibrary0' refers to a library which is defined within the same package. To use this feature the package must specify at least 'cabal-version: >= 1.8'.
