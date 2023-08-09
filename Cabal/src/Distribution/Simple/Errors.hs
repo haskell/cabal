@@ -109,7 +109,7 @@ data CabalException
   | NoSupportPreProcessingBenchmarkExtras BenchmarkType
   | UnlitException String
   | RunProgramInvocationException FilePath String
-  | GetProgamInvocationException FilePath String
+  | GetProgramInvocationException FilePath String
   | GetProgramInvocationLBSException FilePath String
   | CheckSemaphoreSupport
   | NoLibraryForPackage
@@ -118,7 +118,7 @@ data CabalException
   | NoValidComponent
   | ConfigureEitherSingleOrAll
   | ConfigCIDValidForPreComponent
-  | SanitycheckForEnableComponents
+  | SanityCheckForEnableComponents
   | SanityCheckForDynamicStaticLinking
   | UnsupportedLanguages PackageIdentifier CompilerId [String]
   | UnsupportedLanguageExtension PackageIdentifier CompilerId [String]
@@ -214,7 +214,7 @@ exceptionCode e = case e of
   NoSupportPreProcessingBenchmarkExtras{} -> 9999
   UnlitException{} -> 5454
   RunProgramInvocationException{} -> 8012
-  GetProgamInvocationException{} -> 7300
+  GetProgramInvocationException{} -> 7300
   GetProgramInvocationLBSException{} -> 6578
   CheckSemaphoreSupport{} -> 2002
   NoLibraryForPackage{} -> 8004
@@ -223,7 +223,7 @@ exceptionCode e = case e of
   NoValidComponent{} -> 5680
   ConfigureEitherSingleOrAll{} -> 2001
   ConfigCIDValidForPreComponent{} -> 7006
-  SanitycheckForEnableComponents{} -> 5004
+  SanityCheckForEnableComponents{} -> 5004
   SanityCheckForDynamicStaticLinking{} -> 4007
   UnsupportedLanguages{} -> 8074
   UnsupportedLanguageExtension{} -> 5656
@@ -439,7 +439,7 @@ exceptionMessage e = case e of
       ++ prettyShow tt
   UnlitException str -> str
   RunProgramInvocationException path errors -> "'" ++ path ++ "' exited with an error:\n" ++ errors
-  GetProgamInvocationException path errors -> "'" ++ path ++ "' exited with an error:\n" ++ errors
+  GetProgramInvocationException path errors -> "'" ++ path ++ "' exited with an error:\n" ++ errors
   GetProgramInvocationLBSException path errors -> "'" ++ path ++ "' exited with an error:\n" ++ errors
   CheckSemaphoreSupport ->
     "Your compiler does not support the -jsem flag. "
@@ -456,7 +456,7 @@ exceptionMessage e = case e of
   NoValidComponent -> "No valid component targets found"
   ConfigureEitherSingleOrAll -> "Can only configure either single component or all of them"
   ConfigCIDValidForPreComponent -> "--cid is only supported for per-component configure"
-  SanitycheckForEnableComponents ->
+  SanityCheckForEnableComponents ->
     "--enable-tests/--enable-benchmarks are incompatible with"
       ++ " explicitly specifying a component to configure."
   SanityCheckForDynamicStaticLinking ->

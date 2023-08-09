@@ -509,7 +509,7 @@ configure (pkg_descr0, pbi) cfg = do
     ( isJust mb_cname
         && (fromFlag (configTests cfg) || fromFlag (configBenchmarks cfg))
     )
-    $ dieWithException verbosity SanitycheckForEnableComponents
+    $ dieWithException verbosity SanityCheckForEnableComponents
 
   -- Some sanity checks related to dynamic/static linking.
   when (fromFlag (configDynExe cfg) && fromFlag (configFullyStaticExe cfg)) $
