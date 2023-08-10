@@ -1,2 +1,3 @@
 # cabal v2-build
-Error: cabal: No package databases have been specified. If you use --package-db=clear, you must follow it with --package-db= with 'global', 'user' or a specific file.
+Error: [Cabal-2300]
+No package databases have been specified. If you use --package-db=clear, you must follow it with --package-db= with 'global', 'user' or a specific file.

@@ -236,7 +236,7 @@ exceptionCode e = case e of
   CompilerDoesntSupportBackpack{} -> 5446
   LibraryWithinSamePackage{} -> 7007
   ReportFailedDependencies{} -> 4321
-  NoPackageDatabaseSpecified{} -> 2002
+  NoPackageDatabaseSpecified{} -> 2300
   HowToFindInstalledPackages{} -> 3003
   PkgConfigNotFound{} -> 7123
   BadVersion{} -> 7600
