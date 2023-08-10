@@ -58,6 +58,8 @@ library
   if impl(ghc >= 8.0) && impl(ghc < 8.8)
     ghc-options: -Wnoncanonical-monadfail-instances
 
+  build-tool-depends: alex:alex
+
   exposed-modules:
     Distribution.Backpack
     Distribution.CabalSpecVersion

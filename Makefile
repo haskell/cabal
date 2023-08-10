@@ -25,19 +25,6 @@ style-modified: ## Run the code styler on modified files
 	@git ls-files --modified Cabal Cabal-syntax cabal-install \
 		| grep '.hs$$' | xargs -P $(PROCS) -I {} fourmolu -q -i {}
 
-# source generation: Lexer
-
-LEXER_HS:=Cabal-syntax/src/Distribution/Fields/Lexer.hs
-
-lexer : $(LEXER_HS)
-
-$(LEXER_HS) : templates/Lexer.x
-	alex --latin1 --ghc -o $@ $^
-	@rm -f Lexer.tmp
-	echo '{- FOURMOLU_DISABLE -}' >> Lexer.tmp
-	cat -s $@ >> Lexer.tmp
-	mv Lexer.tmp $@
-
 # source generation: SPDX
 
 SPDX_LICENSE_HS:=Cabal-syntax/src/Distribution/SPDX/LicenseId.hs

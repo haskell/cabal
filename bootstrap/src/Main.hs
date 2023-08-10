@@ -1,11 +1,12 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE LambdaCase #-}
+{-# OPTIONS_GHC -Wno-deferred-out-of-scope-variables #-}
 
 module Main (main) where
 
-import Control.Monad      (when)
 import Data.Either        (partitionEithers)
-import Data.Foldable      (for_, traverse_)
-import Data.Maybe         (listToMaybe)
+import Data.Foldable      (for_)
 import Data.String        (fromString)
 import Data.Traversable   (for)
 import System.Environment (getArgs)
@@ -18,10 +19,11 @@ import qualified Cabal.Plan                     as P
 import qualified Data.Aeson                     as A
 import qualified Data.ByteString.Lazy           as LBS
 import qualified Data.Map.Strict                as Map
-import qualified Data.Set                       as Set
 import qualified Distribution.Types.PackageName as C
 import qualified Distribution.Types.Version as C
 import qualified Topograph                      as TG
+import Control.Exception
+import System.IO.Error (isDoesNotExistError)
 
 -------------------------------------------------------------------------------
 -- Main
@@ -31,8 +33,30 @@ main :: IO ()
 main = do
     args <- getArgs
     case args of
-        [fp] -> main1 fp
-        _    -> die "Usage: cabal-bootstrap-gen plan.json"
+        [fp] ->
+          handleJust
+            (\e -> if isDoesNotExistError e then Just e else Nothing)
+              (\e -> die $ unlines ["~~~ ERROR ~~~", "", displayException e, "", cabalDirWarning])
+              (main1 fp)
+        _ -> die "Usage: cabal-bootstrap-gen plan.json"
+
+cabalDirWarning :: String
+cabalDirWarning =
+  unlines [
+    "~~~ NOTE ~~~",
+    "",
+    "This script will look for cabal global config file in the following locations",
+    " - $CABAL_CONFIG",
+    " - $CABAL_DIR/config",
+    " - $HOME/.cabal/config (on Unix-like systems)",
+    " - %APPDATA%/cabal (on Windows)",
+    "",
+    "If you are using XDG paths or a entirely different location, you can set either",
+    "CABAL_CONFIG or CABAL_DIR to guide the script to the correct location.",
+    "",
+    "E.g.",
+    "  $ CABAL_DIR=$HOME/.config/cabal cabal-bootstrap-gen"
+    ]
 
 main1 :: FilePath -> IO ()
 main1 planPath = do
@@ -50,24 +74,19 @@ main2 :: Map.Map C.PackageName I.PackageInfo -> P.PlanJson -> IO ()
 main2 meta plan = do
     info $ show $ Map.keys $ P.pjUnits plan
 
-    -- find cabal-install:exe:cabal unit
-    (cabalUid, cabalUnit) <- case findCabalExe plan of
-        Just x  -> return x
-        Nothing -> die "Cannot find cabal-install:exe:cabal unit"
+    let res = TG.runG (P.planJsonIdGraph plan) $ \g ->
+          map (TG.gFromVertex g) (reverse $ TG.gVertices g)
 
-    info $ "cabal-install:exe:cabal unit " ++ show cabalUid
+    units <- case res of
+              Left loop -> die $ "Loop in install-plan: " ++ show loop
+              Right uids -> for uids $ lookupUnit (P.pjUnits plan)
 
-    -- BFS from cabal unit, getting all dependencies
-    units <- bfs plan cabalUnit
-
-    info $ "Unit order:"
+    info "Unit order:"
     for_ units $ \unit -> do
         info $ " - " ++ show (P.uId unit)
 
     (builtin, deps) <- fmap partitionEithers $ for units $ \unit -> do
         let P.PkgId pkgname@(P.PkgName tpkgname) ver@(P.Ver verdigits) = P.uPId unit
-
-        let uid = P.uId unit
 
         let cpkgname :: C.PackageName
             cpkgname = C.mkPackageName (T.unpack tpkgname)
@@ -75,44 +94,40 @@ main2 meta plan = do
         let cversion :: C.Version
             cversion = C.mkVersion verdigits
 
+        let flags = [ (if fval then "+" else "-") ++ T.unpack fname
+                        | (P.FlagName fname, fval) <- Map.toList (P.uFlags unit)
+                        ]
+        let relInfo = Map.lookup cpkgname meta >>= \pkgInfo -> Map.lookup cversion $ I.piVersions pkgInfo
         case P.uType unit of
             P.UnitTypeBuiltin ->
                 return $ Left Builtin
                   { builtinPackageName = pkgname
                   , builtinVersion     = ver
                   }
-
             _ -> do
-                (src, rev, revhash) <- case P.uSha256 unit of
-                    Just _  -> do
-                        pkgInfo <- maybe (die $ "Cannot find " ++ show uid ++ " package metadata") return $
-                            Map.lookup cpkgname meta
-                        relInfo <- maybe (die $ "Cannot find " ++ show uid ++ " version metadata") return $
-                            Map.lookup cversion $ I.piVersions pkgInfo
+              let component = case Map.keys (P.uComps unit) of
+                                [c] -> Just (P.dispCompNameTarget pkgname c)
+                                _ -> Nothing
 
-                        return
-                            ( Hackage
-                            , Just $ fromIntegral (I.riRevision relInfo)
-                            , P.sha256FromByteString $ I.getSHA256 $ getHash relInfo
-                            )
+              source <-
+                case P.uPkgSrc unit of
+                      Just (P.RepoTarballPackage (P.RepoSecure _uri)) ->
+                        return Hackage
+                      Just (P.LocalUnpackedPackage _path) -> 
+                        return Local
+                      pkgsrc ->
+                        die $ "package source not supported: " ++ show pkgsrc
 
-                    Nothing -> case P.uType unit of
-                        P.UnitTypeLocal   -> return (Local, Nothing, Nothing)
-                        t                 -> die $ "Unit of wrong type " ++ show uid ++ " " ++ show t
-
-                return $ Right Dep
-                    { depPackageName = pkgname
-                    , depVersion     = ver
-                    , depSource      = src
-                    , depSrcHash     = P.uSha256 unit
-                    , depRevision    = rev
-                    , depRevHash     = revhash
-                    , depFlags       =
-                        [ (if fval then "+" else "-") ++ T.unpack fname
-                        | (P.FlagName fname, fval) <- Map.toList (P.uFlags unit)
-                        ]
-                    }
-
+              return $ Right Dep
+                      { depPackageName = pkgname
+                      , depVersion     = ver
+                      , depSource      = source
+                      , depSrcHash     = P.uSha256 unit
+                      , depRevision    = fromIntegral . I.riRevision <$> relInfo
+                      , depRevHash     = relInfo >>= P.sha256FromByteString . I.getSHA256 . getHash
+                      , depFlags       = flags
+                      , depComponent   = component
+                      }
     LBS.putStr $ A.encode Result
         { resBuiltin      = builtin
         , resDependencies = deps
@@ -123,42 +138,6 @@ main2 meta plan = do
 #else
     getHash = I.riCabal
 #endif
-
-bfs :: P.PlanJson -> P.Unit -> IO [P.Unit]
-bfs plan unit0 = do
-    uids <- either (\loop -> die $ "Loop in install-plan " ++ show loop) id $ TG.runG am $ \g -> do
-        v <- maybe (die "Cannot find cabal-install unit in topograph") return $
-            TG.gToVertex g $ P.uId unit0
-
-        let t = TG.dfs g v
-
-        return $ map (TG.gFromVertex g) $
-            -- nub and sort
-            reverse $ Set.toList $ Set.fromList $ concat t
-
-    units <- for uids $ \uid -> do
-        unit <- lookupUnit (P.pjUnits plan) uid
-        case Map.toList (P.uComps unit) of
-            [(_, compinfo)] -> checkExeDeps uid (P.pjUnits plan) (P.ciExeDeps compinfo)
-            _               -> die $ "Unit with multiple components " ++ show uid
-        return unit
-
-    -- Remove non-exe copies of cabal-install. Otherwise, cabal-install
-    -- may appear as cabal-install:lib before dependencies of
-    -- cabal-install:exe:cabal, and the bootstrap build tries to build
-    -- all of cabal-install before those dependencies.
-    return $ filter (\u -> P.uId u == P.uId unit0 || P.uPId u /= P.uPId unit0) units
-  where
-    am :: Map.Map P.UnitId (Set.Set P.UnitId)
-    am = fmap (foldMap P.ciLibDeps . P.uComps) (P.pjUnits plan)
-
-checkExeDeps :: P.UnitId -> Map.Map P.UnitId P.Unit -> Set.Set P.UnitId -> IO ()
-checkExeDeps pkgUid units = traverse_ check . Set.toList where
-    check uid = do
-        unit <- lookupUnit units uid
-        let P.PkgId pkgname _ = P.uPId unit
-        when (pkgname /= P.PkgName (fromString "hsc2hs")) $ do
-            die $ "unit " ++ show pkgUid ++ " depends on executable " ++ show uid
 
 lookupUnit :: Map.Map P.UnitId P.Unit -> P.UnitId -> IO P.Unit
 lookupUnit units uid
@@ -189,6 +168,7 @@ data Dep = Dep
     , depRevision    :: Maybe Int
     , depRevHash     :: Maybe P.Sha256
     , depFlags       :: [String]
+    , depComponent   :: Maybe T.Text
     }
   deriving (Show)
 
@@ -218,6 +198,7 @@ instance A.ToJSON Dep where
         , fromString "revision"     A..= depRevision dep
         , fromString "cabal_sha256" A..= depRevHash dep
         , fromString "flags"        A..= depFlags dep
+        , fromString "component"    A..= depComponent dep
         ]
 
 instance A.ToJSON SrcType where
@@ -241,16 +222,3 @@ die :: String -> IO a
 die msg = do
     hPutStrLn stderr msg
     exitFailure
-
--------------------------------------------------------------------------------
--- Pure bits
--------------------------------------------------------------------------------
-
-findCabalExe :: P.PlanJson -> Maybe (P.UnitId, P.Unit)
-findCabalExe plan = listToMaybe
-    [ (uid, unit)
-    | (uid, unit) <- Map.toList (P.pjUnits plan)
-    , let P.PkgId pkgname _ = P.uPId unit
-    , pkgname == P.PkgName (fromString "cabal-install")
-    , Map.keys (P.uComps unit) == [P.CompNameExe (fromString "cabal")]
-    ]
