@@ -311,7 +311,7 @@ ppExplanation SignaturesCabal2 =
 ppExplanation AutogenNotExposed =
   "An 'autogen-module' is neither on 'exposed-modules' nor 'other-modules'."
 ppExplanation AutogenIncludesNotIncluded =
-  "An include in 'autogen-includes' is neither in 'includes' nor "
+  "An include in 'autogen-includes' is neither in 'includes' or "
     ++ "'install-includes'."
 ppExplanation (NoMainIs exe) =
   "No 'main-is' field found for executable " ++ prettyShow (exeName exe)
