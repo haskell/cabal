@@ -175,7 +175,7 @@ exceptionCode e = case e of
   NoGHCVersionFromCompiler -> 4098
   HaddockAndGHCVersionDoesntMatch{} -> 1998
   MustHaveSharedLibraries{} -> 6032
-  HaddockPackageFlags{} -> 4567
+  HaddockPackageFlags{} -> 4569
   UnknownCompilerFlavor{} -> 3102
   FailedToDetermineTarget{} -> 5049
   NoMultipleTargets{} -> 6091
@@ -185,7 +185,7 @@ exceptionCode e = case e of
   BuildingNotSupportedWithCompiler{} -> 7077
   ProvideHaskellSuiteTool{} -> 7509
   CannotDetermineCompilerVersion{} -> 4519
-  PkgDumpFailed{} -> 2290
+  PkgDumpFailed{} -> 2291
   FailedToParseOutput{} -> 5500
   CantFindSourceModule{} -> 8870
   VersionMismatchJS{} -> 9001
