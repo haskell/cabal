@@ -78,6 +78,7 @@ module Distribution.Simple.Utils
   , IOData (..)
   , KnownIODataMode (..)
   , IODataMode (..)
+  , VerboseException (..)
 
     -- * copying files
   , createDirectoryIfMissingVerbose

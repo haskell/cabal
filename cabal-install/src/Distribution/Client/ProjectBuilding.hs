@@ -132,8 +132,9 @@ import System.IO (Handle, IOMode (AppendMode), withFile)
 import System.Semaphore (SemaphoreName (..))
 
 import Distribution.Compat.Directory (listDirectory)
-import Distribution.Simple.Errors ()
+import Distribution.Simple.Errors (CabalException)
 import Distribution.Simple.Flag (fromFlagOrDefault)
+import Distribution.Simple.Utils ()
 
 ------------------------------------------------------------------------------
 
@@ -1883,9 +1884,8 @@ annotateFailure mlogFile annotate action =
       Handler $ \async -> throwIO (async :: SomeAsyncException)
 #else
       Handler $ \async -> throwIO (async :: AsyncException)
-#elseif
-      Handler $ \cabexe -> throwIO (cabexe :: VerboseException CabalException)
 #endif
+    , Handler $ \cabexe -> handler (cabexe :: VerboseException CabalException)
     , Handler $ \other -> handler (other :: SomeException)
     ]
   where
