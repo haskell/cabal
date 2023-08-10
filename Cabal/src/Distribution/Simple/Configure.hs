@@ -422,10 +422,7 @@ configure (pkg_descr0, pbi) cfg = do
       _ | null (configArgs cfg) -> return Nothing
       [cname] -> return (Just cname)
       [] -> dieWithException verbosity NoValidComponent
-      _ ->
-        dieWithException
-          verbosity
-          ConfigureEitherSingleOrAll
+      _ -> dieWithException verbosity ConfigureEitherSingleOrAll
 
   let use_external_internal_deps = isJust mb_cname
   case mb_cname of
@@ -513,8 +510,7 @@ configure (pkg_descr0, pbi) cfg = do
 
   -- Some sanity checks related to dynamic/static linking.
   when (fromFlag (configDynExe cfg) && fromFlag (configFullyStaticExe cfg)) $
-    dieWithException verbosity $
-      SanityCheckForDynamicStaticLinking
+    dieWithException verbosity SanityCheckForDynamicStaticLinking
 
   -- allConstraints:  The set of all 'Dependency's we have.  Used ONLY
   --                  to 'configureFinalizedPackage'.
@@ -1298,20 +1294,17 @@ checkCompilerProblems verbosity comp pkg_descr enabled = do
           (all (isDefaultIncludeRenaming . mixinIncludeRenaming) . mixins)
           (enabledBuildInfos pkg_descr enabled)
     )
-    $ dieWithException verbosity
-    $ CompilerDoesntSupportThinning
+    $ dieWithException verbosity CompilerDoesn'tSupportThinning
   when
     ( any (not . null . reexportedModules) (allLibraries pkg_descr)
         && not (reexportedModulesSupported comp)
     )
-    $ dieWithException verbosity
-    $ CompilerDoesntSupportReexports
+    $ dieWithException verbosity CompilerDoesn'tSupportReexports
   when
     ( any (not . null . signatures) (allLibraries pkg_descr)
         && not (backpackSupported comp)
     )
-    $ dieWithException verbosity
-    $ CompilerDoesntSupportBackpack
+    $ dieWithException verbosity CompilerDoesn'tSupportBackpack
 
 -- | Select dependencies for the package.
 configureDependencies
@@ -1564,11 +1557,6 @@ data DependencyResolution
     -- polymorphism out of the 'Package' typeclass.)
     InternalDependency PackageId
 
--- data FailedDependency
---  = DependencyNotExists PackageName
---  | DependencyMissingInternal PackageName LibraryName
---  | DependencyNoVersion Dependency
-
 -- | Test for a package dependency and record the version we have installed.
 selectDependency
   :: PackageId
@@ -1692,8 +1680,7 @@ getInstalledPackages
   -> IO InstalledPackageIndex
 getInstalledPackages verbosity comp packageDBs progdb = do
   when (null packageDBs) $
-    dieWithException verbosity $
-      NoPackageDatabaseSpecified
+    dieWithException verbosity NoPackageDatabaseSpecified
 
   info verbosity "Reading installed packages..."
   -- do not check empty packagedbs (ghc-pkg would error out)
@@ -1803,10 +1790,6 @@ combinedConstraints constraints dependencies installedPackages = do
   when (not (null badComponentIds)) $
     Left $
       CombinedConstraints (dispDependencies badComponentIds)
-  -- (render $
-  -- text "The following package dependencies were requested"
-  --   $+$ nest 4 (dispDependencies badComponentIds)
-  --   $+$ text "however the given installed package instance does not exist." )
 
   -- TODO: we don't check that all dependencies are used!
 
@@ -2293,7 +2276,7 @@ checkForeignDeps pkg lbi verbosity =
     explainErrors Nothing [] = return () -- should be impossible!
     explainErrors _ _
       | isNothing . lookupProgram gccProgram . withPrograms $ lbi =
-          dieWithException verbosity $ NoWorkingGcc
+          dieWithException verbosity NoWorkingGcc
     explainErrors hdr libs =
       dieWithException verbosity $ ExplainErrors hdr libs
 
@@ -2403,7 +2386,6 @@ checkRelocatable verbosity pkg lbi =
                 unless (p `isPrefixOf` canonicalized) $
                   dieWithException verbosity $
                     LibDirDepsPrefixNotRelative libdir p
-          -- msg libdir
           | otherwise =
               return ()
         -- NB: should be good enough to check this against the default
@@ -2412,12 +2394,6 @@ checkRelocatable verbosity pkg lbi =
         installDirs = absoluteInstallDirs pkg lbi NoCopyDest
         p = prefix installDirs
         ipkgs = PackageIndex.allPackages (installedPkgs lbi)
-
-{- msg l =
-  "Library directory of a dependency: "
-    ++ show l
-    ++ "\nis not relative to the installation prefix:\n"
-    ++ show p-}
 
 -- -----------------------------------------------------------------------------
 -- Testing foreign library requirements

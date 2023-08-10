@@ -181,8 +181,7 @@ checkSemaphoreSupport
   :: Verbosity -> Compiler -> BuildFlags -> IO ()
 checkSemaphoreSupport verbosity comp flags = do
   unless (jsemSupported comp || (isNothing (flagToMaybe (buildUseSemaphore flags)))) $
-    dieWithException verbosity $
-      CheckSemaphoreSupport
+    dieWithException verbosity CheckSemaphoreSupport
 
 -- | Write available build information for 'LocalBuildInfo' to disk.
 --

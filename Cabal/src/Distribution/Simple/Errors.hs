@@ -126,9 +126,9 @@ data CabalException
   | ExpectedAbsoluteDirectory FilePath
   | FlagsNotSpecified [FlagName]
   | EncounteredMissingDependency [Dependency]
-  | CompilerDoesntSupportThinning
-  | CompilerDoesntSupportReexports
-  | CompilerDoesntSupportBackpack
+  | CompilerDoesn'tSupportThinning
+  | CompilerDoesn'tSupportReexports
+  | CompilerDoesn'tSupportBackpack
   | LibraryWithinSamePackage [PackageId]
   | ReportFailedDependencies [FailedDependency] String
   | NoPackageDatabaseSpecified
@@ -231,9 +231,9 @@ exceptionCode e = case e of
   ExpectedAbsoluteDirectory{} -> 6662
   FlagsNotSpecified{} -> 9080
   EncounteredMissingDependency{} -> 8010
-  CompilerDoesntSupportThinning{} -> 4003
-  CompilerDoesntSupportReexports{} -> 3456
-  CompilerDoesntSupportBackpack{} -> 5446
+  CompilerDoesn'tSupportThinning{} -> 4003
+  CompilerDoesn'tSupportReexports{} -> 3456
+  CompilerDoesn'tSupportBackpack{} -> 5446
   LibraryWithinSamePackage{} -> 7007
   ReportFailedDependencies{} -> 4321
   NoPackageDatabaseSpecified{} -> 2300
@@ -495,14 +495,14 @@ exceptionMessage e = case e of
             . map (pretty . simplifyDependency)
             $ missing
          )
-  CompilerDoesntSupportThinning ->
+  CompilerDoesn'tSupportThinning ->
     "Your compiler does not support thinning and renaming on "
       ++ "package flags.  To use this feature you must use "
       ++ "GHC 7.9 or later."
-  CompilerDoesntSupportReexports ->
+  CompilerDoesn'tSupportReexports ->
     "Your compiler does not support module re-exports. To use "
       ++ "this feature you must use GHC 7.9 or later."
-  CompilerDoesntSupportBackpack ->
+  CompilerDoesn'tSupportBackpack ->
     "Your compiler does not support Backpack. To use "
       ++ "this feature you must use GHC 8.1 or later."
   LibraryWithinSamePackage internalPkgDeps ->
