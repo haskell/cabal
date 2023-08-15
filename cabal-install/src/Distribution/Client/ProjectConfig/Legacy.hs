@@ -821,8 +821,9 @@ convertLegacyPerPackageFlags
         , haddockContents = packageConfigHaddockContents
         , haddockIndex = packageConfigHaddockIndex
         , haddockBaseUrl = packageConfigHaddockBaseUrl
-        , haddockLib = packageConfigHaddockLib
+        , haddockResourcesDir = packageConfigHaddockResourcesDir
         , haddockOutputDir = packageConfigHaddockOutputDir
+        , haddockVersionCPP = packageConfigHaddockVersionCPP
         } = haddockFlags
 
       TestFlags
@@ -1218,8 +1219,9 @@ convertToLegacyPerPackageConfig PackageConfig{..} =
         , haddockKeepTempFiles = mempty
         , haddockIndex = packageConfigHaddockIndex
         , haddockBaseUrl = packageConfigHaddockBaseUrl
-        , haddockLib = packageConfigHaddockLib
+        , haddockResourcesDir = packageConfigHaddockResourcesDir
         , haddockOutputDir = packageConfigHaddockOutputDir
+        , haddockVersionCPP = packageConfigHaddockVersionCPP
         }
 
     testFlags =
@@ -1619,8 +1621,9 @@ legacyPackageConfigFieldDescrs =
             , "index-location"
             , "keep-temp-files"
             , "base-url"
-            , "lib"
+            , "resources-dir"
             , "output-dir"
+            , "version-cpp"
             ]
           . commandOptionsToFields
        )

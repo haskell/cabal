@@ -113,8 +113,9 @@ data HaddockFlags = HaddockFlags
   , haddockIndex :: Flag PathTemplate
   , haddockKeepTempFiles :: Flag Bool
   , haddockBaseUrl :: Flag String
-  , haddockLib :: Flag String
+  , haddockResourcesDir :: Flag String
   , haddockOutputDir :: Flag FilePath
+  , haddockVersionCPP :: Flag Bool
   }
   deriving (Show, Generic, Typeable)
 
@@ -168,8 +169,9 @@ defaultHaddockFlags =
     , haddockKeepTempFiles = Flag False
     , haddockIndex = NoFlag
     , haddockBaseUrl = NoFlag
-    , haddockLib = NoFlag
+    , haddockResourcesDir = NoFlag
     , haddockOutputDir = NoFlag
+    , haddockVersionCPP = Flag False
     }
 
 haddockCommand :: CommandUI HaddockFlags
@@ -366,10 +368,10 @@ haddockOptions showOrParseArgs =
         (reqArgFlag "URL")
     , option
         ""
-        ["lib"]
+        ["resources-dir"]
         "location of Haddocks static / auxiliary files"
-        haddockLib
-        (\v flags -> flags{haddockLib = v})
+        haddockResourcesDir
+        (\v flags -> flags{haddockResourcesDir = v})
         (reqArgFlag "DIR")
     , option
         ""
@@ -378,6 +380,13 @@ haddockOptions showOrParseArgs =
         haddockOutputDir
         (\v flags -> flags{haddockOutputDir = v})
         (reqArgFlag "DIR")
+    , option
+        ""
+        ["version-cpp"]
+        "Define the __HADDOCK_VERSION__ macro when invoking GHC through Haddock. This will likely trigger recompilation during documentation generation."
+        haddockVersionCPP
+        (\v flags -> flags{haddockVersionCPP = v})
+        trueArg
     ]
 
 emptyHaddockFlags :: HaddockFlags
@@ -440,8 +449,9 @@ data HaddockProjectFlags = HaddockProjectFlags
     haddockProjectKeepTempFiles :: Flag Bool
   , haddockProjectVerbosity :: Flag Verbosity
   , -- haddockBaseUrl is not supported, a fixed value is provided
-    haddockProjectLib :: Flag String
+    haddockProjectResourcesDir :: Flag String
   , haddockProjectOutputDir :: Flag FilePath
+  , haddockProjectVersionCPP :: Flag Bool
   }
   deriving (Show, Generic, Typeable)
 
@@ -464,9 +474,10 @@ defaultHaddockProjectFlags =
     , haddockProjectHscolourCss = NoFlag
     , haddockProjectKeepTempFiles = Flag False
     , haddockProjectVerbosity = Flag normal
-    , haddockProjectLib = NoFlag
+    , haddockProjectResourcesDir = NoFlag
     , haddockProjectOutputDir = NoFlag
     , haddockProjectInterfaces = NoFlag
+    , haddockProjectVersionCPP = Flag False
     }
 
 haddockProjectCommand :: CommandUI HaddockProjectFlags
@@ -608,10 +619,10 @@ haddockProjectOptions _showOrParseArgs =
       (\v flags -> flags{haddockProjectVerbosity = v})
   , option
       ""
-      ["lib"]
+      ["resources-dir"]
       "location of Haddocks static / auxiliary files"
-      haddockProjectLib
-      (\v flags -> flags{haddockProjectLib = v})
+      haddockProjectResourcesDir
+      (\v flags -> flags{haddockProjectResourcesDir = v})
       (reqArgFlag "DIR")
   , option
       ""
@@ -620,6 +631,13 @@ haddockProjectOptions _showOrParseArgs =
       haddockProjectOutputDir
       (\v flags -> flags{haddockProjectOutputDir = v})
       (reqArgFlag "DIR")
+  , option
+      ""
+      ["version-cpp"]
+      "Define the __HADDOCK_VERSION__ macro when invoking GHC through Haddock. This will likely trigger recompilation during documentation generation."
+      haddockProjectVersionCPP
+      (\v flags -> flags{haddockProjectVersionCPP = v})
+      trueArg
   ]
 
 emptyHaddockProjectFlags :: HaddockProjectFlags

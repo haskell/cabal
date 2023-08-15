@@ -153,7 +153,7 @@ data HaddockArgs = HaddockArgs
   -- ^ Re-exported modules
   , argTargets :: [FilePath]
   -- ^ Modules to process.
-  , argLib :: Flag String
+  , argResourcesDir :: Flag String
   -- ^ haddock's static \/ auxiliary files.
   }
   deriving (Generic)
@@ -329,6 +329,15 @@ haddock_setupHooks
           [] -> allTargetsInBuildOrder' pkg_descr lbi
           _ -> targets
 
+      version' =
+        if flag haddockVersionCPP
+          then Just version
+          else Nothing
+
+      mtmp
+        | version >= mkVersion [2, 28, 0] = const Nothing
+        | otherwise = Just
+
     internalPackageDB <-
       createInternalPackageDB verbosity lbi (flag $ setupDistPref . haddockCommonFlags)
 
@@ -367,11 +376,11 @@ haddock_setupHooks
                 exeArgs <-
                   fromExecutable
                     verbosity
-                    tmp
+                    (mtmp tmp)
                     lbi'
                     clbi
                     htmlTemplate
-                    version
+                    version'
                     exe
                 let exeArgs' = commonArgs `mappend` exeArgs
                 runHaddock
@@ -401,17 +410,17 @@ haddock_setupHooks
             (maybeComponentInstantiatedWith clbi)
       ipi <- case component of
         CLib lib -> do
-          withTempDirectoryCwdEx verbosity tmpFileOpts mbWorkDir (buildDir lbi) "tmp" $
+          withTempDirectoryCwdEx verbosity tmpFileOpts mbWorkDir (buildDir lbi') "tmp" $
             \tmp -> do
               smsg
               libArgs <-
                 fromLibrary
                   verbosity
-                  tmp
+                  (mtmp tmp)
                   lbi'
                   clbi
                   htmlTemplate
-                  version
+                  version'
                   lib
               let libArgs' = commonArgs `mappend` libArgs
               runHaddock verbosity mbWorkDir tmpFileOpts comp platform haddockProg True libArgs'
@@ -448,20 +457,20 @@ haddock_setupHooks
           when
             (flag haddockForeignLibs)
             ( do
-                withTempDirectoryCwdEx verbosity tmpFileOpts mbWorkDir (buildDir lbi') "tmp" $
-                  \tmp -> do
-                    smsg
-                    flibArgs <-
+                smsg
+                flibArgs <-
+                  withTempDirectoryCwdEx verbosity tmpFileOpts mbWorkDir (buildDir lbi') "tmp" $
+                    \tmp -> do
                       fromForeignLib
                         verbosity
-                        tmp
+                        (mtmp tmp)
                         lbi'
                         clbi
                         htmlTemplate
-                        version
+                        version'
                         flib
-                    let libArgs' = commonArgs `mappend` flibArgs
-                    runHaddock verbosity mbWorkDir tmpFileOpts comp platform haddockProg True libArgs'
+                let libArgs' = commonArgs `mappend` flibArgs
+                runHaddock verbosity mbWorkDir tmpFileOpts comp platform haddockProg True libArgs'
             )
             >> return index
         CExe _ -> when (flag haddockExecutables) (smsg >> doExe component) >> return index
@@ -525,7 +534,7 @@ fromFlags env flags =
           (haddockIndex flags)
     , argGenIndex = Flag False
     , argBaseUrl = haddockBaseUrl flags
-    , argLib = haddockLib flags
+    , argResourcesDir = haddockResourcesDir flags
     , argVerbose =
         maybe mempty (Any . (>= deafening))
           . flagToMaybe
@@ -552,7 +561,7 @@ fromHaddockProjectFlags flags =
     , argPrologueFile = haddockProjectPrologue flags
     , argInterfaces = fromFlagOrDefault [] (haddockProjectInterfaces flags)
     , argLinkedSource = Flag True
-    , argLib = haddockProjectLib flags
+    , argResourcesDir = haddockProjectResourcesDir flags
     }
 
 fromPackageDescription :: HaddockTarget -> PackageDescription -> HaddockArgs
@@ -597,26 +606,34 @@ componentGhcOptions verbosity lbi bi clbi odir =
 
 mkHaddockArgs
   :: Verbosity
-  -> SymbolicPath Pkg (Path.Dir Tmp)
+  -> Maybe (SymbolicPath Pkg (Path.Dir Tmp))
+  -- ^ 'Nothing' to prevent passing temporary directories for -hidir, -odir, and
+  -- -stubdir to GHC through Haddock
   -> LocalBuildInfo
   -> ComponentLocalBuildInfo
   -> Maybe PathTemplate
   -- ^ template for HTML location
-  -> Version
+  -> Maybe Version
+  -- ^ 'Nothing' if the user requested not to define the __HADDOCK_VERSION__
+  -- macro
   -> [SymbolicPath Pkg File]
   -> BuildInfo
   -> IO HaddockArgs
-mkHaddockArgs verbosity tmp lbi clbi htmlTemplate haddockVersion inFiles bi = do
+mkHaddockArgs verbosity mtmp lbi clbi htmlTemplate haddockVersion inFiles bi = do
   ifaceArgs <- getInterfaces verbosity lbi clbi htmlTemplate
-  let vanillaOpts =
-        (componentGhcOptions normal lbi bi clbi (buildDir lbi))
-          { -- Noooooooooo!!!!!111
-            -- haddock stomps on our precious .hi
-            -- and .o files. Workaround by telling
-            -- haddock to write them elsewhere.
-            ghcOptObjDir = toFlag $ coerceSymbolicPath tmp
-          , ghcOptHiDir = toFlag $ coerceSymbolicPath tmp
-          , ghcOptStubDir = toFlag $ coerceSymbolicPath tmp
+  let vanillaOpts' =
+        componentGhcOptions normal lbi bi clbi (buildDir lbi)
+          `mappend` getGhcCppOpts haddockVersion bi
+      vanillaOpts =
+        vanillaOpts'
+          { -- Starting with Haddock 2.28, we no longer want to run Haddock's
+            -- GHC session in a temporary directory. Doing so always causes
+            -- recompilation during documentation generation, which can now be
+            -- avoided thanks to Hi Haddock. See
+            -- https://github.com/haskell/cabal/pull/9177 for discussion.
+            ghcOptObjDir = maybe (ghcOptObjDir vanillaOpts') (toFlag . coerceSymbolicPath) mtmp
+          , ghcOptHiDir = maybe (ghcOptHiDir vanillaOpts') (toFlag . coerceSymbolicPath) mtmp
+          , ghcOptStubDir = maybe (ghcOptStubDir vanillaOpts') (toFlag . coerceSymbolicPath) mtmp
           }
           `mappend` getGhcCppOpts haddockVersion bi
       sharedOpts =
@@ -644,20 +661,24 @@ mkHaddockArgs verbosity tmp lbi clbi htmlTemplate haddockVersion inFiles bi = do
 
 fromLibrary
   :: Verbosity
-  -> SymbolicPath Pkg (Path.Dir Tmp)
+  -> Maybe (SymbolicPath Pkg (Path.Dir Tmp))
+  -- ^ 'Nothing' to prevent passing temporary directories for -hidir, -odir, and
+  -- -stubdir to GHC through Haddock
   -> LocalBuildInfo
   -> ComponentLocalBuildInfo
   -> Maybe PathTemplate
   -- ^ template for HTML location
-  -> Version
+  -> Maybe Version
+  -- ^ 'Nothing' if the user requested not to define the __HADDOCK_VERSION__
+  -- macro
   -> Library
   -> IO HaddockArgs
-fromLibrary verbosity tmp lbi clbi htmlTemplate haddockVersion lib = do
+fromLibrary verbosity mtmp lbi clbi htmlTemplate haddockVersion lib = do
   inFiles <- map snd `fmap` getLibSourceFiles verbosity lbi lib clbi
   args <-
     mkHaddockArgs
       verbosity
-      tmp
+      mtmp
       lbi
       clbi
       htmlTemplate
@@ -671,20 +692,24 @@ fromLibrary verbosity tmp lbi clbi htmlTemplate haddockVersion lib = do
 
 fromExecutable
   :: Verbosity
-  -> SymbolicPath Pkg (Path.Dir Tmp)
+  -> Maybe (SymbolicPath Pkg (Path.Dir Tmp))
+  -- ^ 'Nothing' to prevent passing temporary directories for -hidir, -odir, and
+  -- -stubdir to GHC through Haddock
   -> LocalBuildInfo
   -> ComponentLocalBuildInfo
   -> Maybe PathTemplate
   -- ^ template for HTML location
-  -> Version
+  -> Maybe Version
+  -- ^ 'Nothing' if the user requested not to define the __HADDOCK_VERSION__
+  -- macro
   -> Executable
   -> IO HaddockArgs
-fromExecutable verbosity tmp lbi clbi htmlTemplate haddockVersion exe = do
+fromExecutable verbosity mtmp lbi clbi htmlTemplate haddockVersion exe = do
   inFiles <- map snd `fmap` getExeSourceFiles verbosity lbi exe clbi
   args <-
     mkHaddockArgs
       verbosity
-      tmp
+      mtmp
       lbi
       clbi
       htmlTemplate
@@ -699,20 +724,24 @@ fromExecutable verbosity tmp lbi clbi htmlTemplate haddockVersion exe = do
 
 fromForeignLib
   :: Verbosity
-  -> SymbolicPath Pkg (Path.Dir Tmp)
+  -> Maybe (SymbolicPath Pkg (Path.Dir Tmp))
+  -- ^ 'Nothing' to prevent passing temporary directories for -hidir, -odir, and
+  -- -stubdir to GHC through Haddock
   -> LocalBuildInfo
   -> ComponentLocalBuildInfo
   -> Maybe PathTemplate
   -- ^ template for HTML location
-  -> Version
+  -> Maybe Version
+  -- ^ 'Nothing' if the user requested not to define the __HADDOCK_VERSION__
+  -- macro
   -> ForeignLib
   -> IO HaddockArgs
-fromForeignLib verbosity tmp lbi clbi htmlTemplate haddockVersion flib = do
+fromForeignLib verbosity mtmp lbi clbi htmlTemplate haddockVersion flib = do
   inFiles <- map snd `fmap` getFLibSourceFiles verbosity lbi flib clbi
   args <-
     mkHaddockArgs
       verbosity
-      tmp
+      mtmp
       lbi
       clbi
       htmlTemplate
@@ -768,7 +797,9 @@ getReexports LibComponentLocalBuildInfo{componentExposedModules = mods} =
 getReexports _ = []
 
 getGhcCppOpts
-  :: Version
+  :: Maybe Version
+  -- ^ 'Nothing' if the user requested not to define the __HADDOCK_VERSION__
+  -- macro
   -> BuildInfo
   -> GhcOptions
 getGhcCppOpts haddockVersion bi =
@@ -778,16 +809,21 @@ getGhcCppOpts haddockVersion bi =
     }
   where
     needsCpp = EnableExtension CPP `elem` usedExtensions bi
-    defines = [haddockVersionMacro]
-    haddockVersionMacro =
-      "-D__HADDOCK_VERSION__="
-        ++ show (v1 * 1000 + v2 * 10 + v3)
+    defines =
+      [ "-D__HADDOCK_VERSION__=" ++ show vn
+      | Just vn <- [versionInt . versionNumbers <$> haddockVersion]
+      ]
       where
-        (v1, v2, v3) = case versionNumbers haddockVersion of
-          [] -> (0, 0, 0)
-          [x] -> (x, 0, 0)
-          [x, y] -> (x, y, 0)
-          (x : y : z : _) -> (x, y, z)
+        -- For some list xs = [x, y, z ...], versionInt xs results in
+        -- x * 1000 + y * 10 + z. E.g.:
+        -- >>> versionInt [2, 29, 0]
+        -- 2290
+        -- >>> versionInt [3, 4]
+        -- 3040
+        -- >>> versionInt []
+        -- 0
+        versionInt :: [Int] -> Int
+        versionInt = foldr ((+) . uncurry (*)) 0 . zip [1000, 10, 1]
 
 getGhcLibDir
   :: Verbosity
@@ -993,7 +1029,7 @@ renderPureArgs version comp platform args =
       , isVersion 2 19
       ]
     , argTargets $ args
-    , maybe [] ((: []) . ("--lib=" ++)) . flagToMaybe . argLib $ args
+    , maybe [] ((: []) . (resourcesDirFlag ++)) . flagToMaybe . argResourcesDir $ args
     ]
   where
     -- See Note [Symbolic paths] in Distribution.Utils.Path
@@ -1037,6 +1073,9 @@ renderPureArgs version comp platform args =
     verbosityFlag
       | isVersion 2 5 = "--verbosity=1"
       | otherwise = "--verbose"
+    resourcesDirFlag
+      | isVersion 2 29 = "--resources-dir="
+      | otherwise = "--lib="
     haddockSupportsVisibility = version >= mkVersion [2, 26, 1]
     haddockSupportsPackageName = version > mkVersion [2, 16]
     haddockSupportsHyperlinkedSource = isVersion 2 17

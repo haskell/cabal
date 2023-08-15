@@ -148,8 +148,9 @@ haddockProjectAction flags _extraArgs globalFlags = do
                 then Flag (toPathTemplate "../doc-index.html")
                 else NoFlag
           , haddockKeepTempFiles = haddockProjectKeepTempFiles flags
-          , haddockLib = haddockProjectLib flags
+          , haddockResourcesDir = haddockProjectResourcesDir flags
           , haddockOutputDir = haddockProjectOutputDir flags
+          , haddockVersionCPP = haddockProjectVersionCPP flags
           }
       nixFlags =
         (commandDefaultFlags CmdHaddock.haddockCommand)
