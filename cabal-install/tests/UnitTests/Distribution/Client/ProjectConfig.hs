@@ -725,6 +725,7 @@ instance Arbitrary PackageConfig where
       <*> arbitrary
       <*> arbitrary
       <*> arbitrary
+      <*> arbitrary
       <*> arbitraryFlag arbitraryShortToken
       <*> arbitrary
       <*> shortListOf 5 arbitrary
@@ -790,8 +791,9 @@ instance Arbitrary PackageConfig where
       , packageConfigHaddockForHackage = x41
       , packageConfigHaddockIndex = x54
       , packageConfigHaddockBaseUrl = x55
-      , packageConfigHaddockLib = x56
+      , packageConfigHaddockResourcesDir = x56
       , packageConfigHaddockOutputDir = x57
+      , packageConfigHaddockVersionCPP = x58
       , packageConfigTestHumanLog = x44
       , packageConfigTestMachineLog = x45
       , packageConfigTestShowDetails = x46
@@ -853,8 +855,9 @@ instance Arbitrary PackageConfig where
         , packageConfigHaddockForHackage = x41'
         , packageConfigHaddockIndex = x54'
         , packageConfigHaddockBaseUrl = x55'
-        , packageConfigHaddockLib = x56'
+        , packageConfigHaddockResourcesDir = x56'
         , packageConfigHaddockOutputDir = x57'
+        , packageConfigHaddockVersionCPP = x58'
         , packageConfigTestHumanLog = x44'
         , packageConfigTestMachineLog = x45'
         , packageConfigTestShowDetails = x46'
@@ -877,6 +880,7 @@ instance Arbitrary PackageConfig where
               , (x44', x45', x46', x47', x48', x49', x51', x52', x54', x55')
               , x56'
               , x57'
+              , x58'
               )
           ) <-
           shrink
@@ -902,6 +906,7 @@ instance Arbitrary PackageConfig where
               , (x44, x45, x46, x47, x48, x49, x51, x52, x54, x55)
               , x56
               , x57
+              , x58
               )
             )
       ]
