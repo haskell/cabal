@@ -1,0 +1,11 @@
+synopsis: Add `licenseFiles` to `InstalledPackageInfo`
+packages: Cabal-syntax Cabal
+prs: #9172
+issues: #701 #9184
+
+description: {
+
+- A new field `licenseFiles` is added to `InstalledPackageInfo` to track their locations.
+- The field `licenseFiles` is pretty printed as `license-files` canonically.
+
+}
