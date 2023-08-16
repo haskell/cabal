@@ -210,12 +210,12 @@ SPHINX_HTML_OUTDIR:=dist-newstyle/doc/users-guide
 USERGUIDE_STAMP:=$(SPHINX_HTML_OUTDIR)/index.html
 
 # do pip install every time so we have up to date requirements when we build
-users-guide: .python-sphinx-virtualenv $(USERGUIDE_STAMP)
+users-guide: .python-sphinx-virtualenv/bin/activate $(USERGUIDE_STAMP)
 $(USERGUIDE_STAMP) : doc/*.rst
 	mkdir -p $(SPHINX_HTML_OUTDIR)
 	(. ./.python-sphinx-virtualenv/bin/activate && pip install -r doc/requirements.txt && $(SPHINXCMD) $(SPHINX_FLAGS) doc $(SPHINX_HTML_OUTDIR))
 
-.python-sphinx-virtualenv:
+.python-sphinx-virtualenv/bin/activate:
 	python3 -m venv .python-sphinx-virtualenv
 	(. ./.python-sphinx-virtualenv/bin/activate)
 
@@ -224,7 +224,7 @@ $(USERGUIDE_STAMP) : doc/*.rst
 users-guide-requirements: doc/requirements.txt
 
 .PHONY: doc/requirements.txt
-doc/requirements.txt: .python-sphinx-virtualenv
+doc/requirements.txt: .python-sphinx-virtualenv/bin/activate
 	. .python-sphinx-virtualenv/bin/activate \
 	  && make -C doc build-and-check-requirements
 
