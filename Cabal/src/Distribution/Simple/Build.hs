@@ -181,9 +181,7 @@ checkSemaphoreSupport
   :: Verbosity -> Compiler -> BuildFlags -> IO ()
 checkSemaphoreSupport verbosity comp flags = do
   unless (jsemSupported comp || (isNothing (flagToMaybe (buildUseSemaphore flags)))) $
-    die' verbosity $
-      "Your compiler does not support the -jsem flag. "
-        ++ "To use this feature you must use GHC 9.8 or later."
+    dieWithException verbosity CheckSemaphoreSupport
 
 -- | Write available build information for 'LocalBuildInfo' to disk.
 --

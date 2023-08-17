@@ -309,7 +309,7 @@ ppExplanation SignaturesCabal2 =
   "To use the 'signatures' field the package needs to specify "
     ++ "at least 'cabal-version: 2.0'."
 ppExplanation AutogenNotExposed =
-  "An 'autogen-module' is neither on 'exposed-modules' or 'other-modules'."
+  "An 'autogen-module' is neither on 'exposed-modules' nor 'other-modules'."
 ppExplanation AutogenIncludesNotIncluded =
   "An include in 'autogen-includes' is neither in 'includes' or "
     ++ "'install-includes'."
