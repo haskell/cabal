@@ -1,0 +1,3 @@
+synopsis: Preserve the relative paths of license files
+packages: Cabal
+issues: #9184

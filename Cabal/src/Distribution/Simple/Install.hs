@@ -31,7 +31,11 @@ import Distribution.Types.UnqualComponentName
 
 import Distribution.Package
 import Distribution.PackageDescription
-import Distribution.Simple.BuildPaths (haddockName, haddockPref)
+import Distribution.Simple.BuildPaths
+  ( haddockName
+  , haddockPref
+  , licenseFilePref
+  )
 import Distribution.Simple.BuildTarget
 import Distribution.Simple.Compiler
   ( CompilerFlavor (..)
@@ -74,7 +78,6 @@ import System.Directory
 import System.FilePath
   ( isRelative
   , takeDirectory
-  , takeFileName
   , (</>)
   )
 
@@ -182,7 +185,7 @@ copyPackage verbosity pkg_descr lbi distPref copydest = do
     for_ lfiles $ \lfile' -> do
       let lfile :: FilePath
           lfile = getSymbolicPath lfile'
-      installOrdinaryFile verbosity lfile (docPref </> takeFileName lfile)
+      installOrdinaryFile verbosity lfile (licenseFilePref docPref lfile)
 
 -- | Copy files associated with a component.
 copyComponent
