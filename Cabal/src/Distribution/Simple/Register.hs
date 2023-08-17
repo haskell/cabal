@@ -512,9 +512,7 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
         if ghc84
           then Left $ either id licenseToSPDX $ licenseRaw pkg
           else Right $ either licenseFromSPDX id $ licenseRaw pkg
-    , IPI.licenseFiles =
-        let doc = docdir installDirs
-         in map ((doc </>) . getSymbolicPath) $ licenseFiles pkg
+    , IPI.licenseFiles = licenseFilePref (docdir installDirs) . getSymbolicPath <$> licenseFiles pkg
     , IPI.copyright = copyright pkg
     , IPI.maintainer = maintainer pkg
     , IPI.author = author pkg
