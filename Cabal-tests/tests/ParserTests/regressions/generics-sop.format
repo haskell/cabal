@@ -2,7 +2,7 @@ cabal-version:      >=1.10
 name:               generics-sop
 version:            0.3.1.0
 license:            BSD3
-license-file:       LICENSE
+license-files:      LICENSE
 maintainer:         andres@well-typed.com
 author:
     Edsko de Vries <edsko@well-typed.com>, Andres Löh <andres@well-typed.com>

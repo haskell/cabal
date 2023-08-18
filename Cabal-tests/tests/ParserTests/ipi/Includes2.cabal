@@ -6,6 +6,7 @@ package-name: Includes2
 lib-name: mylib
 key: Includes2-0.1.0.0-inplace-mylib+3gY9SyjX86dBypHcOaev1n
 license: BSD3
+license-files: LICENSE
 maintainer: ezyang@cs.stanford.edu
 author: Edward Z. Yang
 exposed: False

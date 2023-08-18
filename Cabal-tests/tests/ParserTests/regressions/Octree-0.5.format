@@ -3,7 +3,7 @@ cabal-version: >=1.8
 name:          Octree
 version:       0.5
 license:       BSD3
-license-file:  LICENSE
+license-files: LICENSE
 copyright:     Copyright by Michal J. Gajda '2012
 maintainer:    mjgajda@googlemail.com
 author:        Michal J. Gajda

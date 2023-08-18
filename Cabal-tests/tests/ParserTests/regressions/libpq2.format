@@ -2,7 +2,7 @@ cabal-version:      3.0
 name:               postgresql-libpq
 version:            0.9.4.2
 license:            BSD-3-Clause
-license-file:       LICENSE
+license-files:      LICENSE
 copyright:
     (c) 2010 Grant Monroe
     (c) 2011 Leon P Smith

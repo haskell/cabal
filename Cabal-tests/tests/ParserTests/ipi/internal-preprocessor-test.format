@@ -4,6 +4,7 @@ visibility:         public
 id:                 internal-preprocessor-test-0.1.0.0
 key:                internal-preprocessor-test-0.1.0.0
 license:            GPL-3
+license-files:      LICENSE
 maintainer:         mikhail.glushenkov@gmail.com
 author:             Mikhail Glushenkov
 synopsis:           Internal custom preprocessor example.

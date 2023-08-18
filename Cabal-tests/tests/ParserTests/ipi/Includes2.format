@@ -6,6 +6,7 @@ id:                   Includes2-0.1.0.0-inplace-mylib+3gY9SyjX86dBypHcOaev1n
 instantiated-with:    Database=Includes2-0.1.0.0-inplace-mysql:Database.MySQL
 key:                  Includes2-0.1.0.0-inplace-mylib+3gY9SyjX86dBypHcOaev1n
 license:              BSD3
+license-files:        LICENSE
 maintainer:           ezyang@cs.stanford.edu
 author:               Edward Z. Yang
 abi:                  inplace

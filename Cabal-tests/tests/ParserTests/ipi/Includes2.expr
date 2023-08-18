@@ -25,6 +25,7 @@ InstalledPackageInfo {
   compatPackageKey =
   "Includes2-0.1.0.0-inplace-mylib+3gY9SyjX86dBypHcOaev1n",
   license = Right BSD3,
+  licenseFiles = ["LICENSE"],
   copyright = "",
   maintainer =
   "ezyang@cs.stanford.edu",

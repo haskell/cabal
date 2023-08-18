@@ -16,6 +16,7 @@ InstalledPackageInfo {
   compatPackageKey =
   "transformers-0.5.2.0",
   license = Right BSD3,
+  licenseFiles = ["LICENSE"],
   copyright = "",
   maintainer =
   "Ross Paterson <R.Paterson@city.ac.uk>",

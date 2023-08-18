@@ -5,7 +5,7 @@ cabal-version: >=1.6
 name:          wl-pprint-indef
 version:       1.2
 license:       BSD3
-license-file:  LICENSE
+license-files: LICENSE
 maintainer:    Noam Lewis <jones.noamle@gmail.com>
 author:        Daan Leijen
 synopsis:      The Wadler/Leijen Pretty Printer
