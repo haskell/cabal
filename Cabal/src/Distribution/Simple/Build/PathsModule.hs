@@ -26,14 +26,12 @@ import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.Pretty ()
 import Distribution.Simple.Compiler
-import Distribution.Simple.PackageIndex ( allPackages )
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Utils (shortRelativePath)
 import Distribution.System
-import Distribution.Utils.Path ( getSymbolicPath )
+import Distribution.Utils.Path (getSymbolicPath)
 import Distribution.Version
 
-import System.FilePath
 import qualified Distribution.Simple.Build.PathsModule.Z as Z
 
 -- ------------------------------------------------------------

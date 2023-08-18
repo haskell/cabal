@@ -24,10 +24,17 @@ $(capture "decls" [d|
     data Z = Z
         { zPackageName                :: PackageName
         , zVersionDigits              :: String
-        , zSynopsis                   :: String
-        , zCopyright                  :: String
         , zLicense                    :: String
+        , zCopyright                  :: String
+        , zMaintainer                 :: String
+        , zAuthor                     :: String
+        , zStability                  :: String
         , zHomepage                   :: String
+        , zPkgUrl                     :: String
+        , zBugReports                 :: String
+        , zSynopsis                   :: String
+        , zDescription                :: String
+        , zCategory                   :: String
 
         , zSupportsNoRebindableSyntax :: Bool
 

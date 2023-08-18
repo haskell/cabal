@@ -6,10 +6,17 @@
 module PackageInfo_{{ manglePkgName packageName }}
   ( name
   , version
-  , synopsis
-  , copyright
   , license
+  , copyright
+  , maintainer
+  , author
+  , stability
   , homepage
+  , pkgUrl
+  , bugReports
+  , synopsis
+  , description
+  , category
   ) where
 
 import Data.Version (Version(..))
@@ -21,15 +28,35 @@ name = {{ show (manglePkgName packageName) }}
 version :: Version
 version = Version {{ versionDigits }} []
 
-synopsis :: String
-synopsis = {{ synopsis }}
+license :: String
+license = {{ license }}
 
 copyright :: String
 copyright = {{ copyright }}
 
-license :: String
-license = {{ license }}
+maintainer :: String
+maintainer = {{ maintainer }}
+
+author :: String
+author = {{ author }}
+
+stability :: String
+stability = {{ stability }}
 
 homepage :: String
 homepage = {{ homepage }}
 
+pkgUrl :: String
+pkgUrl = {{ pkgUrl }}
+
+bugReports :: String
+bugReports = {{ bugReports }}
+
+synopsis :: String
+synopsis = {{ synopsis }}
+
+description :: String
+description = {{ description }}
+
+category :: String
+category = {{ category }}
