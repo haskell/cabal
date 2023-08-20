@@ -92,7 +92,7 @@ classifyLanguage = \str -> case lookup str langTable of
 
 -- Note: if you add a new 'KnownExtension':
 --
--- * also add it to the Distribution.Simple.X.languageExtensions lists
+-- * also add it to the Distribution.Simple.X.compilerExtensions lists
 --   (where X is each compiler: GHC, UHC, HaskellSuite)
 --
 -- | This represents language extensions beyond a base 'Language' definition
@@ -676,6 +676,9 @@ data KnownExtension =
 
   -- | Enable data types for which an unlifted or levity-polymorphic result kind is inferred.
   | UnliftedDatatypes
+
+  -- | Enable syntax for primitive numeric literals, e.g. @3#Int8@
+  | ExtendedLiterals
 
   -- | Undocumented parsing-related extensions introduced in GHC 7.0.
   | AlternativeLayoutRule
