@@ -94,9 +94,10 @@
 - ignore: {name: "Use when"} # 1 hint
 
 - arguments:
+    - --ignore-glob=Cabal-syntax/src/Distribution/Fields/Lexer.hs
     - --ignore-glob=cabal-testsuite/PackageTests/CmmSources/src/Demo.hs
     - --ignore-glob=cabal-testsuite/PackageTests/CmmSourcesDyn/src/Demo.hs
-    - --ignore-glob=Cabal-syntax/src/Distribution/Fields/Lexer.hs
+    - --ignore-glob=cabal-testsuite/PackageTests/CmmSourcesExe/src/Demo.hs
     - --ignore-glob=templates/Paths_pkg.template.hs
     - --ignore-glob=templates/SPDX.LicenseExceptionId.template.hs
     - --ignore-glob=templates/SPDX.LicenseId.template.hs
