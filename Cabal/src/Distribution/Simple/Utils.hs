@@ -1014,9 +1014,9 @@ rawSystemStdout verbosity path args = withFrozenCallStack $ do
       Nothing
       (IOData.iodataMode :: IODataMode mode)
   when (exitCode /= ExitSuccess) $
-    -- dieWithException verbosity $
-    -- RawSystemStdout errors
-    die' verbosity errors
+    dieWithException verbosity $
+      RawSystemStdout errors
+  -- die' verbosity errors
   return output
 
 -- | Execute the given command with the given arguments, returning

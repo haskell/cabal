@@ -486,34 +486,6 @@ lookupProgramVersion verbosity prog range programDb = do
         Nothing ->
           return $! Left $ UnknownVersionDb (programName prog) range (locationPath location)
 
--- where
-{-  notFound =
-    "The program '"
-      ++ programName prog
-      ++ "'"
-      ++ versionRequirement
-      ++ " is required but it could not be found."
-  badVersion v l =
-    "The program '"
-      ++ programName prog
-      ++ "'"
-      ++ versionRequirement
-      ++ " is required but the version found at "
-      ++ locationPath l
-      ++ " is version "
-      ++ prettyShow v
-  unknownVersion l =
-    "The program '"
-      ++ programName prog
-      ++ "'"
-      ++ versionRequirement
-      ++ " is required but the version of "
-      ++ locationPath l
-      ++ " could not be determined." -}
--- versionRequirement
--- \| isAnyVersion range = ""
---  | otherwise = " version " ++ prettyShow range
-
 -- | Like 'lookupProgramVersion', but raises an exception in case of error
 -- instead of returning 'Left errMsg'.
 requireProgramVersion
