@@ -280,7 +280,7 @@ haddock pkg_descr lbi suffixes flags' = do
       (defaultHscolourFlags `mappend` haddockToHscolour flags)
 
   targets <- readTargetInfos verbosity pkg_descr lbi (haddockArgs flags)
-
+  
   let
     targets' =
       case targets of
@@ -1116,8 +1116,9 @@ hscolour'
   -> HscolourFlags
   -> IO ()
 hscolour' onNoHsColour haddockTarget pkg_descr lbi suffixes flags =
-  either onNoHsColour (\(hscolourProg, _, _) -> go hscolourProg)
-    =<< lookupProgramVersion
+  either (\excep-> onNoHsColour $ exceptionMessage excep) (\(hscolourProg, _, _) -> go hscolourProg)
+    =<< 
+      lookupProgramVersion
       verbosity
       hscolourProgram
       (orLaterVersion (mkVersion [1, 8]))

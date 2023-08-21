@@ -78,7 +78,7 @@ import Distribution.Utils.Path
 import Distribution.Verbosity
 import Distribution.Version (Version)
 import Language.Haskell.Extension
-
+import Distribution.Simple.Errors
 import Data.Bool (bool)
 import qualified Data.ByteString.Lazy.Char8 as BS
 import qualified Data.Map as Map
@@ -285,7 +285,7 @@ getGhcInfo verbosity _implInfo ghcProg = do
       | all isSpace ss ->
           return i
     _ ->
-      die' verbosity "Can't parse --info output of GHC"
+      dieWithException verbosity CantParseGHCOutput
 
 getExtensions
   :: Verbosity
@@ -753,15 +753,7 @@ checkPackageDbEnvVar verbosity compilerName packagePathEnvVar = do
       (Just `fmap` getEnv name)
         `catchIO` const (return Nothing)
     abort =
-      die' verbosity $
-        "Use of "
-          ++ compilerName
-          ++ "'s environment variable "
-          ++ packagePathEnvVar
-          ++ " is incompatible with Cabal. Use the "
-          ++ "flag --package-db to specify a package database (it can be "
-          ++ "used multiple times)."
-
+        dieWithException verbosity $ IncompatibleWithCabal compilerName packagePathEnvVar
     _ = callStack -- TODO: output stack when erroring
 
 profDetailLevelFlag :: Bool -> ProfDetailLevel -> Flag GhcProfAuto
