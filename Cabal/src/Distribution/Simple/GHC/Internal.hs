@@ -51,6 +51,10 @@ module Distribution.Simple.GHC.Internal
 import Distribution.Compat.Prelude
 import Prelude ()
 
+import Data.Bool (bool)
+import qualified Data.ByteString.Lazy.Char8 as BS
+import qualified Data.Map as Map
+import qualified Data.Set as Set
 import Distribution.Backpack
 import Distribution.Compat.Stack
 import qualified Distribution.InstalledPackageInfo as IPI
@@ -61,6 +65,7 @@ import Distribution.Parsec (simpleParsec)
 import Distribution.Pretty (prettyShow)
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Compiler
+import Distribution.Simple.Errors
 import Distribution.Simple.Flag (Flag (NoFlag), maybeToFlag, toFlag)
 import Distribution.Simple.GHC.ImplInfo
 import Distribution.Simple.LocalBuildInfo
@@ -69,6 +74,7 @@ import Distribution.Simple.Program.GHC
 import Distribution.Simple.Setup.Common (extraCompilationArtifacts)
 import Distribution.Simple.Utils
 import Distribution.System
+import Distribution.Types.ComponentId (ComponentId)
 import Distribution.Types.ComponentLocalBuildInfo
 import Distribution.Types.LocalBuildInfo
 import Distribution.Types.TargetInfo
@@ -78,12 +84,6 @@ import Distribution.Utils.Path
 import Distribution.Verbosity
 import Distribution.Version (Version)
 import Language.Haskell.Extension
-import Distribution.Simple.Errors
-import Data.Bool (bool)
-import qualified Data.ByteString.Lazy.Char8 as BS
-import qualified Data.Map as Map
-import qualified Data.Set as Set
-import Distribution.Types.ComponentId (ComponentId)
 import System.Directory (getDirectoryContents, getTemporaryDirectory)
 import System.Environment (getEnv)
 import System.FilePath
@@ -753,7 +753,7 @@ checkPackageDbEnvVar verbosity compilerName packagePathEnvVar = do
       (Just `fmap` getEnv name)
         `catchIO` const (return Nothing)
     abort =
-        dieWithException verbosity $ IncompatibleWithCabal compilerName packagePathEnvVar
+      dieWithException verbosity $ IncompatibleWithCabal compilerName packagePathEnvVar
     _ = callStack -- TODO: output stack when erroring
 
 profDetailLevelFlag :: Bool -> ProfDetailLevel -> Flag GhcProfAuto

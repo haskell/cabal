@@ -348,7 +348,7 @@ configureProgram verbosity prog progdb = do
         else
           findProgramOnSearchPath verbosity (progSearchPath progdb) path
             >>= maybe
-                (dieWithException verbosity $ ConfigureProgram name path) 
+              (dieWithException verbosity $ ConfigureProgram name path)
               (return . Just . swap . fmap UserSpecified . swap)
   case maybeLocation of
     Nothing -> return progdb
@@ -485,33 +485,34 @@ lookupProgramVersion verbosity prog range programDb = do
               return $! Left $ BadVersionDb (programName prog) version range (locationPath location)
         Nothing ->
           return $! Left $ UnknownVersionDb (programName prog) range (locationPath location)
- -- where
-  {-  notFound =
-      "The program '"
-        ++ programName prog
-        ++ "'"
-        ++ versionRequirement
-        ++ " is required but it could not be found."
-    badVersion v l =
-      "The program '"
-        ++ programName prog
-        ++ "'"
-        ++ versionRequirement
-        ++ " is required but the version found at "
-        ++ locationPath l
-        ++ " is version "
-        ++ prettyShow v 
-    unknownVersion l =
-      "The program '"
-        ++ programName prog
-        ++ "'"
-        ++ versionRequirement
-        ++ " is required but the version of "
-        ++ locationPath l
-        ++ " could not be determined." -}
-   --versionRequirement
-    -- | isAnyVersion range = ""
-    --  | otherwise = " version " ++ prettyShow range
+
+-- where
+{-  notFound =
+    "The program '"
+      ++ programName prog
+      ++ "'"
+      ++ versionRequirement
+      ++ " is required but it could not be found."
+  badVersion v l =
+    "The program '"
+      ++ programName prog
+      ++ "'"
+      ++ versionRequirement
+      ++ " is required but the version found at "
+      ++ locationPath l
+      ++ " is version "
+      ++ prettyShow v
+  unknownVersion l =
+    "The program '"
+      ++ programName prog
+      ++ "'"
+      ++ versionRequirement
+      ++ " is required but the version of "
+      ++ locationPath l
+      ++ " could not be determined." -}
+-- versionRequirement
+-- \| isAnyVersion range = ""
+--  | otherwise = " version " ++ prettyShow range
 
 -- | Like 'lookupProgramVersion', but raises an exception in case of error
 -- instead of returning 'Left errMsg'.

@@ -63,7 +63,8 @@ runTest pkg_descr lbi clbi flags suite = do
   -- Check that the test executable exists.
   exists <- doesFileExist cmd
   unless exists $
-      dieWithException verbosity $ Couldn'tFindTestProgram cmd
+    dieWithException verbosity $
+      Couldn'tFindTestProgram cmd
 
   -- Remove old .tix files if appropriate.
   unless (fromFlag $ testKeepTix flags) $ do

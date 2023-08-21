@@ -38,6 +38,7 @@ import Distribution.TestSuite
 import qualified Distribution.Types.LocalBuildInfo as LBI
 import Distribution.Types.UnqualComponentName
 
+import Distribution.Simple.Errors
 import System.Directory
   ( createDirectoryIfMissing
   , doesFileExist
@@ -45,7 +46,6 @@ import System.Directory
   , removeFile
   )
 import System.FilePath ((</>))
-import Distribution.Simple.Errors
 
 -- | Perform the \"@.\/setup test@\" action.
 test

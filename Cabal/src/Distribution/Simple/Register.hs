@@ -71,6 +71,7 @@ import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.Pretty
 import Distribution.Simple.Compiler
+import Distribution.Simple.Errors
 import Distribution.Simple.Flag
 import Distribution.Simple.Program
 import qualified Distribution.Simple.Program.HcPkg as HcPkg
@@ -81,7 +82,6 @@ import Distribution.System
 import Distribution.Utils.MapAccum
 import Distribution.Verbosity as Verbosity
 import Distribution.Version
-import Distribution.Simple.Errors
 import System.Directory
 import System.FilePath (isAbsolute, (<.>), (</>))
 
@@ -350,7 +350,7 @@ relocRegistrationInfo verbosity pkg lib lbi clbi abi_hash packageDb =
             fs
         )
     _ -> dieWithException verbosity RelocRegistrationInfo
- 
+
 initPackageDB :: Verbosity -> Compiler -> ProgramDb -> FilePath -> IO ()
 initPackageDB verbosity comp progdb dbPath =
   createPackageDB verbosity comp progdb False dbPath
@@ -437,7 +437,7 @@ registerPackage verbosity comp progdb packageDbs installedPkgInfo registerOption
       | HcPkg.registerMultiInstance registerOptions ->
           dieWithException verbosity RegisMultiplePkgNotSupported
     UHC -> UHC.registerPackage verbosity comp progdb packageDbs installedPkgInfo
-    _ -> dieWithException verbosity RegisteringNotImplemented 
+    _ -> dieWithException verbosity RegisteringNotImplemented
 
 writeHcPkgRegisterScript
   :: Verbosity

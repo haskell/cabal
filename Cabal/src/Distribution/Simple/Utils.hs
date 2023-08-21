@@ -1014,7 +1014,9 @@ rawSystemStdout verbosity path args = withFrozenCallStack $ do
       Nothing
       (IOData.iodataMode :: IODataMode mode)
   when (exitCode /= ExitSuccess) $
-    dieWithException verbosity $ RawSystemStdout errors
+    -- dieWithException verbosity $
+    -- RawSystemStdout errors
+    die' verbosity errors
   return output
 
 -- | Execute the given command with the given arguments, returning
@@ -1214,7 +1216,7 @@ findFileEx verbosity searchPath fileName =
     | path <- nub searchPath
     ]
     >>= maybe (dieWithException verbosity $ FindFileEx fileName) return
-    
+
 -- | Find a file by looking in a search path with one of a list of possible
 -- file extensions. The file base name should be given and it will be tried
 -- with each of the extensions in each element of the search path.
@@ -1343,7 +1345,7 @@ findModuleFileEx verbosity searchPath extensions mod_name =
   where
     notFound =
       dieWithException verbosity $ FindModuleFileEx mod_name extensions searchPath
- 
+
 -- | List all the files in a directory and all subdirectories.
 --
 -- The order places files in sub-directories after all the files in their
@@ -1826,18 +1828,20 @@ findPackageDescCwd cwd dir =
       [] -> return (Left NoDesc)
       [cabalFile] -> return (Right cabalFile)
       multiple -> return (Left $ MultiDesc multiple)
-  {-where
-    noDesc :: String
-    noDesc =
-      "No cabal file found.\n"
-        ++ "Please create a package description file <pkgname>.cabal"
 
-    multiDesc :: [String] -> String
-    multiDesc l =
-      "Multiple cabal files found.\n"
-        ++ "Please use only one of: "
-        ++ intercalate ", " l
-  -}
+{-where
+  noDesc :: String
+  noDesc =
+    "No cabal file found.\n"
+      ++ "Please create a package description file <pkgname>.cabal"
+
+  multiDesc :: [String] -> String
+  multiDesc l =
+    "Multiple cabal files found.\n"
+      ++ "Please use only one of: "
+      ++ intercalate ", " l
+-}
+
 -- | Like 'findPackageDesc', but calls 'die' in case of error.
 tryFindPackageDesc :: Verbosity -> FilePath -> IO FilePath
 tryFindPackageDesc verbosity dir =

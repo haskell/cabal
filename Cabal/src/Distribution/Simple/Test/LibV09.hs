@@ -39,6 +39,7 @@ import Distribution.Verbosity
 import qualified Control.Exception as CE
 import qualified Data.ByteString.Lazy as LBS
 import Distribution.Compat.Process (proc)
+import Distribution.Simple.Errors
 import System.Directory
   ( canonicalizePath
   , createDirectoryIfMissing
@@ -52,7 +53,6 @@ import System.Directory
 import System.FilePath ((<.>), (</>))
 import System.IO (hClose, hPutStr)
 import qualified System.Process as Process
-import Distribution.Simple.Errors
 
 runTest
   :: PD.PackageDescription
@@ -75,7 +75,8 @@ runTest pkg_descr lbi clbi flags suite = do
   -- Check that the test executable exists.
   exists <- doesFileExist cmd
   unless exists $
-      dieWithException verbosity $ Couldn'tFindTestProgLibV09 cmd
+    dieWithException verbosity $
+      Couldn'tFindTestProgLibV09 cmd
 
   -- Remove old .tix files if appropriate.
   unless (fromFlag $ testKeepTix flags) $ do
