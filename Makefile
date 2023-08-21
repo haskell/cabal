@@ -200,33 +200,13 @@ bootstrap-jsons: $(BOOTSTRAP_GHC_VERSIONS:%=bootstrap-json-%)
 # documentation
 ##############################################################################
 
-# TODO: when we have sphinx-build2 ?
-SPHINXCMD:=sphinx-build
-# Flag -n ("nitpick") warns about broken references
-# Flag -W turns warnings into errors
-# Flag --keep-going continues after errors
-SPHINX_FLAGS:=-n -W --keep-going -E
-SPHINX_HTML_OUTDIR:=dist-newstyle/doc/users-guide
-USERGUIDE_STAMP:=$(SPHINX_HTML_OUTDIR)/index.html
+.PHONY: users-guide
+users-guide:
+	$(MAKE) -C doc users-guide
 
-# do pip install every time so we have up to date requirements when we build
-users-guide: .python-sphinx-virtualenv $(USERGUIDE_STAMP)
-$(USERGUIDE_STAMP) : doc/*.rst
-	mkdir -p $(SPHINX_HTML_OUTDIR)
-	(. ./.python-sphinx-virtualenv/bin/activate && pip install -r doc/requirements.txt && $(SPHINXCMD) $(SPHINX_FLAGS) doc $(SPHINX_HTML_OUTDIR))
-
-.python-sphinx-virtualenv:
-	python3 -m venv .python-sphinx-virtualenv
-	(. ./.python-sphinx-virtualenv/bin/activate)
-
-# This goal is intended for manual invocation, always rebuilds.
 .PHONY: users-guide-requirements
-users-guide-requirements: doc/requirements.txt
-
-.PHONY: doc/requirements.txt
-doc/requirements.txt: .python-sphinx-virtualenv
-	. .python-sphinx-virtualenv/bin/activate \
-	  && make -C doc build-and-check-requirements
+users-guide-requirements:
+	$(MAKE) -C doc users-guide-requirements
 
 ifeq ($(shell uname), Darwin)
 PROCS := $(shell sysctl -n hw.logicalcpu)
