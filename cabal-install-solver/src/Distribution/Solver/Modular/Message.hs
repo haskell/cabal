@@ -46,8 +46,8 @@ data Message =
 -- The log contains level numbers, which are useful for any trace that involves
 -- backtracking, because only the level numbers will allow to keep track of
 -- backjumps.
-showMessages :: Progress Message a b -> Progress String a b
-showMessages = go 0
+showMessages :: Bool -> Progress Message a b -> Progress String a b
+showMessages currentlyRunningInGHA = go 0
   where
     -- 'go' increments the level for a recursive call when it encounters
     -- 'TryP', 'TryF', or 'TryS' and decrements the level when it encounters 'Leave'.
@@ -68,8 +68,8 @@ showMessages = go 0
     go !l (Step (Next (Goal (P qpn) gr)) (Step (Failure _c UnknownPackage) ms)) =
         atLevel l ("unknown package: " ++ showQPN qpn ++ showGR gr) $ go l ms
     -- standard display
-    go !l (Step Enter                    ms) = go (l+1) ms
-    go !l (Step Leave                    ms) = go (l-1) ms
+    go !l (Step Enter                    ms) =    groupGHA (l+1) $ go (l+1) ms
+    go !l (Step Leave                    ms) = endgroupGHA (l-1) $ go (l-1) ms
     go !l (Step (TryP qpn i)             ms) = (atLevel l $ "trying: " ++ showQPNPOpt qpn i) (go l ms)
     go !l (Step (TryF qfn b)             ms) = (atLevel l $ "trying: " ++ showQFNBool qfn b) (go l ms)
     go !l (Step (TryS qsn b)             ms) = (atLevel l $ "trying: " ++ showQSNBool qsn b) (go l ms)
@@ -86,6 +86,9 @@ showMessages = go 0
 
     showFailure :: ConflictSet -> FailReason -> String
     showFailure c fr = "fail" ++ showFR c fr
+
+    groupGHA    l x = if currentlyRunningInGHA then (Step $ "::group::" ++ show l) x else x
+    endgroupGHA _ x = if currentlyRunningInGHA then (Step   "::endgroup::"       ) x else x
 
     -- special handler for many subsequent package rejections
     goPReject :: Int

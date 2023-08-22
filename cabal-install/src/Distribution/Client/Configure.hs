@@ -129,6 +129,7 @@ import Distribution.Version
   , thisVersion
   )
 
+import Distribution.Client.GHA (checkIfcurrentlyRunningInGHA)
 import System.FilePath ((</>))
 
 -- | Choose the Cabal version such that the setup scripts compiled against this
@@ -410,6 +411,7 @@ planLocalPackage
         verbosity
         (fromFlag $ configSolver configExFlags)
         (compilerInfo comp)
+    currentlyRunningInGHA <- checkIfcurrentlyRunningInGHA
 
     let
       -- We create a local package and ask to resolve a dependency on it
@@ -475,6 +477,7 @@ planLocalPackage
             -- have already been installed
             (SourcePackageDb mempty packagePrefs)
             [SpecificSourcePackage localPkg]
+            currentlyRunningInGHA
 
     return (resolveDependencies platform (compilerInfo comp) pkgConfigDb solver resolverParams)
 

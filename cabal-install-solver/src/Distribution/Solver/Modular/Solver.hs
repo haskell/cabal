@@ -72,7 +72,8 @@ data SolverConfig = SolverConfig {
   solveExecutables       :: SolveExecutables,
   goalOrder              :: Maybe (Variable QPN -> Variable QPN -> Ordering),
   solverVerbosity        :: Verbosity,
-  pruneAfterFirstSuccess :: PruneAfterFirstSuccess
+  pruneAfterFirstSuccess :: PruneAfterFirstSuccess,
+  currentlyRunningInGHA  :: Bool
 }
 
 -- | Whether to remove all choices after the first successful choice at each

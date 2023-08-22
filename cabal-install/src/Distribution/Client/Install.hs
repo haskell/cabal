@@ -269,6 +269,7 @@ import Distribution.Version
   )
 
 import qualified Data.ByteString as BS
+import Distribution.Client.GHA (checkIfcurrentlyRunningInGHA)
 
 -- TODO:
 
@@ -498,6 +499,7 @@ makeInstallPlan
         verbosity
         (fromFlag (configSolver configExFlags))
         (compilerInfo comp)
+    currentlyRunningInGHA <- checkIfcurrentlyRunningInGHA
     notice verbosity "Resolving dependencies..."
     return $
       planPackages
@@ -512,6 +514,7 @@ makeInstallPlan
         sourcePkgDb
         pkgConfigDb
         pkgSpecifiers
+        currentlyRunningInGHA
 
 -- | Given an install plan, perform the actual installations.
 processInstallPlan
@@ -570,6 +573,7 @@ planPackages
   -> SourcePackageDb
   -> PkgConfigDb
   -> [PackageSpecifier UnresolvedSourcePackage]
+  -> Bool
   -> Progress String String SolverInstallPlan
 planPackages
   verbosity
@@ -582,7 +586,8 @@ planPackages
   installedPkgIndex
   sourcePkgDb
   pkgConfigDb
-  pkgSpecifiers =
+  pkgSpecifiers
+  currentlyRunningInGHA =
     resolveDependencies
       platform
       (compilerInfo comp)
@@ -653,6 +658,7 @@ planPackages
             installedPkgIndex
             sourcePkgDb
             pkgSpecifiers
+            currentlyRunningInGHA
 
       stanzas =
         [TestStanzas | testsEnabled]

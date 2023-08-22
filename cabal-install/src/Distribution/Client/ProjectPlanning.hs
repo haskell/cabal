@@ -191,6 +191,7 @@ import Data.List (deleteBy, groupBy)
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as Map
 import qualified Data.Set as Set
+import qualified Distribution.Client.GHA as GHA
 import System.FilePath
 import Text.PrettyPrint (colon, comma, fsep, hang, punctuate, quotes, text, vcat, ($$))
 import qualified Text.PrettyPrint as Disp
@@ -739,6 +740,8 @@ rebuildInstallPlan
                     (solverSettingSolver solverSettings)
                     (compilerInfo compiler)
 
+                currentlyRunningInGHA <- GHA.checkIfcurrentlyRunningInGHA
+
                 notice verbosity "Resolving dependencies..."
                 planOrError <-
                   foldProgress logMsg (pure . Left) (pure . Right) $
@@ -753,6 +756,7 @@ rebuildInstallPlan
                       pkgConfigDB
                       localPackages
                       localPackagesEnabledStanzas
+                      currentlyRunningInGHA
                 case planOrError of
                   Left msg -> do
                     reportPlanningFailure projectConfig compiler platform localPackages
@@ -1250,6 +1254,7 @@ planPackages
   -> PkgConfigDb
   -> [PackageSpecifier UnresolvedSourcePackage]
   -> Map PackageName (Map OptionalStanza Bool)
+  -> Bool
   -> Progress String String SolverInstallPlan
 planPackages
   verbosity
@@ -1261,7 +1266,8 @@ planPackages
   sourcePkgDb
   pkgConfigDB
   localPackages
-  pkgStanzasEnable =
+  pkgStanzasEnable
+  currentlyRunningInGHA =
     resolveDependencies
       platform
       (compilerInfo comp)
@@ -1389,6 +1395,7 @@ planPackages
           installedPkgIndex
           sourcePkgDb
           localPackages
+          currentlyRunningInGHA
 
       -- While we can talk to older Cabal versions (we need to be able to
       -- do so for custom Setup scripts that require older Cabal lib

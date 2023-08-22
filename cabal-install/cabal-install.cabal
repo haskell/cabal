@@ -115,6 +115,7 @@ library
         Distribution.Client.Get
         Distribution.Client.Glob
         Distribution.Client.GlobalFlags
+        Distribution.Client.GHA
         Distribution.Client.Haddock
         Distribution.Client.HashValue
         Distribution.Client.HttpUtils

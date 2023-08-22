@@ -39,6 +39,7 @@ import Distribution.Solver.Types.PkgConfigDb (PkgConfigDb, readPkgConfigDb)
 import Distribution.Solver.Types.SolverPackage
 import Distribution.Solver.Types.SourcePackage
 
+import Distribution.Client.GHA (checkIfcurrentlyRunningInGHA)
 import Distribution.Package
   ( packageId
   )
@@ -121,6 +122,8 @@ fetch
         (packageIndex sourcePkgDb)
         userTargets
 
+    currentlyRunningInGHA <- checkIfcurrentlyRunningInGHA
+
     pkgs <-
       planPackages
         verbosity
@@ -131,6 +134,7 @@ fetch
         sourcePkgDb
         pkgConfigDb
         pkgSpecifiers
+        currentlyRunningInGHA
 
     pkgs' <- filterM (fmap not . isFetched . srcpkgSource) pkgs
     if null pkgs'
@@ -162,6 +166,7 @@ planPackages
   -> SourcePackageDb
   -> PkgConfigDb
   -> [PackageSpecifier UnresolvedSourcePackage]
+  -> Bool
   -> IO [UnresolvedSourcePackage]
 planPackages
   verbosity
@@ -172,6 +177,7 @@ planPackages
   sourcePkgDb
   pkgConfigDb
   pkgSpecifiers
+  currentlyRunningInGHA
     | includeDependencies = do
         solver <-
           chooseSolver
@@ -229,7 +235,7 @@ planPackages
           -- already installed. Since we want to get the source packages of
           -- things we might have installed (but not have the sources for).
           . reinstallTargets
-          $ standardInstallPolicy installedPkgIndex sourcePkgDb pkgSpecifiers
+          $ standardInstallPolicy installedPkgIndex sourcePkgDb pkgSpecifiers currentlyRunningInGHA
 
       includeDependencies = fromFlag (fetchDeps fetchFlags)
       logMsg message rest = debug verbosity message >> rest

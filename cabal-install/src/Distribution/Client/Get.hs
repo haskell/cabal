@@ -77,6 +77,7 @@ import Distribution.Solver.Types.SourcePackage
 
 import Control.Monad (mapM_)
 import qualified Data.Map as Map
+import Distribution.Client.GHA (checkIfcurrentlyRunningInGHA)
 import System.Directory
   ( createDirectoryIfMissing
   , doesDirectoryExist
@@ -121,10 +122,12 @@ get verbosity repoCtxt _ getFlags userTargets = do
       (packageIndex sourcePkgDb)
       userTargets
 
+  currentlyRunningInGHA <- checkIfcurrentlyRunningInGHA
+
   pkgs <-
     either (die' verbosity . unlines . map show) return $
       resolveWithoutDependencies
-        (resolverParams sourcePkgDb pkgSpecifiers)
+        (resolverParams sourcePkgDb pkgSpecifiers currentlyRunningInGHA)
 
   unless (null prefix) $
     createDirectoryIfMissing True prefix
@@ -141,10 +144,10 @@ get verbosity repoCtxt _ getFlags userTargets = do
         then clone pkgs
         else unpack pkgs
   where
-    resolverParams :: SourcePackageDb -> [PackageSpecifier UnresolvedSourcePackage] -> DepResolverParams
-    resolverParams sourcePkgDb pkgSpecifiers =
+    resolverParams :: SourcePackageDb -> [PackageSpecifier UnresolvedSourcePackage] -> Bool -> DepResolverParams
+    resolverParams sourcePkgDb pkgSpecifiers currentlyRunningInGHA = do
       -- TODO: add command-line constraint and preference args for unpack
-      standardInstallPolicy mempty sourcePkgDb pkgSpecifiers
+      standardInstallPolicy mempty sourcePkgDb pkgSpecifiers currentlyRunningInGHA
 
     onlyPkgDescr = fromFlagOrDefault False (getOnlyPkgDescr getFlags)
 

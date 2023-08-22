@@ -84,6 +84,7 @@ import Distribution.System
   ( Platform
   )
 
+import Distribution.Client.GHA (checkIfcurrentlyRunningInGHA)
 import Distribution.Version
   ( thisVersion
   )
@@ -222,17 +223,9 @@ planPackages
         (compilerInfo comp)
     notice verbosity "Resolving dependencies..."
 
-    installPlan <-
-      foldProgress logMsg (die' verbosity) return $
-        resolveDependencies
-          platform
-          (compilerInfo comp)
-          pkgConfigDb
-          solver
-          resolverParams
+    currentlyRunningInGHA <- checkIfcurrentlyRunningInGHA
 
-    return $ pruneInstallPlan installPlan pkgSpecifiers
-    where
+    let
       resolverParams :: DepResolverParams
       resolverParams =
         setMaxBackjumps
@@ -259,8 +252,19 @@ planPackages
                in LabeledPackageConstraint pc ConstraintSourceFreeze
             | pkgSpecifier <- pkgSpecifiers
             ]
-          $ standardInstallPolicy installedPkgIndex sourcePkgDb pkgSpecifiers
+          $ standardInstallPolicy installedPkgIndex sourcePkgDb pkgSpecifiers currentlyRunningInGHA
 
+    installPlan <-
+      foldProgress logMsg (die' verbosity) return $
+        resolveDependencies
+          platform
+          (compilerInfo comp)
+          pkgConfigDb
+          solver
+          resolverParams
+
+    return $ pruneInstallPlan installPlan pkgSpecifiers
+    where
       logMsg message rest = debug verbosity message >> rest
 
       stanzas =

@@ -864,7 +864,7 @@ exResolve
                                   setSolveExecutables solveExes $
                                     setGoalOrder goalOrder $
                                       setSolverVerbosity verbosity $
-                                        standardInstallPolicy instIdx avaiIdx targets'
+                                        standardInstallPolicy instIdx avaiIdx targets' False
       toLpc pc = LabeledPackageConstraint pc ConstraintSourceUnknown
 
       toConstraint (ExVersionConstraint scope v) =

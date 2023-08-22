@@ -203,6 +203,7 @@ data DepResolverParams = DepResolverParams
   , depResolverGoalOrder :: Maybe (Variable QPN -> Variable QPN -> Ordering)
   -- ^ Function to override the solver's goal-ordering heuristics.
   , depResolverVerbosity :: Verbosity
+  , depCurrentlyRunningInGHA :: Bool
   }
 
 showDepResolverParams :: DepResolverParams -> String
@@ -276,8 +277,9 @@ showPackagePreference (PackageStanzasPreference pn st) =
 basicDepResolverParams
   :: InstalledPackageIndex
   -> PackageIndex.PackageIndex UnresolvedSourcePackage
+  -> Bool
   -> DepResolverParams
-basicDepResolverParams installedPkgIndex sourcePkgIndex =
+basicDepResolverParams installedPkgIndex sourcePkgIndex currentlyRunningInGHA' =
   DepResolverParams
     { depResolverTargets = Set.empty
     , depResolverConstraints = []
@@ -300,6 +302,7 @@ basicDepResolverParams installedPkgIndex sourcePkgIndex =
     , depResolverSolveExecutables = SolveExecutables True
     , depResolverGoalOrder = Nothing
     , depResolverVerbosity = normal
+    , depCurrentlyRunningInGHA = currentlyRunningInGHA'
     }
 
 addTargets
@@ -686,11 +689,13 @@ basicInstallPolicy
   :: InstalledPackageIndex
   -> SourcePackageDb
   -> [PackageSpecifier UnresolvedSourcePackage]
+  -> Bool
   -> DepResolverParams
 basicInstallPolicy
   installedPkgIndex
   (SourcePackageDb sourcePkgIndex sourcePkgPrefs)
-  pkgSpecifiers =
+  pkgSpecifiers
+  currentlyRunningInGHA' =
     addPreferences
       [ PackageVersionPreference name ver
       | (name, ver) <- Map.toList sourcePkgPrefs
@@ -706,6 +711,7 @@ basicInstallPolicy
       $ basicDepResolverParams
         installedPkgIndex
         sourcePkgIndex
+        currentlyRunningInGHA'
 
 -- | The policy used by all the standard commands, install, fetch, freeze etc
 -- (but not the v2-build and related commands).
@@ -715,13 +721,15 @@ standardInstallPolicy
   :: InstalledPackageIndex
   -> SourcePackageDb
   -> [PackageSpecifier UnresolvedSourcePackage]
+  -> Bool
   -> DepResolverParams
-standardInstallPolicy installedPkgIndex sourcePkgDb pkgSpecifiers =
+standardInstallPolicy installedPkgIndex sourcePkgDb pkgSpecifiers currentlyRunningInGHA' =
   addDefaultSetupDependencies mkDefaultSetupDeps $
     basicInstallPolicy
       installedPkgIndex
       sourcePkgDb
       pkgSpecifiers
+      currentlyRunningInGHA'
   where
     -- Force Cabal >= 1.24 dep when the package is affected by #3199.
     mkDefaultSetupDeps :: UnresolvedSourcePackage -> Maybe [Dependency]
@@ -798,6 +806,7 @@ resolveDependencies platform comp pkgConfigDB solver params =
             order
             verbosity
             (PruneAfterFirstSuccess False)
+            currentlyRunningInGHA'
         )
         platform
         comp
@@ -830,6 +839,7 @@ resolveDependencies platform comp pkgConfigDB solver params =
                     solveExes
                     order
                     verbosity
+                    currentlyRunningInGHA'
                   ) =
         if asBool (depResolverAllowBootLibInstalls params)
           then params
@@ -1148,6 +1158,7 @@ resolveWithoutDependencies
       _onlyConstrained
       _order
       _verbosity
+      _currentlyRunningInGHA
     ) =
     collectEithers $ map selectPackage (Set.toList targets)
     where
