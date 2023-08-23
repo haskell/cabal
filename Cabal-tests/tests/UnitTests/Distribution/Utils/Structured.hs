@@ -29,7 +29,7 @@ tests = testGroup "Distribution.Utils.Structured"
     , testCase "GenericPackageDescription" $
       md5Check (Proxy :: Proxy GenericPackageDescription) 0x8d8f340f10a58b8d8a87bf42213dac89
     , testCase "LocalBuildInfo" $
-      md5Check (Proxy :: Proxy LocalBuildInfo) 0xbb22c3258d3092f31e992bc093d09170
+      md5Check (Proxy :: Proxy LocalBuildInfo) 0x618ab257e99d0b21c617e1f8c39a5a4b
 #endif
     ]
 
