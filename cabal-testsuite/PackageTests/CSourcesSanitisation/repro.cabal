@@ -1,0 +1,26 @@
+cabal-version:      3.0
+name:               repro
+version:            0.1.0.0
+build-type:         Simple
+
+library
+    default-language: Haskell2010
+    c-sources:        cbits/set_term_timing.c
+                      cbits/gwinsz.h
+                      cbits/gwinsz.c
+    build-depends:    base
+
+library lib2
+    default-language: Haskell2010
+    c-sources:        cbits/set_term_timing.c
+                      cbits/gwinsz.h
+                      cbits/gwinsz.c
+    build-depends:    base
+
+executable exec1
+    main-is: Main.hs
+    default-language: Haskell2010
+    c-sources:        cbits/set_term_timing.c
+                      cbits/gwinsz.h
+                      cbits/gwinsz.c
+    build-depends:    base
