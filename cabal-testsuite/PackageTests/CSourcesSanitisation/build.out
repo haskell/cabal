@@ -1,0 +1,25 @@
+# cabal build
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following will be built:
+ - repro-0.1.0.0 (lib) (first run)
+ - repro-0.1.0.0 (exe:exec1) (first run)
+ - repro-0.1.0.0 (lib:lib2) (first run)
+Configuring library for repro-0.1.0.0..
+Preprocessing library for repro-0.1.0.0..
+Building library for repro-0.1.0.0..
+Warning: The following files listed in the main library's c-sources will not be used: cbits/gwinsz.h.
+Header files should be in the 'include' or 'install-include' stanza.
+See https://cabal.readthedocs.io/en/3.10/cabal-package.html#pkg-field-includes
+Configuring executable 'exec1' for repro-0.1.0.0..
+Preprocessing executable 'exec1' for repro-0.1.0.0..
+Building executable 'exec1' for repro-0.1.0.0..
+Warning: The following files listed in exec1's c-sources will not be used: cbits/gwinsz.h.
+Header files should be in the 'include' or 'install-include' stanza.
+See https://cabal.readthedocs.io/en/3.10/cabal-package.html#pkg-field-includes
+Configuring library 'lib2' for repro-0.1.0.0..
+Preprocessing library 'lib2' for repro-0.1.0.0..
+Building library 'lib2' for repro-0.1.0.0..
+Warning: The following files listed in library lib2's c-sources will not be used: cbits/gwinsz.h.
+Header files should be in the 'include' or 'install-include' stanza.
+See https://cabal.readthedocs.io/en/3.10/cabal-package.html#pkg-field-includes

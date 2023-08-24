@@ -705,35 +705,45 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
       | filename <- cxxSources libBi]
 
   -- build any C sources
-  unless (not has_code || null (cSources libBi)) $ do
+  let (cSrcs', others) = partition (\filepath -> ".c"`isSuffixOf` filepath) (cSources libBi)
+  unless (not has_code || null cSrcs') $ do
     info verbosity "Building C Sources..."
-    sequence_
-      [ do let baseCcOpts    = Internal.componentCcGhcOptions verbosity implInfo
-                               lbi libBi clbi relLibTargetDir filename
-               vanillaCcOpts = if isGhcDynamic
-                               -- Dynamic GHC requires C sources to be built
-                               -- with -fPIC for REPL to work. See #2207.
-                               then baseCcOpts { ghcOptFPic = toFlag True }
-                               else baseCcOpts
-               profCcOpts    = vanillaCcOpts `mappend` mempty {
-                                 ghcOptProfilingMode = toFlag True,
-                                 ghcOptObjSuffix     = toFlag "p_o"
-                               }
-               sharedCcOpts  = vanillaCcOpts `mappend` mempty {
-                                 ghcOptFPic        = toFlag True,
-                                 ghcOptDynLinkMode = toFlag GhcDynamicOnly,
-                                 ghcOptObjSuffix   = toFlag "dyn_o"
-                               }
-               odir          = fromFlag (ghcOptObjDir vanillaCcOpts)
-           createDirectoryIfMissingVerbose verbosity True odir
-           let runGhcProgIfNeeded ccOpts = do
-                 needsRecomp <- checkNeedsRecompilation filename ccOpts
-                 when needsRecomp $ runGhcProg ccOpts
-           runGhcProgIfNeeded vanillaCcOpts
-           unless forRepl $
-             whenSharedLib forceSharedLib (runGhcProgIfNeeded sharedCcOpts)
-           unless forRepl $ whenProfLib (runGhcProgIfNeeded profCcOpts)
-      | filename <- cSources libBi]
+    unless (null others) $ do
+      let files = intercalate ", " others
+      let libraryName = case libName lib of
+            LMainLibName -> "the main library"
+            LSubLibName name -> "library " <> prettyShow name
+      warn verbosity $ unlines
+        [ "The following files listed in " <> libraryName <> "'s c-sources will not be used: " <> files <> "."
+        , "Header files should be in the 'include' or 'install-include' stanza."
+        , "See https://cabal.readthedocs.io/en/3.10/cabal-package.html#pkg-field-includes"
+        ]
+    forM_ cSrcs' $ \filename -> do
+       let baseCcOpts    = Internal.componentCcGhcOptions verbosity implInfo
+                           lbi libBi clbi relLibTargetDir filename
+           vanillaCcOpts = if isGhcDynamic
+                           -- Dynamic GHC requires C sources to be built
+                           -- with -fPIC for REPL to work. See #2207.
+                           then baseCcOpts { ghcOptFPic = toFlag True }
+                           else baseCcOpts
+           profCcOpts    = vanillaCcOpts `mappend` mempty {
+                             ghcOptProfilingMode = toFlag True,
+                             ghcOptObjSuffix     = toFlag "p_o"
+                           }
+           sharedCcOpts  = vanillaCcOpts `mappend` mempty {
+                             ghcOptFPic        = toFlag True,
+                             ghcOptDynLinkMode = toFlag GhcDynamicOnly,
+                             ghcOptObjSuffix   = toFlag "dyn_o"
+                           }
+           odir          = fromFlag (ghcOptObjDir vanillaCcOpts)
+       createDirectoryIfMissingVerbose verbosity True odir
+       let runGhcProgIfNeeded ccOpts = do
+             needsRecomp <- checkNeedsRecompilation filename ccOpts
+             when needsRecomp $ runGhcProg ccOpts
+       runGhcProgIfNeeded vanillaCcOpts
+       unless forRepl $
+         whenSharedLib forceSharedLib (runGhcProgIfNeeded sharedCcOpts)
+       unless forRepl $ whenProfLib (runGhcProgIfNeeded profCcOpts)
 
   -- build any JS sources
   unless (not has_code || not hasJsSupport || null (jsSources libBi)) $ do
@@ -1527,32 +1537,40 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
      | filename <- cxxSrcs ]
 
   -- build any C sources
-  unless (null cSrcs) $ do
-   info verbosity "Building C Sources..."
-   sequence_
-     [ do let baseCcOpts    = Internal.componentCcGhcOptions verbosity implInfo
+  let (cSrcs', others) = partition (\filepath -> ".c"`isSuffixOf` filepath) cSrcs
+  unless (null cSrcs') $ do
+    info verbosity "Building C Sources..."
+    unless (null others) $ do
+      let files = intercalate ", " others
+      let currentComponentName = gbuildName bm
+      warn verbosity $ unlines
+        [ "The following files listed in " <> currentComponentName <> "'s c-sources will not be used: " <> files <> "."
+        , "Header files should be in the 'include' or 'install-include' stanza."
+        , "See https://cabal.readthedocs.io/en/3.10/cabal-package.html#pkg-field-includes"
+        ]
+    forM_ cSrcs' $ \filename -> do
+      let baseCcOpts    = Internal.componentCcGhcOptions verbosity implInfo
                               lbi bnfo clbi tmpDir filename
-              vanillaCcOpts = if isGhcDynamic
-                              -- Dynamic GHC requires C sources to be built
-                              -- with -fPIC for REPL to work. See #2207.
-                              then baseCcOpts { ghcOptFPic = toFlag True }
-                              else baseCcOpts
-              profCcOpts    = vanillaCcOpts `mappend` mempty {
-                                ghcOptProfilingMode = toFlag True
-                              }
-              sharedCcOpts  = vanillaCcOpts `mappend` mempty {
-                                ghcOptFPic        = toFlag True,
-                                ghcOptDynLinkMode = toFlag GhcDynamicOnly
-                              }
-              opts | needProfiling = profCcOpts
-                   | needDynamic   = sharedCcOpts
-                   | otherwise     = vanillaCcOpts
-              odir = fromFlag (ghcOptObjDir opts)
-          createDirectoryIfMissingVerbose verbosity True odir
-          needsRecomp <- checkNeedsRecompilation filename opts
-          when needsRecomp $
-            runGhcProg opts
-     | filename <- cSrcs ]
+      let vanillaCcOpts = if isGhcDynamic
+                          -- Dynamic GHC requires C sources to be built
+                          -- with -fPIC for REPL to work. See #2207.
+                          then baseCcOpts { ghcOptFPic = toFlag True }
+                          else baseCcOpts
+      let profCcOpts    = vanillaCcOpts `mappend` mempty {
+                            ghcOptProfilingMode = toFlag True
+                          }
+      let sharedCcOpts  = vanillaCcOpts `mappend` mempty {
+                            ghcOptFPic        = toFlag True,
+                            ghcOptDynLinkMode = toFlag GhcDynamicOnly
+                          }
+      let opts | needProfiling = profCcOpts
+               | needDynamic   = sharedCcOpts
+               | otherwise     = vanillaCcOpts
+      let odir = fromFlag (ghcOptObjDir opts)
+      createDirectoryIfMissingVerbose verbosity True odir
+      needsRecomp <- checkNeedsRecompilation filename opts
+      when needsRecomp $
+        runGhcProg opts
 
   -- TODO: problem here is we need the .c files built first, so we can load them
   -- with ghci, but .c files can depend on .h files generated by ghc by ffi
