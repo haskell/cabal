@@ -714,7 +714,7 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
             LMainLibName -> "the main library"
             LSubLibName name -> "library " <> prettyShow name
       warn verbosity $ unlines
-        [ "The following files listed in " <> libraryName <> "'s c-sources  will not be used: " <> files <> "."
+        [ "The following files listed in " <> libraryName <> "'s c-sources will not be used: " <> files <> "."
         , "Header files should be in the 'include' or 'install-include' stanza."
         , "See https://cabal.readthedocs.io/en/3.10/cabal-package.html#pkg-field-includes"
         ]
@@ -1544,7 +1544,7 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
       let files = intercalate ", " others
       let currentComponentName = gbuildName bm
       warn verbosity $ unlines
-        [ "The following files listed in " <> currentComponentName <> "'s c-sources  will not be used: " <> files <> "."
+        [ "The following files listed in " <> currentComponentName <> "'s c-sources will not be used: " <> files <> "."
         , "Header files should be in the 'include' or 'install-include' stanza."
         , "See https://cabal.readthedocs.io/en/3.10/cabal-package.html#pkg-field-includes"
         ]
