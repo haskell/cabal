@@ -705,9 +705,9 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
       | filename <- cxxSources libBi]
 
   -- build any C sources
-  unless (not has_code || null (cSources libBi)) $ do
+  let (cSrcs', others) = partition (\filepath -> ".c"`isSuffixOf` filepath) (cSources libBi)
+  unless (not has_code || null cSrcs') $ do
     info verbosity "Building C Sources..."
-    let (cSrcs', others) = partition (\filepath -> ".c"`isSuffixOf` filepath) (cSources libBi)
     unless (null others) $ do
       let files = intercalate ", " others
       let libraryName = case libName lib of
@@ -1533,9 +1533,9 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
      | filename <- cxxSrcs ]
 
   -- build any C sources
-  unless (null cSrcs) $ do
+  let (cSrcs', others) = partition (\filepath -> ".c"`isSuffixOf` filepath) cSrcs
+  unless (null cSrcs') $ do
     info verbosity "Building C Sources..."
-    let (cSrcs', others) = partition (\filepath -> ".c"`isSuffixOf` filepath) cSrcs
     unless (null others) $ do
       let files = intercalate ", " others
       let currentComponentName = gbuildName bm
