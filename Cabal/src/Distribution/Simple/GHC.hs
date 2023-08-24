@@ -710,7 +710,10 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
     let (cSrcs', others) = partition (\filepath -> ".c"`isSuffixOf` filepath) (cSources libBi)
     unless (null others) $ do
       let files = intercalate ", " others
-      warn verbosity $ "The following files listed in c-sources will not be used: " <> files
+      let libraryName = case libName lib of
+            LMainLibName -> "the main library"
+            LSubLibName name -> "library " <> prettyShow name
+      warn verbosity $ "The following files listed in " <> libraryName <> "'s c-sources  will not be used: " <> files
     forM_ cSrcs' $ \filename -> do
        let baseCcOpts    = Internal.componentCcGhcOptions verbosity implInfo
                            lbi libBi clbi relLibTargetDir filename
