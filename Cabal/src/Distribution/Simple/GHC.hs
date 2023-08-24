@@ -713,7 +713,11 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
       let libraryName = case libName lib of
             LMainLibName -> "the main library"
             LSubLibName name -> "library " <> prettyShow name
-      warn verbosity $ "The following files listed in " <> libraryName <> "'s c-sources  will not be used: " <> files
+      warn verbosity $ unlines
+        [ "The following files listed in " <> libraryName <> "'s c-sources  will not be used: " <> files <> "."
+        , "Header files should be in the 'include' or 'install-include' stanza."
+        , "See https://cabal.readthedocs.io/en/3.10/cabal-package.html#pkg-field-includes"
+        ]
     forM_ cSrcs' $ \filename -> do
        let baseCcOpts    = Internal.componentCcGhcOptions verbosity implInfo
                            lbi libBi clbi relLibTargetDir filename
@@ -1539,7 +1543,11 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
     unless (null others) $ do
       let files = intercalate ", " others
       let currentComponentName = gbuildName bm
-      warn verbosity $ "The following files listed in " <> currentComponentName <> "'s c-sources will not be used: " <> files
+      warn verbosity $ unlines
+        [ "The following files listed in " <> currentComponentName <> "'s c-sources  will not be used: " <> files <> "."
+        , "Header files should be in the 'include' or 'install-include' stanza."
+        , "See https://cabal.readthedocs.io/en/3.10/cabal-package.html#pkg-field-includes"
+        ]
     forM_ cSrcs' $ \filename -> do
       let baseCcOpts    = Internal.componentCcGhcOptions verbosity implInfo
                               lbi bnfo clbi tmpDir filename
