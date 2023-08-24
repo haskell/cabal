@@ -1538,7 +1538,8 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
     let (cSrcs', others) = partition (\filepath -> ".c"`isSuffixOf` filepath) cSrcs
     unless (null others) $ do
       let files = intercalate ", " others
-      warn verbosity $ "The following files listed in c-sources will not be used: " <> files
+      let currentComponentName = gbuildName bm
+      warn verbosity $ "The following files listed in " <> currentComponentName <> "'s c-sources will not be used: " <> files
     forM_ cSrcs' $ \filename -> do
       let baseCcOpts    = Internal.componentCcGhcOptions verbosity implInfo
                               lbi bnfo clbi tmpDir filename
