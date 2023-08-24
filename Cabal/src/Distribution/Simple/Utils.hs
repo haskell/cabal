@@ -78,6 +78,7 @@ module Distribution.Simple.Utils
   , IOData (..)
   , KnownIODataMode (..)
   , IODataMode (..)
+  , VerboseException
 
     -- * copying files
   , createDirectoryIfMissingVerbose
@@ -1016,7 +1017,6 @@ rawSystemStdout verbosity path args = withFrozenCallStack $ do
   when (exitCode /= ExitSuccess) $
     dieWithException verbosity $
       RawSystemStdout errors
-  -- die' verbosity errors
   return output
 
 -- | Execute the given command with the given arguments, returning
@@ -1129,6 +1129,7 @@ findProgramVersion versionArg selectVersion verbosity path = withFrozenCallStack
   str <-
     rawSystemStdout verbosity path [versionArg]
       `catchIO` (\_ -> return "")
+      `catch` (\(_ :: VerboseException CabalException) -> return "")
       `catchExit` (\_ -> return "")
   let version :: Maybe Version
       version = simpleParsec (selectVersion str)
@@ -1828,19 +1829,6 @@ findPackageDescCwd cwd dir =
       [] -> return (Left NoDesc)
       [cabalFile] -> return (Right cabalFile)
       multiple -> return (Left $ MultiDesc multiple)
-
-{-where
-  noDesc :: String
-  noDesc =
-    "No cabal file found.\n"
-      ++ "Please create a package description file <pkgname>.cabal"
-
-  multiDesc :: [String] -> String
-  multiDesc l =
-    "Multiple cabal files found.\n"
-      ++ "Please use only one of: "
-      ++ intercalate ", " l
--}
 
 -- | Like 'findPackageDesc', but calls 'die' in case of error.
 tryFindPackageDesc :: Verbosity -> FilePath -> IO FilePath
