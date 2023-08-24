@@ -1670,6 +1670,7 @@ reportCommand =
     , commandDescription = Nothing
     , commandNotes = Just $ \_ ->
         "You can store your Hackage login in the ~/.config/cabal/config file\n"
+          ++ "(the %APPDATA%\\cabal\\config file on Windows)\n"
     , commandUsage = usageAlternatives "report" ["[FLAGS]"]
     , commandDefaultFlags = defaultReportFlags
     , commandOptions = \_ ->
@@ -2690,6 +2691,7 @@ uploadCommand =
     , commandDescription = Nothing
     , commandNotes = Just $ \_ ->
         "You can store your Hackage login in the ~/.config/cabal/config file\n"
+          ++ "(the %APPDATA%\\cabal\\config file on Windows)\n"
           ++ relevantConfigValuesText ["username", "password", "password-command"]
     , commandUsage = \pname ->
         "Usage: " ++ pname ++ " upload [FLAGS] TARFILES\n"
