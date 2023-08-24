@@ -33,11 +33,12 @@ Here are some common targets which you can specify when using `cabal`.
 
 * `all`: Build all the locally defined components.
 * `exe:haskell-language-server`: Build the executable called `haskell-language-server`
-* `lib:pkg-a lib:pkg-b`: Build the local libraries pkg-a and pkg-b.
+* `lib:pkg-a lib:pkg-b`: Build the local libraries pkg-a and pkg-b. pkg-a will be the active unit.
 * `src/Main.hs`: Build the unit which `src/Main.hs` belongs to.
 
 After enabling multi-repl, passing a target specification to `cabal repl` which
 resolves to multiple units will load all those units into a single repl session.
+The first "target" will be the active unit.
 For example:
 
 ```
@@ -202,6 +203,14 @@ to modify the GHCi interface in order to work nicely with multiple components in
 At this time, the multi-repl is best used for interactive development situations where
 you want to use the repl to obtain fast-feedback about your project.
 We have made sure that the multi-repl works with `ghcid` for example.
+
+When evaluating code, make sure that the code is in the scope of the active unit,
+which is the first target given on the command line. For example, to run the test suite
+entrypoint, use:
+
+```
+ghcid --command "cabal repl --enable-multi-repl test:suite lib:pkg" --test Main.main
+```
 
 # Conclusion
 

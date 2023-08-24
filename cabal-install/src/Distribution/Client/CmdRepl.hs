@@ -447,6 +447,25 @@ replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings g
         -- unit files for components
         unit_files <- listDirectory dir
 
+        -- Order the unit files so that the find target becomes the active unit
+        let active_unit_fp :: Maybe FilePath
+            active_unit_fp = do
+              -- Get the first target selectors from the cli
+              activeTarget <- safeHead targetSelectors
+              -- Lookup the targets :: Map UnitId [(ComponentTarget, NonEmpty TargetSelector)]
+              unitId <-
+                Map.toList targets
+                  -- Keep the UnitId matching the desired target selector
+                  & find (\(_, xs) -> any (\(_, selectors) -> activeTarget `elem` selectors) xs)
+                  & fmap fst
+              -- Convert to filename (adapted from 'storePackageDirectory')
+              pure (prettyShow unitId)
+            unit_files_ordered :: [FilePath]
+            unit_files_ordered =
+              let (active_unit_files, other_units) = partition (\fp -> Just fp == active_unit_fp) unit_files
+               in -- GHC considers the last unit passed to be the active one
+                  other_units ++ active_unit_files
+
         -- run ghc --interactive with
         runProgramInvocation verbosity $
           programInvocation ghcProg' $
@@ -458,7 +477,7 @@ replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings g
               , show (buildSettingNumJobs (buildSettings ctx))
               ]
                 : [ ["-unit", "@" ++ dir </> unit]
-                  | unit <- unit_files
+                  | unit <- unit_files_ordered
                   , unit /= "paths"
                   ]
 
