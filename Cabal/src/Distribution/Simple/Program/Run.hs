@@ -166,8 +166,8 @@ getProgramInvocationOutput :: Verbosity -> ProgramInvocation -> IO String
 getProgramInvocationOutput verbosity inv = do
   (output, errors, exitCode) <- getProgramInvocationOutputAndErrors verbosity inv
   when (exitCode /= ExitSuccess) $
-    dieWithException verbosity $
-      GetProgramInvocationException (progInvokePath inv) errors
+    die' verbosity $
+      "'" ++ progInvokePath inv ++ "' exited with an error:\n" ++ errors
   return output
 
 getProgramInvocationLBS :: Verbosity -> ProgramInvocation -> IO LBS.ByteString
