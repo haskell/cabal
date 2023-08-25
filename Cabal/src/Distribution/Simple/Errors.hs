@@ -11,6 +11,7 @@
 
 module Distribution.Simple.Errors
   ( CabalException (..)
+  , FailedDependency (..)
   , exceptionCode
   , exceptionMessage
   ) where
@@ -19,14 +20,26 @@ import Distribution.Compat.Prelude
 import Distribution.Compiler
 import Distribution.InstalledPackageInfo
 import Distribution.ModuleName
+import Distribution.Package
+import Distribution.PackageDescription (FlagName, UnqualComponentName)
 import Distribution.Pretty
-  ( prettyShow
+  ( Pretty (pretty)
+  , prettyShow
   )
+import Distribution.Simple.InstallDirs
+import Distribution.System (OS)
 import Distribution.Types.BenchmarkType
-import Distribution.Types.PackageId
+import Distribution.Types.LibraryName
+import Distribution.Types.PkgconfigVersion
 import Distribution.Types.TestType
-import Distribution.Types.UnitId
 import Distribution.Version
+import Text.PrettyPrint
+
+data FailedDependency
+  = DependencyNotExists PackageName
+  | DependencyMissingInternal PackageName LibraryName
+  | DependencyNoVersion Dependency
+  deriving (Show)
 
 -- Types representing exceptions thrown by functions in all the modules of Cabal Package
 data CabalException
@@ -95,6 +108,42 @@ data CabalException
   | NoSupportPreProcessingTestExtras TestType
   | NoSupportPreProcessingBenchmarkExtras BenchmarkType
   | UnlitException String
+  | RunProgramInvocationException FilePath String
+  | GetProgramInvocationException FilePath String
+  | GetProgramInvocationLBSException FilePath String
+  | CheckSemaphoreSupport
+  | NoLibraryForPackage
+  | SanityCheckHookedBuildInfo UnqualComponentName
+  | ConfigureScriptNotFound
+  | NoValidComponent
+  | ConfigureEitherSingleOrAll
+  | ConfigCIDValidForPreComponent
+  | SanityCheckForEnableComponents
+  | SanityCheckForDynamicStaticLinking
+  | UnsupportedLanguages PackageIdentifier CompilerId [String]
+  | UnsupportedLanguageExtension PackageIdentifier CompilerId [String]
+  | CantFindForeignLibraries [String]
+  | ExpectedAbsoluteDirectory FilePath
+  | FlagsNotSpecified [FlagName]
+  | EncounteredMissingDependency [Dependency]
+  | CompilerDoesn'tSupportThinning
+  | CompilerDoesn'tSupportReexports
+  | CompilerDoesn'tSupportBackpack
+  | LibraryWithinSamePackage [PackageId]
+  | ReportFailedDependencies [FailedDependency] String
+  | NoPackageDatabaseSpecified
+  | HowToFindInstalledPackages CompilerFlavor
+  | PkgConfigNotFound String String
+  | BadVersion String String PkgconfigVersion
+  | UnknownCompilerException
+  | NoWorkingGcc
+  | NoOSSupport OS
+  | NoCompilerSupport String
+  | InstallDirsNotPrefixRelative (InstallDirs FilePath)
+  | ExplainErrors (Maybe (Either [Char] [Char])) [String]
+  | CheckPackageProblems [String]
+  | LibDirDepsPrefixNotRelative FilePath FilePath
+  | CombinedConstraints Doc
   deriving (Show, Typeable)
 
 exceptionCode :: CabalException -> Int
@@ -126,7 +175,7 @@ exceptionCode e = case e of
   NoGHCVersionFromCompiler -> 4098
   HaddockAndGHCVersionDoesntMatch{} -> 1998
   MustHaveSharedLibraries{} -> 6032
-  HaddockPackageFlags{} -> 4567
+  HaddockPackageFlags{} -> 4569
   UnknownCompilerFlavor{} -> 3102
   FailedToDetermineTarget{} -> 5049
   NoMultipleTargets{} -> 6091
@@ -136,7 +185,7 @@ exceptionCode e = case e of
   BuildingNotSupportedWithCompiler{} -> 7077
   ProvideHaskellSuiteTool{} -> 7509
   CannotDetermineCompilerVersion{} -> 4519
-  PkgDumpFailed{} -> 2290
+  PkgDumpFailed{} -> 2291
   FailedToParseOutput{} -> 5500
   CantFindSourceModule{} -> 8870
   VersionMismatchJS{} -> 9001
@@ -164,6 +213,42 @@ exceptionCode e = case e of
   NoSupportPreProcessingTestExtras{} -> 7886
   NoSupportPreProcessingBenchmarkExtras{} -> 9999
   UnlitException{} -> 5454
+  RunProgramInvocationException{} -> 8012
+  GetProgramInvocationException{} -> 7300
+  GetProgramInvocationLBSException{} -> 6578
+  CheckSemaphoreSupport{} -> 2002
+  NoLibraryForPackage{} -> 8004
+  SanityCheckHookedBuildInfo{} -> 6007
+  ConfigureScriptNotFound{} -> 4567
+  NoValidComponent{} -> 5680
+  ConfigureEitherSingleOrAll{} -> 2001
+  ConfigCIDValidForPreComponent{} -> 7006
+  SanityCheckForEnableComponents{} -> 5004
+  SanityCheckForDynamicStaticLinking{} -> 4007
+  UnsupportedLanguages{} -> 8074
+  UnsupportedLanguageExtension{} -> 5656
+  CantFindForeignLibraries{} -> 4574
+  ExpectedAbsoluteDirectory{} -> 6662
+  FlagsNotSpecified{} -> 9080
+  EncounteredMissingDependency{} -> 8010
+  CompilerDoesn'tSupportThinning{} -> 4003
+  CompilerDoesn'tSupportReexports{} -> 3456
+  CompilerDoesn'tSupportBackpack{} -> 5446
+  LibraryWithinSamePackage{} -> 7007
+  ReportFailedDependencies{} -> 4321
+  NoPackageDatabaseSpecified{} -> 2300
+  HowToFindInstalledPackages{} -> 3003
+  PkgConfigNotFound{} -> 7123
+  BadVersion{} -> 7600
+  UnknownCompilerException{} -> 3022
+  NoWorkingGcc{} -> 1088
+  NoOSSupport{} -> 3339
+  NoCompilerSupport{} -> 2290
+  InstallDirsNotPrefixRelative{} -> 6000
+  ExplainErrors{} -> 4345
+  CheckPackageProblems{} -> 5559
+  LibDirDepsPrefixNotRelative{} -> 6667
+  CombinedConstraints{} -> 5000
 
 exceptionMessage :: CabalException -> String
 exceptionMessage e = case e of
@@ -189,7 +274,7 @@ exceptionMessage e = case e of
   SuppressingChecksOnFile -> "HcPkg.register: the compiler does not support ,suppressing checks on files."
   NoSupportDirStylePackageDb -> "HcPkg.writeRegistrationFileDirectly: compiler does not support dir style package dbs"
   OnlySupportSpecificPackageDb -> "HcPkg.writeRegistrationFileDirectly: only supports SpecificPackageDB for now"
-  FailedToParseOutputDescribe programId packageId -> "failed to parse output of '" ++ programId ++ " describe " ++ prettyShow packageId ++ "'"
+  FailedToParseOutputDescribe programId pkgId -> "failed to parse output of '" ++ programId ++ " describe " ++ prettyShow pkgId ++ "'"
   DumpFailed programId exception -> programId ++ " dump failed: " ++ exception
   FailedToParseOutputDump programId -> "failed to parse output of '" ++ programId ++ " dump'"
   ListFailed programId -> programId ++ " list failed"
@@ -353,3 +438,210 @@ exceptionMessage e = case e of
       ++ "type "
       ++ prettyShow tt
   UnlitException str -> str
+  RunProgramInvocationException path errors -> "'" ++ path ++ "' exited with an error:\n" ++ errors
+  GetProgramInvocationException path errors -> "'" ++ path ++ "' exited with an error:\n" ++ errors
+  GetProgramInvocationLBSException path errors -> "'" ++ path ++ "' exited with an error:\n" ++ errors
+  CheckSemaphoreSupport ->
+    "Your compiler does not support the -jsem flag. "
+      ++ "To use this feature you must use GHC 9.8 or later."
+  NoLibraryForPackage ->
+    "The buildinfo contains info for a library, "
+      ++ "but the package does not have a library."
+  SanityCheckHookedBuildInfo exe1 ->
+    "The buildinfo contains info for an executable called '"
+      ++ prettyShow exe1
+      ++ "' but the package does not have a "
+      ++ "executable with that name."
+  ConfigureScriptNotFound -> "configure script not found."
+  NoValidComponent -> "No valid component targets found"
+  ConfigureEitherSingleOrAll -> "Can only configure either single component or all of them"
+  ConfigCIDValidForPreComponent -> "--cid is only supported for per-component configure"
+  SanityCheckForEnableComponents ->
+    "--enable-tests/--enable-benchmarks are incompatible with"
+      ++ " explicitly specifying a component to configure."
+  SanityCheckForDynamicStaticLinking ->
+    "--enable-executable-dynamic and --enable-executable-static"
+      ++ " are incompatible with each other."
+  UnsupportedLanguages pkgId compilerId langs ->
+    "The package "
+      ++ prettyShow (pkgId)
+      ++ " requires the following languages which are not "
+      ++ "supported by "
+      ++ prettyShow (compilerId)
+      ++ ": "
+      ++ intercalate ", " langs
+  UnsupportedLanguageExtension pkgId compilerId exts ->
+    "The package "
+      ++ prettyShow (pkgId)
+      ++ " requires the following language extensions which are not "
+      ++ "supported by "
+      ++ prettyShow (compilerId)
+      ++ ": "
+      ++ intercalate ", " exts
+  CantFindForeignLibraries unsupportedFLibs ->
+    "Cannot build some foreign libraries: "
+      ++ intercalate "," unsupportedFLibs
+  ExpectedAbsoluteDirectory fPath -> "expected an absolute directory name for --prefix: " ++ fPath
+  FlagsNotSpecified diffFlags ->
+    "'--exact-configuration' was given, "
+      ++ "but the following flags were not specified: "
+      ++ intercalate ", " (map show diffFlags)
+  EncounteredMissingDependency missing ->
+    "Encountered missing or private dependencies:\n"
+      ++ ( render
+            . nest 4
+            . sep
+            . punctuate comma
+            . map (pretty . simplifyDependency)
+            $ missing
+         )
+  CompilerDoesn'tSupportThinning ->
+    "Your compiler does not support thinning and renaming on "
+      ++ "package flags.  To use this feature you must use "
+      ++ "GHC 7.9 or later."
+  CompilerDoesn'tSupportReexports ->
+    "Your compiler does not support module re-exports. To use "
+      ++ "this feature you must use GHC 7.9 or later."
+  CompilerDoesn'tSupportBackpack ->
+    "Your compiler does not support Backpack. To use "
+      ++ "this feature you must use GHC 8.1 or later."
+  LibraryWithinSamePackage internalPkgDeps ->
+    "The field 'build-depends: "
+      ++ intercalate ", " (map (prettyShow . packageName) internalPkgDeps)
+      ++ "' refers to a library which is defined within the same "
+      ++ "package. To use this feature the package must specify at "
+      ++ "least 'cabal-version: >= 1.8'."
+  ReportFailedDependencies failed hackageUrl -> (intercalate "\n\n" (map reportFailedDependency failed))
+    where
+      reportFailedDependency (DependencyNotExists pkgname) =
+        "there is no version of "
+          ++ prettyShow pkgname
+          ++ " installed.\n"
+          ++ "Perhaps you need to download and install it from\n"
+          ++ hackageUrl
+          ++ prettyShow pkgname
+          ++ "?"
+      reportFailedDependency (DependencyMissingInternal pkgname lib) =
+        "internal dependency "
+          ++ prettyShow (prettyLibraryNameComponent lib)
+          ++ " not installed.\n"
+          ++ "Perhaps you need to configure and install it first?\n"
+          ++ "(This library was defined by "
+          ++ prettyShow pkgname
+          ++ ")"
+      reportFailedDependency (DependencyNoVersion dep) =
+        "cannot satisfy dependency " ++ prettyShow (simplifyDependency dep) ++ "\n"
+  NoPackageDatabaseSpecified ->
+    "No package databases have been specified. If you use "
+      ++ "--package-db=clear, you must follow it with --package-db= "
+      ++ "with 'global', 'user' or a specific file."
+  HowToFindInstalledPackages flv ->
+    "don't know how to find the installed packages for "
+      ++ prettyShow flv
+  PkgConfigNotFound pkg versionRequirement ->
+    "The pkg-config package '"
+      ++ pkg
+      ++ "'"
+      ++ versionRequirement
+      ++ " is required but it could not be found."
+  BadVersion pkg versionRequirement v ->
+    "The pkg-config package '"
+      ++ pkg
+      ++ "'"
+      ++ versionRequirement
+      ++ " is required but the version installed on the"
+      ++ " system is version "
+      ++ prettyShow v
+  UnknownCompilerException -> "Unknown compiler"
+  NoWorkingGcc ->
+    unlines
+      [ "No working gcc"
+      , "This package depends on foreign library but we cannot "
+          ++ "find a working C compiler. If you have it in a "
+          ++ "non-standard location you can use the --with-gcc "
+          ++ "flag to specify it."
+      ]
+  NoOSSupport os ->
+    "Operating system: "
+      ++ prettyShow os
+      ++ ", does not support relocatable builds"
+  NoCompilerSupport comp ->
+    "Compiler: "
+      ++ comp
+      ++ ", does not support relocatable builds"
+  InstallDirsNotPrefixRelative installDirs -> "Installation directories are not prefix_relative:\n" ++ show installDirs
+  ExplainErrors hdr libs ->
+    unlines $
+      [ if plural
+        then "Missing dependencies on foreign libraries:"
+        else "Missing dependency on a foreign library:"
+      | missing
+      ]
+        ++ case hdr of
+          Just (Left h) -> ["* Missing (or bad) header file: " ++ h]
+          _ -> []
+        ++ case libs of
+          [] -> []
+          [lib] -> ["* Missing (or bad) C library: " ++ lib]
+          _ ->
+            [ "* Missing (or bad) C libraries: "
+                ++ intercalate ", " libs
+            ]
+              ++ [if plural then messagePlural else messageSingular | missing]
+        ++ case hdr of
+          Just (Left _) -> [headerCppMessage]
+          Just (Right h) ->
+            [ (if missing then "* " else "")
+                ++ "Bad header file: "
+                ++ h
+            , headerCcMessage
+            ]
+          _ -> []
+    where
+      plural = length libs >= 2
+      -- Is there something missing? (as opposed to broken)
+      missing =
+        not (null libs)
+          || case hdr of Just (Left _) -> True; _ -> False
+      messageSingular =
+        "This problem can usually be solved by installing the system "
+          ++ "package that provides this library (you may need the "
+          ++ "\"-dev\" version). If the library is already installed "
+          ++ "but in a non-standard location then you can use the flags "
+          ++ "--extra-include-dirs= and --extra-lib-dirs= to specify "
+          ++ "where it is."
+          ++ "If the library file does exist, it may contain errors that "
+          ++ "are caught by the C compiler at the preprocessing stage. "
+          ++ "In this case you can re-run configure with the verbosity "
+          ++ "flag -v3 to see the error messages."
+      messagePlural =
+        "This problem can usually be solved by installing the system "
+          ++ "packages that provide these libraries (you may need the "
+          ++ "\"-dev\" versions). If the libraries are already installed "
+          ++ "but in a non-standard location then you can use the flags "
+          ++ "--extra-include-dirs= and --extra-lib-dirs= to specify "
+          ++ "where they are."
+          ++ "If the library files do exist, it may contain errors that "
+          ++ "are caught by the C compiler at the preprocessing stage. "
+          ++ "In this case you can re-run configure with the verbosity "
+          ++ "flag -v3 to see the error messages."
+      headerCppMessage =
+        "If the header file does exist, it may contain errors that "
+          ++ "are caught by the C compiler at the preprocessing stage. "
+          ++ "In this case you can re-run configure with the verbosity "
+          ++ "flag -v3 to see the error messages."
+      headerCcMessage =
+        "The header file contains a compile error. "
+          ++ "You can re-run configure with the verbosity flag "
+          ++ "-v3 to see the error messages from the C compiler."
+  CheckPackageProblems errors -> (intercalate "\n\n" $ errors)
+  LibDirDepsPrefixNotRelative l p ->
+    "Library directory of a dependency: "
+      ++ show l
+      ++ "\nis not relative to the installation prefix:\n"
+      ++ show p
+  CombinedConstraints dispDepend ->
+    render $
+      text "The following package dependencies were requested"
+        $+$ nest 4 dispDepend
+        $+$ text "however the given installed package instance does not exist."

@@ -11,8 +11,7 @@ http://cabal.readthedocs.io/
 
 ### How to build it
 
-Building the documentation requires Python 3 and PIP. From the root of cabal
-repository run:
+Building the documentation requires Python 3 and PIP. Run the following command either from the root of the cabal repository or from the `docs/` subdirectory:
 
 ``` console
 make users-guide
@@ -33,7 +32,7 @@ generation step run
 > make users-guide-requirements
 ```
 
-in the root of the repository.
+either from the root of the cabal repository or from the `docs/` subdirectory.
 
 Note that generating `requirements.txt` is sensitive to the Python version.
 The version currently used is stamped at the top of `requirements.txt`.
