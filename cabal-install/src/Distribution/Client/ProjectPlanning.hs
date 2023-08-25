@@ -84,7 +84,6 @@ import Distribution.Client.Store
 
 import Distribution.Client.Config
 import Distribution.Client.Dependency
-import Distribution.Client.Dependency.Types
 import Distribution.Client.DistDirLayout
 import Distribution.Client.FetchUtils
 import qualified Distribution.Client.IndexUtils as IndexUtils
@@ -733,12 +732,6 @@ rebuildInstallPlan
               -- ones relevant for the compiler.
 
               liftIO $ do
-                solver <-
-                  chooseSolver
-                    verbosity
-                    (solverSettingSolver solverSettings)
-                    (compilerInfo compiler)
-
                 notice verbosity "Resolving dependencies..."
                 planOrError <-
                   foldProgress logMsg (pure . Left) (pure . Right) $
@@ -746,7 +739,6 @@ rebuildInstallPlan
                       verbosity
                       compiler
                       platform
-                      solver
                       solverSettings
                       (installedPackages <> installedPkgIndex)
                       sourcePkgDb
@@ -1243,7 +1235,6 @@ planPackages
   :: Verbosity
   -> Compiler
   -> Platform
-  -> Solver
   -> SolverSettings
   -> InstalledPackageIndex
   -> SourcePackageDb
@@ -1255,7 +1246,6 @@ planPackages
   verbosity
   comp
   platform
-  solver
   SolverSettings{..}
   installedPkgIndex
   sourcePkgDb
@@ -1266,7 +1256,6 @@ planPackages
       platform
       (compilerInfo comp)
       pkgConfigDB
-      solver
       resolverParams
     where
       -- TODO: [nice to have] disable multiple instances restriction in
