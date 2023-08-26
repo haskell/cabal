@@ -96,6 +96,7 @@ import Distribution.Simple.Program
 import Distribution.Simple.Utils
   ( createDirectoryIfMissingVerbose
   , die'
+  , dieWithExceptionCabalInstall
   , fromUTF8LBS
   , info
   , warn
@@ -120,6 +121,7 @@ import Distribution.Solver.Types.PackageIndex (PackageIndex)
 import qualified Distribution.Solver.Types.PackageIndex as PackageIndex
 import Distribution.Solver.Types.SourcePackage
 
+import qualified Codec.Compression.GZip as GZip
 import Control.Exception
 import qualified Data.ByteString.Char8 as BSS
 import Data.ByteString.Lazy (ByteString)
@@ -137,6 +139,7 @@ import Distribution.Client.Utils
   )
 import Distribution.Compat.Directory (listDirectory)
 import Distribution.Compat.Time (getFileAge, getModTime)
+import Distribution.Simple.Errors
 import Distribution.Utils.Generic (fstOf3)
 import Distribution.Utils.Structured (Structured (..), nominalStructure, structuredDecodeFileOrFail, structuredEncodeFile)
 import System.Directory (doesDirectoryExist, doesFileExist)
@@ -153,8 +156,6 @@ import qualified System.FilePath.Posix as FilePath.Posix
 import System.IO
 import System.IO.Error (isDoesNotExistError)
 import System.IO.Unsafe (unsafeInterleaveIO)
-
-import qualified Codec.Compression.GZip as GZip
 
 import qualified Hackage.Security.Client as Sec
 import qualified Hackage.Security.Util.Some as Sec
@@ -893,7 +894,7 @@ withIndexEntries verbosity (RepoIndex _repoCtxt (RepoLocalNoIndex (LocalRepo nam
 
         case Tar.foldEntries (readCabalEntry pkgId) Nothing (const Nothing) entries of
           Just ce -> return (Just ce)
-          Nothing -> die' verbosity $ "Cannot read .cabal file inside " ++ file
+          Nothing -> dieWithExceptionCabalInstall verbosity $ CannotReadCabalFile file
 
   let (prefs, gpds) =
         partitionEithers $
@@ -915,7 +916,7 @@ withIndexEntries verbosity (RepoIndex _repoCtxt (RepoLocalNoIndex (LocalRepo nam
   callback entries
   where
     handler :: IOException -> IO a
-    handler e = die' verbosity $ "Error while updating index for " ++ unRepoName name ++ " repository " ++ show e
+    handler e = dieWithExceptionCabalInstall verbosity $ ErrorUpdatingIndex (unRepoName name) e
 
     isTarGz :: FilePath -> Maybe PackageIdentifier
     isTarGz fp = do
@@ -1082,11 +1083,7 @@ packageListFromCache verbosity mkPkg hnd Cache{..} = accum mempty [] mempty cach
 
     interror :: String -> IO a
     interror msg =
-      die' verbosity $
-        "internal error when reading package index: "
-          ++ msg
-          ++ "The package index or index cache is probably "
-          ++ "corrupt. Running cabal update might fix it."
+      dieWithExceptionCabalInstall verbosity $ InternalError msg
 
 ------------------------------------------------------------------------
 -- Index cache data structure --

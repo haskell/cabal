@@ -76,6 +76,7 @@ import Distribution.Simple.Setup
 import Distribution.Simple.Utils
   ( debug
   , die'
+  , dieWithExceptionCabalInstall
   , notice
   , toUTF8LBS
   , writeFileAtomic
@@ -84,6 +85,7 @@ import Distribution.System
   ( Platform
   )
 
+import Distribution.Simple.Errors
 import Distribution.Version
   ( thisVersion
   )
@@ -188,13 +190,9 @@ getFreezePkgs
       sanityCheck :: [PackageSpecifier UnresolvedSourcePackage] -> IO ()
       sanityCheck pkgSpecifiers = do
         when (not . null $ [n | n@(NamedPackage _ _) <- pkgSpecifiers]) $
-          die' verbosity $
-            "internal error: 'resolveUserTargets' returned "
-              ++ "unexpected named package specifiers!"
+          dieWithExceptionCabalInstall verbosity UnexpectedNamedPkgSpecifiers
         when (length pkgSpecifiers /= 1) $
-          die' verbosity $
-            "internal error: 'resolveUserTargets' returned "
-              ++ "unexpected source package specifiers!"
+          dieWithExceptionCabalInstall verbosity UnexpectedSourcePkgSpecifiers
 
 planPackages
   :: Verbosity

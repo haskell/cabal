@@ -42,7 +42,7 @@ import Distribution.Simple.Command
   , usageAlternatives
   )
 import Distribution.Simple.Utils
-  ( die'
+  ( dieWithExceptionCabalInstall
   , notice
   , wrapText
   )
@@ -53,6 +53,7 @@ import Distribution.Client.DistDirLayout
 import Distribution.Client.HttpUtils
 import Distribution.Client.ProjectConfig.Types
 import Distribution.Client.RebuildMonad (runRebuild)
+import Distribution.Simple.Errors
 import Distribution.Types.CondTree
   ( CondTree (..)
   )
@@ -159,7 +160,7 @@ configureAction' flags@NixStyleFlags{..} _extraArgs globalFlags = do
           (CondNode conf imps bs) <-
             runRebuild (distProjectRootDirectory . distDirLayout $ baseCtx) $
               readProjectLocalExtraConfig v httpTransport (distDirLayout baseCtx)
-          when (not (null imps && null bs)) $ die' v "local project file has conditional and/or import logic, unable to perform and automatic in-place update"
+          when (not (null imps && null bs)) $ dieWithExceptionCabalInstall v UnableToPerformInplaceUpdate
           return (baseCtx, conf <> cliConfig)
         else return (baseCtx, cliConfig)
   where

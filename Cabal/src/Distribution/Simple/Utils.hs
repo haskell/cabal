@@ -32,6 +32,7 @@ module Distribution.Simple.Utils
   , dieNoVerbosity
   , die'
   , dieWithException
+  , dieWithExceptionCabalInstall
   , dieWithLocation'
   , dieNoWrap
   , topHandler
@@ -191,14 +192,12 @@ module Distribution.Simple.Utils
   , exceptionWithCallStackPrefix
   ) where
 
-import Distribution.Compat.Prelude
-import Prelude ()
-
 import Distribution.Compat.Async (waitCatch, withAsyncNF)
 import Distribution.Compat.CopyFile
 import Distribution.Compat.FilePath as FilePath
 import Distribution.Compat.Internal.TempFile
 import Distribution.Compat.Lens (Lens', over)
+import Distribution.Compat.Prelude
 import Distribution.Compat.Stack
 import Distribution.ModuleName as ModuleName
 import Distribution.Simple.Errors
@@ -209,6 +208,7 @@ import Distribution.Utils.IOData (IOData (..), IODataMode (..), KnownIODataMode 
 import qualified Distribution.Utils.IOData as IOData
 import Distribution.Verbosity
 import Distribution.Version
+import Prelude ()
 
 #ifdef CURRENT_PACKAGE_KEY
 #define BOOTSTRAPPED_CABAL 1
@@ -389,6 +389,11 @@ dieWithException verbosity exception = do
   ts <- getPOSIXTime
   throwIO $ VerboseException callStack ts verbosity exception
 
+dieWithExceptionCabalInstall :: HasCallStack => Verbosity -> CabalInstallException -> IO a
+dieWithExceptionCabalInstall verbosity exception = do
+  ts <- getPOSIXTime
+  throwIO $ VerboseException callStack ts verbosity exception
+
 -- Instance for Cabal Exception which will display error code and error message with callStack info
 instance Exception (VerboseException CabalException) where
   displayException :: VerboseException CabalException -> [Char]
@@ -402,6 +407,19 @@ instance Exception (VerboseException CabalException) where
           ]
       )
       ++ exceptionWithMetadata stack timestamp verb (exceptionMessage cabalexception)
+
+instance Exception (VerboseException CabalInstallException) where
+  displayException :: VerboseException CabalInstallException -> [Char]
+  displayException (VerboseException stack timestamp verb cabalexception) =
+    withOutputMarker
+      verb
+      ( concat
+          [ "Error: [Cabal-"
+          , show (exceptionCodeCabalInstall cabalexception)
+          , "]\n"
+          ]
+      )
+      ++ exceptionWithMetadata stack timestamp verb (exceptionMessageCabalInstall cabalexception)
 
 dieNoWrap :: Verbosity -> String -> IO a
 dieNoWrap verbosity msg = withFrozenCallStack $ do
