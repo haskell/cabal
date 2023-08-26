@@ -1,11 +1,12 @@
-Getting Started with Haskell and Cabal
+Getting Started
 ======================================
 
-Installing the Haskell toolchain
+Installing Cabal
 --------------------------------
 
-To install the Haskell toolchain follow the `ghcup instructions
-<https://www.haskell.org/ghcup/>`__.
+The easiest and recommended way to install Cabal on Linux, macOS, FreeBSD or Windows
+is through `ghcup <https://www.haskell.org/ghcup/>`__. It installs the "Haskell toolchain"
+which includes Cabal as well as the Haskell compiler `GHC <https://www.haskell.org/ghc/>`__.
 
 
 Creating a new application
