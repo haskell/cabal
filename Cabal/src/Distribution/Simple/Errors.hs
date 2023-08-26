@@ -847,6 +847,7 @@ data CabalInstallException
   | SpecifySubcommand
   | UnknownUserConfigSubcommand [String]
   | ManpageAction [String]
+  | UnrecognizedResponse
   deriving (Show, Typeable)
 
 exceptionCodeCabalInstall :: CabalInstallException -> Int
@@ -901,6 +902,7 @@ exceptionCodeCabalInstall e = case e of
   SpecifySubcommand{} -> 7059
   UnknownUserConfigSubcommand{} -> 7060
   ManpageAction{} -> 7061
+  UnrecognizedResponse{} -> 7062
 
 exceptionMessageCabalInstall :: CabalInstallException -> String
 exceptionMessageCabalInstall e = case e of
@@ -981,3 +983,4 @@ exceptionMessageCabalInstall e = case e of
   SpecifySubcommand -> "Please specify a subcommand (see 'help user-config')"
   UnknownUserConfigSubcommand extraArgs -> "Unknown 'user-config' subcommand: " ++ unwords extraArgs
   ManpageAction extraArgs -> "'man' doesn't take any extra arguments: " ++ unwords extraArgs
+  UnrecognizedResponse -> "unrecognized response"

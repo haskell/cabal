@@ -28,7 +28,8 @@ import Distribution.Client.HttpUtils
 import Distribution.Client.Setup
   ( RepoContext (..)
   )
-import Distribution.Simple.Utils (die')
+import Distribution.Simple.Errors
+import Distribution.Simple.Utils (dieWithExceptionCabalInstall)
 import System.FilePath.Posix
   ( (</>)
   )
@@ -51,7 +52,7 @@ postBuildReport verbosity repoCtxt auth uri buildReport = do
   res <- postHttp transport verbosity fullURI (showBuildReport buildReport) (Just auth)
   case res of
     (303, redir) -> return $ undefined redir -- TODO parse redir
-    _ -> die' verbosity "unrecognized response" -- give response
+    _ -> dieWithExceptionCabalInstall verbosity UnrecognizedResponse -- give response
 
 {- FOURMOLU_DISABLE -}
 {-
@@ -97,4 +98,4 @@ putBuildLog verbosity repoCtxt auth reportId buildLog = do
   res <- postHttp transport verbosity fullURI buildLog (Just auth)
   case res of
     (200, _) -> return ()
-    _ -> die' verbosity "unrecognized response" -- give response
+    _ -> dieWithExceptionCabalInstall verbosity UnrecognizedResponse -- give response
