@@ -1,3 +1,4 @@
 # cabal check
 Warning: pkg.cabal:0:0: "version" field missing
-Error: cabal: parse error
+Error: [Cabal-7035]
+parse error
