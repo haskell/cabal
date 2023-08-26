@@ -419,7 +419,7 @@ describe the package as a whole:
 
     The type of build used by this package. Build types are the
     constructors of the
-    `BuildType <https://hackage.haskell.org/package/Cabal/docs/Distribution-PackageDescription.html#t:BuildType>`__
+    `BuildType <https://hackage.haskell.org/package/Cabal-syntax/docs/Distribution-Types-BuildType.html#t:BuildType>`__
     type. This field is optional and when missing, its default value
     is inferred according to the following rules:
 
@@ -1825,7 +1825,7 @@ system-dependent values for these fields.
     A list of Haskell extensions used by every module. These determine
     corresponding compiler options enabled for all files. Extension
     names are the constructors of the
-    `Extension <https://hackage.haskell.org/package/Cabal/docs/Language-Haskell-Extension.html#t:Extension>`__
+    `Extension <https://hackage.haskell.org/package/Cabal-syntax/docs/Language-Haskell-Extension.html#t:Extension>`__
     type. For example, ``CPP`` specifies that Haskell source files are
     to be preprocessed with a C preprocessor.
 
@@ -2568,7 +2568,7 @@ Configuration Flags
 Conditional Blocks
 ^^^^^^^^^^^^^^^^^^
 
-Conditional blocks may appear anywhere inside a library or executable
+Conditional blocks may appear anywhere inside a component or common
 section. They have to follow rather strict formatting rules. Conditional
 blocks must always be of the shape
 
