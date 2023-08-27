@@ -1,0 +1,8 @@
+packages: .
+-- `jobs` is necessary to use `InternalMethod :: SetupMethod`.
+jobs: 1
+
+documentation: True
+
+package async
+  documentation: True
