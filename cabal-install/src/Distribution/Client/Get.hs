@@ -46,7 +46,7 @@ import Distribution.Simple.Setup
   )
 import Distribution.Simple.Utils
   ( die'
-  , dieWithExceptionCabalInstall
+  , dieWithException
   , info
   , notice
   , warn
@@ -78,7 +78,7 @@ import Distribution.Solver.Types.SourcePackage
 
 import Control.Monad (mapM_)
 import qualified Data.Map as Map
-import Distribution.Simple.Errors
+import Distribution.Client.Errors
 import System.Directory
   ( createDirectoryIfMissing
   , doesDirectoryExist
@@ -182,7 +182,7 @@ get verbosity repoCtxt _ getFlags userTargets = do
           RepoTarballPackage _repo _pkgid tarballPath ->
             unpackPackage verbosity prefix pkgid descOverride tarballPath
           RemoteSourceRepoPackage _repo _ ->
-            dieWithExceptionCabalInstall verbosity UnpackGet
+            dieWithException verbosity UnpackGet
           LocalUnpackedPackage _ ->
             error "Distribution.Client.Get.unpack: the impossible happened."
       where
@@ -191,8 +191,8 @@ get verbosity repoCtxt _ getFlags userTargets = do
 
 checkTarget :: Verbosity -> UserTarget -> IO ()
 checkTarget verbosity target = case target of
-  UserTargetLocalDir dir -> dieWithExceptionCabalInstall verbosity $ NotTarballDir dir
-  UserTargetLocalCabalFile file -> dieWithExceptionCabalInstall verbosity $ NotTarballDir file
+  UserTargetLocalDir dir -> dieWithException verbosity $ NotTarballDir dir
+  UserTargetLocalCabalFile file -> dieWithException verbosity $ NotTarballDir file
   _ -> return ()
 
 {-where
@@ -224,11 +224,11 @@ unpackPackage verbosity prefix pkgid descOverride pkgPath = do
   when existsDir $ do
     isEmpty <- emptyDirectory pkgdir
     unless isEmpty $
-      dieWithExceptionCabalInstall verbosity $
+      dieWithException verbosity $
         DirectoryAlreadyExists pkgdir'
   existsFile <- doesFileExist pkgdir
   when existsFile $
-    dieWithExceptionCabalInstall verbosity $
+    dieWithException verbosity $
       FileExists pkgdir
   notice verbosity $ "Unpacking to " ++ pkgdir'
   Tar.extractTarGzFile prefix pkgdirname pkgPath
@@ -250,11 +250,11 @@ unpackOnlyPkgDescr verbosity dstDir pkg = do
   let pkgFile = dstDir </> prettyShow (packageId pkg) <.> "cabal"
   existsFile <- doesFileExist pkgFile
   when existsFile $
-    dieWithExceptionCabalInstall verbosity $
+    dieWithException verbosity $
       FileAlreadyExists pkgFile
   existsDir <- doesDirectoryExist (addTrailingPathSeparator pkgFile)
   when existsDir $
-    dieWithExceptionCabalInstall verbosity $
+    dieWithException verbosity $
       DirectoryExists pkgFile
   notice verbosity $ "Writing package description to " ++ pkgFile
   case srcpkgDescrOverride pkg of

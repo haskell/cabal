@@ -96,7 +96,7 @@ import Distribution.Simple.Program
 import Distribution.Simple.Utils
   ( createDirectoryIfMissingVerbose
   , die'
-  , dieWithExceptionCabalInstall
+  , dieWithException
   , fromUTF8LBS
   , info
   , warn
@@ -139,7 +139,6 @@ import Distribution.Client.Utils
   )
 import Distribution.Compat.Directory (listDirectory)
 import Distribution.Compat.Time (getFileAge, getModTime)
-import Distribution.Simple.Errors
 import Distribution.Utils.Generic (fstOf3)
 import Distribution.Utils.Structured (Structured (..), nominalStructure, structuredDecodeFileOrFail, structuredEncodeFile)
 import System.Directory (doesDirectoryExist, doesFileExist)
@@ -157,6 +156,7 @@ import System.IO
 import System.IO.Error (isDoesNotExistError)
 import System.IO.Unsafe (unsafeInterleaveIO)
 
+import Distribution.Client.Errors
 import qualified Hackage.Security.Client as Sec
 import qualified Hackage.Security.Util.Some as Sec
 
@@ -894,7 +894,7 @@ withIndexEntries verbosity (RepoIndex _repoCtxt (RepoLocalNoIndex (LocalRepo nam
 
         case Tar.foldEntries (readCabalEntry pkgId) Nothing (const Nothing) entries of
           Just ce -> return (Just ce)
-          Nothing -> dieWithExceptionCabalInstall verbosity $ CannotReadCabalFile file
+          Nothing -> dieWithException verbosity $ CannotReadCabalFile file
 
   let (prefs, gpds) =
         partitionEithers $
@@ -916,7 +916,7 @@ withIndexEntries verbosity (RepoIndex _repoCtxt (RepoLocalNoIndex (LocalRepo nam
   callback entries
   where
     handler :: IOException -> IO a
-    handler e = dieWithExceptionCabalInstall verbosity $ ErrorUpdatingIndex (unRepoName name) e
+    handler e = dieWithException verbosity $ ErrorUpdatingIndex (unRepoName name) e
 
     isTarGz :: FilePath -> Maybe PackageIdentifier
     isTarGz fp = do
@@ -1083,7 +1083,7 @@ packageListFromCache verbosity mkPkg hnd Cache{..} = accum mempty [] mempty cach
 
     interror :: String -> IO a
     interror msg =
-      dieWithExceptionCabalInstall verbosity $ InternalError msg
+      dieWithException verbosity $ InternalError msg
 
 ------------------------------------------------------------------------
 -- Index cache data structure --

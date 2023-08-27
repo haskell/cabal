@@ -53,6 +53,7 @@ import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PkgConfigDb
 import Distribution.Solver.Types.SolverId
 
+import Distribution.Client.Errors
 import Distribution.Package
   ( Package
   , packageId
@@ -76,7 +77,7 @@ import Distribution.Simple.Setup
 import Distribution.Simple.Utils
   ( debug
   , die'
-  , dieWithExceptionCabalInstall
+  , dieWithException
   , notice
   , toUTF8LBS
   , writeFileAtomic
@@ -84,8 +85,6 @@ import Distribution.Simple.Utils
 import Distribution.System
   ( Platform
   )
-
-import Distribution.Simple.Errors
 import Distribution.Version
   ( thisVersion
   )
@@ -190,9 +189,9 @@ getFreezePkgs
       sanityCheck :: [PackageSpecifier UnresolvedSourcePackage] -> IO ()
       sanityCheck pkgSpecifiers = do
         when (not . null $ [n | n@(NamedPackage _ _) <- pkgSpecifiers]) $
-          dieWithExceptionCabalInstall verbosity UnexpectedNamedPkgSpecifiers
+          dieWithException verbosity UnexpectedNamedPkgSpecifiers
         when (length pkgSpecifiers /= 1) $
-          dieWithExceptionCabalInstall verbosity UnexpectedSourcePkgSpecifiers
+          dieWithException verbosity UnexpectedSourcePkgSpecifiers
 
 planPackages
   :: Verbosity

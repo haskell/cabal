@@ -30,7 +30,7 @@ import Distribution.PackageDescription.Parsec
   , runParseResult
   )
 import Distribution.Parsec (PWarning (..), showPError)
-import Distribution.Simple.Utils (defaultPackageDesc, dieWithExceptionCabalInstall, notice, warn, warnError)
+import Distribution.Simple.Utils (defaultPackageDesc, dieWithException, notice, warn, warnError)
 import System.IO (hPutStr, stderr)
 
 import qualified Control.Monad as CM
@@ -38,14 +38,14 @@ import qualified Data.ByteString as BS
 import qualified Data.Function as F
 import qualified Data.List as L
 import qualified Data.List.NonEmpty as NE
-import Distribution.Simple.Errors
+import Distribution.Client.Errors
 import qualified System.Directory as Dir
 
 readGenericPackageDescriptionCheck :: Verbosity -> FilePath -> IO ([PWarning], GenericPackageDescription)
 readGenericPackageDescriptionCheck verbosity fpath = do
   exists <- Dir.doesFileExist fpath
   unless exists $
-    dieWithExceptionCabalInstall verbosity $
+    dieWithException verbosity $
       FileDoesntExist fpath
   bs <- BS.readFile fpath
   let (warnings, result) = runParseResult (parseGenericPackageDescription bs)
@@ -53,7 +53,7 @@ readGenericPackageDescriptionCheck verbosity fpath = do
     Left (_, errors) -> do
       traverse_ (warn verbosity . showPError fpath) errors
       hPutStr stderr $ renderParseError fpath bs errors warnings
-      dieWithExceptionCabalInstall verbosity ParseError
+      dieWithException verbosity ParseError
     Right x -> return (warnings, x)
 
 -- | Checks a packge for common errors. Returns @True@ if the package

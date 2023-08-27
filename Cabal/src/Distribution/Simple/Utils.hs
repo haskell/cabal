@@ -32,7 +32,6 @@ module Distribution.Simple.Utils
   , dieNoVerbosity
   , die'
   , dieWithException
-  , dieWithExceptionCabalInstall
   , dieWithLocation'
   , dieNoWrap
   , topHandler
@@ -49,6 +48,7 @@ module Distribution.Simple.Utils
   , debugNoWrap
   , chattyTry
   , annotateIO
+  , exceptionWithMetadata
   , withOutputMarker
 
     -- * exceptions
@@ -79,7 +79,7 @@ module Distribution.Simple.Utils
   , IOData (..)
   , KnownIODataMode (..)
   , IODataMode (..)
-  , VerboseException
+  , VerboseException (..)
 
     -- * copying files
   , createDirectoryIfMissingVerbose
@@ -383,14 +383,9 @@ die' verbosity msg = withFrozenCallStack $ do
 data VerboseException a = VerboseException CallStack POSIXTime Verbosity a
   deriving (Show, Typeable)
 
--- A new dieWithException function which will replace the existing die' call sites
-dieWithException :: HasCallStack => Verbosity -> CabalException -> IO a
+-- Function which will replace the existing die' call sites
+dieWithException :: (HasCallStack, Show a1, Typeable a1, Exception (VerboseException a1)) => Verbosity -> a1 -> IO a
 dieWithException verbosity exception = do
-  ts <- getPOSIXTime
-  throwIO $ VerboseException callStack ts verbosity exception
-
-dieWithExceptionCabalInstall :: HasCallStack => Verbosity -> CabalInstallException -> IO a
-dieWithExceptionCabalInstall verbosity exception = do
   ts <- getPOSIXTime
   throwIO $ VerboseException callStack ts verbosity exception
 
@@ -407,19 +402,6 @@ instance Exception (VerboseException CabalException) where
           ]
       )
       ++ exceptionWithMetadata stack timestamp verb (exceptionMessage cabalexception)
-
-instance Exception (VerboseException CabalInstallException) where
-  displayException :: VerboseException CabalInstallException -> [Char]
-  displayException (VerboseException stack timestamp verb cabalexception) =
-    withOutputMarker
-      verb
-      ( concat
-          [ "Error: [Cabal-"
-          , show (exceptionCodeCabalInstall cabalexception)
-          , "]\n"
-          ]
-      )
-      ++ exceptionWithMetadata stack timestamp verb (exceptionMessageCabalInstall cabalexception)
 
 dieNoWrap :: Verbosity -> String -> IO a
 dieNoWrap verbosity msg = withFrozenCallStack $ do

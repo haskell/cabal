@@ -50,7 +50,7 @@ import Distribution.Client.TargetProblem (TargetProblem (..))
 import Distribution.Simple.BuildPaths (dllExtension, exeExtension)
 import Distribution.Simple.Command (CommandUI (..))
 import Distribution.Simple.Setup (configVerbosity, fromFlagOrDefault)
-import Distribution.Simple.Utils (dieWithExceptionCabalInstall, withOutputMarker, wrapText)
+import Distribution.Simple.Utils (dieWithException, withOutputMarker, wrapText)
 import Distribution.System (Platform)
 import Distribution.Types.ComponentName (showComponentName)
 import Distribution.Types.UnitId (UnitId)
@@ -60,8 +60,8 @@ import System.FilePath ((<.>), (</>))
 
 import qualified Data.Map as Map
 import qualified Data.Set as Set
+import Distribution.Client.Errors
 import qualified Distribution.Client.InstallPlan as IP
-import Distribution.Simple.Errors
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import qualified Distribution.Solver.Types.ComponentDeps as CD
 
@@ -92,9 +92,9 @@ listbinAction :: NixStyleFlags () -> [String] -> GlobalFlags -> IO ()
 listbinAction flags@NixStyleFlags{..} args globalFlags = do
   -- fail early if multiple target selectors specified
   target <- case args of
-    [] -> dieWithExceptionCabalInstall verbosity NoTargetProvided
+    [] -> dieWithException verbosity NoTargetProvided
     [x] -> return x
-    _ -> dieWithExceptionCabalInstall verbosity OneTargetRequired
+    _ -> dieWithException verbosity OneTargetRequired
 
   -- configure and elaborate target selectors
   withContextAndSelectors RejectNoTargets (Just ExeKind) flags [target] globalFlags OtherCommand $ \targetCtx ctx targetSelectors -> do
@@ -141,14 +141,14 @@ listbinAction flags@NixStyleFlags{..} args globalFlags = do
     (selectedUnitId, selectedComponent) <-
       -- Slight duplication with 'runProjectPreBuildPhase'.
       singleComponentOrElse
-        ( dieWithExceptionCabalInstall verbosity ThisIsABug
+        ( dieWithException verbosity ThisIsABug
         )
         $ targetsMap buildCtx
 
     printPlan verbosity baseCtx buildCtx
 
     binfiles <- case Map.lookup selectedUnitId $ IP.toMap (elaboratedPlanOriginal buildCtx) of
-      Nothing -> dieWithExceptionCabalInstall verbosity NoOrMultipleTargetsGiven
+      Nothing -> dieWithException verbosity NoOrMultipleTargetsGiven
       Just gpp ->
         return $
           IP.foldPlanPackage
@@ -157,7 +157,7 @@ listbinAction flags@NixStyleFlags{..} args globalFlags = do
             gpp
 
     case binfiles of
-      [] -> dieWithExceptionCabalInstall verbosity NoTargetFound
+      [] -> dieWithException verbosity NoTargetFound
       [exe] -> putStr $ withOutputMarker verbosity $ exe ++ "\n"
       -- Andreas, 2023-01-13, issue #8400:
       -- Regular output of `list-bin` should go to stdout unconditionally,
@@ -170,7 +170,7 @@ listbinAction flags@NixStyleFlags{..} args globalFlags = do
       -- Appending the newline character here rather than using 'putStrLn'
       -- because an active 'withOutputMarker' produces text that ends
       -- in newline characters.
-      _ -> dieWithExceptionCabalInstall verbosity MultipleTargetsFound
+      _ -> dieWithException verbosity MultipleTargetsFound
   where
     defaultVerbosity = verboseStderr silent
     verbosity = fromFlagOrDefault defaultVerbosity (configVerbosity configFlags)
@@ -356,7 +356,7 @@ isSubComponentProblem pkgid name subcomponent =
 
 reportTargetProblems :: Verbosity -> [ListBinTargetProblem] -> IO a
 reportTargetProblems verbosity =
-  dieWithExceptionCabalInstall verbosity . ListBinTargetException . unlines . map renderListBinTargetProblem
+  dieWithException verbosity . ListBinTargetException . unlines . map renderListBinTargetProblem
 
 renderListBinTargetProblem :: ListBinTargetProblem -> String
 renderListBinTargetProblem (TargetProblemNoTargets targetSelector) =

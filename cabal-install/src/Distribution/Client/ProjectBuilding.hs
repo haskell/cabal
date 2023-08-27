@@ -131,8 +131,8 @@ import System.FilePath (dropDrive, makeRelative, normalise, takeDirectory, (<.>)
 import System.IO (Handle, IOMode (AppendMode), withFile)
 import System.Semaphore (SemaphoreName (..))
 
+import Distribution.Client.Errors
 import Distribution.Compat.Directory (listDirectory)
-import Distribution.Simple.Errors
 import Distribution.Simple.Flag (fromFlagOrDefault)
 
 ------------------------------------------------------------------------------
@@ -1080,7 +1080,7 @@ unpackPackageTarball verbosity tarball parentdir pkgid pkgTextOverride =
     --
     exists <- doesFileExist cabalFile
     unless exists $
-      dieWithExceptionCabalInstall verbosity $
+      dieWithException verbosity $
         CabalFileNotFound cabalFile
 
     -- Overwrite the .cabal with the one from the index, when appropriate
@@ -1653,7 +1653,7 @@ buildInplaceUnpackedPackage
           exe <- findOpenProgramLocation platform
           case exe of
             Right open -> runProgramInvocation verbosity (simpleProgramInvocation open [dest])
-            Left err -> dieWithExceptionCabalInstall verbosity $ FindOpenProgramLocationErr err
+            Left err -> dieWithException verbosity $ FindOpenProgramLocationErr err
 
     return
       BuildResult
@@ -1841,7 +1841,7 @@ withTempInstalledPackageInfoFile verbosity tempdir action =
   where
     pkgConfParseFailed :: String -> IO a
     pkgConfParseFailed perror =
-      dieWithExceptionCabalInstall verbosity $ PkgConfParseFailed perror
+      dieWithException verbosity $ PkgConfParseFailed perror
 
     readPkgConf :: FilePath -> FilePath -> IO InstalledPackageInfo
     readPkgConf pkgConfDir pkgConfFile = do
