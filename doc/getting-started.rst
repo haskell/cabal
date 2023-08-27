@@ -1,8 +1,8 @@
 Getting Started
-======================================
+===============
 
 Installing Cabal
---------------------------------
+----------------
 
 The easiest and recommended way to install the ``cabal`` commandline tool 
 on Linux, macOS, FreeBSD or Windows is through `ghcup <https://www.haskell.org/ghcup/>`__. 
@@ -22,7 +22,7 @@ about the ``cabal`` commandline tool:
 4. How to manage external dependencies.
 
 Initializing a package
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^
 
 To initialize a new Haskell package, run
 
