@@ -106,6 +106,7 @@ library
         Distribution.Client.Dependency
         Distribution.Client.Dependency.Types
         Distribution.Client.DistDirLayout
+        Distribution.Client.Errors
         Distribution.Client.Fetch
         Distribution.Client.FetchUtils
         Distribution.Client.FileMonitor
