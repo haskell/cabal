@@ -63,7 +63,6 @@ module Distribution.Simple.Program.Db
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Distribution.Pretty
 import Distribution.Simple.Program.Builtin
 import Distribution.Simple.Program.Find
 import Distribution.Simple.Program.Types
@@ -75,6 +74,7 @@ import Distribution.Version
 import Data.Tuple (swap)
 
 import qualified Data.Map as Map
+import Distribution.Simple.Errors
 
 -- ------------------------------------------------------------
 
@@ -348,16 +348,8 @@ configureProgram verbosity prog progdb = do
         else
           findProgramOnSearchPath verbosity (progSearchPath progdb) path
             >>= maybe
-              (die' verbosity notFound)
+              (dieWithException verbosity $ ConfigureProgram name path)
               (return . Just . swap . fmap UserSpecified . swap)
-      where
-        notFound =
-          "Cannot find the program '"
-            ++ name
-            ++ "'. User-specified path '"
-            ++ path
-            ++ "' does not refer to an executable and "
-            ++ "the program is not on the system path."
   case maybeLocation of
     Nothing -> return progdb
     Just (location, triedLocations) -> do
@@ -437,10 +429,8 @@ requireProgram
 requireProgram verbosity prog progdb = do
   mres <- needProgram verbosity prog progdb
   case mres of
-    Nothing -> die' verbosity notFound
+    Nothing -> dieWithException verbosity $ RequireProgram (programName prog)
     Just res -> return res
-  where
-    notFound = "The program '" ++ programName prog ++ "' is required but it could not be found."
 
 -- | Check that a program is configured and available to be run.
 --
@@ -477,7 +467,7 @@ lookupProgramVersion
   -> Program
   -> VersionRange
   -> ProgramDb
-  -> IO (Either String (ConfiguredProgram, Version, ProgramDb))
+  -> IO (Either CabalException (ConfiguredProgram, Version, ProgramDb))
 lookupProgramVersion verbosity prog range programDb = do
   -- If it's not already been configured, try to configure it now
   programDb' <- case lookupProgram prog programDb of
@@ -485,43 +475,16 @@ lookupProgramVersion verbosity prog range programDb = do
     Just _ -> return programDb
 
   case lookupProgram prog programDb' of
-    Nothing -> return $! Left notFound
+    Nothing -> return $! Left $ NoProgramFound (programName prog) range
     Just configuredProg@ConfiguredProgram{programLocation = location} ->
       case programVersion configuredProg of
         Just version
           | withinRange version range ->
               return $! Right (configuredProg, version, programDb')
           | otherwise ->
-              return $! Left (badVersion version location)
+              return $! Left $ BadVersionDb (programName prog) version range (locationPath location)
         Nothing ->
-          return $! Left (unknownVersion location)
-  where
-    notFound =
-      "The program '"
-        ++ programName prog
-        ++ "'"
-        ++ versionRequirement
-        ++ " is required but it could not be found."
-    badVersion v l =
-      "The program '"
-        ++ programName prog
-        ++ "'"
-        ++ versionRequirement
-        ++ " is required but the version found at "
-        ++ locationPath l
-        ++ " is version "
-        ++ prettyShow v
-    unknownVersion l =
-      "The program '"
-        ++ programName prog
-        ++ "'"
-        ++ versionRequirement
-        ++ " is required but the version of "
-        ++ locationPath l
-        ++ " could not be determined."
-    versionRequirement
-      | isAnyVersion range = ""
-      | otherwise = " version " ++ prettyShow range
+          return $! Left $ UnknownVersionDb (programName prog) range (locationPath location)
 
 -- | Like 'lookupProgramVersion', but raises an exception in case of error
 -- instead of returning 'Left errMsg'.
@@ -533,5 +496,5 @@ requireProgramVersion
   -> IO (ConfiguredProgram, Version, ProgramDb)
 requireProgramVersion verbosity prog range programDb =
   join $
-    either (die' verbosity) return
+    either (dieWithException verbosity) return
       `fmap` lookupProgramVersion verbosity prog range programDb

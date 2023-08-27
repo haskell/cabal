@@ -39,6 +39,7 @@ import System.IO (stderr, stdout)
 import System.Process (createPipe)
 
 import qualified Data.ByteString.Lazy as LBS
+import Distribution.Simple.Errors
 
 runTest
   :: PD.PackageDescription
@@ -62,10 +63,8 @@ runTest pkg_descr lbi clbi flags suite = do
   -- Check that the test executable exists.
   exists <- doesFileExist cmd
   unless exists $
-    die' verbosity $
-      "Could not find test program \""
-        ++ cmd
-        ++ "\". Did you build the package first?"
+    dieWithException verbosity $
+      Couldn'tFindTestProgram cmd
 
   -- Remove old .tix files if appropriate.
   unless (fromFlag $ testKeepTix flags) $ do
@@ -174,7 +173,7 @@ runTest pkg_descr lbi clbi flags suite = do
   when isCoverageEnabled $
     case PD.library pkg_descr of
       Nothing ->
-        die' verbosity "Test coverage is only supported for packages with a library component."
+        dieWithException verbosity TestCoverageSupport
       Just library ->
         markupTest verbosity lbi distPref (prettyShow $ PD.package pkg_descr) suite library
 
