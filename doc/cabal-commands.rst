@@ -398,7 +398,7 @@ Check ``cabal fetch --help`` for a complete list of options.
 cabal get
 ^^^^^^^^^
 
-``cabal get [PACKAGES]`` (synonym: ``cabal unpack``) downloads and unpacks
+``cabal get [FLAGS] [PACKAGES]`` (synonym: ``cabal unpack``) downloads and unpacks
 the source code of ``PACKAGES`` locally. By default the content of the
 packages is unpacked in the current working directory, in named subfolders
 (e.g.  ``./filepath-1.2.0.8/``), use ``--destdir=PATH`` to specify another
@@ -406,11 +406,13 @@ folder. By default the latest version of the package is downloaded, you can
 ask for a spefic one by adding version numbers
 (``cabal get random-1.0.0.1``).
 
+The ``cabal get`` command supports the following options:
+
 .. option:: -s[[head|this|...]], --source-repository[=[head|this|...]]
 
-    Clone the package's source repository (Darcs, Git, etc.) instead
-    of downloading the tarball. Only works if the package specifies
-    a ``source-repository``.
+    Clone the package's source repository using the appropriate version
+    control system instead of downloading the tarball. Only works if the
+    package specifies a ``source-repository``.
 
 .. option:: --index-state=STATE
 
@@ -418,10 +420,23 @@ ask for a spefic one by adding version numbers
     ``STATE`` formats: Unix timestamps (e.g. ``@1474732068``),
     ISO8601 UTC timestamps (e.g. ``2016-09-24T17:47:48Z``), or ``HEAD``
     (default).
+    This determines which package versions are available as well as which
+    ``.cabal`` file revision is selected (unless ``--pristine`` is used).
 
 .. option:: --pristine
 
     Unpacks the pristine tarball, i.e. disregarding any Hackage revision.
+
+.. option:: -d, --destdir=PATH
+
+    Where to place the package source, defaults to (a subdirectory of)
+    the current directory.
+
+.. option:: --only-package-description, --package-description-only
+
+    Unpack the original pristine tarball, rather than updating the
+    ``.cabal`` file with the latest revision from the package archive.
+
 
 .. _command-group-config:
 

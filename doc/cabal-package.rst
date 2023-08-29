@@ -2779,38 +2779,6 @@ The exact fields are as follows:
     This field is optional. It defaults to empty which corresponds to the
     root directory of the repository.
 
-Downloading a package's source
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-The ``cabal get`` command allows to access a package's source code -
-either by unpacking a tarball downloaded from Hackage (the default) or
-by checking out a working copy from the package's source repository.
-
-::
-
-    $ cabal get [FLAGS] PACKAGES
-
-The ``get`` command supports the following options:
-
-``-d --destdir`` *PATH*
-    Where to place the package source, defaults to (a subdirectory of)
-    the current directory.
-``-s --source-repository`` *[head\|this\|...]*
-    Clone the package's source repository using the appropriate version
-    control system. The optional argument allows to choose a specific
-    repository kind.
-``--index-state`` *[HEAD\|@<unix-timestamp>\|<iso8601-utc-timestamp>]*
-    Use source package index state as it existed at a previous time. Accepts
-    unix-timestamps (e.g. ``@1474732068``), ISO8601 UTC timestamps (e.g.
-    ``2016-09-24T17:47:48Z``), or ``HEAD`` (default).
-    This determines which package versions are available as well as which
-    ``.cabal`` file revision is selected (unless ``--pristine`` is used).
-``--only-package-description``
-    Unpack only the package description file. A synonym,
-    ``--package-description-only``, is provided for convenience.
-``--pristine``
-    Unpack the original pristine tarball, rather than updating the
-    ``.cabal`` file with the latest revision from the package archive.
 
 Custom setup scripts
 --------------------
