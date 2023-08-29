@@ -61,7 +61,7 @@ its dependencies and how it is built:
 
 The ``executable`` section shows that this package's build output 
 is an executable called ``myapp`` that we can run on the command line. 
-The ``build-depends`` section contains a list of all internal and external dependencies.
+The ``build-depends`` section contains a list of package dependencies.
 
 
 ``app/Main.hs`` is where your executable's code lives:
