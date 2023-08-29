@@ -1021,32 +1021,6 @@ For more information about the rationale and some examples, see
     TODO inline the blog post
 
 
-Opening an interpreter session
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-While developing a package, it is often useful to make its code
-available inside an interpreter session. This can be done with the
-``repl`` command:
-
-.. code-block:: console
-
-    $ cabal repl
-
-The name comes from the acronym
-`REPL <http://en.wikipedia.org/wiki/Read%E2%80%93eval%E2%80%93print_loop>`__,
-which stands for "read-eval-print-loop". By default ``cabal repl`` loads
-the first component in a package. If the package contains several named
-components, the name can be given as an argument to ``repl``. The name
-can be also optionally prefixed with the component's type for
-disambiguation purposes. Example:
-
-.. code-block:: console
-
-    $ cabal repl foo
-    $ cabal repl exe:foo
-    $ cabal repl test:bar
-    $ cabal repl bench:baz
-
 Freezing dependency versions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
