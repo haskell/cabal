@@ -1020,61 +1020,6 @@ For more information about the rationale and some examples, see
 ..
     TODO inline the blog post
 
-
-Listing outdated dependency version bounds
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Manually updating dependency version bounds in a ``.cabal`` file or a
-freeze file can be tedious, especially when there's a lot of
-dependencies. The ``cabal outdated`` command is designed to help with
-that. It will print a list of packages for which there is a new
-version on Hackage that is outside the version bound specified in the
-``build-depends`` field. The ``outdated`` command can also be
-configured to act on the freeze file (both old- and v2-style) and
-ignore major (or all) version bumps on Hackage for a subset of
-dependencies.
-
-Examples:
-
-.. code-block:: console
-
-    $ cd /some/package
-    $ cabal outdated
-    Outdated dependencies:
-    haskell-src-exts <1.17 (latest: 1.19.1)
-    language-javascript <0.6 (latest: 0.6.0.9)
-    unix ==2.7.2.0 (latest: 2.7.2.1)
-
-    $ cabal outdated --simple-output
-    haskell-src-exts
-    language-javascript
-    unix
-
-    $ cabal outdated --ignore=haskell-src-exts
-    Outdated dependencies:
-    language-javascript <0.6 (latest: 0.6.0.9)
-    unix ==2.7.2.0 (latest: 2.7.2.1)
-
-    $ cabal outdated --ignore=haskell-src-exts,language-javascript,unix
-    All dependencies are up to date.
-
-    $ cabal outdated --ignore=haskell-src-exts,language-javascript,unix -q
-    $ echo $?
-    0
-
-    $ cd /some/other/package
-    $ cabal outdated --freeze-file
-    Outdated dependencies:
-    HTTP ==4000.3.3 (latest: 4000.3.4)
-    HUnit ==1.3.1.1 (latest: 1.5.0.0)
-
-    $ cabal outdated --freeze-file --ignore=HTTP --minor=HUnit
-    Outdated dependencies:
-    HUnit ==1.3.1.1 (latest: 1.3.1.2)
-
-See `the command documentation <cabal-commands.html#cabal-outdated>`__ for a
-list of available flags.
-
 Executables
 ^^^^^^^^^^^
 
