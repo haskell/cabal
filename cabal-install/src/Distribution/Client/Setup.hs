@@ -502,17 +502,17 @@ globalCommand commands =
               )
               ""
               ["nix"] -- Must be empty because we need to return PP.empty from viewAsFieldDescr
-              "Nix integration: run commands through nix-shell if a 'shell.nix' file exists (default is False)"
+              "[DEPRECATED] Nix integration: run commands through nix-shell if a 'shell.nix' file exists (default is False)"
           , noArg
               (Flag True)
               []
               ["enable-nix"]
-              "Enable Nix integration: run commands through nix-shell if a 'shell.nix' file exists"
+              "[DEPRECATED] Enable Nix integration: run commands through nix-shell if a 'shell.nix' file exists"
           , noArg
               (Flag False)
               []
               ["disable-nix"]
-              "Disable Nix integration"
+              "[DEPRECATED] Disable Nix integration"
           ]
       , option
           []
