@@ -1023,6 +1023,10 @@ For more information about the rationale and some examples, see
 Executables
 ^^^^^^^^^^^
 
+A package description can contain multiple executable sections.
+The documentation of the `cabal run <cabal-commands.html#cabal-run>`__ command
+contains detailed information on how to run an executable.
+
 .. pkg-section:: executable name
     :synopsis: Executable build info section.
 
@@ -1053,25 +1057,13 @@ build information fields (see the section on `build information`_).
     be run by other programs rather than the user. Private executables are
     installed into `$libexecdir/$libexecsubdir`.
 
-Running executables
-"""""""""""""""""""
-
-You can have Cabal build and run your executables by using the ``run``
-command:
-
-.. code-block:: console
-
-    $ cabal run EXECUTABLE [-- EXECUTABLE_FLAGS]
-
-This command will configure, build and run the executable
-``EXECUTABLE``. The double dash separator is required to distinguish
-executable flags from ``run``'s own flags. If there is only one
-executable defined in the whole package, the executable's name can be
-omitted. See the output of ``cabal help run`` for a list of options you
-can pass to ``cabal run``.
 
 Test suites
 ^^^^^^^^^^^
+
+A package description can contain multiple test suite sections.
+The documentation of the `cabal test <cabal-commands.html#cabal-test>`__ command
+contains detailed information on how to run test suites.
 
 .. pkg-section:: test-suite name
     :synopsis: Test suite build information.
@@ -1230,22 +1222,12 @@ be provided by the library that provides the testing facility.
             , setOption = \_ _ -> Right fails
             }
 
-Running test suites
-"""""""""""""""""""
-
-You can have Cabal run your test suites using its built-in test runner:
-
-::
-
-    $ cabal configure --enable-tests
-    $ cabal build
-    $ cabal test
-
-See the output of ``cabal help test`` for a list of options you can pass
-to ``cabal test``.
-
 Benchmarks
 ^^^^^^^^^^
+
+A package description can contain multiple benchmark sections.
+The documentation of the `cabal bench <cabal-commands.html#cabal-bench>`__ command
+contains detailed information on how to run benchmarks.
 
 .. pkg-section:: benchmark name
     :since: 1.9.2
@@ -1319,20 +1301,6 @@ Example:
         end <- getCurrentTime
         putStrLn $ "fib 20 took " ++ show (diffUTCTime end start)
 
-Running benchmarks
-""""""""""""""""""
-
-You can have Cabal run your benchmark using its built-in benchmark
-runner:
-
-::
-
-    $ cabal configure --enable-benchmarks
-    $ cabal build
-    $ cabal bench
-
-See the output of ``cabal help bench`` for a list of options you can
-pass to ``cabal bench``.
 
 Foreign libraries
 ^^^^^^^^^^^^^^^^^
