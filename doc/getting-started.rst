@@ -10,7 +10,7 @@ It installs the "Haskell toolchain" which includes Cabal,
 the Haskell compiler `GHC <https://www.haskell.org/ghc/>`__ 
 and optionally other useful Haskell tools.
 
-Creating a Haskell package
+Creating a new application
 --------------------------
 
 We create a minimal Haskell application to get a quick overview 
@@ -21,10 +21,10 @@ about the ``cabal`` commandline tool:
 3. How to compile Haskell files and run a resulting executable.
 4. How to manage external dependencies.
 
-Initializing a package
-^^^^^^^^^^^^^^^^^^^^^^
+Initializing an application
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-To initialize a new Haskell package, run
+To initialize a new Haskell application, run
 
 .. code-block:: console
 
@@ -61,7 +61,7 @@ its dependencies and how it is built:
 
 The ``executable`` section shows that this package's build output 
 is an executable called ``myapp`` that we can run on the command line. 
-The ``build-depends`` section contains a list of package dependencies.
+The ``build-depends`` section contains a list of all package dependencies.
 
 
 ``app/Main.hs`` is where your executable's code lives:
@@ -113,8 +113,8 @@ terminal with some embellishment.
    need to update the package index, you can do this by running ``cabal
    update``.
 
-In our ``myfirstapp.cabal`` file we'll update the ``build-depends`` attribute of
-the ``executable myfirstapp`` section to include ``haskell-say``:
+In our ``myapp.cabal`` file we'll update the ``build-depends`` attribute of
+the ``executable myapp`` section to include ``haskell-say``:
 
 .. code-block:: cabal
 
@@ -194,7 +194,7 @@ the following file named ``myscript``:
     main :: IO ()
     main = getLine >>= print . chunksOf 3
 
-The important sections of a ``.cabal`` file are placed
+The necessary sections of a ``.cabal`` file are placed
 directly into the script as a comment.
 
 To execute this script, run:
