@@ -1021,23 +1021,6 @@ For more information about the rationale and some examples, see
     TODO inline the blog post
 
 
-Freezing dependency versions
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-If a package is built in several different environments, such as a
-development environment, a staging environment and a production
-environment, it may be necessary or desirable to ensure that the same
-dependency versions are selected in each environment. This can be done
-with the ``freeze`` command:
-
-.. code-block:: console
-
-    $ cabal freeze
-
-The command writes the selected version for all dependencies to the
-``cabal.config`` file. All environments which share this file will use
-the dependency versions specified in it.
-
 Generating dependency version bounds
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

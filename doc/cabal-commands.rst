@@ -478,6 +478,12 @@ flag.
 cabal freeze
 ^^^^^^^^^^^^
 
+If a package is built in several different environments, such as a
+development environment, a staging environment and a production
+environment, it may be necessary or desirable to ensure that the same
+dependency versions are selected in each environment. This can be done
+with the ``freeze`` command:
+
 ``cabal freeze`` writes out a **freeze file** which records all of
 the versions and flags that are picked by the solver under the
 current index and flags.  Default name of this file is
