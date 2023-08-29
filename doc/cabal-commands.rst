@@ -517,8 +517,32 @@ cabal gen-bounds
 ``cabal gen-bounds [FLAGS]`` generates bounds for all dependencies that do not
 currently have them.  Generated bounds are printed to stdout. You can then
 paste them into your .cabal file.
+The generated bounds conform to the `Package Versioning Policy`_, which is
+a recommended versioning system for publicly released Cabal packages.
 
-See `the section on generating dependency version bounds <cabal-package.html#generating-dependency-version-bounds>`__ for more details and examples.
+.. code-block:: console
+
+    $ cabal gen-bounds
+
+For example, given the following dependencies without bounds specified in
+:pkg-field:`build-depends`:
+
+::
+
+    build-depends:
+      base,
+      mtl,
+      transformers,
+
+``gen-bounds`` might suggest changing them to the following:
+
+::
+
+    build-depends:
+      base          >= 4.15.0 && < 4.16,
+      mtl           >= 2.2.2 && < 2.3,
+      transformers  >= 0.5.6 && < 0.6,
+
 
 cabal outdated
 ^^^^^^^^^^^^^^
@@ -1163,3 +1187,5 @@ cabal report
 .. option:: -p PASSWORD or -pPASSWORD, --password=PASSWORD
 
     Your Hackage password.
+
+.. include:: references.inc

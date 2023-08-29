@@ -1021,38 +1021,6 @@ For more information about the rationale and some examples, see
     TODO inline the blog post
 
 
-Generating dependency version bounds
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Cabal also has the ability to suggest dependency version bounds that
-conform to the `Package Versioning Policy`_, which is
-a recommended versioning system for publicly released Cabal packages.
-This is done by running the ``gen-bounds`` command:
-
-.. code-block:: console
-
-    $ cabal gen-bounds
-
-For example, given the following dependencies without bounds specified in
-:pkg-field:`build-depends`:
-
-::
-
-    build-depends:
-      base,
-      mtl,
-      transformers,
-
-``gen-bounds`` might suggest changing them to the following:
-
-::
-
-    build-depends:
-      base          >= 4.15.0 && < 4.16,
-      mtl           >= 2.2.2 && < 2.3,
-      transformers  >= 0.5.6 && < 0.6,
-
-
 Listing outdated dependency version bounds
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
