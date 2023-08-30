@@ -322,12 +322,7 @@ defaultConfigFlags progDb =
     , configCabalFilePath = NoFlag
     , configVerbosity = Flag normal
     , configUserInstall = Flag False -- TODO: reverse this
-#if defined(mingw32_HOST_OS)
-        -- See #8062 and GHC #21019.
-    , configGHCiLib = Flag False
-#else
-    , configGHCiLib = NoFlag
-#endif
+    , configGHCiLib = Flag True
     , configSplitSections = Flag False
     , configSplitObjs = Flag False -- takes longer, so turn off by default
     , configStripExes = NoFlag

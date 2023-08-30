@@ -767,22 +767,6 @@ configure (pkg_descr0, pbi) cfg = do
             )
           return False
 
-  let compilerSupportsGhciLibs :: Bool
-      compilerSupportsGhciLibs =
-        case compilerId comp of
-          CompilerId GHC version
-            | version > mkVersion [9, 3] && windows ->
-                False
-          CompilerId GHC _ ->
-            True
-          CompilerId GHCJS _ ->
-            True
-          _ -> False
-        where
-          windows = case compPlatform of
-            Platform _ Windows -> True
-            Platform _ _ -> False
-
   let ghciLibByDefault =
         case compilerId comp of
           CompilerId GHC _ ->
@@ -798,15 +782,6 @@ configure (pkg_descr0, pbi) cfg = do
           CompilerId GHCJS _ ->
             not (GHCJS.isDynamic comp)
           _ -> False
-
-  withGHCiLib_ <-
-    case fromFlagOrDefault ghciLibByDefault (configGHCiLib cfg) of
-      True | not compilerSupportsGhciLibs -> do
-        warn verbosity $
-          "--enable-library-for-ghci is no longer supported on Windows with"
-            ++ " GHC 9.4 and later; ignoring..."
-        return False
-      v -> return v
 
   let sharedLibsByDefault
         | fromFlag (configDynExe cfg) =
@@ -912,7 +887,7 @@ configure (pkg_descr0, pbi) cfg = do
             , withProfExeDetail = ProfDetailNone
             , withOptimization = fromFlag $ configOptimization cfg
             , withDebugInfo = fromFlag $ configDebugInfo cfg
-            , withGHCiLib = withGHCiLib_
+            , withGHCiLib = fromFlagOrDefault ghciLibByDefault $ configGHCiLib cfg
             , splitSections = split_sections
             , splitObjs = split_objs
             , stripExes = strip_exe
