@@ -4284,8 +4284,9 @@ setupHsBuildFlags par_strat elab _ verbosity builddir =
     , buildDistPref = toFlag builddir
     , buildNumJobs = mempty -- TODO: [nice to have] sometimes want to use toFlag (Just numBuildJobs),
     , buildUseSemaphore =
-        if elabSetupScriptCliVersion elab >= mkVersion [3, 9, 0, 0]
-          then par_strat
+        if elabSetupScriptCliVersion elab >= mkVersion [3, 11, 0, 0]
+          then -- Cabal 3.11 is the first version that supports parallelism semaphores
+            par_strat
           else mempty
     , buildArgs = mempty -- unused, passed via args not flags
     , buildCabalFilePath = mempty
