@@ -38,6 +38,7 @@ import Distribution.TestSuite
 import qualified Distribution.Types.LocalBuildInfo as LBI
 import Distribution.Types.UnqualComponentName
 
+import Distribution.Simple.Errors
 import System.Directory
   ( createDirectoryIfMissing
   , doesFileExist
@@ -98,9 +99,7 @@ test args pkg_descr lbi flags = do
     exitSuccess
 
   when (PD.hasTests pkg_descr && null enabledTests) $
-    die' verbosity $
-      "No test suites enabled. Did you remember to configure with "
-        ++ "\'--enable-tests\'?"
+    dieWithException verbosity NoTestSuitesEnabled
 
   testsToRun <- case testNames of
     [] -> return $ zip enabledTests $ repeat Nothing
@@ -113,11 +112,8 @@ test args pkg_descr lbi flags = do
             Just t -> return (t, Nothing)
             _
               | tCompName `elem` allNames ->
-                  die' verbosity $
-                    "Package configured with test suite "
-                      ++ tName
-                      ++ " disabled."
-              | otherwise -> die' verbosity $ "no such test: " ++ tName
+                  dieWithException verbosity $ TestNameDisabled tName
+              | otherwise -> dieWithException verbosity $ NoSuchTest tName
 
   createDirectoryIfMissing True testLogDir
 

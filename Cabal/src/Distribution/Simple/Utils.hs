@@ -78,6 +78,7 @@ module Distribution.Simple.Utils
   , IOData (..)
   , KnownIODataMode (..)
   , IODataMode (..)
+  , VerboseException
 
     -- * copying files
   , createDirectoryIfMissingVerbose
@@ -1014,7 +1015,8 @@ rawSystemStdout verbosity path args = withFrozenCallStack $ do
       Nothing
       (IOData.iodataMode :: IODataMode mode)
   when (exitCode /= ExitSuccess) $
-    die' verbosity errors
+    dieWithException verbosity $
+      RawSystemStdout errors
   return output
 
 -- | Execute the given command with the given arguments, returning
@@ -1127,6 +1129,7 @@ findProgramVersion versionArg selectVersion verbosity path = withFrozenCallStack
   str <-
     rawSystemStdout verbosity path [versionArg]
       `catchIO` (\_ -> return "")
+      `catch` (\(_ :: VerboseException CabalException) -> return "")
       `catchExit` (\_ -> return "")
   let version :: Maybe Version
       version = simpleParsec (selectVersion str)
@@ -1197,7 +1200,7 @@ findFileCwd verbosity cwd searchPath fileName =
     [ path </> fileName
     | path <- nub searchPath
     ]
-    >>= maybe (die' verbosity $ fileName ++ " doesn't exist") return
+    >>= maybe (dieWithException verbosity $ FindFileCwd fileName) return
 
 -- | Find a file by looking in a search path. The file path must match exactly.
 findFileEx
@@ -1213,7 +1216,7 @@ findFileEx verbosity searchPath fileName =
     [ path </> fileName
     | path <- nub searchPath
     ]
-    >>= maybe (die' verbosity $ fileName ++ " doesn't exist") return
+    >>= maybe (dieWithException verbosity $ FindFileEx fileName) return
 
 -- | Find a file by looking in a search path with one of a list of possible
 -- file extensions. The file base name should be given and it will be tried
@@ -1342,13 +1345,7 @@ findModuleFileEx verbosity searchPath extensions mod_name =
       (ModuleName.toFilePath mod_name)
   where
     notFound =
-      die' verbosity $
-        "Could not find module: "
-          ++ prettyShow mod_name
-          ++ " with any suffix: "
-          ++ show extensions
-          ++ " in the search path: "
-          ++ show searchPath
+      dieWithException verbosity $ FindModuleFileEx mod_name extensions searchPath
 
 -- | List all the files in a directory and all subdirectories.
 --
@@ -1803,7 +1800,7 @@ defaultPackageDesc verbosity = tryFindPackageDesc verbosity currentDir
 findPackageDesc
   :: FilePath
   -- ^ Where to look
-  -> IO (Either String FilePath)
+  -> IO (Either CabalException FilePath)
   -- ^ <pkgname>.cabal
 findPackageDesc = findPackageDescCwd "."
 
@@ -1813,7 +1810,7 @@ findPackageDescCwd
   -- ^ project root
   -> FilePath
   -- ^ relative directory
-  -> IO (Either String FilePath)
+  -> IO (Either CabalException FilePath)
   -- ^ <pkgname>.cabal relative to the project root
 findPackageDescCwd cwd dir =
   do
@@ -1829,32 +1826,21 @@ findPackageDescCwd cwd dir =
         , not (null name) && ext == ".cabal"
         ]
     case map fst cabalFiles of
-      [] -> return (Left noDesc)
+      [] -> return (Left NoDesc)
       [cabalFile] -> return (Right cabalFile)
-      multiple -> return (Left $ multiDesc multiple)
-  where
-    noDesc :: String
-    noDesc =
-      "No cabal file found.\n"
-        ++ "Please create a package description file <pkgname>.cabal"
-
-    multiDesc :: [String] -> String
-    multiDesc l =
-      "Multiple cabal files found.\n"
-        ++ "Please use only one of: "
-        ++ intercalate ", " l
+      multiple -> return (Left $ MultiDesc multiple)
 
 -- | Like 'findPackageDesc', but calls 'die' in case of error.
 tryFindPackageDesc :: Verbosity -> FilePath -> IO FilePath
 tryFindPackageDesc verbosity dir =
-  either (die' verbosity) return =<< findPackageDesc dir
+  either (dieWithException verbosity) return =<< findPackageDesc dir
 
 -- | Like 'findPackageDescCwd', but calls 'die' in case of error.
 --
 -- @since 3.4.0.0
 tryFindPackageDescCwd :: Verbosity -> FilePath -> FilePath -> IO FilePath
 tryFindPackageDescCwd verbosity cwd dir =
-  either (die' verbosity) return =<< findPackageDescCwd cwd dir
+  either (dieWithException verbosity) return =<< findPackageDescCwd cwd dir
 
 -- | Find auxiliary package information in the given directory.
 --  Looks for @.buildinfo@ files.
@@ -1877,7 +1863,7 @@ findHookedPackageDesc verbosity dir = do
   case buildInfoFiles of
     [] -> return Nothing
     [f] -> return (Just f)
-    _ -> die' verbosity ("Multiple files with extension " ++ buildInfoExt)
+    _ -> dieWithException verbosity $ MultipleFilesWithExtension buildInfoExt
 
 buildInfoExt :: String
 buildInfoExt = ".buildinfo"
