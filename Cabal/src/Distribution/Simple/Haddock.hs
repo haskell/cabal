@@ -182,7 +182,6 @@ getHaddockProg verbosity programDb comp args quickJumpFlag = do
   -- various sanity checks
   when (hoogle && version < mkVersion [2, 2]) $
     dieWithException verbosity NoSupportForHoogle
-  -- "Haddock 2.0 and 2.1 do not support the --hoogle flag."
 
   when (fromFlag argQuickJump && version < mkVersion [2, 19]) $ do
     let msg = "Haddock prior to 2.19 does not support the --quickjump flag."
@@ -1116,7 +1115,7 @@ hscolour'
   -> HscolourFlags
   -> IO ()
 hscolour' onNoHsColour haddockTarget pkg_descr lbi suffixes flags =
-  either onNoHsColour (\(hscolourProg, _, _) -> go hscolourProg)
+  either (\excep -> onNoHsColour $ exceptionMessage excep) (\(hscolourProg, _, _) -> go hscolourProg)
     =<< lookupProgramVersion
       verbosity
       hscolourProgram

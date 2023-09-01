@@ -250,9 +250,9 @@ library
     if flag(lukko)
       build-depends: lukko >= 0.1 && <0.2
 
-   -- pull in process version with fixed waitForProcess error
-   if impl(ghc >=8.2)
-     build-depends: process >= 1.6.15.0
+    -- pull in process version with fixed waitForProcess error
+    if impl(ghc >=8.2)
+      build-depends: process >= 1.6.15.0
 
 
 executable cabal

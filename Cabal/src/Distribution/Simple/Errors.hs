@@ -32,6 +32,7 @@ import Distribution.Types.BenchmarkType
 import Distribution.Types.LibraryName
 import Distribution.Types.PkgconfigVersion
 import Distribution.Types.TestType
+import Distribution.Types.VersionRange.Internal ()
 import Distribution.Version
 import Text.PrettyPrint
 
@@ -144,6 +145,32 @@ data CabalException
   | CheckPackageProblems [String]
   | LibDirDepsPrefixNotRelative FilePath FilePath
   | CombinedConstraints Doc
+  | CantParseGHCOutput
+  | IncompatibleWithCabal String String
+  | Couldn'tFindTestProgram FilePath
+  | TestCoverageSupport
+  | Couldn'tFindTestProgLibV09 FilePath
+  | TestCoverageSupportLibV09
+  | RawSystemStdout String
+  | FindFileCwd FilePath
+  | FindFileEx FilePath
+  | FindModuleFileEx ModuleName [String] [FilePath]
+  | MultipleFilesWithExtension String
+  | NoDesc
+  | MultiDesc [String]
+  | RelocRegistrationInfo
+  | CreatePackageDB
+  | WithHcPkg String
+  | RegisMultiplePkgNotSupported
+  | RegisteringNotImplemented
+  | NoTestSuitesEnabled
+  | TestNameDisabled String
+  | NoSuchTest String
+  | ConfigureProgram String FilePath
+  | RequireProgram String
+  | NoProgramFound String VersionRange
+  | BadVersionDb String Version VersionRange FilePath
+  | UnknownVersionDb String VersionRange FilePath
   deriving (Show, Typeable)
 
 exceptionCode :: CabalException -> Int
@@ -249,6 +276,37 @@ exceptionCode e = case e of
   CheckPackageProblems{} -> 5559
   LibDirDepsPrefixNotRelative{} -> 6667
   CombinedConstraints{} -> 5000
+  CantParseGHCOutput{} -> 1980
+  IncompatibleWithCabal{} -> 8123
+  Couldn'tFindTestProgram{} -> 5678
+  TestCoverageSupport{} -> 7890
+  Couldn'tFindTestProgLibV09{} -> 9012
+  TestCoverageSupportLibV09{} -> 1076
+  RawSystemStdout{} -> 3098
+  FindFileCwd{} -> 4765
+  FindFileEx{} -> 2115
+  FindModuleFileEx{} -> 6663
+  MultipleFilesWithExtension{} -> 3333
+  NoDesc{} -> 7654
+  MultiDesc{} -> 5554
+  RelocRegistrationInfo{} -> 4343
+  CreatePackageDB{} -> 6787
+  WithHcPkg{} -> 9876
+  RegisMultiplePkgNotSupported{} -> 7632
+  RegisteringNotImplemented{} -> 5411
+  NoTestSuitesEnabled{} -> 9061
+  TestNameDisabled{} -> 8210
+  NoSuchTest{} -> 8000
+  ConfigureProgram{} -> 5490
+  RequireProgram{} -> 6666
+  NoProgramFound{} -> 7620
+  BadVersionDb{} -> 8038
+  UnknownVersionDb{} -> 1008
+
+versionRequirement :: VersionRange -> String
+versionRequirement range
+  | isAnyVersion range = ""
+  | otherwise = " version " ++ prettyShow range
 
 exceptionMessage :: CabalException -> String
 exceptionMessage e = case e of
@@ -538,17 +596,17 @@ exceptionMessage e = case e of
   HowToFindInstalledPackages flv ->
     "don't know how to find the installed packages for "
       ++ prettyShow flv
-  PkgConfigNotFound pkg versionRequirement ->
+  PkgConfigNotFound pkg versionReq ->
     "The pkg-config package '"
       ++ pkg
       ++ "'"
-      ++ versionRequirement
+      ++ versionReq
       ++ " is required but it could not be found."
-  BadVersion pkg versionRequirement v ->
+  BadVersion pkg versionReq v ->
     "The pkg-config package '"
       ++ pkg
       ++ "'"
-      ++ versionRequirement
+      ++ versionReq
       ++ " is required but the version installed on the"
       ++ " system is version "
       ++ prettyShow v
@@ -645,3 +703,92 @@ exceptionMessage e = case e of
       text "The following package dependencies were requested"
         $+$ nest 4 dispDepend
         $+$ text "however the given installed package instance does not exist."
+  CantParseGHCOutput -> "Can't parse --info output of GHC"
+  IncompatibleWithCabal compilerName packagePathEnvVar ->
+    "Use of "
+      ++ compilerName
+      ++ "'s environment variable "
+      ++ packagePathEnvVar
+      ++ " is incompatible with Cabal. Use the "
+      ++ "flag --package-db to specify a package database (it can be "
+      ++ "used multiple times)."
+  Couldn'tFindTestProgram cmd ->
+    "Could not find test program \""
+      ++ cmd
+      ++ "\". Did you build the package first?"
+  TestCoverageSupport -> "Test coverage is only supported for packages with a library component."
+  Couldn'tFindTestProgLibV09 cmd ->
+    "Could not find test program \""
+      ++ cmd
+      ++ "\". Did you build the package first?"
+  TestCoverageSupportLibV09 -> "Test coverage is only supported for packages with a library component."
+  RawSystemStdout errors -> errors
+  FindFileCwd fileName -> fileName ++ " doesn't exist"
+  FindFileEx fileName -> fileName ++ " doesn't exist"
+  FindModuleFileEx mod_name extensions searchPath ->
+    "Could not find module: "
+      ++ prettyShow mod_name
+      ++ " with any suffix: "
+      ++ show extensions
+      ++ " in the search path: "
+      ++ show searchPath
+  MultipleFilesWithExtension buildInfoExt -> "Multiple files with extension " ++ buildInfoExt
+  NoDesc ->
+    "No cabal file found.\n"
+      ++ "Please create a package description file <pkgname>.cabal"
+  MultiDesc l ->
+    "Multiple cabal files found.\n"
+      ++ "Please use only one of: "
+      ++ intercalate ", " l
+  RelocRegistrationInfo ->
+    "Distribution.Simple.Register.relocRegistrationInfo: \
+    \not implemented for this compiler"
+  CreatePackageDB ->
+    "Distribution.Simple.Register.createPackageDB: "
+      ++ "not implemented for this compiler"
+  WithHcPkg name ->
+    "Distribution.Simple.Register."
+      ++ name
+      ++ ":\
+         \not implemented for this compiler"
+  RegisMultiplePkgNotSupported -> "Registering multiple package instances is not yet supported for this compiler"
+  RegisteringNotImplemented -> "Registering is not implemented for this compiler"
+  NoTestSuitesEnabled ->
+    "No test suites enabled. Did you remember to configure with "
+      ++ "\'--enable-tests\'?"
+  TestNameDisabled tName ->
+    "Package configured with test suite "
+      ++ tName
+      ++ " disabled."
+  NoSuchTest tName -> "no such test: " ++ tName
+  ConfigureProgram name path ->
+    "Cannot find the program '"
+      ++ name
+      ++ "'. User-specified path '"
+      ++ path
+      ++ "' does not refer to an executable and "
+      ++ "the program is not on the system path."
+  RequireProgram progName -> "The program '" ++ progName ++ "' is required but it could not be found."
+  NoProgramFound progName versionRange ->
+    "The program '"
+      ++ progName
+      ++ "'"
+      ++ versionRequirement versionRange
+      ++ " is required but it could not be found."
+  BadVersionDb progName version range locationPath ->
+    "The program '"
+      ++ progName
+      ++ "'"
+      ++ versionRequirement range
+      ++ " is required but the version found at "
+      ++ locationPath
+      ++ " is version "
+      ++ prettyShow version
+  UnknownVersionDb progName versionRange locationPath ->
+    "The program '"
+      ++ progName
+      ++ "'"
+      ++ versionRequirement versionRange
+      ++ " is required but the version of "
+      ++ locationPath
+      ++ " could not be determined."
