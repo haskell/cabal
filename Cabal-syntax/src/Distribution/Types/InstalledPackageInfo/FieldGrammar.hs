@@ -88,6 +88,7 @@ ipiFieldGrammar =
     <@> optionalFieldDefAla "instantiated-with" InstWith L.instantiatedWith []
     <@> optionalFieldDefAla "key" CompatPackageKey L.compatPackageKey ""
     <@> optionalFieldDefAla "license" SpecLicenseLenient L.license (Left SPDX.NONE)
+    <@> monoidalFieldAla "license-files" (alaList' FSep FilePathNT) L.licenseFiles
     <@> freeTextFieldDefST "copyright" L.copyright
     <@> freeTextFieldDefST "maintainer" L.maintainer
     <@> freeTextFieldDefST "author" L.author

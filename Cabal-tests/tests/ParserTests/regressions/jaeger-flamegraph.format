@@ -2,7 +2,7 @@ cabal-version: 2.2
 name:          jaeger-flamegraph
 version:       1.0.0
 license:       BSD-3-Clause
-license-file:  LICENSE
+license-files: LICENSE
 copyright:     (c) 2018 Symbiont.io
 maintainer:    Sam Halliday
 author:        Sam Halliday

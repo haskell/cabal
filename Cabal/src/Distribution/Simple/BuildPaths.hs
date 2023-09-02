@@ -20,6 +20,7 @@ module Distribution.Simple.BuildPaths
   , haddockDirName
   , hscolourPref
   , haddockPref
+  , licenseFilePref
   , autogenPackageModulesDir
   , autogenComponentModulesDir
   , autogenPathsModuleName
@@ -89,6 +90,9 @@ haddockDirName ForHackage = (++ "-docs") . prettyShow . packageId
 haddockPref :: HaddockTarget -> FilePath -> PackageDescription -> FilePath
 haddockPref haddockTarget distPref pkg_descr =
   distPref </> "doc" </> "html" </> haddockDirName haddockTarget pkg_descr
+
+licenseFilePref :: FilePath -> FilePath -> FilePath
+licenseFilePref docPref = (docPref </>)
 
 -- | The directory in which we put auto-generated modules for EVERY
 -- component in the package.

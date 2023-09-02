@@ -3,7 +3,7 @@ cabal-version:      >=1.10
 name:               th-lift-instances
 version:            0.1.4
 license:            BSD3
-license-file:       LICENSE
+license-files:      LICENSE
 copyright:          Copyright (C) 2013-2014 Benno Fünfstück
 maintainer:         Benno Fünfstück <benno.fuenfstueck@gmail.com>
 author:             Benno Fünfstück

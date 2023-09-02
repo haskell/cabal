@@ -154,12 +154,11 @@ packageDescriptionFieldGrammar =
 
     licenseFilesGrammar =
       (++)
-        -- TODO: neither field is deprecated
-        -- should we pretty print license-file if there's single license file
-        -- and license-files when more
-        <$> monoidalFieldAla "license-file" CompatLicenseFile L.licenseFiles
+        -- Always pretty print license-files
+        <$> ( monoidalFieldAla "license-file" CompatLicenseFile L.licenseFiles
+                ^^^ hiddenField
+            )
         <*> monoidalFieldAla "license-files" (alaList FSep) L.licenseFiles
-          ^^^ hiddenField
 
 -------------------------------------------------------------------------------
 -- Library

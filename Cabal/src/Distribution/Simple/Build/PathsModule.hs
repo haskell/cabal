@@ -24,12 +24,16 @@ import Prelude ()
 
 import Distribution.Package
 import Distribution.PackageDescription
+import Distribution.Pretty ()
 import Distribution.Simple.Compiler
+import Distribution.Simple.PackageIndex ( allPackages )
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Utils (shortRelativePath)
 import Distribution.System
+import Distribution.Utils.Path ( getSymbolicPath )
 import Distribution.Version
 
+import System.FilePath
 import qualified Distribution.Simple.Build.PathsModule.Z as Z
 
 -- ------------------------------------------------------------
@@ -44,6 +48,7 @@ generatePathsModule pkg_descr lbi clbi =
     Z.Z
       { Z.zPackageName = packageName pkg_descr
       , Z.zVersionDigits = show $ versionNumbers $ packageVersion pkg_descr
+      , Z.zLicenseFiles = show $ getSymbolicPath <$> licenseFiles pkg_descr
       , Z.zSupportsCpp = supports_cpp
       , Z.zSupportsNoRebindableSyntax = supports_rebindable_syntax
       , Z.zAbsolute = absolute
@@ -58,6 +63,7 @@ generatePathsModule pkg_descr lbi clbi =
       , Z.zLibdir = zLibdir
       , Z.zDynlibdir = zDynlibdir
       , Z.zDatadir = zDatadir
+      , Z.zDocdir = zDocdir
       , Z.zLibexecdir = zLibexecdir
       , Z.zSysconfdir = zSysconfdir
       }
@@ -93,6 +99,7 @@ generatePathsModule pkg_descr lbi clbi =
       , libdir = flat_libdir
       , dynlibdir = flat_dynlibdir
       , datadir = flat_datadir
+      , docdir = flat_docdir
       , libexecdir = flat_libexecdir
       , sysconfdir = flat_sysconfdir
       , prefix = flat_prefix
@@ -103,17 +110,19 @@ generatePathsModule pkg_descr lbi clbi =
       , libdir = flat_libdirrel
       , dynlibdir = flat_dynlibdirrel
       , datadir = flat_datadirrel
+      , docdir = flat_docdirrel
       , libexecdir = flat_libexecdirrel
       , sysconfdir = flat_sysconfdirrel
       } = prefixRelativeComponentInstallDirs (packageId pkg_descr) lbi cid
 
-    zBindir, zLibdir, zDynlibdir, zDatadir, zLibexecdir, zSysconfdir :: String
-    (zBindir, zLibdir, zDynlibdir, zDatadir, zLibexecdir, zSysconfdir)
+    zBindir, zLibdir, zDynlibdir, zDatadir, zDocdir, zLibexecdir, zSysconfdir :: String
+    (zBindir, zLibdir, zDynlibdir, zDatadir, zDocdir, zLibexecdir, zSysconfdir)
       | relocatable lbi =
           ( show flat_bindir_reloc
           , show flat_libdir_reloc
           , show flat_dynlibdir_reloc
           , show flat_datadir_reloc
+          , show flat_docdir_reloc
           , show flat_libexecdir_reloc
           , show flat_sysconfdir_reloc
           )
@@ -122,6 +131,7 @@ generatePathsModule pkg_descr lbi clbi =
           , show flat_libdir
           , show flat_dynlibdir
           , show flat_datadir
+          , show flat_docdir
           , show flat_libexecdir
           , show flat_sysconfdir
           )
@@ -130,6 +140,7 @@ generatePathsModule pkg_descr lbi clbi =
           , mkGetDir flat_libdir flat_libdirrel
           , mkGetDir flat_dynlibdir flat_dynlibdirrel
           , mkGetDir flat_datadir flat_datadirrel
+          , mkGetDir flat_docdir flat_docdirrel
           , mkGetDir flat_libexecdir flat_libexecdirrel
           , mkGetDir flat_sysconfdir flat_sysconfdirrel
           )
@@ -144,6 +155,7 @@ generatePathsModule pkg_descr lbi clbi =
     flat_libdir_reloc = shortRelativePath flat_prefix flat_libdir
     flat_dynlibdir_reloc = shortRelativePath flat_prefix flat_dynlibdir
     flat_datadir_reloc = shortRelativePath flat_prefix flat_datadir
+    flat_docdir_reloc = shortRelativePath flat_prefix flat_docdir
     flat_libexecdir_reloc = shortRelativePath flat_prefix flat_libexecdir
     flat_sysconfdir_reloc = shortRelativePath flat_prefix flat_sysconfdir
 

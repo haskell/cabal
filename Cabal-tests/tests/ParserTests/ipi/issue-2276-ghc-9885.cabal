@@ -3,6 +3,7 @@ version: 0.5.2.0
 id: transformers-0.5.2.0
 key: transformers-0.5.2.0
 license: BSD3
+license-files: LICENSE
 maintainer: Ross Paterson <R.Paterson@city.ac.uk>
 synopsis: Concrete functor and monad transformers
 description:

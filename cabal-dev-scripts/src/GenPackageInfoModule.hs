@@ -7,7 +7,6 @@ module Main (main) where
 
 import Control.Exception              (SomeException (..), catch, displayException)
 import Distribution.Types.PackageName (PackageName)
-import Distribution.Types.Version     (Version)
 import GHC.Generics                   (Generic)
 import System.Environment             (getArgs)
 import System.Exit                    (exitFailure)
@@ -25,26 +24,22 @@ $(capture "decls" [d|
     data Z = Z
         { zPackageName                :: PackageName
         , zVersionDigits              :: String
-        , zLicenseFiles               :: String
-        , zSupportsCpp                :: Bool
+        , zLicense                    :: String
+        , zCopyright                  :: String
+        , zMaintainer                 :: String
+        , zAuthor                     :: String
+        , zStability                  :: String
+        , zHomepage                   :: String
+        , zPkgUrl                     :: String
+        , zBugReports                 :: String
+        , zSynopsis                   :: String
+        , zDescription                :: String
+        , zCategory                   :: String
+
         , zSupportsNoRebindableSyntax :: Bool
-        , zAbsolute                   :: Bool
-        , zRelocatable                :: Bool
-        , zIsWindows                  :: Bool
-        , zIsI386                     :: Bool
-        , zIsX8664                    :: Bool
 
-        , zPrefix     :: FilePath
-        , zBindir     :: FilePath
-        , zLibdir     :: FilePath
-        , zDynlibdir  :: FilePath
-        , zDatadir    :: FilePath
-        , zDocdir     :: FilePath
-        , zLibexecdir :: FilePath
-        , zSysconfdir :: FilePath
-
-        , zNot                        :: Bool -> Bool
         , zManglePkgName              :: PackageName -> String
+        , zShow                       :: String -> String
         }
       deriving (Generic)
     |])
@@ -75,7 +70,7 @@ config = ModuleConfig
     , mcHeader =
         [ "{- FOURMOLU_DISABLE -}"
         , "{-# LANGUAGE DeriveGeneric #-}"
-        , "module Distribution.Simple.Build.PathsModule.Z (render, Z(..)) where"
+        , "module Distribution.Simple.Build.PackageInfoModule.Z (render, Z(..)) where"
         , "import Distribution.ZinzaPrelude"
         , decls
         , "render :: Z -> String"
@@ -96,11 +91,6 @@ instance Zinza Z where
 -------------------------------------------------------------------------------
 
 instance Zinza PackageName where
-    toType _    = TyString (Just "prettyShow")
-    toValue _   = error "not needed"
-    fromValue _ = error "not needed"
-
-instance Zinza Version where
     toType _    = TyString (Just "prettyShow")
     toValue _   = error "not needed"
     fromValue _ = error "not needed"

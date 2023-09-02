@@ -17,6 +17,7 @@ InstalledPackageInfo {
   "internal-preprocessor-test-0.1.0.0",
   license = Right
     (GPL (Just (mkVersion [3]))),
+  licenseFiles = ["LICENSE"],
   copyright = "",
   maintainer =
   "mikhail.glushenkov@gmail.com",

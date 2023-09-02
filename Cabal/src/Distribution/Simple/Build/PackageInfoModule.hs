@@ -22,6 +22,7 @@ import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.Simple.Compiler
 import Distribution.Simple.LocalBuildInfo
+import Distribution.Pretty ( prettyShow )
 import Distribution.Utils.ShortText
 import Distribution.Version
 
@@ -37,12 +38,22 @@ generatePackageInfoModule :: PackageDescription -> LocalBuildInfo -> String
 generatePackageInfoModule pkg_descr lbi =
   Z.render
     Z.Z
-      { Z.zPackageName = showPkgName $ packageName pkg_descr
+      { Z.zPackageName = packageName pkg_descr
       , Z.zVersionDigits = show $ versionNumbers $ packageVersion pkg_descr
-      , Z.zSynopsis = fromShortText $ synopsis pkg_descr
-      , Z.zCopyright = fromShortText $ copyright pkg_descr
-      , Z.zHomepage = fromShortText $ homepage pkg_descr
+      , Z.zLicense = show $ prettyShow $ license pkg_descr
+      , Z.zCopyright = show $ fromShortText $ copyright pkg_descr
+      , Z.zMaintainer = show $ fromShortText $ maintainer pkg_descr
+      , Z.zAuthor = show $ fromShortText $ author pkg_descr
+      , Z.zStability = show $ fromShortText $ stability pkg_descr
+      , Z.zHomepage =  show $ fromShortText $ homepage pkg_descr
+      , Z.zPkgUrl = show $ fromShortText $ pkgUrl pkg_descr
+      , Z.zBugReports = show $ fromShortText $ bugReports pkg_descr
+      , Z.zSynopsis = show $ fromShortText $ synopsis pkg_descr
+      , Z.zDescription = show $ fromShortText $ description pkg_descr
+      , Z.zCategory = show $ fromShortText $ category pkg_descr
       , Z.zSupportsNoRebindableSyntax = supports_rebindable_syntax
+      , Z.zManglePkgName = showPkgName
+      , Z.zShow = show
       }
   where
     supports_rebindable_syntax = ghc_newer_than (mkVersion [7, 0, 1])
