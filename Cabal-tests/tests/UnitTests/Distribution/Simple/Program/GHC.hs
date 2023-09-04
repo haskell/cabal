@@ -1,11 +1,16 @@
 module UnitTests.Distribution.Simple.Program.GHC (tests) where
 
+import qualified Data.Map as Map
 import Data.Algorithm.Diff (PolyDiff (..), getDiff)
 import Test.Tasty          (TestTree, testGroup)
 import Test.Tasty.HUnit
 
+import Distribution.System (Platform(..), Arch(X86_64), OS(Linux))
+import Distribution.Types.ParStrat
+import Distribution.Simple.Flag
+import Distribution.Simple.Compiler (Compiler(..), CompilerId(..), CompilerFlavor(..), AbiTag(NoAbiTag))
 import Distribution.PackageDescription (emptyPackageDescription)
-import Distribution.Simple.Program.GHC (normaliseGhcArgs)
+import Distribution.Simple.Program.GHC (normaliseGhcArgs, renderGhcOptions, ghcOptNumJobs)
 import Distribution.Version            (mkVersion)
 
 tests :: TestTree
@@ -38,6 +43,22 @@ tests = testGroup "Distribution.Simple.Program.GHC"
 
             assertListEquals flags options_9_0_affects
         ]
+    , testGroup "renderGhcOptions"
+      [ testCase "options" $ do
+            let flags :: [String]
+                flags = renderGhcOptions
+                  (Compiler
+                      { compilerId = CompilerId GHC (mkVersion [9,8,1])
+                      , compilerAbiTag = NoAbiTag
+                      , compilerCompat = []
+                      , compilerLanguages = []
+                      , compilerExtensions = []
+                      , compilerProperties = Map.singleton "Support parallel --make" "YES" 
+                      })
+                  (Platform X86_64 Linux)
+                  (mempty { ghcOptNumJobs = Flag (NumJobs (Just 4)) })
+            assertListEquals flags ["-j4", "-clear-package-db"]
+        ]        
     ]
 
 assertListEquals :: (Eq a, Show a) => [a] -> [a] -> Assertion
