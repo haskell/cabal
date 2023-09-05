@@ -701,7 +701,7 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
                 if jsemSupported comp
                   then ["-jsem " ++ name]
                   else []
-              Flag (NumJobs n) -> ["-j" ++ show n]
+              Flag (NumJobs n) -> ["-j" ++ maybe "" show n]
             else []
         , --------------------
           -- Creating libraries
