@@ -15,6 +15,13 @@ If not, you aren't able to build the testsuite, so you need to disable the defau
 cabal build --project-file=cabal.project.release cabal
 ```
 
+> **Note**
+> If you're using Nix, you might find it convenient to work within a shell that has all the `Cabal` development dependencies:
+> ```
+> $ nix-shell -p cabal-install ghc ghcid haskellPackages.fourmolu_0_12_0_0 pkgconfig zlib.dev
+> ```
+> A Nix flake developer shell with these dependencies is also available, supported solely by the community, through the command `nix develop github:yvan-sraka/cabal.nix`.
+
 The location of your build products will vary depending on which version of
 cabal-install you use to build; see the documentation section
 [Where are my build products?](http://cabal.readthedocs.io/en/latest/nix-local-build.html#where-are-my-build-products)
