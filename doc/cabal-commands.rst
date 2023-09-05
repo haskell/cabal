@@ -410,8 +410,8 @@ The ``cabal get`` command supports the following options:
 
 .. option:: -s[[head|this|...]], --source-repository[=[head|this|...]]
 
-    Clone the package's source repository using the appropriate version
-    control system instead of downloading the tarball. Only works if the
+    Clone the package's source repository (Darcs, Git, etc.)
+    instead of downloading the tarball. Only works if the
     package specifies a ``source-repository``.
 
 .. option:: --index-state=STATE
