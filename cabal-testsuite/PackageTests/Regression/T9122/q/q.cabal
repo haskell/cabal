@@ -1,0 +1,10 @@
+cabal-version:      3.4
+name:               q
+Version:            1
+Build-Type:         Simple
+
+library
+  build-depends:        q:p
+
+library p
+  build-depends:        p:p == 2
