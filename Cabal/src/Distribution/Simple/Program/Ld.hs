@@ -18,6 +18,8 @@ module Distribution.Simple.Program.Ld
 import Distribution.Compat.Prelude
 import Prelude ()
 
+import qualified Data.Map as Map
+
 import Distribution.Simple.Compiler (arResponseFilesSupported)
 import Distribution.Simple.Flag
   ( fromFlagOrDefault
@@ -67,10 +69,14 @@ combineObjectFiles verbosity lbi ld target files = do
   -- have a slight problem. What we have to do is link files in batches into
   -- a temp object file and then include that one in the next batch.
 
-  let simpleArgs = ["-r", "-o", target]
+  putStrLn "\n\n\n"
+  print ld
+  putStrLn "\n\n\n"
 
-      initialArgs = ["-r", "-o", target]
-      middleArgs = ["-r", "-o", target, tmpfile]
+  let simpleArgs = prependRelocatableFlag ["-o", target]
+
+      initialArgs = prependRelocatableFlag ["-o", target]
+      middleArgs = prependRelocatableFlag ["-o", target, tmpfile]
       finalArgs = middleArgs
 
       simple = programInvocation ld simpleArgs
@@ -104,3 +110,10 @@ combineObjectFiles verbosity lbi ld target files = do
       runProgramInvocation verbosity inv
       renameFile target tmpfile
       run invs
+
+    -- Prepend "-r" to the list if the linker supports relocatable outputs.
+    prependRelocatableFlag :: [String] -> [String]
+    prependRelocatableFlag xs =
+      case Map.lookup "Supports relocatable output" $ programProperties ld of
+        Just "YES" -> "-r" : xs
+        _other -> xs
