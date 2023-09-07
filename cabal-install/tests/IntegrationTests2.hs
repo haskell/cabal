@@ -155,7 +155,6 @@ tests config =
     ]
   , testGroup "Flag tests" $
     [
-      testCase "Test Nix Flag" testNixFlags,
       testCase "Test Config options for commented options" testConfigOptionComments,
       testCase "Test Ignore Project Flag" testIgnoreProjectFlag
     ]
@@ -1934,36 +1933,6 @@ tryFewTimes action = go (3 :: Int) where
         hPutStrLn stderr $ "Trying " ++ show n ++ " after " ++ show e
         threadDelay 10000
         go (n - 1)
-
-testNixFlags :: Assertion
-testNixFlags = do
-  let gc = globalCommand []
-  -- changing from the v1 to v2 build command does not change whether the "--enable-nix" flag
-  -- sets the globalNix param of the GlobalFlags type to True even though the v2 command doesn't use it
-  let nixEnabledFlags = getFlags gc . commandParseArgs gc True $ ["--enable-nix", "build"]
-  let nixDisabledFlags = getFlags gc . commandParseArgs gc True $ ["--disable-nix", "build"]
-  let nixDefaultFlags = getFlags gc . commandParseArgs gc True $ ["build"]
-  True @=? isJust nixDefaultFlags
-  True @=? isJust nixEnabledFlags
-  True @=? isJust nixDisabledFlags
-  Just True @=? (fromFlag . globalNix . fromJust $ nixEnabledFlags)
-  Just False @=? (fromFlag . globalNix . fromJust $ nixDisabledFlags)
-  Nothing @=? (fromFlag . globalNix . fromJust $ nixDefaultFlags)
-
-  -- Config file options
-  trueConfig <- loadConfig verbosity (Flag (basedir </> "nix-config/nix-true"))
-  falseConfig <- loadConfig verbosity (Flag (basedir </> "nix-config/nix-false"))
-
-  Just True @=? (fromFlag . globalNix . savedGlobalFlags $ trueConfig)
-  Just False @=? (fromFlag . globalNix . savedGlobalFlags $ falseConfig)
-
-  where
-    fromFlag :: Flag Bool -> Maybe Bool
-    fromFlag (Flag x) = Just x
-    fromFlag NoFlag = Nothing
-    getFlags :: CommandUI GlobalFlags -> CommandParse (GlobalFlags -> GlobalFlags, [String]) -> Maybe GlobalFlags
-    getFlags cui (CommandReadyToGo (mkflags, _)) = Just . mkflags . commandDefaultFlags $ cui
-    getFlags _ _ = Nothing
 
 -- Tests whether config options are commented or not
 testConfigOptionComments :: Assertion
