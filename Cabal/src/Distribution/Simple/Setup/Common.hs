@@ -327,7 +327,9 @@ configureCCompiler
 configureCCompiler verbosity progdb = configureProg verbosity progdb gccProgram
 
 configureLinker :: Verbosity -> ProgramDb -> IO (FilePath, [String])
-configureLinker verbosity progdb = configureProg verbosity progdb ldProgram
+configureLinker verbosity progdb = do
+  _ <- error $ show ldProgram
+  configureProg verbosity progdb ldProgram
 
 configureProg
   :: Verbosity

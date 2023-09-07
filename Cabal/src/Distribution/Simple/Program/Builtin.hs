@@ -362,7 +362,8 @@ ldProgram =
         -- choice for windows linking does not support this feature. However
         -- if using binutils ld or another linker that supports --relocatable,
         -- we should still be good to generate pre-linked objects.
-        ldHelpOutput <-
+        ldHelpOutput <- do
+          _ <- error "Distribution.Simple.Program.Builtin.ldProgram"
           getProgramInvocationOutput
             verbosity
             (programInvocation ldProg ["--help"])
