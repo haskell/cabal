@@ -47,6 +47,10 @@ license :: Lens' InstalledPackageInfo (Either SPDX.License License)
 license f s = fmap (\x -> s{T.license = x}) (f (T.license s))
 {-# INLINE license #-}
 
+licenseFiles :: Lens' InstalledPackageInfo [FilePath]
+licenseFiles f s = fmap (\x -> s{T.licenseFiles = x}) (f (T.licenseFiles s))
+{-# INLINE licenseFiles #-}
+
 copyright :: Lens' InstalledPackageInfo ShortText
 copyright f s = fmap (\x -> s{T.copyright = x}) (f (T.copyright s))
 {-# INLINE copyright #-}

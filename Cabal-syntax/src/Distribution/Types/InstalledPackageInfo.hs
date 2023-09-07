@@ -52,6 +52,7 @@ data InstalledPackageInfo = InstalledPackageInfo
     instantiatedWith :: [(ModuleName, OpenModule)]
   , compatPackageKey :: String
   , license :: Either SPDX.License License
+  , licenseFiles :: [FilePath]
   , copyright :: !ShortText
   , maintainer :: !ShortText
   , author :: !ShortText
@@ -138,6 +139,7 @@ emptyInstalledPackageInfo =
     , instantiatedWith = []
     , compatPackageKey = ""
     , license = Left SPDX.NONE
+    , licenseFiles = []
     , copyright = ""
     , maintainer = ""
     , author = ""
