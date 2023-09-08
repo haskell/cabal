@@ -863,6 +863,7 @@ platformDefines lbi =
       M68k -> ["m68k"]
       Vax -> ["vax"]
       RISCV64 -> ["riscv64"]
+      LoongArch64 -> ["loongarch64"]
       JavaScript -> ["javascript"]
       Wasm32 -> ["wasm32"]
       OtherArch _ -> []
