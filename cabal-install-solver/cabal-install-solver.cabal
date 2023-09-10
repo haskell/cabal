@@ -143,5 +143,5 @@ Test-Suite unit-tests
      , Cabal-syntax
      , cabal-install-solver
      , tasty       >= 1.2.3 && <1.5
-     , tasty-quickcheck
+     , tasty-quickcheck == 0.10.1.2
      , tasty-hunit >= 0.10
