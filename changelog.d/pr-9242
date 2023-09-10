@@ -1,0 +1,3 @@
+synopsis: Support text-2.1 in Cabal and Cabal-syntax
+packages: Cabal Cabal-syntax
+prs: #9242
