@@ -181,6 +181,7 @@ import Distribution.Simple.Compiler
   , compilerInfo
   )
 import Distribution.Simple.Configure (interpretPackageDbFlags)
+import Distribution.Simple.Errors
 import Distribution.Simple.InstallDirs as InstallDirs
   ( PathTemplate
   , fromPathTemplate
@@ -220,7 +221,8 @@ import qualified Distribution.Simple.Setup as Cabal
   , testCommand
   )
 import Distribution.Simple.Utils
-  ( createDirectoryIfMissingVerbose
+  ( VerboseException
+  , createDirectoryIfMissingVerbose
   , writeFileAtomic
   )
 import Distribution.Simple.Utils as Utils
@@ -1790,7 +1792,7 @@ installLocalTarballPackage
         distDirExists <- doesDirectoryExist distDirPath
         when
           ( distDirExists
-              && (not $ distDirPath `equalFilePath` distDirPathNew)
+              && not (distDirPath `equalFilePath` distDirPathNew)
           )
           $ do
             -- NB: we need to handle the case when 'distDirPathNew' is a
@@ -2090,6 +2092,7 @@ onFailure :: (SomeException -> BuildFailure) -> IO BuildOutcome -> IO BuildOutco
 onFailure result action =
   action
     `catches` [ Handler $ \ioe -> handler (ioe :: IOException)
+              , Handler $ \cabalexe -> handler (cabalexe :: VerboseException CabalException)
               , Handler $ \exit -> handler (exit :: ExitCode)
               ]
   where

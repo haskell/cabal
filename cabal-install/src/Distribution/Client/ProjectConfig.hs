@@ -394,7 +394,12 @@ resolveBuildTimeSettings
       -- buildSettingLogVerbosity  -- defined below, more complicated
       buildSettingBuildReports = fromFlag projectConfigBuildReports
       buildSettingSymlinkBinDir = flagToList projectConfigSymlinkBinDir
-      buildSettingNumJobs = determineNumJobs projectConfigNumJobs
+      buildSettingNumJobs =
+        if fromFlag projectConfigUseSemaphore
+          then UseSem (determineNumJobs projectConfigNumJobs)
+          else case (determineNumJobs projectConfigNumJobs) of
+            1 -> Serial
+            n -> NumJobs (Just n)
       buildSettingKeepGoing = fromFlag projectConfigKeepGoing
       buildSettingOfflineMode = fromFlag projectConfigOfflineMode
       buildSettingKeepTempFiles = fromFlag projectConfigKeepTempFiles
@@ -455,10 +460,8 @@ resolveBuildTimeSettings
       useDefaultTemplate
         | buildSettingBuildReports == DetailedReports = True
         | isJust givenTemplate = False
-        | isParallelBuild = True
+        | isParallelBuild buildSettingNumJobs = True
         | otherwise = False
-
-      isParallelBuild = buildSettingNumJobs >= 2
 
       substLogFileName
         :: PathTemplate
@@ -489,7 +492,7 @@ resolveBuildTimeSettings
       overrideVerbosity
         | buildSettingBuildReports == DetailedReports = True
         | isJust givenTemplate = True
-        | isParallelBuild = False
+        | isParallelBuild buildSettingNumJobs = False
         | otherwise = False
 
 ---------------------------------------------

@@ -39,7 +39,7 @@ renderJson json = toLazyByteString (go json)
     go (JsonObject attrs) =
       surround "{" "}" $ mconcat $ intersperse "," $ map render attrs
       where
-        render (k, v) = (surround "\"" "\"" $ stringUtf8 (escape k)) <> ":" <> go v
+        render (k, v) = surround "\"" "\"" (stringUtf8 (escape k)) <> ":" <> go v
     go (JsonString s) = surround "\"" "\"" $ stringUtf8 (escape s)
 
 surround :: Builder -> Builder -> Builder -> Builder

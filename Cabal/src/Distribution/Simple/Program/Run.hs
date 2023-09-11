@@ -31,11 +31,11 @@ import Distribution.Compat.Prelude
 import Prelude ()
 
 import Distribution.Compat.Environment
+import Distribution.Simple.Errors
 import Distribution.Simple.Program.Types
 import Distribution.Simple.Utils
 import Distribution.Utils.Generic
 import Distribution.Verbosity
-
 import System.FilePath (searchPathSeparator)
 
 import qualified Data.ByteString.Lazy as LBS
@@ -157,8 +157,8 @@ runProgramInvocation
         (Just input)
         IODataModeBinary
     when (exitCode /= ExitSuccess) $
-      die' verbosity $
-        "'" ++ path ++ "' exited with an error:\n" ++ errors
+      dieWithException verbosity $
+        RunProgramInvocationException path errors
     where
       input = encodeToIOData encoding inputStr
 
@@ -174,8 +174,8 @@ getProgramInvocationLBS :: Verbosity -> ProgramInvocation -> IO LBS.ByteString
 getProgramInvocationLBS verbosity inv = do
   (output, errors, exitCode) <- getProgramInvocationIODataAndErrors verbosity inv IODataModeBinary
   when (exitCode /= ExitSuccess) $
-    die' verbosity $
-      "'" ++ progInvokePath inv ++ "' exited with an error:\n" ++ errors
+    dieWithException verbosity $
+      GetProgramInvocationLBSException (progInvokePath inv) errors
   return output
 
 getProgramInvocationOutputAndErrors

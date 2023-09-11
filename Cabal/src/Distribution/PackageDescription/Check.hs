@@ -309,7 +309,7 @@ ppExplanation SignaturesCabal2 =
   "To use the 'signatures' field the package needs to specify "
     ++ "at least 'cabal-version: 2.0'."
 ppExplanation AutogenNotExposed =
-  "An 'autogen-module' is neither on 'exposed-modules' or 'other-modules'."
+  "An 'autogen-module' is neither on 'exposed-modules' nor 'other-modules'."
 ppExplanation AutogenIncludesNotIncluded =
   "An include in 'autogen-includes' is neither in 'includes' or "
     ++ "'install-includes'."
@@ -1352,18 +1352,13 @@ checkFields pkg =
       , isNoVersion vr
       ]
 
-    internalLibraries =
-      map
-        (maybe (packageName pkg) unqualComponentNameToPackageName . libraryNameString . libName)
-        (allLibraries pkg)
-
     internalExecutables = map exeName $ executables pkg
 
     internalLibDeps =
       [ dep
       | bi <- allBuildInfo pkg
       , dep@(Dependency name _ _) <- targetBuildDepends bi
-      , name `elem` internalLibraries
+      , name == packageName pkg
       ]
 
     internalExeDeps =

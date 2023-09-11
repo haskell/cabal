@@ -41,6 +41,7 @@ import Data.List (stripPrefix)
 import qualified Data.Map as Map
 import Data.Monoid (All (..), Any (..), Endo (..))
 import qualified Data.Set as Set
+import Distribution.Types.ParStrat
 
 normaliseGhcArgs :: Maybe Version -> PackageDescription -> [String] -> [String]
 normaliseGhcArgs (Just ghcVersion) PackageDescription{..} ghcArgs
@@ -513,7 +514,7 @@ data GhcOptions = GhcOptions
   -- ^ Use the \"split sections\" feature; the @ghc -split-sections@ flag.
   , ghcOptSplitObjs :: Flag Bool
   -- ^ Use the \"split object files\" feature; the @ghc -split-objs@ flag.
-  , ghcOptNumJobs :: Flag (Maybe Int)
+  , ghcOptNumJobs :: Flag ParStrat
   -- ^ Run N jobs simultaneously (if possible).
   , ghcOptHPCDir :: Flag FilePath
   -- ^ Enable coverage analysis; the @ghc -fhpc -hpcdir@ flags.
@@ -552,6 +553,8 @@ data GhcOptions = GhcOptions
   -- ^ Get GHC to be quiet or verbose with what it's doing; the @ghc -v@ flag.
   , ghcOptExtraPath :: NubListR FilePath
   -- ^ Put the extra folders in the PATH environment variable we invoke
+  -- GHC with
+  -- | Put the extra folders in the PATH environment variable we invoke
   -- GHC with
   , ghcOptCabal :: Flag Bool
   -- ^ Let GHC know that it is Cabal that's calling it.
@@ -693,7 +696,12 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
         , if parmakeSupported comp
             then case ghcOptNumJobs opts of
               NoFlag -> []
-              Flag n -> ["-j" ++ maybe "" show n]
+              Flag Serial -> []
+              Flag (UseSem name) ->
+                if jsemSupported comp
+                  then ["-jsem " ++ name]
+                  else []
+              Flag (NumJobs n) -> ["-j" ++ maybe "" show n]
             else []
         , --------------------
           -- Creating libraries
@@ -769,7 +777,7 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
             [ ["-optl-Wl,-rpath," ++ dir]
             | dir <- flags ghcOptRPaths
             ]
-        , [modDefFile | modDefFile <- flags ghcOptLinkModDefFiles]
+        , flags ghcOptLinkModDefFiles
         , -------------
           -- Packages
 

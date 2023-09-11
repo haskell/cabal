@@ -79,6 +79,7 @@ import Distribution.Compat.Semigroup (All (..), Any (..))
 import Control.Monad
 import Data.Either (rights)
 
+import Distribution.Simple.Errors
 import System.Directory (doesDirectoryExist, doesFileExist, getCurrentDirectory)
 import System.FilePath (isAbsolute, normalise, (<.>), (</>))
 import System.IO (hClose, hPutStrLn, hSetEncoding, utf8)
@@ -180,13 +181,13 @@ getHaddockProg verbosity programDb comp args quickJumpFlag = do
 
   -- various sanity checks
   when (hoogle && version < mkVersion [2, 2]) $
-    die' verbosity "Haddock 2.0 and 2.1 do not support the --hoogle flag."
+    dieWithException verbosity NoSupportForHoogle
 
   when (fromFlag argQuickJump && version < mkVersion [2, 19]) $ do
     let msg = "Haddock prior to 2.19 does not support the --quickjump flag."
         alt = "The generated documentation won't have the QuickJump feature."
     if Flag True == quickJumpFlag
-      then die' verbosity msg
+      then dieWithException verbosity NoSupportForQuickJumpFlag
       else warn verbosity (msg ++ "\n" ++ alt)
 
   haddockGhcVersionStr <-
@@ -195,19 +196,11 @@ getHaddockProg verbosity programDb comp args quickJumpFlag = do
       haddockProg
       ["--ghc-version"]
   case (simpleParsec haddockGhcVersionStr, compilerCompatVersion GHC comp) of
-    (Nothing, _) -> die' verbosity "Could not get GHC version from Haddock"
-    (_, Nothing) -> die' verbosity "Could not get GHC version from compiler"
+    (Nothing, _) -> dieWithException verbosity NoGHCVersionFromHaddock
+    (_, Nothing) -> dieWithException verbosity NoGHCVersionFromCompiler
     (Just haddockGhcVersion, Just ghcVersion)
       | haddockGhcVersion == ghcVersion -> return ()
-      | otherwise ->
-          die' verbosity $
-            "Haddock's internal GHC version must match the configured "
-              ++ "GHC version.\n"
-              ++ "The GHC version is "
-              ++ prettyShow ghcVersion
-              ++ " but "
-              ++ "haddock is using GHC version "
-              ++ prettyShow haddockGhcVersion
+      | otherwise -> dieWithException verbosity $ HaddockAndGHCVersionDoesntMatch ghcVersion haddockGhcVersion
 
   return (haddockProg, version)
 
@@ -395,26 +388,28 @@ haddock pkg_descr lbi suffixes flags' = do
 
             return $ PackageIndex.insert ipi index
       CFLib flib ->
-        ( when (flag haddockForeignLibs) $ do
-            withTempDirectoryEx verbosity tmpFileOpts (buildDir lbi') "tmp" $
-              \tmp -> do
-                smsg
-                flibArgs <-
-                  fromForeignLib
-                    verbosity
-                    tmp
-                    lbi'
-                    clbi
-                    htmlTemplate
-                    version
-                    flib
-                let libArgs' = commonArgs `mappend` flibArgs
-                runHaddock verbosity tmpFileOpts comp platform haddockProg True libArgs'
-        )
+        when
+          (flag haddockForeignLibs)
+          ( do
+              withTempDirectoryEx verbosity tmpFileOpts (buildDir lbi') "tmp" $
+                \tmp -> do
+                  smsg
+                  flibArgs <-
+                    fromForeignLib
+                      verbosity
+                      tmp
+                      lbi'
+                      clbi
+                      htmlTemplate
+                      version
+                      flib
+                  let libArgs' = commonArgs `mappend` flibArgs
+                  runHaddock verbosity tmpFileOpts comp platform haddockProg True libArgs'
+          )
           >> return index
-      CExe _ -> (when (flag haddockExecutables) $ smsg >> doExe component) >> return index
-      CTest _ -> (when (flag haddockTestSuites) $ smsg >> doExe component) >> return index
-      CBench _ -> (when (flag haddockBenchmarks) $ smsg >> doExe component) >> return index
+      CExe _ -> when (flag haddockExecutables) (smsg >> doExe component) >> return index
+      CTest _ -> when (flag haddockTestSuites) (smsg >> doExe component) >> return index
+      CBench _ -> when (flag haddockBenchmarks) (smsg >> doExe component) >> return index
 
   for_ (extraDocFiles pkg_descr) $ \fpath -> do
     files <- matchDirFileGlob verbosity (specVersion pkg_descr) "." fpath
@@ -576,10 +571,7 @@ mkHaddockArgs verbosity tmp lbi clbi htmlTemplate haddockVersion inFiles bi = do
       else
         if withSharedLib lbi
           then return sharedOpts
-          else
-            die' verbosity $
-              "Must have vanilla or shared libraries "
-                ++ "enabled in order to run haddock"
+          else dieWithException verbosity MustHaveSharedLibraries
 
   return
     ifaceArgs
@@ -937,33 +929,34 @@ renderPureArgs version comp platform args =
     renderInterface :: (FilePath, Maybe FilePath, Maybe FilePath, Visibility) -> String
     renderInterface (i, html, hypsrc, visibility) =
       "--read-interface="
-        ++ ( intercalate "," $
-              concat
-                [ [fromMaybe "" html]
-                , -- only render hypsrc path if html path
-                  -- is given and hyperlinked-source is
-                  -- enabled
+        ++ intercalate
+          ","
+          ( concat
+              [ [fromMaybe "" html]
+              , -- only render hypsrc path if html path
+                -- is given and hyperlinked-source is
+                -- enabled
 
-                  [ case (html, hypsrc) of
-                      (Nothing, _) -> ""
-                      (_, Nothing) -> ""
-                      (_, Just x)
-                        | isVersion 2 17
-                        , fromFlagOrDefault False . argLinkedSource $ args ->
-                            x
-                        | otherwise ->
-                            ""
-                  ]
-                , if haddockSupportsVisibility
-                    then
-                      [ case visibility of
-                          Visible -> "visible"
-                          Hidden -> "hidden"
-                      ]
-                    else []
-                , [i]
+                [ case (html, hypsrc) of
+                    (Nothing, _) -> ""
+                    (_, Nothing) -> ""
+                    (_, Just x)
+                      | isVersion 2 17
+                      , fromFlagOrDefault False . argLinkedSource $ args ->
+                          x
+                      | otherwise ->
+                          ""
                 ]
-           )
+              , if haddockSupportsVisibility
+                  then
+                    [ case visibility of
+                        Visible -> "visible"
+                        Hidden -> "hidden"
+                    ]
+                  else []
+              , [i]
+              ]
+          )
 
     bool a b c = if c then a else b
     isVersion major minor = version >= mkVersion [major, minor]
@@ -1081,10 +1074,8 @@ haddockPackageFlags verbosity lbi clbi htmlTemplate = do
   transitiveDeps <- case PackageIndex.dependencyClosure allPkgs directDeps of
     Left x -> return x
     Right inf ->
-      die' verbosity $
-        "internal error when calculating transitive "
-          ++ "package dependencies.\nDebug info: "
-          ++ show inf
+      dieWithException verbosity $ HaddockPackageFlags inf
+
   haddockPackagePaths (PackageIndex.allPackages transitiveDeps) mkHtmlPath
   where
     mkHtmlPath = fmap expandTemplateVars htmlTemplate
@@ -1124,7 +1115,7 @@ hscolour'
   -> HscolourFlags
   -> IO ()
 hscolour' onNoHsColour haddockTarget pkg_descr lbi suffixes flags =
-  either onNoHsColour (\(hscolourProg, _, _) -> go hscolourProg)
+  either (\excep -> onNoHsColour $ exceptionMessage excep) (\(hscolourProg, _, _) -> go hscolourProg)
     =<< lookupProgramVersion
       verbosity
       hscolourProgram

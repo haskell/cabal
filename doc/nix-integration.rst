@@ -1,6 +1,15 @@
 Nix Integration
 ===============
 
+.. warning::
+
+    Nix integration has been deprecated and will be removed in a future release.
+
+    The original mechanism can still be easily replicated with the following commands:
+
+    - for a ``shell.nix``: ``nix-shell --run "cabal ..."``
+    - for a ``flake.nix``: ``nix develop -c cabal ...``
+
 .. note::
 
     This functionality doesn't work with nix-style builds.

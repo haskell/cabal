@@ -193,12 +193,12 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
               let components =
                     J.object $
                       [ comp2str c
-                        J..= ( J.object $
-                                [ "depends" J..= map (jdisplay . confInstId) (map fst ldeps)
-                                , "exe-depends" J..= map (jdisplay . confInstId) edeps
-                                ]
-                                  ++ bin_file c
-                             )
+                        J..= J.object
+                          ( [ "depends" J..= map (jdisplay . confInstId) (map fst ldeps)
+                            , "exe-depends" J..= map (jdisplay . confInstId) edeps
+                            ]
+                              ++ bin_file c
+                          )
                       | (c, (ldeps, edeps)) <-
                           ComponentDeps.toList $
                             ComponentDeps.zip

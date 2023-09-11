@@ -192,23 +192,17 @@ tests =
       , runTest $ mkTest db12 "baseShim6" ["E"] (solverSuccess [("E", 1), ("syb", 2)])
       ]
   , testGroup
-      "Base and Nonupgradable"
+      "Base and non-reinstallable"
       [ runTest $
           mkTest dbBase "Refuse to install base without --allow-boot-library-installs" ["base"] $
-            solverFailure (isInfixOf "only already installed instances can be used")
+            solverFailure (isInfixOf "rejecting: base-1.0.0 (constraint from non-reinstallable package requires installed instance)")
       , runTest $
           allowBootLibInstalls $
             mkTest dbBase "Install base with --allow-boot-library-installs" ["base"] $
               solverSuccess [("base", 1), ("ghc-prim", 1), ("integer-gmp", 1), ("integer-simple", 1)]
       , runTest $
           mkTest dbNonupgrade "Refuse to install newer ghc requested by another library" ["A"] $
-            solverFailure (isInfixOf "rejecting: ghc-2.0.0 (constraint from non-upgradeable package requires installed instance)")
-      , runTest $
-          mkTest dbNonupgrade "Refuse to install newer ghci requested by another library" ["B"] $
-            solverFailure (isInfixOf "rejecting: ghci-2.0.0 (constraint from non-upgradeable package requires installed instance)")
-      , runTest $
-          mkTest dbNonupgrade "Refuse to install newer ghc-boot requested by another library" ["C"] $
-            solverFailure (isInfixOf "rejecting: ghc-boot-2.0.0 (constraint from non-upgradeable package requires installed instance)")
+            solverFailure (isInfixOf "rejecting: ghc-2.0.0 (constraint from non-reinstallable package requires installed instance)")
       ]
   , testGroup
       "reject-unconstrained"
@@ -1301,8 +1295,6 @@ dbBase =
 dbNonupgrade :: ExampleDb
 dbNonupgrade =
   [ Left $ exInst "ghc" 1 "ghc-1" []
-  , Left $ exInst "ghci" 1 "ghci-1" []
-  , Left $ exInst "ghc-boot" 1 "ghc-boot-1" []
   , Right $ exAv "ghc" 2 []
   , Right $ exAv "ghci" 2 []
   , Right $ exAv "ghc-boot" 2 []

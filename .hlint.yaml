@@ -12,7 +12,6 @@
 - ignore: {name: "Missing NOINLINE pragma"} # 1 hint
 - ignore: {name: "Monoid law, left identity"} # 3 hints
 - ignore: {name: "Monoid law, right identity"} # 3 hints
-- ignore: {name: "Move brackets to avoid $"} # 25 hints
 - ignore: {name: "Move guards forward"} # 4 hints
 - ignore: {name: "Redundant $"} # 125 hints
 - ignore: {name: "Redundant $!"} # 4 hints
@@ -22,11 +21,9 @@
 - ignore: {name: "Redundant guard"} # 2 hints
 - ignore: {name: "Redundant if"} # 1 hint
 - ignore: {name: "Redundant lambda"} # 22 hints
-- ignore: {name: "Redundant list comprehension"} # 3 hints
 - ignore: {name: "Redundant map"} # 1 hint
 - ignore: {name: "Redundant multi-way if"} # 1 hint
 - ignore: {name: "Redundant return"} # 4 hints
-- ignore: {name: "Redundant where"} # 3 hints
 - ignore: {name: "Replace case with fromMaybe"} # 5 hints
 - ignore: {name: "Replace case with maybe"} # 10 hints
 - ignore: {name: "Unused LANGUAGE pragma"} # 121 hints

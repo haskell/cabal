@@ -47,17 +47,17 @@ import Distribution.Types.LocalBuildInfo
 import Distribution.Types.TargetInfo
 import Distribution.Types.UnqualComponentName
 
+import qualified Distribution.Compat.CharParsing as P
 import Distribution.ModuleName
 import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.Parsec
 import Distribution.Pretty
+import Distribution.Simple.Errors
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Utils
 import Distribution.Utils.Path
 import Distribution.Verbosity
-
-import qualified Distribution.Compat.CharParsing as P
 
 import Control.Arrow ((&&&))
 import Control.Monad (msum)
@@ -246,19 +246,8 @@ reportUserBuildTargetProblems verbosity problems = do
   case [target | UserBuildTargetUnrecognised target <- problems] of
     [] -> return ()
     target ->
-      die' verbosity $
-        unlines
-          [ "Unrecognised build target '" ++ name ++ "'."
-          | name <- target
-          ]
-          ++ "Examples:\n"
-          ++ " - build foo          -- component name "
-          ++ "(library, executable, test-suite or benchmark)\n"
-          ++ " - build Data.Foo     -- module name\n"
-          ++ " - build Data/Foo.hsc -- file name\n"
-          ++ " - build lib:foo exe:foo   -- component qualified by kind\n"
-          ++ " - build foo:Data.Foo      -- module qualified by component\n"
-          ++ " - build foo:Data/Foo.hsc  -- file qualified by component"
+      dieWithException verbosity $
+        UnrecognisedBuildTarget target
 
 showUserBuildTarget :: UserBuildTarget -> String
 showUserBuildTarget = intercalate ":" . getComponents
@@ -407,57 +396,29 @@ reportBuildTargetProblems verbosity problems = do
   case [(t, e, g) | BuildTargetExpected t e g <- problems] of
     [] -> return ()
     targets ->
-      die' verbosity $
-        unlines
-          [ "Unrecognised build target '"
-            ++ showUserBuildTarget target
-            ++ "'.\n"
-            ++ "Expected a "
-            ++ intercalate " or " expected
-            ++ ", rather than '"
-            ++ got
-            ++ "'."
-          | (target, expected, got) <- targets
-          ]
+      dieWithException verbosity $
+        ReportBuildTargetProblems $
+          map (\(target, expected, got) -> (showUserBuildTarget target, expected, got)) targets
 
   case [(t, e) | BuildTargetNoSuch t e <- problems] of
     [] -> return ()
     targets ->
-      die' verbosity $
-        unlines
-          [ "Unknown build target '"
-            ++ showUserBuildTarget target
-            ++ "'.\nThere is no "
-            ++ intercalate
-              " or "
-              [ mungeThing thing ++ " '" ++ got ++ "'"
-              | (thing, got) <- nosuch
-              ]
-            ++ "."
-          | (target, nosuch) <- targets
-          ]
-      where
-        mungeThing "file" = "file target"
-        mungeThing thing = thing
+      dieWithException verbosity $
+        UnknownBuildTarget $
+          map (\(target, nosuch) -> (showUserBuildTarget target, nosuch)) targets
 
   case [(t, ts) | BuildTargetAmbiguous t ts <- problems] of
     [] -> return ()
     targets ->
-      die' verbosity $
-        unlines
-          [ "Ambiguous build target '"
-            ++ showUserBuildTarget target
-            ++ "'. It could be:\n "
-            ++ unlines
-              [ "   "
-                ++ showUserBuildTarget ut
-                ++ " ("
-                ++ showBuildTargetKind bt
-                ++ ")"
-              | (ut, bt) <- amb
-              ]
-          | (target, amb) <- targets
-          ]
+      dieWithException verbosity $
+        AmbiguousBuildTarget $
+          map
+            ( \(target, amb) ->
+                ( showUserBuildTarget target
+                , (map (\(ut, bt) -> (showUserBuildTarget ut, showBuildTargetKind bt)) amb)
+                )
+            )
+            targets
   where
     showBuildTargetKind (BuildTargetComponent _) = "component"
     showBuildTargetKind (BuildTargetModule _ _) = "module"
@@ -1093,7 +1054,7 @@ checkBuildTargets verbosity pkg_descr lbi targets = do
 
   case disabled of
     [] -> return ()
-    ((cname, reason) : _) -> die' verbosity $ formatReason (showComponentName cname) reason
+    ((cname, reason) : _) -> dieWithException verbosity $ CheckBuildTargets $ formatReason (showComponentName cname) reason
 
   for_ [(c, t) | (c, Just t) <- enabled] $ \(c, t) ->
     warn verbosity $

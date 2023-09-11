@@ -229,7 +229,7 @@ logDirChange _ Nothing m = m
 logDirChange l (Just d) m = do
   l $ "cabal: Entering directory '" ++ d ++ "'\n"
   m
-    `Exception.finally` (l $ "cabal: Leaving directory '" ++ d ++ "'\n")
+    `Exception.finally` l ("cabal: Leaving directory '" ++ d ++ "'\n")
 
 -- The number of processors is not going to change during the duration of the
 -- program, so unsafePerformIO is safe here.

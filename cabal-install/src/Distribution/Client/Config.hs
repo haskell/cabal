@@ -438,6 +438,7 @@ instance Semigroup SavedConfig where
           , installSymlinkBinDir = combine installSymlinkBinDir
           , installPerComponent = combine installPerComponent
           , installNumJobs = combine installNumJobs
+          , installUseSemaphore = combine installUseSemaphore
           , installKeepGoing = combine installKeepGoing
           , installRunTests = combine installRunTests
           , installOfflineMode = combine installOfflineMode
@@ -969,7 +970,9 @@ loadRawConfig verbosity configFileFlag = do
         CommandlineOption -> failNoConfigFile
         EnvironmentVariable -> failNoConfigFile
       where
-        msgNotFound = unwords ["Config file not found:", configFile]
+        msgNotFound
+          | null configFile = "Config file name is empty"
+          | otherwise = unwords ["Config file not found:", configFile]
         failNoConfigFile =
           die' verbosity $
             unlines

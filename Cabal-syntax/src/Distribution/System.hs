@@ -183,7 +183,7 @@ buildOS = classifyOS Permissive System.Info.os
 
 -- | These are the known Arches: I386, X86_64, PPC, PPC64, Sparc,
 -- Arm, AArch64, Mips, SH, IA64, S390, S390X, Alpha, Hppa, Rs6000,
--- M68k, Vax, RISCV64, JavaScript and Wasm32.
+-- M68k, Vax, RISCV64, LoongArch64, JavaScript and Wasm32.
 --
 -- The following aliases can also be used:
 --    * PPC alias: powerpc
@@ -211,6 +211,7 @@ data Arch
   | M68k
   | Vax
   | RISCV64
+  | LoongArch64
   | JavaScript
   | Wasm32
   | OtherArch String
@@ -240,6 +241,7 @@ knownArches =
   , M68k
   , Vax
   , RISCV64
+  , LoongArch64
   , JavaScript
   , Wasm32
   ]

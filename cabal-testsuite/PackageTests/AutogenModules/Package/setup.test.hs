@@ -8,7 +8,7 @@ main = setupAndCabalTest $ do
 
         -- Package check messages.
         let libAutogenMsg =
-                   "An 'autogen-module' is neither on 'exposed-modules' or "
+                   "An 'autogen-module' is neither on 'exposed-modules' nor "
                 ++ "'other-modules'"
         let exeAutogenMsg =
                    "On executable 'Exe' an 'autogen-module' is not on "

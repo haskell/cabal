@@ -15,11 +15,11 @@
 -- \"@>@\", \"@\\begin{code}@\", \"@\\end{code}@\", and \"@#@\"
 module Distribution.Simple.PreProcess.Unlit (unlit, plain) where
 
+import Data.List (mapAccumL)
 import Distribution.Compat.Prelude
+import Distribution.Simple.Errors
 import Distribution.Utils.Generic (safeInit, safeLast, safeTail)
 import Prelude ()
-
-import Data.List (mapAccumL)
 
 data Classified
   = BirdTrack String
@@ -72,7 +72,7 @@ unclassify _ _ = internalError
 
 -- | 'unlit' takes a filename (for error reports), and transforms the
 --   given string, to eliminate the literate comments from the program text.
-unlit :: FilePath -> String -> Either String String
+unlit :: FilePath -> String -> Either String CabalException
 unlit file input =
   let (usesBirdTracks, classified) =
         classifyAndCheckForBirdTracks
@@ -107,7 +107,7 @@ unlit file input =
 
     checkErrors ls = case [e | Error e <- ls] of
       [] -> Left ls
-      (message : _) -> Right (f ++ ":" ++ show n ++ ": " ++ message)
+      (message : _) -> Right (UnlitException (f ++ ":" ++ show n ++ ": " ++ message))
         where
           (f, n) = errorPos file 1 ls
     errorPos f n [] = (f, n)

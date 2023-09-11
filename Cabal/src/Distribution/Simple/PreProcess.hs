@@ -52,10 +52,10 @@ import Distribution.ModuleName (ModuleName)
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.Package
 import Distribution.PackageDescription as PD
-import Distribution.Pretty
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.CCompiler
 import Distribution.Simple.Compiler
+import Distribution.Simple.Errors
 import Distribution.Simple.LocalBuildInfo
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.PreProcess.Unlit
@@ -68,7 +68,6 @@ import Distribution.Types.PackageName.Magic
 import Distribution.Utils.Path
 import Distribution.Verbosity
 import Distribution.Version
-
 import System.Directory (doesDirectoryExist, doesFileExist)
 import System.FilePath
   ( dropExtensions
@@ -264,20 +263,14 @@ preprocessComponent pd comp lbi clbi isSrcDist verbosity handlers =
             writeSimpleTestStub test testDir
             preProcessTest test (stubFilePath test) testDir
           TestSuiteUnsupported tt ->
-            die' verbosity $
-              "No support for preprocessing test "
-                ++ "suite type "
-                ++ prettyShow tt
+            dieWithException verbosity $ NoSupportForPreProcessingTest tt
       CBench bm@Benchmark{benchmarkName = nm} -> do
         let nm' = unUnqualComponentName nm
         case benchmarkInterface bm of
           BenchmarkExeV10 _ f ->
             preProcessBench bm f $ buildDir lbi </> nm' </> nm' ++ "-tmp"
           BenchmarkUnsupported tt ->
-            die' verbosity $
-              "No support for preprocessing benchmark "
-                ++ "type "
-                ++ prettyShow tt
+            dieWithException verbosity $ NoSupportForPreProcessingBenchmark tt
   where
     orderingFromHandlers v d hndlrs mods =
       foldM (\acc (_, pp) -> ppOrdering pp v d acc) mods hndlrs
@@ -374,11 +367,12 @@ preprocessFile searchLoc buildLoc forSDist baseFile verbosity builtinSuffixes ha
       bsrcFiles <- findFileWithExtension builtinSuffixes (buildLoc : map getSymbolicPath searchLoc) baseFile
       case (bsrcFiles, failOnMissing) of
         (Nothing, True) ->
-          die' verbosity $
-            "can't find source for "
-              ++ baseFile
-              ++ " in "
-              ++ intercalate ", " (map getSymbolicPath searchLoc)
+          dieWithException verbosity $
+            CantFindSourceForPreProcessFile $
+              "can't find source for "
+                ++ baseFile
+                ++ " in "
+                ++ intercalate ", " (map getSymbolicPath searchLoc)
         _ -> return ()
     -- found a pre-processable file in one of the source dirs
     Just (psrcLoc, psrcRelFile) -> do
@@ -467,7 +461,7 @@ ppUnlit =
     , ppOrdering = unsorted
     , runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity ->
         withUTF8FileContents inFile $ \contents ->
-          either (writeUTF8File outFile) (die' verbosity) (unlit inFile contents)
+          either (writeUTF8File outFile) (dieWithException verbosity) (unlit inFile contents)
     }
 
 ppCpp :: BuildInfo -> LocalBuildInfo -> ComponentLocalBuildInfo -> PreProcessor
@@ -648,7 +642,7 @@ ppHsc2hs bi lbi clbi =
            | pkg <- pkgs
            , opt <-
               ["-I" ++ opt | opt <- Installed.includeDirs pkg]
-                ++ [opt | opt <- Installed.ccOptions pkg]
+                ++ Installed.ccOptions pkg
            ]
         ++ [ "--lflag=" ++ opt
            | pkg <- pkgs
@@ -662,7 +656,7 @@ ppHsc2hs bi lbi clbi =
                         then Installed.extraLibrariesStatic pkg
                         else Installed.extraLibraries pkg
                    ]
-                ++ [opt | opt <- Installed.ldOptions pkg]
+                ++ Installed.ldOptions pkg
            ]
         ++ preccldFlags
         ++ hsc2hsOptions bi
@@ -869,6 +863,7 @@ platformDefines lbi =
       M68k -> ["m68k"]
       Vax -> ["vax"]
       RISCV64 -> ["riscv64"]
+      LoongArch64 -> ["loongarch64"]
       JavaScript -> ["javascript"]
       Wasm32 -> ["wasm32"]
       OtherArch _ -> []
@@ -947,19 +942,14 @@ preprocessExtras verbosity comp lbi = case comp of
       TestSuiteLibV09 _ _ ->
         pp $ buildDir lbi </> stubName test </> stubName test ++ "-tmp"
       TestSuiteUnsupported tt ->
-        die' verbosity $
-          "No support for preprocessing test suite type "
-            ++ prettyShow tt
+        dieWithException verbosity $ NoSupportPreProcessingTestExtras tt
   CBench bm -> do
     let nm' = unUnqualComponentName $ benchmarkName bm
     case benchmarkInterface bm of
       BenchmarkExeV10 _ _ ->
         pp $ buildDir lbi </> nm' </> nm' ++ "-tmp"
       BenchmarkUnsupported tt ->
-        die' verbosity $
-          "No support for preprocessing benchmark "
-            ++ "type "
-            ++ prettyShow tt
+        dieWithException verbosity $ NoSupportPreProcessingBenchmarkExtras tt
   where
     pp :: FilePath -> IO [FilePath]
     pp dir = do

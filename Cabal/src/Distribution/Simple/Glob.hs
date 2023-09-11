@@ -38,6 +38,7 @@ import System.Directory (doesDirectoryExist, doesFileExist, getDirectoryContents
 import System.FilePath (joinPath, splitDirectories, splitExtensions, takeFileName, (<.>), (</>))
 
 import qualified Data.List.NonEmpty as NE
+import Distribution.Simple.Errors
 
 -- Note throughout that we use splitDirectories, not splitPath. On
 -- Posix, this makes no difference, but, because Windows accepts both
@@ -241,14 +242,14 @@ parseFileGlob version filepath = case reverse (splitDirectories filepath) of
 --
 -- The second 'FilePath' is the glob itself.
 matchDirFileGlob :: Verbosity -> CabalSpecVersion -> FilePath -> FilePath -> IO [FilePath]
-matchDirFileGlob v = matchDirFileGlobWithDie v die'
+matchDirFileGlob v = matchDirFileGlobWithDie v dieWithException
 
 -- | Like 'matchDirFileGlob' but with customizable 'die'
 --
 -- @since 3.6.0.0
-matchDirFileGlobWithDie :: Verbosity -> (Verbosity -> String -> IO [FilePath]) -> CabalSpecVersion -> FilePath -> FilePath -> IO [FilePath]
+matchDirFileGlobWithDie :: Verbosity -> (Verbosity -> CabalException -> IO [FilePath]) -> CabalSpecVersion -> FilePath -> FilePath -> IO [FilePath]
 matchDirFileGlobWithDie verbosity rip version dir filepath = case parseFileGlob version filepath of
-  Left err -> rip verbosity $ explainGlobSyntaxError filepath err
+  Left err -> rip verbosity $ MatchDirFileGlob (explainGlobSyntaxError filepath err)
   Right glob -> do
     results <- runDirFileGlob verbosity dir glob
     let missingDirectories =
@@ -271,7 +272,7 @@ matchDirFileGlobWithDie verbosity rip version dir filepath = case parseFileGlob 
 
     if null errors
       then return matches
-      else rip verbosity $ unlines errors
+      else rip verbosity $ MatchDirFileGlobErrors errors
 
 -- | Match files against a pre-parsed glob, starting in a directory.
 --

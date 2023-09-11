@@ -64,6 +64,7 @@ BootstrapDep = NamedTuple('BootstrapDep', [
     ('revision', Optional[int]),
     ('cabal_sha256', Optional[SHA256Hash]),
     ('flags', List[str]),
+    ('component', Optional[str])
 ])
 
 BootstrapInfo = NamedTuple('BootstrapInfo', [
@@ -189,9 +190,9 @@ def install_dep(dep: BootstrapDep, ghc: Compiler) -> None:
 
     sdist_dir = resolve_dep(dep)
 
-    install_sdist(dist_dir, sdist_dir, ghc, dep.flags)
+    install_sdist(dist_dir, sdist_dir, ghc, dep.flags, dep.component)
 
-def install_sdist(dist_dir: Path, sdist_dir: Path, ghc: Compiler, flags: List[str]):
+def install_sdist(dist_dir: Path, sdist_dir: Path, ghc: Compiler, flags: List[str], component):
     prefix = PSEUDOSTORE.resolve()
     flags_option = ' '.join(flags)
     setup_dist_dir = dist_dir / 'setup'
@@ -205,10 +206,12 @@ def install_sdist(dist_dir: Path, sdist_dir: Path, ghc: Compiler, flags: List[st
         f'--package-db={PKG_DB.resolve()}',
         f'--prefix={prefix}',
         f'--bindir={BINDIR.resolve()}',
+        f'--extra-prog-path={BINDIR.resolve()}',
         f'--with-compiler={ghc.ghc_path}',
         f'--with-hc-pkg={ghc.ghc_pkg_path}',
         f'--with-hsc2hs={ghc.hsc2hs_path}',
         f'--flags={flags_option}',
+        f'{component or ""}'
     ]
 
     def check_call(args: List[str]) -> None:
