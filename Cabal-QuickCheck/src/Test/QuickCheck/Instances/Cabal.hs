@@ -5,8 +5,8 @@ module Test.QuickCheck.Instances.Cabal () where
 
 import Control.Applicative        (liftA2)
 import Data.Bits                  (shiftR)
-import Data.Char                  (isAlphaNum, isDigit)
-import Data.List                  (intercalate)
+import Data.Char                  (isAlphaNum, isDigit, toLower)
+import Data.List                  (intercalate, (\\))
 import Data.List.NonEmpty         (NonEmpty (..))
 import Distribution.Utils.Generic (lowercase)
 import Test.QuickCheck
@@ -506,11 +506,16 @@ arbitraryShortToken :: Gen String
 arbitraryShortToken = arbitraryShortStringWithout "{}[]"
 
 arbitraryShortPath :: Gen String
-arbitraryShortPath = arbitraryShortStringWithout "{}[],"
+arbitraryShortPath = arbitraryShortStringWithout "{}[],<>:|*?" `suchThat` (not . winDevice)
+    where
+        winDevice = any (any (`elem` ["","con", "aux", "prn", "com", "lpt", "nul"]) . splitBy ".") . splitBy "\\/" . map toLower
+        splitBy _ "" = []
+        splitBy seps str = let (part,rest) = break (`elem` seps) str
+                            in part : if length rest == 1 then [""] else splitBy seps (drop 1 rest)
 
 arbitraryShortStringWithout :: String -> Gen String
 arbitraryShortStringWithout excludeChars =
-    shortListOf1 5 $ elements [c | c <- ['#' ..  '~' ], c `notElem` excludeChars ]
+    shortListOf1 5 $ elements $ ['#' .. '~'] \\ excludeChars
 
 -- |
 intSqrt :: Int -> Int
