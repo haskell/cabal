@@ -1,11 +1,10 @@
 -----------------------------------------------------------------------------
 
 -- Module      :  Distribution.Simple.Errors
--- Copyright   :
--- License     :
---
--- Maintainer  :
--- Portability :
+-- Copyright   :  Suganya Arun
+-- License     :  BSD3
+-- Maintainer  :  cabal-devel@haskell.org
+-- Portability :  portable
 --
 -- A collection of Exception Types in the Cabal library package
 
