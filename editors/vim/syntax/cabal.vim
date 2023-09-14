@@ -182,7 +182,6 @@ syn keyword cabalExtension contained
   \ ExplicitNamespaces
   \ ExtendedDefaultRules
   \ ExtensibleRecords
-  \ ExtendedLiterals
   \ FieldSelectors
   \ FlexibleContexts
   \ FlexibleInstances
@@ -300,7 +299,6 @@ syn keyword cabalExtension contained
   \ NoDataKinds
   \ NoDatatypeContexts
   \ NoDefaultSignatures
-  \ NoDeepSubsumption
   \ NoDeriveAnyClass
   \ NoDeriveDataTypeable
   \ NoDeriveFoldable
@@ -321,7 +319,6 @@ syn keyword cabalExtension contained
   \ NoExplicitForAll
   \ NoExplicitNamespaces
   \ NoExtendedDefaultRules
-  \ NoExtendedLiterals
   \ NoExtensibleRecords
   \ NoFieldSelectors
   \ NoFlexibleContexts
@@ -409,7 +406,6 @@ syn keyword cabalExtension contained
   \ NoTransformListComp
   \ NoTupleSections
   \ NoTypeApplications
-  \ NoTypeData
   \ NoTypeFamilies
   \ NoTypeFamilyDependencies
   \ NoTypeInType
