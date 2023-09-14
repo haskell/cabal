@@ -50,7 +50,7 @@ jobs:
         run: cabal v2-update
       # Cannot install it from tarball due to
       # https://github.com/haskell/cabal/issues/7360
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           repository: "fgaz/changelog-d"
           path: "changelog-d"
@@ -59,7 +59,7 @@ jobs:
           pushd changelog-d
           cabal v2-install
           popd
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Run changelog-d
         run: |
           changelog-d changelog.d
