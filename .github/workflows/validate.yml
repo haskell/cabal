@@ -55,7 +55,7 @@ jobs:
 
     steps:
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       #  See the following link for a breakdown of the following step
       #  https://github.com/haskell/actions/issues/7#issuecomment-745697160
@@ -197,7 +197,7 @@ jobs:
       # cause it does not work with the git version included in it, see:
       # https://github.com/actions/checkout/issues/170
       # https://github.com/actions/checkout/issues/295
-      # - uses: actions/checkout@v3
+      # - uses: actions/checkout@v4
       - name: Checkout
         run: |
           echo $GITHUB_REF $GITHUB_SHA
@@ -251,7 +251,7 @@ jobs:
         ghc: ${{ fromJSON (needs.validate.outputs.GHC_FOR_RELEASE) }}
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       # See https://github.com/haskell/cabal/pull/8739
       - name: Sudo chmod to permit ghcup to update its cache

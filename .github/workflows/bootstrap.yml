@@ -34,7 +34,7 @@ jobs:
           key: bootstrap-${{ runner.os }}-${{ matrix.ghc }}-20221115-${{ github.sha }}
           restore-keys: bootstrap-${{ runner.os }}-${{ matrix.ghc }}-20221115-
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       # See https://github.com/haskell/cabal/pull/8739
       - name: Sudo chmod to permit ghcup to update its cache
         run: |
