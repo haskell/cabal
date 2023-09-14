@@ -612,9 +612,10 @@ instance Semigroup SavedConfig where
           , haddockCabalFilePath = combine haddockCabalFilePath
           , haddockIndex = combine haddockIndex
           , haddockBaseUrl = combine haddockBaseUrl
-          , haddockLib = combine haddockLib
+          , haddockResourcesDir = combine haddockResourcesDir
           , haddockOutputDir = combine haddockOutputDir
           , haddockArgs = lastNonEmpty haddockArgs
+          , haddockVersionCPP = combine haddockVersionCPP
           }
         where
           combine = combine' savedHaddockFlags

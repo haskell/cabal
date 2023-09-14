@@ -83,3 +83,6 @@ bench.html
 
 # Emacs
 .projectile
+
+# direnv
+.envrc
