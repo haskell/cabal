@@ -106,15 +106,9 @@ library
   build-depends:
     , array         >=0.4      && <0.6
     , base          >=4.10     && <4.19
-<<<<<<< HEAD
-    , bytestring    >=0.10.6.0 && <0.12
+    , bytestring    >=0.10.6.0 && <0.13
     , Cabal         ^>=3.10
     , Cabal-syntax  ^>=3.10
-=======
-    , bytestring    >=0.10.6.0 && <0.13
-    , Cabal         ^>=3.11
-    , Cabal-syntax  ^>=3.11
->>>>>>> 869e0e59c (Allow bytestring-0.12)
     , containers    >=0.5.6.2  && <0.7
     , edit-distance ^>= 0.2.2
     , filepath      ^>=1.4.0.0
