@@ -47,7 +47,7 @@ import Distribution.Simple.Program
   , simpleProgram
   )
 import Distribution.Simple.Setup (fromFlagOrDefault)
-import Distribution.Simple.Utils (debug, existsAndIsMoreRecentThan)
+import Distribution.Simple.Utils (debug, existsAndIsMoreRecentThan, warn)
 
 import Distribution.Client.Config (SavedConfig (..))
 import Distribution.Client.GlobalFlags (GlobalFlags (..))
@@ -144,6 +144,9 @@ nixShell verb dist globalFlags config go = do
       findNixExpr globalFlags config >>= \case
         Nothing -> go
         Just shellNix -> do
+          -- Nix integration never worked with cabal-install v2 commands ...
+          warn verb "Nix integration has been deprecated and will be removed in a future release. You can learn more about it here: https://cabal.readthedocs.io/en/latest/nix-integration.html"
+
           let prog = simpleProgram "nix-shell"
           progdb <- configureOneProgram verb prog
 

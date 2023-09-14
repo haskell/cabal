@@ -1269,7 +1269,7 @@ the :pkg-field:`test-module` field.
  preprocessors. These executables are invoked as so: ``exe-name
  TARGETDIR [SOURCEDIRS] -- [GHCOPTIONS]``. The arguments are, in order a target dir for
  output, a sequence of all source directories with source files of
- local lib components that the given test stanza dependens on, and
+ local lib components that the given test stanza depends on, and
  following a double dash, all options cabal would pass to ghc for a
  build. They are expected to output a newline-seperated list of
  generated modules which have been written to the targetdir
