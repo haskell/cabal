@@ -87,15 +87,6 @@ with any other suitable archive.
 
 This will install the ``xmonad`` package plus all of its dependencies.
 
-In addition to packages that have been published in an archive,
-developers can install packages from local or remote tarball files, for
-example
-
-::
-
-    $ cabal install foo-1.0.tar.gz
-    $ cabal install http://example.com/foo-1.0.tar.gz
-
 Cabal provides a number of ways for a user to customise how and where a
 package is installed. They can decide where a package will be installed,
 which Haskell implementation to use and whether to build optimised code
