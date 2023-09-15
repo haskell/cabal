@@ -48,7 +48,7 @@ jobs:
         run: cabal v2-update
       - name: Install alex
         run: cabal v2-install alex --constraint='alex ==3.2.7.3'
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Regenerate files
         run: |
           make -B lexer
@@ -87,7 +87,7 @@ jobs:
           ghcup install cabal --set latest
       - name: Update Hackage index
         run: cabal v2-update
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install doctest
         run: make doctest-install
       - name: Doctest

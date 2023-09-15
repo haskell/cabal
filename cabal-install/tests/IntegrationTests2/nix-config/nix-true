@@ -111,6 +111,7 @@ jobs: $ncpus
 -- package-env:
 -- overwrite-policy:
 -- install-method:
+-- token:
 -- username:
 -- password:
 -- password-command:

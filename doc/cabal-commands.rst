@@ -1109,6 +1109,12 @@ to Hackage.
     documentation for a published package (and not a candidate), add
     ``--publish``.
 
+.. option:: -t TOKEN or -tTOKEN, --token=TOKEN
+
+    Your Hackage authentication token. You can create and delete 
+    authentication tokens on Hackage's `account management page 
+    <https://hackage.haskell.org/users/account-management>`__.
+
 .. option:: -u USERNAME or -uUSERNAME, --username=USERNAME
 
     Your Hackage username.
@@ -1137,6 +1143,12 @@ cabal report
 ^^^^^^^^^^^^
 
 ``cabal report [FLAGS]`` uploads build reports to Hackage.
+
+.. option:: -t TOKEN or -tTOKEN, --token=TOKEN
+
+    Your Hackage authentication token. You can create and delete 
+    authentication tokens on Hackage's `account management page 
+    <https://hackage.haskell.org/users/account-management>`__.
 
 .. option:: -u USERNAME or -uUSERNAME, --username=USERNAME
 

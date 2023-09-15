@@ -1117,6 +1117,7 @@ uploadAction uploadFlags extraArgs globalFlags = do
         Upload.uploadDoc
           verbosity
           repoContext
+          (flagToMaybe $ uploadToken uploadFlags')
           (flagToMaybe $ uploadUsername uploadFlags')
           maybe_password
           (fromFlag (uploadCandidate uploadFlags'))
@@ -1125,6 +1126,7 @@ uploadAction uploadFlags extraArgs globalFlags = do
         Upload.upload
           verbosity
           repoContext
+          (flagToMaybe $ uploadToken uploadFlags')
           (flagToMaybe $ uploadUsername uploadFlags')
           maybe_password
           (fromFlag (uploadCandidate uploadFlags'))
@@ -1196,6 +1198,7 @@ reportAction reportFlags extraArgs globalFlags = do
     Upload.report
       verbosity
       repoContext
+      (flagToMaybe $ reportToken reportFlags')
       (flagToMaybe $ reportUsername reportFlags')
       (flagToMaybe $ reportPassword reportFlags')
 

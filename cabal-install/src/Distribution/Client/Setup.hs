@@ -93,7 +93,7 @@ import Distribution.Client.Compat.Prelude hiding (get)
 import Prelude ()
 
 import Distribution.Client.Types.AllowNewer (AllowNewer (..), AllowOlder (..), RelaxDeps (..))
-import Distribution.Client.Types.Credentials (Password (..), Username (..))
+import Distribution.Client.Types.Credentials (Password (..), Token (..), Username (..))
 import Distribution.Client.Types.Repo (LocalRepo (..), RemoteRepo (..))
 import Distribution.Client.Types.WriteGhcEnvironmentFilesPolicy
 
@@ -1648,7 +1648,8 @@ runCommand =
 -- ------------------------------------------------------------
 
 data ReportFlags = ReportFlags
-  { reportUsername :: Flag Username
+  { reportToken :: Flag Token
+  , reportUsername :: Flag Username
   , reportPassword :: Flag Password
   , reportVerbosity :: Flag Verbosity
   }
@@ -1657,7 +1658,8 @@ data ReportFlags = ReportFlags
 defaultReportFlags :: ReportFlags
 defaultReportFlags =
   ReportFlags
-    { reportUsername = mempty
+    { reportToken = mempty
+    , reportUsername = mempty
     , reportPassword = mempty
     , reportVerbosity = toFlag normal
     }
@@ -1675,6 +1677,17 @@ reportCommand =
     , commandDefaultFlags = defaultReportFlags
     , commandOptions = \_ ->
         [ optionVerbosity reportVerbosity (\v flags -> flags{reportVerbosity = v})
+        , option
+            ['t']
+            ["token"]
+            "Hackage authentication Token."
+            reportToken
+            (\v flags -> flags{reportToken = v})
+            ( reqArg'
+                "TOKEN"
+                (toFlag . Token)
+                (flagToList . fmap unToken)
+            )
         , option
             ['u']
             ["username"]
@@ -2665,6 +2678,7 @@ data IsCandidate = IsCandidate | IsPublished
 data UploadFlags = UploadFlags
   { uploadCandidate :: Flag IsCandidate
   , uploadDoc :: Flag Bool
+  , uploadToken :: Flag Token
   , uploadUsername :: Flag Username
   , uploadPassword :: Flag Password
   , uploadPasswordCmd :: Flag [String]
@@ -2677,6 +2691,7 @@ defaultUploadFlags =
   UploadFlags
     { uploadCandidate = toFlag IsCandidate
     , uploadDoc = toFlag False
+    , uploadToken = mempty
     , uploadUsername = mempty
     , uploadPassword = mempty
     , uploadPasswordCmd = mempty
@@ -2692,7 +2707,7 @@ uploadCommand =
     , commandNotes = Just $ \_ ->
         "You can store your Hackage login in the ~/.config/cabal/config file\n"
           ++ "(the %APPDATA%\\cabal\\config file on Windows)\n"
-          ++ relevantConfigValuesText ["username", "password", "password-command"]
+          ++ relevantConfigValuesText ["token", "username", "password", "password-command"]
     , commandUsage = \pname ->
         "Usage: " ++ pname ++ " upload [FLAGS] TARFILES\n"
     , commandDefaultFlags = defaultUploadFlags
@@ -2718,6 +2733,17 @@ uploadCommand =
             uploadDoc
             (\v flags -> flags{uploadDoc = v})
             trueArg
+        , option
+            ['t']
+            ["token"]
+            "Hackage authentication token."
+            uploadToken
+            (\v flags -> flags{uploadToken = v})
+            ( reqArg'
+                "TOKEN"
+                (toFlag . Token)
+                (flagToList . fmap unToken)
+            )
         , option
             ['u']
             ["username"]
