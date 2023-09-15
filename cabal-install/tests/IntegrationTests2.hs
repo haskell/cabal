@@ -2075,6 +2075,7 @@ testConfigOptionComments = do
   "-- overwrite-policy" @=? findLineWith True "overwrite-policy" defaultConfigFile
   "-- install-method" @=? findLineWith True "install-method" defaultConfigFile
   "installdir"  @=? findLineWith False "installdir" defaultConfigFile
+  "-- token" @=? findLineWith True "token" defaultConfigFile
   "-- username" @=? findLineWith True "username" defaultConfigFile
   "-- password" @=? findLineWith True "password" defaultConfigFile
   "-- password-command" @=? findLineWith True "password-command" defaultConfigFile

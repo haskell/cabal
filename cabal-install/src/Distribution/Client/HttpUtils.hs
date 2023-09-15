@@ -27,6 +27,7 @@ import Distribution.Client.Types
   ( RemoteRepo (..)
   , unRepoName
   )
+import Distribution.Client.Types.Credentials (Auth)
 import Distribution.Client.Utils
   ( withTempFileName
   )
@@ -353,7 +354,7 @@ data HttpTransport = HttpTransport
       -> String
       -> Maybe Auth
       -> IO (HttpCode, String)
-  -- ^ POST a resource to a URI, with optional auth (username, password)
+  -- ^ POST a resource to a URI, with optional 'Auth'
   -- and return the HTTP status code and any redirect URL.
   , postHttpFile
       :: Verbosity
@@ -362,7 +363,7 @@ data HttpTransport = HttpTransport
       -> Maybe Auth
       -> IO (HttpCode, String)
   -- ^ POST a file resource to a URI using multipart\/form-data encoding,
-  -- with optional auth (username, password) and return the HTTP status
+  -- with optional 'Auth' and return the HTTP status
   -- code and any error string.
   , putHttpFile
       :: Verbosity
@@ -371,8 +372,8 @@ data HttpTransport = HttpTransport
       -> Maybe Auth
       -> [Header]
       -> IO (HttpCode, String)
-  -- ^ PUT a file resource to a URI, with optional auth
-  -- (username, password), extra headers and return the HTTP status code
+  -- ^ PUT a file resource to a URI, with optional 'Auth',
+  -- extra headers and return the HTTP status code
   -- and any error string.
   , transportSupportsHttps :: Bool
   -- ^ Whether this transport supports https or just http.
@@ -387,13 +388,12 @@ data HttpTransport = HttpTransport
 
 type HttpCode = Int
 type ETag = String
-type Auth = (String, String)
 
 noPostYet
   :: Verbosity
   -> URI
   -> String
-  -> Maybe (String, String)
+  -> Maybe Auth
   -> IO (Int, String)
 noPostYet verbosity _ _ _ = die' verbosity "Posting (for report upload) is not implemented yet"
 
@@ -536,12 +536,13 @@ curlTransport prog =
             (Just (URIAuth u _ _)) | not (null u) -> Just $ filter (/= '@') u
             _ -> Nothing
       -- prefer passed in auth to auth derived from uri. If neither exist, then no auth
-      let mbAuthString = case (explicitAuth, uriDerivedAuth) of
-            (Just (uname, passwd), _) -> Just (uname ++ ":" ++ passwd)
-            (Nothing, Just a) -> Just a
+      let mbAuthStringToken = case (explicitAuth, uriDerivedAuth) of
+            (Just (Right token), _) -> Just $ Right token
+            (Just (Left (uname, passwd)), _) -> Just $ Left (uname ++ ":" ++ passwd)
+            (Nothing, Just a) -> Just $ Left a
             (Nothing, Nothing) -> Nothing
-      case mbAuthString of
-        Just up ->
+      case mbAuthStringToken of
+        Just (Left up) ->
           progInvocation
             { progInvokeInput =
                 Just . IODataText . unlines $
@@ -549,6 +550,12 @@ curlTransport prog =
                   , "--user " ++ up
                   ]
             , progInvokeArgs = ["--config", "-"] ++ progInvokeArgs progInvocation
+            }
+        Just (Right token) ->
+          progInvocation
+            { progInvokeArgs =
+                ["--header", "Authorization: X-ApiKey " ++ token]
+                  ++ progInvokeArgs progInvocation
             }
         Nothing -> progInvocation
 
@@ -702,6 +709,7 @@ wgetTransport prog =
                         ++ "boundary="
                         ++ boundary
                     ]
+                      ++ maybeToList (authTokenHeader auth)
               out <- runWGet verbosity (addUriAuth auth uri) args
               (code, _etag) <- parseOutput verbosity uri out
               withFile responseFile ReadMode $ \hnd -> do
@@ -723,6 +731,7 @@ wgetTransport prog =
                   ++ [ "--header=" ++ show name ++ ": " ++ value
                      | Header name value <- headers
                      ]
+                  ++ maybeToList (authTokenHeader auth)
 
           out <- runWGet verbosity (addUriAuth auth uri) args
           (code, _etag) <- parseOutput verbosity uri out
@@ -730,13 +739,16 @@ wgetTransport prog =
             resp <- hGetContents hnd
             evaluate $ force (code, resp)
 
-    addUriAuth Nothing uri = uri
-    addUriAuth (Just (user, pass)) uri =
+    authTokenHeader (Just (Right token)) = Just $ "--header=Authorization: X-ApiKey " ++ token
+    authTokenHeader _ = Nothing
+
+    addUriAuth (Just (Left (user, pass))) uri =
       uri
         { uriAuthority = Just a{uriUserInfo = user ++ ":" ++ pass ++ "@"}
         }
       where
         a = fromMaybe (URIAuth "" "" "") (uriAuthority uri)
+    addUriAuth _ uri = uri
 
     runWGet verbosity uri args = do
       -- We pass the URI via STDIN because it contains the users' credentials
@@ -918,14 +930,16 @@ powershellTransport prog =
                in "AddRange(\"bytes\", " ++ escape start ++ ", " ++ escape end ++ ");"
             name -> "Headers.Add(" ++ escape (show name) ++ "," ++ escape value ++ ");"
 
-    setupAuth auth =
+    setupAuth (Just (Left (uname, passwd))) =
       [ "$request.Credentials = new-object System.Net.NetworkCredential("
-        ++ escape uname
-        ++ ","
-        ++ escape passwd
-        ++ ",\"\");"
-      | (uname, passwd) <- maybeToList auth
+          ++ escape uname
+          ++ ","
+          ++ escape passwd
+          ++ ",\"\");"
       ]
+    setupAuth (Just (Right token)) =
+      ["$request.Headers[\"Authorization\"] = " ++ escape ("X-ApiKey " ++ token)]
+    setupAuth Nothing = []
 
     uploadFileAction method _uri fullPath =
       [ "$request.Method = " ++ show method
@@ -1027,6 +1041,7 @@ plainHttpTransport =
             , Header HdrContentLength (show (LBS8.length body))
             , Header HdrAccept ("text/plain")
             ]
+              ++ maybeToList (authTokenHeader auth)
           req =
             Request
               { rqURI = uri
@@ -1046,7 +1061,8 @@ plainHttpTransport =
               , rqHeaders =
                   Header HdrContentLength (show (LBS8.length body))
                     : Header HdrAccept "text/plain"
-                    : headers
+                    : maybeToList (authTokenHeader auth)
+                    ++ headers
               , rqBody = body
               }
       (_, resp) <- cabalBrowse verbosity auth (request req)
@@ -1076,8 +1092,13 @@ plainHttpTransport =
           setOutHandler (debug verbosity)
           setUserAgent userAgent
           setAllowBasicAuth False
-          setAuthorityGen (\_ _ -> return auth)
+          case auth of
+            Just (Left x) -> setAuthorityGen (\_ _ -> return $ Just x)
+            _ -> setAuthorityGen (\_ _ -> return Nothing)
           act
+
+    authTokenHeader (Just (Right token)) = Just $ Header HdrAuthorization ("X-ApiKey " ++ token)
+    authTokenHeader _ = Nothing
 
     fixupEmptyProxy (Proxy uri _) | null uri = NoProxy
     fixupEmptyProxy p = p
