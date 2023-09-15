@@ -448,8 +448,17 @@ The following settings control the behavior of the dependency solver:
 
     ::
 
-        constraints: bar == 2.1,
-                     bar +foo -baz
+        constraints:
+            bar == 2.1
+          , bar +foo -baz
+
+    This is equivalent to writing constraints and :cfg-field:`flags` separately:
+
+    ::
+
+        constraints: bar == 2.1
+        package bar
+          flags: +foo -baz
 
     Valid constraints take the same form as for the
     :option:`runhaskell Setup.hs configure --constraint`
@@ -754,8 +763,6 @@ feature was added.
     local packages support the same named flags. If a flag is not
     supported by a package, it is ignored.
 
-    See also the solver configuration field :cfg-field:`constraints`.
-
     The command line variant of this flag is ``--flags``. There is also
     a shortened form ``-ffoo -f-bar``.
 
@@ -763,7 +770,8 @@ feature was added.
     ``hans`` is a flag for a transitive dependency that is not in the
     local package; in this case, the flag will be silently ignored. If
     ``haskell-tor`` is the package you want this flag to apply to, try
-    ``--constraint="haskell-tor +hans"`` instead.
+    ``--constraint="haskell-tor +hans"`` instead. Flags can be specified as
+    package :cfg-field:`constraints`.
 
 .. cfg-field:: with-compiler: PATH
                -w PATH or -wPATH, --with-compiler=PATH
