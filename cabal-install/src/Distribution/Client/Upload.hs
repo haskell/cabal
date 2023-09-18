@@ -163,7 +163,7 @@ uploadDoc verbosity repoCtxt mToken mUsername mPassword isCandidate path = do
         || Unsafe.head reversePkgid /= '-'
     )
     $ dieWithException verbosity ExpectedMatchingFileName
-
+    
   auth <- Just <$> createAuth domain mToken mUsername mPassword
 
   let headers =
