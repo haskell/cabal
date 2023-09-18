@@ -95,6 +95,7 @@ configureToolchain :: GhcImplInfo
                    -> ProgramDb
                    -> ProgramDb
 configureToolchain _implInfo ghcProg ghcInfo =
+<<<<<<< HEAD
     addKnownProgram gccProgram {
       programFindLocation = findProg gccProgramName extraGccPath,
       programPostConf     = configureGcc
@@ -109,6 +110,28 @@ configureToolchain _implInfo ghcProg ghcInfo =
   . addKnownProgram stripProgram {
       programFindLocation = findProg stripProgramName extraStripPath
     }
+=======
+  addKnownProgram
+    gccProgram
+      { programFindLocation = findProg gccProgramName extraGccPath
+      , programPostConf = configureGcc
+      }
+    . addKnownProgram
+      ldProgram
+        { programFindLocation = findProg ldProgramName extraLdPath
+        , programPostConf = \v cp ->
+            -- Call any existing configuration first and then add any new configuration
+            configureLd v =<< programPostConf ldProgram v cp
+        }
+    . addKnownProgram
+      arProgram
+        { programFindLocation = findProg arProgramName extraArPath
+        }
+    . addKnownProgram
+      stripProgram
+        { programFindLocation = findProg stripProgramName extraStripPath
+        }
+>>>>>>> 4336f4c48 (Chain configuration of ldProgram)
   where
     compilerDir = takeDirectory (programPath ghcProg)
     base_dir     = takeDirectory compilerDir
