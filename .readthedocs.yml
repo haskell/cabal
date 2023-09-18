@@ -9,6 +9,5 @@ build:
     python: "3.11"
 
 python:
-  version: 3.8
   install:
     - requirements: doc/requirements.txt
