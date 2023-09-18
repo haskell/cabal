@@ -370,7 +370,19 @@ ldProgram =
             -- `lld` only accepts `-help`.
             `catchIO` (\_ -> return "")
         let k = "Supports relocatable output"
-            v = if "--relocatable" `isInfixOf` ldHelpOutput then "YES" else "NO"
+            -- Standard GNU `ld` uses `--relocatable` while `ld.gold` uses
+            -- `-relocatable` (single `-`).
+            v
+              | "-relocatable" `isInfixOf` ldHelpOutput = "YES"
+              -- ld64 on macOS has this lovely response for "--help"
+              --
+              --   ld64: For information on command line options please use 'man ld'.
+              --
+              -- it does however support -r, if you read the manpage
+              -- (e.g. https://www.manpagez.com/man/1/ld64/)
+              | "ld64:" `isPrefixOf` ldHelpOutput = "YES"
+              | otherwise = "NO"
+
             m = Map.insert k v (programProperties ldProg)
         return $ ldProg{programProperties = m}
     }
