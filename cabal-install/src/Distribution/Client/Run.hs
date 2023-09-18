@@ -36,7 +36,7 @@ import Distribution.Simple.LocalBuildInfo
   )
 import Distribution.Simple.Utils
   ( addLibraryPath
-  , die'
+  , dieWithException
   , notice
   , rawSystemExitWithEnv
   , warn
@@ -46,6 +46,7 @@ import Distribution.Types.UnqualComponentName
 
 import qualified Distribution.Simple.GHCJS as GHCJS
 
+import Distribution.Client.Errors
 import Distribution.Compat.Environment (getEnvironment)
 import System.Directory (getCurrentDirectory)
 import System.FilePath ((<.>), (</>))
@@ -61,7 +62,7 @@ splitRunArgs verbosity lbi args =
   case whichExecutable of -- Either err (wasManuallyChosen, exe, paramsRest)
     Left err -> do
       warn verbosity `traverse_` maybeWarning -- If there is a warning, print it.
-      die' verbosity err
+      dieWithException verbosity $ SplitRunArgs err
     Right (True, exe, xs) -> return (exe, xs)
     Right (False, exe, xs) -> do
       let addition =
@@ -163,8 +164,8 @@ run verbosity lbi exe exeArgs = do
         let (Platform _ os) = hostPlatform lbi
         clbi <- case componentNameTargets' pkg_descr lbi (CExeName (exeName exe)) of
           [target] -> return (targetCLBI target)
-          [] -> die' verbosity "run: Could not find executable in LocalBuildInfo"
-          _ -> die' verbosity "run: Found multiple matching exes in LocalBuildInfo"
+          [] -> dieWithException verbosity CouldNotFindExecutable
+          _ -> dieWithException verbosity FoundMultipleMatchingExes
         paths <- depLibraryPaths True False lbi clbi
         return (addLibraryPath os paths env)
       else return env

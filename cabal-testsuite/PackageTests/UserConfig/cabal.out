@@ -1,7 +1,8 @@
 # cabal user-config
 Writing default configuration to <ROOT>/cabal.dist/cabal-config
 # cabal user-config
-Error: cabal: <ROOT>/cabal.dist/cabal-config already exists.
+Error: [Cabal-7058]
+<ROOT>/cabal.dist/cabal-config already exists.
 # cabal user-config
 Writing default configuration to <ROOT>/cabal.dist/cabal-config
 # cabal user-config

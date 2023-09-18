@@ -48,6 +48,7 @@ module Distribution.Simple.Utils
   , debugNoWrap
   , chattyTry
   , annotateIO
+  , exceptionWithMetadata
   , withOutputMarker
 
     -- * exceptions
@@ -78,7 +79,7 @@ module Distribution.Simple.Utils
   , IOData (..)
   , KnownIODataMode (..)
   , IODataMode (..)
-  , VerboseException
+  , VerboseException (..)
 
     -- * copying files
   , createDirectoryIfMissingVerbose
@@ -191,14 +192,12 @@ module Distribution.Simple.Utils
   , exceptionWithCallStackPrefix
   ) where
 
-import Distribution.Compat.Prelude
-import Prelude ()
-
 import Distribution.Compat.Async (waitCatch, withAsyncNF)
 import Distribution.Compat.CopyFile
 import Distribution.Compat.FilePath as FilePath
 import Distribution.Compat.Internal.TempFile
 import Distribution.Compat.Lens (Lens', over)
+import Distribution.Compat.Prelude
 import Distribution.Compat.Stack
 import Distribution.ModuleName as ModuleName
 import Distribution.Simple.Errors
@@ -209,6 +208,7 @@ import Distribution.Utils.IOData (IOData (..), IODataMode (..), KnownIODataMode 
 import qualified Distribution.Utils.IOData as IOData
 import Distribution.Verbosity
 import Distribution.Version
+import Prelude ()
 
 #ifdef CURRENT_PACKAGE_KEY
 #define BOOTSTRAPPED_CABAL 1
@@ -383,8 +383,8 @@ die' verbosity msg = withFrozenCallStack $ do
 data VerboseException a = VerboseException CallStack POSIXTime Verbosity a
   deriving (Show, Typeable)
 
--- A new dieWithException function which will replace the existing die' call sites
-dieWithException :: HasCallStack => Verbosity -> CabalException -> IO a
+-- Function which will replace the existing die' call sites
+dieWithException :: (HasCallStack, Show a1, Typeable a1, Exception (VerboseException a1)) => Verbosity -> a1 -> IO a
 dieWithException verbosity exception = do
   ts <- getPOSIXTime
   throwIO $ VerboseException callStack ts verbosity exception

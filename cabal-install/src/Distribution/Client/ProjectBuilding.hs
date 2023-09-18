@@ -131,6 +131,7 @@ import System.FilePath (dropDrive, makeRelative, normalise, takeDirectory, (<.>)
 import System.IO (Handle, IOMode (AppendMode), withFile)
 import System.Semaphore (SemaphoreName (..))
 
+import Distribution.Client.Errors
 import Distribution.Compat.Directory (listDirectory)
 import Distribution.Simple.Flag (fromFlagOrDefault)
 
@@ -1079,8 +1080,8 @@ unpackPackageTarball verbosity tarball parentdir pkgid pkgTextOverride =
     --
     exists <- doesFileExist cabalFile
     unless exists $
-      die' verbosity $
-        "Package .cabal file not found in the tarball: " ++ cabalFile
+      dieWithException verbosity $
+        CabalFileNotFound cabalFile
 
     -- Overwrite the .cabal with the one from the index, when appropriate
     --
@@ -1652,7 +1653,7 @@ buildInplaceUnpackedPackage
           exe <- findOpenProgramLocation platform
           case exe of
             Right open -> runProgramInvocation verbosity (simpleProgramInvocation open [dest])
-            Left err -> die' verbosity err
+            Left err -> dieWithException verbosity $ FindOpenProgramLocationErr err
 
     return
       BuildResult
@@ -1840,9 +1841,7 @@ withTempInstalledPackageInfoFile verbosity tempdir action =
   where
     pkgConfParseFailed :: String -> IO a
     pkgConfParseFailed perror =
-      die' verbosity $
-        "Couldn't parse the output of 'setup register --gen-pkg-config':"
-          ++ show perror
+      dieWithException verbosity $ PkgConfParseFailed perror
 
     readPkgConf :: FilePath -> FilePath -> IO InstalledPackageInfo
     readPkgConf pkgConfDir pkgConfFile = do

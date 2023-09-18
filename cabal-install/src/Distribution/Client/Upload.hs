@@ -21,16 +21,15 @@ import Distribution.Client.Types.Repo (RemoteRepo (..), Repo, maybeRepoRemote)
 import Distribution.Client.Types.RepoName (unRepoName)
 
 import Distribution.Client.Config
-import Distribution.Simple.Utils (die', info, notice, toUTF8BS, warn)
+import Distribution.Simple.Utils (dieWithException, info, notice, toUTF8BS, warn)
 import Distribution.Utils.String (trim)
 
 import Distribution.Client.BuildReports.Anonymous (parseBuildReport)
 import qualified Distribution.Client.BuildReports.Anonymous as BuildReport
 import qualified Distribution.Client.BuildReports.Upload as BuildReport
-
+import Distribution.Client.Errors
 import Network.HTTP (Header (..), HeaderName (..))
 import Network.URI (URI (uriAuthority, uriPath), URIAuth (uriRegName))
-
 import System.Directory
 import System.FilePath (dropExtension, takeExtension, takeFileName, (</>))
 import qualified System.FilePath.Posix as FilePath.Posix ((</>))
@@ -63,7 +62,7 @@ upload verbosity repoCtxt mToken mUsername mPassword isCandidate paths = do
   transport <- repoContextGetTransport repoCtxt
   targetRepo <-
     case [remoteRepo | Just remoteRepo <- map maybeRepoRemote repos] of
-      [] -> die' verbosity "Cannot upload. No remote repositories are configured."
+      [] -> dieWithException verbosity NoRemoteRepositories
       (r : rs) -> remoteRepoTryUpgradeToHttps verbosity transport (last (r :| rs))
   let targetRepoURI :: URI
       targetRepoURI = remoteRepoURI targetRepo
@@ -106,7 +105,7 @@ upload verbosity repoCtxt mToken mUsername mPassword isCandidate paths = do
           path
       -- This case shouldn't really happen, since we check in Main that we
       -- only pass tar.gz files to upload.
-      Nothing -> die' verbosity $ "Not a tar.gz file: " ++ path
+      Nothing -> dieWithException verbosity $ NotATarDotGzFile path
 
 uploadDoc
   :: Verbosity
@@ -122,7 +121,7 @@ uploadDoc verbosity repoCtxt mToken mUsername mPassword isCandidate path = do
   transport <- repoContextGetTransport repoCtxt
   targetRepo <-
     case [remoteRepo | Just remoteRepo <- map maybeRepoRemote repos] of
-      [] -> die' verbosity $ "Cannot upload. No remote repositories are configured."
+      [] -> dieWithException verbosity NoRemoteRepositories
       (r : rs) -> remoteRepoTryUpgradeToHttps verbosity transport (last (r :| rs))
   let targetRepoURI = remoteRepoURI targetRepo
       domain = maybe "Hackage" uriRegName $ uriAuthority targetRepoURI
@@ -162,7 +161,7 @@ uploadDoc verbosity repoCtxt mToken mUsername mPassword isCandidate path = do
         || null reversePkgid
         || Unsafe.head reversePkgid /= '-'
     )
-    $ die' verbosity "Expected a file name matching the pattern <pkgid>-docs.tar.gz"
+    $ dieWithException verbosity ExpectedMatchingFileName
 
   auth <- Just <$> createAuth domain mToken mUsername mPassword
 

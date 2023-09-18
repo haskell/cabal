@@ -220,8 +220,8 @@ import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Simple.Utils
   ( cabalVersion
   , createDirectoryIfMissingVerbose
-  , die'
   , dieNoVerbosity
+  , dieWithException
   , findPackageDesc
   , info
   , notice
@@ -243,6 +243,7 @@ import Distribution.Version
 
 import Control.Exception (AssertionFailed, assert, try)
 import Data.Monoid (Any (..))
+import Distribution.Client.Errors
 import Distribution.Compat.ResponseFile
 import System.Directory
   ( doesFileExist
@@ -833,7 +834,7 @@ componentNamesFromLBI verbosity distPref targetsDescr compPred = do
       -- script built against a different Cabal version, so it's crucial that
       -- we ignore the bad version error here.
       ConfigStateFileBadVersion _ _ _ -> return ComponentNamesUnknown
-      _ -> die' verbosity (show err)
+      _ -> dieWithException verbosity $ ConfigStateFileException (show err)
     Right lbi -> do
       let pkgDescr = LBI.localPkgDescr lbi
           names =
@@ -1097,7 +1098,7 @@ uploadAction uploadFlags extraArgs globalFlags = do
       globalFlags' = savedGlobalFlags config `mappend` globalFlags
       tarfiles = extraArgs
   when (null tarfiles && not (fromFlag (uploadDoc uploadFlags'))) $
-    die' verbosity "the 'upload' command expects at least one .tar.gz archive."
+    dieWithException verbosity UploadAction
   checkTarFiles extraArgs
   maybe_password <-
     case uploadPasswordCmd uploadFlags' of
@@ -1111,9 +1112,7 @@ uploadAction uploadFlags extraArgs globalFlags = do
     if fromFlag (uploadDoc uploadFlags')
       then do
         when (length tarfiles > 1) $
-          die' verbosity $
-            "the 'upload' command can only upload documentation "
-              ++ "for one package at a time."
+          dieWithException verbosity UploadActionDocumentation
         tarfile <- maybe (generateDocTarball config) return $ listToMaybe tarfiles
         Upload.uploadDoc
           verbosity
@@ -1136,14 +1135,12 @@ uploadAction uploadFlags extraArgs globalFlags = do
     verbosity = fromFlag (uploadVerbosity uploadFlags)
     checkTarFiles tarfiles
       | not (null otherFiles) =
-          die' verbosity $
-            "the 'upload' command expects only .tar.gz archives: "
-              ++ intercalate ", " otherFiles
+          dieWithException verbosity $ UploadActionOnlyArchives otherFiles
       | otherwise =
           sequence_
             [ do
               exists <- doesFileExist tarfile
-              unless exists $ die' verbosity $ "file not found: " ++ tarfile
+              unless exists $ dieWithException verbosity $ FileNotFound tarfile
             | tarfile <- tarfiles
             ]
       where
@@ -1170,8 +1167,8 @@ checkAction :: Flag Verbosity -> [String] -> Action
 checkAction verbosityFlag extraArgs _globalFlags = do
   let verbosity = fromFlag verbosityFlag
   unless (null extraArgs) $
-    die' verbosity $
-      "'check' doesn't take any extra arguments: " ++ unwords extraArgs
+    dieWithException verbosity $
+      CheckAction extraArgs
   allOk <- Check.check (fromFlag verbosityFlag)
   unless allOk exitFailure
 
@@ -1191,8 +1188,8 @@ reportAction :: ReportFlags -> [String] -> Action
 reportAction reportFlags extraArgs globalFlags = do
   let verbosity = fromFlag (reportVerbosity reportFlags)
   unless (null extraArgs) $
-    die' verbosity $
-      "'report' doesn't take any extra arguments: " ++ unwords extraArgs
+    dieWithException verbosity $
+      ReportAction extraArgs
   config <- loadConfig verbosity (globalConfigFile globalFlags)
   let globalFlags' = savedGlobalFlags config `mappend` globalFlags
       reportFlags' = savedReportFlags config `mappend` reportFlags
@@ -1254,10 +1251,7 @@ initAction initFlags extraArgs globalFlags = do
     [projectDir] -> do
       createDirectoryIfMissingVerbose verbosity True projectDir
       withCurrentDirectory projectDir initAction'
-    _ ->
-      die' verbosity $
-        "'init' only takes a single, optional, extra "
-          ++ "argument for the project root directory"
+    _ -> dieWithException verbosity InitAction
   where
     initAction' = do
       confFlags <- loadConfigOrSandboxConfig verbosity globalFlags
@@ -1291,12 +1285,12 @@ userConfigAction ucflags extraArgs globalFlags = do
       fileExists <- doesFileExist path
       if (not fileExists || (fileExists && frc))
         then void $ createDefaultConfigFile verbosity extraLines path
-        else die' verbosity $ path ++ " already exists."
+        else dieWithException verbosity $ UserConfigAction path
     ("diff" : _) -> traverse_ putStrLn =<< userConfigDiff verbosity globalFlags extraLines
     ("update" : _) -> userConfigUpdate verbosity globalFlags extraLines
     -- Error handling.
-    [] -> die' verbosity $ "Please specify a subcommand (see 'help user-config')"
-    _ -> die' verbosity $ "Unknown 'user-config' subcommand: " ++ unwords extraArgs
+    [] -> dieWithException verbosity SpecifySubcommand
+    _ -> dieWithException verbosity $ UnknownUserConfigSubcommand extraArgs
   where
     configFile = getConfigFilePath (globalConfigFile globalFlags)
 
@@ -1318,8 +1312,8 @@ manpageAction :: [CommandSpec action] -> ManpageFlags -> [String] -> Action
 manpageAction commands flags extraArgs _ = do
   let verbosity = fromFlag (manpageVerbosity flags)
   unless (null extraArgs) $
-    die' verbosity $
-      "'man' doesn't take any extra arguments: " ++ unwords extraArgs
+    dieWithException verbosity $
+      ManpageAction extraArgs
   pname <- getProgName
   let cabalCmd =
         if takeExtension pname == ".exe"
