@@ -370,7 +370,9 @@ ldProgram =
             -- `lld` only accepts `-help`.
             `catchIO` (\_ -> return "")
         let k = "Supports relocatable output"
-            v = if "--relocatable" `isInfixOf` ldHelpOutput then "YES" else "NO"
+            -- Standard GNU `ld` ues `--relocatable` while `ld.gold` uses
+            -- `-relocatable` (single `-`).
+            v = if "-relocatable" `isInfixOf` ldHelpOutput then "YES" else "NO"
             m = Map.insert k v (programProperties ldProg)
         return $ ldProg{programProperties = m}
     }
