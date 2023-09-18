@@ -114,7 +114,9 @@ configureToolchain _implInfo ghcProg ghcInfo =
     . addKnownProgram
       ldProgram
         { programFindLocation = findProg ldProgramName extraLdPath
-        , programPostConf = configureLd
+        , programPostConf = \v cp ->
+            -- Call any existing configuration first and then add any new configuration
+            configureLd v =<< programPostConf ldProgram v cp
         }
     . addKnownProgram
       arProgram
