@@ -27,7 +27,6 @@ import Distribution.Utils.String (trim)
 import Distribution.Client.BuildReports.Anonymous (parseBuildReport)
 import qualified Distribution.Client.BuildReports.Anonymous as BuildReport
 import qualified Distribution.Client.BuildReports.Upload as BuildReport
-
 import Distribution.Client.Errors
 import Network.HTTP (Header (..), HeaderName (..))
 import Network.URI (URI (uriAuthority, uriPath), URIAuth (uriRegName))
