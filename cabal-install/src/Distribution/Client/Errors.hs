@@ -9,7 +9,7 @@
 -- License     :  BSD3
 -- Maintainer  :  cabal-devel@haskell.org
 -- Portability :  portable
---
+
 -- A collection of Exception Types in the Cabal-Install library package
 
 module Distribution.Client.Errors
@@ -19,9 +19,12 @@ module Distribution.Client.Errors
   ) where
 
 import Distribution.Compat.Prelude
+import Distribution.Deprecated.ParseUtils (PWarning, showPWarning)
+import Distribution.Package
 import Distribution.Pretty
+import Distribution.Simple (VersionRange)
 import Distribution.Simple.Utils
-import Distribution.Types.PackageId
+import Text.Regex.Posix.ByteString (WrapError)
 
 data CabalInstallException
   = UnpackGet
@@ -75,6 +78,48 @@ data CabalInstallException
   | UnknownUserConfigSubcommand [String]
   | ManpageAction [String]
   | UnrecognizedResponse
+  | CheckTarget
+  | FetchPackage
+  | PlanPackages String
+  | NoSupportForRunCommand
+  | RunPhaseReached
+  | UnknownExecutable String UnitId
+  | MultipleMatchingExecutables String [String]
+  | CmdRunReportTargetProblems String
+  | CleanAction [String]
+  | ReportCannotPruneDependencies String
+  | ReplCommandDoesn'tSupport
+  | ReplTakesNoArguments [String]
+  | ReplTakesSingleArgument [String]
+  | RenderReplTargetProblem [String]
+  | GetPkgList String WrapError
+  | GatherPkgInfo PackageName VersionRange
+  | UnableToParseRepo String
+  | NullUnknownrepos [String] [String]
+  | UpdateSetupScript
+  | InstalledCabalVersion PackageName VersionRange
+  | FailNoConfigFile String
+  | ParseFailedErr FilePath String String
+  | ParseExtraLinesFailedErr String String
+  | ParseExtraLinesOkError [PWarning]
+  | FetchPackageErr
+  | ReportParseResult String FilePath String String
+  | ReportSourceRepoProblems String
+  | BenchActionException
+  | RenderBenchTargetProblem [String]
+  | ReportUserTargetProblems [String]
+  | ReportUserTargerNonexistantFile [String]
+  | ReportUserTargetUnexpectedFile [String]
+  | ReportUserTargetUnexpectedUriScheme [String]
+  | ReportUserTargetUnrecognisedUri [String]
+  | ReadTarballPackageTarget FilePath FilePath
+  | ReportPackageTargetProblems [PackageName]
+  | PackageNameAmbiguousErr [(PackageName, [PackageName])]
+  | ExtractTarballPackageErr String
+  | OutdatedAction
+  | FreezeFileExistsErr FilePath
+  | FinalizePDFailed
+  | ProjectTargetSelector String String
   deriving (Show, Typeable)
 
 exceptionCodeCabalInstall :: CabalInstallException -> Int
@@ -130,7 +175,48 @@ exceptionCodeCabalInstall e = case e of
   UnknownUserConfigSubcommand{} -> 7060
   ManpageAction{} -> 7061
   UnrecognizedResponse{} -> 7062
-
+  CheckTarget{} -> 7063
+  FetchPackage{} -> 7064
+  PlanPackages{} -> 7065
+  NoSupportForRunCommand{} -> 7066
+  RunPhaseReached{} -> 7067
+  UnknownExecutable{} -> 7068
+  MultipleMatchingExecutables{} -> 7069
+  CmdRunReportTargetProblems{} -> 7070
+  CleanAction{} -> 7071
+  ReportCannotPruneDependencies{} -> 7072
+  ReplCommandDoesn'tSupport{} -> 7073
+  ReplTakesNoArguments{} -> 7074
+  ReplTakesSingleArgument{} -> 7075
+  RenderReplTargetProblem{} -> 7076
+  GetPkgList{} -> 7078
+  GatherPkgInfo{} -> 7079
+  UnableToParseRepo{} -> 7080
+  NullUnknownrepos{} -> 7081
+  UpdateSetupScript{} -> 7082
+  InstalledCabalVersion{} -> 7083
+  FailNoConfigFile{} -> 7084
+  ParseFailedErr{} -> 7085
+  ParseExtraLinesFailedErr{} -> 7087
+  ParseExtraLinesOkError{} -> 7088
+  FetchPackageErr{} -> 7089
+  ReportParseResult{} -> 7090
+  ReportSourceRepoProblems{} -> 7091
+  BenchActionException{} -> 7092
+  RenderBenchTargetProblem{} -> 7093
+  ReportUserTargetProblems{} -> 7094
+  ReportUserTargerNonexistantFile{} -> 7095
+  ReportUserTargetUnexpectedFile{} -> 7096
+  ReportUserTargetUnexpectedUriScheme{} -> 7097
+  ReportUserTargetUnrecognisedUri{} -> 7098
+  ReadTarballPackageTarget{} -> 7099
+  ReportPackageTargetProblems{} -> 7100
+  PackageNameAmbiguousErr{} -> 7101
+  ExtractTarballPackageErr{} -> 7102
+  OutdatedAction{} -> 7103
+  FreezeFileExistsErr{} -> 7104
+  FinalizePDFailed{} -> 7105
+  ProjectTargetSelector{} -> 7106
 exceptionMessageCabalInstall :: CabalInstallException -> String
 exceptionMessageCabalInstall e = case e of
   UnpackGet ->
@@ -211,6 +297,162 @@ exceptionMessageCabalInstall e = case e of
   UnknownUserConfigSubcommand extraArgs -> "Unknown 'user-config' subcommand: " ++ unwords extraArgs
   ManpageAction extraArgs -> "'man' doesn't take any extra arguments: " ++ unwords extraArgs
   UnrecognizedResponse -> "unrecognized response"
+  CheckTarget ->
+    "The 'fetch' command does not yet support remote tarballs. "
+      ++ "In the meantime you can use the 'unpack' commands."
+  FetchPackage ->
+    "The 'fetch' command does not yet support remote "
+      ++ "source repositories."
+  PlanPackages errorStr -> errorStr
+  NoSupportForRunCommand ->
+    "The run command does not support '--only-dependencies'. "
+      ++ "You may wish to use 'build --only-dependencies' and then "
+      ++ "use 'run'."
+  RunPhaseReached ->
+    "No or multiple targets given, but the run "
+      ++ "phase has been reached. This is a bug."
+  UnknownExecutable exeName selectedUnitId ->
+    "Unknown executable "
+      ++ exeName
+      ++ " in package "
+      ++ prettyShow selectedUnitId
+  MultipleMatchingExecutables exeName elabUnitId ->
+    "Multiple matching executables found matching "
+      ++ exeName
+      ++ ":\n"
+      ++ unlines elabUnitId
+  CmdRunReportTargetProblems renderProb -> renderProb
+  CleanAction notScripts ->
+    "'clean' extra arguments should be script files: "
+      ++ unwords notScripts
+  ReportCannotPruneDependencies renderCannotPruneDependencies -> renderCannotPruneDependencies
+  ReplCommandDoesn'tSupport ->
+    "The repl command does not support '--only-dependencies'. "
+      ++ "You may wish to use 'build --only-dependencies' and then "
+      ++ "use 'repl'."
+  ReplTakesNoArguments targetStrings -> "'repl' takes no arguments or a script argument outside a project: " ++ unwords targetStrings
+  ReplTakesSingleArgument targetStrings -> "'repl' takes a single argument which should be a script: " ++ unwords targetStrings
+  RenderReplTargetProblem renderProblem -> unlines renderProblem
+  GetPkgList pat err -> "Failed to compile regex " ++ pat ++ ": " ++ snd err
+  GatherPkgInfo name verConstraint ->
+    "There is no available version of "
+      ++ prettyShow name
+      ++ " that satisfies "
+      ++ prettyShow verConstraint
+  UnableToParseRepo s -> "'v2-update' unable to parse repo: \"" ++ s ++ "\""
+  NullUnknownrepos unRepoName remoteRepoNames ->
+    "'v2-update' repo(s): \""
+      ++ intercalate "\", \"" unRepoName
+      ++ "\" can not be found in known remote repo(s): "
+      ++ intercalate ", " remoteRepoNames
+  UpdateSetupScript -> "Using 'build-type: Custom' but there is no Setup.hs or Setup.lhs script."
+  InstalledCabalVersion name verRange ->
+    "The package '"
+      ++ prettyShow name
+      ++ "' requires Cabal library version "
+      ++ prettyShow verRange
+      ++ " but no suitable version is installed."
+  FailNoConfigFile msgNotFound ->
+    unlines
+      [ msgNotFound
+      , "(Config files can be created via the cabal-command 'user-config init'.)"
+      ]
+  ParseFailedErr configFile msg line ->
+    "Error parsing config file "
+      ++ configFile
+      ++ line
+      ++ ":\n"
+      ++ msg
+  ParseExtraLinesFailedErr msg line ->
+    "Error parsing additional config lines\n"
+      ++ line
+      ++ ":\n"
+      ++ msg
+  ParseExtraLinesOkError ws -> unlines (map (showPWarning "Error parsing additional config lines") ws)
+  FetchPackageErr -> "fetchPackage: source repos not supported"
+  ReportParseResult filetype filename line msg ->
+    "Error parsing "
+      ++ filetype
+      ++ " "
+      ++ filename
+      ++ line
+      ++ ":\n"
+      ++ msg
+  ReportSourceRepoProblems errorStr -> errorStr
+  BenchActionException ->
+    "The bench command does not support '--only-dependencies'. "
+      ++ "You may wish to use 'build --only-dependencies' and then "
+      ++ "use 'bench'."
+  RenderBenchTargetProblem errorStr -> unlines errorStr
+  ReportUserTargetProblems target ->
+    unlines
+      [ "Unrecognised target '" ++ name ++ "'."
+      | name <- target
+      ]
+      ++ "Targets can be:\n"
+      ++ " - package names, e.g. 'pkgname', 'pkgname-1.0.1', 'pkgname < 2.0'\n"
+      ++ " - cabal files 'pkgname.cabal' or package directories 'pkgname/'\n"
+      ++ " - package tarballs 'pkgname.tar.gz' or 'http://example.com/pkgname.tar.gz'"
+  ReportUserTargerNonexistantFile target ->
+    unlines
+      [ "The file does not exist '" ++ name ++ "'."
+      | name <- target
+      ]
+  ReportUserTargetUnexpectedFile target ->
+    unlines
+      [ "Unrecognised file target '" ++ name ++ "'."
+      | name <- target
+      ]
+      ++ "File targets can be either package tarballs 'pkgname.tar.gz' "
+      ++ "or cabal files 'pkgname.cabal'."
+  ReportUserTargetUnexpectedUriScheme target ->
+    unlines
+      [ "URL target not supported '" ++ name ++ "'."
+      | name <- target
+      ]
+      ++ "Only 'http://' and 'https://' URLs are supported."
+  ReportUserTargetUnrecognisedUri target ->
+    unlines
+      [ "Unrecognise URL target '" ++ name ++ "'."
+      | name <- target
+      ]
+  ReadTarballPackageTarget filename tarballFile ->
+    "Could not parse the cabal file "
+      ++ filename
+      ++ " in "
+      ++ tarballFile
+  ReportPackageTargetProblems pkgs ->
+    unlines
+      [ "There is no package named '" ++ prettyShow name ++ "'. "
+      | name <- pkgs
+      ]
+      ++ "You may need to run 'cabal update' to get the latest "
+      ++ "list of available packages."
+  PackageNameAmbiguousErr ambiguities ->
+    unlines
+      [ "There is no package named '"
+        ++ prettyShow name
+        ++ "'. "
+        ++ ( if length matches > 1
+              then "However, the following package names exist: "
+              else "However, the following package name exists: "
+           )
+        ++ intercalate ", " ["'" ++ prettyShow m ++ "'" | m <- matches]
+        ++ "."
+      | (name, matches) <- ambiguities
+      ]
+  ExtractTarballPackageErr err -> err
+  OutdatedAction -> "--project-dir and --project-file must only be used with --v2-freeze-file."
+  FreezeFileExistsErr freezeFile ->
+    "Couldn't find a freeze file expected at: "
+      ++ freezeFile
+      ++ "\n\n"
+      ++ "We are looking for this file because you supplied '--project-file' or '--v2-freeze-file'. "
+      ++ "When one of these flags is given, we try to read the dependencies from a freeze file. "
+      ++ "If it is undesired behaviour, you should not use these flags, otherwise please generate "
+      ++ "a freeze file via 'cabal freeze'."
+  FinalizePDFailed -> "finalizePD failed"
+  ProjectTargetSelector input err -> "Invalid package ID: " ++ input ++ "\n" ++ err
 
 instance Exception (VerboseException CabalInstallException) where
   displayException :: VerboseException CabalInstallException -> [Char]

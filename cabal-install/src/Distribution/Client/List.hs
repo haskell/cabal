@@ -51,7 +51,7 @@ import qualified Distribution.Simple.PackageIndex as InstalledPackageIndex
 import Distribution.Simple.Program (ProgramDb)
 import Distribution.Simple.Setup (fromFlag, fromFlagOrDefault)
 import Distribution.Simple.Utils
-  ( die'
+  ( dieWithException
   , equating
   , notice
   )
@@ -132,6 +132,7 @@ import Text.PrettyPrint
   )
 import qualified Text.PrettyPrint as Disp
 
+import Distribution.Client.Errors
 import Distribution.Utils.ShortText (ShortText)
 import qualified Distribution.Utils.ShortText as ShortText
 import qualified Text.Regex.Base as Regex
@@ -155,7 +156,7 @@ getPkgList verbosity packageDBs repoCtxt mcompprogdb listFlags pats = do
     e <- Regex.compile compOption Regex.execBlank pat
     case e of
       Right r -> return r
-      Left err -> die' verbosity $ "Failed to compile regex " ++ pat ++ ": " ++ snd err
+      Left err -> dieWithException verbosity $ GetPkgList pat err
 
   let sourcePkgIndex = packageIndex sourcePkgDb
       prefs name =
@@ -297,7 +298,7 @@ info
       sequenceA
         [ do
           pkginfo <-
-            either (die' verbosity) return $
+            either (dieWithException verbosity) return $
               gatherPkgInfo
                 prefs
                 installedPkgIndex
@@ -314,18 +315,14 @@ info
         -> InstalledPackageIndex
         -> PackageIndex.PackageIndex UnresolvedSourcePackage
         -> PackageSpecifier UnresolvedSourcePackage
-        -> Either String PackageDisplayInfo
+        -> Either CabalInstallException PackageDisplayInfo
       gatherPkgInfo
         prefs
         installedPkgIndex
         sourcePkgIndex
         (NamedPackage name props)
           | null (selectedInstalledPkgs) && null (selectedSourcePkgs) =
-              Left $
-                "There is no available version of "
-                  ++ prettyShow name
-                  ++ " that satisfies "
-                  ++ prettyShow (simplifyVersionRange verConstraint)
+              Left $ GatherPkgInfo name (simplifyVersionRange verConstraint)
           | otherwise =
               Right $
                 mergePackageInfo

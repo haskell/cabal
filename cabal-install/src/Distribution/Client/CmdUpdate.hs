@@ -72,7 +72,7 @@ import Distribution.Simple.Flag
   ( fromFlagOrDefault
   )
 import Distribution.Simple.Utils
-  ( die'
+  ( dieWithException
   , notice
   , noticeNoWrap
   , warn
@@ -97,6 +97,7 @@ import Distribution.Simple.Command
   )
 import System.FilePath (dropExtension, (<.>))
 
+import Distribution.Client.Errors
 import Distribution.Client.IndexUtils.Timestamp (nullTimestamp)
 import qualified Hackage.Security.Client as Sec
 
@@ -179,8 +180,7 @@ updateAction flags@NixStyleFlags{..} extraArgs globalFlags = do
           parseArg s = case simpleParsec s of
             Just r -> return r
             Nothing ->
-              die' verbosity $
-                "'v2-update' unable to parse repo: \"" ++ s ++ "\""
+              dieWithException verbosity $ UnableToParseRepo s
 
       updateRepoRequests <- traverse parseArg extraArgs
 
@@ -190,11 +190,8 @@ updateAction flags@NixStyleFlags{..} extraArgs globalFlags = do
               [ r | (UpdateRequest r _) <- updateRepoRequests, not (r `elem` remoteRepoNames)
               ]
         unless (null unknownRepos) $
-          die' verbosity $
-            "'v2-update' repo(s): \""
-              ++ intercalate "\", \"" (map unRepoName unknownRepos)
-              ++ "\" can not be found in known remote repo(s): "
-              ++ intercalate ", " (map unRepoName remoteRepoNames)
+          dieWithException verbosity $
+            NullUnknownrepos (map unRepoName unknownRepos) (map unRepoName remoteRepoNames)
 
       let reposToUpdate :: [(Repo, RepoIndexState)]
           reposToUpdate = case updateRepoRequests of

@@ -12,6 +12,7 @@ import Distribution.Client.DistDirLayout
   ( DistDirLayout (..)
   , defaultDistDirLayout
   )
+import Distribution.Client.Errors
 import Distribution.Client.ProjectConfig
   ( findProjectRoot
   )
@@ -35,7 +36,7 @@ import Distribution.Simple.Setup
   , toFlag
   )
 import Distribution.Simple.Utils
-  ( die'
+  ( dieWithException
   , handleDoesNotExist
   , info
   , wrapText
@@ -141,9 +142,8 @@ cleanAction CleanFlags{..} extraArgs _ = do
   -- For now assume all files passed are the names of scripts
   notScripts <- filterM (fmap not . doesFileExist) extraArgs
   unless (null notScripts) $
-    die' verbosity $
-      "'clean' extra arguments should be script files: "
-        ++ unwords notScripts
+    dieWithException verbosity $
+      CleanAction notScripts
 
   projectRoot <- either throwIO return =<< findProjectRoot verbosity mprojectDir mprojectFile
 

@@ -22,6 +22,8 @@ module Distribution.Client.CmdRun
 import Distribution.Client.Compat.Prelude hiding (toList)
 import Prelude ()
 
+import Data.List (group)
+import qualified Data.Set as Set
 import Distribution.Client.CmdErrorMessages
   ( plural
   , renderListCommaAnd
@@ -33,6 +35,7 @@ import Distribution.Client.CmdErrorMessages
   , targetSelectorFilter
   , targetSelectorPluralPkgs
   )
+import Distribution.Client.Errors
 import Distribution.Client.GlobalFlags
   ( defaultGlobalFlags
   )
@@ -85,7 +88,7 @@ import Distribution.Simple.Program.Run
   , runProgramInvocation
   )
 import Distribution.Simple.Utils
-  ( die'
+  ( dieWithException
   , info
   , notice
   , safeHead
@@ -106,9 +109,6 @@ import Distribution.Verbosity
   ( normal
   , silent
   )
-
-import Data.List (group)
-import qualified Data.Set as Set
 import GHC.Environment
   ( getFullArgs
   )
@@ -190,10 +190,7 @@ runAction flags@NixStyleFlags{..} targetAndArgs globalFlags =
     buildCtx <-
       runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
         when (buildSettingOnlyDeps (buildSettings baseCtx)) $
-          die' verbosity $
-            "The run command does not support '--only-dependencies'. "
-              ++ "You may wish to use 'build --only-dependencies' and then "
-              ++ "use 'run'."
+          dieWithException verbosity NoSupportForRunCommand
 
         fullArgs <- getFullArgs
         when (occursOnlyOrBefore fullArgs "+RTS" "--") $
@@ -236,9 +233,7 @@ runAction flags@NixStyleFlags{..} targetAndArgs globalFlags =
     (selectedUnitId, selectedComponent) <-
       -- Slight duplication with 'runProjectPreBuildPhase'.
       singleExeOrElse
-        ( die' verbosity $
-            "No or multiple targets given, but the run "
-              ++ "phase has been reached. This is a bug."
+        ( dieWithException verbosity RunPhaseReached
         )
         $ targetsMap buildCtx
 
@@ -268,12 +263,7 @@ runAction flags@NixStyleFlags{..} targetAndArgs globalFlags =
     -- an error in all of these cases, even if some seem like they
     -- shouldn't happen.
     pkg <- case matchingElaboratedConfiguredPackages of
-      [] ->
-        die' verbosity $
-          "Unknown executable "
-            ++ exeName
-            ++ " in package "
-            ++ prettyShow selectedUnitId
+      [] -> dieWithException verbosity $ UnknownExecutable exeName selectedUnitId
       [elabPkg] -> do
         info verbosity $
           "Selecting "
@@ -282,11 +272,8 @@ runAction flags@NixStyleFlags{..} targetAndArgs globalFlags =
             ++ exeName
         return elabPkg
       elabPkgs ->
-        die' verbosity $
-          "Multiple matching executables found matching "
-            ++ exeName
-            ++ ":\n"
-            ++ unlines (fmap (\p -> " - in package " ++ prettyShow (elabUnitId p)) elabPkgs)
+        dieWithException verbosity $
+          MultipleMatchingExecutables exeName (fmap (\p -> " - in package " ++ prettyShow (elabUnitId p)) elabPkgs)
 
     let defaultExePath =
           binDirectoryFor
@@ -489,7 +476,7 @@ isSubComponentProblem pkgid name subcomponent =
 
 reportTargetProblems :: Verbosity -> [RunTargetProblem] -> IO a
 reportTargetProblems verbosity =
-  die' verbosity . unlines . map renderRunTargetProblem
+  dieWithException verbosity . CmdRunReportTargetProblems . unlines . map renderRunTargetProblem
 
 renderRunTargetProblem :: RunTargetProblem -> String
 renderRunTargetProblem (TargetProblemNoTargets targetSelector) =
