@@ -1020,138 +1020,12 @@ For more information about the rationale and some examples, see
 ..
     TODO inline the blog post
 
-
-Opening an interpreter session
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-While developing a package, it is often useful to make its code
-available inside an interpreter session. This can be done with the
-``repl`` command:
-
-.. code-block:: console
-
-    $ cabal repl
-
-The name comes from the acronym
-`REPL <http://en.wikipedia.org/wiki/Read%E2%80%93eval%E2%80%93print_loop>`__,
-which stands for "read-eval-print-loop". By default ``cabal repl`` loads
-the first component in a package. If the package contains several named
-components, the name can be given as an argument to ``repl``. The name
-can be also optionally prefixed with the component's type for
-disambiguation purposes. Example:
-
-.. code-block:: console
-
-    $ cabal repl foo
-    $ cabal repl exe:foo
-    $ cabal repl test:bar
-    $ cabal repl bench:baz
-
-Freezing dependency versions
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-If a package is built in several different environments, such as a
-development environment, a staging environment and a production
-environment, it may be necessary or desirable to ensure that the same
-dependency versions are selected in each environment. This can be done
-with the ``freeze`` command:
-
-.. code-block:: console
-
-    $ cabal freeze
-
-The command writes the selected version for all dependencies to the
-``cabal.config`` file. All environments which share this file will use
-the dependency versions specified in it.
-
-Generating dependency version bounds
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Cabal also has the ability to suggest dependency version bounds that
-conform to the `Package Versioning Policy`_, which is
-a recommended versioning system for publicly released Cabal packages.
-This is done by running the ``gen-bounds`` command:
-
-.. code-block:: console
-
-    $ cabal gen-bounds
-
-For example, given the following dependencies without bounds specified in
-:pkg-field:`build-depends`:
-
-::
-
-    build-depends:
-      base,
-      mtl,
-      transformers,
-
-``gen-bounds`` might suggest changing them to the following:
-
-::
-
-    build-depends:
-      base          >= 4.15.0 && < 4.16,
-      mtl           >= 2.2.2 && < 2.3,
-      transformers  >= 0.5.6 && < 0.6,
-
-
-Listing outdated dependency version bounds
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Manually updating dependency version bounds in a ``.cabal`` file or a
-freeze file can be tedious, especially when there's a lot of
-dependencies. The ``cabal outdated`` command is designed to help with
-that. It will print a list of packages for which there is a new
-version on Hackage that is outside the version bound specified in the
-``build-depends`` field. The ``outdated`` command can also be
-configured to act on the freeze file (both old- and v2-style) and
-ignore major (or all) version bumps on Hackage for a subset of
-dependencies.
-
-Examples:
-
-.. code-block:: console
-
-    $ cd /some/package
-    $ cabal outdated
-    Outdated dependencies:
-    haskell-src-exts <1.17 (latest: 1.19.1)
-    language-javascript <0.6 (latest: 0.6.0.9)
-    unix ==2.7.2.0 (latest: 2.7.2.1)
-
-    $ cabal outdated --simple-output
-    haskell-src-exts
-    language-javascript
-    unix
-
-    $ cabal outdated --ignore=haskell-src-exts
-    Outdated dependencies:
-    language-javascript <0.6 (latest: 0.6.0.9)
-    unix ==2.7.2.0 (latest: 2.7.2.1)
-
-    $ cabal outdated --ignore=haskell-src-exts,language-javascript,unix
-    All dependencies are up to date.
-
-    $ cabal outdated --ignore=haskell-src-exts,language-javascript,unix -q
-    $ echo $?
-    0
-
-    $ cd /some/other/package
-    $ cabal outdated --freeze-file
-    Outdated dependencies:
-    HTTP ==4000.3.3 (latest: 4000.3.4)
-    HUnit ==1.3.1.1 (latest: 1.5.0.0)
-
-    $ cabal outdated --freeze-file --ignore=HTTP --minor=HUnit
-    Outdated dependencies:
-    HUnit ==1.3.1.1 (latest: 1.3.1.2)
-
-See `the command documentation <cabal-commands.html#cabal-outdated>`__ for a
-list of available flags.
-
 Executables
 ^^^^^^^^^^^
+
+A package description can contain multiple executable sections.
+The documentation of the `cabal run <cabal-commands.html#cabal-run>`__ command
+contains detailed information on how to run an executable.
 
 .. pkg-section:: executable name
     :synopsis: Executable build info section.
@@ -1183,25 +1057,13 @@ build information fields (see the section on `build information`_).
     be run by other programs rather than the user. Private executables are
     installed into `$libexecdir/$libexecsubdir`.
 
-Running executables
-"""""""""""""""""""
-
-You can have Cabal build and run your executables by using the ``run``
-command:
-
-.. code-block:: console
-
-    $ cabal run EXECUTABLE [-- EXECUTABLE_FLAGS]
-
-This command will configure, build and run the executable
-``EXECUTABLE``. The double dash separator is required to distinguish
-executable flags from ``run``'s own flags. If there is only one
-executable defined in the whole package, the executable's name can be
-omitted. See the output of ``cabal help run`` for a list of options you
-can pass to ``cabal run``.
 
 Test suites
 ^^^^^^^^^^^
+
+A package description can contain multiple test suite sections.
+The documentation of the `cabal test <cabal-commands.html#cabal-test>`__ command
+contains detailed information on how to run test suites.
 
 .. pkg-section:: test-suite name
     :synopsis: Test suite build information.
@@ -1360,22 +1222,12 @@ be provided by the library that provides the testing facility.
             , setOption = \_ _ -> Right fails
             }
 
-Running test suites
-"""""""""""""""""""
-
-You can have Cabal run your test suites using its built-in test runner:
-
-::
-
-    $ cabal configure --enable-tests
-    $ cabal build
-    $ cabal test
-
-See the output of ``cabal help test`` for a list of options you can pass
-to ``cabal test``.
-
 Benchmarks
 ^^^^^^^^^^
+
+A package description can contain multiple benchmark sections.
+The documentation of the `cabal bench <cabal-commands.html#cabal-bench>`__ command
+contains detailed information on how to run benchmarks.
 
 .. pkg-section:: benchmark name
     :since: 1.9.2
@@ -1449,20 +1301,6 @@ Example:
         end <- getCurrentTime
         putStrLn $ "fib 20 took " ++ show (diffUTCTime end start)
 
-Running benchmarks
-""""""""""""""""""
-
-You can have Cabal run your benchmark using its built-in benchmark
-runner:
-
-::
-
-    $ cabal configure --enable-benchmarks
-    $ cabal build
-    $ cabal bench
-
-See the output of ``cabal help bench`` for a list of options you can
-pass to ``cabal bench``.
 
 Foreign libraries
 ^^^^^^^^^^^^^^^^^
@@ -2909,38 +2747,6 @@ The exact fields are as follows:
     This field is optional. It defaults to empty which corresponds to the
     root directory of the repository.
 
-Downloading a package's source
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-The ``cabal get`` command allows to access a package's source code -
-either by unpacking a tarball downloaded from Hackage (the default) or
-by checking out a working copy from the package's source repository.
-
-::
-
-    $ cabal get [FLAGS] PACKAGES
-
-The ``get`` command supports the following options:
-
-``-d --destdir`` *PATH*
-    Where to place the package source, defaults to (a subdirectory of)
-    the current directory.
-``-s --source-repository`` *[head\|this\|...]*
-    Clone the package's source repository using the appropriate version
-    control system. The optional argument allows to choose a specific
-    repository kind.
-``--index-state`` *[HEAD\|@<unix-timestamp>\|<iso8601-utc-timestamp>]*
-    Use source package index state as it existed at a previous time. Accepts
-    unix-timestamps (e.g. ``@1474732068``), ISO8601 UTC timestamps (e.g.
-    ``2016-09-24T17:47:48Z``), or ``HEAD`` (default).
-    This determines which package versions are available as well as which
-    ``.cabal`` file revision is selected (unless ``--pristine`` is used).
-``--only-package-description``
-    Unpack only the package description file. A synonym,
-    ``--package-description-only``, is provided for convenience.
-``--pristine``
-    Unpack the original pristine tarball, rather than updating the
-    ``.cabal`` file with the latest revision from the package archive.
 
 Custom setup scripts
 --------------------
