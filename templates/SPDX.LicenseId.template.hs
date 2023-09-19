@@ -31,7 +31,7 @@ import qualified Text.PrettyPrint as Disp
 -- LicenseId
 -------------------------------------------------------------------------------
 
--- | SPDX License identifiers list v3.20
+-- | SPDX License identifiers list v3.16
 data LicenseId
 {{ licenseIds }}
   deriving (Eq, Ord, Enum, Bounded, Show, Read, Typeable, Data)
@@ -174,9 +174,6 @@ licenseIdList LicenseListVersion_3_10 =
 licenseIdList LicenseListVersion_3_16 =
 {{licenseList_perv.v_3_16}}
     ++ bulkOfLicenses
-licenseIdList LicenseListVersion_3_20 =
-{{licenseList_perv.v_3_20}}
-    ++ bulkOfLicenses
 
 -- | Create a 'LicenseId' from a 'String'.
 mkLicenseId :: LicenseListVersion -> String -> Maybe LicenseId
@@ -186,7 +183,6 @@ mkLicenseId LicenseListVersion_3_6  s = Map.lookup s stringLookup_3_6
 mkLicenseId LicenseListVersion_3_9  s = Map.lookup s stringLookup_3_9
 mkLicenseId LicenseListVersion_3_10 s = Map.lookup s stringLookup_3_10
 mkLicenseId LicenseListVersion_3_16 s = Map.lookup s stringLookup_3_16
-mkLicenseId LicenseListVersion_3_20 s = Map.lookup s stringLookup_3_20
 
 stringLookup_3_0 :: Map String LicenseId
 stringLookup_3_0 = Map.fromList $ map (\i -> (licenseId i, i)) $
@@ -211,10 +207,6 @@ stringLookup_3_10 = Map.fromList $ map (\i -> (licenseId i, i)) $
 stringLookup_3_16 :: Map String LicenseId
 stringLookup_3_16 = Map.fromList $ map (\i -> (licenseId i, i)) $
     licenseIdList LicenseListVersion_3_16
-
-stringLookup_3_20 :: Map String LicenseId
-stringLookup_3_20 = Map.fromList $ map (\i -> (licenseId i, i)) $
-    licenseIdList LicenseListVersion_3_20
 
 --  | Licenses in all SPDX License lists
 bulkOfLicenses :: [LicenseId]
