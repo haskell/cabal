@@ -20,10 +20,6 @@ Cabal and Cabal-syntax 3.10.2.0 changelog and release notes
   which had a separate bug (fixed in later versions but not backported) when
   Haddock does not pass `--quickjump` recursively to the package dependencies.
 
-- Add language extension ExtendedLiterals [#8992](https://github.com/haskell/cabal/pull/8992)
-
-  - adds support for the ExtendedLiterals language extension (GHC proposal #451)
-
 - Regenerate Lexer.hs to avoid out-of-bound array access due to a bug in Alex [#8892](https://github.com/haskell/cabal/issues/8892) [#8896](https://github.com/haskell/cabal/pull/8896)
 
   - Regenerate Cabal-syntax's Lexer.hs with Alex 3.2.7.3 which includes a fix for
