@@ -1,5 +1,6 @@
 # cabal get
 Warning: <ROOT>/cabal.config: Unrecognized stanza on line 3
 Warning: The package list for 'repo.invalid' does not exist. Run 'cabal update' to download it.
-Error: cabal: There is no package named 'a-b-s-e-n-t'. 
+Error: [Cabal-7100]
+There is no package named 'a-b-s-e-n-t'. 
 You may need to run 'cabal update' to get the latest list of available packages.
