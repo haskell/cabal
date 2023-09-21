@@ -405,6 +405,10 @@ instance (Arbitrary a, Ord a) => Arbitrary (NubList a) where
 -- InstallDirs
 -------------------------------------------------------------------------------
 
+-- these are wrong because they bottom out in String. We should really use
+-- the modern FilePath at some point, so we get QC instances that don't include
+-- invalid characters or path components
+
 instance Arbitrary a => Arbitrary (InstallDirs a) where
     arbitrary = InstallDirs
         <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary --  4
@@ -508,6 +512,10 @@ arbitraryShortToken = arbitraryShortStringWithout "{}[]"
 arbitraryShortPath :: Gen String
 arbitraryShortPath = arbitraryShortStringWithout "{}[],<>:|*?" `suchThat` (not . winDevice)
     where
+        -- split path components on dots
+        -- no component can be empty or a device name
+        -- this blocks a little too much (both "foo..bar" and "foo.con" are legal)
+        -- but for QC being a little conservative isn't harmful
         winDevice = any (any (`elem` ["","con", "aux", "prn", "com", "lpt", "nul"]) . splitBy ".") . splitBy "\\/" . map toLower
         splitBy _ "" = []
         splitBy seps str = let (part,rest) = break (`elem` seps) str
