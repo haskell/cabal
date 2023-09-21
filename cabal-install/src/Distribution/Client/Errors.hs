@@ -299,7 +299,7 @@ exceptionMessageCabalInstall e = case e of
   UnrecognizedResponse -> "unrecognized response"
   CheckTarget ->
     "The 'fetch' command does not yet support remote tarballs. "
-      ++ "In the meantime you can use the 'unpack' commands."
+      ++ "In the meantime you can use the 'get' commands."
   FetchPackage ->
     "The 'fetch' command does not yet support remote "
       ++ "source repositories."
