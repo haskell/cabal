@@ -731,17 +731,19 @@ initialSavedConfig = do
 warnOnTwoConfigs :: Verbosity -> IO ()
 warnOnTwoConfigs verbosity = do
   defaultDir <- getAppUserDataDirectory "cabal"
-  dotCabalExists <- doesDirectoryExist defaultDir
-  xdgCfg <- getXdgDirectory XdgConfig ("cabal" </> "config")
-  xdgCfgExists <- doesFileExist xdgCfg
-  when (dotCabalExists && xdgCfgExists) $
-    warn verbosity $
-      "Both "
-        <> defaultDir
-        <> " and "
-        <> xdgCfg
-        <> " exist - ignoring the former.\n"
-        <> "It is advisable to remove one of them. In that case, we will use the remaining one by default (unless '$CABAL_DIR' is explicitly set)."
+  xdgCfgDir <- getXdgDirectory XdgConfig "cabal"
+  when (defaultDir /= xdgCfgDir) $ do
+    dotCabalExists <- doesDirectoryExist defaultDir
+    let xdgCfg = xdgCfgDir </> "config"
+    xdgCfgExists <- doesFileExist xdgCfg
+    when (dotCabalExists && xdgCfgExists) $
+      warn verbosity $
+        "Both "
+          <> defaultDir
+          <> " and "
+          <> xdgCfg
+          <> " exist - ignoring the former.\n"
+          <> "It is advisable to remove one of them. In that case, we will use the remaining one by default (unless '$CABAL_DIR' is explicitly set)."
 
 -- | If @CABAL\_DIR@ is set, return @Just@ its value. Otherwise, if
 -- @~/.cabal@ exists and @$XDG_CONFIG_HOME/cabal/config@ does not
