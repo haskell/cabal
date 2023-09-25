@@ -705,19 +705,12 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
       | filename <- cxxSources libBi]
 
   -- build any C sources
-  let (cSrcs', others) = partition (\filepath -> ".c"`isSuffixOf` filepath) (cSources libBi)
+  let libraryName = case libName lib of
+          LMainLibName -> "the main library"
+          LSubLibName name -> "library " <> prettyShow name
+  cSrcs' <- checkCSources verbosity libraryName (cSources libBi)
   unless (not has_code || null cSrcs') $ do
     info verbosity "Building C Sources..."
-    unless (null others) $ do
-      let files = intercalate ", " others
-      let libraryName = case libName lib of
-            LMainLibName -> "the main library"
-            LSubLibName name -> "library " <> prettyShow name
-      warn verbosity $ unlines
-        [ "The following files listed in " <> libraryName <> "'s c-sources will not be used: " <> files <> "."
-        , "Header files should be in the 'include' or 'install-include' stanza."
-        , "See https://cabal.readthedocs.io/en/3.10/cabal-package.html#pkg-field-includes"
-        ]
     forM_ cSrcs' $ \filename -> do
        let baseCcOpts    = Internal.componentCcGhcOptions verbosity implInfo
                            lbi libBi clbi relLibTargetDir filename
@@ -1537,17 +1530,9 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
      | filename <- cxxSrcs ]
 
   -- build any C sources
-  let (cSrcs', others) = partition (\filepath -> ".c"`isSuffixOf` filepath) cSrcs
+  cSrcs' <- checkCSources verbosity (gbuildName bm) cSrcs
   unless (null cSrcs') $ do
     info verbosity "Building C Sources..."
-    unless (null others) $ do
-      let files = intercalate ", " others
-      let currentComponentName = gbuildName bm
-      warn verbosity $ unlines
-        [ "The following files listed in " <> currentComponentName <> "'s c-sources will not be used: " <> files <> "."
-        , "Header files should be in the 'include' or 'install-include' stanza."
-        , "See https://cabal.readthedocs.io/en/3.10/cabal-package.html#pkg-field-includes"
-        ]
     forM_ cSrcs' $ \filename -> do
       let baseCcOpts    = Internal.componentCcGhcOptions verbosity implInfo
                               lbi bnfo clbi tmpDir filename
@@ -2184,3 +2169,23 @@ supportsDynamicToo = Internal.ghcLookupProperty "Support dynamic-too"
 
 withExt :: FilePath -> String -> FilePath
 withExt fp ext = fp <.> if takeExtension fp /= ('.':ext) then ext else ""
+
+checkCSources :: Verbosity -> String -> [String] -> IO [String]
+checkCSources verbosity name cSrcs = do
+  let (headers, cSrcs') = partition (\filepath -> ".h" `isSuffixOf` filepath) cSrcs
+      others = filter (\filepath -> not (".c" `isSuffixOf` filepath)) cSrcs'
+  unless (null headers) $ do
+    let files = intercalate ", " headers
+    warn verbosity $ unlines
+      [ "The following header files listed in " <> name <> "'s c-sources will not be used: " <> files <> "."
+      , "Header files should be in the 'include' or 'install-include' stanza."
+      , "See https://cabal.readthedocs.io/en/3.10/cabal-package.html#pkg-field-includes"
+      ]
+  unless (null others) $ do
+    let files = intercalate ", " others
+    warn verbosity $ unlines
+      [ "The following files listed in " <> name <> "'s c-sources do not have the expected '.c' extension " <> files <> "."
+      , "C++ files should be in the 'cxx-sources' stanza."
+      , "See https://cabal.readthedocs.io/en/3.10/cabal-package.html#pkg-field-cxx-sources"
+      ]
+  return cSrcs'
