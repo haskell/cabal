@@ -65,6 +65,9 @@ escape cs c
 
 #endif
 
+-- | Provides support for response files: in this context, response
+-- files refers to a workaround for shells and OSes with
+-- limits to argument size.
 expandResponse :: [String] -> IO [String]
 expandResponse = go recursionLimit "."
   where
@@ -73,11 +76,17 @@ expandResponse = go recursionLimit "."
     go :: Int -> FilePath -> [String] -> IO [String]
     go n dir
       | n >= 0 = fmap concat . traverse (expand n dir)
-      | otherwise = const $ hPutStrLn stderr "Error: response file recursion limit exceeded." >> exitFailure
+      | otherwise =
+          const $ do
+            hPutStrLn stderr "Error: response file recursion limit exceeded."
+            exitFailure
 
     expand :: Int -> FilePath -> String -> IO [String]
-    expand n dir arg@('@' : f) = readRecursively n (dir </> f) `catchIOError` const (print "?" >> return [arg])
+    expand n dir arg@('@' : f) =
+      readRecursively n (dir </> f)
+        `catchIOError` const (print "?" >> return [arg])
     expand _n _dir x = return [x]
 
     readRecursively :: Int -> FilePath -> IO [String]
-    readRecursively n f = go (n - 1) (takeDirectory f) =<< unescapeArgs <$> readFile f
+    readRecursively n f =
+      go (n - 1) (takeDirectory f) =<< unescapeArgs <$> readFile f

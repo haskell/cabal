@@ -244,7 +244,7 @@ import Distribution.Version
 import Control.Exception (AssertionFailed, assert, try)
 import Data.Monoid (Any (..))
 import Distribution.Client.Errors
-import Distribution.Compat.ResponseFile
+import Distribution.Compat.ResponseFile (expandResponse)
 import System.Directory
   ( doesFileExist
   , getCurrentDirectory
@@ -266,7 +266,7 @@ import System.IO
   , stdout
   )
 
--- | Entry point
+-- | Entry point.
 main :: [String] -> IO ()
 main args = do
   installTerminationHandler
@@ -279,6 +279,9 @@ main args = do
   -- when writing to stderr and stdout.
   relaxEncodingErrors stdout
   relaxEncodingErrors stderr
+
+  -- Use expandResponse to add support for response files; see
+  -- Distribution.Compat.ResponseFile in the Cabal package.
   let (args0, args1) = break (== "--") args
 
   mainWorker =<< (++ args1) <$> expandResponse args0
