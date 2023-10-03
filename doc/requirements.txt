@@ -69,5 +69,7 @@ sphinxcontrib-serializinghtml==1.1.5
     # via sphinx
 sphinxnotes-strike==1.2
     # via -r requirements.in
-urllib3==2.0.2
-    # via requests
+urllib3==2.0.6
+    # via
+    #   -r requirements.in
+    #   requests
