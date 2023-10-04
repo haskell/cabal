@@ -81,8 +81,8 @@ ghcid-cli :
 #       https://github.com/haskell/cabal/issues/8734
 #       Just as well, cabal-install(-solver) doctests (the target below) bitrotted and need some care.
 doctest :
-	cabal repl --with-ghc=doctest --build-depends=QuickCheck --build-depends=template-haskell --repl-options="-w" --project-file="cabal.project.validate" Cabal-syntax
-	cabal repl --with-ghc=doctest --build-depends=QuickCheck --build-depends=template-haskell --repl-options="-w" --project-file="cabal.project.validate" Cabal
+	cabal repl --with-ghc=doctest --build-depends=QuickCheck --build-depends=template-haskell --repl-options="-w" --project-file="cabal.project.doctest" Cabal-syntax
+	cabal repl --with-ghc=doctest --build-depends=QuickCheck --build-depends=template-haskell --repl-options="-w" --project-file="cabal.project.doctest" Cabal
 
 
 # This is not run as part of validate.sh (we need hackage-security, which is tricky to get).
