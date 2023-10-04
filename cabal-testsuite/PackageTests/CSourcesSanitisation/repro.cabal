@@ -15,6 +15,17 @@ library lib2
                       cbits/gwinsz.c
     build-depends:    base
 
+library lib3
+    default-language: Haskell2010
+    c-sources:        cbits/gwinsz.h
+                      cbits/gwinsz.cc
+    build-depends:    base
+
+library lib4
+    default-language: Haskell2010
+    c-sources:        cbits/gwinsz.cc
+    build-depends:    base
+
 executable exec1
     main-is: Main.hs
     default-language: Haskell2010
