@@ -63,7 +63,7 @@ import Distribution.Types.InstalledPackageInfo
 import Distribution.Types.InstalledPackageInfo.FieldGrammar
 
 -- $setup
--- >>> :set -XOverloadedStrings
+-- >>> :seti -XOverloadedStrings
 
 installedComponentId :: InstalledPackageInfo -> ComponentId
 installedComponentId ipi =
