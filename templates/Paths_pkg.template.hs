@@ -15,9 +15,9 @@
 {-# OPTIONS_GHC -fno-warn-missing-import-lists #-}
 {-# OPTIONS_GHC -w #-}
 module Paths_{{ manglePkgName packageName }} (
-    version,
-    getBinDir, getLibDir, getDynLibDir, getDataDir, getLibexecDir,
-    getDataFileName, getSysconfDir
+    version, licenseFiles,
+    getBinDir, getLibDir, getDynLibDir, getDataDir, getDocDir, getLibexecDir,
+    getDataFileName, getDocFileName, getSysconfDir
   ) where
 
 {% if not absolute %}
@@ -56,12 +56,20 @@ catchIO = Exception.catch
 version :: Version
 version = Version {{ versionDigits }} []
 
+licenseFiles :: [FilePath]
+licenseFiles = {{ licenseFiles }}
+
 getDataFileName :: FilePath -> IO FilePath
 getDataFileName name = do
   dir <- getDataDir
   return (dir `joinFileName` name)
 
-getBinDir, getLibDir, getDynLibDir, getDataDir, getLibexecDir, getSysconfDir :: IO FilePath
+getDocFileName :: FilePath -> IO FilePath
+getDocFileName name = do
+  dir <- getDocDir
+  return (dir `joinFileName` name)
+
+getBinDir, getLibDir, getDynLibDir, getDataDir, getDocDir, getLibexecDir, getSysconfDir :: IO FilePath
 
 {% defblock function_defs %}
 minusFileName :: FilePath -> String -> FilePath
@@ -100,6 +108,7 @@ getBinDir     = catchIO (getEnv "{{ manglePkgName packageName }}_bindir")     (\
 getLibDir     = catchIO (getEnv "{{ manglePkgName packageName }}_libdir")     (\_ -> getPrefixDirReloc $ {{ libdir }})
 getDynLibDir  = catchIO (getEnv "{{ manglePkgName packageName }}_dynlibdir")  (\_ -> getPrefixDirReloc $ {{ dynlibdir }})
 getDataDir    = catchIO (getEnv "{{ manglePkgName packageName }}_datadir")    (\_ -> getPrefixDirReloc $ {{ datadir }})
+getDocDir     = catchIO (getEnv "{{ manglePkgName packageName }}_docdir")     (\_ -> getPrefixDirReloc $ {{ docdir }})
 getLibexecDir = catchIO (getEnv "{{ manglePkgName packageName }}_libexecdir") (\_ -> getPrefixDirReloc $ {{ libexecdir }})
 getSysconfDir = catchIO (getEnv "{{ manglePkgName packageName }}_sysconfdir") (\_ -> getPrefixDirReloc $ {{ sysconfdir }})
 
@@ -112,6 +121,7 @@ bindir     = {{ bindir }}
 libdir     = {{ libdir }}
 dynlibdir  = {{ dynlibdir }}
 datadir    = {{ datadir }}
+docdir     = {{ docdir }}
 libexecdir = {{ libexecdir }}
 sysconfdir = {{ sysconfdir }}
 
@@ -119,6 +129,7 @@ getBinDir     = catchIO (getEnv "{{ manglePkgName packageName }}_bindir")     (\
 getLibDir     = catchIO (getEnv "{{ manglePkgName packageName }}_libdir")     (\_ -> return libdir)
 getDynLibDir  = catchIO (getEnv "{{ manglePkgName packageName }}_dynlibdir")  (\_ -> return dynlibdir)
 getDataDir    = catchIO (getEnv "{{ manglePkgName packageName }}_datadir")    (\_ -> return datadir)
+getDocDir     = catchIO (getEnv "{{ manglePkgName packageName }}_docdir")     (\_ -> return docdir)
 getLibexecDir = catchIO (getEnv "{{ manglePkgName packageName }}_libexecdir") (\_ -> return libexecdir)
 getSysconfDir = catchIO (getEnv "{{ manglePkgName packageName }}_sysconfdir") (\_ -> return sysconfdir)
 
@@ -131,6 +142,7 @@ getBinDir     = getPrefixDirRel $ {{ bindir }}
 getLibDir     = {{ libdir }}
 getDynLibDir  = {{ dynlibdir }}
 getDataDir    = catchIO (getEnv "{{ manglePkgName packageName }}_datadir")    (\_ -> {{ datadir }})
+getDocDir     = {{ docdir }}
 getLibexecDir = {{ libexecdir }}
 getSysconfDir = {{ sysconfdir }}
 
