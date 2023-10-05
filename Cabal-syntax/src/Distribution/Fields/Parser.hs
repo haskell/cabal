@@ -59,7 +59,6 @@ import qualified Data.Text.Encoding.Error as T
 #endif
 
 -- $setup
--- >>> :set -XOverloadedStrings
 -- >>> import Data.Either (isLeft)
 
 -- | The 'LexState'' (with a prime) is an instance of parsec's 'Stream'
