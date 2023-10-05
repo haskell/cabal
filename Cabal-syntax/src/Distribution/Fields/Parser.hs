@@ -47,6 +47,9 @@ import qualified Data.Text.Encoding       as T
 import qualified Data.Text.Encoding.Error as T
 #endif
 
+-- $setup
+-- >>> import Data.Either (isLeft)
+
 -- | The 'LexState'' (with a prime) is an instance of parsec's 'Stream'
 -- wrapped around lexer's 'LexState' (without a prime)
 data LexState' = LexState' !LexState (LToken, LexState')
