@@ -170,6 +170,7 @@ data CabalException
   | NoProgramFound String VersionRange
   | BadVersionDb String Version VersionRange FilePath
   | UnknownVersionDb String VersionRange FilePath
+  | CombineObjectFilesRelocatableUnsupported
   deriving (Show, Typeable)
 
 exceptionCode :: CabalException -> Int
@@ -301,6 +302,7 @@ exceptionCode e = case e of
   NoProgramFound{} -> 7620
   BadVersionDb{} -> 8038
   UnknownVersionDb{} -> 1008
+  CombineObjectFilesRelocatableUnsupported -> 4346
 
 versionRequirement :: VersionRange -> String
 versionRequirement range
@@ -791,3 +793,6 @@ exceptionMessage e = case e of
       ++ " is required but the version of "
       ++ locationPath
       ++ " could not be determined."
+  CombineObjectFilesRelocatableUnsupported ->
+    "combineObjectFiles: Have been asked to combine object "
+      ++ "files but the configured linker does not support relocations."

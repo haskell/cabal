@@ -15,10 +15,15 @@ module Distribution.Simple.Program.Ld
   ( combineObjectFiles
   ) where
 
+import qualified Data.Map.Strict as Map
+
 import Distribution.Compat.Prelude
 import Prelude ()
 
 import Distribution.Simple.Compiler (arResponseFilesSupported)
+import Distribution.Simple.Errors
+  ( CabalException (CombineObjectFilesRelocatableUnsupported)
+  )
 import Distribution.Simple.Flag
   ( fromFlagOrDefault
   )
@@ -40,11 +45,11 @@ import Distribution.Simple.Setup.Config
   )
 import Distribution.Simple.Utils
   ( defaultTempFileOptions
+  , dieWithException
   )
 import Distribution.Verbosity
   ( Verbosity
   )
-
 import System.Directory
   ( renameFile
   )
@@ -67,6 +72,11 @@ combineObjectFiles verbosity lbi ld target files = do
   -- have a slight problem. What we have to do is link files in batches into
   -- a temp object file and then include that one in the next batch.
 
+  case Map.lookup "Supports relocatable output" $ programProperties ld of
+    Just "YES" -> pure ()
+    Just "NO" ->
+      dieWithException verbosity $ CombineObjectFilesRelocatableUnsupported
+    _other -> pure () -- NOTE: This may still fail if the compiler does not support -r.
   let simpleArgs = ["-r", "-o", target]
 
       initialArgs = ["-r", "-o", target]
