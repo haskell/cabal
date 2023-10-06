@@ -173,11 +173,6 @@ planPackages
   pkgConfigDb
   pkgSpecifiers
     | includeDependencies = do
-        solver <-
-          chooseSolver
-            verbosity
-            (fromFlag (fetchSolver fetchFlags))
-            (compilerInfo comp)
         notice verbosity "Resolving dependencies..."
         installPlan <-
           foldProgress logMsg (die' verbosity) return $
@@ -185,7 +180,6 @@ planPackages
               platform
               (compilerInfo comp)
               pkgConfigDb
-              solver
               resolverParams
 
         -- The packages we want to fetch are those packages the 'InstallPlan'

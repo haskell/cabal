@@ -212,11 +212,6 @@ planPackages
   sourcePkgDb
   pkgConfigDb
   pkgSpecifiers = do
-    solver <-
-      chooseSolver
-        verbosity
-        (fromFlag (freezeSolver freezeFlags))
-        (compilerInfo comp)
     notice verbosity "Resolving dependencies..."
 
     installPlan <-
@@ -225,7 +220,6 @@ planPackages
           platform
           (compilerInfo comp)
           pkgConfigDb
-          solver
           resolverParams
 
     return $ pruneInstallPlan installPlan pkgSpecifiers

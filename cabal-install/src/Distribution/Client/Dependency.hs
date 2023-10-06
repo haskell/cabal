@@ -17,7 +17,6 @@
 module Distribution.Client.Dependency
   ( -- * The main package dependency resolver
     DepResolverParams
-  , chooseSolver
   , resolveDependencies
   , Progress (..)
   , foldProgress
@@ -72,8 +71,6 @@ import qualified Prelude as Unsafe (head)
 
 import Distribution.Client.Dependency.Types
   ( PackagesPreferenceDefault (..)
-  , PreSolver (..)
-  , Solver (..)
   )
 import Distribution.Client.SolverInstallPlan (SolverInstallPlan)
 import qualified Distribution.Client.SolverInstallPlan as SolverInstallPlan
@@ -756,14 +753,8 @@ standardInstallPolicy installedPkgIndex sourcePkgDb pkgSpecifiers =
 
 -- ------------------------------------------------------------
 
-chooseSolver :: Verbosity -> PreSolver -> CompilerInfo -> IO Solver
-chooseSolver _verbosity preSolver _cinfo =
-  case preSolver of
-    AlwaysModular -> do
-      return Modular
-
-runSolver :: Solver -> SolverConfig -> DependencyResolver UnresolvedPkgLoc
-runSolver Modular = modularResolver
+runSolver :: SolverConfig -> DependencyResolver UnresolvedPkgLoc
+runSolver = modularResolver
 
 -- | Run the dependency solver.
 --
@@ -774,14 +765,12 @@ resolveDependencies
   :: Platform
   -> CompilerInfo
   -> PkgConfigDb
-  -> Solver
   -> DepResolverParams
   -> Progress String String SolverInstallPlan
-resolveDependencies platform comp pkgConfigDB solver params =
+resolveDependencies platform comp pkgConfigDB params =
   Step (showDepResolverParams finalparams) $
     fmap (validateSolverResult platform comp indGoals) $
       runSolver
-        solver
         ( SolverConfig
             reordGoals
             cntConflicts

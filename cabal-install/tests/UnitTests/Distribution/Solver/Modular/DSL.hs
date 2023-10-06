@@ -79,7 +79,6 @@ import Language.Haskell.Extension (Extension (..), Language (..))
 
 -- cabal-install
 import Distribution.Client.Dependency
-import Distribution.Client.Dependency.Types
 import qualified Distribution.Client.SolverInstallPlan as CI.SolverInstallPlan
 import Distribution.Client.Types
 
@@ -821,7 +820,7 @@ exResolve
   prefs
   verbosity
   enableAllTests =
-    resolveDependencies C.buildPlatform compiler pkgConfigDb Modular params
+    resolveDependencies C.buildPlatform compiler pkgConfigDb params
     where
       defaultCompiler = C.unknownCompilerInfo C.buildCompilerId C.NoAbiTag
       compiler =

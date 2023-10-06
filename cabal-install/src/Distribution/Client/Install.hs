@@ -89,9 +89,6 @@ import Distribution.Client.Configure
   , configureSetupScript
   )
 import Distribution.Client.Dependency
-import Distribution.Client.Dependency.Types
-  ( Solver (..)
-  )
 import Distribution.Client.FetchUtils
 import qualified Distribution.Client.Haddock as Haddock (regenerateHaddockIndex)
 import Distribution.Client.HttpUtils
@@ -493,18 +490,12 @@ makeInstallPlan
     , pkgSpecifiers
     , _
     ) = do
-    solver <-
-      chooseSolver
-        verbosity
-        (fromFlag (configSolver configExFlags))
-        (compilerInfo comp)
     notice verbosity "Resolving dependencies..."
     return $
       planPackages
         verbosity
         comp
         platform
-        solver
         configFlags
         configExFlags
         installFlags
@@ -562,7 +553,6 @@ planPackages
   :: Verbosity
   -> Compiler
   -> Platform
-  -> Solver
   -> ConfigFlags
   -> ConfigExFlags
   -> InstallFlags
@@ -575,7 +565,6 @@ planPackages
   verbosity
   comp
   platform
-  solver
   configFlags
   configExFlags
   installFlags
@@ -587,7 +576,6 @@ planPackages
       platform
       (compilerInfo comp)
       pkgConfigDb
-      solver
       resolverParams
       >>= if onlyDeps then pruneInstallPlan pkgSpecifiers else return
     where
