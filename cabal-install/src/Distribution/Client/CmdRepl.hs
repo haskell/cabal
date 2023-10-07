@@ -38,6 +38,7 @@ import Distribution.Client.CmdErrorMessages
 import Distribution.Client.DistDirLayout
   ( DistDirLayout (..)
   )
+import Distribution.Client.Errors
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.NixStyleOptions
   ( NixStyleFlags (..)
@@ -106,7 +107,7 @@ import Distribution.Simple.Setup
 import Distribution.Simple.Utils
   ( TempFileOptions (..)
   , debugNoWrap
-  , die'
+  , dieWithException
   , withTempDirectoryEx
   , wrapText
   )
@@ -284,11 +285,7 @@ replAction :: NixStyleFlags ReplFlags -> [String] -> GlobalFlags -> IO ()
 replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings globalFlags =
   withContextAndSelectors AcceptNoTargets (Just LibKind) flags targetStrings globalFlags ReplCommand $ \targetCtx ctx targetSelectors -> do
     when (buildSettingOnlyDeps (buildSettings ctx)) $
-      die' verbosity $
-        "The repl command does not support '--only-dependencies'. "
-          ++ "You may wish to use 'build --only-dependencies' and then "
-          ++ "use 'repl'."
-
+      dieWithException verbosity ReplCommandDoesn'tSupport
     let projectRoot = distProjectRootDirectory $ distDirLayout ctx
         distDir = distDirectory $ distDirLayout ctx
 
@@ -296,9 +293,8 @@ replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings g
       ProjectContext -> return ctx
       GlobalContext -> do
         unless (null targetStrings) $
-          die' verbosity $
-            "'repl' takes no arguments or a script argument outside a project: " ++ unwords targetStrings
-
+          dieWithException verbosity $
+            ReplTakesNoArguments targetStrings
         let
           sourcePackage =
             fakeProjectSourcePackage projectRoot
@@ -315,12 +311,12 @@ replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings g
         updateContextAndWriteProjectFile' ctx sourcePackage
       ScriptContext scriptPath scriptExecutable -> do
         unless (length targetStrings == 1) $
-          die' verbosity $
-            "'repl' takes a single argument which should be a script: " ++ unwords targetStrings
+          dieWithException verbosity $
+            ReplTakesSingleArgument targetStrings
         existsScriptPath <- doesFileExist scriptPath
         unless existsScriptPath $
-          die' verbosity $
-            "'repl' takes a single argument which should be a script: " ++ unwords targetStrings
+          dieWithException verbosity $
+            ReplTakesSingleArgument targetStrings
 
         updateContextAndWriteProjectFile ctx scriptPath scriptExecutable
 
@@ -750,7 +746,7 @@ multipleTargetsProblem decision = CustomTargetProblem . TargetProblemMultipleTar
 
 reportTargetProblems :: Verbosity -> [TargetProblem ReplProblem] -> IO a
 reportTargetProblems verbosity =
-  die' verbosity . unlines . map renderReplTargetProblem
+  dieWithException verbosity . RenderReplTargetProblem . map renderReplTargetProblem
 
 renderReplTargetProblem :: TargetProblem ReplProblem -> String
 renderReplTargetProblem = renderTargetProblem "open a repl for" renderReplProblem

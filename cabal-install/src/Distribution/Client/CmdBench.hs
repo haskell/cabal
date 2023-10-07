@@ -26,6 +26,7 @@ import Distribution.Client.CmdErrorMessages
   , targetSelectorFilter
   , targetSelectorPluralPkgs
   )
+import Distribution.Client.Errors
 import Distribution.Client.NixStyleOptions
   ( NixStyleFlags (..)
   , defaultNixStyleFlags
@@ -50,7 +51,7 @@ import Distribution.Simple.Flag
   ( fromFlagOrDefault
   )
 import Distribution.Simple.Utils
-  ( die'
+  ( dieWithException
   , warn
   , wrapText
   )
@@ -119,10 +120,7 @@ benchAction flags@NixStyleFlags{..} targetStrings globalFlags = do
   buildCtx <-
     runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
       when (buildSettingOnlyDeps (buildSettings baseCtx)) $
-        die' verbosity $
-          "The bench command does not support '--only-dependencies'. "
-            ++ "You may wish to use 'build --only-dependencies' and then "
-            ++ "use 'bench'."
+        dieWithException verbosity BenchActionException
 
       fullArgs <- getFullArgs
       when ("+RTS" `elem` fullArgs) $
@@ -251,7 +249,7 @@ isSubComponentProblem pkgid name subcomponent =
 
 reportTargetProblems :: Verbosity -> [BenchTargetProblem] -> IO a
 reportTargetProblems verbosity =
-  die' verbosity . unlines . map renderBenchTargetProblem
+  dieWithException verbosity . RenderBenchTargetProblem . map renderBenchTargetProblem
 
 renderBenchTargetProblem :: BenchTargetProblem -> String
 renderBenchTargetProblem (TargetProblemNoTargets targetSelector) =

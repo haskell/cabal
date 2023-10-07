@@ -1,8 +1,10 @@
 # cabal info
 Config file path source is commandline option.
-Error: cabal: Config file not found: does.not.exist
+Error: [Cabal-7084]
+Config file not found: does.not.exist
 (Config files can be created via the cabal-command 'user-config init'.)
 # cabal info
 Config file path source is environment variable CABAL_CONFIG.
-Error: cabal: Config file not found: absent.file
+Error: [Cabal-7084]
+Config file not found: absent.file
 (Config files can be created via the cabal-command 'user-config init'.)

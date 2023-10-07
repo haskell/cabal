@@ -107,6 +107,9 @@ import Distribution.Utils.NubList
   , toNubList
   )
 
+import qualified Data.ByteString as BS
+import qualified Data.Map as M
+import Distribution.Client.Errors
 import Distribution.Client.HttpUtils
   ( isOldHackageURI
   )
@@ -116,10 +119,14 @@ import Distribution.Client.ParseUtils
   , ppSection
   )
 import Distribution.Client.ProjectFlags (ProjectFlags (..))
+import Distribution.Client.ReplFlags
 import Distribution.Client.Version
   ( cabalInstallVersion
   )
 import qualified Distribution.Compat.CharParsing as P
+import Distribution.Compat.Environment
+  ( getEnvironment
+  )
 import Distribution.Compiler
   ( CompilerFlavor (..)
   , defaultCompilerFlavor
@@ -148,6 +155,7 @@ import Distribution.Deprecated.ParseUtils
 import qualified Distribution.Deprecated.ParseUtils as ParseUtils
   ( Field (..)
   )
+import Distribution.Parsec (ParsecParser, parsecFilePath, parsecOptCommaList, parsecToken)
 import Distribution.Simple.Command
   ( CommandUI (commandOptions)
   , ShowOrParseArgs (..)
@@ -188,7 +196,7 @@ import Distribution.Simple.Setup
   )
 import Distribution.Simple.Utils
   ( cabalVersion
-  , die'
+  , dieWithException
   , lowercase
   , notice
   , toUTF8BS
@@ -198,14 +206,6 @@ import Distribution.Solver.Types.ConstraintSource
 import Distribution.Verbosity
   ( normal
   )
-
-import qualified Data.ByteString as BS
-import qualified Data.Map as M
-import Distribution.Client.ReplFlags
-import Distribution.Compat.Environment
-  ( getEnvironment
-  )
-import Distribution.Parsec (ParsecParser, parsecFilePath, parsecOptCommaList, parsecToken)
 import Network.URI
   ( URI (..)
   , URIAuth (..)
@@ -976,11 +976,7 @@ loadRawConfig verbosity configFileFlag = do
           | null configFile = "Config file name is empty"
           | otherwise = unwords ["Config file not found:", configFile]
         failNoConfigFile =
-          die' verbosity $
-            unlines
-              [ msgNotFound
-              , "(Config files can be created via the cabal-command 'user-config init'.)"
-              ]
+          dieWithException verbosity $ FailNoConfigFile msgNotFound
     Just (ParseOk ws conf) -> do
       unless (null ws) $
         warn verbosity $
@@ -988,12 +984,8 @@ loadRawConfig verbosity configFileFlag = do
       return conf
     Just (ParseFailed err) -> do
       let (line, msg) = locatedErrorMsg err
-      die' verbosity $
-        "Error parsing config file "
-          ++ configFile
-          ++ maybe "" (\n -> ':' : show n) line
-          ++ ":\n"
-          ++ msg
+          errLineNo = maybe "" (\n -> ':' : show n) line
+      dieWithException verbosity $ ParseFailedErr configFile msg errLineNo
   where
     sourceMsg CommandlineOption = "commandline option"
     sourceMsg EnvironmentVariable = "environment variable CABAL_CONFIG"
@@ -1856,15 +1848,11 @@ parseExtraLines verbosity extraLines =
     (toUTF8BS (unlines extraLines)) of
     ParseFailed err ->
       let (line, msg) = locatedErrorMsg err
-       in die' verbosity $
-            "Error parsing additional config lines\n"
-              ++ maybe "" (\n -> ':' : show n) line
-              ++ ":\n"
-              ++ msg
+          errLineNo = maybe "" (\n -> ':' : show n) line
+       in dieWithException verbosity $ ParseExtraLinesFailedErr msg errLineNo
     ParseOk [] r -> return r
     ParseOk ws _ ->
-      die' verbosity $
-        unlines (map (showPWarning "Error parsing additional config lines") ws)
+      dieWithException verbosity $ ParseExtraLinesOkError ws
 
 -- | Get the differences (as a pseudo code diff) between the user's
 -- config file and the one that cabal would generate if it didn't exist.

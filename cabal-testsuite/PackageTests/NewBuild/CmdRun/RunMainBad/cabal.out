@@ -1,3 +1,4 @@
 # cabal v2-run
 Resolving dependencies...
-Error: cabal: The run command can only run an executable as a whole, not files or modules within them, but the target 'Main.hs' refers to the file Main.hs in the executable foo.
+Error: [Cabal-7070]
+The run command can only run an executable as a whole, not files or modules within them, but the target 'Main.hs' refers to the file Main.hs in the executable foo.

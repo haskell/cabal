@@ -11,12 +11,13 @@ import Prelude ()
 
 import Network.URI (URI, parseURI)
 
+import Distribution.Client.Errors
 import Distribution.Client.TargetSelector
 import Distribution.Client.Types
 import Distribution.Compat.CharParsing (char, optional)
 import Distribution.Package
 import Distribution.Simple.LocalBuildInfo (ComponentName (CExeName))
-import Distribution.Simple.Utils (die')
+import Distribution.Simple.Utils (dieWithException)
 import Distribution.Solver.Types.PackageConstraint (PackageProperty (..))
 import Distribution.Version
 
@@ -32,7 +33,7 @@ parseWithoutProjectTargetSelector verbosity input =
     Right ts -> return ts
     Left err -> case parseURI input of
       Just uri -> return (WoURI uri)
-      Nothing -> die' verbosity $ "Invalid package ID: " ++ input ++ "\n" ++ err
+      Nothing -> dieWithException verbosity $ ProjectTargetSelector input err
   where
     parser :: CabalParsing m => m WithoutProjectTargetSelector
     parser = do

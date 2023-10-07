@@ -116,7 +116,7 @@ import Distribution.Simple.Setup
   )
 import Distribution.Simple.Utils
   ( debug
-  , die'
+  , dieWithException
   , notice
   , tryFindPackageDesc
   )
@@ -151,6 +151,7 @@ import Distribution.Version
   )
 
 import qualified Data.Set as S
+import Distribution.Client.Errors
 import System.Directory
   ( doesFileExist
   , getCurrentDirectory
@@ -315,8 +316,7 @@ outdatedAction (ProjectFlags{flagProjectDir, flagProjectFile}, OutdatedFlags{..}
       configFlags = savedConfigureFlags config
   withRepoContext verbosity globalFlags' $ \repoContext -> do
     when (not newFreezeFile && (isJust mprojectDir || isJust mprojectFile)) $
-      die' verbosity $
-        "--project-dir and --project-file must only be used with --v2-freeze-file."
+      dieWithException verbosity OutdatedAction
 
     sourcePkgDb <- IndexUtils.getSourcePackages verbosity repoContext
     (comp, platform, _progdb) <- configCompilerAux' configFlags
@@ -425,14 +425,9 @@ depsFromNewFreezeFile verbosity httpTransport compiler (Platform arch os) mproje
   freezeFileExists <- doesFileExist freezeFile
 
   unless freezeFileExists $
-    die' verbosity $
-      "Couldn't find a freeze file expected at: "
-        ++ freezeFile
-        ++ "\n\n"
-        ++ "We are looking for this file because you supplied '--project-file' or '--v2-freeze-file'. "
-        ++ "When one of these flags is given, we try to read the dependencies from a freeze file. "
-        ++ "If it is undesired behaviour, you should not use these flags, otherwise please generate "
-        ++ "a freeze file via 'cabal freeze'."
+    dieWithException verbosity $
+      FreezeFileExistsErr freezeFile
+
   debug verbosity $
     "Reading the list of dependencies from the new-style freeze file " ++ freezeFile
   return deps
@@ -454,7 +449,7 @@ depsFromPkgDesc verbosity comp platform = do
           []
           gpd
   case epd of
-    Left _ -> die' verbosity "finalizePD failed"
+    Left _ -> dieWithException verbosity FinalizePDFailed
     Right (pd, _) -> do
       let bd = allBuildDepends pd
       debug
