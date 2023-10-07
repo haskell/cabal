@@ -1,0 +1,8 @@
+synopsis: PkgConfig environment variables
+prs: #9134
+
+description: {
+
+- `cabal` invokes `pkg-config` with `PKG_CONFIG_ALLOW_SYSTEM_CFLAGS` and `PKG_CONFIG_ALLOW_SYSTEM_LIBS` set
+
+}
