@@ -866,25 +866,33 @@ renderPureArgs version comp platform args =
     , ["--since-qual=external" | isVersion 2 20]
     , [ "--quickjump" | isVersion 2 19, True <- flagToList . argQuickJump $ args
       ]
-    , [ "--hyperlinked-source" | isVersion 2 17, True <- flagToList . argLinkedSource $ args
-      ]
+    , [ "--hyperlinked-source" | isHyperlinkedSource ]
     , (\(All b, xs) -> bool (map (("--hide=" ++) . prettyShow) xs) [] b)
         . argHideModules
         $ args
     , bool ["--ignore-all-exports"] [] . getAny . argIgnoreExports $ args
-    , maybe
-        []
-        ( \(m, e, l) ->
-            [ "--source-module=" ++ m
-            , "--source-entity=" ++ e
-            ]
-              ++ if isVersion 2 14
-                then ["--source-entity-line=" ++ l]
-                else []
-        )
-        . flagToMaybe
-        . argLinkSource
-        $ args
+      -- Haddock's --source-* options are ignored once --hyperlinked-source is
+      -- set.
+      -- See https://haskell-haddock.readthedocs.io/en/latest/invoking.html#cmdoption-hyperlinked-source
+      -- To avoid Haddock's warning, we only set --source-* options if
+      -- --hyperlinked-source is not set.
+    , if isHyperlinkedSource
+        then
+          []
+        else
+          maybe
+            []
+            ( \(m, e, l) ->
+                [ "--source-module=" ++ m
+                , "--source-entity=" ++ e
+                ]
+                  ++ if isVersion 2 14
+                    then ["--source-entity-line=" ++ l]
+                    else []
+            )
+            . flagToMaybe
+            . argLinkSource
+            $ args
     , maybe [] ((: []) . ("--css=" ++)) . flagToMaybe . argCssFile $ args
     , maybe [] ((: []) . ("--use-contents=" ++)) . flagToMaybe . argContents $ args
     , bool ["--gen-contents"] [] . fromFlagOrDefault False . argGenContents $ args
@@ -965,6 +973,10 @@ renderPureArgs version comp platform args =
       | otherwise = "--verbose"
     haddockSupportsVisibility = version >= mkVersion [2, 26, 1]
     haddockSupportsPackageName = version > mkVersion [2, 16]
+    haddockSupportsHyperlinkedSource = isVersion 2 17
+    isHyperlinkedSource =
+         haddockSupportsHyperlinkedSource
+      && fromFlagOrDefault False (argLinkedSource args)
 
 ---------------------------------------------------------------------------------
 
