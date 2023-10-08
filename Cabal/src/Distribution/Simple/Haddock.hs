@@ -866,19 +866,18 @@ renderPureArgs version comp platform args =
     , ["--since-qual=external" | isVersion 2 20]
     , [ "--quickjump" | isVersion 2 19, True <- flagToList . argQuickJump $ args
       ]
-    , [ "--hyperlinked-source" | isHyperlinkedSource ]
+    , ["--hyperlinked-source" | isHyperlinkedSource]
     , (\(All b, xs) -> bool (map (("--hide=" ++) . prettyShow) xs) [] b)
         . argHideModules
         $ args
     , bool ["--ignore-all-exports"] [] . getAny . argIgnoreExports $ args
-      -- Haddock's --source-* options are ignored once --hyperlinked-source is
+    , -- Haddock's --source-* options are ignored once --hyperlinked-source is
       -- set.
       -- See https://haskell-haddock.readthedocs.io/en/latest/invoking.html#cmdoption-hyperlinked-source
       -- To avoid Haddock's warning, we only set --source-* options if
       -- --hyperlinked-source is not set.
-    , if isHyperlinkedSource
-        then
-          []
+      if isHyperlinkedSource
+        then []
         else
           maybe
             []
@@ -975,8 +974,8 @@ renderPureArgs version comp platform args =
     haddockSupportsPackageName = version > mkVersion [2, 16]
     haddockSupportsHyperlinkedSource = isVersion 2 17
     isHyperlinkedSource =
-         haddockSupportsHyperlinkedSource
-      && fromFlagOrDefault False (argLinkedSource args)
+      haddockSupportsHyperlinkedSource
+        && fromFlagOrDefault False (argLinkedSource args)
 
 ---------------------------------------------------------------------------------
 
