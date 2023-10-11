@@ -55,7 +55,7 @@ its dependencies and how it is built:
     executable myapp
         import:           warnings
         main-is:          Main.hs
-        build-depends:    base ^>=4.16.4.0
+        build-depends:    base ^>=4.19.0.0
         hs-source-dirs:   app
         default-language: Haskell2010
 
