@@ -1,6 +1,9 @@
 {-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE NamedFieldPuns #-}
+{-# OPTIONS_GHC -fno-warn-incomplete-uni-patterns #-}
 
 -----------------------------------------------------------------------------
 
@@ -18,12 +21,17 @@ module Distribution.Client.Errors
   , exceptionMessageCabalInstall
   ) where
 
+import Data.ByteString (ByteString)
+import qualified Data.ByteString.Base16 as Base16
+import qualified Data.ByteString.Char8 as BS8
+import Data.List (groupBy)
 import Distribution.Compat.Prelude
 import Distribution.Deprecated.ParseUtils (PWarning, showPWarning)
 import Distribution.Package
 import Distribution.Pretty
 import Distribution.Simple (VersionRange)
 import Distribution.Simple.Utils
+import Network.URI
 import Text.Regex.Posix.ByteString (WrapError)
 
 data CabalInstallException
@@ -120,6 +128,57 @@ data CabalInstallException
   | FreezeFileExistsErr FilePath
   | FinalizePDFailed
   | ProjectTargetSelector String String
+  | PhaseRunSolverErr String
+  | HaddockCommandDoesn'tSupport
+  | CannotParseURIFragment String String
+  | MakeDownload URI ByteString ByteString
+  | FailedToDownloadURI URI String
+  | RemoteRepoCheckHttps String String
+  | TransportCheckHttps URI String
+  | NoPostYet
+  | WGetServerError FilePath String
+  | Couldn'tEstablishHttpConnection
+  | StatusParseFail URI String
+  | TryUpgradeToHttps [String]
+  | UnknownHttpTransportSpecified String [String]
+  | CmdHaddockReportTargetProblems [String]
+  | FailedExtractingScriptBlock String
+  | FreezeAction [String]
+  | TryFindPackageDescErr String
+  | DieIfNotHaddockFailure String
+  | ConfigureInstallInternalError
+  | CmdErrorMessages [String]
+  | ReportTargetSelectorProblems [String]
+  | UnrecognisedTarget [(String, [String], String)]
+  | NoSuchTargetSelectorErr [(String, [(Maybe (String, String), String, String, [String])])]
+  | TargetSelectorAmbiguousErr [(String, [(String, String)])]
+  | TargetSelectorNoCurrentPackageErr String
+  | TargetSelectorNoTargetsInCwdTrue
+  | TargetSelectorNoTargetsInCwdFalse
+  | TargetSelectorNoTargetsInProjectErr
+  | TargetSelectorNoScriptErr String
+  | MatchingInternalErrorErr String String String [(String, [String])]
+  | ReportPlanningFailure String
+  | Can'tDownloadPackagesOffline [String]
+  | SomePackagesFailedToInstall [(String, String)]
+  | PackageDotCabalFileNotFound FilePath
+  | PkgConfParsedFailed String
+  | BrokenException String
+  | WithoutProject String [String]
+  | PackagesAlreadyExistInEnvfile FilePath [String]
+  | ConfigTests
+  | ConfigBenchmarks
+  | UnknownPackage String [String]
+  | InstallUnitExes String
+  | SelectComponentTargetError String
+  | SdistActionException [String]
+  | Can'tWriteMultipleTarballs
+  | ImpossibleHappened String
+  | CannotConvertTarballPackage String
+  | Win32SelfUpgradeNotNeeded
+  | FreezeException String
+  | PkgSpecifierException [String]
+  | CorruptedIndexCache String
   deriving (Show, Typeable)
 
 exceptionCodeCabalInstall :: CabalInstallException -> Int
@@ -217,6 +276,58 @@ exceptionCodeCabalInstall e = case e of
   FreezeFileExistsErr{} -> 7104
   FinalizePDFailed{} -> 7105
   ProjectTargetSelector{} -> 7106
+  PhaseRunSolverErr{} -> 7107
+  HaddockCommandDoesn'tSupport{} -> 7108
+  CannotParseURIFragment{} -> 7109
+  MakeDownload{} -> 7110
+  FailedToDownloadURI{} -> 7111
+  RemoteRepoCheckHttps{} -> 7112
+  TransportCheckHttps{} -> 7113
+  NoPostYet{} -> 7114
+  WGetServerError{} -> 7115
+  Couldn'tEstablishHttpConnection{} -> 7116
+  StatusParseFail{} -> 7117
+  TryUpgradeToHttps{} -> 7118
+  UnknownHttpTransportSpecified{} -> 7119
+  CmdHaddockReportTargetProblems{} -> 7120
+  FailedExtractingScriptBlock{} -> 7121
+  FreezeAction{} -> 7122
+  TryFindPackageDescErr{} -> 7124
+  DieIfNotHaddockFailure{} -> 7125
+  ConfigureInstallInternalError{} -> 7126
+  CmdErrorMessages{} -> 7127
+  ReportTargetSelectorProblems{} -> 7128
+  UnrecognisedTarget{} -> 7129
+  NoSuchTargetSelectorErr{} -> 7131
+  TargetSelectorAmbiguousErr{} -> 7132
+  TargetSelectorNoCurrentPackageErr{} -> 7133
+  TargetSelectorNoTargetsInCwdTrue{} -> 7134
+  TargetSelectorNoTargetsInCwdFalse{} -> 7135
+  TargetSelectorNoTargetsInProjectErr{} -> 7136
+  TargetSelectorNoScriptErr{} -> 7137
+  MatchingInternalErrorErr{} -> 7130
+  ReportPlanningFailure{} -> 7138
+  Can'tDownloadPackagesOffline{} -> 7139
+  SomePackagesFailedToInstall{} -> 7140
+  PackageDotCabalFileNotFound{} -> 7141
+  PkgConfParsedFailed{} -> 7142
+  BrokenException{} -> 7143
+  WithoutProject{} -> 7144
+  PackagesAlreadyExistInEnvfile{} -> 7145
+  ConfigTests{} -> 7146
+  ConfigBenchmarks{} -> 7147
+  UnknownPackage{} -> 7148
+  InstallUnitExes{} -> 7149
+  SelectComponentTargetError{} -> 7150
+  SdistActionException{} -> 7151
+  Can'tWriteMultipleTarballs{} -> 7152
+  ImpossibleHappened{} -> 7153
+  CannotConvertTarballPackage{} -> 7154
+  Win32SelfUpgradeNotNeeded{} -> 7155
+  FreezeException{} -> 7156
+  PkgSpecifierException{} -> 7157
+  CorruptedIndexCache{} -> 7158
+
 exceptionMessageCabalInstall :: CabalInstallException -> String
 exceptionMessageCabalInstall e = case e of
   UnpackGet ->
@@ -235,7 +346,7 @@ exceptionMessageCabalInstall e = case e of
   CouldNotFindExecutable -> "run: Could not find executable in LocalBuildInfo"
   FoundMultipleMatchingExes -> "run: Found multiple matching exes in LocalBuildInfo"
   NoRemoteRepositories -> "Cannot upload. No remote repositories are configured."
-  NotATarDotGzFile path -> "Not a tar.gz file: " ++ path
+  NotATarDotGzFile paths -> "Not a tar.gz file: " ++ paths
   ExpectedMatchingFileName -> "Expected a file name matching the pattern <pkgid>-docs.tar.gz"
   NoTargetProvided -> "One target is required, none provided"
   OneTargetRequired -> "One target is required, given multiple"
@@ -277,7 +388,7 @@ exceptionMessageCabalInstall e = case e of
       ++ msg
       ++ "The package index or index cache is probably "
       ++ "corrupt. Running cabal update might fix it."
-  ReadIndexCache path -> show (path)
+  ReadIndexCache paths -> show (paths)
   ConfigStateFileException err -> err
   UploadAction -> "the 'upload' command expects at least one .tar.gz archive."
   UploadActionDocumentation ->
@@ -292,7 +403,7 @@ exceptionMessageCabalInstall e = case e of
   InitAction ->
     "'init' only takes a single, optional, extra "
       ++ "argument for the project root directory"
-  UserConfigAction path -> path ++ " already exists."
+  UserConfigAction paths -> paths ++ " already exists."
   SpecifySubcommand -> "Please specify a subcommand (see 'help user-config')"
   UnknownUserConfigSubcommand extraArgs -> "Unknown 'user-config' subcommand: " ++ unwords extraArgs
   ManpageAction extraArgs -> "'man' doesn't take any extra arguments: " ++ unwords extraArgs
@@ -453,6 +564,270 @@ exceptionMessageCabalInstall e = case e of
       ++ "a freeze file via 'cabal freeze'."
   FinalizePDFailed -> "finalizePD failed"
   ProjectTargetSelector input err -> "Invalid package ID: " ++ input ++ "\n" ++ err
+  PhaseRunSolverErr msg -> msg
+  HaddockCommandDoesn'tSupport -> "The haddock command does not support '--only-dependencies'."
+  CannotParseURIFragment uriFrag err -> "Cannot parse URI fragment " ++ uriFrag ++ " " ++ err
+  MakeDownload uri expected actual ->
+    unwords
+      [ "Failed to download"
+      , show uri
+      , ": SHA256 don't match; expected:"
+      , BS8.unpack (Base16.encode expected)
+      , "actual:"
+      , BS8.unpack (Base16.encode actual)
+      ]
+  FailedToDownloadURI uri errCode ->
+    "failed to download "
+      ++ show uri
+      ++ " : HTTP code "
+      ++ errCode
+  RemoteRepoCheckHttps unRepoName requiresHttpsErrorMessage ->
+    "The remote repository '"
+      ++ unRepoName
+      ++ "' specifies a URL that "
+      ++ requiresHttpsErrorMessage
+  TransportCheckHttps uri requiresHttpsErrorMessage ->
+    "The URL "
+      ++ show uri
+      ++ " "
+      ++ requiresHttpsErrorMessage
+  NoPostYet -> "Posting (for report upload) is not implemented yet"
+  WGetServerError programPath resp ->
+    "'"
+      ++ programPath
+      ++ "' exited with an error:\n"
+      ++ resp
+  Couldn'tEstablishHttpConnection ->
+    "Couldn't establish HTTP connection. "
+      ++ "Possible cause: HTTP proxy server is down."
+  StatusParseFail uri r ->
+    "Failed to download "
+      ++ show uri
+      ++ " : "
+      ++ "No Status Code could be parsed from response: "
+      ++ r
+  TryUpgradeToHttps str ->
+    "The builtin HTTP implementation does not support HTTPS, but using "
+      ++ "HTTPS for authenticated uploads is recommended. "
+      ++ "The transport implementations with HTTPS support are "
+      ++ intercalate ", " str
+      ++ "but they require the corresponding external program to be "
+      ++ "available. You can either make one available or use plain HTTP by "
+      ++ "using the global flag --http-transport=plain-http (or putting the "
+      ++ "equivalent in the config file). With plain HTTP, your password "
+      ++ "is sent using HTTP digest authentication so it cannot be easily "
+      ++ "intercepted, but it is not as secure as using HTTPS."
+  UnknownHttpTransportSpecified name str ->
+    "Unknown HTTP transport specified: "
+      ++ name
+      ++ ". The supported transports are "
+      ++ intercalate
+        ", "
+        str
+  CmdHaddockReportTargetProblems str -> unlines str
+  FailedExtractingScriptBlock eStr -> "Failed extracting script block: " ++ eStr
+  FreezeAction extraArgs ->
+    "'freeze' doesn't take any extra arguments: "
+      ++ unwords extraArgs
+  TryFindPackageDescErr err -> err
+  DieIfNotHaddockFailure errorStr -> errorStr
+  ConfigureInstallInternalError ->
+    "internal error: configure install plan should have exactly "
+      ++ "one local ready package."
+  CmdErrorMessages err -> unlines err
+  ReportTargetSelectorProblems targets ->
+    unlines
+      [ "Unrecognised target syntax for '" ++ name ++ "'."
+      | name <- targets
+      ]
+  UnrecognisedTarget targets ->
+    unlines
+      [ "Unrecognised target '"
+        ++ target
+        ++ "'.\n"
+        ++ "Expected a "
+        ++ intercalate " or " expected
+        ++ ", rather than '"
+        ++ got
+        ++ "'."
+      | (target, expected, got) <- targets
+      ]
+  NoSuchTargetSelectorErr targets ->
+    unlines
+      [ "Unknown target '"
+        ++ target
+        ++ "'.\n"
+        ++ unlines
+          [ ( case inside of
+                Just (kind, "") ->
+                  "The " ++ kind ++ " has no "
+                Just (kind, thing) ->
+                  "The " ++ kind ++ " " ++ thing ++ " has no "
+                Nothing -> "There is no "
+            )
+            ++ intercalate
+              " or "
+              [ mungeThing thing ++ " '" ++ got ++ "'"
+              | (thing, got, _alts) <- nosuch'
+              ]
+            ++ "."
+            ++ if null alternatives
+              then ""
+              else
+                "\nPerhaps you meant "
+                  ++ intercalate
+                    ";\nor "
+                    [ "the " ++ thing ++ " '" ++ intercalate "' or '" alts ++ "'?"
+                    | (thing, alts) <- alternatives
+                    ]
+          | (inside, nosuch') <- groupByContainer nosuch
+          , let alternatives =
+                  [ (thing, alts)
+                  | (thing, _got, alts@(_ : _)) <- nosuch'
+                  ]
+          ]
+      | (target, nosuch) <- targets
+      , let groupByContainer =
+              map
+                ( \g@((inside, _, _, _) : _) ->
+                    ( inside
+                    , [ (thing, got, alts)
+                      | (_, thing, got, alts) <- g
+                      ]
+                    )
+                )
+                . groupBy ((==) `on` (\(x, _, _, _) -> x))
+                . sortBy (compare `on` (\(x, _, _, _) -> x))
+      ]
+    where
+      mungeThing "file" = "file target"
+      mungeThing thing = thing
+  TargetSelectorAmbiguousErr targets ->
+    unlines
+      [ "Ambiguous target '"
+        ++ target
+        ++ "'. It could be:\n "
+        ++ unlines
+          [ "   "
+            ++ ut
+            ++ " ("
+            ++ bt
+            ++ ")"
+          | (ut, bt) <- amb
+          ]
+      | (target, amb) <- targets
+      ]
+  TargetSelectorNoCurrentPackageErr target ->
+    "The target '"
+      ++ target
+      ++ "' refers to the "
+      ++ "components in the package in the current directory, but there "
+      ++ "is no package in the current directory (or at least not listed "
+      ++ "as part of the project)."
+  TargetSelectorNoTargetsInCwdTrue ->
+    "No targets given and there is no package in the current "
+      ++ "directory. Use the target 'all' for all packages in the "
+      ++ "project or specify packages or components by name or location. "
+      ++ "See 'cabal build --help' for more details on target options."
+  TargetSelectorNoTargetsInCwdFalse ->
+    "No targets given and there is no package in the current "
+      ++ "directory. Specify packages or components by name or location. "
+      ++ "See 'cabal build --help' for more details on target options."
+  TargetSelectorNoTargetsInProjectErr ->
+    "There is no <pkgname>.cabal package file or cabal.project file. "
+      ++ "To build packages locally you need at minimum a <pkgname>.cabal "
+      ++ "file. You can use 'cabal init' to create one.\n"
+      ++ "\n"
+      ++ "For non-trivial projects you will also want a cabal.project "
+      ++ "file in the root directory of your project. This file lists the "
+      ++ "packages in your project and all other build configuration. "
+      ++ "See the Cabal user guide for full details."
+  TargetSelectorNoScriptErr target ->
+    "The script '"
+      ++ target
+      ++ "' does not exist, "
+      ++ "and only script targets may contain whitespace characters or end "
+      ++ "with ':'"
+  MatchingInternalErrorErr t s sKind renderingsAndMatches ->
+    "Internal error in target matching: could not make an "
+      ++ "unambiguous fully qualified target selector for '"
+      ++ t
+      ++ "'.\n"
+      ++ "We made the target '"
+      ++ s
+      ++ "' ("
+      ++ sKind
+      ++ ") that was expected to "
+      ++ "be unambiguous but matches the following targets:\n"
+      ++ unlines
+        [ "'"
+          ++ rendering
+          ++ "', matching:"
+          ++ concatMap
+            ("\n  - " ++)
+            matches
+        | (rendering, matches) <- renderingsAndMatches
+        ]
+      ++ "\nNote: Cabal expects to be able to make a single fully "
+      ++ "qualified name for a target or provide a more specific error. "
+      ++ "Our failure to do so is a bug in cabal. "
+      ++ "Tracking issue: https://github.com/haskell/cabal/issues/8684"
+      ++ "\n\nHint: this may be caused by trying to build a package that "
+      ++ "exists in the project directory but is missing from "
+      ++ "the 'packages' stanza in your cabal project file."
+  ReportPlanningFailure message -> message
+  Can'tDownloadPackagesOffline notFetched ->
+    "Can't download packages in offline mode. "
+      ++ "Must download the following packages to proceed:\n"
+      ++ intercalate ", " notFetched
+      ++ "\nTry using 'cabal fetch'."
+  SomePackagesFailedToInstall failed ->
+    unlines $
+      "Some packages failed to install:"
+        : [ pkgid ++ reason
+          | (pkgid, reason) <- failed
+          ]
+  PackageDotCabalFileNotFound descFilePath -> "Package .cabal file not found: " ++ show descFilePath
+  PkgConfParsedFailed perror ->
+    "Couldn't parse the output of 'setup register --gen-pkg-config':"
+      ++ show perror
+  BrokenException errorStr -> errorStr
+  WithoutProject str1 str2 ->
+    concat $
+      [ "Unknown package \""
+      , str1
+      , "\". "
+      ]
+        ++ str2
+  PackagesAlreadyExistInEnvfile envFile name ->
+    "Packages requested to install already exist in environment file at "
+      ++ envFile
+      ++ ". Overwriting them may break other packages. Use --force-reinstalls to proceed anyway. Packages: "
+      ++ intercalate ", " name
+  ConfigTests ->
+    "--enable-tests was specified, but tests can't "
+      ++ "be enabled in a remote package"
+  ConfigBenchmarks ->
+    "--enable-benchmarks was specified, but benchmarks can't "
+      ++ "be enabled in a remote package"
+  UnknownPackage hn name ->
+    concat $
+      [ "Unknown package \""
+      , hn
+      , "\". "
+      , "Did you mean any of the following?\n"
+      , unlines name
+      ]
+  InstallUnitExes errorMessage -> errorMessage
+  SelectComponentTargetError render -> render
+  SdistActionException errs -> unlines errs
+  Can'tWriteMultipleTarballs -> "Can't write multiple tarballs to standard output!"
+  ImpossibleHappened pkg -> "The impossible happened: a local package isn't local" <> pkg
+  CannotConvertTarballPackage format -> "cannot convert tarball package to " ++ format
+  Win32SelfUpgradeNotNeeded -> "win32selfupgrade not needed except on win32"
+  FreezeException errs -> errs
+  PkgSpecifierException errorStr -> unlines errorStr
+  CorruptedIndexCache str -> str
 
 instance Exception (VerboseException CabalInstallException) where
   displayException :: VerboseException CabalInstallException -> [Char]

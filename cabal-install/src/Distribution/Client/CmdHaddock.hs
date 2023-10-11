@@ -60,7 +60,7 @@ import Distribution.Simple.Setup
   , trueArg
   )
 import Distribution.Simple.Utils
-  ( die'
+  ( dieWithException
   , notice
   , wrapText
   )
@@ -68,6 +68,7 @@ import Distribution.Verbosity
   ( normal
   )
 
+import Distribution.Client.Errors
 import qualified System.Exit (exitSuccess)
 
 newtype ClientHaddockFlags = ClientHaddockFlags {openInBrowser :: Flag Bool}
@@ -167,9 +168,7 @@ haddockAction relFlags targetStrings globalFlags = do
   buildCtx <-
     runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
       when (buildSettingOnlyDeps (buildSettings baseCtx)) $
-        die'
-          verbosity
-          "The haddock command does not support '--only-dependencies'."
+        dieWithException verbosity HaddockCommandDoesn'tSupport
 
       -- When we interpret the targets on the command line, interpret them as
       -- haddock targets

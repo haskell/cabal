@@ -162,7 +162,7 @@ import Distribution.Simple.Setup
   )
 import Distribution.Simple.Utils
   ( createDirectoryIfMissingVerbose
-  , die'
+  , dieWithException
   , notice
   , ordNub
   , safeHead
@@ -220,6 +220,7 @@ import Data.Ord
   ( Down (..)
   )
 import qualified Data.Set as S
+import Distribution.Client.Errors
 import Distribution.Utils.NubList
   ( fromNubList
   )
@@ -424,17 +425,13 @@ installAction flags@NixStyleFlags{extraFlags = clientInstallFlags', ..} targetSt
           let xs = searchByName packageIndex (unPackageName name)
           let emptyIf True _ = []
               emptyIf False zs = zs
-          die' verbosity $
-            concat $
-              [ "Unknown package \""
-              , unPackageName name
-              , "\". "
-              ]
-                ++ emptyIf
+              str2 =
+                emptyIf
                   (null xs)
                   [ "Did you mean any of the following?\n"
                   , unlines (("- " ++) . unPackageName . fst <$> xs)
                   ]
+          dieWithException verbosity $ WithoutProject (unPackageName name) str2
 
       let
         (uris, packageSpecifiers) = partitionEithers $ map woPackageSpecifiers tss
@@ -541,7 +538,7 @@ installAction flags@NixStyleFlags{extraFlags = clientInstallFlags', ..} targetSt
               let es = filter (\e -> not $ getPackageName e `S.member` nameIntersection) envSpecs
                   nge = map snd . filter (\e -> not $ fst e `S.member` nameIntersection) $ nonGlobalEnvEntries
                in pure (es, nge)
-            else die' verbosity $ "Packages requested to install already exist in environment file at " ++ envFile ++ ". Overwriting them may break other packages. Use --force-reinstalls to proceed anyway. Packages: " ++ intercalate ", " (map prettyShow $ S.toList nameIntersection)
+            else dieWithException verbosity $ PackagesAlreadyExistInEnvfile envFile (map prettyShow $ S.toList nameIntersection)
 
     -- we construct an installed index of files in the cleaned target environment (absent overwrites) so that we can solve with regards to packages installed locally but not in the upstream repo
     let installedPacks = PI.allPackagesByName installedIndex
@@ -617,20 +614,16 @@ addLocalConfigToTargets config targetStrings =
 
 -- | Verify that invalid config options were not passed to the install command.
 --
--- If an invalid configuration is found the command will @die'@.
+-- If an invalid configuration is found the command will @dieWithException@.
 verifyPreconditionsOrDie :: Verbosity -> ConfigFlags -> IO ()
 verifyPreconditionsOrDie verbosity configFlags = do
   -- We never try to build tests/benchmarks for remote packages.
   -- So we set them as disabled by default and error if they are explicitly
   -- enabled.
   when (configTests configFlags == Flag True) $
-    die' verbosity $
-      "--enable-tests was specified, but tests can't "
-        ++ "be enabled in a remote package"
+    dieWithException verbosity ConfigTests
   when (configBenchmarks configFlags == Flag True) $
-    die' verbosity $
-      "--enable-benchmarks was specified, but benchmarks can't "
-        ++ "be enabled in a remote package"
+    dieWithException verbosity ConfigBenchmarks
 
 getClientInstallFlags :: Verbosity -> GlobalFlags -> ClientInstallFlags -> IO ClientInstallFlags
 getClientInstallFlags verbosity globalFlags existingClientInstallFlags = do
@@ -733,13 +726,7 @@ partitionToKnownTargetsAndHackagePackages verbosity pkgDb elaboratedPlan targetS
           case searchByName (packageIndex pkgDb) (unPackageName hn) of
             [] -> return ()
             xs ->
-              die' verbosity . concat $
-                [ "Unknown package \""
-                , unPackageName hn
-                , "\". "
-                , "Did you mean any of the following?\n"
-                , unlines (("- " ++) . unPackageName . fst <$> xs)
-                ]
+              dieWithException verbosity $ UnknownPackage (unPackageName hn) (("- " ++) . unPackageName . fst <$> xs)
         _ -> return ()
 
       when (not . null $ errs') $ reportBuildTargetProblems verbosity errs'
@@ -1058,7 +1045,7 @@ installUnitExes
                   InstallMethodSymlink -> "Symlinking"
                   InstallMethodCopy ->
                     "Copying" <> " '" <> prettyShow exe <> "' failed."
-        unless success $ die' verbosity errorMessage
+        unless success $ dieWithException verbosity $ InstallUnitExes errorMessage
 
 -- | Install a specific exe.
 installBuiltExe
@@ -1265,4 +1252,4 @@ reportBuildTargetProblems verbosity problems = reportTargetProblems verbosity "b
 
 reportCannotPruneDependencies :: Verbosity -> CannotPruneDependencies -> IO a
 reportCannotPruneDependencies verbosity =
-  die' verbosity . renderCannotPruneDependencies
+  dieWithException verbosity . SelectComponentTargetError . renderCannotPruneDependencies

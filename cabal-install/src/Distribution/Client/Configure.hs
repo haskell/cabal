@@ -107,7 +107,7 @@ import Distribution.Simple.Setup
 import Distribution.Simple.Utils as Utils
   ( debug
   , defaultPackageDesc
-  , die'
+  , dieWithException
   , notice
   , warn
   )
@@ -128,6 +128,7 @@ import Distribution.Version
   , thisVersion
   )
 
+import Distribution.Client.Errors
 import System.FilePath ((</>))
 
 -- | Choose the Cabal version such that the setup scripts compiled against this
@@ -223,9 +224,7 @@ configure
                     pkg
                     extraArgs
               _ ->
-                die' verbosity $
-                  "internal error: configure install plan should have exactly "
-                    ++ "one local ready package."
+                dieWithException verbosity ConfigureInstallInternalError
     where
       setupScriptOptions
         :: InstalledPackageIndex

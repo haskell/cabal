@@ -63,6 +63,7 @@ import Distribution.Solver.Types.SourcePackage
   ( SourcePackage (..)
   )
 
+import Distribution.Client.Errors
 import Distribution.Client.SrcDist
   ( packageDirToSdist
   )
@@ -106,8 +107,7 @@ import Distribution.Simple.SrcDist
   ( listPackageSourcesWithDie
   )
 import Distribution.Simple.Utils
-  ( die'
-  , dieWithException
+  ( dieWithException
   , notice
   , withOutputMarker
   , wrapText
@@ -258,12 +258,12 @@ sdistAction (pf@ProjectFlags{..}, SdistFlags{..}) targetStrings globalFlags = do
           | otherwise -> distSdistFile distDirLayout (packageId pkg)
 
   case reifyTargetSelectors localPkgs targetSelectors of
-    Left errs -> die' verbosity . unlines . fmap renderTargetProblem $ errs
+    Left errs -> dieWithException verbosity $ SdistActionException . fmap renderTargetProblem $ errs
     Right pkgs
       | length pkgs > 1
       , not listSources
       , Just "-" <- mOutputPath' ->
-          die' verbosity "Can't write multiple tarballs to standard output!"
+          dieWithException verbosity Can'tWriteMultipleTarballs
       | otherwise ->
           traverse_ (\pkg -> packageToSdist verbosity (distProjectRootDirectory distDirLayout) format (outputPath pkg) pkg) pkgs
   where
@@ -306,7 +306,7 @@ data OutputFormat
 
 packageToSdist :: Verbosity -> FilePath -> OutputFormat -> FilePath -> UnresolvedSourcePackage -> IO ()
 packageToSdist verbosity projectRootDir format outputFile pkg = do
-  let death = die' verbosity ("The impossible happened: a local package isn't local" <> (show pkg))
+  let death = dieWithException verbosity $ ImpossibleHappened (show pkg)
   dir0 <- case srcpkgSource pkg of
     LocalUnpackedPackage path -> pure (Right path)
     RemoteSourceRepoPackage _ (Just tgz) -> pure (Left tgz)
@@ -335,7 +335,7 @@ packageToSdist verbosity projectRootDir format outputFile pkg = do
       case format of
         TarGzArchive -> do
           writeLBS =<< BSL.readFile tgz
-        _ -> die' verbosity ("cannot convert tarball package to " ++ show format)
+        _ -> dieWithException verbosity $ CannotConvertTarballPackage (show format)
     Right dir -> case format of
       SourceList nulSep -> do
         let gpd :: GenericPackageDescription

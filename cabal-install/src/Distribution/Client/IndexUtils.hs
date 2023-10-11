@@ -95,7 +95,6 @@ import Distribution.Simple.Program
   )
 import Distribution.Simple.Utils
   ( createDirectoryIfMissingVerbose
-  , die'
   , dieWithException
   , fromUTF8LBS
   , info
@@ -1092,7 +1091,7 @@ packageListFromCache verbosity mkPkg hnd Cache{..} = accum mempty [] mempty cach
 --
 -- If a corrupted index cache is detected this function regenerates
 -- the index cache and then reattempt to read the index once (and
--- 'die's if it fails again).
+-- 'dieWithException's if it fails again).
 readIndexCache :: Verbosity -> Index -> IO Cache
 readIndexCache verbosity index = do
   cacheOrFail <- readIndexCache' index
@@ -1108,7 +1107,7 @@ readIndexCache verbosity index = do
 
       updatePackageIndexCacheFile verbosity index
 
-      either (die' verbosity) (return . hashConsCache) =<< readIndexCache' index
+      either (dieWithException verbosity . CorruptedIndexCache) (return . hashConsCache) =<< readIndexCache' index
     Right res -> return (hashConsCache res)
 
 readNoIndexCache :: Verbosity -> Index -> IO NoIndexCache
@@ -1126,7 +1125,7 @@ readNoIndexCache verbosity index = do
 
       updatePackageIndexCacheFile verbosity index
 
-      either (die' verbosity) return =<< readNoIndexCache' index
+      either (dieWithException verbosity . CorruptedIndexCache) return =<< readNoIndexCache' index
 
     -- we don't hash cons local repository cache, they are hopefully small
     Right res -> return res

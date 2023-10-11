@@ -193,7 +193,7 @@ import qualified Distribution.Simple.Setup as Setup
 import Distribution.Simple.Utils
   ( createDirectoryIfMissingVerbose
   , debugNoWrap
-  , die'
+  , dieWithException
   , notice
   , noticeNoWrap
   , ordNub
@@ -221,6 +221,7 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 #ifdef MIN_VERSION_unix
 import           System.Posix.Signals (sigKILL, sigSEGV)
+import Distribution.Client.Errors
 #endif
 
 -- | Tracks what command is being executed, because we need to hide this somewhere
@@ -1219,10 +1220,10 @@ dieOnBuildFailures verbosity currentCommand plan buildOutcomes
       ]
 
     dieIfNotHaddockFailure :: Verbosity -> String -> IO ()
-    dieIfNotHaddockFailure
-      | currentCommand == HaddockCommand = die'
-      | all isHaddockFailure failuresClassification = warn
-      | otherwise = die'
+    dieIfNotHaddockFailure verb str
+      | currentCommand == HaddockCommand = dieWithException verb $ DieIfNotHaddockFailure str
+      | all isHaddockFailure failuresClassification = warn verb str
+      | otherwise = dieWithException verb $ DieIfNotHaddockFailure str
       where
         isHaddockFailure
           (_, ShowBuildSummaryOnly (HaddocksFailed _)) = True
