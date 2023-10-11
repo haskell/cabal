@@ -122,7 +122,7 @@ the ``executable myapp`` section to include ``haskell-say``:
        import: warnings
        main-is: Main.hs
        build-depends:
-           base ^>=4.14.3.0,
+           base ^>=4.19.0.0,
            haskell-say ^>=1.0.0.0
        hs-source-dirs: app
        default-language: Haskell2010
@@ -142,8 +142,7 @@ Next we'll update ``app/Main.hs`` to use the ``HaskellSay`` library:
    import HaskellSay (haskellSay)
 
    main :: IO ()
-   main =
-     haskellSay "Hello, Haskell! You're using a function from another package!"
+   main = haskellSay "Hello, Haskell!"
 
 ``import HaskellSay (haskellSay)`` brings the ``haskellSay`` function from the
 module named ``HaskellSay`` into scope. The ``HaskellSay`` module is defined in
@@ -156,8 +155,7 @@ Now you can build and re-run your code to see the new output:
    $ cabal run
        ________________________________________________________
       /                                                        \
-     | Hello, Haskell! You're using a function from another     |
-     | package!                                                 |
+     | Hello, Haskell!                                          |
       \____       _____________________________________________/
            \    /
             \  /
@@ -183,16 +181,18 @@ Cabal also supports running a single self-contained Haskell script like
 the following file named ``myscript``:
 
 .. code-block:: haskell
-
+    
     #!/usr/bin/env cabal
     {- cabal:
-    build-depends: base, split
+    build-depends:
+      base ^>=4.19.0.0,
+      haskell-say ^>=1.0.0.0
     -}
 
-    import Data.List.Split (chunksOf)
+    import HaskellSay (haskellSay)
 
     main :: IO ()
-    main = getLine >>= print . chunksOf 3
+    main = haskellSay "Hello, Haskell!"
 
 The necessary sections of a ``.cabal`` file are placed
 directly into the script as a comment.
@@ -209,13 +209,33 @@ On Unix-like systems this can be run directly with execute permission.
 
     $ chmod +x myscript
     $ ./myscript
+       ________________________________________________________
+      /                                                        \
+     | Hello, Haskell!                                          |
+      \____       _____________________________________________/
+           \    /
+            \  /
+             \/
+       _____   _____
+       \    \  \    \
+        \    \  \    \
+         \    \  \    \
+          \    \  \    \  \-----------|
+           \    \  \    \  \          |
+            \    \  \    \  \---------|
+            /    /  /     \
+           /    /  /       \  \-------|
+          /    /  /    ^    \  \      |
+         /    /  /    / \    \  \ ----|
+        /    /  /    /   \    \
+       /____/  /____/     \____\
 
 Project metadata can also be included:
 
 .. code-block:: haskell
 
     {- project:
-    with-compiler: ghc-8.10.7
+    with-compiler: ghc-9.4.7
     -}
 
 See more in the documentation for :ref:`cabal run`.
