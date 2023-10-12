@@ -38,7 +38,8 @@ import Distribution.Package
   , mkComponentId
   )
 import Distribution.Simple.Compiler
-  ( CompilerId
+  ( AbiTag (..)
+  , CompilerId
   , DebugInfoLevel (..)
   , OptimisationLevel (..)
   , PackageDB
@@ -191,6 +192,7 @@ type PackageSourceHash = HashValue
 -- package hash.
 data PackageHashConfigInputs = PackageHashConfigInputs
   { pkgHashCompilerId :: CompilerId
+  , pkgHashCompilerAbiTag :: AbiTag
   , pkgHashPlatform :: Platform
   , pkgHashFlagAssignment :: FlagAssignment -- complete not partial
   , pkgHashConfigureScriptArgs :: [String] -- just ./configure for build-type Configure
@@ -301,6 +303,7 @@ renderPackageHashInputs
               pkgHashDirectDeps
           , -- and then all the config
             entry "compilerid" prettyShow pkgHashCompilerId
+          , entry "compiler-abi-tag" renderAbiTag pkgHashCompilerAbiTag
           , entry "platform" prettyShow pkgHashPlatform
           , opt "flags" mempty showFlagAssignment pkgHashFlagAssignment
           , opt "configure-script" [] unwords pkgHashConfigureScriptArgs
@@ -352,3 +355,8 @@ renderPackageHashInputs
       opt key def format value
         | value == def = Nothing
         | otherwise = entry key format value
+
+renderAbiTag :: AbiTag -> String
+renderAbiTag abiTag = case abiTag of
+  NoAbiTag -> "unknown"
+  AbiTag tag -> tag
