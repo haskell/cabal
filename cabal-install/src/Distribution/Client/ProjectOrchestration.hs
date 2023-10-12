@@ -170,6 +170,11 @@ import Distribution.Types.UnqualComponentName
 
 import Distribution.Solver.Types.OptionalStanza
 
+import Control.Exception (assert)
+import qualified Data.List.NonEmpty as NE
+import qualified Data.Map as Map
+import qualified Data.Set as Set
+import Distribution.Client.Errors
 import Distribution.Package
 import Distribution.Simple.Command (commandShowOptions)
 import Distribution.Simple.Compiler
@@ -214,14 +219,9 @@ import Distribution.Verbosity
 import Distribution.Version
   ( mkVersion
   )
-
-import Control.Exception (assert)
-import qualified Data.List.NonEmpty as NE
-import qualified Data.Map as Map
-import qualified Data.Set as Set
 #ifdef MIN_VERSION_unix
 import           System.Posix.Signals (sigKILL, sigSEGV)
-import Distribution.Client.Errors
+
 #endif
 
 -- | Tracks what command is being executed, because we need to hide this somewhere
@@ -1221,9 +1221,9 @@ dieOnBuildFailures verbosity currentCommand plan buildOutcomes
 
     dieIfNotHaddockFailure :: Verbosity -> String -> IO ()
     dieIfNotHaddockFailure verb str
-      | currentCommand == HaddockCommand = dieWithException verb $ DieIfNotHaddockFailure str
+      | currentCommand == HaddockCommand = dieWithException verb $ DieIfNotHaddockFailureException str
       | all isHaddockFailure failuresClassification = warn verb str
-      | otherwise = dieWithException verb $ DieIfNotHaddockFailure str
+      | otherwise = dieWithException verb $ DieIfNotHaddockFailureException str
       where
         isHaddockFailure
           (_, ShowBuildSummaryOnly (HaddocksFailed _)) = True

@@ -145,7 +145,7 @@ data CabalInstallException
   | FailedExtractingScriptBlock String
   | FreezeAction [String]
   | TryFindPackageDescErr String
-  | DieIfNotHaddockFailure String
+  | DieIfNotHaddockFailureException String
   | ConfigureInstallInternalError
   | CmdErrorMessages [String]
   | ReportTargetSelectorProblems [String]
@@ -293,7 +293,7 @@ exceptionCodeCabalInstall e = case e of
   FailedExtractingScriptBlock{} -> 7121
   FreezeAction{} -> 7122
   TryFindPackageDescErr{} -> 7124
-  DieIfNotHaddockFailure{} -> 7125
+  DieIfNotHaddockFailureException{} -> 7125
   ConfigureInstallInternalError{} -> 7126
   CmdErrorMessages{} -> 7127
   ReportTargetSelectorProblems{} -> 7128
@@ -630,7 +630,7 @@ exceptionMessageCabalInstall e = case e of
     "'freeze' doesn't take any extra arguments: "
       ++ unwords extraArgs
   TryFindPackageDescErr err -> err
-  DieIfNotHaddockFailure errorStr -> errorStr
+  DieIfNotHaddockFailureException errorStr -> errorStr
   ConfigureInstallInternalError ->
     "internal error: configure install plan should have exactly "
       ++ "one local ready package."
