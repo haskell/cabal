@@ -98,7 +98,6 @@ import Distribution.Simple.Command (CommandUI)
 import Distribution.Simple.Compiler
   ( Compiler
   , PackageDB (..)
-  , compilerId
   , jsemSupported
   )
 import qualified Distribution.Simple.InstallDirs as InstallDirs
@@ -1280,7 +1279,7 @@ buildAndInstallUnpackedPackage
                 let ipkg = ipkg0{Installed.installedUnitId = uid}
                 assert
                   ( elabRegisterPackageDBStack pkg
-                      == storePackageDBStack compid
+                      == storePackageDBStack compiler
                   )
                   (return ())
                 criticalSection registerLock $
@@ -1288,7 +1287,7 @@ buildAndInstallUnpackedPackage
                     verbosity
                     compiler
                     progdb
-                    (storePackageDBStack compid)
+                    (storePackageDBStack compiler)
                     ipkg
                     Cabal.defaultRegisterOptions
                       { Cabal.registerMultiInstance = True
@@ -1300,7 +1299,7 @@ buildAndInstallUnpackedPackage
         newStoreEntry
           verbosity
           storeDirLayout
-          compid
+          compiler
           uid
           copyPkgFiles
           registerPkg
@@ -1330,7 +1329,6 @@ buildAndInstallUnpackedPackage
     where
       pkgid = packageId rpkg
       uid = installedUnitId rpkg
-      compid = compilerId compiler
 
       dispname :: String
       dispname = case elabPkgOrComp pkg of

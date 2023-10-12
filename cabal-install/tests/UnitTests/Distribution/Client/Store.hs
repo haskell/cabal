@@ -9,8 +9,8 @@ import System.FilePath
 
 -- import System.Random
 
-import Distribution.Compiler (CompilerFlavor (..), CompilerId (..))
 import Distribution.Package (UnitId, mkUnitId)
+import Distribution.Simple.Compiler (AbiTag (..), Compiler (..), CompilerFlavor (..), CompilerId (..))
 import Distribution.Simple.Utils (withTempDirectory)
 import Distribution.Verbosity (Verbosity, silent)
 import Distribution.Version (mkVersion)
@@ -34,10 +34,20 @@ testListEmpty =
   withTempDirectory verbosity "." "store-" $ \tmp -> do
     let storeDirLayout = defaultStoreDirLayout (tmp </> "store")
 
-    assertStoreEntryExists storeDirLayout compid unitid False
-    assertStoreContent tmp storeDirLayout compid Set.empty
+    assertStoreEntryExists storeDirLayout compiler unitid False
+    assertStoreContent tmp storeDirLayout compiler Set.empty
   where
-    compid = CompilerId GHC (mkVersion [1, 0])
+    compiler :: Compiler
+    compiler =
+      Compiler
+        { compilerId = CompilerId GHC (mkVersion [1, 0])
+        , compilerAbiTag = NoAbiTag
+        , compilerCompat = []
+        , compilerLanguages = []
+        , compilerExtensions = []
+        , compilerProperties = mempty
+        }
+
     unitid = mkUnitId "foo-1.0-xyz"
 
 testInstallSerial :: Assertion
@@ -54,7 +64,7 @@ testInstallSerial =
     assertNewStoreEntry
       tmp
       storeDirLayout
-      compid
+      compiler
       unitid1
       (copyFiles "file1" "content-foo")
       (return ())
@@ -63,7 +73,7 @@ testInstallSerial =
     assertNewStoreEntry
       tmp
       storeDirLayout
-      compid
+      compiler
       unitid1
       (copyFiles "file1" "content-foo")
       (return ())
@@ -72,18 +82,28 @@ testInstallSerial =
     assertNewStoreEntry
       tmp
       storeDirLayout
-      compid
+      compiler
       unitid2
       (copyFiles "file2" "content-bar")
       (return ())
       UseNewStoreEntry
 
     let pkgDir :: UnitId -> FilePath
-        pkgDir = storePackageDirectory storeDirLayout compid
+        pkgDir = storePackageDirectory storeDirLayout compiler
     assertFileEqual (pkgDir unitid1 </> "file1") "content-foo"
     assertFileEqual (pkgDir unitid2 </> "file2") "content-bar"
   where
-    compid = CompilerId GHC (mkVersion [1, 0])
+    compiler :: Compiler
+    compiler =
+      Compiler
+        { compilerId = CompilerId GHC (mkVersion [1, 0])
+        , compilerAbiTag = NoAbiTag
+        , compilerCompat = []
+        , compilerLanguages = []
+        , compilerExtensions = []
+        , compilerProperties = mempty
+        }
+
     unitid1 = mkUnitId "foo-1.0-xyz"
     unitid2 = mkUnitId "bar-2.0-xyz"
 
@@ -150,7 +170,7 @@ testInstallParallel =
 assertNewStoreEntry
   :: FilePath
   -> StoreDirLayout
-  -> CompilerId
+  -> Compiler
   -> UnitId
   -> (FilePath -> IO (FilePath, [FilePath]))
   -> IO ()
@@ -159,43 +179,43 @@ assertNewStoreEntry
 assertNewStoreEntry
   tmp
   storeDirLayout
-  compid
+  compiler
   unitid
   copyFiles
   register
   expectedOutcome = do
-    entries <- runRebuild tmp $ getStoreEntries storeDirLayout compid
+    entries <- runRebuild tmp $ getStoreEntries storeDirLayout compiler
     outcome <-
       newStoreEntry
         verbosity
         storeDirLayout
-        compid
+        compiler
         unitid
         copyFiles
         register
     assertEqual "newStoreEntry outcome" expectedOutcome outcome
-    assertStoreEntryExists storeDirLayout compid unitid True
+    assertStoreEntryExists storeDirLayout compiler unitid True
     let expected = Set.insert unitid entries
-    assertStoreContent tmp storeDirLayout compid expected
+    assertStoreContent tmp storeDirLayout compiler expected
 
 assertStoreEntryExists
   :: StoreDirLayout
-  -> CompilerId
+  -> Compiler
   -> UnitId
   -> Bool
   -> Assertion
-assertStoreEntryExists storeDirLayout compid unitid expected = do
-  actual <- doesStoreEntryExist storeDirLayout compid unitid
+assertStoreEntryExists storeDirLayout compiler unitid expected = do
+  actual <- doesStoreEntryExist storeDirLayout compiler unitid
   assertEqual "store entry exists" expected actual
 
 assertStoreContent
   :: FilePath
   -> StoreDirLayout
-  -> CompilerId
+  -> Compiler
   -> Set.Set UnitId
   -> Assertion
-assertStoreContent tmp storeDirLayout compid expected = do
-  actual <- runRebuild tmp $ getStoreEntries storeDirLayout compid
+assertStoreContent tmp storeDirLayout compiler expected = do
+  actual <- runRebuild tmp $ getStoreEntries storeDirLayout compiler
   assertEqual "store content" actual expected
 
 assertFileEqual :: FilePath -> String -> Assertion

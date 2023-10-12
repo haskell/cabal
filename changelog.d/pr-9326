@@ -1,0 +1,10 @@
+synopsis: Include the GHC "Project Unit Id" in the cabal store path
+packages: Cabal cabal-install
+prs: #9326
+issues: #8114
+description: {
+- This allows the use of several **API incompatible builds of the same version
+  of GHC** without corrupting the cabal store.
+- This relies on the "Project Unit Id" which is available since GHC 9.8.1,
+  older versions of GHC do not benefit from this change.
+}
