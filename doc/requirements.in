@@ -6,3 +6,5 @@ sphinxnotes-strike
 Pygments >= 2.7.4
 # CVE-2023-37920
 certifi >= 2023.07.22
+# CVE-2023-43804
+urllib3 >= 2.0.6
