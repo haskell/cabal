@@ -681,12 +681,12 @@ buildAndInstallUnpackedPackage
                 | otherwise = do
                     assert
                       ( elabRegisterPackageDBStack pkg
-                          == storePackageDBStack compid
+                          == storePackageDBStack compiler
                       )
                       (return ())
                     _ <-
                       runRegister
-                        (storePackageDBStack compid)
+                        (storePackageDBStack compiler)
                         Cabal.defaultRegisterOptions
                           { Cabal.registerMultiInstance = True
                           , Cabal.registerSuppressFilesCheck = True
@@ -698,7 +698,7 @@ buildAndInstallUnpackedPackage
             newStoreEntry
               verbosity
               storeDirLayout
-              compid
+              compiler
               uid
               (copyPkgFiles verbosity pkgshared pkg runCopy)
               registerPkg
@@ -735,7 +735,6 @@ buildAndInstallUnpackedPackage
     where
       uid = installedUnitId rpkg
       pkgid = packageId rpkg
-      compid = compilerId compiler
 
       dispname :: String
       dispname = case elabPkgOrComp pkg of

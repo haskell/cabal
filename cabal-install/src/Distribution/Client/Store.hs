@@ -26,8 +26,8 @@ import Prelude ()
 import Distribution.Client.DistDirLayout
 import Distribution.Client.RebuildMonad
 
-import Distribution.Compiler (CompilerId)
 import Distribution.Package (UnitId, mkUnitId)
+import Distribution.Simple.Compiler (Compiler (..))
 
 import Distribution.Simple.Utils
   ( debug
@@ -129,15 +129,15 @@ import GHC.IO.Handle.Lock (hUnlock)
 -- or replace, i.e. not failing if the db entry already exists.
 
 -- | Check if a particular 'UnitId' exists in the store.
-doesStoreEntryExist :: StoreDirLayout -> CompilerId -> UnitId -> IO Bool
-doesStoreEntryExist StoreDirLayout{storePackageDirectory} compid unitid =
-  doesDirectoryExist (storePackageDirectory compid unitid)
+doesStoreEntryExist :: StoreDirLayout -> Compiler -> UnitId -> IO Bool
+doesStoreEntryExist StoreDirLayout{storePackageDirectory} compiler unitid =
+  doesDirectoryExist (storePackageDirectory compiler unitid)
 
 -- | Return the 'UnitId's of all packages\/components already installed in the
 -- store.
-getStoreEntries :: StoreDirLayout -> CompilerId -> Rebuild (Set UnitId)
-getStoreEntries StoreDirLayout{storeDirectory} compid = do
-  paths <- getDirectoryContentsMonitored (storeDirectory compid)
+getStoreEntries :: StoreDirLayout -> Compiler -> Rebuild (Set UnitId)
+getStoreEntries StoreDirLayout{storeDirectory} compiler = do
+  paths <- getDirectoryContentsMonitored (storeDirectory compiler)
   return $! mkEntries paths
   where
     mkEntries =
@@ -174,7 +174,7 @@ data NewStoreEntryOutcome
 newStoreEntry
   :: Verbosity
   -> StoreDirLayout
-  -> CompilerId
+  -> Compiler
   -> UnitId
   -> (FilePath -> IO (FilePath, [FilePath]))
   -- ^ Action to place files.
@@ -184,20 +184,20 @@ newStoreEntry
 newStoreEntry
   verbosity
   storeDirLayout@StoreDirLayout{..}
-  compid
+  compiler
   unitid
   copyFiles
   register =
     -- See $concurrency above for an explanation of the concurrency protocol
 
-    withTempIncomingDir storeDirLayout compid $ \incomingTmpDir -> do
+    withTempIncomingDir storeDirLayout compiler $ \incomingTmpDir -> do
       -- Write all store entry files within the temp dir and return the prefix.
       (incomingEntryDir, otherFiles) <- copyFiles incomingTmpDir
 
       -- Take a lock named after the 'UnitId' in question.
-      withIncomingUnitIdLock verbosity storeDirLayout compid unitid $ do
+      withIncomingUnitIdLock verbosity storeDirLayout compiler unitid $ do
         -- Check for the existence of the final store entry directory.
-        exists <- doesStoreEntryExist storeDirLayout compid unitid
+        exists <- doesStoreEntryExist storeDirLayout compiler unitid
 
         if exists
           then -- If the entry exists then we lost the race and we must abandon,
@@ -217,7 +217,7 @@ newStoreEntry
             -- Atomically rename the temp dir to the final store entry location.
             renameDirectory incomingEntryDir finalEntryDir
             for_ otherFiles $ \file -> do
-              let finalStoreFile = storeDirectory compid </> makeRelative (incomingTmpDir </> (dropDrive (storeDirectory compid))) file
+              let finalStoreFile = storeDirectory compiler </> makeRelative (incomingTmpDir </> (dropDrive (storeDirectory compiler))) file
               createDirectoryIfMissing True (takeDirectory finalStoreFile)
               renameFile file finalStoreFile
 
@@ -225,64 +225,67 @@ newStoreEntry
               "Installed store entry " ++ prettyShow compid </> prettyShow unitid
             return UseNewStoreEntry
     where
-      finalEntryDir = storePackageDirectory compid unitid
+      compid = compilerId compiler
+
+      finalEntryDir = storePackageDirectory compiler unitid
 
 withTempIncomingDir
   :: StoreDirLayout
-  -> CompilerId
+  -> Compiler
   -> (FilePath -> IO a)
   -> IO a
-withTempIncomingDir StoreDirLayout{storeIncomingDirectory} compid action = do
+withTempIncomingDir StoreDirLayout{storeIncomingDirectory} compiler action = do
   createDirectoryIfMissing True incomingDir
   withTempDirectory silent incomingDir "new" action
   where
-    incomingDir = storeIncomingDirectory compid
+    incomingDir = storeIncomingDirectory compiler
 
 withIncomingUnitIdLock
   :: Verbosity
   -> StoreDirLayout
-  -> CompilerId
+  -> Compiler
   -> UnitId
   -> IO a
   -> IO a
 withIncomingUnitIdLock
   verbosity
   StoreDirLayout{storeIncomingLock}
-  compid
+  compiler
   unitid
   action =
     bracket takeLock releaseLock (\_hnd -> action)
     where
+      compid = compilerId compiler
 #ifdef MIN_VERSION_lukko
-    takeLock
-        | fileLockingSupported = do
-            fd <- fdOpen (storeIncomingLock compid unitid)
-            gotLock <- fdTryLock fd ExclusiveLock
-            unless gotLock  $ do
-                info verbosity $ "Waiting for file lock on store entry "
-                              ++ prettyShow compid </> prettyShow unitid
-                fdLock fd ExclusiveLock
-            return fd
+      takeLock
+          | fileLockingSupported = do
+              fd <- fdOpen (storeIncomingLock compiler unitid)
+              gotLock <- fdTryLock fd ExclusiveLock
+              unless gotLock  $ do
+                  info verbosity $ "Waiting for file lock on store entry "
+                                ++ prettyShow compid </> prettyShow unitid
+                  fdLock fd ExclusiveLock
+              return fd
 
-        -- if there's no locking, do nothing. Be careful on AIX.
-        | otherwise = return undefined -- :(
+          -- if there's no locking, do nothing. Be careful on AIX.
+          | otherwise = return undefined -- :(
 
-    releaseLock fd
-        | fileLockingSupported = do
-            fdUnlock fd
-            fdClose fd
-        | otherwise = return ()
+      releaseLock fd
+          | fileLockingSupported = do
+              fdUnlock fd
+              fdClose fd
+          | otherwise = return ()
 #else
-    takeLock = do
-      h <- openFile (storeIncomingLock compid unitid) ReadWriteMode
-      -- First try non-blocking, but if we would have to wait then
-      -- log an explanation and do it again in blocking mode.
-      gotlock <- hTryLock h ExclusiveLock
-      unless gotlock $ do
-        info verbosity $ "Waiting for file lock on store entry "
-                      ++ prettyShow compid </> prettyShow unitid
-        hLock h ExclusiveLock
-      return h
+      takeLock = do
+        h <- openFile (storeIncomingLock compiler unitid) ReadWriteMode
+        -- First try non-blocking, but if we would have to wait then
+        -- log an explanation and do it again in blocking mode.
+        gotlock <- hTryLock h ExclusiveLock
+        unless gotlock $ do
+          info verbosity $ "Waiting for file lock on store entry "
+                        ++ prettyShow compid </> prettyShow unitid
+          hLock h ExclusiveLock
+        return h
 
-    releaseLock h = hUnlock h >> hClose h
+      releaseLock h = hUnlock h >> hClose h
 #endif

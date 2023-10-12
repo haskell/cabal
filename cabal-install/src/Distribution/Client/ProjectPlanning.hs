@@ -854,7 +854,7 @@ rebuildInstallPlan
         -> Rebuild ElaboratedInstallPlan
       phaseImprovePlan elaboratedPlan elaboratedShared = do
         liftIO $ debug verbosity "Improving the install plan..."
-        storePkgIdSet <- getStoreEntries cabalStoreDirLayout compid
+        storePkgIdSet <- getStoreEntries cabalStoreDirLayout compiler
         let improvedPlan =
               improveInstallPlanWithInstalledPackages
                 storePkgIdSet
@@ -866,7 +866,7 @@ rebuildInstallPlan
         -- matches up as expected, e.g. no dangling deps, files deleted.
         return improvedPlan
         where
-          compid = compilerId (pkgConfigCompiler elaboratedShared)
+          compiler = pkgConfigCompiler elaboratedShared
 
 -- | If a 'PackageSpecifier' refers to a single package, return Just that
 -- package.
@@ -2319,7 +2319,7 @@ elaborateInstallPlan
 
       corePackageDbs =
         applyPackageDbFlags
-          (storePackageDBStack (compilerId compiler))
+          (storePackageDBStack compiler)
           (projectConfigPackageDBs sharedPackageConfig)
 
       -- For this local build policy, every package that lives in a local source
@@ -3768,15 +3768,15 @@ userInstallDirTemplates compiler = do
 
 storePackageInstallDirs
   :: StoreDirLayout
-  -> CompilerId
+  -> Compiler
   -> InstalledPackageId
   -> InstallDirs.InstallDirs FilePath
-storePackageInstallDirs storeDirLayout compid ipkgid =
-  storePackageInstallDirs' storeDirLayout compid $ newSimpleUnitId ipkgid
+storePackageInstallDirs storeDirLayout compiler ipkgid =
+  storePackageInstallDirs' storeDirLayout compiler $ newSimpleUnitId ipkgid
 
 storePackageInstallDirs'
   :: StoreDirLayout
-  -> CompilerId
+  -> Compiler
   -> UnitId
   -> InstallDirs.InstallDirs FilePath
 storePackageInstallDirs'
@@ -3784,12 +3784,12 @@ storePackageInstallDirs'
     { storePackageDirectory
     , storeDirectory
     }
-  compid
+  compiler
   unitid =
     InstallDirs.InstallDirs{..}
     where
-      store = storeDirectory compid
-      prefix = storePackageDirectory compid unitid
+      store = storeDirectory compiler
+      prefix = storePackageDirectory compiler unitid
       bindir = prefix </> "bin"
       libdir = prefix </> "lib"
       libsubdir = ""
@@ -3839,7 +3839,7 @@ computeInstallDirs storeDirLayout defaultInstallDirs elaboratedShared elab
       -- use special simplified install dirs
       storePackageInstallDirs'
         storeDirLayout
-        (compilerId (pkgConfigCompiler elaboratedShared))
+        (pkgConfigCompiler elaboratedShared)
         (elabUnitId elab)
 
 -- TODO: [code cleanup] perhaps reorder this code

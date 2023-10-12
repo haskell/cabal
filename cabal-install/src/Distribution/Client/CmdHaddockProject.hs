@@ -54,9 +54,6 @@ import Distribution.Client.TargetProblem (TargetProblem (..))
 import Distribution.Simple.Command
   ( CommandUI (..)
   )
-import Distribution.Simple.Compiler
-  ( Compiler (..)
-  )
 import Distribution.Simple.Flag
   ( Flag (..)
   , fromFlag
@@ -319,7 +316,7 @@ haddockProjectAction flags _extraArgs globalFlags = do
                     packageDir =
                       storePackageDirectory
                         (cabalStoreDirLayout cabalLayout)
-                        (compilerId (pkgConfigCompiler sharedConfig'))
+                        (pkgConfigCompiler sharedConfig')
                         (elabUnitId package)
                     docDir = packageDir </> "share" </> "doc" </> "html"
                     destDir = outputDir </> packageName
