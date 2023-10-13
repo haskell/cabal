@@ -1,2 +1,3 @@
 # cabal v2-sdist
-Error: cabal: The component test suite 'a-tests' cannot be packaged for distribution on its own. Only entire packages may be packaged for distribution.
+Error: [Cabal-7151]
+The component test suite 'a-tests' cannot be packaged for distribution on its own. Only entire packages may be packaged for distribution.
