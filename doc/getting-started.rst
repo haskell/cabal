@@ -30,7 +30,7 @@ To initialize a new Haskell application, run
 
     $ cabal init myapp --non-interactive
 
-in a terminal. This generates the following files in a new ``myapp`` folder:
+in a terminal. This generates the following files in a new ``myapp`` directory:
 
 .. code-block:: console
 
@@ -42,8 +42,7 @@ in a terminal. This generates the following files in a new ``myapp`` folder:
         ├── CHANGELOG.md
         └── myapp.cabal
 
-``myapp.cabal`` is a package description file (commonly referred to as a "Cabal file"), which contains basic metadata (package name and version, author name, etc.),
-its dependencies and how it is built:
+``myapp.cabal`` is a "package description file", commonly referred to as a "Cabal file":
 
 .. code-block:: cabal
 
@@ -59,9 +58,13 @@ its dependencies and how it is built:
         hs-source-dirs:   app
         default-language: Haskell2010
 
-The ``executable`` section shows that this package has a component named ``myapp``
-of the executable type .
-The ``build-depends`` section contains a list of the component's dependencies.
+It contains metadata (package name and version, author name, license, etc.) and sections
+to define package components. Components can be used to split large codebases into smaller, 
+more managable building blocks.
+A component can be of one of several types (executable, library, etc.) and describes, 
+among other things, the location of source files and its dependencies.
+The ``myapp.cabal`` file above defines a single component named ``myapp`` of the executable type.
+Inside that ``executable`` section ``build-depends`` lists the dependencies of this component.
 
 
 ``app/Main.hs`` is where your executable's code lives:
@@ -78,12 +81,13 @@ To run the executable, switch into the project directory with ``cd myapp`` and  
 
 .. code-block:: console
 
-     $ cabal run
+     $ cabal run myapp
      ...
      Hello, Haskell!
 
-The command ``cabal run`` automatically determines if the executable needs to be (re)built
-before running the executable.
+This command automatically determines if the executable needs to be (re)built
+before running the executable. With only one executable component in the package, 
+``cabal run`` (without a component name) is smart enough to infer it, so the name can be omitted.
 
 If you just want to build the executable without running it, run:
 
@@ -152,7 +156,7 @@ Now you can build and re-run your code to see the new output:
 
 .. code-block:: console
 
-   $ cabal run
+   $ cabal run myapp
        ________________________________________________________
       /                                                        \
      | Hello, Haskell!                                          |
@@ -203,7 +207,8 @@ Use the familiar ``cabal run`` command to execute this script:
 
     $ cabal run myscript
 
-On Unix-like systems, a script can be run directly with the execute permission.
+On Unix-like systems, a Haskell script starting with ``#!/usr/bin/env cabal`` like the above can be run directly 
+after setting the execute permission (+x):
 
 .. code-block:: console
 
@@ -212,31 +217,8 @@ On Unix-like systems, a script can be run directly with the execute permission.
        ________________________________________________________
       /                                                        \
      | Hello, Haskell!                                          |
-      \____       _____________________________________________/
-           \    /
-            \  /
-             \/
-       _____   _____
-       \    \  \    \
-        \    \  \    \
-         \    \  \    \
-          \    \  \    \  \-----------|
-           \    \  \    \  \          |
-            \    \  \    \  \---------|
-            /    /  /     \
-           /    /  /       \  \-------|
-          /    /  /    ^    \  \      |
-         /    /  /    / \    \  \ ----|
-        /    /  /    /   \    \
-       /____/  /____/     \____\
-
-Project metadata can also be included:
-
-.. code-block:: haskell
-
-    {- project:
-    with-compiler: ghc-9.4.7
-    -}
+      \____        ____________________________________________/
+           \ ... /
 
 See more in the documentation for :ref:`cabal run`.
 
