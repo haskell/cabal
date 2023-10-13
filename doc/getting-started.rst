@@ -114,7 +114,7 @@ terminal with some embellishment.
    update``.
 
 In our ``myapp.cabal`` file we'll update the ``build-depends`` attribute of
-the ``executable myapp`` section to include ``haskell-say``:
+the executable section to include ``haskell-say``:
 
 .. code-block:: cabal
 
