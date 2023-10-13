@@ -74,7 +74,7 @@ The ``build-depends`` section contains a list of all package dependencies.
     main = putStrLn "Hello, Haskell!"
 
 
-To run the executable, switch into the project folder with ``cd myapp`` and  run 
+To run the executable, switch into the project directory with ``cd myapp`` and  run 
 
 .. code-block:: console
 
