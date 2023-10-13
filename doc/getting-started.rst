@@ -203,7 +203,7 @@ Use the familiar ``cabal run`` command to execute this script:
 
     $ cabal run myscript
 
-On Unix-like systems this can be run directly with execute permission.
+On Unix-like systems, a script can be run directly with the execute permission.
 
 .. code-block:: console
 
