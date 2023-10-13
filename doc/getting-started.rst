@@ -197,7 +197,7 @@ the following file named ``myscript``:
 The necessary sections of a ``.cabal`` file are placed
 directly into the script as a comment.
 
-To execute this script, run:
+Use the familiar ``cabal run`` command to execute this script:
 
 .. code-block:: console
 
