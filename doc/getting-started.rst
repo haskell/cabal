@@ -61,7 +61,7 @@ its dependencies and how it is built:
 
 The ``executable`` section shows that this package has a component named ``myapp``
 of the executable type .
-The ``build-depends`` section contains a list of all package dependencies.
+The ``build-depends`` section contains a list of the component's dependencies.
 
 
 ``app/Main.hs`` is where your executable's code lives:
