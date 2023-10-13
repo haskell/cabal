@@ -59,8 +59,8 @@ its dependencies and how it is built:
         hs-source-dirs:   app
         default-language: Haskell2010
 
-The ``executable`` section shows that this package's build output 
-is an executable called ``myapp`` that we can run on the command line. 
+The ``executable`` section shows that this package has a component named ``myapp``
+of the executable type .
 The ``build-depends`` section contains a list of all package dependencies.
 
 
