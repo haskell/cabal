@@ -821,6 +821,13 @@ renderArgs verbosity tmpFileOpts version comp platform args k = do
         else k (renderedArgs, result)
   where
     outputDir = (unDir $ argOutputDir args)
+    isNotArgContents = isNothing (flagToMaybe $ argContents args)
+    isNotArgIndex = isNothing (flagToMaybe $ argIndex args)
+    isArgGenIndex = fromFlagOrDefault False (argGenIndex args)
+    -- Haddock, when generating HTML, does not generate an index if the options
+    -- --use-contents or --use-index are passed to it. See
+    -- https://haskell-haddock.readthedocs.io/en/latest/invoking.html#cmdoption-use-contents
+    isIndexGenerated = isArgGenIndex && isNotArgContents && isNotArgIndex
     result =
       intercalate ", "
         . map
@@ -828,7 +835,7 @@ renderArgs verbosity tmpFileOpts version comp platform args k = do
               outputDir
                 </> case o of
                   Html
-                    | fromFlagOrDefault False (argGenIndex args) ->
+                    | isIndexGenerated ->
                         "index.html"
                   Html
                     | otherwise ->
