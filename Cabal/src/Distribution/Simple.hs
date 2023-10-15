@@ -155,6 +155,12 @@ defaultMainWithHooksNoReadArgs :: UserHooks -> GenericPackageDescription -> [Str
 defaultMainWithHooksNoReadArgs hooks pkg_descr =
   defaultMainHelper hooks{readDesc = return (Just pkg_descr)}
 
+-- | Less the helper, and more the core splitter of
+-- the Simple build system.
+--
+-- Given hooks and args, this runs commandsRun
+-- onto the args, getting packed data back,
+-- which is then converted to IO actions.
 defaultMainHelper :: UserHooks -> Args -> IO ()
 defaultMainHelper hooks args = topHandler $ do
   args' <- expandResponse args
