@@ -73,7 +73,6 @@ escape cs c
 -- for allowing complex arguments to cabal
 -- and cabal-install when working on command lines
 -- with input length limitations.
-
 expandResponse :: [String] -> IO [String]
 expandResponse = go recursionLimit "."
   where

@@ -185,9 +185,9 @@ defaultMainHelper hooks args = topHandler $ do
       exitWith (ExitFailure 1)
     printNumericVersion = putStrLn $ prettyShow cabalVersion
     printVersion =
-      putStrLn $
-        "Cabal library version "
-          ++ prettyShow cabalVersion
+      putStrLn
+        $ "Cabal library version "
+        ++ prettyShow cabalVersion
 
     progs = addKnownPrograms (hookedPrograms hooks) defaultProgramDb
     commands =
@@ -649,11 +649,11 @@ getBuildConfig hooks verbosity distPref = do
   where
     reconfigure :: FilePath -> LocalBuildInfo -> IO LocalBuildInfo
     reconfigure pkg_descr_file lbi = do
-      notice verbosity $
-        pkg_descr_file
-          ++ " has been changed. "
-          ++ "Re-configuring with most recently used options. "
-          ++ "If this fails, please run configure manually.\n"
+      notice verbosity
+        $ pkg_descr_file
+        ++ " has been changed. "
+        ++ "Re-configuring with most recently used options. "
+        ++ "If this fails, please run configure manually.\n"
       let cFlags = configFlags lbi
       let cFlags' =
             cFlags

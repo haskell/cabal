@@ -320,8 +320,8 @@ warnIfAssertionsAreEnabled =
 -- returning IO values for execution.
 mainWorker :: [String] -> IO ()
 mainWorker args = do
-  topHandler $
-    case commandsRun (globalCommand commands) commands args of
+  topHandler
+    $ case commandsRun (globalCommand commands) commands args of
       CommandHelp help -> printGlobalHelp help
       CommandList opts -> printOptionsList opts
       CommandErrors errs -> printErrors errs
@@ -357,26 +357,26 @@ mainWorker args = do
       pname <- getProgName
       configFile <- defaultConfigFile
       putStr (help pname)
-      putStr $
-        "\nYou can edit the cabal configuration file to set defaults:\n"
-          ++ "  "
-          ++ configFile
-          ++ "\n"
+      putStr
+        $ "\nYou can edit the cabal configuration file to set defaults:\n"
+        ++ "  "
+        ++ configFile
+        ++ "\n"
       exists <- doesFileExist configFile
-      unless exists $
-        putStrLn $
-          "This file will be generated with sensible "
-            ++ "defaults if you run 'cabal update'."
+      unless exists
+        $ putStrLn
+        $ "This file will be generated with sensible "
+        ++ "defaults if you run 'cabal update'."
     printOptionsList = putStr . unlines
     printErrors errs = dieNoVerbosity $ intercalate "\n" errs
     printNumericVersion = putStrLn $ display cabalInstallVersion
     printVersion =
-      putStrLn $
-        "cabal-install version "
-          ++ display cabalInstallVersion
-          ++ "\ncompiled using version "
-          ++ display cabalVersion
-          ++ " of the Cabal library "
+      putStrLn
+        $ "cabal-install version "
+        ++ display cabalInstallVersion
+        ++ "\ncompiled using version "
+        ++ display cabalVersion
+        ++ " of the Cabal library "
 
     commands = map commandFromSpec commandSpecs
     commandSpecs =
@@ -616,8 +616,10 @@ filterBuildFlags version config buildFlags
       buildFlags
         { -- Take the 'jobs' setting config file into account.
           buildNumJobs =
-            Flag . Just . determineNumJobs $
-              (numJobsConfigFlag `mappend` numJobsCmdLineFlag)
+            Flag
+              . Just
+              . determineNumJobs
+              $ (numJobsConfigFlag `mappend` numJobsCmdLineFlag)
         }
     numJobsConfigFlag = installNumJobs . savedInstallFlags $ config
     numJobsCmdLineFlag = buildNumJobs buildFlags
@@ -657,8 +659,8 @@ replAction replFlags extraArgs globalFlags = do
               , replDistPref = toFlag distPref
               }
 
-      nixShell verbosity distPref globalFlags config $
-        setupWrapper verbosity setupOptions Nothing (Cabal.replCommand progDb) (const replFlags') (const extraArgs)
+      nixShell verbosity distPref globalFlags config
+        $ setupWrapper verbosity setupOptions Nothing (Cabal.replCommand progDb) (const replFlags') (const extraArgs)
 
     -- No .cabal file in the current directory: just start the REPL (possibly
     -- using the sandbox package DB).
@@ -725,9 +727,9 @@ installAction
       targets <- readUserTargets verb extraArgs
 
       let configFlags' =
-            maybeForceTests installFlags' $
-              savedConfigureFlags config
-                `mappend` configFlags{configDistPref = toFlag dist}
+            maybeForceTests installFlags'
+              $ savedConfigureFlags config
+              `mappend` configFlags{configDistPref = toFlag dist}
           configExFlags' =
             defaultConfigExFlags
               `mappend` savedConfigureExFlags config
@@ -866,10 +868,10 @@ componentNamesFromLBI verbosity distPref targetsDescr compPred = do
               $ LBI.pkgComponents pkgDescr
       if null names
         then do
-          notice verbosity $
-            "Package has no buildable "
-              ++ targetsDescr
-              ++ "."
+          notice verbosity
+            $ "Package has no buildable "
+            ++ targetsDescr
+            ++ "."
           exitSuccess -- See #3215.
         else return $! (ComponentNames names)
 
@@ -1119,13 +1121,14 @@ uploadAction uploadFlags extraArgs globalFlags = do
   let uploadFlags' = savedUploadFlags config `mappend` uploadFlags
       globalFlags' = savedGlobalFlags config `mappend` globalFlags
       tarfiles = extraArgs
-  when (null tarfiles && not (fromFlag (uploadDoc uploadFlags'))) $
-    dieWithException verbosity UploadAction
+  when (null tarfiles && not (fromFlag (uploadDoc uploadFlags')))
+    $ dieWithException verbosity UploadAction
   checkTarFiles extraArgs
   maybe_password <-
     case uploadPasswordCmd uploadFlags' of
       Flag (xs : xss) ->
-        Just . Password
+        Just
+          . Password
           <$> getProgramInvocationOutput
             verbosity
             (simpleProgramInvocation xs xss)
@@ -1133,8 +1136,8 @@ uploadAction uploadFlags extraArgs globalFlags = do
   withRepoContext verbosity globalFlags' $ \repoContext -> do
     if fromFlag (uploadDoc uploadFlags')
       then do
-        when (length tarfiles > 1) $
-          dieWithException verbosity UploadActionDocumentation
+        when (length tarfiles > 1)
+          $ dieWithException verbosity UploadActionDocumentation
         tarfile <- maybe (generateDocTarball config) return $ listToMaybe tarfiles
         Upload.uploadDoc
           verbosity
@@ -1171,12 +1174,12 @@ uploadAction uploadFlags extraArgs globalFlags = do
           (file', ".gz") -> takeExtension file' == ".tar"
           _ -> False
     generateDocTarball config = do
-      notice verbosity $
-        "No documentation tarball specified. "
-          ++ "Building a documentation tarball with default settings...\n"
-          ++ "If you need to customise Haddock options, "
-          ++ "run 'haddock --for-hackage' first "
-          ++ "to generate a documentation tarball."
+      notice verbosity
+        $ "No documentation tarball specified. "
+        ++ "Building a documentation tarball with default settings...\n"
+        ++ "If you need to customise Haddock options, "
+        ++ "run 'haddock --for-hackage' first "
+        ++ "to generate a documentation tarball."
       haddockAction
         (defaultHaddockFlags{haddockForHackage = Flag ForHackage})
         []
@@ -1188,9 +1191,9 @@ uploadAction uploadFlags extraArgs globalFlags = do
 checkAction :: Flag Verbosity -> [String] -> Action
 checkAction verbosityFlag extraArgs _globalFlags = do
   let verbosity = fromFlag verbosityFlag
-  unless (null extraArgs) $
-    dieWithException verbosity $
-      CheckAction extraArgs
+  unless (null extraArgs)
+    $ dieWithException verbosity
+    $ CheckAction extraArgs
   allOk <- Check.check (fromFlag verbosityFlag)
   unless allOk exitFailure
 
@@ -1209,9 +1212,9 @@ formatAction verbosityFlag extraArgs _globalFlags = do
 reportAction :: ReportFlags -> [String] -> Action
 reportAction reportFlags extraArgs globalFlags = do
   let verbosity = fromFlag (reportVerbosity reportFlags)
-  unless (null extraArgs) $
-    dieWithException verbosity $
-      ReportAction extraArgs
+  unless (null extraArgs)
+    $ dieWithException verbosity
+    $ ReportAction extraArgs
   config <- loadConfig verbosity (globalConfigFile globalFlags)
   let globalFlags' = savedGlobalFlags config `mappend` globalFlags
       reportFlags' = savedReportFlags config `mappend` reportFlags
@@ -1333,9 +1336,9 @@ actAsSetupAction actAsSetupFlags args _globalFlags =
 manpageAction :: [CommandSpec action] -> ManpageFlags -> [String] -> Action
 manpageAction commands flags extraArgs _ = do
   let verbosity = fromFlag (manpageVerbosity flags)
-  unless (null extraArgs) $
-    dieWithException verbosity $
-      ManpageAction extraArgs
+  unless (null extraArgs)
+    $ dieWithException verbosity
+    $ ManpageAction extraArgs
   pname <- getProgName
   let cabalCmd =
         if takeExtension pname == ".exe"
