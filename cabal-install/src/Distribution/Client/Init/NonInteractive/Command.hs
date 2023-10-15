@@ -40,7 +40,7 @@ import Distribution.Client.Init.Types
 import Distribution.Client.Compat.Prelude hiding (getLine, head, last, putStr, putStrLn)
 import Prelude ()
 
-import Data.List (head, last)
+import Data.List (last)
 import qualified Data.List.NonEmpty as NEL
 
 import Distribution.CabalSpecVersion (CabalSpecVersion (..))
@@ -340,12 +340,18 @@ packageTypeHeuristics flags = getPackageType flags $ guessPackageType flags
 --   to a default value.
 mainFileHeuristics :: Interactive m => InitFlags -> m HsFilePath
 mainFileHeuristics flags = do
-  appDir <- head <$> appDirsHeuristics flags
+  appDirs <- appDirsHeuristics flags
+  let appDir = case appDirs of
+        [] -> error "impossible: appDirsHeuristics returned empty list of dirs"
+        (appDir' : _) -> appDir'
   getMainFile flags . guessMainFile $ appDir
 
 testMainHeuristics :: Interactive m => InitFlags -> m HsFilePath
 testMainHeuristics flags = do
-  testDir <- head <$> testDirsHeuristics flags
+  testDirs' <- testDirsHeuristics flags
+  let testDir = case testDirs' of
+        [] -> error "impossible: testDirsHeuristics returned empty list of dirs"
+        (testDir' : _) -> testDir'
   guessMainFile testDir
 
 initializeTestSuiteHeuristics :: Interactive m => InitFlags -> m Bool

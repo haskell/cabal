@@ -72,9 +72,9 @@ module Distribution.Client.InstallPlan
   , reverseDependencyClosure
   ) where
 
-import Distribution.Client.Compat.Prelude hiding (lookup, tail, toList)
+import Distribution.Client.Compat.Prelude hiding (lookup, toList)
 import Distribution.Compat.Stack (WithCallStack)
-import Prelude (tail)
+import Prelude ()
 
 import Distribution.Client.Types hiding (BuildOutcomes)
 import qualified Distribution.PackageDescription as PD
@@ -757,13 +757,13 @@ failed
   -> ([srcpkg], Processing)
 failed plan (Processing processingSet completedSet failedSet) pkgid =
   assert (pkgid `Set.member` processingSet) $
-    assert (all (`Set.notMember` processingSet) (tail newlyFailedIds)) $
-      assert (all (`Set.notMember` completedSet) (tail newlyFailedIds)) $
+    assert (all (`Set.notMember` processingSet) (drop 1 newlyFailedIds)) $
+      assert (all (`Set.notMember` completedSet) (drop 1 newlyFailedIds)) $
         -- but note that some newlyFailed may already be in the failed set
         -- since one package can depend on two packages that both fail and
         -- so would be in the rev-dep closure for both.
         assert (processingInvariant plan processing') $
-          ( map asConfiguredPackage (tail newlyFailed)
+          ( map asConfiguredPackage (drop 1 newlyFailed)
           , processing'
           )
   where
