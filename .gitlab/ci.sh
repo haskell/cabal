@@ -65,6 +65,13 @@ args=(
     ${ADD_CABAL_ARGS}
 )
 
+# Make sure we get rid of any global index-state
+run cabal update hackage.haskell.org,HEAD
+# cabal-install used to have a bug that caused reporting the wrong index-state, so we do it manually too
+
+info "This is the index-state as determined by $CABAL_DIR/packages/hackage.haskell.org/01-index.timestamp: $(cat $CABAL_DIR/packages/hackage.haskell.org/01-index.timestamp)"
+
+
 run cabal v2-build ${args[@]} cabal-install
 
 mkdir "$CI_PROJECT_DIR/out"
