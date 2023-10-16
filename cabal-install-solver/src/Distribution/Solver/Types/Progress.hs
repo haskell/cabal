@@ -1,9 +1,11 @@
+{-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE DerivingStrategies #-}
 module Distribution.Solver.Types.Progress
     ( Progress(..)
     , foldProgress
     , Message(..)
     , Entry(..)
-    , EntryMsg(..)
+    , EntryMessage(..)
     , SummarizedMessage(..)
     ) where
 
@@ -84,7 +86,10 @@ data Entry
   | LogUnknownPackage QPN (GoalReason QPN)
   | LogSuccessMsg
   | LogFailureMsg ConflictSet FailReason
+  deriving stock (Show, Eq)
 
-data EntryMsg = AtLevel Int Entry
+data EntryMessage = AtLevel Int Entry
+  deriving stock (Show, Eq)
 
-data SummarizedMessage = SummarizedMsg EntryMsg | ErrorMsg String
+data SummarizedMessage = SummarizedMessage EntryMessage | ErrorMessage String
+  deriving stock (Show, Eq)

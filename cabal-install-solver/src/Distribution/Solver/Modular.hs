@@ -62,7 +62,7 @@ import Distribution.Solver.Types.PackagePreferences
 import Distribution.Solver.Types.PkgConfigDb
     ( PkgConfigDb )
 import Distribution.Solver.Types.Progress
-    ( Progress(..), foldProgress, SummarizedMessage(ErrorMsg) )
+    ( Progress(..), foldProgress, SummarizedMessage(ErrorMessage) )
 import Distribution.Solver.Types.Variable ( Variable(..) )
 import Distribution.System
     ( Platform(..) )
@@ -206,7 +206,7 @@ solve' sc cinfo idx pkgConfigDB pprefs gcs pns =
     messages = foldProgress (:) (const []) (const [])
 
 mkErrorMsg :: String -> SummarizedMessage
-mkErrorMsg msg = ErrorMsg msg
+mkErrorMsg msg = ErrorMessage msg
 
 -- | Try to remove variables from the given conflict set to create a minimal
 -- conflict set.

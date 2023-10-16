@@ -48,7 +48,7 @@ import Distribution.Solver.Types.PackagePath
 import Distribution.Solver.Types.Progress
     ( Progress(..),
       SummarizedMessage(..),
-      EntryMsg(..),
+      EntryMessage(..),
       Entry(..),
       Message(..) )
 import Distribution.Types.LibraryName
@@ -57,10 +57,10 @@ import Distribution.Types.UnqualComponentName
     ( unUnqualComponentName )
 
 renderSummarizedMessage :: SummarizedMessage -> String
-renderSummarizedMessage (SummarizedMsg i) = displayMessageAtLevel i
-renderSummarizedMessage (ErrorMsg s) = s
+renderSummarizedMessage (SummarizedMessage i) = displayMessageAtLevel i
+renderSummarizedMessage (ErrorMessage s) = s
 
-displayMessageAtLevel :: EntryMsg -> String
+displayMessageAtLevel :: EntryMessage -> String
 displayMessageAtLevel (AtLevel l msg) =
   let s = show l
   in  "[" ++ replicate (3 - length s) '_' ++ s ++ "] " ++ displayMessage msg
@@ -101,32 +101,32 @@ summarizeMessages = go 0
         goPSkip l qpn [i] conflicts ms
 
     go !l (Step (TryF qfn b) (Step Enter (Step (Failure c fr) (Step Leave ms)))) =
-        Step (SummarizedMsg $ AtLevel l $ (LogRejectF qfn b c fr)) (go l ms)
+        Step (SummarizedMessage $ AtLevel l $ (LogRejectF qfn b c fr)) (go l ms)
 
     go !l (Step (TryS qsn b) (Step Enter (Step (Failure c fr) (Step Leave ms)))) =
-        Step (SummarizedMsg $ AtLevel l $ (LogRejectS qsn b c fr)) (go l ms)
+        Step (SummarizedMessage $ AtLevel l $ (LogRejectS qsn b c fr)) (go l ms)
 
     -- "Trying ..." message when a new goal is started
     go !l (Step (Next (Goal (P _  ) gr)) (Step (TryP qpn' i) ms@(Step Enter (Step (Next _) _)))) =
-        Step (SummarizedMsg $ AtLevel l $ (LogTryingP qpn' i (Just gr))) (go l ms)
+        Step (SummarizedMessage $ AtLevel l $ (LogTryingP qpn' i (Just gr))) (go l ms)
 
     go !l (Step (Next (Goal (P qpn) gr)) (Step (Failure _c UnknownPackage) ms)) =
-        Step (SummarizedMsg $ AtLevel l $ (LogUnknownPackage qpn gr)) (go l ms)
+        Step (SummarizedMessage $ AtLevel l $ (LogUnknownPackage qpn gr)) (go l ms)
 
     -- standard display
     go !l (Step Enter                    ms) = go (l+1) ms
     go !l (Step Leave                    ms) = go (l-1) ms
 
-    go !l (Step (TryP qpn i)             ms) = Step (SummarizedMsg $ AtLevel l $ (LogTryingP qpn i Nothing)) (go l ms)
-    go !l (Step (TryF qfn b)             ms) = Step (SummarizedMsg $ AtLevel l $ (LogTryingF qfn b)) (go l ms)
-    go !l (Step (TryS qsn b)             ms) = Step (SummarizedMsg $ AtLevel l $ (LogTryingS qsn b)) (go l ms)
-    go !l (Step (Next (Goal (P qpn) gr)) ms) = Step (SummarizedMsg $ AtLevel l $ (LogPackageGoal qpn gr)) (go l ms)
+    go !l (Step (TryP qpn i)             ms) = Step (SummarizedMessage $ AtLevel l $ (LogTryingP qpn i Nothing)) (go l ms)
+    go !l (Step (TryF qfn b)             ms) = Step (SummarizedMessage $ AtLevel l $ (LogTryingF qfn b)) (go l ms)
+    go !l (Step (TryS qsn b)             ms) = Step (SummarizedMessage $ AtLevel l $ (LogTryingS qsn b)) (go l ms)
+    go !l (Step (Next (Goal (P qpn) gr)) ms) = Step (SummarizedMessage $ AtLevel l $ (LogPackageGoal qpn gr)) (go l ms)
     go !l (Step (Next _)                 ms) = go l ms -- ignore flag goals in the log
 
     -- 'Skip' should always be handled by 'goPSkip' in the case above.
-    go !l (Step (Skip conflicts)         ms) = Step (SummarizedMsg $ AtLevel l $ (LogSkipping conflicts)) (go l ms)
-    go !l (Step (Success)                ms) = Step (SummarizedMsg $ AtLevel l $ LogSuccessMsg) (go l ms)
-    go !l (Step (Failure c fr)           ms) = Step (SummarizedMsg $ AtLevel l $ (LogFailureMsg c fr)) (go l ms)
+    go !l (Step (Skip conflicts)         ms) = Step (SummarizedMessage $ AtLevel l $ (LogSkipping conflicts)) (go l ms)
+    go !l (Step (Success)                ms) = Step (SummarizedMessage $ AtLevel l $ LogSuccessMsg) (go l ms)
+    go !l (Step (Failure c fr)           ms) = Step (SummarizedMessage $ AtLevel l $ (LogFailureMsg c fr)) (go l ms)
 
     -- special handler for many subsequent package rejections
     goPReject :: Int
@@ -140,7 +140,7 @@ summarizeMessages = go 0
       | qpn == qpn' && fr == fr' =
         goPReject l qpn (i : is) c fr ms
     goPReject l qpn is c fr ms =
-        Step (SummarizedMsg $ AtLevel l $ (LogRejectMany qpn is c fr)) (go l ms)
+        Step (SummarizedMessage $ AtLevel l $ (LogRejectMany qpn is c fr)) (go l ms)
 
     -- Handle many subsequent skipped package instances.
     goPSkip :: Int
@@ -152,7 +152,7 @@ summarizeMessages = go 0
     goPSkip l qpn is conflicts (Step (TryP qpn' i) (Step Enter (Step (Skip conflicts') (Step Leave ms))))
       | qpn == qpn' && conflicts == conflicts' = goPSkip l qpn (i : is) conflicts ms
     goPSkip l qpn is conflicts ms =
-       Step (SummarizedMsg $ AtLevel l $ (LogSkipMany qpn is conflicts)) (go l ms)
+       Step (SummarizedMessage $ AtLevel l $ (LogSkipMany qpn is conflicts)) (go l ms)
 
 -- | Display the set of 'Conflicts' for a skipped package version.
 showConflicts :: Set CS.Conflict -> String

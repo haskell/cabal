@@ -14,6 +14,9 @@
 -- Portability :  portable
 --
 -- Top level interface to dependency resolution.
+{-# LANGUAGE InstanceSigs #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
+
 module Distribution.Client.Dependency
   ( -- * The main package dependency resolver
     DepResolverParams
@@ -59,6 +62,7 @@ module Distribution.Client.Dependency
   , setSolveExecutables
   , setGoalOrder
   , setSolverVerbosity
+  , setSolverOutputJson
   , removeLowerBounds
   , removeUpperBounds
   , addDefaultSetupDependencies
@@ -176,10 +180,11 @@ import Distribution.Solver.Types.PackagePreferences
   )
 import Distribution.Solver.Types.PkgConfigDb (PkgConfigDb)
 import Distribution.Solver.Types.Progress
-  ( Progress (..)
-  , SummarizedMessage
-  , foldProgress
-  )
+    ( SummarizedMessage(..),
+      Progress(..),
+      foldProgress,
+      Entry(..),
+      EntryMessage(..) )
 import Distribution.Solver.Types.ResolverPackage
   ( ResolverPackage (Configured)
   )
@@ -226,6 +231,8 @@ import Distribution.Version
   , transformCaretUpper
   , withinRange
   )
+import Distribution.Client.Utils.Json
+    ( encodeToString, ToJSON(..), (.=), object, Value(String) )
 
 -- ------------------------------------------------------------
 
@@ -266,6 +273,7 @@ data DepResolverParams = DepResolverParams
   , depResolverGoalOrder :: Maybe (Variable QPN -> Variable QPN -> Ordering)
   -- ^ Function to override the solver's goal-ordering heuristics.
   , depResolverVerbosity :: Verbosity
+  , depResolverOutputJson :: Bool
   }
 
 showDepResolverParams :: DepResolverParams -> String
@@ -311,6 +319,8 @@ showDepResolverParams p =
     showLabeledConstraint :: LabeledPackageConstraint -> String
     showLabeledConstraint (LabeledPackageConstraint pc src) =
       showPackageConstraint pc ++ " (" ++ showConstraintSource src ++ ")"
+
+
 
 -- | A package selection preference for a particular package.
 --
@@ -363,6 +373,7 @@ basicDepResolverParams installedPkgIndex sourcePkgIndex =
     , depResolverSolveExecutables = SolveExecutables True
     , depResolverGoalOrder = Nothing
     , depResolverVerbosity = normal
+    , depResolverOutputJson = False
     }
 
 addTargets
@@ -496,6 +507,12 @@ setSolverVerbosity :: Verbosity -> DepResolverParams -> DepResolverParams
 setSolverVerbosity verbosity params =
   params
     { depResolverVerbosity = verbosity
+    }
+
+setSolverOutputJson :: Bool -> DepResolverParams -> DepResolverParams
+setSolverOutputJson outputJson params =
+  params
+    { depResolverOutputJson = outputJson
     }
 
 -- | Some packages are specific to a given compiler version and should never be
@@ -886,13 +903,16 @@ resolveDependencies platform comp pkgConfigDB params =
                     solveExes
                     order
                     verbosity
+                    outputJson
                   ) =
         if asBool (depResolverAllowBootLibInstalls params)
           then params
           else dontInstallNonReinstallablePackages params
 
     formatProgress :: Progress SummarizedMessage String a -> Progress String String a
-    formatProgress p = foldProgress (\x xs -> Step (renderSummarizedMessage x) xs) Fail Done p
+    formatProgress p = foldProgress (\x xs -> Step (formatter x) xs) Fail Done p
+      where
+        formatter = if outputJson then encodeToString else renderSummarizedMessage
 
     preferences :: PackageName -> PackagePreferences
     preferences = interpretPackagesPreference targets defpref prefs
@@ -1210,6 +1230,7 @@ resolveWithoutDependencies
       _onlyConstrained
       _order
       _verbosity
+      _outputJson
     ) =
     collectEithers $ map selectPackage (Set.toList targets)
     where
@@ -1286,3 +1307,33 @@ instance Show ResolveNoDepsError where
       ++ prettyShow name
       ++ " that satisfies "
       ++ prettyShow (simplifyVersionRange ver)
+
+-------------------------------------------------------------------------------
+-- Orphans
+-------------------------------------------------------------------------------
+
+instance ToJSON SummarizedMessage where
+  toJSON :: SummarizedMessage -> Value
+  toJSON (SummarizedMessage x) = object ["status" .= String "success", "message" .= toJSON x]
+  toJSON (ErrorMessage x) = object ["status" .= String "failure", "message" .= String x]
+
+instance ToJSON EntryMessage where
+  toJSON :: EntryMessage -> Value
+  toJSON (AtLevel _ x) = toJSON x
+
+instance ToJSON Entry where
+  toJSON :: Entry -> Value
+  toJSON (LogPackageGoal _ _) = error "To be implemented..."
+  toJSON (LogRejectF _ _ _ _) = error "To be implemented..."
+  toJSON (LogRejectS _ _ _ _) = error "TODO"
+  toJSON (LogSkipping _) = error "To be implemented..."
+  toJSON (LogTryingF _ _) = error "To be implemented..."
+  toJSON (LogTryingP _ _ _) = error "To be implemented..."
+  toJSON (LogTryingS _ _) = error "To be implemented..."
+  toJSON (LogRejectMany _ _ _ _) = error "To be implemented..."
+  toJSON (LogSkipMany _ _ _) = error "To be implemented..."
+  toJSON (LogUnknownPackage _ _) = error "To be implemented..."
+  toJSON (LogSuccessMsg) = error "To be implemented..."
+  toJSON (LogFailureMsg _ _) = error "To be implemented..."
+
+  -- TODO: write a test that assert that: toJSON fromJson == fromJSON toJson == id
