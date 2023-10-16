@@ -22,10 +22,10 @@ data SolverFailure =
 -- 'keepLog'), for efficiency.
 displayLogMessages :: Bool
                    -> RetryLog Message SolverFailure a
-                   -> RetryLog String SolverFailure a
+                   -> RetryLog SolverTrace SolverFailure a
 displayLogMessages keepLog lg = fromProgress $
     if keepLog
-    then showMessages progress
+    then groupMessages progress
     else foldProgress (const id) Fail Done progress
   where
     progress = toProgress lg

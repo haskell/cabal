@@ -54,7 +54,7 @@ import Distribution.Simple.Setup
 import Distribution.Simple.Utils
          ( ordNubBy )
 import Distribution.Verbosity
-
+import Distribution.Solver.Modular.Message (SolverTrace (..))
 
 -- | Ties the two worlds together: classic cabal-install vs. the modular
 -- solver. Performs the necessary translations before and after.
@@ -120,25 +120,25 @@ solve' :: SolverConfig
        -> (PN -> PackagePreferences)
        -> Map PN [LabeledPackageConstraint]
        -> Set PN
-       -> Progress String String (Assignment, RevDepMap)
+       -> Progress SolverTrace String (Assignment, RevDepMap)
 solve' sc cinfo idx pkgConfigDB pprefs gcs pns =
-    toProgress $ retry (runSolver printFullLog sc) createErrorMsg
+    toProgress $ retry (runSolver printFullLog sc) handleFailure
   where
     runSolver :: Bool -> SolverConfig
-              -> RetryLog String SolverFailure (Assignment, RevDepMap)
+              -> RetryLog SolverTrace SolverFailure (Assignment, RevDepMap)
     runSolver keepLog sc' =
         displayLogMessages keepLog $
         solve sc' cinfo idx pkgConfigDB pprefs gcs pns
 
-    createErrorMsg :: SolverFailure
-                   -> RetryLog String String (Assignment, RevDepMap)
-    createErrorMsg failure@(ExhaustiveSearch cs cm) =
+    handleFailure :: SolverFailure
+                   -> RetryLog SolverTrace String (Assignment, RevDepMap)
+    handleFailure failure@(ExhaustiveSearch cs _cm) =
       if asBool $ minimizeConflictSet sc
-      then continueWith ("Found no solution after exhaustively searching the "
+      then continueWith (mkErrorMsg ("Found no solution after exhaustively searching the "
                           ++ "dependency tree. Rerunning the dependency solver "
                           ++ "to minimize the conflict set ({"
-                          ++ showConflictSet cs ++ "}).") $
-           retry (tryToMinimizeConflictSet (runSolver printFullLog) sc cs cm) $
+                          ++ showConflictSet cs ++ "}).")) $
+           retry (tryToMinimizeConflictSet (runSolver printFullLog) sc cs _cm) $
                \case
                   ExhaustiveSearch cs' cm' ->
                       fromProgress $ Fail $
@@ -151,13 +151,13 @@ solve' sc cinfo idx pkgConfigDB pprefs gcs pns =
                        ++ "Original error message:\n"
                        ++ rerunSolverForErrorMsg cs
                        ++ finalErrorMsg sc failure
-      else fromProgress $ Fail $
-           rerunSolverForErrorMsg cs ++ finalErrorMsg sc failure
-    createErrorMsg failure@BackjumpLimitReached     =
+      else
+        fromProgress $ Fail $ rerunSolverForErrorMsg cs ++ finalErrorMsg sc failure
+    handleFailure failure@BackjumpLimitReached     =
         continueWith
-             ("Backjump limit reached. Rerunning dependency solver to generate "
+             (mkErrorMsg ("Backjump limit reached. Rerunning dependency solver to generate "
               ++ "a final conflict set for the search tree containing the "
-              ++ "first backjump.") $
+              ++ "first backjump.")) $
         retry (runSolver printFullLog sc { pruneAfterFirstSuccess = PruneAfterFirstSuccess True }) $
             \case
                ExhaustiveSearch cs _ ->
@@ -181,12 +181,15 @@ solve' sc cinfo idx pkgConfigDB pprefs gcs pns =
           -- original goal order.
           goalOrder' = preferGoalsFromConflictSet cs <> fromMaybe mempty (goalOrder sc)
 
-      in unlines ("Could not resolve dependencies:" : messages (toProgress (runSolver True sc')))
+      in unlines ("Could not resolve dependencies:" : map show (messages (toProgress (runSolver True sc'))))
 
     printFullLog = solverVerbosity sc >= verbose
 
     messages :: Progress step fail done -> [step]
     messages = foldProgress (:) (const []) (const [])
+
+mkErrorMsg :: String -> SolverTrace
+mkErrorMsg msg = ErrorMsg msg
 
 -- | Try to remove variables from the given conflict set to create a minimal
 -- conflict set.
@@ -219,13 +222,13 @@ solve' sc cinfo idx pkgConfigDB pprefs gcs pns =
 --    solver to add new unnecessary variables to the conflict set. This function
 --    discards the result from any run that adds new variables to the conflict
 --    set, but the end result may not be completely minimized.
-tryToMinimizeConflictSet :: forall a . (SolverConfig -> RetryLog String SolverFailure a)
+tryToMinimizeConflictSet :: forall a . (SolverConfig -> RetryLog SolverTrace SolverFailure a)
                          -> SolverConfig
                          -> ConflictSet
                          -> ConflictMap
-                         -> RetryLog String SolverFailure a
+                         -> RetryLog SolverTrace SolverFailure a
 tryToMinimizeConflictSet runSolver sc cs cm =
-    foldl (\r v -> retryNoSolution r $ tryToRemoveOneVar v)
+    foldl (\r v -> retryMap mkErrorMsg $ retryNoSolution (retryMap show r) $ tryToRemoveOneVar v)
           (fromProgress $ Fail $ ExhaustiveSearch cs cm)
           (CS.toList cs)
   where
@@ -258,7 +261,7 @@ tryToMinimizeConflictSet runSolver sc cs cm =
       | otherwise =
         continueWith ("Trying to remove variable " ++ varStr ++ " from the "
                       ++ "conflict set.") $
-        retry (runSolver sc') $ \case
+        retry (retryMap show $ runSolver sc') $ \case
             err@(ExhaustiveSearch cs' _)
               | CS.toSet cs' `isSubsetOf` CS.toSet smallestKnownCS ->
                   let msg = if not $ CS.member v cs'
@@ -296,6 +299,9 @@ tryToMinimizeConflictSet runSolver sc cs cm =
     retryNoSolution lg f = retry lg $ \case
         ExhaustiveSearch cs' cm' -> f cs' cm'
         BackjumpLimitReached     -> fromProgress (Fail BackjumpLimitReached)
+
+    retryMap :: (t -> step) -> RetryLog t fail done -> RetryLog step fail done
+    retryMap f l = fromProgress $ (\p -> foldProgress (\x xs -> Step (f x) xs) Fail Done p) $ toProgress l
 
 -- | Goal ordering that chooses goals contained in the conflict set before
 -- other goals.

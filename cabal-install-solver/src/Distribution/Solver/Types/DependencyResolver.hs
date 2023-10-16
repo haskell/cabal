@@ -17,6 +17,7 @@ import Distribution.Simple.PackageIndex ( InstalledPackageIndex )
 import Distribution.Package ( PackageName )
 import Distribution.Compiler ( CompilerInfo )
 import Distribution.System ( Platform )
+import Distribution.Solver.Modular.Message ( SolverTrace )
 
 -- | A dependency resolver is a function that works out an installation plan
 -- given the set of installed and available packages and a set of deps to
@@ -34,4 +35,4 @@ type DependencyResolver loc = Platform
                            -> (PackageName -> PackagePreferences)
                            -> [LabeledPackageConstraint]
                            -> Set PackageName
-                           -> Progress String String [ResolverPackage loc]
+                           -> Progress SolverTrace String [ResolverPackage loc]

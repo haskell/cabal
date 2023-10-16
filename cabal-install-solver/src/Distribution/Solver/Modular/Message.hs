@@ -2,7 +2,8 @@
 
 module Distribution.Solver.Modular.Message (
     Message(..),
-    showMessages
+    SolverTrace(..),
+    groupMessages,
   ) where
 
 import qualified Data.List as L
@@ -41,51 +42,130 @@ data Message =
   | Success
   | Failure ConflictSet FailReason
 
+data Log
+  = PackageGoal QPN QGoalReason
+  | RejectF QFN Bool ConflictSet FailReason
+  | RejectS QSN Bool ConflictSet FailReason
+  | Skipping' (Set CS.Conflict)
+  | TryingF QFN Bool
+  | TryingP QPN POption (Maybe (GoalReason QPN))
+  | TryingS QSN Bool
+  | RejectMany QPN [POption] ConflictSet FailReason
+  | SkipMany QPN [POption] (Set CS.Conflict)
+  | UnknownPackage' QPN (GoalReason QPN)
+  | SuccessMsg
+  | FailureMsg ConflictSet FailReason
+
+data AtLevel a = AtLevel Int a
+
+type Trace = AtLevel Log
+
+data SolverTrace = SolverTrace Trace | ErrorMsg String
+
+instance Show SolverTrace where
+    show (SolverTrace i) = displayMessageAtLevel i
+    show (ErrorMsg s) = show s
+
+instance Show Log where
+    show = displayMessage
+
+displayMessageAtLevel :: Trace -> String
+displayMessageAtLevel (AtLevel l msg) =
+  let s = show l
+  in  "[" ++ replicate (3 - length s) '_' ++ s ++ "] " ++ displayMessage msg
+
+displayMessage :: Log -> String
+displayMessage (PackageGoal qpn gr) = "next goal: " ++ showQPN qpn ++ showGR gr
+displayMessage (RejectF qfn b c fr) = "rejecting: " ++ showQFNBool qfn b ++ showFR c fr
+displayMessage (RejectS qsn b c fr) = "rejecting: " ++ showQSNBool qsn b ++ showFR c fr
+displayMessage (Skipping' cs) = showConflicts cs
+displayMessage (TryingF qfn b) = "trying: " ++ showQFNBool qfn b
+displayMessage (TryingP qpn i mgr) = "trying: " ++ showQPNPOpt qpn i ++ maybe "" showGR mgr
+displayMessage (TryingS qsn b) = "trying: " ++ showQSNBool qsn b
+displayMessage (UnknownPackage' qpn gr) = "unknown package" ++ showQPN qpn ++ showGR gr
+displayMessage SuccessMsg = "done"
+displayMessage (FailureMsg c fr) = "fail: " ++ showFR c fr
+displayMessage (SkipMany _ _ cs) = "skipping: " ++ showConflicts cs
+-- TODO: Instead of displaying `aeson-1.0.2.1, aeson-1.0.2.0, aeson-1.0.1.0, ...`,
+-- the following line aim to display `aeson: 1.0.2.1, 1.0.2.0, 1.0.1.0, ...`.
+--
+-- displayMessage (RejectMany qpn is c fr) = "rejecting: " ++ fmtPkgsGroupedByName (map (showQPNPOpt qpn) (reverse is)) ++ showFR c fr
+displayMessage (RejectMany qpn is c fr) = "rejecting: " ++ L.intercalate ", " (map (showQPNPOpt qpn) (reverse is)) ++ showFR c fr
+
+-- TODO: This function should take as input the Index? So even without calling the solver, We can say things as
+-- "There is no version in the Hackage index that match the given constraints".
+--
+-- Alternatively, by passing this to the solver, we could get a more semantic output like:
+-- `all versions of aeson available are in conflict with ...`. Isn't already what `tryToMinimizeConflictSet` is doing?
+-- fmtPkgsGroupedByName :: [String] -> String
+-- fmtPkgsGroupedByName pkgs = L.intercalate " " $ fmtPkgGroup (groupByName pkgs)
+--   where
+--     groupByName :: [String] -> Map.Map String [String]
+--     groupByName = foldr f Map.empty
+--       where
+--         f versionString m = let (pkg, ver) = splitOnLastHyphen versionString
+--                             in Map.insertWith (++) pkg [ver] m
+--         -- FIXME: This is not a very robust way to split the package name and version.
+--         -- I should rather retrieve the package name and version from the QPN ...
+--         splitOnLastHyphen :: String -> (String, String)
+--         splitOnLastHyphen s =
+--             case reverse (L.elemIndices '-' s) of
+--                 (x:_)  -> (take x s, drop (x + 1) s)
+--                 _ -> error "splitOnLastHyphen: no hyphen found"
+
+--     fmtPkgGroup :: Map.Map String [String] -> [String]
+--     fmtPkgGroup = map formatEntry . Map.toList
+--       where
+--         formatEntry (pkg, versions) = pkg ++ ": " ++ L.intercalate ", " versions
+
 -- | Transforms the structured message type to actual messages (strings).
 --
 -- The log contains level numbers, which are useful for any trace that involves
 -- backtracking, because only the level numbers will allow to keep track of
 -- backjumps.
-showMessages :: Progress Message a b -> Progress String a b
-showMessages = go 0
+groupMessages :: Progress Message a b -> Progress SolverTrace a b
+groupMessages = go 0
   where
     -- 'go' increments the level for a recursive call when it encounters
     -- 'TryP', 'TryF', or 'TryS' and decrements the level when it encounters 'Leave'.
-    go :: Int -> Progress Message a b -> Progress String a b
+    go :: Int -> Progress Message a b -> Progress SolverTrace a b
     go !_ (Done x)                           = Done x
     go !_ (Fail x)                           = Fail x
+
     -- complex patterns
     go !l (Step (TryP qpn i) (Step Enter (Step (Failure c fr) (Step Leave ms)))) =
         goPReject l qpn [i] c fr ms
+
     go !l (Step (TryP qpn i) (Step Enter (Step (Skip conflicts) (Step Leave ms)))) =
         goPSkip l qpn [i] conflicts ms
+
     go !l (Step (TryF qfn b) (Step Enter (Step (Failure c fr) (Step Leave ms)))) =
-        (atLevel l $ "rejecting: " ++ showQFNBool qfn b ++ showFR c fr) (go l ms)
+        Step (SolverTrace $ AtLevel l $ (RejectF qfn b c fr)) (go l ms)
+
     go !l (Step (TryS qsn b) (Step Enter (Step (Failure c fr) (Step Leave ms)))) =
-        (atLevel l $ "rejecting: " ++ showQSNBool qsn b ++ showFR c fr) (go l ms)
+        Step (SolverTrace $ AtLevel l $ (RejectS qsn b c fr)) (go l ms)
+
+    -- "Trying ..." message when a new goal is started
     go !l (Step (Next (Goal (P _  ) gr)) (Step (TryP qpn' i) ms@(Step Enter (Step (Next _) _)))) =
-        (atLevel l $ "trying: " ++ showQPNPOpt qpn' i ++ showGR gr) (go l ms)
+        Step (SolverTrace $ AtLevel l $ (TryingP qpn' i (Just gr))) (go l ms)
+
     go !l (Step (Next (Goal (P qpn) gr)) (Step (Failure _c UnknownPackage) ms)) =
-        atLevel l ("unknown package: " ++ showQPN qpn ++ showGR gr) $ go l ms
+        Step (SolverTrace $ AtLevel l $ (UnknownPackage' qpn gr)) (go l ms)
+
     -- standard display
     go !l (Step Enter                    ms) = go (l+1) ms
     go !l (Step Leave                    ms) = go (l-1) ms
-    go !l (Step (TryP qpn i)             ms) = (atLevel l $ "trying: " ++ showQPNPOpt qpn i) (go l ms)
-    go !l (Step (TryF qfn b)             ms) = (atLevel l $ "trying: " ++ showQFNBool qfn b) (go l ms)
-    go !l (Step (TryS qsn b)             ms) = (atLevel l $ "trying: " ++ showQSNBool qsn b) (go l ms)
-    go !l (Step (Next (Goal (P qpn) gr)) ms) = (atLevel l $ showPackageGoal qpn gr) (go l ms)
-    go !l (Step (Next _)                 ms) = go l     ms -- ignore flag goals in the log
-    go !l (Step (Skip conflicts)         ms) =
-        -- 'Skip' should always be handled by 'goPSkip' in the case above.
-        (atLevel l $ "skipping: " ++ showConflicts conflicts) (go l ms)
-    go !l (Step (Success)                ms) = (atLevel l $ "done") (go l ms)
-    go !l (Step (Failure c fr)           ms) = (atLevel l $ showFailure c fr) (go l ms)
 
-    showPackageGoal :: QPN -> QGoalReason -> String
-    showPackageGoal qpn gr = "next goal: " ++ showQPN qpn ++ showGR gr
+    go !l (Step (TryP qpn i)             ms) = Step (SolverTrace $ AtLevel l $ (TryingP qpn i Nothing)) (go l ms)
+    go !l (Step (TryF qfn b)             ms) = Step (SolverTrace $ AtLevel l $ (TryingF qfn b)) (go l ms)
+    go !l (Step (TryS qsn b)             ms) = Step (SolverTrace $ AtLevel l $ (TryingS qsn b)) (go l ms)
+    go !l (Step (Next (Goal (P qpn) gr)) ms) = Step (SolverTrace $ AtLevel l $ (PackageGoal qpn gr)) (go l ms)
+    go !l (Step (Next _)                 ms) = go l ms -- ignore flag goals in the log
 
-    showFailure :: ConflictSet -> FailReason -> String
-    showFailure c fr = "fail" ++ showFR c fr
+    -- 'Skip' should always be handled by 'goPSkip' in the case above.
+    go !l (Step (Skip conflicts)         ms) = Step (SolverTrace $ AtLevel l $ (Skipping' conflicts)) (go l ms)
+    go !l (Step (Success)                ms) = Step (SolverTrace $ AtLevel l $ SuccessMsg) (go l ms)
+    go !l (Step (Failure c fr)           ms) = Step (SolverTrace $ AtLevel l $ (FailureMsg c fr)) (go l ms)
 
     -- special handler for many subsequent package rejections
     goPReject :: Int
@@ -94,11 +174,12 @@ showMessages = go 0
               -> ConflictSet
               -> FailReason
               -> Progress Message a b
-              -> Progress String a b
+              -> Progress SolverTrace a b
     goPReject l qpn is c fr (Step (TryP qpn' i) (Step Enter (Step (Failure _ fr') (Step Leave ms))))
-      | qpn == qpn' && fr == fr' = goPReject l qpn (i : is) c fr ms
+      | qpn == qpn' && fr == fr' =
+        goPReject l qpn (i : is) c fr ms
     goPReject l qpn is c fr ms =
-        (atLevel l $ "rejecting: " ++ L.intercalate ", " (map (showQPNPOpt qpn) (reverse is)) ++ showFR c fr) (go l ms)
+        Step (SolverTrace $ AtLevel l $ (RejectMany qpn is c fr)) (go l ms)
 
     -- Handle many subsequent skipped package instances.
     goPSkip :: Int
@@ -106,20 +187,11 @@ showMessages = go 0
             -> [POption]
             -> Set CS.Conflict
             -> Progress Message a b
-            -> Progress String a b
+            -> Progress SolverTrace a b
     goPSkip l qpn is conflicts (Step (TryP qpn' i) (Step Enter (Step (Skip conflicts') (Step Leave ms))))
       | qpn == qpn' && conflicts == conflicts' = goPSkip l qpn (i : is) conflicts ms
     goPSkip l qpn is conflicts ms =
-      let msg = "skipping: "
-                 ++ L.intercalate ", " (map (showQPNPOpt qpn) (reverse is))
-                 ++ showConflicts conflicts
-      in atLevel l msg (go l ms)
-
-    -- write a message with the current level number
-    atLevel :: Int -> String -> Progress String a b -> Progress String a b
-    atLevel l x xs =
-      let s = show l
-      in  Step ("[" ++ replicate (3 - length s) '_' ++ s ++ "] " ++ x) xs
+       Step (SolverTrace $ AtLevel l $ (SkipMany qpn is conflicts)) (go l ms)
 
 -- | Display the set of 'Conflicts' for a skipped package version.
 showConflicts :: Set CS.Conflict -> String

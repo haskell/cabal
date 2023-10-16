@@ -159,6 +159,7 @@ import Data.List
   )
 import qualified Data.Map as Map
 import qualified Data.Set as Set
+import Distribution.Solver.Modular.Message (SolverTrace)
 
 -- ------------------------------------------------------------
 
@@ -769,32 +770,33 @@ resolveDependencies
 resolveDependencies platform comp pkgConfigDB params =
   Step (showDepResolverParams finalparams) $
     fmap (validateSolverResult platform comp indGoals) $
-      runSolver
-        ( SolverConfig
-            reordGoals
-            cntConflicts
-            fineGrained
-            minimize
-            indGoals
-            noReinstalls
-            shadowing
-            strFlags
-            onlyConstrained_
-            maxBkjumps
-            enableBj
-            solveExes
-            order
-            verbosity
-            (PruneAfterFirstSuccess False)
-        )
-        platform
-        comp
-        installedPkgIndex
-        sourcePkgIndex
-        pkgConfigDB
-        preferences
-        constraints
-        targets
+      formatProgress $
+        runSolver
+          ( SolverConfig
+              reordGoals
+              cntConflicts
+              fineGrained
+              minimize
+              indGoals
+              noReinstalls
+              shadowing
+              strFlags
+              onlyConstrained_
+              maxBkjumps
+              enableBj
+              solveExes
+              order
+              verbosity
+              (PruneAfterFirstSuccess False)
+          )
+          platform
+          comp
+          installedPkgIndex
+          sourcePkgIndex
+          pkgConfigDB
+          preferences
+          constraints
+          targets
   where
     finalparams@( DepResolverParams
                     targets
@@ -822,6 +824,9 @@ resolveDependencies platform comp pkgConfigDB params =
         if asBool (depResolverAllowBootLibInstalls params)
           then params
           else dontInstallNonReinstallablePackages params
+
+    formatProgress :: Progress SolverTrace String a -> Progress String String a
+    formatProgress p = foldProgress (\x xs -> Step (show x) xs) Fail Done p
 
     preferences :: PackageName -> PackagePreferences
     preferences = interpretPackagesPreference targets defpref prefs
