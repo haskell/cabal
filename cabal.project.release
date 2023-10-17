@@ -5,3 +5,4 @@ packages: cabal-install/
 tests: False
 benchmarks: False
 optimization: True
+index-state: hackage.haskell.org 2023-10-13T10:16:13Z

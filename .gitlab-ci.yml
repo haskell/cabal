@@ -59,16 +59,24 @@ build-linux:
     TARBALL_EXT: tar.xz
     ADD_CABAL_ARGS: "--enable-split-sections"
 
-build-x86_64-linux-alpine:
+build-linux-alpine:
   extends: .build
+  parallel:
+    matrix:
+      - ARCH: i386
+        OS: [alpine3_12]
+        GHC_VERSION: 9.0.2
+      - ARCH: x86_64
+        OS: [alpine3_12]
   tags:
     - x86_64-linux
   before_script:
     # for cabal build
     - sudo apk add --no-cache zlib zlib-dev zlib-static
-  image: "registry.gitlab.haskell.org/ghc/ci-images/x86_64-linux-alpine3_12:$DOCKER_REV"
+  image: "registry.gitlab.haskell.org/ghc/ci-images/$PLATFORM:$DOCKER_REV"
   variables:
-    TARBALL_ARCHIVE_SUFFIX: x86_64-linux-alpine
+    PLATFORM: "${ARCH}-linux-${OS}"
+    TARBALL_ARCHIVE_SUFFIX: $PLATFORM
     TARBALL_EXT: tar.xz
     ADD_CABAL_ARGS: "--enable-split-sections --enable-executable-static"
 
