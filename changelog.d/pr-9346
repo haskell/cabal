@@ -1,0 +1,13 @@
+synopsis: remove 
+packages: cabal-install
+prs: #9346
+issues: #9151
+significance: minor
+
+description: {
+
+- Log is used in cabal-install as a loglevel.
+- "Log" is not a (loglevel)[https://betterstack.com/community/guides/logging/log-levels-explained/].
+- replace Log with Info where it is used.
+
+}
