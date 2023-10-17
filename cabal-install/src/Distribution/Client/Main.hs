@@ -133,6 +133,7 @@ import qualified Distribution.Client.CmdSdist as CmdSdist
 import qualified Distribution.Client.CmdTarget as CmdTarget
 import qualified Distribution.Client.CmdTest as CmdTest
 import qualified Distribution.Client.CmdUpdate as CmdUpdate
+import qualified Distribution.Client.Outdated as Outdated
 
 import Distribution.Client.Check as Check (check)
 import Distribution.Client.Configure (configure, writeConfigFlags)
