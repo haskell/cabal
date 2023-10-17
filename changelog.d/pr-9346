@@ -2,7 +2,7 @@ synopsis: remove
 packages: cabal-install
 prs: #9346
 issues: #9151
-significance: minor
+significance: significant
 
 description: {
 
