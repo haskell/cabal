@@ -65,6 +65,7 @@ args=(
     ${ADD_CABAL_ARGS}
 )
 
+run cabal update hackage.haskell.org,HEAD
 run cabal v2-build ${args[@]} cabal-install
 
 mkdir "$CI_PROJECT_DIR/out"
