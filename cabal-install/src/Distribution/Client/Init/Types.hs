@@ -455,7 +455,7 @@ newtype BreakException = BreakException String deriving (Eq, Show)
 instance Exception BreakException
 
 -- | Used to inform the intent of prompted messages.
-data Severity = Log | Info | Warning | Error deriving (Eq, Show)
+data Severity = Info | Warning | Error deriving (Eq, Show)
 
 -- | Convenience alias for the literate haskell flag
 type IsLiterate = Bool
