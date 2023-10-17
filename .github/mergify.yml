@@ -57,6 +57,7 @@ pull_request_rules:
       - label=merge me
       - base!=master
       - body~=backport
+      - label=merge delay passed
       - '#approved-reviews-by>=1'
 
   # backports should be labeled as such
