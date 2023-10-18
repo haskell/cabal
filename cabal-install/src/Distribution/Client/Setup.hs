@@ -984,7 +984,7 @@ writeGhcEnvironmentFilesPolicyPrinter = \case
   (Flag WriteGhcEnvironmentFilesOnlyForGhc844AndNewer) -> ["ghc8.4.4+"]
   NoFlag -> []
 
-relaxDepsParser :: (CabalParsing m) => m (Maybe RelaxDeps)
+relaxDepsParser :: CabalParsing m => m (Maybe RelaxDeps)
 relaxDepsParser = do
   rs <- P.sepBy parsec (P.char ',')
   if null rs

@@ -436,7 +436,7 @@ hiddenCmd ui action =
     HiddenCommand
 
 wrapperCmd
-  :: (Monoid flags)
+  :: Monoid flags
   => CommandUI flags
   -> (flags -> Flag Verbosity)
   -> (flags -> Flag String)
@@ -445,7 +445,7 @@ wrapperCmd ui verbosity distPref =
   CommandSpec ui (\ui' -> wrapperAction ui' verbosity distPref) NormalCommand
 
 wrapperAction
-  :: (Monoid flags)
+  :: Monoid flags
   => CommandUI flags
   -> (flags -> Flag Verbosity)
   -> (flags -> Flag String)
