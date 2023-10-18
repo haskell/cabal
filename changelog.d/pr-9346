@@ -6,8 +6,7 @@ significance: significant
 
 description: {
 
-- Log is used in cabal-install as a loglevel.
-- "Log" is not a [loglevel](https://betterstack.com/community/guides/logging/log-levels-explained/).
-- replace Log with Info where it is used.
+- Remove "Log" as a log level in favour of "Info".
+- Remove "Show" in Severity and replace by "displaySeverity" function
 
 }
