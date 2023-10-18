@@ -1332,28 +1332,15 @@ pathAction :: PathFlags -> [String] -> Action
 pathAction pathflags _extraArgs _globalFlags = do
   let verbosity = fromFlag (pathVerbosity pathflags)
   cfg <- loadConfig verbosity mempty
-  let dirs =
-        [
-          ( "cache-dir"
-          , maybe
-              defaultCacheDir
-              pure
-              (flagToMaybe $ globalCacheDir $ savedGlobalFlags cfg)
-          )
-        ,
-          ( "logs-dir"
-          , maybe
-              defaultLogsDir
-              pure
-              (flagToMaybe $ globalLogsDir $ savedGlobalFlags cfg)
-          )
-        ,
-          ( "store-dir"
-          , maybe
-              defaultStoreDir
-              pure
-              (flagToMaybe $ globalStoreDir $ savedGlobalFlags cfg)
-          )
+  let getDir getDefault getGlobal =
+        maybe
+          getDefault
+          pure
+          (flagToMaybe $ getGlobal $ savedGlobalFlags cfg)
+      dirs =
+        [ ("cache-dir", getDir defaultCacheDir globalCacheDir)
+        , ("logs-dir", getDir defaultLogsDir globalLogsDir)
+        , ("store-dir", getDir defaultStoreDir globalStoreDir)
         ]
       printDir (name, m) = putStrLn . ((name ++ ": ") ++) =<< m
   -- If no paths have been requested, print all paths with labels.
