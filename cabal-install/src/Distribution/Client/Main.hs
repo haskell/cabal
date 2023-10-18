@@ -247,6 +247,7 @@ import Distribution.Version
   )
 
 import Control.Exception (AssertionFailed, assert, try)
+import Control.Monad (mapM_)
 import Data.Monoid (Any (..))
 import Distribution.Client.Errors
 import Distribution.Compat.ResponseFile
@@ -1331,18 +1332,40 @@ pathAction :: PathFlags -> [String] -> Action
 pathAction pathflags _extraArgs _globalFlags = do
   let verbosity = fromFlag (pathVerbosity pathflags)
   cfg <- loadConfig verbosity mempty
-  putStrLn . ("cache-dir: " ++)
-    =<< maybe
-      defaultCacheDir
-      pure
-      (flagToMaybe $ globalCacheDir $ savedGlobalFlags cfg)
-  putStrLn . ("logs-dir: " ++)
-    =<< maybe
-      defaultLogsDir
-      pure
-      (flagToMaybe $ globalLogsDir $ savedGlobalFlags cfg)
-  putStrLn . ("store-dir: " ++)
-    =<< maybe
-      defaultStoreDir
-      pure
-      (flagToMaybe $ globalStoreDir $ savedGlobalFlags cfg)
+  let dirs =
+        [
+          ( "cache-dir"
+          , maybe
+              defaultCacheDir
+              pure
+              (flagToMaybe $ globalCacheDir $ savedGlobalFlags cfg)
+          )
+        ,
+          ( "logs-dir"
+          , maybe
+              defaultLogsDir
+              pure
+              (flagToMaybe $ globalLogsDir $ savedGlobalFlags cfg)
+          )
+        ,
+          ( "store-dir"
+          , maybe
+              defaultStoreDir
+              pure
+              (flagToMaybe $ globalStoreDir $ savedGlobalFlags cfg)
+          )
+        ]
+      printDir (name, m) = putStrLn . ((name ++ ": ") ++) =<< m
+  -- If no paths have been requested, print all paths with labels.
+  --
+  -- If a single path has been requested, print that path without any label.
+  --
+  -- If multiple paths have been requested, print each of them with labels.
+  case fromFlag $ pathDirs pathflags of
+    [] -> mapM_ printDir dirs
+    [d] ->
+      case lookup d dirs of
+        Nothing -> do
+          error $ "Unknown directory: " <> d
+        Just m -> putStrLn =<< m
+    ds -> mapM_ printDir $ filter ((`elem` ds) . fst) dirs

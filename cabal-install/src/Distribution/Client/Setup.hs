@@ -3331,6 +3331,7 @@ userConfigCommand =
 
 data PathFlags = PathFlags
   { pathVerbosity :: Flag Verbosity
+  , pathDirs :: Flag [String]
   }
   deriving (Generic)
 
@@ -3338,6 +3339,7 @@ instance Monoid PathFlags where
   mempty =
     PathFlags
       { pathVerbosity = toFlag normal
+      , pathDirs = toFlag []
       }
   mappend = (<>)
 
@@ -3359,8 +3361,20 @@ pathCommand =
     , commandDefaultFlags = mempty
     , commandOptions = \_ ->
         [ optionVerbosity pathVerbosity (\v flags -> flags{pathVerbosity = v})
+        , pathOption "cache-dir"
+        , pathOption "logs-dir"
+        , pathOption "store-dir"
         ]
     }
+  where
+    pathOption s =
+      option
+        []
+        [s]
+        ("Print " <> s)
+        pathDirs
+        (\v flags -> flags{pathDirs = Flag $ concat (flagToList (pathDirs flags) ++ flagToList v)})
+        (noArg (Flag [s]))
 
 -- ------------------------------------------------------------
 
