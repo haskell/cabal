@@ -102,7 +102,7 @@
             "revision": null,
             "source": "local",
             "src_sha256": null,
-            "version": "3.10.2.0"
+            "version": "3.10.2.1"
         },
         {
             "cabal_sha256": "49d8a7f372d35363011591b253cae4c8db8b9ec594590448e20b7bed7acaee98",
@@ -120,7 +120,7 @@
             "revision": null,
             "source": "local",
             "src_sha256": null,
-            "version": "3.10.2.0"
+            "version": "3.10.2.1"
         },
         {
             "cabal_sha256": "d50e055f45bd09a8238200ec64ffa0f17492c32cdb5807487894388ce1c2f839",
@@ -394,7 +394,7 @@
             "revision": null,
             "source": "local",
             "src_sha256": null,
-            "version": "3.10.2.0"
+            "version": "3.10.2.1"
         }
     ]
 }
