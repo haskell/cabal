@@ -3364,6 +3364,7 @@ pathCommand =
         , pathOption "cache-dir"
         , pathOption "logs-dir"
         , pathOption "store-dir"
+        , pathOption "config-file"
         ]
     }
   where

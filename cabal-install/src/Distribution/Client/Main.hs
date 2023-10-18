@@ -1329,7 +1329,7 @@ manpageAction commands flags extraArgs _ = do
   manpageCmd cabalCmd commands flags
 
 pathAction :: PathFlags -> [String] -> Action
-pathAction pathflags _extraArgs _globalFlags = do
+pathAction pathflags _extraArgs globalFlags = do
   let verbosity = fromFlag (pathVerbosity pathflags)
   cfg <- loadConfig verbosity mempty
   let getDir getDefault getGlobal =
@@ -1341,6 +1341,7 @@ pathAction pathflags _extraArgs _globalFlags = do
         [ ("cache-dir", getDir defaultCacheDir globalCacheDir)
         , ("logs-dir", getDir defaultLogsDir globalLogsDir)
         , ("store-dir", getDir defaultStoreDir globalStoreDir)
+        , ("config-file", getConfigFilePath (globalConfigFile globalFlags))
         ]
       printDir (name, m) = putStrLn . ((name ++ ": ") ++) =<< m
   -- If no paths have been requested, print all paths with labels.
