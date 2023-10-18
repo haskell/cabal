@@ -346,6 +346,7 @@ globalCommand commands =
               ( [ startGroup "global"
                 , addCmd "user-config"
                 , addCmd "help"
+                , addCmd "path"
                 , par
                 , startGroup "package database"
                 , addCmd "update"
