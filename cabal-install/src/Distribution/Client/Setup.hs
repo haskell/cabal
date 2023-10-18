@@ -85,6 +85,8 @@ module Distribution.Client.Setup
   , cleanCommand
   , copyCommand
   , registerCommand
+  , Path (..)
+  , pathName
   , PathFlags (..)
   , pathCommand
   , liftOptions
@@ -3329,9 +3331,24 @@ userConfigCommand =
 
 -- ------------------------------------------------------------
 
+-- | A path that can be retrieved by the @cabal path@ command.
+data Path
+  = PathCacheDir
+  | PathLogsDir
+  | PathStoreDir
+  | PathConfigFile
+  deriving (Eq, Ord, Show, Enum, Bounded)
+
+-- | The configuration name for this path.
+pathName :: Path -> String
+pathName PathCacheDir = "cache-dir"
+pathName PathLogsDir = "logs-dir"
+pathName PathStoreDir = "store-dir"
+pathName PathConfigFile = "config-file"
+
 data PathFlags = PathFlags
   { pathVerbosity :: Flag Verbosity
-  , pathDirs :: Flag [String]
+  , pathDirs :: Flag [Path]
   }
   deriving (Generic)
 
@@ -3360,19 +3377,15 @@ pathCommand =
     , commandUsage = \pname -> "Usage: " ++ pname ++ " path\n"
     , commandDefaultFlags = mempty
     , commandOptions = \_ ->
-        [ optionVerbosity pathVerbosity (\v flags -> flags{pathVerbosity = v})
-        , pathOption "cache-dir"
-        , pathOption "logs-dir"
-        , pathOption "store-dir"
-        , pathOption "config-file"
-        ]
+        map pathOption [minBound .. maxBound]
+          ++ [optionVerbosity pathVerbosity (\v flags -> flags{pathVerbosity = v})]
     }
   where
     pathOption s =
       option
         []
-        [s]
-        ("Print " <> s)
+        [pathName s]
+        ("Print " <> pathName s)
         pathDirs
         (\v flags -> flags{pathDirs = Flag $ concat (flagToList (pathDirs flags) ++ flagToList v)})
         (noArg (Flag [s]))

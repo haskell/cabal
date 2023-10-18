@@ -33,6 +33,7 @@ import Distribution.Client.Setup
   , InitFlags (initHcPath, initVerbosity)
   , InstallFlags (..)
   , ListFlags (..)
+  , Path (..)
   , PathFlags (..)
   , ReportFlags (..)
   , UploadFlags (..)
@@ -62,6 +63,7 @@ import Distribution.Client.Setup
   , listNeedsCompiler
   , manpageCommand
   , pathCommand
+  , pathName
   , reconfigureCommand
   , registerCommand
   , replCommand
@@ -1329,31 +1331,28 @@ manpageAction commands flags extraArgs _ = do
   manpageCmd cabalCmd commands flags
 
 pathAction :: PathFlags -> [String] -> Action
-pathAction pathflags _extraArgs globalFlags = do
+pathAction pathflags extraArgs globalFlags = do
   let verbosity = fromFlag (pathVerbosity pathflags)
+  unless (null extraArgs) $
+    dieWithException verbosity $
+      ManpageAction extraArgs
   cfg <- loadConfig verbosity mempty
   let getDir getDefault getGlobal =
         maybe
           getDefault
           pure
           (flagToMaybe $ getGlobal $ savedGlobalFlags cfg)
-      dirs =
-        [ ("cache-dir", getDir defaultCacheDir globalCacheDir)
-        , ("logs-dir", getDir defaultLogsDir globalLogsDir)
-        , ("store-dir", getDir defaultStoreDir globalStoreDir)
-        , ("config-file", getConfigFilePath (globalConfigFile globalFlags))
-        ]
-      printDir (name, m) = putStrLn . ((name ++ ": ") ++) =<< m
+      getSomeDir PathCacheDir = getDir defaultCacheDir globalCacheDir
+      getSomeDir PathLogsDir = getDir defaultLogsDir globalLogsDir
+      getSomeDir PathStoreDir = getDir defaultStoreDir globalStoreDir
+      getSomeDir PathConfigFile = getConfigFilePath (globalConfigFile globalFlags)
+      printPath p = putStrLn . ((pathName p ++ ": ") ++) =<< getSomeDir p
   -- If no paths have been requested, print all paths with labels.
   --
   -- If a single path has been requested, print that path without any label.
   --
   -- If multiple paths have been requested, print each of them with labels.
   case fromFlag $ pathDirs pathflags of
-    [] -> mapM_ printDir dirs
-    [d] ->
-      case lookup d dirs of
-        Nothing -> do
-          error $ "Unknown directory: " <> d
-        Just m -> putStrLn =<< m
-    ds -> mapM_ printDir $ filter ((`elem` ds) . fst) dirs
+    [] -> mapM_ printPath [minBound .. maxBound]
+    [d] -> putStrLn =<< getSomeDir d
+    ds -> mapM_ printPath ds
