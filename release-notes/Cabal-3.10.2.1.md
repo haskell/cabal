@@ -1,7 +1,7 @@
 Cabal and Cabal-syntax 3.10.2.1 changelog and release notes
 ---
 
-## Release 3.10.2.0 is strictly a bug-fix release, with the fixes listed below
+## Release 3.10.2.1 is strictly a bug-fix release, with the fixes listed below
 
 - Relax extension .c requirement for c-sources [#9285](https://github.com/haskell/cabal/pull/9285)
 
