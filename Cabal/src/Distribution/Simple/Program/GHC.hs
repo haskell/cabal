@@ -1,3 +1,4 @@
+{-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
@@ -13,6 +14,7 @@ module Distribution.Simple.Program.GHC
   , ghcInvocation
   , renderGhcOptions
   , runGHC
+  , runGHCWithResponseFile
   , packageDbArgsDb
   , normaliseGhcArgs
   ) where
@@ -28,13 +30,16 @@ import Distribution.Pretty
 import Distribution.Simple.Compiler
 import Distribution.Simple.Flag
 import Distribution.Simple.GHC.ImplInfo
+import Distribution.Simple.Program.ResponseFile
 import Distribution.Simple.Program.Run
 import Distribution.Simple.Program.Types
+import Distribution.Simple.Utils (defaultTempFileOptions)
 import Distribution.System
 import Distribution.Types.ComponentId
 import Distribution.Utils.NubList
 import Distribution.Verbosity
 import Distribution.Version
+import GHC.IO.Encoding (TextEncoding)
 import Language.Haskell.Extension
 
 import Data.List (stripPrefix)
@@ -617,6 +622,74 @@ runGHC
   -> IO ()
 runGHC verbosity ghcProg comp platform opts = do
   runProgramInvocation verbosity (ghcInvocation ghcProg comp platform opts)
+
+runGHCWithResponseFile
+  :: FilePath
+  -> FilePath
+  -> Maybe TextEncoding
+  -> Verbosity
+  -> ConfiguredProgram
+  -> Compiler
+  -> Platform
+  -> GhcOptions
+  -> IO ()
+runGHCWithResponseFile workDir fileNameTemplate encoding verbosity ghcProg comp platform opts = do
+  let invocation = ghcInvocation ghcProg comp platform opts
+
+  -- Don't use response files if the first argument is `--interactive`, for
+  -- two related reasons.
+  --
+  -- `hie-bios` relies on a hack to intercept the command-line that `Cabal`
+  -- supplies to `ghc`.  Specifically, `hie-bios` creates a script around
+  -- `ghc` that detects if the first option is `--interactive` and if so then
+  -- instead of running `ghc` it prints the command-line that `ghc` was given
+  -- instead of running the command:
+  --
+  -- https://github.com/haskell/hie-bios/blob/ce863dba7b57ded20160b4f11a487e4ff8372c08/wrappers/cabal#L7
+  --
+  -- … so we can't store that flag in the response file, otherwise that will
+  -- break.  However, even if we were to add a special-case to keep that flag
+  -- out of the response file things would still break because `hie-bios`
+  -- stores the arguments to `ghc` that the wrapper script outputs and reuses
+  -- them later.  That breaks if you use a response file because it will
+  -- store an argument like `@…/ghc36000-0.rsp` which is a temporary path
+  -- that no longer exists after the wrapper script completes.
+  --
+  -- The work-around here is that we don't use a response file at all if the
+  -- first argument (and only the first argument) to `ghc` is
+  -- `--interactive`.  This ensures that `hie-bios` and all downstream
+  -- utilities (e.g. `haskell-language-server`) continue working.
+  case progInvokeArgs invocation of
+    "--interactive" : _ ->
+      runProgramInvocation verbosity invocation
+    args -> do
+      let (responseFileArgs, otherArgs) = splitArgs False args
+
+      withResponseFile
+        verbosity
+        defaultTempFileOptions
+        workDir
+        fileNameTemplate
+        encoding
+        responseFileArgs
+        \responseFile -> do
+          let newInvocation =
+                invocation{progInvokeArgs = ('@' : responseFile) : otherArgs}
+
+          runProgramInvocation verbosity newInvocation
+  where
+    splitArgs isRTSOption (arg : args) = (newResponseFileArgs, newOtherArgs)
+      where
+        (newIsRTSOption, newResponseFileArgs, newOtherArgs) =
+          case arg of
+            "+RTS" -> (True, responseFileArgs, arg : otherArgs)
+            "-RTS" -> (False, responseFileArgs, arg : otherArgs)
+            _
+              | isRTSOption -> (isRTSOption, responseFileArgs, arg : otherArgs)
+              | otherwise -> (isRTSOption, arg : responseFileArgs, otherArgs)
+
+        ~(responseFileArgs, otherArgs) = splitArgs newIsRTSOption args
+    splitArgs _ [] = ([], [])
 
 ghcInvocation
   :: ConfiguredProgram

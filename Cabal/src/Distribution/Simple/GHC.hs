@@ -625,7 +625,7 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
   relLibTargetDir <- makeRelativeToCurrentDirectory libTargetDir
 
   (ghcProg, _) <- requireProgram verbosity ghcProgram (withPrograms lbi)
-  let runGhcProg = runGHC verbosity ghcProg comp platform
+  let runGhcProg = runGHCWithResponseFile (buildDir lbi) "ghc.rsp" Nothing verbosity ghcProg comp platform
 
   let libBi = libBuildInfo lib
 
@@ -1528,7 +1528,7 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
       comp = compiler lbi
       platform = hostPlatform lbi
       implInfo = getImplInfo comp
-      runGhcProg = runGHC verbosity ghcProg comp platform
+      runGhcProg = runGHCWithResponseFile (buildDir lbi) "ghc.rsp" Nothing verbosity ghcProg comp platform
 
   let bnfo = gbuildInfo bm
 
