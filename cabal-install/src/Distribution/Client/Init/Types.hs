@@ -458,10 +458,10 @@ instance Exception BreakException
 data Severity = Info | Warning | Error deriving (Eq)
 
 displaySeverity :: Severity -> String
-displaySeverity severity
-  | severity == Info = "Info"
-  | severity == Warning = "Warn"
-  | severity == Error = "Err"
+displaySeverity severity = case severity of
+  Info -> "Info"
+  Warning -> "Warn"
+  Error -> "Err"
 
 -- | Convenience alias for the literate haskell flag
 type IsLiterate = Bool
