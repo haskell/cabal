@@ -33,10 +33,10 @@ import Distribution.Client.Setup
   , InitFlags (initHcPath, initVerbosity)
   , InstallFlags (..)
   , ListFlags (..)
+  , PathFlags (..)
   , ReportFlags (..)
   , UploadFlags (..)
   , UserConfigFlags (..)
-  , PathFlags (..)
   , actAsSetupCommand
   , benchmarkCommand
   , buildCommand
@@ -61,6 +61,7 @@ import Distribution.Client.Setup
   , listCommand
   , listNeedsCompiler
   , manpageCommand
+  , pathCommand
   , reconfigureCommand
   , registerCommand
   , replCommand
@@ -70,7 +71,6 @@ import Distribution.Client.Setup
   , unpackCommand
   , uploadCommand
   , userConfigCommand
-  , pathCommand
   , withRepoContext
   )
 import Distribution.Simple.Setup
@@ -99,14 +99,14 @@ import Prelude ()
 import Distribution.Client.Config
   ( SavedConfig (..)
   , createDefaultConfigFile
+  , defaultCacheDir
   , defaultConfigFile
+  , defaultLogsDir
+  , defaultStoreDir
   , getConfigFilePath
   , loadConfig
   , userConfigDiff
   , userConfigUpdate
-  , defaultCacheDir
-  , defaultLogsDir
-  , defaultStoreDir
   )
 import qualified Distribution.Client.List as List
   ( info
@@ -436,7 +436,7 @@ hiddenCmd ui action =
     HiddenCommand
 
 wrapperCmd
-  :: Monoid flags
+  :: (Monoid flags)
   => CommandUI flags
   -> (flags -> Flag Verbosity)
   -> (flags -> Flag String)
@@ -445,7 +445,7 @@ wrapperCmd ui verbosity distPref =
   CommandSpec ui (\ui' -> wrapperAction ui' verbosity distPref) NormalCommand
 
 wrapperAction
-  :: Monoid flags
+  :: (Monoid flags)
   => CommandUI flags
   -> (flags -> Flag Verbosity)
   -> (flags -> Flag String)
@@ -1329,11 +1329,20 @@ manpageAction commands flags extraArgs _ = do
 
 pathAction :: PathFlags -> [String] -> Action
 pathAction pathflags _extraArgs _globalFlags = do
-  let verbosity  = fromFlag (pathVerbosity pathflags)
+  let verbosity = fromFlag (pathVerbosity pathflags)
   cfg <- loadConfig verbosity mempty
-  putStrLn . ("cache-dir: "++) =<< maybe defaultCacheDir pure
-    (flagToMaybe $ globalCacheDir $ savedGlobalFlags cfg)
-  putStrLn . ("logs-dir: "++) =<< maybe defaultLogsDir pure
-    (flagToMaybe $ globalLogsDir $ savedGlobalFlags cfg)
-  putStrLn . ("store-dir: "++) =<< maybe defaultStoreDir pure
-    (flagToMaybe $ globalStoreDir $ savedGlobalFlags cfg)
+  putStrLn . ("cache-dir: " ++)
+    =<< maybe
+      defaultCacheDir
+      pure
+      (flagToMaybe $ globalCacheDir $ savedGlobalFlags cfg)
+  putStrLn . ("logs-dir: " ++)
+    =<< maybe
+      defaultLogsDir
+      pure
+      (flagToMaybe $ globalLogsDir $ savedGlobalFlags cfg)
+  putStrLn . ("store-dir: " ++)
+    =<< maybe
+      defaultStoreDir
+      pure
+      (flagToMaybe $ globalStoreDir $ savedGlobalFlags cfg)

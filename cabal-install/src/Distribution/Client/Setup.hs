@@ -984,7 +984,7 @@ writeGhcEnvironmentFilesPolicyPrinter = \case
   (Flag WriteGhcEnvironmentFilesOnlyForGhc844AndNewer) -> ["ghc8.4.4+"]
   NoFlag -> []
 
-relaxDepsParser :: CabalParsing m => m (Maybe RelaxDeps)
+relaxDepsParser :: (CabalParsing m) => m (Maybe RelaxDeps)
 relaxDepsParser = do
   rs <- P.sepBy parsec (P.char ',')
   if null rs
@@ -3328,35 +3328,38 @@ userConfigCommand =
 
 -- ------------------------------------------------------------
 
-data PathFlags = PathFlags {
-  pathVerbosity   :: Flag Verbosity
-  } deriving Generic
+data PathFlags = PathFlags
+  { pathVerbosity :: Flag Verbosity
+  }
+  deriving (Generic)
 
 instance Monoid PathFlags where
-  mempty = PathFlags {
-    pathVerbosity   = toFlag normal
-    }
+  mempty =
+    PathFlags
+      { pathVerbosity = toFlag normal
+      }
   mappend = (<>)
 
 instance Semigroup PathFlags where
   (<>) = gmappend
 
 pathCommand :: CommandUI PathFlags
-pathCommand = CommandUI {
-  commandName         = "path",
-  commandSynopsis     = "Display the directories used by cabal",
-  commandDescription  = Just $ \_ -> wrapText $
-       "This command prints the directories that are used by cabal,"
-    ++ " taking into account the contents of the configuration file and any"
-    ++ " environment variables.",
-
-  commandNotes        = Nothing,
-  commandUsage        = \pname -> "Usage: " ++ pname ++ " path\n",
-  commandDefaultFlags = mempty,
-  commandOptions      = \ _ -> [
-      optionVerbosity pathVerbosity (\v flags -> flags { pathVerbosity = v })]
-  }
-
+pathCommand =
+  CommandUI
+    { commandName = "path"
+    , commandSynopsis = "Display the directories used by cabal"
+    , commandDescription = Just $ \_ ->
+        wrapText $
+          "This command prints the directories that are used by cabal,"
+            ++ " taking into account the contents of the configuration file and any"
+            ++ " environment variables."
+    , commandNotes = Nothing
+    , commandUsage = \pname -> "Usage: " ++ pname ++ " path\n"
+    , commandDefaultFlags = mempty
+    , commandOptions = \_ ->
+        [ optionVerbosity pathVerbosity (\v flags -> flags{pathVerbosity = v})
+        ]
+    }
 
 -- ------------------------------------------------------------
 
