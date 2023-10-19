@@ -347,8 +347,8 @@ globalCommand commands =
             ++ unlines
               ( [ startGroup "global"
                 , addCmd "user-config"
-                , addCmd "help"
                 , addCmd "path"
+                , addCmd "help"
                 , par
                 , startGroup "package database"
                 , addCmd "update"
@@ -3369,7 +3369,7 @@ pathCommand :: CommandUI PathFlags
 pathCommand =
   CommandUI
     { commandName = "path"
-    , commandSynopsis = "Display the directories used by cabal"
+    , commandSynopsis = "Display paths used by cabal"
     , commandDescription = Just $ \_ ->
         wrapText $
           "This command prints the directories that are used by cabal,"
