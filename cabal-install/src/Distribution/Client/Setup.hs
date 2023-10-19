@@ -3337,6 +3337,7 @@ data Path
   | PathLogsDir
   | PathStoreDir
   | PathConfigFile
+  | PathInstallDir
   deriving (Eq, Ord, Show, Enum, Bounded)
 
 -- | The configuration name for this path.
@@ -3345,6 +3346,7 @@ pathName PathCacheDir = "cache-dir"
 pathName PathLogsDir = "logs-dir"
 pathName PathStoreDir = "store-dir"
 pathName PathConfigFile = "config-file"
+pathName PathInstallDir = "installdir"
 
 data PathFlags = PathFlags
   { pathVerbosity :: Flag Verbosity

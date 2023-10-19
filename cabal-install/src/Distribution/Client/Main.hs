@@ -105,6 +105,7 @@ import Distribution.Client.Config
   , defaultConfigFile
   , defaultLogsDir
   , defaultStoreDir
+  , defaultInstallPath
   , getConfigFilePath
   , loadConfig
   , userConfigDiff
@@ -150,6 +151,7 @@ import Distribution.Client.Install (install)
 
 -- import Distribution.Client.Clean            (clean)
 
+import Distribution.Client.CmdInstall.ClientInstallFlags (ClientInstallFlags (cinstInstalldir))
 import Distribution.Client.Get (get)
 import Distribution.Client.Init (initCmd)
 import Distribution.Client.Manpage (manpageCmd)
@@ -1346,6 +1348,8 @@ pathAction pathflags extraArgs globalFlags = do
       getSomeDir PathLogsDir = getDir defaultLogsDir globalLogsDir
       getSomeDir PathStoreDir = getDir defaultStoreDir globalStoreDir
       getSomeDir PathConfigFile = getConfigFilePath (globalConfigFile globalFlags)
+      getSomeDir PathInstallDir =
+        fromFlagOrDefault defaultInstallPath (pure <$> cinstInstalldir (savedClientInstallFlags cfg))
       printPath p = putStrLn . ((pathName p ++ ": ") ++) =<< getSomeDir p
   -- If no paths have been requested, print all paths with labels.
   --
