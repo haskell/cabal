@@ -103,9 +103,9 @@ import Distribution.Client.Config
   , createDefaultConfigFile
   , defaultCacheDir
   , defaultConfigFile
+  , defaultInstallPath
   , defaultLogsDir
   , defaultStoreDir
-  , defaultInstallPath
   , getConfigFilePath
   , loadConfig
   , userConfigDiff
