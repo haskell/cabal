@@ -267,6 +267,18 @@ import System.IO
   )
 
 -- | Entry point
+--
+-- This does three things.
+--
+-- One, it initializes the program, providing support for termination
+-- signals, preparing console linebuffering, and relaxing encoding errors.
+--
+-- Two, it processes (via an IO action) response
+-- files, calling expandResponse in Cabal/Distribution.Compat.ResponseFile
+--
+-- Three, it calls the mainWorker, which calls the argument parser,
+-- producing CommandParse data, which mainWorker pattern-matches
+-- into IO actions for execution.
 main :: [String] -> IO ()
 main args = do
   installTerminationHandler
@@ -279,6 +291,11 @@ main args = do
   -- when writing to stderr and stdout.
   relaxEncodingErrors stdout
   relaxEncodingErrors stderr
+
+  -- Response files support.
+  -- See expandResponse documentation in
+  -- Cabal/Distribution.Compat.ResponseFile
+  -- for more information.
   let (args0, args1) = break (== "--") args
 
   mainWorker =<< (++ args1) <$> expandResponse args0
@@ -296,6 +313,11 @@ warnIfAssertionsAreEnabled =
     assertionsEnabledMsg =
       "Warning: this is a debug build of cabal-install with assertions enabled."
 
+-- | Core worker, similar to defaultMainHelper in Cabal/Distribution.Simple
+--
+-- With an exception-handler @topHandler@, mainWorker calls commandsRun
+-- to parse arguments, then pattern-matches the CommandParse data
+-- into IO actions for execution.
 mainWorker :: [String] -> IO ()
 mainWorker args = do
   topHandler $
