@@ -236,6 +236,7 @@ import Distribution.Simple.Utils
   , notice
   , topHandler
   , tryFindPackageDesc
+  , withOutputMarker
   )
 import Distribution.Text
   ( display
@@ -1350,7 +1351,7 @@ pathAction pathflags extraArgs globalFlags = do
       getSomeDir PathConfigFile = getConfigFilePath (globalConfigFile globalFlags)
       getSomeDir PathInstallDir =
         fromFlagOrDefault defaultInstallPath (pure <$> cinstInstalldir (savedClientInstallFlags cfg))
-      printPath p = putStrLn . ((pathName p ++ ": ") ++) =<< getSomeDir p
+      printPath p = putStrLn . withOutputMarker verbosity . ((pathName p ++ ": ") ++) =<< getSomeDir p
   -- If no paths have been requested, print all paths with labels.
   --
   -- If a single path has been requested, print that path without any label.
@@ -1358,5 +1359,5 @@ pathAction pathflags extraArgs globalFlags = do
   -- If multiple paths have been requested, print each of them with labels.
   case fromFlag $ pathDirs pathflags of
     [] -> mapM_ printPath [minBound .. maxBound]
-    [d] -> putStrLn =<< getSomeDir d
+    [d] -> putStrLn . withOutputMarker verbosity =<< getSomeDir d
     ds -> mapM_ printPath ds
