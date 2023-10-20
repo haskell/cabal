@@ -30,19 +30,16 @@ import Distribution.Compat.Lens
   ( _1
   , _2
   )
-import Distribution.ReadE (succeedReadE)
 import Distribution.Simple.Command
   ( CommandUI (..)
   , OptionField
   , ShowOrParseArgs
   , liftOptionL
   , option
-  , reqArg
   )
 import Distribution.Simple.Setup
   ( Flag (..)
   , falseArg
-  , flagToList
   , flagToMaybe
   , fromFlagOrDefault
   , optionDistPref
@@ -82,7 +79,6 @@ data CleanFlags = CleanFlags
   { cleanSaveConfig :: Flag Bool
   , cleanVerbosity :: Flag Verbosity
   , cleanDistDir :: Flag FilePath
-  , cleanProjectDir :: Flag FilePath
   }
   deriving (Eq)
 
@@ -92,7 +88,6 @@ defaultCleanFlags =
     { cleanSaveConfig = toFlag False
     , cleanVerbosity = toFlag normal
     , cleanDistDir = NoFlag
-    , cleanProjectDir = mempty
     }
 
 cleanCommand :: CommandUI (ProjectFlags, CleanFlags)
@@ -126,13 +121,6 @@ cleanOptions showOrParseArgs =
       (\dd flags -> flags{cleanDistDir = dd})
       showOrParseArgs
   , option
-      []
-      ["project-dir"]
-      "Set the path of the project directory"
-      cleanProjectDir
-      (\path flags -> flags{cleanProjectDir = path})
-      (reqArg "DIR" (succeedReadE Flag) flagToList)
-  , option
       ['s']
       ["save-config"]
       "Save configuration, only remove build artifacts"
@@ -142,11 +130,11 @@ cleanOptions showOrParseArgs =
   ]
 
 cleanAction :: (ProjectFlags, CleanFlags) -> [String] -> GlobalFlags -> IO ()
-cleanAction (ProjectFlags{flagProjectFile}, CleanFlags{..}) extraArgs _ = do
+cleanAction (ProjectFlags{flagProjectFile, flagProjectDir}, CleanFlags{..}) extraArgs _ = do
   let verbosity = fromFlagOrDefault normal cleanVerbosity
       saveConfig = fromFlagOrDefault False cleanSaveConfig
       mdistDirectory = flagToMaybe cleanDistDir
-      mprojectDir = flagToMaybe cleanProjectDir
+      mprojectDir = flagToMaybe flagProjectDir
       mprojectFile = flagToMaybe flagProjectFile
 
   -- TODO interpret extraArgs as targets and clean those targets only (issue #7506)
