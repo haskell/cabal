@@ -1,4 +1,3 @@
-{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
 
 module Distribution.Client.CmdClean (cleanCommand, cleanAction) where
@@ -130,7 +129,7 @@ cleanOptions showOrParseArgs =
   ]
 
 cleanAction :: (ProjectFlags, CleanFlags) -> [String] -> GlobalFlags -> IO ()
-cleanAction (ProjectFlags{flagProjectFile, flagProjectDir}, CleanFlags{..}) extraArgs _ = do
+cleanAction (ProjectFlags{..}, CleanFlags{..}) extraArgs _ = do
   let verbosity = fromFlagOrDefault normal cleanVerbosity
       saveConfig = fromFlagOrDefault False cleanSaveConfig
       mdistDirectory = flagToMaybe cleanDistDir
