@@ -129,7 +129,7 @@ import Distribution.Simple.Setup
 import Distribution.Simple.Utils
   ( createDirectoryIfMissingVerbose
   , createTempDirectory
-  , die'
+  , dieWithException
   , handleDoesNotExist
   , readUTF8File
   , warn
@@ -192,6 +192,7 @@ import Control.Exception
 import qualified Data.ByteString.Char8 as BS
 import Data.ByteString.Lazy ()
 import qualified Data.Set as S
+import Distribution.Client.Errors
 import System.Directory
   ( canonicalizePath
   , doesFileExist
@@ -488,7 +489,7 @@ readScriptBlock verbosity = parseString parseScriptBlock verbosity "script block
 readExecutableBlockFromScript :: Verbosity -> BS.ByteString -> IO Executable
 readExecutableBlockFromScript verbosity str = do
   str' <- case extractScriptBlock "cabal" str of
-    Left e -> die' verbosity $ "Failed extracting script block: " ++ e
+    Left e -> dieWithException verbosity $ FailedExtractingScriptBlock e
     Right x -> return x
   when (BS.all isSpace str') $ warn verbosity "Empty script block"
   readScriptBlock verbosity str'

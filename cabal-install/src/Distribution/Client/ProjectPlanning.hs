@@ -190,6 +190,7 @@ import Data.List (deleteBy, groupBy)
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as Map
 import qualified Data.Set as Set
+import Distribution.Client.Errors
 import System.FilePath
 import Text.PrettyPrint (colon, comma, fsep, hang, punctuate, quotes, text, vcat, ($$))
 import qualified Text.PrettyPrint as Disp
@@ -748,7 +749,7 @@ rebuildInstallPlan
                 case planOrError of
                   Left msg -> do
                     reportPlanningFailure projectConfig compiler platform localPackages
-                    die' verbosity msg
+                    dieWithException verbosity $ PhaseRunSolverErr msg
                   Right plan -> return (plan, pkgConfigDB, tis, ar)
           where
             corePackageDbs :: [PackageDB]

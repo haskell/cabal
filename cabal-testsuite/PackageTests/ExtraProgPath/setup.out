@@ -4,7 +4,8 @@ Warning: cannot determine version of <ROOT>/./pkg-config :
 Warning: cannot determine version of <ROOT>/./pkg-config :
 ""
 Resolving dependencies...
-Error: cabal: Could not resolve dependencies:
+Error: [Cabal-7107]
+Could not resolve dependencies:
 [__0] next goal: CheckExtraProgPath (user goal)
 [__0] rejecting: CheckExtraProgPath-0.1 (conflict: pkg-config package zlib-any, not found in the pkg-config database)
 [__0] fail (backjumping, conflict set: CheckExtraProgPath)

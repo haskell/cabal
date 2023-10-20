@@ -76,7 +76,6 @@ import Distribution.Simple.Setup
   )
 import Distribution.Simple.Utils
   ( debug
-  , die'
   , dieWithException
   , notice
   , toUTF8LBS
@@ -215,7 +214,7 @@ planPackages
     notice verbosity "Resolving dependencies..."
 
     installPlan <-
-      foldProgress logMsg (die' verbosity) return $
+      foldProgress logMsg (dieWithException verbosity . FreezeException) return $
         resolveDependencies
           platform
           (compilerInfo comp)

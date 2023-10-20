@@ -1,6 +1,7 @@
 # cabal v2-build
 Resolving dependencies...
-Error: cabal: Could not resolve dependencies:
+Error: [Cabal-7107]
+Could not resolve dependencies:
 [__0] trying: p-1.0 (user goal)
 [__1] next goal: q (user goal)
 [__1] rejecting: q-1.0 (requires library from p, but the component is not buildable in the current environment)

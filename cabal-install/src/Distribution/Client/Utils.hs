@@ -68,7 +68,7 @@ import Data.List
 import Distribution.Compat.Environment
 import Distribution.Compat.Time (getModTime)
 import Distribution.Simple.Setup (Flag (..))
-import Distribution.Simple.Utils (die', findPackageDesc, noticeNoWrap)
+import Distribution.Simple.Utils (dieWithException, findPackageDesc, noticeNoWrap)
 import Distribution.System (OS (..), Platform (..))
 import Distribution.Version
 import System.Directory
@@ -109,6 +109,7 @@ import qualified System.Directory as Dir
 import qualified System.IO.Error as IOError
 #endif
 import qualified Data.Set as Set
+import Distribution.Client.Errors
 
 -- | Generic merging utility. For sorted input lists this is a full outer join.
 mergeBy :: forall a b. (a -> b -> Ordering) -> [a] -> [b] -> [MergeResult a b]
@@ -394,7 +395,7 @@ tryFindPackageDesc verbosity depPath err = do
   errOrCabalFile <- findPackageDesc depPath
   case errOrCabalFile of
     Right file -> return file
-    Left _ -> die' verbosity err
+    Left _ -> dieWithException verbosity $ TryFindPackageDescErr err
 
 findOpenProgramLocation :: Platform -> IO (Either String FilePath)
 findOpenProgramLocation (Platform _ os) =
