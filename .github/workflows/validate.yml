@@ -11,11 +11,16 @@ concurrency:
   group: ${{ github.ref }}-${{ github.workflow }}
   cancel-in-progress: true
 
+# Note: This workflow file contains the required job "Validate post job". We are using path filtering
+# here to ignore PRs which only change documentation. This can cause a problem, see the workflow file
+# "validate.skip.yml" for a description of the problem and the solution provided in that file.
 on:
   push:
+    paths-ignore: 'doc/**'
     branches:
       - master
   pull_request:
+    paths-ignore: 'doc/**'
   release:
     types:
       - created
