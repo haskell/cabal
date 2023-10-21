@@ -67,7 +67,7 @@ The ``myapp.cabal`` file above defines a single component named ``myapp`` of the
 Inside the ``executable`` section, the ``build-depends`` field lists the dependencies of this component.
 
 
-``app/Main.hs`` is where your executable's code lives:
+The ``app/Main.hs`` file is where your executable's code lives:
 
 .. code-block:: haskell
 
