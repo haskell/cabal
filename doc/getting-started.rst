@@ -14,7 +14,7 @@ Creating a new application
 --------------------------
 
 We create a minimal Haskell application to get a quick overview 
-about the ``cabal`` commandline tool:
+of the ``cabal`` command-line tool:
 
 1. How to initialize a Haskell package.
 2. How files are organized inside a package.
