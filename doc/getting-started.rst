@@ -181,7 +181,7 @@ Now you can build and re-run your code to see the new output:
 Running a single-file Haskell script
 ------------------------------------
 
-Cabal also supports running a single self-contained Haskell script like 
+Cabal also supports running single-file Haskell scripts like 
 the following file named ``myscript``:
 
 .. code-block:: haskell
