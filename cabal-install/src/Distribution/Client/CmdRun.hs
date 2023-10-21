@@ -56,6 +56,7 @@ import Distribution.Client.ProjectPlanning
   )
 import Distribution.Client.ProjectPlanning.Types
   ( dataDirsEnvironmentForPlan
+  , elabExeDependencyPaths
   )
 import Distribution.Client.ScriptUtils
   ( AcceptNoTargets (..)
@@ -275,6 +276,12 @@ runAction flags@NixStyleFlags{..} targetAndArgs globalFlags =
         dieWithException verbosity $
           MultipleMatchingExecutables exeName (fmap (\p -> " - in package " ++ prettyShow (elabUnitId p)) elabPkgs)
 
+    -- Some dependencies may have executables. Let's put those on the PATH.
+    let extraPaths = elabExeDependencyPaths pkg
+    info verbosity . unlines $
+      "Including the following directories in PATH:"
+        : extraPaths
+
     let defaultExePath =
           binDirectoryFor
             (distDirLayout baseCtx)
@@ -300,6 +307,7 @@ runAction flags@NixStyleFlags{..} targetAndArgs globalFlags =
                 dataDirsEnvironmentForPlan
                   (distDirLayout baseCtx)
                   elaboratedPlan
+            , progInvokePathEnv = extraPaths
             }
   where
     (targetStr, args) = splitAt 1 targetAndArgs

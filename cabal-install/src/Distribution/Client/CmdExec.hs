@@ -263,6 +263,7 @@ withTempEnvFile verbosity baseCtx buildCtx buildStatus action = do
         action envOverrides
     )
 
+-- | Get paths to all dependency executables to be included in PATH and log them.
 pathAdditions :: Verbosity -> ProjectBaseContext -> ProjectBuildContext -> IO [FilePath]
 pathAdditions verbosity ProjectBaseContext{..} ProjectBuildContext{..} = do
   info verbosity . unlines $
@@ -274,6 +275,7 @@ pathAdditions verbosity ProjectBaseContext{..} ProjectBuildContext{..} = do
       S.toList $
         binDirectories distDirLayout elaboratedShared elaboratedPlanToExecute
 
+-- | Get paths to all dependency executables to be included in PATH.
 binDirectories
   :: DistDirLayout
   -> ElaboratedSharedConfig
