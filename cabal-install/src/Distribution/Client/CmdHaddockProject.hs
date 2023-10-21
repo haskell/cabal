@@ -284,27 +284,34 @@ haddockProjectAction flags _extraArgs globalFlags = do
                     unitId = unUnitId (elabUnitId package)
                     buildDir = distBuildDirectory distLayout distDirParams
                     packageName = unPackageName (pkgName $ elabPkgSourceId package)
+                    -- TODO: is there a better way to recognise if the library
+                    -- is the main library?
+                    mainLib =
+                      prettyShow (elabPkgSourceId package) ++ "-inplace"
+                        == prettyShow (elabUnitId package)
+                    name = if mainLib then packageName else unitId
+
                 let docDir =
                       buildDir
                         </> "doc"
                         </> "html"
                         </> packageName
-                    destDir = outputDir </> unitId
+                    destDir = outputDir </> name
                     interfacePath =
                       destDir
                         </> packageName
                         <.> "haddock"
                 a <- doesDirectoryExist docDir
                 case a of
-                  True ->
+                  True -> do
                     copyDirectoryRecursive verbosity docDir destDir
-                      >> return
-                        [
-                          ( unitId
-                          , interfacePath
-                          , Visible
-                          )
-                        ]
+                    return
+                      [
+                        ( name
+                        , interfacePath
+                        , Visible
+                        )
+                      ]
                   False -> do
                     warn
                       verbosity
