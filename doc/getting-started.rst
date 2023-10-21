@@ -117,7 +117,7 @@ terminal with some embellishment.
    need to update the package index, you can do this by running ``cabal
    update``.
 
-In our ``myapp.cabal`` file we'll update the ``build-depends`` attribute of
+In our ``myapp.cabal`` file, we will update the ``build-depends`` field of
 the executable section to include ``haskell-say``:
 
 .. code-block:: cabal
