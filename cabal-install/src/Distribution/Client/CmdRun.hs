@@ -107,6 +107,7 @@ import Distribution.Client.ProjectPlanning
   )
 import Distribution.Client.ProjectPlanning.Types
   ( dataDirsEnvironmentForPlan
+  , elabExeDependencyPaths
   )
 import Distribution.Client.ScriptUtils
   ( AcceptNoTargets (..)
@@ -335,11 +336,13 @@ runAction flags@NixStyleFlags {..} targetAndArgs globalFlags
               || buildSettingOnlyDownload (buildSettings baseCtx)
 
     let extraPath =
-          fromNubList
-            . projectConfigProgPathExtra
-            . projectConfigShared
-            . projectConfig
-            $ baseCtx
+          elabExeDependencyPaths pkg
+            ++ ( fromNubList
+                  . projectConfigProgPathExtra
+                  . projectConfigShared
+                  . projectConfig
+                  $ baseCtx
+               )
 
     logExtraProgramSearchPath verbosity extraPath
 

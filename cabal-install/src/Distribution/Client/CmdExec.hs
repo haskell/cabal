@@ -269,6 +269,7 @@ withTempEnvFile verbosity baseCtx buildCtx buildStatus action = do
      action envOverrides)
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 pathAdditions :: Verbosity -> ProjectBaseContext -> ProjectBuildContext -> IO [FilePath]
 pathAdditions verbosity ProjectBaseContext{..}ProjectBuildContext{..} = do
   info verbosity . unlines $ "Including the following directories in PATH:"
@@ -278,6 +279,9 @@ pathAdditions verbosity ProjectBaseContext{..}ProjectBuildContext{..} = do
   paths = S.toList
         $ binDirectories distDirLayout elaboratedShared elaboratedPlanToExecute
 =======
+=======
+-- | Get paths to all dependency executables to be included in PATH.
+>>>>>>> f06195d3a (Honor build-tool-depends in CmdRun)
 pathAdditions :: ProjectBaseContext -> ProjectBuildContext -> [FilePath]
 pathAdditions ProjectBaseContext{..} ProjectBuildContext{..} =
   paths ++ cabalConfigPaths
@@ -292,6 +296,7 @@ pathAdditions ProjectBaseContext{..} ProjectBuildContext{..} =
         binDirectories distDirLayout elaboratedShared elaboratedPlanToExecute
 >>>>>>> 46df8ba71 (Fix extra-prog-path propagation in the codebase.)
 
+-- | Get paths to all dependency executables to be included in PATH.
 binDirectories
   :: DistDirLayout
   -> ElaboratedSharedConfig
