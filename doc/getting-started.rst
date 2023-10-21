@@ -64,7 +64,7 @@ more managable building blocks.
 A component can be of one of several types (executable, library, etc.) and describes, 
 among other things, the location of source files and its dependencies.
 The ``myapp.cabal`` file above defines a single component named ``myapp`` of the executable type.
-Inside that ``executable`` section ``build-depends`` lists the dependencies of this component.
+Inside the ``executable`` section, the ``build-depends`` field lists the dependencies of this component.
 
 
 ``app/Main.hs`` is where your executable's code lives:
