@@ -268,6 +268,7 @@ withTempEnvFile verbosity baseCtx buildCtx buildStatus action = do
         action envOverrides
     )
 
+-- | Get paths to all dependency executables to be included in PATH.
 pathAdditions :: ProjectBaseContext -> ProjectBuildContext -> [FilePath]
 pathAdditions ProjectBaseContext{..} ProjectBuildContext{..} =
   paths ++ cabalConfigPaths
@@ -281,6 +282,7 @@ pathAdditions ProjectBaseContext{..} ProjectBuildContext{..} =
       S.toList $
         binDirectories distDirLayout elaboratedShared elaboratedPlanToExecute
 
+-- | Get paths to all dependency executables to be included in PATH.
 binDirectories
   :: DistDirLayout
   -> ElaboratedSharedConfig
