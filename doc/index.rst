@@ -2,6 +2,11 @@ Welcome to the Cabal User Guide
 ===============================
 
 .. toctree::
+
+   welcome
+
+
+.. toctree::
    :caption: Getting Started
    :numbered:
    :maxdepth: 2
