@@ -6,7 +6,7 @@ Installing Cabal
 
 The easiest and recommended way to install the ``cabal`` command-line tool 
 on Linux, macOS, FreeBSD or Windows is through `ghcup <https://www.haskell.org/ghcup/>`__. 
-It installs the "Haskell toolchain" which includes Cabal,
+It installs the “Haskell toolchain”, which includes Cabal,
 the Haskell compiler `GHC <https://www.haskell.org/ghc/>`__ 
 and optionally other useful Haskell tools.
 
