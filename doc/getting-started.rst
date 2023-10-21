@@ -77,7 +77,7 @@ Inside the ``executable`` section, the ``build-depends`` field lists the depende
     main = putStrLn "Hello, Haskell!"
 
 
-To run the executable, switch into the project directory with ``cd myapp`` and  run 
+To run the executable, switch into the application directory with ``cd myapp`` and  run 
 
 .. code-block:: console
 
