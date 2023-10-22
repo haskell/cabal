@@ -207,8 +207,8 @@ Use the familiar ``cabal run`` command to execute this script:
 
     $ cabal run myscript
 
-On Unix-like systems, a Haskell script starting with ``#!/usr/bin/env cabal``, like the one above, can be run directly 
-after setting the execute permission (+x):
+On Unix-like systems, a Haskell script starting with ``#!/usr/bin/env cabal``, like the one above,
+can be run directly after setting the execute permission (+x):
 
 .. code-block:: console
 
