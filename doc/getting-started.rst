@@ -42,7 +42,7 @@ in a terminal. This generates the following files in a new ``myapp`` directory:
         ├── CHANGELOG.md
         └── myapp.cabal
 
-The ``myapp.cabal``file  is a package description file, commonly referred to as a “Cabal file”:
+The ``myapp.cabal`` file  is a package description file, commonly referred to as a “Cabal file”:
 
 .. code-block:: cabal
 
