@@ -70,7 +70,10 @@ main = cabalTest $ do
                     -- (see 'testCurrentDir').)
                     withDirectory ".." $ do
                         packageEnv <- (</> ("basic" ++ show idx ++ ".env")) . testWorkDir <$> getTestEnv
-                        cabal "v2-install" $ ["--disable-deterministic", "--lib", "--package-env=" ++ packageEnv] ++ linkConfigFlags linking ++ ["basic"]
+                        let installOptions = ["--disable-deterministic", "--lib", "--package-env=" ++ packageEnv] ++ linkConfigFlags linking ++ ["basic"]
+                        cabal "v2-install" installOptions
+                        fails $ cabal "v2-install" installOptions
+                        cabal "v2-install" $ "--force-reinstalls" : installOptions
                         let exIPID s = takeWhile (/= '\n') . head . filter (\t -> any (`isPrefixOf` t) ["basic-0.1-", "bsc-0.1-"]) $ tails s
                         hashedIpid <- exIPID <$> liftIO (readFile packageEnv)
                         return $ ((idx, linking), hashedIpid)
