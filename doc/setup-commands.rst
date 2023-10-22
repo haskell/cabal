@@ -1379,3 +1379,20 @@ This command takes the following option:
 
 
 .. include:: references.inc
+
+Stability of the Setup.hs interface
+-----------------------------------
+
+The following part of the Setup.hs commandline interface is considered to be very stable.
+
+-  ``./setup configure``
+-  ``--prefix``
+-  ``--user``
+-  ``--ghc``, ``--uhc``
+-  ``--verbose``
+-  ``--prefix``
+
+-  ``./setup build``
+-  ``./setup install``
+-  ``./setup register``
+-  ``./setup copy``
