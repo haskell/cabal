@@ -274,10 +274,13 @@ import System.IO
 -- signals, preparing console linebuffering, and relaxing encoding errors.
 --
 -- Two, it processes (via an IO action) response
--- files, calling expandResponse in Cabal/Distribution.Compat.ResponseFile
+-- files, calling 'expandResponse' in Cabal/Distribution.Compat.ResponseFile
 --
--- Three, it calls the mainWorker, which calls the argument parser,
--- producing CommandParse data, which mainWorker pattern-matches
+-- Note that here, it splits the arguments on a strict match to
+-- "--", and won't parse response files after the split.
+--
+-- Three, it calls the 'mainWorker', which calls the argument parser,
+-- producing 'CommandParse' data, which mainWorker pattern-matches
 -- into IO actions for execution.
 main :: [String] -> IO ()
 main args = do
@@ -293,8 +296,7 @@ main args = do
   relaxEncodingErrors stderr
 
   -- Response files support.
-  -- See expandResponse documentation in
-  -- Cabal/Distribution.Compat.ResponseFile
+  -- See 'expandResponse' documentation in Cabal/Distribution.Compat.ResponseFile
   -- for more information.
   let (args0, args1) = break (== "--") args
 
@@ -313,7 +315,7 @@ warnIfAssertionsAreEnabled =
     assertionsEnabledMsg =
       "Warning: this is a debug build of cabal-install with assertions enabled."
 
--- | Core worker, similar to defaultMainHelper in Cabal/Distribution.Simple
+-- | Core worker, similar to 'defaultMainHelper' in Cabal/Distribution.Simple
 --
 -- With an exception-handler @topHandler@, mainWorker calls commandsRun
 -- to parse arguments, then pattern-matches the CommandParse data
