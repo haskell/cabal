@@ -685,6 +685,7 @@ runGHCWithResponseFile workDir fileNameTemplate encoding verbosity ghcProg comp 
             "+RTS" -> (True, responseFileArgs, arg : otherArgs)
             "-RTS" -> (False, responseFileArgs, arg : otherArgs)
             "--RTS" -> (False, args, [arg])
+            "--" -> (False, arg : args, [])
             _
               | isRTSOption -> (isRTSOption, responseFileArgs, arg : otherArgs)
               | otherwise -> (isRTSOption, arg : responseFileArgs, otherArgs)
