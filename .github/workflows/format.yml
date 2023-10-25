@@ -10,8 +10,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    - uses: haskell-actions/run-fourmolu@v8
+    - uses: haskell-actions/run-fourmolu@v9
       with:
+        version: "0.12.0.0"
         pattern: |
           Cabal/**/*.hs
           Cabal-syntax/**/*.hs
