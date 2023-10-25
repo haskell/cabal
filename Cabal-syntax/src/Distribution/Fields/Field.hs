@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveTraversable #-}
@@ -36,6 +37,9 @@ import Distribution.Compat.Prelude
 import Distribution.Pretty (showTokenStr)
 import Distribution.Utils.Generic (fromUTF8BS)
 import Prelude ()
+#if MIN_VERSION_base(4,18,0)
+import qualified Data.Foldable1 as F1
+#endif
 
 -------------------------------------------------------------------------------
 -- Cabal file
@@ -141,3 +145,30 @@ fieldLinesToString =
   intercalate "\n" . map toStr
   where
     toStr (FieldLine _ bs) = fromUTF8BS bs
+
+-------------------------------------------------------------------------------
+-- Foldable1
+-------------------------------------------------------------------------------
+
+#if MIN_VERSION_base(4,18,0)
+
+-- | @since 3.12.0.0
+instance F1.Foldable1 Field where
+  foldMap1 f (Field x ys) =
+    F1.fold1 (F1.foldMap1 f x :| map (F1.foldMap1 f) ys)
+  foldMap1 f (Section x ys zs) =
+    F1.fold1 (F1.foldMap1 f x :| map (F1.foldMap1 f) ys ++ map (F1.foldMap1 f) zs)
+
+-- | @since 3.12.0.0
+instance F1.Foldable1 FieldLine where
+  foldMap1 = (. fieldLineAnn)
+
+-- | @since 3.12.0.0
+instance F1.Foldable1 SectionArg where
+  foldMap1 = (. sectionArgAnn)
+
+-- | @since 3.12.0.0
+instance F1.Foldable1 Name where
+  foldMap1 = (. nameAnn)
+
+#endif

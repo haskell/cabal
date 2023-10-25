@@ -16,6 +16,14 @@ import Distribution.Compat.DList
 import Distribution.Compat.Prelude
 import Prelude ()
 
+-- | A simple parser supporting quoted strings.
+--
+-- Please be aware that this will only split strings when seeing whitespace
+-- outside of quotation marks, i.e, @"foo\"bar baz\"qux quux"@ will be
+-- converted to @["foobar bazqux", "quux"]@.
+--
+-- This behavior can be useful when parsing text like
+-- @"ghc-options: -Wl,\"some option with spaces\""@, for instance.
 tokenizeQuotedWords :: String -> [String]
 tokenizeQuotedWords = filter (not . null) . go False mempty
   where
