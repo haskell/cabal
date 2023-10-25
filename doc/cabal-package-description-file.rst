@@ -1,22 +1,17 @@
 Package Description — <package>.cabal File
 ==========================================
 
-The package description file, commonly known as "the Cabal file",
-describes the contents of a package.
-The Cabal package is the unit of distribution. When installed, its
-purpose is to make available:
+The package description file, commonly known as "the Cabal file", describes the
+contents of a package. The Cabal package is the unit of distribution. When
+installed, its purpose is to make available one or more:
 
--  One or more Haskell programs (executables).
+-  Haskell programs (executables); and/or
 
--  One or more libraries, exposing a number of Haskell modules.
+-  libraries, exposing a number of Haskell modules.
 
-However having both a library and executables in a package does not work
-very well; if the executables depend on the library, they must
-explicitly list all the modules they directly or indirectly import from
-that library. Fortunately, starting with Cabal 1.8.0.4, executables can
-also declare the package that they are in as a dependency, and Cabal
-will treat them as if they were in another package that depended on the
-library.
+Public library components can be depended upon by other Cabal packages and all
+library components (both public and private) can be depended upon by other
+components of the same package.
 
 Internally, the package may consist of much more than a bunch of Haskell
 modules: it may also have C source code and header files, source code
@@ -803,18 +798,65 @@ Library
 
     Build information for libraries.
 
-    A package can have one default library, which is identified by omitting the
-    ``name`` argument.
+    A package can include zero or more library components. A library can be
+    unnamed or named (using the ``name`` argument). It can also be depended upon
+    only by components in the same package (private) or by those components and
+    components in other packages (public). A package can have no more than one
+    unnamed library.
 
-    Starting with Cabal 2.0, sub-library components can be defined by setting
-    the ``name`` field to a name different from the current package's name; see
-    section on :ref:`Sublibraries <sublibs>` for more information. By
-    default, these sub-libraries are private and internal. Since Cabal 3.0,
-    these sub-libraries can also be exposed and used by other packages. See the
-    :pkg-field:`library:visibility` field and :ref:`Multiple Public Libraries
-    <publicsublibs>` for more information.
+    .. Note::
 
-The library section should contain the following fields:
+       The 'cabal' executable provided by the 'cabal-install' package will not
+       accept dependencies on sublibraries of packages with no unnamed library.
+
+    This guide refers to an unnamed library as the main library and a named
+    library as a sublibrary (such components may be considered as subidiary, or
+    ancillary, to the main library). It refers to a private sublibrary as an
+    internal library.
+
+    A sublibrary cannot have the same name as its package.
+
+    .. Note::
+
+       Before version 3.4 of the Cabal specification, a private sublibrary could
+       shadow a dependency on the main library of another package, if their
+       names clashed.
+
+    A main library is always public and a sublibrary is private by default.
+    See the :pkg-field:`library:visibility` field for setting a sublibrary as
+    public.
+
+    Being able to include more than one public library in a package allows the
+    separation of the unit of distribution (the package) from the unit of
+    buildable code (the library). This is useful for Haskell projects with many
+    libraries that are distributed together as it avoids duplication and
+    potential inconsistencies.
+
+    .. Note::
+
+       Before version 3.0 of the Cabal specification, all sublibraries were
+       internal libraries. Before version 2.0, a package could not include
+       sublibraries.
+
+    See :ref:`Sublibraries - Examples <sublibs>` for examples.
+
+A library section should contain the following fields:
+
+.. pkg-field:: visibility: visibility specifiers
+
+    :since: 3.0
+
+    :default:
+        ``private`` for sublibraries. Cannot be set for the main library, which
+        is always public.
+
+    Can be set to ``private`` or ``public``. A ``private`` library component can
+    only be depended on by other components of the same package. A ``public``
+    component can be depended on by those components and by components of other
+    packages.
+
+    See the :pkg-field:`build-depends` field for the syntax to specify a
+    dependency on a library component.
 
 .. pkg-field:: exposed-modules: identifier list
 
@@ -848,23 +890,6 @@ The library section should contain the following fields:
     may be necessary to set ``exposed: False`` for some old libraries
     that use a flat module namespace or where it is known that the
     exposed modules would clash with other common modules.
-
-.. pkg-field:: visibility: visibility specifiers
-
-    :since: 3.0
-
-    :default:
-        ``private`` for sublibraries. Cannot be set for main
-        (unnamed) library, which is always public.
-
-    Can be ``public`` or ``private``.
-    Makes it possible to have multiple public libraries in a single package.
-    If set to ``public``, depending on this library from another package is
-    allowed. If set to ``private``, depending on this library is allowed only
-    from the same package.
-
-    See section on :ref:`Sublibraries <sublibs>` for examples and more
-    information.
 
 .. pkg-field:: reexported-modules: exportlist
     :since: 1.22
@@ -905,22 +930,21 @@ section on `build information`_).
 
 .. _sublibs:
 
-**Sublibraries**
+**Sublibraries - Examples**
 
-Cabal 2.0 and later support "sublibraries", which are extra named
-libraries (as opposed to the usual unnamed library section). For
-example, suppose that your test suite needs access to some internal
-modules in your library, which you do not otherwise want to export. You
-could put these modules in a sublibrary, which the main library
-and the test suite :pkg-field:`build-depends` upon. Then your Cabal file might
-look something like this:
+An example of the use of a private sublibrary (an internal library) is a test
+suite that needs access to some internal modules in the package's main library,
+which you do not otherwise want to expose. You could put those modules in an
+internal library, which the main library and the test suite
+:pkg-field:`build-depends` upon. Your Cabal file might then look something like
+this:
 
 ::
 
-    cabal-version:  2.0
+    cabal-version:  3.4
     name:           foo
     version:        0.1.0.0
-    license:        BSD3
+    license:        BSD-3-Clause
     license-file:   LICENSE
     build-type:     Simple
 
@@ -933,7 +957,7 @@ look something like this:
 
     library
         exposed-modules:  Foo.Public
-        build-depends:    foo-internal, base >= 4.3 && < 5
+        build-depends:    foo:foo-internal, base >= 4.3 && < 5
         default-language: Haskell2010
 
     test-suite test-foo
@@ -941,26 +965,19 @@ look something like this:
         main-is:          test-foo.hs
         -- NOTE: no constraints on 'foo-internal' as same-package
         --       dependencies implicitly refer to the same package instance
-        build-depends:    foo-internal, base
+        build-depends:    foo:foo-internal, base
         default-language: Haskell2010
 
-Sublibraries are also useful for packages that define multiple
-executables, but do not define a publicly accessible library. Internal
-libraries are only visible internally in the package (so they can only
-be added to the :pkg-field:`build-depends` of same-package libraries,
-executables, test suites, etc.) Sublibraries locally shadow any
-packages which have the same name; consequently, don't name an internal
-library with the same name as an external dependency if you need to be
-able to refer to the external dependency in a
-:pkg-field:`build-depends` declaration.
+Another example of the use of internal libraries is a package that includes one
+or more executables but does not include a public library.
 
-Shadowing can be used to vendor an external dependency into a package
-and thus emulate *private dependencies*. Below is an example based on
-a real-world use case:
+Internal libraries can be used to incorporate (vendor or bundle) an external
+dependency into a package, effectively simulating *private dependencies*. Below
+is an example:
 
 ::
 
-    cabal-version: 3.0
+    cabal-version: 3.4
     name: haddock-library
     version: 1.6.0
     license: BSD-3-Clause
@@ -975,7 +992,7 @@ a real-world use case:
       hs-source-dirs:       src
 
       -- internal sub-lib
-      build-depends:        attoparsec
+      build-depends:        haddock-library:attoparsec
 
       exposed-modules:
         Documentation.Haddock
@@ -1002,25 +1019,6 @@ a real-world use case:
       ghc-options: -funbox-strict-fields -Wall -fwarn-tabs -O2
 
       default-language: Haskell2010
-
-.. note::
-    For packages using ``cabal-version: 3.4`` or higher, the syntax to
-    specify a sublibrary in a ``build-depends:`` section is
-    ``package-name:internal-library-name``.
-
-.. _publicsublibs:
-
-**Multiple Public Libraries**
-
-Cabal 3.0 and later support exposing multiple libraries from a single package
-through the field :pkg-field:`library:visibility`.
-Having multiple public libraries is useful for separating the unit of
-distribution (package) from the unit of buildable code (library).
-For more information about the rationale and some examples, see
-`this blog post <https://fgaz.me/posts/2019-11-14-cabal-multiple-libraries/>`__.
-
-..
-    TODO inline the blog post
 
 Executables
 ^^^^^^^^^^^
@@ -1456,24 +1454,30 @@ system-dependent values for these fields.
 
 .. pkg-field:: build-depends: library list
 
-    Declares the *library* dependencies required to build the current
-    package component; see :pkg-field:`build-tool-depends` for
-    declaring build-time *tool* dependencies. External library
-    dependencies should be annotated with a version constraint.
+    Declares the dependencies on *library* components required to build the
+    current package component. See :pkg-field:`build-tool-depends` for declaring
+    dependencies on build-time *tools*. Dependencies on libraries from another
+    package should be annotated with a version constraint.
 
     **Library Names**
 
-    External libraries are identified by the package's name they're
-    provided by, optionally followed by a colon and the library name
-    (available from ``cabal-version: 3.0``).
-    If the library name is absent, the main (unnamed) library will be used.
-    To refer to the main (unnamed) library explicitly, use the name of the
-    package (``foo:foo``).
-    Multiple libraries from the same package can be specified with the shorthand
-    syntax ``pkg:{lib1,lib2}```.
+    A library is identified by the name of its package, optionally followed by a
+    colon and the library's name (for example, ``my-package:my-library``). If a
+    library name is omitted, the package's main library will be used. To refer
+    expressly to a package's main library, use the name of the package as the
+    library name (for example, ``my-package:my-package``). More than one library
+    from the same package can be specified with the shorthand syntax
+    ``my-package:{my-library1,my-library2}``.
 
-    See section on :ref:`Multiple Public Libraries <publicsublibs>` for examples and more
-    information.
+    .. Note::
+
+       Before version 3.4 of the Cabal specification, from version 2.0, a
+       private sublibrary (an internal library) was identified by only the name
+       of the sublibrary. An internal library could shadow a dependency on the
+       main library of another package, if the names clashed.
+
+    See the section on :pkg-section:`library` for information about how a
+    package can specify library components.
 
     **Version Constraints**
 
