@@ -184,7 +184,7 @@ Example: A package containing a library and executable programs
     executable program2
       -- A different main.hs because of hs-source-dirs.
       main-is:          main.hs
-      -- No bound on internal libraries.
+      -- No bound on a library provided by the same package.
       build-depends:    TestPackage
       hs-source-dirs:   prog2
       other-modules:    Utils
@@ -806,7 +806,7 @@ Library
 
     Starting with Cabal 2.0, sub-library components can be defined by setting
     the ``name`` field to a name different from the current package's name; see
-    section on :ref:`Internal Libraries <sublibs>` for more information. By
+    section on :ref:`Sublibraries <sublibs>` for more information. By
     default, these sub-libraries are private and internal. Since Cabal 3.0,
     these sub-libraries can also be exposed and used by other packages. See the
     :pkg-field:`library:visibility` field and :ref:`Multiple Public Libraries
@@ -852,7 +852,7 @@ The library section should contain the following fields:
     :since: 3.0
 
     :default:
-        ``private`` for internal libraries. Cannot be set for main
+        ``private`` for sublibraries. Cannot be set for main
         (unnamed) library, which is always public.
 
     Can be ``public`` or ``private``.
@@ -861,7 +861,7 @@ The library section should contain the following fields:
     allowed. If set to ``private``, depending on this library is allowed only
     from the same package.
 
-    See section on :ref:`Internal Libraries <sublibs>` for examples and more
+    See section on :ref:`Sublibraries <sublibs>` for examples and more
     information.
 
 .. pkg-field:: reexported-modules: exportlist
@@ -903,13 +903,13 @@ section on `build information`_).
 
 .. _sublibs:
 
-**Internal Libraries**
+**Sublibraries**
 
-Cabal 2.0 and later support "internal libraries", which are extra named
+Cabal 2.0 and later support "sublibraries", which are extra named
 libraries (as opposed to the usual unnamed library section). For
 example, suppose that your test suite needs access to some internal
 modules in your library, which you do not otherwise want to export. You
-could put these modules in an internal library, which the main library
+could put these modules in a sublibrary, which the main library
 and the test suite :pkg-field:`build-depends` upon. Then your Cabal file might
 look something like this:
 
@@ -942,11 +942,11 @@ look something like this:
         build-depends:    foo-internal, base
         default-language: Haskell2010
 
-Internal libraries are also useful for packages that define multiple
+Sublibraries are also useful for packages that define multiple
 executables, but do not define a publicly accessible library. Internal
 libraries are only visible internally in the package (so they can only
 be added to the :pkg-field:`build-depends` of same-package libraries,
-executables, test suites, etc.) Internal libraries locally shadow any
+executables, test suites, etc.) Sublibraries locally shadow any
 packages which have the same name; consequently, don't name an internal
 library with the same name as an external dependency if you need to be
 able to refer to the external dependency in a
@@ -1003,7 +1003,7 @@ a real-world use case:
 
 .. note::
     For packages using ``cabal-version: 3.4`` or higher, the syntax to
-    specify an internal library in a ``build-depends:`` section is
+    specify a sublibrary in a ``build-depends:`` section is
     ``package-name:internal-library-name``.
 
 .. _publicsublibs:
@@ -3370,7 +3370,7 @@ just depending on both ``str-impl`` and ``parametrized``:
 
 Note that due to technical limitations, you cannot directly define
 ``Str`` in the ``combined`` library; it must be placed in its own
-library (you can use :ref:`Internal Libraries <sublibs>` to conveniently
+library (you can use :ref:`Sublibraries <sublibs>` to conveniently
 define a sub-library).
 
 However, a more common situation is that your names don't match up
@@ -3402,7 +3402,7 @@ the requirements and provided modules renamed to be distinct.
         parametrized (MyModule as MyModule.BS) requires (Str as Data.ByteString)
 
 Intensive use of Backpack sometimes involves creating lots of small
-parametrized libraries; :ref:`Internal Libraries <sublibs>` can be used
+parametrized libraries; :ref:`Sublibraries <sublibs>` can be used
 to define all of these libraries in a single package without having to
 create many separate Cabal packages.  You may also find it useful to use
 :pkg-field:`library:reexported-modules` to reexport instantiated
