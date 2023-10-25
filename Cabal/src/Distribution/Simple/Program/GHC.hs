@@ -1,4 +1,3 @@
-{-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
@@ -672,7 +671,7 @@ runGHCWithResponseFile workDir fileNameTemplate encoding verbosity ghcProg comp 
         fileNameTemplate
         encoding
         responseFileArgs
-        \responseFile -> do
+        $ \responseFile -> do
           let newInvocation =
                 invocation{progInvokeArgs = ('@' : responseFile) : otherArgs}
 
