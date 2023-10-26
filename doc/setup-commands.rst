@@ -146,7 +146,7 @@ This has the following effects:
    explicitly specified using :option:`--dependency` simply by giving the name
    of the sublibrary; e.g., the dependency for a sublibrary
    named ``foo`` is given as
-   ``--dependency=pkg-internal=pkg-1.0-internal-abcd``.
+   ``--dependency=Lib:foo=foo-0.1-abc``.
 
 -  Only the dependencies needed for the requested component are
    required. Similarly, when :option:`--exact-configuration` is specified,
