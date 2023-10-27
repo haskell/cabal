@@ -14,10 +14,17 @@
 -- Implementation of the 'outdated' command. Checks for outdated
 -- dependencies in the package description file or freeze file.
 module Distribution.Client.Outdated
-  ( outdatedCommand
-  , outdatedAction
+  ( IgnoreMajorVersionBumps (..)
   , ListOutdatedSettings (..)
+  , OutdatedFlags (..)
+  , defaultOutdatedFlags
+  , depsFromFreezeFile
+  , depsFromNewFreezeFile
+  , outdatedAction
+  , outdatedCommand
+  , outdatedOptions
   , listOutdated
+  , showResult
   )
 where
 
@@ -164,7 +171,7 @@ import System.Directory
 outdatedCommand :: CommandUI (ProjectFlags, OutdatedFlags)
 outdatedCommand =
   CommandUI
-    { commandName = "outdated"
+    { commandName = "v1-outdated"
     , commandSynopsis = "Check for outdated dependencies."
     , commandDescription = Just $ \_ ->
         wrapText $
@@ -325,15 +332,8 @@ outdatedAction (ProjectFlags{flagProjectDir, flagProjectFile}, OutdatedFlags{..}
         then depsFromFreezeFile verbosity
         else
           if newFreezeFile
-            then do
-              httpTransport <-
-                configureTransport
-                  verbosity
-                  (fromNubList . globalProgPathExtra $ globalFlags)
-                  (flagToMaybe . globalHttpTransport $ globalFlags)
-              depsFromNewFreezeFile verbosity httpTransport comp platform mprojectDir mprojectFile
-            else do
-              depsFromPkgDesc verbosity comp platform
+            then depsFromNewFreezeFile verbosity globalFlags comp platform mprojectDir mprojectFile
+            else depsFromPkgDesc verbosity comp platform
     debug verbosity $
       "Dependencies loaded: "
         ++ intercalate ", " (map prettyShow deps)
@@ -404,8 +404,13 @@ depsFromFreezeFile verbosity = do
   return deps
 
 -- | Read the list of dependencies from the new-style freeze file.
-depsFromNewFreezeFile :: Verbosity -> HttpTransport -> Compiler -> Platform -> Maybe FilePath -> Maybe FilePath -> IO [PackageVersionConstraint]
-depsFromNewFreezeFile verbosity httpTransport compiler (Platform arch os) mprojectDir mprojectFile = do
+depsFromNewFreezeFile :: Verbosity -> GlobalFlags -> Compiler -> Platform -> Maybe FilePath -> Maybe FilePath -> IO [PackageVersionConstraint]
+depsFromNewFreezeFile verbosity globalFlags compiler (Platform arch os) mprojectDir mprojectFile = do
+  httpTransport <-
+    configureTransport
+      verbosity
+      (fromNubList . globalProgPathExtra $ globalFlags)
+      (flagToMaybe . globalHttpTransport $ globalFlags)
   projectRoot <-
     either throwIO return
       =<< findProjectRoot verbosity mprojectDir mprojectFile

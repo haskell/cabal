@@ -92,6 +92,7 @@ library
         Distribution.Client.CmdInstall.ClientInstallTargetSelector
         Distribution.Client.CmdLegacy
         Distribution.Client.CmdListBin
+        Distribution.Client.CmdOutdated
         Distribution.Client.CmdRepl
         Distribution.Client.CmdRun
         Distribution.Client.CmdSdist

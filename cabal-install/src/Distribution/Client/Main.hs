@@ -135,6 +135,7 @@ import qualified Distribution.Client.CmdHaddockProject as CmdHaddockProject
 import qualified Distribution.Client.CmdInstall as CmdInstall
 import Distribution.Client.CmdLegacy
 import qualified Distribution.Client.CmdListBin as CmdListBin
+import qualified Distribution.Client.CmdOutdated as CmdOutdated
 import qualified Distribution.Client.CmdRepl as CmdRepl
 import qualified Distribution.Client.CmdRun as CmdRun
 import qualified Distribution.Client.CmdSdist as CmdSdist
@@ -454,6 +455,7 @@ mainWorker args = do
           , newCmd CmdBench.benchCommand CmdBench.benchAction
           , newCmd CmdExec.execCommand CmdExec.execAction
           , newCmd CmdClean.cleanCommand CmdClean.cleanAction
+          , newCmd CmdOutdated.outdatedCommand CmdOutdated.outdatedAction
           , newCmd CmdSdist.sdistCommand CmdSdist.sdistAction
           , legacyCmd configureExCommand configureAction
           , legacyCmd buildCommand buildAction
