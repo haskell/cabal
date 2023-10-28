@@ -73,6 +73,8 @@ cabal-testsuite/**/haddocks
 # python artifacts from documentation builds
 *.pyc
 .python-sphinx-virtualenv/
+venv
+.venv
 /doc/.skjold_cache/
 
 # macOS folder metadata
