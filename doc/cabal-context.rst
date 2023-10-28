@@ -14,8 +14,8 @@ use Hackage_ which is Haskell's central
 package archive that contains thousands of libraries and applications in
 the Cabal package format.
 
-Introduction
-============
+What Cabal does
+===============
 
 Cabal is a package system for Haskell software. The point of a package
 system is to enable software developers and users to easily distribute,
@@ -122,7 +122,7 @@ the package depends on.
 
 For full details on what goes in the ``.cabal`` and ``Setup.hs`` files,
 and for all the other features provided by the build system, see the
-section on :doc:`developing packages <developing-packages>`.
+section on :doc:`How to package Haskell code <how-to-package-haskell-code>`.
 
 Cabal featureset
 ----------------

@@ -1,6 +1,8 @@
-Package Description
-===================
+Package Description — <package>.cabal File
+==========================================
 
+The package description file, commonly known as "the Cabal file",
+describes the contents of a package.
 The Cabal package is the unit of distribution. When installed, its
 purpose is to make available:
 

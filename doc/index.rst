@@ -1,21 +1,40 @@
-
 Welcome to the Cabal User Guide
 ===============================
 
 .. toctree::
-   :maxdepth: 2
+   :caption: Getting Started
    :numbered:
+   :maxdepth: 2
 
    getting-started
-   intro
-   concepts-and-development
-   nix-local-build-overview
+
+.. toctree::
+   :caption: Cabal Guide
+   :numbered:
+   :maxdepth: 2
+
+   how-to-package-haskell-code
+   how-to-build-like-nix
+   how-to-report-bugs
+
+.. toctree::
+   :caption: Cabal Reference
+   :numbered:
+   :maxdepth: 2
+
+   cabal-package-description-file
+   cabal-project-description-file
    cabal-config-and-commands
-   cabal-package
-   cabal-project
+   external-commands
    setup-commands
    file-format-changelog
    buildinfo-fields-reference
-   bugs-and-stability
-   nix-integration
-   external-commands
+
+.. toctree::
+   :caption: Cabal Explanation
+   :numbered:
+   :maxdepth: 2
+
+   cabal-context
+   package-concepts
+   cabal-interface-stability
