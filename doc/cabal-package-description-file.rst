@@ -1490,7 +1490,7 @@ system-dependent values for these fields.
        For example, the ``time =1.12.*`` series depends on ``base >=4.13 && <5``
        but ``time-1.12.3`` bumps the lower bound on base to ``>=4.14``.  If we
        still want to compile with a ``ghc-8.8.*`` version of GHC that ships with
-       ``base-4.13`` and with later GHC versions then we can use ``time >=1.12
+       ``base-4.13`` and with later GHC versions, then we can use ``time >=1.12
        && (time <1.12.3 || time >1.12.3)``.
 
     If no version constraint is specified, any version is assumed to be
