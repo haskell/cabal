@@ -31,6 +31,7 @@ import qualified Distribution.Client.Outdated as V1Outdated
 import Distribution.Client.ProjectConfig
   ( ProjectConfig (..)
   , commandLineFlagsToProjectConfig
+  , projectConfigWithSolverRepoContext
   )
 import Distribution.Client.ProjectFlags
   ( ProjectFlags (..)
@@ -100,7 +101,8 @@ import Distribution.Types.PackageVersionConstraint
   )
 import Distribution.Types.UnqualComponentName (UnqualComponentName)
 import Distribution.Verbosity
-  ( normal
+  ( lessVerbose
+  , normal
   , silent
   )
 import Distribution.Version
@@ -129,40 +131,35 @@ outdatedCommand =
 -- For more details on how this works, see the module
 -- "Distribution.Client.ProjectOrchestration"
 outdatedAction :: NixStyleFlags OutdatedFlags -> [String] -> GlobalFlags -> IO ()
-outdatedAction flags _extraArgs globalFlags = do
-  let mprojectDir = flagToMaybe . flagProjectDir $ projectFlags flags
-      mprojectFile = flagToMaybe . flagProjectFile $ projectFlags flags
+outdatedAction flags@NixStyleFlags{configFlags} _extraArgs globalFlags = do
+  ProjectBaseContext{localPackages, projectConfig} <- establishProjectBaseContext verbosity cliConfig OtherCommand
 
-  config <- loadConfigOrSandboxConfig verbosity globalFlags
-  let globalFlags' = savedGlobalFlags config `mappend` globalFlags
+  projectConfigWithSolverRepoContext
+    verbosity
+    (projectConfigShared projectConfig)
+    (projectConfigBuildOnly projectConfig)
+    $ \repoContext -> do
+      -- Why?
+      -- when (not v2FreezeFile && (isJust mprojectDir || isJust mprojectFile)) $
+      --   dieWithException verbosity OutdatedAction
 
-  (comp, platform, _progdb) <- configCompilerAux' $ configFlags flags
+      sourcePkgDb <- IndexUtils.getSourcePackages verbosity repoContext
 
-  withRepoContext verbosity globalFlags' $ \repoContext -> do
-    when (not v2FreezeFile && (isJust mprojectDir || isJust mprojectFile)) $
-      dieWithException verbosity OutdatedAction
+      let pkgVerConstraints = extractPackageVersionConstraints localPackages
 
-    sourcePkgDb <- IndexUtils.getSourcePackages verbosity repoContext
-    prjBaseCtxt <- establishProjectBaseContext verbosity cliConfig OtherCommand
-    pkgVerConstraints <-
-      if
-          | v1FreezeFile -> V1Outdated.depsFromFreezeFile verbosity
-          | v2FreezeFile ->
-              V1Outdated.depsFromNewFreezeFile verbosity globalFlags comp platform mprojectDir mprojectFile
-          | otherwise -> pure $ extractPackageVersionConstraints (localPackages prjBaseCtxt)
+      debug verbosity $
+        "Dependencies loaded: " ++ intercalate ", " (map prettyShow pkgVerConstraints)
 
-    debug verbosity $
-      "Dependencies loaded: " ++ intercalate ", " (map prettyShow pkgVerConstraints)
+      let outdatedDeps = V1Outdated.listOutdated pkgVerConstraints sourcePkgDb (ListOutdatedSettings ignorePred minorPred)
 
-    let outdatedDeps = V1Outdated.listOutdated pkgVerConstraints sourcePkgDb (ListOutdatedSettings ignorePred minorPred)
+      V1Outdated.showResult (lessVerbose verbosity) outdatedDeps simpleOutput
 
-    when (not quiet) $
-      V1Outdated.showResult verbosity outdatedDeps simpleOutput
-    if exitCode && (not . null $ outdatedDeps)
-      then exitFailure
-      else pure ()
+      if exitCode && (not . null $ outdatedDeps)
+        then exitFailure
+        else pure ()
   where
-    cliConfig :: ProjectConfig
+    verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
+
     cliConfig =
       commandLineFlagsToProjectConfig
         globalFlags
@@ -192,12 +189,6 @@ outdatedAction flags _extraArgs globalFlags = do
         Just (IgnoreMajorVersionBumpsSome pkgs) ->
           let minorSet = Set.fromList pkgs
            in \pkgname -> pkgname `Set.member` minorSet
-
-    verbosity :: Verbosity
-    verbosity =
-      if quiet
-        then silent
-        else fromFlagOrDefault normal (configVerbosity $ configFlags flags)
 
 data OutdatedFlags = OutdatedFlags
   { outdatedFreezeFile :: Flag Bool
