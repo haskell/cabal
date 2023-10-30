@@ -1479,8 +1479,22 @@ system-dependent values for these fields.
 
     Version constraints use the operators ``==, >=, >, <, <=`` and a
     version number. Multiple constraints can be combined using ``&&`` or
-    ``||``. If no version constraint is specified, any version is
-    assumed to be acceptable. For example:
+    ``||``.
+    
+    .. Note::
+
+       Even though there is no ``/=`` operator, by combining operators we can
+       skip over one or more versions, to skip a deprecated version or to skip
+       versions that upset the constraint solving.
+       
+       For example, the ``time =1.12.*`` series depends on ``base >=4.13 && <5``
+       but ``time-1.12.3`` bumps the lower bound on base to ``>=4.14``.  If we
+       still want to compile with a ``ghc-8.8.*`` version of GHC that ships with
+       ``base-4.13`` and with later GHC versions then we can use ``time >=1.12
+       && (time <1.12.3 || time >1.12.3)``.
+
+    If no version constraint is specified, any version is assumed to be
+    acceptable. For example:
 
     ::
 
