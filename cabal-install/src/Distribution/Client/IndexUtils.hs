@@ -318,21 +318,31 @@ getSourcePackagesAtIndexState verbosity repoCtxt mb_idxState mb_activeRepos = do
       IndexStateHead -> do
         info verbosity ("index-state(" ++ unRepoName rname ++ ") = " ++ prettyShow (isiHeadTime isi))
         return ()
-      IndexStateTime ts0 -> do
+      IndexStateTime ts0 ->
         -- isiMaxTime is the latest timestamp in the filtered view returned by
         -- `readRepoIndex` above. It is always true that isiMaxTime is less or
         -- equal to a requested IndexStateTime. When `isiMaxTime isi /= ts0` (or
         -- equivalently `isiMaxTime isi < ts0`) it means that ts0 falls between
         -- two timestamps in the index.
         when (isiMaxTime isi /= ts0) $
-          info verbosity $
-            "There is no index-state for '"
-              ++ unRepoName rname
-              ++ "' exactly at the requested timestamp ("
-              ++ prettyShow ts0
-              ++ "). Falling back to the previous index-state that exists: "
-              ++ prettyShow (isiMaxTime isi)
-
+          let commonMsg =
+                "There is no index-state for '"
+                  ++ unRepoName rname
+                  ++ "' exactly at the requested timestamp ("
+                  ++ prettyShow ts0
+                  ++ "). "
+           in if isNothing $ timestampToUTCTime (isiMaxTime isi)
+                then
+                  warn verbosity $
+                    commonMsg
+                      ++ "Also, there are no index-states before the one requested, so the repository '"
+                      ++ unRepoName rname
+                      ++ "' will be empty."
+                else
+                  info verbosity $
+                    commonMsg
+                      ++ "Falling back to the previous index-state that exists: "
+                      ++ prettyShow (isiMaxTime isi)
     pure
       RepoData
         { rdRepoName = rname
@@ -450,8 +460,8 @@ readRepoIndex verbosity repoCtxt repo idxState =
       if isDoesNotExistError e
         then do
           case repo of
-            RepoRemote{..} -> die' verbosity $ errMissingPackageList repoRemote
-            RepoSecure{..} -> die' verbosity $ errMissingPackageList repoRemote
+            RepoRemote{..} -> dieWithException verbosity $ MissingPackageList repoRemote
+            RepoSecure{..} -> dieWithException verbosity $ MissingPackageList repoRemote
             RepoLocalNoIndex local _ ->
               warn verbosity $
                 "Error during construction of local+noindex "
@@ -465,8 +475,8 @@ readRepoIndex verbosity repoCtxt repo idxState =
     isOldThreshold = 15 -- days
     warnIfIndexIsOld dt = do
       when (dt >= isOldThreshold) $ case repo of
-        RepoRemote{..} -> warn verbosity $ errOutdatedPackageList repoRemote dt
-        RepoSecure{..} -> warn verbosity $ errOutdatedPackageList repoRemote dt
+        RepoRemote{..} -> warn verbosity $ warnOutdatedPackageList repoRemote dt
+        RepoSecure{..} -> warn verbosity $ warnOutdatedPackageList repoRemote dt
         RepoLocalNoIndex{} -> return ()
 
     dieIfRequestedIdxIsNewer isi =
@@ -474,31 +484,17 @@ readRepoIndex verbosity repoCtxt repo idxState =
        in case idxState of
             IndexStateTime t -> when (t > latestTime) $ case repo of
               RepoSecure{..} ->
-                die' verbosity $ errRequestedIdxIsNewer repoRemote latestTime t
+                dieWithException verbosity $ UnusableIndexState repoRemote latestTime t
               RepoRemote{} -> pure ()
               RepoLocalNoIndex{} -> return ()
             IndexStateHead -> pure ()
 
-    errMissingPackageList repoRemote =
-      "The package list for '"
-        ++ unRepoName (remoteRepoName repoRemote)
-        ++ "' does not exist. Run 'cabal update' to download it."
-    errOutdatedPackageList repoRemote dt =
+    warnOutdatedPackageList repoRemote dt =
       "The package list for '"
         ++ unRepoName (remoteRepoName repoRemote)
         ++ "' is "
         ++ shows (floor dt :: Int) " days old.\nRun "
         ++ "'cabal update' to get the latest list of available packages."
-    errRequestedIdxIsNewer repoRemote maxFound req =
-      "Latest known index-state for '"
-        ++ unRepoName (remoteRepoName repoRemote)
-        ++ "' ("
-        ++ prettyShow maxFound
-        ++ ") is older than the requested index-state ("
-        ++ prettyShow req
-        ++ ").\nRun 'cabal update' or set the index-state to a value at or before "
-        ++ prettyShow maxFound
-        ++ "."
 
 -- | Return the age of the index file in days (as a Double).
 getIndexFileAge :: Repo -> IO Double
@@ -1126,7 +1122,7 @@ readIndexCache verbosity index = do
 --
 -- If a corrupted index cache is detected this function regenerates
 -- the index cache and then reattempts to read the index once (and
--- 'die's if it fails again). Throws IOException if any arise.
+-- 'dieWithException's if it fails again). Throws IOException if any arise.
 readNoIndexCache :: Verbosity -> Index -> IO NoIndexCache
 readNoIndexCache verbosity index = do
   cacheOrFail <- readNoIndexCache' index

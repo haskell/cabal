@@ -258,7 +258,7 @@ updateRepo verbosity _updateFlags repoCtxt (repo, indexState) = do
     RepoSecure{} -> repoContextWithSecureRepo repoCtxt repo $ \repoSecure -> do
       let index = RepoIndex repoCtxt repo
       -- NB: This may be a NoTimestamp if we've never updated before
-      current_ts <- currentIndexTimestamp (lessVerbose verbosity) repoCtxt repo
+      current_ts <- currentIndexTimestamp (lessVerbose verbosity) index
       -- NB: always update the timestamp, even if we didn't actually
       -- download anything
       writeIndexTimestamp index indexState
