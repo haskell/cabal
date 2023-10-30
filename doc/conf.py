@@ -102,7 +102,7 @@ html_use_opensearch = 'https://cabal.readthedocs.io/en/stable'
 # Output file base name for HTML help builder.
 htmlhelp_basename = 'CabalUsersGuide'
 
-# MathJax to use HTML rendering by default (makes the text selectableable, see #8453)
+# MathJax to use HTML rendering by default (makes the text selectable, see #8453)
 mathjax_path = 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS_CHTML'
 
 
