@@ -1485,7 +1485,7 @@ system-dependent values for these fields.
 
        Even though there is no ``/=`` operator, by combining operators we can
        skip over one or more versions, to skip a deprecated version or to skip
-       versions that upset the constraint solving.
+       versions that narrow the constraint solving more than we'd like.
        
        For example, the ``time =1.12.*`` series depends on ``base >=4.13 && <5``
        but ``time-1.12.3`` bumps the lower bound on base to ``>=4.14``.  If we
