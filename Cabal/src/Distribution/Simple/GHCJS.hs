@@ -1739,20 +1739,12 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
     libBi = libBuildInfo lib
     comp = compiler lbi
     platform = hostPlatform lbi
-    vanillaArgs0 =
+    vanillaArgs =
       (componentGhcOptions verbosity lbi libBi clbi (componentBuildDir lbi clbi))
         `mappend` mempty
           { ghcOptMode = toFlag GhcModeAbiHash
           , ghcOptInputModules = toNubListR $ exposedModules lib
           }
-    vanillaArgs =
-      -- Package DBs unnecessary, and break ghc-cabal. See #3633
-      -- BUT, put at least the global database so that 7.4 doesn't
-      -- break.
-      vanillaArgs0
-        { ghcOptPackageDBs = [GlobalPackageDB]
-        , ghcOptPackages = mempty
-        }
     sharedArgs =
       vanillaArgs
         `mappend` mempty
