@@ -194,8 +194,8 @@ Specifying Packages from Remote Version Control Locations
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Starting with Cabal 2.4, there is now a stanza
-``source-repository-package`` for specifying packages from an external
-version control.
+``source-repository-package`` for specifying remote packages that cabal will vendor from an external version control system.
+This allows sharing of packages across different projects.
 
 .. code-block:: cabal
 
@@ -218,8 +218,8 @@ version control.
         tag: e76fdc753e660dfa615af6c8b6a2ad9ddf6afe70
         post-checkout-command: autoreconf -i
 
-cabal-install 3.4 sdists the ``source-repository-package`` repositories and uses resulting tarballs as project packages.
-This allows sharing of packages across different projects.
+cabal-install 3.4 sdists the ``source-repository-package`` repositories provided and uses the resulting tarballs as project packages.
+It gathers the names of the packages from the appropriate .cabal file in the version control repository, and allows their use just like hackage or locally defined packages.
 
 .. cfg-field:: type: VCS kind
 
