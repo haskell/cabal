@@ -1,0 +1,111 @@
+cabal-version: 2.2
+name:          Cabal-layout
+version:       3.11.0.0
+copyright:     2003-2023, Cabal Development Team (see AUTHORS file)
+license:       BSD-3-Clause
+license-file:  LICENSE
+author:        Cabal Development Team <cabal-devel@haskell.org>
+maintainer:    cabal-devel@haskell.org
+homepage:      http://www.haskell.org/cabal/
+bug-reports:   https://github.com/haskell/cabal/issues
+synopsis:      Cabal format manipulation
+description:
+  Cabal format manipulation.
+
+category:       Distribution
+build-type:     Simple
+
+extra-source-files:
+  README.md ChangeLog.md
+
+
+source-repository head
+  type:     git
+  location: https://github.com/haskell/cabal/
+  subdir:   Cabal-layout
+
+
+library
+  default-language: Haskell2010
+
+  hs-source-dirs: src
+
+  build-depends:
+      base       >= 4.9      && < 5
+    , bytestring
+    , parsec
+    , text
+
+  ghc-options: -Wall -fno-ignore-asserts -fwarn-tabs -fwarn-incomplete-uni-patterns -fwarn-incomplete-record-updates
+
+  if impl(ghc >= 8.0)
+    ghc-options: -Wcompat -Wnoncanonical-monad-instances
+
+  if impl(ghc >= 8.0) && impl(ghc < 8.8)
+    ghc-options: -Wnoncanonical-monadfail-instances
+
+  exposed-modules:
+    Codec.Manifest.Cabal.Layout
+
+  exposed-modules:
+    Codec.Manifest.Cabal.Internal.Layout
+    Codec.Manifest.Cabal.Internal.Parse
+    Codec.Manifest.Cabal.Internal.Render
+
+
+
+test-suite sanity
+  type: exitcode-stdio-1.0
+
+  main-is: Main.hs
+
+  default-language: Haskell2010
+
+  hs-source-dirs: src
+                , test/sanity
+
+  build-depends:
+      base       >= 4.9      && < 5
+    , bytestring
+    , parsec
+    , tasty
+    , tasty-hunit
+    , text
+
+  ghc-options: -Wall -fno-ignore-asserts -fwarn-tabs -fwarn-incomplete-uni-patterns -fwarn-incomplete-record-updates
+
+  if impl(ghc >= 8.0)
+    ghc-options: -Wcompat -Wnoncanonical-monad-instances
+
+  if impl(ghc >= 8.0) && impl(ghc < 8.8)
+    ghc-options: -Wnoncanonical-monadfail-instances
+
+
+
+test-suite hackage
+  type: exitcode-stdio-1.0
+
+  main-is: Main.hs
+
+  default-language: Haskell2010
+
+  hs-source-dirs: src
+                , test/hackage
+                , test/strictness
+
+  build-depends:
+      base       >= 4.9      && < 5
+    , bytestring
+    , directory
+    , filepath
+    , nothunks
+    , parsec
+    , text
+
+  ghc-options: -Wall -fno-ignore-asserts -fwarn-tabs -fwarn-incomplete-uni-patterns -fwarn-incomplete-record-updates
+
+  if impl(ghc >= 8.0)
+    ghc-options: -Wcompat -Wnoncanonical-monad-instances
+
+  if impl(ghc >= 8.0) && impl(ghc < 8.8)
+    ghc-options: -Wnoncanonical-monadfail-instances
