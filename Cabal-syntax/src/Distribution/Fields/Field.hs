@@ -2,6 +2,7 @@
 {-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveTraversable #-}
+{-# LANGUAGE StandaloneDeriving #-}
 
 -- | Cabal-like file AST types: 'Field', 'Section' etc
 --
@@ -51,6 +52,9 @@ data Field ann
   | Section !(Name ann) [SectionArg ann] [Field ann]
   deriving (Eq, Show, Functor, Foldable, Traversable)
 
+-- | @since 3.12.0.0
+deriving instance Ord ann => Ord (Field ann)
+
 -- | Section of field name
 fieldName :: Field ann -> Name ann
 fieldName (Field n _) = n
@@ -73,6 +77,9 @@ fieldUniverse f@(Field _ _) = [f]
 data FieldLine ann = FieldLine !ann !ByteString
   deriving (Eq, Show, Functor, Foldable, Traversable)
 
+-- | @since 3.12.0.0
+deriving instance Ord ann => Ord (FieldLine ann)
+
 -- | @since 3.0.0.0
 fieldLineAnn :: FieldLine ann -> ann
 fieldLineAnn (FieldLine ann _) = ann
@@ -91,6 +98,9 @@ data SectionArg ann
     SecArgOther !ann !ByteString
   deriving (Eq, Show, Functor, Foldable, Traversable)
 
+-- | @since 3.12.0.0
+deriving instance Ord ann => Ord (SectionArg ann)
+
 -- | Extract annotation from 'SectionArg'.
 sectionArgAnn :: SectionArg ann -> ann
 sectionArgAnn (SecArgName ann _) = ann
@@ -108,6 +118,9 @@ type FieldName = ByteString
 -- /Invariant/: 'ByteString' is lower-case ASCII.
 data Name ann = Name !ann !FieldName
   deriving (Eq, Show, Functor, Foldable, Traversable)
+
+-- | @since 3.12.0.0
+deriving instance Ord ann => Ord (Name ann)
 
 mkName :: ann -> FieldName -> Name ann
 mkName ann bs = Name ann (B.map Char.toLower bs)
