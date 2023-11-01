@@ -219,7 +219,7 @@ This allows sharing of packages across different projects.
         post-checkout-command: autoreconf -i
 
 cabal-install 3.4 sdists the ``source-repository-package`` repositories provided and uses the resulting tarballs as project packages.
-It gathers the names of the packages from the appropriate .cabal file in the version control repository, and allows their use just like hackage or locally defined packages.
+It gathers the names of the packages from the appropriate .cabal file in the version control repository, and allows their use just like Hackage or locally defined packages.
 
 .. cfg-field:: type: VCS kind
 
