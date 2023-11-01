@@ -102,8 +102,8 @@ html_use_opensearch = 'https://cabal.readthedocs.io/en/stable'
 # Output file base name for HTML help builder.
 htmlhelp_basename = 'CabalUsersGuide'
 
-# MathJax to use SVG rendering by default
-mathjax_path = 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_SVG'
+# MathJax to use HTML rendering by default (makes the text selectable, see #8453)
+mathjax_path = 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS_CHTML'
 
 
 # -- Options for LaTeX output ---------------------------------------------
