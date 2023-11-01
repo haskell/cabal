@@ -155,13 +155,16 @@ defaultMainWithHooksNoReadArgs :: UserHooks -> GenericPackageDescription -> [Str
 defaultMainWithHooksNoReadArgs hooks pkg_descr =
   defaultMainHelper hooks{readDesc = return (Just pkg_descr)}
 
--- | Less the helper, and more the central command chooser of
--- the Simple build system, with other defaultMain functions acting as
--- exposed callers.
+-- | The central command chooser of the Simple build system,
+-- with other defaultMain functions acting as exposed callers,
+-- and with 'topHandler' operating as an exceptions handler.
+--
+-- This uses 'expandResponse' to read response files, preprocessing
+-- response files given by "@" prefixes.
 --
 -- Given hooks and args, this runs 'commandsRun' onto the args,
 -- getting 'CommandParse' data back, which is then pattern-matched into
--- IO actions for execution.
+-- IO actions for execution, with arguments applied by the parser.
 defaultMainHelper :: UserHooks -> Args -> IO ()
 defaultMainHelper hooks args = topHandler $ do
   args' <- expandResponse args

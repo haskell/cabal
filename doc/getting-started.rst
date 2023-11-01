@@ -1,90 +1,104 @@
-Getting Started with Haskell and Cabal
-======================================
+Getting Started
+===============
 
-Installing the Haskell toolchain
---------------------------------
+Installing Cabal
+----------------
 
-To install the Haskell toolchain follow the `ghcup instructions
-<https://www.haskell.org/ghcup/>`__.
-
+The easiest and recommended way to install the ``cabal`` command-line tool 
+on Linux, macOS, FreeBSD or Windows is through `ghcup <https://www.haskell.org/ghcup/>`__. 
+It installs the “Haskell toolchain”, which includes Cabal,
+the Haskell compiler `GHC <https://www.haskell.org/ghc/>`__ 
+and optionally other useful Haskell tools.
 
 Creating a new application
 --------------------------
 
-Let's start by creating a simple Haskell application from scratch where we'll
-learn about a Haskell package's directory structure, how to run the executable,
-and how to add external dependencies.
+We create a minimal Haskell application to get a quick overview 
+of the ``cabal`` command-line tool:
 
+1. How to initialize a Haskell package.
+2. How files are organized inside a package.
+3. How to compile Haskell files and run a resulting executable.
+4. How to manage external dependencies.
 
-Initializing the application
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Initializing an application
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Start by initialising our ``myfirstapp`` project, these instructions work in
-unix shells and PowerShell (if you're on Windows).
+To initialize a new Haskell application, run
 
 .. code-block:: console
 
-    $ cabal init myfirstapp -n
+    $ cabal init myapp --non-interactive
 
-.. note:: ``myfirstapp`` stands for the directory (or path) where the project
-          will reside in, if omitted, ``cabal init`` will do its proceedings
-          in the directory it's called in.
-
-.. note:: ``-n`` stands for ``--non-interactive``, which means that cabal will try to guess
-          how to set up the project for you and use the default settings, which will serve us
-          well for the purpose of this tutorial.
-          When setting up your projects in the future, you will likely want to omit ``-n``
-          and do just ``cabal init``, so that cabal will interactively ask you
-          for the details on how the project should be set up
-          (while still offering reasonable defaults on every step).
-          Also, you can run ``cabal init --help`` to get more info on how ``cabal init`` can be used.
-
-This will generate the following files:
+in a terminal. This generates the following files in a new ``myapp`` directory:
 
 .. code-block:: console
 
     $ tree
     .
-    └── myfirstapp
+    └── myapp
         ├── app
         │   └── Main.hs
         ├── CHANGELOG.md
-        └── myfirstapp.cabal
+        └── myapp.cabal
 
-``app/Main.hs`` is where your package's code lives.
+The ``myapp.cabal`` file is a package description file, commonly referred to as a “Cabal file”:
 
-``myfirstapp.cabal`` is Cabal's metadata file which describes your package,
-how it is built and its dependencies. We'll be updating this file in a
-little bit when we add an external dependency to our package.
+.. code-block:: cabal
+
+    cabal-version:      3.0
+    name:               myapp
+    version:            0.1.0.0
+    -- ...
+
+    executable myapp
+        import:           warnings
+        main-is:          Main.hs
+        build-depends:    base ^>=4.19.0.0
+        hs-source-dirs:   app
+        default-language: Haskell2010
+
+It contains metadata (package name and version, author name, license, etc.) and sections
+to define package components. Components can be used to split large codebases into smaller, 
+more managable building blocks.
+A component can be of one of several types (executable, library, etc.) and describes, 
+among other things, the location of source files and its dependencies.
+The ``myapp.cabal`` file above defines a single component named ``myapp`` of the executable type.
+Inside the ``executable`` section, the ``build-depends`` field lists the dependencies of this component.
 
 
-Running the application
-^^^^^^^^^^^^^^^^^^^^^^^
+The ``app/Main.hs`` file is where your executable's code lives:
 
-When we ran ``cabal init myfirstapp -n`` above, it generated a package with a single
-executable named same as the package (in this case ``myfirstapp``) that prints
-``"Hello, Haskell!"`` to the terminal. To run the executable enter the project's
-directory and run it, by inputting the following commands:
+.. code-block:: haskell
+
+    module Main where
+
+    main :: IO ()
+    main = putStrLn "Hello, Haskell!"
+
+
+To run the executable, switch into the application directory with ``cd myapp`` and  run 
 
 .. code-block:: console
 
-    cd myfirstapp
-    cabal run myfirstapp
-
-You should see the following output in the terminal:
-
-.. code-block:: console
-
-     $ cabal run myfirstapp
+     $ cabal run myapp
      ...
      Hello, Haskell!
 
-Notice that we didn't need to run a `build` command before we ran ``cabal run``.
-This is because ``cabal run`` automatically determines if the code needs to be (re)built
-before running the executable.
-If you just want to build a target without running it, you can do so with ``cabal build``:
+This command automatically determines if the executable needs to be (re)built
+before running the executable. With only one executable component in the package, 
+``cabal run`` (without a component name) is smart enough to infer it, so the name can be omitted.
 
-``cabal build myfirstapp``
+If you just want to build the executable without running it, run:
+
+.. code-block:: console
+
+    $ cabal build
+    Resolving dependencies...
+    ...
+    Building executable 'myapp' for myapp-0.1.0.0..
+    [1 of 1] Compiling Main             ( app/Main.hs, /home/.../myapp/dist-newstyle/build/.../myapp-tmp/Main.o )
+    Linking /home/.../myapp/dist-newstyle/build/.../myapp
 
 
 Adding dependencies
@@ -103,16 +117,16 @@ terminal with some embellishment.
    need to update the package index, you can do this by running ``cabal
    update``.
 
-In our ``myfirstapp.cabal`` file we'll update the ``build-depends`` attribute of
-the ``executable myfirstapp`` section to include ``haskell-say``:
+In our ``myapp.cabal`` file, we will update the ``build-depends`` field of
+the executable section to include ``haskell-say``:
 
 .. code-block:: cabal
 
-   executable myfirstapp
+   executable myapp
        import: warnings
        main-is: Main.hs
        build-depends:
-           base ^>=4.14.3.0,
+           base ^>=4.19.0.0,
            haskell-say ^>=1.0.0.0
        hs-source-dirs: app
        default-language: Haskell2010
@@ -132,8 +146,7 @@ Next we'll update ``app/Main.hs`` to use the ``HaskellSay`` library:
    import HaskellSay (haskellSay)
 
    main :: IO ()
-   main =
-     haskellSay "Hello, Haskell! You're using a function from another package!"
+   main = haskellSay "Hello, Haskell!"
 
 ``import HaskellSay (haskellSay)`` brings the ``haskellSay`` function from the
 module named ``HaskellSay`` into scope. The ``HaskellSay`` module is defined in
@@ -143,11 +156,10 @@ Now you can build and re-run your code to see the new output:
 
 .. code-block:: console
 
-   $ cabal run
+   $ cabal run myapp
        ________________________________________________________
       /                                                        \
-     | Hello, Haskell! You're using a function from another     |
-     | package!                                                 |
+     | Hello, Haskell!                                          |
       \____       _____________________________________________/
            \    /
             \  /
@@ -166,42 +178,47 @@ Now you can build and re-run your code to see the new output:
         /    /  /    /   \    \
        /____/  /____/     \____\
 
-Run a single-file Haskell script
---------------------------------
+Running a single-file Haskell script
+------------------------------------
 
-Cabal also enables us to run single-file Haskell scripts
-without creating a project directory or ``.cabal`` file.
-The cabal directives are placed in the file within a comment.
+Cabal also supports running single-file Haskell scripts like 
+the following file named ``myscript``:
 
 .. code-block:: haskell
-
+    
     #!/usr/bin/env cabal
     {- cabal:
-    build-depends: base, split
+    build-depends:
+      base ^>=4.19.0.0,
+      haskell-say ^>=1.0.0.0
     -}
 
-    import Data.List.Split (chunksOf)
+    import HaskellSay (haskellSay)
 
     main :: IO ()
-    main = getLine >>= print . chunksOf 3
+    main = haskellSay "Hello, Haskell!"
 
-This can be run using ``cabal run myscript``.
-On Unix-like systems this can be run directly with execute permission.
+The necessary sections of a ``.cabal`` file are placed
+directly into the script as a comment.
+
+Use the familiar ``cabal run`` command to execute this script:
 
 .. code-block:: console
 
     $ cabal run myscript
 
+On Unix-like systems, a Haskell script starting with ``#!/usr/bin/env cabal``, like the one above,
+can be run directly after setting the execute permission (+x):
+
+.. code-block:: console
+
     $ chmod +x myscript
     $ ./myscript
-
-Project metadata can also be included:
-
-.. code-block:: haskell
-
-    {- project:
-    with-compiler: ghc-8.10.7
-    -}
+       ________________________________________________________
+      /                                                        \
+     | Hello, Haskell!                                          |
+      \____        ____________________________________________/
+           \ ... /
 
 See more in the documentation for :ref:`cabal run`.
 

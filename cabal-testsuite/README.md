@@ -226,8 +226,8 @@ technical innovations to make this work:
   to these scripts.
 
 * The startup latency of `runghc` can be quite high, which adds up
-  when you have many tests.  To solve this, in `Test.Cabal.Server`
-  we have an implementation an GHCi server, for which we can reuse
+  when you have many tests.  To solve this, our `Test.Cabal.Server`
+  GHCi server implementation can reuse
   a GHCi instance as we are running test scripts.  It took some
   technical ingenuity to implement this, but the result is that
   running scripts is essentially free.

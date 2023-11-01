@@ -16,19 +16,29 @@ import Distribution.Client.Errors
 import Distribution.Client.ProjectConfig
   ( findProjectRoot
   )
+import Distribution.Client.ProjectFlags
+  ( ProjectFlags (..)
+  , defaultProjectFlags
+  , projectFlagsOptions
+  , removeIgnoreProjectOption
+  )
 import Distribution.Client.Setup
   ( GlobalFlags
   )
-import Distribution.ReadE (succeedReadE)
+import Distribution.Compat.Lens
+  ( _1
+  , _2
+  )
 import Distribution.Simple.Command
   ( CommandUI (..)
+  , OptionField
+  , ShowOrParseArgs
+  , liftOptionL
   , option
-  , reqArg
   )
 import Distribution.Simple.Setup
   ( Flag (..)
   , falseArg
-  , flagToList
   , flagToMaybe
   , fromFlagOrDefault
   , optionDistPref
@@ -68,8 +78,6 @@ data CleanFlags = CleanFlags
   { cleanSaveConfig :: Flag Bool
   , cleanVerbosity :: Flag Verbosity
   , cleanDistDir :: Flag FilePath
-  , cleanProjectDir :: Flag FilePath
-  , cleanProjectFile :: Flag FilePath
   }
   deriving (Eq)
 
@@ -79,11 +87,9 @@ defaultCleanFlags =
     { cleanSaveConfig = toFlag False
     , cleanVerbosity = toFlag normal
     , cleanDistDir = NoFlag
-    , cleanProjectDir = mempty
-    , cleanProjectFile = mempty
     }
 
-cleanCommand :: CommandUI CleanFlags
+cleanCommand :: CommandUI (ProjectFlags, CleanFlags)
 cleanCommand =
   CommandUI
     { commandName = "v2-clean"
@@ -96,46 +102,39 @@ cleanCommand =
             ++ "(.hi, .o, preprocessed sources, etc.) and also empties out the "
             ++ "local caches (by default).\n\n"
     , commandNotes = Nothing
-    , commandDefaultFlags = defaultCleanFlags
+    , commandDefaultFlags = (defaultProjectFlags, defaultCleanFlags)
     , commandOptions = \showOrParseArgs ->
-        [ optionVerbosity
-            cleanVerbosity
-            (\v flags -> flags{cleanVerbosity = v})
-        , optionDistPref
-            cleanDistDir
-            (\dd flags -> flags{cleanDistDir = dd})
-            showOrParseArgs
-        , option
-            []
-            ["project-dir"]
-            "Set the path of the project directory"
-            cleanProjectDir
-            (\path flags -> flags{cleanProjectDir = path})
-            (reqArg "DIR" (succeedReadE Flag) flagToList)
-        , option
-            []
-            ["project-file"]
-            "Set the path of the cabal.project file (relative to the project directory when relative)"
-            cleanProjectFile
-            (\pf flags -> flags{cleanProjectFile = pf})
-            (reqArg "FILE" (succeedReadE Flag) flagToList)
-        , option
-            ['s']
-            ["save-config"]
-            "Save configuration, only remove build artifacts"
-            cleanSaveConfig
-            (\sc flags -> flags{cleanSaveConfig = sc})
-            falseArg
-        ]
+        map
+          (liftOptionL _1)
+          (removeIgnoreProjectOption (projectFlagsOptions showOrParseArgs))
+          ++ map (liftOptionL _2) (cleanOptions showOrParseArgs)
     }
 
-cleanAction :: CleanFlags -> [String] -> GlobalFlags -> IO ()
-cleanAction CleanFlags{..} extraArgs _ = do
+cleanOptions :: ShowOrParseArgs -> [OptionField CleanFlags]
+cleanOptions showOrParseArgs =
+  [ optionVerbosity
+      cleanVerbosity
+      (\v flags -> flags{cleanVerbosity = v})
+  , optionDistPref
+      cleanDistDir
+      (\dd flags -> flags{cleanDistDir = dd})
+      showOrParseArgs
+  , option
+      ['s']
+      ["save-config"]
+      "Save configuration, only remove build artifacts"
+      cleanSaveConfig
+      (\sc flags -> flags{cleanSaveConfig = sc})
+      falseArg
+  ]
+
+cleanAction :: (ProjectFlags, CleanFlags) -> [String] -> GlobalFlags -> IO ()
+cleanAction (ProjectFlags{..}, CleanFlags{..}) extraArgs _ = do
   let verbosity = fromFlagOrDefault normal cleanVerbosity
       saveConfig = fromFlagOrDefault False cleanSaveConfig
       mdistDirectory = flagToMaybe cleanDistDir
-      mprojectDir = flagToMaybe cleanProjectDir
-      mprojectFile = flagToMaybe cleanProjectFile
+      mprojectDir = flagToMaybe flagProjectDir
+      mprojectFile = flagToMaybe flagProjectFile
 
   -- TODO interpret extraArgs as targets and clean those targets only (issue #7506)
   --
