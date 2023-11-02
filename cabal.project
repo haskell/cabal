@@ -15,17 +15,9 @@ packages: cabal-benchmarks/
 
 optional-packages: ./vendored/*/*.cabal
 
-allow-newer:
-  hackage-security:Cabal
-
 -- avoiding extra dependencies
 constraints: rere -rere-cfg
 constraints: these -assoc
-
--- Andreas, 2022-08-19, https://github.com/haskell/cabal/issues/8377
--- Force latest dependencies in the development version:
-constraints: text >= 2.0
-constraints: time >= 1.12
 
 program-options
   ghc-options: -fno-ignore-asserts
