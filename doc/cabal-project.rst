@@ -195,7 +195,7 @@ Specifying Packages from Remote Version Control Locations
 
 Starting with Cabal 2.4, there is now a stanza
 ``source-repository-package`` for specifying packages stored in a remote version control system that cabal should consider during package retrieval.
-This allows use of a remote package in version control, rather than looking for a package in Hackage.
+This allows use of a package in a remote version control system, rather than looking for a package in Hackage.
 
 .. code-block:: cabal
 
