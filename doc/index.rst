@@ -18,3 +18,4 @@ Welcome to the Cabal User Guide
    buildinfo-fields-reference
    bugs-and-stability
    nix-integration
+   external-commands
