@@ -23,10 +23,10 @@ on:
 env:
   # We choose a stable ghc version across all os's
   # which will be used to do the next release
-  GHC_FOR_RELEASE: '9.2.7'
+  GHC_FOR_RELEASE: '9.2.8'
   # Ideally we should use the version about to be released for hackage tests and benchmarks
-  GHC_FOR_SOLVER_BENCHMARKS: '9.2.7'
-  GHC_FOR_COMPLETE_HACKAGE_TESTS: '9.2.7'
+  GHC_FOR_SOLVER_BENCHMARKS: '9.2.8'
+  GHC_FOR_COMPLETE_HACKAGE_TESTS: '9.2.8'
   COMMON_FLAGS: '-j 2 -v'
 
 jobs:
@@ -38,7 +38,7 @@ jobs:
     strategy:
       matrix:
         os: ["ubuntu-latest", "macos-latest", "windows-latest"]
-        ghc: ["9.6.1", "9.4.4", "9.2.7", "9.0.2", "8.10.7", "8.8.4", "8.6.5", "8.4.4"]
+        ghc: ["9.6.3", "9.4.7", "9.2.8", "9.0.2", "8.10.7", "8.8.4", "8.6.5", "8.4.4"]
         exclude:
           # corrupts GHA cache or the fabric of reality itself, see https://github.com/haskell/cabal/issues/8356
           - os: "windows-latest"
@@ -107,7 +107,7 @@ jobs:
           echo "FLAGS=$FLAGS" >> $GITHUB_ENV
 
       - name: Allow newer dependencies when built with latest GHC
-        if: ${{ matrix.ghc }} == '9.6.1'
+        if: ${{ matrix.ghc }} == '9.6.3'
         run: |
           echo "allow-newer: rere:base, rere:transformers" >> cabal.project.validate
 
@@ -161,7 +161,7 @@ jobs:
         # Have to disable *-suite validation:
         # - the Windows@9.6.1 problem is tracked at https://github.com/haskell/cabal/issues/8858
         # - but curently can't run it with GHC 9.6, tracking: https://github.com/haskell/cabal/issues/8883
-        if: (runner.os != 'Windows')  || (matrix.ghc != '9.6.1')
+        if: (runner.os != 'Windows')  || (matrix.ghc != '9.6.3')
         run: sh validate.sh $FLAGS -s lib-suite
 
       - name: Validate cli-tests
@@ -169,7 +169,7 @@ jobs:
 
       - name: Validate cli-suite
         # Have to disable *-suite validation, see above the comment for lib-suite
-        if: (runner.os != 'Windows')  || (matrix.ghc != '9.6.1')
+        if: (runner.os != 'Windows')  || (matrix.ghc != '9.6.3')
         run: sh validate.sh $FLAGS -s cli-suite
 
   validate-old-ghcs:
