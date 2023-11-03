@@ -67,11 +67,12 @@ readPkgConfigDb verbosity progdb = handle ioErrorHandler $ do
         -- The output of @pkg-config --list-all@ also includes a description
         -- for each package, which we do not need.
         let pkgNames = map (takeWhile (not . isSpace)) pkgList
-        (pkgVersions, _errs, exitCode) <-
+        (outs, _errs, exitCode) <-
                      getProgramInvocationOutputAndErrors verbosity
                        (programInvocation pkgConfig ("--modversion" : pkgNames))
-        if exitCode == ExitSuccess && length pkgNames == length pkgList
-          then (return . pkgConfigDbFromList . zip pkgNames) (lines pkgVersions)
+        let pkgVersions = lines outs
+        if exitCode == ExitSuccess && length pkgVersions == length pkgNames
+          then (return . pkgConfigDbFromList . zip pkgNames) pkgVersions
           else
           -- if there's a single broken pc file the above fails, so we fall back
           -- into calling it individually
