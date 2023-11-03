@@ -194,8 +194,10 @@ Specifying Packages from Remote Version Control Locations
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Starting with Cabal 2.4, there is now a stanza
-``source-repository-package`` for specifying packages stored in a remote version control system that cabal should consider during package retrieval.
-This allows use of a package in a remote version control system, rather than looking for a package in Hackage.
+``source-repository-package`` for specifying packages stored in a remote
+version control system that cabal should consider during package retrieval.
+This allows use of a package in a remote version control system, rather
+than looking for a package in Hackage.
 
 .. code-block:: cabal
 
@@ -218,8 +220,11 @@ This allows use of a package in a remote version control system, rather than loo
         tag: e76fdc753e660dfa615af6c8b6a2ad9ddf6afe70
         post-checkout-command: autoreconf -i
 
-Since version 3.4, cabal-install creates tarballs for each package coming from a source-repository-package stanza (effectively applying cabal sdists to such packages).
-It gathers the names of the packages from the appropriate .cabal file in the version control repository, and allows their use just like Hackage or locally defined packages.
+Since version 3.4, cabal-install creates tarballs for each package coming
+from a source-repository-package stanza (effectively applying cabal
+sdists to such packages). It gathers the names of the packages from the
+appropriate .cabal file in the version control repository, and allows
+their use just like Hackage or locally defined packages.
 
 .. cfg-field:: type: VCS kind
 
