@@ -357,15 +357,21 @@ runPlanExe pkg_name cname args = void $ runPlanExe' pkg_name cname args
 runPlanExe' :: String {- package name -} -> String {- component name -}
             -> [String] -> TestM Result
 runPlanExe' pkg_name cname args = do
+    exePath <- planExePath pkg_name cname
+    defaultRecordMode RecordAll $ do
+    recordHeader [pkg_name, cname]
+    runM exePath args Nothing
+
+planExePath :: String {- package name -} -> String {- component name -}
+            -> TestM FilePath
+planExePath pkg_name cname = do
     Just plan <- testPlan `fmap` getTestEnv
     let distDirOrBinFile = planDistDir plan (mkPackageName pkg_name)
                                (CExeName (mkUnqualComponentName cname))
         exePath = case distDirOrBinFile of
           DistDir dist_dir -> dist_dir </> "build" </> cname </> cname
           BinFile bin_file -> bin_file
-    defaultRecordMode RecordAll $ do
-    recordHeader [pkg_name, cname]
-    runM exePath args Nothing
+    return exePath
 
 ------------------------------------------------------------------------
 -- * Running ghc-pkg
