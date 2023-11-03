@@ -93,7 +93,8 @@ import qualified Distribution.GetOpt as GetOpt
 import Distribution.ReadE
 import Distribution.Simple.Utils
 import System.Directory (findExecutable)
-import System.Process (callProcess)
+import System.Environment (getExecutablePath)
+import System.Process (CreateProcess (env), createProcess, proc)
 
 data CommandUI flags = CommandUI
   { commandName :: String
@@ -663,7 +664,8 @@ commandsRun globalCommand commands args =
 
     callExternal :: a -> String -> [String] -> IO (CommandParse (a, CommandParse action))
     callExternal flags exec cmdArgs = do
-      result <- try $ callProcess exec cmdArgs
+      execPath <- getExecutablePath
+      result <- try $ createProcess (proc exec cmdArgs){env = Just [("CABAL", execPath)]}
       case result of
         Left ex -> pure $ CommandErrors ["Error executing external command: " ++ show (ex :: SomeException)]
         Right _ -> pure $ CommandReadyToGo (flags, CommandDelegate)
