@@ -1,0 +1,29 @@
+cabal-version:      3.0
+name:               custom
+version:            0.1.0.0
+-- synopsis:
+-- description:
+license:            BSD-3-Clause
+license-file:       LICENSE
+author:             Matthew Pickering
+maintainer:         matthewtpickering@gmail.com
+-- copyright:
+build-type:         Custom
+extra-doc-files:    CHANGELOG.md
+-- extra-source-files:
+
+common warnings
+    ghc-options: -Wall
+
+custom-setup
+  build-depends: base, Cabal
+
+library
+    import:           warnings
+    exposed-modules:  MyLib
+    -- other-modules:
+    -- other-extensions:
+    build-depends:    base
+    hs-source-dirs:   src
+    default-language: Haskell2010
+
