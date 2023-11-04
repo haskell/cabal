@@ -221,7 +221,7 @@ than looking for a package in Hackage.
         post-checkout-command: autoreconf -i
 
 Since version 3.4, cabal-install creates tarballs for each package coming
-from a source-repository-package stanza (effectively applying cabal
+from a ``source-repository-package`` stanza (effectively applying cabal
 sdists to such packages). It gathers the names of the packages from the
 appropriate .cabal file in the version control repository, and allows
 their use just like Hackage or locally defined packages.
