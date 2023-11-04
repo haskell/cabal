@@ -105,7 +105,7 @@ library
 
   build-depends:
     , array         >=0.4      && <0.6
-    , base          >=4.10     && <4.19
+    , base          >=4.10     && <4.20
     , bytestring    >=0.10.6.0 && <0.13
     , Cabal         ^>=3.11
     , Cabal-syntax  ^>=3.11
@@ -138,10 +138,10 @@ Test-Suite unit-tests
      UnitTests.Distribution.Solver.Modular.MessageUtils
 
    build-depends:
-     , base        >= 4.10  && <4.19
+     , base        >= 4.10  && <4.20
      , Cabal
      , Cabal-syntax
      , cabal-install-solver
-     , tasty       >= 1.2.3 && <1.5
+     , tasty       >= 1.2.3 && <1.6
      , tasty-quickcheck
      , tasty-hunit >= 0.10

@@ -85,12 +85,15 @@ module Distribution.Simple.Command
 import Distribution.Compat.Prelude hiding (get)
 import Prelude ()
 
+import Control.Exception (try)
 import qualified Data.Array as Array
 import qualified Data.List as List
 import Distribution.Compat.Lens (ALens', (#~), (^#))
 import qualified Distribution.GetOpt as GetOpt
 import Distribution.ReadE
 import Distribution.Simple.Utils
+import System.Directory (findExecutable)
+import System.Process (callProcess)
 
 data CommandUI flags = CommandUI
   { commandName :: String
@@ -596,11 +599,13 @@ data CommandParse flags
   | CommandList [String]
   | CommandErrors [String]
   | CommandReadyToGo flags
+  | CommandDelegate
 instance Functor CommandParse where
   fmap _ (CommandHelp help) = CommandHelp help
   fmap _ (CommandList opts) = CommandList opts
   fmap _ (CommandErrors errs) = CommandErrors errs
   fmap f (CommandReadyToGo flags) = CommandReadyToGo (f flags)
+  fmap _ CommandDelegate = CommandDelegate
 
 data CommandType = NormalCommand | HiddenCommand
 data Command action
@@ -631,25 +636,38 @@ commandsRun
   :: CommandUI a
   -> [Command action]
   -> [String]
-  -> CommandParse (a, CommandParse action)
+  -> IO (CommandParse (a, CommandParse action))
 commandsRun globalCommand commands args =
   case commandParseArgs globalCommand True args of
-    CommandHelp help -> CommandHelp help
-    CommandList opts -> CommandList (opts ++ commandNames)
-    CommandErrors errs -> CommandErrors errs
+    CommandDelegate -> pure CommandDelegate
+    CommandHelp help -> pure $ CommandHelp help
+    CommandList opts -> pure $ CommandList (opts ++ commandNames)
+    CommandErrors errs -> pure $ CommandErrors errs
     CommandReadyToGo (mkflags, args') -> case args' of
-      ("help" : cmdArgs) -> handleHelpCommand cmdArgs
+      ("help" : cmdArgs) -> pure $ handleHelpCommand cmdArgs
       (name : cmdArgs) -> case lookupCommand name of
         [Command _ _ action _] ->
-          CommandReadyToGo (flags, action cmdArgs)
-        _ -> CommandReadyToGo (flags, badCommand name)
-      [] -> CommandReadyToGo (flags, noCommand)
+          pure $ CommandReadyToGo (flags, action cmdArgs)
+        _ -> do
+          mCommand <- findExecutable $ "cabal-" <> name
+          case mCommand of
+            Just exec -> callExternal flags exec cmdArgs
+            Nothing -> pure $ CommandReadyToGo (flags, badCommand name)
+      [] -> pure $ CommandReadyToGo (flags, noCommand)
       where
         flags = mkflags (commandDefaultFlags globalCommand)
   where
     lookupCommand cname =
       [ cmd | cmd@(Command cname' _ _ _) <- commands', cname' == cname
       ]
+
+    callExternal :: a -> String -> [String] -> IO (CommandParse (a, CommandParse action))
+    callExternal flags exec cmdArgs = do
+      result <- try $ callProcess exec cmdArgs
+      case result of
+        Left ex -> pure $ CommandErrors ["Error executing external command: " ++ show (ex :: SomeException)]
+        Right _ -> pure $ CommandReadyToGo (flags, CommandDelegate)
+
     noCommand = CommandErrors ["no command given (try --help)\n"]
 
     -- Print suggested command if edit distance is < 5
@@ -679,6 +697,7 @@ commandsRun globalCommand commands args =
     -- furthermore, support "prog help command" as "prog command --help"
     handleHelpCommand cmdArgs =
       case commandParseArgs helpCommandUI True cmdArgs of
+        CommandDelegate -> CommandDelegate
         CommandHelp help -> CommandHelp help
         CommandList list -> CommandList (list ++ commandNames)
         CommandErrors _ -> CommandHelp globalHelp
