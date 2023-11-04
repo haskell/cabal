@@ -101,6 +101,18 @@ executable cabal-tests
     , transformers
     -- dependencies specific to exe:cabal-tests
     , clock                 ^>= 0.7.2 || ^>=0.8
+    -- Extra dependencies used by PackageTests.
+    --
+    -- The runner allows the tests to use extra dependencies and the custom Prelude
+    -- from 'cabal-testsuite'.
+    -- However, if the tests use a dependency, say 'directory', and there are two
+    -- packages with the same unit id available in the store, the test fails since
+    -- it doesn't know which one to pick.
+    -- By including an extra dependency to directory, we force the test runner to
+    -- use a specific version directory, fixing the test failure.
+    --
+    -- See issue description and discussion: https://github.com/haskell/cabal/issues/8356
+    , directory
 
   build-tool-depends: cabal-testsuite:setup
   default-extensions: TypeOperators
