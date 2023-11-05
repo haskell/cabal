@@ -25,7 +25,7 @@ extensions = [
 templates_path = ['_templates']
 source_suffix = '.rst'
 source_encoding = 'utf-8-sig'
-master_doc = 'index'
+root_doc = 'index'
 
 # extlinks -- see http://www.sphinx-doc.org/en/stable/ext/extlinks.html
 extlinks = {

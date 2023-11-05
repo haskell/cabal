@@ -1,7 +1,7 @@
 .. _nix-style-builds:
 
-Nix-style Local Builds
-======================
+How to build locally like in Nix
+================================
 
 Nix-style local builds are a new build system implementation inspired by Nix.
 The Nix-style local build system is commonly called "v2-build" for short
