@@ -109,3 +109,28 @@ test-suite hackage
 
   if impl(ghc >= 8.0) && impl(ghc < 8.8)
     ghc-options: -Wnoncanonical-monadfail-instances
+
+
+
+test-suite patches
+  type: exitcode-stdio-1.0
+
+  main-is: Main.hs
+
+  default-language: Haskell2010
+
+  hs-source-dirs: src
+                , test/patches
+
+  build-depends:
+      base       >= 4.9      && < 5
+    , bytestring
+    , process
+
+  ghc-options: -Wall -fno-ignore-asserts -fwarn-tabs -fwarn-incomplete-uni-patterns -fwarn-incomplete-record-updates
+
+  if impl(ghc >= 8.0)
+    ghc-options: -Wcompat -Wnoncanonical-monad-instances
+
+  if impl(ghc >= 8.0) && impl(ghc < 8.8)
+    ghc-options: -Wnoncanonical-monadfail-instances
