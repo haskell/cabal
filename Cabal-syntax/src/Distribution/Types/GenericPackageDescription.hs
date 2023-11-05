@@ -5,7 +5,10 @@
 
 module Distribution.Types.GenericPackageDescription
   ( GenericPackageDescription (..)
+  , ExactPrintMeta(..)
+  , ExactPosition(..)
   , emptyGenericPackageDescription
+  , emptyExactPrintMeta
   ) where
 
 import Distribution.Compat.Prelude
@@ -28,6 +31,30 @@ import Distribution.Types.Library
 import Distribution.Types.TestSuite
 import Distribution.Types.UnqualComponentName
 import Distribution.Version
+import Data.Text(Text, pack)
+import Distribution.Fields.Field(FieldName)
+import Distribution.Parsec.Position(Position)
+
+data ExactPosition = ExactPosition {namePosition :: Position
+                                -- argument can be filedline or section args
+                                -- recursive names within sections have their own
+                                -- name identifier so they're not modelled
+                                , argumentPosition :: [Position] }
+  deriving (Show, Eq, Typeable, Data, Generic, Ord)
+instance Structured ExactPosition
+instance NFData ExactPosition where rnf = genericRnf
+instance Binary ExactPosition
+
+
+data ExactPrintMeta = ExactPrintMeta
+  { exactPositions :: Map FieldName ExactPosition
+  , exactComments :: Map Position Text
+  }
+  deriving (Show, Eq, Typeable, Data, Generic)
+
+instance Binary ExactPrintMeta
+instance Structured ExactPrintMeta
+instance NFData ExactPrintMeta where rnf = genericRnf
 
 -- ---------------------------------------------------------------------------
 -- The 'GenericPackageDescription' type
@@ -70,24 +97,42 @@ data GenericPackageDescription = GenericPackageDescription
            , CondTree ConfVar [Dependency] Benchmark
            )
          ]
+  , exactPrintMeta :: ExactPrintMeta
   }
   deriving (Show, Eq, Typeable, Data, Generic)
+
 
 instance Package GenericPackageDescription where
   packageId = packageId . packageDescription
 
-instance Binary GenericPackageDescription
 instance Structured GenericPackageDescription
+
+-- | Required for rebuild monad
+instance Binary GenericPackageDescription
 instance NFData GenericPackageDescription where rnf = genericRnf
 
+emptyExactPrintMeta :: ExactPrintMeta
+emptyExactPrintMeta = ExactPrintMeta mempty mempty
+
 emptyGenericPackageDescription :: GenericPackageDescription
-emptyGenericPackageDescription = GenericPackageDescription emptyPackageDescription Nothing [] Nothing [] [] [] [] []
+emptyGenericPackageDescription = GenericPackageDescription
+  { packageDescription = emptyPackageDescription
+  , gpdScannedVersion = Nothing
+  , genPackageFlags = []
+  , condLibrary =  Nothing
+  , condSubLibraries = []
+  , condForeignLibs = []
+  , condExecutables = []
+  , condTestSuites = []
+  , condBenchmarks = []
+  , exactPrintMeta = emptyExactPrintMeta
+  }
 
 -- -----------------------------------------------------------------------------
 -- Traversal Instances
 
 instance L.HasBuildInfos GenericPackageDescription where
-  traverseBuildInfos f (GenericPackageDescription p v a1 x1 x2 x3 x4 x5 x6) =
+  traverseBuildInfos f (GenericPackageDescription p v a1 x1 x2 x3 x4 x5 x6 exactPrintMeta') =
     GenericPackageDescription
       <$> L.traverseBuildInfos f p
       <*> pure v
@@ -98,6 +143,7 @@ instance L.HasBuildInfos GenericPackageDescription where
       <*> (traverse . L._2 . traverseCondTreeBuildInfo) f x4
       <*> (traverse . L._2 . traverseCondTreeBuildInfo) f x5
       <*> (traverse . L._2 . traverseCondTreeBuildInfo) f x6
+      <*> pure exactPrintMeta'
 
 -- We use this traversal to keep [Dependency] field in CondTree up to date.
 traverseCondTreeBuildInfo
@@ -118,3 +164,4 @@ traverseCondTreeBuildInfo g = node
       CondBranch v
         <$> node x
         <*> traverse node y
+

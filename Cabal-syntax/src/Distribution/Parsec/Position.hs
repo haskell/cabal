@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 
 module Distribution.Parsec.Position
   ( Position (..)
@@ -8,6 +9,7 @@ module Distribution.Parsec.Position
   , zeroPos
   , positionCol
   , positionRow
+  , difference
   ) where
 
 import Distribution.Compat.Prelude
@@ -18,10 +20,11 @@ data Position
   = Position
       {-# UNPACK #-} !Int -- row
       {-# UNPACK #-} !Int -- column
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show, Generic, Data)
 
 instance Binary Position
 instance NFData Position where rnf = genericRnf
+instance Structured Position
 
 -- | Shift position by n columns to the right.
 incPos :: Int -> Position -> Position
@@ -44,3 +47,6 @@ positionCol (Position _ c) = c
 -- | @since 3.0.0.0
 positionRow :: Position -> Int
 positionRow (Position r _) = r
+
+difference :: Position -> Position -> Position
+difference (Position a1 a2) (Position b1 b2) = Position (a1 - b1) (a2 - b2)

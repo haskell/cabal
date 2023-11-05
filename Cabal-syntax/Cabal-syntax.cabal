@@ -197,6 +197,7 @@ library
     Distribution.Utils.String
     Distribution.Utils.Structured
     Distribution.Version
+    Distribution.PackageDescription.ExactPrint
     Language.Haskell.Extension
 
   other-extensions:

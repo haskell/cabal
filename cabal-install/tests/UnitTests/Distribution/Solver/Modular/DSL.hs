@@ -435,7 +435,7 @@ exAvSrcPkg ex =
           , srcpkgSource = LocalTarballPackage "<<path>>"
           , srcpkgDescrOverride = Nothing
           , srcpkgDescription =
-              C.GenericPackageDescription
+              C.emptyGenericPackageDescription
                 { C.packageDescription =
                     C.emptyPackageDescription
                       { C.package = pkgId

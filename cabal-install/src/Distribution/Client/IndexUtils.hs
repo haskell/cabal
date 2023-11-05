@@ -80,6 +80,7 @@ import Distribution.PackageDescription
   ( GenericPackageDescription (..)
   , PackageDescription (..)
   , emptyPackageDescription
+  , emptyGenericPackageDescription
   )
 import Distribution.Simple.Compiler
   ( Compiler
@@ -1062,20 +1063,13 @@ packageListFromCache verbosity mkPkg hnd Cache{..} = accum mempty [] mempty cach
       where
         dummyPackageDescription :: Version -> GenericPackageDescription
         dummyPackageDescription specVer =
-          GenericPackageDescription
+          emptyGenericPackageDescription
             { packageDescription =
                 emptyPackageDescription
                   { package = pkgid
                   , synopsis = dummySynopsis
                   }
             , gpdScannedVersion = Just specVer -- tells index scanner to skip this file.
-            , genPackageFlags = []
-            , condLibrary = Nothing
-            , condSubLibraries = []
-            , condForeignLibs = []
-            , condExecutables = []
-            , condTestSuites = []
-            , condBenchmarks = []
             }
 
         dummySynopsis = "<could not be parsed due to unsupported CABAL spec-version>"
