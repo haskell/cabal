@@ -10,14 +10,10 @@ import Data.Maybe
 import System.Environment
 
 main = do
-  cabalTest $ expectBroken 9404 $ do
+  cabalTest $ do
     res <- cabalWithStdin "v2-build" ["all"] ""
     exe_path <- withPlan $ planExePath "setup-test" "cabal-aaaa"
-    env <- getTestEnv
-    path <- liftIO $ getEnv "PATH"
-    let newpath = takeDirectory exe_path ++ ":" ++ path
-    let new_env = (("PATH", Just newpath) : (testEnvironment env))
-    withEnv new_env $ do
+    addToPath (takeDirectory exe_path) $ do
       res <- cabal_raw_action ["help", "aaaa"] (\h -> () <$ Process.waitForProcess h)
       assertOutputContains "I am helping with the aaaa command" res
 

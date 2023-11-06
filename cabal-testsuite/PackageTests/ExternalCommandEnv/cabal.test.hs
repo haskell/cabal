@@ -10,15 +10,12 @@ import Data.Maybe
 import System.Environment
 
 main = do
-  cabalTest $ expectBroken 9402 $ do
+  cabalTest $ do
     res <- cabalWithStdin "v2-build" ["all"] ""
     exe_path <- withPlan $ planExePath "setup-test" "cabal-aaaa"
     env <- getTestEnv
-    path <- liftIO $ getEnv "PATH"
-    let newpath = takeDirectory exe_path ++ ":" ++ path
-    let new_env = (("OTHER_VAR", Just "is set") : ("PATH", Just newpath) : (testEnvironment env))
-
-    withEnv new_env $ do
+    let new_env = (("OTHER_VAR", Just "is set") : (testEnvironment env))
+    withEnv new_env $ addToPath (takeDirectory exe_path) $ do
       res <- cabal_raw_action ["aaaa"] (\h -> () <$ Process.waitForProcess h)
       assertOutputContains "cabal-install" res
       assertOutputContains "is set" res

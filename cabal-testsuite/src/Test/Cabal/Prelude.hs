@@ -60,16 +60,16 @@ import Data.List.NonEmpty (NonEmpty (..))
 import qualified Data.List.NonEmpty as NE
 import Data.Maybe (mapMaybe, fromMaybe)
 import System.Exit (ExitCode (..))
-import System.FilePath ((</>), takeExtensions, takeDrive, takeDirectory, normalise, splitPath, joinPath, splitFileName, (<.>), dropTrailingPathSeparator)
+import System.FilePath
 import Control.Concurrent (threadDelay)
 import qualified Data.Char as Char
-import System.Directory (canonicalizePath, copyFile, copyFile, doesDirectoryExist, doesFileExist, createDirectoryIfMissing, getDirectoryContents, listDirectory)
+import System.Directory
 import Control.Retry (exponentialBackoff, limitRetriesByCumulativeDelay)
 import Network.Wait (waitTcpVerbose)
+import System.Environment
 
 #ifndef mingw32_HOST_OS
 import Control.Monad.Catch ( bracket_ )
-import System.Directory    ( removeFile )
 import System.Posix.Files  ( createSymbolicLink )
 import System.Posix.Resource
 #endif
@@ -112,6 +112,16 @@ withDirectory f = withReaderT
 -- which prefers the latest override.
 withEnv :: [(String, Maybe String)] -> TestM a -> TestM a
 withEnv e = withReaderT (\env -> env { testEnvironment = testEnvironment env ++ e })
+
+-- | Prepend a directory to the PATH
+addToPath :: FilePath -> TestM a -> TestM a
+addToPath exe_dir action = do
+  env <- getTestEnv
+  path <- liftIO $ getEnv "PATH"
+  let newpath = exe_dir ++ [searchPathSeparator] ++ path
+  let new_env = (("PATH", Just newpath) : (testEnvironment env))
+  withEnv new_env action
+
 
 -- HACK please don't use me
 withEnvFilter :: (String -> Bool) -> TestM a -> TestM a
