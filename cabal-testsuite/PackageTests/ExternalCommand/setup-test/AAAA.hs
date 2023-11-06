@@ -1,4 +1,5 @@
 module Main where
 
-main = do
-  putStrLn "aaaa"
+import System.Environment
+
+main = getArgs >>= print

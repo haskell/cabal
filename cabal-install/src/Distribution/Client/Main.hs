@@ -205,7 +205,8 @@ import Distribution.Simple.Command
   , commandAddAction
   , commandFromSpec
   , commandShowOptions
-  , commandsRun
+  , commandsRunWithFallback
+  , defaultCommandFallback
   , hiddenCommand
   )
 import Distribution.Simple.Compiler (PackageDBStack)
@@ -221,6 +222,8 @@ import Distribution.Simple.PackageDescription (readGenericPackageDescription)
 import Distribution.Simple.Program
   ( configureAllKnownPrograms
   , defaultProgramDb
+  , defaultProgramSearchPath
+  , findProgramOnSearchPath
   , getProgramInvocationOutput
   , simpleProgramInvocation
   )
@@ -261,7 +264,7 @@ import System.Directory
   , getCurrentDirectory
   , withCurrentDirectory
   )
-import System.Environment (getProgName)
+import System.Environment (getEnvironment, getExecutablePath, getProgName)
 import System.FilePath
   ( dropExtension
   , splitExtension
@@ -276,6 +279,7 @@ import System.IO
   , stderr
   , stdout
   )
+import System.Process (createProcess, env, proc)
 
 -- | Entry point
 --
@@ -334,9 +338,8 @@ warnIfAssertionsAreEnabled =
 mainWorker :: [String] -> IO ()
 mainWorker args = do
   topHandler $ do
-    command <- commandsRun (globalCommand commands) commands args
+    command <- commandsRunWithFallback (globalCommand commands) commands delegateToExternal args
     case command of
-      CommandDelegate -> pure ()
       CommandHelp help -> printGlobalHelp help
       CommandList opts -> printOptionsList opts
       CommandErrors errs -> printErrors errs
@@ -347,7 +350,6 @@ mainWorker args = do
                 printVersion
             | fromFlagOrDefault False (globalNumericVersion globalFlags) ->
                 printNumericVersion
-          CommandDelegate -> pure ()
           CommandHelp help -> printCommandHelp help
           CommandList opts -> printOptionsList opts
           CommandErrors errs -> do
@@ -366,6 +368,27 @@ mainWorker args = do
             warnIfAssertionsAreEnabled
             action globalFlags
   where
+    delegateToExternal
+      :: [Command Action]
+      -> String
+      -> [String]
+      -> IO (CommandParse Action)
+    delegateToExternal commands' name cmdArgs = do
+      mCommand <- findProgramOnSearchPath normal defaultProgramSearchPath ("cabal-" <> name)
+      case mCommand of
+        Just (exec, _) -> return (CommandReadyToGo $ \_ -> callExternal exec name cmdArgs)
+        Nothing -> defaultCommandFallback commands' name cmdArgs
+
+    callExternal :: String -> String -> [String] -> IO ()
+    callExternal exec name cmdArgs = do
+      cur_env <- getEnvironment
+      cabal_exe <- getExecutablePath
+      let new_env = ("CABAL", cabal_exe) : cur_env
+      result <- try $ createProcess ((proc exec (name : cmdArgs)){env = Just new_env})
+      case result of
+        Left ex -> printErrors ["Error executing external command: " ++ show (ex :: SomeException)]
+        Right _ -> return ()
+
     printCommandHelp help = do
       pname <- getProgName
       putStr (help pname)

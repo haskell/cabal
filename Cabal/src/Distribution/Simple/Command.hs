@@ -47,6 +47,8 @@ module Distribution.Simple.Command
 
     -- ** Running commands
   , commandsRun
+  , commandsRunWithFallback
+  , defaultCommandFallback
 
     -- * Option Fields
   , OptionField (..)
@@ -85,15 +87,12 @@ module Distribution.Simple.Command
 import Distribution.Compat.Prelude hiding (get)
 import Prelude ()
 
-import Control.Exception (try)
 import qualified Data.Array as Array
 import qualified Data.List as List
 import Distribution.Compat.Lens (ALens', (#~), (^#))
 import qualified Distribution.GetOpt as GetOpt
 import Distribution.ReadE
 import Distribution.Simple.Utils
-import System.Directory (findExecutable)
-import System.Process (callProcess)
 
 data CommandUI flags = CommandUI
   { commandName :: String
@@ -599,13 +598,11 @@ data CommandParse flags
   | CommandList [String]
   | CommandErrors [String]
   | CommandReadyToGo flags
-  | CommandDelegate
 instance Functor CommandParse where
   fmap _ (CommandHelp help) = CommandHelp help
   fmap _ (CommandList opts) = CommandList opts
   fmap _ (CommandErrors errs) = CommandErrors errs
   fmap f (CommandReadyToGo flags) = CommandReadyToGo (f flags)
-  fmap _ CommandDelegate = CommandDelegate
 
 data CommandType = NormalCommand | HiddenCommand
 data Command action
@@ -632,27 +629,62 @@ commandAddAction command action =
       let flags = mkflags (commandDefaultFlags command)
        in action flags args
 
+-- Print suggested command if edit distance is < 5
+badCommand :: [Command action] -> String -> CommandParse a
+badCommand commands' cname =
+  case eDists of
+    [] -> CommandErrors [unErr]
+    (s : _) ->
+      CommandErrors
+        [ unErr
+        , "Maybe you meant `" ++ s ++ "`?\n"
+        ]
+  where
+    eDists =
+      map fst . List.sortBy (comparing snd) $
+        [ (cname', dist)
+        | -- Note that this is not commandNames, so close suggestions will show
+        -- hidden commands
+        (Command cname' _ _ _) <- commands'
+        , let dist = editDistance cname' cname
+        , dist < 5
+        ]
+    unErr = "unrecognised command: " ++ cname ++ " (try --help)"
+
 commandsRun
   :: CommandUI a
   -> [Command action]
   -> [String]
   -> IO (CommandParse (a, CommandParse action))
 commandsRun globalCommand commands args =
+  commandsRunWithFallback globalCommand commands defaultCommandFallback args
+
+defaultCommandFallback
+  :: [Command action]
+  -> String
+  -> [String]
+  -> IO (CommandParse action)
+defaultCommandFallback commands' name _cmdArgs = pure $ badCommand commands' name
+
+commandsRunWithFallback
+  :: CommandUI a
+  -> [Command action]
+  -> ([Command action] -> String -> [String] -> IO (CommandParse action))
+  -> [String]
+  -> IO (CommandParse (a, CommandParse action))
+commandsRunWithFallback globalCommand commands defaultCommand args =
   case commandParseArgs globalCommand True args of
-    CommandDelegate -> pure CommandDelegate
     CommandHelp help -> pure $ CommandHelp help
     CommandList opts -> pure $ CommandList (opts ++ commandNames)
     CommandErrors errs -> pure $ CommandErrors errs
     CommandReadyToGo (mkflags, args') -> case args' of
-      ("help" : cmdArgs) -> pure $ handleHelpCommand cmdArgs
+      ("help" : cmdArgs) -> handleHelpCommand flags cmdArgs
       (name : cmdArgs) -> case lookupCommand name of
         [Command _ _ action _] ->
           pure $ CommandReadyToGo (flags, action cmdArgs)
         _ -> do
-          mCommand <- findExecutable $ "cabal-" <> name
-          case mCommand of
-            Just exec -> callExternal flags exec cmdArgs
-            Nothing -> pure $ CommandReadyToGo (flags, badCommand name)
+          final_cmd <- defaultCommand commands' name cmdArgs
+          return $ CommandReadyToGo (flags, final_cmd)
       [] -> pure $ CommandReadyToGo (flags, noCommand)
       where
         flags = mkflags (commandDefaultFlags globalCommand)
@@ -661,55 +693,29 @@ commandsRun globalCommand commands args =
       [ cmd | cmd@(Command cname' _ _ _) <- commands', cname' == cname
       ]
 
-    callExternal :: a -> String -> [String] -> IO (CommandParse (a, CommandParse action))
-    callExternal flags exec cmdArgs = do
-      result <- try $ callProcess exec cmdArgs
-      case result of
-        Left ex -> pure $ CommandErrors ["Error executing external command: " ++ show (ex :: SomeException)]
-        Right _ -> pure $ CommandReadyToGo (flags, CommandDelegate)
-
     noCommand = CommandErrors ["no command given (try --help)\n"]
-
-    -- Print suggested command if edit distance is < 5
-    badCommand :: String -> CommandParse a
-    badCommand cname =
-      case eDists of
-        [] -> CommandErrors [unErr]
-        (s : _) ->
-          CommandErrors
-            [ unErr
-            , "Maybe you meant `" ++ s ++ "`?\n"
-            ]
-      where
-        eDists =
-          map fst . List.sortBy (comparing snd) $
-            [ (cname', dist)
-            | (Command cname' _ _ _) <- commands'
-            , let dist = editDistance cname' cname
-            , dist < 5
-            ]
-        unErr = "unrecognised command: " ++ cname ++ " (try --help)"
 
     commands' = commands ++ [commandAddAction helpCommandUI undefined]
     commandNames = [name | (Command name _ _ NormalCommand) <- commands']
 
     -- A bit of a hack: support "prog help" as a synonym of "prog --help"
     -- furthermore, support "prog help command" as "prog command --help"
-    handleHelpCommand cmdArgs =
+    handleHelpCommand flags cmdArgs =
       case commandParseArgs helpCommandUI True cmdArgs of
-        CommandDelegate -> CommandDelegate
-        CommandHelp help -> CommandHelp help
-        CommandList list -> CommandList (list ++ commandNames)
-        CommandErrors _ -> CommandHelp globalHelp
-        CommandReadyToGo (_, []) -> CommandHelp globalHelp
+        CommandHelp help -> pure $ CommandHelp help
+        CommandList list -> pure $ CommandList (list ++ commandNames)
+        CommandErrors _ -> pure $ CommandHelp globalHelp
+        CommandReadyToGo (_, []) -> pure $ CommandHelp globalHelp
         CommandReadyToGo (_, (name : cmdArgs')) ->
           case lookupCommand name of
             [Command _ _ action _] ->
               case action ("--help" : cmdArgs') of
-                CommandHelp help -> CommandHelp help
-                CommandList _ -> CommandList []
-                _ -> CommandHelp globalHelp
-            _ -> badCommand name
+                CommandHelp help -> pure $ CommandHelp help
+                CommandList _ -> pure $ CommandList []
+                _ -> pure $ CommandHelp globalHelp
+            _ -> do
+              fall_back <- defaultCommand commands' name ("--help" : cmdArgs')
+              return $ CommandReadyToGo (flags, fall_back)
       where
         globalHelp = commandHelp globalCommand
 
