@@ -96,7 +96,6 @@ import Distribution.Simple.Flag (Flag (..), toFlag)
 import Distribution.Simple.GHC.Build
   ( componentGhcOptions
   , exeTargetName
-  , flibBuildName
   , flibTargetName
   , isDynamic
   )
@@ -128,7 +127,6 @@ import System.Directory
   , doesFileExist
   , getAppUserDataDirectory
   , getDirectoryContents
-  , renameFile
   )
 import System.FilePath
   ( takeDirectory
@@ -137,6 +135,8 @@ import System.FilePath
   )
 import qualified System.Info
 #ifndef mingw32_HOST_OS
+import Distribution.Simple.GHC.Build (flibBuildName)
+import System.Directory (renameFile)
 import System.Posix (createSymbolicLink)
 #endif /* mingw32_HOST_OS */
 
