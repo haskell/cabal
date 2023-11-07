@@ -1,6 +1,6 @@
 cabal-version: 2.2
 name:          cabal-install-solver
-version:       3.10.2.0
+version:       3.10.2.1
 synopsis:      The command-line interface for Cabal and Hackage.
 description:
   The solver component used in cabal-install command-line program
