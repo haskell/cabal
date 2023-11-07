@@ -2,6 +2,11 @@ Welcome to the Cabal User Guide
 ===============================
 
 .. toctree::
+
+   welcome
+
+
+.. toctree::
    :caption: Getting Started
    :numbered:
    :maxdepth: 2
@@ -15,7 +20,6 @@ Welcome to the Cabal User Guide
 
    how-to-package-haskell-code
    how-to-build-like-nix
-   how-to-report-bugs
 
 .. toctree::
    :caption: Cabal Reference
@@ -37,4 +41,3 @@ Welcome to the Cabal User Guide
 
    cabal-context
    package-concepts
-   cabal-interface-stability
