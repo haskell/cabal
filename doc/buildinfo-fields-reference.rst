@@ -504,7 +504,7 @@ pkgconfig-depends
 virtual-modules
     * Monoidal field
     * Available since ``cabal-version: 2.2``.
-    * Documentation of :pkg-field:`virtual-modules`
+    * Documentation of :pkg-field:`library:virtual-modules`
 
     .. math::
         \mathrm{commalist}\left({\left(\mathop{\mathit{upper}}{\left\{ \mathop{\mathit{alpha\text{-}num}}\mid[\mathop{\mathord{``}\mathtt{\text{'}}\mathord{"}}\mathop{\mathord{``}\mathtt{\text{_}}\mathord{"}}] \right\}}^\ast_{}\right)}^+_{\mathop{\mathord{``}\mathtt{\text{.}}\mathord{"}}}\right)
