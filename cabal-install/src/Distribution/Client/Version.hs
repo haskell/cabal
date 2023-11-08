@@ -5,7 +5,7 @@ module Distribution.Client.Version
 
 import Distribution.Version
 
-import qualified PackageInfo_cabal_install as PackageInfo
+import qualified Paths_cabal_install as PackageInfo
 
 -- This value determines the `cabal-install --version` output.
 --
