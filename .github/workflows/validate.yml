@@ -166,7 +166,6 @@ jobs:
         # Have to disable *-suite validation:
         # - the Windows@9.6.1 problem is tracked at https://github.com/haskell/cabal/issues/8858
         # - but curently can't run it with GHC 9.6, tracking: https://github.com/haskell/cabal/issues/8883
-        if: (runner.os != 'Windows')  || (matrix.ghc != '9.6.3')
         run: sh validate.sh $FLAGS -s lib-suite
 
       - name: Validate cli-tests
@@ -174,7 +173,6 @@ jobs:
 
       - name: Validate cli-suite
         # Have to disable *-suite validation, see above the comment for lib-suite
-        if: (runner.os != 'Windows')  || (matrix.ghc != '9.6.3')
         run: sh validate.sh $FLAGS -s cli-suite
 
   validate-old-ghcs:
