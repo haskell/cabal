@@ -803,9 +803,6 @@ checkGHCOptions title t opts = do
         ["-fasm"]
         (PackageDistInexcusable $ OptFasm title)
       checkFlags
-        ["-fvia-C"]
-        (PackageDistSuspicious $ OptViaC title)
-      checkFlags
         ["-fhpc"]
         (PackageDistInexcusable $ OptHpc title)
       checkFlags

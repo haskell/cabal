@@ -164,7 +164,6 @@ data CheckExplanation
   | SubdirRelPath
   | SubdirGoodRelPath String
   | OptFasm String
-  | OptViaC String
   | OptHpc String
   | OptProf String
   | OptO String
@@ -520,13 +519,6 @@ ppExplanation (OptFasm fieldName) =
     ++ fieldName
     ++ ": -fasm' is unnecessary and will not work on CPU "
     ++ "architectures other than x86, x86-64, ppc or sparc."
-ppExplanation (OptViaC fieldName) =
-  "'"
-    ++ fieldName
-    ++ ": -fvia-C' is usually unnecessary. If your package "
-    ++ "needs -via-C for correctness rather than performance then it "
-    ++ "is using the FFI incorrectly and will probably not work with GHC "
-    ++ "6.10 or later."
 ppExplanation (OptHpc fieldName) =
   "'"
     ++ fieldName
