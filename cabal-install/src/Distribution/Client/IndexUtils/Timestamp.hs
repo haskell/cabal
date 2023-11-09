@@ -1,5 +1,5 @@
+{-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 
@@ -12,8 +12,7 @@
 --
 -- Timestamp type used in package indexes
 module Distribution.Client.IndexUtils.Timestamp
-  ( Timestamp
-  , nullTimestamp
+  ( Timestamp (NoTimestamp)
   , epochTimeToTimestamp
   , timestampToUTCTime
   , utcTimeToTimestamp
@@ -33,38 +32,30 @@ import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
 
 -- | UNIX timestamp (expressed in seconds since unix epoch, i.e. 1970).
-newtype Timestamp = TS Int64 -- Tar.EpochTime
-  deriving (Eq, Ord, Enum, NFData, Show, Generic)
+data Timestamp = NoTimestamp | TS Int64 -- Tar.EpochTime
+  deriving (Eq, Ord, NFData, Show, Generic)
 
-epochTimeToTimestamp :: Tar.EpochTime -> Maybe Timestamp
-epochTimeToTimestamp et
-  | ts == nullTimestamp = Nothing
-  | otherwise = Just ts
-  where
-    ts = TS et
+epochTimeToTimestamp :: Tar.EpochTime -> Timestamp
+epochTimeToTimestamp = TS
 
 timestampToUTCTime :: Timestamp -> Maybe UTCTime
-timestampToUTCTime (TS t)
-  | t == minBound = Nothing
-  | otherwise = Just $ posixSecondsToUTCTime (fromIntegral t)
+timestampToUTCTime NoTimestamp = Nothing
+timestampToUTCTime (TS t) = Just $ posixSecondsToUTCTime (fromIntegral t)
 
-utcTimeToTimestamp :: UTCTime -> Maybe Timestamp
-utcTimeToTimestamp utct
-  | minTime <= t, t <= maxTime = Just (TS (fromIntegral t))
-  | otherwise = Nothing
-  where
-    maxTime = toInteger (maxBound :: Int64)
-    minTime = toInteger (succ minBound :: Int64)
-    t :: Integer
-    t = round . utcTimeToPOSIXSeconds $ utct
+utcTimeToTimestamp :: UTCTime -> Timestamp
+utcTimeToTimestamp =
+  TS
+    . (fromIntegral :: Integer -> Int64)
+    . round
+    . utcTimeToPOSIXSeconds
 
 -- | Compute the maximum 'Timestamp' value
 --
--- Returns 'nullTimestamp' for the empty list.  Also note that
--- 'nullTimestamp' compares as smaller to all non-'nullTimestamp'
+-- Returns 'NoTimestamp' for the empty list.  Also note that
+-- 'NoTimestamp' compares as smaller to all non-'NoTimestamp'
 -- values.
 maximumTimestamp :: [Timestamp] -> Timestamp
-maximumTimestamp [] = nullTimestamp
+maximumTimestamp [] = NoTimestamp
 maximumTimestamp xs@(_ : _) = maximum xs
 
 -- returns 'Nothing' if not representable as 'Timestamp'
@@ -76,17 +67,11 @@ posixSecondsToTimestamp pt
     maxTs = toInteger (maxBound :: Int64)
     minTs = toInteger (succ minBound :: Int64)
 
--- | Pretty-prints 'Timestamp' in ISO8601/RFC3339 format
--- (e.g. @"2017-12-31T23:59:59Z"@)
---
--- Returns empty string for 'nullTimestamp' in order for
---
--- > null (display nullTimestamp) == True
---
--- to hold.
+-- | Pretty-prints non-null 'Timestamp' in ISO8601/RFC3339 format
+-- (e.g. @"2017-12-31T23:59:59Z"@).
 showTimestamp :: Timestamp -> String
 showTimestamp ts = case timestampToUTCTime ts of
-  Nothing -> ""
+  Nothing -> "Unknown or invalid timestamp"
   -- Note: we don't use 'formatTime' here to avoid incurring a
   -- dependency on 'old-locale' for older `time` libs
   Just UTCTime{..} -> showGregorian utctDay ++ ('T' : showTOD utctDayTime) ++ "Z"
@@ -141,7 +126,7 @@ instance Parsec Timestamp where
 
         let utc = UTCTime{..}
 
-        maybe (fail (show utc ++ " is not representable as timestamp")) return $ utcTimeToTimestamp utc
+        return $ utcTimeToTimestamp utc
 
       parseTwoDigits = do
         d1 <- P.satisfy isDigit
@@ -156,8 +141,3 @@ instance Parsec Timestamp where
         ds <- P.munch1 isDigit
         when (length ds < 4) $ fail "Year should have at least 4 digits"
         return (read (sign : ds))
-
--- | Special timestamp value to be used when 'timestamp' is
--- missing/unknown/invalid
-nullTimestamp :: Timestamp
-nullTimestamp = TS minBound

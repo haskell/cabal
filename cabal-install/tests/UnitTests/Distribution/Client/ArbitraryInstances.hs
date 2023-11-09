@@ -184,7 +184,7 @@ instance Arbitrary Timestamp where
   -- >>> utcTimeToPOSIXSeconds $ UTCTime (fromGregorian 100000 01 01) 0
   -- >>> 3093527980800s
   --
-  arbitrary = maybe (toEnum 0) id . epochTimeToTimestamp . (`mod` 3093527980800) . abs <$> arbitrary
+  arbitrary = epochTimeToTimestamp . (`mod` 3093527980800) . abs <$> arbitrary
 
 instance Arbitrary RepoIndexState where
   arbitrary =
