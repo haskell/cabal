@@ -1,0 +1,13 @@
+# cabal build
+Error: [Cabal-7159]
+Latest known index-state for 'repository.localhost' (REPLACEME) is older than the requested index-state (4000-01-01T00:00:00Z).
+Run 'cabal update' or set the index-state to a value at or before REPLACEME.
+# cabal build
+Warning: There is no index-state for 'repository.localhost' exactly at the requested timestamp (2023-01-01T00:00:00Z). Also, there are no index-states before the one requested, so the repository 'repository.localhost' will be empty.
+Resolving dependencies...
+Error: [Cabal-7107]
+Could not resolve dependencies:
+[__0] trying: fake-pkg-1.0 (user goal)
+[__1] unknown package: pkg (dependency of fake-pkg)
+[__1] fail (backjumping, conflict set: fake-pkg, pkg)
+After searching the rest of the dependency tree exhaustively, these were the goals I've had most trouble fulfilling: fake-pkg (2), pkg (1)

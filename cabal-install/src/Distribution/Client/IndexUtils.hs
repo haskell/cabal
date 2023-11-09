@@ -212,7 +212,7 @@ data IndexStateInfo = IndexStateInfo
   }
 
 emptyStateInfo :: IndexStateInfo
-emptyStateInfo = IndexStateInfo nullTimestamp nullTimestamp
+emptyStateInfo = IndexStateInfo NoTimestamp NoTimestamp
 
 -- | Filters a 'Cache' according to an 'IndexState'
 -- specification. Also returns 'IndexStateInfo' describing the
@@ -318,40 +318,31 @@ getSourcePackagesAtIndexState verbosity repoCtxt mb_idxState mb_activeRepos = do
       IndexStateHead -> do
         info verbosity ("index-state(" ++ unRepoName rname ++ ") = " ++ prettyShow (isiHeadTime isi))
         return ()
-      IndexStateTime ts0 -> do
+      IndexStateTime ts0 ->
+        -- isiMaxTime is the latest timestamp in the filtered view returned by
+        -- `readRepoIndex` above. It is always true that isiMaxTime is less or
+        -- equal to a requested IndexStateTime. When `isiMaxTime isi /= ts0` (or
+        -- equivalently `isiMaxTime isi < ts0`) it means that ts0 falls between
+        -- two timestamps in the index.
         when (isiMaxTime isi /= ts0) $
-          if ts0 > isiMaxTime isi
-            then
-              warn verbosity $
-                "Requested index-state "
-                  ++ prettyShow ts0
-                  ++ " is newer than '"
+          let commonMsg =
+                "There is no index-state for '"
                   ++ unRepoName rname
-                  ++ "'!"
-                  ++ " Falling back to older state ("
-                  ++ prettyShow (isiMaxTime isi)
-                  ++ ")."
-            else
-              info verbosity $
-                "Requested index-state "
+                  ++ "' exactly at the requested timestamp ("
                   ++ prettyShow ts0
-                  ++ " does not exist in '"
-                  ++ unRepoName rname
-                  ++ "'!"
-                  ++ " Falling back to older state ("
-                  ++ prettyShow (isiMaxTime isi)
-                  ++ ")."
-        info
-          verbosity
-          ( "index-state("
-              ++ unRepoName rname
-              ++ ") = "
-              ++ prettyShow (isiMaxTime isi)
-              ++ " (HEAD = "
-              ++ prettyShow (isiHeadTime isi)
-              ++ ")"
-          )
-
+                  ++ "). "
+           in if isNothing $ timestampToUTCTime (isiMaxTime isi)
+                then
+                  warn verbosity $
+                    commonMsg
+                      ++ "Also, there are no index-states before the one requested, so the repository '"
+                      ++ unRepoName rname
+                      ++ "' will be empty."
+                else
+                  info verbosity $
+                    commonMsg
+                      ++ "Falling back to the previous index-state that exists: "
+                      ++ prettyShow (isiMaxTime isi)
     pure
       RepoData
         { rdRepoName = rname
@@ -381,7 +372,7 @@ getSourcePackagesAtIndexState verbosity repoCtxt mb_idxState mb_activeRepos = do
             [ (n, IndexStateTime ts)
             | (RepoData n ts _idx _prefs, _strategy) <- pkgss'
             , -- e.g. file+noindex have nullTimestamp as their timestamp
-            ts /= nullTimestamp
+            ts /= NoTimestamp
             ]
 
   let addIndex
@@ -439,15 +430,16 @@ readRepoIndex
   -> IO (PackageIndex UnresolvedSourcePackage, [Dependency], IndexStateInfo)
 readRepoIndex verbosity repoCtxt repo idxState =
   handleNotFound $ do
-    when (isRepoRemote repo) $ warnIfIndexIsOld =<< getIndexFileAge repo
-    -- note that if this step fails due to a bad repo cache, the the procedure can still succeed by reading from the existing cache, which is updated regardless.
-    updateRepoIndexCache verbosity (RepoIndex repoCtxt repo)
-      `catchIO` (\e -> warn verbosity $ "unable to update the repo index cache -- " ++ displayException e)
-    readPackageIndexCacheFile
-      verbosity
-      mkAvailablePackage
-      (RepoIndex repoCtxt repo)
-      idxState
+    ret@(_, _, isi) <-
+      readPackageIndexCacheFile
+        verbosity
+        mkAvailablePackage
+        (RepoIndex repoCtxt repo)
+        idxState
+    when (isRepoRemote repo) $ do
+      warnIfIndexIsOld =<< getIndexFileAge repo
+      dieIfRequestedIdxIsNewer isi
+    pure ret
   where
     mkAvailablePackage pkgEntry =
       SourcePackage
@@ -468,8 +460,8 @@ readRepoIndex verbosity repoCtxt repo idxState =
       if isDoesNotExistError e
         then do
           case repo of
-            RepoRemote{..} -> warn verbosity $ errMissingPackageList repoRemote
-            RepoSecure{..} -> warn verbosity $ errMissingPackageList repoRemote
+            RepoRemote{..} -> dieWithException verbosity $ MissingPackageList repoRemote
+            RepoSecure{..} -> dieWithException verbosity $ MissingPackageList repoRemote
             RepoLocalNoIndex local _ ->
               warn verbosity $
                 "Error during construction of local+noindex "
@@ -479,18 +471,25 @@ readRepoIndex verbosity repoCtxt repo idxState =
           return (mempty, mempty, emptyStateInfo)
         else ioError e
 
+    isOldThreshold :: Double
     isOldThreshold = 15 -- days
     warnIfIndexIsOld dt = do
       when (dt >= isOldThreshold) $ case repo of
-        RepoRemote{..} -> warn verbosity $ errOutdatedPackageList repoRemote dt
-        RepoSecure{..} -> warn verbosity $ errOutdatedPackageList repoRemote dt
+        RepoRemote{..} -> warn verbosity $ warnOutdatedPackageList repoRemote dt
+        RepoSecure{..} -> warn verbosity $ warnOutdatedPackageList repoRemote dt
         RepoLocalNoIndex{} -> return ()
 
-    errMissingPackageList repoRemote =
-      "The package list for '"
-        ++ unRepoName (remoteRepoName repoRemote)
-        ++ "' does not exist. Run 'cabal update' to download it."
-    errOutdatedPackageList repoRemote dt =
+    dieIfRequestedIdxIsNewer isi =
+      let latestTime = isiHeadTime isi
+       in case idxState of
+            IndexStateTime t -> when (t > latestTime) $ case repo of
+              RepoSecure{..} ->
+                dieWithException verbosity $ UnusableIndexState repoRemote latestTime t
+              RepoRemote{} -> pure ()
+              RepoLocalNoIndex{} -> return ()
+            IndexStateHead -> pure ()
+
+    warnOutdatedPackageList repoRemote dt =
       "The package list for '"
         ++ unRepoName (remoteRepoName repoRemote)
         ++ "' is "
@@ -852,9 +851,8 @@ withIndexEntries _ (RepoIndex repoCtxt repo@RepoSecure{}) callback _ =
       where
         blockNo = Sec.directoryEntryBlockNo dirEntry
         timestamp =
-          fromMaybe (error "withIndexEntries: invalid timestamp") $
-            epochTimeToTimestamp $
-              Sec.indexEntryTime sie
+          epochTimeToTimestamp $
+            Sec.indexEntryTime sie
 withIndexEntries verbosity (RepoIndex _repoCtxt (RepoLocalNoIndex (LocalRepo name localDir _) _cacheDir)) _ callback = do
   dirContents <- listDirectory localDir
   let contentSet = Set.fromList dirContents
@@ -942,10 +940,14 @@ withIndexEntries verbosity index callback _ = do
     callback $ map toCache (catMaybes pkgsOrPrefs)
   where
     toCache :: PackageOrDep -> IndexCacheEntry
-    toCache (Pkg (NormalPackage pkgid _ _ blockNo)) = CachePackageId pkgid blockNo nullTimestamp
+    toCache (Pkg (NormalPackage pkgid _ _ blockNo)) = CachePackageId pkgid blockNo NoTimestamp
     toCache (Pkg (BuildTreeRef refType _ _ _ blockNo)) = CacheBuildTreeRef refType blockNo
-    toCache (Dep d) = CachePreference d 0 nullTimestamp
+    toCache (Dep d) = CachePreference d 0 NoTimestamp
 
+-- | Read package data from a repository.
+-- Throws IOException if any arise while accessing the index
+-- (unless the repo is local+no-index) and dies if the cache
+-- is corrupted and cannot be regenerated correctly.
 readPackageIndexCacheFile
   :: Package pkg
   => Verbosity
@@ -959,11 +961,17 @@ readPackageIndexCacheFile verbosity mkPkg index idxState
       (pkgs, prefs) <- packageNoIndexFromCache verbosity mkPkg cache0
       pure (pkgs, prefs, emptyStateInfo)
   | otherwise = do
-      cache0 <- readIndexCache verbosity index
+      (cache, isi) <- getIndexCache verbosity index idxState
       indexHnd <- openFile (indexFile index) ReadMode
-      let (cache, isi) = filterCache idxState cache0
       (pkgs, deps) <- packageIndexFromCache verbosity mkPkg indexHnd cache
       pure (pkgs, deps, isi)
+
+-- | Read 'Cache' and 'IndexStateInfo' from the repository index file.
+-- Throws IOException if any arise (e.g. the index or its cache are missing).
+-- Dies if the index cache is corrupted and cannot be regenerated correctly.
+getIndexCache :: Verbosity -> Index -> RepoIndexState -> IO (Cache, IndexStateInfo)
+getIndexCache verbosity index idxState =
+  filterCache idxState <$> readIndexCache verbosity index
 
 packageIndexFromCache
   :: Package pkg
@@ -1087,7 +1095,7 @@ packageListFromCache verbosity mkPkg hnd Cache{..} = accum mempty [] mempty cach
 ------------------------------------------------------------------------
 -- Index cache data structure --
 
--- | Read the 'Index' cache from the filesystem
+-- | Read a repository cache from the filesystem
 --
 -- If a corrupted index cache is detected this function regenerates
 -- the index cache and then reattempt to read the index once (and
@@ -1110,6 +1118,11 @@ readIndexCache verbosity index = do
       either (dieWithException verbosity . CorruptedIndexCache) (return . hashConsCache) =<< readIndexCache' index
     Right res -> return (hashConsCache res)
 
+-- | Read a no-index repository cache from the filesystem
+--
+-- If a corrupted index cache is detected this function regenerates
+-- the index cache and then reattempts to read the index once (and
+-- 'dieWithException's if it fails again). Throws IOException if any arise.
 readNoIndexCache :: Verbosity -> Index -> IO NoIndexCache
 readNoIndexCache verbosity index = do
   cacheOrFail <- readNoIndexCache' index
@@ -1130,11 +1143,12 @@ readNoIndexCache verbosity index = do
     -- we don't hash cons local repository cache, they are hopefully small
     Right res -> return res
 
--- | Read the 'Index' cache from the filesystem without attempting to
--- regenerate on parsing failures.
+-- | Read the 'Index' cache from the filesystem. Throws IO exceptions
+-- if any arise and returns Left on invalid input.
 readIndexCache' :: Index -> IO (Either String Cache)
 readIndexCache' index
-  | is01Index index = structuredDecodeFileOrFail (cacheFile index)
+  | is01Index index =
+      structuredDecodeFileOrFail (cacheFile index)
   | otherwise =
       Right . read00IndexCache <$> BSS.readFile (cacheFile index)
 
@@ -1159,15 +1173,27 @@ writeIndexTimestamp index st =
   writeFile (timestampFile index) (prettyShow st)
 
 -- | Read out the "current" index timestamp, i.e., what
--- timestamp you would use to revert to this version
-currentIndexTimestamp :: Verbosity -> RepoContext -> Repo -> IO Timestamp
-currentIndexTimestamp verbosity repoCtxt r = do
-  mb_is <- readIndexTimestamp verbosity (RepoIndex repoCtxt r)
+-- timestamp you would use to revert to this version.
+--
+-- Note: this is not the same as 'readIndexTimestamp'!
+-- This resolves HEAD to the index's 'isiHeadTime', i.e.
+-- the index latest known timestamp.
+--
+-- Return NoTimestamp if the index has never been updated.
+currentIndexTimestamp :: Verbosity -> Index -> IO Timestamp
+currentIndexTimestamp verbosity index = do
+  mb_is <- readIndexTimestamp verbosity index
   case mb_is of
-    Just (IndexStateTime ts) -> return ts
-    _ -> do
-      (_, _, isi) <- readRepoIndex verbosity repoCtxt r IndexStateHead
-      return (isiHeadTime isi)
+    -- If the index timestamp file specifies an index state time, use that
+    Just (IndexStateTime ts) ->
+      return ts
+    -- Otherwise used the head time as stored in the index cache
+    _otherwise ->
+      fmap (isiHeadTime . snd) (getIndexCache verbosity index IndexStateHead)
+        `catchIO` \e ->
+          if isDoesNotExistError e
+            then return NoTimestamp
+            else ioError e
 
 -- | Read the 'IndexState' from the filesystem
 readIndexTimestamp :: Verbosity -> Index -> IO (Maybe RepoIndexState)
@@ -1259,7 +1285,7 @@ instance NFData NoIndexCacheEntry where
   rnf (NoIndexCachePreference dep) = rnf dep
 
 cacheEntryTimestamp :: IndexCacheEntry -> Timestamp
-cacheEntryTimestamp (CacheBuildTreeRef _ _) = nullTimestamp
+cacheEntryTimestamp (CacheBuildTreeRef _ _) = NoTimestamp
 cacheEntryTimestamp (CachePreference _ _ ts) = ts
 cacheEntryTimestamp (CachePackageId _ _ ts) = ts
 
@@ -1311,7 +1337,7 @@ preferredVersionKey = "pref-ver:"
 read00IndexCache :: BSS.ByteString -> Cache
 read00IndexCache bs =
   Cache
-    { cacheHeadTs = nullTimestamp
+    { cacheHeadTs = NoTimestamp
     , cacheEntries = mapMaybe read00IndexCacheEntry $ BSS.lines bs
     }
 
@@ -1329,7 +1355,7 @@ read00IndexCacheEntry = \line ->
                 ( CachePackageId
                     (PackageIdentifier pkgname pkgver)
                     blockno
-                    nullTimestamp
+                    NoTimestamp
                 )
             _ -> Nothing
     [key, typecodestr, blocknostr] | key == BSS.pack buildTreeRefKey ->
@@ -1339,7 +1365,7 @@ read00IndexCacheEntry = \line ->
         _ -> Nothing
     (key : remainder) | key == BSS.pack preferredVersionKey -> do
       pref <- simpleParsecBS (BSS.unwords remainder)
-      return $ CachePreference pref 0 nullTimestamp
+      return $ CachePreference pref 0 NoTimestamp
     _ -> Nothing
   where
     parseName str
