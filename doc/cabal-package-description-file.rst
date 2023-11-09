@@ -1479,8 +1479,29 @@ system-dependent values for these fields.
 
     Version constraints use the operators ``==, >=, >, <, <=`` and a
     version number. Multiple constraints can be combined using ``&&`` or
-    ``||``. If no version constraint is specified, any version is
-    assumed to be acceptable. For example:
+    ``||``.
+    
+    .. Note::
+
+       Even though there is no ``/=`` operator, by combining operators we can
+       skip over one or more versions, to skip a deprecated version or to skip
+       versions that narrow the constraint solving more than we'd like.
+       
+       For example, the ``time =1.12.*`` series depends on ``base >=4.13 && <5``
+       but ``time-1.12.3`` bumps the lower bound on base to ``>=4.14``.  If we
+       still want to compile with a ``ghc-8.8.*`` version of GHC that ships with
+       ``base-4.13`` and with later GHC versions, then we can use ``time >=1.12
+       && (time <1.12.3 || time >1.12.3)``.
+
+       Hackage shows deprecated and preferred versions for packages, such as for
+       `containers <https://hackage.haskell.org/package/containers/preferred>`_
+       and `aeson <https://hackage.haskell.org/package/aeson/preferred>`_ for
+       example. Deprecating package versions is not the same deprecating a
+       package as a whole, for which hackage keeps a `deprecated packages list
+       <https://hackage.haskell.org/packages/deprecated>`_.
+
+    If no version constraint is specified, any version is assumed to be
+    acceptable. For example:
 
     ::
 
