@@ -25,6 +25,9 @@ import Data.ByteString (ByteString)
 import qualified Data.ByteString.Base16 as Base16
 import qualified Data.ByteString.Char8 as BS8
 import Data.List (groupBy)
+import Distribution.Client.IndexUtils.Timestamp
+import Distribution.Client.Types.Repo
+import Distribution.Client.Types.RepoName (RepoName (..))
 import Distribution.Compat.Prelude
 import Distribution.Deprecated.ParseUtils (PWarning, showPWarning)
 import Distribution.Package
@@ -179,6 +182,8 @@ data CabalInstallException
   | FreezeException String
   | PkgSpecifierException [String]
   | CorruptedIndexCache String
+  | UnusableIndexState RemoteRepo Timestamp Timestamp
+  | MissingPackageList RemoteRepo
   deriving (Show, Typeable)
 
 exceptionCodeCabalInstall :: CabalInstallException -> Int
@@ -327,6 +332,8 @@ exceptionCodeCabalInstall e = case e of
   FreezeException{} -> 7156
   PkgSpecifierException{} -> 7157
   CorruptedIndexCache{} -> 7158
+  UnusableIndexState{} -> 7159
+  MissingPackageList{} -> 7160
 
 exceptionMessageCabalInstall :: CabalInstallException -> String
 exceptionMessageCabalInstall e = case e of
@@ -828,6 +835,20 @@ exceptionMessageCabalInstall e = case e of
   FreezeException errs -> errs
   PkgSpecifierException errorStr -> unlines errorStr
   CorruptedIndexCache str -> str
+  UnusableIndexState repoRemote maxFound requested ->
+    "Latest known index-state for '"
+      ++ unRepoName (remoteRepoName repoRemote)
+      ++ "' ("
+      ++ prettyShow maxFound
+      ++ ") is older than the requested index-state ("
+      ++ prettyShow requested
+      ++ ").\nRun 'cabal update' or set the index-state to a value at or before "
+      ++ prettyShow maxFound
+      ++ "."
+  MissingPackageList repoRemote ->
+    "The package list for '"
+      ++ unRepoName (remoteRepoName repoRemote)
+      ++ "' does not exist. Run 'cabal update' to download it."
 
 instance Exception (VerboseException CabalInstallException) where
   displayException :: VerboseException CabalInstallException -> [Char]
