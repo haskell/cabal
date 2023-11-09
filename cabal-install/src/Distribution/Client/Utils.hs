@@ -408,7 +408,7 @@ findOpenProgramLocation (Platform _ os) =
     xdg = locate "xdg-open"
    in
     case os of
-      Windows -> pure (Right "explorer")
+      Windows -> pure (Right "open")
       OSX -> locate "open"
       Linux -> xdg
       FreeBSD -> xdg
