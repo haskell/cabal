@@ -2,4 +2,4 @@
 These warnings may cause trouble when distributing the package:
 Warning: On library 'int-lib', these packages miss upper bounds:
 - text
-Please add them. More informations at https://pvp.haskell.org/
+Please add them. There is more information at https://pvp.haskell.org/

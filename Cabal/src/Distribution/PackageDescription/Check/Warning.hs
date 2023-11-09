@@ -396,7 +396,7 @@ ppExplanation (InvalidNameWin pkg) =
     ++ prettyShow pkg
     ++ "' is "
     ++ "invalid on Windows. Many tools need to convert package names to "
-    ++ "file names so using this name would cause problems."
+    ++ "file names, so using this name would cause problems."
 ppExplanation ZPrefix =
   "Package names with the prefix 'z-' are reserved by Cabal and "
     ++ "cannot be used."
@@ -637,7 +637,7 @@ ppExplanation (DistPoint mfield path) =
     ++ " points inside the 'dist' "
     ++ "directory. This is not reliable because the location of this "
     ++ "directory is configurable by the user (or package manager). In "
-    ++ "addition the layout of the 'dist' directory is subject to change "
+    ++ "addition, the layout of the 'dist' directory is subject to change "
     ++ "in future versions of Cabal."
   where
     -- mfiled Nothing -> the path is inside `ghc-options`
@@ -841,12 +841,12 @@ ppExplanation (MissingUpperBounds ct names) =
         ++ separator
         ++ List.intercalate separator names
         ++ "\n"
-        ++ "Please add them. More informations at https://pvp.haskell.org/"
+        ++ "Please add them. There is more information at https://pvp.haskell.org/"
 ppExplanation (SuspiciousFlagName invalidFlagNames) =
   "Suspicious flag names: "
     ++ unwords invalidFlagNames
     ++ ". "
-    ++ "To avoid ambiguity in command line interfaces, flag shouldn't "
+    ++ "To avoid ambiguity in command line interfaces, a flag shouldn't "
     ++ "start with a dash. Also for better compatibility, flag names "
     ++ "shouldn't contain non-ascii characters."
 ppExplanation (DeclaredUsedFlags declared used) =
@@ -887,7 +887,7 @@ ppExplanation (JUnneeded fieldName) =
   addConditionalExp $
     "'"
       ++ fieldName
-      ++ ": -j[N]' can make sense for specific user's setup,"
+      ++ ": -j[N]' can make sense for a particular user's setup,"
       ++ " but it is not appropriate for a distributed package."
 ppExplanation (FDeferTypeErrorsUnneeded fieldName) =
   addConditionalExp $
@@ -966,7 +966,7 @@ ppExplanation (UnknownDirectory kind dir) =
   quote (kind ++ ": " ++ dir)
     ++ " specifies a directory which does not exist."
 ppExplanation MissingSourceControl =
-  "When distributing packages it is encouraged to specify source "
+  "When distributing packages, it is encouraged to specify source "
     ++ "control information in the .cabal file using one or more "
     ++ "'source-repository' sections. See the Cabal user guide for "
     ++ "details."

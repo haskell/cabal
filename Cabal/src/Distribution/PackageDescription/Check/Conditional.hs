@@ -8,7 +8,7 @@
 -- Maintainer  :  cabal-devel@haskell.org
 -- Portability :  portable
 --
--- Checks on conditional targes (libraries, executables, etc. that are
+-- Checks on conditional targets (libraries, executables, etc. that are
 -- still inside a CondTree and related checks that can only be performed
 -- here (variables, duplicated modules).
 module Distribution.PackageDescription.Check.Conditional

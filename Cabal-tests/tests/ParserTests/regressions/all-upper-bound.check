@@ -3,4 +3,4 @@ On library, these packages miss upper bounds:
   - alphalib
   - betalib
   - deltalib
-Please add them. More informations at https://pvp.haskell.org/
+Please add them. There is more information at https://pvp.haskell.org/

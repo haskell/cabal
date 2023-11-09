@@ -832,7 +832,7 @@ checkGlobFile cv ddir title fp = do
         rs <- runDirFileGlobM po dir parsedGlob
         return $ checkGlobResult title fp rs
 
--- | Checks for matchless globs and too strict mathching (<2.4 spec).
+-- | Checks for matchless globs and too strict matching (<2.4 spec).
 checkGlobResult
   :: CabalField -- .cabal field we are checking
   -> FilePath -- Glob pattern (to show the user
