@@ -173,16 +173,16 @@ patches =
           [ (,) (Revision 0) $
               Patch
                 (Fingerprint 0x26E9D54B4B97A36B 0x864E315EB592755E)
-                (Fingerprint 0x886CF947F5364109 0xB1CDBFB920AD3589)
-                pds_kanrenv0_2_0_0
+                (Fingerprint 0x384E84502EB3046D 0x536C04CE0186455A)
+                pds_kanrenv0_2_0_0e1
           ]
 
       , (,) (Version (0 :| [2,0,1]))
           [ (,) (Revision 0) $
               Patch
                 (Fingerprint 0x7EB532C6DADD44A1 0x1DEA7B7C0D9CB674)
-                (Fingerprint 0x19A55F8211A75AB0 0x3FCEA17BED62D029)
-                pds_kanrenv0_2_0_1
+                (Fingerprint 0x1CDA064466985F34 0xE9CA7BC31EA7B5E4)
+                pds_kanrenv0_2_0_1e1
           ]
 
       ]
@@ -192,16 +192,16 @@ patches =
           [ (,) (Revision 0) $
               Patch
                 (Fingerprint 0x555941F32E58FE2A 0x2A8F78C4D42CD502)
-                (Fingerprint 0x7EA1E4EB98FD4E64 0xD8E7DD349B7A8884)
-                pmetricv0_1_4
+                (Fingerprint 0x8F667EB7378DF5D7 0xB24B1E98D1DC5BDD)
+                pmetricv0_1_4e1
           ]
 
       , (,) (Version (0 :| [2,0]))
           [ (,) (Revision 0) $
               Patch
                 (Fingerprint 0x4063E6F1F50FFE2E 0x6D11E73784D96987)
-                (Fingerprint 0x4D3F31AEA567A1EF 0x0C1E383D1EC6C7AF)
-                pmetricv0_2_0
+                (Fingerprint 0x0E35BCB54B49DD7A 0x506464B88BC0AC35)
+                pmetricv0_2_0e1
           ]
       ]
 
@@ -669,8 +669,10 @@ pixsetv1_0_4r0 = BSLC.take 1268
 
 -- line 80, column 1: "Test-Suite test-unify:" -> "Test-Suite \"test-unify:\""
 -- line 91, column 1: "Test-Suite test-list-ops:" -> "Test-Suite \"test-list-ops:\""
-pds_kanrenv0_2_0_0 :: BSLC.ByteString -> BSLC.ByteString
-pds_kanrenv0_2_0_0 bsl =
+--
+-- Fingerprint 0x886CF947F5364109 0xB1CDBFB920AD3589
+_pds_kanrenv0_2_0_0e0 :: BSLC.ByteString -> BSLC.ByteString
+_pds_kanrenv0_2_0_0e0 bsl =
   let (before, middle_) = BSLC.splitAt 2509 bsl
       (middle, after)   = BSLC.splitAt 349 middle_
   in before <> "\"test-unify:\""    <> BSLC.drop 11 middle
@@ -678,8 +680,10 @@ pds_kanrenv0_2_0_0 bsl =
 
 -- line 27, column 1: "Test-Suite test-unify:" -> "Test-Suite \"test-unify:\""
 -- line 38, column 1: "Test-Suite test-list-ops:" -> "Test-Suite \"test-list-ops:\""
-pds_kanrenv0_2_0_1 :: BSLC.ByteString -> BSLC.ByteString
-pds_kanrenv0_2_0_1 bsl =
+--
+-- Fingerprint 0x19A55F8211A75AB0 0x3FCEA17BED62D029
+_pds_kanrenv0_2_0_1e0 :: BSLC.ByteString -> BSLC.ByteString
+_pds_kanrenv0_2_0_1e0 bsl =
   let (before, middle_) = BSLC.splitAt 839 bsl
       (middle, after)   = BSLC.splitAt 349 middle_
   in before <> "\"test-unify:\""    <> BSLC.drop 11 middle
@@ -687,15 +691,49 @@ pds_kanrenv0_2_0_1 bsl =
 
 
 
+-- line 80, column 1: "Test-Suite test-unify:" -> "Test-Suite test-unify"
+-- line 91, column 1: "Test-Suite test-list-ops:" -> "Test-Suite test-list-ops"
+pds_kanrenv0_2_0_0e1 :: BSLC.ByteString -> BSLC.ByteString
+pds_kanrenv0_2_0_0e1 bsl =
+  let (before, middle_) = BSLC.splitAt 2519 bsl
+      (middle, after)   = BSLC.splitAt 352 middle_
+  in before <> BSLC.drop 1 middle <> BSLC.drop 1 after
+
+-- line 27, column 1: "Test-Suite test-unify:" -> "Test-Suite test-unify"
+-- line 38, column 1: "Test-Suite test-list-ops:" -> "Test-Suite test-list-ops"
+pds_kanrenv0_2_0_1e1 :: BSLC.ByteString -> BSLC.ByteString
+pds_kanrenv0_2_0_1e1 bsl =
+  let (before, middle_) = BSLC.splitAt 849 bsl
+      (middle, after)   = BSLC.splitAt 352 middle_
+  in before <> BSLC.drop 1 middle <> BSLC.drop 1 after
+
+
+
 -- line 28, column 1: "Test-Suite metric-tests:" -> "Test-Suite \"metric-tests:\""
-pmetricv0_1_4 :: BSLC.ByteString -> BSLC.ByteString
-pmetricv0_1_4 bsl =
+--
+-- Fingerprint 0x7EA1E4EB98FD4E64 0xD8E7DD349B7A8884
+_pmetricv0_1_4e0 :: BSLC.ByteString -> BSLC.ByteString
+_pmetricv0_1_4e0 bsl =
   let (before, after) = BSLC.splitAt 927 bsl
   in before <> "\"metric-tests:\"" <> BSLC.drop 13 after
 
 -- line 28, column 1: "Test-Suite metric-tests:" -> "Test-Suite \"metric-tests:\""
-pmetricv0_2_0 :: BSLC.ByteString -> BSLC.ByteString
-pmetricv0_2_0 = pmetricv0_1_4
+--
+-- Fingerprint 0x4D3F31AEA567A1EF 0x0C1E383D1EC6C7AF
+_pmetricv0_2_0e0 :: BSLC.ByteString -> BSLC.ByteString
+_pmetricv0_2_0e0 = _pmetricv0_1_4e0
+
+
+
+-- line 28, column 1: "Test-Suite metric-tests:" -> "Test-Suite metric-tests"
+pmetricv0_1_4e1 :: BSLC.ByteString -> BSLC.ByteString
+pmetricv0_1_4e1 bsl =
+  let (before, after) = BSLC.splitAt 939 bsl
+  in before <> BSLC.drop 1 after
+
+-- line 28, column 1: "Test-Suite metric-tests:" -> "Test-Suite metric-tests"
+pmetricv0_2_0e1 :: BSLC.ByteString -> BSLC.ByteString
+pmetricv0_2_0e1 = pmetricv0_1_4e1
 
 
 
