@@ -5,12 +5,21 @@
 # for eg:-
 # $ create-release-metadata-for-ghcup.sh 3.10.2.0 or "3.10.2.0"
 
+# Note:- Please run ./download-cabal-install-release-binaries.sh before running this script.
 set -eu
 set -o pipefail
 
 RELEASE=$1
 ## FixMe:// What dir to use here?
-## cd "gh-release-artifacts/Cabal-${RELEASE}"
+
+if [ -d "binary-downloads/cabal-install-${RELEASE}-binaries" ]; then
+    echo "binary downloads folder for release ${RELEASE} found, starting generating GHCup metadata..."
+else
+    echo "The binary downloads for release ${RELEASE} not found."
+    echo "Please run the script to download them first."
+fi
+
+cd "binary-downloads/cabal-install-${RELEASE}-binaries"
 
 cat <<EOF > /dev/stdout
     $RELEASE:
