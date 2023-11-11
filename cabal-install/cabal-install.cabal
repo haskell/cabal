@@ -63,6 +63,8 @@ library
     default-extensions: TypeOperators
 
     hs-source-dirs:   src
+    other-modules:
+        Paths_cabal_install
     exposed-modules:
         -- this modules are moved from Cabal
         -- they are needed for as long until cabal-install moves to parsec parser
