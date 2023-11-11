@@ -710,6 +710,14 @@ Miscellaneous options
         each module, whether top level or local. In GHC specifically,
         this is for non-inline toplevel or where-bound functions or
         values.
+    late-toplevel
+        Like top-level but costs will be assigned to top level definitions after
+        optimization. This lowers profiling overhead massively while giving similar
+        levels of detail as toplevle-functions. However it means functions introduced
+        by GHC during optimization will show up in profiles as well.
+        Corresponds to ``-fprof-late`` if supported and ``-fprof-auto-top`` otherwise.
+    late
+        Currently an alias for late-toplevel
 
     This flag is new in Cabal-1.24. Prior versions used the equivalent
     of ``none`` above.
