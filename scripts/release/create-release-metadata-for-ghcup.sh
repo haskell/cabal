@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This script, when passed the cabal release number as the first and only argument
 # generates the metadata in the correct format to be useable as is by GHCup
