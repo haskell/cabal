@@ -47,9 +47,9 @@ spaceB (Whitespace n) =
   Prim.primMapListBounded (Prim.liftFixedToBounded Prim.char8) (replicate n ' ')
 
 commentB :: Comment -> Builder
-commentB (Comment space0 space1 comment) =
+commentB (Comment space0 space1 comment space2) =
   spaceB space0 <> string8 "--" <> spaceB space1 <> byteString (encodeUtf8 comment)
-
+                                                 <> spaceB space2
 
 
 
@@ -62,9 +62,10 @@ fillerB filler =
 lineB :: Anchor -> Line -> Builder
 lineB anchor l =
   case l of
-    Line off txt     -> anchorB (offset off anchor) <> byteString (encodeUtf8 txt)
-    CommentL comment -> commentB comment
-    EmptyL space     -> spaceB space
+    Line off txt space -> anchorB (offset off anchor) <> byteString (encodeUtf8 txt)
+                                                      <> spaceB space
+    CommentL comment   -> commentB comment
+    EmptyL space       -> spaceB space
 
 
 
@@ -72,8 +73,8 @@ contentsB :: Anchor -> Contents -> Builder
 contentsB anchor (Contents inline lines_) =
   let fit inl =
         case inl of
-          Inline (Whitespace space) txt -> Line (Offset space) txt
-          EmptyI space                  -> EmptyL space
+          Inline (Whitespace space0) txt space1 -> Line (Offset space0) txt space1
+          EmptyI space                          -> EmptyL space
 
   in mintercalate (char8 '\n') $
        lineB Bottom (fit inline) : (fmap (lineB anchor) lines_)
@@ -157,13 +158,13 @@ nodeB anchor trail node =
          , trail'
          )
 
-    Field off (Heading heading) space field ->
+    Field off (Name name) space field ->
       let anchor' = offset off anchor
 
           ~(rendered, trail') = fieldB anchor' field
 
       in (    anchorB anchor'
-           <> byteString (encodeUtf8 heading)
+           <> byteString (encodeUtf8 name)
            <> spaceB space
            <> char8 ':'
            <> rendered

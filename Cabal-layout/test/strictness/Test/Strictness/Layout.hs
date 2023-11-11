@@ -22,11 +22,12 @@ instance NoThunks Whitespace where
 
 
 instance NoThunks Comment where
-  wNoThunks ctx (Comment space0 space1 comment) =
+  wNoThunks ctx (Comment space0 space1 comment space2) =
     allNoThunks
       [ noThunks ("(0)":ctx) space0
       , noThunks ("(1)":ctx) space1
       , noThunks ctx comment
+      , noThunks ("(2)":ctx) space2
       ]
 
   showTypeOf _ = "Comment"
@@ -36,14 +37,20 @@ instance NoThunks Heading where
   wNoThunks ctx (Heading heading) = wNoThunks ctx heading
   showTypeOf _ = "Heading"
 
+instance NoThunks Name where
+  wNoThunks ctx (Name name) = wNoThunks ctx name
+  showTypeOf _ = "Name"
+
+
 
 instance NoThunks Inline where
   wNoThunks ctx inline =
     case inline of
-      Inline space text ->
+      Inline space0 text space1 ->
         allNoThunks
-          [ noThunks ("{I}":ctx) space
+          [ noThunks ("{I}":"(0)":ctx) space0
           , noThunks ("{I}":ctx) text
+          , noThunks ("{I}":"(1)":ctx) space1
           ]
 
       EmptyI space      -> noThunks ("{E}":ctx) space
@@ -54,10 +61,11 @@ instance NoThunks Inline where
 instance NoThunks Line where
   wNoThunks ctx line =
     case line of
-      Line off text    ->
+      Line off text space ->
         allNoThunks
           [ noThunks ("{L}":ctx) off
           , noThunks ("{L}":ctx) text
+          , noThunks ("{L}":ctx) space
           ]
 
       CommentL comment -> wNoThunks ("{C}":ctx) comment
@@ -140,10 +148,10 @@ instance NoThunks Node where
           , wNoThunks ("{S}":ctx) section
           ]
 
-      Field off heading space field ->
+      Field off name space field ->
         allNoThunks
           [ noThunks ("{F}":ctx) off
-          , noThunks ("{F}":ctx) heading
+          , noThunks ("{F}":ctx) name
           , noThunks ("{F}":ctx) space
           , wNoThunks ("{F}":ctx) field
           ]

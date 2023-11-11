@@ -33,28 +33,37 @@ commentP = do
   space1_ <- many $ satisfy (\c -> c /= '\n' && isSpace c)
   let !space1 = length space1_
 
-      sift = do
-        c <- anyChar
-        if isControlC0 c
-          then fail "C0 control codes and '\\DEL' are not allowed"
-          else pure c
-
-  txt_ <- manyTill sift $ eof <|> lookAhead (() <$ satisfy (== '\n'))
+  (len, space2) <- lookAhead $ forecast 0 0
+  txt_ <- count len anyChar
   let !txt = Text.pack txt_
 
-  pure $ \space0 -> Comment space0 (Whitespace space1) txt
+  _ <- count space2 anyChar
+
+  pure $ \space0 -> Comment space0 (Whitespace space1) txt (Whitespace space2)
+  where
+    forecast :: Int -> Int -> Parser (Int, Int)
+    forecast !n !m = do
+      mayc <- optionMaybe anyChar
+      case mayc of
+        Just c
+          | c == '\n'     -> pure (n, m)
+          | isSpace c     -> forecast n (m + 1)
+          | isControlC0 c -> fail "C0 control codes and '\\DEL' are not allowed"
+          | otherwise     -> forecast (n + m + 1) 0
+
+        Nothing -> pure (n, m)
 
 uncomment :: Filler -> Inline
 uncomment filler =
   case filler of
-    CommentF (Comment space0 (Whitespace space1) comment) ->
+    CommentF (Comment space0 (Whitespace space1) comment space2) ->
       let !txt = StrictBuilder.toText . StrictBuilder.unsafeFromByteString
                    . BSL.toStrict . toLazyByteString
                        $ string8 "--"
                       <> foldMap id (replicate space1 $ char8 ' ')
                       <> byteString (encodeUtf8 comment)
 
-      in Inline space0 txt
+      in Inline space0 txt space2
 
     EmptyF space_ -> EmptyI space_
 
@@ -379,8 +388,8 @@ spaceNodeP curliness anchor (Whitespace space_) = do
         JustField len space' -> do
           let !_ = off
 
-          heading_ <- count len anyChar
-          let !heading = Text.pack heading_
+          name_ <- count len anyChar
+          let !name = Text.pack name_
 
           _ <- count space' anyChar
           _ <- anyChar -- ':'
@@ -389,7 +398,7 @@ spaceNodeP curliness anchor (Whitespace space_) = do
 
           pure $
             Proper
-              (Field off (Heading heading) (Whitespace space') field)
+              (Field off (Name name) (Whitespace space') field)
               flow'
               stop
 
@@ -504,7 +513,8 @@ spaceNodeP curliness anchor (Whitespace space_) = do
                 Curled -> pure $ JustSection n m
                 Normal -> fail "Closing curly bracket found, but no opening one"
 
-          | c == ':'      -> pure $ JustField n m
+          | c == ':'      ->
+              fail "Spaces in field names are not allowed"
 
           | isControlC0 c ->
               fail "C0 control codes and '\\DEL' are not allowed"
@@ -575,23 +585,35 @@ ambiguousSectionP curliness anchor inline = go NoOverflow
 
 
 
-lineP :: Curliness -> Parser (Text, Lined)
+lineP :: Curliness -> Parser (Text, Whitespace, Lined)
 lineP curliness = do
-  let predicate = case curliness of
-                    Normal -> (== '\n')
-                    Curled -> \c -> c == '\n' || c == '}'
-
-  txt_ <- manyTill anyChar $ eof <|> lookAhead (() <$ satisfy predicate)
+  (len, space2, lined) <- lookAhead $ forecast 0 0
+  txt_ <- count len anyChar
   let !txt = Text.pack txt_
 
-  maye <- optionMaybe $ lookAhead anyChar
-  lined <- case maye of
-             Just '\n' -> do void anyChar
-                             pure Newline
+  _ <- count space2 anyChar
 
-             _         -> pure Trailing
+  case lined of
+    Newline  -> do _ <- anyChar
+                   pure ()
+    Trailing -> pure ()
 
-  pure (txt, lined)
+  pure (txt, Whitespace space2, lined)
+  where
+    forecast :: Int -> Int -> Parser (Int, Int, Lined)
+    forecast !n !m = do
+      mayc <- optionMaybe anyChar
+      case mayc of
+        Just c
+          | c == '\n'           -> do pure (n, m, Newline)
+          | c == '}'
+          , Curled <- curliness -> pure (n, m, Trailing)
+
+          | isSpace c           -> forecast n (m + 1)
+          | isControlC0 c       -> fail "C0 control codes and '\\DEL' are not allowed"
+          | otherwise           -> forecast (n + m + 1) 0
+
+        Nothing -> pure (n, m, Trailing)
 
 
 
@@ -614,8 +636,8 @@ fieldP curliness0 anchor0 =
               )
 
           _   -> do
-            (txt, lined) <- lineP curliness0
-            normalP curliness0 anchor0 (Inline space_ txt) id NoOverflow lined
+            (txt, space', lined) <- lineP curliness0
+            normalP curliness0 anchor0 (Inline space_ txt space') id NoOverflow lined
 
       NextComment comment lined ->
         ambiguousP curliness0 anchor0 (CommentF comment) NoOverflow lined
@@ -654,10 +676,10 @@ fieldP curliness0 anchor0 =
                 let !inline' = uncomment inline
                 in case relative anchor space_ of
                      Belongs off -> do
-                       (txt, lined1) <- lineP curliness
+                       (txt, space', lined1) <- lineP curliness
 
                        normalP curliness anchor inline'
-                               (lineOverflow flow . (:) (Line off txt))
+                               (lineOverflow flow . (:) (Line off txt space'))
                                NoOverflow
                                lined1
 
@@ -687,8 +709,8 @@ fieldP curliness0 anchor0 =
       nextP Curled $ \next ->
         case next of
           NextLine (Whitespace space_) -> do
-            (txt, lined) <- lineP Curled
-            let !inline = Inline (Whitespace space_) txt
+            (txt, space', lined) <- lineP Curled
+            let !inline = Inline (Whitespace space_) txt space'
             curledP inline id lined
 
           NextComment comment lined ->
@@ -704,8 +726,8 @@ fieldP curliness0 anchor0 =
       nextP Curled $ \next ->
         case next of
           NextLine (Whitespace space_) -> do
-            (txt, lined') <- lineP Curled
-            curledP inline (acc . (:) (Line (Offset space_) txt)) lined'
+            (txt, space', lined') <- lineP Curled
+            curledP inline (acc . (:) (Line (Offset space_) txt space')) lined'
 
           NextComment comment lined'   ->
             curledP inline (acc . (:) (CommentL comment)) lined'
@@ -727,10 +749,10 @@ fieldP curliness0 anchor0 =
           NextLine space_            ->
             case relative anchor space_ of
               Belongs off -> do
-                (txt, lined') <- lineP curliness
+                (txt, space', lined') <- lineP curliness
 
                 normalP curliness anchor inline
-                        (acc . lineOverflow flow . (:) (Line off txt))
+                        (acc . lineOverflow flow . (:) (Line off txt space'))
                         NoOverflow
                         lined'
 

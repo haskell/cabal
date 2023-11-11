@@ -125,6 +125,7 @@ test-suite patches
   build-depends:
       base       >= 4.9      && < 5
     , bytestring
+    , parsec
     , process
 
   ghc-options: -Wall -fno-ignore-asserts -fwarn-tabs -fwarn-incomplete-uni-patterns -fwarn-incomplete-record-updates

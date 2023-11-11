@@ -9,6 +9,8 @@ module Hackage.Cabal.Patches
   , patches
   ) where
 
+import           Codec.Manifest.Cabal.Internal.Version
+
 import           Data.Bits
 import           Data.Char
 import qualified Data.ByteString.Char8 as BSC
@@ -58,9 +60,6 @@ _fingerprint path patch = do
 
 
 newtype Package = Package BSC.ByteString
-                  deriving Show
-
-newtype Version = Version (NonEmpty Int)
                   deriving Show
 
 newtype Revision = Revision Int

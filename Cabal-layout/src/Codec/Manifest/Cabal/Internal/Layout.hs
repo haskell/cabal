@@ -23,13 +23,20 @@ data Comment = Comment
                  Whitespace -- ^ Before double hyphens
                  Whitespace -- ^ Between double hyphens and text
                  Text
+                 Whitespace -- ^ Between end of comment and end of line
                deriving Show
 
 
 
--- | Any Unicode characters, excluding '\x00'..'\x1F', '\DEL', '{', '}', ':'.
+-- | Any Unicode characters, excluding '\x00'..'\x1F'
+--   ('\r' and '\t' are allowed), '\DEL', '{', '}', ':'.
 newtype Heading = Heading Text
                   deriving newtype Show
+
+-- | Any Unicode characters, excluding '\x00'..'\x1F', '\DEL', '{', '}', ':' and spaces.
+newtype Name = Name Text
+               deriving newtype Show
+
 
 
 
@@ -37,6 +44,7 @@ newtype Heading = Heading Text
 data Inline = Inline
                 Whitespace -- ^ Between colon and start of text
                 Text
+                Whitespace -- ^ Between end of text and end of line
 
             | EmptyI Whitespace
 
@@ -46,6 +54,7 @@ data Inline = Inline
 data Line = Line
               Offset
               Text
+              Whitespace -- ^ Between end of text and end of line
 
           | CommentL Comment
 
@@ -95,7 +104,7 @@ data Node = Section
 
           | Field
               Offset
-              Heading
+              Name
               Whitespace -- ^ Between field name and colon
               Field
 
