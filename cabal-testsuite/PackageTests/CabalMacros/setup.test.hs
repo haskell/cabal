@@ -2,6 +2,9 @@ import Test.Cabal.Prelude
 import qualified Data.ByteString.Char8 as BS8
 
 main = setupAndCabalTest $ do
+  isWin <- isWindows
+  ghc94 <- isGhcVersion "== 9.4.*"
+  expectBrokenIf (isWin && ghc94) 9414 $ do
     env <- getTestEnv
     let mode = testRecordMode env
 

@@ -4,6 +4,9 @@ import Distribution.Simple.Hpc
 -- Ensures that even if a .tix file happens to be left around
 -- markup isn't generated.
 main = setupAndCabalTest $ do
+  isWin <- isWindows
+  ghc94 <- isGhcVersion "== 9.4.*"
+  expectBrokenIf (isWin && ghc94) 9414 $ do
     dist_dir <- fmap testDistDir getTestEnv
     let tixFile = tixFilePath dist_dir Vanilla "test-Short"
     withEnv [("HPCTIXFILE", Just tixFile)] $ do

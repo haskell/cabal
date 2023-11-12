@@ -5,6 +5,9 @@ import System.Directory
 import Data.List
 -- Test to see if --gen-pkg-config works.
 main = setupAndCabalTest $ do
+  isWin <- isWindows
+  ghc94 <- isGhcVersion "== 9.4.*"
+  expectBrokenIf (isWin && ghc94) 9414 $ do
     withPackageDb $ do
         withDirectory "p" $ do
             setup_build []

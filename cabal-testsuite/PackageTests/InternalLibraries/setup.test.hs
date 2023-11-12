@@ -3,6 +3,9 @@ import Test.Cabal.Prelude
 -- sure that the internal library correctly is used, not the
 -- external library.
 main = setupAndCabalTest $ do
+  isWin <- isWindows
+  ghc94 <- isGhcVersion "== 9.4.*"
+  expectBrokenIf (isWin && ghc94) 9414 $
     withPackageDb $ do
         withDirectory "q" $ setup_install []
         withDirectory "p" $ do

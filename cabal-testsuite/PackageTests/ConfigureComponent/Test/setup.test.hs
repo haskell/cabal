@@ -3,6 +3,9 @@ import Test.Cabal.Prelude
 -- dependency solver doesn't know how to solve for only
 -- a single component of a package.
 main = setupTest $ do
+  isWin <- isWindows
+  ghc94 <- isGhcVersion "== 9.4.*"
+  expectBrokenIf (isWin && ghc94) 9414 $
     withPackageDb $ do
         setup_install ["test-for-cabal"]
         withDirectory "testlib" $ setup_install []

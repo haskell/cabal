@@ -43,7 +43,7 @@ jobs:
     strategy:
       matrix:
         os: ["ubuntu-latest", "macos-latest", "windows-latest"]
-        ghc: ["9.6.3", "9.4.7", "9.2.8", "9.0.2", "8.10.7", "8.8.4", "8.6.5", "8.4.4"]
+        ghc: ["9.6.3", "9.4.7", "9.2.7", "9.0.2", "8.10.7", "8.8.4", "8.6.5", "8.4.4"]
         exclude:
           # corrupts GHA cache or the fabric of reality itself, see https://github.com/haskell/cabal/issues/8356
           - os: "windows-latest"
@@ -73,7 +73,7 @@ jobs:
           key: ${{ runner.os }}-${{ matrix.ghc }}-${{ github.sha }}
           restore-keys: ${{ runner.os }}-${{ matrix.ghc }}-
 
-      - uses: haskell/actions/setup@v2
+      - uses: haskell-actions/setup@v2
         id: setup-haskell
         with:
           ghc-version: ${{ matrix.ghc }}
@@ -215,7 +215,7 @@ jobs:
           apt-get update
           apt-get install -y ghc-${{ matrix.extra-ghc }}-dyn
 
-      - uses: haskell/actions/setup@v2
+      - uses: haskell-actions/setup@v2
         id: setup-haskell
         with:
           ghc-version: ${{ matrix.ghc }}
@@ -268,7 +268,7 @@ jobs:
             sudo chown -R $USER /usr/local/.ghcup
             sudo chmod -R 777 /usr/local/.ghcup
           fi
-      - uses: haskell/actions/setup@v2
+      - uses: haskell-actions/setup@v2
         id: setup-haskell
         with:
           ghc-version: ${{ matrix.ghc }}

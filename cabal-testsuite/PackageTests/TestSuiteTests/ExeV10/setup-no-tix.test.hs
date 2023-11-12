@@ -12,6 +12,9 @@ import Distribution.Simple.Hpc
 -- at all.)
 --
 main = setupAndCabalTest $ do
+  isWin <- isWindows
+  ghc94 <- isGhcVersion "== 9.4.*"
+  expectBrokenIf (isWin && ghc94) 9414 $
     -- Source copy is necessary as GHC defaults to dumping tix
     -- file in the CWD, and we do NOT clean it up after the fact.
     withSourceCopy $ do

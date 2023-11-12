@@ -2,8 +2,11 @@ import Test.Cabal.Prelude
 -- Test that we can resolve a module name ambiguity when reexporting
 -- by explicitly specifying what package we want.
 main = setupAndCabalTest $ do
-    skipUnlessGhcVersion ">= 7.9"
-    withPackageDb $ do
+    isWin <- isWindows
+    ghc94 <- isGhcVersion "== 9.4.*"
+    expectBrokenIf (isWin && ghc94) 9414 $ do
+      skipUnlessGhcVersion ">= 7.9"
+      withPackageDb $ do
         withDirectory "p" $ setup_install []
         withDirectory "q" $ setup_install []
         withDirectory "reexport" $ setup_install []
