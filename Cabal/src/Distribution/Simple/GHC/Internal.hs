@@ -785,6 +785,7 @@ ghcOsString :: OS -> String
 ghcOsString Windows = "mingw32"
 ghcOsString OSX = "darwin"
 ghcOsString Solaris = "solaris2"
+ghcOsString Hurd = "gnu"
 ghcOsString other = prettyShow other
 
 -- | GHC's rendering of its platform and compiler version string as used in
