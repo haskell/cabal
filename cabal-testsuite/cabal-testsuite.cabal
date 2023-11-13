@@ -90,6 +90,8 @@ executable cabal-tests
   main-is: cabal-tests.hs
   hs-source-dirs: main
   ghc-options: -threaded
+  -- Make sure these are built before the executable is run
+  build-tool-depends: cabal-testsuite:test-runtime-deps
   build-depends:
     , cabal-testsuite
     -- constraints inherited via lib:cabal-testsuite component
@@ -101,18 +103,6 @@ executable cabal-tests
     , transformers
     -- dependencies specific to exe:cabal-tests
     , clock                 ^>= 0.7.2 || ^>=0.8
-    -- Extra dependencies used by PackageTests.
-    --
-    -- The runner allows the tests to use extra dependencies and the custom Prelude
-    -- from 'cabal-testsuite'.
-    -- However, if the tests use a dependency, say 'directory', and there are two
-    -- packages with the same unit id available in the store, the test fails since
-    -- it doesn't know which one to pick.
-    -- By including an extra dependency to directory, we force the test runner to
-    -- use a specific version directory, fixing the test failure.
-    --
-    -- See issue description and discussion: https://github.com/haskell/cabal/issues/8356
-    , directory
 
   build-tool-depends: cabal-testsuite:setup
   default-extensions: TypeOperators
@@ -121,6 +111,32 @@ executable cabal-tests
 executable setup
   import: shared
   main-is: Setup.simple.hs
+
+-- This executable component is used to describe the runtime dependencies of
+-- the tests. The Main.hs file and resulting executable are not useful in any way.
+
+-- Ideally this would be an empty library, but because build-type: Custom, we can't
+-- have sublibraries.
+
+-- If you require an external dependency for a test it must be listed here.
+executable test-runtime-deps
+  build-depends: cabal-testsuite,
+                 base,
+                 directory,
+                 Cabal,
+                 Cabal-syntax,
+                 filepath,
+                 transformers,
+                 bytestring,
+                 time,
+                 process,
+                 exceptions
+  main-is: static/Main.hs
+  if !os(windows)
+    build-depends: unix
+  else
+    build-depends:
+      , Win32
 
 custom-setup
   -- we only depend on even stable releases of lib:Cabal
