@@ -48,24 +48,12 @@ instance Monoid Benchmark where
 instance Semigroup Benchmark where
   a <> b =
     Benchmark
-      { benchmarkName = combine' benchmarkName
+      { benchmarkName = combineNames a b benchmarkName "benchmark"
       , benchmarkInterface = combine benchmarkInterface
       , benchmarkBuildInfo = combine benchmarkBuildInfo
       }
     where
       combine field = field a `mappend` field b
-      combine' field = case ( unUnqualComponentName $ field a
-                            , unUnqualComponentName $ field b
-                            ) of
-        ("", _) -> field b
-        (_, "") -> field a
-        (x, y) ->
-          error $
-            "Ambiguous values for test field: '"
-              ++ x
-              ++ "' and '"
-              ++ y
-              ++ "'"
 
 emptyBenchmark :: Benchmark
 emptyBenchmark = mempty

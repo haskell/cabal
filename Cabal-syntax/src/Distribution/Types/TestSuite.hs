@@ -51,25 +51,13 @@ instance Monoid TestSuite where
 instance Semigroup TestSuite where
   a <> b =
     TestSuite
-      { testName = combine' testName
+      { testName = combineNames a b testName "test"
       , testInterface = combine testInterface
       , testBuildInfo = combine testBuildInfo
       , testCodeGenerators = combine testCodeGenerators
       }
     where
       combine field = field a `mappend` field b
-      combine' field = case ( unUnqualComponentName $ field a
-                            , unUnqualComponentName $ field b
-                            ) of
-        ("", _) -> field b
-        (_, "") -> field a
-        (x, y) ->
-          error $
-            "Ambiguous values for test field: '"
-              ++ x
-              ++ "' and '"
-              ++ y
-              ++ "'"
 
 emptyTestSuite :: TestSuite
 emptyTestSuite = mempty
