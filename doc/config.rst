@@ -120,6 +120,9 @@ file:
 
 * ``~/.local/bin`` for executables installed with ``cabal install``.
 
+You can run ``cabal path`` to see a list of the directories that
+``cabal`` will use with the active configuration.
+
 Repository specification
 ------------------------
 
