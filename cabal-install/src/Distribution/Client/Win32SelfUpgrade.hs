@@ -218,7 +218,8 @@ setEvent handle =
 
 #else
 
-import Distribution.Simple.Utils (die')
+import Distribution.Simple.Utils (dieWithException)
+import Distribution.Client.Errors
 
 possibleSelfUpgrade :: Verbosity
                     -> [FilePath]
@@ -226,7 +227,7 @@ possibleSelfUpgrade :: Verbosity
 possibleSelfUpgrade _ _ action = action
 
 deleteOldExeFile :: Verbosity -> Int -> FilePath -> IO ()
-deleteOldExeFile verbosity _ _ = die' verbosity "win32selfupgrade not needed except on win32"
+deleteOldExeFile verbosity _ _ = dieWithException verbosity Win32SelfUpgradeNotNeeded
 
 #endif
 {- FOURMOLU_ENABLE -}

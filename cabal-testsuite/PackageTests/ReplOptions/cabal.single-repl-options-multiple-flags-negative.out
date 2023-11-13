@@ -6,4 +6,5 @@ In order, the following will be built:
  - cabal-repl-options-0.1 (interactive) (lib) (first run)
 Configuring library for cabal-repl-options-0.1...
 Preprocessing library for cabal-repl-options-0.1...
-Error: cabal: repl failed for cabal-repl-options-0.1-inplace.
+Error: [Cabal-7125]
+repl failed for cabal-repl-options-0.1-inplace.

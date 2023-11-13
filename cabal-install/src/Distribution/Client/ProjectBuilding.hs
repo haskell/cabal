@@ -672,9 +672,9 @@ rebuildTargets
         info verbosity $
           "Executing install plan "
             ++ case buildSettingNumJobs of
-              NumJobs n -> " in parallel using " ++ show n ++ " threads."
-              UseSem n -> " in parallel using a semaphore with " ++ show n ++ " slots."
-              Serial -> " serially."
+              NumJobs n -> "in parallel using " ++ show n ++ " threads."
+              UseSem n -> "in parallel using a semaphore with " ++ show n ++ " slots."
+              Serial -> "serially."
 
         createDirectoryIfMissingVerbose verbosity True distBuildRootDirectory
         createDirectoryIfMissingVerbose verbosity True distTempDirectory

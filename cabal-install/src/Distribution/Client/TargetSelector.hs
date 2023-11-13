@@ -97,27 +97,21 @@ import Distribution.Solver.Types.SourcePackage
   )
 import Distribution.Types.ForeignLib
 
-import Distribution.Client.Utils
-  ( makeRelativeCanonical
-  )
-import Distribution.Simple.Utils
-  ( die'
-  , lowercase
-  , ordNub
-  )
-
 import Control.Arrow ((&&&))
 import Control.Monad hiding
   ( mfilter
   )
 import Data.List
-  ( groupBy
-  , stripPrefix
+  ( stripPrefix
   )
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map.Lazy as Map.Lazy
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
+import Distribution.Client.Errors
+import Distribution.Client.Utils
+  ( makeRelativeCanonical
+  )
 import Distribution.Deprecated.ParseUtils
   ( readPToMaybe
   )
@@ -126,6 +120,11 @@ import Distribution.Deprecated.ReadP
   , (<++)
   )
 import qualified Distribution.Deprecated.ReadP as Parse
+import Distribution.Simple.Utils
+  ( dieWithException
+  , lowercase
+  , ordNub
+  )
 import Distribution.Utils.Path
 import qualified System.Directory as IO
   ( canonicalizePath
@@ -151,7 +150,6 @@ import Text.EditDistance
   ( defaultEditCosts
   , restrictedDamerauLevenshteinDistance
   )
-
 import qualified Prelude (foldr1)
 
 -- ------------------------------------------------------------
@@ -791,190 +789,78 @@ reportTargetSelectorProblems :: Verbosity -> [TargetSelectorProblem] -> IO a
 reportTargetSelectorProblems verbosity problems = do
   case [str | TargetSelectorUnrecognised str <- problems] of
     [] -> return ()
-    targets ->
-      die' verbosity $
-        unlines
-          [ "Unrecognised target syntax for '" ++ name ++ "'."
-          | name <- targets
-          ]
+    targets -> dieWithException verbosity $ ReportTargetSelectorProblems targets
 
   case [(t, m, ms) | MatchingInternalError t m ms <- problems] of
     [] -> return ()
     ((target, originalMatch, renderingsAndMatches) : _) ->
-      die' verbosity $
-        "Internal error in target matching: could not make an "
-          ++ "unambiguous fully qualified target selector for '"
-          ++ showTargetString target
-          ++ "'.\n"
-          ++ "We made the target '"
-          ++ showTargetSelector originalMatch
-          ++ "' ("
-          ++ showTargetSelectorKind originalMatch
-          ++ ") that was expected to "
-          ++ "be unambiguous but matches the following targets:\n"
-          ++ unlines
-            [ "'"
-              ++ showTargetString rendering
-              ++ "', matching:"
-              ++ concatMap
-                ("\n  - " ++)
-                [ showTargetSelector match
-                  ++ " ("
-                  ++ showTargetSelectorKind match
-                  ++ ")"
-                | match <- matches
-                ]
-            | (rendering, matches) <- renderingsAndMatches
-            ]
-          ++ "\nNote: Cabal expects to be able to make a single fully "
-          ++ "qualified name for a target or provide a more specific error. "
-          ++ "Our failure to do so is a bug in cabal. "
-          ++ "Tracking issue: https://github.com/haskell/cabal/issues/8684"
-          ++ "\n\nHint: this may be caused by trying to build a package that "
-          ++ "exists in the project directory but is missing from "
-          ++ "the 'packages' stanza in your cabal project file."
+      dieWithException verbosity
+        $ MatchingInternalErrorErr
+          (showTargetString target)
+          (showTargetSelector originalMatch)
+          (showTargetSelectorKind originalMatch)
+        $ map
+          ( \(rendering, matches) ->
+              ( showTargetString rendering
+              , (map (\match -> showTargetSelector match ++ " (" ++ showTargetSelectorKind match ++ ")") matches)
+              )
+          )
+          renderingsAndMatches
 
   case [(t, e, g) | TargetSelectorExpected t e g <- problems] of
     [] -> return ()
     targets ->
-      die' verbosity $
-        unlines
-          [ "Unrecognised target '"
-            ++ showTargetString target
-            ++ "'.\n"
-            ++ "Expected a "
-            ++ intercalate " or " expected
-            ++ ", rather than '"
-            ++ got
-            ++ "'."
-          | (target, expected, got) <- targets
-          ]
+      dieWithException verbosity $
+        UnrecognisedTarget $
+          map (\(target, expected, got) -> (showTargetString target, expected, got)) targets
 
   case [(t, e) | TargetSelectorNoSuch t e <- problems] of
     [] -> return ()
     targets ->
-      die' verbosity $
-        unlines
-          [ "Unknown target '"
-            ++ showTargetString target
-            ++ "'.\n"
-            ++ unlines
-              [ ( case inside of
-                    Just (kind, "") ->
-                      "The " ++ kind ++ " has no "
-                    Just (kind, thing) ->
-                      "The " ++ kind ++ " " ++ thing ++ " has no "
-                    Nothing -> "There is no "
-                )
-                ++ intercalate
-                  " or "
-                  [ mungeThing thing ++ " '" ++ got ++ "'"
-                  | (thing, got, _alts) <- nosuch'
-                  ]
-                ++ "."
-                ++ if null alternatives
-                  then ""
-                  else
-                    "\nPerhaps you meant "
-                      ++ intercalate
-                        ";\nor "
-                        [ "the " ++ thing ++ " '" ++ intercalate "' or '" alts ++ "'?"
-                        | (thing, alts) <- alternatives
-                        ]
-              | (inside, nosuch') <- groupByContainer nosuch
-              , let alternatives =
-                      [ (thing, alts)
-                      | (thing, _got, alts@(_ : _)) <- nosuch'
-                      ]
-              ]
-          | (target, nosuch) <- targets
-          , let groupByContainer =
-                  map
-                    ( \g@((inside, _, _, _) : _) ->
-                        ( inside
-                        , [ (thing, got, alts)
-                          | (_, thing, got, alts) <- g
-                          ]
-                        )
-                    )
-                    . groupBy ((==) `on` (\(x, _, _, _) -> x))
-                    . sortBy (compare `on` (\(x, _, _, _) -> x))
-          ]
-      where
-        mungeThing "file" = "file target"
-        mungeThing thing = thing
+      dieWithException verbosity $
+        NoSuchTargetSelectorErr $
+          map (\(target, nosuch) -> (showTargetString target, nosuch)) targets
 
   case [(t, ts) | TargetSelectorAmbiguous t ts <- problems] of
     [] -> return ()
     targets ->
-      die' verbosity $
-        unlines
-          [ "Ambiguous target '"
-            ++ showTargetString target
-            ++ "'. It could be:\n "
-            ++ unlines
-              [ "   "
-                ++ showTargetString ut
-                ++ " ("
-                ++ showTargetSelectorKind bt
-                ++ ")"
-              | (ut, bt) <- amb
-              ]
-          | (target, amb) <- targets
-          ]
+      dieWithException verbosity $
+        TargetSelectorAmbiguousErr $
+          map
+            ( \(target, amb) ->
+                ( showTargetString target
+                , (map (\(ut, bt) -> (showTargetString ut, showTargetSelectorKind bt)) amb)
+                )
+            )
+            targets
 
   case [t | TargetSelectorNoCurrentPackage t <- problems] of
     [] -> return ()
     target : _ ->
-      die' verbosity $
-        "The target '"
-          ++ showTargetString target
-          ++ "' refers to the "
-          ++ "components in the package in the current directory, but there "
-          ++ "is no package in the current directory (or at least not listed "
-          ++ "as part of the project)."
+      dieWithException verbosity $ TargetSelectorNoCurrentPackageErr (showTargetString target)
+
   -- TODO: report a different error if there is a .cabal file but it's
   -- not a member of the project
 
   case [() | TargetSelectorNoTargetsInCwd True <- problems] of
     [] -> return ()
     _ : _ ->
-      die' verbosity $
-        "No targets given and there is no package in the current "
-          ++ "directory. Use the target 'all' for all packages in the "
-          ++ "project or specify packages or components by name or location. "
-          ++ "See 'cabal build --help' for more details on target options."
+      dieWithException verbosity TargetSelectorNoTargetsInCwdTrue
 
   case [() | TargetSelectorNoTargetsInCwd False <- problems] of
     [] -> return ()
     _ : _ ->
-      die' verbosity $
-        "No targets given and there is no package in the current "
-          ++ "directory. Specify packages or components by name or location. "
-          ++ "See 'cabal build --help' for more details on target options."
+      dieWithException verbosity TargetSelectorNoTargetsInCwdFalse
 
   case [() | TargetSelectorNoTargetsInProject <- problems] of
     [] -> return ()
     _ : _ ->
-      die' verbosity $
-        "There is no <pkgname>.cabal package file or cabal.project file. "
-          ++ "To build packages locally you need at minimum a <pkgname>.cabal "
-          ++ "file. You can use 'cabal init' to create one.\n"
-          ++ "\n"
-          ++ "For non-trivial projects you will also want a cabal.project "
-          ++ "file in the root directory of your project. This file lists the "
-          ++ "packages in your project and all other build configuration. "
-          ++ "See the Cabal user guide for full details."
+      dieWithException verbosity TargetSelectorNoTargetsInProjectErr
 
   case [t | TargetSelectorNoScript t <- problems] of
     [] -> return ()
     target : _ ->
-      die' verbosity $
-        "The script '"
-          ++ showTargetString target
-          ++ "' does not exist, "
-          ++ "and only script targets may contain whitespace characters or end "
-          ++ "with ':'"
+      dieWithException verbosity $ TargetSelectorNoScriptErr (showTargetString target)
 
   fail "reportTargetSelectorProblems: internal error"
 

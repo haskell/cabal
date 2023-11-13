@@ -190,6 +190,7 @@ import Data.List (deleteBy, groupBy)
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as Map
 import qualified Data.Set as Set
+import Distribution.Client.Errors
 import System.FilePath
 import Text.PrettyPrint (colon, comma, fsep, hang, punctuate, quotes, text, vcat, ($$))
 import qualified Text.PrettyPrint as Disp
@@ -748,7 +749,7 @@ rebuildInstallPlan
                 case planOrError of
                   Left msg -> do
                     reportPlanningFailure projectConfig compiler platform localPackages
-                    die' verbosity msg
+                    dieWithException verbosity $ PhaseRunSolverErr msg
                   Right plan -> return (plan, pkgConfigDB, tis, ar)
           where
             corePackageDbs :: [PackageDB]
@@ -4283,8 +4284,9 @@ setupHsBuildFlags par_strat elab _ verbosity builddir =
     , buildDistPref = toFlag builddir
     , buildNumJobs = mempty -- TODO: [nice to have] sometimes want to use toFlag (Just numBuildJobs),
     , buildUseSemaphore =
-        if elabSetupScriptCliVersion elab >= mkVersion [3, 9, 0, 0]
-          then par_strat
+        if elabSetupScriptCliVersion elab >= mkVersion [3, 11, 0, 0]
+          then -- Cabal 3.11 is the first version that supports parallelism semaphores
+            par_strat
           else mempty
     , buildArgs = mempty -- unused, passed via args not flags
     , buildCabalFilePath = mempty

@@ -45,8 +45,7 @@ import Distribution.Simple.Setup
   , fromFlagOrDefault
   )
 import Distribution.Simple.Utils
-  ( die'
-  , dieWithException
+  ( dieWithException
   , info
   , notice
   , warn
@@ -124,7 +123,7 @@ get verbosity repoCtxt _ getFlags userTargets = do
       userTargets
 
   pkgs <-
-    either (die' verbosity . unlines . map show) return $
+    either (dieWithException verbosity . PkgSpecifierException . map show) return $
       resolveWithoutDependencies
         (resolverParams sourcePkgDb pkgSpecifiers)
 

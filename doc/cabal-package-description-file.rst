@@ -1,6 +1,8 @@
-Package Description
-===================
+Package Description — <package>.cabal File
+==========================================
 
+The package description file, commonly known as "the Cabal file",
+describes the contents of a package.
 The Cabal package is the unit of distribution. When installed, its
 purpose is to make available:
 
@@ -184,7 +186,7 @@ Example: A package containing a library and executable programs
     executable program2
       -- A different main.hs because of hs-source-dirs.
       main-is:          main.hs
-      -- No bound on internal libraries.
+      -- No bound on a library provided by the same package.
       build-depends:    TestPackage
       hs-source-dirs:   prog2
       other-modules:    Utils
@@ -806,7 +808,7 @@ Library
 
     Starting with Cabal 2.0, sub-library components can be defined by setting
     the ``name`` field to a name different from the current package's name; see
-    section on :ref:`Internal Libraries <sublibs>` for more information. By
+    section on :ref:`Sublibraries <sublibs>` for more information. By
     default, these sub-libraries are private and internal. Since Cabal 3.0,
     these sub-libraries can also be exposed and used by other packages. See the
     :pkg-field:`library:visibility` field and :ref:`Multiple Public Libraries
@@ -852,7 +854,7 @@ The library section should contain the following fields:
     :since: 3.0
 
     :default:
-        ``private`` for internal libraries. Cannot be set for main
+        ``private`` for sublibraries. Cannot be set for main
         (unnamed) library, which is always public.
 
     Can be ``public`` or ``private``.
@@ -861,7 +863,7 @@ The library section should contain the following fields:
     allowed. If set to ``private``, depending on this library is allowed only
     from the same package.
 
-    See section on :ref:`Internal Libraries <sublibs>` for examples and more
+    See section on :ref:`Sublibraries <sublibs>` for examples and more
     information.
 
 .. pkg-field:: reexported-modules: exportlist
@@ -888,7 +890,7 @@ The library section should contain the following fields:
 
     Supported only in GHC 8.2 and later. A list of `module signatures <https://downloads.haskell.org/~ghc/master/users-guide/separate_compilation.html#module-signatures>`__ required by this package.
 
-    Module signatures are part of the Backpack_ extension to
+    Module signatures are part of the :ref:`Backpack` extension to
     the Haskell module system.
 
     Packages that do not export any modules and only export required signatures
@@ -903,13 +905,13 @@ section on `build information`_).
 
 .. _sublibs:
 
-**Internal Libraries**
+**Sublibraries**
 
-Cabal 2.0 and later support "internal libraries", which are extra named
+Cabal 2.0 and later support "sublibraries", which are extra named
 libraries (as opposed to the usual unnamed library section). For
 example, suppose that your test suite needs access to some internal
 modules in your library, which you do not otherwise want to export. You
-could put these modules in an internal library, which the main library
+could put these modules in a sublibrary, which the main library
 and the test suite :pkg-field:`build-depends` upon. Then your Cabal file might
 look something like this:
 
@@ -942,11 +944,11 @@ look something like this:
         build-depends:    foo-internal, base
         default-language: Haskell2010
 
-Internal libraries are also useful for packages that define multiple
+Sublibraries are also useful for packages that define multiple
 executables, but do not define a publicly accessible library. Internal
 libraries are only visible internally in the package (so they can only
 be added to the :pkg-field:`build-depends` of same-package libraries,
-executables, test suites, etc.) Internal libraries locally shadow any
+executables, test suites, etc.) Sublibraries locally shadow any
 packages which have the same name; consequently, don't name an internal
 library with the same name as an external dependency if you need to be
 able to refer to the external dependency in a
@@ -1003,7 +1005,7 @@ a real-world use case:
 
 .. note::
     For packages using ``cabal-version: 3.4`` or higher, the syntax to
-    specify an internal library in a ``build-depends:`` section is
+    specify a sublibrary in a ``build-depends:`` section is
     ``package-name:internal-library-name``.
 
 .. _publicsublibs:
@@ -1477,8 +1479,29 @@ system-dependent values for these fields.
 
     Version constraints use the operators ``==, >=, >, <, <=`` and a
     version number. Multiple constraints can be combined using ``&&`` or
-    ``||``. If no version constraint is specified, any version is
-    assumed to be acceptable. For example:
+    ``||``.
+    
+    .. Note::
+
+       Even though there is no ``/=`` operator, by combining operators we can
+       skip over one or more versions, to skip a deprecated version or to skip
+       versions that narrow the constraint solving more than we'd like.
+       
+       For example, the ``time =1.12.*`` series depends on ``base >=4.13 && <5``
+       but ``time-1.12.3`` bumps the lower bound on base to ``>=4.14``.  If we
+       still want to compile with a ``ghc-8.8.*`` version of GHC that ships with
+       ``base-4.13`` and with later GHC versions, then we can use ``time >=1.12
+       && (time <1.12.3 || time >1.12.3)``.
+
+       Hackage shows deprecated and preferred versions for packages, such as for
+       `containers <https://hackage.haskell.org/package/containers/preferred>`_
+       and `aeson <https://hackage.haskell.org/package/aeson/preferred>`_ for
+       example. Deprecating package versions is not the same deprecating a
+       package as a whole, for which hackage keeps a `deprecated packages list
+       <https://hackage.haskell.org/packages/deprecated>`_.
+
+    If no version constraint is specified, any version is assumed to be
+    acceptable. For example:
 
     ::
 
@@ -2209,7 +2232,7 @@ system-dependent values for these fields.
 
     See the :pkg-field:`library:signatures` field for more details.
 
-    Mixin packages are part of the Backpack_ extension to the
+    Mixin packages are part of the :ref:`Backpack` extension to the
     Haskell module system.
 
     The matching of the module signatures required by a
@@ -2222,7 +2245,7 @@ system-dependent values for these fields.
 
     .. Warning::
 
-       Backpack_ has the limitation that implementation modules that instantiate
+       :ref:`Backpack` has the limitation that implementation modules that instantiate
        signatures required by a :pkg-field:`build-depends` dependency can't
        reside in the same component that has the dependency. They must reside
        in a different package dependency, or at least in a separate internal
@@ -2921,16 +2944,6 @@ Right now :pkg-field:`executable:main-is` modules are not supported on
    (e.g. by a ``configure`` script). Autogenerated header files are not
    packaged by ``sdist`` command.
 
-Virtual modules
----------------
-
-TBW
-
-.. pkg-field:: virtual-modules: module list
-   :since: 2.2
-
-   TBW
-
 
 .. _accessing-data-files:
 
@@ -3302,123 +3315,6 @@ a few options:
    own setup script from scratch, and you may use the Cabal
    library for all or part of the work. One option is to copy the source
    of ``Distribution.Simple``, and alter it for your needs. Good luck.
-
-.. _Backpack:
-
-Backpack
---------
-
-Cabal and GHC jointly support Backpack, an extension to Haskell's module
-system which makes it possible to parametrize a package over some
-modules, which can be instantiated later arbitrarily by a user.  This
-means you can write a library to be agnostic over some data
-representation, and then instantiate it several times with different
-data representations.  Like C++ templates, instantiated packages are
-recompiled for each instantiation, which means you do not pay any
-runtime cost for parametrizing packages in this way.  Backpack modules
-are somewhat experimental; while fully supported by cabal-install, they are currently
-`not supported by Stack <https://github.com/commercialhaskell/stack/issues/2540>`__.
-
-A Backpack package is defined by use of the
-:pkg-field:`library:signatures` field, or by (transitive) dependency on
-a package that defines some requirements.  To define a parametrized
-package, define a signature file (file extension ``hsig``) that
-specifies the signature of the module you want to parametrize over, and
-add it to your Cabal file in the :pkg-field:`library:signatures` field.
-
-.. code-block:: haskell
-    :caption: .hsig
-
-    signature Str where
-
-    data Str
-
-    concat :: [Str] -> Str
-
-.. code-block:: cabal
-    :caption: parametrized.cabal
-
-    cabal-version: 2.2
-    name: parametrized
-
-    library
-      build-depends: base
-      signatures: Str
-      exposed-modules: MyModule
-
-You can define any number of regular modules (e.g., ``MyModule``) that
-import signatures and use them as regular modules.
-
-If you are familiar with ML modules, you might now expect there to be
-some way to apply the parametrized package with an implementation of
-the ``Str`` module to get a concrete instantiation of the package.
-Backpack operates slightly differently with a concept of *mix-in
-linking*, where you provide an implementation of ``Str`` simply by
-bringing another module into scope with the same name as the
-requirement.  For example, if you had a package ``str-impl`` that provided a
-module named ``Str``, instantiating ``parametrized`` is as simple as
-just depending on both ``str-impl`` and ``parametrized``:
-
-.. code-block:: cabal
-    :caption: combined.cabal
-
-    cabal-version: 2.2
-    name: combined
-
-    library
-      build-depends: base, str-impl, parametrized
-
-Note that due to technical limitations, you cannot directly define
-``Str`` in the ``combined`` library; it must be placed in its own
-library (you can use :ref:`Internal Libraries <sublibs>` to conveniently
-define a sub-library).
-
-However, a more common situation is that your names don't match up
-exactly.  The :pkg-field:`library:mixins` field can be used to rename
-signatures and modules to line up names as necessary.  If you have
-a requirement ``Str`` and an implementation ``Data.Text``, you can
-line up the names in one of two ways:
-
-* Rename the requirement to match the implementation:
-  ``mixins: parametrized requires (Str as Data.Text)``
-* Rename the implementation to match the requirement:
-  ``mixins: text (Data.Text as Str)``
-
-The :pkg-field:`library:mixins` field can also be used to disambiguate
-between multiple instantiations of the same package; for each
-instantiation of the package, give it a separate entry in mixins with
-the requirements and provided modules renamed to be distinct.
-
-.. code-block:: cabal
-    :caption: .cabal
-
-    cabal-version: 2.2
-    name: double-combined
-
-    library
-      build-depends: base, text, bytestring, parametrized
-      mixins:
-        parametrized (MyModule as MyModule.Text) requires (Str as Data.Text),
-        parametrized (MyModule as MyModule.BS) requires (Str as Data.ByteString)
-
-Intensive use of Backpack sometimes involves creating lots of small
-parametrized libraries; :ref:`Internal Libraries <sublibs>` can be used
-to define all of these libraries in a single package without having to
-create many separate Cabal packages.  You may also find it useful to use
-:pkg-field:`library:reexported-modules` to reexport instantiated
-libraries to Backpack-unware users (e.g., Backpack can be used entirely
-as an implementation detail.)
-
-Backpack imposes a limitation on Template Haskell that goes beyond the usual TH
-stage restriction: it's not possible to splice TH code imported from a
-compilation unit that is still "indefinite", that is, a unit for which some
-module signatures still haven't been matched with implementations. The reason
-is that indefinite units are typechecked, but not compiled, so there's no
-actual TH code to run while splicing. Splicing TH code from a definite
-compilation unit into an indefinite one works normally.
-
-For more information about Backpack, check out the
-`GHC wiki page <https://gitlab.haskell.org/ghc/ghc/-/wikis/backpack>`__.
 
 .. include:: references.inc
 

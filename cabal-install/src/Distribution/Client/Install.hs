@@ -225,7 +225,7 @@ import Distribution.Simple.Utils
 import Distribution.Simple.Utils as Utils
   ( debug
   , debugNoWrap
-  , die'
+  , dieWithException
   , info
   , notice
   , warn
@@ -266,6 +266,7 @@ import Distribution.Version
   )
 
 import qualified Data.ByteString as BS
+import Distribution.Client.Errors
 
 -- TODO:
 
@@ -342,7 +343,7 @@ install
     case planResult of
       Left message -> do
         reportPlanningFailure verbosity args installContext message
-        die'' message
+        die'' $ ReportPlanningFailure message
       Right installPlan ->
         processInstallPlan verbosity args installContext installPlan
     where
@@ -362,7 +363,7 @@ install
         , benchmarkFlags
         )
 
-      die'' = die' verbosity
+      die'' = dieWithException verbosity
 
       logMsg message rest = debugNoWrap verbosity message >> rest
 
@@ -794,9 +795,7 @@ checkPrintPlan
     -- particular, if we can see that packages are likely to be broken, we even
     -- bail out (unless installation has been forced with --force-reinstalls).
     when containsReinstalls $ do
-      if breaksPkgs
-        then do
-          (if dryRun || overrideReinstall then warn else die') verbosity $
+      let errorStr =
             unlines $
               "The following packages are likely to be broken by the reinstalls:"
                 : map (prettyShow . mungedId) newBrokenPkgs
@@ -809,6 +808,12 @@ checkPrintPlan
                             ++ "the plan contains dangerous reinstalls."
                         ]
                   else ["Use --force-reinstalls if you want to install anyway."]
+      if breaksPkgs
+        then do
+          ( if dryRun || overrideReinstall
+              then warn verbosity errorStr
+              else dieWithException verbosity $ BrokenException errorStr
+            )
         else
           unless dryRun $
             warn
@@ -828,11 +833,8 @@ checkPrintPlan
           . filterM (fmap isNothing . checkFetched . srcpkgSource)
           $ pkgs
       unless (null notFetched) $
-        die' verbosity $
-          "Can't download packages in offline mode. "
-            ++ "Must download the following packages to proceed:\n"
-            ++ intercalate ", " (map prettyShow notFetched)
-            ++ "\nTry using 'cabal fetch'."
+        dieWithException verbosity $
+          Can'tDownloadPackagesOffline (map prettyShow notFetched)
     where
       nothingToInstall = null (fst (InstallPlan.ready installPlan))
 
@@ -1346,11 +1348,9 @@ printBuildFailures verbosity buildOutcomes =
        ] of
     [] -> return ()
     failed ->
-      die' verbosity . unlines $
-        "Some packages failed to install:"
-          : [ prettyShow pkgid ++ printFailureReason reason
-            | (pkgid, reason) <- failed
-            ]
+      dieWithException verbosity $
+        SomePackagesFailedToInstall $
+          map (\(pkgid, reason) -> (prettyShow pkgid, printFailureReason reason)) failed
   where
     printFailureReason reason = case reason of
       GracefulFailure msg -> msg
@@ -1760,8 +1760,8 @@ installLocalTarballPackage
         extractTarGzFile tmpDirPath relUnpackedPath tarballPath
         exists <- doesFileExist descFilePath
         unless exists $
-          die' verbosity $
-            "Package .cabal file not found: " ++ show descFilePath
+          dieWithException verbosity $
+            PackageDotCabalFileNotFound descFilePath
         maybeRenameDistDir absUnpackedPath
         installPkg (Just absUnpackedPath)
     where
@@ -2042,9 +2042,7 @@ installUnpackedPackage
 
       pkgConfParseFailed :: String -> IO a
       pkgConfParseFailed perror =
-        die' verbosity $
-          "Couldn't parse the output of 'setup register --gen-pkg-config':"
-            ++ show perror
+        dieWithException verbosity $ PkgConfParsedFailed perror
 
       maybeLogPath :: IO (Maybe FilePath)
       maybeLogPath =

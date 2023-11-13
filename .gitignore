@@ -73,6 +73,8 @@ cabal-testsuite/**/haddocks
 # python artifacts from documentation builds
 *.pyc
 .python-sphinx-virtualenv/
+venv
+.venv
 /doc/.skjold_cache/
 
 # macOS folder metadata
@@ -83,3 +85,6 @@ bench.html
 
 # Emacs
 .projectile
+
+# I'm unsure how to ignore these generated golden files
+cabal-testsuite/PackageTests/NewUpdate/RejectFutureIndexStates/cabal.out

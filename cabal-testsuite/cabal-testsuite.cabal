@@ -26,7 +26,7 @@ common shared
   default-language: Haskell2010
 
   build-depends:
-    , base >= 4.9 && <4.19
+    , base >= 4.9 && <4.20
     -- this needs to match the in-tree lib:Cabal version
     , Cabal ^>= 3.11.0.0
     , Cabal-syntax ^>= 3.11.0.0
@@ -57,7 +57,7 @@ library
     Test.Cabal.ScriptEnv0
 
   build-depends:
-    , aeson                 ^>= 1.4.2.0 || ^>=1.5.0.0 || ^>= 2.0.0.0 || ^>= 2.1.0.0
+    , aeson                 ^>= 1.4.2.0 || ^>=1.5.0.0 || ^>= 2.0.0.0 || ^>= 2.1.0.0 || ^>= 2.2.1.0
     , async                 ^>= 2.2.1
     , attoparsec            ^>= 0.13.2.2 || ^>=0.14.1
     , base64-bytestring     ^>= 1.0.0.0 || ^>= 1.1.0.0 || ^>= 1.2.0.0
@@ -68,14 +68,14 @@ library
     , exceptions            ^>= 0.10.0
     , filepath              ^>= 1.3.0.1 || ^>= 1.4.0.0
     , network-wait          ^>= 0.1.2.0 || ^>= 0.2.0.0
-    , optparse-applicative  ^>= 0.14.3.0 || ^>=0.15.1.0 || ^>=0.16.0.0 || ^>= 0.17.0.0
+    , optparse-applicative  ^>= 0.14.3.0 || ^>=0.15.1.0 || ^>=0.16.0.0 || ^>= 0.17.0.0 || ^>= 0.18.1.0
     , process               ^>= 1.2.1.0 || ^>= 1.4.2.0 || ^>= 1.6.1.0
     , regex-base            ^>= 0.94.0.1
     , regex-tdfa            ^>= 1.2.3.1 || ^>=1.3.1.0
     , retry                 ^>= 0.9.1.0
     , array                 ^>= 0.4.0.1 || ^>= 0.5.0.0
     , temporary             ^>= 1.3
-    , text                  ^>= 1.2.3.1 || ^>= 2.0.1
+    , text                  ^>= 1.2.3.1 || ^>= 2.0.1   || ^>= 2.1
     , transformers          ^>= 0.3.0.0 || ^>= 0.4.2.0 || ^>= 0.5.2.0 || ^>= 0.6.0.2
 
   if !os(windows)
@@ -101,6 +101,18 @@ executable cabal-tests
     , transformers
     -- dependencies specific to exe:cabal-tests
     , clock                 ^>= 0.7.2 || ^>=0.8
+    -- Extra dependencies used by PackageTests.
+    --
+    -- The runner allows the tests to use extra dependencies and the custom Prelude
+    -- from 'cabal-testsuite'.
+    -- However, if the tests use a dependency, say 'directory', and there are two
+    -- packages with the same unit id available in the store, the test fails since
+    -- it doesn't know which one to pick.
+    -- By including an extra dependency to directory, we force the test runner to
+    -- use a specific version directory, fixing the test failure.
+    --
+    -- See issue description and discussion: https://github.com/haskell/cabal/issues/8356
+    , directory
 
   build-tool-depends: cabal-testsuite:setup
   default-extensions: TypeOperators

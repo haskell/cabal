@@ -2,7 +2,8 @@
 Downloading the latest package list from test-local-repo
 # cabal v2-repl
 Resolving dependencies...
-Error: cabal: Could not resolve dependencies:
+Error: [Cabal-7107]
+Could not resolve dependencies:
 [__0] trying: pkg-a-0 (user goal)
 [__1] next goal: pkg-a:setup.Cabal (dependency of pkg-a)
 [__1] rejecting: pkg-a:setup.Cabal-<VERSION>/installed-<HASH>, pkg-a:setup.Cabal-3.8.0.0 (constraint from --enable-multi-repl requires >=3.11)
