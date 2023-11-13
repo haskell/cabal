@@ -7,7 +7,26 @@ index-state: hackage.haskell.org 2025-06-27T20:43:14Z
 
 -- never include this or its TH dependency in a release!
 package cabal-install
-  flags: -git-rev
+  flags: -git-rev -lukko
 
 package Cabal
   flags: -git-rev
+
+constraints:
+  -- don't use `-march=native` (for portability)
+  hashable -arch-native,
+  -- fixes unicode issues
+  tar >= 0.6.2.0,
+  -- https://github.com/haskell/directory/issues/170
+  directory >= 1.3.8.3,
+  -- avoid deprecated versions
+  filepath == 1.4.101.0 || == 1.4.300.1 || == 1.4.300.2 || == 1.4.301.0 || >= 1.5.2.0
+
+-- https://github.com/haskell/ghcup-hs/issues/1107
+-- https://github.com/haskell/unix/pull/318
+if arch(arm) || arch(i386)
+  constraints: unix >= 2.8.6.0
+
+-- static linking
+package zlib
+  flags: -pkg-config +bundled-c-zlib

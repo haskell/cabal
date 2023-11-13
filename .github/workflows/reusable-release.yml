@@ -1,0 +1,741 @@
+name: Build and release
+
+on:
+  workflow_call:
+    inputs:
+      branches:
+        required: true
+        type: string
+      ghc:
+        type: string
+        default: 9.10.2
+      # speed up installation by skipping docs
+      # starting with GHC 9.10.x, we also need to pass the 'install_extra' target
+      ghc_targets:
+        type: string
+        default: "install_bin install_lib update_package_db install_extra"
+      cabal:
+        type: string
+        default: 3.14.2.0
+      test:
+        type: boolean
+        default: true
+
+env:
+  GHC_VERSION: ${{ inputs.ghc }}
+  GHC_TARGETS: ${{ inputs.ghc_targets }}
+  # This shouldn't be necessary, but cabal developers
+  # want to build with 9.10.2, which causes test failures
+  # when used as runtime GHC version as well.
+  GHC_TEST_VERSION: 9.6.7
+  GHC_TEST_TARGETS: "install_bin install_lib update_package_db"
+  CABAL_VERSION: ${{ inputs.cabal }}
+  BOOTSTRAP_HASKELL_NONINTERACTIVE: 1
+  BOOTSTRAP_HASKELL_MINIMAL: 1
+  DEBIAN_FRONTEND: noninteractive
+  TZ: Asia/Singapore
+
+jobs:
+  tool-output:
+    runs-on: ubuntu-latest
+    outputs:
+      apt_tools: ${{ steps.gen_output.outputs.apt_tools }}
+      apt_tools_ncurses6: ${{ steps.gen_output.outputs.apt_tools_ncurses6 }}
+      rpm_tools: ${{ steps.gen_output.outputs.rpm_tools }}
+      apk_tools: ${{ steps.gen_output.outputs.apk_tools }}
+      xbps_tools: ${{ steps.gen_output.outputs.xbps_tools }}
+    env:
+      APT: "groff-base libnuma-dev zlib1g-dev libgmp-dev libgmp10 libssl-dev liblzma-dev libbz2-dev git wget lsb-release software-properties-common gnupg2 apt-transport-https gcc autoconf automake build-essential curl ghc gzip libffi-dev libncurses-dev patchelf"
+      RPM: "groff-base autoconf automake binutils bzip2 coreutils curl elfutils-devel elfutils-libs findutils gcc gcc-c++ git gmp gmp-devel jq lbzip2 make ncurses ncurses-compat-libs ncurses-devel openssh-clients patch perl pxz python3 sqlite sudo wget which xz zlib-devel patchelf"
+      APK: "groff binutils-gold curl gcc g++ gmp-dev libc-dev libffi-dev make musl-dev ncurses-dev perl tar xz autoconf automake bzip2 coreutils elfutils-dev findutils git jq bzip2-dev patch python3 sqlite sudo wget which zlib-dev patchelf zlib zlib-dev zlib-static"
+      XBPS: "groff ncurses-libtinfo-libs autoconf automake binutils bzip2 coreutils curl elfutils-devel elfutils findutils gcc gmp gmp-devel jq lbzip2 make ncurses ncurses-devel openssh patch perl python3 sqlite sudo wget which xz tar zlib-devel patchelf gzip"
+    steps:
+      - name: Generate output
+        id: gen_output
+        run: |
+          echo apt_tools="${{ env.APT }} libncurses5 libtinfo5" >> "$GITHUB_OUTPUT"
+          echo apt_tools_ncurses6="${{ env.APT }} libncurses6 libtinfo6" >> "$GITHUB_OUTPUT"
+          echo rpm_tools="${{ env.RPM }}" >> "$GITHUB_OUTPUT"
+          echo apk_tools="${{ env.APK }}" >> "$GITHUB_OUTPUT"
+          echo xbps_tools="${{ env.XBPS }}" >> "$GITHUB_OUTPUT"
+
+  build-linux:
+    name: Build linux binaries
+    runs-on: ubuntu-latest
+    needs: ["tool-output"]
+    env:
+      TARBALL_EXT: tar.xz
+      ARCH: 64
+    strategy:
+      fail-fast: false
+      matrix:
+        branch: ${{ fromJSON(inputs.branches) }}
+        platform: [ { image: "debian:11"
+                    , installCmd: "apt-get update && apt-get install -y"
+                    , toolRequirements: "${{ needs.tool-output.outputs.apt_tools }}"
+                    , DISTRO: "Debian"
+                    , ARTIFACT: "x86_64-linux-deb11"
+                    , ADD_CABAL_ARGS: "--enable-split-sections"
+                    },
+                    { image: "debian:12"
+                    , installCmd: "apt-get update && apt-get install -y"
+                    , toolRequirements: "${{ needs.tool-output.outputs.apt_tools }}"
+                    , DISTRO: "Debian"
+                    , ARTIFACT: "x86_64-linux-deb12"
+                    , ADD_CABAL_ARGS: "--enable-split-sections"
+                    },
+                    { image: "ubuntu:20.04"
+                    , installCmd: "apt-get update && apt-get install -y"
+                    , toolRequirements: "${{ needs.tool-output.outputs.apt_tools }}"
+                    , DISTRO: "Ubuntu"
+                    , ARTIFACT: "x86_64-linux-ubuntu20.04"
+                    , ADD_CABAL_ARGS: "--enable-split-sections"
+                    },
+                    { image: "ubuntu:22.04"
+                    , installCmd: "apt-get update && apt-get install -y"
+                    , toolRequirements: "${{ needs.tool-output.outputs.apt_tools }}"
+                    , DISTRO: "Ubuntu"
+                    , ARTIFACT: "x86_64-linux-ubuntu22.04"
+                    , ADD_CABAL_ARGS: "--enable-split-sections"
+                    },
+                    { image: "ubuntu:24.04"
+                    , installCmd: "apt-get update && apt-get install -y"
+                    , toolRequirements: "${{ needs.tool-output.outputs.apt_tools_ncurses6 }}"
+                    , DISTRO: "Ubuntu"
+                    , ARTIFACT: "x86_64-linux-ubuntu24.04"
+                    , ADD_CABAL_ARGS: "--enable-split-sections"
+                    },
+                    { image: "fedora:33"
+                    , installCmd: "dnf install -y"
+                    , toolRequirements: "${{ needs.tool-output.outputs.rpm_tools }}"
+                    , DISTRO: "Fedora"
+                    , ARTIFACT: "x86_64-linux-fedora33"
+                    , ADD_CABAL_ARGS: "--enable-split-sections"
+                    },
+                    { image: "fedora:36"
+                    , installCmd: "dnf install -y"
+                    , toolRequirements: "${{ needs.tool-output.outputs.rpm_tools }}"
+                    , DISTRO: "Fedora"
+                    , ARTIFACT: "x86_64-linux-fedora36"
+                    , ADD_CABAL_ARGS: "--enable-split-sections"
+                    },
+                    { image: "fedora:38"
+                    , installCmd: "dnf install -y"
+                    , toolRequirements: "${{ needs.tool-output.outputs.rpm_tools }}"
+                    , DISTRO: "Fedora"
+                    , ARTIFACT: "x86_64-linux-fedora38"
+                    , ADD_CABAL_ARGS: "--enable-split-sections"
+                    },
+                    { image: "rockylinux:8"
+                    , installCmd: "yum -y install epel-release && yum install -y --allowerasing"
+                    , toolRequirements: "${{ needs.tool-output.outputs.rpm_tools }}"
+                    , DISTRO: "Unknown"
+                    , ARTIFACT: "x86_64-linux-rocky8"
+                    , ADD_CABAL_ARGS: "--enable-split-sections"
+                    },
+                    { image: "alpine:3.20"
+                    , installCmd: "apk update && apk add"
+                    , toolRequirements: "${{ needs.tool-output.outputs.apk_tools }}"
+                    , DISTRO: "Unknown"
+                    , ARTIFACT: "x86_64-linux-unknown"
+                    , ADD_CABAL_ARGS: "--enable-split-sections --enable-executable-static"
+                    },
+                    { image: "alpine:3.12"
+                    , installCmd: "apk update && apk add"
+                    , toolRequirements: "${{ needs.tool-output.outputs.apk_tools }}"
+                    , DISTRO: "Unknown"
+                    , ARTIFACT: "x86_64-linux-alpine312"
+                    , ADD_CABAL_ARGS: "--enable-split-sections"
+                    },
+                    { image: "alpine:3.20"
+                    , installCmd: "apk update && apk add"
+                    , toolRequirements: "${{ needs.tool-output.outputs.apk_tools }}"
+                    , DISTRO: "Unknown"
+                    , ARTIFACT: "x86_64-linux-alpine320"
+                    , ADD_CABAL_ARGS: "--enable-split-sections"
+                    }
+                  ]
+    container:
+      image: ${{ matrix.platform.image }}
+    steps:
+      - name: Install requirements
+        shell: sh
+        run: |
+          ${{ matrix.platform.installCmd }} curl bash git ${{ matrix.platform.toolRequirements }}
+
+      - name: Install GHCup
+        uses: haskell/ghcup-setup@v1
+        with:
+          cabal: ${{ env.CABAL_VERSION }}
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.branch }}
+
+      - name: Run build
+        run: |
+          bash .github/scripts/build.bash
+
+        env:
+          ARTIFACT: ${{ matrix.platform.ARTIFACT }}
+          DISTRO: ${{ matrix.platform.DISTRO }}
+          ADD_CABAL_ARGS: ${{ matrix.platform.ADD_CABAL_ARGS }}
+
+      - if: always()
+        name: Upload artifact
+        uses: ./.github/actions/upload
+        with:
+          if-no-files-found: error
+          retention-days: 2
+          name: artifacts-${{ matrix.platform.ARTIFACT }}-${{ matrix.branch }}
+          path: |
+            ./out/*
+
+  build-linux-32bit:
+    name: Build linux binaries (32bit)
+    needs: ["tool-output"]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        branch: ${{ fromJSON(inputs.branches) }}
+    env:
+      TARBALL_EXT: tar.xz
+      ARCH: 32
+      DISTRO: "Unknown"
+      ARTIFACT: "i386-linux-unknown"
+      ADD_CABAL_ARGS: "--enable-split-sections --enable-executable-static"
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.branch }}
+
+      - name: Run build (32 bit linux)
+        uses: docker://i386/alpine:3.20
+        with:
+          args: sh -c "apk update && apk add curl bash git ${{ needs.tool-output.outputs.apk_tools }} && export PATH=$HOME/.ghcup/bin:$PATH && curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | sh && ghcup install cabal ${{ env.CABAL_VERSION }} && bash .github/scripts/build.bash"
+
+      - if: always()
+        name: Upload artifact
+        uses: ./.github/actions/upload
+        with:
+          if-no-files-found: error
+          retention-days: 2
+          name: artifacts-${{ env.ARTIFACT }}-${{ matrix.branch }}
+          path: |
+            ./out/*
+
+  build-arm:
+    name: Build ARM binary
+    needs: ["tool-output"]
+    runs-on: ubuntu-22.04-arm
+    env:
+      TARBALL_EXT: tar.xz
+      ADD_CABAL_ARGS: ""
+      ARCH: ARM64
+    strategy:
+      fail-fast: false
+      matrix:
+        branch: ${{ fromJSON(inputs.branches) }}
+        platform: [ { ARCH: "ARM64"
+                    , DISTRO: "Debian"
+                    , ARTIFACT: "aarch64-linux-deb11"
+                    },
+                    { ARCH: "ARM64"
+                    , DISTRO: "Alpine"
+                    , ARTIFACT: "aarch64-linux-unknown"
+                    }
+                  ]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.branch }}
+
+      - if: matrix.platform.DISTRO == 'Debian'
+        uses: docker://arm64v8/debian:11
+        name: Run build (aarch64 linux)
+        with:
+          args: sh -c "apt-get update && apt-get install -y curl bash git ${{ needs.tool-output.outputs.apt_tools }} && export PATH=$HOME/.ghcup/bin:$PATH && curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | sh && ghcup install cabal ${{ env.CABAL_VERSION }} && bash .github/scripts/build.bash"
+        env:
+          ARTIFACT: ${{ matrix.platform.ARTIFACT }}
+          DISTRO: ${{ matrix.platform.DISTRO }}
+          ADD_CABAL_ARGS: ""
+
+      - if: matrix.platform.DISTRO == 'Alpine'
+        uses: docker://arm64v8/alpine:3.20
+        name: Run build (aarch64 linux alpine)
+        with:
+          args: sh -c "apk update && apk add curl bash git ${{ needs.tool-output.outputs.apk_tools }} && export PATH=$HOME/.ghcup/bin:$PATH && curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | sh && ghcup install cabal ${{ env.CABAL_VERSION }} && bash .github/scripts/build.bash"
+        env:
+          ARTIFACT: ${{ matrix.platform.ARTIFACT }}
+          DISTRO: ${{ matrix.platform.DISTRO }}
+          ADD_CABAL_ARGS: "--enable-split-sections --enable-executable-static"
+
+      - if: always()
+        name: Upload artifact
+        uses: ./.github/actions/upload
+        with:
+          if-no-files-found: error
+          retention-days: 2
+          name: artifacts-${{ matrix.platform.ARTIFACT }}-${{ matrix.branch }}
+          path: |
+            ./out/*
+
+  build-mac-x86_64:
+    name: Build binary (Mac x86_64)
+    runs-on: macOS-13
+    env:
+      MACOSX_DEPLOYMENT_TARGET: 10.13
+      ADD_CABAL_ARGS: ""
+      ARTIFACT: "x86_64-apple-darwin"
+      ARCH: 64
+      TARBALL_EXT: tar.xz
+      DISTRO: na
+    strategy:
+      fail-fast: false
+      matrix:
+        branch: ${{ fromJSON(inputs.branches) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.branch }}
+
+      - name: Install GHCup
+        uses: haskell/ghcup-setup@v1
+        with:
+          cabal: ${{ env.CABAL_VERSION }}
+
+      - name: Run build
+        run: |
+          bash .github/scripts/build.bash
+
+      - if: always()
+        name: Upload artifact
+        uses: ./.github/actions/upload
+        with:
+          if-no-files-found: error
+          retention-days: 2
+          name: artifacts-${{ env.ARTIFACT }}-${{ matrix.branch }}
+          path: |
+            ./out/*
+
+  build-mac-aarch64:
+    name: Build binary (Mac aarch64)
+    runs-on: macos-latest
+    env:
+      MACOSX_DEPLOYMENT_TARGET: 10.13
+      ADD_CABAL_ARGS: ""
+      ARTIFACT: "aarch64-apple-darwin"
+      ARCH: ARM64
+      TARBALL_EXT: tar.xz
+      DISTRO: na
+      HOMEBREW_CHANGE_ARCH_TO_ARM: 1
+      GHCUP_INSTALL_BASE_PREFIX: ${{ github.workspace }}
+    strategy:
+      fail-fast: false
+      matrix:
+        branch: ${{ fromJSON(inputs.branches) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.branch }}
+
+      - name: Install GHCup
+        uses: haskell/ghcup-setup@v1
+        with:
+          cabal: ${{ env.CABAL_VERSION }}
+
+      - name: Run build
+        run: |
+          bash .github/scripts/build.bash
+
+      - if: always()
+        name: Upload artifact
+        uses: ./.github/actions/upload
+        with:
+          if-no-files-found: error
+          retention-days: 2
+          name: artifacts-${{ env.ARTIFACT }}-${{ matrix.branch }}
+          path: |
+            ./out/*
+
+  build-win:
+    name: Build binary (Win)
+    runs-on: windows-latest
+    env:
+      ADD_CABAL_ARGS: ""
+      ARTIFACT: "x86_64-mingw64"
+      ARCH: 64
+      TARBALL_EXT: "zip"
+      DISTRO: na
+      CABAL_DIR: "C:\\Users\\runneradmin\\AppData\\Roaming\\cabal"
+      GHCUP_INSTALL_BASE_PREFIX: "/c"
+    strategy:
+      fail-fast: false
+      matrix:
+        branch: ${{ fromJSON(inputs.branches) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.branch }}
+
+      - name: install windows deps
+        shell: pwsh
+        run: |
+          # https://www.msys2.org/docs/updating/
+          C:\msys64\usr\bin\bash -lc "pacman --disable-download-timeout --noconfirm -Syuu"
+          C:\msys64\usr\bin\bash -lc "pacman --disable-download-timeout --noconfirm -Syuu"
+          C:\msys64\usr\bin\bash -lc "pacman --disable-download-timeout --noconfirm -S make mingw-w64-x86_64-clang curl autoconf mingw-w64-x86_64-pkgconf ca-certificates base-devel gettext autoconf make libtool automake python p7zip patch unzip zip git"
+          taskkill /F /FI "MODULES eq msys-2.0.dll"
+
+      - name: Install GHCup
+        uses: haskell/ghcup-setup@v1
+        with:
+          cabal: ${{ env.CABAL_VERSION }}
+
+      - name: Run build (windows)
+        run: |
+          $env:CHERE_INVOKING = 1
+          $env:MSYS2_PATH_TYPE = "inherit"
+          $ErrorActionPreference = "Stop"
+          C:\msys64\usr\bin\bash -lc "bash .github/scripts/build.bash"
+        shell: pwsh
+
+      - if: always()
+        name: Upload artifact
+        uses: ./.github/actions/upload
+        with:
+          if-no-files-found: error
+          retention-days: 2
+          name: artifacts-${{ env.ARTIFACT }}-${{ matrix.branch }}
+          path: |
+            ./out/*
+
+  test-linux:
+    name: Test linux binaries
+    runs-on: ubuntu-latest
+    needs: ["tool-output", "build-linux"]
+    if: ${{ inputs.test }}
+    env:
+      TARBALL_EXT: tar.xz
+      ARCH: 64
+      ADD_CABAL_ARGS: ""
+    strategy:
+      fail-fast: false
+      matrix:
+        branch: ${{ fromJSON(inputs.branches) }}
+        platform: [ { image: "debian:11"
+                    , installCmd: "apt-get update && apt-get install -y"
+                    , toolRequirements: "${{ needs.tool-output.outputs.apt_tools }}"
+                    , DISTRO: "Debian"
+                    , ARTIFACT: "x86_64-linux-deb11"
+                    },
+                    { image: "debian:12"
+                    , installCmd: "apt-get update && apt-get install -y"
+                    , toolRequirements: "${{ needs.tool-output.outputs.apt_tools }}"
+                    , DISTRO: "Debian"
+                    , ARTIFACT: "x86_64-linux-deb12"
+                    },
+                    { image: "ubuntu:20.04"
+                    , installCmd: "apt-get update && apt-get install -y"
+                    , toolRequirements: "${{ needs.tool-output.outputs.apt_tools }}"
+                    , DISTRO: "Ubuntu"
+                    , ARTIFACT: "x86_64-linux-ubuntu20.04"
+                    },
+                    { image: "ubuntu:22.04"
+                    , installCmd: "apt-get update && apt-get install -y"
+                    , toolRequirements: "${{ needs.tool-output.outputs.apt_tools }}"
+                    , DISTRO: "Ubuntu"
+                    , ARTIFACT: "x86_64-linux-ubuntu22.04"
+                    },
+                    { image: "ubuntu:24.04"
+                    , installCmd: "apt-get update && apt-get install -y"
+                    , toolRequirements: "${{ needs.tool-output.outputs.apt_tools_ncurses6 }}"
+                    , DISTRO: "Ubuntu"
+                    , ARTIFACT: "x86_64-linux-ubuntu24.04"
+                    },
+                    { image: "fedora:33"
+                    , installCmd: "dnf install -y"
+                    , toolRequirements: "${{ needs.tool-output.outputs.rpm_tools }}"
+                    , DISTRO: "Fedora"
+                    , ARTIFACT: "x86_64-linux-fedora33"
+                    },
+                    { image: "fedora:36"
+                    , installCmd: "dnf install -y"
+                    , toolRequirements: "${{ needs.tool-output.outputs.rpm_tools }}"
+                    , DISTRO: "Fedora"
+                    , ARTIFACT: "x86_64-linux-fedora36"
+                    },
+                    { image: "fedora:38"
+                    , installCmd: "dnf install -y"
+                    , toolRequirements: "${{ needs.tool-output.outputs.rpm_tools }}"
+                    , DISTRO: "Fedora"
+                    , ARTIFACT: "x86_64-linux-fedora38"
+                    },
+                    { image: "rockylinux:8"
+                    , installCmd: "yum -y install epel-release && yum install -y --allowerasing"
+                    , toolRequirements: "${{ needs.tool-output.outputs.rpm_tools }}"
+                    , DISTRO: "Unknown"
+                    , ARTIFACT: "x86_64-linux-rocky8"
+                    },
+                    { image: "alpine:3.20"
+                    , installCmd: "apk update && apk add"
+                    , toolRequirements: "${{ needs.tool-output.outputs.apk_tools }}"
+                    , DISTRO: "Unknown"
+                    , ARTIFACT: "x86_64-linux-unknown"
+                    },
+                    { image: "alpine:3.12"
+                    , installCmd: "apk update && apk add"
+                    , toolRequirements: "${{ needs.tool-output.outputs.apk_tools }}"
+                    , DISTRO: "Unknown"
+                    , ARTIFACT: "x86_64-linux-alpine312"
+                    },
+                    { image: "alpine:3.20"
+                    , installCmd: "apk update && apk add"
+                    , toolRequirements: "${{ needs.tool-output.outputs.apk_tools }}"
+                    , DISTRO: "Unknown"
+                    , ARTIFACT: "x86_64-linux-alpine320"
+                    }
+                  ]
+    container:
+      image: ${{ matrix.platform.image }}
+    steps:
+      - name: Install requirements
+        shell: sh
+        run: |
+          ${{ matrix.platform.installCmd }} curl bash git ${{ matrix.platform.toolRequirements }}
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.branch }}
+
+      # Test suite uses 'git' to find the test files. That appears
+      # to cause problems in CI. A similar hack is employed in the validate
+      # pipeline.
+      - name: git clone fix
+        run: git config --system --add safe.directory $GITHUB_WORKSPACE
+
+      - name: Install GHCup
+        uses: haskell/ghcup-setup@v1
+        with:
+          cabal: ${{ env.CABAL_VERSION }}
+
+      - uses: ./.github/actions/download
+        with:
+          name: artifacts-${{ matrix.platform.ARTIFACT }}-${{ matrix.branch }}
+          path: ./out
+
+      - name: Run test
+        run: |
+          bash .github/scripts/test.bash
+        env:
+          ARTIFACT: ${{ matrix.platform.ARTIFACT }}
+          DISTRO: ${{ matrix.platform.DISTRO }}
+          ADD_CABAL_ARGS: ${{ matrix.platform.ADD_CABAL_ARGS }}
+
+# TODO: https://github.com/haskell/cabal/issues/11049
+  test-linux-32bit:
+    name: Test linux binaries (32bit)
+    runs-on: ubuntu-latest
+    needs: ["build-linux-32bit"]
+    if: $ {{ inputs.test }}
+    env:
+      TARBALL_EXT: tar.xz
+      ARCH: 32
+      DISTRO: "Unknown"
+      ARTIFACT: "i386-linux-unknown"
+      ADD_CABAL_ARGS: ""
+    strategy:
+      fail-fast: false
+      matrix:
+        branch: ${{ fromJSON(inputs.branches) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.branch }}
+
+      - uses: ./.github/actions/download
+        with:
+          name: artifacts-${{ env.ARTIFACT }}-${{ matrix.branch }}
+          path: ./out
+
+      - name: Run build (32 bit linux)
+        uses: docker://i386/alpine:3.20
+        with:
+          args: sh -c "apk update && apk add curl bash git ${{ needs.tool-output.outputs.apk_tools }} groff && git config --system --add safe.directory $GITHUB_WORKSPACE && export PATH=$HOME/.ghcup/bin:$PATH && curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | sh && ghcup install cabal ${{ env.CABAL_VERSION }} && bash .github/scripts/build.bash"
+
+  test-arm:
+    name: Test ARM binary
+    runs-on: ubuntu-22.04-arm
+    needs: ["tool-output", "build-arm"]
+    if: ${{ inputs.test }}
+    env:
+      ADD_CABAL_ARGS: ""
+      TARBALL_EXT: tar.xz
+      ARCH: ARM64
+    strategy:
+      fail-fast: false
+      matrix:
+        branch: ${{ fromJSON(inputs.branches) }}
+        platform: [ { ARCH: "ARM64"
+                    , DISTRO: "Debian"
+                    , ARTIFACT: "aarch64-linux-deb11"
+                    },
+                    { ARCH: "ARM64"
+                    , DISTRO: "Alpine"
+                    , ARTIFACT: "aarch64-linux-unknown"
+                    }
+                  ]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.branch }}
+
+      - uses: ./.github/actions/download
+        with:
+          name: artifacts-${{ matrix.platform.ARTIFACT }}-${{ matrix.branch }}
+          path: ./out
+
+      - if: matrix.platform.DISTRO == 'Debian'
+        uses: docker://arm64v8/debian:11
+        name: Run build (aarch64 linux)
+        with:
+          args: sh -c "apt-get update && apt-get install -y curl bash git groff-base ${{ needs.tool-output.outputs.apt_tools }} && git config --system --add safe.directory $GITHUB_WORKSPACE && export PATH=$HOME/.ghcup/bin:$PATH && curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | sh && ghcup install cabal ${{ env.CABAL_VERSION }} && bash .github/scripts/test.bash"
+        env:
+          ARTIFACT: ${{ matrix.platform.ARTIFACT }}
+          DISTRO: ${{ matrix.platform.DISTRO }}
+
+      - if: matrix.platform.DISTRO == 'Alpine'
+        uses: docker://arm64v8/alpine:3.20
+        name: Run build (aarch64 linux alpine)
+        with:
+          args: sh -c "apk update && apk add curl bash git groff ${{ needs.tool-output.outputs.apk_tools }} && git config --system --add safe.directory $GITHUB_WORKSPACE && export PATH=$HOME/.ghcup/bin:$PATH && curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | sh && ghcup install cabal ${{ env.CABAL_VERSION }} && bash .github/scripts/test.bash"
+        env:
+          ARTIFACT: ${{ matrix.platform.ARTIFACT }}
+          DISTRO: ${{ matrix.platform.DISTRO }}
+
+  test-mac-x86_64:
+    name: Test binary (Mac x86_64)
+    runs-on: macOS-13
+    needs: ["build-mac-x86_64"]
+    if: ${{ inputs.test }}
+    env:
+      ADD_CABAL_ARGS: ""
+      MACOSX_DEPLOYMENT_TARGET: 10.13
+      ARTIFACT: "x86_64-apple-darwin"
+      ARCH: 64
+      TARBALL_EXT: tar.xz
+      DISTRO: na
+    strategy:
+      fail-fast: false
+      matrix:
+        branch: ${{ fromJSON(inputs.branches) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.branch }}
+
+      - uses: ./.github/actions/download
+        with:
+          name: artifacts-${{ env.ARTIFACT }}-${{ matrix.branch }}
+          path: ./out
+
+      - name: Install GHCup
+        uses: haskell/ghcup-setup@v1
+        with:
+          cabal: ${{ env.CABAL_VERSION }}
+
+      - name: Run test
+        run: |
+          # cabal-testsuite/PackageTests/Configure/cabal.test.hs needs it
+          # and it doesn't appear pre-installed here
+          brew install autoconf automake
+
+          bash .github/scripts/test.bash
+
+  test-mac-aarch64:
+    name: Test binary (Mac aarch64)
+    runs-on: macos-latest
+    needs: ["build-mac-aarch64"]
+    if: ${{ inputs.test }}
+    env:
+      ADD_CABAL_ARGS: ""
+      MACOSX_DEPLOYMENT_TARGET: 10.13
+      ARTIFACT: "aarch64-apple-darwin"
+      ARCH: ARM64
+      TARBALL_EXT: tar.xz
+      DISTRO: na
+      HOMEBREW_CHANGE_ARCH_TO_ARM: 1
+      GHCUP_INSTALL_BASE_PREFIX: ${{ github.workspace }}
+    strategy:
+      fail-fast: false
+      matrix:
+        branch: ${{ fromJSON(inputs.branches) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.branch }}
+
+      - uses: ./.github/actions/download
+        with:
+          name: artifacts-${{ env.ARTIFACT }}-${{ matrix.branch }}
+          path: ./out
+
+      - name: Install GHCup
+        uses: haskell/ghcup-setup@v1
+        with:
+          cabal: ${{ env.CABAL_VERSION }}
+
+      - name: Run test
+        run: |
+          bash .github/scripts/test.bash
+
+  test-win:
+    name: Test binary (Win)
+    runs-on: windows-latest
+    needs: ["build-win"]
+    if: ${{ inputs.test }}
+    env:
+      ADD_CABAL_ARGS: ""
+      ARTIFACT: "x86_64-mingw64"
+      ARCH: 64
+      TARBALL_EXT: "zip"
+      DISTRO: na
+      CABAL_DIR: "C:\\Users\\runneradmin\\AppData\\Roaming\\cabal"
+      GHCUP_INSTALL_BASE_PREFIX: "/c"
+    strategy:
+      fail-fast: false
+      matrix:
+        branch: ${{ fromJSON(inputs.branches) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.branch }}
+
+      - name: install windows deps
+        shell: pwsh
+        run: |
+          C:\msys64\usr\bin\bash -lc "pacman --disable-download-timeout --noconfirm -Syuu"
+          C:\msys64\usr\bin\bash -lc "pacman --disable-download-timeout --noconfirm -Syuu"
+          C:\msys64\usr\bin\bash -lc "pacman --disable-download-timeout --noconfirm -S make mingw-w64-x86_64-clang curl autoconf mingw-w64-x86_64-pkgconf ca-certificates base-devel gettext autoconf make libtool automake python p7zip patch unzip zip git"
+          taskkill /F /FI "MODULES eq msys-2.0.dll"
+
+      - uses: ./.github/actions/download
+        with:
+          name: artifacts-${{ env.ARTIFACT }}-${{ matrix.branch }}
+          path: ./out
+
+      - name: Install GHCup
+        uses: haskell/ghcup-setup@v1
+        with:
+          cabal: ${{ env.CABAL_VERSION }}
+
+      - name: Run test (windows)
+        run: |
+          $env:CHERE_INVOKING = 1
+          $env:MSYS2_PATH_TYPE = "inherit"
+          $ErrorActionPreference = "Stop"
+          C:\msys64\usr\bin\bash -lc "bash .github/scripts/test.bash"
+        shell: pwsh
+
