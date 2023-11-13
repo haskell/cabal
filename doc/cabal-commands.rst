@@ -19,6 +19,7 @@ Commands
      [global]
       user-config            Display and update the user's global cabal configuration.
       help                   Help about commands.
+      path                   Display paths used by cabal.
 
      [package database]
       update                 Updates list of known packages.
@@ -283,6 +284,38 @@ cabal preferences. It is very useful when you are e.g. first configuring
 
       Note how ``--augment`` syntax follows ``cabal user-config diff``
       output.
+
+cabal path
+^^^^^^^^^^
+
+``cabal path`` prints the file system paths used by ``cabal`` for
+cache, store, installed binaries, and so on. When run without any
+options, it will show all paths, labeled with how they are namen in
+the configuration file:
+
+::
+   $ cabal path
+   cache-dir: /home/haskell/.cache/cabal/packages
+   logs-dir: /home/haskell/.cache/cabal/logs
+   store-dir: /home/haskell/.local/state/cabal/store
+   config-file: /home/haskell/.config/cabal/config
+   installdir: /home/haskell/.local/bin
+   ...
+
+If ``cabal path`` is passed a single option naming a path, then that
+path will be printed *without* any label:
+
+::
+
+   $ cabal path --installdir
+   /home/haskell/.local/bin
+
+This is a stable interface and is intended to be used for scripting.
+For example:
+
+::
+   $ ls $(cabal path --installdir)
+   ...
 
 .. _command-group-database:
 
