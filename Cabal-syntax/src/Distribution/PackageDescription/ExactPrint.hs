@@ -1,6 +1,9 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE OverloadedStrings #-}
+
+-- I suppose this is currently more of an exact-ish print
+-- anything that makes it warn for example is neglected.
 module Distribution.PackageDescription.ExactPrint
   (exactPrint
   ) where
@@ -9,7 +12,7 @@ import Distribution.Types.GenericPackageDescription
 import Distribution.PackageDescription.PrettyPrint
 import Data.Text(Text, pack, unpack)
 import qualified Text.PrettyPrint as PP
-import Text.PrettyPrint(Doc, ($+$), ($$), (<+>))
+import Text.PrettyPrint(Doc, ($+$), ($$))
 import qualified Data.Map as Map
 import Data.Map(Map)
 import Distribution.Fields.Pretty
@@ -19,6 +22,7 @@ import Distribution.Parsec.Position
 import Data.List(sortOn)
 import Control.Monad(join)
 import Distribution.PackageDescription(specVersion)
+import Data.Foldable(fold)
 
 exactPrint :: GenericPackageDescription -> Text
 exactPrint package = foldExactly (exactPrintMeta package) fields
@@ -56,21 +60,34 @@ renderLine :: PrettyField (Maybe ExactPosition) -> RenderState -> RenderState
 renderLine field (previous@MkRenderState {..}) = case field of
   PrettyField mAnn name' doc ->
       let
-
           newPosition = case mAnn of
               Just position -> retPos (namePosition position)
               Nothing -> retPos currentPosition
 
       in MkRenderState {
-          currentDoc = currentDoc $+$ renderWithPositionAdjustment mAnn currentPosition name' doc,
+          currentDoc = currentDoc $+$ renderWithPositionAdjustment mAnn currentPosition ((decodeFieldname name') <> ":") [doc],
           currentPosition = newPosition
         }
-  PrettySection ann name' ppDoc sectionFields -> previous -- TODO render section
+  PrettySection mAnn name' ppDocs sectionFields ->
+    let
+          newPosition = case mAnn of
+              Just position -> retPos (namePosition position)
+              Nothing -> retPos currentPosition
+
+          result =  MkRenderState {
+            currentDoc = currentDoc $+$ renderWithPositionAdjustment mAnn currentPosition (decodeFieldname name') ppDocs,
+            currentPosition = newPosition
+          }
+    in renderLines result $ sortFields sectionFields
+
   PrettyEmpty -> previous
 
-renderWithPositionAdjustment :: (Maybe ExactPosition) -> Position -> FieldName -> Doc -> Doc
-renderWithPositionAdjustment mAnn current  name doc =
-  if rows < 0 then error "unexpected empty negative rows"
+decodeFieldname :: FieldName -> String
+decodeFieldname = unpack . Text.decodeUtf8
+
+renderWithPositionAdjustment :: (Maybe ExactPosition) -> Position -> String -> [Doc] -> Doc
+renderWithPositionAdjustment mAnn current  fieldName doc =
+  if rows < 0 then error ("unexpected empty negative rows" <> show (mAnn, current, fieldName, res))
   else
     let
       spacing :: Doc
@@ -78,23 +95,20 @@ renderWithPositionAdjustment mAnn current  name doc =
     in
   spacing $$
   (PP.nest columns
-  (PP.text fieldName ) <> ((PP.hsep ("" <$ [0..offset])) <> doc))
+  (PP.text fieldName ) <> ((PP.hsep ("" <$ [1..offset])) <> fold doc))
   -- <+> "--" <+> PP.text (show ((rows, columns), mAnn, current, offset)) -- DEBUG
   where
-     (Position rows columns) = case mAnn of
+     res@(Position rows columns) = case mAnn of
               Just position -> (namePosition position) `difference` current
               Nothing -> zeroPos
 
      arguments :: [Position]
      arguments = foldMap argumentPosition mAnn
 
-     fieldName :: String
-     fieldName = unpack (Text.decodeUtf8 name) <> ":"
-
      offset :: Int
      offset = (case arguments of
         ((Position _ cols):_) -> cols
-        [] -> 0) - length fieldName - 1
+        [] -> 0) - length fieldName - columns
 
 -- pp randomly changes ordering, this undoes that
 sortFields :: [PrettyField (Maybe ExactPosition)] -> [PrettyField (Maybe ExactPosition)]

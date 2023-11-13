@@ -6,42 +6,23 @@ module Main
 import Prelude ()
 import Prelude.Compat
 
-import Data.Foldable(fold)
 import Data.Maybe(catMaybes)
 import Test.Tasty
 import Data.Text(unpack)
-import Test.Tasty.Golden.Advanced (goldenTest)
 import Test.Tasty.HUnit
 
-import Control.Monad                               (unless, void)
-import Data.Algorithm.Diff                         (PolyDiff (..), getGroupedDiff)
-import Data.Maybe                                  (isNothing)
+import Control.Monad                               (unless)
 import Distribution.Fields                         (runParseResult)
-import Distribution.PackageDescription             (GenericPackageDescription)
 import Distribution.PackageDescription.Parsec      (parseGenericPackageDescription)
-import Distribution.PackageDescription.PrettyPrint (showGenericPackageDescription)
-import Distribution.Parsec                         (PWarnType (..), PWarning (..), showPError, showPWarning)
-import Distribution.Pretty                         (prettyShow)
-import Distribution.Utils.Generic                  (fromUTF8BS, toUTF8BS)
 import System.Directory                            (setCurrentDirectory)
 import System.Environment                          (getArgs, withArgs)
-import System.FilePath                             (replaceExtension, (</>))
-import Data.Text.Encoding(encodeUtf8, decodeUtf8)
+import System.FilePath                             ((</>))
+import Data.Text.Encoding(decodeUtf8)
 import Distribution.PackageDescription.ExactPrint(exactPrint)
 import Data.TreeDiff
 import Text.PrettyPrint hiding ((<>))
 
 import qualified Data.ByteString       as BS
-import qualified Data.ByteString.Char8 as BS8
-import qualified Data.List.NonEmpty    as NE
-
-import qualified Distribution.InstalledPackageInfo as IPI
-
-#ifdef MIN_VERSION_tree_diff
-import Data.TreeDiff                 (ansiWlEditExpr, ediff, toExpr)
-import Data.TreeDiff.Golden          (ediffGolden)
-import Data.TreeDiff.Instances.Cabal ()
-#endif
 
 tests :: TestTree
 tests = testGroup "printer tests"
@@ -55,28 +36,10 @@ tests = testGroup "printer tests"
 -- Parse some cabal file - print it like cabal file
 printExact :: TestTree
 printExact = testGroup "printExact"
-    [ testParsePrintExact "anynone.cabal"
-    -- , warningTest  "nbsp.cabal"
-    -- , warningTest  "tab.cabal"
-    -- , warningTest  "utf8.cabal"
-    -- , warningTest  "bool.cabal"
-    -- , warningTest  "versiontag.cabal"
-    -- , warningTest  "newsyntax.cabal"
-    -- , warningTest  "oldsyntax.cabal"
-    -- , warningTest  "deprecatedfield.cabal"
-    -- , warningTest  "subsection.cabal"
-    -- , warningTest  "unknownfield.cabal"
-    -- , warningTest  "unknownsection.cabal"
-    -- , warningTest  "trailingfield.cabal"
-    -- , warningTest  "doubledash.cabal"
-    -- , warningTest  "multiplesingular.cabal"
-    -- , warningTest  "wildcard.cabal"
-    -- , warningTest  "operator.cabal"
-    -- , warningTest  "specversion-a.cabal"
-    -- , warningTest  "specversion-b.cabal"
-    -- , warningTest  "specversion-c.cabal"
-    -- -- TODO: not implemented yet
-    -- , warningTest PWTExtraTestModule   "extratestmodule.cabal"
+    [ testParsePrintExact "bounded.cabal"
+    -- , testParsePrintExact "anynone.cabal" -- TODO version ranges
+    -- broken by: instance Pretty VersionRange where
+    -- however we currently don't retain enough information to do this exact!
     ]
 
 testParsePrintExact :: FilePath -> TestTree

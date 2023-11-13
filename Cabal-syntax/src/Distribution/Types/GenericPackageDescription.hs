@@ -31,7 +31,7 @@ import Distribution.Types.Library
 import Distribution.Types.TestSuite
 import Distribution.Types.UnqualComponentName
 import Distribution.Version
-import Data.Text(Text, pack)
+import Data.Text(Text)
 import Distribution.Fields.Field(FieldName)
 import Distribution.Parsec.Position(Position)
 
