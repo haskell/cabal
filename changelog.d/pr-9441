@@ -1,0 +1,3 @@
+synopsis: Enable using $ORIGIN in RPATH on GNU/Hurd
+packages: Cabal
+prs: #9441
