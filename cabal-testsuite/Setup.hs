@@ -73,7 +73,7 @@ canonicalizePackageDB x = return x
 -- non-Backpack.
 cabalTestsPackages :: LocalBuildInfo -> [(OpenUnitId, ModuleRenaming)]
 cabalTestsPackages lbi =
-    case componentNameCLBIs lbi (CExeName (mkUnqualComponentName "cabal-tests")) of
+    case componentNameCLBIs lbi (CExeName (mkUnqualComponentName "test-runtime-deps")) of
         [clbi] -> -- [ (unUnitId $ unDefUnitId duid,rn) | (DefiniteUnitId duid, rn) <- componentIncludes clbi ]
                   componentIncludes clbi
         _ -> error "cabalTestsPackages"

@@ -96,6 +96,15 @@ Otherwise, here is a walkthrough:
      ...
    ```
 
+   The dependencies which your test is allowed to use are listed in the
+   cabal file under the `test-runtime-deps` executable. At compile-time there is
+   a custom Setup.hs script which inspects this list and records the versions of
+   each package in a generated file. These are then used when `cabal-tests` runs
+   when it invokes `runghc` to run each test.
+   We ensure they are built and available by listing `test-runtime-deps` in the
+   build-tool-depends section of the cabal-tests executable.
+
+
 3. Run your tests using `cabal-tests` (no need to rebuild when
    you add or modify a test; it is automatically picked up).
    The first time you run a test, assuming everything else is
