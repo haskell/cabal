@@ -1,0 +1,6 @@
+# cabal path
+cache-dir: <ROOT>/cabal.dist/home/.cabal/packages
+logs-dir: <ROOT>/cabal.dist/home/.cabal/logs
+store-dir: <ROOT>/cabal.dist/home/.cabal/store
+config-file: <ROOT>/cabal.dist/home/.cabal/config
+installdir: <ROOT>/cabal.dist/home/.cabal/bin
