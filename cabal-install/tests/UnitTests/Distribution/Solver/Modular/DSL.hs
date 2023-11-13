@@ -491,7 +491,7 @@ exAvSrcPkg ex =
         -- Furthermore we ignore missing upper bound warnings because
         -- they are not related to this test suite, and are tested
         -- with golden tests.
-        let checks = C.checkPackage (srcpkgDescription package) Nothing
+        let checks = C.checkPackage (srcpkgDescription package)
          in filter (\x -> not (isMissingUpperBound x) && not (isUnknownLangExt x)) checks
    in if null pkgCheckErrors
         then package

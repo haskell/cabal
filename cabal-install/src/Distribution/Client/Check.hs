@@ -24,7 +24,6 @@ import Prelude ()
 import Distribution.Client.Utils.Parsec (renderParseError)
 import Distribution.PackageDescription (GenericPackageDescription)
 import Distribution.PackageDescription.Check
-import Distribution.PackageDescription.Configuration (flattenPackageDescription)
 import Distribution.PackageDescription.Parsec
   ( parseGenericPackageDescription
   , runParseResult
@@ -66,22 +65,8 @@ check verbosity = do
   (ws, ppd) <- readGenericPackageDescriptionCheck verbosity pdfile
   -- convert parse warnings into PackageChecks
   let ws' = map (wrapParseWarning pdfile) ws
-  -- flatten the generic package description into a regular package
-  -- description
-  -- TODO: this may give more warnings than it should give;
-  --       consider two branches of a condition, one saying
-  --          ghc-options: -Wall
-  --       and the other
-  --          ghc-options: -Werror
-  --      joined into
-  --          ghc-options: -Wall -Werror
-  --      checkPackages will yield a warning on the last line, but it
-  --      would not on each individual branch.
-  --      However, this is the same way hackage does it, so we will yield
-  --      the exact same errors as it will.
-  let pkg_desc = flattenPackageDescription ppd
-  ioChecks <- checkPackageFiles verbosity pkg_desc "."
-  let packageChecks = ioChecks ++ checkPackage ppd (Just pkg_desc) ++ ws'
+  ioChecks <- checkPackageFilesGPD verbosity ppd "."
+  let packageChecks = ioChecks ++ checkPackage ppd ++ ws'
 
   CM.mapM_ (outputGroupCheck verbosity) (groupChecks packageChecks)
 

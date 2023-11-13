@@ -1181,6 +1181,142 @@ to Hackage requirements for uploaded packages: if no error is reported,
 Hackage should accept your package. If errors are present ``cabal check``
 exits with ``1`` and Hackage will refuse the package.
 
+A list of all warnings with their constructor:
+
+- ParseWarning: warnings inherited from parser.
+- NoNameField: missing ``name`` field.
+- NoVersionField: missing ``version`` field.
+- NoTarget: missing target in ``.cabal``.
+- UnnamedInternal: unnamed internal library.
+- DuplicateSections: duplicate name in target.
+- IllegalLibraryName: internal library with same name as package.
+- NoModulesExposed: no module exposed in library.
+- SignaturesCabal2: ``signatures`` used with ``cabal-version`` < 2.0
+- AutogenNotExposed: ``autogen-module`` neither in ``exposed-modules`` nor ``other-modules``.
+- AutogenIncludesNotIncluded: ``autogen-include`` neither in ``include`` nor ``install-includes``.
+- NoMainIs: missing ``main-is``.
+- NoHsLhsMain: ``main-is`` is not ``.hs`` nor ``.lhs``.
+- MainCCabal1_18: C-like source file in ``main-is`` with ``cabal-version`` < 1.18.
+- AutogenNoOther: ``autogen-module`` not in ``other-modules``.
+- AutogenIncludesNotIncludedExe: ``autogen-include`` not in ``includes``.
+- TestsuiteTypeNotKnown: unknown test-suite type.
+- TestsuiteNotSupported: unsupported test-suite type.
+- BenchmarkTypeNotKnown: unknown benchmark type.
+- BenchmarkNotSupported: unsupported benchmark type.
+- NoHsLhsMainBench: ``main-is`` for benchmark is neither ``.hs`` nor ``.lhs``.
+- InvalidNameWin: invalid package name on Windows.
+- ZPrefix: package with ``z-`` prexif (reseved for Cabal.
+- NoBuildType: missing ``build-type``.
+- NoCustomSetup: ``custom-setup`` section without ``build-type: Custom``
+- UnknownCompilers: unknown compiler in ``tested-with``.
+- UnknownLanguages: unknown languages.
+- UnknownExtensions: unknown extensions.
+- LanguagesAsExtension: languages listed as extensions.
+- DeprecatedExtensions: deprecated extensions.
+- MissingField: missing cabal field (one of ``category``, ``maintainer``, ``synopsis``, ``description``).
+- SynopsisTooLong: ``synopsis`` longer than 80 characters.
+- ShortDesc: ``description`` shorter than ``synopsis``.
+- InvalidTestWith: invalid ``tested-with`` version range.
+- ImpossibleInternalDep: impossible internal library version range dependency.
+- ImpossibleInternalExe: impossible internal executable version range dependency.
+- MissingInternalExe: missing internal executable.
+- NONELicense: ``NONE`` in ``license`` field.
+- NoLicense: no ``license`` field.
+- AllRightsReservedLicense: all rights reserved license.
+- LicenseMessParse: license not to be used with `cabal-version` < 1.4.
+- UnrecognisedLicense: unknown license.
+- UncommonBSD4: uncommon BSD (BSD4) license.
+- UnknownLicenseVersion: unknown license version.
+- NoLicenseFile: missing license file.
+- UnrecognisedSourceRepo: unrecognised kind of source-repository.
+- MissingType: missing ``type`` in ``source-repository``.
+- MissingLocation: missing ``location`` in ``source-repository``.
+- MissingModule: missing ``module`` in ``source-repository``.
+- MissingTag: missing ``tag`` in ``source-repository``.
+- SubdirRelPath: ``subdir`` in ``source-repository`` must be relative.
+- SubdirGoodRelPath: malformed ``subdir`` in ``source-repository``.
+- OptFasm: unnecessary ``-fasm``.
+- OptViaC: unnecessary ``-fvia-C``.
+- OptHpc: unnecessary ``-fhpc``.
+- OptProf: unnecessary ``-prof``.
+- OptO: unnecessary ``-o``.
+- OptHide: unnecessary ``-hide-package``.
+- OptMake: unnecessary ``--make``.
+- OptONot: unnecessary disable optimisation flag.
+- OptOOne: unnecessary optimisation flag (``-O1``).
+- OptOTwo: unnecessary optimisation flag (``-O2``).
+- OptSplitSections: unnecessary ``-split-section``.
+- OptSplitObjs: unnecessary ``-split-objs``.
+- OptWls: unnecessary ``-optl-Wl,-s``.
+- OptExts: use ``extension`` field instead of ``-fglasgow-exts``.
+- OptRts: unnecessary ``-rtsopts``.
+- OptWithRts: unnecessary ``-with-rtsopts``.
+- COptONumber: unnecessary ``-O[n]`` in C code.
+- COptCPP: unportable ``-cpp-options`` flag.
+- OptAlternatives: C-like options in wrong cabal field.
+- RelativeOutside: relative path outside of source tree.
+- AbsolutePath: absolute path where not allowed.
+- BadRelativePath: malformed relative path.
+- DistPoint: unreliable path pointing inside ``dist``.
+- GlobSyntaxError: glob syntax error.
+- RecursiveGlobInRoot: recursive glob including source control folders.
+- InvalidOnWin: invalid path on Windows.
+- FilePathTooLong: path too long.
+- FilePathNameTooLong: path *name* too long (POSIX).
+- FilePathSplitTooLong: path non portable (POSIX, split requirements).
+- FilePathEmpty: empty path.
+- CVTestSuite: ``test-suite`` used with ``cabal-version`` < 1.10.
+- CVDefaultLanguage: ``default-language`` used with ``cabal-version`` < 1.10.
+- CVDefaultLanguageComponent: missing ``default-language``.
+- CVExtraDocFiles: `extra-doc-files` used with ``cabal-version`` < 1.18.
+- CVMultiLib: multiple ``library`` sections with ``cabal-version`` < 2.0.
+- CVReexported: ``reexported-modules`` with ``cabal-version`` < 1.22.
+- CVMixins: ``mixins`` with ``cabal-version`` < 2.0.
+- CVExtraFrameworkDirs: ``extra-framework-dirs`` with ``cabal-version`` < 1.24.
+- CVDefaultExtensions: ``default-extensions`` with ``cabal-version`` < 1.10.
+- CVExtensionsDeprecated: deprecated ``extensions`` field used with ``cabal-version`` ≥ 1.10
+- CVSources: ``asm-sources``, ``cmm-sources``, ``extra-bundled-libraries`` or ``extra-library-flavours`` used with ``cabal-version`` < 3.0.
+- CVExtraDynamic: ``extra-dynamic-library-flavours`` used with cabal-version < 3.0.
+- CVVirtualModules: ``virtual-modules`` used with cabal-version < 2.2.
+- CVSourceRepository: ``source-repository`` used with ``cabal-version`` 1.6.
+- CVExtensions: incompatible language extension with ``cabal-version``.
+- CVCustomSetup: missing ``setup-depends`` field in ``custom-setup`` with ``cabal-version`` ≥ 1.24.
+- CVExpliticDepsCustomSetup: missing dependencies in ``custom-setup`` with ``cabal-version`` ≥ 1.24.
+- CVAutogenPaths: missing autogen ``Paths_*`` modules in ``autogen-modules`` (``cabal-version`` ≥ 2.0).
+- CVAutogenPackageInfo: missing autogen ``PackageInfo_*`` modules in ``autogen-modules`` *and* ``exposed-modules``/``other-modules`` (``cabal-version`` ≥ 2.0).
+- GlobNoMatch: glob pattern not matching any file.
+- GlobExactMatch: glob pattern not matching any file becuase of lack of extension matching (`cabal-version` < 2.4).
+- GlobNoDir: glob pattern trying to match a missing directory.
+- UnknownOS: unknown operating system name in condition.
+- UnknownArch: unknown architecture in condition.
+- UnknownCompiler: unknown compiler in condition.
+- BaseNoUpperBounds: missing upper bounds for important dependencies (``base``, and for ``custom-setup`` ``Cabal`` too).
+- MissingUpperBounds: missing upper bound in dependency (excluding test-suites and benchmarks).
+- SuspiciousFlagName: troublesome flag name (e.g. starting with a dash).
+- DeclaredUsedFlags: unused user flags.
+- NonASCIICustomField: non-ASCII characters in custom field.
+- RebindableClashPaths: ``Rebindable Syntax`` with ``OverloadedStrings``/``OverloadedStrings`` plus autogenerated ``Paths_*`` modules with ``cabal-version`` < 2.2.
+- RebindableClashPackageInfo: ``Rebindable Syntax`` with ``OverloadedStrings``/``OverloadedStrings`` plus autogenerated ``PackageInfo_*`` modules with ``cabal-version`` < 2.2.
+- WErrorUnneeded: ``-WError`` not under a user flag.
+- JUnneeded: suspicious ``-j[n]`` usage.
+- FDeferTypeErrorsUnneeded: suspicious ``-fdefer-type-errors``.
+- DynamicUnneeded: suspicious ``-d*`` debug flag for distributed package.
+- ProfilingUnneeded: suspicious ``-fprof-*`` flag.
+- UpperBoundSetup: missing upper bounds in ``setup-depends``.
+- DuplicateModule: duplicate modules in target.
+- PotentialDupModule: potential duplicate module in target (subject to conditionals).
+- BOMStart: unicode byte order mark (BOM) character at start of file.
+- NotPackageName: filename not matching ``name``.
+- NoDesc: no ``.cabal`` file found in folder.
+- MultiDesc: multiple ``.cabal`` files found in folder.
+- UnknownFile: path refers to a file which does not exist.
+- MissingSetupFile: missing ``Setup.hs`` or ``Setup.lsh``.
+- MissingConfigureScript: missing ``configure`` script with ``build-type: Configure``.
+- UnknownDirectory: paths refer to a directory which does not exist.
+- MissingSourceControl: missing ``source-repository`` section.
+- MissingExpectedDocFiles: missing expected documentation files (changelog).
+- WrongFieldForExpectedDocFiles: documentation files listed in ``extra-source-files`` instead of ``extra-doc-files``.
+
 cabal sdist
 ^^^^^^^^^^^
 

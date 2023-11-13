@@ -24,7 +24,7 @@ Flag UseBinary
   Description: Use the binary package for serializing keys.
 
 Library
- build-depends: base >= 3
+ build-depends: base < 3
  if flag(UseBinary)
    build-depends: binary <10
    CPP-Options: -DUSE_BINARY
@@ -34,7 +34,7 @@ Library
  exposed-modules: Codec.Crypto.RSA
 
 Executable test_rsa
-    build-depends: base >= 3
+    build-depends: base < 3
   CPP-Options: -DRSA_TEST
   Main-Is: Test.hs
   Other-Modules: Codec.Crypto.RSA
@@ -52,7 +52,7 @@ Executable warnings
 
 -- Increasing indentation is also possible if we use braces to delimit field contents.
 Executable warnings2
-  build-depends: { base <5 }
+  build-depends: { base < 5 }
     main-is: { warnings2.hs }
       Other-Modules: FooBar
 
@@ -62,9 +62,9 @@ flag splitBase
 
 Executable warnings3
     if flag(splitBase)
-        build-depends: base >= 3
+        build-depends: base < 3
     else
-        build-depends: base <  3
+        build-depends: base < 5
 
  Main-Is: warnings3.hs
  Other-Modules:

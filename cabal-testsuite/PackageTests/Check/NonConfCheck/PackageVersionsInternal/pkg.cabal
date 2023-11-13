@@ -1,0 +1,19 @@
+cabal-version: 3.0
+name: pkg
+synopsis: synopsis
+description: description
+version: 0
+category: example
+maintainer: none@example.com
+license: GPL-3.0-or-later
+
+library
+  exposed-modules: Foo
+  default-language: Haskell2010
+  build-depends: base <= 3.10
+
+executable test-exe
+  main-is: Main.hs
+  default-language: Haskell2010
+  build-depends: base, pkg
+

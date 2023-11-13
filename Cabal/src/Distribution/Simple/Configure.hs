@@ -2290,7 +2290,7 @@ checkPackageProblems
   -> IO ()
 checkPackageProblems verbosity dir gpkg pkg = do
   ioChecks <- checkPackageFiles verbosity pkg dir
-  let pureChecks = checkPackage gpkg (Just pkg)
+  let pureChecks = checkPackage gpkg
       (errors, warnings) =
         partitionEithers (M.mapMaybe classEW $ pureChecks ++ ioChecks)
   if null errors
