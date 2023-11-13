@@ -1,0 +1,87 @@
+name: Build and release
+
+on:
+  push:
+    tags:
+      - 'v*'
+      - 'cabal-install-*'
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+    branches:
+      - master
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+permissions:
+  pull-requests: read
+
+env:
+  BUILD_LABEL: "run release build"
+
+jobs:
+  check-pr-labels:
+    name: check PR labels
+    runs-on: ubuntu-latest
+    outputs:
+      run_release_workflow: ${{ steps.gen_output.outputs.run_release_workflow }}
+    steps:
+      - id: gen_output
+        run: |
+          if [ "${{ github.event.action }}" == 'labeled' ] ; then
+            if [ ${{ github.event.label.name == '${{ env.BUILD_LABEL }}' }} ] ; then
+              echo run_release_workflow="yes" >> "$GITHUB_OUTPUT"
+            else
+              echo run_release_workflow="no" >> "$GITHUB_OUTPUT"
+            fi
+          elif [ "${{ github.event_name }}" = 'pull_request' ] ; then
+            run_it=$(if gh api --jq '.labels.[].name' /repos/${{ github.repository }}/pulls/${{ github.event.number }} | grep --quiet '^${{ env.BUILD_LABEL }}$' ; then printf "%s" "yes" ; else printf "%s" "no" ; fi)
+            echo "${run_it}"
+            echo run_release_workflow="${run_it}" >> "$GITHUB_OUTPUT"
+          else
+            echo run_release_workflow="yes" >> "$GITHUB_OUTPUT"
+          fi
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+  release-workflow:
+    needs: ["check-pr-labels"]
+    if: ${{ needs.check-pr-labels.outputs.run_release_workflow == 'yes' }}
+    uses: ./.github/workflows/reusable-release.yml
+    with:
+      branches: '["${{ github.ref }}"]'
+
+  release:
+    name: release
+    needs: [ "release-workflow" ]
+    runs-on: ubuntu-latest
+    if: ${{ startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: artifacts-*
+          merge-multiple: true
+          path: ./out
+
+      - name: Install requirements
+        run: |
+          sudo apt-get update && sudo apt-get install -y tar xz-utils
+        shell: bash
+
+      - name: build sdists
+        run: |
+          cabal sdist -o out all
+        shell: bash
+
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        with:
+          draft: true
+          files: |
+            ./out/*
+
