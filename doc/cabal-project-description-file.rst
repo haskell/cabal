@@ -1712,6 +1712,10 @@ Most users generally won't need these.
 
     The command line variant of this field is ``--solver=modular``.
 
+    .. warning::
+
+    This CLI option has been deprecated and will be removed in a future release.
+
 .. cfg-field:: max-backjumps: nat
                --max-backjumps=N
     :synopsis: Maximum number of solver backjumps.

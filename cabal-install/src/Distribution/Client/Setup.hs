@@ -236,6 +236,8 @@ import System.FilePath
   ( (</>)
   )
 
+import System.IO.Unsafe (unsafePerformIO)
+
 globalCommand :: [Command action] -> CommandUI GlobalFlags
 globalCommand commands =
   CommandUI
@@ -934,7 +936,13 @@ configureExOptions _showOrParseArgs src =
           )
           (map prettyShow)
       )
-  , optionSolver configSolver (\v flags -> flags{configSolver = v})
+  , optionSolver
+      configSolver
+      ( \_ flags ->
+          unsafePerformIO $ do
+            putStrLn "[WARNING] The --solver flag is deprecated and will be removed in a future release."
+            return flags
+      )
   , option
       []
       ["allow-older"]
@@ -2160,9 +2168,6 @@ defaultMaxBackjumps = 4000
 
 defaultSolver :: PreSolver
 defaultSolver = AlwaysModular
-
-allSolvers :: String
-allSolvers = intercalate ", " (map prettyShow ([minBound .. maxBound] :: [PreSolver]))
 
 installCommand
   :: CommandUI
@@ -3424,16 +3429,16 @@ optionSolver get set =
   option
     []
     ["solver"]
-    ("Select dependency solver to use (default: " ++ prettyShow defaultSolver ++ "). Choices: " ++ allSolvers ++ ".")
+    ("[DEPRECATED] Select dependency solver to use (default: modular). Choices: modular.")
     get
     set
     ( reqArg
         "SOLVER"
         ( parsecToReadE
-            (const $ "solver must be one of: " ++ allSolvers)
+            (const $ "solver must be one of: modular")
             (toFlag `fmap` parsec)
         )
-        (flagToList . fmap prettyShow)
+        (flagToList . fmap (\_ -> "modular"))
     )
 
 optionSolverFlags
