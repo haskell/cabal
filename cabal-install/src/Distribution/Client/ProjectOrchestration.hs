@@ -3,6 +3,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ViewPatterns #-}
 
 -- | This module deals with building and incrementally rebuilding a collection
 -- of packages. It is what backs the @cabal build@ and @configure@ commands,
@@ -642,7 +643,7 @@ resolveTargets
       checkTarget :: TargetSelector -> Either (TargetProblem err) [(UnitId, ComponentTarget)]
 
       -- We can ask to build any whole package, project-local or a dependency
-      checkTarget bt@(TargetPackage _ [pkgid] mkfilter)
+      checkTarget bt@(TargetPackage _ (ordNub -> [pkgid]) mkfilter)
         | Just ats <-
             fmap (maybe id filterTargetsKind mkfilter) $
               Map.lookup pkgid availableTargetsByPackageId =
