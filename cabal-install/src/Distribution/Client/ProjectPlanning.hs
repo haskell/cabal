@@ -258,7 +258,7 @@ sanityCheckElaboratedConfiguredPackage
   -> a
   -> a
 sanityCheckElaboratedConfiguredPackage
-  _sharedConfig
+  sharedConfig
   elab@ElaboratedConfiguredPackage{..} =
     ( case elabPkgOrComp of
         ElabPackage pkg -> sanityCheckElaboratedPackage elab pkg
@@ -273,10 +273,12 @@ sanityCheckElaboratedConfiguredPackage
       -- 'installedPackageId' we assigned is consistent with
       -- the 'hashedInstalledPackageId' we would compute from
       -- the elaborated configured package
-      -- . assert (isInplaceBuildStyle elabBuildStyle ||
-      --    elabComponentId == hashedInstalledPackageId
-      --                           (packageHashInputs sharedConfig elab))
-
+      . assert
+        ( isInplaceBuildStyle elabBuildStyle
+            || elabComponentId
+              == hashedInstalledPackageId
+                (packageHashInputs sharedConfig elab)
+        )
       -- the stanzas explicitly disabled should not be available
       . assert
         ( optStanzaSetNull $
@@ -3293,9 +3295,7 @@ pruneInstallPlanPass1 pkgs
     prune :: ElaboratedConfiguredPackage -> PrunedPackage
     prune elab = PrunedPackage elab' (pruneOptionalDependencies elab')
       where
-        elab' =
-          setDocumentation $
-            addOptionalStanzas elab
+        elab' = addOptionalStanzas elab
 
     graph = Graph.fromDistinctList pkgs'
 
@@ -3443,24 +3443,6 @@ pruneInstallPlanPass1 pkgs
             -- (pruning is done after improvement)
             <> optionalStanzasWithDepsAvailable availablePkgs elab pkg
     addOptionalStanzas elab = elab
-
-    setDocumentation :: ElaboratedConfiguredPackage -> ElaboratedConfiguredPackage
-    setDocumentation elab@ElaboratedConfiguredPackage{elabPkgOrComp = ElabComponent comp} =
-      elab
-        { elabBuildHaddocks =
-            elabBuildHaddocks elab && documentationEnabled (compSolverName comp) elab
-        }
-      where
-        documentationEnabled c =
-          case c of
-            CD.ComponentLib -> const True
-            CD.ComponentSubLib _ -> elabHaddockInternal
-            CD.ComponentFLib _ -> elabHaddockForeignLibs
-            CD.ComponentExe _ -> elabHaddockExecutables
-            CD.ComponentTest _ -> elabHaddockTestSuites
-            CD.ComponentBench _ -> elabHaddockBenchmarks
-            CD.ComponentSetup -> const False
-    setDocumentation elab = elab
 
     -- Calculate package dependencies but cut out those needed only by
     -- optional stanzas that we've determined we will not enable.
