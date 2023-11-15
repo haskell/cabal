@@ -518,7 +518,7 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
           }
       dynLinkerOpts =
         mempty
-          { ghcOptRPaths = rpaths
+          { ghcOptRPaths = rpaths <> toNubListR (extraLibDirs bnfo)
           , ghcOptInputFiles =
               toNubListR
                 [tmpDir </> x | x <- cLikeObjs ++ cxxObjs ++ cmmObjs ++ asmObjs]
