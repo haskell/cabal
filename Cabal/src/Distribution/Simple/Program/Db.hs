@@ -32,6 +32,7 @@ module Distribution.Simple.Program.Db (
     restoreProgramDb,
 
     -- ** Query and manipulate the program db
+<<<<<<< HEAD
     addKnownProgram,
     addKnownPrograms,
     appendProgramSearchPath,
@@ -49,6 +50,25 @@ module Distribution.Simple.Program.Db (
     lookupProgram,
     updateProgram,
     configuredPrograms,
+=======
+  , addKnownProgram
+  , addKnownPrograms
+  , lookupKnownProgram
+  , knownPrograms
+  , getProgramSearchPath
+  , setProgramSearchPath
+  , modifyProgramSearchPath
+  , userSpecifyPath
+  , userSpecifyPaths
+  , userMaybeSpecifyPath
+  , userSpecifyArgs
+  , userSpecifyArgss
+  , userSpecifiedArgs
+  , lookupProgram
+  , lookupProgramByName
+  , updateProgram
+  , configuredPrograms
+>>>>>>> 53fc3d36f (Use linker capability detection to improve linker use)
 
     -- ** Query and manipulate the program db
     configureProgram,
@@ -309,7 +329,11 @@ userSpecifiedArgs prog =
 
 -- | Try to find a configured program
 lookupProgram :: Program -> ProgramDb -> Maybe ConfiguredProgram
-lookupProgram prog = Map.lookup (programName prog) . configuredProgs
+lookupProgram = lookupProgramByName . programName
+
+-- | Try to find a configured program
+lookupProgramByName :: String -> ProgramDb -> Maybe ConfiguredProgram
+lookupProgramByName name = Map.lookup name . configuredProgs
 
 
 -- | Update a configured program in the database.

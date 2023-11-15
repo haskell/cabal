@@ -73,10 +73,16 @@ import Distribution.PackageDescription.Configuration
 import Distribution.PackageDescription.Check hiding (doesFileExist)
 import Distribution.Simple.BuildToolDepends
 import Distribution.Simple.Program
+<<<<<<< HEAD
 import Distribution.Simple.Setup as Setup
 import Distribution.Simple.BuildTarget
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Program.Db (appendProgramSearchPath)
+=======
+import Distribution.Simple.Program.Db (lookupProgramByName)
+import Distribution.Simple.Setup.Common as Setup
+import Distribution.Simple.Setup.Config as Setup
+>>>>>>> 53fc3d36f (Use linker capability detection to improve linker use)
 import Distribution.Simple.Utils
 import Distribution.System
 import Distribution.Types.PackageVersionConstraint
@@ -619,6 +625,7 @@ configure (pkg_descr0, pbi) cfg = do
                                       "--enable-split-sections; ignoring")
                                 return False
 
+<<<<<<< HEAD
     -- Decide if we're going to compile with split objects.
     split_objs :: Bool <-
        if not (fromFlag $ configSplitObjs cfg)
@@ -679,6 +686,44 @@ configure (pkg_descr0, pbi) cfg = do
               ++ " GHC 9.4 and later; ignoring..."
           return False
         v -> return v
+=======
+  -- Basically yes/no/unknown.
+  let linkerSupportsRelocations :: Maybe Bool
+      linkerSupportsRelocations =
+        case lookupProgramByName "ld" programDb'' of
+          Nothing -> Nothing
+          Just ld ->
+            case Map.lookup "Supports relocatable output" $ programProperties ld of
+              Just "YES" -> Just True
+              Just "NO" -> Just False
+              _other -> Nothing
+  let ghciLibByDefault =
+        case compilerId comp of
+          CompilerId GHC _ ->
+            -- If ghc is non-dynamic, then ghci needs object files,
+            -- so we build one by default.
+            --
+            -- Technically, archive files should be sufficient for ghci,
+            -- but because of GHC bug #8942, it has never been safe to
+            -- rely on them. By the time that bug was fixed, ghci had
+            -- been changed to read shared libraries instead of archive
+            -- files (see next code block).
+            not (GHC.isDynamic comp)
+          CompilerId GHCJS _ ->
+            not (GHCJS.isDynamic comp)
+          _ -> False
+
+  withGHCiLib_ <-
+    case fromFlagOrDefault ghciLibByDefault (configGHCiLib cfg) of
+      -- NOTE: If linkerSupportsRelocations is Nothing this may still fail if the
+      -- linker does not support -r.
+      True | not (fromMaybe True linkerSupportsRelocations) -> do
+        warn verbosity $
+          "--enable-library-for-ghci is not supported with the current"
+            ++ "  linker; ignoring..."
+        return False
+      v -> return v
+>>>>>>> 53fc3d36f (Use linker capability detection to improve linker use)
 
     let sharedLibsByDefault
           | fromFlag (configDynExe cfg) =
