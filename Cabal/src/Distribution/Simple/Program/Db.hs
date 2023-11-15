@@ -46,6 +46,7 @@ module Distribution.Simple.Program.Db
   , userSpecifyArgss
   , userSpecifiedArgs
   , lookupProgram
+  , lookupProgramByName
   , updateProgram
   , configuredPrograms
 
@@ -299,7 +300,11 @@ userSpecifiedArgs prog =
 
 -- | Try to find a configured program
 lookupProgram :: Program -> ProgramDb -> Maybe ConfiguredProgram
-lookupProgram prog = Map.lookup (programName prog) . configuredProgs
+lookupProgram = lookupProgramByName . programName
+
+-- | Try to find a configured program
+lookupProgramByName :: String -> ProgramDb -> Maybe ConfiguredProgram
+lookupProgramByName name = Map.lookup name . configuredProgs
 
 -- | Update a configured program in the database.
 updateProgram
