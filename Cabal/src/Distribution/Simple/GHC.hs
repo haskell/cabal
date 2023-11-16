@@ -2022,7 +2022,7 @@ getRPaths lbi clbi | supportRPaths hostOS = do
     supportRPaths Android = False
     supportRPaths Ghcjs = False
     supportRPaths Wasi = False
-    supportRPaths Hurd = False
+    supportRPaths Hurd = True
     supportRPaths Haiku = False
     supportRPaths (OtherOS _) = False
 -- Do _not_ add a default case so that we get a warning here when a new OS
