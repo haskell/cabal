@@ -18,6 +18,12 @@ source-repository head
   location: https://github.com/haskell/cabal/
   subdir:   Cabal-tests
 
+-- Common utilities which can be used by all tests.
+library
+  hs-source-dirs: lib
+  exposed-modules: Test.Utils.TempTestDir
+  build-depends: base, directory, Cabal
+
 -- Small, fast running tests.
 test-suite unit-tests
   type:             exitcode-stdio-1.0
@@ -58,6 +64,7 @@ test-suite unit-tests
     , Cabal-described
     , Cabal-syntax
     , Cabal-QuickCheck
+    , Cabal-tests
     , containers
     , deepseq
     , Diff                >=0.4   && <0.6

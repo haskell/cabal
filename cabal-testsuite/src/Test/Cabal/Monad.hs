@@ -72,7 +72,7 @@ import Distribution.Simple.Configure
 import qualified Distribution.Simple.Utils as U (cabalVersion)
 import Distribution.Text
 
-import Distribution.Utils.TempTestDir (removeDirectoryRecursiveHack)
+import Test.Utils.TempTestDir (removeDirectoryRecursiveHack)
 import Distribution.Verbosity
 import Distribution.Version
 
