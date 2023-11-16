@@ -40,6 +40,7 @@ module Test.Cabal.Monad (
     testKeysDir,
     testSourceCopyDir,
     testCabalDir,
+    testStoreDir,
     testUserCabalConfigFile,
     testActualFile,
     -- * Skipping tests
@@ -347,7 +348,8 @@ runTestM mode m =
                     testCabalProjectFile = Nothing,
                     testPlan = Nothing,
                     testRecordDefaultMode = DoNotRecord,
-                    testRecordUserMode = Nothing
+                    testRecordUserMode = Nothing,
+                    testMaybeStoreDir = Nothing
                 }
     let go = do cleanup
                 r <- withSourceCopy m
@@ -595,6 +597,7 @@ data TestEnv = TestEnv
       testSourceDir     :: FilePath
     -- | Somewhere to stow temporary files needed by the test.
     , testTmpDir        :: FilePath
+
     -- | Test sub-name, used to qualify dist/database directory to avoid
     -- conflicts.
     , testSubName       :: String
@@ -652,6 +655,8 @@ data TestEnv = TestEnv
     , testRecordDefaultMode :: RecordMode
     -- | User explicitly set record mode.  Not implemented ATM.
     , testRecordUserMode :: Maybe RecordMode
+    -- | Path to the storedir used by the test, if not the default
+    , testMaybeStoreDir      :: Maybe FilePath
     }
     deriving Show
 
@@ -726,6 +731,11 @@ testSourceCopyDir env = testTmpDir env
 -- | The user cabal directory
 testCabalDir :: TestEnv -> FilePath
 testCabalDir env = testHomeDir env </> ".cabal"
+
+testStoreDir :: TestEnv -> FilePath
+testStoreDir env = case testMaybeStoreDir env of
+                      Just dir -> dir
+                      Nothing -> testCabalDir env </> "store"
 
 -- | The user cabal config file
 testUserCabalConfigFile :: TestEnv -> FilePath
