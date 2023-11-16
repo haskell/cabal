@@ -10,12 +10,11 @@ import Test.Cabal.Prelude
 -- Issue #5409 caused v2-build to use the same instance of build-tool-pkg for
 -- the build-depends and build-tool-depends dependencies, even though it
 -- violated the version constraints.
-main = withShorterPathForNewBuildStore $ \storeDir ->
-  cabalTest $ do
+main = cabalTest $ withShorterPathForNewBuildStore $ do
     skipUnless "not v2-build compatible boot Cabal" =<< hasNewBuildCompatBootCabal
     withRepo "repo" $ do
       r1 <- recordMode DoNotRecord $
-            cabalG' ["--store-dir=" ++ storeDir] "v2-build" ["pkg:my-exe"]
+            cabal' "v2-build" ["pkg:my-exe"]
 
       let msg = concat
               [ "In order, the following will be built:"
