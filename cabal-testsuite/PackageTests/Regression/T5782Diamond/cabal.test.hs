@@ -20,25 +20,27 @@
 -- as failed compilation or wrong exe output, which I do check.
 
 import Test.Cabal.Prelude
-main = withShorterPathForNewBuildStore $ \storeDir ->
-  cabalTest $ withDelay $ do
+main =
+  cabalTest $ withShorterPathForNewBuildStore .
+    withDelay $ do
+        storeDir <- testStoreDir <$> getTestEnv
         writeSourceFile "issue5782/src/Module.hs" "module Module where\nf = \"AAA\""
         recordMode DoNotRecord $
-          cabalG ["--store-dir=" ++ storeDir, "--installdir=" ++ storeDir, "--overwrite-policy=always"] "v2-install" ["issue5782"]
+          cabalG ["--installdir=" ++ storeDir, "--overwrite-policy=always"] "v2-install" ["issue5782"]
         withPlan $
             runPlanExe' "issue5782" "E" []
                 >>= assertOutputContains "AAA"
         delay
         writeSourceFile "issue5782/src/Module.hs" "module Module where\nf = \"BBB\""
         recordMode DoNotRecord $
-          cabalG ["--store-dir=" ++ storeDir, "--installdir=" ++ storeDir, "--overwrite-policy=always"] "v2-install" ["issue5782"]
+          cabalG ["--installdir=" ++ storeDir, "--overwrite-policy=always"] "v2-install" ["issue5782"]
         withPlan $
             runPlanExe' "issue5782" "E" []
                 >>= assertOutputContains "BBB"
         writeSourceFile "issue5782/src/Module.hs" "module Module where\nf = \"CCC\""
         delay  -- different spot to try another scenario
         recordMode DoNotRecord $
-          cabalG ["--store-dir=" ++ storeDir, "--installdir=" ++ storeDir, "--overwrite-policy=always"] "v2-install" ["issue5782"]
+          cabalG ["--installdir=" ++ storeDir, "--overwrite-policy=always"] "v2-install" ["issue5782"]
         withPlan $
             runPlanExe' "issue5782" "E" []
                 >>= assertOutputContains "CCC"

@@ -22,7 +22,11 @@ source-repository head
 library
   hs-source-dirs: lib
   exposed-modules: Test.Utils.TempTestDir
+<<<<<<< HEAD
   build-depends: base, directory, Cabal
+=======
+  build-depends: base, directory, Cabal, filepath, exceptions
+>>>>>>> 2a2d0b304 (testsuite: Refactor withShorterPathForNewBuildStore)
 
 -- Small, fast running tests.
 test-suite unit-tests
