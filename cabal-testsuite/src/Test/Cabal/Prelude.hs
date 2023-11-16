@@ -39,7 +39,7 @@ import Distribution.Parsec (eitherParsec)
 import Distribution.Types.UnqualComponentName
 import Distribution.Types.LocalBuildInfo
 import Distribution.PackageDescription
-import Distribution.Utils.TempTestDir (withTestDir)
+import Test.Utils.TempTestDir (withTestDir)
 import Distribution.Verbosity (normal)
 
 import Distribution.Compat.Stack
