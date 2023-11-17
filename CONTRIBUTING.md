@@ -38,20 +38,20 @@ cabal build cabal-tests # etc...
 Running tests
 -------------
 
-**Using Github Actions.**
+**Using GitHub Actions.**
 If you are not in a hurry, the most convenient way to run tests on Cabal
 is to make a branch on GitHub and then open a pull request; our
-continuous integration service on Github Actions builds and
+continuous integration service on GitHub Actions builds and
 tests your code.  Title your PR with WIP so we know that it does not need
 code review.
 
-Some tips for using Github Actions effectively:
+Some tips for using GitHub Actions effectively:
 
-* Github Actions builds take a long time.  Use them when you are pretty
+* GitHub Actions builds take a long time.  Use them when you are pretty
   sure everything is OK; otherwise, try to run relevant tests locally
   first.
 
-* Watch over your jobs on the [Github Actions website](http://github.org/haskell/cabal/actions).
+* Watch over your jobs on the [GitHub Actions website](http://github.org/haskell/cabal/actions).
   If you know a build of yours is going to fail (because one job has
   already failed), be nice to others and cancel the rest of the jobs,
   so that other commits on the build queue can be processed.
@@ -75,9 +75,9 @@ failures:
    a specific operating system?  If so, try reproducing the
    problem on the specific configuration.
 
-4. Is the test failing on a Github Actions per-GHC build.
+4. Is the test failing on a GitHub Actions per-GHC build.
    In this case, if you click on "Branch", you can get access to
-   the precise binaries that were built by Github Actions that are being
+   the precise binaries that were built by GitHub Actions that are being
    tested.  If you have an Ubuntu system, you can download
    the binaries and run them directly.
 
@@ -176,7 +176,7 @@ Other Conventions
 * Our GHC support window is five years for the Cabal library and three
   years for cabal-install: that is, the Cabal library must be
   buildable out-of-the-box with the dependencies that shipped with GHC
-  for at least five years.  The Travis CI checks this, so most
+  for at least five years.  GitHub Actions checks this, so most
   developers submit a PR to see if their code works on all these
   versions of GHC.  `cabal-install` must also be buildable on all
   supported GHCs, although it does not have to be buildable
@@ -218,7 +218,7 @@ GitHub Ticket Conventions
 
 Each major `Cabal`/`cabal-install` release (e.g. 3.4, 3.6, etc.) has a
 corresponding GitHub Project and milestone. A ticket is included in a release's
-project if the release managers are tenatively planning on including a fix for
+project if the release managers are tentatively planning on including a fix for
 the ticket in the release, i.e. if they are actively seeking someone to work on
 the ticket.
 
@@ -246,6 +246,11 @@ label) and the moment the Mergify bot picks up the pull request for a merge.
 If your pull request consists of several commits, consider using `squash+merge
 me` instead of `merge me`: the Mergify bot will squash all the commits into one
 and concatenate the commit messages of the commits before merging.
+
+There is also a `merge+no rebase` label. Use this very sparingly, as not rebasing
+severely complicates Git history. It is intended for special circumstances, as when
+the PR branch cannot or should not be modified. If you have any questions about it,
+please ask us.
 
 Changelog
 ---------
