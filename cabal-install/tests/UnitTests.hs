@@ -19,6 +19,7 @@ import qualified UnitTests.Distribution.Client.Store
 import qualified UnitTests.Distribution.Client.Tar
 import qualified UnitTests.Distribution.Client.Targets
 import qualified UnitTests.Distribution.Client.UserConfig
+import qualified UnitTests.Distribution.Client.ScriptUtils
 import qualified UnitTests.Distribution.Solver.Modular.Builder
 import qualified UnitTests.Distribution.Solver.Modular.RetryLog
 import qualified UnitTests.Distribution.Solver.Modular.Solver
@@ -43,6 +44,9 @@ main = do
       , testGroup
           "UnitTests.Distribution.Client.Get"
           UnitTests.Distribution.Client.Get.tests
+      , testGroup
+          "UnitTests.Distribution.Client.ScriptUtils"
+          UnitTests.Distribution.Client.ScriptUtils.tests
       , testGroup
           "UnitTests.Distribution.Client.Glob"
           UnitTests.Distribution.Client.Glob.tests

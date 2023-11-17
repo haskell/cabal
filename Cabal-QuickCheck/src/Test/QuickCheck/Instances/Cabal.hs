@@ -1,7 +1,7 @@
 {-# LANGUAGE CPP           #-}
 {-# LANGUAGE TypeOperators #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
-module Test.QuickCheck.Instances.Cabal () where
+module Test.QuickCheck.Instances.Cabal ( ShortPath(..) ) where
 
 import Control.Applicative        (liftA2)
 import Data.Bits                  (shiftR)
@@ -55,6 +55,15 @@ import qualified Distribution.Compat.NonEmptySet as NES
 #if !MIN_VERSION_base(4,8,0)
 import Control.Applicative (pure, (<$>), (<*>))
 #endif
+
+-------------------------------------------------------------------------------
+-- ShortPath
+-------------------------------------------------------------------------------
+
+newtype ShortPath = ShortPath FilePath deriving (Show)
+
+instance Arbitrary ShortPath where
+  arbitrary = ShortPath <$> arbitraryShortPath
 
 -------------------------------------------------------------------------------
 -- CabalSpecVersion

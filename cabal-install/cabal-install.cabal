@@ -317,6 +317,7 @@ test-suite unit-tests
       UnitTests.Distribution.Solver.Modular.DSL.TestCaseUtils
       UnitTests.Distribution.Solver.Modular.WeightedPSQ
       UnitTests.Distribution.Solver.Types.OptionalStanza
+      UnitTests.Distribution.Client.ScriptUtils
       UnitTests.Options
 
     build-depends:
