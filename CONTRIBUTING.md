@@ -51,6 +51,12 @@ Some tips for using GitHub Actions effectively:
   sure everything is OK; otherwise, try to run relevant tests locally
   first.
 
+* If you are only changing documentation in the `docs/` subdirectory,
+  or if you change `README.md` or `CONTRIBUTING.md`, then we only run a
+  small subset of the CI jobs. You can therefore open small PRs with
+  improvements to the documentation without feeling guilty about wasted
+  resources!
+
 * Watch over your jobs on the [GitHub Actions website](http://github.org/haskell/cabal/actions).
   If you know a build of yours is going to fail (because one job has
   already failed), be nice to others and cancel the rest of the jobs,
