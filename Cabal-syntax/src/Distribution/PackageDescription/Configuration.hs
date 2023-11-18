@@ -476,7 +476,7 @@ finalizePD
   (Platform arch os)
   impl
   constraints
-  (GenericPackageDescription pkg _ver flags mb_lib0 sub_libs0 flibs0 exes0 tests0 bms0) = do
+  (GenericPackageDescription pkg _ver flags mb_lib0 sub_libs0 flibs0 exes0 tests0 bms0 _exactPrintMeta) = do
     (targetSet, flagVals) <-
       resolveWithFlags flagChoices enabled os arch impl constraints condTrees check
     let
@@ -556,7 +556,7 @@ resolveWithFlags [] Distribution.System.Linux Distribution.System.I386 (Distribu
 -- function.
 flattenPackageDescription :: GenericPackageDescription -> PackageDescription
 flattenPackageDescription
-  (GenericPackageDescription pkg _ _ mlib0 sub_libs0 flibs0 exes0 tests0 bms0) =
+  (GenericPackageDescription pkg _ _ mlib0 sub_libs0 flibs0 exes0 tests0 bms0 _exactPrintMeta) =
     pkg
       { library = mlib
       , subLibraries = reverse sub_libs

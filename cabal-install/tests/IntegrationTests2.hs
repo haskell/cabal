@@ -462,17 +462,10 @@ testTargetSelectorAmbiguous reportSubCase = do
         srcpkgPackageId = pkgid,
         srcpkgSource = LocalUnpackedPackage loc,
         srcpkgDescrOverride  = Nothing,
-        srcpkgDescription = GenericPackageDescription {
+        srcpkgDescription = emptyGenericPackageDescription {
           packageDescription = emptyPackageDescription { package = pkgid },
-          gpdScannedVersion  = Nothing,
-          genPackageFlags    = [],
-          condLibrary        = Nothing,
-          condSubLibraries   = [],
-          condForeignLibs    = [],
           condExecutables    = [ ( exeName exe, CondNode exe [] [] )
-                               | exe <- exes ],
-          condTestSuites     = [],
-          condBenchmarks     = []
+                               | exe <- exes ]
         }
       }
       where

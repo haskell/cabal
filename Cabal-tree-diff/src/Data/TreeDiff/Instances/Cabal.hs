@@ -11,12 +11,14 @@ import Data.TreeDiff.Instances.CabalVersion ()
 
 -------------------------------------------------------------------------------
 
+import Distribution.Parsec.Position(Position)
 import Distribution.Backpack                       (OpenModule, OpenUnitId)
 import Distribution.CabalSpecVersion               (CabalSpecVersion)
 import Distribution.Compiler                       (CompilerFlavor, CompilerId, PerCompilerFlavor)
 import Distribution.InstalledPackageInfo           (AbiDependency, ExposedModule, InstalledPackageInfo)
 import Distribution.ModuleName                     (ModuleName)
 import Distribution.PackageDescription
+import Distribution.Types.GenericPackageDescription(ExactPrintMeta)
 import Distribution.Simple.Compiler                (DebugInfoLevel, OptimisationLevel, ProfDetailLevel)
 import Distribution.Simple.Flag                    (Flag)
 import Distribution.Simple.InstallDirs
@@ -83,6 +85,9 @@ instance ToExpr FlagName
 instance ToExpr ForeignLib
 instance ToExpr ForeignLibOption
 instance ToExpr ForeignLibType
+instance ToExpr Position
+instance ToExpr ExactPosition
+instance ToExpr ExactPrintMeta
 instance ToExpr GenericPackageDescription
 instance ToExpr HaddockTarget
 instance ToExpr IncludeRenaming

@@ -81,7 +81,7 @@ allCondTrees
      )
   -> GenericPackageDescription
   -> f GenericPackageDescription
-allCondTrees f (GenericPackageDescription p v a1 x1 x2 x3 x4 x5 x6) =
+allCondTrees f (GenericPackageDescription p v a1 x1 x2 x3 x4 x5 x6 exactPrintMeta) =
   GenericPackageDescription
     <$> pure p
     <*> pure v
@@ -92,6 +92,7 @@ allCondTrees f (GenericPackageDescription p v a1 x1 x2 x3 x4 x5 x6) =
     <*> (traverse . _2) f x4
     <*> (traverse . _2) f x5
     <*> (traverse . _2) f x6
+    <*> pure exactPrintMeta
 
 -------------------------------------------------------------------------------
 -- Flag

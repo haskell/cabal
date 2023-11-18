@@ -100,6 +100,30 @@ test-suite parser-tests
   ghc-options:      -Wall
   default-language: Haskell2010
 
+test-suite printer-tests
+  type:             exitcode-stdio-1.0
+  hs-source-dirs:   tests
+  main-is:          PrinterTests.hs
+  build-depends:
+      base
+    , base-compat       >=0.11.0  && <0.14
+    , text
+    , bytestring
+    , Cabal-syntax
+    , Cabal-tree-diff
+    , Diff              >=0.4     && <0.6
+    , directory
+    , filepath
+    , tasty             >=1.2.3   && <1.6
+    , tasty-golden      >=2.3.1.1 && <2.4
+    , tasty-hunit
+    , tasty-quickcheck
+    , tree-diff         >=0.1     && <0.4
+    , pretty
+
+  ghc-options:      -Wall
+  default-language: Haskell2010
+
 test-suite check-tests
   type:             exitcode-stdio-1.0
   hs-source-dirs:   tests

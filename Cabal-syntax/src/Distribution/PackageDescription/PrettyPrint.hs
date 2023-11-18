@@ -237,6 +237,7 @@ pdToGpd pd =
     , condExecutables = mkCondTree' exeName <$> executables pd
     , condTestSuites = mkCondTree' testName <$> testSuites pd
     , condBenchmarks = mkCondTree' benchmarkName <$> benchmarks pd
+    , exactPrintMeta = emptyExactPrintMeta
     }
   where
     -- We set CondTree's [Dependency] to an empty list, as it
