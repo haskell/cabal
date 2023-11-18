@@ -12,7 +12,7 @@ import Distribution.Types.GenericPackageDescription
 import Distribution.PackageDescription.PrettyPrint
 import Data.Text(Text, pack, unpack)
 import qualified Text.PrettyPrint as PP
-import Text.PrettyPrint(Doc, ($+$), ($$))
+import Text.PrettyPrint(Doc, ($+$), ($$), (<+>))
 import qualified Data.Map as Map
 import Data.Map(Map)
 import Distribution.Fields.Pretty
@@ -62,22 +62,28 @@ renderLine :: PrettyField (Maybe ExactPosition) -> RenderState -> RenderState
 renderLine field (previous@MkRenderState {..}) = case field of
   PrettyField mAnn name' doc ->
       let
-          newPosition = case mAnn of
-              Just position -> retPos (namePosition position)
-              Nothing -> retPos currentPosition
+          newPosition = retManyPos docLines $ case mAnn of
+              Just position -> (namePosition position)
+              Nothing -> currentPosition
+
+          docLines :: Int
+          docLines = (length $ lines $ PP.render doc)
 
       in MkRenderState {
-          currentDoc = currentDoc $+$ renderWithPositionAdjustment mAnn currentPosition ((decodeFieldname name') <> ":") [doc],
+          currentDoc = currentDoc $$ renderWithPositionAdjustment mAnn currentPosition ((decodeFieldname name') <> ":") [doc],
           currentPosition = newPosition
         }
   PrettySection mAnn name' ppDocs sectionFields ->
     let
-          newPosition = case mAnn of
-              Just position -> retPos (namePosition position)
-              Nothing -> retPos currentPosition
+          newPosition = retManyPos docLines $ case mAnn of
+              Just position -> (namePosition position)
+              Nothing -> currentPosition
+
+          docLines :: Int
+          docLines = (length $ lines $ PP.render $ fold ppDocs)
 
           result =  MkRenderState {
-            currentDoc = currentDoc $+$ renderWithPositionAdjustment mAnn currentPosition (decodeFieldname name') ppDocs,
+            currentDoc = currentDoc $$ renderWithPositionAdjustment mAnn currentPosition (decodeFieldname name') ppDocs,
             currentPosition = newPosition
           }
     in renderLines result $ sortFields sectionFields
@@ -98,7 +104,7 @@ renderWithPositionAdjustment mAnn current  fieldName doc =
   spacing $$
   (PP.nest columns
   (PP.text fieldName ) <> ((PP.hsep ("" <$ [1..offset])) <> fold doc))
-  -- <+> "--" <+> PP.text (show ((rows, columns), mAnn, current, offset)) -- DEBUG
+  -- <+> "--" <+> PP.text (show (("rows=", rows, "columns=", columns), mAnn, ("current=", current), docLines )) -- DEBUG
   where
      res@(Position rows columns) = case mAnn of
               Just position -> (namePosition position) `difference` current
@@ -106,6 +112,9 @@ renderWithPositionAdjustment mAnn current  fieldName doc =
 
      arguments :: [Position]
      arguments = foldMap argumentPosition mAnn
+
+     docLines :: Int
+     docLines = (length $ lines $ PP.render $ fold doc) - 1
 
      offset :: Int
      offset = (case arguments of

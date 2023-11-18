@@ -5,6 +5,7 @@ module Distribution.Parsec.Position
   ( Position (..)
   , incPos
   , retPos
+  , retManyPos
   , showPos
   , zeroPos
   , positionCol
@@ -32,7 +33,10 @@ incPos n (Position row col) = Position row (col + n)
 
 -- | Shift position to beginning of next row.
 retPos :: Position -> Position
-retPos (Position row _col) = Position (row + 1) 1
+retPos pos = retManyPos 1 pos
+
+retManyPos :: Int -> Position -> Position
+retManyPos x (Position row _x) = (Position (row + x) 1)
 
 showPos :: Position -> String
 showPos (Position row col) = show row ++ ":" ++ show col
