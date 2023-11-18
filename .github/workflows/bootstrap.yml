@@ -66,3 +66,20 @@ jobs:
         with:
           name: cabal-${{ matrix.os }}-${{ matrix.ghc }}-bootstrapped
           path: _build/artifacts/*
+
+  # We use this job as a summary of the workflow
+  # It will fail if any of the previous jobs does it
+  # This way we can use it exclusively in branch protection rules
+  # and abstract away the concrete jobs of the workflow, including their names
+  bootstrap-post-job:
+    if: always()
+    name: Bootstrap post job
+    runs-on: ubuntu-latest
+    # IMPORTANT! Any job added to the workflow should be added here too
+    needs: [bootstrap]
+
+    steps:
+      - run: |
+          echo "jobs info: ${{ toJSON(needs) }}"
+      - if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: exit 1
