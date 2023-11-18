@@ -107,7 +107,7 @@ tokens :-
 <in_section> {
   $spacetab+   ; --TODO: don't allow tab as leading space
 
-  "--" $comment* ;
+  "--" $comment* ; -- TODO capture comments instead of deleting them
 
   @name        { toki TokSym }
   @string      { \pos len inp -> return $! L pos (TokStr (B.take (len - 2) (B.tail inp))) }
