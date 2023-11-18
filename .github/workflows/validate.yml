@@ -16,11 +16,17 @@ concurrency:
 # "validate.skip.yml" for a description of the problem and the solution provided in that file.
 on:
   push:
-    paths-ignore: 'doc/**'
+    paths-ignore:
+      - 'doc/**'
+      - 'README.md'
+      - 'CONTRIBUTING.md'
     branches:
       - master
   pull_request:
-    paths-ignore: 'doc/**'
+    paths-ignore:
+      - 'doc/**'
+      - 'README.md'
+      - 'CONTRIBUTING.md'
   release:
     types:
       - created

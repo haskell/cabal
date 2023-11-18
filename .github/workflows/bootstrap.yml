@@ -5,13 +5,22 @@ concurrency:
   group: ${{ github.ref }}-${{ github.workflow }}
   cancel-in-progress: true
 
+# Note: This workflow file contains the required job "Bootstrap post job". We are using path filtering
+# here to ignore PRs which only change documentation. This can cause a problem, see the workflow file
+# "bootstrap.skip.yml" for a description of the problem and the solution provided in that file.
 on:
   push:
-    paths-ignore: 'doc/**'
+    paths-ignore:
+      - 'doc/**'
+      - 'README.md'
+      - 'CONTRIBUTING.md'
     branches:
       - master
   pull_request:
-    paths-ignore: 'doc/**'
+    paths-ignore:
+      - 'doc/**'
+      - 'README.md'
+      - 'CONTRIBUTING.md'
   release:
     types:
       - created

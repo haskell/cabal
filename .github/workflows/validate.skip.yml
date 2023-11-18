@@ -5,7 +5,7 @@ name: Validate Skip
 # The problem: We don't want to run the "validate" jobs on PRs which contain only changes
 # to the docs, since these jobs take a long time to complete without providing any benefit.
 # We therefore use path-filtering in the workflow triggers for the validate jobs, namely
-# "paths_ignore: doc/**". But the "Validate post job" is a required job, therefore a PR cannot
+# "paths-ignore: doc/**". But the "Validate post job" is a required job, therefore a PR cannot
 # be merged unless the "Validate post job" completes succesfully, which it doesn't do if we 
 # filter it out.
 #
@@ -15,11 +15,17 @@ name: Validate Skip
 # finish successfully.
 on:
   push:
-    paths: 'doc/**'
+    paths:
+      - 'doc/**'
+      - 'README.md'
+      - 'CONTRIBUTING.md'
     branches:
       - master
   pull_request:
-    paths: 'doc/**'
+    paths:
+      - 'doc/**'
+      - 'README.md'
+      - 'CONTRIBUTING.md'
   release:
     types:
       - created
