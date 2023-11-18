@@ -12,7 +12,6 @@ library
 
 executable two
   default-language:  Haskell2010
-  exposed-modules:   AnyNone
   main-is: main.hs
   build-depends:     base <5,
                      containers >3,
