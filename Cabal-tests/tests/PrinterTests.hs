@@ -37,7 +37,9 @@ tests = testGroup "printer tests"
 printExact :: TestTree
 printExact = testGroup "printExact"
     [ testParsePrintExact "bounded.cabal"
-    -- , testParsePrintExact "anynone.cabal" -- TODO version ranges
+    , testParsePrintExact "anynone.cabal" -- TODO version ranges
+    , testParsePrintExact "multiple-depends.cabal" -- TODO version ranges
+    , testParsePrintExact "two-sections.cabal" -- TODO version ranges
     -- broken by: instance Pretty VersionRange where
     -- however we currently don't retain enough information to do this exact!
     ]
