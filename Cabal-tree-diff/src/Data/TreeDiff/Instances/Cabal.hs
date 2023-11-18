@@ -87,6 +87,7 @@ instance ToExpr ForeignLibOption
 instance ToExpr ForeignLibType
 instance ToExpr Position
 instance ToExpr ExactPosition
+instance ToExpr NameSpace
 instance ToExpr ExactPrintMeta
 instance ToExpr GenericPackageDescription
 instance ToExpr HaddockTarget

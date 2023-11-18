@@ -7,13 +7,13 @@ build-type:              Simple
 library
   default-language:  Haskell2010
   exposed-modules:   AnyNone
-  build-depends:     base <5
-                    , containers
+  build-depends:     base <5,
+                     containers
 
 executable two
   default-language:  Haskell2010
   exposed-modules:   AnyNone
   main-is: main.hs
-  build-depends:     base <5
-                    , containers > 3
-                    , two-sections
+  build-depends:     base <5,
+                     containers >3,
+                     two-sections

@@ -7,6 +7,7 @@ module Distribution.Types.GenericPackageDescription
   ( GenericPackageDescription (..)
   , ExactPrintMeta(..)
   , ExactPosition(..)
+  , NameSpace(..)
   , emptyGenericPackageDescription
   , emptyExactPrintMeta
   ) where
@@ -34,6 +35,7 @@ import Distribution.Version
 import Data.Text(Text)
 import Distribution.Fields.Field(FieldName)
 import Distribution.Parsec.Position(Position)
+import Data.ByteString(ByteString)
 
 data ExactPosition = ExactPosition {namePosition :: Position
                                 -- argument can be filedline or section args
@@ -45,9 +47,34 @@ instance Structured ExactPosition
 instance NFData ExactPosition where rnf = genericRnf
 instance Binary ExactPosition
 
+-- | we need to distinct exact positions in various namespaces for fields,
+--  such as:
+-- @
+--  library:
+--      build-depends: base < 4
+--   ...
+--   executable two
+--      build-depends: base <5
+--                     , containers > 3
+--   executable three
+--      build-depends: base <5
+--                     , containers > 5
+-- @
+--  so we put "exectuabe" or "library" as field name
+--  and the arguments such as "two" and "three" as section argument.
+--  this allows us to distinct them in the 'exactPositions'
+data NameSpace = NameSpace
+  { nameSpaceName :: FieldName
+  , nameSpaceSectionArgs :: [ByteString]
+  }
+  deriving (Show, Eq, Typeable, Data, Ord, Generic)
+
+instance Binary NameSpace
+instance Structured NameSpace
+instance NFData NameSpace where rnf = genericRnf
 
 data ExactPrintMeta = ExactPrintMeta
-  { exactPositions :: Map FieldName ExactPosition
+  { exactPositions :: Map [NameSpace] ExactPosition
   , exactComments :: Map Position Text
   }
   deriving (Show, Eq, Typeable, Data, Generic)

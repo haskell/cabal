@@ -2,6 +2,7 @@
 {-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveTraversable #-}
+{-# LANGUAGE LambdaCase #-}
 
 -- | Cabal-like file AST types: 'Field', 'Section' etc
 --
@@ -17,6 +18,7 @@ module Distribution.Fields.Field
   , fieldLineBS
   , SectionArg (..)
   , sectionArgAnn
+  , sectionArgContent
 
     -- * Name
   , FieldName
@@ -96,6 +98,12 @@ sectionArgAnn :: SectionArg ann -> ann
 sectionArgAnn (SecArgName ann _) = ann
 sectionArgAnn (SecArgStr ann _) = ann
 sectionArgAnn (SecArgOther ann _) = ann
+
+sectionArgContent :: SectionArg ann -> ByteString
+sectionArgContent = \case
+    SecArgName _ann bs ->  bs
+    SecArgStr _ann bs -> bs
+    SecArgOther _ann bs -> bs
 
 -------------------------------------------------------------------------------
 -- Name

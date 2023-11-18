@@ -23,6 +23,8 @@ import Data.List(sortOn)
 import Control.Monad(join)
 import Distribution.PackageDescription(specVersion)
 import Data.Foldable(fold)
+import Data.ByteString(ByteString)
+import Data.Text.Encoding(encodeUtf8)
 
 exactPrint :: GenericPackageDescription -> Text
 exactPrint package = foldExactly (exactPrintMeta package) fields
@@ -36,7 +38,7 @@ foldExactly :: ExactPrintMeta -> [PrettyField ()] -> Text
 foldExactly meta' pretty = pack $ PP.render $ currentDoc $ renderLines emptyState positioned
   where
     positioned :: [PrettyField (Maybe ExactPosition)]
-    positioned = sortFields $ attachPositions (exactPositions meta') pretty
+    positioned = sortFields $ attachPositions [] (exactPositions meta') pretty
 
 data RenderState = MkRenderState {
      currentPosition :: Position
@@ -114,13 +116,27 @@ renderWithPositionAdjustment mAnn current  fieldName doc =
 sortFields :: [PrettyField (Maybe ExactPosition)] -> [PrettyField (Maybe ExactPosition)]
 sortFields = reverse . sortOn (join . prettyFieldAnn)
 
-attachPositions :: Map FieldName ExactPosition -> [PrettyField ()] -> [PrettyField (Maybe ExactPosition)]
-attachPositions positionLookup = map (annotatePositions positionLookup)
+attachPositions :: [NameSpace] -> Map [NameSpace] ExactPosition -> [PrettyField ()] -> [PrettyField (Maybe ExactPosition)]
+attachPositions previous positionLookup = map (annotatePositions previous positionLookup)
 
-annotatePositions :: Map FieldName ExactPosition -> PrettyField () -> PrettyField (Maybe ExactPosition)
-annotatePositions positionLookup = \case
+annotatePositions :: [NameSpace] -> Map [NameSpace] ExactPosition -> PrettyField () -> PrettyField (Maybe ExactPosition)
+annotatePositions previous positionLookup field' = case field' of
   PrettyField _ann name' doc ->
-    PrettyField (Map.lookup name' positionLookup) name' doc
+    PrettyField (Map.lookup nameSpace positionLookup) name' doc
   PrettySection _ann name' ppDoc sectionFields ->
-    PrettySection (Map.lookup name' positionLookup) name' ppDoc (attachPositions positionLookup sectionFields)
+    PrettySection (Map.lookup nameSpace positionLookup) name' ppDoc (attachPositions nameSpace positionLookup sectionFields)
   PrettyEmpty -> PrettyEmpty
+  where
+    nameSpace = previous <> toNameSpace field'
+
+toNameSpace :: PrettyField () -> [NameSpace]
+toNameSpace = \case
+  PrettyField _ann name' doc ->
+    [NameSpace {nameSpaceName = name', nameSpaceSectionArgs = []}]
+  PrettySection _ann name' ppDoc sectionFields ->
+    [NameSpace {nameSpaceName = name', nameSpaceSectionArgs = fmap docToBs ppDoc }]
+  PrettyEmpty -> []
+
+
+docToBs :: Doc -> ByteString
+docToBs = encodeUtf8 . pack . PP.render -- I guess we just hope this is the same

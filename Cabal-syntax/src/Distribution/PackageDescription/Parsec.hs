@@ -3,6 +3,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE LambdaCase #-}
 
 -----------------------------------------------------------------------------
 
@@ -41,7 +42,7 @@ import Distribution.Compat.Lens
 import Distribution.FieldGrammar
 import Distribution.FieldGrammar.Parsec (NamelessField (..))
 import Distribution.Fields.ConfVar (parseConditionConfVar)
-import Distribution.Fields.Field (FieldName, getName, fieldLineAnn, sectionArgAnn, nameAnn)
+import Distribution.Fields.Field (FieldName, getName, fieldLineAnn, sectionArgAnn, nameAnn, sectionArgContent)
 import Distribution.Fields.LexerMonad (LexWarning, toPWarnings)
 import Distribution.Fields.ParseResult
 import Distribution.Fields.Parser
@@ -235,19 +236,26 @@ parseGenericPackageDescription' scannedVer lexWarnings utf8WarnPos fieldPosition
               ++ "' must use section syntax. See the Cabal user guide for details."
     maybeWarnCabalVersion _ _ = return ()
 
-toExact :: [Field Position] -> Map FieldName ExactPosition
-toExact = foldr toExactStep mempty
+toExact :: [Field Position] -> Map [NameSpace] ExactPosition
+toExact = foldr (toExactStep []) mempty
 
-toExactStep :: Field Position -> Map FieldName ExactPosition -> Map FieldName ExactPosition
-toExactStep field prev =  case field of
+toExactStep :: [NameSpace] -> Field Position -> Map [NameSpace] ExactPosition -> Map [NameSpace] ExactPosition
+toExactStep prevNamespace field prev =  case field of
   Field name lines' ->
-    Map.insert (getName name)
+    Map.insert nameSpace
                (ExactPosition { namePosition = (nameAnn name), argumentPosition = (fieldLineAnn <$> lines')})
                 prev
   Section name args fields' ->
-    Map.insert (getName name)
+    Map.insert nameSpace
                (ExactPosition { namePosition = (nameAnn name), argumentPosition = (sectionArgAnn <$> args)})
-                          $ foldr toExactStep prev fields'
+                          $ foldr (toExactStep nameSpace) prev fields'
+  where
+    nameSpace = prevNamespace <> [toNameSpace field]
+
+toNameSpace :: Field a -> NameSpace
+toNameSpace = \case
+  Field name _ -> NameSpace { nameSpaceName = getName name, nameSpaceSectionArgs = [] }
+  Section name args _ -> NameSpace { nameSpaceName = getName name, nameSpaceSectionArgs = sectionArgContent <$> args }
 
 goSections :: CabalSpecVersion -> [Field Position] -> SectionParser ()
 goSections specVer = traverse_ process
