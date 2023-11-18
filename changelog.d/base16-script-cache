@@ -1,0 +1,9 @@
+synopsis: Script cache dir is the base16 hash of the canonical path of the script.
+prs: #9459
+packages: cabal-install
+
+description: {
+
+Script cache dir is the base16 hash of the canonical path of the script.
+
+}
