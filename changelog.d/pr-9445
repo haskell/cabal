@@ -1,0 +1,3 @@
+synopsis: Add support for 64-bit SPARC as a separate architecture
+prs: #9445
+packages: Cabal Cabal-syntax
