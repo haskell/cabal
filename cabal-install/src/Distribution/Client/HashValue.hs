@@ -6,7 +6,6 @@ module Distribution.Client.HashValue (
     hashValue,
     truncateHash,
     showHashValue,
-    showHashValueBase64,
     readFileHashValue,
     hashFromTUF,
     ) where
@@ -16,10 +15,9 @@ import Prelude ()
 
 import qualified Hackage.Security.Client as Sec
 
-import qualified Crypto.Hash.SHA256         as SHA256
-import qualified Data.ByteString.Base16     as Base16
-import qualified Data.ByteString.Base64     as Base64
-import qualified Data.ByteString.Char8      as BS
+import qualified Crypto.Hash.SHA256 as SHA256
+import qualified Data.ByteString.Base16 as Base16
+import qualified Data.ByteString.Char8 as BS
 import qualified Data.ByteString.Lazy.Char8 as LBS
 
 import System.IO         (IOMode (..), withBinaryFile)
@@ -56,9 +54,6 @@ hashValue = HashValue . SHA256.hashlazy
 
 showHashValue :: HashValue -> String
 showHashValue (HashValue digest) = BS.unpack (Base16.encode digest)
-
-showHashValueBase64 :: HashValue -> String
-showHashValueBase64 (HashValue digest) = BS.unpack (Base64.encode digest)
 
 -- | Hash the content of a file. Uses SHA256.
 --
