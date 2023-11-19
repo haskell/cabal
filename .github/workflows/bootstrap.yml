@@ -12,14 +12,14 @@ on:
   push:
     paths-ignore:
       - 'doc/**'
-      - 'README.md'
+      - '**/README.md'
       - 'CONTRIBUTING.md'
     branches:
       - master
   pull_request:
     paths-ignore:
       - 'doc/**'
-      - 'README.md'
+      - '**/README.md'
       - 'CONTRIBUTING.md'
   release:
     types:

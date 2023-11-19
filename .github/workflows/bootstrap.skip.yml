@@ -17,14 +17,14 @@ on:
   push:
     paths:
       - 'doc/**'
-      - 'README.md'
+      - '**/README.md'
       - 'CONTRIBUTING.md'
     branches:
       - master
   pull_request:
     paths:
       - 'doc/**'
-      - 'README.md'
+      - '**/README.md'
       - 'CONTRIBUTING.md'
   release:
     types:
