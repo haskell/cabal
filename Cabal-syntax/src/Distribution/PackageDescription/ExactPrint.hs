@@ -95,17 +95,24 @@ decodeFieldname = unpack . Text.decodeUtf8
 
 renderWithPositionAdjustment :: (Maybe ExactPosition) -> Position -> String -> [Doc] -> Doc
 renderWithPositionAdjustment mAnn current  fieldName doc =
-  if rows < 0 then error ("unexpected empty negative rows" <> show (mAnn, current, fieldName, res))
+  if rows < 0 then
+    -- this is a failure mode
+    -- error ("unexpected empty negative rows" <> show (mAnn, current, fieldName, res))
+    output
+    -- <+> "--" <+> PP.text (show (("rows=", rows, "columns=", columns), mAnn, ("current=", current), docLines )) -- DEBUG
   else
     let
       spacing :: Doc
       spacing = foldr ($+$) mempty ("" <$  [1..rows])
     in
-  spacing $$
-  (PP.nest columns
-  (PP.text fieldName ) <> ((PP.hsep ("" <$ [1..offset])) <> fold doc))
+  spacing $$ output
   -- <+> "--" <+> PP.text (show (("rows=", rows, "columns=", columns), mAnn, ("current=", current), docLines )) -- DEBUG
   where
+     output :: Doc
+     output = (PP.nest columns
+              (PP.text fieldName ) <> ((PP.hsep ("" <$ [1..offset])) <> fold doc))
+
+
      res@(Position rows columns) = case mAnn of
               Just position -> (namePosition position) `difference` current
               Nothing -> zeroPos

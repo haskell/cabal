@@ -6,6 +6,7 @@ module Main
 import Prelude ()
 import Prelude.Compat
 
+import Distribution.Types.GenericPackageDescription
 import Data.Maybe(catMaybes)
 import Test.Tasty
 import Data.Text(unpack)
@@ -17,10 +18,11 @@ import Distribution.PackageDescription.Parsec      (parseGenericPackageDescripti
 import System.Directory                            (setCurrentDirectory)
 import System.Environment                          (getArgs, withArgs)
 import System.FilePath                             ((</>))
-import Data.Text.Encoding(decodeUtf8)
+import Data.Text.Encoding(decodeUtf8, encodeUtf8)
 import Distribution.PackageDescription.ExactPrint(exactPrint)
 import Data.TreeDiff
 import Text.PrettyPrint hiding ((<>))
+import Data.TreeDiff.QuickCheck (ediffEq)
 
 import qualified Data.ByteString       as BS
 
@@ -38,18 +40,37 @@ printExact :: TestTree
 printExact = testGroup "printExact"
     [
       testParsePrintExact "bounded.cabal"
+    , testParsePrintExact "two-sections.cabal"
+    , testParsePrintExact "two-sections-spacing.cabal"
+    -- , testParsePrintExact "comment.cabal" -- TODO this is required
+    -- , testParsePrintExact "comments.cabal" -- TODO this is required
     -- , testParsePrintExact "anynone.cabal" -- TODO is this neccessary? I think we're allowed to pretty print a range?
     -- , testParsePrintExact "multiple-depends.cabal" -- TODO is this neccisary? I think we're allowed to be oppinionated on comma placement?
-    , testParsePrintExact "two-sections.cabal" -- this is required
-    , testParsePrintExact "two-sections-spacing.cabal" -- this is required
-    -- , testParsePrintExact "comment.cabal" -- this is required
-    -- , testParsePrintExact "comments.cabal" -- TODO this is required
+    , testParsePrintExact "import.cabal" -- this is required
+    -- , testParsePrintExact "elif.cabal" -- TODO this is required
     -- broken by: instance Pretty VersionRange where
     -- however we currently don't retain enough information to do this exact!
     ]
 
+clearMeta :: GenericPackageDescription  -> GenericPackageDescription
+clearMeta x = x { exactPrintMeta = emptyExactPrintMeta }
+
 testParsePrintExact :: FilePath -> TestTree
-testParsePrintExact fp = testCase ("testParsePrintExact " <> fp) $ do
+testParsePrintExact fp = testGroup "testParsePrintExact" [
+  testCase ("test parse (print (parse fp)) = (parse fp) " <> fp) $ do
+    contents <- BS.readFile $ "tests" </> "ParserTests" </> "exactPrint" </> fp
+
+    let res =  parseGenericPackageDescription contents
+    let (_warns, descirption) = runParseResult res
+
+    case descirption of
+      Left someFailure -> error $ "failed parsing" <> show someFailure
+      Right generic ->
+        case snd (runParseResult (parseGenericPackageDescription (encodeUtf8 (exactPrint generic)))) of
+          Left someParseError ->  error $ "printing caused parse Error" <> show someParseError
+          Right res -> clearMeta generic @=? clearMeta res
+
+  , testCase ("test byte for byte roundtrip " <> fp) $ do
     contents <- BS.readFile $ "tests" </> "ParserTests" </> "exactPrint" </> fp
 
     let res =  parseGenericPackageDescription contents
@@ -58,6 +79,7 @@ testParsePrintExact fp = testCase ("testParsePrintExact " <> fp) $ do
     case descirption of
       Left someFailure -> error $ "failed parsing" <> show someFailure
       Right generic -> assertEqualStrings "should be the same cabalfiles" (unpack (decodeUtf8 contents))  (unpack (exactPrint generic))
+  ]
 
 main :: IO ()
 main = do
