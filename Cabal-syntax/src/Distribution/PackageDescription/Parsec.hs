@@ -128,7 +128,7 @@ type SectionParser = StateT SectionS ParseResult
 -- | State of section parser
 data SectionS = SectionS
   { _stateGpd :: !GenericPackageDescription
-  , _stateCommonStanzas :: !(Map String CondTreeBuildInfo)
+  , _stateCommonStanzas :: !(Map String CondTreeBuildInfo) -- here the stanzas get *not* put in genericPackageDescription
   }
 
 stateGpd :: Lens' SectionS GenericPackageDescription
@@ -289,7 +289,7 @@ goSections specVer = traverse_ process
       , name == "common" = lift $ do
           parseWarning pos PWTUnknownSection $ "Ignoring section: common. You should set cabal-version: 2.2 or larger to use common stanzas."
       | name == "common" = do
-          commonStanzas <- use stateCommonStanzas
+          commonStanzas <- use stateCommonStanzas -- here we find the common stanzas
           name' <- lift $ parseCommonName pos args
           biTree <- lift $ parseCondTree' buildInfoFieldGrammar id commonStanzas fields
 
@@ -649,7 +649,7 @@ parseCondTreeWithCommonStanzas
   -> [Field Position]
   -> ParseResult (CondTree ConfVar [Dependency] a)
 parseCondTreeWithCommonStanzas v grammar fromBuildInfo commonStanzas fields = do
-  (fields', endo) <- processImports v fromBuildInfo commonStanzas fields
+  (fields', endo) <- processImports v fromBuildInfo commonStanzas fields -- common import stanzas get merged
   x <- parseCondTree v hasElif grammar commonStanzas fromBuildInfo (view L.targetBuildDepends) fields'
   return (endo x)
   where
