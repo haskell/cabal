@@ -1,9 +1,5 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE CPP #-}
-#ifdef DEBUG_CONFLICT_SETS
-{-# LANGUAGE ImplicitParams #-}
-#endif
 module Distribution.Solver.Modular.Validate (validateTree) where
 
 -- Validation of the tree.
@@ -39,10 +35,6 @@ import Distribution.Solver.Types.PackagePath
 import Distribution.Solver.Types.PkgConfigDb (PkgConfigDb, pkgConfigPkgIsPresent)
 import Distribution.Types.LibraryName
 import Distribution.Types.PkgconfigVersionRange
-
-#ifdef DEBUG_CONFLICT_SETS
-import GHC.Stack (CallStack)
-#endif
 
 -- In practice, most constraints are implication constraints (IF we have made
 -- a number of choices, THEN we also have to ensure that). We call constraints
@@ -450,11 +442,7 @@ extendWithPackageChoice (PI qpn i) ppa =
 -- set in the sense the it contains variables that allow us to backjump
 -- further. We might apply some heuristics here, such as to change the
 -- order in which we check the constraints.
-merge ::
-#ifdef DEBUG_CONFLICT_SETS
-  (?loc :: CallStack) =>
-#endif
-  MergedPkgDep -> PkgDep -> Either (ConflictSet, (ConflictingDep, ConflictingDep)) MergedPkgDep
+merge :: MergedPkgDep -> PkgDep -> Either (ConflictSet, (ConflictingDep, ConflictingDep)) MergedPkgDep
 merge (MergedDepFixed comp1 vs1 i1) (PkgDep vs2 (PkgComponent p comp2) ci@(Fixed i2))
   | i1 == i2  = Right $ MergedDepFixed comp1 vs1 i1
   | otherwise =

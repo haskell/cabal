@@ -290,7 +290,6 @@
             "cabal_sha256": null,
             "component": "lib:cabal-install-solver",
             "flags": [
-                "-debug-conflict-sets",
                 "-debug-expensive-assertions",
                 "-debug-tracetree"
             ],
