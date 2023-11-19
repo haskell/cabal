@@ -649,7 +649,7 @@ parseCondTreeWithCommonStanzas
   -> [Field Position]
   -> ParseResult (CondTree ConfVar [Dependency] a)
 parseCondTreeWithCommonStanzas v grammar fromBuildInfo commonStanzas fields = do
-  (fields', endo) <- processImports v fromBuildInfo commonStanzas fields -- common import stanzas get merged
+  (fields', endo) <- processImports v fromBuildInfo commonStanzas fields
   x <- parseCondTree v hasElif grammar commonStanzas fromBuildInfo (view L.targetBuildDepends) fields'
   return (endo x)
   where
@@ -693,7 +693,7 @@ processImports v fromBuildInfo commonStanzas = go []
     -- parse actual CondTree
     go acc fields = do
       fields' <- catMaybes <$> traverse (warnImport v) fields
-      pure $ (fields', \x -> foldr (mergeCommonStanza fromBuildInfo) x acc)
+      pure $ (fields', \x -> foldr (mergeCommonStanza fromBuildInfo) x acc) -- common import stanzas get merged
 
 -- | Warn on "import" fields, also map to Maybe, so errorneous fields can be filtered
 warnImport :: CabalSpecVersion -> Field Position -> ParseResult (Maybe (Field Position))
