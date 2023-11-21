@@ -1,12 +1,12 @@
-name: Validate Skip
+name: Bootstrap Skip
 
 # This Workflow is special and contains a workaround for a known limitation of GitHub CI.
 #
-# The problem: We don't want to run the "validate" jobs on PRs which contain only changes
+# The problem: We don't want to run the "bootstrap" jobs on PRs which contain only changes
 # to the docs, since these jobs take a long time to complete without providing any benefit.
-# We therefore use path-filtering in the workflow triggers for the validate jobs, namely
-# "paths-ignore: doc/**". But the "Validate post job" is a required job, therefore a PR cannot
-# be merged unless the "Validate post job" completes succesfully, which it doesn't do if we 
+# We therefore use path-filtering in the workflow triggers for the bootstrap jobs, namely
+# "paths-ignore: doc/**". But the "Bootstrap post job" is a required job, therefore a PR cannot
+# be merged unless the "Bootstrap post job" completes succesfully, which it doesn't do if we 
 # filter it out.
 #
 # The solution: We use a second job with the same name which always returns the exit code 0.
@@ -31,9 +31,9 @@ on:
       - created
 
 jobs:
-  validate-post-job:
+  bootstrap-post-job:
     if: always()
-    name: Validate post job
+    name: Bootstrap post job
     runs-on: ubuntu-latest
     steps:
       - run: exit 0
