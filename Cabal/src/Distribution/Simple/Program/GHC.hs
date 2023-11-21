@@ -572,9 +572,11 @@ data GhcMode
   | -- | @ghci@ \/ @ghc --interactive@
     GhcModeInteractive
   | -- | @ghc --abi-hash@
-    --             | GhcModeDepAnalysis -- ^ @ghc -M@
-    --             | GhcModeEvaluate    -- ^ @ghc -e@
     GhcModeAbiHash
+  | -- | @ghc --merge-objs@
+    GhcModeMergeObjs
+  --             | GhcModeDepAnalysis -- ^ @ghc -M@
+  --             | GhcModeEvaluate    -- ^ @ghc -e@
   deriving (Show, Eq)
 
 data GhcOptimisation
@@ -644,6 +646,7 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
             Just GhcModeMake -> ["--make"]
             Just GhcModeInteractive -> ["--interactive"]
             Just GhcModeAbiHash -> ["--abi-hash"]
+            Just GhcModeMergeObjs -> ["--merge-objs"]
         , --     Just GhcModeDepAnalysis -> ["-M"]
           --     Just GhcModeEvaluate    -> ["-e", expr]
 

@@ -1,0 +1,18 @@
+synopsis: Use `ghc --merge-objs` when available to join object files
+packages: Cabal
+prs: #9226
+
+description: {
+
+Previously Cabal would rely on its own object-merge logic to produce
+GHCi libraries. This was not ideal as it meant that this logic was
+replicated in both GHC and Cabal. Moreover, Cabal's implementation
+historically hasn't handled the more subtle aspects of interacting with
+the linker, resulting in issues like #7828.
+
+In GHC 9.4 a new compiler mode was introduced, `--merge-objs`, which
+exposes GHC's object merging mechanism. Here we teach `Cabal` to take
+advantage of this mechanism when it is available, ensuring that object
+merging behavior is consistent between GHC and Cabal.
+
+}
