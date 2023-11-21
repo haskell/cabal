@@ -104,6 +104,7 @@ packageDescriptionFieldGrammar
      , c (List FSep (Identity (SymbolicPath PackageDir LicenseFile)) (SymbolicPath PackageDir LicenseFile))
      , c (List FSep TestedWith (CompilerFlavor, VersionRange))
      , c (List VCat FilePathNT String)
+     , c (List CommaVCat (Identity Dependency) Dependency)
      , c FilePathNT
      , c CompatLicenseFile
      , c CompatFilePath
@@ -146,6 +147,8 @@ packageDescriptionFieldGrammar =
     <*> monoidalFieldAla "extra-source-files" formatExtraSourceFiles L.extraSrcFiles
     <*> monoidalFieldAla "extra-tmp-files" (alaList' VCat FilePathNT) L.extraTmpFiles
     <*> monoidalFieldAla "extra-doc-files" (alaList' VCat FilePathNT) L.extraDocFiles
+    <*> monoidalFieldAla "package-constraints" formatDependencyList L.packageConstraints
+      ^^^ availableSince CabalSpecV3_12 []
   where
     packageIdentifierGrammar =
       PackageIdentifier

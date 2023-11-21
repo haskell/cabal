@@ -395,6 +395,7 @@ checkPackageDescription
           extraSrcFiles_
           extraTmpFiles_
           extraDocFiles_
+          _packageConstraints
         ) = do
     -- § Sanity checks.
     checkPackageId package_

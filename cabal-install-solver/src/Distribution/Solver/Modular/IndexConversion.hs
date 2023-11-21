@@ -20,6 +20,7 @@ import Distribution.Types.ComponentName              -- from Cabal
 import Distribution.Types.CondTree                   -- from Cabal
 import Distribution.Types.MungedPackageId            -- from Cabal
 import Distribution.Types.MungedPackageName          -- from Cabal
+import Distribution.Types.VersionRange               -- from Cabal
 import Distribution.PackageDescription               -- from Cabal
 import Distribution.PackageDescription.Configuration
 import qualified Distribution.Simple.PackageIndex as SI
@@ -339,8 +340,7 @@ convCondTree flags dr pkg os arch cinfo pn fds comp getInfo solveExes@(SolveExec
              mergeSimpleDeps $
                  [ D.Simple singleDep comp
                  | dep <- ds
-                 , singleDep <- convLibDeps dr dep ]  -- unconditional package dependencies
-
+                 , singleDep <- convLibDeps dr (alterDep dep) ]  -- unconditional package dependencies
               ++ L.map (\e -> D.Simple (LDep dr (Ext  e)) comp) (allExtensions bi) -- unconditional extension dependencies
               ++ L.map (\l -> D.Simple (LDep dr (Lang l)) comp) (allLanguages  bi) -- unconditional language dependencies
               ++ L.map (\(PkgconfigDependency pkn vr) -> D.Simple (LDep dr (Pkg pkn vr)) comp) (pkgconfigDepends bi) -- unconditional pkg-config dependencies
@@ -357,6 +357,14 @@ convCondTree flags dr pkg os arch cinfo pn fds comp getInfo solveExes@(SolveExec
                  ]
   where
     bi = getInfo info
+
+    -- apply package-constraints field of pkg to the actual declared
+    -- dependencies
+    alterDep x@(Dependency name vorig ls) =
+      maybe x (\v -> Dependency name v ls) $
+        listToMaybe [ intersectVersionRanges vorig v2
+                    | Dependency name2 v2 _ <- packageConstraints pkg
+                    , name2 == name ]
 
 data SimpleFlaggedDepKey qpn =
     SimpleFlaggedDepKey (PkgComponent qpn) Component
