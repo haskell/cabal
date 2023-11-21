@@ -1326,6 +1326,7 @@ A typical stanza for a foreign library looks like
       lib-version-info:    6:3:2
 
       if os(Windows)
+        -- standalone *must* be used on Windows.
         options: standalone
         mod-def-file: MyForeignLib.def
 
@@ -1356,8 +1357,7 @@ A typical stanza for a foreign library looks like
    have any dependencies on other (Haskell) shared libraries; without
    the ``standalone`` option the generated library would have dependencies
    on the Haskell runtime library (``libHSrts``), the base library
-   (``libHSbase``), etc. Currently, ``standalone`` *must* be used on Windows
-   and *must not* be used on any other platform.
+   (``libHSbase``), etc. The ``standalone`` option *must* be used on Windows.
 
 .. pkg-field:: mod-def-file: filename
 
