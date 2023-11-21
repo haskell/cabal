@@ -1,0 +1,21 @@
+cabal-version:      3.12
+name:               foo
+version:            0.1.0.0
+
+package-constraints:
+  , time >1
+  , deepseq <0
+
+flag conflicting-constraints
+  manual: True
+  default: False
+
+library
+  if flag(conflicting-constraints)
+    build-depends:
+      time <1
+  else
+    build-depends:
+      time
+
+  default-language: Haskell2010

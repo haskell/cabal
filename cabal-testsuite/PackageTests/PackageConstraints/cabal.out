@@ -1,0 +1,32 @@
+# cabal build
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following will be built:
+ - foo-0.1.0.0 (lib) (first run)
+Configuring library for foo-0.1.0.0...
+Preprocessing library for foo-0.1.0.0...
+Building library for foo-0.1.0.0...
+# cabal build
+Resolving dependencies...
+Error: [Cabal-7107]
+Could not resolve dependencies:
+[__0] trying: foo-0.1.0.0 (user goal)
+[__1] rejecting: foo:-conflicting-constraints (constraint from config file, command line flag, or user target requires opposite flag selection)
+[__1] trying: foo:+conflicting-constraints
+[__2] next goal: time (dependency of foo +/-conflicting-constraints)
+[__2] rejecting: time-<VERSION>/installed-<HASH> (conflict: foo +conflicting-constraints => time<1 && >1)
+[__2] fail (backjumping, conflict set: foo, time, foo:conflicting-constraints)
+After searching the rest of the dependency tree exhaustively, these were the goals I've had most trouble fulfilling: foo (4), foo:conflicting-constraints (3), time (2)
+# cabal check
+These warnings will likely cause trouble when distributing the package:
+Warning: No 'category' field.
+Warning: No 'maintainer' field.
+These warnings may cause trouble when distributing the package:
+Warning: library does not expose any modules
+Warning: On package-constraints, these packages miss upper bounds:
+- time
+Please add them. There is more information at https://pvp.haskell.org/
+The following errors will cause portability problems on other environments:
+Error: No 'synopsis' or 'description' field.
+Error: The 'license' field is missing or is NONE.
+Error: Hackage would reject this package.
