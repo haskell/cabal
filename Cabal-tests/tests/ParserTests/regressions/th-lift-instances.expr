@@ -61,7 +61,8 @@ GenericPackageDescription {
       ".vim.custom",
       "README.md"],
     extraTmpFiles = [],
-    extraDocFiles = []},
+    extraDocFiles = [],
+    packageConstraints = []},
   gpdScannedVersion = Nothing,
   genPackageFlags = [],
   condLibrary = Just

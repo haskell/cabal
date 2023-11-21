@@ -44,7 +44,8 @@ GenericPackageDescription {
     dataDir = ".",
     extraSrcFiles = [],
     extraTmpFiles = [],
-    extraDocFiles = []},
+    extraDocFiles = [],
+    packageConstraints = []},
   gpdScannedVersion = Nothing,
   genPackageFlags = [
     MkPackageFlag {
