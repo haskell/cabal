@@ -19,6 +19,13 @@ relative to the respective preceding *published* version.
     versions of the ``Cabal`` library denote unreleased development
     branches which have no stability guarantee.
 
+``cabal-version: 3.12``
+-----------------------
+
+* Added :pkg-field:`default-package-bounds` stanza. This allows to declare
+  constraints that will be used for the dependencies that have no specified
+  constraints associated in ``build-depends`` lists.
+
 ``cabal-version: 3.8``
 ----------------------
 
