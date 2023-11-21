@@ -73,7 +73,8 @@ GenericPackageDescription {
     dataDir = ".",
     extraSrcFiles = [],
     extraTmpFiles = [],
-    extraDocFiles = []},
+    extraDocFiles = [],
+    defaultPackageBounds = []},
   gpdScannedVersion = Nothing,
   genPackageFlags = [],
   condLibrary = Just

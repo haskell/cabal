@@ -114,7 +114,8 @@ GenericPackageDescription {
       "cbits/noticehandlers.h",
       "CHANGELOG.md"],
     extraTmpFiles = [],
-    extraDocFiles = []},
+    extraDocFiles = [],
+    defaultPackageBounds = []},
   gpdScannedVersion = Nothing,
   genPackageFlags = [
     MkPackageFlag {
