@@ -19,6 +19,7 @@ import Distribution.Types.Benchmark.Lens (benchmarkBuildInfo, benchmarkName)
 import Distribution.Types.BuildInfo (BuildInfo)
 import Distribution.Types.BuildType (BuildType)
 import Distribution.Types.ComponentName (ComponentName (..))
+import Distribution.Types.Dependency (Dependency (..))
 import Distribution.Types.Executable (Executable, exeModules)
 import Distribution.Types.Executable.Lens (exeBuildInfo, exeName)
 import Distribution.Types.ForeignLib (ForeignLib, foreignLibModules)
@@ -157,6 +158,10 @@ extraTmpFiles f s = fmap (\x -> s{T.extraTmpFiles = x}) (f (T.extraTmpFiles s))
 extraDocFiles :: Lens' PackageDescription [String]
 extraDocFiles f s = fmap (\x -> s{T.extraDocFiles = x}) (f (T.extraDocFiles s))
 {-# INLINE extraDocFiles #-}
+
+defaultPackageBounds :: Lens' PackageDescription [Dependency]
+defaultPackageBounds f s = fmap (\x -> s{T.defaultPackageBounds = x}) (f (T.defaultPackageBounds s))
+{-# INLINE defaultPackageBounds #-}
 
 -- | @since 3.0.0.0
 allLibraries :: Traversal' PackageDescription Library
