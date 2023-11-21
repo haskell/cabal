@@ -240,7 +240,7 @@ goSections specVer = traverse_ process
     process (Field (Name pos name) _) =
       lift $
         parseWarning pos PWTTrailingFields $
-          "Ignoring trailing fields after sections: " ++ show name
+          "Ignoring trailing fields after sections: " ++ show name ++ ". Consider moving these fields before any stanzas in your cabal file."
     process (Section name args secFields) =
       parseSection name args secFields
 
