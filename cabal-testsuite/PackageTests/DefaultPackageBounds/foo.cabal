@@ -1,0 +1,22 @@
+cabal-version:      3.12
+name:               foo
+version:            0.1.0.0
+
+default-package-bounds:
+  -- time bound should not apply on lib, there is a specific bound defined,
+  -- however it should prevent the @tests@  from building
+  , time <0
+  -- deepseq bound should never apply, we don't depend on it
+  , deepseq <0
+  -- check will report this missing upper bound
+  , process
+
+library
+  build-depends:
+      time >1
+  default-language: Haskell2010
+
+test-suite tests
+  build-depends: time
+  default-language: Haskell2010
+  main-is: Main.hs
