@@ -67,7 +67,7 @@ jobs:
             sudo chown -R $USER /usr/local/.ghcup
             sudo chmod -R 777 /usr/local/.ghcup
           fi
-      - uses: haskell/actions/setup@v2
+      - uses: haskell-actions/setup@v2
         id: setup-haskell
         with:
           ghc-version: ${{ matrix.ghc }}
@@ -356,11 +356,12 @@ jobs:
           apt-get update
           apt-get install -y ghc-${{ matrix.extra-ghc }}-dyn
 
-      - uses: haskell/actions/setup@v2
+      - uses: haskell-actions/setup@v2
         id: setup-haskell
         with:
           ghc-version: ${{ matrix.ghc }}
-          cabal-version: '3.10.1.0'
+          # Make sure this bindist works in this old environment
+          cabal-version: 3.10.1.0
 
       # As we are reusing the cached build dir from the previous step
       # the generated artifacts are available here,
@@ -415,7 +416,7 @@ jobs:
             sudo chown -R $USER /usr/local/.ghcup
             sudo chmod -R 777 /usr/local/.ghcup
           fi
-      - uses: haskell/actions/setup@v2
+      - uses: haskell-actions/setup@v2
         id: setup-haskell
         with:
           ghc-version: ${{ matrix.ghc }}
