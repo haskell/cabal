@@ -1,5 +1,4 @@
 {-# LANGUAGE MultiWayIf #-}
-{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
 
 -- | cabal-install CLI command: outdated
@@ -11,12 +10,6 @@ module Distribution.Client.CmdOutdated
 import qualified Data.Set as Set
 
 import Distribution.Client.Compat.Prelude
-import Distribution.Client.Config
-  ( SavedConfig
-      ( savedGlobalFlags
-      )
-  )
-import Distribution.Client.Errors (CabalInstallException (OutdatedAction))
 import qualified Distribution.Client.IndexUtils as IndexUtils
 import Distribution.Client.NixStyleOptions
   ( NixStyleFlags (..)
@@ -41,14 +34,9 @@ import Distribution.Client.ProjectOrchestration
   , ProjectBaseContext (..)
   , establishProjectBaseContext
   )
-import Distribution.Client.Sandbox
-  ( loadConfigOrSandboxConfig
-  )
 import Distribution.Client.Setup
   ( ConfigFlags (..)
   , GlobalFlags (..)
-  , configCompilerAux'
-  , withRepoContext
   )
 import Distribution.Client.Types.PackageLocation
   ( UnresolvedPkgLoc
@@ -77,9 +65,11 @@ import Distribution.Simple.Flag
 import Distribution.Simple.Setup
   ( trueArg
   )
+import Distribution.Simple.Configure
+  ( configCompilerAuxEx
+  )
 import Distribution.Simple.Utils
   ( debug
-  , dieWithException
   , wrapText
   )
 import Distribution.Solver.Types.SourcePackage
@@ -101,9 +91,7 @@ import Distribution.Types.PackageVersionConstraint
   )
 import Distribution.Types.UnqualComponentName (UnqualComponentName)
 import Distribution.Verbosity
-  ( lessVerbose
-  , normal
-  , silent
+  ( normal
   )
 import Distribution.Version
   ( simplifyVersionRange
@@ -131,34 +119,41 @@ outdatedCommand =
 -- For more details on how this works, see the module
 -- "Distribution.Client.ProjectOrchestration"
 outdatedAction :: NixStyleFlags OutdatedFlags -> [String] -> GlobalFlags -> IO ()
-outdatedAction flags@NixStyleFlags{configFlags} _extraArgs globalFlags = do
-  ProjectBaseContext{localPackages, projectConfig} <- establishProjectBaseContext verbosity cliConfig OtherCommand
+outdatedAction flags _extraArgs globalFlags = do
+  prjBasedCtxt <- establishProjectBaseContext verbosity cliConfig OtherCommand
 
   projectConfigWithSolverRepoContext
     verbosity
-    (projectConfigShared projectConfig)
-    (projectConfigBuildOnly projectConfig)
+    (projectConfigShared $ projectConfig prjBasedCtxt)
+    (projectConfigBuildOnly $ projectConfig prjBasedCtxt)
     $ \repoContext -> do
-      -- Why?
-      -- when (not v2FreezeFile && (isJust mprojectDir || isJust mprojectFile)) $
-      --   dieWithException verbosity OutdatedAction
+      let mprojectDir = flagToMaybe . flagProjectDir $ projectFlags flags
+          mprojectFile = flagToMaybe . flagProjectFile $ projectFlags flags
 
       sourcePkgDb <- IndexUtils.getSourcePackages verbosity repoContext
 
-      let pkgVerConstraints = extractPackageVersionConstraints localPackages
+      pkgVerConstraints <-
+        if
+            | v1FreezeFile -> V1Outdated.depsFromFreezeFile verbosity
+            | v2FreezeFile -> do
+                putStrLn $ "configHcFlavor: " ++ show (configHcFlavor $ configFlags flags)
+                (comp, platform, _progdb) <- configCompilerAuxEx $ configFlags flags
+                V1Outdated.depsFromNewFreezeFile verbosity globalFlags comp platform mprojectDir mprojectFile
+            | otherwise -> pure $ extractPackageVersionConstraints (localPackages prjBasedCtxt)
 
       debug verbosity $
         "Dependencies loaded: " ++ intercalate ", " (map prettyShow pkgVerConstraints)
 
       let outdatedDeps = V1Outdated.listOutdated pkgVerConstraints sourcePkgDb (ListOutdatedSettings ignorePred minorPred)
 
-      V1Outdated.showResult (lessVerbose verbosity) outdatedDeps simpleOutput
+      when (not quiet) $
+        V1Outdated.showResult verbosity outdatedDeps simpleOutput
 
       if exitCode && (not . null $ outdatedDeps)
         then exitFailure
         else pure ()
   where
-    verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
+    verbosity = fromFlagOrDefault normal (configVerbosity $ configFlags flags)
 
     cliConfig =
       commandLineFlagsToProjectConfig
