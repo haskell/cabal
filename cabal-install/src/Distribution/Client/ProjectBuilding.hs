@@ -1734,9 +1734,11 @@ buildInplaceUnpackedPackage
       testFlags v =
         flip filterTestFlags v $
           setupHsTestFlags
+            plan
             pkg
             pkgshared
             verbosity
+            distDirLayout
             builddir
       testArgs _ = setupHsTestArgs pkg
 

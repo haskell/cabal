@@ -171,6 +171,7 @@ import Distribution.Simple.Flag
   , flagToMaybe
   , fromFlagOrDefault
   , maybeToFlag
+  , mergeListFlag
   , toFlag
   )
 import Distribution.Simple.InstallDirs
@@ -1092,18 +1093,24 @@ filterTestFlags :: TestFlags -> Version -> TestFlags
 filterTestFlags flags cabalLibVersion
   -- NB: we expect the latest version to be the most common case,
   -- so test it first.
-  | cabalLibVersion >= mkVersion [3, 0, 0] = flags_latest
+  | cabalLibVersion >= mkVersion [3, 11, 0] = flags_latest
   -- The naming convention is that flags_version gives flags with
   -- all flags *introduced* in version eliminated.
   -- It is NOT the latest version of Cabal library that
   -- these flags work for; version of introduction is a more
   -- natural metric.
+  | cabalLibVersion < mkVersion [3, 11, 0] = flags_3_10_0
   | cabalLibVersion < mkVersion [3, 0, 0] = flags_3_0_0
   | otherwise = error "the impossible just happened" -- see first guard
   where
     flags_latest = flags
-    flags_3_0_0 =
+    flags_3_10_0 =
       flags_latest
+        { Cabal.testCoverageLibsModules = NoFlag
+        , Cabal.testCoverageDistPrefs = NoFlag
+        }
+    flags_3_0_0 =
+      flags_3_10_0
         { -- Cabal < 3.0 doesn't know about --test-wrapper
           Cabal.testWrapper = NoFlag
         }
@@ -3163,10 +3170,6 @@ initOptions _ =
       parsecToReadE
         ("Cannot parse dependencies: " ++)
         (parsecCommaList parsec)
-
-    mergeListFlag :: Flag [a] -> Flag [a] -> Flag [a]
-    mergeListFlag currentFlags v =
-      Flag $ concat (flagToList currentFlags ++ flagToList v)
 
 -- ------------------------------------------------------------
 

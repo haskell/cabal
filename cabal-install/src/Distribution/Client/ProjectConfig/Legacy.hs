@@ -767,6 +767,8 @@ convertLegacyPerPackageFlags
         , testKeepTix = packageConfigTestKeepTix
         , testWrapper = packageConfigTestWrapper
         , testFailWhenNoTestSuites = packageConfigTestFailWhenNoTestSuites
+        , testCoverageLibsModules = _
+        , testCoverageDistPrefs = _
         , testOptions = packageConfigTestTestOptions
         } = testFlags
 
@@ -1160,6 +1162,8 @@ convertToLegacyPerPackageConfig PackageConfig{..} =
         , testKeepTix = packageConfigTestKeepTix
         , testWrapper = packageConfigTestWrapper
         , testFailWhenNoTestSuites = packageConfigTestFailWhenNoTestSuites
+        , testCoverageLibsModules = mempty
+        , testCoverageDistPrefs = mempty
         , testOptions = packageConfigTestTestOptions
         }
 

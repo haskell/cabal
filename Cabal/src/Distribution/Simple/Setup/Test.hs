@@ -40,6 +40,7 @@ import Distribution.Simple.Utils
 import Distribution.Verbosity
 import qualified Text.PrettyPrint as Disp
 
+import Distribution.ModuleName (ModuleName)
 import Distribution.Simple.Setup.Common
 
 -- ------------------------------------------------------------
@@ -88,6 +89,15 @@ data TestFlags = TestFlags
   , testKeepTix :: Flag Bool
   , testWrapper :: Flag FilePath
   , testFailWhenNoTestSuites :: Flag Bool
+  , testCoverageLibsModules :: Flag [ModuleName]
+  -- ^ The list of all modules from libraries in the local project that should
+  -- be included in the hpc coverage report.
+  , testCoverageDistPrefs :: Flag [FilePath]
+  -- ^ The path to each library local to this project and to the test
+  -- components being built, to include in coverage reporting (notably, this
+  -- excludes indefinite libraries and instantiations because HPC does not
+  -- support backpack - Nov. 2023).  Cabal uses these paths as dist prefixes to
+  -- determine the path to the `mix` dirs of each component to cover.
   , -- TODO: think about if/how options are passed to test exes
     testOptions :: [PathTemplate]
   }
@@ -107,6 +117,8 @@ defaultTestFlags =
     , testKeepTix = toFlag False
     , testWrapper = NoFlag
     , testFailWhenNoTestSuites = toFlag False
+    , testCoverageLibsModules = NoFlag
+    , testCoverageDistPrefs = NoFlag
     , testOptions = []
     }
 
@@ -212,6 +224,38 @@ testOptions' showOrParseArgs =
       testFailWhenNoTestSuites
       (\v flags -> flags{testFailWhenNoTestSuites = v})
       trueArg
+  , option
+      []
+      ["coverage-module"]
+      "Module of a project-local library to include in the HPC report"
+      testCoverageLibsModules
+      ( \v flags ->
+          flags
+            { testCoverageLibsModules =
+                mergeListFlag (testCoverageLibsModules flags) v
+            }
+      )
+      ( reqArg'
+          "MODULE"
+          (Flag . (: []) . fromString)
+          (fmap prettyShow . fromFlagOrDefault [])
+      )
+  , option
+      []
+      ["coverage-dist-dir"]
+      "The directory where Cabal puts generated build files of an HPC enabled component"
+      testCoverageDistPrefs
+      ( \v flags ->
+          flags
+            { testCoverageDistPrefs =
+                mergeListFlag (testCoverageDistPrefs flags) v
+            }
+      )
+      ( reqArg'
+          "DIR"
+          (Flag . (: []))
+          (fromFlagOrDefault [])
+      )
   , option
       []
       ["test-options"]

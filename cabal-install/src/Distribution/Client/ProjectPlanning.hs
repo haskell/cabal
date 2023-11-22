@@ -1,6 +1,7 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -1634,7 +1635,7 @@ elaborateInstallPlan
         where
           -- You are eligible to per-component build if this list is empty
           why_not_per_component g =
-            cuz_buildtype ++ cuz_spec ++ cuz_length ++ cuz_flag ++ cuz_coverage
+            cuz_buildtype ++ cuz_spec ++ cuz_length ++ cuz_flag
             where
               cuz reason = [text reason]
               -- We have to disable per-component for now with
@@ -1671,12 +1672,6 @@ elaborateInstallPlan
                 | fromFlagOrDefault True (projectConfigPerComponent sharedPackageConfig) =
                     []
                 | otherwise = cuz "you passed --disable-per-component"
-              -- Enabling program coverage introduces odd runtime dependencies
-              -- between components.
-              cuz_coverage
-                | fromFlagOrDefault False (packageConfigCoverage localPackagesConfig) =
-                    cuz "program coverage is enabled"
-                | otherwise = []
 
           -- \| Sometimes a package may make use of features which are only
           -- supported in per-package mode.  If this is the case, we should
@@ -4048,12 +4043,14 @@ setupHsBuildArgs (ElaboratedConfiguredPackage{elabPkgOrComp = ElabComponent _}) 
   []
 
 setupHsTestFlags
-  :: ElaboratedConfiguredPackage
+  :: ElaboratedInstallPlan
+  -> ElaboratedConfiguredPackage
   -> ElaboratedSharedConfig
   -> Verbosity
+  -> DistDirLayout
   -> FilePath
   -> Cabal.TestFlags
-setupHsTestFlags (ElaboratedConfiguredPackage{..}) _ verbosity builddir =
+setupHsTestFlags plan (ElaboratedConfiguredPackage{..}) sharedConfig verbosity distDirLayout builddir =
   Cabal.TestFlags
     { testDistPref = toFlag builddir
     , testVerbosity = toFlag verbosity
@@ -4063,8 +4060,47 @@ setupHsTestFlags (ElaboratedConfiguredPackage{..}) _ verbosity builddir =
     , testKeepTix = toFlag elabTestKeepTix
     , testWrapper = maybe mempty toFlag elabTestWrapper
     , testFailWhenNoTestSuites = toFlag elabTestFailWhenNoTestSuites
+    , testCoverageLibsModules = toFlag covIncludeModules
+    , testCoverageDistPrefs = toFlag covLibsDistPref
     , testOptions = elabTestTestOptions
     }
+  where
+    -- The path to dist dir of each of the libraries to consider in hpc, from which Cabal determines the path to the `mix` dir.
+    covLibsDistPref = map (distBuildDirectory distDirLayout . elabDistDirParams sharedConfig) librariesToCover
+    -- The list of modules from libraries to consider in hpc, that Cabal passes to the hpc markup call
+    -- This list includes all modules, not only the exposed ones.
+    covIncludeModules = concatMap (\ElaboratedConfiguredPackage{elabModuleShape = modShape} -> Map.keys $ modShapeProvides modShape) librariesToCover
+
+    -- The list of non-pre-existing libraries without module holes, i.e. the
+    -- main library and sub-libraries components of all the local packages in
+    -- the project that do not require instantiations or are instantiations,
+    -- and the testsuite component.
+    --
+    -- TODO: I think that if the packages it depends on are still uninstalled,
+    -- this seemingly includes the packages that are not local to the project?!
+    -- Weird, because we filter on localToProject!
+    -- Try it on cabal-install: cabal test --enable-coverage cabal-install
+    librariesToCover =
+      mapMaybe
+        ( \case
+            InstallPlan.Installed elab
+              | shouldCoverPkg elab -> Just elab
+            InstallPlan.Configured elab
+              | shouldCoverPkg elab -> Just elab
+            _ -> Nothing
+        )
+        $ Graph.toList
+        $ InstallPlan.toGraph plan
+
+    shouldCoverPkg ElaboratedConfiguredPackage{elabModuleShape = modShape, elabPkgSourceId = pkgId} =
+      elabLocalToProject
+        && not (isIndefiniteOrInstantiation modShape)
+        -- TODO(#9493): We can only cover libraries in the same package
+        -- as the testsuite
+        && pkgId == elabPkgSourceId
+
+    isIndefiniteOrInstantiation :: ModuleShape -> Bool
+    isIndefiniteOrInstantiation = not . Set.null . modShapeRequires
 
 setupHsTestArgs :: ElaboratedConfiguredPackage -> [String]
 -- TODO: Does the issue #3335 affects test as well
@@ -4198,17 +4234,6 @@ setupHsHaddockArgs :: ElaboratedConfiguredPackage -> [String]
 -- TODO: Does the issue #3335 affects test as well
 setupHsHaddockArgs elab =
   map (showComponentTarget (packageId elab)) (elabHaddockTargets elab)
-
-{-
-setupHsTestFlags :: ElaboratedConfiguredPackage
-                 -> ElaboratedSharedConfig
-                 -> Verbosity
-                 -> FilePath
-                 -> Cabal.TestFlags
-setupHsTestFlags _ _ verbosity builddir =
-    Cabal.TestFlags {
-    }
--}
 
 ------------------------------------------------------------------------------
 

@@ -402,7 +402,7 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
       distPref = fromFlag $ configDistPref $ configFlags lbi
       hpcdir way
         | gbuildIsRepl bm = mempty -- HPC is not supported in ghci
-        | isCoverageEnabled = toFlag $ Hpc.mixDir distPref way (gbuildName bm)
+        | isCoverageEnabled = toFlag $ Hpc.mixDir distPref way
         | otherwise = mempty
 
   rpaths <- getRPaths lbi clbi

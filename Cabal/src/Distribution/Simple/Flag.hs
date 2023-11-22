@@ -29,6 +29,7 @@ module Distribution.Simple.Flag
   , flagToMaybe
   , flagToList
   , maybeToFlag
+  , mergeListFlag
   , BooleanFlag (..)
   ) where
 
@@ -142,6 +143,11 @@ allFlags flags =
 maybeToFlag :: Maybe a -> Flag a
 maybeToFlag Nothing = NoFlag
 maybeToFlag (Just x) = Flag x
+
+-- | Merge the elements of a list 'Flag' with another list 'Flag'.
+mergeListFlag :: Flag [a] -> Flag [a] -> Flag [a]
+mergeListFlag currentFlags v =
+  Flag $ concat (flagToList currentFlags ++ flagToList v)
 
 -- | Types that represent boolean flags.
 class BooleanFlag a where

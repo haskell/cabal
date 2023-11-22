@@ -636,6 +636,8 @@ instance Semigroup SavedConfig where
           , testKeepTix = combine testKeepTix
           , testWrapper = combine testWrapper
           , testFailWhenNoTestSuites = combine testFailWhenNoTestSuites
+          , testCoverageLibsModules = combine testCoverageLibsModules
+          , testCoverageDistPrefs = combine testCoverageDistPrefs
           , testOptions = lastNonEmpty testOptions
           }
         where
