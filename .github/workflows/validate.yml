@@ -79,7 +79,7 @@ jobs:
           key: ${{ runner.os }}-${{ matrix.ghc }}-${{ github.sha }}
           restore-keys: ${{ runner.os }}-${{ matrix.ghc }}-
 
-      - uses: haskell/actions/setup@v2
+      - uses: haskell-actions/setup@v2
         id: setup-haskell
         with:
           ghc-version: ${{ matrix.ghc }}
@@ -219,11 +219,12 @@ jobs:
           apt-get update
           apt-get install -y ghc-${{ matrix.extra-ghc }}-dyn
 
-      - uses: haskell/actions/setup@v2
+      - uses: haskell-actions/setup@v2
         id: setup-haskell
         with:
           ghc-version: ${{ matrix.ghc }}
-          cabal-version: latest # latest is mandatory for cabal-testsuite, see https://github.com/haskell/cabal/issues/8133
+          # Make sure this bindist works in this old environment
+          cabal-version: 3.10.1.0
 
       # As we are reusing the cached build dir from the previous step
       # the generated artifacts are available here,
@@ -272,7 +273,7 @@ jobs:
             sudo chown -R $USER /usr/local/.ghcup
             sudo chmod -R 777 /usr/local/.ghcup
           fi
-      - uses: haskell/actions/setup@v2
+      - uses: haskell-actions/setup@v2
         id: setup-haskell
         with:
           ghc-version: ${{ matrix.ghc }}
