@@ -631,9 +631,6 @@ instance Structured UserQualifier
 data UserConstraintScope
   = -- | Scope that applies to the package when it has the specified qualifier.
     UserQualified UserQualifier PackageName
-    -- | Scope that applies to specific package and component, this is useful when
-    -- the constraint is on a private dependency
-  | UserQualifiedComponent UserQualifier PackageName ComponentName
   | -- | Scope that applies to the package when it has a setup qualifier.
     UserAnySetupQualifier PackageName
   | -- | Scope that applies to the package when it has any qualifier.
@@ -643,17 +640,17 @@ data UserConstraintScope
 instance Binary UserConstraintScope
 instance Structured UserConstraintScope
 
-fromUserQualifier :: UserQualifier -> Qualifier
-fromUserQualifier UserQualToplevel = QualToplevel
-fromUserQualifier (UserQualSetup name) = QualSetup name
-fromUserQualifier (UserQualExe name1 name2) = QualExe name1 name2
+fromUserQualifier :: UserQualifier -> Namespace
+fromUserQualifier UserQualToplevel = DefaultNamespace
+fromUserQualifier (UserQualSetup pn) = IndependentComponent pn ComponentSetup
+fromUserQualifier (UserQualExe pn bpn) = IndependentBuildTool pn bpn
+fromUserQualifier (UserQualComp pn cn) = IndependentComponent pn (componentNameToComponent cn)
 
 fromUserConstraintScope :: UserConstraintScope -> ConstraintScope
 fromUserConstraintScope (UserQualified q pn) =
   ScopeQualified (fromUserQualifier q) pn
 fromUserConstraintScope (UserAnySetupQualifier pn) = ScopeAnySetupQualifier pn
 fromUserConstraintScope (UserAnyQualifier pn) = ScopeAnyQualifier pn
-fromUserConstraintScope (UserQualifiedComponent q pn cn) = ScopeQualifiedComponent (fromUserQualifier q) pn cn
 
 -- | Version of 'PackageConstraint' that the user can specify on
 -- the command line.
@@ -720,8 +717,15 @@ instance Parsec UserConstraint where
             | pn == mkPackageName "setup" = UserAnySetupQualifier <$> parsec
             | otherwise = P.unexpected $ "constraint scope: " ++ unPackageName pn
 
-          withColon :: PackageName -> m UserConstraintScope
-          withColon pn =
-            UserQualified (UserQualSeo Iup pn)
+          withColon, setupQual, compQual :: PackageName -> m UserConstraintScope
+          withColon pn = setupQual pn <|> compQual pn
+
+          compQual pn = do
+            comp_qual <- UserQualComp pn <$> parsec
+            void $ P.char '.'
+            UserQualified comp_qual <$> parsec
+
+          setupQual pn =
+            UserQualified (UserQualSetup pn)
               <$ P.string "setup."
               <*> parsec

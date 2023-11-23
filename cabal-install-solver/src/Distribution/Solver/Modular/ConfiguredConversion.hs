@@ -55,11 +55,11 @@ convPI (PI _ (I _ (Inst pi))) = Left pi
 convPI pi                     = Right (packageId (either id id (convConfId pi)))
 
 convConfId :: PI QPN -> Either SolverId {- is lib -} SolverId {- is exe -}
-convConfId (PI (Q (PackagePath _ q) pn) (I v loc)) =
+convConfId (PI (Q (PackagePath ns _) pn) (I v loc)) =
     case loc of
         Inst pi -> Left (PreExistingId sourceId pi)
         _otherwise
-          | QualExe _ pn' <- q
+          | IndependentBuildTool _ pn' <- ns
           -- NB: the dependencies of the executable are also
           -- qualified.  So the way to tell if this is an executable
           -- dependency is to make sure the qualifier is pointing

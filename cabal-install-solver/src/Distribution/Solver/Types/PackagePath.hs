@@ -2,9 +2,9 @@ module Distribution.Solver.Types.PackagePath
     ( PackagePath(..)
     , Namespace(..)
     , Qualifier(..)
-    , dispQualifier
     , Qualified(..)
     , QPN
+    , dispNamespace
     , dispQPN
     , showQPN
     ) where
@@ -27,13 +27,18 @@ data PackagePath = PackagePath Namespace Qualifier
 -- Package choices in different namespaces are considered completely independent
 -- by the solver.
 data Namespace =
-    -- | The default namespace
+    -- | A goal which is solved
     DefaultNamespace
 
-    -- | A namespace for a specific build target
+    -- | A goal which is solved per-package
   | Independent PackageName
 
+  -- A goal which is solved per-component
   | IndependentComponent PackageName Component
+
+  -- Build-tools are solved per-package so there are consistent build-tools across
+  -- components.
+  | IndependentBuildTool PackageName PackageName
   deriving (Eq, Ord, Show)
 
 -- | Pretty-prints a namespace. The result is either empty or
@@ -42,6 +47,11 @@ dispNamespace :: Namespace -> Disp.Doc
 dispNamespace DefaultNamespace = Disp.empty
 dispNamespace (Independent i) = pretty i <<>> Disp.text "."
 dispNamespace (IndependentComponent pn c) = pretty pn <<>> Disp.text "." <<>> pretty c <<>> Disp.text "."
+dispNamespace (IndependentBuildTool pn btp) = pretty pn <<>> Disp.text ":" <<>>
+                                              pretty btp <<>> Disp.text ":exe."
+
+--dispQualifier (QualSetup pn)  = pretty pn <<>> Disp.text ":setup."
+--dispQualifier (QualExe pn pn2) =
 
 -- | Qualifier of a package within a namespace (see 'PackagePath')
 data Qualifier =
@@ -51,8 +61,9 @@ data Qualifier =
     -- | Any dependency on base is considered independent
     --
     -- This makes it possible to have base shims.
-  | QualBase PackageName
+  | QualBase
 
+{-
     -- | Setup dependency
     --
     -- By rights setup dependencies ought to be nestable; after all, the setup
@@ -60,7 +71,7 @@ data Qualifier =
     -- are independent from everything else. However, this very quickly leads to
     -- infinite search trees in the solver. Therefore we limit ourselves to
     -- a single qualifier (within a given namespace).
-  | QualSetup PackageName
+--  | QualSetup PackageName
 
     -- | If we depend on an executable from a package (via
     -- @build-tools@), we should solve for the dependencies of that
@@ -73,7 +84,28 @@ data Qualifier =
     -- tracked only @pn2@, that would require us to pick only one
     -- version of an executable over the entire install plan.)
   | QualExe PackageName PackageName
+  -}
 
+-- PackagePath DefaultNamespace (QualExe my-lib happy)
+
+-- PackagePath (Independent my-pkg) (QualExe happy)
+
+-- PackagePath (IndependentComponent my-pkg my-exe) (QualExe happy)
+
+-- PackagePath DefaultNamespace (QualSetup my-pkg)
+
+-- PackagePath (Independent my-pkg) QualSetup
+
+-- PackagePath (IndependentComponent my-pkg setup-comp) DefaultTopLevel
+
+-- PackagePath DefaultNamespace (QualBase base-3)
+
+
+-- PackagePath (IndependentComponent base-3 lib) DefaultTopLevel -- base == 0.4
+
+-- namespace == DefaultNamespace
+
+-- namespace == (Independent my-pkg) (QualSetup my-pkg)
 
   deriving (Eq, Ord, Show)
 
@@ -85,12 +117,9 @@ data Qualifier =
 -- So we want to print something like @"A.base"@, where the @"A."@ part
 -- is the qualifier and @"base"@ is the actual dependency (which, for the
 -- 'Base' qualifier, will always be @base@).
-dispQualifier :: Qualifier -> Disp.Doc
-dispQualifier QualToplevel = Disp.empty
-dispQualifier (QualSetup pn)  = pretty pn <<>> Disp.text ":setup."
-dispQualifier (QualExe pn pn2) = pretty pn <<>> Disp.text ":" <<>>
-                                 pretty pn2 <<>> Disp.text ":exe."
-dispQualifier (QualBase pn)  = pretty pn <<>> Disp.text "."
+--dispQualifier :: Qualifier -> Disp.Doc
+--dispQualifier QualToplevel = Disp.empty
+--dispQualifier QualBase  = Disp.empty
 
 -- | A qualified entity. Pairs a package path with the entity.
 data Qualified a = Q PackagePath a
@@ -102,7 +131,7 @@ type QPN = Qualified PackageName
 -- | Pretty-prints a qualified package name.
 dispQPN :: QPN -> Disp.Doc
 dispQPN (Q (PackagePath ns qual) pn) =
-  dispNamespace ns <<>> dispQualifier qual <<>> pretty pn
+  dispNamespace ns <<>> pretty pn
 
 -- | String representation of a qualified package name.
 showQPN :: QPN -> String

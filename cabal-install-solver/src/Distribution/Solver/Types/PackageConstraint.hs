@@ -31,6 +31,7 @@ import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PackagePath
 
 import qualified Text.PrettyPrint as Disp
+import Distribution.Solver.Types.ComponentDeps (Component(..), componentNameToComponent)
 
 
 -- | Determines to what packages and in what contexts a
@@ -47,8 +48,7 @@ data ConstraintScope
      -- solving is implemented, and remove this special case for targets.
    = ScopeTarget PackageName
      -- | The package with the specified name and qualifier.
-   | ScopeQualified Qualifier PackageName
-   | ScopeQualifiedComponent Qualifier PackageName ComponentName
+   | ScopeQualified Namespace PackageName
      -- | The package with the specified name when it has a
      -- setup qualifier.
    | ScopeAnySetupQualifier PackageName
@@ -61,7 +61,7 @@ data ConstraintScope
 -- the package with the specified name when that package is a
 -- top-level dependency in the default namespace.
 scopeToplevel :: PackageName -> ConstraintScope
-scopeToplevel = ScopeQualified QualToplevel
+scopeToplevel = ScopeQualified DefaultNamespace
 
 -- | Returns the package name associated with a constraint scope.
 scopeToPackageName :: ConstraintScope -> PackageName
@@ -69,20 +69,20 @@ scopeToPackageName (ScopeTarget pn) = pn
 scopeToPackageName (ScopeQualified _ pn) = pn
 scopeToPackageName (ScopeAnySetupQualifier pn) = pn
 scopeToPackageName (ScopeAnyQualifier pn) = pn
-scopeToPackageName (ScopeQualifiedComponent _ pn _) = pn
 
+-- TOOD: Crucial
 constraintScopeMatches :: ConstraintScope -> QPN -> Bool
 constraintScopeMatches (ScopeTarget pn) (Q (PackagePath ns q) pn') =
   let namespaceMatches DefaultNamespace = True
       namespaceMatches (Independent namespacePn) = pn == namespacePn
-      namespaceMatches (IndependentComponent namespacePn compNm) = pn == namespacePn
+      namespaceMatches (IndependentComponent {}) = False
+      namespaceMatches (IndependentBuildTool {}) = False
   in namespaceMatches ns && q == QualToplevel && pn == pn'
-constraintScopeMatches (ScopeQualified q pn) (Q (PackagePath _ q') pn') =
-    q == q' && pn == pn'
-constraintScopeMatches (ScopeQualifiedComponent q pn cn) (Q (PackagePath (IndependentComponent namespacePn namespaceCn) q') pn') =
-  q == q' && pn == nameSpacePn && _
+constraintScopeMatches (ScopeQualified ns pn) (Q (PackagePath qual_ns _) pn') =
+    -- TODO: Check whether any ns should subsume qual_ns
+    pn == pn' && ns == qual_ns
 constraintScopeMatches (ScopeAnySetupQualifier pn) (Q pp pn') =
-  let setup (PackagePath _ (QualSetup _)) = True
+  let setup (PackagePath (IndependentComponent _ ComponentSetup) x) = True
       setup _                             = False
   in setup pp && pn == pn'
 constraintScopeMatches (ScopeAnyQualifier pn) (Q _ pn') = pn == pn'
@@ -90,7 +90,7 @@ constraintScopeMatches (ScopeAnyQualifier pn) (Q _ pn') = pn == pn'
 -- | Pretty-prints a constraint scope.
 dispConstraintScope :: ConstraintScope -> Disp.Doc
 dispConstraintScope (ScopeTarget pn) = pretty pn <<>> Disp.text "." <<>> pretty pn
-dispConstraintScope (ScopeQualified q pn) = dispQualifier q <<>> pretty pn
+dispConstraintScope (ScopeQualified ns pn) = dispNamespace ns <<>> pretty pn
 dispConstraintScope (ScopeAnySetupQualifier pn) = Disp.text "setup." <<>> pretty pn
 dispConstraintScope (ScopeAnyQualifier pn) = Disp.text "any." <<>> pretty pn
 

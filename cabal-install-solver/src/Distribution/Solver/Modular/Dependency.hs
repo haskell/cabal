@@ -201,12 +201,26 @@ qualifyDeps QO{..} (Q pp@(PackagePath ns q) pn) = go
     goD (Lang lang)   _    = Lang lang
     goD (Pkg pkn vr)  _    = Pkg pkn vr
     goD (Dep dep@(PkgComponent qpn (ExposedExe _)) is_private ci) _ =
-        Dep (Q (PackagePath ns (QualExe pn qpn)) <$> dep) is_private ci
+        Dep (Q (PackagePath (IndependentBuildTool pn qpn) QualToplevel) <$> dep) is_private ci
     goD (Dep dep@(PkgComponent qpn (ExposedLib _)) is_private ci) comp
       | is_private  = Dep (Q (PackagePath (IndependentComponent pn comp) inheritedQ) <$> dep) is_private ci
-      | qBase qpn   = Dep (Q (PackagePath ns (QualBase  pn)) <$> dep) is_private ci
-      | qSetup comp = Dep (Q (PackagePath ns (QualSetup pn)) <$> dep) is_private ci
+      | qBase qpn   = Dep (Q (PackagePath (Independent pn) (QualBase)) <$> dep) is_private ci
+      | qSetup comp = Dep (Q (PackagePath (IndependentComponent pn ComponentSetup) QualToplevel) <$> dep) is_private ci
       | otherwise   = Dep (Q (PackagePath ns inheritedQ    ) <$> dep) is_private ci
+
+
+    --   pkg:lib-foo depends on: a
+    --   b-t-d: happy
+
+    --   happy: base-3
+
+    --   base-3: a
+
+    --   q?: is lib.a forced == to base-3.a
+
+    -- Solution: Namespace = (BTD-namespace pkg lib-foo happy-btd)
+
+
 
     -- If P has a setup dependency on Q, and Q has a regular dependency on R, then
     -- we say that the 'Setup' qualifier is inherited: P has an (indirect) setup
@@ -217,10 +231,8 @@ qualifyDeps QO{..} (Q pp@(PackagePath ns q) pn) = go
     -- a detailed discussion.
     inheritedQ :: Qualifier
     inheritedQ = case q of
-                   QualSetup _  -> q
-                   QualExe _ _  -> q
-                   QualToplevel -> q
-                   QualBase _   -> QualToplevel
+                   QualToplevel -> QualToplevel
+                   QualBase     -> QualToplevel
 
     -- Should we qualify this goal with the 'Base' package path?
     qBase :: PN -> Bool
