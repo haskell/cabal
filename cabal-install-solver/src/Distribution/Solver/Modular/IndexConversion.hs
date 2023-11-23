@@ -340,12 +340,12 @@ convCondTree flags dr pkg os arch cinfo pn fds comp getInfo solveExes@(SolveExec
              -- could create duplicate dependencies, and the number of
              -- duplicates could grow exponentially from the leaves to the root
              -- of the tree.
-             traceShowId $ mergeSimpleDeps $ (traceShowId $ [ D.Simple singleDep comp
+             mergeSimpleDeps $ ([ D.Simple singleDep comp
                  -- TOOD: Add scope here
                  | dep <- publicDependencies ds
                  , singleDep <- convLibDeps False dr dep ])  -- unconditional package dependencies
 
-              ++ traceShowId [ D.Simple singleDep comp
+              ++ [ D.Simple singleDep comp
                  -- TOOD: Add scope here
                  | dep <- privateDependencies ds
                  , singleDep <- convLibDeps True dr dep ]  -- unconditional package dependencies

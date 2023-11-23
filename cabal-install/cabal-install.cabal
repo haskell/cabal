@@ -282,7 +282,7 @@ executable cabal
         extra-libraries: bsd
 
     build-depends:
-        cabal-install, ghc-debug-stub
+        cabal-install
 
 -- Small, fast running tests.
 --

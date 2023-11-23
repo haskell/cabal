@@ -152,7 +152,7 @@ genBounds verbosity packageDBs repoCtxt comp platform progdb globalFlags freezeF
       let needBounds =
             map depName $
               filter (not . hasUpperBound . depVersion) $
-                (error "todo") --enabledBuildDepends pd defaultComponentRequestedSpec
+                enabledBuildDepends pd defaultComponentRequestedSpec
 
       pkgs <-
         getFreezePkgs

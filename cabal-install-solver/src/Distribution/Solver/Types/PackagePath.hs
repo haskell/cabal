@@ -46,7 +46,7 @@ data Namespace =
 dispNamespace :: Namespace -> Disp.Doc
 dispNamespace DefaultNamespace = Disp.empty
 dispNamespace (Independent i) = pretty i <<>> Disp.text "."
-dispNamespace (IndependentComponent pn c) = pretty pn <<>> Disp.text "." <<>> pretty c <<>> Disp.text "."
+dispNamespace (IndependentComponent pn c) = pretty pn <<>> Disp.text ":" <<>> pretty c <<>> Disp.text "."
 dispNamespace (IndependentBuildTool pn btp) = pretty pn <<>> Disp.text ":" <<>>
                                               pretty btp <<>> Disp.text ":exe."
 
