@@ -911,14 +911,15 @@ wrapParseWarning fp pw = PackageDistSuspicious (ParseWarning fp pw)
 -- each of those branch will be checked one by one.
 extractAssocDeps
   :: UnqualComponentName -- Name of the target library
-  -> CondTree ConfVar [Dependency] Library
+  -> CondTree ConfVar Dependencies Library
   -> AssocDep
 extractAssocDeps n ct =
   let a = ignoreConditions ct
    in -- Merging is fine here, remember the specific
       -- library dependencies will be checked branch
       -- by branch.
-      (n, snd a)
+      -- MP: TOOD: WRONG
+      (n, publicDependencies (snd a))
 
 -- | August 2022: this function is an oddity due to the historical
 -- GenericPackageDescription/PackageDescription split (check
@@ -954,8 +955,8 @@ pd2gpd pd = gpd
         }
 
     -- From target to simple, unconditional CondTree.
-    t2c :: a -> CondTree ConfVar [Dependency] a
-    t2c a = CondNode a [] []
+    t2c :: a -> CondTree ConfVar Dependencies a
+    t2c a = CondNode a mempty []
 
     -- From named target to unconditional CondTree. Notice we have
     -- a function to extract the name *and* a function to modify
@@ -965,7 +966,7 @@ pd2gpd pd = gpd
       :: (a -> UnqualComponentName)
       -> (a -> a)
       -> a
-      -> (UnqualComponentName, CondTree ConfVar [Dependency] a)
+      -> (UnqualComponentName, CondTree ConfVar Dependencies a)
     t2cName nf mf a = (nf a, t2c . mf $ a)
 
     ln :: Library -> UnqualComponentName

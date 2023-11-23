@@ -84,7 +84,7 @@ import Distribution.Types.PackageVersionConstraint
   )
 
 import Distribution.PackageDescription
-  ( GenericPackageDescription
+  ( GenericPackageDescription, ComponentName
   )
 import Distribution.Simple.Utils
   ( dieWithException
@@ -124,6 +124,7 @@ import System.FilePath
   , takeDirectory
   , takeExtension
   )
+import Distribution.Solver.Types.ComponentDeps
 
 -- ------------------------------------------------------------
 
@@ -617,6 +618,9 @@ data UserQualifier
     UserQualSetup PackageName
   | -- | Executable dependency.
     UserQualExe PackageName PackageName
+
+  |
+    UserQualComp PackageName ComponentName
   deriving (Eq, Show, Generic)
 
 instance Binary UserQualifier
@@ -627,6 +631,9 @@ instance Structured UserQualifier
 data UserConstraintScope
   = -- | Scope that applies to the package when it has the specified qualifier.
     UserQualified UserQualifier PackageName
+    -- | Scope that applies to specific package and component, this is useful when
+    -- the constraint is on a private dependency
+  | UserQualifiedComponent UserQualifier PackageName ComponentName
   | -- | Scope that applies to the package when it has a setup qualifier.
     UserAnySetupQualifier PackageName
   | -- | Scope that applies to the package when it has any qualifier.
@@ -646,6 +653,7 @@ fromUserConstraintScope (UserQualified q pn) =
   ScopeQualified (fromUserQualifier q) pn
 fromUserConstraintScope (UserAnySetupQualifier pn) = ScopeAnySetupQualifier pn
 fromUserConstraintScope (UserAnyQualifier pn) = ScopeAnyQualifier pn
+fromUserConstraintScope (UserQualifiedComponent q pn cn) = ScopeQualifiedComponent (fromUserQualifier q) pn cn
 
 -- | Version of 'PackageConstraint' that the user can specify on
 -- the command line.
@@ -714,6 +722,6 @@ instance Parsec UserConstraint where
 
           withColon :: PackageName -> m UserConstraintScope
           withColon pn =
-            UserQualified (UserQualSetup pn)
+            UserQualified (UserQualSeo Iup pn)
               <$ P.string "setup."
               <*> parsec

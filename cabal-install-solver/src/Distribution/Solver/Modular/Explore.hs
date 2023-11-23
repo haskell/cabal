@@ -277,13 +277,13 @@ exploreLog mbj enableBj fineGrainedConflicts (CountConflicts countConflicts) idx
           couldBeResolved (CS.GoalConflict conflictingDep) =
               -- Check whether this package instance also has 'conflictingDep'
               -- as a dependency (ignoring flag and stanza choices).
-              if null [() | Simple (LDep _ (Dep (PkgComponent qpn _) _)) _ <- qdeps, qpn == conflictingDep]
+              if null [() | Simple (LDep _ (Dep (PkgComponent qpn _) _is_private _)) _ <- qdeps, qpn == conflictingDep]
               then Nothing
               else Just CS.empty
           couldBeResolved (CS.VersionConstraintConflict dep excludedVersion) =
               -- Check whether this package instance also excludes version
               -- 'excludedVersion' of 'dep' (ignoring flag and stanza choices).
-              let vrs = [vr | Simple (LDep _ (Dep (PkgComponent qpn _) (Constrained vr))) _ <- qdeps, qpn == dep ]
+              let vrs = [vr | Simple (LDep _ (Dep (PkgComponent qpn _) _is_private (Constrained vr))) _ <- qdeps, qpn == dep ]
                   vrIntersection = L.foldl' (.&&.) anyVersion vrs
               in if checkVR vrIntersection excludedVersion
                  then Nothing

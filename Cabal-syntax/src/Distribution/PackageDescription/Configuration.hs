@@ -31,7 +31,6 @@ module Distribution.PackageDescription.Configuration
   , mapTreeConstrs
   , transformAllBuildInfos
   , transformAllBuildDepends
-  , transformAllBuildDependsN
   , simplifyWithSysParams
   ) where
 
@@ -189,10 +188,10 @@ resolveWithFlags
   -- ^ Compiler information
   -> [PackageVersionConstraint]
   -- ^ Additional constraints
-  -> [CondTree ConfVar [Dependency] PDTagged]
-  -> ([Dependency] -> DepTestRslt [Dependency])
+  -> [CondTree ConfVar Dependencies PDTagged]
+  -> (Dependencies -> DepTestRslt Dependencies)
   -- ^ Dependency test function.
-  -> Either [Dependency] (TargetSet PDTagged, FlagAssignment)
+  -> Either Dependencies (TargetSet PDTagged, FlagAssignment)
   -- ^ Either the missing dependencies (error case), or a pair of
   -- (set of build targets with dependencies, chosen flag assignments)
 resolveWithFlags dom enabled os arch impl constrs trees checkDeps =
@@ -324,7 +323,7 @@ extractConditions f gpkg =
     ]
 
 -- | A map of package constraints that combines version ranges using 'unionVersionRanges'.
-newtype DepMapUnion = DepMapUnion {unDepMapUnion :: Map PackageName (VersionRange, NonEmptySet LibraryName)}
+newtype DepMapUnion = DepMapUnion {unDepMapUnion :: Map PackageName (VersionRange, NonEmptySet LibraryName, IsPrivate)}
 
 instance Semigroup DepMapUnion where
   DepMapUnion x <> DepMapUnion y =
@@ -332,17 +331,22 @@ instance Semigroup DepMapUnion where
       Map.unionWith unionVersionRanges' x y
 
 unionVersionRanges'
-  :: (VersionRange, NonEmptySet LibraryName)
-  -> (VersionRange, NonEmptySet LibraryName)
-  -> (VersionRange, NonEmptySet LibraryName)
-unionVersionRanges' (vr, cs) (vr', cs') = (unionVersionRanges vr vr', cs <> cs')
+  :: (VersionRange, NonEmptySet LibraryName, IsPrivate)
+  -> (VersionRange, NonEmptySet LibraryName, IsPrivate)
+  -> (VersionRange, NonEmptySet LibraryName, IsPrivate)
+unionVersionRanges' (vr, cs, p) (vr', cs', p') = (unionVersionRanges vr vr', cs <> cs', p <> p')
 
-toDepMapUnion :: [Dependency] -> DepMapUnion
+toDepMapUnion :: Dependencies -> DepMapUnion
 toDepMapUnion ds =
-  DepMapUnion $ Map.fromListWith unionVersionRanges' [(p, (vr, cs)) | Dependency p vr cs <- ds]
+  DepMapUnion $ Map.fromListWith unionVersionRanges'
+    ([(p, (vr, cs, Public)) | Dependency p vr cs <- publicDependencies ds]
+    ++ [(p, (vr, cs, Private)) | Dependency p vr cs <- privateDependencies ds])
 
-fromDepMapUnion :: DepMapUnion -> [Dependency]
-fromDepMapUnion m = [Dependency p vr cs | (p, (vr, cs)) <- Map.toList (unDepMapUnion m)]
+fromDepMapUnion :: DepMapUnion -> Dependencies
+fromDepMapUnion m =
+  Dependencies
+    [Dependency p vr cs | (p, (vr, cs, Public)) <- Map.toList (unDepMapUnion m)]
+    [Dependency p vr cs | (p, (vr, cs, Private)) <- Map.toList (unDepMapUnion m)]
 
 freeVars :: CondTree ConfVar c a -> [FlagName]
 freeVars t = [f | PackageFlag f <- freeVars' t]
@@ -400,8 +404,9 @@ flattenTaggedTargets (TargetSet targets) = foldr untag (Nothing, []) targets
         | otherwise -> (mb_lib, (n, redoBD c) : comps)
       (PDNull, x) -> x -- actually this should not happen, but let's be liberal
       where
+        deps = fromDepMap depMap
         redoBD :: L.HasBuildInfo a => a -> a
-        redoBD = set L.targetBuildDepends $ fromDepMap depMap
+        redoBD = set L.targetPrivateBuildDepends (privateDependencies deps) . set L.targetBuildDepends (publicDependencies deps)
 
 ------------------------------------------------------------------------------
 -- Convert GenericPackageDescription to PackageDescription
@@ -465,7 +470,7 @@ finalizePD
   -- ^ Additional constraints
   -> GenericPackageDescription
   -> Either
-      [Dependency]
+      Dependencies
       (PackageDescription, FlagAssignment)
   -- ^ Either missing dependencies or the resolved package
   -- description along with the flag assignments chosen.
@@ -526,8 +531,9 @@ finalizePD
           | otherwise -> [b, not b]
       -- flagDefaults = map (\(n,x:_) -> (n,x)) flagChoices
       check ds =
-        let missingDeps = filter (not . satisfyDep) ds
-         in if null missingDeps
+        let missingDeps = Dependencies (filter (not . satisfyDep) (publicDependencies ds))
+                                       (filter (not . satisfyDep) (privateDependencies ds))
+         in if null (publicDependencies missingDeps) && null (privateDependencies missingDeps)
               then DepOk
               else MissingDeps missingDeps
 
@@ -652,15 +658,17 @@ transformAllBuildDepends
   -> GenericPackageDescription
   -> GenericPackageDescription
 transformAllBuildDepends f =
-  over (L.traverseBuildInfos . L.targetBuildDepends . traverse) f
+  over (L.traverseBuildInfos . L.targetPrivateBuildDepends . traverse) f
+    . over (L.traverseBuildInfos . L.targetBuildDepends . traverse) f
     . over (L.packageDescription . L.setupBuildInfo . traverse . L.setupDepends . traverse) f
     -- cannot be point-free as normal because of higher rank
-    . over (\f' -> L.allCondTrees $ traverseCondTreeC f') (map f)
+    . over (\f' -> L.allCondTrees $ traverseCondTreeC f') (mapDependencies f)
 
+{-
 -- | Walk a 'GenericPackageDescription' and apply @f@ to all nested
 -- @build-depends@ fields.
 transformAllBuildDependsN
-  :: ([Dependency] -> [Dependency])
+  :: (Dependencies -> Dependencies)
   -> GenericPackageDescription
   -> GenericPackageDescription
 transformAllBuildDependsN f =
@@ -668,3 +676,4 @@ transformAllBuildDependsN f =
     . over (L.packageDescription . L.setupBuildInfo . traverse . L.setupDepends) f
     -- cannot be point-free as normal because of higher rank
     . over (\f' -> L.allCondTrees $ traverseCondTreeC f') f
+    -}

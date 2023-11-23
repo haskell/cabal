@@ -652,7 +652,7 @@ mergePackageInfo versionPref installedPkgs sourcePkgs selectedPkg showVer =
       , dependencies =
           combine
             ( map (SourceDependency . simplifyDependency)
-                . Source.allBuildDepends
+                . error "todo" -- Source.allBuildDepends
             )
             source
             (map InstalledDependency . Installed.depends)

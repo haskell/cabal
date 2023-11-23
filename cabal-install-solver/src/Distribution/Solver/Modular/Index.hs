@@ -18,6 +18,7 @@ import Distribution.Solver.Modular.Dependency
 import Distribution.Solver.Modular.Flag
 import Distribution.Solver.Modular.Package
 import Distribution.Solver.Modular.Tree
+import Distribution.Solver.Types.PackagePath
 
 -- | An index contains information about package instances. This is a nested
 -- dictionary. Package names are mapped to instances, which in turn is mapped
@@ -60,14 +61,14 @@ groupMap xs = M.fromListWith (flip (++)) (L.map (\ (x, y) -> (x, [y])) xs)
 
 defaultQualifyOptions :: Index -> QualifyOptions
 defaultQualifyOptions idx = QO {
-      qoBaseShim         = or [ dep == base
+      qoBaseShim         = False {- or [ dep == base
                               | -- Find all versions of base ..
                                 Just is <- [M.lookup base idx]
                                 -- .. which are installed ..
                               , (I _ver (Inst _), PInfo deps _comps _flagNfo _fr) <- M.toList is
                                 -- .. and flatten all their dependencies ..
                               , (LDep _ (Dep (PkgComponent dep _) _ci), _comp) <- flattenFlaggedDeps deps
-                              ]
+                              ] -}
     , qoSetupIndependent = True
     }
   where

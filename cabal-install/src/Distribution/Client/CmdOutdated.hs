@@ -455,7 +455,7 @@ depsFromPkgDesc verbosity comp platform = do
       debug
         verbosity
         "Reading the list of dependencies from the package description"
-      return $ map toPVC bd
+      return $ map toPVC (error "todo")
   where
     toPVC (Dependency pn vr _) = PackageVersionConstraint pn vr
 

@@ -14,6 +14,8 @@ import Prelude ()
 import Distribution.Package (PackageName)
 import Distribution.Pretty (pretty, flatStyle)
 import qualified Text.PrettyPrint as Disp
+import Distribution.Types.ComponentName
+import Distribution.Solver.Types.ComponentDeps
 
 -- | A package path consists of a namespace and a package path inside that
 -- namespace.
@@ -30,6 +32,8 @@ data Namespace =
 
     -- | A namespace for a specific build target
   | Independent PackageName
+
+  | IndependentComponent PackageName Component
   deriving (Eq, Ord, Show)
 
 -- | Pretty-prints a namespace. The result is either empty or
@@ -37,6 +41,7 @@ data Namespace =
 dispNamespace :: Namespace -> Disp.Doc
 dispNamespace DefaultNamespace = Disp.empty
 dispNamespace (Independent i) = pretty i <<>> Disp.text "."
+dispNamespace (IndependentComponent pn c) = pretty pn <<>> Disp.text "." <<>> pretty c <<>> Disp.text "."
 
 -- | Qualifier of a package within a namespace (see 'PackagePath')
 data Qualifier =
@@ -68,6 +73,8 @@ data Qualifier =
     -- tracked only @pn2@, that would require us to pick only one
     -- version of an executable over the entire install plan.)
   | QualExe PackageName PackageName
+
+
   deriving (Eq, Ord, Show)
 
 -- | Pretty-prints a qualifier. The result is either empty or

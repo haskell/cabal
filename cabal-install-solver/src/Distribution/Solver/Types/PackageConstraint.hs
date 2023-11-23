@@ -22,7 +22,7 @@ import Distribution.Solver.Compat.Prelude
 import Prelude ()
 
 import Distribution.Package                        (PackageName)
-import Distribution.PackageDescription             (FlagAssignment, dispFlagAssignment)
+import Distribution.PackageDescription             (FlagAssignment, dispFlagAssignment, ComponentName)
 import Distribution.Pretty                         (flatStyle, pretty)
 import Distribution.Types.PackageVersionConstraint (PackageVersionConstraint (..))
 import Distribution.Version                        (VersionRange, simplifyVersionRange)
@@ -48,6 +48,7 @@ data ConstraintScope
    = ScopeTarget PackageName
      -- | The package with the specified name and qualifier.
    | ScopeQualified Qualifier PackageName
+   | ScopeQualifiedComponent Qualifier PackageName ComponentName
      -- | The package with the specified name when it has a
      -- setup qualifier.
    | ScopeAnySetupQualifier PackageName
@@ -68,14 +69,18 @@ scopeToPackageName (ScopeTarget pn) = pn
 scopeToPackageName (ScopeQualified _ pn) = pn
 scopeToPackageName (ScopeAnySetupQualifier pn) = pn
 scopeToPackageName (ScopeAnyQualifier pn) = pn
+scopeToPackageName (ScopeQualifiedComponent _ pn _) = pn
 
 constraintScopeMatches :: ConstraintScope -> QPN -> Bool
 constraintScopeMatches (ScopeTarget pn) (Q (PackagePath ns q) pn') =
   let namespaceMatches DefaultNamespace = True
       namespaceMatches (Independent namespacePn) = pn == namespacePn
+      namespaceMatches (IndependentComponent namespacePn compNm) = pn == namespacePn
   in namespaceMatches ns && q == QualToplevel && pn == pn'
 constraintScopeMatches (ScopeQualified q pn) (Q (PackagePath _ q') pn') =
     q == q' && pn == pn'
+constraintScopeMatches (ScopeQualifiedComponent q pn cn) (Q (PackagePath (IndependentComponent namespacePn namespaceCn) q') pn') =
+  q == q' && pn == nameSpacePn && _
 constraintScopeMatches (ScopeAnySetupQualifier pn) (Q pp pn') =
   let setup (PackagePath _ (QualSetup _)) = True
       setup _                             = False

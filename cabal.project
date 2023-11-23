@@ -1,19 +1,22 @@
 import: cabal.project.latest-ghc
 
 packages: Cabal/
-packages: cabal-testsuite/
+--packages: cabal-testsuite/
 packages: Cabal-syntax/
 packages: cabal-install/
 packages: cabal-install-solver/
 packages: solver-benchmarks/
 
-tests: True
+package *
+  ghc-options: -finfo-table-map -fdistinct-constructor-tables
 
-packages: Cabal-QuickCheck/
-packages: Cabal-tree-diff/
-packages: Cabal-described
-packages: Cabal-tests/
-packages: cabal-benchmarks/
+--tests: True
+
+--packages: Cabal-QuickCheck/
+--packages: Cabal-tree-diff/
+--packages: Cabal-described
+--packages: Cabal-tests/
+--packages: cabal-benchmarks/
 
 optional-packages: ./vendored/*/*.cabal
 

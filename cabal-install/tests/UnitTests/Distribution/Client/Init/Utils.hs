@@ -77,7 +77,7 @@ baseVersion' _ = []
 mkLicense :: SPDX.LicenseId -> SPDX.License
 mkLicense lid = SPDX.License (SPDX.ELicense (SPDX.ELicenseId lid) Nothing)
 
-mangleBaseDep :: a -> (a -> [Dependency]) -> [Dependency]
+mangleBaseDep :: a -> (a -> Dependencies) -> Dependencies
 mangleBaseDep target f =
   [ if unPackageName x == "base"
     then Dependency x anyVersion z

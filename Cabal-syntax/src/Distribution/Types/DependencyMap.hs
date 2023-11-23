@@ -18,7 +18,7 @@ import qualified Data.Map.Lazy as Map
 
 -- | A map of dependencies.  Newtyped since the default monoid instance is not
 --   appropriate.  The monoid instance uses 'intersectVersionRanges'.
-newtype DependencyMap = DependencyMap {unDependencyMap :: Map PackageName (VersionRange, NonEmptySet LibraryName)}
+newtype DependencyMap = DependencyMap {unDependencyMap :: Map PackageName (VersionRange, NonEmptySet LibraryName, IsPrivate)}
   deriving (Show, Read, Eq)
 
 instance Monoid DependencyMap where
@@ -30,18 +30,22 @@ instance Semigroup DependencyMap where
     DependencyMap (Map.unionWith intersectVersionRangesAndJoinComponents a b)
 
 intersectVersionRangesAndJoinComponents
-  :: (VersionRange, NonEmptySet LibraryName)
-  -> (VersionRange, NonEmptySet LibraryName)
-  -> (VersionRange, NonEmptySet LibraryName)
-intersectVersionRangesAndJoinComponents (va, ca) (vb, cb) =
-  (intersectVersionRanges va vb, ca <> cb)
+  :: (VersionRange, NonEmptySet LibraryName, IsPrivate)
+  -> (VersionRange, NonEmptySet LibraryName, IsPrivate)
+  -> (VersionRange, NonEmptySet LibraryName, IsPrivate)
+intersectVersionRangesAndJoinComponents (va, ca, pa) (vb, cb, pb) =
+  (intersectVersionRanges va vb, ca <> cb, pa <> pb)
 
-toDepMap :: [Dependency] -> DependencyMap
+toDepMap :: Dependencies -> DependencyMap
 toDepMap ds =
-  DependencyMap $ Map.fromListWith intersectVersionRangesAndJoinComponents [(p, (vr, cs)) | Dependency p vr cs <- ds]
+  DependencyMap $ Map.fromListWith intersectVersionRangesAndJoinComponents
+                    ( [(p, (vr, cs, Public)) | Dependency p vr cs <- publicDependencies ds]
+                    ++   [(p, (vr, cs, Private)) | Dependency p vr cs <- privateDependencies ds] )
 
-fromDepMap :: DependencyMap -> [Dependency]
-fromDepMap m = [Dependency p vr cs | (p, (vr, cs)) <- Map.toList (unDependencyMap m)]
+fromDepMap :: DependencyMap -> Dependencies
+fromDepMap m = Dependencies
+  [Dependency p vr cs | (p, (vr, cs, Public)) <- Map.toList (unDependencyMap m)]
+  [Dependency p vr cs | (p, (vr, cs, Private)) <- Map.toList (unDependencyMap m)]
 
 -- Apply extra constraints to a dependency map.
 -- Combines dependencies where the result will only contain keys from the left
@@ -56,4 +60,4 @@ constrainBy = foldl' tightenConstraint
     tightenConstraint (DependencyMap l) (PackageVersionConstraint pn vr) = DependencyMap $
       case Map.lookup pn l of
         Nothing -> l
-        Just (vr', cs) -> Map.insert pn (intersectVersionRanges vr' vr, cs) l
+        Just (vr', cs, p) -> Map.insert pn (intersectVersionRanges vr' vr, cs, p) l

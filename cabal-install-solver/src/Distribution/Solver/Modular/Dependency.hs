@@ -92,7 +92,7 @@ data FlaggedDep qpn =
     -- (e.g., a test suite or benchmark) is enabled.
   | Stanza  (SN qpn)       (TrueFlaggedDeps qpn)
     -- | Dependencies which are always enabled, for the component 'comp'.
-  | Simple (LDep qpn) Component
+  | Simple (LDep qpn) Component deriving Show
 
 -- | Conservatively flatten out flagged dependencies
 --
@@ -114,16 +114,16 @@ type FalseFlaggedDeps qpn = FlaggedDeps qpn
 -- is used both to record the dependencies as well as who's doing the
 -- depending; having a 'Functor' instance makes bugs where we don't distinguish
 -- these two far too likely. (By rights 'LDep' ought to have two type variables.)
-data LDep qpn = LDep (DependencyReason qpn) (Dep qpn)
+data LDep qpn = LDep (DependencyReason qpn) (Dep qpn) deriving Show
 
 -- | A dependency (constraint) associates a package name with a constrained
 -- instance. It can also represent other types of dependencies, such as
 -- dependencies on language extensions.
-data Dep qpn = Dep (PkgComponent qpn) CI  -- ^ dependency on a package component
+data Dep qpn = Dep (PkgComponent qpn) Bool CI  -- ^ dependency on a package component
              | Ext Extension              -- ^ dependency on a language extension
              | Lang Language              -- ^ dependency on a language version
              | Pkg PkgconfigName PkgconfigVersionRange  -- ^ dependency on a pkg-config package
-  deriving Functor
+  deriving (Show, Functor)
 
 -- | An exposed component within a package. This type is used to represent
 -- build-depends and build-tool-depends dependencies.
@@ -200,12 +200,13 @@ qualifyDeps QO{..} (Q pp@(PackagePath ns q) pn) = go
     goD (Ext  ext)    _    = Ext  ext
     goD (Lang lang)   _    = Lang lang
     goD (Pkg pkn vr)  _    = Pkg pkn vr
-    goD (Dep dep@(PkgComponent qpn (ExposedExe _)) ci) _ =
-        Dep (Q (PackagePath ns (QualExe pn qpn)) <$> dep) ci
-    goD (Dep dep@(PkgComponent qpn (ExposedLib _)) ci) comp
-      | qBase qpn   = Dep (Q (PackagePath ns (QualBase  pn)) <$> dep) ci
-      | qSetup comp = Dep (Q (PackagePath ns (QualSetup pn)) <$> dep) ci
-      | otherwise   = Dep (Q (PackagePath ns inheritedQ    ) <$> dep) ci
+    goD (Dep dep@(PkgComponent qpn (ExposedExe _)) is_private ci) _ =
+        Dep (Q (PackagePath ns (QualExe pn qpn)) <$> dep) is_private ci
+    goD (Dep dep@(PkgComponent qpn (ExposedLib _)) is_private ci) comp
+      | is_private  = Dep (Q (PackagePath (IndependentComponent pn comp) inheritedQ) <$> dep) is_private ci
+      | qBase qpn   = Dep (Q (PackagePath ns (QualBase  pn)) <$> dep) is_private ci
+      | qSetup comp = Dep (Q (PackagePath ns (QualSetup pn)) <$> dep) is_private ci
+      | otherwise   = Dep (Q (PackagePath ns inheritedQ    ) <$> dep) is_private ci
 
     -- If P has a setup dependency on Q, and Q has a regular dependency on R, then
     -- we say that the 'Setup' qualifier is inherited: P has an (indirect) setup

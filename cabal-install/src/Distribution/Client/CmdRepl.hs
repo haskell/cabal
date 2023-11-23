@@ -131,8 +131,8 @@ import Distribution.Types.CondTree
   ( CondTree (..)
   )
 import Distribution.Types.Dependency
-  ( Dependency (..)
-  , mainLibSet
+  ( Dependencies (..)
+  , mainLibSet, Dependency(..)
   )
 import Distribution.Types.Library
   ( Library (..)
@@ -299,7 +299,7 @@ replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings g
           sourcePackage =
             fakeProjectSourcePackage projectRoot
               & lSrcpkgDescription . L.condLibrary
-                .~ Just (CondNode library [baseDep] [])
+                .~ Just (CondNode library (Dependencies [baseDep] []) [])
           library = emptyLibrary{libBuildInfo = lBuildInfo}
           lBuildInfo =
             emptyBuildInfo

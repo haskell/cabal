@@ -9,6 +9,11 @@ module Distribution.Types.Dependency
   , depLibraries
   , simplifyDependency
   , mainLibSet
+
+  , Dependencies(..)
+  , IsPrivate(..)
+  , mapDependencies
+  , allDependencies
   ) where
 
 import Distribution.Compat.Prelude
@@ -28,6 +33,26 @@ import Distribution.Types.UnqualComponentName
 
 import qualified Distribution.Compat.NonEmptySet as NES
 import qualified Text.PrettyPrint as PP
+
+data IsPrivate = Private | Public deriving (Show, Read, Eq)
+
+instance Semigroup IsPrivate where
+  Public <> _ = Public
+  Private <> a = a
+
+data Dependencies = Dependencies { publicDependencies :: [Dependency], privateDependencies :: [Dependency] } deriving (Eq, Show, Generic, Data)
+
+allDependencies :: Dependencies -> [Dependency]
+allDependencies (Dependencies pub priv) = pub ++ priv
+
+instance Semigroup Dependencies where
+  (Dependencies p1 pr1) <> (Dependencies p2 pr2) = Dependencies (p1 <> p2) (pr1 <> pr2)
+
+instance Monoid Dependencies where
+  mempty = Dependencies mempty mempty
+
+mapDependencies :: (Dependency -> Dependency) -> Dependencies -> Dependencies
+mapDependencies f (Dependencies pub priv) = Dependencies (map f pub) (map f priv)
 
 -- | Describes a dependency on a source package (API)
 --
@@ -76,6 +101,9 @@ instance Binary Dependency
 instance Structured Dependency
 instance NFData Dependency where rnf = genericRnf
 
+instance Binary Dependencies
+instance Structured Dependencies
+instance NFData Dependencies where rnf = genericRnf
 -- |
 --
 -- >>> prettyShow $ Dependency (mkPackageName "pkg") anyVersion mainLibSet

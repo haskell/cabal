@@ -400,7 +400,7 @@ extend extSupported langSupported pkgPresent newactives ppa = foldM extendSingle
     extendSingle a (LDep dr (Pkg pn vr))  =
       if pkgPresent pn vr then Right a
                           else Left (dependencyReasonToConflictSet dr, MissingPkgconfigPackage pn vr)
-    extendSingle a (LDep dr (Dep dep@(PkgComponent qpn _) ci)) =
+    extendSingle a (LDep dr (Dep dep@(PkgComponent qpn _) _is_private ci)) =
       let mergedDep = M.findWithDefault (MergedDepConstrained []) qpn a
       in  case (\ x -> M.insert qpn x a) <$> merge mergedDep (PkgDep dr dep ci) of
             Left (c, (d, d')) -> Left (c, ConflictingConstraints d d')
@@ -530,7 +530,7 @@ extendRequiredComponents eqpn available = foldM extendSingle
     extendSingle :: Map QPN ComponentDependencyReasons
                  -> LDep QPN
                  -> Either Conflict (Map QPN ComponentDependencyReasons)
-    extendSingle required (LDep dr (Dep (PkgComponent qpn comp) _)) =
+    extendSingle required (LDep dr (Dep (PkgComponent qpn comp) _is_private _)) =
       let compDeps = M.findWithDefault M.empty qpn required
           success = Right $ M.insertWith M.union qpn (M.insert comp dr compDeps) required
       in -- Only check for the existence of the component if its package has

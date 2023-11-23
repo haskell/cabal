@@ -180,7 +180,7 @@ toConfiguredComponent pkg_descr this_cid lib_dep_map exe_dep_map component = do
   lib_deps <-
     if newPackageDepsBehaviour pkg_descr
       then fmap concat $
-        forM (targetBuildDepends bi) $
+        forM (targetBuildDepends bi ++ targetPrivateBuildDepends bi) $
           \(Dependency name _ sublibs) -> do
             case Map.lookup name lib_dep_map of
               Nothing ->

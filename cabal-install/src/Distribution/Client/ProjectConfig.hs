@@ -1158,6 +1158,9 @@ fetchAndReadSourcePackages
   projectConfigShared
   projectConfigBuildOnly
   pkgLocations = do
+
+    liftIO $ info verbosity "Project settings changed, reconfiguring7..."
+    liftIO $ info verbosity (show pkgLocations)
     pkgsLocalDirectory <-
       sequenceA
         [ readSourcePackageLocalDirectory verbosity dir cabalFile
@@ -1165,6 +1168,7 @@ fetchAndReadSourcePackages
         , (dir, cabalFile) <- projectPackageLocal location
         ]
 
+    liftIO $ info verbosity "Project settings changed, reconfiguring8..."
     pkgsLocalTarball <-
       sequenceA
         [ readSourcePackageLocalTarball verbosity path
@@ -1230,6 +1234,8 @@ readSourcePackageLocalDirectory
   -- ^ The package @.cabal@ file
   -> Rebuild (PackageSpecifier (SourcePackage UnresolvedPkgLoc))
 readSourcePackageLocalDirectory verbosity dir cabalFile = do
+
+  liftIO $ info verbosity (show cabalFile)
   monitorFiles [monitorFileHashed cabalFile]
   root <- askRoot
   let location = LocalUnpackedPackage (root </> dir)
@@ -1521,10 +1527,13 @@ readSourcePackageCabalFile
 readSourcePackageCabalFile verbosity pkgfilename content =
   case runParseResult (parseGenericPackageDescription content) of
     (warnings, Right pkg) -> do
+
+      liftIO $ info verbosity "RIGHT"
       unless (null warnings) $
         info verbosity (formatWarnings warnings)
       return pkg
-    (warnings, Left (mspecVersion, errors)) ->
+    (warnings, Left (mspecVersion, errors)) -> do
+      liftIO $ info verbosity "LEFT"
       throwIO $ CabalFileParseError pkgfilename content errors mspecVersion warnings
   where
     formatWarnings warnings =

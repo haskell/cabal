@@ -255,10 +255,10 @@ problems indepGoals index =
     ++ [ PackageCycle cycleGroup
        | cycleGroup <- Graph.cycles index
        ]
-    ++ [ PackageInconsistency name inconsistencies
-       | (name, inconsistencies) <-
-          dependencyInconsistencies indepGoals index
-       ]
+    -- ++ [ PackageInconsistency name inconsistencies
+    --    | (name, inconsistencies) <-
+    --      dependencyInconsistencies indepGoals index
+    --   ]
     ++ [ PackageStateInvalid pkg pkg'
        | pkg <- Foldable.toList index
        , Just pkg' <-

@@ -371,17 +371,22 @@ rebuildProjectConfig
         $ do
           liftIO $ info verbosity "Project settings changed, reconfiguring..."
           projectConfigSkeleton <- phaseReadProjectConfig
+          liftIO $ info verbosity "Project settings changed, reconfiguring2..."
           let fetchCompiler = do
                 -- have to create the cache directory before configuring the compiler
                 liftIO $ createDirectoryIfMissingVerbose verbosity True distProjectCacheDirectory
                 (compiler, Platform arch os, _) <- configureCompiler verbosity distDirLayout (fst (PD.ignoreConditions projectConfigSkeleton) <> cliConfig)
                 pure (os, arch, compilerInfo compiler)
 
+          liftIO $ info verbosity "Project settings changed, reconfiguring3..."
           projectConfig <- instantiateProjectConfigSkeletonFetchingCompiler fetchCompiler mempty projectConfigSkeleton
+          liftIO $ info verbosity "Project settings changed, reconfiguring4..."
           when (projectConfigDistDir (projectConfigShared $ projectConfig) /= NoFlag) $
             liftIO $
               warn verbosity "The builddir option is not supported in project and config files. It will be ignored."
+          liftIO $ info verbosity "Project settings changed, reconfiguring5..."
           localPackages <- phaseReadLocalPackages (projectConfig <> cliConfig)
+          liftIO $ info verbosity "Project settings changed, reconfiguring2..."
           return (projectConfig, localPackages)
 
     info verbosity $
@@ -426,6 +431,7 @@ rebuildProjectConfig
             createDirectoryIfMissingVerbose verbosity True distDirectory
             createDirectoryIfMissingVerbose verbosity True distProjectCacheDirectory
 
+          liftIO $ info verbosity "Project settings changed, reconfiguring6..."
           fetchAndReadSourcePackages
             verbosity
             distDirLayout
