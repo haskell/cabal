@@ -20,7 +20,7 @@ jobs:
     name: test ghc-8.6.5
     runs-on: windows-latest
     steps:
-      - uses: actions/setup-haskell@v1.1.4
+      - uses: haskell-actions/setup@v2
         with:
           ghc-version: '8.6.5'
           cabal-version: '3.4.0.0'
@@ -74,7 +74,7 @@ jobs:
     name: test ghc-8.6.5 dogfood
     runs-on: windows-latest
     steps:
-      - uses: actions/setup-haskell@v1.1.4
+      - uses: haskell-actions/setup@v2
         with:
           ghc-version: '8.6.5'
           cabal-version: '3.4.0.0'
@@ -117,7 +117,7 @@ jobs:
     name: test ghc-8.10.4
     runs-on: windows-latest
     steps:
-      - uses: actions/setup-haskell@v1.1.4
+      - uses: haskell-actions/setup@v2
         with:
           ghc-version: '8.10.4'
           cabal-version: '3.4.0.0'
@@ -171,7 +171,7 @@ jobs:
     name: test ghc-8.10.4 dogfood
     runs-on: windows-latest
     steps:
-      - uses: actions/setup-haskell@v1.1.4
+      - uses: haskell-actions/setup@v2
         with:
           ghc-version: '8.10.4'
           cabal-version: '3.4.0.0'

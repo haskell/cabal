@@ -27,7 +27,7 @@ jobs:
     needs: test-windows-{{ mangleVersion needs }}
 {% endfor %}
     steps:
-      - uses: actions/setup-haskell@v1.1.4
+      - uses: haskell-actions/setup@v2
         with:
           ghc-version: '{{ job.chocoVersion }}'
           cabal-version: '3.4.0.0'
@@ -84,7 +84,7 @@ jobs:
     needs: test-windows-{{ mangleVersion needs }}
 {% endfor %}
     steps:
-      - uses: actions/setup-haskell@v1.1.4
+      - uses: haskell-actions/setup@v2
         with:
           ghc-version: '{{ job.chocoVersion }}'
           cabal-version: '3.4.0.0'
