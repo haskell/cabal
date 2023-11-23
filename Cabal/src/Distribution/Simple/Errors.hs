@@ -125,7 +125,7 @@ data CabalException
   | CantFindForeignLibraries [String]
   | ExpectedAbsoluteDirectory FilePath
   | FlagsNotSpecified [FlagName]
-  | EncounteredMissingDependency [Dependency]
+  | EncounteredMissingDependency Dependencies
   | CompilerDoesn'tSupportThinning
   | CompilerDoesn'tSupportReexports
   | CompilerDoesn'tSupportBackpack
@@ -553,8 +553,11 @@ exceptionMessage e = case e of
             . sep
             . punctuate comma
             . map (pretty . simplifyDependency)
+            . allDependencies
             $ missing
          )
+    where
+      allDependencies (Dependencies pub priv) = pub ++ concatMap private_depends priv
   CompilerDoesn'tSupportThinning ->
     "Your compiler does not support thinning and renaming on "
       ++ "package flags.  To use this feature you must use "

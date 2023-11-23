@@ -140,6 +140,7 @@ data BuildInfo = BuildInfo
   --  simple assoc-list.
   , targetBuildDepends :: [Dependency]
   -- ^ Dependencies specific to a library or executable target
+  , targetPrivateBuildDepends :: [PrivateDependency]
   , mixins :: [Mixin]
   }
   deriving (Generic, Show, Read, Eq, Ord, Typeable, Data)
@@ -196,6 +197,7 @@ instance Monoid BuildInfo where
       , staticOptions = mempty
       , customFieldsBI = []
       , targetBuildDepends = []
+      , targetPrivateBuildDepends = []
       , mixins = []
       }
   mappend = (<>)
@@ -248,6 +250,7 @@ instance Semigroup BuildInfo where
       , staticOptions = combine staticOptions
       , customFieldsBI = combine customFieldsBI
       , targetBuildDepends = combineNub targetBuildDepends
+      , targetPrivateBuildDepends = combineNub targetPrivateBuildDepends
       , mixins = combine mixins
       }
     where

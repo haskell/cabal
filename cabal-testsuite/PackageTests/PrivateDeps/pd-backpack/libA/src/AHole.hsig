@@ -1,0 +1,3 @@
+signature AHole where
+
+fillhole :: Int

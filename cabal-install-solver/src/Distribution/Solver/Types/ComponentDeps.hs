@@ -83,7 +83,7 @@ type ComponentDep a = (Component, a)
 
 -- | Fine-grained dependencies for a package.
 --
--- Typically used as @ComponentDeps [Dependency]@, to represent the list of
+-- Typically used as @ComponentDeps Dependencies@, to represent the list of
 -- dependencies for each named component within a package.
 --
 newtype ComponentDeps a = ComponentDeps { unComponentDeps :: Map Component a }

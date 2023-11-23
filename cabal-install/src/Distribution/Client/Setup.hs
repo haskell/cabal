@@ -740,14 +740,15 @@ filterConfigureFlags' flags cabalLibVersion
           -- (public sublibraries), so we convert it to the legacy
           -- --dependency=pkg_or_internal_component=cid
           configDependencies =
-            let convertToLegacyInternalDep (GivenComponent _ (LSubLibName cn) cid) =
+            let convertToLegacyInternalDep (GivenComponent _ (LSubLibName cn) cid alias) =
                   Just $
                     GivenComponent
                       (unqualComponentNameToPackageName cn)
                       LMainLibName
                       cid
-                convertToLegacyInternalDep (GivenComponent pn LMainLibName cid) =
-                  Just $ GivenComponent pn LMainLibName cid
+                      alias
+                convertToLegacyInternalDep (GivenComponent pn LMainLibName cid alias) =
+                  Just $ GivenComponent pn LMainLibName cid alias
              in catMaybes $ convertToLegacyInternalDep <$> configDependencies flags
         , -- Cabal < 2.5 doesn't know about '--allow-depending-on-private-libs'.
           configAllowDependingOnPrivateLibs = NoFlag

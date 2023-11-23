@@ -41,7 +41,7 @@ data ConfiguredPackage loc = ConfiguredPackage
   , confPkgDeps :: CD.ComponentDeps [ConfiguredId]
   -- ^ set of exact dependencies (installed or source).
   --
-  -- These must be consistent with the 'buildDepends'
+  -- These must be consistent with the 'buildDepends' and 'privateBuildDepends'
   -- in the 'PackageDescription' that you'd get by
   -- applying the flag assignment and optional stanzas.
   }

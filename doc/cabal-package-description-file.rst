@@ -2143,6 +2143,30 @@ system-dependent values for these fields.
     supported libraries. Depending on your system you may need to adjust
     ``PKG_CONFIG_PATH``.
 
+.. pkg-field:: private-build-depends: private scope
+
+    A private dependency can be introduced in a cabal file in the
+    ``private-build-depends`` field. The specification starts with the name of the
+    private dependency *scope* and then contains a list of normal dependency
+    specifications which dictate the packages included in that private scope.
+    For example, the following will create two private scopes, with a different
+    version of ``text`` each.
+
+    ::
+
+        private-build-depends: TEXT1 with (text == 1.2.*), TEXT2 with (text == 2.*)
+
+    The package **goals in a private scope are solved independently of all other
+    scopes**. In this example, the ``TEXT1`` scope can choose a version of ``text``
+    in the ``1.2.x`` range and the ``TEXT2`` scope can choose a version of ``text`` in the
+    ``2.*`` range.
+
+    However, **private scopes do not apply transitively**, so the dependencies of
+    ``text`` will be solved in the normal top-level scope. If your program contains a
+    value of type ``Bool`` from the ``base`` package, which ``text`` also depends on, only
+    if the scopes are not applied transitively can the same ``Bool`` value can be
+    passed to functions from the ``TEXT1`` scope and ``TEXT2`` scope.
+
 .. pkg-field:: frameworks: token list
 
     On Darwin/MacOS X, a list of frameworks to link to. See Apple's

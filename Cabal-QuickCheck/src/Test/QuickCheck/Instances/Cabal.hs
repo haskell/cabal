@@ -209,6 +209,23 @@ instance Arbitrary Dependency where
         ]
 
 -------------------------------------------------------------------------------
+-- Private Dependency
+-------------------------------------------------------------------------------
+
+instance Arbitrary PrivateAlias where
+  arbitrary = PrivateAlias <$> arbitrary
+  shrink (PrivateAlias al) = PrivateAlias <$> shrink al
+instance Arbitrary PrivateDependency where
+    arbitrary = PrivateDependency
+        <$> arbitrary
+        <*> arbitrary
+
+    shrink (PrivateDependency al dps) =
+        [ PrivateDependency al' dps'
+        | (al', dps') <- shrink (al, dps)
+        ]
+
+-------------------------------------------------------------------------------
 -- PackageVersionConstraint
 -------------------------------------------------------------------------------
 

@@ -43,6 +43,7 @@ import Distribution.Solver.Modular.Tree
 import Distribution.Solver.Modular.Version
 import qualified Distribution.Solver.Modular.ConflictSet as CS
 import qualified Distribution.Solver.Modular.WeightedPSQ as W
+import Distribution.Solver.Types.ComponentDeps (Component(..))
 
 -- | Update the weights of children under 'PChoice' nodes. 'addWeights' takes a
 -- list of weight-calculating functions in order to avoid sorting the package
@@ -358,6 +359,7 @@ onlyConstrained p = go
     go x
       = x
 
+
 -- | Sort all goals using the provided function.
 sortGoals :: (Variable QPN -> Variable QPN -> Ordering) -> EndoTreeTrav d c
 sortGoals variableOrder = go
@@ -420,8 +422,9 @@ deferSetupExeChoices = go
     go x                    = x
 
     noSetupOrExe :: Goal QPN -> Bool
-    noSetupOrExe (Goal (P (Q (PackagePath _ns (QualSetup _)) _)) _) = False
-    noSetupOrExe (Goal (P (Q (PackagePath _ns (QualExe _ _)) _)) _) = False
+    -- TODO: MP defer all component goals?
+    noSetupOrExe (Goal (P (Q (PackagePath (IndependentComponent _ ComponentSetup) _) _)) _) = False
+    noSetupOrExe (Goal (P (Q (PackagePath (IndependentBuildTool {}) _) _)) _) = False
     noSetupOrExe _                                                  = True
 
 -- | Transformation that tries to avoid making weak flag choices early.

@@ -84,7 +84,8 @@ import Distribution.Types.PackageVersionConstraint
   )
 
 import Distribution.PackageDescription
-  ( GenericPackageDescription
+  ( ComponentName
+  , GenericPackageDescription
   )
 import Distribution.Simple.Utils
   ( dieWithException
@@ -106,6 +107,8 @@ import qualified Data.Map as Map
 import Distribution.Client.Errors
 import qualified Distribution.Client.GZipUtils as GZipUtils
 import qualified Distribution.Compat.CharParsing as P
+import Distribution.Solver.Types.ComponentDeps
+import Distribution.Types.Dependency
 import Distribution.Utils.Path (makeSymbolicPath)
 import Network.URI
   ( URI (..)
@@ -613,6 +616,7 @@ data UserQualifier
     UserQualSetup PackageName
   | -- | Executable dependency.
     UserQualExe PackageName PackageName
+  | UserQualComp PackageName ComponentName
   deriving (Eq, Show, Generic)
 
 instance Binary UserQualifier
@@ -623,6 +627,7 @@ instance Structured UserQualifier
 data UserConstraintScope
   = -- | Scope that applies to the package when it has the specified qualifier.
     UserQualified UserQualifier PackageName
+  | UserPrivateQualifier PackageName PrivateAlias PackageName
   | -- | Scope that applies to the package when it has a setup qualifier.
     UserAnySetupQualifier PackageName
   | -- | Scope that applies to the package when it has any qualifier.
@@ -632,14 +637,16 @@ data UserConstraintScope
 instance Binary UserConstraintScope
 instance Structured UserConstraintScope
 
-fromUserQualifier :: UserQualifier -> Qualifier
-fromUserQualifier UserQualToplevel = QualToplevel
-fromUserQualifier (UserQualSetup name) = QualSetup name
-fromUserQualifier (UserQualExe name1 name2) = QualExe name1 name2
+fromUserQualifier :: UserQualifier -> Namespace
+fromUserQualifier UserQualToplevel = DefaultNamespace
+fromUserQualifier (UserQualSetup pn) = IndependentComponent pn ComponentSetup
+fromUserQualifier (UserQualExe pn bpn) = IndependentBuildTool pn bpn
+fromUserQualifier (UserQualComp pn cn) = IndependentComponent pn (componentNameToComponent cn)
 
 fromUserConstraintScope :: UserConstraintScope -> ConstraintScope
 fromUserConstraintScope (UserQualified q pn) =
-  ScopeQualified (fromUserQualifier q) pn
+  ScopeQualified (fromUserQualifier q) QualToplevel pn
+fromUserConstraintScope (UserPrivateQualifier pn alias cpn) = ScopePrivate pn alias cpn
 fromUserConstraintScope (UserAnySetupQualifier pn) = ScopeAnySetupQualifier pn
 fromUserConstraintScope (UserAnyQualifier pn) = ScopeAnyQualifier pn
 
@@ -658,6 +665,7 @@ userConstraintPackageName (UserConstraint scope _) = scopePN scope
     scopePN (UserQualified _ pn) = pn
     scopePN (UserAnyQualifier pn) = pn
     scopePN (UserAnySetupQualifier pn) = pn
+    scopePN (UserPrivateQualifier _ _ pn) = pn
 
 userToPackageConstraint :: UserConstraint -> PackageConstraint
 userToPackageConstraint (UserConstraint scope prop) =
@@ -706,10 +714,24 @@ instance Parsec UserConstraint where
           withDot pn
             | pn == mkPackageName "any" = UserAnyQualifier <$> parsec
             | pn == mkPackageName "setup" = UserAnySetupQualifier <$> parsec
+            | pn == mkPackageName "private" = do
+                qpn <- parsec
+                _ <- P.char '.'
+                alias <- parsec
+                _ <- P.char ':'
+                cpn <- parsec
+                return $ UserPrivateQualifier qpn alias cpn
             | otherwise = P.unexpected $ "constraint scope: " ++ unPackageName pn
 
-          withColon :: PackageName -> m UserConstraintScope
-          withColon pn =
+          withColon, setupQual, compQual :: PackageName -> m UserConstraintScope
+          withColon pn = setupQual pn <|> compQual pn
+
+          compQual pn = do
+            comp_qual <- UserQualComp pn <$> parsec
+            void $ P.char '.'
+            UserQualified comp_qual <$> parsec
+
+          setupQual pn =
             UserQualified (UserQualSetup pn)
               <$ P.string "setup."
               <*> parsec

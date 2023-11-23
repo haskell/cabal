@@ -66,6 +66,7 @@ library
     Distribution.Solver.Modular.MessageUtils
     Distribution.Solver.Modular.Package
     Distribution.Solver.Modular.Preference
+    Distribution.Solver.Modular.PrivateScopeClosure
     Distribution.Solver.Modular.PSQ
     Distribution.Solver.Modular.RetryLog
     Distribution.Solver.Modular.Solver

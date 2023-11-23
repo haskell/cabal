@@ -8,6 +8,7 @@ module Distribution.Types.GivenComponent
 import Distribution.Compat.Prelude
 
 import Distribution.Types.ComponentId
+import Distribution.Types.Dependency
 import Distribution.Types.LibraryName
 import Distribution.Types.PackageName
 
@@ -22,6 +23,7 @@ data GivenComponent = GivenComponent
   , givenComponentName :: LibraryName -- --dependency is for libraries
   -- only, not for any component
   , givenComponentId :: ComponentId
+  , givenComponentAlias :: Maybe PrivateAlias
   }
   deriving (Generic, Read, Show, Eq, Typeable)
 

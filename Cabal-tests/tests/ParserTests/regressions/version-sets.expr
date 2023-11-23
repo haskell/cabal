@@ -189,72 +189,76 @@ GenericPackageDescription {
                 (MajorBoundVersion
                   (mkVersion [2, 2, 0, 0])))
               mainLibSet],
+          targetPrivateBuildDepends = [],
           mixins = []}},
-      condTreeConstraints = [
-        Dependency
-          (PackageName "network")
-          (MajorBoundVersion
-            (mkVersion [0]))
-          mainLibSet,
-        Dependency
-          (PackageName "base")
-          (ThisVersion (mkVersion [1]))
-          mainLibSet,
-        Dependency
-          (PackageName "base")
-          (ThisVersion (mkVersion [1]))
-          mainLibSet,
-        Dependency
-          (PackageName "base")
-          (UnionVersionRanges
+      condTreeConstraints =
+      Dependencies {
+        publicDependencies = [
+          Dependency
+            (PackageName "network")
+            (MajorBoundVersion
+              (mkVersion [0]))
+            mainLibSet,
+          Dependency
+            (PackageName "base")
             (ThisVersion (mkVersion [1]))
-            (ThisVersion (mkVersion [2])))
-          mainLibSet,
-        Dependency
-          (PackageName "base")
-          (ThisVersion (mkVersion [1, 2]))
-          mainLibSet,
-        Dependency
-          (PackageName "base")
-          (UnionVersionRanges
+            mainLibSet,
+          Dependency
+            (PackageName "base")
+            (ThisVersion (mkVersion [1]))
+            mainLibSet,
+          Dependency
+            (PackageName "base")
+            (UnionVersionRanges
+              (ThisVersion (mkVersion [1]))
+              (ThisVersion (mkVersion [2])))
+            mainLibSet,
+          Dependency
+            (PackageName "base")
             (ThisVersion (mkVersion [1, 2]))
-            (ThisVersion
-              (mkVersion [3, 4])))
-          mainLibSet,
-        Dependency
-          (PackageName "ghc")
-          (UnionVersionRanges
-            (ThisVersion
-              (mkVersion [8, 6, 3]))
+            mainLibSet,
+          Dependency
+            (PackageName "base")
+            (UnionVersionRanges
+              (ThisVersion (mkVersion [1, 2]))
+              (ThisVersion
+                (mkVersion [3, 4])))
+            mainLibSet,
+          Dependency
+            (PackageName "ghc")
             (UnionVersionRanges
               (ThisVersion
-                (mkVersion [8, 4, 4]))
+                (mkVersion [8, 6, 3]))
               (UnionVersionRanges
                 (ThisVersion
-                  (mkVersion [8, 2, 2]))
+                  (mkVersion [8, 4, 4]))
                 (UnionVersionRanges
                   (ThisVersion
-                    (mkVersion [8, 0, 2]))
+                    (mkVersion [8, 2, 2]))
                   (UnionVersionRanges
                     (ThisVersion
-                      (mkVersion [7, 10, 3]))
+                      (mkVersion [8, 0, 2]))
                     (UnionVersionRanges
                       (ThisVersion
-                        (mkVersion [7, 8, 4]))
+                        (mkVersion [7, 10, 3]))
                       (UnionVersionRanges
                         (ThisVersion
-                          (mkVersion [7, 6, 3]))
-                        (ThisVersion
-                          (mkVersion [7, 4, 2])))))))))
-          mainLibSet,
-        Dependency
-          (PackageName "Cabal")
-          (UnionVersionRanges
-            (MajorBoundVersion
-              (mkVersion [2, 4, 1, 1]))
-            (MajorBoundVersion
-              (mkVersion [2, 2, 0, 0])))
-          mainLibSet],
+                          (mkVersion [7, 8, 4]))
+                        (UnionVersionRanges
+                          (ThisVersion
+                            (mkVersion [7, 6, 3]))
+                          (ThisVersion
+                            (mkVersion [7, 4, 2])))))))))
+            mainLibSet,
+          Dependency
+            (PackageName "Cabal")
+            (UnionVersionRanges
+              (MajorBoundVersion
+                (mkVersion [2, 4, 1, 1]))
+              (MajorBoundVersion
+                (mkVersion [2, 2, 0, 0])))
+            mainLibSet],
+        privateDependencies = []},
       condTreeComponents = []},
   condSubLibraries = [],
   condForeignLibs = [],

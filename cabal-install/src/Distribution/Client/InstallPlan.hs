@@ -630,7 +630,11 @@ configureInstallPlan configFlags solverPlan =
         -- NB: no support for executable dependencies
         }
       where
-        deps = fmap (concatMap (map configuredId . mapDep)) (solverPkgLibDeps spkg)
+        -- If the private alias of a given dependency matters to the configured
+        -- package deps we should instead add it  to the datatype rather than
+        -- discarding it here. However, we probably only care about the
+        -- dependencies as a whole here (right?), so we simply discard the scope.
+        deps = fmap (concatMap (map configuredId . mapDep . fst)) (solverPkgLibDeps spkg)
 
 -- ------------------------------------------------------------
 
@@ -757,22 +761,23 @@ failed
   -> ([srcpkg], Processing)
 failed plan (Processing processingSet completedSet failedSet) pkgid =
   assert (pkgid `Set.member` processingSet) $
-    assert (all (`Set.notMember` processingSet) (drop 1 newlyFailedIds)) $
-      assert (all (`Set.notMember` completedSet) (drop 1 newlyFailedIds)) $
+    assert (all (`Set.notMember` processingSet) newlyFailedIds) $
+      assert (all (`Set.notMember` completedSet) newlyFailedIds) $
         -- but note that some newlyFailed may already be in the failed set
         -- since one package can depend on two packages that both fail and
         -- so would be in the rev-dep closure for both.
         assert (processingInvariant plan processing') $
-          ( map asConfiguredPackage (drop 1 newlyFailed)
+          ( map asConfiguredPackage newlyFailed
           , processing'
           )
   where
     processingSet' = Set.delete pkgid processingSet
-    failedSet' = failedSet `Set.union` Set.fromList newlyFailedIds
+    failedSet' = failedSet `Set.union` Set.fromList newlyFailedIds `Set.union` Set.singleton pkgid
     newlyFailedIds = map nodeKey newlyFailed
-    newlyFailed =
-      fromMaybe (internalError "failed" "package not in graph") $
-        Graph.revClosure (planGraph plan) [pkgid]
+    newlyFailed = case fromMaybe (internalError "failed" "package not in graph") $
+      Graph.revClosure (planGraph plan) [pkgid] of
+      [] -> error "impossible"
+      _ : tail' -> tail'
     processing' = Processing processingSet' completedSet failedSet'
 
     asConfiguredPackage (Configured pkg) = pkg

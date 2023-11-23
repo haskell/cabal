@@ -132,32 +132,36 @@ GenericPackageDescription {
               (PackageName "directory")
               (OrLaterVersion (mkVersion [0]))
               mainLibSet],
+          targetPrivateBuildDepends = [],
           mixins = []}},
-      condTreeConstraints = [
-        Dependency
-          (PackageName "base")
-          (OrLaterVersion (mkVersion [0]))
-          mainLibSet,
-        Dependency
-          (PackageName "containers")
-          (OrLaterVersion (mkVersion [0]))
-          mainLibSet,
-        Dependency
-          (PackageName "deepseq")
-          (OrLaterVersion (mkVersion [0]))
-          mainLibSet,
-        Dependency
-          (PackageName "transformers")
-          (OrLaterVersion (mkVersion [0]))
-          mainLibSet,
-        Dependency
-          (PackageName "filepath")
-          (OrLaterVersion (mkVersion [0]))
-          mainLibSet,
-        Dependency
-          (PackageName "directory")
-          (OrLaterVersion (mkVersion [0]))
-          mainLibSet],
+      condTreeConstraints =
+      Dependencies {
+        publicDependencies = [
+          Dependency
+            (PackageName "base")
+            (OrLaterVersion (mkVersion [0]))
+            mainLibSet,
+          Dependency
+            (PackageName "containers")
+            (OrLaterVersion (mkVersion [0]))
+            mainLibSet,
+          Dependency
+            (PackageName "deepseq")
+            (OrLaterVersion (mkVersion [0]))
+            mainLibSet,
+          Dependency
+            (PackageName "transformers")
+            (OrLaterVersion (mkVersion [0]))
+            mainLibSet,
+          Dependency
+            (PackageName "filepath")
+            (OrLaterVersion (mkVersion [0]))
+            mainLibSet,
+          Dependency
+            (PackageName "directory")
+            (OrLaterVersion (mkVersion [0]))
+            mainLibSet],
+        privateDependencies = []},
       condTreeComponents = []},
   condSubLibraries = [],
   condForeignLibs = [],

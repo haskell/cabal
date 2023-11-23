@@ -481,6 +481,7 @@ convertInclude
             }
         , ci_renaming = incl@(IncludeRenaming prov_rns req_rns)
         , ci_implicit = implicit
+        , ci_alias = alias
         }
       ) = addErrContext (text "In" <+> ci_msg ci) $ do
     let pn = packageName pid
@@ -619,12 +620,31 @@ convertInclude
               | (from, to) <- rns
               ]
           return (r, prov_rns)
+
+    -- TODO: Test hiding and private depends to check that works
+
+    -- Expand the alias
+    let prepend_alias mn = case alias of
+          Just (PrivateAlias alias_mn) -> combineModuleName alias_mn mn
+          Nothing -> mn
+
+    let pre_prov_scope' = map (first prepend_alias) pre_prov_scope
+
+    let prov_rns'' =
+          case prov_rns' of
+            DefaultRenaming -> case alias of
+              Nothing -> DefaultRenaming
+              Just{} -> ModuleRenaming (map ((\x -> (x, prepend_alias x)) . fst) (pre_prov_scope))
+            ModuleRenaming rn -> ModuleRenaming (map (\(x, y) -> (x, prepend_alias y)) rn)
+            -- Can't happen, expanded above
+            HidingRenaming{} -> error "unreachable"
+
     let prov_scope =
           modSubst req_subst $
             Map.fromListWith
               (++)
               [ (k, [source v])
-              | (k, v) <- pre_prov_scope
+              | (k, v) <- pre_prov_scope'
               ]
 
     provs_u <- convertModuleProvides prov_scope
@@ -646,8 +666,9 @@ convertInclude
                     , ann_pid = pid
                     , ann_cname = compname
                     }
-              , ci_renaming = prov_rns'
+              , ci_renaming = prov_rns''
               , ci_implicit = ci_implicit ci
+              , ci_alias = alias
               }
           )
       )

@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE TypeApplications #-}
 
 -- | Per-package constraints. Package constraints must be respected by the
 -- solver. Multiple constraints for each package can be given, though obviously
@@ -31,6 +32,8 @@ import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PackagePath
 
 import qualified Text.PrettyPrint as Disp
+import Distribution.Solver.Types.ComponentDeps (Component(..))
+import Distribution.Types.Dependency
 
 
 -- | Determines to what packages and in what contexts a
@@ -43,11 +46,15 @@ data ConstraintScope
      -- namespace (for --no-independent-goals) or it is an independent namespace
      -- with the given package name (for --independent-goals).
 
-     -- TODO: Try to generalize the ConstraintScopes once component-based
-     -- solving is implemented, and remove this special case for targets.
    = ScopeTarget PackageName
      -- | The package with the specified name and qualifier.
-   | ScopeQualified Qualifier PackageName
+   | ScopeQualified Namespace Qualifier PackageName
+
+    -- Apply a constraint to a private-build-depends scope
+    -- It is not sufficient to have ScopeQualified because we don't have enough
+    -- information in the constraint syntax to fill in the `Component` field of
+    -- `QualAlias`
+   | ScopePrivate PackageName PrivateAlias PackageName
      -- | The package with the specified name when it has a
      -- setup qualifier.
    | ScopeAnySetupQualifier PackageName
@@ -60,24 +67,35 @@ data ConstraintScope
 -- the package with the specified name when that package is a
 -- top-level dependency in the default namespace.
 scopeToplevel :: PackageName -> ConstraintScope
-scopeToplevel = ScopeQualified QualToplevel
+scopeToplevel = ScopeQualified DefaultNamespace QualToplevel
 
 -- | Returns the package name associated with a constraint scope.
 scopeToPackageName :: ConstraintScope -> PackageName
 scopeToPackageName (ScopeTarget pn) = pn
-scopeToPackageName (ScopeQualified _ pn) = pn
+scopeToPackageName (ScopeQualified _ _ pn) = pn
 scopeToPackageName (ScopeAnySetupQualifier pn) = pn
 scopeToPackageName (ScopeAnyQualifier pn) = pn
+scopeToPackageName (ScopePrivate _ _ pn) = pn
 
+-- | Whether a ConstraintScope matches a qualified package name, the crucial
+-- function which determines the rules about when constraints apply.
 constraintScopeMatches :: ConstraintScope -> QPN -> Bool
 constraintScopeMatches (ScopeTarget pn) (Q (PackagePath ns q) pn') =
   let namespaceMatches DefaultNamespace = True
       namespaceMatches (Independent namespacePn) = pn == namespacePn
+      namespaceMatches (IndependentComponent {}) = False
+      namespaceMatches (IndependentBuildTool {}) = False
   in namespaceMatches ns && q == QualToplevel && pn == pn'
-constraintScopeMatches (ScopeQualified q pn) (Q (PackagePath _ q') pn') =
-    q == q' && pn == pn'
+constraintScopeMatches (ScopePrivate spn alias c_pn) (Q (PackagePath _qual_ns q) c_pn') =
+  let qualMatches (QualAlias qual_pn _ qual_alias) = spn == qual_pn && alias == qual_alias
+      qualMatches _ = False
+    -- TODO: Check whether any ns should subsume qual_ns (if private constraint scopes grow namespaces...)
+  in qualMatches q && c_pn == c_pn'
+constraintScopeMatches (ScopeQualified ns cq cpn) (Q (PackagePath qual_ns q) cpn') =
+  ns == qual_ns && cq == q && cpn == cpn'
+
 constraintScopeMatches (ScopeAnySetupQualifier pn) (Q pp pn') =
-  let setup (PackagePath _ (QualSetup _)) = True
+  let setup (PackagePath (IndependentComponent _ ComponentSetup) _) = True
       setup _                             = False
   in setup pp && pn == pn'
 constraintScopeMatches (ScopeAnyQualifier pn) (Q _ pn') = pn == pn'
@@ -85,7 +103,8 @@ constraintScopeMatches (ScopeAnyQualifier pn) (Q _ pn') = pn == pn'
 -- | Pretty-prints a constraint scope.
 dispConstraintScope :: ConstraintScope -> Disp.Doc
 dispConstraintScope (ScopeTarget pn) = pretty pn <<>> Disp.text "." <<>> pretty pn
-dispConstraintScope (ScopeQualified q pn) = dispQualifier q <<>> pretty pn
+dispConstraintScope (ScopeQualified ns _q pn) = dispNamespace ns <<>> pretty pn
+dispConstraintScope (ScopePrivate pn alias p) = Disp.text "private." <<>> pretty pn <<>> Disp.text "." <<>> pretty @PrivateAlias alias <<>> Disp.text ":" <<>> pretty p
 dispConstraintScope (ScopeAnySetupQualifier pn) = Disp.text "setup." <<>> pretty pn
 dispConstraintScope (ScopeAnyQualifier pn) = Disp.text "any." <<>> pretty pn
 

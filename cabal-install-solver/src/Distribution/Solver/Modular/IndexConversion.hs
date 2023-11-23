@@ -147,7 +147,7 @@ convIPId dr comp idx ipid =
     Nothing  -> Left ipid
     Just ipi -> let (pn, i) = convId ipi
                     name = ExposedLib LMainLibName  -- TODO: Handle sub-libraries.
-                in  Right (D.Simple (LDep dr (Dep (PkgComponent pn name) (Fixed i))) comp)
+                in  Right (D.Simple (LDep dr (Dep (PkgComponent pn name) Public (Fixed i))) comp)
                 -- NB: something we pick up from the
                 -- InstalledPackageIndex is NEVER an executable
 
@@ -172,6 +172,7 @@ convSP os arch cinfo constraints strfl solveExes (SourcePackage (PackageIdentifi
 -- want to keep the condition tree, but simplify much of the test.
 
 -- | Convert a generic package description to a solver-specific 'PInfo'.
+-- Key function for private dependencies
 convGPD :: OS -> Arch -> CompilerInfo -> [LabeledPackageConstraint]
         -> StrongFlags -> SolveExecutables -> PN -> GenericPackageDescription
         -> PInfo
@@ -182,7 +183,7 @@ convGPD os arch cinfo constraints strfl solveExes pn
 
 
     conv :: Monoid a => Component -> (a -> BuildInfo) -> DependencyReason PN ->
-            CondTree ConfVar [Dependency] a -> FlaggedDeps PN
+            CondTree ConfVar Dependencies a -> FlaggedDeps PN
     conv comp getInfo dr =
         convCondTree M.empty dr pkg os arch cinfo pn fds comp getInfo solveExes .
         addBuildableCondition getInfo
@@ -251,7 +252,7 @@ testConditionForComponent :: OS
                           -> CompilerInfo
                           -> [LabeledPackageConstraint]
                           -> (a -> Bool)
-                          -> CondTree ConfVar [Dependency] a
+                          -> CondTree ConfVar Dependencies a
                           -> Maybe Bool
 testConditionForComponent os arch cinfo constraints p tree =
     case go $ extractCondition p tree of
@@ -329,17 +330,20 @@ convCondTree :: Map FlagName Bool -> DependencyReason PN -> PackageDescription -
                 Component ->
                 (a -> BuildInfo) ->
                 SolveExecutables ->
-                CondTree ConfVar [Dependency] a -> FlaggedDeps PN
+                CondTree ConfVar Dependencies a -> FlaggedDeps PN
 convCondTree flags dr pkg os arch cinfo pn fds comp getInfo solveExes@(SolveExecutables solveExes') (CondNode info ds branches) =
              -- Merge all library and build-tool dependencies at every level in
              -- the tree of flagged dependencies. Otherwise 'extractCommon'
              -- could create duplicate dependencies, and the number of
              -- duplicates could grow exponentially from the leaves to the root
              -- of the tree.
-             mergeSimpleDeps $
-                 [ D.Simple singleDep comp
-                 | dep <- ds
-                 , singleDep <- convLibDeps dr dep ]  -- unconditional package dependencies
+             mergeSimpleDeps $ ([ D.Simple singleDep comp
+                 | dep <- publicDependencies ds
+                 , singleDep <- convLibDeps dr dep ])  -- unconditional package dependencies
+
+              ++ [ D.Simple singleDep comp
+                 | dep <- privateDependencies ds
+                 , singleDep <- convLibDepsAs dr dep ]  -- unconditional package dependencies
 
               ++ L.map (\e -> D.Simple (LDep dr (Ext  e)) comp) (allExtensions bi) -- unconditional extension dependencies
               ++ L.map (\l -> D.Simple (LDep dr (Lang l)) comp) (allLanguages  bi) -- unconditional language dependencies
@@ -390,7 +394,7 @@ mergeSimpleDeps deps = L.map (uncurry toFlaggedDep) (M.toList merged) ++ unmerge
           => (Map (SimpleFlaggedDepKey qpn) (SimpleFlaggedDepValue qpn), FlaggedDeps qpn)
           -> FlaggedDep qpn
           -> (Map (SimpleFlaggedDepKey qpn) (SimpleFlaggedDepValue qpn), FlaggedDeps qpn)
-        f (merged', unmerged') (D.Simple (LDep dr (Dep dep (Constrained vr))) comp) =
+        f (merged', unmerged') (D.Simple (LDep dr (Dep dep Public (Constrained vr))) comp) =
             ( M.insertWith mergeValues
                            (SimpleFlaggedDepKey dep comp)
                            (SimpleFlaggedDepValue dr vr)
@@ -408,7 +412,7 @@ mergeSimpleDeps deps = L.map (uncurry toFlaggedDep) (M.toList merged) ++ unmerge
                  -> SimpleFlaggedDepValue qpn
                  -> FlaggedDep qpn
     toFlaggedDep (SimpleFlaggedDepKey dep comp) (SimpleFlaggedDepValue dr vr) =
-        D.Simple (LDep dr (Dep dep (Constrained vr))) comp
+        D.Simple (LDep dr (Dep dep Public (Constrained vr))) comp
 
 -- | Branch interpreter.  Mutually recursive with 'convCondTree'.
 --
@@ -461,7 +465,7 @@ convBranch :: Map FlagName Bool
            -> Component
            -> (a -> BuildInfo)
            -> SolveExecutables
-           -> CondBranch ConfVar [Dependency] a
+           -> CondBranch ConfVar Dependencies a
            -> FlaggedDeps PN
 convBranch flags dr pkg os arch cinfo pn fds comp getInfo solveExes (CondBranch c' t' mf') =
     go c'
@@ -532,10 +536,10 @@ convBranch flags dr pkg os arch cinfo pn fds comp getInfo solveExes (CondBranch 
         -- Union the DependencyReasons, because the extracted dependency can be
         -- avoided by removing the dependency from either side of the
         -- conditional.
-        [ D.Simple (LDep (unionDRs vs1 vs2) (Dep dep1 (Constrained $ vr1 .||. vr2))) comp
-        | D.Simple (LDep vs1                (Dep dep1 (Constrained vr1))) _ <- ps
-        , D.Simple (LDep vs2                (Dep dep2 (Constrained vr2))) _ <- ps'
-        , dep1 == dep2
+        [ D.Simple (LDep (unionDRs vs1 vs2) (Dep dep1 is_private1 (Constrained $ vr1 .||. vr2))) comp
+        | D.Simple (LDep vs1                (Dep dep1 is_private1 (Constrained vr1))) _ <- ps
+        , D.Simple (LDep vs2                (Dep dep2 is_private2 (Constrained vr2))) _ <- ps'
+        , dep1 == dep2 && is_private1 == is_private2
         ]
 
 -- | Merge DependencyReasons by unioning their variables.
@@ -547,12 +551,17 @@ unionDRs (DependencyReason pn' fs1 ss1) (DependencyReason _ fs2 ss2) =
 -- package) to solver-specific dependencies.
 convLibDeps :: DependencyReason PN -> Dependency -> [LDep PN]
 convLibDeps dr (Dependency pn vr libs) =
-    [ LDep dr $ Dep (PkgComponent pn (ExposedLib lib)) (Constrained vr)
+    [ LDep dr $ Dep (PkgComponent pn (ExposedLib lib)) Public (Constrained vr)
     | lib <- NonEmptySet.toList libs ]
+
+convLibDepsAs :: DependencyReason PN -> PrivateDependency -> [LDep PN]
+convLibDepsAs dr (PrivateDependency alias deps) =
+    [ LDep dr $ Dep (PkgComponent pn (ExposedLib lib)) (Private alias) (Constrained vr)
+    | Dependency pn vr libs <- deps, lib <- NonEmptySet.toList libs ]
 
 -- | Convert a Cabal dependency on an executable (build-tools) to a solver-specific dependency.
 convExeDep :: DependencyReason PN -> ExeDependency -> LDep PN
-convExeDep dr (ExeDependency pn exe vr) = LDep dr $ Dep (PkgComponent pn (ExposedExe exe)) (Constrained vr)
+convExeDep dr (ExeDependency pn exe vr) = LDep dr $ Dep (PkgComponent pn (ExposedExe exe)) Public (Constrained vr)
 
 -- | Convert setup dependencies
 convSetupBuildInfo :: PN -> SetupBuildInfo -> FlaggedDeps PN

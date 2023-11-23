@@ -1158,7 +1158,7 @@ writeBuildReports settings buildContext plan buildOutcomes = do
               Right br -> case buildResultTests br of
                 TestsNotTried -> BuildReports.NotTried
                 TestsOk -> BuildReports.Ok
-         in Just $ (BuildReports.BuildReport (packageId pkg) os arch (compilerId comp) cabalInstallID (elabFlagAssignment pkg) (map (packageId . fst) $ elabLibDependencies pkg) installOutcome docsOutcome testsOutcome, getRepo . elabPkgSourceLocation $ pkg) -- TODO handle failure log files?
+         in Just $ (BuildReports.BuildReport (packageId pkg) os arch (compilerId comp) cabalInstallID (elabFlagAssignment pkg) (map (packageId . (\(a, _, _) -> a)) $ elabLibDependencies pkg) installOutcome docsOutcome testsOutcome, getRepo . elabPkgSourceLocation $ pkg) -- TODO handle failure log files?
       fromPlanPackage _ _ = Nothing
       buildReports = mapMaybe (\x -> fromPlanPackage x (InstallPlan.lookupBuildOutcome x buildOutcomes)) $ InstallPlan.toList plan
 

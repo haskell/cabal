@@ -76,7 +76,7 @@ import Distribution.Types.AbiDependency            (AbiDependency)
 import Distribution.Types.AbiHash                  (AbiHash)
 import Distribution.Types.BenchmarkType            (BenchmarkType)
 import Distribution.Types.BuildType                (BuildType)
-import Distribution.Types.Dependency               (Dependency)
+import Distribution.Types.Dependency               (Dependency, PrivateAlias(..), PrivateDependency)
 import Distribution.Types.ExecutableScope          (ExecutableScope)
 import Distribution.Types.ExeDependency            (ExeDependency)
 import Distribution.Types.ExposedModule            (ExposedModule)
@@ -391,6 +391,19 @@ instance Described Dependency where
       where
         vr = RENamed "version-range" (describe (Proxy :: Proxy VersionRange))
 
+instance Described PrivateDependency where
+    describe _ = REAppend
+        [ RENamed "alias" (describe (Proxy :: Proxy PrivateAlias))
+        , RESpaces1
+        , "with"
+        , RESpaces1
+        , reChar '('
+        , RESpaces
+        , REMunch reSpacedComma (describe (Proxy :: Proxy Dependency))
+        , RESpaces
+        , reChar ')'
+        ]
+
 instance Described ExecutableScope where
     describe _ = REUnion ["public","private"]
 
@@ -445,6 +458,9 @@ instance Described Mixin where
 instance Described ModuleName where
     describe _ = REMunch1 (reChar '.') component where
         component = RECharSet csUpper <> REMunch reEps (REUnion [RECharSet csAlphaNum, RECharSet (fromString "_'")])
+
+instance Described PrivateAlias where
+  describe _ = describe (Proxy :: Proxy ModuleName)
 
 instance Described ModuleReexport where
     describe _ = RETodo

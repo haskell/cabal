@@ -23,6 +23,8 @@ import Language.Haskell.Extension
   )
 
 -- cabal-install
+
+import qualified Distribution.Solver.Types.ComponentDeps as P
 import Distribution.Solver.Types.Flag
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PackageConstraint
@@ -92,7 +94,7 @@ tests =
   , testGroup
       "Qualified manual flag constraints"
       [ let name = "Top-level flag constraint does not constrain setup dep's flag"
-            cs = [ExFlagConstraint (ScopeQualified P.QualToplevel "B") "flag" False]
+            cs = [ExFlagConstraint (ScopeQualified P.DefaultNamespace P.QualToplevel "B") "flag" False]
          in runTest $
               constraints cs $
                 mkTest dbSetupDepWithManualFlag name ["A"] $
@@ -105,7 +107,7 @@ tests =
                     ]
       , let name = "Solver can toggle setup dep's flag to match top-level constraint"
             cs =
-              [ ExFlagConstraint (ScopeQualified P.QualToplevel "B") "flag" False
+              [ ExFlagConstraint (ScopeQualified P.DefaultNamespace P.QualToplevel "B") "flag" False
               , ExVersionConstraint (ScopeAnyQualifier "b-2-true-dep") V.noVersion
               ]
          in runTest $
@@ -120,8 +122,8 @@ tests =
                     ]
       , let name = "User can constrain flags separately with qualified constraints"
             cs =
-              [ ExFlagConstraint (ScopeQualified P.QualToplevel "B") "flag" True
-              , ExFlagConstraint (ScopeQualified (P.QualSetup "A") "B") "flag" False
+              [ ExFlagConstraint (ScopeQualified P.DefaultNamespace P.QualToplevel "B") "flag" True
+              , ExFlagConstraint (ScopeQualified (P.IndependentComponent "A" P.ComponentSetup) P.QualToplevel "B") "flag" False
               ]
          in runTest $
               constraints cs $
@@ -135,15 +137,15 @@ tests =
                     ]
       , -- Regression test for #4299
         let name = "Solver can link deps when only one has constrained manual flag"
-            cs = [ExFlagConstraint (ScopeQualified P.QualToplevel "B") "flag" False]
+            cs = [ExFlagConstraint (ScopeQualified P.DefaultNamespace P.QualToplevel "B") "flag" False]
          in runTest $
               constraints cs $
                 mkTest dbLinkedSetupDepWithManualFlag name ["A"] $
                   solverSuccess [("A", 1), ("B", 1), ("b-1-false-dep", 1)]
       , let name = "Solver cannot link deps that have conflicting manual flag constraints"
             cs =
-              [ ExFlagConstraint (ScopeQualified P.QualToplevel "B") "flag" True
-              , ExFlagConstraint (ScopeQualified (P.QualSetup "A") "B") "flag" False
+              [ ExFlagConstraint (ScopeQualified P.DefaultNamespace P.QualToplevel "B") "flag" True
+              , ExFlagConstraint (ScopeQualified (P.IndependentComponent "A" P.ComponentSetup) P.QualToplevel "B") "flag" False
               ]
             failureReason = "(constraint from unknown source requires opposite flag selection)"
             checkFullLog lns =
@@ -279,8 +281,8 @@ tests =
                 mkTest dbConstraints "force older versions with unqualified constraint" ["A", "B", "C"] $
                   solverSuccess [("A", 1), ("B", 2), ("C", 3), ("D", 1), ("D", 2), ("D", 3)]
       , let cs =
-              [ ExVersionConstraint (ScopeQualified P.QualToplevel "D") $ mkVersionRange 1 4
-              , ExVersionConstraint (ScopeQualified (P.QualSetup "B") "D") $ mkVersionRange 4 7
+              [ ExVersionConstraint (ScopeQualified P.DefaultNamespace P.QualToplevel "D") $ mkVersionRange 1 4
+              , ExVersionConstraint (ScopeQualified (P.IndependentComponent "B" P.ComponentSetup) P.QualToplevel "D") $ mkVersionRange 4 7
               ]
          in runTest $
               constraints cs $
@@ -363,7 +365,7 @@ tests =
       , runTest $ testIndepGoals5 "indepGoals5 - default goal order" DefaultGoalOrder
       , runTest $ testIndepGoals6 "indepGoals6 - fixed goal order" FixedGoalOrder
       , runTest $ testIndepGoals6 "indepGoals6 - default goal order" DefaultGoalOrder
-      , expectFailBecause "#9466" $ runTest $ testIndepGoals7 "indepGoals7"
+      , runTest $ testIndepGoals7 "indepGoals7"
       , runTest $ testIndepGoals8 "indepGoals8"
       ]
   , -- Tests designed for the backjumping blog post
@@ -517,6 +519,7 @@ tests =
                   ++ "[__1] rejecting: H:bt-pkg:exe.bt-pkg-2.0.0 (conflict: H => H:bt-pkg:exe.bt-pkg (exe exe1)==3.0.0)"
       , runTest $ chooseExeAfterBuildToolsPackage True "choose exe after choosing its package - success"
       , runTest $ chooseExeAfterBuildToolsPackage False "choose exe after choosing its package - failure"
+      , runTest $ needTwoBuildToolPkgVersions "needs two build-tool-pkg versions"
       , runTest $ rejectInstalledBuildToolPackage "reject installed package for build-tool dependency"
       , runTest $ requireConsistentBuildToolVersions "build tool versions must be consistent within one package"
       ]
@@ -858,6 +861,26 @@ tests =
                   mkTest db "update conflict set after skipping version - 2" ["A", "B"] $
                     SolverResult (isInfixOf msg) $
                       Right [("A", 1), ("B", 1)]
+      ]
+  , testGroup
+      "Private dependencies"
+      [ runTest privDep1
+      , runTest privDep2
+      , runTest privDep3
+      , runTest privDep4
+      , runTest privDep5
+      , runTest privDep6
+      , runTest privDep7
+      , runTest privDep7a
+      , runTest privDep8
+      , runTest privDep8a
+      , runTest privDep9
+      , runTest privDep10
+      , runTest privDep11
+      , runTest privDep12
+      , runTest privDep13
+      , runTest privDep14
+      , runTest privDep15
       ]
   , -- Tests for the contents of the solver's log
     testGroup
@@ -2366,6 +2389,20 @@ dbBuildTools =
   , Right $ exAv "bt-pkg" 1 []
   ]
 
+needTwoBuildToolPkgVersions :: String -> SolverTest
+needTwoBuildToolPkgVersions name = setVerbose $ mkTest db name ["A"] (solverSuccess [("A", 1), ("build-tool-pkg", 1), ("build-tool-pkg", 2)])
+  where
+    db :: ExampleDb
+    db =
+      [ Right $ exAv "build-tool-pkg" 1 [] `withExe` exExe "build-tool-exe" []
+      , Right $ exAv "build-tool-pkg" 2 [] `withExe` exExe "build-tool-exe" []
+      , Right $
+          exAvNoLibrary "A" 1
+            `withExe` exExe
+              "my-exe"
+              [ExFix "build-tool-pkg" 1, ExBuildToolFix "build-tool-pkg" "build-tool-exe" 2]
+      ]
+
 -- The solver should never choose an installed package for a build tool
 -- dependency.
 rejectInstalledBuildToolPackage :: String -> SolverTest
@@ -2582,6 +2619,232 @@ setupStanzaTest2 =
       "setupStanzaTest2"
       ["A"]
       (solverFailure ("unknown package: A:setup.C (dependency of A:setup.B *test)" `isInfixOf`))
+
+--
+-- Private Dependency tests
+
+-- Test 1: A and B can choose different versions of C because C is a private dependency of A
+priv_db1 :: ExampleDb
+priv_db1 =
+  [ Left $ exInst "C" 1 "C-1" []
+  , Left $ exInst "C" 2 "C-2" []
+  , Right $ exAv "A" 1 [ExFixPriv "G0" "C" 1]
+  , Right $ exAv "B" 1 [ExFix "C" 2]
+  , Right $ exAv "D" 1 [ExAny "A", ExAny "B"]
+  ]
+
+privDep1 :: SolverTest
+privDep1 = setVerbose $ mkTest priv_db1 "private-dependencies-1" ["D"] (solverSuccess [("A", 1), ("B", 1), ("D", 1)])
+
+-- Test 2: A depends on both C publically and privately, directly
+priv_db2 :: ExampleDb
+priv_db2 =
+  [ Left $ exInst "C" 1 "C-1" []
+  , Right $ exAv "A" 1 [ExFix "C" 1, ExFixPriv "G0" "C" 1]
+  ]
+
+privDep2 :: SolverTest
+privDep2 = setVerbose $ mkTest priv_db2 "private-dependencies-2" ["A"] (solverSuccess [("A", 1)])
+
+-- Test 3: A depends on both C publically and privately, transitively
+priv_db3 :: ExampleDb
+priv_db3 =
+  [ Left $ exInst "C" 1 "C-1" []
+  , Right $ exAv "D" 1 [ExFix "C" 1]
+  , Right $ exAv "A" 1 [ExFix "D" 1, ExFixPriv "G0" "C" 1]
+  ]
+
+privDep3 :: SolverTest
+privDep3 = setVerbose $ mkTest priv_db3 "private-dependencies-3" ["A"] (solverSuccess [("A", 1), ("D", 1)])
+
+-- Test 4: Private dependency do not apply transitively, so we fail because the
+-- version of E must match
+priv_db4 :: ExampleDb
+priv_db4 =
+  [ Left $ exInst "E" 1 "E-1" []
+  , Left $ exInst "E" 2 "E-2" []
+  , Right $ exAv "C" 1 [ExFix "E" 1]
+  , Right $ exAv "C" 2 [ExFix "E" 2]
+  , Right $ exAv "A" 1 [ExFixPriv "G0" "C" 1]
+  , Right $ exAv "B" 1 [ExFix "C" 2]
+  , Right $ exAv "D" 1 [ExAny "A", ExAny "B"]
+  ]
+
+privDep4 :: SolverTest
+privDep4 = setVerbose $ mkTest priv_db4 "private-dependencies-4" ["D"] (solverFailure ("(conflict: E==2.0.0/installed-2, A:G0.C => E==1.0.0)" `isInfixOf`))
+
+-- Test 5: Private dependencies and setup dependencies can choose different versions
+
+priv_db5 :: ExampleDb
+priv_db5 =
+  [ Left $ exInst "E" 1 "E-1" []
+  , Left $ exInst "E" 2 "E-2" []
+  , Right $ exAv "A" 1 [ExFixPriv "G0" "E" 1] `withSetupDeps` [ExFix "E" 2]
+  ]
+
+privDep5 :: SolverTest
+privDep5 = setVerbose $ mkTest priv_db5 "private-dependencies-5" ["A"] (solverSuccess [("A", 1)])
+
+-- Private scope, with two dependencies
+priv_db6 :: ExampleDb
+priv_db6 =
+  let f1 = exInst "F" 1 "F-1" []
+      f2 = exInst "F" 2 "F-2" []
+   in [ Left $ exInst "E" 1 "E-1" [f1]
+      , Left $ exInst "E" 2 "E-2" [f2]
+      , Left f1
+      , Left f2
+      , Right $ exAv "A" 1 [ExFix "E" 2, ExFixPriv "G0" "E" 1, ExAnyPriv "G0" "F"]
+      ]
+
+privDep6 :: SolverTest
+privDep6 = setVerbose $ mkTest priv_db6 "private-dependencies-6" ["A"] (solverSuccess [("A", 1)])
+
+-- A dependency structure which violates the closure property for private dependency scopes
+priv_db7 :: ExampleDb
+priv_db7 =
+  [ Right $ exAv "A" 1 [ExAny "B"]
+  , Right $ exAv "B" 1 [ExAny "C"]
+  , Right $ exAv "C" 1 []
+  , Right $ exAv "P" 1 [ExFixPriv "G0" "A" 1, ExAnyPriv "G0" "C"]
+  ]
+
+privDep7 :: SolverTest
+privDep7 = setVerbose $ mkTest priv_db7 "private-dependencies-7" ["P"] (solverFailure ("a private scope must contain its closure, but package B is not included in the private scope P:G0" `isInfixOf`))
+
+-- Closure property with external deps
+priv_db7a :: ExampleDb
+priv_db7a =
+  let a = exInst "A" 1 "A-1" [b]
+      b = exInst "B" 1 "B-1" [c]
+      c = exInst "C" 1 "C-1" []
+   in [ Left a
+      , Left b
+      , Left c
+      , Right $ exAv "P" 1 [ExFixPriv "G0" "A" 1, ExAnyPriv "G0" "C"]
+      ]
+
+privDep7a :: SolverTest
+privDep7a = setVerbose $ mkTest priv_db7a "private-dependencies-7a" ["P"] (solverFailure ("a private scope must contain its closure, but package B is not included in the private scope P:G0" `isInfixOf`))
+
+priv_db8 :: ExampleDb
+priv_db8 =
+  [ Right $ exAv "A" 1 [ExAny "B"]
+  , Right $ exAv "B" 1 [ExAny "C"]
+  , Right $ exAv "C" 1 []
+  , Right $ exAv "P" 1 [ExFixPriv "G0" "A" 1, ExAnyPriv "G0" "B", ExAnyPriv "G0" "C"]
+  ]
+
+privDep8 :: SolverTest
+privDep8 = setVerbose $ mkTest priv_db8 "private-dependencies-8" ["P"] (solverSuccess [("A", 1), ("B", 1), ("C", 1), ("P", 1)])
+
+priv_db8a :: ExampleDb
+priv_db8a =
+  let a = exInst "A" 1 "A-1" [b]
+      b = exInst "B" 1 "B-1" [c]
+      c = exInst "C" 1 "C-1" []
+   in [ Left a
+      , Left b
+      , Left c
+      , Right $ exAv "P" 1 [ExFixPriv "G0" "A" 1, ExAnyPriv "G0" "B", ExAnyPriv "G0" "C"]
+      ]
+
+privDep8a :: SolverTest
+privDep8a = setVerbose $ mkTest priv_db8a "private-dependencies-8a" ["P"] (solverSuccess [("P", 1)])
+
+-- Two different private scopes can have two different versions
+priv_db9 :: ExampleDb
+priv_db9 =
+  let a = exInst "A" 1 "A-1" []
+      b = exInst "A" 2 "A-2" []
+   in [ Left a
+      , Left b
+      , Right $ exAv "P" 1 [ExFixPriv "G0" "A" 1, ExFixPriv "G1" "A" 2]
+      ]
+
+privDep9 :: SolverTest
+privDep9 = setVerbose $ mkTest priv_db9 "private-dependencies-9" ["P"] (solverSuccess [("P", 1)])
+
+-- Backtrack when closure property is violated
+priv_db10 :: ExampleDb
+priv_db10 =
+  let a2 = exInst "A" 2 "A-2" [b]
+      a1 = exInst "A" 1 "A-1" []
+      b = exInst "B" 1 "B-1" [c]
+      c = exInst "C" 1 "C-1" []
+   in [ Left a1
+      , Left a2
+      , Left b
+      , Left c
+      , Right $ exAv "P" 1 [ExAnyPriv "G0" "A", ExAnyPriv "G0" "C"]
+      ]
+
+privDep10 :: SolverTest
+privDep10 =
+  setVerbose $
+    mkTest
+      priv_db10
+      "private-dependencies-10"
+      ["P"]
+      (solverResult (any ("private scopes must contain its closure, but package B is not included in the private scope P:lib:G0." `isInfixOf`)) [("P", 1)])
+
+-- Testing constraints DON'T apply to private dependencies
+priv_db11 :: ExampleDb
+priv_db11 =
+  [ Left (exInst "A" 1 "A-1" [])
+  , Right $ exAv "P" 1 [ExAnyPriv "G0" "A"]
+  ]
+
+privDep11 :: SolverTest
+privDep11 =
+  setVerbose $
+    constraints [ExVersionConstraint (ScopeQualified P.DefaultNamespace P.QualToplevel "A") (V.thisVersion (V.mkVersion [2]))] $
+      mkTest priv_db11 "private-dependencies-11" ["P"] (solverSuccess [("P", 1)])
+
+-- Testing suitably scoped constraints do apply to private dependencies
+privDep12 :: SolverTest
+privDep12 =
+  setVerbose $
+    constraints [ExVersionConstraint (ScopePrivate "P" "G0" "A") (V.thisVersion (V.mkVersion [2]))] $
+      mkTest priv_db11 "private-dependencies-12" ["P"] (solverFailure ("constraint from unknown source requires ==2" `isInfixOf`))
+
+-- Testing that `any` qualifier applies to private deps
+privDep13 :: SolverTest
+privDep13 =
+  setVerbose $
+    constraints [ExVersionConstraint (ScopeAnyQualifier "A") (V.thisVersion (V.mkVersion [2]))] $
+      mkTest priv_db11 "private-dependencies-13" ["P"] (solverFailure ("constraint from unknown source requires ==2" `isInfixOf`))
+
+-- Testing nested private scopes
+priv_db14 :: ExampleDb
+priv_db14 =
+  priv_db6 -- uses A depends on E, F pkg names.
+    ++ [ Left $ exInst "B" 1 "B-1" []
+       , Right $ exAv "P" 1 [ExAnyPriv "G0" "A", ExAnyPriv "G0" "B"]
+       ]
+
+privDep14 :: SolverTest
+privDep14 =
+  setVerbose $
+    mkTest priv_db14 "private-dependencies-14" ["P"] (solverSuccess [("A", 1), ("P", 1)])
+
+-- Testing nested private scopes, where outer private scope includes deps of nested private scope.
+priv_db15 :: ExampleDb
+priv_db15 =
+  let f1 = exInst "F" 1 "F-1" []
+      f2 = exInst "F" 2 "F-2" []
+   in [ Left $ exInst "E" 1 "E-1" [f1]
+      , Left $ exInst "E" 2 "E-2" [f2]
+      , Left f1
+      , Left f2
+      , Right $ exAv "A" 1 [ExFix "E" 2, ExFixPriv "G0" "E" 1, ExAnyPriv "G0" "F"]
+      , Right $ exAv "P" 1 [ExAnyPriv "G0" "A", ExAnyPriv "G0" "E"]
+      ]
+
+privDep15 :: SolverTest
+privDep15 =
+  setVerbose $
+    mkTest priv_db15 "private-dependencies-15" ["P"] (solverSuccess [("A", 1), ("P", 1)])
 
 -- | Returns true if the second list contains all elements of the first list, in
 -- order.

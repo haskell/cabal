@@ -135,6 +135,7 @@ library
     Distribution.Types.Condition
     Distribution.Types.ConfVar
     Distribution.Types.Dependency
+    Distribution.Types.Dependency.Lens
     Distribution.Types.DependencyMap
     Distribution.Types.ExeDependency
     Distribution.Types.Executable

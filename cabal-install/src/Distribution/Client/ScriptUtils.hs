@@ -102,7 +102,8 @@ import Distribution.Fields
   , readFields
   )
 import Distribution.PackageDescription
-  ( ignoreConditions
+  ( Dependencies (..)
+  , ignoreConditions
   )
 import Distribution.PackageDescription.FieldGrammar
   ( executableFieldGrammar
@@ -472,10 +473,11 @@ updateContextAndWriteProjectFile ctx scriptPath scriptExecutable = do
 
   absScript <- unsafeMakeSymbolicPath . makeRelative (normalise projectRoot) <$> canonicalizePath scriptPath
   let
+    deps = Dependencies (targetBuildDepends $ buildInfo executable) (targetPrivateBuildDepends $ buildInfo executable)
     sourcePackage =
       fakeProjectSourcePackage projectRoot
         & lSrcpkgDescription . L.condExecutables
-          .~ [(scriptComponenetName scriptPath, CondNode executable (targetBuildDepends $ buildInfo executable) [])]
+          .~ [(scriptComponenetName scriptPath, CondNode executable deps [])]
     executable =
       scriptExecutable
         & L.modulePath .~ absScript

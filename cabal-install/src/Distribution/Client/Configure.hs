@@ -534,7 +534,7 @@ configurePackage
                     CD.nonSetupDeps deps
                 ]
             , configDependencies =
-                [ GivenComponent (packageName srcid) cname uid
+                [ GivenComponent (packageName srcid) cname uid Nothing
                 | ConfiguredId srcid (Just (PkgDesc.CLibName cname)) uid <-
                     CD.nonSetupDeps deps
                 ]
@@ -555,7 +555,7 @@ configurePackage
       pkg = case finalizePD
         flags
         (enableStanzas stanzas)
-        (const True)
+        (\_ _ -> True)
         platform
         comp
         []

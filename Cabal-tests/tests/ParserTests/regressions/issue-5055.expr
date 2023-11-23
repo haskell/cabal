@@ -112,16 +112,20 @@ GenericPackageDescription {
                   (EarlierVersion
                     (mkVersion [5])))
                 mainLibSet],
+            targetPrivateBuildDepends = [],
             mixins = []}},
-        condTreeConstraints = [
-          Dependency
-            (PackageName "base")
-            (IntersectVersionRanges
-              (OrLaterVersion
-                (mkVersion [4, 8]))
-              (EarlierVersion
-                (mkVersion [5])))
-            mainLibSet],
+        condTreeConstraints =
+        Dependencies {
+          publicDependencies = [
+            Dependency
+              (PackageName "base")
+              (IntersectVersionRanges
+                (OrLaterVersion
+                  (mkVersion [4, 8]))
+                (EarlierVersion
+                  (mkVersion [5])))
+              mainLibSet],
+          privateDependencies = []},
         condTreeComponents = []}],
   condTestSuites = [
     _×_
@@ -195,17 +199,21 @@ GenericPackageDescription {
                   (EarlierVersion
                     (mkVersion [5])))
                 mainLibSet],
+            targetPrivateBuildDepends = [],
             mixins = []},
           testCodeGenerators = []},
-        condTreeConstraints = [
-          Dependency
-            (PackageName "base")
-            (IntersectVersionRanges
-              (OrLaterVersion
-                (mkVersion [4, 8]))
-              (EarlierVersion
-                (mkVersion [5])))
-            mainLibSet],
+        condTreeConstraints =
+        Dependencies {
+          publicDependencies = [
+            Dependency
+              (PackageName "base")
+              (IntersectVersionRanges
+                (OrLaterVersion
+                  (mkVersion [4, 8]))
+                (EarlierVersion
+                  (mkVersion [5])))
+              mainLibSet],
+          privateDependencies = []},
         condTreeComponents = [
           CondBranch {
             condBranchCondition =
@@ -271,9 +279,13 @@ GenericPackageDescription {
                   PerCompilerFlavor [] [],
                   customFieldsBI = [],
                   targetBuildDepends = [],
+                  targetPrivateBuildDepends = [],
                   mixins = []},
                 testCodeGenerators = []},
-              condTreeConstraints = [],
+              condTreeConstraints =
+              Dependencies {
+                publicDependencies = [],
+                privateDependencies = []},
               condTreeComponents = []},
             condBranchIfFalse = Nothing}]}],
   condBenchmarks = []}

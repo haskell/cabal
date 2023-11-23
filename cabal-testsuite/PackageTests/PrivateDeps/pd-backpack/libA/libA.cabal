@@ -1,0 +1,22 @@
+cabal-version:   3.0
+name:            libA
+version:         0.1.0.0
+license:         NONE
+build-type:      Simple
+
+executable exeA
+    main-is: Main.hs
+    build-depends: libA, libB == 0.3.0.0
+    private-build-depends: G1 with (libB == 0.1.0.0)
+    private-build-depends: G2 with (libB == 0.2.0.0)
+    mixins:
+      libA (A as A.G1) requires (AHole as G1.Fill),
+      libA (A as A.G2) requires (AHole as G2.Fill),
+      libA (A as A.NoScope) requires (AHole as Fill)
+    default-extensions: NoImplicitPrelude
+
+library
+    exposed-modules: A
+    signatures: AHole
+    hs-source-dirs: src
+    default-extensions: NoImplicitPrelude

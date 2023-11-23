@@ -126,16 +126,20 @@ GenericPackageDescription {
                 (ThisVersion
                   (mkVersion [4, 4])))
               mainLibSet],
+          targetPrivateBuildDepends = [],
           mixins = []}},
-      condTreeConstraints = [
-        Dependency
-          (PackageName "base")
-          (UnionVersionRanges
-            (LaterVersion
-              (mkVersion [4, 4]))
-            (ThisVersion
-              (mkVersion [4, 4])))
-          mainLibSet],
+      condTreeConstraints =
+      Dependencies {
+        publicDependencies = [
+          Dependency
+            (PackageName "base")
+            (UnionVersionRanges
+              (LaterVersion
+                (mkVersion [4, 4]))
+              (ThisVersion
+                (mkVersion [4, 4])))
+            mainLibSet],
+        privateDependencies = []},
       condTreeComponents = []},
   condSubLibraries = [],
   condForeignLibs = [],

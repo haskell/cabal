@@ -23,7 +23,7 @@ instance Binary SolverId
 instance Structured SolverId
 
 instance Show SolverId where
-    show = show . solverSrcId
+  show = show . solverSrcId
 
 instance Package SolverId where
   packageId = solverSrcId
