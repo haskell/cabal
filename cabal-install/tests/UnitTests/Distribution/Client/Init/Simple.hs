@@ -151,7 +151,7 @@ simpleCreateProjectTests v pkgIx srcDb pkgName =
 -- -------------------------------------------------------------------- --
 -- Utils
 
-mkPkgDep :: Maybe PackageName -> Dependencies
+mkPkgDep :: Maybe PackageName -> [Dependency]
 mkPkgDep Nothing = []
 mkPkgDep (Just pn) = [mkPackageNameDep pn]
 
@@ -170,7 +170,7 @@ simplePkgDesc pkgName =
     mempty
     (Just $ Set.singleton defaultChangelog)
 
-simpleLibTarget :: Dependencies -> LibTarget
+simpleLibTarget :: [Dependency] -> LibTarget
 simpleLibTarget baseDep =
   LibTarget
     [defaultSourceDir]
@@ -181,7 +181,7 @@ simpleLibTarget baseDep =
     baseDep
     []
 
-simpleExeTarget :: Maybe PackageName -> Dependencies -> ExeTarget
+simpleExeTarget :: Maybe PackageName -> [Dependency] -> ExeTarget
 simpleExeTarget pn baseDep =
   ExeTarget
     defaultMainIs
@@ -192,7 +192,7 @@ simpleExeTarget pn baseDep =
     (baseDep ++ mkPkgDep pn)
     []
 
-simpleTestTarget :: Maybe PackageName -> Dependencies -> TestTarget
+simpleTestTarget :: Maybe PackageName -> [Dependency] -> TestTarget
 simpleTestTarget pn baseDep =
   TestTarget
     defaultMainIs

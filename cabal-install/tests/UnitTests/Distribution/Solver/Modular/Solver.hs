@@ -27,8 +27,10 @@ import Distribution.Solver.Types.Flag
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PackageConstraint
 import qualified Distribution.Solver.Types.PackagePath as P
+import qualified Distribution.Solver.Types.ComponentDeps as P
 import UnitTests.Distribution.Solver.Modular.DSL
 import UnitTests.Distribution.Solver.Modular.DSL.TestCaseUtils
+import Debug.Trace
 
 tests :: [TF.TestTree]
 tests =
@@ -92,7 +94,7 @@ tests =
   , testGroup
       "Qualified manual flag constraints"
       [ let name = "Top-level flag constraint does not constrain setup dep's flag"
-            cs = [ExFlagConstraint (ScopeQualified P.QualToplevel "B") "flag" False]
+            cs = [ExFlagConstraint (ScopeQualified P.DefaultNamespace "B") "flag" False]
          in runTest $
               constraints cs $
                 mkTest dbSetupDepWithManualFlag name ["A"] $
@@ -105,7 +107,7 @@ tests =
                     ]
       , let name = "Solver can toggle setup dep's flag to match top-level constraint"
             cs =
-              [ ExFlagConstraint (ScopeQualified P.QualToplevel "B") "flag" False
+              [ ExFlagConstraint (ScopeQualified P.DefaultNamespace "B") "flag" False
               , ExVersionConstraint (ScopeAnyQualifier "b-2-true-dep") V.noVersion
               ]
          in runTest $
@@ -120,8 +122,8 @@ tests =
                     ]
       , let name = "User can constrain flags separately with qualified constraints"
             cs =
-              [ ExFlagConstraint (ScopeQualified P.QualToplevel "B") "flag" True
-              , ExFlagConstraint (ScopeQualified (P.QualSetup "A") "B") "flag" False
+              [ ExFlagConstraint (ScopeQualified P.DefaultNamespace "B") "flag" True
+              , ExFlagConstraint (ScopeQualified (P.IndependentComponent "A" P.ComponentSetup) "B") "flag" False
               ]
          in runTest $
               constraints cs $
@@ -135,15 +137,15 @@ tests =
                     ]
       , -- Regression test for #4299
         let name = "Solver can link deps when only one has constrained manual flag"
-            cs = [ExFlagConstraint (ScopeQualified P.QualToplevel "B") "flag" False]
+            cs = [ExFlagConstraint (ScopeQualified P.DefaultNamespace "B") "flag" False]
          in runTest $
               constraints cs $
                 mkTest dbLinkedSetupDepWithManualFlag name ["A"] $
                   solverSuccess [("A", 1), ("B", 1), ("b-1-false-dep", 1)]
       , let name = "Solver cannot link deps that have conflicting manual flag constraints"
             cs =
-              [ ExFlagConstraint (ScopeQualified P.QualToplevel "B") "flag" True
-              , ExFlagConstraint (ScopeQualified (P.QualSetup "A") "B") "flag" False
+              [ ExFlagConstraint (ScopeQualified P.DefaultNamespace "B") "flag" True
+              , ExFlagConstraint (ScopeQualified (P.IndependentComponent "A" P.ComponentSetup) "B") "flag" False
               ]
             failureReason = "(constraint from unknown source requires opposite flag selection)"
             checkFullLog lns =
@@ -280,8 +282,8 @@ tests =
                 mkTest dbConstraints "force older versions with unqualified constraint" ["A", "B", "C"] $
                   solverSuccess [("A", 1), ("B", 2), ("C", 3), ("D", 1), ("D", 2), ("D", 3)]
       , let cs =
-              [ ExVersionConstraint (ScopeQualified P.QualToplevel "D") $ mkVersionRange 1 4
-              , ExVersionConstraint (ScopeQualified (P.QualSetup "B") "D") $ mkVersionRange 4 7
+              [ ExVersionConstraint (ScopeQualified P.DefaultNamespace "D") $ mkVersionRange 1 4
+              , ExVersionConstraint (ScopeQualified (P.IndependentComponent "B" P.ComponentSetup) "D") $ mkVersionRange 4 7
               ]
          in runTest $
               constraints cs $

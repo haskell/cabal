@@ -204,7 +204,7 @@ qualifyDeps QO{..} (Q pp@(PackagePath ns q) pn) = go
         Dep (Q (PackagePath (IndependentBuildTool pn qpn) QualToplevel) <$> dep) is_private ci
     goD (Dep dep@(PkgComponent qpn (ExposedLib _)) is_private ci) comp
       | is_private  = Dep (Q (PackagePath (IndependentComponent pn comp) inheritedQ) <$> dep) is_private ci
-      | qBase qpn   = Dep (Q (PackagePath (Independent pn) (QualBase)) <$> dep) is_private ci
+      | qBase qpn   = Dep (Q (PackagePath ns (QualBase pn)) <$> dep) is_private ci
       | qSetup comp = Dep (Q (PackagePath (IndependentComponent pn ComponentSetup) QualToplevel) <$> dep) is_private ci
       | otherwise   = Dep (Q (PackagePath ns inheritedQ    ) <$> dep) is_private ci
 
@@ -232,7 +232,7 @@ qualifyDeps QO{..} (Q pp@(PackagePath ns q) pn) = go
     inheritedQ :: Qualifier
     inheritedQ = case q of
                    QualToplevel -> QualToplevel
-                   QualBase     -> QualToplevel
+                   QualBase {}  -> QualToplevel
 
     -- Should we qualify this goal with the 'Base' package path?
     qBase :: PN -> Bool

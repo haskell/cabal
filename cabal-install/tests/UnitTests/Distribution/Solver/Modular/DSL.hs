@@ -392,9 +392,9 @@ exInst pn v hash deps = ExInst pn v hash (map exInstHash deps)
 -- these packages.
 type ExampleDb = [Either ExampleInstalled ExampleAvailable]
 
-type DependencyTree a = C.CondTree C.ConfVar [C.Dependency] a
+type DependencyTree a = C.CondTree C.ConfVar C.Dependencies a
 
-type DependencyComponent a = C.CondBranch C.ConfVar [C.Dependency] a
+type DependencyComponent a = C.CondBranch C.ConfVar C.Dependencies a
 
 exDbPkgs :: ExampleDb -> [ExamplePkgName]
 exDbPkgs = map (either exInstName exAvName)
@@ -647,7 +647,7 @@ exAvSrcPkg ex =
             , -- TODO: Arguably, build-tools dependencies should also
               -- effect constraints on conditional tree. But no way to
               -- distinguish between them
-              C.condTreeConstraints = map mkDirect directDeps
+              C.condTreeConstraints = mempty { C.publicDependencies = map mkDirect directDeps }
             , C.condTreeComponents = map (mkFlagged mkComponent) flaggedDeps
             }
 

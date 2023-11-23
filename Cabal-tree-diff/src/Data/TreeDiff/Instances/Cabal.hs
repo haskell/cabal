@@ -24,6 +24,7 @@ import Distribution.Simple.InstallDirs.Internal
 import Distribution.Simple.Setup                   (HaddockTarget, TestShowDetails)
 import Distribution.System
 import Distribution.Types.AbiHash                  (AbiHash)
+import Distribution.Types.ComponentName
 import Distribution.Types.ComponentId              (ComponentId)
 import Distribution.Types.DumpBuildInfo            (DumpBuildInfo)
 import Distribution.Types.PackageVersionConstraint
@@ -71,6 +72,8 @@ instance ToExpr CabalSpecVersion
 instance ToExpr CompilerFlavor
 instance ToExpr CompilerId
 instance ToExpr ComponentId
+instance ToExpr ComponentName
+instance ToExpr NotLibComponentName
 instance ToExpr DebugInfoLevel
 instance ToExpr DefUnitId
 instance ToExpr DumpBuildInfo
@@ -127,5 +130,6 @@ instance ToExpr UnqualComponentName
 instance ToExpr Verbosity
 instance ToExpr VerbosityFlag
 instance ToExpr VerbosityLevel
+instance ToExpr Dependencies
 
 instance ToExpr ShortText where toExpr = toExpr . fromShortText

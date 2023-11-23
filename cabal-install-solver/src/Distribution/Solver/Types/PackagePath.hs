@@ -61,7 +61,7 @@ data Qualifier =
     -- | Any dependency on base is considered independent
     --
     -- This makes it possible to have base shims.
-  | QualBase
+  | QualBase PackageName
 
 {-
     -- | Setup dependency
@@ -117,9 +117,9 @@ data Qualifier =
 -- So we want to print something like @"A.base"@, where the @"A."@ part
 -- is the qualifier and @"base"@ is the actual dependency (which, for the
 -- 'Base' qualifier, will always be @base@).
---dispQualifier :: Qualifier -> Disp.Doc
---dispQualifier QualToplevel = Disp.empty
---dispQualifier QualBase  = Disp.empty
+dispQualifier :: Qualifier -> Disp.Doc
+dispQualifier QualToplevel = Disp.empty
+dispQualifier (QualBase pn)  = pretty pn <<>> Disp.text ".bb."
 
 -- | A qualified entity. Pairs a package path with the entity.
 data Qualified a = Q PackagePath a
@@ -131,7 +131,7 @@ type QPN = Qualified PackageName
 -- | Pretty-prints a qualified package name.
 dispQPN :: QPN -> Disp.Doc
 dispQPN (Q (PackagePath ns qual) pn) =
-  dispNamespace ns <<>> pretty pn
+  dispNamespace ns <<>> dispQualifier qual <<>> pretty pn
 
 -- | String representation of a qualified package name.
 showQPN :: QPN -> String

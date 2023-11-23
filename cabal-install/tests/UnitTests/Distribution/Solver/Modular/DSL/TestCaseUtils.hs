@@ -48,6 +48,7 @@ import Language.Haskell.Extension (Extension (..), Language (..))
 
 import Distribution.Client.Dependency (foldProgress)
 import qualified Distribution.Solver.Types.PackagePath as P
+import qualified Distribution.Solver.Types.ComponentDeps as C
 import Distribution.Solver.Types.PkgConfigDb (PkgConfigDb (..), pkgConfigDbFromList)
 import Distribution.Solver.Types.Settings
 import Distribution.Solver.Types.Variable
@@ -235,7 +236,7 @@ mkTestExtLangPC exts langs mPkgConfigDb db label targets result =
     , testConstraints = []
     , testUserConstraints = []
     , testSoftConstraints = []
-    , testVerbosity = normal
+    , testVerbosity = verbose
     , testDb = db
     , testSupportedExts = exts
     , testSupportedLangs = langs
@@ -321,13 +322,16 @@ runTest SolverTest{..} = askOption $ \(OptionShowSolverLog showSolverLog) ->
               P.QualToplevel
           QualSetup s ->
             P.PackagePath
-              P.DefaultNamespace
-              (P.QualSetup (C.mkPackageName s))
+              (P.IndependentComponent (C.mkPackageName s) C.ComponentSetup)
+              (P.QualToplevel)
+              {-
           QualIndepSetup p s ->
             P.PackagePath
               (P.Independent $ C.mkPackageName p)
               (P.QualSetup (C.mkPackageName s))
+              -}
           QualExe p1 p2 ->
             P.PackagePath
-              P.DefaultNamespace
-              (P.QualExe (C.mkPackageName p1) (C.mkPackageName p2))
+              (P.IndependentBuildTool (C.mkPackageName p1) (C.mkPackageName p2))
+              P.QualToplevel
+
