@@ -134,44 +134,48 @@ GenericPackageDescription {
                       (UnqualComponentName "a"),
                     LSubLibName
                       (UnqualComponentName "b")]))],
+          targetPrivateBuildDepends = [],
           mixins = []}},
-      condTreeConstraints = [
-        Dependency
-          (PackageName "lib1")
-          (OrLaterVersion (mkVersion [0]))
-          (NonEmptySet.fromNonEmpty
-            (NE.fromList
-              [
-                LSubLibName
-                  (UnqualComponentName "a"),
-                LSubLibName
-                  (UnqualComponentName "b")])),
-        Dependency
-          (PackageName "lib2")
-          (OrLaterVersion (mkVersion [0]))
-          (NonEmptySet.fromNonEmpty
-            (NE.fromList
-              [
-                LSubLibName
-                  (UnqualComponentName "c")])),
-        Dependency
-          (PackageName "lib3")
-          (OrLaterVersion (mkVersion [1]))
-          (NonEmptySet.fromNonEmpty
-            (NE.fromList
-              [
-                LSubLibName
-                  (UnqualComponentName "d")])),
-        Dependency
-          (PackageName "lib4")
-          (OrLaterVersion (mkVersion [1]))
-          (NonEmptySet.fromNonEmpty
-            (NE.fromList
-              [
-                LSubLibName
-                  (UnqualComponentName "a"),
-                LSubLibName
-                  (UnqualComponentName "b")]))],
+      condTreeConstraints =
+      Dependencies {
+        publicDependencies = [
+          Dependency
+            (PackageName "lib1")
+            (OrLaterVersion (mkVersion [0]))
+            (NonEmptySet.fromNonEmpty
+              (NE.fromList
+                [
+                  LSubLibName
+                    (UnqualComponentName "a"),
+                  LSubLibName
+                    (UnqualComponentName "b")])),
+          Dependency
+            (PackageName "lib2")
+            (OrLaterVersion (mkVersion [0]))
+            (NonEmptySet.fromNonEmpty
+              (NE.fromList
+                [
+                  LSubLibName
+                    (UnqualComponentName "c")])),
+          Dependency
+            (PackageName "lib3")
+            (OrLaterVersion (mkVersion [1]))
+            (NonEmptySet.fromNonEmpty
+              (NE.fromList
+                [
+                  LSubLibName
+                    (UnqualComponentName "d")])),
+          Dependency
+            (PackageName "lib4")
+            (OrLaterVersion (mkVersion [1]))
+            (NonEmptySet.fromNonEmpty
+              (NE.fromList
+                [
+                  LSubLibName
+                    (UnqualComponentName "a"),
+                  LSubLibName
+                    (UnqualComponentName "b")]))],
+        privateDependencies = []},
       condTreeComponents = []},
   condSubLibraries = [],
   condForeignLibs = [],

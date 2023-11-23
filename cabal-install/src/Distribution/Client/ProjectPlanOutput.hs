@@ -194,7 +194,7 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
                     J.object $
                       [ comp2str c
                         J..= J.object
-                          ( [ "depends" J..= map (jdisplay . confInstId) (map fst ldeps)
+                          ( [ "depends" J..= map (jdisplay . confInstId) (map (\(p, _, _) -> p) ldeps)
                             , "exe-depends" J..= map (jdisplay . confInstId) edeps
                             ]
                               ++ bin_file c
@@ -207,7 +207,7 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
                       ]
                in ["components" J..= components]
             ElabComponent comp ->
-              [ "depends" J..= map (jdisplay . confInstId) (map fst $ elabLibDependencies elab)
+              [ "depends" J..= map (jdisplay . confInstId) (map (\(p, _, _) -> p) $ elabLibDependencies elab)
               , "exe-depends" J..= map jdisplay (elabExeDependencies elab)
               , "component-name" J..= J.String (comp2str (compSolverName comp))
               ]
@@ -634,7 +634,7 @@ postBuildProjectStatus
           ]
 
       elabLibDeps :: ElaboratedConfiguredPackage -> [UnitId]
-      elabLibDeps = map (newSimpleUnitId . confInstId) . map fst . elabLibDependencies
+      elabLibDeps = map (newSimpleUnitId . confInstId) . map (\(p, _, _) -> p) . elabLibDependencies
 
       -- Was a build was attempted for this package?
       -- If it doesn't have both a build status and outcome then the answer is no.

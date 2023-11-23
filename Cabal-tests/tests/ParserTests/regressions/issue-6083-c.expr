@@ -111,21 +111,25 @@ GenericPackageDescription {
                     LSubLibName
                       (UnqualComponentName
                         "sublib")]))],
+          targetPrivateBuildDepends = [],
           mixins = []}},
-      condTreeConstraints = [
-        Dependency
-          (PackageName "base")
-          (OrLaterVersion (mkVersion [0]))
-          mainLibSet,
-        Dependency
-          (PackageName "issue")
-          (OrLaterVersion (mkVersion [0]))
-          (NonEmptySet.fromNonEmpty
-            (NE.fromList
-              [
-                LSubLibName
-                  (UnqualComponentName
-                    "sublib")]))],
+      condTreeConstraints =
+      Dependencies {
+        publicDependencies = [
+          Dependency
+            (PackageName "base")
+            (OrLaterVersion (mkVersion [0]))
+            mainLibSet,
+          Dependency
+            (PackageName "issue")
+            (OrLaterVersion (mkVersion [0]))
+            (NonEmptySet.fromNonEmpty
+              (NE.fromList
+                [
+                  LSubLibName
+                    (UnqualComponentName
+                      "sublib")]))],
+        privateDependencies = []},
       condTreeComponents = []},
   condSubLibraries = [
     _×_
@@ -193,8 +197,12 @@ GenericPackageDescription {
             PerCompilerFlavor [] [],
             customFieldsBI = [],
             targetBuildDepends = [],
+            targetPrivateBuildDepends = [],
             mixins = []}},
-        condTreeConstraints = [],
+        condTreeConstraints =
+        Dependencies {
+          publicDependencies = [],
+          privateDependencies = []},
         condTreeComponents = []}],
   condForeignLibs = [],
   condExecutables = [],

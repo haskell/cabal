@@ -27,6 +27,7 @@ import Distribution.Types.AnnotatedId
 data PromisedComponent = PromisedComponent
   { pr_pkgname :: PackageName
   , pr_cid :: AnnotatedId ComponentId
+  , pr_alias :: Maybe PrivateAlias
   }
 
 instance Package PromisedComponent where
@@ -47,13 +48,14 @@ data PreExistingComponent = PreExistingComponent
   , pc_cid :: ComponentId
   , pc_open_uid :: OpenUnitId
   , pc_shape :: ModuleShape
+  , pc_alias :: Maybe PrivateAlias
   }
 
 -- | Convert an 'InstalledPackageInfo' into a 'PreExistingComponent',
 -- which was brought into scope under the 'PackageName' (important for
 -- a package qualified reference.)
-ipiToPreExistingComponent :: InstalledPackageInfo -> PreExistingComponent
-ipiToPreExistingComponent ipi =
+ipiToPreExistingComponent :: Maybe PrivateAlias -> InstalledPackageInfo -> PreExistingComponent
+ipiToPreExistingComponent alias ipi =
   PreExistingComponent
     { pc_pkgname = packageName ipi
     , pc_compname = CLibName $ Installed.sourceLibName ipi
@@ -65,6 +67,7 @@ ipiToPreExistingComponent ipi =
           (Installed.installedComponentId ipi)
           (Map.fromList (Installed.instantiatedWith ipi))
     , pc_shape = shapeInstalledPackage ipi
+    , pc_alias = alias
     }
 
 instance HasMungedPackageId PreExistingComponent where

@@ -151,7 +151,7 @@ pattern LocalBuildInfo
   -> Maybe FilePath
   -> Graph ComponentLocalBuildInfo
   -> Map ComponentName [ComponentLocalBuildInfo]
-  -> Map (PackageName, ComponentName) ComponentId
+  -> Map (PackageName, ComponentName, Maybe PrivateAlias) ComponentId
   -> InstalledPackageIndex
   -> PackageDescription
   -> ProgramDb

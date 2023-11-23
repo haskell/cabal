@@ -379,7 +379,9 @@ runPlanExe' pkg_name cname args = do
     recordHeader [pkg_name, cname]
     runM exePath args Nothing
 
-planExePath :: String {- package name -} -> String {- component name -}
+-- | Get the path to an executable built from a package. Requires 'withPlan'
+-- to have been run so that we can find the dist dir.
+planExePath :: String {-^ package name -} -> String {-^ component name -}
             -> TestM FilePath
 planExePath pkg_name cname = do
     Just plan <- testPlan `fmap` getTestEnv
@@ -1105,7 +1107,7 @@ findDependencyInStore :: String -- ^package name prefix
 findDependencyInStore pkgName = do
     storeDir <- testStoreDir <$> getTestEnv
     liftIO $ do
-      storeDirForGhcVersion <- head <$> listDirectory storeDir
+      (storeDirForGhcVersion:_) <- listDirectory storeDir
       packageDirs <- listDirectory (storeDir </> storeDirForGhcVersion)
       -- Ideally, we should call 'hashedInstalledPackageId' from 'Distribution.Client.PackageHash'.
       -- But 'PackageHashInputs', especially 'PackageHashConfigInputs', is too hard to construct.

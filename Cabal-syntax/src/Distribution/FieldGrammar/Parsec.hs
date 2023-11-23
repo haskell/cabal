@@ -1,6 +1,8 @@
 {-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PartialTypeSignatures #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 -- | This module provides a 'FieldGrammarParser', one way to parse

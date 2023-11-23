@@ -321,7 +321,7 @@ fixupDocFiles v pkgDesc
 mkStringyDep :: String -> Dependency
 mkStringyDep = mkPackageNameDep . mkPackageName
 
-getBaseDep :: Interactive m => InstalledPackageIndex -> InitFlags -> m [Dependency]
+getBaseDep :: Interactive m => InstalledPackageIndex -> InitFlags -> m [P.Dependency]
 getBaseDep pkgIx flags =
   retrieveDependencies
     silent

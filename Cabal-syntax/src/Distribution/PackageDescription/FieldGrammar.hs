@@ -174,6 +174,7 @@ libraryFieldGrammar
      , c (List CommaFSep (Identity LegacyExeDependency) LegacyExeDependency)
      , c (List CommaFSep (Identity PkgconfigDependency) PkgconfigDependency)
      , c (List CommaVCat (Identity Dependency) Dependency)
+     , c (List CommaVCat (Identity PrivateDependency) PrivateDependency)
      , c (List CommaVCat (Identity Mixin) Mixin)
      , c (List CommaVCat (Identity ModuleReexport) ModuleReexport)
      , c (List FSep (MQuoted Extension) Extension)
@@ -223,6 +224,7 @@ foreignLibFieldGrammar
      , c (List CommaFSep (Identity ExeDependency) ExeDependency)
      , c (List CommaFSep (Identity LegacyExeDependency) LegacyExeDependency)
      , c (List CommaFSep (Identity PkgconfigDependency) PkgconfigDependency)
+     , c (List CommaVCat (Identity PrivateDependency) PrivateDependency)
      , c (List CommaVCat (Identity Dependency) Dependency)
      , c (List CommaVCat (Identity Mixin) Mixin)
      , c (List FSep (Identity ForeignLibOption) ForeignLibOption)
@@ -263,6 +265,7 @@ executableFieldGrammar
      , c (List CommaFSep (Identity LegacyExeDependency) LegacyExeDependency)
      , c (List CommaFSep (Identity PkgconfigDependency) PkgconfigDependency)
      , c (List CommaVCat (Identity Dependency) Dependency)
+     , c (List CommaVCat (Identity PrivateDependency) PrivateDependency)
      , c (List CommaVCat (Identity Mixin) Mixin)
      , c (List FSep (MQuoted Extension) Extension)
      , c (List FSep (MQuoted Language) Language)
@@ -335,6 +338,7 @@ testSuiteFieldGrammar
      , c (List CommaFSep (Identity PkgconfigDependency) PkgconfigDependency)
      , c (List CommaFSep Token String)
      , c (List CommaVCat (Identity Dependency) Dependency)
+     , c (List CommaVCat (Identity PrivateDependency) PrivateDependency)
      , c (List CommaVCat (Identity Mixin) Mixin)
      , c (List FSep (MQuoted Extension) Extension)
      , c (List FSep (MQuoted Language) Language)
@@ -346,6 +350,7 @@ testSuiteFieldGrammar
      , c (List FSep (Identity (SymbolicPath PackageDir SourceDir)) (SymbolicPath PackageDir SourceDir))
      , c (List VCat Token String)
      , c (MQuoted Language)
+     , c PrivateAlias
      )
   => g TestSuiteStanza TestSuiteStanza
 testSuiteFieldGrammar =
@@ -478,6 +483,7 @@ benchmarkFieldGrammar
      , c (List CommaFSep (Identity LegacyExeDependency) LegacyExeDependency)
      , c (List CommaFSep (Identity PkgconfigDependency) PkgconfigDependency)
      , c (List CommaVCat (Identity Dependency) Dependency)
+     , c (List CommaVCat (Identity PrivateDependency) PrivateDependency)
      , c (List CommaVCat (Identity Mixin) Mixin)
      , c (List FSep (MQuoted Extension) Extension)
      , c (List FSep (MQuoted Language) Language)
@@ -576,6 +582,7 @@ buildInfoFieldGrammar
      , c (List CommaFSep (Identity LegacyExeDependency) LegacyExeDependency)
      , c (List CommaFSep (Identity PkgconfigDependency) PkgconfigDependency)
      , c (List CommaVCat (Identity Dependency) Dependency)
+     , c (List CommaVCat (Identity PrivateDependency) PrivateDependency)
      , c (List CommaVCat (Identity Mixin) Mixin)
      , c (List FSep (MQuoted Extension) Extension)
      , c (List FSep (MQuoted Language) Language)
@@ -670,6 +677,7 @@ buildInfoFieldGrammar =
     <*> pure mempty -- static-options ???
     <*> prefixedFields "x-" L.customFieldsBI
     <*> monoidalFieldAla "build-depends" formatDependencyList L.targetBuildDepends
+    <*> monoidalFieldAla "private-build-depends" formatPrivateDependencyList L.targetPrivateBuildDepends -- (map (\(PrivateDependency a ds) -> (a, formatDependencyList ds))) (map (\(alias, ds) -> PrivateDependency alias (unpack' formatDependencyList ds))) L.targetPrivateBuildDepends
     <*> monoidalFieldAla "mixins" formatMixinList L.mixins
       ^^^ availableSince CabalSpecV2_0 []
 {-# SPECIALIZE buildInfoFieldGrammar :: ParsecFieldGrammar' BuildInfo #-}
@@ -793,6 +801,9 @@ setupBInfoFieldGrammar def =
 
 formatDependencyList :: [Dependency] -> List CommaVCat (Identity Dependency) Dependency
 formatDependencyList = alaList CommaVCat
+
+formatPrivateDependencyList :: [PrivateDependency] -> List CommaVCat (Identity PrivateDependency) PrivateDependency
+formatPrivateDependencyList = alaList CommaVCat
 
 formatMixinList :: [Mixin] -> List CommaVCat (Identity Mixin) Mixin
 formatMixinList = alaList CommaVCat

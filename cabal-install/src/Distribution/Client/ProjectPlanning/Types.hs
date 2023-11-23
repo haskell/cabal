@@ -179,7 +179,13 @@ showElaboratedInstallPlan = InstallPlan.showInstallPlan_gen showNode
 
         installed_deps = map pretty . nodeNeighbors
 
-        local_deps cfg = [(if internal then text "+" else mempty) <> pretty (confInstId uid) | (uid, internal) <- elabLibDependencies cfg]
+        local_deps cfg =
+          [ (if internal then text "+" else mempty) <> mpalias <> pretty (confInstId uid)
+          | (uid, internal, alias) <- elabLibDependencies cfg
+          , let mpalias = case alias of
+                  Nothing -> mempty
+                  Just al -> pretty al <> text "."
+          ]
 
 -- TODO: [code cleanup] decide if we really need this, there's not much in it, and in principle
 --      even platform and compiler could be different if we're building things
@@ -561,13 +567,13 @@ elabOrderLibDependencies elab =
     ElabPackage pkg ->
       map (newSimpleUnitId . confInstId) $
         ordNub $
-          CD.flatDeps (map fst <$> pkgLibDependencies pkg)
+          CD.flatDeps (map (\(cid, _, _) -> cid) <$> pkgLibDependencies pkg)
     ElabComponent comp -> compOrderLibDependencies comp
 
 -- | The library dependencies (i.e., the libraries we depend on, NOT
 -- the dependencies of the library), NOT including setup dependencies.
 -- These are passed to the @Setup@ script via @--dependency@ or @--promised-dependency@.
-elabLibDependencies :: ElaboratedConfiguredPackage -> [(ConfiguredId, Bool)]
+elabLibDependencies :: ElaboratedConfiguredPackage -> [(ConfiguredId, Bool, Maybe PrivateAlias)]
 elabLibDependencies elab =
   case elabPkgOrComp elab of
     ElabPackage pkg -> ordNub (CD.nonSetupDeps (pkgLibDependencies pkg))
@@ -601,7 +607,7 @@ elabExeDependencyPaths elab =
 -- | The setup dependencies (the library dependencies of the setup executable;
 -- note that it is not legal for setup scripts to have executable
 -- dependencies at the moment.)
-elabSetupDependencies :: ElaboratedConfiguredPackage -> [(ConfiguredId, Bool)]
+elabSetupDependencies :: ElaboratedConfiguredPackage -> [(ConfiguredId, Bool, Maybe PrivateAlias)]
 elabSetupDependencies elab =
   case elabPkgOrComp elab of
     ElabPackage pkg -> CD.setupDeps (pkgLibDependencies pkg)
@@ -661,7 +667,7 @@ data ElaboratedComponent = ElaboratedComponent
   , compComponentName :: Maybe ComponentName
   -- ^ The name of the component to be built.  Nothing if
   -- it's a setup dep.
-  , compLibDependencies :: [(ConfiguredId, Bool)]
+  , compLibDependencies :: [(ConfiguredId, Bool, Maybe PrivateAlias)]
   -- ^ The *external* library dependencies of this component.  We
   -- pass this to the configure script. The Bool indicates whether the
   -- dependency is a promised dependency (True) or not (False).
@@ -708,7 +714,7 @@ compOrderExeDependencies = map (newSimpleUnitId . confInstId) . compExeDependenc
 
 data ElaboratedPackage = ElaboratedPackage
   { pkgInstalledId :: InstalledPackageId
-  , pkgLibDependencies :: ComponentDeps [(ConfiguredId, Bool)]
+  , pkgLibDependencies :: ComponentDeps [(ConfiguredId, Bool, Maybe PrivateAlias)]
   -- ^ The exact dependencies (on other plan packages)
   -- The boolean value indicates whether the dependency is a promised dependency
   -- or not.
@@ -780,7 +786,7 @@ whyNotPerComponent = \case
 -- which can be useful in some circumstances.
 pkgOrderDependencies :: ElaboratedPackage -> ComponentDeps [UnitId]
 pkgOrderDependencies pkg =
-  fmap (map (newSimpleUnitId . confInstId)) (map fst <$> pkgLibDependencies pkg)
+  fmap (map (newSimpleUnitId . confInstId)) (map (\(cid, _, _) -> cid) <$> pkgLibDependencies pkg)
     `Mon.mappend` fmap (map (newSimpleUnitId . confInstId)) (pkgExeDependencies pkg)
 
 -- | This is used in the install plan to indicate how the package will be

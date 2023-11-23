@@ -275,7 +275,7 @@ executable cabal
     hs-source-dirs: main
     default-language: Haskell2010
 
-    ghc-options: -rtsopts -threaded
+    ghc-options: -rtsopts -threaded -debug
 
     -- On AIX, some legacy BSD operations such as flock(2) are provided by libbsd.a
     if os(aix)
