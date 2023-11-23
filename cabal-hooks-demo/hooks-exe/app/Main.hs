@@ -20,7 +20,6 @@ main :: IO ()
 main = do
   [hookName] <- getArgs
   case hookName of
-   -- TODO: version of lib
    "version" -> do
     putStr $ encode (VERSION_lib01 :: String)
    "show" -> do
