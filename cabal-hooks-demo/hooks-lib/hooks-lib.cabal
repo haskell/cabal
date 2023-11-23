@@ -1,0 +1,26 @@
+cabal-version:   3.0
+name:            hooks-lib
+version:         0.1.0.0
+license:         NONE
+author:          matthewtpickering@gmail.com
+maintainer:      Matthew Pickering
+build-type:      Simple
+extra-doc-files: CHANGELOG.md
+
+common warnings
+    ghc-options: -Wall
+
+library
+    import:           warnings
+    exposed-modules:  HooksLib
+    build-depends:    base ^>=4.18.0.0, lib01 == 0.2.0.0, lib0101, lib0102, mtl, process, binary, bytestring, deepseq
+    hs-source-dirs:   src
+    default-language: Haskell2010
+
+library lib0101
+  private-build-depends: lib01 == 0.1.0.0
+  reexported-modules: Lib as Lib01
+
+library lib0102
+  private-build-depends: lib01 == 0.2.0.0
+  reexported-modules: Lib as Lib02
