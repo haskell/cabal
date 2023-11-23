@@ -1,5 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric      #-}
+{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE TypeApplications #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Solver.Types.PkgConfigDb
@@ -21,14 +23,15 @@ module Distribution.Solver.Types.PkgConfigDb
     ) where
 
 import Distribution.Solver.Compat.Prelude
-import Prelude ()
+import Prelude (read)
 
-import           Control.Exception (handle)
-import           Control.Monad     (mapM)
+import           Control.Exception (handle, handleJust)
 import qualified Data.Map          as M
-import           System.FilePath   (splitSearchPath)
+import           System.FilePath   (splitSearchPath, takeBaseName, (</>))
 
 import Distribution.Compat.Environment          (lookupEnv)
+import Distribution.Compat.Directory
+import Distribution.Compat.Time                 (getModTime, ModTime)
 import Distribution.Package                     (PkgconfigName, mkPkgconfigName)
 import Distribution.Parsec
 import Distribution.Simple.Program
@@ -38,6 +41,7 @@ import Distribution.Simple.Utils                (info)
 import Distribution.Types.PkgconfigVersion
 import Distribution.Types.PkgconfigVersionRange
 import Distribution.Verbosity                   (Verbosity)
+import System.IO.Error                          (isDoesNotExistError)
 
 -- | The list of packages installed in the system visible to
 -- @pkg-config@. This is an opaque datatype, to be constructed with
@@ -63,25 +67,34 @@ readPkgConfigDb verbosity progdb = handle ioErrorHandler $ do
     case mpkgConfig of
       Nothing             -> noPkgConfig "Cannot find pkg-config program"
       Just (pkgConfig, _) -> do
-        pkgList <- lines <$> getProgramOutput verbosity pkgConfig ["--list-all"]
-        -- The output of @pkg-config --list-all@ also includes a description
-        -- for each package, which we do not need.
-        let pkgNames = map (takeWhile (not . isSpace)) pkgList
-        (pkgVersions, _errs, exitCode) <-
-                     getProgramInvocationOutputAndErrors verbosity
-                       (programInvocation pkgConfig ("--modversion" : pkgNames))
-        if exitCode == ExitSuccess && length pkgNames == length pkgList
-          then (return . pkgConfigDbFromList . zip pkgNames) (lines pkgVersions)
-          else
-          -- if there's a single broken pc file the above fails, so we fall back
-          -- into calling it individually
-          --
-          -- Also some implementations of @pkg-config@ do not provide more than
-          -- one package version, so if the returned list is shorter than the
-          -- requested one, we fall back to querying one by one.
-          do
-            info verbosity ("call to pkg-config --modversion on all packages failed. Falling back to querying pkg-config individually on each package")
-            pkgConfigDbFromList . catMaybes <$> mapM (getIndividualVersion pkgConfig) pkgNames
+        -- TODO use a more sensible data structure
+        -- should I just add a `ModTime` field to `PkgConfigDb` and serialise that directly?
+        -- TODO don't hardcode path (how to get? does this need to be its own preference?)
+        let cacheFile = "/home/gthomas/.local/state/cabal/pkg-config"
+            writeCache = writeFile cacheFile . show @[(String, ModTime, String)]
+            readCache = handleJust (guard . isDoesNotExistError) (\() -> pure []) $ read @[(String, ModTime, String)] <$> readFile cacheFile
+        -- TODO more logging
+        pcPaths <- splitOn ":" . dropWhileEnd isSpace
+            -- TODO verbose logs imply we already call this elsewhere
+            <$> getProgramOutput verbosity pkgConfig ["--variable", "pc_path", "pkg-config"]
+        -- ["/usr/lib/pkgconfig", "/usr/share/pkgconfig"]
+        ts <- traverse (\(d, f) -> (takeBaseName f,) <$> getModTime (d </> f))
+            -- TODO why are there directories here (`personality`)?
+            -- note that if we remove them, we get exactly the same list here that we'd get from `pkg-config --list-package-names`
+            -- should we sanity-check that, or is it part of the `pkg-config` spec?
+            -- =<< filterM (fmap not . doesFileExist)
+            =<< foldMap (\p -> map (p,) <$> listDirectory p) pcPaths
+        cache <- M.fromList . map (\(p, t, v) -> (p, (t, v))) <$> readCache
+        r <- fmap catMaybes $ for ts $ \(p, t) -> do
+            case M.lookup p cache of
+                Just (storedTime, storedVersion) | t == storedTime -> pure $ Just (p, t, storedVersion)
+                -- TODO the `Nothing` case is (on my machine) always for packages with missing dependencies
+                -- since this call will always fail for them, for these never get cached, and thus get checked again on every iteration
+                -- but maybe that's fine? since we'd hope there aren't many of them
+                -- TODO inline `getIndividualVersion` and add better error reporting?
+                _ -> fmap ((p, t,) . snd) <$> getIndividualVersion pkgConfig p
+        writeCache r
+        pure $ pkgConfigDbFromList $ map (\(p, _t, v) -> (p, v)) r
   where
     -- For when pkg-config invocation fails (possibly because of a
     -- too long command line).
@@ -90,6 +103,18 @@ readPkgConfigDb verbosity progdb = handle ioErrorHandler $ do
                         ++ " without solving for pkg-config constraints: "
                         ++ extra)
         return NoPkgConfigDb
+
+    -- TODO vendored from `extra` - what should I do?
+    splitOn :: (Eq a) => [a] -> [a] -> [[a]]
+    splitOn [] _ = error "splitOn, needle may not be empty"
+    splitOn _ [] = [[]]
+    splitOn needle haystack = a : if null b then [] else splitOn needle $ drop (length needle) b
+      where
+        (a, b) = breakOn needle haystack
+    breakOn :: Eq a => [a] -> [a] -> ([a], [a])
+    breakOn needle haystack | needle `isPrefixOf` haystack = ([], haystack)
+    breakOn _ [] = ([], [])
+    breakOn needle (x:xs) = first (x:) $ breakOn needle xs
 
     ioErrorHandler :: IOException -> IO PkgConfigDb
     ioErrorHandler e = noPkgConfig (show e)
