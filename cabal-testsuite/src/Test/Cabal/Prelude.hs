@@ -1157,5 +1157,7 @@ findDependencyInStore storeDir pkgName = do
             then filter (not . flip elem "aeiou") pkgName
                 -- simulates the way 'hashedInstalledPackageId' uses to compress package name
             else pkgName
-    let libDir = head $ filter (pkgName' `isPrefixOf`) packageDirs
+    let libDir = case filter (pkgName' `isPrefixOf`) packageDirs of
+                    [] -> error $ "Could not find " <> pkgName' <> " when searching for " <> pkgName' <> " in\n" <> show packageDirs
+                    (dir:_) -> dir
     pure (storeDir </> storeDirForGhcVersion </> libDir)
