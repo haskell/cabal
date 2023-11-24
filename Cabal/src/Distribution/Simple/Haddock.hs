@@ -269,7 +269,8 @@ haddock pkg_descr lbi suffixes flags' = do
 
   -- We fall back to using HsColour only for versions of Haddock which don't
   -- support '--hyperlinked-sources'.
-  when (flag haddockLinkedSource && version < mkVersion [2, 17]) $
+  let using_hscolour = flag haddockLinkedSource && version < mkVersion [2, 17]
+  when using_hscolour $
     hscolour'
       (warn verbosity)
       haddockTarget
@@ -293,7 +294,7 @@ haddock pkg_descr lbi suffixes flags' = do
     let component = targetComponent target
         clbi = targetCLBI target
 
-    componentInitialBuildSteps (flag haddockDistPref) pkg_descr lbi clbi verbosity
+    preBuildComponent verbosity lbi target
 
     let
       lbi' =
@@ -1152,7 +1153,8 @@ hscolour' onNoHsColour haddockTarget pkg_descr lbi suffixes flags =
         hscolourPref haddockTarget distPref pkg_descr
 
       withAllComponentsInBuildOrder pkg_descr lbi $ \comp clbi -> do
-        componentInitialBuildSteps distPref pkg_descr lbi clbi verbosity
+        let tgt = TargetInfo clbi comp
+        preBuildComponent verbosity lbi tgt
         preprocessComponent pkg_descr comp lbi clbi False verbosity suffixes
         let
           doExe com = case (compToExe com) of
