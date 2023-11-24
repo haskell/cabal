@@ -18,10 +18,13 @@
 -- compiler-specific functions to do the rest.
 module Distribution.Simple.Install
   ( install
+  , installFileGlob
   ) where
 
 import Distribution.Compat.Prelude
 import Prelude ()
+
+import Distribution.CabalSpecVersion (CabalSpecVersion)
 
 import Distribution.Types.ExecutableScope
 import Distribution.Types.ForeignLib
@@ -290,23 +293,37 @@ installDataFiles
   -> SymbolicPath Pkg (Dir DataDir)
   -> IO ()
 installDataFiles verbosity mbWorkDir pkg_descr destDataDir =
-  flip traverse_ (dataFiles pkg_descr) $ \glob -> do
-    let srcDataDirRaw = getSymbolicPath $ dataDir pkg_descr
-        srcDataDir :: Maybe (SymbolicPath CWD (Dir DataDir))
-        srcDataDir
-          | null srcDataDirRaw =
-              Nothing
-          | isAbsoluteOnAnyPlatform srcDataDirRaw =
-              Just $ makeSymbolicPath srcDataDirRaw
-          | otherwise =
-              Just $ fromMaybe sameDirectory mbWorkDir </> makeRelativePathEx srcDataDirRaw
-        i = interpretSymbolicPath mbWorkDir -- See Note [Symbolic paths] in Distribution.Utils.Path
-    files <- matchDirFileGlob verbosity (specVersion pkg_descr) srcDataDir glob
-    for_ files $ \file' -> do
-      let src = i (dataDir pkg_descr </> file')
-          dst = i (destDataDir </> file')
-      createDirectoryIfMissingVerbose verbosity True (takeDirectory dst)
-      installOrdinaryFile verbosity src dst
+  traverse_
+    (installFileGlob verbosity (specVersion pkg_descr) mbWorkDir (srcDataDir, destDataDir))
+    (dataFiles pkg_descr)
+  where
+    srcDataDirRaw = getSymbolicPath $ dataDir pkg_descr
+    srcDataDir :: Maybe (SymbolicPath CWD (Dir DataDir))
+    srcDataDir
+      | null srcDataDirRaw =
+          Nothing
+      | isAbsoluteOnAnyPlatform srcDataDirRaw =
+          Just $ makeSymbolicPath srcDataDirRaw
+      | otherwise =
+          Just $ fromMaybe sameDirectory mbWorkDir </> makeRelativePathEx srcDataDirRaw
+
+-- | Install the files specified by the given glob pattern.
+installFileGlob
+  :: Verbosity
+  -> CabalSpecVersion
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
+  -> (Maybe (SymbolicPath CWD (Dir DataDir)), SymbolicPath Pkg (Dir DataDir))
+  -- ^ @(src_dir, dest_dir)@
+  -> RelativePath DataDir File
+  -- ^ file glob pattern
+  -> IO ()
+installFileGlob verbosity spec_version mbWorkDir (srcDir, destDir) glob = do
+  files <- matchDirFileGlob verbosity spec_version srcDir glob
+  for_ files $ \file' -> do
+    let src = getSymbolicPath (fromMaybe sameDirectory srcDir </> file')
+        dst = interpretSymbolicPath mbWorkDir (destDir </> file')
+    createDirectoryIfMissingVerbose verbosity True (takeDirectory dst)
+    installOrdinaryFile verbosity src dst
 
 -- | Install the files listed in install-includes for a library
 installIncludeFiles :: Verbosity -> BuildInfo -> LocalBuildInfo -> FilePath -> FilePath -> IO ()
