@@ -146,6 +146,7 @@ library
     Distribution.Types.DumpBuildInfo
     Distribution.Types.PackageName.Magic
     Distribution.Types.ComponentLocalBuildInfo
+    Distribution.Types.LocalBuildConfig
     Distribution.Types.LocalBuildInfo
     Distribution.Types.TargetInfo
     Distribution.Types.GivenComponent

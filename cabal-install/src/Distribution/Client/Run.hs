@@ -33,6 +33,7 @@ import Distribution.Simple.LocalBuildInfo
   ( ComponentName (..)
   , LocalBuildInfo (..)
   , depLibraryPaths
+  , buildDir
   )
 import Distribution.Simple.Utils
   ( addLibraryPath

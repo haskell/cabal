@@ -449,11 +449,11 @@ configure (pkg_descr0, pbi) cfg = do
   checkExactConfiguration verbosity pkg_descr0 cfg
 
   -- Where to build the package
-  let buildDir :: FilePath -- e.g. dist/build
+  let build_dir :: FilePath -- e.g. dist/build
   -- fromFlag OK due to Distribution.Simple calling
   -- findDistPrefOrDefault to fill it in
-      buildDir = fromFlag (configDistPref cfg) </> "build"
-  createDirectoryIfMissingVerbose (lessVerbose verbosity) True buildDir
+      build_dir = fromFlag (configDistPref cfg) </> "build"
+  createDirectoryIfMissingVerbose (lessVerbose verbosity) True build_dir
 
   -- What package database(s) to use
   let packageDbs :: PackageDBStack
@@ -905,8 +905,6 @@ configure (pkg_descr0, pbi) cfg = do
             , installDirTemplates = installDirs
             , compiler = comp
             , hostPlatform = compPlatform
-            , buildDir = buildDir
-            , cabalFilePath = flagToMaybe (configCabalFilePath cfg)
             , componentGraph = Graph.fromDistinctList buildComponents
             , componentNameMap = buildComponentsMap
             , installedPkgs = packageDependsIndex
@@ -933,8 +931,6 @@ configure (pkg_descr0, pbi) cfg = do
             , exeCoverage = False
             , libCoverage = False
             , withPackageDB = packageDbs
-            , progPrefix = fromFlag $ configProgPrefix cfg
-            , progSuffix = fromFlag $ configProgSuffix cfg
             , relocatable = reloc
             }
 
