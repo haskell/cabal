@@ -361,6 +361,8 @@ tests =
       , runTest $ testIndepGoals5 "indepGoals5 - default goal order" DefaultGoalOrder
       , runTest $ testIndepGoals6 "indepGoals6 - fixed goal order" FixedGoalOrder
       , runTest $ testIndepGoals6 "indepGoals6 - default goal order" DefaultGoalOrder
+      , expectFailBecause "#9466" $ runTest $ testIndepGoals7 "indepGoals7"
+      , runTest $ testIndepGoals8 "indepGoals8"
       ]
   , -- Tests designed for the backjumping blog post
     testGroup
@@ -2012,6 +2014,33 @@ dbLangs1 =
   , Right $ exAv "B" 1 [ExLang Haskell98, ExAny "A"]
   , Right $ exAv "C" 1 [ExLang (UnknownLanguage "Haskell3000"), ExAny "B"]
   ]
+
+-- This test checks how the scope of a constraint interacts with qualified goals.
+-- If you specify `B == 2`, that top-level should /not/ apply to an independent goal!
+testIndepGoals7 :: String -> SolverTest
+testIndepGoals7 name =
+  constraints [ExVersionConstraint (scopeToplevel "A") (V.thisVersion (V.mkVersion [2, 0, 0]))] $
+    independentGoals $
+      mkTest dbIndepGoals78 name ["A"] $
+        -- The more recent version should be picked by the solver. As said
+        -- above, the top-level B==2 should not apply to an independent goal.
+        solverSuccess [("A", 3)]
+
+dbIndepGoals78 :: ExampleDb
+dbIndepGoals78 =
+  [ Right $ exAv "A" 1 []
+  , Right $ exAv "A" 2 []
+  , Right $ exAv "A" 3 []
+  ]
+
+-- This test checks how the scope of a constraint interacts with qualified goals.
+-- If you specify `any.B == 2`, then that should apply inside an independent goal.
+testIndepGoals8 :: String -> SolverTest
+testIndepGoals8 name =
+  constraints [ExVersionConstraint (ScopeAnyQualifier "A") (V.thisVersion (V.mkVersion [2, 0, 0]))] $
+    independentGoals $
+      mkTest dbIndepGoals78 name ["A"] $
+        solverSuccess [("A", 2)]
 
 -- | cabal must set enable-exe to false in order to avoid the unavailable
 -- dependency. Flags are true by default. The flag choice causes "pkg" to
