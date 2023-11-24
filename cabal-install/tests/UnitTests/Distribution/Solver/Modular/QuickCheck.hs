@@ -244,6 +244,7 @@ solve enableBj fineGrainedConflicts reorder countConflicts indep prefOldest goal
             (SolveExecutables True)
             (unVarOrdering <$> goalOrder)
             (testConstraints test)
+            []
             (testPreferences test)
             normal
             (EnableAllTests False)
