@@ -170,7 +170,6 @@ defaultMainHelper hooks args = topHandler $ do
   args' <- expandResponse args
   command <- commandsRun (globalCommand commands) commands args'
   case command of
-    CommandDelegate -> pure ()
     CommandHelp help -> printHelp help
     CommandList opts -> printOptionsList opts
     CommandErrors errs -> printErrors errs
@@ -179,7 +178,6 @@ defaultMainHelper hooks args = topHandler $ do
         _
           | fromFlag (globalVersion flags) -> printVersion
           | fromFlag (globalNumericVersion flags) -> printNumericVersion
-        CommandDelegate -> pure ()
         CommandHelp help -> printHelp help
         CommandList opts -> printOptionsList opts
         CommandErrors errs -> printErrors errs

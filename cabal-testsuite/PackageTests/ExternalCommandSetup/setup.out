@@ -1,0 +1,13 @@
+# Setup configure
+Configuring aaaa-0.1.0.0...
+# Setup build
+Preprocessing executable 'cabal-aaaa' for aaaa-0.1.0.0...
+Building executable 'cabal-aaaa' for aaaa-0.1.0.0...
+# Setup copy
+Installing executable cabal-aaaa in <PATH>
+Warning: The directory <ROOT>/setup.dist/usr/bin is not in the system search path.
+# Setup register
+Package contains no library to register: aaaa-0.1.0.0...
+# cabal-aaaa
+aaaa
+# Setup aaaa
