@@ -187,20 +187,20 @@ data ConfigStateFileError
 dispConfigStateFileError :: ConfigStateFileError -> Doc
 dispConfigStateFileError ConfigStateFileNoHeader =
   text "Saved package config file header is missing."
-    <+> text "Re-run the 'configure' command."
+    <+> text "Re-run the 'Setup configure' command."
 dispConfigStateFileError ConfigStateFileBadHeader =
   text "Saved package config file header is corrupt."
-    <+> text "Re-run the 'configure' command."
+    <+> text "Re-run the 'Setup configure' command."
 dispConfigStateFileError ConfigStateFileNoParse =
   text "Saved package config file is corrupt."
-    <+> text "Re-run the 'configure' command."
+    <+> text "Re-run the 'Setup configure' command."
 dispConfigStateFileError ConfigStateFileMissing =
-  text "Run the 'configure' command first."
+  text "Run the 'Setup configure' command first."
 dispConfigStateFileError (ConfigStateFileBadVersion oldCabal oldCompiler _) =
   text "Saved package config file is outdated:"
     $+$ badCabal
     $+$ badCompiler
-    $+$ text "Re-run the 'configure' command."
+    $+$ text "Re-run the 'Setup configure' command."
   where
     badCabal =
       text "• the Cabal version changed from"
@@ -950,7 +950,7 @@ configure (pkg_descr0, pbi) cfg = do
         ++ prefix dirs
         ++ " will not work if you rely on the Path_* module "
         ++ " or other hard coded paths.  Cabal does not yet "
-        ++ " support fully  relocatable builds! "
+        ++ " support fully relocatable builds! "
         ++ " See #462 #2302 #2994 #3305 #3473 #3586 #3909"
         ++ " #4097 #4291 #4872"
 
