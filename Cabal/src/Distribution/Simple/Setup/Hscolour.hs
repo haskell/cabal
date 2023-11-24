@@ -51,6 +51,9 @@ data HscolourFlags = HscolourFlags
   }
   deriving (Show, Generic, Typeable)
 
+instance Binary HscolourFlags
+instance Structured HscolourFlags
+
 emptyHscolourFlags :: HscolourFlags
 emptyHscolourFlags = mempty
 

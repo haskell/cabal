@@ -345,6 +345,7 @@ data CopyDest
   deriving (Eq, Show, Generic)
 
 instance Binary CopyDest
+instance Structured CopyDest
 
 -- | Check which of the paths are relative to the installation $prefix.
 --

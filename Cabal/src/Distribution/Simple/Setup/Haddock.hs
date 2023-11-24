@@ -109,6 +109,9 @@ data HaddockFlags = HaddockFlags
   }
   deriving (Show, Generic, Typeable)
 
+instance Binary HaddockFlags
+instance Structured HaddockFlags
+
 defaultHaddockFlags :: HaddockFlags
 defaultHaddockFlags =
   HaddockFlags
