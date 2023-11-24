@@ -4,6 +4,6 @@ main = setupAndCabalTest $ do
     withPackageDb $ do
         withDirectory "containers-dupe" $
             setup_install []
-        withDirectory "p" $ do
-            r <- fails $ setup' "configure" ["--cabal-file", "p.cabal.fail-ambiguous"]
+        withDirectory "p-fail-ambiguous" $ do
+            r <- fails $ setup' "configure" []
             assertOutputContains "Data.Map" r
