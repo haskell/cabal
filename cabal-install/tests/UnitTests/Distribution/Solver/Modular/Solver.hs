@@ -182,6 +182,9 @@ tests =
       , runTest $ mkTest db9 "setupDeps7" ["F", "G"] (solverSuccess [("A", 1), ("B", 1), ("B", 2), ("C", 1), ("D", 1), ("E", 1), ("E", 2), ("F", 1), ("G", 1)])
       , runTest $ mkTest db10 "setupDeps8" ["C"] (solverSuccess [("C", 1)])
       , runTest $ indep $ mkTest dbSetupDeps "setupDeps9" ["A", "B"] (solverSuccess [("A", 1), ("B", 1), ("C", 1), ("D", 1), ("D", 2)])
+      , runTest $ setupStanzaTest1
+      , runTest $ setupStanzaTest2
+      , runTest $ setupStanzaTest3
       ]
   , testGroup
       "Base shim"
@@ -2554,6 +2557,36 @@ dbIssue3775 =
     Right $ exAv "A" 2 [ExFix "warp" 1] `withExe` exExe "warp" [ExAny "A"]
   , Right $ exAv "B" 2 [ExAny "A", ExAny "warp"]
   ]
+
+-- A database where the setup depends on something which has a test stanza, does the
+-- test stanza get enabled?
+dbSetupStanza :: ExampleDb
+dbSetupStanza =
+  [ Right $
+      exAv "A" 1 []
+        `withSetupDeps` [ExAny "B"]
+  , Right $
+      exAv "B" 1 []
+        `withTest` exTest "test" [ExAny "C"]
+  ]
+
+-- With the user constraint syntax
+setupStanzaTest1 :: SolverTest
+setupStanzaTest1 = userConstraints ["B test"] $ mkTest dbSetupStanza "setupStanzaTest1" ["A"] (solverSuccess [("A", 1), ("B", 1)])
+
+-- With the "top-level" qualifier syntax
+setupStanzaTest2 :: SolverTest
+setupStanzaTest2 = constraints [ExStanzaConstraint (scopeToplevel "B") [TestStanzas]] $ mkTest dbSetupStanza "setupStanzaTest2" ["A"] (solverSuccess [("A", 1), ("B", 1)])
+
+-- With the "any" qualifier syntax
+setupStanzaTest3 :: SolverTest
+setupStanzaTest3 =
+  constraints [ExStanzaConstraint (ScopeAnyQualifier "B") [TestStanzas]] $
+    mkTest
+      dbSetupStanza
+      "setupStanzaTest3"
+      ["A"]
+      (solverFailure ("unknown package: A:setup.C (dependency of A:setup.B *test)" `isInfixOf`))
 
 -- | Returns true if the second list contains all elements of the first list, in
 -- order.
