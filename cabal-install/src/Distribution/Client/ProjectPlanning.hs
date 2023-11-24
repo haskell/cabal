@@ -170,6 +170,7 @@ import Distribution.Types.ComponentName
 import Distribution.Types.DumpBuildInfo
 import Distribution.Types.GivenComponent
 import Distribution.Types.LibraryName
+import qualified Distribution.Types.LocalBuildConfig as LBC
 import Distribution.Types.PackageVersionConstraint
 import Distribution.Types.PkgconfigDependency
 import Distribution.Types.UnqualComponentName
@@ -2190,14 +2191,28 @@ elaborateInstallPlan
 
             elabPkgDescriptionOverride = descOverride
 
-            elabVanillaLib = perPkgOptionFlag pkgid True packageConfigVanillaLib -- TODO: [required feature]: also needs to be handled recursively
-            elabSharedLib = pkgid `Set.member` pkgsUseSharedLibrary
-            elabStaticLib = perPkgOptionFlag pkgid False packageConfigStaticLib
-            elabDynExe = perPkgOptionFlag pkgid False packageConfigDynExe
-            elabFullyStaticExe = perPkgOptionFlag pkgid False packageConfigFullyStaticExe
-            elabGHCiLib = perPkgOptionFlag pkgid False packageConfigGHCiLib -- TODO: [required feature] needs to default to enabled on windows still
-            elabProfExe = perPkgOptionFlag pkgid False packageConfigProf
-            elabProfLib = pkgid `Set.member` pkgsUseProfilingLibrary
+            elabBuildOptions =
+              LBC.BuildOptions
+                { withVanillaLib = perPkgOptionFlag pkgid True packageConfigVanillaLib -- TODO: [required feature]: also needs to be handled recursively
+                , withSharedLib = pkgid `Set.member` pkgsUseSharedLibrary
+                , withStaticLib = perPkgOptionFlag pkgid False packageConfigStaticLib
+                , withDynExe = perPkgOptionFlag pkgid False packageConfigDynExe
+                , withFullyStaticExe = perPkgOptionFlag pkgid False packageConfigFullyStaticExe
+                , withGHCiLib = perPkgOptionFlag pkgid False packageConfigGHCiLib -- TODO: [required feature] needs to default to enabled on windows still
+                , withProfExe = perPkgOptionFlag pkgid False packageConfigProf
+                , withProfLib = pkgid `Set.member` pkgsUseProfilingLibrary
+                , exeCoverage = perPkgOptionFlag pkgid False packageConfigCoverage
+                , libCoverage = perPkgOptionFlag pkgid False packageConfigCoverage
+                , withOptimization = perPkgOptionFlag pkgid NormalOptimisation packageConfigOptimization
+                , splitObjs = perPkgOptionFlag pkgid False packageConfigSplitObjs
+                , splitSections = perPkgOptionFlag pkgid False packageConfigSplitSections
+                , stripLibs = perPkgOptionFlag pkgid False packageConfigStripLibs
+                , stripExes = perPkgOptionFlag pkgid False packageConfigStripExes
+                , withDebugInfo = perPkgOptionFlag pkgid NoDebugInfo packageConfigDebugInfo
+                , relocatable = perPkgOptionFlag pkgid False packageConfigRelocatable
+                , withProfLibDetail = elabProfExeDetail
+                , withProfExeDetail = elabProfLibDetail
+                }
 
             ( elabProfExeDetail
               , elabProfLibDetail
@@ -2207,14 +2222,7 @@ elaborateInstallPlan
                   ProfDetailDefault
                   packageConfigProfDetail
                   packageConfigProfLibDetail
-            elabCoverage = perPkgOptionFlag pkgid False packageConfigCoverage
 
-            elabOptimization = perPkgOptionFlag pkgid NormalOptimisation packageConfigOptimization
-            elabSplitObjs = perPkgOptionFlag pkgid False packageConfigSplitObjs
-            elabSplitSections = perPkgOptionFlag pkgid False packageConfigSplitSections
-            elabStripLibs = perPkgOptionFlag pkgid False packageConfigStripLibs
-            elabStripExes = perPkgOptionFlag pkgid False packageConfigStripExes
-            elabDebugInfo = perPkgOptionFlag pkgid NoDebugInfo packageConfigDebugInfo
             elabDumpBuildInfo = perPkgOptionFlag pkgid NoDumpBuildInfo packageConfigDumpBuildInfo
 
             -- Combine the configured compiler prog settings with the user-supplied
@@ -3863,6 +3871,31 @@ setupHsConfigureFlags
       elab
       (Cabal.ConfigFlags{..})
     where
+      Cabal.ConfigFlags
+        { configVanillaLib
+        , configSharedLib
+        , configStaticLib
+        , configDynExe
+        , configFullyStaticExe
+        , configGHCiLib
+        , -- , configProfExe -- overridden
+        configProfLib
+        , -- , configProf -- overridden
+        configProfDetail
+        , configProfLibDetail
+        , configCoverage
+        , configLibCoverage
+        , configRelocatable
+        , configOptimization
+        , configSplitSections
+        , configSplitObjs
+        , configStripExes
+        , configStripLibs
+        , configDebugInfo
+        } = LBC.buildOptionsConfigFlags elabBuildOptions
+      configProfExe = mempty
+      configProf = toFlag $ LBC.withProfExe elabBuildOptions
+
       configArgs = mempty -- unused, passed via args
       configDistPref = toFlag builddir
       configCabalFilePath = mempty
@@ -3904,31 +3937,6 @@ setupHsConfigureFlags
       configHcFlavor = toFlag (compilerFlavor pkgConfigCompiler)
       configHcPath = mempty -- we use configProgramPaths instead
       configHcPkg = mempty -- we use configProgramPaths instead
-      configVanillaLib = toFlag elabVanillaLib
-      configSharedLib = toFlag elabSharedLib
-      configStaticLib = toFlag elabStaticLib
-
-      configDynExe = toFlag elabDynExe
-      configFullyStaticExe = toFlag elabFullyStaticExe
-      configGHCiLib = toFlag elabGHCiLib
-      configProfExe = mempty
-      configProfLib = toFlag elabProfLib
-      configProf = toFlag elabProfExe
-
-      -- configProfDetail is for exe+lib, but overridden by configProfLibDetail
-      -- so we specify both so we can specify independently
-      configProfDetail = toFlag elabProfExeDetail
-      configProfLibDetail = toFlag elabProfLibDetail
-
-      configCoverage = toFlag elabCoverage
-      configLibCoverage = mempty
-
-      configOptimization = toFlag elabOptimization
-      configSplitSections = toFlag elabSplitSections
-      configSplitObjs = toFlag elabSplitObjs
-      configStripExes = toFlag elabStripExes
-      configStripLibs = toFlag elabStripLibs
-      configDebugInfo = toFlag elabDebugInfo
       configDumpBuildInfo = toFlag elabDumpBuildInfo
 
       configConfigurationsFlags = elabFlagAssignment
@@ -3984,7 +3992,6 @@ setupHsConfigureFlags
 
       configExactConfiguration = toFlag True
       configFlagError = mempty -- TODO: [research required] appears not to be implemented
-      configRelocatable = mempty -- TODO: [research required] ???
       configScratchDir = mempty -- never use
       configUserInstall = mempty -- don't rely on defaults
       configPrograms_ = mempty -- never use, shouldn't exist
@@ -4306,22 +4313,22 @@ packageHashConfigInputs shared@ElaboratedSharedConfig{..} pkg =
     , pkgHashPlatform = pkgConfigPlatform
     , pkgHashFlagAssignment = elabFlagAssignment
     , pkgHashConfigureScriptArgs = elabConfigureScriptArgs
-    , pkgHashVanillaLib = elabVanillaLib
-    , pkgHashSharedLib = elabSharedLib
-    , pkgHashDynExe = elabDynExe
-    , pkgHashFullyStaticExe = elabFullyStaticExe
-    , pkgHashGHCiLib = elabGHCiLib
-    , pkgHashProfLib = elabProfLib
-    , pkgHashProfExe = elabProfExe
-    , pkgHashProfLibDetail = elabProfLibDetail
-    , pkgHashProfExeDetail = elabProfExeDetail
-    , pkgHashCoverage = elabCoverage
-    , pkgHashOptimization = elabOptimization
-    , pkgHashSplitSections = elabSplitSections
-    , pkgHashSplitObjs = elabSplitObjs
-    , pkgHashStripLibs = elabStripLibs
-    , pkgHashStripExes = elabStripExes
-    , pkgHashDebugInfo = elabDebugInfo
+    , pkgHashVanillaLib = withVanillaLib
+    , pkgHashSharedLib = withSharedLib
+    , pkgHashDynExe = withDynExe
+    , pkgHashFullyStaticExe = withFullyStaticExe
+    , pkgHashGHCiLib = withGHCiLib
+    , pkgHashProfLib = withProfLib
+    , pkgHashProfExe = withProfExe
+    , pkgHashProfLibDetail = withProfLibDetail
+    , pkgHashProfExeDetail = withProfExeDetail
+    , pkgHashCoverage = exeCoverage
+    , pkgHashOptimization = withOptimization
+    , pkgHashSplitSections = splitSections
+    , pkgHashSplitObjs = splitObjs
+    , pkgHashStripLibs = stripLibs
+    , pkgHashStripExes = stripExes
+    , pkgHashDebugInfo = withDebugInfo
     , pkgHashProgramArgs = elabProgramArgs
     , pkgHashExtraLibDirs = elabExtraLibDirs
     , pkgHashExtraLibDirsStatic = elabExtraLibDirsStatic
@@ -4350,6 +4357,7 @@ packageHashConfigInputs shared@ElaboratedSharedConfig{..} pkg =
     }
   where
     ElaboratedConfiguredPackage{..} = normaliseConfiguredPackage shared pkg
+    LBC.BuildOptions{..} = elabBuildOptions
 
 -- | Given the 'InstalledPackageIndex' for a nix-style package store, and an
 -- 'ElaboratedInstallPlan', replace configured source packages by installed

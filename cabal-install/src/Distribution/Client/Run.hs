@@ -32,8 +32,8 @@ import Distribution.Simple.Compiler (CompilerFlavor (..), compilerFlavor)
 import Distribution.Simple.LocalBuildInfo
   ( ComponentName (..)
   , LocalBuildInfo (..)
-  , depLibraryPaths
   , buildDir
+  , depLibraryPaths
   )
 import Distribution.Simple.Utils
   ( addLibraryPath
