@@ -193,11 +193,11 @@ Formally, the format is described by the following BNF:
 Specifying Packages from Remote Version Control Locations
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Starting with Cabal 2.4, there is now a stanza
-``source-repository-package`` for specifying packages stored in a remote
-version control system that cabal should consider during package retrieval.
-This allows use of a package in a remote version control system, rather
-than looking for a package in Hackage.
+Since version 2.4, the ``source-repository-package`` stanza allows for
+specifying packages in a remote version control system that cabal should
+consider during package retrieval. This allows use of a package from a
+remote version control system, rather than looking for that package in
+Hackage.
 
 .. code-block:: cabal
 
@@ -234,7 +234,7 @@ their use just like Hackage or locally defined packages.
 
 .. cfg-field:: subdir: subdirectory list
 
-    Use one or more subdirectories of the repository.
+    look in one or more subdirectories of the repository for cabal files, rather than the root.
 
 .. cfg-field:: post-checkout-command: command
 
