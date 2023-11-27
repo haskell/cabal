@@ -85,7 +85,7 @@ configureComponentLocalBuildInfos
   cid_flag
   pkg_descr
   (prePkgDeps, promisedPkgDeps)
-  flagAssignment
+  flags
   instantiate_with
   installedPackageSet
   comp = do
@@ -123,7 +123,7 @@ configureComponentLocalBuildInfos
     graph1 <-
       toConfiguredComponents
         use_external_internal_deps
-        flagAssignment
+        flags
         deterministic
         ipid_flag
         cid_flag

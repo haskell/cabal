@@ -43,6 +43,7 @@ module Distribution.Types.LocalBuildInfo
       , stripLibs
       , exeCoverage
       , libCoverage
+      , extraCoverageFor
       , relocatable
       , ..
       )
@@ -173,6 +174,7 @@ pattern LocalBuildInfo
   -> Bool
   -> Bool
   -> Bool
+  -> [UnitId]
   -> Bool
   -> LocalBuildInfo
 pattern LocalBuildInfo
@@ -209,6 +211,7 @@ pattern LocalBuildInfo
   , stripLibs
   , exeCoverage
   , libCoverage
+  , extraCoverageFor
   , relocatable
   } =
   NewLocalBuildInfo
@@ -225,6 +228,7 @@ pattern LocalBuildInfo
             , installDirTemplates
             , withPackageDB
             , pkgDescrFile
+            , extraCoverageFor
             }
         , componentBuildDescr =
           LBC.ComponentBuildDescr
@@ -306,7 +310,7 @@ localComponentId lbi =
 -- | Extract the 'PackageIdentifier' of a 'LocalBuildInfo'.
 -- This is a "safe" use of 'localPkgDescr'
 localPackage :: LocalBuildInfo -> PackageId
-localPackage (LocalBuildInfo{localPkgDescr}) = package localPkgDescr
+localPackage (LocalBuildInfo{localPkgDescr = pkg}) = package pkg
 
 -- | Extract the 'UnitId' from the library component of a
 -- 'LocalBuildInfo' if it exists, or make a fake unit ID based on
@@ -347,22 +351,22 @@ mkTargetInfo pkg_descr _lbi clbi =
 -- Has a prime because it takes a 'PackageDescription' argument
 -- which may disagree with 'localPkgDescr' in 'LocalBuildInfo'.
 componentNameTargets' :: PackageDescription -> LocalBuildInfo -> ComponentName -> [TargetInfo]
-componentNameTargets' pkg_descr lbi@(LocalBuildInfo{componentNameMap}) cname =
-  case Map.lookup cname componentNameMap of
+componentNameTargets' pkg_descr lbi@(LocalBuildInfo{componentNameMap = comps}) cname =
+  case Map.lookup cname comps of
     Just clbis -> map (mkTargetInfo pkg_descr lbi) clbis
     Nothing -> []
 
 unitIdTarget' :: PackageDescription -> LocalBuildInfo -> UnitId -> Maybe TargetInfo
-unitIdTarget' pkg_descr lbi@(LocalBuildInfo{componentGraph}) uid =
-  case Graph.lookup uid componentGraph of
+unitIdTarget' pkg_descr lbi@(LocalBuildInfo{componentGraph = compsGraph}) uid =
+  case Graph.lookup uid compsGraph of
     Just clbi -> Just (mkTargetInfo pkg_descr lbi clbi)
     Nothing -> Nothing
 
 -- | Return all 'ComponentLocalBuildInfo's associated with 'ComponentName'.
 -- In the presence of Backpack there may be more than one!
 componentNameCLBIs :: LocalBuildInfo -> ComponentName -> [ComponentLocalBuildInfo]
-componentNameCLBIs (LocalBuildInfo{componentNameMap}) cname =
-  case Map.lookup cname componentNameMap of
+componentNameCLBIs (LocalBuildInfo{componentNameMap = comps}) cname =
+  case Map.lookup cname comps of
     Just clbis -> clbis
     Nothing -> []
 
@@ -373,8 +377,8 @@ componentNameCLBIs (LocalBuildInfo{componentNameMap}) cname =
 -- Has a prime because it takes a 'PackageDescription' argument
 -- which may disagree with 'localPkgDescr' in 'LocalBuildInfo'.
 allTargetsInBuildOrder' :: PackageDescription -> LocalBuildInfo -> [TargetInfo]
-allTargetsInBuildOrder' pkg_descr lbi@(LocalBuildInfo{componentGraph}) =
-  map (mkTargetInfo pkg_descr lbi) (Graph.revTopSort componentGraph)
+allTargetsInBuildOrder' pkg_descr lbi@(LocalBuildInfo{componentGraph = compsGraph}) =
+  map (mkTargetInfo pkg_descr lbi) (Graph.revTopSort compsGraph)
 
 -- | Execute @f@ for every 'TargetInfo' in the package, respecting the
 -- build dependency order.  (TODO: We should use Shake!)
@@ -389,8 +393,8 @@ withAllTargetsInBuildOrder' pkg_descr lbi f =
 -- Has a prime because it takes a 'PackageDescription' argument
 -- which may disagree with 'localPkgDescr' in 'LocalBuildInfo'.
 neededTargetsInBuildOrder' :: PackageDescription -> LocalBuildInfo -> [UnitId] -> [TargetInfo]
-neededTargetsInBuildOrder' pkg_descr lbi@(LocalBuildInfo{componentGraph}) uids =
-  case Graph.closure componentGraph uids of
+neededTargetsInBuildOrder' pkg_descr lbi@(LocalBuildInfo{componentGraph = compsGraph}) uids =
+  case Graph.closure compsGraph uids of
     Nothing -> error $ "localBuildPlan: missing uids " ++ intercalate ", " (map prettyShow uids)
     Just clos -> map (mkTargetInfo pkg_descr lbi) (Graph.revTopSort (Graph.fromDistinctList clos))
 
@@ -405,21 +409,28 @@ withNeededTargetsInBuildOrder' pkg_descr lbi uids f =
 -- | Is coverage enabled for test suites? In practice, this requires library
 -- and executable profiling to be enabled.
 testCoverage :: LocalBuildInfo -> Bool
-testCoverage (LocalBuildInfo{exeCoverage, libCoverage}) = exeCoverage && libCoverage
+testCoverage (LocalBuildInfo{exeCoverage = exes, libCoverage = libs}) =
+  exes && libs
 
 -------------------------------------------------------------------------------
 -- Stub functions to prevent someone from accidentally defining them
 
 {-# WARNING componentNameTargets, unitIdTarget, allTargetsInBuildOrder, withAllTargetsInBuildOrder, neededTargetsInBuildOrder, withNeededTargetsInBuildOrder "By using this function, you may be introducing a bug where you retrieve a 'Component' which does not have 'HookedBuildInfo' applied to it.  See the documentation for 'HookedBuildInfo' for an explanation of the issue.  If you have a 'PackageDescription' handy (NOT from the 'LocalBuildInfo'), try using the primed version of the function, which takes it as an extra argument." #-}
 componentNameTargets :: LocalBuildInfo -> ComponentName -> [TargetInfo]
-componentNameTargets lbi@(LocalBuildInfo{localPkgDescr}) = componentNameTargets' localPkgDescr lbi
+componentNameTargets lbi@(LocalBuildInfo{localPkgDescr = pkg}) =
+  componentNameTargets' pkg lbi
 unitIdTarget :: LocalBuildInfo -> UnitId -> Maybe TargetInfo
-unitIdTarget lbi@(LocalBuildInfo{localPkgDescr}) = unitIdTarget' localPkgDescr lbi
+unitIdTarget lbi@(LocalBuildInfo{localPkgDescr = pkg}) =
+  unitIdTarget' pkg lbi
 allTargetsInBuildOrder :: LocalBuildInfo -> [TargetInfo]
-allTargetsInBuildOrder lbi@(LocalBuildInfo{localPkgDescr}) = allTargetsInBuildOrder' localPkgDescr lbi
+allTargetsInBuildOrder lbi@(LocalBuildInfo{localPkgDescr = pkg}) =
+  allTargetsInBuildOrder' pkg lbi
 withAllTargetsInBuildOrder :: LocalBuildInfo -> (TargetInfo -> IO ()) -> IO ()
-withAllTargetsInBuildOrder lbi@(LocalBuildInfo{localPkgDescr}) = withAllTargetsInBuildOrder' localPkgDescr lbi
+withAllTargetsInBuildOrder lbi@(LocalBuildInfo{localPkgDescr = pkg}) =
+  withAllTargetsInBuildOrder' pkg lbi
 neededTargetsInBuildOrder :: LocalBuildInfo -> [UnitId] -> [TargetInfo]
-neededTargetsInBuildOrder lbi@(LocalBuildInfo{localPkgDescr}) = neededTargetsInBuildOrder' localPkgDescr lbi
+neededTargetsInBuildOrder lbi@(LocalBuildInfo{localPkgDescr = pkg}) =
+  neededTargetsInBuildOrder' pkg lbi
 withNeededTargetsInBuildOrder :: LocalBuildInfo -> [UnitId] -> (TargetInfo -> IO ()) -> IO ()
-withNeededTargetsInBuildOrder lbi@(LocalBuildInfo{localPkgDescr}) = withNeededTargetsInBuildOrder' localPkgDescr lbi
+withNeededTargetsInBuildOrder lbi@(LocalBuildInfo{localPkgDescr = pkg}) =
+  withNeededTargetsInBuildOrder' pkg lbi

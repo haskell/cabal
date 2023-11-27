@@ -208,8 +208,8 @@ withAllComponentsInBuildOrder pkg lbi f =
 allComponentsInBuildOrder
   :: LocalBuildInfo
   -> [ComponentLocalBuildInfo]
-allComponentsInBuildOrder (LocalBuildInfo{componentGraph}) =
-  Graph.topSort componentGraph
+allComponentsInBuildOrder (LocalBuildInfo{componentGraph = compGraph}) =
+  Graph.topSort compGraph
 
 -- -----------------------------------------------------------------------------
 -- A random function that has no business in this module
@@ -232,7 +232,7 @@ depLibraryPaths
   relative
   lbi@( LocalBuildInfo
           { localPkgDescr = pkgDescr
-          , installedPkgs
+          , installedPkgs = installed
           }
         )
   clbi = do
@@ -284,7 +284,7 @@ depLibraryPaths
     -- is a moot point if you are using a per-component build,
     -- because you never have any internal libraries in this case;
     -- they're all external.
-    let external_ipkgs = filter is_external (allPackages installedPkgs)
+    let external_ipkgs = filter is_external (allPackages installed)
         is_external ipkg = not (installedUnitId ipkg `elem` internalDeps)
         -- First look for dynamic libraries in `dynamic-library-dirs`, and use
         -- `library-dirs` as a fall back.
@@ -358,16 +358,16 @@ absoluteComponentInstallDirs
   -> InstallDirs FilePath
 absoluteComponentInstallDirs
   pkg
-  (LocalBuildInfo{compiler, hostPlatform, installDirTemplates})
+  (LocalBuildInfo{compiler = comp, hostPlatform = plat, installDirTemplates = installDirs})
   uid
   copydest =
     InstallDirs.absoluteInstallDirs
       (packageId pkg)
       uid
-      (compilerInfo compiler)
+      (compilerInfo comp)
       copydest
-      hostPlatform
-      installDirTemplates
+      plat
+      installDirs
 
 absoluteInstallCommandDirs
   :: PackageDescription
@@ -418,14 +418,14 @@ prefixRelativeComponentInstallDirs
   -> InstallDirs (Maybe FilePath)
 prefixRelativeComponentInstallDirs
   pkg_descr
-  (LocalBuildInfo{compiler, hostPlatform, installDirTemplates})
+  (LocalBuildInfo{compiler = comp, hostPlatform = plat, installDirTemplates = installDirs})
   uid =
     InstallDirs.prefixRelativeInstallDirs
       (packageId pkg_descr)
       uid
-      (compilerInfo compiler)
-      hostPlatform
-      installDirTemplates
+      (compilerInfo comp)
+      plat
+      installDirs
 
 substPathTemplate
   :: PackageId
@@ -435,7 +435,7 @@ substPathTemplate
   -> FilePath
 substPathTemplate
   pkgid
-  (LocalBuildInfo{compiler, hostPlatform})
+  (LocalBuildInfo{compiler = comp, hostPlatform = plat})
   uid =
     fromPathTemplate
       . (InstallDirs.substPathTemplate env)
@@ -444,5 +444,5 @@ substPathTemplate
         initialPathTemplateEnv
           pkgid
           uid
-          (compilerInfo compiler)
-          hostPlatform
+          (compilerInfo comp)
+          plat

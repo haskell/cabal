@@ -25,6 +25,7 @@ import Distribution.Types.ComponentId
 import Distribution.Types.ComponentLocalBuildInfo
 import Distribution.Types.ComponentRequestedSpec
 import Distribution.Types.PackageDescription
+import Distribution.Types.UnitId
 
 import Distribution.PackageDescription
 import Distribution.Simple.Compiler
@@ -77,6 +78,11 @@ data PackageBuildDescr = PackageBuildDescr
   -- TODO: inplaceDirTemplates :: InstallDirs FilePath
   , withPackageDB :: PackageDBStack
   -- ^ What package database to use, global\/user
+  , extraCoverageFor :: [UnitId]
+  -- ^ For per-package builds-only: an extra list of libraries to be included in
+  -- the hpc coverage report for testsuites run with @--enable-coverage@.
+  -- Notably, this list must exclude indefinite libraries and instantiations
+  -- because HPC does not support backpack (Nov. 2023).
   }
   deriving (Generic, Read, Show)
 

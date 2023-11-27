@@ -1046,11 +1046,11 @@ checkBuildTargets _ pkg_descr lbi [] =
 checkBuildTargets
   verbosity
   pkg_descr
-  lbi@(LocalBuildInfo{componentEnabledSpec})
+  lbi@(LocalBuildInfo{componentEnabledSpec = enabledComps})
   targets = do
     let (enabled, disabled) =
           partitionEithers
-            [ case componentDisabledReason componentEnabledSpec comp of
+            [ case componentDisabledReason enabledComps comp of
               Nothing -> Left target'
               Just reason -> Right (cname, reason)
             | target <- targets
