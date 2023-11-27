@@ -11,6 +11,9 @@ import qualified Data.Set as Set
 
 import Distribution.Client.Compat.Prelude
 import qualified Distribution.Client.IndexUtils as IndexUtils
+import Distribution.Client.DistDirLayout
+  ( distProjectRootDirectory
+  )
 import Distribution.Client.NixStyleOptions
   ( NixStyleFlags (..)
   , defaultNixStyleFlags
@@ -33,6 +36,12 @@ import Distribution.Client.ProjectOrchestration
   ( CurrentCommand (..)
   , ProjectBaseContext (..)
   , establishProjectBaseContext
+  )
+import Distribution.Client.ProjectPlanning
+  ( configureCompiler
+  )
+import Distribution.Client.RebuildMonad
+  ( runRebuild
   )
 import Distribution.Client.Setup
   ( ConfigFlags (..)
@@ -64,9 +73,6 @@ import Distribution.Simple.Flag
   )
 import Distribution.Simple.Setup
   ( trueArg
-  )
-import Distribution.Simple.Configure
-  ( configCompilerAuxEx
   )
 import Distribution.Simple.Utils
   ( debug
@@ -121,7 +127,6 @@ outdatedCommand =
 outdatedAction :: NixStyleFlags OutdatedFlags -> [String] -> GlobalFlags -> IO ()
 outdatedAction flags _extraArgs globalFlags = do
   prjBasedCtxt <- establishProjectBaseContext verbosity cliConfig OtherCommand
-
   projectConfigWithSolverRepoContext
     verbosity
     (projectConfigShared $ projectConfig prjBasedCtxt)
@@ -136,8 +141,8 @@ outdatedAction flags _extraArgs globalFlags = do
         if
             | v1FreezeFile -> V1Outdated.depsFromFreezeFile verbosity
             | v2FreezeFile -> do
-                putStrLn $ "configHcFlavor: " ++ show (configHcFlavor $ configFlags flags)
-                (comp, platform, _progdb) <- configCompilerAuxEx $ configFlags flags
+                (comp, platform, _progdb) <- runRebuild (distProjectRootDirectory $ distDirLayout prjBasedCtxt) $
+                  configureCompiler verbosity (distDirLayout prjBasedCtxt) (projectConfig prjBasedCtxt)
                 V1Outdated.depsFromNewFreezeFile verbosity globalFlags comp platform mprojectDir mprojectFile
             | otherwise -> pure $ extractPackageVersionConstraints (localPackages prjBasedCtxt)
 
