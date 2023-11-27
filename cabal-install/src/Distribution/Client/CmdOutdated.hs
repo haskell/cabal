@@ -132,18 +132,20 @@ outdatedAction flags _extraArgs globalFlags = do
     (projectConfigShared $ projectConfig prjBasedCtxt)
     (projectConfigBuildOnly $ projectConfig prjBasedCtxt)
     $ \repoContext -> do
-      let mprojectDir = flagToMaybe . flagProjectDir $ projectFlags flags
-          mprojectFile = flagToMaybe . flagProjectFile $ projectFlags flags
-
       sourcePkgDb <- IndexUtils.getSourcePackages verbosity repoContext
 
       pkgVerConstraints <-
         if
-            | v1FreezeFile -> V1Outdated.depsFromFreezeFile verbosity
+            | v1FreezeFile -> do
+                putStrLn "\n\n***** v1FreezeFile ******\n"
+                V1Outdated.depsFromFreezeFile verbosity
             | v2FreezeFile -> do
+                putStrLn "\n\n***** v2FreezeFile ******\n"
                 (comp, platform, _progdb) <- runRebuild (distProjectRootDirectory $ distDirLayout prjBasedCtxt) $
                   configureCompiler verbosity (distDirLayout prjBasedCtxt) (projectConfig prjBasedCtxt)
-                V1Outdated.depsFromNewFreezeFile verbosity globalFlags comp platform mprojectDir mprojectFile
+                V1Outdated.depsFromNewFreezeFile verbosity globalFlags comp platform
+                  (flagToMaybe . flagProjectDir $ projectFlags flags)
+                  (flagToMaybe . flagProjectFile $ projectFlags flags)
             | otherwise -> pure $ extractPackageVersionConstraints (localPackages prjBasedCtxt)
 
       debug verbosity $
