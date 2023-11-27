@@ -2,10 +2,11 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE PatternSynonyms #-}
 
 -- | DSL for testing the modular solver
 module UnitTests.Distribution.Solver.Modular.DSL
-  ( ExampleDependency (..)
+  ( ExampleDependency (.., ExAny, ExFix, ExRange, ExSubLibAny, ExSubLibFix, ExFixPriv, ExAnyPriv)
   , Dependencies (..)
   , ExSubLib (..)
   , ExTest (..)
@@ -183,18 +184,36 @@ publicDependencies = mempty{depsVisibility = C.LibraryVisibilityPublic}
 unbuildableDependencies :: Dependencies
 unbuildableDependencies = mempty{depsIsBuildable = False}
 
+pattern ExAny :: ExamplePkgName -> ExampleDependency
+pattern ExAny p = ExAnyD False p
+pattern ExFix :: ExamplePkgName -> ExamplePkgVersion -> ExampleDependency
+pattern ExFix p v = ExFixD False p v
+pattern ExRange :: ExamplePkgName -> ExamplePkgVersion -> ExamplePkgVersion -> ExampleDependency
+pattern ExRange p v1 v2 = ExRangeD False p v1 v2
+
+pattern ExSubLibAny :: ExamplePkgName -> ExampleSubLibName -> ExampleDependency
+pattern ExSubLibAny e l = ExSubLibAnyD False e l
+
+pattern ExSubLibFix :: ExamplePkgName -> ExampleSubLibName -> ExamplePkgVersion -> ExampleDependency
+pattern ExSubLibFix e l v = ExSubLibFixD False e l v
+
+pattern ExAnyPriv :: ExamplePkgName -> ExampleDependency
+pattern ExAnyPriv p = ExAnyD True p
+pattern ExFixPriv :: ExamplePkgName -> ExamplePkgVersion -> ExampleDependency
+pattern ExFixPriv p v = ExFixD True p v
+
 data ExampleDependency
   = -- | Simple dependency on any version
-    ExAny ExamplePkgName
+    ExAnyD Bool ExamplePkgName
   | -- | Simple dependency on a fixed version
-    ExFix ExamplePkgName ExamplePkgVersion
+    ExFixD Bool ExamplePkgName ExamplePkgVersion
   | -- | Simple dependency on a range of versions, with an inclusive lower bound
     -- and an exclusive upper bound.
-    ExRange ExamplePkgName ExamplePkgVersion ExamplePkgVersion
+    ExRangeD Bool ExamplePkgName ExamplePkgVersion ExamplePkgVersion
   | -- | Sub-library dependency
-    ExSubLibAny ExamplePkgName ExampleSubLibName
+    ExSubLibAnyD Bool ExamplePkgName ExampleSubLibName
   | -- | Sub-library dependency on a fixed version
-    ExSubLibFix ExamplePkgName ExampleSubLibName ExamplePkgVersion
+    ExSubLibFixD Bool ExamplePkgName ExampleSubLibName ExamplePkgVersion
   | -- | Build-tool-depends dependency
     ExBuildToolAny ExamplePkgName ExampleExeName
   | -- | Build-tool-depends dependency on a fixed version
@@ -587,11 +606,11 @@ exAvSrcPkg ex =
     extractFlags deps = concatMap go (depsExampleDependencies deps)
       where
         go :: ExampleDependency -> [ExampleFlagName]
-        go (ExAny _) = []
-        go (ExFix _ _) = []
-        go (ExRange _ _ _) = []
-        go (ExSubLibAny _ _) = []
-        go (ExSubLibFix _ _ _) = []
+        go (ExAnyD {}) = []
+        go (ExFixD {}) = []
+        go (ExRangeD {}) = []
+        go (ExSubLibAnyD {}) = []
+        go (ExSubLibFixD {}) = []
         go (ExBuildToolAny _ _) = []
         go (ExBuildToolFix _ _ _) = []
         go (ExLegacyBuildToolAny _) = []
@@ -620,7 +639,8 @@ exAvSrcPkg ex =
     mkCondTree :: (C.LibraryVisibility -> C.BuildInfo -> a) -> Dependencies -> DependencyTree a
     mkCondTree mkComponent deps =
       let (libraryDeps, exts, mlang, pcpkgs, buildTools, legacyBuildTools) = splitTopLevel (depsExampleDependencies deps)
-          (directDeps, flaggedDeps) = splitDeps libraryDeps
+          (allDirectDeps, flaggedDeps) = splitDeps libraryDeps
+          (privateDeps, directDeps) = partition (\(_, _, _, is_private) -> is_private) allDirectDeps
           component = mkComponent (depsVisibility deps) bi
           bi =
             mempty
@@ -647,12 +667,13 @@ exAvSrcPkg ex =
             , -- TODO: Arguably, build-tools dependencies should also
               -- effect constraints on conditional tree. But no way to
               -- distinguish between them
-              C.condTreeConstraints = mempty { C.publicDependencies = map mkDirect directDeps }
+              C.condTreeConstraints = mempty { C.publicDependencies = map mkDirect directDeps
+                                             , C.privateDependencies = map mkDirect privateDeps }
             , C.condTreeComponents = map (mkFlagged mkComponent) flaggedDeps
             }
 
-    mkDirect :: (ExamplePkgName, C.LibraryName, C.VersionRange) -> C.Dependency
-    mkDirect (dep, name, vr) = C.Dependency (C.mkPackageName dep) vr (NonEmptySet.singleton name)
+    mkDirect :: (ExamplePkgName, C.LibraryName, C.VersionRange, Bool) -> C.Dependency
+    mkDirect (dep, name, vr, _) = C.Dependency (C.mkPackageName dep) vr (NonEmptySet.singleton name)
 
     mkFlagged
       :: (C.LibraryVisibility -> C.BuildInfo -> a)
@@ -671,26 +692,26 @@ exAvSrcPkg ex =
     -- guarded by a flag.
     splitDeps
       :: [ExampleDependency]
-      -> ( [(ExamplePkgName, C.LibraryName, C.VersionRange)]
+      -> ( [(ExamplePkgName, C.LibraryName, C.VersionRange, Bool)]
          , [(ExampleFlagName, Dependencies, Dependencies)]
          )
     splitDeps [] =
-      ([], [])
-    splitDeps (ExAny p : deps) =
+      ([],  [])
+    splitDeps (ExAnyD is_priv p : deps) =
       let (directDeps, flaggedDeps) = splitDeps deps
-       in ((p, C.LMainLibName, C.anyVersion) : directDeps, flaggedDeps)
-    splitDeps (ExFix p v : deps) =
+       in ((p, C.LMainLibName, C.anyVersion, is_priv) : directDeps, flaggedDeps)
+    splitDeps (ExFixD is_priv p v : deps) =
       let (directDeps, flaggedDeps) = splitDeps deps
-       in ((p, C.LMainLibName, C.thisVersion $ mkSimpleVersion v) : directDeps, flaggedDeps)
-    splitDeps (ExRange p v1 v2 : deps) =
+       in ((p, C.LMainLibName, C.thisVersion $ mkSimpleVersion v, is_priv) : directDeps, flaggedDeps)
+    splitDeps (ExRangeD is_priv p v1 v2 : deps) =
       let (directDeps, flaggedDeps) = splitDeps deps
-       in ((p, C.LMainLibName, mkVersionRange v1 v2) : directDeps, flaggedDeps)
-    splitDeps (ExSubLibAny p lib : deps) =
+       in ((p, C.LMainLibName, mkVersionRange v1 v2, is_priv) : directDeps, flaggedDeps)
+    splitDeps (ExSubLibAnyD is_priv p lib : deps) =
       let (directDeps, flaggedDeps) = splitDeps deps
-       in ((p, C.LSubLibName (C.mkUnqualComponentName lib), C.anyVersion) : directDeps, flaggedDeps)
-    splitDeps (ExSubLibFix p lib v : deps) =
+       in ((p, C.LSubLibName (C.mkUnqualComponentName lib), C.anyVersion, is_priv) : directDeps, flaggedDeps)
+    splitDeps (ExSubLibFixD is_priv p lib v : deps) =
       let (directDeps, flaggedDeps) = splitDeps deps
-       in ((p, C.LSubLibName (C.mkUnqualComponentName lib), C.thisVersion $ mkSimpleVersion v) : directDeps, flaggedDeps)
+       in ((p, C.LSubLibName (C.mkUnqualComponentName lib), C.thisVersion $ mkSimpleVersion v, is_priv) : directDeps, flaggedDeps)
     splitDeps (ExFlagged f a b : deps) =
       let (directDeps, flaggedDeps) = splitDeps deps
        in (directDeps, (f, a, b) : flaggedDeps)
@@ -700,7 +721,10 @@ exAvSrcPkg ex =
     mkSetupDeps :: [ExampleDependency] -> [C.Dependency]
     mkSetupDeps deps =
       case splitDeps deps of
-        (directDeps, []) -> map mkDirect directDeps
+        (directDeps, []) ->
+          if any (\(_, _, _, p) -> p) directDeps
+            then error "mkSetupDeps: custom setup has private deps"
+            else map mkDirect directDeps
         _ -> error "mkSetupDeps: custom setup has non-simple deps"
 
     -- Check for `UnknownLanguages` and `UnknownExtensions`. See

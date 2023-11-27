@@ -862,6 +862,8 @@ tests =
                     SolverResult (isInfixOf msg) $
                       Right [("A", 1), ("B", 1)]
       ]
+  , testGroup "Private dependencies"
+    [ runTest privDep1 ]
   , -- Tests for the contents of the solver's log
     testGroup
       "Solver log"
@@ -2589,6 +2591,20 @@ setupStanzaTest3 =
       "setupStanzaTest3"
       ["A"]
       (solverFailure ("unknown package: A:setup.C (dependency of A:setup.B *test)" `isInfixOf`))
+--
+-- Private Dependency tests
+
+
+-- Test 1: A and B can choose different versions of C because C is a private dependency of A
+priv_db1 :: ExampleDb
+priv_db1 = [ Left $  exInst "C" 1 "C-1" []
+           , Left $ exInst "C" 2 "C-2" []
+           , Right $ exAv "A" 1 [ExFixPriv "C" 1]
+           , Right $ exAv "B" 1 [ExFix "C" 2 ]
+           , Right $ exAv "D" 1 [ExAny "A", ExAny "B"] ]
+
+privDep1 :: SolverTest
+privDep1 = setVerbose $ mkTest priv_db1 "private-dependencies-1" ["D"] (solverSuccess [])
 
 -- | Returns true if the second list contains all elements of the first list, in
 -- order.
