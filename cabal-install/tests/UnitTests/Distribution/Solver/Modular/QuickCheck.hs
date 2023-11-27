@@ -37,6 +37,7 @@ import qualified Distribution.Solver.Types.ComponentDeps as CD
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PackageConstraint
 import qualified Distribution.Solver.Types.PackagePath as P
+import qualified Distribution.Solver.Types.ComponentDeps as P
 import Distribution.Solver.Types.PkgConfigDb
   ( pkgConfigDbFromList
   )
@@ -613,6 +614,8 @@ instance Hashable a => Hashable (P.Qualified a)
 instance Hashable P.PackagePath
 instance Hashable P.Qualifier
 instance Hashable P.Namespace
+instance Hashable P.Component
+instance Hashable UnqualComponentName
 instance Hashable OptionalStanza
 instance Hashable FlagName
 instance Hashable PackageName
