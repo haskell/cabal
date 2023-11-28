@@ -1,4 +1,3 @@
-{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE RankNTypes #-}
 
 -- | cabal-install CLI command: outdated
@@ -135,18 +134,16 @@ outdatedAction flags _extraArgs globalFlags = do
       sourcePkgDb <- IndexUtils.getSourcePackages verbosity repoContext
 
       pkgVerConstraints <-
-        if
-            | v1FreezeFile -> do
-                putStrLn "\n\n***** v1FreezeFile ******\n"
-                V1Outdated.depsFromFreezeFile verbosity
-            | v2FreezeFile -> do
-                putStrLn "\n\n***** v2FreezeFile ******\n"
-                (comp, platform, _progdb) <- runRebuild (distProjectRootDirectory $ distDirLayout prjBasedCtxt) $
-                  configureCompiler verbosity (distDirLayout prjBasedCtxt) (projectConfig prjBasedCtxt)
-                V1Outdated.depsFromNewFreezeFile verbosity globalFlags comp platform
-                  (flagToMaybe . flagProjectDir $ projectFlags flags)
-                  (flagToMaybe . flagProjectFile $ projectFlags flags)
-            | otherwise -> pure $ extractPackageVersionConstraints (localPackages prjBasedCtxt)
+        if v2FreezeFile
+          then do
+            putStrLn "\n\n***** v2FreezeFile ******\n"
+            (comp, platform, _progdb) <- runRebuild (distProjectRootDirectory $ distDirLayout prjBasedCtxt) $
+              configureCompiler verbosity (distDirLayout prjBasedCtxt) (projectConfig prjBasedCtxt)
+            V1Outdated.depsFromNewFreezeFile verbosity globalFlags comp platform
+              (flagToMaybe . flagProjectDir $ projectFlags flags)
+              (flagToMaybe . flagProjectFile $ projectFlags flags)
+          else
+            pure $ extractPackageVersionConstraints (localPackages prjBasedCtxt)
 
       debug verbosity $
         "Dependencies loaded: " ++ intercalate ", " (map prettyShow pkgVerConstraints)
@@ -170,8 +167,7 @@ outdatedAction flags _extraArgs globalFlags = do
     outdatedFlags :: OutdatedFlags
     outdatedFlags = extraFlags flags
 
-    v1FreezeFile, v2FreezeFile, simpleOutput, exitCode, quiet :: Bool
-    v1FreezeFile = fromFlagOrDefault False $ outdatedFreezeFile outdatedFlags
+    v2FreezeFile, simpleOutput, exitCode, quiet :: Bool
     v2FreezeFile = fromFlagOrDefault False $ outdatedNewFreezeFile outdatedFlags
     simpleOutput = fromFlagOrDefault False $ outdatedSimpleOutput outdatedFlags
     exitCode = fromFlagOrDefault quiet $ outdatedExitCode outdatedFlags
