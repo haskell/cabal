@@ -13,6 +13,9 @@ import qualified Distribution.Client.IndexUtils as IndexUtils
 import Distribution.Client.DistDirLayout
   ( distProjectRootDirectory
   )
+import Distribution.Client.Errors
+  ( CabalInstallException (OutdatedAction)
+  )
 import Distribution.Client.NixStyleOptions
   ( NixStyleFlags (..)
   , defaultNixStyleFlags
@@ -75,6 +78,7 @@ import Distribution.Simple.Setup
   )
 import Distribution.Simple.Utils
   ( debug
+  , dieWithException
   , wrapText
   )
 import Distribution.Solver.Types.SourcePackage
@@ -137,11 +141,13 @@ outdatedAction flags _extraArgs globalFlags = do
         if v2FreezeFile
           then do
             putStrLn "\n\n***** v2FreezeFile ******\n"
+            let mprojectDir = flagToMaybe . flagProjectDir $ projectFlags flags
+                mprojectFile = flagToMaybe . flagProjectFile $ projectFlags flags
+            when (isJust mprojectDir || isJust mprojectFile) $
+              dieWithException verbosity OutdatedAction
             (comp, platform, _progdb) <- runRebuild (distProjectRootDirectory $ distDirLayout prjBasedCtxt) $
               configureCompiler verbosity (distDirLayout prjBasedCtxt) (projectConfig prjBasedCtxt)
-            V1Outdated.depsFromNewFreezeFile verbosity globalFlags comp platform
-              (flagToMaybe . flagProjectDir $ projectFlags flags)
-              (flagToMaybe . flagProjectFile $ projectFlags flags)
+            V1Outdated.depsFromNewFreezeFile verbosity globalFlags comp platform mprojectDir mprojectFile
           else
             pure $ extractPackageVersionConstraints (localPackages prjBasedCtxt)
 
