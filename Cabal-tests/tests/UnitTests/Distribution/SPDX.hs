@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# OPTIONS_GHC -fno-warn-deprecations #-}
 module UnitTests.Distribution.SPDX (spdxTests) where
 
@@ -11,14 +10,6 @@ import Distribution.Pretty (prettyShow)
 
 import Test.Tasty
 import Test.Tasty.QuickCheck
-
-#if MIN_VERSION_binary(0,7,0)
-import qualified Data.Binary as Binary
-import qualified Data.Binary.Get as Binary
-import qualified Data.Binary.Put as Binary
-import qualified Data.ByteString.Lazy as LBS
-import GHC.Generics (to, from)
-#endif
 
 import Test.QuickCheck.Instances.Cabal ()
 
@@ -42,29 +33,6 @@ licenseExceptionIdRoundtrip :: LicenseExceptionId -> Property
 licenseExceptionIdRoundtrip x =
     counterexample (prettyShow x) $
     Right x === eitherParsec (prettyShow x)
-
-#if MIN_VERSION_binary(0,7,0)
-licenseExceptionIdBinaryPut :: LicenseExceptionId -> Property
-licenseExceptionIdBinaryPut x =
-    Binary.runPut (Binary.put x)
-    ===
-    Binary.runPut (Binary.gput (from x))
-
-licenseExceptionIdBinaryGet :: Word8 -> Property
-licenseExceptionIdBinaryGet w0 =
-    stripMsg id (Binary.runGetOrFail Binary.get bs)
-    ===
-    stripMsg to (Binary.runGetOrFail Binary.gget bs)
-  where
-    bs = LBS.pack [w0]
-
-    stripMsg
-        :: (a -> LicenseExceptionId)
-        -> Either (x, y, String) (x, y, a)
-        -> Either (x, y) (x, y, LicenseExceptionId)
-    stripMsg _ (Left (x,y,_))  = Left (x,y)
-    stripMsg f (Right (x,y,t)) = Right (x,y,f t)
-#endif
 
 licenseRefRoundtrip :: LicenseRef -> Property
 licenseRefRoundtrip x =
