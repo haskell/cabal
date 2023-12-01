@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # A script to download the release binary files for a given cabal release
 # from upstream "downlods.haskell.org".
