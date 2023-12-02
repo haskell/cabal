@@ -234,7 +234,7 @@ their use just like Hackage or locally defined packages.
 
 .. cfg-field:: subdir: subdirectory list
 
-    look in one or more subdirectories of the repository for cabal files, rather than the root.
+    Look in one or more subdirectories of the repository for cabal files, rather than the root.
 
 .. cfg-field:: post-checkout-command: command
 
