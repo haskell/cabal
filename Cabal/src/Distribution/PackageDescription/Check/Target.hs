@@ -13,6 +13,8 @@ module Distribution.PackageDescription.Check.Target
   , checkExecutable
   , checkTestSuite
   , checkBenchmark
+  -- Utils
+  , mergeDependencies
   ) where
 
 import Distribution.Compat.Prelude
@@ -743,6 +745,7 @@ isInternalTarget (CETExecutable{}) = False
 isInternalTarget (CETTest{}) = True
 isInternalTarget (CETBenchmark{}) = True
 isInternalTarget (CETSetup{}) = False
+isInternalTarget (CETPackageConstraints{}) = True
 
 -- ------------------------------------------------------------
 -- Options
@@ -759,6 +762,7 @@ cet2bit (CETExecutable{}) = BITOther
 cet2bit (CETTest{}) = BITTestBench
 cet2bit (CETBenchmark{}) = BITTestBench
 cet2bit CETSetup = BITOther
+cet2bit CETPackageConstraints = BITOther
 
 -- General check on all options (ghc, C, C++, …) for common inaccuracies.
 checkBuildInfoOptions :: Monad m => BITarget -> BuildInfo -> CheckM m ()

@@ -283,6 +283,7 @@ checkGenericPackageDescription
       let ads =
             maybe [] ((: []) . extractAssocDeps pName) condLibrary_
               ++ map (uncurry extractAssocDeps) condSubLibraries_
+              ++ [Left (packageConstraints packageDescription_)]
 
       case condLibrary_ of
         Just cl ->
@@ -395,7 +396,7 @@ checkPackageDescription
           extraSrcFiles_
           extraTmpFiles_
           extraDocFiles_
-          _packageConstraints
+          packageConstraints_
         ) = do
     -- § Sanity checks.
     checkPackageId package_
@@ -506,6 +507,17 @@ checkPackageDescription
     mapM_ (checkGlobFile specVersion_ "." "extra-source-files") extraSrcFiles_
     mapM_ (checkGlobFile specVersion_ "." "extra-doc-files") extraDocFiles_
     mapM_ (checkGlobFile specVersion_ dataDir_ "data-files") dataFiles_
+
+    -- PVP: we check for base and all other deps.
+    (ids, rds) <-
+      partitionDeps
+        []
+        [mkUnqualComponentName "base"]
+        (mergeDependencies packageConstraints_)
+    let ick = const (PackageDistInexcusable BaseNoUpperBounds)
+        rck = PackageDistSuspiciousWarn . MissingUpperBounds CETPackageConstraints
+    checkPVP ick ids
+    checkPVPs rck rds
     where
       checkNull
         :: Monad m
@@ -898,7 +910,7 @@ extractAssocDeps n ct =
    in -- Merging is fine here, remember the specific
       -- library dependencies will be checked branch
       -- by branch.
-      (n, snd a)
+      Right (n, snd a)
 
 -- | August 2022: this function is an oddity due to the historical
 -- GenericPackageDescription/PackageDescription split (check

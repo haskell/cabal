@@ -52,9 +52,9 @@ checkCustomField (n, _) =
 -- PVP types/functions
 -- ------------------------------------------------------------
 
--- A library name / dependencies association list. Ultimately to be
--- fed to PVP check.
-type AssocDep = (UnqualComponentName, [Dependency])
+-- Either a list of dependencies coming from @package-constraints@ or a library
+-- name / dependencies association list. Ultimately to be fed to PVP check.
+type AssocDep = Either [Dependency] (UnqualComponentName, [Dependency])
 
 -- Convenience function to partition important dependencies by name. To
 -- be used together with checkPVP. Important: usually “base” or “Cabal”,
@@ -67,7 +67,7 @@ type AssocDep = (UnqualComponentName, [Dependency])
 partitionDeps
   :: Monad m
   => [AssocDep] -- Possibly inherited dependencies, i.e.
-  -- dependencies from internal/main libs.
+  -- dependencies from internal/main libs, and from @package-constraints@.
   -> [UnqualComponentName] -- List of package names ("base", "Cabal"…)
   -> [Dependency] -- Dependencies to check.
   -> CheckM m ([Dependency], [Dependency])
@@ -77,11 +77,11 @@ partitionDeps ads ns ds = do
     -- names of our dependencies
     dqs = map unqualName ds
     -- shared targets that match
-    fads = filter (flip elem dqs . fst) ads
+    fads = filter (either (const True) (flip elem dqs . fst)) ads
     -- the names of such targets
-    inNam = nub $ map fst fads :: [UnqualComponentName]
+    inNam = nub $ mapMaybe (either (const Nothing) (Just . fst)) fads :: [UnqualComponentName]
     -- the dependencies of such targets
-    inDep = concatMap snd fads :: [Dependency]
+    inDep = concatMap (either id snd) fads :: [Dependency]
 
   -- We exclude from checks:
   -- 1. dependencies which are shared with main library / a
@@ -89,11 +89,15 @@ partitionDeps ads ns ds = do
   -- 2. the names of main library / sub libraries themselves.
   --
   -- So in myPackage.cabal
+  --
+  -- package-constraints: bar < 100
+  --
   -- library
   --      build-depends: text < 5
   -- ⁝
   --      build-depends: myPackage,        ← no warning, internal
   --                     text,             ← no warning, inherited
+  --                     bar,              ← no warning, inherited
   --                     monadacme         ← warning!
   let fFun d =
         notElem (unqualName d) inNam
