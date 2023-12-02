@@ -1,3 +1,5 @@
+{-# LANGUAGE CPP #-}
+
 module UnitTests.Distribution.Client.FileMonitor (tests) where
 
 import Distribution.Parsec (simpleParsec)
@@ -31,8 +33,8 @@ tests mtimeChange =
   [ testGroup
       "Structured hashes"
       [ testCase "MonitorStateFile" $ structureHash (Proxy :: Proxy MonitorStateFile) @?= Fingerprint 0xe4108804c34962f6 0x06e94f8fc9e48e13
-      , testCase "MonitorStateGlob" $ structureHash (Proxy :: Proxy MonitorStateGlob) @?= Fingerprint 0xfd8f6be0e8258fe7 0xdb5fac737139bca6
-      , testCase "MonitorStateFileSet" $ structureHash (Proxy :: Proxy MonitorStateFileSet) @?= Fingerprint 0xb745f4ea498389a5 0x70db6adb5078aa27
+      , testCase "MonitorStateGlob" $ structureHash (Proxy :: Proxy MonitorStateGlob) @?= Fingerprint fingerprintStateGlob1 fingerprintStateGlob2
+      , testCase "MonitorStateFileSet" $ structureHash (Proxy :: Proxy MonitorStateFileSet) @?= Fingerprint fingerprintStateFileSet1 fingerprintStateFileSet2
       ]
   , testCase "sanity check mtimes" $ testFileMTimeSanity mtimeChange
   , testCase "sanity check dirs" $ testDirChangeSanity mtimeChange
@@ -85,6 +87,18 @@ tests mtimeChange =
     knownBrokenInWindows msg = case buildOS of
       Windows -> expectFailBecause msg
       _ -> id
+    fingerprintStateGlob1, fingerprintStateGlob2, fingerprintStateFileSet1, fingerprintStateFileSet2 :: Word64
+#if MIN_VERSION_base(4,19,0)
+    fingerprintStateGlob1 = 0xae70229aabb1ba1f
+    fingerprintStateGlob2 = 0xb53ed324c96f0d0d
+    fingerprintStateFileSet1 = 0x8e509e16f973e036
+    fingerprintStateFileSet2 = 0xa23f21d8dc8a2dee
+#else
+    fingerprintStateGlob1 = 0xfd8f6be0e8258fe7
+    fingerprintStateGlob2 = 0xdb5fac737139bca6
+    fingerprintStateFileSet1 = 0xb745f4ea498389a5
+    fingerprintStateFileSet2 = 0x70db6adb5078aa27
+#endif
 
 -- Check the file system behaves the way we expect it to
 

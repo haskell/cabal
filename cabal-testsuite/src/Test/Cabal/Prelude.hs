@@ -1163,7 +1163,7 @@ findDependencyInStore :: FilePath -- ^store dir
                       -> String -- ^package name prefix
                       -> IO FilePath -- ^package dir
 findDependencyInStore storeDir pkgName = do
-    storeDirForGhcVersion <- head <$> listDirectory storeDir
+    (storeDirForGhcVersion : _) <- listDirectory storeDir
     packageDirs <- listDirectory (storeDir </> storeDirForGhcVersion)
     -- Ideally, we should call 'hashedInstalledPackageId' from 'Distribution.Client.PackageHash'.
     -- But 'PackageHashInputs', especially 'PackageHashConfigInputs', is too hard to construct.

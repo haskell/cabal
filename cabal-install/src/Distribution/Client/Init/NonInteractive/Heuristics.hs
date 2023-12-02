@@ -54,9 +54,9 @@ guessMainFile pkgDir = do
     then do
       files <- filter isMain <$> listFilesRecursive pkgDir
       return $
-        if null files
-          then defaultMainIs
-          else toHsFilePath $ L.head files
+        case files of
+          [] -> defaultMainIs
+          (f : _) -> toHsFilePath f
     else return defaultMainIs
 
 -- | Juggling characters around to guess the desired cabal version based on
