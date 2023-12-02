@@ -746,6 +746,7 @@ data CEType
   | CETTest UnqualComponentName
   | CETBenchmark UnqualComponentName
   | CETSetup
+  | CETDefaultPackageBounds
   deriving (Eq, Ord, Show)
 
 -- | Pretty printing `CEType`.
@@ -757,6 +758,7 @@ ppCET cet = case cet of
   CETTest n -> "test suite" ++ qn n
   CETBenchmark n -> "benchmark" ++ qn n
   CETSetup -> "custom-setup"
+  CETDefaultPackageBounds -> "defaultPackageBounds"
   where
     qn :: UnqualComponentName -> String
     qn wn = (" " ++) . quote . prettyShow $ wn
