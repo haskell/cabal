@@ -153,7 +153,6 @@ library
     Distribution.Utils.Json
     Distribution.Utils.NubList
     Distribution.Utils.Progress
-    Distribution.Utils.TempTestDir
     Distribution.Verbosity
     Distribution.Verbosity.Internal
 
@@ -322,9 +321,18 @@ library
     Distribution.Compat.SnocList
     Distribution.GetOpt
     Distribution.Lex
+    Distribution.PackageDescription.Check.Common
+    Distribution.PackageDescription.Check.Conditional
+    Distribution.PackageDescription.Check.Monad
+    Distribution.PackageDescription.Check.Paths
+    Distribution.PackageDescription.Check.Target
+    Distribution.PackageDescription.Check.Warning
     Distribution.Simple.Build.Macros.Z
     Distribution.Simple.Build.PackageInfoModule.Z
     Distribution.Simple.Build.PathsModule.Z
+    Distribution.Simple.GHC.Build
+    Distribution.Simple.GHC.BuildOrRepl
+    Distribution.Simple.GHC.BuildGeneric
     Distribution.Simple.GHC.EnvironmentParser
     Distribution.Simple.GHC.Internal
     Distribution.Simple.GHC.ImplInfo

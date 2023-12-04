@@ -30,6 +30,7 @@ common shared
     -- this needs to match the in-tree lib:Cabal version
     , Cabal ^>= 3.11.0.0
     , Cabal-syntax ^>= 3.11.0.0
+    , Cabal-tests
 
   ghc-options: -Wall -fwarn-tabs -fwarn-incomplete-uni-patterns
 
@@ -60,7 +61,7 @@ library
     , aeson                 ^>= 1.4.2.0 || ^>=1.5.0.0 || ^>= 2.0.0.0 || ^>= 2.1.0.0 || ^>= 2.2.1.0
     , async                 ^>= 2.2.1
     , attoparsec            ^>= 0.13.2.2 || ^>=0.14.1
-    , base64-bytestring     ^>= 1.0.0.0 || ^>= 1.1.0.0 || ^>= 1.2.0.0
+    , base16-bytestring     ^>= 0.1.1.5 || ^>= 1.0
     , bytestring            ^>= 0.10.0.2 || ^>= 0.11.0.0 || ^>= 0.12.0.0
     , containers            ^>= 0.5.0.0 || ^>= 0.6.0.1
     , cryptohash-sha256     ^>= 0.11.101.0
@@ -90,6 +91,8 @@ executable cabal-tests
   main-is: cabal-tests.hs
   hs-source-dirs: main
   ghc-options: -threaded
+  -- Make sure these are built before the executable is run
+  build-tool-depends: cabal-testsuite:test-runtime-deps
   build-depends:
     , cabal-testsuite
     -- constraints inherited via lib:cabal-testsuite component
@@ -109,6 +112,33 @@ executable cabal-tests
 executable setup
   import: shared
   main-is: Setup.simple.hs
+
+-- This executable component is used to describe the runtime dependencies of
+-- the tests. The Main.hs file and resulting executable are not useful in any way.
+
+-- Ideally this would be an empty library, but because build-type: Custom, we can't
+-- have sublibraries.
+
+-- If you require an external dependency for a test it must be listed here.
+executable test-runtime-deps
+  default-language: Haskell2010
+  build-depends: cabal-testsuite,
+                 base,
+                 directory,
+                 Cabal,
+                 Cabal-syntax,
+                 filepath,
+                 transformers,
+                 bytestring,
+                 time,
+                 process,
+                 exceptions
+  main-is: static/Main.hs
+  if !os(windows)
+    build-depends: unix
+  else
+    build-depends:
+      , Win32
 
 custom-setup
   -- we only depend on even stable releases of lib:Cabal

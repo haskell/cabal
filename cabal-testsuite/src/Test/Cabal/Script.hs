@@ -93,6 +93,7 @@ runnerGhcArgs senv =
   where
     ghc_options = M.mempty { ghcOptPackageDBs = runnerPackageDbStack senv
                            , ghcOptPackages   = toNubListR (runnerPackages senv)
+                           , ghcOptHideAllPackages = Flag True
                            -- Avoid picking stray module files that look
                            -- like our imports
                            , ghcOptSourcePathClear = Flag True }

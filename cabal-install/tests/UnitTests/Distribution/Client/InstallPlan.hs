@@ -5,7 +5,6 @@
 module UnitTests.Distribution.Client.InstallPlan (tests) where
 
 import Distribution.Client.Compat.Prelude
-import qualified Prelude as Unsafe (tail)
 
 import Distribution.Client.InstallPlan (GenericInstallPlan, IsUnit)
 import qualified Distribution.Client.InstallPlan as InstallPlan
@@ -285,7 +284,7 @@ arbitraryAcyclicGraph genNRanks genNPerRank edgeChance = do
   nranks <- genNRanks
   rankSizes <- replicateM nranks genNPerRank
   let rankStarts = scanl (+) 0 rankSizes
-      rankRanges = drop 1 (zip rankStarts (Unsafe.tail rankStarts))
+      rankRanges = drop 1 (zip rankStarts (drop 1 rankStarts))
       totalRange = sum rankSizes
   rankEdges <- traverse (uncurry genRank) rankRanges
   return $ buildG (0, totalRange - 1) (concat rankEdges)

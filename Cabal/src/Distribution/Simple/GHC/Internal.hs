@@ -114,7 +114,9 @@ configureToolchain _implInfo ghcProg ghcInfo =
     . addKnownProgram
       ldProgram
         { programFindLocation = findProg ldProgramName extraLdPath
-        , programPostConf = configureLd
+        , programPostConf = \v cp ->
+            -- Call any existing configuration first and then add any new configuration
+            configureLd v =<< programPostConf ldProgram v cp
         }
     . addKnownProgram
       arProgram
@@ -785,6 +787,7 @@ ghcOsString :: OS -> String
 ghcOsString Windows = "mingw32"
 ghcOsString OSX = "darwin"
 ghcOsString Solaris = "solaris2"
+ghcOsString Hurd = "gnu"
 ghcOsString other = prettyShow other
 
 -- | GHC's rendering of its platform and compiler version string as used in

@@ -196,7 +196,7 @@ parseCheckTest fpath bs = do
                              Parsec.parseGenericPackageDescription bs
     case parsec of
         Right gpd -> do
-            let checks = checkPackage gpd Nothing
+            let checks = checkPackage gpd
             let w [] = 0
                 w _  = 1
 

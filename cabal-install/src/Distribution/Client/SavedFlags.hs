@@ -51,7 +51,6 @@ readCommandFlags :: FilePath -> CommandUI flags -> IO flags
 readCommandFlags path command = do
   savedArgs <- fmap (fromMaybe []) (readSavedArgs path)
   case (commandParseArgs command True savedArgs) of
-    CommandDelegate -> error "CommandDelegate Flags evaluated, this should never occur"
     CommandHelp _ -> throwIO (SavedArgsErrorHelp savedArgs)
     CommandList _ -> throwIO (SavedArgsErrorList savedArgs)
     CommandErrors errs -> throwIO (SavedArgsErrorOther savedArgs errs)

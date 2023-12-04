@@ -16,8 +16,8 @@ import Distribution.Client.Types.SourceRepo (SourceRepoProxy, SourceRepositoryPa
 import Distribution.Client.VCS
 import Distribution.Simple.Program
 import Distribution.System (OS (Windows), buildOS)
-import Distribution.Utils.TempTestDir (removeDirectoryRecursiveHack, withTestDir)
 import Distribution.Verbosity as Verbosity
+import Test.Utils.TempTestDir (removeDirectoryRecursiveHack, withTestDir)
 
 import Data.List (mapAccumL)
 import qualified Data.Map as Map

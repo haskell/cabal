@@ -850,6 +850,7 @@ platformDefines lbi =
       PPC -> ["powerpc"]
       PPC64 -> ["powerpc64"]
       Sparc -> ["sparc"]
+      Sparc64 -> ["sparc64"]
       Arm -> ["arm"]
       AArch64 -> ["aarch64"]
       Mips -> ["mips"]

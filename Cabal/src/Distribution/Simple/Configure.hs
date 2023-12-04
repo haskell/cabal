@@ -82,6 +82,7 @@ import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.PreProcess
 import Distribution.Simple.Program
+import Distribution.Simple.Program.Db (lookupProgramByName)
 import Distribution.Simple.Setup.Common as Setup
 import Distribution.Simple.Setup.Config as Setup
 import Distribution.Simple.Utils
@@ -767,22 +768,16 @@ configure (pkg_descr0, pbi) cfg = do
             )
           return False
 
-  let compilerSupportsGhciLibs :: Bool
-      compilerSupportsGhciLibs =
-        case compilerId comp of
-          CompilerId GHC version
-            | version > mkVersion [9, 3] && windows ->
-                False
-          CompilerId GHC _ ->
-            True
-          CompilerId GHCJS _ ->
-            True
-          _ -> False
-        where
-          windows = case compPlatform of
-            Platform _ Windows -> True
-            Platform _ _ -> False
-
+  -- Basically yes/no/unknown.
+  let linkerSupportsRelocations :: Maybe Bool
+      linkerSupportsRelocations =
+        case lookupProgramByName "ld" programDb'' of
+          Nothing -> Nothing
+          Just ld ->
+            case Map.lookup "Supports relocatable output" $ programProperties ld of
+              Just "YES" -> Just True
+              Just "NO" -> Just False
+              _other -> Nothing
   let ghciLibByDefault =
         case compilerId comp of
           CompilerId GHC _ ->
@@ -801,10 +796,12 @@ configure (pkg_descr0, pbi) cfg = do
 
   withGHCiLib_ <-
     case fromFlagOrDefault ghciLibByDefault (configGHCiLib cfg) of
-      True | not compilerSupportsGhciLibs -> do
+      -- NOTE: If linkerSupportsRelocations is Nothing this may still fail if the
+      -- linker does not support -r.
+      True | not (fromMaybe True linkerSupportsRelocations) -> do
         warn verbosity $
-          "--enable-library-for-ghci is no longer supported on Windows with"
-            ++ " GHC 9.4 and later; ignoring..."
+          "--enable-library-for-ghci is not supported with the current"
+            ++ "  linker; ignoring..."
         return False
       v -> return v
 
@@ -2290,7 +2287,7 @@ checkPackageProblems
   -> IO ()
 checkPackageProblems verbosity dir gpkg pkg = do
   ioChecks <- checkPackageFiles verbosity pkg dir
-  let pureChecks = checkPackage gpkg (Just pkg)
+  let pureChecks = checkPackage gpkg
       (errors, warnings) =
         partitionEithers (M.mapMaybe classEW $ pureChecks ++ ioChecks)
   if null errors

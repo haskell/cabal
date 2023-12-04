@@ -5,7 +5,7 @@ Quickstart
 
 Suppose that you are in a directory containing a single Cabal package
 which you wish to build (if you haven't set up a package yet check
-out :doc:`developing packages <developing-packages>` for
+out :doc:`How to package Haskell code <how-to-package-haskell-code>` for
 instructions). You can configure and build it using Nix-style
 local builds with this command (configuring is not necessary):
 

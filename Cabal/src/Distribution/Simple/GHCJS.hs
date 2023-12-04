@@ -1697,7 +1697,7 @@ getRPaths lbi clbi | supportRPaths hostOS = do
     supportRPaths Android = False
     supportRPaths Ghcjs = False
     supportRPaths Wasi = False
-    supportRPaths Hurd = False
+    supportRPaths Hurd = True
     supportRPaths Haiku = False
     supportRPaths (OtherOS _) = False
 -- Do _not_ add a default case so that we get a warning here when a new OS
@@ -1739,20 +1739,12 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
     libBi = libBuildInfo lib
     comp = compiler lbi
     platform = hostPlatform lbi
-    vanillaArgs0 =
+    vanillaArgs =
       (componentGhcOptions verbosity lbi libBi clbi (componentBuildDir lbi clbi))
         `mappend` mempty
           { ghcOptMode = toFlag GhcModeAbiHash
           , ghcOptInputModules = toNubListR $ exposedModules lib
           }
-    vanillaArgs =
-      -- Package DBs unnecessary, and break ghc-cabal. See #3633
-      -- BUT, put at least the global database so that 7.4 doesn't
-      -- break.
-      vanillaArgs0
-        { ghcOptPackageDBs = [GlobalPackageDB]
-        , ghcOptPackages = mempty
-        }
     sharedArgs =
       vanillaArgs
         `mappend` mempty

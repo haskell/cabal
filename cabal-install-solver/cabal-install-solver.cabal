@@ -27,11 +27,6 @@ flag debug-expensive-assertions
   default:     False
   manual:      True
 
-flag debug-conflict-sets
-  description: Add additional information to ConflictSets
-  default:     False
-  manual:      True
-
 flag debug-tracetree
   description: Compile in support for tracetree (used to debug the solver)
   default:     False
@@ -118,10 +113,6 @@ library
 
   if flag(debug-expensive-assertions)
     cpp-options: -DDEBUG_EXPENSIVE_ASSERTIONS
-
-  if flag(debug-conflict-sets)
-    cpp-options:   -DDEBUG_CONFLICT_SETS
-    build-depends: base >=4.9
 
   if flag(debug-tracetree)
     cpp-options:   -DDEBUG_TRACETREE

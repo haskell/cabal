@@ -43,7 +43,10 @@ tests =
       "readUserConstraints"
       (uncurry readUserConstraintsTest)
       [ -- First example only.
-        (head exampleStrs, take 1 exampleUcs)
+
+        ( case exampleStrs of (e : _) -> e; _ -> error "empty examples"
+        , take 1 exampleUcs
+        )
       , -- All examples separated by commas.
         (intercalate ", " exampleStrs, exampleUcs)
       ]

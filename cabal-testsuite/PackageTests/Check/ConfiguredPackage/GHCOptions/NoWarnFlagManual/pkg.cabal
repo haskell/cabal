@@ -1,0 +1,17 @@
+cabal-version: 2.2
+name: pkg
+version: 0
+category: example
+maintainer: none@example.com
+synopsis: synopsys
+description: description
+license: GPL-3.0-or-later
+
+flag force-O2
+  default: False
+
+library
+  exposed-modules:      Foo
+  default-language:     Haskell2010
+  if flag(force-O2)
+    ghc-options:        -O2
