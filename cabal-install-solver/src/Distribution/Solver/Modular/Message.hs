@@ -77,7 +77,36 @@ displayMessage (LogUnknownPackage qpn gr) = "unknown package" ++ showQPN qpn ++ 
 displayMessage LogSuccessMsg = "done"
 displayMessage (LogFailureMsg c fr) = "fail: " ++ showFR c fr
 displayMessage (LogSkipMany _ _ cs) = "skipping: " ++ showConflicts cs
-displayMessage (LogRejectMany qpn is c fr) = "rejecting: " ++ L.intercalate ", " (map (showQPNPOpt qpn) (reverse is)) ++ showFR c fr
+-- Instead of displaying `aeson-1.0.2.1, aeson-1.0.2.0, aeson-1.0.1.0, ...`,
+-- the following line aim to display `aeson: 1.0.2.1, 1.0.2.0, 1.0.1.0, ...`.
+--
+displayMessage (LogRejectMany qpn is c fr) = "rejecting: " ++ fmtPkgsGroupedByName (map (showQPNPOpt qpn) (reverse is)) ++ showFR c fr
+
+-- TODO: This function should take as input the Index? So even without calling the solver, We can say things as
+-- "There is no version in the Hackage index that match the given constraints".
+--
+-- Alternatively, by passing this to the solver, we could get a more semantic output like:
+-- `all versions of aeson available are in conflict with ...`. Isn't already what `tryToMinimizeConflictSet` is doing?
+fmtPkgsGroupedByName :: [String] -> String
+fmtPkgsGroupedByName pkgs = L.intercalate " " $ fmtPkgGroup (groupByName pkgs)
+  where
+    groupByName :: [String] -> M.Map String [String]
+    groupByName = foldr f M.empty
+      where
+        f versionString m = let (pkg, ver) = splitOnLastHyphen versionString
+                            in M.insertWith (++) pkg [ver] m
+        -- FIXME: This is not a very robust way to split the package name and version.
+        -- I should rather retrieve the package name and version from the QPN ...
+        splitOnLastHyphen :: String -> (String, String)
+        splitOnLastHyphen s =
+            case reverse (L.elemIndices '-' s) of
+                (x:_)  -> (take x s, drop (x + 1) s)
+                _ -> error "splitOnLastHyphen: no hyphen found"
+
+    fmtPkgGroup :: M.Map String [String] -> [String]
+    fmtPkgGroup = map formatEntry . M.toList
+      where
+        formatEntry (pkg, versions) = pkg ++ ": " ++ L.intercalate ", " versions
 
 -- | Transforms the structured message type to actual messages (SummarizedMsg s).
 --
