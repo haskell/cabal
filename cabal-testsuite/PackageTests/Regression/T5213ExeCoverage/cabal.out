@@ -14,6 +14,6 @@ Running 1 test suites...
 Test suite tests: RUNNING...
 Test suite tests: PASS
 Test suite logged to: <ROOT>/cabal.dist/work/./dist/build/<ARCH>/ghc-<GHCVER>/cabal-gh5213-0.1/t/tests/noopt/test/cabal-gh5213-0.1-tests.log
-Test coverage report written to <ROOT>/cabal.dist/work/./dist/build/<ARCH>/ghc-<GHCVER>/cabal-gh5213-0.1/t/tests/noopt/hpc/vanilla/html/tests/hpc_index.html
+Package coverage report written to <ROOT>/cabal.dist/work/./dist/build/<ARCH>/ghc-<GHCVER>/cabal-gh5213-0.1/t/tests/noopt/hpc/vanilla/html/hpc_index.html
 1 of 1 test suites (1 of 1 test cases) passed.
-Package coverage report written to <ROOT>/cabal.dist/work/./dist/build/<ARCH>/ghc-<GHCVER>/cabal-gh5213-0.1/t/tests/noopt/hpc/vanilla/html/cabal-gh5213-0.1/hpc_index.html
+Package coverage report written to <ROOT>/cabal.dist/work/./dist/build/<ARCH>/ghc-<GHCVER>/cabal-gh5213-0.1/t/tests/noopt/hpc/vanilla/html/hpc_index.html

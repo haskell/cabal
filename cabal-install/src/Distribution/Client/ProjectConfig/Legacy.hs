@@ -727,6 +727,7 @@ convertLegacyPerPackageFlags
         , configDebugInfo = packageConfigDebugInfo
         , configDumpBuildInfo = packageConfigDumpBuildInfo
         , configRelocatable = packageConfigRelocatable
+        , configCoverageFor = _
         } = configFlags
       packageConfigProgramPaths = MapLast (Map.fromList configProgramPaths)
       packageConfigProgramArgs = MapMappend (Map.fromListWith (++) configProgramArgs)
@@ -767,8 +768,6 @@ convertLegacyPerPackageFlags
         , testKeepTix = packageConfigTestKeepTix
         , testWrapper = packageConfigTestWrapper
         , testFailWhenNoTestSuites = packageConfigTestFailWhenNoTestSuites
-        , testCoverageLibsModules = _
-        , testCoverageDistPrefs = _
         , testOptions = packageConfigTestTestOptions
         } = testFlags
 
@@ -1039,6 +1038,7 @@ convertToLegacyAllPackageConfig
           , configUseResponseFiles = mempty
           , configDumpBuildInfo = mempty
           , configAllowDependingOnPrivateLibs = mempty
+          , configCoverageFor = mempty
           }
 
       haddockFlags =
@@ -1115,6 +1115,7 @@ convertToLegacyPerPackageConfig PackageConfig{..} =
         , configUseResponseFiles = mempty
         , configDumpBuildInfo = packageConfigDumpBuildInfo
         , configAllowDependingOnPrivateLibs = mempty
+        , configCoverageFor = mempty
         }
 
     installFlags =
@@ -1162,8 +1163,6 @@ convertToLegacyPerPackageConfig PackageConfig{..} =
         , testKeepTix = packageConfigTestKeepTix
         , testWrapper = packageConfigTestWrapper
         , testFailWhenNoTestSuites = packageConfigTestFailWhenNoTestSuites
-        , testCoverageLibsModules = mempty
-        , testCoverageDistPrefs = mempty
         , testOptions = packageConfigTestTestOptions
         }
 

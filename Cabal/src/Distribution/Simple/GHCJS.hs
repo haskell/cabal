@@ -72,7 +72,7 @@ import Distribution.Simple.Program
 import Distribution.Simple.Program.GHC
 import qualified Distribution.Simple.Program.HcPkg as HcPkg
 import qualified Distribution.Simple.Program.Strip as Strip
-import Distribution.Simple.Setup.Config
+import Distribution.Simple.Setup.Common
 import Distribution.Simple.Utils
 import Distribution.System
 import Distribution.Types.ComponentLocalBuildInfo
@@ -515,10 +515,9 @@ buildOrReplLib mReplFlags verbosity numJobs _pkg_descr lbi lib clbi = do
   -- Determine if program coverage should be enabled and if so, what
   -- '-hpcdir' should be.
   let isCoverageEnabled = libCoverage lbi
-      distPref = fromFlag $ configDistPref $ configFlags lbi
       hpcdir way
         | forRepl = mempty -- HPC is not supported in ghci
-        | isCoverageEnabled = toFlag $ Hpc.mixDir distPref way
+        | isCoverageEnabled = toFlag $ Hpc.mixDir (libTargetDir </> extraCompilationArtifacts) way
         | otherwise = mempty
 
   createDirectoryIfMissingVerbose verbosity True libTargetDir
@@ -1235,10 +1234,9 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
   -- Determine if program coverage should be enabled and if so, what
   -- '-hpcdir' should be.
   let isCoverageEnabled = exeCoverage lbi
-      distPref = fromFlag $ configDistPref $ configFlags lbi
       hpcdir way
         | gbuildIsRepl bm = mempty -- HPC is not supported in ghci
-        | isCoverageEnabled = toFlag $ Hpc.mixDir distPref way
+        | isCoverageEnabled = toFlag $ Hpc.mixDir (tmpDir </> extraCompilationArtifacts) way
         | otherwise = mempty
 
   rpaths <- getRPaths lbi clbi

@@ -22,27 +22,26 @@ module Distribution.Simple.Hpc
   , mixDir
   , tixDir
   , tixFilePath
+  , HPCMarkupInfo (..)
   , markupPackage
   ) where
 
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Distribution.ModuleName (main)
+import Distribution.ModuleName (ModuleName, main)
 import Distribution.PackageDescription
   ( TestSuite (..)
   , testModules
   )
 import qualified Distribution.PackageDescription as PD
 import Distribution.Pretty
-import Distribution.Simple.Flag (fromFlagOrDefault)
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo (..))
 import Distribution.Simple.Program
   ( hpcProgram
   , requireProgramVersion
   )
 import Distribution.Simple.Program.Hpc (markup, union)
-import Distribution.Simple.Setup (TestFlags (..))
 import Distribution.Simple.Utils (notice)
 import Distribution.Types.UnqualComponentName
 import Distribution.Verbosity (Verbosity ())
@@ -112,17 +111,27 @@ guessWay lbi
   | withDynExe lbi = Dyn
   | otherwise = Vanilla
 
+-- | Haskell Program Coverage information required to produce a valid HPC
+-- report through the `hpc markup` call for the package libraries.
+data HPCMarkupInfo = HPCMarkupInfo
+  { pathsToLibsArtifacts :: [FilePath]
+  -- ^ The paths to the library components whose modules are included in the
+  -- coverage report
+  , libsModulesToInclude :: [ModuleName]
+  -- ^ The modules to include in the coverage report
+  }
+
 -- | Generate the HTML markup for a package's test suites.
 markupPackage
   :: Verbosity
-  -> TestFlags
+  -> HPCMarkupInfo
   -> LocalBuildInfo
   -> FilePath
   -- ^ Testsuite \"dist/\" prefix
   -> PD.PackageDescription
   -> [TestSuite]
   -> IO ()
-markupPackage verbosity TestFlags{testCoverageDistPrefs, testCoverageLibsModules} lbi testDistPref pkg_descr suites = do
+markupPackage verbosity HPCMarkupInfo{pathsToLibsArtifacts, libsModulesToInclude} lbi testDistPref pkg_descr suites = do
   let tixFiles = map (tixFilePath testDistPref way) testNames
   tixFilesExist <- traverse doesFileExist tixFiles
   when (and tixFilesExist) $ do
@@ -160,7 +169,7 @@ markupPackage verbosity TestFlags{testCoverageDistPrefs, testCoverageLibsModules
         union hpc verbosity tixFiles summedTixFile excluded
         return summedTixFile
 
-    markup hpc hpcVer verbosity tixFile mixDirs htmlDir' included
+    markup hpc hpcVer verbosity tixFile mixDirs htmlDir' libsModulesToInclude
     notice verbosity $
       "Package coverage report written to "
         ++ htmlDir'
@@ -168,5 +177,4 @@ markupPackage verbosity TestFlags{testCoverageDistPrefs, testCoverageLibsModules
   where
     way = guessWay lbi
     testNames = fmap (unUnqualComponentName . testName) suites
-    mixDirs = map (`mixDir` way) (fromFlagOrDefault [] testCoverageDistPrefs)
-    included = fromFlagOrDefault [] testCoverageLibsModules
+    mixDirs = map (`mixDir` way) pathsToLibsArtifacts

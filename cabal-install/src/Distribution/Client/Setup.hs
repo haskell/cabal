@@ -677,6 +677,11 @@ filterConfigureFlags flags cabalLibVersion
           -- We add a Cabal>=3.11 constraint before solving when multi-repl is
           -- enabled, so this should never trigger.
           configPromisedDependencies = assert (null $ configPromisedDependencies flags) []
+        , -- Cabal < 3.11 does not understand '--coverage-for', which is OK
+          -- because previous versions of Cabal using coverage implied
+          -- whole-package builds (cuz_coverage), and determine the path to
+          -- libraries mix dirs from the testsuite root with a small hack.
+          configCoverageFor = NoFlag
         }
 
     flags_3_7_0 =
@@ -1093,24 +1098,18 @@ filterTestFlags :: TestFlags -> Version -> TestFlags
 filterTestFlags flags cabalLibVersion
   -- NB: we expect the latest version to be the most common case,
   -- so test it first.
-  | cabalLibVersion >= mkVersion [3, 11, 0] = flags_latest
+  | cabalLibVersion >= mkVersion [3, 0, 0] = flags_latest
   -- The naming convention is that flags_version gives flags with
   -- all flags *introduced* in version eliminated.
   -- It is NOT the latest version of Cabal library that
   -- these flags work for; version of introduction is a more
   -- natural metric.
-  | cabalLibVersion < mkVersion [3, 11, 0] = flags_3_10_0
   | cabalLibVersion < mkVersion [3, 0, 0] = flags_3_0_0
   | otherwise = error "the impossible just happened" -- see first guard
   where
     flags_latest = flags
-    flags_3_10_0 =
-      flags_latest
-        { Cabal.testCoverageLibsModules = NoFlag
-        , Cabal.testCoverageDistPrefs = NoFlag
-        }
     flags_3_0_0 =
-      flags_3_10_0
+      flags_latest
         { -- Cabal < 3.0 doesn't know about --test-wrapper
           Cabal.testWrapper = NoFlag
         }

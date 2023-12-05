@@ -531,6 +531,7 @@ instance Semigroup SavedConfig where
           , configDumpBuildInfo = combine configDumpBuildInfo
           , configAllowDependingOnPrivateLibs =
               combine configAllowDependingOnPrivateLibs
+          , configCoverageFor = combine configCoverageFor
           }
         where
           combine = combine' savedConfigureFlags
@@ -636,8 +637,6 @@ instance Semigroup SavedConfig where
           , testKeepTix = combine testKeepTix
           , testWrapper = combine testWrapper
           , testFailWhenNoTestSuites = combine testFailWhenNoTestSuites
-          , testCoverageLibsModules = combine testCoverageLibsModules
-          , testCoverageDistPrefs = combine testCoverageDistPrefs
           , testOptions = lastNonEmpty testOptions
           }
         where

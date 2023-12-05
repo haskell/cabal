@@ -44,10 +44,11 @@ runTest
   :: PD.PackageDescription
   -> LBI.LocalBuildInfo
   -> LBI.ComponentLocalBuildInfo
+  -> HPCMarkupInfo
   -> TestFlags
   -> PD.TestSuite
   -> IO TestSuiteLog
-runTest pkg_descr lbi clbi flags suite = do
+runTest pkg_descr lbi clbi hpcMarkupInfo flags suite = do
   let isCoverageEnabled = LBI.testCoverage lbi
       way = guessWay lbi
       tixDir_ = tixDir distPref way
@@ -178,7 +179,7 @@ runTest pkg_descr lbi clbi flags suite = do
     when (null $ PD.allLibraries pkg_descr) $
       dieWithException verbosity TestCoverageSupport
 
-    markupPackage verbosity flags lbi distPref pkg_descr [suite]
+    markupPackage verbosity hpcMarkupInfo lbi distPref pkg_descr [suite]
 
   return suiteLog
   where

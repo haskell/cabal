@@ -3846,12 +3846,14 @@ computeInstallDirs storeDirLayout defaultInstallDirs elaboratedShared elab
 -- make the various Setup.hs {configure,build,copy} flags
 
 setupHsConfigureFlags
-  :: ElaboratedReadyPackage
+  :: ElaboratedInstallPlan
+  -> ElaboratedReadyPackage
   -> ElaboratedSharedConfig
   -> Verbosity
   -> FilePath
   -> Cabal.ConfigFlags
 setupHsConfigureFlags
+  plan
   (ReadyPackage elab@ElaboratedConfiguredPackage{..})
   sharedConfig@ElaboratedSharedConfig{..}
   verbosity
@@ -3997,6 +3999,8 @@ setupHsConfigureFlags
             Just _ -> error "non-library dependency"
             Nothing -> LMainLibName
 
+      configCoverageFor = determineCoverageFor elabPkgSourceId plan
+
 setupHsConfigureArgs
   :: ElaboratedConfiguredPackage
   -> [String]
@@ -4043,14 +4047,11 @@ setupHsBuildArgs (ElaboratedConfiguredPackage{elabPkgOrComp = ElabComponent _}) 
   []
 
 setupHsTestFlags
-  :: ElaboratedInstallPlan
-  -> ElaboratedConfiguredPackage
-  -> ElaboratedSharedConfig
+  :: ElaboratedConfiguredPackage
   -> Verbosity
-  -> DistDirLayout
   -> FilePath
   -> Cabal.TestFlags
-setupHsTestFlags plan (ElaboratedConfiguredPackage{..}) sharedConfig verbosity distDirLayout builddir =
+setupHsTestFlags (ElaboratedConfiguredPackage{..}) verbosity builddir =
   Cabal.TestFlags
     { testDistPref = toFlag builddir
     , testVerbosity = toFlag verbosity
@@ -4060,47 +4061,8 @@ setupHsTestFlags plan (ElaboratedConfiguredPackage{..}) sharedConfig verbosity d
     , testKeepTix = toFlag elabTestKeepTix
     , testWrapper = maybe mempty toFlag elabTestWrapper
     , testFailWhenNoTestSuites = toFlag elabTestFailWhenNoTestSuites
-    , testCoverageLibsModules = toFlag covIncludeModules
-    , testCoverageDistPrefs = toFlag covLibsDistPref
     , testOptions = elabTestTestOptions
     }
-  where
-    -- The path to dist dir of each of the libraries to consider in hpc, from which Cabal determines the path to the `mix` dir.
-    covLibsDistPref = map (distBuildDirectory distDirLayout . elabDistDirParams sharedConfig) librariesToCover
-    -- The list of modules from libraries to consider in hpc, that Cabal passes to the hpc markup call
-    -- This list includes all modules, not only the exposed ones.
-    covIncludeModules = concatMap (\ElaboratedConfiguredPackage{elabModuleShape = modShape} -> Map.keys $ modShapeProvides modShape) librariesToCover
-
-    -- The list of non-pre-existing libraries without module holes, i.e. the
-    -- main library and sub-libraries components of all the local packages in
-    -- the project that do not require instantiations or are instantiations,
-    -- and the testsuite component.
-    --
-    -- TODO: I think that if the packages it depends on are still uninstalled,
-    -- this seemingly includes the packages that are not local to the project?!
-    -- Weird, because we filter on localToProject!
-    -- Try it on cabal-install: cabal test --enable-coverage cabal-install
-    librariesToCover =
-      mapMaybe
-        ( \case
-            InstallPlan.Installed elab
-              | shouldCoverPkg elab -> Just elab
-            InstallPlan.Configured elab
-              | shouldCoverPkg elab -> Just elab
-            _ -> Nothing
-        )
-        $ Graph.toList
-        $ InstallPlan.toGraph plan
-
-    shouldCoverPkg ElaboratedConfiguredPackage{elabModuleShape = modShape, elabPkgSourceId = pkgId} =
-      elabLocalToProject
-        && not (isIndefiniteOrInstantiation modShape)
-        -- TODO(#9493): We can only cover libraries in the same package
-        -- as the testsuite
-        && pkgId == elabPkgSourceId
-
-    isIndefiniteOrInstantiation :: ModuleShape -> Bool
-    isIndefiniteOrInstantiation = not . Set.null . modShapeRequires
 
 setupHsTestArgs :: ElaboratedConfiguredPackage -> [String]
 -- TODO: Does the issue #3335 affects test as well
@@ -4442,3 +4404,40 @@ inplaceBinRoot
 inplaceBinRoot layout config package =
   distBuildDirectory layout (elabDistDirParams config package)
     </> "build"
+
+--------------------------------------------------------------------------------
+-- Configure --coverage-for flags
+
+-- The list of non-pre-existing libraries without module holes, i.e. the
+-- main library and sub-libraries components of all the local packages in
+-- the project that do not require instantiations or are instantiations.
+determineCoverageFor
+  :: PackageId
+  -- ^ The 'PackageId' of the package or component being configured
+  -> ElaboratedInstallPlan
+  -> Flag [UnitId]
+determineCoverageFor configuredPkgSourceId plan =
+  Flag
+    $ mapMaybe
+      ( \case
+          InstallPlan.Installed elab
+            | shouldCoverPkg elab -> Just $ elabUnitId elab
+          InstallPlan.Configured elab
+            | shouldCoverPkg elab -> Just $ elabUnitId elab
+          _ -> Nothing
+      )
+    $ Graph.toList
+    $ InstallPlan.toGraph plan
+  where
+    shouldCoverPkg elab@ElaboratedConfiguredPackage{elabModuleShape, elabPkgSourceId, elabLocalToProject} =
+      elabLocalToProject
+        && not (isIndefiniteOrInstantiation elabModuleShape)
+        -- TODO(#9493): We can only cover libraries in the same package
+        -- as the testsuite
+        && configuredPkgSourceId == elabPkgSourceId
+        -- Libraries only! We don't cover testsuite modules, so we never need
+        -- the paths to their mix dirs. Furthermore, we do not install testsuites...
+        && maybe False (\case CLibName{} -> True; CNotLibName{} -> False) (elabComponentName elab)
+
+    isIndefiniteOrInstantiation :: ModuleShape -> Bool
+    isIndefiniteOrInstantiation = not . Set.null . modShapeRequires
