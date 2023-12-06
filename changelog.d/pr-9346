@@ -1,0 +1,12 @@
+synopsis: remove 
+packages: cabal-install
+prs: #9346
+issues: #9151
+significance: significant
+
+description: {
+
+- Remove "Log" as a log level in favour of "Info".
+- Remove "Show" in Severity and replace by "displaySeverity" function
+
+}

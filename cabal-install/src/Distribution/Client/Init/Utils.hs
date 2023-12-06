@@ -214,7 +214,7 @@ retrieveDependencies v flags mods' pkgIx = do
       modDeps = map (\(mn, ds) -> (mn, ds, M.lookup ds modMap)) mods
   -- modDeps = map (id &&& flip M.lookup modMap) mods
 
-  message v Log "Guessing dependencies..."
+  message v Info "Guessing dependencies..."
   nub . catMaybes <$> traverse (chooseDep v flags) modDeps
 
 -- Given a module and a list of installed packages providing it,

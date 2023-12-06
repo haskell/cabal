@@ -65,7 +65,7 @@ writeProject (ProjectSettings opts pkgDesc libTarget exeTarget testTarget)
       message opts T.Error "no package name given, so no .cabal file can be generated\n"
   | otherwise = do
       -- clear prompt history a bit"
-      message opts T.Log $
+      message opts T.Info $
         "Using cabal specification: "
           ++ showCabalSpecVersion (_optCabalSpec opts)
 
@@ -269,7 +269,7 @@ writeFileSafe opts fileName content = do
 
   go exists
 
-  message opts T.Log $ show action ++ " file " ++ fileName ++ "..."
+  message opts T.Info $ show action ++ " file " ++ fileName ++ "..."
   return $ action == Existing
   where
     doOverwrite = _optOverwrite opts
@@ -279,7 +279,7 @@ writeFileSafe opts fileName content = do
           writeFile fileName content
       | exists && doOverwrite = do
           newName <- findNewPath fileName
-          message opts T.Log $
+          message opts T.Info $
             concat
               [ fileName
               , " already exists. Backing up old version in "
@@ -302,7 +302,7 @@ writeDirectoriesSafe opts dirs = fmap or $ for dirs $ \dir -> do
 
   go dir exists
 
-  message opts T.Log $ show action ++ " directory ./" ++ dir ++ "..."
+  message opts T.Info $ show action ++ " directory ./" ++ dir ++ "..."
   return $ action == Existing
   where
     doOverwrite = _optOverwrite opts
@@ -312,7 +312,7 @@ writeDirectoriesSafe opts dirs = fmap or $ for dirs $ \dir -> do
           createDirectory dir
       | exists && doOverwrite = do
           newDir <- findNewPath dir
-          message opts T.Log $
+          message opts T.Info $
             concat
               [ dir
               , " already exists. Backing up old version in "
