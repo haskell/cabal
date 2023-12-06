@@ -5,12 +5,36 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE ViewPatterns #-}
-{-# LANGUAGE NoMonoLocalBinds #-}
 
--- | Planning how to build everything in a project.
+-- |
+-- /Elaborated: worked out with great care and nicety of detail; executed with great minuteness: elaborate preparations; elaborate care./
+--
+-- In this module we construct an install plan that includes all the information needed to execute it.
+--
+-- Building a project is therefore split into two phases:
+--
+-- 1. The construction of the install plan (which as far as possible should be pure), done here.
+-- 2. The execution of the plan, done in "ProjectBuilding"
+--
+-- To achieve this we need a representation of this fully elaborated install plan; this representation
+-- consists of two parts:
+--
+-- * A 'ElaboratedInstallPlan'. This is a 'GenericInstallPlan' with a
+--   representation of source packages that includes a lot more detail about
+--   that package's individual configuration
+--
+-- * A 'ElaboratedSharedConfig'. Some package configuration is the same for
+--   every package in a plan. Rather than duplicate that info every entry in
+--   the 'GenericInstallPlan' we keep that separately.
+--
+-- The division between the shared and per-package config is not set in stone
+-- for all time. For example if we wanted to generalise the install plan to
+-- describe a situation where we want to build some packages with GHC and some
+-- with GHCJS then the platform and compiler would no longer be shared between
+-- all packages but would have to be per-package (probably with some sanity
+-- condition on the graph structure).
 module Distribution.Client.ProjectPlanning
-  ( -- * elaborated install plan types
+  ( -- * Types for the elaborated install plan
     ElaboratedInstallPlan
   , ElaboratedConfiguredPackage (..)
   , ElaboratedPlanPackage
@@ -19,8 +43,11 @@ module Distribution.Client.ProjectPlanning
   , BuildStyle (..)
   , CabalFileText
 
-    -- * Producing the elaborated install plan
+    -- * Reading the project configuration
+    -- $readingTheProjectConfiguration
   , rebuildProjectConfig
+
+    -- * Producing the elaborated install plan
   , rebuildInstallPlan
 
     -- * Build targets
@@ -72,96 +99,75 @@ module Distribution.Client.ProjectPlanning
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
-import Distribution.Client.HashValue
-import Distribution.Client.HttpUtils
-import Distribution.Client.PackageHash
-import Distribution.Client.ProjectConfig
-import Distribution.Client.ProjectConfig.Legacy
-import Distribution.Client.ProjectPlanOutput
-import Distribution.Client.ProjectPlanning.Types as Ty
-import Distribution.Client.RebuildMonad
-import Distribution.Client.Store
-
 import Distribution.Client.Config
 import Distribution.Client.Dependency
 import Distribution.Client.DistDirLayout
 import Distribution.Client.FetchUtils
-import qualified Distribution.Client.IndexUtils as IndexUtils
-import qualified Distribution.Client.InstallPlan as InstallPlan
+import Distribution.Client.HashValue
+import Distribution.Client.HttpUtils
 import Distribution.Client.JobControl
+import Distribution.Client.PackageHash
+import Distribution.Client.ProjectConfig
+import Distribution.Client.ProjectConfig.Legacy
+import Distribution.Client.ProjectPlanOutput
+import Distribution.Client.ProjectPlanning.SetupPolicy
+  ( NonSetupLibDepSolverPlanPackage (..)
+  , mkDefaultSetupDeps
+  , packageSetupScriptSpecVersion
+  , packageSetupScriptStyle
+  )
+import Distribution.Client.ProjectPlanning.Types as Ty
+import Distribution.Client.RebuildMonad
 import Distribution.Client.Setup hiding (cabalVersion, packageName)
 import Distribution.Client.SetupWrapper
-import qualified Distribution.Client.SolverInstallPlan as SolverInstallPlan
+import Distribution.Client.Store
 import Distribution.Client.Targets (userToPackageConstraint)
 import Distribution.Client.Types
 import Distribution.Client.Utils (incVersion)
+
+import qualified Distribution.Client.BuildReports.Storage as BuildReports
+import qualified Distribution.Client.IndexUtils as IndexUtils
+import qualified Distribution.Client.InstallPlan as InstallPlan
+import qualified Distribution.Client.SolverInstallPlan as SolverInstallPlan
+
+import Distribution.CabalSpecVersion
 import Distribution.Utils.LogProgress
 import Distribution.Utils.MapAccum
 import Distribution.Utils.NubList
+
 import qualified Hackage.Security.Client as Sec
 
-import qualified Distribution.Client.BuildReports.Storage as BuildReports
-  ( fromPlanningFailure
-  , storeLocal
-  )
-
-import Distribution.Solver.Types.ComponentDeps (ComponentDeps)
-import qualified Distribution.Solver.Types.ComponentDeps as CD
 import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.InstSolverPackage
 import Distribution.Solver.Types.LabeledPackageConstraint
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PkgConfigDb
-import Distribution.Solver.Types.ResolverPackage
 import Distribution.Solver.Types.Settings
 import Distribution.Solver.Types.SolverId
 import Distribution.Solver.Types.SolverPackage
 import Distribution.Solver.Types.SourcePackage
 
-import Distribution.CabalSpecVersion
-
--- TODO: [code cleanup] eliminate
--- TODO: [code cleanup] eliminate
-
-import qualified Distribution.InstalledPackageInfo as IPI
 import Distribution.ModuleName
 import Distribution.Package
-import qualified Distribution.PackageDescription as Cabal
-import qualified Distribution.PackageDescription as PD
-import qualified Distribution.PackageDescription.Configuration as PD
 import Distribution.Simple.Compiler
-import qualified Distribution.Simple.Configure as Cabal
-import qualified Distribution.Simple.GHC as GHC
-import qualified Distribution.Simple.GHCJS as GHCJS
-import qualified Distribution.Simple.InstallDirs as InstallDirs
+import Distribution.Simple.Flag
 import Distribution.Simple.LocalBuildInfo
   ( Component (..)
   , componentBuildInfo
   , componentName
   , pkgComponents
   )
-import qualified Distribution.Simple.LocalBuildInfo as Cabal
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import Distribution.Simple.Program
 import Distribution.Simple.Program.Db
 import Distribution.Simple.Program.Find
-import Distribution.Simple.Setup
-  ( Flag (..)
-  , flagToList
-  , flagToMaybe
-  , fromFlagOrDefault
-  , toFlag
-  )
-import qualified Distribution.Simple.Setup as Cabal
 import Distribution.System
+
 import Distribution.Types.AnnotatedId
+import Distribution.Types.ComponentInclude
 import Distribution.Types.ComponentName
 import Distribution.Types.DumpBuildInfo
-  ( DumpBuildInfo (..)
-  )
 import Distribution.Types.GivenComponent
-  ( GivenComponent (GivenComponent)
-  )
 import Distribution.Types.LibraryName
 import Distribution.Types.PackageVersionConstraint
 import Distribution.Types.PkgconfigDependency
@@ -173,12 +179,21 @@ import Distribution.Backpack.ConfiguredComponent
 import Distribution.Backpack.FullUnitId
 import Distribution.Backpack.LinkedComponent
 import Distribution.Backpack.ModuleShape
-import Distribution.Types.ComponentInclude
 
 import Distribution.Simple.Utils
 import Distribution.Version
 
-import Distribution.Compat.Graph (IsNode (..))
+import qualified Distribution.InstalledPackageInfo as IPI
+import qualified Distribution.PackageDescription as PD
+import qualified Distribution.PackageDescription.Configuration as PD
+import qualified Distribution.Simple.Configure as Cabal
+import qualified Distribution.Simple.GHC as GHC
+import qualified Distribution.Simple.GHCJS as GHCJS
+import qualified Distribution.Simple.InstallDirs as InstallDirs
+import qualified Distribution.Simple.LocalBuildInfo as Cabal
+import qualified Distribution.Simple.Setup as Cabal
+import qualified Distribution.Solver.Types.ComponentDeps as CD
+
 import qualified Distribution.Compat.Graph as Graph
 
 import Control.Exception (assert)
@@ -194,61 +209,6 @@ import Distribution.Client.Errors
 import System.FilePath
 import Text.PrettyPrint (colon, comma, fsep, hang, punctuate, quotes, text, vcat, ($$))
 import qualified Text.PrettyPrint as Disp
-
-------------------------------------------------------------------------------
-
--- * Elaborated install plan
-
-------------------------------------------------------------------------------
-
--- "Elaborated" -- worked out with great care and nicety of detail;
---                 executed with great minuteness: elaborate preparations;
---                 elaborate care.
---
--- So here's the idea:
---
--- Rather than a miscellaneous collection of 'ConfigFlags', 'InstallFlags' etc
--- all passed in as separate args and which are then further selected,
--- transformed etc during the execution of the build. Instead we construct
--- an elaborated install plan that includes everything we will need, and then
--- during the execution of the plan we do as little transformation of this
--- info as possible.
---
--- So we're trying to split the work into two phases: construction of the
--- elaborated install plan (which as far as possible should be pure) and
--- then simple execution of that plan without any smarts, just doing what the
--- plan says to do.
---
--- So that means we need a representation of this fully elaborated install
--- plan. The representation consists of two parts:
---
-
--- * A 'ElaboratedInstallPlan'. This is a 'GenericInstallPlan' with a
-
---   representation of source packages that includes a lot more detail about
---   that package's individual configuration
---
-
--- * A 'ElaboratedSharedConfig'. Some package configuration is the same for
-
---   every package in a plan. Rather than duplicate that info every entry in
---   the 'GenericInstallPlan' we keep that separately.
---
--- The division between the shared and per-package config is /not set in stone
--- for all time/. For example if we wanted to generalise the install plan to
--- describe a situation where we want to build some packages with GHC and some
--- with GHCJS then the platform and compiler would no longer be shared between
--- all packages but would have to be per-package (probably with some sanity
--- condition on the graph structure).
---
-
--- Refer to ProjectPlanning.Types for details of these important types:
-
--- type ElaboratedInstallPlan = ...
--- type ElaboratedPlanPackage = ...
--- data ElaboratedSharedConfig = ...
--- data ElaboratedConfiguredPackage = ...
--- data BuildStyle =
 
 -- | Check that an 'ElaboratedConfiguredPackage' actually makes
 -- sense under some 'ElaboratedSharedConfig'.
@@ -333,32 +293,28 @@ sanityCheckElaboratedPackage
             `optStanzaSetIsSubset` pkgStanzasEnabled
         )
 
--- Note [reading project configuration]
+-- $readingTheProjectConfiguration
 --
 -- The project configuration is assembled into a ProjectConfig as follows:
 --
--- CLI arguments are converted using commandLineFlagsToProjectConfig in the
--- v2 command entrypoints and passed to establishProjectBaseContext which
--- then calls rebuildProjectConfig.
+-- CLI arguments are converted using "commandLineFlagsToProjectConfig" in the
+-- v2 command entrypoints and passed to "establishProjectBaseContext" which
+-- then calls "rebuildProjectConfig".
 --
--- rebuildProjectConfig then calls readProjectConfig to read the project
--- files. Because of conditionals, this output is in the form of a
--- ProjectConfigSkeleton and will be resolved by rebuildProjectConfig using
--- instantiateProjectConfigSkeletonFetchingCompiler.
+-- "rebuildProjectConfig" then calls "readProjectConfig" to read the project
+-- files. Due to the presence of conditionals, this output is in the form of a
+-- "ProjectConfigSkeleton" and will be resolved by "rebuildProjectConfig" using
+-- "instantiateProjectConfigSkeletonFetchingCompiler".
 --
--- readProjectConfig also loads the global configuration, which is read with
--- loadConfig and convertd to a ProjectConfig with convertLegacyGlobalConfig.
+-- "readProjectConfig" also loads the global configuration, which is read with
+-- "loadConfig" and convertd to a "ProjectConfig" with "convertLegacyGlobalConfig".
 --
-
--- * Important *
-
---
--- You can notice how some project config options are needed to read the
--- project config! This is evident by the fact that rebuildProjectConfig
--- takes HttpTransport and DistDirLayout as parameters. Two arguments are
--- infact determined from the CLI alone (in establishProjectBaseContext).
+-- *Important:* You can notice how some project config options are needed to read the
+-- project config! This is evident by the fact that "rebuildProjectConfig"
+-- takes "HttpTransport" and "DistDirLayout" as parameters. Two arguments are
+-- infact determined from the CLI alone (in "establishProjectBaseContext").
 -- Consequently, project files (including global configuration) cannot
--- affect those parameters.
+-- affect those parameters!
 --
 -- Furthermore, the project configuration can specify a compiler to use,
 -- which we need to resolve the conditionals in the project configuration!
@@ -760,11 +716,13 @@ rebuildInstallPlan
                 [GlobalPackageDB]
                 (projectConfigPackageDBs projectConfigShared)
 
+            withRepoCtx :: (RepoContext -> IO a) -> IO a
             withRepoCtx =
               projectConfigWithSolverRepoContext
                 verbosity
                 projectConfigShared
                 projectConfigBuildOnly
+
             solverSettings = resolveSolverSettings projectConfig
             logMsg message rest = debugNoWrap verbosity message >> rest
 
@@ -863,6 +821,7 @@ rebuildInstallPlan
           liftIO $ debugNoWrap verbosity (showElaboratedInstallPlan instantiatedPlan)
           return (instantiatedPlan, elaboratedShared)
           where
+            withRepoCtx :: (RepoContext -> IO a) -> IO a
             withRepoCtx =
               projectConfigWithSolverRepoContext
                 verbosity
@@ -1300,7 +1259,7 @@ planPackages
           . removeLowerBounds solverSettingAllowOlder
           . removeUpperBounds solverSettingAllowNewer
           . addDefaultSetupDependencies
-            ( defaultSetupDeps comp platform
+            ( mkDefaultSetupDeps comp platform
                 . PD.packageDescription
                 . srcpkgDescription
             )
@@ -1757,15 +1716,23 @@ elaborateInstallPlan
             where
               compSolverName = CD.ComponentSetup
               compComponentName = Nothing
+
               dep_pkgs = elaborateLibSolverId mapDep =<< CD.setupDeps deps0
+
               compLibDependencies =
                 -- MP: No idea what this function does
                 map (\cid -> (configuredId cid, False)) dep_pkgs
               compLinkedLibDependencies = notImpl "compLinkedLibDependencies"
               compOrderLibDependencies = notImpl "compOrderLibDependencies"
+
               -- Not supported:
+              compExeDependencies :: [a]
               compExeDependencies = []
+
+              compExeDependencyPaths :: [a]
               compExeDependencyPaths = []
+
+              compPkgConfigDependencies :: [a]
               compPkgConfigDependencies = []
 
               notImpl f =
@@ -2035,7 +2002,9 @@ elaborateInstallPlan
           -- of the other fields of the elaboratedPackage.
           elab
           where
-            elab0@ElaboratedConfiguredPackage{..} = elaborateSolverToCommon pkg
+            elab0@ElaboratedConfiguredPackage{..} =
+              elaborateSolverToCommon pkg
+
             elab1 =
               elab0
                 { elabUnitId = newSimpleUnitId pkgInstalledId
@@ -2044,6 +2013,7 @@ elaborateInstallPlan
                 , elabPkgOrComp = ElabPackage $ ElaboratedPackage{..}
                 , elabModuleShape = modShape
                 }
+
             elab =
               elab1
                 { elabInstallDirs =
@@ -2073,6 +2043,8 @@ elaborateInstallPlan
             -- correspond to anything real anymore.
             isExt confid = confSrcId confid /= pkgid
             filterExt = filter isExt
+
+            filterExt' :: [(ConfiguredId, a)] -> [(ConfiguredId, a)]
             filterExt' = filter (isExt . fst)
 
             pkgLibDependencies =
@@ -2081,6 +2053,7 @@ elaborateInstallPlan
               buildComponentDeps (filterExt . compExeDependencies)
             pkgExeDependencyPaths =
               buildComponentDeps (filterExt' . compExeDependencyPaths)
+
             -- TODO: Why is this flat?
             pkgPkgConfigDependencies =
               CD.flatDeps $ buildComponentDeps compPkgConfigDependencies
@@ -2097,13 +2070,11 @@ elaborateInstallPlan
                 is_lib (CLibName _) = True
                 is_lib _ = False
 
+            buildComponentDeps :: Monoid a => (ElaboratedComponent -> a) -> CD.ComponentDeps a
             buildComponentDeps f =
               CD.fromList
                 [ (compSolverName comp, f comp)
-                | ElaboratedConfiguredPackage
-                    { elabPkgOrComp = ElabComponent comp
-                    } <-
-                    comps
+                | ElaboratedConfiguredPackage{elabPkgOrComp = ElabComponent comp} <- comps
                 ]
 
             -- NB: This is not the final setting of 'pkgStanzasEnabled'.
@@ -2154,7 +2125,7 @@ elaborateInstallPlan
             elabFlagAssignment = flags
             elabFlagDefaults =
               PD.mkFlagAssignment
-                [ (Cabal.flagName flag, Cabal.flagDefault flag)
+                [ (PD.flagName flag, PD.flagDefault flag)
                 | flag <- PD.genPackageFlags gdesc
                 ]
 
@@ -2576,22 +2547,6 @@ binDirectories layout config package = case elabBuildStyle package of
     root =
       distBuildDirectory layout (elabDistDirParams config package)
         </> "build"
-
--- | A newtype for 'SolverInstallPlan.SolverPlanPackage' for which the
--- dependency graph considers only dependencies on libraries which are
--- NOT from setup dependencies.  Used to compute the set
--- of packages needed for profiling and dynamic libraries.
-newtype NonSetupLibDepSolverPlanPackage = NonSetupLibDepSolverPlanPackage
-  {unNonSetupLibDepSolverPlanPackage :: SolverInstallPlan.SolverPlanPackage}
-
-instance Package NonSetupLibDepSolverPlanPackage where
-  packageId = packageId . unNonSetupLibDepSolverPlanPackage
-
-instance IsNode NonSetupLibDepSolverPlanPackage where
-  type Key NonSetupLibDepSolverPlanPackage = SolverId
-  nodeKey = nodeKey . unNonSetupLibDepSolverPlanPackage
-  nodeNeighbors (NonSetupLibDepSolverPlanPackage spkg) =
-    ordNub $ CD.nonSetupDeps (resolverPackageLibDeps spkg)
 
 type InstS = Map UnitId ElaboratedPlanPackage
 type InstM a = State InstS a
@@ -3209,11 +3164,11 @@ instance Package PrunedPackage where
   packageId (PrunedPackage elab _) = packageId elab
 
 instance HasUnitId PrunedPackage where
-  installedUnitId = nodeKey
+  installedUnitId = Graph.nodeKey
 
-instance IsNode PrunedPackage where
+instance Graph.IsNode PrunedPackage where
   type Key PrunedPackage = UnitId
-  nodeKey (PrunedPackage elab _) = nodeKey elab
+  nodeKey (PrunedPackage elab _) = Graph.nodeKey elab
   nodeNeighbors (PrunedPackage _ deps) = deps
 
 fromPrunedPackage :: PrunedPackage -> ElaboratedConfiguredPackage
@@ -3342,23 +3297,22 @@ pruneInstallPlanPass1 pkgs
     -- otherwise we will confuse Setup.hs by passing new arguments which it doesn't understand
     -- later down the line. We try to remove just these edges, if it doesn't break the overall structure
     -- then we just report to the user that their target will not be loaded for this reason.
-
-    ( bad -- Nodes which we wanted to build InMemory but lack new enough version of Cabal
-      , _good -- Nodes we want to build in memory.
-      ) = partitionEithers (map go graph_with_repl_targets)
-        where
-          go :: ElaboratedPlanPackage -> Either UnitId ElaboratedPlanPackage
-          go (InstallPlan.Configured cp)
-            | BuildInplaceOnly InMemory <- elabBuildStyle cp
-            , elabSetupScriptCliVersion cp < minVersionReplFlagFile =
-                Left (elabUnitId cp)
-          go (InstallPlan.Configured c) = Right (InstallPlan.Configured c)
-          go c = Right c
+    --
+    -- 'bad' are the nodes with a too old version of Cabal
+    -- 'good' are the nodes with a new-enough version of Cabal
+    (bad, _good) = partitionEithers (map go graph_with_repl_targets)
+      where
+        go :: ElaboratedPlanPackage -> Either UnitId ElaboratedPlanPackage
+        go (InstallPlan.Configured cp)
+          | BuildInplaceOnly InMemory <- elabBuildStyle cp
+          , elabSetupScriptCliVersion cp < minVersionReplFlagFile =
+              Left (elabUnitId cp)
+        go (InstallPlan.Configured c) = Right (InstallPlan.Configured c)
+        go c = Right c
 
     -- Now take the upwards closure from the bad nodes, and find the other `BuildInplaceOnly InMemory` packages that clobbers,
     -- disables those and issue a warning to the user. Because we aren't going to be able to load those into memory as well
     -- because the thing it depends on is not going to be in memory.
-
     disabled_repl_targets =
       [ c | InstallPlan.Configured c <- fromMaybe [] $ Graph.revClosure (Graph.fromDistinctList graph_with_repl_targets) bad, BuildInplaceOnly InMemory <- [elabBuildStyle c]
       ]
@@ -3596,18 +3550,28 @@ pruneInstallPlanPass2 pkgs =
                 let stanzas =
                       pkgStanzasEnabled pkg
                         <> optionalStanzasWithDepsAvailable availablePkgs elab pkg
+
+                    keepNeeded :: CD.Component -> a -> Bool
                     keepNeeded (CD.ComponentTest _) _ = TestStanzas `optStanzaSetMember` stanzas
                     keepNeeded (CD.ComponentBench _) _ = BenchStanzas `optStanzaSetMember` stanzas
                     keepNeeded _ _ = True
                  in ElabPackage $
                       pkg
-                        { pkgStanzasEnabled = stanzas
-                        , pkgLibDependencies = CD.mapDeps (\_ -> map addInternal) $ CD.filterDeps keepNeeded (pkgLibDependencies pkg)
-                        , pkgExeDependencies = CD.filterDeps keepNeeded (pkgExeDependencies pkg)
-                        , pkgExeDependencyPaths = CD.filterDeps keepNeeded (pkgExeDependencyPaths pkg)
+                        { pkgStanzasEnabled =
+                            stanzas
+                        , pkgLibDependencies =
+                            CD.mapDeps (\_ -> map addInternal) $
+                              CD.filterDeps keepNeeded (pkgLibDependencies pkg)
+                        , pkgExeDependencies =
+                            CD.filterDeps keepNeeded (pkgExeDependencies pkg)
+                        , pkgExeDependencyPaths =
+                            CD.filterDeps keepNeeded (pkgExeDependencyPaths pkg)
                         }
-              (ElabComponent comp) ->
-                ElabComponent $ comp{compLibDependencies = map addInternal (compLibDependencies comp)}
+              ElabComponent comp ->
+                ElabComponent $
+                  comp
+                    { compLibDependencies = map addInternal (compLibDependencies comp)
+                    }
         }
       where
         -- We initially assume that all the dependencies are external (hence the boolean is always
@@ -3733,207 +3697,6 @@ newtype CannotPruneDependencies
         )
       ]
   deriving (Show)
-
----------------------------
--- Setup.hs script policy
---
-
--- Handling for Setup.hs scripts is a bit tricky, part of it lives in the
--- solver phase, and part in the elaboration phase. We keep the helper
--- functions for both phases together here so at least you can see all of it
--- in one place.
---
--- There are four major cases for Setup.hs handling:
---
---  1. @build-type@ Custom with a @custom-setup@ section
---  2. @build-type@ Custom without a @custom-setup@ section
---  3. @build-type@ not Custom with @cabal-version >  $our-cabal-version@
---  4. @build-type@ not Custom with @cabal-version <= $our-cabal-version@
---
--- It's also worth noting that packages specifying @cabal-version: >= 1.23@
--- or later that have @build-type@ Custom will always have a @custom-setup@
--- section. Therefore in case 2, the specified @cabal-version@ will always be
--- less than 1.23.
---
--- In cases 1 and 2 we obviously have to build an external Setup.hs script,
--- while in case 4 we can use the internal library API.
---
--- TODO:In case 3 we should fail. We don't know how to talk to
--- newer ./Setup.hs
---
--- data SetupScriptStyle = ...  -- see ProjectPlanning.Types
-
--- | Work out the 'SetupScriptStyle' given the package description.
-packageSetupScriptStyle :: PD.PackageDescription -> SetupScriptStyle
-packageSetupScriptStyle pkg
-  | buildType == PD.Custom
-  , Just setupbi <- PD.setupBuildInfo pkg -- does have a custom-setup stanza
-  , not (PD.defaultSetupDepends setupbi) -- but not one we added internally
-    =
-      SetupCustomExplicitDeps
-  | buildType == PD.Custom
-  , Just setupbi <- PD.setupBuildInfo pkg -- we get this case post-solver as
-  , PD.defaultSetupDepends setupbi -- the solver fills in the deps
-    =
-      SetupCustomImplicitDeps
-  | buildType == PD.Custom
-  , Nothing <- PD.setupBuildInfo pkg -- we get this case pre-solver
-    =
-      SetupCustomImplicitDeps
-  -- here we should fail.
-  | PD.specVersion pkg > cabalSpecLatest -- one cabal-install is built against
-    =
-      SetupNonCustomExternalLib
-  | otherwise =
-      SetupNonCustomInternalLib
-  where
-    buildType = PD.buildType pkg
-
--- | Part of our Setup.hs handling policy is implemented by getting the solver
--- to work out setup dependencies for packages. The solver already handles
--- packages that explicitly specify setup dependencies, but we can also tell
--- the solver to treat other packages as if they had setup dependencies.
--- That's what this function does, it gets called by the solver for all
--- packages that don't already have setup dependencies.
---
--- The dependencies we want to add is different for each 'SetupScriptStyle'.
---
--- Note that adding default deps means these deps are actually /added/ to the
--- packages that we get out of the solver in the 'SolverInstallPlan'. Making
--- implicit setup deps explicit is a problem in the post-solver stages because
--- we still need to distinguish the case of explicit and implicit setup deps.
--- See 'rememberImplicitSetupDeps'.
---
--- Note in addition to adding default setup deps, we also use
--- 'addSetupCabalMinVersionConstraint' (in 'planPackages') to require
--- @Cabal >= 1.20@ for Setup scripts.
-defaultSetupDeps
-  :: Compiler
-  -> Platform
-  -> PD.PackageDescription
-  -> Maybe [Dependency]
-defaultSetupDeps compiler platform pkg =
-  case packageSetupScriptStyle pkg of
-    -- For packages with build type custom that do not specify explicit
-    -- setup dependencies, we add a dependency on Cabal and a number
-    -- of other packages.
-    SetupCustomImplicitDeps ->
-      Just $
-        [ Dependency depPkgname anyVersion mainLibSet
-        | depPkgname <- legacyCustomSetupPkgs compiler platform
-        ]
-          ++ [ Dependency cabalPkgname cabalConstraint mainLibSet
-             | packageName pkg /= cabalPkgname
-             ]
-      where
-        -- The Cabal dep is slightly special:
-        -- \* We omit the dep for the Cabal lib itself, since it bootstraps.
-        -- \* We constrain it to be < 1.25
-        --
-        -- Note: we also add a global constraint to require Cabal >= 1.20
-        -- for Setup scripts (see use addSetupCabalMinVersionConstraint).
-        --
-        cabalConstraint =
-          orLaterVersion (csvToVersion (PD.specVersion pkg))
-            `intersectVersionRanges` earlierVersion cabalCompatMaxVer
-        -- The idea here is that at some point we will make significant
-        -- breaking changes to the Cabal API that Setup.hs scripts use.
-        -- So for old custom Setup scripts that do not specify explicit
-        -- constraints, we constrain them to use a compatible Cabal version.
-        cabalCompatMaxVer = mkVersion [1, 25]
-
-    -- For other build types (like Simple) if we still need to compile an
-    -- external Setup.hs, it'll be one of the simple ones that only depends
-    -- on Cabal and base.
-    SetupNonCustomExternalLib ->
-      Just
-        [ Dependency cabalPkgname cabalConstraint mainLibSet
-        , Dependency basePkgname anyVersion mainLibSet
-        ]
-      where
-        cabalConstraint = orLaterVersion (csvToVersion (PD.specVersion pkg))
-
-    -- The internal setup wrapper method has no deps at all.
-    SetupNonCustomInternalLib -> Just []
-    -- This case gets ruled out by the caller, planPackages, see the note
-    -- above in the SetupCustomImplicitDeps case.
-    SetupCustomExplicitDeps ->
-      error $
-        "defaultSetupDeps: called for a package with explicit "
-          ++ "setup deps: "
-          ++ prettyShow (packageId pkg)
-  where
-    -- we require one less
-    --
-    -- This maps e.g. CabalSpecV3_0 to mkVersion [2,5]
-    csvToVersion :: CabalSpecVersion -> Version
-    csvToVersion = mkVersion . cabalSpecMinimumLibraryVersion
-
--- | Work out which version of the Cabal we will be using to talk to the
--- Setup.hs interface for this package.
---
--- This depends somewhat on the 'SetupScriptStyle' but most cases are a result
--- of what the solver picked for us, based on the explicit setup deps or the
--- ones added implicitly by 'defaultSetupDeps'.
-packageSetupScriptSpecVersion
-  :: SetupScriptStyle
-  -> PD.PackageDescription
-  -> Graph.Graph NonSetupLibDepSolverPlanPackage
-  -> ComponentDeps [SolverId]
-  -> Version
--- We're going to be using the internal Cabal library, so the spec version of
--- that is simply the version of the Cabal library that cabal-install has been
--- built with.
-packageSetupScriptSpecVersion SetupNonCustomInternalLib _ _ _ =
-  cabalVersion
--- If we happen to be building the Cabal lib itself then because that
--- bootstraps itself then we use the version of the lib we're building.
-packageSetupScriptSpecVersion SetupCustomImplicitDeps pkg _ _
-  | packageName pkg == cabalPkgname =
-      packageVersion pkg
--- In all other cases we have a look at what version of the Cabal lib the
--- solver picked. Or if it didn't depend on Cabal at all (which is very rare)
--- then we look at the .cabal file to see what spec version it declares.
-packageSetupScriptSpecVersion _ pkg libDepGraph deps =
-  case find ((cabalPkgname ==) . packageName) setupLibDeps of
-    Just dep -> packageVersion dep
-    Nothing -> mkVersion (cabalSpecMinimumLibraryVersion (PD.specVersion pkg))
-  where
-    setupLibDeps =
-      map packageId $
-        fromMaybe [] $
-          Graph.closure libDepGraph (CD.setupDeps deps)
-
-cabalPkgname, basePkgname :: PackageName
-cabalPkgname = mkPackageName "Cabal"
-basePkgname = mkPackageName "base"
-
-legacyCustomSetupPkgs :: Compiler -> Platform -> [PackageName]
-legacyCustomSetupPkgs compiler (Platform _ os) =
-  map mkPackageName $
-    [ "array"
-    , "base"
-    , "binary"
-    , "bytestring"
-    , "containers"
-    , "deepseq"
-    , "directory"
-    , "filepath"
-    , "pretty"
-    , "process"
-    , "time"
-    , "transformers"
-    ]
-      ++ ["Win32" | os == Windows]
-      ++ ["unix" | os /= Windows]
-      ++ ["ghc-prim" | isGHC]
-      ++ ["template-haskell" | isGHC]
-      ++ ["old-time" | notGHC710]
-  where
-    isGHC = compilerCompatFlavor GHC compiler
-    notGHC710 = case compilerCompatVersion GHC compiler of
-      Nothing -> False
-      Just v -> v <= mkVersion [7, 9]
 
 -- The other aspects of our Setup.hs policy lives here where we decide on
 -- the 'SetupScriptOptions'.
