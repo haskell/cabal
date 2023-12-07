@@ -3,7 +3,7 @@
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
--- module HackageBenchmark (
+module HackageBenchmark (
     hackageBenchmarkMain
 
 -- Exposed for testing:
