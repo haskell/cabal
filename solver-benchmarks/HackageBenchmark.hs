@@ -32,7 +32,7 @@ import Statistics.Test.MannWhitneyU ( PositionTest(..), TestResult(..)
 import Statistics.Types (PValue, mkPValue)
 import System.Directory (getTemporaryDirectory, createDirectoryIfMissing)
 import System.Environment (getEnvironment)
-import System.Exit (ExitCode(..), die, exitWith, exitFailure)
+import System.Exit (ExitCode(..), exitWith, exitFailure)
 import System.FilePath ((</>))
 import System.IO ( BufferMode(LineBuffering), hPutStrLn, hSetBuffering, stderr
                  , stdout)
@@ -76,7 +76,6 @@ data CabalResult
 
 hackageBenchmarkMain :: IO ()
 hackageBenchmarkMain = do
-  die "Hackage benchmark failed"
   hSetBuffering stdout LineBuffering
   args@Args {..} <- execParser parserInfo
   checkArgs args
