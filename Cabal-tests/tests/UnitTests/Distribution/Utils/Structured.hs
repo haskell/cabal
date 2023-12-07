@@ -10,10 +10,8 @@ import Test.Tasty.HUnit              (testCase, (@?=), Assertion)
 import Distribution.SPDX.License       (License)
 import Distribution.Types.VersionRange (VersionRange)
 
-#if MIN_VERSION_base(4,7,0)
 import Distribution.Types.GenericPackageDescription (GenericPackageDescription)
 import Distribution.Types.LocalBuildInfo            (LocalBuildInfo)
-#endif
 
 import UnitTests.Orphans ()
 
@@ -25,21 +23,25 @@ tests = testGroup "Distribution.Utils.Structured"
     , testCase "SPDX.License" $
       md5Check (Proxy :: Proxy License) 0xd3d4a09f517f9f75bc3d16370d5a853a
     -- The difference is in encoding of newtypes
-#if MIN_VERSION_base(4,19,0)
-    , testCase "GenericPackageDescription" $
-      md5Check (Proxy :: Proxy GenericPackageDescription) 0xf5fdb32b43aca790192f44d9ecaa9689
-    , testCase "LocalBuildInfo" $
-      md5Check (Proxy :: Proxy LocalBuildInfo) 0x205fbe2649bc5e488bce50c07a71cadb
-#elif MIN_VERSION_base(4,7,0)
-    , testCase "GenericPackageDescription" $
-      md5Check (Proxy :: Proxy GenericPackageDescription) 0xb287a6f04e34ef990cdd15bc6cb01c76
-    , testCase "LocalBuildInfo" $
-      md5Check (Proxy :: Proxy LocalBuildInfo) 0x26e91a71ebd19d4d6ce37f798ede249a
-#endif
+    , testCase "GenericPackageDescription" $ md5CheckGenericPackageDescription (Proxy :: Proxy GenericPackageDescription)
+    , testCase "LocalBuildInfo" $ md5CheckLocalBuildInfo (Proxy :: Proxy LocalBuildInfo)
     ]
-
--- -------------------------------------------------------------------- --
--- utils
 
 md5Check :: Structured a => Proxy a -> Integer -> Assertion
 md5Check proxy md5Int = structureHash proxy @?= md5FromInteger md5Int
+
+md5CheckGenericPackageDescription :: Proxy GenericPackageDescription -> Assertion
+md5CheckGenericPackageDescription proxy = md5Check proxy
+#if MIN_VERSION_base(4,19,0)
+    0xf5fdb32b43aca790192f44d9ecaa9689
+#else
+    0xb287a6f04e34ef990cdd15bc6cb01c76
+#endif
+
+md5CheckLocalBuildInfo :: Proxy LocalBuildInfo -> Assertion
+md5CheckLocalBuildInfo proxy = md5Check proxy
+#if MIN_VERSION_base(4,19,0)
+    0x205fbe2649bc5e488bce50c07a71cadb
+#else
+    0x26e91a71ebd19d4d6ce37f798ede249a
+#endif
