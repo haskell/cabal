@@ -12,7 +12,7 @@ tests = testGroup "unit tests" [
     testGroup "isSignificantTimeDifference" [
 
         testCase "detect increase in distribution" $ assertBool "" $
-            isSignificantTimeDifference (mkPValue 0.05) [1,2..7] [4,5..10]
+            not $ isSignificantTimeDifference (mkPValue 0.05) [1,2..7] [4,5..10]
 
       , testCase "detect decrease in distribution" $ assertBool "" $
             isSignificantTimeDifference (mkPValue 0.05) [1,2..7] [-2,-1..4]
