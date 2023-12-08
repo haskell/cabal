@@ -1193,9 +1193,10 @@ checkFields pkg =
     unknownCompilers  = [ name | (OtherCompiler name, _) <- testedWith pkg ]
     unknownLanguages  = [ name | bi <- allBuildInfo pkg
                                , UnknownLanguage name <- allLanguages bi ]
-    unknownExtensions = [ name | bi <- allBuildInfo pkg
-                               , UnknownExtension name <- allExtensions bi
-                               , name `notElem` map prettyShow knownLanguages ]
+    unknownExtensions = filter (/= "TypeAbstractions")
+                          [ name | bi <- allBuildInfo pkg
+                                 , UnknownExtension name <- allExtensions bi
+                                 , name `notElem` map prettyShow knownLanguages ]
     ourDeprecatedExtensions = nub $ catMaybes
       [ find ((==ext) . fst) deprecatedExtensions
       | bi <- allBuildInfo pkg
