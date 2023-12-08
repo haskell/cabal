@@ -646,7 +646,7 @@ instance Arbitrary ProjectConfigShared where
 
 projectConfigConstraintSource :: ConstraintSource
 projectConfigConstraintSource =
-  ConstraintSourceProjectConfig "unused"
+  ConstraintSourceProjectConfig $ ProjectConfigImport 0 "unused"
 
 instance Arbitrary ProjectConfigProvenance where
   arbitrary = elements [Implicit, Explicit "cabal.project"]

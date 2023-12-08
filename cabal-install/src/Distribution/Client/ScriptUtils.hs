@@ -506,7 +506,7 @@ readProjectBlockFromScript verbosity httpTransport DistDirLayout{distDownloadSrc
     Left _ -> return mempty
     Right x ->
       reportParseResult verbosity "script" scriptName
-        =<< parseProjectSkeleton distDownloadSrcDirectory httpTransport verbosity [] scriptName x
+        =<< parseProjectSkeleton distDownloadSrcDirectory httpTransport verbosity [] scriptName (0, x)
 
 -- | Extract the first encountered script metadata block started end
 -- terminated by the tokens
