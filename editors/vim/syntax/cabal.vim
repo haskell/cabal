@@ -267,6 +267,7 @@ syn keyword cabalExtension contained
   \ TraditionalRecordSyntax
   \ TransformListComp
   \ TupleSections
+  \ TypeAbstractions
   \ TypeApplications
   \ TypeData
   \ TypeFamilies
@@ -405,6 +406,7 @@ syn keyword cabalExtension contained
   \ NoTraditionalRecordSyntax
   \ NoTransformListComp
   \ NoTupleSections
+  \ NoTypeAbstractions
   \ NoTypeApplications
   \ NoTypeFamilies
   \ NoTypeFamilyDependencies
