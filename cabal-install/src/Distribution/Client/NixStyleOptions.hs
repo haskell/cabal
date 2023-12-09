@@ -55,11 +55,12 @@ nixStyleOptions commandOptions showOrParseArgs =
     configFlags
     set1
     -- Note: [Hidden Flags]
-    -- hide "constraint", "dependency", "promised-dependency" and
-    -- "exact-configuration" from the configure options.
+    -- We reuse the configure options from v1 commands which on their turn
+    -- reuse the ones from Cabal) but we hide some of them in v2 commands.
     ( filter
         ( ( `notElem`
-              [ "constraint"
+              [ "cabal-file"
+              , "constraint"
               , "dependency"
               , "promised-dependency"
               , "exact-configuration"

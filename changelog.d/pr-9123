@@ -1,0 +1,8 @@
+synopsis: Remove --cabal-file flags from v2 commands
+packages: cabal-install
+prs: #9123
+issues: #8395 #7225 #6880
+description: {
+  The --cabal-file flag was never meant for public use but only for testing. To
+  avoid confusing the users any further we removed the flag from v2 commands.
+}
