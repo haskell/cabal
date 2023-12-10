@@ -168,8 +168,8 @@ reUnqualComponent = RENamed "unqual-name" $
         -- currently the parser accepts "csAlphaNum `difference` "0123456789"
         -- which is larger set than CS.alpha
         --
-        -- Hackage rejects non ANSI names, so it's not so relevant.
-        <> RECharSet CS.alpha
+        -- Hackage, however, rejects non ANSI names.
+        <> RECharSet csAlphaNumNotDigit
         <> REMunch reEps (RECharSet csAlphaNum)
 
 reDot :: GrammarRegex a
@@ -193,6 +193,9 @@ csAlpha = CS.alpha
 
 csAlphaNum :: CS.CharSet
 csAlphaNum = CS.alphanum
+
+csAlphaNumNotDigit :: CS.CharSet
+csAlphaNumNotDigit = CS.alphanumNotDigit
 
 csUpper :: CS.CharSet
 csUpper = CS.upper

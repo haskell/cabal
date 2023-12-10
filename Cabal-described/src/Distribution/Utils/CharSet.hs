@@ -27,16 +27,17 @@ module Distribution.Utils.CharSet (
     -- * Special lists
     alpha,
     alphanum,
+    alphanumNotDigit,
     upper,
     ) where
 
-import Data.Char                     (chr, isAlpha, isAlphaNum, isUpper, ord)
+import Data.Char                     (chr, isAlpha, isAlphaNum, isDigit, isUpper, ord)
 import Data.List                     (foldl', sortBy)
 import Data.Monoid                   (Monoid (..))
 import Data.String                   (IsString (..))
 import Distribution.Compat.Semigroup (Semigroup (..))
 import Prelude
-       (Bool (..), Bounded (..), Char, Enum (..), Eq (..), Int, Maybe (..), Num (..), Ord (..), Show (..), String, concatMap, flip, fst, otherwise, showParen,
+       (Bool (..), Bounded (..), Char, Enum (..), Eq (..), Int, Maybe (..), Num (..), Ord (..), Show (..), String, (&&), concatMap, flip, fst, not, otherwise, showParen,
        showString, uncurry, ($), (.))
 
 #if MIN_VERSION_containers(0,5,0)
@@ -231,8 +232,14 @@ alpha = foldl' (flip insert) empty [ c | c <- [ minBound .. maxBound ], isAlpha 
 
 -- | Note: this set varies depending on @base@ version.
 --
+alphanumNotDigit :: CharSet
+alphanumNotDigit = foldl' (flip insert) empty [ c | c <- [ minBound .. maxBound ], isAlphaNum c && not (isDigit c) ]
+{-# NOINLINE alphanumNotDigit #-}
+
+-- | Note: this set varies depending on @base@ version.
+--
 alphanum :: CharSet
-alphanum = foldl' (flip insert) empty [ c | c <- [ minBound .. maxBound ], isAlphaNum c ]
+alphanum = foldl' (flip insert) alphanumNotDigit ['0' .. '9' ]
 {-# NOINLINE alphanum #-}
 
 -- | Note: this set varies depending on @base@ version.

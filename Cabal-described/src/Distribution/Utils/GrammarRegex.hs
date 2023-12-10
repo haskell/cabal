@@ -194,9 +194,10 @@ mathtt d = "\\mathtt{" <<>> d <<>> "}"
 
 charsetDoc :: CS.CharSet -> PP.Doc
 charsetDoc acs
-    | acs == CS.alpha    = terminalDoc "alpha"
-    | acs == CS.alphanum = terminalDoc "alpha-num"
-    | acs == CS.upper    = terminalDoc "upper"
+    | acs == CS.alpha            = terminalDoc "alpha"
+    | acs == CS.alphanum         = terminalDoc "alpha-num"
+    | acs == CS.alphanumNotDigit = terminalDoc "alpha-num-not-digit"
+    | acs == CS.upper            = terminalDoc "upper"
 charsetDoc acs = case CS.toIntervalList acs of
     []               -> "\\emptyset"
     [(x,y)] | x == y -> inquotes $ mathtt $ charDoc x
