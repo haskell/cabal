@@ -25,7 +25,6 @@ module Distribution.Simple.BuildTarget
   , BuildTarget (..)
   , showBuildTarget
   , QualLevel (..)
-  , buildTargetComponentName
 
     -- * Parsing user build targets
   , UserBuildTarget
@@ -62,19 +61,9 @@ import Distribution.Utils.Path
 import Distribution.Verbosity
 
 import Control.Arrow ((&&&))
-import Control.Monad (msum)
-import Data.List (groupBy, stripPrefix)
+import Data.List (groupBy)
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as Map
-import System.Directory (doesDirectoryExist, doesFileExist)
-import System.FilePath as FilePath
-  ( dropExtension
-  , hasTrailingPathSeparator
-  , joinPath
-  , normalise
-  , splitDirectories
-  , splitPath
-  )
 
 -- | Take a list of 'String' build targets, and parse and validate them
 -- into actual 'TargetInfo's to be built/registered/whatever.
@@ -91,27 +80,15 @@ readTargetInfos verbosity pkg_descr lbi args = do
 
 -- | Various ways that a user may specify a build target.
 data UserBuildTarget
-  = -- | A target specified by a single name. This could be a component
-    -- module or file.
+  = -- | A target specified by a component name.
     --
     -- > cabal build foo
-    -- > cabal build Data.Foo
-    -- > cabal build Data/Foo.hs  Data/Foo.hsc
     UserBuildTargetSingle String
-  | -- | A target specified by a qualifier and name. This could be a component
-    -- name qualified by the component namespace kind, or a module or file
-    -- qualified by the component name.
+  | -- | A target specified by a component kind and a component name.
     --
-    -- > cabal build lib:foo exe:foo
-    -- > cabal build foo:Data.Foo
-    -- > cabal build foo:Data/Foo.hs
+    -- > cabal build lib:foo
+    -- > cabal build test:foo-test
     UserBuildTargetDouble String String
-  | -- | A fully qualified target, either a module or file qualified by a
-    -- component name with the component namespace kind.
-    --
-    -- > cabal build lib:foo:Data/Foo.hs exe:foo:Data/Foo.hs
-    -- > cabal build lib:foo:Data.Foo exe:foo:Data.Foo
-    UserBuildTargetTriple String String String
   deriving (Show, Eq, Ord)
 
 -- ------------------------------------------------------------
@@ -124,18 +101,9 @@ data UserBuildTarget
 data BuildTarget
   = -- | A specific component
     BuildTargetComponent ComponentName
-  | -- | A specific module within a specific component.
-    BuildTargetModule ComponentName ModuleName
-  | -- | A specific file within a specific component.
-    BuildTargetFile ComponentName FilePath
   deriving (Eq, Show, Generic)
 
 instance Binary BuildTarget
-
-buildTargetComponentName :: BuildTarget -> ComponentName
-buildTargetComponentName (BuildTargetComponent cn) = cn
-buildTargetComponentName (BuildTargetModule cn _) = cn
-buildTargetComponentName (BuildTargetFile cn _) = cn
 
 -- | Read a list of user-supplied build target strings and resolve them to
 -- 'BuildTarget's according to a 'PackageDescription'. If there are problems
@@ -146,28 +114,10 @@ readBuildTargets verbosity pkg targetStrs = do
   let (uproblems, utargets) = readUserBuildTargets targetStrs
   reportUserBuildTargetProblems verbosity uproblems
 
-  utargets' <- traverse checkTargetExistsAsFile utargets
-
-  let (bproblems, btargets) = resolveBuildTargets pkg utargets'
+  let (bproblems, btargets) = resolveBuildTargets pkg utargets
   reportBuildTargetProblems verbosity bproblems
 
   return btargets
-
-checkTargetExistsAsFile :: UserBuildTarget -> IO (UserBuildTarget, Bool)
-checkTargetExistsAsFile t = do
-  fexists <- existsAsFile (fileComponentOfTarget t)
-  return (t, fexists)
-  where
-    existsAsFile f = do
-      exists <- doesFileExist f
-      case splitPath f of
-        (d : _) | hasTrailingPathSeparator d -> doesDirectoryExist d
-        (d : _ : _) | not exists -> doesDirectoryExist d
-        _ -> return exists
-
-    fileComponentOfTarget (UserBuildTargetSingle s1) = s1
-    fileComponentOfTarget (UserBuildTargetDouble _ s2) = s2
-    fileComponentOfTarget (UserBuildTargetTriple _ _ s3) = s3
 
 -- ------------------------------------------------------------
 
@@ -190,8 +140,8 @@ readUserBuildTargets = partitionEithers . map readUserBuildTarget
 -- >>> readUserBuildTarget "lib:comp"
 -- Right (UserBuildTargetDouble "lib" "comp")
 --
--- >>> readUserBuildTarget "pkg:lib:comp"
--- Right (UserBuildTargetTriple "pkg" "lib" "comp")
+-- >>> readUserBuildTarget "else:comp"
+-- Right (UserBuildTargetDouble "else" "comp")
 --
 -- >>> readUserBuildTarget "\"comp\""
 -- Right (UserBuildTargetSingle "comp")
@@ -199,14 +149,8 @@ readUserBuildTargets = partitionEithers . map readUserBuildTarget
 -- >>> readUserBuildTarget "lib:\"comp\""
 -- Right (UserBuildTargetDouble "lib" "comp")
 --
--- >>> readUserBuildTarget "pkg:lib:\"comp\""
--- Right (UserBuildTargetTriple "pkg" "lib" "comp")
---
--- >>> readUserBuildTarget "pkg:lib:comp:more"
--- Left (UserBuildTargetUnrecognised "pkg:lib:comp:more")
---
--- >>> readUserBuildTarget "pkg:\"lib\":comp"
--- Left (UserBuildTargetUnrecognised "pkg:\"lib\":comp")
+-- >>> readUserBuildTarget "one:two:three"
+-- Left (UserBuildTargetUnrecognised "one:two:three")
 readUserBuildTarget
   :: String
   -> Either
@@ -223,18 +167,15 @@ readUserBuildTarget targetstr =
       ts <- tokens
       return $ case ts of
         (a, Nothing) -> UserBuildTargetSingle a
-        (a, Just (b, Nothing)) -> UserBuildTargetDouble a b
-        (a, Just (b, Just c)) -> UserBuildTargetTriple a b c
+        (a, Just b) -> UserBuildTargetDouble a b
 
-    tokens :: CabalParsing m => m (String, Maybe (String, Maybe String))
+    tokens :: CabalParsing m => m (String, Maybe String)
     tokens =
-      (\s -> (s, Nothing)) <$> parsecHaskellString
-        <|> (,) <$> token <*> P.optional (P.char ':' *> tokens2)
-
-    tokens2 :: CabalParsing m => m (String, Maybe String)
-    tokens2 =
-      (\s -> (s, Nothing)) <$> parsecHaskellString
-        <|> (,) <$> token <*> P.optional (P.char ':' *> (parsecHaskellString <|> token))
+      (\s -> (s, Nothing))
+        <$> parsecHaskellString
+        <|> (,)
+          <$> token
+          <*> P.optional (P.char ':' *> (parsecHaskellString <|> token))
 
     token :: CabalParsing m => m String
     token = P.munch1 (\x -> not (isSpace x) && x /= ':')
@@ -256,22 +197,12 @@ showUserBuildTarget = intercalate ":" . getComponents
   where
     getComponents (UserBuildTargetSingle s1) = [s1]
     getComponents (UserBuildTargetDouble s1 s2) = [s1, s2]
-    getComponents (UserBuildTargetTriple s1 s2 s3) = [s1, s2, s3]
-
--- | Unless you use 'QL1', this function is PARTIAL;
--- use 'showBuildTarget' instead.
-showBuildTarget' :: QualLevel -> PackageId -> BuildTarget -> String
-showBuildTarget' ql pkgid bt =
-  showUserBuildTarget (renderBuildTarget ql bt pkgid)
 
 -- | Unambiguously render a 'BuildTarget', so that it can
 -- be parsed in all situations.
 showBuildTarget :: PackageId -> BuildTarget -> String
 showBuildTarget pkgid t =
-  showBuildTarget' (qlBuildTarget t) pkgid t
-  where
-    qlBuildTarget BuildTargetComponent{} = QL2
-    qlBuildTarget _ = QL3
+  showUserBuildTarget (renderBuildTarget QL2 t pkgid)
 
 -- ------------------------------------------------------------
 
@@ -297,19 +228,18 @@ Just ex_pkgid = simpleParse "thelib"
 -- refer to.
 resolveBuildTargets
   :: PackageDescription
-  -> [(UserBuildTarget, Bool)]
+  -> [UserBuildTarget]
   -> ([BuildTargetProblem], [BuildTarget])
 resolveBuildTargets pkg =
   partitionEithers
-    . map (uncurry (resolveBuildTarget pkg))
+    . map (resolveBuildTarget pkg)
 
 resolveBuildTarget
   :: PackageDescription
   -> UserBuildTarget
-  -> Bool
   -> Either BuildTargetProblem BuildTarget
-resolveBuildTarget pkg userTarget fexists =
-  case findMatch (matchBuildTarget pkg userTarget fexists) of
+resolveBuildTarget pkg userTarget =
+  case findMatch (matchBuildTarget pkg userTarget) of
     Unambiguous target -> Right target
     Ambiguous targets -> Left (BuildTargetAmbiguous userTarget targets')
       where
@@ -355,7 +285,6 @@ disambiguateBuildTargets pkgid original =
 
     userTargetQualLevel (UserBuildTargetSingle _) = QL1
     userTargetQualLevel (UserBuildTargetDouble _ _) = QL2
-    userTargetQualLevel (UserBuildTargetTriple _ _ _) = QL3
 
     step
       :: QualLevel
@@ -368,7 +297,7 @@ disambiguateBuildTargets pkgid original =
         . sortBy (comparing fst)
         . map (\t -> (renderBuildTarget ql t pkgid, t))
 
-data QualLevel = QL1 | QL2 | QL3
+data QualLevel = QL1 | QL2
   deriving (Enum, Show)
 
 renderBuildTarget :: QualLevel -> BuildTarget -> PackageId -> UserBuildTarget
@@ -376,19 +305,10 @@ renderBuildTarget ql target pkgid =
   case ql of
     QL1 -> UserBuildTargetSingle s1 where s1 = single target
     QL2 -> UserBuildTargetDouble s1 s2 where (s1, s2) = double target
-    QL3 -> UserBuildTargetTriple s1 s2 s3 where (s1, s2, s3) = triple target
   where
     single (BuildTargetComponent cn) = dispCName cn
-    single (BuildTargetModule _ m) = prettyShow m
-    single (BuildTargetFile _ f) = f
 
     double (BuildTargetComponent cn) = (dispKind cn, dispCName cn)
-    double (BuildTargetModule cn m) = (dispCName cn, prettyShow m)
-    double (BuildTargetFile cn f) = (dispCName cn, f)
-
-    triple (BuildTargetComponent _) = error "triple BuildTargetComponent"
-    triple (BuildTargetModule cn m) = (dispKind cn, dispCName cn, prettyShow m)
-    triple (BuildTargetFile cn f) = (dispKind cn, dispCName cn, f)
 
     dispCName = componentStringName pkgid
     dispKind = showComponentKindShort . componentKind
@@ -423,8 +343,6 @@ reportBuildTargetProblems verbosity problems = do
             targets
   where
     showBuildTargetKind (BuildTargetComponent _) = "component"
-    showBuildTargetKind (BuildTargetModule _ _) = "module"
-    showBuildTargetKind (BuildTargetFile _ _) = "file"
 
 ----------------------------------
 -- Top level BuildTarget matcher
@@ -433,46 +351,15 @@ reportBuildTargetProblems verbosity problems = do
 matchBuildTarget
   :: PackageDescription
   -> UserBuildTarget
-  -> Bool
   -> Match BuildTarget
-matchBuildTarget pkg = \utarget fexists ->
+matchBuildTarget pkg utarget =
   case utarget of
     UserBuildTargetSingle str1 ->
-      matchBuildTarget1 cinfo str1 fexists
+      matchComponent1 cinfo str1
     UserBuildTargetDouble str1 str2 ->
-      matchBuildTarget2 cinfo str1 str2 fexists
-    UserBuildTargetTriple str1 str2 str3 ->
-      matchBuildTarget3 cinfo str1 str2 str3 fexists
+      matchComponent2 cinfo str1 str2
   where
     cinfo = pkgComponentInfo pkg
-
-matchBuildTarget1 :: [ComponentInfo] -> String -> Bool -> Match BuildTarget
-matchBuildTarget1 cinfo str1 fexists =
-  matchComponent1 cinfo str1
-    `matchPlusShadowing` matchModule1 cinfo str1
-    `matchPlusShadowing` matchFile1 cinfo str1 fexists
-
-matchBuildTarget2
-  :: [ComponentInfo]
-  -> String
-  -> String
-  -> Bool
-  -> Match BuildTarget
-matchBuildTarget2 cinfo str1 str2 fexists =
-  matchComponent2 cinfo str1 str2
-    `matchPlusShadowing` matchModule2 cinfo str1 str2
-    `matchPlusShadowing` matchFile2 cinfo str1 str2 fexists
-
-matchBuildTarget3
-  :: [ComponentInfo]
-  -> String
-  -> String
-  -> String
-  -> Bool
-  -> Match BuildTarget
-matchBuildTarget3 cinfo str1 str2 str3 fexists =
-  matchModule3 cinfo str1 str2 str3
-    `matchPlusShadowing` matchFile3 cinfo str1 str2 str3 fexists
 
 data ComponentInfo = ComponentInfo
   { cinfoName :: ComponentName
@@ -628,11 +515,7 @@ guardComponentName s
   | otherwise = matchErrorExpected "component name" s
   where
     validComponentChar c =
-      isAlphaNum c
-        || c == '.'
-        || c == '_'
-        || c == '-'
-        || c == '\''
+      isAlphaNum c || c `elem` "._-'"
 
 matchComponentName :: [ComponentInfo] -> String -> Match ComponentInfo
 matchComponentName cs str =
@@ -655,180 +538,6 @@ matchComponentKindAndName cs ckind str =
         (\(ck, cn) -> (ck, caseFold cn))
         [((cinfoKind c, cinfoStrName c), c) | c <- cs]
         (ckind, str)
-
-------------------------------
--- Matching module targets
---
-
-matchModule1 :: [ComponentInfo] -> String -> Match BuildTarget
-matchModule1 cs = \str1 -> do
-  guardModuleName str1
-  nubMatchErrors $ do
-    c <- tryEach cs
-    let ms = cinfoModules c
-    m <- matchModuleName ms str1
-    return (BuildTargetModule (cinfoName c) m)
-
-matchModule2 :: [ComponentInfo] -> String -> String -> Match BuildTarget
-matchModule2 cs = \str1 str2 -> do
-  guardComponentName str1
-  guardModuleName str2
-  c <- matchComponentName cs str1
-  let ms = cinfoModules c
-  m <- matchModuleName ms str2
-  return (BuildTargetModule (cinfoName c) m)
-
-matchModule3
-  :: [ComponentInfo]
-  -> String
-  -> String
-  -> String
-  -> Match BuildTarget
-matchModule3 cs str1 str2 str3 = do
-  ckind <- matchComponentKind str1
-  guardComponentName str2
-  c <- matchComponentKindAndName cs ckind str2
-  guardModuleName str3
-  let ms = cinfoModules c
-  m <- matchModuleName ms str3
-  return (BuildTargetModule (cinfoName c) m)
-
--- utils:
-
-guardModuleName :: String -> Match ()
-guardModuleName s
-  | all validModuleChar s
-      && not (null s) =
-      increaseConfidence
-  | otherwise = matchErrorExpected "module name" s
-  where
-    validModuleChar c = isAlphaNum c || c == '.' || c == '_' || c == '\''
-
-matchModuleName :: [ModuleName] -> String -> Match ModuleName
-matchModuleName ms str =
-  orNoSuchThing "module" str $
-    increaseConfidenceFor $
-      matchInexactly
-        caseFold
-        [ (prettyShow m, m)
-        | m <- ms
-        ]
-        str
-
-------------------------------
--- Matching file targets
---
-
-matchFile1 :: [ComponentInfo] -> String -> Bool -> Match BuildTarget
-matchFile1 cs str1 exists =
-  nubMatchErrors $ do
-    c <- tryEach cs
-    filepath <- matchComponentFile c str1 exists
-    return (BuildTargetFile (cinfoName c) filepath)
-
-matchFile2 :: [ComponentInfo] -> String -> String -> Bool -> Match BuildTarget
-matchFile2 cs str1 str2 exists = do
-  guardComponentName str1
-  c <- matchComponentName cs str1
-  filepath <- matchComponentFile c str2 exists
-  return (BuildTargetFile (cinfoName c) filepath)
-
-matchFile3
-  :: [ComponentInfo]
-  -> String
-  -> String
-  -> String
-  -> Bool
-  -> Match BuildTarget
-matchFile3 cs str1 str2 str3 exists = do
-  ckind <- matchComponentKind str1
-  guardComponentName str2
-  c <- matchComponentKindAndName cs ckind str2
-  filepath <- matchComponentFile c str3 exists
-  return (BuildTargetFile (cinfoName c) filepath)
-
-matchComponentFile :: ComponentInfo -> String -> Bool -> Match FilePath
-matchComponentFile c str fexists =
-  expecting "file" str $
-    matchPlus
-      (matchFileExists str fexists)
-      ( matchPlusShadowing
-          ( msum
-              [ matchModuleFileRooted dirs ms str
-              , matchOtherFileRooted dirs hsFiles str
-              ]
-          )
-          ( msum
-              [ matchModuleFileUnrooted ms str
-              , matchOtherFileUnrooted hsFiles str
-              , matchOtherFileUnrooted cFiles str
-              , matchOtherFileUnrooted jsFiles str
-              ]
-          )
-      )
-  where
-    dirs = cinfoSrcDirs c
-    ms = cinfoModules c
-    hsFiles = cinfoHsFiles c
-    cFiles = cinfoCFiles c
-    jsFiles = cinfoJsFiles c
-
--- utils
-
-matchFileExists :: FilePath -> Bool -> Match a
-matchFileExists _ False = mzero
-matchFileExists fname True = do
-  increaseConfidence
-  matchErrorNoSuch "file" fname
-
-matchModuleFileUnrooted :: [ModuleName] -> String -> Match FilePath
-matchModuleFileUnrooted ms str = do
-  let filepath = normalise str
-  _ <- matchModuleFileStem ms filepath
-  return filepath
-
-matchModuleFileRooted :: [FilePath] -> [ModuleName] -> String -> Match FilePath
-matchModuleFileRooted dirs ms str = nubMatches $ do
-  let filepath = normalise str
-  filepath' <- matchDirectoryPrefix dirs filepath
-  _ <- matchModuleFileStem ms filepath'
-  return filepath
-
-matchModuleFileStem :: [ModuleName] -> FilePath -> Match ModuleName
-matchModuleFileStem ms =
-  increaseConfidenceFor
-    . matchInexactly
-      caseFold
-      [(toFilePath m, m) | m <- ms]
-    . dropExtension
-
-matchOtherFileRooted :: [FilePath] -> [FilePath] -> FilePath -> Match FilePath
-matchOtherFileRooted dirs fs str = do
-  let filepath = normalise str
-  filepath' <- matchDirectoryPrefix dirs filepath
-  _ <- matchFile fs filepath'
-  return filepath
-
-matchOtherFileUnrooted :: [FilePath] -> FilePath -> Match FilePath
-matchOtherFileUnrooted fs str = do
-  let filepath = normalise str
-  _ <- matchFile fs filepath
-  return filepath
-
-matchFile :: [FilePath] -> FilePath -> Match FilePath
-matchFile fs =
-  increaseConfidenceFor
-    . matchInexactly caseFold [(f, f) | f <- fs]
-
-matchDirectoryPrefix :: [FilePath] -> FilePath -> Match FilePath
-matchDirectoryPrefix dirs filepath =
-  exactMatches $
-    catMaybes
-      [stripDirectory (normalise dir) filepath | dir <- dirs]
-  where
-    stripDirectory :: FilePath -> FilePath -> Maybe FilePath
-    stripDirectory dir fp =
-      joinPath `fmap` stripPrefix (splitDirectories dir) (splitDirectories fp)
 
 ------------------------------
 -- Matching monad
@@ -883,13 +592,6 @@ matchPlus a@(NoMatch d1 ms) b@(NoMatch d2 ms')
   | d1 < d2 = b
   | otherwise = NoMatch d1 (ms ++ ms')
 
--- | Combine two matchers. This is similar to 'ambiguousWith' with the
--- difference that an exact match from the left matcher shadows any exact
--- match on the right. Inexact matches are still collected however.
-matchPlusShadowing :: Match a -> Match a -> Match a
-matchPlusShadowing a@(ExactMatch _ _) (ExactMatch _ _) = a
-matchPlusShadowing a b = matchPlus a b
-
 instance Functor Match where
   fmap _ (NoMatch d ms) = NoMatch d ms
   fmap f (ExactMatch d xs) = ExactMatch d (fmap f xs)
@@ -907,8 +609,9 @@ instance Monad Match where
     addDepth d $
       foldr matchPlus matchZero (map f xs)
   InexactMatch d xs >>= f =
-    addDepth d . forceInexact $
-      foldr matchPlus matchZero (map f xs)
+    addDepth d
+      . forceInexact
+      $ foldr matchPlus matchZero (map f xs)
 
 addDepth :: Confidence -> Match a -> Match a
 addDepth d' (NoMatch d msgs) = NoMatch (d' + d) msgs
@@ -927,10 +630,6 @@ matchErrorExpected, matchErrorNoSuch :: String -> String -> Match a
 matchErrorExpected thing got = NoMatch 0 [MatchErrorExpected thing got]
 matchErrorNoSuch thing got = NoMatch 0 [MatchErrorNoSuch thing got]
 
-expecting :: String -> String -> Match a -> Match a
-expecting thing got (NoMatch 0 _) = matchErrorExpected thing got
-expecting _ _ m = m
-
 orNoSuchThing :: String -> String -> Match a -> Match a
 orNoSuchThing thing got (NoMatch 0 _) = matchErrorNoSuch thing got
 orNoSuchThing _ _ m = m
@@ -941,25 +640,14 @@ increaseConfidence = ExactMatch 1 [()]
 increaseConfidenceFor :: Match a -> Match a
 increaseConfidenceFor m = m >>= \r -> increaseConfidence >> return r
 
-nubMatches :: Eq a => Match a -> Match a
-nubMatches (NoMatch d msgs) = NoMatch d msgs
-nubMatches (ExactMatch d xs) = ExactMatch d (nub xs)
-nubMatches (InexactMatch d xs) = InexactMatch d (nub xs)
-
-nubMatchErrors :: Match a -> Match a
-nubMatchErrors (NoMatch d msgs) = NoMatch d (nub msgs)
-nubMatchErrors (ExactMatch d xs) = ExactMatch d xs
-nubMatchErrors (InexactMatch d xs) = InexactMatch d xs
-
 -- | Lift a list of matches to an exact match.
-exactMatches, inexactMatches :: [a] -> Match a
+exactMatches :: [a] -> Match a
 exactMatches [] = matchZero
 exactMatches xs = ExactMatch 0 xs
+
+inexactMatches :: [a] -> Match a
 inexactMatches [] = matchZero
 inexactMatches xs = InexactMatch 0 xs
-
-tryEach :: [a] -> Match a
-tryEach = exactMatches
 
 ------------------------------
 -- Top level match runner
@@ -1051,10 +739,9 @@ checkBuildTargets
     let (enabled, disabled) =
           partitionEithers
             [ case componentDisabledReason enabledComps comp of
-              Nothing -> Left target'
+              Nothing -> Left cname
               Just reason -> Right (cname, reason)
-            | target <- targets
-            , let target'@(cname, _) = swizzleTarget target
+            | (BuildTargetComponent cname) <- targets
             , let comp = getComponent pkg_descr cname
             ]
 
@@ -1062,28 +749,13 @@ checkBuildTargets
       [] -> return ()
       ((cname, reason) : _) -> dieWithException verbosity $ CheckBuildTargets $ formatReason (showComponentName cname) reason
 
-    for_ [(c, t) | (c, Just t) <- enabled] $ \(c, t) ->
-      warn verbosity $
-        "Ignoring '"
-          ++ either prettyShow id t
-          ++ ". The whole "
-          ++ showComponentName c
-          ++ " will be processed. (Support for "
-          ++ "module and file targets has not been implemented yet.)"
-
     -- Pick out the actual CLBIs for each of these cnames
-    enabled' <- for enabled $ \(cname, _) -> do
+    for enabled $ \cname -> do
       case componentNameTargets' pkg_descr lbi cname of
         [] -> error "checkBuildTargets: nothing enabled"
         [target] -> return target
         _targets -> error "checkBuildTargets: multiple copies enabled"
-
-    return enabled'
     where
-      swizzleTarget (BuildTargetComponent c) = (c, Nothing)
-      swizzleTarget (BuildTargetModule c m) = (c, Just (Left m))
-      swizzleTarget (BuildTargetFile c f) = (c, Just (Right f))
-
       formatReason cn DisabledComponent =
         "Cannot process the "
           ++ cn

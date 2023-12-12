@@ -52,7 +52,7 @@ woPackageTargets :: WithoutProjectTargetSelector -> TargetSelector
 woPackageTargets (WoPackageId pid) =
   TargetPackageNamed (pkgName pid) Nothing
 woPackageTargets (WoPackageComponent pid cn) =
-  TargetComponentUnknown (pkgName pid) (Right cn) WholeComponent
+  TargetComponentUnknown (pkgName pid) (Right cn)
 woPackageTargets (WoURI _) =
   TargetAllPackages (Just ExeKind)
 

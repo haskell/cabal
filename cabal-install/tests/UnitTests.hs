@@ -14,7 +14,6 @@ import qualified UnitTests.Distribution.Client.Init
 import qualified UnitTests.Distribution.Client.InstallPlan
 import qualified UnitTests.Distribution.Client.JobControl
 import qualified UnitTests.Distribution.Client.ProjectConfig
-import qualified UnitTests.Distribution.Client.ProjectPlanning
 import qualified UnitTests.Distribution.Client.Store
 import qualified UnitTests.Distribution.Client.Tar
 import qualified UnitTests.Distribution.Client.Targets
@@ -67,9 +66,6 @@ main = do
       , testGroup
           "UnitTests.Distribution.Client.ProjectConfig"
           UnitTests.Distribution.Client.ProjectConfig.tests
-      , testGroup
-          "UnitTests.Distribution.Client.ProjectPlanning"
-          UnitTests.Distribution.Client.ProjectPlanning.tests
       , testGroup
           "Distribution.Client.Store"
           UnitTests.Distribution.Client.Store.tests
