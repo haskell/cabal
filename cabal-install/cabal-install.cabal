@@ -159,6 +159,7 @@ library
         Distribution.Client.ProjectOrchestration
         Distribution.Client.ProjectPlanOutput
         Distribution.Client.ProjectPlanning
+        Distribution.Client.ProjectPlanning.SetupPolicy
         Distribution.Client.ProjectPlanning.Types
         Distribution.Client.RebuildMonad
         Distribution.Client.Reconfigure
