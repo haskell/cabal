@@ -252,6 +252,8 @@ symlinkBinaries
       cinfo = compilerInfo comp
       (CompilerId compilerFlavor _) = compilerInfoId cinfo
 
+-- | A record needed to either check if a symlink is possible or to create a
+-- symlink. Also used if copying instead of symlinking.
 data Symlink = Symlink
   { overwritePolicy :: OverwritePolicy
   -- ^ Whether to force overwrite an existing file.
@@ -265,7 +267,12 @@ data Symlink = Symlink
   -- ^ The name of the executable to in the private bin dir, eg @foo-1.0@.
   }
 
--- | How to handle symlinking a binary.
+-- | After checking if a target is writeable given the overwrite policy,
+-- dispatch to an appropriate action;
+--  * @onMissing@ if the target doesn't exist
+--  * @onOverwrite@ if the target exists and we are allowed to overwrite it
+--  * @onNever@ if the target exists and we are never allowed to overwrite it
+--  * @onPrompt@ if the target exists and we are allowed to overwrite after prompting
 onSymlinkBinary
   :: IO a
   -- ^ Missing action
@@ -274,6 +281,7 @@ onSymlinkBinary
   -> IO a
   -- ^ Never action
   -> IO a
+  -- ^ Prompt action
   -> Symlink
   -> IO a
 onSymlinkBinary

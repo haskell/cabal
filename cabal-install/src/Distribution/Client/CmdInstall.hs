@@ -269,6 +269,9 @@ data InstallCfg = InstallCfg
   , installClientFlags :: ClientInstallFlags
   }
 
+-- | A record of install method, install directory and file path functions
+-- needed by actions that either check if an install is possible or actually
+-- perform an installation. This is for installation of executables only.
 data InstallExe = InstallExe
   { installMethod :: InstallMethod
   , installDir :: FilePath
@@ -638,10 +641,11 @@ installAction flags@NixStyleFlags{extraFlags = clientInstallFlags', ..} targetSt
     cliConfig = addLocalConfigToTargets baseCliConfig targetStrings
     globalConfigFlag = projectConfigConfigFile (projectConfigShared cliConfig)
 
+    -- Do the install action for each executable in the install configuration.
     traverseInstall :: InstallAction -> InstallCfg -> IO ()
     traverseInstall action cfg@InstallCfg{verbosity = v, buildCtx, installClientFlags} = do
       let overwritePolicy = fromFlagOrDefault NeverOverwrite $ cinstOverwritePolicy installClientFlags
-      actionOnExe <- action v overwritePolicy <$> installExesPrep cfg
+      actionOnExe <- action v overwritePolicy <$> prepareExeInstall cfg
       traverse_ actionOnExe . Map.toList $ targetsMap buildCtx
 
 -- | Treat all direct targets of install command as local packages: #8637
@@ -827,8 +831,11 @@ constructProjectBuildContext verbosity baseCtx targetSelectors = do
 
     return (prunedElaboratedPlan, targets)
 
-installExesPrep :: InstallCfg -> IO InstallExe
-installExesPrep
+-- | From an install configuration, prepare the record needed by actions that
+-- will either check if an install of a single executable is possible or
+-- actually perform its installation.
+prepareExeInstall :: InstallCfg -> IO InstallExe
+prepareExeInstall
   InstallCfg{verbosity, baseCtx, buildCtx, platform, compiler, installConfigFlags, installClientFlags} = do
     installPath <- defaultInstallPath
     let storeDirLayout = cabalStoreDirLayout $ cabalDirLayout baseCtx
@@ -997,6 +1004,8 @@ disableTestsBenchsByDefault configFlags =
     , configBenchmarks = Flag False <> configBenchmarks configFlags
     }
 
+-- | Prepares a record containing the information needed to either symlink or
+-- copy an executable.
 symlink :: OverwritePolicy -> InstallExe -> UnitId -> UnqualComponentName -> Symlink
 symlink
   overwritePolicy
