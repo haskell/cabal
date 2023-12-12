@@ -1,6 +1,7 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE RecordWildCards #-}
 
 -----------------------------------------------------------------------------
 
@@ -284,24 +285,19 @@ onSymlinkBinary
   -- ^ Prompt action
   -> Symlink
   -> IO a
-onSymlinkBinary
-  onMissing
-  onOverwrite
-  onNever
-  onPrompt
-  Symlink{overwritePolicy, publicBindir, privateBindir, publicName, privateName} = do
-    ok <-
-      targetOkToOverwrite
-        (publicBindir </> publicName)
-        (privateBindir </> privateName)
-    case ok of
-      NotExists -> onMissing
-      OkToOverwrite -> onOverwrite
-      NotOurFile ->
-        case overwritePolicy of
-          NeverOverwrite -> onNever
-          AlwaysOverwrite -> onOverwrite
-          PromptOverwrite -> onPrompt
+onSymlinkBinary onMissing onOverwrite onNever onPrompt Symlink{..} = do
+  ok <-
+    targetOkToOverwrite
+      (publicBindir </> publicName)
+      (privateBindir </> privateName)
+  case ok of
+    NotExists -> onMissing
+    OkToOverwrite -> onOverwrite
+    NotOurFile ->
+      case overwritePolicy of
+        NeverOverwrite -> onNever
+        AlwaysOverwrite -> onOverwrite
+        PromptOverwrite -> onPrompt
 
 -- | Can we symlink a binary?
 --
