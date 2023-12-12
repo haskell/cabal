@@ -50,9 +50,9 @@ imports in ``cabal.project`` files.
       project is restricted.  Conditions may only be introduced at the top level
       of a project.
 
-      Projects have fewer :ref:`condition tests<conditions>` as only packages
-      can have tests for flags.  The remaining tests are available to projects,
-      operating system, architecture, compiler and boolean constants.
+      Of the :ref:`condition tests<conditions>`, only packages can test for
+      flags. Projects can test for operating system, architecture, compiler and
+      the boolean constants.
 
       - :samp:`os({name})`
       - :samp:`arch({name})`
