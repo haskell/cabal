@@ -1,4 +1,4 @@
-CABAL="../new_new_dir/build/x86_64-linux/ghc-9.6.2/cabal-install-3.11.0.0/x/cabal/build/cabal/cabal"
+CABAL="/home/matt/cabal/dist-newstyle/build/x86_64-linux/ghc-9.6.2/cabal-install-3.11.0.0/x/cabal/build/cabal/cabal"
 
 clean:
 	rm -rf repo/
@@ -22,11 +22,11 @@ build:
 	$(CABAL) build all
 
 run: build
-	$(CABAL) build exe:hooks-exe --constraint="hooks-exe:exe:hooks-exe.lib01 == 0.1.0.0"
+	$(CABAL) build exe:hooks-exe --constraint="private.hooks-exe.L01:lib01 == 0.1.0.0"
 	$(eval HOOKS_EXE := $(shell $(CABAL) list-bin exe:hooks-exe))
 	PATH=$(shell dirname $(HOOKS_EXE)):$$PATH $(CABAL) run exe:main-prog
 
-	$(CABAL) build exe:hooks-exe --constraint="hooks-exe:exe:hooks-exe.lib01 == 0.2.0.0"
+	$(CABAL) build exe:hooks-exe --constraint="private.hooks-exe.L01:lib01 == 0.2.0.0"
 	$(eval HOOKS_EXE := $(shell $(CABAL) list-bin exe:hooks-exe))
 	PATH=$(shell dirname $(HOOKS_EXE)):$$PATH $(CABAL) run exe:main-prog
 

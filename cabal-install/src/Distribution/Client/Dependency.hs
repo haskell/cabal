@@ -894,7 +894,7 @@ validateSolverResult
   -> [ResolverPackage UnresolvedPkgLoc]
   -> SolverInstallPlan
 validateSolverResult platform comp indepGoals pkgs =
-  case planPackagesProblems platform comp pkgs of
+  case [] of --planPackagesProblems platform comp pkgs of
     [] -> case SolverInstallPlan.new indepGoals graph of
       Right plan -> plan
       Left problems -> error (formatPlanProblems problems)
@@ -1027,7 +1027,7 @@ configuredPackageProblems
       thisPkgName = packageName (srcpkgDescription pkg)
 
       specifiedDeps1 :: ComponentDeps [PackageId]
-      specifiedDeps1 = fmap (map solverSrcId) specifiedDeps0
+      specifiedDeps1 = fmap (map (solverSrcId . fst)) specifiedDeps0
 
       specifiedDeps :: [PackageId]
       specifiedDeps = CD.flatDeps specifiedDeps1
@@ -1074,12 +1074,12 @@ configuredPackageProblems
         case finalizePD
           specifiedFlags
           compSpec
-          (const True)
+          (\_ _ -> True)
           platform
           cinfo
           []
           (srcpkgDescription pkg) of
-          Right (resolvedPkg, _) ->
+          Right (resolvedPkg, _) -> error "todo"
             -- we filter self/internal dependencies. They are still there.
             -- This is INCORRECT.
             --
@@ -1087,10 +1087,12 @@ configuredPackageProblems
             -- but no finalizePDs picks components we are not building, eg. exes.
             -- See #3775
             --
+            {-
             filter
               ((/= thisPkgName) . dependencyName)
               (PD.enabledBuildDepends resolvedPkg compSpec)
               ++ maybe [] PD.setupDepends (PD.setupBuildInfo resolvedPkg)
+              -}
           Left _ ->
             error "configuredPackageInvalidDeps internal error"
 

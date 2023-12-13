@@ -2,6 +2,8 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE PartialTypeSignatures #-}
 
 -- | This module provides a 'FieldGrammarParser', one way to parse
 -- @.cabal@ -like files.
@@ -73,6 +75,7 @@ import Distribution.Utils.String (trim)
 import Prelude ()
 
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Char8 as BS8
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
@@ -87,6 +90,9 @@ import Distribution.Fields.ParseResult
 import Distribution.Parsec
 import Distribution.Parsec.FieldLineStream
 import Distribution.Parsec.Position (positionCol, positionRow)
+import Distribution.Compat.Lens
+import Distribution.Compat.CharParsing (CharParsing(..), spaces)
+import Distribution.Types.Dependency (PrivateAlias(..))
 
 -------------------------------------------------------------------------------
 -- Auxiliary types
@@ -264,6 +270,45 @@ instance FieldGrammar Parsec ParsecFieldGrammar where
         Just xs -> foldMap (unpack' _pack) <$> traverse (parseOne v) xs
 
       parseOne v (MkNamelessField pos fls) = runFieldParser pos parsec v fls
+
+  monoidalFieldPrefixAla :: (Parsec b, Parsec d, Monoid a)
+                         => FieldName
+                         -> (a -> [(b, d)])
+                         -> ([(b, d)] -> a)
+                         -> ALens' s a
+                         -> ParsecFieldGrammar s a
+  monoidalFieldPrefixAla fnPfx _unpack _pack _extract =  ParsecFG mempty (Set.singleton fnPfx) parser
+
+        where
+      parser :: CabalSpecVersion -> Fields Position -> ParseResult _
+      parser v values = process v $ filter match $ Map.toList values
+
+      process v xs = case xs of
+                    [] -> pure mempty
+                    xs -> foldMap _pack <$> traverse (parseStanza v) xs
+
+      parseStanza v (header, fls) = do
+        traceShowM (header, fls)
+        let mn = BS.drop (BS.length fnPfx + 1) header
+--        let name'' = PrivateAlias (fromString (map toUpper (BS8.unpack mn)))
+        name'' <- runFieldParser' [] parsec v (fieldLineStreamFromBS mn)
+        dls <-  traverse (parseOne v) fls
+        return  $ [(name'', d) | d <- dls]
+
+
+      parseOne v (MkNamelessField pos fls) = do
+        runFieldParser pos parsec v fls
+
+      match (fn, _) = fnPfx `BS.isPrefixOf` fn
+
+{-
+      convert (fn, fields) =
+        [ (pos, (fromUTF8BS fn, trim $ fromUTF8BS $ fieldlinesToBS fls))
+        | MkNamelessField pos fls <- fields
+        ]
+      -- hack: recover the order of prefixed fields
+      reorder = map snd . sortBy (comparing fst)
+      -}
 
   prefixedFields fnPfx _extract = ParsecFG mempty (Set.singleton fnPfx) (\_ fs -> pure (parser fs))
     where

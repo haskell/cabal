@@ -313,7 +313,7 @@ nonSetupClosure index pkgids0 = closure Graph.empty pkgids0
             Nothing -> closure completed' pkgids'
               where
                 completed' = Graph.insert pkg completed
-                pkgids' = CD.nonSetupDeps (resolverPackageLibDeps pkg) ++ pkgids
+                pkgids' = map fst (CD.nonSetupDeps (resolverPackageLibDeps pkg)) ++ pkgids
 
 -- | Compute the root sets of a plan
 --
@@ -349,7 +349,7 @@ libraryRoots index =
 setupRoots :: SolverPlanIndex -> [[SolverId]]
 setupRoots =
   filter (not . null)
-    . map (CD.setupDeps . resolverPackageLibDeps)
+    . map (map fst . CD.setupDeps . resolverPackageLibDeps)
     . Foldable.toList
 
 -- | Given a package index where we assume we want to use all the packages
@@ -383,7 +383,7 @@ dependencyInconsistencies' index =
         | -- For each package @pkg@
         pkg <- Foldable.toList index
         , -- Find out which @sid@ @pkg@ depends on
-        sid <- CD.nonSetupDeps (resolverPackageLibDeps pkg)
+        (sid, _) <- CD.nonSetupDeps (resolverPackageLibDeps pkg)
         , -- And look up those @sid@ (i.e., @sid@ is the ID of @dep@)
         Just dep <- [Graph.lookup sid index]
         ]
@@ -399,8 +399,8 @@ dependencyInconsistencies' index =
     reallyIsInconsistent [p1, p2] =
       let pid1 = nodeKey p1
           pid2 = nodeKey p2
-       in pid1 `notElem` CD.nonSetupDeps (resolverPackageLibDeps p2)
-            && pid2 `notElem` CD.nonSetupDeps (resolverPackageLibDeps p1)
+       in pid1 `notElem` map fst (CD.nonSetupDeps (resolverPackageLibDeps p2))
+            && pid2 `notElem` map fst (CD.nonSetupDeps (resolverPackageLibDeps p1))
     reallyIsInconsistent _ = True
 
 -- | The graph of packages (nodes) and dependencies (edges) must be acyclic.

@@ -57,6 +57,7 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Distribution.Pretty
 import Text.PrettyPrint
+import Distribution.Simple.Setup
 
 ------------------------------------------------------------------------------
 -- Pipeline
@@ -103,7 +104,7 @@ configureComponentLocalBuildInfos
     let conf_pkg_map =
           Map.fromListWith
             Map.union
-            [ ( pc_pkgname pkg
+            [ ( (pc_pkgname pkg, pc_alias pkg)
               , Map.singleton
                   (pc_compname pkg)
                   ( AnnotatedId
@@ -117,8 +118,9 @@ configureComponentLocalBuildInfos
             ]
             `Map.union` Map.fromListWith
               Map.union
-              [ (pkg, Map.singleton (ann_cname aid) aid)
-              | PromisedComponent pkg aid <- promisedPkgDeps
+              [ ( (pkg, alias)
+                , Map.singleton (ann_cname aid) aid)
+              | PromisedComponent pkg aid alias <- promisedPkgDeps
               ]
     graph1 <-
       toConfiguredComponents
@@ -151,7 +153,7 @@ configureComponentLocalBuildInfos
                   , emptyModuleShape
                   )
                 )
-              | PromisedComponent _ aid <- promisedPkgDeps
+              | PromisedComponent _ aid _ <- promisedPkgDeps
               ]
         uid_lookup def_uid
           | Just pkg <- PackageIndex.lookupUnitId installedPackageSet uid =

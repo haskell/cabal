@@ -133,6 +133,20 @@ class
     -- ^ lens into the field
     -> g s a
 
+  -- | Like monoidalFieldAla but the field-name can have a parsed suffix
+  monoidalFieldPrefixAla
+    :: (c b, c d, Monoid a)
+    => FieldName
+    -- ^ field name prefix
+    -- b = parsing rest of prefix field
+    -- d = parsing contents of field
+    -> (a -> [(b, d)])
+    -> ([(b, d)] -> a)
+    -- ^ 'pack'
+    -> ALens' s a
+    -- ^ lens into the field
+    -> g s a
+
   -- | Parser matching all fields with a name starting with a prefix.
   prefixedFields
     :: FieldName

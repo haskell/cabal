@@ -263,7 +263,7 @@ buildTree idx (IndependentGoals ind) igs =
     topLevelGoal qpn = PkgGoal qpn UserGoal
 
     qpns | ind       = L.map makeIndependent igs
-         | otherwise = L.map (Q (PackagePath DefaultNamespace QualToplevel)) igs
+         | otherwise = L.map (Q (PackagePath DefaultNamespace QualToplevel) ) igs
 
 {-------------------------------------------------------------------------------
   Goals

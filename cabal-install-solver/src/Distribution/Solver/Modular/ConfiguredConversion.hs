@@ -4,9 +4,8 @@ module Distribution.Solver.Modular.ConfiguredConversion
 
 import Data.Maybe
 import Prelude hiding (pi)
-import Data.Either (partitionEithers)
 
-import Distribution.Package (UnitId, packageId)
+import Distribution.Package (UnitId)
 
 import qualified Distribution.Simple.PackageIndex as SI
 
@@ -21,6 +20,8 @@ import           Distribution.Solver.Types.SolverId
 import           Distribution.Solver.Types.SolverPackage
 import           Distribution.Solver.Types.InstSolverPackage
 import           Distribution.Solver.Types.SourcePackage
+import Distribution.ModuleName
+import Distribution.Types.Dependency (PrivateAlias)
 
 -- | Converts from the solver specific result @CP QPN@ into
 -- a 'ResolverPackage', which can then be converted into
@@ -33,31 +34,45 @@ convCP iidx sidx (CP qpi fa es ds) =
     Left  pi -> PreExisting $
                   InstSolverPackage {
                     instSolverPkgIPI = fromJust $ SI.lookupUnitId iidx pi,
-                    instSolverPkgLibDeps = fmap fst ds',
-                    instSolverPkgExeDeps = fmap snd ds'
+                    instSolverPkgLibDeps  = fmap (\(b, _) -> map fst b) ds',
+                    instSolverPkgExeDeps  = fmap (\(_, c) -> c) ds'
                   }
     Right pi -> Configured $
                   SolverPackage {
                       solverPkgSource = srcpkg,
                       solverPkgFlags = fa,
                       solverPkgStanzas = es,
-                      solverPkgLibDeps = fmap fst ds',
-                      solverPkgExeDeps = fmap snd ds'
+                      solverPkgLibDeps = fmap (\(b, _) -> b) ds',
+                      solverPkgExeDeps = fmap (\(_, c) -> c) ds'
                     }
       where
         srcpkg = fromMaybe (error "convCP: lookupPackageId failed") $ CI.lookupPackageId sidx pi
   where
-    ds' :: ComponentDeps ([SolverId] {- lib -}, [SolverId] {- exe -})
-    ds' = fmap (partitionEithers . map convConfId) ds
+
+    ds' :: ComponentDeps (([(SolverId, Maybe PrivateAlias)] {- lib -}, [SolverId] {- exe -}))
+    ds' = fmap (partitionDeps . map convConfId) ds
+
+partitionDeps :: [Converted] -> (([(SolverId, Maybe PrivateAlias)], [SolverId]))
+partitionDeps [] = ([], [])
+partitionDeps (dep:deps) =
+  let (p, e) = partitionDeps deps
+  in case dep of
+        AliasPkg sid pn -> ((sid, Just pn) : p, e)
+        NormalPkg sid -> ((sid, Nothing) :p, e)
+        NormalExe sid -> (p, sid:e)
+
+
 
 convPI :: PI QPN -> Either UnitId PackageId
 convPI (PI _ (I _ (Inst pi))) = Left pi
-convPI pi                     = Right (packageId (either id id (convConfId pi)))
+convPI (PI (Q _ pn) (I v _)) = Right (PackageIdentifier pn v)
 
-convConfId :: PI QPN -> Either SolverId {- is lib -} SolverId {- is exe -}
-convConfId (PI (Q (PackagePath ns _) pn) (I v loc)) =
+data Converted = NormalPkg SolverId | NormalExe SolverId | AliasPkg SolverId PrivateAlias
+
+convConfId :: PI QPN -> Converted
+convConfId (PI (Q (PackagePath ns qn) pn) (I v loc)) =
     case loc of
-        Inst pi -> Left (PreExistingId sourceId pi)
+        Inst pi -> NormalPkg (PreExistingId sourceId pi)
         _otherwise
           | IndependentBuildTool _ pn' <- ns
           -- NB: the dependencies of the executable are also
@@ -66,7 +81,8 @@ convConfId (PI (Q (PackagePath ns _) pn) (I v loc)) =
           -- at the actual thing.  Fortunately for us, I was
           -- silly and didn't allow arbitrarily nested build-tools
           -- dependencies, so a shallow check works.
-          , pn == pn' -> Right (PlannedId sourceId)
-          | otherwise    -> Left  (PlannedId sourceId)
+          , pn == pn' -> NormalExe (PlannedId sourceId)
+          | QualAlias _ _ alias _ <- qn -> AliasPkg (PlannedId sourceId) alias
+          | otherwise    -> NormalPkg  (PlannedId sourceId)
   where
     sourceId    = PackageIdentifier pn v

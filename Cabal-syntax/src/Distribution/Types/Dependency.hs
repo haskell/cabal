@@ -1,5 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Distribution.Types.Dependency
   ( Dependency (..)
@@ -9,6 +11,8 @@ module Distribution.Types.Dependency
   , depLibraries
   , simplifyDependency
   , mainLibSet
+  , PrivateDependency(..)
+  , PrivateAlias(..)
 
   , Dependencies(..)
   , IsPrivate(..)
@@ -23,7 +27,7 @@ import Distribution.Types.VersionRange (isAnyVersionLight)
 import Distribution.Version (VersionRange, anyVersion, simplifyVersionRange)
 
 import Distribution.CabalSpecVersion
-import Distribution.Compat.CharParsing (char, spaces)
+import Distribution.Compat.CharParsing (char, spaces, CharParsing (string), anyChar, satisfy)
 import Distribution.Compat.Parsing (between, option)
 import Distribution.Parsec
 import Distribution.Pretty
@@ -33,17 +37,42 @@ import Distribution.Types.UnqualComponentName
 
 import qualified Distribution.Compat.NonEmptySet as NES
 import qualified Text.PrettyPrint as PP
+import Distribution.ModuleName
+import qualified Distribution.Compat.CharParsing as P
 
-data IsPrivate = Private | Public deriving (Show, Read, Eq)
+data IsPrivate = Private (PrivateAlias, [PackageName]) | Public deriving (Show, Ord, Read, Eq)
 
-instance Semigroup IsPrivate where
-  Public <> _ = Public
-  Private <> a = a
+data Dependencies = Dependencies { publicDependencies :: [Dependency], privateDependencies :: [PrivateDependency] } deriving (Eq, Show, Generic, Data)
 
-data Dependencies = Dependencies { publicDependencies :: [Dependency], privateDependencies :: [Dependency] } deriving (Eq, Show, Generic, Data)
+newtype PrivateAlias = PrivateAlias ModuleName deriving (Show, Eq, Generic, Data, Read, Ord)
+
+instance Pretty PrivateAlias where
+  pretty (PrivateAlias p) = pretty p
+
+instance Parsec PrivateAlias where
+  parsec = PrivateAlias <$> parsec
+
+
+data PrivateDependency = PrivateDependency { private_alias :: PrivateAlias, private_depends :: [Dependency] } deriving (Eq, Show, Generic, Data, Read, Ord)
+
+instance Parsec PrivateDependency where
+  parsec = do
+    alias <- parsec
+    P.spaces
+    P.string "with"
+    P.spaces
+    let parensLax p = P.between (P.char '(' >> P.spaces) (P.char ')' >> P.spaces) p
+    deps <- parensLax (parsecCommaList parsec)
+    return (PrivateDependency alias deps)
+
+instance Pretty PrivateDependency where
+  pretty (PrivateDependency alias deps) = PP.hsep [pretty alias, PP.text "with", PP.parens (PP.hsep (PP.punctuate PP.comma (map pretty deps)))]
+
+flattenPrivateDepends :: Dependencies -> [Dependency]
+flattenPrivateDepends (Dependencies _ priv) = concatMap private_depends priv
 
 allDependencies :: Dependencies -> [Dependency]
-allDependencies (Dependencies pub priv) = pub ++ priv
+allDependencies (Dependencies pub priv) = pub ++ concatMap private_depends priv
 
 instance Semigroup Dependencies where
   (Dependencies p1 pr1) <> (Dependencies p2 pr2) = Dependencies (p1 <> p2) (pr1 <> pr2)
@@ -52,7 +81,7 @@ instance Monoid Dependencies where
   mempty = Dependencies mempty mempty
 
 mapDependencies :: (Dependency -> Dependency) -> Dependencies -> Dependencies
-mapDependencies f (Dependencies pub priv) = Dependencies (map f pub) (map f priv)
+mapDependencies f (Dependencies pub priv) = Dependencies (map f pub) (map (\d -> d { private_depends = map f (private_depends d) }) priv)
 
 -- | Describes a dependency on a source package (API)
 --
@@ -100,6 +129,14 @@ mkDependency pn vr lb = Dependency pn vr (NES.map conv lb)
 instance Binary Dependency
 instance Structured Dependency
 instance NFData Dependency where rnf = genericRnf
+
+instance Binary PrivateDependency
+instance Structured PrivateDependency
+instance NFData PrivateDependency where rnf = genericRnf
+
+instance Binary PrivateAlias
+instance Structured PrivateAlias
+instance NFData PrivateAlias where rnf = genericRnf
 
 instance Binary Dependencies
 instance Structured Dependencies
@@ -167,6 +204,7 @@ instance Pretty Dependency where
 -- >>> map (`simpleParsec'` "mylib:sub") [CabalSpecV2_4, CabalSpecV3_0] :: [Maybe Dependency]
 -- [Nothing,Just (Dependency (PackageName "mylib") (OrLaterVersion (mkVersion [0])) (fromNonEmpty (LSubLibName (UnqualComponentName "sub") :| [])))]
 instance Parsec Dependency where
+  parsec :: forall m . CabalParsing m => m Dependency
   parsec = do
     name <- parsec
 

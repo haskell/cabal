@@ -11,7 +11,7 @@ import System.Environment (getArgs)
 import System.IO (stderr, hPrint)
 import Data.String
 import Data.Binary
-import Lib
+import L01.Lib
 
 -- | Create an executable which accepts the name of a hook as the argument,
 -- then reads arguments to the hook over stdin and writes the results of the hook

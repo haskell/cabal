@@ -137,7 +137,7 @@ data BuildInfo = BuildInfo
   --  simple assoc-list.
   , targetBuildDepends :: [Dependency]
   -- ^ Dependencies specific to a library or executable target
-  , targetPrivateBuildDepends :: [Dependency]
+  , targetPrivateBuildDepends :: [PrivateDependency]
   , mixins :: [Mixin]
   }
   deriving (Generic, Show, Read, Eq, Ord, Typeable, Data)

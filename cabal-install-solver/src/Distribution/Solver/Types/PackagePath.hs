@@ -11,11 +11,12 @@ module Distribution.Solver.Types.PackagePath
 
 import Distribution.Solver.Compat.Prelude
 import Prelude ()
-import Distribution.Package (PackageName)
+import Distribution.Package (PackageName, PrivateAlias)
 import Distribution.Pretty (pretty, flatStyle)
 import qualified Text.PrettyPrint as Disp
 import Distribution.Types.ComponentName
 import Distribution.Solver.Types.ComponentDeps
+import Distribution.ModuleName
 
 -- | A package path consists of a namespace and a package path inside that
 -- namespace.
@@ -33,9 +34,8 @@ data Namespace =
     -- | A goal which is solved per-package
   | Independent PackageName
 
-  -- A goal which is solved per-component
-  | IndependentComponent PackageName Component
 
+  | IndependentComponent PackageName Component
   -- Build-tools are solved per-package so there are consistent build-tools across
   -- components.
   | IndependentBuildTool PackageName PackageName
@@ -46,9 +46,9 @@ data Namespace =
 dispNamespace :: Namespace -> Disp.Doc
 dispNamespace DefaultNamespace = Disp.empty
 dispNamespace (Independent i) = pretty i <<>> Disp.text "."
-dispNamespace (IndependentComponent pn c) = pretty pn <<>> Disp.text ":" <<>> pretty c <<>> Disp.text "."
 dispNamespace (IndependentBuildTool pn btp) = pretty pn <<>> Disp.text ":" <<>>
                                               pretty btp <<>> Disp.text ":exe."
+dispNamespace (IndependentComponent pn c) = pretty pn <<>> Disp.text ":" <<>> pretty c <<>> Disp.text "."
 
 --dispQualifier (QualSetup pn)  = pretty pn <<>> Disp.text ":setup."
 --dispQualifier (QualExe pn pn2) =
@@ -62,6 +62,9 @@ data Qualifier =
     --
     -- This makes it possible to have base shims.
   | QualBase PackageName
+
+  -- A goal which is solved per-component
+  | QualAlias PackageName Component PrivateAlias [PackageName]
 
 {-
     -- | Setup dependency
@@ -120,6 +123,7 @@ data Qualifier =
 dispQualifier :: Qualifier -> Disp.Doc
 dispQualifier QualToplevel = Disp.empty
 dispQualifier (QualBase pn)  = pretty pn <<>> Disp.text ".bb."
+dispQualifier (QualAlias pn c alias _) = pretty pn <<>> Disp.text ":" <<>> pretty c <<>> Disp.text ":" <<>> pretty alias <<>> Disp.text "."
 
 -- | A qualified entity. Pairs a package path with the entity.
 data Qualified a = Q PackagePath a

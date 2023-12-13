@@ -15,8 +15,10 @@ import Distribution.Solver.Types.SolverPackage
 import qualified Distribution.Solver.Types.ComponentDeps as CD
 
 import Distribution.Compat.Graph (IsNode(..))
-import Distribution.Package (Package(..), HasUnitId(..))
+import Distribution.Package (Package(..), HasUnitId(..), PackageName)
 import Distribution.Simple.Utils (ordNub)
+import Distribution.ModuleName
+import Distribution.Types.Dependency (PrivateAlias)
 
 -- | The dependency resolver picks either pre-existing installed packages
 -- or it picks source packages along with package configuration.
@@ -34,8 +36,8 @@ instance Package (ResolverPackage loc) where
   packageId (PreExisting ipkg)     = packageId ipkg
   packageId (Configured  spkg)     = packageId spkg
 
-resolverPackageLibDeps :: ResolverPackage loc -> CD.ComponentDeps [SolverId]
-resolverPackageLibDeps (PreExisting ipkg) = instSolverPkgLibDeps ipkg
+resolverPackageLibDeps :: ResolverPackage loc -> CD.ComponentDeps [(SolverId, Maybe PrivateAlias)]
+resolverPackageLibDeps (PreExisting ipkg) = map (\x -> (x,Nothing)) <$> instSolverPkgLibDeps ipkg
 resolverPackageLibDeps (Configured spkg) = solverPkgLibDeps spkg
 
 resolverPackageExeDeps :: ResolverPackage loc -> CD.ComponentDeps [SolverId]
@@ -48,5 +50,5 @@ instance IsNode (ResolverPackage loc) where
   nodeKey (Configured spkg) = PlannedId (packageId spkg)
   -- Use dependencies for ALL components
   nodeNeighbors pkg =
-    ordNub $ CD.flatDeps (resolverPackageLibDeps pkg) ++
+    ordNub $ (map fst (CD.flatDeps (resolverPackageLibDeps pkg))) ++
              CD.flatDeps (resolverPackageExeDeps pkg)

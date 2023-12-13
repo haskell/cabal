@@ -125,6 +125,7 @@ import System.FilePath
   , takeExtension
   )
 import Distribution.Solver.Types.ComponentDeps
+import Distribution.Types.Dependency
 
 -- ------------------------------------------------------------
 
@@ -631,6 +632,7 @@ instance Structured UserQualifier
 data UserConstraintScope
   = -- | Scope that applies to the package when it has the specified qualifier.
     UserQualified UserQualifier PackageName
+  | UserPrivateQualifier PackageName PrivateAlias PackageName
   | -- | Scope that applies to the package when it has a setup qualifier.
     UserAnySetupQualifier PackageName
   | -- | Scope that applies to the package when it has any qualifier.
@@ -649,6 +651,7 @@ fromUserQualifier (UserQualComp pn cn) = IndependentComponent pn (componentNameT
 fromUserConstraintScope :: UserConstraintScope -> ConstraintScope
 fromUserConstraintScope (UserQualified q pn) =
   ScopeQualified (fromUserQualifier q) pn
+fromUserConstraintScope (UserPrivateQualifier pn alias cpn) = ScopePrivate pn alias cpn
 fromUserConstraintScope (UserAnySetupQualifier pn) = ScopeAnySetupQualifier pn
 fromUserConstraintScope (UserAnyQualifier pn) = ScopeAnyQualifier pn
 
@@ -667,6 +670,7 @@ userConstraintPackageName (UserConstraint scope _) = scopePN scope
     scopePN (UserQualified _ pn) = pn
     scopePN (UserAnyQualifier pn) = pn
     scopePN (UserAnySetupQualifier pn) = pn
+    scopePN (UserPrivateQualifier _ _ pn) = pn
 
 userToPackageConstraint :: UserConstraint -> PackageConstraint
 userToPackageConstraint (UserConstraint scope prop) =
@@ -715,6 +719,13 @@ instance Parsec UserConstraint where
           withDot pn
             | pn == mkPackageName "any" = UserAnyQualifier <$> parsec
             | pn == mkPackageName "setup" = UserAnySetupQualifier <$> parsec
+            | pn == mkPackageName "private" = do
+                qpn <- parsec
+                P.char '.'
+                alias <- parsec
+                P.char ':'
+                cpn <- parsec
+                return $ UserPrivateQualifier qpn alias cpn
             | otherwise = P.unexpected $ "constraint scope: " ++ unPackageName pn
 
           withColon, setupQual, compQual :: PackageName -> m UserConstraintScope

@@ -151,7 +151,7 @@ data SolverResult = SolverResult
   }
 
 solverSuccess :: [(String, Int)] -> SolverResult
-solverSuccess = SolverResult (const True) . Right
+solverSuccess = SolverResult (const False) . Right
 
 solverFailure :: (String -> Bool) -> SolverResult
 solverFailure = SolverResult (const True) . Left

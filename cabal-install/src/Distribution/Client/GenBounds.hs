@@ -141,7 +141,7 @@ genBounds verbosity packageDBs repoCtxt comp platform progdb globalFlags freezeF
         finalizePD
           mempty
           defaultComponentRequestedSpec
-          (const True)
+          (\_ _ -> True)
           platform
           cinfo
           []
@@ -150,9 +150,9 @@ genBounds verbosity packageDBs repoCtxt comp platform progdb globalFlags freezeF
     Left _ -> putStrLn "finalizePD failed"
     Right (pd, _) -> do
       let needBounds =
-            map depName $
-              filter (not . hasUpperBound . depVersion) $
-                enabledBuildDepends pd defaultComponentRequestedSpec
+            map depName $ error "todo"
+--              filter (not . hasUpperBound . depVersion) $
+--                enabledBuildDepends pd defaultComponentRequestedSpec
 
       pkgs <-
         getFreezePkgs
@@ -180,10 +180,10 @@ genBounds verbosity packageDBs repoCtxt comp platform progdb globalFlags freezeF
           traverse_ (notice verbosity . (++ ",") . showBounds padTo) thePkgs
 
 depName :: Dependency -> String
-depName (Dependency pn _ _) = unPackageName pn
+depName = unPackageName . depPkgName
 
 depVersion :: Dependency -> VersionRange
-depVersion (Dependency _ vr _) = vr
+depVersion = depVerRange
 
 -- | The message printed when some dependencies are found to be lacking proper
 -- PVP-mandated bounds.

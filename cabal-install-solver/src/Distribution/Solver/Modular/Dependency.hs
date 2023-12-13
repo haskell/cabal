@@ -58,6 +58,7 @@ import Distribution.Solver.Types.PackagePath
 import Distribution.Types.LibraryName
 import Distribution.Types.PkgconfigVersionRange
 import Distribution.Types.UnqualComponentName
+import Distribution.Types.Dependency
 
 {-------------------------------------------------------------------------------
   Constrained instances
@@ -119,7 +120,7 @@ data LDep qpn = LDep (DependencyReason qpn) (Dep qpn) deriving Show
 -- | A dependency (constraint) associates a package name with a constrained
 -- instance. It can also represent other types of dependencies, such as
 -- dependencies on language extensions.
-data Dep qpn = Dep (PkgComponent qpn) Bool CI  -- ^ dependency on a package component
+data Dep qpn = Dep (PkgComponent qpn) IsPrivate CI  -- ^ dependency on a package component
              | Ext Extension              -- ^ dependency on a language extension
              | Lang Language              -- ^ dependency on a language version
              | Pkg PkgconfigName PkgconfigVersionRange  -- ^ dependency on a pkg-config package
@@ -181,8 +182,8 @@ qualifyDeps QO{..} (Q pp@(PackagePath ns q) pn) = go
     go = map go1
 
     go1 :: FlaggedDep PN -> FlaggedDep QPN
-    go1 (Flagged fn nfo t f) = Flagged (fmap (Q pp) fn) nfo (go t) (go f)
-    go1 (Stanza  sn     t)   = Stanza  (fmap (Q pp) sn)     (go t)
+    go1 (Flagged fn nfo t f) = Flagged (fmap (Q pp ) fn) nfo (go t) (go f)
+    go1 (Stanza  sn     t)   = Stanza  (fmap (Q pp ) sn)     (go t)
     go1 (Simple dep comp)    = Simple (goLDep dep comp) comp
 
     -- Suppose package B has a setup dependency on package A.
@@ -194,7 +195,7 @@ qualifyDeps QO{..} (Q pp@(PackagePath ns q) pn) = go
     -- @"A"@ into @"B-setup.A"@, but we should not apply that same qualifier
     -- to the DependencyReason.
     goLDep :: LDep PN -> Component -> LDep QPN
-    goLDep (LDep dr dep) comp = LDep (fmap (Q pp) dr) (goD dep comp)
+    goLDep (LDep dr dep) comp = LDep (fmap (Q pp ) dr) (goD dep comp)
 
     goD :: Dep PN -> Component -> Dep QPN
     goD (Ext  ext)    _    = Ext  ext
@@ -203,7 +204,7 @@ qualifyDeps QO{..} (Q pp@(PackagePath ns q) pn) = go
     goD (Dep dep@(PkgComponent qpn (ExposedExe _)) is_private ci) _ =
         Dep (Q (PackagePath (IndependentBuildTool pn qpn) QualToplevel) <$> dep) is_private ci
     goD (Dep dep@(PkgComponent qpn (ExposedLib _)) is_private ci) comp
-      | is_private  = Dep (Q (PackagePath (IndependentComponent pn comp) inheritedQ) <$> dep) is_private ci
+      | Private (qpn, pkgs) <- is_private  = Dep (Q (PackagePath ns (QualAlias pn comp qpn pkgs))  <$> dep) is_private ci
       | qBase qpn   = Dep (Q (PackagePath ns (QualBase pn)) <$> dep) is_private ci
       | qSetup comp = Dep (Q (PackagePath (IndependentComponent pn ComponentSetup) QualToplevel) <$> dep) is_private ci
       | otherwise   = Dep (Q (PackagePath ns inheritedQ    ) <$> dep) is_private ci
@@ -233,6 +234,8 @@ qualifyDeps QO{..} (Q pp@(PackagePath ns q) pn) = go
     inheritedQ = case q of
                    QualToplevel -> QualToplevel
                    QualBase {}  -> QualToplevel
+                   -- MP: TODO, check if package name is in same scope (if so, persist)
+                   QualAlias {} -> QualToplevel
 
     -- Should we qualify this goal with the 'Base' package path?
     qBase :: PN -> Bool

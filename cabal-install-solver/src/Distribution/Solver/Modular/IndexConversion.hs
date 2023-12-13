@@ -149,7 +149,7 @@ convIPId dr comp idx ipid =
     Nothing  -> Left ipid
     Just ipi -> let (pn, i) = convId ipi
                     name = ExposedLib LMainLibName  -- TODO: Handle sub-libraries.
-                in  Right (D.Simple (LDep dr (Dep (PkgComponent pn name) False (Fixed i))) comp)
+                in  Right (D.Simple (LDep dr (Dep (PkgComponent pn name) Public (Fixed i))) comp)
                 -- NB: something we pick up from the
                 -- InstalledPackageIndex is NEVER an executable
 
@@ -241,7 +241,6 @@ convGPD os arch cinfo constraints strfl solveExes pn
         isPrivate LibraryVisibilityPrivate = True
         isPrivate LibraryVisibilityPublic  = False
 
-  -- MP: Better if we call qualifyDeps here really?
   in PInfo flagged_deps components fds fr
 
 -- | Applies the given predicate (for example, testing buildability or
@@ -343,12 +342,12 @@ convCondTree flags dr pkg os arch cinfo pn fds comp getInfo solveExes@(SolveExec
              mergeSimpleDeps $ ([ D.Simple singleDep comp
                  -- TOOD: Add scope here
                  | dep <- publicDependencies ds
-                 , singleDep <- convLibDeps False dr dep ])  -- unconditional package dependencies
+                 , singleDep <- convLibDeps dr dep ])  -- unconditional package dependencies
 
               ++ [ D.Simple singleDep comp
                  -- TOOD: Add scope here
                  | dep <- privateDependencies ds
-                 , singleDep <- convLibDeps True dr dep ]  -- unconditional package dependencies
+                 , singleDep <- convLibDepsAs dr dep ]  -- unconditional package dependencies
 
               ++ L.map (\e -> D.Simple (LDep dr (Ext  e)) comp) (allExtensions bi) -- unconditional extension dependencies
               ++ L.map (\l -> D.Simple (LDep dr (Lang l)) comp) (allLanguages  bi) -- unconditional language dependencies
@@ -399,7 +398,7 @@ mergeSimpleDeps deps = L.map (uncurry toFlaggedDep) (M.toList merged) ++ unmerge
           => (Map (SimpleFlaggedDepKey qpn) (SimpleFlaggedDepValue qpn), FlaggedDeps qpn)
           -> FlaggedDep qpn
           -> (Map (SimpleFlaggedDepKey qpn) (SimpleFlaggedDepValue qpn), FlaggedDeps qpn)
-        f (merged', unmerged') (D.Simple (LDep dr (Dep dep False (Constrained vr))) comp) =
+        f (merged', unmerged') (D.Simple (LDep dr (Dep dep Public (Constrained vr))) comp) =
             ( M.insertWith mergeValues
                            (SimpleFlaggedDepKey dep comp)
                            (SimpleFlaggedDepValue dr vr)
@@ -417,7 +416,7 @@ mergeSimpleDeps deps = L.map (uncurry toFlaggedDep) (M.toList merged) ++ unmerge
                  -> SimpleFlaggedDepValue qpn
                  -> FlaggedDep qpn
     toFlaggedDep (SimpleFlaggedDepKey dep comp) (SimpleFlaggedDepValue dr vr) =
-        D.Simple (LDep dr (Dep dep False (Constrained vr))) comp
+        D.Simple (LDep dr (Dep dep Public (Constrained vr))) comp
 
 -- | Branch interpreter.  Mutually recursive with 'convCondTree'.
 --
@@ -554,18 +553,26 @@ unionDRs (DependencyReason pn' fs1 ss1) (DependencyReason _ fs2 ss2) =
 
 -- | Convert a Cabal dependency on a set of library components (from a single
 -- package) to solver-specific dependencies.
-convLibDeps :: Bool -> DependencyReason PN -> Dependency -> [LDep PN]
-convLibDeps is_private dr (Dependency pn vr libs) =
-    [ LDep dr $ Dep (PkgComponent pn (ExposedLib lib)) is_private (Constrained vr)
+convLibDeps :: DependencyReason PN -> Dependency -> [LDep PN]
+convLibDeps dr (Dependency pn vr libs) =
+    [ LDep dr $ Dep (PkgComponent pn (ExposedLib lib)) Public (Constrained vr)
     | lib <- NonEmptySet.toList libs ]
+
+convLibDepsAs :: DependencyReason PN -> PrivateDependency -> [LDep PN]
+convLibDepsAs dr (PrivateDependency alias deps) =
+    [ LDep dr $ Dep (PkgComponent pn (ExposedLib lib)) (Private (alias, scope)) (Constrained vr)
+    | Dependency pn vr libs <- deps, lib <- NonEmptySet.toList libs ]
+  where
+    scope = map depPkgName deps
+
 
 -- | Convert a Cabal dependency on an executable (build-tools) to a solver-specific dependency.
 convExeDep :: DependencyReason PN -> ExeDependency -> LDep PN
-convExeDep dr (ExeDependency pn exe vr) = LDep dr $ Dep (PkgComponent pn (ExposedExe exe)) False (Constrained vr)
+convExeDep dr (ExeDependency pn exe vr) = LDep dr $ Dep (PkgComponent pn (ExposedExe exe)) Public (Constrained vr)
 
 -- | Convert setup dependencies
 convSetupBuildInfo :: PN -> SetupBuildInfo -> FlaggedDeps PN
 convSetupBuildInfo pn nfo =
     [ D.Simple singleDep ComponentSetup
     | dep <- setupDepends nfo
-    , singleDep <- convLibDeps False (DependencyReason pn M.empty S.empty) dep ]
+    , singleDep <- convLibDeps (DependencyReason pn M.empty S.empty) dep ]

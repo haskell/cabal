@@ -13,14 +13,8 @@ common warnings
 library
     import:           warnings
     exposed-modules:  HooksLib
-    build-depends:    base ^>=4.18.0.0, lib01 == 0.2.0.0, lib0101, lib0102, mtl, process, binary, bytestring, deepseq
+    build-depends:    base ^>=4.18.0.0, lib01 == 0.2.0.0,  mtl, process, binary, bytestring, deepseq
+    private-build-depends: V01 with (lib01 == 0.1.0.0), V02 with (lib01 == 0.2.0.0)
     hs-source-dirs:   src
     default-language: Haskell2010
 
-library lib0101
-  private-build-depends: lib01 == 0.1.0.0
-  reexported-modules: Lib as Lib01
-
-library lib0102
-  private-build-depends: lib01 == 0.2.0.0
-  reexported-modules: Lib as Lib02

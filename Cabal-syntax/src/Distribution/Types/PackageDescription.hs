@@ -359,18 +359,20 @@ enabledBuildInfos pkg enabled =
 -- ------------------------------------------------------------
 
 -- | Get the combined build-depends entries of all components.
-allBuildDepends :: PackageDescription -> [Dependency]
+allBuildDepends :: PackageDescription -> [(Maybe PrivateAlias, Dependency)]
 allBuildDepends pd = do
   bi <- allBuildInfo pd
-  (targetBuildDepends bi ++ targetPrivateBuildDepends bi)
+  [(Nothing, d) | d <- targetBuildDepends bi ]
+    ++ [(Just p, d) | PrivateDependency p ds <- targetPrivateBuildDepends bi, d <- ds ]
 
 -- | Get the combined build-depends entries of all enabled components, per the
 -- given request spec.
-enabledBuildDepends :: PackageDescription -> ComponentRequestedSpec -> [Dependency]
+enabledBuildDepends :: PackageDescription -> ComponentRequestedSpec -> [(Maybe PrivateAlias, Dependency)]
 enabledBuildDepends spec pd =
   do
     bi <- enabledBuildInfos spec pd
-    (targetBuildDepends bi ++ targetPrivateBuildDepends bi)
+    [(Nothing, d) | d <- targetBuildDepends bi ]
+      ++ [(Just p, d) | PrivateDependency p ds <- targetPrivateBuildDepends bi, d <- ds ]
 
 updatePackageDescription :: HookedBuildInfo -> PackageDescription -> PackageDescription
 updatePackageDescription (mb_lib_bi, exe_bi) p =

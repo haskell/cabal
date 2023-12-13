@@ -62,6 +62,7 @@ import Distribution.Version
 
 import qualified Data.Map.Lazy as Map
 import Data.Tree (Tree (Node))
+import qualified Distribution.Types.Dependency.Lens as L
 
 ------------------------------------------------------------------------------
 
@@ -323,7 +324,7 @@ extractConditions f gpkg =
     ]
 
 -- | A map of package constraints that combines version ranges using 'unionVersionRanges'.
-newtype DepMapUnion = DepMapUnion {unDepMapUnion :: Map PackageName (VersionRange, NonEmptySet LibraryName, IsPrivate)}
+newtype DepMapUnion = DepMapUnion {unDepMapUnion :: Map (PackageName, IsPrivate) (VersionRange, NonEmptySet LibraryName)}
 
 instance Semigroup DepMapUnion where
   DepMapUnion x <> DepMapUnion y =
@@ -331,22 +332,24 @@ instance Semigroup DepMapUnion where
       Map.unionWith unionVersionRanges' x y
 
 unionVersionRanges'
-  :: (VersionRange, NonEmptySet LibraryName, IsPrivate)
-  -> (VersionRange, NonEmptySet LibraryName, IsPrivate)
-  -> (VersionRange, NonEmptySet LibraryName, IsPrivate)
-unionVersionRanges' (vr, cs, p) (vr', cs', p') = (unionVersionRanges vr vr', cs <> cs', p <> p')
+  :: (VersionRange, NonEmptySet LibraryName)
+  -> (VersionRange, NonEmptySet LibraryName)
+  -> (VersionRange, NonEmptySet LibraryName)
+unionVersionRanges' (vr, cs) (vr', cs') = (unionVersionRanges vr vr', cs <> cs')
 
 toDepMapUnion :: Dependencies -> DepMapUnion
 toDepMapUnion ds =
   DepMapUnion $ Map.fromListWith unionVersionRanges'
-    ([(p, (vr, cs, Public)) | Dependency p vr cs <- publicDependencies ds]
-    ++ [(p, (vr, cs, Private)) | Dependency p vr cs <- privateDependencies ds])
+    ([((p, Public), (vr, cs)) | Dependency p vr cs <- publicDependencies ds]
+    ++ [((p, Private (private_alias d, pns)), (vr, cs)) | d <- privateDependencies ds, let pns = map depPkgName (private_depends d), Dependency p vr cs <- private_depends d])
 
 fromDepMapUnion :: DepMapUnion -> Dependencies
 fromDepMapUnion m =
   Dependencies
-    [Dependency p vr cs | (p, (vr, cs, Public)) <- Map.toList (unDepMapUnion m)]
-    [Dependency p vr cs | (p, (vr, cs, Private)) <- Map.toList (unDepMapUnion m)]
+    [Dependency p vr cs | ((p, Public), (vr, cs)) <- Map.toList (unDepMapUnion m)]
+    [PrivateDependency alias deps | (alias, deps) <- Map.toList priv_deps]
+    where
+      priv_deps = Map.fromListWith (++) [(sn, [Dependency p vr cs]) | ((p, Private (sn, _)), (vr, cs)) <- Map.toList (unDepMapUnion m)]
 
 freeVars :: CondTree ConfVar c a -> [FlagName]
 freeVars t = [f | PackageFlag f <- freeVars' t]
@@ -458,7 +461,7 @@ finalizePD
   :: FlagAssignment
   -- ^ Explicitly specified flag assignments
   -> ComponentRequestedSpec
-  -> (Dependency -> Bool)
+  -> (Maybe PrivateAlias -> Dependency -> Bool)
   -- ^ Is a given dependency satisfiable from the set of
   -- available packages?  If this is unknown then use
   -- True.
@@ -531,8 +534,8 @@ finalizePD
           | otherwise -> [b, not b]
       -- flagDefaults = map (\(n,x:_) -> (n,x)) flagChoices
       check ds =
-        let missingDeps = Dependencies (filter (not . satisfyDep) (publicDependencies ds))
-                                       (filter (not . satisfyDep) (privateDependencies ds))
+        let missingDeps = Dependencies (filter (not . satisfyDep Nothing) (publicDependencies ds))
+                                       (mapMaybe (\(PrivateDependency priv ds) -> case filter (not . satisfyDep (Just priv)) ds of { [] -> Nothing; ds' -> Just (PrivateDependency priv ds') })  (privateDependencies ds))
          in if null (publicDependencies missingDeps) && null (privateDependencies missingDeps)
               then DepOk
               else MissingDeps missingDeps
@@ -658,7 +661,7 @@ transformAllBuildDepends
   -> GenericPackageDescription
   -> GenericPackageDescription
 transformAllBuildDepends f =
-  over (L.traverseBuildInfos . L.targetPrivateBuildDepends . traverse) f
+  over (L.traverseBuildInfos . L.targetPrivateBuildDepends . traverse . L.private_depends . traverse) f
     . over (L.traverseBuildInfos . L.targetBuildDepends . traverse) f
     . over (L.packageDescription . L.setupBuildInfo . traverse . L.setupDepends . traverse) f
     -- cannot be point-free as normal because of higher rank

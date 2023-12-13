@@ -630,7 +630,7 @@ configureInstallPlan configFlags solverPlan =
         -- NB: no support for executable dependencies
         }
       where
-        deps = fmap (concatMap (map configuredId . mapDep)) (solverPkgLibDeps spkg)
+        deps = error "todo" --fmap (concatMap (map configuredId . mapDep)) (solverPkgLibDeps spkg)
 
 -- ------------------------------------------------------------
 

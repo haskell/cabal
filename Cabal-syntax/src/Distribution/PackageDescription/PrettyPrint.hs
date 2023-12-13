@@ -61,6 +61,7 @@ import Text.PrettyPrint (Doc, char, hsep, parens, text)
 
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 import qualified Distribution.Compat.NonEmptySet as NES
+import qualified Distribution.Types.Dependency.Lens as L
 
 -- | Writes a .cabal file from a generic package description
 writeGenericPackageDescription :: FilePath -> GenericPackageDescription -> IO ()
@@ -263,7 +264,7 @@ preProcessInternalDeps specVer gpd
   where
     transformBI :: BuildInfo -> BuildInfo
     transformBI =
-      over L.targetPrivateBuildDepends (concatMap transformD)
+      over (L.targetPrivateBuildDepends . traverse . L.private_depends) (concatMap transformD)
         . over L.targetBuildDepends (concatMap transformD)
         . over L.mixins (map transformM)
 
@@ -274,7 +275,7 @@ preProcessInternalDeps specVer gpd
     transformD (Dependency pn vr ln)
       | pn == thisPn =
           if LMainLibName `NES.member` ln
-            then Dependency thisPn vr mainLibSet : sublibs
+            then Dependency thisPn vr mainLibSet: sublibs
             else sublibs
       where
         sublibs =

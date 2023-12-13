@@ -31,6 +31,9 @@ module Distribution.Simple.Setup.Config
   , configureArgs
   , configureOptions
   , installDirsOptions
+
+  -- TODO: Move
+  , AliasDependency(..)
   ) where
 
 import Distribution.Compat.Prelude hiding (get)
@@ -231,6 +234,11 @@ data ConfigFlags = ConfigFlags
 
 instance Binary ConfigFlags
 instance Structured ConfigFlags
+
+data AliasDependency = AliasDependency PrivateAlias GivenComponent deriving (Generic, Read, Show, Typeable)
+
+instance Binary AliasDependency
+instance Structured AliasDependency
 
 -- | More convenient version of 'configPrograms'. Results in an
 -- 'error' if internal invariant is violated.
@@ -744,6 +752,7 @@ configureOptions showOrParseArgs =
               (parsecToReadE (const "dependency expected") ((\x -> [x]) `fmap` parsec))
               (map prettyShow)
           )
+
        , option
           ""
           ["dependency"]
@@ -751,7 +760,7 @@ configureOptions showOrParseArgs =
           configDependencies
           (\v flags -> flags{configDependencies = v})
           ( reqArg
-              "NAME[:COMPONENT_NAME]=CID"
+              "NAME[:COMPONENT_NAME]=CID[=ALIAS]"
               (parsecToReadE (const "dependency expected") ((\x -> [x]) `fmap` parsecGivenComponent))
               (map prettyGivenComponent)
           )
@@ -762,7 +771,7 @@ configureOptions showOrParseArgs =
           configPromisedDependencies
           (\v flags -> flags{configPromisedDependencies = v})
           ( reqArg
-              "NAME[:COMPONENT_NAME]=CID"
+              "NAME[:COMPONENT_NAME]=CID[=ALIAS]"
               (parsecToReadE (const "dependency expected") ((\x -> [x]) `fmap` parsecGivenComponent))
               (map prettyGivenComponent)
           )
@@ -893,6 +902,20 @@ showProfDetailLevelFlag :: Flag ProfDetailLevel -> [String]
 showProfDetailLevelFlag NoFlag = []
 showProfDetailLevelFlag (Flag dl) = [showProfDetailLevel dl]
 
+parsecAliasDependency :: ParsecParser AliasDependency
+parsecAliasDependency = do
+  pn <- parsec
+  traceShowM pn
+  _ <- P.char '='
+  gc <- parsecGivenComponent
+  return $ AliasDependency pn gc
+
+prettyAliasDependency :: AliasDependency -> String
+prettyAliasDependency (AliasDependency pn gc) =
+  prettyShow pn
+    ++ "="
+    ++ prettyGivenComponent gc
+
 parsecGivenComponent :: ParsecParser GivenComponent
 parsecGivenComponent = do
   pn <- parsec
@@ -905,16 +928,20 @@ parsecGivenComponent = do
         else LSubLibName ucn
   _ <- P.char '='
   cid <- parsec
-  return $ GivenComponent pn ln cid
+  alias <- P.option Nothing $ do
+            _ <- P.char '='
+            Just <$> parsec
+  return $ GivenComponent pn ln cid alias
 
 prettyGivenComponent :: GivenComponent -> String
-prettyGivenComponent (GivenComponent pn cn cid) =
+prettyGivenComponent (GivenComponent pn cn cid alias) =
   prettyShow pn
     ++ case cn of
       LMainLibName -> ""
       LSubLibName n -> ":" ++ prettyShow n
     ++ "="
     ++ prettyShow cid
+    ++ maybe "" (\a -> "=" ++ prettyShow a) alias
 
 installDirsOptions :: [OptionField (InstallDirs (Flag PathTemplate))]
 installDirsOptions =

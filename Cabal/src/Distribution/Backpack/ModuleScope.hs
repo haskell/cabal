@@ -69,7 +69,7 @@ import Text.PrettyPrint
 data ModuleScope = ModuleScope
   { modScopeProvides :: ModuleProvides
   , modScopeRequires :: ModuleRequires
-  }
+  } deriving Show
 
 -- | An empty 'ModuleScope'.
 emptyModuleScope :: ModuleScope
@@ -92,6 +92,7 @@ data ModuleSource
   | FromExposedModules ModuleName
   | FromOtherModules ModuleName
   | FromSignatures ModuleName
+  deriving Show
 
 -- We don't have line numbers, but if we did, we'd want to record that
 -- too
@@ -123,7 +124,7 @@ dispComponent pn cn =
 
 -- | An 'OpenModule', annotated with where it came from in a Cabal file.
 data WithSource a = WithSource ModuleSource a
-  deriving (Functor, Foldable, Traversable)
+  deriving (Show, Functor, Foldable, Traversable)
 
 unWithSource :: WithSource a -> a
 unWithSource (WithSource _ x) = x

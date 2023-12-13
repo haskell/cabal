@@ -1,5 +1,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE BangPatterns #-}
 
 -- | See <https://github.com/ezyang/ghc-proposals/blob/backpack/proposals/0000-backpack.rst>
 module Distribution.Backpack.LinkedComponent
@@ -150,13 +151,15 @@ toLinkedComponent
             _ -> ([], [], [])
       src_hidden = otherModules (componentBuildInfo component)
 
+
+      -- HERE??
       -- Take each included ComponentId and resolve it into an
       -- \*unlinked* unit identity.  We will use unification (relying
       -- on the ModuleShape) to resolve these into linked identities.
       unlinked_includes :: [ComponentInclude (OpenUnitId, ModuleShape) IncludeRenaming]
       unlinked_includes =
-        [ ComponentInclude (fmap lookupUid dep_aid) rns i
-        | ComponentInclude dep_aid rns i <- cid_includes
+        [ ComponentInclude (fmap lookupUid dep_aid) rns i alias
+        | ComponentInclude dep_aid rns i alias <- cid_includes
         ]
 
       lookupUid :: ComponentId -> (OpenUnitId, ModuleShape)
@@ -184,7 +187,7 @@ toLinkedComponent
               , preModShapeRequires = Set.fromList src_reqs
               }
               : [ renamePreModuleShape (toPreModuleShape sh) rns
-                | ComponentInclude (AnnotatedId{ann_id = (_, sh)}) rns _ <- unlinked_includes
+                | ComponentInclude (AnnotatedId{ann_id = (_, sh)}) rns _ _ <- unlinked_includes
                 ]
         reqs = preModShapeRequires pre_shape
         insts =
@@ -236,7 +239,7 @@ toLinkedComponent
         -- src_reqs_u <- traverse convertReq src_reqs
         -- Read out all the final results by converting back
         -- into a pure representation.
-        let convertIncludeU (ComponentInclude dep_aid rns i) = do
+        let convertIncludeU (ComponentInclude dep_aid rns i alias) = do
               let component_name = pretty $ ann_cname dep_aid
               uid <- convertUnitIdU (ann_id dep_aid) component_name
               return
@@ -244,6 +247,7 @@ toLinkedComponent
                     { ci_ann_id = dep_aid{ann_id = uid}
                     , ci_renaming = rns
                     , ci_implicit = i
+                    , ci_alias = alias
                     }
                 )
 

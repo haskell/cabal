@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE TypeApplications #-}
 
 -- | Per-package constraints. Package constraints must be respected by the
 -- solver. Multiple constraints for each package can be given, though obviously
@@ -32,6 +33,7 @@ import Distribution.Solver.Types.PackagePath
 
 import qualified Text.PrettyPrint as Disp
 import Distribution.Solver.Types.ComponentDeps (Component(..), componentNameToComponent)
+import Distribution.Types.Dependency
 
 
 -- | Determines to what packages and in what contexts a
@@ -49,6 +51,10 @@ data ConstraintScope
    = ScopeTarget PackageName
      -- | The package with the specified name and qualifier.
    | ScopeQualified Namespace PackageName
+
+
+   -- Apply a constraint to a private-build-depends scope
+   | ScopePrivate PackageName PrivateAlias PackageName
      -- | The package with the specified name when it has a
      -- setup qualifier.
    | ScopeAnySetupQualifier PackageName
@@ -69,18 +75,23 @@ scopeToPackageName (ScopeTarget pn) = pn
 scopeToPackageName (ScopeQualified _ pn) = pn
 scopeToPackageName (ScopeAnySetupQualifier pn) = pn
 scopeToPackageName (ScopeAnyQualifier pn) = pn
+scopeToPackageName (ScopePrivate _ _ pn) = pn
 
 -- TOOD: Crucial
 constraintScopeMatches :: ConstraintScope -> QPN -> Bool
+constraintScopeMatches cs qpn | traceShow (cs, qpn) False = undefined
 constraintScopeMatches (ScopeTarget pn) (Q (PackagePath ns q) pn') =
   let namespaceMatches DefaultNamespace = True
       namespaceMatches (Independent namespacePn) = pn == namespacePn
       namespaceMatches (IndependentComponent {}) = False
       namespaceMatches (IndependentBuildTool {}) = False
   in namespaceMatches ns && q == QualToplevel && pn == pn'
-constraintScopeMatches (ScopeQualified ns pn) (Q (PackagePath qual_ns _) pn') =
+constraintScopeMatches (ScopePrivate spn alias c_pn) (Q (PackagePath qual_ns q) c_pn') =
+  let qualMatches (QualAlias qual_pn _ qual_alias _) = spn == qual_pn && alias == qual_alias
+      qualMatches _ = False
     -- TODO: Check whether any ns should subsume qual_ns
-    pn == pn' && ns == qual_ns
+  in qualMatches q && c_pn == c_pn'
+constraintScopeMatches (ScopeQualified {}) _ = False
 constraintScopeMatches (ScopeAnySetupQualifier pn) (Q pp pn') =
   let setup (PackagePath (IndependentComponent _ ComponentSetup) x) = True
       setup _                             = False
@@ -91,6 +102,7 @@ constraintScopeMatches (ScopeAnyQualifier pn) (Q _ pn') = pn == pn'
 dispConstraintScope :: ConstraintScope -> Disp.Doc
 dispConstraintScope (ScopeTarget pn) = pretty pn <<>> Disp.text "." <<>> pretty pn
 dispConstraintScope (ScopeQualified ns pn) = dispNamespace ns <<>> pretty pn
+dispConstraintScope (ScopePrivate pn alias p) = Disp.text "private." <<>> pretty pn <<>> Disp.text "." <<>> pretty @PrivateAlias alias <<>> Disp.text "." <<>> pretty p
 dispConstraintScope (ScopeAnySetupQualifier pn) = Disp.text "setup." <<>> pretty pn
 dispConstraintScope (ScopeAnyQualifier pn) = Disp.text "any." <<>> pretty pn
 

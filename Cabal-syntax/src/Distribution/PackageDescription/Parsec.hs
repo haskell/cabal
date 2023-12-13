@@ -71,6 +71,7 @@ import qualified Distribution.Types.GenericPackageDescription.Lens as L
 import qualified Distribution.Types.PackageDescription.Lens as L
 import qualified Distribution.Types.SetupBuildInfo.Lens as L
 import qualified Text.Parsec as P
+import qualified Distribution.Types.Dependency.Lens as L
 
 ------------------------------------------------------------------------------
 
@@ -812,7 +813,7 @@ postProcessInternalDeps specVer gpd
   where
     transformBI :: BuildInfo -> BuildInfo
     transformBI =
-      over L.targetPrivateBuildDepends (concatMap transformD)
+      over (L.targetPrivateBuildDepends . traverse . L.private_depends) (concatMap transformD)
         . over L.targetBuildDepends (concatMap transformD)
         . over L.mixins (map transformM)
 

@@ -668,12 +668,15 @@ exAvSrcPkg ex =
               -- effect constraints on conditional tree. But no way to
               -- distinguish between them
               C.condTreeConstraints = mempty { C.publicDependencies = map mkDirect directDeps
-                                             , C.privateDependencies = map mkDirect privateDeps }
+                                             , C.privateDependencies = map mkDirectD privateDeps }
             , C.condTreeComponents = map (mkFlagged mkComponent) flaggedDeps
             }
 
     mkDirect :: (ExamplePkgName, C.LibraryName, C.VersionRange, Bool) -> C.Dependency
     mkDirect (dep, name, vr, _) = C.Dependency (C.mkPackageName dep) vr (NonEmptySet.singleton name)
+
+    mkDirectD :: (ExamplePkgName, C.LibraryName, C.VersionRange, Bool) -> C.Dependency
+    mkDirectD (dep, name, vr, _) = (C.Dependency (C.mkPackageName dep) vr (NonEmptySet.singleton name) )
 
     mkFlagged
       :: (C.LibraryVisibility -> C.BuildInfo -> a)

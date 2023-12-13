@@ -10,6 +10,7 @@ import Distribution.Compat.Prelude
 import Distribution.Types.ComponentId
 import Distribution.Types.LibraryName
 import Distribution.Types.PackageName
+import Distribution.Types.Dependency
 
 -- | A 'GivenComponent' represents a library depended on and explicitly
 -- specified by the user/client with @--dependency@
@@ -22,6 +23,7 @@ data GivenComponent = GivenComponent
   , givenComponentName :: LibraryName -- --dependency is for libraries
   -- only, not for any component
   , givenComponentId :: ComponentId
+  , givenComponentAlias :: Maybe PrivateAlias
   }
   deriving (Generic, Read, Show, Eq, Typeable)
 

@@ -39,6 +39,8 @@ import qualified Distribution.Compat.NonEmptySet as NonEmptySet
 import Distribution.Pretty
 import Text.PrettyPrint (Doc, hang, hsep, quotes, text, vcat, ($$))
 import qualified Text.PrettyPrint as PP
+import Distribution.ModuleName
+import Distribution.InstalledPackageInfo
 
 -- | A configured component, we know exactly what its 'ComponentId' is,
 -- and the 'ComponentId's of the things it depends on.
@@ -100,7 +102,7 @@ dispConfiguredComponent cc =
 mkConfiguredComponent
   :: PackageDescription
   -> ComponentId
-  -> [AnnotatedId ComponentId] -- lib deps
+  -> [(AnnotatedId ComponentId, Maybe PrivateAlias)] -- lib deps
   -> [AnnotatedId ComponentId] -- exe deps
   -> Component
   -> LogProgress ConfiguredComponent
@@ -120,6 +122,8 @@ mkConfiguredComponent pkg_descr this_cid lib_deps exe_deps component = do
         { ci_ann_id = aid
         , ci_renaming = rns
         , ci_implicit = False
+        -- Mixins can't be private
+        , ci_alias = Nothing
         }
 
   -- Any @build-depends@ which is not explicitly mentioned in
@@ -127,14 +131,15 @@ mkConfiguredComponent pkg_descr this_cid lib_deps exe_deps component = do
   let used_explicitly = Set.fromList (map ci_id explicit_includes)
       implicit_includes =
         map
-          ( \aid ->
+          ( \(aid, alias)->
               ComponentInclude
                 { ci_ann_id = aid
                 , ci_renaming = defaultIncludeRenaming
                 , ci_implicit = True
+                , ci_alias = alias
                 }
           )
-          $ filter (flip Set.notMember used_explicitly . ann_id) lib_deps
+          $ filter (flip Set.notMember used_explicitly . ann_id . fst) lib_deps
 
   return
     ConfiguredComponent
@@ -161,13 +166,14 @@ mkConfiguredComponent pkg_descr this_cid lib_deps exe_deps component = do
     deps_map =
       Map.fromList
         [ ((packageName dep, ann_cname dep), dep)
-        | dep <- lib_deps
+        | (dep, _) <- lib_deps
         ]
 
     is_public = componentName component == CLibName LMainLibName
 
+-- A function from PackageName -> Maybe PrivateQualifier -> ComponentName -> ResolvedComponentId
 type ConfiguredComponentMap =
-  Map PackageName (Map ComponentName (AnnotatedId ComponentId))
+  Map (PackageName, Maybe PrivateAlias) (Map ComponentName ((AnnotatedId ComponentId)))
 
 toConfiguredComponent
   :: PackageDescription
@@ -180,14 +186,15 @@ toConfiguredComponent pkg_descr this_cid lib_dep_map exe_dep_map component = do
   lib_deps <-
     if newPackageDepsBehaviour pkg_descr
       then fmap concat $
-        forM (targetBuildDepends bi ++ targetPrivateBuildDepends bi) $
-          \(Dependency name _ sublibs) -> do
-            case Map.lookup name lib_dep_map of
+        forM ([ (d, Nothing) | d <- targetBuildDepends bi] ++ [ (d, Just alias) | (PrivateDependency alias ds) <- targetPrivateBuildDepends bi, d <- ds]) $
+          \((Dependency name _ sublibs), alias) -> do
+            case Map.lookup (name, alias) lib_dep_map of
               Nothing ->
                 dieProgress $
                   text "Dependency on unbuildable"
                     <+> text "package"
-                    <+> pretty name
+                    <+> pretty name <+> maybe mempty pretty alias
+                    <+> text (show lib_dep_map)
               Just pkg -> do
                 -- Return all library components
                 forM (NonEmptySet.toList sublibs) $ \lib ->
@@ -198,8 +205,8 @@ toConfiguredComponent pkg_descr this_cid lib_dep_map exe_dep_map component = do
                             text "Dependency on unbuildable"
                               <+> text (showLibraryName lib)
                               <+> text "from"
-                              <+> pretty name
-                        Just v -> return v
+                              <+> pretty name <+> maybe mempty pretty alias
+                        Just v -> return (v, alias)
       else return old_style_lib_deps
   mkConfiguredComponent
     pkg_descr
@@ -217,8 +224,8 @@ toConfiguredComponent pkg_descr this_cid lib_dep_map exe_dep_map component = do
     -- because it would imply a cyclic dependency for the
     -- library itself.
     old_style_lib_deps =
-      [ e
-      | (pn, comp_map) <- Map.toList lib_dep_map
+      [ (e, alias)
+      | ((pn, alias), comp_map) <- Map.toList lib_dep_map
       , pn /= packageName pkg_descr
       , (cn, e) <- Map.toList comp_map
       , cn == CLibName LMainLibName
@@ -236,7 +243,7 @@ toConfiguredComponent pkg_descr this_cid lib_dep_map exe_dep_map component = do
         -- which the package is attempting to use (those deps are only
         -- fed in when cabal-install uses this codepath.)
         -- TODO: Let cabal-install request errors here
-        Just exe <- [Map.lookup (CExeName cn) =<< Map.lookup pn exe_dep_map]
+        Just exe <- [Map.lookup (CExeName cn) =<< Map.lookup (pn, Nothing) exe_dep_map]
         ]
 
 -- | Also computes the 'ComponentId', and sets cc_public if necessary.
@@ -292,7 +299,7 @@ extendConfiguredComponentMap
 extendConfiguredComponentMap cc =
   Map.insertWith
     Map.union
-    (pkgName (cc_pkgid cc))
+    ((pkgName (cc_pkgid cc)), Nothing)
     (Map.singleton (cc_name cc) (cc_ann_id cc))
 
 -- Compute the 'ComponentId's for a graph of 'Component's.  The

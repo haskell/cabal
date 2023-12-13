@@ -6,11 +6,8 @@ module HooksLib where
 
 import Control.Monad.Reader
 
--- ghc bug I think
---import "lib0101" Lib as L1
---import "lib0102" Lib as L2
-import Lib01 as L1
-import Lib02 as L2
+import V01.Lib as L1
+import V02.Lib as L2
 import "lib01" Lib as L
 
 import System.IO (stderr)

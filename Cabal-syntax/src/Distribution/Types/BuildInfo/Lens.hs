@@ -11,7 +11,7 @@ import Prelude ()
 import Distribution.Compiler (PerCompilerFlavor)
 import Distribution.ModuleName (ModuleName)
 import Distribution.Types.BuildInfo (BuildInfo)
-import Distribution.Types.Dependency (Dependency)
+import Distribution.Types.Dependency (Dependency, PrivateDependency)
 import Distribution.Types.ExeDependency (ExeDependency)
 import Distribution.Types.LegacyExeDependency (LegacyExeDependency)
 import Distribution.Types.Mixin (Mixin)
@@ -205,7 +205,7 @@ class HasBuildInfo a where
   targetBuildDepends = buildInfo . targetBuildDepends
   {-# INLINE targetBuildDepends #-}
 
-  targetPrivateBuildDepends :: Lens' a [Dependency]
+  targetPrivateBuildDepends :: Lens' a [PrivateDependency]
   targetPrivateBuildDepends = buildInfo . targetPrivateBuildDepends
   {-# INLINE targetPrivateBuildDepends #-}
 

@@ -863,7 +863,12 @@ tests =
                       Right [("A", 1), ("B", 1)]
       ]
   , testGroup "Private dependencies"
-    [ runTest privDep1 ]
+    [ runTest privDep1
+    , runTest privDep2
+    , runTest privDep3
+    , runTest privDep4
+    , runTest privDep5
+    ]
   , -- Tests for the contents of the solver's log
     testGroup
       "Solver log"
@@ -2601,10 +2606,57 @@ priv_db1 = [ Left $  exInst "C" 1 "C-1" []
            , Left $ exInst "C" 2 "C-2" []
            , Right $ exAv "A" 1 [ExFixPriv "C" 1]
            , Right $ exAv "B" 1 [ExFix "C" 2 ]
-           , Right $ exAv "D" 1 [ExAny "A", ExAny "B"] ]
+           , Right $ exAv "D" 1 [ExAny "A", ExAny "B"]
+           ]
 
 privDep1 :: SolverTest
 privDep1 = setVerbose $ mkTest priv_db1 "private-dependencies-1" ["D"] (solverSuccess [])
+
+-- Test 2: A depends on both C publically and privately, directly
+priv_db2 :: ExampleDb
+priv_db2 = [ Left $  exInst "C" 1 "C-1" []
+           , Right $ exAv "A" 1 [ExFix "C" 1, ExFixPriv "C" 1]
+           ]
+
+privDep2 :: SolverTest
+privDep2 = setVerbose $ mkTest priv_db2 "private-dependencies-2" ["A"] anySolverFailure
+
+-- Test 3: A depends on both C publically and privately, transitively
+priv_db3 :: ExampleDb
+priv_db3 = [ Left $  exInst "C" 1 "C-1" []
+           , Right $ exAv "D" 1 [ExFix "C" 1]
+           , Right $ exAv "A" 1 [ExFix "D" 1, ExFixPriv "C" 1]
+           ]
+
+privDep3 :: SolverTest
+privDep3 = setVerbose $ mkTest priv_db3 "private-dependencies-3" ["A"] (solverSuccess [])
+
+-- Test 4: Private dependency applies transitively, so we choose two versions of C and hence two versions of E
+priv_db4 :: ExampleDb
+priv_db4 = [ Left $ exInst "E" 1 "E-1" []
+           , Left $ exInst "E" 2 "E-2" []
+           , Right $ exAv "C" 1 [ ExFix "E" 1 ]
+           , Right $ exAv "C" 2 [ ExFix "E" 2]
+           , Right $ exAv "A" 1 [ExFixPriv "C" 1]
+           , Right $ exAv "B" 1 [ExFix "C" 2 ]
+           , Right $ exAv "D" 1 [ExAny "A", ExAny "B"]
+           ]
+
+privDep4 :: SolverTest
+privDep4 = setVerbose $ mkTest priv_db4 "private-dependencies-4" ["D"] (solverSuccess [])
+
+-- Test 5: Private dependencies and setup dependencies can choose different versions
+
+priv_db5 :: ExampleDb
+priv_db5 = [ Left $ exInst "E" 1 "E-1" []
+           , Left $ exInst "E" 2 "E-2" []
+           , Right $ exAv "A" 1 [ExFixPriv "E" 1] `withSetupDeps` [ExFix "E" 2]
+           ]
+
+privDep5 :: SolverTest
+privDep5 = setVerbose $ mkTest priv_db5 "private-dependencies-5" ["A"] (solverSuccess [])
+
+
 
 -- | Returns true if the second list contains all elements of the first list, in
 -- order.

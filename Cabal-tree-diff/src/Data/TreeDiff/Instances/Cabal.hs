@@ -131,5 +131,7 @@ instance ToExpr Verbosity
 instance ToExpr VerbosityFlag
 instance ToExpr VerbosityLevel
 instance ToExpr Dependencies
+instance ToExpr PrivateDependency
+instance ToExpr PrivateAlias
 
 instance ToExpr ShortText where toExpr = toExpr . fromShortText
