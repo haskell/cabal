@@ -77,14 +77,19 @@ runghc senv mb_cwd env_overrides script_path args = do
 -- script with 'runghc'.
 runnerCommand :: ScriptEnv -> Maybe FilePath -> [(String, Maybe String)]
               -> FilePath -> [String] -> IO (FilePath, [String])
-runnerCommand senv _mb_cwd _env_overrides script_path args = do
+runnerCommand senv mb_cwd _env_overrides script_path args = do
     (prog, _) <- requireProgram verbosity runghcProgram (runnerProgramDb senv)
     return (programPath prog,
             runghc_args ++ ["--"] ++ map ("--ghc-arg="++) ghc_args ++ [script_path] ++ args)
   where
     verbosity = runnerVerbosity senv
     runghc_args = []
-    ghc_args = runnerGhcArgs senv
+    ghc_args = runnerGhcArgs senv ++ srcArg
+    srcArg = case mb_cwd of
+      Nothing -> []
+      Just wd -> ["-i" ++ wd]
+        -- Add a --ghc-arg=-iworkDir argument to runghc so that it can find
+        -- extra modules imported by the Setup.hs script.
 
 -- | Compute the GHC flags to invoke 'runghc' with under a 'ScriptEnv'.
 runnerGhcArgs :: ScriptEnv -> [String]
