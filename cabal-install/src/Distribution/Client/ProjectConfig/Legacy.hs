@@ -280,7 +280,7 @@ parseProjectSkeleton cacheDir httpTransport verbosity seenImports source Project
         pure (Just <$> condNode, rest)
       _ -> (\r -> (pure Nothing, r)) <$> go 0 [] x
 
-    fieldsToConfig depth xs = fmap (addProvenance . convertLegacyProjectConfig) $ parseLegacyProjectConfigFields (depth, source) xs
+    fieldsToConfig depth xs = fmap (addProvenance . convertLegacyProjectConfig) $ parseLegacyProjectConfigFields (ProjectConfigImport depth source) xs
     addProvenance x = x{projectConfigProvenance = Set.singleton (Explicit source)}
 
     adaptParseError _ (Right x) = pure x
@@ -1186,18 +1186,18 @@ convertToLegacyPerPackageConfig PackageConfig{..} =
 -- Parsing and showing the project config file
 --
 
-parseLegacyProjectConfigFields :: (Int, FilePath) -> [ParseUtils.Field] -> ParseResult LegacyProjectConfig
-parseLegacyProjectConfigFields (depth, source) =
+parseLegacyProjectConfigFields :: ProjectConfigImport -> [ParseUtils.Field] -> ParseResult LegacyProjectConfig
+parseLegacyProjectConfigFields pci =
   parseFieldsAndSections
     (legacyProjectConfigFieldDescrs constraintSrc)
     legacyPackageConfigSectionDescrs
     legacyPackageConfigFGSectionDescrs
     mempty
   where
-    constraintSrc = ConstraintSourceProjectConfig $ ProjectConfigImport depth source
+    constraintSrc = ConstraintSourceProjectConfig pci
 
 parseLegacyProjectConfig :: FilePath -> BS.ByteString -> ParseResult LegacyProjectConfig
-parseLegacyProjectConfig source bs = parseLegacyProjectConfigFields (0, source) =<< ParseUtils.readFields bs
+parseLegacyProjectConfig source bs = parseLegacyProjectConfigFields (ProjectConfigImport 0 source) =<< ParseUtils.readFields bs
 
 showLegacyProjectConfig :: LegacyProjectConfig -> String
 showLegacyProjectConfig config =
