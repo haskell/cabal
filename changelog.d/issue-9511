@@ -1,0 +1,45 @@
+synopsis: Override imported package version equalities
+description:
+  This change enables a project to take constraints from stackage without having
+  to download and comment out conflicting version equality constraints where we
+  might prefer a different version of a package than the resolver has.
+  
+  Stackage provides a `/cabal.config` for any resolver, such as
+  [nightly-2023-12-07/cabal.config](https://www.stackage.org/nightly-2023-12-07/cabal.config).
+  This is made up mostly of exact versions of packages, stipulated as version
+  equality constraints. For any package in the resolver where we want a
+  different version we're stuck as we can't add a new equality constraint for
+  a package without creating a constraint set that is impossible to solve. We
+  can't solve for two versions of the same package.
+
+  ```
+  -- cabal.project
+  constraints: hashable ==1.4.3.0
+  constraints: hashable ==1.4.2.0
+  ```
+
+  This change gives priority to version equality constraints that are less
+  imported and does so by only passing along the top priority constraints (the
+  least imported for any package) to the solver. The lower priority version
+  equality constraints are discarded. If `nightly-2023-12-07` has `constraints:
+  hashable ==1.4.3.0` then this fix will effectively allow the local
+  `cabal.project` to override that version and pick another.
+
+  ```
+  -- cabal.project
+  import: https://www.stackage.org/nightly-2023-12-07/cabal.config
+  constraints: hashable ==1.4.2.0
+  ```
+
+  The order of the import relative to the constraints does not matter within a
+  project because the project is at the root of the import tree. Anything put
+  there is top priority.
+  
+  The same relative precedence rule applies per-package down an import tree for
+  more complex import situations. Other constraints, such as flags, are not
+  touched by this fix so it may be possible to orphan some flags that relate to
+  versions of packages that get weeded out.
+
+packages: cabal-install
+prs: #9510
+issues: #9511
