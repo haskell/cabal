@@ -540,6 +540,8 @@ data KnownExtension
     AlternativeLayoutRuleTransitional
   | -- | Undocumented parsing-related extensions introduced in GHC 7.2.
     RelaxedLayout
+  | -- | Allow the use of type abstraction syntax.
+    TypeAbstractions
   deriving (Generic, Show, Read, Eq, Ord, Enum, Bounded, Typeable, Data)
 
 instance Binary KnownExtension
