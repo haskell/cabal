@@ -1187,14 +1187,12 @@ convertToLegacyPerPackageConfig PackageConfig{..} =
 --
 
 parseLegacyProjectConfigFields :: ProjectConfigImport -> [ParseUtils.Field] -> ParseResult LegacyProjectConfig
-parseLegacyProjectConfigFields pci =
+parseLegacyProjectConfigFields (ConstraintSourceProjectConfig -> constraintSrc) =
   parseFieldsAndSections
     (legacyProjectConfigFieldDescrs constraintSrc)
     legacyPackageConfigSectionDescrs
     legacyPackageConfigFGSectionDescrs
     mempty
-  where
-    constraintSrc = ConstraintSourceProjectConfig pci
 
 parseLegacyProjectConfig :: FilePath -> BS.ByteString -> ParseResult LegacyProjectConfig
 parseLegacyProjectConfig source bs = parseLegacyProjectConfigFields (ProjectConfigImport 0 source) =<< ParseUtils.readFields bs
