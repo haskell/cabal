@@ -2426,6 +2426,8 @@ Configuration Flags
     negated value. However, if the flag is manual, then the default
     value (which can be overridden by commandline flags) will be used.
 
+.. _conditional-blocks:
+
 Conditional Blocks
 ^^^^^^^^^^^^^^^^^^
 
