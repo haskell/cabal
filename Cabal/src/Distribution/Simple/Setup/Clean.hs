@@ -47,6 +47,9 @@ data CleanFlags = CleanFlags
   }
   deriving (Show, Generic, Typeable)
 
+instance Binary CleanFlags
+instance Structured CleanFlags
+
 defaultCleanFlags :: CleanFlags
 defaultCleanFlags =
   CleanFlags

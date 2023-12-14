@@ -29,7 +29,10 @@ data Component
   | CExe Executable
   | CTest TestSuite
   | CBench Benchmark
-  deriving (Show, Eq, Read)
+  deriving (Generic, Show, Eq, Read)
+
+instance Binary Component
+instance Structured Component
 
 instance Semigroup Component where
   CLib l <> CLib l' = CLib (l <> l')

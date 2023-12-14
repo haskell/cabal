@@ -55,6 +55,9 @@ data CopyFlags = CopyFlags
   }
   deriving (Show, Generic)
 
+instance Binary CopyFlags
+instance Structured CopyFlags
+
 defaultCopyFlags :: CopyFlags
 defaultCopyFlags =
   CopyFlags
