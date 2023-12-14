@@ -61,6 +61,7 @@ import Distribution.Client.ProjectConfig.Legacy
   , instantiateProjectConfigSkeletonFetchingCompiler
   , parseProjectSkeleton
   )
+import Distribution.Client.ProjectConfig.Types (ProjectConfigToParse (..))
 import Distribution.Client.ProjectFlags
   ( flagIgnoreProject
   )
@@ -506,7 +507,7 @@ readProjectBlockFromScript verbosity httpTransport DistDirLayout{distDownloadSrc
     Left _ -> return mempty
     Right x ->
       reportParseResult verbosity "script" scriptName
-        =<< parseProjectSkeleton distDownloadSrcDirectory httpTransport verbosity [] scriptName (0, x)
+        =<< parseProjectSkeleton distDownloadSrcDirectory httpTransport verbosity [] scriptName (ProjectConfigToParse 0 x)
 
 -- | Extract the first encountered script metadata block started end
 -- terminated by the tokens

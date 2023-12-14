@@ -6,6 +6,7 @@
 module Distribution.Client.ProjectConfig.Types
   ( -- * Types for project config
     ProjectConfig (..)
+  , ProjectConfigToParse (..)
   , ProjectConfigBuildOnly (..)
   , ProjectConfigShared (..)
   , ProjectConfigProvenance (..)
@@ -26,6 +27,7 @@ module Distribution.Client.ProjectConfig.Types
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
+import qualified Data.ByteString.Char8 as BS
 import Distribution.Client.BuildReports.Types
   ( ReportLevel (..)
   )
@@ -99,6 +101,17 @@ import Distribution.Types.ParStrat
 -------------------------------
 -- Project config types
 --
+
+-- | The project configuration is configuration that is parsed but parse
+-- configuration may import more configuration. This record attaches an import
+-- depth to each piece of imported configuration.
+data ProjectConfigToParse = ProjectConfigToParse
+  { toParseDepth :: Int
+  -- ^ Depth of the import. The main project config file has depth 0, and each
+  -- import increases the depth by 1.
+  , toParseContents :: BS.ByteString
+  -- ^ Unparsed contents of an imported file contributing to the project config.
+  }
 
 -- | This type corresponds directly to what can be written in the
 -- @cabal.project@ file. Other sources of configuration can also be injected

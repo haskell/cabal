@@ -226,8 +226,8 @@ instantiateProjectConfigSkeletonWithCompiler os arch impl _flags skel = go $ map
 projectSkeletonImports :: ProjectConfigSkeleton -> [ProjectConfigImport]
 projectSkeletonImports = view traverseCondTreeC
 
-parseProjectSkeleton :: FilePath -> HttpTransport -> Verbosity -> [ProjectConfigImport] -> FilePath -> (Int, BS.ByteString) -> IO (ParseResult ProjectConfigSkeleton)
-parseProjectSkeleton cacheDir httpTransport verbosity seenImports source (depthInitial, bs) =
+parseProjectSkeleton :: FilePath -> HttpTransport -> Verbosity -> [ProjectConfigImport] -> FilePath -> ProjectConfigToParse -> IO (ParseResult ProjectConfigSkeleton)
+parseProjectSkeleton cacheDir httpTransport verbosity seenImports source ProjectConfigToParse{toParseDepth = depthInitial, toParseContents = bs} =
   (sanityWalkPCS False =<<) <$> liftPR (go depthInitial []) (ParseUtils.readFields bs)
   where
     go :: Int -> [ParseUtils.Field] -> [ParseUtils.Field] -> IO (ParseResult ProjectConfigSkeleton)
@@ -243,7 +243,8 @@ parseProjectSkeleton cacheDir httpTransport verbosity seenImports source (depthI
                 >>= ( \sourceNext ->
                         let depthNext = depth + 1
                             imports = ProjectConfigImport depthNext importLoc : seenImports
-                         in parseProjectSkeleton cacheDir httpTransport verbosity imports importLoc (depthNext, sourceNext)
+                            nextConfig = ProjectConfigToParse depthNext sourceNext
+                         in parseProjectSkeleton cacheDir httpTransport verbosity imports importLoc nextConfig
                     )
             rest <- go depth [] xs
             pure . fmap mconcat . sequence $ [fs, res, rest]

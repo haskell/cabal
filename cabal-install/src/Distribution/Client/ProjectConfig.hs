@@ -9,6 +9,7 @@
 module Distribution.Client.ProjectConfig
   ( -- * Types for project config
     ProjectConfig (..)
+  , ProjectConfigToParse (..)
   , ProjectConfigBuildOnly (..)
   , ProjectConfigShared (..)
   , ProjectConfigProvenance (..)
@@ -767,7 +768,7 @@ readProjectFileSkeleton
                   verbosity
                   []
                   extensionFile
-                  . (0,)
+                  . ProjectConfigToParse 0
               )
           =<< BS.readFile extensionFile
 
