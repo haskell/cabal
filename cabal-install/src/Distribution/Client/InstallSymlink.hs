@@ -1,5 +1,7 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE RecordWildCards #-}
 
 -----------------------------------------------------------------------------
 
@@ -16,8 +18,10 @@
 --
 -- Managing installing binaries with symlinks.
 module Distribution.Client.InstallSymlink
-  ( symlinkBinaries
+  ( Symlink (..)
+  , symlinkBinaries
   , symlinkBinary
+  , symlinkableBinary
   , trySymlink
   , promptRun
   ) where
@@ -150,11 +154,13 @@ symlinkBinaries
                   privateBinDir <- pkgBinDir pkg ipid
                   ok <-
                     symlinkBinary
-                      overwritePolicy
-                      publicBinDir
-                      privateBinDir
-                      (prettyShow publicExeName)
-                      privateExeName
+                      ( Symlink
+                          overwritePolicy
+                          publicBinDir
+                          privateBinDir
+                          (prettyShow publicExeName)
+                          privateExeName
+                      )
                   if ok
                     then return Nothing
                     else
@@ -247,50 +253,80 @@ symlinkBinaries
       cinfo = compilerInfo comp
       (CompilerId compilerFlavor _) = compilerInfoId cinfo
 
--- | Symlink binary.
---
--- The paths are take in pieces, so we can make relative link when possible.
-symlinkBinary
-  :: OverwritePolicy
-  -- ^ Whether to force overwrite an existing file
-  -> FilePath
-  -- ^ The canonical path of the public bin dir eg
-  --   @/home/user/bin@
-  -> FilePath
-  -- ^ The canonical path of the private bin dir eg
-  --   @/home/user/.cabal/bin@
-  -> FilePath
-  -- ^ The name of the executable to go in the public bin
-  --   dir, eg @foo@
-  -> String
-  -- ^ The name of the executable to in the private bin
-  --   dir, eg @foo-1.0@
-  -> IO Bool
-  -- ^ If creating the symlink was successful. @False@ if
-  --   there was another file there already that we did
-  --   not own. Other errors like permission errors just
-  --   propagate as exceptions.
-symlinkBinary overwritePolicy publicBindir privateBindir publicName privateName = do
+-- | A record needed to either check if a symlink is possible or to create a
+-- symlink. Also used if copying instead of symlinking.
+data Symlink = Symlink
+  { overwritePolicy :: OverwritePolicy
+  -- ^ Whether to force overwrite an existing file.
+  , publicBindir :: FilePath
+  -- ^ The canonical path of the public bin dir eg @/home/user/bin@.
+  , privateBindir :: FilePath
+  -- ^ The canonical path of the private bin dir eg @/home/user/.cabal/bin@.
+  , publicName :: FilePath
+  -- ^ The name of the executable to go in the public bin dir, eg @foo@.
+  , privateName :: String
+  -- ^ The name of the executable to in the private bin dir, eg @foo-1.0@.
+  }
+
+-- | After checking if a target is writeable given the overwrite policy,
+-- dispatch to an appropriate action;
+--  * @onMissing@ if the target doesn't exist
+--  * @onOverwrite@ if the target exists and we are allowed to overwrite it
+--  * @onNever@ if the target exists and we are never allowed to overwrite it
+--  * @onPrompt@ if the target exists and we are allowed to overwrite after prompting
+onSymlinkBinary
+  :: IO a
+  -- ^ Missing action
+  -> IO a
+  -- ^ Overwrite action
+  -> IO a
+  -- ^ Never action
+  -> IO a
+  -- ^ Prompt action
+  -> Symlink
+  -> IO a
+onSymlinkBinary onMissing onOverwrite onNever onPrompt Symlink{..} = do
   ok <-
     targetOkToOverwrite
       (publicBindir </> publicName)
       (privateBindir </> privateName)
   case ok of
-    NotExists -> mkLink
-    OkToOverwrite -> overwrite
+    NotExists -> onMissing
+    OkToOverwrite -> onOverwrite
     NotOurFile ->
       case overwritePolicy of
-        NeverOverwrite -> return False
-        AlwaysOverwrite -> overwrite
-        PromptOverwrite -> maybeOverwrite
+        NeverOverwrite -> onNever
+        AlwaysOverwrite -> onOverwrite
+        PromptOverwrite -> onPrompt
+
+-- | Can we symlink a binary?
+--
+-- @True@ if creating the symlink would be succeed, being optimistic that the user will
+-- agree if prompted to overwrite.
+symlinkableBinary :: Symlink -> IO Bool
+symlinkableBinary = onSymlinkBinary (return True) (return True) (return False) (return True)
+
+-- | Symlink binary.
+--
+-- The paths are take in pieces, so we can make relative link when possible.
+-- @True@ if creating the symlink was successful. @False@ if there was another
+-- file there already that we did not own. Other errors like permission errors
+-- just propagate as exceptions.
+symlinkBinary :: Symlink -> IO Bool
+symlinkBinary inputs@Symlink{publicBindir, privateBindir, publicName, privateName} = do
+  onSymlinkBinary mkLink overwrite (return False) maybeOverwrite inputs
   where
     relativeBindir = makeRelative publicBindir privateBindir
+
     mkLink :: IO Bool
     mkLink = True <$ createFileLink (relativeBindir </> privateName) (publicBindir </> publicName)
+
     rmLink :: IO Bool
     rmLink = True <$ removeFile (publicBindir </> publicName)
+
     overwrite :: IO Bool
     overwrite = rmLink *> mkLink
+
     maybeOverwrite :: IO Bool
     maybeOverwrite =
       promptRun
