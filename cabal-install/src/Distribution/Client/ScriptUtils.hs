@@ -27,7 +27,7 @@ import Distribution.Client.Config
 import Distribution.Client.DistDirLayout
     ( DistDirLayout(..), DistDirParams(..) )
 import Distribution.Client.HashValue
-    ( hashValue, showHashValueBase64 )
+    ( hashValue, showHashValue, truncateHash )
 import Distribution.Client.HttpUtils
          ( HttpTransport, configureTransport )
 import Distribution.Client.NixStyleOptions
@@ -131,17 +131,18 @@ import qualified Text.Parsec as P
 --    repl to deal with the fact that the repl is relative to the working directory and not
 --    the project root.
 
--- | Get the hash of a script's absolute path)
+-- | Get the hash of a script's absolute path.
 --
 -- Two hashes will be the same as long as the absolute paths
 -- are the same.
 getScriptHash :: FilePath -> IO String
-getScriptHash script
-  -- Base64 is shorter than Base16, which helps avoid long path issues on windows
-  -- but it can contain /'s which aren't valid in file paths so replace them with
-  -- %'s. 26 chars / 130 bits is enough to practically avoid collisions.
-  = map (\c -> if c == '/' then '%' else c) . take 26
-  . showHashValueBase64 . hashValue . fromString <$> canonicalizePath script
+getScriptHash script =
+  -- Truncation here tries to help with long path issues on Windows.
+  showHashValue
+    . truncateHash 26
+    . hashValue
+    . fromString
+    <$> canonicalizePath script
 
 -- | Get the directory for caching a script build.
 --
