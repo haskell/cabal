@@ -231,7 +231,7 @@ data CurrentCommand = InstallCommand | HaddockCommand | BuildCommand | ReplComma
   deriving (Show, Eq)
 
 -- | This holds the context of a project prior to solving: the content of the
--- @cabal.project@ and all the local package @.cabal@ files.
+-- @cabal.project@, @cabal/config@ and all the local package @.cabal@ files.
 data ProjectBaseContext = ProjectBaseContext
   { distDirLayout :: DistDirLayout
   , cabalDirLayout :: CabalDirLayout

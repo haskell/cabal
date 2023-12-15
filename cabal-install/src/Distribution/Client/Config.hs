@@ -1540,6 +1540,14 @@ parseConfig src initial = \str -> do
                       splitMultiPath
                         (configConfigureArgs scf)
                   }
+        , savedGlobalFlags =
+            let sgf = savedGlobalFlags conf
+             in sgf
+                  { globalProgPathExtra =
+                      toNubList $
+                        splitMultiPath
+                          (fromNubList $ globalProgPathExtra sgf)
+                  }
         }
 
     parse =

@@ -1769,7 +1769,7 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
   hash <-
     getProgramInvocationOutput
       verbosity
-      (ghcInvocation ghcjsProg comp platform ghcArgs)
+      =<< ghcInvocation verbosity ghcjsProg comp platform ghcArgs
   return (takeWhile (not . isSpace) hash)
 
 componentGhcOptions

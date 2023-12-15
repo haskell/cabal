@@ -26,6 +26,10 @@ import Distribution.Client.NixStyleOptions
   , defaultNixStyleFlags
   , nixStyleOptions
   )
+import Distribution.Client.ProjectConfig.Types
+  ( ProjectConfig (projectConfigShared)
+  , ProjectConfigShared (projectConfigProgPathExtra)
+  )
 import Distribution.Client.ProjectFlags
   ( removeIgnoreProjectOption
   )
@@ -72,12 +76,9 @@ import Distribution.Simple.Program
   , simpleProgram
   )
 import Distribution.Simple.Program.Db
-  ( configuredPrograms
-  , modifyProgramSearchPath
+  ( appendProgramSearchPath
+  , configuredPrograms
   , requireProgram
-  )
-import Distribution.Simple.Program.Find
-  ( ProgramSearchPathEntry (..)
   )
 import Distribution.Simple.Program.Run
   ( programInvocation
@@ -86,10 +87,12 @@ import Distribution.Simple.Program.Run
 import Distribution.Simple.Utils
   ( createDirectoryIfMissingVerbose
   , dieWithException
-  , info
   , notice
   , withTempDirectory
   , wrapText
+  )
+import Distribution.Utils.NubList
+  ( fromNubList
   )
 import Distribution.Verbosity
   ( normal
@@ -162,13 +165,15 @@ execAction flags@NixStyleFlags{..} extraArgs globalFlags = do
       mempty
 
   -- Some dependencies may have executables. Let's put those on the PATH.
-  extraPaths <- pathAdditions verbosity baseCtx buildCtx
-  let programDb =
-        modifyProgramSearchPath
-          (map ProgramSearchPathDir extraPaths ++)
-          . pkgConfigCompilerProgs
-          . elaboratedShared
-          $ buildCtx
+  let extraPaths = pathAdditions baseCtx buildCtx
+
+  programDb <-
+    appendProgramSearchPath
+      verbosity
+      extraPaths
+      . pkgConfigCompilerProgs
+      . elaboratedShared
+      $ buildCtx
 
   -- Now that we have the packages, set up the environment. We accomplish this
   -- by creating an environment file that selects the databases and packages we
@@ -263,13 +268,15 @@ withTempEnvFile verbosity baseCtx buildCtx buildStatus action = do
         action envOverrides
     )
 
-pathAdditions :: Verbosity -> ProjectBaseContext -> ProjectBuildContext -> IO [FilePath]
-pathAdditions verbosity ProjectBaseContext{..} ProjectBuildContext{..} = do
-  info verbosity . unlines $
-    "Including the following directories in PATH:"
-      : paths
-  return paths
+pathAdditions :: ProjectBaseContext -> ProjectBuildContext -> [FilePath]
+pathAdditions ProjectBaseContext{..} ProjectBuildContext{..} =
+  paths ++ cabalConfigPaths
   where
+    cabalConfigPaths =
+      fromNubList
+        . projectConfigProgPathExtra
+        . projectConfigShared
+        $ projectConfig
     paths =
       S.toList $
         binDirectories distDirLayout elaboratedShared elaboratedPlanToExecute

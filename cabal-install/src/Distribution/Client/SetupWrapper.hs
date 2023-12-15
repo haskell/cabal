@@ -88,9 +88,11 @@ import Distribution.Simple.Program
   , ghcjsProgram
   , runDbProgram
   )
+import Distribution.Simple.Program.Db
+  ( appendProgramSearchPath
+  )
 import Distribution.Simple.Program.Find
-  ( ProgramSearchPathEntry (ProgramSearchPathDir)
-  , programSearchPathAsPATHVar
+  ( programSearchPathAsPATHVar
   )
 import Distribution.Simple.Program.Run
   ( getEffectiveEnvironment
@@ -537,11 +539,11 @@ invoke verbosity path args options = do
     Nothing -> return ()
     Just logHandle -> info verbosity $ "Redirecting build log to " ++ show logHandle
 
+  progDb <- appendProgramSearchPath verbosity (useExtraPathEnv options) (useProgramDb options)
+
   searchpath <-
-    programSearchPathAsPATHVar
-      ( map ProgramSearchPathDir (useExtraPathEnv options)
-          ++ getProgramSearchPath (useProgramDb options)
-      )
+    programSearchPathAsPATHVar $ getProgramSearchPath progDb
+
   env <-
     getEffectiveEnvironment $
       [ ("PATH", Just searchpath)

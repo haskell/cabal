@@ -36,7 +36,6 @@ import Distribution.Simple.Program.Types
 import Distribution.Simple.Utils
 import Distribution.Utils.Generic
 import Distribution.Verbosity
-import System.FilePath (searchPathSeparator)
 
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.Map as Map
@@ -51,8 +50,6 @@ data ProgramInvocation = ProgramInvocation
   { progInvokePath :: FilePath
   , progInvokeArgs :: [String]
   , progInvokeEnv :: [(String, Maybe String)]
-  , -- Extra paths to add to PATH
-    progInvokePathEnv :: [FilePath]
   , progInvokeCwd :: Maybe FilePath
   , progInvokeInput :: Maybe IOData
   , progInvokeInputEncoding :: IOEncoding
@@ -75,7 +72,6 @@ emptyProgramInvocation =
     { progInvokePath = ""
     , progInvokeArgs = []
     , progInvokeEnv = []
-    , progInvokePathEnv = []
     , progInvokeCwd = Nothing
     , progInvokeInput = Nothing
     , progInvokeInputEncoding = IOEncodingText
@@ -107,7 +103,6 @@ runProgramInvocation
     { progInvokePath = path
     , progInvokeArgs = args
     , progInvokeEnv = []
-    , progInvokePathEnv = []
     , progInvokeCwd = Nothing
     , progInvokeInput = Nothing
     } =
@@ -118,12 +113,10 @@ runProgramInvocation
     { progInvokePath = path
     , progInvokeArgs = args
     , progInvokeEnv = envOverrides
-    , progInvokePathEnv = extraPath
     , progInvokeCwd = mcwd
     , progInvokeInput = Nothing
     } = do
-    pathOverride <- getExtraPathEnv envOverrides extraPath
-    menv <- getEffectiveEnvironment (envOverrides ++ pathOverride)
+    menv <- getEffectiveEnvironment envOverrides
     maybeExit $
       rawSystemIOWithEnv
         verbosity
@@ -140,13 +133,11 @@ runProgramInvocation
     { progInvokePath = path
     , progInvokeArgs = args
     , progInvokeEnv = envOverrides
-    , progInvokePathEnv = extraPath
     , progInvokeCwd = mcwd
     , progInvokeInput = Just inputStr
     , progInvokeInputEncoding = encoding
     } = do
-    pathOverride <- getExtraPathEnv envOverrides extraPath
-    menv <- getEffectiveEnvironment (envOverrides ++ pathOverride)
+    menv <- getEffectiveEnvironment envOverrides
     (_, errors, exitCode) <-
       rawSystemStdInOut
         verbosity
@@ -202,29 +193,15 @@ getProgramInvocationIODataAndErrors
     { progInvokePath = path
     , progInvokeArgs = args
     , progInvokeEnv = envOverrides
-    , progInvokePathEnv = extraPath
     , progInvokeCwd = mcwd
     , progInvokeInput = minputStr
     , progInvokeInputEncoding = encoding
     }
   mode = do
-    pathOverride <- getExtraPathEnv envOverrides extraPath
-    menv <- getEffectiveEnvironment (envOverrides ++ pathOverride)
+    menv <- getEffectiveEnvironment envOverrides
     rawSystemStdInOut verbosity path args mcwd menv input mode
     where
       input = encodeToIOData encoding <$> minputStr
-
-getExtraPathEnv :: [(String, Maybe String)] -> [FilePath] -> IO [(String, Maybe String)]
-getExtraPathEnv _ [] = return []
-getExtraPathEnv env extras = do
-  mb_path <- case lookup "PATH" env of
-    Just x -> return x
-    Nothing -> lookupEnv "PATH"
-  let extra = intercalate [searchPathSeparator] extras
-      path' = case mb_path of
-        Nothing -> extra
-        Just path -> extra ++ searchPathSeparator : path
-  return [("PATH", Just path')]
 
 -- | Return the current environment extended with the given overrides.
 -- If an entry is specified twice in @overrides@, the second entry takes
