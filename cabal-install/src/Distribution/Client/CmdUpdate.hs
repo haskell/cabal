@@ -28,6 +28,7 @@ import Distribution.Client.HttpUtils
 import Distribution.Client.IndexUtils
   ( Index (..)
   , currentIndexTimestamp
+  , getIndexHeadTimestamp
   , indexBaseName
   , updatePackageIndexCacheFile
   , updateRepoIndexCache
@@ -280,12 +281,14 @@ updateRepo verbosity _updateFlags repoCtxt (repo, indexState) = do
           setModificationTime (indexBaseName repo <.> "tar") now
             `catchIO` \e ->
               warn verbosity $ "Could not set modification time of index tarball -- " ++ displayException e
+          head_ts <- getIndexHeadTimestamp verbosity index
           noticeNoWrap verbosity $
-            "Package list of " ++ prettyShow rname ++ " is up to date."
+            "Package list of " ++ prettyShow rname ++ " is up to date to " ++ prettyShow head_ts ++ "."
         Sec.HasUpdates -> do
           updateRepoIndexCache verbosity index
+          head_ts <- getIndexHeadTimestamp verbosity index
           noticeNoWrap verbosity $
-            "Package list of " ++ prettyShow rname ++ " has been updated."
+            "Package list of " ++ prettyShow rname ++ " has been updated to " ++ prettyShow head_ts ++ "."
 
       -- This resolves indexState (which could be HEAD) into a timestamp
       -- This could be null but should not be, since the above guarantees
@@ -293,11 +296,11 @@ updateRepo verbosity _updateFlags repoCtxt (repo, indexState) = do
       new_ts <- currentIndexTimestamp (lessVerbose verbosity) index
 
       noticeNoWrap verbosity $
-        "The index-state is set to " ++ prettyShow (IndexStateTime new_ts) ++ "."
-
-      -- TODO: This will print multiple times if there are multiple
-      -- repositories: main problem is we don't have a way of updating
-      -- a specific repo.  Once we implement that, update this.
+        "The global index-state for "
+          ++ prettyShow rname
+          ++ " now resolves to "
+          ++ prettyShow (IndexStateTime new_ts)
+          ++ "."
 
       -- In case current_ts is a valid timestamp different from new_ts, let
       -- the user know how to go back to current_ts

@@ -6,7 +6,7 @@ main = cabalTest $ withRemoteRepo "repo" $ do
   -- check the output manually.
   res <- recordMode DoNotRecord $
            cabal' "update" ["repository.localhost,2022-01-28T02:36:41Z"]
-  assertOutputContains "The index-state is set to 2022-01-28T02:36:41Z" res
+  assertOutputContains "The global index-state for repository.localhost now resolves to 2022-01-28T02:36:41Z." res
   assertOutputDoesNotContain "revert" res
   cabal "update" ["repository.localhost,2016-09-24T17:47:48Z"]
   cabal "update" ["repository.localhost,2022-01-28T02:36:41Z"]
