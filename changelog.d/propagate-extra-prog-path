@@ -1,0 +1,13 @@
+synopsis: Fix extra-prog-path propagation
+packages: cabal-install Cabal
+prs: #9527
+issues: #7649 #9519
+
+description: {
+
+- extra-prog-paths are now propagated to all commands. This in particular helps
+  when running a MinGW cabal in the PowerShell, where the MSYS2 paths are
+  usually not available in the PowerShell PATH. GHCup already sets them up for
+  us but they were sometimes lost on the way.
+
+}

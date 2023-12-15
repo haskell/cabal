@@ -31,6 +31,12 @@ import Distribution.PackageDescription
 import Distribution.ModuleName
 import Distribution.Simple.Compiler
 import Distribution.Simple.Flag
+<<<<<<< HEAD
+=======
+import Distribution.Simple.GHC.ImplInfo
+import Distribution.Simple.Program.Find (getExtraPathEnv)
+import Distribution.Simple.Program.Run
+>>>>>>> 46df8ba71 (Fix extra-prog-path propagation in the codebase.)
 import Distribution.Simple.Program.Types
 import Distribution.Simple.Program.Run
 import Distribution.System
@@ -529,11 +535,21 @@ data GhcOptions = GhcOptions {
   -- | Get GHC to be quiet or verbose with what it's doing; the @ghc -v@ flag.
   ghcOptVerbosity     :: Flag Verbosity,
 
+<<<<<<< HEAD
   -- | Put the extra folders in the PATH environment variable we invoke
   -- GHC with
   ghcOptExtraPath     :: NubListR FilePath,
 
   -- | Let GHC know that it is Cabal that's calling it.
+=======
+    ghcOptVerbosity :: Flag Verbosity
+  -- ^ Get GHC to be quiet or verbose with what it's doing; the @ghc -v@ flag.
+  , ghcOptExtraPath :: NubListR FilePath
+  -- ^ Put the extra folders in the PATH environment variable we invoke
+  -- GHC with
+  , ghcOptCabal :: Flag Bool
+  -- ^ Let GHC know that it is Cabal that's calling it.
+>>>>>>> 46df8ba71 (Fix extra-prog-path propagation in the codebase.)
   -- Modifies some of the GHC error messages.
   ghcOptCabal         :: Flag Bool
 
@@ -569,8 +585,9 @@ data GhcProfAuto = GhcProfAutoAll       -- ^ @-fprof-auto@
 runGHC :: Verbosity -> ConfiguredProgram -> Compiler -> Platform  -> GhcOptions
        -> IO ()
 runGHC verbosity ghcProg comp platform opts = do
-  runProgramInvocation verbosity (ghcInvocation ghcProg comp platform opts)
+  runProgramInvocation verbosity =<< ghcInvocation verbosity ghcProg comp platform opts
 
+<<<<<<< HEAD
 
 ghcInvocation :: ConfiguredProgram -> Compiler -> Platform -> GhcOptions
               -> ProgramInvocation
@@ -578,6 +595,24 @@ ghcInvocation prog comp platform opts =
     (programInvocation prog (renderGhcOptions comp platform opts)) {
         progInvokePathEnv = fromNubListR (ghcOptExtraPath opts)
     }
+=======
+ghcInvocation
+  :: Verbosity
+  -> ConfiguredProgram
+  -> Compiler
+  -> Platform
+  -> GhcOptions
+  -> IO ProgramInvocation
+ghcInvocation verbosity ghcProg comp platform opts = do
+  -- NOTE: GHC is the only program whose path we modify with more values than
+  -- the standard @extra-prog-path@, namely the folders of the executables in
+  -- the components, see @componentGhcOptions@.
+  let envOverrides = programOverrideEnv ghcProg
+  extraPath <- getExtraPathEnv verbosity envOverrides (fromNubListR (ghcOptExtraPath opts))
+  let ghcProg' = ghcProg{programOverrideEnv = envOverrides ++ extraPath}
+
+  pure $ programInvocation ghcProg' (renderGhcOptions comp platform opts)
+>>>>>>> 46df8ba71 (Fix extra-prog-path propagation in the codebase.)
 
 renderGhcOptions :: Compiler -> Platform -> GhcOptions -> [String]
 renderGhcOptions comp _platform@(Platform _arch os) opts

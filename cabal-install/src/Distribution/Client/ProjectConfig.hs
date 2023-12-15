@@ -1149,11 +1149,18 @@ syncAndReadSourcePackagesRemoteRepos verbosity
                             [ ((rtype, rloc), [(repo, vcsRepoType vcs)])
                             | (repo, rloc, rtype, vcs) <- repos' ]
 
+<<<<<<< HEAD
     --TODO: pass progPathExtra on to 'configureVCS'
     let _progPathExtra = fromNubList projectConfigProgPathExtra
     getConfiguredVCS <- delayInitSharedResources $ \repoType ->
                           let vcs = Map.findWithDefault (error $ "Unknown VCS: " ++ prettyShow repoType) repoType knownVCSs in
                           configureVCS verbosity {-progPathExtra-} vcs
+=======
+    let progPathExtra = fromNubList projectConfigProgPathExtra
+    getConfiguredVCS <- delayInitSharedResources $ \repoType ->
+      let vcs = Map.findWithDefault (error $ "Unknown VCS: " ++ prettyShow repoType) repoType knownVCSs
+       in configureVCS verbosity progPathExtra vcs
+>>>>>>> 46df8ba71 (Fix extra-prog-path propagation in the codebase.)
 
     concat <$> sequenceA
       [ rerunIfChanged verbosity monitor repoGroup' $ do

@@ -1262,6 +1262,7 @@ parseConfig src initial = \str -> do
     -- This is a fixup, pending a full config parser rewrite, to
     -- ensure that config fields which can be comma-separated lists
     -- actually parse as comma-separated lists.
+<<<<<<< HEAD
     fixConfigMultilines conf = conf {
          savedConfigureFlags =
            let scf = savedConfigureFlags conf
@@ -1281,6 +1282,42 @@ parseConfig src initial = \str -> do
                                                 (configConfigureArgs scf)
                }
       }
+=======
+    fixConfigMultilines conf =
+      conf
+        { savedConfigureFlags =
+            let scf = savedConfigureFlags conf
+             in scf
+                  { configProgramPathExtra =
+                      toNubList $
+                        splitMultiPath
+                          (fromNubList $ configProgramPathExtra scf)
+                  , configExtraLibDirs =
+                      splitMultiPath
+                        (configExtraLibDirs scf)
+                  , configExtraLibDirsStatic =
+                      splitMultiPath
+                        (configExtraLibDirsStatic scf)
+                  , configExtraFrameworkDirs =
+                      splitMultiPath
+                        (configExtraFrameworkDirs scf)
+                  , configExtraIncludeDirs =
+                      splitMultiPath
+                        (configExtraIncludeDirs scf)
+                  , configConfigureArgs =
+                      splitMultiPath
+                        (configConfigureArgs scf)
+                  }
+        , savedGlobalFlags =
+            let sgf = savedGlobalFlags conf
+             in sgf
+                  { globalProgPathExtra =
+                      toNubList $
+                        splitMultiPath
+                          (fromNubList $ globalProgPathExtra sgf)
+                  }
+        }
+>>>>>>> 46df8ba71 (Fix extra-prog-path propagation in the codebase.)
 
     parse = parseFields (configFieldDescriptions src
                       ++ deprecatedFieldDescriptions) initial

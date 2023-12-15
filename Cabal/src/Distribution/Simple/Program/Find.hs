@@ -24,6 +24,7 @@
 -- So we need an extension of the usual 'findExecutable' that can look in
 -- additional locations, either before, after or instead of the normal OS
 -- locations.
+<<<<<<< HEAD
 --
 module Distribution.Simple.Program.Find (
     -- * Program search path
@@ -33,6 +34,19 @@ module Distribution.Simple.Program.Find (
     findProgramOnSearchPath,
     programSearchPathAsPATHVar,
     getSystemSearchPath,
+=======
+module Distribution.Simple.Program.Find
+  ( -- * Program search path
+    ProgramSearchPath
+  , ProgramSearchPathEntry (..)
+  , defaultProgramSearchPath
+  , findProgramOnSearchPath
+  , programSearchPathAsPATHVar
+  , logExtraProgramSearchPath
+  , getSystemSearchPath
+  , getExtraPathEnv
+  , simpleProgram
+>>>>>>> 46df8ba71 (Fix extra-prog-path propagation in the codebase.)
   ) where
 
 import Prelude ()
@@ -76,8 +90,25 @@ instance Structured ProgramSearchPathEntry
 defaultProgramSearchPath :: ProgramSearchPath
 defaultProgramSearchPath = [ProgramSearchPathDefault]
 
+<<<<<<< HEAD
 findProgramOnSearchPath :: Verbosity -> ProgramSearchPath
                         -> FilePath -> IO (Maybe (FilePath, [FilePath]))
+=======
+logExtraProgramSearchPath
+  :: Verbosity
+  -> [FilePath]
+  -> IO ()
+logExtraProgramSearchPath verbosity extraPaths =
+  info verbosity . unlines $
+    "Including the following directories in PATH:"
+      : map ("- " ++) extraPaths
+
+findProgramOnSearchPath
+  :: Verbosity
+  -> ProgramSearchPath
+  -> FilePath
+  -> IO (Maybe (FilePath, [FilePath]))
+>>>>>>> 46df8ba71 (Fix extra-prog-path propagation in the codebase.)
 findProgramOnSearchPath verbosity searchpath prog = do
     debug verbosity $ "Searching for " ++ prog ++ " in path."
     res <- tryPathElems [] searchpath
@@ -140,6 +171,25 @@ findProgramOnSearchPath verbosity searchpath prog = do
       case a of
         Just _  -> return a
         Nothing -> firstJustM mas
+
+-- | Adds some paths to the "PATH" entry in the key-value environment provided
+-- or if there is none, looks up @$PATH@ in the real environment.
+getExtraPathEnv
+  :: Verbosity
+  -> [(String, Maybe String)]
+  -> [FilePath]
+  -> IO [(String, Maybe String)]
+getExtraPathEnv _ _ [] = return []
+getExtraPathEnv verbosity env extras = do
+  mb_path <- case lookup "PATH" env of
+    Just x -> return x
+    Nothing -> lookupEnv "PATH"
+  logExtraProgramSearchPath verbosity extras
+  let extra = intercalate [searchPathSeparator] extras
+      path' = case mb_path of
+        Nothing -> extra
+        Just path -> extra ++ searchPathSeparator : path
+  return [("PATH", Just path')]
 
 -- | Interpret a 'ProgramSearchPath' to construct a new @$PATH@ env var.
 -- Note that this is close but not perfect because on Windows the search

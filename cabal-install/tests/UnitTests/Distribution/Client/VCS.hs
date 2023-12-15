@@ -49,12 +49,47 @@ import UnitTests.TempTestDir (withTestDir, removeDirectoryRecursiveHack)
 -- checks that the working state is as expected (given the pure representation).
 --
 tests :: MTimeChange -> [TestTree]
+<<<<<<< HEAD
 tests mtimeChange = map (localOption $ QuickCheckTests 10)
   [ ignoreInWindows "See issue #8048" $
     testGroup "git"
     [ testProperty "check VCS test framework"    prop_framework_git
     , testProperty "cloneSourceRepo"             prop_cloneRepo_git
     , testProperty "syncSourceRepos"             prop_syncRepos_git
+=======
+tests mtimeChange =
+  map
+    (localOption $ QuickCheckTests 10)
+    [ ignoreInWindows "See issue #8048 and #9519" $
+        testGroup
+          "git"
+          [ testProperty "check VCS test framework" prop_framework_git
+          , testProperty "cloneSourceRepo" prop_cloneRepo_git
+          , testProperty "syncSourceRepos" prop_syncRepos_git
+          ]
+    , --
+      ignoreTestBecause "for the moment they're not yet working" $
+        testGroup
+          "darcs"
+          [ testProperty "check VCS test framework" $ prop_framework_darcs mtimeChange
+          , testProperty "cloneSourceRepo" $ prop_cloneRepo_darcs mtimeChange
+          , testProperty "syncSourceRepos" $ prop_syncRepos_darcs mtimeChange
+          ]
+    , ignoreTestBecause "for the moment they're not yet working" $
+        testGroup
+          "pijul"
+          [ testProperty "check VCS test framework" prop_framework_pijul
+          , testProperty "cloneSourceRepo" prop_cloneRepo_pijul
+          , testProperty "syncSourceRepos" prop_syncRepos_pijul
+          ]
+    , ignoreTestBecause "for the moment they're not yet working" $
+        testGroup
+          "mercurial"
+          [ testProperty "check VCS test framework" prop_framework_hg
+          , testProperty "cloneSourceRepo" prop_cloneRepo_hg
+          , testProperty "syncSourceRepos" prop_syncRepos_hg
+          ]
+>>>>>>> 46df8ba71 (Fix extra-prog-path propagation in the codebase.)
     ]
 
     --
@@ -178,6 +213,7 @@ testSetup :: VCS Program
           -> (VCSTestDriver -> FilePath -> RepoState -> IO a)
           -> IO a
 testSetup vcs mkVCSTestDriver repoRecipe theTest = do
+<<<<<<< HEAD
     -- test setup
     vcs' <- configureVCS verbosity vcs
     withTestDir verbosity "vcstest" $ \tmpdir -> do
@@ -185,6 +221,15 @@ testSetup vcs mkVCSTestDriver repoRecipe theTest = do
           submodulesPath = tmpdir </> "submodules"
           vcsDriver   = mkVCSTestDriver verbosity vcs' submodulesPath srcRepoPath
       repoState <- createRepo vcsDriver repoRecipe
+=======
+  -- test setup
+  vcs' <- configureVCS verbosity [] vcs
+  withTestDir verbosity "vcstest" $ \tmpdir -> do
+    let srcRepoPath = tmpdir </> "src"
+        submodulesPath = tmpdir </> "submodules"
+        vcsDriver = mkVCSTestDriver verbosity vcs' submodulesPath srcRepoPath
+    repoState <- createRepo vcsDriver repoRecipe
+>>>>>>> 46df8ba71 (Fix extra-prog-path propagation in the codebase.)
 
       -- actual test
       result <- theTest vcsDriver tmpdir repoState

@@ -87,6 +87,39 @@ instance Show Program where
 
 type ProgArg = String
 
+<<<<<<< HEAD
+=======
+-- | A search path to use when locating executables. This is analogous
+-- to the unix @$PATH@ or win32 @%PATH%@ but with the ability to use
+-- the system default method for finding executables ('findExecutable' which
+-- on unix is simply looking on the @$PATH@ but on win32 is a bit more
+-- complicated).
+--
+-- The default to use is @[ProgSearchPathDefault]@ but you can add extra dirs
+-- either before, after or instead of the default, e.g. here we add an extra
+-- dir to search after the usual ones.
+--
+-- > ['ProgramSearchPathDefault', 'ProgramSearchPathDir' dir]
+--
+-- We also use this path to set the environment when running child processes.
+--
+-- The @ProgramDb@ is created with a @ProgramSearchPath@ to which we
+-- @appendProgramSearchPath@ to add the ones that come from cli flags and from
+-- configurations. Then each of the programs that are configured in the db
+-- inherits the same path as part of @configureProgram@.
+type ProgramSearchPath = [ProgramSearchPathEntry]
+
+data ProgramSearchPathEntry
+  = -- | A specific dir
+    ProgramSearchPathDir FilePath
+  | -- | The system default
+    ProgramSearchPathDefault
+  deriving (Eq, Generic, Typeable)
+
+instance Binary ProgramSearchPathEntry
+instance Structured ProgramSearchPathEntry
+
+>>>>>>> 46df8ba71 (Fix extra-prog-path propagation in the codebase.)
 -- | Represents a program which has been configured and is thus ready to be run.
 --
 -- These are usually made by configuring a 'Program', but if you have to
