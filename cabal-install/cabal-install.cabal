@@ -154,6 +154,8 @@ library
         Distribution.Client.PackageHash
         Distribution.Client.ParseUtils
         Distribution.Client.ProjectBuilding
+        Distribution.Client.ProjectBuilding.UnpackedPackage
+        Distribution.Client.ProjectBuilding.PackageFileMonitor
         Distribution.Client.ProjectBuilding.Types
         Distribution.Client.ProjectConfig
         Distribution.Client.ProjectConfig.Legacy
