@@ -1,4 +1,4 @@
-Cabal-version: 2.2
+Cabal-version: 3.12
 name: PackageInfoModule
 version: 0.1
 license: BSD-3-Clause
