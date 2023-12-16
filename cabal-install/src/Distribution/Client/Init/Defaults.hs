@@ -67,7 +67,7 @@ defaultTestDir :: String
 defaultTestDir = "test"
 
 defaultCabalVersion :: CabalSpecVersion
-defaultCabalVersion = CabalSpecV3_0
+defaultCabalVersion = CabalSpecV3_4
 
 defaultPackageType :: PackageType
 defaultPackageType = Executable

@@ -1,0 +1,9 @@
+synopsis: Use the latest cabal spec in the interactive package init
+packages: cabal-install
+prs: #8978
+
+description: {
+
+`cabal init` will now suggest version spec 3.4 when initialising new packages
+
+}

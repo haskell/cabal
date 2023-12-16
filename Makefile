@@ -16,7 +16,6 @@ exe : $(LEXER_HS)
 
 init: ## Set up git hooks and ignored revisions
 	@git config core.hooksPath .githooks
-	## TODO
 
 style: ## Run the code styler
 	@fourmolu -q -i Cabal Cabal-syntax cabal-install
