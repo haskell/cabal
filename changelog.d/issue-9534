@@ -1,5 +1,6 @@
 synopsis: Distinguish `powerpc64le`, by adding `PPC64LE` constructor to type `Arch`
 packages: Cabal Cabal-syntax
+prs: #9535
 issues: #9534
 
 description: {
