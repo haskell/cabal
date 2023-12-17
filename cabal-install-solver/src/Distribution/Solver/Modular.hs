@@ -128,7 +128,7 @@ solve' sc cinfo idx pkgConfigDB pprefs gcs pns =
               -> RetryLog String SolverFailure (Assignment, RevDepMap)
     runSolver keepLog sc' =
         displayLogMessages keepLog $
-        solve sc' cinfo idx pkgConfigDB pprefs (weedLabeledPackageConstraints <$> gcs) pns
+        solve sc' cinfo idx pkgConfigDB pprefs (shallowConstraintsWin <$> gcs) pns
 
     createErrorMsg :: SolverFailure
                    -> RetryLog String String (Assignment, RevDepMap)
