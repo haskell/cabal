@@ -151,7 +151,7 @@ jobs:
       # - Make it available in the workflow to make easier testing it locally
       - name: Upload cabal-install executable to workflow artifacts
         if: matrix.ghc == env.GHC_FOR_RELEASE
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: cabal-${{ runner.os }}-x86_64
           path: ${{ env.CABAL_EXEC_TAR }}
