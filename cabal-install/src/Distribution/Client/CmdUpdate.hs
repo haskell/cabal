@@ -283,7 +283,7 @@ updateRepo verbosity _updateFlags repoCtxt (repo, indexState) = do
               warn verbosity $ "Could not set modification time of index tarball -- " ++ displayException e
           head_ts <- getIndexHeadTimestamp verbosity index
           noticeNoWrap verbosity $
-            "Package list of " ++ prettyShow rname ++ " is up to date to " ++ prettyShow head_ts ++ "."
+            "Package list of " ++ prettyShow rname ++ " is up to date at " ++ prettyShow head_ts ++ "."
         Sec.HasUpdates -> do
           updateRepoIndexCache verbosity index
           head_ts <- getIndexHeadTimestamp verbosity index
@@ -298,7 +298,7 @@ updateRepo verbosity _updateFlags repoCtxt (repo, indexState) = do
       noticeNoWrap verbosity $
         "The global index-state for "
           ++ prettyShow rname
-          ++ " now resolves to "
+          ++ " now is "
           ++ prettyShow (IndexStateTime new_ts)
           ++ "."
 
