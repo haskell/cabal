@@ -652,7 +652,18 @@ checkAutogenModules ams bi = do
   -- Paths_* module + some default extension build failure.
   autogenCheck autoInfoModuleName CVAutogenPackageInfo
   rebindableClashCheck autoInfoModuleName RebindableClashPackageInfo
+
+  -- PackageInfo_* module + cabal-version < 3.12
+  -- See Mikolaj’s comments on #9481 on why this has to be
+  -- PackageBuildImpossible and not merely PackageDistInexcusable.
+  checkSpecVer
+    CabalSpecV3_12
+    (elem autoInfoModuleName allModsForAuto)
+    (PackageBuildImpossible CVAutogenPackageInfoGuard)
   where
+    allModsForAuto :: [ModuleName]
+    allModsForAuto = ams ++ otherModules bi
+
     autogenCheck
       :: Monad m
       => ModuleName
@@ -660,7 +671,6 @@ checkAutogenModules ams bi = do
       -> CheckM m ()
     autogenCheck name warning = do
       sv <- asksCM ccSpecVersion
-      let allModsForAuto = ams ++ otherModules bi
       checkP
         ( sv >= CabalSpecV2_0
             && elem name allModsForAuto

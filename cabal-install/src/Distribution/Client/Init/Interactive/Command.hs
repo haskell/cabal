@@ -312,6 +312,7 @@ cabalVersionPrompt flags = getCabalVersion flags $ do
     parseCabalVersion "2.4" = CabalSpecV2_4
     parseCabalVersion "3.0" = CabalSpecV3_0
     parseCabalVersion "3.4" = CabalSpecV3_4
+    parseCabalVersion "3.12" = CabalSpecV3_12
     parseCabalVersion _ = defaultCabalVersion -- 2.4
     displayCabalVersion :: CabalSpecVersion -> String
     displayCabalVersion v = case v of

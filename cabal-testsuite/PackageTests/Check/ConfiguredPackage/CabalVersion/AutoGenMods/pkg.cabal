@@ -1,4 +1,4 @@
-cabal-version: 2.0
+cabal-version: 3.12
 build-type: Simple
 name: pkg
 synopsis: synopsis
@@ -6,7 +6,7 @@ description: description
 version: 0
 category: example
 maintainer: none@example.com
-license: GPL-3
+license: GPL-3.0-or-later
 license-file: LICENSE
 
 library
