@@ -58,10 +58,11 @@ runTest
   :: PD.PackageDescription
   -> LBI.LocalBuildInfo
   -> LBI.ComponentLocalBuildInfo
+  -> HPCMarkupInfo
   -> TestFlags
   -> PD.TestSuite
   -> IO TestSuiteLog
-runTest pkg_descr lbi clbi flags suite = do
+runTest pkg_descr lbi clbi hpcMarkupInfo flags suite = do
   let isCoverageEnabled = LBI.testCoverage lbi
       way = guessWay lbi
 
@@ -80,12 +81,12 @@ runTest pkg_descr lbi clbi flags suite = do
 
   -- Remove old .tix files if appropriate.
   unless (fromFlag $ testKeepTix flags) $ do
-    let tDir = tixDir distPref way testName'
+    let tDir = tixDir distPref way
     exists' <- doesDirectoryExist tDir
     when exists' $ removeDirectoryRecursive tDir
 
   -- Create directory for HPC files.
-  createDirectoryIfMissing True $ tixDir distPref way testName'
+  createDirectoryIfMissing True $ tixDir distPref way
 
   -- Write summary notices indicating start of test suite
   notice verbosity $ summarizeSuiteStart testName'
@@ -185,12 +186,16 @@ runTest pkg_descr lbi clbi flags suite = do
   -- Write summary notice to terminal indicating end of test suite
   notice verbosity $ summarizeSuiteFinish suiteLog
 
-  when isCoverageEnabled $
-    case PD.library pkg_descr of
-      Nothing ->
-        dieWithException verbosity TestCoverageSupportLibV09
-      Just library ->
-        markupTest verbosity lbi distPref (prettyShow $ PD.package pkg_descr) suite library
+  when isCoverageEnabled $ do
+    -- Until #9493 is fixed, we expect cabal-install to pass one dist dir per
+    -- library and there being at least one library in the package with the
+    -- testsuite.  When it is fixed, we can remove this predicate and allow a
+    -- testsuite without a library to cover libraries in other packages of the
+    -- same project
+    when (null $ PD.allLibraries pkg_descr) $
+      dieWithException verbosity TestCoverageSupport
+
+    markupPackage verbosity hpcMarkupInfo lbi distPref pkg_descr [suite]
 
   return suiteLog
   where

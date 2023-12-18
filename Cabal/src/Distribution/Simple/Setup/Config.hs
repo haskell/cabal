@@ -54,6 +54,7 @@ import Distribution.Types.DumpBuildInfo
 import Distribution.Types.GivenComponent
 import Distribution.Types.Module
 import Distribution.Types.PackageVersionConstraint
+import Distribution.Types.UnitId
 import Distribution.Utils.NubList
 import Distribution.Verbosity
 import qualified Text.PrettyPrint as Disp
@@ -220,6 +221,11 @@ data ConfigFlags = ConfigFlags
   -- ^ Allow depending on private sublibraries. This is used by external
   -- tools (like cabal-install) so they can add multiple-public-libraries
   -- compatibility to older ghcs by checking visibility externally.
+  , configCoverageFor :: Flag [UnitId]
+  -- ^ The list of libraries to be included in the hpc coverage report for
+  -- testsuites run with @--enable-coverage@. Notably, this list must exclude
+  -- indefinite libraries and instantiations because HPC does not support
+  -- backpack (Nov. 2023).
   }
   deriving (Generic, Read, Show, Typeable)
 
@@ -288,6 +294,7 @@ instance Eq ConfigFlags where
       && equal configDebugInfo
       && equal configDumpBuildInfo
       && equal configUseResponseFiles
+      && equal configCoverageFor
     where
       equal f = on (==) f a b
 
@@ -828,6 +835,22 @@ configureOptions showOrParseArgs =
           configAllowDependingOnPrivateLibs
           (\v flags -> flags{configAllowDependingOnPrivateLibs = v})
           trueArg
+       , option
+          ""
+          ["coverage-for"]
+          "A list of unit-ids of libraries to include in the Haskell Program Coverage report."
+          configCoverageFor
+          ( \v flags ->
+              flags
+                { configCoverageFor =
+                    mergeListFlag (configCoverageFor flags) v
+                }
+          )
+          ( reqArg'
+              "UNITID"
+              (Flag . (: []) . fromString)
+              (fmap prettyShow . fromFlagOrDefault [])
+          )
        ]
   where
     liftInstallDirs =

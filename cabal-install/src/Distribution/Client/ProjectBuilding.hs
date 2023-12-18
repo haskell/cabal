@@ -1356,6 +1356,7 @@ buildAndInstallUnpackedPackage
       configureFlags v =
         flip filterConfigureFlags v $
           setupHsConfigureFlags
+            plan
             rpkg
             pkgshared
             verbosity
@@ -1714,6 +1715,7 @@ buildInplaceUnpackedPackage
       configureFlags v =
         flip filterConfigureFlags v $
           setupHsConfigureFlags
+            plan
             rpkg
             pkgshared
             verbosity
@@ -1735,7 +1737,6 @@ buildInplaceUnpackedPackage
         flip filterTestFlags v $
           setupHsTestFlags
             pkg
-            pkgshared
             verbosity
             builddir
       testArgs _ = setupHsTestArgs pkg

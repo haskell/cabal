@@ -7,10 +7,8 @@ import Control.Monad (forM_)
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.Package
 import Distribution.PackageDescription as PD
-import Distribution.Pretty
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Compiler
-import Distribution.Simple.Flag (Flag (..), fromFlag, toFlag)
 import Distribution.Simple.GHC.Build
   ( checkNeedsRecompilation
   , componentGhcOptions
@@ -28,7 +26,7 @@ import Distribution.Simple.Program
 import qualified Distribution.Simple.Program.Ar as Ar
 import Distribution.Simple.Program.GHC
 import qualified Distribution.Simple.Program.Ld as Ld
-import Distribution.Simple.Setup.Config
+import Distribution.Simple.Setup.Common
 import Distribution.Simple.Setup.Repl
 import Distribution.Simple.Utils
 import Distribution.System
@@ -97,15 +95,9 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
   -- Determine if program coverage should be enabled and if so, what
   -- '-hpcdir' should be.
   let isCoverageEnabled = libCoverage lbi
-      -- TODO: Historically HPC files have been put into a directory which
-      -- has the package name.  I'm going to avoid changing this for
-      -- now, but it would probably be better for this to be the
-      -- component ID instead...
-      pkg_name = prettyShow (PD.package pkg_descr)
-      distPref = fromFlag $ configDistPref $ configFlags lbi
       hpcdir way
         | forRepl = mempty -- HPC is not supported in ghci
-        | isCoverageEnabled = toFlag $ Hpc.mixDir distPref way pkg_name
+        | isCoverageEnabled = toFlag $ Hpc.mixDir (libTargetDir </> extraCompilationArtifacts) way
         | otherwise = mempty
 
   createDirectoryIfMissingVerbose verbosity True libTargetDir

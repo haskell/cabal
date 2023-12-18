@@ -727,6 +727,7 @@ convertLegacyPerPackageFlags
         , configDebugInfo = packageConfigDebugInfo
         , configDumpBuildInfo = packageConfigDumpBuildInfo
         , configRelocatable = packageConfigRelocatable
+        , configCoverageFor = _
         } = configFlags
       packageConfigProgramPaths = MapLast (Map.fromList configProgramPaths)
       packageConfigProgramArgs = MapMappend (Map.fromListWith (++) configProgramArgs)
@@ -1037,6 +1038,7 @@ convertToLegacyAllPackageConfig
           , configUseResponseFiles = mempty
           , configDumpBuildInfo = mempty
           , configAllowDependingOnPrivateLibs = mempty
+          , configCoverageFor = mempty
           }
 
       haddockFlags =
@@ -1113,6 +1115,7 @@ convertToLegacyPerPackageConfig PackageConfig{..} =
         , configUseResponseFiles = mempty
         , configDumpBuildInfo = packageConfigDumpBuildInfo
         , configAllowDependingOnPrivateLibs = mempty
+        , configCoverageFor = mempty
         }
 
     installFlags =

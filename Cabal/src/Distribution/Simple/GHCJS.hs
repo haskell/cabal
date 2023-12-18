@@ -72,7 +72,7 @@ import Distribution.Simple.Program
 import Distribution.Simple.Program.GHC
 import qualified Distribution.Simple.Program.HcPkg as HcPkg
 import qualified Distribution.Simple.Program.Strip as Strip
-import Distribution.Simple.Setup.Config
+import Distribution.Simple.Setup.Common
 import Distribution.Simple.Utils
 import Distribution.System
 import Distribution.Types.ComponentLocalBuildInfo
@@ -481,7 +481,7 @@ buildOrReplLib
   -> Library
   -> ComponentLocalBuildInfo
   -> IO ()
-buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
+buildOrReplLib mReplFlags verbosity numJobs _pkg_descr lbi lib clbi = do
   let uid = componentUnitId clbi
       libTargetDir = componentBuildDir lbi clbi
       whenVanillaLib forceVanilla =
@@ -515,15 +515,9 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
   -- Determine if program coverage should be enabled and if so, what
   -- '-hpcdir' should be.
   let isCoverageEnabled = libCoverage lbi
-      -- TODO: Historically HPC files have been put into a directory which
-      -- has the package name.  I'm going to avoid changing this for
-      -- now, but it would probably be better for this to be the
-      -- component ID instead...
-      pkg_name = prettyShow (PD.package pkg_descr)
-      distPref = fromFlag $ configDistPref $ configFlags lbi
       hpcdir way
         | forRepl = mempty -- HPC is not supported in ghci
-        | isCoverageEnabled = toFlag $ Hpc.mixDir distPref way pkg_name
+        | isCoverageEnabled = toFlag $ Hpc.mixDir (libTargetDir </> extraCompilationArtifacts) way
         | otherwise = mempty
 
   createDirectoryIfMissingVerbose verbosity True libTargetDir
@@ -1240,10 +1234,9 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
   -- Determine if program coverage should be enabled and if so, what
   -- '-hpcdir' should be.
   let isCoverageEnabled = exeCoverage lbi
-      distPref = fromFlag $ configDistPref $ configFlags lbi
       hpcdir way
         | gbuildIsRepl bm = mempty -- HPC is not supported in ghci
-        | isCoverageEnabled = toFlag $ Hpc.mixDir distPref way (gbuildName bm)
+        | isCoverageEnabled = toFlag $ Hpc.mixDir (tmpDir </> extraCompilationArtifacts) way
         | otherwise = mempty
 
   rpaths <- getRPaths lbi clbi

@@ -1,6 +1,7 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -1634,7 +1635,7 @@ elaborateInstallPlan
         where
           -- You are eligible to per-component build if this list is empty
           why_not_per_component g =
-            cuz_buildtype ++ cuz_spec ++ cuz_length ++ cuz_flag ++ cuz_coverage
+            cuz_buildtype ++ cuz_spec ++ cuz_length ++ cuz_flag
             where
               cuz reason = [text reason]
               -- We have to disable per-component for now with
@@ -1671,12 +1672,6 @@ elaborateInstallPlan
                 | fromFlagOrDefault True (projectConfigPerComponent sharedPackageConfig) =
                     []
                 | otherwise = cuz "you passed --disable-per-component"
-              -- Enabling program coverage introduces odd runtime dependencies
-              -- between components.
-              cuz_coverage
-                | fromFlagOrDefault False (packageConfigCoverage localPackagesConfig) =
-                    cuz "program coverage is enabled"
-                | otherwise = []
 
           -- \| Sometimes a package may make use of features which are only
           -- supported in per-package mode.  If this is the case, we should
@@ -3851,12 +3846,14 @@ computeInstallDirs storeDirLayout defaultInstallDirs elaboratedShared elab
 -- make the various Setup.hs {configure,build,copy} flags
 
 setupHsConfigureFlags
-  :: ElaboratedReadyPackage
+  :: ElaboratedInstallPlan
+  -> ElaboratedReadyPackage
   -> ElaboratedSharedConfig
   -> Verbosity
   -> FilePath
   -> Cabal.ConfigFlags
 setupHsConfigureFlags
+  plan
   (ReadyPackage elab@ElaboratedConfiguredPackage{..})
   sharedConfig@ElaboratedSharedConfig{..}
   verbosity
@@ -4002,6 +3999,8 @@ setupHsConfigureFlags
             Just _ -> error "non-library dependency"
             Nothing -> LMainLibName
 
+      configCoverageFor = determineCoverageFor elabPkgSourceId plan
+
 setupHsConfigureArgs
   :: ElaboratedConfiguredPackage
   -> [String]
@@ -4049,11 +4048,10 @@ setupHsBuildArgs (ElaboratedConfiguredPackage{elabPkgOrComp = ElabComponent _}) 
 
 setupHsTestFlags
   :: ElaboratedConfiguredPackage
-  -> ElaboratedSharedConfig
   -> Verbosity
   -> FilePath
   -> Cabal.TestFlags
-setupHsTestFlags (ElaboratedConfiguredPackage{..}) _ verbosity builddir =
+setupHsTestFlags (ElaboratedConfiguredPackage{..}) verbosity builddir =
   Cabal.TestFlags
     { testDistPref = toFlag builddir
     , testVerbosity = toFlag verbosity
@@ -4198,17 +4196,6 @@ setupHsHaddockArgs :: ElaboratedConfiguredPackage -> [String]
 -- TODO: Does the issue #3335 affects test as well
 setupHsHaddockArgs elab =
   map (showComponentTarget (packageId elab)) (elabHaddockTargets elab)
-
-{-
-setupHsTestFlags :: ElaboratedConfiguredPackage
-                 -> ElaboratedSharedConfig
-                 -> Verbosity
-                 -> FilePath
-                 -> Cabal.TestFlags
-setupHsTestFlags _ _ verbosity builddir =
-    Cabal.TestFlags {
-    }
--}
 
 ------------------------------------------------------------------------------
 
@@ -4417,3 +4404,40 @@ inplaceBinRoot
 inplaceBinRoot layout config package =
   distBuildDirectory layout (elabDistDirParams config package)
     </> "build"
+
+--------------------------------------------------------------------------------
+-- Configure --coverage-for flags
+
+-- The list of non-pre-existing libraries without module holes, i.e. the
+-- main library and sub-libraries components of all the local packages in
+-- the project that do not require instantiations or are instantiations.
+determineCoverageFor
+  :: PackageId
+  -- ^ The 'PackageId' of the package or component being configured
+  -> ElaboratedInstallPlan
+  -> Flag [UnitId]
+determineCoverageFor configuredPkgSourceId plan =
+  Flag
+    $ mapMaybe
+      ( \case
+          InstallPlan.Installed elab
+            | shouldCoverPkg elab -> Just $ elabUnitId elab
+          InstallPlan.Configured elab
+            | shouldCoverPkg elab -> Just $ elabUnitId elab
+          _ -> Nothing
+      )
+    $ Graph.toList
+    $ InstallPlan.toGraph plan
+  where
+    shouldCoverPkg elab@ElaboratedConfiguredPackage{elabModuleShape, elabPkgSourceId, elabLocalToProject} =
+      elabLocalToProject
+        && not (isIndefiniteOrInstantiation elabModuleShape)
+        -- TODO(#9493): We can only cover libraries in the same package
+        -- as the testsuite
+        && configuredPkgSourceId == elabPkgSourceId
+        -- Libraries only! We don't cover testsuite modules, so we never need
+        -- the paths to their mix dirs. Furthermore, we do not install testsuites...
+        && maybe False (\case CLibName{} -> True; CNotLibName{} -> False) (elabComponentName elab)
+
+    isIndefiniteOrInstantiation :: ModuleShape -> Bool
+    isIndefiniteOrInstantiation = not . Set.null . modShapeRequires

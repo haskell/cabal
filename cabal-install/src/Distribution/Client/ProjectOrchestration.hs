@@ -1040,6 +1040,7 @@ printPlan
       showConfigureFlags elab =
         let fullConfigureFlags =
               setupHsConfigureFlags
+                elaboratedPlan
                 (ReadyPackage elab)
                 elaboratedShared
                 verbosity

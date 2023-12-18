@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
 
 -----------------------------------------------------------------------------
@@ -21,17 +22,16 @@ module Distribution.Simple.Hpc
   , mixDir
   , tixDir
   , tixFilePath
+  , HPCMarkupInfo (..)
   , markupPackage
-  , markupTest
   ) where
 
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Distribution.ModuleName (main)
+import Distribution.ModuleName (ModuleName, main)
 import Distribution.PackageDescription
-  ( Library (..)
-  , TestSuite (..)
+  ( TestSuite (..)
   , testModules
   )
 import qualified Distribution.PackageDescription as PD
@@ -73,44 +73,16 @@ mixDir
   -- ^ \"dist/\" prefix
   -> Way
   -> FilePath
-  -- ^ Component name
-  -> FilePath
   -- ^ Directory containing test suite's .mix files
-mixDir distPref way name = hpcDir distPrefBuild way </> "mix" </> name
-  where
-    -- This is a hack for HPC over test suites, needed to match the directory
-    -- where HPC saves and reads .mix files when the main library of the same
-    -- package is being processed, perhaps in a previous cabal run (#5213).
-    -- E.g., @distPref@ may be
-    -- @./dist-newstyle/build/x86_64-linux/ghc-9.0.1/cabal-gh5213-0.1/t/tests@
-    -- but the path where library mix files reside has two less components
-    -- at the end (@t/tests@) and this reduced path needs to be passed to
-    -- both @hpc@ and @ghc@. For non-default optimization levels, the path
-    -- suffix is one element longer and the extra path element needs
-    -- to be preserved.
-    distPrefElements = splitDirectories distPref
-    distPrefBuild = case drop (length distPrefElements - 3) distPrefElements of
-      ["t", _, "noopt"] ->
-        joinPath $
-          take (length distPrefElements - 3) distPrefElements
-            ++ ["noopt"]
-      ["t", _, "opt"] ->
-        joinPath $
-          take (length distPrefElements - 3) distPrefElements
-            ++ ["opt"]
-      [_, "t", _] ->
-        joinPath $ take (length distPrefElements - 2) distPrefElements
-      _ -> distPref
+mixDir distPref way = hpcDir distPref way </> "mix"
 
 tixDir
   :: FilePath
   -- ^ \"dist/\" prefix
   -> Way
   -> FilePath
-  -- ^ Component name
-  -> FilePath
   -- ^ Directory containing test suite's .tix files
-tixDir distPref way name = hpcDir distPref way </> "tix" </> name
+tixDir distPref way = hpcDir distPref way </> "tix"
 
 -- | Path to the .tix file containing a test suite's sum statistics.
 tixFilePath
@@ -121,17 +93,15 @@ tixFilePath
   -- ^ Component name
   -> FilePath
   -- ^ Path to test suite's .tix file
-tixFilePath distPref way name = tixDir distPref way name </> name <.> "tix"
+tixFilePath distPref way name = tixDir distPref way </> name <.> "tix"
 
 htmlDir
   :: FilePath
   -- ^ \"dist/\" prefix
   -> Way
   -> FilePath
-  -- ^ Component name
-  -> FilePath
   -- ^ Path to test suite's HTML markup directory
-htmlDir distPref way name = hpcDir distPref way </> "html" </> name
+htmlDir distPref way = hpcDir distPref way </> "html"
 
 -- | Attempt to guess the way the test suites in this package were compiled
 -- and linked with the library so the correct module interfaces are found.
@@ -141,57 +111,28 @@ guessWay lbi
   | withDynExe lbi = Dyn
   | otherwise = Vanilla
 
--- | Generate the HTML markup for a test suite.
-markupTest
-  :: Verbosity
-  -> LocalBuildInfo
-  -> FilePath
-  -- ^ \"dist/\" prefix
-  -> String
-  -- ^ Library name
-  -> TestSuite
-  -> Library
-  -> IO ()
-markupTest verbosity lbi distPref libraryName suite library = do
-  tixFileExists <- doesFileExist $ tixFilePath distPref way $ testName'
-  when tixFileExists $ do
-    -- behaviour of 'markup' depends on version, so we need *a* version
-    -- but no particular one
-    (hpc, hpcVer, _) <-
-      requireProgramVersion
-        verbosity
-        hpcProgram
-        anyVersion
-        (withPrograms lbi)
-    let htmlDir_ = htmlDir distPref way testName'
-    markup
-      hpc
-      hpcVer
-      verbosity
-      (tixFilePath distPref way testName')
-      mixDirs
-      htmlDir_
-      (exposedModules library)
-    notice verbosity $
-      "Test coverage report written to "
-        ++ htmlDir_
-        </> "hpc_index" <.> "html"
-  where
-    way = guessWay lbi
-    testName' = unUnqualComponentName $ testName suite
-    mixDirs = map (mixDir distPref way) [testName', libraryName]
+-- | Haskell Program Coverage information required to produce a valid HPC
+-- report through the `hpc markup` call for the package libraries.
+data HPCMarkupInfo = HPCMarkupInfo
+  { pathsToLibsArtifacts :: [FilePath]
+  -- ^ The paths to the library components whose modules are included in the
+  -- coverage report
+  , libsModulesToInclude :: [ModuleName]
+  -- ^ The modules to include in the coverage report
+  }
 
--- | Generate the HTML markup for all of a package's test suites.
+-- | Generate the HTML markup for a package's test suites.
 markupPackage
   :: Verbosity
+  -> HPCMarkupInfo
   -> LocalBuildInfo
   -> FilePath
-  -- ^ \"dist/\" prefix
+  -- ^ Testsuite \"dist/\" prefix
   -> PD.PackageDescription
   -> [TestSuite]
   -> IO ()
-markupPackage verbosity lbi distPref pkg_descr suites = do
-  let tixFiles = map (tixFilePath distPref way) testNames
+markupPackage verbosity HPCMarkupInfo{pathsToLibsArtifacts, libsModulesToInclude} lbi testDistPref pkg_descr suites = do
+  let tixFiles = map (tixFilePath testDistPref way) testNames
   tixFilesExist <- traverse doesFileExist tixFiles
   when (and tixFilesExist) $ do
     -- behaviour of 'markup' depends on version, so we need *a* version
@@ -202,12 +143,33 @@ markupPackage verbosity lbi distPref pkg_descr suites = do
         hpcProgram
         anyVersion
         (withPrograms lbi)
-    let outFile = tixFilePath distPref way libraryName
-        htmlDir' = htmlDir distPref way libraryName
-        excluded = concatMap testModules suites ++ [main]
-    createDirectoryIfMissing True $ takeDirectory outFile
-    union hpc verbosity tixFiles outFile excluded
-    markup hpc hpcVer verbosity outFile mixDirs htmlDir' included
+    let htmlDir' = htmlDir testDistPref way
+    -- The tix file used to generate the report is either the testsuite's
+    -- tix file, when there is only one testsuite, or the sum of the tix
+    -- files of all testsuites in the package, which gets put under pkgName
+    -- for this component (a bit weird)
+    -- TODO: cabal-install should pass to Cabal where to put the summed tix
+    -- and report, and perhaps even the testsuites from other packages in
+    -- the project which are currently not accounted for in the summed
+    -- report.
+    tixFile <- case suites of
+      -- We call 'markupPackage' once for each testsuite to run individually,
+      -- to get the coverage report of just the one testsuite
+      [oneTest] -> do
+        let testName' = unUnqualComponentName $ testName oneTest
+        return $
+          tixFilePath testDistPref way testName'
+      -- And call 'markupPackage' once per `test` invocation with all the
+      -- testsuites to run, which results in multiple tix files being considered
+      _ -> do
+        let excluded = concatMap testModules suites ++ [main]
+            pkgName = prettyShow $ PD.package pkg_descr
+            summedTixFile = tixFilePath testDistPref way pkgName
+        createDirectoryIfMissing True $ takeDirectory summedTixFile
+        union hpc verbosity tixFiles summedTixFile excluded
+        return summedTixFile
+
+    markup hpc hpcVer verbosity tixFile mixDirs htmlDir' libsModulesToInclude
     notice verbosity $
       "Package coverage report written to "
         ++ htmlDir'
@@ -215,6 +177,4 @@ markupPackage verbosity lbi distPref pkg_descr suites = do
   where
     way = guessWay lbi
     testNames = fmap (unUnqualComponentName . testName) suites
-    mixDirs = map (mixDir distPref way) $ libraryName : testNames
-    included = concatMap (exposedModules) $ PD.allLibraries pkg_descr
-    libraryName = prettyShow $ PD.package pkg_descr
+    mixDirs = map (`mixDir` way) pathsToLibsArtifacts

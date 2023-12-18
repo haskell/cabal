@@ -13,4 +13,4 @@ main = setupAndCabalTest $ do
           , "--ghc-option=-hpcdir"
           , "--ghc-option=" ++ dist_dir ++ "/hpc/vanilla" ]
         setup "test" ["test-Short", "--show-details=direct"]
-    shouldNotExist $ htmlDir dist_dir Vanilla "test-Short" </> "hpc_index.html"
+    shouldNotExist $ htmlDir dist_dir Vanilla </> "hpc_index.html"

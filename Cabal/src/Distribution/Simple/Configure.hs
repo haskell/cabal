@@ -1,5 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -44,6 +46,7 @@ module Distribution.Simple.Configure
   , localBuildInfoFile
   , getInstalledPackages
   , getInstalledPackagesMonitorFiles
+  , getInstalledPackagesById
   , getPackageDBContents
   , configCompilerEx
   , configCompilerAuxEx
@@ -56,6 +59,7 @@ module Distribution.Simple.Configure
   , platformDefines
   ) where
 
+import Control.Monad
 import Distribution.Compat.Prelude
 import Prelude ()
 
@@ -78,7 +82,7 @@ import Distribution.Simple.BuildTarget
 import Distribution.Simple.BuildToolDepends
 import Distribution.Simple.Compiler
 import Distribution.Simple.LocalBuildInfo
-import Distribution.Simple.PackageIndex (InstalledPackageIndex)
+import Distribution.Simple.PackageIndex (InstalledPackageIndex, lookupUnitId)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.PreProcess
 import Distribution.Simple.Program
@@ -162,6 +166,7 @@ import qualified Data.Maybe as M
 import qualified Data.Set as Set
 import qualified Distribution.Compat.NonEmptySet as NES
 import Distribution.Simple.Errors
+import Distribution.Simple.Flag (mergeListFlag)
 import Distribution.Types.AnnotatedId
 
 type UseExternalInternalDeps = Bool
@@ -877,10 +882,21 @@ configure (pkg_descr0, pbi) cfg = do
           Map.empty
           buildComponents
 
+  -- For whole-package configure, we have to determine the additional
+  -- configCoverageFor of the main lib and sub libs here.
+  let extraCoverageFor :: [UnitId] = case enabled of
+        -- Whole package configure, add package libs
+        ComponentRequestedSpec{} -> mapMaybe (\case LibComponentLocalBuildInfo{componentUnitId} -> Just componentUnitId; _ -> Nothing) buildComponents
+        -- Component configure, no need to do anything
+        OneComponentRequestedSpec{} -> []
+
+  -- TODO: Should we also enforce something here on that --coverage-for cannot
+  -- include indefinite components or instantiations?
+
   let lbi =
         (setCoverageLBI . setProfLBI)
           LocalBuildInfo
-            { configFlags = cfg
+            { configFlags = cfg{configCoverageFor = mergeListFlag (configCoverageFor cfg) (toFlag extraCoverageFor)}
             , flagAssignment = flags
             , componentEnabledSpec = enabled
             , extraConfigArgs = [] -- Currently configure does not
@@ -1746,6 +1762,28 @@ getInstalledPackagesMonitorFiles verbosity comp packageDBs progdb platform =
           ++ "the installed package databases for "
           ++ prettyShow other
       return []
+
+-- | Looks up the 'InstalledPackageInfo' of the given 'UnitId's from the
+-- 'PackageDBStack' in the 'LocalBuildInfo'.
+getInstalledPackagesById
+  :: (Exception (VerboseException exception), Show exception, Typeable exception)
+  => Verbosity
+  -> LocalBuildInfo
+  -> (UnitId -> exception)
+  -- ^ Construct an exception that is thrown if a
+  -- unit-id is not found in the installed packages,
+  -- from the unit-id that is missing.
+  -> [UnitId]
+  -- ^ The unit ids to lookup in the installed packages
+  -> IO [InstalledPackageInfo]
+getInstalledPackagesById verbosity LocalBuildInfo{compiler, withPackageDB, withPrograms} mkException unitids = do
+  ipindex <- getInstalledPackages verbosity compiler withPackageDB withPrograms
+  mapM
+    ( \uid -> case lookupUnitId ipindex uid of
+        Nothing -> dieWithException verbosity (mkException uid)
+        Just ipkg -> return ipkg
+    )
+    unitids
 
 -- | The user interface specifies the package dbs to use with a combination of
 -- @--global@, @--user@ and @--package-db=global|user|clear|$file@.
