@@ -275,7 +275,7 @@ jobs:
           cabal-version: latest # default, we are not using it in this job
 
       - name: Download cabal executable from workflow artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: cabal-${{ runner.os }}-x86_64
           path: cabal-head
@@ -300,15 +300,15 @@ jobs:
     needs: [validate, validate-old-ghcs, dogfooding]
 
     steps:
-    - uses: actions/download-artifact@v3
+    - uses: actions/download-artifact@v4
       with:
         name: cabal-Windows-x86_64
 
-    - uses: actions/download-artifact@v3
+    - uses: actions/download-artifact@v4
       with:
         name: cabal-Linux-x86_64
 
-    - uses: actions/download-artifact@v3
+    - uses: actions/download-artifact@v4
       with:
         name: cabal-macOS-x86_64
 
