@@ -63,6 +63,7 @@ import Prelude ()
 import Distribution.Client.FileMonitor
 import Distribution.Client.Glob hiding (matchFileGlob)
 import qualified Distribution.Client.Glob as Glob (matchFileGlob)
+import Distribution.Simple.PreProcess.Types (Suffix (..))
 
 import Distribution.Simple.Utils (debug)
 
@@ -296,7 +297,7 @@ needIfExists f = do
 
 -- | Like 'findFileWithExtension', but in the 'Rebuild' monad.
 findFileWithExtensionMonitored
-  :: [String]
+  :: [Suffix]
   -> [FilePath]
   -> FilePath
   -> Rebuild (Maybe FilePath)
@@ -305,7 +306,7 @@ findFileWithExtensionMonitored extensions searchPath baseName =
     id
     [ path </> baseName <.> ext
     | path <- nub searchPath
-    , ext <- nub extensions
+    , Suffix ext <- nub extensions
     ]
 
 -- | Like 'findFirstFile', but in the 'Rebuild' monad.

@@ -26,6 +26,7 @@ import Distribution.Pretty
   , prettyShow
   )
 import Distribution.Simple.InstallDirs
+import Distribution.Simple.PreProcess.Types (Suffix)
 import Distribution.System (OS)
 import Distribution.Types.BenchmarkType
 import Distribution.Types.LibraryName
@@ -53,7 +54,7 @@ data CabalException
   | UnsupportedTestSuite String
   | UnsupportedBenchMark String
   | NoIncludeFileFound String
-  | NoModuleFound ModuleName [String]
+  | NoModuleFound ModuleName [Suffix]
   | RegMultipleInstancePkg
   | SuppressingChecksOnFile
   | NoSupportDirStylePackageDb
@@ -153,7 +154,7 @@ data CabalException
   | RawSystemStdout String
   | FindFileCwd FilePath
   | FindFileEx FilePath
-  | FindModuleFileEx ModuleName [String] [FilePath]
+  | FindModuleFileEx ModuleName [Suffix] [FilePath]
   | MultipleFilesWithExtension String
   | NoDesc
   | MultiDesc [String]

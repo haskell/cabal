@@ -238,7 +238,7 @@ linkLibrary buildTargetDir cleanedExtraLibDirs pkg_descr verbosity runGhcProg li
         , catMaybes
             <$> sequenceA
               [ findFileWithExtension
-                [buildWayPrefix way ++ objExtension]
+                [Suffix $ buildWayPrefix way ++ objExtension]
                 [buildTargetDir]
                 (ModuleName.toFilePath x ++ "_stub")
               | ghcVersion < mkVersion [7, 2] -- ghc-7.2+ does not make _stub.o files
