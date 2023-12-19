@@ -107,6 +107,7 @@ import qualified Distribution.Simple.GHC.Internal as Internal
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
+import Distribution.Simple.PreProcess.Types
 import Distribution.Simple.Program
 import Distribution.Simple.Program.Builtin (runghcProgram)
 import Distribution.Simple.Program.GHC
@@ -836,9 +837,9 @@ installLib
   -> IO ()
 installLib verbosity lbi targetDir dynlibTargetDir _builtDir pkg lib clbi = do
   -- copy .hi files over:
-  whenVanilla $ copyModuleFiles "hi"
-  whenProf $ copyModuleFiles "p_hi"
-  whenShared $ copyModuleFiles "dyn_hi"
+  whenVanilla $ copyModuleFiles $ Suffix "hi"
+  whenProf $ copyModuleFiles $ Suffix "p_hi"
+  whenShared $ copyModuleFiles $ Suffix "dyn_hi"
 
   -- copy extra compilation artifacts that ghc plugins may produce
   copyDirectoryIfExists extraCompilationArtifacts

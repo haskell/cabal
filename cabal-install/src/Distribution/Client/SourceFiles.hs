@@ -167,8 +167,8 @@ needBuildInfo :: PackageDescription -> BuildInfo -> [ModuleName] -> Rebuild ()
 needBuildInfo pkg_descr bi modules = do
   -- NB: These are separate because there may be both A.hs and
   -- A.hs-boot; need to track both.
-  findNeededModules ["hs", "lhs", "hsig", "lhsig"]
-  findNeededModules ["hs-boot", "lhs-boot"]
+  findNeededModules builtinHaskellSuffixes
+  findNeededModules builtinHaskellBootSuffixes
   root <- askRoot
   expandedExtraSrcFiles <- liftIO $ fmap concat . for (extraSrcFiles pkg_descr) $ \fpath -> matchDirFileGlobWithDie normal (\_ _ -> return []) (specVersion pkg_descr) root fpath
   traverse_ needIfExists $
@@ -184,12 +184,12 @@ needBuildInfo pkg_descr bi modules = do
     findFileMonitored ("." : includeDirs bi) f
       >>= maybe (return ()) need
   where
-    findNeededModules :: [String] -> Rebuild ()
+    findNeededModules :: [Suffix] -> Rebuild ()
     findNeededModules exts =
       traverse_
         (findNeededModule exts)
         (modules ++ otherModules bi)
-    findNeededModule :: [String] -> ModuleName -> Rebuild ()
+    findNeededModule :: [Suffix] -> ModuleName -> Rebuild ()
     findNeededModule exts m =
       findFileWithExtensionMonitored
         (ppSuffixes knownSuffixHandlers ++ exts)

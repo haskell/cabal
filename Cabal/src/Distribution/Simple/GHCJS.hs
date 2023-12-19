@@ -68,6 +68,7 @@ import qualified Distribution.Simple.Hpc as Hpc
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
+import Distribution.Simple.PreProcess.Types
 import Distribution.Simple.Program
 import Distribution.Simple.Program.GHC
 import qualified Distribution.Simple.Program.HcPkg as HcPkg
@@ -1880,9 +1881,9 @@ installLib
   -> ComponentLocalBuildInfo
   -> IO ()
 installLib verbosity lbi targetDir dynlibTargetDir _builtDir _pkg lib clbi = do
-  whenVanilla $ copyModuleFiles "js_hi"
-  whenProf $ copyModuleFiles "js_p_hi"
-  whenShared $ copyModuleFiles "js_dyn_hi"
+  whenVanilla $ copyModuleFiles $ Suffix "js_hi"
+  whenProf $ copyModuleFiles $ Suffix "js_p_hi"
+  whenShared $ copyModuleFiles $ Suffix "js_dyn_hi"
 
   -- whenVanilla $ installOrdinary builtDir targetDir $ toJSLibName vanillaLibName
   -- whenProf    $ installOrdinary builtDir targetDir $ toJSLibName profileLibName

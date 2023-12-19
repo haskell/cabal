@@ -22,6 +22,7 @@ import Distribution.Simple.GHC.ImplInfo
 import qualified Distribution.Simple.GHC.Internal as Internal
 import qualified Distribution.Simple.Hpc as Hpc
 import Distribution.Simple.LocalBuildInfo
+import Distribution.Simple.PreProcess.Types
 import Distribution.Simple.Program
 import qualified Distribution.Simple.Program.Ar as Ar
 import Distribution.Simple.Program.GHC
@@ -351,7 +352,7 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
       catMaybes
         <$> sequenceA
           [ findFileWithExtension
-            [objExtension]
+            [Suffix objExtension]
             [libTargetDir]
             (ModuleName.toFilePath x ++ "_stub")
           | ghcVersion < mkVersion [7, 2] -- ghc-7.2+ does not make _stub.o files
@@ -361,7 +362,7 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
       catMaybes
         <$> sequenceA
           [ findFileWithExtension
-            ["p_" ++ objExtension]
+            [Suffix $ "p_" ++ objExtension]
             [libTargetDir]
             (ModuleName.toFilePath x ++ "_stub")
           | ghcVersion < mkVersion [7, 2] -- ghc-7.2+ does not make _stub.o files
@@ -371,7 +372,7 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
       catMaybes
         <$> sequenceA
           [ findFileWithExtension
-            ["dyn_" ++ objExtension]
+            [Suffix $ "dyn_" ++ objExtension]
             [libTargetDir]
             (ModuleName.toFilePath x ++ "_stub")
           | ghcVersion < mkVersion [7, 2] -- ghc-7.2+ does not make _stub.o files
