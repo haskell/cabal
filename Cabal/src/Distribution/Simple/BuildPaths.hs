@@ -58,6 +58,7 @@ import Distribution.PackageDescription
 import Distribution.Pretty
 import Distribution.Simple.Errors
 import Distribution.Simple.LocalBuildInfo
+import Distribution.Simple.PreProcess.Types (builtinHaskellSuffixes)
 import Distribution.Simple.Setup.Common (defaultDistPref)
 import Distribution.Simple.Setup.Haddock (HaddockTarget (..))
 import Distribution.Simple.Utils
@@ -189,7 +190,7 @@ getSourceFiles
   -> IO [(ModuleName.ModuleName, FilePath)]
 getSourceFiles verbosity dirs modules = flip traverse modules $ \m ->
   fmap ((,) m) $
-    findFileWithExtension ["hs", "lhs", "hsig", "lhsig"] dirs (ModuleName.toFilePath m)
+    findFileWithExtension builtinHaskellSuffixes dirs (ModuleName.toFilePath m)
       >>= maybe (notFound m) (return . normalise)
   where
     notFound module_ =

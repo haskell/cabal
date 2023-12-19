@@ -11,21 +11,23 @@
 -- Maintainer  :  cabal-devel@haskell.org
 -- Portability :  portable
 --
--- This defines a 'PreProcessor' abstraction which represents a pre-processor
--- that can transform one kind of file into another. There is also a
--- 'PPSuffixHandler' which is a combination of a file extension and a function
--- for configuring a 'PreProcessor'. It defines a bunch of known built-in
--- preprocessors like @cpp@, @cpphs@, @c2hs@, @hsc2hs@, @happy@, @alex@ etc and
--- lists them in 'knownSuffixHandlers'. On top of this it provides a function
--- for actually preprocessing some sources given a bunch of known suffix
--- handlers. This module is not as good as it could be, it could really do with
--- a rewrite to address some of the problems we have with pre-processors.
+-- This module defines 'PPSuffixHandler', which is a combination of a file
+-- extension and a function for configuring a 'PreProcessor'. It also defines
+-- a bunch of known built-in preprocessors like @cpp@, @cpphs@, @c2hs@,
+-- @hsc2hs@, @happy@, @alex@ etc and lists them in 'knownSuffixHandlers'.
+-- On top of this it provides a function for actually preprocessing some sources
+-- given a bunch of known suffix handlers.
+-- This module is not as good as it could be, it could really do with a rewrite
+-- to address some of the problems we have with pre-processors.
 module Distribution.Simple.PreProcess
   ( preprocessComponent
   , preprocessExtras
   , knownSuffixHandlers
   , ppSuffixes
   , PPSuffixHandler
+  , Suffix (..)
+  , builtinHaskellSuffixes
+  , builtinHaskellBootSuffixes
   , PreProcessor (..)
   , mkSimplePreProcessor
   , runSimplePreProcessor
@@ -58,6 +60,7 @@ import Distribution.Simple.Compiler
 import Distribution.Simple.Errors
 import Distribution.Simple.LocalBuildInfo
 import qualified Distribution.Simple.PackageIndex as PackageIndex
+import Distribution.Simple.PreProcess.Types
 import Distribution.Simple.PreProcess.Unlit
 import Distribution.Simple.Program
 import Distribution.Simple.Program.ResponseFile
@@ -80,69 +83,6 @@ import System.FilePath
   , (</>)
   )
 import System.Info (arch, os)
-
--- | The interface to a preprocessor, which may be implemented using an
---  external program, but need not be.  The arguments are the name of
---  the input file, the name of the output file and a verbosity level.
---  Here is a simple example that merely prepends a comment to the given
---  source file:
---
---  > ppTestHandler :: PreProcessor
---  > ppTestHandler =
---  >   PreProcessor {
---  >     platformIndependent = True,
---  >     runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity ->
---  >       do info verbosity (inFile++" has been preprocessed to "++outFile)
---  >          stuff <- readFile inFile
---  >          writeFile outFile ("-- preprocessed as a test\n\n" ++ stuff)
---  >          return ExitSuccess
---
---  We split the input and output file names into a base directory and the
---  rest of the file name. The input base dir is the path in the list of search
---  dirs that this file was found in. The output base dir is the build dir where
---  all the generated source files are put.
---
---  The reason for splitting it up this way is that some pre-processors don't
---  simply generate one output .hs file from one input file but have
---  dependencies on other generated files (notably c2hs, where building one
---  .hs file may require reading other .chi files, and then compiling the .hs
---  file may require reading a generated .h file). In these cases the generated
---  files need to embed relative path names to each other (eg the generated .hs
---  file mentions the .h file in the FFI imports). This path must be relative to
---  the base directory where the generated files are located, it cannot be
---  relative to the top level of the build tree because the compilers do not
---  look for .h files relative to there, ie we do not use \"-I .\", instead we
---  use \"-I dist\/build\" (or whatever dist dir has been set by the user)
---
---  Most pre-processors do not care of course, so mkSimplePreProcessor and
---  runSimplePreProcessor functions handle the simple case.
-data PreProcessor = PreProcessor
-  { -- Is the output of the pre-processor platform independent? eg happy output
-    -- is portable haskell but c2hs's output is platform dependent.
-    -- This matters since only platform independent generated code can be
-    -- included into a source tarball.
-    platformIndependent :: Bool
-  , -- TODO: deal with pre-processors that have implementation dependent output
-    --       eg alex and happy have --ghc flags. However we can't really include
-    --       ghc-specific code into supposedly portable source tarballs.
-
-    ppOrdering
-      :: Verbosity
-      -> [FilePath] -- Source directories
-      -> [ModuleName] -- Module names
-      -> IO [ModuleName] -- Sorted modules
-
-  -- ^ This function can reorder /all/ modules, not just those that the
-  -- require the preprocessor in question. As such, this function should be
-  -- well-behaved and not reorder modules it doesn't have dominion over!
-  --
-  -- @since 3.8.1.0
-  , runPreProcessor
-      :: (FilePath, FilePath) -- Location of the source file relative to a base dir
-      -> (FilePath, FilePath) -- Output file name, relative to an output base dir
-      -> Verbosity -- verbosity
-      -> IO () -- Should exit if the preprocessor fails
-  }
 
 -- | Just present the modules in the order given; this is the default and it is
 -- appropriate for preprocessors which do not have any sort of dependencies
@@ -184,10 +124,10 @@ runSimplePreProcessor
 runSimplePreProcessor pp inFile outFile verbosity =
   runPreProcessor pp (".", inFile) (".", outFile) verbosity
 
--- | A preprocessor for turning non-Haskell files with the given extension
---  into plain Haskell source files.
+-- | A preprocessor for turning non-Haskell files with the given 'Suffix'
+-- (i.e. file extension) into plain Haskell source files.
 type PPSuffixHandler =
-  (String, BuildInfo -> LocalBuildInfo -> ComponentLocalBuildInfo -> PreProcessor)
+  (Suffix, BuildInfo -> LocalBuildInfo -> ComponentLocalBuildInfo -> PreProcessor)
 
 -- | Apply preprocessors to the sources from 'hsSourceDirs' for a given
 -- component (lib, exe, or test suite).
@@ -274,8 +214,7 @@ preprocessComponent pd comp lbi clbi isSrcDist verbosity handlers =
   where
     orderingFromHandlers v d hndlrs mods =
       foldM (\acc (_, pp) -> ppOrdering pp v d acc) mods hndlrs
-    builtinHaskellSuffixes = ["hs", "lhs", "hsig", "lhsig"]
-    builtinCSuffixes = cSourceExtensions
+    builtinCSuffixes = map Suffix cSourceExtensions
     builtinSuffixes = builtinHaskellSuffixes ++ builtinCSuffixes
     localHandlers bi = [(ext, h bi lbi clbi) | (ext, h) <- handlers]
     pre dirs dir lhndlrs fp =
@@ -344,9 +283,9 @@ preprocessFile
   -- ^ module file name
   -> Verbosity
   -- ^ verbosity
-  -> [String]
+  -> [Suffix]
   -- ^ builtin suffixes
-  -> [(String, PreProcessor)]
+  -> [(Suffix, PreProcessor)]
   -- ^ possible preprocessors
   -> Bool
   -- ^ fail on missing file
@@ -381,7 +320,7 @@ preprocessFile searchLoc buildLoc forSDist baseFile verbosity builtinSuffixes ha
           pp =
             fromMaybe
               (error "Distribution.Simple.PreProcess: Just expected")
-              (lookup (safeTail ext) handlers)
+              (lookup (Suffix $ safeTail ext) handlers)
       -- Preprocessing files for 'sdist' is different from preprocessing
       -- for 'build'.  When preprocessing for sdist we preprocess to
       -- avoid that the user has to have the preprocessors available.
@@ -901,19 +840,19 @@ standardPP lbi prog args =
     }
 
 -- | Convenience function; get the suffixes of these preprocessors.
-ppSuffixes :: [PPSuffixHandler] -> [String]
+ppSuffixes :: [PPSuffixHandler] -> [Suffix]
 ppSuffixes = map fst
 
 -- | Standard preprocessors: GreenCard, c2hs, hsc2hs, happy, alex and cpphs.
 knownSuffixHandlers :: [PPSuffixHandler]
 knownSuffixHandlers =
-  [ ("gc", ppGreenCard)
-  , ("chs", ppC2hs)
-  , ("hsc", ppHsc2hs)
-  , ("x", ppAlex)
-  , ("y", ppHappy)
-  , ("ly", ppHappy)
-  , ("cpphs", ppCpp)
+  [ (Suffix "gc", ppGreenCard)
+  , (Suffix "chs", ppC2hs)
+  , (Suffix "hsc", ppHsc2hs)
+  , (Suffix "x", ppAlex)
+  , (Suffix "y", ppHappy)
+  , (Suffix "ly", ppHappy)
+  , (Suffix "cpphs", ppCpp)
   ]
 
 -- | Standard preprocessors with possible extra C sources: c2hs, hsc2hs.
