@@ -29,6 +29,7 @@ import Distribution.Simple.GHC.ImplInfo
 import qualified Distribution.Simple.GHC.Internal as Internal
 import Distribution.Simple.LocalBuildInfo
 import qualified Distribution.Simple.PackageIndex as PackageIndex
+import Distribution.Simple.PreProcess.Types
 import Distribution.Simple.Program
 import qualified Distribution.Simple.Program.Ar as Ar
 import Distribution.Simple.Program.GHC
@@ -238,7 +239,7 @@ linkLibrary buildTargetDir cleanedExtraLibDirs pkg_descr verbosity runGhcProg li
         , catMaybes
             <$> sequenceA
               [ findFileWithExtension
-                [buildWayPrefix way ++ objExtension]
+                [Suffix $ buildWayPrefix way ++ objExtension]
                 [buildTargetDir]
                 (ModuleName.toFilePath x ++ "_stub")
               | ghcVersion < mkVersion [7, 2] -- ghc-7.2+ does not make _stub.o files
