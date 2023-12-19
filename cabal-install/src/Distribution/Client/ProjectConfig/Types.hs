@@ -96,6 +96,7 @@ import Distribution.Version
   )
 
 import qualified Data.Map as Map
+import Distribution.Solver.Types.LabeledPackageConstraint (VersionWin)
 import Distribution.Types.ParStrat
 
 -------------------------------
@@ -228,6 +229,7 @@ data ProjectConfigShared = ProjectConfigShared
   , projectConfigStrongFlags :: Flag StrongFlags
   , projectConfigAllowBootLibInstalls :: Flag AllowBootLibInstalls
   , projectConfigOnlyConstrained :: Flag OnlyConstrained
+  , projectConfigVersionWin :: Flag VersionWin
   , projectConfigPerComponent :: Flag Bool
   , projectConfigIndependentGoals :: Flag IndependentGoals
   , projectConfigPreferOldest :: Flag PreferOldest
@@ -430,6 +432,7 @@ data SolverSettings = SolverSettings
   , solverSettingStrongFlags :: StrongFlags
   , solverSettingAllowBootLibInstalls :: AllowBootLibInstalls
   , solverSettingOnlyConstrained :: OnlyConstrained
+  , solverSettingVersionWin :: VersionWin
   , solverSettingIndexState :: Maybe TotalIndexState
   , solverSettingActiveRepos :: Maybe ActiveRepos
   , solverSettingIndependentGoals :: IndependentGoals

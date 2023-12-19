@@ -34,6 +34,7 @@ import Distribution.Solver.Types.ComponentDeps
   , ComponentDeps
   )
 import qualified Distribution.Solver.Types.ComponentDeps as CD
+import Distribution.Solver.Types.LabeledPackageConstraint
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PackageConstraint
 import qualified Distribution.Solver.Types.PackagePath as P

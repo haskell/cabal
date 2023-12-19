@@ -67,6 +67,7 @@ data SolverConfig = SolverConfig {
   shadowPkgs             :: ShadowPkgs,
   strongFlags            :: StrongFlags,
   onlyConstrained        :: OnlyConstrained,
+  solverVersionWin       :: VersionWin,
   maxBackjumps           :: Maybe Int,
   enableBackjumping      :: EnableBackjumping,
   solveExecutables       :: SolveExecutables,

@@ -46,6 +46,7 @@ import Language.Haskell.Extension (Extension (..), Language (..))
 -- cabal-install
 
 import Distribution.Client.Dependency (foldProgress)
+import Distribution.Solver.Types.LabeledPackageConstraint
 import qualified Distribution.Solver.Types.PackagePath as P
 import Distribution.Solver.Types.PkgConfigDb (PkgConfigDb (..), pkgConfigDbFromList)
 import Distribution.Solver.Types.Settings

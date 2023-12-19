@@ -676,6 +676,7 @@ convertLegacyAllPackageFlags globalFlags configFlags configExFlags installFlags 
       installStrongFlags = projectConfigStrongFlags
       , installAllowBootLibInstalls = projectConfigAllowBootLibInstalls
       , installOnlyConstrained = projectConfigOnlyConstrained
+      , installVersionWin = projectConfigVersionWin
       } = installFlags
 
     ProjectFlags
@@ -950,6 +951,7 @@ convertToLegacySharedConfig
           , installStrongFlags = projectConfigStrongFlags
           , installAllowBootLibInstalls = projectConfigAllowBootLibInstalls
           , installOnlyConstrained = projectConfigOnlyConstrained
+          , installVersionWin = projectConfigVersionWin
           , installOnly = mempty
           , installOnlyDeps = projectConfigOnlyDeps
           , installIndexState = projectConfigIndexState
@@ -1413,6 +1415,7 @@ legacySharedConfigFieldDescrs constraintSrc =
           , "allow-boot-library-installs"
           , "reject-unconstrained-dependencies"
           , "index-state"
+          , "version-win"
           ]
         . commandOptionsToFields
         $ installOptions ParseArgs

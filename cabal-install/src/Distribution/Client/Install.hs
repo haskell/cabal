@@ -596,6 +596,7 @@ planPackages
           . setStrongFlags strongFlags
           . setAllowBootLibInstalls allowBootLibInstalls
           . setOnlyConstrained onlyConstrained
+          . setVersionWin (fromFlag (installVersionWin installFlags))
           . setSolverVerbosity verbosity
           . setPreferenceDefault
             ( if upgradeDeps

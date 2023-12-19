@@ -16,6 +16,7 @@ import Prelude ()
 import Distribution.Solver.Compat.Prelude
 
 import qualified Data.Map as M
+import qualified Data.List as L
 import Data.Set (isSubsetOf)
 import Distribution.Compat.Graph
          ( IsNode(..) )
@@ -124,23 +125,33 @@ solve' :: SolverConfig
        -> Set PN
        -> Progress String String (Assignment, RevDepMap)
 solve' sc cinfo idx pkgConfigDB pprefs gcs pns =
-    toProgress $ retry (runSolver printFullLog sc) createErrorMsg
+    toProgress $
+    let gcs' = versionWin (solverVersionWin sc) <$> gcs
+        diff = concat (M.elems gcs) L.\\ concat (M.elems gcs')
+        msg =
+          if null diff then "Overriding doesn't remove any constraints." else
+          "Overriding constraints by "
+          ++ showVersionWin (solverVersionWin sc) ++ " removes these " ++ show (length diff) ++ " constraints:"
+          ++ showGroupedConstraints diff
+    in
+      continueWith msg $
+      retry (runSolver printFullLog gcs' sc) createErrorMsg
   where
-    runSolver :: Bool -> SolverConfig
+    runSolver :: Bool -> Map PN [LabeledPackageConstraint] -> SolverConfig
               -> RetryLog String SolverFailure (Assignment, RevDepMap)
-    runSolver keepLog sc' =
+    runSolver keepLog gcs' sc' =
         displayLogMessages keepLog $
-        solve sc' cinfo idx pkgConfigDB pprefs (shallowConstraintsWin <$> gcs) pns
+        solve sc' cinfo idx pkgConfigDB pprefs gcs' pns
 
     createErrorMsg :: SolverFailure
                    -> RetryLog String String (Assignment, RevDepMap)
     createErrorMsg failure@(ExhaustiveSearch cs cm) =
-      if asBool $ minimizeConflictSet sc
+      if asBool (minimizeConflictSet sc)
       then continueWith ("Found no solution after exhaustively searching the "
                           ++ "dependency tree. Rerunning the dependency solver "
                           ++ "to minimize the conflict set ({"
                           ++ showConflictSet cs ++ "}).") $
-           retry (tryToMinimizeConflictSet (runSolver printFullLog) sc cs cm) $
+           retry (tryToMinimizeConflictSet (runSolver printFullLog gcs) sc cs cm) $
                \case
                   ExhaustiveSearch cs' cm' ->
                       fromProgress $ Fail $
@@ -153,14 +164,16 @@ solve' sc cinfo idx pkgConfigDB pprefs gcs pns =
                        ++ "Original error message:\n"
                        ++ rerunSolverForErrorMsg cs
                        ++ finalErrorMsg sc failure
+
       else fromProgress $ Fail $
            rerunSolverForErrorMsg cs ++ finalErrorMsg sc failure
+
     createErrorMsg failure@BackjumpLimitReached     =
         continueWith
              ("Backjump limit reached. Rerunning dependency solver to generate "
               ++ "a final conflict set for the search tree containing the "
               ++ "first backjump.") $
-        retry (runSolver printFullLog sc { pruneAfterFirstSuccess = PruneAfterFirstSuccess True }) $
+        retry (runSolver printFullLog gcs sc { pruneAfterFirstSuccess = PruneAfterFirstSuccess True }) $
             \case
                ExhaustiveSearch cs _ ->
                    fromProgress $ Fail $
@@ -183,7 +196,7 @@ solve' sc cinfo idx pkgConfigDB pprefs gcs pns =
           -- original goal order.
           goalOrder' = preferGoalsFromConflictSet cs <> fromMaybe mempty (goalOrder sc)
 
-      in unlines ("Could not resolve dependencies:" : messages (toProgress (runSolver True sc')))
+      in unlines ("Could not resolve dependencies:" : messages (toProgress (runSolver True gcs sc')))
 
     printFullLog = solverVerbosity sc >= verbose
 

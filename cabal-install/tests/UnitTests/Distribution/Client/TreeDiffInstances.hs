@@ -4,6 +4,7 @@
 module UnitTests.Distribution.Client.TreeDiffInstances () where
 
 import Distribution.Solver.Types.ConstraintSource
+import Distribution.Solver.Types.LabeledPackageConstraint
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PackageConstraint
 import Distribution.Solver.Types.Settings

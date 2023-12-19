@@ -423,6 +423,7 @@ instance Semigroup SavedConfig where
           , installStrongFlags = combine installStrongFlags
           , installAllowBootLibInstalls = combine installAllowBootLibInstalls
           , installOnlyConstrained = combine installOnlyConstrained
+          , installVersionWin = combine installVersionWin
           , installReinstall = combine installReinstall
           , installAvoidReinstalls = combine installAvoidReinstalls
           , installOverrideReinstall = combine installOverrideReinstall

@@ -1244,6 +1244,7 @@ planPackages
           . setStrongFlags solverSettingStrongFlags
           . setAllowBootLibInstalls solverSettingAllowBootLibInstalls
           . setOnlyConstrained solverSettingOnlyConstrained
+          . setVersionWin solverSettingVersionWin
           . setSolverVerbosity verbosity
           -- TODO: [required eventually] decide if we need to prefer
           -- installed for global packages, or prefer latest even for

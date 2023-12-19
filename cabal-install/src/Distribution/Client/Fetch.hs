@@ -210,6 +210,7 @@ planPackages
           . setStrongFlags strongFlags
           . setAllowBootLibInstalls allowBootLibInstalls
           . setOnlyConstrained onlyConstrained
+          . setVersionWin (fromFlag (fetchVersionWins fetchFlags))
           . setSolverVerbosity verbosity
           . addConstraints
             [ let pc =
