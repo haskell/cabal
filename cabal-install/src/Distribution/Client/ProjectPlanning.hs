@@ -1613,13 +1613,13 @@ elaborateInstallPlan
                 buildComponent
                 (Map.empty, Map.empty, Map.empty)
                 (map fst src_comps)
-            let not_per_component_reasons = why_not_per_component src_comps
-            if null not_per_component_reasons
-              then return comps
-              else do
-                checkPerPackageOk comps not_per_component_reasons
+            let whyNotPerComp = why_not_per_component src_comps
+            case NE.nonEmpty whyNotPerComp of
+              Nothing -> return comps
+              Just notPerCompReasons -> do
+                checkPerPackageOk comps notPerCompReasons
                 return
-                  [ elaborateSolverToPackage spkg g $
+                  [ elaborateSolverToPackage notPerCompReasons spkg g $
                       comps ++ maybeToList setupComponent
                   ]
           Left cns ->
@@ -1633,7 +1633,6 @@ elaborateInstallPlan
           why_not_per_component g =
             cuz_buildtype ++ cuz_spec ++ cuz_length ++ cuz_flag
             where
-              cuz reason = [text reason]
               -- We have to disable per-component for now with
               -- Configure-type scripts in order to prevent parallel
               -- invocation of the same `./configure` script.
@@ -1646,28 +1645,29 @@ elaborateInstallPlan
               -- Once you've implemented this, swap it for the code below.
               cuz_buildtype =
                 case PD.buildType (elabPkgDescription elab0) of
-                  PD.Configure -> cuz "build-type is Configure"
-                  PD.Custom -> cuz "build-type is Custom"
+                  PD.Configure -> [CuzBuildType CuzConfigureBuildType]
+                  PD.Custom -> [CuzBuildType CuzCustomBuildType]
+                  PD.Make -> [CuzBuildType CuzMakeBuildType]
                   _ -> []
               -- cabal-format versions prior to 1.8 have different build-depends semantics
               -- for now it's easier to just fallback to legacy-mode when specVersion < 1.8
               -- see, https://github.com/haskell/cabal/issues/4121
               cuz_spec
                 | PD.specVersion pd >= CabalSpecV1_8 = []
-                | otherwise = cuz "cabal-version is less than 1.8"
+                | otherwise = [CuzCabalSpecVersion]
               -- In the odd corner case that a package has no components at all
               -- then keep it as a whole package, since otherwise it turns into
               -- 0 component graph nodes and effectively vanishes. We want to
               -- keep it around at least for error reporting purposes.
               cuz_length
                 | length g > 0 = []
-                | otherwise = cuz "there are no buildable components"
+                | otherwise = [CuzNoBuildableComponents]
               -- For ease of testing, we let per-component builds be toggled
               -- at the top level
               cuz_flag
                 | fromFlagOrDefault True (projectConfigPerComponent sharedPackageConfig) =
                     []
-                | otherwise = cuz "you passed --disable-per-component"
+                | otherwise = [CuzDisablePerComponent]
 
           -- \| Sometimes a package may make use of features which are only
           -- supported in per-package mode.  If this is the case, we should
@@ -1679,7 +1679,7 @@ elaborateInstallPlan
               dieProgress $
                 text "Internal libraries only supported with per-component builds."
                   $$ text "Per-component builds were disabled because"
-                  <+> fsep (punctuate comma reasons)
+                  <+> fsep (punctuate comma $ map (text . whyNotPerComponent) $ toList reasons)
           -- TODO: Maybe exclude Backpack too
 
           elab0 = elaborateSolverToCommon spkg
@@ -1974,11 +1974,13 @@ elaborateInstallPlan
               <$> executables
 
       elaborateSolverToPackage
-        :: SolverPackage UnresolvedPkgLoc
+        :: NE.NonEmpty NotPerComponentReason
+        -> SolverPackage UnresolvedPkgLoc
         -> ComponentsGraph
         -> [ElaboratedConfiguredPackage]
         -> ElaboratedConfiguredPackage
       elaborateSolverToPackage
+        pkgWhyNotPerComponent
         pkg@( SolverPackage
                 (SourcePackage pkgid _gpd _srcloc _descOverride)
                 _flags
