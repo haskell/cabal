@@ -1,12 +1,14 @@
 # cabal update
-Downloading the latest package list from repository.localhost
-Package list of repository.localhost is up to date.
-The index-state is set to 2016-09-24T17:47:48Z.
-To revert to previous state run:
-    cabal v2-update 'repository.localhost,2022-01-28T02:36:41Z'
+Downloading the latest package list from test-local-repo
+Package list of test-local-repo has been updated.
+The index-state is set to 2023-01-01T00:00:00Z.
 # cabal update
-Downloading the latest package list from repository.localhost
-Package list of repository.localhost is up to date.
-The index-state is set to 2022-01-28T02:36:41Z.
+Downloading the latest package list from test-local-repo
+Package list of test-local-repo is up to date.
+The index-state is set to 2022-01-01T00:00:00Z.
 To revert to previous state run:
-    cabal v2-update 'repository.localhost,2016-09-24T17:47:48Z'
+    cabal v2-update 'test-local-repo,2023-01-01T00:00:00Z'
+# cabal update
+Downloading the latest package list from test-local-repo
+Package list of test-local-repo is up to date.
+The index-state is set to 2022-01-01T00:00:00Z.

@@ -15,6 +15,7 @@ module Test.Cabal.Prelude (
     module Control.Monad.IO.Class,
     module Distribution.Version,
     module Distribution.Simple.Program,
+    module Data.Time.Format.ISO8601
 ) where
 
 import Test.Cabal.Script
@@ -35,7 +36,8 @@ import Distribution.Simple.Configure
     ( getPersistBuildConfig )
 import Distribution.Version
 import Distribution.Package
-import Distribution.Parsec (eitherParsec)
+import Distribution.Parsec (eitherParsec, simpleParsec)
+import Distribution.Pretty (prettyShow)
 import Distribution.Types.UnqualComponentName
 import Distribution.Types.LocalBuildInfo
 import Distribution.PackageDescription
@@ -58,15 +60,15 @@ import qualified Data.ByteString.Char8 as C
 import Data.List (isInfixOf, stripPrefix, isPrefixOf, intercalate)
 import Data.List.NonEmpty (NonEmpty (..))
 import qualified Data.List.NonEmpty as NE
-import Data.Maybe (mapMaybe, fromMaybe)
+import Data.Maybe (mapMaybe, fromMaybe, fromJust)
 import System.Exit (ExitCode (..))
 import System.FilePath
 import Control.Concurrent (threadDelay)
 import qualified Data.Char as Char
-import System.Directory
-import Control.Retry (exponentialBackoff, limitRetriesByCumulativeDelay)
-import Network.Wait (waitTcpVerbose)
 import System.Environment
+import Data.Time
+import Data.Time.Format.ISO8601 (iso8601ParseM)
+import System.Directory
 
 #ifndef mingw32_HOST_OS
 import Control.Monad.Catch ( bracket_ )
@@ -590,82 +592,77 @@ withRepo repo_dir m = do
 
 -- | Given a directory (relative to the 'testCurrentDir') containing
 -- a series of directories representing packages, generate an
--- remote repository corresponding to all of these packages
-withRemoteRepo :: FilePath -> TestM a -> TestM a
-withRemoteRepo repoDir m = do
-    -- https://github.com/haskell/cabal/issues/7065
-    -- you don't simply put a windows path into URL...
-    skipIfWindows
-
-    -- we rely on the presence of python3 for a simple http server
-    skipUnless "no python3" =<< isAvailableProgram python3Program
-    -- we rely on hackage-repo-tool to set up the secure repository
-    skipUnless "no hackage-repo-tool" =<< isAvailableProgram hackageRepoToolProgram
-
+-- secure repository corresponding to all of these packages
+withSecureRepo :: FilePath -> TestM a -> TestM a
+withSecureRepo repo_dir m = do
     env <- getTestEnv
 
-    let workDir = testRepoDir env
+    -- 1. Generate keys
+    hackageRepoTool "create-keys" ["--keys", testKeysDir env]
+    keyIds <- liftIO $ fmap (map takeBaseName) $ listDirectory (testKeysDir env </> "root")
 
-    -- 1. Initialize repo and repo_keys directory
-    let keysDir = workDir </> "keys"
-    let packageDir = workDir </> "package"
+    -- 2. Create root and mirros metadata
+    hackageRepoTool "create-root" ["--keys", testKeysDir env, "-o", testRepoDir env </> "root.json"]
+    hackageRepoTool "create-mirrors" ["--keys", testKeysDir env, "-o", testRepoDir env </> "mirrors.json"]
 
-    liftIO $ createDirectoryIfMissing True packageDir
-    liftIO $ createDirectoryIfMissing True keysDir
+    -- 3. Create repo directories
+    let package_dir = testRepoDir env </> "package"
+        index_dir = testRepoDir env </> "index"
+    liftIO $ createDirectoryIfMissing True package_dir
+    liftIO $ createDirectoryIfMissing True index_dir
 
-    -- 2. Create tarballs
-    entries <- liftIO $ getDirectoryContents (testCurrentDir env </> repoDir)
-    forM_ entries $ \entry -> do
-        let srcPath = testCurrentDir env </> repoDir </> entry
-        let destPath = packageDir </> entry
-        isPreferredVersionsFile <- liftIO $
-            -- validate this is the "magic" 'preferred-versions' file
-            -- and perform a sanity-check whether this is actually a file
-            -- and not a package that happens to have the same name.
-            if entry == "preferred-versions"
-                then doesFileExist srcPath
-                else return False
-        case entry of
-            '.' : _ -> return ()
-            _
-                | isPreferredVersionsFile ->
-                      liftIO $ copyFile srcPath destPath
-                | otherwise ->
-                  archiveTo srcPath (destPath <.> "tar.gz")
+    -- 4. Create tarballs
+    pkgs <- liftIO $ listDirectory (testCurrentDir env </> repo_dir)
+    forM_ pkgs $ \pkg -> do
+        let srcPath = testCurrentDir env </> repo_dir </> pkg
+        let sdistPath = package_dir </> pkg <.> "tar.gz"
 
-    -- 3. Create keys and bootstrap repository
-    hackageRepoTool "create-keys" $ ["--keys", keysDir ]
-    hackageRepoTool "bootstrap" $ ["--keys", keysDir, "--repo", workDir]
+        let PackageIdentifier{pkgName = pn, pkgVersion = pv} = fromJust (simpleParsec pkg)
+            idxPath = index_dir </> unPackageName pn </> prettyShow pv </> unPackageName pn <.> "cabal"
 
-    -- 4. Wire it up in .cabal/config
+        srcPath `archiveTo` sdistPath
+
+        -- When hackage-repo-tool extracts the cabal file from the tarball, it does carry
+        -- over the timestamp; so what ends up in the index is the time of this operation.
+        --
+        -- We extract the cabal file ourselves carrying over the modification time.
+        -- hackage-repo-tool would re-extract the cabal file is the sdist is newer, to
+        -- avoid this possibiliy we apply the same modification time to the sdist.
+        liftIO $ do
+          createDirectoryIfMissing True (takeDirectory idxPath)
+          copyFileWithMetadata (srcPath </> unPackageName pn <.> "cabal") idxPath
+
+          ts <- System.Directory.getModificationTime (srcPath </> unPackageName pn <.> "cabal")
+          System.Directory.setModificationTime sdistPath ts
+
+    -- 5. Update repository
+    hackageRepoTool "update" ["--keys", testKeysDir env, "--repo", testRepoDir env]
+
+    -- 6. Wire it up in .cabal/config
     let package_cache = testCabalDir env </> "packages"
-    -- In the following we launch a python http server to serve the remote
-    -- repository. When the http server is ready we proceed with the tests.
-    -- NOTE 1: it's important that both the http server and cabal use the
-    -- same hostname ("localhost"), otherwise there could be a mismatch
-    -- (depending on the details of the host networking settings).
-    -- NOTE 2: here we use a fixed port (8000). This can cause problems in
-    -- case multiple tests are running concurrently or other another
-    -- process on the developer machine is using the same port.
-    liftIO $ do
-        appendFile (testUserCabalConfigFile env) $
-            unlines [ "repository repository.localhost"
-                    , "  url: http://localhost:8000/"
-                    , "  secure: True"
-                    , "  root-keys:"
-                    , "  key-threshold: 0"
-                    , "remote-repo-cache: " ++ package_cache ]
-        putStrLn $ testUserCabalConfigFile env
-        putStrLn =<< readFile (testUserCabalConfigFile env)
+    liftIO $ appendFile (testUserCabalConfigFile env)
+           $ unlines [ "repository test-local-repo"
+                     , "  url: file:" ++ testRepoDir env
+                     , "  secure: True"
+                     , "  root-keys: " ++ unwords keyIds
+                     , "remote-repo-cache: " ++ package_cache ]
 
-        withAsync
-          (flip runReaderT env $ python3 ["-m", "http.server", "-d", workDir, "--bind", "localhost", "8000"])
-          (\_ -> do
-            -- wait for the python webserver to come up with a exponential
-            -- backoff starting from 50ms, up to a maximum wait of 60s
-            _ <- waitTcpVerbose putStrLn (limitRetriesByCumulativeDelay 60000000 $ exponentialBackoff 50000) "localhost" "8000"
-            runReaderT m (env { testHaveRepo = True }))
+    -- 6. Create local directories (TODO: this is a bug #4136, once you
+    -- fix that this can be removed)
+    liftIO $ createDirectoryIfMissing True (package_cache </> "test-local-repo")
 
+    -- 7. Profit
+    withReaderT (\env' -> env' { testHaveRepo = True }) m
+
+setModificationTime :: FilePath -> UTCTime -> TestM ()
+setModificationTime fp ts = do
+  env <- getTestEnv
+  liftIO $ System.Directory.setModificationTime (testCurrentDir env </> fp) ts
+
+getModificationTime :: FilePath -> TestM UTCTime
+getModificationTime fp = do
+  env <- getTestEnv
+  liftIO $ System.Directory.getModificationTime (testCurrentDir env </> fp)
 
 ------------------------------------------------------------------------
 -- * Subprocess run results
@@ -1020,14 +1017,6 @@ ghc' :: [String] -> TestM Result
 ghc' args = do
     recordHeader ["ghc"]
     runProgramM ghcProgram args Nothing
-
-python3 :: [String] -> TestM ()
-python3 args = void $ python3' args
-
-python3' :: [String] -> TestM Result
-python3' args = do
-    recordHeader ["python3"]
-    runProgramM python3Program args Nothing
 
 -- | If a test needs to modify or write out source files, it's
 -- necessary to make a hermetic copy of the source files to operate
