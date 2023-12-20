@@ -1,5 +1,19 @@
 # cabal v2-update
 Downloading the latest package list from test-local-repo
+# --version-win not supplied, default
+# cabal v2-build
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following would be built:
+ - hashable-1.4.2.0 (lib) (requires build)
+ - cabal-version-override-0.1.0.0 (exe:cabal-version-override) (first run)
+# --version-win=shallowest
+# cabal v2-build
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following would be built:
+ - hashable-1.4.2.0 (lib) (requires build)
+ - cabal-version-override-0.1.0.0 (exe:cabal-version-override) (first run)
+# --version-win=latest
 # cabal v2-build
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
