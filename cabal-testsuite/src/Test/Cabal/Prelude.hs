@@ -591,7 +591,7 @@ withRepo repo_dir m = do
     repoUri env ="file+noindex://" ++ testRepoDir env
 
 -- | Given a directory (relative to the 'testCurrentDir') containing
--- a series of directories representing packages, generate an
+-- a series of directories representing packages, generate a
 -- secure repository corresponding to all of these packages
 withSecureRepo :: FilePath -> TestM a -> TestM a
 withSecureRepo repo_dir m = do
@@ -601,7 +601,7 @@ withSecureRepo repo_dir m = do
     hackageRepoTool "create-keys" ["--keys", testKeysDir env]
     keyIds <- liftIO $ fmap (map takeBaseName) $ listDirectory (testKeysDir env </> "root")
 
-    -- 2. Create root and mirros metadata
+    -- 2. Create root and mirrors metadata
     hackageRepoTool "create-root" ["--keys", testKeysDir env, "-o", testRepoDir env </> "root.json"]
     hackageRepoTool "create-mirrors" ["--keys", testKeysDir env, "-o", testRepoDir env </> "mirrors.json"]
 
@@ -626,8 +626,8 @@ withSecureRepo repo_dir m = do
         -- over the timestamp; so what ends up in the index is the time of this operation.
         --
         -- We extract the cabal file ourselves carrying over the modification time.
-        -- hackage-repo-tool would re-extract the cabal file is the sdist is newer, to
-        -- avoid this possibiliy we apply the same modification time to the sdist.
+        -- hackage-repo-tool would re-extract the cabal file if the sdist is newer, to
+        -- avoid this possibility, we apply the same modification time to the sdist.
         liftIO $ do
           createDirectoryIfMissing True (takeDirectory idxPath)
           copyFileWithMetadata (srcPath </> unPackageName pn <.> "cabal") idxPath
