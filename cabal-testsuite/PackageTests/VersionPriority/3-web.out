@@ -1,19 +1,39 @@
 # cabal v2-update
 Downloading the latest package list from test-local-repo
-# --version-win not supplied, default
+# 3-web-constraints-import.project --version-win not supplied, default
 # cabal v2-build
 Resolving dependencies...
 Build profile: -w ghc-9.6.3 -O1
 In order, the following would be built:
  - hashable-1.4.2.0 (lib) (requires build)
  - cabal-version-override-0.1.0.0 (exe:cabal-version-override) (first run)
-# --version-win=shallowest
+# 3-web-constraints-import.project --version-win=shallowest
 # cabal v2-build
 Build profile: -w ghc-9.6.3 -O1
 In order, the following would be built:
  - hashable-1.4.2.0 (lib) (requires build)
  - cabal-version-override-0.1.0.0 (exe:cabal-version-override) (first run)
-# --version-win=latest
+# 3-web-constraints-import.project --version-win=latest
+# cabal v2-build
+Resolving dependencies...
+Build profile: -w ghc-9.6.3 -O1
+In order, the following would be built:
+ - hashable-1.4.3.0 (lib) (requires build)
+ - cabal-version-override-0.1.0.0 (exe:cabal-version-override) (first run)
+# 3-web-import-constraints.project --version-win not supplied, default
+# cabal v2-build
+Resolving dependencies...
+Build profile: -w ghc-9.6.3 -O1
+In order, the following would be built:
+ - hashable-1.4.2.0 (lib) (requires build)
+ - cabal-version-override-0.1.0.0 (exe:cabal-version-override) (first run)
+# 3-web-import-constraints.project --version-win=shallowest
+# cabal v2-build
+Build profile: -w ghc-9.6.3 -O1
+In order, the following would be built:
+ - hashable-1.4.2.0 (lib) (requires build)
+ - cabal-version-override-0.1.0.0 (exe:cabal-version-override) (first run)
+# 3-web-import-constraints.project --version-win=latest
 # cabal v2-build
 Resolving dependencies...
 Build profile: -w ghc-9.6.3 -O1
