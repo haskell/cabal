@@ -50,6 +50,7 @@ instance ToExpr InstallOutcome
 instance ToExpr LocalRepo
 instance ToExpr MinimizeConflictSet
 instance ToExpr OnlyConstrained
+instance ToExpr VersionWin
 instance ToExpr OptionalStanza
 instance ToExpr Outcome
 instance ToExpr OverwritePolicy

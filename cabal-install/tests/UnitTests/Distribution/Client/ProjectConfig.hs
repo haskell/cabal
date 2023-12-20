@@ -1005,3 +1005,10 @@ instance Arbitrary OnlyConstrained where
       [ pure OnlyConstrainedAll
       , pure OnlyConstrainedNone
       ]
+
+instance Arbitrary VersionWin where
+  arbitrary =
+    oneof
+      [ pure ShallowWins
+      , pure LastWins
+      ]
