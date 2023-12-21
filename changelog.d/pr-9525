@@ -1,0 +1,10 @@
+synopsis: `check`: add PackageInfo warning
+packages: cabal-install
+prs: #9525
+issues: #9331
+
+description: {
+
+`cabal check` will warn about PackageInfo_* modules and provide an upgrade path to 3.12.
+
+}
