@@ -17,10 +17,13 @@
 -- compiler-specific functions to do the rest.
 module Distribution.Simple.Install
   ( install
+  , installFileGlob
   ) where
 
 import Distribution.Compat.Prelude
 import Prelude ()
+
+import Distribution.CabalSpecVersion (CabalSpecVersion)
 
 import Distribution.Types.ExecutableScope
 import Distribution.Types.ForeignLib
@@ -279,21 +282,35 @@ copyComponent verbosity pkg_descr lbi (CExe exe) clbi copydest = do
 copyComponent _ _ _ (CBench _) _ _ = return ()
 copyComponent _ _ _ (CTest _) _ _ = return ()
 
--- | Install the files listed in data-files
+-- | Install the files listed in data-files.
 installDataFiles :: Verbosity -> PackageDescription -> FilePath -> IO ()
 installDataFiles verbosity pkg_descr destDataDir =
-  flip traverse_ (dataFiles pkg_descr) $ \glob -> do
-    let srcDataDirRaw = dataDir pkg_descr
-        srcDataDir =
-          if null srcDataDirRaw
-            then "."
-            else srcDataDirRaw
-    files <- matchDirFileGlob verbosity (specVersion pkg_descr) srcDataDir glob
-    for_ files $ \file' -> do
-      let src = srcDataDir </> file'
-          dst = destDataDir </> file'
-      createDirectoryIfMissingVerbose verbosity True (takeDirectory dst)
-      installOrdinaryFile verbosity src dst
+  traverse_
+    (installFileGlob verbosity (specVersion pkg_descr) (srcDataDir, destDataDir))
+    (dataFiles pkg_descr)
+  where
+    srcDataDirRaw = dataDir pkg_descr
+    srcDataDir =
+      if null srcDataDirRaw
+        then "."
+        else srcDataDirRaw
+
+-- | Install the files specified by the given glob pattern.
+installFileGlob
+  :: Verbosity
+  -> CabalSpecVersion
+  -> (FilePath, FilePath)
+  -- ^ @(src_dir, dest_dir)@
+  -> FilePath
+  -- ^ file glob pattern
+  -> IO ()
+installFileGlob verbosity spec_version (srcDir, destDir) glob = do
+  files <- matchDirFileGlob verbosity spec_version srcDir glob
+  for_ files $ \file' -> do
+    let src = srcDir </> file'
+        dst = destDir </> file'
+    createDirectoryIfMissingVerbose verbosity True (takeDirectory dst)
+    installOrdinaryFile verbosity src dst
 
 -- | Install the files listed in install-includes for a library
 installIncludeFiles :: Verbosity -> BuildInfo -> LocalBuildInfo -> FilePath -> FilePath -> IO ()
