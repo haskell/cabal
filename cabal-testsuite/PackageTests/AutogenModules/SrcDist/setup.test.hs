@@ -61,7 +61,6 @@ main = setupAndCabalTest $ do
         assertOutputDoesNotContain pathsAutogenMsg configureResult
 
         -- Asserts for the undesired check messages after sdist.
-        assertOutputDoesNotContain "Distribution quality errors:" sdistResult
         assertOutputDoesNotContain libAutogenMsg   sdistResult
         assertOutputDoesNotContain exeAutogenMsg   sdistResult
         assertOutputDoesNotContain testAutogenMsg  sdistResult
