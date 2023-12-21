@@ -36,8 +36,6 @@ import Distribution.Client.Setup
   , InitFlags (initHcPath, initVerbosity)
   , InstallFlags (..)
   , ListFlags (..)
-  , Path (..)
-  , PathFlags (..)
   , ReportFlags (..)
   , UploadFlags (..)
   , UserConfigFlags (..)
@@ -66,8 +64,6 @@ import Distribution.Client.Setup
   , listCommand
   , listNeedsCompiler
   , manpageCommand
-  , pathCommand
-  , pathName
   , reconfigureCommand
   , registerCommand
   , replCommand
@@ -104,11 +100,7 @@ import Prelude ()
 import Distribution.Client.Config
   ( SavedConfig (..)
   , createDefaultConfigFile
-  , defaultCacheDir
   , defaultConfigFile
-  , defaultInstallPath
-  , defaultLogsDir
-  , defaultStoreDir
   , getConfigFilePath
   , loadConfig
   , userConfigDiff
@@ -139,6 +131,7 @@ import qualified Distribution.Client.CmdInstall as CmdInstall
 import Distribution.Client.CmdLegacy
 import qualified Distribution.Client.CmdListBin as CmdListBin
 import qualified Distribution.Client.CmdOutdated as CmdOutdated
+import qualified Distribution.Client.CmdPath as CmdPath
 import qualified Distribution.Client.CmdRepl as CmdRepl
 import qualified Distribution.Client.CmdRun as CmdRun
 import qualified Distribution.Client.CmdSdist as CmdSdist
@@ -154,7 +147,6 @@ import Distribution.Client.Install (install)
 
 -- import Distribution.Client.Clean            (clean)
 
-import Distribution.Client.CmdInstall.ClientInstallFlags (ClientInstallFlags (cinstInstalldir))
 import Distribution.Client.Get (get)
 import Distribution.Client.Init (initCmd)
 import Distribution.Client.Manpage (manpageCmd)
@@ -244,7 +236,6 @@ import Distribution.Simple.Utils
   , notice
   , topHandler
   , tryFindPackageDesc
-  , withOutputMarker
   )
 import Distribution.Text
   ( display
@@ -264,7 +255,6 @@ import Distribution.Version
   )
 
 import Control.Exception (AssertionFailed, assert, try)
-import Control.Monad (mapM_)
 import Data.Monoid (Any (..))
 import System.Directory
   ( doesFileExist
@@ -439,7 +429,7 @@ mainWorker args = do
       , regularCmd reportCommand reportAction
       , regularCmd initCommand initAction
       , regularCmd userConfigCommand userConfigAction
-      , regularCmd pathCommand pathAction
+      , regularCmd CmdPath.pathCommand CmdPath.pathAction
       , regularCmd genBoundsCommand genBoundsAction
       , regularCmd CmdOutdated.outdatedCommand CmdOutdated.outdatedAction
       , wrapperCmd hscolourCommand hscolourCommonFlags
@@ -1498,32 +1488,3 @@ manpageAction commands flags extraArgs _ = do
           then dropExtension pname
           else pname
   manpageCmd cabalCmd commands flags
-
-pathAction :: PathFlags -> [String] -> Action
-pathAction pathflags extraArgs globalFlags = do
-  let verbosity = fromFlag (pathVerbosity pathflags)
-  unless (null extraArgs) $
-    dieWithException verbosity $
-      ManpageAction extraArgs
-  cfg <- loadConfig verbosity mempty
-  let getDir getDefault getGlobal =
-        maybe
-          getDefault
-          pure
-          (flagToMaybe $ getGlobal $ savedGlobalFlags cfg)
-      getSomeDir PathCacheDir = getDir defaultCacheDir globalCacheDir
-      getSomeDir PathLogsDir = getDir defaultLogsDir globalLogsDir
-      getSomeDir PathStoreDir = getDir defaultStoreDir globalStoreDir
-      getSomeDir PathConfigFile = getConfigFilePath (globalConfigFile globalFlags)
-      getSomeDir PathInstallDir =
-        fromFlagOrDefault defaultInstallPath (pure <$> cinstInstalldir (savedClientInstallFlags cfg))
-      printPath p = putStrLn . withOutputMarker verbosity . ((pathName p ++ ": ") ++) =<< getSomeDir p
-  -- If no paths have been requested, print all paths with labels.
-  --
-  -- If a single path has been requested, print that path without any label.
-  --
-  -- If multiple paths have been requested, print each of them with labels.
-  case fromFlag $ pathDirs pathflags of
-    [] -> mapM_ printPath [minBound .. maxBound]
-    [d] -> putStrLn . withOutputMarker verbosity =<< getSomeDir d
-    ds -> mapM_ printPath ds

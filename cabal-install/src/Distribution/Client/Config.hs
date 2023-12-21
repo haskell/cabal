@@ -25,6 +25,7 @@ module Distribution.Client.Config
   , parseConfig
   , defaultConfigFile
   , defaultCacheDir
+  , defaultCacheHome
   , defaultScriptBuildsDir
   , defaultStoreDir
   , defaultCompiler
@@ -803,6 +804,10 @@ defaultInstallPrefix = do
 defaultConfigFile :: IO FilePath
 defaultConfigFile =
   getDefaultDir XdgConfig "config"
+
+defaultCacheHome :: IO FilePath
+defaultCacheHome =
+  getDefaultDir XdgCache ""
 
 defaultCacheDir :: IO FilePath
 defaultCacheDir =
