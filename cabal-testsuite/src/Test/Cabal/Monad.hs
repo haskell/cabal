@@ -232,7 +232,11 @@ runTestM mode m = withSystemTempDirectory "cabal-testsuite" $ \tmp_dir -> do
     args <- execParser (info testArgParser Data.Monoid.mempty)
     let dist_dir = testArgDistDir args
         (script_dir0, script_filename) = splitFileName (testArgScriptPath args)
-        script_base = dropExtensions script_filename
+
+        stripped = stripExtension ".test.hs" script_filename
+               <|> stripExtension ".multitest.hs" script_filename
+        script_base = fromMaybe (dropExtensions script_filename) stripped
+
     -- Canonicalize this so that it is stable across working directory changes
     script_dir <- canonicalizePath script_dir0
     senv <- mkScriptEnv verbosity
