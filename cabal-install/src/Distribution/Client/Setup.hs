@@ -86,10 +86,6 @@ module Distribution.Client.Setup
   , cleanCommand
   , copyCommand
   , registerCommand
-  , Path (..)
-  , pathName
-  , PathFlags (..)
-  , pathCommand
   , liftOptions
   , yesNoOpt
   ) where
@@ -354,7 +350,6 @@ globalCommand commands =
             ++ unlines
               ( [ startGroup "global"
                 , addCmd "user-config"
-                , addCmd "path"
                 , addCmd "help"
                 , par
                 , startGroup "package database"
@@ -372,6 +367,7 @@ globalCommand commands =
                 , addCmd "freeze"
                 , addCmd "gen-bounds"
                 , addCmd "outdated"
+                , addCmd "path"
                 , par
                 , startGroup "project building and installing"
                 , addCmd "build"
@@ -3363,73 +3359,6 @@ userConfigCommand =
             (reqArg' "CONFIGLINE" (Flag . (: [])) (fromMaybe [] . flagToMaybe))
         ]
     }
-
--- ------------------------------------------------------------
-
--- * Dirs
-
--- ------------------------------------------------------------
-
--- | A path that can be retrieved by the @cabal path@ command.
-data Path
-  = PathCacheDir
-  | PathLogsDir
-  | PathStoreDir
-  | PathConfigFile
-  | PathInstallDir
-  deriving (Eq, Ord, Show, Enum, Bounded)
-
--- | The configuration name for this path.
-pathName :: Path -> String
-pathName PathCacheDir = "cache-dir"
-pathName PathLogsDir = "logs-dir"
-pathName PathStoreDir = "store-dir"
-pathName PathConfigFile = "config-file"
-pathName PathInstallDir = "installdir"
-
-data PathFlags = PathFlags
-  { pathVerbosity :: Flag Verbosity
-  , pathDirs :: Flag [Path]
-  }
-  deriving (Generic)
-
-instance Monoid PathFlags where
-  mempty =
-    PathFlags
-      { pathVerbosity = toFlag normal
-      , pathDirs = toFlag []
-      }
-  mappend = (<>)
-
-instance Semigroup PathFlags where
-  (<>) = gmappend
-
-pathCommand :: CommandUI PathFlags
-pathCommand =
-  CommandUI
-    { commandName = "path"
-    , commandSynopsis = "Display paths used by cabal."
-    , commandDescription = Just $ \_ ->
-        wrapText $
-          "This command prints the directories that are used by cabal,"
-            ++ " taking into account the contents of the configuration file and any"
-            ++ " environment variables."
-    , commandNotes = Nothing
-    , commandUsage = \pname -> "Usage: " ++ pname ++ " path\n"
-    , commandDefaultFlags = mempty
-    , commandOptions = \_ ->
-        map pathOption [minBound .. maxBound]
-          ++ [optionVerbosity pathVerbosity (\v flags -> flags{pathVerbosity = v})]
-    }
-  where
-    pathOption s =
-      option
-        []
-        [pathName s]
-        ("Print " <> pathName s)
-        pathDirs
-        (\v flags -> flags{pathDirs = Flag $ concat (flagToList (pathDirs flags) ++ flagToList v)})
-        (noArg (Flag [s]))
 
 -- ------------------------------------------------------------
 

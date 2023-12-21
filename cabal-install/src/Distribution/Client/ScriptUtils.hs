@@ -307,7 +307,15 @@ withContextAndSelectors noTargets kind flags@NixStyleFlags{..} targetStrings glo
         -- In the case where a selector is both a valid target and script, assume it is a target,
         -- because you can disambiguate the script with "./script"
         readTargetSelectors (localPackages ctx) kind targetStrings >>= \case
+          -- If there are no target selectors and no targets are fine, return
+          -- the context
+          Left (TargetSelectorNoTargetsInCwd{} : _)
+            | [] <- targetStrings
+            , AcceptNoTargets <- noTargets ->
+                return (tc, ctx, defaultTarget)
           Left err@(TargetSelectorNoTargetsInProject : _)
+            -- If there are no target selectors and no targets are fine, return
+            -- the context
             | [] <- targetStrings
             , AcceptNoTargets <- noTargets ->
                 return (tc, ctx, defaultTarget)
