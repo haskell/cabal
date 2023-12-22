@@ -343,6 +343,14 @@ cppProgram :: Program
 cppProgram = simpleProgram "cpp"
 
 pkgConfigProgram :: Program
-pkgConfigProgram = (simpleProgram "pkg-config") {
-    programFindVersion = findProgramVersion "--version" id
-  }
+pkgConfigProgram =
+  (simpleProgram "pkg-config")
+    { programFindVersion = findProgramVersion "--version" id
+    , programPostConf = \_ pkgConfProg ->
+        let programOverrideEnv' =
+              programOverrideEnv pkgConfProg
+                ++ [ ("PKG_CONFIG_ALLOW_SYSTEM_CFLAGS", Just "1")
+                   , ("PKG_CONFIG_ALLOW_SYSTEM_LIBS", Just "1")
+                   ]
+         in pure $ pkgConfProg{programOverrideEnv = programOverrideEnv'}
+    }
