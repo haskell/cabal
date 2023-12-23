@@ -12,12 +12,19 @@
 -- Portability :  portable
 --
 -- Reading, writing and manipulating \"@.tar@\" archive files.
+<<<<<<< HEAD
 --
 -----------------------------------------------------------------------------
 module Distribution.Client.Tar (
   -- * @tar.gz@ operations
   createTarGzFile,
   extractTarGzFile,
+=======
+module Distribution.Client.Tar
+  ( -- * @tar.gz@ operations
+    createTarGzFile
+  , TarComp.extractTarGzFile
+>>>>>>> 51e6483f9 (Relax `tar` upper bound)
 
   -- * Other local utils
   buildTreeRefTypeCode,
@@ -31,12 +38,20 @@ module Distribution.Client.Tar (
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
+<<<<<<< HEAD
 import qualified Data.ByteString.Lazy    as BS
 import qualified Codec.Archive.Tar       as Tar
 import qualified Codec.Archive.Tar.Entry as Tar
 import qualified Codec.Archive.Tar.Check as Tar
 import qualified Codec.Compression.GZip  as GZip
 import qualified Distribution.Client.GZipUtils as GZipUtils
+=======
+import qualified Codec.Archive.Tar as Tar
+import qualified Codec.Archive.Tar.Entry as Tar
+import qualified Codec.Compression.GZip as GZip
+import qualified Data.ByteString.Lazy as BS
+import qualified Distribution.Client.Compat.Tar as TarComp
+>>>>>>> 51e6483f9 (Relax `tar` upper bound)
 
 -- for foldEntries...
 import Control.Exception (throw)
@@ -52,6 +67,7 @@ createTarGzFile :: FilePath  -- ^ Full Tarball path
 createTarGzFile tar base dir =
   BS.writeFile tar . GZip.compress . Tar.write =<< Tar.pack base [dir]
 
+<<<<<<< HEAD
 extractTarGzFile :: FilePath -- ^ Destination directory
                  -> FilePath -- ^ Expected subdir (to check for tarbombs)
                  -> FilePath -- ^ Tarball
@@ -72,6 +88,8 @@ instance (Exception a, Exception b) => Exception (Either a b) where
                    Nothing -> Nothing
 
 
+=======
+>>>>>>> 51e6483f9 (Relax `tar` upper bound)
 -- | Type code for the local build tree reference entry type. We don't use the
 -- symbolic link entry type because it allows only 100 ASCII characters for the
 -- path.

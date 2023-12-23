@@ -2,6 +2,7 @@ module UnitTests.Distribution.Client.Tar (
   tests
   ) where
 
+<<<<<<< HEAD
 import Distribution.Client.Tar ( filterEntries
                                , filterEntriesM
                                )
@@ -13,6 +14,19 @@ import Codec.Archive.Tar.Entry ( EntryContent(..)
                                , Entry(..)
                                , toTarPath
                                )
+=======
+import Codec.Archive.Tar
+  ( foldEntries
+  )
+import Codec.Archive.Tar.Entry
+  ( simpleEntry
+  , toTarPath
+  )
+import Distribution.Client.Tar
+  ( filterEntries
+  , filterEntriesM
+  )
+>>>>>>> 51e6483f9 (Relax `tar` upper bound)
 
 import Test.Tasty
 import Test.Tasty.HUnit
@@ -20,6 +34,8 @@ import Test.Tasty.HUnit
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 import Control.Monad.Writer.Lazy (runWriterT, tell)
+
+import Distribution.Client.Compat.Tar
 
 tests :: [TestTree]
 tests = [ testCase "filterEntries" filterTest
