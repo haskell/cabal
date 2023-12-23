@@ -1484,13 +1484,13 @@ system-dependent values for these fields.
     Version constraints use the operators ``==, >=, >, <, <=`` and a
     version number. Multiple constraints can be combined using ``&&`` or
     ``||``.
-    
+
     .. Note::
 
        Even though there is no ``/=`` operator, by combining operators we can
        skip over one or more versions, to skip a deprecated version or to skip
        versions that narrow the constraint solving more than we'd like.
-       
+
        For example, the ``time =1.12.*`` series depends on ``base >=4.13 && <5``
        but ``time-1.12.3`` bumps the lower bound on base to ``>=4.14``.  If we
        still want to compile with a ``ghc-8.8.*`` version of GHC that ships with
@@ -2490,10 +2490,15 @@ The following tests are currently supported.
     implementations. If the canonicalised os names match, this test
     evaluates to true, otherwise false. The match is case-insensitive.
 :samp:`arch({name})`
-    Tests if the current architecture is *name*. The argument is matched
-    against ``System.Info.arch`` on the target system. If the arch names
-    match, this test evaluates to true, otherwise false. The match is
-    case-insensitive.
+    Tests if the current architecture is *name*. *name* should be the name of
+    one of the nullary constructors of ``Distribution.System.Arch`` (e.g.
+    ``x86_64``, ``aarch64`` or ``i386``), otherwise it will be treated as an
+    'other architecture' of the given *name*. It will be compared with
+    ``Distribution.System.buildArch``, which is derived from
+    ``System.Info.arch`` (certain architectures are treated as synonymous; e.g.
+    ``aarch64`` / ``arm64`` or ``powerpc64`` / ``powerpc64le`` are not
+    distinguished). For a match, this test evaluates to true, otherwise false.
+    The match is case-insensitive.
 :samp:`impl({compiler})`
     Tests for the configured Haskell implementation. An optional version
     constraint may be specified (for example ``impl(ghc >= 6.6.1)``). If
