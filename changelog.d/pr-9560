@@ -1,0 +1,22 @@
+synopsis: Shorten solver rejection messages by removing repetition
+packages: cabal-install-solver
+prs: #9560
+issues: #9559 #4251
+
+description: {
+
+As before, we show a single rejection as hyphenated package-version.
+
+For multiple rejections, we show a list of versions preceded by package
+semicolon, a much shorter rendering of the same information.
+
+```diff
+- [__0] rejecting: pandoc-3.1.8, pandoc-3.1.7, pandoc-3.1.6.2, pandoc-3.1.6.1,
+- pandoc-3.1.6, pandoc-3.1.5, pandoc-3.1.4, pandoc-3.1.3, pandoc-3.1.2,
+- pandoc-3.1.1, pandoc-3.1, pandoc-3.0.1, pandoc-3.0, pandoc-2.19.2,
+- pandoc-2.19.1, pandoc-2.19, pandoc-2.18, pandoc-2.17.1.1, pandoc-2.17.1,
++ [__0] rejecting: pandoc; 3.1.8, 3.1.7, 3.1.6.2, 3.1.6.1, 3.1.6, 3.1.5, 3.1.4,
++ 3.1.3, 3.1.2, 3.1.1, 3.1, 3.0.1, 3.0, 2.19.2, 2.19.1, 2.19, 2.18, 2.17.1.1,
+```
+
+}

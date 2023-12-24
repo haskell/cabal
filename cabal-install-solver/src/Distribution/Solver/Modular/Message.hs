@@ -5,6 +5,7 @@ module Distribution.Solver.Modular.Message (
     showMessages
   ) where
 
+import Data.Maybe (listToMaybe)
 import qualified Data.List as L
 import Data.Map (Map)
 import qualified Data.Map as M
@@ -98,7 +99,23 @@ showMessages = go 0
     goPReject l qpn is c fr (Step (TryP qpn' i) (Step Enter (Step (Failure _ fr') (Step Leave ms))))
       | qpn == qpn' && fr == fr' = goPReject l qpn (i : is) c fr ms
     goPReject l qpn is c fr ms =
-        (atLevel l $ "rejecting: " ++ L.intercalate ", " (map (showQPNPOpt qpn) (reverse is)) ++ showFR c fr) (go l ms)
+        (atLevel l $ formatRejections (map (showQPNPOpt qpn) (reverse is)) ++ showFR c fr)
+        (go l ms)
+
+    formatRejections :: [String] -> String
+    formatRejections [x] = "rejecting: " ++ x
+    formatRejections xs = "rejecting: " ++ case L.nub prefixes of
+        [prefix] -> prefix ++ "; " ++ L.intercalate ", " versions
+        _ -> L.intercalate ", " xs
+      where
+        (prefixes, versions) = unzip
+          [ maybe (x, "") (\hyphen -> (take hyphen x, drop (hyphen + 1) x)) ix
+          | x <- xs
+          -- Package names may contain hypens but a hypen is also the separator
+          -- between the package name and its version so find the last hyphen in
+          -- the string.
+          , let ix = listToMaybe (reverse $ L.elemIndices '-' x)
+          ]
 
     -- Handle many subsequent skipped package instances.
     goPSkip :: Int
