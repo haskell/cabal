@@ -64,6 +64,13 @@ import Distribution.Simple.GHC
   ( GhcImplInfo (supportsPkgEnvFiles)
   , getImplInfo
   )
+import Distribution.Simple.Program
+  ( ConfiguredProgram
+  , programDefaultArgs
+  , programOverrideEnv
+  , programPath
+  , simpleProgram
+  )
 import Distribution.Simple.Program.Db
   ( configuredPrograms
   , modifyProgramSearchPath
@@ -75,13 +82,6 @@ import Distribution.Simple.Program.Find
 import Distribution.Simple.Program.Run
   ( programInvocation
   , runProgramInvocation
-  )
-import Distribution.Simple.Program.Types
-  ( ConfiguredProgram
-  , programDefaultArgs
-  , programOverrideEnv
-  , programPath
-  , simpleProgram
   )
 import Distribution.Simple.Utils
   ( createDirectoryIfMissingVerbose
