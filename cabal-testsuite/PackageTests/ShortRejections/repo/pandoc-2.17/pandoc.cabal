@@ -1,0 +1,862 @@
+cabal-version:   2.4
+name:            pandoc
+version:         2.17
+build-type:      Simple
+license:         GPL-2.0-or-later
+license-file:    COPYING.md
+copyright:       (c) 2006-2022 John MacFarlane
+author:          John MacFarlane <jgm@berkeley.edu>
+maintainer:      John MacFarlane <jgm@berkeley.edu>
+bug-reports:     https://github.com/jgm/pandoc/issues
+stability:       alpha
+homepage:        https://pandoc.org
+category:        Text
+tested-with:     GHC == 8.6.5, GHC == 8.8.4, GHC == 8.10.7, GHC == 9.0.1
+synopsis:        Conversion between markup formats
+description:     Pandoc is a Haskell library for converting from one markup
+                 format to another, and a command-line tool that uses
+                 this library. The formats it can handle include
+                 .
+                 - light markup formats (many variants of Markdown,
+                   reStructuredText, AsciiDoc, Org-mode, Muse, Textile,
+                   txt2tags)
+                 - HTML formats (HTML 4 and 5)
+                 - Ebook formats (EPUB v2 and v3, FB2)
+                 - Documentation formats (GNU TexInfo, Haddock)
+                 - Roff formats (man, ms)
+                 - TeX formats (LaTeX, ConTeXt)
+                 - XML formats (DocBook 4 and 5, JATS, TEI Simple, OpenDocument)
+                 - Outline formats (OPML)
+                 - Bibliography formats (BibTeX, BibLaTeX, CSL JSON, CSL YAML)
+                 - Word processor formats (Docx, RTF, ODT)
+                 - Interactive notebook formats (Jupyter notebook ipynb)
+                 - Page layout formats (InDesign ICML)
+                 - Wiki markup formats (MediaWiki, DokuWiki, TikiWiki, TWiki,
+                   Vimwiki, XWiki, ZimWiki, Jira wiki, Creole)
+                 - Slide show formats (LaTeX Beamer, PowerPoint, Slidy,
+                   reveal.js, Slideous, S5, DZSlides)
+                 - Data formats (CSV tables)
+                 - PDF (via external programs such as pdflatex or wkhtmltopdf)
+                 .
+                 Pandoc can convert mathematical content in documents
+                 between TeX, MathML, Word equations, roff eqn, and plain text.
+                 It includes a powerful system for automatic citations
+                 and bibliographies, and it can be customized extensively
+                 using templates, filters, and custom readers and writers
+                 written in Lua.
+data-files:
+                 -- templates
+                 data/templates/styles.html
+                 data/templates/default.html4
+                 data/templates/default.html5
+                 data/templates/default.docbook4
+                 data/templates/default.docbook5
+                 data/templates/default.jats_archiving
+                 data/templates/default.jats_articleauthoring
+                 data/templates/default.jats_publishing
+                 data/templates/default.tei
+                 data/templates/default.opendocument
+                 data/templates/default.icml
+                 data/templates/default.opml
+                 data/templates/default.latex
+                 data/templates/default.bibtex
+                 data/templates/default.biblatex
+                 data/templates/default.context
+                 data/templates/default.texinfo
+                 data/templates/default.jira
+                 data/templates/default.man
+                 data/templates/default.ms
+                 data/templates/default.markdown
+                 data/templates/default.muse
+                 data/templates/default.commonmark
+                 data/templates/default.rst
+                 data/templates/default.plain
+                 data/templates/default.mediawiki
+                 data/templates/default.dokuwiki
+                 data/templates/default.xwiki
+                 data/templates/default.zimwiki
+                 data/templates/default.rtf
+                 data/templates/default.s5
+                 data/templates/default.slidy
+                 data/templates/default.slideous
+                 data/templates/default.revealjs
+                 data/templates/default.dzslides
+                 data/templates/default.asciidoc
+                 data/templates/default.asciidoctor
+                 data/templates/default.haddock
+                 data/templates/default.textile
+                 data/templates/default.org
+                 data/templates/default.epub2
+                 data/templates/default.epub3
+                 data/templates/article.jats_publishing
+                 data/templates/affiliations.jats
+                 data/templates/default.markua
+                 -- translations
+                 data/translations/*.yaml
+                 -- source files for reference.docx
+                 data/docx/[Content_Types].xml
+                 data/docx/_rels/.rels
+                 data/docx/docProps/app.xml
+                 data/docx/docProps/core.xml
+                 data/docx/docProps/custom.xml
+                 data/docx/word/document.xml
+                 data/docx/word/fontTable.xml
+                 data/docx/word/comments.xml
+                 data/docx/word/footnotes.xml
+                 data/docx/word/numbering.xml
+                 data/docx/word/settings.xml
+                 data/docx/word/webSettings.xml
+                 data/docx/word/styles.xml
+                 data/docx/word/_rels/document.xml.rels
+                 data/docx/word/_rels/footnotes.xml.rels
+                 data/docx/word/theme/theme1.xml
+                 -- source files for reference.odt
+                 data/odt/mimetype
+                 data/odt/manifest.rdf
+                 data/odt/styles.xml
+                 data/odt/content.xml
+                 data/odt/meta.xml
+                 data/odt/settings.xml
+                 data/odt/Configurations2/accelerator/current.xml
+                 data/odt/Thumbnails/thumbnail.png
+                 data/odt/META-INF/manifest.xml
+                 -- source files for reference.pptx
+                 data/pptx/_rels/.rels
+                 data/pptx/docProps/app.xml
+                 data/pptx/docProps/core.xml
+                 data/pptx/ppt/slideLayouts/_rels/slideLayout1.xml.rels
+                 data/pptx/ppt/slideLayouts/_rels/slideLayout2.xml.rels
+                 data/pptx/ppt/slideLayouts/_rels/slideLayout3.xml.rels
+                 data/pptx/ppt/slideLayouts/_rels/slideLayout4.xml.rels
+                 data/pptx/ppt/slideLayouts/_rels/slideLayout5.xml.rels
+                 data/pptx/ppt/slideLayouts/_rels/slideLayout6.xml.rels
+                 data/pptx/ppt/slideLayouts/_rels/slideLayout7.xml.rels
+                 data/pptx/ppt/slideLayouts/_rels/slideLayout8.xml.rels
+                 data/pptx/ppt/slideLayouts/_rels/slideLayout9.xml.rels
+                 data/pptx/ppt/slideLayouts/_rels/slideLayout10.xml.rels
+                 data/pptx/ppt/slideLayouts/_rels/slideLayout11.xml.rels
+                 data/pptx/ppt/slideLayouts/slideLayout1.xml
+                 data/pptx/ppt/slideLayouts/slideLayout2.xml
+                 data/pptx/ppt/slideLayouts/slideLayout3.xml
+                 data/pptx/ppt/slideLayouts/slideLayout4.xml
+                 data/pptx/ppt/slideLayouts/slideLayout5.xml
+                 data/pptx/ppt/slideLayouts/slideLayout6.xml
+                 data/pptx/ppt/slideLayouts/slideLayout7.xml
+                 data/pptx/ppt/slideLayouts/slideLayout8.xml
+                 data/pptx/ppt/slideLayouts/slideLayout9.xml
+                 data/pptx/ppt/slideLayouts/slideLayout10.xml
+                 data/pptx/ppt/slideLayouts/slideLayout11.xml
+                 data/pptx/ppt/_rels/presentation.xml.rels
+                 data/pptx/ppt/theme/theme1.xml
+                 data/pptx/ppt/presProps.xml
+                 data/pptx/ppt/slides/_rels/slide1.xml.rels
+                 data/pptx/ppt/slides/_rels/slide2.xml.rels
+                 data/pptx/ppt/slides/slide2.xml
+                 data/pptx/ppt/slides/slide1.xml
+                 data/pptx/ppt/slides/_rels/slide3.xml.rels
+                 data/pptx/ppt/slides/_rels/slide4.xml.rels
+                 data/pptx/ppt/slides/slide3.xml
+                 data/pptx/ppt/slides/slide4.xml
+                 data/pptx/ppt/viewProps.xml
+                 data/pptx/ppt/tableStyles.xml
+                 data/pptx/ppt/slideMasters/_rels/slideMaster1.xml.rels
+                 data/pptx/ppt/slideMasters/slideMaster1.xml
+                 data/pptx/ppt/presentation.xml
+                 data/pptx/ppt/notesMasters/_rels/notesMaster1.xml.rels
+                 data/pptx/ppt/notesMasters/notesMaster1.xml
+                 data/pptx/ppt/notesSlides/_rels/notesSlide1.xml.rels
+                 data/pptx/ppt/notesSlides/notesSlide1.xml
+                 data/pptx/ppt/notesSlides/_rels/notesSlide2.xml.rels
+                 data/pptx/ppt/notesSlides/notesSlide2.xml
+                 data/pptx/ppt/theme/theme2.xml
+                 data/pptx/[Content_Types].xml
+                  -- stylesheet for EPUB writer
+                 data/epub.css
+                 -- data for dzslides writer
+                 data/dzslides/template.html
+                 -- default abbreviations file
+                 data/abbreviations
+                 -- sample lua custom writer
+                 data/sample.lua
+                 -- sample lua custom reader
+                 data/creole.lua
+                 -- lua init script
+                 data/init.lua
+                 -- bash completion template
+                 data/bash_completion.tpl
+                 -- citeproc
+                 data/default.csl
+                 citeproc/biblatex-localization/*.lbx.strings
+                 -- documentation
+                 MANUAL.txt, COPYRIGHT
+extra-source-files:
+                 -- documentation
+                 INSTALL.md, AUTHORS.md, README.md,
+                 CONTRIBUTING.md, BUGS, changelog.md,
+                 man/pandoc.1
+                 -- cabal and stack build plans
+                 cabal.project
+                 stack.yaml
+                 -- files needed to build man page
+                 man/manfilter.lua
+                 man/pandoc.1.before
+                 man/pandoc.1.after
+                 -- trypandoc
+                 trypandoc/Makefile
+                 trypandoc/index.html
+                 -- tests
+                 test/bodybg.gif
+                 test/*.native
+                 test/command/*.md
+                 test/command/*.csl
+                 test/command/biblio.bib
+                 test/command/averroes.bib
+                 test/command/A.txt
+                 test/command/B.txt
+                 test/command/C.txt
+                 test/command/D.txt
+                 test/command/three.txt
+                 test/command/01.csv
+                 test/command/chap1/spider.png
+                 test/command/chap2/spider.png
+                 test/command/chap1/text.md
+                 test/command/chap2/text.md
+                 test/command/defaults1.yaml
+                 test/command/defaults2.yaml
+                 test/command/defaults3.yaml
+                 test/command/defaults4.yaml
+                 test/command/defaults5.yaml
+                 test/command/defaults6.yaml
+                 test/command/defaults7.yaml
+                 test/command/defaults8.yaml
+                 test/command/defaults9.yaml
+                 test/command/3533-rst-csv-tables.csv
+                 test/command/3880.txt
+                 test/command/5182.txt
+                 test/command/5700-metadata-file-1.yml
+                 test/command/5700-metadata-file-2.yml
+                 test/command/abbrevs
+                 test/command/SVG_logo-without-xml-declaration.svg
+                 test/command/SVG_logo.svg
+                 test/command/corrupt.svg
+                 test/command/inkscape-cube.svg
+                 test/command/lua-pandoc-state.lua
+                 test/command/sub-file-chapter-1.tex
+                 test/command/sub-file-chapter-2.tex
+                 test/command/bar.tex
+                 test/command/bar-endinput.tex
+                 test/command/yaml-metadata.yaml
+                 test/command/7813-meta.yaml
+                 test/command/3510-subdoc.org
+                 test/command/3510-export.latex
+                 test/command/3510-src.hs
+                 test/command/3971b.tex
+                 test/docbook-chapter.docbook
+                 test/docbook-reader.docbook
+                 test/docbook-xref.docbook
+                 test/html-reader.html
+                 test/opml-reader.opml
+                 test/org-select-tags.org
+                 test/haddock-reader.haddock
+                 test/insert
+                 test/lalune.jpg
+                 test/man-reader.man
+                 test/movie.jpg
+                 test/media/rId25.jpg
+                 test/media/rId26.jpg
+                 test/media/rId27.jpg
+                 test/latex-reader.latex
+                 test/textile-reader.textile
+                 test/markdown-reader-more.txt
+                 test/markdown-citations.txt
+                 test/textile-reader.textile
+                 test/mediawiki-reader.wiki
+                 test/vimwiki-reader.wiki
+                 test/creole-reader.txt
+                 test/rst-reader.rst
+                 test/jats-reader.xml
+                 test/jira-reader.jira
+                 test/s5-basic.html
+                 test/s5-fancy.html
+                 test/s5-fragment.html
+                 test/s5-inserts.html
+                 test/tables.context
+                 test/tables.docbook4
+                 test/tables.docbook5
+                 test/tables.jats_archiving
+                 test/tables.jats_articleauthoring
+                 test/tables.jats_publishing
+                 test/tables.jira
+                 test/tables.dokuwiki
+                 test/tables.zimwiki
+                 test/tables.icml
+                 test/tables.html4
+                 test/tables.html5
+                 test/tables.latex
+                 test/tables.man
+                 test/tables.ms
+                 test/tables.plain
+                 test/tables.markdown
+                 test/tables.markua
+                 test/tables.mediawiki
+                 test/tables.tei
+                 test/tables.textile
+                 test/tables.opendocument
+                 test/tables.org
+                 test/tables.asciidoc
+                 test/tables.asciidoctor
+                 test/tables.haddock
+                 test/tables.texinfo
+                 test/tables.rst
+                 test/tables.rtf
+                 test/tables.txt
+                 test/tables.fb2
+                 test/tables.muse
+                 test/tables.custom
+                 test/tables.xwiki
+                 test/tables/*.html4
+                 test/tables/*.html5
+                 test/tables/*.latex
+                 test/tables/*.native
+                 test/tables/*.jats_archiving
+                 test/testsuite.txt
+                 test/writer.latex
+                 test/writer.context
+                 test/writer.docbook4
+                 test/writer.docbook5
+                 test/writer.jats_archiving
+                 test/writer.jats_articleauthoring
+                 test/writer.jats_publishing
+                 test/writer.jira
+                 test/writer.html4
+                 test/writer.html5
+                 test/writer.man
+                 test/writer.ms
+                 test/writer.markdown
+                 test/writer.markua
+                 test/writer.plain
+                 test/writer.mediawiki
+                 test/writer.textile
+                 test/writer.opendocument
+                 test/writer.org
+                 test/writer.asciidoc
+                 test/writer.asciidoctor
+                 test/writer.haddock
+                 test/writer.rst
+                 test/writer.icml
+                 test/writer.rtf
+                 test/writer.tei
+                 test/writer.texinfo
+                 test/writer.fb2
+                 test/writer.opml
+                 test/writer.dokuwiki
+                 test/writer.zimwiki
+                 test/writer.xwiki
+                 test/writer.muse
+                 test/writer.custom
+                 test/writers-lang-and-dir.latex
+                 test/writers-lang-and-dir.context
+                 test/dokuwiki_inline_formatting.dokuwiki
+                 test/lhs-test.markdown
+                 test/lhs-test.markdown+lhs
+                 test/lhs-test.rst
+                 test/lhs-test.rst+lhs
+                 test/lhs-test.latex
+                 test/lhs-test.latex+lhs
+                 test/lhs-test.html
+                 test/lhs-test.html+lhs
+                 test/lhs-test.fragment.html+lhs
+                 test/pipe-tables.txt
+                 test/dokuwiki_external_images.dokuwiki
+                 test/dokuwiki_multiblock_table.dokuwiki
+                 test/fb2/*.markdown
+                 test/fb2/*.fb2
+                 test/fb2/images-embedded.html
+                 test/fb2/images-embedded.fb2
+                 test/fb2/test-small.png
+                 test/fb2/reader/*.fb2
+                 test/fb2/reader/*.native
+                 test/fb2/test.jpg
+                 test/docx/*.docx
+                 test/docx/golden/*.docx
+                 test/docx/*.native
+                 test/epub/*.epub
+                 test/epub/*.native
+                 test/rtf/*.native
+                 test/rtf/*.rtf
+                 test/pptx/*.pptx
+                 test/pptx/**/*.pptx
+                 test/pptx/**/*.native
+                 test/ipynb/*.native
+                 test/ipynb/*.in.native
+                 test/ipynb/*.out.native
+                 test/ipynb/*.ipynb
+                 test/ipynb/*.out.ipynb
+                 test/ipynb/*.out.html
+                 test/txt2tags.t2t
+                 test/twiki-reader.twiki
+                 test/tikiwiki-reader.tikiwiki
+                 test/odt/odt/*.odt
+                 test/odt/markdown/*.md
+                 test/odt/native/*.native
+                 test/lua/*.lua
+                 test/lua/module/*.lua
+                 test/lua/module/partial.test
+                 test/lua/module/tiny.epub
+source-repository head
+  type:          git
+  location:      git://github.com/jgm/pandoc.git
+
+flag embed_data_files
+  Description:   Embed data files in binary for relocatable executable.
+  Default:       False
+
+flag trypandoc
+  Description:   Build trypandoc cgi executable.
+  Default:       False
+
+common common-options
+  default-language: Haskell2010
+  build-depends:    base         >= 4.12 && < 5
+  ghc-options:      -Wall -fno-warn-unused-do-bind
+                    -Wincomplete-record-updates
+                    -Wnoncanonical-monad-instances
+                    -Wcpp-undef
+                    -Wincomplete-uni-patterns
+                    -Widentities
+                    -Wpartial-fields
+                    -Wmissing-signatures
+                    -fhide-source-paths
+                    -- -Wmissing-export-lists
+
+  if impl(ghc >= 8.10)
+    ghc-options:    -Wunused-packages
+
+  if impl(ghc >= 9.0)
+    ghc-options:    -Winvalid-haddock
+
+  if os(windows)
+    cpp-options:      -D_WINDOWS
+
+common common-executable
+  import:           common-options
+  build-depends:    pandoc
+  ghc-options:      -rtsopts -with-rtsopts=-A8m -threaded
+
+
+library
+  import:        common-options
+  build-depends: Glob                  >= 0.7      && < 0.11,
+                 JuicyPixels           >= 3.1.6.1  && < 3.4,
+                 SHA                   >= 1.6      && < 1.7,
+                 aeson                 >= 0.7      && < 2.1,
+                 aeson-pretty          >= 0.8.9    && < 0.9,
+                 array                 >= 0.5      && < 0.6,
+                 attoparsec            >= 0.12     && < 0.15,
+                 base64-bytestring     >= 0.1      && < 1.3,
+                 binary                >= 0.7      && < 0.11,
+                 blaze-html            >= 0.9      && < 0.10,
+                 blaze-markup          >= 0.8      && < 0.9,
+                 bytestring            >= 0.9      && < 0.12,
+                 case-insensitive      >= 1.2      && < 1.3,
+                 citeproc              >= 0.6.0.1  && < 0.7,
+                 commonmark            >= 0.2.1.1  && < 0.3,
+                 commonmark-extensions >= 0.2.3    && < 0.3,
+                 commonmark-pandoc     >= 0.2.1.1  && < 0.3,
+                 connection            >= 0.3.1,
+                 containers            >= 0.4.2.1  && < 0.7,
+                 data-default          >= 0.4      && < 0.8,
+                 deepseq               >= 1.3      && < 1.5,
+                 directory             >= 1.2.3    && < 1.4,
+                 doclayout             >= 0.3.1.1  && < 0.4,
+                 doctemplates          >= 0.10     && < 0.11,
+                 emojis                >= 0.1      && < 0.2,
+                 exceptions            >= 0.8      && < 0.11,
+                 file-embed            >= 0.0      && < 0.1,
+                 filepath              >= 1.1      && < 1.5,
+                 haddock-library       >= 1.10     && < 1.11,
+                 hslua                 >= 2.0.1    && < 2.1,
+                 hslua-aeson           >= 2.0.1    && < 2.1,
+                 hslua-marshalling     >= 2.0.1    && < 2.1,
+                 hslua-module-path     >= 1.0      && < 1.1,
+                 hslua-module-system   >= 1.0      && < 1.1,
+                 hslua-module-text     >= 1.0      && < 1.1,
+                 hslua-module-version  >= 1.0      && < 1.1,
+                 http-client           >= 0.4.30   && < 0.8,
+                 http-client-tls       >= 0.2.4    && < 0.4,
+                 http-types            >= 0.8      && < 0.13,
+                 ipynb                 >= 0.2      && < 0.3,
+                 jira-wiki-markup      >= 1.4      && < 1.5,
+                 lpeg                  >= 1.0.1    && < 1.1,
+                 mtl                   >= 2.2      && < 2.3,
+                 network               >= 2.6,
+                 network-uri           >= 2.6      && < 2.8,
+                 pandoc-lua-marshal    >= 0.1.3    && < 0.2,
+                 pandoc-types          >= 1.22.1   && < 1.23,
+                 parsec                >= 3.1      && < 3.2,
+                 pretty                >= 1.1      && < 1.2,
+                 pretty-show           >= 1.10     && < 1.11,
+                 process               >= 1.2.3    && < 1.7,
+                 random                >= 1        && < 1.3,
+                 safe                  >= 0.3.18   && < 0.4,
+                 scientific            >= 0.3      && < 0.4,
+                 skylighting           >= 0.12.1   && < 0.13,
+                 skylighting-core      >= 0.12.1   && < 0.13,
+                 split                 >= 0.2      && < 0.3,
+                 syb                   >= 0.1      && < 0.8,
+                 tagsoup               >= 0.14.6   && < 0.15,
+                 temporary             >= 1.1      && < 1.4,
+                 texmath               >= 0.12.4   && < 0.12.5,
+                 text                  >= 1.1.1.0  && < 2.1,
+                 text-conversions      >= 0.3      && < 0.4,
+                 time                  >= 1.5      && < 1.14,
+                 unicode-collation     >= 0.1.1    && < 0.2,
+                 unicode-transforms    >= 0.3      && < 0.5,
+                 xml                   >= 1.3.12   && < 1.4,
+                 xml-conduit           >= 1.9.1.1  && < 1.10,
+                 yaml                  >= 0.11     && < 0.12,
+                 zip-archive           >= 0.2.3.4  && < 0.5,
+                 zlib                  >= 0.5      && < 0.7
+  if !os(windows)
+    build-depends:  unix >= 2.4 && < 2.8
+  if flag(embed_data_files)
+     cpp-options:   -DEMBED_DATA_FILES
+     other-modules: Text.Pandoc.Data
+  hs-source-dirs:  src
+
+  exposed-modules: Text.Pandoc,
+                   Text.Pandoc.App,
+                   Text.Pandoc.Options,
+                   Text.Pandoc.Extensions,
+                   Text.Pandoc.Shared,
+                   Text.Pandoc.Sources,
+                   Text.Pandoc.MediaBag,
+                   Text.Pandoc.Error,
+                   Text.Pandoc.Filter,
+                   Text.Pandoc.Readers,
+                   Text.Pandoc.Readers.HTML,
+                   Text.Pandoc.Readers.LaTeX,
+                   Text.Pandoc.Readers.Markdown,
+                   Text.Pandoc.Readers.CommonMark,
+                   Text.Pandoc.Readers.Creole,
+                   Text.Pandoc.Readers.BibTeX,
+                   Text.Pandoc.Readers.CslJson,
+                   Text.Pandoc.Readers.MediaWiki,
+                   Text.Pandoc.Readers.Vimwiki,
+                   Text.Pandoc.Readers.RST,
+                   Text.Pandoc.Readers.Org,
+                   Text.Pandoc.Readers.DocBook,
+                   Text.Pandoc.Readers.JATS,
+                   Text.Pandoc.Readers.Jira,
+                   Text.Pandoc.Readers.OPML,
+                   Text.Pandoc.Readers.Textile,
+                   Text.Pandoc.Readers.Native,
+                   Text.Pandoc.Readers.Haddock,
+                   Text.Pandoc.Readers.TWiki,
+                   Text.Pandoc.Readers.TikiWiki,
+                   Text.Pandoc.Readers.Txt2Tags,
+                   Text.Pandoc.Readers.Docx,
+                   Text.Pandoc.Readers.Odt,
+                   Text.Pandoc.Readers.EPUB,
+                   Text.Pandoc.Readers.Muse,
+                   Text.Pandoc.Readers.Man,
+                   Text.Pandoc.Readers.FB2,
+                   Text.Pandoc.Readers.DokuWiki,
+                   Text.Pandoc.Readers.Ipynb,
+                   Text.Pandoc.Readers.CSV,
+                   Text.Pandoc.Readers.RTF,
+                   Text.Pandoc.Readers.Custom,
+                   Text.Pandoc.Writers,
+                   Text.Pandoc.Writers.Native,
+                   Text.Pandoc.Writers.Docbook,
+                   Text.Pandoc.Writers.JATS,
+                   Text.Pandoc.Writers.OPML,
+                   Text.Pandoc.Writers.HTML,
+                   Text.Pandoc.Writers.Ipynb,
+                   Text.Pandoc.Writers.ICML,
+                   Text.Pandoc.Writers.Jira,
+                   Text.Pandoc.Writers.LaTeX,
+                   Text.Pandoc.Writers.ConTeXt,
+                   Text.Pandoc.Writers.OpenDocument,
+                   Text.Pandoc.Writers.Texinfo,
+                   Text.Pandoc.Writers.Man,
+                   Text.Pandoc.Writers.Ms,
+                   Text.Pandoc.Writers.Markdown,
+                   Text.Pandoc.Writers.CommonMark,
+                   Text.Pandoc.Writers.Haddock,
+                   Text.Pandoc.Writers.RST,
+                   Text.Pandoc.Writers.Org,
+                   Text.Pandoc.Writers.AsciiDoc,
+                   Text.Pandoc.Writers.Custom,
+                   Text.Pandoc.Writers.Textile,
+                   Text.Pandoc.Writers.MediaWiki,
+                   Text.Pandoc.Writers.DokuWiki,
+                   Text.Pandoc.Writers.XWiki,
+                   Text.Pandoc.Writers.ZimWiki,
+                   Text.Pandoc.Writers.RTF,
+                   Text.Pandoc.Writers.ODT,
+                   Text.Pandoc.Writers.Docx,
+                   Text.Pandoc.Writers.Powerpoint,
+                   Text.Pandoc.Writers.EPUB,
+                   Text.Pandoc.Writers.FB2,
+                   Text.Pandoc.Writers.TEI,
+                   Text.Pandoc.Writers.Muse,
+                   Text.Pandoc.Writers.CslJson,
+                   Text.Pandoc.Writers.Math,
+                   Text.Pandoc.Writers.Shared,
+                   Text.Pandoc.Writers.OOXML,
+                   Text.Pandoc.Writers.AnnotatedTable,
+                   Text.Pandoc.Writers.BibTeX,
+                   Text.Pandoc.Lua,
+                   Text.Pandoc.PDF,
+                   Text.Pandoc.UTF8,
+                   Text.Pandoc.Templates,
+                   Text.Pandoc.XML,
+                   Text.Pandoc.SelfContained,
+                   Text.Pandoc.Highlighting,
+                   Text.Pandoc.Logging,
+                   Text.Pandoc.Process,
+                   Text.Pandoc.MIME,
+                   Text.Pandoc.Parsing,
+                   Text.Pandoc.Asciify,
+                   Text.Pandoc.Emoji,
+                   Text.Pandoc.ImageSize,
+                   Text.Pandoc.Class,
+                   Text.Pandoc.Citeproc
+  other-modules:   Text.Pandoc.App.CommandLineOptions,
+                   Text.Pandoc.App.FormatHeuristics,
+                   Text.Pandoc.App.Opt,
+                   Text.Pandoc.App.OutputSettings,
+                   Text.Pandoc.Class.CommonState,
+                   Text.Pandoc.Class.IO,
+                   Text.Pandoc.Class.PandocMonad,
+                   Text.Pandoc.Class.PandocIO,
+                   Text.Pandoc.Class.PandocPure,
+                   Text.Pandoc.Class.Sandbox,
+                   Text.Pandoc.Filter.Environment,
+                   Text.Pandoc.Filter.JSON,
+                   Text.Pandoc.Filter.Lua,
+                   Text.Pandoc.Filter.Path,
+                   Text.Pandoc.Readers.Docx.Lists,
+                   Text.Pandoc.Readers.Docx.Combine,
+                   Text.Pandoc.Readers.Docx.Parse,
+                   Text.Pandoc.Readers.Docx.Parse.Styles,
+                   Text.Pandoc.Readers.Docx.Util,
+                   Text.Pandoc.Readers.Docx.Fields,
+                   Text.Pandoc.Readers.HTML.Parsing,
+                   Text.Pandoc.Readers.HTML.Table,
+                   Text.Pandoc.Readers.HTML.TagCategories,
+                   Text.Pandoc.Readers.HTML.Types,
+                   Text.Pandoc.Readers.LaTeX.Inline,
+                   Text.Pandoc.Readers.LaTeX.Citation,
+                   Text.Pandoc.Readers.LaTeX.Lang,
+                   Text.Pandoc.Readers.LaTeX.Macro,
+                   Text.Pandoc.Readers.LaTeX.Math,
+                   Text.Pandoc.Readers.LaTeX.Parsing,
+                   Text.Pandoc.Readers.LaTeX.SIunitx,
+                   Text.Pandoc.Readers.LaTeX.Table,
+                   Text.Pandoc.Readers.LaTeX.Types,
+                   Text.Pandoc.Readers.Odt.Base,
+                   Text.Pandoc.Readers.Odt.Namespaces,
+                   Text.Pandoc.Readers.Odt.StyleReader,
+                   Text.Pandoc.Readers.Odt.ContentReader,
+                   Text.Pandoc.Readers.Odt.Generic.Fallible,
+                   Text.Pandoc.Readers.Odt.Generic.SetMap,
+                   Text.Pandoc.Readers.Odt.Generic.Utils,
+                   Text.Pandoc.Readers.Odt.Generic.Namespaces,
+                   Text.Pandoc.Readers.Odt.Generic.XMLConverter,
+                   Text.Pandoc.Readers.Odt.Arrows.State,
+                   Text.Pandoc.Readers.Odt.Arrows.Utils,
+                   Text.Pandoc.Readers.Org.BlockStarts,
+                   Text.Pandoc.Readers.Org.Blocks,
+                   Text.Pandoc.Readers.Org.DocumentTree,
+                   Text.Pandoc.Readers.Org.ExportSettings,
+                   Text.Pandoc.Readers.Org.Inlines,
+                   Text.Pandoc.Readers.Org.Meta,
+                   Text.Pandoc.Readers.Org.ParserState,
+                   Text.Pandoc.Readers.Org.Parsing,
+                   Text.Pandoc.Readers.Org.Shared,
+                   Text.Pandoc.Readers.Metadata,
+                   Text.Pandoc.Readers.Roff,
+                   Text.Pandoc.Writers.Docx.StyleMap,
+                   Text.Pandoc.Writers.Docx.Table,
+                   Text.Pandoc.Writers.Docx.Types,
+                   Text.Pandoc.Writers.GridTable
+                   Text.Pandoc.Writers.JATS.References,
+                   Text.Pandoc.Writers.JATS.Table,
+                   Text.Pandoc.Writers.JATS.Types,
+                   Text.Pandoc.Writers.LaTeX.Caption,
+                   Text.Pandoc.Writers.LaTeX.Notes,
+                   Text.Pandoc.Writers.LaTeX.Table,
+                   Text.Pandoc.Writers.LaTeX.Lang,
+                   Text.Pandoc.Writers.LaTeX.Types,
+                   Text.Pandoc.Writers.LaTeX.Citation,
+                   Text.Pandoc.Writers.LaTeX.Util,
+                   Text.Pandoc.Writers.Markdown.Types,
+                   Text.Pandoc.Writers.Markdown.Inline,
+                   Text.Pandoc.Writers.Roff,
+                   Text.Pandoc.Writers.Blaze,
+                   Text.Pandoc.Writers.Powerpoint.Presentation,
+                   Text.Pandoc.Writers.Powerpoint.Output,
+                   Text.Pandoc.Lua.ErrorConversion,
+                   Text.Pandoc.Lua.Filter,
+                   Text.Pandoc.Lua.Global,
+                   Text.Pandoc.Lua.Init,
+                   Text.Pandoc.Lua.Marshal.CommonState,
+                   Text.Pandoc.Lua.Marshal.Context,
+                   Text.Pandoc.Lua.Marshal.PandocError,
+                   Text.Pandoc.Lua.Marshal.ReaderOptions,
+                   Text.Pandoc.Lua.Marshal.Reference,
+                   Text.Pandoc.Lua.Marshal.Sources,
+                   Text.Pandoc.Lua.Marshal.Template,
+                   Text.Pandoc.Lua.Marshal.WriterOptions,
+                   Text.Pandoc.Lua.Module.MediaBag,
+                   Text.Pandoc.Lua.Module.Pandoc,
+                   Text.Pandoc.Lua.Module.System,
+                   Text.Pandoc.Lua.Module.Template,
+                   Text.Pandoc.Lua.Module.Types,
+                   Text.Pandoc.Lua.Module.Utils,
+                   Text.Pandoc.Lua.Orphans,
+                   Text.Pandoc.Lua.Packages,
+                   Text.Pandoc.Lua.PandocLua,
+                   Text.Pandoc.Lua.Util,
+                   Text.Pandoc.XML.Light,
+                   Text.Pandoc.XML.Light.Types,
+                   Text.Pandoc.XML.Light.Proc,
+                   Text.Pandoc.XML.Light.Output,
+                   Text.Pandoc.Network.HTTP,
+                   Text.Pandoc.CSS,
+                   Text.Pandoc.CSV,
+                   Text.Pandoc.RoffChar,
+                   Text.Pandoc.UUID,
+                   Text.Pandoc.Translations,
+                   Text.Pandoc.Slides,
+                   Text.Pandoc.Image,
+                   Text.Pandoc.Citeproc.BibTeX,
+                   Text.Pandoc.Citeproc.CslJson,
+                   Text.Pandoc.Citeproc.Data,
+                   Text.Pandoc.Citeproc.Locator,
+                   Text.Pandoc.Citeproc.MetaValue,
+                   Text.Pandoc.Citeproc.Util,
+                   Paths_pandoc
+  autogen-modules: Paths_pandoc
+  buildable:       True
+
+executable pandoc
+  import:          common-executable
+  hs-source-dirs:  app
+  main-is:         pandoc.hs
+  buildable:       True
+  other-modules:   Paths_pandoc
+
+executable trypandoc
+  import:          common-executable
+  main-is:         trypandoc.hs
+  hs-source-dirs:  trypandoc
+  if flag(trypandoc)
+    build-depends: aeson,
+                   http-types,
+                   text,
+                   wai >= 0.3,
+                   wai-extra >= 3.0.24
+    buildable:     True
+  else
+    buildable:     False
+
+test-suite test-pandoc
+  import:         common-executable
+  type:           exitcode-stdio-1.0
+  main-is:        test-pandoc.hs
+  hs-source-dirs: test
+  build-depends:  pandoc,
+                  Diff              >= 0.2     && < 0.5,
+                  Glob              >= 0.7     && < 0.11,
+                  bytestring        >= 0.9     && < 0.12,
+                  containers        >= 0.4.2.1 && < 0.7,
+                  directory         >= 1.2.3   && < 1.4,
+                  doctemplates      >= 0.10    && < 0.11,
+                  exceptions        >= 0.8     && < 0.11,
+                  filepath          >= 1.1     && < 1.5,
+                  hslua             >= 2.0     && < 2.1,
+                  mtl               >= 2.2     && < 2.3,
+                  pandoc-types      >= 1.22.1  && < 1.23,
+                  process           >= 1.2.3   && < 1.7,
+                  tasty             >= 0.11    && < 1.5,
+                  tasty-golden      >= 2.3     && < 2.4,
+                  tasty-hunit       >= 0.9     && < 0.11,
+                  tasty-lua         >= 1.0     && < 1.1,
+                  tasty-quickcheck  >= 0.8     && < 0.11,
+                  text              >= 1.1.1.0 && < 2.1,
+                  time              >= 1.5     && < 1.14,
+                  xml               >= 1.3.12  && < 1.4,
+                  zip-archive       >= 0.2.3.4 && < 0.5
+  other-modules:  Tests.Old
+                  Tests.Command
+                  Tests.Helpers
+                  Tests.Lua
+                  Tests.Lua.Module
+                  Tests.Shared
+                  Tests.Readers.LaTeX
+                  Tests.Readers.HTML
+                  Tests.Readers.JATS
+                  Tests.Readers.Jira
+                  Tests.Readers.Markdown
+                  Tests.Readers.Org
+                  Tests.Readers.Org.Block
+                  Tests.Readers.Org.Block.CodeBlock
+                  Tests.Readers.Org.Block.Figure
+                  Tests.Readers.Org.Block.Header
+                  Tests.Readers.Org.Block.List
+                  Tests.Readers.Org.Block.Table
+                  Tests.Readers.Org.Directive
+                  Tests.Readers.Org.Inline
+                  Tests.Readers.Org.Inline.Citation
+                  Tests.Readers.Org.Inline.Note
+                  Tests.Readers.Org.Inline.Smart
+                  Tests.Readers.Org.Meta
+                  Tests.Readers.Org.Shared
+                  Tests.Readers.RST
+                  Tests.Readers.RTF
+                  Tests.Readers.Docx
+                  Tests.Readers.Odt
+                  Tests.Readers.Txt2Tags
+                  Tests.Readers.EPUB
+                  Tests.Readers.Muse
+                  Tests.Readers.Creole
+                  Tests.Readers.Man
+                  Tests.Readers.FB2
+                  Tests.Readers.DokuWiki
+                  Tests.Writers.Native
+                  Tests.Writers.ConTeXt
+                  Tests.Writers.Docbook
+                  Tests.Writers.HTML
+                  Tests.Writers.JATS
+                  Tests.Writers.Jira
+                  Tests.Writers.Markdown
+                  Tests.Writers.Org
+                  Tests.Writers.Plain
+                  Tests.Writers.AsciiDoc
+                  Tests.Writers.LaTeX
+                  Tests.Writers.Docx
+                  Tests.Writers.RST
+                  Tests.Writers.TEI
+                  Tests.Writers.Markua
+                  Tests.Writers.Muse
+                  Tests.Writers.FB2
+                  Tests.Writers.Powerpoint
+                  Tests.Writers.OOXML
+                  Tests.Writers.Ms
+                  Tests.Writers.AnnotatedTable
+
+benchmark benchmark-pandoc
+  import:          common-executable
+  type:            exitcode-stdio-1.0
+  main-is:         benchmark-pandoc.hs
+  hs-source-dirs:  benchmark
+  build-depends:   bytestring,
+                   tasty-bench >= 0.2     && <= 0.4,
+                   mtl         >= 2.2     && < 2.3,
+                   text        >= 1.1.1.0 && < 2.1,
+                   deepseq
+  -- we increase heap size to avoid benchmarking garbage collection:
+  ghc-options:     -rtsopts -with-rtsopts=-A8m -threaded
