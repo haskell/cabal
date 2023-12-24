@@ -30,6 +30,19 @@ on:
   release:
     types:
       - created
+  workflow_call:
+
+  # See https://github.com/haskell/cabal/blob/master/CONTRIBUTING.md#hackage-revisions
+  workflow_dispatch:
+    inputs:
+      allow-newer:
+        description: allow-newer line
+        required: true
+        type: string
+      constraints:
+        description: constraints line
+        required: true
+        type: string
 
 env:
   # We choose a stable ghc version across all os's
@@ -39,6 +52,11 @@ env:
   GHC_FOR_SOLVER_BENCHMARKS: '9.2.8'
   GHC_FOR_COMPLETE_HACKAGE_TESTS: '9.2.8'
   COMMON_FLAGS: '-j 2 -v'
+
+  # See https://github.com/haskell/cabal/blob/master/CONTRIBUTING.md#hackage-revisions
+  ALLOWNEWER: ${{ github.event.inputs.allow-newer }}
+  CONSTRAINTS: ${{ github.event.inputs.constraints }}
+
 
 jobs:
   validate:
@@ -67,6 +85,13 @@ jobs:
     steps:
 
       - uses: actions/checkout@v4
+
+      # See https://github.com/haskell/cabal/blob/master/CONTRIBUTING.md#hackage-revisions
+      - name: Manually supplied constraints/allow-newer
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        run: |
+          echo 'allow-newer:' ${ALLOWNEWER}  >> cabal.project.validate
+          echo 'constraints:' ${CONSTRAINTS} >> cabal.project.validate
 
       #  See the following link for a breakdown of the following step
       #  https://github.com/haskell/actions/issues/7#issuecomment-745697160

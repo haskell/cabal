@@ -345,3 +345,35 @@ Auto-generated API documentation for the `master` branch of Cabal is automatical
 ## Issue triage [![Open Source Helpers](https://www.codetriage.com/haskell/cabal/badges/users.svg)](https://www.codetriage.com/haskell/cabal)
 
 You can contribute by triaging issues which may include reproducing bug reports or asking for vital information, such as version numbers or reproduction instructions. If you would like to start triaging issues, one easy way to get started is to [subscribe to cabal on CodeTriage](https://www.codetriage.com/haskell/cabal).
+
+Hackage Revisions
+-----------------
+
+We are reactive rather than proactive with revising bounds on our dependencies
+for code already released on Hackage. If you would benefit from a version bump,
+please, open a ticket and get familiar with
+[our revision policy](https://github.com/haskell/cabal/issues/9531#issuecomment-1866930240).
+
+The burden of proof that the bump is harmless remains with you, but we have a CI
+setup to show that our main pipeline ("Validate") is fine with the bump. To use
+it, someone with enough permissions needs to go on the
+[Validate workflow page](https://github.com/haskell/cabal/actions/workflows/validate.yml)
+and dispatch it manually by clicking "Run workflow".
+
+Running workflow manually as discussed above requires you to supply two inputs:
+
+> allow-newer line
+> constraints line
+
+Going via an example, imagine that Cabal only allows `tar` or version less then
+or equal to 0.6, and you want to bump it to 0.6. Then, to show that Validate
+succeeds with `tar` 0.6, you should input 
+
+- `tar` to the "allow-newer line"
+- `tar ==0.6` to the "constraints line"
+
+Hopefully, running the Validate pipeline with these inputs succeeds and you
+supply the link to the run in the ticket about bumping the bound and making a revision.
+
+If interested in technical details, refer to the parts of `validate.yml` that
+mention `hackage-revisions`.
