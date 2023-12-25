@@ -15,7 +15,7 @@ module Test.Cabal.Prelude (
     module Control.Monad.IO.Class,
     module Distribution.Version,
     module Distribution.Simple.Program,
-    module Data.Time.Format.ISO8601
+    module Data.Time.Format.ISO8601.Compat
 ) where
 
 import Test.Cabal.Script
@@ -67,7 +67,7 @@ import Control.Concurrent (threadDelay)
 import qualified Data.Char as Char
 import System.Environment
 import Data.Time
-import Data.Time.Format.ISO8601 (iso8601ParseM)
+import Data.Time.Format.ISO8601.Compat (iso8601ParseM)
 import System.Directory
 
 #ifndef mingw32_HOST_OS
