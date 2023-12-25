@@ -529,7 +529,6 @@ src `archiveTo` dst = do
     -- TODO: --format ustar, like createArchive?
     -- --force-local is necessary for handling colons in Windows paths.
     tar $ ["-czf", dst]
-       ++ ["--force-local" | buildOS == Windows]
        ++ ["-C", src_parent, src_dir]
 
 infixr 4 `archiveTo`
