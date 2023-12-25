@@ -2,9 +2,10 @@
 Downloading the latest package list from test-local-repo
 # cabal v2-build
 Resolving dependencies...
-Error: cabal: Could not resolve dependencies:
+Error: [Cabal-7107]
+Could not resolve dependencies:
 [__0] next goal: pandoc (user goal)
 [__0] rejecting: pandoc-999999999.0.0.0 (constraint from project config <ROOT>/cabal.project requires ==3.1.11)
-[__0] rejecting: pandoc-3.1.11, pandoc-3.1.10, pandoc-3.1.9, pandoc-3.1.8, pandoc-3.1.7, pandoc-3.1.6.2, pandoc-3.1.6.1, pandoc-3.1.5, pandoc-3.1.4, pandoc-3.1.3, pandoc-3.1.2, pandoc-3.1.1, pandoc-3.0.1, pandoc-3.0, pandoc-2.19.2, pandoc-2.19.1, pandoc-2.19, pandoc-2.18, pandoc-2.17.1.1, pandoc-2.17.1, pandoc-2.17.0.1, pandoc-2.17, pandoc-2.16.2, pandoc-2.16.1, pandoc-2.16, pandoc-2.15, pandoc-2.14.2, pandoc-2.14.1, pandoc-2.14.0.3, pandoc-2.14.0.2, pandoc-2.14.0.1, pandoc-2.14, pandoc-2.13, pandoc-2.12, pandoc-2.11.4, pandoc-2.11.3.2, pandoc-2.11.3.1, pandoc-2.11.3, pandoc-2.11.2, pandoc-2.11.1.1, pandoc-2.11.1, pandoc-2.11.0.4 (constraint from user target requires ==999999999.0.0.0)
+[__0] rejecting: pandoc; 3.1.11, 3.1.10, 3.1.9, 3.1.8, 3.1.7, 3.1.6.2, 3.1.6.1, 3.1.5, 3.1.4, 3.1.3, 3.1.2, 3.1.1, 3.0.1, 3.0, 2.19.2, 2.19.1, 2.19, 2.18, 2.17.1.1, 2.17.1, 2.17.0.1, 2.17, 2.16.2, 2.16.1, 2.16, 2.15, 2.14.2, 2.14.1, 2.14.0.3, 2.14.0.2, 2.14.0.1, 2.14, 2.13, 2.12, 2.11.4, 2.11.3.2, 2.11.3.1, 2.11.3, 2.11.2, 2.11.1.1, 2.11.1, 2.11.0.4 (constraint from user target requires ==999999999.0.0.0)
 [__0] fail (backjumping, conflict set: pandoc)
 After searching the rest of the dependency tree exhaustively, these were the goals I've had most trouble fulfilling: pandoc (44)
