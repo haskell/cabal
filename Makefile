@@ -65,8 +65,8 @@ doc/buildinfo-fields-reference.rst : \
   $(wildcard Cabal-described/src/Distribution/Described.hs Cabal-described/src/Distribution/Utils/*.hs) \
   buildinfo-reference-generator/src/Main.hs \
   buildinfo-reference-generator/template.zinza
-	cabal build --project-file=cabal.project.buildinfo buildinfo-reference-generator
-	cabal run --project-file=cabal.project.buildinfo buildinfo-reference-generator buildinfo-reference-generator/template.zinza | tee $@
+	cabal build buildinfo-reference-generator
+	cabal run buildinfo-reference-generator buildinfo-reference-generator/template.zinza | tee $@
 	git diff --exit-code $@
 
 # analyse-imports
