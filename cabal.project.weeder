@@ -4,10 +4,8 @@
 --     cabal install -w ghc-8.8.3 weeder
 --
 
-packages: Cabal-syntax/
-packages: Cabal/
-packages: cabal-install/
-tests: False
+import: project-cabal/pkgs/cabal.config
+import: project-cabal/pkgs/install.config
 
 with-compiler: ghc-8.8.3
 

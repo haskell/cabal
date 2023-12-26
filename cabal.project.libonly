@@ -1,14 +1,5 @@
-packages: Cabal-syntax/ Cabal/ cabal-testsuite/
-
-packages: Cabal-QuickCheck/
-packages: Cabal-tree-diff
-packages: Cabal-described
-packages: Cabal-tests
+import: project-cabal/ghc-options.config
+import: project-cabal/pkgs/cabal.config
+import: project-cabal/pkgs/tests.config
 
 tests: True
-
--- Uncomment to allow picking up extra local unpacked deps:
---optional-packages: */
-
-program-options
-  ghc-options: -fno-ignore-asserts
