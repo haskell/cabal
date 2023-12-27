@@ -1,3 +1,0 @@
-import: cabal.project
-
-write-ghc-environment-files: never
