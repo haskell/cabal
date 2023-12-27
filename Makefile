@@ -3,7 +3,13 @@
 
 CABALBUILD := cabal build
 CABALRUN   := cabal run
-DOCTEST    := cabal repl --with-ghc=doctest --repl-options="-w" --project-file=cabal.project.doctest
+
+# The newer and prefered way to call the doctest tool is:
+#   $ cabal repl --with-ghc=doctest
+# SEE: https://github.com/haskell/cabal/issues/8504
+# There is but one caveat, we have to avoid allow-newer.
+# SEE: https://github.com/haskell/cabal/issues/6859
+DOCTEST := cabal repl --with-ghc=doctest --repl-options="-w" --ghc-options="-Wwarn" --allow-newer=False
 
 # default rules
 
@@ -81,11 +87,6 @@ ghcid-lib :
 ghcid-cli :
 	ghcid -c 'cabal repl cabal-install'
 
-# Artem, 2023-02-03, https://github.com/haskell/cabal/issues/8504
-# The new and prefered way to call the doctest tool (as of now) is based on cabal repl --with-ghc=doctest.
-# The call below reflects the current documentation of the doctest tool except one caveat,
-# which is https://github.com/haskell/cabal/issues/6859, i.e. we have to hide allow-newer in our project
-# file from cabal/doctest. This is easy: we just select a project file with no allow-newer (e.g. cabal.project.libonly).
 doctest :
 	$(DOCTEST) Cabal-syntax
 	$(DOCTEST) Cabal-described
@@ -180,11 +181,6 @@ validate-via-docker-8.10.4:
 
 validate-via-docker-old:
 	docker build $(DOCKERARGS) -t cabal-validate:older -f .docker/validate-old.dockerfile .
-
-# Weeder
-weeder :
-	cabal build all --project-file=cabal.project.weeder
-	weeder | less
 
 # tags
 .PHONY : tags
