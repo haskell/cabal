@@ -29,7 +29,7 @@ instance Pretty RepoName where
 -- |
 --
 -- >>> simpleParsec "hackage.haskell.org" :: Maybe RepoName
--- Just (RepoName "hackage.haskell.org")
+-- Just (RepoName {unRepoName = "hackage.haskell.org"})
 --
 -- >>> simpleParsec "0123" :: Maybe RepoName
 -- Nothing
