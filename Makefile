@@ -58,10 +58,14 @@ $(TEMPLATE_PATHS) : templates/Paths_pkg.template.hs cabal-dev-scripts/src/GenPat
 	cabal run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-paths-module -- $< $@
 
 # generated docs
-
-buildinfo-fields-reference : phony
-	cabal build --builddir=dist-newstyle-bi --project-file=cabal.project.buildinfo buildinfo-reference-generator
-	$$(cabal list-bin --builddir=dist-newstyle-bi buildinfo-reference-generator) buildinfo-reference-generator/template.zinza | tee $@
+# Use cabal build before cabal run to avoid output of the build on stdout when running
+doc/buildinfo-fields-reference.rst : \
+  $(wildcard Cabal-syntax/src/*/*.hs Cabal-syntax/src/*/*/*.hs Cabal-syntax/src/*/*/*/*.hs) \
+  $(wildcard Cabal-described/src/Distribution/Described.hs Cabal-described/src/Distribution/Utils/*.hs) \
+  buildinfo-reference-generator/src/Main.hs \
+  buildinfo-reference-generator/template.zinza
+	cabal build --project-file=cabal.project.buildinfo buildinfo-reference-generator
+	cabal run --project-file=cabal.project.buildinfo buildinfo-reference-generator buildinfo-reference-generator/template.zinza | tee $@
 
 # analyse-imports
 analyse-imports : phony
