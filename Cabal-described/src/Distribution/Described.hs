@@ -422,7 +422,7 @@ instance Described IncludeRenaming where
         mr = describe (Proxy :: Proxy ModuleRenaming)
 
 instance Described Language where
-    describe _ = REUnion ["Haskell98", "Haskell2010"]
+    describe _ = REUnion ["GHC2021", "Haskell2010", "Haskell98"]
 
 instance Described LegacyExeDependency where
     describe _ = RETodo
