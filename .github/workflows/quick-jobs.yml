@@ -93,7 +93,7 @@ jobs:
       - name: Doctest
         run: make doctest
   buildinfo:
-    name: Check buildinfo
+    name: Check Field Syntax Reference
     runs-on: ubuntu-latest
     steps:
       - name: Set PATH
