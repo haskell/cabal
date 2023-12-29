@@ -66,6 +66,7 @@ doc/buildinfo-fields-reference.rst : \
   buildinfo-reference-generator/template.zinza
 	cabal build --project-file=cabal.project.buildinfo buildinfo-reference-generator
 	cabal run --project-file=cabal.project.buildinfo buildinfo-reference-generator buildinfo-reference-generator/template.zinza | tee $@
+	git diff --exit-code $@
 
 # analyse-imports
 analyse-imports : phony
