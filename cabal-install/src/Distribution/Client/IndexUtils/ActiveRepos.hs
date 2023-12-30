@@ -70,7 +70,7 @@ instance Pretty ActiveRepos where
 -- Just (ActiveRepos [ActiveRepoRest CombineStrategyMerge])
 --
 -- >>> simpleParsec "hackage.haskell.org, :rest, head.hackage:override" :: Maybe ActiveRepos
--- Just (ActiveRepos [ActiveRepo (RepoName "hackage.haskell.org") CombineStrategyMerge,ActiveRepoRest CombineStrategyMerge,ActiveRepo (RepoName "head.hackage") CombineStrategyOverride])
+-- Just (ActiveRepos [ActiveRepo (RepoName {unRepoName = "hackage.haskell.org"}) CombineStrategyMerge,ActiveRepoRest CombineStrategyMerge,ActiveRepo (RepoName {unRepoName = "head.hackage"}) CombineStrategyOverride])
 instance Parsec ActiveRepos where
   parsec =
     ActiveRepos [] <$ P.try (P.string ":none")
@@ -148,13 +148,13 @@ instance Parsec CombineStrategy where
 --
 -- >>> let repos = [RepoName "a", RepoName "b", RepoName "c"]
 -- >>> organizeByRepos (ActiveRepos [ActiveRepoRest CombineStrategyMerge]) id repos
--- Right [(RepoName "a",CombineStrategyMerge),(RepoName "b",CombineStrategyMerge),(RepoName "c",CombineStrategyMerge)]
+-- Right [(RepoName {unRepoName = "a"},CombineStrategyMerge),(RepoName {unRepoName = "b"},CombineStrategyMerge),(RepoName {unRepoName = "c"},CombineStrategyMerge)]
 --
 -- >>> organizeByRepos (ActiveRepos [ActiveRepo (RepoName "b") CombineStrategyOverride, ActiveRepoRest CombineStrategyMerge]) id repos
--- Right [(RepoName "b",CombineStrategyOverride),(RepoName "a",CombineStrategyMerge),(RepoName "c",CombineStrategyMerge)]
+-- Right [(RepoName {unRepoName = "b"},CombineStrategyOverride),(RepoName {unRepoName = "a"},CombineStrategyMerge),(RepoName {unRepoName = "c"},CombineStrategyMerge)]
 --
 -- >>> organizeByRepos (ActiveRepos [ActiveRepoRest CombineStrategyMerge, ActiveRepo (RepoName "b") CombineStrategyOverride]) id repos
--- Right [(RepoName "a",CombineStrategyMerge),(RepoName "c",CombineStrategyMerge),(RepoName "b",CombineStrategyOverride)]
+-- Right [(RepoName {unRepoName = "a"},CombineStrategyMerge),(RepoName {unRepoName = "c"},CombineStrategyMerge),(RepoName {unRepoName = "b"},CombineStrategyOverride)]
 --
 -- >>> organizeByRepos (ActiveRepos [ActiveRepoRest CombineStrategyMerge, ActiveRepo (RepoName "d") CombineStrategyOverride]) id repos
 -- Left "no repository provided d"

@@ -240,3 +240,8 @@ alphanum = foldl' (flip insert) empty [ c | c <- [ minBound .. maxBound ], isAlp
 upper :: CharSet
 upper = foldl' (flip insert) empty [ c | c <- [ minBound .. maxBound ], isUpper c ]
 {-# NOINLINE upper #-}
+
+-- $setup
+-- Use -XOverloadedStrings to avoid the error: Couldn't match type ‘[Char]’ with ‘CharSet’
+-- >>> :set -XOverloadedStrings
+-- >>> import Prelude (length)
