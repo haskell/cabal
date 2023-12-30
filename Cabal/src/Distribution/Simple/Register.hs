@@ -99,7 +99,7 @@ register
 register pkg_descr lbi0 flags =
   -- Duncan originally asked for us to not register/install files
   -- when there was no public library.  But with per-component
-  -- configure, we legitimately need to install internal libraries
+  -- configure, we legitimately need to install sublibraries
   -- so that we can get them.  So just unconditionally install.
   doRegister
   where

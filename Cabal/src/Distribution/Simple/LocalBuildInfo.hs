@@ -262,12 +262,12 @@ depLibraryPaths inplace relative lbi clbi = do
 
   -- Why do we go through all the trouble of a hand-crafting
   -- internalLibs, when 'installedPkgs' actually contains the
-  -- internal libraries?  The trouble is that 'installedPkgs'
+  -- sublibraries?  The trouble is that 'installedPkgs'
   -- may contain *inplace* entries, which we must NOT use for
   -- not inplace 'depLibraryPaths' (e.g., for RPATH calculation).
   -- See #4025 for more details. This is all horrible but it
   -- is a moot point if you are using a per-component build,
-  -- because you never have any internal libraries in this case;
+  -- because you never have any sublibraries in this case;
   -- they're all external.
   let external_ipkgs = filter is_external (allPackages (installedPkgs lbi))
       is_external ipkg = not (installedUnitId ipkg `elem` internalDeps)
@@ -365,9 +365,9 @@ absoluteInstallCommandDirs pkg lbi uid copydest =
       -- one hand, the easiest to understand Haddock documentation
       -- path is pkgname-0.1, which means it's per-package (not
       -- per-component).  But this means that it's impossible to
-      -- install Haddock documentation for internal libraries.  We'll
+      -- install Haddock documentation for sublibraries.  We'll
       -- keep this constraint for now; this means you can't use
-      -- Cabal to Haddock internal libraries.  This does not seem
+      -- Cabal to Haddock sublibraries.  This does not seem
       -- like a big problem.
       docdir = docdir dirs'
     , htmldir = htmldir dirs'

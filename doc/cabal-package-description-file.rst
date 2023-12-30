@@ -811,8 +811,8 @@ Library
 
     This guide refers to an unnamed library as the main library and a named
     library as a sublibrary (such components may be considered as subidiary, or
-    ancillary, to the main library). It refers to a private sublibrary as an
-    internal library.
+    ancillary, to the main library). It refers to a private sublibrary as a
+    sublibrary.
 
     A sublibrary cannot have the same name as its package.
 
@@ -835,7 +835,7 @@ Library
     .. Note::
 
        Before version 3.0 of the Cabal specification, all sublibraries were
-       internal libraries. Before version 2.0, a package could not include
+       sublibraries. Before version 2.0, a package could not include
        sublibraries.
 
     See :ref:`Sublibraries - Examples <sublibs>` for examples.
@@ -932,10 +932,10 @@ section on `build information`_).
 
 **Sublibraries - Examples**
 
-An example of the use of a private sublibrary (an internal library) is a test
+An example of the use of a private sublibrary (a sublibrary) is a test
 suite that needs access to some internal modules in the package's main library,
-which you do not otherwise want to expose. You could put those modules in an
-internal library, which the main library and the test suite
+which you do not otherwise want to expose. You could put those modules in a
+sublibrary, which the main library and the test suite
 :pkg-field:`build-depends` upon. Your Cabal file might then look something like
 this:
 
@@ -968,10 +968,10 @@ this:
         build-depends:    foo:foo-internal, base
         default-language: Haskell2010
 
-Another example of the use of internal libraries is a package that includes one
+Another example of the use of sublibraries is a package that includes one
 or more executables but does not include a public library.
 
-Internal libraries can be used to incorporate (vendor or bundle) an external
+Sublibraries can be used to incorporate (vendor or bundle) an external
 dependency into a package, effectively simulating *private dependencies*. Below
 is an example:
 
@@ -1472,8 +1472,8 @@ system-dependent values for these fields.
     .. Note::
 
        Before version 3.4 of the Cabal specification, from version 2.0, a
-       private sublibrary (an internal library) was identified by only the name
-       of the sublibrary. An internal library could shadow a dependency on the
+       private sublibrary (a sublibrary) was identified by only the name
+       of the sublibrary. A sublibrary could shadow a dependency on the
        main library of another package, if the names clashed.
 
     See the section on :pkg-section:`library` for information about how a
@@ -2252,8 +2252,7 @@ system-dependent values for these fields.
        :ref:`Backpack` has the limitation that implementation modules that instantiate
        signatures required by a :pkg-field:`build-depends` dependency can't
        reside in the same component that has the dependency. They must reside
-       in a different package dependency, or at least in a separate internal
-       library.
+       in a different package dependency, or at least in a separate sublibrary.
 
 Configurations
 ^^^^^^^^^^^^^^

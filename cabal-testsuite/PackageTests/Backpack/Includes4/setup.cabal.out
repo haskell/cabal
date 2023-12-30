@@ -18,9 +18,9 @@ for Includes4-0.1.0.0...
 Preprocessing executable 'exe' for Includes4-0.1.0.0...
 Building executable 'exe' for Includes4-0.1.0.0...
 # Setup copy
-Installing internal library indef in <PATH>
-Installing internal library impl in <PATH>
-Installing internal library indef in <PATH>
+Installing sublibrary indef in <PATH>
+Installing sublibrary impl in <PATH>
+Installing sublibrary indef in <PATH>
 Installing executable exe in <PATH>
 Warning: The directory <ROOT>/setup.cabal.dist/usr/bin is not in the system search path.
 # Setup register

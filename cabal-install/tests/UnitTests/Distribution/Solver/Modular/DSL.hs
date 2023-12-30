@@ -189,9 +189,9 @@ data ExampleDependency
   | -- | Simple dependency on a range of versions, with an inclusive lower bound
     -- and an exclusive upper bound.
     ExRange ExamplePkgName ExamplePkgVersion ExamplePkgVersion
-  | -- | Sub-library dependency
+  | -- | Sublibrary dependency
     ExSubLibAny ExamplePkgName ExampleSubLibName
-  | -- | Sub-library dependency on a fixed version
+  | -- | Sublibrary dependency on a fixed version
     ExSubLibFix ExamplePkgName ExampleSubLibName ExamplePkgVersion
   | -- | Build-tool-depends dependency
     ExBuildToolAny ExamplePkgName ExampleExeName
@@ -450,7 +450,7 @@ exAvSrcPkg ex =
                       , C.description = "description"
                       , C.synopsis = "synopsis"
                       , C.licenseFiles = [C.unsafeMakeSymbolicPath "LICENSE"]
-                      , -- Version 2.0 is required for internal libraries.
+                      , -- Version 2.0 is required for sublibraries.
                         C.specVersion = C.CabalSpecV2_0
                       }
                 , C.gpdScannedVersion = Nothing

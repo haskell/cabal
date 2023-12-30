@@ -80,7 +80,7 @@
     scripts to backwards-incompatible changes in this release:
     https://github.com/haskell/cabal/wiki/3.0-migration-guide.
   * Due to [#5119](https://github.com/haskell/cabal/issues/5119), the
-    `cabal check` warning for bounds on internal libraries has been
+    `cabal check` warning for bounds on sublibraries has been
     disabled.
   * Introduce set notation for `^>=` and `==` operators
     ([#5906](https://github.com/haskell/cabal/pull/5906)).
@@ -148,7 +148,7 @@
 
 # 2.4.0.0 [Mikhail Glushenkov](mailto:mikhail.glushenkov@gmail.com) September 2018
   * Due to [#5119](https://github.com/haskell/cabal/issues/5119), the
-    `cabal check` warning for bounds on internal libraries has been
+    `cabal check` warning for bounds on sublibraries has been
     disabled.
   * `Distribution.Simple.Haddock` now checks to ensure that it
     does not erroneously call Haddock with no target modules.
@@ -341,9 +341,9 @@
   * Dropped support for versions of GHC earlier than 6.12 (#3111).
   * GHC compatibility window for the Cabal library has been extended
     to five years (#3838).
-  * Convenience/internal libraries are now supported (#269).
-    An internal library is declared using the stanza `library
-    'libname'`.  Packages which use internal libraries can
+  * Convenience/sublibraries are now supported (#269).
+    A sublibrary is declared using the stanza `library
+    'libname'`.  Packages which use sublibraries can
     result in multiple registrations; thus `--gen-pkg-config`
     can now output a directory of registration scripts rather than
     a single file.

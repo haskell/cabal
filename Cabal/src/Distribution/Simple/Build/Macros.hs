@@ -18,7 +18,7 @@
 -- /package/ in use is @>= A.B.C@, using the normal ordering on version
 -- numbers.
 --
--- TODO Figure out what to do about backpack and internal libraries. It is very
+-- TODO Figure out what to do about backpack and sublibraries. It is very
 -- suspicious that this stuff works with munged package identifiers
 module Distribution.Simple.Build.Macros
   ( generateCabalMacrosHeader

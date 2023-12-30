@@ -66,7 +66,7 @@ just depending on both ``str-impl`` and ``parametrized``:
 Note that due to technical limitations, you cannot directly define
 ``Str`` in the ``combined`` library; it must be placed in its own
 library (you can use :ref:`Sublibraries <sublibs>` to conveniently
-define a sub-library).
+define a sublibrary).
 
 However, a more common situation is that your names don't match up
 exactly.  The :pkg-field:`library:mixins` field can be used to rename

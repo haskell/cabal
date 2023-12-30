@@ -17,7 +17,7 @@
 -- An index of packages whose primary key is 'UnitId'.  Public libraries
 -- are additionally indexed by 'PackageName' and 'Version'.
 -- Technically, these are an index of *units* (so we should eventually
--- rename it to 'UnitIndex'); but in the absence of internal libraries
+-- rename it to 'UnitIndex'); but in the absence of sublibraries
 -- or Backpack each unit is equivalent to a package.
 --
 -- While 'PackageIndex' is parametric over what it actually records,
@@ -344,7 +344,7 @@ deleteSourcePackageId pkgid original@(PackageIndex pids pnames) =
 
 -- | Removes all packages with this (case-sensitive) name from the index.
 --
--- NB: Does NOT delete internal libraries from this package.
+-- NB: Does NOT delete sublibraries from this package.
 deletePackageName
   :: PackageName
   -> InstalledPackageIndex
@@ -409,7 +409,7 @@ allPackagesBySourcePackageId index =
 --
 -- They are grouped by source package id and library name.
 --
--- This DOES include internal libraries.
+-- This DOES include sublibraries.
 allPackagesBySourcePackageIdAndLibName
   :: HasUnitId a
   => PackageIndex a
@@ -452,7 +452,7 @@ lookupComponentId index cid =
 -- preference, with the most preferred first.
 lookupSourcePackageId :: PackageIndex a -> PackageId -> [a]
 lookupSourcePackageId index pkgid =
-  -- Do not lookup internal libraries
+  -- Do not lookup sublibraries
   case Map.lookup (packageName pkgid, LMainLibName) (packageIdIndex index) of
     Nothing -> []
     Just pvers -> case Map.lookup (packageVersion pkgid) pvers of
@@ -473,7 +473,7 @@ lookupPackageName
   -> PackageName
   -> [(Version, [a])]
 lookupPackageName index name =
-  -- Do not match internal libraries
+  -- Do not match sublibraries
   case Map.lookup (name, LMainLibName) (packageIdIndex index) of
     Nothing -> []
     Just pvers -> Map.toList pvers

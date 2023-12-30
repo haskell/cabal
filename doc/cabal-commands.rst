@@ -1187,9 +1187,9 @@ A list of all warnings with their constructor:
 - NoNameField: missing ``name`` field.
 - NoVersionField: missing ``version`` field.
 - NoTarget: missing target in ``.cabal``.
-- UnnamedInternal: unnamed internal library.
+- UnnamedInternal: unnamed sublibrary.
 - DuplicateSections: duplicate name in target.
-- IllegalLibraryName: internal library with same name as package.
+- IllegalLibraryName: sublibrary with same name as package.
 - NoModulesExposed: no module exposed in library.
 - SignaturesCabal2: ``signatures`` used with ``cabal-version`` < 2.0
 - AutogenNotExposed: ``autogen-module`` neither in ``exposed-modules`` nor ``other-modules``.
@@ -1217,7 +1217,7 @@ A list of all warnings with their constructor:
 - SynopsisTooLong: ``synopsis`` longer than 80 characters.
 - ShortDesc: ``description`` shorter than ``synopsis``.
 - InvalidTestWith: invalid ``tested-with`` version range.
-- ImpossibleInternalDep: impossible internal library version range dependency.
+- ImpossibleInternalDep: impossible sublibrary version range dependency.
 - ImpossibleInternalExe: impossible internal executable version range dependency.
 - MissingInternalExe: missing internal executable.
 - NONELicense: ``NONE`` in ``license`` field.

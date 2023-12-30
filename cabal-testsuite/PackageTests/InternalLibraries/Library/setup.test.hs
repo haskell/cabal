@@ -1,5 +1,5 @@
 import Test.Cabal.Prelude
--- Internal library used by public library; it must be installed and
+-- Sublibrary used by public library; it must be installed and
 -- registered.
 main = setupAndCabalTest $
     withPackageDb $ do

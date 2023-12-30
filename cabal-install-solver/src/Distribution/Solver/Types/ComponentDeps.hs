@@ -191,7 +191,7 @@ nonSetupDeps :: Monoid a => ComponentDeps a -> a
 nonSetupDeps = select (/= ComponentSetup)
 
 -- | Library dependencies proper only.  (Includes dependencies
--- of internal libraries.)
+-- of sublibraries.)
 libraryDeps :: Monoid a => ComponentDeps a -> a
 libraryDeps = select (\c -> case c of ComponentSubLib _ -> True
                                       ComponentLib -> True

@@ -166,7 +166,7 @@ versionGuardMultilibs = do
       unwords
         [ "Sublibrary dependency syntax used."
         , "To use this syntax the package needs to specify at least 'cabal-version: 3.0'."
-        , "Alternatively, if you are depending on an internal library, you can write"
+        , "Alternatively, if you are depending on a sublibrary, you can write"
         , "directly the library name as it were a package."
         ]
 

@@ -281,7 +281,7 @@ goSections specVer = traverse_ process
           when (isJust prev) $
             lift $
               parseFailure pos $
-                "Multiple main libraries; have you forgotten to specify a name for an internal library?"
+                "Multiple main libraries; have you forgotten to specify a name for a sublibrary?"
 
           commonStanzas <- use stateCommonStanzas
           let name'' = LMainLibName
@@ -764,7 +764,7 @@ checkForUndefinedCustomSetup gpd = do
 -- This is solution to https://github.com/haskell/cabal/issues/6083
 --
 -- Before 'cabal-version: 3.0' we didn't have a syntax specially
--- for referring to internal libraries. Internal library names
+-- for referring to sublibraries. Sublibrary names
 -- shadowed the outside ones.
 --
 -- Since 'cabal-version: 3.0' we have ability to write
@@ -782,10 +782,10 @@ checkForUndefinedCustomSetup gpd = do
 -- pkg-name:pkg-name | may refer to sublib | always refers to external pkg |
 --
 -- In pre-3.4 case, if a package 'this-pkg' has a sublibrary 'pkg-name',
--- all dependency definitions will refer to that sublirary.
+-- all dependency definitions will refer to that sublibrary.
 --
 -- In 3.4 and after case, 'pkg-name' will always refer to external package,
--- and to use internal library you have to say 'this-pkg:pkg-name'.
+-- and to use sublibrary you have to say 'this-pkg:pkg-name'.
 --
 -- In summary, In 3.4 and after, the internal names don't shadow,
 -- as there is an explicit syntax to refer to them,

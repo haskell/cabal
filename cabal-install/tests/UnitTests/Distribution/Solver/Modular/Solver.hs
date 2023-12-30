@@ -396,13 +396,13 @@ tests =
                 solverSuccess [("A", 1), ("B", 1)]
       ]
   , testGroup
-      "sub-library dependencies"
+      "sublibrary dependencies"
       [ let db =
               [ Right $ exAv "A" 1 [ExSubLibAny "B" "sub-lib"]
               , Right $ exAv "B" 1 []
               ]
          in runTest $
-              mkTest db "reject package that is missing required sub-library" ["A"] $
+              mkTest db "reject package that is missing required sublibrary" ["A"] $
                 solverFailure $
                   isInfixOf $
                     "rejecting: B-1.0.0 (does not contain library 'sub-lib', which is required by A)"
@@ -411,7 +411,7 @@ tests =
               , Right $ exAvNoLibrary "B" 1 `withSubLibrary` exSubLib "sub-lib" []
               ]
          in runTest $
-              mkTest db "reject package with private but required sub-library" ["A"] $
+              mkTest db "reject package with private but required sublibrary" ["A"] $
                 solverFailure $
                   isInfixOf $
                     "rejecting: B-1.0.0 (library 'sub-lib' is private, but it is required by A)"
@@ -423,7 +423,7 @@ tests =
               ]
          in runTest $
               constraints [ExFlagConstraint (ScopeAnyQualifier "B") "make-lib-private" True] $
-                mkTest db "reject package with sub-library made private by flag constraint" ["A"] $
+                mkTest db "reject package with sublibrary made private by flag constraint" ["A"] $
                   solverFailure $
                     isInfixOf $
                       "rejecting: B-1.0.0 (library 'sub-lib' is private, but it is required by A)"
@@ -434,7 +434,7 @@ tests =
                     `withSubLibrary` exSubLib "sub-lib" [ExFlagged "make-lib-private" (dependencies []) publicDependencies]
               ]
          in runTest $
-              mkTest db "treat sub-library as visible even though flag choice could make it private" ["A"] $
+              mkTest db "treat sublibrary as visible even though flag choice could make it private" ["A"] $
                 solverSuccess [("A", 1), ("B", 1)]
       , let db =
               [ Right $ exAv "A" 1 [ExAny "B"]
@@ -449,7 +449,7 @@ tests =
               ]
          in runTest $
               goalOrder goals $
-                mkTest db "reject package that requires a private sub-library" ["A", "C"] $
+                mkTest db "reject package that requires a private sublibrary" ["A", "C"] $
                   solverFailure $
                     isInfixOf $
                       "rejecting: C-1.0.0 (requires library 'sub-lib' from B, but the component is private)"
@@ -459,7 +459,7 @@ tests =
               , Right $ exAv "B" 1 [] `withSubLibrary` ExSubLib "sub-lib-v1" publicDependencies
               ]
          in runTest $
-              mkTest db "choose version of package containing correct sub-library" ["A"] $
+              mkTest db "choose version of package containing correct sublibrary" ["A"] $
                 solverSuccess [("A", 1), ("B", 1)]
       , let db =
               [ Right $ exAv "A" 1 [ExSubLibAny "B" "sub-lib"]
@@ -467,7 +467,7 @@ tests =
               , Right $ exAv "B" 1 [] `withSubLibrary` ExSubLib "sub-lib" publicDependencies
               ]
          in runTest $
-              mkTest db "choose version of package with public sub-library" ["A"] $
+              mkTest db "choose version of package with public sublibrary" ["A"] $
                 solverSuccess [("A", 1), ("B", 1)]
       ]
   , -- build-tool-depends dependencies

@@ -1607,7 +1607,7 @@ selectDependency
     -- Executable my-exec
     --     build-depends: MyLibrary
     --
-    -- We want "build-depends: MyLibrary" always to match the internal library
+    -- We want "build-depends: MyLibrary" always to match the sublibrary
     -- even if there is a newer installed library "MyLibrary-0.2".
     if dep_pkgname == pn
       then
@@ -1618,7 +1618,7 @@ selectDependency
     where
       pn = packageName pkgid
 
-      -- It's an internal library, and we're not per-component build
+      -- It's a sublibrary, and we're not per-component build
       do_internal lib
         | Set.member lib internalIndex =
             Right $ InternalDependency $ PackageIdentifier dep_pkgname $ packageVersion pkgid
@@ -1649,7 +1649,7 @@ selectDependency
           -- If we know the exact pkg to use, then use it.
           Just pkginstance -> Right pkginstance
           Nothing -> case pickLastIPI $ PackageIndex.lookupInternalDependency installedIndex pn vr lib of
-            -- It's an internal library, being looked up externally
+            -- It's a sublibrary, being looked up externally
             Nothing -> Left (DependencyMissingInternal dep_pkgname lib)
             Just pkg -> Right pkg
         return $ ExternalDependency $ ipiToPreExistingComponent ipi

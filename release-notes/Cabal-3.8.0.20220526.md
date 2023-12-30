@@ -126,7 +126,7 @@ Cabal 3.8.0.20220526 Changelog
   argument) means.
 
 - Create Cabal-syntax for .cabal files [#7559](https://github.com/haskell/cabal/issues/7559) [#7620](https://github.com/haskell/cabal/pull/7620)
-- Fix haddock command via Setup.hs for internal libraries [#1919](https://github.com/haskell/cabal/issues/1919) [#7827](https://github.com/haskell/cabal/pull/7827)
+- Fix haddock command via Setup.hs for sublibraries [#1919](https://github.com/haskell/cabal/issues/1919) [#7827](https://github.com/haskell/cabal/pull/7827)
 - `ghc-options` and `--with-gcc` are now passed to GHC when compiling C and C++ sources [#4439](https://github.com/haskell/cabal/issues/4439) [#5440](https://github.com/haskell/cabal/pull/5440) [#7874](https://github.com/haskell/cabal/pull/7874)
 - 'cabal check' to fail when no upper bounds for base or Cabal are present in setup dependencies [#4683](https://github.com/haskell/cabal/issues/4683) [#5370](https://github.com/haskell/cabal/pull/5370) [#7409](https://github.com/haskell/cabal/pull/7409)
 - --repl-options doesn’t split on whitespace [#6190](https://github.com/haskell/cabal/issues/6190) [#7799](https://github.com/haskell/cabal/pull/7799)

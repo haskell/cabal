@@ -13,7 +13,7 @@ import Distribution.Types.LocalBuildInfo
 import Distribution.Types.UnqualComponentName
 import System.Directory
 
--- Internal libraries used by a statically linked executable:
+-- Sublibraries used by a statically linked executable:
 -- no libraries should get installed or registered.  (Note,
 -- this does build shared libraries just to make sure they
 -- don't get installed, so this test doesn't work on Windows.)

@@ -86,7 +86,7 @@ function _cabal_list_packages ()
 #   - ‹test-suite› for test suites
 #   - ‹benchmark› for benchmarks
 #   - ‹executable› for executables
-#   - ‹library› for internal libraries
+#   - ‹library› for sublibraries
 #   - ‹foreign-library› for foreign libraries
 #   - nothing for all components.
 #

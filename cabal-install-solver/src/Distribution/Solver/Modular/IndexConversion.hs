@@ -68,8 +68,8 @@ convIPI' (ShadowPkgs sip) idx =
     -- apply shadowing whenever there are multiple installed packages with
     -- the same version
     [ maybeShadow (convIP idx pkg)
-    -- IMPORTANT to get internal libraries. See
-    -- Note [Index conversion with internal libraries]
+    -- IMPORTANT to get sublibraries. See
+    -- Note [Index conversion with sublibraries]
     | (_, pkgs) <- SI.allPackagesBySourcePackageIdAndLibName idx
     , (maybeShadow, pkg) <- zip (id : repeat shadow) pkgs ]
   where
@@ -83,7 +83,7 @@ convIPI' (ShadowPkgs sip) idx =
 convId :: IPI.InstalledPackageInfo -> (PN, I)
 convId ipi = (pn, I ver $ Inst $ IPI.installedUnitId ipi)
   where MungedPackageId mpn ver = mungedId ipi
-        -- HACK. See Note [Index conversion with internal libraries]
+        -- HACK. See Note [Index conversion with sublibraries]
         pn = encodeCompatPackageName mpn
 
 -- | Convert a single installed package into the solver-specific format.
@@ -93,7 +93,7 @@ convIP idx ipi =
         Left u    -> (pn, i, PInfo [] M.empty M.empty (Just (Broken u)))
         Right fds -> (pn, i, PInfo fds components M.empty Nothing)
  where
-  -- TODO: Handle sub-libraries and visibility.
+  -- TODO: Handle sublibraries and visibility.
   components =
       M.singleton (ExposedLib LMainLibName)
                   ComponentInfo {
@@ -108,11 +108,11 @@ convIP idx ipi =
   comp = componentNameToComponent $ CLibName $ IPI.sourceLibName ipi
 -- TODO: Installed packages should also store their encapsulations!
 
--- Note [Index conversion with internal libraries]
+-- Note [Index conversion with sublibraries]
 -- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
--- Something very interesting happens when we have internal libraries
+-- Something very interesting happens when we have sublibraries
 -- in our index.  In this case, we maybe have p-0.1, which itself
--- depends on the internal library p-internal ALSO from p-0.1.
+-- depends on the sublibrary p-internal ALSO from p-0.1.
 -- Here's the danger:
 --
 --      - If we treat both of these packages as having PN "p",
@@ -146,7 +146,7 @@ convIPId dr comp idx ipid =
   case SI.lookupUnitId idx ipid of
     Nothing  -> Left ipid
     Just ipi -> let (pn, i) = convId ipi
-                    name = ExposedLib LMainLibName  -- TODO: Handle sub-libraries.
+                    name = ExposedLib LMainLibName  -- TODO: Handle sublibraries.
                 in  Right (D.Simple (LDep dr (Dep (PkgComponent pn name) (Fixed i))) comp)
                 -- NB: something we pick up from the
                 -- InstalledPackageIndex is NEVER an executable

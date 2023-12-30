@@ -21,11 +21,11 @@ Building library for Includes2-0.1.0.0...
 Preprocessing executable 'exe' for Includes2-0.1.0.0...
 Building executable 'exe' for Includes2-0.1.0.0...
 # Setup copy
-Installing internal library postgresql in <PATH>
-Installing internal library mysql in <PATH>
-Installing internal library mylib in <PATH>
-Installing internal library mylib in <PATH>
-Installing internal library mylib in <PATH>
+Installing sublibrary postgresql in <PATH>
+Installing sublibrary mysql in <PATH>
+Installing sublibrary mylib in <PATH>
+Installing sublibrary mylib in <PATH>
+Installing sublibrary mylib in <PATH>
 Installing library in <PATH>
 Installing executable exe in <PATH>
 Warning: The directory <ROOT>/setup-internal.dist/usr/bin is not in the system search path.

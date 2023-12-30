@@ -40,22 +40,21 @@ instance NFData MungedPackageName where rnf = genericRnf
 -- | Computes the package name for a library.  If this is the public
 -- library, it will just be the original package name; otherwise,
 -- it will be a munged package name recording the original package
--- name as well as the name of the internal library.
+-- name as well as the name of the sublibrary.
 --
 -- A lot of tooling in the Haskell ecosystem assumes that if something
 -- is installed to the package database with the package name 'foo',
 -- then it actually is an entry for the (only public) library in package
 -- 'foo'.  With internal packages, this is not necessarily true:
--- a public library as well as arbitrarily many internal libraries may
+-- a public library as well as arbitrarily many sublibraries may
 -- come from the same package.  To prevent tools from getting confused
--- in this case, the package name of these internal libraries is munged
+-- in this case, the package name of these sublibraries is munged
 -- so that they do not conflict the public library proper.  A particular
 -- case where this matters is ghc-pkg: if we don't munge the package
--- name, the inplace registration will OVERRIDE a different internal
--- library.
+-- name, the inplace registration will OVERRIDE a different sublibrary.
 --
 -- We munge into a reserved namespace, "z-", and encode both the
--- component name and the package name of an internal library using the
+-- component name and the package name of a sublibrary using the
 -- following format:
 --
 --      compat-pkg-name ::= "z-" package-name "-z-" library-name

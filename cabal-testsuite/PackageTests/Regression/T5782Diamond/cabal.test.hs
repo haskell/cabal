@@ -13,7 +13,7 @@
 -- (default installdir is different on various OSes).
 --
 -- `withShorterPathForNewBuildStore` is needed to avoid some path mismatches, etc.,
--- in the output, but MacOS still insists on processing internal libraries
+-- in the output, but MacOS still insists on processing sublibraries
 -- in a different order and Windows additionally still can't recognize
 -- the paths match. Hence `recordMode DoNotRecord` to mute the output,
 -- which is fine in this case, because the problem manifests either

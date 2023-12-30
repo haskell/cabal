@@ -110,7 +110,7 @@ computeComponentId deterministic mb_ipid mb_cid pid cname mb_details =
 --
 --      * We use the *compatibility* package name and version.  For
 --        public libraries this is just the package identifier; for
---        internal libraries, it's something like "z-pkgname-z-libname-0.1".
+--        sublibraries, it's something like "z-pkgname-z-libname-0.1".
 --        See 'computeCompatPackageName' for more details.
 --
 -- The mapping for GHC 7.10:

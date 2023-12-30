@@ -406,7 +406,7 @@ elabRequiresRegistration elab =
         -- the next sub-condition below is currently redundant
         -- (see discussion in #5604 for more details), but it's
         -- being kept intentionally here as a safeguard because if
-        -- internal libraries ever start working with
+        -- sublibraries ever start working with
         -- non-per-component builds this condition won't be
         -- redundant anymore.
         || any (depends_on_lib pkg) (elabBuildTargets elab)
@@ -883,7 +883,7 @@ componentOptionalStanza _ = Nothing
 -- less than 1.23.
 --
 -- In cases 1 and 2 we obviously have to build an external Setup.hs script,
--- while in case 4 we can use the internal library API. In case 3 we also have
+-- while in case 4 we can use the sublibrary API. In case 3 we also have
 -- to build an external Setup.hs script because the package needs a later
 -- Cabal lib version than we can support internally.
 data SetupScriptStyle

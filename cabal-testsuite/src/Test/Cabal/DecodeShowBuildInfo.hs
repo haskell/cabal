@@ -171,7 +171,7 @@ assertComponent pkgName cname assert = do
 exe :: String -> ComponentName
 exe = CExeName . mkUnqualComponentName
 
--- | Helper function to create a named sub-library component name.
+-- | Helper function to create a named sublibrary component name.
 lib :: String -> ComponentName
 lib = CLibName . LSubLibName . mkUnqualComponentName
 

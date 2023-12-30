@@ -20,7 +20,7 @@
 -- less than 1.23.
 --
 -- In cases 1 and 2 we obviously have to build an external Setup.hs script,
--- while in case 4 we can use the internal library API.
+-- while in case 4 we can use the sublibrary API.
 --
 -- @since 3.12.0.0
 module Distribution.Client.ProjectPlanning.SetupPolicy

@@ -88,7 +88,7 @@ instance NFData UnqualComponentName where
 -- component, if one is defined with that name.
 --
 -- 2018-12-21: These "legacy" situations are not legacy.
--- We can @build-depends@ on the internal library. However
+-- We can @build-depends@ on the sublibrary. However
 -- Now dependency contains @Set LibraryName@, and we should use that.
 --
 -- @since 2.0.0.2

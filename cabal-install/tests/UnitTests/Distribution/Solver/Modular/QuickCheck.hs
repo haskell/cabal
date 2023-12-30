@@ -534,7 +534,7 @@ instance Arbitrary Component where
 -- The "component-" prefix prevents component names and build-depends
 -- dependency names from overlapping.
 -- TODO: Remove the prefix once the QuickCheck tests support dependencies on
--- internal libraries.
+-- sublibraries.
 arbitraryUQN :: Gen UnqualComponentName
 arbitraryUQN =
   mkUnqualComponentName <$> (\c -> "component-" ++ [c]) <$> elements "ABC"

@@ -341,7 +341,7 @@ mungePackagePaths pkgroot pkginfo =
 
 -- Older installed package info files did not have the installedUnitId
 -- field, so if it is missing then we fill it as the source package ID.
--- NB: Internal libraries not supported.
+-- NB: Sublibraries not supported.
 setUnitId :: InstalledPackageInfo -> InstalledPackageInfo
 setUnitId
   pkginfo@InstalledPackageInfo

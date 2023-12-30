@@ -4,6 +4,6 @@ main = setupAndCabalTest . withPackageDb $ do
     setup_build []
     r <- runExe' "lemon" []
     assertEqual
-        ("executable should have linked with the internal library")
+        ("executable should have linked with the sublibrary")
         ("foo foo myLibFunc internal")
         (concatOutput (resultOutput r))

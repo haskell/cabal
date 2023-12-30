@@ -1,6 +1,6 @@
 import Test.Cabal.Prelude
--- Basic test for internal libraries (in p); package q is to make
--- sure that the internal library correctly is used, not the
+-- Basic test for sublibraries (in p); package q is to make
+-- sure that the sublibrary correctly is used, not the
 -- external library.
 main = setupAndCabalTest $ do
     withPackageDb $ do

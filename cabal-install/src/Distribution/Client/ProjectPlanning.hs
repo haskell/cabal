@@ -1681,7 +1681,7 @@ elaborateInstallPlan
                 is_sublib _ = False
             when (any (matchElabPkg is_sublib) comps) $
               dieProgress $
-                text "Internal libraries only supported with per-component builds."
+                text "Sublibraries only supported with per-component builds."
                   $$ text "Per-component builds were disabled because"
                   <+> fsep (punctuate comma reasons)
           -- TODO: Maybe exclude Backpack too
@@ -2060,7 +2060,7 @@ elaborateInstallPlan
                 ]
               where
                 mb_closure = Graph.revClosure compGraph [k | k <- Graph.keys compGraph, is_lib k]
-                -- NB: the sublib case should not occur, because sub-libraries
+                -- NB: the sublib case should not occur, because sublibraries
                 -- are not supported without per-component builds
                 is_lib (CLibName _) = True
                 is_lib _ = False
@@ -4409,7 +4409,7 @@ inplaceBinRoot layout config package =
 -- Configure --coverage-for flags
 
 -- The list of non-pre-existing libraries without module holes, i.e. the
--- main library and sub-libraries components of all the local packages in
+-- main library and sublibraries components of all the local packages in
 -- the project that do not require instantiations or are instantiations.
 determineCoverageFor
   :: PackageId

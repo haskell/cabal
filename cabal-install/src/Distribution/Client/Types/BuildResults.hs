@@ -38,7 +38,7 @@ instance Exception BuildFailure
 
 -- Note that the @Maybe InstalledPackageInfo@ is a slight hack: we only
 -- the public library's 'InstalledPackageInfo' is stored here, even if
--- there were 'InstalledPackageInfo' from internal libraries.  This
+-- there were 'InstalledPackageInfo' from sublibraries.  This
 -- 'InstalledPackageInfo' is not used anyway, so it makes no difference.
 data BuildResult
   = BuildResult

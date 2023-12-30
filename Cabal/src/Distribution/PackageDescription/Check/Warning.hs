@@ -321,18 +321,18 @@ ppExplanation NoVersionField = "No 'version' field."
 ppExplanation NoTarget =
   "No executables, libraries, tests, or benchmarks found. Nothing to do."
 ppExplanation UnnamedInternal =
-  "Found one or more unnamed internal libraries. Only the non-internal"
-    ++ " library can have the same name as the package."
+  "Found one or more unnamed sublibraries. Only the non-sublibrary"
+    ++ " can have the same name as the package."
 ppExplanation (DuplicateSections duplicateNames) =
   "Duplicate sections: "
     ++ commaSep (map unUnqualComponentName duplicateNames)
     ++ ". The name of every library, executable, test suite,"
     ++ " and benchmark section in the package must be unique."
 ppExplanation (IllegalLibraryName pname) =
-  "Illegal internal library name "
+  "Illegal sublibrary name "
     ++ prettyShow pname
-    ++ ". Internal libraries cannot have the same name as the package."
-    ++ " Maybe you wanted a non-internal library?"
+    ++ ". Sublibraries cannot have the same name as the package."
+    ++ " Maybe you wanted a non-sublibrary?"
     ++ " If so, rewrite the section stanza"
     ++ " from 'library: '"
     ++ prettyShow pname
@@ -455,7 +455,7 @@ ppExplanation (InvalidTestWith testedWithImpossibleRanges) =
     ++ "'tested-with: GHC==6.10.4 && ==6.12.3'."
 ppExplanation (ImpossibleInternalDep depInternalLibWithImpossibleVersion) =
   "The package has an impossible version range for a dependency on an "
-    ++ "internal library: "
+    ++ "sublibrary: "
     ++ commaSep (map prettyShow depInternalLibWithImpossibleVersion)
     ++ ". This version range does not include the current package, and must "
     ++ "be removed as the current package's library will always be used."
