@@ -1,11 +1,12 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE ViewPatterns #-}
 
 module Distribution.Solver.Modular.Message (
     Message(..),
     showMessages
   ) where
 
-import Data.Maybe (listToMaybe)
+import Data.Maybe (isJust)
 import qualified Data.List as L
 import Data.Map (Map)
 import qualified Data.Map as M
@@ -225,7 +226,7 @@ showQSNBool a q b = show a ++ Flag.showQSNBool q b
 
 showOptions :: ProgressAction -> QPN -> [POption] -> String
 showOptions a q [p] = show a ++ showOption q p
-showOptions a q ps = show a ++ abbreviatePkgVers (showOption q `map` reverse ps)
+showOptions a q ps = show a ++ abbreviatePkgVers q ps
 
 showOption :: QPN -> POption -> String
 showOption qpn@(Q _pp pn) (POption i linkedTo) =
@@ -233,31 +234,19 @@ showOption qpn@(Q _pp pn) (POption i linkedTo) =
     Nothing  -> showPI (PI qpn i) -- Consistent with prior to POption
     Just pp' -> showQPN qpn ++ "~>" ++ showPI (PI (Q pp' pn) i)
 
--- | Format a list of package names and versions, avoiding repetition of the
--- package name.
--- >>> abbreviatePkgVers ["foo-1.0.0", "foo-1.0.1", "foo-1.0.2"]
--- "foo; 1.0.0, 1.0.1, 1.0.2"
--- >>> abbreviatePkgVers ["foo-1.0.0"]
+-- |
+-- >>> abbreviatePkgVers fooQPN [v0, v1, v2]
+-- "foo; 1.0.2, 1.0.1, 1.0.0"
+-- >>> abbreviatePkgVers fooQPN [v0]
 -- "foo-1.0.0"
--- >>> abbreviatePkgVers ["foo-1.0.0", "bar-1.0.0"]
--- "foo-1.0.0, bar-1.0.0"
--- >>> abbreviatePkgVers []
--- "unexpected package version set"
-abbreviatePkgVers :: [String] -> String
-abbreviatePkgVers [] = "unexpected package version set"
-abbreviatePkgVers [x] = x
-abbreviatePkgVers xs = case L.nub prefixes of
-    [prefix] -> prefix ++ "; " ++ L.intercalate ", " versions
-    _ -> L.intercalate ", " xs
-  where
-    (prefixes, versions) = unzip
-      [ maybe (x, "") (\hyphen -> (take hyphen x, drop (hyphen + 1) x)) ix
-      | x <- xs
-      -- Package names may contain hypens but a hypen is also the separator
-      -- between the package name and its version so find the last hyphen in
-      -- the string.
-      , let ix = listToMaybe (reverse $ L.elemIndices '-' x)
-      ]
+-- >>> abbreviatePkgVers fooQPN []
+-- "unexpected empty list of versions"
+abbreviatePkgVers :: QPN -> [POption] -> String
+abbreviatePkgVers _ [] = "unexpected empty list of versions"
+abbreviatePkgVers q [x] = showOption q x
+abbreviatePkgVers q (reverse -> xs)
+    | any (\(POption (instI -> b0) (isJust -> b1)) -> b0 || b1) xs = showQPN q ++ L.intercalate ", " (showOption q `map` xs)
+    | otherwise = showQPN q ++ "; " ++ L.intercalate ", " ((\(POption (showI -> v) _) -> v) `map` xs)
 
 showGR :: QGoalReason -> String
 showGR UserGoal            = " (user goal)"
@@ -317,3 +306,11 @@ showConflictingDep (ConflictingDep dr (PkgComponent qpn comp) ci) =
                          showQPN qpn ++ componentStr ++ "==" ++ showI i
        Constrained vr -> showDependencyReason dr ++ " => " ++ showQPN qpn ++
                          componentStr ++ showVR vr
+
+-- $setup
+-- >>> import Distribution.Solver.Types.PackagePath
+-- >>> import Distribution.Types.Version
+-- >>> let fooQPN = Q (PackagePath DefaultNamespace QualToplevel) (mkPackageName "foo")
+-- >>> let v0 = POption (I (mkVersion [1,0,0]) InRepo) Nothing
+-- >>> let v1 = POption (I (mkVersion [1,0,1]) InRepo) Nothing
+-- >>> let v2 = POption (I (mkVersion [1,0,2]) InRepo) Nothing
