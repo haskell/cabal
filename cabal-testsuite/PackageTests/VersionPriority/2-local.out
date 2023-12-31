@@ -6,8 +6,12 @@ Error: [Cabal-7107]
 Could not resolve dependencies:
 [__0] trying: cabal-version-override-0.1.0.0 (user goal)
 [__1] next goal: hashable (dependency of cabal-version-override)
-[__1] rejecting: hashable-1.4.3.0 (constraint from project config <ROOT>/2-local-constraints-import.project requires ==1.4.2.0)
-[__1] rejecting: hashable-1.4.2.0 (constraint from project config stackage-local.config requires ==1.4.3.0)
+[__1] rejecting: hashable-1.4.3.0
+      (constraint from 2-local-constraints-import.project requires ==1.4.2.0)
+[__1] rejecting: hashable-1.4.2.0
+      (constraint from stackage-local.config requires ==1.4.3.0)
+        imported by: hop-local.config
+        imported by: 2-local-constraints-import.project
 [__1] fail (backjumping, conflict set: cabal-version-override, hashable)
 After searching the rest of the dependency tree exhaustively, these were the goals I've had most trouble fulfilling: hashable (3), cabal-version-override (2)
 # cabal v2-build
@@ -16,7 +20,11 @@ Error: [Cabal-7107]
 Could not resolve dependencies:
 [__0] trying: cabal-version-override-0.1.0.0 (user goal)
 [__1] next goal: hashable (dependency of cabal-version-override)
-[__1] rejecting: hashable-1.4.3.0 (constraint from project config <ROOT>/2-local-import-constraints.project requires ==1.4.2.0)
-[__1] rejecting: hashable-1.4.2.0 (constraint from project config stackage-local.config requires ==1.4.3.0)
+[__1] rejecting: hashable-1.4.3.0
+      (constraint from 2-local-import-constraints.project requires ==1.4.2.0)
+[__1] rejecting: hashable-1.4.2.0
+      (constraint from stackage-local.config requires ==1.4.3.0)
+        imported by: hop-local.config
+        imported by: 2-local-import-constraints.project
 [__1] fail (backjumping, conflict set: cabal-version-override, hashable)
 After searching the rest of the dependency tree exhaustively, these were the goals I've had most trouble fulfilling: hashable (3), cabal-version-override (2)

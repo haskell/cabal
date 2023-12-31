@@ -98,6 +98,7 @@ module Distribution.Client.ProjectPlanning
   ) where
 
 import Distribution.Client.Compat.Prelude
+import Text.PrettyPrint (render)
 import Prelude ()
 
 import Distribution.Client.Config
@@ -208,6 +209,7 @@ import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Distribution.Client.Errors
+import Distribution.Solver.Types.ProjectConfigPath
 import System.FilePath
 import Text.PrettyPrint (colon, comma, fsep, hang, punctuate, quotes, text, vcat, ($$))
 import qualified Text.PrettyPrint as Disp
@@ -384,12 +386,13 @@ rebuildProjectConfig
           localPackages <- phaseReadLocalPackages (projectConfig <> cliConfig)
           return (projectConfig, localPackages)
 
-    info verbosity $
-      unlines $
-        ("this build was affected by the following (project) config files:" :) $
-          [ "- " ++ path
-          | Explicit path <- Set.toList $ projectConfigProvenance projectConfig
-          ]
+    sequence_
+      [ do
+        info verbosity . render . vcat $
+          text "this build was affected by the following (project) config files:"
+            : [text "-" <+> docProjectConfigPath path]
+      | Explicit path <- Set.toList $ projectConfigProvenance projectConfig
+      ]
 
     return (projectConfig <> cliConfig, localPackages)
     where
