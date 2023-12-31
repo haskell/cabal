@@ -102,21 +102,6 @@ showMessages = go 0
         (atLevel l $ formatRejections (map (showQPNPOpt qpn) (reverse is)) ++ showFR c fr)
         (go l ms)
 
-    formatRejections :: [String] -> String
-    formatRejections [x] = "rejecting: " ++ x
-    formatRejections xs = "rejecting: " ++ case L.nub prefixes of
-        [prefix] -> prefix ++ "; " ++ L.intercalate ", " versions
-        _ -> L.intercalate ", " xs
-      where
-        (prefixes, versions) = unzip
-          [ maybe (x, "") (\hyphen -> (take hyphen x, drop (hyphen + 1) x)) ix
-          | x <- xs
-          -- Package names may contain hypens but a hypen is also the separator
-          -- between the package name and its version so find the last hyphen in
-          -- the string.
-          , let ix = listToMaybe (reverse $ L.elemIndices '-' x)
-          ]
-
     -- Handle many subsequent skipped package instances.
     goPSkip :: Int
             -> QPN
@@ -137,6 +122,32 @@ showMessages = go 0
     atLevel l x xs =
       let s = show l
       in  Step ("[" ++ replicate (3 - length s) '_' ++ s ++ "] " ++ x) xs
+
+-- | Format a list of package names and versions as a rejection message,
+-- avoiding repetition of the package name.
+-- >>> formatRejections ["foo-1.0.0", "foo-1.0.1", "foo-1.0.2"]
+-- "rejecting: foo; 1.0.0, 1.0.1, 1.0.2"
+-- >>> formatRejections ["foo-1.0.0"]
+-- "rejecting: foo-1.0.0"
+-- >>> formatRejections ["foo-1.0.0", "bar-1.0.0"]
+-- "rejecting: foo-1.0.0, bar-1.0.0"
+-- >>> formatRejections []
+-- "unexpected rejection set"
+formatRejections :: [String] -> String
+formatRejections [] = "unexpected rejection set"
+formatRejections [x] = "rejecting: " ++ x
+formatRejections xs = "rejecting: " ++ case L.nub prefixes of
+    [prefix] -> prefix ++ "; " ++ L.intercalate ", " versions
+    _ -> L.intercalate ", " xs
+  where
+    (prefixes, versions) = unzip
+      [ maybe (x, "") (\hyphen -> (take hyphen x, drop (hyphen + 1) x)) ix
+      | x <- xs
+      -- Package names may contain hypens but a hypen is also the separator
+      -- between the package name and its version so find the last hyphen in
+      -- the string.
+      , let ix = listToMaybe (reverse $ L.elemIndices '-' x)
+      ]
 
 -- | Display the set of 'Conflicts' for a skipped package version.
 showConflicts :: Set CS.Conflict -> String
