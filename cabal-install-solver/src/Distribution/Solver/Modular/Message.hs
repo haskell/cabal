@@ -18,7 +18,8 @@ import Distribution.Pretty (prettyShow) -- from Cabal
 
 import qualified Distribution.Solver.Modular.ConflictSet as CS
 import Distribution.Solver.Modular.Dependency
-import Distribution.Solver.Modular.Flag
+import Distribution.Solver.Modular.Flag ( QFN, QSN )
+import qualified Distribution.Solver.Modular.Flag as Flag ( showQFN, showQFNBool, showQSN, showQSNBool )
 import Distribution.Solver.Modular.MessageUtils
          (showUnsupportedExtension, showUnsupportedLanguage)
 import Distribution.Solver.Modular.Package
@@ -61,9 +62,9 @@ showMessages = go 0
     go !l (Step (TryP qpn i) (Step Enter (Step (Skip conflicts) (Step Leave ms)))) =
         goPSkip l qpn [i] conflicts ms
     go !l (Step (TryF qfn b) (Step Enter (Step (Failure c fr) (Step Leave ms)))) =
-        (atLevel l $ "rejecting: " ++ showQFNBool qfn b ++ showFR c fr) (go l ms)
+        (atLevel l $ showQFNBool Rejecting qfn b ++ showFR c fr) (go l ms)
     go !l (Step (TryS qsn b) (Step Enter (Step (Failure c fr) (Step Leave ms)))) =
-        (atLevel l $ "rejecting: " ++ showQSNBool qsn b ++ showFR c fr) (go l ms)
+        (atLevel l $ showQSNBool Rejecting qsn b ++ showFR c fr) (go l ms)
     go !l (Step (Next (Goal (P _  ) gr)) (Step (TryP qpn' i) ms@(Step Enter (Step (Next _) _)))) =
         (atLevel l $ showOptions Trying qpn' [i] ++ showGR gr) (go l ms)
     go !l (Step (Next (Goal (P qpn) gr)) (Step (Failure _c UnknownPackage) ms)) =
@@ -72,13 +73,13 @@ showMessages = go 0
     go !l (Step Enter                    ms) = go (l+1) ms
     go !l (Step Leave                    ms) = go (l-1) ms
     go !l (Step (TryP qpn i)             ms) = (atLevel l $ showOptions Trying qpn [i]) (go l ms)
-    go !l (Step (TryF qfn b)             ms) = (atLevel l $ "trying: " ++ showQFNBool qfn b) (go l ms)
-    go !l (Step (TryS qsn b)             ms) = (atLevel l $ "trying: " ++ showQSNBool qsn b) (go l ms)
+    go !l (Step (TryF qfn b)             ms) = (atLevel l $ showQFNBool Trying qfn b) (go l ms)
+    go !l (Step (TryS qsn b)             ms) = (atLevel l $ showQSNBool Trying qsn b) (go l ms)
     go !l (Step (Next (Goal (P qpn) gr)) ms) = (atLevel l $ showPackageGoal qpn gr) (go l ms)
     go !l (Step (Next _)                 ms) = go l     ms -- ignore flag goals in the log
     go !l (Step (Skip conflicts)         ms) =
         -- 'Skip' should always be handled by 'goPSkip' in the case above.
-        (atLevel l $ "skipping: " ++ showConflicts conflicts) (go l ms)
+        (atLevel l $ show Skipping ++ showConflicts conflicts) (go l ms)
     go !l (Step (Success)                ms) = (atLevel l $ "done") (go l ms)
     go !l (Step (Failure c fr)           ms) = (atLevel l $ showFailure c fr) (go l ms)
 
@@ -216,6 +217,12 @@ instance Show ProgressAction where
   show Skipping = "skipping: "
   show Rejecting = "rejecting: "
 
+showQFNBool :: ProgressAction -> QFN -> Bool -> String
+showQFNBool a q b = show a ++ Flag.showQFNBool q b
+
+showQSNBool :: ProgressAction -> QSN -> Bool -> String
+showQSNBool a q b = show a ++ Flag.showQSNBool q b
+
 showOptions :: ProgressAction -> QPN -> [POption] -> String
 showOptions a q [p] = show a ++ showOption q p
 showOptions a q ps = show a ++ abbreviatePkgVers (showOption q `map` reverse ps)
@@ -286,8 +293,8 @@ showFR _ (UnsupportedSpecVer ver)         = " (unsupported spec-version " ++ pre
 -- The following are internal failures. They should not occur. In the
 -- interest of not crashing unnecessarily, we still just print an error
 -- message though.
-showFR _ (MalformedFlagChoice qfn)        = " (INTERNAL ERROR: MALFORMED FLAG CHOICE: " ++ showQFN qfn ++ ")"
-showFR _ (MalformedStanzaChoice qsn)      = " (INTERNAL ERROR: MALFORMED STANZA CHOICE: " ++ showQSN qsn ++ ")"
+showFR _ (MalformedFlagChoice qfn)        = " (INTERNAL ERROR: MALFORMED FLAG CHOICE: " ++ Flag.showQFN qfn ++ ")"
+showFR _ (MalformedStanzaChoice qsn)      = " (INTERNAL ERROR: MALFORMED STANZA CHOICE: " ++ Flag.showQSN qsn ++ ")"
 showFR _ EmptyGoalChoice                  = " (INTERNAL ERROR: EMPTY GOAL CHOICE)"
 
 showExposedComponent :: ExposedComponent -> String
