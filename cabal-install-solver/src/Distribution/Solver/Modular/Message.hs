@@ -65,13 +65,13 @@ showMessages = go 0
     go !l (Step (TryS qsn b) (Step Enter (Step (Failure c fr) (Step Leave ms)))) =
         (atLevel l $ "rejecting: " ++ showQSNBool qsn b ++ showFR c fr) (go l ms)
     go !l (Step (Next (Goal (P _  ) gr)) (Step (TryP qpn' i) ms@(Step Enter (Step (Next _) _)))) =
-        (atLevel l $ "trying: " ++ showQPNPOpt qpn' i ++ showGR gr) (go l ms)
+        (atLevel l $ showOptions Trying qpn' [i] ++ showGR gr) (go l ms)
     go !l (Step (Next (Goal (P qpn) gr)) (Step (Failure _c UnknownPackage) ms)) =
         atLevel l ("unknown package: " ++ showQPN qpn ++ showGR gr) $ go l ms
     -- standard display
     go !l (Step Enter                    ms) = go (l+1) ms
     go !l (Step Leave                    ms) = go (l-1) ms
-    go !l (Step (TryP qpn i)             ms) = (atLevel l $ "trying: " ++ showQPNPOpt qpn i) (go l ms)
+    go !l (Step (TryP qpn i)             ms) = (atLevel l $ showOptions Trying qpn [i]) (go l ms)
     go !l (Step (TryF qfn b)             ms) = (atLevel l $ "trying: " ++ showQFNBool qfn b) (go l ms)
     go !l (Step (TryS qsn b)             ms) = (atLevel l $ "trying: " ++ showQSNBool qsn b) (go l ms)
     go !l (Step (Next (Goal (P qpn) gr)) ms) = (atLevel l $ showPackageGoal qpn gr) (go l ms)
@@ -99,7 +99,7 @@ showMessages = go 0
     goPReject l qpn is c fr (Step (TryP qpn' i) (Step Enter (Step (Failure _ fr') (Step Leave ms))))
       | qpn == qpn' && fr == fr' = goPReject l qpn (i : is) c fr ms
     goPReject l qpn is c fr ms =
-        (atLevel l $ formatRejections (map (showQPNPOpt qpn) (reverse is)) ++ showFR c fr)
+        (atLevel l $ showOptions Rejecting qpn is ++ showFR c fr)
         (go l ms)
 
     -- Handle many subsequent skipped package instances.
@@ -112,9 +112,7 @@ showMessages = go 0
     goPSkip l qpn is conflicts (Step (TryP qpn' i) (Step Enter (Step (Skip conflicts') (Step Leave ms))))
       | qpn == qpn' && conflicts == conflicts' = goPSkip l qpn (i : is) conflicts ms
     goPSkip l qpn is conflicts ms =
-      let msg = "skipping: "
-                 ++ L.intercalate ", " (map (showQPNPOpt qpn) (reverse is))
-                 ++ showConflicts conflicts
+      let msg = showOptions Skipping qpn is ++ showConflicts conflicts
       in atLevel l msg (go l ms)
 
     -- write a message with the current level number
@@ -122,32 +120,6 @@ showMessages = go 0
     atLevel l x xs =
       let s = show l
       in  Step ("[" ++ replicate (3 - length s) '_' ++ s ++ "] " ++ x) xs
-
--- | Format a list of package names and versions as a rejection message,
--- avoiding repetition of the package name.
--- >>> formatRejections ["foo-1.0.0", "foo-1.0.1", "foo-1.0.2"]
--- "rejecting: foo; 1.0.0, 1.0.1, 1.0.2"
--- >>> formatRejections ["foo-1.0.0"]
--- "rejecting: foo-1.0.0"
--- >>> formatRejections ["foo-1.0.0", "bar-1.0.0"]
--- "rejecting: foo-1.0.0, bar-1.0.0"
--- >>> formatRejections []
--- "unexpected rejection set"
-formatRejections :: [String] -> String
-formatRejections [] = "unexpected rejection set"
-formatRejections [x] = "rejecting: " ++ x
-formatRejections xs = "rejecting: " ++ case L.nub prefixes of
-    [prefix] -> prefix ++ "; " ++ L.intercalate ", " versions
-    _ -> L.intercalate ", " xs
-  where
-    (prefixes, versions) = unzip
-      [ maybe (x, "") (\hyphen -> (take hyphen x, drop (hyphen + 1) x)) ix
-      | x <- xs
-      -- Package names may contain hypens but a hypen is also the separator
-      -- between the package name and its version so find the last hyphen in
-      -- the string.
-      , let ix = listToMaybe (reverse $ L.elemIndices '-' x)
-      ]
 
 -- | Display the set of 'Conflicts' for a skipped package version.
 showConflicts :: Set CS.Conflict -> String
@@ -234,11 +206,51 @@ data MergedPackageConflict = MergedPackageConflict {
   , versionConflict :: Maybe VR
   }
 
-showQPNPOpt :: QPN -> POption -> String
-showQPNPOpt qpn@(Q _pp pn) (POption i linkedTo) =
+data ProgressAction =
+    Trying
+  | Skipping
+  | Rejecting
+
+instance Show ProgressAction where
+  show Trying = "trying: "
+  show Skipping = "skipping: "
+  show Rejecting = "rejecting: "
+
+showOptions :: ProgressAction -> QPN -> [POption] -> String
+showOptions a q [p] = show a ++ showOption q p
+showOptions a q ps = show a ++ abbreviatePkgVers (showOption q `map` reverse ps)
+
+showOption :: QPN -> POption -> String
+showOption qpn@(Q _pp pn) (POption i linkedTo) =
   case linkedTo of
     Nothing  -> showPI (PI qpn i) -- Consistent with prior to POption
     Just pp' -> showQPN qpn ++ "~>" ++ showPI (PI (Q pp' pn) i)
+
+-- | Format a list of package names and versions, avoiding repetition of the
+-- package name.
+-- >>> abbreviatePkgVers ["foo-1.0.0", "foo-1.0.1", "foo-1.0.2"]
+-- "foo; 1.0.0, 1.0.1, 1.0.2"
+-- >>> abbreviatePkgVers ["foo-1.0.0"]
+-- "foo-1.0.0"
+-- >>> abbreviatePkgVers ["foo-1.0.0", "bar-1.0.0"]
+-- "foo-1.0.0, bar-1.0.0"
+-- >>> abbreviatePkgVers []
+-- "unexpected package version set"
+abbreviatePkgVers :: [String] -> String
+abbreviatePkgVers [] = "unexpected package version set"
+abbreviatePkgVers [x] = x
+abbreviatePkgVers xs = case L.nub prefixes of
+    [prefix] -> prefix ++ "; " ++ L.intercalate ", " versions
+    _ -> L.intercalate ", " xs
+  where
+    (prefixes, versions) = unzip
+      [ maybe (x, "") (\hyphen -> (take hyphen x, drop (hyphen + 1) x)) ix
+      | x <- xs
+      -- Package names may contain hypens but a hypen is also the separator
+      -- between the package name and its version so find the last hyphen in
+      -- the string.
+      , let ix = listToMaybe (reverse $ L.elemIndices '-' x)
+      ]
 
 showGR :: QGoalReason -> String
 showGR UserGoal            = " (user goal)"
