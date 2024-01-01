@@ -240,10 +240,18 @@ data IsOrVs = Is [POption] | Vs [Ver] deriving Show
 -- | Try to convert a list of options to a list of versions, or a list of
 -- instances if any of the options is linked (installed).  Singleton lists or
 -- empty lists are always converted to Is.
--- >>> tryVs [v0, v1, v2]
--- Vs [mkVersion [1,0,0],mkVersion [1,0,1],mkVersion [1,0,2]]
+-- >>> tryVs [v0, v1]
+-- Vs [mkVersion [1,0,0],mkVersion [1,0,1]]
 -- >>> tryVs [v0]
 -- Is [POption (I (mkVersion [1,0,0]) InRepo) Nothing]
+-- >>> tryVs [i0, i1]
+-- Is [POption (I (mkVersion [1,0,0]) (Inst (UnitId "foo-1.0.0-inplace"))) Nothing,POption (I (mkVersion [1,0,1]) (Inst (UnitId "foo-1.0.1-inplace"))) Nothing]
+-- >>> tryVs [i0, v1]
+-- Is [POption (I (mkVersion [1,0,0]) (Inst (UnitId "foo-1.0.0-inplace"))) Nothing,POption (I (mkVersion [1,0,1]) InRepo) Nothing]
+-- >>> tryVs [v0, i1]
+-- Is [POption (I (mkVersion [1,0,0]) InRepo) Nothing,POption (I (mkVersion [1,0,1]) (Inst (UnitId "foo-1.0.1-inplace"))) Nothing]
+-- >>> tryVs [i0]
+-- Is [POption (I (mkVersion [1,0,0]) (Inst (UnitId "foo-1.0.0-inplace"))) Nothing]
 -- >>> tryVs []
 -- Is []
 tryVs :: [POption] -> IsOrVs
@@ -257,16 +265,22 @@ tryVs xs
 
 -- | Shows a list of versions in a human-friendly way, abbreviated. Shows a list
 -- of instances in full.
--- >>> showIsOrVs fooQPN $ tryVs [v0, v1, v2]
--- "foo; 1.0.2, 1.0.1, 1.0.0"
+-- >>> showIsOrVs fooQPN $ tryVs [v0, v1]
+-- "foo; 1.0.1, 1.0.0"
 -- >>> showIsOrVs fooQPN $ tryVs [v0]
 -- "foo-1.0.0"
+-- >>> showIsOrVs fooQPN $ tryVs [i0, i1]
+-- "foo-1.0.1/installed-inplace, foo-1.0.0/installed-inplace"
+-- >>> showIsOrVs fooQPN $ tryVs [i0, v1]
+-- "foo-1.0.1, foo-1.0.0/installed-inplace"
+-- >>> showIsOrVs fooQPN $ tryVs [v0, i1]
+-- "foo-1.0.1/installed-inplace, foo-1.0.0"
 -- >>> showIsOrVs fooQPN $ tryVs []
 -- "unexpected empty list of versions"
 showIsOrVs :: QPN -> IsOrVs -> String
 showIsOrVs _ (Is []) = "unexpected empty list of versions"
 showIsOrVs q (Is [x]) = showOption q x
-showIsOrVs q (Is xs) = L.intercalate ", " (showOption q `map` xs)
+showIsOrVs q (Is (reverse -> xs)) = L.intercalate ", " (showOption q `map` xs)
 showIsOrVs q (Vs (reverse -> xs)) = showQPN q ++ "; " ++ L.intercalate ", " (showVer `map` xs)
 
 showGR :: QGoalReason -> String
@@ -331,7 +345,9 @@ showConflictingDep (ConflictingDep dr (PkgComponent qpn comp) ci) =
 -- $setup
 -- >>> import Distribution.Solver.Types.PackagePath
 -- >>> import Distribution.Types.Version
+-- >>> import Distribution.Types.UnitId
 -- >>> let fooQPN = Q (PackagePath DefaultNamespace QualToplevel) (mkPackageName "foo")
 -- >>> let v0 = POption (I (mkVersion [1,0,0]) InRepo) Nothing
 -- >>> let v1 = POption (I (mkVersion [1,0,1]) InRepo) Nothing
--- >>> let v2 = POption (I (mkVersion [1,0,2]) InRepo) Nothing
+-- >>> let i0 = POption (I (mkVersion [1,0,0]) (Inst $ mkUnitId "foo-1.0.0-inplace")) Nothing
+-- >>> let i1 = POption (I (mkVersion [1,0,1]) (Inst $ mkUnitId "foo-1.0.1-inplace")) Nothing
