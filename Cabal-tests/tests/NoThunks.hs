@@ -81,6 +81,7 @@ instance NoThunks LibraryVisibility
 instance NoThunks ForeignLibType
 instance NoThunks Position
 instance NoThunks ExactPosition
+instance NoThunks NameSpace
 instance NoThunks ExactPrintMeta
 instance NoThunks GenericPackageDescription
 instance NoThunks KnownRepoType
