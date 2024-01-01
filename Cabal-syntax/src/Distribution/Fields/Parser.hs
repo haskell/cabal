@@ -1,7 +1,7 @@
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PatternGuards #-}
 
 -----------------------------------------------------------------------------
 
@@ -35,9 +35,6 @@ module Distribution.Fields.Parser
 
 import qualified Data.ByteString.Char8 as B8
 import Data.Functor.Identity
-import qualified Data.Text as T
-import qualified Data.Text.Encoding as T
-import qualified Data.Text.Encoding.Error as T
 import Distribution.Compat.Prelude
 import Distribution.Fields.Field
 import Distribution.Fields.Lexer
@@ -80,10 +77,6 @@ instance Stream LexState' Identity LToken where
   uncons (LexState' _ (tok, st')) =
     case tok of
       L _ EOF -> return Nothing
-      -- FIXME: DEBUG: uncomment these lines to skip new tokens and restore old lexer behaviour
-      -- L _ (Whitespace _) -> uncons st'
-      -- L _ (Comment _) -> uncons st'
-      -- FIXME: ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
       _ -> return (Just (tok, st'))
 
 -- | Get lexer warnings accumulated so far
@@ -107,7 +100,7 @@ getToken :: (Token -> Maybe a) -> Parser a
 getToken getTok = getTokenWithPos (\(L _ t) -> getTok t)
 
 getTokenWithPos :: (LToken -> Maybe a) -> Parser a
-getTokenWithPos = tokenPrim (\(L _ t) -> describeToken t) updatePos
+getTokenWithPos getTok = tokenPrim (\(L _ t) -> describeToken t) updatePos getTok
   where
     updatePos :: SourcePos -> LToken -> LexState' -> SourcePos
     updatePos pos (L (Position col line) _) _ = newPos (sourceName pos) col line
@@ -122,57 +115,37 @@ describeToken t = case t of
   Colon -> "\":\""
   OpenBrace -> "\"{\""
   CloseBrace -> "\"}\""
-  Whitespace s -> "whitespace " ++ show s
-  Comment s -> "comment " ++ show s
+  --  SemiColon       -> "\";\""
   EOF -> "end of file"
   LexicalError is -> "character in input " ++ show (B8.head is)
 
 tokSym :: Parser (Name Position)
-tokSym = many tokWhitespace *> getTokenWithPos (\t -> case t of L pos (TokSym x) -> Just (mkName pos x); _ -> Nothing)
-
-tokSym' :: Parser (SectionArg Position)
-tokSym' = many tokWhitespace *> getTokenWithPos (\t -> case t of L pos (TokSym x) -> Just (SecArgName pos x); _ -> Nothing)
-
-tokStr :: Parser (SectionArg Position)
-tokStr = many tokWhitespace *> getTokenWithPos (\t -> case t of L pos (TokStr x) -> Just (SecArgStr pos x); _ -> Nothing)
-
-tokOther :: Parser (SectionArg Position)
-tokOther = many tokWhitespace *> getTokenWithPos (\t -> case t of L pos (TokOther x) -> Just (SecArgOther pos x); _ -> Nothing)
-
+tokSym', tokStr, tokOther :: Parser (SectionArg Position)
 tokIndent :: Parser Int
-tokIndent = many tokWhitespace *> getToken (\t -> case t of Indent x -> Just x; _ -> Nothing)
-
-tokColon :: Parser ()
-tokColon = getToken (\t -> case t of Colon -> Just (); _ -> Nothing)
-
-tokOpenBrace :: Parser ()
-tokOpenBrace = getToken (\t -> case t of OpenBrace -> Just (); _ -> Nothing)
-
-tokCloseBrace :: Parser ()
-tokCloseBrace = getToken (\t -> case t of CloseBrace -> Just (); _ -> Nothing)
-
+tokColon, tokCloseBrace :: Parser ()
+tokOpenBrace :: Parser Position
 tokFieldLine :: Parser (FieldLine Position)
-tokFieldLine = many tokWhitespace *> getTokenWithPos (\t -> case t of L pos (TokFieldLine s) -> Just (FieldLine pos s); _ -> Nothing)
+tokSym = getTokenWithPos $ \t -> case t of L pos (TokSym x) -> Just (mkName pos x); _ -> Nothing
+tokSym' = getTokenWithPos $ \t -> case t of L pos (TokSym x) -> Just (SecArgName pos x); _ -> Nothing
+tokStr = getTokenWithPos $ \t -> case t of L pos (TokStr x) -> Just (SecArgStr pos x); _ -> Nothing
+tokOther = getTokenWithPos $ \t -> case t of L pos (TokOther x) -> Just (SecArgOther pos x); _ -> Nothing
+tokIndent = getToken $ \t -> case t of Indent x -> Just x; _ -> Nothing
+tokColon = getToken $ \t -> case t of Colon -> Just (); _ -> Nothing
+tokOpenBrace = getTokenWithPos $ \t -> case t of L pos OpenBrace -> Just pos; _ -> Nothing
+tokCloseBrace = getToken $ \t -> case t of CloseBrace -> Just (); _ -> Nothing
+tokFieldLine = getTokenWithPos $ \t -> case t of L pos (TokFieldLine s) -> Just (FieldLine pos s); _ -> Nothing
 
-tokComment :: Parser B8.ByteString
-tokComment = getToken (\case Comment s -> Just s; _ -> Nothing) *> tokWhitespace
-
-tokWhitespace :: Parser B8.ByteString
-tokWhitespace = getToken (\case Whitespace s -> Just s; _ -> Nothing)
-
+colon, openBrace, closeBrace :: Parser ()
 sectionArg :: Parser (SectionArg Position)
 sectionArg = tokSym' <|> tokStr <|> tokOther <?> "section parameter"
 
 fieldSecName :: Parser (Name Position)
 fieldSecName = tokSym <?> "field or section name"
 
-colon :: Parser ()
 colon = tokColon <?> "\":\""
-
-openBrace :: Parser ()
-openBrace = tokOpenBrace <?> "\"{\""
-
-closeBrace :: Parser ()
+openBrace = do
+  pos <- tokOpenBrace <?> "\"{\""
+  addLexerWarning (LexWarning LexBraces pos)
 closeBrace = tokCloseBrace <?> "\"}\""
 
 fieldContent :: Parser (FieldLine Position)
@@ -255,7 +228,6 @@ inLexerMode (LexerMode mode) p =
 --
 cabalStyleFile :: Parser [Field Position]
 cabalStyleFile = do
-  skipMany tokComment
   es <- elements zeroIndentLevel
   eof
   return es
@@ -274,13 +246,12 @@ elements ilevel = many (element ilevel)
 -- element ::= '\\n' name elementInLayoutContext
 --           |      name elementInNonLayoutContext
 element :: IndentLevel -> Parser (Field Position)
-element ilevel = do
-  skipMany tokWhitespace
+element ilevel =
   ( do
       ilevel' <- indentOfAtLeast ilevel
       name <- fieldSecName
       elementInLayoutContext (incIndentLevel ilevel') name
-    )
+  )
     <|> ( do
             name <- fieldSecName
             elementInNonLayoutContext name
@@ -293,12 +264,10 @@ element ilevel = do
 -- elementInLayoutContext ::= ':'  fieldLayoutOrBraces
 --                          | arg* sectionLayoutOrBraces
 elementInLayoutContext :: IndentLevel -> Name Position -> Parser (Field Position)
-elementInLayoutContext ilevel name = do
-  skipMany tokWhitespace
+elementInLayoutContext ilevel name =
   (do colon; fieldLayoutOrBraces ilevel name)
     <|> ( do
-            args <- parserTraced "many sectionArg" (many (sectionArg <* tokWhitespace))
-            skipMany tokComment
+            args <- many sectionArg
             elems <- sectionLayoutOrBraces ilevel
             return (Section name args elems)
         )
@@ -310,9 +279,8 @@ elementInLayoutContext ilevel name = do
 -- elementInNonLayoutContext ::= ':' FieldInlineOrBraces
 --                             | arg* '\\n'? '{' elements '\\n'? '}'
 elementInNonLayoutContext :: Name Position -> Parser (Field Position)
-elementInNonLayoutContext name = do
-  skipMany tokWhitespace
-  (do parserTraced "colon" colon; fieldInlineOrBraces name)
+elementInNonLayoutContext name =
+  (do colon; fieldInlineOrBraces name)
     <|> ( do
             args <- many sectionArg
             openBrace
@@ -327,9 +295,7 @@ elementInNonLayoutContext name = do
 -- fieldLayoutOrBraces   ::= '\\n'? '{' content '}'
 --                         | line? ('\\n' line)*
 fieldLayoutOrBraces :: IndentLevel -> Name Position -> Parser (Field Position)
-fieldLayoutOrBraces ilevel name = do
-  skipMany tokWhitespace
-  braces <|> fieldLayout
+fieldLayoutOrBraces ilevel name = braces <|> fieldLayout
   where
     braces = do
       openBrace
@@ -348,30 +314,28 @@ fieldLayoutOrBraces ilevel name = do
 -- sectionLayoutOrBraces ::= '\\n'? '{' elements \\n? '}'
 --                         | elements
 sectionLayoutOrBraces :: IndentLevel -> Parser [Field Position]
-sectionLayoutOrBraces ilevel = parserTraced "sectionLayoutOrBraces" $ do
-  skipMany tokWhitespace
+sectionLayoutOrBraces ilevel =
   ( do
       openBrace
       elems <- elements zeroIndentLevel
       optional tokIndent
       closeBrace
       return elems
-    )
-    <|> elements ilevel
+  )
+    <|> (elements ilevel)
 
 -- The body of a field, using either inline style or braces.
 --
 -- fieldInlineOrBraces   ::= '\\n'? '{' content '}'
 --                         | content
 fieldInlineOrBraces :: Name Position -> Parser (Field Position)
-fieldInlineOrBraces name = do
-  skipMany tokWhitespace
+fieldInlineOrBraces name =
   ( do
       openBrace
       ls <- inLexerMode (LexerMode in_field_braces) (many fieldContent)
       closeBrace
       return (Field name ls)
-    )
+  )
     <|> ( do
             ls <- inLexerMode (LexerMode in_field_braces) (option [] (fmap (\l -> [l]) fieldContent))
             return (Field name ls)
@@ -443,58 +407,51 @@ checkIndentation'' a b
   | positionCol a == positionCol b = id
   | otherwise = (LexWarning LexInconsistentIndentation b :)
 
--- #ifdef CABAL_PARSEC_DEBUG
+#ifdef CABAL_PARSEC_DEBUG
 parseTest' :: Show a => Parsec LexState' () a -> SourceName -> B8.ByteString -> IO ()
 parseTest' p fname s =
-  case parse p fname (lexSt s) of
-    Left err -> putStrLn (formatError s err)
-    Right x -> print x
+    case parse p fname (lexSt s) of
+      Left err -> putStrLn (formatError s err)
+
+      Right x  -> print x
   where
     lexSt = mkLexState' . mkLexState
 
 parseFile :: Show a => Parser a -> FilePath -> IO ()
 parseFile p f = B8.readFile f >>= \s -> parseTest' p f s
 
-parseStr :: Show a => Parser a -> String -> IO ()
+parseStr  :: Show a => Parser a -> String -> IO ()
 parseStr p = parseBS p . B8.pack
 
-parseBS :: Show a => Parser a -> B8.ByteString -> IO ()
+parseBS  :: Show a => Parser a -> B8.ByteString -> IO ()
 parseBS p = parseTest' p "<input string>"
 
 formatError :: B8.ByteString -> ParseError -> String
 formatError input perr =
-  unlines
-    [ "Parse error " ++ show (errorPos perr) ++ ":"
-    , errLine
-    , indicator ++ errmsg
-    ]
+    unlines
+      [ "Parse error "++ show (errorPos perr) ++ ":"
+      , errLine
+      , indicator ++ errmsg ]
   where
-    pos = errorPos perr
-    ls = lines' (T.decodeUtf8With T.lenientDecode input)
-    errLine = T.unpack (ls !! (sourceLine pos - 1))
+    pos       = errorPos perr
+    ls        = lines' (T.decodeUtf8With T.lenientDecode input)
+    errLine   = T.unpack (ls !! (sourceLine pos - 1))
     indicator = replicate (sourceColumn pos) ' ' ++ "^"
-    errmsg =
-      showErrorMessages
-        "or"
-        "unknown parse error"
-        "expecting"
-        "unexpected"
-        "end of file"
-        (errorMessages perr)
+    errmsg    = showErrorMessages "or" "unknown parse error"
+                                  "expecting" "unexpected" "end of file"
+                                  (errorMessages perr)
 
 -- | Handles windows/osx/unix line breaks uniformly
 lines' :: T.Text -> [T.Text]
 lines' s1
   | T.null s1 = []
   | otherwise = case T.break (\c -> c == '\r' || c == '\n') s1 of
-      (l, s2)
-        | Just (c, s3) <- T.uncons s2 ->
-            case T.uncons s3 of
-              Just ('\n', s4) | c == '\r' -> l : lines' s4
-              _ -> l : lines' s3
-        | otherwise -> [l]
-
--- #endif
+                  (l, s2) | Just (c,s3) <- T.uncons s2
+                         -> case T.uncons s3 of
+                              Just ('\n', s4) | c == '\r' -> l : lines' s4
+                              _               -> l : lines' s3
+                          | otherwise -> [l]
+#endif
 
 eof :: Parser ()
 eof = notFollowedBy anyToken <?> "end of file"

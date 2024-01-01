@@ -15,7 +15,7 @@
 #endif
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
 module Distribution.Fields.Lexer
-  (ltest, lexString, lexByteString, lexToken, Token(..), LToken(..)
+  (ltest, lexToken, Token(..), LToken(..)
   ,bol_section, in_section, in_field_layout, in_field_braces
   ,mkLexState) where
 
@@ -82,102 +82,85 @@ tokens :-
 }
 
 <bol_section, bol_field_layout, bol_field_braces> {
-  @nbspspacetab* @nl         { \pos len inp -> do
-                                  _ <- checkWhitespace pos len inp
-                                  adjustPos retPos
-                                  toki Whitespace pos len inp }
-  -- FIXME: no @nl here to allow for comments on last line of the file with no trailing \n
-  -- FIXME: TODO: check the lack of @nl works here including counting line numbers
-  $spacetab* "--" $comment*  { toki Comment }
+  @nbspspacetab* @nl         { \pos len inp -> checkWhitespace pos len inp >> adjustPos retPos >> lexToken }
+  -- no @nl here to allow for comments on last line of the file with no trailing \n
+  $spacetab* "--" $comment*  ;  -- TODO: check the lack of @nl works here
+                                -- including counting line numbers
 }
 
 <bol_section> {
-  @nbspspacetab*   { \pos len inp -> do
-                        len' <- checkLeadingWhitespace pos len inp
-                        -- len' is character whitespace length (counting nbsp as one)
-                        if B.length inp == len
-                          then return (L pos EOF)
-                          else do
-                          -- Small hack: if char and byte length mismatch
-                          -- subtract the difference, so lexToken will count position correctly.
-                          -- Proper (and slower) fix is to count utf8 length in lexToken
-                          when (len' /= len) $ adjustPos (incPos (len' - len))
-                          setStartCode in_section
-                          return (L pos (Indent len')) }
+  @nbspspacetab*   { \pos len inp -> checkLeadingWhitespace pos len inp >>= \len' ->
+                                     -- len' is character whitespace length (counting nbsp as one)
+                                     if B.length inp == len
+                                       then return (L pos EOF)
+                                       else do
+                                        -- Small hack: if char and byte length mismatch
+                                        -- subtract the difference, so lexToken will count position correctly.
+                                        -- Proper (and slower) fix is to count utf8 length in lexToken
+                                        when (len' /= len) $ adjustPos (incPos (len' - len))
+                                        setStartCode in_section
+                                        return (L pos (Indent len')) }
   $spacetab* \{    { tok  OpenBrace }
   $spacetab* \}    { tok  CloseBrace }
 }
 
 <in_section> {
-  --TODO: don't allow tab as leading space
-  $spacetab+     { toki Whitespace }
+  $spacetab+   ; --TODO: don't allow tab as leading space
 
-  "--" $comment* { toki Comment }
+  "--" $comment* ; -- TODO capture comments instead of deleting them
 
-  @name          { toki TokSym }
-  @string        { \pos len inp -> return $! L pos (TokStr (B.take (len - 2) (B.tail inp))) }
-  @oplike        { toki TokOther }
-  $paren         { toki TokOther }
-  \:             { tok  Colon }
-  \{             { tok  OpenBrace }
-  \}             { tok  CloseBrace }
-  @nl            { \pos len inp -> do
-                      adjustPos retPos
-                      setStartCode bol_section
-                      toki Whitespace pos len inp }
+  @name        { toki TokSym }
+  @string      { \pos len inp -> return $! L pos (TokStr (B.take (len - 2) (B.tail inp))) }
+  @oplike      { toki TokOther }
+  $paren       { toki TokOther }
+  \:           { tok  Colon }
+  \{           { tok  OpenBrace }
+  \}           { tok  CloseBrace }
+  @nl          { \_ _ _ -> adjustPos retPos >> setStartCode bol_section >> lexToken }
 }
 
 <bol_field_layout> {
-  @nbspspacetab* { \pos len inp -> do
-                      len' <- checkLeadingWhitespace pos len inp
-                      if B.length inp == len
-                        then return (L pos EOF)
-                        else do
-                          -- Small hack: if char and byte length mismatch
-                          -- subtract the difference, so lexToken will count position correctly.
-                          -- Proper (and slower) fix is to count utf8 length in lexToken
-                          when (len' /= len) $ adjustPos (incPos (len' - len))
-                          setStartCode in_field_layout
-                          return (L pos (Indent len')) }
+  @nbspspacetab* { \pos len inp -> checkLeadingWhitespace pos len inp >>= \len' ->
+                                  if B.length inp == len
+                                    then return (L pos EOF)
+                                    else do
+                                      -- Small hack: if char and byte length mismatch
+                                      -- subtract the difference, so lexToken will count position correctly.
+                                      -- Proper (and slower) fix is to count utf8 length in lexToken
+                                      when (len' /= len) $ adjustPos (incPos (len' - len))
+                                      setStartCode in_field_layout
+                                      return (L pos (Indent len')) }
 }
 
 <in_field_layout> {
-  $spacetab+                       { toki Whitespace }
-  $field_layout' $field_layout*    { toki TokFieldLine }
-  @nl                              { \pos len inp -> do
-                                        adjustPos retPos
-                                        setStartCode bol_field_layout
-                                        toki Whitespace pos len inp }
+  $spacetab+;
+  $field_layout' $field_layout*  { toki TokFieldLine }
+  @nl             { \_ _ _ -> adjustPos retPos >> setStartCode bol_field_layout >> lexToken }
 }
 
 <bol_field_braces> {
-   ()                              { \_ _ _ -> setStartCode in_field_braces >> lexToken }
+   ()                { \_ _ _ -> setStartCode in_field_braces >> lexToken }
 }
 
 <in_field_braces> {
-  $spacetab+                       { toki Whitespace }
+  $spacetab+;
   $field_braces' $field_braces*    { toki TokFieldLine }
-  \{                               { tok  OpenBrace  }
-  \}                               { tok  CloseBrace }
-  @nl                              { \pos len inp -> do
-                                        adjustPos retPos
-                                        setStartCode bol_field_braces
-                                        toki Whitespace pos len inp }
+  \{                { tok  OpenBrace  }
+  \}                { tok  CloseBrace }
+  @nl               { \_ _ _ -> adjustPos retPos >> setStartCode bol_field_braces >> lexToken }
 }
 
 {
 
 -- | Tokens of outer cabal file structure. Field values are treated opaquely.
-data Token = TokSym       !ByteString   -- ^ Haskell-like identifier, number or operator
-           | TokStr       !ByteString   -- ^ String in quotes
-           | TokOther     !ByteString   -- ^ Operators and parens
-           | Indent       !Int          -- ^ Indentation token
+data Token = TokSym   !ByteString       -- ^ Haskell-like identifier, number or operator
+           | TokStr   !ByteString       -- ^ String in quotes
+           | TokOther !ByteString       -- ^ Operators and parens
+           | Indent   !Int              -- ^ Indentation token
            | TokFieldLine !ByteString   -- ^ Lines after @:@
            | Colon
            | OpenBrace
            | CloseBrace
-           | Whitespace   !ByteString
-           | Comment      !ByteString
            | EOF
            | LexicalError InputStream --TODO: add separate string lexical error
   deriving Show
@@ -247,6 +230,7 @@ lexToken = do
         setInput inp'
         let !len_bytes = B.length inp - B.length inp'
         t <- action pos len_bytes inp
+        --traceShow t $ return tok
         return t
 
 
@@ -275,29 +259,11 @@ lexAll = do
     _       -> do ts <- lexAll
                   return (t : ts)
 
--- FIXME: for debugging
-lexAll' :: Lex [(Int, LToken)]
-lexAll' = do
-  t <- lexToken
-  c <- getStartCode
-  case t of
-    L _ EOF -> return [(c, t)]
-    _       -> do ts <- lexAll'
-                  return ((c, t) : ts)
-
 ltest :: Int -> String -> Prelude.IO ()
 ltest code s =
   let (ws, xs) = execLexer (setStartCode code >> lexAll) (B.Char8.pack s)
    in traverse_ print ws >> traverse_ print xs
 
-lexString :: String -> ([LexWarning], [LToken])
-lexString = execLexer lexAll . B.Char8.pack
-
-lexByteString :: ByteString -> ([LexWarning], [LToken])
-lexByteString = execLexer lexAll
-
-lexByteString' :: ByteString -> ([LexWarning], [(Int, LToken)])
-lexByteString' = execLexer lexAll'
 
 mkLexState :: ByteString -> LexState
 mkLexState input = LexState
