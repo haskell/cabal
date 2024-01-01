@@ -235,10 +235,17 @@ showOption qpn@(Q _pp pn) (POption i linkedTo) =
     Just pp' -> showQPN qpn ++ "~>" ++ showPI (PI (Q pp' pn) i)
 
 -- | A list of versions, or a list of instances.
-data IsOrVs = Is [POption] | Vs [Ver]
+data IsOrVs = Is [POption] | Vs [Ver] deriving Show
 
 -- | Try to convert a list of options to a list of versions, or a list of
--- instances if any of the options is linked.
+-- instances if any of the options is linked (installed).  Singleton lists or
+-- empty lists are always converted to Is.
+-- >>> tryVs [v0, v1, v2]
+-- Vs [mkVersion [1,0,0],mkVersion [1,0,1],mkVersion [1,0,2]]
+-- >>> tryVs [v0]
+-- Is [POption (I (mkVersion [1,0,0]) InRepo) Nothing]
+-- >>> tryVs []
+-- Is []
 tryVs :: [POption] -> IsOrVs
 tryVs xs@[] = Is xs
 tryVs xs@[_] = Is xs
@@ -248,7 +255,8 @@ tryVs xs
       let (vs, is) = L.partition ((== InRepo) . snd) [(v, l) | POption i _ <- xs, let I v l = i]
       in if null is then Vs (fst `map` vs) else Is xs
 
--- |
+-- | Shows a list of versions in a human-friendly way, abbreviated. Shows a list
+-- of instances in full.
 -- >>> showIsOrVs fooQPN $ tryVs [v0, v1, v2]
 -- "foo; 1.0.2, 1.0.1, 1.0.0"
 -- >>> showIsOrVs fooQPN $ tryVs [v0]
