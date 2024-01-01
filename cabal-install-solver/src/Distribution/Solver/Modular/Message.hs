@@ -226,7 +226,7 @@ showQSNBool a q b = show a ++ Flag.showQSNBool q b
 
 showOptions :: ProgressAction -> QPN -> [POption] -> String
 showOptions a q [p] = show a ++ showOption q p
-showOptions a q ps = show a ++ abbreviatePkgVers q ps
+showOptions a q ps = show a ++ abbreviateOptions q ps
 
 showOption :: QPN -> POption -> String
 showOption qpn@(Q _pp pn) (POption i linkedTo) =
@@ -235,16 +235,16 @@ showOption qpn@(Q _pp pn) (POption i linkedTo) =
     Just pp' -> showQPN qpn ++ "~>" ++ showPI (PI (Q pp' pn) i)
 
 -- |
--- >>> abbreviatePkgVers fooQPN [v0, v1, v2]
+-- >>> abbreviateOptions fooQPN [v0, v1, v2]
 -- "foo; 1.0.2, 1.0.1, 1.0.0"
--- >>> abbreviatePkgVers fooQPN [v0]
+-- >>> abbreviateOptions fooQPN [v0]
 -- "foo-1.0.0"
--- >>> abbreviatePkgVers fooQPN []
+-- >>> abbreviateOptions fooQPN []
 -- "unexpected empty list of versions"
-abbreviatePkgVers :: QPN -> [POption] -> String
-abbreviatePkgVers _ [] = "unexpected empty list of versions"
-abbreviatePkgVers q [x] = showOption q x
-abbreviatePkgVers q (reverse -> xs)
+abbreviateOptions :: QPN -> [POption] -> String
+abbreviateOptions _ [] = "unexpected empty list of versions"
+abbreviateOptions q [x] = showOption q x
+abbreviateOptions q (reverse -> xs)
     | any (\(POption (instI -> b0) (isJust -> b1)) -> b0 || b1) xs = showQPN q ++ L.intercalate ", " (showOption q `map` xs)
     | otherwise = showQPN q ++ "; " ++ L.intercalate ", " ((\(POption (showI -> v) _) -> v) `map` xs)
 
