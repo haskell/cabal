@@ -226,7 +226,7 @@ showQSNBool a q b = show a ++ Flag.showQSNBool q b
 
 showOptions :: ProgressAction -> QPN -> [POption] -> String
 showOptions a q [p] = show a ++ showOption q p
-showOptions a q ps = show a ++ showAbbreviated q (abbreviateOptions ps)
+showOptions a q ps = show a ++ showIsOrVs q (tryVs ps)
 
 showOption :: QPN -> POption -> String
 showOption qpn@(Q _pp pn) (POption i linkedTo) =
@@ -234,29 +234,32 @@ showOption qpn@(Q _pp pn) (POption i linkedTo) =
     Nothing  -> showPI (PI qpn i) -- Consistent with prior to POption
     Just pp' -> showQPN qpn ++ "~>" ++ showPI (PI (Q pp' pn) i)
 
-data Abbreviation = Unabridged [POption] | Abbreviated [Ver]
+-- | A list of versions, or a list of instances.
+data IsOrVs = Is [POption] | Vs [Ver]
 
-abbreviateOptions :: [POption] -> Abbreviation
-abbreviateOptions xs@[] = Unabridged xs
-abbreviateOptions xs@[_] = Unabridged xs
-abbreviateOptions xs
-    | any (\(POption (instI -> b0) (isJust -> b1)) -> b0 || b1) xs = Unabridged xs
+-- | Try to convert a list of options to a list of versions, or a list of
+-- instances if any of the options is linked.
+tryVs :: [POption] -> IsOrVs
+tryVs xs@[] = Is xs
+tryVs xs@[_] = Is xs
+tryVs xs
+    | any (\(POption (instI -> b0) (isJust -> b1)) -> b0 || b1) xs = Is xs
     | otherwise =
       let (vs, is) = L.partition ((== InRepo) . snd) [(v, l) | POption i _ <- xs, let I v l = i]
-      in if null is then Abbreviated (fst `map` vs) else Unabridged xs
+      in if null is then Vs (fst `map` vs) else Is xs
 
 -- |
--- >>> showAbbreviated fooQPN $ abbreviateOptions [v0, v1, v2]
+-- >>> showIsOrVs fooQPN $ tryVs [v0, v1, v2]
 -- "foo; 1.0.2, 1.0.1, 1.0.0"
--- >>> showAbbreviated fooQPN $ abbreviateOptions [v0]
+-- >>> showIsOrVs fooQPN $ tryVs [v0]
 -- "foo-1.0.0"
--- >>> showAbbreviated fooQPN $ abbreviateOptions []
+-- >>> showIsOrVs fooQPN $ tryVs []
 -- "unexpected empty list of versions"
-showAbbreviated :: QPN -> Abbreviation -> String
-showAbbreviated _ (Unabridged []) = "unexpected empty list of versions"
-showAbbreviated q (Unabridged [x]) = showOption q x
-showAbbreviated q (Unabridged xs) = L.intercalate ", " (showOption q `map` xs)
-showAbbreviated q (Abbreviated (reverse -> xs)) = showQPN q ++ "; " ++ L.intercalate ", " (showVer `map` xs)
+showIsOrVs :: QPN -> IsOrVs -> String
+showIsOrVs _ (Is []) = "unexpected empty list of versions"
+showIsOrVs q (Is [x]) = showOption q x
+showIsOrVs q (Is xs) = L.intercalate ", " (showOption q `map` xs)
+showIsOrVs q (Vs (reverse -> xs)) = showQPN q ++ "; " ++ L.intercalate ", " (showVer `map` xs)
 
 showGR :: QGoalReason -> String
 showGR UserGoal            = " (user goal)"
