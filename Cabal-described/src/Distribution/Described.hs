@@ -39,8 +39,10 @@ module Distribution.Described (
     ) where
 
 import Prelude
-       (Bool (..), Char, Either (..), Enum (..), Eq (..), Ord (..), Show (..), String, elem, fmap, foldr, id, map, maybe, otherwise, return, undefined, ($),
-       (.))
+       ( Bool (..), Char, Either (..), Enum (..), Eq (..), Ord (..), Show (..), String
+       , elem, fmap, foldr, id, map, maybe, otherwise, return, reverse, undefined
+       , ($), (.), (<$>)
+       )
 
 import Data.Functor.Identity (Identity (..))
 import Data.Maybe            (fromMaybe)
@@ -100,7 +102,7 @@ import Distribution.Types.UnqualComponentName      (UnqualComponentName)
 import Distribution.Utils.Path                     (LicenseFile, PackageDir, SourceDir, SymbolicPath)
 import Distribution.Verbosity                      (Verbosity)
 import Distribution.Version                        (Version, VersionRange)
-import Language.Haskell.Extension                  (Extension, Language)
+import Language.Haskell.Extension                  (Extension, Language, knownLanguages)
 
 -- | Class describing the pretty/parsec format of a.
 class (Pretty a, Parsec a) => Described a where
@@ -422,7 +424,7 @@ instance Described IncludeRenaming where
         mr = describe (Proxy :: Proxy ModuleRenaming)
 
 instance Described Language where
-    describe _ = REUnion ["GHC2021", "Haskell2010", "Haskell98"]
+    describe _ = REUnion $ (REString . show) <$> reverse knownLanguages
 
 instance Described LegacyExeDependency where
     describe _ = RETodo
