@@ -241,17 +241,17 @@ data IsOrVs = Is [POption] | Vs [Ver] deriving Show
 -- instances if any of the options is linked (installed).  Singleton lists or
 -- empty lists are always converted to Is.
 -- >>> tryVs [v0, v1]
--- Vs [mkVersion [1,0,0],mkVersion [1,0,1]]
+-- Vs [mkVersion [0],mkVersion [1]]
 -- >>> tryVs [v0]
--- Is [POption (I (mkVersion [1,0,0]) InRepo) Nothing]
+-- Is [POption (I (mkVersion [0]) InRepo) Nothing]
 -- >>> tryVs [i0, i1]
--- Is [POption (I (mkVersion [1,0,0]) (Inst (UnitId "foo-1.0.0-inplace"))) Nothing,POption (I (mkVersion [1,0,1]) (Inst (UnitId "foo-1.0.1-inplace"))) Nothing]
+-- Is [POption (I (mkVersion [0]) (Inst (UnitId "foo-0-inplace"))) Nothing,POption (I (mkVersion [1]) (Inst (UnitId "foo-1-inplace"))) Nothing]
 -- >>> tryVs [i0, v1]
--- Is [POption (I (mkVersion [1,0,0]) (Inst (UnitId "foo-1.0.0-inplace"))) Nothing,POption (I (mkVersion [1,0,1]) InRepo) Nothing]
+-- Is [POption (I (mkVersion [0]) (Inst (UnitId "foo-0-inplace"))) Nothing,POption (I (mkVersion [1]) InRepo) Nothing]
 -- >>> tryVs [v0, i1]
--- Is [POption (I (mkVersion [1,0,0]) InRepo) Nothing,POption (I (mkVersion [1,0,1]) (Inst (UnitId "foo-1.0.1-inplace"))) Nothing]
+-- Is [POption (I (mkVersion [0]) InRepo) Nothing,POption (I (mkVersion [1]) (Inst (UnitId "foo-1-inplace"))) Nothing]
 -- >>> tryVs [i0]
--- Is [POption (I (mkVersion [1,0,0]) (Inst (UnitId "foo-1.0.0-inplace"))) Nothing]
+-- Is [POption (I (mkVersion [0]) (Inst (UnitId "foo-0-inplace"))) Nothing]
 -- >>> tryVs []
 -- Is []
 tryVs :: [POption] -> IsOrVs
@@ -266,15 +266,15 @@ tryVs xs
 -- | Shows a list of versions in a human-friendly way, abbreviated. Shows a list
 -- of instances in full.
 -- >>> showIsOrVs fooQPN $ tryVs [v0, v1]
--- "foo; 1.0.1, 1.0.0"
+-- "foo; 1, 0"
 -- >>> showIsOrVs fooQPN $ tryVs [v0]
--- "foo-1.0.0"
+-- "foo-0"
 -- >>> showIsOrVs fooQPN $ tryVs [i0, i1]
--- "foo-1.0.1/installed-inplace, foo-1.0.0/installed-inplace"
+-- "foo-1/installed-inplace, foo-0/installed-inplace"
 -- >>> showIsOrVs fooQPN $ tryVs [i0, v1]
--- "foo-1.0.1, foo-1.0.0/installed-inplace"
+-- "foo-1, foo-0/installed-inplace"
 -- >>> showIsOrVs fooQPN $ tryVs [v0, i1]
--- "foo-1.0.1/installed-inplace, foo-1.0.0"
+-- "foo-1/installed-inplace, foo-0"
 -- >>> showIsOrVs fooQPN $ tryVs []
 -- "unexpected empty list of versions"
 showIsOrVs :: QPN -> IsOrVs -> String
@@ -347,7 +347,7 @@ showConflictingDep (ConflictingDep dr (PkgComponent qpn comp) ci) =
 -- >>> import Distribution.Types.Version
 -- >>> import Distribution.Types.UnitId
 -- >>> let fooQPN = Q (PackagePath DefaultNamespace QualToplevel) (mkPackageName "foo")
--- >>> let v0 = POption (I (mkVersion [1,0,0]) InRepo) Nothing
--- >>> let v1 = POption (I (mkVersion [1,0,1]) InRepo) Nothing
--- >>> let i0 = POption (I (mkVersion [1,0,0]) (Inst $ mkUnitId "foo-1.0.0-inplace")) Nothing
--- >>> let i1 = POption (I (mkVersion [1,0,1]) (Inst $ mkUnitId "foo-1.0.1-inplace")) Nothing
+-- >>> let v0 = POption (I (mkVersion [0]) InRepo) Nothing
+-- >>> let v1 = POption (I (mkVersion [1]) InRepo) Nothing
+-- >>> let i0 = POption (I (mkVersion [0]) (Inst $ mkUnitId "foo-0-inplace")) Nothing
+-- >>> let i1 = POption (I (mkVersion [1]) (Inst $ mkUnitId "foo-1-inplace")) Nothing
