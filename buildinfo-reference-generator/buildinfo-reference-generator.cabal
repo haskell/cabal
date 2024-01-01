@@ -8,7 +8,7 @@ executable buildinfo-reference-generator
   ghc-options:      -Wall
   main-is:          Main.hs
   build-depends:
-    , base             ^>=4.12 || ^>=4.13
+    , base             >=4.11 && <4.20
     , Cabal
     , Cabal-described
     , containers
