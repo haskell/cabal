@@ -26,12 +26,12 @@ import qualified Text.PrettyPrint as PP
 import qualified Zinza as Z
 
 import Distribution.Described
+import Distribution.Described.Extension
 import Distribution.Utils.GrammarRegex
 
 import Distribution.ModuleName         (ModuleName)
 import Distribution.Types.Version      (Version)
 import Distribution.Types.VersionRange (VersionRange)
-import Language.Haskell.Extension
 
 -------------------------------------------------------------------------------
 -- Main
