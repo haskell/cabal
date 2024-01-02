@@ -108,6 +108,7 @@ Comma separated
     Note, the comma cannot exist alone.
 
     .. math::
+    
         \mathrm{commalist}(\mathit{element}) =
         {{commaList}}
 
@@ -119,6 +120,7 @@ Optional comma separated
     an example field is :pkg-field:`default-extensions`.
 
     .. math::
+
         \mathrm{optcommalist}(\mathit{element}) =
         {{optCommaList}}
 
@@ -132,6 +134,7 @@ In the syntax definitions below the following non-terminal symbols are used:
     {{ production.description }}
 
     .. math::
+
         {{ production.syntax }}
 
 {% endfor %}
@@ -163,6 +166,7 @@ Build info fields
 {% if notNull field.syntax %}
 
     .. math::
+
         {{field.syntax}}
 {% endif %}
 
@@ -195,6 +199,7 @@ Package description fields
 {% if notNull field.syntax %}
 
     .. math::
+
         {{field.syntax}}
 {% endif %}
 
@@ -227,6 +232,7 @@ Test-suite fields
 {% if notNull field.syntax %}
 
     .. math::
+
         {{field.syntax}}
 {% endif %}
 

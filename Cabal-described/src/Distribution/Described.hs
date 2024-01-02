@@ -1,6 +1,8 @@
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances   #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ViewPatterns #-}
 module Distribution.Described (
     Described (..),
     describeDoc,
@@ -20,6 +22,10 @@ module Distribution.Described (
     reSpacedComma,
     reHsString,
     reUnqualComponent,
+    -- * Language Extensions
+    reKnownExtension,
+    reDisableExtension,
+    reXs,
     -- *
     describeFlagAssignmentNonEmpty,
     -- * Lists
@@ -102,7 +108,7 @@ import Distribution.Types.UnqualComponentName      (UnqualComponentName)
 import Distribution.Utils.Path                     (SymbolicPath, RelativePath)
 import Distribution.Verbosity                      (Verbosity)
 import Distribution.Version                        (Version, VersionRange)
-import Language.Haskell.Extension                  (Extension, Language, knownLanguages)
+import Language.Haskell.Extension
 
 -- | Class describing the pretty/parsec format of a.
 class (Pretty a, Parsec a) => Described a where
@@ -180,6 +186,42 @@ reComma = reChar ','
 
 reSpacedComma :: GrammarRegex a
 reSpacedComma = RESpaces <> reComma <> RESpaces
+
+-------------------------------------------------------------------------------
+-- Language extensions
+-------------------------------------------------------------------------------
+
+reXs :: [KnownExtension] -> GrammarRegex a
+reXs xs = REUnion (fromString . prettyShow <$> xs)
+
+reKnownExtension :: GrammarRegex a
+reKnownExtension = REUnion
+    [ RENamed "interactive-extension" $ reXs xGroupInteractive
+    , RENamed "phase-extension" $ reXs xGroupPhase
+    , RENamed "syntax-extension" $ reXs xGroupSyntax
+    , RENamed "import-export-extension" $ reXs xGroupImportExport
+    , RENamed "type-extension" $ reXs xGroupTypes
+    , RENamed "record-extension" $ reXs xGroupRecords
+    , RENamed "deriving-extension" $ reXs xGroupDeriving
+    , RENamed "pattern-extension" $ reXs xGroupPatterns
+    , RENamed "classes-instances-extension" $ reXs xGroupClassesInstances
+    , RENamed "literals-extension" $ reXs xGroupLiterals
+    , RENamed "constraint-extension" $ reXs xGroupConstraints
+    , RENamed "type-signature-extension" $ reXs xGroupTypeSignatures
+    , RENamed "binding-generalisation-extension" $ reXs xGroupBindingsGeneralisation
+    , RENamed "template-haskell-extension" $ reXs xGroupTemplates
+    , RENamed "bang-strict-extension" $ reXs xGroupBangStrict
+    , RENamed "parallel-concurrent-extension" $ reXs xGroupParallelConcurrent
+    , RENamed "unboxed-primitive-extension" $ reXs xGroupUnboxedPrimitive
+    , RENamed "foreign-extension" $ reXs xGroupForeign
+    , RENamed "safe-extension" $ reXs xGroupSafe
+    , RENamed "miscellaneous-extension" $ reXs xGroupMiscellaneous
+    , RENamed "bugs-extension" $ reXs xGroupBugs
+    , RENamed "ungrouped-extension" $ reXs xUngrouped
+    ]
+
+reDisableExtension :: GrammarRegex a
+reDisableExtension = REUnion ["No" <> RENamed "enable-extension" reKnownExtension]
 
 -------------------------------------------------------------------------------
 -- Character sets
@@ -401,7 +443,10 @@ instance Described ExposedModule where
     describe _ = RETodo
 
 instance Described Extension where
-    describe _ = RETodo
+    describe _ = REUnion
+        [ RENamed "enable-extension" reKnownExtension
+        , RENamed "disable-extension" reDisableExtension
+        ]
 
 instance Described FlagAssignment where
     describe _ = REMunch RESpaces1 $

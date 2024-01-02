@@ -31,6 +31,7 @@ import Distribution.Utils.GrammarRegex
 import Distribution.ModuleName         (ModuleName)
 import Distribution.Types.Version      (Version)
 import Distribution.Types.VersionRange (VersionRange)
+import Language.Haskell.Extension
 
 -------------------------------------------------------------------------------
 -- Main
@@ -48,7 +49,31 @@ main = do
                 , zPackageDescriptionFields = fromReference packageDescriptionFieldGrammar
                 , zTestSuiteFields          = fromReference $ testSuiteFieldGrammar // buildInfoFieldGrammar
                 , zProductions              =
-                    [ zproduction "hs-string"       reHsString
+                    [ zproduction "interactive-extension" (reXs xGroupInteractive) "Language Extensions related to GHC interactive."
+                    , zproduction "phase-extension" (reXs xGroupPhase) "Language Extensions related to a particular GHC phase."
+                    , zproduction "syntax-extension" (reXs xGroupSyntax) "Syntax Language Extensions."
+                    , zproduction "import-export-extension" (reXs xGroupImportExport) "Import and Export Language Extensions."
+                    , zproduction "type-extension" (reXs xGroupTypes) "Language Extensions for Types."
+                    , zproduction "record-extension" (reXs xGroupRecords) "Record Language Extensions."
+                    , zproduction "deriving-extension" (reXs xGroupDeriving) "Language Extensions for deriving mechanisms."
+                    , zproduction "pattern-extension" (reXs xGroupPatterns) "Patterns Language Extensions."
+                    , zproduction "classes-instances-extension" (reXs xGroupClassesInstances) "Language Extensions for class and instance declarations."
+                    , zproduction "literal-extension" (reXs xGroupLiterals) "Literals Language Extensions."
+                    , zproduction "constraint-extension" (reXs xGroupConstraints) "Constraint Language Extensions."
+                    , zproduction "type-signature-extension" (reXs xGroupTypeSignatures) "Type Signature Language Extensions."
+                    , zproduction "binding-generalisation-extension" (reXs xGroupBindingsGeneralisation) "Language Extensions for bindings and generalisation "
+                    , zproduction "template-haskell-extension" (reXs xGroupTemplates) "Template Haskell Language Extensions."
+                    , zproduction "bang-strict-extension" (reXs xGroupBangStrict) "Bang pattern and Strict Haskell Language Extensions."
+                    , zproduction "parallel-concurrent-extension" (reXs xGroupParallelConcurrent) "Parallel and Concurrent Language Extensions."
+                    , zproduction "unboxed-primitive-extension" (reXs xGroupUnboxedPrimitive) "Unboxed types and Primitive operations Language Extensions."
+                    , zproduction "foreign-extension" (reXs xGroupForeign) "Foreign function interface (FFI) Language Extensions."
+                    , zproduction "safe-extension" (reXs xGroupSafe) "Safe Haskell Language Extensions."
+                    , zproduction "miscellaneous-extension" (reXs xGroupMiscellaneous) "Miscellaneous Language Extensions."
+                    , zproduction "bugs-extension" (reXs xGroupBugs) "Language Extensions related to GHC bugs and infelicities."
+                    , zproduction "ungrouped-extension" (reXs xUngrouped) "Language Extensions not belonging to other extension groups, includes undocumented extensions."
+                    , zproduction "enable-extension" reKnownExtension "GHC Language Extensions, some of these may be on by default."
+                    , zproduction "disable-extension" reDisableExtension "Disable a GHC Language Extension."
+                    , zproduction "hs-string"       reHsString
                         "String as in Haskell; it's recommended to avoid using Haskell-specific escapes."
                     , zproduction "unqual-name"     reUnqualComponent $ unwords
                         [ "Unqualified component names are used for package names, component names etc. but not flag names."
