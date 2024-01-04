@@ -1,0 +1,10 @@
+packages: Cabal-syntax
+packages: Cabal
+packages: Cabal-described
+packages: Cabal-syntax-docs
+tests: False
+optimization: False
+
+-- avoiding extra dependencies
+constraints: rere -rere-cfg
+constraints: these -assoc

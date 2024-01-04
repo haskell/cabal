@@ -1,10 +1,26 @@
-.. _buildinfo-field-reference:
+.. _cabal-package-syntax:
 
-Field Syntax Reference
-======================
+Cabal Package Syntax
+====================
+
+GHC syntax
+----------
+
+Some elements of cabal package syntax are controlled by GHC. As such these are
+effectively strings passed on to GHC and that may be as far as Cabal will check
+their syntax. See the :ref:`ghc-syntax` for these elements of GHC syntax
+embedded within cabal package descriptions.
+
+- :ref:`ghc-enable-extension`
+- :ref:`ghc-disable-extension`
+- :ref:`default-extensions<ghc-default-extensions>`
+- :ref:`default-language<ghc-default-language>`
+- :ref:`extensions<ghc-extensions>`
+- :ref:`other-extensions<ghc-other-extensions>`
+- :ref:`other-languages<ghc-other-languages>`
 
 Notation
----------------
+--------
 
 Field syntax is described as they are in the latest cabal file format version.
 

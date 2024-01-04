@@ -1,0 +1,63 @@
+.. _ghc-syntax:
+
+GHC Syntax Reference
+====================
+
+Language Extensions
+-------------------
+
+The many GHC language extensions are divided into groups of extensions
+corresponding to subsections of the GHC users' guide on language extensions.
+Those of the :ref:`ungrouped-extension <ghc-ungrouped-extension>` group are
+undocumented in the GHC users' guide.
+
+{% for production in productions %}
+.. _ghc-{{ production.name }}:
+
+{{ production.name }}
+    {{ production.description }}
+
+    .. math::
+
+        {{ production.syntax }}
+
+{% endfor %}
+
+GHC build info fields
+---------------------
+
+These are cabal package build info fields that are more related to GHC, the
+Haskell compiler, than they are to Cabal.
+
+{% for field in ghcBuildInfoFields %}
+.. _ghc-{{ field.name }}:
+
+{{ field.name }}
+    * {{field.format}}
+{% if notNull field.default %}
+    * Default: ``{{field.default}}``
+{% endif %}
+{% if notNull field.availableSince %}
+    * Available since ``cabal-version: {{field.availableSince}}``.
+{% endif %}
+{% if notNull field.deprecatedSince.fst %}
+    * Deprecated since ``cabal-version: {{field.deprecatedSince.fst}}``: {{field.deprecatedSince.snd}}
+{% endif %}
+{% if notNull field.removedIn.fst %}
+    * Removed in ``cabal-version: {{field.removedIn.fst}}``: {{field.removedIn.snd}}
+{% endif %}
+{# We show documentation link only for non deprecated fields #}
+{% if null field.deprecatedSince.fst %}
+{% if null field.removedIn.fst %}
+    * Documentation of :pkg-field:`library:{{field.name}}`
+{% endif %}
+{% endif %}
+{% if notNull field.syntax %}
+
+    .. math::
+
+        {{field.syntax}}
+{% endif %}
+
+{% endfor %}
+

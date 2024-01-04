@@ -1,7 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 module Distribution.Described.Extension
-  ( reKnownExtension
+  ( reEnableExtension
+  , reKnownExtension
   , reDisableExtension
   , reXs
       -- * Extension groups
@@ -43,6 +44,9 @@ instance Described Extension where
 
 reXs :: [KnownExtension] -> GrammarRegex a
 reXs xs = REUnion (fromString . prettyShow <$> xs)
+
+reEnableExtension :: GrammarRegex a
+reEnableExtension = "enable-extension"
 
 reKnownExtension :: GrammarRegex a
 reKnownExtension = REUnion

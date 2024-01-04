@@ -79,13 +79,22 @@ $(TEMPLATE_PATHS) : templates/Paths_pkg.template.hs cabal-dev-scripts/src/GenPat
 
 # generated docs
 # Use cabal build before cabal run to avoid output of the build on stdout when running
-doc/buildinfo-fields-reference.rst : \
+doc/cabal-package-syntax.rst : \
   $(wildcard Cabal-syntax/src/*/*.hs Cabal-syntax/src/*/*/*.hs Cabal-syntax/src/*/*/*/*.hs) \
   $(wildcard Cabal-described/src/Distribution/Described.hs Cabal-described/src/Distribution/Utils/*.hs) \
-  buildinfo-reference-generator/src/Main.hs \
-  buildinfo-reference-generator/template.zinza
-	cabal build buildinfo-reference-generator
-	cabal run buildinfo-reference-generator buildinfo-reference-generator/template.zinza | tee $@
+  Cabal-syntax-docs/cabal-package/Main.hs \
+  Cabal-syntax-docs/cabal-package/template.zinza
+	cabal build --project-file=cabal.project.docs gen-cabal-package-syntax-docs
+	cabal run --project-file=cabal.project.docs gen-cabal-package-syntax-docs Cabal-syntax-docs/cabal-package/template.zinza | tee $@
+	git diff --exit-code $@
+
+doc/ghc-syntax.rst : \
+  $(wildcard Cabal-syntax/src/*/*.hs Cabal-syntax/src/*/*/*.hs Cabal-syntax/src/*/*/*/*.hs) \
+  $(wildcard Cabal-described/src/Distribution/Described.hs Cabal-described/src/Distribution/Utils/*.hs) \
+  Cabal-syntax-docs/ghc/Main.hs \
+  Cabal-syntax-docs/ghc/template.zinza
+	cabal build --project-file=cabal.project.docs gen-ghc-syntax-docs
+	cabal run --project-file=cabal.project.docs gen-ghc-syntax-docs Cabal-syntax-docs/ghc/template.zinza | tee $@
 	git diff --exit-code $@
 
 .PHONY: analyse-imports
