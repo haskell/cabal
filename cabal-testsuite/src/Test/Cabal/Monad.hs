@@ -243,7 +243,7 @@ runTestM mode m = withSystemTempDirectory "cabal-testsuite" $ \tmp_dir -> do
     -- Add test suite specific programs
     let program_db0 =
             addKnownPrograms
-                ([gitProgram, hackageRepoToolProgram, cabalProgram, diffProgram, python3Program] ++ builtinPrograms)
+                ([gitProgram, hackageRepoToolProgram, cabalProgram, diffProgram] ++ builtinPrograms)
                 (runnerProgramDb senv)
     -- Reconfigure according to user flags
     let cargs = testCommonArgs args
