@@ -88,7 +88,7 @@ doc/cabal-package-syntax.rst : \
 	cabal run --project-file=cabal.project.docs gen-cabal-package-syntax-docs Cabal-syntax-docs/cabal-package/template.zinza | tee $@
 	git diff --exit-code $@
 
-doc/ghc-syntax.rst : \
+doc/language-extensions.rst : \
   $(wildcard Cabal-syntax/src/*/*.hs Cabal-syntax/src/*/*/*.hs Cabal-syntax/src/*/*/*/*.hs) \
   $(wildcard Cabal-described/src/Distribution/Described.hs Cabal-described/src/Distribution/Utils/*.hs) \
   Cabal-syntax-docs/ghc/Main.hs \
