@@ -63,6 +63,11 @@ freeze files. As a usage example:
 
     import: /absolutepath/some-project.project
 
+Using conditionals will force cabal to find a ghc to derive
+architecture and version information from, which will force some
+commands (update, sdist) to require ghc present where otherwise it
+would not be necessitated.
+
 Specifying the local packages
 -----------------------------
 
