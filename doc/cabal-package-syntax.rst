@@ -3,19 +3,14 @@
 Cabal Package Syntax
 ====================
 
-Lanugage Extensions
+Language Extensions
 -------------------
 
 For control of the default language and language extensions for the whole
 package, see :ref:`ghc-syntax`.
 
-- :ref:`ghc-enable-extension`
-- :ref:`ghc-disable-extension`
-- :ref:`default-extensions<ghc-default-extensions>`
-- :ref:`default-language<ghc-default-language>`
-- :ref:`extensions<ghc-extensions>`
-- :ref:`other-extensions<ghc-other-extensions>`
-- :ref:`other-languages<ghc-other-languages>`
+- :ref:`ghc-default-language`
+- :ref:`ghc-default-extensions`
 
 Notation
 --------
@@ -172,7 +167,7 @@ version-range
         \mathbf{fix}\;\mathop{\mathit{version\text{-}range}}\;\mathbf{in}\;\left\{ \begin{gathered}\mathop{\mathord{``}\mathtt{\text{=}\text{=}}\mathord{"}}\circ\mathop{\mathit{version}}\\\mathop{\mathord{``}\mathtt{\text{>}}\mathord{"}}\circ\mathop{\mathit{version}}\\\mathop{\mathord{``}\mathtt{\text{<}}\mathord{"}}\circ\mathop{\mathit{version}}\\\mathop{\mathord{``}\mathtt{\text{<}\text{=}}\mathord{"}}\circ\mathop{\mathit{version}}\\\mathop{\mathord{``}\mathtt{\text{>}\text{=}}\mathord{"}}\circ\mathop{\mathit{version}}\\\mathop{\mathord{``}\mathtt{\text{^}\text{>}\text{=}}\mathord{"}}\circ\mathop{\mathit{version}}\\\mathop{\mathord{``}\mathtt{\text{=}\text{=}}\mathord{"}}\circ{\left\{ \mathop{\mathord{``}\mathtt{0}\mathord{"}}\mid[\mathop{\mathord{``}\mathtt{1}\mathord{"}}\cdots\mathop{\mathord{``}\mathtt{9}\mathord{"}}]{[\mathop{\mathord{``}\mathtt{0}\mathord{"}}\cdots\mathop{\mathord{``}\mathtt{9}\mathord{"}}]}^{\in [0\ldots8]}_{} \right\}}^+_{\mathop{\mathord{``}\mathtt{\text{.}}\mathord{"}}}\mathop{\mathord{``}\mathtt{\text{.}\text{*}}\mathord{"}}\\\mathop{\mathit{version\text{-}range}}\circ\mathop{\mathord{``}\mathtt{\text{|}\text{|}}\mathord{"}}\circ\mathop{\mathit{version\text{-}range}}\\\mathop{\mathit{version\text{-}range}}\circ\mathop{\mathord{``}\mathtt{\text{&}\text{&}}\mathord{"}}\circ\mathop{\mathit{version\text{-}range}}\\\mathop{\mathord{``}\mathtt{\text{(}}\mathord{"}}\circ\mathop{\mathit{version\text{-}range}}\circ\mathop{\mathord{``}\mathtt{\text{)}}\mathord{"}}\\\mathop{\mathord{``}\mathtt{\text{=}\text{=}}\mathord{"}}\circ\mathop{\mathord{``}\mathtt{\{}\mathord{"}}\circ{\mathop{\mathit{version}}}^+_{\left(\circ\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}\circ\right)}\circ\mathop{\mathord{``}\mathtt{\}}\mathord{"}}\\\mathop{\mathord{``}\mathtt{\text{^}\text{>}\text{=}}\mathord{"}}\circ\mathop{\mathord{``}\mathtt{\{}\mathord{"}}\circ{\mathop{\mathit{version}}}^+_{\left(\circ\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}\circ\right)}\circ\mathop{\mathord{``}\mathtt{\}}\mathord{"}}\end{gathered} \right\}
 
 
-Build info fields
+Build Info Fields
 -----------------
 
 asm-options
@@ -549,7 +544,7 @@ virtual-modules
         \mathrm{commalist}\left({\left(\mathop{\mathit{upper}}{\left\{ \mathop{\mathit{alpha\text{-}num}}\mid[\mathop{\mathord{``}\mathtt{\text{'}}\mathord{"}}\mathop{\mathord{``}\mathtt{\text{_}}\mathord{"}}] \right\}}^\ast_{}\right)}^+_{\mathop{\mathord{``}\mathtt{\text{.}}\mathord{"}}}\right)
 
 
-Package description fields
+Package Description Fields
 --------------------------
 
 author
@@ -688,7 +683,7 @@ version
         {\left\{ \mathop{\mathord{``}\mathtt{0}\mathord{"}}\mid[\mathop{\mathord{``}\mathtt{1}\mathord{"}}\cdots\mathop{\mathord{``}\mathtt{9}\mathord{"}}]{[\mathop{\mathord{``}\mathtt{0}\mathord{"}}\cdots\mathop{\mathord{``}\mathtt{9}\mathord{"}}]}^{\in [0\ldots8]}_{} \right\}}^+_{\mathop{\mathord{``}\mathtt{\text{.}}\mathord{"}}}
 
 
-Test-suite fields
+Test-suite Fields
 -----------------
 
 code-generators

@@ -3,9 +3,79 @@
 Language Extensions
 ===================
 
+Package Language Fields
+-----------------------
+
+These are cabal package build info fields that control language.
+
+.. _ghc-default-extensions:
+
+default-extensions
+    * Monoidal field
+    * Available since ``cabal-version: 1.10``.
+    * Documentation of :pkg-field:`library:default-extensions`
+
+    .. math::
+
+        \mathrm{optcommalist}\left\{ \mathop{\mathit{enable\text{-}extension}}\mid\mathop{\mathit{disable\text{-}extension}} \right\}
+
+.. _ghc-default-language:
+
+default-language
+    * Optional field
+    * Available since ``cabal-version: 1.10``.
+    * Documentation of :pkg-field:`library:default-language`
+
+    .. math::
+
+        \left\{ \mathop{\mathord{``}\mathtt{GHC2021}\mathord{"}}\mid\mathop{\mathord{``}\mathtt{Haskell2010}\mathord{"}}\mid\mathop{\mathord{``}\mathtt{Haskell98}\mathord{"}} \right\}
+
+.. _ghc-extensions:
+
+extensions
+    * Monoidal field
+    * Deprecated since ``cabal-version: 1.12``: Please use 'default-extensions' or 'other-extensions' fields.
+    * Removed in ``cabal-version: 3.0``: Please use 'default-extensions' or 'other-extensions' fields.
+
+    .. math::
+
+        \mathrm{optcommalist}\left\{ \mathop{\mathit{enable\text{-}extension}}\mid\mathop{\mathit{disable\text{-}extension}} \right\}
+
+.. _ghc-other-extensions:
+
+other-extensions
+    * Monoidal field
+    * Documentation of :pkg-field:`library:other-extensions`
+
+    .. math::
+
+        \mathrm{optcommalist}\left\{ \mathop{\mathit{enable\text{-}extension}}\mid\mathop{\mathit{disable\text{-}extension}} \right\}
+
+.. _ghc-other-languages:
+
+other-languages
+    * Monoidal field
+    * Available since ``cabal-version: 1.10``.
+    * Documentation of :pkg-field:`library:other-languages`
+
+    .. math::
+
+        \mathrm{optcommalist}\left\{ \mathop{\mathord{``}\mathtt{GHC2021}\mathord{"}}\mid\mathop{\mathord{``}\mathtt{Haskell2010}\mathord{"}}\mid\mathop{\mathord{``}\mathtt{Haskell98}\mathord{"}} \right\}
+
+
+Langage Extension Groups
+------------------------
+
 Language extensions groups shown here correspond to subsections of the GHC
-users' guide on language extensions.  Those of the :ref:`ungrouped-extension
-<ghc-ungrouped-extension>` group are undocumented in the GHC users' guide.
+users' guide on language extensions.
+
+.. Note::
+
+    The Cabal package grammar accepts any tokens for extension fields. The
+    extensions specified may be anything, something which a particular Cabal
+    version doesn't know about and this list of "known" extensions is not part
+    of the ``.cabal`` file specification and shown here only as a convenience.
+    The GHC users' guide is the place to look these up.
 
 .. _ghc-disable-extension:
 
@@ -217,71 +287,15 @@ bugs-extension
 .. _ghc-ungrouped-extension:
 
 ungrouped-extension
-    Language Extensions not belonging to other extension groups, includes undocumented extensions.
+    Language Extensions not belonging to other extension groups.
 
     .. math::
 
         \left\{ \begin{gathered}\mathop{\mathord{``}\mathtt{DoRec}\mathord{"}}\\\mathop{\mathord{``}\mathtt{PolymorphicComponents}\mathord{"}}\\\mathop{\mathord{``}\mathtt{PatternSignatures}\mathord{"}}\\\mathop{\mathord{``}\mathtt{Generics}\mathord{"}}\\\mathop{\mathord{``}\mathtt{ExtensibleRecords}\mathord{"}}\\\mathop{\mathord{``}\mathtt{RestrictedTypeSynonyms}\mathord{"}}\\\mathop{\mathord{``}\mathtt{HereDocuments}\mathord{"}}\\\mathop{\mathord{``}\mathtt{RecordPuns}\mathord{"}}\\\mathop{\mathord{``}\mathtt{MonoPatBinds}\mathord{"}}\\\mathop{\mathord{``}\mathtt{RelaxedPolyRec}\mathord{"}}\\\mathop{\mathord{``}\mathtt{NewQualifiedOperators}\mathord{"}}\\\mathop{\mathord{``}\mathtt{XmlSyntax}\mathord{"}}\\\mathop{\mathord{``}\mathtt{RegularPatterns}\mathord{"}}\\\mathop{\mathord{``}\mathtt{DoAndIfThenElse}\mathord{"}}\\\mathop{\mathord{``}\mathtt{SafeImports}\mathord{"}}\\\mathop{\mathord{``}\mathtt{ParallelArrays}\mathord{"}}\\\mathop{\mathord{``}\mathtt{AutoDeriveTypeable}\mathord{"}}\\\mathop{\mathord{``}\mathtt{JavaScriptFFI}\mathord{"}}\\\mathop{\mathord{``}\mathtt{MonadFailDesugaring}\mathord{"}}\\\mathop{\mathord{``}\mathtt{AlternativeLayoutRule}\mathord{"}}\\\mathop{\mathord{``}\mathtt{AlternativeLayoutRuleTransitional}\mathord{"}}\\\mathop{\mathord{``}\mathtt{RelaxedLayout}\mathord{"}}\end{gathered} \right\}
 
 
-Package language fields
------------------------
+.. Warning::
 
-These are cabal package build info fields that control language.
-
-.. _ghc-default-extensions:
-
-default-extensions
-    * Monoidal field
-    * Available since ``cabal-version: 1.10``.
-    * Documentation of :pkg-field:`library:default-extensions`
-
-    .. math::
-
-        \mathrm{optcommalist}\left\{ \mathop{\mathit{enable\text{-}extension}}\mid\mathop{\mathit{disable\text{-}extension}} \right\}
-
-.. _ghc-default-language:
-
-default-language
-    * Optional field
-    * Available since ``cabal-version: 1.10``.
-    * Documentation of :pkg-field:`library:default-language`
-
-    .. math::
-
-        \left\{ \mathop{\mathord{``}\mathtt{GHC2021}\mathord{"}}\mid\mathop{\mathord{``}\mathtt{Haskell2010}\mathord{"}}\mid\mathop{\mathord{``}\mathtt{Haskell98}\mathord{"}} \right\}
-
-.. _ghc-extensions:
-
-extensions
-    * Monoidal field
-    * Deprecated since ``cabal-version: 1.12``: Please use 'default-extensions' or 'other-extensions' fields.
-    * Removed in ``cabal-version: 3.0``: Please use 'default-extensions' or 'other-extensions' fields.
-
-    .. math::
-
-        \mathrm{optcommalist}\left\{ \mathop{\mathit{enable\text{-}extension}}\mid\mathop{\mathit{disable\text{-}extension}} \right\}
-
-.. _ghc-other-extensions:
-
-other-extensions
-    * Monoidal field
-    * Documentation of :pkg-field:`library:other-extensions`
-
-    .. math::
-
-        \mathrm{optcommalist}\left\{ \mathop{\mathit{enable\text{-}extension}}\mid\mathop{\mathit{disable\text{-}extension}} \right\}
-
-.. _ghc-other-languages:
-
-other-languages
-    * Monoidal field
-    * Available since ``cabal-version: 1.10``.
-    * Documentation of :pkg-field:`library:other-languages`
-
-    .. math::
-
-        \mathrm{optcommalist}\left\{ \mathop{\mathord{``}\mathtt{GHC2021}\mathord{"}}\mid\mathop{\mathord{``}\mathtt{Haskell2010}\mathord{"}}\mid\mathop{\mathord{``}\mathtt{Haskell98}\mathord{"}} \right\}
-
-
+    Extensions of the :ref:`ungrouped-extension <ghc-ungrouped-extension>` group
+    are undocumented in the GHC users' guide.
 

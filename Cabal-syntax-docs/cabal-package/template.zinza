@@ -3,17 +3,14 @@
 Cabal Package Syntax
 ====================
 
-Lanugage Extensions
+Language Extensions
 -------------------
 
 For control of the default language and language extensions for the whole
 package, see :ref:`ghc-syntax`.
 
-- :ref:`ghc-enable-extension`
-- :ref:`ghc-disable-extension`
-{% for field in ghcBuildInfoFields %}
-- :ref:`{{field.name}}<ghc-{{field.name}}>`
-{% endfor %}
+- :ref:`ghc-default-language`
+- :ref:`ghc-default-extensions`
 
 Notation
 --------
@@ -151,7 +148,7 @@ In the syntax definitions below the following non-terminal symbols are used:
 
 {% endfor %}
 
-Build info fields
+Build Info Fields
 -----------------
 
 {% for field in cabalBuildInfoFields %}
@@ -184,7 +181,7 @@ Build info fields
 
 {% endfor %}
 
-Package description fields
+Package Description Fields
 --------------------------
 
 {% for field in packageDescriptionFields %}
@@ -217,7 +214,7 @@ Package description fields
 
 {% endfor %}
 
-Test-suite fields
+Test-suite Fields
 -----------------
 
 {% for field in testSuiteFields %}

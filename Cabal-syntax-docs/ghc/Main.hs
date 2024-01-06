@@ -71,7 +71,7 @@ main = do
                     , zproduction "bugs-extension" (reXs xGroupBugs)
                         "Language Extensions related to GHC bugs and infelicities."
                     , zproduction "ungrouped-extension" (reXs xUngrouped)
-                        "Language Extensions not belonging to other extension groups, includes undocumented extensions."
+                        "Language Extensions not belonging to other extension groups."
                     ]
                 , zSpaceList                = show $ regexDoc $
                     REMunch RESpaces1 (RENamed "element" RETodo)

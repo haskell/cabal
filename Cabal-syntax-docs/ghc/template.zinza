@@ -3,23 +3,7 @@
 Language Extensions
 ===================
 
-Language extensions groups shown here correspond to subsections of the GHC
-users' guide on language extensions.  Those of the :ref:`ungrouped-extension
-<ghc-ungrouped-extension>` group are undocumented in the GHC users' guide.
-
-{% for production in productions %}
-.. _ghc-{{ production.name }}:
-
-{{ production.name }}
-    {{ production.description }}
-
-    .. math::
-
-        {{ production.syntax }}
-
-{% endfor %}
-
-Package language fields
+Package Language Fields
 -----------------------
 
 These are cabal package build info fields that control language.
@@ -56,3 +40,33 @@ These are cabal package build info fields that control language.
 
 {% endfor %}
 
+Langage Extension Groups
+------------------------
+
+Language extensions groups shown here correspond to subsections of the GHC
+users' guide on language extensions.
+
+.. Note::
+
+    The Cabal package grammar accepts any tokens for extension fields. The
+    extensions specified may be anything, something which a particular Cabal
+    version doesn't know about and this list of "known" extensions is not part
+    of the ``.cabal`` file specification and shown here only as a convenience.
+    The GHC users' guide is the place to look these up.
+
+{% for production in productions %}
+.. _ghc-{{ production.name }}:
+
+{{ production.name }}
+    {{ production.description }}
+
+    .. math::
+
+        {{ production.syntax }}
+
+{% endfor %}
+
+.. Warning::
+
+    Extensions of the :ref:`ungrouped-extension <ghc-ungrouped-extension>` group
+    are undocumented in the GHC users' guide.
