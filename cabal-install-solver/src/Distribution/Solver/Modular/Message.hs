@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE ViewPatterns #-}
 
 module Distribution.Solver.Modular.Message (
@@ -80,7 +81,7 @@ showMessages = go 0
     go !l (Step (Next _)                 ms) = go l     ms -- ignore flag goals in the log
     go !l (Step (Skip conflicts)         ms) =
         -- 'Skip' should always be handled by 'goPSkip' in the case above.
-        (atLevel l $ show Skipping ++ showConflicts conflicts) (go l ms)
+        (atLevel l $ showing Skipping ++ showConflicts conflicts) (go l ms)
     go !l (Step (Success)                ms) = (atLevel l $ "done") (go l ms)
     go !l (Step (Failure c fr)           ms) = (atLevel l $ showFailure c fr) (go l ms)
 
@@ -213,20 +214,21 @@ data ProgressAction =
   | Skipping
   | Rejecting
 
-instance Show ProgressAction where
-  show Trying = "trying: "
-  show Skipping = "skipping: "
-  show Rejecting = "rejecting: "
+showing :: ProgressAction -> String
+showing = \case
+  Trying -> "trying: "
+  Skipping -> "skipping: "
+  Rejecting -> "rejecting: "
 
 showQFNBool :: ProgressAction -> QFN -> Bool -> String
-showQFNBool a q b = show a ++ Flag.showQFNBool q b
+showQFNBool a q b = showing a ++ Flag.showQFNBool q b
 
 showQSNBool :: ProgressAction -> QSN -> Bool -> String
-showQSNBool a q b = show a ++ Flag.showQSNBool q b
+showQSNBool a q b = showing a ++ Flag.showQSNBool q b
 
 showOptions :: ProgressAction -> QPN -> [POption] -> String
-showOptions a q [p] = show a ++ showOption q p
-showOptions a q ps = show a ++ showIsOrVs q (tryVs ps)
+showOptions a q [p] = showing a ++ showOption q p
+showOptions a q ps = showing a ++ showIsOrVs q (tryVs ps)
 
 showOption :: QPN -> POption -> String
 showOption qpn@(Q _pp pn) (POption i linkedTo) =
