@@ -1,15 +1,11 @@
 .. _ghc-syntax:
 
-GHC Syntax Reference
-====================
-
 Language Extensions
--------------------
+===================
 
-The many GHC language extensions are divided into groups of extensions
-corresponding to subsections of the GHC users' guide on language extensions.
-Those of the :ref:`ungrouped-extension <ghc-ungrouped-extension>` group are
-undocumented in the GHC users' guide.
+Language extensions groups shown here correspond to subsections of the GHC
+users' guide on language extensions.  Those of the :ref:`ungrouped-extension
+<ghc-ungrouped-extension>` group are undocumented in the GHC users' guide.
 
 .. _ghc-disable-extension:
 
@@ -228,11 +224,10 @@ ungrouped-extension
         \left\{ \begin{gathered}\mathop{\mathord{``}\mathtt{DoRec}\mathord{"}}\\\mathop{\mathord{``}\mathtt{PolymorphicComponents}\mathord{"}}\\\mathop{\mathord{``}\mathtt{PatternSignatures}\mathord{"}}\\\mathop{\mathord{``}\mathtt{Generics}\mathord{"}}\\\mathop{\mathord{``}\mathtt{ExtensibleRecords}\mathord{"}}\\\mathop{\mathord{``}\mathtt{RestrictedTypeSynonyms}\mathord{"}}\\\mathop{\mathord{``}\mathtt{HereDocuments}\mathord{"}}\\\mathop{\mathord{``}\mathtt{RecordPuns}\mathord{"}}\\\mathop{\mathord{``}\mathtt{MonoPatBinds}\mathord{"}}\\\mathop{\mathord{``}\mathtt{RelaxedPolyRec}\mathord{"}}\\\mathop{\mathord{``}\mathtt{NewQualifiedOperators}\mathord{"}}\\\mathop{\mathord{``}\mathtt{XmlSyntax}\mathord{"}}\\\mathop{\mathord{``}\mathtt{RegularPatterns}\mathord{"}}\\\mathop{\mathord{``}\mathtt{DoAndIfThenElse}\mathord{"}}\\\mathop{\mathord{``}\mathtt{SafeImports}\mathord{"}}\\\mathop{\mathord{``}\mathtt{ParallelArrays}\mathord{"}}\\\mathop{\mathord{``}\mathtt{AutoDeriveTypeable}\mathord{"}}\\\mathop{\mathord{``}\mathtt{JavaScriptFFI}\mathord{"}}\\\mathop{\mathord{``}\mathtt{MonadFailDesugaring}\mathord{"}}\\\mathop{\mathord{``}\mathtt{AlternativeLayoutRule}\mathord{"}}\\\mathop{\mathord{``}\mathtt{AlternativeLayoutRuleTransitional}\mathord{"}}\\\mathop{\mathord{``}\mathtt{RelaxedLayout}\mathord{"}}\end{gathered} \right\}
 
 
-GHC build info fields
----------------------
+Package language fields
+-----------------------
 
-These are cabal package build info fields that are more related to GHC, the
-Haskell compiler, than they are to Cabal.
+These are cabal package build info fields that control language.
 
 .. _ghc-default-extensions:
 

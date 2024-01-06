@@ -1,15 +1,11 @@
 .. _ghc-syntax:
 
-GHC Syntax Reference
-====================
-
 Language Extensions
--------------------
+===================
 
-The many GHC language extensions are divided into groups of extensions
-corresponding to subsections of the GHC users' guide on language extensions.
-Those of the :ref:`ungrouped-extension <ghc-ungrouped-extension>` group are
-undocumented in the GHC users' guide.
+Language extensions groups shown here correspond to subsections of the GHC
+users' guide on language extensions.  Those of the :ref:`ungrouped-extension
+<ghc-ungrouped-extension>` group are undocumented in the GHC users' guide.
 
 {% for production in productions %}
 .. _ghc-{{ production.name }}:
@@ -23,11 +19,10 @@ undocumented in the GHC users' guide.
 
 {% endfor %}
 
-GHC build info fields
----------------------
+Package language fields
+-----------------------
 
-These are cabal package build info fields that are more related to GHC, the
-Haskell compiler, than they are to Cabal.
+These are cabal package build info fields that control language.
 
 {% for field in ghcBuildInfoFields %}
 .. _ghc-{{ field.name }}:

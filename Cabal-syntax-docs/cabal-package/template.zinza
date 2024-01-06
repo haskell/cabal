@@ -3,13 +3,11 @@
 Cabal Package Syntax
 ====================
 
-GHC syntax
-----------
+Lanugage Extensions
+-------------------
 
-Some elements of cabal package syntax are controlled by GHC. As such these are
-effectively strings passed on to GHC and that may be as far as Cabal will check
-their syntax. See the :ref:`ghc-syntax` for these elements of GHC syntax
-embedded within cabal package descriptions.
+For control of the default language and language extensions for the whole
+package, see :ref:`ghc-syntax`.
 
 - :ref:`ghc-enable-extension`
 - :ref:`ghc-disable-extension`
