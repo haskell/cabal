@@ -3,6 +3,7 @@
 module Distribution.Described.Extension
   ( reEnableExtension
   , reKnownExtension
+  , reUnknownExtension
   , reDisableExtension
   , reXs
       -- * Extension groups
@@ -38,15 +39,22 @@ import Language.Haskell.Extension
 
 instance Described Extension where
     describe _ = REUnion
-        [ RENamed "enable-extension" reKnownExtension
-        , RENamed "disable-extension" reDisableExtension
+        [ reEnableExtension
+        , reDisableExtension
+        , reUnknownExtension
         ]
 
 reXs :: [KnownExtension] -> GrammarRegex a
 reXs xs = REUnion (fromString . prettyShow <$> xs)
 
 reEnableExtension :: GrammarRegex a
-reEnableExtension = "enable-extension"
+reEnableExtension = RENamed "enable-known-extension" reKnownExtension
+
+reDisableExtension :: GrammarRegex a
+reDisableExtension = REUnion ["No" <> reEnableExtension]
+
+reUnknownExtension :: GrammarRegex a
+reUnknownExtension = RENamed "unknown-extension" RETodo
 
 reKnownExtension :: GrammarRegex a
 reKnownExtension = REUnion
@@ -73,9 +81,6 @@ reKnownExtension = REUnion
     , RENamed "bugs-extension" $ reXs xGroupBugs
     , RENamed "ungrouped-extension" $ reXs xUngrouped
     ]
-
-reDisableExtension :: GrammarRegex a
-reDisableExtension = REUnion ["No" <> RENamed "enable-extension" reKnownExtension]
 
 -- The comments in the xGroup* lists are taken from the GHC User's Guide. Stop
 -- the formatter from rearranging them with:

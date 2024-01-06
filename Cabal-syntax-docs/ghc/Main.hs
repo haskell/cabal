@@ -24,10 +24,12 @@ main = do
             contents <- run $ Z
                 { zGhcBuildInfoFields = biGhc
                 , zProductions =
-                    [ zproduction "disable-extension" reDisableExtension
+                    [ zproduction "disable-known-extension" reDisableExtension
                         "Disable a language extension by prepending the extension with \"No\"."
-                    , zproduction "enable-extension" reKnownExtension
-                        "All GHC language extensions known to cabal. There may be more and some of these may be on by default."
+                    , zproduction "enable-known-extension" reKnownExtension
+                        "All \"known\" language extensions. There may be more and some of these may be on by default."
+                    , zproduction "unknown-extension" reUnknownExtension
+                        "Any token for any unknown extension is acceptable."
                     , zproduction "interactive-extension" (reXs xGroupInteractive)
                         "Language Extensions related to GHC interactive."
                     , zproduction "phase-extension" (reXs xGroupPhase)

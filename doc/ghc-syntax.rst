@@ -17,7 +17,7 @@ default-extensions
 
     .. math::
 
-        \mathrm{optcommalist}\left\{ \mathop{\mathit{enable\text{-}extension}}\mid\mathop{\mathit{disable\text{-}extension}} \right\}
+        \mathrm{optcommalist}\left\{ \mathop{\mathit{enable\text{-}known\text{-}extension}}\mid\mathop{\mathord{``}\mathtt{No}\mathord{"}}\mathop{\mathit{enable\text{-}known\text{-}extension}}\mid\mathop{\mathit{unknown\text{-}extension}} \right\}
 
 .. _ghc-default-language:
 
@@ -39,7 +39,7 @@ extensions
 
     .. math::
 
-        \mathrm{optcommalist}\left\{ \mathop{\mathit{enable\text{-}extension}}\mid\mathop{\mathit{disable\text{-}extension}} \right\}
+        \mathrm{optcommalist}\left\{ \mathop{\mathit{enable\text{-}known\text{-}extension}}\mid\mathop{\mathord{``}\mathtt{No}\mathord{"}}\mathop{\mathit{enable\text{-}known\text{-}extension}}\mid\mathop{\mathit{unknown\text{-}extension}} \right\}
 
 .. _ghc-other-extensions:
 
@@ -49,7 +49,7 @@ other-extensions
 
     .. math::
 
-        \mathrm{optcommalist}\left\{ \mathop{\mathit{enable\text{-}extension}}\mid\mathop{\mathit{disable\text{-}extension}} \right\}
+        \mathrm{optcommalist}\left\{ \mathop{\mathit{enable\text{-}known\text{-}extension}}\mid\mathop{\mathord{``}\mathtt{No}\mathord{"}}\mathop{\mathit{enable\text{-}known\text{-}extension}}\mid\mathop{\mathit{unknown\text{-}extension}} \right\}
 
 .. _ghc-other-languages:
 
@@ -77,23 +77,32 @@ users' guide on language extensions.
     of the ``.cabal`` file specification and shown here only as a convenience.
     The GHC users' guide is the place to look these up.
 
-.. _ghc-disable-extension:
+.. _ghc-disable-known-extension:
 
-disable-extension
+disable-known-extension
     Disable a language extension by prepending the extension with "No".
 
     .. math::
 
-        \mathop{\mathord{``}\mathtt{No}\mathord{"}}\mathop{\mathit{enable\text{-}extension}}
+        \mathop{\mathord{``}\mathtt{No}\mathord{"}}\mathop{\mathit{enable\text{-}known\text{-}extension}}
 
-.. _ghc-enable-extension:
+.. _ghc-enable-known-extension:
 
-enable-extension
-    All GHC language extensions known to cabal. There may be more and some of these may be on by default.
+enable-known-extension
+    All "known" language extensions. There may be more and some of these may be on by default.
 
     .. math::
 
         \left\{ \begin{gathered}\mathop{\mathit{interactive\text{-}extension}}\\\mathop{\mathit{phase\text{-}extension}}\\\mathop{\mathit{syntax\text{-}extension}}\\\mathop{\mathit{import\text{-}export\text{-}extension}}\\\mathop{\mathit{type\text{-}extension}}\\\mathop{\mathit{record\text{-}extension}}\\\mathop{\mathit{deriving\text{-}extension}}\\\mathop{\mathit{pattern\text{-}extension}}\\\mathop{\mathit{classes\text{-}instances\text{-}extension}}\\\mathop{\mathit{literals\text{-}extension}}\\\mathop{\mathit{constraint\text{-}extension}}\\\mathop{\mathit{type\text{-}signature\text{-}extension}}\\\mathop{\mathit{binding\text{-}generalisation\text{-}extension}}\\\mathop{\mathit{template\text{-}haskell\text{-}extension}}\\\mathop{\mathit{bang\text{-}strict\text{-}extension}}\\\mathop{\mathit{parallel\text{-}concurrent\text{-}extension}}\\\mathop{\mathit{unboxed\text{-}primitive\text{-}extension}}\\\mathop{\mathit{foreign\text{-}extension}}\\\mathop{\mathit{safe\text{-}extension}}\\\mathop{\mathit{miscellaneous\text{-}extension}}\\\mathop{\mathit{bugs\text{-}extension}}\\\mathop{\mathit{ungrouped\text{-}extension}}\end{gathered} \right\}
+
+.. _ghc-unknown-extension:
+
+unknown-extension
+    Any token for any unknown extension is acceptable.
+
+    .. math::
+
+        \mathsf{\color{red}{TODO}}
 
 .. _ghc-interactive-extension:
 
