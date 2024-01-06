@@ -43,7 +43,7 @@ import Distribution.Solver.Types.PackageConstraint       (PackageProperty (..))
 
 import Data.Coerce                      (Coercible, coerce)
 import Network.URI                      (URI (..), URIAuth (..), isUnreserved)
-import Test.QuickCheck
+import Test.QuickCheck hiding (shrinkBoundedEnum)
 import Test.QuickCheck.GenericArbitrary
 import Test.QuickCheck.Instances.Cabal ()
 
