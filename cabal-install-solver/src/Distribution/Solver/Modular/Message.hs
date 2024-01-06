@@ -281,7 +281,6 @@ tryVs xs
 -- "unexpected empty list of versions"
 showIsOrVs :: QPN -> IsOrVs -> String
 showIsOrVs _ (Is []) = "unexpected empty list of versions"
-showIsOrVs q (Is [x]) = showOption q x
 showIsOrVs q (Is (reverse -> xs)) = L.intercalate ", " (showOption q `map` xs)
 showIsOrVs q (Vs (reverse -> xs)) = showQPN q ++ "; " ++ L.intercalate ", " (showVer `map` xs)
 
