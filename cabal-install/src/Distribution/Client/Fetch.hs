@@ -39,6 +39,7 @@ import Distribution.Solver.Types.PkgConfigDb (PkgConfigDb, readPkgConfigDb)
 import Distribution.Solver.Types.SolverPackage
 import Distribution.Solver.Types.SourcePackage
 
+import Distribution.Client.Errors
 import Distribution.Package
   ( packageId
   )
@@ -57,7 +58,7 @@ import Distribution.Simple.Setup
   )
 import Distribution.Simple.Utils
   ( debug
-  , die'
+  , dieWithException
   , notice
   )
 import Distribution.System
@@ -173,19 +174,13 @@ planPackages
   pkgConfigDb
   pkgSpecifiers
     | includeDependencies = do
-        solver <-
-          chooseSolver
-            verbosity
-            (fromFlag (fetchSolver fetchFlags))
-            (compilerInfo comp)
         notice verbosity "Resolving dependencies..."
         installPlan <-
-          foldProgress logMsg (die' verbosity) return $
+          foldProgress logMsg (dieWithException verbosity . PlanPackages . show) return $
             resolveDependencies
               platform
               (compilerInfo comp)
               pkgConfigDb
-              solver
               resolverParams
 
         -- The packages we want to fetch are those packages the 'InstallPlan'
@@ -196,7 +191,7 @@ planPackages
               SolverInstallPlan.toList installPlan
           ]
     | otherwise =
-        either (die' verbosity . unlines . map show) return $
+        either (dieWithException verbosity . PlanPackages . unlines . map show) return $
           resolveWithoutDependencies resolverParams
     where
       resolverParams :: DepResolverParams
@@ -254,9 +249,7 @@ planPackages
 checkTarget :: Verbosity -> UserTarget -> IO ()
 checkTarget verbosity target = case target of
   UserTargetRemoteTarball _uri ->
-    die' verbosity $
-      "The 'fetch' command does not yet support remote tarballs. "
-        ++ "In the meantime you can use the 'unpack' commands."
+    dieWithException verbosity CheckTarget
   _ -> return ()
 
 fetchPackage :: Verbosity -> RepoContext -> PackageLocation a -> IO ()
@@ -264,13 +257,9 @@ fetchPackage verbosity repoCtxt pkgsrc = case pkgsrc of
   LocalUnpackedPackage _dir -> return ()
   LocalTarballPackage _file -> return ()
   RemoteTarballPackage _uri _ ->
-    die' verbosity $
-      "The 'fetch' command does not yet support remote tarballs. "
-        ++ "In the meantime you can use the 'unpack' commands."
+    dieWithException verbosity CheckTarget
   RemoteSourceRepoPackage _repo _ ->
-    die' verbosity $
-      "The 'fetch' command does not yet support remote "
-        ++ "source repositories."
+    dieWithException verbosity FetchPackage
   RepoTarballPackage repo pkgid _ -> do
     _ <- fetchRepoTarball verbosity repoCtxt repo pkgid
     return ()

@@ -39,7 +39,7 @@ import Distribution.Parsec (eitherParsec)
 import Distribution.Types.UnqualComponentName
 import Distribution.Types.LocalBuildInfo
 import Distribution.PackageDescription
-import Distribution.Utils.TempTestDir (withTestDir)
+import Test.Utils.TempTestDir (withTestDir)
 import Distribution.Verbosity (normal)
 
 import Distribution.Compat.Stack
@@ -53,23 +53,23 @@ import Control.Monad (unless, when, void, forM_, liftM2, liftM4)
 import Control.Monad.Trans.Reader (withReaderT, runReaderT)
 import Control.Monad.IO.Class (MonadIO (..))
 import qualified Crypto.Hash.SHA256 as SHA256
-import qualified Data.ByteString.Base64 as Base64
+import qualified Data.ByteString.Base16 as Base16
 import qualified Data.ByteString.Char8 as C
 import Data.List (isInfixOf, stripPrefix, isPrefixOf, intercalate)
 import Data.List.NonEmpty (NonEmpty (..))
 import qualified Data.List.NonEmpty as NE
 import Data.Maybe (mapMaybe, fromMaybe)
 import System.Exit (ExitCode (..))
-import System.FilePath ((</>), takeExtensions, takeDrive, takeDirectory, normalise, splitPath, joinPath, splitFileName, (<.>), dropTrailingPathSeparator)
+import System.FilePath
 import Control.Concurrent (threadDelay)
 import qualified Data.Char as Char
-import System.Directory (canonicalizePath, copyFile, copyFile, doesDirectoryExist, doesFileExist, createDirectoryIfMissing, getDirectoryContents, listDirectory)
+import System.Directory
 import Control.Retry (exponentialBackoff, limitRetriesByCumulativeDelay)
 import Network.Wait (waitTcpVerbose)
+import System.Environment
 
 #ifndef mingw32_HOST_OS
 import Control.Monad.Catch ( bracket_ )
-import System.Directory    ( removeFile )
 import System.Posix.Files  ( createSymbolicLink )
 import System.Posix.Resource
 #endif
@@ -112,6 +112,16 @@ withDirectory f = withReaderT
 -- which prefers the latest override.
 withEnv :: [(String, Maybe String)] -> TestM a -> TestM a
 withEnv e = withReaderT (\env -> env { testEnvironment = testEnvironment env ++ e })
+
+-- | Prepend a directory to the PATH
+addToPath :: FilePath -> TestM a -> TestM a
+addToPath exe_dir action = do
+  env <- getTestEnv
+  path <- liftIO $ getEnv "PATH"
+  let newpath = exe_dir ++ [searchPathSeparator] ++ path
+  let new_env = (("PATH", Just newpath) : (testEnvironment env))
+  withEnv new_env action
+
 
 -- HACK please don't use me
 withEnvFilter :: (String -> Bool) -> TestM a -> TestM a
@@ -295,6 +305,7 @@ cabalGArgs global_args cmd args input = do
               , "info"
               , "init"
               , "haddock-project"
+              , "path"
               ]
           = [ ]
 
@@ -357,15 +368,21 @@ runPlanExe pkg_name cname args = void $ runPlanExe' pkg_name cname args
 runPlanExe' :: String {- package name -} -> String {- component name -}
             -> [String] -> TestM Result
 runPlanExe' pkg_name cname args = do
+    exePath <- planExePath pkg_name cname
+    defaultRecordMode RecordAll $ do
+    recordHeader [pkg_name, cname]
+    runM exePath args Nothing
+
+planExePath :: String {- package name -} -> String {- component name -}
+            -> TestM FilePath
+planExePath pkg_name cname = do
     Just plan <- testPlan `fmap` getTestEnv
     let distDirOrBinFile = planDistDir plan (mkPackageName pkg_name)
                                (CExeName (mkUnqualComponentName cname))
         exePath = case distDirOrBinFile of
           DistDir dist_dir -> dist_dir </> "build" </> cname </> cname
           BinFile bin_file -> bin_file
-    defaultRecordMode RecordAll $ do
-    recordHeader [pkg_name, cname]
-    runM exePath args Nothing
+    return exePath
 
 ------------------------------------------------------------------------
 -- * Running ghc-pkg
@@ -839,8 +856,7 @@ getScriptCacheDirectory :: FilePath -> TestM FilePath
 getScriptCacheDirectory script = do
     cabalDir <- testCabalDir `fmap` getTestEnv
     hashinput <- liftIO $ canonicalizePath script
-    let hash = map (\c -> if c == '/' then '%' else c) . take 26
-             . C.unpack . Base64.encode . SHA256.hash . C.pack $ hashinput
+    let hash = C.unpack . Base16.encode . C.take 26 . SHA256.hash . C.pack $ hashinput
     return $ cabalDir </> "script-builds" </> hash
 
 ------------------------------------------------------------------------
@@ -1147,7 +1163,7 @@ findDependencyInStore :: FilePath -- ^store dir
                       -> String -- ^package name prefix
                       -> IO FilePath -- ^package dir
 findDependencyInStore storeDir pkgName = do
-    storeDirForGhcVersion <- head <$> listDirectory storeDir
+    (storeDirForGhcVersion : _) <- listDirectory storeDir
     packageDirs <- listDirectory (storeDir </> storeDirForGhcVersion)
     -- Ideally, we should call 'hashedInstalledPackageId' from 'Distribution.Client.PackageHash'.
     -- But 'PackageHashInputs', especially 'PackageHashConfigInputs', is too hard to construct.
@@ -1156,5 +1172,7 @@ findDependencyInStore storeDir pkgName = do
             then filter (not . flip elem "aeiou") pkgName
                 -- simulates the way 'hashedInstalledPackageId' uses to compress package name
             else pkgName
-    let libDir = head $ filter (pkgName' `isPrefixOf`) packageDirs
+    let libDir = case filter (pkgName' `isPrefixOf`) packageDirs of
+                    [] -> error $ "Could not find " <> pkgName' <> " when searching for " <> pkgName' <> " in\n" <> show packageDirs
+                    (dir:_) -> dir
     pure (storeDir </> storeDirForGhcVersion </> libDir)

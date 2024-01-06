@@ -85,6 +85,10 @@ module Distribution.Client.Setup
   , cleanCommand
   , copyCommand
   , registerCommand
+  , Path (..)
+  , pathName
+  , PathFlags (..)
+  , pathCommand
   , liftOptions
   , yesNoOpt
   ) where
@@ -93,7 +97,7 @@ import Distribution.Client.Compat.Prelude hiding (get)
 import Prelude ()
 
 import Distribution.Client.Types.AllowNewer (AllowNewer (..), AllowOlder (..), RelaxDeps (..))
-import Distribution.Client.Types.Credentials (Password (..), Username (..))
+import Distribution.Client.Types.Credentials (Password (..), Token (..), Username (..))
 import Distribution.Client.Types.Repo (LocalRepo (..), RemoteRepo (..))
 import Distribution.Client.Types.WriteGhcEnvironmentFilesPolicy
 
@@ -167,6 +171,7 @@ import Distribution.Simple.Flag
   , flagToMaybe
   , fromFlagOrDefault
   , maybeToFlag
+  , mergeListFlag
   , toFlag
   )
 import Distribution.Simple.InstallDirs
@@ -343,6 +348,7 @@ globalCommand commands =
             ++ unlines
               ( [ startGroup "global"
                 , addCmd "user-config"
+                , addCmd "path"
                 , addCmd "help"
                 , par
                 , startGroup "package database"
@@ -502,17 +508,17 @@ globalCommand commands =
               )
               ""
               ["nix"] -- Must be empty because we need to return PP.empty from viewAsFieldDescr
-              "Nix integration: run commands through nix-shell if a 'shell.nix' file exists (default is False)"
+              "[DEPRECATED] Nix integration: run commands through nix-shell if a 'shell.nix' file exists (default is False)"
           , noArg
               (Flag True)
               []
               ["enable-nix"]
-              "Enable Nix integration: run commands through nix-shell if a 'shell.nix' file exists"
+              "[DEPRECATED] Enable Nix integration: run commands through nix-shell if a 'shell.nix' file exists"
           , noArg
               (Flag False)
               []
               ["disable-nix"]
-              "Disable Nix integration"
+              "[DEPRECATED] Disable Nix integration"
           ]
       , option
           []
@@ -671,6 +677,11 @@ filterConfigureFlags flags cabalLibVersion
           -- We add a Cabal>=3.11 constraint before solving when multi-repl is
           -- enabled, so this should never trigger.
           configPromisedDependencies = assert (null $ configPromisedDependencies flags) []
+        , -- Cabal < 3.11 does not understand '--coverage-for', which is OK
+          -- because previous versions of Cabal using coverage implied
+          -- whole-package builds (cuz_coverage), and determine the path to
+          -- libraries mix dirs from the testsuite root with a small hack.
+          configCoverageFor = NoFlag
         }
 
     flags_3_7_0 =
@@ -1648,7 +1659,8 @@ runCommand =
 -- ------------------------------------------------------------
 
 data ReportFlags = ReportFlags
-  { reportUsername :: Flag Username
+  { reportToken :: Flag Token
+  , reportUsername :: Flag Username
   , reportPassword :: Flag Password
   , reportVerbosity :: Flag Verbosity
   }
@@ -1657,7 +1669,8 @@ data ReportFlags = ReportFlags
 defaultReportFlags :: ReportFlags
 defaultReportFlags =
   ReportFlags
-    { reportUsername = mempty
+    { reportToken = mempty
+    , reportUsername = mempty
     , reportPassword = mempty
     , reportVerbosity = toFlag normal
     }
@@ -1670,10 +1683,22 @@ reportCommand =
     , commandDescription = Nothing
     , commandNotes = Just $ \_ ->
         "You can store your Hackage login in the ~/.config/cabal/config file\n"
+          ++ "(the %APPDATA%\\cabal\\config file on Windows)\n"
     , commandUsage = usageAlternatives "report" ["[FLAGS]"]
     , commandDefaultFlags = defaultReportFlags
     , commandOptions = \_ ->
         [ optionVerbosity reportVerbosity (\v flags -> flags{reportVerbosity = v})
+        , option
+            ['t']
+            ["token"]
+            "Hackage authentication Token."
+            reportToken
+            (\v flags -> flags{reportToken = v})
+            ( reqArg'
+                "TOKEN"
+                (toFlag . Token)
+                (flagToList . fmap unToken)
+            )
         , option
             ['u']
             ["username"]
@@ -2664,6 +2689,7 @@ data IsCandidate = IsCandidate | IsPublished
 data UploadFlags = UploadFlags
   { uploadCandidate :: Flag IsCandidate
   , uploadDoc :: Flag Bool
+  , uploadToken :: Flag Token
   , uploadUsername :: Flag Username
   , uploadPassword :: Flag Password
   , uploadPasswordCmd :: Flag [String]
@@ -2676,6 +2702,7 @@ defaultUploadFlags =
   UploadFlags
     { uploadCandidate = toFlag IsCandidate
     , uploadDoc = toFlag False
+    , uploadToken = mempty
     , uploadUsername = mempty
     , uploadPassword = mempty
     , uploadPasswordCmd = mempty
@@ -2690,7 +2717,8 @@ uploadCommand =
     , commandDescription = Nothing
     , commandNotes = Just $ \_ ->
         "You can store your Hackage login in the ~/.config/cabal/config file\n"
-          ++ relevantConfigValuesText ["username", "password", "password-command"]
+          ++ "(the %APPDATA%\\cabal\\config file on Windows)\n"
+          ++ relevantConfigValuesText ["token", "username", "password", "password-command"]
     , commandUsage = \pname ->
         "Usage: " ++ pname ++ " upload [FLAGS] TARFILES\n"
     , commandDefaultFlags = defaultUploadFlags
@@ -2716,6 +2744,17 @@ uploadCommand =
             uploadDoc
             (\v flags -> flags{uploadDoc = v})
             trueArg
+        , option
+            ['t']
+            ["token"]
+            "Hackage authentication token."
+            uploadToken
+            (\v flags -> flags{uploadToken = v})
+            ( reqArg'
+                "TOKEN"
+                (toFlag . Token)
+                (flagToList . fmap unToken)
+            )
         , option
             ['u']
             ["username"]
@@ -3131,10 +3170,6 @@ initOptions _ =
         ("Cannot parse dependencies: " ++)
         (parsecCommaList parsec)
 
-    mergeListFlag :: Flag [a] -> Flag [a] -> Flag [a]
-    mergeListFlag currentFlags v =
-      Flag $ concat (flagToList currentFlags ++ flagToList v)
-
 -- ------------------------------------------------------------
 
 -- * Copy and Register
@@ -3291,6 +3326,73 @@ userConfigCommand =
             (reqArg' "CONFIGLINE" (Flag . (: [])) (fromMaybe [] . flagToMaybe))
         ]
     }
+
+-- ------------------------------------------------------------
+
+-- * Dirs
+
+-- ------------------------------------------------------------
+
+-- | A path that can be retrieved by the @cabal path@ command.
+data Path
+  = PathCacheDir
+  | PathLogsDir
+  | PathStoreDir
+  | PathConfigFile
+  | PathInstallDir
+  deriving (Eq, Ord, Show, Enum, Bounded)
+
+-- | The configuration name for this path.
+pathName :: Path -> String
+pathName PathCacheDir = "cache-dir"
+pathName PathLogsDir = "logs-dir"
+pathName PathStoreDir = "store-dir"
+pathName PathConfigFile = "config-file"
+pathName PathInstallDir = "installdir"
+
+data PathFlags = PathFlags
+  { pathVerbosity :: Flag Verbosity
+  , pathDirs :: Flag [Path]
+  }
+  deriving (Generic)
+
+instance Monoid PathFlags where
+  mempty =
+    PathFlags
+      { pathVerbosity = toFlag normal
+      , pathDirs = toFlag []
+      }
+  mappend = (<>)
+
+instance Semigroup PathFlags where
+  (<>) = gmappend
+
+pathCommand :: CommandUI PathFlags
+pathCommand =
+  CommandUI
+    { commandName = "path"
+    , commandSynopsis = "Display paths used by cabal"
+    , commandDescription = Just $ \_ ->
+        wrapText $
+          "This command prints the directories that are used by cabal,"
+            ++ " taking into account the contents of the configuration file and any"
+            ++ " environment variables."
+    , commandNotes = Nothing
+    , commandUsage = \pname -> "Usage: " ++ pname ++ " path\n"
+    , commandDefaultFlags = mempty
+    , commandOptions = \_ ->
+        map pathOption [minBound .. maxBound]
+          ++ [optionVerbosity pathVerbosity (\v flags -> flags{pathVerbosity = v})]
+    }
+  where
+    pathOption s =
+      option
+        []
+        [pathName s]
+        ("Print " <> pathName s)
+        pathDirs
+        (\v flags -> flags{pathDirs = Flag $ concat (flagToList (pathDirs flags) ++ flagToList v)})
+        (noArg (Flag [s]))
 
 -- ------------------------------------------------------------
 

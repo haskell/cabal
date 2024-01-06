@@ -63,7 +63,7 @@ import Distribution.Package
   )
 import Distribution.Simple.Utils
   ( debug
-  , die'
+  , dieWithException
   , info
   , notice
   , warn
@@ -98,6 +98,7 @@ import System.IO
   , openTempFile
   )
 
+import Distribution.Client.Errors
 import qualified Hackage.Security.Client as Sec
 import qualified Hackage.Security.Util.Checked as Sec
 import qualified Hackage.Security.Util.Path as Sec
@@ -210,7 +211,7 @@ fetchPackage verbosity repoCtxt loc = case loc of
     local <- fetchRepoTarball verbosity repoCtxt repo pkgid
     return (RepoTarballPackage repo pkgid local)
   RemoteSourceRepoPackage _repo Nothing ->
-    die' verbosity "fetchPackage: source repos not supported"
+    dieWithException verbosity FetchPackageErr
   where
     downloadTarballPackage :: URI -> IO FilePath
     downloadTarballPackage uri = do

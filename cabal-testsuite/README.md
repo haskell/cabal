@@ -25,10 +25,9 @@ There are a few useful flags:
   the autodetection doesn't work correctly (which may be the
   case for old versions of GHC.)
 
-doctests
-========
+### How to run the doctests
 
-You need to install the doctest tool. Make sure it's compiled with your current
+You need to install the `doctest` tool. Make sure it's compiled with your current
 GHC, and don't forget to reinstall it every time you switch GHC version:
 
 ``` shellsession
@@ -45,7 +44,7 @@ In this example we have run doctests in `Cabal-syntax`. Notice, that some
 components have broken doctests
 ([#8734](https://github.com/haskell/cabal/issues/8734));
 our CI currently checks that `Cabal-syntax` and `Cabal` doctests pass via
-`make doctest-install && make doctest` (you can use this make-based workflow too).
+`make doctest-install && make doctest` (you can use this `make`-based workflow too).
 
 How to write
 ------------
@@ -96,6 +95,15 @@ Otherwise, here is a walkthrough:
      fails $ cabal "another-bad-one" [ ... ]
      ...
    ```
+
+   The dependencies which your test is allowed to use are listed in the
+   cabal file under the `test-runtime-deps` executable. At compile-time there is
+   a custom Setup.hs script which inspects this list and records the versions of
+   each package in a generated file. These are then used when `cabal-tests` runs
+   when it invokes `runghc` to run each test.
+   We ensure they are built and available by listing `test-runtime-deps` in the
+   build-tool-depends section of the cabal-tests executable.
+
 
 3. Run your tests using `cabal-tests` (no need to rebuild when
    you add or modify a test; it is automatically picked up).
@@ -227,8 +235,8 @@ technical innovations to make this work:
   to these scripts.
 
 * The startup latency of `runghc` can be quite high, which adds up
-  when you have many tests.  To solve this, in `Test.Cabal.Server`
-  we have an implementation an GHCi server, for which we can reuse
+  when you have many tests.  To solve this, our `Test.Cabal.Server`
+  GHCi server implementation can reuse
   a GHCi instance as we are running test scripts.  It took some
   technical ingenuity to implement this, but the result is that
   running scripts is essentially free.

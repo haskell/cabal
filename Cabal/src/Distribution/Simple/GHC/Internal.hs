@@ -51,6 +51,10 @@ module Distribution.Simple.GHC.Internal
 import Distribution.Compat.Prelude
 import Prelude ()
 
+import Data.Bool (bool)
+import qualified Data.ByteString.Lazy.Char8 as BS
+import qualified Data.Map as Map
+import qualified Data.Set as Set
 import Distribution.Backpack
 import Distribution.Compat.Stack
 import qualified Distribution.InstalledPackageInfo as IPI
@@ -61,6 +65,7 @@ import Distribution.Parsec (simpleParsec)
 import Distribution.Pretty (prettyShow)
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Compiler
+import Distribution.Simple.Errors
 import Distribution.Simple.Flag (Flag (NoFlag), maybeToFlag, toFlag)
 import Distribution.Simple.GHC.ImplInfo
 import Distribution.Simple.LocalBuildInfo
@@ -69,6 +74,7 @@ import Distribution.Simple.Program.GHC
 import Distribution.Simple.Setup.Common (extraCompilationArtifacts)
 import Distribution.Simple.Utils
 import Distribution.System
+import Distribution.Types.ComponentId (ComponentId)
 import Distribution.Types.ComponentLocalBuildInfo
 import Distribution.Types.LocalBuildInfo
 import Distribution.Types.TargetInfo
@@ -78,12 +84,6 @@ import Distribution.Utils.Path
 import Distribution.Verbosity
 import Distribution.Version (Version)
 import Language.Haskell.Extension
-
-import Data.Bool (bool)
-import qualified Data.ByteString.Lazy.Char8 as BS
-import qualified Data.Map as Map
-import qualified Data.Set as Set
-import Distribution.Types.ComponentId (ComponentId)
 import System.Directory (getDirectoryContents, getTemporaryDirectory)
 import System.Environment (getEnv)
 import System.FilePath
@@ -114,7 +114,9 @@ configureToolchain _implInfo ghcProg ghcInfo =
     . addKnownProgram
       ldProgram
         { programFindLocation = findProg ldProgramName extraLdPath
-        , programPostConf = configureLd
+        , programPostConf = \v cp ->
+            -- Call any existing configuration first and then add any new configuration
+            configureLd v =<< programPostConf ldProgram v cp
         }
     . addKnownProgram
       arProgram
@@ -285,7 +287,7 @@ getGhcInfo verbosity _implInfo ghcProg = do
       | all isSpace ss ->
           return i
     _ ->
-      die' verbosity "Can't parse --info output of GHC"
+      dieWithException verbosity CantParseGHCOutput
 
 getExtensions
   :: Verbosity
@@ -578,7 +580,7 @@ componentGhcOptions verbosity implInfo lbi bi clbi odir =
     , ghcOptFfiIncludes = toNubListR $ includes bi
     , ghcOptObjDir = toFlag odir
     , ghcOptHiDir = toFlag odir
-    , ghcOptHieDir = bool NoFlag (toFlag $ odir </> extraCompilationArtifacts) $ flagHie implInfo
+    , ghcOptHieDir = bool NoFlag (toFlag $ odir </> extraCompilationArtifacts </> "hie") $ flagHie implInfo
     , ghcOptStubDir = toFlag odir
     , ghcOptOutputDir = toFlag odir
     , ghcOptOptimisation = toGhcOptimisation (withOptimization lbi)
@@ -753,15 +755,7 @@ checkPackageDbEnvVar verbosity compilerName packagePathEnvVar = do
       (Just `fmap` getEnv name)
         `catchIO` const (return Nothing)
     abort =
-      die' verbosity $
-        "Use of "
-          ++ compilerName
-          ++ "'s environment variable "
-          ++ packagePathEnvVar
-          ++ " is incompatible with Cabal. Use the "
-          ++ "flag --package-db to specify a package database (it can be "
-          ++ "used multiple times)."
-
+      dieWithException verbosity $ IncompatibleWithCabal compilerName packagePathEnvVar
     _ = callStack -- TODO: output stack when erroring
 
 profDetailLevelFlag :: Bool -> ProfDetailLevel -> Flag GhcProfAuto
@@ -793,6 +787,7 @@ ghcOsString :: OS -> String
 ghcOsString Windows = "mingw32"
 ghcOsString OSX = "darwin"
 ghcOsString Solaris = "solaris2"
+ghcOsString Hurd = "gnu"
 ghcOsString other = prettyShow other
 
 -- | GHC's rendering of its platform and compiler version string as used in

@@ -1,0 +1,12 @@
+name:                exe
+version:             1
+license:             BSD3
+author:              Edward Z. Yang
+maintainer:          ezyang@cs.stanford.edu
+build-type:          Simple
+cabal-version:       2.0
+
+executable exe
+  build-depends:       base
+  main-is:             Main.hs
+  default-language:    Haskell2010

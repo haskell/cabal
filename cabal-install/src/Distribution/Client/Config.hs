@@ -95,7 +95,11 @@ import Distribution.Client.Types
   , isRelaxDeps
   , unRepoName
   )
-import Distribution.Client.Types.Credentials (Password (..), Username (..))
+import Distribution.Client.Types.Credentials
+  ( Password (..)
+  , Token (..)
+  , Username (..)
+  )
 import Distribution.Utils.NubList
   ( NubList
   , fromNubList
@@ -103,6 +107,9 @@ import Distribution.Utils.NubList
   , toNubList
   )
 
+import qualified Data.ByteString as BS
+import qualified Data.Map as M
+import Distribution.Client.Errors
 import Distribution.Client.HttpUtils
   ( isOldHackageURI
   )
@@ -112,10 +119,14 @@ import Distribution.Client.ParseUtils
   , ppSection
   )
 import Distribution.Client.ProjectFlags (ProjectFlags (..))
+import Distribution.Client.ReplFlags
 import Distribution.Client.Version
   ( cabalInstallVersion
   )
 import qualified Distribution.Compat.CharParsing as P
+import Distribution.Compat.Environment
+  ( getEnvironment
+  )
 import Distribution.Compiler
   ( CompilerFlavor (..)
   , defaultCompilerFlavor
@@ -144,6 +155,7 @@ import Distribution.Deprecated.ParseUtils
 import qualified Distribution.Deprecated.ParseUtils as ParseUtils
   ( Field (..)
   )
+import Distribution.Parsec (ParsecParser, parsecFilePath, parsecOptCommaList, parsecToken)
 import Distribution.Simple.Command
   ( CommandUI (commandOptions)
   , ShowOrParseArgs (..)
@@ -184,7 +196,7 @@ import Distribution.Simple.Setup
   )
 import Distribution.Simple.Utils
   ( cabalVersion
-  , die'
+  , dieWithException
   , lowercase
   , notice
   , toUTF8BS
@@ -194,14 +206,6 @@ import Distribution.Solver.Types.ConstraintSource
 import Distribution.Verbosity
   ( normal
   )
-
-import qualified Data.ByteString as BS
-import qualified Data.Map as M
-import Distribution.Client.ReplFlags
-import Distribution.Compat.Environment
-  ( getEnvironment
-  )
-import Distribution.Parsec (ParsecParser, parsecFilePath, parsecOptCommaList, parsecToken)
 import Network.URI
   ( URI (..)
   , URIAuth (..)
@@ -527,6 +531,7 @@ instance Semigroup SavedConfig where
           , configDumpBuildInfo = combine configDumpBuildInfo
           , configAllowDependingOnPrivateLibs =
               combine configAllowDependingOnPrivateLibs
+          , configCoverageFor = combine configCoverageFor
           }
         where
           combine = combine' savedConfigureFlags
@@ -569,6 +574,7 @@ instance Semigroup SavedConfig where
         UploadFlags
           { uploadCandidate = combine uploadCandidate
           , uploadDoc = combine uploadDoc
+          , uploadToken = combine uploadToken
           , uploadUsername = combine uploadUsername
           , uploadPassword = combine uploadPassword
           , uploadPasswordCmd = combine uploadPasswordCmd
@@ -579,7 +585,8 @@ instance Semigroup SavedConfig where
 
       combinedSavedReportFlags =
         ReportFlags
-          { reportUsername = combine reportUsername
+          { reportToken = combine reportToken
+          , reportUsername = combine reportUsername
           , reportPassword = combine reportPassword
           , reportVerbosity = combine reportVerbosity
           }
@@ -725,17 +732,19 @@ initialSavedConfig = do
 warnOnTwoConfigs :: Verbosity -> IO ()
 warnOnTwoConfigs verbosity = do
   defaultDir <- getAppUserDataDirectory "cabal"
-  dotCabalExists <- doesDirectoryExist defaultDir
-  xdgCfg <- getXdgDirectory XdgConfig ("cabal" </> "config")
-  xdgCfgExists <- doesFileExist xdgCfg
-  when (dotCabalExists && xdgCfgExists) $
-    warn verbosity $
-      "Both "
-        <> defaultDir
-        <> " and "
-        <> xdgCfg
-        <> " exist - ignoring the former.\n"
-        <> "It is advisable to remove one of them. In that case, we will use the remaining one by default (unless '$CABAL_DIR' is explicitly set)."
+  xdgCfgDir <- getXdgDirectory XdgConfig "cabal"
+  when (defaultDir /= xdgCfgDir) $ do
+    dotCabalExists <- doesDirectoryExist defaultDir
+    let xdgCfg = xdgCfgDir </> "config"
+    xdgCfgExists <- doesFileExist xdgCfg
+    when (dotCabalExists && xdgCfgExists) $
+      warn verbosity $
+        "Both "
+          <> defaultDir
+          <> " and "
+          <> xdgCfg
+          <> " exist - ignoring the former.\n"
+          <> "It is advisable to remove one of them. In that case, we will use the remaining one by default (unless '$CABAL_DIR' is explicitly set)."
 
 -- | If @CABAL\_DIR@ is set, return @Just@ its value. Otherwise, if
 -- @~/.cabal@ exists and @$XDG_CONFIG_HOME/cabal/config@ does not
@@ -964,13 +973,11 @@ loadRawConfig verbosity configFileFlag = do
         CommandlineOption -> failNoConfigFile
         EnvironmentVariable -> failNoConfigFile
       where
-        msgNotFound = unwords ["Config file not found:", configFile]
+        msgNotFound
+          | null configFile = "Config file name is empty"
+          | otherwise = unwords ["Config file not found:", configFile]
         failNoConfigFile =
-          die' verbosity $
-            unlines
-              [ msgNotFound
-              , "(Config files can be created via the cabal-command 'user-config init'.)"
-              ]
+          dieWithException verbosity $ FailNoConfigFile msgNotFound
     Just (ParseOk ws conf) -> do
       unless (null ws) $
         warn verbosity $
@@ -978,12 +985,8 @@ loadRawConfig verbosity configFileFlag = do
       return conf
     Just (ParseFailed err) -> do
       let (line, msg) = locatedErrorMsg err
-      die' verbosity $
-        "Error parsing config file "
-          ++ configFile
-          ++ maybe "" (\n -> ':' : show n) line
-          ++ ":\n"
-          ++ msg
+          errLineNo = maybe "" (\n -> ':' : show n) line
+      dieWithException verbosity $ ParseFailedErr configFile msg errLineNo
   where
     sourceMsg CommandlineOption = "commandline option"
     sourceMsg EnvironmentVariable = "environment variable CABAL_CONFIG"
@@ -1273,7 +1276,7 @@ configFieldDescriptions src =
     ++ toSavedConfig
       liftReportFlag
       (commandOptions reportCommand ParseArgs)
-      ["verbose", "username", "password"]
+      ["verbose", "token", "username", "password"]
       []
     -- FIXME: this is a hack, hiding the user name and password.
     -- But otherwise it masks the upload ones. Either need to
@@ -1338,6 +1341,13 @@ deprecatedFieldDescriptions =
         (optionalFlag parsecFilePath)
         globalCacheDir
         (\d cfg -> cfg{globalCacheDir = d})
+  , liftUploadFlag $
+      simpleFieldParsec
+        "hackage-token"
+        (Disp.text . fromFlagOrDefault "" . fmap unToken)
+        (optionalFlag (fmap Token parsecToken))
+        uploadToken
+        (\d cfg -> cfg{uploadToken = d})
   , liftUploadFlag $
       simpleFieldParsec
         "hackage-username"
@@ -1839,15 +1849,11 @@ parseExtraLines verbosity extraLines =
     (toUTF8BS (unlines extraLines)) of
     ParseFailed err ->
       let (line, msg) = locatedErrorMsg err
-       in die' verbosity $
-            "Error parsing additional config lines\n"
-              ++ maybe "" (\n -> ':' : show n) line
-              ++ ":\n"
-              ++ msg
+          errLineNo = maybe "" (\n -> ':' : show n) line
+       in dieWithException verbosity $ ParseExtraLinesFailedErr msg errLineNo
     ParseOk [] r -> return r
     ParseOk ws _ ->
-      die' verbosity $
-        unlines (map (showPWarning "Error parsing additional config lines") ws)
+      dieWithException verbosity $ ParseExtraLinesOkError ws
 
 -- | Get the differences (as a pseudo code diff) between the user's
 -- config file and the one that cabal would generate if it didn't exist.

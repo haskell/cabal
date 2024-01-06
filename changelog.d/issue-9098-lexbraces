@@ -1,0 +1,18 @@
+synopsis: Add LexBraces lexer warning
+packages: Cabal-syntax
+issues: #8577
+
+description: {
+
+LexBraces warning is issued when brace delimiting syntax is used.
+This way, using `readFields'`, a low-lever consumer may decide
+whether braces were used.
+
+(Looking for a brace character in the input is imprecise, as braces can occur inside field content).
+
+This warning is not propagated to parser warnings,
+so e.g. readGenericPackageDescription doesn't warn about it.
+This is because all parser warnings prevent uploads to Hackage,
+and using braces (or not) is opinionated choice.
+
+}

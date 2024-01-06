@@ -1,6 +1,7 @@
 # cabal v2-build
 Resolving dependencies...
-Error: cabal: Could not resolve dependencies:
+Error: [Cabal-7107]
+Could not resolve dependencies:
 [__0] next goal: issue7234 (user goal)
 [__0] rejecting: issue7234-0 (conflict: requires unknown extension HopefullyThisExtensionWontOccur)
 [__0] fail (backjumping, conflict set: issue7234)

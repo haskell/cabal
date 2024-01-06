@@ -87,7 +87,7 @@ import Distribution.PackageDescription
   ( GenericPackageDescription
   )
 import Distribution.Simple.Utils
-  ( die'
+  ( dieWithException
   , lowercase
   )
 import Distribution.Types.Flag
@@ -106,6 +106,7 @@ import Distribution.Simple.PackageDescription
 
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.Map as Map
+import Distribution.Client.Errors
 import qualified Distribution.Client.GZipUtils as GZipUtils
 import qualified Distribution.Compat.CharParsing as P
 import Network.URI
@@ -249,54 +250,26 @@ reportUserTargetProblems verbosity problems = do
   case [target | UserTargetUnrecognised target <- problems] of
     [] -> return ()
     target ->
-      die' verbosity $
-        unlines
-          [ "Unrecognised target '" ++ name ++ "'."
-          | name <- target
-          ]
-          ++ "Targets can be:\n"
-          ++ " - package names, e.g. 'pkgname', 'pkgname-1.0.1', 'pkgname < 2.0'\n"
-          ++ " - cabal files 'pkgname.cabal' or package directories 'pkgname/'\n"
-          ++ " - package tarballs 'pkgname.tar.gz' or 'http://example.com/pkgname.tar.gz'"
-
+      dieWithException verbosity $ ReportUserTargetProblems target
   case [target | UserTargetNonexistantFile target <- problems] of
     [] -> return ()
     target ->
-      die' verbosity $
-        unlines
-          [ "The file does not exist '" ++ name ++ "'."
-          | name <- target
-          ]
+      dieWithException verbosity $ ReportUserTargerNonexistantFile target
 
   case [target | UserTargetUnexpectedFile target <- problems] of
     [] -> return ()
     target ->
-      die' verbosity $
-        unlines
-          [ "Unrecognised file target '" ++ name ++ "'."
-          | name <- target
-          ]
-          ++ "File targets can be either package tarballs 'pkgname.tar.gz' "
-          ++ "or cabal files 'pkgname.cabal'."
+      dieWithException verbosity $ ReportUserTargetUnexpectedFile target
 
   case [target | UserTargetUnexpectedUriScheme target <- problems] of
     [] -> return ()
     target ->
-      die' verbosity $
-        unlines
-          [ "URL target not supported '" ++ name ++ "'."
-          | name <- target
-          ]
-          ++ "Only 'http://' and 'https://' URLs are supported."
+      dieWithException verbosity $ ReportUserTargetUnexpectedUriScheme target
 
   case [target | UserTargetUnrecognisedUri target <- problems] of
     [] -> return ()
     target ->
-      die' verbosity $
-        unlines
-          [ "Unrecognise URL target '" ++ name ++ "'."
-          | name <- target
-          ]
+      dieWithException verbosity $ ReportUserTargetUnrecognisedUri target
 
 -- ------------------------------------------------------------
 
@@ -450,11 +423,7 @@ readPackageTarget verbosity = traverse modifyLocation
           tarballOriginalLoc
       case parsePackageDescription' content of
         Nothing ->
-          die' verbosity $
-            "Could not parse the cabal file "
-              ++ filename
-              ++ " in "
-              ++ tarballFile
+          dieWithException verbosity $ ReadTarballPackageTarget filename tarballFile
         Just pkg ->
           return
             SourcePackage
@@ -469,7 +438,7 @@ readPackageTarget verbosity = traverse modifyLocation
       -> String
       -> IO (FilePath, BS.ByteString)
     extractTarballPackageCabalFile tarballFile tarballOriginalLoc =
-      either (die' verbosity . formatErr) return
+      either (dieWithException verbosity . ExtractTarballPackageErr . formatErr) return
         . check
         . accumEntryMap
         . Tar.filterEntries isCabalFile
@@ -572,30 +541,12 @@ reportPackageTargetProblems verbosity problems = do
   case [pkg | PackageNameUnknown pkg _ <- problems] of
     [] -> return ()
     pkgs ->
-      die' verbosity $
-        unlines
-          [ "There is no package named '" ++ prettyShow name ++ "'. "
-          | name <- pkgs
-          ]
-          ++ "You may need to run 'cabal update' to get the latest "
-          ++ "list of available packages."
+      dieWithException verbosity $ ReportPackageTargetProblems pkgs
 
   case [(pkg, matches) | PackageNameAmbiguous pkg matches _ <- problems] of
     [] -> return ()
     ambiguities ->
-      die' verbosity $
-        unlines
-          [ "There is no package named '"
-            ++ prettyShow name
-            ++ "'. "
-            ++ ( if length matches > 1
-                  then "However, the following package names exist: "
-                  else "However, the following package name exists: "
-               )
-            ++ intercalate ", " ["'" ++ prettyShow m ++ "'" | m <- matches]
-            ++ "."
-          | (name, matches) <- ambiguities
-          ]
+      dieWithException verbosity $ PackageNameAmbiguousErr ambiguities
 
 -- ------------------------------------------------------------
 

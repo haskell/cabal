@@ -3,6 +3,7 @@
 
 CABALBUILD := cabal build
 CABALRUN   := cabal run
+DOCTEST    := cabal repl --with-ghc=doctest --repl-options="-w" --project-file=cabal.project.doctest
 
 # default rules
 
@@ -25,18 +26,9 @@ style-modified: ## Run the code styler on modified files
 	@git ls-files --modified Cabal Cabal-syntax cabal-install \
 		| grep '.hs$$' | xargs -P $(PROCS) -I {} fourmolu -q -i {}
 
-# source generation: Lexer
-
-LEXER_HS:=Cabal-syntax/src/Distribution/Fields/Lexer.hs
-
-lexer : $(LEXER_HS)
-
-$(LEXER_HS) : templates/Lexer.x
-	alex --latin1 --ghc -o $@ $^
-	@rm -f Lexer.tmp
-	echo '{- FOURMOLU_DISABLE -}' >> Lexer.tmp
-	cat -s $@ >> Lexer.tmp
-	mv Lexer.tmp $@
+style-commit: ## Run the code styler on the previous commit
+	@git diff --name-only HEAD $(COMMIT) Cabal Cabal-syntax cabal-install \
+		| grep '.hs$$' | xargs -P $(PROCS) -I {} fourmolu -q -i {}
 
 # source generation: SPDX
 
@@ -67,10 +59,15 @@ $(TEMPLATE_PATHS) : templates/Paths_pkg.template.hs cabal-dev-scripts/src/GenPat
 	cabal run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-paths-module -- $< $@
 
 # generated docs
-
-buildinfo-fields-reference : phony
-	cabal build --builddir=dist-newstyle-bi --project-file=cabal.project.buildinfo buildinfo-reference-generator
-	$$(cabal list-bin --builddir=dist-newstyle-bi buildinfo-reference-generator) buildinfo-reference-generator/template.zinza | tee $@
+# Use cabal build before cabal run to avoid output of the build on stdout when running
+doc/buildinfo-fields-reference.rst : \
+  $(wildcard Cabal-syntax/src/*/*.hs Cabal-syntax/src/*/*/*.hs Cabal-syntax/src/*/*/*/*.hs) \
+  $(wildcard Cabal-described/src/Distribution/Described.hs Cabal-described/src/Distribution/Utils/*.hs) \
+  buildinfo-reference-generator/src/Main.hs \
+  buildinfo-reference-generator/template.zinza
+	cabal build --project-file=cabal.project.buildinfo buildinfo-reference-generator
+	cabal run --project-file=cabal.project.buildinfo buildinfo-reference-generator buildinfo-reference-generator/template.zinza | tee $@
+	git diff --exit-code $@
 
 # analyse-imports
 analyse-imports : phony
@@ -94,9 +91,10 @@ ghcid-cli :
 #       https://github.com/haskell/cabal/issues/8734
 #       Just as well, cabal-install(-solver) doctests (the target below) bitrotted and need some care.
 doctest :
-	cabal repl --with-ghc=doctest --build-depends=QuickCheck --build-depends=template-haskell --repl-options="-w" --project-file="cabal.project.validate" Cabal-syntax
-	cabal repl --with-ghc=doctest --build-depends=QuickCheck --build-depends=template-haskell --repl-options="-w" --project-file="cabal.project.validate" Cabal
-
+	$(DOCTEST) Cabal-syntax
+	$(DOCTEST) Cabal-described
+	$(DOCTEST) --build-depends=QuickCheck Cabal
+	$(DOCTEST) cabal-install
 
 # This is not run as part of validate.sh (we need hackage-security, which is tricky to get).
 doctest-cli :
@@ -213,33 +211,13 @@ bootstrap-jsons: $(BOOTSTRAP_GHC_VERSIONS:%=bootstrap-json-%)
 # documentation
 ##############################################################################
 
-# TODO: when we have sphinx-build2 ?
-SPHINXCMD:=sphinx-build
-# Flag -n ("nitpick") warns about broken references
-# Flag -W turns warnings into errors
-# Flag --keep-going continues after errors
-SPHINX_FLAGS:=-n -W --keep-going -E
-SPHINX_HTML_OUTDIR:=dist-newstyle/doc/users-guide
-USERGUIDE_STAMP:=$(SPHINX_HTML_OUTDIR)/index.html
+.PHONY: users-guide
+users-guide:
+	$(MAKE) -C doc users-guide
 
-# do pip install every time so we have up to date requirements when we build
-users-guide: .python-sphinx-virtualenv $(USERGUIDE_STAMP)
-$(USERGUIDE_STAMP) : doc/*.rst
-	mkdir -p $(SPHINX_HTML_OUTDIR)
-	(. ./.python-sphinx-virtualenv/bin/activate && pip install -r doc/requirements.txt && $(SPHINXCMD) $(SPHINX_FLAGS) doc $(SPHINX_HTML_OUTDIR))
-
-.python-sphinx-virtualenv:
-	python3 -m venv .python-sphinx-virtualenv
-	(. ./.python-sphinx-virtualenv/bin/activate)
-
-# This goal is intended for manual invocation, always rebuilds.
 .PHONY: users-guide-requirements
-users-guide-requirements: doc/requirements.txt
-
-.PHONY: doc/requirements.txt
-doc/requirements.txt: .python-sphinx-virtualenv
-	. .python-sphinx-virtualenv/bin/activate \
-	  && make -C doc build-and-check-requirements
+users-guide-requirements:
+	$(MAKE) -C doc users-guide-requirements
 
 ifeq ($(shell uname), Darwin)
 PROCS := $(shell sysctl -n hw.logicalcpu)

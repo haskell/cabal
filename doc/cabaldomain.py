@@ -598,9 +598,9 @@ class CabalConfigFieldXRef(CabalFieldXRef):
 #
 
 class ConfigFieldIndex(Index):
-    name = 'projectindex'
-    localname = "Cabal reference"
-    shortname = "Reference"
+    name = 'syntax-quicklinks'
+    localname = "Cabal Syntax Quicklinks"
+    shortname = "Quicklinks"
 
     class Entry(object):
         def __init__(self, typ, name, doc, anchor, meta):

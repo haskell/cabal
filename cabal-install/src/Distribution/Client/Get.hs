@@ -45,7 +45,7 @@ import Distribution.Simple.Setup
   , fromFlagOrDefault
   )
 import Distribution.Simple.Utils
-  ( die'
+  ( dieWithException
   , info
   , notice
   , warn
@@ -77,6 +77,7 @@ import Distribution.Solver.Types.SourcePackage
 
 import Control.Monad (mapM_)
 import qualified Data.Map as Map
+import Distribution.Client.Errors
 import System.Directory
   ( createDirectoryIfMissing
   , doesDirectoryExist
@@ -122,7 +123,7 @@ get verbosity repoCtxt _ getFlags userTargets = do
       userTargets
 
   pkgs <-
-    either (die' verbosity . unlines . map show) return $
+    either (dieWithException verbosity . PkgSpecifierException . map show) return $
       resolveWithoutDependencies
         (resolverParams sourcePkgDb pkgSpecifiers)
 
@@ -180,9 +181,7 @@ get verbosity repoCtxt _ getFlags userTargets = do
           RepoTarballPackage _repo _pkgid tarballPath ->
             unpackPackage verbosity prefix pkgid descOverride tarballPath
           RemoteSourceRepoPackage _repo _ ->
-            die' verbosity $
-              "The 'get' command does no yet support targets "
-                ++ "that are remote source repositories."
+            dieWithException verbosity UnpackGet
           LocalUnpackedPackage _ ->
             error "Distribution.Client.Get.unpack: the impossible happened."
       where
@@ -191,16 +190,17 @@ get verbosity repoCtxt _ getFlags userTargets = do
 
 checkTarget :: Verbosity -> UserTarget -> IO ()
 checkTarget verbosity target = case target of
-  UserTargetLocalDir dir -> die' verbosity (notTarball dir)
-  UserTargetLocalCabalFile file -> die' verbosity (notTarball file)
+  UserTargetLocalDir dir -> dieWithException verbosity $ NotTarballDir dir
+  UserTargetLocalCabalFile file -> dieWithException verbosity $ NotTarballDir file
   _ -> return ()
-  where
+
+{-where
     notTarball t =
       "The 'get' command is for tarball packages. "
         ++ "The target '"
         ++ t
         ++ "' is not a tarball."
-
+-}
 -- ------------------------------------------------------------
 
 -- * Unpacking the source tarball
@@ -223,12 +223,12 @@ unpackPackage verbosity prefix pkgid descOverride pkgPath = do
   when existsDir $ do
     isEmpty <- emptyDirectory pkgdir
     unless isEmpty $
-      die' verbosity $
-        "The directory \"" ++ pkgdir' ++ "\" already exists and is not empty, not unpacking."
+      dieWithException verbosity $
+        DirectoryAlreadyExists pkgdir'
   existsFile <- doesFileExist pkgdir
   when existsFile $
-    die' verbosity $
-      "A file \"" ++ pkgdir ++ "\" is in the way, not unpacking."
+    dieWithException verbosity $
+      FileExists pkgdir
   notice verbosity $ "Unpacking to " ++ pkgdir'
   Tar.extractTarGzFile prefix pkgdirname pkgPath
 
@@ -249,12 +249,12 @@ unpackOnlyPkgDescr verbosity dstDir pkg = do
   let pkgFile = dstDir </> prettyShow (packageId pkg) <.> "cabal"
   existsFile <- doesFileExist pkgFile
   when existsFile $
-    die' verbosity $
-      "The file \"" ++ pkgFile ++ "\" already exists, not overwriting."
+    dieWithException verbosity $
+      FileAlreadyExists pkgFile
   existsDir <- doesDirectoryExist (addTrailingPathSeparator pkgFile)
   when existsDir $
-    die' verbosity $
-      "A directory \"" ++ pkgFile ++ "\" is in the way, not unpacking."
+    dieWithException verbosity $
+      DirectoryExists pkgFile
   notice verbosity $ "Writing package description to " ++ pkgFile
   case srcpkgDescrOverride pkg of
     Just pkgTxt -> writeFileAtomic pkgFile pkgTxt

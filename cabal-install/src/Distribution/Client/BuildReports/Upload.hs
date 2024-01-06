@@ -24,11 +24,13 @@ import Network.URI (URI, uriPath) -- parseRelativeReference, relativeTo)
 
 import Distribution.Client.BuildReports.Anonymous (BuildReport, showBuildReport)
 import qualified Distribution.Client.BuildReports.Anonymous as BuildReport
+import Distribution.Client.Errors
 import Distribution.Client.HttpUtils
 import Distribution.Client.Setup
   ( RepoContext (..)
   )
-import Distribution.Simple.Utils (die')
+import Distribution.Client.Types.Credentials (Auth)
+import Distribution.Simple.Utils (dieWithException)
 import System.FilePath.Posix
   ( (</>)
   )
@@ -36,7 +38,7 @@ import System.FilePath.Posix
 type BuildReportId = URI
 type BuildLog = String
 
-uploadReports :: Verbosity -> RepoContext -> (String, String) -> URI -> [(BuildReport, Maybe BuildLog)] -> IO ()
+uploadReports :: Verbosity -> RepoContext -> Auth -> URI -> [(BuildReport, Maybe BuildLog)] -> IO ()
 uploadReports verbosity repoCtxt auth uri reports = do
   for_ reports $ \(report, mbBuildLog) -> do
     buildId <- postBuildReport verbosity repoCtxt auth uri report
@@ -44,14 +46,14 @@ uploadReports verbosity repoCtxt auth uri reports = do
       Just buildLog -> putBuildLog verbosity repoCtxt auth buildId buildLog
       Nothing -> return ()
 
-postBuildReport :: Verbosity -> RepoContext -> (String, String) -> URI -> BuildReport -> IO BuildReportId
+postBuildReport :: Verbosity -> RepoContext -> Auth -> URI -> BuildReport -> IO BuildReportId
 postBuildReport verbosity repoCtxt auth uri buildReport = do
   let fullURI = uri{uriPath = "/package" </> prettyShow (BuildReport.package buildReport) </> "reports"}
   transport <- repoContextGetTransport repoCtxt
   res <- postHttp transport verbosity fullURI (showBuildReport buildReport) (Just auth)
   case res of
     (303, redir) -> return $ undefined redir -- TODO parse redir
-    _ -> die' verbosity "unrecognized response" -- give response
+    _ -> dieWithException verbosity UnrecognizedResponse -- give response
 
 {- FOURMOLU_DISABLE -}
 {-
@@ -87,7 +89,7 @@ postBuildReport verbosity repoCtxt auth uri buildReport = do
 putBuildLog
   :: Verbosity
   -> RepoContext
-  -> (String, String)
+  -> Auth
   -> BuildReportId
   -> BuildLog
   -> IO ()
@@ -97,4 +99,4 @@ putBuildLog verbosity repoCtxt auth reportId buildLog = do
   res <- postHttp transport verbosity fullURI buildLog (Just auth)
   case res of
     (200, _) -> return ()
-    _ -> die' verbosity "unrecognized response" -- give response
+    _ -> dieWithException verbosity UnrecognizedResponse -- give response

@@ -27,6 +27,8 @@ export BOOTSTRAP_HASKELL_NONINTERACTIVE=1
 export BOOTSTRAP_HASKELL_GHC_VERSION=$GHC_VERSION
 export BOOTSTRAP_HASKELL_CABAL_VERSION=$CABAL_INSTALL_VERSION
 export BOOTSTRAP_HASKELL_ADJUST_CABAL_CONFIG=yes
+# We don't use stack, and it isn't available on i386-deb9
+export BOOTSTRAP_HASKELL_INSTALL_NO_STACK=yes
 
 # for some reason the subshell doesn't pick up the arm64 environment on darwin
 # and starts installing x86_64 GHC
@@ -63,6 +65,7 @@ args=(
     ${ADD_CABAL_ARGS}
 )
 
+run cabal update hackage.haskell.org,HEAD
 run cabal v2-build ${args[@]} cabal-install
 
 mkdir "$CI_PROJECT_DIR/out"

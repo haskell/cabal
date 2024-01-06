@@ -58,6 +58,9 @@ data BuildFlags = BuildFlags
   }
   deriving (Read, Show, Generic, Typeable)
 
+instance Binary BuildFlags
+instance Structured BuildFlags
+
 defaultBuildFlags :: BuildFlags
 defaultBuildFlags =
   BuildFlags

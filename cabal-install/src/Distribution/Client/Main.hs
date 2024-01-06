@@ -33,6 +33,8 @@ import Distribution.Client.Setup
   , InitFlags (initHcPath, initVerbosity)
   , InstallFlags (..)
   , ListFlags (..)
+  , Path (..)
+  , PathFlags (..)
   , ReportFlags (..)
   , UploadFlags (..)
   , UserConfigFlags (..)
@@ -60,6 +62,8 @@ import Distribution.Client.Setup
   , listCommand
   , listNeedsCompiler
   , manpageCommand
+  , pathCommand
+  , pathName
   , reconfigureCommand
   , registerCommand
   , replCommand
@@ -97,7 +101,11 @@ import Prelude ()
 import Distribution.Client.Config
   ( SavedConfig (..)
   , createDefaultConfigFile
+  , defaultCacheDir
   , defaultConfigFile
+  , defaultInstallPath
+  , defaultLogsDir
+  , defaultStoreDir
   , getConfigFilePath
   , loadConfig
   , userConfigDiff
@@ -143,6 +151,7 @@ import Distribution.Client.Install (install)
 
 -- import Distribution.Client.Clean            (clean)
 
+import Distribution.Client.CmdInstall.ClientInstallFlags (ClientInstallFlags (cinstInstalldir))
 import Distribution.Client.Get (get)
 import Distribution.Client.Init (initCmd)
 import Distribution.Client.Manpage (manpageCmd)
@@ -196,7 +205,8 @@ import Distribution.Simple.Command
   , commandAddAction
   , commandFromSpec
   , commandShowOptions
-  , commandsRun
+  , commandsRunWithFallback
+  , defaultCommandFallback
   , hiddenCommand
   )
 import Distribution.Simple.Compiler (PackageDBStack)
@@ -212,6 +222,8 @@ import Distribution.Simple.PackageDescription (readGenericPackageDescription)
 import Distribution.Simple.Program
   ( configureAllKnownPrograms
   , defaultProgramDb
+  , defaultProgramSearchPath
+  , findProgramOnSearchPath
   , getProgramInvocationOutput
   , simpleProgramInvocation
   )
@@ -220,13 +232,14 @@ import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Simple.Utils
   ( cabalVersion
   , createDirectoryIfMissingVerbose
-  , die'
   , dieNoVerbosity
+  , dieWithException
   , findPackageDesc
   , info
   , notice
   , topHandler
   , tryFindPackageDesc
+  , withOutputMarker
   )
 import Distribution.Text
   ( display
@@ -242,14 +255,16 @@ import Distribution.Version
   )
 
 import Control.Exception (AssertionFailed, assert, try)
+import Control.Monad (mapM_)
 import Data.Monoid (Any (..))
+import Distribution.Client.Errors
 import Distribution.Compat.ResponseFile
 import System.Directory
   ( doesFileExist
   , getCurrentDirectory
   , withCurrentDirectory
   )
-import System.Environment (getProgName)
+import System.Environment (getEnvironment, getExecutablePath, getProgName)
 import System.FilePath
   ( dropExtension
   , splitExtension
@@ -264,8 +279,24 @@ import System.IO
   , stderr
   , stdout
   )
+import System.Process (createProcess, env, proc)
 
 -- | Entry point
+--
+-- This does three things.
+--
+-- One, it initializes the program, providing support for termination
+-- signals, preparing console linebuffering, and relaxing encoding errors.
+--
+-- Two, it processes (via an IO action) response
+-- files, calling 'expandResponse' in Cabal/Distribution.Compat.ResponseFile
+--
+-- Note that here, it splits the arguments on a strict match to
+-- "--", and won't parse response files after the split.
+--
+-- Three, it calls the 'mainWorker', which calls the argument parser,
+-- producing 'CommandParse' data, which mainWorker pattern-matches
+-- into IO actions for execution.
 main :: [String] -> IO ()
 main args = do
   installTerminationHandler
@@ -278,6 +309,10 @@ main args = do
   -- when writing to stderr and stdout.
   relaxEncodingErrors stdout
   relaxEncodingErrors stderr
+
+  -- Response files support.
+  -- See 'expandResponse' documentation in Cabal/Distribution.Compat.ResponseFile
+  -- for more information.
   let (args0, args1) = break (== "--") args
 
   mainWorker =<< (++ args1) <$> expandResponse args0
@@ -295,10 +330,16 @@ warnIfAssertionsAreEnabled =
     assertionsEnabledMsg =
       "Warning: this is a debug build of cabal-install with assertions enabled."
 
+-- | Core worker, similar to 'defaultMainHelper' in Cabal/Distribution.Simple
+--
+-- With an exception-handler @topHandler@, mainWorker calls commandsRun
+-- to parse arguments, then pattern-matches the CommandParse data
+-- into IO actions for execution.
 mainWorker :: [String] -> IO ()
 mainWorker args = do
-  topHandler $
-    case commandsRun (globalCommand commands) commands args of
+  topHandler $ do
+    command <- commandsRunWithFallback (globalCommand commands) commands delegateToExternal args
+    case command of
       CommandHelp help -> printGlobalHelp help
       CommandList opts -> printOptionsList opts
       CommandErrors errs -> printErrors errs
@@ -327,6 +368,27 @@ mainWorker args = do
             warnIfAssertionsAreEnabled
             action globalFlags
   where
+    delegateToExternal
+      :: [Command Action]
+      -> String
+      -> [String]
+      -> IO (CommandParse Action)
+    delegateToExternal commands' name cmdArgs = do
+      mCommand <- findProgramOnSearchPath normal defaultProgramSearchPath ("cabal-" <> name)
+      case mCommand of
+        Just (exec, _) -> return (CommandReadyToGo $ \_ -> callExternal exec name cmdArgs)
+        Nothing -> defaultCommandFallback commands' name cmdArgs
+
+    callExternal :: String -> String -> [String] -> IO ()
+    callExternal exec name cmdArgs = do
+      cur_env <- getEnvironment
+      cabal_exe <- getExecutablePath
+      let new_env = ("CABAL", cabal_exe) : cur_env
+      result <- try $ createProcess ((proc exec (name : cmdArgs)){env = Just new_env})
+      case result of
+        Left ex -> printErrors ["Error executing external command: " ++ show (ex :: SomeException)]
+        Right _ -> return ()
+
     printCommandHelp help = do
       pname <- getProgName
       putStr (help pname)
@@ -367,6 +429,7 @@ mainWorker args = do
       , regularCmd reportCommand reportAction
       , regularCmd initCommand initAction
       , regularCmd userConfigCommand userConfigAction
+      , regularCmd pathCommand pathAction
       , regularCmd genBoundsCommand genBoundsAction
       , regularCmd CmdOutdated.outdatedCommand CmdOutdated.outdatedAction
       , wrapperCmd hscolourCommand hscolourVerbosity hscolourDistPref
@@ -833,7 +896,7 @@ componentNamesFromLBI verbosity distPref targetsDescr compPred = do
       -- script built against a different Cabal version, so it's crucial that
       -- we ignore the bad version error here.
       ConfigStateFileBadVersion _ _ _ -> return ComponentNamesUnknown
-      _ -> die' verbosity (show err)
+      _ -> dieWithException verbosity $ ConfigStateFileException (show err)
     Right lbi -> do
       let pkgDescr = LBI.localPkgDescr lbi
           names =
@@ -1097,7 +1160,7 @@ uploadAction uploadFlags extraArgs globalFlags = do
       globalFlags' = savedGlobalFlags config `mappend` globalFlags
       tarfiles = extraArgs
   when (null tarfiles && not (fromFlag (uploadDoc uploadFlags'))) $
-    die' verbosity "the 'upload' command expects at least one .tar.gz archive."
+    dieWithException verbosity UploadAction
   checkTarFiles extraArgs
   maybe_password <-
     case uploadPasswordCmd uploadFlags' of
@@ -1111,13 +1174,12 @@ uploadAction uploadFlags extraArgs globalFlags = do
     if fromFlag (uploadDoc uploadFlags')
       then do
         when (length tarfiles > 1) $
-          die' verbosity $
-            "the 'upload' command can only upload documentation "
-              ++ "for one package at a time."
+          dieWithException verbosity UploadActionDocumentation
         tarfile <- maybe (generateDocTarball config) return $ listToMaybe tarfiles
         Upload.uploadDoc
           verbosity
           repoContext
+          (flagToMaybe $ uploadToken uploadFlags')
           (flagToMaybe $ uploadUsername uploadFlags')
           maybe_password
           (fromFlag (uploadCandidate uploadFlags'))
@@ -1126,6 +1188,7 @@ uploadAction uploadFlags extraArgs globalFlags = do
         Upload.upload
           verbosity
           repoContext
+          (flagToMaybe $ uploadToken uploadFlags')
           (flagToMaybe $ uploadUsername uploadFlags')
           maybe_password
           (fromFlag (uploadCandidate uploadFlags'))
@@ -1134,14 +1197,12 @@ uploadAction uploadFlags extraArgs globalFlags = do
     verbosity = fromFlag (uploadVerbosity uploadFlags)
     checkTarFiles tarfiles
       | not (null otherFiles) =
-          die' verbosity $
-            "the 'upload' command expects only .tar.gz archives: "
-              ++ intercalate ", " otherFiles
+          dieWithException verbosity $ UploadActionOnlyArchives otherFiles
       | otherwise =
           sequence_
             [ do
               exists <- doesFileExist tarfile
-              unless exists $ die' verbosity $ "file not found: " ++ tarfile
+              unless exists $ dieWithException verbosity $ FileNotFound tarfile
             | tarfile <- tarfiles
             ]
       where
@@ -1168,8 +1229,8 @@ checkAction :: Flag Verbosity -> [String] -> Action
 checkAction verbosityFlag extraArgs _globalFlags = do
   let verbosity = fromFlag verbosityFlag
   unless (null extraArgs) $
-    die' verbosity $
-      "'check' doesn't take any extra arguments: " ++ unwords extraArgs
+    dieWithException verbosity $
+      CheckAction extraArgs
   allOk <- Check.check (fromFlag verbosityFlag)
   unless allOk exitFailure
 
@@ -1189,8 +1250,8 @@ reportAction :: ReportFlags -> [String] -> Action
 reportAction reportFlags extraArgs globalFlags = do
   let verbosity = fromFlag (reportVerbosity reportFlags)
   unless (null extraArgs) $
-    die' verbosity $
-      "'report' doesn't take any extra arguments: " ++ unwords extraArgs
+    dieWithException verbosity $
+      ReportAction extraArgs
   config <- loadConfig verbosity (globalConfigFile globalFlags)
   let globalFlags' = savedGlobalFlags config `mappend` globalFlags
       reportFlags' = savedReportFlags config `mappend` reportFlags
@@ -1199,6 +1260,7 @@ reportAction reportFlags extraArgs globalFlags = do
     Upload.report
       verbosity
       repoContext
+      (flagToMaybe $ reportToken reportFlags')
       (flagToMaybe $ reportUsername reportFlags')
       (flagToMaybe $ reportPassword reportFlags')
 
@@ -1251,10 +1313,7 @@ initAction initFlags extraArgs globalFlags = do
     [projectDir] -> do
       createDirectoryIfMissingVerbose verbosity True projectDir
       withCurrentDirectory projectDir initAction'
-    _ ->
-      die' verbosity $
-        "'init' only takes a single, optional, extra "
-          ++ "argument for the project root directory"
+    _ -> dieWithException verbosity InitAction
   where
     initAction' = do
       confFlags <- loadConfigOrSandboxConfig verbosity globalFlags
@@ -1288,12 +1347,12 @@ userConfigAction ucflags extraArgs globalFlags = do
       fileExists <- doesFileExist path
       if (not fileExists || (fileExists && frc))
         then void $ createDefaultConfigFile verbosity extraLines path
-        else die' verbosity $ path ++ " already exists."
+        else dieWithException verbosity $ UserConfigAction path
     ("diff" : _) -> traverse_ putStrLn =<< userConfigDiff verbosity globalFlags extraLines
     ("update" : _) -> userConfigUpdate verbosity globalFlags extraLines
     -- Error handling.
-    [] -> die' verbosity $ "Please specify a subcommand (see 'help user-config')"
-    _ -> die' verbosity $ "Unknown 'user-config' subcommand: " ++ unwords extraArgs
+    [] -> dieWithException verbosity SpecifySubcommand
+    _ -> dieWithException verbosity $ UnknownUserConfigSubcommand extraArgs
   where
     configFile = getConfigFilePath (globalConfigFile globalFlags)
 
@@ -1315,11 +1374,40 @@ manpageAction :: [CommandSpec action] -> ManpageFlags -> [String] -> Action
 manpageAction commands flags extraArgs _ = do
   let verbosity = fromFlag (manpageVerbosity flags)
   unless (null extraArgs) $
-    die' verbosity $
-      "'man' doesn't take any extra arguments: " ++ unwords extraArgs
+    dieWithException verbosity $
+      ManpageAction extraArgs
   pname <- getProgName
   let cabalCmd =
         if takeExtension pname == ".exe"
           then dropExtension pname
           else pname
   manpageCmd cabalCmd commands flags
+
+pathAction :: PathFlags -> [String] -> Action
+pathAction pathflags extraArgs globalFlags = do
+  let verbosity = fromFlag (pathVerbosity pathflags)
+  unless (null extraArgs) $
+    dieWithException verbosity $
+      ManpageAction extraArgs
+  cfg <- loadConfig verbosity mempty
+  let getDir getDefault getGlobal =
+        maybe
+          getDefault
+          pure
+          (flagToMaybe $ getGlobal $ savedGlobalFlags cfg)
+      getSomeDir PathCacheDir = getDir defaultCacheDir globalCacheDir
+      getSomeDir PathLogsDir = getDir defaultLogsDir globalLogsDir
+      getSomeDir PathStoreDir = getDir defaultStoreDir globalStoreDir
+      getSomeDir PathConfigFile = getConfigFilePath (globalConfigFile globalFlags)
+      getSomeDir PathInstallDir =
+        fromFlagOrDefault defaultInstallPath (pure <$> cinstInstalldir (savedClientInstallFlags cfg))
+      printPath p = putStrLn . withOutputMarker verbosity . ((pathName p ++ ": ") ++) =<< getSomeDir p
+  -- If no paths have been requested, print all paths with labels.
+  --
+  -- If a single path has been requested, print that path without any label.
+  --
+  -- If multiple paths have been requested, print each of them with labels.
+  case fromFlag $ pathDirs pathflags of
+    [] -> mapM_ printPath [minBound .. maxBound]
+    [d] -> putStrLn . withOutputMarker verbosity =<< getSomeDir d
+    ds -> mapM_ printPath ds

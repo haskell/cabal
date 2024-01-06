@@ -144,9 +144,9 @@ This has the following effects:
    the set of databases via :option:`--package-db` (and related flags): these
    dependencies are assumed to be up-to-date. A dependency can be
    explicitly specified using :option:`--dependency` simply by giving the name
-   of the internal library; e.g., the dependency for an internal library
+   of the sublibrary; e.g., the dependency for a sublibrary
    named ``foo`` is given as
-   ``--dependency=pkg-internal=pkg-1.0-internal-abcd``.
+   ``--dependency=Lib:foo=foo-0.1-abc``.
 
 -  Only the dependencies needed for the requested component are
    required. Similarly, when :option:`--exact-configuration` is specified,
@@ -612,8 +612,8 @@ Miscellaneous options
     built; this identifier is passed on to GHC and serves as the basis
     for linker symbols and the ``id`` field in a ``ghc-pkg``
     registration. When a package has multiple components, the actual
-    component identifiers are derived off of this identifier. E.g., an
-    internal library ``foo`` from package ``p-0.1-abcd`` will get the
+    component identifiers are derived off of this identifier. E.g., a
+    sublibrary ``foo`` from package ``p-0.1-abcd`` will get the
     identifier ``p-0.1-abcd-foo``.
 
 .. option:: --cid=CID
@@ -710,6 +710,14 @@ Miscellaneous options
         each module, whether top level or local. In GHC specifically,
         this is for non-inline toplevel or where-bound functions or
         values.
+    late-toplevel
+        Like top-level but costs will be assigned to top level definitions after
+        optimization. This lowers profiling overhead massively while giving similar
+        levels of detail as toplevle-functions. However it means functions introduced
+        by GHC during optimization will show up in profiles as well.
+        Corresponds to ``-fprof-late`` if supported and ``-fprof-auto-top`` otherwise.
+    late
+        Currently an alias for late-toplevel
 
     This flag is new in Cabal-1.24. Prior versions used the equivalent
     of ``none`` above.

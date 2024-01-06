@@ -92,6 +92,7 @@ import Distribution.Pretty
 import Distribution.Simple.Bench
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.ConfigureScript
+import Distribution.Simple.Errors
 import Distribution.Simple.Haddock
 import Distribution.Simple.Install
 import Distribution.Simple.LocalBuildInfo
@@ -154,10 +155,21 @@ defaultMainWithHooksNoReadArgs :: UserHooks -> GenericPackageDescription -> [Str
 defaultMainWithHooksNoReadArgs hooks pkg_descr =
   defaultMainHelper hooks{readDesc = return (Just pkg_descr)}
 
+-- | The central command chooser of the Simple build system,
+-- with other defaultMain functions acting as exposed callers,
+-- and with 'topHandler' operating as an exceptions handler.
+--
+-- This uses 'expandResponse' to read response files, preprocessing
+-- response files given by "@" prefixes.
+--
+-- Given hooks and args, this runs 'commandsRun' onto the args,
+-- getting 'CommandParse' data back, which is then pattern-matched into
+-- IO actions for execution, with arguments applied by the parser.
 defaultMainHelper :: UserHooks -> Args -> IO ()
 defaultMainHelper hooks args = topHandler $ do
   args' <- expandResponse args
-  case commandsRun (globalCommand commands) commands args' of
+  command <- commandsRun (globalCommand commands) commands args'
+  case command of
     CommandHelp help -> printHelp help
     CommandList opts -> printOptionsList opts
     CommandErrors errs -> printErrors errs
@@ -601,16 +613,10 @@ sanityCheckHookedBuildInfo
   verbosity
   (PackageDescription{library = Nothing})
   (Just _, _) =
-    die' verbosity $
-      "The buildinfo contains info for a library, "
-        ++ "but the package does not have a library."
+    dieWithException verbosity $ NoLibraryForPackage
 sanityCheckHookedBuildInfo verbosity pkg_descr (_, hookExes)
   | exe1 : _ <- nonExistant =
-      die' verbosity $
-        "The buildinfo contains info for an executable called '"
-          ++ prettyShow exe1
-          ++ "' but the package does not have a "
-          ++ "executable with that name."
+      dieWithException verbosity $ SanityCheckHookedBuildInfo exe1
   where
     pkgExeNames = nub (map exeName (executables pkg_descr))
     hookExeNames = nub (map fst hookExes)
@@ -777,7 +783,7 @@ autoconfUserHooks =
               verbosity
               flags
               lbi
-          else die' verbosity "configure script not found."
+          else dieWithException verbosity ConfigureScriptNotFound
 
         pbi <- getHookedBuildInfo verbosity (buildDir lbi)
         sanityCheckHookedBuildInfo verbosity pkg_descr pbi

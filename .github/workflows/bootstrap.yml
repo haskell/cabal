@@ -5,11 +5,22 @@ concurrency:
   group: ${{ github.ref }}-${{ github.workflow }}
   cancel-in-progress: true
 
+# Note: This workflow file contains the required job "Bootstrap post job". We are using path filtering
+# here to ignore PRs which only change documentation. This can cause a problem, see the workflow file
+# "bootstrap.skip.yml" for a description of the problem and the solution provided in that file.
 on:
   push:
+    paths-ignore:
+      - 'doc/**'
+      - '**/README.md'
+      - 'CONTRIBUTING.md'
     branches:
       - master
   pull_request:
+    paths-ignore:
+      - 'doc/**'
+      - '**/README.md'
+      - 'CONTRIBUTING.md'
   release:
     types:
       - created
@@ -34,7 +45,7 @@ jobs:
           key: bootstrap-${{ runner.os }}-${{ matrix.ghc }}-20221115-${{ github.sha }}
           restore-keys: bootstrap-${{ runner.os }}-${{ matrix.ghc }}-20221115-
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       # See https://github.com/haskell/cabal/pull/8739
       - name: Sudo chmod to permit ghcup to update its cache
         run: |
@@ -66,3 +77,20 @@ jobs:
         with:
           name: cabal-${{ matrix.os }}-${{ matrix.ghc }}-bootstrapped
           path: _build/artifacts/*
+
+  # We use this job as a summary of the workflow
+  # It will fail if any of the previous jobs does it
+  # This way we can use it exclusively in branch protection rules
+  # and abstract away the concrete jobs of the workflow, including their names
+  bootstrap-post-job:
+    if: always()
+    name: Bootstrap post job
+    runs-on: ubuntu-latest
+    # IMPORTANT! Any job added to the workflow should be added here too
+    needs: [bootstrap]
+
+    steps:
+      - run: |
+          echo "jobs info: ${{ toJSON(needs) }}"
+      - if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: exit 1

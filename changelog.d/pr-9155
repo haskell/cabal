@@ -1,0 +1,4 @@
+synopsis: Do not ask overwrite permissions on blank project
+packages: cabal-install
+prs: #9155
+issues: #9150

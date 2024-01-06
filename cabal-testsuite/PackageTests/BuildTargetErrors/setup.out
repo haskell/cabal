@@ -1,4 +1,5 @@
 # Setup configure
 Configuring BuildTargetErrors-1.0...
 # Setup build
-Error: setup: Cannot process the executable 'not-buildable-exe' because the component is marked as disabled in the .cabal file.
+Error: [Cabal-4733]
+Cannot process the executable 'not-buildable-exe' because the component is marked as disabled in the .cabal file.

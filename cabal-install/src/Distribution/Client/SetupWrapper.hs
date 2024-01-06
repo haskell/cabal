@@ -151,7 +151,7 @@ import Distribution.Simple.Utils
   , copyFileVerbose
   , createDirectoryIfMissingVerbose
   , debug
-  , die'
+  , dieWithException
   , info
   , infoNoWrap
   , installExecutableFile
@@ -183,6 +183,7 @@ import System.Process (StdStream (..))
 import qualified System.Process as Process
 
 import qualified Data.ByteString.Lazy as BS
+import Distribution.Client.Errors
 
 #ifdef mingw32_HOST_OS
 import Distribution.Simple.Utils
@@ -794,9 +795,7 @@ getExternalSetupMethod verbosity options pkg bt = do
       useHs <- doesFileExist customSetupHs
       useLhs <- doesFileExist customSetupLhs
       unless (useHs || useLhs) $
-        die'
-          verbosity
-          "Using 'build-type: Custom' but there is no Setup.hs or Setup.lhs script."
+        dieWithException verbosity UpdateSetupScript
       let src = (if useHs then customSetupHs else customSetupLhs)
       srcNewer <- src `moreRecentFile` setupHs
       when srcNewer $
@@ -838,12 +837,7 @@ getExternalSetupMethod verbosity options pkg bt = do
           options'' = options'{usePackageIndex = Just index}
       case PackageIndex.lookupDependency index cabalDepName cabalDepVersion of
         [] ->
-          die' verbosity $
-            "The package '"
-              ++ prettyShow (packageName pkg)
-              ++ "' requires Cabal library version "
-              ++ prettyShow (useCabalVersion options)
-              ++ " but no suitable version is installed."
+          dieWithException verbosity $ InstalledCabalVersion (packageName pkg) (useCabalVersion options)
         pkgs ->
           let ipkginfo = fromMaybe err $ safeHead . snd . bestVersion fst $ pkgs
               err = error "Distribution.Client.installedCabalVersion: empty version list"

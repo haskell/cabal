@@ -1,5 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ViewPatterns #-}
 
 -----------------------------------------------------------------------------
 
@@ -38,6 +40,15 @@ import Distribution.TestSuite
 import qualified Distribution.Types.LocalBuildInfo as LBI
 import Distribution.Types.UnqualComponentName
 
+import Distribution.Simple.Configure (getInstalledPackagesById)
+import Distribution.Simple.Errors
+import Distribution.Simple.Register
+import Distribution.Simple.Setup (fromFlagOrDefault)
+import Distribution.Simple.Setup.Common (extraCompilationArtifacts)
+import Distribution.Simple.Setup.Config
+import Distribution.Types.ExposedModule
+import Distribution.Types.InstalledPackageInfo (InstalledPackageInfo (libraryDirs), exposedModules)
+import Distribution.Types.LocalBuildInfo (LocalBuildInfo (..))
 import System.Directory
   ( createDirectoryIfMissing
   , doesFileExist
@@ -57,7 +68,7 @@ test
   -> TestFlags
   -- ^ flags sent to test
   -> IO ()
-test args pkg_descr lbi flags = do
+test args pkg_descr lbi0 flags = do
   let verbosity = fromFlag $ testVerbosity flags
       machineTemplate = fromFlag $ testMachineLog flags
       distPref = fromFlag $ testDistPref flags
@@ -65,18 +76,23 @@ test args pkg_descr lbi flags = do
       testNames = args
       pkgTests = PD.testSuites pkg_descr
       enabledTests = LBI.enabledTestLBIs pkg_descr lbi
+      -- We must add the internalPkgDB to the package database stack to lookup
+      -- the path to HPC dirs of libraries local to this package
+      internalPkgDB = internalPackageDBPath lbi distPref
+      lbi = lbi0{withPackageDB = withPackageDB lbi0 ++ [SpecificPackageDB internalPkgDB]}
 
       doTest
-        :: ( (PD.TestSuite, LBI.ComponentLocalBuildInfo)
+        :: HPCMarkupInfo
+        -> ( (PD.TestSuite, LBI.ComponentLocalBuildInfo)
            , Maybe TestSuiteLog
            )
         -> IO TestSuiteLog
-      doTest ((suite, clbi), _) =
+      doTest hpcMarkupInfo ((suite, clbi), _) =
         case PD.testInterface suite of
           PD.TestSuiteExeV10 _ _ ->
-            ExeV10.runTest pkg_descr lbi clbi flags suite
+            ExeV10.runTest pkg_descr lbi clbi hpcMarkupInfo flags suite
           PD.TestSuiteLibV09 _ _ ->
-            LibV09.runTest pkg_descr lbi clbi flags suite
+            LibV09.runTest pkg_descr lbi clbi hpcMarkupInfo flags suite
           _ ->
             return
               TestSuiteLog
@@ -98,9 +114,7 @@ test args pkg_descr lbi flags = do
     exitSuccess
 
   when (PD.hasTests pkg_descr && null enabledTests) $
-    die' verbosity $
-      "No test suites enabled. Did you remember to configure with "
-        ++ "\'--enable-tests\'?"
+    dieWithException verbosity NoTestSuitesEnabled
 
   testsToRun <- case testNames of
     [] -> return $ zip enabledTests $ repeat Nothing
@@ -113,11 +127,8 @@ test args pkg_descr lbi flags = do
             Just t -> return (t, Nothing)
             _
               | tCompName `elem` allNames ->
-                  die' verbosity $
-                    "Package configured with test suite "
-                      ++ tName
-                      ++ " disabled."
-              | otherwise -> die' verbosity $ "no such test: " ++ tName
+                  dieWithException verbosity $ TestNameDisabled tName
+              | otherwise -> dieWithException verbosity $ NoSuchTest tName
 
   createDirectoryIfMissing True testLogDir
 
@@ -126,9 +137,30 @@ test args pkg_descr lbi flags = do
     >>= filterM doesFileExist . map (testLogDir </>)
     >>= traverse_ removeFile
 
+  -- We configured the unit-ids of libraries we should cover in our coverage
+  -- report at configure time into the local build info. At build time, we built
+  -- the hpc artifacts into the extraCompilationArtifacts directory, which, at
+  -- install time, is copied into the ghc-pkg database files.
+  -- Now, we get the path to the HPC artifacts and exposed modules of each
+  -- library by querying the package database keyed by unit-id:
+  let coverageFor = fromFlagOrDefault [] (configCoverageFor (configFlags lbi))
+  ipkginfos <- getInstalledPackagesById verbosity lbi MissingCoveredInstalledLibrary coverageFor
+  let ( concat -> pathsToLibsArtifacts
+        , concat -> libsModulesToInclude
+        ) =
+          unzip $
+            map
+              ( \ip ->
+                  ( map (</> extraCompilationArtifacts) $ libraryDirs ip
+                  , map exposedName $ exposedModules ip
+                  )
+              )
+              ipkginfos
+      hpcMarkupInfo = HPCMarkupInfo{pathsToLibsArtifacts, libsModulesToInclude}
+
   let totalSuites = length testsToRun
   notice verbosity $ "Running " ++ show totalSuites ++ " test suites..."
-  suites <- traverse doTest testsToRun
+  suites <- traverse (doTest hpcMarkupInfo) testsToRun
   let packageLog = (localPackageLog pkg_descr lbi){testSuites = suites}
       packageLogFile =
         (</>) testLogDir $
@@ -137,7 +169,7 @@ test args pkg_descr lbi flags = do
   writeFile packageLogFile $ show packageLog
 
   when (LBI.testCoverage lbi) $
-    markupPackage verbosity lbi distPref pkg_descr $
+    markupPackage verbosity hpcMarkupInfo lbi distPref pkg_descr $
       map (fst . fst) testsToRun
 
   unless allOk exitFailure

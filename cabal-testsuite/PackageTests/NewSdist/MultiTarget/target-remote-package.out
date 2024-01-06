@@ -1,2 +1,3 @@
 # cabal v2-sdist
-Error: cabal: The package base cannot be packaged for distribution, because it is not local to this project.
+Error: [Cabal-7151]
+The package base cannot be packaged for distribution, because it is not local to this project.

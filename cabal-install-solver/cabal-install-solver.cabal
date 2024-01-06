@@ -27,11 +27,6 @@ flag debug-expensive-assertions
   default:     False
   manual:      True
 
-flag debug-conflict-sets
-  description: Add additional information to ConflictSets
-  default:     False
-  manual:      True
-
 flag debug-tracetree
   description: Compile in support for tracetree (used to debug the solver)
   default:     False
@@ -105,23 +100,19 @@ library
 
   build-depends:
     , array         >=0.4      && <0.6
-    , base          >=4.10     && <4.19
-    , bytestring    >=0.10.6.0 && <0.12
+    , base          >=4.10     && <4.20
+    , bytestring    >=0.10.6.0 && <0.13
     , Cabal         ^>=3.11
     , Cabal-syntax  ^>=3.11
-    , containers    >=0.5.6.2  && <0.7
+    , containers    >=0.5.6.2  && <0.8
     , edit-distance ^>= 0.2.2
-    , filepath      ^>=1.4.0.0
+    , filepath      ^>=1.4.0.0 || ^>=1.5.0.0
     , mtl           >=2.0      && <2.4
     , pretty        ^>=1.1
     , transformers  >=0.4.2.0  && <0.7
 
   if flag(debug-expensive-assertions)
     cpp-options: -DDEBUG_EXPENSIVE_ASSERTIONS
-
-  if flag(debug-conflict-sets)
-    cpp-options:   -DDEBUG_CONFLICT_SETS
-    build-depends: base >=4.9
 
   if flag(debug-tracetree)
     cpp-options:   -DDEBUG_TRACETREE
@@ -138,10 +129,10 @@ Test-Suite unit-tests
      UnitTests.Distribution.Solver.Modular.MessageUtils
 
    build-depends:
-     , base        >= 4.10  && <4.19
+     , base        >= 4.10  && <4.20
      , Cabal
      , Cabal-syntax
      , cabal-install-solver
-     , tasty       >= 1.2.3 && <1.5
+     , tasty       >= 1.2.3 && <1.6
      , tasty-quickcheck
      , tasty-hunit >= 0.10

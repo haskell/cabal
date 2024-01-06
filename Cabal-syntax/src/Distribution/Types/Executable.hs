@@ -40,25 +40,13 @@ instance Monoid Executable where
 instance Semigroup Executable where
   a <> b =
     Executable
-      { exeName = combine' exeName
+      { exeName = combineNames a b exeName "executable"
       , modulePath = combine modulePath
       , exeScope = combine exeScope
       , buildInfo = combine buildInfo
       }
     where
       combine field = field a `mappend` field b
-      combine' field = case ( unUnqualComponentName $ field a
-                            , unUnqualComponentName $ field b
-                            ) of
-        ("", _) -> field b
-        (_, "") -> field a
-        (x, y) ->
-          error $
-            "Ambiguous values for executable field: '"
-              ++ x
-              ++ "' and '"
-              ++ y
-              ++ "'"
 
 emptyExecutable :: Executable
 emptyExecutable = mempty

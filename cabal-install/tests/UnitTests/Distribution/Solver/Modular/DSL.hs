@@ -79,7 +79,6 @@ import Language.Haskell.Extension (Extension (..), Language (..))
 
 -- cabal-install
 import Distribution.Client.Dependency
-import Distribution.Client.Dependency.Types
 import qualified Distribution.Client.SolverInstallPlan as CI.SolverInstallPlan
 import Distribution.Client.Types
 
@@ -492,7 +491,7 @@ exAvSrcPkg ex =
         -- Furthermore we ignore missing upper bound warnings because
         -- they are not related to this test suite, and are tested
         -- with golden tests.
-        let checks = C.checkPackage (srcpkgDescription package) Nothing
+        let checks = C.checkPackage (srcpkgDescription package)
          in filter (\x -> not (isMissingUpperBound x) && not (isUnknownLangExt x)) checks
    in if null pkgCheckErrors
         then package
@@ -821,7 +820,7 @@ exResolve
   prefs
   verbosity
   enableAllTests =
-    resolveDependencies C.buildPlatform compiler pkgConfigDb Modular params
+    resolveDependencies C.buildPlatform compiler pkgConfigDb params
     where
       defaultCompiler = C.unknownCompilerInfo C.buildCompilerId C.NoAbiTag
       compiler =

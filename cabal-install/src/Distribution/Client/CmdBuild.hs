@@ -26,6 +26,8 @@ import Distribution.Client.TargetProblem
   , TargetProblem'
   )
 
+import qualified Data.Map as Map
+import Distribution.Client.Errors
 import Distribution.Client.NixStyleOptions
   ( NixStyleFlags (..)
   , defaultNixStyleFlags
@@ -49,14 +51,12 @@ import Distribution.Simple.Command
   )
 import Distribution.Simple.Flag (Flag (..), fromFlag, fromFlagOrDefault, toFlag)
 import Distribution.Simple.Utils
-  ( die'
+  ( dieWithException
   , wrapText
   )
 import Distribution.Verbosity
   ( normal
   )
-
-import qualified Data.Map as Map
 
 buildCommand :: CommandUI (NixStyleFlags BuildFlags)
 buildCommand =
@@ -237,4 +237,4 @@ reportBuildTargetProblems verbosity problems =
 
 reportCannotPruneDependencies :: Verbosity -> CannotPruneDependencies -> IO a
 reportCannotPruneDependencies verbosity =
-  die' verbosity . renderCannotPruneDependencies
+  dieWithException verbosity . ReportCannotPruneDependencies . renderCannotPruneDependencies

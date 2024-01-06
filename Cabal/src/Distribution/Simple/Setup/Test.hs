@@ -93,6 +93,9 @@ data TestFlags = TestFlags
   }
   deriving (Show, Generic, Typeable)
 
+instance Binary TestFlags
+instance Structured TestFlags
+
 defaultTestFlags :: TestFlags
 defaultTestFlags =
   TestFlags

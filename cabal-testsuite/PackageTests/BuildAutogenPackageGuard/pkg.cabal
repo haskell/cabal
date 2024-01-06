@@ -1,0 +1,17 @@
+cabal-version: 2.4
+name: pkg
+version: 0
+license: GPL-3.0-or-later
+maintainer: Someone
+category: Example
+synopsis: Foo
+description: FooBar
+build-type: Simple
+
+library
+    default-language: Haskell2010
+    build-depends: base == 4.*
+    -- ☞ N.B.: PackageInfo packages must contain the same name of
+    -- of the package! (In this example: `pkg`).
+    autogen-modules: PackageInfo_pkg
+    exposed-modules: PackageInfo_pkg

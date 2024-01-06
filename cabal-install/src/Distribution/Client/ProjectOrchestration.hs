@@ -3,6 +3,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ViewPatterns #-}
 
 -- | This module deals with building and incrementally rebuilding a collection
 -- of packages. It is what backs the @cabal build@ and @configure@ commands,
@@ -170,6 +171,11 @@ import Distribution.Types.UnqualComponentName
 
 import Distribution.Solver.Types.OptionalStanza
 
+import Control.Exception (assert)
+import qualified Data.List.NonEmpty as NE
+import qualified Data.Map as Map
+import qualified Data.Set as Set
+import Distribution.Client.Errors
 import Distribution.Package
 import Distribution.Simple.Command (commandShowOptions)
 import Distribution.Simple.Compiler
@@ -193,7 +199,7 @@ import qualified Distribution.Simple.Setup as Setup
 import Distribution.Simple.Utils
   ( createDirectoryIfMissingVerbose
   , debugNoWrap
-  , die'
+  , dieWithException
   , notice
   , noticeNoWrap
   , ordNub
@@ -214,13 +220,9 @@ import Distribution.Verbosity
 import Distribution.Version
   ( mkVersion
   )
-
-import Control.Exception (assert)
-import qualified Data.List.NonEmpty as NE
-import qualified Data.Map as Map
-import qualified Data.Set as Set
 #ifdef MIN_VERSION_unix
 import           System.Posix.Signals (sigKILL, sigSEGV)
+
 #endif
 
 -- | Tracks what command is being executed, because we need to hide this somewhere
@@ -641,7 +643,7 @@ resolveTargets
       checkTarget :: TargetSelector -> Either (TargetProblem err) [(UnitId, ComponentTarget)]
 
       -- We can ask to build any whole package, project-local or a dependency
-      checkTarget bt@(TargetPackage _ [pkgid] mkfilter)
+      checkTarget bt@(TargetPackage _ (ordNub -> [pkgid]) mkfilter)
         | Just ats <-
             fmap (maybe id filterTargetsKind mkfilter) $
               Map.lookup pkgid availableTargetsByPackageId =
@@ -1038,6 +1040,7 @@ printPlan
       showConfigureFlags elab =
         let fullConfigureFlags =
               setupHsConfigureFlags
+                elaboratedPlan
                 (ReadyPackage elab)
                 elaboratedShared
                 verbosity
@@ -1219,10 +1222,10 @@ dieOnBuildFailures verbosity currentCommand plan buildOutcomes
       ]
 
     dieIfNotHaddockFailure :: Verbosity -> String -> IO ()
-    dieIfNotHaddockFailure
-      | currentCommand == HaddockCommand = die'
-      | all isHaddockFailure failuresClassification = warn
-      | otherwise = die'
+    dieIfNotHaddockFailure verb str
+      | currentCommand == HaddockCommand = dieWithException verb $ DieIfNotHaddockFailureException str
+      | all isHaddockFailure failuresClassification = warn verb str
+      | otherwise = dieWithException verb $ DieIfNotHaddockFailureException str
       where
         isHaddockFailure
           (_, ShowBuildSummaryOnly (HaddocksFailed _)) = True

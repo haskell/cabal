@@ -77,8 +77,8 @@ installCommand =
         "Copy the files into the install locations. Run register."
     , commandDescription = Just $ \_ ->
         wrapText $
-          "Unlike the copy command, install calls the register command."
-            ++ "If you want to install into a location that is not what was"
+          "Unlike the copy command, install calls the register command. "
+            ++ "If you want to install into a location that is not what was "
             ++ "specified in the configure step, use the copy command.\n"
     , commandNotes = Nothing
     , commandUsage = \pname ->

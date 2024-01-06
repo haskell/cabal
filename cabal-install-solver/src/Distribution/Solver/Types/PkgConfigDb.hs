@@ -67,15 +67,22 @@ readPkgConfigDb verbosity progdb = handle ioErrorHandler $ do
         -- The output of @pkg-config --list-all@ also includes a description
         -- for each package, which we do not need.
         let pkgNames = map (takeWhile (not . isSpace)) pkgList
-        (pkgVersions, _errs, exitCode) <-
+        (outs, _errs, exitCode) <-
                      getProgramInvocationOutputAndErrors verbosity
                        (programInvocation pkgConfig ("--modversion" : pkgNames))
-        case exitCode of
-          ExitSuccess -> (return . pkgConfigDbFromList . zip pkgNames) (lines pkgVersions)
-          -- if there's a single broken pc file the above fails, so we fall back into calling it individually
-          _ -> do
-             info verbosity ("call to pkg-config --modversion on all packages failed. Falling back to querying pkg-config individually on each package")
-             pkgConfigDbFromList . catMaybes <$> mapM (getIndividualVersion pkgConfig) pkgNames
+        let pkgVersions = lines outs
+        if exitCode == ExitSuccess && length pkgVersions == length pkgNames
+          then (return . pkgConfigDbFromList . zip pkgNames) pkgVersions
+          else
+          -- if there's a single broken pc file the above fails, so we fall back
+          -- into calling it individually
+          --
+          -- Also some implementations of @pkg-config@ do not provide more than
+          -- one package version, so if the returned list is shorter than the
+          -- requested one, we fall back to querying one by one.
+          do
+            info verbosity ("call to pkg-config --modversion on all packages failed. Falling back to querying pkg-config individually on each package")
+            pkgConfigDbFromList . catMaybes <$> mapM (getIndividualVersion pkgConfig) pkgNames
   where
     -- For when pkg-config invocation fails (possibly because of a
     -- too long command line).
@@ -92,7 +99,7 @@ readPkgConfigDb verbosity progdb = handle ioErrorHandler $ do
     getIndividualVersion pkgConfig pkg = do
        (pkgVersion, _errs, exitCode) <-
                getProgramInvocationOutputAndErrors verbosity
-                 (programInvocation pkgConfig ["--modversion",pkg])
+                 (programInvocation pkgConfig ["--modversion", pkg])
        return $ case exitCode of
          ExitSuccess -> Just (pkg, pkgVersion)
          _ -> Nothing

@@ -10,7 +10,6 @@ import Prelude ()
 
 import Distribution.Compat.Environment
 import qualified Distribution.PackageDescription as PD
-import Distribution.Pretty
 import Distribution.Simple.Build.PathsModule
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Compiler
@@ -39,18 +38,20 @@ import System.IO (stderr, stdout)
 import System.Process (createPipe)
 
 import qualified Data.ByteString.Lazy as LBS
+import Distribution.Simple.Errors
 
 runTest
   :: PD.PackageDescription
   -> LBI.LocalBuildInfo
   -> LBI.ComponentLocalBuildInfo
+  -> HPCMarkupInfo
   -> TestFlags
   -> PD.TestSuite
   -> IO TestSuiteLog
-runTest pkg_descr lbi clbi flags suite = do
+runTest pkg_descr lbi clbi hpcMarkupInfo flags suite = do
   let isCoverageEnabled = LBI.testCoverage lbi
       way = guessWay lbi
-      tixDir_ = tixDir distPref way testName'
+      tixDir_ = tixDir distPref way
 
   pwd <- getCurrentDirectory
   existingEnv <- getEnvironment
@@ -62,10 +63,8 @@ runTest pkg_descr lbi clbi flags suite = do
   -- Check that the test executable exists.
   exists <- doesFileExist cmd
   unless exists $
-    die' verbosity $
-      "Could not find test program \""
-        ++ cmd
-        ++ "\". Did you build the package first?"
+    dieWithException verbosity $
+      Couldn'tFindTestProgram cmd
 
   -- Remove old .tix files if appropriate.
   unless (fromFlag $ testKeepTix flags) $ do
@@ -171,12 +170,16 @@ runTest pkg_descr lbi clbi flags suite = do
   -- Write summary notice to terminal indicating end of test suite
   notice verbosity $ summarizeSuiteFinish suiteLog
 
-  when isCoverageEnabled $
-    case PD.library pkg_descr of
-      Nothing ->
-        die' verbosity "Test coverage is only supported for packages with a library component."
-      Just library ->
-        markupTest verbosity lbi distPref (prettyShow $ PD.package pkg_descr) suite library
+  when isCoverageEnabled $ do
+    -- Until #9493 is fixed, we expect cabal-install to pass one dist dir per
+    -- library and there being at least one library in the package with the
+    -- testsuite.  When it is fixed, we can remove this predicate and allow a
+    -- testsuite without a library to cover libraries in other packages of the
+    -- same project
+    when (null $ PD.allLibraries pkg_descr) $
+      dieWithException verbosity TestCoverageSupport
+
+    markupPackage verbosity hpcMarkupInfo lbi distPref pkg_descr [suite]
 
   return suiteLog
   where

@@ -27,6 +27,7 @@ import Distribution.Client.Types
   ( RemoteRepo (..)
   , unRepoName
   )
+import Distribution.Client.Types.Credentials (Auth)
 import Distribution.Client.Utils
   ( withTempFileName
   )
@@ -59,7 +60,7 @@ import Distribution.Simple.Utils
   ( IOData (..)
   , copyFileVerbose
   , debug
-  , die'
+  , dieWithException
   , info
   , notice
   , warn
@@ -126,6 +127,7 @@ import qualified Data.ByteString.Char8 as BS8
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString.Lazy.Char8 as LBS8
 import qualified Data.Char as Char
+import Distribution.Client.Errors
 import qualified Distribution.Compat.CharParsing as P
 
 ------------------------------------------------------------------------------
@@ -179,8 +181,7 @@ downloadURI transport verbosity uri path = do
         Right expected -> return (NeedsDownload (Just expected))
         -- we failed to parse uriFragment
         Left err ->
-          die' verbosity $
-            "Cannot parse URI fragment " ++ uriFrag ++ " " ++ err
+          dieWithException verbosity $ CannotParseURIFragment uriFrag err
       else -- if there are no uri fragment, use ETag
       do
         etagPathExists <- doesFileExist etagPath
@@ -215,15 +216,8 @@ downloadURI transport verbosity uri path = do
           contents <- LBS.readFile tmpFile
           let actual = SHA256.hashlazy contents
           unless (actual == expected) $
-            die' verbosity $
-              unwords
-                [ "Failed to download"
-                , show uri
-                , ": SHA256 don't match; expected:"
-                , BS8.unpack (Base16.encode expected)
-                , "actual:"
-                , BS8.unpack (Base16.encode actual)
-                ]
+            dieWithException verbosity $
+              MakeDownload uri expected actual
         (200, Just newEtag) -> writeFile etagPath newEtag
         _ -> return ()
 
@@ -236,11 +230,7 @@ downloadURI transport verbosity uri path = do
           notice verbosity "Skipping download: local and remote files match."
           return FileAlreadyInCache
         errCode ->
-          die' verbosity $
-            "failed to download "
-              ++ show uri
-              ++ " : HTTP code "
-              ++ show errCode
+          dieWithException verbosity $ FailedToDownloadURI uri (show errCode)
 
     etagPath = path <.> "etag"
     uriFrag = uriFragment uri
@@ -266,22 +256,14 @@ remoteRepoCheckHttps :: Verbosity -> HttpTransport -> RemoteRepo -> IO ()
 remoteRepoCheckHttps verbosity transport repo
   | uriScheme (remoteRepoURI repo) == "https:"
   , not (transportSupportsHttps transport) =
-      die' verbosity $
-        "The remote repository '"
-          ++ unRepoName (remoteRepoName repo)
-          ++ "' specifies a URL that "
-          ++ requiresHttpsErrorMessage
+      dieWithException verbosity $ RemoteRepoCheckHttps (unRepoName (remoteRepoName repo)) requiresHttpsErrorMessage
   | otherwise = return ()
 
 transportCheckHttps :: Verbosity -> HttpTransport -> URI -> IO ()
 transportCheckHttps verbosity transport uri
   | uriScheme uri == "https:"
   , not (transportSupportsHttps transport) =
-      die' verbosity $
-        "The URL "
-          ++ show uri
-          ++ " "
-          ++ requiresHttpsErrorMessage
+      dieWithException verbosity $ TransportCheckHttps uri requiresHttpsErrorMessage
   | otherwise = return ()
 
 requiresHttpsErrorMessage :: String
@@ -302,17 +284,7 @@ remoteRepoTryUpgradeToHttps verbosity transport repo
   , uriScheme (remoteRepoURI repo) == "http:"
   , not (transportSupportsHttps transport)
   , not (transportManuallySelected transport) =
-      die' verbosity $
-        "The builtin HTTP implementation does not support HTTPS, but using "
-          ++ "HTTPS for authenticated uploads is recommended. "
-          ++ "The transport implementations with HTTPS support are "
-          ++ intercalate ", " [name | (name, _, True, _) <- supportedTransports]
-          ++ "but they require the corresponding external program to be "
-          ++ "available. You can either make one available or use plain HTTP by "
-          ++ "using the global flag --http-transport=plain-http (or putting the "
-          ++ "equivalent in the config file). With plain HTTP, your password "
-          ++ "is sent using HTTP digest authentication so it cannot be easily "
-          ++ "intercepted, but it is not as secure as using HTTPS."
+      dieWithException verbosity $ TryUpgradeToHttps [name | (name, _, True, _) <- supportedTransports]
   | remoteRepoShouldTryHttps repo
   , uriScheme (remoteRepoURI repo) == "http:"
   , transportSupportsHttps transport =
@@ -353,7 +325,7 @@ data HttpTransport = HttpTransport
       -> String
       -> Maybe Auth
       -> IO (HttpCode, String)
-  -- ^ POST a resource to a URI, with optional auth (username, password)
+  -- ^ POST a resource to a URI, with optional 'Auth'
   -- and return the HTTP status code and any redirect URL.
   , postHttpFile
       :: Verbosity
@@ -362,7 +334,7 @@ data HttpTransport = HttpTransport
       -> Maybe Auth
       -> IO (HttpCode, String)
   -- ^ POST a file resource to a URI using multipart\/form-data encoding,
-  -- with optional auth (username, password) and return the HTTP status
+  -- with optional 'Auth' and return the HTTP status
   -- code and any error string.
   , putHttpFile
       :: Verbosity
@@ -371,8 +343,8 @@ data HttpTransport = HttpTransport
       -> Maybe Auth
       -> [Header]
       -> IO (HttpCode, String)
-  -- ^ PUT a file resource to a URI, with optional auth
-  -- (username, password), extra headers and return the HTTP status code
+  -- ^ PUT a file resource to a URI, with optional 'Auth',
+  -- extra headers and return the HTTP status code
   -- and any error string.
   , transportSupportsHttps :: Bool
   -- ^ Whether this transport supports https or just http.
@@ -387,15 +359,14 @@ data HttpTransport = HttpTransport
 
 type HttpCode = Int
 type ETag = String
-type Auth = (String, String)
 
 noPostYet
   :: Verbosity
   -> URI
   -> String
-  -> Maybe (String, String)
+  -> Maybe Auth
   -> IO (Int, String)
-noPostYet verbosity _ _ _ = die' verbosity "Posting (for report upload) is not implemented yet"
+noPostYet verbosity _ _ _ = dieWithException verbosity NoPostYet
 
 supportedTransports
   :: [ ( String
@@ -447,13 +418,7 @@ configureTransport verbosity extraPath (Just name) =
       let transport = fromMaybe (error "configureTransport: failed to make transport") $ mkTrans progdb
       return transport{transportManuallySelected = True}
     Nothing ->
-      die' verbosity $
-        "Unknown HTTP transport specified: "
-          ++ name
-          ++ ". The supported transports are "
-          ++ intercalate
-            ", "
-            [name' | (name', _, _, _) <- supportedTransports]
+      dieWithException verbosity $ UnknownHttpTransportSpecified name [name' | (name', _, _, _) <- supportedTransports]
 configureTransport verbosity extraPath Nothing = do
   -- the user hasn't selected a transport, so we'll pick the first one we
   -- can configure successfully, provided that it supports tls
@@ -536,12 +501,13 @@ curlTransport prog =
             (Just (URIAuth u _ _)) | not (null u) -> Just $ filter (/= '@') u
             _ -> Nothing
       -- prefer passed in auth to auth derived from uri. If neither exist, then no auth
-      let mbAuthString = case (explicitAuth, uriDerivedAuth) of
-            (Just (uname, passwd), _) -> Just (uname ++ ":" ++ passwd)
-            (Nothing, Just a) -> Just a
+      let mbAuthStringToken = case (explicitAuth, uriDerivedAuth) of
+            (Just (Right token), _) -> Just $ Right token
+            (Just (Left (uname, passwd)), _) -> Just $ Left (uname ++ ":" ++ passwd)
+            (Nothing, Just a) -> Just $ Left a
             (Nothing, Nothing) -> Nothing
-      case mbAuthString of
-        Just up ->
+      case mbAuthStringToken of
+        Just (Left up) ->
           progInvocation
             { progInvokeInput =
                 Just . IODataText . unlines $
@@ -549,6 +515,12 @@ curlTransport prog =
                   , "--user " ++ up
                   ]
             , progInvokeArgs = ["--config", "-"] ++ progInvokeArgs progInvocation
+            }
+        Just (Right token) ->
+          progInvocation
+            { progInvokeArgs =
+                ["--header", "Authorization: X-ApiKey " ++ token]
+                  ++ progInvokeArgs progInvocation
             }
         Nothing -> progInvocation
 
@@ -702,6 +674,7 @@ wgetTransport prog =
                         ++ "boundary="
                         ++ boundary
                     ]
+                      ++ maybeToList (authTokenHeader auth)
               out <- runWGet verbosity (addUriAuth auth uri) args
               (code, _etag) <- parseOutput verbosity uri out
               withFile responseFile ReadMode $ \hnd -> do
@@ -723,6 +696,7 @@ wgetTransport prog =
                   ++ [ "--header=" ++ show name ++ ": " ++ value
                      | Header name value <- headers
                      ]
+                  ++ maybeToList (authTokenHeader auth)
 
           out <- runWGet verbosity (addUriAuth auth uri) args
           (code, _etag) <- parseOutput verbosity uri out
@@ -730,13 +704,16 @@ wgetTransport prog =
             resp <- hGetContents hnd
             evaluate $ force (code, resp)
 
-    addUriAuth Nothing uri = uri
-    addUriAuth (Just (user, pass)) uri =
+    authTokenHeader (Just (Right token)) = Just $ "--header=Authorization: X-ApiKey " ++ token
+    authTokenHeader _ = Nothing
+
+    addUriAuth (Just (Left (user, pass))) uri =
       uri
         { uriAuthority = Just a{uriUserInfo = user ++ ":" ++ pass ++ "@"}
         }
       where
         a = fromMaybe (URIAuth "" "" "") (uriAuthority uri)
+    addUriAuth _ uri = uri
 
     runWGet verbosity uri args = do
       -- We pass the URI via STDIN because it contains the users' credentials
@@ -755,12 +732,7 @@ wgetTransport prog =
       -- wget returns exit code 8 for server "errors" like "304 not modified"
       if exitCode == ExitSuccess || exitCode == ExitFailure 8
         then return resp
-        else
-          die' verbosity $
-            "'"
-              ++ programPath prog
-              ++ "' exited with an error:\n"
-              ++ resp
+        else dieWithException verbosity $ WGetServerError (programPath prog) resp
 
     -- With the --server-response flag, wget produces output with the full
     -- http server response with all headers, we want to find a line like
@@ -918,14 +890,16 @@ powershellTransport prog =
                in "AddRange(\"bytes\", " ++ escape start ++ ", " ++ escape end ++ ");"
             name -> "Headers.Add(" ++ escape (show name) ++ "," ++ escape value ++ ");"
 
-    setupAuth auth =
+    setupAuth (Just (Left (uname, passwd))) =
       [ "$request.Credentials = new-object System.Net.NetworkCredential("
-        ++ escape uname
-        ++ ","
-        ++ escape passwd
-        ++ ",\"\");"
-      | (uname, passwd) <- maybeToList auth
+          ++ escape uname
+          ++ ","
+          ++ escape passwd
+          ++ ",\"\");"
       ]
+    setupAuth (Just (Right token)) =
+      ["$request.Headers[\"Authorization\"] = " ++ escape ("X-ApiKey " ++ token)]
+    setupAuth Nothing = []
 
     uploadFileAction method _uri fullPath =
       [ "$request.Method = " ++ show method
@@ -1027,6 +1001,7 @@ plainHttpTransport =
             , Header HdrContentLength (show (LBS8.length body))
             , Header HdrAccept ("text/plain")
             ]
+              ++ maybeToList (authTokenHeader auth)
           req =
             Request
               { rqURI = uri
@@ -1046,7 +1021,8 @@ plainHttpTransport =
               , rqHeaders =
                   Header HdrContentLength (show (LBS8.length body))
                     : Header HdrAccept "text/plain"
-                    : headers
+                    : maybeToList (authTokenHeader auth)
+                    ++ headers
               , rqBody = body
               }
       (_, resp) <- cabalBrowse verbosity auth (request req)
@@ -1065,9 +1041,7 @@ plainHttpTransport =
       p <- fixupEmptyProxy <$> fetchProxy True
       Exception.handleJust
         (guard . isDoesNotExistError)
-        ( const . die' verbosity $
-            "Couldn't establish HTTP connection. "
-              ++ "Possible cause: HTTP proxy server is down."
+        ( const . dieWithException verbosity $ Couldn'tEstablishHttpConnection
         )
         $ browse
         $ do
@@ -1076,8 +1050,13 @@ plainHttpTransport =
           setOutHandler (debug verbosity)
           setUserAgent userAgent
           setAllowBasicAuth False
-          setAuthorityGen (\_ _ -> return auth)
+          case auth of
+            Just (Left x) -> setAuthorityGen (\_ _ -> return $ Just x)
+            _ -> setAuthorityGen (\_ _ -> return Nothing)
           act
+
+    authTokenHeader (Just (Right token)) = Just $ Header HdrAuthorization ("X-ApiKey " ++ token)
+    authTokenHeader _ = Nothing
 
     fixupEmptyProxy (Proxy uri _) | null uri = NoProxy
     fixupEmptyProxy p = p
@@ -1100,12 +1079,7 @@ userAgent =
 
 statusParseFail :: Verbosity -> URI -> String -> IO a
 statusParseFail verbosity uri r =
-  die' verbosity $
-    "Failed to download "
-      ++ show uri
-      ++ " : "
-      ++ "No Status Code could be parsed from response: "
-      ++ r
+  dieWithException verbosity $ StatusParseFail uri r
 
 ------------------------------------------------------------------------------
 -- Multipart stuff partially taken from cgi package.

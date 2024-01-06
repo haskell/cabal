@@ -182,7 +182,6 @@ getHaddockProg verbosity programDb comp args quickJumpFlag = do
   -- various sanity checks
   when (hoogle && version < mkVersion [2, 2]) $
     dieWithException verbosity NoSupportForHoogle
-  -- "Haddock 2.0 and 2.1 do not support the --hoogle flag."
 
   when (fromFlag argQuickJump && version < mkVersion [2, 19]) $ do
     let msg = "Haddock prior to 2.19 does not support the --quickjump flag."
@@ -822,6 +821,13 @@ renderArgs verbosity tmpFileOpts version comp platform args k = do
         else k (renderedArgs, result)
   where
     outputDir = (unDir $ argOutputDir args)
+    isNotArgContents = isNothing (flagToMaybe $ argContents args)
+    isNotArgIndex = isNothing (flagToMaybe $ argIndex args)
+    isArgGenIndex = fromFlagOrDefault False (argGenIndex args)
+    -- Haddock, when generating HTML, does not generate an index if the options
+    -- --use-contents or --use-index are passed to it. See
+    -- https://haskell-haddock.readthedocs.io/en/latest/invoking.html#cmdoption-use-contents
+    isIndexGenerated = isArgGenIndex && isNotArgContents && isNotArgIndex
     result =
       intercalate ", "
         . map
@@ -829,7 +835,7 @@ renderArgs verbosity tmpFileOpts version comp platform args k = do
               outputDir
                 </> case o of
                   Html
-                    | fromFlagOrDefault False (argGenIndex args) ->
+                    | isIndexGenerated ->
                         "index.html"
                   Html
                     | otherwise ->
@@ -867,25 +873,32 @@ renderPureArgs version comp platform args =
     , ["--since-qual=external" | isVersion 2 20]
     , [ "--quickjump" | isVersion 2 19, True <- flagToList . argQuickJump $ args
       ]
-    , [ "--hyperlinked-source" | isVersion 2 17, True <- flagToList . argLinkedSource $ args
-      ]
+    , ["--hyperlinked-source" | isHyperlinkedSource]
     , (\(All b, xs) -> bool (map (("--hide=" ++) . prettyShow) xs) [] b)
         . argHideModules
         $ args
     , bool ["--ignore-all-exports"] [] . getAny . argIgnoreExports $ args
-    , maybe
-        []
-        ( \(m, e, l) ->
-            [ "--source-module=" ++ m
-            , "--source-entity=" ++ e
-            ]
-              ++ if isVersion 2 14
-                then ["--source-entity-line=" ++ l]
-                else []
-        )
-        . flagToMaybe
-        . argLinkSource
-        $ args
+    , -- Haddock's --source-* options are ignored once --hyperlinked-source is
+      -- set.
+      -- See https://haskell-haddock.readthedocs.io/en/latest/invoking.html#cmdoption-hyperlinked-source
+      -- To avoid Haddock's warning, we only set --source-* options if
+      -- --hyperlinked-source is not set.
+      if isHyperlinkedSource
+        then []
+        else
+          maybe
+            []
+            ( \(m, e, l) ->
+                [ "--source-module=" ++ m
+                , "--source-entity=" ++ e
+                ]
+                  ++ if isVersion 2 14
+                    then ["--source-entity-line=" ++ l]
+                    else []
+            )
+            . flagToMaybe
+            . argLinkSource
+            $ args
     , maybe [] ((: []) . ("--css=" ++)) . flagToMaybe . argCssFile $ args
     , maybe [] ((: []) . ("--use-contents=" ++)) . flagToMaybe . argContents $ args
     , bool ["--gen-contents"] [] . fromFlagOrDefault False . argGenContents $ args
@@ -966,6 +979,10 @@ renderPureArgs version comp platform args =
       | otherwise = "--verbose"
     haddockSupportsVisibility = version >= mkVersion [2, 26, 1]
     haddockSupportsPackageName = version > mkVersion [2, 16]
+    haddockSupportsHyperlinkedSource = isVersion 2 17
+    isHyperlinkedSource =
+      haddockSupportsHyperlinkedSource
+        && fromFlagOrDefault False (argLinkedSource args)
 
 ---------------------------------------------------------------------------------
 
@@ -1116,7 +1133,7 @@ hscolour'
   -> HscolourFlags
   -> IO ()
 hscolour' onNoHsColour haddockTarget pkg_descr lbi suffixes flags =
-  either onNoHsColour (\(hscolourProg, _, _) -> go hscolourProg)
+  either (\excep -> onNoHsColour $ exceptionMessage excep) (\(hscolourProg, _, _) -> go hscolourProg)
     =<< lookupProgramVersion
       verbosity
       hscolourProgram

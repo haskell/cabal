@@ -1,6 +1,7 @@
 # cabal v2-build
 Resolving dependencies...
-Error: cabal: Could not resolve dependencies:
+Error: [Cabal-7107]
+Could not resolve dependencies:
 [__0] trying: d-0.1.0.0 (user goal)
 [__1] next goal: p (user goal)
 [__1] rejecting: p-0.1.0.0 (requires library 'privatelib' from d, but the component is private)

@@ -1,0 +1,12 @@
+-- Usually, the latest GHC requires a few allow-newer's
+-- for some time after the release. This project file is meant to host these.
+-- The file is supposed to be included in the main project files used for
+-- Cabal development:
+--   - cabal.project (day-to-day development),
+--   - cabal.project.validate (Cabal CI),
+-- Commented out below are the usual suspects. Feel free to add more.
+
+-- NOTE: don't forget to update the compiler version in the conditional
+-- when upgrading to a newer GHC
+if impl(ghc >= 9.8.1)
+    -- allow-newer: windns:*

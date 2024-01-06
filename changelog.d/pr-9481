@@ -1,0 +1,13 @@
+synopsis: Guard PackageInfo_* modules behind `cabal-version` ≥ 3.12
+packages: Cabal cabal-install
+prs: #9481
+issues: #9331
+
+description: {
+
+`cabal check` now warns whenever PackageInfo_* autogen modules are
+used with `cabal-version` ≥ 3.12.
+Additionally, `cabal configure` will fail if you try to use PackageInfo_*
+with `cabal-version` < 3.12.
+
+}

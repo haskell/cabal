@@ -64,6 +64,13 @@ import Distribution.Simple.GHC
   ( GhcImplInfo (supportsPkgEnvFiles)
   , getImplInfo
   )
+import Distribution.Simple.Program
+  ( ConfiguredProgram
+  , programDefaultArgs
+  , programOverrideEnv
+  , programPath
+  , simpleProgram
+  )
 import Distribution.Simple.Program.Db
   ( configuredPrograms
   , modifyProgramSearchPath
@@ -76,16 +83,9 @@ import Distribution.Simple.Program.Run
   ( programInvocation
   , runProgramInvocation
   )
-import Distribution.Simple.Program.Types
-  ( ConfiguredProgram
-  , programDefaultArgs
-  , programOverrideEnv
-  , programPath
-  , simpleProgram
-  )
 import Distribution.Simple.Utils
   ( createDirectoryIfMissingVerbose
-  , die'
+  , dieWithException
   , info
   , notice
   , withTempDirectory
@@ -100,6 +100,7 @@ import Prelude ()
 
 import qualified Data.Map as M
 import qualified Data.Set as S
+import Distribution.Client.Errors
 
 execCommand :: CommandUI (NixStyleFlags ())
 execCommand =
@@ -178,7 +179,7 @@ execAction flags@NixStyleFlags{..} extraArgs globalFlags = do
   let compiler = pkgConfigCompiler $ elaboratedShared buildCtx
       envFilesSupported = supportsPkgEnvFiles (getImplInfo compiler)
   case extraArgs of
-    [] -> die' verbosity "Please specify an executable to run"
+    [] -> dieWithException verbosity SpecifyAnExecutable
     exe : args -> do
       (program, _) <- requireProgram verbosity (simpleProgram exe) programDb
       let argOverrides =

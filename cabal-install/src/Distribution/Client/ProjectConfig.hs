@@ -165,7 +165,7 @@ import Distribution.Simple.Setup
   )
 import Distribution.Simple.Utils
   ( createDirectoryIfMissingVerbose
-  , die'
+  , dieWithException
   , info
   , maybeExit
   , notice
@@ -209,6 +209,7 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Numeric (showHex)
 
+import Distribution.Client.Errors
 import Network.URI
   ( URI (..)
   , URIAuth (..)
@@ -799,14 +800,8 @@ reportParseResult verbosity _filetype filename (OldParser.ParseOk warnings x) = 
   return x
 reportParseResult verbosity filetype filename (OldParser.ParseFailed err) =
   let (line, msg) = OldParser.locatedErrorMsg err
-   in die' verbosity $
-        "Error parsing "
-          ++ filetype
-          ++ " "
-          ++ filename
-          ++ maybe "" (\n -> ':' : show n) line
-          ++ ":\n"
-          ++ msg
+      errLineNo = maybe "" (\n -> ':' : show n) line
+   in dieWithException verbosity $ ReportParseResult filetype filename errLineNo msg
 
 ---------------------------------------------
 -- Finding packages in the project
@@ -1463,7 +1458,7 @@ syncAndReadSourcePackagesRemoteRepos
             return $ mkSpecificSourcePackage location gpd
 
       reportSourceRepoProblems :: [(SourceRepoList, SourceRepoProblem)] -> Rebuild a
-      reportSourceRepoProblems = liftIO . die' verbosity . renderSourceRepoProblems
+      reportSourceRepoProblems = liftIO . dieWithException verbosity . ReportSourceRepoProblems . renderSourceRepoProblems
 
       renderSourceRepoProblems :: [(SourceRepoList, SourceRepoProblem)] -> String
       renderSourceRepoProblems = unlines . map show -- "TODO: the repo problems"

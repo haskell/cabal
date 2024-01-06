@@ -53,8 +53,10 @@ import Distribution.Client.IndexUtils
   )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.InstallSymlink
-  ( promptRun
+  ( Symlink (..)
+  , promptRun
   , symlinkBinary
+  , symlinkableBinary
   , trySymlink
   )
 import Distribution.Client.NixStyleOptions
@@ -162,7 +164,7 @@ import Distribution.Simple.Setup
   )
 import Distribution.Simple.Utils
   ( createDirectoryIfMissingVerbose
-  , die'
+  , dieWithException
   , notice
   , ordNub
   , safeHead
@@ -220,6 +222,7 @@ import Data.Ord
   ( Down (..)
   )
 import qualified Data.Set as S
+import Distribution.Client.Errors
 import Distribution.Utils.NubList
   ( fromNubList
   )
@@ -241,6 +244,46 @@ import System.FilePath
   , (</>)
   )
 
+-- | Check or check then install an exe. The check is to see if the overwrite
+-- policy allows installation.
+data InstallCheck
+  = -- | Only check if install is permitted.
+    InstallCheckOnly
+  | -- | Actually install but check first if permitted.
+    InstallCheckInstall
+
+type InstallAction =
+  Verbosity
+  -> OverwritePolicy
+  -> InstallExe
+  -> (UnitId, [(ComponentTarget, NonEmpty TargetSelector)])
+  -> IO ()
+
+data InstallCfg = InstallCfg
+  { verbosity :: Verbosity
+  , baseCtx :: ProjectBaseContext
+  , buildCtx :: ProjectBuildContext
+  , platform :: Platform
+  , compiler :: Compiler
+  , installConfigFlags :: ConfigFlags
+  , installClientFlags :: ClientInstallFlags
+  }
+
+-- | A record of install method, install directory and file path functions
+-- needed by actions that either check if an install is possible or actually
+-- perform an installation. This is for installation of executables only.
+data InstallExe = InstallExe
+  { installMethod :: InstallMethod
+  , installDir :: FilePath
+  , mkSourceBinDir :: UnitId -> FilePath
+  -- ^ A function to get an UnitId's store directory.
+  , mkExeName :: UnqualComponentName -> FilePath
+  -- ^ A function to get an exe's filename.
+  , mkFinalExeName :: UnqualComponentName -> FilePath
+  -- ^ A function to get an exe's final possibly different to the name in the
+  -- store.
+  }
+
 installCommand :: CommandUI (NixStyleFlags ClientInstallFlags)
 installCommand =
   CommandUI
@@ -253,7 +296,7 @@ installCommand =
     , commandDescription = Just $ \_ ->
         wrapText $
           "Installs one or more packages. This is done by installing them "
-            ++ "in the store and symlinking/copying the executables in the directory "
+            ++ "in the store and symlinking or copying the executables in the directory "
             ++ "specified by the --installdir flag (`~/.local/bin/` by default). "
             ++ "If you want the installed executables to be available globally, "
             ++ "make sure that the PATH environment variable contains that directory. "
@@ -424,17 +467,13 @@ installAction flags@NixStyleFlags{extraFlags = clientInstallFlags', ..} targetSt
           let xs = searchByName packageIndex (unPackageName name)
           let emptyIf True _ = []
               emptyIf False zs = zs
-          die' verbosity $
-            concat $
-              [ "Unknown package \""
-              , unPackageName name
-              , "\". "
-              ]
-                ++ emptyIf
+              str2 =
+                emptyIf
                   (null xs)
                   [ "Did you mean any of the following?\n"
                   , unlines (("- " ++) . unPackageName . fst <$> xs)
                   ]
+          dieWithException verbosity $ WithoutProject (unPackageName name) str2
 
       let
         (uris, packageSpecifiers) = partitionEithers $ map woPackageSpecifiers tss
@@ -541,7 +580,7 @@ installAction flags@NixStyleFlags{extraFlags = clientInstallFlags', ..} targetSt
               let es = filter (\e -> not $ getPackageName e `S.member` nameIntersection) envSpecs
                   nge = map snd . filter (\e -> not $ fst e `S.member` nameIntersection) $ nonGlobalEnvEntries
                in pure (es, nge)
-            else die' verbosity $ "Packages requested to install already exist in environment file at " ++ envFile ++ ". Overwriting them may break other packages. Use --force-reinstalls to proceed anyway. Packages: " ++ intercalate ", " (map prettyShow $ S.toList nameIntersection)
+            else dieWithException verbosity $ PackagesAlreadyExistInEnvfile envFile (map prettyShow $ S.toList nameIntersection)
 
     -- we construct an installed index of files in the cleaned target environment (absent overwrites) so that we can solve with regards to packages installed locally but not in the upstream repo
     let installedPacks = PI.allPackagesByName installedIndex
@@ -559,18 +598,23 @@ installAction flags@NixStyleFlags{extraFlags = clientInstallFlags', ..} targetSt
     buildCtx <- constructProjectBuildContext verbosity (baseCtx{installedPackages = Just installedIndex'}) targetSelectors
 
     printPlan verbosity baseCtx buildCtx
+    let installCfg = InstallCfg verbosity baseCtx buildCtx platform compiler configFlags clientInstallFlags
 
-    buildOutcomes <- runProjectBuildPhase verbosity baseCtx buildCtx
-    runProjectPostBuildPhase verbosity baseCtx buildCtx buildOutcomes
-
-    -- Now that we built everything we can do the installation part.
-    -- First, figure out if / what parts we want to install:
     let
       dryRun =
         buildSettingDryRun (buildSettings baseCtx)
           || buildSettingOnlyDownload (buildSettings baseCtx)
 
-    -- Then, install!
+    -- Before building, check if we could install any built exe by symlinking or
+    -- copying it?
+    unless
+      (dryRun || installLibs)
+      (traverseInstall (installCheckUnitExes InstallCheckOnly) installCfg)
+
+    buildOutcomes <- runProjectBuildPhase verbosity baseCtx buildCtx
+    runProjectPostBuildPhase verbosity baseCtx buildCtx buildOutcomes
+
+    -- Having built everything, do the install.
     unless dryRun $
       if installLibs
         then
@@ -582,15 +626,9 @@ installAction flags@NixStyleFlags{extraFlags = clientInstallFlags', ..} targetSt
             packageDbs
             envFile
             nonGlobalEnvEntries'
-        else
-          installExes
-            verbosity
-            baseCtx
-            buildCtx
-            platform
-            compiler
-            configFlags
-            clientInstallFlags
+        else -- Install any built exe by symlinking or copying it we don't use
+        -- BuildOutcomes because we also need the component names
+          traverseInstall (installCheckUnitExes InstallCheckInstall) installCfg
   where
     configFlags' = disableTestsBenchsByDefault configFlags
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags')
@@ -602,6 +640,13 @@ installAction flags@NixStyleFlags{extraFlags = clientInstallFlags', ..} targetSt
         clientInstallFlags'
     cliConfig = addLocalConfigToTargets baseCliConfig targetStrings
     globalConfigFlag = projectConfigConfigFile (projectConfigShared cliConfig)
+
+    -- Do the install action for each executable in the install configuration.
+    traverseInstall :: InstallAction -> InstallCfg -> IO ()
+    traverseInstall action cfg@InstallCfg{verbosity = v, buildCtx, installClientFlags} = do
+      let overwritePolicy = fromFlagOrDefault NeverOverwrite $ cinstOverwritePolicy installClientFlags
+      actionOnExe <- action v overwritePolicy <$> prepareExeInstall cfg
+      traverse_ actionOnExe . Map.toList $ targetsMap buildCtx
 
 -- | Treat all direct targets of install command as local packages: #8637
 addLocalConfigToTargets :: ProjectConfig -> [String] -> ProjectConfig
@@ -617,20 +662,16 @@ addLocalConfigToTargets config targetStrings =
 
 -- | Verify that invalid config options were not passed to the install command.
 --
--- If an invalid configuration is found the command will @die'@.
+-- If an invalid configuration is found the command will @dieWithException@.
 verifyPreconditionsOrDie :: Verbosity -> ConfigFlags -> IO ()
 verifyPreconditionsOrDie verbosity configFlags = do
   -- We never try to build tests/benchmarks for remote packages.
   -- So we set them as disabled by default and error if they are explicitly
   -- enabled.
   when (configTests configFlags == Flag True) $
-    die' verbosity $
-      "--enable-tests was specified, but tests can't "
-        ++ "be enabled in a remote package"
+    dieWithException verbosity ConfigTests
   when (configBenchmarks configFlags == Flag True) $
-    die' verbosity $
-      "--enable-benchmarks was specified, but benchmarks can't "
-        ++ "be enabled in a remote package"
+    dieWithException verbosity ConfigBenchmarks
 
 getClientInstallFlags :: Verbosity -> GlobalFlags -> ClientInstallFlags -> IO ClientInstallFlags
 getClientInstallFlags verbosity globalFlags existingClientInstallFlags = do
@@ -733,13 +774,7 @@ partitionToKnownTargetsAndHackagePackages verbosity pkgDb elaboratedPlan targetS
           case searchByName (packageIndex pkgDb) (unPackageName hn) of
             [] -> return ()
             xs ->
-              die' verbosity . concat $
-                [ "Unknown package \""
-                , unPackageName hn
-                , "\". "
-                , "Did you mean any of the following?\n"
-                , unlines (("- " ++) . unPackageName . fst <$> xs)
-                ]
+              dieWithException verbosity $ UnknownPackage (unPackageName hn) (("- " ++) . unPackageName . fst <$> xs)
         _ -> return ()
 
       when (not . null $ errs') $ reportBuildTargetProblems verbosity errs'
@@ -796,30 +831,17 @@ constructProjectBuildContext verbosity baseCtx targetSelectors = do
 
     return (prunedElaboratedPlan, targets)
 
--- | Install any built exe by symlinking/copying it
--- we don't use BuildOutcomes because we also need the component names
-installExes
-  :: Verbosity
-  -> ProjectBaseContext
-  -> ProjectBuildContext
-  -> Platform
-  -> Compiler
-  -> ConfigFlags
-  -> ClientInstallFlags
-  -> IO ()
-installExes
-  verbosity
-  baseCtx
-  buildCtx
-  platform
-  compiler
-  configFlags
-  clientInstallFlags = do
+-- | From an install configuration, prepare the record needed by actions that
+-- will either check if an install of a single executable is possible or
+-- actually perform its installation.
+prepareExeInstall :: InstallCfg -> IO InstallExe
+prepareExeInstall
+  InstallCfg{verbosity, baseCtx, buildCtx, platform, compiler, installConfigFlags, installClientFlags} = do
     installPath <- defaultInstallPath
     let storeDirLayout = cabalStoreDirLayout $ cabalDirLayout baseCtx
 
-        prefix = fromFlagOrDefault "" (fmap InstallDirs.fromPathTemplate (configProgPrefix configFlags))
-        suffix = fromFlagOrDefault "" (fmap InstallDirs.fromPathTemplate (configProgSuffix configFlags))
+        prefix = fromFlagOrDefault "" (fmap InstallDirs.fromPathTemplate (configProgPrefix installConfigFlags))
+        suffix = fromFlagOrDefault "" (fmap InstallDirs.fromPathTemplate (configProgSuffix installConfigFlags))
 
         mkUnitBinDir :: UnitId -> FilePath
         mkUnitBinDir =
@@ -839,42 +861,24 @@ installExes
     installdir <-
       fromFlagOrDefault
         (warn verbosity installdirUnknown >> pure installPath)
-        $ pure <$> cinstInstalldir clientInstallFlags
+        $ pure <$> cinstInstalldir installClientFlags
     createDirectoryIfMissingVerbose verbosity True installdir
     warnIfNoExes verbosity buildCtx
 
-    installMethod <-
-      flagElim defaultMethod return $
-        cinstInstallMethod clientInstallFlags
+    -- This is in IO as we will make environment checks, to decide which install
+    -- method is best.
+    let defaultMethod :: IO InstallMethod
+        defaultMethod
+          -- Try symlinking in temporary directory, if it works default to
+          -- symlinking even on windows.
+          | buildOS == Windows = do
+              symlinks <- trySymlink verbosity
+              return $ if symlinks then InstallMethodSymlink else InstallMethodCopy
+          | otherwise = return InstallMethodSymlink
 
-    let
-      doInstall =
-        installUnitExes
-          verbosity
-          overwritePolicy
-          mkUnitBinDir
-          mkExeName
-          mkFinalExeName
-          installdir
-          installMethod
-     in
-      traverse_ doInstall $ Map.toList $ targetsMap buildCtx
-    where
-      overwritePolicy =
-        fromFlagOrDefault NeverOverwrite $
-          cinstOverwritePolicy clientInstallFlags
-      isWindows = buildOS == Windows
+    installMethod <- flagElim defaultMethod return $ cinstInstallMethod installClientFlags
 
-      -- This is in IO as we will make environment checks,
-      -- to decide which method is best
-      defaultMethod :: IO InstallMethod
-      defaultMethod
-        -- Try symlinking in temporary directory, if it works default to
-        -- symlinking even on windows
-        | isWindows = do
-            symlinks <- trySymlink verbosity
-            return $ if symlinks then InstallMethodSymlink else InstallMethodCopy
-        | otherwise = return InstallMethodSymlink
+    return $ InstallExe installMethod installdir mkUnitBinDir mkExeName mkFinalExeName
 
 -- | Install any built library by adding it to the default ghc environment
 installLibraries
@@ -1000,41 +1004,49 @@ disableTestsBenchsByDefault configFlags =
     , configBenchmarks = Flag False <> configBenchmarks configFlags
     }
 
--- | Symlink/copy every exe from a package from the store to a given location
-installUnitExes
-  :: Verbosity
-  -> OverwritePolicy
-  -- ^ Whether to overwrite existing files
-  -> (UnitId -> FilePath)
-  -- ^ A function to get an UnitId's
-  -- ^ store directory
-  -> (UnqualComponentName -> FilePath)
-  -- ^ A function to get an
-  -- ^ exe's filename
-  -> (UnqualComponentName -> FilePath)
-  -- ^ A function to get an
-  -- ^ exe's final possibly
-  -- ^ different to the name in the store.
-  -> FilePath
-  -> InstallMethod
-  -> ( UnitId
-     , [(ComponentTarget, NonEmpty TargetSelector)]
-     )
-  -> IO ()
-installUnitExes
+-- | Prepares a record containing the information needed to either symlink or
+-- copy an executable.
+symlink :: OverwritePolicy -> InstallExe -> UnitId -> UnqualComponentName -> Symlink
+symlink
+  overwritePolicy
+  InstallExe{installDir, mkSourceBinDir, mkExeName, mkFinalExeName}
+  unit
+  exe =
+    Symlink
+      overwritePolicy
+      installDir
+      (mkSourceBinDir unit)
+      (mkExeName exe)
+      (mkFinalExeName exe)
+
+-- |
+-- -- * When 'InstallCheckOnly', warn if install would fail overwrite policy
+--      checks but don't install anything.
+-- -- * When 'InstallCheckInstall', try to symlink or copy every package exe
+--      from the store to a given location. When not permitted by the overwrite
+--      policy, stop with a message.
+installCheckUnitExes :: InstallCheck -> InstallAction
+installCheckUnitExes
+  installCheck
   verbosity
   overwritePolicy
-  mkSourceBinDir
-  mkExeName
-  mkFinalExeName
-  installdir
-  installMethod
-  (unit, components) =
-    traverse_ installAndWarn exes
+  installExe@InstallExe{installMethod, installDir, mkSourceBinDir, mkExeName, mkFinalExeName}
+  (unit, components) = do
+    symlinkables :: [Bool] <- traverse (symlinkableBinary . symlink overwritePolicy installExe unit) exes
+    case installCheck of
+      InstallCheckOnly -> traverse_ warnAbout (zip symlinkables exes)
+      InstallCheckInstall ->
+        if and symlinkables
+          then traverse_ installAndWarn exes
+          else traverse_ warnAbout (zip symlinkables exes)
     where
       exes = catMaybes $ (exeMaybe . fst) <$> components
       exeMaybe (ComponentTarget (CExeName exe) _) = Just exe
       exeMaybe _ = Nothing
+
+      warnAbout (True, _) = return ()
+      warnAbout (False, exe) = dieWithException verbosity $ InstallUnitExes (errorMessage installDir exe)
+
       installAndWarn exe = do
         success <-
           installBuiltExe
@@ -1043,22 +1055,22 @@ installUnitExes
             (mkSourceBinDir unit)
             (mkExeName exe)
             (mkFinalExeName exe)
-            installdir
+            installDir
             installMethod
-        let errorMessage = case overwritePolicy of
-              NeverOverwrite ->
-                "Path '"
-                  <> (installdir </> prettyShow exe)
-                  <> "' already exists. "
-                  <> "Use --overwrite-policy=always to overwrite."
-              -- This shouldn't even be possible, but we keep it in case
-              -- symlinking/copying logic changes
-              _ ->
-                case installMethod of
-                  InstallMethodSymlink -> "Symlinking"
-                  InstallMethodCopy ->
-                    "Copying" <> " '" <> prettyShow exe <> "' failed."
-        unless success $ die' verbosity errorMessage
+        unless success $ dieWithException verbosity $ InstallUnitExes (errorMessage installDir exe)
+
+      errorMessage installdir exe = case overwritePolicy of
+        NeverOverwrite ->
+          "Path '"
+            <> (installdir </> prettyShow exe)
+            <> "' already exists. "
+            <> "Use --overwrite-policy=always to overwrite."
+        -- This shouldn't even be possible, but we keep it in case symlinking or
+        -- copying logic changes.
+        _ ->
+          case installMethod of
+            InstallMethodSymlink -> "Symlinking"
+            InstallMethodCopy -> "Copying" <> " '" <> prettyShow exe <> "' failed."
 
 -- | Install a specific exe.
 installBuiltExe
@@ -1085,11 +1097,13 @@ installBuiltExe
   InstallMethodSymlink = do
     notice verbosity $ "Symlinking '" <> exeName <> "' to '" <> destination <> "'"
     symlinkBinary
-      overwritePolicy
-      installdir
-      sourceDir
-      finalExeName
-      exeName
+      ( Symlink
+          overwritePolicy
+          installdir
+          sourceDir
+          finalExeName
+          exeName
+      )
     where
       destination = installdir </> finalExeName
 installBuiltExe
@@ -1265,4 +1279,4 @@ reportBuildTargetProblems verbosity problems = reportTargetProblems verbosity "b
 
 reportCannotPruneDependencies :: Verbosity -> CannotPruneDependencies -> IO a
 reportCannotPruneDependencies verbosity =
-  die' verbosity . renderCannotPruneDependencies
+  dieWithException verbosity . SelectComponentTargetError . renderCannotPruneDependencies

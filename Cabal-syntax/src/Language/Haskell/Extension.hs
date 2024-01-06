@@ -63,7 +63,7 @@ instance Structured Language
 
 instance NFData Language where rnf = genericRnf
 
--- | List of known (supported) languages for GHC
+-- | List of known (supported) languages for GHC, oldest first.
 knownLanguages :: [Language]
 knownLanguages = [Haskell98, Haskell2010, GHC2021]
 
@@ -540,6 +540,8 @@ data KnownExtension
     AlternativeLayoutRuleTransitional
   | -- | Undocumented parsing-related extensions introduced in GHC 7.2.
     RelaxedLayout
+  | -- | Allow the use of type abstraction syntax.
+    TypeAbstractions
   deriving (Generic, Show, Read, Eq, Ord, Enum, Bounded, Typeable, Data)
 
 instance Binary KnownExtension

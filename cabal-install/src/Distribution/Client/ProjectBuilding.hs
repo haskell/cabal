@@ -131,6 +131,7 @@ import System.FilePath (dropDrive, makeRelative, normalise, takeDirectory, (<.>)
 import System.IO (Handle, IOMode (AppendMode), withFile)
 import System.Semaphore (SemaphoreName (..))
 
+import Distribution.Client.Errors
 import Distribution.Compat.Directory (listDirectory)
 import Distribution.Simple.Flag (fromFlagOrDefault)
 
@@ -671,9 +672,9 @@ rebuildTargets
         info verbosity $
           "Executing install plan "
             ++ case buildSettingNumJobs of
-              NumJobs n -> " in parallel using " ++ show n ++ " threads."
-              UseSem n -> " in parallel using a semaphore with " ++ show n ++ " slots."
-              Serial -> " serially."
+              NumJobs n -> "in parallel using " ++ show n ++ " threads."
+              UseSem n -> "in parallel using a semaphore with " ++ show n ++ " slots."
+              Serial -> "serially."
 
         createDirectoryIfMissingVerbose verbosity True distBuildRootDirectory
         createDirectoryIfMissingVerbose verbosity True distTempDirectory
@@ -1079,8 +1080,8 @@ unpackPackageTarball verbosity tarball parentdir pkgid pkgTextOverride =
     --
     exists <- doesFileExist cabalFile
     unless exists $
-      die' verbosity $
-        "Package .cabal file not found in the tarball: " ++ cabalFile
+      dieWithException verbosity $
+        CabalFileNotFound cabalFile
 
     -- Overwrite the .cabal with the one from the index, when appropriate
     --
@@ -1355,6 +1356,7 @@ buildAndInstallUnpackedPackage
       configureFlags v =
         flip filterConfigureFlags v $
           setupHsConfigureFlags
+            plan
             rpkg
             pkgshared
             verbosity
@@ -1652,7 +1654,7 @@ buildInplaceUnpackedPackage
           exe <- findOpenProgramLocation platform
           case exe of
             Right open -> runProgramInvocation verbosity (simpleProgramInvocation open [dest])
-            Left err -> die' verbosity err
+            Left err -> dieWithException verbosity $ FindOpenProgramLocationErr err
 
     return
       BuildResult
@@ -1713,6 +1715,7 @@ buildInplaceUnpackedPackage
       configureFlags v =
         flip filterConfigureFlags v $
           setupHsConfigureFlags
+            plan
             rpkg
             pkgshared
             verbosity
@@ -1734,7 +1737,6 @@ buildInplaceUnpackedPackage
         flip filterTestFlags v $
           setupHsTestFlags
             pkg
-            pkgshared
             verbosity
             builddir
       testArgs _ = setupHsTestArgs pkg
@@ -1840,9 +1842,7 @@ withTempInstalledPackageInfoFile verbosity tempdir action =
   where
     pkgConfParseFailed :: String -> IO a
     pkgConfParseFailed perror =
-      die' verbosity $
-        "Couldn't parse the output of 'setup register --gen-pkg-config':"
-          ++ show perror
+      dieWithException verbosity $ PkgConfParseFailed perror
 
     readPkgConf :: FilePath -> FilePath -> IO InstalledPackageInfo
     readPkgConf pkgConfDir pkgConfFile = do

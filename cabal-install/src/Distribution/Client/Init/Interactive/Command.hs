@@ -276,10 +276,16 @@ genTestTarget flags pkgs = initializeTestSuitePrompt flags >>= go
 
 overwritePrompt :: Interactive m => InitFlags -> m Bool
 overwritePrompt flags = do
-  isOverwrite <- getOverwrite flags
-  promptYesNo
-    "Do you wish to overwrite existing files (backups will be created) (y/n)"
-    (DefaultPrompt isOverwrite)
+  con <- getPackageDir flags >>= listDirectory
+
+  -- Do not ask useless overwrite question if directory is empty.
+  if null con
+    then return False
+    else do
+      isOverwrite <- getOverwrite flags
+      promptYesNo
+        "Do you wish to overwrite existing files (backups will be created) (y/n)"
+        (DefaultPrompt isOverwrite)
 
 cabalVersionPrompt :: Interactive m => InitFlags -> m CabalSpecVersion
 cabalVersionPrompt flags = getCabalVersion flags $ do
@@ -306,6 +312,7 @@ cabalVersionPrompt flags = getCabalVersion flags $ do
     parseCabalVersion "2.4" = CabalSpecV2_4
     parseCabalVersion "3.0" = CabalSpecV3_0
     parseCabalVersion "3.4" = CabalSpecV3_4
+    parseCabalVersion "3.12" = CabalSpecV3_12
     parseCabalVersion _ = defaultCabalVersion -- 2.4
     displayCabalVersion :: CabalSpecVersion -> String
     displayCabalVersion v = case v of

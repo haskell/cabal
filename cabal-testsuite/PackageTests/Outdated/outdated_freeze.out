@@ -23,6 +23,7 @@ Outdated dependencies:
 template-haskell ==2.3.0.0 (latest: 2.3.0.1)
 binary ==0.8.5.0 (latest: 0.8.6.0)
 # cabal outdated
-Error: cabal: Couldn't find a freeze file expected at: <ROOT>/cabal.project.missing.freeze.freeze
+Error: [Cabal-7104]
+Couldn't find a freeze file expected at: <ROOT>/cabal.project.missing.freeze.freeze
 
 We are looking for this file because you supplied '--project-file' or '--v2-freeze-file'. When one of these flags is given, we try to read the dependencies from a freeze file. If it is undesired behaviour, you should not use these flags, otherwise please generate a freeze file via 'cabal freeze'.

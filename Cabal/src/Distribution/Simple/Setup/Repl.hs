@@ -70,6 +70,9 @@ data ReplFlags = ReplFlags
   }
   deriving (Show, Generic, Typeable)
 
+instance Binary ReplFlags
+instance Structured ReplFlags
+
 defaultReplFlags :: ReplFlags
 defaultReplFlags =
   ReplFlags

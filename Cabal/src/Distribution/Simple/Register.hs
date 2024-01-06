@@ -71,6 +71,7 @@ import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.Pretty
 import Distribution.Simple.Compiler
+import Distribution.Simple.Errors
 import Distribution.Simple.Flag
 import Distribution.Simple.Program
 import qualified Distribution.Simple.Program.HcPkg as HcPkg
@@ -81,7 +82,6 @@ import Distribution.System
 import Distribution.Utils.MapAccum
 import Distribution.Verbosity as Verbosity
 import Distribution.Version
-
 import System.Directory
 import System.FilePath (isAbsolute, (<.>), (</>))
 
@@ -349,11 +349,7 @@ relocRegistrationInfo verbosity pkg lib lbi clbi abi_hash packageDb =
             clbi
             fs
         )
-    _ ->
-      die'
-        verbosity
-        "Distribution.Simple.Register.relocRegistrationInfo: \
-        \not implemented for this compiler"
+    _ -> dieWithException verbosity RelocRegistrationInfo
 
 initPackageDB :: Verbosity -> Compiler -> ProgramDb -> FilePath -> IO ()
 initPackageDB verbosity comp progdb dbPath =
@@ -373,10 +369,7 @@ createPackageDB verbosity comp progdb preferCompat dbPath =
     GHCJS -> HcPkg.init (GHCJS.hcPkgInfo progdb) verbosity False dbPath
     UHC -> return ()
     HaskellSuite _ -> HaskellSuite.initPackageDB verbosity progdb dbPath
-    _ ->
-      die' verbosity $
-        "Distribution.Simple.Register.createPackageDB: "
-          ++ "not implemented for this compiler"
+    _ -> dieWithException verbosity CreatePackageDB
 
 doesPackageDBExist :: FilePath -> IO Bool
 doesPackageDBExist dbPath = do
@@ -424,14 +417,7 @@ withHcPkg verbosity name comp progdb f =
   case compilerFlavor comp of
     GHC -> f (GHC.hcPkgInfo progdb)
     GHCJS -> f (GHCJS.hcPkgInfo progdb)
-    _ ->
-      die'
-        verbosity
-        ( "Distribution.Simple.Register."
-            ++ name
-            ++ ":\
-               \not implemented for this compiler"
-        )
+    _ -> dieWithException verbosity $ WithHcPkg name
 
 registerPackage
   :: Verbosity
@@ -449,9 +435,9 @@ registerPackage verbosity comp progdb packageDbs installedPkgInfo registerOption
       HaskellSuite.registerPackage verbosity progdb packageDbs installedPkgInfo
     _
       | HcPkg.registerMultiInstance registerOptions ->
-          die' verbosity "Registering multiple package instances is not yet supported for this compiler"
+          dieWithException verbosity RegisMultiplePkgNotSupported
     UHC -> UHC.registerPackage verbosity comp progdb packageDbs installedPkgInfo
-    _ -> die' verbosity "Registering is not implemented for this compiler"
+    _ -> dieWithException verbosity RegisteringNotImplemented
 
 writeHcPkgRegisterScript
   :: Verbosity

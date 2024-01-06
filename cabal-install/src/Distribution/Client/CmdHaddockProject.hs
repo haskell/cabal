@@ -84,7 +84,7 @@ import Distribution.Simple.Setup
 import Distribution.Simple.Utils
   ( copyDirectoryRecursive
   , createDirectoryIfMissingVerbose
-  , die'
+  , dieWithException
   , warn
   )
 import Distribution.Types.InstalledPackageInfo (InstalledPackageInfo (..))
@@ -97,6 +97,7 @@ import Distribution.Verbosity as Verbosity
   ( normal
   )
 
+import Distribution.Client.Errors
 import System.Directory (doesDirectoryExist, doesFileExist)
 import System.FilePath (normalise, takeDirectory, (<.>), (</>))
 
@@ -384,7 +385,7 @@ haddockProjectAction flags _extraArgs globalFlags = do
 
     reportTargetProblems :: Show x => [x] -> IO a
     reportTargetProblems =
-      die' verbosity . unlines . map show
+      dieWithException verbosity . CmdHaddockReportTargetProblems . map show
 
     -- TODO: this is just a sketch
     selectPackageTargets

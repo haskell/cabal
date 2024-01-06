@@ -1,0 +1,22 @@
+cabal-version: 3.0
+name: pkg
+version: 2
+maintainer: fffaaa
+category: asdasd
+synopsis: asdcasdcs
+description: cdscsd acs dcs dss
+license:     GPL-3.0-or-later
+
+library
+  exposed-modules: Foo
+  build-depends:  text < 5.0
+  default-language: Haskell2010
+
+executable prova
+  main-is: Prova.hs
+  build-depends:
+      pkg
+    , text
+    , acme-box
+  default-language: Haskell2010
+

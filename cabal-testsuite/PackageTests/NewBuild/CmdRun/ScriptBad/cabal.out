@@ -1,2 +1,3 @@
 # cabal v2-run
-Error: cabal: Failed extracting script block: `{- cabal:` start marker not found
+Error: [Cabal-7121]
+Failed extracting script block: `{- cabal:` start marker not found

@@ -5,4 +5,4 @@ main = withShorterPathForNewBuildStore $ \storeDir -> cabalTest $ withRepo "repo
   cabalG ["--store-dir=" ++ storeDir] "v2-build" ["hie"]
   liftIO $ do
     installedDependencyLibDir <- findDependencyInStore storeDir "hie-dependency"
-    shouldExist $ installedDependencyLibDir </> "lib" </> "extra-compilation-artifacts" </> "HieDependency.hie"
+    shouldExist $ installedDependencyLibDir </> "lib" </> "extra-compilation-artifacts" </> "hie" </> "HieDependency.hie"

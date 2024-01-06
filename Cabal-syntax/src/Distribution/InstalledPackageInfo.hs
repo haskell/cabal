@@ -62,9 +62,6 @@ import qualified Text.PrettyPrint as Disp
 import Distribution.Types.InstalledPackageInfo
 import Distribution.Types.InstalledPackageInfo.FieldGrammar
 
--- $setup
--- >>> :set -XOverloadedStrings
-
 installedComponentId :: InstalledPackageInfo -> ComponentId
 installedComponentId ipi =
   case unComponentId (installedComponentId_ ipi) of
@@ -130,7 +127,7 @@ showFullInstalledPackageInfo = P.showFields (const NoComment) . prettyFieldGramm
 
 -- |
 --
--- >>> let ipi = emptyInstalledPackageInfo { maintainer = "Tester" }
+-- >>> let ipi = emptyInstalledPackageInfo { maintainer = fromString "Tester" }
 -- >>> fmap ($ ipi) $ showInstalledPackageInfoField "maintainer"
 -- Just "maintainer: Tester"
 showInstalledPackageInfoField :: String -> Maybe (InstalledPackageInfo -> String)

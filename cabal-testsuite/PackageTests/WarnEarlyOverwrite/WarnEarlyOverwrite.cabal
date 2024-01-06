@@ -1,0 +1,16 @@
+cabal-version:      3.0
+name:               WarnEarlyOverwrite
+version:            0.1.0.0
+license:            BSD-3-Clause
+author:             Phil de Joux
+build-type:         Simple
+
+common warnings
+    ghc-options: -Wall
+
+executable warn-early-overwrite
+    import:           warnings
+    main-is:          Main.hs
+    build-depends:    base
+    hs-source-dirs:   app
+    default-language: Haskell2010

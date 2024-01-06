@@ -9,7 +9,7 @@ brew_dir="${CI_PROJECT_DIR}/.brew"
 
 if [ ! -e "${brew_dir}" ]; then
     mkdir -p "${brew_dir}"
-    curl -L "https://github.com/Homebrew/brew/archive/refs/tags/${BREW_VERSION}.tar.gz" | tar xz --strip 1 -C "${brew_dir}"
+    curl --fail -L "https://github.com/Homebrew/brew/archive/refs/tags/${BREW_VERSION}.tar.gz" | tar xz --strip 1 -C "${brew_dir}"
 fi
 
 export PATH="${brew_dir}/bin:${brew_dir}/sbin:$PATH"

@@ -1,0 +1,11 @@
+synopsis: Use linker capability detection to improve linker use
+packages: Cabal
+prs: #9443
+
+description: {
+
+- Previously the GHC version number and platform were used as a proxy for whether
+  the linker can generate relocatable objects.
+- Now, the ability of the linker to create relocatable objects is detected.
+
+}

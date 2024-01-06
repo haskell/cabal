@@ -37,11 +37,11 @@ library
     Cabal-syntax ^>= 3.11,
     array      >= 0.4.0.1  && < 0.6,
     base       >= 4.9      && < 5,
-    bytestring >= 0.10.0.0 && < 0.12,
-    containers >= 0.5.0.0  && < 0.7,
+    bytestring >= 0.10.0.0 && < 0.13,
+    containers >= 0.5.0.0  && < 0.8,
     deepseq    >= 1.3.0.1  && < 1.6,
     directory  >= 1.2      && < 1.4,
-    filepath   >= 1.3.0.1  && < 1.5,
+    filepath   >= 1.3.0.1  && < 1.6,
     pretty     >= 1.1.1    && < 1.2,
     process    >= 1.2.1.0  && < 1.7,
     time       >= 1.4.0.1  && < 1.13
@@ -153,7 +153,6 @@ library
     Distribution.Utils.Json
     Distribution.Utils.NubList
     Distribution.Utils.Progress
-    Distribution.Utils.TempTestDir
     Distribution.Verbosity
     Distribution.Verbosity.Internal
 
@@ -305,7 +304,7 @@ library
     -- See also https://github.com/ekmett/transformers-compat/issues/35
     transformers (>= 0.3      && < 0.4) || (>=0.4.1.0 && <0.7),
     mtl           >= 2.1      && < 2.4,
-    text         (>= 1.2.3.0  && < 1.3) || (>= 2.0 && < 2.1),
+    text         (>= 1.2.3.0  && < 1.3) || (>= 2.0 && < 2.2),
     parsec        >= 3.1.13.0 && < 3.2
 
   other-modules:
@@ -322,9 +321,18 @@ library
     Distribution.Compat.SnocList
     Distribution.GetOpt
     Distribution.Lex
+    Distribution.PackageDescription.Check.Common
+    Distribution.PackageDescription.Check.Conditional
+    Distribution.PackageDescription.Check.Monad
+    Distribution.PackageDescription.Check.Paths
+    Distribution.PackageDescription.Check.Target
+    Distribution.PackageDescription.Check.Warning
     Distribution.Simple.Build.Macros.Z
     Distribution.Simple.Build.PackageInfoModule.Z
     Distribution.Simple.Build.PathsModule.Z
+    Distribution.Simple.GHC.Build
+    Distribution.Simple.GHC.BuildOrRepl
+    Distribution.Simple.GHC.BuildGeneric
     Distribution.Simple.GHC.EnvironmentParser
     Distribution.Simple.GHC.Internal
     Distribution.Simple.GHC.ImplInfo

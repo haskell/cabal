@@ -101,14 +101,13 @@ import Distribution.Simple.Program (ProgramDb)
 import Distribution.Simple.Setup
   ( ConfigFlags (..)
   , flagToMaybe
-  , fromFlag
   , fromFlagOrDefault
   , toFlag
   )
 import Distribution.Simple.Utils as Utils
   ( debug
   , defaultPackageDesc
-  , die'
+  , dieWithException
   , notice
   , warn
   )
@@ -129,6 +128,7 @@ import Distribution.Version
   , thisVersion
   )
 
+import Distribution.Client.Errors
 import System.FilePath ((</>))
 
 -- | Choose the Cabal version such that the setup scripts compiled against this
@@ -224,9 +224,7 @@ configure
                     pkg
                     extraArgs
               _ ->
-                die' verbosity $
-                  "internal error: configure install plan should have exactly "
-                    ++ "one local ready package."
+                dieWithException verbosity ConfigureInstallInternalError
     where
       setupScriptOptions
         :: InstalledPackageIndex
@@ -405,11 +403,6 @@ planLocalPackage
         =<< case flagToMaybe (configCabalFilePath configFlags) of
           Nothing -> defaultPackageDesc verbosity
           Just fp -> return fp
-    solver <-
-      chooseSolver
-        verbosity
-        (fromFlag $ configSolver configExFlags)
-        (compilerInfo comp)
 
     let
       -- We create a local package and ask to resolve a dependency on it
@@ -476,7 +469,7 @@ planLocalPackage
             (SourcePackageDb mempty packagePrefs)
             [SpecificSourcePackage localPkg]
 
-    return (resolveDependencies platform (compilerInfo comp) pkgConfigDb solver resolverParams)
+    return (resolveDependencies platform (compilerInfo comp) pkgConfigDb resolverParams)
 
 -- | Call an installer for an 'SourcePackage' but override the configure
 -- flags with the ones given by the 'ReadyPackage'. In particular the

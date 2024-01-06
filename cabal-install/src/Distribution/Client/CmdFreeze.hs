@@ -54,7 +54,7 @@ import Distribution.PackageDescription
   )
 import Distribution.Simple.Flag (Flag (..), fromFlagOrDefault)
 import Distribution.Simple.Utils
-  ( die'
+  ( dieWithException
   , notice
   , wrapText
   )
@@ -70,6 +70,7 @@ import Distribution.Version
 
 import qualified Data.Map as Map
 
+import Distribution.Client.Errors
 import Distribution.Simple.Command
   ( CommandUI (..)
   , usageAlternatives
@@ -125,9 +126,8 @@ freezeCommand =
 freezeAction :: NixStyleFlags () -> [String] -> GlobalFlags -> IO ()
 freezeAction flags@NixStyleFlags{..} extraArgs globalFlags = do
   unless (null extraArgs) $
-    die' verbosity $
-      "'freeze' doesn't take any extra arguments: "
-        ++ unwords extraArgs
+    dieWithException verbosity $
+      FreezeAction extraArgs
 
   ProjectBaseContext
     { distDirLayout

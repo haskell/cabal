@@ -49,6 +49,9 @@ data BenchmarkFlags = BenchmarkFlags
   }
   deriving (Show, Generic, Typeable)
 
+instance Binary BenchmarkFlags
+instance Structured BenchmarkFlags
+
 defaultBenchmarkFlags :: BenchmarkFlags
 defaultBenchmarkFlags =
   BenchmarkFlags

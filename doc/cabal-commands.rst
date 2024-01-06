@@ -19,6 +19,7 @@ Commands
      [global]
       user-config            Display and update the user's global cabal configuration.
       help                   Help about commands.
+      path                   Display paths used by cabal.
 
      [package database]
       update                 Updates list of known packages.
@@ -284,6 +285,38 @@ cabal preferences. It is very useful when you are e.g. first configuring
       Note how ``--augment`` syntax follows ``cabal user-config diff``
       output.
 
+cabal path
+^^^^^^^^^^
+
+``cabal path`` prints the file system paths used by ``cabal`` for
+cache, store, installed binaries, and so on. When run without any
+options, it will show all paths, labeled with how they are namen in
+the configuration file:
+
+::
+   $ cabal path
+   cache-dir: /home/haskell/.cache/cabal/packages
+   logs-dir: /home/haskell/.cache/cabal/logs
+   store-dir: /home/haskell/.local/state/cabal/store
+   config-file: /home/haskell/.config/cabal/config
+   installdir: /home/haskell/.local/bin
+   ...
+
+If ``cabal path`` is passed a single option naming a path, then that
+path will be printed *without* any label:
+
+::
+
+   $ cabal path --installdir
+   /home/haskell/.local/bin
+
+This is a stable interface and is intended to be used for scripting.
+For example:
+
+::
+   $ ls $(cabal path --installdir)
+   ...
+
 .. _command-group-database:
 
 Package database commands
@@ -398,7 +431,7 @@ Check ``cabal fetch --help`` for a complete list of options.
 cabal get
 ^^^^^^^^^
 
-``cabal get [PACKAGES]`` (synonym: ``cabal unpack``) downloads and unpacks
+``cabal get [FLAGS] [PACKAGES]`` (synonym: ``cabal unpack``) downloads and unpacks
 the source code of ``PACKAGES`` locally. By default the content of the
 packages is unpacked in the current working directory, in named subfolders
 (e.g.  ``./filepath-1.2.0.8/``), use ``--destdir=PATH`` to specify another
@@ -406,11 +439,13 @@ folder. By default the latest version of the package is downloaded, you can
 ask for a spefic one by adding version numbers
 (``cabal get random-1.0.0.1``).
 
+The ``cabal get`` command supports the following options:
+
 .. option:: -s[[head|this|...]], --source-repository[=[head|this|...]]
 
-    Clone the package's source repository (Darcs, Git, etc.) instead
-    of downloading the tarball. Only works if the package specifies
-    a ``source-repository``.
+    Clone the package's source repository (Darcs, Git, etc.)
+    instead of downloading the tarball. Only works if the
+    package specifies a ``source-repository``.
 
 .. option:: --index-state=STATE
 
@@ -418,10 +453,23 @@ ask for a spefic one by adding version numbers
     ``STATE`` formats: Unix timestamps (e.g. ``@1474732068``),
     ISO8601 UTC timestamps (e.g. ``2016-09-24T17:47:48Z``), or ``HEAD``
     (default).
+    This determines which package versions are available as well as which
+    ``.cabal`` file revision is selected (unless ``--pristine`` is used).
 
 .. option:: --pristine
 
     Unpacks the pristine tarball, i.e. disregarding any Hackage revision.
+
+.. option:: -d, --destdir=PATH
+
+    Where to place the package source, defaults to (a subdirectory of)
+    the current directory.
+
+.. option:: --only-package-description, --package-description-only
+
+    Unpack the original pristine tarball, rather than updating the
+    ``.cabal`` file with the latest revision from the package archive.
+
 
 .. _command-group-config:
 
@@ -478,6 +526,12 @@ flag.
 cabal freeze
 ^^^^^^^^^^^^
 
+If a package is built in several different environments, such as a
+development environment, a staging environment and a production
+environment, it may be necessary or desirable to ensure that the same
+dependency versions are selected in each environment. This can be done
+with the ``freeze`` command:
+
 ``cabal freeze`` writes out a **freeze file** which records all of
 the versions and flags that are picked by the solver under the
 current index and flags.  Default name of this file is
@@ -511,14 +565,87 @@ cabal gen-bounds
 ``cabal gen-bounds [FLAGS]`` generates bounds for all dependencies that do not
 currently have them.  Generated bounds are printed to stdout. You can then
 paste them into your .cabal file.
+The generated bounds conform to the `Package Versioning Policy`_, which is
+a recommended versioning system for publicly released Cabal packages.
 
-See `the section on generating dependency version bounds <cabal-package.html#generating-dependency-version-bounds>`__ for more details and examples.
+.. code-block:: console
+
+    $ cabal gen-bounds
+
+For example, given the following dependencies without bounds specified in
+:pkg-field:`build-depends`:
+
+::
+
+    build-depends:
+      base,
+      mtl,
+      transformers,
+
+``gen-bounds`` might suggest changing them to the following:
+
+::
+
+    build-depends:
+      base          >= 4.15.0 && < 4.16,
+      mtl           >= 2.2.2 && < 2.3,
+      transformers  >= 0.5.6 && < 0.6,
+
 
 cabal outdated
 ^^^^^^^^^^^^^^
 
 ``cabal outdated [FLAGS]`` checks for outdated dependencies in the package
 description file or freeze file.
+
+Manually updating dependency version bounds in a ``.cabal`` file or a
+freeze file can be tedious, especially when there's a lot of
+dependencies. The ``cabal outdated`` command is designed to help with
+that. It will print a list of packages for which there is a new
+version on Hackage that is outside the version bound specified in the
+``build-depends`` field. The ``outdated`` command can also be
+configured to act on the freeze file and
+ignore major (or all) version bumps on Hackage for a subset of
+dependencies.
+
+Examples:
+
+.. code-block:: console
+
+    $ cd /some/package
+    $ cabal outdated
+    Outdated dependencies:
+    haskell-src-exts <1.17 (latest: 1.19.1)
+    language-javascript <0.6 (latest: 0.6.0.9)
+    unix ==2.7.2.0 (latest: 2.7.2.1)
+
+    $ cabal outdated --simple-output
+    haskell-src-exts
+    language-javascript
+    unix
+
+    $ cabal outdated --ignore=haskell-src-exts
+    Outdated dependencies:
+    language-javascript <0.6 (latest: 0.6.0.9)
+    unix ==2.7.2.0 (latest: 2.7.2.1)
+
+    $ cabal outdated --ignore=haskell-src-exts,language-javascript,unix
+    All dependencies are up to date.
+
+    $ cabal outdated --ignore=haskell-src-exts,language-javascript,unix -q
+    $ echo $?
+    0
+
+    $ cd /some/other/package
+    $ cabal outdated --freeze-file
+    Outdated dependencies:
+    HTTP ==4000.3.3 (latest: 4000.3.4)
+    HUnit ==1.3.1.1 (latest: 1.5.0.0)
+
+    $ cabal outdated --freeze-file --ignore=HTTP --minor=HUnit
+    Outdated dependencies:
+    HUnit ==1.3.1.1 (latest: 1.3.1.2)
+
 
 ``cabal outdated`` supports the following flags:
 
@@ -574,8 +701,6 @@ description file or freeze file.
     of ``pkg`` on Hackage satisfying ``pkg > 1.9 && < 2.0``. ``--minor`` can also
     be used without arguments, in that case major version bumps are ignored for
     all packages.
-
-    See `the section on listing outdated dependency version bounds <cabal-package.html#listing-outdated-dependency-version-bounds>`__ for more details and examples.
 
 .. _command-group-build:
 
@@ -1056,6 +1181,142 @@ to Hackage requirements for uploaded packages: if no error is reported,
 Hackage should accept your package. If errors are present ``cabal check``
 exits with ``1`` and Hackage will refuse the package.
 
+A list of all warnings with their constructor:
+
+- ParseWarning: warnings inherited from parser.
+- NoNameField: missing ``name`` field.
+- NoVersionField: missing ``version`` field.
+- NoTarget: missing target in ``.cabal``.
+- UnnamedInternal: unnamed internal library.
+- DuplicateSections: duplicate name in target.
+- IllegalLibraryName: internal library with same name as package.
+- NoModulesExposed: no module exposed in library.
+- SignaturesCabal2: ``signatures`` used with ``cabal-version`` < 2.0
+- AutogenNotExposed: ``autogen-module`` neither in ``exposed-modules`` nor ``other-modules``.
+- AutogenIncludesNotIncluded: ``autogen-include`` neither in ``include`` nor ``install-includes``.
+- NoMainIs: missing ``main-is``.
+- NoHsLhsMain: ``main-is`` is not ``.hs`` nor ``.lhs``.
+- MainCCabal1_18: C-like source file in ``main-is`` with ``cabal-version`` < 1.18.
+- AutogenNoOther: ``autogen-module`` not in ``other-modules``.
+- AutogenIncludesNotIncludedExe: ``autogen-include`` not in ``includes``.
+- TestsuiteTypeNotKnown: unknown test-suite type.
+- TestsuiteNotSupported: unsupported test-suite type.
+- BenchmarkTypeNotKnown: unknown benchmark type.
+- BenchmarkNotSupported: unsupported benchmark type.
+- NoHsLhsMainBench: ``main-is`` for benchmark is neither ``.hs`` nor ``.lhs``.
+- InvalidNameWin: invalid package name on Windows.
+- ZPrefix: package with ``z-`` prexif (reseved for Cabal.
+- NoBuildType: missing ``build-type``.
+- NoCustomSetup: ``custom-setup`` section without ``build-type: Custom``
+- UnknownCompilers: unknown compiler in ``tested-with``.
+- UnknownLanguages: unknown languages.
+- UnknownExtensions: unknown extensions.
+- LanguagesAsExtension: languages listed as extensions.
+- DeprecatedExtensions: deprecated extensions.
+- MissingField: missing cabal field (one of ``category``, ``maintainer``, ``synopsis``, ``description``).
+- SynopsisTooLong: ``synopsis`` longer than 80 characters.
+- ShortDesc: ``description`` shorter than ``synopsis``.
+- InvalidTestWith: invalid ``tested-with`` version range.
+- ImpossibleInternalDep: impossible internal library version range dependency.
+- ImpossibleInternalExe: impossible internal executable version range dependency.
+- MissingInternalExe: missing internal executable.
+- NONELicense: ``NONE`` in ``license`` field.
+- NoLicense: no ``license`` field.
+- AllRightsReservedLicense: all rights reserved license.
+- LicenseMessParse: license not to be used with `cabal-version` < 1.4.
+- UnrecognisedLicense: unknown license.
+- UncommonBSD4: uncommon BSD (BSD4) license.
+- UnknownLicenseVersion: unknown license version.
+- NoLicenseFile: missing license file.
+- UnrecognisedSourceRepo: unrecognised kind of source-repository.
+- MissingType: missing ``type`` in ``source-repository``.
+- MissingLocation: missing ``location`` in ``source-repository``.
+- MissingModule: missing ``module`` in ``source-repository``.
+- MissingTag: missing ``tag`` in ``source-repository``.
+- SubdirRelPath: ``subdir`` in ``source-repository`` must be relative.
+- SubdirGoodRelPath: malformed ``subdir`` in ``source-repository``.
+- OptFasm: unnecessary ``-fasm``.
+- OptViaC: unnecessary ``-fvia-C``.
+- OptHpc: unnecessary ``-fhpc``.
+- OptProf: unnecessary ``-prof``.
+- OptO: unnecessary ``-o``.
+- OptHide: unnecessary ``-hide-package``.
+- OptMake: unnecessary ``--make``.
+- OptONot: unnecessary disable optimisation flag.
+- OptOOne: unnecessary optimisation flag (``-O1``).
+- OptOTwo: unnecessary optimisation flag (``-O2``).
+- OptSplitSections: unnecessary ``-split-section``.
+- OptSplitObjs: unnecessary ``-split-objs``.
+- OptWls: unnecessary ``-optl-Wl,-s``.
+- OptExts: use ``extension`` field instead of ``-fglasgow-exts``.
+- OptRts: unnecessary ``-rtsopts``.
+- OptWithRts: unnecessary ``-with-rtsopts``.
+- COptONumber: unnecessary ``-O[n]`` in C code.
+- COptCPP: unportable ``-cpp-options`` flag.
+- OptAlternatives: C-like options in wrong cabal field.
+- RelativeOutside: relative path outside of source tree.
+- AbsolutePath: absolute path where not allowed.
+- BadRelativePath: malformed relative path.
+- DistPoint: unreliable path pointing inside ``dist``.
+- GlobSyntaxError: glob syntax error.
+- RecursiveGlobInRoot: recursive glob including source control folders.
+- InvalidOnWin: invalid path on Windows.
+- FilePathTooLong: path too long.
+- FilePathNameTooLong: path *name* too long (POSIX).
+- FilePathSplitTooLong: path non portable (POSIX, split requirements).
+- FilePathEmpty: empty path.
+- CVTestSuite: ``test-suite`` used with ``cabal-version`` < 1.10.
+- CVDefaultLanguage: ``default-language`` used with ``cabal-version`` < 1.10.
+- CVDefaultLanguageComponent: missing ``default-language``.
+- CVExtraDocFiles: `extra-doc-files` used with ``cabal-version`` < 1.18.
+- CVMultiLib: multiple ``library`` sections with ``cabal-version`` < 2.0.
+- CVReexported: ``reexported-modules`` with ``cabal-version`` < 1.22.
+- CVMixins: ``mixins`` with ``cabal-version`` < 2.0.
+- CVExtraFrameworkDirs: ``extra-framework-dirs`` with ``cabal-version`` < 1.24.
+- CVDefaultExtensions: ``default-extensions`` with ``cabal-version`` < 1.10.
+- CVExtensionsDeprecated: deprecated ``extensions`` field used with ``cabal-version`` ≥ 1.10
+- CVSources: ``asm-sources``, ``cmm-sources``, ``extra-bundled-libraries`` or ``extra-library-flavours`` used with ``cabal-version`` < 3.0.
+- CVExtraDynamic: ``extra-dynamic-library-flavours`` used with cabal-version < 3.0.
+- CVVirtualModules: ``virtual-modules`` used with cabal-version < 2.2.
+- CVSourceRepository: ``source-repository`` used with ``cabal-version`` 1.6.
+- CVExtensions: incompatible language extension with ``cabal-version``.
+- CVCustomSetup: missing ``setup-depends`` field in ``custom-setup`` with ``cabal-version`` ≥ 1.24.
+- CVExpliticDepsCustomSetup: missing dependencies in ``custom-setup`` with ``cabal-version`` ≥ 1.24.
+- CVAutogenPaths: missing autogen ``Paths_*`` modules in ``autogen-modules`` (``cabal-version`` ≥ 2.0).
+- CVAutogenPackageInfo: missing autogen ``PackageInfo_*`` modules in ``autogen-modules`` *and* ``exposed-modules``/``other-modules`` (``cabal-version`` ≥ 2.0).
+- GlobNoMatch: glob pattern not matching any file.
+- GlobExactMatch: glob pattern not matching any file becuase of lack of extension matching (`cabal-version` < 2.4).
+- GlobNoDir: glob pattern trying to match a missing directory.
+- UnknownOS: unknown operating system name in condition.
+- UnknownArch: unknown architecture in condition.
+- UnknownCompiler: unknown compiler in condition.
+- BaseNoUpperBounds: missing upper bounds for important dependencies (``base``, and for ``custom-setup`` ``Cabal`` too).
+- MissingUpperBounds: missing upper bound in dependency (excluding test-suites and benchmarks).
+- SuspiciousFlagName: troublesome flag name (e.g. starting with a dash).
+- DeclaredUsedFlags: unused user flags.
+- NonASCIICustomField: non-ASCII characters in custom field.
+- RebindableClashPaths: ``Rebindable Syntax`` with ``OverloadedStrings``/``OverloadedStrings`` plus autogenerated ``Paths_*`` modules with ``cabal-version`` < 2.2.
+- RebindableClashPackageInfo: ``Rebindable Syntax`` with ``OverloadedStrings``/``OverloadedStrings`` plus autogenerated ``PackageInfo_*`` modules with ``cabal-version`` < 2.2.
+- WErrorUnneeded: ``-WError`` not under a user flag.
+- JUnneeded: suspicious ``-j[n]`` usage.
+- FDeferTypeErrorsUnneeded: suspicious ``-fdefer-type-errors``.
+- DynamicUnneeded: suspicious ``-d*`` debug flag for distributed package.
+- ProfilingUnneeded: suspicious ``-fprof-*`` flag.
+- UpperBoundSetup: missing upper bounds in ``setup-depends``.
+- DuplicateModule: duplicate modules in target.
+- PotentialDupModule: potential duplicate module in target (subject to conditionals).
+- BOMStart: unicode byte order mark (BOM) character at start of file.
+- NotPackageName: filename not matching ``name``.
+- NoDesc: no ``.cabal`` file found in folder.
+- MultiDesc: multiple ``.cabal`` files found in folder.
+- UnknownFile: path refers to a file which does not exist.
+- MissingSetupFile: missing ``Setup.hs`` or ``Setup.lsh``.
+- MissingConfigureScript: missing ``configure`` script with ``build-type: Configure``.
+- UnknownDirectory: paths refer to a directory which does not exist.
+- MissingSourceControl: missing ``source-repository`` section.
+- MissingExpectedDocFiles: missing expected documentation files (changelog).
+- WrongFieldForExpectedDocFiles: documentation files listed in ``extra-source-files`` instead of ``extra-doc-files``.
+
 cabal sdist
 ^^^^^^^^^^^
 
@@ -1109,6 +1370,12 @@ to Hackage.
     documentation for a published package (and not a candidate), add
     ``--publish``.
 
+.. option:: -t TOKEN or -tTOKEN, --token=TOKEN
+
+    Your Hackage authentication token. You can create and delete 
+    authentication tokens on Hackage's `account management page 
+    <https://hackage.haskell.org/users/account-management>`__.
+
 .. option:: -u USERNAME or -uUSERNAME, --username=USERNAME
 
     Your Hackage username.
@@ -1138,6 +1405,12 @@ cabal report
 
 ``cabal report [FLAGS]`` uploads build reports to Hackage.
 
+.. option:: -t TOKEN or -tTOKEN, --token=TOKEN
+
+    Your Hackage authentication token. You can create and delete 
+    authentication tokens on Hackage's `account management page 
+    <https://hackage.haskell.org/users/account-management>`__.
+
 .. option:: -u USERNAME or -uUSERNAME, --username=USERNAME
 
     Your Hackage username.
@@ -1145,3 +1418,5 @@ cabal report
 .. option:: -p PASSWORD or -pPASSWORD, --password=PASSWORD
 
     Your Hackage password.
+
+.. include:: references.inc

@@ -20,7 +20,7 @@ import Distribution.PackageDescription.Configuration (flattenPackageDescription)
 import Distribution.Simple.PackageDescription (readGenericPackageDescription)
 import Distribution.Simple.PreProcess (knownSuffixHandlers)
 import Distribution.Simple.SrcDist (listPackageSourcesWithDie)
-import Distribution.Simple.Utils (die', dieWithException)
+import Distribution.Simple.Utils (dieWithException)
 import Distribution.Types.GenericPackageDescription (GenericPackageDescription)
 
 import qualified Codec.Archive.Tar as Tar
@@ -29,6 +29,7 @@ import qualified Codec.Compression.GZip as GZip
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BSL
 import qualified Data.Set as Set
+import Distribution.Client.Errors
 
 -- | List all source files of a given add-source dependency. Exits with error if
 -- something is wrong (e.g. there is no .cabal file in the given directory).
@@ -66,7 +67,7 @@ packageDirToSdist verbosity gpd dir = do
         let prefix = prettyShow (packageId gpd)
         modify (Set.insert prefix)
         case Tar.toTarPath True prefix of
-          Left err -> liftIO $ die' verbosity ("Error packing sdist: " ++ err)
+          Left err -> liftIO $ dieWithException verbosity $ ErrorPackingSdist err
           Right path -> tell [Tar.directoryEntry path]
 
         for_ files $ \file -> do
@@ -76,12 +77,12 @@ packageDirToSdist verbosity gpd dir = do
           when needsEntry $ do
             modify (Set.insert fileDir)
             case Tar.toTarPath True fileDir of
-              Left err -> liftIO $ die' verbosity ("Error packing sdist: " ++ err)
+              Left err -> liftIO $ dieWithException verbosity $ ErrorPackingSdist err
               Right path -> tell [Tar.directoryEntry path]
 
           contents <- liftIO . fmap BSL.fromStrict . BS.readFile $ dir </> file
           case Tar.toTarPath False (prefix </> file) of
-            Left err -> liftIO $ die' verbosity ("Error packing sdist: " ++ err)
+            Left err -> liftIO $ dieWithException verbosity $ ErrorPackingSdist err
             Right path -> tell [(Tar.fileEntry path contents){Tar.entryPermissions = Tar.ordinaryFilePermissions}]
 
   entries <- execWriterT (evalStateT entriesM mempty)

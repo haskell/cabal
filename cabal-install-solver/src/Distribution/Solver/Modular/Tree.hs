@@ -110,7 +110,6 @@ data FailReason = UnsupportedExtension Extension
                 | PackageRequiresMissingComponent QPN ExposedComponent
                 | PackageRequiresPrivateComponent QPN ExposedComponent
                 | PackageRequiresUnbuildableComponent QPN ExposedComponent
-                | CannotInstall
                 | CannotReinstall
                 | NotExplicit
                 | Shadowed
