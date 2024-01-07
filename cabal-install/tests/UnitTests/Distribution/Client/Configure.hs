@@ -23,13 +23,22 @@ tests =
   [ configureTests
   ]
 
+defaultTestFlags :: NixStyleFlags ()
+defaultTestFlags =
+  (defaultNixStyleFlags ())
+    { projectFlags =
+        mempty
+          { flagProjectDir = Flag projectDir
+          }
+    }
+
 configureTests :: TestTree
 configureTests =
   testGroup
     "Configure tests"
     [ testCase "New config" $ do
         let flags =
-              (defaultNixStyleFlags ())
+              defaultTestFlags
                 { configFlags =
                     mempty
                       { configOptimization = Flag MaximumOptimisation
@@ -42,7 +51,7 @@ configureTests =
           @=? (packageConfigOptimization . projectConfigLocalPackages $ snd projConfig)
     , testCase "Replacement + new config" $ do
         let flags =
-              (defaultNixStyleFlags ())
+              defaultTestFlags
                 { configExFlags =
                     mempty
                       { configAppend = Flag True
@@ -52,10 +61,6 @@ configureTests =
                       { configOptimization = Flag NoOptimisation
                       , configVerbosity = Flag silent
                       }
-                , projectFlags =
-                    mempty
-                      { flagProjectDir = Flag projectDir
-                      }
                 }
         (_, ProjectConfig{..}) <- configureAction' flags [] defaultGlobalFlags
 
@@ -63,7 +68,7 @@ configureTests =
         Flag silent @=? projectConfigVerbosity projectConfigBuildOnly
     , testCase "Old + new config" $ do
         let flags =
-              (defaultNixStyleFlags ())
+              defaultTestFlags
                 { configExFlags =
                     mempty
                       { configAppend = Flag True
@@ -72,10 +77,6 @@ configureTests =
                     mempty
                       { configVerbosity = Flag silent
                       }
-                , projectFlags =
-                    mempty
-                      { flagProjectDir = Flag projectDir
-                      }
                 }
         (_, ProjectConfig{..}) <- configureAction' flags [] defaultGlobalFlags
 
@@ -83,14 +84,10 @@ configureTests =
         Flag silent @=? projectConfigVerbosity projectConfigBuildOnly
     , testCase "Old + new config, no appending" $ do
         let flags =
-              (defaultNixStyleFlags ())
+              defaultTestFlags
                 { configFlags =
                     mempty
                       { configVerbosity = Flag silent
-                      }
-                , projectFlags =
-                    mempty
-                      { flagProjectDir = Flag projectDir
                       }
                 }
         (_, ProjectConfig{..}) <- configureAction' flags [] defaultGlobalFlags
@@ -99,14 +96,10 @@ configureTests =
         Flag silent @=? projectConfigVerbosity projectConfigBuildOnly
     , testCase "Old + new config, backup check" $ do
         let flags =
-              (defaultNixStyleFlags ())
+              defaultTestFlags
                 { configFlags =
                     mempty
                       { configVerbosity = Flag silent
-                      }
-                , projectFlags =
-                    mempty
-                      { flagProjectDir = Flag projectDir
                       }
                 }
             backup = projectDir </> "cabal.project.local~"
@@ -122,15 +115,11 @@ configureTests =
     , testCase "Local program options" $ do
         let ghcFlags = ["-fno-full-laziness"]
             flags =
-              (defaultNixStyleFlags ())
+              defaultTestFlags
                 { configFlags =
                     mempty
                       { configVerbosity = Flag silent
                       , configProgramArgs = [("ghc", ghcFlags)]
-                      }
-                , projectFlags =
-                    mempty
-                      { flagProjectDir = Flag projectDir
                       }
                 }
         (_, ProjectConfig{..}) <- configureAction' flags [] defaultGlobalFlags
