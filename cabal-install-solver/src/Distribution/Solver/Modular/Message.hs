@@ -68,13 +68,13 @@ showMessages = go 0
     go !l (Step (TryS qsn b) (Step Enter (Step (Failure c fr) (Step Leave ms)))) =
         (atLevel l $ blurbQSNBool Rejecting qsn b ++ showFR c fr) (go l ms)
     go !l (Step (Next (Goal (P _  ) gr)) (Step (TryP qpn' i) ms@(Step Enter (Step (Next _) _)))) =
-        (atLevel l $ blurbOptions Trying qpn' [i] ++ showGR gr) (go l ms)
+        (atLevel l $ blurbOption Trying qpn' i ++ showGR gr) (go l ms)
     go !l (Step (Next (Goal (P qpn) gr)) (Step (Failure _c UnknownPackage) ms)) =
         atLevel l ("unknown package: " ++ showQPN qpn ++ showGR gr) $ go l ms
     -- standard display
     go !l (Step Enter                    ms) = go (l+1) ms
     go !l (Step Leave                    ms) = go (l-1) ms
-    go !l (Step (TryP qpn i)             ms) = (atLevel l $ blurbOptions Trying qpn [i]) (go l ms)
+    go !l (Step (TryP qpn i)             ms) = (atLevel l $ blurbOption Trying qpn i) (go l ms)
     go !l (Step (TryF qfn b)             ms) = (atLevel l $ blurbQFNBool Trying qfn b) (go l ms)
     go !l (Step (TryS qsn b)             ms) = (atLevel l $ blurbQSNBool Trying qsn b) (go l ms)
     go !l (Step (Next (Goal (P qpn) gr)) ms) = (atLevel l $ showPackageGoal qpn gr) (go l ms)
@@ -230,8 +230,10 @@ blurbQFNBool a q b = blurb a ++ Flag.showQFNBool q b
 blurbQSNBool :: ProgressAction -> QSN -> Bool -> String
 blurbQSNBool a q b = blurb a ++ Flag.showQSNBool q b
 
+blurbOption :: ProgressAction -> QPN -> POption -> String
+blurbOption a q p = blurb a ++ showOption q p
+
 blurbOptions :: ProgressAction -> QPN -> [POption] -> String
-blurbOptions a q [p] = blurb a ++ showOption q p
 blurbOptions a q ps = blurb a ++ showIsOrVs q (tryVs ps)
 
 showOption :: QPN -> POption -> String
