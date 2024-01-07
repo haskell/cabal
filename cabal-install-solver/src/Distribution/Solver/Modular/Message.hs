@@ -100,9 +100,11 @@ showMessages = go 0
               -> Progress Message a b
               -> Progress String a b
     goPReject l qpn is c fr (Step (TryP qpn' i) (Step Enter (Step (Failure _ fr') (Step Leave ms))))
-      | qpn == qpn' && fr == fr' = goPReject l qpn (i : is) c fr ms
+      | qpn == qpn' && fr == fr' =
+        -- By prepending (i : is) we reverse the order of the instances.
+        goPReject l qpn (i : is) c fr ms
     goPReject l qpn is c fr ms =
-        (atLevel l $ showOptions Rejecting qpn is ++ showFR c fr)
+        (atLevel l $ showOptions Rejecting qpn (reverse is) ++ showFR c fr)
         (go l ms)
 
     -- Handle many subsequent skipped package instances.
@@ -113,9 +115,11 @@ showMessages = go 0
             -> Progress Message a b
             -> Progress String a b
     goPSkip l qpn is conflicts (Step (TryP qpn' i) (Step Enter (Step (Skip conflicts') (Step Leave ms))))
-      | qpn == qpn' && conflicts == conflicts' = goPSkip l qpn (i : is) conflicts ms
+      | qpn == qpn' && conflicts == conflicts' =
+        -- By prepending (i : is) we reverse the order of the instances.
+        goPSkip l qpn (i : is) conflicts ms
     goPSkip l qpn is conflicts ms =
-      let msg = showOptions Skipping qpn is ++ showConflicts conflicts
+      let msg = showOptions Skipping qpn (reverse is) ++ showConflicts conflicts
       in atLevel l msg (go l ms)
 
     -- write a message with the current level number
@@ -268,21 +272,21 @@ tryVs xs
 -- | Shows a list of versions in a human-friendly way, abbreviated. Shows a list
 -- of instances in full.
 -- >>> showIsOrVs fooQPN $ tryVs [v0, v1]
--- "foo; 1, 0"
+-- "foo; 0, 1"
 -- >>> showIsOrVs fooQPN $ tryVs [v0]
 -- "foo-0"
 -- >>> showIsOrVs fooQPN $ tryVs [i0, i1]
--- "foo-1/installed-inplace, foo-0/installed-inplace"
+-- "foo-0/installed-inplace, foo-1/installed-inplace"
 -- >>> showIsOrVs fooQPN $ tryVs [i0, v1]
--- "foo-1, foo-0/installed-inplace"
+-- "foo-0/installed-inplace, foo-1"
 -- >>> showIsOrVs fooQPN $ tryVs [v0, i1]
--- "foo-1/installed-inplace, foo-0"
+-- "foo-0, foo-1/installed-inplace"
 -- >>> showIsOrVs fooQPN $ tryVs []
 -- "unexpected empty list of versions"
 showIsOrVs :: QPN -> IsOrVs -> String
 showIsOrVs _ (Is []) = "unexpected empty list of versions"
-showIsOrVs q (Is (reverse -> xs)) = L.intercalate ", " (showOption q `map` xs)
-showIsOrVs q (Vs (reverse -> xs)) = showQPN q ++ "; " ++ L.intercalate ", " (showVer `map` xs)
+showIsOrVs q (Is xs) = L.intercalate ", " (showOption q `map` xs)
+showIsOrVs q (Vs xs) = showQPN q ++ "; " ++ L.intercalate ", " (showVer `map` xs)
 
 showGR :: QGoalReason -> String
 showGR UserGoal            = " (user goal)"
