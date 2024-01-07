@@ -253,13 +253,13 @@ data IsOrVs = Is [POption] | Vs [Ver] deriving Show
 -- >>> tryVs [v0]
 -- Is [POption (I (mkVersion [0]) InRepo) Nothing]
 -- >>> tryVs [i0, i1]
--- Is [POption (I (mkVersion [0]) (Inst (UnitId "foo-0-inplace"))) Nothing,POption (I (mkVersion [1]) (Inst (UnitId "foo-1-inplace"))) Nothing]
+-- Is [POption (I (mkVersion [0]) (Inst (UnitId "foo-bar-0-inplace"))) Nothing,POption (I (mkVersion [1]) (Inst (UnitId "foo-bar-1-inplace"))) Nothing]
 -- >>> tryVs [i0, v1]
--- Is [POption (I (mkVersion [0]) (Inst (UnitId "foo-0-inplace"))) Nothing,POption (I (mkVersion [1]) InRepo) Nothing]
+-- Is [POption (I (mkVersion [0]) (Inst (UnitId "foo-bar-0-inplace"))) Nothing,POption (I (mkVersion [1]) InRepo) Nothing]
 -- >>> tryVs [v0, i1]
--- Is [POption (I (mkVersion [0]) InRepo) Nothing,POption (I (mkVersion [1]) (Inst (UnitId "foo-1-inplace"))) Nothing]
+-- Is [POption (I (mkVersion [0]) InRepo) Nothing,POption (I (mkVersion [1]) (Inst (UnitId "foo-bar-1-inplace"))) Nothing]
 -- >>> tryVs [i0]
--- Is [POption (I (mkVersion [0]) (Inst (UnitId "foo-0-inplace"))) Nothing]
+-- Is [POption (I (mkVersion [0]) (Inst (UnitId "foo-bar-0-inplace"))) Nothing]
 -- >>> tryVs []
 -- Is []
 tryVs :: [POption] -> IsOrVs
@@ -273,17 +273,17 @@ tryVs xs
 
 -- | Shows a list of versions in a human-friendly way, abbreviated. Shows a list
 -- of instances in full.
--- >>> showIsOrVs fooQPN $ tryVs [v0, v1]
--- "foo; 0, 1"
--- >>> showIsOrVs fooQPN $ tryVs [v0]
--- "foo-0"
--- >>> showIsOrVs fooQPN $ tryVs [i0, i1]
--- "foo-0/installed-inplace, foo-1/installed-inplace"
--- >>> showIsOrVs fooQPN $ tryVs [i0, v1]
--- "foo-0/installed-inplace, foo-1"
--- >>> showIsOrVs fooQPN $ tryVs [v0, i1]
--- "foo-0, foo-1/installed-inplace"
--- >>> showIsOrVs fooQPN $ tryVs []
+-- >>> showIsOrVs foobarQPN $ tryVs [v0, v1]
+-- "foo-bar; 0, 1"
+-- >>> showIsOrVs foobarQPN $ tryVs [v0]
+-- "foo-bar-0"
+-- >>> showIsOrVs foobarQPN $ tryVs [i0, i1]
+-- "foo-bar-0/installed-inplace, foo-bar-1/installed-inplace"
+-- >>> showIsOrVs foobarQPN $ tryVs [i0, v1]
+-- "foo-bar-0/installed-inplace, foo-bar-1"
+-- >>> showIsOrVs foobarQPN $ tryVs [v0, i1]
+-- "foo-bar-0, foo-bar-1/installed-inplace"
+-- >>> showIsOrVs foobarQPN $ tryVs []
 -- "unexpected empty list of versions"
 showIsOrVs :: QPN -> IsOrVs -> String
 showIsOrVs _ (Is []) = "unexpected empty list of versions"
@@ -353,8 +353,8 @@ showConflictingDep (ConflictingDep dr (PkgComponent qpn comp) ci) =
 -- >>> import Distribution.Solver.Types.PackagePath
 -- >>> import Distribution.Types.Version
 -- >>> import Distribution.Types.UnitId
--- >>> let fooQPN = Q (PackagePath DefaultNamespace QualToplevel) (mkPackageName "foo")
+-- >>> let foobarQPN = Q (PackagePath DefaultNamespace QualToplevel) (mkPackageName "foo-bar")
 -- >>> let v0 = POption (I (mkVersion [0]) InRepo) Nothing
 -- >>> let v1 = POption (I (mkVersion [1]) InRepo) Nothing
--- >>> let i0 = POption (I (mkVersion [0]) (Inst $ mkUnitId "foo-0-inplace")) Nothing
--- >>> let i1 = POption (I (mkVersion [1]) (Inst $ mkUnitId "foo-1-inplace")) Nothing
+-- >>> let i0 = POption (I (mkVersion [0]) (Inst $ mkUnitId "foo-bar-0-inplace")) Nothing
+-- >>> let i1 = POption (I (mkVersion [1]) (Inst $ mkUnitId "foo-bar-1-inplace")) Nothing
