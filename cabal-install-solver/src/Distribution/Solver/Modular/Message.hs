@@ -246,7 +246,7 @@ showOption qpn@(Q _pp pn) (POption i linkedTo) =
 data IsOrVs = Is [POption] | Vs [Ver] deriving Show
 
 -- | Try to convert a list of options to a list of versions, or a list of
--- instances if any of the options is linked (installed).  Singleton lists or
+-- instances if any of the options is linked or installed.  Singleton lists or
 -- empty lists are always converted to Is.
 -- >>> tryVs [v0, v1]
 -- Vs [mkVersion [0],mkVersion [1]]
