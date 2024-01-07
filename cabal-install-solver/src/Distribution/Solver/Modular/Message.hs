@@ -64,24 +64,24 @@ showMessages = go 0
     go !l (Step (TryP qpn i) (Step Enter (Step (Skip conflicts) (Step Leave ms)))) =
         goPSkip l qpn [i] conflicts ms
     go !l (Step (TryF qfn b) (Step Enter (Step (Failure c fr) (Step Leave ms)))) =
-        (atLevel l $ showQFNBool Rejecting qfn b ++ showFR c fr) (go l ms)
+        (atLevel l $ blurbQFNBool Rejecting qfn b ++ showFR c fr) (go l ms)
     go !l (Step (TryS qsn b) (Step Enter (Step (Failure c fr) (Step Leave ms)))) =
-        (atLevel l $ showQSNBool Rejecting qsn b ++ showFR c fr) (go l ms)
+        (atLevel l $ blurbQSNBool Rejecting qsn b ++ showFR c fr) (go l ms)
     go !l (Step (Next (Goal (P _  ) gr)) (Step (TryP qpn' i) ms@(Step Enter (Step (Next _) _)))) =
-        (atLevel l $ showOptions Trying qpn' [i] ++ showGR gr) (go l ms)
+        (atLevel l $ blurbOptions Trying qpn' [i] ++ showGR gr) (go l ms)
     go !l (Step (Next (Goal (P qpn) gr)) (Step (Failure _c UnknownPackage) ms)) =
         atLevel l ("unknown package: " ++ showQPN qpn ++ showGR gr) $ go l ms
     -- standard display
     go !l (Step Enter                    ms) = go (l+1) ms
     go !l (Step Leave                    ms) = go (l-1) ms
-    go !l (Step (TryP qpn i)             ms) = (atLevel l $ showOptions Trying qpn [i]) (go l ms)
-    go !l (Step (TryF qfn b)             ms) = (atLevel l $ showQFNBool Trying qfn b) (go l ms)
-    go !l (Step (TryS qsn b)             ms) = (atLevel l $ showQSNBool Trying qsn b) (go l ms)
+    go !l (Step (TryP qpn i)             ms) = (atLevel l $ blurbOptions Trying qpn [i]) (go l ms)
+    go !l (Step (TryF qfn b)             ms) = (atLevel l $ blurbQFNBool Trying qfn b) (go l ms)
+    go !l (Step (TryS qsn b)             ms) = (atLevel l $ blurbQSNBool Trying qsn b) (go l ms)
     go !l (Step (Next (Goal (P qpn) gr)) ms) = (atLevel l $ showPackageGoal qpn gr) (go l ms)
     go !l (Step (Next _)                 ms) = go l     ms -- ignore flag goals in the log
     go !l (Step (Skip conflicts)         ms) =
         -- 'Skip' should always be handled by 'goPSkip' in the case above.
-        (atLevel l $ showing Skipping ++ showConflicts conflicts) (go l ms)
+        (atLevel l $ blurb Skipping ++ showConflicts conflicts) (go l ms)
     go !l (Step (Success)                ms) = (atLevel l $ "done") (go l ms)
     go !l (Step (Failure c fr)           ms) = (atLevel l $ showFailure c fr) (go l ms)
 
@@ -104,7 +104,7 @@ showMessages = go 0
         -- By prepending (i : is) we reverse the order of the instances.
         goPReject l qpn (i : is) c fr ms
     goPReject l qpn is c fr ms =
-        (atLevel l $ showOptions Rejecting qpn (reverse is) ++ showFR c fr)
+        (atLevel l $ blurbOptions Rejecting qpn (reverse is) ++ showFR c fr)
         (go l ms)
 
     -- Handle many subsequent skipped package instances.
@@ -119,7 +119,7 @@ showMessages = go 0
         -- By prepending (i : is) we reverse the order of the instances.
         goPSkip l qpn (i : is) conflicts ms
     goPSkip l qpn is conflicts ms =
-      let msg = showOptions Skipping qpn (reverse is) ++ showConflicts conflicts
+      let msg = blurbOptions Skipping qpn (reverse is) ++ showConflicts conflicts
       in atLevel l msg (go l ms)
 
     -- write a message with the current level number
@@ -218,21 +218,21 @@ data ProgressAction =
   | Skipping
   | Rejecting
 
-showing :: ProgressAction -> String
-showing = \case
+blurb :: ProgressAction -> String
+blurb = \case
   Trying -> "trying: "
   Skipping -> "skipping: "
   Rejecting -> "rejecting: "
 
-showQFNBool :: ProgressAction -> QFN -> Bool -> String
-showQFNBool a q b = showing a ++ Flag.showQFNBool q b
+blurbQFNBool :: ProgressAction -> QFN -> Bool -> String
+blurbQFNBool a q b = blurb a ++ Flag.showQFNBool q b
 
-showQSNBool :: ProgressAction -> QSN -> Bool -> String
-showQSNBool a q b = showing a ++ Flag.showQSNBool q b
+blurbQSNBool :: ProgressAction -> QSN -> Bool -> String
+blurbQSNBool a q b = blurb a ++ Flag.showQSNBool q b
 
-showOptions :: ProgressAction -> QPN -> [POption] -> String
-showOptions a q [p] = showing a ++ showOption q p
-showOptions a q ps = showing a ++ showIsOrVs q (tryVs ps)
+blurbOptions :: ProgressAction -> QPN -> [POption] -> String
+blurbOptions a q [p] = blurb a ++ showOption q p
+blurbOptions a q ps = blurb a ++ showIsOrVs q (tryVs ps)
 
 showOption :: QPN -> POption -> String
 showOption qpn@(Q _pp pn) (POption i linkedTo) =
