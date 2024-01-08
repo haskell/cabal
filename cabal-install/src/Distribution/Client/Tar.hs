@@ -14,10 +14,11 @@
 -- Reading, writing and manipulating \"@.tar@\" archive files.
 --
 -----------------------------------------------------------------------------
-module Distribution.Client.Tar (
-  -- * @tar.gz@ operations
+
+module Distribution.Client.Tar
+  ( -- * @tar.gz@ operations
   createTarGzFile,
-  extractTarGzFile,
+  TarComp.extractTarGzFile,
 
   -- * Other local utils
   buildTreeRefTypeCode,
@@ -31,12 +32,11 @@ module Distribution.Client.Tar (
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
-import qualified Data.ByteString.Lazy    as BS
-import qualified Codec.Archive.Tar       as Tar
+import qualified Codec.Archive.Tar as Tar
 import qualified Codec.Archive.Tar.Entry as Tar
-import qualified Codec.Archive.Tar.Check as Tar
-import qualified Codec.Compression.GZip  as GZip
-import qualified Distribution.Client.GZipUtils as GZipUtils
+import qualified Codec.Compression.GZip as GZip
+import qualified Data.ByteString.Lazy as BS
+import qualified Distribution.Client.Compat.Tar as TarComp
 
 -- for foldEntries...
 import Control.Exception (throw)
@@ -51,26 +51,6 @@ createTarGzFile :: FilePath  -- ^ Full Tarball path
                 -> IO ()
 createTarGzFile tar base dir =
   BS.writeFile tar . GZip.compress . Tar.write =<< Tar.pack base [dir]
-
-extractTarGzFile :: FilePath -- ^ Destination directory
-                 -> FilePath -- ^ Expected subdir (to check for tarbombs)
-                 -> FilePath -- ^ Tarball
-                -> IO ()
-extractTarGzFile dir expected tar =
-  Tar.unpack dir . Tar.checkTarbomb expected . Tar.read
-  . GZipUtils.maybeDecompress =<< BS.readFile tar
-
-instance (Exception a, Exception b) => Exception (Either a b) where
-  toException (Left  e) = toException e
-  toException (Right e) = toException e
-
-  fromException e =
-    case fromException e of
-      Just e' -> Just (Left e')
-      Nothing -> case fromException e of
-                   Just e' -> Just (Right e')
-                   Nothing -> Nothing
-
 
 -- | Type code for the local build tree reference entry type. We don't use the
 -- symbolic link entry type because it allows only 100 ASCII characters for the
