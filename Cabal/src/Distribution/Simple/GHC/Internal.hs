@@ -333,14 +333,13 @@ getExtensions verbosity implInfo ghcProg = do
 
 componentCcGhcOptions
   :: Verbosity
-  -> GhcImplInfo
   -> LocalBuildInfo
   -> BuildInfo
   -> ComponentLocalBuildInfo
   -> FilePath
   -> FilePath
   -> GhcOptions
-componentCcGhcOptions verbosity _implInfo lbi bi clbi odir filename =
+componentCcGhcOptions verbosity lbi bi clbi odir filename =
   mempty
     { -- Respect -v0, but don't crank up verbosity on GHC if
       -- Cabal verbosity is requested. For that, use --ghc-option=-v instead!
@@ -383,14 +382,13 @@ componentCcGhcOptions verbosity _implInfo lbi bi clbi odir filename =
 
 componentCxxGhcOptions
   :: Verbosity
-  -> GhcImplInfo
   -> LocalBuildInfo
   -> BuildInfo
   -> ComponentLocalBuildInfo
   -> FilePath
   -> FilePath
   -> GhcOptions
-componentCxxGhcOptions verbosity _implInfo lbi bi clbi odir filename =
+componentCxxGhcOptions verbosity lbi bi clbi odir filename =
   mempty
     { -- Respect -v0, but don't crank up verbosity on GHC if
       -- Cabal verbosity is requested. For that, use --ghc-option=-v instead!
@@ -433,14 +431,13 @@ componentCxxGhcOptions verbosity _implInfo lbi bi clbi odir filename =
 
 componentAsmGhcOptions
   :: Verbosity
-  -> GhcImplInfo
   -> LocalBuildInfo
   -> BuildInfo
   -> ComponentLocalBuildInfo
   -> FilePath
   -> FilePath
   -> GhcOptions
-componentAsmGhcOptions verbosity _implInfo lbi bi clbi odir filename =
+componentAsmGhcOptions verbosity lbi bi clbi odir filename =
   mempty
     { -- Respect -v0, but don't crank up verbosity on GHC if
       -- Cabal verbosity is requested. For that, use --ghc-option=-v instead!
@@ -478,14 +475,13 @@ componentAsmGhcOptions verbosity _implInfo lbi bi clbi odir filename =
 
 componentJsGhcOptions
   :: Verbosity
-  -> GhcImplInfo
   -> LocalBuildInfo
   -> BuildInfo
   -> ComponentLocalBuildInfo
   -> FilePath
   -> FilePath
   -> GhcOptions
-componentJsGhcOptions verbosity _implInfo lbi bi clbi odir filename =
+componentJsGhcOptions verbosity lbi bi clbi odir filename =
   mempty
     { -- Respect -v0, but don't crank up verbosity on GHC if
       -- Cabal verbosity is requested. For that, use --ghc-option=-v instead!
@@ -607,14 +603,13 @@ toGhcOptimisation MaximumOptimisation = toFlag GhcMaximumOptimisation
 
 componentCmmGhcOptions
   :: Verbosity
-  -> GhcImplInfo
   -> LocalBuildInfo
   -> BuildInfo
   -> ComponentLocalBuildInfo
   -> FilePath
   -> FilePath
   -> GhcOptions
-componentCmmGhcOptions verbosity _implInfo lbi bi clbi odir filename =
+componentCmmGhcOptions verbosity lbi bi clbi odir filename =
   mempty
     { -- Respect -v0, but don't crank up verbosity on GHC if
       -- Cabal verbosity is requested. For that, use --ghc-option=-v instead!

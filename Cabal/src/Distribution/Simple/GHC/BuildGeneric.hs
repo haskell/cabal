@@ -1,3 +1,5 @@
+{-# LANGUAGE LambdaCase #-}
+
 module Distribution.Simple.GHC.BuildGeneric
   ( GBuildMode (..)
   , gbuild
@@ -17,21 +19,11 @@ import Distribution.Package
 import Distribution.PackageDescription as PD
 import Distribution.PackageDescription.Utils (cabalBug)
 import Distribution.Pretty
+import Distribution.Simple.Build.ExtraSources
+import Distribution.Simple.Build.Monad
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Compiler
 import Distribution.Simple.GHC.Build
-  ( checkNeedsRecompilation
-  , componentGhcOptions
-  , exeTargetName
-  , flibBuildName
-  , flibTargetName
-  , getRPaths
-  , isDynamic
-  , replNoLoad
-  , runReplOrWriteFlags
-  , supportsDynamicToo
-  )
-import Distribution.Simple.GHC.ImplInfo
 import qualified Distribution.Simple.GHC.Internal as Internal
 import qualified Distribution.Simple.Hpc as Hpc
 import Distribution.Simple.LocalBuildInfo
@@ -45,7 +37,6 @@ import Distribution.System
 import Distribution.Types.PackageName.Magic
 import Distribution.Types.ParStrat
 import Distribution.Utils.NubList
-import Distribution.Utils.Path
 import Distribution.Verbosity
 import Distribution.Version
 import System.Directory
@@ -56,7 +47,6 @@ import System.Directory
   )
 import System.FilePath
   ( replaceExtension
-  , takeExtension
   , (</>)
   )
 
@@ -147,17 +137,15 @@ gbuildNeedDynamic lbi bm =
   case bm of
     GBuildExe _ -> withDynExe lbi
     GReplExe _ _ -> withDynExe lbi
-    GBuildFLib flib -> withDynFLib flib
-    GReplFLib _ flib -> withDynFLib flib
-  where
-    withDynFLib flib =
-      case foreignLibType flib of
-        ForeignLibNativeShared ->
-          ForeignLibStandalone `notElem` foreignLibOptions flib
-        ForeignLibNativeStatic ->
-          False
-        ForeignLibTypeUnknown ->
-          cabalBug "unknown foreign lib type"
+    GBuildFLib flib -> flibIsDynamic flib
+    GReplFLib _ flib -> flibIsDynamic flib
+
+gbuildComp :: GBuildMode -> Component
+gbuildComp = \case
+  GBuildExe exe -> CExe exe
+  GReplExe _ exe -> CExe exe
+  GBuildFLib flib -> CFLib flib
+  GReplFLib _ flib -> CFLib flib
 
 -- | Locate and return the 'BuildSources' required to build and link.
 gbuildSources
@@ -175,8 +163,8 @@ gbuildSources verbosity pkgId specVer tmpDir bm =
     GReplFLib _ flib -> return $ flibSources flib
   where
     exeSources :: Executable -> IO BuildSources
-    exeSources exe@Executable{buildInfo = bnfo, modulePath = modPath} = do
-      main <- findFileEx verbosity (tmpDir : map getSymbolicPath (hsSourceDirs bnfo)) modPath
+    exeSources exe@Executable{buildInfo = bnfo} = do
+      main <- findExecutableMain verbosity tmpDir exe
       let mainModName = fromMaybe ModuleName.main $ exeMainModuleName exe
           otherModNames = exeModules exe
 
@@ -254,9 +242,6 @@ gbuildSources verbosity pkgId specVer tmpDir bm =
         , inputSourceModules = foreignLibModules flib
         }
 
-    isCxx :: FilePath -> Bool
-    isCxx fp = elem (takeExtension fp) [".cpp", ".cxx", ".c++"]
-
 -- | Extract (and compute) information about the RTS library
 --
 -- TODO: This hardcodes the name as @HSrts-ghc<version>@. I don't know if we can
@@ -305,10 +290,6 @@ hasThreaded :: BuildInfo -> Bool
 hasThreaded bi = elem "-threaded" ghc
   where
     PerCompilerFlavor ghc _ = options bi
-
--- | FilePath has a Haskell extension: .hs or .lhs
-isHaskell :: FilePath -> Bool
-isHaskell fp = elem (takeExtension fp) [".hs", ".lhs"]
 
 -- | "Main" module name when overridden by @ghc-options: -main-is ...@
 -- or 'Nothing' if no @-main-is@ flag could be found.
@@ -364,14 +345,15 @@ decodeMainIsArg arg
 
 -- | Generic build function. See comment for 'GBuildMode'.
 gbuild
-  :: Verbosity
+  :: BuildingWhat
   -> Flag ParStrat
   -> PackageDescription
   -> LocalBuildInfo
   -> GBuildMode
   -> ComponentLocalBuildInfo
   -> IO ()
-gbuild verbosity numJobs pkg_descr lbi bm clbi = do
+gbuild what numJobs pkg_descr lbi bm clbi = do
+  let verbosity = buildingWhatVerbosity what
   (ghcProg, _) <- requireProgram verbosity ghcProgram (withPrograms lbi)
   let replFlags = case bm of
         GReplExe flags _ -> flags
@@ -380,7 +362,6 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
         GBuildFLib{} -> mempty
       comp = compiler lbi
       platform = hostPlatform lbi
-      implInfo = getImplInfo comp
       runGhcProg = runGHC verbosity ghcProg comp platform
 
   let bnfo = gbuildInfo bm
@@ -596,74 +577,7 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
         , ghcOptNumJobs = numJobs
         }
 
-  let
-    buildExtraSources mkSrcOpts wantDyn = traverse_ $ buildExtraSource mkSrcOpts wantDyn
-    buildExtraSource mkSrcOpts wantDyn filename = do
-      let baseSrcOpts =
-            mkSrcOpts
-              verbosity
-              implInfo
-              lbi
-              bnfo
-              clbi
-              tmpDir
-              filename
-          vanillaSrcOpts =
-            if isGhcDynamic && wantDyn
-              then -- Dynamic GHC requires C/C++ sources to be built
-              -- with -fPIC for REPL to work. See #2207.
-                baseSrcOpts{ghcOptFPic = toFlag True}
-              else baseSrcOpts
-          profSrcOpts =
-            vanillaSrcOpts
-              `mappend` mempty
-                { ghcOptProfilingMode = toFlag True
-                }
-          sharedSrcOpts =
-            vanillaSrcOpts
-              `mappend` mempty
-                { ghcOptFPic = toFlag True
-                , ghcOptDynLinkMode = toFlag GhcDynamicOnly
-                }
-          opts
-            | needProfiling = profSrcOpts
-            | needDynamic && wantDyn = sharedSrcOpts
-            | otherwise = vanillaSrcOpts
-          -- TODO: Placing all Haskell, C, & C++ objects in a single directory
-          --       Has the potential for file collisions. In general we would
-          --       consider this a user error. However, we should strive to
-          --       add a warning if this occurs.
-          odir = fromFlag (ghcOptObjDir opts)
-
-      createDirectoryIfMissingVerbose verbosity True odir
-      needsRecomp <- checkNeedsRecompilation filename opts
-      when needsRecomp $
-        runGhcProg opts
-
-  -- build any C++ sources
-  unless (null cxxSrcs) $ do
-    info verbosity "Building C++ Sources..."
-    buildExtraSources Internal.componentCxxGhcOptions True cxxSrcs
-
-  -- build any C sources
-  unless (null cSrcs) $ do
-    info verbosity "Building C Sources..."
-    buildExtraSources Internal.componentCcGhcOptions True cSrcs
-
-  -- build any JS sources
-  unless (not hasJsSupport || null jsSrcs) $ do
-    info verbosity "Building JS Sources..."
-    buildExtraSources Internal.componentJsGhcOptions False jsSrcs
-
-  -- build any ASM sources
-  unless (null asmSrcs) $ do
-    info verbosity "Building Assembler Sources..."
-    buildExtraSources Internal.componentAsmGhcOptions True asmSrcs
-
-  -- build any Cmm sources
-  unless (null cmmSrcs) $ do
-    info verbosity "Building C-- Sources..."
-    buildExtraSources Internal.componentCmmGhcOptions True cmmSrcs
+  runBuildM what lbi (TargetInfo clbi (gbuildComp bm)) buildAllExtraSources
 
   -- TODO: problem here is we need the .c files built first, so we can load them
   -- with ghci, but .c files can depend on .h files generated by ghc by ffi

@@ -88,6 +88,7 @@ library
     Distribution.Simple
     Distribution.Simple.Bench
     Distribution.Simple.Build
+    Distribution.Simple.Build.ExtraSources
     Distribution.Simple.Build.Macros
     Distribution.Simple.Build.Monad
     Distribution.Simple.Build.PackageInfoModule

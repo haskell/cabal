@@ -6,9 +6,14 @@ module Distribution.Simple.GHC.Build
   , componentGhcOptions
   , supportsDynamicToo
   , isDynamic
+  , findExecutableMain
   , flibBuildName
   , flibTargetName
+  , flibIsDynamic
   , exeTargetName
+  , isCxx
+  , isC
+  , isHaskell
   )
 where
 
@@ -35,6 +40,7 @@ import Distribution.Simple.Setup.Repl
 import Distribution.Simple.Utils
 import Distribution.System
 import Distribution.Utils.NubList
+import Distribution.Utils.Path (getSymbolicPath)
 import Distribution.Verbosity
 import Distribution.Version
 import System.Directory
@@ -54,6 +60,18 @@ exeTargetName platform exe = unUnqualComponentName (exeName exe) `withExt` exeEx
 
 withExt :: FilePath -> String -> FilePath
 withExt fp ext = fp <.> if takeExtension fp /= ('.' : ext) then ext else ""
+
+-- | Find the path to the entry point of an executable (typically specified in
+-- @main-is@, and found in @hs-source-dirs@).
+findExecutableMain
+  :: Verbosity
+  -> FilePath
+  -- ^ Build directory
+  -> Executable
+  -> IO FilePath
+  -- ^ The path to the main source file.
+findExecutableMain verbosity bdir Executable{buildInfo = bnfo, modulePath = modPath} =
+  findFileEx verbosity (bdir : map getSymbolicPath (hsSourceDirs bnfo)) modPath
 
 -- | Target name for a foreign library (the actual file name)
 --
@@ -127,11 +145,33 @@ flibBuildName lbi flib
     nm :: String
     nm = unUnqualComponentName $ foreignLibName flib
 
+flibIsDynamic :: ForeignLib -> Bool
+flibIsDynamic flib =
+  case foreignLibType flib of
+    ForeignLibNativeShared ->
+      ForeignLibStandalone `notElem` foreignLibOptions flib
+    ForeignLibNativeStatic ->
+      False
+    ForeignLibTypeUnknown ->
+      cabalBug "unknown foreign lib type"
+
 supportsDynamicToo :: Compiler -> Bool
 supportsDynamicToo = Internal.ghcLookupProperty "Support dynamic-too"
 
 isDynamic :: Compiler -> Bool
 isDynamic = Internal.ghcLookupProperty "GHC Dynamic"
+
+-- | Is this file a C++ source file, i.e. ends with .cpp, .cxx, or .c++?
+isCxx :: FilePath -> Bool
+isCxx fp = elem (takeExtension fp) [".cpp", ".cxx", ".c++"]
+
+-- | Is this a C source file, i.e. ends with .c?
+isC :: FilePath -> Bool
+isC fp = elem (takeExtension fp) [".c"]
+
+-- | FilePath has a Haskell extension: .hs or .lhs
+isHaskell :: FilePath -> Bool
+isHaskell fp = elem (takeExtension fp) [".hs", ".lhs"]
 
 componentGhcOptions
   :: Verbosity
