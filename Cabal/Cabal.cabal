@@ -89,6 +89,7 @@ library
     Distribution.Simple.Bench
     Distribution.Simple.Build
     Distribution.Simple.Build.Macros
+    Distribution.Simple.Build.Monad
     Distribution.Simple.Build.PackageInfoModule
     Distribution.Simple.Build.PathsModule
     Distribution.Simple.BuildPaths
