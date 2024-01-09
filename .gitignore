@@ -86,9 +86,6 @@ bench.html
 # Emacs
 .projectile
 
-# I'm unsure how to ignore these generated golden files
-cabal-testsuite/PackageTests/NewUpdate/RejectFutureIndexStates/cabal.out
-
 ## Release Scripts
 
 # ignore the downloaded binary files
