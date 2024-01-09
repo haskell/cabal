@@ -1198,7 +1198,7 @@ findFileCwd verbosity cwd searchPath fileName =
   findFirstFile
     (cwd </>)
     [ path </> fileName
-    | path <- nub searchPath
+    | path <- ordNub searchPath
     ]
     >>= maybe (dieWithException verbosity $ FindFileCwd fileName) return
 
@@ -1214,7 +1214,7 @@ findFileEx verbosity searchPath fileName =
   findFirstFile
     id
     [ path </> fileName
-    | path <- nub searchPath
+    | path <- ordNub searchPath
     ]
     >>= maybe (dieWithException verbosity $ FindFileEx fileName) return
 
@@ -1230,8 +1230,8 @@ findFileWithExtension extensions searchPath baseName =
   findFirstFile
     id
     [ path </> baseName <.> ext
-    | path <- nub searchPath
-    , ext <- nub extensions
+    | path <- ordNub searchPath
+    , ext <- ordNub extensions
     ]
 
 -- | @since 3.4.0.0
@@ -1245,8 +1245,8 @@ findFileCwdWithExtension cwd extensions searchPath baseName =
   findFirstFile
     (cwd </>)
     [ path </> baseName <.> ext
-    | path <- nub searchPath
-    , ext <- nub extensions
+    | path <- ordNub searchPath
+    , ext <- ordNub extensions
     ]
 
 -- | @since 3.4.0.0
@@ -1264,8 +1264,8 @@ findAllFilesCwdWithExtension cwd extensions searchPath basename =
   findAllFiles
     (cwd </>)
     [ path </> basename <.> ext
-    | path <- nub searchPath
-    , ext <- nub extensions
+    | path <- ordNub searchPath
+    , ext <- ordNub extensions
     ]
 
 findAllFilesWithExtension
@@ -1277,8 +1277,8 @@ findAllFilesWithExtension extensions searchPath basename =
   findAllFiles
     id
     [ path </> basename <.> ext
-    | path <- nub searchPath
-    , ext <- nub extensions
+    | path <- ordNub searchPath
+    , ext <- ordNub extensions
     ]
 
 -- | Like 'findFileWithExtension' but returns which element of the search path
@@ -1292,8 +1292,8 @@ findFileWithExtension' extensions searchPath baseName =
   findFirstFile
     (uncurry (</>))
     [ (path, baseName <.> ext)
-    | path <- nub searchPath
-    , ext <- nub extensions
+    | path <- ordNub searchPath
+    , ext <- ordNub extensions
     ]
 
 findFirstFile :: (a -> FilePath) -> [a] -> IO (Maybe a)
@@ -1535,7 +1535,7 @@ copyFilesWith
   -> IO ()
 copyFilesWith doCopy verbosity targetDir srcFiles = withFrozenCallStack $ do
   -- Create parent directories for everything
-  let dirs = map (targetDir </>) . nub . map (takeDirectory . snd) $ srcFiles
+  let dirs = map (targetDir </>) . ordNub . map (takeDirectory . snd) $ srcFiles
   traverse_ (createDirectoryIfMissingVerbose verbosity True) dirs
 
   -- Copy all the files
