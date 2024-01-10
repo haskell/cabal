@@ -151,29 +151,27 @@ buildAndRegisterUnpackedPackage
   -> ElaboratedReadyPackage
   -> FilePath
   -> FilePath
+  -> Maybe (FilePath)
+  -- ^ The path to an /initialized/ log file
   -> (PackageBuildingPhase -> IO ())
-  -> IO (Maybe FilePath)
-  -- ^ Returns the path to the /initialized/ log file configured in
-  -- t'BuildTimeSettings' ('buildSettingLogFile'), if one exists.
+  -> IO ()
 buildAndRegisterUnpackedPackage
   verbosity
   distDirLayout@DistDirLayout{distTempDirectory}
   maybe_semaphore
-  BuildTimeSettings{buildSettingNumJobs, buildSettingLogFile}
+  BuildTimeSettings{buildSettingNumJobs}
   registerLock
   cacheLock
   pkgshared@ElaboratedSharedConfig
     { pkgConfigCompiler = compiler
     , pkgConfigCompilerProgs = progdb
-    , pkgConfigPlatform = platform
     }
   plan
   rpkg@(ReadyPackage pkg)
   srcdir
   builddir
+  mlogFile
   delegate = do
-    initLogFile
-
     -- Configure phase
     delegate $
       PBConfigurePhase $
@@ -238,10 +236,9 @@ buildAndRegisterUnpackedPackage
           annotateFailure mlogFile ReplFailed $
             setupInteractive replCommand replFlags replArgs
 
-    return mlogFile
+    return ()
     where
       uid = installedUnitId rpkg
-      pkgid = packageId rpkg
 
       comp_par_strat = case maybe_semaphore of
         Just sem_name -> Cabal.toFlag (getSemaphoreName sem_name)
@@ -386,21 +383,6 @@ buildAndRegisterUnpackedPackage
                     pkgConfDest
             setup Cabal.registerCommand registerFlags (const [])
 
-      mlogFile :: Maybe FilePath
-      mlogFile =
-        case buildSettingLogFile of
-          Nothing -> Nothing
-          Just mkLogFile -> Just (mkLogFile compiler platform pkgid uid)
-
-      initLogFile :: IO ()
-      initLogFile =
-        case mlogFile of
-          Nothing -> return ()
-          Just logFile -> do
-            createDirectoryIfMissing True (takeDirectory logFile)
-            exists <- doesFileExist logFile
-            when exists $ removeFile logFile
-
       withLogging :: (Maybe Handle -> IO r) -> IO r
       withLogging action =
         case mlogFile of
@@ -459,7 +441,7 @@ buildInplaceUnpackedPackage
         buildResult :: BuildResultMisc
         buildResult = (docsResult, testsResult)
 
-    mlogFile <- buildAndRegisterUnpackedPackage
+    buildAndRegisterUnpackedPackage
       verbosity
       distDirLayout
       maybe_semaphore
@@ -471,6 +453,7 @@ buildInplaceUnpackedPackage
       rpkg
       srcdir
       builddir
+      Nothing -- no log file for inplace builds!
       $ \case
         PBConfigurePhase{runConfigure} -> do
           whenReConfigure $ do
@@ -572,7 +555,7 @@ buildInplaceUnpackedPackage
       BuildResult
         { buildResultDocs = docsResult
         , buildResultTests = testsResult
-        , buildResultLogFile = mlogFile
+        , buildResultLogFile = Nothing
         }
     where
       dparams = elabDistDirParams pkgshared pkg
@@ -632,10 +615,13 @@ buildAndInstallUnpackedPackage
     { storePackageDBStack
     }
   maybe_semaphore
-  buildSettings@BuildTimeSettings{buildSettingNumJobs}
+  buildSettings@BuildTimeSettings{buildSettingNumJobs, buildSettingLogFile}
   registerLock
   cacheLock
-  pkgshared@ElaboratedSharedConfig{pkgConfigCompiler = compiler}
+  pkgshared@ElaboratedSharedConfig
+    { pkgConfigCompiler = compiler
+    , pkgConfigPlatform = platform
+    }
   plan
   rpkg@(ReadyPackage pkg)
   srcdir
@@ -653,7 +639,9 @@ buildAndInstallUnpackedPackage
     -- TODO: [required feature] docs and tests
     -- TODO: [required feature] sudo re-exec
 
-    mlogFile <- buildAndRegisterUnpackedPackage
+    initLogFile
+
+    buildAndRegisterUnpackedPackage
       verbosity
       distDirLayout
       maybe_semaphore
@@ -665,6 +653,7 @@ buildAndInstallUnpackedPackage
       rpkg
       srcdir
       builddir
+      mlogFile
       $ \case
         PBConfigurePhase{runConfigure} -> do
           noticeProgress ProgressStarting
@@ -757,6 +746,21 @@ buildAndInstallUnpackedPackage
       noticeProgress phase =
         when (isParallelBuild buildSettingNumJobs) $
           progressMessage verbosity phase dispname
+
+      mlogFile :: Maybe FilePath
+      mlogFile =
+        case buildSettingLogFile of
+          Nothing -> Nothing
+          Just mkLogFile -> Just (mkLogFile compiler platform pkgid uid)
+
+      initLogFile :: IO ()
+      initLogFile =
+        case mlogFile of
+          Nothing -> return ()
+          Just logFile -> do
+            createDirectoryIfMissing True (takeDirectory logFile)
+            exists <- doesFileExist logFile
+            when exists $ removeFile logFile
 
 -- | The copy part of the installation phase when doing build-and-install
 copyPkgFiles
