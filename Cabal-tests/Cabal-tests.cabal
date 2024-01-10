@@ -35,6 +35,7 @@ test-suite unit-tests
     UnitTests.Distribution.Compat.Graph
     UnitTests.Distribution.Compat.Time
     UnitTests.Distribution.Described
+    UnitTests.Distribution.PackageDescription.Check
     UnitTests.Distribution.PkgconfigVersion
     UnitTests.Distribution.Simple.Command
     UnitTests.Distribution.Simple.Glob

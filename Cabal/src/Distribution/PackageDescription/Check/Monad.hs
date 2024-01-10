@@ -22,7 +22,6 @@ module Distribution.PackageDescription.Check.Monad
   , TargetAnnotation (..)
   , PackageCheck (..)
   , CheckExplanation (..)
-  , CEField (..)
   , CEType (..)
   , WarnLang (..)
   , CheckCtx (..)

@@ -1,2 +1,2 @@
 decreasing-indentation.cabal:38:3: Inconsistent indentation. Indentation jumps at lines 38, 49, 56, 57, 69
-No 'main-is' field found for executable warnings
+[no-main-is] No 'main-is' field found for executable warnings

@@ -1,4 +1,4 @@
-On library, these packages miss upper bounds:
+[missing-upper-bounds] On library, these packages miss upper bounds:
   - somelib
   - alphalib
   - betalib

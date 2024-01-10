@@ -1,6 +1,6 @@
 # cabal check
 The following errors will cause portability problems on other environments:
-Error: The following file name is too long to store in a portable POSIX format tar archive. The maximum length for the name part (including extension) is 100 ASCII characters. The maximum length for any individual directory component is 155.
+Error: [long-name] The following file name is too long to store in a portable POSIX format tar archive. The maximum length for the name part (including extension) is 100 ASCII characters. The maximum length for any individual directory component is 155.
 The file in question is:
   aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.hg
 Error: Hackage would reject this package.

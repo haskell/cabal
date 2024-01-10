@@ -1,4 +1,4 @@
 # cabal check
 The following errors will cause portability problems on other environments:
-Error: Unfortunately the language extensions 'MonoPatBinds' break the parser in earlier Cabal versions so you need to specify 'cabal-version: >= 1.4'. Alternatively if you require compatibility with earlier Cabal versions then you may be able to use an equivalent compiler-specific flag.
+Error: [incompatible-extension] Unfortunately the language extensions 'MonoPatBinds' break the parser in earlier Cabal versions so you need to specify 'cabal-version: >= 1.4'. Alternatively if you require compatibility with earlier Cabal versions then you may be able to use an equivalent compiler-specific flag.
 Error: Hackage would reject this package.

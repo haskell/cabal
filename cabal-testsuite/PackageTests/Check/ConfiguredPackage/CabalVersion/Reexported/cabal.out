@@ -1,4 +1,4 @@
 # cabal check
 The following errors will cause portability problems on other environments:
-Error: To use the 'reexported-module' field the package needs to specify 'cabal-version: 1.22' or higher.
+Error: [reexported-modules] To use the 'reexported-module' field the package needs to specify 'cabal-version: 1.22' or higher.
 Error: Hackage would reject this package.

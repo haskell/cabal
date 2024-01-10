@@ -1,1 +1,1 @@
-In the 'extra-source-files' field: invalid file glob 'foo/**/bar'. Prior to 'cabal-version: 3.8' if a wildcard '**' is used as a parent directory, the file's base name must be a wildcard '*'.
+[glob-syntax-error] In the 'extra-source-files' field: invalid file glob 'foo/**/bar'. Prior to 'cabal-version: 3.8' if a wildcard '**' is used as a parent directory, the file's base name must be a wildcard '*'.

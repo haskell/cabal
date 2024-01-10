@@ -23,12 +23,17 @@
 module Distribution.PackageDescription.Check
   ( -- * Package Checking
     CheckExplanation (..)
+  , CheckExplanationID
+  , CheckExplanationIDString
   , PackageCheck (..)
   , checkPackage
   , checkConfiguredPackage
   , wrapParseWarning
   , ppPackageCheck
+  , ppCheckExplanationId
   , isHackageDistError
+  , filterPackageChecksById
+  , filterPackageChecksByIdString
 
     -- ** Checking package contents
   , checkPackageFiles
@@ -52,6 +57,7 @@ import Distribution.PackageDescription.Check.Conditional
 import Distribution.PackageDescription.Check.Monad
 import Distribution.PackageDescription.Check.Paths
 import Distribution.PackageDescription.Check.Target
+import Distribution.PackageDescription.Check.Warning
 import Distribution.Parsec.Warning (PWarning)
 import Distribution.Pretty (prettyShow)
 import Distribution.Simple.Glob
@@ -416,19 +422,19 @@ checkPackageDescription
     -- § Fields check.
     checkNull
       category_
-      (PackageDistSuspicious $ MissingField CEFCategory)
+      (PackageDistSuspicious MissingFieldCategory)
     checkNull
       maintainer_
-      (PackageDistSuspicious $ MissingField CEFMaintainer)
+      (PackageDistSuspicious MissingFieldMaintainer)
     checkP
       (ShortText.null synopsis_ && not (ShortText.null description_))
-      (PackageDistSuspicious $ MissingField CEFSynopsis)
+      (PackageDistSuspicious MissingFieldSynopsis)
     checkP
       (ShortText.null description_ && not (ShortText.null synopsis_))
-      (PackageDistSuspicious $ MissingField CEFDescription)
+      (PackageDistSuspicious MissingFieldDescription)
     checkP
       (all ShortText.null [synopsis_, description_])
-      (PackageDistInexcusable $ MissingField CEFSynOrDesc)
+      (PackageDistInexcusable MissingFieldSynOrDesc)
     checkP
       (ShortText.length synopsis_ > 80)
       (PackageDistSuspicious SynopsisTooLong)

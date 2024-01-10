@@ -1,1 +1,1 @@
-Potential duplicate modules (subject to conditionals) in benchmark: Data.Hashable.RandomSource
+[maybe-duplicate-modules] Potential duplicate modules (subject to conditionals) in benchmark: Data.Hashable.RandomSource

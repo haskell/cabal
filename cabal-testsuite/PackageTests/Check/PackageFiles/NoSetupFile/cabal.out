@@ -1,4 +1,4 @@
 # cabal check
 The following errors will cause portability problems on other environments:
-Error: The package is missing a Setup.hs or Setup.lhs script.
+Error: [missing-setup] The package is missing a Setup.hs or Setup.lhs script.
 Error: Hackage would reject this package.

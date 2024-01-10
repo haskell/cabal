@@ -1,4 +1,4 @@
 # cabal check
 The following errors are likely to affect your build negatively:
-Error: 'license: Illiberal' is not a recognised license. The known licenses are: GPL, GPL-2, GPL-3, LGPL, LGPL-2.1, LGPL-3, AGPL, AGPL-3, BSD2, BSD3, MIT, ISC, MPL-2.0, Apache, Apache-2.0, PublicDomain, AllRightsReserved, OtherLicense
+Error: [unknown-license] 'license: Illiberal' is not a recognised license. The known licenses are: GPL, GPL-2, GPL-3, LGPL, LGPL-2.1, LGPL-3, AGPL, AGPL-3, BSD2, BSD3, MIT, ISC, MPL-2.0, Apache, Apache-2.0, PublicDomain, AllRightsReserved, OtherLicense
 Error: Hackage would reject this package.

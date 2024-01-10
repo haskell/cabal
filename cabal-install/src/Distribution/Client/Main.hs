@@ -23,6 +23,7 @@ module Distribution.Client.Main (main) where
 import Distribution.Client.Setup
   ( ActAsSetupFlags (..)
   , BuildFlags (..)
+  , CheckFlags (..)
   , ConfigExFlags (..)
   , ConfigFlags (..)
   , FetchFlags (..)
@@ -1225,13 +1226,14 @@ uploadAction uploadFlags extraArgs globalFlags = do
       pkg <- fmap LBI.localPkgDescr (getPersistBuildConfig distPref)
       return $ distPref </> display (packageId pkg) ++ "-docs" <.> "tar.gz"
 
-checkAction :: Flag Verbosity -> [String] -> Action
-checkAction verbosityFlag extraArgs _globalFlags = do
-  let verbosity = fromFlag verbosityFlag
+checkAction :: CheckFlags -> [String] -> Action
+checkAction checkFlags extraArgs _globalFlags = do
+  let verbosityFlag = checkVerbosity checkFlags
+      verbosity = fromFlag verbosityFlag
   unless (null extraArgs) $
     dieWithException verbosity $
       CheckAction extraArgs
-  allOk <- Check.check (fromFlag verbosityFlag)
+  allOk <- Check.check (fromFlag verbosityFlag) (checkIgnore checkFlags)
   unless allOk exitFailure
 
 formatAction :: Flag Verbosity -> [String] -> Action

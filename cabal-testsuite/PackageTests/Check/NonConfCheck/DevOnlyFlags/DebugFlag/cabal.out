@@ -1,4 +1,4 @@
 # cabal check
 The following errors will cause portability problems on other environments:
-Error: 'ghc-prof-options: -d*' debug flags are not appropriate for a distributed package. Alternatively, if you want to use this, make it conditional based on a Cabal configuration flag (with 'manual: True' and 'default: False') and enable that flag during development.
+Error: [debug-flag] 'ghc-prof-options: -d*' debug flags are not appropriate for a distributed package. Alternatively, if you want to use this, make it conditional based on a Cabal configuration flag (with 'manual: True' and 'default: False') and enable that flag during development.
 Error: Hackage would reject this package.

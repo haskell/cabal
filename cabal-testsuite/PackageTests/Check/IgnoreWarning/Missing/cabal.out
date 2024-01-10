@@ -1,0 +1,4 @@
+# cabal check
+Warning: Unrecognised ignore "foo"
+These warnings will likely cause trouble when distributing the package:
+Warning: [short-description] The 'description' field should be longer than the 'synopsis' field. It's useful to provide an informative 'description' to allow Haskell programmers who have never heard about your package to understand the purpose of your package. The 'description' field content is typically shown by tooling (e.g. 'cabal info', Haddock, Hackage) below the 'synopsis' which serves as a headline. Please refer to <https://cabal.readthedocs.io/en/stable/cabal-package.html#package-properties> for more details.
