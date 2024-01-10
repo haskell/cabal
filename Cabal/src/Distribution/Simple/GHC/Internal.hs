@@ -507,13 +507,14 @@ componentJsGhcOptions verbosity lbi bi clbi odir filename =
 
 componentGhcOptions
   :: Verbosity
-  -> GhcImplInfo
   -> LocalBuildInfo
   -> BuildInfo
   -> ComponentLocalBuildInfo
   -> FilePath
   -> GhcOptions
-componentGhcOptions verbosity implInfo lbi bi clbi odir =
+componentGhcOptions verbosity lbi bi clbi odir =
+  let implInfo = getImplInfo $ compiler lbi
+  in 
   mempty
     { -- Respect -v0, but don't crank up verbosity on GHC if
       -- Cabal verbosity is requested. For that, use --ghc-option=-v instead!

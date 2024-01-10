@@ -6,17 +6,13 @@ import Prelude ()
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.Package
 import Distribution.PackageDescription as PD
-import Distribution.Simple.Build.ExtraSources
+import Distribution.Simple.GHC.Build.ExtraSources
 import Distribution.Simple.Build.Monad
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Compiler
 import Distribution.Simple.GHC.Build
-  ( componentGhcOptions
-  , getRPaths
-  , isDynamic
-  , replNoLoad
+  ( replNoLoad
   , runReplOrWriteFlags
-  , supportsDynamicToo
   )
 import Distribution.Simple.GHC.ImplInfo
 import qualified Distribution.Simple.GHC.Internal as Internal
@@ -26,14 +22,13 @@ import Distribution.Simple.Program
 import qualified Distribution.Simple.Program.Ar as Ar
 import Distribution.Simple.Program.GHC
 import qualified Distribution.Simple.Program.Ld as Ld
-import Distribution.Simple.Setup.Build
 import Distribution.Simple.Setup.Common
 import Distribution.Simple.Setup.Repl
 import Distribution.Simple.Utils
 import Distribution.System
 import Distribution.Types.ComponentLocalBuildInfo
 import Distribution.Types.ParStrat
-import Distribution.Types.TargetInfo
+import Distribution.Simple.GHC.Build.Modules
 import Distribution.Utils.NubList
 import Distribution.Version
 import System.Directory
@@ -44,6 +39,7 @@ import System.FilePath
   ( replaceExtension
   , (</>)
   )
+import Distribution.Simple.GHC.Build.Link
 
 buildOrReplLib
   :: BuildingWhat
@@ -65,7 +61,7 @@ buildOrReplLib what numJobs pkg_descr lbi lib clbi = do
         when (forceStatic || withStaticLib lbi)
       whenGHCiLib = when (withGHCiLib lbi)
       forRepl = case what of BuildRepl{} -> True; _ -> False
-      whenReplLib f = case what of BuildRepl flags -> f (replReplOptions flags); _ -> pure ()
+      whenReplLib f = case what of BuildRepl flags -> f flags; _ -> pure ()
       replFlags = case what of BuildRepl flags -> replReplOptions flags; _ -> mempty
       comp = compiler lbi
       ghcVersion = compilerVersion comp
@@ -74,6 +70,7 @@ buildOrReplLib what numJobs pkg_descr lbi lib clbi = do
       hasJsSupport = hostArch == JavaScript
       has_code = not (componentIsIndefinite clbi)
       verbosity = buildingWhatVerbosity what
+      target = TargetInfo clbi (CLib lib)
 
   relLibTargetDir <- makeRelativeToCurrentDirectory libTargetDir
 
@@ -85,13 +82,6 @@ buildOrReplLib what numJobs pkg_descr lbi lib clbi = do
   -- ensure extra lib dirs exist before passing to ghc
   cleanedExtraLibDirs <- filterM doesDirectoryExist (extraLibDirs libBi)
   cleanedExtraLibDirsStatic <- filterM doesDirectoryExist (extraLibDirsStatic libBi)
-
-  let isGhcDynamic = isDynamic comp
-      dynamicTooSupported = supportsDynamicToo comp
-      doingTH = usesTemplateHaskellOrQQ libBi
-      forceVanillaLib = doingTH && not isGhcDynamic
-      forceSharedLib = doingTH && isGhcDynamic
-  -- TH always needs default libs, even when building for profiling
 
   -- Determine if program coverage should be enabled and if so, what
   -- '-hpcdir' should be.
@@ -120,7 +110,7 @@ buildOrReplLib what numJobs pkg_descr lbi lib clbi = do
                 else mempty
             ]
       cLikeObjs = map (`replaceExtension` objExtension) cLikeSources
-      baseOpts = componentGhcOptions verbosity lbi libBi clbi libTargetDir
+      baseOpts = Internal.componentGhcOptions verbosity lbi libBi clbi libTargetDir
       vanillaOpts =
         baseOpts
           `mappend` mempty
@@ -130,30 +120,6 @@ buildOrReplLib what numJobs pkg_descr lbi lib clbi = do
             , ghcOptHPCDir = hpcdir Hpc.Vanilla
             }
 
-      profOpts =
-        vanillaOpts
-          `mappend` mempty
-            { ghcOptProfilingMode = toFlag True
-            , ghcOptProfilingAuto =
-                Internal.profDetailLevelFlag
-                  True
-                  (withProfLibDetail lbi)
-            , ghcOptHiSuffix = toFlag "p_hi"
-            , ghcOptObjSuffix = toFlag "p_o"
-            , ghcOptExtra = hcProfOptions GHC libBi
-            , ghcOptHPCDir = hpcdir Hpc.Prof
-            }
-
-      sharedOpts =
-        vanillaOpts
-          `mappend` mempty
-            { ghcOptDynLinkMode = toFlag GhcDynamicOnly
-            , ghcOptFPic = toFlag True
-            , ghcOptHiSuffix = toFlag "dyn_hi"
-            , ghcOptObjSuffix = toFlag "dyn_o"
-            , ghcOptExtra = hcSharedOptions GHC libBi
-            , ghcOptHPCDir = hpcdir Hpc.Dyn
-            }
       linkerOpts =
         mempty
           { ghcOptLinkOptions =
@@ -201,54 +167,16 @@ buildOrReplLib what numJobs pkg_descr lbi lib clbi = do
 
       isInteractive = toFlag GhcModeInteractive
 
-      vanillaSharedOpts =
-        vanillaOpts
-          `mappend` mempty
-            { ghcOptDynLinkMode = toFlag GhcStaticAndDynamic
-            , ghcOptDynHiSuffix = toFlag "dyn_hi"
-            , ghcOptDynObjSuffix = toFlag "dyn_o"
-            , ghcOptHPCDir = hpcdir Hpc.Dyn
-            }
 
-  unless (forRepl || null (allLibModules lib clbi)) $
-    do
-      let vanilla = whenVanillaLib forceVanillaLib (runGhcProg vanillaOpts)
-          shared = whenSharedLib forceSharedLib (runGhcProg sharedOpts)
-          useDynToo =
-            dynamicTooSupported
-              && (forceVanillaLib || withVanillaLib lbi)
-              && (forceSharedLib || withSharedLib lbi)
-              && null (hcSharedOptions GHC libBi)
-      if not has_code
-        then vanilla
-        else
-          if useDynToo
-            then do
-              runGhcProg vanillaSharedOpts
-              case (hpcdir Hpc.Dyn, hpcdir Hpc.Vanilla) of
-                (Flag dynDir, Flag vanillaDir) ->
-                  -- When the vanilla and shared library builds are done
-                  -- in one pass, only one set of HPC module interfaces
-                  -- are generated. This set should suffice for both
-                  -- static and dynamically linked executables. We copy
-                  -- the modules interfaces so they are available under
-                  -- both ways.
-                  copyDirectoryRecursive verbosity dynDir vanillaDir
-                _ -> return ()
-            else
-              if isGhcDynamic
-                then do shared; vanilla
-                else do vanilla; shared
-      whenProfLib (runGhcProg profOpts)
-
-  runBuildM what lbi (TargetInfo clbi (CLib lib)) buildAllExtraSources
+  runBuildM what lbi target (buildHaskellModules numJobs ghcProg pkg_descr libTargetDir)
+  runBuildM what lbi target (buildAllExtraSources ghcProg)
 
   -- TODO: problem here is we need the .c files built first, so we can load them
   -- with ghci, but .c files can depend on .h files generated by ghc by ffi
   -- exports.
   whenReplLib $ \rflags -> do
     when (null (allLibModules lib clbi)) $ warn verbosity "No exposed modules"
-    runReplOrWriteFlags verbosity ghcProg comp platform rflags replOpts libBi clbi (pkgName (PD.package pkg_descr))
+    runReplOrWriteFlags ghcProg lbi rflags replOpts target (pkgName (PD.package pkg_descr))
 
   -- link:
   when has_code . unless forRepl $ do
@@ -349,7 +277,7 @@ buildOrReplLib what numJobs pkg_descr lbi lib clbi = do
         else return []
 
     unless (null hObjs && null cLikeObjs && null stubObjs) $ do
-      rpaths <- getRPaths lbi clbi
+      rpaths <- runBuildM what lbi target getRPaths
 
       let staticObjectFiles =
             hObjs

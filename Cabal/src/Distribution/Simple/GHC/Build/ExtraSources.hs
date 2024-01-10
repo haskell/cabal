@@ -3,7 +3,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 
-module Distribution.Simple.Build.ExtraSources where
+module Distribution.Simple.GHC.Build.ExtraSources where
 
 import Control.Monad
 import Data.Foldable
@@ -12,24 +12,27 @@ import qualified Distribution.Simple.GHC.Internal as Internal
 import Distribution.Simple.Program.GHC
 import Distribution.Simple.Utils
 
-import Distribution.Simple.Program.Builtin (ghcProgram)
 import Distribution.Types.BuildInfo
 import Distribution.Types.Component
 import Distribution.Types.TargetInfo
 
-import Distribution.Simple.GHC.Build
+import Distribution.Simple.GHC.Build.Utils
 import Distribution.Simple.LocalBuildInfo
-import Distribution.Simple.Program (requireProgram)
 import Distribution.Types.ComponentName (componentNameRaw)
 import Distribution.Types.Executable
 import Distribution.Verbosity (Verbosity)
 import System.FilePath
+import Distribution.Simple.Program.Types
 
 import Distribution.Simple.Build.Monad
 
-buildAllExtraSources :: BuildM ()
+-- | An action that builds all the extra build sources of a component, i.e. C,
+-- C++, Js, Asm, C-- sources.
+buildAllExtraSources :: ConfiguredProgram
+                     -- ^ The GHC configured program
+                     -> BuildM ()
 buildAllExtraSources =
-  sequence_
+  sequence_ . sequence
     [ buildCSources
     , buildCxxSources
     , buildJsSources
@@ -44,15 +47,14 @@ buildAllExtraSources =
 -- ROMES:PATCH:NOTE: Worry about mimicking the current behaviour first, and only
 -- later worry about dependency tracking and ghc -M, gcc -M, or ghc -optc-MD ...
 
--- ROMES:TODO:
--- How should we handle a C source depending on a stub generated from a foreign export?
-
 buildCSources
   , buildCxxSources
   , buildJsSources
   , buildAsmSources
   , buildCmmSources
-    :: BuildM ()
+    :: ConfiguredProgram
+    -- ^ The GHC configured program
+    -> BuildM ()
 -- Currently, an executable main file may be a C++ or C file, in which case we want to
 -- compile it alongside other C/C++ sources. Eventually, we may be able to
 -- compile other main files as build sources (e.g. ObjC...). This functionality
@@ -119,8 +121,10 @@ buildExtraSources
   -- @'Executable'@ components might additionally add the
   -- program entry point (@main-is@ file) to the extra sources,
   -- if it should be compiled as the rest of them.
+  -> ConfiguredProgram
+  -- ^ The GHC configured program
   -> BuildM ()
-buildExtraSources description componentSourceGhcOptions wantDyn viewSources =
+buildExtraSources description componentSourceGhcOptions wantDyn viewSources ghcProg =
   BuildM \PreBuildComponentInputs{buildingWhat, localBuildInfo = lbi, targetInfo} ->
     let
       bi = componentBuildInfo (targetComponent targetInfo)
@@ -136,7 +140,6 @@ buildExtraSources description componentSourceGhcOptions wantDyn viewSources =
       forceSharedLib = doingTH && isGhcDynamic
 
       buildAction sourceFile = do
-        (ghcProg, _) <- requireProgram verbosity ghcProgram (withPrograms lbi)
         let runGhcProg = runGHC verbosity ghcProg comp platform
 
         let baseSrcOpts =
@@ -222,9 +225,8 @@ buildExtraSources description componentSourceGhcOptions wantDyn viewSources =
         | CNotLibName{} <- cname =
             componentBuildDir lbi clbi
               </> componentNameRaw cname <> "-tmp"
-     in
-      do
-        -- build any sources
-        unless (null sources) $ do
-          info verbosity ("Building " ++ description ++ "...")
-          traverse_ buildAction sources
+     in do
+      -- build any sources
+      unless (null sources) $ do
+        info verbosity ("Building " ++ description ++ "...")
+        traverse_ buildAction sources

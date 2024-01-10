@@ -56,7 +56,7 @@ module Distribution.Simple.GHC
   , libAbiHash
   , hcPkgInfo
   , registerPackage
-  , componentGhcOptions
+  , Internal.componentGhcOptions
   , Internal.componentCcGhcOptions
   , getGhcAppDir
   , getLibDir
@@ -95,12 +95,7 @@ import Distribution.Simple.BuildPaths
 import Distribution.Simple.Compiler
 import Distribution.Simple.Errors
 import Distribution.Simple.Flag (Flag (..), toFlag)
-import Distribution.Simple.GHC.Build
-  ( componentGhcOptions
-  , exeTargetName
-  , flibTargetName
-  , isDynamic
-  )
+import Distribution.Simple.GHC.Build.Utils
 import Distribution.Simple.GHC.EnvironmentParser
 import Distribution.Simple.GHC.ImplInfo
 import qualified Distribution.Simple.GHC.Internal as Internal
@@ -109,6 +104,7 @@ import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.Program
 import Distribution.Simple.Program.Builtin (runghcProgram)
+import Distribution.Types.TargetInfo
 import Distribution.Simple.Program.GHC
 import qualified Distribution.Simple.Program.HcPkg as HcPkg
 import qualified Distribution.Simple.Program.Strip as Strip
@@ -137,7 +133,7 @@ import System.FilePath
   )
 import qualified System.Info
 #ifndef mingw32_HOST_OS
-import Distribution.Simple.GHC.Build (flibBuildName)
+import Distribution.Simple.GHC.Build.Utils (flibBuildName)
 import System.Directory (renameFile)
 import System.Posix (createSymbolicLink)
 #endif /* mingw32_HOST_OS */
@@ -579,7 +575,7 @@ buildLib
   -> Library
   -> ComponentLocalBuildInfo
   -> IO ()
-buildLib = buildOrReplLib . Left
+buildLib = buildOrReplLib . BuildNormal
 
 replLib
   :: ReplFlags
@@ -589,7 +585,7 @@ replLib
   -> Library
   -> ComponentLocalBuildInfo
   -> IO ()
-replLib = buildOrReplLib . Right
+replLib = buildOrReplLib . BuildRepl
 
 -- | Start a REPL without loading any source files.
 startInterpreter
@@ -632,7 +628,7 @@ replFLib
   -> ComponentLocalBuildInfo
   -> IO ()
 replFLib replFlags njobs pkg lbi =
-  gbuild (BuildRepl replFlags) njobs pkg lbi . GReplFLib (replReplOptions replFlags)
+  gbuild (BuildRepl replFlags) njobs pkg lbi . GReplFLib replFlags
 
 -- | Build an executable with GHC.
 buildExe
@@ -654,7 +650,7 @@ replExe
   -> ComponentLocalBuildInfo
   -> IO ()
 replExe replFlags njobs pkg lbi =
-  gbuild (BuildRepl replFlags) njobs pkg lbi . GReplExe (replReplOptions replFlags)
+  gbuild (BuildRepl replFlags) njobs pkg lbi . GReplExe replFlags
 
 -- | Extracts a String representing a hash of the ABI of a built
 -- library.  It can fail if the library has not yet been built.
@@ -671,7 +667,7 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
     comp = compiler lbi
     platform = hostPlatform lbi
     vanillaArgs =
-      (componentGhcOptions verbosity lbi libBi clbi (componentBuildDir lbi clbi))
+      (Internal.componentGhcOptions verbosity lbi libBi clbi (componentBuildDir lbi clbi))
         `mappend` mempty
           { ghcOptMode = toFlag GhcModeAbiHash
           , ghcOptInputModules = toNubListR $ exposedModules lib

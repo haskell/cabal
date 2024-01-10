@@ -88,7 +88,6 @@ library
     Distribution.Simple
     Distribution.Simple.Bench
     Distribution.Simple.Build
-    Distribution.Simple.Build.ExtraSources
     Distribution.Simple.Build.Macros
     Distribution.Simple.Build.Monad
     Distribution.Simple.Build.PackageInfoModule
@@ -334,8 +333,12 @@ library
     Distribution.Simple.Build.PackageInfoModule.Z
     Distribution.Simple.Build.PathsModule.Z
     Distribution.Simple.GHC.Build
-    Distribution.Simple.GHC.BuildOrRepl
+    Distribution.Simple.GHC.Build.ExtraSources
+    Distribution.Simple.GHC.Build.Link
+    Distribution.Simple.GHC.Build.Modules
+    Distribution.Simple.GHC.Build.Utils
     Distribution.Simple.GHC.BuildGeneric
+    Distribution.Simple.GHC.BuildOrRepl
     Distribution.Simple.GHC.EnvironmentParser
     Distribution.Simple.GHC.Internal
     Distribution.Simple.GHC.ImplInfo

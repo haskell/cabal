@@ -1777,9 +1777,7 @@ componentGhcOptions
   -> FilePath
   -> GhcOptions
 componentGhcOptions verbosity lbi bi clbi odir =
-  let opts = Internal.componentGhcOptions verbosity implInfo lbi bi clbi odir
-      comp = compiler lbi
-      implInfo = getImplInfo comp
+  let opts = Internal.componentGhcOptions verbosity lbi bi clbi odir
    in opts
         { ghcOptExtra = ghcOptExtra opts `mappend` hcOptions GHCJS bi
         }

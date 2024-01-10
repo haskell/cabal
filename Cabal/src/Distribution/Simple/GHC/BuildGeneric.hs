@@ -8,22 +8,20 @@ module Distribution.Simple.GHC.BuildGeneric
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Control.Monad (msum)
-import Data.Char (isLower)
 import Distribution.CabalSpecVersion
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
 import Distribution.ModuleName (ModuleName)
-import qualified Distribution.ModuleName as ModuleName
 import Distribution.Package
 import Distribution.PackageDescription as PD
 import Distribution.PackageDescription.Utils (cabalBug)
 import Distribution.Pretty
-import Distribution.Simple.Build.ExtraSources
 import Distribution.Simple.Build.Monad
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Compiler
 import Distribution.Simple.GHC.Build
+import Distribution.Simple.GHC.Build.ExtraSources
+import Distribution.Simple.GHC.Build.Modules
 import qualified Distribution.Simple.GHC.Internal as Internal
 import qualified Distribution.Simple.Hpc as Hpc
 import Distribution.Simple.LocalBuildInfo
@@ -49,6 +47,8 @@ import System.FilePath
   ( replaceExtension
   , (</>)
   )
+import Distribution.Simple.GHC.Build.Utils
+import Distribution.Simple.GHC.Build.Link (getRPaths)
 
 -- | A collection of:
 --    * C input files
@@ -98,9 +98,9 @@ data RtsInfo = RtsInfo
 -- 'GBuildMode' distinguishes between the various kinds of operation.
 data GBuildMode
   = GBuildExe Executable
-  | GReplExe ReplOptions Executable
+  | GReplExe ReplFlags Executable
   | GBuildFLib ForeignLib
-  | GReplFLib ReplOptions ForeignLib
+  | GReplFLib ReplFlags ForeignLib
 
 gbuildInfo :: GBuildMode -> BuildInfo
 gbuildInfo (GBuildExe exe) = buildInfo exe
@@ -163,9 +163,9 @@ gbuildSources verbosity pkgId specVer tmpDir bm =
     GReplFLib _ flib -> return $ flibSources flib
   where
     exeSources :: Executable -> IO BuildSources
-    exeSources exe@Executable{buildInfo = bnfo} = do
-      main <- findExecutableMain verbosity tmpDir exe
-      let mainModName = fromMaybe ModuleName.main $ exeMainModuleName exe
+    exeSources exe@Executable{buildInfo = bnfo, modulePath = path} = do
+      main <- findExecutableMain verbosity tmpDir (bnfo, path)
+      let mainModName = exeMainModuleName bnfo
           otherModNames = exeModules exe
 
       -- Scripts have fakePackageId and are always Haskell but can have any extension.
@@ -291,57 +291,6 @@ hasThreaded bi = elem "-threaded" ghc
   where
     PerCompilerFlavor ghc _ = options bi
 
--- | "Main" module name when overridden by @ghc-options: -main-is ...@
--- or 'Nothing' if no @-main-is@ flag could be found.
---
--- In case of 'Nothing', 'Distribution.ModuleName.main' can be assumed.
-exeMainModuleName :: Executable -> Maybe ModuleName
-exeMainModuleName Executable{buildInfo = bnfo} =
-  -- GHC honors the last occurrence of a module name updated via -main-is
-  --
-  -- Moreover, -main-is when parsed left-to-right can update either
-  -- the "Main" module name, or the "main" function name, or both,
-  -- see also 'decodeMainIsArg'.
-  msum $ reverse $ map decodeMainIsArg $ findIsMainArgs ghcopts
-  where
-    ghcopts = hcOptions GHC bnfo
-
-    findIsMainArgs [] = []
-    findIsMainArgs ("-main-is" : arg : rest) = arg : findIsMainArgs rest
-    findIsMainArgs (_ : rest) = findIsMainArgs rest
-
--- | Decode argument to '-main-is'
---
--- Returns 'Nothing' if argument set only the function name.
---
--- This code has been stolen/refactored from GHC's DynFlags.setMainIs
--- function. The logic here is deliberately imperfect as it is
--- intended to be bug-compatible with GHC's parser. See discussion in
--- https://github.com/haskell/cabal/pull/4539#discussion_r118981753.
-decodeMainIsArg :: String -> Maybe ModuleName
-decodeMainIsArg arg
-  | headOf main_fn isLower =
-      -- The arg looked like "Foo.Bar.baz"
-      Just (ModuleName.fromString main_mod)
-  | headOf arg isUpper -- The arg looked like "Foo" or "Foo.Bar"
-    =
-      Just (ModuleName.fromString arg)
-  | otherwise -- The arg looked like "baz"
-    =
-      Nothing
-  where
-    headOf :: String -> (Char -> Bool) -> Bool
-    headOf str pred' = any pred' (safeHead str)
-
-    (main_mod, main_fn) = splitLongestPrefix arg (== '.')
-
-    splitLongestPrefix :: String -> (Char -> Bool) -> (String, String)
-    splitLongestPrefix str pred'
-      | null r_pre = (str, [])
-      | otherwise = (reverse (safeTail r_pre), reverse r_suf)
-      where
-        -- 'safeTail' drops the char satisfying 'pred'
-        (r_suf, r_pre) = break pred' (reverse str)
 
 -- | Generic build function. See comment for 'GBuildMode'.
 gbuild
@@ -363,6 +312,7 @@ gbuild what numJobs pkg_descr lbi bm clbi = do
       comp = compiler lbi
       platform = hostPlatform lbi
       runGhcProg = runGHC verbosity ghcProg comp platform
+      target = TargetInfo clbi (gbuildComp bm)
 
   let bnfo = gbuildInfo bm
 
@@ -384,7 +334,7 @@ gbuild what numJobs pkg_descr lbi bm clbi = do
         | isCoverageEnabled = toFlag $ Hpc.mixDir (tmpDir </> extraCompilationArtifacts) way
         | otherwise = mempty
 
-  rpaths <- getRPaths lbi clbi
+  rpaths <- runBuildM what lbi target getRPaths
   buildSources <- gbuildSources verbosity (package pkg_descr) (specVersion pkg_descr) tmpDir bm
 
   -- ensure extra lib dirs exist before passing to ghc
@@ -398,8 +348,6 @@ gbuild what numJobs pkg_descr lbi bm clbi = do
       cmmSrcs = cmmSourceFiles buildSources
       inputFiles = inputSourceFiles buildSources
       inputModules = inputSourceModules buildSources
-      isGhcDynamic = isDynamic comp
-      dynamicTooSupported = supportsDynamicToo comp
       cLikeObjs = map (`replaceExtension` objExtension) cSrcs
       cxxObjs = map (`replaceExtension` objExtension) cxxSrcs
       jsObjs = if hasJsSupport then map (`replaceExtension` objExtension) jsSrcs else []
@@ -412,7 +360,7 @@ gbuild what numJobs pkg_descr lbi bm clbi = do
 
       -- build executables
       baseOpts =
-        (componentGhcOptions verbosity lbi bnfo clbi tmpDir)
+        (Internal.componentGhcOptions verbosity lbi bnfo clbi tmpDir)
           `mappend` mempty
             { ghcOptMode = toFlag GhcModeMake
             , ghcOptInputFiles =
@@ -455,14 +403,6 @@ gbuild what numJobs pkg_descr lbi bm clbi = do
             , ghcOptHiSuffix = toFlag "dyn_hi"
             , ghcOptObjSuffix = toFlag "dyn_o"
             , ghcOptExtra = hcSharedOptions GHC bnfo
-            , ghcOptHPCDir = hpcdir Hpc.Dyn
-            }
-      dynTooOpts =
-        staticOpts
-          `mappend` mempty
-            { ghcOptDynLinkMode = toFlag GhcStaticAndDynamic
-            , ghcOptDynHiSuffix = toFlag "dyn_hi"
-            , ghcOptDynObjSuffix = toFlag "dyn_o"
             , ghcOptHPCDir = hpcdir Hpc.Dyn
             }
       linkerOpts =
@@ -509,9 +449,9 @@ gbuild what numJobs pkg_descr lbi bm clbi = do
           { ghcOptExtra =
               Internal.filterGhciFlags
                 (ghcOptExtra baseOpts)
-                <> replOptionsFlags replFlags
-          , ghcOptInputModules = replNoLoad replFlags (ghcOptInputModules baseOpts)
-          , ghcOptInputFiles = replNoLoad replFlags (ghcOptInputFiles baseOpts)
+                <> replOptionsFlags (replReplOptions replFlags)
+          , ghcOptInputModules = replNoLoad (replReplOptions replFlags) (ghcOptInputModules baseOpts)
+          , ghcOptInputFiles = replNoLoad (replReplOptions replFlags) (ghcOptInputFiles baseOpts)
           }
           -- For a normal compile we do separate invocations of ghc for
           -- compiling as for linking. But for repl we have to do just
@@ -527,64 +467,16 @@ gbuild what numJobs pkg_descr lbi bm clbi = do
         | needProfiling = profOpts
         | needDynamic = dynOpts
         | otherwise = staticOpts
-      compileOpts
-        | useDynToo = dynTooOpts
-        | otherwise = commonOpts
-      withStaticExe = not needProfiling && not needDynamic
 
-      -- For building exe's that use TH with -prof or -dynamic we actually have
-      -- to build twice, once without -prof/-dynamic and then again with
-      -- -prof/-dynamic. This is because the code that TH needs to run at
-      -- compile time needs to be the vanilla ABI so it can be loaded up and run
-      -- by the compiler.
-      -- With dynamic-by-default GHC the TH object files loaded at compile-time
-      -- need to be .dyn_o instead of .o.
-      doingTH = usesTemplateHaskellOrQQ bnfo
-      -- Should we use -dynamic-too instead of compiling twice?
-      useDynToo =
-        dynamicTooSupported
-          && isGhcDynamic
-          && doingTH
-          && withStaticExe
-          && null (hcSharedOptions GHC bnfo)
-      compileTHOpts
-        | isGhcDynamic = dynOpts
-        | otherwise = staticOpts
-      compileForTH
-        | gbuildIsRepl bm = False
-        | useDynToo = False
-        | isGhcDynamic = doingTH && (needProfiling || withStaticExe)
-        | otherwise = doingTH && (needProfiling || needDynamic)
-
-  -- Build static/dynamic object files for TH, if needed.
-  when compileForTH $
-    runGhcProg
-      compileTHOpts
-        { ghcOptNoLink = toFlag True
-        , ghcOptNumJobs = numJobs
-        }
-
-  -- Do not try to build anything if there are no input files.
-  -- This can happen if the cabal file ends up with only cSrcs
-  -- but no Haskell modules.
-  unless
-    ( (null inputFiles && null inputModules)
-        || gbuildIsRepl bm
-    )
-    $ runGhcProg
-      compileOpts
-        { ghcOptNoLink = toFlag True
-        , ghcOptNumJobs = numJobs
-        }
-
-  runBuildM what lbi (TargetInfo clbi (gbuildComp bm)) buildAllExtraSources
+  runBuildM what lbi target (buildHaskellModules numJobs ghcProg pkg_descr tmpDir)
+  runBuildM what lbi target (buildAllExtraSources ghcProg)
 
   -- TODO: problem here is we need the .c files built first, so we can load them
   -- with ghci, but .c files can depend on .h files generated by ghc by ffi
   -- exports.
   case bm of
-    GReplExe _ _ -> runReplOrWriteFlags verbosity ghcProg comp platform replFlags replOpts bnfo clbi (pkgName (PD.package pkg_descr))
-    GReplFLib _ _ -> runReplOrWriteFlags verbosity ghcProg comp platform replFlags replOpts bnfo clbi (pkgName (PD.package pkg_descr))
+    GReplExe _ _ -> runReplOrWriteFlags ghcProg lbi replFlags replOpts target (pkgName (PD.package pkg_descr))
+    GReplFLib _ _ -> runReplOrWriteFlags ghcProg lbi replFlags replOpts target (pkgName (PD.package pkg_descr))
     GBuildExe _ -> do
       let linkOpts =
             commonOpts
@@ -597,11 +489,11 @@ gbuild what numJobs pkg_descr lbi bm clbi = do
       info verbosity "Linking..."
       -- Work around old GHCs not relinking in this
       -- situation, see #3294
-      let target = targetDir </> targetName
+      let target' = targetDir </> targetName
       when (compilerVersion comp < mkVersion [7, 7]) $ do
-        e <- doesFileExist target
-        when e (removeFile target)
-      runGhcProg linkOpts{ghcOptOutputFile = toFlag target}
+        e <- doesFileExist target'
+        when e (removeFile target')
+      runGhcProg linkOpts{ghcOptOutputFile = toFlag target'}
     GBuildFLib flib -> do
       let
         -- Instruct GHC to link against libHSrts.
