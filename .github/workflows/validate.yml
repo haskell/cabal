@@ -84,6 +84,12 @@ jobs:
 
     steps:
 
+      - name: Work around XDG directories existence (haskell-actions/setup#62)
+        if: ${{ runner.os == 'macOS' }}
+        run: |
+          rm -rf ~/.config/cabal
+          rm -rf ~/.cache/cabal
+
       - uses: actions/checkout@v4
 
       # See https://github.com/haskell/cabal/blob/master/CONTRIBUTING.md#hackage-revisions
@@ -281,6 +287,12 @@ jobs:
         ghc: ${{ fromJSON (needs.validate.outputs.GHC_FOR_RELEASE) }}
 
     steps:
+      - name: Work around XDG directories existence (haskell-actions/setup#62)
+        if: ${{ runner.os == 'macOS' }}
+        run: |
+          rm -rf ~/.config/cabal
+          rm -rf ~/.cache/cabal
+
       - uses: actions/checkout@v4
 
       # See https://github.com/haskell/cabal/pull/8739
