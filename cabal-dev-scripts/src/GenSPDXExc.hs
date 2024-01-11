@@ -4,7 +4,6 @@ module Main (main) where
 import Control.Lens     (imap)
 import Data.Aeson       (FromJSON (..), eitherDecode, withObject, (.:))
 import Data.List        (sortOn)
-import Data.Semigroup   ((<>))
 import Data.Text        (Text)
 import Data.Traversable (for)
 
