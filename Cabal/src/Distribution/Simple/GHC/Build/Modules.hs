@@ -1,49 +1,49 @@
-{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
-module Distribution.Simple.GHC.Build.Modules
-  ( buildHaskellModules )
-  where 
+{-# LANGUAGE TupleSections #-}
 
-import Distribution.Compat.Prelude
+module Distribution.Simple.GHC.Build.Modules (buildHaskellModules, BuildWay (..), buildWayPrefix) where
+
 import Control.Monad.IO.Class
+import Distribution.Compat.Prelude
 
-import Distribution.Types.ParStrat
+import Data.List (sortOn, (\\))
+import qualified Data.Set as Set
+import Distribution.CabalSpecVersion
+import Distribution.ModuleName (ModuleName)
+import qualified Distribution.PackageDescription as PD
+import Distribution.Pretty
+import Distribution.Simple.Build.Monad
 import Distribution.Simple.Compiler
+import Distribution.Simple.GHC.Build.Utils
+import qualified Distribution.Simple.GHC.Internal as Internal
+import qualified Distribution.Simple.Hpc as Hpc
 import Distribution.Simple.LocalBuildInfo
+import Distribution.Simple.Program.GHC
+import Distribution.Simple.Program.Types
+import Distribution.Simple.Setup.Common
 import Distribution.Simple.Utils
+import Distribution.Types.Benchmark
+import Distribution.Types.BenchmarkInterface
+import Distribution.Types.BuildInfo
+import Distribution.Types.Executable
+import Distribution.Types.ForeignLib
+import Distribution.Types.PackageName.Magic
+import Distribution.Types.ParStrat
+import Distribution.Types.TestSuite
+import Distribution.Types.TestSuiteInterface
 import Distribution.Utils.NubList
 import System.FilePath
-import Distribution.Simple.Build.Monad
-import Distribution.Simple.GHC.Build.Utils
-import qualified Distribution.Simple.Hpc as Hpc
-import Distribution.Simple.Setup.Common
-import Distribution.Simple.Program.Types
-import Distribution.Simple.Program.GHC
-import Distribution.Types.ForeignLib
-import Distribution.Types.Executable
-import Distribution.Types.TestSuite
-import Distribution.Types.Benchmark
-import Distribution.Types.BuildInfo
-import qualified Data.Set as Set
-import Data.List ((\\), sortOn)
-import qualified Distribution.Simple.GHC.Internal as Internal
-import Distribution.ModuleName (ModuleName)
-import Distribution.Types.TestSuiteInterface
-import Distribution.Types.BenchmarkInterface
-import Distribution.Pretty
-import Distribution.CabalSpecVersion
-import Distribution.Types.PackageName.Magic
-import qualified Distribution.PackageDescription as PD
 
 {-
 Note [Building Haskell Modules accounting for TH]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 There are multiple ways in which we may want to build our Haskell modules:
-  * The static way
-  * The dynamic/shared way
-  * The profiled way
+  * The static way (-static)
+  * The dynamic/shared way (-dynamic)
+  * The profiled way (-prof)
 
 For libraries, we may /want/ to build modules in all three ways, or in any combination, depending on user options.
 For executables, we just /want/ to build the executable in the requested way.
@@ -65,7 +65,7 @@ compile-time need to be .dyn_o instead of .o.
 Of course, if the /wanted/ way is the way additionally /needed/ for TH, we don't need to do extra work.
 
 If it turns out that in the end we need to build both statically and
-dynamically, we want to make use of GHC's --dynamic-too capability, which
+dynamically, we want to make use of GHC's -static -dynamic-too capability, which
 builds modules in the two ways in a single invocation.
 
 If --dynamic-too is not supported by the GHC, then we need to be careful about
@@ -89,31 +89,38 @@ To build an executable statically, with a static by default GHC, regardless of w
 -}
 
 -- | Compile the Haskell modules of the component being built.
-buildHaskellModules :: Flag ParStrat
-                    -- ^ The parallelism strategy (e.g. num of jobs)
-                    -> ConfiguredProgram
-                    -- ^ The GHC configured program
-                    -> PD.PackageDescription
-                    -- ^ The package description
-                    -> FilePath
-                    -- ^ The path to the build directory for this target, which
-                    -- has already been created.
-                    -> BuildM ()
--- See Note [Building Haskell Modules accounting for TH]
-buildHaskellModules numJobs ghcProg pkg_descr buildTargetDir = do
+buildHaskellModules
+  :: Flag ParStrat
+  -- ^ The parallelism strategy (e.g. num of jobs)
+  -> ConfiguredProgram
+  -- ^ The GHC configured program
+  -> PD.PackageDescription
+  -- ^ The package description
+  -> FilePath
+  -- ^ The path to the build directory for this target, which
+  -- has already been created.
+  -> Set.Set BuildWay
+  -- ^ The set of wanted build ways according to user options
+  -> BuildM (BuildWay -> GhcOptions)
+  -- ^ Returns a mapping from build ways to the 'GhcOptions' used in the
+  -- invocation used to compile the component in that 'BuildWay'.
+  -- This can be useful in, eg, a linker invocation, in which we want to use the
+  -- same options and list the same inputs as those used for building.
+buildHaskellModules numJobs ghcProg pkg_descr buildTargetDir wantedWays = do
+  -- See Note [Building Haskell Modules accounting for TH]
   verbosity <- buildVerbosity
-  component <- buildComponent
-  clbi      <- buildCLBI
-  lbi       <- buildLBI
-  bi        <- buildBI
-  what      <- buildWhat
-  comp      <- buildCompiler
+  isLib <- buildIsLib
+  clbi <- buildCLBI
+  lbi <- buildLBI
+  bi <- buildBI
+  what <- buildWhat
+  comp <- buildCompiler
 
-  let isLib | CLib{} <- component = True
-            | otherwise = False
-      forRepl
-            | BuildRepl{} <- what = True
-            | otherwise = False
+  let
+    -- If this component will be loaded into a repl, we don't compile the modules at all.
+    forRepl
+      | BuildRepl{} <- what = True
+      | otherwise = False
 
   -- TODO: do we need to put hs-boot files into place for mutually recursive
   -- modules?  FIX: what about exeName.hi-boot?
@@ -135,11 +142,16 @@ buildHaskellModules numJobs ghcProg pkg_descr buildTargetDir = do
     -- See Note [Building Haskell Modules accounting for TH]
     doingTH = usesTemplateHaskellOrQQ bi
 
-    baseOpts = Internal.componentGhcOptions verbosity lbi bi clbi buildTargetDir
-    vanillaOpts = 
-      baseOpts
+    -- We define the base opts which are shared across different build ways in
+    -- 'buildHaskellModules'
+    baseOpts way =
+      (Internal.componentGhcOptions verbosity lbi bi clbi buildTargetDir)
         `mappend` mempty
           { ghcOptMode = toFlag GhcModeMake
+          , -- romes:TODO previously we didn't pass -no-link when building libs,
+            -- but I also think that could result in a bug (e.g. if a lib module
+            -- is called Main and exports main). So we really want nolink when building libs too.
+            ghcOptNoLink = if isLib then NoFlag else toFlag True
           , ghcOptNumJobs = numJobs
           , ghcOptInputModules = toNubListR inputModules
           , ghcOptInputFiles =
@@ -152,110 +164,82 @@ buildHaskellModules numJobs ghcProg pkg_descr buildTargetDir = do
                 if PD.package pkg_descr == fakePackageId
                   then filter (not . isHaskell) inputFiles
                   else []
+          , ghcOptExtra = fromMaybe mempty (buildWayExtraHcOptions way) GHC bi
+          , ghcOptHiSuffix = optSuffixFlag (buildWayPrefix way) "hi"
+          , ghcOptObjSuffix = optSuffixFlag (buildWayPrefix way) "o"
+          , ghcOptHPCDir = hpcdir (buildWayHpcWay way) -- maybe this should not be passed for vanilla?
           }
+      where
+        optSuffixFlag "" _ = NoFlag
+        optSuffixFlag pre x = toFlag (pre ++ x)
 
-    staticOpts =
-      vanillaOpts
-        `mappend` mempty
-          { ghcOptDynLinkMode = toFlag GhcStaticOnly
-          , ghcOptHPCDir = hpcdir Hpc.Vanilla
-          }
+    -- ROMES:TODO: For libs we don't pass -static when building static, leaving it implicit.
+    -- We should just always pass -static, but we don't want to change behaviour when doing the refactor.
+    staticOpts = (baseOpts StaticWay){ghcOptDynLinkMode = if isLib then NoFlag else toFlag GhcStaticOnly}
     dynOpts =
-      vanillaOpts
-        `mappend` mempty
-          { ghcOptDynLinkMode = toFlag GhcDynamicOnly
-            -- TODO: Does it hurt to set -fPIC for executables?
-          , ghcOptFPic = toFlag True
-          , ghcOptHiSuffix = toFlag "dyn_hi"
-          , ghcOptObjSuffix = toFlag "dyn_o"
-          , ghcOptExtra = hcSharedOptions GHC bi
-          , ghcOptHPCDir = hpcdir Hpc.Dyn
-          }
+      (baseOpts DynWay)
+        { ghcOptDynLinkMode = toFlag GhcDynamicOnly -- use -dynamic
+        , -- TODO: Does it hurt to set -fPIC for executables?
+          ghcOptFPic = toFlag True -- use -fPIC
+        }
     profOpts =
-      vanillaOpts
-        `mappend` mempty
-          { ghcOptProfilingMode = toFlag True
-          , ghcOptProfilingAuto =
-              Internal.profDetailLevelFlag
-                (if isLib then True else False)
-                ((if isLib then withProfLibDetail else withProfExeDetail) lbi)
-          , ghcOptHiSuffix = toFlag "p_hi"
-          , ghcOptObjSuffix = toFlag "p_o"
-          , ghcOptExtra = hcProfOptions GHC bi
-          , ghcOptHPCDir = hpcdir Hpc.Prof
-          }
+      (baseOpts ProfWay)
+        { ghcOptProfilingMode = toFlag True
+        , ghcOptProfilingAuto =
+            Internal.profDetailLevelFlag
+              (if isLib then True else False)
+              ((if isLib then withProfLibDetail else withProfExeDetail) lbi)
+        }
+    -- Options for building both static and dynamic way at the same time, using
+    -- the GHC flag -static and -dynamic-too
     dynTooOpts =
-      vanillaOpts
-        `mappend` mempty
-          { ghcOptDynLinkMode = toFlag GhcStaticAndDynamic
-          , ghcOptDynHiSuffix = toFlag "dyn_hi"
-          , ghcOptDynObjSuffix = toFlag "dyn_o"
-          , ghcOptHPCDir = hpcdir Hpc.Dyn
-          }
+      (baseOpts StaticWay)
+        { ghcOptDynLinkMode = toFlag GhcStaticAndDynamic -- use -dynamic-too
+        , ghcOptDynHiSuffix = toFlag (buildWayPrefix DynWay ++ "hi")
+        , ghcOptDynObjSuffix = toFlag (buildWayPrefix DynWay ++ "o")
+        , ghcOptHPCDir = hpcdir Hpc.Dyn
+        -- ROMES:TODO: We don't pass hcSharedOpts to dyntoo?
+        -- (baseOtps StaticWay -> hcStaticOptions, not hcSharedOpts)
+        }
 
-    -- wantVanilla is underspecified, maybe we could deprecated it (TODO)
-    wantVanilla = if isLib then withVanillaLib lbi else False
-    wantStatic  = if isLib then withStaticLib lbi else withFullyStaticExe lbi
-    wantDynamic = if isLib then withSharedLib lbi else withDynExe lbi
-    wantProf    = if isLib then withProfLib lbi else withProfExe lbi
+    -- Determines how to build for each way, also serves as the base options
+    -- for loading modules in 'linkOrLoadComponent'
+    buildOpts way = case way of
+      StaticWay -> staticOpts
+      DynWay -> dynOpts
+      ProfWay -> profOpts
 
     defaultGhcWay = if isDynamic comp then DynWay else StaticWay
 
   -- If there aren't modules, or if we're loading the modules in repl, don't build.
-  unless (forRepl || (null inputFiles && null inputModules)) $ liftIO $
-
+  unless (forRepl || (null inputFiles && null inputModules)) $ liftIO $ do
     -- See Note [Building Haskell Modules accounting for TH]
     let
-      wantedWays
-        = Set.fromList
-        $ [StaticWay | wantStatic]
-        <> [DynWay | wantDynamic ]
-        <> [ProfWay | wantProf ]
-        -- If no way is explicitly wanted, we take vanilla
-        <> [VanillaWay | wantVanilla || not (wantStatic || wantDynamic || wantProf) ]
-        -- ROMES:TODO: Is vanilla necessarily the same as defaultGhcWay? If so,
-        -- we can deal away with VanillaWay and be explicit in -dynamic vs
-        -- -static, or always default to -static. Would simplify further.
-        -- ROMES:TODO: Perhaps, if the component is indefinite, we only pick Vanilla?
-        -- To mimick the old behaviour we need at least profiled too (Vanilla +
-        -- Prof), and there's even a test for profiled signature, whatever that
-        -- means. So only doing vanilla way for indefinite components before seems wrong.
-        -- Consider...
-
-      neededWays
-        = wantedWays
-        <> Set.fromList
-            -- TODO: You also don't need this if you are using an external interpreter!!
+      neededWays =
+        wantedWays
+          <> Set.fromList
+            -- ROMES:TODO: You also don't need this if you are using an external interpreter!!
             [defaultGhcWay | doingTH && defaultGhcWay `Set.notMember` wantedWays]
 
       -- If we need both static and dynamic, use dynamic-too instead of
       -- compiling twice (if we support it)
-      useDynamicToo
-        -- TODO: These vanilla way are kind of bothersome. Ask Matthew.
-        = (StaticWay `Set.member` neededWays || VanillaWay `Set.member` neededWays)
-        && DynWay `Set.member` neededWays
-        && supportsDynamicToo comp
-        && null (hcSharedOptions GHC bi)
+      useDynamicToo =
+        StaticWay `Set.member` neededWays
+          && DynWay `Set.member` neededWays
+          && supportsDynamicToo comp
+          && null (hcSharedOptions GHC bi)
 
       -- The ways we'll build, in order
       orderedBuilds
-
         -- If we can use dynamic-too, do it first. The default GHC way can only
-        -- be static or dynamic, so if we build both right away any TH-needed
-        -- modules possibly needed later (for prof.) are already built.
-        | useDynamicToo
-        = [ buildStaticAndDynamicToo ] ++
-          (buildWay <$> Set.toList neededWays \\ [StaticWay, VanillaWay, DynWay])
-
-        -- Otherwise, we need to ensure the defaultGhcWay is built first.
-        | otherwise
-        = buildWay <$> sortOn (\w -> if w == defaultGhcWay then 0 else 1 :: Int) (Set.toList neededWays)
-
-      buildWay = \case
-        StaticWay -> runGhcProg staticOpts
-        DynWay    -> runGhcProg dynOpts
-        ProfWay   -> runGhcProg profOpts
-        VanillaWay -> runGhcProg vanillaOpts
+        -- be static or dynamic, so, if we build both right away, any modules
+        -- possibly needed by TH later (e.g. if building profiled) are already built.
+        | useDynamicToo =
+            [buildStaticAndDynamicToo]
+              ++ (runGhcProg . buildOpts <$> Set.toList neededWays \\ [StaticWay, DynWay])
+        -- Otherwise, we need to ensure the defaultGhcWay is built first
+        | otherwise =
+            runGhcProg . buildOpts <$> sortOn (\w -> if w == defaultGhcWay then 0 else fromEnum w + 1) (Set.toList neededWays)
 
       buildStaticAndDynamicToo = do
         runGhcProg dynTooOpts
@@ -269,37 +253,65 @@ buildHaskellModules numJobs ghcProg pkg_descr buildTargetDir = do
             -- both ways.
             copyDirectoryRecursive verbosity dynDir vanillaDir
           _ -> return ()
+     in
+      -- REVIEW:ADD? info verbosity "Building Haskell Sources..."
+      sequence_ orderedBuilds
+  return buildOpts
 
-    in sequence_ orderedBuilds
+data BuildWay = StaticWay | DynWay | ProfWay
+  deriving (Eq, Ord, Show, Enum)
 
-data BuildWay = StaticWay | DynWay | ProfWay | VanillaWay
-  deriving (Eq, Ord)
+-- | Returns the object/interface extension prefix for the given build way (e.g. "dyn_" for 'DynWay')
+buildWayPrefix :: BuildWay -> String
+buildWayPrefix = \case
+  StaticWay -> ""
+  ProfWay -> "p_"
+  DynWay -> "dyn_"
 
--- | Returns a pair of the input files and Haskell modules of the component
--- being built.
-componentInputs :: FilePath
-                -- ^ Target build dir
-                -> PD.PackageDescription
-                -> BuildM ([FilePath], [ModuleName])
+-- | Returns the corresponding 'Hpc.Way' for a 'BuildWay'
+buildWayHpcWay :: BuildWay -> Hpc.Way
+buildWayHpcWay = \case
+  StaticWay -> Hpc.Vanilla
+  ProfWay -> Hpc.Prof
+  DynWay -> Hpc.Dyn
+
+-- | Returns a function to extract the extra haskell compiler options from a
+-- 'BuildInfo' and 'CompilerFlavor'
+buildWayExtraHcOptions :: BuildWay -> Maybe (CompilerFlavor -> BuildInfo -> [String])
+buildWayExtraHcOptions = \case
+  StaticWay -> Just hcStaticOptions
+  ProfWay -> Just hcProfOptions
+  DynWay -> Just hcSharedOptions
+
+-- | Returns a pair of the Haskell input files and Haskell modules of the
+-- component being built.
+--
+-- The "input files" are either the path to the main Haskell module, or a repl
+-- script (that does not necessarily have an extension).
+componentInputs
+  :: FilePath
+  -- ^ Target build dir
+  -> PD.PackageDescription
+  -> BuildM ([FilePath], [ModuleName])
+  -- ^ The Haskell input files, and the Haskell modules
 componentInputs buildTargetDir pkg_descr = do
   verbosity <- buildVerbosity
   component <- buildComponent
   clbi <- buildCLBI
 
   case component of
-    CLib lib
-      -> pure ([], allLibModules lib clbi)
-    CFLib flib
-      -> pure ([], foreignLibModules flib)
-    CExe Executable{buildInfo=bi', modulePath}
-      -> exeLikeInputs verbosity bi' modulePath
-    CTest TestSuite{testBuildInfo=bi', testInterface = TestSuiteExeV10 _ mainFile }
-      -> exeLikeInputs verbosity bi' mainFile
-    CBench Benchmark{benchmarkBuildInfo=bi', benchmarkInterface = BenchmarkExeV10 _ mainFile }
-      -> exeLikeInputs verbosity bi' mainFile
+    CLib lib ->
+      pure ([], allLibModules lib clbi)
+    CFLib flib ->
+      pure ([], foreignLibModules flib)
+    CExe Executable{buildInfo = bi', modulePath} ->
+      exeLikeInputs verbosity bi' modulePath
+    CTest TestSuite{testBuildInfo = bi', testInterface = TestSuiteExeV10 _ mainFile} ->
+      exeLikeInputs verbosity bi' mainFile
+    CBench Benchmark{benchmarkBuildInfo = bi', benchmarkInterface = BenchmarkExeV10 _ mainFile} ->
+      exeLikeInputs verbosity bi' mainFile
     CTest TestSuite{} -> error "testSuiteExeV10AsExe: wrong kind"
     CBench Benchmark{} -> error "benchmarkExeV10asExe: wrong kind"
-
   where
     exeLikeInputs verbosity bnfo modulePath = liftIO $ do
       main <- findExecutableMain verbosity buildTargetDir (bnfo, modulePath)
@@ -307,25 +319,25 @@ componentInputs buildTargetDir pkg_descr = do
           otherModNames = otherModules bnfo
 
       -- Scripts have fakePackageId and are always Haskell but can have any extension.
-      if isHaskell main || PD.package pkg_descr == fakePackageId then
-        if PD.specVersion pkg_descr < CabalSpecV2_0 && (mainModName `elem` otherModNames) then do
-          -- The cabal manual clearly states that `other-modules` is
-          -- intended for non-main modules.  However, there's at least one
-          -- important package on Hackage (happy-1.19.5) which
-          -- violates this. We workaround this here so that we don't
-          -- invoke GHC with e.g.  'ghc --make Main src/Main.hs' which
-          -- would result in GHC complaining about duplicate Main
-          -- modules.
-          --
-          -- Finally, we only enable this workaround for
-          -- specVersion < 2, as 'cabal-version:>=2.0' cabal files
-          -- have no excuse anymore to keep doing it wrong... ;-)
-          warn verbosity $
-            "Enabling workaround for Main module '"
-              ++ prettyShow mainModName
-              ++ "' listed in 'other-modules' illegally!"
-          return ([main], filter (/= mainModName) otherModNames)
-        else
-          return ([main], otherModNames)
-      else
-        return ([], otherModNames)
+      if isHaskell main || PD.package pkg_descr == fakePackageId
+        then
+          if PD.specVersion pkg_descr < CabalSpecV2_0 && (mainModName `elem` otherModNames)
+            then do
+              -- The cabal manual clearly states that `other-modules` is
+              -- intended for non-main modules.  However, there's at least one
+              -- important package on Hackage (happy-1.19.5) which
+              -- violates this. We workaround this here so that we don't
+              -- invoke GHC with e.g.  'ghc --make Main src/Main.hs' which
+              -- would result in GHC complaining about duplicate Main
+              -- modules.
+              --
+              -- Finally, we only enable this workaround for
+              -- specVersion < 2, as 'cabal-version:>=2.0' cabal files
+              -- have no excuse anymore to keep doing it wrong... ;-)
+              warn verbosity $
+                "Enabling workaround for Main module '"
+                  ++ prettyShow mainModName
+                  ++ "' listed in 'other-modules' illegally!"
+              return ([main], filter (/= mainModName) otherModNames)
+            else return ([main], otherModNames)
+        else return ([], otherModNames)

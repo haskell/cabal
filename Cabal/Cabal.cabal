@@ -337,8 +337,6 @@ library
     Distribution.Simple.GHC.Build.Link
     Distribution.Simple.GHC.Build.Modules
     Distribution.Simple.GHC.Build.Utils
-    Distribution.Simple.GHC.BuildGeneric
-    Distribution.Simple.GHC.BuildOrRepl
     Distribution.Simple.GHC.EnvironmentParser
     Distribution.Simple.GHC.Internal
     Distribution.Simple.GHC.ImplInfo

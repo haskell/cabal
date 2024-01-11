@@ -1,14 +1,18 @@
-{-# LANGUAGE DerivingVia #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE PatternSynonyms #-}
+
 module Distribution.Simple.Build.Monad
-  ( BuildM (..)
+  ( -- * A Monad for building components
+    BuildM (BuildM)
   , runBuildM
   , PreBuildComponentInputs (..)
 
-    -- * A few queries on @'BuildM'@
+    -- * Queries over the component being built
   , buildVerbosity
   , buildWhat
   , buildComponent
+  , buildIsLib
   , buildCLBI
   , buildBI
   , buildLBI
@@ -26,14 +30,14 @@ where
 
 import Control.Monad.Reader
 
+import Distribution.Simple.Compiler
 import Distribution.Simple.Setup (BuildingWhat (..), buildingWhatDistPref, buildingWhatVerbosity)
+import Distribution.Types.BuildInfo
+import Distribution.Types.Component
+import Distribution.Types.ComponentLocalBuildInfo
 import Distribution.Types.LocalBuildInfo
 import Distribution.Types.TargetInfo
 import Distribution.Verbosity
-import Distribution.Types.Component
-import Distribution.Types.ComponentLocalBuildInfo
-import Distribution.Types.BuildInfo
-import Distribution.Simple.Compiler
 
 -- | The information required for a build computation (@'BuildM'@)
 -- which is available right before building each component, i.e. the pre-build
@@ -48,8 +52,16 @@ data PreBuildComponentInputs = PreBuildComponentInputs
   }
 
 -- | Computations carried out in the context of building a component (e.g. @'buildAllExtraSources'@)
-newtype BuildM a = BuildM (PreBuildComponentInputs -> IO a)
-  deriving (Functor, Applicative, Monad, MonadReader PreBuildComponentInputs, MonadIO) via ReaderT PreBuildComponentInputs IO
+newtype BuildM a = BuildM' (ReaderT PreBuildComponentInputs IO a)
+  deriving (Functor, Applicative, Monad, MonadReader PreBuildComponentInputs, MonadIO)
+
+-- Ideally we'd use deriving via ReaderT PreBuildComponentInputs IO, but ghc 8.4 doesn't support it.
+
+-- | Construct a t'BuildM' action from an IO function on 'PreBuildComponentInputs'.
+pattern BuildM :: (PreBuildComponentInputs -> IO a) -> BuildM a
+pattern BuildM f = BuildM' (ReaderT f)
+
+{-# COMPLETE BuildM #-}
 
 -- | Run a 'BuildM' action, i.e. a computation in the context of building a component.
 runBuildM :: BuildingWhat -> LocalBuildInfo -> TargetInfo -> BuildM a -> IO a
@@ -72,6 +84,16 @@ buildComponent :: BuildM Component
 buildComponent = asks (targetComponent . targetInfo)
 {-# INLINE buildComponent #-}
 
+-- | Is the @'Component'@ being built a @'Library'@?
+buildIsLib :: BuildM Bool
+buildIsLib = do
+  component <- buildComponent
+  let isLib
+        | CLib{} <- component = True
+        | otherwise = False
+  return isLib
+{-# INLINE buildIsLib #-}
+
 -- | Get the @'ComponentLocalBuildInfo'@ for the component being built.
 buildCLBI :: BuildM ComponentLocalBuildInfo
 buildCLBI = asks (targetCLBI . targetInfo)
@@ -87,6 +109,7 @@ buildLBI :: BuildM LocalBuildInfo
 buildLBI = asks localBuildInfo
 {-# INLINE buildLBI #-}
 
+-- | Get the @'Compiler'@ being used to build the component.
 buildCompiler :: BuildM Compiler
 buildCompiler = compiler <$> buildLBI
 {-# INLINE buildCompiler #-}
@@ -94,4 +117,4 @@ buildCompiler = compiler <$> buildLBI
 -- | Get the @'TargetInfo'@ of the current component being built.
 buildTarget :: BuildM TargetInfo
 buildTarget = asks targetInfo
-
+{-# INLINE buildTarget #-}

@@ -91,10 +91,12 @@ import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
 import Distribution.Package
 import Distribution.PackageDescription as PD
 import Distribution.Pretty
+import Distribution.Simple.Build.Monad (runBuildM)
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Compiler
 import Distribution.Simple.Errors
 import Distribution.Simple.Flag (Flag (..), toFlag)
+import qualified Distribution.Simple.GHC.Build as GHC
 import Distribution.Simple.GHC.Build.Utils
 import Distribution.Simple.GHC.EnvironmentParser
 import Distribution.Simple.GHC.ImplInfo
@@ -104,7 +106,6 @@ import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.Program
 import Distribution.Simple.Program.Builtin (runghcProgram)
-import Distribution.Types.TargetInfo
 import Distribution.Simple.Program.GHC
 import qualified Distribution.Simple.Program.HcPkg as HcPkg
 import qualified Distribution.Simple.Program.Strip as Strip
@@ -114,6 +115,7 @@ import Distribution.Simple.Utils
 import Distribution.System
 import Distribution.Types.ComponentLocalBuildInfo
 import Distribution.Types.ParStrat
+import Distribution.Types.TargetInfo
 import Distribution.Utils.NubList
 import Distribution.Verbosity
 import Distribution.Version
@@ -133,13 +135,10 @@ import System.FilePath
   )
 import qualified System.Info
 #ifndef mingw32_HOST_OS
-import Distribution.Simple.GHC.Build.Utils (flibBuildName)
 import System.Directory (renameFile)
 import System.Posix (createSymbolicLink)
 #endif /* mingw32_HOST_OS */
 
-import Distribution.Simple.GHC.BuildGeneric (GBuildMode (..), gbuild)
-import Distribution.Simple.GHC.BuildOrRepl (buildOrReplLib)
 import Distribution.Simple.Setup (BuildingWhat (..))
 import Distribution.Simple.Setup.Build
 
@@ -575,7 +574,8 @@ buildLib
   -> Library
   -> ComponentLocalBuildInfo
   -> IO ()
-buildLib = buildOrReplLib . BuildNormal
+buildLib flags numJobs pkg lbi lib clbi =
+  runBuildM (BuildNormal flags) lbi (TargetInfo clbi (CLib lib)) (GHC.build numJobs pkg)
 
 replLib
   :: ReplFlags
@@ -585,7 +585,8 @@ replLib
   -> Library
   -> ComponentLocalBuildInfo
   -> IO ()
-replLib = buildOrReplLib . BuildRepl
+replLib flags numJobs pkg lbi lib clbi =
+  runBuildM (BuildRepl flags) lbi (TargetInfo clbi (CLib lib)) (GHC.build numJobs pkg)
 
 -- | Start a REPL without loading any source files.
 startInterpreter
@@ -617,7 +618,8 @@ buildFLib
   -> ForeignLib
   -> ComponentLocalBuildInfo
   -> IO ()
-buildFLib v njobs pkg lbi = gbuild (BuildNormal mempty{buildVerbosity = toFlag v}) njobs pkg lbi . GBuildFLib
+buildFLib v njobs pkg lbi flib clbi =
+  runBuildM (BuildNormal mempty{buildVerbosity = toFlag v}) lbi (TargetInfo clbi (CFLib flib)) (GHC.build njobs pkg)
 
 replFLib
   :: ReplFlags
@@ -627,8 +629,8 @@ replFLib
   -> ForeignLib
   -> ComponentLocalBuildInfo
   -> IO ()
-replFLib replFlags njobs pkg lbi =
-  gbuild (BuildRepl replFlags) njobs pkg lbi . GReplFLib replFlags
+replFLib replFlags njobs pkg lbi flib clbi =
+  runBuildM (BuildRepl replFlags) lbi (TargetInfo clbi (CFLib flib)) (GHC.build njobs pkg)
 
 -- | Build an executable with GHC.
 buildExe
@@ -639,7 +641,8 @@ buildExe
   -> Executable
   -> ComponentLocalBuildInfo
   -> IO ()
-buildExe v njobs pkg lbi = gbuild (BuildNormal mempty{buildVerbosity = toFlag v}) njobs pkg lbi . GBuildExe
+buildExe v njobs pkg lbi exe clbi =
+  runBuildM (BuildNormal mempty{buildVerbosity = toFlag v}) lbi (TargetInfo clbi (CExe exe)) (GHC.build njobs pkg)
 
 replExe
   :: ReplFlags
@@ -649,8 +652,8 @@ replExe
   -> Executable
   -> ComponentLocalBuildInfo
   -> IO ()
-replExe replFlags njobs pkg lbi =
-  gbuild (BuildRepl replFlags) njobs pkg lbi . GReplExe replFlags
+replExe replFlags njobs pkg lbi exe clbi =
+  runBuildM (BuildRepl replFlags) lbi (TargetInfo clbi (CExe exe)) (GHC.build njobs pkg)
 
 -- | Extracts a String representing a hash of the ABI of a built
 -- library.  It can fail if the library has not yet been built.
@@ -734,7 +737,7 @@ installExe
   exe = do
     createDirectoryIfMissingVerbose verbosity True binDir
     let exeName' = unUnqualComponentName $ exeName exe
-        exeFileName = exeTargetName (hostPlatform lbi) exe
+        exeFileName = exeTargetName (hostPlatform lbi) (exeName exe)
         fixedExeBaseName = progprefix ++ exeName' ++ progsuffix
         installBinary dest = do
           installExecutableFile
@@ -844,47 +847,47 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir pkg lib clbi = do
       whenGHCi $ installOrdinary builtDir targetDir ghciProfLibName
     whenShared $
       if
-        -- The behavior for "extra-bundled-libraries" changed in version 2.5.0.
-        -- See ghc issue #15837 and Cabal PR #5855.
-        | specVersion pkg < CabalSpecV3_0 -> do
-            sequence_
-              [ installShared
-                builtDir
-                dynlibTargetDir
-                (mkGenericSharedLibName platform compiler_id (l ++ f))
-              | l <- getHSLibraryName uid : extraBundledLibs (libBuildInfo lib)
-              , f <- "" : extraDynLibFlavours (libBuildInfo lib)
-              ]
-        | otherwise -> do
-            sequence_
-              [ installShared
-                builtDir
-                dynlibTargetDir
-                ( mkGenericSharedLibName
-                    platform
-                    compiler_id
-                    (getHSLibraryName uid ++ f)
-                )
-              | f <- "" : extraDynLibFlavours (libBuildInfo lib)
-              ]
-            sequence_
-              [ do
-                files <- getDirectoryContents builtDir
-                let l' =
-                      mkGenericSharedBundledLibName
-                        platform
-                        compiler_id
-                        l
-                forM_ files $ \file ->
-                  when (l' `isPrefixOf` file) $ do
-                    isFile <- doesFileExist (builtDir </> file)
-                    when isFile $ do
-                      installShared
-                        builtDir
-                        dynlibTargetDir
-                        file
-              | l <- extraBundledLibs (libBuildInfo lib)
-              ]
+          -- The behavior for "extra-bundled-libraries" changed in version 2.5.0.
+          -- See ghc issue #15837 and Cabal PR #5855.
+          | specVersion pkg < CabalSpecV3_0 -> do
+              sequence_
+                [ installShared
+                  builtDir
+                  dynlibTargetDir
+                  (mkGenericSharedLibName platform compiler_id (l ++ f))
+                | l <- getHSLibraryName uid : extraBundledLibs (libBuildInfo lib)
+                , f <- "" : extraDynLibFlavours (libBuildInfo lib)
+                ]
+          | otherwise -> do
+              sequence_
+                [ installShared
+                  builtDir
+                  dynlibTargetDir
+                  ( mkGenericSharedLibName
+                      platform
+                      compiler_id
+                      (getHSLibraryName uid ++ f)
+                  )
+                | f <- "" : extraDynLibFlavours (libBuildInfo lib)
+                ]
+              sequence_
+                [ do
+                  files <- getDirectoryContents builtDir
+                  let l' =
+                        mkGenericSharedBundledLibName
+                          platform
+                          compiler_id
+                          l
+                  forM_ files $ \file ->
+                    when (l' `isPrefixOf` file) $ do
+                      isFile <- doesFileExist (builtDir </> file)
+                      when isFile $ do
+                        installShared
+                          builtDir
+                          dynlibTargetDir
+                          file
+                | l <- extraBundledLibs (libBuildInfo lib)
+                ]
   where
     builtDir = componentBuildDir lbi clbi
 

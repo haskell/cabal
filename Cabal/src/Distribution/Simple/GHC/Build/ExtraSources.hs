@@ -1,4 +1,3 @@
-{-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DisambiguateRecordFields #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
@@ -18,34 +17,33 @@ import Distribution.Types.TargetInfo
 
 import Distribution.Simple.GHC.Build.Utils
 import Distribution.Simple.LocalBuildInfo
-import Distribution.Types.ComponentName (componentNameRaw)
+import Distribution.Simple.Program.Types
+import Distribution.System (Arch (JavaScript), Platform (..))
+import Distribution.Types.ComponentLocalBuildInfo
 import Distribution.Types.Executable
 import Distribution.Verbosity (Verbosity)
-import System.FilePath
-import Distribution.Simple.Program.Types
 
 import Distribution.Simple.Build.Monad
 
 -- | An action that builds all the extra build sources of a component, i.e. C,
 -- C++, Js, Asm, C-- sources.
-buildAllExtraSources :: ConfiguredProgram
-                     -- ^ The GHC configured program
-                     -> BuildM ()
-buildAllExtraSources =
-  sequence_ . sequence
-    [ buildCSources
-    , buildCxxSources
-    , buildJsSources
-    , buildAsmSources
-    , buildCmmSources
-    ]
-
--- ROMES:TODO:
--- unless (not hasJsSupport || null jsSrcs) $ ... and (not has_code)
--- where has_code = not (componentIsIndefinite clbi)
-
--- ROMES:PATCH:NOTE: Worry about mimicking the current behaviour first, and only
--- later worry about dependency tracking and ghc -M, gcc -M, or ghc -optc-MD ...
+buildAllExtraSources
+  :: ConfiguredProgram
+  -- ^ The GHC configured program
+  -> FilePath
+  -- ^ The build directory for this target
+  -> BuildM [FilePath]
+  -- ^ Returns the list of extra sources that were built
+buildAllExtraSources ghcProg buildTargetDir =
+  concat
+    <$> traverse
+      (($ buildTargetDir) . ($ ghcProg))
+      [ buildCSources
+      , buildCxxSources
+      , buildJsSources
+      , buildAsmSources
+      , buildCmmSources
+      ]
 
 buildCSources
   , buildCxxSources
@@ -54,13 +52,10 @@ buildCSources
   , buildCmmSources
     :: ConfiguredProgram
     -- ^ The GHC configured program
-    -> BuildM ()
--- Currently, an executable main file may be a C++ or C file, in which case we want to
--- compile it alongside other C/C++ sources. Eventually, we may be able to
--- compile other main files as build sources (e.g. ObjC...). This functionality
--- may also be provided in standalone packages, since nothing precludes users
--- from writing their own build rules for declared foreign modules in main-is
--- and eventually custom stanzas.
+    -> FilePath
+    -- ^ The build directory for this target
+    -> BuildM [FilePath]
+    -- ^ Returns the list of extra sources that were built
 buildCSources =
   buildExtraSources
     "C Sources"
@@ -83,12 +78,24 @@ buildCxxSources =
             CExe exe | isCxx (modulePath exe) -> [modulePath exe]
             _otherwise -> []
     )
-buildJsSources =
+buildJsSources ghcProg buildTargetDir = do
+  Platform hostArch _ <- hostPlatform <$> buildLBI
+  let hasJsSupport = hostArch == JavaScript
   buildExtraSources
     "JS Sources"
     Internal.componentJsGhcOptions
     False
-    (jsSources . componentBuildInfo)
+    ( \c ->
+        if hasJsSupport
+          then -- JS files are C-like with GHC's JS backend: they are
+          -- "compiled" into `.o` files (renamed with a header).
+          -- This is a difference from GHCJS, for which we only
+          -- pass the JS files at link time.
+            jsSources (componentBuildInfo c)
+          else mempty
+    )
+    ghcProg
+    buildTargetDir
 buildAsmSources =
   buildExtraSources
     "Assembler Sources"
@@ -123,9 +130,12 @@ buildExtraSources
   -- if it should be compiled as the rest of them.
   -> ConfiguredProgram
   -- ^ The GHC configured program
-  -> BuildM ()
-buildExtraSources description componentSourceGhcOptions wantDyn viewSources ghcProg =
-  BuildM \PreBuildComponentInputs{buildingWhat, localBuildInfo = lbi, targetInfo} ->
+  -> FilePath
+  -- ^ The build directory for this target
+  -> BuildM [FilePath]
+  -- ^ Returns the list of extra sources that were built
+buildExtraSources description componentSourceGhcOptions wantDyn viewSources ghcProg buildTargetDir =
+  BuildM $ \PreBuildComponentInputs{buildingWhat, localBuildInfo = lbi, targetInfo} ->
     let
       bi = componentBuildInfo (targetComponent targetInfo)
       verbosity = buildingWhatVerbosity buildingWhat
@@ -135,20 +145,21 @@ buildExtraSources description componentSourceGhcOptions wantDyn viewSources ghcP
 
       comp = compiler lbi
       platform = hostPlatform lbi
+      -- ROMES:TODO: Instead of keeping this logic here, we really just want to
+      -- receive as an input the `neededWays` and build accordingly
       isGhcDynamic = isDynamic comp
       doingTH = usesTemplateHaskellOrQQ bi
       forceSharedLib = doingTH && isGhcDynamic
+      runGhcProg = runGHC verbosity ghcProg comp platform
 
       buildAction sourceFile = do
-        let runGhcProg = runGHC verbosity ghcProg comp platform
-
         let baseSrcOpts =
               componentSourceGhcOptions
                 verbosity
                 lbi
                 bi
                 clbi
-                buildDir'
+                buildTargetDir
                 sourceFile
             vanillaSrcOpts
               -- Dynamic GHC requires C sources to be built
@@ -198,9 +209,9 @@ buildExtraSources description componentSourceGhcOptions wantDyn viewSources ghcP
           -- For foreign libraries, we determine with which options to build the
           -- objects (vanilla vs shared vs profiled)
           CFLib flib
-            | withProfExe lbi -> -- ROMES: hmm... doesn't sound right.
+            | withProfExe lbi -> -- ROMES:TODO: doesn't sound right "ProfExe" for FLib...
                 compileIfNeeded profSrcOpts
-            | flibIsDynamic flib ->
+            | withDynFLib flib && wantDyn ->
                 compileIfNeeded sharedSrcOpts
             | otherwise ->
                 compileIfNeeded vanillaSrcOpts
@@ -210,23 +221,15 @@ buildExtraSources description componentSourceGhcOptions wantDyn viewSources ghcP
           _exeLike
             | withProfExe lbi ->
                 compileIfNeeded profSrcOpts
-            | withDynExe lbi ->
+            | withDynExe lbi && wantDyn ->
                 compileIfNeeded sharedSrcOpts
             | otherwise ->
                 compileIfNeeded vanillaSrcOpts
-
-      -- Until we get rid of the "exename-tmp" directory within the executable
-      -- build dir, we need to accommodate that fact (see eg @tmpDir@ in @gbuild@)
-      -- This is a workaround for #9498 until it is fixed.
-      cname = componentName (targetComponent targetInfo)
-      buildDir'
-        | CLibName{} <- cname =
-            componentBuildDir lbi clbi
-        | CNotLibName{} <- cname =
-            componentBuildDir lbi clbi
-              </> componentNameRaw cname <> "-tmp"
-     in do
+     in
       -- build any sources
-      unless (null sources) $ do
-        info verbosity ("Building " ++ description ++ "...")
-        traverse_ buildAction sources
+      if (null sources || componentIsIndefinite clbi)
+        then return []
+        else do
+          info verbosity ("Building " ++ description ++ "...")
+          traverse_ buildAction sources
+          return sources
