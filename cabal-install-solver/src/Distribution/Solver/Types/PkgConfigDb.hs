@@ -23,17 +23,22 @@ module Distribution.Solver.Types.PkgConfigDb
 import Distribution.Solver.Compat.Prelude
 import Prelude ()
 
-import           Control.Exception (handle)
-import           Control.Monad     (mapM)
-import qualified Data.Map          as M
-import           System.FilePath   (splitSearchPath)
+import           Control.Exception    (handle)
+import           Control.Monad        (mapM)
+import qualified Data.ByteString.Lazy as LBS
+import           Data.Either          (rights)
+import qualified Data.Map             as M
+import qualified Data.Text            as T
+import qualified Data.Text.Encoding   as T
+import           System.FilePath      (splitSearchPath)
 
 import Distribution.Compat.Environment          (lookupEnv)
 import Distribution.Package                     (PkgconfigName, mkPkgconfigName)
 import Distribution.Parsec
 import Distribution.Simple.Program
        (ProgramDb, getProgramOutput, pkgConfigProgram, needProgram, ConfiguredProgram)
-import Distribution.Simple.Program.Run          (getProgramInvocationOutputAndErrors, programInvocation)
+import Distribution.Simple.Program.Run
+       (getProgramInvocationOutputAndErrors, programInvocation, getProgramInvocationLBS)
 import Distribution.Simple.Utils                (info)
 import Distribution.Types.PkgconfigVersion
 import Distribution.Types.PkgconfigVersionRange
@@ -63,10 +68,14 @@ readPkgConfigDb verbosity progdb = handle ioErrorHandler $ do
     case mpkgConfig of
       Nothing             -> noPkgConfig "Cannot find pkg-config program"
       Just (pkgConfig, _) -> do
-        pkgList <- lines <$> getProgramOutput verbosity pkgConfig ["--list-all"]
+        -- To prevent malformed Unicode in the descriptions from crashing cabal,
+        -- read without interpreting any encoding first. (#9608)
+        pkgList <- LBS.split 10 <$> getProgramInvocationLBS verbosity (programInvocation pkgConfig ["--list-all"])
         -- The output of @pkg-config --list-all@ also includes a description
         -- for each package, which we do not need.
-        let pkgNames = map (takeWhile (not . isSpace)) pkgList
+        let pkgNamesLBS = map (LBS.takeWhile (not . isSpace . chr . fromIntegral)) pkgList
+        -- Now decode as UTF8 and convert to String, dropping any that fail decoding.
+        let pkgNames = rights $ map (fmap T.unpack . T.decodeUtf8' . LBS.toStrict) pkgNamesLBS
         (outs, _errs, exitCode) <-
                      getProgramInvocationOutputAndErrors verbosity
                        (programInvocation pkgConfig ("--modversion" : pkgNames))

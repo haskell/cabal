@@ -110,6 +110,7 @@ library
     , mtl           >=2.0      && <2.4
     , pretty        ^>=1.1
     , transformers  >=0.4.2.0  && <0.7
+    , text
 
   if flag(debug-expensive-assertions)
     cpp-options: -DDEBUG_EXPENSIVE_ASSERTIONS
