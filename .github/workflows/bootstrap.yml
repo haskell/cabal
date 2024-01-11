@@ -37,6 +37,12 @@ jobs:
     name: Bootstrap ${{ matrix.os }} ghc-${{ matrix.ghc }}
     runs-on: ${{ matrix.os }}
     steps:
+      - name: Work around XDG directories existence (haskell-actions/setup#62)
+        if: ${{ runner.os == 'macOS' }}
+        run: |
+          rm -rf ~/.config/cabal
+          rm -rf ~/.cache/cabal
+
       - uses: actions/cache@v3
         name: Cache the downloads
         id: bootstrap-cache
