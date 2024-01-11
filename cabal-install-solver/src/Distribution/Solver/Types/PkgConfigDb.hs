@@ -26,7 +26,6 @@ import Prelude ()
 import           Control.Exception    (handle)
 import           Control.Monad        (mapM)
 import qualified Data.ByteString.Lazy as LBS
-import           Data.Either          (rights)
 import qualified Data.Map             as M
 import qualified Data.Text            as T
 import qualified Data.Text.Encoding   as T
@@ -72,11 +71,30 @@ readPkgConfigDb verbosity progdb = handle ioErrorHandler $ do
         -- read without interpreting any encoding first. (#9608)
         pkgList <- LBS.split (fromIntegral (ord '\n')) <$>
                      getProgramInvocationLBS verbosity (programInvocation pkgConfig ["--list-all"])
-        -- The output of @pkg-config --list-all@ also includes a description
-        -- for each package, which we do not need.
-        let pkgNamesLBS = map (LBS.takeWhile (not . isSpace . chr . fromIntegral)) pkgList
-        -- Now decode as UTF8 and convert to String, dropping any that fail decoding.
-        let pkgNames = rights $ map (fmap T.unpack . T.decodeUtf8' . LBS.toStrict) pkgNamesLBS
+        -- Now decode the package *names* to a String. The ones where decoding
+        -- failed end up in 'failedPkgNames'.
+        let (failedPkgNames, pkgNames) =
+              partitionEithers
+              -- Drop empty package names. This will handle empty lines
+              -- in pkg-config's output, including the spurious one
+              -- after the last newline (because of LBS.split).
+              . filter (either (const True) (not . null))
+              -- Try decoding strictly; if it fails, put the lenient
+              -- decoding in a Left for later reporting.
+              . map (\bsname ->
+                       let sbsname = LBS.toStrict bsname
+                       in case T.decodeUtf8' sbsname of
+                            Left _ -> Left (T.unpack (T.decodeUtf8Lenient sbsname))
+                            Right name -> Right (T.unpack name))
+              -- The output of @pkg-config --list-all@ also includes a
+              -- description for each package, which we do not need.
+              -- We don't use Data.Char.isSpace because that would also
+              -- include 0xA0, the non-breaking space, which can occur
+              -- in multi-byte UTF-8 sequences.
+              . map (LBS.takeWhile (not . isAsciiSpace))
+              $ pkgList
+        when (not (null failedPkgNames)) $
+          info verbosity ("Some pkg-config packages have names containing invalid unicode: " ++ intercalate ", " failedPkgNames)
         (outs, _errs, exitCode) <-
                      getProgramInvocationOutputAndErrors verbosity
                        (programInvocation pkgConfig ("--modversion" : pkgNames))
@@ -113,6 +131,9 @@ readPkgConfigDb verbosity progdb = handle ioErrorHandler $ do
        return $ case exitCode of
          ExitSuccess -> Just (pkg, pkgVersion)
          _ -> Nothing
+
+    isAsciiSpace :: Word8 -> Bool
+    isAsciiSpace c = c `elem` map (fromIntegral . ord) " \t"
 
 -- | Create a `PkgConfigDb` from a list of @(packageName, version)@ pairs.
 pkgConfigDbFromList :: [(String, String)] -> PkgConfigDb
