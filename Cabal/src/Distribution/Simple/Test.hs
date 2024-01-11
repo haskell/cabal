@@ -143,7 +143,10 @@ test args pkg_descr lbi0 flags = do
   -- install time, is copied into the ghc-pkg database files.
   -- Now, we get the path to the HPC artifacts and exposed modules of each
   -- library by querying the package database keyed by unit-id:
-  let coverageFor = fromFlagOrDefault [] (configCoverageFor (configFlags lbi))
+  let coverageFor =
+        nub $
+          fromFlagOrDefault [] (configCoverageFor (configFlags lbi))
+            <> extraCoverageFor lbi
   ipkginfos <- getInstalledPackagesById verbosity lbi MissingCoveredInstalledLibrary coverageFor
   let ( concat -> pathsToLibsArtifacts
         , concat -> libsModulesToInclude

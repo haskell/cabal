@@ -17,12 +17,20 @@ import Distribution.Simple.Flag
 import Distribution.Simple.Hpc
 import Distribution.Simple.InstallDirs
 import qualified Distribution.Simple.LocalBuildInfo as LBI
+  ( ComponentLocalBuildInfo (..)
+  , buildDir
+  , depLibraryPaths
+  )
 import Distribution.Simple.Setup.Test
 import Distribution.Simple.Test.Log
 import Distribution.Simple.Utils
 import Distribution.System
 import Distribution.TestSuite
 import qualified Distribution.Types.LocalBuildInfo as LBI
+  ( LocalBuildInfo (..)
+  , localUnitId
+  , testCoverage
+  )
 import Distribution.Types.UnqualComponentName
 import Distribution.Verbosity
 

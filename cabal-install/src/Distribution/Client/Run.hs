@@ -32,6 +32,7 @@ import Distribution.Simple.Compiler (CompilerFlavor (..), compilerFlavor)
 import Distribution.Simple.LocalBuildInfo
   ( ComponentName (..)
   , LocalBuildInfo (..)
+  , buildDir
   , depLibraryPaths
   )
 import Distribution.Simple.Utils

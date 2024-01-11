@@ -3,6 +3,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeFamilies #-}
 
 -- | Types used while planning how to build everything in a project.
@@ -103,6 +104,7 @@ import Distribution.Simple.Setup
   )
 import Distribution.System
 import Distribution.Types.ComponentRequestedSpec
+import qualified Distribution.Types.LocalBuildConfig as LBC
 import Distribution.Types.PackageDescription (PackageDescription (..))
 import Distribution.Types.PkgconfigVersion
 import Distribution.Verbosity (normal)
@@ -264,23 +266,7 @@ data ElaboratedConfiguredPackage = ElaboratedConfiguredPackage
   , elabInplaceRegisterPackageDBStack :: PackageDBStack
   , elabPkgDescriptionOverride :: Maybe CabalFileText
   , -- TODO: make per-component variants of these flags
-    elabVanillaLib :: Bool
-  , elabSharedLib :: Bool
-  , elabStaticLib :: Bool
-  , elabDynExe :: Bool
-  , elabFullyStaticExe :: Bool
-  , elabGHCiLib :: Bool
-  , elabProfLib :: Bool
-  , elabProfExe :: Bool
-  , elabProfLibDetail :: ProfDetailLevel
-  , elabProfExeDetail :: ProfDetailLevel
-  , elabCoverage :: Bool
-  , elabOptimization :: OptimisationLevel
-  , elabSplitObjs :: Bool
-  , elabSplitSections :: Bool
-  , elabStripLibs :: Bool
-  , elabStripExes :: Bool
-  , elabDebugInfo :: DebugInfoLevel
+    elabBuildOptions :: LBC.BuildOptions
   , elabDumpBuildInfo :: DumpBuildInfo
   , elabProgramPaths :: Map String FilePath
   , elabProgramArgs :: Map String [String]
@@ -542,7 +528,7 @@ elabDistDirParams shared elab =
         ElabPackage _ -> Nothing
     , distParamCompilerId = compilerId (pkgConfigCompiler shared)
     , distParamPlatform = pkgConfigPlatform shared
-    , distParamOptimization = elabOptimization elab
+    , distParamOptimization = LBC.withOptimization $ elabBuildOptions elab
     }
 
 -- | The full set of dependencies which dictate what order we

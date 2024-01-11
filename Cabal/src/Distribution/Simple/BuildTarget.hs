@@ -1,5 +1,7 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
 
 -----------------------------------------------------------------------------
@@ -1041,64 +1043,68 @@ checkBuildTargets
   -> IO [TargetInfo]
 checkBuildTargets _ pkg_descr lbi [] =
   return (allTargetsInBuildOrder' pkg_descr lbi)
-checkBuildTargets verbosity pkg_descr lbi targets = do
-  let (enabled, disabled) =
-        partitionEithers
-          [ case componentDisabledReason (componentEnabledSpec lbi) comp of
-            Nothing -> Left target'
-            Just reason -> Right (cname, reason)
-          | target <- targets
-          , let target'@(cname, _) = swizzleTarget target
-          , let comp = getComponent pkg_descr cname
-          ]
+checkBuildTargets
+  verbosity
+  pkg_descr
+  lbi@(LocalBuildInfo{componentEnabledSpec = enabledComps})
+  targets = do
+    let (enabled, disabled) =
+          partitionEithers
+            [ case componentDisabledReason enabledComps comp of
+              Nothing -> Left target'
+              Just reason -> Right (cname, reason)
+            | target <- targets
+            , let target'@(cname, _) = swizzleTarget target
+            , let comp = getComponent pkg_descr cname
+            ]
 
-  case disabled of
-    [] -> return ()
-    ((cname, reason) : _) -> dieWithException verbosity $ CheckBuildTargets $ formatReason (showComponentName cname) reason
+    case disabled of
+      [] -> return ()
+      ((cname, reason) : _) -> dieWithException verbosity $ CheckBuildTargets $ formatReason (showComponentName cname) reason
 
-  for_ [(c, t) | (c, Just t) <- enabled] $ \(c, t) ->
-    warn verbosity $
-      "Ignoring '"
-        ++ either prettyShow id t
-        ++ ". The whole "
-        ++ showComponentName c
-        ++ " will be processed. (Support for "
-        ++ "module and file targets has not been implemented yet.)"
+    for_ [(c, t) | (c, Just t) <- enabled] $ \(c, t) ->
+      warn verbosity $
+        "Ignoring '"
+          ++ either prettyShow id t
+          ++ ". The whole "
+          ++ showComponentName c
+          ++ " will be processed. (Support for "
+          ++ "module and file targets has not been implemented yet.)"
 
-  -- Pick out the actual CLBIs for each of these cnames
-  enabled' <- for enabled $ \(cname, _) -> do
-    case componentNameTargets' pkg_descr lbi cname of
-      [] -> error "checkBuildTargets: nothing enabled"
-      [target] -> return target
-      _targets -> error "checkBuildTargets: multiple copies enabled"
+    -- Pick out the actual CLBIs for each of these cnames
+    enabled' <- for enabled $ \(cname, _) -> do
+      case componentNameTargets' pkg_descr lbi cname of
+        [] -> error "checkBuildTargets: nothing enabled"
+        [target] -> return target
+        _targets -> error "checkBuildTargets: multiple copies enabled"
 
-  return enabled'
-  where
-    swizzleTarget (BuildTargetComponent c) = (c, Nothing)
-    swizzleTarget (BuildTargetModule c m) = (c, Just (Left m))
-    swizzleTarget (BuildTargetFile c f) = (c, Just (Right f))
+    return enabled'
+    where
+      swizzleTarget (BuildTargetComponent c) = (c, Nothing)
+      swizzleTarget (BuildTargetModule c m) = (c, Just (Left m))
+      swizzleTarget (BuildTargetFile c f) = (c, Just (Right f))
 
-    formatReason cn DisabledComponent =
-      "Cannot process the "
-        ++ cn
-        ++ " because the component is marked "
-        ++ "as disabled in the .cabal file."
-    formatReason cn DisabledAllTests =
-      "Cannot process the "
-        ++ cn
-        ++ " because test suites are not "
-        ++ "enabled. Run configure with the flag --enable-tests"
-    formatReason cn DisabledAllBenchmarks =
-      "Cannot process the "
-        ++ cn
-        ++ " because benchmarks are not "
-        ++ "enabled. Re-run configure with the flag --enable-benchmarks"
-    formatReason cn (DisabledAllButOne cn') =
-      "Cannot process the "
-        ++ cn
-        ++ " because this package was "
-        ++ "configured only to build "
-        ++ cn'
-        ++ ". Re-run configure "
-        ++ "with the argument "
-        ++ cn
+      formatReason cn DisabledComponent =
+        "Cannot process the "
+          ++ cn
+          ++ " because the component is marked "
+          ++ "as disabled in the .cabal file."
+      formatReason cn DisabledAllTests =
+        "Cannot process the "
+          ++ cn
+          ++ " because test suites are not "
+          ++ "enabled. Run configure with the flag --enable-tests"
+      formatReason cn DisabledAllBenchmarks =
+        "Cannot process the "
+          ++ cn
+          ++ " because benchmarks are not "
+          ++ "enabled. Re-run configure with the flag --enable-benchmarks"
+      formatReason cn (DisabledAllButOne cn') =
+        "Cannot process the "
+          ++ cn
+          ++ " because this package was "
+          ++ "configured only to build "
+          ++ cn'
+          ++ ". Re-run configure "
+          ++ "with the argument "
+          ++ cn
