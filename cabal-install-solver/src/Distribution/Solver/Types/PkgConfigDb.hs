@@ -70,7 +70,8 @@ readPkgConfigDb verbosity progdb = handle ioErrorHandler $ do
       Just (pkgConfig, _) -> do
         -- To prevent malformed Unicode in the descriptions from crashing cabal,
         -- read without interpreting any encoding first. (#9608)
-        pkgList <- LBS.split 10 <$> getProgramInvocationLBS verbosity (programInvocation pkgConfig ["--list-all"])
+        pkgList <- LBS.split (fromIntegral (ord '\n')) <$>
+                     getProgramInvocationLBS verbosity (programInvocation pkgConfig ["--list-all"])
         -- The output of @pkg-config --list-all@ also includes a description
         -- for each package, which we do not need.
         let pkgNamesLBS = map (LBS.takeWhile (not . isSpace . chr . fromIntegral)) pkgList
