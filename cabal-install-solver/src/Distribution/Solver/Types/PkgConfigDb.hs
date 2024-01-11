@@ -23,15 +23,15 @@ module Distribution.Solver.Types.PkgConfigDb
 import Distribution.Solver.Compat.Prelude
 import Prelude ()
 
-import           Control.Exception    (handle)
-import           Control.Monad        (mapM)
-import           Data.ByteString      (ByteString)
-import qualified Data.ByteString.Lazy as LBS
-import qualified Data.Map             as M
-import qualified Data.Text            as T
-import qualified Data.Text.Encoding   as T
+import           Control.Exception        (handle)
+import           Control.Monad            (mapM)
+import           Data.ByteString          (ByteString)
+import qualified Data.ByteString.Lazy     as LBS
+import qualified Data.Map                 as M
+import qualified Data.Text                as T
+import qualified Data.Text.Encoding       as T
 import qualified Data.Text.Encoding.Error as T
-import           System.FilePath      (splitSearchPath)
+import           System.FilePath          (splitSearchPath)
 
 import Distribution.Compat.Environment          (lookupEnv)
 import Distribution.Package                     (PkgconfigName, mkPkgconfigName)
