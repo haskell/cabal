@@ -124,4 +124,22 @@ jobs:
       - uses: actions/checkout@v4
       - name: Are buildinfo docs up to date?
         run: make doc/buildinfo-fields-reference.rst
+  release-project:
+    name: Check Release Project
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set PATH
+        run: |
+          echo "$HOME/.cabal/bin" >> $GITHUB_PATH
+      - name: ghcup
+        run: |
+          ghcup --version
+          ghcup config set cache true
+          ghcup install ghc --set recommended
+          ghcup install cabal --set latest
+      - name: Update Hackage index
+        run: cabal v2-update
+      - uses: actions/checkout@v4
+      - name: Check release project
+        run: cabal build all --enable-tests --enable-benchmarks --dry-run --project-file=cabal.project.release --index-state="hackage.haskell.org HEAD"
 
