@@ -25,10 +25,12 @@ import Prelude ()
 
 import           Control.Exception    (handle)
 import           Control.Monad        (mapM)
+import           Data.ByteString      (ByteString)
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.Map             as M
 import qualified Data.Text            as T
 import qualified Data.Text.Encoding   as T
+import qualified Data.Text.Encoding.Error as T
 import           System.FilePath      (splitSearchPath)
 
 import Distribution.Compat.Environment          (lookupEnv)
@@ -84,7 +86,7 @@ readPkgConfigDb verbosity progdb = handle ioErrorHandler $ do
               . map (\bsname ->
                        let sbsname = LBS.toStrict bsname
                        in case T.decodeUtf8' sbsname of
-                            Left _ -> Left (T.unpack (T.decodeUtf8Lenient sbsname))
+                            Left _ -> Left (T.unpack (decodeUtf8LenientCompat sbsname))
                             Right name -> Right (T.unpack name))
               -- The output of @pkg-config --list-all@ also includes a
               -- description for each package, which we do not need.
@@ -134,6 +136,12 @@ readPkgConfigDb verbosity progdb = handle ioErrorHandler $ do
 
     isAsciiSpace :: Word8 -> Bool
     isAsciiSpace c = c `elem` map (fromIntegral . ord) " \t"
+
+    -- The decodeUtf8Lenient function is defined starting with text-2.0.1; this
+    -- function simply reimplements it. When the minimum supported GHC version
+    -- is >= 9.4, switch to decodeUtf8Lenient.
+    decodeUtf8LenientCompat :: ByteString -> T.Text
+    decodeUtf8LenientCompat = T.decodeUtf8With T.lenientDecode
 
 -- | Create a `PkgConfigDb` from a list of @(packageName, version)@ pairs.
 pkgConfigDbFromList :: [(String, String)] -> PkgConfigDb
