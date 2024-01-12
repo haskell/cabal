@@ -21,7 +21,7 @@ https://github.com/haskell/cabal.
 Ways to get the `cabal-install` binary
 --------------------------------
 
-1. _GHCup (**preferred**)_: get GHCup using [the directions on its website](https://www.haskell.org/ghcup/) and run:
+1. _GHCup_ (**preferred**): get GHCup using [the directions on its website](https://www.haskell.org/ghcup/) and run:
 
     ```
     ghcup install --set cabal latest
