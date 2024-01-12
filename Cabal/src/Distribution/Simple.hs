@@ -576,14 +576,14 @@ simpleUserHooks =
 --
 -- * 'postConf' runs @.\/configure@, if present.
 --
--- * the pre-hooks 'preBuild', 'preClean', 'preCopy', 'preInst',
---   'preReg' and 'preUnreg' read additional build information from
+-- * the pre-hooks, except for pre-conf, read additional build information from
 --   /package/@.buildinfo@, if present.
 --
 -- Thus @configure@ can use local system information to generate
 -- /package/@.buildinfo@ and possibly other files.
 
 autoconfUserHooks :: UserHooks
+<<<<<<< HEAD
 autoconfUserHooks
     = simpleUserHooks
       {
@@ -608,6 +608,45 @@ autoconfUserHooks
                      then runConfigureScript verbosity
                             flags lbi
                      else die' verbosity "configure script not found."
+=======
+autoconfUserHooks =
+  simpleUserHooks
+    { postConf = defaultPostConf
+    , preBuild = readHookWithArgs buildVerbosity buildDistPref
+    , preRepl = readHookWithArgs replVerbosity replDistPref
+    , preCopy = readHookWithArgs copyVerbosity copyDistPref
+    , preClean = readHook cleanVerbosity cleanDistPref
+    , preInst = readHook installVerbosity installDistPref
+    , preHscolour = readHook hscolourVerbosity hscolourDistPref
+    , preHaddock = readHookWithArgs haddockVerbosity haddockDistPref
+    , preReg = readHook regVerbosity regDistPref
+    , preUnreg = readHook regVerbosity regDistPref
+    , preTest = readHookWithArgs testVerbosity testDistPref
+    , preBench = readHookWithArgs benchmarkVerbosity benchmarkDistPref
+    }
+  where
+    defaultPostConf
+      :: Args
+      -> ConfigFlags
+      -> PackageDescription
+      -> LocalBuildInfo
+      -> IO ()
+    defaultPostConf args flags pkg_descr lbi =
+      do
+        let verbosity = fromFlag (configVerbosity flags)
+            baseDir lbi' =
+              fromMaybe
+                ""
+                (takeDirectory <$> cabalFilePath lbi')
+        confExists <- doesFileExist $ (baseDir lbi) </> "configure"
+        if confExists
+          then
+            runConfigureScript
+              verbosity
+              flags
+              lbi
+          else dieWithException verbosity ConfigureScriptNotFound
+>>>>>>> ee1e6b81c (Account for .buildinfo in repl when build-type: Configure (#9440))
 
                    pbi <- getHookedBuildInfo verbosity (buildDir lbi)
                    sanityCheckHookedBuildInfo verbosity pkg_descr pbi
