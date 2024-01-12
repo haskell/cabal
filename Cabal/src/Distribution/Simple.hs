@@ -576,8 +576,7 @@ simpleUserHooks =
 --
 -- * 'postConf' runs @.\/configure@, if present.
 --
--- * the pre-hooks 'preBuild', 'preClean', 'preCopy', 'preInst',
---   'preReg' and 'preUnreg' read additional build information from
+-- * the pre-hooks, except for pre-conf, read additional build information from
 --   /package/@.buildinfo@, if present.
 --
 -- Thus @configure@ can use local system information to generate
@@ -588,14 +587,17 @@ autoconfUserHooks
     = simpleUserHooks
       {
        postConf    = defaultPostConf,
-       preBuild    = readHookWithArgs buildVerbosity buildDistPref, -- buildCabalFilePath,
+       preBuild = readHookWithArgs buildVerbosity buildDistPref,
+       preRepl = readHookWithArgs replVerbosity replDistPref,
        preCopy     = readHookWithArgs copyVerbosity copyDistPref,
        preClean    = readHook cleanVerbosity cleanDistPref,
        preInst     = readHook installVerbosity installDistPref,
        preHscolour = readHook hscolourVerbosity hscolourDistPref,
        preHaddock  = readHookWithArgs haddockVerbosity haddockDistPref,
        preReg      = readHook regVerbosity regDistPref,
-       preUnreg    = readHook regVerbosity regDistPref
+       preUnreg    = readHook regVerbosity regDistPref,
+       preTest     = readHookWithArgs testVerbosity testDistPref,
+       preBench    = readHookWithArgs benchmarkVerbosity benchmarkDistPref
       }
     where defaultPostConf :: Args -> ConfigFlags -> PackageDescription
                           -> LocalBuildInfo -> IO ()
