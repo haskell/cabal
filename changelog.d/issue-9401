@@ -1,0 +1,11 @@
+synopsis: Account for .buildinfo in repl, test, and bench
+packages: Cabal
+prs: #9440
+issues: #9401
+
+description: {
+
+Generated <project>.buildinfo is now respected in cabal repl, cabal test and cabal bench.
+
+}
+
