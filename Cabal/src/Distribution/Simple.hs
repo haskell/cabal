@@ -583,19 +583,21 @@ simpleUserHooks =
 -- /package/@.buildinfo@ and possibly other files.
 
 autoconfUserHooks :: UserHooks
-<<<<<<< HEAD
 autoconfUserHooks
     = simpleUserHooks
       {
        postConf    = defaultPostConf,
-       preBuild    = readHookWithArgs buildVerbosity buildDistPref, -- buildCabalFilePath,
+       preBuild = readHookWithArgs buildVerbosity buildDistPref,
+       preRepl = readHookWithArgs replVerbosity replDistPref,
        preCopy     = readHookWithArgs copyVerbosity copyDistPref,
        preClean    = readHook cleanVerbosity cleanDistPref,
        preInst     = readHook installVerbosity installDistPref,
        preHscolour = readHook hscolourVerbosity hscolourDistPref,
        preHaddock  = readHookWithArgs haddockVerbosity haddockDistPref,
        preReg      = readHook regVerbosity regDistPref,
-       preUnreg    = readHook regVerbosity regDistPref
+       preUnreg    = readHook regVerbosity regDistPref,
+       preTest     = readHookWithArgs testVerbosity testDistPref,
+       preBench    = readHookWithArgs benchmarkVerbosity benchmarkDistPref
       }
     where defaultPostConf :: Args -> ConfigFlags -> PackageDescription
                           -> LocalBuildInfo -> IO ()
@@ -608,45 +610,6 @@ autoconfUserHooks
                      then runConfigureScript verbosity
                             flags lbi
                      else die' verbosity "configure script not found."
-=======
-autoconfUserHooks =
-  simpleUserHooks
-    { postConf = defaultPostConf
-    , preBuild = readHookWithArgs buildVerbosity buildDistPref
-    , preRepl = readHookWithArgs replVerbosity replDistPref
-    , preCopy = readHookWithArgs copyVerbosity copyDistPref
-    , preClean = readHook cleanVerbosity cleanDistPref
-    , preInst = readHook installVerbosity installDistPref
-    , preHscolour = readHook hscolourVerbosity hscolourDistPref
-    , preHaddock = readHookWithArgs haddockVerbosity haddockDistPref
-    , preReg = readHook regVerbosity regDistPref
-    , preUnreg = readHook regVerbosity regDistPref
-    , preTest = readHookWithArgs testVerbosity testDistPref
-    , preBench = readHookWithArgs benchmarkVerbosity benchmarkDistPref
-    }
-  where
-    defaultPostConf
-      :: Args
-      -> ConfigFlags
-      -> PackageDescription
-      -> LocalBuildInfo
-      -> IO ()
-    defaultPostConf args flags pkg_descr lbi =
-      do
-        let verbosity = fromFlag (configVerbosity flags)
-            baseDir lbi' =
-              fromMaybe
-                ""
-                (takeDirectory <$> cabalFilePath lbi')
-        confExists <- doesFileExist $ (baseDir lbi) </> "configure"
-        if confExists
-          then
-            runConfigureScript
-              verbosity
-              flags
-              lbi
-          else dieWithException verbosity ConfigureScriptNotFound
->>>>>>> ee1e6b81c (Account for .buildinfo in repl when build-type: Configure (#9440))
 
                    pbi <- getHookedBuildInfo verbosity (buildDir lbi)
                    sanityCheckHookedBuildInfo verbosity pkg_descr pbi
