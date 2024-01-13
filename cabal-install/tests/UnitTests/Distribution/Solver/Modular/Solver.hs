@@ -912,7 +912,31 @@ tests =
               msg = "rejecting: other-package-2.0.0/installed-AbCdEfGhIj0123456789"
            in mkTest db "show full installed package ABI hash (issue #5892)" ["my-package"] $
                 solverFailure (isInfixOf msg)
-      ]
+      , testGroup
+        "package versions abbreviation (issue #9559.)"
+        [ runTest $
+            let db =
+                  [ Right $ exAv "A" 1 []
+                  , Right $ exAv "A" 2 []
+                  , Right $ exAv "B" 1 [ExFix "A" 3]
+                  ]
+                rejecting = "rejecting: A-2.0.0"
+                skipping = "skipping: A-1.0.0"
+            in mkTest db "show skipping singleton" ["B"] $
+                  solverFailure (\msg -> rejecting `isInfixOf` msg && skipping `isInfixOf` msg)
+        , runTest $
+            let db =
+                  [ Right $ exAv "A" 1 []
+                  , Right $ exAv "A" 2 []
+                  , Right $ exAv "A" 3 []
+                  , Right $ exAv "B" 1 [ExFix "A" 4]
+                  ]
+                rejecting = "rejecting: A-3.0.0"
+                skipping = "skipping: A; 2.0.0, 1.0.0"
+            in mkTest db "show skipping versions list" ["B"] $
+                  solverFailure (\msg -> rejecting `isInfixOf` msg && skipping `isInfixOf` msg)
+        ]
+     ]
   ]
   where
     indep = independentGoals
