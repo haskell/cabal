@@ -14,7 +14,6 @@ module Distribution.Types.UnqualComponentName
 
 import Distribution.Compat.Prelude
 import Distribution.Utils.ShortText
-import Prelude as P (null)
 
 import Distribution.Parsec
 import Distribution.Pretty
@@ -111,28 +110,29 @@ unqualComponentNameToPackageName = mkPackageNameST . unUnqualComponentNameST
 -- (partial function).
 -- Useful in 'Semigroup' and similar instances.
 combineNames
-  :: a
+  :: (Monoid b, Eq b, Show b)
+  => a
   -> a
-  -> (a -> UnqualComponentName)
+  -> (a -> b)
   -> String
-  -> UnqualComponentName
+  -> b
 combineNames a b tacc tt
   -- One empty or the same.
-  | P.null unb
-      || una == unb =
+  | nb == mempty
+      || na == nb =
       na
-  | P.null una = nb
+  | na == mempty =
+      nb
   -- Both non-empty, different.
   | otherwise =
       error $
         "Ambiguous values for "
           ++ tt
           ++ " field: '"
-          ++ una
+          ++ show na
           ++ "' and '"
-          ++ unb
+          ++ show nb
           ++ "'"
   where
     (na, nb) = (tacc a, tacc b)
-    una = unUnqualComponentName na
-    unb = unUnqualComponentName nb
+{-# INLINEABLE combineNames #-}

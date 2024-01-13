@@ -41,7 +41,7 @@ instance Semigroup Executable where
   a <> b =
     Executable
       { exeName = combineNames a b exeName "executable"
-      , modulePath = combine modulePath
+      , modulePath = combineNames a b modulePath "modulePath"
       , exeScope = combine exeScope
       , buildInfo = combine buildInfo
       }

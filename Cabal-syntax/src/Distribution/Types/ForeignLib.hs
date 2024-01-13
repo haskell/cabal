@@ -28,6 +28,7 @@ import Distribution.Types.ForeignLibType
 import Distribution.Types.UnqualComponentName
 import Distribution.Version
 
+import Data.Monoid
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
 import qualified Text.Read as Read
@@ -144,13 +145,14 @@ instance Semigroup ForeignLib where
       , foreignLibType = combine foreignLibType
       , foreignLibOptions = combine foreignLibOptions
       , foreignLibBuildInfo = combine foreignLibBuildInfo
-      , foreignLibVersionInfo = combine'' foreignLibVersionInfo
-      , foreignLibVersionLinux = combine'' foreignLibVersionLinux
+      , foreignLibVersionInfo = chooseLast foreignLibVersionInfo
+      , foreignLibVersionLinux = chooseLast foreignLibVersionLinux
       , foreignLibModDefFile = combine foreignLibModDefFile
       }
     where
       combine field = field a `mappend` field b
-      combine'' field = field b
+      -- chooseLast: the second field overrides the first, unless it is Nothing
+      chooseLast field = getLast (Last (field a) <> Last (field b))
 
 instance Monoid ForeignLib where
   mempty =
