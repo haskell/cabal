@@ -448,10 +448,10 @@ haddockProjectCommand =
     { commandName = "v2-haddock-project"
     , commandSynopsis = "Generate Haddocks HTML documentation for the cabal project."
     , commandDescription = Just $ \_ ->
-        "Require the programm haddock, version 2.26.\n"
+        "Requires the program haddock, version 2.26.\n"
     , commandNotes = Nothing
     , commandUsage =
-        usageAlternatives "haddocks" $
+        usageAlternatives "haddock-project" $
           [ "[FLAGS]"
           , "COMPONENTS [FLAGS]"
           ]
