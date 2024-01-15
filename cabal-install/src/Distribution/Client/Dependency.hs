@@ -14,6 +14,9 @@
 -- Portability :  portable
 --
 -- Top level interface to dependency resolution.
+{-# LANGUAGE InstanceSigs #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
+
 module Distribution.Client.Dependency
   ( -- * The main package dependency resolver
     DepResolverParams
@@ -59,6 +62,7 @@ module Distribution.Client.Dependency
   , setSolveExecutables
   , setGoalOrder
   , setSolverVerbosity
+  , setSolverOutputJson
   , removeLowerBounds
   , removeUpperBounds
   , addDefaultSetupDependencies
@@ -68,26 +72,40 @@ module Distribution.Client.Dependency
 
 import Distribution.Client.Compat.Prelude
 
+import Control.Exception
+  ( assert
+  )
+import Data.List
+  ( maximumBy
+  )
+import qualified Data.Map as Map
+import qualified Data.Set as Set
 import Distribution.Client.Dependency.Types
   ( PackagesPreferenceDefault (..)
   )
 import Distribution.Client.SolverInstallPlan (SolverInstallPlan)
 import qualified Distribution.Client.SolverInstallPlan as SolverInstallPlan
-import Distribution.Client.Types
+import Distribution.Client.Types.AllowNewer
   ( AllowNewer (..)
   , AllowOlder (..)
-  , PackageSpecifier (..)
   , RelaxDepMod (..)
   , RelaxDepScope (..)
   , RelaxDepSubject (..)
   , RelaxDeps (..)
   , RelaxedDep (..)
-  , SourcePackageDb (SourcePackageDb)
-  , UnresolvedPkgLoc
-  , UnresolvedSourcePackage
   , isRelaxDeps
+  )
+import Distribution.Client.Types.PackageLocation
+  ( UnresolvedPkgLoc
+  , UnresolvedSourcePackage
+  )
+import Distribution.Client.Types.PackageSpecifier
+  ( PackageSpecifier (..)
   , pkgSpecifierConstraints
   , pkgSpecifierTarget
+  )
+import Distribution.Client.Types.SourcePackageDb
+  ( SourcePackageDb (SourcePackageDb)
   )
 import Distribution.Client.Utils
   ( MergeResult (..)
@@ -122,43 +140,99 @@ import Distribution.Solver.Modular
   , SolverConfig (..)
   , modularResolver
   )
+import Distribution.Solver.Modular.Message (renderSummarizedMessage)
+import Distribution.Solver.Types.ComponentDeps (ComponentDeps)
+import qualified Distribution.Solver.Types.ComponentDeps as CD
+import Distribution.Solver.Types.ConstraintSource
+  ( ConstraintSource
+      ( ConstraintSetupCabalMaxVersion
+      , ConstraintSetupCabalMinVersion
+      , ConstraintSourceNonReinstallablePackage
+      )
+  , showConstraintSource
+  )
+import Distribution.Solver.Types.DependencyResolver
+  ( DependencyResolver
+  )
+import Distribution.Solver.Types.InstalledPreference as Preference
+  ( InstalledPreference (..)
+  )
+import Distribution.Solver.Types.LabeledPackageConstraint
+  ( LabeledPackageConstraint (..)
+  , unlabelPackageConstraint
+  )
+import Distribution.Solver.Types.OptionalStanza
+  ( OptionalStanza
+  , enableStanzas
+  )
+import Distribution.Solver.Types.PackageConstraint
+  ( ConstraintScope (ScopeAnyQualifier, ScopeAnySetupQualifier)
+  , PackageConstraint (..)
+  , PackageProperty (..)
+  , scopeToPackageName
+  , scopeToplevel
+  , showPackageConstraint
+  )
+import qualified Distribution.Solver.Types.PackageIndex as PackageIndex
+import Distribution.Solver.Types.PackagePath (QPN)
+import Distribution.Solver.Types.PackagePreferences
+  ( PackagePreferences (..)
+  )
+import Distribution.Solver.Types.PkgConfigDb (PkgConfigDb)
+import Distribution.Solver.Types.Progress
+    ( SummarizedMessage(..),
+      Progress(..),
+      foldProgress,
+      Entry(..),
+      EntryMessage(..) )
+import Distribution.Solver.Types.ResolverPackage
+  ( ResolverPackage (Configured)
+  )
+import Distribution.Solver.Types.Settings
+  ( AllowBootLibInstalls (..)
+  , AvoidReinstalls (..)
+  , CountConflicts (..)
+  , EnableBackjumping (..)
+  , FineGrainedConflicts (..)
+  , IndependentGoals (..)
+  , MinimizeConflictSet (..)
+  , OnlyConstrained (OnlyConstrainedNone)
+  , ReorderGoals (..)
+  , ShadowPkgs (..)
+  , SolveExecutables (..)
+  , StrongFlags (..)
+  )
+import Distribution.Solver.Types.SolverId (SolverId (solverSrcId))
+import Distribution.Solver.Types.SolverPackage
+  ( SolverPackage (SolverPackage)
+  )
+import Distribution.Solver.Types.SourcePackage
+  ( SourcePackage (srcpkgDescription)
+  )
+import Distribution.Solver.Types.Variable (Variable)
 import Distribution.System
   ( Platform
   )
-import Distribution.Types.Dependency
+import Distribution.Types.Dependency (Dependency (..), mainLibSet)
 import Distribution.Verbosity
   ( normal
   )
 import Distribution.Version
-
-import Distribution.Solver.Types.ComponentDeps (ComponentDeps)
-import qualified Distribution.Solver.Types.ComponentDeps as CD
-import Distribution.Solver.Types.ConstraintSource
-import Distribution.Solver.Types.DependencyResolver
-import Distribution.Solver.Types.InstalledPreference as Preference
-import Distribution.Solver.Types.LabeledPackageConstraint
-import Distribution.Solver.Types.OptionalStanza
-import Distribution.Solver.Types.PackageConstraint
-import qualified Distribution.Solver.Types.PackageIndex as PackageIndex
-import Distribution.Solver.Types.PackagePath
-import Distribution.Solver.Types.PackagePreferences
-import Distribution.Solver.Types.PkgConfigDb (PkgConfigDb)
-import Distribution.Solver.Types.Progress
-import Distribution.Solver.Types.ResolverPackage
-import Distribution.Solver.Types.Settings
-import Distribution.Solver.Types.SolverId
-import Distribution.Solver.Types.SolverPackage
-import Distribution.Solver.Types.SourcePackage
-import Distribution.Solver.Types.Variable
-
-import Control.Exception
-  ( assert
+  ( Version
+  , VersionRange
+  , anyVersion
+  , earlierVersion
+  , mkVersion
+  , orLaterVersion
+  , removeLowerBound
+  , removeUpperBound
+  , simplifyVersionRange
+  , transformCaretLower
+  , transformCaretUpper
+  , withinRange
   )
-import Data.List
-  ( maximumBy
-  )
-import qualified Data.Map as Map
-import qualified Data.Set as Set
+import Distribution.Client.Utils.Json
+    ( encodeToString, ToJSON(..), (.=), object, Value(String) )
 
 -- ------------------------------------------------------------
 
@@ -199,6 +273,7 @@ data DepResolverParams = DepResolverParams
   , depResolverGoalOrder :: Maybe (Variable QPN -> Variable QPN -> Ordering)
   -- ^ Function to override the solver's goal-ordering heuristics.
   , depResolverVerbosity :: Verbosity
+  , depResolverOutputJson :: Bool
   }
 
 showDepResolverParams :: DepResolverParams -> String
@@ -244,6 +319,8 @@ showDepResolverParams p =
     showLabeledConstraint :: LabeledPackageConstraint -> String
     showLabeledConstraint (LabeledPackageConstraint pc src) =
       showPackageConstraint pc ++ " (" ++ showConstraintSource src ++ ")"
+
+
 
 -- | A package selection preference for a particular package.
 --
@@ -296,6 +373,7 @@ basicDepResolverParams installedPkgIndex sourcePkgIndex =
     , depResolverSolveExecutables = SolveExecutables True
     , depResolverGoalOrder = Nothing
     , depResolverVerbosity = normal
+    , depResolverOutputJson = False
     }
 
 addTargets
@@ -429,6 +507,12 @@ setSolverVerbosity :: Verbosity -> DepResolverParams -> DepResolverParams
 setSolverVerbosity verbosity params =
   params
     { depResolverVerbosity = verbosity
+    }
+
+setSolverOutputJson :: Bool -> DepResolverParams -> DepResolverParams
+setSolverOutputJson outputJson params =
+  params
+    { depResolverOutputJson = outputJson
     }
 
 -- | Some packages are specific to a given compiler version and should never be
@@ -769,32 +853,33 @@ resolveDependencies
 resolveDependencies platform comp pkgConfigDB params =
   Step (showDepResolverParams finalparams) $
     fmap (validateSolverResult platform comp indGoals) $
-      runSolver
-        ( SolverConfig
-            reordGoals
-            cntConflicts
-            fineGrained
-            minimize
-            indGoals
-            noReinstalls
-            shadowing
-            strFlags
-            onlyConstrained_
-            maxBkjumps
-            enableBj
-            solveExes
-            order
-            verbosity
-            (PruneAfterFirstSuccess False)
-        )
-        platform
-        comp
-        installedPkgIndex
-        sourcePkgIndex
-        pkgConfigDB
-        preferences
-        constraints
-        targets
+      formatProgress $
+        runSolver
+          ( SolverConfig
+              reordGoals
+              cntConflicts
+              fineGrained
+              minimize
+              indGoals
+              noReinstalls
+              shadowing
+              strFlags
+              onlyConstrained_
+              maxBkjumps
+              enableBj
+              solveExes
+              order
+              verbosity
+              (PruneAfterFirstSuccess False)
+          )
+          platform
+          comp
+          installedPkgIndex
+          sourcePkgIndex
+          pkgConfigDB
+          preferences
+          constraints
+          targets
   where
     finalparams@( DepResolverParams
                     targets
@@ -818,10 +903,16 @@ resolveDependencies platform comp pkgConfigDB params =
                     solveExes
                     order
                     verbosity
+                    outputJson
                   ) =
         if asBool (depResolverAllowBootLibInstalls params)
           then params
           else dontInstallNonReinstallablePackages params
+
+    formatProgress :: Progress SummarizedMessage String a -> Progress String String a
+    formatProgress p = foldProgress (\x xs -> Step (formatter x) xs) Fail Done p
+      where
+        formatter = if outputJson then encodeToString else renderSummarizedMessage
 
     preferences :: PackageName -> PackagePreferences
     preferences = interpretPackagesPreference targets defpref prefs
@@ -1139,6 +1230,7 @@ resolveWithoutDependencies
       _onlyConstrained
       _order
       _verbosity
+      _outputJson
     ) =
     collectEithers $ map selectPackage (Set.toList targets)
     where
@@ -1215,3 +1307,33 @@ instance Show ResolveNoDepsError where
       ++ prettyShow name
       ++ " that satisfies "
       ++ prettyShow (simplifyVersionRange ver)
+
+-------------------------------------------------------------------------------
+-- Orphans
+-------------------------------------------------------------------------------
+
+instance ToJSON SummarizedMessage where
+  toJSON :: SummarizedMessage -> Value
+  toJSON (SummarizedMessage x) = object ["status" .= String "success", "message" .= toJSON x]
+  toJSON (ErrorMessage x) = object ["status" .= String "failure", "message" .= String x]
+
+instance ToJSON EntryMessage where
+  toJSON :: EntryMessage -> Value
+  toJSON (AtLevel _ x) = toJSON x
+
+instance ToJSON Entry where
+  toJSON :: Entry -> Value
+  toJSON (LogPackageGoal _ _) = error "To be implemented..."
+  toJSON (LogRejectF _ _ _ _) = error "To be implemented..."
+  toJSON (LogRejectS _ _ _ _) = error "TODO"
+  toJSON (LogSkipping _) = error "To be implemented..."
+  toJSON (LogTryingF _ _) = error "To be implemented..."
+  toJSON (LogTryingP _ _ _) = error "To be implemented..."
+  toJSON (LogTryingS _ _) = error "To be implemented..."
+  toJSON (LogRejectMany _ _ _ _) = error "To be implemented..."
+  toJSON (LogSkipMany _ _ _) = error "To be implemented..."
+  toJSON (LogUnknownPackage _ _) = error "To be implemented..."
+  toJSON (LogSuccessMsg) = error "To be implemented..."
+  toJSON (LogFailureMsg _ _) = error "To be implemented..."
+
+  -- TODO: write a test that assert that: toJSON fromJson == fromJSON toJson == id
