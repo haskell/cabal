@@ -1,10 +1,22 @@
 module Distribution.Solver.Types.Progress
     ( Progress(..)
     , foldProgress
+    , Message(..)
+    , Entry(..)
+    , EntryMsg(..)
+    , SummarizedMessage(..)
     ) where
 
 import Prelude ()
 import Distribution.Solver.Compat.Prelude hiding (fail)
+
+import Distribution.Solver.Modular.Tree
+    ( FailReason(..), POption(..) )
+import Distribution.Solver.Types.PackagePath ( QPN )
+import Distribution.Solver.Modular.Flag ( QSN, QFN )
+import Distribution.Solver.Modular.Dependency
+    ( ConflictSet, QGoalReason, GoalReason, Goal )
+import qualified Distribution.Solver.Modular.ConflictSet as CS
 
 -- | A type to represent the unfolding of an expensive long running
 -- calculation that may fail. We may get intermediate steps before the final
@@ -47,3 +59,32 @@ instance Applicative (Progress step fail) where
 instance Monoid fail => Alternative (Progress step fail) where
   empty   = Fail mempty
   p <|> q = foldProgress Step (const q) Done p
+
+data Message =
+    Enter           -- ^ increase indentation level
+  | Leave           -- ^ decrease indentation level
+  | TryP QPN POption
+  | TryF QFN Bool
+  | TryS QSN Bool
+  | Next (Goal QPN)
+  | Skip (Set CS.Conflict)
+  | Success
+  | Failure ConflictSet FailReason
+
+data Entry
+  = LogPackageGoal QPN QGoalReason
+  | LogRejectF QFN Bool ConflictSet FailReason
+  | LogRejectS QSN Bool ConflictSet FailReason
+  | LogSkipping (Set CS.Conflict)
+  | LogTryingF QFN Bool
+  | LogTryingP QPN POption (Maybe (GoalReason QPN))
+  | LogTryingS QSN Bool
+  | LogRejectMany QPN [POption] ConflictSet FailReason
+  | LogSkipMany QPN [POption] (Set CS.Conflict)
+  | LogUnknownPackage QPN (GoalReason QPN)
+  | LogSuccessMsg
+  | LogFailureMsg ConflictSet FailReason
+
+data EntryMsg = AtLevel Int Entry
+
+data SummarizedMessage = SummarizedMsg EntryMsg | ErrorMsg String
