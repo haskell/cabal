@@ -94,6 +94,7 @@ doctest :
 	$(DOCTEST) Cabal-syntax
 	$(DOCTEST) Cabal-described
 	$(DOCTEST) --build-depends=QuickCheck Cabal
+	$(DOCTEST) cabal-install-solver
 	$(DOCTEST) cabal-install
 
 # This is not run as part of validate.sh (we need hackage-security, which is tricky to get).

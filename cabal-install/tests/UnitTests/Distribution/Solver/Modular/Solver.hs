@@ -615,7 +615,7 @@ tests =
                 , "[__2] unknown package: unknown2 (dependency of B)"
                 , "[__2] fail (backjumping, conflict set: B, unknown2)"
                 , "[__1] fail (backjumping, conflict set: A, B, unknown1, unknown2)"
-                , "[__0] skipping: A-3.0.0, A-2.0.0 (has the same characteristics that "
+                , "[__0] skipping: A; 3.0.0, 2.0.0 (has the same characteristics that "
                     ++ "caused the previous version to fail: depends on 'B')"
                 , "[__0] trying: A-1.0.0"
                 , "[__1] done"
@@ -644,7 +644,7 @@ tests =
                 , "[__1] next goal: B (dependency of A)"
                 , "[__1] rejecting: B-11.0.0 (conflict: A => B==14.0.0)"
                 , "[__1] fail (backjumping, conflict set: A, B)"
-                , "[__0] skipping: A-3.0.0, A-2.0.0 (has the same characteristics that "
+                , "[__0] skipping: A; 3.0.0, 2.0.0 (has the same characteristics that "
                     ++ "caused the previous version to fail: depends on 'B' but excludes "
                     ++ "version 11.0.0)"
                 , "[__0] trying: A-1.0.0"
@@ -769,7 +769,7 @@ tests =
                 , "[__2] next goal: C (dependency of A)"
                 , "[__2] rejecting: C-2.0.0 (conflict: A => C==1.0.0)"
                 , "[__2] fail (backjumping, conflict set: A, C)"
-                , "[__0] skipping: A-3.0.0, A-2.0.0 (has the same characteristics that caused the "
+                , "[__0] skipping: A; 3.0.0, 2.0.0 (has the same characteristics that caused the "
                     ++ "previous version to fail: depends on 'C' but excludes version 2.0.0)"
                 , "[__0] trying: A-1.0.0"
                 , "[__1] next goal: C (dependency of A)"
@@ -912,6 +912,51 @@ tests =
               msg = "rejecting: other-package-2.0.0/installed-AbCdEfGhIj0123456789"
            in mkTest db "show full installed package ABI hash (issue #5892)" ["my-package"] $
                 solverFailure (isInfixOf msg)
+      , testGroup
+          "package versions abbreviation (issue #9559.)"
+          [ runTest $
+              let db =
+                    [ Right $ exAv "A" 1 []
+                    , Right $ exAv "A" 2 []
+                    , Right $ exAv "B" 1 [ExFix "A" 3]
+                    ]
+                  rejecting = "rejecting: A-2.0.0"
+                  skipping = "skipping: A-1.0.0"
+               in mkTest db "show skipping singleton" ["B"] $
+                    solverFailure (\msg -> rejecting `isInfixOf` msg && skipping `isInfixOf` msg)
+          , runTest $
+              let db =
+                    [ Left $ exInst "A" 1 "A-1.0.0" []
+                    , Left $ exInst "A" 2 "A-2.0.0" []
+                    , Right $ exAv "B" 1 [ExFix "A" 3]
+                    ]
+                  rejecting = "rejecting: A-2.0.0/installed-2.0.0"
+                  skipping = "skipping: A-1.0.0/installed-1.0.0"
+               in mkTest db "show skipping singleton, installed" ["B"] $
+                    solverFailure (\msg -> rejecting `isInfixOf` msg && skipping `isInfixOf` msg)
+          , runTest $
+              let db =
+                    [ Right $ exAv "A" 1 []
+                    , Right $ exAv "A" 2 []
+                    , Right $ exAv "A" 3 []
+                    , Right $ exAv "B" 1 [ExFix "A" 4]
+                    ]
+                  rejecting = "rejecting: A-3.0.0"
+                  skipping = "skipping: A; 2.0.0, 1.0.0"
+               in mkTest db "show skipping versions list" ["B"] $
+                    solverFailure (\msg -> rejecting `isInfixOf` msg && skipping `isInfixOf` msg)
+          , runTest $
+              let db =
+                    [ Left $ exInst "A" 1 "A-1.0.0" []
+                    , Left $ exInst "A" 2 "A-2.0.0" []
+                    , Left $ exInst "A" 3 "A-3.0.0" []
+                    , Right $ exAv "B" 1 [ExFix "A" 4]
+                    ]
+                  rejecting = "rejecting: A-3.0.0/installed-3.0.0"
+                  skipping = "skipping: A-2.0.0/installed-2.0.0, A-1.0.0/installed-1.0.0"
+               in mkTest db "show skipping versions list, installed" ["B"] $
+                    solverFailure (\msg -> rejecting `isInfixOf` msg && skipping `isInfixOf` msg)
+          ]
       ]
   ]
   where
