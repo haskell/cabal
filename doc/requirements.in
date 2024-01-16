@@ -4,5 +4,14 @@ sphinx-jsonschema
 sphinxnotes-strike
 # Pygments>=2.7.4 suggested by CVE-2021-20270 CVE-2021-27291
 Pygments >= 2.7.4
+<<<<<<< HEAD
 # Suggested by dependabot in https://github.com/haskell/cabal/pull/8807
 certifi >= 2022.12.7
+=======
+# CVE-2023-37920
+certifi >= 2023.07.22
+# CVE-2023-45803
+urllib3 >= 2.0.7
+# CVE-2024-22195
+jinja2 == 3.1.3
+>>>>>>> f1908283c (update jinja2 per CVE-2024-22195)
