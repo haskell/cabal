@@ -286,10 +286,11 @@ checkGenericPackageDescription
               . pnPackageId
               . ccNames
           )
+
       let ads =
             maybe [] ((: []) . extractAssocDeps pName) condLibrary_
               ++ map (uncurry extractAssocDeps) condSubLibraries_
-              ++ [Left (defaultPackageBounds packageDescription_)]
+              ++ [Left $ defaultPackageBounds packageDescription_]
 
       case condLibrary_ of
         Just cl ->
@@ -519,7 +520,15 @@ checkPackageDescription
       partitionDeps
         []
         [mkUnqualComponentName "base"]
-        (mergeDependencies defaultPackageBounds_)
+        ( mergeDependencies $
+            catMaybes $
+              map
+                ( \x -> case x of
+                    DefaultQualBound{} -> Nothing
+                    DefaultUnqualBound p ver -> Just $ Dependency p ver mainLibSet
+                )
+                defaultPackageBounds_
+        )
     let ick = const (PackageDistInexcusable BaseNoUpperBounds)
         rck = PackageDistSuspiciousWarn . MissingUpperBounds CETDefaultPackageBounds
     checkPVP ick ids

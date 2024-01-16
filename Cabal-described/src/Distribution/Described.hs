@@ -76,6 +76,7 @@ import Distribution.Types.AbiDependency            (AbiDependency)
 import Distribution.Types.AbiHash                  (AbiHash)
 import Distribution.Types.BenchmarkType            (BenchmarkType)
 import Distribution.Types.BuildType                (BuildType)
+import Distribution.Types.DefaultBound             (DefaultBound)
 import Distribution.Types.Dependency               (Dependency)
 import Distribution.Types.ExecutableScope          (ExecutableScope)
 import Distribution.Types.ExeDependency            (ExeDependency)
@@ -369,6 +370,21 @@ instance Described CompilerId where
         <> fromString "-"
         <> describe (Proxy :: Proxy Version)
 
+instance Described DefaultBound where
+    describe _ = REUnion
+        [ REAppend
+          [ RENamed "pkg-name" (describe (Proxy :: Proxy PackageName))
+          , reChar ':' <> reUnqualComponent
+          , RESpaces <> vr
+          ]
+        , REAppend
+          [ RENamed "pkg-name" (describe (Proxy :: Proxy PackageName))
+          , RESpaces <> vr
+          ]
+        ]
+      where
+        vr = RENamed "version-range" (describe (Proxy :: Proxy VersionRange))
+
 instance Described Dependency where
     describe _ = REAppend
         [ RENamed "pkg-name" (describe (Proxy :: Proxy PackageName))
@@ -591,4 +607,4 @@ instance Described CompatLicenseFile where
     describe _ = describe ([] :: [Token])
 
 instance Described CompatFilePath where
-    describe _ = describe ([] :: [Token]) 
+    describe _ = describe ([] :: [Token])

@@ -75,6 +75,7 @@ import Distribution.Types.BuildType
 import Distribution.Types.Component
 import Distribution.Types.ComponentName
 import Distribution.Types.ComponentRequestedSpec
+import Distribution.Types.DefaultBound
 import Distribution.Types.Dependency
 import Distribution.Types.HookedBuildInfo
 import Distribution.Types.PackageId
@@ -147,7 +148,7 @@ data PackageDescription = PackageDescription
   , extraTmpFiles :: [FilePath]
   , extraDocFiles :: [FilePath]
   , -- default constraints to override unversioned dependencies
-    defaultPackageBounds :: [Dependency]
+    defaultPackageBounds :: [DefaultBound]
   }
   deriving (Generic, Show, Read, Eq, Ord, Typeable, Data)
 

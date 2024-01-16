@@ -343,14 +343,14 @@ convCondTree flags dr pkg os arch cinfo pn fds comp getInfo solveExes@(SolveExec
                  , singleDep <- convLibDeps dr (alterDep dep) ]  -- unconditional package dependencies
               ++ L.map (\e -> D.Simple (LDep dr (Ext  e)) comp) (allExtensions bi) -- unconditional extension dependencies
               ++ L.map (\l -> D.Simple (LDep dr (Lang l)) comp) (allLanguages  bi) -- unconditional language dependencies
-              ++ L.map (\(PkgconfigDependency pkn vr) -> D.Simple (LDep dr (Pkg pkn vr)) comp) (pkgconfigDepends bi) -- unconditional pkg-config dependencies
+              ++ L.map ((\(PkgconfigDependency pkn vr) -> D.Simple (LDep dr (Pkg pkn vr)) comp) . alterPkgconfigDep) (pkgconfigDepends bi) -- unconditional pkg-config dependencies
               ++ concatMap (convBranch flags dr pkg os arch cinfo pn fds comp getInfo solveExes) branches
               -- build-tools dependencies
               -- NB: Only include these dependencies if SolveExecutables
               -- is True.  It might be false in the legacy solver
               -- codepath, in which case there won't be any record of
               -- an executable we need.
-              ++ [ D.Simple (convExeDep dr exeDep) comp
+              ++ [ D.Simple (convExeDep dr (alterExeDep exeDep)) comp
                  | solveExes'
                  , exeDep <- getAllToolDependencies pkg bi
                  , not $ isInternal pkg exeDep
@@ -364,9 +364,31 @@ convCondTree flags dr pkg os arch cinfo pn fds comp getInfo solveExes@(SolveExec
       if vorig == anyVersion
       then
         maybe x (\v -> Dependency name v ls) $
-        listToMaybe [ v2 | Dependency name2 v2 _ <- defaultPackageBounds pkg
+        listToMaybe [ v2 | DefaultUnqualBound name2 v2 <- defaultPackageBounds pkg
                          , name2 == name ]
       else x
+
+    -- apply default-package-bounds field of pkg to the actual declared
+    -- exe dependencies
+    alterExeDep x@(ExeDependency name c vorig) =
+      if vorig == anyVersion
+      then
+        maybe x (\v -> ExeDependency name c v) $
+        listToMaybe [ v2 | DefaultQualBound name2 comp2 v2 <- defaultPackageBounds pkg
+                         , name2 == name, c == comp2 ]
+      else x
+
+    -- apply default-package-bounds field of pkg to the actual declared
+    -- exe dependencies
+    alterPkgconfigDep x@(PkgconfigDependency name vorig) =
+      if vorig == PcAnyVersion
+      then
+        maybe x (\v -> PkgconfigDependency name v) $
+        listToMaybe [ versionRangeToPkgconfigVersionRange v2
+                    | DefaultUnqualBound name2 v2 <- defaultPackageBounds pkg
+                    , mkPkgconfigName (unPackageName name2) == name ]
+      else x
+
 
 data SimpleFlaggedDepKey qpn =
     SimpleFlaggedDepKey (PkgComponent qpn) Component

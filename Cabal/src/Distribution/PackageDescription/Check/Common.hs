@@ -54,7 +54,7 @@ checkCustomField (n, _) =
 
 -- Either a list of dependencies coming from @package-constraints@ or a library
 -- name / dependencies association list. Ultimately to be fed to PVP check.
-type AssocDep = Either [Dependency] (UnqualComponentName, [Dependency])
+type AssocDep = Either [DefaultBound] (UnqualComponentName, [Dependency])
 
 -- Convenience function to partition important dependencies by name. To
 -- be used together with checkPVP. Important: usually “base” or “Cabal”,
@@ -81,7 +81,20 @@ partitionDeps ads ns ds = do
     -- the names of such targets
     inNam = nub $ mapMaybe (either (const Nothing) (Just . fst)) fads :: [UnqualComponentName]
     -- the dependencies of such targets
-    inDep = concatMap (either id snd) fads :: [Dependency]
+    inDep =
+      concatMap
+        ( either
+            ( catMaybes
+                . map
+                  ( \x -> case x of
+                      DefaultUnqualBound name ver -> Just $ Dependency name ver mainLibSet
+                      DefaultQualBound{} -> Nothing
+                  )
+            )
+            snd
+        )
+        fads
+        :: [Dependency]
 
   -- We exclude from checks:
   -- 1. dependencies which are shared with main library / a

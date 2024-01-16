@@ -568,6 +568,15 @@ data-files
     .. math::
         \mathrm{commalist}\left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}]^c}}^+_{} \right\}
 
+default-package-bounds
+    * Monoidal field
+    * Available since ``cabal-version: 3.12``.
+    * Documentation of :pkg-field:`default-package-bounds`
+
+    .. math::
+        \mathrm{commalist}\left\{ \mathop{\mathit{pkg\text{-}name}}\mathop{\mathord{``}\mathtt{\text{:}}\mathord{"}}\mathop{\mathit{unqual\text{-}name}}\circ\mathop{\mathit{version\text{-}range}}\mid\mathop{\mathit{pkg\text{-}name}}\circ\mathop{\mathit{version\text{-}range}} \right\}
+
+
 description
     * Free text field
     * Documentation of :pkg-field:`description`

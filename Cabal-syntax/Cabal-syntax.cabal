@@ -133,6 +133,7 @@ library
     Distribution.Types.CondTree
     Distribution.Types.Condition
     Distribution.Types.ConfVar
+    Distribution.Types.DefaultBound
     Distribution.Types.Dependency
     Distribution.Types.DependencyMap
     Distribution.Types.ExeDependency

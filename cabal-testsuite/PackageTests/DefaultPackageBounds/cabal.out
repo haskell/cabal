@@ -1,31 +1,40 @@
 # cabal build
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
-In order, the following will be built:
+In order, the following would be built:
+ - bar-0.1.0.0 (exe:bar) (first run)
  - foo-0.1.0.0 (lib) (first run)
-Configuring library for foo-0.1.0.0...
-Preprocessing library for foo-0.1.0.0...
-Building library for foo-0.1.0.0...
 # cabal build
 Resolving dependencies...
 Error: [Cabal-7107]
 Could not resolve dependencies:
 [__0] trying: foo-0.1.0.0 (user goal)
-[__1] trying: foo:*test
-[__2] next goal: time (dependency of foo)
-[__2] rejecting: time-<VERSION>/installed-<HASH> (conflict: foo *test => time<0)
-[__2] fail (backjumping, conflict set: foo, time, foo:test)
-After searching the rest of the dependency tree exhaustively, these were the goals I've had most trouble fulfilling: foo (4), foo:test (3), time (2)
-# cabal check
-These warnings will likely cause trouble when distributing the package:
-Warning: No 'category' field.
-Warning: No 'maintainer' field.
-These warnings may cause trouble when distributing the package:
-Warning: library does not expose any modules
-Warning: On package-constraints, these packages miss upper bounds:
-- process
-Please add them. There is more information at https://pvp.haskell.org/
-The following errors will cause portability problems on other environments:
-Error: No 'synopsis' or 'description' field.
-Error: The 'license' field is missing or is NONE.
-Error: Hackage would reject this package.
+[__1] rejecting: foo:-build-depends-conflict (constraint from config file, command line flag, or user target requires opposite flag selection)
+[__1] trying: foo:+build-depends-conflict
+[__2] next goal: time (dependency of foo +/-build-depends-conflict)
+[__2] rejecting: time-<VERSION>/installed-<HASH> (conflict: foo +build-depends-conflict => time<0)
+[__2] fail (backjumping, conflict set: foo, time, foo:build-depends-conflict)
+After searching the rest of the dependency tree exhaustively, these were the goals I've had most trouble fulfilling: foo (4), foo:build-depends-conflict (3), time (2)
+# cabal build
+Resolving dependencies...
+Error: [Cabal-7107]
+Could not resolve dependencies:
+[__0] trying: foo-0.1.0.0 (user goal)
+[__1] rejecting: foo:-pkg-config-conflict (constraint from config file, command line flag, or user target requires opposite flag selection)
+[__1] rejecting: foo:+pkg-config-conflict (conflict: pkg-config package libpkgconf<0, not found in the pkg-config database)
+[__1] fail (backjumping, conflict set: foo, foo:pkg-config-conflict)
+After searching the rest of the dependency tree exhaustively, these were the goals I've had most trouble fulfilling: foo (3), foo:pkg-config-conflict (3)
+# cabal build
+Resolving dependencies...
+Error: [Cabal-7107]
+Could not resolve dependencies:
+[__0] trying: bar-0.1.0.0 (user goal)
+[__1] trying: foo-0.1.0.0 (user goal)
+[__2] rejecting: foo:-build-tool-conflict (constraint from config file, command line flag, or user target requires opposite flag selection)
+[__2] trying: foo:+build-tool-conflict
+[__3] next goal: foo:bar:exe.bar (dependency of foo +/-build-tool-conflict)
+[__3] rejecting: foo:bar:exe.bar~>bar-0.1.0.0 (conflict: foo +build-tool-conflict => foo:bar:exe.bar (exe bar)<0)
+[__3] rejecting: foo:bar:exe.bar-0.1.0.0 (multiple instances)
+[__3] fail (backjumping, conflict set: bar, foo, foo:bar:exe.bar, foo:build-tool-conflict)
+After searching the rest of the dependency tree exhaustively, these were the goals I've had most trouble fulfilling: foo (4), foo:bar:exe.bar (3), foo:build-tool-conflict (3), bar (2)
+Try running with --minimize-conflict-set to improve the error message.
