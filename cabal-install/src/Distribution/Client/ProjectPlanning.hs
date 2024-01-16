@@ -4303,6 +4303,7 @@ packageHashConfigInputs
 packageHashConfigInputs shared@ElaboratedSharedConfig{..} pkg =
   PackageHashConfigInputs
     { pkgHashCompilerId = compilerId pkgConfigCompiler
+    , pkgHashCompilerABI = compilerAbiTag pkgConfigCompiler
     , pkgHashPlatform = pkgConfigPlatform
     , pkgHashFlagAssignment = elabFlagAssignment
     , pkgHashConfigureScriptArgs = elabConfigureScriptArgs

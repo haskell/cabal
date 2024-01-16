@@ -82,7 +82,7 @@ module Distribution.Simple.GHC
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Control.Monad (forM_, msum)
+import Control.Monad (forM_)
 import Data.List (stripPrefix)
 import qualified Data.Map as Map
 import Distribution.CabalSpecVersion
