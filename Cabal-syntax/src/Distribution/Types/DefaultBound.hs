@@ -1,16 +1,17 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 
-module Distribution.Types.DefaultBound where
+module Distribution.Types.DefaultBound
+  ( DefaultBound (..)
+  , applyDefaultBoundsToDependency
+  , applyDefaultBoundsToExeDependency
+  ) where
 
 import Distribution.Compat.Prelude
 
 import Distribution.Types.Dependency
 import Distribution.Types.ExeDependency
 import Distribution.Types.PackageName
-import Distribution.Types.PkgconfigDependency
-import Distribution.Types.PkgconfigName
-import Distribution.Types.PkgconfigVersionRange
 import Distribution.Types.UnqualComponentName
 import Distribution.Types.VersionRange
 
@@ -19,29 +20,30 @@ import Distribution.Pretty
 
 import qualified Distribution.Compat.CharParsing as P
 
--- | Describes a default bound on a package, executable or pkg-config package.
+-- | Describes a default bound on a package, executable or pkg-config package,
+-- provided via the @default-package-bounds@ section in a cabal file.
 data DefaultBound
   = DefaultUnqualBound PackageName VersionRange
   | DefaultQualBound PackageName UnqualComponentName VersionRange
   deriving (Generic, Read, Show, Eq, Ord, Typeable, Data)
 
-applyDefaultBoundToDependency :: Dependency -> DefaultBound -> Dependency
-applyDefaultBoundToDependency dep@(Dependency pkg vorig l) (DefaultUnqualBound pkg' v)
-  | pkg == pkg' && isAnyVersion vorig = Dependency pkg v l
+applyDefaultBoundsToDependency :: Dependency -> [DefaultBound] -> Dependency
+applyDefaultBoundsToDependency dep@(Dependency pkg vorig l) defaultBounds
+  | isAnyVersion vorig =
+      maybe dep (\v -> Dependency pkg v l) $
+        listToMaybe
+          [ v | DefaultUnqualBound name v <- defaultBounds, name == pkg
+          ]
   | otherwise = dep
-applyDefaultBoundToDependency dep _ = dep
 
-applyDefaultBoundToExeDependency :: ExeDependency -> DefaultBound -> ExeDependency
-applyDefaultBoundToExeDependency dep@(ExeDependency pkg comp vorig) (DefaultQualBound pkg' comp' v)
-  | pkg == pkg' && comp == comp' && isAnyVersion vorig = ExeDependency pkg comp v
+applyDefaultBoundsToExeDependency :: ExeDependency -> [DefaultBound] -> ExeDependency
+applyDefaultBoundsToExeDependency dep@(ExeDependency pkg comp vorig) defaultBounds
+  | isAnyVersion vorig =
+      maybe dep (\v -> ExeDependency pkg comp v) $
+        listToMaybe
+          [ v | DefaultQualBound name comp2 v <- defaultBounds, name == pkg, comp == comp2
+          ]
   | otherwise = dep
-applyDefaultBoundToExeDependency dep _ = dep
-
-applyDefaultBoundToPkgconfigDependency :: PkgconfigDependency -> DefaultBound -> PkgconfigDependency
-applyDefaultBoundToPkgconfigDependency dep@(PkgconfigDependency pkg PcAnyVersion) (DefaultUnqualBound pkg' v)
-  | pkg == mkPkgconfigName (unPackageName pkg') = PkgconfigDependency pkg (versionRangeToPkgconfigVersionRange v)
-  | otherwise = dep
-applyDefaultBoundToPkgconfigDependency dep _ = dep
 
 instance Binary DefaultBound
 instance Structured DefaultBound
