@@ -1170,8 +1170,8 @@ cabal check
 (e.g.: if it is missing important fields like ``synopsis``, if it is using
 tricky GHC options, etc.).
 
-Specify a ``TARGET`` folder or run ``cabal check`` in the folder where
-your ``.cabal`` package file is.
+Specify a ``TARGET`` or run ``cabal check`` in the folder where your
+``.cabal`` package file is.
 
 .. option:: -i, --ignore=WARNING
 

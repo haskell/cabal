@@ -87,6 +87,7 @@ library
         Distribution.Client.Check
         Distribution.Client.CmdBench
         Distribution.Client.CmdBuild
+        Distribution.Client.CmdCheck
         Distribution.Client.CmdClean
         Distribution.Client.CmdConfigure
         Distribution.Client.CmdErrorMessages

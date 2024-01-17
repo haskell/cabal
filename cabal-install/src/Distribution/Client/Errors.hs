@@ -81,7 +81,6 @@ data CabalInstallException
   | UploadActionDocumentation
   | UploadActionOnlyArchives [FilePath]
   | FileNotFound FilePath
-  | CheckAction [String]
   | ReportAction [String]
   | InitAction
   | UserConfigAction FilePath
@@ -231,7 +230,6 @@ exceptionCodeCabalInstall e = case e of
   UploadActionDocumentation{} -> 7052
   UploadActionOnlyArchives{} -> 7053
   FileNotFound{} -> 7054
-  CheckAction{} -> 7055
   ReportAction{} -> 7056
   InitAction{} -> 7057
   UserConfigAction{} -> 7058
@@ -405,7 +403,6 @@ exceptionMessageCabalInstall e = case e of
     "the 'upload' command expects only .tar.gz archives: "
       ++ intercalate ", " otherFiles
   FileNotFound tarfile -> "file not found: " ++ tarfile
-  CheckAction extraArgs -> "'check' only takes one (optional) directory path argument: " ++ unwords extraArgs
   ReportAction extraArgs -> "'report' doesn't take any extra arguments: " ++ unwords extraArgs
   InitAction ->
     "'init' only takes a single, optional, extra "
