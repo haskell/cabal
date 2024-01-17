@@ -1,0 +1,9 @@
+synopsis: Warn about missing `default-language`
+packages: Cabal cabal-install
+prs: #9621
+issues: #9620
+description: {
+
+- `cabal check` will warn about missing `default-language` and not assume `Haskell 2010`.
+
+}

@@ -17,3 +17,4 @@ Executable TestPathsModule
         PackageInfo_PathsModule
         Paths_PathsModule
     build-depends: base
+    default-language: Haskell2010

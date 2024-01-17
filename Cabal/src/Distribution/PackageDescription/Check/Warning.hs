@@ -1158,7 +1158,7 @@ ppExplanation CVDefaultLanguage =
   "To use the 'default-language' field the package needs to specify "
     ++ "at least 'cabal-version: >= 1.10'."
 ppExplanation CVDefaultLanguageComponent =
-  "Packages using 'cabal-version: >= 1.10' and before 'cabal-version: 3.4' "
+  "Packages using 'cabal-version: >= 1.10' "
     ++ "must specify the 'default-language' field for each component (e.g. "
     ++ "Haskell98 or Haskell2010). If a component uses different languages "
     ++ "in different modules then list the other ones in the "

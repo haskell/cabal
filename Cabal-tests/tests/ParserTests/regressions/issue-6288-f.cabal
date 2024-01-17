@@ -11,3 +11,4 @@ maintainer:    Cabal Contributors
 
 library
   exposed-modules:  Foo
+  default-language: Haskell2010

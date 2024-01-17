@@ -12,3 +12,4 @@ executable my-executable
   other-modules:  Foo
   build-depends:  base
   hsc2hs-options: -DTEST_OPTION=42
+  default-language: Haskell2010

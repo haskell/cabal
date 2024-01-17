@@ -485,7 +485,6 @@ checkBuildInfoFeatures bi sv = do
   -- CheckSpecVer sv.
   checkP
     ( sv >= CabalSpecV1_10
-        && sv < CabalSpecV3_4
         && isNothing (defaultLanguage bi)
     )
     (PackageBuildWarning CVDefaultLanguageComponent)

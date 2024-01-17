@@ -6,3 +6,4 @@ Build-Type: Simple
 Executable main
     Main-is: Exe.hs
     Build-Depends: base
+    default-language: Haskell2010

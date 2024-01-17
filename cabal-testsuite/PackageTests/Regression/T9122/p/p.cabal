@@ -4,3 +4,4 @@ Version:            2
 Build-Type:         Simple
 
 library
+  default-language:     Haskell2010

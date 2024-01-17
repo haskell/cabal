@@ -12,3 +12,4 @@ executable my-executable
   build-depends:  base
   other-modules:  Foo
   hsc2hs-options: "--cc=g++"
+  default-language: Haskell2010

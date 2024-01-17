@@ -17,3 +17,4 @@ Executable TestPackageInfoModule
         PackageInfo_PackageInfoModule
         Paths_PackageInfoModule
     build-depends: base
+    default-language: Haskell2010
