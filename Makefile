@@ -86,10 +86,6 @@ ghcid-cli :
 # The call below reflects the current documentation of the doctest tool except one caveat,
 # which is https://github.com/haskell/cabal/issues/6859, i.e. we have to hide allow-newer in our project
 # file from cabal/doctest. This is easy: we just select a project file with no allow-newer (e.g. cabal.project.libonly).
-#
-# TODO: Cabal-described should be added here but its doctests currently broken, see:
-#       https://github.com/haskell/cabal/issues/8734
-#       Just as well, cabal-install(-solver) doctests (the target below) bitrotted and need some care.
 doctest :
 	$(DOCTEST) Cabal-syntax
 	$(DOCTEST) Cabal-described
