@@ -48,6 +48,10 @@ import Distribution.Client.NixStyleOptions
   , defaultNixStyleFlags
   , nixStyleOptions
   )
+import Distribution.Client.ProjectConfig.Types
+  ( ProjectConfig (projectConfigShared)
+  , ProjectConfigShared (projectConfigProgPathExtra)
+  )
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.ProjectPlanning
   ( ElaboratedConfiguredPackage (..)
@@ -56,6 +60,7 @@ import Distribution.Client.ProjectPlanning
   )
 import Distribution.Client.ProjectPlanning.Types
   ( dataDirsEnvironmentForPlan
+  , elabExeDependencyPaths
   )
 import Distribution.Client.ScriptUtils
   ( AcceptNoTargets (..)
@@ -82,6 +87,12 @@ import Distribution.Simple.Command
 import Distribution.Simple.Flag
   ( fromFlagOrDefault
   )
+import Distribution.Simple.Program.Find
+  ( ProgramSearchPathEntry (ProgramSearchPathDir)
+  , defaultProgramSearchPath
+  , logExtraProgramSearchPath
+  , programSearchPathAsPATHVar
+  )
 import Distribution.Simple.Program.Run
   ( ProgramInvocation (..)
   , emptyProgramInvocation
@@ -104,6 +115,9 @@ import Distribution.Types.UnitId
 import Distribution.Types.UnqualComponentName
   ( UnqualComponentName
   , unUnqualComponentName
+  )
+import Distribution.Utils.NubList
+  ( fromNubList
   )
 import Distribution.Verbosity
   ( normal
@@ -288,6 +302,19 @@ runAction flags@NixStyleFlags{..} targetAndArgs globalFlags =
           buildSettingDryRun (buildSettings baseCtx)
             || buildSettingOnlyDownload (buildSettings baseCtx)
 
+    let extraPath =
+          elabExeDependencyPaths pkg
+            ++ ( fromNubList
+                  . projectConfigProgPathExtra
+                  . projectConfigShared
+                  . projectConfig
+                  $ baseCtx
+               )
+
+    logExtraProgramSearchPath verbosity extraPath
+
+    progPath <- programSearchPathAsPATHVar (map ProgramSearchPathDir extraPath ++ defaultProgramSearchPath)
+
     if dryRun
       then notice verbosity "Running of executable suppressed by flag(s)"
       else
@@ -297,9 +324,10 @@ runAction flags@NixStyleFlags{..} targetAndArgs globalFlags =
             { progInvokePath = exePath
             , progInvokeArgs = args
             , progInvokeEnv =
-                dataDirsEnvironmentForPlan
-                  (distDirLayout baseCtx)
-                  elaboratedPlan
+                ("PATH", Just $ progPath)
+                  : dataDirsEnvironmentForPlan
+                    (distDirLayout baseCtx)
+                    elaboratedPlan
             }
   where
     (targetStr, args) = splitAt 1 targetAndArgs

@@ -1351,11 +1351,10 @@ syncAndReadSourcePackagesRemoteRepos
             | (repo, rloc, rtype, vcs) <- repos'
             ]
 
-    -- TODO: pass progPathExtra on to 'configureVCS'
-    let _progPathExtra = fromNubList projectConfigProgPathExtra
+    let progPathExtra = fromNubList projectConfigProgPathExtra
     getConfiguredVCS <- delayInitSharedResources $ \repoType ->
       let vcs = Map.findWithDefault (error $ "Unknown VCS: " ++ prettyShow repoType) repoType knownVCSs
-       in configureVCS verbosity {-progPathExtra-} vcs
+       in configureVCS verbosity progPathExtra vcs
 
     concat
       <$> sequenceA

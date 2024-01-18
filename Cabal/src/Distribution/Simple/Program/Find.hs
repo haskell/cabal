@@ -32,7 +32,9 @@ module Distribution.Simple.Program.Find
   , defaultProgramSearchPath
   , findProgramOnSearchPath
   , programSearchPathAsPATHVar
+  , logExtraProgramSearchPath
   , getSystemSearchPath
+  , getExtraPathEnv
   , simpleProgram
   ) where
 
@@ -62,6 +64,15 @@ import qualified System.Win32 as Win32
 
 defaultProgramSearchPath :: ProgramSearchPath
 defaultProgramSearchPath = [ProgramSearchPathDefault]
+
+logExtraProgramSearchPath
+  :: Verbosity
+  -> [FilePath]
+  -> IO ()
+logExtraProgramSearchPath verbosity extraPaths =
+  info verbosity . unlines $
+    "Including the following directories in PATH:"
+      : map ("- " ++) extraPaths
 
 findProgramOnSearchPath
   :: Verbosity
@@ -132,6 +143,25 @@ findProgramOnSearchPath verbosity searchpath prog = do
       case a of
         Just _ -> return a
         Nothing -> firstJustM mas
+
+-- | Adds some paths to the "PATH" entry in the key-value environment provided
+-- or if there is none, looks up @$PATH@ in the real environment.
+getExtraPathEnv
+  :: Verbosity
+  -> [(String, Maybe String)]
+  -> [FilePath]
+  -> IO [(String, Maybe String)]
+getExtraPathEnv _ _ [] = return []
+getExtraPathEnv verbosity env extras = do
+  mb_path <- case lookup "PATH" env of
+    Just x -> return x
+    Nothing -> lookupEnv "PATH"
+  logExtraProgramSearchPath verbosity extras
+  let extra = intercalate [searchPathSeparator] extras
+      path' = case mb_path of
+        Nothing -> extra
+        Just path -> extra ++ searchPathSeparator : path
+  return [("PATH", Just path')]
 
 -- | Interpret a 'ProgramSearchPath' to construct a new @$PATH@ env var.
 -- Note that this is close but not perfect because on Windows the search

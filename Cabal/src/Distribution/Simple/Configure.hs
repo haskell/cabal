@@ -85,7 +85,7 @@ import Distribution.Simple.PackageIndex (InstalledPackageIndex, lookupUnitId)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.PreProcess
 import Distribution.Simple.Program
-import Distribution.Simple.Program.Db (lookupProgramByName)
+import Distribution.Simple.Program.Db (appendProgramSearchPath, lookupProgramByName)
 import Distribution.Simple.Setup.Common as Setup
 import Distribution.Simple.Setup.Config as Setup
 import Distribution.Simple.Utils
@@ -488,6 +488,7 @@ preConfigurePackage cfg g_pkg_descr = do
   checkDeprecatedFlags verbosity cfg
   checkExactConfiguration verbosity g_pkg_descr cfg
 
+  programDbPre <- mkProgramDb cfg (configPrograms cfg)
   -- comp:            the compiler we're building with
   -- compPlatform:    the platform we're building for
   -- programDb:  location and args of all programs we're
@@ -500,7 +501,7 @@ preConfigurePackage cfg g_pkg_descr = do
       (flagToMaybe (configHcFlavor cfg))
       (flagToMaybe (configHcPath cfg))
       (flagToMaybe (configHcPkg cfg))
-      (mkProgramDb cfg (configPrograms cfg))
+      programDbPre
       (lessVerbose verbosity)
 
   -- Where to build the package
@@ -1230,19 +1231,18 @@ configureComponents
 mkPromisedDepsSet :: [GivenComponent] -> Map (PackageName, ComponentName) ComponentId
 mkPromisedDepsSet comps = Map.fromList [((pn, CLibName ln), cid) | GivenComponent pn ln cid <- comps]
 
-mkProgramDb :: ConfigFlags -> ProgramDb -> ProgramDb
-mkProgramDb cfg initialProgramDb = programDb
+-- | Adds the extra program paths from the flags provided to @configure@ as
+-- well as specified locations for certain known programs and their default
+-- arguments.
+mkProgramDb :: ConfigFlags -> ProgramDb -> IO ProgramDb
+mkProgramDb cfg initialProgramDb = do
+  programDb <- appendProgramSearchPath (fromFlagOrDefault normal (configVerbosity cfg)) searchpath initialProgramDb
+  pure
+    . userSpecifyArgss (configProgramArgs cfg)
+    . userSpecifyPaths (configProgramPaths cfg)
+    $ programDb
   where
-    programDb =
-      userSpecifyArgss (configProgramArgs cfg)
-        . userSpecifyPaths (configProgramPaths cfg)
-        . setProgramSearchPath searchpath
-        $ initialProgramDb
-    searchpath =
-      getProgramSearchPath initialProgramDb
-        ++ map
-          ProgramSearchPathDir
-          (fromNubList $ configProgramPathExtra cfg)
+    searchpath = fromNubList $ configProgramPathExtra cfg
 
 -- Note. We try as much as possible to _prepend_ rather than postpend the extra-prog-path
 -- so that we can override the system path. However, in a v2-build, at this point, the "system" path
@@ -2253,15 +2253,14 @@ ccLdOptionsBuildInfo cflags ldflags ldflags_static =
 configCompilerAuxEx
   :: ConfigFlags
   -> IO (Compiler, Platform, ProgramDb)
-configCompilerAuxEx cfg =
+configCompilerAuxEx cfg = do
+  programDb <- mkProgramDb cfg defaultProgramDb
   configCompilerEx
     (flagToMaybe $ configHcFlavor cfg)
     (flagToMaybe $ configHcPath cfg)
     (flagToMaybe $ configHcPkg cfg)
     programDb
     (fromFlag (configVerbosity cfg))
-  where
-    programDb = mkProgramDb cfg defaultProgramDb
 
 configCompilerEx
   :: Maybe CompilerFlavor

@@ -150,13 +150,10 @@ import Distribution.Simple.GHC
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import qualified Distribution.Simple.PackageIndex as PI
 import Distribution.Simple.Program.Db
-  ( defaultProgramDb
-  , modifyProgramSearchPath
+  ( appendProgramSearchPath
+  , defaultProgramDb
   , userSpecifyArgss
   , userSpecifyPaths
-  )
-import Distribution.Simple.Program.Find
-  ( ProgramSearchPathEntry (..)
   )
 import Distribution.Simple.Setup
   ( Flag (..)
@@ -496,6 +493,7 @@ installAction flags@NixStyleFlags{extraFlags = clientInstallFlags', ..} targetSt
           , projectConfigHcPath
           , projectConfigHcPkg
           , projectConfigStoreDir
+          , projectConfigProgPathExtra
           }
       , projectConfigLocalPackages =
         PackageConfig
@@ -509,17 +507,13 @@ installAction flags@NixStyleFlags{extraFlags = clientInstallFlags', ..} targetSt
     hcPath = flagToMaybe projectConfigHcPath
     hcPkg = flagToMaybe projectConfigHcPkg
 
+  configProgDb <- appendProgramSearchPath verbosity ((fromNubList packageConfigProgramPathExtra) ++ (fromNubList projectConfigProgPathExtra)) defaultProgramDb
+  let
     -- ProgramDb with directly user specified paths
     preProgDb =
       userSpecifyPaths (Map.toList (getMapLast packageConfigProgramPaths))
         . userSpecifyArgss (Map.toList (getMapMappend packageConfigProgramArgs))
-        . modifyProgramSearchPath
-          ( ++
-              [ ProgramSearchPathDir dir
-              | dir <- fromNubList packageConfigProgramPathExtra
-              ]
-          )
-        $ defaultProgramDb
+        $ configProgDb
 
   -- progDb is a program database with compiler tools configured properly
   ( compiler@Compiler

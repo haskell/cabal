@@ -78,6 +78,9 @@ import Distribution.Solver.Types.SourcePackage
 import Control.Monad (mapM_)
 import qualified Data.Map as Map
 import Distribution.Client.Errors
+import Distribution.Utils.NubList
+  ( fromNubList
+  )
 import System.Directory
   ( createDirectoryIfMissing
   , doesDirectoryExist
@@ -99,7 +102,7 @@ get
   -> IO ()
 get verbosity _ _ _ [] =
   notice verbosity "No packages requested. Nothing to do."
-get verbosity repoCtxt _ getFlags userTargets = do
+get verbosity repoCtxt globalFlags getFlags userTargets = do
   let useSourceRepo = case getSourceRepository getFlags of
         NoFlag -> False
         _ -> True
@@ -154,7 +157,7 @@ get verbosity repoCtxt _ getFlags userTargets = do
 
     clone :: [UnresolvedSourcePackage] -> IO ()
     clone =
-      clonePackagesFromSourceRepo verbosity prefix kind
+      clonePackagesFromSourceRepo verbosity prefix kind (fromNubList $ globalProgPathExtra globalFlags)
         . map (\pkg -> (packageId pkg, packageSourceRepos pkg))
       where
         kind :: Maybe RepoKind
@@ -337,6 +340,8 @@ clonePackagesFromSourceRepo
   -- ^ destination dir prefix
   -> Maybe RepoKind
   -- ^ preferred 'RepoKind'
+  -> [FilePath]
+  -- ^ Extra prog paths
   -> [(PackageId, [PD.SourceRepo])]
   -- ^ the packages and their
   -- available 'SourceRepo's
@@ -345,13 +350,14 @@ clonePackagesFromSourceRepo
   verbosity
   destDirPrefix
   preferredRepoKind
+  progPaths
   pkgrepos = do
     -- Do a bunch of checks and collect the required info
     pkgrepos' <- traverse preCloneChecks pkgrepos
 
     -- Configure the VCS drivers for all the repository types we may need
     vcss <-
-      configureVCSs verbosity $
+      configureVCSs verbosity progPaths $
         Map.fromList
           [ (vcsRepoType vcs, vcs)
           | (_, _, vcs, _) <- pkgrepos'
