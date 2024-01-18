@@ -4,3 +4,4 @@ autom4te.cache/
 *.status
 configure
 include/HsZlibConfig.h
+include/HsZlibConfig.h.in
