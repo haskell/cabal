@@ -34,12 +34,14 @@ import Distribution.Client.InstallPlan
          ( toList, foldPlanPackage )
 import Distribution.Client.NixStyleOptions
          ( NixStyleFlags (..), nixStyleOptions, defaultNixStyleFlags )
+import Distribution.Client.ProjectConfig.Types
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.ProjectPlanning
          ( ElaboratedConfiguredPackage(..)
-         , ElaboratedInstallPlan, binDirectoryFor )
+         , ElaboratedInstallPlan, binDirectoryFor
+         )
 import Distribution.Client.ProjectPlanning.Types
-         ( dataDirsEnvironmentForPlan )
+         ( dataDirsEnvironmentForPlan, elabExeDependencyPaths )
 import Distribution.Client.ScriptUtils
          ( AcceptNoTargets(..), TargetContext(..)
          , updateContextAndWriteProjectFile, withContextAndSelectors
@@ -52,6 +54,10 @@ import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives )
 import Distribution.Simple.Flag
          ( fromFlagOrDefault )
+import Distribution.Simple.Program.Find
+         ( ProgramSearchPathEntry(..), defaultProgramSearchPath,
+           programSearchPathAsPATHVar, logExtraProgramSearchPath
+         )
 import Distribution.Simple.Program.Run
          ( runProgramInvocation, ProgramInvocation(..),
            emptyProgramInvocation )
@@ -61,6 +67,8 @@ import Distribution.Types.ComponentName
          ( componentNameRaw )
 import Distribution.Types.UnitId
          ( UnitId )
+import Distribution.Utils.NubList
+         ( fromNubList )
 
 import Distribution.Types.UnqualComponentName
          ( UnqualComponentName, unUnqualComponentName )
@@ -69,111 +77,7 @@ import Distribution.Verbosity
 
 import Data.List (group)
 import qualified Data.Set as Set
-<<<<<<< HEAD
-=======
-import Distribution.Client.CmdErrorMessages
-  ( plural
-  , renderListCommaAnd
-  , renderListPretty
-  , renderTargetProblem
-  , renderTargetProblemNoTargets
-  , renderTargetSelector
-  , showTargetSelector
-  , targetSelectorFilter
-  , targetSelectorPluralPkgs
-  )
-import Distribution.Client.Errors
-import Distribution.Client.GlobalFlags
-  ( defaultGlobalFlags
-  )
-import Distribution.Client.InstallPlan
-  ( foldPlanPackage
-  , toList
-  )
-import Distribution.Client.NixStyleOptions
-  ( NixStyleFlags (..)
-  , defaultNixStyleFlags
-  , nixStyleOptions
-  )
-import Distribution.Client.ProjectConfig.Types
-  ( ProjectConfig (projectConfigShared)
-  , ProjectConfigShared (projectConfigProgPathExtra)
-  )
-import Distribution.Client.ProjectOrchestration
-import Distribution.Client.ProjectPlanning
-  ( ElaboratedConfiguredPackage (..)
-  , ElaboratedInstallPlan
-  , binDirectoryFor
-  )
-import Distribution.Client.ProjectPlanning.Types
-  ( dataDirsEnvironmentForPlan
-  , elabExeDependencyPaths
-  )
-import Distribution.Client.ScriptUtils
-  ( AcceptNoTargets (..)
-  , TargetContext (..)
-  , movedExePath
-  , updateContextAndWriteProjectFile
-  , withContextAndSelectors
-  )
-import Distribution.Client.Setup
-  ( ConfigFlags (..)
-  , GlobalFlags (..)
-  )
-import Distribution.Client.TargetProblem
-  ( TargetProblem (..)
-  )
-import Distribution.Client.Utils
-  ( giveRTSWarning
-  , occursOnlyOrBefore
-  )
-import Distribution.Simple.Command
-  ( CommandUI (..)
-  , usageAlternatives
-  )
-import Distribution.Simple.Flag
-  ( fromFlagOrDefault
-  )
-import Distribution.Simple.Program.Find
-  ( ProgramSearchPathEntry (ProgramSearchPathDir)
-  , defaultProgramSearchPath
-  , logExtraProgramSearchPath
-  , programSearchPathAsPATHVar
-  )
-import Distribution.Simple.Program.Run
-  ( ProgramInvocation (..)
-  , emptyProgramInvocation
-  , runProgramInvocation
-  )
-import Distribution.Simple.Utils
-  ( dieWithException
-  , info
-  , notice
-  , safeHead
-  , warn
-  , wrapText
-  )
-import Distribution.Types.ComponentName
-  ( componentNameRaw
-  )
-import Distribution.Types.UnitId
-  ( UnitId
-  )
-import Distribution.Types.UnqualComponentName
-  ( UnqualComponentName
-  , unUnqualComponentName
-  )
-import Distribution.Utils.NubList
-  ( fromNubList
-  )
-import Distribution.Verbosity
-  ( normal
-  , silent
-  )
-import GHC.Environment
-  ( getFullArgs
-  )
->>>>>>> 46df8ba71 (Fix extra-prog-path propagation in the codebase.)
+
 import System.Directory
          ( doesFileExist )
 import System.FilePath
@@ -349,7 +253,6 @@ runAction flags@NixStyleFlags {..} targetAndArgs globalFlags
     progPath <- programSearchPathAsPATHVar (map ProgramSearchPathDir extraPath ++ defaultProgramSearchPath)
 
     if dryRun
-<<<<<<< HEAD
        then notice verbosity "Running of executable suppressed by flag(s)"
        else
          runProgramInvocation
@@ -357,25 +260,11 @@ runAction flags@NixStyleFlags {..} targetAndArgs globalFlags
            emptyProgramInvocation {
              progInvokePath  = exePath,
              progInvokeArgs  = args,
-             progInvokeEnv   = dataDirsEnvironmentForPlan
+             progInvokeEnv   = ("PATH", Just $ progPath)
+                             : dataDirsEnvironmentForPlan
                                  (distDirLayout baseCtx)
                                  elaboratedPlan
            }
-=======
-      then notice verbosity "Running of executable suppressed by flag(s)"
-      else
-        runProgramInvocation
-          verbosity
-          emptyProgramInvocation
-            { progInvokePath = exePath
-            , progInvokeArgs = args
-            , progInvokeEnv =
-                ("PATH", Just $ progPath)
-                  : dataDirsEnvironmentForPlan
-                    (distDirLayout baseCtx)
-                    elaboratedPlan
-            }
->>>>>>> 46df8ba71 (Fix extra-prog-path propagation in the codebase.)
   where
     (targetStr, args) = splitAt 1 targetAndArgs
 

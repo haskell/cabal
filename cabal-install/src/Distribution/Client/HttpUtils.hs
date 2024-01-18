@@ -19,67 +19,6 @@ import Prelude ()
 import Distribution.Client.Compat.Prelude hiding (Proxy (..))
 import Distribution.Utils.Generic
 
-<<<<<<< HEAD
-=======
-import qualified Control.Exception as Exception
-import Distribution.Client.Types
-  ( RemoteRepo (..)
-  , unRepoName
-  )
-import Distribution.Client.Types.Credentials (Auth)
-import Distribution.Client.Utils
-  ( withTempFileName
-  )
-import Distribution.Client.Version
-  ( cabalInstallVersion
-  )
-import Distribution.Simple.Program
-  ( ConfiguredProgram
-  , Program
-  , ProgramInvocation (..)
-  , getProgramInvocationOutput
-  , programInvocation
-  , programPath
-  , simpleProgram
-  )
-import Distribution.Simple.Program.Db
-  ( ProgramDb
-  , addKnownPrograms
-  , appendProgramSearchPath
-  , configureAllKnownPrograms
-  , emptyProgramDb
-  , lookupProgram
-  , requireProgram
-  )
-import Distribution.Simple.Program.Run
-  ( getProgramInvocationOutputAndErrors
-  )
-import Distribution.Simple.Utils
-  ( IOData (..)
-  , copyFileVerbose
-  , debug
-  , dieWithException
-  , info
-  , notice
-  , warn
-  , withTempFile
-  )
-import Distribution.System
-  ( buildArch
-  , buildOS
-  )
-import Distribution.Utils.String (trim)
-import Network.Browser
-  ( browse
-  , request
-  , setAllowBasicAuth
-  , setAuthorityGen
-  , setErrHandler
-  , setOutHandler
-  , setProxy
-  , setUserAgent
-  )
->>>>>>> 46df8ba71 (Fix extra-prog-path propagation in the codebase.)
 import Network.HTTP
          ( Request (..), Response (..), RequestMethod (..)
          , Header(..), HeaderName(..), lookupHeader )
@@ -115,13 +54,12 @@ import System.IO.Error
 import Distribution.Simple.Program
          ( Program, simpleProgram, ConfiguredProgram, programPath
          , ProgramInvocation(..), programInvocation
-         , ProgramSearchPathEntry(..)
          , getProgramInvocationOutput )
 import Distribution.Simple.Program.Db
          ( ProgramDb, emptyProgramDb, addKnownPrograms
          , configureAllKnownPrograms
          , requireProgram, lookupProgram
-         , modifyProgramSearchPath )
+         , appendProgramSearchPath )
 import Distribution.Simple.Program.Run
          ( getProgramInvocationOutputAndErrors )
 import Numeric (showHex)
@@ -394,11 +332,10 @@ configureTransport verbosity extraPath (Just name) =
     -- the user specifically selected a transport by name so we'll try and
     -- configure that one
 
-<<<<<<< HEAD
     case find (\(name',_,_,_) -> name' == name) supportedTransports of
       Just (_, mprog, _tls, mkTrans) -> do
 
-        let baseProgDb = modifyProgramSearchPath (\p -> map ProgramSearchPathDir extraPath ++ p) emptyProgramDb
+        baseProgDb <- appendProgramSearchPath verbosity extraPath emptyProgramDb
         progdb <- case mprog of
           Nothing   -> return emptyProgramDb
           Just prog -> snd <$> requireProgram verbosity prog baseProgDb
@@ -411,38 +348,18 @@ configureTransport verbosity extraPath (Just name) =
                     ++ ". The supported transports are "
                     ++ intercalate ", "
                          [ name' | (name', _, _, _ ) <- supportedTransports ]
-=======
-  case find (\(name', _, _, _) -> name' == name) supportedTransports of
-    Just (_, mprog, _tls, mkTrans) -> do
-      baseProgDb <- appendProgramSearchPath verbosity extraPath emptyProgramDb
-      progdb <- case mprog of
-        Nothing -> return emptyProgramDb
-        Just prog -> snd <$> requireProgram verbosity prog baseProgDb
-      --      ^^ if it fails, it'll fail here
->>>>>>> 46df8ba71 (Fix extra-prog-path propagation in the codebase.)
 
 configureTransport verbosity extraPath Nothing = do
     -- the user hasn't selected a transport, so we'll pick the first one we
     -- can configure successfully, provided that it supports tls
 
-<<<<<<< HEAD
     -- for all the transports except plain-http we need to try and find
     -- their external executable
-    let baseProgDb = modifyProgramSearchPath (\p -> map ProgramSearchPathDir extraPath ++ p) emptyProgramDb
+    baseProgDb <- appendProgramSearchPath verbosity extraPath emptyProgramDb
     progdb <- configureAllKnownPrograms  verbosity $
                 addKnownPrograms
                   [ prog | (_, Just prog, _, _) <- supportedTransports ]
                   baseProgDb
-=======
-  -- for all the transports except plain-http we need to try and find
-  -- their external executable
-  baseProgDb <- appendProgramSearchPath verbosity extraPath emptyProgramDb
-  progdb <-
-    configureAllKnownPrograms verbosity $
-      addKnownPrograms
-        [prog | (_, Just prog, _, _) <- supportedTransports]
-        baseProgDb
->>>>>>> 46df8ba71 (Fix extra-prog-path propagation in the codebase.)
 
     let availableTransports =
           [ (name, transport)

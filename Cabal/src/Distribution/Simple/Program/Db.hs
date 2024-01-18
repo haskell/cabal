@@ -32,9 +32,9 @@ module Distribution.Simple.Program.Db (
     restoreProgramDb,
 
     -- ** Query and manipulate the program db
-<<<<<<< HEAD
     addKnownProgram,
     addKnownPrograms,
+    appendProgramSearchPath,
     lookupKnownProgram,
     knownPrograms,
     getProgramSearchPath,
@@ -49,26 +49,6 @@ module Distribution.Simple.Program.Db (
     lookupProgram,
     updateProgram,
     configuredPrograms,
-=======
-  , addKnownProgram
-  , addKnownPrograms
-  , appendProgramSearchPath
-  , lookupKnownProgram
-  , knownPrograms
-  , getProgramSearchPath
-  , setProgramSearchPath
-  , modifyProgramSearchPath
-  , userSpecifyPath
-  , userSpecifyPaths
-  , userMaybeSpecifyPath
-  , userSpecifyArgs
-  , userSpecifyArgss
-  , userSpecifiedArgs
-  , lookupProgram
-  , lookupProgramByName
-  , updateProgram
-  , configuredPrograms
->>>>>>> 46df8ba71 (Fix extra-prog-path propagation in the codebase.)
 
     -- ** Query and manipulate the program db
     configureProgram,
@@ -243,15 +223,6 @@ modifyProgramSearchPath :: (ProgramSearchPath -> ProgramSearchPath)
 modifyProgramSearchPath f db =
   setProgramSearchPath (f $ getProgramSearchPath db) db
 
-<<<<<<< HEAD
--- |User-specify this path.  Basically override any path information
--- for this program in the configuration. If it's not a known
--- program ignore it.
---
-userSpecifyPath :: String   -- ^Program name
-                -> FilePath -- ^user-specified path to the program
-                -> ProgramDb -> ProgramDb
-=======
 -- | Modify the current 'ProgramSearchPath' used by the 'ProgramDb'
 -- by appending the provided extra paths. Also logs the added paths
 -- in info verbosity.
@@ -267,17 +238,13 @@ appendProgramSearchPath verbosity extraPaths db =
       pure $ modifyProgramSearchPath (map ProgramSearchPathDir extraPaths ++) db
     else pure db
 
--- | User-specify this path.  Basically override any path information
---  for this program in the configuration. If it's not a known
---  program ignore it.
-userSpecifyPath
-  :: String
-  -- ^ Program name
-  -> FilePath
-  -- ^ user-specified path to the program
-  -> ProgramDb
-  -> ProgramDb
->>>>>>> 46df8ba71 (Fix extra-prog-path propagation in the codebase.)
+-- |User-specify this path.  Basically override any path information
+-- for this program in the configuration. If it's not a known
+-- program ignore it.
+--
+userSpecifyPath :: String   -- ^Program name
+                -> FilePath -- ^user-specified path to the program
+                -> ProgramDb -> ProgramDb
 userSpecifyPath name path = updateUnconfiguredProgs $
   flip Map.update name $ \(prog, _, args) -> Just (prog, Just path, args)
 

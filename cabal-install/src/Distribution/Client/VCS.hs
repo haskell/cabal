@@ -37,32 +37,6 @@ module Distribution.Client.VCS (
 import Prelude ()
 import Distribution.Client.Compat.Prelude
 
-<<<<<<< HEAD
-=======
-import Distribution.Client.RebuildMonad
-  ( MonitorFilePath
-  , Rebuild
-  , monitorDirectoryExistence
-  , monitorFiles
-  )
-import Distribution.Client.Types.SourceRepo (SourceRepoMaybe, SourceRepositoryPackage (..), srpToProxy)
-import qualified Distribution.PackageDescription as PD
-import Distribution.Simple.Program
-  ( ConfiguredProgram (programVersion)
-  , Program (programFindVersion)
-  , ProgramInvocation (..)
-  , emptyProgramDb
-  , findProgramVersion
-  , getProgramInvocationOutput
-  , programInvocation
-  , requireProgram
-  , runProgramInvocation
-  , simpleProgram
-  )
-import Distribution.Simple.Program.Db
-  ( appendProgramSearchPath
-  )
->>>>>>> 46df8ba71 (Fix extra-prog-path propagation in the codebase.)
 import Distribution.Types.SourceRepo
          ( RepoType(..), KnownRepoType (..) )
 import Distribution.Client.Types.SourceRepo (SourceRepoMaybe, SourceRepositoryPackage (..), srpToProxy)
@@ -76,6 +50,8 @@ import Distribution.Simple.Program
          , simpleProgram, findProgramVersion
          , ProgramInvocation(..), programInvocation, runProgramInvocation, getProgramInvocationOutput
          , emptyProgramDb, requireProgram )
+import Distribution.Simple.Program.Db
+         ( appendProgramSearchPath )
 import Distribution.Version
          ( mkVersion )
 import qualified Distribution.PackageDescription as PD
@@ -193,41 +169,22 @@ validateSourceRepos rs =
     validateSourceRepo' r = either (Left . (,) r) Right
                                    (validateSourceRepo r)
 
-<<<<<<< HEAD
 
 configureVCS :: Verbosity
+             -> [FilePath] -- ^ Extra prog paths
              -> VCS Program
              -> IO (VCS ConfiguredProgram)
-configureVCS verbosity vcs@VCS{vcsProgram = prog} =
-    asVcsConfigured <$> requireProgram verbosity prog emptyProgramDb
-=======
-configureVCS
-  :: Verbosity
-  -> [FilePath]
-  -- ^ Extra prog paths
-  -> VCS Program
-  -> IO (VCS ConfiguredProgram)
 configureVCS verbosity progPaths vcs@VCS{vcsProgram = prog} = do
-  progPath <- appendProgramSearchPath verbosity progPaths emptyProgramDb
-  asVcsConfigured <$> requireProgram verbosity prog progPath
->>>>>>> 46df8ba71 (Fix extra-prog-path propagation in the codebase.)
+    progPath <- appendProgramSearchPath verbosity progPaths emptyProgramDb
+    asVcsConfigured <$> requireProgram verbosity prog progPath
   where
     asVcsConfigured (prog', _) = vcs { vcsProgram = prog' }
 
-<<<<<<< HEAD
 configureVCSs :: Verbosity
+              -> [FilePath] -- ^ Extra prog paths
               -> Map RepoType (VCS Program)
               -> IO (Map RepoType (VCS ConfiguredProgram))
-configureVCSs verbosity = traverse (configureVCS verbosity)
-=======
-configureVCSs
-  :: Verbosity
-  -> [FilePath]
-  -- ^ Extra prog paths
-  -> Map RepoType (VCS Program)
-  -> IO (Map RepoType (VCS ConfiguredProgram))
 configureVCSs verbosity progPaths = traverse (configureVCS verbosity progPaths)
->>>>>>> 46df8ba71 (Fix extra-prog-path propagation in the codebase.)
 
 
 -- ------------------------------------------------------------

@@ -190,8 +190,7 @@ data CurrentCommand = InstallCommand | HaddockCommand | BuildCommand | ReplComma
                     deriving (Show, Eq)
 
 -- | This holds the context of a project prior to solving: the content of the
-<<<<<<< HEAD
--- @cabal.project@ and all the local package @.cabal@ files.
+-- @cabal.project@, @cabal/config@ and all the local package @.cabal@ files.
 --
 data ProjectBaseContext = ProjectBaseContext {
        distDirLayout  :: DistDirLayout,
@@ -202,18 +201,6 @@ data ProjectBaseContext = ProjectBaseContext {
        currentCommand :: CurrentCommand,
        installedPackages :: Maybe InstalledPackageIndex
      }
-=======
--- @cabal.project@, @cabal/config@ and all the local package @.cabal@ files.
-data ProjectBaseContext = ProjectBaseContext
-  { distDirLayout :: DistDirLayout
-  , cabalDirLayout :: CabalDirLayout
-  , projectConfig :: ProjectConfig
-  , localPackages :: [PackageSpecifier UnresolvedSourcePackage]
-  , buildSettings :: BuildTimeSettings
-  , currentCommand :: CurrentCommand
-  , installedPackages :: Maybe InstalledPackageIndex
-  }
->>>>>>> 46df8ba71 (Fix extra-prog-path propagation in the codebase.)
 
 establishProjectBaseContext
     :: Verbosity

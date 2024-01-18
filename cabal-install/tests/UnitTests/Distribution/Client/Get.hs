@@ -61,32 +61,18 @@ pkgidfoo = PackageIdentifier (mkPackageName "foo") (mkVersion [1,0])
 
 testNoRepos :: Assertion
 testNoRepos = do
-<<<<<<< HEAD
     e <- assertException $
-           clonePackagesFromSourceRepo verbosity "." Nothing pkgrepos
+           clonePackagesFromSourceRepo verbosity "." Nothing [] pkgrepos
     e @?= ClonePackageNoSourceRepos pkgidfoo
-=======
-  e <-
-    assertException $
-      clonePackagesFromSourceRepo verbosity "." Nothing [] pkgrepos
-  e @?= ClonePackageNoSourceRepos pkgidfoo
->>>>>>> 46df8ba71 (Fix extra-prog-path propagation in the codebase.)
   where
     pkgrepos = [(pkgidfoo, [])]
 
 
 testNoReposOfKind :: Assertion
 testNoReposOfKind = do
-<<<<<<< HEAD
     e <- assertException $
-           clonePackagesFromSourceRepo verbosity "." repokind pkgrepos
+           clonePackagesFromSourceRepo verbosity "." repokind [] pkgrepos
     e @?= ClonePackageNoSourceReposOfKind pkgidfoo repokind
-=======
-  e <-
-    assertException $
-      clonePackagesFromSourceRepo verbosity "." repokind [] pkgrepos
-  e @?= ClonePackageNoSourceReposOfKind pkgidfoo repokind
->>>>>>> 46df8ba71 (Fix extra-prog-path propagation in the codebase.)
   where
     pkgrepos = [(pkgidfoo, [repo])]
     repo     = emptySourceRepo RepoHead
@@ -95,16 +81,9 @@ testNoReposOfKind = do
 
 testNoRepoType :: Assertion
 testNoRepoType = do
-<<<<<<< HEAD
     e <- assertException $
-           clonePackagesFromSourceRepo verbosity "." Nothing pkgrepos
+           clonePackagesFromSourceRepo verbosity "." Nothing []pkgrepos
     e @?= ClonePackageNoRepoType pkgidfoo repo
-=======
-  e <-
-    assertException $
-      clonePackagesFromSourceRepo verbosity "." Nothing [] pkgrepos
-  e @?= ClonePackageNoRepoType pkgidfoo repo
->>>>>>> 46df8ba71 (Fix extra-prog-path propagation in the codebase.)
   where
     pkgrepos = [(pkgidfoo, [repo])]
     repo     = emptySourceRepo RepoHead
@@ -112,16 +91,9 @@ testNoRepoType = do
 
 testUnsupportedRepoType :: Assertion
 testUnsupportedRepoType = do
-<<<<<<< HEAD
     e <- assertException $
-           clonePackagesFromSourceRepo verbosity "." Nothing pkgrepos
+           clonePackagesFromSourceRepo verbosity "." Nothing [] pkgrepos
     e @?= ClonePackageUnsupportedRepoType pkgidfoo repo' repotype
-=======
-  e <-
-    assertException $
-      clonePackagesFromSourceRepo verbosity "." Nothing [] pkgrepos
-  e @?= ClonePackageUnsupportedRepoType pkgidfoo repo' repotype
->>>>>>> 46df8ba71 (Fix extra-prog-path propagation in the codebase.)
   where
     pkgrepos = [(pkgidfoo, [repo])]
     repo     = (emptySourceRepo RepoHead)
@@ -141,16 +113,9 @@ testUnsupportedRepoType = do
 
 testNoRepoLocation :: Assertion
 testNoRepoLocation = do
-<<<<<<< HEAD
     e <- assertException $
-           clonePackagesFromSourceRepo verbosity "." Nothing pkgrepos
+           clonePackagesFromSourceRepo verbosity "." Nothing [] pkgrepos
     e @?= ClonePackageNoRepoLocation pkgidfoo repo
-=======
-  e <-
-    assertException $
-      clonePackagesFromSourceRepo verbosity "." Nothing [] pkgrepos
-  e @?= ClonePackageNoRepoLocation pkgidfoo repo
->>>>>>> 46df8ba71 (Fix extra-prog-path propagation in the codebase.)
   where
     pkgrepos = [(pkgidfoo, [repo])]
     repo     = (emptySourceRepo RepoHead) {
@@ -165,22 +130,12 @@ testSelectRepoKind =
       [ do e <- test requestedRepoType pkgrepos
            e @?= ClonePackageNoRepoType pkgidfoo expectedRepo
 
-<<<<<<< HEAD
            e' <- test requestedRepoType (reverse pkgrepos)
            e' @?= ClonePackageNoRepoType pkgidfoo expectedRepo
       | let test rt rs = assertException $
-                           clonePackagesFromSourceRepo verbosity "." rt rs
+                           clonePackagesFromSourceRepo verbosity "." rt [] rs
       , (requestedRepoType, expectedRepo) <- cases
       ]
-=======
-      e' <- test requestedRepoType (reverse pkgrepos)
-      e' @?= ClonePackageNoRepoType pkgidfoo expectedRepo
-    | let test rt rs =
-            assertException $
-              clonePackagesFromSourceRepo verbosity "." rt [] rs
-    , (requestedRepoType, expectedRepo) <- cases
-    ]
->>>>>>> 46df8ba71 (Fix extra-prog-path propagation in the codebase.)
   where
     pkgrepos = [(pkgidfoo, [repo1, repo2, repo3])]
     repo1    = emptySourceRepo RepoThis
@@ -195,36 +150,19 @@ testSelectRepoKind =
 
 testRepoDestinationExists :: Assertion
 testRepoDestinationExists =
-<<<<<<< HEAD
     withTestDir verbosity "repos" $ \tmpdir -> do
       let pkgdir = tmpdir </> "foo"
       createDirectory pkgdir
       e1 <- assertException $
-              clonePackagesFromSourceRepo verbosity tmpdir Nothing pkgrepos
+              clonePackagesFromSourceRepo verbosity tmpdir Nothing [] pkgrepos
       e1 @?= ClonePackageDestinationExists pkgidfoo pkgdir True {- isdir -}
 
       removeDirectory pkgdir
 
       writeFile pkgdir ""
       e2 <- assertException $
-              clonePackagesFromSourceRepo verbosity tmpdir Nothing pkgrepos
+              clonePackagesFromSourceRepo verbosity tmpdir Nothing [] pkgrepos
       e2 @?= ClonePackageDestinationExists pkgidfoo pkgdir False {- isfile -}
-=======
-  withTestDir verbosity "repos" $ \tmpdir -> do
-    let pkgdir = tmpdir </> "foo"
-    createDirectory pkgdir
-    e1 <-
-      assertException $
-        clonePackagesFromSourceRepo verbosity tmpdir Nothing [] pkgrepos
-    e1 @?= ClonePackageDestinationExists pkgidfoo pkgdir True {- isdir -}
-    removeDirectory pkgdir
-
-    writeFile pkgdir ""
-    e2 <-
-      assertException $
-        clonePackagesFromSourceRepo verbosity tmpdir Nothing [] pkgrepos
-    e2 @?= ClonePackageDestinationExists pkgidfoo pkgdir False {- isfile -}
->>>>>>> 46df8ba71 (Fix extra-prog-path propagation in the codebase.)
   where
     pkgrepos = [(pkgidfoo, [repo])]
     repo     = (emptySourceRepo RepoHead) {
@@ -235,7 +173,6 @@ testRepoDestinationExists =
 
 testGitFetchFailed :: Assertion
 testGitFetchFailed =
-<<<<<<< HEAD
     withTestDir verbosity "repos" $ \tmpdir -> do
       let srcdir   = tmpdir </> "src"
           repo     = (emptySourceRepo RepoHead) {
@@ -252,7 +189,7 @@ testGitFetchFailed =
                      }
           pkgrepos = [(pkgidfoo, [repo])]
       e1 <- assertException $
-              clonePackagesFromSourceRepo verbosity tmpdir Nothing pkgrepos
+              clonePackagesFromSourceRepo verbosity tmpdir Nothing [] pkgrepos
       e1 @?= ClonePackageFailedWithExitCode pkgidfoo repo' "git" (ExitFailure 128)
 
 
@@ -263,7 +200,7 @@ testNetworkGitClone =
                     repoType     = Just (KnownRepoType Git),
                     repoLocation = Just "https://github.com/haskell/zlib.git"
                   }
-      clonePackagesFromSourceRepo verbosity tmpdir Nothing
+      clonePackagesFromSourceRepo verbosity tmpdir Nothing []
                                   [(mkpkgid "zlib1", [repo1])]
       assertFileContains (tmpdir </> "zlib1/zlib.cabal") ["name:", "zlib"]
 
@@ -271,7 +208,7 @@ testNetworkGitClone =
                     repoType     = Just (KnownRepoType Git),
                     repoLocation = Just (tmpdir </> "zlib1")
                   }
-      clonePackagesFromSourceRepo verbosity tmpdir Nothing
+      clonePackagesFromSourceRepo verbosity tmpdir Nothing []
                                   [(mkpkgid "zlib2", [repo2])]
       assertFileContains (tmpdir </> "zlib2/zlib.cabal") ["name:", "zlib"]
 
@@ -280,75 +217,9 @@ testNetworkGitClone =
                     repoLocation = Just (tmpdir </> "zlib1"),
                     repoTag      = Just "0.5.0.0"
                   }
-      clonePackagesFromSourceRepo verbosity tmpdir Nothing
+      clonePackagesFromSourceRepo verbosity tmpdir Nothing []
                                   [(mkpkgid "zlib3", [repo3])]
       assertFileContains (tmpdir </> "zlib3/zlib.cabal") ["version:", "0.5.0.0"]
-=======
-  withTestDir verbosity "repos" $ \tmpdir -> do
-    let srcdir = tmpdir </> "src"
-        repo =
-          (emptySourceRepo RepoHead)
-            { repoType = Just (KnownRepoType Git)
-            , repoLocation = Just srcdir
-            }
-        repo' =
-          SourceRepositoryPackage
-            { srpType = KnownRepoType Git
-            , srpLocation = srcdir
-            , srpTag = Nothing
-            , srpBranch = Nothing
-            , srpSubdir = Proxy
-            , srpCommand = []
-            }
-        pkgrepos = [(pkgidfoo, [repo])]
-    e1 <-
-      assertException $
-        clonePackagesFromSourceRepo verbosity tmpdir Nothing [] pkgrepos
-    e1 @?= ClonePackageFailedWithExitCode pkgidfoo repo' "git" (ExitFailure 128)
-
-testNetworkGitClone :: Assertion
-testNetworkGitClone =
-  withTestDir verbosity "repos" $ \tmpdir -> do
-    let repo1 =
-          (emptySourceRepo RepoHead)
-            { repoType = Just (KnownRepoType Git)
-            , repoLocation = Just "https://github.com/haskell/zlib.git"
-            }
-    clonePackagesFromSourceRepo
-      verbosity
-      tmpdir
-      Nothing
-      []
-      [(mkpkgid "zlib1", [repo1])]
-    assertFileContains (tmpdir </> "zlib1/zlib.cabal") ["name:", "zlib"]
-
-    let repo2 =
-          (emptySourceRepo RepoHead)
-            { repoType = Just (KnownRepoType Git)
-            , repoLocation = Just (tmpdir </> "zlib1")
-            }
-    clonePackagesFromSourceRepo
-      verbosity
-      tmpdir
-      Nothing
-      []
-      [(mkpkgid "zlib2", [repo2])]
-    assertFileContains (tmpdir </> "zlib2/zlib.cabal") ["name:", "zlib"]
-
-    let repo3 =
-          (emptySourceRepo RepoHead)
-            { repoType = Just (KnownRepoType Git)
-            , repoLocation = Just (tmpdir </> "zlib1")
-            , repoTag = Just "0.5.0.0"
-            }
-    clonePackagesFromSourceRepo
-      verbosity
-      tmpdir
-      Nothing
-      []
-      [(mkpkgid "zlib3", [repo3])]
-    assertFileContains (tmpdir </> "zlib3/zlib.cabal") ["version:", "0.5.0.0"]
->>>>>>> 46df8ba71 (Fix extra-prog-path propagation in the codebase.)
   where
     mkpkgid nm = PackageIdentifier (mkPackageName nm) (mkVersion [])
 

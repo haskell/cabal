@@ -37,11 +37,6 @@ import Distribution.Simple.Program.Types
 import Distribution.Simple.Utils
 import Distribution.Utils.Generic
 import Distribution.Verbosity
-<<<<<<< HEAD
-
-import System.FilePath (searchPathSeparator)
-=======
->>>>>>> 46df8ba71 (Fix extra-prog-path propagation in the codebase.)
 
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.Map             as Map
@@ -52,31 +47,16 @@ import qualified Data.Map             as Map
 -- and actually doing it. This provides the opportunity to the caller to
 -- adjust how the program will be called. These invocations can either be run
 -- directly or turned into shell or batch scripts.
-<<<<<<< HEAD
 --
 data ProgramInvocation = ProgramInvocation {
        progInvokePath  :: FilePath,
        progInvokeArgs  :: [String],
        progInvokeEnv   :: [(String, Maybe String)],
-       -- Extra paths to add to PATH
-       progInvokePathEnv :: [FilePath],
        progInvokeCwd   :: Maybe FilePath,
        progInvokeInput :: Maybe IOData,
        progInvokeInputEncoding  :: IOEncoding, -- ^ TODO: remove this, make user decide when constructing 'progInvokeInput'.
        progInvokeOutputEncoding :: IOEncoding
      }
-=======
-data ProgramInvocation = ProgramInvocation
-  { progInvokePath :: FilePath
-  , progInvokeArgs :: [String]
-  , progInvokeEnv :: [(String, Maybe String)]
-  , progInvokeCwd :: Maybe FilePath
-  , progInvokeInput :: Maybe IOData
-  , progInvokeInputEncoding :: IOEncoding
-  -- ^ TODO: remove this, make user decide when constructing 'progInvokeInput'.
-  , progInvokeOutputEncoding :: IOEncoding
-  }
->>>>>>> 46df8ba71 (Fix extra-prog-path propagation in the codebase.)
 
 data IOEncoding = IOEncodingText   -- locale mode text
                 | IOEncodingUTF8   -- always utf8
@@ -88,28 +68,15 @@ encodeToIOData IOEncodingUTF8 (IODataText str)     = IODataBinary (toUTF8LBS str
 
 emptyProgramInvocation :: ProgramInvocation
 emptyProgramInvocation =
-<<<<<<< HEAD
   ProgramInvocation {
     progInvokePath  = "",
     progInvokeArgs  = [],
     progInvokeEnv   = [],
-    progInvokePathEnv = [],
     progInvokeCwd   = Nothing,
     progInvokeInput = Nothing,
     progInvokeInputEncoding  = IOEncodingText,
     progInvokeOutputEncoding = IOEncodingText
   }
-=======
-  ProgramInvocation
-    { progInvokePath = ""
-    , progInvokeArgs = []
-    , progInvokeEnv = []
-    , progInvokeCwd = Nothing
-    , progInvokeInput = Nothing
-    , progInvokeInputEncoding = IOEncodingText
-    , progInvokeOutputEncoding = IOEncodingText
-    }
->>>>>>> 46df8ba71 (Fix extra-prog-path propagation in the codebase.)
 
 simpleProgramInvocation :: FilePath -> [String] -> ProgramInvocation
 simpleProgramInvocation path args =
@@ -130,13 +97,11 @@ programInvocation prog args =
 
 
 runProgramInvocation :: Verbosity -> ProgramInvocation -> IO ()
-<<<<<<< HEAD
 runProgramInvocation verbosity
   ProgramInvocation {
     progInvokePath  = path,
     progInvokeArgs  = args,
     progInvokeEnv   = [],
-    progInvokePathEnv = [],
     progInvokeCwd   = Nothing,
     progInvokeInput = Nothing
   } =
@@ -147,12 +112,10 @@ runProgramInvocation verbosity
     progInvokePath  = path,
     progInvokeArgs  = args,
     progInvokeEnv   = envOverrides,
-    progInvokePathEnv = extraPath,
     progInvokeCwd   = mcwd,
     progInvokeInput = Nothing
   } = do
-    pathOverride <- getExtraPathEnv envOverrides extraPath
-    menv <- getEffectiveEnvironment (envOverrides ++ pathOverride)
+    menv <- getEffectiveEnvironment envOverrides
     maybeExit $ rawSystemIOWithEnv verbosity
                                    path args
                                    mcwd menv
@@ -163,69 +126,15 @@ runProgramInvocation verbosity
     progInvokePath  = path,
     progInvokeArgs  = args,
     progInvokeEnv   = envOverrides,
-    progInvokePathEnv = extraPath,
     progInvokeCwd   = mcwd,
     progInvokeInput = Just inputStr,
     progInvokeInputEncoding = encoding
   } = do
-    pathOverride <- getExtraPathEnv envOverrides extraPath
-    menv <- getEffectiveEnvironment (envOverrides ++ pathOverride)
+    menv <- getEffectiveEnvironment envOverrides
     (_, errors, exitCode) <- rawSystemStdInOut verbosity
                                     path args
                                     mcwd menv
                                     (Just input) IODataModeBinary
-=======
-runProgramInvocation
-  verbosity
-  ProgramInvocation
-    { progInvokePath = path
-    , progInvokeArgs = args
-    , progInvokeEnv = []
-    , progInvokeCwd = Nothing
-    , progInvokeInput = Nothing
-    } =
-    rawSystemExit verbosity path args
-runProgramInvocation
-  verbosity
-  ProgramInvocation
-    { progInvokePath = path
-    , progInvokeArgs = args
-    , progInvokeEnv = envOverrides
-    , progInvokeCwd = mcwd
-    , progInvokeInput = Nothing
-    } = do
-    menv <- getEffectiveEnvironment envOverrides
-    maybeExit $
-      rawSystemIOWithEnv
-        verbosity
-        path
-        args
-        mcwd
-        menv
-        Nothing
-        Nothing
-        Nothing
-runProgramInvocation
-  verbosity
-  ProgramInvocation
-    { progInvokePath = path
-    , progInvokeArgs = args
-    , progInvokeEnv = envOverrides
-    , progInvokeCwd = mcwd
-    , progInvokeInput = Just inputStr
-    , progInvokeInputEncoding = encoding
-    } = do
-    menv <- getEffectiveEnvironment envOverrides
-    (_, errors, exitCode) <-
-      rawSystemStdInOut
-        verbosity
-        path
-        args
-        mcwd
-        menv
-        (Just input)
-        IODataModeBinary
->>>>>>> 46df8ba71 (Fix extra-prog-path propagation in the codebase.)
     when (exitCode /= ExitSuccess) $
       die' verbosity $ "'" ++ path ++ "' exited with an error:\n" ++ errors
   where
@@ -261,20 +170,11 @@ getProgramInvocationIODataAndErrors
 getProgramInvocationIODataAndErrors
   verbosity
   ProgramInvocation
-<<<<<<< HEAD
     { progInvokePath          = path
     , progInvokeArgs          = args
     , progInvokeEnv           = envOverrides
-    , progInvokePathEnv       = extraPath
     , progInvokeCwd           = mcwd
     , progInvokeInput         = minputStr
-=======
-    { progInvokePath = path
-    , progInvokeArgs = args
-    , progInvokeEnv = envOverrides
-    , progInvokeCwd = mcwd
-    , progInvokeInput = minputStr
->>>>>>> 46df8ba71 (Fix extra-prog-path propagation in the codebase.)
     , progInvokeInputEncoding = encoding
     }
   mode = do
@@ -283,21 +183,6 @@ getProgramInvocationIODataAndErrors
   where
     input = encodeToIOData encoding <$> minputStr
 
-<<<<<<< HEAD
-getExtraPathEnv :: [(String, Maybe String)] -> [FilePath] -> IO [(String, Maybe String)]
-getExtraPathEnv _ [] = return []
-getExtraPathEnv env extras = do
-    mb_path <- case lookup "PATH" env of
-                Just x  -> return x
-                Nothing -> lookupEnv "PATH"
-    let extra = intercalate [searchPathSeparator] extras
-        path' = case mb_path of
-                    Nothing   -> extra
-                    Just path -> extra ++ searchPathSeparator : path
-    return [("PATH", Just path')]
-
-=======
->>>>>>> 46df8ba71 (Fix extra-prog-path propagation in the codebase.)
 -- | Return the current environment extended with the given overrides.
 -- If an entry is specified twice in @overrides@, the second entry takes
 -- precedence.

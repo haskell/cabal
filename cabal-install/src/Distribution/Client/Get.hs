@@ -37,6 +37,8 @@ import Distribution.Simple.Program
          ( programName )
 import Distribution.Types.SourceRepo (RepoKind (..))
 import Distribution.Client.Types.SourceRepo (SourceRepositoryPackage (..), SourceRepoProxy, srpToProxy)
+import Distribution.Utils.NubList
+         ( fromNubList )
 
 import Distribution.Client.Setup
          ( GlobalFlags(..), GetFlags(..), RepoContext(..) )
@@ -53,14 +55,8 @@ import Distribution.PackageDescription.PrettyPrint
         ( writeGenericPackageDescription )
 
 import qualified Data.Map as Map
-<<<<<<< HEAD
 import Control.Monad ( mapM_ )
-=======
-import Distribution.Client.Errors
-import Distribution.Utils.NubList
-  ( fromNubList
-  )
->>>>>>> 46df8ba71 (Fix extra-prog-path propagation in the codebase.)
+
 import System.Directory
          ( createDirectoryIfMissing, doesDirectoryExist, doesFileExist )
 import System.FilePath
@@ -75,14 +71,9 @@ get :: Verbosity
     -> [UserTarget]
     -> IO ()
 get verbosity _ _ _ [] =
-<<<<<<< HEAD
     notice verbosity "No packages requested. Nothing to do."
 
-get verbosity repoCtxt _ getFlags userTargets = do
-=======
-  notice verbosity "No packages requested. Nothing to do."
 get verbosity repoCtxt globalFlags getFlags userTargets = do
->>>>>>> 46df8ba71 (Fix extra-prog-path propagation in the codebase.)
   let useSourceRepo = case getSourceRepository getFlags of
                         NoFlag -> False
                         _      -> True
@@ -133,14 +124,8 @@ get verbosity repoCtxt globalFlags getFlags userTargets = do
     prefix = fromFlagOrDefault "" (getDestDir getFlags)
 
     clone :: [UnresolvedSourcePackage] -> IO ()
-<<<<<<< HEAD
-    clone = clonePackagesFromSourceRepo verbosity prefix kind
+    clone = clonePackagesFromSourceRepo verbosity prefix kind (fromNubList $ globalProgPathExtra globalFlags)
           . map (\pkg -> (packageId pkg, packageSourceRepos pkg))
-=======
-    clone =
-      clonePackagesFromSourceRepo verbosity prefix kind (fromNubList $ globalProgPathExtra globalFlags)
-        . map (\pkg -> (packageId pkg, packageSourceRepos pkg))
->>>>>>> 46df8ba71 (Fix extra-prog-path propagation in the codebase.)
       where
         kind :: Maybe RepoKind
         kind = fromFlag . getSourceRepository $ getFlags
@@ -292,54 +277,25 @@ instance Exception ClonePackageException where
 -- | Given a bunch of package ids and their corresponding available
 -- 'SourceRepo's, pick a single 'SourceRepo' for each one and clone into
 -- new subdirs of the given directory.
-<<<<<<< HEAD
 --
 clonePackagesFromSourceRepo :: Verbosity
                             -> FilePath            -- ^ destination dir prefix
                             -> Maybe RepoKind      -- ^ preferred 'RepoKind'
+                            -> [FilePath]          -- ^ Extra prog paths
                             -> [(PackageId, [PD.SourceRepo])]
                                                    -- ^ the packages and their
                                                    -- available 'SourceRepo's
                             -> IO ()
 clonePackagesFromSourceRepo verbosity destDirPrefix
-                            preferredRepoKind pkgrepos = do
+                            preferredRepoKind progPaths pkgrepos = do
 
-=======
-clonePackagesFromSourceRepo
-  :: Verbosity
-  -> FilePath
-  -- ^ destination dir prefix
-  -> Maybe RepoKind
-  -- ^ preferred 'RepoKind'
-  -> [FilePath]
-  -- ^ Extra prog paths
-  -> [(PackageId, [PD.SourceRepo])]
-  -- ^ the packages and their
-  -- available 'SourceRepo's
-  -> IO ()
-clonePackagesFromSourceRepo
-  verbosity
-  destDirPrefix
-  preferredRepoKind
-  progPaths
-  pkgrepos = do
->>>>>>> 46df8ba71 (Fix extra-prog-path propagation in the codebase.)
     -- Do a bunch of checks and collect the required info
     pkgrepos' <- traverse preCloneChecks pkgrepos
 
     -- Configure the VCS drivers for all the repository types we may need
-<<<<<<< HEAD
-    vcss <- configureVCSs verbosity $
+    vcss <- configureVCSs verbosity progPaths $
               Map.fromList [ (vcsRepoType vcs, vcs)
                            | (_, _, vcs, _) <- pkgrepos' ]
-=======
-    vcss <-
-      configureVCSs verbosity progPaths $
-        Map.fromList
-          [ (vcsRepoType vcs, vcs)
-          | (_, _, vcs, _) <- pkgrepos'
-          ]
->>>>>>> 46df8ba71 (Fix extra-prog-path propagation in the codebase.)
 
     -- Now execute all the required commands for each repo
     sequence_

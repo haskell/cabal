@@ -29,52 +29,7 @@ import Distribution.Client.Compat.Prelude
 import Distribution.CabalSpecVersion (cabalSpecMinimumLibraryVersion)
 import qualified Distribution.Make as Make
 import qualified Distribution.Simple as Simple
-<<<<<<< HEAD
-=======
-import Distribution.Simple.Build.Macros
-  ( generatePackageVersionMacros
-  )
-import Distribution.Simple.BuildPaths
-  ( defaultDistPref
-  , exeExtension
-  )
-import Distribution.Simple.Compiler
-  ( Compiler (compilerId)
-  , PackageDB (..)
-  , PackageDBStack
-  , compilerFlavor
-  )
-import Distribution.Simple.Configure
-  ( configCompilerEx
-  )
-import Distribution.Simple.PackageDescription
-  ( readGenericPackageDescription
-  )
-import Distribution.Simple.PreProcess
-  ( ppUnlit
-  , runSimplePreProcessor
-  )
-import Distribution.Simple.Program
-  ( ProgramDb
-  , emptyProgramDb
-  , getDbProgramOutput
-  , getProgramSearchPath
-  , ghcProgram
-  , ghcjsProgram
-  , runDbProgram
-  )
-import Distribution.Simple.Program.Db
-  ( appendProgramSearchPath
-  )
-import Distribution.Simple.Program.Find
-  ( programSearchPathAsPATHVar
-  )
-import Distribution.Simple.Program.Run
-  ( getEffectiveEnvironment
-  )
-import qualified Distribution.Simple.Program.Strip as Strip
-import Distribution.Types.ModuleRenaming (defaultRenaming)
->>>>>>> 46df8ba71 (Fix extra-prog-path propagation in the codebase.)
+
 import Distribution.Version
          ( Version, mkVersion, versionNumbers, VersionRange, anyVersion
          , intersectVersionRanges, orLaterVersion
@@ -105,9 +60,10 @@ import Distribution.Simple.Program
          ( ProgramDb, emptyProgramDb
          , getProgramSearchPath, getDbProgramOutput, runDbProgram, ghcProgram
          , ghcjsProgram )
+import Distribution.Simple.Program.Db
+         ( appendProgramSearchPath )
 import Distribution.Simple.Program.Find
-         ( programSearchPathAsPATHVar
-         , ProgramSearchPathEntry(ProgramSearchPathDir) )
+         ( programSearchPathAsPATHVar )
 import Distribution.Simple.Program.Run
          ( getEffectiveEnvironment )
 import qualified Distribution.Simple.Program.Strip as Strip
@@ -489,27 +445,13 @@ invoke verbosity path args options = do
     Nothing        -> return ()
     Just logHandle -> info verbosity $ "Redirecting build log to " ++ show logHandle
 
-<<<<<<< HEAD
-  searchpath <- programSearchPathAsPATHVar
-                (map ProgramSearchPathDir (useExtraPathEnv options) ++
-                 getProgramSearchPath (useProgramDb options))
+  progDb <- appendProgramSearchPath verbosity (useExtraPathEnv options) (useProgramDb options)
+
+  searchpath <- programSearchPathAsPATHVar $ getProgramSearchPath progDb
   env       <- getEffectiveEnvironment $
                  [ ("PATH", Just searchpath)
                  , ("HASKELL_DIST_DIR", Just (useDistPref options))
                  ] ++ useExtraEnvOverrides options
-=======
-  progDb <- appendProgramSearchPath verbosity (useExtraPathEnv options) (useProgramDb options)
-
-  searchpath <-
-    programSearchPathAsPATHVar $ getProgramSearchPath progDb
-
-  env <-
-    getEffectiveEnvironment $
-      [ ("PATH", Just searchpath)
-      , ("HASKELL_DIST_DIR", Just (useDistPref options))
-      ]
-        ++ useExtraEnvOverrides options
->>>>>>> 46df8ba71 (Fix extra-prog-path propagation in the codebase.)
 
   let loggingHandle = case useLoggingHandle options of
                         Nothing -> Inherit

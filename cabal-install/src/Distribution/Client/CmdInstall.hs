@@ -39,88 +39,7 @@ import Distribution.Client.Types
          , SourcePackageDb(..) )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Package
-<<<<<<< HEAD
          ( Package(..), PackageName, mkPackageName, unPackageName )
-=======
-  ( Package (..)
-  , PackageName
-  , mkPackageName
-  , unPackageName
-  )
-import Distribution.Simple.BuildPaths
-  ( exeExtension
-  )
-import Distribution.Simple.Command
-  ( CommandUI (..)
-  , optionName
-  , usageAlternatives
-  )
-import Distribution.Simple.Compiler
-  ( Compiler (..)
-  , CompilerFlavor (..)
-  , CompilerId (..)
-  , PackageDB (..)
-  , PackageDBStack
-  )
-import Distribution.Simple.Configure
-  ( configCompilerEx
-  )
-import Distribution.Simple.Flag
-  ( flagElim
-  , flagToMaybe
-  , fromFlagOrDefault
-  )
-import Distribution.Simple.GHC
-  ( GhcEnvironmentFileEntry (..)
-  , GhcImplInfo (..)
-  , ParseErrorExc
-  , getGhcAppDir
-  , getImplInfo
-  , ghcPlatformAndVersionString
-  , readGhcEnvironmentFile
-  , renderGhcEnvironmentFile
-  )
-import qualified Distribution.Simple.InstallDirs as InstallDirs
-import qualified Distribution.Simple.PackageIndex as PI
-import Distribution.Simple.Program.Db
-  ( appendProgramSearchPath
-  , defaultProgramDb
-  , userSpecifyArgss
-  , userSpecifyPaths
-  )
-import Distribution.Simple.Setup
-  ( Flag (..)
-  , installDirsOptions
-  )
-import Distribution.Simple.Utils
-  ( createDirectoryIfMissingVerbose
-  , dieWithException
-  , notice
-  , ordNub
-  , safeHead
-  , warn
-  , withTempDirectory
-  , wrapText
-  )
-import Distribution.Solver.Types.PackageConstraint
-  ( PackageProperty (..)
-  )
-import Distribution.Solver.Types.PackageIndex
-  ( lookupPackageName
-  , searchByName
-  )
-import Distribution.Solver.Types.SourcePackage
-  ( SourcePackage (..)
-  )
-import Distribution.System
-  ( OS (Windows)
-  , Platform
-  , buildOS
-  )
-import Distribution.Types.InstalledPackageInfo
-  ( InstalledPackageInfo (..)
-  )
->>>>>>> 46df8ba71 (Fix extra-prog-path propagation in the codebase.)
 import Distribution.Types.PackageId
          ( PackageIdentifier(..) )
 import Distribution.Client.ProjectConfig
@@ -140,11 +59,9 @@ import Distribution.Client.ProjectConfig.Types
          , projectConfigConfigFile )
 import Distribution.Simple.Program.Db
          ( userSpecifyPaths, userSpecifyArgss, defaultProgramDb
-         , modifyProgramSearchPath )
+         , appendProgramSearchPath )
 import Distribution.Simple.BuildPaths
          ( exeExtension )
-import Distribution.Simple.Program.Find
-         ( ProgramSearchPathEntry(..) )
 import Distribution.Client.Config
          ( defaultInstallPath, loadConfig, SavedConfig(..) )
 import qualified Distribution.Simple.PackageIndex as PI
@@ -397,7 +314,6 @@ installAction flags@NixStyleFlags { extraFlags = clientInstallFlags', .. } targe
      withProjectOrGlobalConfig verbosity ignoreProject globalConfigFlag withProject withoutProject
 
   let
-<<<<<<< HEAD
     ProjectConfig {
       projectConfigBuildOnly = ProjectConfigBuildOnly {
         projectConfigLogsDir
@@ -406,7 +322,8 @@ installAction flags@NixStyleFlags { extraFlags = clientInstallFlags', .. } targe
         projectConfigHcFlavor,
         projectConfigHcPath,
         projectConfigHcPkg,
-        projectConfigStoreDir
+        projectConfigStoreDir,
+        projectConfigProgPathExtra
       },
       projectConfigLocalPackages = PackageConfig {
         packageConfigProgramPaths,
@@ -414,28 +331,6 @@ installAction flags@NixStyleFlags { extraFlags = clientInstallFlags', .. } targe
         packageConfigProgramPathExtra
       }
     } = config
-=======
-    ProjectConfig
-      { projectConfigBuildOnly =
-        ProjectConfigBuildOnly
-          { projectConfigLogsDir
-          }
-      , projectConfigShared =
-        ProjectConfigShared
-          { projectConfigHcFlavor
-          , projectConfigHcPath
-          , projectConfigHcPkg
-          , projectConfigStoreDir
-          , projectConfigProgPathExtra
-          }
-      , projectConfigLocalPackages =
-        PackageConfig
-          { packageConfigProgramPaths
-          , packageConfigProgramArgs
-          , packageConfigProgramPathExtra
-          }
-      } = config
->>>>>>> 46df8ba71 (Fix extra-prog-path propagation in the codebase.)
 
     hcFlavor = flagToMaybe projectConfigHcFlavor
     hcPath   = flagToMaybe projectConfigHcPath
@@ -445,18 +340,9 @@ installAction flags@NixStyleFlags { extraFlags = clientInstallFlags', .. } targe
   let
     -- ProgramDb with directly user specified paths
     preProgDb =
-<<<<<<< HEAD
-        userSpecifyPaths (Map.toList (getMapLast packageConfigProgramPaths))
-      . userSpecifyArgss (Map.toList (getMapMappend packageConfigProgramArgs))
-      . modifyProgramSearchPath
-          (++ [ ProgramSearchPathDir dir
-              | dir <- fromNubList packageConfigProgramPathExtra ])
-      $ defaultProgramDb
-=======
       userSpecifyPaths (Map.toList (getMapLast packageConfigProgramPaths))
         . userSpecifyArgss (Map.toList (getMapMappend packageConfigProgramArgs))
         $ configProgDb
->>>>>>> 46df8ba71 (Fix extra-prog-path propagation in the codebase.)
 
   -- progDb is a program database with compiler tools configured properly
   (compiler@Compiler { compilerId =

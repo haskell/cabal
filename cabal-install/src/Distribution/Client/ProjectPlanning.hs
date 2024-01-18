@@ -385,7 +385,6 @@ rebuildProjectConfig verbosity
                                projectConfigBuildOnly
                              } = do
 
-<<<<<<< HEAD
       pkgLocations <- findProjectPackages distDirLayout projectConfig
       -- Create folder only if findProjectPackages did not throw a
       -- BadPackageLocations exception.
@@ -427,35 +426,12 @@ configureCompiler verbosity
                         packageConfigProgramPathExtra) $ do
 
           liftIO $ info verbosity "Compiler settings changed, reconfiguring..."
-          result@(_, _, progdb') <- liftIO $
+          progdb <- liftIO $ appendProgramSearchPath verbosity (fromNubList packageConfigProgramPathExtra) defaultProgramDb
+          let progdb' = userSpecifyPaths (Map.toList (getMapLast packageConfigProgramPaths)) progdb
+          result@(_, _, progdb'') <- liftIO $
             Cabal.configCompilerEx
               hcFlavor hcPath hcPkg
-              progdb verbosity
-=======
-    progsearchpath <- liftIO $ getSystemSearchPath
-    rerunIfChanged
-      verbosity
-      fileMonitorCompiler
-      ( hcFlavor
-      , hcPath
-      , hcPkg
-      , progsearchpath
-      , packageConfigProgramPaths
-      , packageConfigProgramPathExtra
-      )
-      $ do
-        liftIO $ info verbosity "Compiler settings changed, reconfiguring..."
-        progdb <- liftIO $ appendProgramSearchPath verbosity (fromNubList packageConfigProgramPathExtra) defaultProgramDb
-        let progdb' = userSpecifyPaths (Map.toList (getMapLast packageConfigProgramPaths)) progdb
-        result@(_, _, progdb'') <-
-          liftIO $
-            Cabal.configCompilerEx
-              hcFlavor
-              hcPath
-              hcPkg
-              progdb'
-              verbosity
->>>>>>> 46df8ba71 (Fix extra-prog-path propagation in the codebase.)
+              progdb' verbosity
 
         -- Note that we added the user-supplied program locations and args
         -- for /all/ programs, not just those for the compiler prog and
@@ -463,29 +439,14 @@ configureCompiler verbosity
         -- the compiler will configure (and it does vary between compilers).
         -- We do know however that the compiler will only configure the
         -- programs it cares about, and those are the ones we monitor here.
-<<<<<<< HEAD
-          monitorFiles (programsMonitorFiles progdb')
+          monitorFiles (programsMonitorFiles progdb'')
 
           return result
       where
         hcFlavor = flagToMaybe projectConfigHcFlavor
         hcPath   = flagToMaybe projectConfigHcPath
         hcPkg    = flagToMaybe projectConfigHcPkg
-        progdb   =
-            userSpecifyPaths (Map.toList (getMapLast packageConfigProgramPaths))
-          . modifyProgramSearchPath
-              ([ ProgramSearchPathDir dir
-               | dir <- fromNubList packageConfigProgramPathExtra ] ++)
-          $ defaultProgramDb
-=======
-        monitorFiles (programsMonitorFiles progdb'')
 
-        return result
-    where
-      hcFlavor = flagToMaybe projectConfigHcFlavor
-      hcPath = flagToMaybe projectConfigHcPath
-      hcPkg = flagToMaybe projectConfigHcPkg
->>>>>>> 46df8ba71 (Fix extra-prog-path propagation in the codebase.)
 
 
 -- | Return an up-to-date elaborated install plan.

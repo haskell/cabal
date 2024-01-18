@@ -58,21 +58,13 @@ import Distribution.Client.ProjectPlanning
 import Distribution.Simple.Command
   ( CommandUI(..) )
 import Distribution.Simple.Program.Db
-<<<<<<< HEAD
-  ( modifyProgramSearchPath
-=======
   ( appendProgramSearchPath
   , configuredPrograms
->>>>>>> 46df8ba71 (Fix extra-prog-path propagation in the codebase.)
   , requireProgram
   , configuredPrograms
   )
-<<<<<<< HEAD
 import Distribution.Simple.Program.Find
-  ( ProgramSearchPathEntry(..)
-  )
-=======
->>>>>>> 46df8ba71 (Fix extra-prog-path propagation in the codebase.)
+  ( simpleProgram )
 import Distribution.Simple.Program.Run
   ( programInvocation
   , runProgramInvocation
@@ -81,7 +73,6 @@ import Distribution.Simple.Program.Types
   ( programOverrideEnv
   , programDefaultArgs
   , programPath
-  , simpleProgram
   , ConfiguredProgram
   )
 import Distribution.Simple.GHC
@@ -91,15 +82,8 @@ import Distribution.Simple.Flag
   ( fromFlagOrDefault
   )
 import Distribution.Simple.Utils
-<<<<<<< HEAD
   ( die'
-  , info
   , createDirectoryIfMissingVerbose
-=======
-  ( createDirectoryIfMissingVerbose
-  , dieWithException
-  , notice
->>>>>>> 46df8ba71 (Fix extra-prog-path propagation in the codebase.)
   , withTempDirectory
   , wrapText
   , notice
@@ -168,14 +152,6 @@ execAction flags@NixStyleFlags {..} extraArgs globalFlags = do
     mempty
 
   -- Some dependencies may have executables. Let's put those on the PATH.
-<<<<<<< HEAD
-  extraPaths <- pathAdditions verbosity baseCtx buildCtx
-  let programDb = modifyProgramSearchPath
-                  (map ProgramSearchPathDir extraPaths ++)
-                . pkgConfigCompilerProgs
-                . elaboratedShared
-                $ buildCtx
-=======
   let extraPaths = pathAdditions baseCtx buildCtx
 
   programDb <-
@@ -185,7 +161,6 @@ execAction flags@NixStyleFlags {..} extraArgs globalFlags = do
       . pkgConfigCompilerProgs
       . elaboratedShared
       $ buildCtx
->>>>>>> 46df8ba71 (Fix extra-prog-path propagation in the codebase.)
 
   -- Now that we have the packages, set up the environment. We accomplish this
   -- by creating an environment file that selects the databases and packages we
@@ -268,20 +243,7 @@ withTempEnvFile verbosity baseCtx buildCtx buildStatus action = do
        buildStatus
      action envOverrides)
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-pathAdditions :: Verbosity -> ProjectBaseContext -> ProjectBuildContext -> IO [FilePath]
-pathAdditions verbosity ProjectBaseContext{..}ProjectBuildContext{..} = do
-  info verbosity . unlines $ "Including the following directories in PATH:"
-                           : paths
-  return paths
-  where
-  paths = S.toList
-        $ binDirectories distDirLayout elaboratedShared elaboratedPlanToExecute
-=======
-=======
 -- | Get paths to all dependency executables to be included in PATH.
->>>>>>> f06195d3a (Honor build-tool-depends in CmdRun)
 pathAdditions :: ProjectBaseContext -> ProjectBuildContext -> [FilePath]
 pathAdditions ProjectBaseContext{..} ProjectBuildContext{..} =
   paths ++ cabalConfigPaths
@@ -294,7 +256,6 @@ pathAdditions ProjectBaseContext{..} ProjectBuildContext{..} =
     paths =
       S.toList $
         binDirectories distDirLayout elaboratedShared elaboratedPlanToExecute
->>>>>>> 46df8ba71 (Fix extra-prog-path propagation in the codebase.)
 
 -- | Get paths to all dependency executables to be included in PATH.
 binDirectories

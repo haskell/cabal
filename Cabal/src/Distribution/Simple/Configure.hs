@@ -73,23 +73,16 @@ import Distribution.PackageDescription.Configuration
 import Distribution.PackageDescription.Check hiding (doesFileExist)
 import Distribution.Simple.BuildToolDepends
 import Distribution.Simple.Program
-<<<<<<< HEAD
 import Distribution.Simple.Setup as Setup
 import Distribution.Simple.BuildTarget
 import Distribution.Simple.LocalBuildInfo
+import Distribution.Simple.Program.Db (appendProgramSearchPath)
+import Distribution.Simple.Utils
+import Distribution.System
 import Distribution.Types.PackageVersionConstraint
 import Distribution.Types.LocalBuildInfo
-=======
-import Distribution.Simple.Program.Db (appendProgramSearchPath, lookupProgramByName)
-import Distribution.Simple.Setup.Common as Setup
-import Distribution.Simple.Setup.Config as Setup
-import Distribution.Simple.Utils
-import Distribution.System
->>>>>>> 46df8ba71 (Fix extra-prog-path propagation in the codebase.)
 import Distribution.Types.ComponentRequestedSpec
 import Distribution.Types.GivenComponent
-import Distribution.Simple.Utils
-import Distribution.System
 import Distribution.Version
 import Distribution.Verbosity
 import qualified Distribution.Compat.Graph as Graph
@@ -375,18 +368,19 @@ configure (pkg_descr0, pbi) cfg = do
             (fromFlag (configUserInstall cfg))
             (configPackageDBs cfg)
 
+    programDbPre <- mkProgramDb cfg (configPrograms cfg)
     -- comp:            the compiler we're building with
     -- compPlatform:    the platform we're building for
     -- programDb:  location and args of all programs we're
     --                  building with
-    (comp         :: Compiler,
+    (comp :: Compiler,
      compPlatform :: Platform,
-     programDb    :: ProgramDb)
+     programDb :: ProgramDb)
         <- configCompilerEx
             (flagToMaybe (configHcFlavor cfg))
             (flagToMaybe (configHcPath cfg))
             (flagToMaybe (configHcPkg cfg))
-            (mkProgramDb cfg (configPrograms cfg))
+            programDbPre
             (lessVerbose verbosity)
 
     -- The InstalledPackageIndex of all installed packages
@@ -399,7 +393,6 @@ configure (pkg_descr0, pbi) cfg = do
     let internalPackageSet :: Set LibraryName
         internalPackageSet = getInternalLibraries pkg_descr0
 
-<<<<<<< HEAD
     -- Make a data structure describing what components are enabled.
     let enabled :: ComponentRequestedSpec
         enabled = case mb_cname of
@@ -421,23 +414,6 @@ configure (pkg_descr0, pbi) cfg = do
         die' verbosity $
               "--enable-tests/--enable-benchmarks are incompatible with" ++
               " explicitly specifying a component to configure."
-=======
-  programDbPre <- mkProgramDb cfg (configPrograms cfg)
-  -- comp:            the compiler we're building with
-  -- compPlatform:    the platform we're building for
-  -- programDb:  location and args of all programs we're
-  --                  building with
-  ( comp :: Compiler
-    , compPlatform :: Platform
-    , programDb00 :: ProgramDb
-    ) <-
-    configCompilerEx
-      (flagToMaybe (configHcFlavor cfg))
-      (flagToMaybe (configHcPath cfg))
-      (flagToMaybe (configHcPkg cfg))
-      programDbPre
-      (lessVerbose verbosity)
->>>>>>> 46df8ba71 (Fix extra-prog-path propagation in the codebase.)
 
     -- Some sanity checks related to dynamic/static linking.
     when (fromFlag (configDynExe cfg) && fromFlag (configFullyStaticExe cfg)) $
@@ -880,15 +856,6 @@ mkProgramDb cfg initialProgramDb = do
     . userSpecifyPaths (configProgramPaths cfg)
     $ programDb
   where
-<<<<<<< HEAD
-    programDb  = userSpecifyArgss (configProgramArgs cfg)
-                 . userSpecifyPaths (configProgramPaths cfg)
-                 . setProgramSearchPath searchpath
-                 $ initialProgramDb
-    searchpath = map ProgramSearchPathDir
-                 (fromNubList $ configProgramPathExtra cfg)
-                 ++ getProgramSearchPath initialProgramDb
-=======
     searchpath = fromNubList $ configProgramPathExtra cfg
 
 -- Note. We try as much as possible to _prepend_ rather than postpend the extra-prog-path
@@ -897,7 +864,6 @@ mkProgramDb cfg initialProgramDb = do
 -- so for v2 builds adding it again is entirely unnecessary. However, it needs to get added again _anyway_
 -- so as to take effect for v1 builds or standalone calls to Setup.hs
 -- In this instance, the lesser evil is to not allow it to override the system path.
->>>>>>> 46df8ba71 (Fix extra-prog-path propagation in the codebase.)
 
 -- -----------------------------------------------------------------------------
 -- Helper functions for configure
@@ -1745,29 +1711,15 @@ ccLdOptionsBuildInfo cflags ldflags ldflags_static =
 -- -----------------------------------------------------------------------------
 -- Determining the compiler details
 
-<<<<<<< HEAD
 configCompilerAuxEx :: ConfigFlags
                     -> IO (Compiler, Platform, ProgramDb)
-configCompilerAuxEx cfg = configCompilerEx (flagToMaybe $ configHcFlavor cfg)
+configCompilerAuxEx cfg = do
+  programDb <- mkProgramDb cfg defaultProgramDb
+  configCompilerEx (flagToMaybe $ configHcFlavor cfg)
                                            (flagToMaybe $ configHcPath cfg)
                                            (flagToMaybe $ configHcPkg cfg)
                                            programDb
                                            (fromFlag (configVerbosity cfg))
-  where
-    programDb = mkProgramDb cfg defaultProgramDb
-=======
-configCompilerAuxEx
-  :: ConfigFlags
-  -> IO (Compiler, Platform, ProgramDb)
-configCompilerAuxEx cfg = do
-  programDb <- mkProgramDb cfg defaultProgramDb
-  configCompilerEx
-    (flagToMaybe $ configHcFlavor cfg)
-    (flagToMaybe $ configHcPath cfg)
-    (flagToMaybe $ configHcPkg cfg)
-    programDb
-    (fromFlag (configVerbosity cfg))
->>>>>>> 46df8ba71 (Fix extra-prog-path propagation in the codebase.)
 
 configCompilerEx :: Maybe CompilerFlavor -> Maybe FilePath -> Maybe FilePath
                  -> ProgramDb -> Verbosity

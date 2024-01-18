@@ -1601,15 +1601,8 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
         | otherwise = error "libAbiHash: Can't find an enabled library way"
 
   (ghcjsProg, _) <- requireProgram verbosity ghcjsProgram (withPrograms lbi)
-<<<<<<< HEAD
   hash <- getProgramInvocationOutput verbosity
-          (ghcInvocation ghcjsProg comp platform ghcArgs)
-=======
-  hash <-
-    getProgramInvocationOutput
-      verbosity
-      =<< ghcInvocation verbosity ghcjsProg comp platform ghcArgs
->>>>>>> 46df8ba71 (Fix extra-prog-path propagation in the codebase.)
+          =<< ghcInvocation verbose ghcjsProg comp platform ghcArgs
   return (takeWhile (not . isSpace) hash)
 
 componentGhcOptions :: Verbosity -> LocalBuildInfo
