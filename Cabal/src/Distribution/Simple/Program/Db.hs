@@ -26,7 +26,7 @@
 -- don't have to write all the PATH logic inside Setup.lhs.
 module Distribution.Simple.Program.Db
   ( -- * The collection of configured programs we can run
-    ProgramDb
+    ProgramDb (..)
   , emptyProgramDb
   , defaultProgramDb
   , restoreProgramDb
@@ -60,6 +60,12 @@ module Distribution.Simple.Program.Db
   , requireProgram
   , requireProgramVersion
   , needProgram
+
+    -- * Internal functions
+  , UnconfiguredProgs
+  , ConfiguredProgs
+  , updateUnconfiguredProgs
+  , updateConfiguredProgs
   ) where
 
 import Distribution.Compat.Prelude

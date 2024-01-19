@@ -501,7 +501,7 @@ checkPackageDescription
       (isNothing buildTypeRaw_ && specVersion_ < CabalSpecV2_2)
       (PackageBuildWarning NoBuildType)
     checkP
-      (isJust setupBuildInfo_ && buildType pkg /= Custom)
+      (isJust setupBuildInfo_ && buildType pkg `notElem` [Custom, Hooks])
       (PackageBuildWarning NoCustomSetup)
 
     -- Contents.

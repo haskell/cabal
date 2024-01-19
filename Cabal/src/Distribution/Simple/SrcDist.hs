@@ -271,6 +271,8 @@ listPackageSources' verbosity rip cwd pkg_descr pps =
           traverse (fmap snd . findIncludeFile verbosity cwd relincdirs) incls
     , -- Setup script, if it exists.
       fmap (maybe [] (\f -> [f])) $ findSetupFile cwd
+    , -- SetupHooks script, if it exists.
+      fmap (maybe [] (\f -> [f])) $ findSetupHooksFile cwd
     , -- The .cabal file itself.
       fmap (\d -> [d]) (tryFindPackageDescCwd verbosity cwd ".")
     ]
@@ -315,6 +317,21 @@ findSetupFile targetDir = do
   where
     setupHs = "Setup.hs"
     setupLhs = "Setup.lhs"
+
+-- | Find the setup hooks script file, if it exists.
+findSetupHooksFile :: FilePath -> IO (Maybe FilePath)
+findSetupHooksFile targetDir = do
+  hsExists <- doesFileExist (targetDir </> setupHs)
+  lhsExists <- doesFileExist (targetDir </> setupLhs)
+  if hsExists
+    then return (Just setupHs)
+    else
+      if lhsExists
+        then return (Just setupLhs)
+        else return Nothing
+  where
+    setupHs = "SetupHooks.hs"
+    setupLhs = "SetupHooks.lhs"
 
 -- | Create a default setup script in the target directory, if it doesn't exist.
 maybeCreateDefaultSetupScript :: FilePath -> IO ()

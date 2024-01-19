@@ -1,5 +1,7 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TupleSections #-}
 
@@ -22,9 +24,11 @@
 module Distribution.Simple.Build
   ( -- * Build
     build
+  , build_setupHooks
 
     -- * Repl
   , repl
+  , repl_setupHooks
   , startInterpreter
 
     -- * Build preparation,
@@ -95,6 +99,12 @@ import Distribution.Simple.Register
 import Distribution.Simple.Setup.Build
 import Distribution.Simple.Setup.Config
 import Distribution.Simple.Setup.Repl
+import Distribution.Simple.SetupHooks.Internal
+  ( BuildHooks (..)
+  , BuildingWhat (..)
+  , noBuildHooks
+  )
+import qualified Distribution.Simple.SetupHooks.Internal as SetupHooks
 import Distribution.Simple.ShowBuildInfo
 import Distribution.Simple.Test.LibV09
 import Distribution.Simple.Utils
@@ -128,69 +138,105 @@ build
   -> [PPSuffixHandler]
   -- ^ preprocessors to run before compiling
   -> IO ()
-build pkg_descr lbi flags suffixes = do
-  checkSemaphoreSupport verbosity (compiler lbi) flags
-  targets <- readTargetInfos verbosity pkg_descr lbi (buildArgs flags)
-  let componentsToBuild = neededTargetsInBuildOrder' pkg_descr lbi (map nodeKey targets)
-  info verbosity $
-    "Component build order: "
-      ++ intercalate
-        ", "
-        ( map
-            (showComponentName . componentLocalName . targetCLBI)
-            componentsToBuild
-        )
+build = build_setupHooks noBuildHooks
 
-  when (null targets) $
-    -- Only bother with this message if we're building the whole package
-    setupMessage verbosity "Building" (packageId pkg_descr)
+build_setupHooks
+  :: BuildHooks
+  -> PackageDescription
+  -- ^ Mostly information from the .cabal file
+  -> LocalBuildInfo
+  -- ^ Configuration information
+  -> BuildFlags
+  -- ^ Flags that the user passed to build
+  -> [PPSuffixHandler]
+  -- ^ preprocessors to run before compiling
+  -> IO ()
+build_setupHooks
+  (BuildHooks{preBuildComponentRules = mbPbcRules, postBuildComponentHook = mbPostBuild})
+  pkg_descr
+  lbi
+  flags
+  suffixHandlers = do
+    checkSemaphoreSupport verbosity (compiler lbi) flags
+    targets <- readTargetInfos verbosity pkg_descr lbi (buildArgs flags)
+    let componentsToBuild = neededTargetsInBuildOrder' pkg_descr lbi (map nodeKey targets)
+    info verbosity $
+      "Component build order: "
+        ++ intercalate
+          ", "
+          ( map
+              (showComponentName . componentLocalName . targetCLBI)
+              componentsToBuild
+          )
 
-  internalPackageDB <- createInternalPackageDB verbosity lbi distPref
+    when (null targets) $
+      -- Only bother with this message if we're building the whole package
+      setupMessage verbosity "Building" (packageId pkg_descr)
 
-  -- Before the actual building, dump out build-information.
-  -- This way, if the actual compilation failed, the options have still been
-  -- dumped.
-  dumpBuildInfo verbosity distPref (configDumpBuildInfo (configFlags lbi)) pkg_descr lbi flags
+    internalPackageDB <- createInternalPackageDB verbosity lbi distPref
 
-  -- Now do the actual building
-  (\f -> foldM_ f (installedPkgs lbi) componentsToBuild) $ \index target -> do
-    preBuildComponent verbosity lbi target
-    let comp = targetComponent target
-        clbi = targetCLBI target
-        bi = componentBuildInfo comp
-        progs' = addInternalBuildTools pkg_descr lbi bi (withPrograms lbi)
-        lbi' =
-          lbi
-            { withPrograms = progs'
-            , withPackageDB = withPackageDB lbi ++ [internalPackageDB]
-            , installedPkgs = index
-            }
-    par_strat <-
-      toFlag <$> case buildUseSemaphore flags of
-        Flag sem_name -> case buildNumJobs flags of
-          Flag{} -> do
-            warn verbosity $ "Ignoring -j due to --semaphore"
-            return $ UseSem sem_name
-          NoFlag -> return $ UseSem sem_name
-        NoFlag -> return $ case buildNumJobs flags of
-          Flag n -> NumJobs n
-          NoFlag -> Serial
-    mb_ipi <-
-      buildComponent
-        verbosity
-        par_strat
-        pkg_descr
-        lbi'
-        suffixes
-        comp
-        clbi
-        distPref
-    return (maybe index (Index.insert `flip` index) mb_ipi)
+    -- Before the actual building, dump out build-information.
+    -- This way, if the actual compilation failed, the options have still been
+    -- dumped.
+    dumpBuildInfo verbosity distPref (configDumpBuildInfo (configFlags lbi)) pkg_descr lbi flags
 
-  return ()
-  where
-    distPref = fromFlag (buildDistPref flags)
-    verbosity = fromFlag (buildVerbosity flags)
+    -- Now do the actual building
+    (\f -> foldM_ f (installedPkgs lbi) componentsToBuild) $ \index target -> do
+      let comp = targetComponent target
+          clbi = targetCLBI target
+          bi = componentBuildInfo comp
+          progs' = addInternalBuildTools pkg_descr lbi bi (withPrograms lbi)
+          lbi' =
+            lbi
+              { withPrograms = progs'
+              , withPackageDB = withPackageDB lbi ++ [internalPackageDB]
+              , installedPkgs = index
+              }
+          runPreBuildHooks :: LocalBuildInfo -> TargetInfo -> IO ()
+          runPreBuildHooks lbi2 tgt =
+            let inputs =
+                  SetupHooks.PreBuildComponentInputs
+                    { SetupHooks.buildingWhat = BuildNormal flags
+                    , SetupHooks.localBuildInfo = lbi2
+                    , SetupHooks.targetInfo = tgt
+                    }
+             in for_ mbPbcRules $ \pbcRules ->
+                  SetupHooks.executeRules verbosity lbi target pbcRules inputs
+      preBuildComponent runPreBuildHooks verbosity lbi target
+
+      par_strat <-
+        toFlag <$> case buildUseSemaphore flags of
+          Flag sem_name -> case buildNumJobs flags of
+            Flag{} -> do
+              warn verbosity $ "Ignoring -j due to --semaphore"
+              return $ UseSem sem_name
+            NoFlag -> return $ UseSem sem_name
+          NoFlag -> return $ case buildNumJobs flags of
+            Flag n -> NumJobs n
+            NoFlag -> Serial
+      mb_ipi <-
+        buildComponent
+          verbosity
+          par_strat
+          pkg_descr
+          lbi'
+          suffixHandlers
+          comp
+          clbi
+          distPref
+      let postBuildInputs =
+            SetupHooks.PostBuildComponentInputs
+              { SetupHooks.buildFlags = flags
+              , SetupHooks.localBuildInfo = lbi'
+              , SetupHooks.targetInfo = target
+              }
+      for_ mbPostBuild ($ postBuildInputs)
+      return (maybe index (Index.insert `flip` index) mb_ipi)
+
+    return ()
+    where
+      distPref = fromFlag (buildDistPref flags)
+      verbosity = fromFlag (buildVerbosity flags)
 
 -- | Check for conditions that would prevent the build from succeeding.
 checkSemaphoreSupport
@@ -274,67 +320,98 @@ repl
   -- ^ preprocessors to run before compiling
   -> [String]
   -> IO ()
-repl pkg_descr lbi flags suffixes args = do
-  let distPref = fromFlag (replDistPref flags)
-      verbosity = fromFlag (replVerbosity flags)
+repl = repl_setupHooks noBuildHooks
 
-  target <-
-    readTargetInfos verbosity pkg_descr lbi args >>= \r -> case r of
-      -- This seems DEEPLY questionable.
-      [] -> case allTargetsInBuildOrder' pkg_descr lbi of
-        (target : _) -> return target
-        [] -> dieWithException verbosity $ FailedToDetermineTarget
-      [target] -> return target
-      _ -> dieWithException verbosity $ NoMultipleTargets
-  let componentsToBuild = neededTargetsInBuildOrder' pkg_descr lbi [nodeKey target]
-  debug verbosity $
-    "Component build order: "
-      ++ intercalate
-        ", "
-        ( map
-            (showComponentName . componentLocalName . targetCLBI)
-            componentsToBuild
-        )
+repl_setupHooks
+  :: BuildHooks
+  -- ^ build hook
+  -> PackageDescription
+  -- ^ Mostly information from the .cabal file
+  -> LocalBuildInfo
+  -- ^ Configuration information
+  -> ReplFlags
+  -- ^ Flags that the user passed to build
+  -> [PPSuffixHandler]
+  -- ^ preprocessors to run before compiling
+  -> [String]
+  -> IO ()
+repl_setupHooks
+  (BuildHooks{preBuildComponentRules = mbPbcRules})
+  pkg_descr
+  lbi
+  flags
+  suffixHandlers
+  args = do
+    let distPref = fromFlag (replDistPref flags)
+        verbosity = fromFlag (replVerbosity flags)
 
-  internalPackageDB <- createInternalPackageDB verbosity lbi distPref
+    target <-
+      readTargetInfos verbosity pkg_descr lbi args >>= \r -> case r of
+        -- This seems DEEPLY questionable.
+        [] -> case allTargetsInBuildOrder' pkg_descr lbi of
+          (target : _) -> return target
+          [] -> dieWithException verbosity $ FailedToDetermineTarget
+        [target] -> return target
+        _ -> dieWithException verbosity $ NoMultipleTargets
+    let componentsToBuild = neededTargetsInBuildOrder' pkg_descr lbi [nodeKey target]
+    debug verbosity $
+      "Component build order: "
+        ++ intercalate
+          ", "
+          ( map
+              (showComponentName . componentLocalName . targetCLBI)
+              componentsToBuild
+          )
 
-  let lbiForComponent comp lbi' =
-        lbi'
-          { withPackageDB = withPackageDB lbi ++ [internalPackageDB]
-          , withPrograms =
-              addInternalBuildTools
-                pkg_descr
-                lbi'
-                (componentBuildInfo comp)
-                (withPrograms lbi')
-          }
+    internalPackageDB <- createInternalPackageDB verbosity lbi distPref
 
-  -- build any dependent components
-  sequence_
-    [ do
-      let clbi = targetCLBI subtarget
-          comp = targetComponent subtarget
-          lbi' = lbiForComponent comp lbi
-      preBuildComponent verbosity lbi subtarget
-      buildComponent
-        verbosity
-        NoFlag
-        pkg_descr
-        lbi'
-        suffixes
-        comp
-        clbi
-        distPref
-    | subtarget <- safeInit componentsToBuild
-    ]
+    let lbiForComponent comp lbi' =
+          lbi'
+            { withPackageDB = withPackageDB lbi ++ [internalPackageDB]
+            , withPrograms =
+                addInternalBuildTools
+                  pkg_descr
+                  lbi'
+                  (componentBuildInfo comp)
+                  (withPrograms lbi')
+            }
+        runPreBuildHooks :: LocalBuildInfo -> TargetInfo -> IO ()
+        runPreBuildHooks lbi2 tgt =
+          let inputs =
+                SetupHooks.PreBuildComponentInputs
+                  { SetupHooks.buildingWhat = BuildRepl flags
+                  , SetupHooks.localBuildInfo = lbi2
+                  , SetupHooks.targetInfo = tgt
+                  }
+           in for_ mbPbcRules $ \pbcRules ->
+                SetupHooks.executeRules verbosity lbi target pbcRules inputs
 
-  -- REPL for target components
-  let clbi = targetCLBI target
-      comp = targetComponent target
-      lbi' = lbiForComponent comp lbi
-      replFlags = replReplOptions flags
-  preBuildComponent verbosity lbi target
-  replComponent replFlags verbosity pkg_descr lbi' suffixes comp clbi distPref
+    -- build any dependent components
+    sequence_
+      [ do
+        let clbi = targetCLBI subtarget
+            comp = targetComponent subtarget
+            lbi' = lbiForComponent comp lbi
+        preBuildComponent runPreBuildHooks verbosity lbi subtarget
+        buildComponent
+          verbosity
+          NoFlag
+          pkg_descr
+          lbi'
+          suffixHandlers
+          comp
+          clbi
+          distPref
+      | subtarget <- safeInit componentsToBuild
+      ]
+
+    -- REPL for target components
+    let clbi = targetCLBI target
+        comp = targetComponent target
+        lbi' = lbiForComponent comp lbi
+        replFlags = replReplOptions flags
+    preBuildComponent runPreBuildHooks verbosity lbi target
+    replComponent replFlags verbosity pkg_descr lbi' suffixHandlers comp clbi distPref
 
 -- | Start an interpreter without loading any package files.
 startInterpreter
@@ -369,7 +446,7 @@ buildComponent
   numJobs
   pkg_descr
   lbi0
-  suffixes
+  suffixHandlers
   comp@( CTest
           test@TestSuite{testInterface = TestSuiteLibV09{}}
         )
@@ -383,7 +460,7 @@ buildComponent
       pwd <- getCurrentDirectory
       let (pkg, lib, libClbi, lbi, ipi, exe, exeClbi) =
             testSuiteLibV09AsLibAndExe pkg_descr test clbi lbi0 distPref pwd
-      preprocessComponent pkg_descr comp lbi clbi False verbosity suffixes
+      preprocessComponent pkg_descr comp lbi clbi False verbosity suffixHandlers
       extras <- preprocessExtras verbosity comp lbi -- TODO find cpphs processed files
       (genDir, generatedExtras) <- generateCode (testCodeGenerators test) (testName test) pkg_descr (testBuildInfo test) lbi clbi verbosity
       setupMessage'
@@ -419,12 +496,12 @@ buildComponent
   numJobs
   pkg_descr
   lbi
-  suffixes
+  suffixHandlers
   comp
   clbi
   distPref =
     do
-      preprocessComponent pkg_descr comp lbi clbi False verbosity suffixes
+      preprocessComponent pkg_descr comp lbi clbi False verbosity suffixHandlers
       extras <- preprocessExtras verbosity comp lbi
       setupMessage'
         verbosity
@@ -607,7 +684,7 @@ replComponent
   verbosity
   pkg_descr
   lbi0
-  suffixes
+  suffixHandlers
   comp@( CTest
           test@TestSuite{testInterface = TestSuiteLibV09{}}
         )
@@ -616,7 +693,7 @@ replComponent
     pwd <- getCurrentDirectory
     let (pkg, lib, libClbi, lbi, _, _, _) =
           testSuiteLibV09AsLibAndExe pkg_descr test clbi lbi0 distPref pwd
-    preprocessComponent pkg_descr comp lbi clbi False verbosity suffixes
+    preprocessComponent pkg_descr comp lbi clbi False verbosity suffixHandlers
     extras <- preprocessExtras verbosity comp lbi
     let libbi = libBuildInfo lib
         lib' = lib{libBuildInfo = libbi{cSources = cSources libbi ++ extras}}
@@ -626,12 +703,12 @@ replComponent
   verbosity
   pkg_descr
   lbi
-  suffixes
+  suffixHandlers
   comp
   clbi
   _ =
     do
-      preprocessComponent pkg_descr comp lbi clbi False verbosity suffixes
+      preprocessComponent pkg_descr comp lbi clbi False verbosity suffixHandlers
       extras <- preprocessExtras verbosity comp lbi
       case comp of
         CLib lib -> do
@@ -928,19 +1005,22 @@ replFLib replFlags verbosity pkg_descr lbi exe clbi =
     GHC -> GHC.replFLib replFlags verbosity NoFlag pkg_descr lbi exe clbi
     _ -> dieWithException verbosity REPLNotSupported
 
--- | Pre-build steps for a component: creates the autogenerated files
--- for a particular configured component.
+-- | Creates the autogenerated files for a particular configured component,
+-- and runs the pre-build hook.
 preBuildComponent
-  :: Verbosity
+  :: (LocalBuildInfo -> TargetInfo -> IO ())
+  -- ^ pre-build hook
+  -> Verbosity
   -> LocalBuildInfo
   -- ^ Configuration information
   -> TargetInfo
   -> IO ()
-preBuildComponent verbosity lbi tgt = do
+preBuildComponent preBuildHook verbosity lbi tgt = do
   let pkg_descr = localPkgDescr lbi
       clbi = targetCLBI tgt
   createDirectoryIfMissingVerbose verbosity True (componentBuildDir lbi clbi)
   writeBuiltinAutogenFiles verbosity pkg_descr lbi clbi
+  preBuildHook lbi tgt
 
 -- | Generate and write to disk all built-in autogenerated files
 -- for the specified component. These files will be put in the
