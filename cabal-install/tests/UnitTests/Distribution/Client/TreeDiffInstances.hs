@@ -3,7 +3,6 @@
 
 module UnitTests.Distribution.Client.TreeDiffInstances () where
 
-import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PackageConstraint
 import Distribution.Solver.Types.Settings
@@ -15,6 +14,7 @@ import Distribution.Client.IndexUtils.ActiveRepos
 import Distribution.Client.IndexUtils.IndexState
 import Distribution.Client.IndexUtils.Timestamp
 import Distribution.Client.ProjectConfig.Types
+import Distribution.Client.ProjectConfig.Types.ConstraintSource
 import Distribution.Client.Targets
 import Distribution.Client.Types
 import Distribution.Client.Types.OverwritePolicy (OverwritePolicy)

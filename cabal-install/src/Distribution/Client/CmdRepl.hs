@@ -111,9 +111,6 @@ import Distribution.Simple.Utils
   , withTempDirectoryEx
   , wrapText
   )
-import Distribution.Solver.Types.ConstraintSource
-  ( ConstraintSource (ConstraintSourceMultiRepl)
-  )
 import Distribution.Solver.Types.PackageConstraint
   ( PackageProperty (PackagePropertyVersion)
   )
@@ -167,6 +164,9 @@ import qualified Data.Set as Set
 import Distribution.Client.ProjectConfig
   ( ProjectConfig (projectConfigShared)
   , ProjectConfigShared (projectConfigConstraints, projectConfigMultiRepl)
+  )
+import Distribution.Client.ProjectConfig.Types.ConstraintSource 
+  ( ConstraintSource (..)
   )
 import Distribution.Client.ReplFlags
   ( EnvFlags (envIncludeTransitive, envPackages)

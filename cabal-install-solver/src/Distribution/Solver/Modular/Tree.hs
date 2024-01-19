@@ -1,10 +1,13 @@
 {-# LANGUAGE DeriveFunctor, DeriveFoldable, DeriveTraversable #-}
+{-# LANGUAGE GADTs #-}
+
 module Distribution.Solver.Modular.Tree
     ( POption(..)
     , Tree(..)
     , TreeF(..)
     , Weight
     , FailReason(..)
+    , SomeSrc(..)
     , ConflictingDep(..)
     , ana
     , cata
@@ -21,16 +24,16 @@ module Distribution.Solver.Modular.Tree
 import Control.Monad hiding (mapM, sequence)
 import Data.Foldable
 import Data.Traversable
+import Type.Reflection (Typeable, eqTypeRep, typeOf, (:~~:) (..))
 import Prelude hiding (foldr, mapM, sequence)
 
 import Distribution.Solver.Modular.Dependency
 import Distribution.Solver.Modular.Flag
-import Distribution.Solver.Modular.Package
 import Distribution.Solver.Modular.PSQ (PSQ)
+import Distribution.Solver.Modular.Package
 import Distribution.Solver.Modular.Version
 import Distribution.Solver.Modular.WeightedPSQ (WeightedPSQ)
 import qualified Distribution.Solver.Modular.WeightedPSQ as W
-import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.Flag
 import Distribution.Solver.Types.PackagePath
 import Distribution.Types.PkgconfigVersionRange
@@ -115,10 +118,10 @@ data FailReason = UnsupportedExtension Extension
                 | Shadowed
                 | Broken UnitId
                 | UnknownPackage
-                | GlobalConstraintVersion VR ConstraintSource
-                | GlobalConstraintInstalled ConstraintSource
-                | GlobalConstraintSource ConstraintSource
-                | GlobalConstraintFlag ConstraintSource
+                | GlobalConstraintVersion VR SomeSrc
+                | GlobalConstraintInstalled SomeSrc
+                | GlobalConstraintSource SomeSrc
+                | GlobalConstraintFlag SomeSrc
                 | ManualFlag
                 | MalformedFlagChoice QFN
                 | MalformedStanzaChoice QSN
@@ -128,7 +131,18 @@ data FailReason = UnsupportedExtension Extension
                 | DependenciesNotLinked String
                 | CyclicDependencies
                 | UnsupportedSpecVer Ver
-  deriving (Eq, Show)
+                deriving (Eq, Show)
+
+data SomeSrc = forall src. (Typeable src, Eq src, Show src) => SomeSrc src
+
+instance Eq SomeSrc where
+  SomeSrc lhs == SomeSrc rhs =
+    case eqTypeRep (typeOf lhs) (typeOf rhs) of
+      Nothing -> False
+      Just HRefl -> lhs == rhs
+
+instance Show SomeSrc where
+  showsPrec d (SomeSrc lhs) = showsPrec d lhs
 
 -- | Information about a dependency involved in a conflict, for error messages.
 data ConflictingDep = ConflictingDep (DependencyReason QPN) (PkgComponent QPN) CI

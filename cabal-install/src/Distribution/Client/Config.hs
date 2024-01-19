@@ -118,6 +118,7 @@ import Distribution.Client.ParseUtils
   , ppFields
   , ppSection
   )
+import Distribution.Client.ProjectConfig.Types.ConstraintSource (ConstraintSource (..))
 import Distribution.Client.ProjectFlags (ProjectFlags (..))
 import Distribution.Client.ReplFlags
 import Distribution.Client.Version
@@ -202,7 +203,6 @@ import Distribution.Simple.Utils
   , toUTF8BS
   , warn
   )
-import Distribution.Solver.Types.ConstraintSource
 import Distribution.Verbosity
   ( normal
   )

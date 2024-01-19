@@ -47,13 +47,13 @@ import qualified Distribution.Client.SolverInstallPlan as SolverInstallPlan
 import Distribution.Client.Targets
 import Distribution.Client.Types
 
-import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.LabeledPackageConstraint
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PkgConfigDb
 import Distribution.Solver.Types.SolverId
 
 import Distribution.Client.Errors
+import Distribution.Client.ProjectConfig.Types.ConstraintSource
 import Distribution.Package
   ( Package
   , packageId

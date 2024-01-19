@@ -160,6 +160,7 @@ library
         Distribution.Client.ProjectConfig
         Distribution.Client.ProjectConfig.Legacy
         Distribution.Client.ProjectConfig.Types
+        Distribution.Client.ProjectConfig.Types.ConstraintSource
         Distribution.Client.ProjectFlags
         Distribution.Client.ProjectOrchestration
         Distribution.Client.ProjectPlanOutput

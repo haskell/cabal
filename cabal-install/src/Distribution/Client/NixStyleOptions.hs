@@ -15,8 +15,8 @@ import Prelude ()
 
 import Distribution.Simple.Command (OptionField (..), ShowOrParseArgs)
 import Distribution.Simple.Setup (BenchmarkFlags, HaddockFlags, TestFlags)
-import Distribution.Solver.Types.ConstraintSource (ConstraintSource (..))
 
+import Distribution.Client.ProjectConfig.Types.ConstraintSource (ConstraintSource (..))
 import Distribution.Client.ProjectFlags
   ( ProjectFlags (..)
   , defaultProjectFlags

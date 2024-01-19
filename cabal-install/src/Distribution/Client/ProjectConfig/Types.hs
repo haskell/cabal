@@ -51,7 +51,7 @@ import Distribution.Client.CmdInstall.ClientInstallFlags
   ( ClientInstallFlags (..)
   )
 
-import Distribution.Solver.Types.ConstraintSource
+import Distribution.Client.ProjectConfig.Types.ConstraintSource (ConstraintSource)
 import Distribution.Solver.Types.Settings
 
 import Distribution.Package

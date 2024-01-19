@@ -58,7 +58,7 @@ import Distribution.Simple.Setup
   , HaddockFlags (..)
   )
 import Distribution.Simple.Utils (debug, warn)
-import Distribution.Solver.Types.ConstraintSource
+import Distribution.Client.ProjectConfig.Types.ConstraintSource (ConstraintSource (..))
 import System.Directory (doesFileExist)
 import System.FilePath ((</>))
 import System.IO.Error (isDoesNotExistError)
