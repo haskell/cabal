@@ -45,13 +45,13 @@ import Distribution.Pretty
 import Distribution.Client.CmdInstall.ClientInstallFlags
 import Distribution.Client.Dependency.Types
 import Distribution.Client.DistDirLayout (defaultProjectFile)
+import Distribution.Client.ProjectConfig.Types.ConstraintSource
 import Distribution.Client.Targets
 import Distribution.Client.Types
 import Distribution.Client.Types.SourceRepo
 import Distribution.Utils.NubList
 import Distribution.Verbosity (silent)
 
-import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.PackageConstraint
 import Distribution.Solver.Types.Settings
 

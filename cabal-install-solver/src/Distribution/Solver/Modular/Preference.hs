@@ -172,10 +172,11 @@ preferPackageStanzaPreferences pcs = go
 -- given instance for a P-node. Translates the constraint into a
 -- tree-transformer that either leaves the subtree untouched, or replaces it
 -- with an appropriate failure node.
-processPackageConstraintP :: forall d c. QPN
+processPackageConstraintP :: forall d c cs. (Eq cs, Show cs, Typeable cs)
+                          => QPN
                           -> ConflictSet
                           -> I
-                          -> LabeledPackageConstraint
+                          -> LabeledPackageConstraint cs
                           -> Tree d c
                           -> Tree d c
 processPackageConstraintP qpn c i (LabeledPackageConstraint (PackageConstraint scope prop) src) r =
@@ -186,24 +187,25 @@ processPackageConstraintP qpn c i (LabeledPackageConstraint (PackageConstraint s
     go :: I -> PackageProperty -> Tree d c
     go (I v _) (PackagePropertyVersion vr)
         | checkVR vr v  = r
-        | otherwise     = Fail c (GlobalConstraintVersion vr src)
+        | otherwise     = Fail c (GlobalConstraintVersion vr (SomeSrc src))
     go _       PackagePropertyInstalled
         | instI i       = r
-        | otherwise     = Fail c (GlobalConstraintInstalled src)
+        | otherwise     = Fail c (GlobalConstraintInstalled (SomeSrc src))
     go _       PackagePropertySource
         | not (instI i) = r
-        | otherwise     = Fail c (GlobalConstraintSource src)
+        | otherwise     = Fail c (GlobalConstraintSource (SomeSrc src))
     go _       _        = r
 
 -- | Helper function that tries to enforce a single package constraint on a
 -- given flag setting for an F-node. Translates the constraint into a
 -- tree-transformer that either leaves the subtree untouched, or replaces it
 -- with an appropriate failure node.
-processPackageConstraintF :: forall d c. QPN
+processPackageConstraintF :: forall d c cs . (Eq cs, Show cs, Typeable cs)
+                          => QPN
                           -> Flag
                           -> ConflictSet
                           -> Bool
-                          -> LabeledPackageConstraint
+                          -> LabeledPackageConstraint cs
                           -> Tree d c
                           -> Tree d c
 processPackageConstraintF qpn f c b' (LabeledPackageConstraint (PackageConstraint scope prop) src) r =
@@ -216,18 +218,19 @@ processPackageConstraintF qpn f c b' (LabeledPackageConstraint (PackageConstrain
         case lookupFlagAssignment f fa of
           Nothing            -> r
           Just b | b == b'   -> r
-                 | otherwise -> Fail c (GlobalConstraintFlag src)
+                 | otherwise -> Fail c (GlobalConstraintFlag (SomeSrc src))
     go _                             = r
 
 -- | Helper function that tries to enforce a single package constraint on a
 -- given flag setting for an F-node. Translates the constraint into a
 -- tree-transformer that either leaves the subtree untouched, or replaces it
 -- with an appropriate failure node.
-processPackageConstraintS :: forall d c. QPN
+processPackageConstraintS :: forall d c cs. (Typeable cs, Eq cs, Show cs)
+                          => QPN
                           -> OptionalStanza
                           -> ConflictSet
                           -> Bool
-                          -> LabeledPackageConstraint
+                          -> LabeledPackageConstraint cs
                           -> Tree d c
                           -> Tree d c
 processPackageConstraintS qpn s c b' (LabeledPackageConstraint (PackageConstraint scope prop) src) r =
@@ -237,14 +240,15 @@ processPackageConstraintS qpn s c b' (LabeledPackageConstraint (PackageConstrain
   where
     go :: PackageProperty -> Tree d c
     go (PackagePropertyStanzas ss) =
-        if not b' && s `elem` ss then Fail c (GlobalConstraintFlag src)
+        if not b' && s `elem` ss then Fail c (GlobalConstraintFlag (SomeSrc src))
                                  else r
     go _                               = r
 
 -- | Traversal that tries to establish various kinds of user constraints. Works
 -- by selectively disabling choices that have been ruled out by global user
 -- constraints.
-enforcePackageConstraints :: M.Map PN [LabeledPackageConstraint]
+enforcePackageConstraints :: (Typeable cs, Eq cs, Show cs)
+                          => M.Map PN [LabeledPackageConstraint cs]
                           -> EndoTreeTrav d c
 enforcePackageConstraints pcs = go
   where
@@ -291,7 +295,7 @@ enforcePackageConstraints pcs = go
 --
 -- This function does not enforce any of the constraints, since that is done by
 -- 'enforcePackageConstraints'.
-enforceManualFlags :: M.Map PN [LabeledPackageConstraint] -> EndoTreeTrav d c
+enforceManualFlags :: M.Map PN [LabeledPackageConstraint cs] -> EndoTreeTrav d c
 enforceManualFlags pcs = go
   where
     go (FChoiceF qfn@(FN (Q _ pn) fn) rdm gr tr Manual d ts) =

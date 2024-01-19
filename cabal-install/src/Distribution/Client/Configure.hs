@@ -59,7 +59,6 @@ import Distribution.Client.Targets
 import Distribution.Client.Types as Source
 
 import qualified Distribution.Solver.Types.ComponentDeps as CD
-import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.LabeledPackageConstraint
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PackageIndex
@@ -129,6 +128,10 @@ import Distribution.Version
   )
 
 import Distribution.Client.Errors
+import Distribution.Client.ProjectConfig.Types.ConstraintSource
+  ( ConstraintSource (..)
+  , showConstraintSource
+  )
 import System.FilePath ((</>))
 
 -- | Choose the Cabal version such that the setup scripts compiled against this

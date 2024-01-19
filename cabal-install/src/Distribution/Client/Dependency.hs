@@ -133,7 +133,6 @@ import Distribution.Version
 
 import Distribution.Solver.Types.ComponentDeps (ComponentDeps)
 import qualified Distribution.Solver.Types.ComponentDeps as CD
-import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.DependencyResolver
 import Distribution.Solver.Types.InstalledPreference as Preference
 import Distribution.Solver.Types.LabeledPackageConstraint
@@ -150,6 +149,7 @@ import Distribution.Solver.Types.SolverId
 import Distribution.Solver.Types.SolverPackage
 import Distribution.Solver.Types.SourcePackage
 import Distribution.Solver.Types.Variable
+import Distribution.Client.ProjectConfig.Types.ConstraintSource (ConstraintSource (..), showConstraintSource)
 
 import Control.Exception
   ( assert
@@ -171,7 +171,7 @@ import qualified Data.Set as Set
 -- implemented in terms of adjustments to the parameters.
 data DepResolverParams = DepResolverParams
   { depResolverTargets :: Set PackageName
-  , depResolverConstraints :: [LabeledPackageConstraint]
+  , depResolverConstraints :: [LabeledPackageConstraint ConstraintSource]
   , depResolverPreferences :: [PackagePreference]
   , depResolverPreferenceDefault :: PackagesPreferenceDefault
   , depResolverInstalledPkgIndex :: InstalledPackageIndex
@@ -241,7 +241,7 @@ showDepResolverParams p =
       show
       (depResolverMaxBackjumps p)
   where
-    showLabeledConstraint :: LabeledPackageConstraint -> String
+    showLabeledConstraint :: LabeledPackageConstraint ConstraintSource -> String
     showLabeledConstraint (LabeledPackageConstraint pc src) =
       showPackageConstraint pc ++ " (" ++ showConstraintSource src ++ ")"
 
@@ -308,7 +308,7 @@ addTargets extraTargets params =
     }
 
 addConstraints
-  :: [LabeledPackageConstraint]
+  :: [LabeledPackageConstraint ConstraintSource]
   -> DepResolverParams
   -> DepResolverParams
 addConstraints extraConstraints params =
@@ -752,7 +752,7 @@ standardInstallPolicy installedPkgIndex sourcePkgDb pkgSpecifiers =
 
 -- ------------------------------------------------------------
 
-runSolver :: SolverConfig -> DependencyResolver UnresolvedPkgLoc
+runSolver :: SolverConfig -> DependencyResolver UnresolvedPkgLoc ConstraintSource
 runSolver = modularResolver
 
 -- | Run the dependency solver.

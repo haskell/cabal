@@ -58,7 +58,7 @@ import Distribution.Verbosity
 
 -- | Ties the two worlds together: classic cabal-install vs. the modular
 -- solver. Performs the necessary translations before and after.
-modularResolver :: SolverConfig -> DependencyResolver loc
+modularResolver :: (Typeable cs, Show cs, Eq cs) => SolverConfig -> DependencyResolver loc cs
 modularResolver sc (Platform arch os) cinfo iidx sidx pkgConfigDB pprefs pcs pns =
   uncurry postprocess <$> -- convert install plan
   solve' sc cinfo idx pkgConfigDB pprefs gcs pns
@@ -113,12 +113,13 @@ modularResolver sc (Platform arch os) cinfo iidx sidx pkgConfigDB pprefs pcs pns
 -- Using the full log from a rerun of the solver ensures that the log is
 -- complete, i.e., it shows the whole chain of dependencies from the user
 -- targets to the conflicting packages.
-solve' :: SolverConfig
+solve' :: (Typeable cs, Eq cs, Show cs)
+       => SolverConfig
        -> CompilerInfo
        -> Index
        -> PkgConfigDb
        -> (PN -> PackagePreferences)
-       -> Map PN [LabeledPackageConstraint]
+       -> Map PN [LabeledPackageConstraint cs]
        -> Set PN
        -> Progress String String (Assignment, RevDepMap)
 solve' sc cinfo idx pkgConfigDB pprefs gcs pns =

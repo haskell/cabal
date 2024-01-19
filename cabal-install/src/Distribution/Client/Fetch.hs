@@ -32,7 +32,6 @@ import qualified Distribution.Client.SolverInstallPlan as SolverInstallPlan
 import Distribution.Client.Targets
 import Distribution.Client.Types
 
-import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.LabeledPackageConstraint
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PkgConfigDb (PkgConfigDb, readPkgConfigDb)
@@ -40,6 +39,7 @@ import Distribution.Solver.Types.SolverPackage
 import Distribution.Solver.Types.SourcePackage
 
 import Distribution.Client.Errors
+import Distribution.Client.ProjectConfig.Types.ConstraintSource (ConstraintSource (ConstraintSourceConfigFlagOrTarget))
 import Distribution.Package
   ( packageId
   )

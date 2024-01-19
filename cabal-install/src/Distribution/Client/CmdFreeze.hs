@@ -32,9 +32,6 @@ import Distribution.Client.Targets
   , UserConstraintScope (..)
   , UserQualifier (..)
   )
-import Distribution.Solver.Types.ConstraintSource
-  ( ConstraintSource (..)
-  )
 import Distribution.Solver.Types.PackageConstraint
   ( PackageProperty (..)
   )
@@ -71,6 +68,9 @@ import Distribution.Version
 import qualified Data.Map as Map
 
 import Distribution.Client.Errors
+import Distribution.Client.ProjectConfig.Types.ConstraintSource
+  ( ConstraintSource (..)
+  )
 import Distribution.Simple.Command
   ( CommandUI (..)
   , usageAlternatives
