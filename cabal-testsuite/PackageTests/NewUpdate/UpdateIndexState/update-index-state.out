@@ -1,12 +1,12 @@
 # cabal update
 Downloading the latest package list from repository.localhost
-Package list of repository.localhost is up to date to 2023-12-15T04:30:20Z.
-The global index-state for repository.localhost now resolves to 2016-09-24T17:47:48Z.
+The repository repository.localhost is up to date. Its most recent known index-state is 2024-01-19T07:22:23Z.
+The default index-state for the repository repository.localhost has been updated to 2016-09-24T17:47:48Z.
 To revert to previous state run:
     cabal v2-update 'repository.localhost,2022-01-28T02:36:41Z'
 # cabal update
 Downloading the latest package list from repository.localhost
-Package list of repository.localhost is up to date to 2023-12-15T04:30:20Z.
-The global index-state for repository.localhost now resolves to 2022-01-28T02:36:41Z.
+The repository repository.localhost is up to date. Its most recent known index-state is 2024-01-19T07:22:23Z.
+The default index-state for the repository repository.localhost has been updated to 2022-01-28T02:36:41Z.
 To revert to previous state run:
     cabal v2-update 'repository.localhost,2016-09-24T17:47:48Z'
