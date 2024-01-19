@@ -63,7 +63,7 @@ import Test.Cabal.TestCode
 import Distribution.Pretty (prettyShow)
 import Distribution.Simple.Compiler
     ( PackageDBStack, PackageDB(..), compilerFlavor
-    , Compiler, compilerVersion, showCompilerId )
+    , Compiler, compilerVersion, showCompilerIdWithAbi )
 import Distribution.System
 import Distribution.Simple.Program.Db
 import Distribution.Simple.Program
@@ -582,7 +582,7 @@ testLibInstallDir env = libDir </> compilerDir
     libDir = case os of
       Windows -> testPrefixDir env
       _ -> testPrefixDir env </> "lib"
-    compilerDir = prettyShow platform ++ "-" ++ showCompilerId (testCompiler env)
+    compilerDir = prettyShow platform ++ "-" ++ showCompilerIdWithAbi (testCompiler env)
 
 -- | The absolute path to the build directory that should be used
 -- for the current package in a test.

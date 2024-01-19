@@ -1,6 +1,7 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MultiWayIf #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TupleSections #-}
 
@@ -82,6 +83,7 @@ import Distribution.Compat.Prelude
 import Prelude ()
 
 import Control.Monad (forM_)
+import Data.List (stripPrefix)
 import qualified Data.Map as Map
 import Distribution.CabalSpecVersion
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
@@ -236,10 +238,16 @@ configure verbosity hcPath hcPkgPath conf0 = do
 
       filterExt ext = filter ((/= EnableExtension ext) . fst)
 
+      compilerId :: CompilerId
+      compilerId = CompilerId GHC ghcVersion
+
+      compilerAbiTag :: AbiTag
+      compilerAbiTag = maybe NoAbiTag AbiTag (Map.lookup "Project Unit Id" ghcInfoMap >>= stripPrefix (prettyShow compilerId <> "-"))
+
   let comp =
         Compiler
-          { compilerId = CompilerId GHC ghcVersion
-          , compilerAbiTag = NoAbiTag
+          { compilerId
+          , compilerAbiTag
           , compilerCompat = []
           , compilerLanguages = languages
           , compilerExtensions = extensions

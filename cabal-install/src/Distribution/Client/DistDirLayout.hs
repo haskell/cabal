@@ -41,7 +41,8 @@ import Distribution.Package
   , UnitId
   )
 import Distribution.Simple.Compiler
-  ( OptimisationLevel (..)
+  ( Compiler (..)
+  , OptimisationLevel (..)
   , PackageDB (..)
   , PackageDBStack
   )
@@ -116,13 +117,13 @@ data DistDirLayout = DistDirLayout
 
 -- | The layout of a cabal nix-style store.
 data StoreDirLayout = StoreDirLayout
-  { storeDirectory :: CompilerId -> FilePath
-  , storePackageDirectory :: CompilerId -> UnitId -> FilePath
-  , storePackageDBPath :: CompilerId -> FilePath
-  , storePackageDB :: CompilerId -> PackageDB
-  , storePackageDBStack :: CompilerId -> PackageDBStack
-  , storeIncomingDirectory :: CompilerId -> FilePath
-  , storeIncomingLock :: CompilerId -> UnitId -> FilePath
+  { storeDirectory :: Compiler -> FilePath
+  , storePackageDirectory :: Compiler -> UnitId -> FilePath
+  , storePackageDBPath :: Compiler -> FilePath
+  , storePackageDB :: Compiler -> PackageDB
+  , storePackageDBStack :: Compiler -> PackageDBStack
+  , storeIncomingDirectory :: Compiler -> FilePath
+  , storeIncomingLock :: Compiler -> UnitId -> FilePath
   }
 
 -- TODO: move to another module, e.g. CabalDirLayout?
@@ -267,33 +268,35 @@ defaultStoreDirLayout :: FilePath -> StoreDirLayout
 defaultStoreDirLayout storeRoot =
   StoreDirLayout{..}
   where
-    storeDirectory :: CompilerId -> FilePath
-    storeDirectory compid =
-      storeRoot </> prettyShow compid
+    storeDirectory :: Compiler -> FilePath
+    storeDirectory compiler =
+      storeRoot </> case compilerAbiTag compiler of
+        NoAbiTag -> prettyShow (compilerId compiler)
+        AbiTag tag -> prettyShow (compilerId compiler) <> "-" <> tag
 
-    storePackageDirectory :: CompilerId -> UnitId -> FilePath
-    storePackageDirectory compid ipkgid =
-      storeDirectory compid </> prettyShow ipkgid
+    storePackageDirectory :: Compiler -> UnitId -> FilePath
+    storePackageDirectory compiler ipkgid =
+      storeDirectory compiler </> prettyShow ipkgid
 
-    storePackageDBPath :: CompilerId -> FilePath
-    storePackageDBPath compid =
-      storeDirectory compid </> "package.db"
+    storePackageDBPath :: Compiler -> FilePath
+    storePackageDBPath compiler =
+      storeDirectory compiler </> "package.db"
 
-    storePackageDB :: CompilerId -> PackageDB
-    storePackageDB compid =
-      SpecificPackageDB (storePackageDBPath compid)
+    storePackageDB :: Compiler -> PackageDB
+    storePackageDB compiler =
+      SpecificPackageDB (storePackageDBPath compiler)
 
-    storePackageDBStack :: CompilerId -> PackageDBStack
-    storePackageDBStack compid =
-      [GlobalPackageDB, storePackageDB compid]
+    storePackageDBStack :: Compiler -> PackageDBStack
+    storePackageDBStack compiler =
+      [GlobalPackageDB, storePackageDB compiler]
 
-    storeIncomingDirectory :: CompilerId -> FilePath
-    storeIncomingDirectory compid =
-      storeDirectory compid </> "incoming"
+    storeIncomingDirectory :: Compiler -> FilePath
+    storeIncomingDirectory compiler =
+      storeDirectory compiler </> "incoming"
 
-    storeIncomingLock :: CompilerId -> UnitId -> FilePath
-    storeIncomingLock compid unitid =
-      storeIncomingDirectory compid </> prettyShow unitid <.> "lock"
+    storeIncomingLock :: Compiler -> UnitId -> FilePath
+    storeIncomingLock compiler unitid =
+      storeIncomingDirectory compiler </> prettyShow unitid <.> "lock"
 
 defaultCabalDirLayout :: IO CabalDirLayout
 defaultCabalDirLayout =
