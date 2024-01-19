@@ -1,4 +1,6 @@
+{-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
 
 -----------------------------------------------------------------------------
@@ -17,6 +19,7 @@
 -- compiler-specific functions to do the rest.
 module Distribution.Simple.Install
   ( install
+  , install_setupHooks
   , installFileGlob
   ) where
 
@@ -51,6 +54,10 @@ import Distribution.Simple.Setup.Copy
 import Distribution.Simple.Setup.Haddock
   ( HaddockTarget (ForDevelopment)
   )
+import Distribution.Simple.SetupHooks.Internal
+  ( InstallHooks (..)
+  )
+import qualified Distribution.Simple.SetupHooks.Internal as SetupHooks
 import Distribution.Simple.Utils
   ( createDirectoryIfMissingVerbose
   , dieWithException
@@ -99,25 +106,48 @@ install
   -> CopyFlags
   -- ^ flags sent to copy or install
   -> IO ()
-install pkg_descr lbi flags = do
-  checkHasLibsOrExes
-  targets <- readTargetInfos verbosity pkg_descr lbi (copyArgs flags)
+install = install_setupHooks SetupHooks.noInstallHooks
 
-  copyPackage verbosity pkg_descr lbi distPref copydest
+install_setupHooks
+  :: InstallHooks
+  -> PackageDescription
+  -- ^ information from the .cabal file
+  -> LocalBuildInfo
+  -- ^ information from the configure step
+  -> CopyFlags
+  -- ^ flags sent to copy or install
+  -> IO ()
+install_setupHooks
+  (InstallHooks{installComponentHook})
+  pkg_descr
+  lbi
+  flags = do
+    checkHasLibsOrExes
+    targets <- readTargetInfos verbosity pkg_descr lbi (copyArgs flags)
 
-  -- It's not necessary to do these in build-order, but it's harmless
-  withNeededTargetsInBuildOrder' pkg_descr lbi (map nodeKey targets) $ \target ->
-    let comp = targetComponent target
-        clbi = targetCLBI target
-     in copyComponent verbosity pkg_descr lbi comp clbi copydest
-  where
-    distPref = fromFlag (copyDistPref flags)
-    verbosity = fromFlag (copyVerbosity flags)
-    copydest = fromFlag (copyDest flags)
+    copyPackage verbosity pkg_descr lbi distPref copydest
 
-    checkHasLibsOrExes =
-      unless (hasLibs pkg_descr || hasForeignLibs pkg_descr || hasExes pkg_descr) $
-        dieWithException verbosity NoLibraryFound
+    -- It's not necessary to do these in build-order, but it's harmless
+    withNeededTargetsInBuildOrder' pkg_descr lbi (map nodeKey targets) $ \target -> do
+      let comp = targetComponent target
+          clbi = targetCLBI target
+      copyComponent verbosity pkg_descr lbi comp clbi copydest
+      for_ installComponentHook $ \instAction ->
+        let inputs =
+              SetupHooks.InstallComponentInputs
+                { copyFlags = flags
+                , localBuildInfo = lbi
+                , targetInfo = target
+                }
+         in instAction inputs
+    where
+      distPref = fromFlag (copyDistPref flags)
+      verbosity = fromFlag (copyVerbosity flags)
+      copydest = fromFlag (copyDest flags)
+
+      checkHasLibsOrExes =
+        unless (hasLibs pkg_descr || hasForeignLibs pkg_descr || hasExes pkg_descr) $
+          dieWithException verbosity NoLibraryFound
 
 -- | Copy package global files.
 copyPackage

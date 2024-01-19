@@ -17,7 +17,8 @@ This module defines the interface for the @Hooks@ @build-type@.
 
 To write a package that implements @build-type: Hooks@, you should define
 a module @SetupHooks.hs@ which exports a value @setupHooks :: 'SetupHooks'@.
-This is a record that declares actions to hook into the cabal build process.
+This is a record that declares actions that should be hooked into the
+cabal build process.
 
 See 'SetupHooks' for more details.
 -}
@@ -97,9 +98,7 @@ module Distribution.Simple.SetupHooks
 
   -- **** File/directory monitoring
   , addRuleMonitors
-  , MonitorFilePath(..)
-  , MonitorKindFile(..)
-  , MonitorKindDir(..)
+  , module Distribution.Simple.FileMonitor.Types
 
     -- * Install hooks
   , InstallHooks(..), noInstallHooks
@@ -127,10 +126,10 @@ module Distribution.Simple.SetupHooks
 
     -- *** Package information
   , LocalBuildConfig, LocalBuildInfo, PackageBuildDescr
-      -- SetupHooks TODO: we can't simply re-export all the fields of
-      -- LocalBuildConfig etc, due to the presence of duplicate record fields.
-      -- Ideally we'd like to e.g. re-export LocalBuildConfig
-      -- qualified, but qualified re-exports aren't a thing currently.
+      -- NB: we can't simply re-export all the fields of LocalBuildConfig etc,
+      -- due to the presence of duplicate record fields.
+      -- Ideally, we'd like to e.g. re-export LocalBuildConfig qualified,
+      -- but qualified re-exports aren't a thing currently.
 
   , PackageDescription(..)
 
@@ -166,6 +165,7 @@ import Distribution.Simple.Compiler
   ( Compiler(..) )
 import Distribution.Simple.Errors
   ( CabalException(SetupHooksException) )
+import Distribution.Simple.FileMonitor.Types
 import Distribution.Simple.Install
   ( installFileGlob )
 import Distribution.Simple.LocalBuildInfo
@@ -250,7 +250,7 @@ Usage example:
 > custom-setup
 >   setup-depends:
 >     base        >= 4.18 && < 5,
->     Cabal-hooks >= 0.1  && < 0.3
+>     Cabal-hooks >= 0.1  && < 0.2
 
 > -- In SetupHooks.hs, next to your .cabal file
 > module SetupHooks where
@@ -304,26 +304,31 @@ For example, to generate modules inside a given component, you should:
 -}
 
 {- $preBuildRules
-Pre-build hooks are specified in the form of a collection of pre-build 'Rules'.
+Pre-build hooks are specified as a collection of pre-build 'Rules'.
+Each t'Rule' consists of:
 
-Pre-build rules are specified as a collection of rules. Each t'Rule' declares
-its dependencies, its outputs, and refers to a command to run in order to
-execute the rule in the form of a t'RuleCommands'.
+  - a specification of its static dependencies and outputs,
+  - the commands that execute the rule.
+
+Rules are constructed using either one of the 'staticRule' or 'dynamicRule'
+smart constructors. Directly constructing a t'Rule' using the constructors of
+that data type is not advised, as this relies on internal implementation details
+which are subject to change in between versions of the `Cabal-hooks` library.
 
 Note that:
 
-  - file dependencies are not specified directly by 'FilePath' but rather use
-    the 'Location' type,
-  - rules can directly depend on other rules, which requires the ability to
-    refer to a rule by 'RuleId',
-  - rules refer to the actions that execute them using static pointers, in order
-    to enable serialisation/deserialisation of rules,
-  - rules can additionally monitor files or directories, which determines
+  - To declare the dependency on the output of a rule, one must refer to the
+    rule directly, and not to the path to the output executing that rule will
+    eventually produce.
+    To do so, registering a t'Rule' with the API returns a unique identifier
+    for that rule, in the form of a t'RuleId'.
+  - File dependencies and outputs are not specified directly by
+    'FilePath', but rather use the 'Location' type (which is more convenient
+    when working with preprocessors).
+  - Rules refer to the actions that execute them using static pointers, in order
+    to enable serialisation/deserialisation of rules.
+  - Rules can additionally monitor files or directories, which determines
     when to re-compute the entire set of rules.
-
-To construct a t'Rule', you should use one of the 'staticRule' or 'dynamicRule'
-smart constructors, to avoid relying on internal implementation details of
-the t'Rule' datatype.
 -}
 
 {- $rulesDemand
@@ -331,7 +336,7 @@ Rules can declare various kinds of dependencies:
 
   - 'staticDependencies': files or other rules that a rule statically depends on,
   - extra dynamic dependencies, using the 'DynamicRuleCommands' constructor,
-  - 'MonitoredFileOrDir': additional files or directories to monitor.
+  - 'MonitorFilePath': additional files and directories to monitor.
 
 Rules are considered __out-of-date__ precisely when any of the following
 conditions apply:
@@ -377,7 +382,7 @@ Defining pre-build rules can be done in the following style:
 >       let cmd1 = mkCommand (static Dict) $ static \ arg -> do { .. }
 >           cmd2 = mkCommand (static Dict) $ static \ arg -> do { .. }
 >       myData <- liftIO someIOAction
->       addRuleMonitors [ MonitorDir "someSearchDir" DirContents ]
+>       addRuleMonitors [ monitorDirectory "someSearchDir" ]
 >       registerRule_ $ staticRule (cmd1 arg1) deps1 outs1
 >       registerRule_ $ staticRule (cmd1 arg2) deps2 outs2
 >       registerRule_ $ staticRule (cmd1 arg3) deps3 outs3
@@ -456,5 +461,5 @@ findFileInDirs file dirs =
       | path <- nub dirs
       ]
 
-  -- SetupHooks TODO: add API functions that do searching and declare
-  -- the appropriate monitoring at the same time.
+  -- TODO: add API functions that search and declare the appropriate monitoring
+  -- at the same time.

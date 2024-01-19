@@ -59,17 +59,17 @@ import qualified Distribution.Compat.Graph as Graph
 -- @since 3.12.0.0
 packageSetupScriptStyle :: PackageDescription -> SetupScriptStyle
 packageSetupScriptStyle pkg
-  | buildType pkg == Custom
+  | customOrHooks
   , Just setupbi <- setupBuildInfo pkg -- does have a custom-setup stanza
   , not (defaultSetupDepends setupbi) -- but not one we added ourselves
     =
       SetupCustomExplicitDeps
-  | buildType pkg == Custom
+  | customOrHooks
   , Just setupbi <- setupBuildInfo pkg -- does have a custom-setup stanza
   , defaultSetupDepends setupbi -- that we had to add ourselves
     =
       SetupCustomImplicitDeps
-  | buildType pkg == Custom
+  | customOrHooks
   , Nothing <- setupBuildInfo pkg -- we get this case pre-solver
     =
       SetupCustomImplicitDeps
@@ -79,6 +79,8 @@ packageSetupScriptStyle pkg
       SetupNonCustomExternalLib
   | otherwise =
       SetupNonCustomInternalLib
+  where
+    customOrHooks = buildType pkg `elem` [Custom, Hooks]
 
 -- | Part of our Setup.hs handling policy is implemented by getting the solver
 -- to work out setup dependencies for packages. The solver already handles

@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
@@ -21,8 +22,10 @@
 -- source, with coloured syntax highlighting.
 module Distribution.Simple.Haddock
   ( haddock
+  , haddock_setupHooks
   , createHaddockIndex
   , hscolour
+  , hscolour_setupHooks
   , haddockPackagePaths
   , Visibility (..)
   ) where
@@ -61,6 +64,12 @@ import Distribution.Simple.Program.ResponseFile
 import Distribution.Simple.Register
 import Distribution.Simple.Setup.Haddock
 import Distribution.Simple.Setup.Hscolour
+import Distribution.Simple.SetupHooks.Internal
+  ( BuildHooks (..)
+  , BuildingWhat (..)
+  , noBuildHooks
+  )
+import qualified Distribution.Simple.SetupHooks.Internal as SetupHooks
 import Distribution.Simple.Utils
 import Distribution.System
 import Distribution.Types.ComponentLocalBuildInfo
@@ -210,211 +219,247 @@ haddock
   -> [PPSuffixHandler]
   -> HaddockFlags
   -> IO ()
-haddock pkg_descr _ _ haddockFlags
-  | not (hasLibs pkg_descr)
-      && not (fromFlag $ haddockExecutables haddockFlags)
-      && not (fromFlag $ haddockTestSuites haddockFlags)
-      && not (fromFlag $ haddockBenchmarks haddockFlags)
-      && not (fromFlag $ haddockForeignLibs haddockFlags) =
-      warn (fromFlag $ haddockVerbosity haddockFlags) $
-        "No documentation was generated as this package does not contain "
-          ++ "a library. Perhaps you want to use the --executables, --tests,"
-          ++ " --benchmarks or --foreign-libraries flags."
-haddock pkg_descr lbi suffixes flags' = do
-  let verbosity = flag haddockVerbosity
-      comp = compiler lbi
-      platform = hostPlatform lbi
+haddock = haddock_setupHooks noBuildHooks
 
-      quickJmpFlag = haddockQuickJump flags'
-      flags = case haddockTarget of
-        ForDevelopment -> flags'
-        ForHackage ->
-          flags'
-            { haddockHoogle = Flag True
-            , haddockHtml = Flag True
-            , haddockHtmlLocation = Flag (pkg_url ++ "/docs")
-            , haddockContents = Flag (toPathTemplate pkg_url)
-            , haddockLinkedSource = Flag True
-            , haddockQuickJump = Flag True
+haddock_setupHooks
+  :: BuildHooks
+  -> PackageDescription
+  -> LocalBuildInfo
+  -> [PPSuffixHandler]
+  -> HaddockFlags
+  -> IO ()
+haddock_setupHooks
+  _
+  pkg_descr
+  _
+  _
+  haddockFlags
+    | not (hasLibs pkg_descr)
+        && not (fromFlag $ haddockExecutables haddockFlags)
+        && not (fromFlag $ haddockTestSuites haddockFlags)
+        && not (fromFlag $ haddockBenchmarks haddockFlags)
+        && not (fromFlag $ haddockForeignLibs haddockFlags) =
+        warn (fromFlag $ haddockVerbosity haddockFlags) $
+          "No documentation was generated as this package does not contain "
+            ++ "a library. Perhaps you want to use the --executables, --tests,"
+            ++ " --benchmarks or --foreign-libraries flags."
+haddock_setupHooks
+  (BuildHooks{preBuildComponentRules = mbPbcRules})
+  pkg_descr
+  lbi
+  suffixes
+  flags' = do
+    let verbosity = flag haddockVerbosity
+        comp = compiler lbi
+        platform = hostPlatform lbi
+
+        quickJmpFlag = haddockQuickJump flags'
+        flags = case haddockTarget of
+          ForDevelopment -> flags'
+          ForHackage ->
+            flags'
+              { haddockHoogle = Flag True
+              , haddockHtml = Flag True
+              , haddockHtmlLocation = Flag (pkg_url ++ "/docs")
+              , haddockContents = Flag (toPathTemplate pkg_url)
+              , haddockLinkedSource = Flag True
+              , haddockQuickJump = Flag True
+              }
+        pkg_url = "/package/$pkg-$version"
+        flag f = fromFlag $ f flags
+
+        tmpFileOpts =
+          defaultTempFileOptions
+            { optKeepTempFiles = flag haddockKeepTempFiles
             }
-      pkg_url = "/package/$pkg-$version"
-      flag f = fromFlag $ f flags
+        htmlTemplate =
+          fmap toPathTemplate . flagToMaybe . haddockHtmlLocation $
+            flags
+        haddockTarget =
+          fromFlagOrDefault ForDevelopment (haddockForHackage flags')
 
-      tmpFileOpts =
-        defaultTempFileOptions
-          { optKeepTempFiles = flag haddockKeepTempFiles
-          }
-      htmlTemplate =
-        fmap toPathTemplate . flagToMaybe . haddockHtmlLocation $
-          flags
-      haddockTarget =
-        fromFlagOrDefault ForDevelopment (haddockForHackage flags')
+    libdirArgs <- getGhcLibDir verbosity lbi
+    -- The haddock-output-dir flag overrides any other documentation placement concerns.
+    -- The point is to give the user full freedom over the location if they need it.
+    let overrideWithOutputDir args = case haddockOutputDir flags of
+          NoFlag -> args
+          Flag dir -> args{argOutputDir = Dir dir}
+    let commonArgs =
+          overrideWithOutputDir $
+            mconcat
+              [ libdirArgs
+              , fromFlags (haddockTemplateEnv lbi (packageId pkg_descr)) flags
+              , fromPackageDescription haddockTarget pkg_descr
+              ]
 
-  libdirArgs <- getGhcLibDir verbosity lbi
-  -- The haddock-output-dir flag overrides any other documentation placement concerns.
-  -- The point is to give the user full freedom over the location if they need it.
-  let overrideWithOutputDir args = case haddockOutputDir flags of
-        NoFlag -> args
-        Flag dir -> args{argOutputDir = Dir dir}
-  let commonArgs =
-        overrideWithOutputDir $
-          mconcat
-            [ libdirArgs
-            , fromFlags (haddockTemplateEnv lbi (packageId pkg_descr)) flags
-            , fromPackageDescription haddockTarget pkg_descr
-            ]
+    (haddockProg, version) <-
+      getHaddockProg verbosity (withPrograms lbi) comp commonArgs quickJmpFlag
 
-  (haddockProg, version) <-
-    getHaddockProg verbosity (withPrograms lbi) comp commonArgs quickJmpFlag
+    -- We fall back to using HsColour only for versions of Haddock which don't
+    -- support '--hyperlinked-sources'.
+    let using_hscolour = flag haddockLinkedSource && version < mkVersion [2, 17]
+    when using_hscolour $
+      hscolour'
+        noBuildHooks
+        -- NB: we are not passing the user BuildHooks here,
+        -- because we are already running the pre/post build hooks
+        -- for Haddock.
+        (warn verbosity)
+        haddockTarget
+        pkg_descr
+        lbi
+        suffixes
+        (defaultHscolourFlags `mappend` haddockToHscolour flags)
 
-  -- We fall back to using HsColour only for versions of Haddock which don't
-  -- support '--hyperlinked-sources'.
-  let using_hscolour = flag haddockLinkedSource && version < mkVersion [2, 17]
-  when using_hscolour $
-    hscolour'
-      (warn verbosity)
-      haddockTarget
-      pkg_descr
-      lbi
-      suffixes
-      (defaultHscolourFlags `mappend` haddockToHscolour flags)
+    targets <- readTargetInfos verbosity pkg_descr lbi (haddockArgs flags)
 
-  targets <- readTargetInfos verbosity pkg_descr lbi (haddockArgs flags)
+    let
+      targets' =
+        case targets of
+          [] -> allTargetsInBuildOrder' pkg_descr lbi
+          _ -> targets
 
-  let
-    targets' =
-      case targets of
-        [] -> allTargetsInBuildOrder' pkg_descr lbi
-        _ -> targets
+    internalPackageDB <-
+      createInternalPackageDB verbosity lbi (flag haddockDistPref)
 
-  internalPackageDB <-
-    createInternalPackageDB verbosity lbi (flag haddockDistPref)
-
-  (\f -> foldM_ f (installedPkgs lbi) targets') $ \index target -> do
-    let component = targetComponent target
+    (\f -> foldM_ f (installedPkgs lbi) targets') $ \index target -> do
+      let
+        component = targetComponent target
         clbi = targetCLBI target
 
-    preBuildComponent verbosity lbi target
+        runPreBuildHooks :: LocalBuildInfo -> TargetInfo -> IO ()
+        runPreBuildHooks lbi2 tgt =
+          let inputs =
+                SetupHooks.PreBuildComponentInputs
+                  { SetupHooks.buildingWhat = BuildHaddock flags
+                  , SetupHooks.localBuildInfo = lbi2
+                  , SetupHooks.targetInfo = tgt
+                  }
+           in for_ mbPbcRules $ \pbcRules ->
+                SetupHooks.executeRules verbosity lbi target pbcRules inputs
+      preBuildComponent runPreBuildHooks verbosity lbi target
 
-    let
-      lbi' =
-        lbi
-          { withPackageDB = withPackageDB lbi ++ [internalPackageDB]
-          , installedPkgs = index
-          }
+      let
+        lbi' =
+          lbi
+            { withPackageDB = withPackageDB lbi ++ [internalPackageDB]
+            , installedPkgs = index
+            }
 
-    preprocessComponent pkg_descr component lbi' clbi False verbosity suffixes
-    let
-      doExe com = case (compToExe com) of
-        Just exe -> do
-          withTempDirectoryEx verbosity tmpFileOpts (buildDir lbi') "tmp" $
+      preprocessComponent pkg_descr component lbi' clbi False verbosity suffixes
+      let
+        doExe com = case (compToExe com) of
+          Just exe -> do
+            withTempDirectoryEx verbosity tmpFileOpts (buildDir lbi') "tmp" $
+              \tmp -> do
+                exeArgs <-
+                  fromExecutable
+                    verbosity
+                    tmp
+                    lbi'
+                    clbi
+                    htmlTemplate
+                    version
+                    exe
+                let exeArgs' = commonArgs `mappend` exeArgs
+                runHaddock
+                  verbosity
+                  tmpFileOpts
+                  comp
+                  platform
+                  haddockProg
+                  True
+                  exeArgs'
+          Nothing -> do
+            warn
+              (fromFlag $ haddockVerbosity flags)
+              "Unsupported component, skipping..."
+            return ()
+        -- We define 'smsg' once and then reuse it inside the case, so that
+        -- we don't say we are running Haddock when we actually aren't
+        -- (e.g., Haddock is not run on non-libraries)
+        smsg :: IO ()
+        smsg =
+          setupMessage'
+            verbosity
+            "Running Haddock on"
+            (packageId pkg_descr)
+            (componentLocalName clbi)
+            (maybeComponentInstantiatedWith clbi)
+      ipi <- case component of
+        CLib lib -> do
+          withTempDirectoryEx verbosity tmpFileOpts (buildDir lbi) "tmp" $
             \tmp -> do
-              exeArgs <-
-                fromExecutable
+              smsg
+              libArgs <-
+                fromLibrary
                   verbosity
                   tmp
                   lbi'
                   clbi
                   htmlTemplate
                   version
-                  exe
-              let exeArgs' = commonArgs `mappend` exeArgs
-              runHaddock
-                verbosity
-                tmpFileOpts
-                comp
-                platform
-                haddockProg
-                True
-                exeArgs'
-        Nothing -> do
-          warn
-            (fromFlag $ haddockVerbosity flags)
-            "Unsupported component, skipping..."
-          return ()
-      -- We define 'smsg' once and then reuse it inside the case, so that
-      -- we don't say we are running Haddock when we actually aren't
-      -- (e.g., Haddock is not run on non-libraries)
-      smsg :: IO ()
-      smsg =
-        setupMessage'
-          verbosity
-          "Running Haddock on"
-          (packageId pkg_descr)
-          (componentLocalName clbi)
-          (maybeComponentInstantiatedWith clbi)
-    case component of
-      CLib lib -> do
-        withTempDirectoryEx verbosity tmpFileOpts (buildDir lbi) "tmp" $
-          \tmp -> do
-            smsg
-            libArgs <-
-              fromLibrary
-                verbosity
-                tmp
-                lbi'
-                clbi
-                htmlTemplate
-                version
-                lib
-            let libArgs' = commonArgs `mappend` libArgs
-            runHaddock verbosity tmpFileOpts comp platform haddockProg True libArgs'
-
-            pwd <- getCurrentDirectory
-
-            let
-              ipi =
-                inplaceInstalledPackageInfo
-                  pwd
-                  (flag haddockDistPref)
-                  pkg_descr
-                  (mkAbiHash "inplace")
                   lib
-                  lbi'
-                  clbi
+              let libArgs' = commonArgs `mappend` libArgs
+              runHaddock verbosity tmpFileOpts comp platform haddockProg True libArgs'
 
-            debug verbosity $
-              "Registering inplace:\n"
-                ++ (InstalledPackageInfo.showInstalledPackageInfo ipi)
+              pwd <- getCurrentDirectory
 
-            registerPackage
-              verbosity
-              (compiler lbi')
-              (withPrograms lbi')
-              (withPackageDB lbi')
-              ipi
-              HcPkg.defaultRegisterOptions
-                { HcPkg.registerMultiInstance = True
-                }
+              let
+                ipi =
+                  inplaceInstalledPackageInfo
+                    pwd
+                    (flag haddockDistPref)
+                    pkg_descr
+                    (mkAbiHash "inplace")
+                    lib
+                    lbi'
+                    clbi
 
-            return $ PackageIndex.insert ipi index
-      CFLib flib ->
-        when
-          (flag haddockForeignLibs)
-          ( do
-              withTempDirectoryEx verbosity tmpFileOpts (buildDir lbi') "tmp" $
-                \tmp -> do
-                  smsg
-                  flibArgs <-
-                    fromForeignLib
-                      verbosity
-                      tmp
-                      lbi'
-                      clbi
-                      htmlTemplate
-                      version
-                      flib
-                  let libArgs' = commonArgs `mappend` flibArgs
-                  runHaddock verbosity tmpFileOpts comp platform haddockProg True libArgs'
-          )
-          >> return index
-      CExe _ -> when (flag haddockExecutables) (smsg >> doExe component) >> return index
-      CTest _ -> when (flag haddockTestSuites) (smsg >> doExe component) >> return index
-      CBench _ -> when (flag haddockBenchmarks) (smsg >> doExe component) >> return index
+              debug verbosity $
+                "Registering inplace:\n"
+                  ++ (InstalledPackageInfo.showInstalledPackageInfo ipi)
 
-  for_ (extraDocFiles pkg_descr) $ \fpath -> do
-    files <- matchDirFileGlob verbosity (specVersion pkg_descr) "." fpath
-    for_ files $ copyFileTo verbosity (unDir $ argOutputDir commonArgs)
+              registerPackage
+                verbosity
+                (compiler lbi')
+                (withPrograms lbi')
+                (withPackageDB lbi')
+                ipi
+                HcPkg.defaultRegisterOptions
+                  { HcPkg.registerMultiInstance = True
+                  }
+
+              return $ PackageIndex.insert ipi index
+        CFLib flib ->
+          when
+            (flag haddockForeignLibs)
+            ( do
+                withTempDirectoryEx verbosity tmpFileOpts (buildDir lbi') "tmp" $
+                  \tmp -> do
+                    smsg
+                    flibArgs <-
+                      fromForeignLib
+                        verbosity
+                        tmp
+                        lbi'
+                        clbi
+                        htmlTemplate
+                        version
+                        flib
+                    let libArgs' = commonArgs `mappend` flibArgs
+                    runHaddock verbosity tmpFileOpts comp platform haddockProg True libArgs'
+            )
+            >> return index
+        CExe _ -> when (flag haddockExecutables) (smsg >> doExe component) >> return index
+        CTest _ -> when (flag haddockTestSuites) (smsg >> doExe component) >> return index
+        CBench _ -> when (flag haddockBenchmarks) (smsg >> doExe component) >> return index
+
+      return ipi
+
+    for_ (extraDocFiles pkg_descr) $ \fpath -> do
+      files <- matchDirFileGlob verbosity (specVersion pkg_descr) "." fpath
+      for_ files $ copyFileTo verbosity (unDir $ argOutputDir commonArgs)
 
 -- | Execute 'Haddock' configured with 'HaddocksFlags'.  It is used to build
 -- index and contents for documentation of multiple packages.
@@ -1122,10 +1167,21 @@ hscolour
   -> [PPSuffixHandler]
   -> HscolourFlags
   -> IO ()
-hscolour = hscolour' dieNoVerbosity ForDevelopment
+hscolour = hscolour_setupHooks noBuildHooks
+
+hscolour_setupHooks
+  :: BuildHooks
+  -> PackageDescription
+  -> LocalBuildInfo
+  -> [PPSuffixHandler]
+  -> HscolourFlags
+  -> IO ()
+hscolour_setupHooks setupHooks =
+  hscolour' setupHooks dieNoVerbosity ForDevelopment
 
 hscolour'
-  :: (String -> IO ())
+  :: BuildHooks
+  -> (String -> IO ())
   -- ^ Called when the 'hscolour' exe is not found.
   -> HaddockTarget
   -> PackageDescription
@@ -1133,83 +1189,100 @@ hscolour'
   -> [PPSuffixHandler]
   -> HscolourFlags
   -> IO ()
-hscolour' onNoHsColour haddockTarget pkg_descr lbi suffixes flags =
-  either (\excep -> onNoHsColour $ exceptionMessage excep) (\(hscolourProg, _, _) -> go hscolourProg)
-    =<< lookupProgramVersion
-      verbosity
-      hscolourProgram
-      (orLaterVersion (mkVersion [1, 8]))
-      (withPrograms lbi)
-  where
-    go :: ConfiguredProgram -> IO ()
-    go hscolourProg = do
-      warn verbosity $
-        "the 'cabal hscolour' command is deprecated in favour of 'cabal "
-          ++ "haddock --hyperlink-source' and will be removed in the next major "
-          ++ "release."
+hscolour'
+  (BuildHooks{preBuildComponentRules = mbPbcRules})
+  onNoHsColour
+  haddockTarget
+  pkg_descr
+  lbi
+  suffixes
+  flags =
+    either (\excep -> onNoHsColour $ exceptionMessage excep) (\(hscolourProg, _, _) -> go hscolourProg)
+      =<< lookupProgramVersion
+        verbosity
+        hscolourProgram
+        (orLaterVersion (mkVersion [1, 8]))
+        (withPrograms lbi)
+    where
+      go :: ConfiguredProgram -> IO ()
+      go hscolourProg = do
+        warn verbosity $
+          "the 'cabal hscolour' command is deprecated in favour of 'cabal "
+            ++ "haddock --hyperlink-source' and will be removed in the next major "
+            ++ "release."
 
-      setupMessage verbosity "Running hscolour for" (packageId pkg_descr)
-      createDirectoryIfMissingVerbose verbosity True $
-        hscolourPref haddockTarget distPref pkg_descr
+        setupMessage verbosity "Running hscolour for" (packageId pkg_descr)
+        createDirectoryIfMissingVerbose verbosity True $
+          hscolourPref haddockTarget distPref pkg_descr
 
-      withAllComponentsInBuildOrder pkg_descr lbi $ \comp clbi -> do
-        let tgt = TargetInfo clbi comp
-        preBuildComponent verbosity lbi tgt
-        preprocessComponent pkg_descr comp lbi clbi False verbosity suffixes
-        let
-          doExe com = case (compToExe com) of
-            Just exe -> do
+        withAllComponentsInBuildOrder pkg_descr lbi $ \comp clbi -> do
+          let tgt = TargetInfo clbi comp
+              runPreBuildHooks :: LocalBuildInfo -> TargetInfo -> IO ()
+              runPreBuildHooks lbi2 target =
+                let inputs =
+                      SetupHooks.PreBuildComponentInputs
+                        { SetupHooks.buildingWhat = BuildHscolour flags
+                        , SetupHooks.localBuildInfo = lbi2
+                        , SetupHooks.targetInfo = target
+                        }
+                 in for_ mbPbcRules $ \pbcRules ->
+                      SetupHooks.executeRules verbosity lbi target pbcRules inputs
+          preBuildComponent runPreBuildHooks verbosity lbi tgt
+          preprocessComponent pkg_descr comp lbi clbi False verbosity suffixes
+          let
+            doExe com = case (compToExe com) of
+              Just exe -> do
+                let outputDir =
+                      hscolourPref haddockTarget distPref pkg_descr
+                        </> unUnqualComponentName (exeName exe)
+                        </> "src"
+                runHsColour hscolourProg outputDir =<< getExeSourceFiles verbosity lbi exe clbi
+              Nothing -> do
+                warn
+                  (fromFlag $ hscolourVerbosity flags)
+                  "Unsupported component, skipping..."
+                return ()
+          case comp of
+            CLib lib -> do
+              let outputDir = hscolourPref haddockTarget distPref pkg_descr </> "src"
+              runHsColour hscolourProg outputDir =<< getLibSourceFiles verbosity lbi lib clbi
+            CFLib flib -> do
               let outputDir =
                     hscolourPref haddockTarget distPref pkg_descr
-                      </> unUnqualComponentName (exeName exe)
+                      </> unUnqualComponentName (foreignLibName flib)
                       </> "src"
-              runHsColour hscolourProg outputDir =<< getExeSourceFiles verbosity lbi exe clbi
-            Nothing -> do
-              warn
-                (fromFlag $ hscolourVerbosity flags)
-                "Unsupported component, skipping..."
-              return ()
-        case comp of
-          CLib lib -> do
-            let outputDir = hscolourPref haddockTarget distPref pkg_descr </> "src"
-            runHsColour hscolourProg outputDir =<< getLibSourceFiles verbosity lbi lib clbi
-          CFLib flib -> do
-            let outputDir =
-                  hscolourPref haddockTarget distPref pkg_descr
-                    </> unUnqualComponentName (foreignLibName flib)
-                    </> "src"
-            runHsColour hscolourProg outputDir =<< getFLibSourceFiles verbosity lbi flib clbi
-          CExe _ -> when (fromFlag (hscolourExecutables flags)) $ doExe comp
-          CTest _ -> when (fromFlag (hscolourTestSuites flags)) $ doExe comp
-          CBench _ -> when (fromFlag (hscolourBenchmarks flags)) $ doExe comp
+              runHsColour hscolourProg outputDir =<< getFLibSourceFiles verbosity lbi flib clbi
+            CExe _ -> when (fromFlag (hscolourExecutables flags)) $ doExe comp
+            CTest _ -> when (fromFlag (hscolourTestSuites flags)) $ doExe comp
+            CBench _ -> when (fromFlag (hscolourBenchmarks flags)) $ doExe comp
 
-    stylesheet = flagToMaybe (hscolourCSS flags)
+      stylesheet = flagToMaybe (hscolourCSS flags)
 
-    verbosity = fromFlag (hscolourVerbosity flags)
-    distPref = fromFlag (hscolourDistPref flags)
+      verbosity = fromFlag (hscolourVerbosity flags)
+      distPref = fromFlag (hscolourDistPref flags)
 
-    runHsColour prog outputDir moduleFiles = do
-      createDirectoryIfMissingVerbose verbosity True outputDir
+      runHsColour prog outputDir moduleFiles = do
+        createDirectoryIfMissingVerbose verbosity True outputDir
 
-      case stylesheet of -- copy the CSS file
-        Nothing
-          | programVersion prog >= Just (mkVersion [1, 9]) ->
-              runProgram
-                verbosity
-                prog
-                ["-print-css", "-o" ++ outputDir </> "hscolour.css"]
-          | otherwise -> return ()
-        Just s -> copyFileVerbose verbosity s (outputDir </> "hscolour.css")
+        case stylesheet of -- copy the CSS file
+          Nothing
+            | programVersion prog >= Just (mkVersion [1, 9]) ->
+                runProgram
+                  verbosity
+                  prog
+                  ["-print-css", "-o" ++ outputDir </> "hscolour.css"]
+            | otherwise -> return ()
+          Just s -> copyFileVerbose verbosity s (outputDir </> "hscolour.css")
 
-      for_ moduleFiles $ \(m, inFile) ->
-        runProgram
-          verbosity
-          prog
-          ["-css", "-anchor", "-o" ++ outFile m, inFile]
-      where
-        outFile m =
-          outputDir
-            </> intercalate "-" (ModuleName.components m) <.> "html"
+        for_ moduleFiles $ \(m, inFile) ->
+          runProgram
+            verbosity
+            prog
+            ["-css", "-anchor", "-o" ++ outFile m, inFile]
+        where
+          outFile m =
+            outputDir
+              </> intercalate "-" (ModuleName.components m) <.> "html"
 
 haddockToHscolour :: HaddockFlags -> HscolourFlags
 haddockToHscolour flags =

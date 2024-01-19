@@ -630,7 +630,7 @@ addDefaultSetupDependencies defaultSetupDeps params =
               }
         }
       where
-        isCustom = PD.buildType pkgdesc == PD.Custom
+        isCustom = PD.buildType pkgdesc == PD.Custom || PD.buildType pkgdesc == PD.Hooks
         gpkgdesc = srcpkgDescription srcpkg
         pkgdesc = PD.packageDescription gpkgdesc
 
@@ -729,7 +729,7 @@ standardInstallPolicy installedPkgIndex sourcePkgDb pkgSpecifiers =
         gpkgdesc = srcpkgDescription srcpkg
         pkgdesc = PD.packageDescription gpkgdesc
         bt = PD.buildType pkgdesc
-        affected = bt == PD.Custom && hasBuildableFalse gpkgdesc
+        affected = (bt == PD.Custom || bt == PD.Hooks) && hasBuildableFalse gpkgdesc
 
     -- Does this package contain any components with non-empty 'build-depends'
     -- and a 'buildable' field that could potentially be set to 'False'? False
