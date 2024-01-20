@@ -1,262 +1,137 @@
-module Distribution.Simple.GHC.Build
-  ( getRPaths
-  , runReplOrWriteFlags
-  , checkNeedsRecompilation
-  , replNoLoad
-  , componentGhcOptions
-  , supportsDynamicToo
-  , isDynamic
-  , flibBuildName
-  , flibTargetName
-  , exeTargetName
-  )
-where
+module Distribution.Simple.GHC.Build where
 
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import qualified Data.ByteString.Lazy.Char8 as BS
-import Distribution.Compat.Binary (encode)
-import Distribution.Compat.ResponseFile (escapeArgs)
-import qualified Distribution.InstalledPackageInfo as IPI
-import Distribution.Package
-import Distribution.PackageDescription as PD
-import Distribution.PackageDescription.Utils (cabalBug)
-import Distribution.Pretty
-import Distribution.Simple.BuildPaths
-import Distribution.Simple.Compiler
-import Distribution.Simple.Flag (Flag (..), fromFlag, fromFlagOrDefault)
-import Distribution.Simple.GHC.ImplInfo
-import qualified Distribution.Simple.GHC.Internal as Internal
+import Control.Monad.IO.Class
+import Data.Function
+import qualified Data.Set as Set
+import Distribution.PackageDescription as PD hiding (buildInfo)
+import Distribution.Simple.Build.Monad
+import Distribution.Simple.Flag (Flag)
+import Distribution.Simple.GHC.Build.ExtraSources
+import Distribution.Simple.GHC.Build.Link
+import Distribution.Simple.GHC.Build.Modules
+import Distribution.Simple.GHC.Build.Utils (withDynFLib)
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Program
-import Distribution.Simple.Program.GHC
-import Distribution.Simple.Setup.Repl
 import Distribution.Simple.Utils
-import Distribution.System
-import Distribution.Utils.NubList
-import Distribution.Verbosity
-import Distribution.Version
-import System.Directory
-  ( createDirectoryIfMissing
-  , getCurrentDirectory
-  )
+import Distribution.Types.ComponentLocalBuildInfo (componentIsIndefinite)
+import Distribution.Types.ParStrat
+import System.Directory hiding (exeExtension)
 import System.FilePath
-  ( isRelative
-  , replaceExtension
-  , takeExtension
-  , (<.>)
-  , (</>)
-  )
 
-exeTargetName :: Platform -> Executable -> String
-exeTargetName platform exe = unUnqualComponentName (exeName exe) `withExt` exeExtension platform
+{-
+Note [Build Target Dir vs Target Dir]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-withExt :: FilePath -> String -> FilePath
-withExt fp ext = fp <.> if takeExtension fp /= ('.' : ext) then ext else ""
+Where to place the build result (targetDir) and the build artifacts (buildTargetDir).
 
--- | Target name for a foreign library (the actual file name)
---
--- We do not use mkLibName and co here because the naming for foreign libraries
--- is slightly different (we don't use "_p" or compiler version suffices, and we
--- don't want the "lib" prefix on Windows).
---
--- TODO: We do use `dllExtension` and co here, but really that's wrong: they
--- use the OS used to build cabal to determine which extension to use, rather
--- than the target OS (but this is wrong elsewhere in Cabal as well).
-flibTargetName :: LocalBuildInfo -> ForeignLib -> String
-flibTargetName lbi flib =
-  case (os, foreignLibType flib) of
-    (Windows, ForeignLibNativeShared) -> nm <.> "dll"
-    (Windows, ForeignLibNativeStatic) -> nm <.> "lib"
-    (Linux, ForeignLibNativeShared) -> "lib" ++ nm <.> versionedExt
-    (_other, ForeignLibNativeShared) ->
-      "lib" ++ nm <.> dllExtension (hostPlatform lbi)
-    (_other, ForeignLibNativeStatic) ->
-      "lib" ++ nm <.> staticLibExtension (hostPlatform lbi)
-    (_any, ForeignLibTypeUnknown) -> cabalBug "unknown foreign lib type"
-  where
-    nm :: String
-    nm = unUnqualComponentName $ foreignLibName flib
+\* For libraries, targetDir == buildTargetDir, where both the library and
+artifacts are put together.
 
-    os :: OS
-    os =
-      let (Platform _ os') = hostPlatform lbi
-       in os'
+\* For executables or foreign libs, buildTargetDir == targetDir/<name-of-target-dir>-tmp, where
+    the targetDir is the location where the target (e.g. the executable) is written to
+    and buildTargetDir is where the compilation artifacts (e.g. Main.o) will live
+  Arguably, this difference should not exist (#9498) (TODO)
 
-    -- If a foreign lib foo has lib-version-info 5:1:2 or
-    -- lib-version-linux 3.2.1, it should be built as libfoo.so.3.2.1
-    -- Libtool's version-info data is translated into library versions in a
-    -- nontrivial way: so refer to libtool documentation.
-    versionedExt :: String
-    versionedExt =
-      let nums = foreignLibVersion flib os
-       in foldl (<.>) "so" (map show nums)
+For instance, for a component `cabal-benchmarks`:
+  targetDir == <buildDir>/cabal-benchmarks
+  buildTargetDir == <buildDir>/cabal-benchmarks/cabal-benchmarks-tmp
 
--- | Name for the library when building.
---
--- If the `lib-version-info` field or the `lib-version-linux` field of
--- a foreign library target is set, we need to incorporate that
--- version into the SONAME field.
---
--- If a foreign library foo has lib-version-info 5:1:2, it should be
--- built as libfoo.so.3.2.1.  We want it to get soname libfoo.so.3.
--- However, GHC does not allow overriding soname by setting linker
--- options, as it sets a soname of its own (namely the output
--- filename), after the user-supplied linker options.  Hence, we have
--- to compile the library with the soname as its filename.  We rename
--- the compiled binary afterwards.
---
--- This method allows to adjust the name of the library at build time
--- such that the correct soname can be set.
-flibBuildName :: LocalBuildInfo -> ForeignLib -> String
-flibBuildName lbi flib
-  -- On linux, if a foreign-library has version data, the first digit is used
-  -- to produce the SONAME.
-  | (os, foreignLibType flib)
-      == (Linux, ForeignLibNativeShared) =
-      let nums = foreignLibVersion flib os
-       in "lib" ++ nm <.> foldl (<.>) "so" (map show (take 1 nums))
-  | otherwise = flibTargetName lbi flib
-  where
-    os :: OS
-    os =
-      let (Platform _ os') = hostPlatform lbi
-       in os'
+Or, for a library `Cabal`:
+  targetDir == <buildDir>/.
+  buildTargetDir == targetDir
 
-    nm :: String
-    nm = unUnqualComponentName $ foreignLibName flib
+Furthermore, we need to account for the limit of characters in ghc
+invocations that different OSes constrain us to. Cabal invocations can
+rapidly reach this limit, in part, due to the long length of cabal v2
+prefixes. To minimize the likelihood, we use
+`makeRelativeToCurrentDirectory` to shorten the paths used in invocations
+(see da6321bb).
 
-supportsDynamicToo :: Compiler -> Bool
-supportsDynamicToo = Internal.ghcLookupProperty "Support dynamic-too"
+However, in executables, we don't do this. It seems that we don't need to do it
+for executable-like components because the linking step, instead of passing as
+an argument the path to each module, it simply passes the module name, the sources dir, and --make.
+RM: I believe we can use --make + module names instead of paths-to-objects
+for linking libraries too (2024-01) (TODO)
+-}
 
-isDynamic :: Compiler -> Bool
-isDynamic = Internal.ghcLookupProperty "GHC Dynamic"
+-- | The main build phase of building a component.
+-- Includes building Haskell modules, extra build sources, and linking.
+build
+  :: Flag ParStrat
+  -> PackageDescription
+  -> BuildM ()
+build numJobs pkg_descr = do
+  verbosity <- buildVerbosity
+  component <- buildComponent
+  isLib <- buildIsLib
+  lbi <- buildLBI
+  clbi <- buildCLBI
 
-componentGhcOptions
-  :: Verbosity
-  -> LocalBuildInfo
-  -> BuildInfo
-  -> ComponentLocalBuildInfo
-  -> FilePath
-  -> GhcOptions
-componentGhcOptions verbosity lbi =
-  Internal.componentGhcOptions verbosity implInfo lbi
-  where
-    comp = compiler lbi
-    implInfo = getImplInfo comp
+  -- Create a few directories for building the component
+  -- See Note [Build Target Dir vs Target Dir]
+  let targetDir_absolute = componentBuildDir lbi clbi
+      buildTargetDir_absolute
+        -- Libraries use the target dir for building (see above)
+        | isLib = targetDir_absolute
+        -- In other cases, use targetDir/<name-of-target-dir>-tmp
+        | targetDirName : _ <- reverse $ splitDirectories targetDir_absolute =
+            targetDir_absolute </> (targetDirName ++ "-tmp")
+        | otherwise = error "GHC.build: targetDir is empty"
 
-replNoLoad :: Ord a => ReplOptions -> NubListR a -> NubListR a
-replNoLoad replFlags l
-  | replOptionsNoLoad replFlags == Flag True = mempty
-  | otherwise = l
+  liftIO $ do
+    createDirectoryIfMissingVerbose verbosity True targetDir_absolute
+    createDirectoryIfMissingVerbose verbosity True buildTargetDir_absolute
 
--- | Finds the object file name of the given source file
-getObjectFileName :: FilePath -> GhcOptions -> FilePath
-getObjectFileName filename opts = oname
-  where
-    odir = fromFlag (ghcOptObjDir opts)
-    oext = fromFlagOrDefault "o" (ghcOptObjSuffix opts)
-    oname = odir </> replaceExtension filename oext
+  -- See Note [Build Target Dir vs Target Dir] as well
+  _targetDir <- makeRelativeToCurrentDirectory targetDir_absolute & liftIO
+  buildTargetDir <-
+    -- ROMES:TODO: To preserve the previous behaviour, we don't use relative
+    -- dirs for executables. Historically, this isn't needed to reduce the CLI
+    -- limit (unlike for libraries) because we link executables with the module
+    -- names instead of passing the path to object file -- that's something
+    -- else we can now fix after the refactor lands.
+    if isLib
+      then makeRelativeToCurrentDirectory buildTargetDir_absolute & liftIO
+      else return buildTargetDir_absolute
 
--- | Returns True if the modification date of the given source file is newer than
--- the object file we last compiled for it, or if no object file exists yet.
-checkNeedsRecompilation :: FilePath -> GhcOptions -> IO Bool
-checkNeedsRecompilation filename opts = filename `moreRecentFile` oname
-  where
-    oname = getObjectFileName filename opts
+  (ghcProg, _) <- requireProgram verbosity ghcProgram (withPrograms lbi) & liftIO
 
--- | Calculate the RPATHs for the component we are building.
---
--- Calculates relative RPATHs when 'relocatable' is set.
-getRPaths
-  :: LocalBuildInfo
-  -> ComponentLocalBuildInfo
-  -- ^ Component we are building
-  -> IO (NubListR FilePath)
-getRPaths lbi clbi | supportRPaths hostOS = do
-  libraryPaths <- depLibraryPaths False (relocatable lbi) lbi clbi
-  let hostPref = case hostOS of
-        OSX -> "@loader_path"
-        _ -> "$ORIGIN"
-      relPath p = if isRelative p then hostPref </> p else p
-      rpaths = toNubListR (map relPath libraryPaths)
-  return rpaths
-  where
-    (Platform _ hostOS) = hostPlatform lbi
-    compid = compilerId . compiler $ lbi
+  -- Determine in which ways we want to build the component
+  let
+    wantVanilla = if isLib then withVanillaLib lbi else False
+    -- ROMES:TODO: Arguably, wantStatic should be "withFullyStaticExe lbi" for
+    -- executables, but it was not before the refactor, also, flibs should consider if is fully static flib.
+    wantStatic = if isLib then withStaticLib lbi else not (wantDynamic || wantProf)
+    wantDynamic = case component of
+      CLib{} -> withSharedLib lbi
+      CFLib flib -> withDynFLib flib
+      CExe{} -> withDynExe lbi
+      CTest{} -> withDynExe lbi
+      CBench{} -> withDynExe lbi
+    wantProf = if isLib then withProfLib lbi else withProfExe lbi
 
-    -- The list of RPath-supported operating systems below reflects the
-    -- platforms on which Cabal's RPATH handling is tested. It does _NOT_
-    -- reflect whether the OS supports RPATH.
+    -- See also Note [Building Haskell Modules accounting for TH] in Distribution.Simple.GHC.Build.Modules
+    -- We build static by default if no other way is wanted.
+    -- For executables and foreign libraries, there should only be one wanted way.
+    wantedWays =
+      Set.fromList $
+        -- If building a library, we accumulate all the ways,
+        -- otherwise, we take just one.
+        (if isLib then id else take 1) $
+          [ProfWay | wantProf]
+            -- ROMES:TODO: I don't see why we shouldn't build with dynamic
+            -- indefinite components (being instantiated?).
+            <> [DynWay | wantDynamic && not (componentIsIndefinite clbi)]
+            <> [StaticWay | wantStatic || wantVanilla || not (wantDynamic || wantProf)]
 
-    -- E.g. when this comment was written, the *BSD operating systems were
-    -- untested with regards to Cabal RPATH handling, and were hence set to
-    -- 'False', while those operating systems themselves do support RPATH.
-    supportRPaths Linux = True
-    supportRPaths Windows = False
-    supportRPaths OSX = True
-    supportRPaths FreeBSD =
-      case compid of
-        CompilerId GHC ver | ver >= mkVersion [7, 10, 2] -> True
-        _ -> False
-    supportRPaths OpenBSD = False
-    supportRPaths NetBSD = False
-    supportRPaths DragonFly = False
-    supportRPaths Solaris = False
-    supportRPaths AIX = False
-    supportRPaths HPUX = False
-    supportRPaths IRIX = False
-    supportRPaths HaLVM = False
-    supportRPaths IOS = False
-    supportRPaths Android = False
-    supportRPaths Ghcjs = False
-    supportRPaths Wasi = False
-    supportRPaths Hurd = True
-    supportRPaths Haiku = False
-    supportRPaths (OtherOS _) = False
--- Do _not_ add a default case so that we get a warning here when a new OS
--- is added.
+  info verbosity ("Wanted build ways: " ++ show (Set.toList wantedWays)) & liftIO
 
-getRPaths _ _ = return mempty
-
-runReplOrWriteFlags
-  :: Verbosity
-  -> ConfiguredProgram
-  -> Compiler
-  -> Platform
-  -> ReplOptions
-  -> GhcOptions
-  -> BuildInfo
-  -> ComponentLocalBuildInfo
-  -> PackageName
-  -> IO ()
-runReplOrWriteFlags verbosity ghcProg comp platform rflags replOpts bi clbi pkg_name =
-  case replOptionsFlagOutput rflags of
-    NoFlag -> runGHC verbosity ghcProg comp platform replOpts
-    Flag out_dir -> do
-      src_dir <- getCurrentDirectory
-      let uid = componentUnitId clbi
-          this_unit = prettyShow uid
-          reexported_modules = [mn | LibComponentLocalBuildInfo{} <- [clbi], IPI.ExposedModule mn (Just{}) <- componentExposedModules clbi]
-          hidden_modules = otherModules bi
-          extra_opts =
-            concat $
-              [ ["-this-package-name", prettyShow pkg_name]
-              , ["-working-dir", src_dir]
-              ]
-                ++ [ ["-reexported-module", prettyShow m] | m <- reexported_modules
-                   ]
-                ++ [ ["-hidden-module", prettyShow m] | m <- hidden_modules
-                   ]
-      -- Create "paths" subdirectory if it doesn't exist. This is where we write
-      -- information about how the PATH was augmented.
-      createDirectoryIfMissing False (out_dir </> "paths")
-      -- Write out the PATH information into `paths` subdirectory.
-      writeFileAtomic (out_dir </> "paths" </> this_unit) (encode ghcProg)
-      -- Write out options for this component into a file ready for loading into
-      -- the multi-repl
-      writeFileAtomic (out_dir </> this_unit) $
-        BS.pack $
-          escapeArgs $
-            extra_opts ++ renderGhcOptions comp platform (replOpts{ghcOptMode = NoFlag})
+  -- We need a separate build and link phase, and C sources must be compiled
+  -- after Haskell modules, because C sources may depend on stub headers
+  -- generated from compiling Haskell modules (#842, #3294).
+  buildOpts <- buildHaskellModules numJobs ghcProg pkg_descr buildTargetDir_absolute wantedWays
+  extraSources <- buildAllExtraSources ghcProg buildTargetDir
+  linkOrLoadComponent ghcProg pkg_descr extraSources (buildTargetDir, targetDir_absolute) (wantedWays, buildOpts)
