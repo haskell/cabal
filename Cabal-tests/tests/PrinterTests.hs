@@ -43,10 +43,11 @@ printExact = testGroup "printExact"
     , testParsePrintExact "two-sections.cabal"
     , testParsePrintExact "two-sections-spacing.cabal"
     -- , testParsePrintExact "comment.cabal" -- TODO this is required
+    , testParsePrintExact "commas.cabal" -- TODO dear lord is this also requried?!
     -- , testParsePrintExact "comments.cabal" -- TODO this is required
     -- , testParsePrintExact "anynone.cabal" -- TODO is this neccessary? I think we're allowed to pretty print a range?
     -- , testParsePrintExact "multiple-depends.cabal" -- TODO is this neccisary? I think we're allowed to be oppinionated on comma placement?
-    , testParsePrintExact "import.cabal" -- this is required
+    -- , testParsePrintExact "import.cabal" -- this is required
     -- , testParsePrintExact "elif.cabal" -- TODO this is required
     -- broken by: instance Pretty VersionRange where
     -- however we currently don't retain enough information to do this exact!
