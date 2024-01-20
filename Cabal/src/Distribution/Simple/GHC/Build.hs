@@ -103,7 +103,7 @@ build numJobs pkg_descr = do
   let
     wantVanilla = if isLib then withVanillaLib lbi else False
     -- ROMES:TODO: Arguably, wantStatic should be "withFullyStaticExe lbi" for
-    -- executables, but it was not before the refactor.
+    -- executables, but it was not before the refactor, also, flibs should consider if is fully static flib.
     wantStatic = if isLib then withStaticLib lbi else not (wantDynamic || wantProf)
     wantDynamic = case component of
       CLib{} -> withSharedLib lbi

@@ -2622,18 +2622,18 @@ checkForeignLibSupported comp platform flib = go (compilerFlavor comp)
         ]
 
     goGhcPlatform :: Platform -> Maybe String
-    goGhcPlatform (Platform _ OSX) = goGhcOsx (foreignLibType flib)
-    goGhcPlatform (Platform _ Linux) = goGhcLinux (foreignLibType flib)
-    goGhcPlatform (Platform I386 Windows) = goGhcWindows (foreignLibType flib)
-    goGhcPlatform (Platform X86_64 Windows) = goGhcWindows (foreignLibType flib)
+    goGhcPlatform (Platform _ OSX) = goGhcOsx
+    goGhcPlatform (Platform _ Linux) = goGhcLinux
+    goGhcPlatform (Platform I386 Windows) = goGhcWindows
+    goGhcPlatform (Platform X86_64 Windows) = goGhcWindows
     goGhcPlatform _ =
       unsupported
         [ "Building foreign libraries is currently only supported on Mac OS, "
         , "Linux and Windows"
         ]
 
-    goGhcOsx :: ForeignLibType -> Maybe String
-    goGhcOsx ForeignLibNativeShared
+    goGhcOsx :: Maybe String
+    goGhcOsx
       | not (null (foreignLibModDefFile flib)) =
           unsupported
             [ "Module definition file not supported on OSX"
@@ -2642,15 +2642,15 @@ checkForeignLibSupported comp platform flib = go (compilerFlavor comp)
           unsupported
             [ "Foreign library versioning not currently supported on OSX"
             ]
+      | ForeignLibTypeUnknown <- foreignLibType flib =
+          unsupported
+            [ "We don't support building unknown-type foreign libraries on OSX"
+            ]
       | otherwise =
           Nothing
-    goGhcOsx _ =
-      unsupported
-        [ "We can currently only build shared foreign libraries on OSX"
-        ]
 
-    goGhcLinux :: ForeignLibType -> Maybe String
-    goGhcLinux ForeignLibNativeShared
+    goGhcLinux :: Maybe String
+    goGhcLinux
       | not (null (foreignLibModDefFile flib)) =
           unsupported
             [ "Module definition file not supported on Linux"
@@ -2660,15 +2660,15 @@ checkForeignLibSupported comp platform flib = go (compilerFlavor comp)
           unsupported
             [ "You must not specify both lib-version-info and lib-version-linux"
             ]
+      | ForeignLibTypeUnknown <- foreignLibType flib =
+          unsupported
+            [ "We don't support building unknown-type foreign libraries on Linux"
+            ]
       | otherwise =
           Nothing
-    goGhcLinux _ =
-      unsupported
-        [ "We can currently only build shared foreign libraries on Linux"
-        ]
 
-    goGhcWindows :: ForeignLibType -> Maybe String
-    goGhcWindows ForeignLibNativeShared
+    goGhcWindows :: Maybe String
+    goGhcWindows
       | not standalone =
           unsupported
             [ "We can currently only build standalone libraries on Windows. Use\n"
@@ -2681,12 +2681,12 @@ checkForeignLibSupported comp platform flib = go (compilerFlavor comp)
             [ "Foreign library versioning not currently supported on Windows.\n"
             , "You can specify module definition files in the mod-def-file field."
             ]
+      | ForeignLibTypeUnknown <- foreignLibType flib =
+          unsupported
+            [ "We don't support building unknown-type foreign libraries on Windows"
+            ]
       | otherwise =
           Nothing
-    goGhcWindows _ =
-      unsupported
-        [ "We can currently only build shared foreign libraries on Windows"
-        ]
 
     standalone :: Bool
     standalone = ForeignLibStandalone `elem` foreignLibOptions flib

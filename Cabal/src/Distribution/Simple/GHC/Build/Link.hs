@@ -451,23 +451,21 @@ linkFLib flib bi lbi linkerOpts (wantedWays, buildOpts) targetDir runGhcProg = d
                   else statRtsVanillaLib (rtsStaticInfo rtsInfo)
           ]
 
-    linkOpts :: BuildWay -> GhcOptions
-    linkOpts way = case foreignLibType flib of
+    linkOpts = case foreignLibType flib of
       ForeignLibNativeShared ->
-        (buildOpts way)
-          `mappend` linkerOpts
-          `mappend` rtsLinkOpts
-          `mappend` mempty
-            { ghcOptLinkNoHsMain = toFlag True
-            , ghcOptShared = toFlag True
-            , ghcOptFPic = toFlag True
-            , ghcOptLinkModDefFiles = toNubListR $ foreignLibModDefFile flib
-            }
+        (buildOpts DynWay)
+          { ghcOptShared = toFlag True
+          , ghcOptFPic = toFlag True
+          }
       ForeignLibNativeStatic ->
-        -- this should be caught by buildFLib
-        -- (and if we do implement this, we probably don't even want to call
-        -- ghc here, but rather Ar.createArLibArchive or something)
-        cabalBug "static libraries not yet implemented"
+        (buildOpts StaticWay)
+          `mappend` mempty
+            { ghcOptStaticLib = toFlag True
+            -- ROMES:TODO: Currently ignoring linkerOpts already sets this, but
+            -- only for fully static exes... should converge to considering flibs
+            -- when defining fully static exe probably?
+            , ghcOptLinkOptions = ["-static"]
+            }
       ForeignLibTypeUnknown ->
         cabalBug "unknown foreign lib type"
   -- We build under a (potentially) different filename to set a
@@ -476,8 +474,17 @@ linkFLib flib bi lbi linkerOpts (wantedWays, buildOpts) targetDir runGhcProg = d
   let buildName = flibBuildName lbi flib
   -- There should not be more than one wanted way when building an flib
   assert (Set.size wantedWays == 1) $
-    forM_ wantedWays $ \way -> do
-      runGhcProg (linkOpts way){ghcOptOutputFile = toFlag (targetDir </> buildName)}
+    -- ROMES:TODO: Using the "wantedWay" is a bit senseless here, we likely
+    -- just want to use the Way of each ForeignLib type.
+    forM_ wantedWays $ \_way -> do
+      runGhcProg $
+        (linkOpts
+          `mappend` linkerOpts
+          `mappend` rtsLinkOpts
+          `mappend` mempty
+            { ghcOptLinkNoHsMain = toFlag True
+            , ghcOptLinkModDefFiles = toNubListR $ foreignLibModDefFile flib
+            }){ ghcOptOutputFile = toFlag (targetDir </> buildName) }
       renameFile (targetDir </> buildName) (targetDir </> flibTargetName lbi flib)
 
 -- | Calculate the RPATHs for the component we are building.
