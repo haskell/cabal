@@ -778,10 +778,7 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
             else []
         , ["-no-hs-main" | flagBool ghcOptLinkNoHsMain]
         , ["-dynload deploy" | not (null (flags ghcOptRPaths))]
-        , concat
-            [ ["-optl-Wl,-rpath," ++ dir]
-            | dir <- flags ghcOptRPaths
-            ]
+        , ["-optl-Wl,-rpath," ++ dir | dir <- flags ghcOptRPaths]
         , flags ghcOptLinkModDefFiles
         , -------------
           -- Packages

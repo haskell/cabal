@@ -474,7 +474,7 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
               , ghcOptLinkFrameworks = toNubListR $ PD.frameworks libBi
               , ghcOptLinkFrameworkDirs =
                   toNubListR $ PD.extraFrameworkDirs libBi
-              , ghcOptRPaths = rpaths
+              , ghcOptRPaths = rpaths <> toNubListR (extraLibDirs libBi)
               }
           ghcStaticLinkArgs =
             mempty
