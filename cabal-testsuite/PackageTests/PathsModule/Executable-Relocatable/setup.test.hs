@@ -4,4 +4,4 @@ import Test.Cabal.Prelude
 main = setupAndCabalTest $ do
   skipIfWindows
   skipUnlessGhcVersion ">= 8.0"
-  setup_build ["--enable-relocatable"]
+  withPackageDb $ setup_build ["--enable-relocatable"]
