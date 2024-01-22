@@ -7,7 +7,8 @@ module Distribution.Client.ProjectConfig.Legacy (
    -- Project config skeletons
     ProjectConfigSkeleton,
     parseProjectSkeleton,
-    instantiateProjectConfigSkeleton,
+    instantiateProjectConfigSkeletonFetchingCompiler,
+    instantiateProjectConfigSkeletonWithCompiler,
     singletonProjectConfigSkeleton,
     projectSkeletonImports,
 
@@ -44,7 +45,7 @@ import Distribution.Client.CmdInstall.ClientInstallFlags
          ( ClientInstallFlags(..), defaultClientInstallFlags
          , clientInstallOptions )
 
-import Distribution.Compat.Lens (view)
+import Distribution.Compat.Lens (view, toListOf)
 
 import Distribution.Solver.Types.ConstraintSource
 
@@ -52,7 +53,7 @@ import Distribution.FieldGrammar
 import Distribution.Package
 import Distribution.Types.SourceRepo (RepoType)
 import Distribution.Types.CondTree
-         ( CondTree (..), CondBranch (..), mapTreeConds, traverseCondTreeC )
+         ( CondTree (..), CondBranch (..), mapTreeConds, traverseCondTreeC, traverseCondTreeV, ignoreConditions )
 import Distribution.PackageDescription
          ( dispFlagAssignment, Condition (..), ConfVar (..), FlagAssignment )
 import Distribution.PackageDescription.Configuration (simplifyWithSysParams)
@@ -135,8 +136,16 @@ type ProjectConfigImport = String
 singletonProjectConfigSkeleton :: ProjectConfig -> ProjectConfigSkeleton
 singletonProjectConfigSkeleton x = CondNode x mempty mempty
 
-instantiateProjectConfigSkeleton :: OS -> Arch -> CompilerInfo -> FlagAssignment -> ProjectConfigSkeleton -> ProjectConfig
-instantiateProjectConfigSkeleton os arch impl _flags skel = go $ mapTreeConds (fst . simplifyWithSysParams os arch impl) skel
+instantiateProjectConfigSkeletonFetchingCompiler :: Monad m =>  m (OS, Arch, CompilerInfo) -> FlagAssignment -> ProjectConfigSkeleton -> m ProjectConfig
+instantiateProjectConfigSkeletonFetchingCompiler fetch flags skel
+   | null (toListOf traverseCondTreeV skel) = pure $ fst (ignoreConditions skel)
+   | otherwise = do
+       (os, arch, impl) <- fetch
+       pure $ instantiateProjectConfigSkeletonWithCompiler os arch impl flags skel
+
+
+instantiateProjectConfigSkeletonWithCompiler :: OS -> Arch -> CompilerInfo -> FlagAssignment -> ProjectConfigSkeleton -> ProjectConfig
+instantiateProjectConfigSkeletonWithCompiler os arch impl _flags skel = go $ mapTreeConds (fst . simplifyWithSysParams os arch impl) skel
     where
         go :: CondTree
                FlagName

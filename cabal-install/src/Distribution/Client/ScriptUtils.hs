@@ -37,7 +37,7 @@ import Distribution.Client.ProjectConfig
     , projectConfigHttpTransport )
 import Distribution.Client.ProjectConfig.Legacy
     ( ProjectConfigSkeleton
-    , parseProjectSkeleton, instantiateProjectConfigSkeleton )
+    , parseProjectSkeleton, instantiateProjectConfigSkeletonFetchingCompiler )
 import Distribution.Client.ProjectFlags
     ( flagIgnoreProject )
 import Distribution.Client.RebuildMonad
@@ -243,9 +243,11 @@ withContextAndSelectors noTargets kind flags@NixStyleFlags {..} targetStrings gl
 
         projectCfgSkeleton <- readProjectBlockFromScript verbosity httpTransport (distDirLayout ctx) (takeFileName script) scriptContents
 
-        (compiler, Platform arch os, _) <- runRebuild (distProjectRootDirectory . distDirLayout $ ctx) $ configureCompiler verbosity (distDirLayout ctx) ((fst $ ignoreConditions projectCfgSkeleton) <> projectConfig ctx)
+        let fetchCompiler = do
+               (compiler, Platform arch os, _) <- runRebuild (distProjectRootDirectory . distDirLayout $ ctx) $ configureCompiler verbosity (distDirLayout ctx) ((fst $ ignoreConditions projectCfgSkeleton) <> projectConfig ctx)
+               pure (os, arch, compilerInfo compiler)
 
-        let projectCfg = instantiateProjectConfigSkeleton os arch (compilerInfo compiler) mempty projectCfgSkeleton :: ProjectConfig
+        projectCfg <- instantiateProjectConfigSkeletonFetchingCompiler fetchCompiler mempty projectCfgSkeleton
 
         let executable' = executable & L.buildInfo . L.defaultLanguage %~ maybe (Just Haskell2010) Just
             ctx'        = ctx & lProjectConfig %~ (<> projectCfg)

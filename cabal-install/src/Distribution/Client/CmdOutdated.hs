@@ -30,7 +30,7 @@ import Distribution.Client.DistDirLayout
     , DistDirLayout(distProjectRootDirectory, distProjectFile) )
 import Distribution.Client.ProjectConfig
 import Distribution.Client.ProjectConfig.Legacy
-    ( instantiateProjectConfigSkeleton )
+    ( instantiateProjectConfigSkeletonWithCompiler )
 import Distribution.Client.ProjectFlags
     ( projectFlagsOptions, ProjectFlags(..), defaultProjectFlags
     , removeIgnoreProjectOption )
@@ -306,7 +306,7 @@ depsFromNewFreezeFile verbosity httpTransport compiler (Platform arch os) mproje
                       {- TODO: Support dist dir override -} Nothing
   projectConfig <- runRebuild (distProjectRootDirectory distDirLayout) $ do
                       pcs <- readProjectLocalFreezeConfig verbosity httpTransport distDirLayout
-                      pure $ instantiateProjectConfigSkeleton os arch (compilerInfo compiler) mempty pcs
+                      pure $ instantiateProjectConfigSkeletonWithCompiler os arch (compilerInfo compiler) mempty pcs
   let ucnstrs = map fst . projectConfigConstraints . projectConfigShared
                 $ projectConfig
       deps    = userConstraintsToDependencies ucnstrs
