@@ -1,0 +1,14 @@
+cabal-version: 3.0
+name: uv
+version: 0.1
+build-type: Simple
+
+library U
+  visibility: public
+  exposed-modules: U
+  build-depends: base
+
+library V
+  visibility: public
+  exposed-modules: V
+  build-depends: base

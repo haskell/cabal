@@ -1,0 +1,9 @@
+diff --git a/cabal-testsuite/PackageTests/SDist/Respect-Project-File/Projects-Default-No/cabal.sub-rs.out b/cabal-testsuite/PackageTests/SDist/Respect-Project-File/Projects-Default-No/cabal.sub-rs.out
+index 3a0a8e5f4..b4cced990 100644
+--- a/cabal-testsuite/PackageTests/SDist/Respect-Project-File/Projects-Default-No/cabal.sub-rs.out
++++ b/cabal-testsuite/PackageTests/SDist/Respect-Project-File/Projects-Default-No/cabal.sub-rs.out
+@@ -1,2 +1,3 @@
+ # cabal sdist
+-Wrote tarball sdist to <ROOT>/cabal.sub-rs.dist/work/./dist/sdist/p-0.1.tar.gz
++Wrote tarball sdist to <ROOT>/cabal.sub-rs.dist/work/./dist/sdist/r-0.1.tar.gz
++Wrote tarball sdist to <ROOT>/cabal.sub-rs.dist/work/./dist/sdist/s-0.1.tar.gz

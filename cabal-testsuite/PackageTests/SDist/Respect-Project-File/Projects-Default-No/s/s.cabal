@@ -1,0 +1,8 @@
+name: s
+version: 0.1
+build-type: Simple
+cabal-version: >= 1.2
+
+library
+  exposed-modules: S
+  build-depends: base
