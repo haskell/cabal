@@ -1602,7 +1602,7 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
 
   (ghcjsProg, _) <- requireProgram verbosity ghcjsProgram (withPrograms lbi)
   hash <- getProgramInvocationOutput verbosity
-          (ghcInvocation ghcjsProg comp platform ghcArgs)
+          =<< ghcInvocation verbose ghcjsProg comp platform ghcArgs
   return (takeWhile (not . isSpace) hash)
 
 componentGhcOptions :: Verbosity -> LocalBuildInfo

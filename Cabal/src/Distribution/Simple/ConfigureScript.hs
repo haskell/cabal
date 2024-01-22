@@ -137,10 +137,9 @@ runConfigureScript verbosity flags lbi = do
       maybeHostFlag = if hp == buildPlatform then [] else ["--host=" ++ show (pretty hp)]
       args' = configureFile':args ++ ["CC=" ++ ccProgShort] ++ maybeHostFlag
       shProg = simpleProgram "sh"
-      progDb = modifyProgramSearchPath
-               (\p -> map ProgramSearchPathDir extraPath ++ p) emptyProgramDb
+  progDb <- appendProgramSearchPath verbosity extraPath emptyProgramDb
   shConfiguredProg <- lookupProgram shProg
-                      `fmap` configureProgram  verbosity shProg progDb
+                      `fmap` configureProgram verbosity shProg progDb
   case shConfiguredProg of
       Just sh -> runProgramInvocation verbosity $
                  (programInvocation (sh {programOverrideEnv = overEnv}) args')

@@ -54,13 +54,12 @@ import System.IO.Error
 import Distribution.Simple.Program
          ( Program, simpleProgram, ConfiguredProgram, programPath
          , ProgramInvocation(..), programInvocation
-         , ProgramSearchPathEntry(..)
          , getProgramInvocationOutput )
 import Distribution.Simple.Program.Db
          ( ProgramDb, emptyProgramDb, addKnownPrograms
          , configureAllKnownPrograms
          , requireProgram, lookupProgram
-         , modifyProgramSearchPath )
+         , appendProgramSearchPath )
 import Distribution.Simple.Program.Run
          ( getProgramInvocationOutputAndErrors )
 import Numeric (showHex)
@@ -336,7 +335,7 @@ configureTransport verbosity extraPath (Just name) =
     case find (\(name',_,_,_) -> name' == name) supportedTransports of
       Just (_, mprog, _tls, mkTrans) -> do
 
-        let baseProgDb = modifyProgramSearchPath (\p -> map ProgramSearchPathDir extraPath ++ p) emptyProgramDb
+        baseProgDb <- appendProgramSearchPath verbosity extraPath emptyProgramDb
         progdb <- case mprog of
           Nothing   -> return emptyProgramDb
           Just prog -> snd <$> requireProgram verbosity prog baseProgDb
@@ -356,7 +355,7 @@ configureTransport verbosity extraPath Nothing = do
 
     -- for all the transports except plain-http we need to try and find
     -- their external executable
-    let baseProgDb = modifyProgramSearchPath (\p -> map ProgramSearchPathDir extraPath ++ p) emptyProgramDb
+    baseProgDb <- appendProgramSearchPath verbosity extraPath emptyProgramDb
     progdb <- configureAllKnownPrograms  verbosity $
                 addKnownPrograms
                   [ prog | (_, Just prog, _, _) <- supportedTransports ]

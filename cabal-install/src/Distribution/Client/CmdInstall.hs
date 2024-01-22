@@ -59,11 +59,9 @@ import Distribution.Client.ProjectConfig.Types
          , projectConfigConfigFile )
 import Distribution.Simple.Program.Db
          ( userSpecifyPaths, userSpecifyArgss, defaultProgramDb
-         , modifyProgramSearchPath )
+         , appendProgramSearchPath )
 import Distribution.Simple.BuildPaths
          ( exeExtension )
-import Distribution.Simple.Program.Find
-         ( ProgramSearchPathEntry(..) )
 import Distribution.Client.Config
          ( defaultInstallPath, loadConfig, SavedConfig(..) )
 import qualified Distribution.Simple.PackageIndex as PI
@@ -324,7 +322,8 @@ installAction flags@NixStyleFlags { extraFlags = clientInstallFlags', .. } targe
         projectConfigHcFlavor,
         projectConfigHcPath,
         projectConfigHcPkg,
-        projectConfigStoreDir
+        projectConfigStoreDir,
+        projectConfigProgPathExtra
       },
       projectConfigLocalPackages = PackageConfig {
         packageConfigProgramPaths,
@@ -337,14 +336,13 @@ installAction flags@NixStyleFlags { extraFlags = clientInstallFlags', .. } targe
     hcPath   = flagToMaybe projectConfigHcPath
     hcPkg    = flagToMaybe projectConfigHcPkg
 
+  configProgDb <- appendProgramSearchPath verbosity ((fromNubList packageConfigProgramPathExtra) ++ (fromNubList projectConfigProgPathExtra)) defaultProgramDb
+  let
     -- ProgramDb with directly user specified paths
     preProgDb =
-        userSpecifyPaths (Map.toList (getMapLast packageConfigProgramPaths))
-      . userSpecifyArgss (Map.toList (getMapMappend packageConfigProgramArgs))
-      . modifyProgramSearchPath
-          (++ [ ProgramSearchPathDir dir
-              | dir <- fromNubList packageConfigProgramPathExtra ])
-      $ defaultProgramDb
+      userSpecifyPaths (Map.toList (getMapLast packageConfigProgramPaths))
+        . userSpecifyArgss (Map.toList (getMapMappend packageConfigProgramArgs))
+        $ configProgDb
 
   -- progDb is a program database with compiler tools configured properly
   (compiler@Compiler { compilerId =

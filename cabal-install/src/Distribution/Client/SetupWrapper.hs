@@ -29,6 +29,7 @@ import Distribution.Client.Compat.Prelude
 import Distribution.CabalSpecVersion (cabalSpecMinimumLibraryVersion)
 import qualified Distribution.Make as Make
 import qualified Distribution.Simple as Simple
+
 import Distribution.Version
          ( Version, mkVersion, versionNumbers, VersionRange, anyVersion
          , intersectVersionRanges, orLaterVersion
@@ -59,9 +60,10 @@ import Distribution.Simple.Program
          ( ProgramDb, emptyProgramDb
          , getProgramSearchPath, getDbProgramOutput, runDbProgram, ghcProgram
          , ghcjsProgram )
+import Distribution.Simple.Program.Db
+         ( appendProgramSearchPath )
 import Distribution.Simple.Program.Find
-         ( programSearchPathAsPATHVar
-         , ProgramSearchPathEntry(ProgramSearchPathDir) )
+         ( programSearchPathAsPATHVar )
 import Distribution.Simple.Program.Run
          ( getEffectiveEnvironment )
 import qualified Distribution.Simple.Program.Strip as Strip
@@ -443,9 +445,9 @@ invoke verbosity path args options = do
     Nothing        -> return ()
     Just logHandle -> info verbosity $ "Redirecting build log to " ++ show logHandle
 
-  searchpath <- programSearchPathAsPATHVar
-                (map ProgramSearchPathDir (useExtraPathEnv options) ++
-                 getProgramSearchPath (useProgramDb options))
+  progDb <- appendProgramSearchPath verbosity (useExtraPathEnv options) (useProgramDb options)
+
+  searchpath <- programSearchPathAsPATHVar $ getProgramSearchPath progDb
   env       <- getEffectiveEnvironment $
                  [ ("PATH", Just searchpath)
                  , ("HASKELL_DIST_DIR", Just (useDistPref options))

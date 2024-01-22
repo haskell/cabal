@@ -34,12 +34,14 @@ import Distribution.Client.InstallPlan
          ( toList, foldPlanPackage )
 import Distribution.Client.NixStyleOptions
          ( NixStyleFlags (..), nixStyleOptions, defaultNixStyleFlags )
+import Distribution.Client.ProjectConfig.Types
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.ProjectPlanning
          ( ElaboratedConfiguredPackage(..)
-         , ElaboratedInstallPlan, binDirectoryFor )
+         , ElaboratedInstallPlan, binDirectoryFor
+         )
 import Distribution.Client.ProjectPlanning.Types
-         ( dataDirsEnvironmentForPlan )
+         ( dataDirsEnvironmentForPlan, elabExeDependencyPaths )
 import Distribution.Client.ScriptUtils
          ( AcceptNoTargets(..), TargetContext(..)
          , updateContextAndWriteProjectFile, withContextAndSelectors
@@ -52,6 +54,10 @@ import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives )
 import Distribution.Simple.Flag
          ( fromFlagOrDefault )
+import Distribution.Simple.Program.Find
+         ( ProgramSearchPathEntry(..), defaultProgramSearchPath,
+           programSearchPathAsPATHVar, logExtraProgramSearchPath
+         )
 import Distribution.Simple.Program.Run
          ( runProgramInvocation, ProgramInvocation(..),
            emptyProgramInvocation )
@@ -61,6 +67,8 @@ import Distribution.Types.ComponentName
          ( componentNameRaw )
 import Distribution.Types.UnitId
          ( UnitId )
+import Distribution.Utils.NubList
+         ( fromNubList )
 
 import Distribution.Types.UnqualComponentName
          ( UnqualComponentName, unUnqualComponentName )
@@ -69,6 +77,7 @@ import Distribution.Verbosity
 
 import Data.List (group)
 import qualified Data.Set as Set
+
 import System.Directory
          ( doesFileExist )
 import System.FilePath
@@ -230,6 +239,19 @@ runAction flags@NixStyleFlags {..} targetAndArgs globalFlags
     let dryRun = buildSettingDryRun (buildSettings baseCtx)
               || buildSettingOnlyDownload (buildSettings baseCtx)
 
+    let extraPath =
+          elabExeDependencyPaths pkg
+            ++ ( fromNubList
+                  . projectConfigProgPathExtra
+                  . projectConfigShared
+                  . projectConfig
+                  $ baseCtx
+               )
+
+    logExtraProgramSearchPath verbosity extraPath
+
+    progPath <- programSearchPathAsPATHVar (map ProgramSearchPathDir extraPath ++ defaultProgramSearchPath)
+
     if dryRun
        then notice verbosity "Running of executable suppressed by flag(s)"
        else
@@ -238,7 +260,8 @@ runAction flags@NixStyleFlags {..} targetAndArgs globalFlags
            emptyProgramInvocation {
              progInvokePath  = exePath,
              progInvokeArgs  = args,
-             progInvokeEnv   = dataDirsEnvironmentForPlan
+             progInvokeEnv   = ("PATH", Just $ progPath)
+                             : dataDirsEnvironmentForPlan
                                  (distDirLayout baseCtx)
                                  elaboratedPlan
            }

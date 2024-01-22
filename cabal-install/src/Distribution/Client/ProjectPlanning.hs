@@ -426,10 +426,12 @@ configureCompiler verbosity
                         packageConfigProgramPathExtra) $ do
 
           liftIO $ info verbosity "Compiler settings changed, reconfiguring..."
-          result@(_, _, progdb') <- liftIO $
+          progdb <- liftIO $ appendProgramSearchPath verbosity (fromNubList packageConfigProgramPathExtra) defaultProgramDb
+          let progdb' = userSpecifyPaths (Map.toList (getMapLast packageConfigProgramPaths)) progdb
+          result@(_, _, progdb'') <- liftIO $
             Cabal.configCompilerEx
               hcFlavor hcPath hcPkg
-              progdb verbosity
+              progdb' verbosity
 
         -- Note that we added the user-supplied program locations and args
         -- for /all/ programs, not just those for the compiler prog and
@@ -437,19 +439,14 @@ configureCompiler verbosity
         -- the compiler will configure (and it does vary between compilers).
         -- We do know however that the compiler will only configure the
         -- programs it cares about, and those are the ones we monitor here.
-          monitorFiles (programsMonitorFiles progdb')
+          monitorFiles (programsMonitorFiles progdb'')
 
           return result
       where
         hcFlavor = flagToMaybe projectConfigHcFlavor
         hcPath   = flagToMaybe projectConfigHcPath
         hcPkg    = flagToMaybe projectConfigHcPkg
-        progdb   =
-            userSpecifyPaths (Map.toList (getMapLast packageConfigProgramPaths))
-          . modifyProgramSearchPath
-              ([ ProgramSearchPathDir dir
-               | dir <- fromNubList packageConfigProgramPathExtra ] ++)
-          $ defaultProgramDb
+
 
 
 -- | Return an up-to-date elaborated install plan.

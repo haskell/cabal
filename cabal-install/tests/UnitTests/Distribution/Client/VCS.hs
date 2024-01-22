@@ -179,7 +179,7 @@ testSetup :: VCS Program
           -> IO a
 testSetup vcs mkVCSTestDriver repoRecipe theTest = do
     -- test setup
-    vcs' <- configureVCS verbosity vcs
+    vcs' <- configureVCS verbosity [] vcs
     withTestDir verbosity "vcstest" $ \tmpdir -> do
       let srcRepoPath = tmpdir </> "src"
           submodulesPath = tmpdir </> "submodules"

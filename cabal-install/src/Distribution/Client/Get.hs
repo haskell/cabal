@@ -37,6 +37,8 @@ import Distribution.Simple.Program
          ( programName )
 import Distribution.Types.SourceRepo (RepoKind (..))
 import Distribution.Client.Types.SourceRepo (SourceRepositoryPackage (..), SourceRepoProxy, srpToProxy)
+import Distribution.Utils.NubList
+         ( fromNubList )
 
 import Distribution.Client.Setup
          ( GlobalFlags(..), GetFlags(..), RepoContext(..) )
@@ -54,6 +56,7 @@ import Distribution.PackageDescription.PrettyPrint
 
 import qualified Data.Map as Map
 import Control.Monad ( mapM_ )
+
 import System.Directory
          ( createDirectoryIfMissing, doesDirectoryExist, doesFileExist )
 import System.FilePath
@@ -70,7 +73,7 @@ get :: Verbosity
 get verbosity _ _ _ [] =
     notice verbosity "No packages requested. Nothing to do."
 
-get verbosity repoCtxt _ getFlags userTargets = do
+get verbosity repoCtxt globalFlags getFlags userTargets = do
   let useSourceRepo = case getSourceRepository getFlags of
                         NoFlag -> False
                         _      -> True
@@ -121,7 +124,7 @@ get verbosity repoCtxt _ getFlags userTargets = do
     prefix = fromFlagOrDefault "" (getDestDir getFlags)
 
     clone :: [UnresolvedSourcePackage] -> IO ()
-    clone = clonePackagesFromSourceRepo verbosity prefix kind
+    clone = clonePackagesFromSourceRepo verbosity prefix kind (fromNubList $ globalProgPathExtra globalFlags)
           . map (\pkg -> (packageId pkg, packageSourceRepos pkg))
       where
         kind :: Maybe RepoKind
@@ -278,18 +281,19 @@ instance Exception ClonePackageException where
 clonePackagesFromSourceRepo :: Verbosity
                             -> FilePath            -- ^ destination dir prefix
                             -> Maybe RepoKind      -- ^ preferred 'RepoKind'
+                            -> [FilePath]          -- ^ Extra prog paths
                             -> [(PackageId, [PD.SourceRepo])]
                                                    -- ^ the packages and their
                                                    -- available 'SourceRepo's
                             -> IO ()
 clonePackagesFromSourceRepo verbosity destDirPrefix
-                            preferredRepoKind pkgrepos = do
+                            preferredRepoKind progPaths pkgrepos = do
 
     -- Do a bunch of checks and collect the required info
     pkgrepos' <- traverse preCloneChecks pkgrepos
 
     -- Configure the VCS drivers for all the repository types we may need
-    vcss <- configureVCSs verbosity $
+    vcss <- configureVCSs verbosity progPaths $
               Map.fromList [ (vcsRepoType vcs, vcs)
                            | (_, _, vcs, _) <- pkgrepos' ]
 
