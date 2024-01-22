@@ -1,5 +1,6 @@
 packages: Cabal-syntax/
 packages: Cabal/
+packages: Cabal-hooks/
 packages: cabal-install-solver/
 packages: cabal-install/
 tests: False

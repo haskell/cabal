@@ -2,6 +2,7 @@ import: cabal.project.latest-ghc
 
 packages: Cabal-syntax/
 packages: Cabal/
+packages: Cabal-hooks/
 packages: cabal-testsuite/
 packages: cabal-install/
 packages: solver-benchmarks/
@@ -27,6 +28,8 @@ program-options
 package Cabal-syntax
   ghc-options: -Werror
 package Cabal
+  ghc-options: -Werror
+package Cabal-hooks
   ghc-options: -Werror
 package cabal-testsuite
   ghc-options: -Werror

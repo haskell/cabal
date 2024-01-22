@@ -1,0 +1,6 @@
+# Setup configure
+Configuring setup-hooks-invalid-rule-output-index-test-0.1.0.0...
+# Setup build
+Error: [Cabal-1173]
+Invalid index '7' in dependency of RuleId {ruleUnitId = UnitId "main", ruleName = "r2"}.
+The dependency RuleId {ruleUnitId = UnitId "main", ruleName = "r1"} only has 1 output.

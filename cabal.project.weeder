@@ -6,6 +6,7 @@
 
 packages: Cabal-syntax/
 packages: Cabal/
+packages: Cabal-hooks/
 packages: cabal-install/
 tests: False
 

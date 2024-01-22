@@ -1,5 +1,6 @@
 packages: Cabal-syntax/
 packages: Cabal/
+packages: Cabal-hooks
 packages: cabal-testsuite/
 packages: cabal-install/
 packages: solver-benchmarks/
