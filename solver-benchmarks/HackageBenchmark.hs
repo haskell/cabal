@@ -220,17 +220,12 @@ runCabal timeoutSeconds cabalUnderTest cabal flags = do
           & Map.insert "CABAL_CONFIG" (cabalDir </> "config")
           & Map.insert "CABAL_DIR"     cabalDir
 
-  -- Run cabal update,
+  -- Initialize the config file, whether or not it already exists
+  runCabalCmdWithEnv cabalDir thisEnv ["user-config", "init", "--force"]
+
+  -- Run cabal update
   putStrLn $ "Running cabal update (using " ++ cabal ++ ") ..."
-  (ec, uout, uerr) <- readCreateProcessWithExitCode (proc cabal ["update"])
-      { cwd = Just cabalDir
-      , env = Just thisEnv
-      }
-      ""
-  unless (ec == ExitSuccess) $ do
-      putStrLn uout
-      putStrLn uerr
-      exitWith ec
+  runCabalCmdWithEnv cabalDir thisEnv ["update"]
 
   -- return an actual runner
   return $ \pkg -> do
@@ -289,6 +284,17 @@ runCabal timeoutSeconds cabalUnderTest cabal flags = do
           | fromString "There is no package named" `BS.isInfixOf` err                         = PkgNotFound
           | otherwise                                                                        = Unknown
     return (CabalTrial time result)
+  where
+    runCabalCmdWithEnv cabalDir thisEnv args = do
+      (ec, uout, uerr) <- readCreateProcessWithExitCode (proc cabal args)
+          { cwd = Just cabalDir
+          , env = Just thisEnv
+          }
+          ""
+      unless (ec == ExitSuccess) $ do
+          putStrLn uout
+          putStrLn uerr
+          exitWith ec
 
 isSampleLargeEnough :: PValue Double -> Int -> Bool
 isSampleLargeEnough pvalue trials =
