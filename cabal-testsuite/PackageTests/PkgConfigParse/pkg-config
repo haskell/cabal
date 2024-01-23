@@ -38,8 +38,12 @@ case "$*" in
     done
     ;;
 
+  # Ignore some stuff we're not implementing
+  '--cflags '*) ;;
+  '--libs '*) ;;
+
   *)
-    echo >&2 "pkg-config: unrecognised arguments (this is an incomplete shim)"
+    echo >&2 "pkg-config: unrecognised arguments $* (this is an incomplete shim)"
     exit 1
     ;;
 esac
