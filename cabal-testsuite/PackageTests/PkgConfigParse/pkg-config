@@ -37,4 +37,9 @@ case "$*" in
       esac
     done
     ;;
+
+  *)
+    echo >&2 "pkg-config: unrecognised arguments (this is an incomplete shim)"
+    exit 1
+    ;;
 esac
