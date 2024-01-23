@@ -2,3 +2,4 @@ packages: .
 allow-newer: hashable:*
 constraints: hashable ==1.4.2.0
 import: https://www.stackage.org/nightly-2023-12-07/cabal.config
+import: with-ghc.config

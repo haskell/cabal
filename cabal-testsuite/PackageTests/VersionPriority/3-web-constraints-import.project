@@ -2,3 +2,4 @@ packages: .
 allow-newer: hashable:*
 constraints: hashable ==1.4.2.0
 import: hop-web.config
+import: with-ghc.config
