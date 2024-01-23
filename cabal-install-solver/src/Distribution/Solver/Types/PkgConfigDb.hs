@@ -24,7 +24,7 @@ module Distribution.Solver.Types.PkgConfigDb
 import Distribution.Solver.Compat.Prelude
 import Prelude ()
 
-import           Control.Exception        (handle, handleJust)
+import           Control.Exception        (handle)
 import           Control.Monad            (mapM)
 import           Data.ByteString          (ByteString)
 import qualified Data.ByteString.Lazy     as LBS
@@ -37,12 +37,11 @@ import           System.FilePath          (splitSearchPath)
 import Distribution.Compat.Environment          (lookupEnv)
 import Distribution.Package                     (PkgconfigName, mkPkgconfigName)
 import Distribution.Parsec
-import Distribution.Simple.Errors               (CabalException(..))
 import Distribution.Simple.Program
        (ProgramDb, getProgramOutput, pkgConfigProgram, needProgram, ConfiguredProgram)
 import Distribution.Simple.Program.Run
-       (getProgramInvocationOutputAndErrors, programInvocation, getProgramInvocationLBS)
-import Distribution.Simple.Utils                (info, VerboseException(..))
+       (getProgramInvocationOutputAndErrors, programInvocation, getProgramInvocationLBSAndErrors)
+import Distribution.Simple.Utils                (info)
 import Distribution.Types.PkgconfigVersion
 import Distribution.Types.PkgconfigVersionRange
 import Distribution.Verbosity                   (Verbosity)
@@ -73,12 +72,11 @@ readPkgConfigDb verbosity progdb = handle ioErrorHandler $ do
       Just (pkgConfig, _) -> do
         -- To prevent malformed Unicode in the descriptions from crashing cabal,
         -- read without interpreting any encoding first. (#9608)
-        pkgList <- LBS.split (fromIntegral (ord '\n')) <$>
-                     handleJust
-                       (\case e@(VerboseException _ _ _ GetProgramInvocationLBSException{}) -> Just e
-                              _ -> Nothing)
-                       (ioError . userError . show)
-                       (getProgramInvocationLBS verbosity (programInvocation pkgConfig ["--list-all"]))
+        (listAllOutput, listAllErrs, listAllExitcode) <-
+          getProgramInvocationLBSAndErrors verbosity (programInvocation pkgConfig ["--list-all"])
+        when (listAllExitcode /= ExitSuccess) $
+          ioError (userError ("pkg-config --list-all failed: " ++ listAllErrs))
+        let pkgList = LBS.split (fromIntegral (ord '\n')) listAllOutput
         -- Now decode the package *names* to a String. The ones where decoding
         -- failed end up in 'failedPkgNames'.
         let (failedPkgNames, pkgNames) =

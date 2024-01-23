@@ -24,6 +24,7 @@ module Distribution.Simple.Program.Run
   , getProgramInvocationOutput
   , getProgramInvocationLBS
   , getProgramInvocationOutputAndErrors
+  , getProgramInvocationLBSAndErrors
   , getEffectiveEnvironment
   ) where
 
@@ -189,6 +190,13 @@ getProgramInvocationOutputAndErrors verbosity inv = case progInvokeOutputEncodin
   IOEncodingUTF8 -> do
     (output', errors, exitCode) <- getProgramInvocationIODataAndErrors verbosity inv IODataModeBinary
     return (normaliseLineEndings (fromUTF8LBS output'), errors, exitCode)
+
+getProgramInvocationLBSAndErrors
+  :: Verbosity
+  -> ProgramInvocation
+  -> IO (LBS.ByteString, String, ExitCode)
+getProgramInvocationLBSAndErrors verbosity inv =
+  getProgramInvocationIODataAndErrors verbosity inv IODataModeBinary
 
 getProgramInvocationIODataAndErrors
   :: KnownIODataMode mode
