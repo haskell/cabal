@@ -16,12 +16,12 @@ case "$*" in
 
   '--list-all')
     printf 'zlib   zlib - zlib compression library\n'
-    # \xAE is the iso-8859-1 (latin-1) encoded version of U+00AE,
+    # \256 = \xAE is the iso-8859-1 (latin-1) encoded version of U+00AE,
     # i.e. the "registered sign": ®
     # This resulted in problems, see #9608
-    printf 'vpl    Intel\xAE Video Processing Library - Accelerated video decode, encode, and frame processing capabilities on Intel\xAE GPUs\n'
-    # \xF0 is latin-1 for ð; this is orð, Icelandic for "word"/"words".
-    printf 'or\xF0   Icelandic characters\n'
+    printf 'vpl    Intel\256 Video Processing Library - Accelerated video decode, encode, and frame processing capabilities on Intel\256 GPUs\n'
+    # \360 = \xF0 is latin-1 for ð; this is orð, Icelandic for "word"/"words".
+    printf 'or\360   Icelandic characters\n'
     ;;
 
   '--modversion '*)
