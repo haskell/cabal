@@ -12,3 +12,5 @@ tests: True
 
 program-options
   ghc-options: -fno-ignore-asserts
+
+import: hackage-security.config

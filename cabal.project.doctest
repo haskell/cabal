@@ -22,3 +22,4 @@ write-ghc-environment-files: never
 program-options
   ghc-options: -fno-ignore-asserts
 
+import: hackage-security.config

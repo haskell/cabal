@@ -8,3 +8,5 @@ optimization: False
 -- avoiding extra dependencies
 constraints: rere -rere-cfg
 constraints: these -assoc
+
+import: hackage-security.config

@@ -23,3 +23,5 @@ constraints: these -assoc
 
 program-options
   ghc-options: -fno-ignore-asserts
+
+import: hackage-security.config
