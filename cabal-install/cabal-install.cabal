@@ -177,6 +177,8 @@ library
         Distribution.Client.Security.DNS
         Distribution.Client.Security.HTTP
         Distribution.Client.Setup
+        Distribution.Client.SetupHooks
+        Distribution.Client.SetupHooks.Errors
         Distribution.Client.SetupWrapper
         Distribution.Client.Signal
         Distribution.Client.SolverInstallPlan

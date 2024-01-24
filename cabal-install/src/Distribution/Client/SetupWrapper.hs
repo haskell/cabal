@@ -20,7 +20,8 @@
 -- setup actions directly.  Otherwise it builds the setup script and
 -- runs it with the given arguments.
 module Distribution.Client.SetupWrapper
-  ( getSetup
+  ( Setup(..) -- SetupHooks TODO: prototyping
+  , getSetup
   , runSetup
   , runSetupCommand
   , setupWrapper

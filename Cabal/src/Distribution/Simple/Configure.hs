@@ -32,6 +32,10 @@
 module Distribution.Simple.Configure
   ( configure
   , configure_setupHooks
+  , runPreConfPackageHook
+  , runPostConfPackageHook
+  , runPreConfComponentHook
+  , configurePackage
   , writePersistBuildConfig
   , getConfigStateFile
   , getPersistBuildConfig
@@ -442,70 +446,24 @@ configure_setupHooks
 
     -- Package-wide pre-configure hook
     lbc1 <-
-      case preConfPackageHook of
-        Nothing -> return lbc0
-        Just pre_conf -> do
-          let programDb0 = LBC.withPrograms lbc0
-              programDb0' = programDb0{unconfiguredProgs = Map.empty}
-              input =
-                SetupHooks.PreConfPackageInputs
-                  { SetupHooks.configFlags = cfg
-                  , SetupHooks.localBuildConfig = lbc0{LBC.withPrograms = programDb0'}
-                  , -- Unconfigured programs are not supplied to the hook,
-                    -- as these cannot be passed over a serialisation boundary
-                    -- (see the "Binary ProgramDb" instance).
-                    SetupHooks.compiler = comp
-                  , SetupHooks.platform = platform
-                  }
-          SetupHooks.PreConfPackageOutputs
-            { SetupHooks.buildOptions = opts1
-            , SetupHooks.extraConfiguredProgs = progs1
-            } <-
-            pre_conf input
-          -- The package-wide pre-configure hook returns BuildOptions that
-          -- overrides the one it was passed in, as well as an update to
-          -- the ProgramDb in the form of new configured programs to add
-          -- to the program database.
-          return $
-            lbc0
-              { LBC.withBuildOptions = opts1
-              , LBC.withPrograms =
-                  updateConfiguredProgs
-                    (`Map.union` progs1)
-                    programDb0
-              }
+      maybe
+        (return lbc0)
+        (runPreConfPackageHook cfg comp platform lbc0)
+        preConfPackageHook
 
     -- Cabal package-wide configure
     (lbc2, pbd2, pkg_info) <-
       finalizeAndConfigurePackage cfg lbc1 g_pkg_descr comp platform enabledComps
 
     -- Package-wide post-configure hook
-    for_ postConfPackageHook $ \postConfPkg -> do
-      let input =
-            SetupHooks.PostConfPackageInputs
-              { SetupHooks.localBuildConfig = lbc2
-              , SetupHooks.packageBuildDescr = pbd2
-              }
-      postConfPkg input
+    for_ postConfPackageHook $ runPostConfPackageHook lbc2 pbd2
 
     -- Per-component pre-configure hook
     pkg_descr <- do
       let pkg_descr2 = LBC.localPkgDescr pbd2
       applyComponentDiffs
         verbosity
-        ( \c -> for preConfComponentHook $ \computeDiff -> do
-            let input =
-                  SetupHooks.PreConfComponentInputs
-                    { SetupHooks.localBuildConfig = lbc2
-                    , SetupHooks.packageBuildDescr = pbd2
-                    , SetupHooks.component = c
-                    }
-            SetupHooks.PreConfComponentOutputs
-              { SetupHooks.componentDiff = diff
-              } <-
-              computeDiff input
-            return diff
-        )
+        (for preConfComponentHook . runPreConfComponentHook lbc2 pbd2)
         pkg_descr2
     let pbd3 = pbd2{LBC.localPkgDescr = pkg_descr}
 
@@ -516,6 +474,76 @@ configure_setupHooks
     writePersistBuildConfig distPref lbi
 
     return lbi
+
+runPreConfPackageHook
+  :: ConfigFlags
+  -> Compiler
+  -> Platform
+  -> LBC.LocalBuildConfig
+  -> (SetupHooks.PreConfPackageInputs -> IO SetupHooks.PreConfPackageOutputs)
+  -> IO LBC.LocalBuildConfig
+runPreConfPackageHook cfg comp platform lbc0 pre_conf = do
+  let programDb0 = LBC.withPrograms lbc0
+      programDb0' = programDb0{unconfiguredProgs = Map.empty}
+      input =
+        SetupHooks.PreConfPackageInputs
+          { SetupHooks.configFlags = cfg
+          , SetupHooks.localBuildConfig = lbc0{LBC.withPrograms = programDb0'}
+          , -- Unconfigured programs are not supplied to the hook,
+            -- as these cannot be passed over a serialisation boundary
+            -- (see the "Binary ProgramDb" instance).
+            SetupHooks.compiler = comp
+          , SetupHooks.platform = platform
+          }
+  SetupHooks.PreConfPackageOutputs
+    { SetupHooks.buildOptions = opts1
+    , SetupHooks.extraConfiguredProgs = progs1
+    } <-
+    pre_conf input
+  -- The package-wide pre-configure hook returns BuildOptions that
+  -- overrides the one it was passed in, as well as an update to
+  -- the ProgramDb in the form of new configured programs to add
+  -- to the program database.
+  return $
+    lbc0
+      { LBC.withBuildOptions = opts1
+      , LBC.withPrograms =
+          updateConfiguredProgs
+            (`Map.union` progs1)
+            programDb0
+      }
+
+runPostConfPackageHook
+  :: LBC.LocalBuildConfig
+  -> LBC.PackageBuildDescr
+  -> (SetupHooks.PostConfPackageInputs -> IO ())
+  -> IO ()
+runPostConfPackageHook lbc2 pbd2 postConfPkg =
+  let input =
+        SetupHooks.PostConfPackageInputs
+          { SetupHooks.localBuildConfig = lbc2
+          , SetupHooks.packageBuildDescr = pbd2
+          }
+   in postConfPkg input
+
+runPreConfComponentHook
+  :: LBC.LocalBuildConfig
+  -> LBC.PackageBuildDescr
+  -> Component
+  -> (SetupHooks.PreConfComponentInputs -> IO SetupHooks.PreConfComponentOutputs)
+  -> IO SetupHooks.ComponentDiff
+runPreConfComponentHook lbc pbd c hook = do
+  let input =
+        SetupHooks.PreConfComponentInputs
+          { SetupHooks.localBuildConfig = lbc
+          , SetupHooks.packageBuildDescr = pbd
+          , SetupHooks.component = c
+          }
+  SetupHooks.PreConfComponentOutputs
+    { SetupHooks.componentDiff = diff
+    } <-
+    hook input
+  return diff
 
 preConfigurePackage
   :: ConfigFlags
@@ -802,11 +830,11 @@ configurePackage
   -> ComponentRequestedSpec
   -> Compiler
   -> Platform
-  -> ProgramDb
   -> PackageDBStack
   -> IO (LBC.LocalBuildConfig, LBC.PackageBuildDescr)
-configurePackage cfg lbc0 pkg_descr00 flags enabled comp platform programDb0 packageDbs = do
+configurePackage cfg lbc0 pkg_descr00 flags enabled comp platform packageDbs = do
   let verbosity = fromFlag (configVerbosity cfg)
+      programDb0 = LBC.withPrograms lbc0
 
       -- add extra include/lib dirs as specified in cfg
       pkg_descr0 = addExtraIncludeLibDirsFromConfigFlags pkg_descr00 cfg
@@ -1008,7 +1036,6 @@ finalizeAndConfigurePackage cfg lbc0 g_pkg_descr comp platform enabled = do
       enabled
       comp
       platform
-      programDb0
       packageDbs
   return (lbc, pbd, pkg_info)
 

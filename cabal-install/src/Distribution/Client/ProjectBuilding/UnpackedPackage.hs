@@ -1,5 +1,6 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -47,6 +48,7 @@ import Distribution.Client.Setup
   , filterHaddockFlags
   , filterTestFlags
   )
+import Distribution.Client.SetupHooks
 import Distribution.Client.SetupWrapper
 import Distribution.Client.SourceFiles
 import Distribution.Client.SrcDist (allPackageSourceFiles)
@@ -72,15 +74,20 @@ import Distribution.Simple.Command (CommandUI)
 import Distribution.Simple.Compiler
   ( PackageDBStack
   )
+import Distribution.Simple.Configure
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import Distribution.Simple.LocalBuildInfo
-  ( ComponentName (..)
+  ( Component
+  , ComponentName (..)
   , LibraryName (..)
+  , componentName
   )
 import Distribution.Simple.Program
 import qualified Distribution.Simple.Register as Cabal
 import qualified Distribution.Simple.Setup as Cabal
+import Distribution.Simple.SetupHooks.Internal
 import Distribution.Types.BuildType
+import qualified Distribution.Types.LocalBuildConfig as LBC
 import Distribution.Types.PackageDescription.Lens (componentModules)
 
 import Distribution.Simple.Utils
@@ -165,7 +172,8 @@ buildAndRegisterUnpackedPackage
   registerLock
   cacheLock
   pkgshared@ElaboratedSharedConfig
-    { pkgConfigCompiler = compiler
+    { pkgConfigPlatform = platform
+    , pkgConfigCompiler = compiler
     , pkgConfigCompilerProgs = progdb
     }
   plan
@@ -177,8 +185,73 @@ buildAndRegisterUnpackedPackage
     -- Configure phase
     delegate $
       PBConfigurePhase $
-        annotateFailure mlogFile ConfigureFailed $
-          setup configureCommand configureFlags configureArgs
+        annotateFailure mlogFile ConfigureFailed $ do
+          -- setup configureCommand configureFlags configureArgs
+          setupObj <-
+            getSetup
+              verbosity
+              ( scriptOptions
+                  { useExtraEnvOverrides =
+                      dataDirsEnvironmentForPlan
+                        distDirLayout
+                        plan
+                  }
+              )
+              (Just (elabPkgDescription pkg))
+          let lbc0 =
+                LBC.LocalBuildConfig
+                  { LBC.extraConfigArgs = []
+                  , LBC.withPrograms = progdb
+                  , LBC.withBuildOptions = elabBuildOptions pkg
+                  }
+              cfg = configureFlags $ setupVersion setupObj
+          -- SetupHooks TODO: we should avoid re-doing package-wide things
+          -- over and over in the per-component world, e.g.
+          --   cabal build comp1 && cabal build comp2
+          -- should only run the per-package configuration (including hooks) a single time.
+          let perPkgPreConfHook :: PreConfPackageInputs -> IO PreConfPackageOutputs
+              perPkgPreConfHook pcpi = error "call hooks exe" pcpi
+          lbc1 <- runPreConfPackageHook cfg compiler platform lbc0 perPkgPreConfHook
+          (lbc2, pbd2) <-
+            configurePackage
+              (configureFlags $ setupVersion setupObj)
+              lbc1
+              (elabPkgDescription pkg)
+              (elabFlagAssignment pkg)
+              (elabEnabledSpec pkg)
+              compiler
+              platform
+              (elabBuildPackageDBStack pkg)
+          let perPkgPostConfHook :: PostConfPackageInputs -> IO ()
+              perPkgPostConfHook pcpi = error "call hooks exe" pcpi
+          runPostConfPackageHook lbc2 pbd2 perPkgPostConfHook
+          let pkg_descr2 = LBC.localPkgDescr pbd2
+              wantComponent :: Component -> Bool
+              wantComponent comp = case elabPkgOrComp pkg of
+                ElabPackage{} -> True
+                ElabComponent elabComp ->
+                  case compComponentName elabComp of
+                    Just elabCompNm ->
+                      componentName comp == elabCompNm
+                    -- NB: this might match multiple components,
+                    -- due to Backpack instantiations.
+                    Nothing ->
+                      False
+              perCompPreConfHook :: PreConfComponentInputs -> IO PreConfComponentOutputs
+              perCompPreConfHook pbci = error "call hooks exe" pbci
+          pkg_descr <-
+            applyComponentDiffs
+              verbosity
+              ( \comp ->
+                  if wantComponent comp
+                    then Just <$> runPreConfComponentHook lbc2 pbd2 comp perCompPreConfHook
+                    else return Nothing
+              )
+              pkg_descr2
+          let pbd3 = pbd2{LBC.localPkgDescr = pkg_descr}
+          return ()
+    -- SetupHooks TODO: we should be able to return a LocalBuildInfo here,
+    -- or write it to disk so that further phases can consume it.
 
     -- Build phase
     delegate $

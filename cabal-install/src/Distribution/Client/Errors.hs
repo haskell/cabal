@@ -26,6 +26,7 @@ import qualified Data.ByteString.Base16 as Base16
 import qualified Data.ByteString.Char8 as BS8
 import Data.List (groupBy)
 import Distribution.Client.IndexUtils.Timestamp
+import Distribution.Client.SetupHooks.Errors
 import Distribution.Client.Types.Repo
 import Distribution.Client.Types.RepoName (RepoName (..))
 import Distribution.Compat.Prelude
@@ -184,6 +185,7 @@ data CabalInstallException
   | CorruptedIndexCache String
   | UnusableIndexState RemoteRepo Timestamp Timestamp
   | MissingPackageList RemoteRepo
+  | SetupHooksExeException SetupHooksExeException
   deriving (Show, Typeable)
 
 exceptionCodeCabalInstall :: CabalInstallException -> Int
@@ -334,6 +336,7 @@ exceptionCodeCabalInstall e = case e of
   CorruptedIndexCache{} -> 7158
   UnusableIndexState{} -> 7159
   MissingPackageList{} -> 7160
+  SetupHooksExeException err -> setupHooksExeExceptionCode err
 
 exceptionMessageCabalInstall :: CabalInstallException -> String
 exceptionMessageCabalInstall e = case e of
@@ -849,6 +852,8 @@ exceptionMessageCabalInstall e = case e of
     "The package list for '"
       ++ unRepoName (remoteRepoName repoRemote)
       ++ "' does not exist. Run 'cabal update' to download it."
+  SetupHooksExeException err ->
+    setupHooksExeExceptionMessage err
 
 instance Exception (VerboseException CabalInstallException) where
   displayException :: VerboseException CabalInstallException -> [Char]
