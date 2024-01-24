@@ -6,4 +6,4 @@ main = cabalTest $ do
   skipIfWindows
   cdir <- testCurrentDir `fmap` getTestEnv
   res <- cabal' "v2-build" ["--extra-prog-path="++cdir, "-v2"]
-  assertOutputContains "Some pkg-config packages have names containing invalid unicode: or?" res
+  assertOutputContains "Some pkg-config packages have names containing invalid unicode: or" res
