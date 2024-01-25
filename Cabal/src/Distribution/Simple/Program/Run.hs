@@ -27,15 +27,6 @@ module Distribution.Simple.Program.Run (
     getProgramInvocationOutputAndErrors,
 
     getEffectiveEnvironment,
-    IOEncoding (..)
-  , emptyProgramInvocation
-  , simpleProgramInvocation
-  , programInvocation
-  , multiStageProgramInvocation
-  , runProgramInvocation
-  , getProgramInvocationOutput
-  , getProgramInvocationLBS
-  , getProgramInvocationLBSAndErrors
   ) where
 
 import Distribution.Compat.Prelude
