@@ -28,6 +28,7 @@ import Distribution.Pretty
 import Distribution.Simple.Compiler
 import Distribution.Simple.Flag
 import Distribution.Simple.GHC.ImplInfo
+import Distribution.Simple.Program.Find (getExtraPathEnv)
 import Distribution.Simple.Program.Run
 import Distribution.Simple.Program.Types
 import Distribution.System
@@ -554,8 +555,6 @@ data GhcOptions = GhcOptions
   , ghcOptExtraPath :: NubListR FilePath
   -- ^ Put the extra folders in the PATH environment variable we invoke
   -- GHC with
-  -- | Put the extra folders in the PATH environment variable we invoke
-  -- GHC with
   , ghcOptCabal :: Flag Bool
   -- ^ Let GHC know that it is Cabal that's calling it.
   -- Modifies some of the GHC error messages.
@@ -616,18 +615,24 @@ runGHC
   -> GhcOptions
   -> IO ()
 runGHC verbosity ghcProg comp platform opts = do
-  runProgramInvocation verbosity (ghcInvocation ghcProg comp platform opts)
+  runProgramInvocation verbosity =<< ghcInvocation verbosity ghcProg comp platform opts
 
 ghcInvocation
-  :: ConfiguredProgram
+  :: Verbosity
+  -> ConfiguredProgram
   -> Compiler
   -> Platform
   -> GhcOptions
-  -> ProgramInvocation
-ghcInvocation prog comp platform opts =
-  (programInvocation prog (renderGhcOptions comp platform opts))
-    { progInvokePathEnv = fromNubListR (ghcOptExtraPath opts)
-    }
+  -> IO ProgramInvocation
+ghcInvocation verbosity ghcProg comp platform opts = do
+  -- NOTE: GHC is the only program whose path we modify with more values than
+  -- the standard @extra-prog-path@, namely the folders of the executables in
+  -- the components, see @componentGhcOptions@.
+  let envOverrides = programOverrideEnv ghcProg
+  extraPath <- getExtraPathEnv verbosity envOverrides (fromNubListR (ghcOptExtraPath opts))
+  let ghcProg' = ghcProg{programOverrideEnv = envOverrides ++ extraPath}
+
+  pure $ programInvocation ghcProg' (renderGhcOptions comp platform opts)
 
 renderGhcOptions :: Compiler -> Platform -> GhcOptions -> [String]
 renderGhcOptions comp _platform@(Platform _arch os) opts
@@ -773,10 +778,7 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
             else []
         , ["-no-hs-main" | flagBool ghcOptLinkNoHsMain]
         , ["-dynload deploy" | not (null (flags ghcOptRPaths))]
-        , concat
-            [ ["-optl-Wl,-rpath," ++ dir]
-            | dir <- flags ghcOptRPaths
-            ]
+        , ["-optl-Wl,-rpath," ++ dir | dir <- flags ghcOptRPaths]
         , flags ghcOptLinkModDefFiles
         , -------------
           -- Packages

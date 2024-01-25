@@ -2,6 +2,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 -- | This module exposes functions to build and register unpacked packages.
 --
@@ -58,7 +59,6 @@ import Distribution.Client.Types hiding
   )
 import Distribution.Client.Utils
   ( ProgressPhase (..)
-  , findOpenProgramLocation
   , progressMessage
   )
 
@@ -71,7 +71,6 @@ import Distribution.Simple.BuildPaths (haddockDirName)
 import Distribution.Simple.Command (CommandUI)
 import Distribution.Simple.Compiler
   ( PackageDBStack
-  , compilerId
   )
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import Distribution.Simple.LocalBuildInfo
@@ -85,6 +84,7 @@ import Distribution.Types.BuildType
 import Distribution.Types.PackageDescription.Lens (componentModules)
 
 import Distribution.Simple.Utils
+import Distribution.System (Platform (..))
 import Distribution.Version
 
 import qualified Data.ByteString as BS
@@ -92,11 +92,13 @@ import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString.Lazy.Char8 as LBS.Char8
 import qualified Data.List.NonEmpty as NE
 
-import Control.Exception (Handler (..), SomeAsyncException, assert, catches)
+import Control.Exception (ErrorCall, Handler (..), SomeAsyncException, assert, catches)
 import System.Directory (canonicalizePath, createDirectoryIfMissing, doesDirectoryExist, doesFileExist, removeFile)
 import System.FilePath (dropDrive, normalise, takeDirectory, (<.>), (</>))
 import System.IO (Handle, IOMode (AppendMode), withFile)
 import System.Semaphore (SemaphoreName (..))
+
+import Web.Browser (openBrowser)
 
 import Distribution.Client.Errors
 import Distribution.Compat.Directory (listDirectory)
@@ -420,7 +422,7 @@ buildInplaceUnpackedPackage
   buildSettings@BuildTimeSettings{buildSettingHaddockOpen}
   registerLock
   cacheLock
-  pkgshared@ElaboratedSharedConfig{pkgConfigPlatform = platform}
+  pkgshared@ElaboratedSharedConfig{pkgConfigPlatform = Platform _ os}
   plan
   rpkg@(ReadyPackage pkg)
   buildStatus
@@ -527,10 +529,13 @@ buildInplaceUnpackedPackage
                 docDir = case distHaddockOutputDir of
                   Nothing -> distBuildDirectory distDirLayout dparams </> "doc" </> "html" </> name
                   Just dir -> dir
-            exe <- findOpenProgramLocation platform
-            case exe of
-              Right open -> runProgramInvocation verbosity (simpleProgramInvocation open [dest])
-              Left err -> dieWithException verbosity $ FindOpenProgramLocationErr err
+            catch
+              (void $ openBrowser dest)
+              ( \(_ :: ErrorCall) ->
+                  dieWithException verbosity $
+                    FindOpenProgramLocationErr $
+                      "Unsupported OS: " <> show os
+              )
         PBInstallPhase{runCopy = _runCopy, runRegister} -> do
           -- PURPOSELY omitted: no copy!
 
@@ -675,12 +680,12 @@ buildAndInstallUnpackedPackage
                 | otherwise = do
                     assert
                       ( elabRegisterPackageDBStack pkg
-                          == storePackageDBStack compid
+                          == storePackageDBStack compiler
                       )
                       (return ())
                     _ <-
                       runRegister
-                        (storePackageDBStack compid)
+                        (storePackageDBStack compiler)
                         Cabal.defaultRegisterOptions
                           { Cabal.registerMultiInstance = True
                           , Cabal.registerSuppressFilesCheck = True
@@ -692,7 +697,7 @@ buildAndInstallUnpackedPackage
             newStoreEntry
               verbosity
               storeDirLayout
-              compid
+              compiler
               uid
               (copyPkgFiles verbosity pkgshared pkg runCopy)
               registerPkg
@@ -729,7 +734,6 @@ buildAndInstallUnpackedPackage
     where
       uid = installedUnitId rpkg
       pkgid = packageId rpkg
-      compid = compilerId compiler
 
       dispname :: String
       dispname = case elabPkgOrComp pkg of

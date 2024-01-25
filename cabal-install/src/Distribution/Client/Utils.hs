@@ -28,7 +28,6 @@ module Distribution.Client.Utils
   , existsAndIsMoreRecentThan
   , tryFindAddSourcePackageDesc
   , tryFindPackageDesc
-  , findOpenProgramLocation
   , relaxEncodingErrors
   , ProgressPhase (..)
   , progressMessage
@@ -69,13 +68,11 @@ import Distribution.Compat.Environment
 import Distribution.Compat.Time (getModTime)
 import Distribution.Simple.Setup (Flag (..))
 import Distribution.Simple.Utils (dieWithException, findPackageDesc, noticeNoWrap)
-import Distribution.System (OS (..), Platform (..))
 import Distribution.Version
 import System.Directory
   ( canonicalizePath
   , doesDirectoryExist
   , doesFileExist
-  , findExecutable
   , getCurrentDirectory
   , getDirectoryContents
   , removeFile
@@ -396,26 +393,6 @@ tryFindPackageDesc verbosity depPath err = do
   case errOrCabalFile of
     Right file -> return file
     Left _ -> dieWithException verbosity $ TryFindPackageDescErr err
-
-findOpenProgramLocation :: Platform -> IO (Either String FilePath)
-findOpenProgramLocation (Platform _ os) =
-  let
-    locate name = do
-      exe <- findExecutable name
-      case exe of
-        Just s -> pure (Right s)
-        Nothing -> pure (Left ("Couldn't find file-opener program `" <> name <> "`"))
-    xdg = locate "xdg-open"
-   in
-    case os of
-      Windows -> pure (Right "start")
-      OSX -> locate "open"
-      Linux -> xdg
-      FreeBSD -> xdg
-      OpenBSD -> xdg
-      NetBSD -> xdg
-      DragonFly -> xdg
-      _ -> pure (Left ("Couldn't determine file-opener program for " <> show os))
 
 -- | Phase of building a dependency. Represents current status of package
 -- dependency processing. See #4040 for details.

@@ -57,7 +57,7 @@ tests :: MTimeChange -> [TestTree]
 tests mtimeChange =
   map
     (localOption $ QuickCheckTests 10)
-    [ ignoreInWindows "See issue #8048" $
+    [ ignoreInWindows "See issue #8048 and #9519" $
         testGroup
           "git"
           [ testProperty "check VCS test framework" prop_framework_git
@@ -227,7 +227,7 @@ testSetup
   -> IO a
 testSetup vcs mkVCSTestDriver repoRecipe theTest = do
   -- test setup
-  vcs' <- configureVCS verbosity vcs
+  vcs' <- configureVCS verbosity [] vcs
   withTestDir verbosity "vcstest" $ \tmpdir -> do
     let srcRepoPath = tmpdir </> "src"
         submodulesPath = tmpdir </> "submodules"

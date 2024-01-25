@@ -58,7 +58,9 @@ normalizeOutput nenv =
   . (if normalizerGhcVersion nenv /= nullVersion
         then resub (posixRegexEscape (display (normalizerGhcVersion nenv))
                         -- Also glob the date, for nightly GHC builds
-                        ++ "(\\.[0-9]+)?")
+                        ++ "(\\.[0-9]+)?"
+                        -- Also glob the ABI hash, for GHCs which support it
+                        ++ "(-[a-z0-9]+)?")
                    "<GHCVER>"
         else id)
   -- hackage-security locks occur non-deterministically

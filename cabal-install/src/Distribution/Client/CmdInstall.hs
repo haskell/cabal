@@ -150,13 +150,10 @@ import Distribution.Simple.GHC
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import qualified Distribution.Simple.PackageIndex as PI
 import Distribution.Simple.Program.Db
-  ( defaultProgramDb
-  , modifyProgramSearchPath
+  ( appendProgramSearchPath
+  , defaultProgramDb
   , userSpecifyArgss
   , userSpecifyPaths
-  )
-import Distribution.Simple.Program.Find
-  ( ProgramSearchPathEntry (..)
   )
 import Distribution.Simple.Setup
   ( Flag (..)
@@ -496,6 +493,7 @@ installAction flags@NixStyleFlags{extraFlags = clientInstallFlags', ..} targetSt
           , projectConfigHcPath
           , projectConfigHcPkg
           , projectConfigStoreDir
+          , projectConfigProgPathExtra
           }
       , projectConfigLocalPackages =
         PackageConfig
@@ -509,22 +507,17 @@ installAction flags@NixStyleFlags{extraFlags = clientInstallFlags', ..} targetSt
     hcPath = flagToMaybe projectConfigHcPath
     hcPkg = flagToMaybe projectConfigHcPkg
 
+  configProgDb <- appendProgramSearchPath verbosity ((fromNubList packageConfigProgramPathExtra) ++ (fromNubList projectConfigProgPathExtra)) defaultProgramDb
+  let
     -- ProgramDb with directly user specified paths
     preProgDb =
       userSpecifyPaths (Map.toList (getMapLast packageConfigProgramPaths))
         . userSpecifyArgss (Map.toList (getMapMappend packageConfigProgramArgs))
-        . modifyProgramSearchPath
-          ( ++
-              [ ProgramSearchPathDir dir
-              | dir <- fromNubList packageConfigProgramPathExtra
-              ]
-          )
-        $ defaultProgramDb
+        $ configProgDb
 
   -- progDb is a program database with compiler tools configured properly
   ( compiler@Compiler
-      { compilerId =
-        compilerId@(CompilerId compilerFlavor compilerVersion)
+      { compilerId = CompilerId compilerFlavor compilerVersion
       }
     , platform
     , progDb
@@ -537,7 +530,7 @@ installAction flags@NixStyleFlags{extraFlags = clientInstallFlags', ..} targetSt
   envFile <- getEnvFile clientInstallFlags platform compilerVersion
   existingEnvEntries <-
     getExistingEnvEntries verbosity compilerFlavor supportsPkgEnvFiles envFile
-  packageDbs <- getPackageDbStack compilerId projectConfigStoreDir projectConfigLogsDir
+  packageDbs <- getPackageDbStack compiler projectConfigStoreDir projectConfigLogsDir
   installedIndex <- getInstalledPackages verbosity compiler packageDbs progDb
 
   let
@@ -846,7 +839,7 @@ prepareExeInstall
         mkUnitBinDir :: UnitId -> FilePath
         mkUnitBinDir =
           InstallDirs.bindir
-            . storePackageInstallDirs' storeDirLayout (compilerId compiler)
+            . storePackageInstallDirs' storeDirLayout compiler
 
         mkExeName :: UnqualComponentName -> FilePath
         mkExeName exe = unUnqualComponentName exe <.> exeExtension platform
@@ -1218,16 +1211,16 @@ getLocalEnv dir platform compilerVersion =
     <> ghcPlatformAndVersionString platform compilerVersion
 
 getPackageDbStack
-  :: CompilerId
+  :: Compiler
   -> Flag FilePath
   -> Flag FilePath
   -> IO PackageDBStack
-getPackageDbStack compilerId storeDirFlag logsDirFlag = do
+getPackageDbStack compiler storeDirFlag logsDirFlag = do
   mstoreDir <- traverse makeAbsolute $ flagToMaybe storeDirFlag
   let
     mlogsDir = flagToMaybe logsDirFlag
   cabalLayout <- mkCabalDirLayout mstoreDir mlogsDir
-  pure $ storePackageDBStack (cabalStoreDirLayout cabalLayout) compilerId
+  pure $ storePackageDBStack (cabalStoreDirLayout cabalLayout) compiler
 
 -- | This defines what a 'TargetSelector' means for the @bench@ command.
 -- It selects the 'AvailableTarget's that the 'TargetSelector' refers to,
