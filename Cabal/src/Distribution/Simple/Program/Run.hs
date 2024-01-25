@@ -27,7 +27,7 @@ module Distribution.Simple.Program.Run (
     getProgramInvocationOutputAndErrors,
 
     getEffectiveEnvironment,
-  , IOEncoding (..)
+    IOEncoding (..)
   , emptyProgramInvocation
   , simpleProgramInvocation
   , programInvocation
