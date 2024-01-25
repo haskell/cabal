@@ -12,7 +12,6 @@
 --
 -- This module provides a data type for program invocations and functions to
 -- run them.
-<<<<<<< HEAD
 
 module Distribution.Simple.Program.Run (
     ProgramInvocation(..),
