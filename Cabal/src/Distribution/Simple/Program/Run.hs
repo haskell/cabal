@@ -27,9 +27,6 @@ module Distribution.Simple.Program.Run (
     getProgramInvocationOutputAndErrors,
 
     getEffectiveEnvironment,
-=======
-module Distribution.Simple.Program.Run
-  ( ProgramInvocation (..)
   , IOEncoding (..)
   , emptyProgramInvocation
   , simpleProgramInvocation
@@ -38,10 +35,7 @@ module Distribution.Simple.Program.Run
   , runProgramInvocation
   , getProgramInvocationOutput
   , getProgramInvocationLBS
-  , getProgramInvocationOutputAndErrors
   , getProgramInvocationLBSAndErrors
-  , getEffectiveEnvironment
->>>>>>> 0b34b4eaa (Ignore invalid Unicode in pkg-config descriptions (#9609))
   ) where
 
 import Distribution.Compat.Prelude
