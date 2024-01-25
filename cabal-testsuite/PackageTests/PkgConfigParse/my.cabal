@@ -1,0 +1,19 @@
+name: PkgConfigParse
+version: 0.1
+license: BSD3
+author: Tom Smeding
+maintainer: Tom Smeding
+synopsis: Pkg Config Parse
+category: PackageTests
+build-type: Simple
+cabal-version: 2.0
+
+description:
+    Check that Cabal does not crash when pkg-config outputs invalid Unicode.
+
+Library
+    pkgconfig-depends: vpl
+    default-language: Haskell2010
+    build-depends: base <5.0
+    exposed-modules:
+        MyLibrary
