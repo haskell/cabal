@@ -790,6 +790,49 @@ describe the package as a whole:
     additional hooks, such as the scheme described in the section on
     `system-dependent parameters`_.
 
+.. pkg-field:: default-package-bounds: library list
+   :since: 3.12
+
+   Starting with **Cabal 3.12**, a new section ``default-package-bounds`` can be
+   declared on the package description which will provide version bounds that
+   will be used when a `build-depends` dependency doesn't specify a version
+   bound.
+
+   So the package description:
+
+   ::
+
+        package-constraints:
+          , x ^>= 5
+
+        library a
+          build-depends: x
+
+        library b
+          build-depends: x >5.5
+
+        library c
+          build-depends: y
+
+   will be equivalent to:
+
+   ::
+
+        library a
+          build-depends: x ^>=5
+
+        library b
+          build-depends: x >5.5
+
+        library c
+          build-depends: y
+
+   This process is only applied as a syntactic desugar, only to avoid
+   duplication and verbosity on the cabal file. It will not apply version bounds
+   on transitive dependencies that are not explicitly listed as a dependency. It
+   will not be applied to ``build-tool-depends`` or ``pkgconfig-depends``
+   entries.
+
 Library
 ^^^^^^^
 
@@ -1519,12 +1562,12 @@ system-dependent values for these fields.
     common because it is recommended practice for package versions to
     correspond to API versions (see PVP_).
 
-    Since Cabal 1.6, there is a special wildcard syntax to help with
+    Since **Cabal 1.6**, there is a special wildcard syntax to help with
     such ranges
 
     ::
 
-        build-depends: foo ==1.2.*
+        build-depends: foo ==1.2.***
 
     It is only syntactic sugar. It is exactly equivalent to
     ``foo >= 1.2 && < 1.3``.
@@ -1537,7 +1580,7 @@ system-dependent values for these fields.
        than ``1.0``. This is not an issue with the caret-operator
        ``^>=`` described below.
 
-    Starting with Cabal 2.0, there's a new version operator to express
+    Starting with **Cabal 2.0**, there's a new version operator to express
     PVP_-style major upper bounds conveniently, and is inspired by similar
     syntactic sugar found in other language ecosystems where it's often
     called the "Caret" operator:
@@ -1628,8 +1671,8 @@ system-dependent values for these fields.
        renaming in ``build-depends``; however, this support has since been
        removed and should not be used.
 
-    Starting with Cabal 3.0, a set notation for the ``==`` and ``^>=`` operator
-    is available. For instance,
+    Starting with **Cabal 3.0**, a set notation for the ``==`` and ``^>=``
+    operator is available. For instance,
 
     ::
 
@@ -1645,7 +1688,6 @@ system-dependent values for these fields.
         tested-with: GHC == { 8.6.3, 8.4.4, 8.2.2, 8.0.2, 7.10.3, 7.8.4, 7.6.3, 7.4.2 }
 
         build-depends: network ^>= { 2.6.3.6, 2.7.0.2, 2.8.0.0, 3.0.1.0 }
-
 
 .. pkg-field:: other-modules: identifier list
 

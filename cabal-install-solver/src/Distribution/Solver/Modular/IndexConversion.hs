@@ -20,6 +20,7 @@ import Distribution.Types.ComponentName              -- from Cabal
 import Distribution.Types.CondTree                   -- from Cabal
 import Distribution.Types.MungedPackageId            -- from Cabal
 import Distribution.Types.MungedPackageName          -- from Cabal
+import Distribution.Types.VersionRange               -- from Cabal
 import Distribution.PackageDescription               -- from Cabal
 import Distribution.PackageDescription.Configuration
 import qualified Distribution.Simple.PackageIndex as SI
@@ -339,8 +340,8 @@ convCondTree flags dr pkg os arch cinfo pn fds comp getInfo solveExes@(SolveExec
              mergeSimpleDeps $
                  [ D.Simple singleDep comp
                  | dep <- ds
-                 , singleDep <- convLibDeps dr dep ]  -- unconditional package dependencies
-
+                 , let dep' = applyDefaultBoundsToDependency dep (defaultPackageBounds pkg)
+                 , singleDep <- convLibDeps dr dep' ]  -- unconditional package dependencies
               ++ L.map (\e -> D.Simple (LDep dr (Ext  e)) comp) (allExtensions bi) -- unconditional extension dependencies
               ++ L.map (\l -> D.Simple (LDep dr (Lang l)) comp) (allLanguages  bi) -- unconditional language dependencies
               ++ L.map (\(PkgconfigDependency pkn vr) -> D.Simple (LDep dr (Pkg pkn vr)) comp) (pkgconfigDepends bi) -- unconditional pkg-config dependencies
@@ -350,10 +351,11 @@ convCondTree flags dr pkg os arch cinfo pn fds comp getInfo solveExes@(SolveExec
               -- is True.  It might be false in the legacy solver
               -- codepath, in which case there won't be any record of
               -- an executable we need.
-              ++ [ D.Simple (convExeDep dr exeDep) comp
+              ++ [ D.Simple (convExeDep dr exeDep') comp
                  | solveExes'
                  , exeDep <- getAllToolDependencies pkg bi
                  , not $ isInternal pkg exeDep
+                 , let exeDep' = applyDefaultBoundsToExeDependency exeDep (defaultPackageBounds pkg)
                  ]
   where
     bi = getInfo info

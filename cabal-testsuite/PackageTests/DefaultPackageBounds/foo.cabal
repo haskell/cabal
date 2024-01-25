@@ -1,0 +1,42 @@
+cabal-version:      3.12
+name:               foo
+version:            0.1.0.0
+
+default-package-bounds:
+  , time <0
+  , libpkgconf <0
+  , bar:bar <0
+
+flag build-depends-conflict
+  manual: True
+  default: False
+  description: cause conflict
+
+flag pkg-config-conflict
+  manual: True
+  default: False
+  description: cause conflict
+
+flag build-tool-conflict
+  manual: True
+  default: False
+  description: cause conflict
+
+library
+  if flag(build-depends-conflict)
+    build-depends:
+      time
+  else
+    build-depends:
+      time >0
+  default-language: Haskell2010
+
+  if flag(pkg-config-conflict)
+    pkgconfig-depends: libpkgconf
+  else
+    pkgconfig-depends: libpkgconf >0
+
+  if flag(build-tool-conflict)
+    build-tool-depends: bar:bar
+  else
+    build-tool-depends: bar:bar >0

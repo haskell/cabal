@@ -104,6 +104,7 @@ packageDescriptionFieldGrammar
      , c (List FSep (Identity (SymbolicPath PackageDir LicenseFile)) (SymbolicPath PackageDir LicenseFile))
      , c (List FSep TestedWith (CompilerFlavor, VersionRange))
      , c (List VCat FilePathNT String)
+     , c (List CommaFSep (Identity DefaultBound) DefaultBound)
      , c FilePathNT
      , c CompatLicenseFile
      , c CompatFilePath
@@ -146,6 +147,8 @@ packageDescriptionFieldGrammar =
     <*> monoidalFieldAla "extra-source-files" formatExtraSourceFiles L.extraSrcFiles
     <*> monoidalFieldAla "extra-tmp-files" (alaList' VCat FilePathNT) L.extraTmpFiles
     <*> monoidalFieldAla "extra-doc-files" (alaList' VCat FilePathNT) L.extraDocFiles
+    <*> monoidalFieldAla "default-package-bounds" (alaList CommaFSep) L.defaultPackageBounds
+      ^^^ availableSince CabalSpecV3_12 []
   where
     packageIdentifierGrammar =
       PackageIdentifier
@@ -174,6 +177,7 @@ libraryFieldGrammar
      , c (List CommaFSep (Identity LegacyExeDependency) LegacyExeDependency)
      , c (List CommaFSep (Identity PkgconfigDependency) PkgconfigDependency)
      , c (List CommaVCat (Identity Dependency) Dependency)
+     , c (List CommaVCat (Identity DefaultBound) DefaultBound)
      , c (List CommaVCat (Identity Mixin) Mixin)
      , c (List CommaVCat (Identity ModuleReexport) ModuleReexport)
      , c (List FSep (MQuoted Extension) Extension)

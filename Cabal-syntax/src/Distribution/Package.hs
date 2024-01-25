@@ -25,6 +25,7 @@ module Distribution.Package
   , module Distribution.Types.PackageName
   , module Distribution.Types.PkgconfigName
   , module Distribution.Types.Dependency
+  , module Distribution.Types.DefaultBound
   , Package (..)
   , packageName
   , packageVersion
@@ -44,6 +45,7 @@ import Distribution.Version
 
 import Distribution.Types.AbiHash
 import Distribution.Types.ComponentId
+import Distribution.Types.DefaultBound
 import Distribution.Types.Dependency
 import Distribution.Types.Module
 import Distribution.Types.MungedPackageId
