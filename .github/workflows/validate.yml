@@ -207,6 +207,18 @@ jobs:
         # Have to disable *-suite validation, see above the comment for lib-suite
         run: sh validate.sh $FLAGS -s cli-suite
 
+      - name: Validate solver-benchmarks-tests
+        run: |
+          if [[ ${{ matrix.ghc }} == ${{ env.GHC_FOR_SOLVER_BENCHMARKS }} ]]; then
+            sh validate.sh $FLAGS -s solver-benchmarks-tests
+          fi
+
+      - name: Validate solver-benchmarks-run
+        run: |
+          if [[ ${{ matrix.ghc }} == ${{ env.GHC_FOR_SOLVER_BENCHMARKS }} ]]; then
+            sh validate.sh $FLAGS -s solver-benchmarks-run
+          fi
+
   validate-old-ghcs:
     name: Validate old ghcs ${{ matrix.extra-ghc }}
     runs-on: ubuntu-latest
