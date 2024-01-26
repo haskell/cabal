@@ -59,6 +59,9 @@ library
   if impl(ghc >= 8.0) && impl(ghc < 8.8)
     ghc-options: -Wnoncanonical-monadfail-instances
 
+  if impl(ghc >= 8.10)
+    ghc-options: -Wunused-packages
+
   exposed-modules:
     Distribution.Backpack.Configure
     Distribution.Backpack.ComponentsGraph
