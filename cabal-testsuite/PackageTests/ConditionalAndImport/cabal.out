@@ -10,13 +10,38 @@ Preprocessing executable 'some-exe' for some-exe-0.0.1.0...
 Building executable 'some-exe' for some-exe-0.0.1.0...
 Installing executable some-exe in <PATH>
 Warning: The directory <ROOT>/cabal.dist/home/.cabal/store/ghc-<GHCVER>/incoming/new-<RAND><ROOT>/cabal.dist/home/.cabal/store/ghc-<GHCVER>/<PACKAGE>-<HASH>/bin is not in the system search path.
-# checking cyclical loopback
+# checking cyclical loopback of a project importing itself
 # cabal v2-build
 Error: [Cabal-7090]
-Error parsing project file <ROOT>/cabal-cyclical.project:3:
-cyclical import of cabal-cyclical.project
+Error parsing project file <ROOT>/cyclical-0-self.project:3:
+cyclical import of cyclical-0-self.project
+# checking cyclical with hops; out and back
+# cabal v2-build
+Error: [Cabal-7090]
+Error parsing project file <ROOT>/cyclical-1-out-back.project:3:
+cyclical import of cyclical-1-out-back.config
+# checking cyclical with hops; out to a config that imports itself
+# cabal v2-build
+Error: [Cabal-7090]
+Error parsing project file <ROOT>/cyclical-1-out-self.project:1:
+cyclical import of cyclical-1-out-self.config
+# checking cyclical with hops; out, out, twice back
+# cabal v2-build
+Error: [Cabal-7090]
+Error parsing project file <ROOT>/cyclical-2-out-out-backback.project:3:
+cyclical import of cyclical-2-out-out-backback-a.config
+# checking cyclical with hops; out, out, once back
+# cabal v2-build
+Error: [Cabal-7090]
+Error parsing project file <ROOT>/cyclical-2-out-out-back.project:1:
+cyclical import of cyclical-2-out-out-back-a.config
+# checking cyclical with hops; out, out to a config that imports itself
+# cabal v2-build
+Error: [Cabal-7090]
+Error parsing project file <ROOT>/cyclical-2-out-out-self.project:1:
+cyclical import of cyclical-2-out-out-self-b.config
 # checking bad conditional
 # cabal v2-build
 Error: [Cabal-7090]
-Error parsing project file <ROOT>/cabal-bad-conditional.project:
+Error parsing project file <ROOT>/bad-conditional.project:
 Cannot set compiler in a conditional clause of a cabal project file
