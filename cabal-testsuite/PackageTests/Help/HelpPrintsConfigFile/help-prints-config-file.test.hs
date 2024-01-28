@@ -24,15 +24,15 @@ main = cabalTest $ do
   let configFile = testUserCabalConfigFile env
 
   -- Test 1: with config file present.
-  test configFile "(config file exists)"
+  test configFile "Case: config file exists."
 
   -- Test 2: with config file absent.
   liftIO $ removeFile configFile
-  test configFile "(config file deleted)"
+  test configFile "Case: config file does not exist."
 
 test configFile info = do
   res <- cabal' "--help" []
-  assertEqual (unwords ["Help text contains name of the config file after the marker", info])
+  assertEqual (unwords ["Help text contains name of the config file after the marker.", info])
     configFile
     (configFileFromHelpText $ resultOutput res)
 
@@ -43,8 +43,10 @@ test configFile info = do
 configFileFromHelpText :: String -> FilePath
 configFileFromHelpText txt =
     case found of
-      _marker : l : _ -> trim l
+      _marker : l : _ -> l
       _ -> ""
   where
     marker = "You can edit the cabal configuration file to set defaults:"
-    (_before, found) = break (marker ==) $ lines txt
+    (_before, found) = break (marker ==) $ map trim $ lines txt
+       -- Note: 'trim' lines to get rid of CR on Windows;
+       -- 'lines' does not seem to remove it.
