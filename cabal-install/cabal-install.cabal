@@ -310,7 +310,6 @@ test-suite unit-tests
       UnitTests.Distribution.Client.InstallPlan
       UnitTests.Distribution.Client.JobControl
       UnitTests.Distribution.Client.ProjectConfig
-      UnitTests.Distribution.Client.ProjectPlanning
       UnitTests.Distribution.Client.Store
       UnitTests.Distribution.Client.Tar
       UnitTests.Distribution.Client.Targets

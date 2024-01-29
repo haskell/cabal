@@ -71,7 +71,6 @@ module Distribution.Client.ProjectOrchestration
   , ComponentName (..)
   , ComponentKind (..)
   , ComponentTarget (..)
-  , SubComponentTarget (..)
   , selectComponentTargetBasic
   , distinctTargetComponents
 
@@ -608,8 +607,7 @@ resolveTargets
        -> Either (TargetProblem err) [k]
      )
   -> ( forall k
-        . SubComponentTarget
-       -> AvailableTarget k
+        . AvailableTarget k
        -> Either (TargetProblem err) k
      )
   -> ElaboratedInstallPlan
@@ -647,7 +645,7 @@ resolveTargets
         | Just ats <-
             fmap (maybe id filterTargetsKind mkfilter) $
               Map.lookup pkgid availableTargetsByPackageId =
-            fmap (componentTargets WholeComponent) $
+            fmap componentTargets $
               selectPackageTargets bt ats
         | otherwise =
             Left (TargetProblemNoSuchPackage pkgid)
@@ -665,23 +663,23 @@ resolveTargets
       -- .cabal files for a single package?
 
       checkTarget bt@(TargetAllPackages mkfilter) =
-        fmap (componentTargets WholeComponent)
+        fmap componentTargets
           . selectPackageTargets bt
           . maybe id filterTargetsKind mkfilter
           . filter availableTargetLocalToProject
           $ concat (Map.elems availableTargetsByPackageId)
-      checkTarget (TargetComponent pkgid cname subtarget)
+      checkTarget (TargetComponent pkgid cname)
         | Just ats <-
             Map.lookup
               (pkgid, cname)
               availableTargetsByPackageIdAndComponentName =
-            fmap (componentTargets subtarget) $
-              selectComponentTargets subtarget ats
+            fmap componentTargets $
+              selectComponentTargets ats
         | Map.member pkgid availableTargetsByPackageId =
             Left (TargetProblemNoSuchComponent pkgid cname)
         | otherwise =
             Left (TargetProblemNoSuchPackage pkgid)
-      checkTarget (TargetComponentUnknown pkgname ecname subtarget)
+      checkTarget (TargetComponentUnknown pkgname ecname)
         | Just ats <- case ecname of
             Left ucname ->
               Map.lookup
@@ -691,8 +689,8 @@ resolveTargets
               Map.lookup
                 (pkgname, cname)
                 availableTargetsByPackageNameAndComponentName =
-            fmap (componentTargets subtarget) $
-              selectComponentTargets subtarget ats
+            fmap componentTargets $
+              selectComponentTargets ats
         | Map.member pkgname availableTargetsByPackageName =
             Left (TargetProblemUnknownComponent pkgname ecname)
         | otherwise =
@@ -701,7 +699,7 @@ resolveTargets
         | Just ats <-
             fmap (maybe id filterTargetsKind mkfilter) $
               Map.lookup pkgname availableTargetsByPackageName =
-            fmap (componentTargets WholeComponent)
+            fmap componentTargets
               . selectPackageTargets bt
               $ ats
         | Just SourcePackageDb{packageIndex} <- mPkgDb
@@ -712,20 +710,18 @@ resolveTargets
             Left (TargetNotInProject pkgname)
 
       componentTargets
-        :: SubComponentTarget
-        -> [(b, ComponentName)]
+        :: [(b, ComponentName)]
         -> [(b, ComponentTarget)]
-      componentTargets subtarget =
-        map (fmap (\cname -> ComponentTarget cname subtarget))
+      componentTargets =
+        map (fmap (\cname -> ComponentTarget cname))
 
       selectComponentTargets
-        :: SubComponentTarget
-        -> [AvailableTarget k]
+        :: [AvailableTarget k]
         -> Either (TargetProblem err) [k]
-      selectComponentTargets subtarget =
+      selectComponentTargets =
         either (Left . NE.head) Right
           . checkErrors
-          . map (selectComponentTarget subtarget)
+          . map selectComponentTarget
 
       checkErrors :: [Either e a] -> Either (NonEmpty e) [a]
       checkErrors =
@@ -881,11 +877,9 @@ forgetTargetsDetail = map forgetTargetDetail
 -- buildable and isn't a test suite or benchmark that is disabled. This
 -- can also be used to do these basic checks as part of a custom impl that
 selectComponentTargetBasic
-  :: SubComponentTarget
-  -> AvailableTarget k
+  :: AvailableTarget k
   -> Either (TargetProblem a) k
 selectComponentTargetBasic
-  subtarget
   AvailableTarget
     { availableTargetPackageId = pkgid
     , availableTargetComponentName = cname
@@ -893,13 +887,13 @@ selectComponentTargetBasic
     } =
     case availableTargetStatus of
       TargetDisabledByUser ->
-        Left (TargetOptionalStanzaDisabledByUser pkgid cname subtarget)
+        Left (TargetOptionalStanzaDisabledByUser pkgid cname)
       TargetDisabledBySolver ->
-        Left (TargetOptionalStanzaDisabledBySolver pkgid cname subtarget)
+        Left (TargetOptionalStanzaDisabledBySolver pkgid cname)
       TargetNotLocal ->
-        Left (TargetComponentNotProjectLocal pkgid cname subtarget)
+        Left (TargetComponentNotProjectLocal pkgid cname)
       TargetNotBuildable ->
-        Left (TargetComponentNotBuildable pkgid cname subtarget)
+        Left (TargetComponentNotBuildable pkgid cname)
       TargetBuildable targetKey _ ->
         Right targetKey
 
@@ -924,7 +918,7 @@ distinctTargetComponents targetsMap =
   Set.fromList
     [ (uid, cname)
     | (uid, cts) <- Map.toList targetsMap
-    , (ComponentTarget cname _, _) <- cts
+    , (ComponentTarget cname, _) <- cts
     ]
 
 ------------------------------------------------------------------------------

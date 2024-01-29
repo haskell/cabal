@@ -268,8 +268,7 @@ selectPackageTargets haddockFlags targetSelector targets
 -- For the @haddock@ command we just need the basic checks on being buildable
 -- etc.
 selectComponentTarget
-  :: SubComponentTarget
-  -> AvailableTarget k
+  :: AvailableTarget k
   -> Either TargetProblem' k
 selectComponentTarget = selectComponentTargetBasic
 

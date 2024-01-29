@@ -57,7 +57,6 @@ module Distribution.Client.ProjectPlanning
   , AvailableTargetStatus (..)
   , TargetRequested (..)
   , ComponentTarget (..)
-  , SubComponentTarget (..)
   , showComponentTarget
   , nubComponentTargets
 
@@ -69,7 +68,6 @@ module Distribution.Client.ProjectPlanning
 
     -- * Utils required for building
   , pkgHasEphemeralBuildTargets
-  , elabBuildTargetWholeComponents
   , configureCompiler
 
     -- * Setup.hs CLI flags for building
@@ -3053,7 +3051,7 @@ nubComponentTargets =
   concatMap (wholeComponentOverrides . map snd)
     . groupBy ((==) `on` fst)
     . sortBy (compare `on` fst)
-    . map (\t@((ComponentTarget cname _, _)) -> (cname, t))
+    . map (\t@((ComponentTarget cname, _)) -> (cname, t))
     . map compatSubComponentTargets
   where
     -- If we're building the whole component then that the only target all we
@@ -3062,7 +3060,7 @@ nubComponentTargets =
       :: [(ComponentTarget, a)]
       -> [(ComponentTarget, NonEmpty a)]
     wholeComponentOverrides ts =
-      case [ta | ta@(ComponentTarget _ WholeComponent, _) <- ts] of
+      case [ta | ta@(ComponentTarget _, _) <- ts] of
         ((t, x) : _) ->
           let
             -- Delete tuple (t, x) from original list to avoid duplicates.
@@ -3075,9 +3073,9 @@ nubComponentTargets =
     -- Not all Cabal Setup.hs versions support sub-component targets, so switch
     -- them over to the whole component
     compatSubComponentTargets :: (ComponentTarget, a) -> (ComponentTarget, a)
-    compatSubComponentTargets target@(ComponentTarget cname _subtarget, x)
+    compatSubComponentTargets target@(ComponentTarget cname, x)
       | not setupHsSupportsSubComponentTargets =
-          (ComponentTarget cname WholeComponent, x)
+          (ComponentTarget cname, x)
       | otherwise = target
 
     -- Actually the reality is that no current version of Cabal's Setup.hs
@@ -3093,19 +3091,6 @@ pkgHasEphemeralBuildTargets elab =
     || (not . null) (elabTestTargets elab)
     || (not . null) (elabBenchTargets elab)
     || (not . null) (elabHaddockTargets elab)
-    || (not . null)
-      [ () | ComponentTarget _ subtarget <- elabBuildTargets elab, subtarget /= WholeComponent
-      ]
-
--- | The components that we'll build all of, meaning that after they're built
--- we can skip building them again (unlike with building just some modules or
--- other files within a component).
-elabBuildTargetWholeComponents
-  :: ElaboratedConfiguredPackage
-  -> Set ComponentName
-elabBuildTargetWholeComponents elab =
-  Set.fromList
-    [cname | ComponentTarget cname WholeComponent <- elabBuildTargets elab]
 
 ------------------------------------------------------------------------------
 
@@ -3279,7 +3264,7 @@ pruneInstallPlanPass1 pkgs
     add_repl_target ecp
       | elabUnitId ecp `Set.member` all_desired_repl_targets =
           ecp
-            { elabReplTarget = maybeToList (ComponentTarget <$> (elabComponentName ecp) <*> pure WholeComponent)
+            { elabReplTarget = maybeToList (ComponentTarget <$> elabComponentName ecp)
             , elabBuildStyle = BuildInplaceOnly InMemory
             }
       | otherwise = ecp
@@ -3417,7 +3402,7 @@ pruneInstallPlanPass1 pkgs
     optionalStanzasRequiredByTargets pkg =
       optStanzaSetFromList
         [ stanza
-        | ComponentTarget cname _ <-
+        | ComponentTarget cname <-
             elabBuildTargets pkg
               ++ elabTestTargets pkg
               ++ elabBenchTargets pkg
@@ -3577,7 +3562,7 @@ pruneInstallPlanPass2 pkgs =
         libTargetsRequiredForRevDeps =
           [ c
           | installedUnitId elab `Set.member` hasReverseLibDeps
-          , let c = ComponentTarget (CLibName Cabal.defaultLibName) WholeComponent
+          , let c = ComponentTarget (CLibName Cabal.defaultLibName)
           , -- Don't enable building for anything which is being build in memory
           elabBuildStyle elab /= BuildInplaceOnly InMemory
           ]
@@ -3590,7 +3575,6 @@ pruneInstallPlanPass2 pkgs =
                   packageName $
                     elabPkgSourceId elab
             )
-            WholeComponent
           | installedUnitId elab `Set.member` hasReverseExeDeps
           ]
 
@@ -4006,7 +3990,7 @@ setupHsConfigureArgs
   -> [String]
 setupHsConfigureArgs (ElaboratedConfiguredPackage{elabPkgOrComp = ElabPackage _}) = []
 setupHsConfigureArgs elab@(ElaboratedConfiguredPackage{elabPkgOrComp = ElabComponent comp}) =
-  [showComponentTarget (packageId elab) (ComponentTarget cname WholeComponent)]
+  [showComponentTarget (packageId elab) (ComponentTarget cname)]
   where
     cname =
       fromMaybe

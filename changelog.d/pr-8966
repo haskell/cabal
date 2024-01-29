@@ -1,0 +1,20 @@
+synopsis: Drop file and module targets
+packages: Cabal cabal-install
+prs: #8966
+
+description: {
+
+- The ability to specify a single file or a single module as a target has been
+  removed since no versions of Cabal ever supported this feature; and cabal-install
+  would always fallback to targeting (e.g. building) the whole component.
+
+  If you were using a target syntax that includes a file or module name, you
+  can remove them expecting no change in behaviour. In some cases this will
+  cause the target to become ambiguous, and you will have to specify the
+  component instead.
+
+  Another minor change is that it is now possible to use `cabal run` against a
+  source file which is part of a component. The file will be considered like
+  any other and will need the metadata block.
+
+}
