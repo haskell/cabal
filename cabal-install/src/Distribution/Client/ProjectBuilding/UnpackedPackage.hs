@@ -109,12 +109,12 @@ import Distribution.Client.ProjectBuilding.PackageFileMonitor
 --
 -- * Configure phase
 -- * Build phase
+-- * Haddock phase
 -- * Install phase (copy + register)
 -- * Register phase
 -- * Test phase
 -- * Bench phase
 -- * Repl phase
--- * Haddock phase
 --
 -- Depending on whether we are installing the package or building it inplace,
 -- the phases will be carried out differently. For example, when installing,
@@ -183,7 +183,7 @@ buildAndRegisterUnpackedPackage
     -- Build phase
     delegate $
       PBBuildPhase $
-        annotateFailure mlogFile BuildFailed $
+        annotateFailure mlogFile BuildFailed $ do
           setup buildCommand buildFlags buildArgs
 
     -- Haddock phase
@@ -198,7 +198,7 @@ buildAndRegisterUnpackedPackage
       PBInstallPhase
         { runCopy = \destdir ->
             annotateFailure mlogFile InstallFailed $
-              setup Cabal.copyCommand (copyFlags destdir) (const [])
+              setup Cabal.copyCommand (copyFlags destdir) copyArgs
         , runRegister = \pkgDBStack registerOpts ->
             annotateFailure mlogFile InstallFailed $ do
               -- We register ourselves rather than via Setup.hs. We need to
@@ -284,6 +284,9 @@ buildAndRegisterUnpackedPackage
           verbosity
           builddir
           destdir
+      -- In theory, we could want to copy less things than those that were
+      -- built, but instead, we simply copy the targets that were built.
+      copyArgs = buildArgs
 
       testCommand = Cabal.testCommand -- defaultProgramDb
       testFlags v =
