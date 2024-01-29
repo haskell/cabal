@@ -337,6 +337,25 @@ Currently, [@emilypi](https://github.com/emilypi), [@fgaz](https://github.com/fg
 `haskell.org/cabal`, and [@Mikolaj](https://github.com/Mikolaj) is the point of contact for getting
 permissions.
 
+Preview Releases
+----------------
+
+We make preview releases available to facilitate testing of development builds.
+
+Artifacts can be found on the [`cabal-head` release page](https://github.com/haskell/cabal/releases/tag/cabal-head).
+The Validate CI pipeline generates tarballs with a `cabal` executable. The executable gets uploaded to this release by the pipelines that run on `master`.
+
+We currently make available builds for:
+  - Linux, dynamically linked (requiring `zlib`, `gmp`, `glibc`)
+  - Linux, statically linked
+  - MacOS
+  - Windows
+
+The statically linked Linux executables are built using Alpine.
+To reproduce these locally, set up an Alpine build environment using GHCup,
+and then build by calling `cabal build cabal-install --enable-executable-static`.
+
+
 API Documentation
 -----------------
 
