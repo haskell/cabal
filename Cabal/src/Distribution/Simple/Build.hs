@@ -161,7 +161,7 @@ build pkg_descr lbi flags suffixes = do
           NoFlag -> Serial
     mb_ipi <-
       buildComponent
-        verbosity
+        flags
         par_strat
         pkg_descr
         lbi'
@@ -301,7 +301,7 @@ repl pkg_descr lbi flags suffixes args = do
           lbi' = lbiForComponent comp lbi
       preBuildComponent verbosity lbi subtarget
       buildComponent
-        verbosity
+        mempty{buildVerbosity = toFlag verbosity}
         NoFlag
         pkg_descr
         lbi'
@@ -316,9 +316,8 @@ repl pkg_descr lbi flags suffixes args = do
   let clbi = targetCLBI target
       comp = targetComponent target
       lbi' = lbiForComponent comp lbi
-      replFlags = replReplOptions flags
   preBuildComponent verbosity lbi target
-  replComponent replFlags verbosity pkg_descr lbi' suffixes comp clbi distPref
+  replComponent flags verbosity pkg_descr lbi' suffixes comp clbi distPref
 
 -- | Start an interpreter without loading any package files.
 startInterpreter
@@ -335,7 +334,7 @@ startInterpreter verbosity programDb comp platform packageDBs =
     _ -> dieWithException verbosity REPLNotSupported
 
 buildComponent
-  :: Verbosity
+  :: BuildFlags
   -> Flag ParStrat
   -> PackageDescription
   -> LocalBuildInfo
@@ -344,12 +343,12 @@ buildComponent
   -> ComponentLocalBuildInfo
   -> FilePath
   -> IO (Maybe InstalledPackageInfo)
-buildComponent verbosity _ _ _ _ (CTest TestSuite{testInterface = TestSuiteUnsupported tt}) _ _ =
-  dieWithException verbosity $ NoSupportBuildingTestSuite tt
-buildComponent verbosity _ _ _ _ (CBench Benchmark{benchmarkInterface = BenchmarkUnsupported tt}) _ _ =
-  dieWithException verbosity $ NoSupportBuildingBenchMark tt
+buildComponent flags _ _ _ _ (CTest TestSuite{testInterface = TestSuiteUnsupported tt}) _ _ =
+  dieWithException (fromFlag $ buildVerbosity flags) $ NoSupportBuildingTestSuite tt
+buildComponent flags _ _ _ _ (CBench Benchmark{benchmarkInterface = BenchmarkUnsupported tt}) _ _ =
+  dieWithException (fromFlag $ buildVerbosity flags) $ NoSupportBuildingBenchMark tt
 buildComponent
-  verbosity
+  flags
   numJobs
   pkg_descr
   lbi0
@@ -364,6 +363,7 @@ buildComponent
   -- built.
   distPref =
     do
+      let verbosity = fromFlag $ buildVerbosity flags
       pwd <- getCurrentDirectory
       let (pkg, lib, libClbi, lbi, ipi, exe, exeClbi) =
             testSuiteLibV09AsLibAndExe pkg_descr test clbi lbi0 distPref pwd
@@ -378,7 +378,7 @@ buildComponent
         (maybeComponentInstantiatedWith clbi)
       let libbi = libBuildInfo lib
           lib' = lib{libBuildInfo = addSrcDir (addExtraOtherModules libbi generatedExtras) genDir}
-      buildLib verbosity numJobs pkg lbi lib' libClbi
+      buildLib flags numJobs pkg lbi lib' libClbi
       -- NB: need to enable multiple instances here, because on 7.10+
       -- the package name is the same as the library, and we still
       -- want the registration to go through.
@@ -399,7 +399,7 @@ buildComponent
       buildExe verbosity numJobs pkg_descr lbi exe' exeClbi
       return Nothing -- Can't depend on test suite
 buildComponent
-  verbosity
+  flags
   numJobs
   pkg_descr
   lbi
@@ -408,6 +408,7 @@ buildComponent
   clbi
   distPref =
     do
+      let verbosity = fromFlag $ buildVerbosity flags
       preprocessComponent pkg_descr comp lbi clbi False verbosity suffixes
       extras <- preprocessExtras verbosity comp lbi
       setupMessage'
@@ -430,7 +431,7 @@ buildComponent
                                 libbi
                   }
 
-          buildLib verbosity numJobs pkg_descr lbi lib' clbi
+          buildLib flags numJobs pkg_descr lbi lib' clbi
 
           let oneComponentRequested (OneComponentRequestedSpec _) = True
               oneComponentRequested _ = False
@@ -573,7 +574,7 @@ addSrcDir bi extra = bi{hsSourceDirs = new}
     new = ordNub (unsafeMakeSymbolicPath extra : hsSourceDirs bi)
 
 replComponent
-  :: ReplOptions
+  :: ReplFlags
   -> Verbosity
   -> PackageDescription
   -> LocalBuildInfo
@@ -604,7 +605,7 @@ replComponent
     extras <- preprocessExtras verbosity comp lbi
     let libbi = libBuildInfo lib
         lib' = lib{libBuildInfo = libbi{cSources = cSources libbi ++ extras}}
-    replLib replFlags verbosity pkg lbi lib' libClbi
+    replLib replFlags pkg lbi lib' libClbi
 replComponent
   replFlags
   verbosity
@@ -621,23 +622,23 @@ replComponent
         CLib lib -> do
           let libbi = libBuildInfo lib
               lib' = lib{libBuildInfo = libbi{cSources = cSources libbi ++ extras}}
-          replLib replFlags verbosity pkg_descr lbi lib' clbi
+          replLib replFlags pkg_descr lbi lib' clbi
         CFLib flib ->
-          replFLib replFlags verbosity pkg_descr lbi flib clbi
+          replFLib replFlags pkg_descr lbi flib clbi
         CExe exe -> do
           let ebi = buildInfo exe
               exe' = exe{buildInfo = ebi{cSources = cSources ebi ++ extras}}
-          replExe replFlags verbosity pkg_descr lbi exe' clbi
+          replExe replFlags pkg_descr lbi exe' clbi
         CTest test@TestSuite{testInterface = TestSuiteExeV10{}} -> do
           let exe = testSuiteExeV10AsExe test
           let ebi = buildInfo exe
               exe' = exe{buildInfo = ebi{cSources = cSources ebi ++ extras}}
-          replExe replFlags verbosity pkg_descr lbi exe' clbi
+          replExe replFlags pkg_descr lbi exe' clbi
         CBench bm@Benchmark{benchmarkInterface = BenchmarkExeV10{}} -> do
           let exe = benchmarkExeV10asExe bm
           let ebi = buildInfo exe
               exe' = exe{buildInfo = ebi{cSources = cSources ebi ++ extras}}
-          replExe replFlags verbosity pkg_descr lbi exe' clbi
+          replExe replFlags pkg_descr lbi exe' clbi
 #if __GLASGOW_HASKELL__ < 811
 -- silence pattern-match warnings prior to GHC 9.0
         _ -> error "impossible"
@@ -822,20 +823,21 @@ addInternalBuildTools pkg lbi bi progs =
 -- TODO: build separate libs in separate dirs so that we can build
 -- multiple libs, e.g. for 'LibTest' library-style test suites
 buildLib
-  :: Verbosity
+  :: BuildFlags
   -> Flag ParStrat
   -> PackageDescription
   -> LocalBuildInfo
   -> Library
   -> ComponentLocalBuildInfo
   -> IO ()
-buildLib verbosity numJobs pkg_descr lbi lib clbi =
-  case compilerFlavor (compiler lbi) of
-    GHC -> GHC.buildLib verbosity numJobs pkg_descr lbi lib clbi
-    GHCJS -> GHCJS.buildLib verbosity numJobs pkg_descr lbi lib clbi
-    UHC -> UHC.buildLib verbosity pkg_descr lbi lib clbi
-    HaskellSuite{} -> HaskellSuite.buildLib verbosity pkg_descr lbi lib clbi
-    _ -> dieWithException verbosity BuildingNotSupportedWithCompiler
+buildLib flags numJobs pkg_descr lbi lib clbi =
+  let verbosity = fromFlag $ buildVerbosity flags
+   in case compilerFlavor (compiler lbi) of
+        GHC -> GHC.buildLib flags numJobs pkg_descr lbi lib clbi
+        GHCJS -> GHCJS.buildLib verbosity numJobs pkg_descr lbi lib clbi
+        UHC -> UHC.buildLib verbosity pkg_descr lbi lib clbi
+        HaskellSuite{} -> HaskellSuite.buildLib verbosity pkg_descr lbi lib clbi
+        _ -> dieWithException verbosity BuildingNotSupportedWithCompiler
 
 -- | Build a foreign library
 --
@@ -870,47 +872,48 @@ buildExe verbosity numJobs pkg_descr lbi exe clbi =
     _ -> dieWithException verbosity BuildingNotSupportedWithCompiler
 
 replLib
-  :: ReplOptions
-  -> Verbosity
+  :: ReplFlags
   -> PackageDescription
   -> LocalBuildInfo
   -> Library
   -> ComponentLocalBuildInfo
   -> IO ()
-replLib replFlags verbosity pkg_descr lbi lib clbi =
-  case compilerFlavor (compiler lbi) of
-    -- 'cabal repl' doesn't need to support 'ghc --make -j', so we just pass
-    -- NoFlag as the numJobs parameter.
-    GHC -> GHC.replLib replFlags verbosity NoFlag pkg_descr lbi lib clbi
-    GHCJS -> GHCJS.replLib (replOptionsFlags replFlags) verbosity NoFlag pkg_descr lbi lib clbi
-    _ -> dieWithException verbosity REPLNotSupported
+replLib replFlags pkg_descr lbi lib clbi =
+  let verbosity = fromFlag $ replVerbosity replFlags
+      opts = replReplOptions replFlags
+   in case compilerFlavor (compiler lbi) of
+        -- 'cabal repl' doesn't need to support 'ghc --make -j', so we just pass
+        -- NoFlag as the numJobs parameter.
+        GHC -> GHC.replLib replFlags NoFlag pkg_descr lbi lib clbi
+        GHCJS -> GHCJS.replLib (replOptionsFlags opts) verbosity NoFlag pkg_descr lbi lib clbi
+        _ -> dieWithException verbosity REPLNotSupported
 
 replExe
-  :: ReplOptions
-  -> Verbosity
+  :: ReplFlags
   -> PackageDescription
   -> LocalBuildInfo
   -> Executable
   -> ComponentLocalBuildInfo
   -> IO ()
-replExe replFlags verbosity pkg_descr lbi exe clbi =
-  case compilerFlavor (compiler lbi) of
-    GHC -> GHC.replExe replFlags verbosity NoFlag pkg_descr lbi exe clbi
-    GHCJS -> GHCJS.replExe (replOptionsFlags replFlags) verbosity NoFlag pkg_descr lbi exe clbi
-    _ -> dieWithException verbosity REPLNotSupported
+replExe flags pkg_descr lbi exe clbi =
+  let verbosity = fromFlag $ replVerbosity flags
+   in case compilerFlavor (compiler lbi) of
+        GHC -> GHC.replExe flags NoFlag pkg_descr lbi exe clbi
+        GHCJS -> GHCJS.replExe (replOptionsFlags $ replReplOptions flags) verbosity NoFlag pkg_descr lbi exe clbi
+        _ -> dieWithException verbosity REPLNotSupported
 
 replFLib
-  :: ReplOptions
-  -> Verbosity
+  :: ReplFlags
   -> PackageDescription
   -> LocalBuildInfo
   -> ForeignLib
   -> ComponentLocalBuildInfo
   -> IO ()
-replFLib replFlags verbosity pkg_descr lbi exe clbi =
-  case compilerFlavor (compiler lbi) of
-    GHC -> GHC.replFLib replFlags verbosity NoFlag pkg_descr lbi exe clbi
-    _ -> dieWithException verbosity REPLNotSupported
+replFLib flags pkg_descr lbi exe clbi =
+  let verbosity = fromFlag $ replVerbosity flags
+   in case compilerFlavor (compiler lbi) of
+        GHC -> GHC.replFLib flags NoFlag pkg_descr lbi exe clbi
+        _ -> dieWithException verbosity REPLNotSupported
 
 -- | Pre-build steps for a component: creates the autogenerated files
 -- for a particular configured component.
