@@ -35,7 +35,7 @@ import Distribution.Simple.Utils
     ( withFileContents, tryFindPackageDesc )
 import Distribution.Version
 import Distribution.Package
-import Distribution.Parsec (eitherParsec)
+import Distribution.Parsec (eitherParsec, simpleParsec)
 import Distribution.Types.UnqualComponentName
 import Distribution.Types.LocalBuildInfo
 import Distribution.PackageDescription
@@ -317,6 +317,7 @@ cabalGArgs global_args cmd args input = do
           = [ "--builddir", testDistDir env
             , "-j1" ]
             ++ [ "--project-file=" ++ fp | Just fp <- [testCabalProjectFile env] ]
+            ++ ["--package-db=" ++ db | Just db <- [testPackageDbPath env]]
 
           | otherwise
           = [ "--builddir", testDistDir env ] ++
@@ -397,6 +398,12 @@ withPackageDb m = do
                                 } )
                $ do ghcPkg "init" [db_path]
                     m
+
+-- | Don't pass `--package-db` to cabal-install, so it won't find the specific version of
+-- `Cabal` which you have configured the testsuite to run with. You probably don't want to use
+-- this unless you are testing the `--package-db` flag itself.
+noCabalPackageDb :: TestM a -> TestM a
+noCabalPackageDb m = withReaderT (\nenv -> nenv { testPackageDbPath = Nothing }) m
 
 ghcPkg :: String -> [String] -> TestM ()
 ghcPkg cmd args = void (ghcPkg' cmd args)
@@ -839,6 +846,44 @@ hasCabalShared = do
   env <- getTestEnv
   return (testHaveCabalShared env)
 
+
+anyCabalVersion :: WithCallStack ( String -> TestM Bool )
+anyCabalVersion = isCabalVersion any
+
+allCabalVersion :: WithCallStack ( String -> TestM Bool )
+allCabalVersion = isCabalVersion all
+
+-- Used by cabal-install tests to determine which Cabal library versions are
+-- available. Given a version range, and a predicate on version ranges,
+-- are there any installed packages Cabal library
+-- versions which satisfy these.
+isCabalVersion :: WithCallStack (((Version -> Bool) -> [Version] -> Bool) -> String -> TestM Bool)
+isCabalVersion decide range = do
+  env <- getTestEnv
+  cabal_pkgs <- ghcPkg_raw' $ ["--global", "list", "Cabal", "--simple"] ++ ["--package-db=" ++ db | Just db <- [testPackageDbPath env]]
+  let pkg_versions :: [PackageIdentifier] = mapMaybe simpleParsec (words (resultOutput cabal_pkgs))
+  vr <- case eitherParsec range of
+          Left err -> fail err
+          Right vr -> return vr
+  return $ decide (`withinRange` vr)  (map pkgVersion pkg_versions)
+
+-- | Skip a test unless any available Cabal library version matches the predicate.
+skipUnlessAnyCabalVersion :: String -> TestM ()
+skipUnlessAnyCabalVersion range = skipUnless ("needs any Cabal " ++ range) =<< anyCabalVersion range
+
+
+-- | Skip a test if any available Cabal library version matches the predicate.
+skipIfAnyCabalVersion :: String -> TestM ()
+skipIfAnyCabalVersion range = skipIf ("incompatible with Cabal " ++ range) =<< anyCabalVersion range
+
+-- | Skip a test unless all Cabal library versions match the predicate.
+skipUnlessAllCabalVersion :: String -> TestM ()
+skipUnlessAllCabalVersion range = skipUnless ("needs all Cabal " ++ range) =<< allCabalVersion range
+
+-- | Skip a test if all the Cabal library version matches a predicate.
+skipIfAllCabalVersion :: String -> TestM ()
+skipIfAllCabalVersion range = skipIf ("incompatible with Cabal " ++ range) =<< allCabalVersion range
+
 isGhcVersion :: WithCallStack (String -> TestM Bool)
 isGhcVersion range = do
     ghc_program <- requireProgramM ghcProgram
@@ -892,24 +937,6 @@ getOpenFilesLimit = liftIO $ do
         ResourceLimit n | n >= 0 && n <= 4096 -> return (Just n)
         _                                     -> return Nothing
 #endif
-
-hasCabalForGhc :: TestM Bool
-hasCabalForGhc = do
-    env <- getTestEnv
-    ghc_program <- requireProgramM ghcProgram
-    (runner_ghc_program, _) <- liftIO $ requireProgram
-        (testVerbosity env)
-        ghcProgram
-        (runnerProgramDb (testScriptEnv env))
-
-    -- TODO: I guess, to be more robust what we should check for
-    -- specifically is that the Cabal library we want to use
-    -- will be picked up by the package db stack of ghc-program
-
-    -- liftIO $ putStrLn $ "ghc_program:        " ++ show ghc_program
-    -- liftIO $ putStrLn $ "runner_ghc_program: " ++ show runner_ghc_program
-
-    return (programPath ghc_program == programPath runner_ghc_program)
 
 -- | If you want to use a Custom setup with new-build, it needs to
 -- be 1.20 or later.  Ordinarily, Cabal can go off and build a
@@ -970,6 +997,12 @@ ghc' :: [String] -> TestM Result
 ghc' args = do
     recordHeader ["ghc"]
     runProgramM ghcProgram args Nothing
+
+ghcPkg_raw' :: [String] -> TestM Result
+ghcPkg_raw' args = do
+  recordHeader ["ghc-pkg"]
+  runProgramM ghcPkgProgram args Nothing
+
 
 python3 :: [String] -> TestM ()
 python3 args = void $ python3' args

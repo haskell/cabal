@@ -28,6 +28,31 @@ There are a few useful flags:
 * `--keep-tmp-files` can be used to keep the temporary directories that tests
   are run in.
 
+## Which Cabal library version do cabal-install tests use?
+
+By default the `cabal-install` tests will use the `Cabal` library which comes with
+the boot compiler when it needs to build a custom `Setup.hs`.
+
+This can be very confusing if you are modifying the Cabal library, writing a test
+which relies on a custom setup script and you are wondering why the test is not
+responding at all to your changes.
+
+There are some flags which allow you to instruct `cabal-install` to use a different
+`Cabal` library version.
+
+1. `--boot-cabal-lib` specifies to use the Cabal library bundled with the
+   test compiler, this is the default.
+2. `--intree-cabal-lib=<root_dir>` specifies to use Cabal and Cabal-syntax
+   from a specific directory, and `--test-tmp` indicates where to put
+   the package database they are built into.
+3. `--specific-cabal-lib=<VERSION>` specifies to use a specific Cabal
+   version from hackage (ie 3.10.2.0) and installs the package database
+   into `--test-tmp=<DIR>`
+
+The CI scripts use the `--intree-cabal-lib` option for the most part but in
+the future there should be a variety of jobs which test `cabal-install` built
+against newer `Cabal` versions but forced to interact with older `Cabal` versions.
+
 ### How to run the doctests
 
 You need to install the `doctest` tool. Make sure it's compiled with your current
@@ -173,8 +198,7 @@ and stderr.
 **How do I skip running a test in some environments?**  Use the
 `skipIf` and `skipUnless` combinators.  Useful parameters to test
 these with include `hasSharedLibraries`, `hasProfiledLibraries`,
-`hasCabalShared`, `isGhcVersion`, `isWindows`, `isLinux`, `isOSX`
-and `hasCabalForGhc`.
+`hasCabalShared`, `isGhcVersion`, `isWindows`, `isLinux`, `isOSX`.
 
 **I programmatically modified a file in my test suite, but Cabal/GHC
 doesn't seem to be picking it up.**  You need to sleep sufficiently
