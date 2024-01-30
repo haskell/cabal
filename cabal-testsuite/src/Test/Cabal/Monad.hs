@@ -157,6 +157,7 @@ renderCommonArgs args =
 
 data TestArgs = TestArgs {
         testArgDistDir    :: FilePath,
+        testArgPackageDb  :: Maybe FilePath,
         testArgScriptPath :: FilePath,
         testCommonArgs    :: CommonArgs
     }
@@ -167,6 +168,10 @@ testArgParser = TestArgs
         ( help "Build directory of cabal-testsuite"
        <> long "builddir"
        <> metavar "DIR")
+    <*> optional (option str
+        ( help "Package DB which contains Cabal and Cabal-syntax"
+       <> long "extra-package-db"
+       <> metavar "DIR"))
     <*> argument str ( metavar "FILE")
     <*> commonArgParser
 
@@ -321,6 +326,7 @@ runTestM mode m =
                     testMtimeChangeDelay = Nothing,
                     testScriptEnv = senv,
                     testSetupPath = dist_dir </> "build" </> "setup" </> "setup",
+                    testPackageDbPath = testArgPackageDb args,
                     testSkipSetupTests =  argSkipSetupTests (testCommonArgs args),
                     testHaveCabalShared = runnerWithSharedLib senv,
                     testEnvironment =
@@ -615,6 +621,9 @@ data TestEnv = TestEnv
     , testScriptEnv :: ScriptEnv
     -- | Setup script path
     , testSetupPath :: FilePath
+    -- | Setup package-db path which contains Cabal and Cabal-syntax for cabal-install to
+    -- use when compiling custom setups.
+    , testPackageDbPath :: Maybe FilePath
     -- | Skip Setup tests?
     , testSkipSetupTests :: Bool
     -- | Do we have shared libraries for the Cabal-under-tests?
