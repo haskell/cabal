@@ -1,3 +1,0 @@
-synopsis: Don't add `extra-prog-path: ~/.local/bin` when initially creating `~/.config/cabal/config`
-packages: cabal-install
-issues: #8951

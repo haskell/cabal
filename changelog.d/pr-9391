@@ -1,4 +1,0 @@
-synopsis: fix pkgconfig-depends for pkgconf-1.9
-packages: cabal-install-solver
-prs: #9391
-issues: #8923
