@@ -1,0 +1,3 @@
+packages: .
+
+import: hops/hops-1.config
