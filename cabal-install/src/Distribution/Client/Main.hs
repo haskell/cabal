@@ -397,6 +397,10 @@ mainWorker args = do
       pname <- getProgName
       configFile <- defaultConfigFile
       putStr (help pname)
+      -- Andreas Abel, 2024-01-28: https://github.com/haskell/cabal/pull/9614
+      -- See cabal-testsuite/PackageTests/Help/HelpPrintsConfigFile/
+      -- Third-party tools may rely on the specific wording
+      -- to find the config file in the help text, so do not change!
       putStr $
         "\nYou can edit the cabal configuration file to set defaults:\n"
           ++ "  "
