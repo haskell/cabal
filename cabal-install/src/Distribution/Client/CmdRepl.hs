@@ -304,7 +304,7 @@ replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings g
           lBuildInfo =
             emptyBuildInfo
               { targetBuildDepends = [baseDep]
-              , defaultLanguage = Just Haskell2010
+              , defaultLanguage = Just Haskell98
               }
           baseDep = Dependency "base" anyVersion mainLibSet
 

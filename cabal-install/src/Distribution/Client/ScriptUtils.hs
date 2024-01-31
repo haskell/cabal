@@ -373,7 +373,7 @@ withContextAndSelectors noTargets kind flags@NixStyleFlags{..} targetStrings glo
 
               executable' =
                 executable
-                  & L.buildInfo . L.defaultLanguage %~ maybe (Just Haskell2010) Just
+                  & L.buildInfo . L.defaultLanguage %~ maybe (Just Haskell98) Just
                   & L.buildInfo . L.options %~ fmap (setExePath exePathRel)
 
           createDirectoryIfMissingVerbose verbosity True (takeDirectory exePath)
