@@ -56,8 +56,8 @@ module Distribution.Simple.GHC
   , libAbiHash
   , hcPkgInfo
   , registerPackage
-  , componentGhcOptions
-  , componentCcGhcOptions
+  , Internal.componentGhcOptions
+  , Internal.componentCcGhcOptions
   , getGhcAppDir
   , getLibDir
   , isDynamic
@@ -91,16 +91,13 @@ import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
 import Distribution.Package
 import Distribution.PackageDescription as PD
 import Distribution.Pretty
+import Distribution.Simple.Build.Inputs (PreBuildComponentInputs (..))
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Compiler
 import Distribution.Simple.Errors
 import Distribution.Simple.Flag (Flag (..), toFlag)
-import Distribution.Simple.GHC.Build
-  ( componentGhcOptions
-  , exeTargetName
-  , flibTargetName
-  , isDynamic
-  )
+import qualified Distribution.Simple.GHC.Build as GHC
+import Distribution.Simple.GHC.Build.Utils
 import Distribution.Simple.GHC.EnvironmentParser
 import Distribution.Simple.GHC.ImplInfo
 import qualified Distribution.Simple.GHC.Internal as Internal
@@ -118,6 +115,7 @@ import Distribution.Simple.Utils
 import Distribution.System
 import Distribution.Types.ComponentLocalBuildInfo
 import Distribution.Types.ParStrat
+import Distribution.Types.TargetInfo
 import Distribution.Utils.NubList
 import Distribution.Verbosity
 import Distribution.Version
@@ -137,13 +135,12 @@ import System.FilePath
   )
 import qualified System.Info
 #ifndef mingw32_HOST_OS
-import Distribution.Simple.GHC.Build (flibBuildName)
 import System.Directory (renameFile)
 import System.Posix (createSymbolicLink)
 #endif /* mingw32_HOST_OS */
 
-import Distribution.Simple.GHC.BuildGeneric (GBuildMode (..), gbuild)
-import Distribution.Simple.GHC.BuildOrRepl (buildOrReplLib)
+import Distribution.Simple.Setup (BuildingWhat (..))
+import Distribution.Simple.Setup.Build
 
 -- -----------------------------------------------------------------------------
 -- Configuring
@@ -570,25 +567,28 @@ getInstalledPackagesMonitorFiles verbosity platform progdb =
 -- Building a library
 
 buildLib
-  :: Verbosity
+  :: BuildFlags
   -> Flag ParStrat
   -> PackageDescription
   -> LocalBuildInfo
   -> Library
   -> ComponentLocalBuildInfo
   -> IO ()
-buildLib = buildOrReplLib Nothing
+buildLib flags numJobs pkg lbi lib clbi =
+  GHC.build numJobs pkg $
+    PreBuildComponentInputs (BuildNormal flags) lbi (TargetInfo clbi (CLib lib))
 
 replLib
-  :: ReplOptions
-  -> Verbosity
+  :: ReplFlags
   -> Flag ParStrat
   -> PackageDescription
   -> LocalBuildInfo
   -> Library
   -> ComponentLocalBuildInfo
   -> IO ()
-replLib = buildOrReplLib . Just
+replLib flags numJobs pkg lbi lib clbi =
+  GHC.build numJobs pkg $
+    PreBuildComponentInputs (BuildRepl flags) lbi (TargetInfo clbi (CLib lib))
 
 -- | Start a REPL without loading any source files.
 startInterpreter
@@ -620,19 +620,21 @@ buildFLib
   -> ForeignLib
   -> ComponentLocalBuildInfo
   -> IO ()
-buildFLib v njobs pkg lbi = gbuild v njobs pkg lbi . GBuildFLib
+buildFLib v numJobs pkg lbi flib clbi =
+  GHC.build numJobs pkg $
+    PreBuildComponentInputs (BuildNormal mempty{buildVerbosity = toFlag v}) lbi (TargetInfo clbi (CFLib flib))
 
 replFLib
-  :: ReplOptions
-  -> Verbosity
+  :: ReplFlags
   -> Flag ParStrat
   -> PackageDescription
   -> LocalBuildInfo
   -> ForeignLib
   -> ComponentLocalBuildInfo
   -> IO ()
-replFLib replFlags v njobs pkg lbi =
-  gbuild v njobs pkg lbi . GReplFLib replFlags
+replFLib replFlags njobs pkg lbi flib clbi =
+  GHC.build njobs pkg $
+    PreBuildComponentInputs (BuildRepl replFlags) lbi (TargetInfo clbi (CFLib flib))
 
 -- | Build an executable with GHC.
 buildExe
@@ -643,19 +645,21 @@ buildExe
   -> Executable
   -> ComponentLocalBuildInfo
   -> IO ()
-buildExe v njobs pkg lbi = gbuild v njobs pkg lbi . GBuildExe
+buildExe v njobs pkg lbi exe clbi =
+  GHC.build njobs pkg $
+    PreBuildComponentInputs (BuildNormal mempty{buildVerbosity = toFlag v}) lbi (TargetInfo clbi (CExe exe))
 
 replExe
-  :: ReplOptions
-  -> Verbosity
+  :: ReplFlags
   -> Flag ParStrat
   -> PackageDescription
   -> LocalBuildInfo
   -> Executable
   -> ComponentLocalBuildInfo
   -> IO ()
-replExe replFlags v njobs pkg lbi =
-  gbuild v njobs pkg lbi . GReplExe replFlags
+replExe replFlags njobs pkg lbi exe clbi =
+  GHC.build njobs pkg $
+    PreBuildComponentInputs (BuildRepl replFlags) lbi (TargetInfo clbi (CExe exe))
 
 -- | Extracts a String representing a hash of the ABI of a built
 -- library.  It can fail if the library has not yet been built.
@@ -672,7 +676,7 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
     comp = compiler lbi
     platform = hostPlatform lbi
     vanillaArgs =
-      (componentGhcOptions verbosity lbi libBi clbi (componentBuildDir lbi clbi))
+      (Internal.componentGhcOptions verbosity lbi libBi clbi (componentBuildDir lbi clbi))
         `mappend` mempty
           { ghcOptMode = toFlag GhcModeAbiHash
           , ghcOptInputModules = toNubListR $ exposedModules lib
@@ -713,20 +717,6 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
 
   return (takeWhile (not . isSpace) hash)
 
-componentCcGhcOptions
-  :: Verbosity
-  -> LocalBuildInfo
-  -> BuildInfo
-  -> ComponentLocalBuildInfo
-  -> FilePath
-  -> FilePath
-  -> GhcOptions
-componentCcGhcOptions verbosity lbi =
-  Internal.componentCcGhcOptions verbosity implInfo lbi
-  where
-    comp = compiler lbi
-    implInfo = getImplInfo comp
-
 -- -----------------------------------------------------------------------------
 -- Installing
 
@@ -753,7 +743,7 @@ installExe
   exe = do
     createDirectoryIfMissingVerbose verbosity True binDir
     let exeName' = unUnqualComponentName $ exeName exe
-        exeFileName = exeTargetName (hostPlatform lbi) exe
+        exeFileName = exeTargetName (hostPlatform lbi) (exeName exe)
         fixedExeBaseName = progprefix ++ exeName' ++ progsuffix
         installBinary dest = do
           installExecutableFile

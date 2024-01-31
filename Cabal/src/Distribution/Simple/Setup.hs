@@ -2,6 +2,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RankNTypes #-}
 
 -----------------------------------------------------------------------------
@@ -131,9 +132,13 @@ module Distribution.Simple.Setup
   , trueArg
   , falseArg
   , optionVerbosity
+  , BuildingWhat (..)
+  , buildingWhatVerbosity
+  , buildingWhatDistPref
   ) where
 
-import Prelude ()
+import GHC.Generics (Generic)
+import Prelude (FilePath, Show, ($))
 
 import Distribution.Simple.Flag
 import Distribution.Simple.InstallDirs
@@ -153,6 +158,37 @@ import Distribution.Simple.Setup.Register
 import Distribution.Simple.Setup.Repl
 import Distribution.Simple.Setup.SDist
 import Distribution.Simple.Setup.Test
+
+import Distribution.Verbosity (Verbosity)
+
+-- | What kind of build are we doing?
+--
+-- Is this a normal build, or is it perhaps for running an interactive
+-- session or Haddock?
+data BuildingWhat
+  = -- | A normal build.
+    BuildNormal BuildFlags
+  | -- | Build steps for an interactive session.
+    BuildRepl ReplFlags
+  | -- | Build steps for generating documentation.
+    BuildHaddock HaddockFlags
+  | -- | Build steps for Hscolour.
+    BuildHscolour HscolourFlags
+  deriving (Generic, Show)
+
+buildingWhatVerbosity :: BuildingWhat -> Verbosity
+buildingWhatVerbosity = \case
+  BuildNormal flags -> fromFlag $ buildVerbosity flags
+  BuildRepl flags -> fromFlag $ replVerbosity flags
+  BuildHaddock flags -> fromFlag $ haddockVerbosity flags
+  BuildHscolour flags -> fromFlag $ hscolourVerbosity flags
+
+buildingWhatDistPref :: BuildingWhat -> FilePath
+buildingWhatDistPref = \case
+  BuildNormal flags -> fromFlag $ buildDistPref flags
+  BuildRepl flags -> fromFlag $ replDistPref flags
+  BuildHaddock flags -> fromFlag $ haddockDistPref flags
+  BuildHscolour flags -> fromFlag $ hscolourDistPref flags
 
 -- The test cases kinda have to be rewritten from the ground up... :/
 -- hunitTests :: [Test]
