@@ -709,9 +709,7 @@ rebuildInstallPlan
           where
             corePackageDbs :: [PackageDB]
             corePackageDbs =
-              applyPackageDbFlags
-                [GlobalPackageDB]
-                (projectConfigPackageDBs projectConfigShared)
+              Cabal.interpretPackageDbFlags False (projectConfigPackageDBs projectConfigShared)
 
             withRepoCtx :: (RepoContext -> IO a) -> IO a
             withRepoCtx =
@@ -1176,13 +1174,6 @@ getPackageSourceHashes verbosity withRepoCtx solverPlan = do
   return $!
     hashesFromRepoMetadata
       <> hashesFromTarballFiles
-
--- | Append the given package databases to an existing PackageDBStack.
--- A @Nothing@ entry will clear everything before it.
-applyPackageDbFlags :: PackageDBStack -> [Maybe PackageDB] -> PackageDBStack
-applyPackageDbFlags dbs' [] = dbs'
-applyPackageDbFlags _ (Nothing : dbs) = applyPackageDbFlags [] dbs
-applyPackageDbFlags dbs' (Just db : dbs) = applyPackageDbFlags (dbs' ++ [db]) dbs
 
 -- ------------------------------------------------------------
 
@@ -2321,10 +2312,7 @@ elaborateInstallPlan
         corePackageDbs
           ++ [distPackageDB (compilerId compiler)]
 
-      corePackageDbs =
-        applyPackageDbFlags
-          (storePackageDBStack compiler)
-          (projectConfigPackageDBs sharedPackageConfig)
+      corePackageDbs = storePackageDBStack compiler (projectConfigPackageDBs sharedPackageConfig)
 
       -- For this local build policy, every package that lives in a local source
       -- dir (as opposed to a tarball), or depends on such a package, will be

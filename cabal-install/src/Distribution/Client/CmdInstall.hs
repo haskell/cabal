@@ -412,6 +412,7 @@ installAction flags@NixStyleFlags{extraFlags, configFlags, installFlags, project
           , projectConfigHcPkg
           , projectConfigStoreDir
           , projectConfigProgPathExtra
+          , projectConfigPackageDBs
           }
       , projectConfigLocalPackages =
         PackageConfig
@@ -443,7 +444,7 @@ installAction flags@NixStyleFlags{extraFlags, configFlags, installFlags, project
   envFile <- getEnvFile clientInstallFlags platform compilerVersion
   existingEnvEntries <-
     getExistingEnvEntries verbosity compilerFlavor supportsPkgEnvFiles envFile
-  packageDbs <- getPackageDbStack compiler projectConfigStoreDir projectConfigLogsDir
+  packageDbs <- getPackageDbStack compiler projectConfigStoreDir projectConfigLogsDir projectConfigPackageDBs
   installedIndex <- getInstalledPackages verbosity compiler packageDbs progDb
 
   let
@@ -1281,13 +1282,14 @@ getPackageDbStack
   :: Compiler
   -> Flag FilePath
   -> Flag FilePath
+  -> [Maybe PackageDB]
   -> IO PackageDBStack
-getPackageDbStack compiler storeDirFlag logsDirFlag = do
+getPackageDbStack compiler storeDirFlag logsDirFlag packageDbs = do
   mstoreDir <- traverse makeAbsolute $ flagToMaybe storeDirFlag
   let
     mlogsDir = flagToMaybe logsDirFlag
   cabalLayout <- mkCabalDirLayout mstoreDir mlogsDir
-  pure $ storePackageDBStack (cabalStoreDirLayout cabalLayout) compiler
+  pure $ storePackageDBStack (cabalStoreDirLayout cabalLayout) compiler packageDbs
 
 -- | This defines what a 'TargetSelector' means for the @bench@ command.
 -- It selects the 'AvailableTarget's that the 'TargetSelector' refers to,

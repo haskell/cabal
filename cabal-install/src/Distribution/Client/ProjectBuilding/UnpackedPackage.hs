@@ -683,12 +683,12 @@ buildAndInstallUnpackedPackage
                 | otherwise = do
                     assert
                       ( elabRegisterPackageDBStack pkg
-                          == storePackageDBStack compiler
+                          == storePackageDBStack compiler (elabPackageDbs pkg)
                       )
                       (return ())
                     _ <-
                       runRegister
-                        (storePackageDBStack compiler)
+                        (elabRegisterPackageDBStack pkg)
                         Cabal.defaultRegisterOptions
                           { Cabal.registerMultiInstance = True
                           , Cabal.registerSuppressFilesCheck = True

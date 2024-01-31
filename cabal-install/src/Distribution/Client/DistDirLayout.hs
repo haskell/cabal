@@ -46,6 +46,7 @@ import Distribution.Simple.Compiler
   , PackageDB (..)
   , PackageDBStack
   )
+import Distribution.Simple.Configure (interpretPackageDbFlags)
 import Distribution.System
 import Distribution.Types.ComponentName
 import Distribution.Types.LibraryName
@@ -121,7 +122,7 @@ data StoreDirLayout = StoreDirLayout
   , storePackageDirectory :: Compiler -> UnitId -> FilePath
   , storePackageDBPath :: Compiler -> FilePath
   , storePackageDB :: Compiler -> PackageDB
-  , storePackageDBStack :: Compiler -> PackageDBStack
+  , storePackageDBStack :: Compiler -> [Maybe PackageDB] -> PackageDBStack
   , storeIncomingDirectory :: Compiler -> FilePath
   , storeIncomingLock :: Compiler -> UnitId -> FilePath
   }
@@ -286,9 +287,10 @@ defaultStoreDirLayout storeRoot =
     storePackageDB compiler =
       SpecificPackageDB (storePackageDBPath compiler)
 
-    storePackageDBStack :: Compiler -> PackageDBStack
-    storePackageDBStack compiler =
-      [GlobalPackageDB, storePackageDB compiler]
+    storePackageDBStack :: Compiler -> [Maybe PackageDB] -> PackageDBStack
+    storePackageDBStack compiler extraPackageDB =
+      (interpretPackageDbFlags False extraPackageDB)
+        ++ [storePackageDB compiler]
 
     storeIncomingDirectory :: Compiler -> FilePath
     storeIncomingDirectory compiler =
