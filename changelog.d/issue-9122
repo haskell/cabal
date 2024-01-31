@@ -1,4 +1,0 @@
-synopsis: Fix dependency on an external package when an internal library with the same name exists
-packages: Cabal
-issues: #9122
-prs: #9132
