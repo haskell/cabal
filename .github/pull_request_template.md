@@ -19,4 +19,5 @@ Include the following checklist in your PR:
 Include the following checklist in your PR:
 
 * [ ] Patches conform to the [coding conventions](https://github.com/haskell/cabal/blob/master/CONTRIBUTING.md#other-conventions).
+* [ ] Is this a PR that fixes CI? If so, it will need to be backported to older cabal release branches (ask maintainers for directions).
 
