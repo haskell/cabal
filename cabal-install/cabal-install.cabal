@@ -364,7 +364,7 @@ test-suite mem-use-tests
   build-depends:
         cabal-install,
         containers,
-        tasty >= 1.2.3 && <1.5,
+        tasty >= 1.2.3 && <1.6,
         tasty-hunit >= 0.10
 
 
@@ -384,7 +384,7 @@ test-suite integration-tests2
         containers,
         directory,
         filepath,
-        tasty >= 1.2.3 && <1.5,
+        tasty >= 1.2.3 && <1.6,
         tasty-hunit >= 0.10,
         tagged
 
@@ -420,7 +420,7 @@ test-suite long-tests
         network-uri >= 2.6.2.0 && <2.7,
         random,
         tagged,
-        tasty >= 1.2.3 && <1.5,
+        tasty >= 1.2.3 && <1.6,
         tasty-expected-failure,
         tasty-hunit >= 0.10,
         tasty-quickcheck,
