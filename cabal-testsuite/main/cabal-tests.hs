@@ -34,6 +34,35 @@ import Data.Monoid ((<>))
 import Data.Monoid (mempty)
 #endif
 
+{- Note [Testsuite package environments]
+
+There are three different package environments which are used when running the
+testsuite.
+
+1. Environment used to compile `cabal-tests` executable
+2. Environment used to run test scripts "setup.test.hs"
+3. Environment made available to tests themselves via `./Setup configure`
+
+These are all distinct from each other and should be specified separately.
+
+Where are these environments specified:
+
+1. The build-depends on `cabal-tests` executable in `cabal-testsuite.cabal`
+2. The build-depends of `test-runtime-deps` executable in `cabal-testsuite.cabal`
+   These dependencies are injected in a special module (`Test.Cabal.ScriptEnv0`) which
+   then is consulted in `Test.Cabal.Monad` in order to pass the right environmnet.
+   This is mechanism by which the `./Setup` tests have access to the in-tree `Cabal`
+   and `Cabal-syntax` libraries.
+3. No specification, only the `GlobalPackageDb` is available (see
+   `testPackageDBStack`) unless the test itself augments the environment with
+   `withPackageDb`.
+
+At the moment, `cabal-install` tests always use the bootstrap cabal, which is a
+bit confusing but `cabal-install` is not flexible enough to be given additional
+package databases (yet).
+
+-}
+
 -- | Record for arguments that can be passed to @cabal-tests@ executable.
 data MainArgs = MainArgs {
         mainArgThreads :: Int,
