@@ -3,11 +3,13 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TupleSections #-}
 
 -- | Handling project configuration.
 module Distribution.Client.ProjectConfig
   ( -- * Types for project config
     ProjectConfig (..)
+  , ProjectConfigToParse (..)
   , ProjectConfigBuildOnly (..)
   , ProjectConfigShared (..)
   , ProjectConfigProvenance (..)
@@ -172,6 +174,7 @@ import Distribution.Simple.Utils
   , rawSystemIOWithEnv
   , warn
   )
+import Distribution.Solver.Types.LabeledPackageConstraint (VersionWin (ShallowWins))
 import Distribution.System
   ( Platform
   )
@@ -222,6 +225,8 @@ import System.IO
   ( IOMode (ReadMode)
   , withBinaryFile
   )
+
+import Distribution.Solver.Types.ConstraintSource (ProjectConfigImport (importPath))
 
 ----------------------------------------
 -- Resolving configuration to settings
@@ -330,6 +335,7 @@ resolveSolverSettings
       solverSettingStrongFlags = fromFlag projectConfigStrongFlags
       solverSettingAllowBootLibInstalls = fromFlag projectConfigAllowBootLibInstalls
       solverSettingOnlyConstrained = fromFlag projectConfigOnlyConstrained
+      solverSettingVersionWin = fromFlag projectConfigVersionWin
       solverSettingIndexState = flagToMaybe projectConfigIndexState
       solverSettingActiveRepos = flagToMaybe projectConfigActiveRepos
       solverSettingIndependentGoals = fromFlag projectConfigIndependentGoals
@@ -355,6 +361,7 @@ resolveSolverSettings
           , projectConfigStrongFlags = Flag (StrongFlags False)
           , projectConfigAllowBootLibInstalls = Flag (AllowBootLibInstalls False)
           , projectConfigOnlyConstrained = Flag OnlyConstrainedNone
+          , projectConfigVersionWin = Flag ShallowWins
           , projectConfigIndependentGoals = Flag (IndependentGoals False)
           , projectConfigPreferOldest = Flag (PreferOldest False)
           -- projectConfigShadowPkgs        = Flag False,
@@ -748,7 +755,7 @@ readProjectFileSkeleton
       then do
         monitorFiles [monitorFileHashed extensionFile]
         pcs <- liftIO readExtensionFile
-        monitorFiles $ map monitorFileHashed (projectSkeletonImports pcs)
+        monitorFiles $ map monitorFileHashed (importPath <$> projectSkeletonImports pcs)
         pure pcs
       else do
         monitorFiles [monitorNonExistentFile extensionFile]
@@ -758,7 +765,14 @@ readProjectFileSkeleton
 
       readExtensionFile =
         reportParseResult verbosity extensionDescription extensionFile
-          =<< parseProjectSkeleton distDownloadSrcDirectory httpTransport verbosity [] extensionFile
+          =<< ( parseProjectSkeleton
+                  distDownloadSrcDirectory
+                  httpTransport
+                  verbosity
+                  []
+                  extensionFile
+                  . ProjectConfigToParse 0
+              )
           =<< BS.readFile extensionFile
 
 -- | Render the 'ProjectConfig' format.
@@ -795,7 +809,7 @@ readGlobalConfig verbosity configFileFlag = do
 reportParseResult :: Verbosity -> String -> FilePath -> OldParser.ParseResult ProjectConfigSkeleton -> IO ProjectConfigSkeleton
 reportParseResult verbosity _filetype filename (OldParser.ParseOk warnings x) = do
   unless (null warnings) $
-    let msg = unlines (map (OldParser.showPWarning (intercalate ", " $ filename : projectSkeletonImports x)) warnings)
+    let msg = unlines (map (OldParser.showPWarning (intercalate ", " $ filename : (importPath <$> projectSkeletonImports x))) warnings)
      in warn verbosity msg
   return x
 reportParseResult verbosity filetype filename (OldParser.ParseFailed err) =

@@ -54,6 +54,7 @@ module Distribution.Client.Dependency
   , setStrongFlags
   , setAllowBootLibInstalls
   , setOnlyConstrained
+  , setVersionWin
   , setMaxBackjumps
   , setEnableBackjumping
   , setSolveExecutables
@@ -136,7 +137,7 @@ import qualified Distribution.Solver.Types.ComponentDeps as CD
 import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.DependencyResolver
 import Distribution.Solver.Types.InstalledPreference as Preference
-import Distribution.Solver.Types.LabeledPackageConstraint
+import Distribution.Solver.Types.LabeledPackageConstraint hiding (versionWin)
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PackageConstraint
 import qualified Distribution.Solver.Types.PackageIndex as PackageIndex
@@ -189,6 +190,7 @@ data DepResolverParams = DepResolverParams
   , depResolverOnlyConstrained :: OnlyConstrained
   -- ^ Whether to only allow explicitly constrained packages plus
   -- goals or to allow any package.
+  , depResolverVersionWin :: VersionWin
   , depResolverMaxBackjumps :: Maybe Int
   , depResolverEnableBackjumping :: EnableBackjumping
   , depResolverSolveExecutables :: SolveExecutables
@@ -209,6 +211,8 @@ showDepResolverParams p =
     ++ concatMap
       (("\n  " ++) . showLabeledConstraint)
       (depResolverConstraints p)
+    ++ "\nversion override: "
+    ++ showVersionWin (depResolverVersionWin p)
     ++ "\npreferences: "
     ++ concatMap
       (("\n  " ++) . showPackagePreference)
@@ -240,10 +244,6 @@ showDepResolverParams p =
       "infinite"
       show
       (depResolverMaxBackjumps p)
-  where
-    showLabeledConstraint :: LabeledPackageConstraint -> String
-    showLabeledConstraint (LabeledPackageConstraint pc src) =
-      showPackageConstraint pc ++ " (" ++ showConstraintSource src ++ ")"
 
 -- | A package selection preference for a particular package.
 --
@@ -277,6 +277,7 @@ basicDepResolverParams installedPkgIndex sourcePkgIndex =
   DepResolverParams
     { depResolverTargets = Set.empty
     , depResolverConstraints = []
+    , depResolverVersionWin = ShallowWins
     , depResolverPreferences = []
     , depResolverPreferenceDefault = PreferLatestForSelected
     , depResolverInstalledPkgIndex = installedPkgIndex
@@ -396,6 +397,12 @@ setOnlyConstrained :: OnlyConstrained -> DepResolverParams -> DepResolverParams
 setOnlyConstrained i params =
   params
     { depResolverOnlyConstrained = i
+    }
+
+setVersionWin :: VersionWin -> DepResolverParams -> DepResolverParams
+setVersionWin i params =
+  params
+    { depResolverVersionWin = i
     }
 
 setMaxBackjumps :: Maybe Int -> DepResolverParams -> DepResolverParams
@@ -780,6 +787,7 @@ resolveDependencies platform comp pkgConfigDB params =
             shadowing
             strFlags
             onlyConstrained_
+            versionWin
             maxBkjumps
             enableBj
             solveExes
@@ -813,6 +821,7 @@ resolveDependencies platform comp pkgConfigDB params =
                     strFlags
                     _allowBootLibs
                     onlyConstrained_
+                    versionWin
                     maxBkjumps
                     enableBj
                     solveExes
@@ -1137,6 +1146,7 @@ resolveWithoutDependencies
       _solveExes
       _allowBootLibInstalls
       _onlyConstrained
+      _versionWind
       _order
       _verbosity
     ) =

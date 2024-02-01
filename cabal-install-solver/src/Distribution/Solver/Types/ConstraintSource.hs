@@ -1,11 +1,25 @@
 {-# LANGUAGE DeriveGeneric #-}
 module Distribution.Solver.Types.ConstraintSource
     ( ConstraintSource(..)
+    , ProjectConfigImport(..)
     , showConstraintSource
     ) where
 
 import Distribution.Solver.Compat.Prelude
 import Prelude ()
+
+data ProjectConfigImport =
+  ProjectConfigImport
+    { importDepth :: Int
+    -- ^ Depth of the import. The main project config file has depth 0, and each
+    -- import increases the depth by 1.
+    , importPath :: FilePath
+    -- ^ Path to the imported file contributing to the project config.
+    }
+    deriving (Eq, Show, Generic)
+
+instance Binary ProjectConfigImport
+instance Structured ProjectConfigImport
 
 -- | Source of a 'PackageConstraint'.
 data ConstraintSource =
@@ -14,7 +28,7 @@ data ConstraintSource =
   ConstraintSourceMainConfig FilePath
 
   -- | Local cabal.project file
-  | ConstraintSourceProjectConfig FilePath
+  | ConstraintSourceProjectConfig ProjectConfigImport
 
   -- | User config file, which is ./cabal.config by default.
   | ConstraintSourceUserConfig FilePath
@@ -59,8 +73,8 @@ instance Structured ConstraintSource
 showConstraintSource :: ConstraintSource -> String
 showConstraintSource (ConstraintSourceMainConfig path) =
     "main config " ++ path
-showConstraintSource (ConstraintSourceProjectConfig path) =
-    "project config " ++ path
+showConstraintSource (ConstraintSourceProjectConfig projectConfig) =
+    "project config " ++ show projectConfig
 showConstraintSource (ConstraintSourceUserConfig path)= "user config " ++ path
 showConstraintSource ConstraintSourceCommandlineFlag = "command line flag"
 showConstraintSource ConstraintSourceUserTarget = "user target"

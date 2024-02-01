@@ -239,6 +239,7 @@ planPackages
           . setStrongFlags strongFlags
           . setAllowBootLibInstalls allowBootLibInstalls
           . setOnlyConstrained onlyConstrained
+          . setVersionWin (fromFlag (freezeVersionWin freezeFlags))
           . setSolverVerbosity verbosity
           . addConstraints
             [ let pkg = pkgSpecifierTarget pkgSpecifier

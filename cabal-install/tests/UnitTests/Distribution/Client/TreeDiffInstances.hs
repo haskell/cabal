@@ -4,6 +4,7 @@
 module UnitTests.Distribution.Client.TreeDiffInstances () where
 
 import Distribution.Solver.Types.ConstraintSource
+import Distribution.Solver.Types.LabeledPackageConstraint
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PackageConstraint
 import Distribution.Solver.Types.Settings
@@ -39,6 +40,7 @@ instance ToExpr AllowOlder
 instance ToExpr BuildReport
 instance ToExpr ClientInstallFlags
 instance ToExpr CombineStrategy
+instance ToExpr ProjectConfigImport
 instance ToExpr ConstraintSource
 instance ToExpr CountConflicts
 instance ToExpr FineGrainedConflicts
@@ -48,6 +50,7 @@ instance ToExpr InstallOutcome
 instance ToExpr LocalRepo
 instance ToExpr MinimizeConflictSet
 instance ToExpr OnlyConstrained
+instance ToExpr VersionWin
 instance ToExpr OptionalStanza
 instance ToExpr Outcome
 instance ToExpr OverwritePolicy

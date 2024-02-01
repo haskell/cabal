@@ -86,7 +86,7 @@ import Distribution.Solver.Types.ComponentDeps (ComponentDeps)
 import qualified Distribution.Solver.Types.ComponentDeps as CD
 import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.Flag
-import Distribution.Solver.Types.LabeledPackageConstraint
+import Distribution.Solver.Types.LabeledPackageConstraint hiding (versionWin)
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PackageConstraint
 import qualified Distribution.Solver.Types.PackageIndex as CI.PackageIndex
@@ -790,6 +790,7 @@ exResolve
   -> ReorderGoals
   -> AllowBootLibInstalls
   -> OnlyConstrained
+  -> VersionWin
   -> EnableBackjumping
   -> SolveExecutables
   -> Maybe (Variable P.QPN -> Variable P.QPN -> Ordering)
@@ -813,6 +814,7 @@ exResolve
   reorder
   allowBootLibInstalls
   onlyConstrained
+  versionWin
   enableBj
   solveExes
   goalOrder
@@ -859,11 +861,12 @@ exResolve
                           setMaxBackjumps mbj $
                             setAllowBootLibInstalls allowBootLibInstalls $
                               setOnlyConstrained onlyConstrained $
-                                setEnableBackjumping enableBj $
-                                  setSolveExecutables solveExes $
-                                    setGoalOrder goalOrder $
-                                      setSolverVerbosity verbosity $
-                                        standardInstallPolicy instIdx avaiIdx targets'
+                                setVersionWin versionWin $
+                                  setEnableBackjumping enableBj $
+                                    setSolveExecutables solveExes $
+                                      setGoalOrder goalOrder $
+                                        setSolverVerbosity verbosity $
+                                          standardInstallPolicy instIdx avaiIdx targets'
       toLpc pc = LabeledPackageConstraint pc ConstraintSourceUnknown
 
       toConstraint (ExVersionConstraint scope v) =
