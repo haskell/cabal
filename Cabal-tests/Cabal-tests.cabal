@@ -211,4 +211,4 @@ test-suite no-thunks-test
   -- this is test is buildable on old GHCs
   -- but it doesn't do anything.
   if impl(ghc >=8.6)
-    build-depends: nothunks >=0.1.1.0 && <0.2
+    build-depends: nothunks >=0.1.1.0 && <0.3
