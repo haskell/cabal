@@ -40,6 +40,34 @@ cyclical import of cyclical-2-out-out-back-a.config
 Error: [Cabal-7090]
 Error parsing project file <ROOT>/cyclical-2-out-out-self.project:1:
 cyclical import of cyclical-2-out-out-self-b.config
+# checking that cyclical check doesn't false-positive on same file names in different folders; hoping within a folder and then into a subfolder
+# cabal v2-build
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following will be built:
+ - my-0.1 (lib:my) (first run)
+Configuring my-0.1...
+Preprocessing library for my-0.1...
+Building library for my-0.1...
+# checking that cyclical check doesn't false-positive on same file names in different folders; hoping into a subfolder and then back out again
+# cabal v2-build
+# checking that cyclical check catches a same file name that imports itself
+# cabal v2-build
+Error: [Cabal-7090]
+Error parsing project file <ROOT>/cyclical-same-filename-out-out-self.project:1:
+cyclical import of cyclical-same-filename-out-out-self.config
+# checking that cyclical check catches importing its importer (with the same file name)
+# cabal v2-build
+Error: [Cabal-7090]
+Error parsing project file <ROOT>/cyclical-same-filename-out-out-backback.project:3:
+cyclical import of cyclical-same-filename-out-out-backback.config
+# checking that cyclical check catches importing its importer's importer (hopping over same file names)
+# cabal v2-build
+Error: [Cabal-7090]
+Error parsing project file <ROOT>/cyclical-same-filename-out-out-back.project:1:
+cyclical import of same-filename/cyclical-same-filename-out-out-back.config
+# checking that imports work skipping into a subfolder and then back out again and again
+# cabal v2-build
 # checking bad conditional
 # cabal v2-build
 Error: [Cabal-7090]

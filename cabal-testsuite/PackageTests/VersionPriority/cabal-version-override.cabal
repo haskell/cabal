@@ -1,0 +1,17 @@
+cabal-version:      3.0
+name:               cabal-version-override
+version:            0.1.0.0
+license:            MPL-2.0
+author:             Phil de Joux
+category:           Development
+build-type:         Simple
+
+common warnings
+    ghc-options: -Wall
+
+executable cabal-version-override
+    import:           warnings
+    main-is:          Main.hs
+    build-depends:    base, hashable
+    hs-source-dirs:   app
+    default-language: Haskell2010
