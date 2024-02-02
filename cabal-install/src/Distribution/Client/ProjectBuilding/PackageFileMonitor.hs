@@ -92,19 +92,18 @@ packageFileMonitorKeyValues
 packageFileMonitorKeyValues elab =
   (elab_config, buildComponents)
   where
-    -- The first part, 'elab_config', is the value used to guard (re)configuring the package.
+    -- The first part is the value used to guard (re)configuring the package.
     -- That is, if this value changes then we will reconfigure.
     -- The ElaboratedConfiguredPackage consists mostly (but not entirely) of
     -- information that affects the (re)configure step. But those parts that
     -- do not affect the configure step need to be nulled out. Those parts are
     -- the specific targets that we're going to build.
     --
-    -- The second part is the value used to guard the build step. So this is
-    -- more or less the opposite of the first part, as it's just the info about
-    -- what targets we're going to build.
-    --
+
     -- Additionally we null out the parts that don't affect the configure step because they're simply
     -- about how tests or benchmarks are run
+
+    -- TODO there may be more things to null here too, in the future.
 
     elab_config :: ElaboratedConfiguredPackage
     elab_config =
@@ -128,7 +127,7 @@ packageFileMonitorKeyValues elab =
     -- what targets we're going to build.
     --
     buildComponents :: Set ComponentName
-    buildComponents = Set.fromList [cn | ComponentTarget cn <- elabBuildTargets elab]
+    buildComponents = elabBuildTargetWholeComponents elab
 
 -- | Do all the checks on whether a package has changed and thus needs either
 -- rebuilding or reconfiguring and rebuilding.

@@ -734,7 +734,8 @@ selectPackageTargetsSingle decision targetSelector targets
 --
 -- For the @repl@ command we just need the basic checks on being buildable etc.
 selectComponentTarget
-  :: AvailableTarget k
+  :: SubComponentTarget
+  -> AvailableTarget k
   -> Either ReplTargetProblem k
 selectComponentTarget = selectComponentTargetBasic
 

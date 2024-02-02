@@ -887,7 +887,7 @@ hasValidHaddockTargets ElaboratedConfiguredPackage{..}
         ++ elabHaddockTargets
 
     componentHasHaddocks :: ComponentTarget -> Bool
-    componentHasHaddocks (ComponentTarget name) =
+    componentHasHaddocks (ComponentTarget name _) =
       case name of
         CLibName LMainLibName -> hasHaddocks
         CLibName (LSubLibName _) -> elabHaddockInternal && hasHaddocks
