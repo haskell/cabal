@@ -30,6 +30,8 @@ Ways to get the `cabal-install` binary
 2. _[Download from official website](https://www.haskell.org/cabal/download.html)_:
     the `cabal-install` binary download for your platform should contain the `cabal` executable.
 
+#### Preview Releases
+
 _Getting unreleased versions of `cabal-install`_: gives you a chance to try out yet-unreleased features.
 Currently, we only provide binaries for `x86_64` platforms.
 
@@ -40,10 +42,28 @@ Currently, we only provide binaries for `x86_64` platforms.
     ```
 
     Replace "Linux" with "Windows" or "macOS" as appropriate.
+    
+    The default Linux build is dynamically linked against `zlib`, `gmp` and `glibc`.
+    You will need to have appropriate versions of these libraries installed to use it.
+    Alternatively a statically linked "Linux-static" binary is also provided.
+
+    You might need to add the following to your `cabal.project` file
+    if your build fails because of an out-of-date `Cabal` library:
+    ```
+    allow-newer: 
+      *:Cabal,
+      *:Cabal-syntax
+
+    source-repository-package
+        type: git
+        location: https://github.com/haskell/cabal.git
+        subdir: Cabal Cabal-syntax
+    ```
 
 
 2. Even more cutting-edge binaries built from pull requests are always available
-   from the `Validate` worklow page on GitHub, at the very bottom of the page.
+   from the `Validate` worklow page on GitHub, at the very bottom of the page,
+   or from the `build-alpine` workflow for statically linked Linux builds.
 
 Ways to build `cabal-install` for everyday use
 --------------------------------------------
