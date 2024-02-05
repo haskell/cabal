@@ -34,23 +34,23 @@ convCP iidx sidx (CP qpi fa es ds) =
     Left  pi -> PreExisting $
                   InstSolverPackage {
                     instSolverPkgIPI = fromJust $ SI.lookupUnitId iidx pi,
-                    instSolverPkgLibDeps  = fmap (\(b, _) -> map fst b) ds',
-                    instSolverPkgExeDeps  = fmap (\(_, c) -> c) ds'
+                    instSolverPkgLibDeps  = fmap (\(b, _) -> map fst b) (ds' Nothing),
+                    instSolverPkgExeDeps  = fmap (\(_, c) -> c) (ds' Nothing)
                   }
     Right pi -> Configured $
                   SolverPackage {
                       solverPkgSource = srcpkg,
                       solverPkgFlags = fa,
                       solverPkgStanzas = es,
-                      solverPkgLibDeps = fmap (\(b, _) -> b) ds',
-                      solverPkgExeDeps = fmap (\(_, c) -> c) ds'
+                      solverPkgLibDeps = fmap (\(b, _) -> b) (ds' (Just (pkgName pi))),
+                      solverPkgExeDeps = fmap (\(_, c) -> c) (ds' (Just (pkgName pi)))
                     }
       where
         srcpkg = fromMaybe (error "convCP: lookupPackageId failed") $ CI.lookupPackageId sidx pi
   where
 
-    ds' :: ComponentDeps (([(SolverId, Maybe PrivateAlias)] {- lib -}, [SolverId] {- exe -}))
-    ds' = fmap (partitionDeps . map convConfId) ds
+    ds' :: Maybe PackageName -> ComponentDeps (([(SolverId, Maybe PrivateAlias)] {- lib -}, [SolverId] {- exe -}))
+    ds' pn = fmap (partitionDeps . map (convConfId pn)) ds
 
 partitionDeps :: [Converted] -> (([(SolverId, Maybe PrivateAlias)], [SolverId]))
 partitionDeps [] = ([], [])
@@ -69,8 +69,8 @@ convPI (PI (Q _ pn) (I v _)) = Right (PackageIdentifier pn v)
 
 data Converted = NormalPkg SolverId | NormalExe SolverId | AliasPkg SolverId PrivateAlias
 
-convConfId :: PI QPN -> Converted
-convConfId (PI (Q (PackagePath ns qn) pn) (I v loc)) =
+convConfId :: Maybe PackageName -> PI QPN -> Converted
+convConfId parent (PI (Q (PackagePath ns qn) pn) (I v loc)) =
     case loc of
         Inst pi -> NormalPkg (PreExistingId sourceId pi)
         _otherwise
@@ -82,7 +82,10 @@ convConfId (PI (Q (PackagePath ns qn) pn) (I v loc)) =
           -- silly and didn't allow arbitrarily nested build-tools
           -- dependencies, so a shallow check works.
           , pn == pn' -> NormalExe (PlannedId sourceId)
-          | QualAlias _ _ alias _ <- qn -> AliasPkg (PlannedId sourceId) alias
+          -- Same reasoning as for exes, the "top" qualified goal is the one
+          -- which is private and needs to be aliased, but there might be other goals underneath which
+          -- are solved in the same scope (but are not private)
+          | QualAlias pn' _ alias _ <- qn, parent == Just pn' -> AliasPkg (PlannedId sourceId) alias
           | otherwise    -> NormalPkg  (PlannedId sourceId)
   where
     sourceId    = PackageIdentifier pn v

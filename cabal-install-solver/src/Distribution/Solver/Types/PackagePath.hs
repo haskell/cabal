@@ -32,6 +32,7 @@ data Namespace =
     DefaultNamespace
 
     -- | A goal which is solved per-package
+    -- `--independent-goals`
   | Independent PackageName
 
 
@@ -65,6 +66,67 @@ data Qualifier =
 
   -- A goal which is solved per-component
   | QualAlias PackageName Component PrivateAlias [PackageName]
+
+
+-- package: qux
+--  :build-depends: foo, baz
+--
+-- package: baz
+--  :build-depends: wurble
+--
+--  PackagePath DefaultNamespace QualToplevel "foo"
+--    => PackagePath DefaultNamespace QualToplevel "wurble"
+--  PackagePath DefaultNamespace QualToplevel "baz"
+--  PackagePath DefaultNamespace QualToplevel "wurble"
+--
+-- package: qux
+--  :private-build-depends: G0 with (foo == 0.3, baz == 0.5)
+--  :private-build-depends: G1 with (foo == 0.4, baz)
+--
+-- package: foo
+--  :build-depends: baz >= 0.5
+--
+--  PackagePath DefaultNamespace (QualAlias "qux" "MainLib" "G0" [foo, baz]) "foo" (== 0.3)
+----   => PackagePath DefaultNamespace (QualAlias "qux" "MainLib" "G0") "baz" (>= 0.5)
+--   => PackagePath DefaultNamespace QualTopLevel "baz" (>= 0.5)
+--  PackagePath DefaultNamespace (QualAlias "qux" "MainLib" "G0") "baz" == 0.5
+--    =>>> PackagePath DefaultNamespace (QualAlias "qux" "MainLib" "G0") "baz" =>> 0.5
+--    =>>> PackagePath DefaultNamespace QualTopLevel "baz" =>> 0.6
+--
+--
+-- package a
+--  :private-build-depends: G0 with (b, d)
+--
+-- package b-0.1
+--  :build-depends: x
+--
+-- package b-0.2
+--  :build-depends: x, d
+--
+-- package b-0.3
+--  :build-depends: x, c, d
+--
+-- package c-0.1
+--  :build-depends: x
+--
+-- package c-0.2
+--  :build-depends: x, d
+--
+--
+-- Closure property violated by `b == 0.3` and `c == 0.2` THEN closure property is violated.
+--
+-- Need to be able to implicitly introduce c into the private scope so that the closure property holds.
+--
+--
+--
+--
+--
+--  PackagePath DefaultNamespace (QualAlias "qux" "MainLib" "G1" ) "foo"
+--  PackagePath DefaultNamespace (QualAlias "qux" "MainLib" "G1") "baz"
+--
+-- package: baz
+--  :build-depends: wurble
+--
 
 {-
     -- | Setup dependency

@@ -15,6 +15,7 @@ module Distribution.Solver.Modular.Preference
     , onlyConstrained
     , sortGoals
     , pruneAfterFirstSuccess
+    , rewriteQPN
     ) where
 
 import Prelude ()
@@ -358,6 +359,14 @@ onlyConstrained p = go
         NotExplicit
     go x
       = x
+
+
+rewriteQPN :: Show d => EndoTreeTrav d QGoalReason
+rewriteQPN = go
+  where
+    go x = x
+
+
 
 -- | Sort all goals using the provided function.
 sortGoals :: (Variable QPN -> Variable QPN -> Ordering) -> EndoTreeTrav d c

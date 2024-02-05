@@ -79,7 +79,7 @@ scopeToPackageName (ScopePrivate _ _ pn) = pn
 
 -- TOOD: Crucial
 constraintScopeMatches :: ConstraintScope -> QPN -> Bool
-constraintScopeMatches cs qpn | traceShow (cs, qpn) False = undefined
+--constraintScopeMatches cs qpn | traceShow (cs, qpn) False = undefined
 constraintScopeMatches (ScopeTarget pn) (Q (PackagePath ns q) pn') =
   let namespaceMatches DefaultNamespace = True
       namespaceMatches (Independent namespacePn) = pn == namespacePn

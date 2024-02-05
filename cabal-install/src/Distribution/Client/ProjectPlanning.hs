@@ -1873,7 +1873,7 @@ elaborateInstallPlan
               external_lib_dep_sids = CD.select (== compSolverName) deps0
               external_exe_dep_sids = CD.select (== compSolverName) exe_deps0
 
-              external_lib_dep_pkgs = [ (d, alias) | (sid, alias) <- external_lib_dep_sids, d <- mapDep sid ]
+              external_lib_dep_pkgs = Debug.Trace.traceShow ("SIDS", external_lib_dep_sids) [ (d, alias) | (sid, alias) <- external_lib_dep_sids, d <- mapDep sid ]
 
               external_exe_dep_pkgs_raw = [ (d, Nothing) | sid <- external_exe_dep_sids, d <- mapDep sid ]
 
@@ -1894,8 +1894,7 @@ elaborateInstallPlan
               exe_map1 = Map.union external_exe_map $ fmap (\x -> [x]) exe_map
 
               external_lib_cc_map =
-                Map.fromListWith Map.union $
-                  map mkCCMapping external_lib_dep_pkgs
+                Map.fromListWith Map.union (map mkCCMapping external_lib_dep_pkgs)
               external_exe_cc_map =
                 Map.fromListWith Map.union $
                   map mkCCMapping external_exe_dep_pkgs

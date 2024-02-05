@@ -79,6 +79,7 @@ data Tree d c =
 
     -- | We failed to find a solution in this path through the tree
   | Fail ConflictSet FailReason
+  deriving (Show)
 
 -- | A package option is a package instance with an optional linking annotation
 --
@@ -143,7 +144,7 @@ data TreeF d c a =
   | GoalChoiceF     RevDepMap                               (PSQ (Goal QPN) a)
   | DoneF           RevDepMap d
   | FailF       ConflictSet FailReason
-  deriving (Functor, Foldable, Traversable)
+  deriving (Functor, Foldable, Traversable, Show)
 
 out :: Tree d c -> TreeF d c (Tree d c)
 out (PChoice    p s i       ts) = PChoiceF    p s i       ts

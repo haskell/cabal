@@ -207,7 +207,7 @@ qualifyDeps QO{..} (Q pp@(PackagePath ns q) pn) = go
       | Private (qpn, pkgs) <- is_private  = Dep (Q (PackagePath ns (QualAlias pn comp qpn pkgs))  <$> dep) is_private ci
       | qBase qpn   = Dep (Q (PackagePath ns (QualBase pn)) <$> dep) is_private ci
       | qSetup comp = Dep (Q (PackagePath (IndependentComponent pn ComponentSetup) QualToplevel) <$> dep) is_private ci
-      | otherwise   = Dep (Q (PackagePath ns inheritedQ    ) <$> dep) is_private ci
+      | otherwise   = Dep (Q (PackagePath ns (inheritedQ qpn)    ) <$> dep) is_private ci
 
 
     --   pkg:lib-foo depends on: a
@@ -230,12 +230,16 @@ qualifyDeps QO{..} (Q pp@(PackagePath ns q) pn) = go
     -- The inherited qualifier is only used for regular dependencies; for setup
     -- and base dependencies we override the existing qualifier. See #3160 for
     -- a detailed discussion.
-    inheritedQ :: Qualifier
-    inheritedQ = case q of
+    inheritedQ :: PackageName -> Qualifier
+    inheritedQ pn = case q of
                    QualToplevel -> QualToplevel
                    QualBase {}  -> QualToplevel
                    -- MP: TODO, check if package name is in same scope (if so, persist)
-                   QualAlias {} -> QualToplevel
+                   QualAlias _ _ _ pkgs ->
+                    if pn `elem` pkgs
+                      then traceShow ("INHERITED", pn, pkgs) q
+                      else QualToplevel
+--                    traceShow (alias, pkgs) QualToplevel
 
     -- Should we qualify this goal with the 'Base' package path?
     qBase :: PN -> Bool

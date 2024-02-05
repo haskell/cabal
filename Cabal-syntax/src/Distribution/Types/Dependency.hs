@@ -68,9 +68,11 @@ instance Parsec PrivateDependency where
 instance Pretty PrivateDependency where
   pretty (PrivateDependency alias deps) = PP.hsep [pretty alias, PP.text "with", PP.parens (PP.hsep (PP.punctuate PP.comma (map pretty deps)))]
 
+-- Footgun
 flattenPrivateDepends :: Dependencies -> [Dependency]
 flattenPrivateDepends (Dependencies _ priv) = concatMap private_depends priv
 
+-- Footgun
 allDependencies :: Dependencies -> [Dependency]
 allDependencies (Dependencies pub priv) = pub ++ concatMap private_depends priv
 

@@ -17,13 +17,10 @@ import Distribution.Package (PackageId, Package(..), UnitId)
 --
 data SolverId = PreExistingId { solverSrcId :: PackageId, solverInstId :: UnitId }
               | PlannedId     { solverSrcId :: PackageId }
-  deriving (Eq, Ord, Generic)
+  deriving (Eq, Ord, Generic, Show)
 
 instance Binary SolverId
 instance Structured SolverId
-
-instance Show SolverId where
-    show = show . solverSrcId
 
 instance Package SolverId where
   packageId = solverSrcId

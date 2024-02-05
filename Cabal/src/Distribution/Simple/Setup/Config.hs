@@ -905,7 +905,6 @@ showProfDetailLevelFlag (Flag dl) = [showProfDetailLevel dl]
 parsecAliasDependency :: ParsecParser AliasDependency
 parsecAliasDependency = do
   pn <- parsec
-  traceShowM pn
   _ <- P.char '='
   gc <- parsecGivenComponent
   return $ AliasDependency pn gc
