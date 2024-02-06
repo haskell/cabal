@@ -84,7 +84,8 @@ import Distribution.Types.PackageVersionConstraint
   )
 
 import Distribution.PackageDescription
-  ( GenericPackageDescription, ComponentName
+  ( ComponentName
+  , GenericPackageDescription
   )
 import Distribution.Simple.Utils
   ( dieWithException
@@ -109,6 +110,8 @@ import qualified Data.Map as Map
 import Distribution.Client.Errors
 import qualified Distribution.Client.GZipUtils as GZipUtils
 import qualified Distribution.Compat.CharParsing as P
+import Distribution.Solver.Types.ComponentDeps
+import Distribution.Types.Dependency
 import Network.URI
   ( URI (..)
   , URIAuth (..)
@@ -124,8 +127,6 @@ import System.FilePath
   , takeDirectory
   , takeExtension
   )
-import Distribution.Solver.Types.ComponentDeps
-import Distribution.Types.Dependency
 
 -- ------------------------------------------------------------
 
@@ -619,9 +620,7 @@ data UserQualifier
     UserQualSetup PackageName
   | -- | Executable dependency.
     UserQualExe PackageName PackageName
-
-  |
-    UserQualComp PackageName ComponentName
+  | UserQualComp PackageName ComponentName
   deriving (Eq, Show, Generic)
 
 instance Binary UserQualifier
@@ -650,7 +649,7 @@ fromUserQualifier (UserQualComp pn cn) = IndependentComponent pn (componentNameT
 
 fromUserConstraintScope :: UserConstraintScope -> ConstraintScope
 fromUserConstraintScope (UserQualified q pn) =
-  ScopeQualified (fromUserQualifier q) pn
+  ScopeQualified (fromUserQualifier q) QualToplevel pn
 fromUserConstraintScope (UserPrivateQualifier pn alias cpn) = ScopePrivate pn alias cpn
 fromUserConstraintScope (UserAnySetupQualifier pn) = ScopeAnySetupQualifier pn
 fromUserConstraintScope (UserAnyQualifier pn) = ScopeAnyQualifier pn
@@ -721,9 +720,9 @@ instance Parsec UserConstraint where
             | pn == mkPackageName "setup" = UserAnySetupQualifier <$> parsec
             | pn == mkPackageName "private" = do
                 qpn <- parsec
-                P.char '.'
+                _ <- P.char '.'
                 alias <- parsec
-                P.char ':'
+                _ <- P.char ':'
                 cpn <- parsec
                 return $ UserPrivateQualifier qpn alias cpn
             | otherwise = P.unexpected $ "constraint scope: " ++ unPackageName pn

@@ -651,8 +651,9 @@ mergePackageInfo versionPref installedPkgs sourcePkgs selectedPkg showVer =
             source
       , dependencies =
           combine
-            ( map (SourceDependency . simplifyDependency)
-                . error "todo" -- Source.allBuildDepends
+            -- We discard info (with `snd`) about private scopes because we don't yet report them in cabal list or cabal info (TODO).
+            ( map (SourceDependency . simplifyDependency . snd)
+                . Source.allBuildDepends
             )
             source
             (map InstalledDependency . Installed.depends)

@@ -38,16 +38,20 @@ intersectVersionRangesAndJoinComponents (va, ca) (vb, cb) =
 
 toDepMap :: Dependencies -> DependencyMap
 toDepMap ds =
-  DependencyMap $ Map.fromListWith intersectVersionRangesAndJoinComponents
-                    ( [((p, Public), (vr, cs)) | Dependency p vr cs <- publicDependencies ds]
-                    ++   [((p, Private (pn, map depPkgName pds)), (vr, cs)) | PrivateDependency pn pds <- privateDependencies ds , Dependency p vr cs <- pds ]  )
+  DependencyMap $
+    Map.fromListWith
+      intersectVersionRangesAndJoinComponents
+      ( [((p, Public), (vr, cs)) | Dependency p vr cs <- publicDependencies ds]
+          ++ [((p, Private pn), (vr, cs)) | PrivateDependency pn pds <- privateDependencies ds, Dependency p vr cs <- pds]
+      )
 
 fromDepMap :: DependencyMap -> Dependencies
-fromDepMap m = Dependencies
-  [Dependency p vr cs | ((p, Public), (vr, cs)) <- Map.toList (unDependencyMap m)]
-  [PrivateDependency alias deps | (alias, deps) <- Map.toList priv_deps]
-    where
-      priv_deps = Map.fromListWith (++) [(sn, [Dependency p vr cs]) | ((p, (Private (sn, _))), (vr, cs)) <- Map.toList (unDependencyMap m)]
+fromDepMap m =
+  Dependencies
+    [Dependency p vr cs | ((p, Public), (vr, cs)) <- Map.toList (unDependencyMap m)]
+    [PrivateDependency alias deps | (alias, deps) <- Map.toList priv_deps]
+  where
+    priv_deps = Map.fromListWith (++) [(sn, [Dependency p vr cs]) | ((p, (Private sn)), (vr, cs)) <- Map.toList (unDependencyMap m)]
 
 -- Apply extra constraints to a dependency map.
 -- Combines dependencies where the result will only contain keys from the left

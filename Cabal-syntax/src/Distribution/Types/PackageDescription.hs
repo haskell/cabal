@@ -59,8 +59,6 @@ module Distribution.Types.PackageDescription
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Control.Monad ((<=<))
-
 -- lens
 
 import Distribution.Types.Benchmark
@@ -362,8 +360,8 @@ enabledBuildInfos pkg enabled =
 allBuildDepends :: PackageDescription -> [(Maybe PrivateAlias, Dependency)]
 allBuildDepends pd = do
   bi <- allBuildInfo pd
-  [(Nothing, d) | d <- targetBuildDepends bi ]
-    ++ [(Just p, d) | PrivateDependency p ds <- targetPrivateBuildDepends bi, d <- ds ]
+  [(Nothing, d) | d <- targetBuildDepends bi]
+    ++ [(Just p, d) | PrivateDependency p ds <- targetPrivateBuildDepends bi, d <- ds]
 
 -- | Get the combined build-depends entries of all enabled components, per the
 -- given request spec.
@@ -371,8 +369,8 @@ enabledBuildDepends :: PackageDescription -> ComponentRequestedSpec -> [(Maybe P
 enabledBuildDepends spec pd =
   do
     bi <- enabledBuildInfos spec pd
-    [(Nothing, d) | d <- targetBuildDepends bi ]
-      ++ [(Just p, d) | PrivateDependency p ds <- targetPrivateBuildDepends bi, d <- ds ]
+    [(Nothing, d) | d <- targetBuildDepends bi]
+      ++ [(Just p, d) | PrivateDependency p ds <- targetPrivateBuildDepends bi, d <- ds]
 
 updatePackageDescription :: HookedBuildInfo -> PackageDescription -> PackageDescription
 updatePackageDescription (mb_lib_bi, exe_bi) p =

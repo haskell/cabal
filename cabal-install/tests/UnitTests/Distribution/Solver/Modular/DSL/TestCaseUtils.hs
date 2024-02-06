@@ -19,6 +19,7 @@ module UnitTests.Distribution.Solver.Modular.DSL.TestCaseUtils
   , preferences
   , setVerbose
   , enableAllTests
+  , solverResult
   , solverSuccess
   , solverFailure
   , anySolverFailure
@@ -47,8 +48,8 @@ import Language.Haskell.Extension (Extension (..), Language (..))
 -- cabal-install
 
 import Distribution.Client.Dependency (foldProgress)
-import qualified Distribution.Solver.Types.PackagePath as P
 import qualified Distribution.Solver.Types.ComponentDeps as C
+import qualified Distribution.Solver.Types.PackagePath as P
 import Distribution.Solver.Types.PkgConfigDb (PkgConfigDb (..), pkgConfigDbFromList)
 import Distribution.Solver.Types.Settings
 import Distribution.Solver.Types.Variable
@@ -150,8 +151,11 @@ data SolverResult = SolverResult
   -- the given plan.
   }
 
+solverResult :: ([String] -> Bool) -> [(String, Int)] -> SolverResult
+solverResult slog r = SolverResult slog (Right r)
+
 solverSuccess :: [(String, Int)] -> SolverResult
-solverSuccess = SolverResult (const False) . Right
+solverSuccess = SolverResult (const True) . Right
 
 solverFailure :: (String -> Bool) -> SolverResult
 solverFailure = SolverResult (const True) . Left
@@ -236,7 +240,7 @@ mkTestExtLangPC exts langs mPkgConfigDb db label targets result =
     , testConstraints = []
     , testUserConstraints = []
     , testSoftConstraints = []
-    , testVerbosity = verbose
+    , testVerbosity = normal
     , testDb = db
     , testSupportedExts = exts
     , testSupportedLangs = langs
@@ -324,14 +328,7 @@ runTest SolverTest{..} = askOption $ \(OptionShowSolverLog showSolverLog) ->
             P.PackagePath
               (P.IndependentComponent (C.mkPackageName s) C.ComponentSetup)
               (P.QualToplevel)
-              {-
-          QualIndepSetup p s ->
-            P.PackagePath
-              (P.Independent $ C.mkPackageName p)
-              (P.QualSetup (C.mkPackageName s))
-              -}
           QualExe p1 p2 ->
             P.PackagePath
               (P.IndependentBuildTool (C.mkPackageName p1) (C.mkPackageName p2))
               P.QualToplevel
-

@@ -194,7 +194,7 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
                     J.object $
                       [ comp2str c
                         J..= J.object
-                          ( [ "depends" J..= map (jdisplay . confInstId) (map (\(p,_, _) -> p) ldeps)
+                          ( [ "depends" J..= map (jdisplay . confInstId) (map (\(p, _, _) -> p) ldeps)
                             , "exe-depends" J..= map (jdisplay . confInstId) edeps
                             ]
                               ++ bin_file c

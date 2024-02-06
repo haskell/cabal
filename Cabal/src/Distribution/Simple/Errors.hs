@@ -556,6 +556,8 @@ exceptionMessage e = case e of
             . allDependencies
             $ missing
          )
+    where
+      allDependencies (Dependencies pub priv) = pub ++ concatMap private_depends priv
   CompilerDoesn'tSupportThinning ->
     "Your compiler does not support thinning and renaming on "
       ++ "package flags.  To use this feature you must use "

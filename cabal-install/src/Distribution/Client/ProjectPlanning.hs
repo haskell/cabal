@@ -5,8 +5,10 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE NoMonoLocalBinds #-}
 
 -- |
 -- /Elaborated: worked out with great care and nicety of detail; executed with great minuteness: elaborate preparations; elaborate care./
@@ -1758,7 +1760,7 @@ elaborateInstallPlan
 
                 let do_ cid =
                       let cid' = annotatedIdToConfiguredId . ci_ann_id $ cid
-                       in (cid', False, ci_alias cid ) -- filled in later in pruneInstallPlanPhase2)
+                       in (cid', False, ci_alias cid) -- filled in later in pruneInstallPlanPhase2)
                       -- 2. Read out the dependencies from the ConfiguredComponent cc0
                 let compLibDependencies =
                       -- Nub because includes can show up multiple times
@@ -1873,17 +1875,16 @@ elaborateInstallPlan
               external_lib_dep_sids = CD.select (== compSolverName) deps0
               external_exe_dep_sids = CD.select (== compSolverName) exe_deps0
 
-              external_lib_dep_pkgs = Debug.Trace.traceShow ("SIDS", external_lib_dep_sids) [ (d, alias) | (sid, alias) <- external_lib_dep_sids, d <- mapDep sid ]
-
-              external_exe_dep_pkgs_raw = [ (d, Nothing) | sid <- external_exe_dep_sids, d <- mapDep sid ]
+              external_exe_dep_sids_raw = [(sid, Nothing) | sid <- external_exe_dep_sids]
 
               -- Combine library and build-tool dependencies, for backwards
               -- compatibility (See issue #5412 and the documentation for
               -- InstallPlan.fromSolverInstallPlan), but prefer the versions
               -- specified as build-tools.
               external_exe_dep_pkgs =
-                  ordNubBy (pkgName . packageId . fst) $
-                   external_exe_dep_pkgs_raw ++ external_lib_dep_pkgs
+                [(d, alias) | (sid, alias) <- ordNubBy (pkgName . packageId . fst) $ external_exe_dep_sids_raw ++ external_lib_dep_sids, d <- mapDep sid]
+
+              external_lib_dep_pkgs = [(d, alias) | (sid, alias) <- external_lib_dep_sids, d <- mapDep sid]
 
               external_exe_map =
                 Map.fromList $
@@ -1902,7 +1903,7 @@ elaborateInstallPlan
                 Map.fromList $
                   map mkShapeMapping $
                     -- MP: TODO... should these aliases work here as well
-                    (map fst external_lib_dep_pkgs ++ map fst external_exe_dep_pkgs_raw)
+                    (map fst external_lib_dep_pkgs ++ concatMap (mapDep . fst) external_exe_dep_sids_raw)
 
               compPkgConfigDependencies =
                 [ ( pn
@@ -2454,42 +2455,43 @@ matchElabPkg p elab =
 mkCCMapping
   :: (ElaboratedPlanPackage, Maybe PrivateAlias)
   -> ((PackageName, Maybe PrivateAlias), Map ComponentName ((AnnotatedId ComponentId)))
-mkCCMapping (ep, alias) = fold ep
+mkCCMapping (ep, alias) = foldpp ep
   where
-    fold =
-       InstallPlan.foldPlanPackage
-         ( \ipkg ->
-             ( (packageName ipkg, alias)
-             , Map.singleton
-                 (ipiComponentName ipkg)
-                 -- TODO: libify
-                 ( AnnotatedId
-                     { ann_id = IPI.installedComponentId ipkg
-                     , ann_pid = packageId ipkg
-                     , ann_cname = IPI.sourceComponentName ipkg
-                     } )
-             )
-         )
-         $ \elab ->
-           let mk_aid cn =
-                 ( AnnotatedId
-                   { ann_id = elabComponentId elab
-                   , ann_pid = packageId elab
-                   , ann_cname = cn
-                   }
-                 )
-            in ( (packageName elab, alias)
-               , case elabPkgOrComp elab of
-                   ElabComponent comp ->
-                     case compComponentName comp of
-                       Nothing -> Map.empty
-                       Just n -> Map.singleton n (mk_aid n)
-                   ElabPackage _ ->
-                     Map.fromList $
-                       map
-                         (\comp -> let cn = Cabal.componentName comp in (cn, mk_aid cn))
-                         (Cabal.pkgBuildableComponents (elabPkgDescription elab))
-               )
+    foldpp =
+      InstallPlan.foldPlanPackage
+        ( \ipkg ->
+            ( (packageName ipkg, alias)
+            , Map.singleton
+                (ipiComponentName ipkg)
+                -- TODO: libify
+                ( AnnotatedId
+                    { ann_id = IPI.installedComponentId ipkg
+                    , ann_pid = packageId ipkg
+                    , ann_cname = IPI.sourceComponentName ipkg
+                    }
+                )
+            )
+        )
+        $ \elab ->
+          let mk_aid cn =
+                ( AnnotatedId
+                    { ann_id = elabComponentId elab
+                    , ann_pid = packageId elab
+                    , ann_cname = cn
+                    }
+                )
+           in ( (packageName elab, alias)
+              , case elabPkgOrComp elab of
+                  ElabComponent comp ->
+                    case compComponentName comp of
+                      Nothing -> Map.empty
+                      Just n -> Map.singleton n (mk_aid n)
+                  ElabPackage _ ->
+                    Map.fromList $
+                      map
+                        (\comp -> let cn = Cabal.componentName comp in (cn, mk_aid cn))
+                        (Cabal.pkgBuildableComponents (elabPkgDescription elab))
+              )
 
 -- | Given an 'ElaboratedPlanPackage', generate the mapping from 'ComponentId'
 -- to the shape of this package, as per mix-in linking.

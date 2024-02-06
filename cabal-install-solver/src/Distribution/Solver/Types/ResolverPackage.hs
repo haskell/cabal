@@ -15,9 +15,8 @@ import Distribution.Solver.Types.SolverPackage
 import qualified Distribution.Solver.Types.ComponentDeps as CD
 
 import Distribution.Compat.Graph (IsNode(..))
-import Distribution.Package (Package(..), HasUnitId(..), PackageName)
+import Distribution.Package (Package(..), HasUnitId(..))
 import Distribution.Simple.Utils (ordNub)
-import Distribution.ModuleName
 import Distribution.Types.Dependency (PrivateAlias)
 
 -- | The dependency resolver picks either pre-existing installed packages
@@ -37,7 +36,7 @@ instance Package (ResolverPackage loc) where
   packageId (Configured  spkg)     = packageId spkg
 
 resolverPackageLibDeps :: ResolverPackage loc -> CD.ComponentDeps [(SolverId, Maybe PrivateAlias)]
-resolverPackageLibDeps (PreExisting ipkg) = map (\x -> (x,Nothing)) <$> instSolverPkgLibDeps ipkg
+resolverPackageLibDeps (PreExisting ipkg) = instSolverPkgLibDeps ipkg
 resolverPackageLibDeps (Configured spkg) = solverPkgLibDeps spkg
 
 resolverPackageExeDeps :: ResolverPackage loc -> CD.ComponentDeps [SolverId]

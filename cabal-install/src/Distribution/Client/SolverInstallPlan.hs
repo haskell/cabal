@@ -60,6 +60,7 @@ import Distribution.Package
   , PackageId
   , PackageIdentifier (..)
   , PackageName
+  , PrivateAlias (..)
   , packageName
   , packageVersion
   )
@@ -81,6 +82,7 @@ import Distribution.Solver.Types.SolverPackage
 import Data.Array ((!))
 import qualified Data.Foldable as Foldable
 import qualified Data.Graph as OldGraph
+import qualified Data.List as List
 import qualified Data.Map as Map
 import Distribution.Compat.Graph (Graph, IsNode (..))
 import qualified Distribution.Compat.Graph as Graph
@@ -255,10 +257,10 @@ problems indepGoals index =
     ++ [ PackageCycle cycleGroup
        | cycleGroup <- Graph.cycles index
        ]
-    -- ++ [ PackageInconsistency name inconsistencies
-    --    | (name, inconsistencies) <-
-    --      dependencyInconsistencies indepGoals index
-    --   ]
+    ++ [ PackageInconsistency name inconsistencies
+       | (name, inconsistencies) <-
+          dependencyInconsistencies indepGoals index
+       ]
     ++ [ PackageStateInvalid pkg pkg'
        | pkg <- Foldable.toList index
        , Just pkg' <-
@@ -365,35 +367,49 @@ dependencyInconsistencies'
   :: SolverPlanIndex
   -> [(PackageName, [(PackageIdentifier, Version)])]
 dependencyInconsistencies' index =
-  [ (name, [(pid, packageVersion dep) | (dep, pids) <- uses, pid <- pids])
+  [ (name, [(pid, packageVersion dep) | (dep, pids) <- map snd uses, pid <- pids])
   | (name, ipid_map) <- Map.toList inverseIndex
-  , let uses = Map.elems ipid_map
-  , reallyIsInconsistent (map fst uses)
+  , let uses = Map.toAscList ipid_map -- We need a sorted list with (aliases, packages) (aliases before packages) to call groupBy on.
+  , any (reallyIsInconsistent . map (fst . snd)) $
+      -- We group together all packages without a private alias, and those with
+      -- private aliases by its scope name AND the SolverId of the package
+      -- (because, across packages, there may exist scopes with the same name).
+      List.groupBy
+        ( \x y -> case (x, y) of
+            (((Nothing, _), _), (_, _)) -> False
+            ((_, _), ((Nothing, _), _)) -> False
+            (((aliasA, sidA), _), ((aliasB, sidB), _))
+              | aliasA == aliasB ->
+                  sidA == sidB
+              | otherwise ->
+                  False
+        )
+        uses
   ]
   where
     -- For each package name (of a dependency, somewhere)
     --   and each installed ID of that package
     --     the associated package instance
-    --     and a list of reverse dependencies (as source IDs)
-    inverseIndex :: Map PackageName (Map SolverId (SolverPlanPackage, [PackageId]))
+    --     and a list of reverse dependencies (as source IDs) and the possible private scope of each revdep
+    inverseIndex :: Map PackageName (Map (Maybe PrivateAlias, SolverId) (SolverPlanPackage, [PackageId]))
     inverseIndex =
       Map.fromListWith
         (Map.unionWith (\(a, b) (_, b') -> (a, b ++ b')))
-        [ (packageName dep, Map.fromList [(sid, (dep, [packageId pkg]))])
+        [ (packageName dep, Map.fromList [((palias, sid), (dep, [(packageId pkg)]))])
         | -- For each package @pkg@
         pkg <- Foldable.toList index
         , -- Find out which @sid@ @pkg@ depends on
-        (sid, _) <- CD.nonSetupDeps (resolverPackageLibDeps pkg)
+        (sid, palias) <- CD.nonSetupDeps (resolverPackageLibDeps pkg)
         , -- And look up those @sid@ (i.e., @sid@ is the ID of @dep@)
         Just dep <- [Graph.lookup sid index]
         ]
 
     -- If, in a single install plan, we depend on more than one version of a
-    -- package, then this is ONLY okay in the (rather special) case that we
-    -- depend on precisely two versions of that package, and one of them
-    -- depends on the other. This is necessary for example for the base where
-    -- we have base-3 depending on base-4.
-    reallyIsInconsistent :: [SolverPlanPackage] -> Bool
+    -- package in the same top-level or private scope, then this is ONLY okay
+    -- in the (rather special) case that we depend on precisely two versions of
+    -- that package, and one of them depends on the other. This is necessary
+    -- for example for the base where we have base-3 depending on base-4.
+    reallyIsInconsistent :: ([SolverPlanPackage]) -> Bool
     reallyIsInconsistent [] = False
     reallyIsInconsistent [_p] = False
     reallyIsInconsistent [p1, p2] =

@@ -455,8 +455,12 @@ depsFromPkgDesc verbosity comp platform = do
       debug
         verbosity
         "Reading the list of dependencies from the package description"
-      return $ map toPVC bd  --(error "todo")
+      return $ map toPVC bd
   where
+    -- It doesn't seem critical that we report the scope in which the package
+    -- is outdated, because, in order for that report to be consistent with the
+    -- rest of Cabal, we must first consider how cabal outdated and cabal
+    -- freeze work wrt private dependencies (TODO).
     toPVC (_alias, (Dependency pn vr _)) = PackageVersionConstraint pn vr
 
 -- | Various knobs for customising the behaviour of 'listOutdated'.

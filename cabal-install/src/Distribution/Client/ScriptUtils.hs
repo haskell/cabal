@@ -100,7 +100,8 @@ import Distribution.Fields
   , readFields
   )
 import Distribution.PackageDescription
-  ( ignoreConditions, Dependencies(..)
+  ( Dependencies (..)
+  , ignoreConditions
   )
 import Distribution.PackageDescription.FieldGrammar
   ( executableFieldGrammar

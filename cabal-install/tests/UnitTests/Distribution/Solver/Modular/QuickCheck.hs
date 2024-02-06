@@ -24,6 +24,8 @@ import Distribution.Utils.ShortText (ShortText)
 
 import Distribution.Client.Setup (defaultMaxBackjumps)
 
+import Distribution.ModuleName
+import Distribution.Types.Dependency (PrivateAlias (..))
 import Distribution.Types.LibraryVisibility
 import Distribution.Types.PackageName
 import Distribution.Types.UnqualComponentName
@@ -34,10 +36,10 @@ import Distribution.Solver.Types.ComponentDeps
   , ComponentDeps
   )
 import qualified Distribution.Solver.Types.ComponentDeps as CD
+import qualified Distribution.Solver.Types.ComponentDeps as P
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PackageConstraint
 import qualified Distribution.Solver.Types.PackagePath as P
-import qualified Distribution.Solver.Types.ComponentDeps as P
 import Distribution.Solver.Types.PkgConfigDb
   ( pkgConfigDbFromList
   )
@@ -76,7 +78,8 @@ tests =
               ReverseOrder -> reverse targets
          in counterexample (showResults r1 r2) $
               noneReachedBackjumpLimit [r1, r2] ==>
-                isRight (resultPlan r1) === isRight (resultPlan r2)
+                isRight (resultPlan r1)
+                  === isRight (resultPlan r2)
   , testPropertyWithSeed
       "solvable without --independent-goals => solvable with --independent-goals"
       $ \test reorderGoals ->
@@ -93,7 +96,8 @@ tests =
                 Nothing
          in counterexample (showResults r1 r2) $
               noneReachedBackjumpLimit [r1, r2] ==>
-                isRight (resultPlan r1) `implies` isRight (resultPlan r2)
+                isRight (resultPlan r1)
+                  `implies` isRight (resultPlan r2)
   , testPropertyWithSeed "backjumping does not affect solvability" $
       \test reorderGoals indepGoals ->
         let r1 = solve' (EnableBackjumping True) test
@@ -109,7 +113,8 @@ tests =
                 Nothing
          in counterexample (showResults r1 r2) $
               noneReachedBackjumpLimit [r1, r2] ==>
-                isRight (resultPlan r1) === isRight (resultPlan r2)
+                isRight (resultPlan r1)
+                  === isRight (resultPlan r2)
   , testPropertyWithSeed "fine-grained conflicts does not affect solvability" $
       \test reorderGoals indepGoals ->
         let r1 = solve' (FineGrainedConflicts True) test
@@ -125,7 +130,8 @@ tests =
                 Nothing
          in counterexample (showResults r1 r2) $
               noneReachedBackjumpLimit [r1, r2] ==>
-                isRight (resultPlan r1) === isRight (resultPlan r2)
+                isRight (resultPlan r1)
+                  === isRight (resultPlan r2)
   , testPropertyWithSeed "prefer oldest does not affect solvability" $
       \test reorderGoals indepGoals ->
         let r1 = solve' (PreferOldest True) test
@@ -141,7 +147,8 @@ tests =
                 Nothing
          in counterexample (showResults r1 r2) $
               noneReachedBackjumpLimit [r1, r2] ==>
-                isRight (resultPlan r1) === isRight (resultPlan r2)
+                isRight (resultPlan r1)
+                  === isRight (resultPlan r2)
   , -- The next two tests use --no-count-conflicts, because the goal order used
     -- with --count-conflicts depends on the total set of conflicts seen by the
     -- solver. The solver explores more of the tree and encounters more
@@ -166,7 +173,8 @@ tests =
                 Nothing
          in counterexample (showResults r1 r2) $
               noneReachedBackjumpLimit [r1, r2] ==>
-                resultPlan r1 === resultPlan r2
+                resultPlan r1
+                  === resultPlan r2
   , testPropertyWithSeed
       "fine-grained conflicts does not affect the result (with static goal order)"
       $ \test reorderGoals indepGoals ->
@@ -183,7 +191,8 @@ tests =
                 Nothing
          in counterexample (showResults r1 r2) $
               noneReachedBackjumpLimit [r1, r2] ==>
-                resultPlan r1 === resultPlan r2
+                resultPlan r1
+                  === resultPlan r2
   ]
   where
     noneReachedBackjumpLimit :: [Result] -> Bool
@@ -620,6 +629,8 @@ instance Hashable OptionalStanza
 instance Hashable FlagName
 instance Hashable PackageName
 instance Hashable ShortText
+instance Hashable ModuleName
+instance Hashable PrivateAlias
 
 deriving instance Generic (Variable pn)
 deriving instance Generic (P.Qualified a)

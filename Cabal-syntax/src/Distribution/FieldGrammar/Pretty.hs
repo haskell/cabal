@@ -86,16 +86,6 @@ instance FieldGrammar Pretty PrettyFieldGrammar where
     where
       pp v s = ppField fn (prettyVersioned v (pack' _pack (aview l s)))
 
-  monoidalFieldPrefixAla fnPfx _pack _unpack l = PrettyFG pp
-    where
-      pp v s =
-        let d = _pack (aview l s)
-        in concatMap (doOne v) d
-
-      doOne v (h, l) =
-        let pfxString = PP.render (prettyVersioned v h)
-        in ppField (fnPfx <> fromString " " <> toUTF8BS pfxString) (prettyVersioned v l)
-
   prefixedFields _fnPfx l = PrettyFG (\_ -> pp . aview l)
     where
       pp xs =

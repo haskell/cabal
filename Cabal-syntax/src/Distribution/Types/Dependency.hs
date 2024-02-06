@@ -11,13 +11,11 @@ module Distribution.Types.Dependency
   , depLibraries
   , simplifyDependency
   , mainLibSet
-  , PrivateDependency(..)
-  , PrivateAlias(..)
-
-  , Dependencies(..)
-  , IsPrivate(..)
+  , PrivateDependency (..)
+  , PrivateAlias (..)
+  , Dependencies (..)
+  , IsPrivate (..)
   , mapDependencies
-  , allDependencies
   ) where
 
 import Distribution.Compat.Prelude
@@ -27,7 +25,7 @@ import Distribution.Types.VersionRange (isAnyVersionLight)
 import Distribution.Version (VersionRange, anyVersion, simplifyVersionRange)
 
 import Distribution.CabalSpecVersion
-import Distribution.Compat.CharParsing (char, spaces, CharParsing (string), anyChar, satisfy)
+import Distribution.Compat.CharParsing (char, spaces)
 import Distribution.Compat.Parsing (between, option)
 import Distribution.Parsec
 import Distribution.Pretty
@@ -35,14 +33,14 @@ import Distribution.Types.LibraryName
 import Distribution.Types.PackageName
 import Distribution.Types.UnqualComponentName
 
-import qualified Distribution.Compat.NonEmptySet as NES
-import qualified Text.PrettyPrint as PP
-import Distribution.ModuleName
 import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.Compat.NonEmptySet as NES
+import Distribution.ModuleName
+import qualified Text.PrettyPrint as PP
 
-data IsPrivate = Private (PrivateAlias, [PackageName]) | Public deriving (Show, Ord, Read, Eq)
+data IsPrivate = Private PrivateAlias | Public deriving (Show, Ord, Read, Eq)
 
-data Dependencies = Dependencies { publicDependencies :: [Dependency], privateDependencies :: [PrivateDependency] } deriving (Eq, Show, Generic, Data)
+data Dependencies = Dependencies {publicDependencies :: [Dependency], privateDependencies :: [PrivateDependency]} deriving (Eq, Show, Generic, Data)
 
 newtype PrivateAlias = PrivateAlias ModuleName deriving (Show, Eq, Generic, Data, Read, Ord)
 
@@ -52,14 +50,21 @@ instance Pretty PrivateAlias where
 instance Parsec PrivateAlias where
   parsec = PrivateAlias <$> parsec
 
+-- | Construct a 'PrivateAlias' from a valid module name 'String'.
+--
+-- This is just a convenience function intended for valid module strings. It is
+-- an error if it is used with a string that is not a valid module name. If you
+-- are parsing user input then use 'Distribution.Text.simpleParse' instead.
+instance IsString PrivateAlias where
+  fromString = PrivateAlias . fromString
 
-data PrivateDependency = PrivateDependency { private_alias :: PrivateAlias, private_depends :: [Dependency] } deriving (Eq, Show, Generic, Data, Read, Ord)
+data PrivateDependency = PrivateDependency {private_alias :: PrivateAlias, private_depends :: [Dependency]} deriving (Eq, Show, Generic, Data, Read, Ord)
 
 instance Parsec PrivateDependency where
   parsec = do
     alias <- parsec
     P.spaces
-    P.string "with"
+    _ <- P.string "with"
     P.spaces
     let parensLax p = P.between (P.char '(' >> P.spaces) (P.char ')' >> P.spaces) p
     deps <- parensLax (parsecCommaList parsec)
@@ -68,14 +73,6 @@ instance Parsec PrivateDependency where
 instance Pretty PrivateDependency where
   pretty (PrivateDependency alias deps) = PP.hsep [pretty alias, PP.text "with", PP.parens (PP.hsep (PP.punctuate PP.comma (map pretty deps)))]
 
--- Footgun
-flattenPrivateDepends :: Dependencies -> [Dependency]
-flattenPrivateDepends (Dependencies _ priv) = concatMap private_depends priv
-
--- Footgun
-allDependencies :: Dependencies -> [Dependency]
-allDependencies (Dependencies pub priv) = pub ++ concatMap private_depends priv
-
 instance Semigroup Dependencies where
   (Dependencies p1 pr1) <> (Dependencies p2 pr2) = Dependencies (p1 <> p2) (pr1 <> pr2)
 
@@ -83,7 +80,7 @@ instance Monoid Dependencies where
   mempty = Dependencies mempty mempty
 
 mapDependencies :: (Dependency -> Dependency) -> Dependencies -> Dependencies
-mapDependencies f (Dependencies pub priv) = Dependencies (map f pub) (map (\d -> d { private_depends = map f (private_depends d) }) priv)
+mapDependencies f (Dependencies pub priv) = Dependencies (map f pub) (map (\d -> d{private_depends = map f (private_depends d)}) priv)
 
 -- | Describes a dependency on a source package (API)
 --
@@ -143,6 +140,7 @@ instance NFData PrivateAlias where rnf = genericRnf
 instance Binary Dependencies
 instance Structured Dependencies
 instance NFData Dependencies where rnf = genericRnf
+
 -- |
 --
 -- >>> prettyShow $ Dependency (mkPackageName "pkg") anyVersion mainLibSet
@@ -206,7 +204,7 @@ instance Pretty Dependency where
 -- >>> map (`simpleParsec'` "mylib:sub") [CabalSpecV2_4, CabalSpecV3_0] :: [Maybe Dependency]
 -- [Nothing,Just (Dependency (PackageName "mylib") (OrLaterVersion (mkVersion [0])) (fromNonEmpty (LSubLibName (UnqualComponentName "sub") :| [])))]
 instance Parsec Dependency where
-  parsec :: forall m . CabalParsing m => m Dependency
+  parsec :: forall m. CabalParsing m => m Dependency
   parsec = do
     name <- parsec
 

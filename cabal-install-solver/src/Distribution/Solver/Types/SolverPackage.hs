@@ -6,13 +6,12 @@ module Distribution.Solver.Types.SolverPackage
 import Distribution.Solver.Compat.Prelude
 import Prelude ()
 
-import Distribution.Package ( Package(..), PackageName )
+import Distribution.Package ( Package(..) )
 import Distribution.PackageDescription ( FlagAssignment )
 import Distribution.Solver.Types.ComponentDeps ( ComponentDeps )
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.SolverId
 import Distribution.Solver.Types.SourcePackage
-import Distribution.ModuleName
 import Distribution.Types.Dependency (PrivateAlias)
 
 -- | A 'SolverPackage' is a package specified by the dependency solver.

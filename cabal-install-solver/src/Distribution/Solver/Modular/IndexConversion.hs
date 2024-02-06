@@ -41,7 +41,6 @@ import Distribution.Solver.Modular.Index
 import Distribution.Solver.Modular.Package
 import Distribution.Solver.Modular.Tree
 import Distribution.Solver.Modular.Version
-import Distribution.Solver.Types.PackagePath
 
 -- | Convert both the installed package index and the source package
 -- index into one uniform solver index.
@@ -560,11 +559,8 @@ convLibDeps dr (Dependency pn vr libs) =
 
 convLibDepsAs :: DependencyReason PN -> PrivateDependency -> [LDep PN]
 convLibDepsAs dr (PrivateDependency alias deps) =
-    [ LDep dr $ Dep (PkgComponent pn (ExposedLib lib)) (Private (alias, scope)) (Constrained vr)
+    [ LDep dr $ Dep (PkgComponent pn (ExposedLib lib)) (Private alias) (Constrained vr)
     | Dependency pn vr libs <- deps, lib <- NonEmptySet.toList libs ]
-  where
-    scope = map depPkgName deps
-
 
 -- | Convert a Cabal dependency on an executable (build-tools) to a solver-specific dependency.
 convExeDep :: DependencyReason PN -> ExeDependency -> LDep PN

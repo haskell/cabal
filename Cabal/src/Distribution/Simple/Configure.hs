@@ -696,9 +696,9 @@ computeLocalBuildConfig cfg comp programDb = do
 
 data PackageInfo = PackageInfo
   { internalPackageSet :: Set LibraryName
-  , promisedDepsSet :: Map (PackageName, ComponentName) ComponentId
+  , promisedDepsSet :: Map (PackageName, ComponentName, Maybe PrivateAlias) ComponentId
   , installedPackageSet :: InstalledPackageIndex
-  , requiredDepsMap :: Map (PackageName, ComponentName) InstalledPackageInfo
+  , requiredDepsMap :: Map (PackageName, ComponentName, Maybe PrivateAlias) InstalledPackageInfo
   }
 
 configurePackage
@@ -2020,7 +2020,7 @@ combinedConstraints constraints dependencies installedPackages = do
         -- NB: do NOT use the packageName from
         -- dependenciesPkgInfo!
         [ ((pn, cname, alias), pkg)
-        | (pn, cname, alias, _,  Just pkg) <- dependenciesPkgInfo
+        | (pn, cname, alias, _, Just pkg) <- dependenciesPkgInfo
         ]
 
     -- The dependencies along with the installed package info, if it exists

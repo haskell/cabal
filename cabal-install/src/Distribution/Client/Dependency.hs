@@ -1,3 +1,5 @@
+{-# LANGUAGE TupleSections #-}
+
 -----------------------------------------------------------------------------
 
 -----------------------------------------------------------------------------
@@ -894,7 +896,7 @@ validateSolverResult
   -> [ResolverPackage UnresolvedPkgLoc]
   -> SolverInstallPlan
 validateSolverResult platform comp indepGoals pkgs =
-  case [] of --planPackagesProblems platform comp pkgs of
+  case planPackagesProblems platform comp pkgs of
     [] -> case SolverInstallPlan.new indepGoals graph of
       Right plan -> plan
       Left problems -> error (formatPlanProblems problems)
@@ -960,10 +962,10 @@ data PackageProblem
   = DuplicateFlag PD.FlagName
   | MissingFlag PD.FlagName
   | ExtraFlag PD.FlagName
-  | DuplicateDeps [PackageId]
-  | MissingDep Dependency
-  | ExtraDep PackageId
-  | InvalidDep Dependency PackageId
+  | DuplicateDeps [(PackageId, Maybe PrivateAlias)]
+  | MissingDep Dependency (Maybe PrivateAlias)
+  | ExtraDep PackageId (Maybe PrivateAlias)
+  | InvalidDep Dependency PackageId (Maybe PrivateAlias)
 
 showPackageProblem :: PackageProblem -> String
 showPackageProblem (DuplicateFlag flag) =
@@ -974,20 +976,23 @@ showPackageProblem (ExtraFlag flag) =
   "extra flag given that is not used by the package: " ++ PD.unFlagName flag
 showPackageProblem (DuplicateDeps pkgids) =
   "duplicate packages specified as selected dependencies: "
-    ++ intercalate ", " (map prettyShow pkgids)
-showPackageProblem (MissingDep dep) =
+    ++ intercalate ", " (map (\(x, y) -> maybe "" ((<> ".") . prettyShow) y <> prettyShow x) pkgids)
+showPackageProblem (MissingDep dep palias) =
   "the package has a dependency "
+    ++ maybe "" ((<> ".") . prettyShow) palias
     ++ prettyShow dep
     ++ " but no package has been selected to satisfy it."
-showPackageProblem (ExtraDep pkgid) =
+showPackageProblem (ExtraDep pkgid palias) =
   "the package configuration specifies "
+    ++ maybe "" ((<> ".") . prettyShow) palias
     ++ prettyShow pkgid
     ++ " but (with the given flag assignment) the package does not actually"
     ++ " depend on any version of that package."
-showPackageProblem (InvalidDep dep pkgid) =
+showPackageProblem (InvalidDep dep pkgid palias) =
   "the package depends on "
     ++ prettyShow dep
     ++ " but the configuration specifies "
+    ++ maybe "" ((<> ".") . prettyShow) palias
     ++ prettyShow pkgid
     ++ " which does not satisfy the dependency."
 
@@ -1012,13 +1017,18 @@ configuredPackageProblems
          | pkgs <-
             CD.nonSetupDeps
               ( fmap
-                  (duplicatesBy (comparing packageName))
+                  (duplicatesBy (comparing (\(x, y) -> (packageName x, y))))
                   specifiedDeps1
               )
          ]
-      ++ [MissingDep dep | OnlyInLeft dep <- mergedDeps]
-      ++ [ExtraDep pkgid | OnlyInRight pkgid <- mergedDeps]
-      ++ [ InvalidDep dep pkgid | InBoth dep pkgid <- mergedDeps, not (packageSatisfiesDependency pkgid dep)
+      ++ [MissingDep dep alias | OnlyInLeft (dep, alias) <- mergedDeps]
+      ++ [ExtraDep pkgid palias | OnlyInRight (pkgid, palias) <- mergedDeps]
+      ++ [ InvalidDep dep pkgid palias
+         | InBoth (dep, palias) (pkgid, _palias) <- mergedDeps
+         , assert
+            (palias == _palias)
+            not
+            (packageSatisfiesDependency pkgid dep)
          ]
     where
       -- TODO: sanity tests on executable deps
@@ -1026,10 +1036,10 @@ configuredPackageProblems
       thisPkgName :: PackageName
       thisPkgName = packageName (srcpkgDescription pkg)
 
-      specifiedDeps1 :: ComponentDeps [PackageId]
-      specifiedDeps1 = fmap (map (solverSrcId . fst)) specifiedDeps0
+      specifiedDeps1 :: ComponentDeps [(PackageId, Maybe PrivateAlias)]
+      specifiedDeps1 = fmap (map (first solverSrcId)) specifiedDeps0
 
-      specifiedDeps :: [PackageId]
+      specifiedDeps :: [(PackageId, Maybe PrivateAlias)]
       specifiedDeps = CD.flatDeps specifiedDeps1
 
       mergedFlags :: [MergeResult PD.FlagName PD.FlagName]
@@ -1047,19 +1057,19 @@ configuredPackageProblems
 
       dependencyName (Dependency name _ _) = name
 
-      mergedDeps :: [MergeResult Dependency PackageId]
+      mergedDeps :: [MergeResult (Dependency, Maybe PrivateAlias) (PackageId, Maybe PrivateAlias)]
       mergedDeps = mergeDeps requiredDeps specifiedDeps
 
       mergeDeps
-        :: [Dependency]
-        -> [PackageId]
-        -> [MergeResult Dependency PackageId]
+        :: [(Dependency, Maybe PrivateAlias)]
+        -> [(PackageId, Maybe PrivateAlias)]
+        -> [MergeResult (Dependency, Maybe PrivateAlias) (PackageId, Maybe PrivateAlias)]
       mergeDeps required specified =
         let sortNubOn f = nubBy ((==) `on` f) . sortBy (compare `on` f)
          in mergeBy
-              (\dep pkgid -> dependencyName dep `compare` packageName pkgid)
-              (sortNubOn dependencyName required)
-              (sortNubOn packageName specified)
+              (\(dep, alias1) (pkgid, alias2) -> (dependencyName dep, alias1) `compare` (packageName pkgid, alias2))
+              (sortNubOn (first dependencyName) required)
+              (sortNubOn (first packageName) specified)
 
       compSpec = enableStanzas stanzas
       -- TODO: It would be nicer to use ComponentDeps here so we can be more
@@ -1068,7 +1078,7 @@ configuredPackageProblems
       -- have to allow for duplicates when we fold specifiedDeps; once we have
       -- proper ComponentDeps here we should get rid of the `nubOn` in
       -- `mergeDeps`.
-      requiredDeps :: [Dependency]
+      requiredDeps :: [(Dependency, Maybe PrivateAlias)]
       requiredDeps =
         -- TODO: use something lower level than finalizePD
         case finalizePD
@@ -1079,7 +1089,7 @@ configuredPackageProblems
           cinfo
           []
           (srcpkgDescription pkg) of
-          Right (resolvedPkg, _) -> error "todo"
+          Right (resolvedPkg, _) ->
             -- we filter self/internal dependencies. They are still there.
             -- This is INCORRECT.
             --
@@ -1087,12 +1097,12 @@ configuredPackageProblems
             -- but no finalizePDs picks components we are not building, eg. exes.
             -- See #3775
             --
-            {-
             filter
-              ((/= thisPkgName) . dependencyName)
-              (PD.enabledBuildDepends resolvedPkg compSpec)
-              ++ maybe [] PD.setupDepends (PD.setupBuildInfo resolvedPkg)
-              -}
+              ((/= thisPkgName) . dependencyName . fst)
+              ( map (\(x, y) -> (y, x)) $
+                  PD.enabledBuildDepends resolvedPkg compSpec
+              )
+              ++ maybe [] (map (,Nothing) . PD.setupDepends) (PD.setupBuildInfo resolvedPkg)
           Left _ ->
             error "configuredPackageInvalidDeps internal error"
 

@@ -1,0 +1,14 @@
+cabal-version:      3.0
+name:               libA
+version:            0.2.0.0
+license:            NONE
+build-type:         Simple
+
+library
+    exposed-modules:  MyLib
+    build-depends:    libC
+    -- Must pick libC == 0.1
+    private-build-depends: G0 with (libB == 0.2.0.0,libD)
+    hs-source-dirs:   .
+    default-language: Haskell2010
+    default-extensions: NoImplicitPrelude

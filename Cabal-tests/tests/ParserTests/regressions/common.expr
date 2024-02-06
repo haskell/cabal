@@ -118,12 +118,16 @@ GenericPackageDescription {
               (PackageName "ghc-prim")
               (OrLaterVersion (mkVersion [0]))
               mainLibSet],
+          targetPrivateBuildDepends = [],
           mixins = []}},
-      condTreeConstraints = [
-        Dependency
-          (PackageName "ghc-prim")
-          (OrLaterVersion (mkVersion [0]))
-          mainLibSet],
+      condTreeConstraints =
+      Dependencies {
+        publicDependencies = [
+          Dependency
+            (PackageName "ghc-prim")
+            (OrLaterVersion (mkVersion [0]))
+            mainLibSet],
+        privateDependencies = []},
       condTreeComponents = []},
   condSubLibraries = [],
   condForeignLibs = [],
@@ -194,12 +198,16 @@ GenericPackageDescription {
                 (PackageName "HUnit")
                 (OrLaterVersion (mkVersion [0]))
                 mainLibSet],
+            targetPrivateBuildDepends = [],
             mixins = []},
           testCodeGenerators = []},
-        condTreeConstraints = [
-          Dependency
-            (PackageName "HUnit")
-            (OrLaterVersion (mkVersion [0]))
-            mainLibSet],
+        condTreeConstraints =
+        Dependencies {
+          publicDependencies = [
+            Dependency
+              (PackageName "HUnit")
+              (OrLaterVersion (mkVersion [0]))
+              mainLibSet],
+          privateDependencies = []},
         condTreeComponents = []}],
   condBenchmarks = []}

@@ -1,6 +1,6 @@
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE BangPatterns #-}
 
 -- | See <https://github.com/ezyang/ghc-proposals/blob/backpack/proposals/0000-backpack.rst>
 module Distribution.Backpack.LinkedComponent
@@ -150,7 +150,6 @@ toLinkedComponent
               )
             _ -> ([], [], [])
       src_hidden = otherModules (componentBuildInfo component)
-
 
       -- HERE??
       -- Take each included ComponentId and resolve it into an

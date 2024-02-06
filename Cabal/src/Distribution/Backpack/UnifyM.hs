@@ -625,25 +625,19 @@ convertInclude
 
     -- Expand the alias
     let prepend_alias mn = case alias of
-                          Just (PrivateAlias alias_mn) -> fromComponents (components alias_mn ++ components mn)
-                          Nothing -> mn
-
+          Just (PrivateAlias alias_mn) -> fromComponents (components alias_mn ++ components mn)
+          Nothing -> mn
 
     let pre_prov_scope' = map (first prepend_alias) pre_prov_scope
 
     let prov_rns'' =
-         case prov_rns' of
-           DefaultRenaming -> case alias of
-                                Nothing -> DefaultRenaming
-                                Just {} -> ModuleRenaming (map ((\x -> (x, prepend_alias x)) . fst) (pre_prov_scope))
-
-
-           ModuleRenaming rn -> ModuleRenaming (map (\(x, y) -> (x, prepend_alias y)) rn)
-           -- Can't happen, expanded avove
-           HidingRenaming {} -> error "unreachabel"
-
-
-
+          case prov_rns' of
+            DefaultRenaming -> case alias of
+              Nothing -> DefaultRenaming
+              Just{} -> ModuleRenaming (map ((\x -> (x, prepend_alias x)) . fst) (pre_prov_scope))
+            ModuleRenaming rn -> ModuleRenaming (map (\(x, y) -> (x, prepend_alias y)) rn)
+            -- Can't happen, expanded avove
+            HidingRenaming{} -> error "unreachabel"
 
     let prov_scope =
           modSubst req_subst $

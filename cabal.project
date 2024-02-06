@@ -1,7 +1,7 @@
 import: cabal.project.latest-ghc
 
 packages: Cabal/
---packages: cabal-testsuite/
+packages: cabal-testsuite/
 packages: Cabal-syntax/
 packages: cabal-install/
 packages: cabal-install-solver/
@@ -27,3 +27,4 @@ constraints: these -assoc
 program-options
   ghc-options: -fno-ignore-asserts
 
+allow-newer: tracetree:*

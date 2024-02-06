@@ -339,17 +339,20 @@ unionVersionRanges' (vr, cs) (vr', cs') = (unionVersionRanges vr vr', cs <> cs')
 
 toDepMapUnion :: Dependencies -> DepMapUnion
 toDepMapUnion ds =
-  DepMapUnion $ Map.fromListWith unionVersionRanges'
-    ([((p, Public), (vr, cs)) | Dependency p vr cs <- publicDependencies ds]
-    ++ [((p, Private (private_alias d, pns)), (vr, cs)) | d <- privateDependencies ds, let pns = map depPkgName (private_depends d), Dependency p vr cs <- private_depends d])
+  DepMapUnion $
+    Map.fromListWith
+      unionVersionRanges'
+      ( [((p, Public), (vr, cs)) | Dependency p vr cs <- publicDependencies ds]
+          ++ [((p, Private (private_alias d)), (vr, cs)) | d <- privateDependencies ds, Dependency p vr cs <- private_depends d]
+      )
 
 fromDepMapUnion :: DepMapUnion -> Dependencies
 fromDepMapUnion m =
   Dependencies
     [Dependency p vr cs | ((p, Public), (vr, cs)) <- Map.toList (unDepMapUnion m)]
     [PrivateDependency alias deps | (alias, deps) <- Map.toList priv_deps]
-    where
-      priv_deps = Map.fromListWith (++) [(sn, [Dependency p vr cs]) | ((p, Private (sn, _)), (vr, cs)) <- Map.toList (unDepMapUnion m)]
+  where
+    priv_deps = Map.fromListWith (++) [(sn, [Dependency p vr cs]) | ((p, Private sn), (vr, cs)) <- Map.toList (unDepMapUnion m)]
 
 freeVars :: CondTree ConfVar c a -> [FlagName]
 freeVars t = [f | PackageFlag f <- freeVars' t]
@@ -534,8 +537,10 @@ finalizePD
           | otherwise -> [b, not b]
       -- flagDefaults = map (\(n,x:_) -> (n,x)) flagChoices
       check ds =
-        let missingDeps = Dependencies (filter (not . satisfyDep Nothing) (publicDependencies ds))
-                                       (mapMaybe (\(PrivateDependency priv ds) -> case filter (not . satisfyDep (Just priv)) ds of { [] -> Nothing; ds' -> Just (PrivateDependency priv ds') })  (privateDependencies ds))
+        let missingDeps =
+              Dependencies
+                (filter (not . satisfyDep Nothing) (publicDependencies ds))
+                (mapMaybe (\(PrivateDependency priv pds) -> case filter (not . satisfyDep (Just priv)) pds of [] -> Nothing; pds' -> Just (PrivateDependency priv pds')) (privateDependencies ds))
          in if null (publicDependencies missingDeps) && null (privateDependencies missingDeps)
               then DepOk
               else MissingDeps missingDeps

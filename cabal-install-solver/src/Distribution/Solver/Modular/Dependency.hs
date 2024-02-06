@@ -175,8 +175,8 @@ data QualifyOptions = QO {
 --
 -- NOTE: It's the _dependencies_ of a package that may or may not be independent
 -- from the package itself. Package flag choices must of course be consistent.
-qualifyDeps :: QualifyOptions -> QPN -> FlaggedDeps PN -> FlaggedDeps QPN
-qualifyDeps QO{..} (Q pp@(PackagePath ns q) pn) = go
+qualifyDeps :: QualifyOptions -> RevDepMap -> QPN -> FlaggedDeps PN -> FlaggedDeps QPN
+qualifyDeps QO{..} rdm (Q pp@(PackagePath ns q) pn) = go
   where
     go :: FlaggedDeps PN -> FlaggedDeps QPN
     go = map go1
@@ -204,7 +204,7 @@ qualifyDeps QO{..} (Q pp@(PackagePath ns q) pn) = go
     goD (Dep dep@(PkgComponent qpn (ExposedExe _)) is_private ci) _ =
         Dep (Q (PackagePath (IndependentBuildTool pn qpn) QualToplevel) <$> dep) is_private ci
     goD (Dep dep@(PkgComponent qpn (ExposedLib _)) is_private ci) comp
-      | Private (qpn, pkgs) <- is_private  = Dep (Q (PackagePath ns (QualAlias pn comp qpn pkgs))  <$> dep) is_private ci
+      | Private pq <- is_private  = Dep (Q (PackagePath ns (QualAlias pn comp pq))  <$> dep) is_private ci
       | qBase qpn   = Dep (Q (PackagePath ns (QualBase pn)) <$> dep) is_private ci
       | qSetup comp = Dep (Q (PackagePath (IndependentComponent pn ComponentSetup) QualToplevel) <$> dep) is_private ci
       | otherwise   = Dep (Q (PackagePath ns (inheritedQ qpn)    ) <$> dep) is_private ci
@@ -222,7 +222,6 @@ qualifyDeps QO{..} (Q pp@(PackagePath ns q) pn) = go
     -- Solution: Namespace = (BTD-namespace pkg lib-foo happy-btd)
 
 
-
     -- If P has a setup dependency on Q, and Q has a regular dependency on R, then
     -- we say that the 'Setup' qualifier is inherited: P has an (indirect) setup
     -- dependency on R. We do not do this for the base qualifier however.
@@ -231,15 +230,18 @@ qualifyDeps QO{..} (Q pp@(PackagePath ns q) pn) = go
     -- and base dependencies we override the existing qualifier. See #3160 for
     -- a detailed discussion.
     inheritedQ :: PackageName -> Qualifier
-    inheritedQ pn = case q of
+    inheritedQ pnx = case q of
                    QualToplevel -> QualToplevel
                    QualBase {}  -> QualToplevel
-                   -- MP: TODO, check if package name is in same scope (if so, persist)
-                   QualAlias _ _ _ pkgs ->
-                    if pn `elem` pkgs
-                      then traceShow ("INHERITED", pn, pkgs) q
-                      else QualToplevel
---                    traceShow (alias, pkgs) QualToplevel
+                   -- check if package name is in same private scope (if so, persist)
+                   QualAlias {} ->
+                     -- Lookup this dependency in the reverse dependency map
+                     -- with the package-path of the package that introduced
+                     -- this dependency, which will match if this dependency is
+                     -- included in the same private scope.
+                     case M.lookup (Q pp pnx) rdm of
+                       Just _x -> q -- found, use same private qualifier
+                       Nothing -> QualToplevel -- not found, use top level qual
 
     -- Should we qualify this goal with the 'Base' package path?
     qBase :: PN -> Bool

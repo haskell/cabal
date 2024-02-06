@@ -31,9 +31,8 @@ module Distribution.Simple.Setup.Config
   , configureArgs
   , configureOptions
   , installDirsOptions
-
   -- TODO: Move
-  , AliasDependency(..)
+  , AliasDependency (..)
   ) where
 
 import Distribution.Compat.Prelude hiding (get)
@@ -752,7 +751,6 @@ configureOptions showOrParseArgs =
               (parsecToReadE (const "dependency expected") ((\x -> [x]) `fmap` parsec))
               (map prettyShow)
           )
-
        , option
           ""
           ["dependency"]
@@ -902,15 +900,15 @@ showProfDetailLevelFlag :: Flag ProfDetailLevel -> [String]
 showProfDetailLevelFlag NoFlag = []
 showProfDetailLevelFlag (Flag dl) = [showProfDetailLevel dl]
 
-parsecAliasDependency :: ParsecParser AliasDependency
-parsecAliasDependency = do
+_parsecAliasDependency :: ParsecParser AliasDependency
+_parsecAliasDependency = do
   pn <- parsec
   _ <- P.char '='
   gc <- parsecGivenComponent
   return $ AliasDependency pn gc
 
-prettyAliasDependency :: AliasDependency -> String
-prettyAliasDependency (AliasDependency pn gc) =
+_prettyAliasDependency :: AliasDependency -> String
+_prettyAliasDependency (AliasDependency pn gc) =
   prettyShow pn
     ++ "="
     ++ prettyGivenComponent gc
@@ -928,8 +926,8 @@ parsecGivenComponent = do
   _ <- P.char '='
   cid <- parsec
   alias <- P.option Nothing $ do
-            _ <- P.char '='
-            Just <$> parsec
+    _ <- P.char '='
+    Just <$> parsec
   return $ GivenComponent pn ln cid alias
 
 prettyGivenComponent :: GivenComponent -> String

@@ -12,11 +12,9 @@ module Distribution.Solver.Types.PackagePath
 import Distribution.Solver.Compat.Prelude
 import Prelude ()
 import Distribution.Package (PackageName, PrivateAlias)
-import Distribution.Pretty (pretty, flatStyle)
+import Distribution.Pretty (Pretty, pretty, flatStyle)
 import qualified Text.PrettyPrint as Disp
-import Distribution.Types.ComponentName
 import Distribution.Solver.Types.ComponentDeps
-import Distribution.ModuleName
 
 -- | A package path consists of a namespace and a package path inside that
 -- namespace.
@@ -65,7 +63,7 @@ data Qualifier =
   | QualBase PackageName
 
   -- A goal which is solved per-component
-  | QualAlias PackageName Component PrivateAlias [PackageName]
+  | QualAlias PackageName Component PrivateAlias
 
 
 -- package: qux
@@ -94,8 +92,17 @@ data Qualifier =
 --    =>>> PackagePath DefaultNamespace QualTopLevel "baz" =>> 0.6
 --
 --
--- package a
---  :private-build-depends: G0 with (b, d)
+-- package pkg-a
+--  :private-build-depends: G0 with (b==1, d)
+--  build-depends: b==2, d
+--
+--  privatescope: b,d
+--  b -> c
+--  c -> d
+--
+--  enclosure
+--    anything from G0 cannot be exposed by pkg-a
+--  solver
 --
 -- package b-0.1
 --  :build-depends: x
@@ -116,8 +123,6 @@ data Qualifier =
 -- Closure property violated by `b == 0.3` and `c == 0.2` THEN closure property is violated.
 --
 -- Need to be able to implicitly introduce c into the private scope so that the closure property holds.
---
---
 --
 --
 --
@@ -185,7 +190,10 @@ data Qualifier =
 dispQualifier :: Qualifier -> Disp.Doc
 dispQualifier QualToplevel = Disp.empty
 dispQualifier (QualBase pn)  = pretty pn <<>> Disp.text ".bb."
-dispQualifier (QualAlias pn c alias _) = pretty pn <<>> Disp.text ":" <<>> pretty c <<>> Disp.text ":" <<>> pretty alias <<>> Disp.text "."
+dispQualifier (QualAlias pn c alias) = pretty pn <<>> Disp.text ":" <<>> pretty c <<>> Disp.text ":" <<>> pretty alias <<>> Disp.text "."
+
+instance Pretty Qualifier where
+  pretty = dispQualifier
 
 -- | A qualified entity. Pairs a package path with the entity.
 data Qualified a = Q PackagePath a

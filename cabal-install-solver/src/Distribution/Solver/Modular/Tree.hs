@@ -128,6 +128,7 @@ data FailReason = UnsupportedExtension Extension
                 | MultipleInstances
                 | DependenciesNotLinked String
                 | CyclicDependencies
+                | InvalidPrivateScope Qualifier
                 | UnsupportedSpecVer Ver
   deriving (Eq, Show)
 

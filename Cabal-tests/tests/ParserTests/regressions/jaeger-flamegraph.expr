@@ -156,21 +156,25 @@ GenericPackageDescription {
               (MajorBoundVersion
                 (mkVersion [2, 12, 6, 1]))
               mainLibSet],
+          targetPrivateBuildDepends = [],
           mixins = []}},
-      condTreeConstraints = [
-        Dependency
-          (PackageName "base")
-          (UnionVersionRanges
+      condTreeConstraints =
+      Dependencies {
+        publicDependencies = [
+          Dependency
+            (PackageName "base")
+            (UnionVersionRanges
+              (MajorBoundVersion
+                (mkVersion [4, 11, 1, 0]))
+              (MajorBoundVersion
+                (mkVersion [4, 12, 0, 0])))
+            mainLibSet,
+          Dependency
+            (PackageName "QuickCheck")
             (MajorBoundVersion
-              (mkVersion [4, 11, 1, 0]))
-            (MajorBoundVersion
-              (mkVersion [4, 12, 0, 0])))
-          mainLibSet,
-        Dependency
-          (PackageName "QuickCheck")
-          (MajorBoundVersion
-            (mkVersion [2, 12, 6, 1]))
-          mainLibSet],
+              (mkVersion [2, 12, 6, 1]))
+            mainLibSet],
+        privateDependencies = []},
       condTreeComponents = []},
   condSubLibraries = [],
   condForeignLibs = [],
@@ -285,52 +289,56 @@ GenericPackageDescription {
                 (MajorBoundVersion
                   (mkVersion [1, 2, 3, 1]))
                 mainLibSet],
+            targetPrivateBuildDepends = [],
             mixins = []}},
-        condTreeConstraints = [
-          Dependency
-            (PackageName "base")
-            (UnionVersionRanges
+        condTreeConstraints =
+        Dependencies {
+          publicDependencies = [
+            Dependency
+              (PackageName "base")
+              (UnionVersionRanges
+                (MajorBoundVersion
+                  (mkVersion [4, 11, 1, 0]))
+                (MajorBoundVersion
+                  (mkVersion [4, 12, 0, 0])))
+              mainLibSet,
+            Dependency
+              (PackageName
+                "jaeger-flamegraph")
+              (OrLaterVersion (mkVersion [0]))
+              mainLibSet,
+            Dependency
+              (PackageName "bytestring")
               (MajorBoundVersion
-                (mkVersion [4, 11, 1, 0]))
+                (mkVersion [0, 10, 8, 2]))
+              mainLibSet,
+            Dependency
+              (PackageName "containers")
               (MajorBoundVersion
-                (mkVersion [4, 12, 0, 0])))
-            mainLibSet,
-          Dependency
-            (PackageName
-              "jaeger-flamegraph")
-            (OrLaterVersion (mkVersion [0]))
-            mainLibSet,
-          Dependency
-            (PackageName "bytestring")
-            (MajorBoundVersion
-              (mkVersion [0, 10, 8, 2]))
-            mainLibSet,
-          Dependency
-            (PackageName "containers")
-            (MajorBoundVersion
-              (mkVersion [0, 6, 0, 1]))
-            mainLibSet,
-          Dependency
-            (PackageName "extra")
-            (MajorBoundVersion
-              (mkVersion [1, 6, 13]))
-            mainLibSet,
-          Dependency
-            (PackageName "aeson")
-            (MajorBoundVersion
-              (mkVersion [1, 4, 1, 0]))
-            mainLibSet,
-          Dependency
-            (PackageName
-              "optparse-applicative")
-            (MajorBoundVersion
-              (mkVersion [0, 14, 3, 0]))
-            mainLibSet,
-          Dependency
-            (PackageName "text")
-            (MajorBoundVersion
-              (mkVersion [1, 2, 3, 1]))
-            mainLibSet],
+                (mkVersion [0, 6, 0, 1]))
+              mainLibSet,
+            Dependency
+              (PackageName "extra")
+              (MajorBoundVersion
+                (mkVersion [1, 6, 13]))
+              mainLibSet,
+            Dependency
+              (PackageName "aeson")
+              (MajorBoundVersion
+                (mkVersion [1, 4, 1, 0]))
+              mainLibSet,
+            Dependency
+              (PackageName
+                "optparse-applicative")
+              (MajorBoundVersion
+                (mkVersion [0, 14, 3, 0]))
+              mainLibSet,
+            Dependency
+              (PackageName "text")
+              (MajorBoundVersion
+                (mkVersion [1, 2, 3, 1]))
+              mainLibSet],
+          privateDependencies = []},
         condTreeComponents = []}],
   condTestSuites = [
     _×_
@@ -434,36 +442,40 @@ GenericPackageDescription {
                 (MajorBoundVersion
                   (mkVersion [0, 10]))
                 mainLibSet],
+            targetPrivateBuildDepends = [],
             mixins = []},
           testCodeGenerators = []},
-        condTreeConstraints = [
-          Dependency
-            (PackageName "base")
-            (UnionVersionRanges
+        condTreeConstraints =
+        Dependencies {
+          publicDependencies = [
+            Dependency
+              (PackageName "base")
+              (UnionVersionRanges
+                (MajorBoundVersion
+                  (mkVersion [4, 11, 1, 0]))
+                (MajorBoundVersion
+                  (mkVersion [4, 12, 0, 0])))
+              mainLibSet,
+            Dependency
+              (PackageName
+                "jaeger-flamegraph")
+              (OrLaterVersion (mkVersion [0]))
+              mainLibSet,
+            Dependency
+              (PackageName "tasty")
               (MajorBoundVersion
-                (mkVersion [4, 11, 1, 0]))
+                (mkVersion [1, 1, 0, 4]))
+              mainLibSet,
+            Dependency
+              (PackageName "tasty-hspec")
               (MajorBoundVersion
-                (mkVersion [4, 12, 0, 0])))
-            mainLibSet,
-          Dependency
-            (PackageName
-              "jaeger-flamegraph")
-            (OrLaterVersion (mkVersion [0]))
-            mainLibSet,
-          Dependency
-            (PackageName "tasty")
-            (MajorBoundVersion
-              (mkVersion [1, 1, 0, 4]))
-            mainLibSet,
-          Dependency
-            (PackageName "tasty-hspec")
-            (MajorBoundVersion
-              (mkVersion [1, 1, 5]))
-            mainLibSet,
-          Dependency
-            (PackageName "tasty-quickcheck")
-            (MajorBoundVersion
-              (mkVersion [0, 10]))
-            mainLibSet],
+                (mkVersion [1, 1, 5]))
+              mainLibSet,
+            Dependency
+              (PackageName "tasty-quickcheck")
+              (MajorBoundVersion
+                (mkVersion [0, 10]))
+              mainLibSet],
+          privateDependencies = []},
         condTreeComponents = []}],
   condBenchmarks = []}

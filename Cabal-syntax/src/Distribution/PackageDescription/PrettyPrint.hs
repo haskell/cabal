@@ -275,7 +275,7 @@ preProcessInternalDeps specVer gpd
     transformD (Dependency pn vr ln)
       | pn == thisPn =
           if LMainLibName `NES.member` ln
-            then Dependency thisPn vr mainLibSet: sublibs
+            then Dependency thisPn vr mainLibSet : sublibs
             else sublibs
       where
         sublibs =

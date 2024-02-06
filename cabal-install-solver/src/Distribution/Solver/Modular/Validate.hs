@@ -158,7 +158,7 @@ validate = go
   where
     go :: Tree d c -> Validate (Tree d c)
 
-    go (PChoice qpn rdm gr       ts) = PChoice qpn rdm gr <$> W.traverseWithKey (\k -> goP qpn k . go) ts
+    go (PChoice qpn rdm gr       ts) = PChoice qpn rdm gr <$> W.traverseWithKey (\k -> goP rdm qpn k . go) ts
     go (FChoice qfn rdm gr b m d ts) =
       do
         -- Flag choices may occur repeatedly (because they can introduce new constraints
@@ -190,8 +190,8 @@ validate = go
     go (Fail    c fr               ) = pure (Fail c fr)
 
     -- What to do for package nodes ...
-    goP :: QPN -> POption -> Validate (Tree d c) -> Validate (Tree d c)
-    goP qpn@(Q _pp pn) (POption i _) r = do
+    goP :: RevDepMap -> QPN -> POption -> Validate (Tree d c) -> Validate (Tree d c)
+    goP rdm qpn@(Q _pp pn) (POption i _) r = do
       PA ppa pfa psa <- asks pa    -- obtain current preassignment
       extSupported   <- asks supportedExt  -- obtain the supported extensions
       langSupported  <- asks supportedLang -- obtain the supported languages
@@ -204,7 +204,7 @@ validate = go
       -- obtain dependencies and index-dictated exclusions introduced by the choice
       let (PInfo deps comps _ mfr) = idx ! pn ! i
       -- qualify the deps in the current scope
-      let qdeps = qualifyDeps qo qpn deps
+      let qdeps = qualifyDeps qo rdm qpn deps
       -- the new active constraints are given by the instance we have chosen,
       -- plus the dependency information we have for that instance
       let newactives = extractAllDeps pfa psa qdeps

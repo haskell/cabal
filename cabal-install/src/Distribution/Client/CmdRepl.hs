@@ -132,7 +132,8 @@ import Distribution.Types.CondTree
   )
 import Distribution.Types.Dependency
   ( Dependencies (..)
-  , mainLibSet, Dependency(..)
+  , Dependency (..)
+  , mainLibSet
   )
 import Distribution.Types.Library
   ( Library (..)

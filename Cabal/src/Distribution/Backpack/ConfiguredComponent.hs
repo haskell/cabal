@@ -39,8 +39,6 @@ import qualified Distribution.Compat.NonEmptySet as NonEmptySet
 import Distribution.Pretty
 import Text.PrettyPrint (Doc, hang, hsep, quotes, text, vcat, ($$))
 import qualified Text.PrettyPrint as PP
-import Distribution.ModuleName
-import Distribution.InstalledPackageInfo
 
 -- | A configured component, we know exactly what its 'ComponentId' is,
 -- and the 'ComponentId's of the things it depends on.
@@ -122,8 +120,8 @@ mkConfiguredComponent pkg_descr this_cid lib_deps exe_deps component = do
         { ci_ann_id = aid
         , ci_renaming = rns
         , ci_implicit = False
-        -- Mixins can't be private
-        , ci_alias = Nothing
+        , -- Mixins can't be private
+          ci_alias = Nothing
         }
 
   -- Any @build-depends@ which is not explicitly mentioned in
@@ -131,7 +129,7 @@ mkConfiguredComponent pkg_descr this_cid lib_deps exe_deps component = do
   let used_explicitly = Set.fromList (map ci_id explicit_includes)
       implicit_includes =
         map
-          ( \(aid, alias)->
+          ( \(aid, alias) ->
               ComponentInclude
                 { ci_ann_id = aid
                 , ci_renaming = defaultIncludeRenaming
@@ -186,14 +184,15 @@ toConfiguredComponent pkg_descr this_cid lib_dep_map exe_dep_map component = do
   lib_deps <-
     if newPackageDepsBehaviour pkg_descr
       then fmap concat $
-        forM ([ (d, Nothing) | d <- targetBuildDepends bi] ++ [ (d, Just alias) | (PrivateDependency alias ds) <- targetPrivateBuildDepends bi, d <- ds]) $
+        forM ([(d, Nothing) | d <- targetBuildDepends bi] ++ [(d, Just alias) | (PrivateDependency alias ds) <- targetPrivateBuildDepends bi, d <- ds]) $
           \((Dependency name _ sublibs), alias) -> do
             case Map.lookup (name, alias) lib_dep_map of
               Nothing ->
                 dieProgress $
                   text "Dependency on unbuildable"
                     <+> text "package"
-                    <+> pretty name <+> maybe mempty pretty alias
+                    <+> pretty name
+                    <+> maybe mempty pretty alias
                     <+> text (show lib_dep_map)
               Just pkg -> do
                 -- Return all library components
@@ -205,7 +204,8 @@ toConfiguredComponent pkg_descr this_cid lib_dep_map exe_dep_map component = do
                             text "Dependency on unbuildable"
                               <+> text (showLibraryName lib)
                               <+> text "from"
-                              <+> pretty name <+> maybe mempty pretty alias
+                              <+> pretty name
+                              <+> maybe mempty pretty alias
                         Just v -> return (v, alias)
       else return old_style_lib_deps
   mkConfiguredComponent

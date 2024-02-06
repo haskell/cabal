@@ -179,7 +179,13 @@ showElaboratedInstallPlan = InstallPlan.showInstallPlan_gen showNode
 
         installed_deps = map pretty . nodeNeighbors
 
-        local_deps cfg = [(if internal then text "+" else mempty) <> pretty (confInstId uid) | (uid, internal, alias) <- elabLibDependencies cfg]
+        local_deps cfg =
+          [ (if internal then text "+" else mempty) <> mpalias <> pretty (confInstId uid)
+          | (uid, internal, alias) <- elabLibDependencies cfg
+          , let mpalias = case alias of
+                  Nothing -> mempty
+                  Just al -> pretty al <> text "."
+          ]
 
 -- TODO: [code cleanup] decide if we really need this, there's not much in it, and in principle
 --      even platform and compiler could be different if we're building things

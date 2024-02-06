@@ -80,6 +80,8 @@ instance NoThunks LibraryVisibility
 instance NoThunks ForeignLibType
 instance NoThunks GenericPackageDescription
 instance NoThunks Dependencies
+instance NoThunks PrivateDependency
+instance NoThunks PrivateAlias
 instance NoThunks KnownRepoType
 instance NoThunks Library
 instance NoThunks LibraryName

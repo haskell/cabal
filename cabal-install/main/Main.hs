@@ -7,6 +7,5 @@ import System.Environment (getArgs)
 
 import qualified Distribution.Client.Main as Client
 
-
 main :: IO ()
 main = getArgs >>= Client.main

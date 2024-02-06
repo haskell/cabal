@@ -39,9 +39,6 @@ import Distribution.Package
   , packageVersion
   , unPackageName
   )
-import Distribution.PackageDescription
-  ( enabledBuildDepends
-  )
 import Distribution.PackageDescription.Configuration
   ( finalizePD
   )
@@ -67,6 +64,7 @@ import Distribution.Types.ComponentRequestedSpec
   ( defaultComponentRequestedSpec
   )
 import Distribution.Types.Dependency
+import Distribution.Types.PackageDescription
 import Distribution.Version
   ( LowerBound (..)
   , UpperBound (..)
@@ -150,9 +148,13 @@ genBounds verbosity packageDBs repoCtxt comp platform progdb globalFlags freezeF
     Left _ -> putStrLn "finalizePD failed"
     Right (pd, _) -> do
       let needBounds =
-            map depName $ error "todo"
---              filter (not . hasUpperBound . depVersion) $
---                enabledBuildDepends pd defaultComponentRequestedSpec
+            -- ROMES:TODO: This is not quite right for gen-bounds when private
+            -- dependencies are included: comparing package names is no longer
+            -- sufficient because some packages "duplicated" by also being
+            -- present within some private scope
+            map (depName . snd) $
+              filter (not . hasUpperBound . depVersion . snd) $
+                enabledBuildDepends pd defaultComponentRequestedSpec
 
       pkgs <-
         getFreezePkgs

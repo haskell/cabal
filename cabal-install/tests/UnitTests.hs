@@ -24,11 +24,12 @@ import qualified UnitTests.Distribution.Solver.Modular.RetryLog
 import qualified UnitTests.Distribution.Solver.Modular.Solver
 import qualified UnitTests.Distribution.Solver.Modular.WeightedPSQ
 import qualified UnitTests.Distribution.Solver.Types.OptionalStanza
+import UnitTests.Options (extraOptions)
 
 main :: IO ()
 main = do
   initTests <- UnitTests.Distribution.Client.Init.tests
-  defaultMain $
+  defaultMainWithIngredients (includingOptions extraOptions : defaultIngredients) $
     testGroup
       "Unit Tests"
       [ testGroup

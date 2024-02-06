@@ -8,9 +8,9 @@ module Distribution.Types.GivenComponent
 import Distribution.Compat.Prelude
 
 import Distribution.Types.ComponentId
+import Distribution.Types.Dependency
 import Distribution.Types.LibraryName
 import Distribution.Types.PackageName
-import Distribution.Types.Dependency
 
 -- | A 'GivenComponent' represents a library depended on and explicitly
 -- specified by the user/client with @--dependency@

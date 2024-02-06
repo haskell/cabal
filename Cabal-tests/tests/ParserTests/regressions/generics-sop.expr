@@ -278,40 +278,44 @@ GenericPackageDescription {
                 (EarlierVersion
                   (mkVersion [1, 5])))
               mainLibSet],
+          targetPrivateBuildDepends = [],
           mixins = []}},
-      condTreeConstraints = [
-        Dependency
-          (PackageName "base")
-          (IntersectVersionRanges
-            (OrLaterVersion
-              (mkVersion [4, 7]))
-            (EarlierVersion
-              (mkVersion [5])))
-          mainLibSet,
-        Dependency
-          (PackageName "template-haskell")
-          (IntersectVersionRanges
-            (OrLaterVersion
-              (mkVersion [2, 8]))
-            (EarlierVersion
-              (mkVersion [2, 13])))
-          mainLibSet,
-        Dependency
-          (PackageName "ghc-prim")
-          (IntersectVersionRanges
-            (OrLaterVersion
-              (mkVersion [0, 3]))
-            (EarlierVersion
-              (mkVersion [0, 6])))
-          mainLibSet,
-        Dependency
-          (PackageName "deepseq")
-          (IntersectVersionRanges
-            (OrLaterVersion
-              (mkVersion [1, 3]))
-            (EarlierVersion
-              (mkVersion [1, 5])))
-          mainLibSet],
+      condTreeConstraints =
+      Dependencies {
+        publicDependencies = [
+          Dependency
+            (PackageName "base")
+            (IntersectVersionRanges
+              (OrLaterVersion
+                (mkVersion [4, 7]))
+              (EarlierVersion
+                (mkVersion [5])))
+            mainLibSet,
+          Dependency
+            (PackageName "template-haskell")
+            (IntersectVersionRanges
+              (OrLaterVersion
+                (mkVersion [2, 8]))
+              (EarlierVersion
+                (mkVersion [2, 13])))
+            mainLibSet,
+          Dependency
+            (PackageName "ghc-prim")
+            (IntersectVersionRanges
+              (OrLaterVersion
+                (mkVersion [0, 3]))
+              (EarlierVersion
+                (mkVersion [0, 6])))
+            mainLibSet,
+          Dependency
+            (PackageName "deepseq")
+            (IntersectVersionRanges
+              (OrLaterVersion
+                (mkVersion [1, 3]))
+              (EarlierVersion
+                (mkVersion [1, 5])))
+            mainLibSet],
+        privateDependencies = []},
       condTreeComponents = [
         CondBranch {
           condBranchCondition =
@@ -385,16 +389,20 @@ GenericPackageDescription {
                       (EarlierVersion
                         (mkVersion [0, 9])))
                     mainLibSet],
+                targetPrivateBuildDepends = [],
                 mixins = []}},
-            condTreeConstraints = [
-              Dependency
-                (PackageName "tagged")
-                (IntersectVersionRanges
-                  (OrLaterVersion
-                    (mkVersion [0, 7]))
-                  (EarlierVersion
-                    (mkVersion [0, 9])))
-                mainLibSet],
+            condTreeConstraints =
+            Dependencies {
+              publicDependencies = [
+                Dependency
+                  (PackageName "tagged")
+                  (IntersectVersionRanges
+                    (OrLaterVersion
+                      (mkVersion [0, 7]))
+                    (EarlierVersion
+                      (mkVersion [0, 9])))
+                  mainLibSet],
+              privateDependencies = []},
             condTreeComponents = []},
           condBranchIfFalse = Nothing},
         CondBranch {
@@ -478,25 +486,29 @@ GenericPackageDescription {
                       (EarlierVersion
                         (mkVersion [0, 6])))
                     mainLibSet],
+                targetPrivateBuildDepends = [],
                 mixins = []}},
-            condTreeConstraints = [
-              Dependency
-                (PackageName
-                  "transformers-compat")
-                (IntersectVersionRanges
-                  (OrLaterVersion
-                    (mkVersion [0, 3]))
-                  (EarlierVersion
-                    (mkVersion [0, 6])))
-                mainLibSet,
-              Dependency
-                (PackageName "transformers")
-                (IntersectVersionRanges
-                  (OrLaterVersion
-                    (mkVersion [0, 3]))
-                  (EarlierVersion
-                    (mkVersion [0, 6])))
-                mainLibSet],
+            condTreeConstraints =
+            Dependencies {
+              publicDependencies = [
+                Dependency
+                  (PackageName
+                    "transformers-compat")
+                  (IntersectVersionRanges
+                    (OrLaterVersion
+                      (mkVersion [0, 3]))
+                    (EarlierVersion
+                      (mkVersion [0, 6])))
+                  mainLibSet,
+                Dependency
+                  (PackageName "transformers")
+                  (IntersectVersionRanges
+                    (OrLaterVersion
+                      (mkVersion [0, 3]))
+                    (EarlierVersion
+                      (mkVersion [0, 6])))
+                  mainLibSet],
+              privateDependencies = []},
             condTreeComponents = []},
           condBranchIfFalse = Nothing},
         CondBranch {
@@ -565,8 +577,12 @@ GenericPackageDescription {
                 PerCompilerFlavor [] [],
                 customFieldsBI = [],
                 targetBuildDepends = [],
+                targetPrivateBuildDepends = [],
                 mixins = []}},
-            condTreeConstraints = [],
+            condTreeConstraints =
+            Dependencies {
+              publicDependencies = [],
+              privateDependencies = []},
             condTreeComponents = []},
           condBranchIfFalse = Nothing},
         CondBranch {
@@ -635,8 +651,12 @@ GenericPackageDescription {
                 PerCompilerFlavor [] [],
                 customFieldsBI = [],
                 targetBuildDepends = [],
+                targetPrivateBuildDepends = [],
                 mixins = []}},
-            condTreeConstraints = [],
+            condTreeConstraints =
+            Dependencies {
+              publicDependencies = [],
+              privateDependencies = []},
             condTreeComponents = []},
           condBranchIfFalse = Nothing}]},
   condSubLibraries = [],
@@ -721,21 +741,25 @@ GenericPackageDescription {
                   (EarlierVersion
                     (mkVersion [0, 14])))
                 mainLibSet],
+            targetPrivateBuildDepends = [],
             mixins = []},
           testCodeGenerators = []},
-        condTreeConstraints = [
-          Dependency
-            (PackageName "base")
-            (OrLaterVersion (mkVersion [0]))
-            mainLibSet,
-          Dependency
-            (PackageName "doctest")
-            (IntersectVersionRanges
-              (OrLaterVersion
-                (mkVersion [0, 13]))
-              (EarlierVersion
-                (mkVersion [0, 14])))
-            mainLibSet],
+        condTreeConstraints =
+        Dependencies {
+          publicDependencies = [
+            Dependency
+              (PackageName "base")
+              (OrLaterVersion (mkVersion [0]))
+              mainLibSet,
+            Dependency
+              (PackageName "doctest")
+              (IntersectVersionRanges
+                (OrLaterVersion
+                  (mkVersion [0, 13]))
+                (EarlierVersion
+                  (mkVersion [0, 14])))
+              mainLibSet],
+          privateDependencies = []},
         condTreeComponents = []},
     _×_
       (UnqualComponentName
@@ -814,20 +838,24 @@ GenericPackageDescription {
                 (PackageName "generics-sop")
                 (OrLaterVersion (mkVersion [0]))
                 mainLibSet],
+            targetPrivateBuildDepends = [],
             mixins = []},
           testCodeGenerators = []},
-        condTreeConstraints = [
-          Dependency
-            (PackageName "base")
-            (IntersectVersionRanges
-              (OrLaterVersion
-                (mkVersion [4, 6]))
-              (EarlierVersion
-                (mkVersion [5])))
-            mainLibSet,
-          Dependency
-            (PackageName "generics-sop")
-            (OrLaterVersion (mkVersion [0]))
-            mainLibSet],
+        condTreeConstraints =
+        Dependencies {
+          publicDependencies = [
+            Dependency
+              (PackageName "base")
+              (IntersectVersionRanges
+                (OrLaterVersion
+                  (mkVersion [4, 6]))
+                (EarlierVersion
+                  (mkVersion [5])))
+              mainLibSet,
+            Dependency
+              (PackageName "generics-sop")
+              (OrLaterVersion (mkVersion [0]))
+              mainLibSet],
+          privateDependencies = []},
         condTreeComponents = []}],
   condBenchmarks = []}

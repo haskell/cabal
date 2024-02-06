@@ -22,7 +22,6 @@ import Distribution.Types.MungedPackageName
 import Distribution.Types.UnitId
 
 import qualified Distribution.InstalledPackageInfo as Installed
-import Distribution.Package
 
 -- | The first five fields are common across all algebraic variants.
 data ComponentLocalBuildInfo

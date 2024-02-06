@@ -18,7 +18,6 @@ import Distribution.Solver.Modular.Dependency
 import Distribution.Solver.Modular.Flag
 import Distribution.Solver.Modular.Package
 import Distribution.Solver.Modular.Tree
-import Distribution.Solver.Types.PackagePath
 
 -- | An index contains information about package instances. This is a nested
 -- dictionary. Package names are mapped to instances, which in turn is mapped

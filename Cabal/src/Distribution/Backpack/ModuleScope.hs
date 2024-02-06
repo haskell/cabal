@@ -69,7 +69,8 @@ import Text.PrettyPrint
 data ModuleScope = ModuleScope
   { modScopeProvides :: ModuleProvides
   , modScopeRequires :: ModuleRequires
-  } deriving Show
+  }
+  deriving (Show)
 
 -- | An empty 'ModuleScope'.
 emptyModuleScope :: ModuleScope
@@ -92,7 +93,7 @@ data ModuleSource
   | FromExposedModules ModuleName
   | FromOtherModules ModuleName
   | FromSignatures ModuleName
-  deriving Show
+  deriving (Show)
 
 -- We don't have line numbers, but if we did, we'd want to record that
 -- too

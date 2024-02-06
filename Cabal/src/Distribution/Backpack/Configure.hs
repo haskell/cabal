@@ -57,7 +57,6 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Distribution.Pretty
 import Text.PrettyPrint
-import Distribution.Simple.Setup
 
 ------------------------------------------------------------------------------
 -- Pipeline
@@ -119,7 +118,8 @@ configureComponentLocalBuildInfos
             `Map.union` Map.fromListWith
               Map.union
               [ ( (pkg, alias)
-                , Map.singleton (ann_cname aid) aid)
+                , Map.singleton (ann_cname aid) aid
+                )
               | PromisedComponent pkg aid alias <- promisedPkgDeps
               ]
     graph1 <-

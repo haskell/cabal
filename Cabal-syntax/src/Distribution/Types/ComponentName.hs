@@ -8,8 +8,7 @@ module Distribution.Types.ComponentName
   , componentNameRaw
   , componentNameStanza
   , componentNameString
-
-  , NotLibComponentName(..)
+  , NotLibComponentName (..)
   ) where
 
 import Distribution.Compat.Prelude

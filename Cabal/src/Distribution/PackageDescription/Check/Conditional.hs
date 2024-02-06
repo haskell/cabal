@@ -117,13 +117,13 @@ crossAnnotateBranches
   :: forall a
    . (Eq a, Monoid a)
   => [PackageFlag] -- `default: true` flags.
-  -> [CondBranch ConfVar [Dependency] (TargetAnnotation a)]
-  -> [CondBranch ConfVar [Dependency] (TargetAnnotation a)]
+  -> [CondBranch ConfVar Dependencies (TargetAnnotation a)]
+  -> [CondBranch ConfVar Dependencies (TargetAnnotation a)]
 crossAnnotateBranches fs bs = map crossAnnBranch bs
   where
     crossAnnBranch
-      :: CondBranch ConfVar [Dependency] (TargetAnnotation a)
-      -> CondBranch ConfVar [Dependency] (TargetAnnotation a)
+      :: CondBranch ConfVar Dependencies (TargetAnnotation a)
+      -> CondBranch ConfVar Dependencies (TargetAnnotation a)
     crossAnnBranch wr =
       let
         rs = filter (/= wr) bs
@@ -131,7 +131,7 @@ crossAnnotateBranches fs bs = map crossAnnBranch bs
        in
         updateTargetAnnBranch (mconcat ts) wr
 
-    realiseBranch :: CondBranch ConfVar [Dependency] (TargetAnnotation a) -> Maybe a
+    realiseBranch :: CondBranch ConfVar Dependencies (TargetAnnotation a) -> Maybe a
     realiseBranch b =
       let
         -- We are only interested in True by default package flags.
@@ -144,8 +144,8 @@ crossAnnotateBranches fs bs = map crossAnnBranch bs
 
     updateTargetAnnBranch
       :: a
-      -> CondBranch ConfVar [Dependency] (TargetAnnotation a)
-      -> CondBranch ConfVar [Dependency] (TargetAnnotation a)
+      -> CondBranch ConfVar Dependencies (TargetAnnotation a)
+      -> CondBranch ConfVar Dependencies (TargetAnnotation a)
     updateTargetAnnBranch a (CondBranch k t mt) =
       let updateTargetAnnTree (CondNode ka c wbs) =
             (CondNode (updateTargetAnnotation a ka) c wbs)

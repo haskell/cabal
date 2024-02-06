@@ -677,7 +677,7 @@ buildInfoFieldGrammar =
     <*> pure mempty -- static-options ???
     <*> prefixedFields "x-" L.customFieldsBI
     <*> monoidalFieldAla "build-depends" formatDependencyList L.targetBuildDepends
-    <*> monoidalFieldAla "private-build-depends" formatPrivateDependencyList L.targetPrivateBuildDepends --(map (\(PrivateDependency a ds) -> (a, formatDependencyList ds))) (map (\(alias, ds) -> PrivateDependency alias (unpack' formatDependencyList ds))) L.targetPrivateBuildDepends
+    <*> monoidalFieldAla "private-build-depends" formatPrivateDependencyList L.targetPrivateBuildDepends -- (map (\(PrivateDependency a ds) -> (a, formatDependencyList ds))) (map (\(alias, ds) -> PrivateDependency alias (unpack' formatDependencyList ds))) L.targetPrivateBuildDepends
     <*> monoidalFieldAla "mixins" formatMixinList L.mixins
       ^^^ availableSince CabalSpecV2_0 []
 {-# SPECIALIZE buildInfoFieldGrammar :: ParsecFieldGrammar' BuildInfo #-}
