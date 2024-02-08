@@ -2671,8 +2671,42 @@ Source Repositories
 .. pkg-section:: source-repository
     :since: 1.6
 
-It is often useful to be able to specify a source revision control
-repository for a package. Cabal lets you specify this information in
+.. warning::
+
+    A ``source-repository`` is for a version of the source of its package
+    whereas each ``source-repository-package`` is for one or more source
+    dependencies of a project. The fields of each are much the same.
+
+    .. list-table::
+        :header-rows: 1
+        :widths: 30 30 40
+
+        * - Field Name
+          - source-repository (head|this)
+          - source-repository-package
+        * - type
+          - 🗹
+          - 🗹
+        * - location
+          - 🗹
+          - 🗹
+        * - branch
+          - 🗹
+          - 🗹
+        * - tag
+          - 🗹
+          - 🗹
+        * - subdir
+          - 🗹 (0 or 1)
+          - 🗹 (0 or 1 for each dependency)
+        * - module (CVS only)
+          - 🗹
+          - ☐
+        * - post-checkout-command
+          - ☐
+          - 🗹
+
+Cabal lets you specify source repositories for a package in
 a relatively structured form which enables other tools to interpret and
 make effective use of the information. For example the information
 should be sufficient for an automatic tool to checkout the sources.
@@ -2729,6 +2763,7 @@ The exact fields are as follows:
     -  ``bazaar`` (or alias ``bzr``)
     -  ``arch``
     -  ``monotone``
+    -  ``pijul``
 
     This field is required.
 
@@ -2778,9 +2813,8 @@ The exact fields are as follows:
     package, i.e. the directory containing the package's ``.cabal``
     file.
 
-    This field is optional. It defaults to empty which corresponds to the
-    root directory of the repository.
-
+    This field is optional. It defaults to empty which corresponds to the root
+    directory of the repository and is the same as specifying ``.`` explicitly.
 
 Custom setup scripts
 --------------------
