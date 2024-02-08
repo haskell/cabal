@@ -205,8 +205,10 @@ Formally, the format is described by the following BNF:
                 | "{" Glob "," ... "," Glob "}" # union (match any of these)
 
 
-Specifying Packages from Remote Version Control Locations
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.. _pkg-consume-source:
+
+Taking a dependency from a *source code* repository
+---------------------------------------------------
 
 Since version 2.4, the ``source-repository-package`` stanza allows for
 specifying packages in a remote version control system that cabal should
@@ -238,18 +240,43 @@ Hackage.
 Since version 3.4, cabal-install creates tarballs for each package coming
 from a ``source-repository-package`` stanza (effectively applying cabal
 sdists to such packages). It gathers the names of the packages from the
-appropriate .cabal file in the version control repository, and allows
+appropriate ``.cabal`` file in the version control repository, and allows
 their use just like Hackage or locally defined packages.
+
+.. _source-repository-package-fields:
+
+The :ref:`VCS fields<vcs-fields>` of ``source-repository-package`` are:
+
+..
+  data SourceRepositoryPackage f = SourceRepositoryPackage
+    { srpType :: !RepoType
+    , srpLocation :: !String
+    , srpTag :: !(Maybe String)
+    , srpBranch :: !(Maybe String)
+    , srpSubdir :: !(f FilePath)
+    , srpCommand :: ![String]
+    }
 
 .. cfg-field:: type: VCS kind
 
-.. cfg-field:: location: VCS location (usually URL)
+    This field is required.
+
+.. cfg-field:: location: VCS location
+
+    This field is required.
+
+.. cfg-field:: branch: VCS branch
+
+    This field is optional.
 
 .. cfg-field:: tag: VCS tag
 
-.. cfg-field:: subdir: subdirectory list
+    This field is optional.
 
-    Look in one or more subdirectories of the repository for cabal files, rather than the root.
+.. cfg-field:: subdir: VCS subdirectory list
+
+    Look in one or more subdirectories of the repository for cabal files, rather
+    than the root. This field is optional.
 
 .. cfg-field:: post-checkout-command: command
 
