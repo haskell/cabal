@@ -25,6 +25,7 @@ module Distribution.Client.TargetSelector
   , TargetImplicitCwd (..)
   , ComponentKind (..)
   , ComponentKindFilter
+  , SubComponentTarget (..)
   , QualLevel (..)
   , componentKind
 
@@ -65,6 +66,7 @@ import Distribution.Types.UnqualComponentName
 
 import Distribution.ModuleName
   ( ModuleName
+  , toFilePath
   )
 import Distribution.PackageDescription
   ( Benchmark (..)
@@ -99,6 +101,9 @@ import Control.Arrow ((&&&))
 import Control.Monad hiding
   ( mfilter
   )
+import Data.List
+  ( stripPrefix
+  )
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map.Lazy as Map.Lazy
 import qualified Data.Map.Strict as Map
@@ -130,11 +135,15 @@ import qualified System.Directory as IO
 import System.FilePath
   ( dropTrailingPathSeparator
   , equalFilePath
+  , normalise
   , (<.>)
   , (</>)
   )
 import System.FilePath as FilePath
-  ( splitPath
+  ( dropExtension
+  , joinPath
+  , splitDirectories
+  , splitPath
   , takeExtension
   )
 import Text.EditDistance
@@ -183,13 +192,14 @@ data TargetSelector
   | -- | All packages, or all components of a particular kind in all packages.
     TargetAllPackages (Maybe ComponentKindFilter)
   | -- | A specific component in a package within the project.
-    TargetComponent PackageId ComponentName
+    TargetComponent PackageId ComponentName SubComponentTarget
   | -- | A component in a package, but where it cannot be verified that the
     -- package has such a component, or because the package is itself not
     -- known.
     TargetComponentUnknown
       PackageName
       (Either UnqualComponentName ComponentName)
+      SubComponentTarget
   deriving (Eq, Ord, Show, Generic)
 
 -- | Does this 'TargetPackage' selector arise from syntax referring to a
@@ -203,6 +213,21 @@ data ComponentKind = LibKind | FLibKind | ExeKind | TestKind | BenchKind
   deriving (Eq, Ord, Enum, Show)
 
 type ComponentKindFilter = ComponentKind
+
+-- | Either the component as a whole or detail about a file or module target
+-- within a component.
+data SubComponentTarget
+  = -- | The component as a whole
+    WholeComponent
+  | -- | A specific module within a component.
+    ModuleTarget ModuleName
+  | -- | A specific file within a component. Note that this does not carry the
+    -- file extension.
+    FileTarget FilePath
+  deriving (Eq, Ord, Show, Generic)
+
+instance Binary SubComponentTarget
+instance Structured SubComponentTarget
 
 -- ------------------------------------------------------------
 
@@ -389,8 +414,12 @@ showTargetSelectorKind bt = case bt of
   TargetPackageNamed _ (Just _) -> "named-package:filter"
   TargetAllPackages Nothing -> "package *"
   TargetAllPackages (Just _) -> "package *:filter"
-  TargetComponent _ _ -> "component"
-  TargetComponentUnknown _ _ -> "unknown-component"
+  TargetComponent _ _ WholeComponent -> "component"
+  TargetComponent _ _ ModuleTarget{} -> "module"
+  TargetComponent _ _ FileTarget{} -> "file"
+  TargetComponentUnknown _ _ WholeComponent -> "unknown-component"
+  TargetComponentUnknown _ _ ModuleTarget{} -> "unknown-module"
+  TargetComponentUnknown _ _ FileTarget{} -> "unknown-file"
 
 -- ------------------------------------------------------------
 
@@ -607,7 +636,7 @@ resolveTargetSelector knowntargets@KnownTargets{..} mfilter targetStrStatus =
         go (TargetPackage _ _ (Just filter')) = kfilter == filter'
         go (TargetPackageNamed _ (Just filter')) = kfilter == filter'
         go (TargetAllPackages (Just filter')) = kfilter == filter'
-        go (TargetComponent _ cname)
+        go (TargetComponent _ cname _)
           | CLibName _ <- cname = kfilter == LibKind
           | CFLibName _ <- cname = kfilter == FLibKind
           | CExeName _ <- cname = kfilter == ExeKind
@@ -936,6 +965,8 @@ syntaxForms
                   ]
               ]
           , syntaxForm1Component ocinfo
+          , syntaxForm1Module cinfo
+          , syntaxForm1File pinfo
           ]
       , -- two-component partially qualified forms
         -- fully qualified form for 'all'
@@ -945,8 +976,24 @@ syntaxForms
       , syntaxForm2PackageComponent pinfo
       , syntaxForm2PackageFilter pinfo
       , syntaxForm2KindComponent cinfo
+      , shadowingAlternatives
+          [ syntaxForm2PackageModule pinfo
+          , syntaxForm2PackageFile pinfo
+          ]
+      , shadowingAlternatives
+          [ syntaxForm2ComponentModule cinfo
+          , syntaxForm2ComponentFile cinfo
+          ]
       , -- rarely used partially qualified forms
         syntaxForm3PackageKindComponent pinfo
+      , shadowingAlternatives
+          [ syntaxForm3PackageComponentModule pinfo
+          , syntaxForm3PackageComponentFile pinfo
+          ]
+      , shadowingAlternatives
+          [ syntaxForm3KindComponentModule cinfo
+          , syntaxForm3KindComponentFile cinfo
+          ]
       , syntaxForm3NamespacePackageFilter pinfo
       , -- fully-qualified forms for all and cwd with filter
         syntaxForm3MetaAllFilter
@@ -956,6 +1003,8 @@ syntaxForms
       , syntaxForm4MetaNamespacePackageFilter pinfo
       , -- fully-qualified forms for component, module and file
         syntaxForm5MetaNamespacePackageKindComponent pinfo
+      , syntaxForm7MetaNamespacePackageKindComponentNamespaceModule pinfo
+      , syntaxForm7MetaNamespacePackageKindComponentNamespaceFile pinfo
       ]
     where
       ambiguousAlternatives = Prelude.foldr1 AmbiguousAlternatives
@@ -1017,10 +1066,47 @@ syntaxForm1Component cs =
   syntaxForm1 render $ \str1 _fstatus1 -> do
     guardComponentName str1
     c <- matchComponentName cs str1
-    return (TargetComponent (cinfoPackageId c) (cinfoName c))
+    return (TargetComponent (cinfoPackageId c) (cinfoName c) WholeComponent)
   where
-    render (TargetComponent p c) =
+    render (TargetComponent p c WholeComponent) =
       [TargetStringFileStatus1 (dispC p c) noFileStatus]
+    render _ = []
+
+-- | Syntax: module
+--
+-- > cabal build Data.Foo
+syntaxForm1Module :: [KnownComponent] -> Syntax
+syntaxForm1Module cs =
+  syntaxForm1 render $ \str1 _fstatus1 -> do
+    guardModuleName str1
+    let ms = [(m, c) | c <- cs, m <- cinfoModules c]
+    (m, c) <- matchModuleNameAnd ms str1
+    return (TargetComponent (cinfoPackageId c) (cinfoName c) (ModuleTarget m))
+  where
+    render (TargetComponent _p _c (ModuleTarget m)) =
+      [TargetStringFileStatus1 (dispM m) noFileStatus]
+    render _ = []
+
+-- | Syntax: file name
+--
+-- > cabal build Data/Foo.hs bar/Main.hsc
+syntaxForm1File :: [KnownPackage] -> Syntax
+syntaxForm1File ps =
+  -- Note there's a bit of an inconsistency here vs the other syntax forms
+  -- for files. For the single-part syntax the target has to point to a file
+  -- that exists (due to our use of matchPackageDirectoryPrefix), whereas for
+  -- all the other forms we don't require that.
+  syntaxForm1 render $ \str1 fstatus1 ->
+    expecting "file" str1 $ do
+      (pkgfile, ~KnownPackage{pinfoId, pinfoComponents}) <-
+        -- always returns the KnownPackage case
+        matchPackageDirectoryPrefix ps fstatus1
+      orNoThingIn "package" (prettyShow (packageName pinfoId)) $ do
+        (filepath, c) <- matchComponentFile pinfoComponents pkgfile
+        return (TargetComponent pinfoId (cinfoName c) (FileTarget filepath))
+  where
+    render (TargetComponent _p _c (FileTarget f)) =
+      [TargetStringFileStatus1 f noFileStatus]
     render _ = []
 
 ---
@@ -1110,16 +1196,16 @@ syntaxForm2PackageComponent ps =
       KnownPackage{pinfoId, pinfoComponents} ->
         orNoThingIn "package" (prettyShow (packageName pinfoId)) $ do
           c <- matchComponentName pinfoComponents str2
-          return (TargetComponent pinfoId (cinfoName c))
+          return (TargetComponent pinfoId (cinfoName c) WholeComponent)
       -- TODO: the error here ought to say there's no component by that name in
       -- this package, and name the package
       KnownPackageName pn ->
         let cn = mkUnqualComponentName str2
-         in return (TargetComponentUnknown pn (Left cn))
+         in return (TargetComponentUnknown pn (Left cn) WholeComponent)
   where
-    render (TargetComponent p c) =
+    render (TargetComponent p c WholeComponent) =
       [TargetStringFileStatus2 (dispP p) noFileStatus (dispC p c)]
-    render (TargetComponentUnknown pn (Left cn)) =
+    render (TargetComponentUnknown pn (Left cn) WholeComponent) =
       [TargetStringFileStatus2 (dispPN pn) noFileStatus (prettyShow cn)]
     render _ = []
 
@@ -1132,11 +1218,107 @@ syntaxForm2KindComponent cs =
     ckind <- matchComponentKind str1
     guardComponentName str2
     c <- matchComponentKindAndName cs ckind str2
-    return (TargetComponent (cinfoPackageId c) (cinfoName c))
+    return (TargetComponent (cinfoPackageId c) (cinfoName c) WholeComponent)
   where
-    render (TargetComponent p c) =
+    render (TargetComponent p c WholeComponent) =
       [TargetStringFileStatus2 (dispCK c) noFileStatus (dispC p c)]
     render _ = []
+
+-- | Syntax: package : module
+--
+-- > cabal build foo:Data.Foo
+-- > cabal build ./foo:Data.Foo
+-- > cabal build ./foo.cabal:Data.Foo
+syntaxForm2PackageModule :: [KnownPackage] -> Syntax
+syntaxForm2PackageModule ps =
+  syntaxForm2 render $ \str1 fstatus1 str2 -> do
+    guardPackage str1 fstatus1
+    guardModuleName str2
+    p <- matchPackage ps str1 fstatus1
+    case p of
+      KnownPackage{pinfoId, pinfoComponents} ->
+        orNoThingIn "package" (prettyShow (packageName pinfoId)) $ do
+          let ms = [(m, c) | c <- pinfoComponents, m <- cinfoModules c]
+          (m, c) <- matchModuleNameAnd ms str2
+          return (TargetComponent pinfoId (cinfoName c) (ModuleTarget m))
+      KnownPackageName pn -> do
+        m <- matchModuleNameUnknown str2
+        -- We assume the primary library component of the package:
+        return (TargetComponentUnknown pn (Right $ CLibName LMainLibName) (ModuleTarget m))
+  where
+    render (TargetComponent p _c (ModuleTarget m)) =
+      [TargetStringFileStatus2 (dispP p) noFileStatus (dispM m)]
+    render _ = []
+
+-- | Syntax: component : module
+--
+-- > cabal build foo:Data.Foo
+syntaxForm2ComponentModule :: [KnownComponent] -> Syntax
+syntaxForm2ComponentModule cs =
+  syntaxForm2 render $ \str1 _fstatus1 str2 -> do
+    guardComponentName str1
+    guardModuleName str2
+    c <- matchComponentName cs str1
+    orNoThingIn "component" (cinfoStrName c) $ do
+      let ms = cinfoModules c
+      m <- matchModuleName ms str2
+      return
+        ( TargetComponent
+            (cinfoPackageId c)
+            (cinfoName c)
+            (ModuleTarget m)
+        )
+  where
+    render (TargetComponent p c (ModuleTarget m)) =
+      [TargetStringFileStatus2 (dispC p c) noFileStatus (dispM m)]
+    render _ = []
+
+-- | Syntax: package : filename
+--
+-- > cabal build foo:Data/Foo.hs
+-- > cabal build ./foo:Data/Foo.hs
+-- > cabal build ./foo.cabal:Data/Foo.hs
+syntaxForm2PackageFile :: [KnownPackage] -> Syntax
+syntaxForm2PackageFile ps =
+  syntaxForm2 render $ \str1 fstatus1 str2 -> do
+    guardPackage str1 fstatus1
+    p <- matchPackage ps str1 fstatus1
+    case p of
+      KnownPackage{pinfoId, pinfoComponents} ->
+        orNoThingIn "package" (prettyShow (packageName pinfoId)) $ do
+          (filepath, c) <- matchComponentFile pinfoComponents str2
+          return (TargetComponent pinfoId (cinfoName c) (FileTarget filepath))
+      KnownPackageName pn ->
+        let filepath = str2
+         in -- We assume the primary library component of the package:
+            return (TargetComponentUnknown pn (Right $ CLibName LMainLibName) (FileTarget filepath))
+  where
+    render (TargetComponent p _c (FileTarget f)) =
+      [TargetStringFileStatus2 (dispP p) noFileStatus f]
+    render _ = []
+
+-- | Syntax: component : filename
+--
+-- > cabal build foo:Data/Foo.hs
+syntaxForm2ComponentFile :: [KnownComponent] -> Syntax
+syntaxForm2ComponentFile cs =
+  syntaxForm2 render $ \str1 _fstatus1 str2 -> do
+    guardComponentName str1
+    c <- matchComponentName cs str1
+    orNoThingIn "component" (cinfoStrName c) $ do
+      (filepath, _) <- matchComponentFile [c] str2
+      return
+        ( TargetComponent
+            (cinfoPackageId c)
+            (cinfoName c)
+            (FileTarget filepath)
+        )
+  where
+    render (TargetComponent p c (FileTarget f)) =
+      [TargetStringFileStatus2 (dispC p c) noFileStatus f]
+    render _ = []
+
+---
 
 -- | Syntax: :all : filter
 --
@@ -1204,15 +1386,121 @@ syntaxForm3PackageKindComponent ps =
       KnownPackage{pinfoId, pinfoComponents} ->
         orNoThingIn "package" (prettyShow (packageName pinfoId)) $ do
           c <- matchComponentKindAndName pinfoComponents ckind str3
-          return (TargetComponent pinfoId (cinfoName c))
+          return (TargetComponent pinfoId (cinfoName c) WholeComponent)
       KnownPackageName pn ->
         let cn = mkComponentName pn ckind (mkUnqualComponentName str3)
-         in return (TargetComponentUnknown pn (Right cn))
+         in return (TargetComponentUnknown pn (Right cn) WholeComponent)
   where
-    render (TargetComponent p c) =
+    render (TargetComponent p c WholeComponent) =
       [TargetStringFileStatus3 (dispP p) noFileStatus (dispCK c) (dispC p c)]
-    render (TargetComponentUnknown pn (Right c)) =
+    render (TargetComponentUnknown pn (Right c) WholeComponent) =
       [TargetStringFileStatus3 (dispPN pn) noFileStatus (dispCK c) (dispC' pn c)]
+    render _ = []
+
+-- | Syntax: package : component : module
+--
+-- > cabal build foo:foo:Data.Foo
+-- > cabal build foo/:foo:Data.Foo
+-- > cabal build foo.cabal:foo:Data.Foo
+syntaxForm3PackageComponentModule :: [KnownPackage] -> Syntax
+syntaxForm3PackageComponentModule ps =
+  syntaxForm3 render $ \str1 fstatus1 str2 str3 -> do
+    guardPackage str1 fstatus1
+    guardComponentName str2
+    guardModuleName str3
+    p <- matchPackage ps str1 fstatus1
+    case p of
+      KnownPackage{pinfoId, pinfoComponents} ->
+        orNoThingIn "package" (prettyShow (packageName pinfoId)) $ do
+          c <- matchComponentName pinfoComponents str2
+          orNoThingIn "component" (cinfoStrName c) $ do
+            let ms = cinfoModules c
+            m <- matchModuleName ms str3
+            return (TargetComponent pinfoId (cinfoName c) (ModuleTarget m))
+      KnownPackageName pn -> do
+        let cn = mkUnqualComponentName str2
+        m <- matchModuleNameUnknown str3
+        return (TargetComponentUnknown pn (Left cn) (ModuleTarget m))
+  where
+    render (TargetComponent p c (ModuleTarget m)) =
+      [TargetStringFileStatus3 (dispP p) noFileStatus (dispC p c) (dispM m)]
+    render (TargetComponentUnknown pn (Left c) (ModuleTarget m)) =
+      [TargetStringFileStatus3 (dispPN pn) noFileStatus (dispCN c) (dispM m)]
+    render _ = []
+
+-- | Syntax: namespace : component : module
+--
+-- > cabal build lib:foo:Data.Foo
+syntaxForm3KindComponentModule :: [KnownComponent] -> Syntax
+syntaxForm3KindComponentModule cs =
+  syntaxForm3 render $ \str1 _fstatus1 str2 str3 -> do
+    ckind <- matchComponentKind str1
+    guardComponentName str2
+    guardModuleName str3
+    c <- matchComponentKindAndName cs ckind str2
+    orNoThingIn "component" (cinfoStrName c) $ do
+      let ms = cinfoModules c
+      m <- matchModuleName ms str3
+      return
+        ( TargetComponent
+            (cinfoPackageId c)
+            (cinfoName c)
+            (ModuleTarget m)
+        )
+  where
+    render (TargetComponent p c (ModuleTarget m)) =
+      [TargetStringFileStatus3 (dispCK c) noFileStatus (dispC p c) (dispM m)]
+    render _ = []
+
+-- | Syntax: package : component : filename
+--
+-- > cabal build foo:foo:Data/Foo.hs
+-- > cabal build foo/:foo:Data/Foo.hs
+-- > cabal build foo.cabal:foo:Data/Foo.hs
+syntaxForm3PackageComponentFile :: [KnownPackage] -> Syntax
+syntaxForm3PackageComponentFile ps =
+  syntaxForm3 render $ \str1 fstatus1 str2 str3 -> do
+    guardPackage str1 fstatus1
+    guardComponentName str2
+    p <- matchPackage ps str1 fstatus1
+    case p of
+      KnownPackage{pinfoId, pinfoComponents} ->
+        orNoThingIn "package" (prettyShow (packageName pinfoId)) $ do
+          c <- matchComponentName pinfoComponents str2
+          orNoThingIn "component" (cinfoStrName c) $ do
+            (filepath, _) <- matchComponentFile [c] str3
+            return (TargetComponent pinfoId (cinfoName c) (FileTarget filepath))
+      KnownPackageName pn ->
+        let cn = mkUnqualComponentName str2
+            filepath = str3
+         in return (TargetComponentUnknown pn (Left cn) (FileTarget filepath))
+  where
+    render (TargetComponent p c (FileTarget f)) =
+      [TargetStringFileStatus3 (dispP p) noFileStatus (dispC p c) f]
+    render (TargetComponentUnknown pn (Left c) (FileTarget f)) =
+      [TargetStringFileStatus3 (dispPN pn) noFileStatus (dispCN c) f]
+    render _ = []
+
+-- | Syntax: namespace : component : filename
+--
+-- > cabal build lib:foo:Data/Foo.hs
+syntaxForm3KindComponentFile :: [KnownComponent] -> Syntax
+syntaxForm3KindComponentFile cs =
+  syntaxForm3 render $ \str1 _fstatus1 str2 str3 -> do
+    ckind <- matchComponentKind str1
+    guardComponentName str2
+    c <- matchComponentKindAndName cs ckind str2
+    orNoThingIn "component" (cinfoStrName c) $ do
+      (filepath, _) <- matchComponentFile [c] str3
+      return
+        ( TargetComponent
+            (cinfoPackageId c)
+            (cinfoName c)
+            (FileTarget filepath)
+        )
+  where
+    render (TargetComponent p c (FileTarget f)) =
+      [TargetStringFileStatus3 (dispCK c) noFileStatus (dispC p c) f]
     render _ = []
 
 syntaxForm3NamespacePackageFilter :: [KnownPackage] -> Syntax
@@ -1272,15 +1560,112 @@ syntaxForm5MetaNamespacePackageKindComponent ps =
       KnownPackage{pinfoId, pinfoComponents} ->
         orNoThingIn "package" (prettyShow (packageName pinfoId)) $ do
           c <- matchComponentKindAndName pinfoComponents ckind str5
-          return (TargetComponent pinfoId (cinfoName c))
+          return (TargetComponent pinfoId (cinfoName c) WholeComponent)
       KnownPackageName pn ->
         let cn = mkComponentName pn ckind (mkUnqualComponentName str5)
-         in return (TargetComponentUnknown pn (Right cn))
+         in return (TargetComponentUnknown pn (Right cn) WholeComponent)
   where
-    render (TargetComponent p c) =
+    render (TargetComponent p c WholeComponent) =
       [TargetStringFileStatus5 "" "pkg" (dispP p) (dispCK c) (dispC p c)]
-    render (TargetComponentUnknown pn (Right c)) =
+    render (TargetComponentUnknown pn (Right c) WholeComponent) =
       [TargetStringFileStatus5 "" "pkg" (dispPN pn) (dispCK c) (dispC' pn c)]
+    render _ = []
+
+-- | Syntax: :pkg : package : namespace : component : module : module
+--
+-- > cabal build :pkg:foo:lib:foo:module:Data.Foo
+syntaxForm7MetaNamespacePackageKindComponentNamespaceModule
+  :: [KnownPackage] -> Syntax
+syntaxForm7MetaNamespacePackageKindComponentNamespaceModule ps =
+  syntaxForm7 render $ \str1 str2 str3 str4 str5 str6 str7 -> do
+    guardNamespaceMeta str1
+    guardNamespacePackage str2
+    guardPackageName str3
+    ckind <- matchComponentKind str4
+    guardComponentName str5
+    guardNamespaceModule str6
+    p <- matchPackage ps str3 noFileStatus
+    case p of
+      KnownPackage{pinfoId, pinfoComponents} ->
+        orNoThingIn "package" (prettyShow (packageName pinfoId)) $ do
+          c <- matchComponentKindAndName pinfoComponents ckind str5
+          orNoThingIn "component" (cinfoStrName c) $ do
+            let ms = cinfoModules c
+            m <- matchModuleName ms str7
+            return (TargetComponent pinfoId (cinfoName c) (ModuleTarget m))
+      KnownPackageName pn -> do
+        let cn = mkComponentName pn ckind (mkUnqualComponentName str2)
+        m <- matchModuleNameUnknown str7
+        return (TargetComponentUnknown pn (Right cn) (ModuleTarget m))
+  where
+    render (TargetComponent p c (ModuleTarget m)) =
+      [ TargetStringFileStatus7
+          ""
+          "pkg"
+          (dispP p)
+          (dispCK c)
+          (dispC p c)
+          "module"
+          (dispM m)
+      ]
+    render (TargetComponentUnknown pn (Right c) (ModuleTarget m)) =
+      [ TargetStringFileStatus7
+          ""
+          "pkg"
+          (dispPN pn)
+          (dispCK c)
+          (dispC' pn c)
+          "module"
+          (dispM m)
+      ]
+    render _ = []
+
+-- | Syntax: :pkg : package : namespace : component : file : filename
+--
+-- > cabal build :pkg:foo:lib:foo:file:Data/Foo.hs
+syntaxForm7MetaNamespacePackageKindComponentNamespaceFile
+  :: [KnownPackage] -> Syntax
+syntaxForm7MetaNamespacePackageKindComponentNamespaceFile ps =
+  syntaxForm7 render $ \str1 str2 str3 str4 str5 str6 str7 -> do
+    guardNamespaceMeta str1
+    guardNamespacePackage str2
+    guardPackageName str3
+    ckind <- matchComponentKind str4
+    guardComponentName str5
+    guardNamespaceFile str6
+    p <- matchPackage ps str3 noFileStatus
+    case p of
+      KnownPackage{pinfoId, pinfoComponents} ->
+        orNoThingIn "package" (prettyShow (packageName pinfoId)) $ do
+          c <- matchComponentKindAndName pinfoComponents ckind str5
+          orNoThingIn "component" (cinfoStrName c) $ do
+            (filepath, _) <- matchComponentFile [c] str7
+            return (TargetComponent pinfoId (cinfoName c) (FileTarget filepath))
+      KnownPackageName pn ->
+        let cn = mkComponentName pn ckind (mkUnqualComponentName str5)
+            filepath = str7
+         in return (TargetComponentUnknown pn (Right cn) (FileTarget filepath))
+  where
+    render (TargetComponent p c (FileTarget f)) =
+      [ TargetStringFileStatus7
+          ""
+          "pkg"
+          (dispP p)
+          (dispCK c)
+          (dispC p c)
+          "file"
+          f
+      ]
+    render (TargetComponentUnknown pn (Right c) (FileTarget f)) =
+      [ TargetStringFileStatus7
+          ""
+          "pkg"
+          (dispPN pn)
+          (dispCK c)
+          (dispC' pn c)
+          "file"
+          f
+      ]
     render _ = []
 
 ---------------------------------------
@@ -1312,29 +1697,40 @@ type Match5 =
   -> String
   -> String
   -> Match TargetSelector
+type Match7 =
+  String
+  -> String
+  -> String
+  -> String
+  -> String
+  -> String
+  -> String
+  -> Match TargetSelector
 
 syntaxForm1 :: Renderer -> Match1 -> Syntax
+syntaxForm2 :: Renderer -> Match2 -> Syntax
+syntaxForm3 :: Renderer -> Match3 -> Syntax
+syntaxForm4 :: Renderer -> Match4 -> Syntax
+syntaxForm5 :: Renderer -> Match5 -> Syntax
+syntaxForm7 :: Renderer -> Match7 -> Syntax
 syntaxForm1 render f =
   Syntax QL1 match render
   where
     match = \(TargetStringFileStatus1 str1 fstatus1) ->
       f str1 fstatus1
 
-syntaxForm2 :: Renderer -> Match2 -> Syntax
 syntaxForm2 render f =
   Syntax QL2 match render
   where
     match = \(TargetStringFileStatus2 str1 fstatus1 str2) ->
       f str1 fstatus1 str2
 
-syntaxForm3 :: Renderer -> Match3 -> Syntax
 syntaxForm3 render f =
   Syntax QL3 match render
   where
     match = \(TargetStringFileStatus3 str1 fstatus1 str2 str3) ->
       f str1 fstatus1 str2 str3
 
-syntaxForm4 :: Renderer -> Match4 -> Syntax
 syntaxForm4 render f =
   Syntax QLFull match render
   where
@@ -1342,12 +1738,18 @@ syntaxForm4 render f =
       f str1 str2 str3 str4
     match _ = mzero
 
-syntaxForm5 :: Renderer -> Match5 -> Syntax
 syntaxForm5 render f =
   Syntax QLFull match render
   where
     match (TargetStringFileStatus5 str1 str2 str3 str4 str5) =
       f str1 str2 str3 str4 str5
+    match _ = mzero
+
+syntaxForm7 render f =
+  Syntax QLFull match render
+  where
+    match (TargetStringFileStatus7 str1 str2 str3 str4 str5 str6 str7) =
+      f str1 str2 str3 str4 str5 str6 str7
     match _ = mzero
 
 dispP :: Package p => p -> String
@@ -1362,6 +1764,9 @@ dispC = componentStringName . packageName
 dispC' :: PackageName -> ComponentName -> String
 dispC' = componentStringName
 
+dispCN :: UnqualComponentName -> String
+dispCN = prettyShow
+
 dispK :: ComponentKind -> String
 dispK = showComponentKindShort
 
@@ -1370,6 +1775,9 @@ dispCK = dispK . componentKind
 
 dispF :: ComponentKind -> String
 dispF = showComponentKindFilterShort
+
+dispM :: ModuleName -> String
+dispM = prettyShow
 
 -------------------------------
 -- Package and component info
@@ -1560,6 +1968,12 @@ guardNamespacePackage = guardToken ["pkg", "package"] "'pkg' namespace"
 
 guardNamespaceCwd :: String -> Match ()
 guardNamespaceCwd = guardToken ["cwd"] "'cwd' namespace"
+
+guardNamespaceModule :: String -> Match ()
+guardNamespaceModule = guardToken ["mod", "module"] "'module' namespace"
+
+guardNamespaceFile :: String -> Match ()
+guardNamespaceFile = guardToken ["file"] "'file' namespace"
 
 guardToken :: [String] -> String -> String -> Match ()
 guardToken tokens msg s
@@ -1772,7 +2186,97 @@ matchComponentKindAndName cs ckind str =
     render c = showComponentKindShort (cinfoKind c) ++ ":" ++ cinfoStrName c
 
 ------------------------------
--- Utils
+-- Matching module targets
+--
+
+guardModuleName :: String -> Match ()
+guardModuleName s =
+  case simpleParsec s :: Maybe ModuleName of
+    Just _ -> increaseConfidence
+    _
+      | all validModuleChar s
+          && not (null s) ->
+          return ()
+      | otherwise -> matchErrorExpected "module name" s
+  where
+    validModuleChar c = isAlphaNum c || c == '.' || c == '_' || c == '\''
+
+matchModuleName :: [ModuleName] -> String -> Match ModuleName
+matchModuleName ms str =
+  orNoSuchThing "module" str (map prettyShow ms) $
+    increaseConfidenceFor $
+      matchInexactly caseFold prettyShow ms str
+
+matchModuleNameAnd :: [(ModuleName, a)] -> String -> Match (ModuleName, a)
+matchModuleNameAnd ms str =
+  orNoSuchThing "module" str (map (prettyShow . fst) ms) $
+    increaseConfidenceFor $
+      matchInexactly caseFold (prettyShow . fst) ms str
+
+matchModuleNameUnknown :: String -> Match ModuleName
+matchModuleNameUnknown str =
+  expecting "module" str $
+    increaseConfidenceFor $
+      matchParse str
+
+------------------------------
+-- Matching file targets
+--
+
+matchPackageDirectoryPrefix
+  :: [KnownPackage]
+  -> FileStatus
+  -> Match (FilePath, KnownPackage)
+matchPackageDirectoryPrefix ps (FileStatusExistsFile filepath) =
+  increaseConfidenceFor $
+    matchDirectoryPrefix pkgdirs filepath
+  where
+    pkgdirs =
+      [ (dir, p)
+      | p@KnownPackage{pinfoDirectory = Just (dir, _)} <- ps
+      ]
+matchPackageDirectoryPrefix _ _ = mzero
+
+matchComponentFile
+  :: [KnownComponent]
+  -> String
+  -> Match (FilePath, KnownComponent)
+matchComponentFile cs str =
+  orNoSuchThing "file" str [] $
+    matchComponentModuleFile cs str
+      <|> matchComponentOtherFile cs str
+
+matchComponentOtherFile
+  :: [KnownComponent]
+  -> String
+  -> Match (FilePath, KnownComponent)
+matchComponentOtherFile cs =
+  matchFile
+    [ (normalise (srcdir </> file), c)
+    | c <- cs
+    , srcdir <- cinfoSrcDirs c
+    , file <-
+        cinfoHsFiles c
+          ++ cinfoCFiles c
+          ++ cinfoJsFiles c
+    ]
+    . normalise
+
+matchComponentModuleFile
+  :: [KnownComponent]
+  -> String
+  -> Match (FilePath, KnownComponent)
+matchComponentModuleFile cs str = do
+  matchFile
+    [ (normalise (d </> toFilePath m), c)
+    | c <- cs
+    , d <- cinfoSrcDirs c
+    , m <- cinfoModules c
+    ]
+    (dropExtension (normalise str)) -- Drop the extension because FileTarget
+    -- is stored without the extension
+
+-- utils
 
 -- | Compare two filepaths for equality using DirActions' canonicalizePath
 -- to normalize AND canonicalize filepaths before comparison.
@@ -1788,6 +2292,25 @@ compareFilePath DirActions{..} fp1 fp2
       c1 <- canonicalizePath fp1
       c2 <- canonicalizePath fp2
       pure $ equalFilePath c1 c2
+
+matchFile :: [(FilePath, a)] -> FilePath -> Match (FilePath, a)
+matchFile fs =
+  increaseConfidenceFor
+    . matchInexactly caseFold fst fs
+
+matchDirectoryPrefix :: [(FilePath, a)] -> FilePath -> Match (FilePath, a)
+matchDirectoryPrefix dirs filepath =
+  tryEach $
+    [ (file, x)
+    | (dir, x) <- dirs
+    , file <- maybeToList (stripDirectory dir)
+    ]
+  where
+    stripDirectory :: FilePath -> Maybe FilePath
+    stripDirectory dir =
+      joinPath `fmap` stripPrefix (splitDirectories dir) filepathsplit
+
+    filepathsplit = splitDirectories filepath
 
 ------------------------------
 -- Matching monad
@@ -1900,6 +2423,10 @@ matchErrorExpected thing got = NoMatch 0 [MatchErrorExpected thing got]
 matchErrorNoSuch :: String -> String -> [String] -> Match a
 matchErrorNoSuch thing got alts = NoMatch 0 [MatchErrorNoSuch thing got alts]
 
+expecting :: String -> String -> Match a -> Match a
+expecting thing got (NoMatch 0 _) = matchErrorExpected thing got
+expecting _ _ m = m
+
 orNoSuchThing :: String -> String -> [String] -> Match a -> Match a
 orNoSuchThing thing got alts (NoMatch 0 _) = matchErrorNoSuch thing got alts
 orNoSuchThing _ _ _ m = m
@@ -1928,6 +2455,9 @@ inexactMatches xs = Match Inexact 0 xs
 
 unknownMatch :: a -> Match a
 unknownMatch x = Match Unknown 0 [x]
+
+tryEach :: [a] -> Match a
+tryEach = exactMatches
 
 ------------------------------
 -- Top level match runner
@@ -2059,7 +2589,7 @@ ex1pinfo =
 -}
 {-
 stargets =
-  [ TargetComponent (CExeName "foo")
+  [ TargetComponent (CExeName "foo")  WholeComponent
   , TargetComponent (CExeName "foo") (ModuleTarget (mkMn "Foo"))
   , TargetComponent (CExeName "tst") (ModuleTarget (mkMn "Foo"))
   ]

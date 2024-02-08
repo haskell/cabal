@@ -24,6 +24,7 @@ import Distribution.Client.TargetProblem
 import Distribution.Client.TargetSelector
   ( ComponentKind (..)
   , ComponentKindFilter
+  , SubComponentTarget (..)
   , TargetSelector (..)
   , componentKind
   , showTargetSelector
@@ -141,17 +142,27 @@ renderTargetSelector (TargetAllPackages (Just kfilter)) =
   "all the "
     ++ renderComponentKind Plural kfilter
     ++ " in the project"
-renderTargetSelector (TargetComponent pkgid cname) =
-  "the "
+renderTargetSelector (TargetComponent pkgid cname subtarget) =
+  renderSubComponentTarget subtarget
+    ++ "the "
     ++ renderComponentName (packageName pkgid) cname
-renderTargetSelector (TargetComponentUnknown pkgname (Left ucname)) =
-  "the component "
+renderTargetSelector (TargetComponentUnknown pkgname (Left ucname) subtarget) =
+  renderSubComponentTarget subtarget
+    ++ "the component "
     ++ prettyShow ucname
     ++ " in the package "
     ++ prettyShow pkgname
-renderTargetSelector (TargetComponentUnknown pkgname (Right cname)) =
-  "the "
+renderTargetSelector (TargetComponentUnknown pkgname (Right cname) subtarget) =
+  renderSubComponentTarget subtarget
+    ++ "the "
     ++ renderComponentName pkgname cname
+
+renderSubComponentTarget :: SubComponentTarget -> String
+renderSubComponentTarget WholeComponent = ""
+renderSubComponentTarget (FileTarget filename) =
+  "the file " ++ filename ++ " in "
+renderSubComponentTarget (ModuleTarget modname) =
+  "the module " ++ prettyShow modname ++ " in "
 
 renderOptionalStanza :: Plural -> OptionalStanza -> String
 renderOptionalStanza Singular TestStanzas = "test suite"
@@ -249,7 +260,7 @@ renderTargetProblem verb _ (TargetAvailableInIndex pkgname) =
     ++ "in this project (either directly or indirectly), but it is in the current "
     ++ "package index. If you want to add it to the project then edit the "
     ++ "cabal.project file."
-renderTargetProblem verb _ (TargetComponentNotProjectLocal pkgid cname) =
+renderTargetProblem verb _ (TargetComponentNotProjectLocal pkgid cname _) =
   "Cannot "
     ++ verb
     ++ " the "
@@ -262,7 +273,7 @@ renderTargetProblem verb _ (TargetComponentNotProjectLocal pkgid cname) =
     ++ "non-local dependencies. To run test suites or benchmarks from "
     ++ "dependencies you can unpack the package locally and adjust the "
     ++ "cabal.project file to include that package directory."
-renderTargetProblem verb _ (TargetComponentNotBuildable pkgid cname) =
+renderTargetProblem verb _ (TargetComponentNotBuildable pkgid cname _) =
   "Cannot "
     ++ verb
     ++ " the "
@@ -275,7 +286,7 @@ renderTargetProblem verb _ (TargetComponentNotBuildable pkgid cname) =
     ++ "property is conditional on flags. Alternatively you may simply have to "
     ++ "edit the .cabal file to declare it as buildable and fix any resulting "
     ++ "build problems."
-renderTargetProblem verb _ (TargetOptionalStanzaDisabledByUser _ cname) =
+renderTargetProblem verb _ (TargetOptionalStanzaDisabledByUser _ cname _) =
   "Cannot "
     ++ verb
     ++ " the "
@@ -294,7 +305,7 @@ renderTargetProblem verb _ (TargetOptionalStanzaDisabledByUser _ cname) =
     ++ "explanation."
   where
     compkinds = renderComponentKind Plural (componentKind cname)
-renderTargetProblem verb _ (TargetOptionalStanzaDisabledBySolver pkgid cname) =
+renderTargetProblem verb _ (TargetOptionalStanzaDisabledBySolver pkgid cname _) =
   "Cannot "
     ++ verb
     ++ " the "

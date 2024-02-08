@@ -377,8 +377,8 @@ reifyTargetSelectors pkgs sels =
     go (TargetPackage _ _ (Just kind)) = [Left (AllComponentsOnly kind)]
     go (TargetAllPackages (Just kind)) = [Left (AllComponentsOnly kind)]
     go (TargetPackageNamed pname _) = [Left (NonlocalPackageNotAllowed pname)]
-    go (TargetComponentUnknown pname _) = [Left (NonlocalPackageNotAllowed pname)]
-    go (TargetComponent _ cname) = [Left (ComponentsNotAllowed cname)]
+    go (TargetComponentUnknown pname _ _) = [Left (NonlocalPackageNotAllowed pname)]
+    go (TargetComponent _ cname _) = [Left (ComponentsNotAllowed cname)]
 
 data TargetProblem
   = AllComponentsOnly ComponentKind
