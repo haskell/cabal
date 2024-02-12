@@ -32,6 +32,7 @@ import Distribution.Client.ProjectConfig
   , commandLineFlagsToProjectConfig
   , projectConfigConfigFile
   , projectConfigShared
+  , withGlobalConfig
   , withProjectOrGlobalConfig
   )
 import Distribution.Client.ProjectFlags
@@ -219,7 +220,11 @@ sdistOptions showOrParseArgs =
 
 sdistAction :: (ProjectFlags, SdistFlags) -> [String] -> GlobalFlags -> IO ()
 sdistAction (pf@ProjectFlags{..}, SdistFlags{..}) targetStrings globalFlags = do
-  (baseCtx, distDirLayout) <- withProjectOrGlobalConfig verbosity flagIgnoreProject globalConfigFlag withProject withoutProject
+  (baseCtx, distDirLayout) <-
+    withProjectOrGlobalConfig
+      flagIgnoreProject
+      withProject
+      (withGlobalConfig verbosity globalConfigFlag withoutProject)
 
   let localPkgs = localPackages baseCtx
 

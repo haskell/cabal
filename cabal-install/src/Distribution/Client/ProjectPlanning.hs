@@ -409,6 +409,8 @@ rebuildProjectConfig
       -- Look for all the cabal packages in the project
       -- some of which may be local src dirs, tarballs etc
       --
+      -- NOTE: These are all packages mentioned in the project configuration.
+      -- Whether or not they will be considered local to the project will be decided by `shouldBeLocal`.
       phaseReadLocalPackages
         :: ProjectConfig
         -> Rebuild [PackageSpecifier UnresolvedSourcePackage]

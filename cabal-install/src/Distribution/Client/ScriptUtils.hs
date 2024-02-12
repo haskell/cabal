@@ -292,7 +292,11 @@ withContextAndSelectors
   -> IO b
 withContextAndSelectors noTargets kind flags@NixStyleFlags{..} targetStrings globalFlags cmd act =
   withTemporaryTempDirectory $ \mkTmpDir -> do
-    (tc, ctx) <- withProjectOrGlobalConfig verbosity ignoreProject globalConfigFlag withProject (withoutProject mkTmpDir)
+    (tc, ctx) <-
+      withProjectOrGlobalConfig
+        ignoreProject
+        withProject
+        (withGlobalConfig verbosity globalConfigFlag $ withoutProject mkTmpDir)
 
     (tc', ctx', sels) <- case targetStrings of
       -- Only script targets may contain spaces and or end with ':'.

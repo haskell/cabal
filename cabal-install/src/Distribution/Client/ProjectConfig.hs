@@ -621,32 +621,25 @@ withGlobalConfig verbosity gcf with = do
   with globalConfig
 
 withProjectOrGlobalConfig
-  :: Verbosity
-  -- ^ verbosity
-  -> Flag Bool
+  :: Flag Bool
   -- ^ whether to ignore local project (--ignore-project flag)
-  -> Flag FilePath
-  -- ^ @--cabal-config@
   -> IO a
-  -- ^ with project
-  -> (ProjectConfig -> IO a)
-  -- ^ without project
+  -- ^ continuation with project
   -> IO a
-withProjectOrGlobalConfig verbosity (Flag True) gcf _with without = do
-  globalConfig <- runRebuild "" $ readGlobalConfig verbosity gcf
-  without globalConfig
-withProjectOrGlobalConfig verbosity _ignorePrj gcf with without =
-  withProjectOrGlobalConfig' verbosity gcf with without
+  -- ^ continuation without project
+  -> IO a
+withProjectOrGlobalConfig (Flag True) _with without = do
+  without
+withProjectOrGlobalConfig _ignorePrj with without =
+  withProjectOrGlobalConfig' with without
 
 withProjectOrGlobalConfig'
-  :: Verbosity
-  -> Flag FilePath
+  :: IO a
+  -- ^ continuation with project
   -> IO a
-  -> (ProjectConfig -> IO a)
+  -- ^ continuation without project
   -> IO a
-withProjectOrGlobalConfig' verbosity globalConfigFlag with without = do
-  globalConfig <- runRebuild "" $ readGlobalConfig verbosity globalConfigFlag
-
+withProjectOrGlobalConfig' with without = do
   catch with $
     \case
       (BadPackageLocations prov locs)
@@ -654,8 +647,8 @@ withProjectOrGlobalConfig' verbosity globalConfigFlag with without = do
         , let
             isGlobErr (BadLocGlobEmptyMatch _) = True
             isGlobErr _ = False
-        , any isGlobErr locs ->
-            without globalConfig
+        , any isGlobErr locs -> do
+            without
       err -> throwIO err
 
 -- | Read all the config relevant for a project. This includes the project
@@ -956,7 +949,7 @@ renderBadPackageLocationMatch bplm = case bplm of
       ++ "' contains multiple "
       ++ ".cabal files (which is not currently supported)."
 
--- | Given the project config,
+-- | Determines the location of all packages mentioned in the project configuration.
 --
 -- Throws 'BadPackageLocations'.
 findProjectPackages
@@ -986,11 +979,7 @@ findProjectPackages
       findPackageLocation
         :: Bool
         -> String
-        -> Rebuild
-            ( Either
-                BadPackageLocation
-                [ProjectPackageLocation]
-            )
+        -> Rebuild (Either BadPackageLocation [ProjectPackageLocation])
       findPackageLocation _required@True pkglocstr =
         -- strategy: try first as a file:// or http(s):// URL.
         -- then as a file glob (usually encompassing single file)
@@ -1011,13 +1000,7 @@ findProjectPackages
         , checkIsFileGlobPackage
         , checkIsSingleFilePackage
           :: String
-          -> Rebuild
-              ( Maybe
-                  ( Either
-                      BadPackageLocation
-                      [ProjectPackageLocation]
-                  )
-              )
+          -> Rebuild (Maybe (Either BadPackageLocation [ProjectPackageLocation]))
       checkIsUriPackage pkglocstr =
         case parseAbsoluteURI pkglocstr of
           Just
