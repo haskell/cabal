@@ -1001,7 +1001,9 @@ installLibraries
         unless usedExistingPkgEnvFile $
           warn verbosity $
             "The libraries were installed by creating a global GHC environment file at:\n"
-              ++ "  " ++ envFile ++ "\n"
+              ++ "  "
+              ++ envFile
+              ++ "\n"
               ++ "The presence of such an environment file has several knock-on effects. Because\n"
               ++ "changes the default package set in ghc and ghci from their default (which is\n"
               ++ "\"all boot libraries\"), and because GHC environment files are little-used, other\n"
