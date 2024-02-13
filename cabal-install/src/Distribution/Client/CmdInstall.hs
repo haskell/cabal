@@ -2,6 +2,7 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections #-}
 
 -- | cabal-install CLI command: build
 module Distribution.Client.CmdInstall
@@ -104,6 +105,7 @@ import Distribution.Client.Types
   , PackageSpecifier (..)
   , SourcePackageDb (..)
   , UnresolvedSourcePackage
+  , pkgSpecifierTarget
   )
 import Distribution.Client.Types.OverwritePolicy
   ( OverwritePolicy (..)
@@ -371,7 +373,7 @@ installAction flags@NixStyleFlags{extraFlags = clientInstallFlags', ..} targetSt
 
       -- First, we need to learn about what's available to be installed.
       localBaseCtx <-
-        establishProjectBaseContext reducedVerbosity cliConfig InstallCommand
+        establishProjectBaseContext reducedVerbosity baseCliConfig InstallCommand
       let localDistDirLayout = distDirLayout localBaseCtx
       pkgDb <-
         projectConfigWithBuilderRepoContext
@@ -432,7 +434,7 @@ installAction flags@NixStyleFlags{extraFlags = clientInstallFlags', ..} targetSt
     withoutProject globalConfig = do
       tss <- traverse (parseWithoutProjectTargetSelector verbosity) targetStrings'
       let
-        projectConfig = globalConfig <> cliConfig
+        projectConfig = globalConfig <> baseCliConfig
 
         ProjectConfigBuildOnly
           { projectConfigLogsDir
@@ -478,10 +480,17 @@ installAction flags@NixStyleFlags{extraFlags = clientInstallFlags', ..} targetSt
 
       return (packageSpecifiers, uris, packageTargets, projectConfig)
 
-  (specs, uris, targetSelectors, config) <-
+  (specs, uris, targetSelectors, baseConfig) <-
     withProjectOrGlobalConfig verbosity ignoreProject globalConfigFlag withProject withoutProject
 
+  -- We compute the base context again to determine packages available in the
+  -- project to be installed, so we can list the available package names when
+  -- the "all:..." variants of the target selectors are used.
+  localPkgs <- localPackages <$> establishProjectBaseContext verbosity baseConfig InstallCommand
+
   let
+    config = addLocalConfigToPkgs baseConfig (map pkgSpecifierTarget specs ++ concatMap (targetPkgNames localPkgs) targetSelectors)
+
     ProjectConfig
       { projectConfigBuildOnly =
         ProjectConfigBuildOnly
@@ -631,8 +640,7 @@ installAction flags@NixStyleFlags{extraFlags = clientInstallFlags', ..} targetSt
         globalFlags
         flags{configFlags = configFlags'}
         clientInstallFlags'
-    cliConfig = addLocalConfigToTargets baseCliConfig targetStrings
-    globalConfigFlag = projectConfigConfigFile (projectConfigShared cliConfig)
+    globalConfigFlag = projectConfigConfigFile (projectConfigShared baseCliConfig)
 
     -- Do the install action for each executable in the install configuration.
     traverseInstall :: InstallAction -> InstallCfg -> IO ()
@@ -641,9 +649,9 @@ installAction flags@NixStyleFlags{extraFlags = clientInstallFlags', ..} targetSt
       actionOnExe <- action v overwritePolicy <$> prepareExeInstall cfg
       traverse_ actionOnExe . Map.toList $ targetsMap buildCtx
 
--- | Treat all direct targets of install command as local packages: #8637
-addLocalConfigToTargets :: ProjectConfig -> [String] -> ProjectConfig
-addLocalConfigToTargets config targetStrings =
+-- | Treat all direct targets of install command as local packages: #8637 and later #7297, #8909, #7236.
+addLocalConfigToPkgs :: ProjectConfig -> [PackageName] -> ProjectConfig
+addLocalConfigToPkgs config pkgs =
   config
     { projectConfigSpecificPackage =
         projectConfigSpecificPackage config
@@ -651,7 +659,25 @@ addLocalConfigToTargets config targetStrings =
     }
   where
     localConfig = projectConfigLocalPackages config
-    targetPackageConfigs = map (\x -> (mkPackageName x, localConfig)) targetStrings
+    targetPackageConfigs = map (,localConfig) pkgs
+
+targetPkgNames
+  :: [PackageSpecifier UnresolvedSourcePackage]
+  -- ^ The local packages, to resolve 'TargetAllPackages' selectors
+  -> TargetSelector
+  -> [PackageName]
+targetPkgNames localPkgs = \case
+  TargetPackage _ pkgIds _ -> map pkgName pkgIds
+  TargetPackageNamed name _ -> [name]
+  TargetAllPackages _ -> map pkgSpecifierTarget localPkgs
+  -- Note how the target may select a component only, but we will always apply
+  -- the local flags to the whole package in which that component is contained.
+  -- The reason is that our finest level of configuration is per-package, so
+  -- there is no interface to configure options to a component only. It is not
+  -- trivial to say whether we could indeed support per-component configuration
+  -- because of legacy packages which we may always have to build whole.
+  TargetComponent pkgId _ _ -> [pkgName pkgId]
+  TargetComponentUnknown name _ _ -> [name]
 
 -- | Verify that invalid config options were not passed to the install command.
 --
@@ -774,7 +800,7 @@ partitionToKnownTargetsAndHackagePackages verbosity pkgDb elaboratedPlan targetS
 
       let
         targetSelectors' = flip filter targetSelectors $ \case
-          TargetComponentUnknown name _
+          TargetComponentUnknown name _ _
             | name `elem` hackageNames -> False
           TargetPackageNamed name _
             | name `elem` hackageNames -> False
@@ -954,7 +980,7 @@ warnIfNoExes verbosity buildCtx =
     selectors = concatMap (NE.toList . snd) targets
     noExes = null $ catMaybes $ exeMaybe <$> components
 
-    exeMaybe (ComponentTarget (CExeName exe)) = Just exe
+    exeMaybe (ComponentTarget (CExeName exe) _) = Just exe
     exeMaybe _ = Nothing
 
 -- | Return the package specifiers and non-global environment file entries.
@@ -1034,7 +1060,7 @@ installCheckUnitExes
           else traverse_ warnAbout (zip symlinkables exes)
     where
       exes = catMaybes $ (exeMaybe . fst) <$> components
-      exeMaybe (ComponentTarget (CExeName exe)) = Just exe
+      exeMaybe (ComponentTarget (CExeName exe) _) = Just exe
       exeMaybe _ = Nothing
 
       warnAbout (True, _) = return ()
@@ -1136,7 +1162,7 @@ entriesForLibraryComponents :: TargetsMap -> [GhcEnvironmentFileEntry]
 entriesForLibraryComponents = Map.foldrWithKey' (\k v -> mappend (go k v)) []
   where
     hasLib :: (ComponentTarget, NonEmpty TargetSelector) -> Bool
-    hasLib (ComponentTarget (CLibName _), _) = True
+    hasLib (ComponentTarget (CLibName _) _, _) = True
     hasLib _ = False
 
     go
@@ -1262,7 +1288,8 @@ selectPackageTargets targetSelector targets
 --
 -- For the @build@ command we just need the basic checks on being buildable etc.
 selectComponentTarget
-  :: AvailableTarget k
+  :: SubComponentTarget
+  -> AvailableTarget k
   -> Either TargetProblem' k
 selectComponentTarget = selectComponentTargetBasic
 

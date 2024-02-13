@@ -234,7 +234,7 @@ library
         stm        >= 2.0      && < 2.6,
         tar        >= 0.5.0.3  && < 0.7,
         time       >= 1.5.0.1  && < 1.13,
-        zlib       >= 0.5.3    && < 0.7,
+        zlib       >= 0.5.3    && < 0.8,
         hackage-security >= 0.6.2.0 && < 0.7,
         text       >= 1.2.3    && < 1.3 || >= 2.0 && < 2.2,
         parsec     >= 3.1.13.0 && < 3.2,
@@ -310,6 +310,7 @@ test-suite unit-tests
       UnitTests.Distribution.Client.InstallPlan
       UnitTests.Distribution.Client.JobControl
       UnitTests.Distribution.Client.ProjectConfig
+      UnitTests.Distribution.Client.ProjectPlanning
       UnitTests.Distribution.Client.Store
       UnitTests.Distribution.Client.Tar
       UnitTests.Distribution.Client.Targets
@@ -370,7 +371,7 @@ test-suite mem-use-tests
   build-depends:
         cabal-install,
         containers,
-        tasty >= 1.2.3 && <1.5,
+        tasty >= 1.2.3 && <1.6,
         tasty-hunit >= 0.10
 
 
@@ -390,7 +391,7 @@ test-suite integration-tests2
         containers,
         directory,
         filepath,
-        tasty >= 1.2.3 && <1.5,
+        tasty >= 1.2.3 && <1.6,
         tasty-hunit >= 0.10,
         tagged
 
@@ -426,7 +427,7 @@ test-suite long-tests
         network-uri >= 2.6.2.0 && <2.7,
         random,
         tagged,
-        tasty >= 1.2.3 && <1.5,
+        tasty >= 1.2.3 && <1.6,
         tasty-expected-failure,
         tasty-hunit >= 0.10,
         tasty-quickcheck,
