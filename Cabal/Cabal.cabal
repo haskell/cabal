@@ -59,6 +59,9 @@ library
   if impl(ghc >= 8.0) && impl(ghc < 8.8)
     ghc-options: -Wnoncanonical-monadfail-instances
 
+  if impl(ghc >= 8.10)
+    ghc-options: -Wunused-packages
+
   exposed-modules:
     Distribution.Backpack.Configure
     Distribution.Backpack.ComponentsGraph
@@ -306,7 +309,6 @@ library
     -- See also https://github.com/ekmett/transformers-compat/issues/35
     transformers (>= 0.3      && < 0.4) || (>=0.4.1.0 && <0.7),
     mtl           >= 2.1      && < 2.4,
-    text         (>= 1.2.3.0  && < 1.3) || (>= 2.0 && < 2.2),
     parsec        >= 3.1.13.0 && < 3.2
 
   other-modules:
