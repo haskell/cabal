@@ -16,6 +16,7 @@ module Distribution.Solver.Types.ProjectConfigPath
     , docProjectImportedBy
     , docProjectConfigFiles
     , cyclicalImportMsg
+    , duplicateImportMsg
     , untrimmedUriImportMsg
     , docProjectConfigPathFailReason
     , quoteUntrimmed
@@ -187,9 +188,24 @@ docProjectConfigFiles ps = vcat
 -- | A message for a cyclical import, a "cyclical import of".
 cyclicalImportMsg :: ProjectConfigPath -> Doc
 cyclicalImportMsg path@(ProjectConfigPath (duplicate :| _)) =
+    seenImportMsg (text "cyclical import of" <+> text duplicate <> semi) duplicate path []
+
+-- | A message for a duplicate import, a "duplicate import of". If a check for
+-- cyclical imports has already been made then this would report a duplicate
+-- import by two different paths.
+duplicateImportMsg :: Doc -> FilePath -> ProjectConfigPath -> [(FilePath, ProjectConfigPath)] -> Doc
+duplicateImportMsg intro = seenImportMsg intro
+
+seenImportMsg :: Doc -> FilePath -> ProjectConfigPath -> [(FilePath, ProjectConfigPath)] -> Doc
+seenImportMsg intro duplicate path seenImportsBy =
     vcat
-    [ text "cyclical import of" <+> text duplicate <> semi
+    [ intro
     , nest 2 (docProjectConfigPath path)
+    , nest 2 $
+        vcat
+        [ docProjectConfigPath dib
+        | (_, dib) <- filter ((duplicate ==) . fst) seenImportsBy
+        ]
     ]
 
 -- | A message for an import that has leading or trailing spaces.
