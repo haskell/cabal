@@ -1,12 +1,10 @@
 import Test.Cabal.Prelude
 
-main = cabalTest $
-  withSourceCopyDir "app" $ do
-    cwd <- fmap testSourceCopyDir getTestEnv
-
-    buildOut <- withDirectory cwd $ do
-      cabalWithStdin "init" ["-i"]
-        "2\n\n1\n\n\n10\n\n\n\n\n\n\n\n\n\n"
+main = cabalTest $ do
+    cwd <- testCurrentDir <$> getTestEnv
+    buildOut <- do
+      cabalWithStdin "init" ["-i", "-p", "app"]
+        "2\n\n1\n\n10\n\n\n\n\n\n\n\n\n\n"
       setup "configure" []
       setup' "build" ["app"]
 

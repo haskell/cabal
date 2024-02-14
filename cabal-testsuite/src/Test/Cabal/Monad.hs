@@ -20,6 +20,9 @@ module Test.Cabal.Monad (
     cabalProgram,
     diffProgram,
     python3Program,
+    requireSuccess,
+    initWorkDir,
+    recordLog,
     -- * The test environment
     TestEnv(..),
     getTestEnv,
@@ -91,15 +94,20 @@ import System.Exit
 import System.FilePath
 import System.IO
 import System.IO.Error (isDoesNotExistError)
-import System.IO.Temp (withSystemTempDirectory)
+import Distribution.Simple.Utils hiding (info)
 import System.Process hiding (env)
 import Options.Applicative
+import Test.Cabal.Run
+import qualified Data.ByteString.Char8 as C
+import Data.List
+import GHC.Stack
 
 data CommonArgs = CommonArgs {
         argCabalInstallPath    :: Maybe FilePath,
         argGhcPath             :: Maybe FilePath,
         argHackageRepoToolPath :: Maybe FilePath,
         argHaddockPath         :: Maybe FilePath,
+        argKeepTmpFiles        :: Bool,
         argAccept              :: Bool,
         argSkipSetupTests      :: Bool
     }
@@ -128,6 +136,10 @@ commonArgParser = CommonArgs
        <> metavar "PATH"
         ))
     <*> switch
+        ( long "keep-tmp-files"
+       <> help "Keep temporary files"
+        )
+    <*> switch
         ( long "accept"
        <> help "Accept output"
         )
@@ -140,6 +152,7 @@ renderCommonArgs args =
     maybe [] (\x -> ["--with-haddock",           x]) (argHaddockPath         args) ++
     maybe [] (\x -> ["--with-hackage-repo-tool", x]) (argHackageRepoToolPath args) ++
     (if argAccept args then ["--accept"] else []) ++
+    (if argKeepTmpFiles args then ["--keep-tmp-files"] else []) ++
     (if argSkipSetupTests args then ["--skip-setup-tests"] else [])
 
 data TestArgs = TestArgs {
@@ -177,6 +190,7 @@ unexpectedSuccess :: TestM ()
 unexpectedSuccess = liftIO $ do
     putStrLn "UNEXPECTED OK"
     E.throwIO TestCodeUnexpectedOk
+
 
 trySkip :: IO a -> IO (Either String a)
 trySkip m = fmap Right m `E.catch` \e -> case e of
@@ -228,8 +242,12 @@ python3Program = simpleProgram "python3"
 
 -- | Run a test in the test monad according to program's arguments.
 runTestM :: String -> TestM a -> IO a
-runTestM mode m = withSystemTempDirectory "cabal-testsuite" $ \tmp_dir -> do
-    args <- execParser (info testArgParser Data.Monoid.mempty)
+runTestM mode m =
+    liftIO $ getTemporaryDirectory >>= \systemTmpDir ->
+    execParser (info testArgParser Data.Monoid.mempty) >>= \args ->
+    withTempDirectoryEx verbosity (defaultTempFileOptions { optKeepTempFiles = argKeepTmpFiles (testCommonArgs args) })
+                               systemTmpDir
+                               "cabal-testsuite" $ \tmp_dir -> do
     let dist_dir = testArgDistDir args
         (script_dir0, script_filename) = splitFileName (testArgScriptPath args)
 
@@ -319,16 +337,14 @@ runTestM mode m = withSystemTempDirectory "cabal-testsuite" $ \tmp_dir -> do
                     testRelativeCurrentDir = ".",
                     testHavePackageDb = False,
                     testHaveRepo = False,
-                    testHaveSourceCopy = False,
                     testCabalInstallAsSetup = False,
-                    testCabalProjectFile = "cabal.project",
+                    testCabalProjectFile = Nothing,
                     testPlan = Nothing,
                     testRecordDefaultMode = DoNotRecord,
-                    testRecordUserMode = Nothing,
-                    testSourceCopyRelativeDir = "source"
+                    testRecordUserMode = Nothing
                 }
     let go = do cleanup
-                r <- m
+                r <- withSourceCopy m
                 check_expect (argAccept (testCommonArgs args))
                 return r
     runReaderT go env
@@ -373,6 +389,107 @@ readFileOrEmpty f = readFile f `E.catch` \e ->
                                         then return ""
                                         else E.throwIO e
 
+-- | Run an IO action, and suppress a "does not exist" error.
+onlyIfExists :: MonadIO m => IO () -> m ()
+onlyIfExists m =
+    liftIO $ E.catch m $ \(e :: IOError) ->
+        unless (isDoesNotExistError e) $ E.throwIO e
+
+-- | Make a hermetic copy of the test directory.
+--
+-- This requires the test repository to be a Git checkout, because
+-- we use the Git metadata to figure out what files to copy into the
+-- hermetic copy.
+--
+-- Also see 'withSourceCopyDir'.
+withSourceCopy :: TestM a -> TestM a
+withSourceCopy m = do
+    env <- getTestEnv
+    initWorkDir
+    let curdir  = testSourceDir env
+        dest = testSourceCopyDir env
+    fs <- getSourceFiles
+    when (null fs)
+      (error (unlines [ "withSourceCopy: No files to copy from " ++ curdir
+                      , "You need to \"git add\" any files before they are copied by the testsuite."]))
+    forM_ fs $ \f -> do
+        unless (isTestFile f) $ liftIO $ do
+            putStrLn ("Copying " ++ (curdir </> f) ++ " to " ++ (dest </> f))
+            createDirectoryIfMissing True (takeDirectory (dest </> f))
+            d <- liftIO $ doesDirectoryExist (curdir </> f)
+            if d
+              then
+                copyDirectoryRecursive normal (curdir </> f) (dest </> f)
+              else
+                copyFile (curdir </> f) (dest </> f)
+    m
+
+
+-- NB: Keep this synchronized with partitionTests
+isTestFile :: FilePath -> Bool
+isTestFile f =
+    case takeExtensions f of
+        ".test.hs"      -> True
+        ".multitest.hs" -> True
+        _               -> False
+
+
+initWorkDir :: TestM ()
+initWorkDir = do
+    env <- getTestEnv
+    liftIO $ createDirectoryIfMissing True (testWorkDir env)
+
+
+
+getSourceFiles :: TestM [FilePath]
+getSourceFiles = do
+    env <- getTestEnv
+    configured_prog <- requireProgramM gitProgram
+    r <- liftIO $ run (testVerbosity env)
+                 (Just (testSourceDir env))
+                 (testEnvironment env)
+                 (programPath configured_prog)
+                 ["ls-files", "--cached", "--modified"]
+                 Nothing
+    recordLog r
+    _ <- requireSuccess r
+    return (lines $ resultOutput r)
+
+recordLog :: Result -> TestM ()
+recordLog res = do
+    env <- getTestEnv
+    let mode = testRecordMode env
+    initWorkDir
+    liftIO $ C.appendFile (testWorkDir env </> "test.log")
+                         (C.pack $ "+ " ++ resultCommand res ++ "\n"
+                            ++ resultOutput res ++ "\n\n")
+    liftIO . C.appendFile (testActualFile env) . C.pack $
+        case mode of
+            RecordAll    -> unlines (lines (resultOutput res))
+            RecordMarked -> getMarkedOutput (resultOutput res)
+            DoNotRecord  -> ""
+
+------------------------------------------------------------------------
+-- * Subprocess run results
+
+requireSuccess :: Result -> TestM Result
+requireSuccess r@Result { resultCommand = cmd
+                        , resultExitCode = exitCode
+                        , resultOutput = output } = withFrozenCallStack $ do
+    env <- getTestEnv
+    when (exitCode /= ExitSuccess && not (testShouldFail env)) $
+        assertFailure $ "Command " ++ cmd ++ " failed.\n" ++
+        "Output:\n" ++ output ++ "\n"
+    when (exitCode == ExitSuccess && testShouldFail env) $
+        assertFailure $ "Command " ++ cmd ++ " succeeded.\n" ++
+        "Output:\n" ++ output ++ "\n"
+    return r
+
+assertFailure :: String -> m ()
+assertFailure msg = withFrozenCallStack $ error msg
+
+
+
 -- | Runs 'diff' with some arguments on two files, outputting the
 -- diff to stderr, and returning true if the two files differ
 diff :: [String] -> FilePath -> FilePath -> TestM Bool
@@ -402,11 +519,15 @@ mkNormalizerEnv = do
                       ["list", "--global", "--simple-output"] ""
     tmpDir <- liftIO $ getTemporaryDirectory
 
+    canonicalizedTestTmpDir <- liftIO $ canonicalizePath (testTmpDir env)
+
     return NormalizerEnv {
         normalizerRoot
             = addTrailingPathSeparator (testSourceDir env),
         normalizerTmpDir
             = addTrailingPathSeparator (testTmpDir env),
+        normalizerCanonicalTmpDir
+            = addTrailingPathSeparator canonicalizedTestTmpDir,
         normalizerGblTmpDir
             = addTrailingPathSeparator tmpDir,
         normalizerGhcVersion
@@ -445,11 +566,21 @@ isAvailableProgram program = do
                 Just _  -> return True
                 Nothing -> return False
 
--- | Run an IO action, and suppress a "does not exist" error.
-onlyIfExists :: MonadIO m => IO () -> m ()
-onlyIfExists m =
-    liftIO $ E.catch m $ \(e :: IOError) ->
-        unless (isDoesNotExistError e) $ E.throwIO e
+
+getMarkedOutput :: String -> String -- trailing newline
+getMarkedOutput out = unlines (go (lines out) False)
+  where
+    go [] _ = []
+    go (x:xs) True
+        | "-----END CABAL OUTPUT-----"   `isPrefixOf` x
+                    =     go xs False
+        | otherwise = x : go xs True
+    go (x:xs) False
+        -- NB: Windows has extra goo at the end
+        | "-----BEGIN CABAL OUTPUT-----" `isPrefixOf` x
+                    = go xs True
+        | otherwise = go xs False
+
 
 data TestEnv = TestEnv
     -- UNCHANGING:
@@ -503,12 +634,10 @@ data TestEnv = TestEnv
     , testHavePackageDb  :: Bool
     -- | Says if we've setup a repository
     , testHaveRepo :: Bool
-    -- | Says if we've copied the source to a hermetic directory
-    , testHaveSourceCopy :: Bool
     -- | Says if we're testing cabal-install as setup
     , testCabalInstallAsSetup :: Bool
     -- | Says what cabal.project file to use (probed)
-    , testCabalProjectFile :: FilePath
+    , testCabalProjectFile :: Maybe FilePath
     -- | Cached record of the plan metadata from a new-build
     -- invocation; controlled by 'withPlan'.
     , testPlan :: Maybe Plan
@@ -516,9 +645,6 @@ data TestEnv = TestEnv
     , testRecordDefaultMode :: RecordMode
     -- | User explicitly set record mode.  Not implemented ATM.
     , testRecordUserMode :: Maybe RecordMode
-    -- | Name of the subdirectory we copied the test's sources to,
-    -- relative to 'testSourceDir'
-    , testSourceCopyRelativeDir :: FilePath
     }
     deriving Show
 
@@ -538,10 +664,7 @@ getTestEnv = ask
 -- where the Cabal file lives.  This is what you want the CWD of cabal
 -- calls to be.
 testCurrentDir :: TestEnv -> FilePath
-testCurrentDir env =
-    (if testHaveSourceCopy env
-        then testSourceCopyDir env
-        else testSourceDir env) </> testRelativeCurrentDir env
+testCurrentDir env = testSourceCopyDir env </> testRelativeCurrentDir env
 
 testName :: TestEnv -> String
 testName env = testSubName env <.> testMode env
@@ -550,8 +673,7 @@ testName env = testSubName env <.> testMode env
 -- files for ALL tests associated with a test (respecting
 -- subtests.)  To clean, you ONLY need to delete this directory.
 testWorkDir :: TestEnv -> FilePath
-testWorkDir env =
-    testSourceDir env </> (testName env <.> "dist")
+testWorkDir env = testTmpDir env </> (testName env <.> "dist")
 
 -- | The absolute prefix where installs go.
 testPrefixDir :: TestEnv -> FilePath
@@ -592,7 +714,7 @@ testKeysDir env = testWorkDir env </> "keys"
 
 -- | If 'withSourceCopy' is used, where the source files go.
 testSourceCopyDir :: TestEnv -> FilePath
-testSourceCopyDir env = testWorkDir env </> testSourceCopyRelativeDir env
+testSourceCopyDir env = testTmpDir env
 
 -- | The user cabal directory
 testCabalDir :: TestEnv -> FilePath

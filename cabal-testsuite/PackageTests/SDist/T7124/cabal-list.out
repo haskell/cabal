@@ -1,4 +1,4 @@
 # cabal v2-sdist
-Wrote source list to <TMPDIR>/pkg-a-0.list
+Wrote source list to <ROOT>/pkg-a-0.list
 Error: [Cabal-6661]
 filepath wildcard './data.txt' does not match any files.

@@ -2587,7 +2587,12 @@ checkRelocatable verbosity pkg lbi =
                 -- @shortRelativePath prefix pkgroot@ will return a path with
                 -- @..@s and following check will fail without @canonicalizePath@.
                 canonicalized <- canonicalizePath libdir
-                unless (p `isPrefixOf` canonicalized) $
+                -- The @prefix@ itself must also be canonicalized because
+                -- canonicalizing @libdir@ may expand symlinks which would make
+                -- @prefix@ no longer being a prefix of @canonical libdir@,
+                -- while @canonical p@ could be a prefix of @canonical libdir@
+                p' <- canonicalizePath p
+                unless (p' `isPrefixOf` canonicalized) $
                   dieWithException verbosity $
                     LibDirDepsPrefixNotRelative libdir p
           | otherwise =

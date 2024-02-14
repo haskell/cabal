@@ -2,7 +2,7 @@ import Test.Cabal.Prelude
 
 -- Test that 'cabal v2-configure' generates the config file appropriately
 main = withShorterPathForNewBuildStore $ \storeDir ->
-  cabalTest . withSourceCopy $ do
+  cabalTest $ do
     cwd <- fmap testCurrentDir getTestEnv
     let configFile = cwd </> "cabal.project.local"
 

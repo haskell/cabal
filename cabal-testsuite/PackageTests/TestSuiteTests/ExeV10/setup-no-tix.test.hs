@@ -12,9 +12,6 @@ import Distribution.Simple.Hpc
 -- at all.)
 --
 main = setupAndCabalTest $ do
-    -- Source copy is necessary as GHC defaults to dumping tix
-    -- file in the CWD, and we do NOT clean it up after the fact.
-    withSourceCopy $ do
         dist_dir <- fmap testDistDir getTestEnv
         setup_build
           [ "--enable-tests"

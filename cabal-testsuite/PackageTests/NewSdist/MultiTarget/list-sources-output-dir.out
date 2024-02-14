@@ -1,3 +1,3 @@
 # cabal v2-sdist
-Wrote source list to <ROOT>/list-sources-output-dir.dist/source/lists/a-0.1.list
-Wrote source list to <ROOT>/list-sources-output-dir.dist/source/lists/b-0.1.list
+Wrote source list to <ROOT>/lists/a-0.1.list
+Wrote source list to <ROOT>/lists/b-0.1.list

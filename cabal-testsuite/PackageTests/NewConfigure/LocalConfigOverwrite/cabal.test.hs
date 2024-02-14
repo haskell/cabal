@@ -1,7 +1,6 @@
 import Test.Cabal.Prelude
 
-main = cabalTest $
-    withSourceCopy $ do
+main = cabalTest $ do
         cabal' "v2-configure" [] >>=
             assertOutputContains "backing it up to 'cabal.project.local~'"
 
