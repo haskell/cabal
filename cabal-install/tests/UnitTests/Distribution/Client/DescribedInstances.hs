@@ -13,7 +13,7 @@ import Distribution.Types.PackageName (PackageName)
 import Distribution.Types.VersionRange (VersionRange)
 
 import Distribution.Client.BuildReports.Types (InstallOutcome, Outcome)
-import Distribution.Client.Glob (FilePathGlob)
+import Distribution.Client.Glob (RootedGlob)
 import Distribution.Client.IndexUtils.ActiveRepos (ActiveRepoEntry, ActiveRepos, CombineStrategy)
 import Distribution.Client.IndexUtils.IndexState (RepoIndexState, TotalIndexState)
 import Distribution.Client.IndexUtils.Timestamp (Timestamp)
@@ -51,7 +51,7 @@ instance Described Outcome where
 -------------------------------------------------------------------------------
 
 -- This instance is incorrect as it may generate C:\dir\{foo,bar}
-instance Described FilePathGlob where
+instance Described RootedGlob where
   describe _ = REUnion [root, relative, homedir]
     where
       root =

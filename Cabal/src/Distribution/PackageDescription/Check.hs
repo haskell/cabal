@@ -61,9 +61,20 @@ import Distribution.PackageDescription.Check.Warning
 import Distribution.Parsec.Warning (PWarning)
 import Distribution.Pretty (prettyShow)
 import Distribution.Simple.Glob
+  ( Glob
+  , GlobResult (..)
+  , globMatches
+  , parseFileGlob
+  , runDirFileGlob
+  )
 import Distribution.Simple.Utils hiding (findPackageDesc, notice)
 import Distribution.Utils.Generic (isAscii)
 import Distribution.Utils.Path
+  ( LicenseFile
+  , PackageDir
+  , SymbolicPath
+  , getSymbolicPath
+  )
 import Distribution.Verbosity
 import Distribution.Version
 import System.FilePath (splitExtension, takeFileName, (<.>), (</>))
@@ -170,7 +181,7 @@ checkPackageFilesGPD verbosity gpd root =
 
     checkPreIO =
       CheckPreDistributionOps
-        { runDirFileGlobM = \fp g -> runDirFileGlob verbosity (root </> fp) g
+        { runDirFileGlobM = \fp g -> runDirFileGlob verbosity (Just . specVersion $ packageDescription gpd) (root </> fp) g
         , getDirectoryContentsM = System.Directory.getDirectoryContents . relative
         }
 
@@ -853,13 +864,14 @@ checkGlobResult title fp rs = dirCheck ++ catMaybes (map getWarning rs)
           [PackageDistSuspiciousWarn $ GlobNoMatch title fp]
       | otherwise = []
 
-    -- If there's a missing directory in play, since our globs don't
-    -- (currently) support disjunction, that will always mean there are
+    -- If there's a missing directory in play, since globs in Cabal packages
+    -- don't (currently) support disjunction, that will always mean there are
     -- no matches. The no matches error in this case is strictly less
     -- informative than the missing directory error.
     withoutNoMatchesWarning (GlobMatch _) = True
     withoutNoMatchesWarning (GlobWarnMultiDot _) = False
     withoutNoMatchesWarning (GlobMissingDirectory _) = True
+    withoutNoMatchesWarning (GlobMatchesDirectory _) = True
 
     getWarning :: GlobResult FilePath -> Maybe PackageCheck
     getWarning (GlobMatch _) = Nothing
@@ -871,6 +883,9 @@ checkGlobResult title fp rs = dirCheck ++ catMaybes (map getWarning rs)
       Just $ PackageDistSuspiciousWarn (GlobExactMatch title fp file)
     getWarning (GlobMissingDirectory dir) =
       Just $ PackageDistSuspiciousWarn (GlobNoDir title fp dir)
+    -- GlobMatchesDirectory is handled elsewhere if relevant;
+    -- we can discard it here.
+    getWarning (GlobMatchesDirectory _) = Nothing
 
 -- ------------------------------------------------------------
 -- Other exports
@@ -1012,10 +1027,6 @@ checkMissingDocs dgs esgs edgs = do
         return (mcs ++ pcs)
     )
   where
-    -- From Distribution.Simple.Glob.
-    globMatches :: [GlobResult a] -> [a]
-    globMatches input = [a | GlobMatch a <- input]
-
     checkDoc
       :: Bool -- Cabal spec ≥ 1.18?
       -> [FilePath] -- Desirables.

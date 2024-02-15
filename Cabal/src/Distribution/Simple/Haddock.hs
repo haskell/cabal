@@ -49,7 +49,7 @@ import Distribution.Simple.BuildPaths
 import Distribution.Simple.BuildTarget
 import Distribution.Simple.Compiler
 import Distribution.Simple.Flag
-import Distribution.Simple.Glob
+import Distribution.Simple.Glob (matchDirFileGlob)
 import Distribution.Simple.InstallDirs
 import Distribution.Simple.LocalBuildInfo hiding (substPathTemplate)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
