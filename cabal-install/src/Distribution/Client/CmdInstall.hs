@@ -470,8 +470,7 @@ installAction flags@NixStyleFlags{extraFlags, configFlags, installFlags, project
 
     -- check for targets already in env
     let getPackageName :: PackageSpecifier UnresolvedSourcePackage -> PackageName
-        getPackageName (NamedPackage pn _) = pn
-        getPackageName (SpecificSourcePackage (SourcePackage pkgId _ _ _)) = pkgName pkgId
+        getPackageName = pkgSpecifierTarget
         targetNames = S.fromList $ map getPackageName (pkgSpecs ++ uriSpecs)
         envNames = S.fromList $ map getPackageName envSpecs
         forceInstall = fromFlagOrDefault False $ installOverrideReinstall installFlags
@@ -571,7 +570,7 @@ withProject verbosity cliConfig targetStrings installLibs = do
     if null unresolvedTargetStrings
       then return (parsedPkgSpecs, parsedTargets)
       else do
-        -- Anything that could not be parsed as a packageId (e.g. a pacakge name with not version or
+        -- Anything that could not be parsed as a packageId (e.g. a package name without a version or
         -- a target syntax using colons) must be resolved inside the project context.
         (resolvedPkgSpecs, resolvedTargets) <-
           resolveTargetSelectorsInProjectBaseContext verbosity baseCtx unresolvedTargetStrings targetFilter
@@ -580,7 +579,7 @@ withProject verbosity cliConfig targetStrings installLibs = do
   -- Apply the local configuration (e.g. cli flags) to all direct targets of install command, see note
   -- in 'installAction'.
   --
-  -- NOTE: If a target string had to be resolved inside the project conterxt, then pkgSpecs will include
+  -- NOTE: If a target string had to be resolved inside the project context, then pkgSpecs will include
   -- the project packages turned into source distributions (getSpecsAndTargetSelectors does this).
   -- We want to apply the local configuration only to the actual targets.
   let config =
@@ -797,7 +796,16 @@ getSpecsAndTargetSelectors verbosity reducedVerbosity sourcePkgDb targetSelector
           TarGzArchive
           (distSdistFile distDirLayout (packageId pkg))
           pkg
-      NamedPackage pkgName _ -> error $ "Got NamedPackage " ++ prettyShow pkgName
+      NamedPackage _ _ ->
+        -- This may happen if 'extra-packages' are listed in the project file.
+        -- We don't need to do extra work for NamedPackages since they will be
+        -- fetched from Hackage rather than locally 'sdistize'-d. Note how,
+        -- below, we already return the local 'sdistize'-d packages together
+        -- with the 'hackagePkgs' (which are 'NamedPackage's), and that
+        -- 'sdistize' is a no-op for 'NamedPackages', meaning the
+        -- 'NamedPackage's in 'localPkgs' will be treated just like
+        -- 'hackagePkgs' as they should.
+        pure ()
 
     if null targetsMap
       then return (hackagePkgs, hackageTargets)
