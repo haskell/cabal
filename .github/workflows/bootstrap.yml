@@ -30,10 +30,10 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        ghc: ["8.10.7", "9.0.2", "9.2.7", "9.4.4"]
+        ghc: ["8.10.7", "9.0.2", "9.2.8", "9.4.8", "9.6.4", "9.8.1"]
         include:
           - os: macos-latest
-            ghc: "9.2.7"
+            ghc: "9.2.8"
     name: Bootstrap ${{ matrix.os }} ghc-${{ matrix.ghc }}
     runs-on: ${{ matrix.os }}
     steps:
