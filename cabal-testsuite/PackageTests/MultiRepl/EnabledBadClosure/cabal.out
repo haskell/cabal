@@ -1,0 +1,9 @@
+# cabal v2-repl
+Resolving dependencies...
+Error: [Cabal-7107]
+Could not resolve dependencies:
+[__0] trying: pkg-b-0 (user goal)
+[__1] next goal: pkg-b:setup.Cabal (dependency of pkg-b)
+[__1] rejecting: pkg-b:setup.Cabal-<VERSION>/installed-<HASH> (constraint from --enable-multi-repl requires >=3.11)
+[__1] fail (backjumping, conflict set: pkg-b, pkg-b:setup.Cabal)
+After searching the rest of the dependency tree exhaustively, these were the goals I've had most trouble fulfilling: pkg-b (2), pkg-b:setup.Cabal (2)
