@@ -14,13 +14,14 @@ webpage to install at least GHC and Cabal. GHCup will install its own MSYS2
 system in your computer unless told not to do so, refer to `its documentation
 <https://www.haskell.org/ghcup/install/#windows_1>`_ for more information.
 
-Ensure that Cabal can call UNIX-like tools
-------------------------------------------
+Ensure that Cabal can call the tools it needs
+---------------------------------------------
 
-As Cabal sometimes needs to call UNIX-like tools that come with MSYS2 (such as
-``make`` or even ``git``), the directories where those are located need to be
-made visible in the ``PATH`` when executing ``cabal``. For that, Cabal provides
-the ``extra-prog-path`` configuration option. Your :ref:`global configuration
+Cabal sometimes needs to call tools that do not come with Windows (such as
+``make`` or even ``git``). The MSYS2 project makes many of them available on
+Windows. The directories where those are located need to be made visible in the
+``PATH`` when executing ``cabal``. For that, Cabal provides the
+``extra-prog-path`` configuration option. Your :ref:`global configuration
 <config-file-discovery>` should include this option:
 
 ::
