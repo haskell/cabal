@@ -17,16 +17,16 @@ system in your computer unless told not to do so, refer to `its documentation
 Ensure that Cabal can call UNIX-like tools
 ------------------------------------------
 
-As Cabal needs sometimes to call UNIX-like tools that come with MSYS2 (such as
+As Cabal sometimes needs to call UNIX-like tools that come with MSYS2 (such as
 ``make`` or even ``git``), the directories where those are located need to be
-made visible in the ``PATH``. For that, Cabal provides the ``extra-prog-path``
-configuration option. Your :ref:`global configuration <config-file-discovery>`
-should include this option:
+made visible in the ``PATH`` when executing ``cabal``. For that, Cabal provides
+the ``extra-prog-path`` configuration option. Your :ref:`global configuration
+<config-file-discovery>` should include this option:
 
 ::
 
-   extra-prog-path: <msys-dir>\usr\bin
-                    <msys-dir>\<environment>\bin
+   extra-prog-path: <msys-dir>\<environment>\bin
+                    <msys-dir>\usr\bin
 
 Where ``<msys-dir>`` points to the location of your MSYS2 installation. Refer to
 GHCup's documentation on where this directory is located by default.
@@ -109,8 +109,8 @@ look like this:
    extra-lib-dirs: <msys-dir>\<environment>\lib
    extra-prog-path: <ghcup-dir>\bin
                     <installdir>
-                    <msys-dir>\usr\bin
                     <msys-dir>\<environment>\bin
+                    <msys-dir>\usr\bin
 
 .. note::
 
