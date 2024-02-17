@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 module UnitTests.Distribution.Simple.Glob
     ( tests
     ) where
@@ -54,7 +55,7 @@ compatibilityTests version =
   [ testCase "literal match" $
       testMatches "foo/a" [GlobMatch "foo/a"]
   , testCase "literal no match on prefix" $
-      testMatches "foo/c.html" []
+      testMatches "foo/c.html" [GlobMatchesDirectory "foo/c.html"]
   , testCase "literal no match on suffix" $
       testMatches "foo/a.html" [GlobMatch "foo/a.html"]
   , testCase "literal no prefix" $
@@ -64,7 +65,7 @@ compatibilityTests version =
   , testCase "glob" $
       testMatches "*.html" [GlobMatch "a.html", GlobMatch "b.html"]
   , testCase "glob in subdir" $
-      testMatches "foo/*.html" [GlobMatch "foo/a.html", GlobMatch "foo/b.html"]
+      testMatches "foo/*.html" [GlobMatchesDirectory "foo/c.html", GlobMatch "foo/b.html", GlobMatch "foo/a.html"]
   , testCase "glob multiple extensions" $
       testMatches "foo/*.html.gz" [GlobMatch "foo/a.html.gz", GlobMatch "foo/b.html.gz"]
   , testCase "glob in deep subdir" $
@@ -101,13 +102,16 @@ testMatchesVersion version pat expected = do
   where
     isEqual = (==) `on` (sort . fmap (fmap normalise))
     checkPure globPat = do
-      let actual = mapMaybe (fileGlobMatches globPat) sampleFileNames
-      unless (sort expected == sort actual) $
+      let actual = mapMaybe (\p -> (p <$) <$> fileGlobMatches version globPat p) sampleFileNames
+          -- We drop directory matches from the expected results since the pure
+          -- check can't identify that kind of match.
+          expected' = filter (\case GlobMatchesDirectory _ -> False; _ -> True) expected
+      unless (sort expected' == sort actual) $
         assertFailure $ "Unexpected result (pure matcher): " ++ show actual
     checkIO globPat =
       withSystemTempDirectory "globstar-sample" $ \tmpdir -> do
         makeSampleFiles tmpdir
-        actual <- runDirFileGlob Verbosity.normal tmpdir globPat
+        actual <- runDirFileGlob Verbosity.normal (Just version) tmpdir globPat
         unless (isEqual actual expected) $
           assertFailure $ "Unexpected result (impure matcher): " ++ show actual
 

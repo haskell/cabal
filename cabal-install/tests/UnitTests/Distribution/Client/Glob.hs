@@ -22,16 +22,16 @@ tests =
   , testGroup
       "Structured hashes"
       [ testCase "GlobPiece" $ structureHash (Proxy :: Proxy GlobPiece) @?= Fingerprint 0xd5e5361866a30ea2 0x31fbfe7b58864782
-      , testCase "FilePathGlobRel" $ structureHash (Proxy :: Proxy FilePathGlobRel) @?= Fingerprint 0x76fa5bcb865a8501 0xb152f68915316f98
+      , testCase "Glob" $ structureHash (Proxy :: Proxy Glob) @?= Fingerprint 0x3a5af41e8194eaa3 0xd8e461fdfdb0e07b
       , testCase "FilePathRoot" $ structureHash (Proxy :: Proxy FilePathRoot) @?= Fingerprint 0x713373d51426ec64 0xda7376a38ecee5a5
-      , testCase "FilePathGlob" $ structureHash (Proxy :: Proxy FilePathGlob) @?= Fingerprint 0x3c11c41f3f03a1f0 0x96e69d85c37d0024
+      , testCase "RootedGlob" $ structureHash (Proxy :: Proxy RootedGlob) @?= Fingerprint 0x0031d198379cd1bf 0x7246ab9b6c6e0e7d
       ]
   ]
 
 -- TODO: [nice to have] tests for trivial globs, tests for matching,
 -- tests for windows style file paths
 
-prop_roundtrip_printparse :: FilePathGlob -> Property
+prop_roundtrip_printparse :: RootedGlob -> Property
 prop_roundtrip_printparse pathglob =
   counterexample (prettyShow pathglob) $
     eitherParsec (prettyShow pathglob) === Right pathglob
@@ -39,35 +39,35 @@ prop_roundtrip_printparse pathglob =
 -- first run, where we don't even call updateMonitor
 testParseCases :: Assertion
 testParseCases = do
-  FilePathGlob (FilePathRoot "/") GlobDirTrailing <- testparse "/"
-  FilePathGlob FilePathHomeDir GlobDirTrailing <- testparse "~/"
+  RootedGlob (FilePathRoot "/") GlobDirTrailing <- testparse "/"
+  RootedGlob FilePathHomeDir GlobDirTrailing <- testparse "~/"
 
-  FilePathGlob (FilePathRoot "A:\\") GlobDirTrailing <- testparse "A:/"
-  FilePathGlob (FilePathRoot "Z:\\") GlobDirTrailing <- testparse "z:/"
-  FilePathGlob (FilePathRoot "C:\\") GlobDirTrailing <- testparse "C:\\"
-  FilePathGlob FilePathRelative (GlobFile [Literal "_:"]) <- testparse "_:"
+  RootedGlob (FilePathRoot "A:\\") GlobDirTrailing <- testparse "A:/"
+  RootedGlob (FilePathRoot "Z:\\") GlobDirTrailing <- testparse "z:/"
+  RootedGlob (FilePathRoot "C:\\") GlobDirTrailing <- testparse "C:\\"
+  RootedGlob FilePathRelative (GlobFile [Literal "_:"]) <- testparse "_:"
 
-  FilePathGlob
+  RootedGlob
     FilePathRelative
     (GlobFile [Literal "."]) <-
     testparse "."
 
-  FilePathGlob
+  RootedGlob
     FilePathRelative
     (GlobFile [Literal "~"]) <-
     testparse "~"
 
-  FilePathGlob
+  RootedGlob
     FilePathRelative
     (GlobDir [Literal "."] GlobDirTrailing) <-
     testparse "./"
 
-  FilePathGlob
+  RootedGlob
     FilePathRelative
     (GlobFile [Literal "foo"]) <-
     testparse "foo"
 
-  FilePathGlob
+  RootedGlob
     FilePathRelative
     ( GlobDir
         [Literal "foo"]
@@ -75,7 +75,7 @@ testParseCases = do
       ) <-
     testparse "foo/bar"
 
-  FilePathGlob
+  RootedGlob
     FilePathRelative
     ( GlobDir
         [Literal "foo"]
@@ -83,7 +83,7 @@ testParseCases = do
       ) <-
     testparse "foo/bar/"
 
-  FilePathGlob
+  RootedGlob
     (FilePathRoot "/")
     ( GlobDir
         [Literal "foo"]
@@ -91,7 +91,7 @@ testParseCases = do
       ) <-
     testparse "/foo/bar/"
 
-  FilePathGlob
+  RootedGlob
     (FilePathRoot "C:\\")
     ( GlobDir
         [Literal "foo"]
@@ -99,26 +99,26 @@ testParseCases = do
       ) <-
     testparse "C:\\foo\\bar\\"
 
-  FilePathGlob
+  RootedGlob
     FilePathRelative
     (GlobFile [WildCard]) <-
     testparse "*"
 
-  FilePathGlob
+  RootedGlob
     FilePathRelative
     (GlobFile [WildCard, WildCard]) <-
     testparse "**" -- not helpful but valid
-  FilePathGlob
+  RootedGlob
     FilePathRelative
     (GlobFile [WildCard, Literal "foo", WildCard]) <-
     testparse "*foo*"
 
-  FilePathGlob
+  RootedGlob
     FilePathRelative
     (GlobFile [Literal "foo", WildCard, Literal "bar"]) <-
     testparse "foo*bar"
 
-  FilePathGlob
+  RootedGlob
     FilePathRelative
     (GlobFile [Union [[WildCard], [Literal "foo"]]]) <-
     testparse "{*,foo}"
@@ -135,7 +135,7 @@ testParseCases = do
 
   return ()
 
-testparse :: String -> IO FilePathGlob
+testparse :: String -> IO RootedGlob
 testparse s =
   case eitherParsec s of
     Right p -> return p
@@ -143,6 +143,6 @@ testparse s =
 
 parseFail :: String -> Assertion
 parseFail s =
-  case eitherParsec s :: Either String FilePathGlob of
+  case eitherParsec s :: Either String RootedGlob of
     Right p -> throwIO $ HUnitFailure Nothing ("expected no parse of: " ++ s ++ " -- " ++ show p)
     Left _ -> return ()

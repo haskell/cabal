@@ -108,6 +108,7 @@ library
     Distribution.Simple.GHCJS
     Distribution.Simple.Haddock
     Distribution.Simple.Glob
+    Distribution.Simple.Glob.Internal
     Distribution.Simple.HaskellSuite
     Distribution.Simple.Hpc
     Distribution.Simple.Install

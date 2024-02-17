@@ -60,7 +60,7 @@ import Distribution.Client.Compat.Prelude
 import Prelude ()
 
 import Distribution.Client.Glob
-  ( isTrivialFilePathGlob
+  ( isTrivialRootedGlob
   )
 import Distribution.Client.ProjectConfig.Legacy
 import Distribution.Client.ProjectConfig.Types
@@ -1050,7 +1050,7 @@ findProjectPackages
             matches <- matchFileGlob glob
             case matches of
               []
-                | isJust (isTrivialFilePathGlob glob) ->
+                | isJust (isTrivialRootedGlob glob) ->
                     return
                       ( Left
                           ( BadPackageLocationFile
@@ -1064,7 +1064,7 @@ findProjectPackages
                     <$> traverse checkFilePackageMatch matches
                 return $! case (failures, pkglocs) of
                   ([failure], [])
-                    | isJust (isTrivialFilePathGlob glob) ->
+                    | isJust (isTrivialRootedGlob glob) ->
                         Left (BadPackageLocationFile failure)
                   (_, []) -> Left (BadLocGlobBadMatches pkglocstr failures)
                   _ -> Right pkglocs
@@ -1133,9 +1133,9 @@ findProjectPackages
 --
 -- For a directory @some/dir/@, this is a glob of the form @some/dir/\*.cabal@.
 -- The directory part can be either absolute or relative.
-globStarDotCabal :: FilePath -> FilePathGlob
+globStarDotCabal :: FilePath -> RootedGlob
 globStarDotCabal dir =
-  FilePathGlob
+  RootedGlob
     (if isAbsolute dir then FilePathRoot root else FilePathRelative)
     ( foldr
         (\d -> GlobDir [Literal d])

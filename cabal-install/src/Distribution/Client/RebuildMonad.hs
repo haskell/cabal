@@ -32,9 +32,9 @@ module Distribution.Client.RebuildMonad
     -- ** Monitoring file globs
   , monitorFileGlob
   , monitorFileGlobExistence
-  , FilePathGlob (..)
+  , RootedGlob (..)
   , FilePathRoot (..)
-  , FilePathGlobRel (..)
+  , Glob (..)
   , GlobPiece (..)
 
     -- * Using a file monitor
@@ -232,7 +232,7 @@ delayInitSharedResources action = do
 --
 -- Since this operates in the 'Rebuild' monad, it also monitors the given glob
 -- for changes.
-matchFileGlob :: FilePathGlob -> Rebuild [FilePath]
+matchFileGlob :: RootedGlob -> Rebuild [FilePath]
 matchFileGlob glob = do
   root <- askRoot
   monitorFiles [monitorFileGlobExistence glob]

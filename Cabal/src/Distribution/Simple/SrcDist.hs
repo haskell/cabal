@@ -245,12 +245,13 @@ listPackageSources' verbosity rip cwd pkg_descr pps =
     , -- Data files.
       fmap concat
         . for (dataFiles pkg_descr)
-        $ \filename -> do
-          let srcDataDirRaw = dataDir pkg_descr
-              srcDataDir
-                | null srcDataDirRaw = "."
-                | otherwise = srcDataDirRaw
-          matchDirFileGlobWithDie verbosity rip (specVersion pkg_descr) cwd (srcDataDir </> filename)
+        $ \filename ->
+          do
+            let srcDataDirRaw = dataDir pkg_descr
+                srcDataDir
+                  | null srcDataDirRaw = "."
+                  | otherwise = srcDataDirRaw
+            matchDirFileGlobWithDie verbosity rip (specVersion pkg_descr) cwd (srcDataDir </> filename)
     , -- Extra source files.
       fmap concat . for (extraSrcFiles pkg_descr) $ \fpath ->
         matchDirFileGlobWithDie verbosity rip (specVersion pkg_descr) cwd fpath

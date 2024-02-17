@@ -189,16 +189,16 @@ Formally, the format is described by the following BNF:
 
 .. code-block:: abnf
 
-    FilePathGlob    ::= FilePathRoot FilePathGlobRel
+    RootedGlob    ::= FilePathRoot Glob
     FilePathRoot    ::= {- empty -}        # relative to cabal.project
                       | "/"                # Unix root
                       | [a-zA-Z] ":" [/\\] # Windows root
                       | "~"                # home directory
-    FilePathGlobRel ::= Glob "/"  FilePathGlobRel # Unix directory
-                      | Glob "\\" FilePathGlobRel # Windows directory
-                      | Glob         # file
-                      | {- empty -}  # trailing slash
-    Glob      ::= GlobPiece *
+    Glob ::= GlobPieces [/\\] Glob   # Unix or Windows directory
+           | "..[**/\\]"  GlobPieces # Recursive directory glob
+           | GlobPieces              # file
+           | [/\\]                   # trailing slash
+    GlobPieces ::= GlobPiece *
     GlobPiece ::= "*"            # wildcard
                 | [^*{},/\\] *   # literal string
                 | "\\" [*{},]    # escaped reserved character
