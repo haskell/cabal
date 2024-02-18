@@ -1002,7 +1002,8 @@ installLibraries
         when showWarning $
           warn verbosity $
             "The libraries were installed by creating a global GHC environment file at:\n"
-              ++ envFile ++ "\n"
+              ++ envFile
+              ++ "\n"
               ++ "\n"
               ++ "The presence of such an environment file is likely to confuse or break other "
               ++ "tools because it changes GHC's behaviour: it changes the default package set in "
