@@ -442,7 +442,7 @@ installAction flags@NixStyleFlags{extraFlags, configFlags, installFlags, project
   let
     GhcImplInfo{supportsPkgEnvFiles} = getImplInfo compiler
 
-  envFile <- getEnvFile clientInstallFlags platform compilerVersion
+  (usedPackageEnvFlag, envFile) <- getEnvFile clientInstallFlags platform compilerVersion
   (usedExistingPkgEnvFile, existingEnvEntries) <-
     getExistingEnvEntries verbosity compilerFlavor supportsPkgEnvFiles envFile
   packageDbs <- getPackageDbStack compiler projectConfigStoreDir projectConfigLogsDir projectConfigPackageDBs
@@ -534,7 +534,7 @@ installAction flags@NixStyleFlags{extraFlags, configFlags, installFlags, project
             packageDbs
             envFile
             nonGlobalEnvEntries'
-            usedExistingPkgEnvFile
+            (not usedExistingPkgEnvFile && not usedPackageEnvFlag)
         else -- Install any built exe by symlinking or copying it we don't use
         -- BuildOutcomes because we also need the component names
           traverseInstall (installCheckUnitExes InstallCheckInstall) installCfg
@@ -962,7 +962,8 @@ installLibraries
   -- ^ Environment file
   -> [GhcEnvironmentFileEntry]
   -> Bool
-  -- ^ Whether we used an existing environment file (for diagnostics)
+  -- ^ Whether we need to show a warning (i.e. we created a new environment
+  --   file, and the user did not use --package-env)
   -> IO ()
 installLibraries
   verbosity
@@ -972,7 +973,7 @@ installLibraries
   packageDbs'
   envFile
   envEntries
-  usedExistingPkgEnvFile = do
+  showWarning = do
     if supportsPkgEnvFiles $ getImplInfo compiler
       then do
         let validDb (SpecificPackageDB fp) = doesPathExist fp
@@ -998,7 +999,7 @@ installLibraries
           contents' = renderGhcEnvironmentFile (baseEntries ++ pkgEntries)
         createDirectoryIfMissing True (takeDirectory envFile)
         writeFileAtomic envFile (BS.pack contents')
-        unless usedExistingPkgEnvFile $
+        when showWarning $
           warn verbosity $
             "The libraries were installed by creating a global GHC environment file at:\n"
               ++ "  "
@@ -1247,8 +1248,10 @@ entriesForLibraryComponents = Map.foldrWithKey' (\k v -> mappend (go k v)) []
       | any hasLib targets = [GhcEnvFilePackageId unitId]
       | otherwise = []
 
--- | Gets the file path to the request environment file.
-getEnvFile :: ClientInstallFlags -> Platform -> Version -> IO FilePath
+-- | Gets the file path to the request environment file. The @Bool@ is @True@
+-- if we got an explicit instruction using @--package-env@, @False@ if we used
+-- the default.
+getEnvFile :: ClientInstallFlags -> Platform -> Version -> IO (Bool, FilePath)
 getEnvFile clientInstallFlags platform compilerVersion = do
   appDir <- getGhcAppDir
   case flagToMaybe (cinstEnvironmentPath clientInstallFlags) of
@@ -1256,18 +1259,18 @@ getEnvFile clientInstallFlags platform compilerVersion = do
       -- Is spec a bare word without any "pathy" content, then it refers to
       -- a named global environment.
       | takeBaseName spec == spec ->
-          return (getGlobalEnv appDir platform compilerVersion spec)
+          return (True, getGlobalEnv appDir platform compilerVersion spec)
       | otherwise -> do
           spec' <- makeAbsolute spec
           isDir <- doesDirectoryExist spec'
           if isDir
             then -- If spec is a directory, then make an ambient environment inside
             -- that directory.
-              return (getLocalEnv spec' platform compilerVersion)
+              return (True, getLocalEnv spec' platform compilerVersion)
             else -- Otherwise, treat it like a literal file path.
-              return spec'
+              return (True, spec')
     Nothing ->
-      return (getGlobalEnv appDir platform compilerVersion "default")
+      return (False, getGlobalEnv appDir platform compilerVersion "default")
 
 -- | Returns the list of @GhcEnvFilePackageId@ values already existing in the
 --   environment being operated on. The @Bool@ is @True@ if we took settings
