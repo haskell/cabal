@@ -1,0 +1,18 @@
+cabal-version:   3.0
+name:            external-lib
+version:         0.1.0.0
+license:         NONE
+author:          matthewtpickering@gmail.com
+maintainer:      Matthew Pickering
+build-type:      Simple
+extra-doc-files: CHANGELOG.md
+
+common warnings
+    ghc-options: -Wall
+
+executable my-exe
+    import:           warnings
+    main-is: Main.hs
+    build-depends:    base
+    hs-source-dirs:   .
+    default-language: Haskell2010
