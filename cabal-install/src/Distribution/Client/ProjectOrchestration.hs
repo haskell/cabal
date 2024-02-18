@@ -237,6 +237,9 @@ data ProjectBaseContext = ProjectBaseContext
   , cabalDirLayout :: CabalDirLayout
   , projectConfig :: ProjectConfig
   , localPackages :: [PackageSpecifier UnresolvedSourcePackage]
+  -- ^ Note: these are all the packages mentioned in the project configuration.
+  -- Whether or not they will be considered local to the project will be decided
+  -- by `shouldBeLocal` in ProjectPlanning.
   , buildSettings :: BuildTimeSettings
   , currentCommand :: CurrentCommand
   , installedPackages :: Maybe InstalledPackageIndex

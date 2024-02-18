@@ -48,6 +48,7 @@ import Distribution.Client.ProjectConfig
   ( ProjectConfig (..)
   , ProjectConfigShared (projectConfigConfigFile)
   , projectConfigWithSolverRepoContext
+  , withGlobalConfig
   , withProjectOrGlobalConfig
   )
 import Distribution.Client.ProjectFlags
@@ -162,11 +163,9 @@ updateAction flags@NixStyleFlags{..} extraArgs globalFlags = do
 
   projectConfig <-
     withProjectOrGlobalConfig
-      verbosity
       ignoreProject
-      globalConfigFlag
       (projectConfig <$> establishProjectBaseContext verbosity cliConfig OtherCommand)
-      (\globalConfig -> return $ globalConfig <> cliConfig)
+      (withGlobalConfig verbosity globalConfigFlag $ \globalConfig -> return $ globalConfig <> cliConfig)
 
   projectConfigWithSolverRepoContext
     verbosity
