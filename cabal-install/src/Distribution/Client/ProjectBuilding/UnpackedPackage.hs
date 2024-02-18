@@ -740,9 +740,13 @@ buildAndInstallUnpackedPackage
 
       dispname :: String
       dispname = case elabPkgOrComp pkg of
-        ElabPackage _ ->
+        -- Packages built altogether, instead of per component
+        ElabPackage ElaboratedPackage{pkgWhyNotPerComponent} ->
           prettyShow pkgid
-            ++ " (all, legacy fallback)"
+            ++ " (all, legacy fallback: "
+            ++ unwords (map whyNotPerComponent $ NE.toList pkgWhyNotPerComponent)
+            ++ ")"
+        -- Packages built per component
         ElabComponent comp ->
           prettyShow pkgid
             ++ " ("
