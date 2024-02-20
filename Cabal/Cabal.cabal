@@ -1,6 +1,6 @@
 cabal-version: 2.2
 name:          Cabal
-version:       3.10.2.1
+version:       3.10.3.0
 copyright:     2003-2023, Cabal Development Team (see AUTHORS file)
 license:       BSD-3-Clause
 license-file:  LICENSE
