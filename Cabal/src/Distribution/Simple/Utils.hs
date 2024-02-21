@@ -201,6 +201,7 @@ import Distribution.Compat.Prelude
 import Distribution.Compat.Stack
 import Distribution.ModuleName as ModuleName
 import Distribution.Simple.Errors
+import Distribution.Simple.PreProcess.Types
 import Distribution.System
 import Distribution.Types.PackageId
 import Distribution.Utils.Generic
@@ -1222,7 +1223,7 @@ findFileEx verbosity searchPath fileName =
 -- file extensions. The file base name should be given and it will be tried
 -- with each of the extensions in each element of the search path.
 findFileWithExtension
-  :: [String]
+  :: [Suffix]
   -> [FilePath]
   -> FilePath
   -> IO (Maybe FilePath)
@@ -1231,13 +1232,13 @@ findFileWithExtension extensions searchPath baseName =
     id
     [ path </> baseName <.> ext
     | path <- ordNub searchPath
-    , ext <- ordNub extensions
+    , Suffix ext <- ordNub extensions
     ]
 
 -- | @since 3.4.0.0
 findFileCwdWithExtension
   :: FilePath
-  -> [String]
+  -> [Suffix]
   -> [FilePath]
   -> FilePath
   -> IO (Maybe FilePath)
@@ -1246,14 +1247,14 @@ findFileCwdWithExtension cwd extensions searchPath baseName =
     (cwd </>)
     [ path </> baseName <.> ext
     | path <- ordNub searchPath
-    , ext <- ordNub extensions
+    , Suffix ext <- ordNub extensions
     ]
 
 -- | @since 3.4.0.0
 findAllFilesCwdWithExtension
   :: FilePath
   -- ^ cwd
-  -> [String]
+  -> [Suffix]
   -- ^ extensions
   -> [FilePath]
   -- ^ relative search locations
@@ -1265,11 +1266,11 @@ findAllFilesCwdWithExtension cwd extensions searchPath basename =
     (cwd </>)
     [ path </> basename <.> ext
     | path <- ordNub searchPath
-    , ext <- ordNub extensions
+    , Suffix ext <- ordNub extensions
     ]
 
 findAllFilesWithExtension
-  :: [String]
+  :: [Suffix]
   -> [FilePath]
   -> FilePath
   -> IO [FilePath]
@@ -1278,13 +1279,13 @@ findAllFilesWithExtension extensions searchPath basename =
     id
     [ path </> basename <.> ext
     | path <- ordNub searchPath
-    , ext <- ordNub extensions
+    , Suffix ext <- ordNub extensions
     ]
 
 -- | Like 'findFileWithExtension' but returns which element of the search path
 -- the file was found in, and the file path relative to that base directory.
 findFileWithExtension'
-  :: [String]
+  :: [Suffix]
   -> [FilePath]
   -> FilePath
   -> IO (Maybe (FilePath, FilePath))
@@ -1293,7 +1294,7 @@ findFileWithExtension' extensions searchPath baseName =
     (uncurry (</>))
     [ (path, baseName <.> ext)
     | path <- ordNub searchPath
-    , ext <- ordNub extensions
+    , Suffix ext <- ordNub extensions
     ]
 
 findFirstFile :: (a -> FilePath) -> [a] -> IO (Maybe a)
@@ -1316,7 +1317,7 @@ findModuleFilesEx
   :: Verbosity
   -> [FilePath]
   -- ^ build prefix (location of objects)
-  -> [String]
+  -> [Suffix]
   -- ^ search suffixes
   -> [ModuleName]
   -- ^ modules
@@ -1332,7 +1333,7 @@ findModuleFileEx
   :: Verbosity
   -> [FilePath]
   -- ^ build prefix (location of objects)
-  -> [String]
+  -> [Suffix]
   -- ^ search suffixes
   -> ModuleName
   -- ^ module

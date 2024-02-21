@@ -118,6 +118,7 @@ library
     Distribution.Simple.PackageDescription
     Distribution.Simple.PackageIndex
     Distribution.Simple.PreProcess
+    Distribution.Simple.PreProcess.Types
     Distribution.Simple.PreProcess.Unlit
     Distribution.Simple.Program
     Distribution.Simple.Program.Ar
