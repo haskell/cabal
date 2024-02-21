@@ -40,6 +40,9 @@ jobs:
         os: ["ubuntu-20.04", "macos-latest", "windows-latest"]
         ghc: ["9.4.8", "9.2.8", "9.0.2", "8.10.7", "8.8.4", "8.6.5", "8.4.4"]
         exclude:
+          # Run takes 4+ hours
+          - os: "windows-latest"
+            ghc: "9.0.2"
           # corrupts GHA cache or the fabric of reality itself, see https://github.com/haskell/cabal/issues/8356
           - os: "windows-latest"
             ghc: "8.10.7"
