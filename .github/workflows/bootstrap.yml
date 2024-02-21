@@ -19,7 +19,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        ghc: ["8.10.7", "9.0.2", "9.2.8", "9.4.5"]
+        ghc: ["8.10.7", "9.0.2", "9.2.8", "9.4.8"]
         include:
           - os: macos-latest
             ghc: "9.2.8"

@@ -189,13 +189,13 @@ tags :
 ##############################################################################
 
 bootstrap-json-%: phony
-	cabal v2-build --project=cabal.project.release --with-compiler=ghc-$* --dry-run cabal-install:exe:cabal
+	cabal v2-build --project-file=cabal.project.release --with-compiler=ghc-$* --dry-run cabal-install:exe:cabal
 	cp dist-newstyle/cache/plan.json bootstrap/linux-$*.plan.json
 	@# -v0 to avoid build output on stdout
 	cd bootstrap && cabal v2-run -v0 cabal-bootstrap-gen -- linux-$*.plan.json \
 		| python3 -m json.tool > linux-$*.json
 
-BOOTSTRAP_GHC_VERSIONS := 8.10.7 9.0.2 9.2.8 9.4.5
+BOOTSTRAP_GHC_VERSIONS := 8.10.7 9.0.2 9.2.8 9.4.8
 
 bootstrap-jsons: $(BOOTSTRAP_GHC_VERSIONS:%=bootstrap-json-%)
 
