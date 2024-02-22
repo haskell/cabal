@@ -2,22 +2,28 @@ Source Repositories
 ===================
 
 Source repositories are a way to specify where to find the source code for a
-package, both for package authors and maintainers and for package consumers.
+package, both for :ref:`package authors<pkg-authors>` and maintainers and for
+:ref:`package consumers<pkg-consumers>`.
 
-A relatively structured set of fields, that depend on the VCS kind, enables
-cabal commands and other tools to interpret and make effective use of this
-information.
+A relatively structured set of fields, that vary depending on the VCS kind,
+enables cabal commands and other tools to interpret and make effective use of
+this information.
 
-- ``source-repository`` says where to find the source for a package.
-- ``source-repository-package`` also says where to find the source for a package
-  but in the context of a project.
+- ``source-repository`` says where to find the source for a package description
+- ``source-repository-package`` locates source for project dependencies
+
+.. _pkg-authors:
 
 As a Package Author
 -------------------
 
 If you are authoring or maintaining a package, you will be dealing with
-``source-repository``.  This package description stanza typically specifies
-where upstream development of the package is happening.
+``source-repository``, a package description stanza that typically specifies
+where upstream development of the package is happening.  A package published to
+hackage will be displayed with a link to the source repository if a
+``source-repository`` stanza is present in the package description.
+
+.. _pkg-consumers:
 
 As a Package Consumer
 ---------------------
