@@ -2813,7 +2813,7 @@ The exact fields are as follows:
     package, i.e. the directory containing the package's ``.cabal``
     file.
 
-    This field is optional. It defaults to empty which corresponds to the root
+    This field is optional. It defaults to empty, which corresponds to the root
     directory of the repository and is the same as specifying ``.`` explicitly.
 
 Custom setup scripts
