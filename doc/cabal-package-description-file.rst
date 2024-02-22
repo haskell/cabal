@@ -2673,7 +2673,7 @@ Source Repositories
 
 Where to find the source for this package.
 
-There are two kinds, and you can specify one or the other or both:
+There are two kinds. You can specify one or the other or both at once:
 
 -  The ``head`` kind refers to the latest development branch of the
    package. This may be used for example to track activity of a project
