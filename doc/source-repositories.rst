@@ -5,9 +5,9 @@ Source repositories are a way to specify where to find the source code for a
 package, both for :ref:`package authors<pkg-authors>` and maintainers and for
 :ref:`package consumers<pkg-consumers>`.
 
-A relatively structured set of fields, that vary depending on the :ref:`VCS
-kind<vcs-kind>`, enables cabal commands and other tools to interpret and make effective
-use of this information.
+A relatively structured set of version control system (VCS) fields, that vary
+depending on the :ref:`VCS kind<vcs-kind>`, enables cabal commands and other
+tools to interpret and make effective use of this information.
 
 - ``source-repository`` says where to find the source for a package description
 - ``source-repository-package`` locates source for project dependencies
@@ -29,10 +29,10 @@ As a Package Consumer
 ---------------------
 
 When working on a project you may need one or more ``source-repository-package``
-stanzas if taking dependencies via a version control system (VCS) such as git.
-This is an alternative way of taking dependencies, instead of getting them from
-a package repository such as hackage. It may be the only practical way of taking
-dependencies on packages not published to hackage. For a package on hackage, a
+stanzas if taking dependencies via a VCS such as git.  This is an alternative
+way of taking dependencies, instead of getting them from a package repository
+such as hackage. It may be the only practical way of taking dependencies on
+packages not published to hackage. For a package on hackage, a
 ``source-repository`` stanza is not needed but if used, the downloaded source
 will become the only version of the package available to the project.
 
