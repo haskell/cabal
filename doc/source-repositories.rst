@@ -5,9 +5,9 @@ Source repositories are a way to specify where to find the source code for a
 package, both for :ref:`package authors<pkg-authors>` and maintainers and for
 :ref:`package consumers<pkg-consumers>`.
 
-A relatively structured set of fields, that vary depending on the VCS kind,
-enables cabal commands and other tools to interpret and make effective use of
-this information.
+A relatively structured set of fields, that vary depending on the :ref:`VCS
+kind<vcs-kind>`, enables cabal commands and other tools to interpret and make effective
+use of this information.
 
 - ``source-repository`` says where to find the source for a package description
 - ``source-repository-package`` locates source for project dependencies
@@ -132,7 +132,7 @@ Source Repository Package Fields
 VCS Field Types
 ---------------
 
-Most of the version Control Systems (VCS) fields types are common to both
+Most of the version control system (VCS) fields types are common to both
 ``source-repository`` and ``source-repository-package`` stanzas.
 
 .. list-table::
@@ -163,6 +163,8 @@ Most of the version Control Systems (VCS) fields types are common to both
     * - post-checkout-command
       - ☐
       - 🗹
+
+.. _vcs-kind:
 
 VCS kind
 ^^^^^^^^
