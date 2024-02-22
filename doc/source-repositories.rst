@@ -212,9 +212,9 @@ the tag depends on the repository type.
 VCS subdirectory
 ^^^^^^^^^^^^^^^^
 
-This field is always optional because it defaults to empty, which corresponds to
-the root directory of the repository and is the same as specifying ``.``
-explicitly.
+A field of this type is always optional because it defaults to empty, which
+corresponds to the root directory of the repository and is the same as
+specifying ``.`` explicitly.
 
 Some projects put the sources for multiple packages under a single source
 repository. This field lets you specify the relative path from the root of the
