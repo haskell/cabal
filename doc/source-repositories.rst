@@ -39,7 +39,7 @@ will become the only version of the package available to the project.
 A dependency taken this way, effectively adds a local package to the project
 much like listing the package's source directory in the packages field, except
 that the source code is downloaded by cabal using the version control system.
-Cabal commands that need the source code will do this as needed, command like
+Cabal commands that need the source code will do this as needed, commands like
 ``cabal build`` or ``cabal freeze``. This is also the easiest way to work with a
 fork, much easier than using a git submodule.
 
