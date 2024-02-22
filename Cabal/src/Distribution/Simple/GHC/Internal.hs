@@ -774,6 +774,7 @@ profDetailLevelFlag forLib mpl =
 ghcArchString :: Arch -> String
 ghcArchString PPC = "powerpc"
 ghcArchString PPC64 = "powerpc64"
+ghcArchString PPC64LE = "powerpc64le"
 ghcArchString other = prettyShow other
 
 -- | GHC's rendering of its host or target 'OS' as used in its platform

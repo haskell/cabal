@@ -788,6 +788,7 @@ platformDefines lbi =
       X86_64 -> ["x86_64"]
       PPC -> ["powerpc"]
       PPC64 -> ["powerpc64"]
+      PPC64LE -> ["powerpc64le"]
       Sparc -> ["sparc"]
       Sparc64 -> ["sparc64"]
       Arm -> ["arm"]
