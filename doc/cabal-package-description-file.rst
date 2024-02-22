@@ -2685,7 +2685,7 @@ There are two kinds and you can specify one or the other or both:
    source control systems this involves specifying a tag, id or hash of some
    form and perhaps a branch.
 
-As an example here are the repositories for the Cabal library. Note that the
+As an example, here are the repositories for the Cabal library. Note that the
 ``this`` kind of repository specifies a tag.
 
 ::
