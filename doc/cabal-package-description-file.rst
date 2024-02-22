@@ -2699,6 +2699,9 @@ As an example here are the repositories for the Cabal library. Note that the
       location: https://github.com/haskell/cabal
       tag:      1.6.1
 
+The :ref:`cabal get<cabal-get>` command uses the kind of repository with
+its ``--source-repository`` option, if provided.
+
 See :ref:`source-repository-fields` for description of the fields of
 ``source-repository``.
 
