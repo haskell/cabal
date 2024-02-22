@@ -43,35 +43,6 @@ Cabal commands that need the source code will do this as needed, commands like
 ``cabal build`` or ``cabal freeze``. This is also the easiest way to work with a
 fork, much easier than using a git submodule.
 
-.. list-table::
-    :header-rows: 1
-    :widths: 30 30 40
-
-    * - Field Name
-      - source-repository (head|this)
-      - source-repository-package
-    * - type
-      - 🗹
-      - 🗹
-    * - location
-      - 🗹
-      - 🗹
-    * - branch
-      - 🗹
-      - 🗹
-    * - tag
-      - 🗹
-      - 🗹
-    * - subdir
-      - 🗹 (0 or 1)
-      - 🗹 (0 or 1 for each dependency)
-    * - module (CVS only)
-      - 🗹
-      - ☐
-    * - post-checkout-command
-      - ☐
-      - 🗹
-
 .. _source-repository-fields:
 
 Source Repository Fields
@@ -161,8 +132,37 @@ Source Repository Package Fields
 VCS Field Types
 ---------------
 
-Version Control Systems (VCS) fields types common to both ``source-repository``
-and ``source-repository-package`` stanzas.
+Most of the version Control Systems (VCS) fields types are common to both
+``source-repository`` and ``source-repository-package`` stanzas.
+
+.. list-table::
+    :header-rows: 1
+    :widths: 30 30 40
+
+    * - Field Name
+      - source-repository (head|this)
+      - source-repository-package
+    * - type
+      - 🗹
+      - 🗹
+    * - location
+      - 🗹
+      - 🗹
+    * - branch
+      - 🗹
+      - 🗹
+    * - tag
+      - 🗹
+      - 🗹
+    * - subdir
+      - 🗹 (0 or 1)
+      - 🗹 (0 or 1 for each dependency)
+    * - module (CVS only)
+      - 🗹
+      - ☐
+    * - post-checkout-command
+      - ☐
+      - 🗹
 
 VCS kind
 ^^^^^^^^
