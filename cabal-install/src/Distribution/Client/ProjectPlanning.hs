@@ -3223,9 +3223,6 @@ setRootTargets targetAction perPkgTargetsMap =
       | isSubLibComponentTarget tgt = elab{elabHaddockInternal = True}
       | otherwise = elab
 
-minVersionReplFlagFile :: Version
-minVersionReplFlagFile = mkVersion [3, 9]
-
 -- | Assuming we have previously set the root build targets (i.e. the user
 -- targets but not rev deps yet), the first pruning pass does two things:
 --
@@ -3240,7 +3237,7 @@ pruneInstallPlanPass1
 pruneInstallPlanPass1 pkgs
   -- if there are repl targets, we need to do a bit more work
   -- See Note [Pruning for Multi Repl]
-  | anyReplTarget = final_final_graph
+  | anyMultiReplTarget = graph_with_repl_targets
   -- otherwise we'll do less
   | otherwise = pruned_packages
   where
@@ -3264,10 +3261,11 @@ pruneInstallPlanPass1 pkgs
     closed_graph :: Graph.Graph ElaboratedPlanPackage
     closed_graph = Graph.fromDistinctList pruned_packages
 
-    -- whether any package has repl targets enabled.
-    anyReplTarget :: Bool
-    anyReplTarget = any is_repl_gpp pkgs'
+    -- whether any package has repl targets enabled, and we need to use multi-repl.
+    anyMultiReplTarget :: Bool
+    anyMultiReplTarget = length repls > 1
       where
+        repls = filter is_repl_gpp pkgs'
         is_repl_gpp (InstallPlan.Configured pkg) = is_repl_pp pkg
         is_repl_gpp _ = False
 
@@ -3290,51 +3288,8 @@ pruneInstallPlanPass1 pkgs
 
     -- Add the repl target information to the ElaboratedPlanPackages
     graph_with_repl_targets
-      | anyReplTarget = map (mapConfiguredPackage add_repl_target) (Graph.toList closed_graph)
+      | anyMultiReplTarget = map (mapConfiguredPackage add_repl_target) (Graph.toList closed_graph)
       | otherwise = Graph.toList closed_graph
-
-    -- But check that all the InMemory targets have a new enough version of Cabal,
-    -- otherwise we will confuse Setup.hs by passing new arguments which it doesn't understand
-    -- later down the line. We try to remove just these edges, if it doesn't break the overall structure
-    -- then we just report to the user that their target will not be loaded for this reason.
-    --
-    -- 'bad' are the nodes with a too old version of Cabal
-    -- 'good' are the nodes with a new-enough version of Cabal
-    (bad, _good) = partitionEithers (map go graph_with_repl_targets)
-      where
-        go :: ElaboratedPlanPackage -> Either UnitId ElaboratedPlanPackage
-        go (InstallPlan.Configured cp)
-          | BuildInplaceOnly InMemory <- elabBuildStyle cp
-          , elabSetupScriptCliVersion cp < minVersionReplFlagFile =
-              Left (elabUnitId cp)
-        go (InstallPlan.Configured c) = Right (InstallPlan.Configured c)
-        go c = Right c
-
-    -- Now take the upwards closure from the bad nodes, and find the other `BuildInplaceOnly InMemory` packages that clobbers,
-    -- disables those and issue a warning to the user. Because we aren't going to be able to load those into memory as well
-    -- because the thing it depends on is not going to be in memory.
-    disabled_repl_targets =
-      [ c | InstallPlan.Configured c <- fromMaybe [] $ Graph.revClosure (Graph.fromDistinctList graph_with_repl_targets) bad, BuildInplaceOnly InMemory <- [elabBuildStyle c]
-      ]
-
-    remove_repl_target :: ElaboratedConfiguredPackage -> ElaboratedConfiguredPackage
-    remove_repl_target ecp
-      | ecp `elem` disabled_repl_targets =
-          ecp
-            { elabReplTarget = []
-            , elabBuildStyle = BuildInplaceOnly OnDisk
-            }
-      | otherwise = ecp
-
-    final_graph_with_repl_targets = map (mapConfiguredPackage remove_repl_target) graph_with_repl_targets
-
-    -- Now find what the new roots are after we have disabled things which we can't build (and the things above that)
-    new_roots :: [UnitId]
-    new_roots = mapMaybe find_root (map (mapConfiguredPackage prune) final_graph_with_repl_targets)
-
-    -- Then take the final closure from these new roots to remove these things
-    -- TODO: Can probably just remove them directly in remove_repl_target.
-    final_final_graph = fromMaybe [] $ Graph.closure (Graph.fromDistinctList final_graph_with_repl_targets) new_roots
 
     is_root :: PrunedPackage -> Maybe UnitId
     is_root (PrunedPackage elab _) =
@@ -3462,13 +3417,6 @@ our roots (graph closure), and then from this closed graph, we calculate
 the reverse closure, which gives us all components that depend on
 'roots'. Thus, the result is a list of components that we need to load
 into the repl to uphold the closure property.
-
-Further to this, we then check that all the enabled components are using a new enough
-version of Cabal which understands the repl option to write the arguments to a file.
-
-If there is a package using a custom Setup.hs which is linked against a too old version
-of Cabal then we need to disable that as otherwise we will end up passing unknown
-arguments to `./Setup`.
 -}
 
 -- | Given a set of already installed packages @availablePkgs@,

@@ -1,0 +1,38 @@
+cabal-version:      3.0
+name:               foo
+version:            0.1.0.0
+license:            BSD-3-Clause
+license-file:       LICENSE
+author:             Teo Camarasu
+build-type:         Custom
+extra-doc-files:    CHANGELOG.md
+
+custom-setup
+  setup-depends:
+      Cabal <= 3.11
+    , base
+
+common warnings
+    ghc-options: -Wall
+
+executable foo
+    -- Import common warning flags.
+    import:           warnings
+
+    -- .hs or .lhs file containing the Main module.
+    main-is:          Main.hs
+
+    -- Modules included in this executable, other than Main.
+    -- other-modules:
+
+    -- LANGUAGE extensions used by modules in this package.
+    -- other-extensions:
+
+    -- Other library packages from which modules are imported.
+    build-depends:    base
+
+    -- Directories containing source files.
+    hs-source-dirs:   app
+
+    -- Base language which the package is written in.
+    default-language: Haskell2010
