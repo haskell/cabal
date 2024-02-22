@@ -209,6 +209,7 @@ syn keyword cabalExtension contained
   \ LexicalNegation
   \ LiberalTypeSynonyms
   \ LinearTypes
+  \ ListTuplePuns
   \ RequiredTypeArguments
   \ MagicHash
   \ MonadComprehensions

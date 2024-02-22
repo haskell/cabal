@@ -542,6 +542,9 @@ data KnownExtension
     RelaxedLayout
   | -- | Allow the use of type abstraction syntax.
     TypeAbstractions
+  | -- | Allow the use of built-in syntax for list, tuple and sum type constructors
+    -- rather than being exclusive to data constructors.
+    ListTuplePuns
   deriving (Generic, Show, Read, Eq, Ord, Enum, Bounded, Typeable, Data)
 
 instance Binary KnownExtension

@@ -1,0 +1,9 @@
+synopsis: Add language extension ListTuplePuns
+packages: Cabal-syntax
+prs: #8854
+
+description: {
+
+- adds support for the `ListTuplePuns` language extension (GHC proposal #475)
+
+}
