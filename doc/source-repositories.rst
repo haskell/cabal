@@ -1,32 +1,41 @@
 Source Repositories
 ===================
 
-Cabal lets you specify source repositories for a package in
-a relatively structured form which enables other tools to interpret and
-make effective use of the information. For example the information
-should be sufficient for an automatic tool to checkout the sources.
+Source repositories are a way to specify where to find the source code for a
+package, both for package authors and maintainers and for package consumers.
 
-Cabal supports specifying different information for various common
-source control systems. Obviously not all automated tools will support
-all source control systems.
+A relatively structured set of fields, that depend on the VCS kind, enables
+cabal commands and other tools to interpret and make effective use of this
+information.
 
 - ``source-repository`` says where to find the source for a package.
 - ``source-repository-package`` also says where to find the source for a package
   but in the context of a project.
 
-.. note::
+As a Package Author
+-------------------
 
-    **Package source versus and Dependency source**
+If you are authoring or maintaining a package, you will be dealing with
+``source-repository``.  This package description stanza typically specifies
+where upstream development of the package is happening.
 
-    Note that source-repository-package is not related to the source-repository
-    field in package descriptions. [link the field] The source-repository field
-    specifies the source repository where upstream development of the package is
-    happening. It is currently only used by cabal get via the same-named
-    parameter if specified. [Link to the docs of the parameter] Whereas, the
-    source-repository-package project stanza adds a local package to the project
-    much like listing the package's source directory in the packages field,
-    except that the source code is downloaded as needed instead of being taken
-    from the local directory.
+As a Package Consumer
+---------------------
+
+When working on a project you may need one or more ``source-repository-package``
+stanzas if taking dependencies via a version control system (VCS) such as git.
+This is an alternative way of taking dependencies, instead of getting them from
+a package repository such as hackage. It may be the only practical way of taking
+dependencies on packages not published to hackage. For a package on hackage, a
+``source-repository`` stanza is not needed but if used, the downloaded source
+will become the only version of the package available to the project.
+
+A dependency taken this way, effectively adds a local package to the project
+much like listing the package's source directory in the packages field, except
+that the source code is downloaded by cabal using the version control system.
+Cabal commands that need the source code will do this as needed, command like
+``cabal build`` or ``cabal freeze``. This is also the easiest way to work with a
+fork, much easier than using a git submodule.
 
 .. list-table::
     :header-rows: 1
@@ -152,8 +161,9 @@ and ``source-repository-package`` stanzas.
 VCS kind
 ^^^^^^^^
 
-The name of the source control system used for this repository. The
-currently recognised types are:
+Cabal supports specifying different information for various common source
+control systems. This is the name of the source control system used for a
+repository. The currently recognised types are:
 
 -  ``darcs``
 -  ``git``
@@ -164,6 +174,9 @@ currently recognised types are:
 -  ``arch``
 -  ``monotone``
 -  ``pijul``
+
+The VCS kind will determine what other fields are appropriate to specify for a
+particular version control system.
 
 VCS location
 ^^^^^^^^^^^^
@@ -193,8 +206,9 @@ the tag depends on the repository type.
 VCS subdirectory
 ^^^^^^^^^^^^^^^^
 
-This field is optional. It defaults to empty, which corresponds to the root
-directory of the repository and is the same as specifying ``.`` explicitly.
+This field is always optional because it defaults to empty, which corresponds to
+the root directory of the repository and is the same as specifying ``.``
+explicitly.
 
 Some projects put the sources for multiple packages under a single source
 repository. This field lets you specify the relative path from the root of the
