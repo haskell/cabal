@@ -66,46 +66,6 @@ fork, much easier than using a git submodule.
       - ☐
       - 🗹
 
-.. _source-repository-package-fields:
-
-Source Repository Package Fields
---------------------------------
-
-..
-  data SourceRepositoryPackage f = SourceRepositoryPackage
-    { srpType :: !RepoType
-    , srpLocation :: !String
-    , srpTag :: !(Maybe String)
-    , srpBranch :: !(Maybe String)
-    , srpSubdir :: !(f FilePath)
-    , srpCommand :: ![String]
-    }
-
-.. cfg-field:: type: VCS kind
-
-    This field is required.
-
-.. cfg-field:: location: VCS location
-
-    This field is required.
-
-.. cfg-field:: branch: VCS branch
-
-    This field is optional.
-
-.. cfg-field:: tag: VCS tag
-
-    This field is optional.
-
-.. cfg-field:: subdir: VCS subdirectory list
-
-    Look in one or more subdirectories of the repository for cabal files, rather
-    than the root. This field is optional.
-
-.. cfg-field:: post-checkout-command: command
-
-    Run command in the checked out repository, prior sdisting.
-
 .. _source-repository-fields:
 
 Source Repository Fields
@@ -151,6 +111,46 @@ Source Repository Fields
 .. pkg-field:: subdir: VCS subdirectory
 
     This field is optional but, if given, specifies a single subdirectory.
+
+.. _source-repository-package-fields:
+
+Source Repository Package Fields
+--------------------------------
+
+..
+  data SourceRepositoryPackage f = SourceRepositoryPackage
+    { srpType :: !RepoType
+    , srpLocation :: !String
+    , srpTag :: !(Maybe String)
+    , srpBranch :: !(Maybe String)
+    , srpSubdir :: !(f FilePath)
+    , srpCommand :: ![String]
+    }
+
+.. cfg-field:: type: VCS kind
+
+    This field is required.
+
+.. cfg-field:: location: VCS location
+
+    This field is required.
+
+.. cfg-field:: branch: VCS branch
+
+    This field is optional.
+
+.. cfg-field:: tag: VCS tag
+
+    This field is optional.
+
+.. cfg-field:: subdir: VCS subdirectory list
+
+    Look in one or more subdirectories of the repository for cabal files, rather
+    than the root. This field is optional.
+
+.. cfg-field:: post-checkout-command: command
+
+    Run command in the checked out repository, prior sdisting.
 
 VCS Field Types
 ---------------
