@@ -1,0 +1,202 @@
+Source Repositories
+===================
+
+Cabal lets you specify source repositories for a package in
+a relatively structured form which enables other tools to interpret and
+make effective use of the information. For example the information
+should be sufficient for an automatic tool to checkout the sources.
+
+Cabal supports specifying different information for various common
+source control systems. Obviously not all automated tools will support
+all source control systems.
+
+- ``source-repository`` says where to find the source for a package.
+- ``source-repository-package`` also says where to find the source for a package
+  but in the context of a project.
+
+.. note::
+
+    **Package source versus and Dependency source**
+
+    Note that source-repository-package is not related to the source-repository
+    field in package descriptions. [link the field] The source-repository field
+    specifies the source repository where upstream development of the package is
+    happening. It is currently only used by cabal get via the same-named
+    parameter if specified. [Link to the docs of the parameter] Whereas, the
+    source-repository-package project stanza adds a local package to the project
+    much like listing the package's source directory in the packages field,
+    except that the source code is downloaded as needed instead of being taken
+    from the local directory.
+
+.. list-table::
+    :header-rows: 1
+    :widths: 30 30 40
+
+    * - Field Name
+      - source-repository (head|this)
+      - source-repository-package
+    * - type
+      - 🗹
+      - 🗹
+    * - location
+      - 🗹
+      - 🗹
+    * - branch
+      - 🗹
+      - 🗹
+    * - tag
+      - 🗹
+      - 🗹
+    * - subdir
+      - 🗹 (0 or 1)
+      - 🗹 (0 or 1 for each dependency)
+    * - module (CVS only)
+      - 🗹
+      - ☐
+    * - post-checkout-command
+      - ☐
+      - 🗹
+
+.. _source-repository-package-fields:
+
+Source Repository Package Fields
+--------------------------------
+
+..
+  data SourceRepositoryPackage f = SourceRepositoryPackage
+    { srpType :: !RepoType
+    , srpLocation :: !String
+    , srpTag :: !(Maybe String)
+    , srpBranch :: !(Maybe String)
+    , srpSubdir :: !(f FilePath)
+    , srpCommand :: ![String]
+    }
+
+.. cfg-field:: type: VCS kind
+
+    This field is required.
+
+.. cfg-field:: location: VCS location
+
+    This field is required.
+
+.. cfg-field:: branch: VCS branch
+
+    This field is optional.
+
+.. cfg-field:: tag: VCS tag
+
+    This field is optional.
+
+.. cfg-field:: subdir: VCS subdirectory list
+
+    Look in one or more subdirectories of the repository for cabal files, rather
+    than the root. This field is optional.
+
+.. cfg-field:: post-checkout-command: command
+
+    Run command in the checked out repository, prior sdisting.
+
+.. _source-repository-fields:
+
+Source Repository Fields
+------------------------
+..
+  data SourceRepo = SourceRepo
+    { repoKind :: RepoKind
+    , repoType :: Maybe RepoType
+    , repoLocation :: Maybe String
+    , repoModule :: Maybe String
+    , repoBranch :: Maybe String
+    , repoTag :: Maybe String
+    , repoSubdir :: Maybe FilePath
+    }
+
+.. pkg-field:: type: VCS kind
+
+    This field is required.
+
+.. pkg-field:: location: VCS location
+
+    This field is required.
+
+.. pkg-field:: module: token
+
+    CVS requires a named module, as each CVS server can host multiple
+    named repositories.
+
+    This field is required for the CVS repository type and should not be
+    used otherwise.
+
+.. pkg-field:: branch: VCS branch
+
+    This field is optional.
+
+.. pkg-field:: tag: VCS tag
+
+    This field is required for the ``this`` repository kind.
+
+    This might be used to indicate what sources to get if someone needs to fix a
+    bug in an older branch that is no longer an active head branch.
+
+.. pkg-field:: subdir: VCS subdirectory
+
+    This field is optional but, if given, specifies a single subdirectory.
+
+VCS Field Types
+---------------
+
+Version Control Systems (VCS) fields types common to both ``source-repository``
+and ``source-repository-package`` stanzas.
+
+VCS kind
+^^^^^^^^
+
+The name of the source control system used for this repository. The
+currently recognised types are:
+
+-  ``darcs``
+-  ``git``
+-  ``svn``
+-  ``cvs``
+-  ``mercurial`` (or alias ``hg``)
+-  ``bazaar`` (or alias ``bzr``)
+-  ``arch``
+-  ``monotone``
+-  ``pijul``
+
+VCS location
+^^^^^^^^^^^^
+
+The location of the repository, usually a URL but the exact form of this field
+depends on the repository type. For example:
+
+-  for darcs: ``http://code.haskell.org/foo/``
+-  for git: ``git://github.com/foo/bar.git``
+-  for CVS: ``anoncvs@cvs.foo.org:/cvs``
+
+VCS branch
+^^^^^^^^^^
+
+Many source control systems support the notion of a branch, as a distinct
+concept from having repositories in separate locations. For example CVS, SVN and
+git use branches while darcs uses different locations for different branches. If
+you need to specify a branch to identify a your repository then specify it in
+this field.
+
+VCS tag
+^^^^^^^
+
+A tag identifies a particular state of a source repository.  The exact form of
+the tag depends on the repository type.
+
+VCS subdirectory
+^^^^^^^^^^^^^^^^
+
+This field is optional. It defaults to empty, which corresponds to the root
+directory of the repository and is the same as specifying ``.`` explicitly.
+
+Some projects put the sources for multiple packages under a single source
+repository. This field lets you specify the relative path from the root of the
+repository to the top directory for the package, i.e. the directory containing
+the package's ``.cabal`` file.

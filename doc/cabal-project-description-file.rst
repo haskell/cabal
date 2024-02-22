@@ -241,19 +241,8 @@ sdists to such packages). It gathers the names of the packages from the
 appropriate .cabal file in the version control repository, and allows
 their use just like Hackage or locally defined packages.
 
-.. cfg-field:: type: VCS kind
-
-.. cfg-field:: location: VCS location (usually URL)
-
-.. cfg-field:: tag: VCS tag
-
-.. cfg-field:: subdir: subdirectory list
-
-    Look in one or more subdirectories of the repository for cabal files, rather than the root.
-
-.. cfg-field:: post-checkout-command: command
-
-    Run command in the checked out repository, prior sdisting.
+See :ref:`source-repository-package-fields` for description of the fields of
+``source-repository-package``.
 
 Global configuration options
 ----------------------------
