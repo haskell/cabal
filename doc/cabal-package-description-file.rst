@@ -2671,41 +2671,6 @@ Source Repositories
 .. pkg-section:: source-repository
     :since: 1.6
 
-.. warning::
-
-    A ``source-repository`` is for a version of the source of its package
-    whereas each ``source-repository-package`` is for one or more source
-    dependencies of a project. The fields of each are much the same.
-
-    .. list-table::
-        :header-rows: 1
-        :widths: 30 30 40
-
-        * - Field Name
-          - source-repository (head|this)
-          - source-repository-package
-        * - type
-          - 🗹
-          - 🗹
-        * - location
-          - 🗹
-          - 🗹
-        * - branch
-          - 🗹
-          - 🗹
-        * - tag
-          - 🗹
-          - 🗹
-        * - subdir
-          - 🗹 (0 or 1)
-          - 🗹 (0 or 1 for each dependency)
-        * - module (CVS only)
-          - 🗹
-          - ☐
-        * - post-checkout-command
-          - ☐
-          - 🗹
-
 Cabal lets you specify source repositories for a package in
 a relatively structured form which enables other tools to interpret and
 make effective use of the information. For example the information
@@ -2748,7 +2713,42 @@ repository specifies a tag.
       location: https://github.com/haskell/cabal
       tag:      1.6.1
 
-The exact fields are as follows:
+.. warning::
+
+    A ``source-repository`` is for a version of the source of its package
+    whereas each ``source-repository-package`` is for one or more source
+    dependencies of a project. The fields of each are much the same.
+
+    .. list-table::
+        :header-rows: 1
+        :widths: 30 30 40
+
+        * - Field Name
+          - source-repository (head|this)
+          - source-repository-package
+        * - type
+          - 🗹
+          - 🗹
+        * - location
+          - 🗹
+          - 🗹
+        * - branch
+          - 🗹
+          - 🗹
+        * - tag
+          - 🗹
+          - 🗹
+        * - subdir
+          - 🗹 (0 or 1)
+          - 🗹 (0 or 1 for each dependency)
+        * - module (CVS only)
+          - 🗹
+          - ☐
+        * - post-checkout-command
+          - ☐
+          - 🗹
+
+The exact fields of ``source-repository`` are as follows:
 
 .. pkg-field:: type: token
 
