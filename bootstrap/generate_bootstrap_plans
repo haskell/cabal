@@ -1,0 +1,23 @@
+nix build nixpkgs#jq.bin -o jq
+PATH+=:$PWD/jq-bin/bin
+
+ghcs_nix="https://gitlab.haskell.org/bgamari/ghcs-nix/-/archive/master/ghcs-nix-master.tar.gz"
+
+nix build -f "$ghcs_nix" ghc-8_10_7 -o boot_ghc
+
+run() {
+  local ver="$1"
+  local drv="ghc-$ver"
+  echo "$ver"
+  nix build -f "$ghcs_nix" $drv
+  (cd ../; rm -r dist-bootstrap; cabal --distdir=dist-bootstrap build --project-file=cabal.project.release --dry-run cabal-install:exe:cabal -w bootstrap/result/bin/ghc)
+  jq --sort-keys < ../dist-bootstrap/cache/plan.json > "plan-$ver.json"
+  cabal run --with-ghc-pkg $PWD/boot_ghc/bin/ghc-pkg -w $PWD/boot_ghc/bin/ghc -v0 cabal-bootstrap-gen -- "plan-$ver.json" | jq --sort-keys | tee "linux-$(echo $ver | tr "_" ".").json"
+}
+
+run "8_10_7"
+run "9_0_2"
+run "9_2_8"
+run "9_4_8"
+run "9_6_4"
+run "9_8_1"

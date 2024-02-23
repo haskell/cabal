@@ -6,15 +6,15 @@
     },
     {
       "package": "ghc-prim",
-      "version": "0.7.0"
+      "version": "0.8.0"
     },
     {
       "package": "ghc-bignum",
-      "version": "1.1"
+      "version": "1.2"
     },
     {
       "package": "base",
-      "version": "4.15.1.0"
+      "version": "4.16.4.0"
     },
     {
       "package": "array",
@@ -22,15 +22,15 @@
     },
     {
       "package": "deepseq",
-      "version": "1.4.5.0"
+      "version": "1.4.6.1"
     },
     {
       "package": "containers",
-      "version": "0.6.4.1"
+      "version": "0.6.5.1"
     },
     {
       "package": "ghc-boot-th",
-      "version": "9.0.2"
+      "version": "9.2.8"
     },
     {
       "package": "pretty",
@@ -38,7 +38,11 @@
     },
     {
       "package": "template-haskell",
-      "version": "2.17.0.0"
+      "version": "2.18.0.0"
+    },
+    {
+      "package": "bytestring",
+      "version": "0.11.4.0"
     },
     {
       "package": "transformers",
@@ -50,7 +54,7 @@
     },
     {
       "package": "stm",
-      "version": "2.5.0.0"
+      "version": "2.5.0.2"
     },
     {
       "package": "exceptions",
@@ -58,30 +62,22 @@
     },
     {
       "package": "time",
-      "version": "1.9.3"
+      "version": "1.11.1.1"
+    },
+    {
+      "package": "binary",
+      "version": "0.8.9.0"
+    },
+    {
+      "package": "text",
+      "version": "1.2.5.0"
+    },
+    {
+      "package": "parsec",
+      "version": "3.1.15.0"
     }
   ],
   "dependencies": [
-    {
-      "cabal_sha256": "ad89e28b2b046175698fbf542af2ce43e5d2af50aae9f48d12566b1bb3de1d3c",
-      "component": "lib:data-array-byte",
-      "flags": [],
-      "package": "data-array-byte",
-      "revision": 2,
-      "source": "hackage",
-      "src_sha256": "1bb6eca0b3e02d057fe7f4e14c81ef395216f421ab30fdaa1b18017c9c025600",
-      "version": "0.1.0.1"
-    },
-    {
-      "cabal_sha256": "9fc077ff5b7ed2246773c3ac4370ef8822e4834d4587522b68ae551a5968fb86",
-      "component": "lib:bytestring",
-      "flags": [],
-      "package": "bytestring",
-      "revision": 0,
-      "source": "hackage",
-      "src_sha256": "a93fe5fbc8062656bd611ab1529b4879bb61411eda6529b350c7bf3aaf7dba3e",
-      "version": "0.12.0.2"
-    },
     {
       "cabal_sha256": "d9e181e1acae0ac505d8b217dec3805c68554878f1e32b3d8351b9ce17061623",
       "component": "lib:filepath",
@@ -125,39 +121,6 @@
       "source": "hackage",
       "src_sha256": "caed9f23b4bc1cdd6f8083b79a0bb86ba86ed81ab9a1238fe0e13ed544809fed",
       "version": "3.5.0.0"
-    },
-    {
-      "cabal_sha256": "81f468c1c75fd6535152ab69b2d32ac6cfcc03e345267b069abe4da56ec95801",
-      "component": "lib:binary",
-      "flags": [],
-      "package": "binary",
-      "revision": 0,
-      "source": "hackage",
-      "src_sha256": "ac21ca63452dfc9b0bcab87c57699c531d87f7a9bcb6230ca46fba1b7faeebc0",
-      "version": "0.8.9.1"
-    },
-    {
-      "cabal_sha256": "471b9a22f88b1d51bc343e7d1db7bf88b84e1582eb6d5fbe643fe7afc683c256",
-      "component": "lib:text",
-      "flags": [
-        "-developer",
-        "+simdutf"
-      ],
-      "package": "text",
-      "revision": 0,
-      "source": "hackage",
-      "src_sha256": "cbe65b04a28a96a1de364d19c5ee33dc63cd253aa2716d22ceb8496b2062b6c8",
-      "version": "2.1"
-    },
-    {
-      "cabal_sha256": "6cf18e59d9f1c5b40385457b82ab679dc18d3c5bd3c2c67b2f94e1e8732e6624",
-      "component": "lib:parsec",
-      "flags": [],
-      "package": "parsec",
-      "revision": 0,
-      "source": "hackage",
-      "src_sha256": "58c500bec1ec3c849c8243ddfd675a5983b17a8e5da55acea6adade5ae179d36",
-      "version": "3.1.17.0"
     },
     {
       "cabal_sha256": null,
@@ -249,14 +212,14 @@
       "version": "4000.4.1"
     },
     {
-      "cabal_sha256": "c4733d09f798fc4304e936924a1a7d9fc2425aefad6c46ad4592035254b46051",
-      "component": "lib:base-orphans",
+      "cabal_sha256": "ad89e28b2b046175698fbf542af2ce43e5d2af50aae9f48d12566b1bb3de1d3c",
+      "component": "lib:data-array-byte",
       "flags": [],
-      "package": "base-orphans",
-      "revision": 0,
+      "package": "data-array-byte",
+      "revision": 2,
       "source": "hackage",
-      "src_sha256": "5bbf2da382c5b212d6a8be2f8c49edee0eba30f272a15fd32c13e6e4091ef172",
-      "version": "0.9.1"
+      "src_sha256": "1bb6eca0b3e02d057fe7f4e14c81ef395216f421ab30fdaa1b18017c9c025600",
+      "version": "0.1.0.1"
     },
     {
       "cabal_sha256": "f3bf68acfa0df7a064a378ef2cdcfeb55e6fb96100675f4c593556dcbf3d7194",
