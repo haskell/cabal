@@ -295,6 +295,7 @@ establishProjectBaseContextWithRoot verbosity cliConfig projectRoot currentComma
     sequenceA $
       makeAbsolute
         <$> Setup.flagToMaybe projectConfigStoreDir
+
   cabalDirLayout <- mkCabalDirLayout mstoreDir mlogsDir
 
   let buildSettings =

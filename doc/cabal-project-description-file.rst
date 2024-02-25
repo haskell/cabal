@@ -372,6 +372,11 @@ package, and thus apply globally:
     :synopsis: PackageDB stack manipulation
     :since: 3.7
 
+    By modifying ``package-dbs`` you can modify the default package environment
+    which ``cabal`` will see. The package databases you add using ``package-dbs``
+    will not be written into and only used as immutable package stores to initialise
+    the environment with additional packages that ``cabal`` can choose to use.
+
     There are three package databases involved with most builds:
 
     global
@@ -381,37 +386,42 @@ package, and thus apply globally:
     in-place
         Project-specific build directory
 
-    By default, the package stack you will have with v2 commands is:
+    By default, the initial package stack prefix you will have with v2 commands is:
 
     ::
 
-        -- [global, store]
+        -- prefix = [global]
 
-    So all remote packages required by your project will be
-    registered in the store package db (because it is last).
+    So the initial set of packages which is used by cabal is just the packages
+    installed in the global package database which comes with ``ghc``.
 
-    When cabal starts building your local projects, it appends the in-place db
-    to the end:
+    When cabal builds a package it will start populating the ``store`` package database,
+    whose packages will then be subsequently be available to be used in future runs.
 
     ::
 
-        -- [global, store, in-place]
+        -- prefix ++ [store]
 
-    So your local packages get put in ``dist-newstyle`` instead of the store.
+    When cabal builds your local projects, packages are registered into the local
+    in-place package database.
 
-    This flag manipulates the default prefix: ``[global, store]`` and accepts
+    ::
+
+        -- prefix ++ [store, in-place]
+
+    This flag manipulates the default prefix: ``[global]`` and accepts
     paths, the special value ``global`` referring to the global package db, and
     ``clear`` which removes all prior entries. For example,
 
     ::
 
-        -- [global, store, foo]
+        -- prefix = [global, foo]
         package-dbs: foo
 
-        -- [foo]
+        -- prefix = [foo]
         package-dbs: clear, foo
 
-        -- [bar, baz]
+        -- prefix = [bar, baz]
         package-dbs: clear, foo, clear, bar, baz
 
     The command line variant of this flag is ``--package-db=DB`` which can be
