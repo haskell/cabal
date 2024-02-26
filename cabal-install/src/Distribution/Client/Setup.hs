@@ -275,6 +275,7 @@ globalCommand commands =
               , "unpack"
               , "init"
               , "configure"
+              , "target"
               , "build"
               , "clean"
               , "run"
@@ -327,7 +328,8 @@ globalCommand commands =
               , "v1-register"
               , "v1-reconfigure"
               , -- v2 commands, nix-style
-                "v2-build"
+                "v2-target"
+              , "v2-build"
               , "v2-configure"
               , "v2-repl"
               , "v2-freeze"
@@ -381,6 +383,7 @@ globalCommand commands =
                 , addCmd "clean"
                 , par
                 , startGroup "running and testing"
+                , addCmd "target"
                 , addCmd "list-bin"
                 , addCmd "repl"
                 , addCmd "run"
@@ -399,6 +402,7 @@ globalCommand commands =
                 , addCmd "hscolour"
                 , par
                 , startGroup "new-style projects (forwards-compatible aliases)"
+                , addCmd "v2-target"
                 , addCmd "v2-build"
                 , addCmd "v2-configure"
                 , addCmd "v2-repl"
