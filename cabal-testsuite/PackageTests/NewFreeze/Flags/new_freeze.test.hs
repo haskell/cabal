@@ -6,7 +6,7 @@ import System.Directory
 -- Test that 'cabal v2-freeze' freezes flag choices. my-local-package depends
 -- on my-library-dep. my-library-dep has a flag, my-flag, which defaults to
 -- true.
-main = cabalTest $ withSourceCopy $
+main = cabalTest $
   withRepo "repo" $ do
     cabal' "v2-build" ["--dry-run"] >>= assertDependencyFlagChoice True
 

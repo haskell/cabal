@@ -36,8 +36,8 @@ normalizeOutput nenv =
     -- string search-replace.  Make sure we do this before backslash
     -- normalization!
   . resub (posixRegexEscape (normalizerGblTmpDir nenv) ++ "[a-z0-9\\.-]+") "<GBLTMPDIR>" -- note, after TMPDIR
-  . resub (posixRegexEscape (normalizerRoot nenv)) "<ROOT>/"
-  . resub (posixRegexEscape (normalizerTmpDir nenv)) "<TMPDIR>/"
+  . resub (posixRegexEscape (normalizerTmpDir nenv)) "<ROOT>/"
+  . resub (posixRegexEscape (normalizerCanonicalTmpDir nenv)) "<ROOT>/" -- before normalizerTmpDir
   . appEndo (F.fold (map (Endo . packageIdRegex) (normalizerKnownPackages nenv)))
     -- Look for 0.1/installed-0d6uzW7Ubh1Fb4TB5oeQ3G
     -- These installed packages will vary depending on GHC version
@@ -99,6 +99,9 @@ normalizeOutput nenv =
 data NormalizerEnv = NormalizerEnv
     { normalizerRoot          :: FilePath
     , normalizerTmpDir        :: FilePath
+    , normalizerCanonicalTmpDir :: FilePath
+    -- ^ May differ from 'normalizerTmpDir', especially e.g. on macos, where
+    -- `/var` is a symlink for `/private/var`.
     , normalizerGblTmpDir     :: FilePath
     , normalizerGhcVersion    :: Version
     , normalizerKnownPackages :: [PackageId]
