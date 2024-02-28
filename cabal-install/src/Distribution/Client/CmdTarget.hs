@@ -56,13 +56,13 @@ targetCommand :: CommandUI (NixStyleFlags ())
 targetCommand =
   CommandUI
     { commandName = "v2-target"
-    , commandSynopsis = "List target forms within the project."
+    , commandSynopsis = "Target disclosure."
     , commandUsage = usageAlternatives "v2-target" ["[TARGETS]"]
     , commandDescription = Just $ \_ ->
         wrapText $
-          "List targets within a build plan. "
+          "Reveal the targets of build plan. "
             ++ "If no [TARGETS] are given 'all' will be used for selecting a build plan.\n\n"
-            ++ "The given target can be;\n"
+            ++ "A [TARGETS] item can be one of these target forms;\n"
             ++ "- a package target (e.g. [pkg:]package)\n"
             ++ "- a component target (e.g. [package:][ctype:]component)\n"
             ++ "- all packages (e.g. all)\n"
@@ -81,20 +81,20 @@ targetCommand =
           ++ "  "
           ++ pname
           ++ " v2-target all\n"
-          ++ "    List all targets of the package in the current directory "
+          ++ "    Targets of the package in the current directory "
           ++ "or all packages in the project\n"
           ++ "  "
           ++ pname
           ++ " v2-target pkgname\n"
-          ++ "    List targets of the package named pkgname in the project\n"
+          ++ "    Targets of the package named pkgname in the project\n"
           ++ "  "
           ++ pname
           ++ " v2-target ./pkgfoo\n"
-          ++ "    List targets of the package in the ./pkgfoo directory\n"
+          ++ "    Targets of the package in the ./pkgfoo directory\n"
           ++ "  "
           ++ pname
           ++ " v2-target cname\n"
-          ++ "    List targets of the component named cname in the project\n"
+          ++ "    Targets of the component named cname in the project\n"
           ++ "  "
     , commandDefaultFlags = defaultNixStyleFlags ()
     , commandOptions = const []
