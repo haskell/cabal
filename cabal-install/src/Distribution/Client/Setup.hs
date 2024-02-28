@@ -376,6 +376,7 @@ globalCommand commands =
                 , addCmd "outdated"
                 , par
                 , startGroup "project building and installing"
+                , addCmd "target"
                 , addCmd "build"
                 , addCmd "install"
                 , addCmd "haddock"
@@ -383,7 +384,6 @@ globalCommand commands =
                 , addCmd "clean"
                 , par
                 , startGroup "running and testing"
-                , addCmd "target"
                 , addCmd "list-bin"
                 , addCmd "repl"
                 , addCmd "run"
