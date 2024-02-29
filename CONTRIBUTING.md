@@ -265,6 +265,23 @@ severely complicates Git history. It is intended for special circumstances, as w
 the PR branch cannot or should not be modified. If you have any questions about it,
 please ask us.
 
+### Pull Requests & Issues
+
+A pull request *fixes* a problem that is *described* in an issue. Make sure to
+file an issue before opening a pull request. In the issue you can illustrate
+your proposed design, UX considerations, tradeoffs etc. and work them out with
+other contributors. The PR itself is for implementation.
+
+If a PR becomes out of sync with its issue, go back to the issue, update
+it, and continue the conversation there. Telltale signs of Issue/PR diverging
+are, for example: the PR growing bigger in scope; lengthy discussions
+about things that are *not* implementation choices; a change in design.
+
+If your PR is trivial you can omit this process (but explain in the PR why you
+think it does not warrant an issue). Feel free to open a new issue (or new
+issues) when appropriate.
+
+
 Changelog
 ---------
 
