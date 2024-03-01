@@ -62,7 +62,7 @@ import Distribution.Simple.Program
   , simpleProgram
   )
 import Distribution.Simple.Program.Db
-  ( appendProgramSearchPath
+  ( prependProgramSearchPath
   )
 import Distribution.Types.SourceRepo
   ( KnownRepoType (..)
@@ -206,7 +206,7 @@ configureVCS
   -> VCS Program
   -> IO (VCS ConfiguredProgram)
 configureVCS verbosity progPaths vcs@VCS{vcsProgram = prog} = do
-  progPath <- appendProgramSearchPath verbosity progPaths emptyProgramDb
+  progPath <- prependProgramSearchPath verbosity progPaths emptyProgramDb
   asVcsConfigured <$> requireProgram verbosity prog progPath
   where
     asVcsConfigured (prog', _) = vcs{vcsProgram = prog'}
