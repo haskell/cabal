@@ -76,7 +76,7 @@ import Distribution.Simple.Program
 import Distribution.Simple.Setup as Setup
 import Distribution.Simple.BuildTarget
 import Distribution.Simple.LocalBuildInfo
-import Distribution.Simple.Program.Db (appendProgramSearchPath)
+import Distribution.Simple.Program.Db (modifyProgramSearchPath)
 import Distribution.Simple.Utils
 import Distribution.System
 import Distribution.Types.PackageVersionConstraint
