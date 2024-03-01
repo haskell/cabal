@@ -200,7 +200,7 @@ builds packages for all the Haskell implementations.
 The simple build infrastructure can also handle packages where building
 is governed by system-dependent parameters, if you specify a little more
 (see the section on `system-dependent parameters`_).
-A few packages require `more elaborate solutions <more complex packages>`_.
+A few packages require `more elaborate solutions <#more-complex-packages>`_.
 
 .. _pkg-desc:
 
