@@ -1,5 +1,8 @@
 import Test.Cabal.Prelude
 
-main = cabalTest $ withRepo "repo" $ do
+main = cabalTest $ recordMode DoNotRecord . withRepo "repo" $ do
+    -- For the multi-repl command
     skipUnlessGhcVersion ">= 9.4"
-    void $ fails $ cabalWithStdin "v2-repl" ["--keep-temp-files","--enable-multi-repl","pkg-a", "pkg-b"] ""
+    skipUnlessAnyCabalVersion "< 3.11"
+    res <- fails $ cabalWithStdin "v2-repl" ["--keep-temp-files","--enable-multi-repl","pkg-a", "pkg-b"] ""
+    assertOutputContains "constraint from --enable-multi-repl requires >=3.11" res

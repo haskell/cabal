@@ -104,6 +104,7 @@ executable cabal-tests
     , transformers
     -- dependencies specific to exe:cabal-tests
     , clock                 ^>= 0.7.2 || ^>=0.8
+    , directory
 
   build-tool-depends: cabal-testsuite:setup
   default-extensions: TypeOperators
