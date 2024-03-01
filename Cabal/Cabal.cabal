@@ -21,7 +21,7 @@ build-type:     Simple
 -- If we use a new Cabal feature, this needs to be changed to Custom so
 -- we can bootstrap.
 
-extra-source-files:
+extra-doc-files:
   README.md ChangeLog.md
 
 source-repository head

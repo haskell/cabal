@@ -15,7 +15,7 @@ description:
 category:       Distribution
 build-type:     Simple
 
-extra-source-files:
+extra-doc-files:
   README.md ChangeLog.md
 
 source-repository head
