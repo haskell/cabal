@@ -1,0 +1,11 @@
+synopsis: Warn on missing `default-language`
+packages: Cabalcabal-install
+prs: #9766
+issues: #9620
+
+description: {
+
+- To help the adoption of GHC language editions, `cabal check` will now
+  warn about missing `default-language`.
+
+}
