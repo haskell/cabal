@@ -850,7 +850,9 @@ configure (pkg_descr0, pbi) cfg = do
 -- arguments.
 mkProgramDb :: ConfigFlags -> ProgramDb -> IO ProgramDb
 mkProgramDb cfg initialProgramDb = do
-  programDb <- appendProgramSearchPath (fromFlagOrDefault normal (configVerbosity cfg)) searchpath initialProgramDb
+  programDb <-
+    modifyProgramSearchPath (getProgramSearchPath initialProgramDb ++)
+      <$> appendProgramSearchPath (fromFlagOrDefault normal (configVerbosity cfg)) searchpath initialProgramDb
   pure
     . userSpecifyArgss (configProgramArgs cfg)
     . userSpecifyPaths (configProgramPaths cfg)
