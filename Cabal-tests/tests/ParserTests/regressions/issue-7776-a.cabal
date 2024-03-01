@@ -24,3 +24,4 @@ library
             GHC.Hs.Type
         hs-source-dirs:
             compat-8.10
+    default-language: Haskell2010

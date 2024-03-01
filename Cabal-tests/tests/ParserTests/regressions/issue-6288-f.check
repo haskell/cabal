@@ -1,0 +1,1 @@
+[add-language] Without `default-language`, cabal will default to Haskell98, which is probably not what you want. Please add `default-language` to all targets.

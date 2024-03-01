@@ -483,12 +483,7 @@ checkBuildInfoFeatures bi sv = do
     (isJust $ defaultLanguage bi)
     (PackageBuildWarning CVDefaultLanguage)
   -- CheckSpecVer sv.
-  checkP
-    ( sv >= CabalSpecV1_10
-        && sv < CabalSpecV3_4
-        && isNothing (defaultLanguage bi)
-    )
-    (PackageBuildWarning CVDefaultLanguageComponent)
+  checkDefaultLanguage
   -- Check use of 'extra-framework-dirs' field.
   checkSpecVer
     CabalSpecV1_24
@@ -533,6 +528,17 @@ checkBuildInfoFeatures bi sv = do
         CabalSpecV3_0
         (not . null $ cvs)
         (PackageDistInexcusable CVSources)
+
+    checkDefaultLanguage :: Monad m => CheckM m ()
+    checkDefaultLanguage = do
+      -- < 1.10 has no `default-language` field.
+      when
+        (sv >= CabalSpecV1_10 && isNothing (defaultLanguage bi))
+        -- < 3.4 mandatory, after just a suggestion.
+        ( if sv < CabalSpecV3_4
+            then tellP (PackageBuildWarning CVDefaultLanguageComponent)
+            else tellP (PackageDistInexcusable CVDefaultLanguageComponentSoft)
+        )
 
 -- Tests for extensions usage which can break Cabal < 1.4.
 checkBuildInfoExtensions :: Monad m => BuildInfo -> CheckM m ()

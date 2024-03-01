@@ -4,7 +4,8 @@ version:       6288
 build-type:    Simple
 synopsis:      default-language optionality
 category:      Test
-description:   Field is introduced in 1.10, defaulted in 3.4
+description:   Field is introduced in 1.10, defaulted in 3.4,
+               suggested in cabal 3.12.
 license:       BSD3
 license-file:  LICENSE
 maintainer:    Cabal Contributors

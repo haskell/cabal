@@ -1276,6 +1276,7 @@ A list of all warnings with their constructor:
 - ``test-cabal-ver``: ``test-suite`` used with ``cabal-version`` < 1.10.
 - ``default-language``: ``default-language`` used with ``cabal-version`` < 1.10.
 - ``no-default-language``: missing ``default-language``.
+- ``add-default-language``: suggested ``default-language``.
 - ``extra-doc-files``: ``extra-doc-files`` used with ``cabal-version`` < 1.18.
 - ``multilib``: multiple ``library`` sections with ``cabal-version`` < 2.0.
 - ``reexported-modules``: ``reexported-modules`` with ``cabal-version`` < 1.22.

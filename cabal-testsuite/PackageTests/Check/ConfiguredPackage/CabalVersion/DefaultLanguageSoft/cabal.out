@@ -1,0 +1,4 @@
+# cabal check
+The following errors will cause portability problems on other environments:
+Error: [add-language] Without `default-language`, cabal will default to Haskell98, which is probably not what you want. Please add `default-language` to all targets.
+Error: Hackage would reject this package.
