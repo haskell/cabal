@@ -583,7 +583,7 @@ componentGhcOptions verbosity lbi bi clbi odir =
         , ghcOptDebugInfo = toFlag (withDebugInfo lbi)
         , ghcOptExtra = hcOptions GHC bi
         , ghcOptExtraPath = toNubListR $ exe_paths
-        , ghcOptLanguage = toFlag (fromMaybe Haskell98 (defaultLanguage bi))
+        , ghcOptLanguage = toFlag (fromMaybe defaultDefLang (defaultLanguage bi))
         , -- Unsupported extensions have already been checked by configure
           ghcOptExtensions = toNubListR $ usedExtensions bi
         , ghcOptExtensionMap = Map.fromList . compilerExtensions $ (compiler lbi)

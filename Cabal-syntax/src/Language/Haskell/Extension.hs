@@ -16,6 +16,7 @@
 module Language.Haskell.Extension
   ( Language (..)
   , knownLanguages
+  , defaultDefLang
   , classifyLanguage
   , Extension (..)
   , KnownExtension (..)
@@ -66,6 +67,10 @@ instance NFData Language where rnf = genericRnf
 -- | List of known (supported) languages for GHC, oldest first.
 knownLanguages :: [Language]
 knownLanguages = [Haskell98, Haskell2010, GHC2021]
+
+-- | When @default-language@ is missing, 'Haskell98' is the choice.
+defaultDefLang :: Language
+defaultDefLang = Haskell98
 
 instance Pretty Language where
   pretty (UnknownLanguage other) = Disp.text other

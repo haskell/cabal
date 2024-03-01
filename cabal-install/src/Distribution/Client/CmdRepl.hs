@@ -154,7 +154,7 @@ import Distribution.Verbosity
   , normal
   )
 import Language.Haskell.Extension
-  ( Language (..)
+  ( defaultDefLang
   )
 
 import Control.Monad (mapM)
@@ -304,7 +304,7 @@ replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings g
           lBuildInfo =
             emptyBuildInfo
               { targetBuildDepends = [baseDep]
-              , defaultLanguage = Just Haskell2010
+              , defaultLanguage = Just defaultDefLang
               }
           baseDep = Dependency "base" anyVersion mainLibSet
 

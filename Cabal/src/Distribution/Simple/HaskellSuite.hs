@@ -181,7 +181,7 @@ buildLib verbosity pkg_descr lbi lib clbi = do
       bi = libBuildInfo lib
       srcDirs = map getSymbolicPath (hsSourceDirs bi) ++ [odir]
       dbStack = withPackageDB lbi
-      language = fromMaybe Haskell98 (defaultLanguage bi)
+      language = fromMaybe defaultDefLang (defaultLanguage bi)
       progdb = withPrograms lbi
       pkgid = packageId pkg_descr
 

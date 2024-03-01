@@ -1732,7 +1732,7 @@ system-dependent values for these fields.
 
     -  ``GHC2021`` (only available for GHC version newer than ``9.2``)
     -  ``Haskell2010``
-    -  ``Haskell98``
+    -  ``Haskell98`` (default)
 
 .. pkg-field:: other-languages: identifier
    :since: 1.12
