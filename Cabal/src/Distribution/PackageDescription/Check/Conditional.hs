@@ -131,7 +131,7 @@ checkCondTarget fs cf nf (unqualName, ct) =
       :: CondTree ConfVar [Dependency] (TargetAnnotation a)
       -> CheckM m ()
     wTree (CondNode ta _ bs)
-      -- There are no branches (and [] == True) *or* every branch
+      -- There are no branches ([] == True) *or* every branch
       -- is “simple” (i.e. missing a 'condBranchIfFalse' part).
       -- This is convenient but not necessarily correct in all
       -- cases; a more precise way would be to check incompatibility

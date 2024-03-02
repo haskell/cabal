@@ -169,7 +169,7 @@ extractCondition p = go
        in
         ((c `cAnd` ct) `cOr` (CNot c `cAnd` ce)) `cAnd` goList cs
 
--- | Flattens a CondTree using a partial flag assignment.  When a condition
+-- | Flattens a CondTree using a partial flag assignment. When a condition
 -- cannot be evaluated, both branches are ignored.
 simplifyCondTree
   :: (Semigroup a, Semigroup d)
