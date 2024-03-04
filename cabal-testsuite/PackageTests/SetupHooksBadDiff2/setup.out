@@ -1,0 +1,7 @@
+# Setup configure
+Configuring setup-hooks-bad-diff2-test-0.1.0.0...
+Error: [Cabal-7634]
+Hooks: illegal component diff in per-component pre-configure hook for main library:
+  - cannot change the name of a component.
+  - cannot change component field 'libExposed'.
+  - cannot change BuildInfo field 'buildable'.

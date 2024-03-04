@@ -1,0 +1,4 @@
+imports: B
+
+quux :: Double
+quux = bar + 11

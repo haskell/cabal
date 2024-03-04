@@ -1,4 +1,4 @@
-packages: Cabal-syntax/ Cabal/ cabal-testsuite/
+packages: Cabal-syntax/ Cabal/ Cabal-hooks/ cabal-testsuite/
 
 packages: Cabal-QuickCheck/
 packages: Cabal-tree-diff

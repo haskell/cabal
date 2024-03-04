@@ -1,0 +1,4 @@
+imports: A1 A2
+
+bar :: Double
+bar = foo1 + foo2

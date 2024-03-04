@@ -1,0 +1,5 @@
+# Setup configure
+Configuring setup-hooks-bad-diff1-test-0.1.0.0...
+Error: [Cabal-9491]
+Hooks: mismatched component types in per-component configure hook.
+Trying to apply an executable diff to a library.
