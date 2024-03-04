@@ -1,0 +1,8 @@
+synopsis: offline flag applied to `source-repository-package`s
+packages: Cabal-install
+prs: #9771
+issues: #9641
+
+description: {
+`--offline` flag is already used to block access to Hackage. Now with this PR, this also applies to remote dependency `source-repository-package` in `cabal.project`.
+}
