@@ -1035,7 +1035,7 @@ haddockPackagePaths ipkgs mkHtmlPath = do
 
   let missing = [pkgid | Left pkgid <- interfaces]
       warning =
-        "The documentation for the following packages are not "
+        "The following packages have no Haddock documentation "
           ++ "installed. No links will be generated to these packages: "
           ++ intercalate ", " (map prettyShow missing)
       flags = rights interfaces
