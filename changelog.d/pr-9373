@@ -1,0 +1,4 @@
+synopsis: Implpement v2-outdated command
+packages: cabal-install
+prs: #9373
+issues:
