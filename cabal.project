@@ -3,6 +3,7 @@ import: cabal.project.latest-ghc
 packages: Cabal/
 packages: cabal-testsuite/
 packages: Cabal-syntax/
+packages: Cabal-layout/
 packages: cabal-install/
 packages: cabal-install-solver/
 packages: solver-benchmarks/
