@@ -85,7 +85,7 @@ import Distribution.Simple.PackageIndex (InstalledPackageIndex, lookupUnitId)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.PreProcess
 import Distribution.Simple.Program
-import Distribution.Simple.Program.Db (appendProgramSearchPath, lookupProgramByName)
+import Distribution.Simple.Program.Db (lookupProgramByName, modifyProgramSearchPath, prependProgramSearchPath)
 import Distribution.Simple.Setup.Common as Setup
 import Distribution.Simple.Setup.Config as Setup
 import Distribution.Simple.Utils
@@ -1236,13 +1236,15 @@ mkPromisedDepsSet comps = Map.fromList [((pn, CLibName ln), cid) | GivenComponen
 -- arguments.
 mkProgramDb :: ConfigFlags -> ProgramDb -> IO ProgramDb
 mkProgramDb cfg initialProgramDb = do
-  programDb <- appendProgramSearchPath (fromFlagOrDefault normal (configVerbosity cfg)) searchpath initialProgramDb
+  programDb <-
+    modifyProgramSearchPath (getProgramSearchPath initialProgramDb ++) -- We need to have the paths to programs installed by build-tool-depends before all other paths
+      <$> prependProgramSearchPath (fromFlagOrDefault normal (configVerbosity cfg)) searchpath initialProgramDb
   pure
     . userSpecifyArgss (configProgramArgs cfg)
     . userSpecifyPaths (configProgramPaths cfg)
     $ programDb
   where
-    searchpath = fromNubList $ configProgramPathExtra cfg
+    searchpath = fromNubList (configProgramPathExtra cfg)
 
 -- Note. We try as much as possible to _prepend_ rather than postpend the extra-prog-path
 -- so that we can override the system path. However, in a v2-build, at this point, the "system" path
