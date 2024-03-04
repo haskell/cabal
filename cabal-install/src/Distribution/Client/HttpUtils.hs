@@ -46,10 +46,10 @@ import Distribution.Simple.Program
 import Distribution.Simple.Program.Db
   ( ProgramDb
   , addKnownPrograms
-  , appendProgramSearchPath
   , configureAllKnownPrograms
   , emptyProgramDb
   , lookupProgram
+  , prependProgramSearchPath
   , requireProgram
   )
 import Distribution.Simple.Program.Run
@@ -408,7 +408,7 @@ configureTransport verbosity extraPath (Just name) =
 
   case find (\(name', _, _, _) -> name' == name) supportedTransports of
     Just (_, mprog, _tls, mkTrans) -> do
-      baseProgDb <- appendProgramSearchPath verbosity extraPath emptyProgramDb
+      baseProgDb <- prependProgramSearchPath verbosity extraPath emptyProgramDb
       progdb <- case mprog of
         Nothing -> return emptyProgramDb
         Just prog -> snd <$> requireProgram verbosity prog baseProgDb
@@ -424,7 +424,7 @@ configureTransport verbosity extraPath Nothing = do
 
   -- for all the transports except plain-http we need to try and find
   -- their external executable
-  baseProgDb <- appendProgramSearchPath verbosity extraPath emptyProgramDb
+  baseProgDb <- prependProgramSearchPath verbosity extraPath emptyProgramDb
   progdb <-
     configureAllKnownPrograms verbosity $
       addKnownPrograms

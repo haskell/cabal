@@ -34,7 +34,7 @@ module Distribution.Simple.Program.Db
     -- ** Query and manipulate the program db
   , addKnownProgram
   , addKnownPrograms
-  , appendProgramSearchPath
+  , prependProgramSearchPath
   , lookupKnownProgram
   , knownPrograms
   , getProgramSearchPath
@@ -223,14 +223,14 @@ modifyProgramSearchPath f db =
   setProgramSearchPath (f $ getProgramSearchPath db) db
 
 -- | Modify the current 'ProgramSearchPath' used by the 'ProgramDb'
--- by appending the provided extra paths. Also logs the added paths
+-- by prepending the provided extra paths. Also logs the added paths
 -- in info verbosity.
-appendProgramSearchPath
+prependProgramSearchPath
   :: Verbosity
   -> [FilePath]
   -> ProgramDb
   -> IO ProgramDb
-appendProgramSearchPath verbosity extraPaths db =
+prependProgramSearchPath verbosity extraPaths db =
   if not $ null extraPaths
     then do
       logExtraProgramSearchPath verbosity extraPaths

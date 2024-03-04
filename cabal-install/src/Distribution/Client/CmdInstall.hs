@@ -154,8 +154,8 @@ import Distribution.Simple.GHC
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import qualified Distribution.Simple.PackageIndex as PI
 import Distribution.Simple.Program.Db
-  ( appendProgramSearchPath
-  , defaultProgramDb
+  ( defaultProgramDb
+  , prependProgramSearchPath
   , userSpecifyArgss
   , userSpecifyPaths
   )
@@ -426,7 +426,7 @@ installAction flags@NixStyleFlags{extraFlags, configFlags, installFlags, project
     hcPath = flagToMaybe projectConfigHcPath
     hcPkg = flagToMaybe projectConfigHcPkg
 
-  configProgDb <- appendProgramSearchPath verbosity ((fromNubList packageConfigProgramPathExtra) ++ (fromNubList projectConfigProgPathExtra)) defaultProgramDb
+  configProgDb <- prependProgramSearchPath verbosity ((fromNubList packageConfigProgramPathExtra) ++ (fromNubList projectConfigProgPathExtra)) defaultProgramDb
   let
     -- ProgramDb with directly user specified paths
     preProgDb =
