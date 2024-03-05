@@ -14,7 +14,7 @@ maintainer:    Cabal Development Team <cabal-devel@haskell.org>
 copyright:     2003-2023, Cabal Development Team
 category:      Distribution
 build-type:    Simple
-Extra-Source-Files:
+extra-doc-files:
   ChangeLog.md
 
 source-repository head
