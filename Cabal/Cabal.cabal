@@ -106,6 +106,7 @@ library
     Distribution.Simple.Compiler
     Distribution.Simple.Configure
     Distribution.Simple.Errors
+    Distribution.Simple.FileMonitor.Types
     Distribution.Simple.Flag
     Distribution.Simple.GHC
     Distribution.Simple.GHCJS
