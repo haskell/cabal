@@ -3408,7 +3408,7 @@ pathCommand :: CommandUI PathFlags
 pathCommand =
   CommandUI
     { commandName = "path"
-    , commandSynopsis = "Display paths used by cabal"
+    , commandSynopsis = "Display paths used by cabal."
     , commandDescription = Just $ \_ ->
         wrapText $
           "This command prints the directories that are used by cabal,"
