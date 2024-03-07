@@ -1,9 +1,0 @@
-synopsis: Fix precedence for PATH for build-tools-depends
-packages: Cabal cabal-install
-prs: #8972
-
-description: {
-
-- fixes a bug introduced in #8506 that caused executables in the path to take precedence over those specified in build-tools-depends.
-
-}
