@@ -1,6 +1,0 @@
-synopsis: config file: allow more flags in the init section
-packages: cabal-install
-prs: #8839
-issues: #8835
-description: The init section of config file now allows the following fields:
-`no-comments`, `quiet`, `simple` and `minimal`
