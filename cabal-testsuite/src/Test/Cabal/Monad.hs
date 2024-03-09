@@ -406,8 +406,6 @@ onlyIfExists m =
 -- This requires the test repository to be a Git checkout, because
 -- we use the Git metadata to figure out what files to copy into the
 -- hermetic copy.
---
--- Also see 'withSourceCopyDir'.
 withSourceCopy :: TestM a -> TestM a
 withSourceCopy m = do
     env <- getTestEnv

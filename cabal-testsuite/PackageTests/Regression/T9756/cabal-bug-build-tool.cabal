@@ -1,0 +1,10 @@
+cabal-version:  1.12
+name:           cabal-bug-build-tool
+version:        0
+build-type:     Simple
+
+library
+  exposed-modules:  OK
+  default-language: Haskell2010
+  build-depends:    base, template-haskell, process
+  build-tool-depends: mybuilder:mybuilder >=0.2.0.0

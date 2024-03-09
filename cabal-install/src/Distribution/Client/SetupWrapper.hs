@@ -89,7 +89,7 @@ import Distribution.Simple.Program
   , runDbProgram
   )
 import Distribution.Simple.Program.Db
-  ( appendProgramSearchPath
+  ( prependProgramSearchPath
   )
 import Distribution.Simple.Program.Find
   ( programSearchPathAsPATHVar
@@ -539,7 +539,7 @@ invoke verbosity path args options = do
     Nothing -> return ()
     Just logHandle -> info verbosity $ "Redirecting build log to " ++ show logHandle
 
-  progDb <- appendProgramSearchPath verbosity (useExtraPathEnv options) (useProgramDb options)
+  progDb <- prependProgramSearchPath verbosity (useExtraPathEnv options) (useProgramDb options)
 
   searchpath <-
     programSearchPathAsPATHVar $ getProgramSearchPath progDb

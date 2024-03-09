@@ -17,8 +17,9 @@ Copyright:          2003-2024, Cabal Development Team
 Category:           Distribution
 Build-type:         Simple
 Extra-Source-Files:
-  README.md
   bash-completion/cabal
+extra-doc-files:
+  README.md
   changelog
 
 source-repository head
@@ -67,6 +68,8 @@ library
     default-extensions: TypeOperators
 
     hs-source-dirs:   src
+    autogen-modules:
+        Paths_cabal_install
     other-modules:
         Paths_cabal_install
     exposed-modules:

@@ -76,8 +76,8 @@ import Distribution.Simple.Program
   , simpleProgram
   )
 import Distribution.Simple.Program.Db
-  ( appendProgramSearchPath
-  , configuredPrograms
+  ( configuredPrograms
+  , prependProgramSearchPath
   , requireProgram
   )
 import Distribution.Simple.Program.Run
@@ -168,7 +168,7 @@ execAction flags@NixStyleFlags{..} extraArgs globalFlags = do
   let extraPaths = pathAdditions baseCtx buildCtx
 
   programDb <-
-    appendProgramSearchPath
+    prependProgramSearchPath
       verbosity
       extraPaths
       . pkgConfigCompilerProgs

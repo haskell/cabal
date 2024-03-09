@@ -1,2 +1,3 @@
 VERSION: Just (mkVersion [99999,99])
-forward-compat3.cabal:0:0: Unsupported cabal-version 99999.99. See https://github.com/haskell/cabal/issues/4899.
+forward-compat3.cabal:0:0: Unsupported cabal format version in cabal-version field: 99999.99.
+Current cabal-version values are listed at https://cabal.readthedocs.io/en/stable/file-format-changelog.html.
