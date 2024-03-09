@@ -122,6 +122,8 @@ jobs:
       - name: Update Hackage index
         run: cabal v2-update
       - uses: actions/checkout@v4
-      - name: Are buildinfo docs up to date?
-        run: make doc/buildinfo-fields-reference.rst
+      - name: Are cabal package syntax docs up to date?
+        run: make doc/cabal-package-syntax.rst
+      - name: Are language extensions docs up to date?
+        run: make doc/language-extensions.rst
 

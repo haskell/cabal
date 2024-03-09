@@ -1,0 +1,13 @@
+mjx-container[jax="SVG"] {
+  color: #55a5d9;
+}
+
+/*
+TODO: Avoid overflow of mixin in field syntax reference with the TeX expression:
+   \mathrm{commalist}\left(\mathop{\mathit{package\text{-}name}}{\left(\mathop{\mathord{``}\mathtt{\text{:}}\mathord{"}}\mathop{\mathit{library\text{-}name}}\right)}^?{\left(\bullet\left\{ \mid\mathop{\mathord{``}\mathtt{hiding}\mathord{"}}\circ\mathop{\mathord{``}\mathtt{\text{(}}\mathord{"}}\circ{\mathop{\mathit{module\text{-}name}}}^\ast_{\left(\circ\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}\circ\right)}\circ\mathop{\mathord{``}\mathtt{\text{)}}\mathord{"}}\mid\mathop{\mathord{``}\mathtt{\text{(}}\mathord{"}}\circ{\left(\mathop{\mathit{module\text{-}name}}{\left(\bullet\mathop{\mathord{``}\mathtt{as}\mathord{"}}\bullet\mathop{\mathit{module\text{-}name}}\right)}^?\right)}^\ast_{\left(\circ\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}\circ\right)}\circ\mathop{\mathord{``}\mathtt{\text{)}}\mathord{"}} \right\}{\left(\circ\mathop{\mathord{``}\mathtt{requires}\mathord{"}}\bullet\left\{ \mid\mathop{\mathord{``}\mathtt{hiding}\mathord{"}}\circ\mathop{\mathord{``}\mathtt{\text{(}}\mathord{"}}\circ{\mathop{\mathit{module\text{-}name}}}^\ast_{\left(\circ\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}\circ\right)}\circ\mathop{\mathord{``}\mathtt{\text{)}}\mathord{"}}\mid\mathop{\mathord{``}\mathtt{\text{(}}\mathord{"}}\circ{\left(\mathop{\mathit{module\text{-}name}}{\left(\bullet\mathop{\mathord{``}\mathtt{as}\mathord{"}}\bullet\mathop{\mathit{module\text{-}name}}\right)}^?\right)}^\ast_{\left(\circ\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}\circ\right)}\circ\mathop{\mathord{``}\mathtt{\text{)}}\mathord{"}} \right\}\right)}^?\right)}^?\right)
+To alleviate this problem and to aid readability on desktops, use the whole width of the screen for the documentation.
+SEE: https://stackoverflow.com/questions/23211695/modifying-content-width-of-the-sphinx-theme-read-the-docs
+*/
+.wy-nav-content {
+  max-width: none;
+}

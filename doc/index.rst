@@ -29,7 +29,6 @@ Welcome to the Cabal User Guide
    external-commands
    setup-commands
    file-format-changelog
-   buildinfo-fields-reference
 
 .. toctree::
    :caption: Cabal Explanation
@@ -39,3 +38,11 @@ Welcome to the Cabal User Guide
    cabal-context
    package-concepts
    cabal-interface-stability
+
+.. toctree::
+   :caption: Syntax Reference
+   :numbered:
+   :maxdepth: 2
+
+   cabal-package-syntax
+   language-extensions

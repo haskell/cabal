@@ -1,10 +1,19 @@
-.. _buildinfo-field-reference:
+.. _cabal-package-syntax:
 
-Field Syntax Reference
-======================
+Cabal Package Syntax
+====================
+
+Language Extensions
+-------------------
+
+For control of the default language and language extensions for the whole
+package, see :ref:`ghc-syntax`.
+
+- :ref:`ghc-default-language`
+- :ref:`ghc-default-extensions`
 
 Notation
----------------
+--------
 
 Field syntax is described as they are in the latest cabal file format version.
 
@@ -108,6 +117,7 @@ Comma separated
     Note, the comma cannot exist alone.
 
     .. math::
+    
         \mathrm{commalist}(\mathit{element}) =
         \left\{ {\mathop{\mathit{element}}}^\ast_{\left(\circ\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}\circ\right)}\mid\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}\circ{\mathop{\mathit{element}}}^+_{\left(\circ\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}\circ\right)}\mid{\mathop{\mathit{element}}}^+_{\left(\circ\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}\circ\right)}\circ\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}} \right\}
 
@@ -119,6 +129,7 @@ Optional comma separated
     an example field is :pkg-field:`default-extensions`.
 
     .. math::
+
         \mathrm{optcommalist}(\mathit{element}) =
         \left\{ \begin{gathered}{\mathop{\mathit{element}}}^\ast_{\bullet}\\{\mathop{\mathit{element}}}^\ast_{\left(\circ\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}\circ\right)}\\\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}\circ{\mathop{\mathit{element}}}^+_{\left(\circ\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}\circ\right)}\\{\mathop{\mathit{element}}}^+_{\left(\circ\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}\circ\right)}\circ\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}\end{gathered} \right\}
 
@@ -131,34 +142,39 @@ hs-string
     String as in Haskell; it's recommended to avoid using Haskell-specific escapes.
 
     .. math::
+
         \mathop{\mathord{``}\mathtt{\text{"}}\mathord{"}}{\left\{ {[\mathop{\mathord{``}\mathtt{\text{"}}\mathord{"}}\mathop{\mathord{``}\mathtt{\text{\\}}\mathord{"}}]^c}\mid\left\{ \begin{gathered}\mathop{\mathord{``}\mathtt{\text{\\}\text{&}}\mathord{"}}\\\mathop{\mathord{``}\mathtt{\text{\\}\text{\\}}\mathord{"}}\\\left\{ \mathop{\mathord{``}\mathtt{\text{\\}n}\mathord{"}}\mid\mathop{\mathit{escapes}} \right\}\\\mathop{\mathord{``}\mathtt{\text{\\}}\mathord{"}}[\mathop{\mathord{``}\mathtt{0}\mathord{"}}\cdots\mathop{\mathord{``}\mathtt{9}\mathord{"}}]\\\mathop{\mathord{``}\mathtt{\text{\\}o}\mathord{"}}[\mathop{\mathord{``}\mathtt{0}\mathord{"}}\cdots\mathop{\mathord{``}\mathtt{7}\mathord{"}}]\\\mathop{\mathord{``}\mathtt{\text{\\}x}\mathord{"}}[\mathop{\mathord{``}\mathtt{0}\mathord{"}}\cdots\mathop{\mathord{``}\mathtt{9}\mathord{"}}\mathop{\mathord{``}\mathtt{A}\mathord{"}}\cdots\mathop{\mathord{``}\mathtt{F}\mathord{"}}\mathop{\mathord{``}\mathtt{a}\mathord{"}}\cdots\mathop{\mathord{``}\mathtt{f}\mathord{"}}]\\\left\{ \mathop{\mathord{``}\mathtt{\text{\\}\text{^}\text{@}}\mathord{"}}\mid\mathop{\mathit{control}} \right\}\\\left\{ \mathop{\mathord{``}\mathtt{\text{\\}NUL}\mathord{"}}\mid\mathop{\mathit{ascii}} \right\}\end{gathered} \right\} \right\}}^\ast_{}\mathop{\mathord{``}\mathtt{\text{"}}\mathord{"}}
 
 unqual-name
     Unqualified component names are used for package names, component names etc. but not flag names. Unqualified component name consist of components separated by dash, each component is non-empty alphanumeric string, with at least one alphabetic character. In other words, component may not look like a number.
 
     .. math::
+
         {\left({\mathop{\mathit{alpha\text{-}num}}}^\ast_{}\mathop{\mathit{alpha}}{\mathop{\mathit{alpha\text{-}num}}}^\ast_{}\right)}^+_{\mathop{\mathord{``}\mathtt{\text{-}}\mathord{"}}}
 
 module-name
     Haskell module name as recognized by Cabal parser.
 
     .. math::
+
         {\left(\mathop{\mathit{upper}}{\left\{ \mathop{\mathit{alpha\text{-}num}}\mid[\mathop{\mathord{``}\mathtt{\text{'}}\mathord{"}}\mathop{\mathord{``}\mathtt{\text{_}}\mathord{"}}] \right\}}^\ast_{}\right)}^+_{\mathop{\mathord{``}\mathtt{\text{.}}\mathord{"}}}
 
 version
     Version is to first approximation numbers separated by dots, where leading zero is not allowed and each version digit is consists at most of nine characters.
 
     .. math::
+
         {\left\{ \mathop{\mathord{``}\mathtt{0}\mathord{"}}\mid[\mathop{\mathord{``}\mathtt{1}\mathord{"}}\cdots\mathop{\mathord{``}\mathtt{9}\mathord{"}}]{[\mathop{\mathord{``}\mathtt{0}\mathord{"}}\cdots\mathop{\mathord{``}\mathtt{9}\mathord{"}}]}^{\in [0\ldots8]}_{} \right\}}^+_{\mathop{\mathord{``}\mathtt{\text{.}}\mathord{"}}}
 
 version-range
     Version range syntax is recursive. Also note the set syntax added in ``cabal-version: 3.0``, set cannot be empty.
 
     .. math::
+
         \mathbf{fix}\;\mathop{\mathit{version\text{-}range}}\;\mathbf{in}\;\left\{ \begin{gathered}\mathop{\mathord{``}\mathtt{\text{=}\text{=}}\mathord{"}}\circ\mathop{\mathit{version}}\\\mathop{\mathord{``}\mathtt{\text{>}}\mathord{"}}\circ\mathop{\mathit{version}}\\\mathop{\mathord{``}\mathtt{\text{<}}\mathord{"}}\circ\mathop{\mathit{version}}\\\mathop{\mathord{``}\mathtt{\text{<}\text{=}}\mathord{"}}\circ\mathop{\mathit{version}}\\\mathop{\mathord{``}\mathtt{\text{>}\text{=}}\mathord{"}}\circ\mathop{\mathit{version}}\\\mathop{\mathord{``}\mathtt{\text{^}\text{>}\text{=}}\mathord{"}}\circ\mathop{\mathit{version}}\\\mathop{\mathord{``}\mathtt{\text{=}\text{=}}\mathord{"}}\circ{\left\{ \mathop{\mathord{``}\mathtt{0}\mathord{"}}\mid[\mathop{\mathord{``}\mathtt{1}\mathord{"}}\cdots\mathop{\mathord{``}\mathtt{9}\mathord{"}}]{[\mathop{\mathord{``}\mathtt{0}\mathord{"}}\cdots\mathop{\mathord{``}\mathtt{9}\mathord{"}}]}^{\in [0\ldots8]}_{} \right\}}^+_{\mathop{\mathord{``}\mathtt{\text{.}}\mathord{"}}}\mathop{\mathord{``}\mathtt{\text{.}\text{*}}\mathord{"}}\\\mathop{\mathit{version\text{-}range}}\circ\mathop{\mathord{``}\mathtt{\text{|}\text{|}}\mathord{"}}\circ\mathop{\mathit{version\text{-}range}}\\\mathop{\mathit{version\text{-}range}}\circ\mathop{\mathord{``}\mathtt{\text{&}\text{&}}\mathord{"}}\circ\mathop{\mathit{version\text{-}range}}\\\mathop{\mathord{``}\mathtt{\text{(}}\mathord{"}}\circ\mathop{\mathit{version\text{-}range}}\circ\mathop{\mathord{``}\mathtt{\text{)}}\mathord{"}}\\\mathop{\mathord{``}\mathtt{\text{=}\text{=}}\mathord{"}}\circ\mathop{\mathord{``}\mathtt{\{}\mathord{"}}\circ{\mathop{\mathit{version}}}^+_{\left(\circ\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}\circ\right)}\circ\mathop{\mathord{``}\mathtt{\}}\mathord{"}}\\\mathop{\mathord{``}\mathtt{\text{^}\text{>}\text{=}}\mathord{"}}\circ\mathop{\mathord{``}\mathtt{\{}\mathord{"}}\circ{\mathop{\mathit{version}}}^+_{\left(\circ\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}\circ\right)}\circ\mathop{\mathord{``}\mathtt{\}}\mathord{"}}\end{gathered} \right\}
 
 
-Build info fields
+Build Info Fields
 -----------------
 
 asm-options
@@ -167,6 +183,7 @@ asm-options
     * Documentation of :pkg-field:`library:asm-options`
 
     .. math::
+
         {\left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}]^c}}^+_{} \right\}}^\ast_{\bullet}
 
 asm-sources
@@ -175,6 +192,7 @@ asm-sources
     * Documentation of :pkg-field:`library:asm-sources`
 
     .. math::
+
         \mathrm{commalist}\left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}]^c}}^+_{} \right\}
 
 autogen-includes
@@ -183,6 +201,7 @@ autogen-includes
     * Documentation of :pkg-field:`library:autogen-includes`
 
     .. math::
+
         \mathrm{optcommalist}\left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}]^c}}^+_{} \right\}
 
 autogen-modules
@@ -191,6 +210,7 @@ autogen-modules
     * Documentation of :pkg-field:`library:autogen-modules`
 
     .. math::
+
         \mathrm{commalist}\left({\left(\mathop{\mathit{upper}}{\left\{ \mathop{\mathit{alpha\text{-}num}}\mid[\mathop{\mathord{``}\mathtt{\text{'}}\mathord{"}}\mathop{\mathord{``}\mathtt{\text{_}}\mathord{"}}] \right\}}^\ast_{}\right)}^+_{\mathop{\mathord{``}\mathtt{\text{.}}\mathord{"}}}\right)
 
 build-depends
@@ -198,6 +218,7 @@ build-depends
     * Documentation of :pkg-field:`library:build-depends`
 
     .. math::
+
         \mathrm{commalist}\left(\mathop{\mathit{pkg\text{-}name}}{\left(\mathop{\mathord{``}\mathtt{\text{:}}\mathord{"}}\left\{ \mathop{\mathit{unqual\text{-}name}}\mid\mathop{\mathord{``}\mathtt{\{}\mathord{"}}\circ{\mathop{\mathit{unqual\text{-}name}}}^+_{\left(\circ\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}\circ\right)}\circ\mathop{\mathord{``}\mathtt{\}}\mathord{"}} \right\}\right)}^?{\left(\circ\mathop{\mathit{version\text{-}range}}\right)}^?\right)
 
 build-tool-depends
@@ -205,6 +226,7 @@ build-tool-depends
     * Documentation of :pkg-field:`library:build-tool-depends`
 
     .. math::
+
         \mathrm{commalist}\mathsf{\color{red}{TODO}}
 
 build-tools
@@ -213,6 +235,7 @@ build-tools
     * Removed in ``cabal-version: 3.0``: Please use 'build-tool-depends' field.
 
     .. math::
+
         \mathrm{commalist}\mathsf{\color{red}{TODO}}
 
 buildable
@@ -221,6 +244,7 @@ buildable
     * Documentation of :pkg-field:`library:buildable`
 
     .. math::
+
         \left\{ \mathop{\mathord{``}\mathtt{True}\mathord{"}}\mid\mathop{\mathord{``}\mathtt{False}\mathord{"}} \right\}
 
 c-sources
@@ -228,6 +252,7 @@ c-sources
     * Documentation of :pkg-field:`library:c-sources`
 
     .. math::
+
         \mathrm{commalist}\left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}]^c}}^+_{} \right\}
 
 cc-options
@@ -235,6 +260,7 @@ cc-options
     * Documentation of :pkg-field:`library:cc-options`
 
     .. math::
+
         {\left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}]^c}}^+_{} \right\}}^\ast_{\bullet}
 
 cmm-options
@@ -243,6 +269,7 @@ cmm-options
     * Documentation of :pkg-field:`library:cmm-options`
 
     .. math::
+
         {\left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}]^c}}^+_{} \right\}}^\ast_{\bullet}
 
 cmm-sources
@@ -251,6 +278,7 @@ cmm-sources
     * Documentation of :pkg-field:`library:cmm-sources`
 
     .. math::
+
         \mathrm{commalist}\left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}]^c}}^+_{} \right\}
 
 cpp-options
@@ -258,6 +286,7 @@ cpp-options
     * Documentation of :pkg-field:`library:cpp-options`
 
     .. math::
+
         {\left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}]^c}}^+_{} \right\}}^\ast_{\bullet}
 
 cxx-options
@@ -266,6 +295,7 @@ cxx-options
     * Documentation of :pkg-field:`library:cxx-options`
 
     .. math::
+
         {\left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}]^c}}^+_{} \right\}}^\ast_{\bullet}
 
 cxx-sources
@@ -274,37 +304,15 @@ cxx-sources
     * Documentation of :pkg-field:`library:cxx-sources`
 
     .. math::
+
         \mathrm{commalist}\left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}]^c}}^+_{} \right\}
-
-default-extensions
-    * Monoidal field
-    * Available since ``cabal-version: 1.10``.
-    * Documentation of :pkg-field:`library:default-extensions`
-
-    .. math::
-        \mathrm{optcommalist}\mathsf{\color{red}{TODO}}
-
-default-language
-    * Optional field
-    * Available since ``cabal-version: 1.10``.
-    * Documentation of :pkg-field:`library:default-language`
-
-    .. math::
-        \left\{ \mathop{\mathord{``}\mathtt{GHC2021}\mathord{"}}\mid\mathop{\mathord{``}\mathtt{Haskell2010}\mathord{"}}\mid\mathop{\mathord{``}\mathtt{Haskell98}\mathord{"}} \right\}
-
-extensions
-    * Monoidal field
-    * Deprecated since ``cabal-version: 1.12``: Please use 'default-extensions' or 'other-extensions' fields.
-    * Removed in ``cabal-version: 3.0``: Please use 'default-extensions' or 'other-extensions' fields.
-
-    .. math::
-        \mathrm{optcommalist}\mathsf{\color{red}{TODO}}
 
 extra-bundled-libraries
     * Monoidal field
     * Documentation of :pkg-field:`library:extra-bundled-libraries`
 
     .. math::
+
         \mathrm{commalist}\left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}]^c}}^+_{} \right\}
 
 extra-dynamic-library-flavours
@@ -313,6 +321,7 @@ extra-dynamic-library-flavours
     * Documentation of :pkg-field:`library:extra-dynamic-library-flavours`
 
     .. math::
+
         \mathrm{commalist}\left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}]^c}}^+_{} \right\}
 
 extra-framework-dirs
@@ -320,6 +329,7 @@ extra-framework-dirs
     * Documentation of :pkg-field:`library:extra-framework-dirs`
 
     .. math::
+
         \mathrm{optcommalist}\left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}]^c}}^+_{} \right\}
 
 extra-ghci-libraries
@@ -327,6 +337,7 @@ extra-ghci-libraries
     * Documentation of :pkg-field:`library:extra-ghci-libraries`
 
     .. math::
+
         \mathrm{commalist}\left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}]^c}}^+_{} \right\}
 
 extra-lib-dirs
@@ -334,6 +345,7 @@ extra-lib-dirs
     * Documentation of :pkg-field:`library:extra-lib-dirs`
 
     .. math::
+
         \mathrm{optcommalist}\left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}]^c}}^+_{} \right\}
 
 extra-lib-dirs-static
@@ -342,6 +354,7 @@ extra-lib-dirs-static
     * Documentation of :pkg-field:`library:extra-lib-dirs-static`
 
     .. math::
+
         \mathrm{optcommalist}\left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}]^c}}^+_{} \right\}
 
 extra-libraries
@@ -349,6 +362,7 @@ extra-libraries
     * Documentation of :pkg-field:`library:extra-libraries`
 
     .. math::
+
         \mathrm{commalist}\left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}]^c}}^+_{} \right\}
 
 extra-libraries-static
@@ -357,6 +371,7 @@ extra-libraries-static
     * Documentation of :pkg-field:`library:extra-libraries-static`
 
     .. math::
+
         \mathrm{commalist}\left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}]^c}}^+_{} \right\}
 
 extra-library-flavours
@@ -364,6 +379,7 @@ extra-library-flavours
     * Documentation of :pkg-field:`library:extra-library-flavours`
 
     .. math::
+
         \mathrm{commalist}\left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}]^c}}^+_{} \right\}
 
 frameworks
@@ -371,6 +387,7 @@ frameworks
     * Documentation of :pkg-field:`library:frameworks`
 
     .. math::
+
         \mathrm{optcommalist}\left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}]^c}}^+_{} \right\}
 
 ghc-options
@@ -378,6 +395,7 @@ ghc-options
     * Documentation of :pkg-field:`library:ghc-options`
 
     .. math::
+
         {\left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}]^c}}^+_{} \right\}}^\ast_{\bullet}
 
 ghc-prof-options
@@ -385,6 +403,7 @@ ghc-prof-options
     * Documentation of :pkg-field:`library:ghc-prof-options`
 
     .. math::
+
         {\left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}]^c}}^+_{} \right\}}^\ast_{\bullet}
 
 ghc-shared-options
@@ -392,6 +411,7 @@ ghc-shared-options
     * Documentation of :pkg-field:`library:ghc-shared-options`
 
     .. math::
+
         {\left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}]^c}}^+_{} \right\}}^\ast_{\bullet}
 
 ghcjs-options
@@ -399,6 +419,7 @@ ghcjs-options
     * Documentation of :pkg-field:`library:ghcjs-options`
 
     .. math::
+
         {\left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}]^c}}^+_{} \right\}}^\ast_{\bullet}
 
 ghcjs-prof-options
@@ -406,6 +427,7 @@ ghcjs-prof-options
     * Documentation of :pkg-field:`library:ghcjs-prof-options`
 
     .. math::
+
         {\left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}]^c}}^+_{} \right\}}^\ast_{\bullet}
 
 ghcjs-shared-options
@@ -413,6 +435,7 @@ ghcjs-shared-options
     * Documentation of :pkg-field:`library:ghcjs-shared-options`
 
     .. math::
+
         {\left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}]^c}}^+_{} \right\}}^\ast_{\bullet}
 
 hs-source-dir
@@ -421,6 +444,7 @@ hs-source-dir
     * Removed in ``cabal-version: 3.0``: Please use 'hs-source-dirs' field.
 
     .. math::
+
         \mathrm{optcommalist}\left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}]^c}}^+_{} \right\}
 
 hs-source-dirs
@@ -428,6 +452,7 @@ hs-source-dirs
     * Documentation of :pkg-field:`library:hs-source-dirs`
 
     .. math::
+
         \mathrm{optcommalist}\left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}]^c}}^+_{} \right\}
 
 hsc2hs-options
@@ -436,6 +461,7 @@ hsc2hs-options
     * Documentation of :pkg-field:`library:hsc2hs-options`
 
     .. math::
+
         {\left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}]^c}}^+_{} \right\}}^\ast_{\bullet}
 
 include-dirs
@@ -443,6 +469,7 @@ include-dirs
     * Documentation of :pkg-field:`library:include-dirs`
 
     .. math::
+
         \mathrm{optcommalist}\left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}]^c}}^+_{} \right\}
 
 includes
@@ -450,6 +477,7 @@ includes
     * Documentation of :pkg-field:`library:includes`
 
     .. math::
+
         \mathrm{optcommalist}\left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}]^c}}^+_{} \right\}
 
 install-includes
@@ -457,6 +485,7 @@ install-includes
     * Documentation of :pkg-field:`library:install-includes`
 
     .. math::
+
         \mathrm{optcommalist}\left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}]^c}}^+_{} \right\}
 
 js-sources
@@ -464,6 +493,7 @@ js-sources
     * Documentation of :pkg-field:`library:js-sources`
 
     .. math::
+
         \mathrm{commalist}\left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}]^c}}^+_{} \right\}
 
 ld-options
@@ -471,6 +501,7 @@ ld-options
     * Documentation of :pkg-field:`library:ld-options`
 
     .. math::
+
         {\left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}]^c}}^+_{} \right\}}^\ast_{\bullet}
 
 mixins
@@ -479,28 +510,15 @@ mixins
     * Documentation of :pkg-field:`library:mixins`
 
     .. math::
+
         \mathrm{commalist}\left(\mathop{\mathit{package\text{-}name}}{\left(\mathop{\mathord{``}\mathtt{\text{:}}\mathord{"}}\mathop{\mathit{library\text{-}name}}\right)}^?{\left(\bullet\left\{ \mid\mathop{\mathord{``}\mathtt{hiding}\mathord{"}}\circ\mathop{\mathord{``}\mathtt{\text{(}}\mathord{"}}\circ{\mathop{\mathit{module\text{-}name}}}^\ast_{\left(\circ\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}\circ\right)}\circ\mathop{\mathord{``}\mathtt{\text{)}}\mathord{"}}\mid\mathop{\mathord{``}\mathtt{\text{(}}\mathord{"}}\circ{\left(\mathop{\mathit{module\text{-}name}}{\left(\bullet\mathop{\mathord{``}\mathtt{as}\mathord{"}}\bullet\mathop{\mathit{module\text{-}name}}\right)}^?\right)}^\ast_{\left(\circ\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}\circ\right)}\circ\mathop{\mathord{``}\mathtt{\text{)}}\mathord{"}} \right\}{\left(\circ\mathop{\mathord{``}\mathtt{requires}\mathord{"}}\bullet\left\{ \mid\mathop{\mathord{``}\mathtt{hiding}\mathord{"}}\circ\mathop{\mathord{``}\mathtt{\text{(}}\mathord{"}}\circ{\mathop{\mathit{module\text{-}name}}}^\ast_{\left(\circ\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}\circ\right)}\circ\mathop{\mathord{``}\mathtt{\text{)}}\mathord{"}}\mid\mathop{\mathord{``}\mathtt{\text{(}}\mathord{"}}\circ{\left(\mathop{\mathit{module\text{-}name}}{\left(\bullet\mathop{\mathord{``}\mathtt{as}\mathord{"}}\bullet\mathop{\mathit{module\text{-}name}}\right)}^?\right)}^\ast_{\left(\circ\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}\circ\right)}\circ\mathop{\mathord{``}\mathtt{\text{)}}\mathord{"}} \right\}\right)}^?\right)}^?\right)
-
-other-extensions
-    * Monoidal field
-    * Documentation of :pkg-field:`library:other-extensions`
-
-    .. math::
-        \mathrm{optcommalist}\mathsf{\color{red}{TODO}}
-
-other-languages
-    * Monoidal field
-    * Available since ``cabal-version: 1.10``.
-    * Documentation of :pkg-field:`library:other-languages`
-
-    .. math::
-        \mathrm{optcommalist}\left\{ \mathop{\mathord{``}\mathtt{GHC2021}\mathord{"}}\mid\mathop{\mathord{``}\mathtt{Haskell2010}\mathord{"}}\mid\mathop{\mathord{``}\mathtt{Haskell98}\mathord{"}} \right\}
 
 other-modules
     * Monoidal field
     * Documentation of :pkg-field:`library:other-modules`
 
     .. math::
+
         \mathrm{commalist}\left({\left(\mathop{\mathit{upper}}{\left\{ \mathop{\mathit{alpha\text{-}num}}\mid[\mathop{\mathord{``}\mathtt{\text{'}}\mathord{"}}\mathop{\mathord{``}\mathtt{\text{_}}\mathord{"}}] \right\}}^\ast_{}\right)}^+_{\mathop{\mathord{``}\mathtt{\text{.}}\mathord{"}}}\right)
 
 pkgconfig-depends
@@ -508,6 +526,7 @@ pkgconfig-depends
     * Documentation of :pkg-field:`library:pkgconfig-depends`
 
     .. math::
+
         \mathrm{commalist}\mathsf{\color{red}{TODO}}
 
 virtual-modules
@@ -516,10 +535,11 @@ virtual-modules
     * Documentation of :pkg-field:`library:virtual-modules`
 
     .. math::
+
         \mathrm{commalist}\left({\left(\mathop{\mathit{upper}}{\left\{ \mathop{\mathit{alpha\text{-}num}}\mid[\mathop{\mathord{``}\mathtt{\text{'}}\mathord{"}}\mathop{\mathord{``}\mathtt{\text{_}}\mathord{"}}] \right\}}^\ast_{}\right)}^+_{\mathop{\mathord{``}\mathtt{\text{.}}\mathord{"}}}\right)
 
 
-Package description fields
+Package Description Fields
 --------------------------
 
 author
@@ -535,6 +555,7 @@ build-type
     * Documentation of :pkg-field:`build-type`
 
     .. math::
+
         \left\{ \begin{gathered}\mathop{\mathord{``}\mathtt{Simple}\mathord{"}}\\\mathop{\mathord{``}\mathtt{Configure}\mathord{"}}\\\mathop{\mathord{``}\mathtt{Custom}\mathord{"}}\\\mathop{\mathord{``}\mathtt{Make}\mathord{"}}\\\mathop{\mathord{``}\mathtt{Default}\mathord{"}}\end{gathered} \right\}
 
 cabal-version
@@ -543,6 +564,7 @@ cabal-version
     * Documentation of :pkg-field:`cabal-version`
 
     .. math::
+
         \mathop{\mathord{``}\mathtt{3\text{.}4}\mathord{"}}
 
 category
@@ -559,6 +581,7 @@ data-dir
     * Documentation of :pkg-field:`data-dir`
 
     .. math::
+
         \left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}]^c}}^+_{} \right\}
 
 data-files
@@ -566,6 +589,7 @@ data-files
     * Documentation of :pkg-field:`data-files`
 
     .. math::
+
         \mathrm{commalist}\left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}]^c}}^+_{} \right\}
 
 description
@@ -577,6 +601,7 @@ extra-doc-files
     * Documentation of :pkg-field:`extra-doc-files`
 
     .. math::
+
         \mathrm{commalist}\left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}]^c}}^+_{} \right\}
 
 extra-source-files
@@ -584,6 +609,7 @@ extra-source-files
     * Documentation of :pkg-field:`extra-source-files`
 
     .. math::
+
         \mathrm{commalist}\left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}]^c}}^+_{} \right\}
 
 extra-tmp-files
@@ -591,6 +617,7 @@ extra-tmp-files
     * Documentation of :pkg-field:`extra-tmp-files`
 
     .. math::
+
         \mathrm{commalist}\left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}]^c}}^+_{} \right\}
 
 homepage
@@ -603,6 +630,7 @@ license
     * Documentation of :pkg-field:`license`
 
     .. math::
+
         \mathsf{\color{red}{TODO}}
 
 license-file
@@ -610,6 +638,7 @@ license-file
     * Documentation of :pkg-field:`license-file`
 
     .. math::
+
         \left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}]^c}}^+_{} \right\}
 
 maintainer
@@ -621,6 +650,7 @@ name
     * Documentation of :pkg-field:`name`
 
     .. math::
+
         \mathop{\mathit{unqual\text{-}name}}
 
 package-url
@@ -640,6 +670,7 @@ tested-with
     * Documentation of :pkg-field:`tested-with`
 
     .. math::
+
         \mathrm{optcommalist}\mathsf{\color{red}{TODO}}
 
 version
@@ -647,10 +678,11 @@ version
     * Documentation of :pkg-field:`version`
 
     .. math::
+
         {\left\{ \mathop{\mathord{``}\mathtt{0}\mathord{"}}\mid[\mathop{\mathord{``}\mathtt{1}\mathord{"}}\cdots\mathop{\mathord{``}\mathtt{9}\mathord{"}}]{[\mathop{\mathord{``}\mathtt{0}\mathord{"}}\cdots\mathop{\mathord{``}\mathtt{9}\mathord{"}}]}^{\in [0\ldots8]}_{} \right\}}^+_{\mathop{\mathord{``}\mathtt{\text{.}}\mathord{"}}}
 
 
-Test-suite fields
+Test-suite Fields
 -----------------
 
 code-generators
@@ -659,6 +691,7 @@ code-generators
     * Documentation of :pkg-field:`test-suite:code-generators`
 
     .. math::
+
         \mathrm{commalist}\left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}]^c}}^+_{} \right\}
 
 main-is
@@ -666,6 +699,7 @@ main-is
     * Documentation of :pkg-field:`test-suite:main-is`
 
     .. math::
+
         \left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}]^c}}^+_{} \right\}
 
 test-module
@@ -673,6 +707,7 @@ test-module
     * Documentation of :pkg-field:`test-suite:test-module`
 
     .. math::
+
         {\left(\mathop{\mathit{upper}}{\left\{ \mathop{\mathit{alpha\text{-}num}}\mid[\mathop{\mathord{``}\mathtt{\text{'}}\mathord{"}}\mathop{\mathord{``}\mathtt{\text{_}}\mathord{"}}] \right\}}^\ast_{}\right)}^+_{\mathop{\mathord{``}\mathtt{\text{.}}\mathord{"}}}
 
 type
@@ -680,6 +715,7 @@ type
     * Documentation of :pkg-field:`test-suite:type`
 
     .. math::
+
         \left\{ \mathop{\mathord{``}\mathtt{exitcode\text{-}stdio\text{-}1\text{.}0}\mathord{"}}\mid\mathop{\mathord{``}\mathtt{detailed\text{-}0\text{.}9}\mathord{"}} \right\}
 
 

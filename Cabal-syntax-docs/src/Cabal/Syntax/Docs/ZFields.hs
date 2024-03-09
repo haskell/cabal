@@ -1,12 +1,11 @@
 {-# LANGUAGE DeriveFunctor         #-}
 {-# LANGUAGE DeriveGeneric         #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-module Main (main) where
+module Cabal.Syntax.Docs.ZFields where
 
 import Data.Map.Strict (Map)
 
 import Data.Bifunctor                  (first)
-import Data.Proxy                      (Proxy (..))
 import Data.Void                       (Void)
 import Distribution.CabalSpecVersion   (CabalSpecVersion, showCabalSpecVersion)
 import Distribution.Compat.Newtype     (pack')
@@ -15,10 +14,6 @@ import Distribution.Fields.Field       (FieldName)
 import Distribution.Pretty             (pretty)
 import Distribution.Simple.Utils       (fromUTF8BS)
 import GHC.Generics                    (Generic)
-import System.Environment              (getArgs)
-import System.Exit                     (exitFailure)
-
-import Distribution.PackageDescription.FieldGrammar (buildInfoFieldGrammar, packageDescriptionFieldGrammar, testSuiteFieldGrammar)
 
 import qualified Data.Map.Strict  as Map
 import qualified Text.PrettyPrint as PP
@@ -26,58 +21,14 @@ import qualified Text.PrettyPrint as PP
 import qualified Zinza as Z
 
 import Distribution.Described
+import Distribution.Described.Extension ()
 import Distribution.Utils.GrammarRegex
 
-import Distribution.ModuleName         (ModuleName)
-import Distribution.Types.Version      (Version)
-import Distribution.Types.VersionRange (VersionRange)
+ghcBuildInfoFields :: [String]
+ghcBuildInfoFields = ["default-language", "other-languages", "default-extensions", "other-extensions", "extensions"]
 
--------------------------------------------------------------------------------
--- Main
--------------------------------------------------------------------------------
-
-main :: IO ()
-main = do
-    args <- getArgs
-    case args of
-        [tmpl] -> do
-            -- TODO: getArgs
-            run <- Z.parseAndCompileTemplateIO tmpl
-            contents <- run $ Z
-                { zBuildInfoFields          = fromReference buildInfoFieldGrammar
-                , zPackageDescriptionFields = fromReference packageDescriptionFieldGrammar
-                , zTestSuiteFields          = fromReference $ testSuiteFieldGrammar // buildInfoFieldGrammar
-                , zProductions              =
-                    [ zproduction "hs-string"       reHsString
-                        "String as in Haskell; it's recommended to avoid using Haskell-specific escapes."
-                    , zproduction "unqual-name"     reUnqualComponent $ unwords
-                        [ "Unqualified component names are used for package names, component names etc. but not flag names."
-                        , "Unqualified component name consist of components separated by dash, each component is non-empty alphanumeric string, with at least one alphabetic character."
-                        , "In other words, component may not look like a number."
-                        ]
-
-                    , zproduction "module-name"     (describe (Proxy :: Proxy ModuleName))
-                        "Haskell module name as recognized by Cabal parser."
-                    , zproduction "version"         (describe (Proxy :: Proxy Version))
-                        "Version is to first approximation numbers separated by dots, where leading zero is not allowed and each version digit is consists at most of nine characters."
-                    , zproduction "version-range"   (describe (Proxy :: Proxy VersionRange))
-                        "Version range syntax is recursive. Also note the set syntax added in ``cabal-version: 3.0``, set cannot be empty."
-                    ]
-                , zSpaceList                = show $ regexDoc $
-                    REMunch RESpaces1 (RENamed "element" RETodo)
-                , zCommaList                = show $ regexDoc $
-                    expandedCommaList (RENamed "element" RETodo)
-                , zOptCommaList             = show $ regexDoc $
-                    expandedOptCommaList (RENamed "element" RETodo)
-
-                , zNull                     = null
-                , zNotNull                  = not . null
-                }
-
-            putStrLn contents
-        _ -> do
-          putStrLn "Usage: generator <tmpl>"
-          exitFailure
+isGhcBuildInfo :: ZField -> Bool
+isGhcBuildInfo = (`elem` ghcBuildInfoFields) . zfieldName
 
 zproduction :: String -> GrammarRegex Void -> String -> ZProduction
 zproduction name re desc = ZProduction
@@ -104,23 +55,6 @@ expandedCommaList' r =
 expandedOptCommaList :: GrammarRegex a -> GrammarRegex a
 expandedOptCommaList r = REUnion $ reSpacedList r : expandedCommaList' r
 
--------------------------------------------------------------------------------
--- Template Inputs
--------------------------------------------------------------------------------
-
-data Z = Z
-    { zBuildInfoFields          :: [ZField]
-    , zPackageDescriptionFields :: [ZField]
-    , zTestSuiteFields          :: [ZField]
-    , zProductions              :: [ZProduction]
-    , zSpaceList                :: String
-    , zCommaList                :: String
-    , zOptCommaList             :: String
-    , zNull                     :: String -> Bool
-    , zNotNull                  :: String -> Bool
-    }
-  deriving (Generic)
-
 data ZField = ZField
     { zfieldName            :: String
     , zfieldAvailableSince  :: String
@@ -132,22 +66,17 @@ data ZField = ZField
     }
   deriving (Generic)
 
+instance Z.Zinza ZField where
+    toType    = Z.genericToTypeSFP
+    toValue   = Z.genericToValueSFP
+    fromValue = Z.genericFromValueSFP
+
 data ZProduction = ZProduction
     { zprodName        :: String
     , zprodSyntax      :: String
     , zprodDescription :: String
     }
   deriving (Generic)
-
-instance Z.Zinza Z where
-    toType    = Z.genericToTypeSFP
-    toValue   = Z.genericToValueSFP
-    fromValue = Z.genericFromValueSFP
-
-instance Z.Zinza ZField where
-    toType    = Z.genericToTypeSFP
-    toValue   = Z.genericToValueSFP
-    fromValue = Z.genericFromValueSFP
 
 instance Z.Zinza ZProduction where
     toType    = Z.genericToTypeSFP

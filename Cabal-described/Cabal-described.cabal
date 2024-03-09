@@ -23,5 +23,6 @@ library
 
   exposed-modules:
     Distribution.Described
+    Distribution.Described.Extension
     Distribution.Utils.CharSet
     Distribution.Utils.GrammarRegex

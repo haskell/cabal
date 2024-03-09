@@ -1,10 +1,19 @@
-.. _buildinfo-field-reference:
+.. _cabal-package-syntax:
 
-Field Syntax Reference
-======================
+Cabal Package Syntax
+====================
+
+Language Extensions
+-------------------
+
+For control of the default language and language extensions for the whole
+package, see :ref:`ghc-syntax`.
+
+- :ref:`ghc-default-language`
+- :ref:`ghc-default-extensions`
 
 Notation
----------------
+--------
 
 Field syntax is described as they are in the latest cabal file format version.
 
@@ -108,6 +117,7 @@ Comma separated
     Note, the comma cannot exist alone.
 
     .. math::
+    
         \mathrm{commalist}(\mathit{element}) =
         {{commaList}}
 
@@ -119,6 +129,7 @@ Optional comma separated
     an example field is :pkg-field:`default-extensions`.
 
     .. math::
+
         \mathrm{optcommalist}(\mathit{element}) =
         {{optCommaList}}
 
@@ -132,14 +143,15 @@ In the syntax definitions below the following non-terminal symbols are used:
     {{ production.description }}
 
     .. math::
+
         {{ production.syntax }}
 
 {% endfor %}
 
-Build info fields
+Build Info Fields
 -----------------
 
-{% for field in buildInfoFields %}
+{% for field in cabalBuildInfoFields %}
 {{ field.name }}
     * {{field.format}}
 {% if notNull field.default %}
@@ -163,12 +175,13 @@ Build info fields
 {% if notNull field.syntax %}
 
     .. math::
+
         {{field.syntax}}
 {% endif %}
 
 {% endfor %}
 
-Package description fields
+Package Description Fields
 --------------------------
 
 {% for field in packageDescriptionFields %}
@@ -195,12 +208,13 @@ Package description fields
 {% if notNull field.syntax %}
 
     .. math::
+
         {{field.syntax}}
 {% endif %}
 
 {% endfor %}
 
-Test-suite fields
+Test-suite Fields
 -----------------
 
 {% for field in testSuiteFields %}
@@ -227,6 +241,7 @@ Test-suite fields
 {% if notNull field.syntax %}
 
     .. math::
+
         {{field.syntax}}
 {% endif %}
 

@@ -72,7 +72,8 @@ else:
 html_title = "Cabal {} User's Guide".format(release)
 html_short_title = "Cabal %s User's Guide" % release
 html_logo = 'images/Cabal-dark.png'
-html_static_path = ['images']
+html_static_path = ['_static', 'images']
+html_css_files = ['css/custom.css']
 # Convert quotes and dashes to typographically correct entities
 html_use_smartypants = True
 html_show_copyright = True
@@ -102,8 +103,20 @@ html_use_opensearch = 'https://cabal.readthedocs.io/en/stable'
 # Output file base name for HTML help builder.
 htmlhelp_basename = 'CabalUsersGuide'
 
-# MathJax to use HTML rendering by default (makes the text selectable, see #8453)
-mathjax_path = 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS_CHTML'
+# The SVG renders clearer and quicker than the HTML (with version 3 of MathJax).
+# It is not selectable immediately (with either version 3 renderer unlike with
+# version 2's HTML renderer), but can be selected through the context menu, see
+# #8453.
+mathjax_path = 'https://cdn.jsdelivr.net/npm/mathjax@3.0.1/es5/tex-mml-svg.js'
+mathjax3_config = {
+    'tex': {
+        # Avoid a false positive infinite loop detection by increasing the buffer size.
+        'maxBuffer': 1024 * 1024
+    },
+    'svg': {
+        'displayAlign': 'left',
+    }
+  }
 
 
 # -- Options for LaTeX output ---------------------------------------------
