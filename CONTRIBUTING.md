@@ -252,6 +252,9 @@ at which point others (e.g., reviewers) apply the label. Merge buttons are
 reserved for exceptional situations, e.g., CI fixes being iterated on or
 backports/patches that need to be expedited for a release.
 
+Note that it is expected that you, the contributor, put the `merge me` label,
+even if you are not a maintainer.
+
 Currently there is a 2 day buffer for potential extra feedback between the last
 update of a pull request (e.g. a commit, a rebase, an addition of the `merge me`
 label) and the moment the Mergify bot picks up the pull request for a merge.
