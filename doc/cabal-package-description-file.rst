@@ -1730,7 +1730,8 @@ system-dependent values for these fields.
 
     The possible values are:
 
-    -  ``GHC2021`` (only available for GHC version newer than ``9.2``)
+    -  ``GHC2024`` (only available for GHC version ``9.10`` or later)
+    -  ``GHC2021`` (only available for GHC version ``9.2`` or later)
     -  ``Haskell2010``
     -  ``Haskell98``
 
