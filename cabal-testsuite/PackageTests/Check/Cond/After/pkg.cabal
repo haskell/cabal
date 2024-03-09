@@ -1,0 +1,26 @@
+cabal-version: 3.0
+name: pkg
+synopsis: synopsis
+description: description
+version: 0
+category: example
+maintainer: none@example.com
+license: GPL-3.0-or-later
+
+flag my-flag
+  description: Test for branches.
+  default: False
+  manual: True
+
+executable exe
+  if os(windows)
+    ghc-options: -pgml misc/static-libstdc++
+
+  if flag(my-flag)
+    main-is: Main.hs
+    build-depends: async, unix
+    c-sources: executable/link.c
+  else
+    main-is: ParallelMain.hs
+
+  default-language: Haskell2010

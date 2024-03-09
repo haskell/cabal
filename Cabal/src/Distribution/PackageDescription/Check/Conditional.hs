@@ -58,7 +58,7 @@ updateTargetAnnotation t ta = ta{taTarget = taTarget ta <> t}
 -- doc for more info).
 annotateCondTree
   :: forall a
-   . Monoid a
+   . (Eq a, Monoid a)
   => [PackageFlag] -- User flags.
   -> TargetAnnotation a
   -> CondTree ConfVar [Dependency] a
@@ -66,7 +66,8 @@ annotateCondTree
 annotateCondTree fs ta (CondNode a c bs) =
   let ta' = updateTargetAnnotation a ta
       bs' = map (annotateBranch ta') bs
-   in CondNode ta' c bs'
+      bs'' = crossAnnotateBranches defTrueFlags bs'
+   in CondNode ta' c bs''
   where
     annotateBranch
       :: TargetAnnotation a
@@ -107,12 +108,55 @@ annotateCondTree fs ta (CondNode a c bs) =
           )
           fs
 
+    defTrueFlags :: [PackageFlag]
+    defTrueFlags = filter flagDefault fs
+
+-- Propagate contextual information in CondTree branches. This is
+-- needed as CondTree is a rosetree and not a binary tree.
+crossAnnotateBranches
+  :: forall a
+   . (Eq a, Monoid a)
+  => [PackageFlag] -- `default: true` flags.
+  -> [CondBranch ConfVar [Dependency] (TargetAnnotation a)]
+  -> [CondBranch ConfVar [Dependency] (TargetAnnotation a)]
+crossAnnotateBranches fs bs = map crossAnnBranch bs
+  where
+    crossAnnBranch
+      :: CondBranch ConfVar [Dependency] (TargetAnnotation a)
+      -> CondBranch ConfVar [Dependency] (TargetAnnotation a)
+    crossAnnBranch wr =
+      let
+        rs = filter (/= wr) bs
+        ts = mapMaybe realiseBranch rs
+       in
+        updateTargetAnnBranch (mconcat ts) wr
+
+    realiseBranch :: CondBranch ConfVar [Dependency] (TargetAnnotation a) -> Maybe a
+    realiseBranch b =
+      let
+        -- We are only interested in True by default package flags.
+        realiseBranchFunction :: ConfVar -> Either ConfVar Bool
+        realiseBranchFunction (PackageFlag n) | elem n (map flagName fs) = Right True
+        realiseBranchFunction _ = Right False
+        ms = simplifyCondBranch realiseBranchFunction (fmap taTarget b)
+       in
+        fmap snd ms
+
+    updateTargetAnnBranch
+      :: a
+      -> CondBranch ConfVar [Dependency] (TargetAnnotation a)
+      -> CondBranch ConfVar [Dependency] (TargetAnnotation a)
+    updateTargetAnnBranch a (CondBranch k t mt) =
+      let updateTargetAnnTree (CondNode ka c wbs) =
+            (CondNode (updateTargetAnnotation a ka) c wbs)
+       in CondBranch k (updateTargetAnnTree t) (updateTargetAnnTree <$> mt)
+
 -- | A conditional target is a library, exe, benchmark etc., destructured
 -- in a CondTree. Traversing method: we render the branches, pass a
 -- relevant context, collect checks.
 checkCondTarget
   :: forall m a
-   . (Monad m, Monoid a)
+   . (Monad m, Eq a, Monoid a)
   => [PackageFlag] -- User flags.
   -> (a -> CheckM m ()) -- Check function (a = target).
   -> (UnqualComponentName -> a -> a)
@@ -131,7 +175,7 @@ checkCondTarget fs cf nf (unqualName, ct) =
       :: CondTree ConfVar [Dependency] (TargetAnnotation a)
       -> CheckM m ()
     wTree (CondNode ta _ bs)
-      -- There are no branches (and [] == True) *or* every branch
+      -- There are no branches ([] == True) *or* every branch
       -- is “simple” (i.e. missing a 'condBranchIfFalse' part).
       -- This is convenient but not necessarily correct in all
       -- cases; a more precise way would be to check incompatibility
