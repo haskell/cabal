@@ -62,7 +62,7 @@ import Distribution.Verbosity
 
 -- FIXME Not sure where this should live
 defaultDistPref :: FilePath
-defaultDistPref = "dist"
+defaultDistPref = "dist-newstyle"
 
 -- | The name of the directory where optional compilation artifacts
 -- go, such as ghc plugins and .hie files.
