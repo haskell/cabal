@@ -220,6 +220,7 @@ syn keyword cabalExtension contained
   \ MultiParamTypeClasses
   \ MultiWayIf
   \ NPlusKPatterns
+  \ NamedDefaults
   \ NamedFieldPuns
   \ NamedWildCards
   \ NegativeLiterals
@@ -361,6 +362,7 @@ syn keyword cabalExtension contained
   \ NoMultiParamTypeClasses
   \ NoMultiWayIf
   \ NoNPlusKPatterns
+  \ NoNamedDefaults
   \ NoNamedFieldPuns
   \ NoNamedWildCards
   \ NoNegativeLiterals
