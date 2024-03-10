@@ -1,4 +1,6 @@
+{-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
 
 -----------------------------------------------------------------------------
@@ -17,10 +19,14 @@
 -- compiler-specific functions to do the rest.
 module Distribution.Simple.Install
   ( install
+  , install_setupHooks
+  , installFileGlob
   ) where
 
 import Distribution.Compat.Prelude
 import Prelude ()
+
+import Distribution.CabalSpecVersion (CabalSpecVersion)
 
 import Distribution.Types.ExecutableScope
 import Distribution.Types.ForeignLib
@@ -48,6 +54,10 @@ import Distribution.Simple.Setup.Copy
 import Distribution.Simple.Setup.Haddock
   ( HaddockTarget (ForDevelopment)
   )
+import Distribution.Simple.SetupHooks.Internal
+  ( InstallHooks (..)
+  )
+import qualified Distribution.Simple.SetupHooks.Internal as SetupHooks
 import Distribution.Simple.Utils
   ( createDirectoryIfMissingVerbose
   , dieWithException
@@ -96,25 +106,48 @@ install
   -> CopyFlags
   -- ^ flags sent to copy or install
   -> IO ()
-install pkg_descr lbi flags = do
-  checkHasLibsOrExes
-  targets <- readTargetInfos verbosity pkg_descr lbi (copyArgs flags)
+install = install_setupHooks SetupHooks.noInstallHooks
 
-  copyPackage verbosity pkg_descr lbi distPref copydest
+install_setupHooks
+  :: InstallHooks
+  -> PackageDescription
+  -- ^ information from the .cabal file
+  -> LocalBuildInfo
+  -- ^ information from the configure step
+  -> CopyFlags
+  -- ^ flags sent to copy or install
+  -> IO ()
+install_setupHooks
+  (InstallHooks{installComponentHook})
+  pkg_descr
+  lbi
+  flags = do
+    checkHasLibsOrExes
+    targets <- readTargetInfos verbosity pkg_descr lbi (copyArgs flags)
 
-  -- It's not necessary to do these in build-order, but it's harmless
-  withNeededTargetsInBuildOrder' pkg_descr lbi (map nodeKey targets) $ \target ->
-    let comp = targetComponent target
-        clbi = targetCLBI target
-     in copyComponent verbosity pkg_descr lbi comp clbi copydest
-  where
-    distPref = fromFlag (copyDistPref flags)
-    verbosity = fromFlag (copyVerbosity flags)
-    copydest = fromFlag (copyDest flags)
+    copyPackage verbosity pkg_descr lbi distPref copydest
 
-    checkHasLibsOrExes =
-      unless (hasLibs pkg_descr || hasForeignLibs pkg_descr || hasExes pkg_descr) $
-        dieWithException verbosity NoLibraryFound
+    -- It's not necessary to do these in build-order, but it's harmless
+    withNeededTargetsInBuildOrder' pkg_descr lbi (map nodeKey targets) $ \target -> do
+      let comp = targetComponent target
+          clbi = targetCLBI target
+      copyComponent verbosity pkg_descr lbi comp clbi copydest
+      for_ installComponentHook $ \instAction ->
+        let inputs =
+              SetupHooks.InstallComponentInputs
+                { copyFlags = flags
+                , localBuildInfo = lbi
+                , targetInfo = target
+                }
+         in instAction inputs
+    where
+      distPref = fromFlag (copyDistPref flags)
+      verbosity = fromFlag (copyVerbosity flags)
+      copydest = fromFlag (copyDest flags)
+
+      checkHasLibsOrExes =
+        unless (hasLibs pkg_descr || hasForeignLibs pkg_descr || hasExes pkg_descr) $
+          dieWithException verbosity NoLibraryFound
 
 -- | Copy package global files.
 copyPackage
@@ -279,21 +312,35 @@ copyComponent verbosity pkg_descr lbi (CExe exe) clbi copydest = do
 copyComponent _ _ _ (CBench _) _ _ = return ()
 copyComponent _ _ _ (CTest _) _ _ = return ()
 
--- | Install the files listed in data-files
+-- | Install the files listed in data-files.
 installDataFiles :: Verbosity -> PackageDescription -> FilePath -> IO ()
 installDataFiles verbosity pkg_descr destDataDir =
-  flip traverse_ (dataFiles pkg_descr) $ \glob -> do
-    let srcDataDirRaw = dataDir pkg_descr
-        srcDataDir =
-          if null srcDataDirRaw
-            then "."
-            else srcDataDirRaw
-    files <- matchDirFileGlob verbosity (specVersion pkg_descr) srcDataDir glob
-    for_ files $ \file' -> do
-      let src = srcDataDir </> file'
-          dst = destDataDir </> file'
-      createDirectoryIfMissingVerbose verbosity True (takeDirectory dst)
-      installOrdinaryFile verbosity src dst
+  traverse_
+    (installFileGlob verbosity (specVersion pkg_descr) (srcDataDir, destDataDir))
+    (dataFiles pkg_descr)
+  where
+    srcDataDirRaw = dataDir pkg_descr
+    srcDataDir =
+      if null srcDataDirRaw
+        then "."
+        else srcDataDirRaw
+
+-- | Install the files specified by the given glob pattern.
+installFileGlob
+  :: Verbosity
+  -> CabalSpecVersion
+  -> (FilePath, FilePath)
+  -- ^ @(src_dir, dest_dir)@
+  -> FilePath
+  -- ^ file glob pattern
+  -> IO ()
+installFileGlob verbosity spec_version (srcDir, destDir) glob = do
+  files <- matchDirFileGlob verbosity spec_version srcDir glob
+  for_ files $ \file' -> do
+    let src = srcDir </> file'
+        dst = destDir </> file'
+    createDirectoryIfMissingVerbose verbosity True (takeDirectory dst)
+    installOrdinaryFile verbosity src dst
 
 -- | Install the files listed in install-includes for a library
 installIncludeFiles :: Verbosity -> BuildInfo -> LocalBuildInfo -> FilePath -> FilePath -> IO ()

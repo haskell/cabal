@@ -1,0 +1,4 @@
+imports:
+
+foo2 :: Double
+foo2 = 3.000003

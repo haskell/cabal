@@ -153,6 +153,7 @@ import Distribution.Simple.Utils
   , copyFileVerbose
   , createDirectoryIfMissingVerbose
   , debug
+  , die'
   , dieWithException
   , info
   , infoNoWrap
@@ -398,6 +399,7 @@ getSetupMethod
   -> IO (Version, SetupMethod, SetupScriptOptions)
 getSetupMethod verbosity options pkg buildType'
   | buildType' == Custom
+      || buildType' == Hooks
       || maybe False (cabalVersion /=) (useCabalSpecVersion options)
       || not (cabalVersion `withinRange` useCabalVersion options) =
       getExternalSetupMethod verbosity options pkg buildType'
@@ -530,6 +532,7 @@ buildTypeAction Configure =
   Simple.defaultMainWithHooksArgs
     Simple.autoconfUserHooks
 buildTypeAction Make = Make.defaultMainArgs
+buildTypeAction Hooks  = error "buildTypeAction Hooks"
 buildTypeAction Custom = error "buildTypeAction Custom"
 
 invoke :: Verbosity -> FilePath -> [String] -> SetupScriptOptions -> IO ()
@@ -683,6 +686,7 @@ getExternalSetupMethod verbosity options pkg bt = do
     setupDir = workingDir options </> useDistPref options </> "setup"
     setupVersionFile = setupDir </> "setup" <.> "version"
     setupHs = setupDir </> "setup" <.> "hs"
+    setupHooks = setupDir </> "SetupHooks" <.> "hs"
     setupProgFile = setupDir </> "setup" <.> exeExtension buildPlatform
     platform = fromMaybe buildPlatform (usePlatform options)
 
@@ -807,6 +811,17 @@ getExternalSetupMethod verbosity options pkg bt = do
       where
         customSetupHs = workingDir options </> "Setup.hs"
         customSetupLhs = workingDir options </> "Setup.lhs"
+    updateSetupScript cabalLibVersion Hooks = do
+
+      let customSetupHooks = workingDir options </> "SetupHooks.hs"
+      useHs <- doesFileExist customSetupHooks
+      unless (useHs) $
+        die'
+          verbosity
+          "Using 'build-type: Hooks' but there is no SetupHooks.hs file."
+      copyFileVerbose verbosity customSetupHooks setupHooks
+      rewriteFileLBS verbosity setupHs (buildTypeScript cabalLibVersion)
+--      rewriteFileLBS verbosity hooksHs hooksScript
     updateSetupScript cabalLibVersion _ =
       rewriteFileLBS verbosity setupHs (buildTypeScript cabalLibVersion)
 
@@ -817,6 +832,7 @@ getExternalSetupMethod verbosity options pkg bt = do
         | cabalLibVersion >= mkVersion [1, 3, 10] -> "import Distribution.Simple; main = defaultMainWithHooks autoconfUserHooks\n"
         | otherwise -> "import Distribution.Simple; main = defaultMainWithHooks defaultUserHooks\n"
       Make -> "import Distribution.Make; main = defaultMain\n"
+      Hooks -> "import Distribution.Simple; import SetupHooks; main = defaultMainWithSetupHooks setupHooks\n"
       Custom -> error "buildTypeScript Custom"
 
     installedCabalVersion
@@ -1058,6 +1074,7 @@ getExternalSetupMethod verbosity options pkg bt = do
                   , ghcOptSourcePathClear = Flag True
                   , ghcOptSourcePath = case bt of
                       Custom -> toNubListR [workingDir options']
+                      Hooks -> toNubListR [workingDir options']
                       _ -> mempty
                   , ghcOptPackageDBs = usePackageDB options''
                   , ghcOptHideAllPackages = Flag (useDependenciesExclusive options')

@@ -1,0 +1,19 @@
+synopsis: Introduce SetupHooks
+packages: Cabal
+prs: #9551
+description: {
+  Introduction of a new build type: Hooks.
+  This build type, intended as replacement to the Custom build type, integrates
+  better with the rest of the ecosystem (`cabal-install`, Haskell Language Server).
+
+  The motivation and full design of this new build-type are specified in the
+  Haskell Foundation Tech Proposal
+  [Replacing the Cabal Custom build-type](https://github.com/haskellfoundation/tech-proposals/pull/60).
+
+  Package authors willing to use this feature should declare `build-type: Hooks`
+  in their `.cabal` file, declare a custom-setup stanza with a dependency on the
+  `Cabal-hooks` package, and define a module `SetupHooks` that exports a value
+  `setupHooks :: SetupHooks`, using the API exported by `Distribution.Simple.SetupHooks`
+  from the `Cabal-hooks` package. Refer to the Haddock documentation of
+  `Distribution.Simple.SetupHooks` for example usage.
+}

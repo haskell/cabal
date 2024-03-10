@@ -6,6 +6,7 @@ packages: Cabal-syntax/
 packages: cabal-install/
 packages: cabal-install-solver/
 packages: solver-benchmarks/
+packages: Cabal-hooks/
 
 tests: True
 

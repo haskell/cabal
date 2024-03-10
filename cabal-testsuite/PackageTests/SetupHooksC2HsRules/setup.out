@@ -1,0 +1,17 @@
+# Setup configure
+Configuring setup-hooks-c2hs-rules-test-0.1.0.0...
+# Setup build
+Warning: Computed C2Hs dependencies of C.myChs: [B]
+Warning: Computed C2Hs dependencies of A1.myChs: []
+Warning: Computed C2Hs dependencies of B.myChs: [A1, A2]
+Warning: Computed C2Hs dependencies of A2.myChs: []
+Warning: Running C2Hs on A2.myChs.
+ C2Hs dependencies: []
+Warning: Running C2Hs on A1.myChs.
+ C2Hs dependencies: []
+Warning: Running C2Hs on B.myChs.
+ C2Hs dependencies: [A1, A2]
+Warning: Running C2Hs on C.myChs.
+ C2Hs dependencies: [B]
+Preprocessing library for setup-hooks-c2hs-rules-test-0.1.0.0...
+Building library for setup-hooks-c2hs-rules-test-0.1.0.0...
