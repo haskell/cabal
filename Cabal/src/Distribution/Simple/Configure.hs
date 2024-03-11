@@ -76,7 +76,7 @@ import Distribution.Simple.Program
 import Distribution.Simple.Setup as Setup
 import Distribution.Simple.BuildTarget
 import Distribution.Simple.LocalBuildInfo
-import Distribution.Simple.Program.Db (appendProgramSearchPath, modifyProgramSearchPath)
+import Distribution.Simple.Program.Db (appendProgramSearchPath, modifyProgramSearchPath, lookupProgramByName)
 import Distribution.Simple.Utils
 import Distribution.System
 import Distribution.Types.PackageVersionConstraint
@@ -102,7 +102,8 @@ import qualified Distribution.Simple.HaskellSuite as HaskellSuite
 import Control.Exception
     ( try )
 import Distribution.Utils.Structured ( structuredDecodeOrFailIO, structuredEncode )
-import Distribution.Compat.Directory ( listDirectory )
+import Distribution.Compat.Directory
+    ( listDirectory, doesPathExist )
 import Data.ByteString.Lazy          ( ByteString )
 import qualified Data.ByteString            as BS
 import qualified Data.ByteString.Lazy.Char8 as BLC8
@@ -115,8 +116,6 @@ import System.Directory
     , getTemporaryDirectory, removeFile)
 import System.FilePath
     ( (</>), isAbsolute, takeDirectory )
-import Distribution.Compat.Directory
-    ( doesPathExist )
 import qualified System.Info
     ( compilerName, compilerVersion )
 import System.IO
@@ -639,21 +638,16 @@ configure (pkg_descr0, pbi) cfg = do
                                       "--enable-split-objs; ignoring")
                                 return False
 
-    let compilerSupportsGhciLibs :: Bool
-        compilerSupportsGhciLibs =
-          case compilerId comp of
-            CompilerId GHC version
-              | version > mkVersion [9,3] && windows ->
-                False
-            CompilerId GHC _ ->
-                True
-            CompilerId GHCJS _ ->
-                True
-            _ -> False
-          where
-            windows = case compPlatform of
-              Platform _ Windows -> True
-              Platform _ _ -> False
+    -- Basically yes/no/unknown.
+    let linkerSupportsRelocations :: Maybe Bool
+        linkerSupportsRelocations =
+          case lookupProgramByName "ld" programDb'' of
+            Nothing -> Nothing
+            Just ld ->
+              case Map.lookup "Supports relocatable output" $ programProperties ld of
+                Just "YES" -> Just True
+                Just "NO" -> Just False
+                _other -> Nothing
 
     let ghciLibByDefault =
           case compilerId comp of
@@ -673,10 +667,12 @@ configure (pkg_descr0, pbi) cfg = do
 
     withGHCiLib_ <-
       case fromFlagOrDefault ghciLibByDefault (configGHCiLib cfg) of
-        True | not compilerSupportsGhciLibs -> do
+        -- NOTE: If linkerSupportsRelocations is Nothing this may still fail if the
+        -- linker does not support -r.
+        True | not (fromMaybe True linkerSupportsRelocations) -> do
           warn verbosity $
-                "--enable-library-for-ghci is no longer supported on Windows with"
-              ++ " GHC 9.4 and later; ignoring..."
+            "--enable-library-for-ghci is not supported with the current"
+            ++ "  linker; ignoring..."
           return False
         v -> return v
 
@@ -951,11 +947,11 @@ dependencySatisfiable
         then internalDepSatisfiable
         else
           -- Backward compatibility for the old sublibrary syntax
-          (sublibs == mainLibSet
+          sublibs == mainLibSet
             && Map.member
                  (pn, CLibName $ LSubLibName $
                       packageNameToUnqualComponentName depName)
-                 requiredDepsMap)
+                 requiredDepsMap
 
           || all visible sublibs
 
@@ -982,7 +978,7 @@ dependencySatisfiable
     internalDepSatisfiable =
         Set.isSubsetOf (NES.toSet sublibs) packageLibraries
     internalDepSatisfiableExternally =
-        all (\ln -> not $ null $ PackageIndex.lookupInternalDependency installedPackageSet pn vr ln) sublibs
+        all (not . null . PackageIndex.lookupInternalDependency installedPackageSet pn vr) sublibs
 
     -- Check whether a library exists and is visible.
     -- We don't disambiguate between dependency on non-existent or private
@@ -1451,8 +1447,7 @@ getInstalledPackagesMonitorFiles verbosity comp packageDBs progdb platform =
 -- flag into a single package db stack.
 --
 interpretPackageDbFlags :: Bool -> [Maybe PackageDB] -> PackageDBStack
-interpretPackageDbFlags userInstall specificDBs =
-    extra initialStack specificDBs
+interpretPackageDbFlags userInstall = extra initialStack
   where
     initialStack | userInstall = [GlobalPackageDB, UserPackageDB]
                  | otherwise   = [GlobalPackageDB]
@@ -1698,8 +1693,8 @@ ccLdOptionsBuildInfo cflags ldflags ldflags_static =
   let (includeDirs',  cflags')   = partition ("-I" `isPrefixOf`) cflags
       (extraLibs',    ldflags')  = partition ("-l" `isPrefixOf`) ldflags
       (extraLibDirs', ldflags'') = partition ("-L" `isPrefixOf`) ldflags'
-      (extraLibsStatic')         = filter ("-l" `isPrefixOf`) ldflags_static
-      (extraLibDirsStatic')      = filter ("-L" `isPrefixOf`) ldflags_static
+      extraLibsStatic'         = filter ("-l" `isPrefixOf`) ldflags_static
+      extraLibDirsStatic'      = filter ("-L" `isPrefixOf`) ldflags_static
   in mempty {
        includeDirs  = map (drop 2) includeDirs',
        extraLibs    = map (drop 2) extraLibs',

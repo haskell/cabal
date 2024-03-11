@@ -256,8 +256,7 @@ arProgram = simpleProgram "ar"
 
 stripProgram :: Program
 stripProgram = (simpleProgram "strip") {
-    programFindVersion = \verbosity ->
-      findProgramVersion "--version" stripExtractVersion (lessVerbose verbosity)
+    programFindVersion = findProgramVersion "--version" stripExtractVersion . lessVerbose
   }
 
 hsc2hsProgram :: Program
@@ -322,7 +321,44 @@ greencardProgram :: Program
 greencardProgram = simpleProgram "greencard"
 
 ldProgram :: Program
-ldProgram = simpleProgram "ld"
+ldProgram = (simpleProgram "ld")
+    { programPostConf = \verbosity ldProg -> do
+        -- The `lld` linker cannot create merge (relocatable) objects so we
+        -- want to detect this.
+        -- If the linker does support relocatable objects, we want to use that
+        -- to create partially pre-linked objects for GHCi, so we get much
+        -- faster loading as we do not have to do the separate loading and
+        -- in-memory linking the static linker in GHC does, but can offload
+        -- parts of this process to a pre-linking step.
+        -- However this requires the linker to support this features. Not all
+        -- linkers do, and notably as of this writing `lld` which is a popular
+        -- choice for windows linking does not support this feature. However
+        -- if using binutils ld or another linker that supports --relocatable,
+        -- we should still be good to generate pre-linked objects.
+        ldHelpOutput <-
+          getProgramInvocationOutput
+            verbosity
+            (programInvocation ldProg ["--help"])
+            -- In case the linker does not support '--help'. Eg the LLVM linker,
+            -- `lld` only accepts `-help`.
+            `catchIO` (\_ -> return "")
+        let k = "Supports relocatable output"
+            -- Standard GNU `ld` uses `--relocatable` while `ld.gold` uses
+            -- `-relocatable` (single `-`).
+            v
+              | "-relocatable" `isInfixOf` ldHelpOutput = "YES"
+              -- ld64 on macOS has this lovely response for "--help"
+              --
+              --   ld64: For information on command line options please use 'man ld'.
+              --
+              -- it does however support -r, if you read the manpage
+              -- (e.g. https://www.manpagez.com/man/1/ld64/)
+              | "ld64:" `isPrefixOf` ldHelpOutput = "YES"
+              | otherwise = "NO"
+
+            m = Map.insert k v (programProperties ldProg)
+        return $ ldProg{programProperties = m}
+    }
 
 tarProgram :: Program
 tarProgram = (simpleProgram "tar") {
@@ -334,7 +370,7 @@ tarProgram = (simpleProgram "tar") {
                       -- Some versions of tar don't support '--help'.
                       `catchIO` (\_ -> return "")
      let k = "Supports --format"
-         v = if ("--format" `isInfixOf` tarHelpOutput) then "YES" else "NO"
+         v = if "--format" `isInfixOf` tarHelpOutput then "YES" else "NO"
          m = Map.insert k v (programProperties tarProg)
      return $ tarProg { programProperties = m }
   }
