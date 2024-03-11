@@ -21,6 +21,7 @@ module Distribution.Types.CondTree
   , traverseCondBranchC
   , extractCondition
   , simplifyCondTree
+  , simplifyCondBranch
   , ignoreConditions
   ) where
 
@@ -169,7 +170,7 @@ extractCondition p = go
        in
         ((c `cAnd` ct) `cOr` (CNot c `cAnd` ce)) `cAnd` goList cs
 
--- | Flattens a CondTree using a partial flag assignment.  When a condition
+-- | Flattens a CondTree using a partial flag assignment. When a condition
 -- cannot be evaluated, both branches are ignored.
 simplifyCondTree
   :: (Semigroup a, Semigroup d)
@@ -177,13 +178,20 @@ simplifyCondTree
   -> CondTree v d a
   -> (d, a)
 simplifyCondTree env (CondNode a d ifs) =
-  foldl (<>) (d, a) $ mapMaybe simplifyIf ifs
-  where
-    simplifyIf (CondBranch cnd t me) =
-      case simplifyCondition cnd env of
-        (Lit True, _) -> Just $ simplifyCondTree env t
-        (Lit False, _) -> fmap (simplifyCondTree env) me
-        _ -> Nothing
+  foldl (<>) (d, a) $ mapMaybe (simplifyCondBranch env) ifs
+
+-- | Realizes a 'CondBranch' using partial flag assignment. When a condition
+-- cannot be evaluated, returns 'Nothing'.
+simplifyCondBranch
+  :: (Semigroup a, Semigroup d)
+  => (v -> Either v Bool)
+  -> CondBranch v d a
+  -> Maybe (d, a)
+simplifyCondBranch env (CondBranch cnd t me) =
+  case simplifyCondition cnd env of
+    (Lit True, _) -> Just $ simplifyCondTree env t
+    (Lit False, _) -> fmap (simplifyCondTree env) me
+    _ -> Nothing
 
 -- | Flatten a CondTree.  This will resolve the CondTree by taking all
 --  possible paths into account.  Note that since branches represent exclusive
