@@ -3394,7 +3394,10 @@ setupHsScriptOptions (ReadyPackage elab@ElaboratedConfiguredPackage{..})
       useDistPref              = builddir,
       useLoggingHandle         = Nothing, -- this gets set later
       useWorkingDir            = Just srcdir,
-      useExtraPathEnv          = elabExeDependencyPaths elab,
+      useExtraPathEnv = elabExeDependencyPaths elab ++ elabProgramPathExtra,
+        -- note that the above adds the extra-prog-path directly following the elaborated
+        -- dep paths, so that it overrides the normal path, but _not_ the elaborated extensions
+        -- for build-tools-depends.
       useExtraEnvOverrides     = dataDirsEnvironmentForPlan distdir plan,
       useWin32CleanHack        = False,   --TODO: [required eventually]
       forceExternalSetupMethod = isParallelBuild,
