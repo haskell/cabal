@@ -51,7 +51,7 @@ with these tests.
    `cabal.project` instead; either the one one in the current directory or the
    one from the parent directory, one level up. I think this behaviour is wrong
    and the supplied `--project-file` option should be respected.
-   
+
    Before I'd put a project there, one level up, the project probing had gone
    all the way up to Cabal's own `cabal.project` as can be seen by this diff
    after that change:
