@@ -520,6 +520,7 @@ tests =
                   ++ "[__1] rejecting: H:bt-pkg:exe.bt-pkg-2.0.0 (conflict: H => H:bt-pkg:exe.bt-pkg (exe exe1)==3.0.0)"
       , runTest $ chooseExeAfterBuildToolsPackage True "choose exe after choosing its package - success"
       , runTest $ chooseExeAfterBuildToolsPackage False "choose exe after choosing its package - failure"
+      , runTest $ needTwoBuildToolPkgVersions "needs two build-tool-pkg versions"
       , runTest $ rejectInstalledBuildToolPackage "reject installed package for build-tool dependency"
       , runTest $ requireConsistentBuildToolVersions "build tool versions must be consistent within one package"
       ]
@@ -881,7 +882,6 @@ tests =
       , runTest privDep13
       , runTest privDep14
       , runTest privDep15
-      , runTest privDep16
       ]
   , -- Tests for the contents of the solver's log
     testGroup
@@ -2390,6 +2390,20 @@ dbBuildTools =
   , Right $ exAv "bt-pkg" 1 []
   ]
 
+needTwoBuildToolPkgVersions :: String -> SolverTest
+needTwoBuildToolPkgVersions name = setVerbose $ mkTest db name ["A"] (solverSuccess [("A", 1), ("build-tool-pkg", 1), ("build-tool-pkg", 2)])
+  where
+    db :: ExampleDb
+    db =
+      [ Right $ exAv "build-tool-pkg" 1 [] `withExe` exExe "build-tool-exe" []
+      , Right $ exAv "build-tool-pkg" 2 [] `withExe` exExe "build-tool-exe" []
+      , Right $
+          exAvNoLibrary "A" 1
+            `withExe` exExe
+              "my-exe"
+              [ExFix "build-tool-pkg" 1, ExBuildToolFix "build-tool-pkg" "build-tool-exe" 2]
+      ]
+
 -- The solver should never choose an installed package for a build tool
 -- dependency.
 rejectInstalledBuildToolPackage :: String -> SolverTest
@@ -2836,20 +2850,6 @@ privDep15 :: SolverTest
 privDep15 =
   setVerbose $
     mkTest priv_db15 "private-dependencies-15" ["P"] (solverSuccess [("A", 1), ("P", 1)])
-
-privDep16 :: SolverTest
-privDep16 = setVerbose $ mkTest priv_db16 "private-dependencies-16" ["A"] (solverSuccess [("A", 1), ("build-tool-pkg", 1), ("build-tool-pkg", 2)])
-
-priv_db16 :: ExampleDb
-priv_db16 =
-  [ Right $ exAv "build-tool-pkg" 1 [] `withExe` exExe "build-tool-exe" []
-  , Right $ exAv "build-tool-pkg" 2 [] `withExe` exExe "build-tool-exe" []
-  , Right $
-      exAvNoLibrary "A" 1
-        `withExe` exExe
-          "my-exe"
-          [ExFix "build-tool-pkg" 1, ExBuildToolFix "build-tool-pkg" "build-tool-exe" 2]
-  ]
 
 -- | Returns true if the second list contains all elements of the first list, in
 -- order.
