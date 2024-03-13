@@ -258,6 +258,13 @@ getLanguages
   -> IO [(Language, String)]
 getLanguages _ implInfo _
   -- TODO: should be using --supported-languages rather than hard coding
+  | supportsGHC2024 implInfo =
+      return
+        [ (GHC2024, "-XGHC2024")
+        , (GHC2021, "-XGHC2021")
+        , (Haskell2010, "-XHaskell2010")
+        , (Haskell98, "-XHaskell98")
+        ]
   | supportsGHC2021 implInfo =
       return
         [ (GHC2021, "-XGHC2021")
