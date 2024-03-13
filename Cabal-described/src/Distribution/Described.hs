@@ -591,4 +591,4 @@ instance Described CompatLicenseFile where
     describe _ = describe ([] :: [Token])
 
 instance Described CompatFilePath where
-    describe _ = describe ([] :: [Token]) 
+    describe _ = describe ([] :: [Token])
