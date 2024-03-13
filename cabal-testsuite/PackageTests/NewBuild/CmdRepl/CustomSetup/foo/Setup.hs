@@ -5,4 +5,4 @@ import qualified Distribution.Simple as DS
 import           Distribution.Simple.Setup
 
 main :: IO ()
-main = DS.defaultMainWithHooks DS.simpleUserHooks 
+main = DS.defaultMainWithHooks DS.simpleUserHooks
