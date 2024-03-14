@@ -2133,6 +2133,10 @@ system-dependent values for these fields.
     supported libraries. Depending on your system you may need to adjust
     ``PKG_CONFIG_PATH``.
 
+.. pkg-field:: private-build-depends: private scope
+
+    `private-build-depends` introduces a new private scope,... TODO
+
 .. pkg-field:: frameworks: token list
 
     On Darwin/MacOS X, a list of frameworks to link to. See Apple's
