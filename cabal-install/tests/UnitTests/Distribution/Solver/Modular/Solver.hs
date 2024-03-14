@@ -366,7 +366,7 @@ tests =
       , runTest $ testIndepGoals5 "indepGoals5 - default goal order" DefaultGoalOrder
       , runTest $ testIndepGoals6 "indepGoals6 - fixed goal order" FixedGoalOrder
       , runTest $ testIndepGoals6 "indepGoals6 - default goal order" DefaultGoalOrder
-      , expectFailBecause "#9466" $ runTest $ testIndepGoals7 "indepGoals7"
+      , runTest $ testIndepGoals7 "indepGoals7"
       , runTest $ testIndepGoals8 "indepGoals8"
       ]
   , -- Tests designed for the backjumping blog post
