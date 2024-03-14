@@ -163,7 +163,12 @@ the code base.
 * `make style-modified` - Format files modified in the current tree.
 * `make style-commit COMMIT=<ref>` - Format files modified between HEAD and the given reference.
 
+Whitespace Conventions
+----------------------
 
+We use automated whitespace convention checking. Violations can be fixed by
+running [fix-whitespace](https://hackage.haskell.org/package/fix-whitespace). If
+you push a fix of a whitespace violation, please do so in a _separate commit_.
 
 Other Conventions
 -----------------
