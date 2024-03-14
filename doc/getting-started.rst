@@ -4,16 +4,16 @@ Getting Started
 Installing Cabal
 ----------------
 
-The easiest and recommended way to install the ``cabal`` command-line tool 
-on Linux, macOS, FreeBSD or Windows is through `ghcup <https://www.haskell.org/ghcup/>`__. 
+The easiest and recommended way to install the ``cabal`` command-line tool
+on Linux, macOS, FreeBSD or Windows is through `ghcup <https://www.haskell.org/ghcup/>`__.
 It installs the “Haskell toolchain”, which includes Cabal,
-the Haskell compiler `GHC <https://www.haskell.org/ghc/>`__ 
+the Haskell compiler `GHC <https://www.haskell.org/ghc/>`__
 and optionally other useful Haskell tools.
 
 Creating a new application
 --------------------------
 
-We create a minimal Haskell application to get a quick overview 
+We create a minimal Haskell application to get a quick overview
 of the ``cabal`` command-line tool:
 
 1. How to initialize a Haskell package.
@@ -59,9 +59,9 @@ The ``myapp.cabal`` file is a package description file, commonly referred to as 
         default-language: Haskell2010
 
 It contains metadata (package name and version, author name, license, etc.) and sections
-to define package components. Components can be used to split large codebases into smaller, 
+to define package components. Components can be used to split large codebases into smaller,
 more managable building blocks.
-A component can be of one of several types (executable, library, etc.) and describes, 
+A component can be of one of several types (executable, library, etc.) and describes,
 among other things, the location of source files and its dependencies.
 The ``myapp.cabal`` file above defines a single component named ``myapp`` of the executable type.
 Inside the ``executable`` section, the ``build-depends`` field lists the dependencies of this component.
@@ -77,7 +77,7 @@ The ``app/Main.hs`` file is where your executable's code lives:
     main = putStrLn "Hello, Haskell!"
 
 
-To run the executable, switch into the application directory with ``cd myapp`` and  run 
+To run the executable, switch into the application directory with ``cd myapp`` and  run
 
 .. code-block:: console
 
@@ -86,7 +86,7 @@ To run the executable, switch into the application directory with ``cd myapp`` a
      Hello, Haskell!
 
 This command automatically determines if the executable needs to be (re)built
-before running the executable. With only one executable component in the package, 
+before running the executable. With only one executable component in the package,
 ``cabal run`` (without a component name) is smart enough to infer it, so the name can be omitted.
 
 If you just want to build the executable without running it, run:
@@ -181,11 +181,11 @@ Now you can build and re-run your code to see the new output:
 Running a single-file Haskell script
 ------------------------------------
 
-Cabal also supports running single-file Haskell scripts like 
+Cabal also supports running single-file Haskell scripts like
 the following file named ``myscript``:
 
 .. code-block:: haskell
-    
+
     #!/usr/bin/env cabal
     {- cabal:
     build-depends:

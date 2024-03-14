@@ -43,7 +43,7 @@ Currently, we only provide binaries for `x86_64` platforms.
     ```
 
     Replace "Linux" with "Windows" or "macOS" as appropriate.
-    
+
     The default Linux build is dynamically linked against `zlib`, `gmp` and `glibc`.
     You will need to have appropriate versions of these libraries installed to use it.
     Alternatively a statically linked "Linux-static" binary is also provided.
@@ -51,7 +51,7 @@ Currently, we only provide binaries for `x86_64` platforms.
     You might need to add the following to your `cabal.project` file
     if your build fails because of an out-of-date `Cabal` library:
     ```
-    allow-newer: 
+    allow-newer:
       *:Cabal,
       *:Cabal-syntax
 
