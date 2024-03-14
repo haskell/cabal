@@ -118,6 +118,7 @@ excluded-files:
   - "*.golden"
   - "*.log"
   - "*.out"
+  - doc/buildinfo-fields-reference.rst
 
 # Binary files
   - "*.a"
