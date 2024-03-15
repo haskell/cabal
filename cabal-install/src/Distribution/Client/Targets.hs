@@ -45,6 +45,7 @@ module Distribution.Client.Targets
   , userConstraintPackageName
   , readUserConstraint
   , userToPackageConstraint
+  , toUserConstraintScope
   ) where
 
 import Distribution.Client.Compat.Prelude
@@ -646,6 +647,18 @@ fromUserConstraintScope (UserQualified q pn) =
   ScopeQualified (fromUserQualifier q) pn
 fromUserConstraintScope (UserAnySetupQualifier pn) = ScopeAnySetupQualifier pn
 fromUserConstraintScope (UserAnyQualifier pn) = ScopeAnyQualifier pn
+
+toUserQualifier :: Qualifier -> Maybe UserQualifier
+toUserQualifier QualToplevel = pure $ UserQualToplevel
+toUserQualifier (QualSetup name) = pure $ UserQualSetup name
+toUserQualifier (QualExe name1 name2) = pure $ UserQualExe name1 name2
+toUserQualifier (QualBase _) = Nothing
+
+toUserConstraintScope :: ConstraintScope -> Maybe UserConstraintScope
+toUserConstraintScope (ScopeQualified q pn) = UserQualified <$> toUserQualifier q <*> pure pn
+toUserConstraintScope (ScopeAnySetupQualifier pn) = pure $ UserAnySetupQualifier pn
+toUserConstraintScope (ScopeAnyQualifier pn) = pure $ UserAnyQualifier pn
+toUserConstraintScope (ScopeTarget _) = Nothing
 
 -- | Version of 'PackageConstraint' that the user can specify on
 -- the command line.

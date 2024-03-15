@@ -1,6 +1,5 @@
 import Test.Cabal.Prelude
-main = cabalTest $ do
-  expectBroken 9799 $ withRepo "repo" $ do
+main = cabalTest $ withRepo "repo" $ do
 
     -- Show how using 'any' qualifiers always with relaxed bounds can violate that
     --    cabal freeze --constraint=... && cabal build

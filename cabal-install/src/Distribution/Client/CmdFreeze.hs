@@ -29,14 +29,15 @@ import Distribution.Client.ProjectOrchestration
 import Distribution.Client.ProjectPlanning
 import Distribution.Client.Targets
   ( UserConstraint (..)
-  , UserConstraintScope (..)
-  , UserQualifier (..)
+  , toUserConstraintScope
   )
 import Distribution.Solver.Types.ConstraintSource
   ( ConstraintSource (..)
   )
 import Distribution.Solver.Types.PackageConstraint
   ( PackageProperty (..)
+  , PackageConstraint (..)
+  , scopeToPackageName
   )
 
 import Distribution.Client.Setup
@@ -46,11 +47,6 @@ import Distribution.Client.Setup
 import Distribution.Package
   ( PackageName
   , packageName
-  , packageVersion
-  )
-import Distribution.PackageDescription
-  ( FlagAssignment
-  , nullFlagAssignment
   )
 import Distribution.Simple.Flag (Flag (..), fromFlagOrDefault)
 import Distribution.Simple.Utils
@@ -60,12 +56,6 @@ import Distribution.Simple.Utils
   )
 import Distribution.Verbosity
   ( normal
-  )
-import Distribution.Version
-  ( VersionRange
-  , simplifyVersionRange
-  , thisVersion
-  , unionVersionRanges
   )
 
 import qualified Data.Map as Map
@@ -177,8 +167,7 @@ projectFreezeConfig elaboratedPlan totalIndexState activeRepos0 =
   mempty
     { projectConfigShared =
         mempty
-          { projectConfigConstraints =
-              concat (Map.elems (projectFreezeConstraints elaboratedPlan))
+          { projectConfigConstraints = projectFreezeConstraints elaboratedPlan
           , projectConfigIndexState = Flag totalIndexState
           , projectConfigActiveRepos = Flag activeRepos
           }
@@ -191,7 +180,7 @@ projectFreezeConfig elaboratedPlan totalIndexState activeRepos0 =
 -- solver picks the same solution again in future in different environments.
 projectFreezeConstraints
   :: ElaboratedInstallPlan
-  -> Map PackageName [(UserConstraint, ConstraintSource)]
+  -> [(UserConstraint, ConstraintSource)]
 projectFreezeConstraints plan =
   --
   -- TODO: [required eventually] this is currently an underapproximation
@@ -207,53 +196,17 @@ projectFreezeConstraints plan =
   -- constraint would apply to both instances). We do however keep flag
   -- constraints of local packages.
   --
-  deleteLocalPackagesVersionConstraints
-    (Map.unionWith (++) versionConstraints flagConstraints)
+  concat $ Map.elems $
+  deleteLocalPackagesVersionConstraints $
+    Map.fromListWith (++) $
+    [ (scopeToPackageName cts, [(UserConstraint userct pp, ConstraintSourceFreeze)])
+
+      | PackageConstraint cts pp <- InstallPlan.planPackageConstraints plan
+
+      -- If this constraint scope is not a valid UserConstraint, we omit it from the freeze file.
+      , userct <- maybeToList (toUserConstraintScope cts)
+    ]
   where
-    versionConstraints :: Map PackageName [(UserConstraint, ConstraintSource)]
-    versionConstraints =
-      Map.mapWithKey
-        ( \p v ->
-            [
-              ( UserConstraint (UserAnyQualifier p) (PackagePropertyVersion v)
-              , ConstraintSourceFreeze
-              )
-            ]
-        )
-        versionRanges
-
-    versionRanges :: Map PackageName VersionRange
-    versionRanges =
-      Map.map simplifyVersionRange $
-        Map.fromListWith unionVersionRanges $
-          [ (packageName pkg, thisVersion (packageVersion pkg))
-          | InstallPlan.PreExisting pkg <- InstallPlan.toList plan
-          ]
-            ++ [ (packageName pkg, thisVersion (packageVersion pkg))
-               | InstallPlan.Configured pkg <- InstallPlan.toList plan
-               ]
-
-    flagConstraints :: Map PackageName [(UserConstraint, ConstraintSource)]
-    flagConstraints =
-      Map.mapWithKey
-        ( \p f ->
-            [
-              ( UserConstraint (UserQualified UserQualToplevel p) (PackagePropertyFlags f)
-              , ConstraintSourceFreeze
-              )
-            ]
-        )
-        flagAssignments
-
-    flagAssignments :: Map PackageName FlagAssignment
-    flagAssignments =
-      Map.fromList
-        [ (pkgname, flags)
-        | InstallPlan.Configured elab <- InstallPlan.toList plan
-        , let flags = elabFlagAssignment elab
-              pkgname = packageName elab
-        , not (nullFlagAssignment flags)
-        ]
 
     -- As described above, remove the version constraints on local packages,
     -- but leave any flag constraints.

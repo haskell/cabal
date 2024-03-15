@@ -1,6 +1,5 @@
 import Test.Cabal.Prelude
-main = cabalTest $ do
-  expectBroken 9799 $ withRepo "repo" $ do
+main = cabalTest $ withRepo "repo" $ do
     cabal "v2-freeze" []
     cwd <- fmap testCurrentDir getTestEnv
     -- Guarantee that freeze writes scope-qualified constraints, not 'any'
