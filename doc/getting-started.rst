@@ -77,7 +77,7 @@ The ``app/Main.hs`` file is where your executable's code lives:
     main = putStrLn "Hello, Haskell!"
 
 
-To run the executable, switch into the application directory with ``cd myapp`` and  run
+To run the executable, switch into the application directory with ``cd myapp`` and run
 
 .. code-block:: console
 
