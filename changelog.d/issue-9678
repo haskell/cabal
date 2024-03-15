@@ -1,0 +1,17 @@
+synopsis: Clarify the semantics of the -package-db flag
+packages: cabal-install
+prs:
+issues: #9678
+prs: #9683
+
+description: {
+
+The `--package-db` flag now only applies to the default
+immutable initial package stack rather than also applying to the store
+package database.
+
+This fixes an assertion failure which was triggered when using -package-db and also
+clarifies how it should interact with `--store-dir` and `--dist-dir` flags.
+
+}
+

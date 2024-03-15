@@ -1,2 +1,3 @@
 organization: haskell
 repository:   cabal
+required-fields: packages prs
