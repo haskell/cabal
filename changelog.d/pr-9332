@@ -1,4 +1,0 @@
-synopsis: Don't report `index.html` file as created, if not created by Haddock
-packages: Cabal cabal-install
-prs: #9332
-issues: #5120

@@ -1,4 +1,0 @@
-synopsis: cabal init now generates cabal versions older than 1.12 with the correct >= syntax
-packages: cabal-install
-prs: #8860
-issues: #8206

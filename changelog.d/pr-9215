@@ -1,3 +1,0 @@
-synopsis: Add support for 64-bit LoongArch architecture
-prs: #9215
-packages: Cabal Cabal-syntax

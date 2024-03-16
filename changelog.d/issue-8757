@@ -1,4 +1,0 @@
-synopsis: `cabal init`: suggest BSD-3 as default license
-packages: cabal-install
-prs: #8764
-issues: #8757

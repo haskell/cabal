@@ -1,8 +1,0 @@
-synopsis: Adds functionality for the --offline flag with the "build" command.
-packages: cabal-install
-prs: #8676
-
-description: {
-    The --offline flag previously created in #2578 but was only implemented for the install command even thought the flag didn't throw an error whenever the build command was run. This PR adds functionality for the --offline flag with the build command.
-Additionally there is a new PackageTest for the flag using the build command.
-}
