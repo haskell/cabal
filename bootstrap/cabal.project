@@ -3,3 +3,6 @@
 
 packages: .
 optimization: False
+
+allow-newer:
+    cabal-plan:base
