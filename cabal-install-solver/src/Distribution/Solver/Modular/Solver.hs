@@ -36,6 +36,7 @@ import Distribution.Solver.Modular.Log
 import Distribution.Solver.Modular.Message
 import Distribution.Solver.Modular.Package
 import qualified Distribution.Solver.Modular.Preference as P
+import Distribution.Solver.Modular.PrivateScopeClosure
 import Distribution.Solver.Modular.Validate
 import Distribution.Solver.Modular.Linking
 import Distribution.Solver.Modular.PSQ (PSQ)
@@ -48,7 +49,7 @@ import Distribution.Simple.Setup (BooleanFlag(..))
 #ifdef DEBUG_TRACETREE
 import qualified Distribution.Solver.Modular.ConflictSet as CS
 import qualified Distribution.Solver.Modular.WeightedPSQ as W
-import qualified Distribution.Deprecated.Text as T
+--import qualified Distribution.Deprecated.Text as T
 
 import Debug.Trace.Tree (gtraceJson)
 import Debug.Trace.Tree.Simple
@@ -98,6 +99,8 @@ solve :: SolverConfig                         -- ^ solver parameters
       -> RetryLog Message SolverFailure (Assignment, RevDepMap)
 solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
   explorePhase      .
+  traceTree "invalid-scopes.json" id .
+  detectInvalidPrivateScopesPhase .
   traceTree "cycles.json" id .
   detectCycles      .
   traceTree "heuristics.json" id .
@@ -143,7 +146,8 @@ solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
                           OnlyConstrainedAll ->
                             P.onlyConstrained pkgIsExplicit
                           OnlyConstrainedNone ->
-                            id)
+                            id) . prunePhase2
+    prunePhase2      = P.rewriteQPN
     buildPhase       = buildTree idx (independentGoals sc) (S.toList userGoals)
 
     allExplicit = M.keysSet userConstraints `S.union` userGoals
@@ -201,7 +205,7 @@ instance GSimpleTree (Tree d c) where
 
       -- Show package choice
       goP :: QPN -> POption -> Tree d c -> (String, SimpleTree)
-      goP _        (POption (I ver _loc) Nothing)  subtree = (T.display ver, go subtree)
+      goP _        (POption (I ver _loc) Nothing)  subtree = (show ver, go subtree)
       goP (Q _ pn) (POption _           (Just pp)) subtree = (showQPN (Q pp pn), go subtree)
 
       -- Show flag or stanza choice

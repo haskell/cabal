@@ -220,9 +220,9 @@ exploreLog mbj enableBj fineGrainedConflicts (CountConflicts countConflicts) idx
         let es' = es { esConflictMap = updateCM c (esConflictMap es) }
         in failWith (Failure c fr) (NoSolution c es')
     go (DoneF rdm a)                           = \ _   -> succeedWith Success (a, rdm)
-    go (PChoiceF qpn _ gr       ts)            =
+    go (PChoiceF qpn rdm gr       ts)            =
       backjump mbj enableBj fineGrainedConflicts
-               (couldResolveConflicts qpn)
+               (couldResolveConflicts rdm qpn)
                (logSkippedPackage qpn)
                (P qpn) (avoidSet (P qpn) gr) $ -- try children in order,
                W.mapWithKey                    -- when descending ...
@@ -267,23 +267,24 @@ exploreLog mbj enableBj fineGrainedConflicts (CountConflicts countConflicts) idx
     -- is true, because it is always safe to explore a package instance.
     -- Skipping it is an optimization. If false, it returns a new conflict set
     -- to be merged with the previous one.
-    couldResolveConflicts :: QPN -> POption -> S.Set CS.Conflict -> Maybe ConflictSet
-    couldResolveConflicts currentQPN@(Q _ pn) (POption i@(I v _) _) conflicts =
+    couldResolveConflicts :: RevDepMap -> QPN -> POption -> S.Set CS.Conflict -> Maybe ConflictSet
+    couldResolveConflicts rdm currentQPN@(Q _ pn) (POption i@(I v _) _) conflicts =
       let (PInfo deps _ _ _) = idx M.! pn M.! i
-          qdeps = qualifyDeps (defaultQualifyOptions idx) currentQPN deps
+          qdeps = qualifyDeps (defaultQualifyOptions idx) rdm currentQPN deps
 
           couldBeResolved :: CS.Conflict -> Maybe ConflictSet
           couldBeResolved CS.OtherConflict = Nothing
+          couldBeResolved (CS.PrivateScopeClosureConflict _ _) = Nothing -- Could we optimise here?
           couldBeResolved (CS.GoalConflict conflictingDep) =
               -- Check whether this package instance also has 'conflictingDep'
               -- as a dependency (ignoring flag and stanza choices).
-              if null [() | Simple (LDep _ (Dep (PkgComponent qpn _) _)) _ <- qdeps, qpn == conflictingDep]
+              if null [() | Simple (LDep _ (Dep (PkgComponent qpn _) _is_private _)) _ <- qdeps, qpn == conflictingDep]
               then Nothing
               else Just CS.empty
           couldBeResolved (CS.VersionConstraintConflict dep excludedVersion) =
               -- Check whether this package instance also excludes version
               -- 'excludedVersion' of 'dep' (ignoring flag and stanza choices).
-              let vrs = [vr | Simple (LDep _ (Dep (PkgComponent qpn _) (Constrained vr))) _ <- qdeps, qpn == dep ]
+              let vrs = [vr | Simple (LDep _ (Dep (PkgComponent qpn _) _is_private (Constrained vr))) _ <- qdeps, qpn == dep ]
                   vrIntersection = L.foldl' (.&&.) anyVersion vrs
               in if checkVR vrIntersection excludedVersion
                  then Nothing

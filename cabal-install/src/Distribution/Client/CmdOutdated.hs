@@ -443,7 +443,7 @@ depsFromPkgDesc verbosity comp platform = do
         finalizePD
           mempty
           (ComponentRequestedSpec True True)
-          (const True)
+          (\_ _ -> True)
           platform
           cinfo
           []
@@ -457,7 +457,11 @@ depsFromPkgDesc verbosity comp platform = do
         "Reading the list of dependencies from the package description"
       return $ map toPVC bd
   where
-    toPVC (Dependency pn vr _) = PackageVersionConstraint pn vr
+    -- It doesn't seem critical that we report the scope in which the package
+    -- is outdated, because, in order for that report to be consistent with the
+    -- rest of Cabal, we must first consider how cabal outdated and cabal
+    -- freeze work wrt private dependencies (TODO).
+    toPVC (_alias, (Dependency pn vr _)) = PackageVersionConstraint pn vr
 
 -- | Various knobs for customising the behaviour of 'listOutdated'.
 data ListOutdatedSettings = ListOutdatedSettings

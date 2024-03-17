@@ -61,8 +61,8 @@ annotateCondTree
    . (Eq a, Monoid a)
   => [PackageFlag] -- User flags.
   -> TargetAnnotation a
-  -> CondTree ConfVar [Dependency] a
-  -> CondTree ConfVar [Dependency] (TargetAnnotation a)
+  -> CondTree ConfVar Dependencies a
+  -> CondTree ConfVar Dependencies (TargetAnnotation a)
 annotateCondTree fs ta (CondNode a c bs) =
   let ta' = updateTargetAnnotation a ta
       bs' = map (annotateBranch ta') bs
@@ -71,10 +71,10 @@ annotateCondTree fs ta (CondNode a c bs) =
   where
     annotateBranch
       :: TargetAnnotation a
-      -> CondBranch ConfVar [Dependency] a
+      -> CondBranch ConfVar Dependencies a
       -> CondBranch
           ConfVar
-          [Dependency]
+          Dependencies
           (TargetAnnotation a)
     annotateBranch wta (CondBranch k t mf) =
       let uf = isPkgFlagCond k
@@ -117,13 +117,13 @@ crossAnnotateBranches
   :: forall a
    . (Eq a, Monoid a)
   => [PackageFlag] -- `default: true` flags.
-  -> [CondBranch ConfVar [Dependency] (TargetAnnotation a)]
-  -> [CondBranch ConfVar [Dependency] (TargetAnnotation a)]
+  -> [CondBranch ConfVar Dependencies (TargetAnnotation a)]
+  -> [CondBranch ConfVar Dependencies (TargetAnnotation a)]
 crossAnnotateBranches fs bs = map crossAnnBranch bs
   where
     crossAnnBranch
-      :: CondBranch ConfVar [Dependency] (TargetAnnotation a)
-      -> CondBranch ConfVar [Dependency] (TargetAnnotation a)
+      :: CondBranch ConfVar Dependencies (TargetAnnotation a)
+      -> CondBranch ConfVar Dependencies (TargetAnnotation a)
     crossAnnBranch wr =
       let
         rs = filter (/= wr) bs
@@ -131,7 +131,7 @@ crossAnnotateBranches fs bs = map crossAnnBranch bs
        in
         updateTargetAnnBranch (mconcat ts) wr
 
-    realiseBranch :: CondBranch ConfVar [Dependency] (TargetAnnotation a) -> Maybe a
+    realiseBranch :: CondBranch ConfVar Dependencies (TargetAnnotation a) -> Maybe a
     realiseBranch b =
       let
         -- We are only interested in True by default package flags.
@@ -144,8 +144,8 @@ crossAnnotateBranches fs bs = map crossAnnBranch bs
 
     updateTargetAnnBranch
       :: a
-      -> CondBranch ConfVar [Dependency] (TargetAnnotation a)
-      -> CondBranch ConfVar [Dependency] (TargetAnnotation a)
+      -> CondBranch ConfVar Dependencies (TargetAnnotation a)
+      -> CondBranch ConfVar Dependencies (TargetAnnotation a)
     updateTargetAnnBranch a (CondBranch k t mt) =
       let updateTargetAnnTree (CondNode ka c wbs) =
             (CondNode (updateTargetAnnotation a ka) c wbs)
@@ -163,7 +163,7 @@ checkCondTarget
   -- Naming function (some targets
   -- need to have their name
   -- spoonfed to them.
-  -> (UnqualComponentName, CondTree ConfVar [Dependency] a)
+  -> (UnqualComponentName, CondTree ConfVar Dependencies a)
   -- Target name/condtree.
   -> CheckM m ()
 checkCondTarget fs cf nf (unqualName, ct) =
@@ -172,7 +172,7 @@ checkCondTarget fs cf nf (unqualName, ct) =
     -- Walking the tree. Remember that CondTree is not a binary
     -- tree but a /rose/tree.
     wTree
-      :: CondTree ConfVar [Dependency] (TargetAnnotation a)
+      :: CondTree ConfVar Dependencies (TargetAnnotation a)
       -> CheckM m ()
     wTree (CondNode ta _ bs)
       -- There are no branches ([] == True) *or* every branch
@@ -190,13 +190,13 @@ checkCondTarget fs cf nf (unqualName, ct) =
           mapM_ wBranch bs
 
     isSimple
-      :: CondBranch ConfVar [Dependency] (TargetAnnotation a)
+      :: CondBranch ConfVar Dependencies (TargetAnnotation a)
       -> Bool
     isSimple (CondBranch _ _ Nothing) = True
     isSimple (CondBranch _ _ (Just _)) = False
 
     wBranch
-      :: CondBranch ConfVar [Dependency] (TargetAnnotation a)
+      :: CondBranch ConfVar Dependencies (TargetAnnotation a)
       -> CheckM m ()
     wBranch (CondBranch k t mf) = do
       checkCondVars k

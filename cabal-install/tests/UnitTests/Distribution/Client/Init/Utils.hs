@@ -78,12 +78,12 @@ mkLicense :: SPDX.LicenseId -> SPDX.License
 mkLicense lid = SPDX.License (SPDX.ELicense (SPDX.ELicenseId lid) Nothing)
 
 mangleBaseDep :: a -> (a -> [Dependency]) -> [Dependency]
-mangleBaseDep target f =
-  [ if unPackageName x == "base"
-    then Dependency x anyVersion z
-    else dep
-  | dep@(Dependency x _ z) <- f target
-  ]
+mangleBaseDep target f = map go (f target)
+  where
+    go dep@(Dependency x _ z) =
+      if unPackageName x == "base"
+        then Dependency x anyVersion z
+        else dep
 
 infix 1 @?!, @!?
 

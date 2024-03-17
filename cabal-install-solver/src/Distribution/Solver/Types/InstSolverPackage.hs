@@ -6,7 +6,7 @@ module Distribution.Solver.Types.InstSolverPackage
 import Distribution.Solver.Compat.Prelude
 import Prelude ()
 
-import Distribution.Package ( Package(..), HasMungedPackageId(..), HasUnitId(..) )
+import Distribution.Package ( Package(..), HasMungedPackageId(..), HasUnitId(..), PrivateAlias )
 import Distribution.Solver.Types.ComponentDeps ( ComponentDeps )
 import Distribution.Solver.Types.SolverId
 import Distribution.Types.MungedPackageId
@@ -18,7 +18,7 @@ import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 -- specified by the dependency solver.
 data InstSolverPackage = InstSolverPackage {
       instSolverPkgIPI :: InstalledPackageInfo,
-      instSolverPkgLibDeps :: ComponentDeps [SolverId],
+      instSolverPkgLibDeps :: ComponentDeps [(SolverId, Maybe PrivateAlias)],
       instSolverPkgExeDeps :: ComponentDeps [SolverId]
     }
   deriving (Eq, Show, Generic)

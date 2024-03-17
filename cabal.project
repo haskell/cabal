@@ -7,6 +7,9 @@ packages: cabal-install/
 packages: cabal-install-solver/
 packages: solver-benchmarks/
 
+package *
+  ghc-options: -finfo-table-map -fdistinct-constructor-tables
+
 tests: True
 
 packages: Cabal-QuickCheck/
@@ -23,3 +26,5 @@ constraints: these -assoc
 
 program-options
   ghc-options: -fno-ignore-asserts
+
+allow-newer: tracetree:*

@@ -398,80 +398,84 @@ GenericPackageDescription {
                 (EarlierVersion
                   (mkVersion [0, 0, 2])))
               mainLibSet],
+          targetPrivateBuildDepends = [],
           mixins = []}},
-      condTreeConstraints = [
-        Dependency
-          (PackageName "base")
-          (IntersectVersionRanges
+      condTreeConstraints =
+      Dependencies {
+        publicDependencies = [
+          Dependency
+            (PackageName "base")
+            (IntersectVersionRanges
+              (UnionVersionRanges
+                (ThisVersion (mkVersion [4, 7]))
+                (LaterVersion
+                  (mkVersion [4, 7])))
+              (EarlierVersion
+                (mkVersion [5])))
+            mainLibSet,
+          Dependency
+            (PackageName "dimensions")
             (UnionVersionRanges
-              (ThisVersion (mkVersion [4, 7]))
+              (ThisVersion (mkVersion [1, 0]))
               (LaterVersion
-                (mkVersion [4, 7])))
-            (EarlierVersion
-              (mkVersion [5])))
-          mainLibSet,
-        Dependency
-          (PackageName "dimensions")
-          (UnionVersionRanges
-            (ThisVersion (mkVersion [1, 0]))
-            (LaterVersion
-              (mkVersion [1, 0])))
-          mainLibSet,
-        Dependency
-          (PackageName "safe-exceptions")
-          (UnionVersionRanges
-            (ThisVersion
-              (mkVersion [0, 1, 0]))
-            (LaterVersion
-              (mkVersion [0, 1, 0])))
-          mainLibSet,
-        Dependency
-          (PackageName "singletons")
-          (UnionVersionRanges
-            (ThisVersion (mkVersion [2, 2]))
-            (LaterVersion
-              (mkVersion [2, 2])))
-          mainLibSet,
-        Dependency
-          (PackageName "text")
-          (UnionVersionRanges
-            (ThisVersion
-              (mkVersion [1, 2, 2]))
-            (LaterVersion
-              (mkVersion [1, 2, 2])))
-          mainLibSet,
-        Dependency
-          (PackageName "hasktorch")
-          (OrLaterVersion (mkVersion [0]))
-          (NonEmptySet.fromNonEmpty
-            (NE.fromList
-              [
-                LSubLibName
-                  (UnqualComponentName
-                    "hasktorch-cpu")])),
-        Dependency
-          (PackageName "hasktorch-ffi-th")
-          (IntersectVersionRanges
+                (mkVersion [1, 0])))
+            mainLibSet,
+          Dependency
+            (PackageName "safe-exceptions")
             (UnionVersionRanges
               (ThisVersion
-                (mkVersion [0, 0, 1]))
+                (mkVersion [0, 1, 0]))
               (LaterVersion
-                (mkVersion [0, 0, 1])))
-            (EarlierVersion
-              (mkVersion [0, 0, 2])))
-          mainLibSet,
-        Dependency
-          (PackageName
-            "hasktorch-types-th")
-          (IntersectVersionRanges
+                (mkVersion [0, 1, 0])))
+            mainLibSet,
+          Dependency
+            (PackageName "singletons")
+            (UnionVersionRanges
+              (ThisVersion (mkVersion [2, 2]))
+              (LaterVersion
+                (mkVersion [2, 2])))
+            mainLibSet,
+          Dependency
+            (PackageName "text")
             (UnionVersionRanges
               (ThisVersion
-                (mkVersion [0, 0, 1]))
+                (mkVersion [1, 2, 2]))
               (LaterVersion
-                (mkVersion [0, 0, 1])))
-            (EarlierVersion
-              (mkVersion [0, 0, 2])))
-          mainLibSet],
+                (mkVersion [1, 2, 2])))
+            mainLibSet,
+          Dependency
+            (PackageName "hasktorch")
+            (OrLaterVersion (mkVersion [0]))
+            (NonEmptySet.fromNonEmpty
+              (NE.fromList
+                [
+                  LSubLibName
+                    (UnqualComponentName
+                      "hasktorch-cpu")])),
+          Dependency
+            (PackageName "hasktorch-ffi-th")
+            (IntersectVersionRanges
+              (UnionVersionRanges
+                (ThisVersion
+                  (mkVersion [0, 0, 1]))
+                (LaterVersion
+                  (mkVersion [0, 0, 1])))
+              (EarlierVersion
+                (mkVersion [0, 0, 2])))
+            mainLibSet,
+          Dependency
+            (PackageName
+              "hasktorch-types-th")
+            (IntersectVersionRanges
+              (UnionVersionRanges
+                (ThisVersion
+                  (mkVersion [0, 0, 1]))
+                (LaterVersion
+                  (mkVersion [0, 0, 1])))
+              (EarlierVersion
+                (mkVersion [0, 0, 2])))
+            mainLibSet],
+        privateDependencies = []},
       condTreeComponents = [
         CondBranch {
           condBranchCondition =
@@ -646,8 +650,12 @@ GenericPackageDescription {
                 PerCompilerFlavor [] [],
                 customFieldsBI = [],
                 targetBuildDepends = [],
+                targetPrivateBuildDepends = [],
                 mixins = []}},
-            condTreeConstraints = [],
+            condTreeConstraints =
+            Dependencies {
+              publicDependencies = [],
+              privateDependencies = []},
             condTreeComponents = []},
           condBranchIfFalse = Nothing},
         CondBranch {
@@ -897,17 +905,21 @@ GenericPackageDescription {
                           LSubLibName
                             (UnqualComponentName
                               "hasktorch-gpu")]))],
+                targetPrivateBuildDepends = [],
                 mixins = []}},
-            condTreeConstraints = [
-              Dependency
-                (PackageName "hasktorch")
-                (OrLaterVersion (mkVersion [0]))
-                (NonEmptySet.fromNonEmpty
-                  (NE.fromList
-                    [
-                      LSubLibName
-                        (UnqualComponentName
-                          "hasktorch-gpu")]))],
+            condTreeConstraints =
+            Dependencies {
+              publicDependencies = [
+                Dependency
+                  (PackageName "hasktorch")
+                  (OrLaterVersion (mkVersion [0]))
+                  (NonEmptySet.fromNonEmpty
+                    (NE.fromList
+                      [
+                        LSubLibName
+                          (UnqualComponentName
+                            "hasktorch-gpu")]))],
+              privateDependencies = []},
             condTreeComponents = [
               CondBranch {
                 condBranchCondition =
@@ -1088,8 +1100,12 @@ GenericPackageDescription {
                       PerCompilerFlavor [] [],
                       customFieldsBI = [],
                       targetBuildDepends = [],
+                      targetPrivateBuildDepends = [],
                       mixins = []}},
-                  condTreeConstraints = [],
+                  condTreeConstraints =
+                  Dependencies {
+                    publicDependencies = [],
+                    privateDependencies = []},
                   condTreeComponents = []},
                 condBranchIfFalse = Nothing}]},
           condBranchIfFalse = Nothing}]},
@@ -1535,6 +1551,7 @@ GenericPackageDescription {
                       LSubLibName
                         (UnqualComponentName
                           "hasktorch-indef-signed")]))],
+            targetPrivateBuildDepends = [],
             mixins =
             [
               Mixin {
@@ -2582,100 +2599,103 @@ GenericPackageDescription {
                           "Torch.Sig.Tensor.Random.THC")
                         (ModuleName
                           "Torch.Undefined.Double.Tensor.Random.THC")]}}]}},
-        condTreeConstraints = [
-          Dependency
-            (PackageName "base")
-            (IntersectVersionRanges
+        condTreeConstraints =
+        Dependencies {
+          publicDependencies = [
+            Dependency
+              (PackageName "base")
+              (IntersectVersionRanges
+                (UnionVersionRanges
+                  (ThisVersion (mkVersion [4, 7]))
+                  (LaterVersion
+                    (mkVersion [4, 7])))
+                (EarlierVersion
+                  (mkVersion [5])))
+              mainLibSet,
+            Dependency
+              (PackageName
+                "hasktorch-types-th")
+              (IntersectVersionRanges
+                (UnionVersionRanges
+                  (ThisVersion
+                    (mkVersion [0, 0, 1]))
+                  (LaterVersion
+                    (mkVersion [0, 0, 1])))
+                (EarlierVersion
+                  (mkVersion [0, 0, 2])))
+              mainLibSet,
+            Dependency
+              (PackageName "dimensions")
               (UnionVersionRanges
-                (ThisVersion (mkVersion [4, 7]))
+                (ThisVersion (mkVersion [1, 0]))
                 (LaterVersion
-                  (mkVersion [4, 7])))
-              (EarlierVersion
-                (mkVersion [5])))
-            mainLibSet,
-          Dependency
-            (PackageName
-              "hasktorch-types-th")
-            (IntersectVersionRanges
+                  (mkVersion [1, 0])))
+              mainLibSet,
+            Dependency
+              (PackageName "hasktorch-ffi-th")
+              (IntersectVersionRanges
+                (UnionVersionRanges
+                  (ThisVersion
+                    (mkVersion [0, 0, 1]))
+                  (LaterVersion
+                    (mkVersion [0, 0, 1])))
+                (EarlierVersion
+                  (mkVersion [0, 0, 2])))
+              mainLibSet,
+            Dependency
+              (PackageName
+                "hasktorch-types-th")
+              (IntersectVersionRanges
+                (UnionVersionRanges
+                  (ThisVersion
+                    (mkVersion [0, 0, 1]))
+                  (LaterVersion
+                    (mkVersion [0, 0, 1])))
+                (EarlierVersion
+                  (mkVersion [0, 0, 2])))
+              mainLibSet,
+            Dependency
+              (PackageName "safe-exceptions")
               (UnionVersionRanges
                 (ThisVersion
-                  (mkVersion [0, 0, 1]))
+                  (mkVersion [0, 1, 0]))
                 (LaterVersion
-                  (mkVersion [0, 0, 1])))
-              (EarlierVersion
-                (mkVersion [0, 0, 2])))
-            mainLibSet,
-          Dependency
-            (PackageName "dimensions")
-            (UnionVersionRanges
-              (ThisVersion (mkVersion [1, 0]))
-              (LaterVersion
-                (mkVersion [1, 0])))
-            mainLibSet,
-          Dependency
-            (PackageName "hasktorch-ffi-th")
-            (IntersectVersionRanges
+                  (mkVersion [0, 1, 0])))
+              mainLibSet,
+            Dependency
+              (PackageName "singletons")
+              (UnionVersionRanges
+                (ThisVersion (mkVersion [2, 2]))
+                (LaterVersion
+                  (mkVersion [2, 2])))
+              mainLibSet,
+            Dependency
+              (PackageName "text")
               (UnionVersionRanges
                 (ThisVersion
-                  (mkVersion [0, 0, 1]))
+                  (mkVersion [1, 2, 2]))
                 (LaterVersion
-                  (mkVersion [0, 0, 1])))
-              (EarlierVersion
-                (mkVersion [0, 0, 2])))
-            mainLibSet,
-          Dependency
-            (PackageName
-              "hasktorch-types-th")
-            (IntersectVersionRanges
-              (UnionVersionRanges
-                (ThisVersion
-                  (mkVersion [0, 0, 1]))
-                (LaterVersion
-                  (mkVersion [0, 0, 1])))
-              (EarlierVersion
-                (mkVersion [0, 0, 2])))
-            mainLibSet,
-          Dependency
-            (PackageName "safe-exceptions")
-            (UnionVersionRanges
-              (ThisVersion
-                (mkVersion [0, 1, 0]))
-              (LaterVersion
-                (mkVersion [0, 1, 0])))
-            mainLibSet,
-          Dependency
-            (PackageName "singletons")
-            (UnionVersionRanges
-              (ThisVersion (mkVersion [2, 2]))
-              (LaterVersion
-                (mkVersion [2, 2])))
-            mainLibSet,
-          Dependency
-            (PackageName "text")
-            (UnionVersionRanges
-              (ThisVersion
-                (mkVersion [1, 2, 2]))
-              (LaterVersion
-                (mkVersion [1, 2, 2])))
-            mainLibSet,
-          Dependency
-            (PackageName "hasktorch")
-            (OrLaterVersion (mkVersion [0]))
-            (NonEmptySet.fromNonEmpty
-              (NE.fromList
-                [
-                  LSubLibName
-                    (UnqualComponentName
-                      "hasktorch-indef-floating")])),
-          Dependency
-            (PackageName "hasktorch")
-            (OrLaterVersion (mkVersion [0]))
-            (NonEmptySet.fromNonEmpty
-              (NE.fromList
-                [
-                  LSubLibName
-                    (UnqualComponentName
-                      "hasktorch-indef-signed")]))],
+                  (mkVersion [1, 2, 2])))
+              mainLibSet,
+            Dependency
+              (PackageName "hasktorch")
+              (OrLaterVersion (mkVersion [0]))
+              (NonEmptySet.fromNonEmpty
+                (NE.fromList
+                  [
+                    LSubLibName
+                      (UnqualComponentName
+                        "hasktorch-indef-floating")])),
+            Dependency
+              (PackageName "hasktorch")
+              (OrLaterVersion (mkVersion [0]))
+              (NonEmptySet.fromNonEmpty
+                (NE.fromList
+                  [
+                    LSubLibName
+                      (UnqualComponentName
+                        "hasktorch-indef-signed")]))],
+          privateDependencies = []},
         condTreeComponents =
         [
           CondBranch {
@@ -2744,8 +2764,12 @@ GenericPackageDescription {
                   PerCompilerFlavor [] [],
                   customFieldsBI = [],
                   targetBuildDepends = [],
+                  targetPrivateBuildDepends = [],
                   mixins = []}},
-              condTreeConstraints = [],
+              condTreeConstraints =
+              Dependencies {
+                publicDependencies = [],
+                privateDependencies = []},
               condTreeComponents = []},
             condBranchIfFalse =
             Just
@@ -2842,6 +2866,7 @@ GenericPackageDescription {
                               LSubLibName
                                 (UnqualComponentName
                                   "hasktorch-indef-unsigned")]))],
+                    targetPrivateBuildDepends = [],
                     mixins =
                     [
                       Mixin {
@@ -4840,16 +4865,19 @@ GenericPackageDescription {
                                   "Torch.Sig.Tensor.Random.THC")
                                 (ModuleName
                                   "Torch.Undefined.Float.Tensor.Random.THC")]}}]}},
-                condTreeConstraints = [
-                  Dependency
-                    (PackageName "hasktorch")
-                    (OrLaterVersion (mkVersion [0]))
-                    (NonEmptySet.fromNonEmpty
-                      (NE.fromList
-                        [
-                          LSubLibName
-                            (UnqualComponentName
-                              "hasktorch-indef-unsigned")]))],
+                condTreeConstraints =
+                Dependencies {
+                  publicDependencies = [
+                    Dependency
+                      (PackageName "hasktorch")
+                      (OrLaterVersion (mkVersion [0]))
+                      (NonEmptySet.fromNonEmpty
+                        (NE.fromList
+                          [
+                            LSubLibName
+                              (UnqualComponentName
+                                "hasktorch-indef-unsigned")]))],
+                  privateDependencies = []},
                 condTreeComponents = []}}]},
     _×_
       (UnqualComponentName
@@ -5193,6 +5221,7 @@ GenericPackageDescription {
                   (EarlierVersion
                     (mkVersion [0, 0, 2])))
                 mainLibSet],
+            targetPrivateBuildDepends = [],
             mixins =
             [
               Mixin {
@@ -6242,124 +6271,127 @@ GenericPackageDescription {
                           "Torch.Sig.Tensor.Random.THC")
                         (ModuleName
                           "Torch.FFI.THC.Double.TensorRandom")]}}]}},
-        condTreeConstraints = [
-          Dependency
-            (PackageName "base")
-            (IntersectVersionRanges
+        condTreeConstraints =
+        Dependencies {
+          publicDependencies = [
+            Dependency
+              (PackageName "base")
+              (IntersectVersionRanges
+                (UnionVersionRanges
+                  (ThisVersion (mkVersion [4, 7]))
+                  (LaterVersion
+                    (mkVersion [4, 7])))
+                (EarlierVersion
+                  (mkVersion [5])))
+              mainLibSet,
+            Dependency
+              (PackageName
+                "hasktorch-types-th")
+              (IntersectVersionRanges
+                (UnionVersionRanges
+                  (ThisVersion
+                    (mkVersion [0, 0, 1]))
+                  (LaterVersion
+                    (mkVersion [0, 0, 1])))
+                (EarlierVersion
+                  (mkVersion [0, 0, 2])))
+              mainLibSet,
+            Dependency
+              (PackageName "dimensions")
               (UnionVersionRanges
-                (ThisVersion (mkVersion [4, 7]))
+                (ThisVersion (mkVersion [1, 0]))
                 (LaterVersion
-                  (mkVersion [4, 7])))
-              (EarlierVersion
-                (mkVersion [5])))
-            mainLibSet,
-          Dependency
-            (PackageName
-              "hasktorch-types-th")
-            (IntersectVersionRanges
-              (UnionVersionRanges
-                (ThisVersion
-                  (mkVersion [0, 0, 1]))
-                (LaterVersion
-                  (mkVersion [0, 0, 1])))
-              (EarlierVersion
-                (mkVersion [0, 0, 2])))
-            mainLibSet,
-          Dependency
-            (PackageName "dimensions")
-            (UnionVersionRanges
-              (ThisVersion (mkVersion [1, 0]))
-              (LaterVersion
-                (mkVersion [1, 0])))
-            mainLibSet,
-          Dependency
-            (PackageName "hasktorch-ffi-th")
-            (IntersectVersionRanges
-              (UnionVersionRanges
-                (ThisVersion
-                  (mkVersion [0, 0, 1]))
-                (LaterVersion
-                  (mkVersion [0, 0, 1])))
-              (EarlierVersion
-                (mkVersion [0, 0, 2])))
-            mainLibSet,
-          Dependency
-            (PackageName
-              "hasktorch-types-th")
-            (IntersectVersionRanges
-              (UnionVersionRanges
-                (ThisVersion
-                  (mkVersion [0, 0, 1]))
-                (LaterVersion
-                  (mkVersion [0, 0, 1])))
-              (EarlierVersion
-                (mkVersion [0, 0, 2])))
-            mainLibSet,
-          Dependency
-            (PackageName "safe-exceptions")
-            (UnionVersionRanges
-              (ThisVersion
-                (mkVersion [0, 1, 0]))
-              (LaterVersion
-                (mkVersion [0, 1, 0])))
-            mainLibSet,
-          Dependency
-            (PackageName "singletons")
-            (UnionVersionRanges
-              (ThisVersion (mkVersion [2, 2]))
-              (LaterVersion
-                (mkVersion [2, 2])))
-            mainLibSet,
-          Dependency
-            (PackageName "text")
-            (UnionVersionRanges
-              (ThisVersion
-                (mkVersion [1, 2, 2]))
-              (LaterVersion
-                (mkVersion [1, 2, 2])))
-            mainLibSet,
-          Dependency
-            (PackageName "hasktorch")
-            (OrLaterVersion (mkVersion [0]))
-            (NonEmptySet.fromNonEmpty
-              (NE.fromList
-                [
-                  LSubLibName
-                    (UnqualComponentName
-                      "hasktorch-indef-floating")])),
-          Dependency
-            (PackageName "hasktorch")
-            (OrLaterVersion (mkVersion [0]))
-            (NonEmptySet.fromNonEmpty
-              (NE.fromList
-                [
-                  LSubLibName
-                    (UnqualComponentName
-                      "hasktorch-indef-signed")])),
-          Dependency
-            (PackageName
-              "hasktorch-ffi-thc")
-            (IntersectVersionRanges
+                  (mkVersion [1, 0])))
+              mainLibSet,
+            Dependency
+              (PackageName "hasktorch-ffi-th")
+              (IntersectVersionRanges
+                (UnionVersionRanges
+                  (ThisVersion
+                    (mkVersion [0, 0, 1]))
+                  (LaterVersion
+                    (mkVersion [0, 0, 1])))
+                (EarlierVersion
+                  (mkVersion [0, 0, 2])))
+              mainLibSet,
+            Dependency
+              (PackageName
+                "hasktorch-types-th")
+              (IntersectVersionRanges
+                (UnionVersionRanges
+                  (ThisVersion
+                    (mkVersion [0, 0, 1]))
+                  (LaterVersion
+                    (mkVersion [0, 0, 1])))
+                (EarlierVersion
+                  (mkVersion [0, 0, 2])))
+              mainLibSet,
+            Dependency
+              (PackageName "safe-exceptions")
               (UnionVersionRanges
                 (ThisVersion
-                  (mkVersion [0, 0, 1]))
+                  (mkVersion [0, 1, 0]))
                 (LaterVersion
-                  (mkVersion [0, 0, 1])))
-              (EarlierVersion
-                (mkVersion [0, 0, 2])))
-            mainLibSet,
-          Dependency
-            (PackageName
-              "hasktorch-types-thc")
-            (IntersectVersionRanges
+                  (mkVersion [0, 1, 0])))
+              mainLibSet,
+            Dependency
+              (PackageName "singletons")
+              (UnionVersionRanges
+                (ThisVersion (mkVersion [2, 2]))
+                (LaterVersion
+                  (mkVersion [2, 2])))
+              mainLibSet,
+            Dependency
+              (PackageName "text")
               (UnionVersionRanges
                 (ThisVersion
-                  (mkVersion [0, 0, 1]))
+                  (mkVersion [1, 2, 2]))
                 (LaterVersion
-                  (mkVersion [0, 0, 1])))
-              (EarlierVersion
-                (mkVersion [0, 0, 2])))
-            mainLibSet],
+                  (mkVersion [1, 2, 2])))
+              mainLibSet,
+            Dependency
+              (PackageName "hasktorch")
+              (OrLaterVersion (mkVersion [0]))
+              (NonEmptySet.fromNonEmpty
+                (NE.fromList
+                  [
+                    LSubLibName
+                      (UnqualComponentName
+                        "hasktorch-indef-floating")])),
+            Dependency
+              (PackageName "hasktorch")
+              (OrLaterVersion (mkVersion [0]))
+              (NonEmptySet.fromNonEmpty
+                (NE.fromList
+                  [
+                    LSubLibName
+                      (UnqualComponentName
+                        "hasktorch-indef-signed")])),
+            Dependency
+              (PackageName
+                "hasktorch-ffi-thc")
+              (IntersectVersionRanges
+                (UnionVersionRanges
+                  (ThisVersion
+                    (mkVersion [0, 0, 1]))
+                  (LaterVersion
+                    (mkVersion [0, 0, 1])))
+                (EarlierVersion
+                  (mkVersion [0, 0, 2])))
+              mainLibSet,
+            Dependency
+              (PackageName
+                "hasktorch-types-thc")
+              (IntersectVersionRanges
+                (UnionVersionRanges
+                  (ThisVersion
+                    (mkVersion [0, 0, 1]))
+                  (LaterVersion
+                    (mkVersion [0, 0, 1])))
+                (EarlierVersion
+                  (mkVersion [0, 0, 2])))
+              mainLibSet],
+          privateDependencies = []},
         condTreeComponents =
         [
           CondBranch {
@@ -6428,8 +6460,12 @@ GenericPackageDescription {
                   PerCompilerFlavor [] [],
                   customFieldsBI = [],
                   targetBuildDepends = [],
+                  targetPrivateBuildDepends = [],
                   mixins = []}},
-              condTreeConstraints = [],
+              condTreeConstraints =
+              Dependencies {
+                publicDependencies = [],
+                privateDependencies = []},
               condTreeComponents = []},
             condBranchIfFalse =
             Just
@@ -6527,6 +6563,7 @@ GenericPackageDescription {
                               LSubLibName
                                 (UnqualComponentName
                                   "hasktorch-indef-unsigned")]))],
+                    targetPrivateBuildDepends = [],
                     mixins =
                     [
                       Mixin {
@@ -7823,16 +7860,19 @@ GenericPackageDescription {
                                   "Torch.Sig.Tensor.Math.Pointwise.Signed")
                                 (ModuleName
                                   "Torch.FFI.THC.Int.TensorMathPointwise")]}}]}},
-                condTreeConstraints = [
-                  Dependency
-                    (PackageName "hasktorch")
-                    (OrLaterVersion (mkVersion [0]))
-                    (NonEmptySet.fromNonEmpty
-                      (NE.fromList
-                        [
-                          LSubLibName
-                            (UnqualComponentName
-                              "hasktorch-indef-unsigned")]))],
+                condTreeConstraints =
+                Dependencies {
+                  publicDependencies = [
+                    Dependency
+                      (PackageName "hasktorch")
+                      (OrLaterVersion (mkVersion [0]))
+                      (NonEmptySet.fromNonEmpty
+                        (NE.fromList
+                          [
+                            LSubLibName
+                              (UnqualComponentName
+                                "hasktorch-indef-unsigned")]))],
+                  privateDependencies = []},
                 condTreeComponents = []}}]},
     _×_
       (UnqualComponentName
@@ -8212,6 +8252,7 @@ GenericPackageDescription {
                 (PackageName "hasktorch-indef")
                 (OrLaterVersion (mkVersion [0]))
                 mainLibSet],
+            targetPrivateBuildDepends = [],
             mixins = [
               Mixin {
                 mixinPackageName = PackageName
@@ -8278,33 +8319,36 @@ GenericPackageDescription {
                           "Torch.Sig.Tensor.Random.THC")
                         (ModuleName
                           "Torch.Undefined.Tensor.Random.THC")]}}]}},
-        condTreeConstraints = [
-          Dependency
-            (PackageName "base")
-            (IntersectVersionRanges
-              (UnionVersionRanges
-                (ThisVersion (mkVersion [4, 7]))
-                (LaterVersion
-                  (mkVersion [4, 7])))
-              (EarlierVersion
-                (mkVersion [5])))
-            mainLibSet,
-          Dependency
-            (PackageName
-              "hasktorch-signatures-partial")
-            (IntersectVersionRanges
-              (UnionVersionRanges
-                (ThisVersion
-                  (mkVersion [0, 0, 1]))
-                (LaterVersion
-                  (mkVersion [0, 0, 1])))
-              (EarlierVersion
-                (mkVersion [0, 0, 2])))
-            mainLibSet,
-          Dependency
-            (PackageName "hasktorch-indef")
-            (OrLaterVersion (mkVersion [0]))
-            mainLibSet],
+        condTreeConstraints =
+        Dependencies {
+          publicDependencies = [
+            Dependency
+              (PackageName "base")
+              (IntersectVersionRanges
+                (UnionVersionRanges
+                  (ThisVersion (mkVersion [4, 7]))
+                  (LaterVersion
+                    (mkVersion [4, 7])))
+                (EarlierVersion
+                  (mkVersion [5])))
+              mainLibSet,
+            Dependency
+              (PackageName
+                "hasktorch-signatures-partial")
+              (IntersectVersionRanges
+                (UnionVersionRanges
+                  (ThisVersion
+                    (mkVersion [0, 0, 1]))
+                  (LaterVersion
+                    (mkVersion [0, 0, 1])))
+                (EarlierVersion
+                  (mkVersion [0, 0, 2])))
+              mainLibSet,
+            Dependency
+              (PackageName "hasktorch-indef")
+              (OrLaterVersion (mkVersion [0]))
+              mainLibSet],
+          privateDependencies = []},
         condTreeComponents = []},
     _×_
       (UnqualComponentName
@@ -8700,6 +8744,7 @@ GenericPackageDescription {
                 (PackageName "hasktorch-indef")
                 (OrLaterVersion (mkVersion [0]))
                 mainLibSet],
+            targetPrivateBuildDepends = [],
             mixins = [
               Mixin {
                 mixinPackageName = PackageName
@@ -8761,33 +8806,36 @@ GenericPackageDescription {
                           "Torch.Sig.Tensor.Random.THC")
                         (ModuleName
                           "Torch.Undefined.Tensor.Random.THC")]}}]}},
-        condTreeConstraints = [
-          Dependency
-            (PackageName "base")
-            (IntersectVersionRanges
-              (UnionVersionRanges
-                (ThisVersion (mkVersion [4, 7]))
-                (LaterVersion
-                  (mkVersion [4, 7])))
-              (EarlierVersion
-                (mkVersion [5])))
-            mainLibSet,
-          Dependency
-            (PackageName
-              "hasktorch-signatures-partial")
-            (IntersectVersionRanges
-              (UnionVersionRanges
-                (ThisVersion
-                  (mkVersion [0, 0, 1]))
-                (LaterVersion
-                  (mkVersion [0, 0, 1])))
-              (EarlierVersion
-                (mkVersion [0, 0, 2])))
-            mainLibSet,
-          Dependency
-            (PackageName "hasktorch-indef")
-            (OrLaterVersion (mkVersion [0]))
-            mainLibSet],
+        condTreeConstraints =
+        Dependencies {
+          publicDependencies = [
+            Dependency
+              (PackageName "base")
+              (IntersectVersionRanges
+                (UnionVersionRanges
+                  (ThisVersion (mkVersion [4, 7]))
+                  (LaterVersion
+                    (mkVersion [4, 7])))
+                (EarlierVersion
+                  (mkVersion [5])))
+              mainLibSet,
+            Dependency
+              (PackageName
+                "hasktorch-signatures-partial")
+              (IntersectVersionRanges
+                (UnionVersionRanges
+                  (ThisVersion
+                    (mkVersion [0, 0, 1]))
+                  (LaterVersion
+                    (mkVersion [0, 0, 1])))
+                (EarlierVersion
+                  (mkVersion [0, 0, 2])))
+              mainLibSet,
+            Dependency
+              (PackageName "hasktorch-indef")
+              (OrLaterVersion (mkVersion [0]))
+              mainLibSet],
+          privateDependencies = []},
         condTreeComponents = []},
     _×_
       (UnqualComponentName
@@ -9463,34 +9511,38 @@ GenericPackageDescription {
                   (EarlierVersion
                     (mkVersion [0, 0, 2])))
                 mainLibSet],
+            targetPrivateBuildDepends = [],
             mixins = []}},
-        condTreeConstraints = [
-          Dependency
-            (PackageName "base")
-            (IntersectVersionRanges
-              (UnionVersionRanges
-                (ThisVersion (mkVersion [4, 7]))
-                (LaterVersion
-                  (mkVersion [4, 7])))
-              (EarlierVersion
-                (mkVersion [5])))
-            mainLibSet,
-          Dependency
-            (PackageName "hasktorch-indef")
-            (OrLaterVersion (mkVersion [0]))
-            mainLibSet,
-          Dependency
-            (PackageName
-              "hasktorch-signatures-partial")
-            (IntersectVersionRanges
-              (UnionVersionRanges
-                (ThisVersion
-                  (mkVersion [0, 0, 1]))
-                (LaterVersion
-                  (mkVersion [0, 0, 1])))
-              (EarlierVersion
-                (mkVersion [0, 0, 2])))
-            mainLibSet],
+        condTreeConstraints =
+        Dependencies {
+          publicDependencies = [
+            Dependency
+              (PackageName "base")
+              (IntersectVersionRanges
+                (UnionVersionRanges
+                  (ThisVersion (mkVersion [4, 7]))
+                  (LaterVersion
+                    (mkVersion [4, 7])))
+                (EarlierVersion
+                  (mkVersion [5])))
+              mainLibSet,
+            Dependency
+              (PackageName "hasktorch-indef")
+              (OrLaterVersion (mkVersion [0]))
+              mainLibSet,
+            Dependency
+              (PackageName
+                "hasktorch-signatures-partial")
+              (IntersectVersionRanges
+                (UnionVersionRanges
+                  (ThisVersion
+                    (mkVersion [0, 0, 1]))
+                  (LaterVersion
+                    (mkVersion [0, 0, 1])))
+                (EarlierVersion
+                  (mkVersion [0, 0, 2])))
+              mainLibSet],
+          privateDependencies = []},
         condTreeComponents = []}],
   condForeignLibs = [],
   condExecutables = [
@@ -9576,27 +9628,31 @@ GenericPackageDescription {
                       LSubLibName
                         (UnqualComponentName
                           "hasktorch-cpu")]))],
+            targetPrivateBuildDepends = [],
             mixins = []}},
-        condTreeConstraints = [
-          Dependency
-            (PackageName "base")
-            (IntersectVersionRanges
-              (UnionVersionRanges
-                (ThisVersion (mkVersion [4, 7]))
-                (LaterVersion
-                  (mkVersion [4, 7])))
-              (EarlierVersion
-                (mkVersion [5])))
-            mainLibSet,
-          Dependency
-            (PackageName "hasktorch")
-            (OrLaterVersion (mkVersion [0]))
-            (NonEmptySet.fromNonEmpty
-              (NE.fromList
-                [
-                  LSubLibName
-                    (UnqualComponentName
-                      "hasktorch-cpu")]))],
+        condTreeConstraints =
+        Dependencies {
+          publicDependencies = [
+            Dependency
+              (PackageName "base")
+              (IntersectVersionRanges
+                (UnionVersionRanges
+                  (ThisVersion (mkVersion [4, 7]))
+                  (LaterVersion
+                    (mkVersion [4, 7])))
+                (EarlierVersion
+                  (mkVersion [5])))
+              mainLibSet,
+            Dependency
+              (PackageName "hasktorch")
+              (OrLaterVersion (mkVersion [0]))
+              (NonEmptySet.fromNonEmpty
+                (NE.fromList
+                  [
+                    LSubLibName
+                      (UnqualComponentName
+                        "hasktorch-cpu")]))],
+          privateDependencies = []},
         condTreeComponents = []},
     _×_
       (UnqualComponentName
@@ -9680,27 +9736,31 @@ GenericPackageDescription {
                       LSubLibName
                         (UnqualComponentName
                           "hasktorch-gpu")]))],
+            targetPrivateBuildDepends = [],
             mixins = []}},
-        condTreeConstraints = [
-          Dependency
-            (PackageName "base")
-            (IntersectVersionRanges
-              (UnionVersionRanges
-                (ThisVersion (mkVersion [4, 7]))
-                (LaterVersion
-                  (mkVersion [4, 7])))
-              (EarlierVersion
-                (mkVersion [5])))
-            mainLibSet,
-          Dependency
-            (PackageName "hasktorch")
-            (OrLaterVersion (mkVersion [0]))
-            (NonEmptySet.fromNonEmpty
-              (NE.fromList
-                [
-                  LSubLibName
-                    (UnqualComponentName
-                      "hasktorch-gpu")]))],
+        condTreeConstraints =
+        Dependencies {
+          publicDependencies = [
+            Dependency
+              (PackageName "base")
+              (IntersectVersionRanges
+                (UnionVersionRanges
+                  (ThisVersion (mkVersion [4, 7]))
+                  (LaterVersion
+                    (mkVersion [4, 7])))
+                (EarlierVersion
+                  (mkVersion [5])))
+              mainLibSet,
+            Dependency
+              (PackageName "hasktorch")
+              (OrLaterVersion (mkVersion [0]))
+              (NonEmptySet.fromNonEmpty
+                (NE.fromList
+                  [
+                    LSubLibName
+                      (UnqualComponentName
+                        "hasktorch-gpu")]))],
+          privateDependencies = []},
         condTreeComponents = []},
     _×_
       (UnqualComponentName
@@ -9779,22 +9839,26 @@ GenericPackageDescription {
                 (PackageName "hasktorch")
                 (OrLaterVersion (mkVersion [0]))
                 mainLibSet],
+            targetPrivateBuildDepends = [],
             mixins = []}},
-        condTreeConstraints = [
-          Dependency
-            (PackageName "base")
-            (IntersectVersionRanges
-              (UnionVersionRanges
-                (ThisVersion (mkVersion [4, 7]))
-                (LaterVersion
-                  (mkVersion [4, 7])))
-              (EarlierVersion
-                (mkVersion [5])))
-            mainLibSet,
-          Dependency
-            (PackageName "hasktorch")
-            (OrLaterVersion (mkVersion [0]))
-            mainLibSet],
+        condTreeConstraints =
+        Dependencies {
+          publicDependencies = [
+            Dependency
+              (PackageName "base")
+              (IntersectVersionRanges
+                (UnionVersionRanges
+                  (ThisVersion (mkVersion [4, 7]))
+                  (LaterVersion
+                    (mkVersion [4, 7])))
+                (EarlierVersion
+                  (mkVersion [5])))
+              mainLibSet,
+            Dependency
+              (PackageName "hasktorch")
+              (OrLaterVersion (mkVersion [0]))
+              mainLibSet],
+          privateDependencies = []},
         condTreeComponents = []},
     _×_
       (UnqualComponentName "memcheck")
@@ -9872,22 +9936,26 @@ GenericPackageDescription {
                 (PackageName "hasktorch")
                 (OrLaterVersion (mkVersion [0]))
                 mainLibSet],
+            targetPrivateBuildDepends = [],
             mixins = []}},
-        condTreeConstraints = [
-          Dependency
-            (PackageName "base")
-            (IntersectVersionRanges
-              (UnionVersionRanges
-                (ThisVersion (mkVersion [4, 7]))
-                (LaterVersion
-                  (mkVersion [4, 7])))
-              (EarlierVersion
-                (mkVersion [5])))
-            mainLibSet,
-          Dependency
-            (PackageName "hasktorch")
-            (OrLaterVersion (mkVersion [0]))
-            mainLibSet],
+        condTreeConstraints =
+        Dependencies {
+          publicDependencies = [
+            Dependency
+              (PackageName "base")
+              (IntersectVersionRanges
+                (UnionVersionRanges
+                  (ThisVersion (mkVersion [4, 7]))
+                  (LaterVersion
+                    (mkVersion [4, 7])))
+                (EarlierVersion
+                  (mkVersion [5])))
+              mainLibSet,
+            Dependency
+              (PackageName "hasktorch")
+              (OrLaterVersion (mkVersion [0]))
+              mainLibSet],
+          privateDependencies = []},
         condTreeComponents = []}],
   condTestSuites = [
     _×_
@@ -10080,110 +10148,114 @@ GenericPackageDescription {
                 (PackageName "generic-lens")
                 (OrLaterVersion (mkVersion [0]))
                 mainLibSet],
+            targetPrivateBuildDepends = [],
             mixins = []},
           testCodeGenerators = []},
-        condTreeConstraints = [
-          Dependency
-            (PackageName "QuickCheck")
-            (UnionVersionRanges
-              (ThisVersion
-                (mkVersion [2, 11]))
-              (LaterVersion
-                (mkVersion [2, 11])))
-            mainLibSet,
-          Dependency
-            (PackageName "backprop")
-            (UnionVersionRanges
-              (ThisVersion
-                (mkVersion [0, 2, 5]))
-              (LaterVersion
-                (mkVersion [0, 2, 5])))
-            mainLibSet,
-          Dependency
-            (PackageName "base")
-            (IntersectVersionRanges
+        condTreeConstraints =
+        Dependencies {
+          publicDependencies = [
+            Dependency
+              (PackageName "QuickCheck")
               (UnionVersionRanges
-                (ThisVersion (mkVersion [4, 7]))
+                (ThisVersion
+                  (mkVersion [2, 11]))
                 (LaterVersion
-                  (mkVersion [4, 7])))
-              (EarlierVersion
-                (mkVersion [5])))
-            mainLibSet,
-          Dependency
-            (PackageName "dimensions")
-            (UnionVersionRanges
-              (ThisVersion (mkVersion [1, 0]))
-              (LaterVersion
-                (mkVersion [1, 0])))
-            mainLibSet,
-          Dependency
-            (PackageName
-              "ghc-typelits-natnormalise")
-            (OrLaterVersion (mkVersion [0]))
-            mainLibSet,
-          Dependency
-            (PackageName "hasktorch")
-            (OrLaterVersion (mkVersion [0]))
-            mainLibSet,
-          Dependency
-            (PackageName "hspec")
-            (UnionVersionRanges
-              (ThisVersion
-                (mkVersion [2, 4, 4]))
-              (LaterVersion
-                (mkVersion [2, 4, 4])))
-            mainLibSet,
-          Dependency
-            (PackageName "singletons")
-            (UnionVersionRanges
-              (ThisVersion (mkVersion [2, 2]))
-              (LaterVersion
-                (mkVersion [2, 2])))
-            mainLibSet,
-          Dependency
-            (PackageName "mtl")
-            (UnionVersionRanges
-              (ThisVersion
-                (mkVersion [2, 2, 2]))
-              (LaterVersion
-                (mkVersion [2, 2, 2])))
-            mainLibSet,
-          Dependency
-            (PackageName
-              "microlens-platform")
-            (UnionVersionRanges
-              (ThisVersion
-                (mkVersion [0, 3, 10]))
-              (LaterVersion
-                (mkVersion [0, 3, 10])))
-            mainLibSet,
-          Dependency
-            (PackageName "monad-loops")
-            (UnionVersionRanges
-              (ThisVersion
-                (mkVersion [0, 4, 3]))
-              (LaterVersion
-                (mkVersion [0, 4, 3])))
-            mainLibSet,
-          Dependency
-            (PackageName "time")
-            (UnionVersionRanges
-              (ThisVersion
-                (mkVersion [1, 8, 0]))
-              (LaterVersion
-                (mkVersion [1, 8, 0])))
-            mainLibSet,
-          Dependency
-            (PackageName "transformers")
-            (UnionVersionRanges
-              (ThisVersion
-                (mkVersion [0, 5, 5]))
-              (LaterVersion
-                (mkVersion [0, 5, 5])))
-            mainLibSet,
-          Dependency
-            (PackageName "generic-lens")
-            (OrLaterVersion (mkVersion [0]))
-            mainLibSet],
+                  (mkVersion [2, 11])))
+              mainLibSet,
+            Dependency
+              (PackageName "backprop")
+              (UnionVersionRanges
+                (ThisVersion
+                  (mkVersion [0, 2, 5]))
+                (LaterVersion
+                  (mkVersion [0, 2, 5])))
+              mainLibSet,
+            Dependency
+              (PackageName "base")
+              (IntersectVersionRanges
+                (UnionVersionRanges
+                  (ThisVersion (mkVersion [4, 7]))
+                  (LaterVersion
+                    (mkVersion [4, 7])))
+                (EarlierVersion
+                  (mkVersion [5])))
+              mainLibSet,
+            Dependency
+              (PackageName "dimensions")
+              (UnionVersionRanges
+                (ThisVersion (mkVersion [1, 0]))
+                (LaterVersion
+                  (mkVersion [1, 0])))
+              mainLibSet,
+            Dependency
+              (PackageName
+                "ghc-typelits-natnormalise")
+              (OrLaterVersion (mkVersion [0]))
+              mainLibSet,
+            Dependency
+              (PackageName "hasktorch")
+              (OrLaterVersion (mkVersion [0]))
+              mainLibSet,
+            Dependency
+              (PackageName "hspec")
+              (UnionVersionRanges
+                (ThisVersion
+                  (mkVersion [2, 4, 4]))
+                (LaterVersion
+                  (mkVersion [2, 4, 4])))
+              mainLibSet,
+            Dependency
+              (PackageName "singletons")
+              (UnionVersionRanges
+                (ThisVersion (mkVersion [2, 2]))
+                (LaterVersion
+                  (mkVersion [2, 2])))
+              mainLibSet,
+            Dependency
+              (PackageName "mtl")
+              (UnionVersionRanges
+                (ThisVersion
+                  (mkVersion [2, 2, 2]))
+                (LaterVersion
+                  (mkVersion [2, 2, 2])))
+              mainLibSet,
+            Dependency
+              (PackageName
+                "microlens-platform")
+              (UnionVersionRanges
+                (ThisVersion
+                  (mkVersion [0, 3, 10]))
+                (LaterVersion
+                  (mkVersion [0, 3, 10])))
+              mainLibSet,
+            Dependency
+              (PackageName "monad-loops")
+              (UnionVersionRanges
+                (ThisVersion
+                  (mkVersion [0, 4, 3]))
+                (LaterVersion
+                  (mkVersion [0, 4, 3])))
+              mainLibSet,
+            Dependency
+              (PackageName "time")
+              (UnionVersionRanges
+                (ThisVersion
+                  (mkVersion [1, 8, 0]))
+                (LaterVersion
+                  (mkVersion [1, 8, 0])))
+              mainLibSet,
+            Dependency
+              (PackageName "transformers")
+              (UnionVersionRanges
+                (ThisVersion
+                  (mkVersion [0, 5, 5]))
+                (LaterVersion
+                  (mkVersion [0, 5, 5])))
+              mainLibSet,
+            Dependency
+              (PackageName "generic-lens")
+              (OrLaterVersion (mkVersion [0]))
+              mainLibSet],
+          privateDependencies = []},
         condTreeComponents = []}],
   condBenchmarks = []}

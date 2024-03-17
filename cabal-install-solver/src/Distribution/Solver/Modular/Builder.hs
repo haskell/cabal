@@ -73,7 +73,7 @@ extendOpen qpn' gs s@(BS { rdeps = gs', open = o' }) = go gs' o' gs
       -- the later addition will have better dependency information.
     go g o ((Stanza sn@(SN qpn _) t)           : ngs) =
         go g (StanzaGoal sn t (flagGR qpn) : o) ngs
-    go g o ((Simple (LDep dr (Dep (PkgComponent qpn _) _)) c) : ngs)
+    go g o ((Simple (LDep dr (Dep (PkgComponent qpn _) _is_private _)) c) : ngs)
       | qpn == qpn'       =
             -- We currently only add a self-dependency to the graph if it is
             -- between a package and its setup script. The edge creates a cycle
@@ -100,12 +100,12 @@ extendOpen qpn' gs s@(BS { rdeps = gs', open = o' }) = go gs' o' gs
 
 -- | Given the current scope, qualify all the package names in the given set of
 -- dependencies and then extend the set of open goals accordingly.
-scopedExtendOpen :: QPN -> FlaggedDeps PN -> FlagInfo ->
+scopedExtendOpen :: RevDepMap -> QPN -> FlaggedDeps PN -> FlagInfo ->
                     BuildState -> BuildState
-scopedExtendOpen qpn fdeps fdefs s = extendOpen qpn gs s
+scopedExtendOpen rdm qpn fdeps fdefs s = extendOpen qpn gs s
   where
     -- Qualify all package names
-    qfdeps = qualifyDeps (qualifyOptions s) qpn fdeps
+    qfdeps = qualifyDeps (qualifyOptions s) rdm qpn fdeps
     -- Introduce all package flags
     qfdefs = L.map (\ (fn, b) -> Flagged (FN qpn fn) b [] []) $ M.toList fdefs
     -- Combine new package and flag goals
@@ -179,8 +179,8 @@ addChildren bs@(BS { rdeps = rdm, next = OneGoal (StanzaGoal qsn@(SN qpn _) t gr
 -- and furthermore we update the set of goals.
 --
 -- TODO: We could inline this above.
-addChildren bs@(BS { next = Instance qpn (PInfo fdeps _ fdefs _) }) =
-  addChildren ((scopedExtendOpen qpn fdeps fdefs bs)
+addChildren bs@(BS { rdeps = rdm, next = Instance qpn (PInfo fdeps _ fdefs _) }) =
+  addChildren ((scopedExtendOpen rdm qpn fdeps fdefs bs)
          { next = Goals })
 
 {-------------------------------------------------------------------------------
@@ -263,7 +263,7 @@ buildTree idx (IndependentGoals ind) igs =
     topLevelGoal qpn = PkgGoal qpn UserGoal
 
     qpns | ind       = L.map makeIndependent igs
-         | otherwise = L.map (Q (PackagePath DefaultNamespace QualToplevel)) igs
+         | otherwise = L.map (Q (PackagePath DefaultNamespace QualToplevel) ) igs
 
 {-------------------------------------------------------------------------------
   Goals

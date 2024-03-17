@@ -8,6 +8,7 @@ import Distribution.Client.Compat.Prelude
 import Data.List ((\\))
 import Distribution.Described
 
+import Distribution.Types.Dependency (PrivateAlias)
 import Distribution.Types.PackageId (PackageIdentifier)
 import Distribution.Types.PackageName (PackageName)
 import Distribution.Types.VersionRange (VersionRange)
@@ -164,6 +165,7 @@ instance Described UserConstraint where
         REUnion
           [ "any." <> describePN
           , "setup." <> describePN
+          , "private." <> describePN <> "." <> describe (Proxy :: Proxy PrivateAlias) <> ":" <> describePN
           , describePN
           , describePN <> ":setup." <> describePN
           ]

@@ -204,7 +204,7 @@ symlinkBinaries
           case finalizePD
             flags
             (enableStanzas stanzas)
-            (const True)
+            (\_ _ -> True)
             platform
             cinfo
             []

@@ -99,12 +99,6 @@ validModuleComponent (c : cs) = isUpper c && all validModuleChar cs
 instance IsString ModuleName where
   fromString = ModuleName . toShortText
 
--- | Construct a 'ModuleName' from valid module components, i.e. parts
--- separated by dots.
-fromComponents :: [String] -> ModuleName
-fromComponents comps = fromString (intercalate "." comps)
-{-# DEPRECATED fromComponents "Exists for cabal-install only" #-}
-
 -- | The module name @Main@.
 main :: ModuleName
 main = ModuleName (fromString "Main")
@@ -118,6 +112,13 @@ components mn = split (unModuleName mn)
     split cs = case break (== '.') cs of
       (chunk, []) -> chunk : []
       (chunk, _ : rest) -> chunk : split rest
+
+-- | Construct a 'ModuleName' from valid module components, i.e. parts
+-- separated by dots.
+--
+-- Inverse of 'components', i.e. @fromComponents (components x) = x@
+fromComponents :: [String] -> ModuleName
+fromComponents comps = fromString (intercalate "." comps)
 
 -- | Convert a module name to a file path, but without any file extension.
 -- For example:

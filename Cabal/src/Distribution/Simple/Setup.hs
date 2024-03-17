@@ -41,6 +41,7 @@ module Distribution.Simple.Setup
   , ConfigFlags (..)
   , emptyConfigFlags
   , defaultConfigFlags
+  , AliasDependency (..)
   , configureCommand
   , configPrograms
   , configAbsolutePaths

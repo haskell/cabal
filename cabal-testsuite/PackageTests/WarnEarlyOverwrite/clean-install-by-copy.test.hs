@@ -1,7 +1,8 @@
 import Test.Cabal.Prelude
 
-main = withShorterPathForNewBuildStore $ \storeDir -> cabalTest $ do
-    let options = ["--store-dir=" ++ storeDir, "--installdir=" ++ storeDir]
+main = cabalTest $ withShorterPathForNewBuildStore $ do
+    storeDir <- testStoreDir <$> getTestEnv
+    let options = ["--installdir=" ++ storeDir]
     -- Use install method copy that should surely work on Windows too but our
     -- path normalization for testing is not good enough yet as can be seen in
     -- this CI failure snippet diff:

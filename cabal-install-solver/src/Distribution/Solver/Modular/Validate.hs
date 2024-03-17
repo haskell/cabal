@@ -158,7 +158,7 @@ validate = go
   where
     go :: Tree d c -> Validate (Tree d c)
 
-    go (PChoice qpn rdm gr       ts) = PChoice qpn rdm gr <$> W.traverseWithKey (\k -> goP qpn k . go) ts
+    go (PChoice qpn rdm gr       ts) = PChoice qpn rdm gr <$> W.traverseWithKey (\k -> goP rdm qpn k . go) ts
     go (FChoice qfn rdm gr b m d ts) =
       do
         -- Flag choices may occur repeatedly (because they can introduce new constraints
@@ -190,8 +190,8 @@ validate = go
     go (Fail    c fr               ) = pure (Fail c fr)
 
     -- What to do for package nodes ...
-    goP :: QPN -> POption -> Validate (Tree d c) -> Validate (Tree d c)
-    goP qpn@(Q _pp pn) (POption i _) r = do
+    goP :: RevDepMap -> QPN -> POption -> Validate (Tree d c) -> Validate (Tree d c)
+    goP rdm qpn@(Q _pp pn) (POption i _) r = do
       PA ppa pfa psa <- asks pa    -- obtain current preassignment
       extSupported   <- asks supportedExt  -- obtain the supported extensions
       langSupported  <- asks supportedLang -- obtain the supported languages
@@ -204,7 +204,7 @@ validate = go
       -- obtain dependencies and index-dictated exclusions introduced by the choice
       let (PInfo deps comps _ mfr) = idx ! pn ! i
       -- qualify the deps in the current scope
-      let qdeps = qualifyDeps qo qpn deps
+      let qdeps = qualifyDeps qo rdm qpn deps
       -- the new active constraints are given by the instance we have chosen,
       -- plus the dependency information we have for that instance
       let newactives = extractAllDeps pfa psa qdeps
@@ -400,7 +400,7 @@ extend extSupported langSupported pkgPresent newactives ppa = foldM extendSingle
     extendSingle a (LDep dr (Pkg pn vr))  =
       if pkgPresent pn vr then Right a
                           else Left (dependencyReasonToConflictSet dr, MissingPkgconfigPackage pn vr)
-    extendSingle a (LDep dr (Dep dep@(PkgComponent qpn _) ci)) =
+    extendSingle a (LDep dr (Dep dep@(PkgComponent qpn _) _is_private ci)) =
       let mergedDep = M.findWithDefault (MergedDepConstrained []) qpn a
       in  case (\ x -> M.insert qpn x a) <$> merge mergedDep (PkgDep dr dep ci) of
             Left (c, (d, d')) -> Left (c, ConflictingConstraints d d')
@@ -530,7 +530,7 @@ extendRequiredComponents eqpn available = foldM extendSingle
     extendSingle :: Map QPN ComponentDependencyReasons
                  -> LDep QPN
                  -> Either Conflict (Map QPN ComponentDependencyReasons)
-    extendSingle required (LDep dr (Dep (PkgComponent qpn comp) _)) =
+    extendSingle required (LDep dr (Dep (PkgComponent qpn comp) _is_private _)) =
       let compDeps = M.findWithDefault M.empty qpn required
           success = Right $ M.insertWith M.union qpn (M.insert comp dr compDeps) required
       in -- Only check for the existence of the component if its package has

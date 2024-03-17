@@ -3,13 +3,13 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 module Test.QuickCheck.Instances.Cabal () where
 
-import Control.Applicative        (liftA2)
 import Data.Bits                  (shiftR)
 import Data.Char                  (isAlphaNum, isDigit, toLower)
 import Data.List                  (intercalate, (\\))
 import Data.List.NonEmpty         (NonEmpty (..))
 import Distribution.Utils.Generic (lowercase)
 import Test.QuickCheck
+import Control.Applicative (liftA2)
 
 #if MIN_VERSION_base(4,8,0)
 import Data.Bits (countLeadingZeros, finiteBitSize, shiftL)
@@ -204,6 +204,23 @@ instance Arbitrary Dependency where
     shrink (Dependency pn vr lb) =
         [ mkDependency pn' vr' lb'
         | (pn', vr', lb') <- shrink (pn, vr, lb)
+        ]
+
+-------------------------------------------------------------------------------
+-- Private Dependency
+-------------------------------------------------------------------------------
+
+instance Arbitrary PrivateAlias where
+  arbitrary = PrivateAlias <$> arbitrary
+  shrink (PrivateAlias al) = PrivateAlias <$> shrink al
+instance Arbitrary PrivateDependency where
+    arbitrary = PrivateDependency
+        <$> arbitrary
+        <*> arbitrary
+
+    shrink (PrivateDependency al dps) =
+        [ PrivateDependency al' dps'
+        | (al', dps') <- shrink (al, dps)
         ]
 
 -------------------------------------------------------------------------------

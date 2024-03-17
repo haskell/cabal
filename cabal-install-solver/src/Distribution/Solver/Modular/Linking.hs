@@ -85,11 +85,11 @@ validateLinking index = (`runReader` initVS) . go
     go :: Tree d c -> Validate (Tree d c)
 
     go (PChoice qpn rdm gr       cs) =
-      PChoice qpn rdm gr       <$> W.traverseWithKey (goP qpn) (fmap go cs)
+      PChoice qpn rdm gr       <$> W.traverseWithKey (goP rdm qpn) (fmap go cs)
     go (FChoice qfn rdm gr t m d cs) =
-      FChoice qfn rdm gr t m d <$> W.traverseWithKey (goF qfn) (fmap go cs)
+      FChoice qfn rdm gr t m d <$> W.traverseWithKey (goF rdm qfn) (fmap go cs)
     go (SChoice qsn rdm gr t     cs) =
-      SChoice qsn rdm gr t     <$> W.traverseWithKey (goS qsn) (fmap go cs)
+      SChoice qsn rdm gr t     <$> W.traverseWithKey (goS rdm qsn) (fmap go cs)
 
     -- For the other nodes we just recurse
     go (GoalChoice rdm           cs) = GoalChoice rdm <$> T.traverse go cs
@@ -97,29 +97,29 @@ validateLinking index = (`runReader` initVS) . go
     go (Fail conflictSet failReason) = return $ Fail conflictSet failReason
 
     -- Package choices
-    goP :: QPN -> POption -> Validate (Tree d c) -> Validate (Tree d c)
-    goP qpn@(Q _pp pn) opt@(POption i _) r = do
+    goP :: RevDepMap -> QPN -> POption -> Validate (Tree d c) -> Validate (Tree d c)
+    goP rdm qpn@(Q _pp pn) opt@(POption i _) r = do
       vs <- ask
       let PInfo deps _ _ _ = vsIndex vs ! pn ! i
-          qdeps            = qualifyDeps (vsQualifyOptions vs) qpn deps
+          qdeps            = qualifyDeps (vsQualifyOptions vs) rdm qpn deps
           newSaved         = M.insert qpn qdeps (vsSaved vs)
-      case execUpdateState (pickPOption qpn opt qdeps) vs of
+      case execUpdateState (pickPOption rdm qpn opt qdeps) vs of
         Left  (cs, err) -> return $ Fail cs (DependenciesNotLinked err)
         Right vs'       -> local (const vs' { vsSaved = newSaved }) r
 
     -- Flag choices
-    goF :: QFN -> Bool -> Validate (Tree d c) -> Validate (Tree d c)
-    goF qfn b r = do
+    goF :: RevDepMap -> QFN -> Bool -> Validate (Tree d c) -> Validate (Tree d c)
+    goF rdm qfn b r = do
       vs <- ask
-      case execUpdateState (pickFlag qfn b) vs of
+      case execUpdateState (pickFlag rdm qfn b) vs of
         Left  (cs, err) -> return $ Fail cs (DependenciesNotLinked err)
         Right vs'       -> local (const vs') r
 
     -- Stanza choices (much the same as flag choices)
-    goS :: QSN -> Bool -> Validate (Tree d c) -> Validate (Tree d c)
-    goS qsn b r = do
+    goS :: RevDepMap -> QSN -> Bool -> Validate (Tree d c) -> Validate (Tree d c)
+    goS rdm qsn b r = do
       vs <- ask
-      case execUpdateState (pickStanza qsn b) vs of
+      case execUpdateState (pickStanza rdm qsn b) vs of
         Left  (cs, err) -> return $ Fail cs (DependenciesNotLinked err)
         Right vs'       -> local (const vs') r
 
@@ -159,9 +159,9 @@ conflict = lift' . Left
 execUpdateState :: UpdateState () -> ValidateState -> Either Conflict ValidateState
 execUpdateState = execStateT . unUpdateState
 
-pickPOption :: QPN -> POption -> FlaggedDeps QPN -> UpdateState ()
-pickPOption qpn (POption i Nothing)    _deps = pickConcrete qpn i
-pickPOption qpn (POption i (Just pp'))  deps = pickLink     qpn i pp' deps
+pickPOption :: RevDepMap -> QPN -> POption -> FlaggedDeps QPN -> UpdateState ()
+pickPOption _rdm qpn (POption i Nothing)    _deps = pickConcrete qpn i
+pickPOption  rdm qpn (POption i (Just pp'))  deps = pickLink rdm qpn i pp' deps
 
 pickConcrete :: QPN -> I -> UpdateState ()
 pickConcrete qpn@(Q pp _) i = do
@@ -177,8 +177,8 @@ pickConcrete qpn@(Q pp _) i = do
       Just lg ->
         makeCanonical lg qpn i
 
-pickLink :: QPN -> I -> PackagePath -> FlaggedDeps QPN -> UpdateState ()
-pickLink qpn@(Q _pp pn) i pp' deps = do
+pickLink :: RevDepMap -> QPN -> I -> PackagePath -> FlaggedDeps QPN -> UpdateState ()
+pickLink rdm qpn@(Q _pp pn) i pp' deps = do
     vs <- get
 
     -- The package might already be in a link group
@@ -209,7 +209,7 @@ pickLink qpn@(Q _pp pn) i pp' deps = do
     updateLinkGroup lgTarget'
 
     -- Make sure all dependencies are linked as well
-    linkDeps target deps
+    linkDeps rdm target deps
 
 makeCanonical :: LinkGroup -> QPN -> I -> UpdateState ()
 makeCanonical lg qpn@(Q pp _) i =
@@ -233,8 +233,8 @@ makeCanonical lg qpn@(Q pp _) i =
 -- because having the direct dependencies in a link group means that we must
 -- have already made or will make sooner or later a link choice for one of these
 -- as well, and cover their dependencies at that point.
-linkDeps :: QPN -> FlaggedDeps QPN -> UpdateState ()
-linkDeps target = \deps -> do
+linkDeps :: RevDepMap -> QPN -> FlaggedDeps QPN -> UpdateState ()
+linkDeps rdm target = \deps -> do
     -- linkDeps is called in two places: when we first link one package to
     -- another, and when we discover more dependencies of an already linked
     -- package after doing some flag assignment. It is therefore important that
@@ -248,7 +248,7 @@ linkDeps target = \deps -> do
 
     go1 :: FlaggedDep QPN -> FlaggedDep QPN -> UpdateState ()
     go1 dep rdep = case (dep, rdep) of
-      (Simple (LDep dr1 (Dep (PkgComponent qpn _) _)) _, ~(Simple (LDep dr2 (Dep (PkgComponent qpn' _) _)) _)) -> do
+      (Simple (LDep dr1 (Dep (PkgComponent qpn _) _is_private1 _)) _, ~(Simple (LDep dr2 (Dep (PkgComponent qpn' _) _is_private2 _)) _)) -> do
         vs <- get
         let lg   = M.findWithDefault (lgSingleton qpn  Nothing) qpn  $ vsLinks vs
             lg'  = M.findWithDefault (lgSingleton qpn' Nothing) qpn' $ vsLinks vs
@@ -276,19 +276,19 @@ linkDeps target = \deps -> do
     requalify :: FlaggedDeps QPN -> UpdateState (FlaggedDeps QPN)
     requalify deps = do
       vs <- get
-      return $ qualifyDeps (vsQualifyOptions vs) target (unqualifyDeps deps)
+      return $ qualifyDeps (vsQualifyOptions vs) rdm target (unqualifyDeps deps)
 
-pickFlag :: QFN -> Bool -> UpdateState ()
-pickFlag qfn b = do
+pickFlag :: RevDepMap -> QFN -> Bool -> UpdateState ()
+pickFlag rdm qfn b = do
     modify $ \vs -> vs { vsFlags = M.insert qfn b (vsFlags vs) }
     verifyFlag qfn
-    linkNewDeps (F qfn) b
+    linkNewDeps rdm (F qfn) b
 
-pickStanza :: QSN -> Bool -> UpdateState ()
-pickStanza qsn b = do
+pickStanza :: RevDepMap -> QSN -> Bool -> UpdateState ()
+pickStanza rdm qsn b = do
     modify $ \vs -> vs { vsStanzas = M.insert qsn b (vsStanzas vs) }
     verifyStanza qsn
-    linkNewDeps (S qsn) b
+    linkNewDeps rdm (S qsn) b
 
 -- | Link dependencies that we discover after making a flag or stanza choice.
 --
@@ -297,15 +297,15 @@ pickStanza qsn b = do
 -- non-trivial link group, then these new dependencies have to be linked as
 -- well. In linkNewDeps, we compute such new dependencies and make sure they are
 -- linked.
-linkNewDeps :: Var QPN -> Bool -> UpdateState ()
-linkNewDeps var b = do
+linkNewDeps :: RevDepMap -> Var QPN -> Bool -> UpdateState ()
+linkNewDeps rdm var b = do
     vs <- get
     let qpn@(Q pp pn)           = varPN var
         qdeps                   = vsSaved vs ! qpn
         lg                      = vsLinks vs ! qpn
         newDeps                 = findNewDeps vs qdeps
         linkedTo                = S.delete pp (lgMembers lg)
-    forM_ (S.toList linkedTo) $ \pp' -> linkDeps (Q pp' pn) newDeps
+    forM_ (S.toList linkedTo) $ \pp' -> linkDeps rdm (Q pp' pn) newDeps
   where
     findNewDeps :: ValidateState -> FlaggedDeps QPN -> FlaggedDeps QPN
     findNewDeps vs = concatMap (findNewDeps' vs)

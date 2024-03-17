@@ -1653,7 +1653,7 @@ installReadyPackage
                 CD.nonSetupDeps deps
             ]
         , configDependencies =
-            [ GivenComponent (packageName srcid) cname dep_ipid
+            [ GivenComponent (packageName srcid) cname dep_ipid Nothing
             | ConfiguredId srcid (Just (PackageDescription.CLibName cname)) dep_ipid <-
                 CD.nonSetupDeps deps
             ]
@@ -1669,7 +1669,7 @@ installReadyPackage
       pkg = case finalizePD
         flags
         (enableStanzas stanzas)
-        (const True)
+        (\_ _ -> True)
         platform
         cinfo
         []
