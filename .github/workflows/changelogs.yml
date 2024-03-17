@@ -48,12 +48,14 @@ jobs:
           ghcup set ghc recommended
       - name: Update Hackage index
         run: cabal v2-update
-      # Cannot install it from tarball due to
+      # Cannot install it directly from remote tarball due to
       # https://github.com/haskell/cabal/issues/7360
-      - uses: actions/checkout@v4
-        with:
-          repository: "fgaz/changelog-d"
-          path: "changelog-d"
+      - name: Fetch changelog-d
+        run: |
+          changelog_d_latest="$(curl https://codeberg.org/api/v1/repos/fgaz/changelog-d/branches/master | jq -r .commit.id)"
+          echo "Using changelog-d revision $changelog_d_latest"
+          curl "https://codeberg.org/fgaz/changelog-d/archive/$changelog_d_latest.tar.gz" -o changelog-d.tar.gz
+          tar -xf changelog-d.tar.gz
       - name: Install changelog-d
         run: |
           pushd changelog-d

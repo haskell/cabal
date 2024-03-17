@@ -2,6 +2,7 @@ synopsis: Clarify the semantics of the -package-db flag
 packages: cabal-install
 prs:
 issues: #9678
+prs: #9683
 
 description: {
 
