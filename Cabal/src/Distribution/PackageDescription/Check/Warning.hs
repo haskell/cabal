@@ -233,6 +233,7 @@ data CheckExplanation
   | CVTestSuite
   | CVDefaultLanguage
   | CVDefaultLanguageComponent
+  | CVDefaultLanguageComponentSoft
   | CVExtraDocFiles
   | CVMultiLib
   | CVReexported
@@ -394,6 +395,7 @@ data CheckExplanationID
   | CICVTestSuite
   | CICVDefaultLanguage
   | CICVDefaultLanguageComponent
+  | CICVDefaultLanguageComponentSoft
   | CICVExtraDocFiles
   | CICVMultiLib
   | CICVReexported
@@ -534,6 +536,7 @@ checkExplanationId (FilePathEmpty{}) = CIFilePathEmpty
 checkExplanationId (CVTestSuite{}) = CICVTestSuite
 checkExplanationId (CVDefaultLanguage{}) = CICVDefaultLanguage
 checkExplanationId (CVDefaultLanguageComponent{}) = CICVDefaultLanguageComponent
+checkExplanationId (CVDefaultLanguageComponentSoft{}) = CICVDefaultLanguageComponentSoft
 checkExplanationId (CVExtraDocFiles{}) = CICVExtraDocFiles
 checkExplanationId (CVMultiLib{}) = CICVMultiLib
 checkExplanationId (CVReexported{}) = CICVReexported
@@ -679,6 +682,7 @@ ppCheckExplanationId CIFilePathEmpty = "empty-path"
 ppCheckExplanationId CICVTestSuite = "test-cabal-ver"
 ppCheckExplanationId CICVDefaultLanguage = "default-language"
 ppCheckExplanationId CICVDefaultLanguageComponent = "no-default-language"
+ppCheckExplanationId CICVDefaultLanguageComponentSoft = "add-language"
 ppCheckExplanationId CICVExtraDocFiles = "extra-doc-files"
 ppCheckExplanationId CICVMultiLib = "multilib"
 ppCheckExplanationId CICVReexported = "reexported-modules"
@@ -1163,6 +1167,10 @@ ppExplanation CVDefaultLanguageComponent =
     ++ "Haskell98 or Haskell2010). If a component uses different languages "
     ++ "in different modules then list the other ones in the "
     ++ "'other-languages' field."
+ppExplanation CVDefaultLanguageComponentSoft =
+  "Without `default-language`, cabal will default to Haskell98, which is "
+    ++ "probably not what you want. Please add `default-language` to all "
+    ++ "targets."
 ppExplanation CVExtraDocFiles =
   "To use the 'extra-doc-files' field the package needs to specify "
     ++ "'cabal-version: 1.18' or higher."
