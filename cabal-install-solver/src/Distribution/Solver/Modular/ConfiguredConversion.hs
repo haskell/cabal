@@ -2,6 +2,7 @@ module Distribution.Solver.Modular.ConfiguredConversion
     ( convCP
     ) where
 
+import Distribution.Compat.Prelude (traceShow)
 import Data.Maybe
 import Prelude hiding (pi)
 import Data.Either (partitionEithers)
@@ -58,8 +59,13 @@ convCP iidx sidx (CP qpi fa es ds) =
     -- This will probably become simpler after the private dependencies refactor
     -- of Namespace vs Qualifier lands.
     qpn2Scope :: QPN -> ConstraintScope
-    qpn2Scope (Q (PackagePath _ns ql) pkg) = ScopeQualified ql pkg
-
+    qpn2Scope q@(Q (PackagePath _ns ql) pkg) = traceShow ("qpn2Scope", q, ScopeQualified ql pkg) $ ScopeQualified ql pkg -- case ql of
+     -- ROMES:TODO
+     --    QualToplevel ->
+     --  | QualBase PackageName
+     --  | QualSetup PackageName
+     --  | QualExe PackageName PackageName
+   
 convPI :: PI QPN -> (Either UnitId PackageId, QPN)
 convPI (PI qpn (I _ (Inst pi))) = (Left pi, qpn)
 convPI pi@(PI qpn _)            = (Right (packageId (either id id (convConfId pi))), qpn)
