@@ -20,4 +20,3 @@ executable demo
   else
     cmm-options: -ddump-cmm
 
-

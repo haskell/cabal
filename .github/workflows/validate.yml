@@ -285,7 +285,7 @@ jobs:
         run: sh validate.sh ${{ env.COMMON_FLAGS }} --lib-only -s lib-suite-extras --extra-hc ${{ env.EXTRA_GHC }}
 
   build-alpine:
-    name: Build statically linked using alpine 
+    name: Build statically linked using alpine
     runs-on: "ubuntu-latest"
     container: "alpine:3.19"
     steps:

@@ -53,12 +53,12 @@ tests = testGroup "Distribution.Simple.Program.GHC"
                       , compilerCompat = []
                       , compilerLanguages = []
                       , compilerExtensions = []
-                      , compilerProperties = Map.singleton "Support parallel --make" "YES" 
+                      , compilerProperties = Map.singleton "Support parallel --make" "YES"
                       })
                   (Platform X86_64 Linux)
                   (mempty { ghcOptNumJobs = Flag (NumJobs (Just 4)) })
             assertListEquals flags ["-j4", "-clear-package-db"]
-        ]        
+        ]
     ]
 
 assertListEquals :: (Eq a, Show a) => [a] -> [a] -> Assertion
