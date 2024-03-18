@@ -51,8 +51,8 @@ resolverPackageConstraintScope (Configured _ cs) = cs
 
 instance IsNode (ResolverPackage loc) where
   type Key (ResolverPackage loc) = SolverId
-  nodeKey (PreExisting ipkg _) = PreExistingId (packageId ipkg) (installedUnitId ipkg)
-  nodeKey (Configured spkg _) = PlannedId (packageId spkg)
+  nodeKey (PreExisting ipkg cs) = PreExistingId (packageId ipkg) (installedUnitId ipkg) cs
+  nodeKey (Configured spkg cs) = PlannedId (packageId spkg) cs
   -- Use dependencies for ALL components
   nodeNeighbors pkg =
     ordNub $ CD.flatDeps (resolverPackageLibDeps pkg) ++

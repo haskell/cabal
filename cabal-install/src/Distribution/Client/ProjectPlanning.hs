@@ -147,6 +147,8 @@ import Distribution.Solver.Types.Settings
 import Distribution.Solver.Types.SolverId
 import Distribution.Solver.Types.SolverPackage
 import Distribution.Solver.Types.SourcePackage
+import Distribution.Solver.Types.PackagePath
+import Distribution.Solver.Types.PackageConstraint
 
 import Distribution.ModuleName
 import Distribution.Package
@@ -2330,7 +2332,8 @@ elaborateInstallPlan
           map packageId $
             SolverInstallPlan.reverseDependencyClosure
               solverPlan
-              (map PlannedId (Set.toList pkgsLocalToProject))
+              {- romes:todo: I guess here it makes sense? -}
+              (map (\x -> PlannedId x (ScopeQualified QualToplevel (pkgName x))) (Set.toList pkgsLocalToProject))
 
       isLocalToProject :: Package pkg => pkg -> Bool
       isLocalToProject pkg =

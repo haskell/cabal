@@ -6,6 +6,7 @@ module Distribution.Solver.Types.SolverId
 where
 
 import Distribution.Solver.Compat.Prelude
+import Distribution.Solver.Types.PackageConstraint
 import Prelude ()
 
 import Distribution.Package (PackageId, Package(..), UnitId)
@@ -15,8 +16,10 @@ import Distribution.Package (PackageId, Package(..), UnitId)
 -- yet know the 'UnitId' for planned packages, because it's
 -- not the solver's job to compute them.
 --
-data SolverId = PreExistingId { solverSrcId :: PackageId, solverInstId :: UnitId }
-              | PlannedId     { solverSrcId :: PackageId }
+-- We keep the constraint scope as a solved package must also be identified by
+-- the scope it was resolved in (in particular to generate proper freeze files)
+data SolverId = PreExistingId { solverSrcId :: PackageId, solverInstId :: UnitId, solverScope :: ConstraintScope }
+              | PlannedId     { solverSrcId :: PackageId, solverScope :: ConstraintScope }
   deriving (Eq, Ord, Generic)
 
 instance Binary SolverId

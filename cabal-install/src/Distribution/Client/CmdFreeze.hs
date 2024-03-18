@@ -39,7 +39,6 @@ import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.PackageConstraint
   ( ConstraintScope (..)
   , PackageProperty (..)
-  , scopeToPackageName
   )
 
 import Distribution.Client.Setup
