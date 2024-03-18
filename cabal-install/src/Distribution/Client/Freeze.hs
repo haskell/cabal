@@ -27,8 +27,6 @@ import Distribution.Client.IndexUtils as IndexUtils
   ( getInstalledPackages
   , getSourcePackages
   )
-import Distribution.Solver.Types.PackagePath
-import Distribution.Solver.Types.PackageConstraint
 import Distribution.Client.Sandbox.PackageEnvironment
   ( loadUserConfig
   , pkgEnvSavedConfig
@@ -293,7 +291,7 @@ pruneInstallPlan installPlan pkgSpecifiers =
     SolverInstallPlan.dependencyClosure installPlan pkgIds
   where
     pkgIds =
-      [ PlannedId (packageId pkg) (ScopeQualified QualToplevel (packageName pkg)) {- ROMES: this feels wrong... maybe this approach is wrong?... -}
+      [ PlannedId (packageId pkg)
       | SpecificSourcePackage pkg <- pkgSpecifiers
       ]
     removeSelf [thisPkg] = filter (\pp -> packageId pp /= packageId thisPkg)

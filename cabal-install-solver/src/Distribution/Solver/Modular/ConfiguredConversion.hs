@@ -56,14 +56,24 @@ convCP iidx sidx (CP qpi fa es ds) =
     ds' :: ComponentDeps ([SolverId] {- lib -}, [SolverId] {- exe -})
     ds' = fmap (partitionEithers . map convConfId) ds
 
+    -- This will probably become simpler after the private dependencies refactor
+    -- of Namespace vs Qualifier lands.
+    qpn2Scope :: QPN -> ConstraintScope
+    qpn2Scope q@(Q (PackagePath _ns ql) pkg) = traceShow ("qpn2Scope", q, ScopeQualified ql pkg) $ ScopeQualified ql pkg -- case ql of
+     -- ROMES:TODO
+     --    QualToplevel ->
+     --  | QualBase PackageName
+     --  | QualSetup PackageName
+     --  | QualExe PackageName PackageName
+   
 convPI :: PI QPN -> (Either UnitId PackageId, QPN)
 convPI (PI qpn (I _ (Inst pi))) = (Left pi, qpn)
 convPI pi@(PI qpn _)            = (Right (packageId (either id id (convConfId pi))), qpn)
 
 convConfId :: PI QPN -> Either SolverId {- is lib -} SolverId {- is exe -}
-convConfId (PI qpn@(Q (PackagePath _ q) pn) (I v loc)) =
+convConfId (PI (Q (PackagePath _ q) pn) (I v loc)) =
     case loc of
-        Inst pi -> Left (PreExistingId sourceId pi cscope)
+        Inst pi -> Left (PreExistingId sourceId pi)
         _otherwise
           | QualExe _ pn' <- q
           -- NB: the dependencies of the executable are also
@@ -72,19 +82,7 @@ convConfId (PI qpn@(Q (PackagePath _ q) pn) (I v loc)) =
           -- at the actual thing.  Fortunately for us, I was
           -- silly and didn't allow arbitrarily nested build-tools
           -- dependencies, so a shallow check works.
-          , pn == pn' -> Right (PlannedId sourceId cscope)
-          | otherwise    -> Left  (PlannedId sourceId cscope)
+          , pn == pn' -> Right (PlannedId sourceId)
+          | otherwise    -> Left  (PlannedId sourceId)
   where
-    sourceId = PackageIdentifier pn v
-    cscope = qpn2Scope qpn
-
--- This will probably become simpler after the private dependencies refactor
--- of Namespace vs Qualifier lands.
-qpn2Scope :: QPN -> ConstraintScope
-qpn2Scope q@(Q (PackagePath _ns ql) pkg) = traceShow ("qpn2Scope", q, ScopeQualified ql pkg) $ ScopeQualified ql pkg -- case ql of
- -- ROMES:TODO
- --    QualToplevel ->
- --  | QualBase PackageName
- --  | QualSetup PackageName
- --  | QualExe PackageName PackageName
-
+    sourceId    = PackageIdentifier pn v

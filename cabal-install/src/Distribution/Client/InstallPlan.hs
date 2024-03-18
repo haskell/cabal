@@ -5,7 +5,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeFamilies #-}
 
 -----------------------------------------------------------------------------
@@ -214,13 +213,13 @@ instance
   (IsNode ipkg, IsNode srcpkg, Key ipkg ~ UnitId, Key srcpkg ~ UnitId)
   => IsNode (GenericPlanPackage ipkg srcpkg)
   where
-  type Key (GenericPlanPackage ipkg srcpkg) = (UnitId, ConstraintScope)
-  nodeKey (PreExisting ipkg cs) = (nodeKey ipkg, cs)
-  nodeKey (Configured spkg cs) = (nodeKey spkg, cs)
-  nodeKey (Installed spkg cs) = (nodeKey spkg, cs)
-  nodeNeighbors (PreExisting ipkg cs) = map (,cs) $ nodeNeighbors ipkg
-  nodeNeighbors (Configured spkg cs) = map (,cs) $ nodeNeighbors spkg
-  nodeNeighbors (Installed spkg cs) = map (,cs) $ nodeNeighbors spkg
+  type Key (GenericPlanPackage ipkg srcpkg) = UnitId
+  nodeKey (PreExisting ipkg _) = nodeKey ipkg
+  nodeKey (Configured spkg _) = nodeKey spkg
+  nodeKey (Installed spkg _) = nodeKey spkg
+  nodeNeighbors (PreExisting ipkg _) = nodeNeighbors ipkg
+  nodeNeighbors (Configured spkg _) = nodeNeighbors spkg
+  nodeNeighbors (Installed spkg _) = nodeNeighbors spkg
 
 instance (Binary ipkg, Binary srcpkg) => Binary (GenericPlanPackage ipkg srcpkg)
 instance (Structured ipkg, Structured srcpkg) => Structured (GenericPlanPackage ipkg srcpkg)
@@ -546,14 +545,14 @@ fromSolverInstallPlan f plan =
 
         (pidMap', ipiMap') =
           case nodeKey pkg of
-            PreExistingId _ uid cs -> (pidMap, Map.insert (uid, cs) pkgs' ipiMap)
-            PlannedId pid cs -> (Map.insert (pid, cs) pkgs' pidMap, ipiMap)
+            PreExistingId _ uid -> (pidMap, Map.insert uid pkgs' ipiMap)
+            PlannedId pid -> (Map.insert pid pkgs' pidMap, ipiMap)
 
-    mapDep _ ipiMap (PreExistingId _pid uid cs)
-      | Just pkgs <- Map.lookup (uid, cs) ipiMap = pkgs
+    mapDep _ ipiMap (PreExistingId _pid uid)
+      | Just pkgs <- Map.lookup uid ipiMap = pkgs
       | otherwise = error ("fromSolverInstallPlan: PreExistingId " ++ prettyShow uid)
-    mapDep pidMap _ (PlannedId pid cs)
-      | Just pkgs <- Map.lookup (pid, cs) pidMap = pkgs
+    mapDep pidMap _ (PlannedId pid)
+      | Just pkgs <- Map.lookup pid pidMap = pkgs
       | otherwise = error ("fromSolverInstallPlan: PlannedId " ++ prettyShow pid)
 
 -- This shouldn't happen, since mapDep should only be called
@@ -584,15 +583,15 @@ fromSolverInstallPlanWithProgress f plan = do
       pkgs' <- f (mapDep pidMap ipiMap) pkg
       let (pidMap', ipiMap') =
             case nodeKey pkg of
-              PreExistingId _ uid cs -> (pidMap, Map.insert (uid, cs) pkgs' ipiMap)
-              PlannedId pid cs -> (Map.insert (pid, cs) pkgs' pidMap, ipiMap)
+              PreExistingId _ uid -> (pidMap, Map.insert uid pkgs' ipiMap)
+              PlannedId pid -> (Map.insert pid pkgs' pidMap, ipiMap)
       return (pidMap', ipiMap', pkgs' ++ pkgs)
 
-    mapDep _ ipiMap (PreExistingId _pid uid cs)
-      | Just pkgs <- Map.lookup (uid, cs) ipiMap = pkgs
+    mapDep _ ipiMap (PreExistingId _pid uid)
+      | Just pkgs <- Map.lookup uid ipiMap = pkgs
       | otherwise = error ("fromSolverInstallPlan: PreExistingId " ++ prettyShow uid)
-    mapDep pidMap _ (PlannedId pid cs)
-      | Just pkgs <- Map.lookup (pid, cs) pidMap = pkgs
+    mapDep pidMap _ (PlannedId pid)
+      | Just pkgs <- Map.lookup pid pidMap = pkgs
       | otherwise = error ("fromSolverInstallPlan: PlannedId " ++ prettyShow pid)
 
 -- This shouldn't happen, since mapDep should only be called

@@ -11,4 +11,3 @@ import Distribution.Solver.Types.OptionalStanza
 -- | A configured package is a package instance together with
 -- a flag assignment and complete dependencies.
 data CP qpn = CP (PI qpn) FlagAssignment OptionalStanzaSet (ComponentDeps [PI qpn])
-  deriving Show
