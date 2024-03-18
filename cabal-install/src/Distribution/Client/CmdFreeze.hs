@@ -235,15 +235,11 @@ projectFreezeConstraints plan =
     versionRanges =
       Map.map simplifyVersionRange $
         Map.fromListWith unionVersionRanges $
-          [ ((packageName pkg, constraint), thisVersion (packageVersion pkg))
-          | InstallPlan.PreExisting pkg <- InstallPlan.toList plan
-          , constraint <- InstallPlan.planPackageConstraints plan
-          , scopeToPackageName constraint == packageName pkg
+          [ ((packageName pkg, cscope), thisVersion (packageVersion pkg))
+          | InstallPlan.PreExisting pkg cscope <- InstallPlan.toList plan
           ]
-            ++ [ ((packageName pkg, constraint), thisVersion (packageVersion pkg))
-               | InstallPlan.Configured pkg <- InstallPlan.toList plan
-               , constraint <- InstallPlan.planPackageConstraints plan
-               , scopeToPackageName constraint == packageName pkg
+            ++ [ ((packageName pkg, cscope), thisVersion (packageVersion pkg))
+               | InstallPlan.Configured pkg cscope <- InstallPlan.toList plan
                ]
 
     flagConstraints :: Map PackageName [(UserConstraint, ConstraintSource)]
@@ -262,7 +258,7 @@ projectFreezeConstraints plan =
     flagAssignments =
       Map.fromList
         [ (pkgname, flags)
-        | InstallPlan.Configured elab <- InstallPlan.toList plan
+        | InstallPlan.Configured elab _ <- InstallPlan.toList plan
         , let flags = elabFlagAssignment elab
               pkgname = packageName elab
         , not (nullFlagAssignment flags)
@@ -291,6 +287,6 @@ projectFreezeConstraints plan =
     localPackages =
       Map.fromList
         [ (packageName elab, ())
-        | InstallPlan.Configured elab <- InstallPlan.toList plan
+        | InstallPlan.Configured elab _ <- InstallPlan.toList plan
         , elabLocalToProject elab
         ]

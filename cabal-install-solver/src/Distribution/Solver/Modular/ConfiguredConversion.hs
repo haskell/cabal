@@ -12,6 +12,7 @@ import qualified Distribution.Simple.PackageIndex as SI
 
 import Distribution.Solver.Modular.Configured
 import Distribution.Solver.Modular.Package
+import Distribution.Solver.Types.PackageConstraint
 
 import           Distribution.Solver.Types.ComponentDeps (ComponentDeps)
 import qualified Distribution.Solver.Types.PackageIndex as CI
@@ -30,29 +31,38 @@ convCP :: SI.InstalledPackageIndex ->
           CP QPN -> ResolverPackage loc
 convCP iidx sidx (CP qpi fa es ds) =
   case convPI qpi of
-    Left  pi -> PreExisting $
-                  InstSolverPackage {
-                    instSolverPkgIPI = fromJust $ SI.lookupUnitId iidx pi,
-                    instSolverPkgLibDeps = fmap fst ds',
-                    instSolverPkgExeDeps = fmap snd ds'
-                  }
-    Right pi -> Configured $
-                  SolverPackage {
-                      solverPkgSource = srcpkg,
-                      solverPkgFlags = fa,
-                      solverPkgStanzas = es,
-                      solverPkgLibDeps = fmap fst ds',
-                      solverPkgExeDeps = fmap snd ds'
-                    }
+    (Left  pi, qpn) ->
+      PreExisting
+        (InstSolverPackage {
+          instSolverPkgIPI = fromJust $ SI.lookupUnitId iidx pi,
+          instSolverPkgLibDeps = fmap fst ds',
+          instSolverPkgExeDeps = fmap snd ds'
+        })
+        (qpn2Scope qpn)
+    (Right pi, qpn) ->
+      Configured
+        (SolverPackage {
+            solverPkgSource = srcpkg,
+            solverPkgFlags = fa,
+            solverPkgStanzas = es,
+            solverPkgLibDeps = fmap fst ds',
+            solverPkgExeDeps = fmap snd ds'
+        })
+        (qpn2Scope qpn)
       where
         srcpkg = fromMaybe (error "convCP: lookupPackageId failed") $ CI.lookupPackageId sidx pi
   where
     ds' :: ComponentDeps ([SolverId] {- lib -}, [SolverId] {- exe -})
     ds' = fmap (partitionEithers . map convConfId) ds
 
-convPI :: PI QPN -> Either UnitId PackageId
-convPI (PI _ (I _ (Inst pi))) = Left pi
-convPI pi                     = Right (packageId (either id id (convConfId pi)))
+    -- This will probably become simpler after the private dependencies refactor
+    -- of Namespace vs Qualifier lands.
+    qpn2Scope :: QPN -> ConstraintScope
+    qpn2Scope (Q (PackagePath _ns ql) pkg) = ScopeQualified ql pkg
+
+convPI :: PI QPN -> (Either UnitId PackageId, QPN)
+convPI (PI qpn (I _ (Inst pi))) = (Left pi, qpn)
+convPI pi@(PI qpn _)            = (Right (packageId (either id id (convConfId pi))), qpn)
 
 convConfId :: PI QPN -> Either SolverId {- is lib -} SolverId {- is exe -}
 convConfId (PI (Q (PackagePath _ q) pn) (I v loc)) =

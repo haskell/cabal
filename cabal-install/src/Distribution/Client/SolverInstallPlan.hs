@@ -73,7 +73,6 @@ import Distribution.Version
   ( Version
   )
 
-import Distribution.Solver.Types.PackageConstraint
 import Distribution.Solver.Types.ResolverPackage
 import Distribution.Solver.Types.Settings
 import Distribution.Solver.Types.SolverId
@@ -93,9 +92,6 @@ type SolverPlanIndex = Graph SolverPlanPackage
 data SolverInstallPlan = SolverInstallPlan
   { planIndex :: !SolverPlanIndex
   , planIndepGoals :: !IndependentGoals
-  , planPackageConstraints :: ![PackageConstraint]
-  -- ^ The solved package constraints. There may be more package constraints
-  -- than packages in the index.
   }
   deriving (Typeable, Generic)
 
@@ -121,13 +117,13 @@ showInstallPlan :: SolverInstallPlan -> String
 showInstallPlan = showPlanIndex . toList
 
 showPlanPackage :: SolverPlanPackage -> String
-showPlanPackage (PreExisting ipkg) =
+showPlanPackage (PreExisting ipkg _) =
   "PreExisting "
     ++ prettyShow (packageId ipkg)
     ++ " ("
     ++ prettyShow (installedUnitId ipkg)
     ++ ")"
-showPlanPackage (Configured spkg) =
+showPlanPackage (Configured spkg _) =
   "Configured " ++ prettyShow (packageId spkg) ++ flags ++ comps
   where
     flags
@@ -149,11 +145,10 @@ showPlanPackage (Configured spkg) =
 new
   :: IndependentGoals
   -> SolverPlanIndex
-  -> [PackageConstraint]
   -> Either [SolverPlanProblem] SolverInstallPlan
-new indepGoals index pkgConstraints =
+new indepGoals index =
   case problems indepGoals index of
-    [] -> Right (SolverInstallPlan index indepGoals pkgConstraints)
+    [] -> Right (SolverInstallPlan index indepGoals)
     probs -> Left probs
 
 toList :: SolverInstallPlan -> [SolverPlanPackage]
@@ -174,7 +169,7 @@ remove
       [SolverPlanProblem]
       (SolverInstallPlan)
 remove shouldRemove plan =
-  new (planIndepGoals plan) newIndex (planPackageConstraints plan)
+  new (planIndepGoals plan) newIndex
   where
     newIndex =
       Graph.fromDistinctList $
@@ -238,8 +233,8 @@ showPlanProblem (PackageStateInvalid pkg pkg') =
     ++ showPlanState pkg'
     ++ " state"
   where
-    showPlanState (PreExisting _) = "pre-existing"
-    showPlanState (Configured _) = "configured"
+    showPlanState (PreExisting{}) = "pre-existing"
+    showPlanState (Configured{}) = "configured"
 
 -- | For an invalid plan, produce a detailed list of problems as human readable
 -- error messages. This is mainly intended for debugging purposes.
@@ -450,8 +445,8 @@ stateDependencyRelation
   -> SolverPlanPackage
   -> Bool
 stateDependencyRelation PreExisting{} PreExisting{} = True
-stateDependencyRelation (Configured _) PreExisting{} = True
-stateDependencyRelation (Configured _) (Configured _) = True
+stateDependencyRelation Configured{} PreExisting{} = True
+stateDependencyRelation Configured{} Configured{} = True
 stateDependencyRelation _ _ = False
 
 -- | Compute the dependency closure of a package in a install plan

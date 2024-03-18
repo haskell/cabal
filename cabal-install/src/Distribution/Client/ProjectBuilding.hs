@@ -180,11 +180,11 @@ rebuildTargetsDryRun distDirLayout@DistDirLayout{..} shared =
       :: ElaboratedPlanPackage
       -> [BuildStatus]
       -> IO BuildStatus
-    dryRunPkg (InstallPlan.PreExisting _pkg) _depsBuildStatus =
+    dryRunPkg (InstallPlan.PreExisting _pkg _) _depsBuildStatus =
       return BuildStatusPreExisting
-    dryRunPkg (InstallPlan.Installed _pkg) _depsBuildStatus =
+    dryRunPkg (InstallPlan.Installed _pkg _) _depsBuildStatus =
       return BuildStatusInstalled
-    dryRunPkg (InstallPlan.Configured pkg) depsBuildStatus = do
+    dryRunPkg (InstallPlan.Configured pkg _) depsBuildStatus = do
       mloc <- checkFetched (elabPkgSourceLocation pkg)
       case mloc of
         Nothing -> return BuildStatusDownload
@@ -423,7 +423,7 @@ rebuildTargets
         -- all the package dbs we may need to create
         (Set.toList . Set.fromList)
           [ pkgdb
-          | InstallPlan.Configured elab <- InstallPlan.toList installPlan
+          | InstallPlan.Configured elab _ <- InstallPlan.toList installPlan
           , pkgdb <-
               concat
                 [ elabBuildPackageDBStack elab
@@ -458,7 +458,7 @@ rebuildTargets
 
       packagesToDownload :: [ElaboratedConfiguredPackage]
       packagesToDownload =
-        [ elab | InstallPlan.Configured elab <- InstallPlan.reverseTopologicalOrder installPlan, isRemote $ elabPkgSourceLocation elab
+        [ elab | InstallPlan.Configured elab _ <- InstallPlan.reverseTopologicalOrder installPlan, isRemote $ elabPkgSourceLocation elab
         ]
         where
           isRemote :: PackageLocation a -> Bool
@@ -651,7 +651,7 @@ asyncDownloadPackages verbosity withRepoCtx installPlan pkgsBuildStatus body
     pkgsToDownload =
       ordNub $
         [ elabPkgSourceLocation elab
-        | InstallPlan.Configured elab <-
+        | InstallPlan.Configured elab _ <-
             InstallPlan.reverseTopologicalOrder installPlan
         , let uid = installedUnitId elab
               pkgBuildStatus = Map.findWithDefault (error "asyncDownloadPackages") uid pkgsBuildStatus

@@ -770,7 +770,7 @@ resolveDependencies
   -> Progress String String SolverInstallPlan
 resolveDependencies platform comp pkgConfigDB params =
   Step (showDepResolverParams finalparams) $
-    fmap (validateSolverResult platform comp indGoals pkgConstraints) $
+    fmap (validateSolverResult platform comp indGoals) $
       runSolver
         ( SolverConfig
             reordGoals
@@ -825,8 +825,6 @@ resolveDependencies platform comp pkgConfigDB params =
           then params
           else dontInstallNonReinstallablePackages params
 
-    pkgConstraints :: [PackageConstraint]
-    pkgConstraints = map (\case LabeledPackageConstraint pkgc _ -> pkgc) constraints
 
     preferences :: PackageName -> PackagePreferences
     preferences = interpretPackagesPreference targets defpref prefs
@@ -896,12 +894,11 @@ validateSolverResult
   :: Platform
   -> CompilerInfo
   -> IndependentGoals
-  -> [PackageConstraint]
   -> [ResolverPackage UnresolvedPkgLoc]
   -> SolverInstallPlan
-validateSolverResult platform comp indepGoals pkgConstraints pkgs =
+validateSolverResult platform comp indepGoals pkgs =
   case planPackagesProblems platform comp pkgs of
-    [] -> case SolverInstallPlan.new indepGoals graph pkgConstraints of
+    [] -> case SolverInstallPlan.new indepGoals graph of
       Right plan -> plan
       Left problems -> error (formatPlanProblems problems)
     problems -> error (formatPkgProblems problems)
@@ -951,7 +948,7 @@ planPackagesProblems
   -> [PlanPackageProblem]
 planPackagesProblems platform cinfo pkgs =
   [ InvalidConfiguredPackage pkg packageProblems
-  | Configured pkg <- pkgs
+  | Configured pkg _ <- pkgs
   , let packageProblems = configuredPackageProblems platform cinfo pkg
   , not (null packageProblems)
   ]

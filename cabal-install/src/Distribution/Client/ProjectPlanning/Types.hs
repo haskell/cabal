@@ -145,12 +145,12 @@ type ElaboratedPlanPackage =
 
 -- | User-friendly display string for an 'ElaboratedPlanPackage'.
 elabPlanPackageName :: Verbosity -> ElaboratedPlanPackage -> String
-elabPlanPackageName verbosity (PreExisting ipkg)
+elabPlanPackageName verbosity (PreExisting ipkg _)
   | verbosity <= normal = prettyShow (packageName ipkg)
   | otherwise = prettyShow (installedUnitId ipkg)
-elabPlanPackageName verbosity (Configured elab) =
+elabPlanPackageName verbosity (Configured elab _) =
   elabConfiguredName verbosity elab
-elabPlanPackageName verbosity (Installed elab) =
+elabPlanPackageName verbosity (Installed elab _) =
   elabConfiguredName verbosity elab
 
 showElaboratedInstallPlan :: ElaboratedInstallPlan -> String
