@@ -8,4 +8,4 @@ main = cabalTest . withRepo "repo" $ do
   let docsDir = testDir </> "docs"
   liftIO (removePathForcibly docsDir)
   r <- cabal' "haddock" ["--haddock-output-dir=docs", "A"]
-  assertFindInFile "A minimal test package for testing haddock." (docsDir </> "index.html")
+  assertFindInFile "A minimal test package for testing haddock." (docsDir </> "A" </> "index.html")

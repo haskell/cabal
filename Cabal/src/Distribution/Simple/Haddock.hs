@@ -369,8 +369,10 @@ haddock_setupHooks
                   lbi'
                   clbi
                   htmlTemplate
+                  haddockTarget
+                  pkg_descr
                   exe
-              let exeArgs' = commonArgs `mappend` exeArgs
+                  commonArgs
               runHaddock
                 verbosity
                 mbWorkDir
@@ -379,7 +381,7 @@ haddock_setupHooks
                 platform
                 haddockProg
                 True
-                exeArgs'
+                exeArgs
             Nothing -> do
               warn
                 verbosity
@@ -406,9 +408,19 @@ haddock_setupHooks
                 lbi'
                 clbi
                 htmlTemplate
+                haddockTarget
+                pkg_descr
                 lib
-            let libArgs' = commonArgs `mappend` libArgs
-            runHaddock verbosity mbWorkDir tmpFileOpts comp platform haddockProg True libArgs'
+                commonArgs
+            runHaddock
+              verbosity
+              mbWorkDir
+              tmpFileOpts
+              comp
+              platform
+              haddockProg
+              True
+              libArgs
             inplaceDir <- absoluteWorkingDirLBI lbi
 
             let
@@ -450,9 +462,19 @@ haddock_setupHooks
                       lbi'
                       clbi
                       htmlTemplate
+                      haddockTarget
+                      pkg_descr
                       flib
-                  let libArgs' = commonArgs `mappend` flibArgs
-                  runHaddock verbosity mbWorkDir tmpFileOpts comp platform haddockProg True libArgs'
+                      commonArgs
+                  runHaddock
+                    verbosity
+                    mbWorkDir
+                    tmpFileOpts
+                    comp
+                    platform
+                    haddockProg
+                    True
+                    flibArgs
               )
               >> return index
           CExe _ -> when (flag haddockExecutables) (smsg >> doExe component) >> return index
@@ -547,13 +569,11 @@ fromHaddockProjectFlags flags =
     }
 
 fromPackageDescription :: HaddockTarget -> PackageDescription -> HaddockArgs
-fromPackageDescription haddockTarget pkg_descr =
+fromPackageDescription _haddockTarget pkg_descr =
   mempty
-    { argInterfaceFile = Flag $ haddockName pkg_descr
+    { argInterfaceFile = Flag $ haddockPath pkg_descr
     , argPackageName = Flag $ packageId $ pkg_descr
-    , argOutputDir =
-        Dir $
-          "doc" </> "html" </> haddockDirName haddockTarget pkg_descr
+    , argOutputDir = Dir $ "doc" </> "html"
     , argPrologue =
         Flag $
           ShortText.fromShortText $
@@ -674,9 +694,13 @@ fromLibrary
   -> ComponentLocalBuildInfo
   -> Maybe PathTemplate
   -- ^ template for HTML location
+  -> HaddockTarget
+  -> PackageDescription
   -> Library
+  -> HaddockArgs
+  -- ^ common args
   -> IO HaddockArgs
-fromLibrary verbosity haddockArtifactsDirs lbi clbi htmlTemplate lib = do
+fromLibrary verbosity haddockArtifactsDirs lbi clbi htmlTemplate haddockTarget pkg_descr lib commonArgs = do
   inFiles <- map snd `fmap` getLibSourceFiles verbosity lbi lib clbi
   args <-
     mkHaddockArgs
@@ -687,10 +711,29 @@ fromLibrary verbosity haddockArtifactsDirs lbi clbi htmlTemplate lib = do
       htmlTemplate
       inFiles
       (libBuildInfo lib)
-  return
-    args
-      { argHideModules = (mempty, otherModules (libBuildInfo lib))
-      }
+  let args' =
+        commonArgs
+          <> args
+            { argOutputDir =
+                Dir $ haddockLibraryDirPath haddockTarget pkg_descr lib
+            , argInterfaceFile = Flag $ haddockLibraryPath pkg_descr lib
+            }
+      args'' =
+        args'
+          { argHideModules = (mempty, otherModules (libBuildInfo lib))
+          , argTitle = Flag $ haddockPackageLibraryName pkg_descr lib
+          , -- we need to accommodate for `argOutputDir`, see `haddockLibraryPath`
+            argBaseUrl = case (libName lib, argBaseUrl args') of
+              (LSubLibName _, Flag url) -> Flag $ ".." </> url
+              (_, a) -> a
+          , argContents = case (libName lib, argContents args') of
+              (LSubLibName _, Flag url) -> Flag $ ".." </> url
+              (_, a) -> a
+          , argIndex = case (libName lib, argIndex args') of
+              (LSubLibName _, Flag url) -> Flag $ ".." </> url
+              (_, a) -> a
+          }
+  return args''
 
 fromExecutable
   :: Verbosity
@@ -701,9 +744,13 @@ fromExecutable
   -> ComponentLocalBuildInfo
   -> Maybe PathTemplate
   -- ^ template for HTML location
+  -> HaddockTarget
+  -> PackageDescription
   -> Executable
+  -> HaddockArgs
+  -- ^ common args
   -> IO HaddockArgs
-fromExecutable verbosity haddockArtifactsDirs lbi clbi htmlTemplate exe = do
+fromExecutable verbosity haddockArtifactsDirs lbi clbi htmlTemplate haddockTarget pkg_descr exe commonArgs = do
   inFiles <- map snd `fmap` getExeSourceFiles verbosity lbi exe clbi
   args <-
     mkHaddockArgs
@@ -714,10 +761,27 @@ fromExecutable verbosity haddockArtifactsDirs lbi clbi htmlTemplate exe = do
       htmlTemplate
       inFiles
       (buildInfo exe)
+  let args' =
+        commonArgs
+          <> args
+            { argOutputDir =
+                Dir $
+                  haddockDirName haddockTarget pkg_descr
+                    </> unUnqualComponentName (exeName exe)
+            }
   return
-    args
-      { argOutputDir = Dir $ unUnqualComponentName $ exeName exe
-      , argTitle = Flag $ unUnqualComponentName $ exeName exe
+    args'
+      { argTitle = Flag $ unUnqualComponentName $ exeName exe
+      , -- we need to accommodate `argOutputDir`
+        argBaseUrl = case argBaseUrl args' of
+          Flag url -> Flag $ ".." </> url
+          NoFlag -> NoFlag
+      , argContents = case argContents args' of
+          Flag url -> Flag $ ".." </> url
+          NoFlag -> NoFlag
+      , argIndex = case argIndex args' of
+          Flag url -> Flag $ ".." </> url
+          NoFlag -> NoFlag
       }
 
 fromForeignLib
@@ -729,9 +793,13 @@ fromForeignLib
   -> ComponentLocalBuildInfo
   -> Maybe PathTemplate
   -- ^ template for HTML location
+  -> HaddockTarget
+  -> PackageDescription
   -> ForeignLib
+  -> HaddockArgs
+  -- ^ common args
   -> IO HaddockArgs
-fromForeignLib verbosity haddockArtifactsDirs lbi clbi htmlTemplate flib = do
+fromForeignLib verbosity haddockArtifactsDirs lbi clbi htmlTemplate haddockTarget pkg_descr flib commonArgs = do
   inFiles <- map snd `fmap` getFLibSourceFiles verbosity lbi flib clbi
   args <-
     mkHaddockArgs
@@ -742,10 +810,27 @@ fromForeignLib verbosity haddockArtifactsDirs lbi clbi htmlTemplate flib = do
       htmlTemplate
       inFiles
       (foreignLibBuildInfo flib)
+  let args' =
+        commonArgs
+          <> args
+            { argOutputDir =
+                Dir $
+                  haddockDirName haddockTarget pkg_descr
+                    </> unUnqualComponentName (foreignLibName flib)
+            }
   return
-    args
-      { argOutputDir = Dir $ unUnqualComponentName $ foreignLibName flib
-      , argTitle = Flag $ unUnqualComponentName $ foreignLibName flib
+    args'
+      { argTitle = Flag $ unUnqualComponentName $ foreignLibName flib
+      , -- we need to accommodate `argOutputDir`
+        argBaseUrl = case argBaseUrl args' of
+          Flag url -> Flag $ ".." </> url
+          NoFlag -> NoFlag
+      , argContents = case argContents args' of
+          Flag url -> Flag $ ".." </> url
+          NoFlag -> NoFlag
+      , argIndex = case argIndex args' of
+          Flag url -> Flag $ ".." </> url
+          NoFlag -> NoFlag
       }
 
 compToExe :: Component -> Maybe Executable
@@ -1117,7 +1202,8 @@ haddockPackagePaths ipkgs mkHtmlPath = do
   interfaces <-
     sequenceA
       [ case interfaceAndHtmlPath ipkg of
-        Nothing -> return (Left (packageId ipkg))
+        Nothing -> do
+          return (Left (packageId ipkg))
         Just (interface, html) -> do
           (html', hypsrc') <-
             case html of
