@@ -1,0 +1,9 @@
+synopsis: Add language extension NamedDefaults
+packages: Cabal-syntax
+prs: #9740
+
+description: {
+
+- adds support for the `NamedDefaults` language extension (GHC proposal #409)
+
+}

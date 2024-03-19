@@ -303,6 +303,9 @@ data KnownExtension
   | -- | Allow default instantiation of polymorphic types in more
     -- situations.
     ExtendedDefaultRules
+  | -- | Allow @default@ declarations to explicitly name the class and
+    -- be exported.
+    NamedDefaults
   | -- | Enable unboxed tuples.
     UnboxedTuples
   | -- | Enable @deriving@ for classes 'Data.Typeable.Typeable' and
