@@ -91,3 +91,5 @@ cabal-testsuite/PackageTests/NewUpdate/RejectFutureIndexStates/cabal.out
 
 # ignore the downloaded binary files
 scripts/release/binary-downloads/
+scripts/release/fetch-gitlab/
+scripts/release/*.json
