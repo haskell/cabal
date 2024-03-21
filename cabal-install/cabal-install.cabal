@@ -52,7 +52,7 @@ common base-dep
     build-depends: base >=4.10 && <4.20
 
 common cabal-dep
-    build-depends: Cabal ^>=3.10
+    build-depends: Cabal ^>=3.10.3
 
 common cabal-syntax-dep
     build-depends: Cabal-syntax ^>=3.10
