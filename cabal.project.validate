@@ -30,3 +30,5 @@ package cabal-testsuite
   ghc-options: -Werror
 package cabal-install
   ghc-options: -Werror
+
+index-state: hackage.haskell.org 2024-03-19T15:03:08Z
