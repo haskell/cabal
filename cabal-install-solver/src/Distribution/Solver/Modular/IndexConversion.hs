@@ -53,7 +53,7 @@ import Distribution.Solver.Modular.Version
 -- resolving these situations. However, the right thing to do is to
 -- fix the problem there, so for now, shadowing is only activated if
 -- explicitly requested.
-convPIs :: OS -> Arch -> CompilerInfo -> Map PN [LabeledPackageConstraint]
+convPIs :: OS -> Arch -> CompilerInfo -> Map PN [LabeledPackageConstraint cs]
         -> ShadowPkgs -> StrongFlags -> SolveExecutables
         -> SI.InstalledPackageIndex -> CI.PackageIndex (SourcePackage loc)
         -> Index
@@ -153,14 +153,14 @@ convIPId dr comp idx ipid =
 
 -- | Convert a cabal-install source package index to the simpler,
 -- more uniform index format of the solver.
-convSPI' :: OS -> Arch -> CompilerInfo -> Map PN [LabeledPackageConstraint]
+convSPI' :: OS -> Arch -> CompilerInfo -> Map PN [LabeledPackageConstraint cs]
          -> StrongFlags -> SolveExecutables
          -> CI.PackageIndex (SourcePackage loc) -> [(PN, I, PInfo)]
 convSPI' os arch cinfo constraints strfl solveExes =
     L.map (convSP os arch cinfo constraints strfl solveExes) . CI.allPackages
 
 -- | Convert a single source package into the solver-specific format.
-convSP :: OS -> Arch -> CompilerInfo -> Map PN [LabeledPackageConstraint]
+convSP :: OS -> Arch -> CompilerInfo -> Map PN [LabeledPackageConstraint cs]
        -> StrongFlags -> SolveExecutables -> SourcePackage loc -> (PN, I, PInfo)
 convSP os arch cinfo constraints strfl solveExes (SourcePackage (PackageIdentifier pn pv) gpd _ _pl) =
   let i = I pv InRepo
@@ -172,7 +172,7 @@ convSP os arch cinfo constraints strfl solveExes (SourcePackage (PackageIdentifi
 -- want to keep the condition tree, but simplify much of the test.
 
 -- | Convert a generic package description to a solver-specific 'PInfo'.
-convGPD :: OS -> Arch -> CompilerInfo -> [LabeledPackageConstraint]
+convGPD :: OS -> Arch -> CompilerInfo -> [LabeledPackageConstraint cs]
         -> StrongFlags -> SolveExecutables -> PN -> GenericPackageDescription
         -> PInfo
 convGPD os arch cinfo constraints strfl solveExes pn
@@ -249,7 +249,7 @@ convGPD os arch cinfo constraints strfl solveExes pn
 testConditionForComponent :: OS
                           -> Arch
                           -> CompilerInfo
-                          -> [LabeledPackageConstraint]
+                          -> [LabeledPackageConstraint cs]
                           -> (a -> Bool)
                           -> CondTree ConfVar [Dependency] a
                           -> Maybe Bool

@@ -19,6 +19,7 @@ import Distribution.Client.ProjectConfig
 import Distribution.Client.HttpUtils
 import Distribution.Client.TargetSelector hiding (DirActions(..))
 import qualified Distribution.Client.TargetSelector as TS (DirActions(..))
+import Distribution.Client.ProjectConfig.Types.ConstraintSource
 import Distribution.Client.ProjectPlanning
 import Distribution.Client.ProjectPlanning.Types
 import Distribution.Client.ProjectBuilding
@@ -33,8 +34,6 @@ import Distribution.Client.Targets
          ( UserConstraint(..), UserConstraintScope(UserAnyQualifier) )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Solver.Types.SourcePackage as SP
-import Distribution.Solver.Types.ConstraintSource
-         ( ConstraintSource(ConstraintSourceUnknown) )
 import Distribution.Solver.Types.PackageConstraint
          ( PackageProperty(PackagePropertySource) )
 

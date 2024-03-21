@@ -54,8 +54,6 @@ import Distribution.Client.CmdInstall.ClientInstallFlags
 
 import Distribution.Compat.Lens (toListOf, view)
 
-import Distribution.Solver.Types.ConstraintSource
-
 import Distribution.Client.NixStyleOptions (NixStyleFlags (..))
 import Distribution.Client.ProjectFlags (ProjectFlags (..), defaultProjectFlags, projectFlagsOptions)
 import Distribution.Client.Setup
@@ -182,6 +180,7 @@ import Network.URI (URI (..), parseURI)
 import Distribution.Fields.ConfVar (parseConditionConfVarFromClause)
 
 import Distribution.Client.HttpUtils
+import Distribution.Client.ProjectConfig.Types.ConstraintSource (ConstraintSource (..))
 import Distribution.Client.ReplFlags (multiReplOption)
 import System.Directory (createDirectoryIfMissing)
 import System.FilePath (isAbsolute, isPathSeparator, makeValid, takeDirectory, (</>))

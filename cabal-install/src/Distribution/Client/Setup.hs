@@ -129,7 +129,6 @@ import Distribution.Utils.NubList
   , toNubList
   )
 
-import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.Settings
 
 import Distribution.Client.GlobalFlags
@@ -139,6 +138,7 @@ import Distribution.Client.GlobalFlags
   , withRepoContext
   )
 import Distribution.Client.ManpageFlags (ManpageFlags, defaultManpageFlags, manpageOptions)
+import Distribution.Client.ProjectConfig.Types.ConstraintSource (ConstraintSource (..))
 import qualified Distribution.Compat.CharParsing as P
 import Distribution.FieldGrammar.Newtypes (SpecVersion (..))
 import Distribution.PackageDescription

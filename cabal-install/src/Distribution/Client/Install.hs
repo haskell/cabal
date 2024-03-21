@@ -130,7 +130,6 @@ import qualified Distribution.InstalledPackageInfo as Installed
 import Distribution.Solver.Types.PackageFixedDeps
 
 import qualified Distribution.Solver.Types.ComponentDeps as CD
-import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.LabeledPackageConstraint
 import Distribution.Solver.Types.OptionalStanza
 import qualified Distribution.Solver.Types.PackageIndex as SourcePackageIndex
@@ -267,6 +266,7 @@ import Distribution.Version
 
 import qualified Data.ByteString as BS
 import Distribution.Client.Errors
+import Distribution.Client.ProjectConfig.Types.ConstraintSource (ConstraintSource (ConstraintSourceConfigFlagOrTarget))
 
 -- TODO:
 

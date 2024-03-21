@@ -28,7 +28,6 @@ import Distribution.Solver.Modular.Package
 import Distribution.Solver.Modular.Tree
          ( FailReason(..), POption(..), ConflictingDep(..) )
 import Distribution.Solver.Modular.Version
-import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.PackagePath
 import Distribution.Solver.Types.Progress
 import Distribution.Types.LibraryName
@@ -311,10 +310,10 @@ showFR _ NotExplicit                      = " (not a user-provided goal nor ment
 showFR _ Shadowed                         = " (shadowed by another installed package with same version)"
 showFR _ (Broken u)                       = " (package is broken, missing dependency " ++ prettyShow u ++ ")"
 showFR _ UnknownPackage                   = " (unknown package)"
-showFR _ (GlobalConstraintVersion vr src) = " (" ++ constraintSource src ++ " requires " ++ prettyShow vr ++ ")"
-showFR _ (GlobalConstraintInstalled src)  = " (" ++ constraintSource src ++ " requires installed instance)"
-showFR _ (GlobalConstraintSource src)     = " (" ++ constraintSource src ++ " requires source instance)"
-showFR _ (GlobalConstraintFlag src)       = " (" ++ constraintSource src ++ " requires opposite flag selection)"
+showFR _ (GlobalConstraintVersion vr src) = " (constraint from " ++ show src ++ " requires " ++ prettyShow vr ++ ")"
+showFR _ (GlobalConstraintInstalled src)  = " (constraint from " ++ show src ++ " requires installed instance)"
+showFR _ (GlobalConstraintSource src)     = " (constraint from " ++ show src ++ " requires source instance)"
+showFR _ (GlobalConstraintFlag src)       = " (constraint from " ++ show src ++ " requires opposite flag selection)"
 showFR _ ManualFlag                       = " (manual flag can only be changed explicitly)"
 showFR c Backjump                         = " (backjumping, conflict set: " ++ showConflictSet c ++ ")"
 showFR _ MultipleInstances                = " (multiple instances)"
@@ -332,9 +331,6 @@ showExposedComponent :: ExposedComponent -> String
 showExposedComponent (ExposedLib LMainLibName)       = "library"
 showExposedComponent (ExposedLib (LSubLibName name)) = "library '" ++ unUnqualComponentName name ++ "'"
 showExposedComponent (ExposedExe name)               = "executable '" ++ unUnqualComponentName name ++ "'"
-
-constraintSource :: ConstraintSource -> String
-constraintSource src = "constraint from " ++ showConstraintSource src
 
 showConflictingDep :: ConflictingDep -> String
 showConflictingDep (ConflictingDep dr (PkgComponent qpn comp) ci) =

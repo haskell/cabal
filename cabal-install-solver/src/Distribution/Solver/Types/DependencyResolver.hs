@@ -26,12 +26,12 @@ import Distribution.System ( Platform )
 -- solving the package dependency problem and we want to make it easy to swap
 -- in alternatives.
 --
-type DependencyResolver loc = Platform
+type DependencyResolver loc cs = Platform
                            -> CompilerInfo
                            -> InstalledPackageIndex
                            -> PackageIndex (SourcePackage loc)
                            -> PkgConfigDb
                            -> (PackageName -> PackagePreferences)
-                           -> [LabeledPackageConstraint]
+                           -> [LabeledPackageConstraint cs]
                            -> Set PackageName
                            -> Progress String String [ResolverPackage loc]

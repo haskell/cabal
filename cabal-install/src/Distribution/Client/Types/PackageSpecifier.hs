@@ -15,7 +15,7 @@ import Distribution.Package (Package (..), PackageIdentifier (..), packageName, 
 import Distribution.Types.PackageName (PackageName)
 import Distribution.Version (nullVersion, thisVersion)
 
-import Distribution.Solver.Types.ConstraintSource
+import Distribution.Client.ProjectConfig.Types.ConstraintSource
 import Distribution.Solver.Types.LabeledPackageConstraint
 import Distribution.Solver.Types.PackageConstraint
 
@@ -40,7 +40,7 @@ pkgSpecifierTarget (SpecificSourcePackage pkg) = packageName pkg
 pkgSpecifierConstraints
   :: Package pkg
   => PackageSpecifier pkg
-  -> [LabeledPackageConstraint]
+  -> [LabeledPackageConstraint ConstraintSource]
 pkgSpecifierConstraints (NamedPackage name props) = map toLpc props
   where
     toLpc prop =

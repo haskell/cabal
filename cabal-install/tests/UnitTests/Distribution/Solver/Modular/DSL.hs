@@ -79,12 +79,12 @@ import Language.Haskell.Extension (Extension (..), Language (..))
 
 -- cabal-install
 import Distribution.Client.Dependency
+import Distribution.Client.ProjectConfig.Types.ConstraintSource
 import qualified Distribution.Client.SolverInstallPlan as CI.SolverInstallPlan
 import Distribution.Client.Types
 
 import Distribution.Solver.Types.ComponentDeps (ComponentDeps)
 import qualified Distribution.Solver.Types.ComponentDeps as CD
-import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.Flag
 import Distribution.Solver.Types.LabeledPackageConstraint
 import Distribution.Solver.Types.OptionalStanza

@@ -88,12 +88,13 @@ newtype PruneAfterFirstSuccess = PruneAfterFirstSuccess Bool
 -- has been added relatively recently. Cycles are only removed directly
 -- before exploration.
 --
-solve :: SolverConfig                         -- ^ solver parameters
+solve :: (Eq cs, Show cs, Typeable cs)
+      => SolverConfig                         -- ^ solver parameters
       -> CompilerInfo
       -> Index                                -- ^ all available packages as an index
       -> PkgConfigDb                          -- ^ available pkg-config pkgs
       -> (PN -> PackagePreferences)           -- ^ preferences
-      -> M.Map PN [LabeledPackageConstraint]  -- ^ global constraints
+      -> M.Map PN [LabeledPackageConstraint cs]  -- ^ global constraints
       -> S.Set PN                             -- ^ global goals
       -> RetryLog Message SolverFailure (Assignment, RevDepMap)
 solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
