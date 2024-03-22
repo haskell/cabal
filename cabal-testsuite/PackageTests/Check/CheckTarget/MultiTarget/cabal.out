@@ -1,0 +1,8 @@
+# cabal check
+***  pkg-a
+These warnings may cause trouble when distributing the package:
+Warning: [no-docs] Please consider including the file './CHANGELOG.TXT' in the 'extra-doc-files' section of the .cabal file if it contains useful information for users of the package.
+***  pkg-b
+The following errors are likely to affect your build negatively:
+Error: [unknown-languages] Unknown languages: Haskell2060
+Error: Hackage would reject this package.

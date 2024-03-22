@@ -23,7 +23,6 @@ module Distribution.Client.Main (main) where
 import Distribution.Client.Setup
   ( ActAsSetupFlags (..)
   , BuildFlags (..)
-  , CheckFlags (..)
   , ConfigExFlags (..)
   , ConfigFlags (..)
   , FetchFlags (..)
@@ -42,7 +41,6 @@ import Distribution.Client.Setup
   , actAsSetupCommand
   , benchmarkCommand
   , buildCommand
-  , checkCommand
   , cleanCommand
   , configCompilerAux'
   , configPackageDB'
@@ -127,6 +125,7 @@ import Distribution.Client.Targets
 
 import qualified Distribution.Client.CmdBench as CmdBench
 import qualified Distribution.Client.CmdBuild as CmdBuild
+import qualified Distribution.Client.CmdCheck as CmdCheck
 import qualified Distribution.Client.CmdClean as CmdClean
 import qualified Distribution.Client.CmdConfigure as CmdConfigure
 import qualified Distribution.Client.CmdExec as CmdExec
@@ -143,7 +142,6 @@ import qualified Distribution.Client.CmdSdist as CmdSdist
 import qualified Distribution.Client.CmdTest as CmdTest
 import qualified Distribution.Client.CmdUpdate as CmdUpdate
 
-import Distribution.Client.Check as Check (check)
 import Distribution.Client.Configure (configure, writeConfigFlags)
 import Distribution.Client.Fetch (fetch)
 import Distribution.Client.Freeze (freeze)
@@ -429,7 +427,7 @@ mainWorker args = do
       , regularCmd fetchCommand fetchAction
       , regularCmd getCommand getAction
       , regularCmd unpackCommand unpackAction
-      , regularCmd checkCommand checkAction
+      , regularCmd CmdCheck.checkCommand CmdCheck.checkAction
       , regularCmd uploadCommand uploadAction
       , regularCmd reportCommand reportAction
       , regularCmd initCommand initAction
@@ -1229,16 +1227,6 @@ uploadAction uploadFlags extraArgs globalFlags = do
       distPref <- findSavedDistPref config NoFlag
       pkg <- fmap LBI.localPkgDescr (getPersistBuildConfig distPref)
       return $ distPref </> display (packageId pkg) ++ "-docs" <.> "tar.gz"
-
-checkAction :: CheckFlags -> [String] -> Action
-checkAction checkFlags extraArgs _globalFlags = do
-  let verbosityFlag = checkVerbosity checkFlags
-      verbosity = fromFlag verbosityFlag
-  unless (null extraArgs) $
-    dieWithException verbosity $
-      CheckAction extraArgs
-  allOk <- Check.check (fromFlag verbosityFlag) (checkIgnore checkFlags)
-  unless allOk exitFailure
 
 formatAction :: Flag Verbosity -> [String] -> Action
 formatAction verbosityFlag extraArgs _globalFlags = do

@@ -29,7 +29,7 @@ module Distribution.Client.TargetSelector
   , QualLevel (..)
   , componentKind
 
-    -- * Reading target selectors
+    -- * R/ading target selectors
   , readTargetSelectors
   , TargetSelectorProblem (..)
   , reportTargetSelectorProblems

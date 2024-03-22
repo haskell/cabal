@@ -16,20 +16,21 @@
 -- Check a package for common mistakes
 module Distribution.Client.Check
   ( check
+  , multiCheck
   ) where
 
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
 import Distribution.Client.Utils.Parsec (renderParseError)
-import Distribution.PackageDescription (GenericPackageDescription)
+import Distribution.PackageDescription (GenericPackageDescription, PackageName)
 import Distribution.PackageDescription.Check
 import Distribution.PackageDescription.Parsec
   ( parseGenericPackageDescription
   , runParseResult
   )
 import Distribution.Parsec (PWarning (..), showPError)
-import Distribution.Simple.Utils (defaultPackageDesc, dieWithException, notice, warn, warnError)
+import Distribution.Simple.Utils (dieWithException, findPackageDesc, notice, warn, warnError)
 import System.IO (hPutStr, stderr)
 
 import qualified Control.Monad as CM
@@ -37,7 +38,8 @@ import qualified Data.ByteString as BS
 import qualified Data.Function as F
 import qualified Data.List as L
 import qualified Data.List.NonEmpty as NE
-import Distribution.Client.Errors
+import qualified Distribution.Client.Errors as E
+import qualified Distribution.Types.PackageName as PN
 import qualified System.Directory as Dir
 
 readGenericPackageDescriptionCheck :: Verbosity -> FilePath -> IO ([PWarning], GenericPackageDescription)
@@ -45,36 +47,43 @@ readGenericPackageDescriptionCheck verbosity fpath = do
   exists <- Dir.doesFileExist fpath
   unless exists $
     dieWithException verbosity $
-      FileDoesntExist fpath
+      E.FileDoesntExist fpath
   bs <- BS.readFile fpath
   let (warnings, result) = runParseResult (parseGenericPackageDescription bs)
   case result of
     Left (_, errors) -> do
       traverse_ (warn verbosity . showPError fpath) errors
       hPutStr stderr $ renderParseError fpath bs errors warnings
-      dieWithException verbosity ParseError
+      dieWithException verbosity E.ParseError
     Right x -> return (warnings, x)
 
 -- | Checks a packge for common errors. Returns @True@ if the package
 -- is fit to upload to Hackage, @False@ otherwise.
--- Note: must be called with the CWD set to the directory containing
--- the '.cabal' file.
 check
   :: Verbosity
+  -> Maybe PackageName
   -> [CheckExplanationIDString]
   -- ^ List of check-ids in String form
   -- (e.g. @invalid-path-win@) to ignore.
+  -> FilePath
+  -- ^ Folder to check (where `.cabal` file is).
   -> IO Bool
-check verbosity ignores = do
-  pdfile <- defaultPackageDesc verbosity
+check verbosity mPkgName ignores checkDir = do
+  epdf <- findPackageDesc checkDir
+  pdfile <- case epdf of
+    Right cf -> return cf
+    Left e -> dieWithException verbosity e
   (ws, ppd) <- readGenericPackageDescriptionCheck verbosity pdfile
   -- convert parse warnings into PackageChecks
   let ws' = map (wrapParseWarning pdfile) ws
-  ioChecks <- checkPackageFilesGPD verbosity ppd "."
+  ioChecks <- checkPackageFilesGPD verbosity ppd checkDir
   let packageChecksPrim = ioChecks ++ checkPackage ppd ++ ws'
       (packageChecks, unrecs) = filterPackageChecksByIdString packageChecksPrim ignores
 
   CM.mapM_ (\s -> warn verbosity ("Unrecognised ignore \"" ++ s ++ "\"")) unrecs
+  case mPkgName of
+    (Just pn) -> notice verbosity $ "***  " ++ PN.unPackageName pn
+    Nothing -> return ()
 
   CM.mapM_ (outputGroupCheck verbosity) (groupChecks packageChecks)
 
@@ -87,6 +96,29 @@ check verbosity ignores = do
     notice verbosity "No errors or warnings could be found in the package."
 
   return (null errors)
+
+-- | Same as 'check', but with output adjusted for multiple targets.
+multiCheck
+  :: Verbosity
+  -> [CheckExplanationIDString]
+  -- ^ List of check-ids in String form
+  -- (e.g. @invalid-path-win@) to ignore.
+  -> [(PackageName, FilePath)]
+  -- ^ Folder to check (where `.cabal` file is).
+  -> IO Bool
+multiCheck verbosity _ [] = do
+  notice verbosity "check: no targets, nothing to do."
+  return True
+multiCheck verbosity ignores [(_, checkDir)] = do
+  -- Only one target, do not print header with package name.
+  check verbosity Nothing ignores checkDir
+multiCheck verbosity ignores namesDirs = do
+  bs <- CM.mapM (uncurry checkFun) namesDirs
+  return (and bs)
+  where
+    checkFun :: PackageName -> FilePath -> IO Bool
+    checkFun mpn wdir = do
+      check verbosity (Just mpn) ignores wdir
 
 -------------------------------------------------------------------------------
 -- Grouping/displaying checks

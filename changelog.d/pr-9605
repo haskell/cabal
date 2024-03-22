@@ -1,0 +1,11 @@
+synopsis: Add TARGET to `cabal check`
+packages: cabal-install
+prs: #9605
+issues: #6282
+
+description: {
+
+- `cabal check` now supports TARGET, e.g. `cabal check ~/my/folder`.
+
+}
+
