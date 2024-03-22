@@ -26,7 +26,8 @@ import Distribution.Client.CmdInstall.ClientInstallFlags
   ( cinstInstalldir
   )
 import Distribution.Client.Config
-  ( defaultInstallPath
+  ( defaultCacheHome
+  , defaultInstallPath
   , defaultStoreDir
   , getConfigFilePath
   )
@@ -204,7 +205,8 @@ pathOptions showOrParseArgs =
 
 -- | A path that can be retrieved by the @cabal path@ command.
 data ConfigPath
-  = ConfigPathCacheDir
+  = ConfigPathCacheHome
+  | ConfigPathRemoteRepoCache
   | ConfigPathLogsDir
   | ConfigPathStoreDir
   | ConfigPathConfigFile
@@ -213,7 +215,8 @@ data ConfigPath
 
 -- | The configuration name for this path.
 pathName :: ConfigPath -> String
-pathName ConfigPathCacheDir = "cache-dir"
+pathName ConfigPathCacheHome = "cache-home"
+pathName ConfigPathRemoteRepoCache = "remote-repo-cache"
 pathName ConfigPathLogsDir = "logs-dir"
 pathName ConfigPathStoreDir = "store-dir"
 pathName ConfigPathConfigFile = "config-file"
@@ -275,7 +278,9 @@ pathAction flags@NixStyleFlags{extraFlags = pathFlags', ..} cliTargetStrings glo
 --
 -- TODO: this should come from a common source of truth to avoid code path divergence
 getPathLocation :: ProjectBaseContext -> ConfigPath -> IO FilePath
-getPathLocation baseCtx ConfigPathCacheDir =
+getPathLocation _ ConfigPathCacheHome =
+  defaultCacheHome
+getPathLocation baseCtx ConfigPathRemoteRepoCache =
   pure $ buildSettingCacheDir (buildSettings baseCtx)
 getPathLocation baseCtx ConfigPathLogsDir =
   pure $ cabalLogsDirectory (cabalDirLayout baseCtx)

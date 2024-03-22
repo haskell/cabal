@@ -1,136 +1,137 @@
 # cabal path
-{"cabal-version":"<CABAL_INSTALL_VER>","compiler":{"flavour":"ghc","id":"ghc-<GHCVER>","path":"<GHCPATH>"},"cache-dir":"<ROOT>/cabal.dist/home/.cabal/packages","logs-dir":"<ROOT>/cabal.dist/home/.cabal/logs","store-dir":"<ROOT>/cabal.dist/home/.cabal/store","config-file":"<ROOT>/cabal.dist/home/.cabal/config","installdir":"<ROOT>/cabal.dist/home/.cabal/bin"}
+{"cabal-version":"<CABAL_INSTALL_VER>","compiler":{"flavour":"ghc","id":"ghc-<GHCVER>","path":"<GHCPATH>"},"cache-home":"<ROOT>/cabal.dist/home/.cabal","remote-repo-cache":"<ROOT>/cabal.dist/home/.cabal/packages","logs-dir":"<ROOT>/cabal.dist/home/.cabal/logs","store-dir":"<ROOT>/cabal.dist/home/.cabal/store","config-file":"<ROOT>/cabal.dist/home/.cabal/config","installdir":"<ROOT>/cabal.dist/home/.cabal/bin"}
 # cabal path
 {"cabal-version":"<CABAL_INSTALL_VER>","compiler":{"flavour":"ghc","id":"ghc-<GHCVER>","path":"<GHCPATH>"}}
 # cabal path
-{"cabal-version":"<CABAL_INSTALL_VER>","cache-dir":"<ROOT>/cabal.dist/home/.cabal/packages"}
+{"cabal-version":"<CABAL_INSTALL_VER>","remote-repo-cache":"<ROOT>/cabal.dist/home/.cabal/packages"}
 # cabal path
-{"cabal-version":"<CABAL_INSTALL_VER>","compiler":{"flavour":"ghc","id":"ghc-<GHCVER>","path":"<GHCPATH>"},"cache-dir":"<ROOT>/cabal.dist/home/.cabal/packages"}
+{"cabal-version":"<CABAL_INSTALL_VER>","compiler":{"flavour":"ghc","id":"ghc-<GHCVER>","path":"<GHCPATH>"},"remote-repo-cache":"<ROOT>/cabal.dist/home/.cabal/packages"}
 # cabal path
 {"cabal-version":"<CABAL_INSTALL_VER>","logs-dir":"<ROOT>/cabal.dist/home/.cabal/logs"}
 # cabal path
 {"cabal-version":"<CABAL_INSTALL_VER>","compiler":{"flavour":"ghc","id":"ghc-<GHCVER>","path":"<GHCPATH>"},"logs-dir":"<ROOT>/cabal.dist/home/.cabal/logs"}
 # cabal path
-{"cabal-version":"<CABAL_INSTALL_VER>","cache-dir":"<ROOT>/cabal.dist/home/.cabal/packages","logs-dir":"<ROOT>/cabal.dist/home/.cabal/logs"}
+{"cabal-version":"<CABAL_INSTALL_VER>","remote-repo-cache":"<ROOT>/cabal.dist/home/.cabal/packages","logs-dir":"<ROOT>/cabal.dist/home/.cabal/logs"}
 # cabal path
-{"cabal-version":"<CABAL_INSTALL_VER>","compiler":{"flavour":"ghc","id":"ghc-<GHCVER>","path":"<GHCPATH>"},"cache-dir":"<ROOT>/cabal.dist/home/.cabal/packages","logs-dir":"<ROOT>/cabal.dist/home/.cabal/logs"}
+{"cabal-version":"<CABAL_INSTALL_VER>","compiler":{"flavour":"ghc","id":"ghc-<GHCVER>","path":"<GHCPATH>"},"remote-repo-cache":"<ROOT>/cabal.dist/home/.cabal/packages","logs-dir":"<ROOT>/cabal.dist/home/.cabal/logs"}
 # cabal path
 {"cabal-version":"<CABAL_INSTALL_VER>","store-dir":"<ROOT>/cabal.dist/home/.cabal/store"}
 # cabal path
 {"cabal-version":"<CABAL_INSTALL_VER>","compiler":{"flavour":"ghc","id":"ghc-<GHCVER>","path":"<GHCPATH>"},"store-dir":"<ROOT>/cabal.dist/home/.cabal/store"}
 # cabal path
-{"cabal-version":"<CABAL_INSTALL_VER>","cache-dir":"<ROOT>/cabal.dist/home/.cabal/packages","store-dir":"<ROOT>/cabal.dist/home/.cabal/store"}
+{"cabal-version":"<CABAL_INSTALL_VER>","remote-repo-cache":"<ROOT>/cabal.dist/home/.cabal/packages","store-dir":"<ROOT>/cabal.dist/home/.cabal/store"}
 # cabal path
-{"cabal-version":"<CABAL_INSTALL_VER>","compiler":{"flavour":"ghc","id":"ghc-<GHCVER>","path":"<GHCPATH>"},"cache-dir":"<ROOT>/cabal.dist/home/.cabal/packages","store-dir":"<ROOT>/cabal.dist/home/.cabal/store"}
+{"cabal-version":"<CABAL_INSTALL_VER>","compiler":{"flavour":"ghc","id":"ghc-<GHCVER>","path":"<GHCPATH>"},"remote-repo-cache":"<ROOT>/cabal.dist/home/.cabal/packages","store-dir":"<ROOT>/cabal.dist/home/.cabal/store"}
 # cabal path
 {"cabal-version":"<CABAL_INSTALL_VER>","logs-dir":"<ROOT>/cabal.dist/home/.cabal/logs","store-dir":"<ROOT>/cabal.dist/home/.cabal/store"}
 # cabal path
 {"cabal-version":"<CABAL_INSTALL_VER>","compiler":{"flavour":"ghc","id":"ghc-<GHCVER>","path":"<GHCPATH>"},"logs-dir":"<ROOT>/cabal.dist/home/.cabal/logs","store-dir":"<ROOT>/cabal.dist/home/.cabal/store"}
 # cabal path
-{"cabal-version":"<CABAL_INSTALL_VER>","cache-dir":"<ROOT>/cabal.dist/home/.cabal/packages","logs-dir":"<ROOT>/cabal.dist/home/.cabal/logs","store-dir":"<ROOT>/cabal.dist/home/.cabal/store"}
+{"cabal-version":"<CABAL_INSTALL_VER>","remote-repo-cache":"<ROOT>/cabal.dist/home/.cabal/packages","logs-dir":"<ROOT>/cabal.dist/home/.cabal/logs","store-dir":"<ROOT>/cabal.dist/home/.cabal/store"}
 # cabal path
-{"cabal-version":"<CABAL_INSTALL_VER>","compiler":{"flavour":"ghc","id":"ghc-<GHCVER>","path":"<GHCPATH>"},"cache-dir":"<ROOT>/cabal.dist/home/.cabal/packages","logs-dir":"<ROOT>/cabal.dist/home/.cabal/logs","store-dir":"<ROOT>/cabal.dist/home/.cabal/store"}
+{"cabal-version":"<CABAL_INSTALL_VER>","compiler":{"flavour":"ghc","id":"ghc-<GHCVER>","path":"<GHCPATH>"},"remote-repo-cache":"<ROOT>/cabal.dist/home/.cabal/packages","logs-dir":"<ROOT>/cabal.dist/home/.cabal/logs","store-dir":"<ROOT>/cabal.dist/home/.cabal/store"}
 # cabal path
 {"cabal-version":"<CABAL_INSTALL_VER>","config-file":"<ROOT>/cabal.dist/home/.cabal/config"}
 # cabal path
 {"cabal-version":"<CABAL_INSTALL_VER>","compiler":{"flavour":"ghc","id":"ghc-<GHCVER>","path":"<GHCPATH>"},"config-file":"<ROOT>/cabal.dist/home/.cabal/config"}
 # cabal path
-{"cabal-version":"<CABAL_INSTALL_VER>","cache-dir":"<ROOT>/cabal.dist/home/.cabal/packages","config-file":"<ROOT>/cabal.dist/home/.cabal/config"}
+{"cabal-version":"<CABAL_INSTALL_VER>","remote-repo-cache":"<ROOT>/cabal.dist/home/.cabal/packages","config-file":"<ROOT>/cabal.dist/home/.cabal/config"}
 # cabal path
-{"cabal-version":"<CABAL_INSTALL_VER>","compiler":{"flavour":"ghc","id":"ghc-<GHCVER>","path":"<GHCPATH>"},"cache-dir":"<ROOT>/cabal.dist/home/.cabal/packages","config-file":"<ROOT>/cabal.dist/home/.cabal/config"}
+{"cabal-version":"<CABAL_INSTALL_VER>","compiler":{"flavour":"ghc","id":"ghc-<GHCVER>","path":"<GHCPATH>"},"remote-repo-cache":"<ROOT>/cabal.dist/home/.cabal/packages","config-file":"<ROOT>/cabal.dist/home/.cabal/config"}
 # cabal path
 {"cabal-version":"<CABAL_INSTALL_VER>","logs-dir":"<ROOT>/cabal.dist/home/.cabal/logs","config-file":"<ROOT>/cabal.dist/home/.cabal/config"}
 # cabal path
 {"cabal-version":"<CABAL_INSTALL_VER>","compiler":{"flavour":"ghc","id":"ghc-<GHCVER>","path":"<GHCPATH>"},"logs-dir":"<ROOT>/cabal.dist/home/.cabal/logs","config-file":"<ROOT>/cabal.dist/home/.cabal/config"}
 # cabal path
-{"cabal-version":"<CABAL_INSTALL_VER>","cache-dir":"<ROOT>/cabal.dist/home/.cabal/packages","logs-dir":"<ROOT>/cabal.dist/home/.cabal/logs","config-file":"<ROOT>/cabal.dist/home/.cabal/config"}
+{"cabal-version":"<CABAL_INSTALL_VER>","remote-repo-cache":"<ROOT>/cabal.dist/home/.cabal/packages","logs-dir":"<ROOT>/cabal.dist/home/.cabal/logs","config-file":"<ROOT>/cabal.dist/home/.cabal/config"}
 # cabal path
-{"cabal-version":"<CABAL_INSTALL_VER>","compiler":{"flavour":"ghc","id":"ghc-<GHCVER>","path":"<GHCPATH>"},"cache-dir":"<ROOT>/cabal.dist/home/.cabal/packages","logs-dir":"<ROOT>/cabal.dist/home/.cabal/logs","config-file":"<ROOT>/cabal.dist/home/.cabal/config"}
+{"cabal-version":"<CABAL_INSTALL_VER>","compiler":{"flavour":"ghc","id":"ghc-<GHCVER>","path":"<GHCPATH>"},"remote-repo-cache":"<ROOT>/cabal.dist/home/.cabal/packages","logs-dir":"<ROOT>/cabal.dist/home/.cabal/logs","config-file":"<ROOT>/cabal.dist/home/.cabal/config"}
 # cabal path
 {"cabal-version":"<CABAL_INSTALL_VER>","store-dir":"<ROOT>/cabal.dist/home/.cabal/store","config-file":"<ROOT>/cabal.dist/home/.cabal/config"}
 # cabal path
 {"cabal-version":"<CABAL_INSTALL_VER>","compiler":{"flavour":"ghc","id":"ghc-<GHCVER>","path":"<GHCPATH>"},"store-dir":"<ROOT>/cabal.dist/home/.cabal/store","config-file":"<ROOT>/cabal.dist/home/.cabal/config"}
 # cabal path
-{"cabal-version":"<CABAL_INSTALL_VER>","cache-dir":"<ROOT>/cabal.dist/home/.cabal/packages","store-dir":"<ROOT>/cabal.dist/home/.cabal/store","config-file":"<ROOT>/cabal.dist/home/.cabal/config"}
+{"cabal-version":"<CABAL_INSTALL_VER>","remote-repo-cache":"<ROOT>/cabal.dist/home/.cabal/packages","store-dir":"<ROOT>/cabal.dist/home/.cabal/store","config-file":"<ROOT>/cabal.dist/home/.cabal/config"}
 # cabal path
-{"cabal-version":"<CABAL_INSTALL_VER>","compiler":{"flavour":"ghc","id":"ghc-<GHCVER>","path":"<GHCPATH>"},"cache-dir":"<ROOT>/cabal.dist/home/.cabal/packages","store-dir":"<ROOT>/cabal.dist/home/.cabal/store","config-file":"<ROOT>/cabal.dist/home/.cabal/config"}
+{"cabal-version":"<CABAL_INSTALL_VER>","compiler":{"flavour":"ghc","id":"ghc-<GHCVER>","path":"<GHCPATH>"},"remote-repo-cache":"<ROOT>/cabal.dist/home/.cabal/packages","store-dir":"<ROOT>/cabal.dist/home/.cabal/store","config-file":"<ROOT>/cabal.dist/home/.cabal/config"}
 # cabal path
 {"cabal-version":"<CABAL_INSTALL_VER>","logs-dir":"<ROOT>/cabal.dist/home/.cabal/logs","store-dir":"<ROOT>/cabal.dist/home/.cabal/store","config-file":"<ROOT>/cabal.dist/home/.cabal/config"}
 # cabal path
 {"cabal-version":"<CABAL_INSTALL_VER>","compiler":{"flavour":"ghc","id":"ghc-<GHCVER>","path":"<GHCPATH>"},"logs-dir":"<ROOT>/cabal.dist/home/.cabal/logs","store-dir":"<ROOT>/cabal.dist/home/.cabal/store","config-file":"<ROOT>/cabal.dist/home/.cabal/config"}
 # cabal path
-{"cabal-version":"<CABAL_INSTALL_VER>","cache-dir":"<ROOT>/cabal.dist/home/.cabal/packages","logs-dir":"<ROOT>/cabal.dist/home/.cabal/logs","store-dir":"<ROOT>/cabal.dist/home/.cabal/store","config-file":"<ROOT>/cabal.dist/home/.cabal/config"}
+{"cabal-version":"<CABAL_INSTALL_VER>","remote-repo-cache":"<ROOT>/cabal.dist/home/.cabal/packages","logs-dir":"<ROOT>/cabal.dist/home/.cabal/logs","store-dir":"<ROOT>/cabal.dist/home/.cabal/store","config-file":"<ROOT>/cabal.dist/home/.cabal/config"}
 # cabal path
-{"cabal-version":"<CABAL_INSTALL_VER>","compiler":{"flavour":"ghc","id":"ghc-<GHCVER>","path":"<GHCPATH>"},"cache-dir":"<ROOT>/cabal.dist/home/.cabal/packages","logs-dir":"<ROOT>/cabal.dist/home/.cabal/logs","store-dir":"<ROOT>/cabal.dist/home/.cabal/store","config-file":"<ROOT>/cabal.dist/home/.cabal/config"}
+{"cabal-version":"<CABAL_INSTALL_VER>","compiler":{"flavour":"ghc","id":"ghc-<GHCVER>","path":"<GHCPATH>"},"remote-repo-cache":"<ROOT>/cabal.dist/home/.cabal/packages","logs-dir":"<ROOT>/cabal.dist/home/.cabal/logs","store-dir":"<ROOT>/cabal.dist/home/.cabal/store","config-file":"<ROOT>/cabal.dist/home/.cabal/config"}
 # cabal path
 {"cabal-version":"<CABAL_INSTALL_VER>","installdir":"<ROOT>/cabal.dist/home/.cabal/bin"}
 # cabal path
 {"cabal-version":"<CABAL_INSTALL_VER>","compiler":{"flavour":"ghc","id":"ghc-<GHCVER>","path":"<GHCPATH>"},"installdir":"<ROOT>/cabal.dist/home/.cabal/bin"}
 # cabal path
-{"cabal-version":"<CABAL_INSTALL_VER>","cache-dir":"<ROOT>/cabal.dist/home/.cabal/packages","installdir":"<ROOT>/cabal.dist/home/.cabal/bin"}
+{"cabal-version":"<CABAL_INSTALL_VER>","remote-repo-cache":"<ROOT>/cabal.dist/home/.cabal/packages","installdir":"<ROOT>/cabal.dist/home/.cabal/bin"}
 # cabal path
-{"cabal-version":"<CABAL_INSTALL_VER>","compiler":{"flavour":"ghc","id":"ghc-<GHCVER>","path":"<GHCPATH>"},"cache-dir":"<ROOT>/cabal.dist/home/.cabal/packages","installdir":"<ROOT>/cabal.dist/home/.cabal/bin"}
+{"cabal-version":"<CABAL_INSTALL_VER>","compiler":{"flavour":"ghc","id":"ghc-<GHCVER>","path":"<GHCPATH>"},"remote-repo-cache":"<ROOT>/cabal.dist/home/.cabal/packages","installdir":"<ROOT>/cabal.dist/home/.cabal/bin"}
 # cabal path
 {"cabal-version":"<CABAL_INSTALL_VER>","logs-dir":"<ROOT>/cabal.dist/home/.cabal/logs","installdir":"<ROOT>/cabal.dist/home/.cabal/bin"}
 # cabal path
 {"cabal-version":"<CABAL_INSTALL_VER>","compiler":{"flavour":"ghc","id":"ghc-<GHCVER>","path":"<GHCPATH>"},"logs-dir":"<ROOT>/cabal.dist/home/.cabal/logs","installdir":"<ROOT>/cabal.dist/home/.cabal/bin"}
 # cabal path
-{"cabal-version":"<CABAL_INSTALL_VER>","cache-dir":"<ROOT>/cabal.dist/home/.cabal/packages","logs-dir":"<ROOT>/cabal.dist/home/.cabal/logs","installdir":"<ROOT>/cabal.dist/home/.cabal/bin"}
+{"cabal-version":"<CABAL_INSTALL_VER>","remote-repo-cache":"<ROOT>/cabal.dist/home/.cabal/packages","logs-dir":"<ROOT>/cabal.dist/home/.cabal/logs","installdir":"<ROOT>/cabal.dist/home/.cabal/bin"}
 # cabal path
-{"cabal-version":"<CABAL_INSTALL_VER>","compiler":{"flavour":"ghc","id":"ghc-<GHCVER>","path":"<GHCPATH>"},"cache-dir":"<ROOT>/cabal.dist/home/.cabal/packages","logs-dir":"<ROOT>/cabal.dist/home/.cabal/logs","installdir":"<ROOT>/cabal.dist/home/.cabal/bin"}
+{"cabal-version":"<CABAL_INSTALL_VER>","compiler":{"flavour":"ghc","id":"ghc-<GHCVER>","path":"<GHCPATH>"},"remote-repo-cache":"<ROOT>/cabal.dist/home/.cabal/packages","logs-dir":"<ROOT>/cabal.dist/home/.cabal/logs","installdir":"<ROOT>/cabal.dist/home/.cabal/bin"}
 # cabal path
 {"cabal-version":"<CABAL_INSTALL_VER>","store-dir":"<ROOT>/cabal.dist/home/.cabal/store","installdir":"<ROOT>/cabal.dist/home/.cabal/bin"}
 # cabal path
 {"cabal-version":"<CABAL_INSTALL_VER>","compiler":{"flavour":"ghc","id":"ghc-<GHCVER>","path":"<GHCPATH>"},"store-dir":"<ROOT>/cabal.dist/home/.cabal/store","installdir":"<ROOT>/cabal.dist/home/.cabal/bin"}
 # cabal path
-{"cabal-version":"<CABAL_INSTALL_VER>","cache-dir":"<ROOT>/cabal.dist/home/.cabal/packages","store-dir":"<ROOT>/cabal.dist/home/.cabal/store","installdir":"<ROOT>/cabal.dist/home/.cabal/bin"}
+{"cabal-version":"<CABAL_INSTALL_VER>","remote-repo-cache":"<ROOT>/cabal.dist/home/.cabal/packages","store-dir":"<ROOT>/cabal.dist/home/.cabal/store","installdir":"<ROOT>/cabal.dist/home/.cabal/bin"}
 # cabal path
-{"cabal-version":"<CABAL_INSTALL_VER>","compiler":{"flavour":"ghc","id":"ghc-<GHCVER>","path":"<GHCPATH>"},"cache-dir":"<ROOT>/cabal.dist/home/.cabal/packages","store-dir":"<ROOT>/cabal.dist/home/.cabal/store","installdir":"<ROOT>/cabal.dist/home/.cabal/bin"}
+{"cabal-version":"<CABAL_INSTALL_VER>","compiler":{"flavour":"ghc","id":"ghc-<GHCVER>","path":"<GHCPATH>"},"remote-repo-cache":"<ROOT>/cabal.dist/home/.cabal/packages","store-dir":"<ROOT>/cabal.dist/home/.cabal/store","installdir":"<ROOT>/cabal.dist/home/.cabal/bin"}
 # cabal path
 {"cabal-version":"<CABAL_INSTALL_VER>","logs-dir":"<ROOT>/cabal.dist/home/.cabal/logs","store-dir":"<ROOT>/cabal.dist/home/.cabal/store","installdir":"<ROOT>/cabal.dist/home/.cabal/bin"}
 # cabal path
 {"cabal-version":"<CABAL_INSTALL_VER>","compiler":{"flavour":"ghc","id":"ghc-<GHCVER>","path":"<GHCPATH>"},"logs-dir":"<ROOT>/cabal.dist/home/.cabal/logs","store-dir":"<ROOT>/cabal.dist/home/.cabal/store","installdir":"<ROOT>/cabal.dist/home/.cabal/bin"}
 # cabal path
-{"cabal-version":"<CABAL_INSTALL_VER>","cache-dir":"<ROOT>/cabal.dist/home/.cabal/packages","logs-dir":"<ROOT>/cabal.dist/home/.cabal/logs","store-dir":"<ROOT>/cabal.dist/home/.cabal/store","installdir":"<ROOT>/cabal.dist/home/.cabal/bin"}
+{"cabal-version":"<CABAL_INSTALL_VER>","remote-repo-cache":"<ROOT>/cabal.dist/home/.cabal/packages","logs-dir":"<ROOT>/cabal.dist/home/.cabal/logs","store-dir":"<ROOT>/cabal.dist/home/.cabal/store","installdir":"<ROOT>/cabal.dist/home/.cabal/bin"}
 # cabal path
-{"cabal-version":"<CABAL_INSTALL_VER>","compiler":{"flavour":"ghc","id":"ghc-<GHCVER>","path":"<GHCPATH>"},"cache-dir":"<ROOT>/cabal.dist/home/.cabal/packages","logs-dir":"<ROOT>/cabal.dist/home/.cabal/logs","store-dir":"<ROOT>/cabal.dist/home/.cabal/store","installdir":"<ROOT>/cabal.dist/home/.cabal/bin"}
+{"cabal-version":"<CABAL_INSTALL_VER>","compiler":{"flavour":"ghc","id":"ghc-<GHCVER>","path":"<GHCPATH>"},"remote-repo-cache":"<ROOT>/cabal.dist/home/.cabal/packages","logs-dir":"<ROOT>/cabal.dist/home/.cabal/logs","store-dir":"<ROOT>/cabal.dist/home/.cabal/store","installdir":"<ROOT>/cabal.dist/home/.cabal/bin"}
 # cabal path
 {"cabal-version":"<CABAL_INSTALL_VER>","config-file":"<ROOT>/cabal.dist/home/.cabal/config","installdir":"<ROOT>/cabal.dist/home/.cabal/bin"}
 # cabal path
 {"cabal-version":"<CABAL_INSTALL_VER>","compiler":{"flavour":"ghc","id":"ghc-<GHCVER>","path":"<GHCPATH>"},"config-file":"<ROOT>/cabal.dist/home/.cabal/config","installdir":"<ROOT>/cabal.dist/home/.cabal/bin"}
 # cabal path
-{"cabal-version":"<CABAL_INSTALL_VER>","cache-dir":"<ROOT>/cabal.dist/home/.cabal/packages","config-file":"<ROOT>/cabal.dist/home/.cabal/config","installdir":"<ROOT>/cabal.dist/home/.cabal/bin"}
+{"cabal-version":"<CABAL_INSTALL_VER>","remote-repo-cache":"<ROOT>/cabal.dist/home/.cabal/packages","config-file":"<ROOT>/cabal.dist/home/.cabal/config","installdir":"<ROOT>/cabal.dist/home/.cabal/bin"}
 # cabal path
-{"cabal-version":"<CABAL_INSTALL_VER>","compiler":{"flavour":"ghc","id":"ghc-<GHCVER>","path":"<GHCPATH>"},"cache-dir":"<ROOT>/cabal.dist/home/.cabal/packages","config-file":"<ROOT>/cabal.dist/home/.cabal/config","installdir":"<ROOT>/cabal.dist/home/.cabal/bin"}
+{"cabal-version":"<CABAL_INSTALL_VER>","compiler":{"flavour":"ghc","id":"ghc-<GHCVER>","path":"<GHCPATH>"},"remote-repo-cache":"<ROOT>/cabal.dist/home/.cabal/packages","config-file":"<ROOT>/cabal.dist/home/.cabal/config","installdir":"<ROOT>/cabal.dist/home/.cabal/bin"}
 # cabal path
 {"cabal-version":"<CABAL_INSTALL_VER>","logs-dir":"<ROOT>/cabal.dist/home/.cabal/logs","config-file":"<ROOT>/cabal.dist/home/.cabal/config","installdir":"<ROOT>/cabal.dist/home/.cabal/bin"}
 # cabal path
 {"cabal-version":"<CABAL_INSTALL_VER>","compiler":{"flavour":"ghc","id":"ghc-<GHCVER>","path":"<GHCPATH>"},"logs-dir":"<ROOT>/cabal.dist/home/.cabal/logs","config-file":"<ROOT>/cabal.dist/home/.cabal/config","installdir":"<ROOT>/cabal.dist/home/.cabal/bin"}
 # cabal path
-{"cabal-version":"<CABAL_INSTALL_VER>","cache-dir":"<ROOT>/cabal.dist/home/.cabal/packages","logs-dir":"<ROOT>/cabal.dist/home/.cabal/logs","config-file":"<ROOT>/cabal.dist/home/.cabal/config","installdir":"<ROOT>/cabal.dist/home/.cabal/bin"}
+{"cabal-version":"<CABAL_INSTALL_VER>","remote-repo-cache":"<ROOT>/cabal.dist/home/.cabal/packages","logs-dir":"<ROOT>/cabal.dist/home/.cabal/logs","config-file":"<ROOT>/cabal.dist/home/.cabal/config","installdir":"<ROOT>/cabal.dist/home/.cabal/bin"}
 # cabal path
-{"cabal-version":"<CABAL_INSTALL_VER>","compiler":{"flavour":"ghc","id":"ghc-<GHCVER>","path":"<GHCPATH>"},"cache-dir":"<ROOT>/cabal.dist/home/.cabal/packages","logs-dir":"<ROOT>/cabal.dist/home/.cabal/logs","config-file":"<ROOT>/cabal.dist/home/.cabal/config","installdir":"<ROOT>/cabal.dist/home/.cabal/bin"}
+{"cabal-version":"<CABAL_INSTALL_VER>","compiler":{"flavour":"ghc","id":"ghc-<GHCVER>","path":"<GHCPATH>"},"remote-repo-cache":"<ROOT>/cabal.dist/home/.cabal/packages","logs-dir":"<ROOT>/cabal.dist/home/.cabal/logs","config-file":"<ROOT>/cabal.dist/home/.cabal/config","installdir":"<ROOT>/cabal.dist/home/.cabal/bin"}
 # cabal path
 {"cabal-version":"<CABAL_INSTALL_VER>","store-dir":"<ROOT>/cabal.dist/home/.cabal/store","config-file":"<ROOT>/cabal.dist/home/.cabal/config","installdir":"<ROOT>/cabal.dist/home/.cabal/bin"}
 # cabal path
 {"cabal-version":"<CABAL_INSTALL_VER>","compiler":{"flavour":"ghc","id":"ghc-<GHCVER>","path":"<GHCPATH>"},"store-dir":"<ROOT>/cabal.dist/home/.cabal/store","config-file":"<ROOT>/cabal.dist/home/.cabal/config","installdir":"<ROOT>/cabal.dist/home/.cabal/bin"}
 # cabal path
-{"cabal-version":"<CABAL_INSTALL_VER>","cache-dir":"<ROOT>/cabal.dist/home/.cabal/packages","store-dir":"<ROOT>/cabal.dist/home/.cabal/store","config-file":"<ROOT>/cabal.dist/home/.cabal/config","installdir":"<ROOT>/cabal.dist/home/.cabal/bin"}
+{"cabal-version":"<CABAL_INSTALL_VER>","remote-repo-cache":"<ROOT>/cabal.dist/home/.cabal/packages","store-dir":"<ROOT>/cabal.dist/home/.cabal/store","config-file":"<ROOT>/cabal.dist/home/.cabal/config","installdir":"<ROOT>/cabal.dist/home/.cabal/bin"}
 # cabal path
-{"cabal-version":"<CABAL_INSTALL_VER>","compiler":{"flavour":"ghc","id":"ghc-<GHCVER>","path":"<GHCPATH>"},"cache-dir":"<ROOT>/cabal.dist/home/.cabal/packages","store-dir":"<ROOT>/cabal.dist/home/.cabal/store","config-file":"<ROOT>/cabal.dist/home/.cabal/config","installdir":"<ROOT>/cabal.dist/home/.cabal/bin"}
+{"cabal-version":"<CABAL_INSTALL_VER>","compiler":{"flavour":"ghc","id":"ghc-<GHCVER>","path":"<GHCPATH>"},"remote-repo-cache":"<ROOT>/cabal.dist/home/.cabal/packages","store-dir":"<ROOT>/cabal.dist/home/.cabal/store","config-file":"<ROOT>/cabal.dist/home/.cabal/config","installdir":"<ROOT>/cabal.dist/home/.cabal/bin"}
 # cabal path
 {"cabal-version":"<CABAL_INSTALL_VER>","logs-dir":"<ROOT>/cabal.dist/home/.cabal/logs","store-dir":"<ROOT>/cabal.dist/home/.cabal/store","config-file":"<ROOT>/cabal.dist/home/.cabal/config","installdir":"<ROOT>/cabal.dist/home/.cabal/bin"}
 # cabal path
 {"cabal-version":"<CABAL_INSTALL_VER>","compiler":{"flavour":"ghc","id":"ghc-<GHCVER>","path":"<GHCPATH>"},"logs-dir":"<ROOT>/cabal.dist/home/.cabal/logs","store-dir":"<ROOT>/cabal.dist/home/.cabal/store","config-file":"<ROOT>/cabal.dist/home/.cabal/config","installdir":"<ROOT>/cabal.dist/home/.cabal/bin"}
 # cabal path
-{"cabal-version":"<CABAL_INSTALL_VER>","cache-dir":"<ROOT>/cabal.dist/home/.cabal/packages","logs-dir":"<ROOT>/cabal.dist/home/.cabal/logs","store-dir":"<ROOT>/cabal.dist/home/.cabal/store","config-file":"<ROOT>/cabal.dist/home/.cabal/config","installdir":"<ROOT>/cabal.dist/home/.cabal/bin"}
+{"cabal-version":"<CABAL_INSTALL_VER>","remote-repo-cache":"<ROOT>/cabal.dist/home/.cabal/packages","logs-dir":"<ROOT>/cabal.dist/home/.cabal/logs","store-dir":"<ROOT>/cabal.dist/home/.cabal/store","config-file":"<ROOT>/cabal.dist/home/.cabal/config","installdir":"<ROOT>/cabal.dist/home/.cabal/bin"}
 # cabal path
-{"cabal-version":"<CABAL_INSTALL_VER>","compiler":{"flavour":"ghc","id":"ghc-<GHCVER>","path":"<GHCPATH>"},"cache-dir":"<ROOT>/cabal.dist/home/.cabal/packages","logs-dir":"<ROOT>/cabal.dist/home/.cabal/logs","store-dir":"<ROOT>/cabal.dist/home/.cabal/store","config-file":"<ROOT>/cabal.dist/home/.cabal/config","installdir":"<ROOT>/cabal.dist/home/.cabal/bin"}
+{"cabal-version":"<CABAL_INSTALL_VER>","compiler":{"flavour":"ghc","id":"ghc-<GHCVER>","path":"<GHCPATH>"},"remote-repo-cache":"<ROOT>/cabal.dist/home/.cabal/packages","logs-dir":"<ROOT>/cabal.dist/home/.cabal/logs","store-dir":"<ROOT>/cabal.dist/home/.cabal/store","config-file":"<ROOT>/cabal.dist/home/.cabal/config","installdir":"<ROOT>/cabal.dist/home/.cabal/bin"}
 # cabal path
 compiler-flavour: ghc
 compiler-id: ghc-<GHCVER>
 compiler-path: <GHCPATH>
-cache-dir: <ROOT>/cabal.dist/home/.cabal/packages
+cache-home: <ROOT>/cabal.dist/home/.cabal
+remote-repo-cache: <ROOT>/cabal.dist/home/.cabal/packages
 logs-dir: <ROOT>/cabal.dist/home/.cabal/logs
 store-dir: <ROOT>/cabal.dist/home/.cabal/store
 config-file: <ROOT>/cabal.dist/home/.cabal/config
@@ -145,7 +146,7 @@ compiler-path: <GHCPATH>
 compiler-flavour: ghc
 compiler-id: ghc-<GHCVER>
 compiler-path: <GHCPATH>
-cache-dir: <ROOT>/cabal.dist/home/.cabal/packages
+remote-repo-cache: <ROOT>/cabal.dist/home/.cabal/packages
 # cabal path
 <ROOT>/cabal.dist/home/.cabal/logs
 # cabal path
@@ -154,13 +155,13 @@ compiler-id: ghc-<GHCVER>
 compiler-path: <GHCPATH>
 logs-dir: <ROOT>/cabal.dist/home/.cabal/logs
 # cabal path
-cache-dir: <ROOT>/cabal.dist/home/.cabal/packages
+remote-repo-cache: <ROOT>/cabal.dist/home/.cabal/packages
 logs-dir: <ROOT>/cabal.dist/home/.cabal/logs
 # cabal path
 compiler-flavour: ghc
 compiler-id: ghc-<GHCVER>
 compiler-path: <GHCPATH>
-cache-dir: <ROOT>/cabal.dist/home/.cabal/packages
+remote-repo-cache: <ROOT>/cabal.dist/home/.cabal/packages
 logs-dir: <ROOT>/cabal.dist/home/.cabal/logs
 # cabal path
 <ROOT>/cabal.dist/home/.cabal/store
@@ -170,13 +171,13 @@ compiler-id: ghc-<GHCVER>
 compiler-path: <GHCPATH>
 store-dir: <ROOT>/cabal.dist/home/.cabal/store
 # cabal path
-cache-dir: <ROOT>/cabal.dist/home/.cabal/packages
+remote-repo-cache: <ROOT>/cabal.dist/home/.cabal/packages
 store-dir: <ROOT>/cabal.dist/home/.cabal/store
 # cabal path
 compiler-flavour: ghc
 compiler-id: ghc-<GHCVER>
 compiler-path: <GHCPATH>
-cache-dir: <ROOT>/cabal.dist/home/.cabal/packages
+remote-repo-cache: <ROOT>/cabal.dist/home/.cabal/packages
 store-dir: <ROOT>/cabal.dist/home/.cabal/store
 # cabal path
 logs-dir: <ROOT>/cabal.dist/home/.cabal/logs
@@ -188,14 +189,14 @@ compiler-path: <GHCPATH>
 logs-dir: <ROOT>/cabal.dist/home/.cabal/logs
 store-dir: <ROOT>/cabal.dist/home/.cabal/store
 # cabal path
-cache-dir: <ROOT>/cabal.dist/home/.cabal/packages
+remote-repo-cache: <ROOT>/cabal.dist/home/.cabal/packages
 logs-dir: <ROOT>/cabal.dist/home/.cabal/logs
 store-dir: <ROOT>/cabal.dist/home/.cabal/store
 # cabal path
 compiler-flavour: ghc
 compiler-id: ghc-<GHCVER>
 compiler-path: <GHCPATH>
-cache-dir: <ROOT>/cabal.dist/home/.cabal/packages
+remote-repo-cache: <ROOT>/cabal.dist/home/.cabal/packages
 logs-dir: <ROOT>/cabal.dist/home/.cabal/logs
 store-dir: <ROOT>/cabal.dist/home/.cabal/store
 # cabal path
@@ -206,13 +207,13 @@ compiler-id: ghc-<GHCVER>
 compiler-path: <GHCPATH>
 config-file: <ROOT>/cabal.dist/home/.cabal/config
 # cabal path
-cache-dir: <ROOT>/cabal.dist/home/.cabal/packages
+remote-repo-cache: <ROOT>/cabal.dist/home/.cabal/packages
 config-file: <ROOT>/cabal.dist/home/.cabal/config
 # cabal path
 compiler-flavour: ghc
 compiler-id: ghc-<GHCVER>
 compiler-path: <GHCPATH>
-cache-dir: <ROOT>/cabal.dist/home/.cabal/packages
+remote-repo-cache: <ROOT>/cabal.dist/home/.cabal/packages
 config-file: <ROOT>/cabal.dist/home/.cabal/config
 # cabal path
 logs-dir: <ROOT>/cabal.dist/home/.cabal/logs
@@ -224,14 +225,14 @@ compiler-path: <GHCPATH>
 logs-dir: <ROOT>/cabal.dist/home/.cabal/logs
 config-file: <ROOT>/cabal.dist/home/.cabal/config
 # cabal path
-cache-dir: <ROOT>/cabal.dist/home/.cabal/packages
+remote-repo-cache: <ROOT>/cabal.dist/home/.cabal/packages
 logs-dir: <ROOT>/cabal.dist/home/.cabal/logs
 config-file: <ROOT>/cabal.dist/home/.cabal/config
 # cabal path
 compiler-flavour: ghc
 compiler-id: ghc-<GHCVER>
 compiler-path: <GHCPATH>
-cache-dir: <ROOT>/cabal.dist/home/.cabal/packages
+remote-repo-cache: <ROOT>/cabal.dist/home/.cabal/packages
 logs-dir: <ROOT>/cabal.dist/home/.cabal/logs
 config-file: <ROOT>/cabal.dist/home/.cabal/config
 # cabal path
@@ -244,14 +245,14 @@ compiler-path: <GHCPATH>
 store-dir: <ROOT>/cabal.dist/home/.cabal/store
 config-file: <ROOT>/cabal.dist/home/.cabal/config
 # cabal path
-cache-dir: <ROOT>/cabal.dist/home/.cabal/packages
+remote-repo-cache: <ROOT>/cabal.dist/home/.cabal/packages
 store-dir: <ROOT>/cabal.dist/home/.cabal/store
 config-file: <ROOT>/cabal.dist/home/.cabal/config
 # cabal path
 compiler-flavour: ghc
 compiler-id: ghc-<GHCVER>
 compiler-path: <GHCPATH>
-cache-dir: <ROOT>/cabal.dist/home/.cabal/packages
+remote-repo-cache: <ROOT>/cabal.dist/home/.cabal/packages
 store-dir: <ROOT>/cabal.dist/home/.cabal/store
 config-file: <ROOT>/cabal.dist/home/.cabal/config
 # cabal path
@@ -266,7 +267,7 @@ logs-dir: <ROOT>/cabal.dist/home/.cabal/logs
 store-dir: <ROOT>/cabal.dist/home/.cabal/store
 config-file: <ROOT>/cabal.dist/home/.cabal/config
 # cabal path
-cache-dir: <ROOT>/cabal.dist/home/.cabal/packages
+remote-repo-cache: <ROOT>/cabal.dist/home/.cabal/packages
 logs-dir: <ROOT>/cabal.dist/home/.cabal/logs
 store-dir: <ROOT>/cabal.dist/home/.cabal/store
 config-file: <ROOT>/cabal.dist/home/.cabal/config
@@ -274,7 +275,7 @@ config-file: <ROOT>/cabal.dist/home/.cabal/config
 compiler-flavour: ghc
 compiler-id: ghc-<GHCVER>
 compiler-path: <GHCPATH>
-cache-dir: <ROOT>/cabal.dist/home/.cabal/packages
+remote-repo-cache: <ROOT>/cabal.dist/home/.cabal/packages
 logs-dir: <ROOT>/cabal.dist/home/.cabal/logs
 store-dir: <ROOT>/cabal.dist/home/.cabal/store
 config-file: <ROOT>/cabal.dist/home/.cabal/config
@@ -286,13 +287,13 @@ compiler-id: ghc-<GHCVER>
 compiler-path: <GHCPATH>
 installdir: <ROOT>/cabal.dist/home/.cabal/bin
 # cabal path
-cache-dir: <ROOT>/cabal.dist/home/.cabal/packages
+remote-repo-cache: <ROOT>/cabal.dist/home/.cabal/packages
 installdir: <ROOT>/cabal.dist/home/.cabal/bin
 # cabal path
 compiler-flavour: ghc
 compiler-id: ghc-<GHCVER>
 compiler-path: <GHCPATH>
-cache-dir: <ROOT>/cabal.dist/home/.cabal/packages
+remote-repo-cache: <ROOT>/cabal.dist/home/.cabal/packages
 installdir: <ROOT>/cabal.dist/home/.cabal/bin
 # cabal path
 logs-dir: <ROOT>/cabal.dist/home/.cabal/logs
@@ -304,14 +305,14 @@ compiler-path: <GHCPATH>
 logs-dir: <ROOT>/cabal.dist/home/.cabal/logs
 installdir: <ROOT>/cabal.dist/home/.cabal/bin
 # cabal path
-cache-dir: <ROOT>/cabal.dist/home/.cabal/packages
+remote-repo-cache: <ROOT>/cabal.dist/home/.cabal/packages
 logs-dir: <ROOT>/cabal.dist/home/.cabal/logs
 installdir: <ROOT>/cabal.dist/home/.cabal/bin
 # cabal path
 compiler-flavour: ghc
 compiler-id: ghc-<GHCVER>
 compiler-path: <GHCPATH>
-cache-dir: <ROOT>/cabal.dist/home/.cabal/packages
+remote-repo-cache: <ROOT>/cabal.dist/home/.cabal/packages
 logs-dir: <ROOT>/cabal.dist/home/.cabal/logs
 installdir: <ROOT>/cabal.dist/home/.cabal/bin
 # cabal path
@@ -324,14 +325,14 @@ compiler-path: <GHCPATH>
 store-dir: <ROOT>/cabal.dist/home/.cabal/store
 installdir: <ROOT>/cabal.dist/home/.cabal/bin
 # cabal path
-cache-dir: <ROOT>/cabal.dist/home/.cabal/packages
+remote-repo-cache: <ROOT>/cabal.dist/home/.cabal/packages
 store-dir: <ROOT>/cabal.dist/home/.cabal/store
 installdir: <ROOT>/cabal.dist/home/.cabal/bin
 # cabal path
 compiler-flavour: ghc
 compiler-id: ghc-<GHCVER>
 compiler-path: <GHCPATH>
-cache-dir: <ROOT>/cabal.dist/home/.cabal/packages
+remote-repo-cache: <ROOT>/cabal.dist/home/.cabal/packages
 store-dir: <ROOT>/cabal.dist/home/.cabal/store
 installdir: <ROOT>/cabal.dist/home/.cabal/bin
 # cabal path
@@ -346,7 +347,7 @@ logs-dir: <ROOT>/cabal.dist/home/.cabal/logs
 store-dir: <ROOT>/cabal.dist/home/.cabal/store
 installdir: <ROOT>/cabal.dist/home/.cabal/bin
 # cabal path
-cache-dir: <ROOT>/cabal.dist/home/.cabal/packages
+remote-repo-cache: <ROOT>/cabal.dist/home/.cabal/packages
 logs-dir: <ROOT>/cabal.dist/home/.cabal/logs
 store-dir: <ROOT>/cabal.dist/home/.cabal/store
 installdir: <ROOT>/cabal.dist/home/.cabal/bin
@@ -354,7 +355,7 @@ installdir: <ROOT>/cabal.dist/home/.cabal/bin
 compiler-flavour: ghc
 compiler-id: ghc-<GHCVER>
 compiler-path: <GHCPATH>
-cache-dir: <ROOT>/cabal.dist/home/.cabal/packages
+remote-repo-cache: <ROOT>/cabal.dist/home/.cabal/packages
 logs-dir: <ROOT>/cabal.dist/home/.cabal/logs
 store-dir: <ROOT>/cabal.dist/home/.cabal/store
 installdir: <ROOT>/cabal.dist/home/.cabal/bin
@@ -368,14 +369,14 @@ compiler-path: <GHCPATH>
 config-file: <ROOT>/cabal.dist/home/.cabal/config
 installdir: <ROOT>/cabal.dist/home/.cabal/bin
 # cabal path
-cache-dir: <ROOT>/cabal.dist/home/.cabal/packages
+remote-repo-cache: <ROOT>/cabal.dist/home/.cabal/packages
 config-file: <ROOT>/cabal.dist/home/.cabal/config
 installdir: <ROOT>/cabal.dist/home/.cabal/bin
 # cabal path
 compiler-flavour: ghc
 compiler-id: ghc-<GHCVER>
 compiler-path: <GHCPATH>
-cache-dir: <ROOT>/cabal.dist/home/.cabal/packages
+remote-repo-cache: <ROOT>/cabal.dist/home/.cabal/packages
 config-file: <ROOT>/cabal.dist/home/.cabal/config
 installdir: <ROOT>/cabal.dist/home/.cabal/bin
 # cabal path
@@ -390,7 +391,7 @@ logs-dir: <ROOT>/cabal.dist/home/.cabal/logs
 config-file: <ROOT>/cabal.dist/home/.cabal/config
 installdir: <ROOT>/cabal.dist/home/.cabal/bin
 # cabal path
-cache-dir: <ROOT>/cabal.dist/home/.cabal/packages
+remote-repo-cache: <ROOT>/cabal.dist/home/.cabal/packages
 logs-dir: <ROOT>/cabal.dist/home/.cabal/logs
 config-file: <ROOT>/cabal.dist/home/.cabal/config
 installdir: <ROOT>/cabal.dist/home/.cabal/bin
@@ -398,7 +399,7 @@ installdir: <ROOT>/cabal.dist/home/.cabal/bin
 compiler-flavour: ghc
 compiler-id: ghc-<GHCVER>
 compiler-path: <GHCPATH>
-cache-dir: <ROOT>/cabal.dist/home/.cabal/packages
+remote-repo-cache: <ROOT>/cabal.dist/home/.cabal/packages
 logs-dir: <ROOT>/cabal.dist/home/.cabal/logs
 config-file: <ROOT>/cabal.dist/home/.cabal/config
 installdir: <ROOT>/cabal.dist/home/.cabal/bin
@@ -414,7 +415,7 @@ store-dir: <ROOT>/cabal.dist/home/.cabal/store
 config-file: <ROOT>/cabal.dist/home/.cabal/config
 installdir: <ROOT>/cabal.dist/home/.cabal/bin
 # cabal path
-cache-dir: <ROOT>/cabal.dist/home/.cabal/packages
+remote-repo-cache: <ROOT>/cabal.dist/home/.cabal/packages
 store-dir: <ROOT>/cabal.dist/home/.cabal/store
 config-file: <ROOT>/cabal.dist/home/.cabal/config
 installdir: <ROOT>/cabal.dist/home/.cabal/bin
@@ -422,7 +423,7 @@ installdir: <ROOT>/cabal.dist/home/.cabal/bin
 compiler-flavour: ghc
 compiler-id: ghc-<GHCVER>
 compiler-path: <GHCPATH>
-cache-dir: <ROOT>/cabal.dist/home/.cabal/packages
+remote-repo-cache: <ROOT>/cabal.dist/home/.cabal/packages
 store-dir: <ROOT>/cabal.dist/home/.cabal/store
 config-file: <ROOT>/cabal.dist/home/.cabal/config
 installdir: <ROOT>/cabal.dist/home/.cabal/bin
@@ -440,7 +441,7 @@ store-dir: <ROOT>/cabal.dist/home/.cabal/store
 config-file: <ROOT>/cabal.dist/home/.cabal/config
 installdir: <ROOT>/cabal.dist/home/.cabal/bin
 # cabal path
-cache-dir: <ROOT>/cabal.dist/home/.cabal/packages
+remote-repo-cache: <ROOT>/cabal.dist/home/.cabal/packages
 logs-dir: <ROOT>/cabal.dist/home/.cabal/logs
 store-dir: <ROOT>/cabal.dist/home/.cabal/store
 config-file: <ROOT>/cabal.dist/home/.cabal/config
@@ -449,7 +450,7 @@ installdir: <ROOT>/cabal.dist/home/.cabal/bin
 compiler-flavour: ghc
 compiler-id: ghc-<GHCVER>
 compiler-path: <GHCPATH>
-cache-dir: <ROOT>/cabal.dist/home/.cabal/packages
+remote-repo-cache: <ROOT>/cabal.dist/home/.cabal/packages
 logs-dir: <ROOT>/cabal.dist/home/.cabal/logs
 store-dir: <ROOT>/cabal.dist/home/.cabal/store
 config-file: <ROOT>/cabal.dist/home/.cabal/config

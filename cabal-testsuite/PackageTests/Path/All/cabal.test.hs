@@ -8,7 +8,7 @@ allOutputFormats =
 
 allFlags =
   [ "--compiler-info"
-  , "--cache-dir"
+  , "--remote-repo-cache"
   , "--logs-dir"
   , "--store-dir"
   , "--config-file"
@@ -23,5 +23,3 @@ main = cabalTest $ do
     -- 'subsequences' generated "n over k" for k in (1 .. n)
     forM_ (subsequences allFlags) $ \flags -> do
       cabal "path" $ ["--output-format", outputFormat] <> flags
-
-
