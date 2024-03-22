@@ -26,7 +26,6 @@ import Data.List (group)
 import qualified Data.Set as Set
 import Distribution.Client.CmdErrorMessages
   ( plural
-  , renderListCommaAnd
   , renderListPretty
   , renderTargetProblem
   , renderTargetProblemNoTargets
@@ -541,7 +540,7 @@ renderRunProblem (TargetProblemMatchesMultiple targetSelector targets) =
     removeDuplicates = catMaybes . map safeHead . group . sort
 renderRunProblem (TargetProblemMultipleTargets selectorMap) =
   "The run command is for running a single executable at once. The targets "
-    ++ renderListCommaAnd
+    ++ renderListPretty
       [ "'" ++ showTargetSelector ts ++ "'"
       | ts <- uniqueTargetSelectors selectorMap
       ]
