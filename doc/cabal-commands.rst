@@ -428,6 +428,8 @@ e.g. you plan to work on a project with unreliable or no internet access.
 
 Check ``cabal fetch --help`` for a complete list of options.
 
+.. _cabal-get:
+
 cabal get
 ^^^^^^^^^
 

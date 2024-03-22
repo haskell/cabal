@@ -2672,19 +2672,9 @@ Source Repositories
 .. pkg-section:: source-repository
     :since: 1.6
 
-It is often useful to be able to specify a source revision control
-repository for a package. Cabal lets you specify this information in
-a relatively structured form which enables other tools to interpret and
-make effective use of the information. For example the information
-should be sufficient for an automatic tool to checkout the sources.
+Where to find the source for this package.
 
-Cabal supports specifying different information for various common
-source control systems. Obviously not all automated tools will support
-all source control systems.
-
-Cabal supports specifying repositories for different use cases. By
-declaring which case we mean automated tools can be more useful. There
-are currently two kinds defined:
+There are two kinds. You can specify one or the other or both at once:
 
 -  The ``head`` kind refers to the latest development branch of the
    package. This may be used for example to track activity of a project
@@ -2692,17 +2682,12 @@ are currently two kinds defined:
    making new contributions.
 
 -  The ``this`` kind refers to the branch and tag of a repository that
-   contains the sources for this version or release of a package. For
-   most source control systems this involves specifying a tag, id or
-   hash of some form and perhaps a branch. The purpose is to be able to
-   reconstruct the sources corresponding to a particular package
-   version. This might be used to indicate what sources to get if
-   someone needs to fix a bug in an older branch that is no longer an
-   active head branch.
+   contains the sources for this version or release of a package.  For most
+   source control systems this involves specifying a tag, id or hash of some
+   form and perhaps a branch.
 
-You can specify one kind or the other or both. As an example here are
-the repositories for the Cabal library. Note that the ``this`` kind of
-repository specifies a tag.
+As an example, here are the repositories for the Cabal library. Note that the
+``this`` kind of repository specifies a tag.
 
 ::
 
@@ -2715,73 +2700,11 @@ repository specifies a tag.
       location: https://github.com/haskell/cabal
       tag:      1.6.1
 
-The exact fields are as follows:
+The :ref:`cabal get<cabal-get>` command uses the kind of repository with
+its ``--source-repository`` option, if provided.
 
-.. pkg-field:: type: token
-
-    The name of the source control system used for this repository. The
-    currently recognised types are:
-
-    -  ``darcs``
-    -  ``git``
-    -  ``svn``
-    -  ``cvs``
-    -  ``mercurial`` (or alias ``hg``)
-    -  ``bazaar`` (or alias ``bzr``)
-    -  ``arch``
-    -  ``monotone``
-
-    This field is required.
-
-.. pkg-field:: location: URL
-
-    The location of the repository. The exact form of this field depends
-    on the repository type. For example:
-
-    -  for darcs: ``http://code.haskell.org/foo/``
-    -  for git: ``git://github.com/foo/bar.git``
-    -  for CVS: ``anoncvs@cvs.foo.org:/cvs``
-
-    This field is required.
-
-.. pkg-field:: module: token
-
-    CVS requires a named module, as each CVS server can host multiple
-    named repositories.
-
-    This field is required for the CVS repository type and should not be
-    used otherwise.
-
-.. pkg-field:: branch: token
-
-    Many source control systems support the notion of a branch, as a
-    distinct concept from having repositories in separate locations. For
-    example CVS, SVN and git use branches while darcs uses different
-    locations for different branches. If you need to specify a branch to
-    identify a your repository then specify it in this field.
-
-    This field is optional.
-
-.. pkg-field:: tag: token
-
-    A tag identifies a particular state of a source repository. The tag
-    can be used with a ``this`` repository kind to identify the state of
-    a repository corresponding to a particular package version or
-    release. The exact form of the tag depends on the repository type.
-
-    This field is required for the ``this`` repository kind.
-
-.. pkg-field:: subdir: directory
-
-    Some projects put the sources for multiple packages under a single
-    source repository. This field lets you specify the relative path
-    from the root of the repository to the top directory for the
-    package, i.e. the directory containing the package's ``.cabal``
-    file.
-
-    This field is optional. It defaults to empty which corresponds to the
-    root directory of the repository.
-
+See :ref:`source-repository-fields` for description of the fields of
+``source-repository``.
 
 Custom setup scripts
 --------------------

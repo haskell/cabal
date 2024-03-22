@@ -25,6 +25,7 @@ Welcome to the Cabal User Guide
 
    cabal-package-description-file
    cabal-project-description-file
+   source-repositories
    cabal-config-and-commands
    external-commands
    setup-commands
