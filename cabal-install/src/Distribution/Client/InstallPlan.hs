@@ -3,6 +3,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
 
@@ -36,6 +37,7 @@ module Distribution.Client.InstallPlan
   , keys
   , keysSet
   , planIndepGoals
+  , planPackageConstraints
   , depends
   , fromSolverInstallPlan
   , fromSolverInstallPlanWithProgress
@@ -99,6 +101,7 @@ import Text.PrettyPrint
 
 import qualified Distribution.Solver.Types.ComponentDeps as CD
 import Distribution.Solver.Types.InstSolverPackage
+import Distribution.Solver.Types.PackageConstraint
 import Distribution.Solver.Types.Settings
 import Distribution.Solver.Types.SolverId
 
@@ -257,6 +260,10 @@ instance
 data GenericInstallPlan ipkg srcpkg = GenericInstallPlan
   { planGraph :: !(Graph (GenericPlanPackage ipkg srcpkg))
   , planIndepGoals :: !IndependentGoals
+  , planPackageConstraints :: ![PackageConstraint]
+  -- ^ The package constraints from the solved plan that generated this
+  -- install plan. There may be more package constraints than packages in the
+  -- plan.
   }
   deriving (Typeable)
 
@@ -272,13 +279,15 @@ mkInstallPlan
   => String
   -> Graph (GenericPlanPackage ipkg srcpkg)
   -> IndependentGoals
+  -> [PackageConstraint]
   -> GenericInstallPlan ipkg srcpkg
-mkInstallPlan loc graph indepGoals =
+mkInstallPlan loc graph indepGoals pkgConstranints =
   assert
     (valid loc graph)
     GenericInstallPlan
       { planGraph = graph
       , planIndepGoals = indepGoals
+      , planPackageConstraints = pkgConstranints
       }
 
 internalError :: WithCallStack (String -> String -> a)
@@ -312,12 +321,14 @@ instance
     GenericInstallPlan
       { planGraph = graph
       , planIndepGoals = indepGoals
-      } = put graph >> put indepGoals
+      , planPackageConstraints = pkgConstraints
+      } = put graph >> put indepGoals >> put pkgConstraints
 
   get = do
     graph <- get
     indepGoals <- get
-    return $! mkInstallPlan "(instance Binary)" graph indepGoals
+    pkgConstraints <- get
+    return $! mkInstallPlan "(instance Binary)" graph indepGoals pkgConstraints
 
 data ShowPlanNode = ShowPlanNode
   { showPlanHerald :: Doc
@@ -367,9 +378,10 @@ showPlanPackageTag (Installed _) = "Installed"
 new
   :: (IsUnit ipkg, IsUnit srcpkg)
   => IndependentGoals
+  -> [PackageConstraint]
   -> Graph (GenericPlanPackage ipkg srcpkg)
   -> GenericInstallPlan ipkg srcpkg
-new indepGoals graph = mkInstallPlan "new" graph indepGoals
+new indepGoals pkgConstraints graph = mkInstallPlan "new" graph indepGoals pkgConstraints
 
 toGraph
   :: GenericInstallPlan ipkg srcpkg
@@ -398,12 +410,12 @@ keysSet = Graph.keysSet . planGraph
 -- the dependencies of a package or set of packages without actually
 -- installing the package itself, as when doing development.
 remove
-  :: (IsUnit ipkg, IsUnit srcpkg)
+  :: (IsUnit ipkg, IsUnit srcpkg, Package ipkg, Package srcpkg)
   => (GenericPlanPackage ipkg srcpkg -> Bool)
   -> GenericInstallPlan ipkg srcpkg
   -> GenericInstallPlan ipkg srcpkg
 remove shouldRemove plan =
-  mkInstallPlan "remove" newGraph (planIndepGoals plan)
+  mkInstallPlan "remove" newGraph (planIndepGoals plan) (planPackageConstraints plan)
   where
     newGraph =
       Graph.fromDistinctList $
@@ -524,6 +536,7 @@ fromSolverInstallPlan f plan =
     "fromSolverInstallPlan"
     (Graph.fromDistinctList pkgs'')
     (SolverInstallPlan.planIndepGoals plan)
+    (SolverInstallPlan.planPackageConstraints plan)
   where
     (_, _, pkgs'') =
       foldl'
@@ -570,6 +583,7 @@ fromSolverInstallPlanWithProgress f plan = do
       "fromSolverInstallPlanWithProgress"
       (Graph.fromDistinctList pkgs'')
       (SolverInstallPlan.planIndepGoals plan)
+      (SolverInstallPlan.planPackageConstraints plan)
   where
     f' (pidMap, ipiMap, pkgs) pkg = do
       pkgs' <- f (mapDep pidMap ipiMap) pkg

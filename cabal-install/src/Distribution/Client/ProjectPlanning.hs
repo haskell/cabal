@@ -2600,6 +2600,7 @@ instantiateInstallPlan :: StoreDirLayout -> InstallDirs.InstallDirTemplates -> E
 instantiateInstallPlan storeDirLayout defaultInstallDirs elaboratedShared plan =
   InstallPlan.new
     (IndependentGoals False)
+    (InstallPlan.planPackageConstraints plan)
     (Graph.fromDistinctList (Map.elems ready_map))
   where
     pkgs = InstallPlan.toList plan
@@ -3129,7 +3130,7 @@ pruneInstallPlanToTargets
   -> ElaboratedInstallPlan
   -> ElaboratedInstallPlan
 pruneInstallPlanToTargets targetActionType perPkgTargetsMap elaboratedPlan =
-  InstallPlan.new (InstallPlan.planIndepGoals elaboratedPlan)
+  InstallPlan.new (InstallPlan.planIndepGoals elaboratedPlan) (InstallPlan.planPackageConstraints elaboratedPlan)
     . Graph.fromDistinctList
     -- We have to do the pruning in two passes
     . pruneInstallPlanPass2
@@ -3591,7 +3592,7 @@ pruneInstallPlanToDependencies pkgTargets installPlan =
         (isJust . InstallPlan.lookup installPlan)
         (Set.toList pkgTargets)
     )
-    $ fmap (InstallPlan.new (InstallPlan.planIndepGoals installPlan))
+    $ fmap (InstallPlan.new (InstallPlan.planIndepGoals installPlan) (InstallPlan.planPackageConstraints installPlan))
       . checkBrokenDeps
       . Graph.fromDistinctList
       . filter (\pkg -> installedUnitId pkg `Set.notMember` pkgTargets)

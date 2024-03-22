@@ -31,12 +31,15 @@ import Distribution.Client.Targets
   ( UserConstraint (..)
   , UserConstraintScope (..)
   , UserQualifier (..)
+  , toUserConstraintScope
   )
 import Distribution.Solver.Types.ConstraintSource
   ( ConstraintSource (..)
   )
 import Distribution.Solver.Types.PackageConstraint
-  ( PackageProperty (..)
+  ( ConstraintScope (..)
+  , PackageProperty (..)
+  , scopeToPackageName
   )
 
 import Distribution.Client.Setup
@@ -212,25 +215,35 @@ projectFreezeConstraints plan =
   where
     versionConstraints :: Map PackageName [(UserConstraint, ConstraintSource)]
     versionConstraints =
-      Map.mapWithKey
-        ( \p v ->
-            [
-              ( UserConstraint (UserAnyQualifier p) (PackagePropertyVersion v)
-              , ConstraintSourceFreeze
-              )
-            ]
-        )
-        versionRanges
+      Map.mapKeys fst $
+        Map.mapWithKey
+          ( \(_, cs) v ->
+              case toUserConstraintScope cs of
+                Just ucs ->
+                  [
+                    ( UserConstraint ucs (PackagePropertyVersion v)
+                    , ConstraintSourceFreeze
+                    )
+                  ]
+                Nothing ->
+                  -- This constraint scope is not a valid user constraint, so we omit it.
+                  []
+          )
+          versionRanges
 
-    versionRanges :: Map PackageName VersionRange
+    versionRanges :: Map (PackageName, ConstraintScope) VersionRange
     versionRanges =
       Map.map simplifyVersionRange $
         Map.fromListWith unionVersionRanges $
-          [ (packageName pkg, thisVersion (packageVersion pkg))
+          [ ((packageName pkg, constraint), thisVersion (packageVersion pkg))
           | InstallPlan.PreExisting pkg <- InstallPlan.toList plan
+          , constraint <- InstallPlan.planPackageConstraints plan
+          , scopeToPackageName constraint == packageName pkg
           ]
-            ++ [ (packageName pkg, thisVersion (packageVersion pkg))
+            ++ [ ((packageName pkg, constraint), thisVersion (packageVersion pkg))
                | InstallPlan.Configured pkg <- InstallPlan.toList plan
+               , constraint <- InstallPlan.planPackageConstraints plan
+               , scopeToPackageName constraint == packageName pkg
                ]
 
     flagConstraints :: Map PackageName [(UserConstraint, ConstraintSource)]

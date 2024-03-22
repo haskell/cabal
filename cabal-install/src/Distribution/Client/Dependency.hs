@@ -1,3 +1,5 @@
+{-# LANGUAGE LambdaCase #-}
+
 -----------------------------------------------------------------------------
 
 -----------------------------------------------------------------------------
@@ -768,7 +770,7 @@ resolveDependencies
   -> Progress String String SolverInstallPlan
 resolveDependencies platform comp pkgConfigDB params =
   Step (showDepResolverParams finalparams) $
-    fmap (validateSolverResult platform comp indGoals) $
+    fmap (validateSolverResult platform comp indGoals pkgConstraints) $
       runSolver
         ( SolverConfig
             reordGoals
@@ -822,6 +824,9 @@ resolveDependencies platform comp pkgConfigDB params =
         if asBool (depResolverAllowBootLibInstalls params)
           then params
           else dontInstallNonReinstallablePackages params
+
+    pkgConstraints :: [PackageConstraint]
+    pkgConstraints = map (\case LabeledPackageConstraint pkgc _ -> pkgc) constraints
 
     preferences :: PackageName -> PackagePreferences
     preferences = interpretPackagesPreference targets defpref prefs
@@ -891,11 +896,12 @@ validateSolverResult
   :: Platform
   -> CompilerInfo
   -> IndependentGoals
+  -> [PackageConstraint]
   -> [ResolverPackage UnresolvedPkgLoc]
   -> SolverInstallPlan
-validateSolverResult platform comp indepGoals pkgs =
+validateSolverResult platform comp indepGoals pkgConstraints pkgs =
   case planPackagesProblems platform comp pkgs of
-    [] -> case SolverInstallPlan.new indepGoals graph of
+    [] -> case SolverInstallPlan.new indepGoals graph pkgConstraints of
       Right plan -> plan
       Left problems -> error (formatPlanProblems problems)
     problems -> error (formatPkgProblems problems)

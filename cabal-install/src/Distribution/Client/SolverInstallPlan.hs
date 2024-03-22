@@ -73,6 +73,7 @@ import Distribution.Version
   ( Version
   )
 
+import Distribution.Solver.Types.PackageConstraint
 import Distribution.Solver.Types.ResolverPackage
 import Distribution.Solver.Types.Settings
 import Distribution.Solver.Types.SolverId
@@ -92,6 +93,9 @@ type SolverPlanIndex = Graph SolverPlanPackage
 data SolverInstallPlan = SolverInstallPlan
   { planIndex :: !SolverPlanIndex
   , planIndepGoals :: !IndependentGoals
+  , planPackageConstraints :: ![PackageConstraint]
+  -- ^ The solved package constraints. There may be more package constraints
+  -- than packages in the index.
   }
   deriving (Typeable, Generic)
 
@@ -145,10 +149,11 @@ showPlanPackage (Configured spkg) =
 new
   :: IndependentGoals
   -> SolverPlanIndex
+  -> [PackageConstraint]
   -> Either [SolverPlanProblem] SolverInstallPlan
-new indepGoals index =
+new indepGoals index pkgConstraints =
   case problems indepGoals index of
-    [] -> Right (SolverInstallPlan index indepGoals)
+    [] -> Right (SolverInstallPlan index indepGoals pkgConstraints)
     probs -> Left probs
 
 toList :: SolverInstallPlan -> [SolverPlanPackage]
@@ -169,7 +174,7 @@ remove
       [SolverPlanProblem]
       (SolverInstallPlan)
 remove shouldRemove plan =
-  new (planIndepGoals plan) newIndex
+  new (planIndepGoals plan) newIndex (planPackageConstraints plan)
   where
     newIndex =
       Graph.fromDistinctList $

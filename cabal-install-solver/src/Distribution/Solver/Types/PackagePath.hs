@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric #-}
 module Distribution.Solver.Types.PackagePath
     ( PackagePath(..)
     , Namespace(..)
@@ -68,7 +69,10 @@ data Qualifier =
     -- tracked only @pn2@, that would require us to pick only one
     -- version of an executable over the entire install plan.)
   | QualExe PackageName PackageName
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance Binary Qualifier
+instance Structured Qualifier
 
 -- | Pretty-prints a qualifier. The result is either empty or
 -- ends in a period, so it can be prepended onto a package name.
