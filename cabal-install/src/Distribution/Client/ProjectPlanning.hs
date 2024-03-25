@@ -488,7 +488,7 @@ configureCompiler
         -- the compiler will configure (and it does vary between compilers).
         -- We do know however that the compiler will only configure the
         -- programs it cares about, and those are the ones we monitor here.
-        monitorFiles (programsMonitorFiles progdb'')
+        monitorFiles (Set.fromList (programsMonitorFiles progdb''))
 
         return result
     where
@@ -941,7 +941,7 @@ getInstalledPackages
   -> PackageDBStack
   -> Rebuild InstalledPackageIndex
 getInstalledPackages verbosity compiler progdb platform packagedbs = do
-  monitorFiles . map monitorFileOrDirectory
+  monitorFiles . Set.fromList . map monitorFileOrDirectory
     =<< liftIO
       ( IndexUtils.getInstalledPackagesMonitorFiles
           verbosity
@@ -1166,6 +1166,7 @@ getPackageSourceHashes verbosity withRepoCtx solverPlan = do
           | (pkgid, tarball) <- allTarballFilePkgs
           ]
   monitorFiles
+    $ Set.fromList
     [ monitorFile tarball
     | (_pkgid, tarball) <- allTarballFilePkgs
     ]
