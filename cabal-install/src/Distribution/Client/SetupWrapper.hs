@@ -686,6 +686,7 @@ getExternalSetupMethod verbosity options pkgId bt = do
   return (cabalLibVersion, ExternalMethod path', options'')
   where
     setupDir = workingDir options </> useDistPref options </> "setup"
+    setupProgFile = setupDir </> "setup" <.> exeExtension buildPlatform
 
 useCachedSetupExecutable :: BuildType -> Bool
 useCachedSetupExecutable bt = (bt == Simple || bt == Configure || bt == Make)
