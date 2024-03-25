@@ -90,6 +90,7 @@ import Control.Monad.Trans
 import qualified Data.Char as Char
 import qualified Data.List as List
 import qualified Data.Map as Map
+import qualified Data.Set as Set
 import System.Directory
   ( doesDirectoryExist
   , removeDirectoryRecursive
@@ -274,7 +275,7 @@ syncSourceRepos
   -> Rebuild ()
 syncSourceRepos verbosity vcs repos = do
   files <- liftIO $ vcsSyncRepos vcs verbosity (vcsProgram vcs) repos
-  monitorFiles files
+  monitorFiles (Set.fromList files)
 
 -- ------------------------------------------------------------
 

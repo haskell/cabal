@@ -91,6 +91,7 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString.Lazy.Char8 as LBS.Char8
 import qualified Data.List.NonEmpty as NE
+import qualified Data.Set as Set
 
 import Control.Exception (ErrorCall, Handler (..), SomeAsyncException, assert, catches)
 import System.Directory (canonicalizePath, createDirectoryIfMissing, doesDirectoryExist, doesFileExist, removeFile)
@@ -472,8 +473,7 @@ buildInplaceUnpackedPackage
 
             let listSimple =
                   execRebuild srcdir (needElaboratedConfiguredPackage pkg)
-                listSdist =
-                  fmap (map monitorFileHashed) $
+                listSdist = fmap (Set.fromList . map monitorFileHashed) $
                     allPackageSourceFiles verbosity srcdir
                 ifNullThen m m' = do
                   xs <- m
@@ -499,6 +499,7 @@ buildInplaceUnpackedPackage
                     listSimple
 
             let dep_monitors =
+                  Set.fromList $
                   map monitorFileHashed $
                     elabInplaceDependencyBuildCacheFiles
                       distDirLayout
@@ -511,7 +512,7 @@ buildInplaceUnpackedPackage
               timestamp
               pkg
               buildStatus
-              (monitors ++ dep_monitors)
+              (monitors <> dep_monitors)
               buildResult
         PBHaddockPhase{runHaddock} -> do
           runHaddock
@@ -933,4 +934,3 @@ withTempInstalledPackageInfoFile verbosity tempdir action =
           unlines warns
 
       return ipkg
-

@@ -49,7 +49,7 @@ data Glob
     GlobFile !GlobPieces
   | -- | Trailing dir; a glob ending in @/@.
     GlobDirTrailing
-  deriving (Eq, Show, Generic)
+  deriving (Eq, Ord, Show, Generic)
 
 instance Binary Glob
 instance Structured Glob
@@ -65,7 +65,7 @@ data GlobPiece
     Literal String
   | -- | A union of patterns, e.g. @dir/{a,*.txt,c}/...@
     Union [GlobPieces]
-  deriving (Eq, Show, Generic)
+  deriving (Eq, Ord, Show, Generic)
 
 instance Binary GlobPiece
 instance Structured GlobPiece

@@ -39,7 +39,7 @@ data RootedGlob
       -- ^ what the glob is relative to
       Glob
       -- ^ the glob
-  deriving (Eq, Show, Generic)
+  deriving (Eq, Ord, Show, Generic)
 
 instance Binary RootedGlob
 instance Structured RootedGlob
@@ -49,7 +49,7 @@ data FilePathRoot
   | -- | e.g. @"/"@, @"c:\"@ or result of 'takeDrive'
     FilePathRoot FilePath
   | FilePathHomeDir
-  deriving (Eq, Show, Generic)
+  deriving (Eq, Ord, Show, Generic)
 
 instance Binary FilePathRoot
 instance Structured FilePathRoot

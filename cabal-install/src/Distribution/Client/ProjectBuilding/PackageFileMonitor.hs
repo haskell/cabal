@@ -226,7 +226,7 @@ updatePackageConfigFileMonitor
       pkgFileMonitorConfig
       srcdir
       Nothing
-      []
+      mempty
       pkgconfig
       ()
     where
@@ -238,7 +238,7 @@ updatePackageBuildFileMonitor
   -> MonitorTimestamp
   -> ElaboratedConfiguredPackage
   -> BuildStatusRebuild
-  -> [MonitorFilePath]
+  -> Set MonitorFilePath
   -> BuildResultMisc
   -> IO ()
 updatePackageBuildFileMonitor
@@ -285,7 +285,7 @@ updatePackageRegFileMonitor
       pkgFileMonitorReg
       srcdir
       Nothing
-      []
+      mempty
       ()
       mipkg
 

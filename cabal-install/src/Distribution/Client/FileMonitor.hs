@@ -52,6 +52,7 @@ import Data.Binary.Get (runGetOrFail)
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.Hashable as Hashable
 import qualified Data.Map.Strict as Map
+import qualified Data.Set as Set
 
 import Control.Exception
 import Control.Monad
@@ -93,20 +94,20 @@ data MonitorFilePath
       , monitorKindDir :: !MonitorKindDir
       , monitorPathGlob :: !RootedGlob
       }
-  deriving (Eq, Show, Generic)
+  deriving (Eq, Ord, Show, Generic)
 
 data MonitorKindFile
   = FileExists
   | FileModTime
   | FileHashed
   | FileNotExists
-  deriving (Eq, Show, Generic)
+  deriving (Eq, Ord, Show, Generic)
 
 data MonitorKindDir
   = DirExists
   | DirModTime
   | DirNotExists
-  deriving (Eq, Show, Generic)
+  deriving (Eq, Ord, Show, Generic)
 
 instance Binary MonitorFilePath
 instance Binary MonitorKindFile
@@ -202,8 +203,8 @@ monitorFileHashedSearchPath notFoundAtPaths foundAtPath =
 -- globs, which monitor may files at once.
 data MonitorStateFileSet
   = MonitorStateFileSet
-      ![MonitorStateFile]
-      ![MonitorStateGlob]
+      !(Set MonitorStateFile)
+      !(Set MonitorStateGlob)
   -- Morally this is not actually a set but a bag (represented by lists).
   -- There is no principled reason to use a bag here rather than a set, but
   -- there is also no particular gain either. That said, we do preserve the
@@ -231,7 +232,7 @@ data MonitorStateFile
       !MonitorKindDir
       !FilePath
       !MonitorStateFileStatus
-  deriving (Show, Generic)
+  deriving (Eq, Ord, Show, Generic)
 
 data MonitorStateFileStatus
   = MonitorStateFileExists
@@ -244,7 +245,7 @@ data MonitorStateFileStatus
     MonitorStateDirModTime !ModTime
   | MonitorStateNonExistent
   | MonitorStateAlreadyChanged
-  deriving (Show, Generic)
+  deriving (Eq, Ord, Show, Generic)
 
 instance Binary MonitorStateFile
 instance Binary MonitorStateFileStatus
@@ -259,7 +260,7 @@ data MonitorStateGlob
       !MonitorKindDir
       !FilePathRoot
       !MonitorStateGlobRel
-  deriving (Show, Generic)
+  deriving (Eq, Ord, Show, Generic)
 
 data MonitorStateGlobRel
   = MonitorStateGlobDirs
@@ -272,7 +273,7 @@ data MonitorStateGlobRel
       !ModTime
       ![(FilePath, MonitorStateFileStatus)] -- invariant: sorted
   | MonitorStateGlobDirTrailing
-  deriving (Show, Generic)
+  deriving (Eq, Ord, Show, Generic)
 
 instance Binary MonitorStateGlob
 instance Binary MonitorStateGlobRel
@@ -283,9 +284,11 @@ instance Structured MonitorStateGlobRel
 -- | We can build a 'MonitorStateFileSet' from a set of 'MonitorFilePath' by
 -- inspecting the state of the file system, and we can go in the reverse
 -- direction by just forgetting the extra info.
-reconstructMonitorFilePaths :: MonitorStateFileSet -> [MonitorFilePath]
+reconstructMonitorFilePaths :: MonitorStateFileSet -> Set MonitorFilePath
 reconstructMonitorFilePaths (MonitorStateFileSet singlePaths globPaths) =
-  map getSinglePath singlePaths ++ map getGlobPath globPaths
+  Set.fromList
+    $ map getSinglePath (Set.toList singlePaths)
+    <> map getGlobPath (Set.toList globPaths)
   where
     getSinglePath :: MonitorStateFile -> MonitorFilePath
     getSinglePath (MonitorStateFile kindfile kinddir filepath _) =
@@ -374,7 +377,7 @@ data MonitorChanged a b
     --
     -- The set of monitored files is also returned. This is useful
     -- for composing or nesting 'FileMonitor's.
-    MonitorUnchanged b [MonitorFilePath]
+    MonitorUnchanged b (Set MonitorFilePath)
   | -- | The monitor found that something changed. The reason is given.
     MonitorChanged (MonitorChangedReason a)
   deriving (Show)
@@ -569,13 +572,13 @@ probeFileSystem root (MonitorStateFileSet singlePaths globPaths) =
   runChangedM $ do
     sequence_
       [ probeMonitorStateFileStatus root file status
-      | MonitorStateFile _ _ file status <- singlePaths
+      | MonitorStateFile _ _ file status <- Set.toList singlePaths
       ]
     -- The glob monitors can require state changes
     globPaths' <-
-      sequence
+      Set.fromList <$> sequence
         [ probeMonitorStateGlob root globPath
-        | globPath <- globPaths
+        | globPath <- Set.toList globPaths
         ]
     return (MonitorStateFileSet singlePaths globPaths')
 
@@ -849,7 +852,7 @@ updateFileMonitor
   -- ^ root directory
   -> Maybe MonitorTimestamp
   -- ^ timestamp when the update action started
-  -> [MonitorFilePath]
+  -> Set MonitorFilePath
   -- ^ files of interest relative to root
   -> a
   -- ^ the current key value
@@ -889,20 +892,20 @@ buildMonitorStateFileSet
   -- ^ existing file hashes
   -> FilePath
   -- ^ root directory
-  -> [MonitorFilePath]
+  -> Set MonitorFilePath
   -- ^ patterns of interest
   --   relative to root
   -> IO MonitorStateFileSet
 buildMonitorStateFileSet mstartTime hashcache root =
-  go [] []
+  go mempty mempty . Set.toList
   where
     go
-      :: [MonitorStateFile]
-      -> [MonitorStateGlob]
+      :: Set MonitorStateFile
+      -> Set MonitorStateGlob
       -> [MonitorFilePath]
       -> IO MonitorStateFileSet
     go !singlePaths !globPaths [] =
-      return (MonitorStateFileSet (reverse singlePaths) (reverse globPaths))
+      return (MonitorStateFileSet singlePaths globPaths)
     go
       !singlePaths
       !globPaths
@@ -916,7 +919,7 @@ buildMonitorStateFileSet mstartTime hashcache root =
               kinddir
               root
               path
-        go (monitorState : singlePaths) globPaths monitors
+        go (Set.insert monitorState singlePaths) globPaths monitors
     go
       !singlePaths
       !globPaths
@@ -929,7 +932,7 @@ buildMonitorStateFileSet mstartTime hashcache root =
             kinddir
             root
             globPath
-        go singlePaths (monitorState : globPaths) monitors
+        go singlePaths (Set.insert monitorState globPaths) monitors
 
 buildMonitorStateFile
   :: Maybe MonitorTimestamp
@@ -1129,7 +1132,7 @@ readCacheFileHashes monitor =
       collectAllFileHashes singlePaths
         `Map.union` collectAllGlobHashes globPaths
 
-    collectAllFileHashes :: [MonitorStateFile] -> Map FilePath (ModTime, Hash)
+    collectAllFileHashes :: Set MonitorStateFile -> Map FilePath (ModTime, Hash)
     collectAllFileHashes singlePaths =
       Map.fromList
         [ (fpath, (mtime, hash))
@@ -1138,14 +1141,14 @@ readCacheFileHashes monitor =
             _
             fpath
             (MonitorStateFileHashed mtime hash) <-
-            singlePaths
+            Set.toList singlePaths
         ]
 
-    collectAllGlobHashes :: [MonitorStateGlob] -> Map FilePath (ModTime, Hash)
+    collectAllGlobHashes :: Set MonitorStateGlob -> Map FilePath (ModTime, Hash)
     collectAllGlobHashes globPaths =
       Map.fromList
         [ (fpath, (mtime, hash))
-        | MonitorStateGlob _ _ _ gstate <- globPaths
+        | MonitorStateGlob _ _ _ gstate <- Set.toList globPaths
         , (fpath, (mtime, hash)) <- collectGlobHashes "" gstate
         ]
 
