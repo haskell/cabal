@@ -49,7 +49,7 @@ data Glob
     GlobFile !GlobPieces
   | -- | Trailing dir; a glob ending in @/@.
     GlobDirTrailing
-  deriving (Eq, Show, Generic)
+  deriving (Eq, Ord, Show, Generic)
 
 instance Binary Glob
 instance Structured Glob
@@ -65,7 +65,7 @@ data GlobPiece
     Literal String
   | -- | A union of patterns, e.g. @dir/{a,*.txt,c}/...@
     Union [GlobPieces]
-  deriving (Eq, Show, Generic)
+  deriving (Eq, Ord, Show, Generic)
 
 instance Binary GlobPiece
 instance Structured GlobPiece
@@ -457,8 +457,8 @@ checkNameMatches spec glob candidate
       -- if multidot is supported, then this is a clean match
       if enableMultidot spec
         then pure (GlobMatch ())
-        else -- if not, issue a warning saying multidot is needed for the match
 
+        else -- if not, issue a warning saying multidot is needed for the match
           let (_, candidateExts) = splitExtensions $ takeFileName candidate
               extractExts :: GlobPieces -> Maybe String
               extractExts [] = Nothing
