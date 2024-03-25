@@ -1,0 +1,5 @@
+synopsis: Synchronize source repositories concurrently
+packages: cabal-install
+prs: #0000
+significance: significant
+

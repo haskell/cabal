@@ -1338,12 +1338,13 @@ syncAndReadSourcePackagesRemoteRepos
             ]
 
     let progPathExtra = fromNubList projectConfigProgPathExtra
+    let numJobs = 4 -- hardcoded for now
     getConfiguredVCS <- delayInitSharedResources $ \repoType ->
       let vcs = Map.findWithDefault (error $ "Unknown VCS: " ++ prettyShow repoType) repoType knownVCSs
        in configureVCS verbosity progPathExtra vcs
 
     concat
-      <$> sequenceA
+      <$> sequenceConcurrentlyBoundedRebuild numJobs
         [ rerunIfChanged verbosity monitor repoGroup' $ do
           vcs' <- getConfiguredVCS repoType
           syncRepoGroupAndReadSourcePackages vcs' pathStem repoGroup'
