@@ -494,7 +494,7 @@ resolveBuildTimeSettings
           cabalLogsDirectory
             </> "$compiler"
             </> "$libname"
-            <.> "log"
+              <.> "log"
       givenTemplate = flagToMaybe projectConfigLogFile
 
       useDefaultTemplate
@@ -1245,10 +1245,10 @@ fetchAndReadSourcePackages
             preferredHttpTransport
       sequenceA
         [ fetchAndReadSourcePackageRemoteTarball
-          verbosity
-          distDirLayout
-          getTransport
-          uri
+            verbosity
+            distDirLayout
+            getTransport
+            uri
         | ProjectPackageRemoteTarball uri <- pkgLocations
         ]
 
@@ -1403,15 +1403,17 @@ syncAndReadSourcePackagesRemoteRepos
             ]
 
     let progPathExtra = fromNubList projectConfigProgPathExtra
+    let numJobs = 4 -- hardcoded for now
     getConfiguredVCS <- delayInitSharedResources $ \repoType ->
       let vcs = Map.findWithDefault (error $ "Unknown VCS: " ++ prettyShow repoType) repoType knownVCSs
        in configureVCS verbosity progPathExtra vcs
 
     concat
-      <$> sequenceA
+      <$> sequenceConcurrentlyBoundedRebuild
+        numJobs
         [ rerunIfChanged verbosity monitor repoGroup' $ do
-          vcs' <- getConfiguredVCS repoType
-          syncRepoGroupAndReadSourcePackages vcs' pathStem repoGroup'
+            vcs' <- getConfiguredVCS repoType
+            syncRepoGroupAndReadSourcePackages vcs' pathStem repoGroup'
         | repoGroup@((primaryRepo, repoType) : _) <- Map.elems reposByLocation
         , let repoGroup' = map fst repoGroup
               pathStem =
