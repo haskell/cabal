@@ -192,6 +192,8 @@ module Distribution.Simple.Utils
   , unintersperse
   , wrapText
   , wrapLine
+  , sequenceConcurrentlyBounded
+  , sequenceConcurrentlyBounded_
 
     -- * FilePath stuff
   , isAbsoluteOnAnyPlatform
@@ -235,6 +237,7 @@ import Data.Typeable
   ( cast
   )
 
+import Control.Concurrent
 import qualified Control.Exception as Exception
 import Data.Time.Clock.POSIX (POSIXTime, getPOSIXTime)
 import Distribution.Compat.Process (proc)
@@ -2025,3 +2028,45 @@ findHookedPackageDesc verbosity mbWorkDir dir = do
 
 buildInfoExt :: String
 buildInfoExt = ".buildinfo"
+
+sequenceConcurrentlyBounded :: Int -> [IO a] -> IO [a]
+sequenceConcurrentlyBounded n xs = do
+  sem <- newQSem (n - 1)
+  tid <- myThreadId
+  let
+    catchForMe x =
+      Exception.catches
+        x
+        [ Exception.Handler $ \e@(Exception.SomeAsyncException _) -> throwIO e
+        , Exception.Handler $ \e@(SomeException _) -> Exception.throwTo tid e
+        ]
+  Exception.mask $ \restore -> do
+    resultvars <- for xs $ \x -> do
+      var <- newEmptyMVar
+      _tid <- forkIO $ Exception.bracket_ (waitQSem sem) (signalQSem sem) $ catchForMe $ do
+        res <- restore x
+        True <- tryPutMVar var res
+        return ()
+      return var
+    Exception.bracket_ (signalQSem sem) (waitQSem sem) (traverse takeMVar resultvars)
+
+sequenceConcurrentlyBounded_ :: Int -> [IO a] -> IO ()
+sequenceConcurrentlyBounded_ n xs = do
+  sem <- newQSem (n - 1)
+  tid <- myThreadId
+  let
+    catchForMe x =
+      Exception.catches
+        x
+        [ Exception.Handler $ \e@(Exception.SomeAsyncException _) -> throwIO e
+        , Exception.Handler $ \e@(SomeException _) -> Exception.throwTo tid e
+        ]
+  Exception.mask $ \restore -> do
+    resultvars <- for xs $ \x -> do
+      var <- newEmptyMVar
+      _tid <- forkIO $ Exception.bracket_ (waitQSem sem) (signalQSem sem) $ catchForMe $ do
+        _ <- restore x
+        True <- tryPutMVar var ()
+        return ()
+      return var
+    Exception.bracket_ (signalQSem sem) (waitQSem sem) (traverse_ takeMVar resultvars)
