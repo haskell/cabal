@@ -1,8 +1,11 @@
 # cabal v2-build
 Warning: cannot determine version of <ROOT>/./pkg-config :
 ""
+<<<<<<< HEAD
 Warning: cannot determine version of <ROOT>/./pkg-config :
 ""
+=======
+>>>>>>> 8bdda9c0b (cabal-install configureCompiler: configure progdb)
 Resolving dependencies...
 Error: [Cabal-7107]
 Could not resolve dependencies:

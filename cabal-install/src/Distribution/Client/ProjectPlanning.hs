@@ -476,7 +476,7 @@ configureCompiler
         liftIO $ info verbosity "Compiler settings changed, reconfiguring..."
         progdb <- liftIO $ prependProgramSearchPath verbosity (fromNubList packageConfigProgramPathExtra) defaultProgramDb
         let progdb' = userSpecifyPaths (Map.toList (getMapLast packageConfigProgramPaths)) progdb
-        result@(_, _, progdb'') <-
+        (comp, plat, progdb'') <-
           liftIO $
             Cabal.configCompilerEx
               hcFlavor
@@ -493,7 +493,12 @@ configureCompiler
         -- programs it cares about, and those are the ones we monitor here.
         monitorFiles (programsMonitorFiles progdb'')
 
-        return result
+        -- Configure the unconfigured programs in the program database,
+        -- as we can't serialise unconfigured programs.
+        -- See also #2241 and #9840.
+        finalProgDb <- liftIO $ configureAllKnownPrograms verbosity progdb''
+
+        return (comp, plat, finalProgDb)
     where
       hcFlavor = flagToMaybe projectConfigHcFlavor
       hcPath = flagToMaybe projectConfigHcPath
