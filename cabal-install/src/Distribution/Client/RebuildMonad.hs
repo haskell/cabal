@@ -56,6 +56,7 @@ module Distribution.Client.RebuildMonad
   , findFileWithExtensionMonitored
   , findFirstFileMonitored
   , findFileMonitored
+  , sequenceConcurrentlyBoundedRebuild
   ) where
 
 import Distribution.Client.Compat.Prelude
@@ -66,7 +67,7 @@ import Distribution.Client.Glob hiding (matchFileGlob)
 import qualified Distribution.Client.Glob as Glob (matchFileGlob)
 import Distribution.Simple.PreProcess.Types (Suffix (..))
 
-import Distribution.Simple.Utils (debug)
+import Distribution.Simple.Utils (debug, sequenceConcurrentlyBounded)
 
 import Control.Concurrent.MVar (MVar, modifyMVar, newMVar)
 import Control.Monad.Reader as Reader
@@ -330,3 +331,13 @@ findFileMonitored searchPath fileName =
     [ path </> fileName
     | path <- nub searchPath
     ]
+
+-- | Run multiple 'Rebuild' actions in parallel, collecting the final
+-- list of used files.
+sequenceConcurrentlyBoundedRebuild :: Int -> [Rebuild a] -> Rebuild [a]
+sequenceConcurrentlyBoundedRebuild n xs = do
+  root <- askRoot
+  results <- liftIO $ sequenceConcurrentlyBounded n (unRebuild root <$> xs)
+  for results $ \(a, files) -> do
+    monitorFiles files
+    return a
