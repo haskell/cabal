@@ -498,47 +498,77 @@ instance
 --------------------------------------------------------------------------------
 -- Abstract directory locations.
 
--- | The current working directory.
+-- | Abstract directory: current working directory.
+--
+-- See Note [Symbolic paths] in Distribution.Utils.Path.
 data CWD
 
--- | A package directory (e.g. a directory containing the @.cabal@ file).
+-- | Abstract directory: package directory (e.g. a directory containing the @.cabal@ file).
+--
+-- See Note [Symbolic paths] in Distribution.Utils.Path.
 data Pkg
 
--- | The dist directory (e.g. @dist-newstyle@).
+-- | Abstract directory: dist directory (e.g. @dist-newstyle@).
+--
+-- See Note [Symbolic paths] in Distribution.Utils.Path.
 data Dist
 
--- | A source directory (a search directory for source files).
+-- | Abstract directory: source directory (a search directory for source files).
+--
+-- See Note [Symbolic paths] in Distribution.Utils.Path.
 data Source
 
--- | An include directory (a search directory for CPP includes like header files, e.g. with @ghc -I@).
+-- | Abstract directory: include directory (a search directory for CPP includes like header files, e.g. with @ghc -I@).
+--
+-- See Note [Symbolic paths] in Distribution.Utils.Path.
 data Include
 
--- | A search directory for extra libraries.
+-- | Abstract directory: search directory for extra libraries.
+--
+-- See Note [Symbolic paths] in Distribution.Utils.Path.
 data Lib
 
--- | A MacOS framework directory.
+-- | Abstract directory: MacOS framework directory.
+--
+-- See Note [Symbolic paths] in Distribution.Utils.Path.
 data Framework
 
--- | The build directory.
+-- | Abstract directory: build directory.
+--
+-- See Note [Symbolic paths] in Distribution.Utils.Path.
 data Build
 
--- | A directory for build artifacts, such as documentation or @.hie@ files.
+-- | Abstract directory: directory for build artifacts, such as documentation or @.hie@ files.
+--
+-- See Note [Symbolic paths] in Distribution.Utils.Path.
 data Artifacts
 
--- | A package database directory.
+-- | Abstract directory: package database directory.
+--
+-- See Note [Symbolic paths] in Distribution.Utils.Path.
 data PkgDB
 
--- | A directory for data files.
+-- | Abstract directory: data files directory.
+--
+-- See Note [Symbolic paths] in Distribution.Utils.Path.
 data DataDir
 
--- | A directory for HPC @.mix@ files.
+-- | Abstract directory: directory for HPC @.mix@ files.
+--
+-- See Note [Symbolic paths] in Distribution.Utils.Path.
 data Mix
 
--- | A directory for HPC @.tix@ files.
+-- | Abstract directory: directory for HPC @.tix@ files.
+--
+-- See Note [Symbolic paths] in Distribution.Utils.Path.
 data Tix
 
--- | A temporary directory.
+-- | Abstract directory: a temporary directory.
+--
+-- See Note [Symbolic paths] in Distribution.Utils.Path.
 data Tmp
 
--- | A directory for response files.
+-- | Abstract directory: directory for response files.
+--
+-- See Note [Symbolic paths] in Distribution.Utils.Path.
 data Response
