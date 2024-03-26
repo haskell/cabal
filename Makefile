@@ -49,6 +49,9 @@ style-commit: ## Run the code styler on the previous commit
 SPDX_LICENSE_HS:=Cabal-syntax/src/Distribution/SPDX/LicenseId.hs
 SPDX_EXCEPTION_HS:=Cabal-syntax/src/Distribution/SPDX/LicenseExceptionId.hs
 
+# Note: the 'spdx' goal is used in .github/workflows/quick-jobs.yml.
+# Any changes to this goal need to be reconciled with this workflow.
+#
 .PHONY: spdx
 spdx : $(SPDX_LICENSE_HS) $(SPDX_EXCEPTION_HS)
 
@@ -65,6 +68,9 @@ $(SPDX_EXCEPTION_HS) : templates/SPDX.LicenseExceptionId.template.hs cabal-dev-s
 TEMPLATE_MACROS:=Cabal/src/Distribution/Simple/Build/Macros/Z.hs
 TEMPLATE_PATHS:=Cabal/src/Distribution/Simple/Build/PathsModule/Z.hs
 
+# Note: the 'templates' goal is used in .github/workflows/quick-jobs.yml.
+# Any changes to this goal need to be reconciled with this workflow.
+#
 .PHONY: templates
 templates : $(TEMPLATE_MACROS) $(TEMPLATE_PATHS)
 
