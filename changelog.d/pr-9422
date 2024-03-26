@@ -1,0 +1,12 @@
+synopsis: Add separate cache for getPkgConfigDb
+packages: cabal-install
+prs: #9422
+issues: #8930
+
+description: {
+  Querying pkg-config for the version of every module can be a very expensive
+  operation on some systems. This change adds a separate, per-project, cache for
+  pkgConfigDB; reducing the cost from "every plan change" to "every pkg-config-db
+  change per project". A notice is also presented to the user when refreshing the
+  packagedb.
+}
