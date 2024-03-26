@@ -1,0 +1,6 @@
+packages: ./
+
+logs-dir: my-logs-dir
+store-dir: my-store-dir
+remote-repo-cache: my-cache-dir
+installdir: my-installdir

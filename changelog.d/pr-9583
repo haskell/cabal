@@ -1,0 +1,28 @@
+synopsis: Redesign 'cabal path' command to account for projects
+packages: cabal-install
+prs: #9673
+
+description: {
+
+Previously, `cabal path` was only able to query from the global configuration file, e.g., `~/.cabal/config` or the XDG equivalent. This was deemed not useful enough to warrant a new cabal command, which is a user facing change.
+
+We take the foundations and turn them into `cabal v2-path` which takes project configuration, such as `cabal.project` into account. Note, the command is still named `cabal path`, but for the sake of disambiguation, we refer to this new iteration of the command as `cabal v2-path`.
+
+In addition, we add support for multiple output formats, such as key-value pairs and json. Specifying the output format is currently mandatory. This allows us to postpone the decision of the default output format and encourages users to explicitly specify the output format in the future, too.
+
+The json output format is versioned by the cabal-install version, which is part of the json object.
+Thus, all result objects contain at least the key "cabal-install-version".
+
+The key-value pair output prints a line for each queried key and its respective value:
+
+    key1: value2
+    key2: value2
+
+If only a single key is queried, we print only the value, for example:
+
+    value1
+
+We expand the `cabal v2-path` to also produce information of the compiler that is going to be used in a `cabal build` or `cabal repl` invocation. To do that, we rebuild the install plan and query for the configured compiler program.
+This is helpful for downstream tools, such as HLS, to figure out the GHC version required to compile a project with.
+
+}
