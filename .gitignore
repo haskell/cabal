@@ -65,6 +65,17 @@ progress.txt
 # test files
 register.sh
 
+# listed explicitly to show which files are generated but ignored
+testdb/intree/cabal.project-test
+testdb/intree/store/**/bin/alex
+testdb/intree/store/**/cabal-hash.txt
+testdb/intree/store/**/share/AlexTemplate.hs
+testdb/intree/store/**/share/AlexWrappers.hs
+testdb/intree/store/**/share/doc/LICENSE
+testdb/intree/store/*/incoming/alex-*.lock
+testdb/intree/store/*/package.db/package.cache
+testdb/intree/store/*/package.db/package.cache.lock
+
 # windows test artifacts
 cabal-testsuite/**/*.exe
 cabal-testsuite/**/*.bat
