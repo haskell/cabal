@@ -54,10 +54,10 @@ common base-dep
     build-depends: base >=4.10 && <4.20
 
 common cabal-dep
-    build-depends: Cabal ^>=3.11
+    build-depends: Cabal ^>=3.12
 
 common cabal-syntax-dep
-    build-depends: Cabal-syntax ^>=3.11
+    build-depends: Cabal-syntax ^>=3.12
 
 common cabal-install-solver-dep
     build-depends: cabal-install-solver ^>=3.11
