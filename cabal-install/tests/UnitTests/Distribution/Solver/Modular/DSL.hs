@@ -68,6 +68,7 @@ import qualified Distribution.Package as C hiding
   )
 import qualified Distribution.PackageDescription as C
 import qualified Distribution.PackageDescription.Check as C
+import Distribution.Parsec
 import qualified Distribution.Simple.PackageIndex as C.PackageIndex
 import Distribution.Simple.Setup (BooleanFlag (..))
 import qualified Distribution.System as C
@@ -80,6 +81,7 @@ import Language.Haskell.Extension (Extension (..), Language (..))
 -- cabal-install
 import Distribution.Client.Dependency
 import qualified Distribution.Client.SolverInstallPlan as CI.SolverInstallPlan
+import Distribution.Client.Targets
 import Distribution.Client.Types
 
 import Distribution.Solver.Types.ComponentDeps (ComponentDeps)
@@ -794,6 +796,7 @@ exResolve
   -> SolveExecutables
   -> Maybe (Variable P.QPN -> Variable P.QPN -> Ordering)
   -> [ExConstraint]
+  -> [String]
   -> [ExPreference]
   -> C.Verbosity
   -> EnableAllTests
@@ -817,6 +820,7 @@ exResolve
   solveExes
   goalOrder
   constraints
+  userConstraints
   prefs
   verbosity
   enableAllTests =
@@ -847,23 +851,24 @@ exResolve
         | otherwise = []
       targets' = fmap (\p -> NamedPackage (C.mkPackageName p) []) targets
       params =
-        addConstraints (fmap toConstraint constraints) $
-          addConstraints (fmap toLpc enableTests) $
-            addPreferences (fmap toPref prefs) $
-              setCountConflicts countConflicts $
-                setFineGrainedConflicts fineGrainedConflicts $
-                  setMinimizeConflictSet minimizeConflictSet $
-                    setIndependentGoals indepGoals $
-                      (if asBool prefOldest then setPreferenceDefault PreferAllOldest else id) $
-                        setReorderGoals reorder $
-                          setMaxBackjumps mbj $
-                            setAllowBootLibInstalls allowBootLibInstalls $
-                              setOnlyConstrained onlyConstrained $
-                                setEnableBackjumping enableBj $
-                                  setSolveExecutables solveExes $
-                                    setGoalOrder goalOrder $
-                                      setSolverVerbosity verbosity $
-                                        standardInstallPolicy instIdx avaiIdx targets'
+        addConstraints (map parseConstraint userConstraints) $
+          addConstraints (fmap toConstraint constraints) $
+            addConstraints (fmap toLpc enableTests) $
+              addPreferences (fmap toPref prefs) $
+                setCountConflicts countConflicts $
+                  setFineGrainedConflicts fineGrainedConflicts $
+                    setMinimizeConflictSet minimizeConflictSet $
+                      setIndependentGoals indepGoals $
+                        (if asBool prefOldest then setPreferenceDefault PreferAllOldest else id) $
+                          setReorderGoals reorder $
+                            setMaxBackjumps mbj $
+                              setAllowBootLibInstalls allowBootLibInstalls $
+                                setOnlyConstrained onlyConstrained $
+                                  setEnableBackjumping enableBj $
+                                    setSolveExecutables solveExes $
+                                      setGoalOrder goalOrder $
+                                        setSolverVerbosity verbosity $
+                                          standardInstallPolicy instIdx avaiIdx targets'
       toLpc pc = LabeledPackageConstraint pc ConstraintSourceUnknown
 
       toConstraint (ExVersionConstraint scope v) =
@@ -872,6 +877,12 @@ exResolve
         toLpc $ PackageConstraint scope (PackagePropertyFlags (C.mkFlagAssignment [(C.mkFlagName fn, b)]))
       toConstraint (ExStanzaConstraint scope stanzas) =
         toLpc $ PackageConstraint scope (PackagePropertyStanzas stanzas)
+
+      parseConstraint :: String -> LabeledPackageConstraint
+      parseConstraint str =
+        case explicitEitherParsec parsec str of
+          Left err -> error ("Bad user constraint: " ++ err)
+          Right user_constraint -> toLpc (userToPackageConstraint user_constraint)
 
       toPref (ExPkgPref n v) = PackageVersionPreference (C.mkPackageName n) v
       toPref (ExStanzaPref n stanzas) = PackageStanzasPreference (C.mkPackageName n) stanzas

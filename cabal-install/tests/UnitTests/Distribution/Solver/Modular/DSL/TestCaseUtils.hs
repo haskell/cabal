@@ -15,6 +15,7 @@ module UnitTests.Distribution.Solver.Modular.DSL.TestCaseUtils
   , disableSolveExecutables
   , goalOrder
   , constraints
+  , userConstraints
   , preferences
   , setVerbose
   , enableAllTests
@@ -95,6 +96,9 @@ goalOrder order test = test{testGoalOrder = Just order}
 constraints :: [ExConstraint] -> SolverTest -> SolverTest
 constraints cs test = test{testConstraints = cs}
 
+userConstraints :: [String] -> SolverTest -> SolverTest
+userConstraints cs test = test{testUserConstraints = cs}
+
 preferences :: [ExPreference] -> SolverTest -> SolverTest
 preferences prefs test = test{testSoftConstraints = prefs}
 
@@ -126,6 +130,7 @@ data SolverTest = SolverTest
   , testGoalOrder :: Maybe [ExampleVar]
   , testConstraints :: [ExConstraint]
   , testSoftConstraints :: [ExPreference]
+  , testUserConstraints :: [String]
   , testVerbosity :: Verbosity
   , testDb :: ExampleDb
   , testSupportedExts :: Maybe [Extension]
@@ -228,6 +233,7 @@ mkTestExtLangPC exts langs mPkgConfigDb db label targets result =
     , testSolveExecutables = SolveExecutables True
     , testGoalOrder = Nothing
     , testConstraints = []
+    , testUserConstraints = []
     , testSoftConstraints = []
     , testVerbosity = normal
     , testDb = db
@@ -260,6 +266,7 @@ runTest SolverTest{..} = askOption $ \(OptionShowSolverLog showSolverLog) ->
             testSolveExecutables
             (sortGoals <$> testGoalOrder)
             testConstraints
+            testUserConstraints
             testSoftConstraints
             testVerbosity
             testEnableAllTests
