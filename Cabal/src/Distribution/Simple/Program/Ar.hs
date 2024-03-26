@@ -76,8 +76,8 @@ import System.IO
 createArLibArchive
   :: Verbosity
   -> LocalBuildInfo
-  -> SymbolicPath "Package" File
-  -> [SymbolicPath "Package" File]
+  -> SymbolicPath Pkg File
+  -> [SymbolicPath Pkg File]
   -> IO ()
 createArLibArchive verbosity lbi targetPath files = do
   (arProg, _) <- requireProgram verbosity arProgram progDb
@@ -88,7 +88,7 @@ createArLibArchive verbosity lbi targetPath files = do
       mbWorkDir = mbWorkDirLBI lbi
       -- See Note [Symbolic paths] in Distribution.Utils.Path
       i = interpretSymbolicPath mbWorkDir
-      u :: IsCWD "Package" => SymbolicPath "Package" to -> FilePath
+      u :: IsCWD Pkg => SymbolicPath Pkg to -> FilePath
       u = interpretSymbolicPathCWD
   withTempDirectoryCwd verbosity mbWorkDir targetDir "objs" $ \tmpDir -> do
     let tmpPath = tmpDir </> targetName
@@ -124,7 +124,7 @@ createArLibArchive verbosity lbi targetPath files = do
           _ | dashLSupported -> ["-qL"]
           _ -> ["-q"]
 
-        extraArgs :: IsCWD "Package" => [String]
+        extraArgs :: IsCWD Pkg => [String]
         extraArgs = verbosityOpts verbosity ++ [u tmpPath]
 
         ar = programInvocationCwd mbWorkDir arProg

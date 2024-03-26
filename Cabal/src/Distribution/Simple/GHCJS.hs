@@ -313,7 +313,7 @@ getGhcInfo verbosity ghcjsProg = Internal.getGhcInfo verbosity implInfo ghcjsPro
 -- | Given a single package DB, return all installed packages.
 getPackageDBContents
   :: Verbosity
-  -> Maybe (SymbolicPath "CWD" (Dir "Package"))
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -> PackageDB
   -> ProgramDb
   -> IO InstalledPackageIndex
@@ -324,7 +324,7 @@ getPackageDBContents verbosity mbWorkDir packagedb progdb = do
 -- | Given a package DB stack, return all installed packages.
 getInstalledPackages
   :: Verbosity
-  -> Maybe (SymbolicPath "CWD" (Dir "Package"))
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -> PackageDBStack
   -> ProgramDb
   -> IO InstalledPackageIndex
@@ -404,7 +404,7 @@ checkPackageDbStack verbosity _ =
 
 getInstalledPackages'
   :: Verbosity
-  -> Maybe (SymbolicPath "CWD" (Dir "Package"))
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -> [PackageDB]
   -> ProgramDb
   -> IO [(PackageDB, [InstalledPackageInfo])]
@@ -420,7 +420,7 @@ getInstalledPackages' verbosity mbWorkDir packagedbs progdb =
 getInstalledPackagesMonitorFiles
   :: Verbosity
   -> Platform
-  -> Maybe (SymbolicPath "CWD" (Dir "Package"))
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -> ProgramDb
   -> [PackageDB]
   -> IO [FilePath]
@@ -511,7 +511,7 @@ buildOrReplLib mReplFlags verbosity numJobs _pkg_descr lbi lib clbi = do
 
       -- See Note [Symbolic paths] in Distribution.Utils.Path
       i = interpretSymbolicPathLBI lbi
-      u :: SymbolicPathX allowAbs "Package" to -> FilePath
+      u :: SymbolicPathX allowAbs Pkg to -> FilePath
       u = getSymbolicPath
 
   (ghcjsProg, _) <- requireProgram verbosity ghcjsProgram (withPrograms lbi)
@@ -1051,7 +1051,7 @@ gbuildNeedDynamic lbi bm =
         ForeignLibTypeUnknown ->
           cabalBug "unknown foreign lib type"
 
-gbuildModDefFiles :: GBuildMode -> [RelativePath "Source" File]
+gbuildModDefFiles :: GBuildMode -> [RelativePath Source File]
 gbuildModDefFiles (GBuildExe _) = []
 gbuildModDefFiles (GReplExe _ _) = []
 gbuildModDefFiles (GBuildFLib flib) = foreignLibModDefFile flib
@@ -1117,19 +1117,19 @@ decodeMainIsArg arg
 --
 -- Used to correctly build and link sources.
 data BuildSources = BuildSources
-  { cSourcesFiles :: [SymbolicPath "Package" File]
-  , cxxSourceFiles :: [SymbolicPath "Package" File]
-  , inputSourceFiles :: [SymbolicPath "Package" File]
+  { cSourcesFiles :: [SymbolicPath Pkg File]
+  , cxxSourceFiles :: [SymbolicPath Pkg File]
+  , inputSourceFiles :: [SymbolicPath Pkg File]
   , inputSourceModules :: [ModuleName]
   }
 
 -- | Locate and return the 'BuildSources' required to build and link.
 gbuildSources
   :: Verbosity
-  -> Maybe (SymbolicPath "CWD" ('Dir "Package"))
+  -> Maybe (SymbolicPath CWD ('Dir Pkg))
   -> PackageId
   -> CabalSpecVersion
-  -> SymbolicPath "Package" (Dir "Source")
+  -> SymbolicPath Pkg (Dir Source)
   -> GBuildMode
   -> IO BuildSources
 gbuildSources verbosity mbWorkDir pkgId specVer tmpDir bm =
@@ -1654,8 +1654,8 @@ extractRtsInfo lbi =
 -- | Returns True if the modification date of the given source file is newer than
 -- the object file we last compiled for it, or if no object file exists yet.
 checkNeedsRecompilation
-  :: Maybe (SymbolicPath "CWD" (Dir "Package"))
-  -> SymbolicPath "Package" File
+  :: Maybe (SymbolicPath CWD (Dir Pkg))
+  -> SymbolicPath Pkg File
   -> GhcOptions
   -> IO Bool
 checkNeedsRecompilation mbWorkDir filename opts =
@@ -1666,8 +1666,8 @@ checkNeedsRecompilation mbWorkDir filename opts =
 
 -- | Finds the object file name of the given source file
 getObjectFileName
-  :: Maybe (SymbolicPath "CWD" (Dir "Package"))
-  -> SymbolicPath "Package" File
+  :: Maybe (SymbolicPath CWD (Dir Pkg))
+  -> SymbolicPath Pkg File
   -> GhcOptions
   -> FilePath
 getObjectFileName mbWorkDir filename opts = oname
@@ -1813,7 +1813,7 @@ componentGhcOptions
   -> LocalBuildInfo
   -> BuildInfo
   -> ComponentLocalBuildInfo
-  -> SymbolicPath "Package" (Dir build)
+  -> SymbolicPath Pkg (Dir build)
   -> GhcOptions
 componentGhcOptions verbosity lbi bi clbi odir =
   let opts = Internal.componentGhcOptions verbosity lbi bi clbi odir
@@ -2026,7 +2026,7 @@ hcPkgInfo progdb =
 registerPackage
   :: Verbosity
   -> ProgramDb
-  -> Maybe (SymbolicPath "CWD" (Dir "Package"))
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -> PackageDBStack
   -> InstalledPackageInfo
   -> HcPkg.RegisterOptions

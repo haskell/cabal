@@ -80,7 +80,7 @@ data PreProcessor = PreProcessor
 
     ppOrdering
       :: Verbosity
-      -> [SymbolicPath "Package" (Dir "Source")] -- Source directories
+      -> [SymbolicPath Pkg (Dir Source)] -- Source directories
       -> [ModuleName] -- Module names
       -> IO [ModuleName] -- Sorted modules
 

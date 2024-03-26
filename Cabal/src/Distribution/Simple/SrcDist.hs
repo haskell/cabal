@@ -134,13 +134,13 @@ sdist pkg flags mkTmpDir pps = do
 listPackageSources
   :: Verbosity
   -- ^ verbosity
-  -> Maybe (SymbolicPath "CWD" (Dir "Package"))
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -- ^ directory with cabal file
   -> PackageDescription
   -- ^ info from the cabal file
   -> [PPSuffixHandler]
   -- ^ extra preprocessors (include suffixes)
-  -> IO [SymbolicPath "Package" File]
+  -> IO [SymbolicPath Pkg File]
 listPackageSources verbosity cwd pkg_descr0 pps = do
   -- Call helpers that actually do all work.
   listPackageSources' verbosity dieWithException cwd pkg_descr pps
@@ -160,13 +160,13 @@ listPackageSourcesWithDie
   -- Since 'die'' prefixes the error message with 'errorPrefix',
   -- whatever is passed in here and wants to die should do the same.
   -- See issue #7331.
-  -> Maybe (SymbolicPath "CWD" (Dir "Package"))
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -- ^ directory with cabal file
   -> PackageDescription
   -- ^ info from the cabal file
   -> [PPSuffixHandler]
   -- ^ extra preprocessors (include suffixes)
-  -> IO [SymbolicPath "Package" File]
+  -> IO [SymbolicPath Pkg File]
 listPackageSourcesWithDie verbosity rip cwd pkg_descr0 pps = do
   -- Call helpers that actually do all work.
   listPackageSources' verbosity rip cwd pkg_descr pps
@@ -181,13 +181,13 @@ listPackageSources'
   -- Since 'die'' prefixes the error message with 'errorPrefix',
   -- whatever is passed in here and wants to die should do the same.
   -- See issue #7331.
-  -> Maybe (SymbolicPath "CWD" (Dir "Package"))
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -- ^ directory with cabal file
   -> PackageDescription
   -- ^ info from the cabal file
   -> [PPSuffixHandler]
   -- ^ extra preprocessors (include suffixes)
-  -> IO [SymbolicPath "Package" File]
+  -> IO [SymbolicPath Pkg File]
 listPackageSources' verbosity rip mbWorkDir pkg_descr pps =
   fmap concat . sequenceA $
     [ -- Library sources.
@@ -248,7 +248,7 @@ listPackageSources' verbosity rip mbWorkDir pkg_descr pps =
         $ \filename ->
           do
             let srcDataDirRaw = dataDir pkg_descr
-                srcDataFile :: SymbolicPath "Package" File
+                srcDataFile :: SymbolicPath Pkg File
                 srcDataFile
                   | null (getSymbolicPath srcDataDirRaw) = sameDirectory </> filename
                   | otherwise = srcDataDirRaw </> filename
@@ -293,7 +293,7 @@ listPackageSources' verbosity rip mbWorkDir pkg_descr pps =
 prepareTree
   :: Verbosity
   -- ^ verbosity
-  -> Maybe (SymbolicPath "CWD" (Dir "Package"))
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -- ^ working directory
   -> PackageDescription
   -- ^ info from the cabal file
@@ -341,13 +341,13 @@ maybeCreateDefaultSetupScript targetDir = do
 -- | Find the main executable file.
 findMainExeFile
   :: Verbosity
-  -> Maybe (SymbolicPath "CWD" (Dir "Package"))
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -- ^ working directory
   -> BuildInfo
   -> [PPSuffixHandler]
-  -> RelativePath "Source" File
+  -> RelativePath Source File
   -- ^ main-is
-  -> IO (SymbolicPath "Package" File)
+  -> IO (SymbolicPath Pkg File)
 findMainExeFile verbosity cwd exeBi pps mainPath = do
   ppFile <-
     findFileCwdWithExtension
@@ -364,11 +364,11 @@ findMainExeFile verbosity cwd exeBi pps mainPath = do
 -- TODO: I don't know if this is right
 findModDefFile
   :: Verbosity
-  -> Maybe (SymbolicPath "CWD" (Dir "Package"))
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -> BuildInfo
   -> [PPSuffixHandler]
-  -> RelativePath "Source" File
-  -> IO (SymbolicPath "Package" File)
+  -> RelativePath Source File
+  -> IO (SymbolicPath Pkg File)
 findModDefFile verbosity cwd flibBi _pps modDefPath =
   findFileCwd verbosity cwd (sameDirectory : hsSourceDirs flibBi) modDefPath
 
@@ -415,7 +415,7 @@ filterAutogenModules pkg_descr0 =
 prepareSnapshotTree
   :: Verbosity
   -- ^ verbosity
-  -> Maybe (SymbolicPath "CWD" (Dir "Package"))
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -- ^ working directory
   -> PackageDescription
   -- ^ info from the cabal file
@@ -508,19 +508,19 @@ createArchive verbosity pkg_descr tmpDir targetPref = do
 -- | Given a buildinfo, return the names of all source files.
 allSourcesBuildInfo
   :: Verbosity
-  -> (Verbosity -> CabalException -> IO [SymbolicPath "Package" File])
+  -> (Verbosity -> CabalException -> IO [SymbolicPath Pkg File])
   -- ^ 'die'' alternative.
   -- Since 'die'' prefixes the error message with 'errorPrefix',
   -- whatever is passed in here and wants to die should do the same.
   -- See issue #7331.
-  -> Maybe (SymbolicPath "CWD" (Dir "Package"))
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -- ^ working directory
   -> BuildInfo
   -> [PPSuffixHandler]
   -- ^ Extra preprocessors
   -> [ModuleName]
   -- ^ Exposed modules
-  -> IO [SymbolicPath "Package" File]
+  -> IO [SymbolicPath Pkg File]
 allSourcesBuildInfo verbosity rip mbWorkDir bi pps modules = do
   let searchDirs = hsSourceDirs bi
   sources <-
@@ -557,7 +557,7 @@ allSourcesBuildInfo verbosity rip mbWorkDir bi pps modules = do
 
     suffixes = ppSuffixes pps ++ builtinHaskellSuffixes
 
-    notFound :: ModuleName -> IO [SymbolicPath "Package" File]
+    notFound :: ModuleName -> IO [SymbolicPath Pkg File]
     notFound m =
       rip verbosity $ NoModuleFound m suffixes
 

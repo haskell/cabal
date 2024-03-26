@@ -99,7 +99,7 @@ buildHaskellModules
   -- ^ The GHC configured program
   -> PD.PackageDescription
   -- ^ The package description
-  -> SymbolicPath "Package" ('Dir "Artifacts")
+  -> SymbolicPath Pkg ('Dir Artifacts)
   -- ^ The path to the build directory for this target, which
   -- has already been created.
   -> Set.Set BuildWay
@@ -300,12 +300,12 @@ buildWayExtraHcOptions = \case
 -- The "input files" are either the path to the main Haskell module, or a repl
 -- script (that does not necessarily have an extension).
 componentInputs
-  :: SymbolicPath "Package" (Dir "Artifacts")
+  :: SymbolicPath Pkg (Dir Artifacts)
   -- ^ Target build dir
   -> PD.PackageDescription
   -> PreBuildComponentInputs
   -- ^ The context and component being built in it.
-  -> IO ([SymbolicPath "Package" File], [ModuleName])
+  -> IO ([SymbolicPath Pkg File], [ModuleName])
   -- ^ The Haskell input files, and the Haskell modules
 componentInputs buildTargetDir pkg_descr pbci =
   case component of

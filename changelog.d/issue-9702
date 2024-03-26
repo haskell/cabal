@@ -13,7 +13,7 @@ all fields of `PackageDescription` that, if relative, should be interpreted
 with respect to e.g. the package root, use `SymbolicPath` instead of `FilePath`.
 
 This means that many library functions in `Cabal` take an extra argument of type
-`Maybe (SymbolicPath "CWD" (Dir "Package))`, which is an optional (relative or
+`Maybe (SymbolicPath CWD (Dir "Package))`, which is an optional (relative or
 absolute) path to the package root (if relative, relative to the current working
 directory). In addition, many functions that used to manipulate `FilePath`s now
 manipulate `SymbolicPath`s, require explicit conversion using e.g. `getSymbolicPath`.
@@ -24,7 +24,7 @@ To illustrate with file searching, the `Cabal` library defines:
 findFileCwd
   :: forall dir1 dir2 file
    . Verbosity
-  -> Maybe (SymbolicPath "CWD" (Dir dir1))
+  -> Maybe (SymbolicPath CWD (Dir dir1))
   -- ^ working directory
   -> [SymbolicPath dir1 (Dir dir2)]
   -- ^ search directories

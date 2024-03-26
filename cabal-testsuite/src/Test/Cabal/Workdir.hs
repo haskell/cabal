@@ -21,7 +21,7 @@ import System.Environment ( getExecutablePath )
 -- by using the conventional layout of built executables
 -- in relation to the top of a dist directory.  Will not work
 -- if the executable has been installed somewhere else.
-guessDistDir :: IO (SymbolicPath "Package" (Dir "Dist"))
+guessDistDir :: IO (SymbolicPath Pkg (Dir Dist))
 guessDistDir = do
     exe_path <- canonicalizePath =<< getExecutablePath
     let dist0 = dropFileName exe_path </> ".." </> ".."

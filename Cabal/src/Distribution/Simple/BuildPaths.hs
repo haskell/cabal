@@ -78,14 +78,14 @@ srcPref distPref = distPref </> "src"
 
 hscolourPref
   :: HaddockTarget
-  -> SymbolicPath root (Dir "Dist")
+  -> SymbolicPath root (Dir Dist)
   -> PackageDescription
-  -> SymbolicPath root (Dir "Docs")
+  -> SymbolicPath root (Dir Artifacts)
 hscolourPref = haddockPref
 
 -- | Build info json file, generated in every build
 buildInfoPref
-  :: SymbolicPath root (Dir "Dist")
+  :: SymbolicPath root (Dir Dist)
   -> SymbolicPath root File
 buildInfoPref distPref = distPref </> makeRelativePathEx "build-info.json"
 
@@ -98,20 +98,20 @@ haddockDirName ForHackage = (++ "-docs") . prettyShow . packageId
 -- | The directory to which generated haddock documentation should be written.
 haddockPref
   :: HaddockTarget
-  -> SymbolicPath root (Dir "Dist")
+  -> SymbolicPath root (Dir Dist)
   -> PackageDescription
-  -> SymbolicPath root (Dir "Docs")
+  -> SymbolicPath root (Dir Artifacts)
 haddockPref haddockTarget distPref pkg_descr =
   distPref </> makeRelativePathEx ("doc" </> "html" </> haddockDirName haddockTarget pkg_descr)
 
 -- | The directory in which we put auto-generated modules for EVERY
 -- component in the package.
-autogenPackageModulesDir :: LocalBuildInfo -> SymbolicPath "Package" (Dir "Source")
+autogenPackageModulesDir :: LocalBuildInfo -> SymbolicPath Pkg (Dir Source)
 autogenPackageModulesDir lbi = buildDir lbi </> makeRelativePathEx "global-autogen"
 
 -- | The directory in which we put auto-generated modules for a
 -- particular component.
-autogenComponentModulesDir :: LocalBuildInfo -> ComponentLocalBuildInfo -> SymbolicPath "Package" (Dir "Source")
+autogenComponentModulesDir :: LocalBuildInfo -> ComponentLocalBuildInfo -> SymbolicPath Pkg (Dir Source)
 autogenComponentModulesDir lbi clbi = componentBuildDir lbi clbi </> makeRelativePathEx "autogen"
 
 -- NB: Look at 'checkForeignDeps' for where a simplified version of this
@@ -149,7 +149,7 @@ getLibSourceFiles
   -> LocalBuildInfo
   -> Library
   -> ComponentLocalBuildInfo
-  -> IO [(ModuleName.ModuleName, SymbolicPath "Package" File)]
+  -> IO [(ModuleName.ModuleName, SymbolicPath Pkg File)]
 getLibSourceFiles verbosity lbi lib clbi =
   getSourceFiles verbosity mbWorkDir searchpaths modules
   where
@@ -168,7 +168,7 @@ getExeSourceFiles
   -> LocalBuildInfo
   -> Executable
   -> ComponentLocalBuildInfo
-  -> IO [(ModuleName.ModuleName, SymbolicPath "Package" 'File)]
+  -> IO [(ModuleName.ModuleName, SymbolicPath Pkg 'File)]
 getExeSourceFiles verbosity lbi exe clbi = do
   moduleFiles <- getSourceFiles verbosity mbWorkDir searchpaths modules
   srcMainPath <- findFileCwd verbosity mbWorkDir (hsSourceDirs bi) (modulePath exe)
@@ -188,7 +188,7 @@ getFLibSourceFiles
   -> LocalBuildInfo
   -> ForeignLib
   -> ComponentLocalBuildInfo
-  -> IO [(ModuleName.ModuleName, SymbolicPath "Package" File)]
+  -> IO [(ModuleName.ModuleName, SymbolicPath Pkg File)]
 getFLibSourceFiles verbosity lbi flib clbi =
   getSourceFiles verbosity mbWorkDir searchpaths modules
   where
@@ -203,10 +203,10 @@ getFLibSourceFiles verbosity lbi flib clbi =
 
 getSourceFiles
   :: Verbosity
-  -> Maybe (SymbolicPath "CWD" ('Dir "Package"))
-  -> [SymbolicPathX allowAbsolute "Package" (Dir "Source")]
+  -> Maybe (SymbolicPath CWD ('Dir Pkg))
+  -> [SymbolicPathX allowAbsolute Pkg (Dir Source)]
   -> [ModuleName.ModuleName]
-  -> IO [(ModuleName.ModuleName, SymbolicPathX allowAbsolute "Package" File)]
+  -> IO [(ModuleName.ModuleName, SymbolicPathX allowAbsolute Pkg File)]
 getSourceFiles verbosity mbWorkDir dirs modules = flip traverse modules $ \m ->
   fmap ((,) m) $
     findFileCwdWithExtension
@@ -220,13 +220,13 @@ getSourceFiles verbosity mbWorkDir dirs modules = flip traverse modules $ \m ->
       dieWithException verbosity $ CantFindSourceModule module_
 
 -- | The directory where we put build results for an executable
-exeBuildDir :: LocalBuildInfo -> Executable -> SymbolicPath "Package" (Dir "Build")
+exeBuildDir :: LocalBuildInfo -> Executable -> SymbolicPath Pkg (Dir Build)
 exeBuildDir lbi exe = buildDir lbi </> makeRelativePathEx (nm </> nm ++ "-tmp")
   where
     nm = unUnqualComponentName $ exeName exe
 
 -- | The directory where we put build results for a foreign library
-flibBuildDir :: LocalBuildInfo -> ForeignLib -> SymbolicPath "Package" (Dir "Build")
+flibBuildDir :: LocalBuildInfo -> ForeignLib -> SymbolicPath Pkg (Dir Build)
 flibBuildDir lbi flib = buildDir lbi </> makeRelativePathEx (nm </> nm ++ "-tmp")
   where
     nm = unUnqualComponentName $ foreignLibName flib
@@ -236,7 +236,7 @@ stubName :: TestSuite -> FilePath
 stubName t = unUnqualComponentName (testName t) ++ "Stub"
 
 -- | The directory where we put build results for a test suite
-testBuildDir :: LocalBuildInfo -> TestSuite -> SymbolicPath "Package" (Dir "Build")
+testBuildDir :: LocalBuildInfo -> TestSuite -> SymbolicPath Pkg (Dir Build)
 testBuildDir lbi tst =
   buildDir lbi </> makeRelativePathEx testDir
   where
@@ -247,7 +247,7 @@ testBuildDir lbi tst =
     nm = unUnqualComponentName $ testName tst
 
 -- | The directory where we put build results for a benchmark suite
-benchmarkBuildDir :: LocalBuildInfo -> Benchmark -> SymbolicPath "Package" (Dir "Build")
+benchmarkBuildDir :: LocalBuildInfo -> Benchmark -> SymbolicPath Pkg (Dir Build)
 benchmarkBuildDir lbi bm =
   buildDir lbi </> makeRelativePathEx (nm </> nm ++ "-tmp")
   where

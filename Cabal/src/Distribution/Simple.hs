@@ -274,9 +274,9 @@ configureAction globalFlags hooks flags args = do
 confPkgDescr
   :: UserHooks
   -> Verbosity
-  -> Maybe (SymbolicPath "CWD" (Dir "Package"))
-  -> Maybe (SymbolicPath "Package" File)
-  -> IO (Maybe (SymbolicPath "Package" File), GenericPackageDescription)
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
+  -> Maybe (SymbolicPath Pkg File)
+  -> IO (Maybe (SymbolicPath Pkg File), GenericPackageDescription)
 confPkgDescr hooks verbosity cwd mb_path = do
   mdescr <- readDesc hooks
   case mdescr of
@@ -659,7 +659,7 @@ tryGetBuildConfig
   :: GlobalFlags
   -> UserHooks
   -> Verbosity
-  -> SymbolicPath "Package" (Dir "Dist")
+  -> SymbolicPath Pkg (Dir Dist)
   -> IO (Either ConfigStateFileError LocalBuildInfo)
 tryGetBuildConfig g u v = try . getBuildConfig g u v
 
@@ -668,7 +668,7 @@ getBuildConfig
   :: GlobalFlags
   -> UserHooks
   -> Verbosity
-  -> SymbolicPath "Package" (Dir "Dist")
+  -> SymbolicPath Pkg (Dir Dist)
   -> IO LocalBuildInfo
 getBuildConfig globalFlags hooks verbosity distPref = do
   lbi_wo_programs <- getPersistBuildConfig mbWorkDir distPref
@@ -690,7 +690,7 @@ getBuildConfig globalFlags hooks verbosity distPref = do
         else return lbi
   where
     mbWorkDir = flagToMaybe $ globalWorkingDir globalFlags
-    reconfigure :: SymbolicPath "Package" File -> LocalBuildInfo -> IO LocalBuildInfo
+    reconfigure :: SymbolicPath Pkg File -> LocalBuildInfo -> IO LocalBuildInfo
     reconfigure pkg_descr_file lbi = do
       notice verbosity $
         getSymbolicPath pkg_descr_file
@@ -866,8 +866,8 @@ autoconfUserHooks =
 
 getHookedBuildInfo
   :: Verbosity
-  -> Maybe (SymbolicPath "CWD" (Dir "Package"))
-  -> SymbolicPath "Package" (Dir "Build")
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
+  -> SymbolicPath Pkg (Dir Build)
   -> IO HookedBuildInfo
 getHookedBuildInfo verbosity mbWorkDir build_dir = do
   maybe_infoFile <- findHookedPackageDesc verbosity mbWorkDir build_dir

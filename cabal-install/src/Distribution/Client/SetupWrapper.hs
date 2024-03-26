@@ -257,9 +257,9 @@ data SetupScriptOptions = SetupScriptOptions
   , usePackageDB :: PackageDBStack
   , usePackageIndex :: Maybe InstalledPackageIndex
   , useProgramDb :: ProgramDb
-  , useDistPref :: SymbolicPath "Package" (Dir "Dist")
+  , useDistPref :: SymbolicPath Pkg (Dir Dist)
   , useLoggingHandle :: Maybe Handle
-  , useWorkingDir :: Maybe (SymbolicPath "CWD" (Dir "Package"))
+  , useWorkingDir :: Maybe (SymbolicPath CWD (Dir Pkg))
   , useExtraPathEnv :: [FilePath]
   -- ^ Extra things to add to PATH when invoking the setup script.
   , useExtraEnvOverrides :: [(String, Maybe FilePath)]
@@ -1101,7 +1101,7 @@ getExternalSetupMethod verbosity options pkg bt = do
                         ]
                   , ghcOptExtra = extraOpts
                   }
-          let ghcCmdLine :: IsCWD "Package" => [String]
+          let ghcCmdLine :: IsCWD Pkg => [String]
               ghcCmdLine = renderGhcOptions compiler platform ghcOptions
           when (useVersionMacros options') $
             rewriteFileEx verbosity (i cppMacrosFile) $

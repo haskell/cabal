@@ -158,8 +158,8 @@ buildAndRegisterUnpackedPackage
   -> ElaboratedSharedConfig
   -> ElaboratedInstallPlan
   -> ElaboratedReadyPackage
-  -> SymbolicPath "CWD" (Dir "Package")
-  -> SymbolicPath "Package" (Dir "Dist")
+  -> SymbolicPath CWD (Dir Pkg)
+  -> SymbolicPath Pkg (Dir Dist)
   -> Maybe FilePath
   -- ^ The path to an /initialized/ log file
   -> (PackageBuildingPhase -> IO ())
@@ -421,8 +421,8 @@ buildInplaceUnpackedPackage
   -> ElaboratedInstallPlan
   -> ElaboratedReadyPackage
   -> BuildStatusRebuild
-  -> SymbolicPath "CWD" (Dir "Package")
-  -> SymbolicPath "Package" (Dir "Dist")
+  -> SymbolicPath CWD (Dir Pkg)
+  -> SymbolicPath Pkg (Dir Dist)
   -> IO BuildResult
 buildInplaceUnpackedPackage
   verbosity
@@ -623,8 +623,8 @@ buildAndInstallUnpackedPackage
   -> ElaboratedSharedConfig
   -> ElaboratedInstallPlan
   -> ElaboratedReadyPackage
-  -> SymbolicPath "CWD" (Dir "Package")
-  -> SymbolicPath "Package" (Dir "Dist")
+  -> SymbolicPath CWD (Dir Pkg)
+  -> SymbolicPath Pkg (Dir Dist)
   -> IO BuildResult
 buildAndInstallUnpackedPackage
   verbosity

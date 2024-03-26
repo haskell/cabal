@@ -212,13 +212,13 @@ registrationPackageDB dbs = case safeLast dbs of
 
 -- | Make package paths absolute
 absolutePackageDBPaths
-  :: Maybe (SymbolicPath "CWD" (Dir "Package"))
+  :: Maybe (SymbolicPath CWD (Dir Pkg))
   -> PackageDBStack
   -> IO PackageDBStack
 absolutePackageDBPaths mbWorkDir = traverse $ absolutePackageDBPath mbWorkDir
 
 absolutePackageDBPath
-  :: Maybe (SymbolicPath "CWD" (Dir "Package"))
+  :: Maybe (SymbolicPath CWD (Dir Pkg))
   -> PackageDB
   -> IO PackageDB
 absolutePackageDBPath _ GlobalPackageDB = return GlobalPackageDB

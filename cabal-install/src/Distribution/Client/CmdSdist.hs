@@ -171,7 +171,7 @@ sdistCommand =
 
 data SdistFlags = SdistFlags
   { sdistVerbosity :: Flag Verbosity
-  , sdistDistDir :: Flag (SymbolicPath "Package" (Dir "Dist"))
+  , sdistDistDir :: Flag (SymbolicPath Pkg (Dir Dist))
   , sdistListSources :: Flag Bool
   , sdistNulSeparated :: Flag Bool
   , sdistOutputPath :: Flag FilePath

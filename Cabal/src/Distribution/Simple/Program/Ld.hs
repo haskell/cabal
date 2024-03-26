@@ -56,8 +56,8 @@ combineObjectFiles
   :: Verbosity
   -> LocalBuildInfo
   -> ConfiguredProgram
-  -> SymbolicPath "Package" File
-  -> [SymbolicPath "Package" File]
+  -> SymbolicPath Pkg File
+  -> [SymbolicPath Pkg File]
   -> IO ()
 combineObjectFiles verbosity lbi ldProg target files = do
   -- Unlike "ar", the "ld" tool is not designed to be used with xargs. That is,
@@ -67,12 +67,12 @@ combineObjectFiles verbosity lbi ldProg target files = do
 
   let
     -- See Note [Symbolic paths] in Distribution.Utils.Path
-    u :: IsCWD "Package" => SymbolicPath "Package" to -> FilePath
+    u :: IsCWD Pkg => SymbolicPath Pkg to -> FilePath
     u = interpretSymbolicPathCWD
     i = interpretSymbolicPath mbWorkDir
     mbWorkDir = mbWorkDirLBI lbi
 
-    simpleArgs, initialArgs, middleArgs, finalArgs :: IsCWD "Package" => [String]
+    simpleArgs, initialArgs, middleArgs, finalArgs :: IsCWD Pkg => [String]
     simpleArgs = ["-r", "-o", u target]
     initialArgs = ["-r", "-o", u target]
     middleArgs = ["-r", "-o", u target, u tmpfile]

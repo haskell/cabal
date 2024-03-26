@@ -79,9 +79,9 @@ build numJobs pkg_descr pbci = do
 
   -- Create a few directories for building the component
   -- See Note [Build Target Dir vs Target Dir]
-  let targetDir0 :: SymbolicPath "Package" ('Dir "Build")
+  let targetDir0 :: SymbolicPath Pkg ('Dir Build)
       targetDir0 = componentBuildDir lbi clbi
-      buildTargetDir0 :: SymbolicPath "Package" ('Dir "Artifacts")
+      buildTargetDir0 :: SymbolicPath Pkg ('Dir Artifacts)
       buildTargetDir0
         -- Libraries use the target dir for building (see above)
         | isLib = coerceSymbolicPath targetDir0

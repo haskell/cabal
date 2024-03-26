@@ -153,7 +153,7 @@ pattern LocalBuildInfo
   -> InstallDirTemplates
   -> Compiler
   -> Platform
-  -> Maybe (SymbolicPath "Package" File)
+  -> Maybe (SymbolicPath Pkg File)
   -> Graph ComponentLocalBuildInfo
   -> Map ComponentName [ComponentLocalBuildInfo]
   -> Map (PackageName, ComponentName) ComponentId
@@ -278,15 +278,15 @@ instance Structured LocalBuildInfo
 -------------------------------------------------------------------------------
 -- Accessor functions
 
-buildDir :: LocalBuildInfo -> SymbolicPath "Package" (Dir "Build")
+buildDir :: LocalBuildInfo -> SymbolicPath Pkg (Dir Build)
 buildDir lbi =
   buildDirPBD $ LBC.packageBuildDescr $ localBuildDescr lbi
 
-buildDirPBD :: LBC.PackageBuildDescr -> SymbolicPath "Package" (Dir "Build")
+buildDirPBD :: LBC.PackageBuildDescr -> SymbolicPath Pkg (Dir Build)
 buildDirPBD (LBC.PackageBuildDescr{configFlags = cfg}) =
   setupFlagsBuildDir $ configCommonFlags cfg
 
-setupFlagsBuildDir :: CommonSetupFlags -> SymbolicPath "Package" (Dir "Build")
+setupFlagsBuildDir :: CommonSetupFlags -> SymbolicPath Pkg (Dir Build)
 setupFlagsBuildDir cfg = fromFlag (setupDistPref cfg) </> makeRelativePathEx "build"
 
 -- | The (relative or absolute) path to the package root, based on

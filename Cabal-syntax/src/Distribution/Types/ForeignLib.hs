@@ -55,7 +55,7 @@ data ForeignLib = ForeignLib
   -- current:revision:age versioning scheme.
   , foreignLibVersionLinux :: Maybe Version
   -- ^ Linux library version
-  , foreignLibModDefFile :: [RelativePath "Source" File]
+  , foreignLibModDefFile :: [RelativePath Source File]
   -- ^ (Windows-specific) module definition files
   --
   -- This is a list rather than a maybe field so that we can flatten

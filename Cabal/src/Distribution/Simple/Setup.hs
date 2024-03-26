@@ -197,10 +197,10 @@ buildingWhatCommonFlags = \case
 buildingWhatVerbosity :: BuildingWhat -> Verbosity
 buildingWhatVerbosity = fromFlag . setupVerbosity . buildingWhatCommonFlags
 
-buildingWhatWorkingDir :: BuildingWhat -> Maybe (SymbolicPath "CWD" (Dir "Package"))
+buildingWhatWorkingDir :: BuildingWhat -> Maybe (SymbolicPath CWD (Dir Pkg))
 buildingWhatWorkingDir = flagToMaybe . setupWorkingDir . buildingWhatCommonFlags
 
-buildingWhatDistPref :: BuildingWhat -> SymbolicPath "Package" (Dir "Dist")
+buildingWhatDistPref :: BuildingWhat -> SymbolicPath Pkg (Dir Dist)
 buildingWhatDistPref = fromFlag . setupDistPref . buildingWhatCommonFlags
 
 -- The test cases kinda have to be rewritten from the ground up... :/

@@ -859,7 +859,7 @@ logCommand verbosity cp = do
 
 -- | Execute the given command with the given arguments, exiting
 -- with the same exit code if the command fails.
-rawSystemExit :: Verbosity -> Maybe (SymbolicPath "CWD" (Dir "Package")) -> FilePath -> [String] -> IO ()
+rawSystemExit :: Verbosity -> Maybe (SymbolicPath CWD (Dir Pkg)) -> FilePath -> [String] -> IO ()
 rawSystemExit verbosity mbWorkDir path args =
   withFrozenCallStack $
     maybeExit $
@@ -867,7 +867,7 @@ rawSystemExit verbosity mbWorkDir path args =
 
 -- | Execute the given command with the given arguments, returning
 -- the command's exit code.
-rawSystemExitCode :: Verbosity -> Maybe (SymbolicPath "CWD" (Dir "Package")) -> FilePath -> [String] -> IO ExitCode
+rawSystemExitCode :: Verbosity -> Maybe (SymbolicPath CWD (Dir Pkg)) -> FilePath -> [String] -> IO ExitCode
 rawSystemExitCode verbosity mbWorkDir path args =
   withFrozenCallStack $
     rawSystemProc verbosity $
@@ -932,7 +932,7 @@ rawSystemExitWithEnv verbosity =
 -- | Like 'rawSystemExitWithEnv', but setting a working directory.
 rawSystemExitWithEnvCwd
   :: Verbosity
-  -> Maybe (SymbolicPath "CWD" to)
+  -> Maybe (SymbolicPath CWD to)
   -> FilePath
   -> [String]
   -> [(String, String)]
@@ -1209,7 +1209,7 @@ xargs maxSize rawSystemFun fixedArgs bigArgs =
 findFileCwd
   :: forall dir1 dir2 allowAbsolute
    . Verbosity
-  -> Maybe (SymbolicPath "CWD" (Dir dir1))
+  -> Maybe (SymbolicPath CWD (Dir dir1))
   -- ^ working directory
   -> [SymbolicPathX allowAbsolute dir1 (Dir dir2)]
   -- ^ search directories
@@ -1252,7 +1252,7 @@ findFileWithExtension =
 -- @since 3.4.0.0
 findFileCwdWithExtension
   :: forall dir1 dir2 allowAbsolute
-   . Maybe (SymbolicPath "CWD" (Dir dir1))
+   . Maybe (SymbolicPath CWD (Dir dir1))
   -> [Suffix]
   -> [SymbolicPathX allowAbsolute dir1 (Dir dir2)]
   -> RelativePath dir2 File
@@ -1264,7 +1264,7 @@ findFileCwdWithExtension cwd extensions searchPath baseName =
 -- | @since 3.4.0.0
 findAllFilesCwdWithExtension
   :: forall dir1 dir2 allowAbsolute
-   . Maybe (SymbolicPath "CWD" (Dir dir1))
+   . Maybe (SymbolicPath CWD (Dir dir1))
   -- ^ working directory
   -> [Suffix]
   -- ^ extensions
@@ -1303,7 +1303,7 @@ findFileWithExtension' =
 -- the file was found in, and the file path relative to that base directory.
 findFileCwdWithExtension'
   :: forall dir1 dir2 allowAbsolute
-   . Maybe (SymbolicPath "CWD" (Dir dir1))
+   . Maybe (SymbolicPath CWD (Dir dir1))
   -> [Suffix]
   -> [SymbolicPathX allowAbsolute dir1 (Dir dir2)]
   -> RelativePath dir2 File
@@ -1355,7 +1355,7 @@ findModuleFilesEx verbosity searchPath extensions moduleNames =
 findModuleFilesCwd
   :: forall dir1 dir2 allowAbsolute
    . Verbosity
-  -> Maybe (SymbolicPath "CWD" (Dir dir1))
+  -> Maybe (SymbolicPath CWD (Dir dir1))
   -> [SymbolicPathX allowAbsolute dir1 (Dir dir2)]
   -- ^ build prefix (location of objects)
   -> [Suffix]
@@ -1390,7 +1390,7 @@ findModuleFileEx verbosity =
 findModuleFileCwd
   :: forall dir1 dir2 allowAbsolute
    . Verbosity
-  -> Maybe (SymbolicPath "CWD" (Dir dir1))
+  -> Maybe (SymbolicPath CWD (Dir dir1))
   -> [SymbolicPathX allowAbsolute dir1 (Dir dir2)]
   -- ^ build prefix (location of objects)
   -> [Suffix]
@@ -1600,16 +1600,16 @@ copyFileTo verbosity dir file =
 -- the relative path and creating the parent directories if needed.
 copyFileToCwd
   :: Verbosity
-  -> Maybe (SymbolicPath "CWD" (Dir "Package"))
-  -> SymbolicPath "Package" (Dir target)
-  -> RelativePath "Package" File
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
+  -> SymbolicPath Pkg (Dir target)
+  -> RelativePath Pkg File
   -> IO ()
 copyFileToCwd verbosity mbWorkDir dir file = withFrozenCallStack $ do
   let targetFile = i $ dir </> unsafeCoerceSymbolicPath file
   createDirectoryIfMissingVerbose verbosity True (takeDirectory targetFile)
   installOrdinaryFile verbosity (i file) targetFile
   where
-    i :: SymbolicPathX allowAbs "Package" to -> FilePath
+    i :: SymbolicPathX allowAbs Pkg to -> FilePath
     i = interpretSymbolicPath mbWorkDir
 
 -- | Common implementation of 'copyFiles', 'installOrdinaryFiles',
@@ -1737,13 +1737,13 @@ withTempFile tmpDir template f = withFrozenCallStack $
 
 -- | Use a temporary filename that doesn't already exist.
 withTempFileCwd
-  :: Maybe (SymbolicPath "CWD" (Dir "Package"))
+  :: Maybe (SymbolicPath CWD (Dir Pkg))
   -- ^ Working directory
-  -> SymbolicPath "Package" (Dir tmpDir)
+  -> SymbolicPath Pkg (Dir tmpDir)
   -- ^ Temp dir to create the file in
   -> String
   -- ^ File name template. See 'openTempFile'.
-  -> (SymbolicPath "Package" File -> Handle -> IO a)
+  -> (SymbolicPath Pkg File -> Handle -> IO a)
   -> IO a
 withTempFileCwd = withFrozenCallStack $ withTempFileEx defaultTempFileOptions
 
@@ -1752,13 +1752,13 @@ withTempFileCwd = withFrozenCallStack $ withTempFileEx defaultTempFileOptions
 withTempFileEx
   :: forall a tmpDir
    . TempFileOptions
-  -> Maybe (SymbolicPath "CWD" (Dir "Package"))
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -- ^ Working directory
-  -> SymbolicPath "Package" (Dir tmpDir)
+  -> SymbolicPath Pkg (Dir tmpDir)
   -- ^ Temp dir to create the file in
   -> String
   -- ^ File name template. See 'openTempFile'.
-  -> (SymbolicPath "Package" File -> Handle -> IO a)
+  -> (SymbolicPath Pkg File -> Handle -> IO a)
   -> IO a
 withTempFileEx opts mbWorkDir tmpDir template action =
   withFrozenCallStack $
@@ -1774,7 +1774,7 @@ withTempFileEx opts mbWorkDir tmpDir template action =
       (withLexicalCallStack (\(fn, h) -> action (mkRelToPkg fn) h))
   where
     i = interpretSymbolicPath mbWorkDir -- See Note [Symbolic paths] in Distribution.Utils.Path
-    mkRelToPkg :: FilePath -> SymbolicPath "Package" File
+    mkRelToPkg :: FilePath -> SymbolicPath Pkg File
     mkRelToPkg fp =
       tmpDir </> makeRelativePathEx (takeFileName fp)
 
@@ -1819,11 +1819,11 @@ withTempDirectory verb targetDir template f =
 -- @src/sdist.342@.
 withTempDirectoryCwd
   :: Verbosity
-  -> Maybe (SymbolicPath "CWD" (Dir "Package"))
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -- ^ Working directory
-  -> SymbolicPath "Package" (Dir tmpDir1)
+  -> SymbolicPath Pkg (Dir tmpDir1)
   -> String
-  -> (SymbolicPath "Package" (Dir tmpDir2) -> IO a)
+  -> (SymbolicPath Pkg (Dir tmpDir2) -> IO a)
   -> IO a
 withTempDirectoryCwd verbosity mbWorkDir targetDir template f =
   withFrozenCallStack $
@@ -1855,11 +1855,11 @@ withTempDirectoryCwdEx
   :: forall a tmpDir1 tmpDir2
    . Verbosity
   -> TempFileOptions
-  -> Maybe (SymbolicPath "CWD" (Dir "Package"))
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -- ^ Working directory
-  -> SymbolicPath "Package" (Dir tmpDir1)
+  -> SymbolicPath Pkg (Dir tmpDir1)
   -> String
-  -> (SymbolicPath "Package" (Dir tmpDir2) -> IO a)
+  -> (SymbolicPath Pkg (Dir tmpDir2) -> IO a)
   -> IO a
 withTempDirectoryCwdEx _verbosity opts mbWorkDir targetDir template f =
   withFrozenCallStack $
@@ -1955,15 +1955,15 @@ exeExtensions = case (buildArch, buildOS) of
 
 -- | Package description file (/pkgname/@.cabal@) in the current
 -- working directory.
-defaultPackageDescCwd :: Verbosity -> IO (RelativePath "Package" File)
+defaultPackageDescCwd :: Verbosity -> IO (RelativePath Pkg File)
 defaultPackageDescCwd verbosity = tryFindPackageDesc verbosity Nothing
 
 -- | Find a package description file in the given directory.  Looks for
 --  @.cabal@ files.
 findPackageDesc
-  :: Maybe (SymbolicPath "CWD" (Dir "Package"))
+  :: Maybe (SymbolicPath CWD (Dir Pkg))
   -- ^ package directory
-  -> IO (Either CabalException (RelativePath "Package" File))
+  -> IO (Either CabalException (RelativePath Pkg File))
 findPackageDesc mbPkgDir =
   do
     let pkgDir = maybe "." getSymbolicPath mbPkgDir
@@ -1986,9 +1986,9 @@ findPackageDesc mbPkgDir =
 -- | Like 'findPackageDesc', but calls 'die' in case of error.
 tryFindPackageDesc
   :: Verbosity
-  -> Maybe (SymbolicPath "CWD" (Dir "Package"))
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -- ^ directory in which to look
-  -> IO (RelativePath "Package" File)
+  -> IO (RelativePath Pkg File)
 tryFindPackageDesc verbosity dir =
   either (dieWithException verbosity) return =<< findPackageDesc dir
 
@@ -1996,11 +1996,11 @@ tryFindPackageDesc verbosity dir =
 --  Looks for @.buildinfo@ files.
 findHookedPackageDesc
   :: Verbosity
-  -> Maybe (SymbolicPath "CWD" (Dir "Package"))
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -- ^ Working directory
-  -> SymbolicPath "Package" (Dir "Build")
+  -> SymbolicPath Pkg (Dir Build)
   -- ^ Directory to search
-  -> IO (Maybe (SymbolicPath "Package" File))
+  -> IO (Maybe (SymbolicPath Pkg File))
   -- ^ /dir/@\/@/pkgname/@.buildinfo@, if present
 findHookedPackageDesc verbosity mbWorkDir dir = do
   files <- getDirectoryContents $ interpretSymbolicPath mbWorkDir dir

@@ -33,11 +33,11 @@ import Distribution.Verbosity (Verbosity)
 buildAllExtraSources
   :: ConfiguredProgram
   -- ^ The GHC configured program
-  -> SymbolicPath "Package" (Dir "Artifacts")
+  -> SymbolicPath Pkg (Dir Artifacts)
   -- ^ The build directory for this target
   -> PreBuildComponentInputs
   -- ^ The context and component being built in it.
-  -> IO (NubListR (SymbolicPath "Package" File))
+  -> IO (NubListR (SymbolicPath Pkg File))
   -- ^ Returns the (nubbed) list of extra sources that were built
 buildAllExtraSources =
   mconcat
@@ -55,11 +55,11 @@ buildCSources
   , buildCmmSources
     :: ConfiguredProgram
     -- ^ The GHC configured program
-    -> SymbolicPath "Package" (Dir "Artifacts")
+    -> SymbolicPath Pkg (Dir Artifacts)
     -- ^ The build directory for this target
     -> PreBuildComponentInputs
     -- ^ The context and component being built in it.
-    -> IO (NubListR (SymbolicPath "Package" File))
+    -> IO (NubListR (SymbolicPath Pkg File))
     -- ^ Returns the list of extra sources that were built
 buildCSources =
   buildExtraSources
@@ -134,8 +134,8 @@ buildExtraSources
        -> LocalBuildInfo
        -> BuildInfo
        -> ComponentLocalBuildInfo
-       -> SymbolicPath "Package" (Dir "Artifacts")
-       -> SymbolicPath "Package" File
+       -> SymbolicPath Pkg (Dir Artifacts)
+       -> SymbolicPath Pkg File
        -> GhcOptions
      )
   -- ^ Function to determine the @'GhcOptions'@ for the
@@ -146,7 +146,7 @@ buildExtraSources
   -- ^ Some types of build sources should not be built in the dynamic way, namely, JS sources.
   -- I'm not entirely sure this remains true after we migrate to supporting GHC's JS backend rather than GHCJS.
   -- Boolean for "do we allow building these sources the dynamic way?"
-  -> (Component -> [SymbolicPath "Package" File])
+  -> (Component -> [SymbolicPath Pkg File])
   -- ^ View the extra sources of a component, typically from
   -- the build info (e.g. @'asmSources'@, @'cSources'@).
   -- @'Executable'@ components might additionally add the
@@ -154,11 +154,11 @@ buildExtraSources
   -- if it should be compiled as the rest of them.
   -> ConfiguredProgram
   -- ^ The GHC configured program
-  -> SymbolicPath "Package" (Dir "Artifacts")
+  -> SymbolicPath Pkg (Dir Artifacts)
   -- ^ The build directory for this target
   -> PreBuildComponentInputs
   -- ^ The context and component being built in it.
-  -> IO (NubListR (SymbolicPath "Package" File))
+  -> IO (NubListR (SymbolicPath Pkg File))
   -- ^ Returns the list of extra sources that were built
 buildExtraSources description componentSourceGhcOptions wantDyn viewSources ghcProg buildTargetDir =
   \PreBuildComponentInputs{buildingWhat, localBuildInfo = lbi, targetInfo} -> do
@@ -180,7 +180,7 @@ buildExtraSources description componentSourceGhcOptions wantDyn viewSources ghcP
       forceSharedLib = doingTH && isGhcDynamic
       runGhcProg = runGHC verbosity ghcProg comp platform
 
-      buildAction :: SymbolicPath "Package" File -> IO ()
+      buildAction :: SymbolicPath Pkg File -> IO ()
       buildAction sourceFile = do
         let baseSrcOpts =
               componentSourceGhcOptions

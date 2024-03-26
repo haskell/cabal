@@ -48,17 +48,17 @@ import Text.Printf (printf)
 readGenericPackageDescription
   :: HasCallStack
   => Verbosity
-  -> Maybe (SymbolicPath "CWD" (Dir "Package"))
-  -> SymbolicPath "Package" File
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
+  -> SymbolicPath Pkg File
   -> IO GenericPackageDescription
 readGenericPackageDescription =
   readAndParseFile parseGenericPackageDescription
 
 readHookedBuildInfo
   :: Verbosity
-  -> Maybe (SymbolicPath "CWD" (Dir "Package"))
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -- ^ working directory
-  -> SymbolicPath "Package" File
+  -> SymbolicPath Pkg File
   -> IO HookedBuildInfo
 readHookedBuildInfo =
   readAndParseFile parseHookedBuildInfo
@@ -74,9 +74,9 @@ readAndParseFile
   -- ^ File contents to final value parser
   -> Verbosity
   -- ^ Verbosity level
-  -> Maybe (SymbolicPath "CWD" (Dir "Package"))
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -- ^ Working directory
-  -> SymbolicPath "Package" File
+  -> SymbolicPath Pkg File
   -- ^ File to read
   -> IO a
 readAndParseFile parser verbosity mbWorkDir fpath = do

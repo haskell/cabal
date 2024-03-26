@@ -21,7 +21,7 @@ exeName :: Lens' Executable UnqualComponentName
 exeName f s = fmap (\x -> s{T.exeName = x}) (f (T.exeName s))
 {-# INLINE exeName #-}
 
-modulePath :: Lens' Executable (RelativePath "Source" File)
+modulePath :: Lens' Executable (RelativePath Source File)
 modulePath f s = fmap (\x -> s{T.modulePath = x}) (f (T.modulePath s))
 {-# INLINE modulePath #-}
 

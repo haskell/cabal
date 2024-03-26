@@ -257,7 +257,7 @@ configureSetupScript
   -> Compiler
   -> Platform
   -> ProgramDb
-  -> SymbolicPath "Package" (Dir "Dist")
+  -> SymbolicPath Pkg (Dir Dist)
   -> VersionRange
   -> Maybe Lock
   -> Bool

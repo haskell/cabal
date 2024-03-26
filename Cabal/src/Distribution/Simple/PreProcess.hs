@@ -98,9 +98,9 @@ unsorted _ _ ms = pure ms
 -- this to search for C sources with names that match the
 -- preprocessor's output name format.
 type PreProcessorExtras =
-  Maybe (SymbolicPath "CWD" (Dir "Package"))
-  -> SymbolicPath "Package" (Dir "Source")
-  -> IO [RelativePath "Source" File]
+  Maybe (SymbolicPath CWD (Dir Pkg))
+  -> SymbolicPath Pkg (Dir Source)
+  -> IO [RelativePath Source File]
 
 mkSimplePreProcessor
   :: (FilePath -> FilePath -> Verbosity -> IO ())
@@ -228,8 +228,8 @@ preprocessComponent pd comp lbi clbi isSrcDist verbosity handlers =
     preProcessComponent
       :: BuildInfo
       -> [ModuleName]
-      -> RelativePath "Source" File
-      -> SymbolicPath "Package" (Dir "Build")
+      -> RelativePath Source File
+      -> SymbolicPath Pkg (Dir Build)
       -> IO ()
     preProcessComponent bi modules exePath outputDir = do
       let biHandlers = localHandlers bi
@@ -271,15 +271,15 @@ preprocessComponent pd comp lbi clbi isSrcDist verbosity handlers =
 -- | Find the first extension of the file that exists, and preprocess it
 -- if required.
 preprocessFile
-  :: Maybe (SymbolicPath "CWD" (Dir "Package"))
+  :: Maybe (SymbolicPath CWD (Dir Pkg))
   -- ^ package directory location
-  -> [SymbolicPath "Package" (Dir "Source")]
+  -> [SymbolicPath Pkg (Dir Source)]
   -- ^ source directories
-  -> SymbolicPath "Package" (Dir "Build")
+  -> SymbolicPath Pkg (Dir Build)
   -- ^ build directory
   -> Bool
   -- ^ preprocess for sdist
-  -> RelativePath "Source" File
+  -> RelativePath Source File
   -- ^ module file name
   -> Verbosity
   -- ^ verbosity
@@ -347,7 +347,7 @@ preprocessFile mbWorkDir searchLoc buildLoc forSDist baseFile verbosity builtinS
             (i buildLoc, srcStem <.> "hs")
   where
     i = interpretSymbolicPath mbWorkDir -- See Note [Symbolic paths] in Distribution.Utils.Path
-    buildAsSrcLoc :: SymbolicPath "Package" (Dir "Source")
+    buildAsSrcLoc :: SymbolicPath Pkg (Dir Source)
     buildAsSrcLoc = coerceSymbolicPath buildLoc
 
     -- FIXME: This is a somewhat nasty hack. GHC requires that hs-boot files
@@ -451,7 +451,7 @@ ppGhcCpp program xHs extraArgs _bi lbi clbi =
     }
   where
     -- See Note [Symbolic paths] in Distribution.Utils.Path
-    u :: IsCWD "Package" => SymbolicPath "Package" to -> FilePath
+    u :: IsCWD Pkg => SymbolicPath Pkg to -> FilePath
     u = interpretSymbolicPathCWD
 
 ppCpphs :: [String] -> BuildInfo -> LocalBuildInfo -> ComponentLocalBuildInfo -> PreProcessor
@@ -479,7 +479,7 @@ ppCpphs extraArgs _bi lbi clbi =
     }
   where
     -- See Note [Symbolic paths] in Distribution.Utils.Path
-    u :: IsCWD "Package" => SymbolicPath "Package" to -> FilePath
+    u :: IsCWD Pkg => SymbolicPath Pkg to -> FilePath
     u = interpretSymbolicPathCWD
 
 ppHsc2hs :: BuildInfo -> LocalBuildInfo -> ComponentLocalBuildInfo -> PreProcessor
@@ -495,14 +495,14 @@ ppHsc2hs bi lbi clbi =
             hsc2hsProgram
             anyVersion
             (withPrograms lbi)
-        let runHsc2hs :: (IsCWD "Package" => [ProgArg]) -> IO ()
+        let runHsc2hs :: (IsCWD Pkg => [ProgArg]) -> IO ()
             runHsc2hs = runProgramCwd verbosity mbWorkDir hsc2hsProg
         -- See Trac #13896 and https://github.com/haskell/cabal/issues/3122.
         let isCross = hostPlatform lbi /= buildPlatform
-            prependCrossFlags :: IsCWD "Package" => [String] -> [String]
+            prependCrossFlags :: IsCWD Pkg => [String] -> [String]
             prependCrossFlags = if isCross then ("-x" :) else id
         let hsc2hsSupportsResponseFiles = hsc2hsVersion >= mkVersion [0, 68, 4]
-            pureArgs :: IsCWD "Package" => [String]
+            pureArgs :: IsCWD Pkg => [String]
             pureArgs = genPureArgs hsc2hsVersion gccProg inFile outFile
         if hsc2hsSupportsResponseFiles
           then
@@ -521,13 +521,13 @@ ppHsc2hs bi lbi clbi =
     }
   where
     -- See Note [Symbolic paths] in Distribution.Utils.Path
-    u :: IsCWD "Package" => SymbolicPathX allowAbs "Package" to -> FilePath
+    u :: IsCWD Pkg => SymbolicPathX allowAbs Pkg to -> FilePath
     u = interpretSymbolicPathCWD
     mbWorkDir = mbWorkDirLBI lbi
 
     -- Returns a list of command line arguments that can either be passed
     -- directly, or via a response file.
-    genPureArgs :: IsCWD "Package" => Version -> ConfiguredProgram -> String -> String -> [String]
+    genPureArgs :: IsCWD Pkg => Version -> ConfiguredProgram -> String -> String -> [String]
     genPureArgs hsc2hsVersion gccProg inFile outFile =
       -- Additional gcc options
       [ "--cflag=" ++ opt
@@ -723,7 +723,7 @@ ppC2hs bi lbi clbi =
     pkgs = PackageIndex.topologicalOrder (installedPkgs lbi)
     mbWorkDir = mbWorkDirLBI lbi
     -- See Note [Symbolic paths] in Distribution.Utils.Path
-    u :: IsCWD "Package" => SymbolicPath "Package" to -> FilePath
+    u :: IsCWD Pkg => SymbolicPath Pkg to -> FilePath
     u = interpretSymbolicPathCWD
 
 ppC2hsExtras :: PreProcessorExtras
@@ -895,7 +895,7 @@ preprocessExtras
   :: Verbosity
   -> Component
   -> LocalBuildInfo
-  -> IO [SymbolicPath "Package" File]
+  -> IO [SymbolicPath Pkg File]
 preprocessExtras verbosity comp lbi = case comp of
   CLib _ -> pp $ buildDir lbi
   (CExe exe@Executable{}) -> pp $ exeBuildDir lbi exe
@@ -911,10 +911,10 @@ preprocessExtras verbosity comp lbi = case comp of
         dieWithException verbosity $ NoSupportPreProcessingBenchmarkExtras tt
       _ -> pp $ benchmarkBuildDir lbi bm
   where
-    pp :: SymbolicPath "Package" (Dir "Build") -> IO [SymbolicPath "Package" File]
+    pp :: SymbolicPath Pkg (Dir Build) -> IO [SymbolicPath Pkg File]
     pp builddir = do
       -- Use the build dir as a source dir.
-      let dir :: SymbolicPath "Package" (Dir "Source")
+      let dir :: SymbolicPath Pkg (Dir Source)
           dir = coerceSymbolicPath builddir
           mbWorkDir = mbWorkDirLBI lbi
       b <- doesDirectoryExist (interpretSymbolicPathLBI lbi dir)

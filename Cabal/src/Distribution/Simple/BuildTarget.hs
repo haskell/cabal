@@ -530,7 +530,7 @@ componentModules (CExe exe) = exeModules exe
 componentModules (CTest test) = testModules test
 componentModules (CBench bench) = benchmarkModules bench
 
-componentHsFiles :: Component -> [RelativePath "Source" File]
+componentHsFiles :: Component -> [RelativePath Source File]
 componentHsFiles (CExe exe) = [modulePath exe]
 componentHsFiles
   ( CTest

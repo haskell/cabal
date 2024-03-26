@@ -3656,8 +3656,8 @@ setupHsScriptOptions
   -> ElaboratedInstallPlan
   -> ElaboratedSharedConfig
   -> DistDirLayout
-  -> SymbolicPath "CWD" (Dir "Package")
-  -> SymbolicPath "Package" (Dir "Dist")
+  -> SymbolicPath CWD (Dir Pkg)
+  -> SymbolicPath Pkg (Dir Dist)
   -> Bool
   -> Lock
   -> SetupScriptOptions
@@ -3955,8 +3955,8 @@ setupHsConfigureArgs elab@(ElaboratedConfiguredPackage{elabPkgOrComp = ElabCompo
 
 setupHsCommonFlags
   :: Verbosity
-  -> Maybe (SymbolicPath "CWD" (Dir "Package"))
-  -> SymbolicPath "Package" (Dir "Dist")
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
+  -> SymbolicPath Pkg (Dir Dist)
   -> Cabal.CommonSetupFlags
 setupHsCommonFlags verbosity mbWorkDir builddir =
   Cabal.CommonSetupFlags

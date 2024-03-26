@@ -638,7 +638,7 @@ buildAction buildFlags extraArgs globalFlags = do
 -- | Actually do the work of building the package. This is separate from
 -- 'buildAction' so that 'testAction' and 'benchmarkAction' do not invoke
 -- 'reconfigure' twice.
-build :: Verbosity -> SavedConfig -> SymbolicPath "Package" (Dir "Dist") -> BuildFlags -> [String] -> IO ()
+build :: Verbosity -> SavedConfig -> SymbolicPath Pkg (Dir Dist) -> BuildFlags -> [String] -> IO ()
 build verbosity config distPref buildFlags extraArgs =
   setupWrapper
     verbosity
@@ -963,9 +963,9 @@ data ComponentNames
 -- | Return the names of all buildable components matching a given predicate.
 componentNamesFromLBI
   :: Verbosity
-  -> Maybe (SymbolicPath "CWD" (Dir "Package"))
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -- ^ working directory
-  -> SymbolicPath "Package" (Dir "Dist")
+  -> SymbolicPath Pkg (Dir Dist)
   -> String
   -> (LBI.Component -> Bool)
   -> IO ComponentNames

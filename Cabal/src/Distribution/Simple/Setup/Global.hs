@@ -49,7 +49,7 @@ import Distribution.Utils.Path
 data GlobalFlags = GlobalFlags
   { globalVersion :: Flag Bool
   , globalNumericVersion :: Flag Bool
-  , globalWorkingDir :: Flag (SymbolicPath "CWD" (Dir "Package"))
+  , globalWorkingDir :: Flag (SymbolicPath CWD (Dir Pkg))
   }
   deriving (Generic, Typeable)
 

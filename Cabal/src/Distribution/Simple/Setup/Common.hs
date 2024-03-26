@@ -74,11 +74,11 @@ import Distribution.Verbosity
 data CommonSetupFlags = CommonSetupFlags
   { setupVerbosity :: !(Flag Verbosity)
   -- ^ Verbosity
-  , setupWorkingDir :: !(Flag (SymbolicPath "CWD" (Dir "Package")))
+  , setupWorkingDir :: !(Flag (SymbolicPath CWD (Dir Pkg)))
   -- ^ Working directory (optional)
-  , setupDistPref :: !(Flag (SymbolicPath "Package" (Dir "Dist")))
+  , setupDistPref :: !(Flag (SymbolicPath Pkg (Dir Dist)))
   -- ^ Build directory
-  , setupCabalFilePath :: !(Flag (SymbolicPath "Package" File))
+  , setupCabalFilePath :: !(Flag (SymbolicPath Pkg File))
   -- ^ Which Cabal file to use (optional)
   , setupTargets :: [String]
   -- ^ Which targets is this Setup invocation relative to?
@@ -143,12 +143,12 @@ withCommonSetupOptions getCommon setCommon showOrParseArgs opts =
 --------------------------------------------------------------------------------
 
 -- FIXME Not sure where this should live
-defaultDistPref :: SymbolicPath "Package" (Dir "Dist")
+defaultDistPref :: SymbolicPath Pkg (Dir Dist)
 defaultDistPref = makeSymbolicPath "dist"
 
 -- | The name of the directory where optional compilation artifacts
 -- go, such as ghc plugins and .hie files.
-extraCompilationArtifacts :: RelativePath "Build" (Dir "ExtraArtifacts")
+extraCompilationArtifacts :: RelativePath Build (Dir Artifacts)
 extraCompilationArtifacts = makeRelativePathEx "extra-compilation-artifacts"
 
 -- | Help text for @test@ and @bench@ commands.
@@ -330,8 +330,8 @@ reqArgFlag
 reqArgFlag ad = reqArg ad (succeedReadE Flag) flagToList
 
 optionDistPref
-  :: (flags -> Flag (SymbolicPath "Package" (Dir "Dist")))
-  -> (Flag (SymbolicPath "Package" (Dir "Dist")) -> flags -> flags)
+  :: (flags -> Flag (SymbolicPath Pkg (Dir Dist)))
+  -> (Flag (SymbolicPath Pkg (Dir Dist)) -> flags -> flags)
   -> ShowOrParseArgs
   -> OptionField flags
 optionDistPref get set = \showOrParseArgs ->

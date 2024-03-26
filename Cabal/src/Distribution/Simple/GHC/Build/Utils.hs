@@ -33,12 +33,12 @@ import System.FilePath
 -- @main-is@, and found in @hs-source-dirs@).
 findExecutableMain
   :: Verbosity
-  -> Maybe (SymbolicPath "CWD" (Dir "Package"))
-  -> SymbolicPath "Package" (Dir build)
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
+  -> SymbolicPath Pkg (Dir build)
   -- ^ Build directory
-  -> (BuildInfo, RelativePath "Source" File)
+  -> (BuildInfo, RelativePath Source File)
   -- ^ The build info and module path of an executable-like component (Exe, Test, Bench)
-  -> IO (SymbolicPath "Package" File)
+  -> IO (SymbolicPath Pkg File)
   -- ^ The path to the main source file.
 findExecutableMain verbosity mbWorkDir buildDir (bnfo, modPath) =
   findFileCwd verbosity mbWorkDir (coerceSymbolicPath buildDir : hsSourceDirs bnfo) modPath
@@ -77,8 +77,8 @@ isHaskell fp = elem (takeExtension fp) [".hs", ".lhs"]
 -- | Returns True if the modification date of the given source file is newer than
 -- the object file we last compiled for it, or if no object file exists yet.
 checkNeedsRecompilation
-  :: Maybe (SymbolicPath "CWD" (Dir "Package"))
-  -> SymbolicPath "Package" File
+  :: Maybe (SymbolicPath CWD (Dir Pkg))
+  -> SymbolicPath Pkg File
   -> GhcOptions
   -> IO Bool
 checkNeedsRecompilation mbWorkDir filename opts =
@@ -89,8 +89,8 @@ checkNeedsRecompilation mbWorkDir filename opts =
 
 -- | Finds the object file name of the given source file
 getObjectFileName
-  :: Maybe (SymbolicPath "CWD" (Dir "Package"))
-  -> SymbolicPath "Package" File
+  :: Maybe (SymbolicPath CWD (Dir Pkg))
+  -> SymbolicPath Pkg File
   -> GhcOptions
   -> FilePath
 getObjectFileName mbWorkDir filename opts = oname

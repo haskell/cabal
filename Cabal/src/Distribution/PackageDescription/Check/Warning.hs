@@ -48,10 +48,6 @@ import Distribution.Types.TestType (TestType, knownTestTypes)
 import Distribution.Types.UnqualComponentName
 import Distribution.Types.Version (Version)
 import Distribution.Utils.Path
-  ( FileOrDir (..)
-  , RelativePath
-  , getSymbolicPath
-  )
 import Language.Haskell.Extension (Extension)
 
 import qualified Data.Either as Either
@@ -275,7 +271,7 @@ data CheckExplanation
   | NotPackageName FilePath String
   | NoDesc
   | MultiDesc [String]
-  | UnknownFile String (RelativePath "Package" File)
+  | UnknownFile String (RelativePath Pkg File)
   | MissingSetupFile
   | MissingConfigureScript
   | UnknownDirectory String FilePath

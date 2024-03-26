@@ -1706,7 +1706,7 @@ installLocalPackage
   :: Verbosity
   -> PackageIdentifier
   -> ResolvedPkgLoc
-  -> SymbolicPath "Package" (Dir "Dist")
+  -> SymbolicPath Pkg (Dir Dist)
   -> (Maybe FilePath -> IO BuildOutcome)
   -> IO BuildOutcome
 installLocalPackage verbosity pkgid location distPref installPkg =
@@ -1741,7 +1741,7 @@ installLocalTarballPackage
   :: Verbosity
   -> PackageIdentifier
   -> FilePath
-  -> SymbolicPath "Package" (Dir "Dist")
+  -> SymbolicPath Pkg (Dir Dist)
   -> (Maybe FilePath -> IO BuildOutcome)
   -> IO BuildOutcome
 installLocalTarballPackage

@@ -37,15 +37,15 @@ import Distribution.Version
 -- library as a dependency can still work, but those that include the library
 -- modules directly (in other-modules) don't.
 markup
-  :: Maybe (SymbolicPath "CWD" (Dir "Package"))
+  :: Maybe (SymbolicPath CWD (Dir Pkg))
   -> ConfiguredProgram
   -> Version
   -> Verbosity
-  -> SymbolicPath "Package" File
+  -> SymbolicPath Pkg File
   -- ^ Path to .tix file
-  -> [SymbolicPath "Package" (Dir "mix")]
+  -> [SymbolicPath Pkg (Dir Mix)]
   -- ^ Paths to .mix file directories
-  -> SymbolicPath "Package" (Dir "html")
+  -> SymbolicPath Pkg (Dir Artifacts)
   -- ^ Path where html output should be located
   -> [ModuleName]
   -- ^ List of modules to include in the report
@@ -80,13 +80,13 @@ markup mbWorkDir hpc hpcVer verbosity tixFile hpcDirs destDir included = do
     (passedDirs, droppedDirs) = splitAt 1 hpcDirs
 
 markupInvocation
-  :: Maybe (SymbolicPath "CWD" (Dir "Package"))
+  :: Maybe (SymbolicPath CWD (Dir Pkg))
   -> ConfiguredProgram
-  -> SymbolicPath "Package" File
+  -> SymbolicPath Pkg File
   -- ^ Path to .tix file
-  -> [SymbolicPath "Package" (Dir "mix")]
+  -> [SymbolicPath Pkg (Dir Mix)]
   -- ^ Paths to .mix file directories
-  -> SymbolicPath "Package" (Dir "html")
+  -> SymbolicPath Pkg (Dir Artifacts)
   -- ^ Path where html output should be
   -- located
   -> [ModuleName]
@@ -105,12 +105,12 @@ markupInvocation mbWorkDir hpc tixFile hpcDirs destDir included =
    in programInvocationCwd mbWorkDir hpc args
 
 union
-  :: Maybe (SymbolicPath "CWD" (Dir "Package"))
+  :: Maybe (SymbolicPath CWD (Dir Pkg))
   -> ConfiguredProgram
   -> Verbosity
-  -> [SymbolicPath "Package" File]
+  -> [SymbolicPath Pkg File]
   -- ^ Paths to .tix files
-  -> SymbolicPath "Package" File
+  -> SymbolicPath Pkg File
   -- ^ Path to resultant .tix file
   -> [ModuleName]
   -- ^ List of modules to exclude from union
@@ -121,11 +121,11 @@ union mbWorkDir hpc verbosity tixFiles outFile excluded =
     (unionInvocation mbWorkDir hpc tixFiles outFile excluded)
 
 unionInvocation
-  :: Maybe (SymbolicPath "CWD" (Dir "Package"))
+  :: Maybe (SymbolicPath CWD (Dir Pkg))
   -> ConfiguredProgram
-  -> [SymbolicPath "Package" File]
+  -> [SymbolicPath Pkg File]
   -- ^ Paths to .tix files
-  -> SymbolicPath "Package" File
+  -> SymbolicPath Pkg File
   -- ^ Path to resultant .tix file
   -> [ModuleName]
   -- ^ List of modules to exclude from union

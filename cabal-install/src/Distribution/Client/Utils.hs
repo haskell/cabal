@@ -70,7 +70,7 @@ import Distribution.Compat.Time (getModTime)
 import Distribution.Simple.Setup (Flag (..))
 import Distribution.Simple.Utils (dieWithException, findPackageDesc, noticeNoWrap)
 import Distribution.Utils.Path
-  ( FileOrDir (..)
+  ( FileOrDir (..), CWD, Pkg
   , RelativePath
   , SymbolicPath
   , makeSymbolicPath
@@ -394,7 +394,7 @@ tryReadAddSourcePackageDesc verbosity depPath err = do
 --  us to give a more descriptive error than that provided by @findPackageDesc@.
 tryReadGenericPackageDesc
   :: Verbosity
-  -> SymbolicPath "CWD" (Dir "Package")
+  -> SymbolicPath CWD (Dir Pkg)
   -> String
   -> IO GenericPackageDescription
 tryReadGenericPackageDesc verbosity pkgDir err = do
@@ -404,9 +404,9 @@ tryReadGenericPackageDesc verbosity pkgDir err = do
 -- | Internal helper function for 'tryReadAddSourcePackageDesc' and 'tryReadGenericPackageDesc'.
 try_find_package_desc
   :: Verbosity
-  -> SymbolicPath "CWD" (Dir "Package")
+  -> SymbolicPath CWD (Dir Pkg)
   -> String
-  -> IO (RelativePath "Package" File)
+  -> IO (RelativePath Pkg File)
 try_find_package_desc verbosity pkgDir err = do
   errOrCabalFile <- findPackageDesc (Just pkgDir)
   case errOrCabalFile of

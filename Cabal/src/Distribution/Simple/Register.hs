@@ -259,7 +259,7 @@ generateRegistrationInfo
   -> ComponentLocalBuildInfo
   -> Bool
   -> Bool
-  -> SymbolicPath "Package" (Dir "Dist")
+  -> SymbolicPath Pkg (Dir Dist)
   -> PackageDB
   -> IO InstalledPackageInfo
 generateRegistrationInfo verbosity pkg lib lbi clbi inplace reloc distPref packageDb = do
@@ -309,7 +309,7 @@ abiHash
   :: Verbosity
   -> PackageDescription
   -> FilePath
-  -> SymbolicPath "Package" (Dir "Dist")
+  -> SymbolicPath Pkg (Dir Dist)
   -> LocalBuildInfo
   -> Library
   -> ComponentLocalBuildInfo
@@ -398,7 +398,7 @@ invokeHcPkg
   :: Verbosity
   -> Compiler
   -> ProgramDb
-  -> Maybe (SymbolicPath "CWD" (Dir "Package"))
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -> PackageDBStack
   -> [String]
   -> IO ()
@@ -427,7 +427,7 @@ registerPackage
   :: Verbosity
   -> Compiler
   -> ProgramDb
-  -> Maybe (SymbolicPath "CWD" (Dir "Package"))
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -> PackageDBStack
   -> InstalledPackageInfo
   -> HcPkg.RegisterOptions
@@ -446,7 +446,7 @@ registerPackage verbosity comp progdb mbWorkDir packageDbs installedPkgInfo regi
 
 writeHcPkgRegisterScript
   :: Verbosity
-  -> Maybe (SymbolicPath "CWD" (Dir "Package"))
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -> [InstalledPackageInfo]
   -> PackageDBStack
   -> HcPkg.HcPkgInfo
@@ -611,7 +611,7 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
 inplaceInstalledPackageInfo
   :: FilePath
   -- ^ top of the build tree (absolute path)
-  -> SymbolicPath "Package" (Dir "Dist")
+  -> SymbolicPath Pkg (Dir Dist)
   -- ^ location of the dist tree
   -> PackageDescription
   -> AbiHash
@@ -686,7 +686,7 @@ relocatableInstalledPackageInfo
   -> Library
   -> LocalBuildInfo
   -> ComponentLocalBuildInfo
-  -> SymbolicPath "CWD" ('Dir "Package")
+  -> SymbolicPath CWD ('Dir Pkg)
   -> InstalledPackageInfo
 relocatableInstalledPackageInfo pkg abi_hash lib lbi clbi pkgroot =
   generalInstalledPackageInfo
@@ -750,7 +750,7 @@ unregScriptFileName = case buildOS of
   Windows -> "unregister.bat"
   _ -> "unregister.sh"
 
-internalPackageDBPath :: LocalBuildInfo -> SymbolicPath "Package" (Dir "Dist") -> SymbolicPath "Package" (Dir "PackageDB")
+internalPackageDBPath :: LocalBuildInfo -> SymbolicPath Pkg (Dir Dist) -> SymbolicPath Pkg (Dir PkgDB)
 internalPackageDBPath lbi distPref =
   case compilerFlavor (compiler lbi) of
     UHC -> UHC.inplacePackageDbPath lbi

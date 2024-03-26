@@ -58,9 +58,9 @@ data CleanFlags = CleanFlags
 
 pattern CleanCommonFlags
   :: Flag Verbosity
-  -> Flag (SymbolicPath "Package" (Dir "Dist"))
-  -> Flag (SymbolicPath "CWD" (Dir "Package"))
-  -> Flag (SymbolicPath "Package" File)
+  -> Flag (SymbolicPath Pkg (Dir Dist))
+  -> Flag (SymbolicPath CWD (Dir Pkg))
+  -> Flag (SymbolicPath Pkg File)
   -> [String]
   -> CleanFlags
 pattern CleanCommonFlags

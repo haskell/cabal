@@ -121,7 +121,7 @@ copyPackage
   :: Verbosity
   -> PackageDescription
   -> LocalBuildInfo
-  -> SymbolicPath "Package" (Dir "Dist")
+  -> SymbolicPath Pkg (Dir Dist)
   -> CopyDest
   -> IO ()
 copyPackage verbosity pkg_descr lbi distPref copydest = do
@@ -285,14 +285,14 @@ copyComponent _ _ _ (CTest _) _ _ = return ()
 -- | Install the files listed in data-files
 installDataFiles
   :: Verbosity
-  -> Maybe (SymbolicPath "CWD" (Dir "Package"))
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -> PackageDescription
-  -> SymbolicPath "Package" (Dir "Data")
+  -> SymbolicPath Pkg (Dir DataDir)
   -> IO ()
 installDataFiles verbosity mbWorkDir pkg_descr destDataDir =
   flip traverse_ (dataFiles pkg_descr) $ \glob -> do
     let srcDataDirRaw = getSymbolicPath $ dataDir pkg_descr
-        srcDataDir :: Maybe (SymbolicPath "CWD" (Dir "Data"))
+        srcDataDir :: Maybe (SymbolicPath CWD (Dir DataDir))
         srcDataDir
           | null srcDataDirRaw =
               Nothing

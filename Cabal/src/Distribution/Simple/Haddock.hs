@@ -153,7 +153,7 @@ newtype Directory = Dir {unDir' :: FilePath} deriving (Read, Show, Eq, Ord)
 
 -- NB: only correct at the top-level, after we have combined monoidally
 -- the top-level output directory with the component subdir.
-unDir :: Directory -> SymbolicPath "Package" (Path.Dir "Dir")
+unDir :: Directory -> SymbolicPath Pkg (Path.Dir Artifacts)
 unDir = makeSymbolicPath . normalise . unDir'
 
 type Template = String
@@ -432,7 +432,7 @@ createHaddockIndex
   -> ProgramDb
   -> Compiler
   -> Platform
-  -> Maybe (SymbolicPath "CWD" (Path.Dir "Package"))
+  -> Maybe (SymbolicPath CWD (Path.Dir Pkg))
   -> HaddockProjectFlags
   -> IO ()
 createHaddockIndex verbosity programDb comp platform mbWorkDir flags = do
@@ -533,7 +533,7 @@ componentGhcOptions
   -> LocalBuildInfo
   -> BuildInfo
   -> ComponentLocalBuildInfo
-  -> SymbolicPath "Package" (Path.Dir build)
+  -> SymbolicPath Pkg (Path.Dir build)
   -> GhcOptions
 componentGhcOptions verbosity lbi bi clbi odir =
   let f = case compilerFlavor (compiler lbi) of
@@ -547,13 +547,13 @@ componentGhcOptions verbosity lbi bi clbi odir =
 
 mkHaddockArgs
   :: Verbosity
-  -> SymbolicPath "Package" (Path.Dir "Tmp")
+  -> SymbolicPath Pkg (Path.Dir Tmp)
   -> LocalBuildInfo
   -> ComponentLocalBuildInfo
   -> Maybe PathTemplate
   -- ^ template for HTML location
   -> Version
-  -> [SymbolicPath "Package" File]
+  -> [SymbolicPath Pkg File]
   -> BuildInfo
   -> IO HaddockArgs
 mkHaddockArgs verbosity tmp lbi clbi htmlTemplate haddockVersion inFiles bi = do
@@ -594,7 +594,7 @@ mkHaddockArgs verbosity tmp lbi clbi htmlTemplate haddockVersion inFiles bi = do
 
 fromLibrary
   :: Verbosity
-  -> SymbolicPath "Package" (Path.Dir "Tmp")
+  -> SymbolicPath Pkg (Path.Dir Tmp)
   -> LocalBuildInfo
   -> ComponentLocalBuildInfo
   -> Maybe PathTemplate
@@ -621,7 +621,7 @@ fromLibrary verbosity tmp lbi clbi htmlTemplate haddockVersion lib = do
 
 fromExecutable
   :: Verbosity
-  -> SymbolicPath "Package" (Path.Dir "Tmp")
+  -> SymbolicPath Pkg (Path.Dir Tmp)
   -> LocalBuildInfo
   -> ComponentLocalBuildInfo
   -> Maybe PathTemplate
@@ -649,7 +649,7 @@ fromExecutable verbosity tmp lbi clbi htmlTemplate haddockVersion exe = do
 
 fromForeignLib
   :: Verbosity
-  -> SymbolicPath "Package" (Path.Dir "Tmp")
+  -> SymbolicPath Pkg (Path.Dir Tmp)
   -> LocalBuildInfo
   -> ComponentLocalBuildInfo
   -> Maybe PathTemplate
@@ -755,7 +755,7 @@ getGhcLibDir verbosity lbi = do
 -- | Call haddock with the specified arguments.
 runHaddock
   :: Verbosity
-  -> Maybe (SymbolicPath "CWD" (Path.Dir "Package"))
+  -> Maybe (SymbolicPath CWD (Path.Dir Pkg))
   -> TempFileOptions
   -> Compiler
   -> Platform
@@ -782,21 +782,21 @@ runHaddock verbosity mbWorkDir tmpFileOpts comp platform haddockProg requireTarg
 renderArgs
   :: forall a
    . Verbosity
-  -> Maybe (SymbolicPath "CWD" (Path.Dir "Package"))
+  -> Maybe (SymbolicPath CWD (Path.Dir Pkg))
   -> TempFileOptions
   -> Version
   -> Compiler
   -> Platform
   -> HaddockArgs
-  -> ((IsCWD "Package" => [String]) -> FilePath -> IO a)
+  -> ((IsCWD Pkg => [String]) -> FilePath -> IO a)
   -> IO a
 renderArgs verbosity mbWorkDir tmpFileOpts version comp platform args k = do
   let haddockSupportsUTF8 = version >= mkVersion [2, 14, 4]
       haddockSupportsResponseFiles = version > mkVersion [2, 16, 2]
   createDirectoryIfMissingVerbose verbosity True (i outputDir)
-  let withPrologueArgs :: (IsCWD "Package" => [String]) -> IO a
+  let withPrologueArgs :: (IsCWD Pkg => [String]) -> IO a
       withPrologueArgs prologueArgs =
-        let renderedArgs :: IsCWD "Package" => [String]
+        let renderedArgs :: IsCWD Pkg => [String]
             renderedArgs = prologueArgs <> renderPureArgs version comp platform args
          in if haddockSupportsResponseFiles
               then
@@ -827,7 +827,7 @@ renderArgs verbosity mbWorkDir tmpFileOpts version comp platform args k = do
   where
     -- See Note [Symbolic paths] in Distribution.Utils.Path
     i = interpretSymbolicPath mbWorkDir
-    u :: IsCWD "Package" => SymbolicPath "Package" to -> FilePath
+    u :: IsCWD Pkg => SymbolicPath Pkg to -> FilePath
     u = interpretSymbolicPathCWD
 
     outputDir = coerceSymbolicPath $ unDir $ argOutputDir args
@@ -860,7 +860,7 @@ renderArgs verbosity mbWorkDir tmpFileOpts version comp platform args k = do
         pkgid = arg argPackageName
     arg f = fromFlag $ f args
 
-renderPureArgs :: IsCWD "Package" => Version -> Compiler -> Platform -> HaddockArgs -> [String]
+renderPureArgs :: IsCWD Pkg => Version -> Compiler -> Platform -> HaddockArgs -> [String]
 renderPureArgs version comp platform args =
   concat
     [ map (\f -> "--dump-interface=" ++ u (unDir (argOutputDir args)) </> f)
@@ -1157,7 +1157,7 @@ hscolour' onNoHsColour haddockTarget pkg_descr lbi suffixes flags =
     distPref = fromFlag $ setupDistPref common
     mbWorkDir = mbWorkDirLBI lbi
     i = interpretSymbolicPathLBI lbi -- See Note [Symbolic paths] in Distribution.Utils.Path
-    u :: IsCWD "Package" => SymbolicPath "Package" to -> FilePath
+    u :: IsCWD Pkg => SymbolicPath Pkg to -> FilePath
     u = interpretSymbolicPathCWD
     go :: ConfiguredProgram -> IO ()
     go hscolourProg = do

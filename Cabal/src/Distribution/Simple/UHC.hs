@@ -269,7 +269,7 @@ constructUHCCmdLine
   -> LocalBuildInfo
   -> BuildInfo
   -> ComponentLocalBuildInfo
-  -> SymbolicPath "Package" (Dir "Build")
+  -> SymbolicPath Pkg (Dir Build)
   -> Verbosity
   -> [String]
 constructUHCCmdLine user system lbi bi clbi odir verbosity =
@@ -367,5 +367,5 @@ registerPackage verbosity comp progdb packageDbs installedPkgInfo = do
     pkgid = sourcePackageId installedPkgInfo
     compilerid = compilerId comp
 
-inplacePackageDbPath :: LocalBuildInfo -> SymbolicPath "Package" (Dir "PackageDB")
+inplacePackageDbPath :: LocalBuildInfo -> SymbolicPath Pkg (Dir PkgDB)
 inplacePackageDbPath lbi = coerceSymbolicPath $ buildDir lbi

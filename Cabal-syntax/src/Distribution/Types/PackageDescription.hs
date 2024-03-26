@@ -109,7 +109,7 @@ data PackageDescription = PackageDescription
   -- ^ The version of the Cabal spec that this package description uses.
   , package :: PackageIdentifier
   , licenseRaw :: Either SPDX.License License
-  , licenseFiles :: [RelativePath "Package" File]
+  , licenseFiles :: [RelativePath Pkg File]
   , copyright :: !ShortText
   , maintainer :: !ShortText
   , author :: !ShortText
@@ -142,13 +142,13 @@ data PackageDescription = PackageDescription
   , testSuites :: [TestSuite]
   , benchmarks :: [Benchmark]
   , -- files
-    dataFiles :: [RelativePath "Data" File]
+    dataFiles :: [RelativePath DataDir File]
   -- ^ data file globs, relative to data directory
-  , dataDir :: SymbolicPath "Package" (Dir "Data")
+  , dataDir :: SymbolicPath Pkg (Dir DataDir)
   -- ^ data directory (may be absolute, or relative to package)
-  , extraSrcFiles :: [RelativePath "Package" File]
-  , extraTmpFiles :: [RelativePath "Package" File]
-  , extraDocFiles :: [RelativePath "Package" File]
+  , extraSrcFiles :: [RelativePath Pkg File]
+  , extraTmpFiles :: [RelativePath Pkg File]
+  , extraDocFiles :: [RelativePath Pkg File]
   }
   deriving (Generic, Show, Read, Eq, Ord, Typeable, Data)
 

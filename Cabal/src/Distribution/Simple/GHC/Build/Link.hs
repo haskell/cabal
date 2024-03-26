@@ -69,11 +69,11 @@ linkOrLoadComponent
   -- ^ The configured GHC program that will be used for linking
   -> PackageDescription
   -- ^ The package description containing the component being built
-  -> [SymbolicPath "Package" File]
+  -> [SymbolicPath Pkg File]
   -- ^ The full list of extra build sources (all C, C++, Js,
   -- Asm, and Cmm sources), which were compiled to object
   -- files.
-  -> (SymbolicPath "Package" (Dir "Artifacts"), SymbolicPath "Package" (Dir "Build"))
+  -> (SymbolicPath Pkg (Dir Artifacts), SymbolicPath Pkg (Dir Build))
   -- ^ The build target dir, and the target dir.
   -- See Note [Build Target Dir vs Target Dir] in Distribution.Simple.GHC.Build
   -> (Set.Set BuildWay, BuildWay -> GhcOptions)
@@ -102,7 +102,7 @@ linkOrLoadComponent ghcProg pkg_descr extraSources (buildTargetDir, targetDir) (
   cleanedExtraLibDirsStatic <- liftIO $ filterM (doesDirectoryExist . i) (extraLibDirsStatic bi)
 
   let
-    extraSourcesObjs :: [RelativePath "Artifacts" File]
+    extraSourcesObjs :: [RelativePath Artifacts File]
     extraSourcesObjs =
       [ makeRelativePathEx $ getSymbolicPath src `replaceExtension` objExtension
       | src <- extraSources
@@ -201,9 +201,9 @@ linkOrLoadComponent ghcProg pkg_descr extraSources (buildTargetDir, targetDir) (
 
 -- | Link a library component
 linkLibrary
-  :: SymbolicPath "Package" (Dir "Artifacts")
+  :: SymbolicPath Pkg (Dir Artifacts)
   -- ^ The library target build directory
-  -> [SymbolicPath "Package" (Dir "Lib")]
+  -> [SymbolicPath Pkg (Dir Lib)]
   -- ^ The list of extra lib dirs that exist (aka "cleaned")
   -> PackageDescription
   -- ^ The package description containing this library
@@ -213,7 +213,7 @@ linkLibrary
   -> Library
   -> LocalBuildInfo
   -> ComponentLocalBuildInfo
-  -> [SymbolicPath "Package" File]
+  -> [SymbolicPath Pkg File]
   -- ^ Extra build sources (that were compiled to objects)
   -> NubListR FilePath
   -- ^ A list with the runtime-paths (rpaths), or empty if not linking dynamically
@@ -253,7 +253,7 @@ linkLibrary buildTargetDir cleanedExtraLibDirs pkg_descr verbosity runGhcProg li
       libInstallPath
         </> mkSharedLibName (hostPlatform lbi) compiler_id uid
 
-    getObjFiles :: BuildWay -> IO [SymbolicPath "Package" File]
+    getObjFiles :: BuildWay -> IO [SymbolicPath Pkg File]
     getObjFiles way =
       mconcat
         [ Internal.getHaskellObjects
@@ -274,14 +274,14 @@ linkLibrary buildTargetDir cleanedExtraLibDirs pkg_descr verbosity runGhcProg li
                 xPath
               | ghcVersion < mkVersion [7, 2] -- ghc-7.2+ does not make _stub.o files
               , x <- allLibModules lib clbi
-              , let xPath :: RelativePath "Artifacts" File
+              , let xPath :: RelativePath Artifacts File
                     xPath = makeRelativePathEx $ ModuleName.toFilePath x ++ "_stub"
               ]
         ]
 
     -- Get the @.o@ path from a source path (e.g. @.hs@),
     -- in the library target build directory.
-    srcObjPath :: BuildWay -> SymbolicPath "Package" File -> SymbolicPath "Package" File
+    srcObjPath :: BuildWay -> SymbolicPath Pkg File -> SymbolicPath Pkg File
     srcObjPath way srcPath =
       case symbolicPathRelative_maybe objPath of
         -- Absolute path: should already be in the target build directory
@@ -336,7 +336,7 @@ linkLibrary buildTargetDir cleanedExtraLibDirs pkg_descr verbosity runGhcProg li
     -- After the relocation lib is created we invoke ghc -shared
     -- with the dependencies spelled out as -package arguments
     -- and ghc invokes the linker with the proper library paths
-    ghcSharedLinkArgs :: [SymbolicPath "Package" File] -> GhcOptions
+    ghcSharedLinkArgs :: [SymbolicPath Pkg File] -> GhcOptions
     ghcSharedLinkArgs dynObjectFiles =
       ghcBaseLinkArgs
         { ghcOptShared = toFlag True
@@ -416,7 +416,7 @@ linkExecutable
   -> (Set.Set BuildWay, BuildWay -> GhcOptions)
   -- ^ The wanted build ways and corresponding GhcOptions that were
   -- used to compile the modules in that way.
-  -> SymbolicPath "Package" (Dir "Build")
+  -> SymbolicPath Pkg (Dir Build)
   -- ^ The target dir (2024-01:note: not the same as build target
   -- dir, see Note [Build Target Dir vs Target Dir] in Distribution.Simple.GHC.Build)
   -> UnqualComponentName
@@ -460,7 +460,7 @@ linkFLib
   -> (Set.Set BuildWay, BuildWay -> GhcOptions)
   -- ^ The wanted build ways and corresponding GhcOptions that were
   -- used to compile the modules in that way.
-  -> SymbolicPath "Package" (Dir "Build")
+  -> SymbolicPath Pkg (Dir Build)
   -- ^ The target dir (2024-01:note: not the same as build target
   -- dir, see Note [Build Target Dir vs Target Dir] in Distribution.Simple.GHC.Build)
   -> (GhcOptions -> IO ())

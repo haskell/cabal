@@ -84,7 +84,7 @@ reconfigure
   -- ^ configure action
   -> Verbosity
   -- ^ Verbosity setting
-  -> SymbolicPath "Package" (Dir "Dist")
+  -> SymbolicPath Pkg (Dir Dist)
   -- ^ \"dist\" prefix
   -> Flag (Maybe Int)
   -- ^ -j flag for reinstalling add-source deps.

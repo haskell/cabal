@@ -81,7 +81,7 @@ globMatches input = [a | GlobMatch a <- input]
 matchDirFileGlob
   :: Verbosity
   -> CabalSpecVersion
-  -> Maybe (SymbolicPath "CWD" (Dir dir))
+  -> Maybe (SymbolicPath CWD (Dir dir))
   -> SymbolicPathX allowAbs dir file
   -> IO [SymbolicPathX allowAbs dir file]
 matchDirFileGlob v = matchDirFileGlobWithDie v dieWithException
@@ -93,7 +93,7 @@ matchDirFileGlobWithDie
   :: Verbosity
   -> (forall res. Verbosity -> CabalException -> IO [res])
   -> CabalSpecVersion
-  -> Maybe (SymbolicPath "CWD" (Dir dir))
+  -> Maybe (SymbolicPath CWD (Dir dir))
   -> SymbolicPathX allowAbs dir file
   -> IO [SymbolicPathX allowAbs dir file]
 matchDirFileGlobWithDie verbosity rip version mbWorkDir symPath =

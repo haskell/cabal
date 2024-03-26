@@ -117,7 +117,7 @@ import qualified System.Directory as Directory
 -- -----------------------------------------------------------------------------
 -- Configuration information of buildable components
 
-componentBuildDir :: LocalBuildInfo -> ComponentLocalBuildInfo -> SymbolicPath "Package" (Dir "Build")
+componentBuildDir :: LocalBuildInfo -> ComponentLocalBuildInfo -> SymbolicPath Pkg (Dir Build)
 -- For now, we assume that libraries/executables/test-suites/benchmarks
 -- are only ever built once.  With Backpack, we need a special case for
 -- libraries so that we can handle building them multiple times.
@@ -151,12 +151,12 @@ componentBuildDir lbi clbi =
 -- to be relative).
 --
 -- See Note [Symbolic paths] in Distribution.Utils.Path
-interpretSymbolicPathLBI :: LocalBuildInfo -> SymbolicPathX allowAbsolute "Package" to -> FilePath
+interpretSymbolicPathLBI :: LocalBuildInfo -> SymbolicPathX allowAbsolute Pkg to -> FilePath
 interpretSymbolicPathLBI lbi =
   interpretSymbolicPath (mbWorkDirLBI lbi)
 
 -- | Retrieve an optional working directory from 'LocalBuildInfo'.
-mbWorkDirLBI :: LocalBuildInfo -> Maybe (SymbolicPath "CWD" (Dir "Package"))
+mbWorkDirLBI :: LocalBuildInfo -> Maybe (SymbolicPath CWD (Dir Pkg))
 mbWorkDirLBI =
   flagToMaybe . setupWorkingDir . configCommonFlags . configFlags
 

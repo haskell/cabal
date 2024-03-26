@@ -82,7 +82,7 @@ import System.FilePath
 data CleanFlags = CleanFlags
   { cleanSaveConfig :: Flag Bool
   , cleanVerbosity :: Flag Verbosity
-  , cleanDistDir :: Flag (SymbolicPath "Package" (Dir "Dist"))
+  , cleanDistDir :: Flag (SymbolicPath Pkg (Dir Dist))
   }
   deriving (Eq)
 

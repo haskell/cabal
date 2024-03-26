@@ -113,7 +113,7 @@ init hpi verbosity preferCompat path
 invoke
   :: HcPkgInfo
   -> Verbosity
-  -> Maybe (SymbolicPath "CWD" (Dir "Package"))
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -> PackageDBStack
   -> [String]
   -> IO ()
@@ -154,7 +154,7 @@ defaultRegisterOptions =
 register
   :: HcPkgInfo
   -> Verbosity
-  -> Maybe (SymbolicPath "CWD" (Dir "Package"))
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -> PackageDBStack
   -> InstalledPackageInfo
   -> RegisterOptions
@@ -207,7 +207,7 @@ writeRegistrationFileDirectly verbosity _ _ _ =
 -- | Call @hc-pkg@ to unregister a package
 --
 -- > hc-pkg unregister [pkgid] [--user | --global | --package-db]
-unregister :: HcPkgInfo -> Verbosity -> Maybe (SymbolicPath "CWD" (Dir "Package")) -> PackageDB -> PackageId -> IO ()
+unregister :: HcPkgInfo -> Verbosity -> Maybe (SymbolicPath CWD (Dir Pkg)) -> PackageDB -> PackageId -> IO ()
 unregister hpi verbosity mbWorkDir packagedb pkgid =
   runProgramInvocation
     verbosity
@@ -216,7 +216,7 @@ unregister hpi verbosity mbWorkDir packagedb pkgid =
 -- | Call @hc-pkg@ to recache the registered packages.
 --
 -- > hc-pkg recache [--user | --global | --package-db]
-recache :: HcPkgInfo -> Verbosity -> Maybe (SymbolicPath "CWD" (Dir "Package")) -> PackageDB -> IO ()
+recache :: HcPkgInfo -> Verbosity -> Maybe (SymbolicPath CWD (Dir Pkg)) -> PackageDB -> IO ()
 recache hpi verbosity mbWorkDir packagedb =
   runProgramInvocation
     verbosity
@@ -228,7 +228,7 @@ recache hpi verbosity mbWorkDir packagedb =
 expose
   :: HcPkgInfo
   -> Verbosity
-  -> Maybe (SymbolicPath "CWD" (Dir "Package"))
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -> PackageDB
   -> PackageId
   -> IO ()
@@ -243,7 +243,7 @@ expose hpi verbosity mbWorkDir packagedb pkgid =
 describe
   :: HcPkgInfo
   -> Verbosity
-  -> Maybe (SymbolicPath "CWD" (Dir "Package"))
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -> PackageDBStack
   -> PackageId
   -> IO [InstalledPackageInfo]
@@ -264,7 +264,7 @@ describe hpi verbosity mbWorkDir packagedb pid = do
 hide
   :: HcPkgInfo
   -> Verbosity
-  -> Maybe (SymbolicPath "CWD" (Dir "Package"))
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -> PackageDB
   -> PackageId
   -> IO ()
@@ -278,7 +278,7 @@ hide hpi verbosity mbWorkDir packagedb pkgid =
 dump
   :: HcPkgInfo
   -> Verbosity
-  -> Maybe (SymbolicPath "CWD" (Dir "Package"))
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -> PackageDB
   -> IO [InstalledPackageInfo]
 dump hpi verbosity mbWorkDir packagedb = do
@@ -401,7 +401,7 @@ setUnitId pkginfo = pkginfo
 list
   :: HcPkgInfo
   -> Verbosity
-  -> Maybe (SymbolicPath "CWD" (Dir "Package"))
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -> PackageDB
   -> IO [PackageId]
 list hpi verbosity mbWorkDir packagedb = do
@@ -432,7 +432,7 @@ initInvocation hpi verbosity path =
 registerInvocation
   :: HcPkgInfo
   -> Verbosity
-  -> Maybe (SymbolicPath "CWD" (Dir "Package"))
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -> PackageDBStack
   -> InstalledPackageInfo
   -> RegisterOptions
@@ -462,7 +462,7 @@ registerInvocation hpi verbosity mbWorkDir packagedbs pkgInfo registerOptions =
 unregisterInvocation
   :: HcPkgInfo
   -> Verbosity
-  -> Maybe (SymbolicPath "CWD" (Dir "Package"))
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -> PackageDB
   -> PackageId
   -> ProgramInvocation
@@ -474,7 +474,7 @@ unregisterInvocation hpi verbosity mbWorkDir packagedb pkgid =
 recacheInvocation
   :: HcPkgInfo
   -> Verbosity
-  -> Maybe (SymbolicPath "CWD" (Dir "Package"))
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -> PackageDB
   -> ProgramInvocation
 recacheInvocation hpi verbosity mbWorkDir packagedb =
@@ -485,7 +485,7 @@ recacheInvocation hpi verbosity mbWorkDir packagedb =
 exposeInvocation
   :: HcPkgInfo
   -> Verbosity
-  -> Maybe (SymbolicPath "CWD" (Dir "Package"))
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -> PackageDB
   -> PackageId
   -> ProgramInvocation
@@ -497,7 +497,7 @@ exposeInvocation hpi verbosity mbWorkDir packagedb pkgid =
 describeInvocation
   :: HcPkgInfo
   -> Verbosity
-  -> Maybe (SymbolicPath "CWD" (Dir "Package"))
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -> PackageDBStack
   -> PackageId
   -> ProgramInvocation
@@ -510,7 +510,7 @@ describeInvocation hpi verbosity mbWorkDir packagedbs pkgid =
 hideInvocation
   :: HcPkgInfo
   -> Verbosity
-  -> Maybe (SymbolicPath "CWD" (Dir "Package"))
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -> PackageDB
   -> PackageId
   -> ProgramInvocation
@@ -522,7 +522,7 @@ hideInvocation hpi verbosity mbWorkDir packagedb pkgid =
 dumpInvocation
   :: HcPkgInfo
   -> Verbosity
-  -> Maybe (SymbolicPath "CWD" (Dir "Package"))
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -> PackageDB
   -> ProgramInvocation
 dumpInvocation hpi _verbosity mbWorkDir packagedb =
@@ -540,7 +540,7 @@ dumpInvocation hpi _verbosity mbWorkDir packagedb =
 listInvocation
   :: HcPkgInfo
   -> Verbosity
-  -> Maybe (SymbolicPath "CWD" (Dir "Package"))
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -> PackageDB
   -> ProgramInvocation
 listInvocation hpi _verbosity mbWorkDir packagedb =

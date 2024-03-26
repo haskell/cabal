@@ -575,7 +575,7 @@ rebuildTarget
       -- 'BuildInplaceOnly' style packages. 'BuildAndInstall' style packages
       -- would only start from download or unpack phases.
       --
-      rebuildPhase :: BuildStatusRebuild -> SymbolicPath "CWD" (Dir "Package") -> IO BuildResult
+      rebuildPhase :: BuildStatusRebuild -> SymbolicPath CWD (Dir Pkg) -> IO BuildResult
       rebuildPhase buildStatus srcdir =
         assert
           (isInplaceBuildStyle $ elabBuildStyle pkg)
@@ -590,7 +590,7 @@ rebuildTarget
               makeRelative (normalise $ getSymbolicPath srcdir) distdir
       -- TODO: [nice to have] ^^ do this relative stuff better
 
-      buildAndInstall :: SymbolicPath "CWD" (Dir "Package") -> SymbolicPath "Package" (Dir "Dist") -> IO BuildResult
+      buildAndInstall :: SymbolicPath CWD (Dir Pkg) -> SymbolicPath Pkg (Dir Dist) -> IO BuildResult
       buildAndInstall srcdir builddir =
         buildAndInstallUnpackedPackage
           verbosity
@@ -606,7 +606,7 @@ rebuildTarget
           srcdir
           builddir
 
-      buildInplace :: BuildStatusRebuild -> SymbolicPath "CWD" (Dir "Package") -> SymbolicPath "Package" (Dir "Dist") -> IO BuildResult
+      buildInplace :: BuildStatusRebuild -> SymbolicPath CWD (Dir Pkg) -> SymbolicPath Pkg (Dir Dist) -> IO BuildResult
       buildInplace buildStatus srcdir builddir =
         -- TODO: [nice to have] use a relative build dir rather than absolute
         buildInplaceUnpackedPackage
@@ -702,8 +702,8 @@ withTarballLocalDirectory
   -> DistDirParams
   -> BuildStyle
   -> Maybe CabalFileText
-  -> ( SymbolicPath "CWD" (Dir "Package") -- Source directory
-       -> SymbolicPath "Package" (Dir "Dist") -- Build directory
+  -> ( SymbolicPath CWD (Dir Pkg) -- Source directory
+       -> SymbolicPath Pkg (Dir Dist) -- Build directory
        -> IO a
      )
   -> IO a

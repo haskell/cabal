@@ -180,8 +180,8 @@ data ConfigStateFileError
     ConfigStateFileNoParse
   | -- | No file!
     ConfigStateFileMissing
-      { cfgStateFileErrorCwd :: Maybe (SymbolicPath "CWD" (Dir "Package"))
-      , cfgStateFileErrorFile :: SymbolicPath "Package" File
+      { cfgStateFileErrorCwd :: Maybe (SymbolicPath CWD (Dir Pkg))
+      , cfgStateFileErrorFile :: SymbolicPath Pkg File
       }
   | -- | Mismatched version.
     ConfigStateFileBadVersion
@@ -231,8 +231,8 @@ instance Exception ConfigStateFileError
 -- missing, if the file cannot be read, or if the file was created by an older
 -- version of Cabal.
 getConfigStateFile
-  :: Maybe (SymbolicPath "CWD" (Dir "Package"))
-  -> SymbolicPath "Package" File
+  :: Maybe (SymbolicPath CWD (Dir Pkg))
+  -> SymbolicPath Pkg File
   -- ^ The file path of the @setup-config@ file.
   -> IO LocalBuildInfo
 getConfigStateFile mbWorkDir setupConfigFile = do
@@ -263,18 +263,18 @@ getConfigStateFile mbWorkDir setupConfigFile = do
 -- | Read the 'localBuildInfoFile', returning either an error or the local build
 -- info.
 tryGetConfigStateFile
-  :: Maybe (SymbolicPath "CWD" (Dir "Package"))
+  :: Maybe (SymbolicPath CWD (Dir Pkg))
   -- ^ Working directory.
-  -> SymbolicPath "Package" File
+  -> SymbolicPath Pkg File
   -- ^ The file path of the @setup-config@ file.
   -> IO (Either ConfigStateFileError LocalBuildInfo)
 tryGetConfigStateFile mbWorkDir = try . getConfigStateFile mbWorkDir
 
 -- | Try to read the 'localBuildInfoFile'.
 tryGetPersistBuildConfig
-  :: Maybe (SymbolicPath "CWD" (Dir "Package"))
+  :: Maybe (SymbolicPath CWD (Dir Pkg))
   -- ^ Working directory.
-  -> SymbolicPath "Package" (Dir "Dist")
+  -> SymbolicPath Pkg (Dir Dist)
   -- ^ The @dist@ directory path.
   -> IO (Either ConfigStateFileError LocalBuildInfo)
 tryGetPersistBuildConfig mbWorkDir = try . getPersistBuildConfig mbWorkDir
@@ -283,9 +283,9 @@ tryGetPersistBuildConfig mbWorkDir = try . getPersistBuildConfig mbWorkDir
 -- missing, if the file cannot be read, or if the file was created by an older
 -- version of Cabal.
 getPersistBuildConfig
-  :: Maybe (SymbolicPath "CWD" (Dir "Package"))
+  :: Maybe (SymbolicPath CWD (Dir Pkg))
   -- ^ Working directory.
-  -> SymbolicPath "Package" (Dir "Dist")
+  -> SymbolicPath Pkg (Dir Dist)
   -- ^ The @dist@ directory path.
   -> IO LocalBuildInfo
 getPersistBuildConfig mbWorkDir distPref =
@@ -293,9 +293,9 @@ getPersistBuildConfig mbWorkDir distPref =
 
 -- | Try to read the 'localBuildInfoFile'.
 maybeGetPersistBuildConfig
-  :: Maybe (SymbolicPath "CWD" (Dir "Package"))
+  :: Maybe (SymbolicPath CWD (Dir Pkg))
   -- ^ Working directory.
-  -> SymbolicPath "Package" (Dir "Dist")
+  -> SymbolicPath Pkg (Dir Dist)
   -- ^ The @dist@ directory path.
   -> IO (Maybe LocalBuildInfo)
 maybeGetPersistBuildConfig mbWorkDir =
@@ -304,9 +304,9 @@ maybeGetPersistBuildConfig mbWorkDir =
 -- | After running configure, output the 'LocalBuildInfo' to the
 -- 'localBuildInfoFile'.
 writePersistBuildConfig
-  :: Maybe (SymbolicPath "CWD" (Dir "Package"))
+  :: Maybe (SymbolicPath CWD (Dir Pkg))
   -- ^ Working directory
-  -> SymbolicPath "Package" (Dir "Dist")
+  -> SymbolicPath Pkg (Dir Dist)
   -- ^ The @dist@ directory path.
   -> LocalBuildInfo
   -- ^ The 'LocalBuildInfo' to write.
@@ -377,9 +377,9 @@ showHeader pkgId =
 -- | Check that localBuildInfoFile is up-to-date with respect to the
 -- .cabal file.
 checkPersistBuildConfigOutdated
-  :: Maybe (SymbolicPath "CWD" (Dir "Package"))
-  -> SymbolicPath "Package" (Dir "Dist")
-  -> SymbolicPath "Package" File
+  :: Maybe (SymbolicPath CWD (Dir Pkg))
+  -> SymbolicPath Pkg (Dir Dist)
+  -> SymbolicPath Pkg File
   -> IO Bool
 checkPersistBuildConfigOutdated mbWorkDir distPref pkg_descr_file =
   i pkg_descr_file `moreRecentFile` i (localBuildInfoFile distPref)
@@ -388,9 +388,9 @@ checkPersistBuildConfigOutdated mbWorkDir distPref pkg_descr_file =
 
 -- | Get the path of @dist\/setup-config@.
 localBuildInfoFile
-  :: SymbolicPath "Package" (Dir "Dist")
+  :: SymbolicPath Pkg (Dir Dist)
   -- ^ The @dist@ directory path.
-  -> SymbolicPath "Package" File
+  -> SymbolicPath Pkg File
 localBuildInfoFile distPref = distPref </> makeRelativePathEx "setup-config"
 
 -- -----------------------------------------------------------------------------
@@ -403,11 +403,11 @@ localBuildInfoFile distPref = distPref </> makeRelativePathEx "setup-config"
 -- from (in order of highest to lowest preference) the override prefix, the
 -- \"CABAL_BUILDDIR\" environment variable, or the default prefix.
 findDistPref
-  :: SymbolicPath "Package" (Dir "Dist")
+  :: SymbolicPath Pkg (Dir Dist)
   -- ^ default \"dist\" prefix
-  -> Setup.Flag (SymbolicPath "Package" (Dir "Dist"))
+  -> Setup.Flag (SymbolicPath Pkg (Dir Dist))
   -- ^ override \"dist\" prefix
-  -> IO (SymbolicPath "Package" (Dir "Dist"))
+  -> IO (SymbolicPath Pkg (Dir Dist))
 findDistPref defDistPref overrideDistPref = do
   envDistPref <- liftM parseEnvDistPref (lookupEnv "CABAL_BUILDDIR")
   return $ fromFlagOrDefault defDistPref (mappend envDistPref overrideDistPref)
@@ -424,9 +424,9 @@ findDistPref defDistPref overrideDistPref = do
 -- set. (The @*DistPref@ flags are always set to a definite value before
 -- invoking 'UserHooks'.)
 findDistPrefOrDefault
-  :: Setup.Flag (SymbolicPath "Package" (Dir "Dist"))
+  :: Setup.Flag (SymbolicPath Pkg (Dir Dist))
   -- ^ override \"dist\" prefix
-  -> IO (SymbolicPath "Package" (Dir "Dist"))
+  -> IO (SymbolicPath Pkg (Dir Dist))
 findDistPrefOrDefault = findDistPref defaultDistPref
 
 -- | Perform the \"@.\/setup configure@\" action.
@@ -529,7 +529,7 @@ preConfigurePackage cfg g_pkg_descr = do
       (lessVerbose verbosity)
 
   -- Where to build the package
-  let builddir :: SymbolicPath "Package" (Dir "Build") -- e.g. dist/build
+  let builddir :: SymbolicPath Pkg (Dir Build) -- e.g. dist/build
       builddir = setupFlagsBuildDir $ configCommonFlags cfg
       mbWorkDir = flagToMaybe $ configWorkingDir cfg
   -- NB: create this directory now so that all configure hooks get
@@ -1770,7 +1770,7 @@ data DependencyResolution
   | -- | An internal dependency ('PackageId' should be a library name)
     -- which we are going to have to build.  (The
     -- 'PackageId' here is a hack to get a modest amount of
-    -- polymorphism out of the 'Package' typeclass.)
+    -- polymorphism out of the Pkg' typeclass.)
     InternalDependency PackageId
 
 -- | Test for a package dependency and record the version we have installed.
@@ -1890,7 +1890,7 @@ reportFailedDependencies verbosity failed =
 getInstalledPackages
   :: Verbosity
   -> Compiler
-  -> Maybe (SymbolicPath "CWD" (Dir "Package"))
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -> PackageDBStack
   -- ^ The stack of package databases.
   -> ProgramDb
@@ -1933,7 +1933,7 @@ getInstalledPackages verbosity comp mbWorkDir packageDBs progdb = do
 getPackageDBContents
   :: Verbosity
   -> Compiler
-  -> Maybe (SymbolicPath "CWD" (Dir "Package"))
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -> PackageDB
   -> ProgramDb
   -> IO InstalledPackageIndex
@@ -1950,7 +1950,7 @@ getPackageDBContents verbosity comp mbWorkDir packageDB progdb = do
 getInstalledPackagesMonitorFiles
   :: Verbosity
   -> Compiler
-  -> Maybe (SymbolicPath "CWD" ('Dir "Package"))
+  -> Maybe (SymbolicPath CWD ('Dir Pkg))
   -> PackageDBStack
   -> ProgramDb
   -> Platform
@@ -2422,7 +2422,7 @@ checkForeignDeps pkg lbi verbosity =
 
     -- See Note [Symbolic paths] in Distribution.Utils.Path
     i = interpretSymbolicPathLBI lbi
-    u :: IsCWD "Package" => SymbolicPath "Package" to -> FilePath
+    u :: IsCWD Pkg => SymbolicPath Pkg to -> FilePath
     u = interpretSymbolicPathCWD
     mbWorkDir = mbWorkDirLBI lbi
 

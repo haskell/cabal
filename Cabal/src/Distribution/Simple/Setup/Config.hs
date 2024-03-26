@@ -145,16 +145,16 @@ data ConfigFlags = ConfigFlags
   -- ^ Installation
   --  paths
   , configScratchDir :: Flag FilePath
-  , configExtraLibDirs :: [SymbolicPath "Package" (Dir "Lib")]
+  , configExtraLibDirs :: [SymbolicPath Pkg (Dir Lib)]
   -- ^ path to search for extra libraries
-  , configExtraLibDirsStatic :: [SymbolicPath "Package" (Dir "Lib")]
+  , configExtraLibDirsStatic :: [SymbolicPath Pkg (Dir Lib)]
   -- ^ path to search for extra
   --   libraries when linking
   --   fully static executables
-  , configExtraFrameworkDirs :: [SymbolicPath "Package" (Dir "Framework")]
+  , configExtraFrameworkDirs :: [SymbolicPath Pkg (Dir Framework)]
   -- ^ path to search for extra
   -- frameworks (OS X only)
-  , configExtraIncludeDirs :: [SymbolicPath "Package" (Dir "Include")]
+  , configExtraIncludeDirs :: [SymbolicPath Pkg (Dir Include)]
   -- ^ path to search for header files
   , configIPID :: Flag String
   -- ^ explicit IPID to be used
@@ -233,9 +233,9 @@ data ConfigFlags = ConfigFlags
 
 pattern ConfigCommonFlags
   :: Flag Verbosity
-  -> Flag (SymbolicPath "Package" (Dir "Dist"))
-  -> Flag (SymbolicPath "CWD" (Dir "Package"))
-  -> Flag (SymbolicPath "Package" File)
+  -> Flag (SymbolicPath Pkg (Dir Dist))
+  -> Flag (SymbolicPath CWD (Dir Pkg))
+  -> Flag (SymbolicPath Pkg File)
   -> [String]
   -> ConfigFlags
 pattern ConfigCommonFlags

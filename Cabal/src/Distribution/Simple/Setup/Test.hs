@@ -106,9 +106,9 @@ data TestFlags = TestFlags
 
 pattern TestCommonFlags
   :: Flag Verbosity
-  -> Flag (SymbolicPath "Package" (Dir "Dist"))
-  -> Flag (SymbolicPath "CWD" (Dir "Package"))
-  -> Flag (SymbolicPath "Package" File)
+  -> Flag (SymbolicPath Pkg (Dir Dist))
+  -> Flag (SymbolicPath CWD (Dir Pkg))
+  -> Flag (SymbolicPath Pkg File)
   -> [String]
   -> TestFlags
 pattern TestCommonFlags

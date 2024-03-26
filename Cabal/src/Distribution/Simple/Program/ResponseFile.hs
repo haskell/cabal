@@ -27,17 +27,17 @@ import Distribution.Verbosity
 withResponseFile
   :: Verbosity
   -> TempFileOptions
-  -> Maybe (SymbolicPath "CWD" (Dir "Package"))
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -- ^ Working directory
-  -> SymbolicPath "Package" (Dir "Response")
+  -> SymbolicPath Pkg (Dir Response)
   -- ^ Directory to create response file in.
   -> String
   -- ^ Template for response file name.
   -> Maybe TextEncoding
   -- ^ Encoding to use for response file contents.
-  -> (IsCWD "Package" => [String])
+  -> (IsCWD Pkg => [String])
   -- ^ Arguments to put into response file.
-  -> (IsCWD "Package" => FilePath -> IO a)
+  -> (IsCWD Pkg => FilePath -> IO a)
   -> IO a
 withResponseFile verbosity tmpFileOpts mbWorkDir responseDir fileNameTemplate encoding arguments f =
   changingWorkingDir mbWorkDir $

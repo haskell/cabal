@@ -393,7 +393,7 @@ getGhcInfo verbosity ghcProg = Internal.getGhcInfo verbosity implInfo ghcProg
 -- | Given a single package DB, return all installed packages.
 getPackageDBContents
   :: Verbosity
-  -> Maybe (SymbolicPath "CWD" (Dir "Package"))
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -> PackageDB
   -> ProgramDb
   -> IO InstalledPackageIndex
@@ -405,7 +405,7 @@ getPackageDBContents verbosity mbWorkDir packagedb progdb = do
 getInstalledPackages
   :: Verbosity
   -> Compiler
-  -> Maybe (SymbolicPath "CWD" (Dir "Package"))
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -> PackageDBStack
   -> ProgramDb
   -> IO InstalledPackageIndex
@@ -528,7 +528,7 @@ removeMingwIncludeDir pkg =
 -- | Get the packages from specific PackageDBs, not cumulative.
 getInstalledPackages'
   :: Verbosity
-  -> Maybe (SymbolicPath "CWD" (Dir "Package"))
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -> [PackageDB]
   -> ProgramDb
   -> IO [(PackageDB, [InstalledPackageInfo])]
@@ -542,7 +542,7 @@ getInstalledPackages' verbosity mbWorkDir packagedbs progdb =
 
 getInstalledPackagesMonitorFiles
   :: Verbosity
-  -> Maybe (SymbolicPath "CWD" (Dir "Package"))
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -> Platform
   -> ProgramDb
   -> [PackageDB]
@@ -941,7 +941,7 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir pkg lib clbi = do
                 ]
   where
     -- See Note [Symbolic paths] in Distribution.Utils.Path
-    i :: SymbolicPathX allowAbsolute "Package" to -> FilePath
+    i :: SymbolicPathX allowAbsolute Pkg to -> FilePath
     i = interpretSymbolicPathLBI lbi
 
     builtDir = componentBuildDir lbi clbi
@@ -972,7 +972,7 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir pkg lib clbi = do
       let files' = map (i *** getSymbolicPath) files
       installOrdinaryFiles verbosity targetDir files'
 
-    copyDirectoryIfExists :: RelativePath "Build" (Dir "ExtraArtifacts") -> IO ()
+    copyDirectoryIfExists :: RelativePath Build (Dir Artifacts) -> IO ()
     copyDirectoryIfExists dirName = do
       let src = i $ builtDir </> dirName
           dst = targetDir </> getSymbolicPath dirName
@@ -1028,7 +1028,7 @@ hcPkgInfo progdb =
 registerPackage
   :: Verbosity
   -> ProgramDb
-  -> Maybe (SymbolicPath "CWD" (Dir "Package"))
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -> PackageDBStack
   -> InstalledPackageInfo
   -> HcPkg.RegisterOptions
@@ -1042,7 +1042,7 @@ registerPackage verbosity progdb mbWorkDir packageDbs installedPkgInfo registerO
     installedPkgInfo
     registerOptions
 
-pkgRoot :: Verbosity -> LocalBuildInfo -> PackageDB -> IO (SymbolicPath "CWD" (Dir "Package"))
+pkgRoot :: Verbosity -> LocalBuildInfo -> PackageDB -> IO (SymbolicPath CWD (Dir Pkg))
 pkgRoot verbosity lbi = fmap makeSymbolicPath . pkgRoot'
   where
     pkgRoot' GlobalPackageDB =

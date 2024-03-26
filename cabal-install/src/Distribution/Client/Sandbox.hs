@@ -124,7 +124,7 @@ loadConfigOrSandboxConfig verbosity globalFlags = do
       return config'
 
 -- | Return the saved \"dist/\" prefix, or the default prefix.
-findSavedDistPref :: SavedConfig -> Flag (SymbolicPath "Package" (Dir "Dist")) -> IO (SymbolicPath "Package" (Dir "Dist"))
+findSavedDistPref :: SavedConfig -> Flag (SymbolicPath Pkg (Dir Dist)) -> IO (SymbolicPath Pkg (Dir Dist))
 findSavedDistPref config flagDistPref = do
   let defDistPref = useDistPref defaultSetupScriptOptions
       flagDistPref' =

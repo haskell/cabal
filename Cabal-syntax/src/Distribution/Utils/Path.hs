@@ -3,46 +3,67 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RoleAnnotations #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 module Distribution.Utils.Path
-  ( FileOrDir (..)
+  ( -- * Symbolic path endpoints
+    FileOrDir (..)
   , AllowAbsolute (..)
+    -- ** Abstract directory locations
+  , CWD
+  , Pkg
+  , Dist
+  , Source
+  , Include
+  , Lib
+  , Framework
+  , Build
+  , Artifacts
+  , PkgDB
+  , DataDir
+  , Mix
+  , Tix
+  , Tmp
+  , Response
 
     -- * Symbolic paths
   , RelativePath
   , SymbolicPath
   , SymbolicPathX -- NB: constructor not exposed, to retain type safety.
+
+  -- ** Symbolic path API
   , getSymbolicPath
   , sameDirectory
   , makeRelativePathEx
   , makeSymbolicPath
   , unsafeMakeSymbolicPath
+  , coerceSymbolicPath
+  , unsafeCoerceSymbolicPath
+  , relativeSymbolicPath
+  , symbolicPathRelative_maybe
   , interpretSymbolicPath
+
+  -- ** General filepath API
+  , (</>)
+  , (<.>)
+  , takeDirectorySymbolicPath
+  , dropExtensionsSymbolicPath
+  , replaceExtensionSymbolicPath
+  , normaliseSymbolicPath
+
+  -- ** Working directory handling
   , IsCWD
   , interpretSymbolicPathCWD
   , changingWorkingDir
   , absoluteWorkingDir
   , tryMakeRelativeToWorkingDir
-  , (</>)
-  , (<.>)
-  , coerceSymbolicPath
-  , unsafeCoerceSymbolicPath
-  , relativeSymbolicPath
-  , symbolicPathRelative_maybe
-  , takeDirectorySymbolicPath
-  , dropExtensionsSymbolicPath
-  , replaceExtensionSymbolicPath
-  , normaliseSymbolicPath
+
+  -- ** Module names
   , moduleNameSymbolicPath
   ) where
 
@@ -65,15 +86,11 @@ import qualified System.Directory as Directory
 import qualified System.FilePath as FilePath
 
 import Data.Kind
-  ( Constraint )
+  ( Type, Constraint )
 import Data.Typeable
   ( (:~:)(Refl) )
 import GHC.Stack
   ( HasCallStack
-  )
-import GHC.TypeLits
-  ( KnownSymbol
-  , Symbol
   )
 import Unsafe.Coerce
   ( unsafeCoerce )
@@ -98,11 +115,11 @@ current working directory. We achieve this with the following API:
   - newtype SymbolicPath from to
   - getSymbolicPath :: SymbolicPath from to -> FilePath
   - interpretSymbolicPath
-      :: Maybe (SymbolicPath "CWD" (Dir from)) -> SymbolicPath from to -> FilePath
+      :: Maybe (SymbolicPath CWD (Dir from)) -> SymbolicPath from to -> FilePath
 
 Note that, in the type @SymbolicPath from to@, @from@ is the name of a directory,
 whereas @to@ is either @Dir toDir@ or @File@. For example, a source directory
-typically has the type @SymbolicPath "Package" (Dir "Source")@, while a source
+typically has the type @SymbolicPath Pkg (Dir Source)@, while a source
 file has a type such as @SymbolicPath "Source" File@.
 
 Here, a symbolic path refers to an **uninterpreted** file path, i.e. any
@@ -114,7 +131,7 @@ Thus, whenever we interact with the file system, we do the following:
   - in a direct interaction (e.g. `doesFileExist`), we interpret the
     path relative to a working directory argument, e.g.
 
-      doCheck :: Maybe (SymbolicPath "CWD" (Dir from))
+      doCheck :: Maybe (SymbolicPath CWD (Dir from))
               -> SymbolicPath from File
               -> Bool
       doCheck mbWorkDir file = doesFileExist $ interpretSymbolicPath mbWorkDir file
@@ -123,8 +140,8 @@ Thus, whenever we interact with the file system, we do the following:
     of the sub-process is the same as the passed-in working directory, in which
     case we interpret the symbolic paths by using `interpretSymbolicPathCWD`:
 
-      callGhc :: Maybe (SymbolicPath "CWD" (Dir "Package"))
-              -> SymbolicPath (Dir "Package") File
+      callGhc :: Maybe (SymbolicPath CWD (Dir Pkg))
+              -> SymbolicPath (Dir Pkg) File
               -> IO ()
       callGhc mbWorkDir inputFile =
         runProgramInvocation $
@@ -133,13 +150,13 @@ Thus, whenever we interact with the file system, we do the following:
 In practice, we often use:
 
   -- Interpret a symbolic path with respect to the working directory argument
-  -- @'mbWorkDir' :: Maybe (SymbolicPath "CWD" (Dir "Package"))@.
-  i :: SymbolicPath "Package" to -> FilePath
+  -- @'mbWorkDir' :: Maybe (SymbolicPath CWD (Dir Pkg))@.
+  i :: SymbolicPath Pkg to -> FilePath
   i = interpretSymbolicPath mbWorkDir
 
   -- Interpret a symbolic path, provided that the current working directory
   -- is the package directory. See Note [Working directory proof tokens].
-  u :: IsCWD "Package" => SymbolicPath "Package" to -> FilePath
+  u :: IsCWD Pkg => SymbolicPath Pkg to -> FilePath
   u = interpretSymbolicPathCWD
 
 Note [Working directory proof tokens]
@@ -159,7 +176,7 @@ or deferred to the caller.
 
 For instance, we have:
 
-  renderGhcOptions :: IsCWD "Package" => Compiler -> Platform -> GhcOptions -> [String]
+  renderGhcOptions :: IsCWD Pkg => Compiler -> Platform -> GhcOptions -> [String]
   renderGhcOptions comp platform opts =
     concat
       [ concat [["-odir", u dir] | dir <- flag ghcOptObjDir]
@@ -167,7 +184,7 @@ For instance, we have:
       ...
       ]
     where
-      u :: IsCWD "Package" => SymbolicPath "Package" to -> FilePath
+      u :: IsCWD Pkg => SymbolicPath Pkg to -> FilePath
       u = interpretSymbolicPathCWD
 
 This indicates that these command-line options are only valid once we have
@@ -175,7 +192,7 @@ changed the working directory to the package directory, which in practice is
 done using the fact that programInvokationCwd changes the working directory:
 
   programInvocationCwd
-    :: Maybe (SymbolicPath "CWD" (Dir to))
+    :: Maybe (SymbolicPath CWD (Dir to))
     -> ConfiguredProgram
     -> (IsCWD to => [String])
     -> ProgramInvocation
@@ -215,7 +232,7 @@ data FileOrDir
     File
   | -- | The abstract name of a directory or category of directories,
     -- e.g. the package directory or a source directory.
-    Dir Symbol
+    Dir Type
 
 -- | Is this symbolic path allowed to be absolute, or must it be relative?
 data AllowAbsolute
@@ -229,7 +246,7 @@ data AllowAbsolute
 --
 -- They are *symbolic*, which means we cannot perform any 'IO'
 -- until we interpret them (using e.g. 'interpretSymbolicPath').
-newtype SymbolicPathX (allowAbsolute :: AllowAbsolute) (from :: Symbol) (to :: FileOrDir)
+newtype SymbolicPathX (allowAbsolute :: AllowAbsolute) (from :: Type) (to :: FileOrDir)
   = SymbolicPath FilePath
   deriving (Generic, Show, Read, Eq, Ord, Typeable, Data)
 
@@ -250,7 +267,7 @@ type SymbolicPath = SymbolicPathX 'AllowAbsolute
 
 instance Binary (SymbolicPathX allowAbsolute from to)
 instance
-  (Typeable allowAbsolute, KnownSymbol from, Typeable to)
+  (Typeable allowAbsolute, Typeable from, Typeable to)
   => Structured (SymbolicPathX allowAbsolute from to)
 instance NFData (SymbolicPathX allowAbsolute from to) where rnf = genericRnf
 
@@ -307,7 +324,7 @@ normaliseSymbolicPath :: SymbolicPathX allowAbsolute from to -> SymbolicPathX al
 normaliseSymbolicPath (SymbolicPath fp) = SymbolicPath (FilePath.normalise fp)
 
 -- | Retrieve the relative symbolic path to a Haskell module.
-moduleNameSymbolicPath :: ModuleName -> SymbolicPathX allowAbsolute "Source" File
+moduleNameSymbolicPath :: ModuleName -> SymbolicPathX allowAbsolute Source File
 moduleNameSymbolicPath modNm = SymbolicPath $ ModuleName.toFilePath modNm
 
 -- | Interpret a symbolic path with respect to the given directory.
@@ -323,7 +340,7 @@ moduleNameSymbolicPath modNm = SymbolicPath $ ModuleName.toFilePath modNm
 -- (because the program might expect certain paths to be relative).
 --
 -- See Note [Symbolic paths] in Distribution.Utils.Path.
-interpretSymbolicPath :: Maybe (SymbolicPath "CWD" (Dir from)) -> SymbolicPathX allowAbsolute from to -> FilePath
+interpretSymbolicPath :: Maybe (SymbolicPath CWD (Dir from)) -> SymbolicPathX allowAbsolute from to -> FilePath
 interpretSymbolicPath mbWorkDir (SymbolicPath p) =
   -- Note that this properly handles an absolute symbolic path,
   -- because if @q@ is absolute, then @p </> q = q@.
@@ -335,7 +352,7 @@ interpretSymbolicPath mbWorkDir (SymbolicPath p) =
 -- accidentally discarding a working directory argument.
 --
 -- See Note [Working directory proof tokens] in Distribution.Utils.Path.
-type family IsCWD (dir :: Symbol) :: Constraint where {}
+type family IsCWD (dir :: Type) :: Constraint where {}
 
 -- | Interpret a symbolic path, requiring that the directory it is relative to
 -- is the same as the working directory (via a proof token of type @'IsCWD' from@;
@@ -348,8 +365,8 @@ type family IsCWD (dir :: Symbol) :: Constraint where {}
 -- process: set the working directory of the sub-process, and use this function,
 -- e.g.:
 --
--- > callGhc :: Maybe (SymbolicPath "CWD" (Dir "Package"))
--- >         -> SymbolicPath (Dir "Package") File
+-- > callGhc :: Maybe (SymbolicPath CWD (Dir Pkg))
+-- >         -> SymbolicPath (Dir Pkg) File
 -- >         -> IO ()
 -- > callGhc mbWorkDir inputFile =
 -- >   runProgramInvocation $
@@ -365,7 +382,7 @@ interpretSymbolicPathCWD (SymbolicPath p) = p
 -- This ensures that 'interpretSymbolicPathCWD' is sound.
 --
 -- See Note [Working directory proof tokens] in Distribution.Utils.Path.
-changingWorkingDir :: forall to r. Maybe (SymbolicPath "CWD" (Dir to)) -> (IsCWD to => r) -> r
+changingWorkingDir :: forall to r. Maybe (SymbolicPath CWD (Dir to)) -> (IsCWD to => r) -> r
 changingWorkingDir _ f
   | Refl <- ( unsafeCoerce Refl :: IsCWD to :~: ( () :: Constraint ) )
   = f
@@ -393,14 +410,14 @@ symbolicPathRelative_maybe (SymbolicPath fp) =
     else Just $ SymbolicPath fp
 
 -- | Absolute path to the current working directory.
-absoluteWorkingDir :: Maybe (SymbolicPath "CWD" to) -> IO FilePath
+absoluteWorkingDir :: Maybe (SymbolicPath CWD to) -> IO FilePath
 absoluteWorkingDir Nothing = Directory.getCurrentDirectory
 absoluteWorkingDir (Just wd) = Directory.makeAbsolute $ getSymbolicPath wd
 
 -- | Try to make a path relative to the current working directory.
 --
 -- NB: this function may fail to make the path relative.
-tryMakeRelativeToWorkingDir :: Maybe (SymbolicPath "CWD" (Dir dir)) -> SymbolicPath dir to -> IO (SymbolicPath dir to)
+tryMakeRelativeToWorkingDir :: Maybe (SymbolicPath CWD (Dir dir)) -> SymbolicPath dir to -> IO (SymbolicPath dir to)
 tryMakeRelativeToWorkingDir mbWorkDir (SymbolicPath fp) = do
   wd <- absoluteWorkingDir mbWorkDir
   return $ SymbolicPath (FilePath.makeRelative wd fp)
@@ -465,10 +482,58 @@ instance PathLike FilePath FilePath FilePath where
 --
 -- (Recall that @a </> b = b@ whenever @b@ is absolute.)
 instance
-  (b1 ~ Dir b2, a3 ~ a1, c2 ~ c3, midAbsolute ~ OnlyRelative)
+  (b1 ~ 'Dir b2, a3 ~ a1, c2 ~ c3, midAbsolute ~ OnlyRelative)
   => PathLike
       (SymbolicPathX allowAbsolute a1 b1)
       (SymbolicPathX midAbsolute b2 c2)
       (SymbolicPathX allowAbsolute a3 c3)
   where
   SymbolicPath p1 </> SymbolicPath p2 = SymbolicPath (p1 </> p2)
+
+--------------------------------------------------------------------------------
+-- Abstract directory locations.
+
+-- | The current working directory.
+data CWD
+
+-- | A package directory (e.g. a directory containing the @.cabal@ file).
+data Pkg
+
+-- | The dist directory (e.g. @dist-newstyle@).
+data Dist
+
+-- | A source directory (a search directory for source files).
+data Source
+
+-- | An include directory (a search directory for CPP includes like header files, e.g. with @ghc -I@).
+data Include
+
+-- | A search directory for extra libraries.
+data Lib
+
+-- | A MacOS framework directory.
+data Framework
+
+-- | The build directory.
+data Build
+
+-- | A directory for build artifacts, such as documentation or @.hie@ files.
+data Artifacts
+
+-- | A package database directory.
+data PkgDB
+
+-- | A directory for data files.
+data DataDir
+
+-- | A directory for HPC @.mix@ files.
+data Mix
+
+-- | A directory for HPC @.tix@ files.
+data Tix
+
+-- | A temporary directory.
+data Tmp
+
+-- | A directory for response files.
+data Response

@@ -62,10 +62,10 @@ data Way = Vanilla | Prof | Dyn
   deriving (Bounded, Enum, Eq, Read, Show)
 
 hpcDir
-  :: SymbolicPath "Package" (Dir "Dist")
+  :: SymbolicPath Pkg (Dir Dist)
   -- ^ \"dist/\" prefix
   -> Way
-  -> SymbolicPath "Package" (Dir "hpc")
+  -> SymbolicPath Pkg (Dir Artifacts)
   -- ^ Directory containing component's HPC .mix files
 hpcDir distPref way = distPref </> makeRelativePathEx ("hpc" </> wayDir)
   where
@@ -75,37 +75,37 @@ hpcDir distPref way = distPref </> makeRelativePathEx ("hpc" </> wayDir)
       Dyn -> "dyn"
 
 mixDir
-  :: SymbolicPath "Package" (Dir "Dist")
+  :: SymbolicPath Pkg (Dir Dist)
   -- ^ \"dist/\" prefix
   -> Way
-  -> SymbolicPath "Package" (Dir "mix")
+  -> SymbolicPath Pkg (Dir Mix)
   -- ^ Directory containing test suite's .mix files
 mixDir distPref way = hpcDir distPref way </> makeRelativePathEx "mix"
 
 tixDir
-  :: SymbolicPath "Package" (Dir "Dist")
+  :: SymbolicPath Pkg (Dir Dist)
   -- ^ \"dist/\" prefix
   -> Way
-  -> SymbolicPath "Package" (Dir "tix")
+  -> SymbolicPath Pkg (Dir Tix)
   -- ^ Directory containing test suite's .tix files
 tixDir distPref way = hpcDir distPref way </> makeRelativePathEx "tix"
 
 -- | Path to the .tix file containing a test suite's sum statistics.
 tixFilePath
-  :: SymbolicPath "Package" (Dir "Dist")
+  :: SymbolicPath Pkg (Dir Dist)
   -- ^ \"dist/\" prefix
   -> Way
   -> FilePath
   -- ^ Component name
-  -> SymbolicPath "Package" File
+  -> SymbolicPath Pkg File
   -- ^ Path to test suite's .tix file
 tixFilePath distPref way name = tixDir distPref way </> makeRelativePathEx (name <.> "tix")
 
 htmlDir
-  :: SymbolicPath "Package" (Dir "Dist")
+  :: SymbolicPath Pkg (Dir Dist)
   -- ^ \"dist/\" prefix
   -> Way
-  -> SymbolicPath "Package" (Dir "html")
+  -> SymbolicPath Pkg (Dir Artifacts)
   -- ^ Path to test suite's HTML markup directory
 htmlDir distPref way = hpcDir distPref way </> makeRelativePathEx "html"
 
@@ -120,7 +120,7 @@ guessWay lbi
 -- | Haskell Program Coverage information required to produce a valid HPC
 -- report through the `hpc markup` call for the package libraries.
 data HPCMarkupInfo = HPCMarkupInfo
-  { pathsToLibsArtifacts :: [SymbolicPath "Package" (Dir "hpc-artifacts")]
+  { pathsToLibsArtifacts :: [SymbolicPath Pkg (Dir Artifacts)]
   -- ^ The paths to the library components whose modules are included in the
   -- coverage report
   , libsModulesToInclude :: [ModuleName]
@@ -132,7 +132,7 @@ markupPackage
   :: Verbosity
   -> HPCMarkupInfo
   -> LocalBuildInfo
-  -> SymbolicPath "Package" (Dir "Dist")
+  -> SymbolicPath Pkg (Dir Dist)
   -- ^ Testsuite \"dist/\" prefix
   -> PD.PackageDescription
   -> [TestSuite]

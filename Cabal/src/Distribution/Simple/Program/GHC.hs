@@ -402,13 +402,13 @@ data GhcOptions = GhcOptions
   , -----------------------
     -- Inputs and outputs
 
-    ghcOptInputFiles :: NubListR (SymbolicPath "Package" File)
+    ghcOptInputFiles :: NubListR (SymbolicPath Pkg File)
   -- ^ The main input files; could be .hs, .hi, .c, .o, depending on mode.
-  , ghcOptInputScripts :: NubListR (SymbolicPath "Package" File)
+  , ghcOptInputScripts :: NubListR (SymbolicPath Pkg File)
   -- ^ Script files with irregular extensions that need -x hs.
   , ghcOptInputModules :: NubListR ModuleName
   -- ^ The names of input Haskell modules, mainly for @--make@ mode.
-  , ghcOptOutputFile :: Flag (SymbolicPath "Package" File)
+  , ghcOptOutputFile :: Flag (SymbolicPath Pkg File)
   -- ^ Location for output file; the @ghc -o@ flag.
   , ghcOptOutputDynFile :: Flag FilePath
   -- ^ Location for dynamic output file in 'GhcStaticAndDynamic' mode;
@@ -416,7 +416,7 @@ data GhcOptions = GhcOptions
   , ghcOptSourcePathClear :: Flag Bool
   -- ^ Start with an empty search path for Haskell source files;
   -- the @ghc -i@ flag (@-i@ on its own with no path argument).
-  , ghcOptSourcePath :: NubListR (SymbolicPath "Package" (Dir "Source"))
+  , ghcOptSourcePath :: NubListR (SymbolicPath Pkg (Dir Source))
   -- ^ Search path for Haskell source files; the @ghc -i@ flag.
   , -------------
     -- Packages
@@ -457,13 +457,13 @@ data GhcOptions = GhcOptions
 
     ghcOptLinkLibs :: [FilePath]
   -- ^ Names of libraries to link in; the @ghc -l@ flag.
-  , ghcOptLinkLibPath :: NubListR (SymbolicPath "Package" (Dir "Lib"))
+  , ghcOptLinkLibPath :: NubListR (SymbolicPath Pkg (Dir Lib))
   -- ^ Search path for libraries to link in; the @ghc -L@ flag.
   , ghcOptLinkOptions :: [String]
   -- ^ Options to pass through to the linker; the @ghc -optl@ flag.
   , ghcOptLinkFrameworks :: NubListR String
   -- ^ OSX only: frameworks to link in; the @ghc -framework@ flag.
-  , ghcOptLinkFrameworkDirs :: NubListR (SymbolicPath "Package" (Dir "Framework"))
+  , ghcOptLinkFrameworkDirs :: NubListR (SymbolicPath Pkg (Dir Framework))
   -- ^ OSX only: Search path for frameworks to link in; the
   -- @ghc -framework-path@ flag.
   , ghcOptLinkRts :: Flag Bool
@@ -486,9 +486,9 @@ data GhcOptions = GhcOptions
   -- ^ Options to pass through to the Assembler.
   , ghcOptCppOptions :: [String]
   -- ^ Options to pass through to CPP; the @ghc -optP@ flag.
-  , ghcOptCppIncludePath :: NubListR (SymbolicPath "Package" (Dir "Include"))
+  , ghcOptCppIncludePath :: NubListR (SymbolicPath Pkg (Dir Include))
   -- ^ Search path for CPP includes like header files; the @ghc -I@ flag.
-  , ghcOptCppIncludes :: NubListR (SymbolicPath "Package" File)
+  , ghcOptCppIncludes :: NubListR (SymbolicPath Pkg File)
   -- ^ Extra header files to include at CPP stage; the @ghc -optP-include@ flag.
   , ghcOptFfiIncludes :: NubListR FilePath
   -- ^ Extra header files to include for old-style FFI; the @ghc -#include@ flag.
@@ -521,7 +521,7 @@ data GhcOptions = GhcOptions
   -- ^ Use the \"split object files\" feature; the @ghc -split-objs@ flag.
   , ghcOptNumJobs :: Flag ParStrat
   -- ^ Run N jobs simultaneously (if possible).
-  , ghcOptHPCDir :: Flag (SymbolicPath "Package" (Dir "mix"))
+  , ghcOptHPCDir :: Flag (SymbolicPath Pkg (Dir Mix))
   -- ^ Enable coverage analysis; the @ghc -fhpc -hpcdir@ flags.
   , ----------------
     -- GHCi
@@ -537,11 +537,11 @@ data GhcOptions = GhcOptions
   -- ^ only in 'GhcStaticAndDynamic' mode
   , ghcOptDynObjSuffix :: Flag String
   -- ^ only in 'GhcStaticAndDynamic' mode
-  , ghcOptHiDir :: Flag (SymbolicPath "Package" (Dir "Interfaces"))
-  , ghcOptHieDir :: Flag (SymbolicPath "Package" (Dir "HIE"))
-  , ghcOptObjDir :: Flag (SymbolicPath "Package" (Dir "Artifacts"))
-  , ghcOptOutputDir :: Flag (SymbolicPath "Package" (Dir "Output"))
-  , ghcOptStubDir :: Flag (SymbolicPath "Package" (Dir "Stub"))
+  , ghcOptHiDir :: Flag (SymbolicPath Pkg (Dir Artifacts))
+  , ghcOptHieDir :: Flag (SymbolicPath Pkg (Dir Artifacts))
+  , ghcOptObjDir :: Flag (SymbolicPath Pkg (Dir Artifacts))
+  , ghcOptOutputDir :: Flag (SymbolicPath Pkg (Dir Artifacts))
+  , ghcOptStubDir :: Flag (SymbolicPath Pkg (Dir Artifacts))
   , --------------------
     -- Creating libraries
 
@@ -556,7 +556,7 @@ data GhcOptions = GhcOptions
 
     ghcOptVerbosity :: Flag Verbosity
   -- ^ Get GHC to be quiet or verbose with what it's doing; the @ghc -v@ flag.
-  , ghcOptExtraPath :: NubListR (SymbolicPath "Package" (Dir "Build"))
+  , ghcOptExtraPath :: NubListR (SymbolicPath Pkg (Dir Build))
   -- ^ Put the extra folders in the PATH environment variable we invoke
   -- GHC with
   , ghcOptCabal :: Flag Bool
@@ -616,7 +616,7 @@ runGHC
   -> ConfiguredProgram
   -> Compiler
   -> Platform
-  -> Maybe (SymbolicPath "CWD" (Dir "Package"))
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -> GhcOptions
   -> IO ()
 runGHC verbosity ghcProg comp platform mbWorkDir opts = do
@@ -628,7 +628,7 @@ ghcInvocation
   -> ConfiguredProgram
   -> Compiler
   -> Platform
-  -> Maybe (SymbolicPath "CWD" (Dir "Package"))
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -> GhcOptions
   -> IO ProgramInvocation
 ghcInvocation verbosity ghcProg comp platform mbWorkDir opts = do
@@ -647,7 +647,7 @@ ghcInvocation verbosity ghcProg comp platform mbWorkDir opts = do
 -- TODO: use the -working-dir GHC flag instead of setting the process
 -- working directory, as this improves error messages.
 
-renderGhcOptions :: IsCWD "Package" => Compiler -> Platform -> GhcOptions -> [String]
+renderGhcOptions :: IsCWD Pkg => Compiler -> Platform -> GhcOptions -> [String]
 renderGhcOptions comp _platform@(Platform _arch os) opts
   | compilerFlavor comp `notElem` [GHC, GHCJS] =
       error $
@@ -876,7 +876,7 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
         ]
   where
     -- See Note [Symbolic paths] in Distribution.Utils.Path
-    u :: IsCWD "Package" => SymbolicPath "Package" to -> FilePath
+    u :: IsCWD Pkg => SymbolicPath Pkg to -> FilePath
     u = interpretSymbolicPathCWD
     implInfo = getImplInfo comp
     isOSX = os == OSX

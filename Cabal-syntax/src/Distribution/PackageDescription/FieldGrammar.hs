@@ -296,7 +296,7 @@ executableFieldGrammar n =
 -- After validation it is converted into the proper 'TestSuite' type.
 data TestSuiteStanza = TestSuiteStanza
   { _testStanzaTestType :: Maybe TestType
-  , _testStanzaMainIs :: Maybe (RelativePath "Source" File)
+  , _testStanzaMainIs :: Maybe (RelativePath Source File)
   , _testStanzaTestModule :: Maybe ModuleName
   , _testStanzaBuildInfo :: BuildInfo
   , _testStanzaCodeGenerators :: [String]
@@ -309,7 +309,7 @@ testStanzaTestType :: Lens' TestSuiteStanza (Maybe TestType)
 testStanzaTestType f s = fmap (\x -> s{_testStanzaTestType = x}) (f (_testStanzaTestType s))
 {-# INLINE testStanzaTestType #-}
 
-testStanzaMainIs :: Lens' TestSuiteStanza (Maybe (RelativePath "Source" File))
+testStanzaMainIs :: Lens' TestSuiteStanza (Maybe (RelativePath Source File))
 testStanzaMainIs f s = fmap (\x -> s{_testStanzaMainIs = x}) (f (_testStanzaMainIs s))
 {-# INLINE testStanzaMainIs #-}
 
@@ -446,7 +446,7 @@ unvalidateTestSuite t =
 -- After validation it is converted into the proper 'Benchmark' type.
 data BenchmarkStanza = BenchmarkStanza
   { _benchmarkStanzaBenchmarkType :: Maybe BenchmarkType
-  , _benchmarkStanzaMainIs :: Maybe (RelativePath "Source" File)
+  , _benchmarkStanzaMainIs :: Maybe (RelativePath Source File)
   , _benchmarkStanzaBenchmarkModule :: Maybe ModuleName
   , _benchmarkStanzaBuildInfo :: BuildInfo
   }
@@ -458,7 +458,7 @@ benchmarkStanzaBenchmarkType :: Lens' BenchmarkStanza (Maybe BenchmarkType)
 benchmarkStanzaBenchmarkType f s = fmap (\x -> s{_benchmarkStanzaBenchmarkType = x}) (f (_benchmarkStanzaBenchmarkType s))
 {-# INLINE benchmarkStanzaBenchmarkType #-}
 
-benchmarkStanzaMainIs :: Lens' BenchmarkStanza (Maybe (RelativePath "Source" File))
+benchmarkStanzaMainIs :: Lens' BenchmarkStanza (Maybe (RelativePath Source File))
 benchmarkStanzaMainIs f s = fmap (\x -> s{_benchmarkStanzaMainIs = x}) (f (_benchmarkStanzaMainIs s))
 {-# INLINE benchmarkStanzaMainIs #-}
 
@@ -686,7 +686,7 @@ hsSourceDirsGrammar
      , Applicative (g BuildInfo)
      , forall from to. c (List FSep (SymbolicPathNT from to) (SymbolicPath from to))
      )
-  => g BuildInfo [SymbolicPath "Package" (Dir "Source")]
+  => g BuildInfo [SymbolicPath Pkg (Dir Source)]
 hsSourceDirsGrammar =
   (++)
     <$> monoidalFieldAla "hs-source-dirs" formatHsSourceDirs L.hsSourceDirs
@@ -696,7 +696,7 @@ hsSourceDirsGrammar =
       ^^^ removedIn CabalSpecV3_0 "Please use 'hs-source-dirs' field."
   where
     -- TODO: make pretty printer aware of CabalSpecVersion
-    wrongLens :: Functor f => LensLike' f BuildInfo [SymbolicPath "Package" (Dir "Source")]
+    wrongLens :: Functor f => LensLike' f BuildInfo [SymbolicPath Pkg (Dir Source)]
     wrongLens f bi = (\fps -> set L.hsSourceDirs fps bi) <$> f []
 
 optionsFieldGrammar
@@ -803,13 +803,13 @@ formatDependencyList = alaList CommaVCat
 formatMixinList :: [Mixin] -> List CommaVCat (Identity Mixin) Mixin
 formatMixinList = alaList CommaVCat
 
-formatExtraSourceFiles :: [RelativePath "Package" File] -> List VCat (RelativePathNT "Package" File) (RelativePath "Package" File)
+formatExtraSourceFiles :: [RelativePath Pkg File] -> List VCat (RelativePathNT Pkg File) (RelativePath Pkg File)
 formatExtraSourceFiles = alaList' VCat RelativePathNT
 
 formatExposedModules :: [ModuleName] -> List VCat (MQuoted ModuleName) ModuleName
 formatExposedModules = alaList' VCat MQuoted
 
-formatHsSourceDirs :: [SymbolicPath "Package" (Dir "Source")] -> List FSep (SymbolicPathNT "Package" (Dir "Source")) (SymbolicPath "Package" (Dir "Source"))
+formatHsSourceDirs :: [SymbolicPath Pkg (Dir Source)] -> List FSep (SymbolicPathNT Pkg (Dir Source)) (SymbolicPath Pkg (Dir Source))
 formatHsSourceDirs = alaList' FSep SymbolicPathNT
 
 formatOtherExtensions :: [Extension] -> List FSep (MQuoted Extension) Extension
@@ -833,9 +833,9 @@ formatOtherModules = alaList' VCat MQuoted
 --
 -- across Hackage to outrule them completely.
 -- I suspect some of them are generated (e.g. formatted) by machine.
-newtype CompatDataDir = CompatDataDir {getCompatDataDir :: SymbolicPath "Package" (Dir "Data")}
+newtype CompatDataDir = CompatDataDir {getCompatDataDir :: SymbolicPath Pkg (Dir DataDir)}
 
-instance Newtype (SymbolicPath "Package" (Dir "Data")) CompatDataDir
+instance Newtype (SymbolicPath Pkg (Dir DataDir)) CompatDataDir
 
 instance Parsec CompatDataDir where
   parsec = do
@@ -847,9 +847,9 @@ instance Parsec CompatDataDir where
 instance Pretty CompatDataDir where
   pretty = showToken . getSymbolicPath . getCompatDataDir
 
-newtype CompatLicenseFile = CompatLicenseFile {getCompatLicenseFile :: [RelativePath "Package" File]}
+newtype CompatLicenseFile = CompatLicenseFile {getCompatLicenseFile :: [RelativePath Pkg File]}
 
-instance Newtype [RelativePath "Package" File] CompatLicenseFile
+instance Newtype [RelativePath Pkg File] CompatLicenseFile
 
 -- TODO
 instance Parsec CompatLicenseFile where

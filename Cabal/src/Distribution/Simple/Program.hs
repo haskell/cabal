@@ -155,7 +155,7 @@ runProgram verbosity prog args =
 runProgramCwd
   :: Verbosity
   -- ^ Verbosity
-  -> Maybe (SymbolicPath "CWD" (Dir to))
+  -> Maybe (SymbolicPath CWD (Dir to))
   -- ^ Working directory
   -> ConfiguredProgram
   -- ^ The program to run
@@ -195,7 +195,7 @@ runDbProgram verbosity =
 runDbProgramCwd
   :: Verbosity
   -- ^ verbosity
-  -> Maybe (SymbolicPath "CWD" (Dir to))
+  -> Maybe (SymbolicPath CWD (Dir to))
   -- ^ working directory
   -> Program
   -- ^ The program to run
@@ -227,7 +227,7 @@ getDbProgramOutput verb = getDbProgramOutputCwd verb Nothing
 getDbProgramOutputCwd
   :: Verbosity
   -- ^ verbosity
-  -> Maybe (SymbolicPath "CWD" (Dir to))
+  -> Maybe (SymbolicPath CWD (Dir to))
   -- ^ working directory
   -> Program
   -- ^ The program to run
