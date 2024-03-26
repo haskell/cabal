@@ -1,25 +1,6 @@
-import: cabal.project.latest-ghc
-
-packages: Cabal/
-packages: cabal-testsuite/
-packages: Cabal-syntax/
-packages: cabal-install/
-packages: cabal-install-solver/
-packages: solver-benchmarks/
+import: project-cabal/ghc-options.config
+import: project-cabal/ghc-latest.config
+import: project-cabal/pkgs.config
+import: project-cabal/constraints.config
 
 tests: True
-
-packages: Cabal-QuickCheck/
-packages: Cabal-tree-diff/
-packages: Cabal-described
-packages: Cabal-tests/
-packages: cabal-benchmarks/
-
-optional-packages: ./vendored/*/*.cabal
-
--- avoiding extra dependencies
-constraints: rere -rere-cfg
-constraints: these -assoc
-
-program-options
-  ghc-options: -fno-ignore-asserts
