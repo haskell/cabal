@@ -450,10 +450,11 @@ testMultipleMonitorKinds mtimeChange =
     updateMonitor
       root
       monitor
-      (Set.fromList
-      [ monitorDirectory "dir"
-      , monitorDirectoryExistence "dir"
-      ])
+      ( Set.fromList
+          [ monitorDirectory "dir"
+          , monitorDirectoryExistence "dir"
+          ]
+      )
       ()
       ()
     (res2, files2) <- expectMonitorUnchanged root monitor ()
