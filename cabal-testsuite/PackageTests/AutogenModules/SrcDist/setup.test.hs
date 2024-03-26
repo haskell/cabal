@@ -84,7 +84,7 @@ main = setupAndCabalTest $ do
                 ++ ".\\Dummy.hs\n"
                 ++ ".\\MyBenchModule.hs\n"
                 ++ "LICENSE\n"
-                ++ ".\\AutogenModules.cabal\n"
+                ++ "AutogenModules.cabal\n"
 #else
                    "./MyLibrary.hs\n"
                 ++ "./MyLibModule.hs\n"
@@ -95,7 +95,7 @@ main = setupAndCabalTest $ do
                 ++ "./Dummy.hs\n"
                 ++ "./MyBenchModule.hs\n"
                 ++ "LICENSE\n"
-                ++ "./AutogenModules.cabal\n"
+                ++ "AutogenModules.cabal\n"
 #endif
         listSourcesStrGot <- liftIO $ readFile listSourcesFileGot
         assertEqual "sdist --list-sources does not match the expected files"

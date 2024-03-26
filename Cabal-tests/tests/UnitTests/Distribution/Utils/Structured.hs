@@ -43,5 +43,5 @@ md5CheckLocalBuildInfo proxy = md5Check proxy
 #if MIN_VERSION_base(4,19,0)
     0x8a8e81b52a34b8610acdcd0b9d488940
 #else
-    0xb53fbd58281a6f329f7b659d91fcd86e
+    0xc8425b35e65a279d5b3f0060b41c6a4ae
 #endif

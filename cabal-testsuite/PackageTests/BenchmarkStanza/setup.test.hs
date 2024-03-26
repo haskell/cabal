@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 import Test.Cabal.Prelude
 
 import Distribution.Version
@@ -18,7 +19,11 @@ main = setupAndCabalTest $ do
                 (mkUnqualComponentName "dummy")
                 (benchmarkName gotBenchmark)
     assertEqual "benchmarkInterface"
-                (BenchmarkExeV10 (mkVersion [1,0]) "dummy.hs")
+                (BenchmarkExeV10 (mkVersion [1,0])
+#if MIN_VERSION_Cabal(3,11,0)
+                  $ makeRelativePathEx
+#endif
+                  "dummy.hs")
                 (benchmarkInterface gotBenchmark)
     -- NB: Not testing targetBuildDepends (benchmarkBuildInfo gotBenchmark),
     -- as the dependency varies with cabal-install

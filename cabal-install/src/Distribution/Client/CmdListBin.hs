@@ -49,7 +49,7 @@ import Distribution.Client.Setup (GlobalFlags (..))
 import Distribution.Client.TargetProblem (TargetProblem (..))
 import Distribution.Simple.BuildPaths (dllExtension, exeExtension)
 import Distribution.Simple.Command (CommandUI (..))
-import Distribution.Simple.Setup (configVerbosity, fromFlagOrDefault)
+import Distribution.Simple.Setup (configCommonFlags, fromFlagOrDefault, setupVerbosity)
 import Distribution.Simple.Utils (dieWithException, withOutputMarker, wrapText)
 import Distribution.System (Platform)
 import Distribution.Types.ComponentName (showComponentName)
@@ -173,7 +173,7 @@ listbinAction flags@NixStyleFlags{..} args globalFlags = do
       _ -> dieWithException verbosity MultipleTargetsFound
   where
     defaultVerbosity = verboseStderr silent
-    verbosity = fromFlagOrDefault defaultVerbosity (configVerbosity configFlags)
+    verbosity = fromFlagOrDefault defaultVerbosity (setupVerbosity $ configCommonFlags configFlags)
 
     -- this is copied from
     elaboratedPackage

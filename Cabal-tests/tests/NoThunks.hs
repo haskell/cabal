@@ -16,6 +16,7 @@ import Control.Applicative                    ((<|>))
 import Data.Foldable                          (toList)
 import Data.Proxy                             (Proxy (..))
 import Data.Typeable                          (Typeable, typeRep)
+import GHC.TypeLits                           ( KnownSymbol )
 import Distribution.CabalSpecVersion          (CabalSpecVersion)
 import Distribution.Compat.NonEmptySet        (NonEmptySet)
 import Distribution.Compiler                  (CompilerFlavor, PerCompilerFlavor)
@@ -24,7 +25,7 @@ import Distribution.ModuleName                (ModuleName)
 import Distribution.PackageDescription.Parsec (parseGenericPackageDescription)
 import Distribution.SPDX                      (License, LicenseExceptionId, LicenseExpression, LicenseId, LicenseRef, SimpleLicenseExpression)
 import Distribution.System                    (Arch, OS)
-import Distribution.Utils.Path                (SymbolicPath)
+import Distribution.Utils.Path                (SymbolicPathX)
 import Distribution.Utils.ShortText           (ShortText)
 import Distribution.Version                   (Version, VersionRange)
 import Language.Haskell.Extension             (Extension, KnownExtension, Language)
@@ -121,7 +122,8 @@ instance NoThunks ShortText where
 
 instance NoThunks a => NoThunks (PerCompilerFlavor a)
 
-instance (Typeable a, Typeable b) => NoThunks (SymbolicPath a b)
+instance (Typeable allowAbs, KnownSymbol from, Typeable to)
+       => NoThunks (SymbolicPathX allowAbs from to)
 
 deriving via (OnlyCheckWhnf LicenseId) instance NoThunks LicenseId
 deriving via (OnlyCheckWhnf LicenseExceptionId) instance NoThunks LicenseExceptionId

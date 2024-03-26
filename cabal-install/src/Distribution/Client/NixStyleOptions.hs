@@ -8,13 +8,19 @@ module Distribution.Client.NixStyleOptions
   ( NixStyleFlags (..)
   , nixStyleOptions
   , defaultNixStyleFlags
+  , updNixStyleCommonSetupFlags
   ) where
 
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
 import Distribution.Simple.Command (OptionField (..), ShowOrParseArgs)
-import Distribution.Simple.Setup (BenchmarkFlags, HaddockFlags, TestFlags)
+import Distribution.Simple.Setup
+  ( BenchmarkFlags (benchmarkCommonFlags)
+  , CommonSetupFlags (..)
+  , HaddockFlags (..)
+  , TestFlags (testCommonFlags)
+  )
 import Distribution.Solver.Types.ConstraintSource (ConstraintSource (..))
 
 import Distribution.Client.ProjectFlags
@@ -125,4 +131,28 @@ defaultNixStyleFlags x =
     , benchmarkFlags = mempty
     , projectFlags = defaultProjectFlags
     , extraFlags = x
+    }
+
+updNixStyleCommonSetupFlags
+  :: (CommonSetupFlags -> CommonSetupFlags)
+  -> NixStyleFlags a
+  -> NixStyleFlags a
+updNixStyleCommonSetupFlags setFlag nixFlags =
+  nixFlags
+    { configFlags =
+        let flags = configFlags nixFlags
+            common = configCommonFlags flags
+         in flags{configCommonFlags = setFlag common}
+    , haddockFlags =
+        let flags = haddockFlags nixFlags
+            common = haddockCommonFlags flags
+         in flags{haddockCommonFlags = setFlag common}
+    , testFlags =
+        let flags = testFlags nixFlags
+            common = testCommonFlags flags
+         in flags{testCommonFlags = setFlag common}
+    , benchmarkFlags =
+        let flags = benchmarkFlags nixFlags
+            common = benchmarkCommonFlags flags
+         in flags{benchmarkCommonFlags = setFlag common}
     }

@@ -23,8 +23,10 @@ module Distribution.Client.Setup
   , RepoContext (..)
   , withRepoContext
   , configureCommand
+  , CommonSetupFlags (..)
   , ConfigFlags (..)
   , configureOptions
+  , filterCommonFlags
   , filterConfigureFlags
   , configPackageDB'
   , configCompilerAux'
@@ -189,6 +191,7 @@ import Distribution.Simple.Setup
   , BooleanFlag (..)
   , BuildFlags (..)
   , CleanFlags (..)
+  , CommonSetupFlags (..)
   , ConfigFlags (..)
   , CopyFlags (..)
   , HaddockFlags (..)
@@ -201,6 +204,7 @@ import Distribution.Simple.Setup
   , optionVerbosity
   , readPackageDbList
   , showPackageDbList
+  , testCommonFlags
   , trueArg
   )
 import qualified Distribution.Simple.Setup as Cabal
@@ -631,6 +635,34 @@ configureCommand =
 configureOptions :: ShowOrParseArgs -> [OptionField ConfigFlags]
 configureOptions = commandOptions configureCommand
 
+filterCommonFlags :: CommonSetupFlags -> Version -> CommonSetupFlags
+filterCommonFlags flags cabalLibVersion
+  -- NB: we expect the latest version to be the most common case,
+  -- so test it first.
+  | cabalLibVersion >= mkVersion [3, 11, 0] = flags_latest
+  | cabalLibVersion < mkVersion [1, 2, 5] = flags_1_2_5
+  | cabalLibVersion < mkVersion [2, 1, 0] = flags_2_1_0
+  | cabalLibVersion < mkVersion [3, 11, 0] = flags_3_11_0
+  | otherwise = error "the impossible just happened" -- see first guard
+  where
+    flags_latest = flags
+    flags_3_11_0 =
+      flags_latest
+        { setupWorkingDir = NoFlag
+        }
+    -- Cabal < 3.11 does not support the --working-dir flag.
+    flags_2_1_0 =
+      flags_3_11_0
+        { -- Cabal < 2.1 doesn't know about -v +timestamp modifier
+          setupVerbosity = fmap verboseNoTimestamp (setupVerbosity flags_3_11_0)
+        }
+    flags_1_2_5 =
+      flags_2_1_0
+        { -- Cabal < 1.25 doesn't have extended verbosity syntax
+          setupVerbosity =
+            fmap verboseNoFlags (setupVerbosity flags_2_1_0)
+        }
+
 -- | Given some 'ConfigFlags' for the version of Cabal that
 -- cabal-install was built with, and a target older 'Version' of
 -- Cabal that we want to pass these flags to, convert the
@@ -640,7 +672,15 @@ configureOptions = commandOptions configureCommand
 -- in some cases it may also mean "emulating" a feature using
 -- some more legacy flags.
 filterConfigureFlags :: ConfigFlags -> Version -> ConfigFlags
-filterConfigureFlags flags cabalLibVersion
+filterConfigureFlags flags cabalLibVersion =
+  let flags' = filterConfigureFlags' flags cabalLibVersion
+   in flags'
+        { configCommonFlags =
+            filterCommonFlags (configCommonFlags flags') cabalLibVersion
+        }
+
+filterConfigureFlags' :: ConfigFlags -> Version -> ConfigFlags
+filterConfigureFlags' flags cabalLibVersion
   -- NB: we expect the latest version to be the most common case,
   -- so test it first.
   | cabalLibVersion >= mkVersion [3, 11, 0] = flags_latest
@@ -721,9 +761,7 @@ filterConfigureFlags flags cabalLibVersion
 
     flags_2_1_0 =
       flags_2_5_0
-        { -- Cabal < 2.1 doesn't know about -v +timestamp modifier
-          configVerbosity = fmap verboseNoTimestamp (configVerbosity flags_latest)
-        , -- Cabal < 2.1 doesn't know about --<enable|disable>-static
+        { -- Cabal < 2.1 doesn't know about --<enable|disable>-static
           configStaticLib = NoFlag
         , configSplitSections = NoFlag
         }
@@ -732,8 +770,6 @@ filterConfigureFlags flags cabalLibVersion
       flags_2_1_0
         { -- Cabal < 1.25.0 doesn't know about --dynlibdir.
           configInstallDirs = configInstallDirs_1_25_0
-        , -- Cabal < 1.25 doesn't have extended verbosity syntax
-          configVerbosity = fmap verboseNoFlags (configVerbosity flags_2_1_0)
         , -- Cabal < 1.25 doesn't support --deterministic
           configDeterministic = mempty
         }
@@ -826,11 +862,15 @@ configPackageDB' cfg =
 
 -- | Configure the compiler, but reduce verbosity during this step.
 configCompilerAux' :: ConfigFlags -> IO (Compiler, Platform, ProgramDb)
-configCompilerAux' configFlags =
+configCompilerAux' configFlags = do
+  let commonFlags = configCommonFlags configFlags
   configCompilerAuxEx
     configFlags
       { -- FIXME: make configCompilerAux use a sensible verbosity
-        configVerbosity = fmap lessVerbose (configVerbosity configFlags)
+        configCommonFlags =
+          commonFlags
+            { setupVerbosity = fmap lessVerbose (setupVerbosity commonFlags)
+            }
       }
 
 -- ------------------------------------------------------------
@@ -1101,7 +1141,15 @@ buildCommand =
 -- in some cases it may also mean "emulating" a feature using
 -- some more legacy flags.
 filterTestFlags :: TestFlags -> Version -> TestFlags
-filterTestFlags flags cabalLibVersion
+filterTestFlags flags cabalLibVersion =
+  let flags' = filterTestFlags' flags cabalLibVersion
+   in flags'
+        { testCommonFlags =
+            filterCommonFlags (testCommonFlags flags') cabalLibVersion
+        }
+
+filterTestFlags' :: TestFlags -> Version -> TestFlags
+filterTestFlags' flags cabalLibVersion
   -- NB: we expect the latest version to be the most common case,
   -- so test it first.
   | cabalLibVersion >= mkVersion [3, 0, 0] = flags_latest
@@ -2339,7 +2387,15 @@ filterHaddockArgs args cabalLibVersion
     args_2_3_0 = []
 
 filterHaddockFlags :: HaddockFlags -> Version -> HaddockFlags
-filterHaddockFlags flags cabalLibVersion
+filterHaddockFlags flags cabalLibVersion =
+  let flags' = filterHaddockFlags' flags cabalLibVersion
+   in flags'
+        { haddockCommonFlags =
+            filterCommonFlags (haddockCommonFlags flags') cabalLibVersion
+        }
+
+filterHaddockFlags' :: HaddockFlags -> Version -> HaddockFlags
+filterHaddockFlags' flags cabalLibVersion
   | cabalLibVersion >= mkVersion [2, 3, 0] = flags_latest
   | cabalLibVersion < mkVersion [2, 3, 0] = flags_2_3_0
   | otherwise = flags_latest
@@ -2349,7 +2405,10 @@ filterHaddockFlags flags cabalLibVersion
     flags_2_3_0 =
       flags_latest
         { -- Cabal < 2.3 doesn't know about per-component haddock
-          haddockArgs = []
+          haddockCommonFlags =
+            (haddockCommonFlags flags_latest)
+              { setupTargets = []
+              }
         }
 
 haddockOptions :: ShowOrParseArgs -> [OptionField HaddockFlags]

@@ -51,7 +51,7 @@ GenericPackageDescription {
     testSuites = [],
     benchmarks = [],
     dataFiles = [],
-    dataDir = ".",
+    dataDir = SymbolicPath ".",
     extraSrcFiles = [],
     extraTmpFiles = [],
     extraDocFiles = []},
@@ -9501,7 +9501,8 @@ GenericPackageDescription {
         condTreeData = Executable {
           exeName = UnqualComponentName
             "isdefinite-cpu",
-          modulePath = "Noop.hs",
+          modulePath = SymbolicPath
+            "Noop.hs",
           exeScope = ExecutablePublic,
           buildInfo = BuildInfo {
             buildable = True,
@@ -9605,7 +9606,8 @@ GenericPackageDescription {
         condTreeData = Executable {
           exeName = UnqualComponentName
             "isdefinite-gpu",
-          modulePath = "Noop.hs",
+          modulePath = SymbolicPath
+            "Noop.hs",
           exeScope = ExecutablePublic,
           buildInfo = BuildInfo {
             buildable = True,
@@ -9709,7 +9711,8 @@ GenericPackageDescription {
         condTreeData = Executable {
           exeName = UnqualComponentName
             "isdefinite",
-          modulePath = "Noop.hs",
+          modulePath = SymbolicPath
+            "Noop.hs",
           exeScope = ExecutablePublic,
           buildInfo = BuildInfo {
             buildable = True,
@@ -9802,7 +9805,8 @@ GenericPackageDescription {
         condTreeData = Executable {
           exeName = UnqualComponentName
             "memcheck",
-          modulePath = "Memcheck.hs",
+          modulePath = SymbolicPath
+            "Memcheck.hs",
           exeScope = ExecutablePublic,
           buildInfo = BuildInfo {
             buildable = True,
@@ -9898,7 +9902,7 @@ GenericPackageDescription {
             "",
           testInterface = TestSuiteExeV10
             (mkVersion [1, 0])
-            "Spec.hs",
+            (SymbolicPath "Spec.hs"),
           testBuildInfo = BuildInfo {
             buildable = True,
             buildTools = [],

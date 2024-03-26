@@ -41,6 +41,8 @@ import Distribution.Types.LocalBuildInfo
 import Distribution.PackageDescription
 import Test.Utils.TempTestDir (withTestDir)
 import Distribution.Verbosity (normal)
+import Distribution.Utils.Path
+  ( makeSymbolicPath, relativeSymbolicPath )
 
 import Distribution.Compat.Stack
 
@@ -99,7 +101,7 @@ runProgramM prog args input = do
 getLocalBuildInfoM :: TestM LocalBuildInfo
 getLocalBuildInfoM = do
     env <- getTestEnv
-    liftIO $ getPersistBuildConfig (testDistDir env)
+    liftIO $ getPersistBuildConfig Nothing (makeSymbolicPath $ testDistDir env)
 
 ------------------------------------------------------------------------
 -- * Changing parameters
@@ -185,9 +187,9 @@ setup'' prefix cmd args = do
     --
     -- `cabal` and `Setup.hs` do have different interface.
     --
-
-    pdfile <- liftIO $ tryFindPackageDesc (testVerbosity env) (testCurrentDir env </> prefix)
-    pdesc <- liftIO $ readGenericPackageDescription (testVerbosity env) pdfile
+    let pkgDir = makeSymbolicPath $ testCurrentDir env </> prefix
+    pdfile <- liftIO $ tryFindPackageDesc (testVerbosity env) (Just pkgDir)
+    pdesc <- liftIO $ readGenericPackageDescription (testVerbosity env) (Just pkgDir) $ relativeSymbolicPath pdfile
     if testCabalInstallAsSetup env
     then if buildType (packageDescription pdesc) == Simple
          then runProgramM cabalProgram ("act-as-setup" : "--" : NE.toList full_args) Nothing

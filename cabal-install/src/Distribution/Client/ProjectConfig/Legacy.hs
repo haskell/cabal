@@ -1,4 +1,5 @@
 {-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE NamedFieldPuns #-}
@@ -97,6 +98,7 @@ import Distribution.Simple.Program.Db
   )
 import Distribution.Simple.Setup
   ( BenchmarkFlags (..)
+  , CommonSetupFlags (..)
   , ConfigFlags (..)
   , DumpBuildInfo (DumpBuildInfo, NoDumpBuildInfo)
   , Flag (..)
@@ -135,7 +137,9 @@ import Distribution.Utils.NubList
   , toNubList
   )
 
+import Distribution.Client.HttpUtils
 import Distribution.Client.ParseUtils
+import Distribution.Client.ReplFlags (multiReplOption)
 import Distribution.Deprecated.ParseUtils
   ( PError (..)
   , PWarning (..)
@@ -155,6 +159,7 @@ import Distribution.Deprecated.ReadP
   , (+++)
   )
 import qualified Distribution.Deprecated.ReadP as Parse
+import Distribution.Fields.ConfVar (parseConditionConfVarFromClause)
 import Distribution.Parsec (ParsecParser, parsecToken)
 import Distribution.Simple.Command
   ( CommandUI (commandOptions)
@@ -167,24 +172,22 @@ import Distribution.System (Arch, OS)
 import Distribution.Types.PackageVersionConstraint
   ( PackageVersionConstraint
   )
+import Distribution.Utils.Path hiding
+  ( (<.>)
+  , (</>)
+  )
+
+import qualified Data.ByteString.Char8 as BS
+import qualified Data.Map as Map
+import qualified Data.Set as Set
+import Network.URI (URI (..), parseURI)
+import System.Directory (createDirectoryIfMissing)
+import System.FilePath (isAbsolute, isPathSeparator, makeValid, takeDirectory, (</>))
 import Text.PrettyPrint
   ( Doc
   , ($+$)
   )
 import qualified Text.PrettyPrint as Disp
-
-import qualified Data.ByteString.Char8 as BS
-import qualified Data.Map as Map
-import qualified Data.Set as Set
-
-import Network.URI (URI (..), parseURI)
-
-import Distribution.Fields.ConfVar (parseConditionConfVarFromClause)
-
-import Distribution.Client.HttpUtils
-import Distribution.Client.ReplFlags (multiReplOption)
-import System.Directory (createDirectoryIfMissing)
-import System.FilePath (isAbsolute, isPathSeparator, makeValid, takeDirectory, (</>))
 
 ------------------------------------------------------------------
 -- Handle extended project config files with conditionals and imports.
@@ -627,7 +630,7 @@ convertLegacyAllPackageFlags globalFlags configFlags configExFlags installFlags 
       } = globalFlags
 
     ConfigFlags
-      { configDistPref = projectConfigDistDir
+      { configCommonFlags = commonFlags
       , configHcFlavor = projectConfigHcFlavor
       , configHcPath = projectConfigHcPath
       , configHcPkg = projectConfigHcPkg
@@ -636,6 +639,12 @@ convertLegacyAllPackageFlags globalFlags configFlags configExFlags installFlags 
       , -- configUserInstall         = projectConfigUserInstall,
       configPackageDBs = projectConfigPackageDBs
       } = configFlags
+
+    CommonSetupFlags
+      { setupDistPref = projectConfigAbsoluteDistDir
+      } = commonFlags
+
+    projectConfigDistDir = fmap getSymbolicPath projectConfigAbsoluteDistDir
 
     ConfigExFlags
       { configCabalVersion = projectConfigCabalVersion
@@ -715,10 +724,6 @@ convertLegacyPerPackageFlags
         , configSplitObjs = packageConfigSplitObjs
         , configStripExes = packageConfigStripExes
         , configStripLibs = packageConfigStripLibs
-        , configExtraLibDirs = packageConfigExtraLibDirs
-        , configExtraLibDirsStatic = packageConfigExtraLibDirsStatic
-        , configExtraFrameworkDirs = packageConfigExtraFrameworkDirs
-        , configExtraIncludeDirs = packageConfigExtraIncludeDirs
         , configConfigurationsFlags = packageConfigFlagAssignment
         , configTests = packageConfigTests
         , configBenchmarks = packageConfigBenchmarks
@@ -729,6 +734,10 @@ convertLegacyPerPackageFlags
         , configRelocatable = packageConfigRelocatable
         , configCoverageFor = _
         } = configFlags
+      packageConfigExtraLibDirs = fmap getSymbolicPath $ configExtraLibDirs configFlags
+      packageConfigExtraLibDirsStatic = fmap getSymbolicPath $ configExtraLibDirsStatic configFlags
+      packageConfigExtraFrameworkDirs = fmap getSymbolicPath $ configExtraFrameworkDirs configFlags
+      packageConfigExtraIncludeDirs = fmap getSymbolicPath $ configExtraIncludeDirs configFlags
       packageConfigProgramPaths = MapLast (Map.fromList configProgramPaths)
       packageConfigProgramArgs = MapMappend (Map.fromListWith (++) configProgramArgs)
 
@@ -805,8 +814,12 @@ convertLegacyBuildOnlyFlags
         } = globalFlags
 
       ConfigFlags
-        { configVerbosity = projectConfigVerbosity
+        { configCommonFlags = commonFlags
         } = configFlags
+
+      CommonSetupFlags
+        { setupVerbosity = projectConfigVerbosity
+        } = commonFlags
 
       InstallFlags
         { installDryRun = projectConfigDryRun
@@ -897,10 +910,15 @@ convertToLegacySharedConfig
           , globalProgPathExtra = projectConfigProgPathExtra
           }
 
+      commonFlags =
+        mempty
+          { setupVerbosity = projectConfigVerbosity
+          , setupDistPref = fmap makeSymbolicPath $ projectConfigDistDir
+          }
+
       configFlags =
         mempty
-          { configVerbosity = projectConfigVerbosity
-          , configDistPref = projectConfigDistDir
+          { configCommonFlags = commonFlags
           , configPackageDBs = projectConfigPackageDBs
           , configInstallDirs = projectConfigInstallDirs
           }
@@ -979,9 +997,12 @@ convertToLegacyAllPackageConfig
       , legacyBenchmarkFlags = mempty
       }
     where
+      commonFlags =
+        mempty
+
       configFlags =
         ConfigFlags
-          { configArgs = mempty
+          { configCommonFlags = commonFlags
           , configPrograms_ = mempty
           , configProgramPaths = mempty
           , configProgramArgs = mempty
@@ -1006,9 +1027,6 @@ convertToLegacyAllPackageConfig
           , configProgSuffix = mempty
           , configInstallDirs = projectConfigInstallDirs
           , configScratchDir = mempty
-          , configDistPref = mempty
-          , configCabalFilePath = mempty
-          , configVerbosity = mempty
           , configUserInstall = mempty -- projectConfigUserInstall,
           , configPackageDBs = mempty
           , configGHCiLib = mempty
@@ -1056,9 +1074,11 @@ convertToLegacyPerPackageConfig PackageConfig{..} =
     , legacyBenchmarkFlags = benchmarkFlags
     }
   where
+    commonFlags =
+      mempty
     configFlags =
       ConfigFlags
-        { configArgs = mempty
+        { configCommonFlags = commonFlags
         , configPrograms_ = configPrograms_ mempty
         , configProgramPaths = Map.toList (getMapLast packageConfigProgramPaths)
         , configProgramArgs = Map.toList (getMapMappend packageConfigProgramArgs)
@@ -1083,9 +1103,6 @@ convertToLegacyPerPackageConfig PackageConfig{..} =
         , configProgSuffix = packageConfigProgSuffix
         , configInstallDirs = mempty
         , configScratchDir = mempty
-        , configDistPref = mempty
-        , configCabalFilePath = mempty
-        , configVerbosity = mempty
         , configUserInstall = mempty
         , configPackageDBs = mempty
         , configGHCiLib = packageConfigGHCiLib
@@ -1093,13 +1110,13 @@ convertToLegacyPerPackageConfig PackageConfig{..} =
         , configSplitObjs = packageConfigSplitObjs
         , configStripExes = packageConfigStripExes
         , configStripLibs = packageConfigStripLibs
-        , configExtraLibDirs = packageConfigExtraLibDirs
-        , configExtraLibDirsStatic = packageConfigExtraLibDirsStatic
-        , configExtraFrameworkDirs = packageConfigExtraFrameworkDirs
+        , configExtraLibDirs = fmap makeSymbolicPath $ packageConfigExtraLibDirs
+        , configExtraLibDirsStatic = fmap makeSymbolicPath $ packageConfigExtraLibDirsStatic
+        , configExtraFrameworkDirs = fmap makeSymbolicPath $ packageConfigExtraFrameworkDirs
         , configConstraints = mempty
         , configDependencies = mempty
         , configPromisedDependencies = mempty
-        , configExtraIncludeDirs = packageConfigExtraIncludeDirs
+        , configExtraIncludeDirs = fmap makeSymbolicPath $ packageConfigExtraIncludeDirs
         , configIPID = mempty
         , configCID = mempty
         , configDeterministic = mempty
@@ -1126,7 +1143,8 @@ convertToLegacyPerPackageConfig PackageConfig{..} =
 
     haddockFlags =
       HaddockFlags
-        { haddockProgramPaths = mempty
+        { haddockCommonFlags = commonFlags
+        , haddockProgramPaths = mempty
         , haddockProgramArgs = mempty
         , haddockHoogle = packageConfigHaddockHoogle
         , haddockHtml = packageConfigHaddockHtml
@@ -1142,21 +1160,16 @@ convertToLegacyPerPackageConfig PackageConfig{..} =
         , haddockQuickJump = packageConfigHaddockQuickJump
         , haddockHscolourCss = packageConfigHaddockHscolourCss
         , haddockContents = packageConfigHaddockContents
-        , haddockDistPref = mempty
         , haddockKeepTempFiles = mempty
-        , haddockVerbosity = mempty
-        , haddockCabalFilePath = mempty
         , haddockIndex = packageConfigHaddockIndex
         , haddockBaseUrl = packageConfigHaddockBaseUrl
         , haddockLib = packageConfigHaddockLib
         , haddockOutputDir = packageConfigHaddockOutputDir
-        , haddockArgs = mempty
         }
 
     testFlags =
       TestFlags
-        { testDistPref = mempty
-        , testVerbosity = mempty
+        { testCommonFlags = commonFlags
         , testHumanLog = packageConfigTestHumanLog
         , testMachineLog = packageConfigTestMachineLog
         , testShowDetails = packageConfigTestShowDetails
@@ -1168,8 +1181,7 @@ convertToLegacyPerPackageConfig PackageConfig{..} =
 
     benchmarkFlags =
       BenchmarkFlags
-        { benchmarkDistPref = mempty
-        , benchmarkVerbosity = mempty
+        { benchmarkCommonFlags = commonFlags
         , benchmarkOptions = packageConfigBenchmarkOptions
         }
 
@@ -1432,26 +1444,26 @@ legacyPackageConfigFieldDescrs =
             "extra-include-dirs"
             showTokenQ
             parseTokenQ
-            configExtraIncludeDirs
-            (\v conf -> conf{configExtraIncludeDirs = v})
+            (fmap getSymbolicPath . configExtraIncludeDirs)
+            (\v conf -> conf{configExtraIncludeDirs = fmap makeSymbolicPath v})
         , newLineListField
             "extra-lib-dirs"
             showTokenQ
             parseTokenQ
-            configExtraLibDirs
-            (\v conf -> conf{configExtraLibDirs = v})
+            (fmap getSymbolicPath . configExtraLibDirs)
+            (\v conf -> conf{configExtraLibDirs = fmap makeSymbolicPath v})
         , newLineListField
             "extra-lib-dirs-static"
             showTokenQ
             parseTokenQ
-            configExtraLibDirsStatic
-            (\v conf -> conf{configExtraLibDirsStatic = v})
+            (fmap getSymbolicPath . configExtraLibDirsStatic)
+            (\v conf -> conf{configExtraLibDirsStatic = fmap makeSymbolicPath v})
         , newLineListField
             "extra-framework-dirs"
             showTokenQ
             parseTokenQ
-            configExtraFrameworkDirs
-            (\v conf -> conf{configExtraFrameworkDirs = v})
+            (fmap getSymbolicPath . configExtraFrameworkDirs)
+            (\v conf -> conf{configExtraFrameworkDirs = fmap makeSymbolicPath v})
         , newLineListField
             "extra-prog-path"
             showTokenQ

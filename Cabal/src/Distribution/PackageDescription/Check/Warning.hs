@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -47,9 +48,8 @@ import Distribution.Types.TestType (TestType, knownTestTypes)
 import Distribution.Types.UnqualComponentName
 import Distribution.Types.Version (Version)
 import Distribution.Utils.Path
-  ( LicenseFile
-  , PackageDir
-  , SymbolicPath
+  ( FileOrDir (..)
+  , RelativePath
   , getSymbolicPath
   )
 import Language.Haskell.Extension (Extension)
@@ -275,7 +275,7 @@ data CheckExplanation
   | NotPackageName FilePath String
   | NoDesc
   | MultiDesc [String]
-  | UnknownFile String (SymbolicPath PackageDir LicenseFile)
+  | UnknownFile String (RelativePath "Package" (File "License"))
   | MissingSetupFile
   | MissingConfigureScript
   | UnknownDirectory String FilePath
@@ -1113,9 +1113,9 @@ ppExplanation (InvalidOnWin paths) =
     ++ quotes paths
     ++ " invalid on Windows, which "
     ++ "would cause portability problems for this package. Windows file "
-    ++ "names cannot contain any of the characters \":*?<>|\" and there "
-    ++ "a few reserved names including \"aux\", \"nul\", \"con\", "
-    ++ "\"prn\", \"com1-9\", \"lpt1-9\" and \"clock$\"."
+    ++ "names cannot contain any of the characters \":*?<>|\", and there "
+    ++ "are a few reserved names including \"aux\", \"nul\", \"con\", "
+    ++ "\"prn\", \"com{1-9}\", \"lpt{1-9}\" and \"clock$\"."
   where
     quotes [failed] = "path " ++ quote failed ++ " is"
     quotes failed =

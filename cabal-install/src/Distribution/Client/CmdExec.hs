@@ -55,7 +55,7 @@ import Distribution.Client.ProjectPlanning
   )
 import qualified Distribution.Client.ProjectPlanning as Planning
 import Distribution.Client.Setup
-  ( ConfigFlags (configVerbosity)
+  ( ConfigFlags (configCommonFlags)
   , GlobalFlags
   )
 import Distribution.Simple.Command
@@ -84,6 +84,7 @@ import Distribution.Simple.Program.Run
   ( programInvocation
   , runProgramInvocation
   )
+import Distribution.Simple.Setup (CommonSetupFlags (..))
 import Distribution.Simple.Utils
   ( createDirectoryIfMissingVerbose
   , dieWithException
@@ -222,7 +223,7 @@ execAction flags@NixStyleFlags{..} extraArgs globalFlags = do
             then notice verbosity "Running of executable suppressed by flag(s)"
             else runProgramInvocation verbosity invocation
   where
-    verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
+    verbosity = fromFlagOrDefault normal (setupVerbosity $ configCommonFlags configFlags)
     cliConfig =
       commandLineFlagsToProjectConfig
         globalFlags
@@ -252,10 +253,11 @@ withTempEnvFile
   -> ([(String, Maybe String)] -> IO a)
   -> IO a
 withTempEnvFile verbosity baseCtx buildCtx buildStatus action = do
-  createDirectoryIfMissingVerbose verbosity True (distTempDirectory (distDirLayout baseCtx))
+  let tmpDirTemplate = distTempDirectory (distDirLayout baseCtx)
+  createDirectoryIfMissingVerbose verbosity True tmpDirTemplate
   withTempDirectory
     verbosity
-    (distTempDirectory (distDirLayout baseCtx))
+    tmpDirTemplate
     "environment."
     ( \tmpDir -> do
         envOverrides <-

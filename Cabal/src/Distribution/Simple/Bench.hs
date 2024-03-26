@@ -25,18 +25,18 @@ import qualified Distribution.PackageDescription as PD
 import Distribution.Pretty
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Compiler
-import Distribution.Simple.Flag (fromFlag)
 import Distribution.Simple.InstallDirs
 import qualified Distribution.Simple.LocalBuildInfo as LBI
 import Distribution.Simple.Setup.Benchmark
+import Distribution.Simple.Setup.Common
 import Distribution.Simple.UserHooks
 import Distribution.Simple.Utils
+import Distribution.Utils.Path
 
 import Distribution.Types.UnqualComponentName
 
 import Distribution.Simple.Errors
 import System.Directory (doesFileExist)
-import System.FilePath ((<.>), (</>))
 
 -- | Perform the \"@.\/setup bench@\" action.
 bench
@@ -54,13 +54,15 @@ bench args pkg_descr lbi flags = do
       benchmarkNames = args
       pkgBenchmarks = PD.benchmarks pkg_descr
       enabledBenchmarks = map fst (LBI.enabledBenchLBIs pkg_descr lbi)
+      mbWorkDir = flagToMaybe $ benchmarkWorkingDir flags
+      i = interpretSymbolicPath mbWorkDir -- See Note [Symbolic paths] in Distribution.Utils.Path
 
       -- Run the benchmark
       doBench :: PD.Benchmark -> IO ExitCode
       doBench bm =
         case PD.benchmarkInterface bm of
           PD.BenchmarkExeV10 _ _ -> do
-            let cmd = LBI.buildDir lbi </> name </> name <.> exeExtension (LBI.hostPlatform lbi)
+            let cmd = i $ LBI.buildDir lbi </> makeRelativePathEx (name </> name <.> exeExtension (LBI.hostPlatform lbi))
                 options =
                   map (benchOption pkg_descr lbi bm) $
                     benchmarkOptions flags
@@ -73,7 +75,7 @@ bench args pkg_descr lbi flags = do
             notice verbosity $ startMessage name
             -- This will redirect the child process
             -- stdout/stderr to the parent process.
-            exitcode <- rawSystemExitCode verbosity cmd options
+            exitcode <- rawSystemExitCode verbosity mbWorkDir cmd options
             notice verbosity $ finishMessage name exitcode
             return exitcode
           _ -> do

@@ -1,163 +1,159 @@
-GenericPackageDescription
-  {condBenchmarks = [],
-   condExecutables = [],
-   condForeignLibs = [],
-   condLibrary = Just
-                   CondNode
-                     {condTreeComponents = [],
-                      condTreeConstraints = [Dependency
-                                               (PackageName "base")
-                                               (OrLaterVersion (mkVersion [0]))
-                                               mainLibSet,
-                                             Dependency
-                                               (PackageName "containers")
-                                               (OrLaterVersion (mkVersion [0]))
-                                               mainLibSet,
-                                             Dependency
-                                               (PackageName "deepseq")
-                                               (OrLaterVersion (mkVersion [0]))
-                                               mainLibSet,
-                                             Dependency
-                                               (PackageName "transformers")
-                                               (OrLaterVersion (mkVersion [0]))
-                                               mainLibSet,
-                                             Dependency
-                                               (PackageName "filepath")
-                                               (OrLaterVersion (mkVersion [0]))
-                                               mainLibSet,
-                                             Dependency
-                                               (PackageName "directory")
-                                               (OrLaterVersion (mkVersion [0]))
-                                               mainLibSet],
-                      condTreeData = Library
-                                       {exposedModules = [ModuleName "LeadingComma"],
-                                        libBuildInfo = BuildInfo
-                                                         {asmOptions = [],
-                                                          asmSources = [],
-                                                          autogenIncludes = [],
-                                                          autogenModules = [],
-                                                          buildToolDepends = [],
-                                                          buildTools = [],
-                                                          buildable = True,
-                                                          cSources = [],
-                                                          ccOptions = [],
-                                                          cmmOptions = [],
-                                                          cmmSources = [],
-                                                          cppOptions = [],
-                                                          customFieldsBI = [],
-                                                          cxxOptions = [],
-                                                          cxxSources = [],
-                                                          defaultExtensions = [],
-                                                          defaultLanguage = Just Haskell2010,
-                                                          extraBundledLibs = [],
-                                                          extraDynLibFlavours = [],
-                                                          extraFrameworkDirs = [],
-                                                          extraGHCiLibs = [],
-                                                          extraLibDirs = [],
-                                                          extraLibDirsStatic = [],
-                                                          extraLibFlavours = [],
-                                                          extraLibs = [],
-                                                          extraLibsStatic = [],
-                                                          frameworks = [],
-                                                          hsSourceDirs = [],
-                                                          hsc2hsOptions = [],
-                                                          includeDirs = [],
-                                                          includes = [],
-                                                          installIncludes = [],
-                                                          jsSources = [],
-                                                          ldOptions = [],
-                                                          mixins = [],
-                                                          oldExtensions = [],
-                                                          options = PerCompilerFlavor [] [],
-                                                          otherExtensions = [],
-                                                          otherLanguages = [],
-                                                          otherModules = [],
-                                                          pkgconfigDepends = [],
-                                                          profOptions = PerCompilerFlavor [] [],
-                                                          sharedOptions = PerCompilerFlavor [] [],
-                                                          staticOptions = PerCompilerFlavor [] [],
-                                                          targetBuildDepends = [Dependency
-                                                                                  (PackageName
-                                                                                     "base")
-                                                                                  (OrLaterVersion
-                                                                                     (mkVersion
-                                                                                        [0]))
-                                                                                  mainLibSet,
-                                                                                Dependency
-                                                                                  (PackageName
-                                                                                     "containers")
-                                                                                  (OrLaterVersion
-                                                                                     (mkVersion
-                                                                                        [0]))
-                                                                                  mainLibSet,
-                                                                                Dependency
-                                                                                  (PackageName
-                                                                                     "deepseq")
-                                                                                  (OrLaterVersion
-                                                                                     (mkVersion
-                                                                                        [0]))
-                                                                                  mainLibSet,
-                                                                                Dependency
-                                                                                  (PackageName
-                                                                                     "transformers")
-                                                                                  (OrLaterVersion
-                                                                                     (mkVersion
-                                                                                        [0]))
-                                                                                  mainLibSet,
-                                                                                Dependency
-                                                                                  (PackageName
-                                                                                     "filepath")
-                                                                                  (OrLaterVersion
-                                                                                     (mkVersion
-                                                                                        [0]))
-                                                                                  mainLibSet,
-                                                                                Dependency
-                                                                                  (PackageName
-                                                                                     "directory")
-                                                                                  (OrLaterVersion
-                                                                                     (mkVersion
-                                                                                        [0]))
-                                                                                  mainLibSet],
-                                                          virtualModules = []},
-                                        libExposed = True,
-                                        libName = LMainLibName,
-                                        libVisibility = LibraryVisibilityPublic,
-                                        reexportedModules = [],
-                                        signatures = []}},
-   condSubLibraries = [],
-   condTestSuites = [],
-   genPackageFlags = [],
-   gpdScannedVersion = Nothing,
-   packageDescription = PackageDescription
-                          {author = "",
-                           benchmarks = [],
-                           bugReports = "",
-                           buildTypeRaw = Just Simple,
-                           category = "",
-                           copyright = "",
-                           customFieldsPD = [],
-                           dataDir = ".",
-                           dataFiles = [],
-                           description = "",
-                           executables = [],
-                           extraDocFiles = [],
-                           extraSrcFiles = [],
-                           extraTmpFiles = [],
-                           foreignLibs = [],
-                           homepage = "",
-                           library = Nothing,
-                           licenseFiles = [],
-                           licenseRaw = Left NONE,
-                           maintainer = "",
-                           package = PackageIdentifier
-                                       {pkgName = PackageName "leading-comma",
-                                        pkgVersion = mkVersion [0]},
-                           pkgUrl = "",
-                           setupBuildInfo = Nothing,
-                           sourceRepos = [],
-                           specVersion = CabalSpecV2_2,
-                           stability = "",
-                           subLibraries = [],
-                           synopsis = "leading comma, trailing comma, or ordinary",
-                           testSuites = [],
-                           testedWith = []}}
+GenericPackageDescription {
+  packageDescription =
+  PackageDescription {
+    specVersion = CabalSpecV2_2,
+    package = PackageIdentifier {
+      pkgName = PackageName
+        "leading-comma",
+      pkgVersion = mkVersion [0]},
+    licenseRaw = Left NONE,
+    licenseFiles = [],
+    copyright = "",
+    maintainer = "",
+    author = "",
+    stability = "",
+    testedWith = [],
+    homepage = "",
+    pkgUrl = "",
+    bugReports = "",
+    sourceRepos = [],
+    synopsis =
+    "leading comma, trailing comma, or ordinary",
+    description = "",
+    category = "",
+    customFieldsPD = [],
+    buildTypeRaw = Just Simple,
+    setupBuildInfo = Nothing,
+    library = Nothing,
+    subLibraries = [],
+    executables = [],
+    foreignLibs = [],
+    testSuites = [],
+    benchmarks = [],
+    dataFiles = [],
+    dataDir = SymbolicPath ".",
+    extraSrcFiles = [],
+    extraTmpFiles = [],
+    extraDocFiles = []},
+  gpdScannedVersion = Nothing,
+  genPackageFlags = [],
+  condLibrary = Just
+    CondNode {
+      condTreeData = Library {
+        libName = LMainLibName,
+        exposedModules = [
+          ModuleName "LeadingComma"],
+        reexportedModules = [],
+        signatures = [],
+        libExposed = True,
+        libVisibility =
+        LibraryVisibilityPublic,
+        libBuildInfo = BuildInfo {
+          buildable = True,
+          buildTools = [],
+          buildToolDepends = [],
+          cppOptions = [],
+          asmOptions = [],
+          cmmOptions = [],
+          ccOptions = [],
+          cxxOptions = [],
+          ldOptions = [],
+          hsc2hsOptions = [],
+          pkgconfigDepends = [],
+          frameworks = [],
+          extraFrameworkDirs = [],
+          asmSources = [],
+          cmmSources = [],
+          cSources = [],
+          cxxSources = [],
+          jsSources = [],
+          hsSourceDirs = [],
+          otherModules = [],
+          virtualModules = [],
+          autogenModules = [],
+          defaultLanguage = Just
+            Haskell2010,
+          otherLanguages = [],
+          defaultExtensions = [],
+          otherExtensions = [],
+          oldExtensions = [],
+          extraLibs = [],
+          extraLibsStatic = [],
+          extraGHCiLibs = [],
+          extraBundledLibs = [],
+          extraLibFlavours = [],
+          extraDynLibFlavours = [],
+          extraLibDirs = [],
+          extraLibDirsStatic = [],
+          includeDirs = [],
+          includes = [],
+          autogenIncludes = [],
+          installIncludes = [],
+          options = PerCompilerFlavor
+            []
+            [],
+          profOptions = PerCompilerFlavor
+            []
+            [],
+          sharedOptions =
+          PerCompilerFlavor [] [],
+          staticOptions =
+          PerCompilerFlavor [] [],
+          customFieldsBI = [],
+          targetBuildDepends = [
+            Dependency
+              (PackageName "base")
+              (OrLaterVersion (mkVersion [0]))
+              mainLibSet,
+            Dependency
+              (PackageName "containers")
+              (OrLaterVersion (mkVersion [0]))
+              mainLibSet,
+            Dependency
+              (PackageName "deepseq")
+              (OrLaterVersion (mkVersion [0]))
+              mainLibSet,
+            Dependency
+              (PackageName "transformers")
+              (OrLaterVersion (mkVersion [0]))
+              mainLibSet,
+            Dependency
+              (PackageName "filepath")
+              (OrLaterVersion (mkVersion [0]))
+              mainLibSet,
+            Dependency
+              (PackageName "directory")
+              (OrLaterVersion (mkVersion [0]))
+              mainLibSet],
+          mixins = []}},
+      condTreeConstraints = [
+        Dependency
+          (PackageName "base")
+          (OrLaterVersion (mkVersion [0]))
+          mainLibSet,
+        Dependency
+          (PackageName "containers")
+          (OrLaterVersion (mkVersion [0]))
+          mainLibSet,
+        Dependency
+          (PackageName "deepseq")
+          (OrLaterVersion (mkVersion [0]))
+          mainLibSet,
+        Dependency
+          (PackageName "transformers")
+          (OrLaterVersion (mkVersion [0]))
+          mainLibSet,
+        Dependency
+          (PackageName "filepath")
+          (OrLaterVersion (mkVersion [0]))
+          mainLibSet,
+        Dependency
+          (PackageName "directory")
+          (OrLaterVersion (mkVersion [0]))
+          mainLibSet],
+      condTreeComponents = []},
+  condSubLibraries = [],
+  condForeignLibs = [],
+  condExecutables = [],
+  condTestSuites = [],
+  condBenchmarks = []}

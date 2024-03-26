@@ -216,6 +216,7 @@ import Distribution.Types.Flag
 import Distribution.Utils.NubList
   ( fromNubList
   )
+import Distribution.Utils.Path (makeSymbolicPath)
 import Distribution.Verbosity
 import Distribution.Version
   ( mkVersion
@@ -1042,13 +1043,17 @@ printPlan
 
       showConfigureFlags :: ElaboratedConfiguredPackage -> String
       showConfigureFlags elab =
-        let fullConfigureFlags =
+        let commonFlags =
+              setupHsCommonFlags
+                verbosity
+                Nothing -- omit working directory
+                (makeSymbolicPath "$builddir")
+            fullConfigureFlags =
               setupHsConfigureFlags
                 elaboratedPlan
                 (ReadyPackage elab)
                 elaboratedShared
-                verbosity
-                "$builddir"
+                commonFlags
             -- \| Given a default value @x@ for a flag, nub @Flag x@
             -- into @NoFlag@.  This gives us a tidier command line
             -- rendering.

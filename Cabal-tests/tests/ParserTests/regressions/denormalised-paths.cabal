@@ -71,7 +71,7 @@ library
   -- this is forbidden by a parser
   -- hs-source-dirs:   /var/secret/source
 
-  -- this is the only case catched by Cabal-3.0.2.0
+  -- this is the only case caught by Cabal-3.0.2.0
   hs-source-dirs:   ../../assoc/src
 
   -- globs not allowed in field

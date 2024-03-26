@@ -180,7 +180,7 @@ mkLibStanza opts (LibTarget srcDirs lang expMods otherMods exts deps tools) =
     , field
         "hs-source-dirs"
         formatHsSourceDirs
-        (unsafeMakeSymbolicPath <$> srcDirs)
+        (makeSymbolicPath <$> srcDirs)
         ["Directories containing source files."]
         True
         opts
@@ -247,7 +247,7 @@ mkExeStanza opts (ExeTarget exeMain appDirs lang otherMods exts deps tools) =
     , field
         "hs-source-dirs"
         formatHsSourceDirs
-        (unsafeMakeSymbolicPath <$> appDirs)
+        (makeSymbolicPath <$> appDirs)
         ["Directories containing source files."]
         True
         opts
@@ -316,7 +316,7 @@ mkTestStanza opts (TestTarget testMain dirs lang otherMods exts deps tools) =
     , field
         "hs-source-dirs"
         formatHsSourceDirs
-        (unsafeMakeSymbolicPath <$> dirs)
+        (makeSymbolicPath <$> dirs)
         ["Directories containing source files."]
         True
         opts
@@ -473,14 +473,14 @@ mkPkgDescription opts pkgDesc =
       Just fs ->
         field
           "extra-doc-files"
-          formatExtraSourceFiles
+          (formatExtraSourceFiles . map unsafeMakeSymbolicPath)
           (toList fs)
           ["Extra doc files to be distributed with the package, such as a CHANGELOG or a README."]
           True
           opts
   , field
       "extra-source-files"
-      formatExtraSourceFiles
+      (formatExtraSourceFiles . map unsafeMakeSymbolicPath)
       (toList $ _pkgExtraSrcFiles pkgDesc)
       ["Extra source files to be distributed with the package, such as examples, or a tutorial module."]
       True

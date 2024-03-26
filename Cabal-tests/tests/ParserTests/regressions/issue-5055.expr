@@ -31,7 +31,7 @@ GenericPackageDescription {
     testSuites = [],
     benchmarks = [],
     dataFiles = [],
-    dataDir = ".",
+    dataDir = SymbolicPath ".",
     extraSrcFiles = [],
     extraTmpFiles = [],
     extraDocFiles = []},
@@ -48,7 +48,8 @@ GenericPackageDescription {
         condTreeData = Executable {
           exeName = UnqualComponentName
             "flag-test-exe",
-          modulePath = "FirstMain.hs",
+          modulePath = SymbolicPath
+            "FirstMain.hs",
           exeScope = ExecutablePublic,
           buildInfo = BuildInfo {
             buildable = True,
@@ -132,7 +133,7 @@ GenericPackageDescription {
             "",
           testInterface = TestSuiteExeV10
             (mkVersion [1, 0])
-            "SecondMain.hs",
+            (SymbolicPath "SecondMain.hs"),
           testBuildInfo = BuildInfo {
             buildable = True,
             buildTools = [],

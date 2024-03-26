@@ -10,6 +10,7 @@ import Distribution.Simple.Utils
 import Distribution.Types.LocalBuildInfo
 import Distribution.Types.ModuleRenaming
 import Distribution.Types.UnqualComponentName
+import Distribution.Utils.Path (getSymbolicPath)
 import Distribution.Verbosity
 
 import System.Directory

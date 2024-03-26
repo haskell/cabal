@@ -51,7 +51,13 @@ library
   else
     build-depends: unix  >= 2.6.0.0 && < 2.9
 
-  ghc-options: -Wall -fno-ignore-asserts -fwarn-tabs -fwarn-incomplete-uni-patterns -fwarn-incomplete-record-updates
+  ghc-options:
+    -Wall
+    -fno-ignore-asserts
+    -fwarn-tabs
+    -fwarn-incomplete-uni-patterns
+    -fwarn-incomplete-record-updates
+    -fno-warn-unticked-promoted-constructors
 
   if impl(ghc >= 8.0)
     ghc-options: -Wcompat -Wnoncanonical-monad-instances

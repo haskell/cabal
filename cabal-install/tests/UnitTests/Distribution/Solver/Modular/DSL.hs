@@ -449,7 +449,7 @@ exAvSrcPkg ex =
                       , C.maintainer = "maintainer"
                       , C.description = "description"
                       , C.synopsis = "synopsis"
-                      , C.licenseFiles = [C.unsafeMakeSymbolicPath "LICENSE"]
+                      , C.licenseFiles = [C.makeRelativePathEx "LICENSE"]
                       , -- Version 2.0 is required for internal libraries.
                         C.specVersion = C.CabalSpecV2_0
                       }
@@ -524,21 +524,25 @@ exAvSrcPkg ex =
     defaultExe =
       mempty
         { C.buildInfo = defaultTopLevelBuildInfo
-        , C.modulePath = "Main.hs"
+        , C.modulePath = C.makeRelativePathEx "Main.hs"
         }
 
     defaultTest :: C.TestSuite
     defaultTest =
       mempty
         { C.testBuildInfo = defaultTopLevelBuildInfo
-        , C.testInterface = C.TestSuiteExeV10 (C.mkVersion [1, 0]) "Test.hs"
+        , C.testInterface =
+            C.TestSuiteExeV10 (C.mkVersion [1, 0]) $
+              C.makeRelativePathEx "Test.hs"
         }
 
     defaultBenchmark :: C.Benchmark
     defaultBenchmark =
       mempty
         { C.benchmarkBuildInfo = defaultTopLevelBuildInfo
-        , C.benchmarkInterface = C.BenchmarkExeV10 (C.mkVersion [1, 0]) "Benchmark.hs"
+        , C.benchmarkInterface =
+            C.BenchmarkExeV10 (C.mkVersion [1, 0]) $
+              C.makeRelativePathEx "Benchmark.hs"
         }
 
     -- Split the set of dependencies into the set of dependencies of the library,

@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -108,7 +109,7 @@ data PackageDescription = PackageDescription
   -- ^ The version of the Cabal spec that this package description uses.
   , package :: PackageIdentifier
   , licenseRaw :: Either SPDX.License License
-  , licenseFiles :: [SymbolicPath PackageDir LicenseFile]
+  , licenseFiles :: [RelativePath "Package" (File "License")]
   , copyright :: !ShortText
   , maintainer :: !ShortText
   , author :: !ShortText
@@ -141,11 +142,13 @@ data PackageDescription = PackageDescription
   , testSuites :: [TestSuite]
   , benchmarks :: [Benchmark]
   , -- files
-    dataFiles :: [FilePath]
-  , dataDir :: FilePath
-  , extraSrcFiles :: [FilePath]
-  , extraTmpFiles :: [FilePath]
-  , extraDocFiles :: [FilePath]
+    dataFiles :: [RelativePath "Data" (File "Data")]
+  -- ^ data file globs, relative to data directory
+  , dataDir :: SymbolicPath "Package" (Dir "Data")
+  -- ^ data directory (may be absolute, or relative to package)
+  , extraSrcFiles :: [RelativePath "Package" (File "Source")]
+  , extraTmpFiles :: [RelativePath "Package" (File "Tmp")]
+  , extraDocFiles :: [RelativePath "Package" (File "Doc")]
   }
   deriving (Generic, Show, Read, Eq, Ord, Typeable, Data)
 
@@ -228,7 +231,7 @@ emptyPackageDescription =
     , testSuites = []
     , benchmarks = []
     , dataFiles = []
-    , dataDir = "."
+    , dataDir = sameDirectory
     , extraSrcFiles = []
     , extraTmpFiles = []
     , extraDocFiles = []

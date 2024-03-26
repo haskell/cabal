@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RankNTypes #-}
 
 -- | Utilities to implement cabal @v2-sdist@.
 module Distribution.Client.SrcDist
@@ -12,16 +13,19 @@ import Prelude ()
 import Control.Monad.State.Lazy (StateT, evalStateT, gets, modify)
 import Control.Monad.Trans (liftIO)
 import Control.Monad.Writer.Lazy (WriterT, execWriterT, tell)
-import System.FilePath (normalise, takeDirectory, (</>))
 
-import Distribution.Client.Utils (tryFindAddSourcePackageDesc)
+import Distribution.Client.Errors
+import Distribution.Client.Utils (tryReadAddSourcePackageDesc)
 import Distribution.Package (Package (packageId))
 import Distribution.PackageDescription.Configuration (flattenPackageDescription)
-import Distribution.Simple.PackageDescription (readGenericPackageDescription)
 import Distribution.Simple.PreProcess (knownSuffixHandlers)
 import Distribution.Simple.SrcDist (listPackageSourcesWithDie)
 import Distribution.Simple.Utils (dieWithException)
 import Distribution.Types.GenericPackageDescription (GenericPackageDescription)
+import Distribution.Utils.Path
+  ( getSymbolicPath
+  , makeSymbolicPath
+  )
 
 import qualified Codec.Archive.Tar as Tar
 import qualified Codec.Archive.Tar.Entry as Tar
@@ -29,7 +33,8 @@ import qualified Codec.Compression.GZip as GZip
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BSL
 import qualified Data.Set as Set
-import Distribution.Client.Errors
+import System.Directory (canonicalizePath)
+import System.FilePath
 
 -- | List all source files of a given add-source dependency. Exits with error if
 -- something is wrong (e.g. there is no .cabal file in the given directory).
@@ -38,12 +43,17 @@ import Distribution.Client.Errors
 -- TODO: when sandboxes are removed, move to ProjectBuilding.
 allPackageSourceFiles :: Verbosity -> FilePath -> IO [FilePath]
 allPackageSourceFiles verbosity packageDir = do
-  pd <- do
-    let err = "Error reading source files of package."
-    desc <- tryFindAddSourcePackageDesc verbosity packageDir err
-    flattenPackageDescription `fmap` readGenericPackageDescription verbosity desc
-
-  listPackageSourcesWithDie verbosity (\_ _ -> return []) packageDir pd knownSuffixHandlers
+  let err = "Error reading source files of package."
+  gpd <- tryReadAddSourcePackageDesc verbosity packageDir err
+  let pd = flattenPackageDescription gpd
+  srcs <-
+    listPackageSourcesWithDie
+      verbosity
+      (\_ _ -> return [])
+      (Just $ makeSymbolicPath packageDir)
+      pd
+      knownSuffixHandlers
+  return $ map getSymbolicPath srcs
 
 -- | Create a tarball for a package in a directory
 packageDirToSdist
@@ -57,10 +67,10 @@ packageDirToSdist
 packageDirToSdist verbosity gpd dir = do
   -- let thisDie :: Verbosity -> String -> IO a
   --    thisDie v s = die' v $ "sdist of " <> prettyShow (packageId gpd) ++ ": " ++ s
-
-  files' <- listPackageSourcesWithDie verbosity dieWithException dir (flattenPackageDescription gpd) knownSuffixHandlers
+  absDir <- canonicalizePath dir
+  files' <- listPackageSourcesWithDie verbosity dieWithException (Just $ makeSymbolicPath absDir) (flattenPackageDescription gpd) knownSuffixHandlers
   let files :: [FilePath]
-      files = nub $ sort $ map normalise files'
+      files = nub $ sort $ map (normalise . getSymbolicPath) files'
 
   let entriesM :: StateT (Set.Set FilePath) (WriterT [Tar.Entry] IO) ()
       entriesM = do

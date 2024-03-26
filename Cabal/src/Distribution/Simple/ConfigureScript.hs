@@ -32,16 +32,11 @@ import Distribution.Simple.Setup.Config
 import Distribution.Simple.Utils
 import Distribution.System (buildPlatform)
 import Distribution.Utils.NubList
+import Distribution.Utils.Path
 import Distribution.Verbosity
 
 -- Base
-import System.FilePath
-  ( dropDrive
-  , searchPathSeparator
-  , splitDirectories
-  , takeDirectory
-  , (</>)
-  )
+import qualified System.FilePath as FilePath
 #ifdef mingw32_HOST_OS
 import System.FilePath    (normalise, splitDrive)
 #endif
@@ -59,7 +54,8 @@ runConfigureScript
   -> IO ()
 runConfigureScript verbosity flags lbi = do
   env <- getEnvironment
-  let programDb = withPrograms lbi
+  let commonFlags = configCommonFlags flags
+      programDb = withPrograms lbi
   (ccProg, ccFlags) <- configureCCompiler verbosity programDb
   ccProgShort <- getShortPathName ccProg
   -- The C compiler's compilation and linker flags (e.g.
@@ -69,8 +65,7 @@ runConfigureScript verbosity flags lbi = do
   -- We don't try and tell configure which ld to use, as we don't have
   -- a way to pass its flags too
   configureFile <-
-    makeAbsolute $
-      fromMaybe "." (takeDirectory <$> cabalFilePath lbi) </> "configure"
+    makeAbsolute $ packageRoot commonFlags </> "configure"
   -- autoconf is fussy about filenames, and has a set of forbidden
   -- characters that can't appear in the build directory, etc:
   -- https://www.gnu.org/software/autoconf/manual/autoconf.html#File-System-Conventions
@@ -86,7 +81,7 @@ runConfigureScript verbosity flags lbi = do
   -- paths as well.
   let configureFile' = toUnix configureFile
   for_ badAutoconfCharacters $ \(c, cname) ->
-    when (c `elem` dropDrive configureFile') $
+    when (c `elem` FilePath.dropDrive configureFile') $
       warn verbosity $
         concat
           [ "The path to the './configure' script, '"
@@ -155,7 +150,7 @@ runConfigureScript verbosity flags lbi = do
   let cflagsEnv =
         maybe (unwords ccFlags) (++ (" " ++ unwords ccFlags)) $
           lookup "CFLAGS" env
-      spSep = [searchPathSeparator]
+      spSep = [FilePath.searchPathSeparator]
       pathEnv =
         maybe
           (intercalate spSep extraPath)
@@ -177,7 +172,7 @@ runConfigureScript verbosity flags lbi = do
     Just sh ->
       runProgramInvocation verbosity $
         (programInvocation (sh{programOverrideEnv = overEnv}) args')
-          { progInvokeCwd = Just (buildDir lbi)
+          { progInvokeCwd = Just (interpretSymbolicPathLBI lbi $ buildDir lbi)
           }
     Nothing -> dieWithException verbosity NotFoundMsg
   where
@@ -191,10 +186,10 @@ toUnix s = let tmp = normalise s
                (l, rest) = case splitDrive tmp of
                              ([],  x) -> ("/"      , x)
                              (h:_, x) -> ('/':h:"/", x)
-               parts = splitDirectories rest
+               parts = FilePath.splitDirectories rest
            in  l ++ intercalate "/" parts
 #else
-toUnix s = intercalate "/" $ splitDirectories s
+toUnix s = intercalate "/" $ FilePath.splitDirectories s
 #endif
 
 badAutoconfCharacters :: [(Char, String)]

@@ -1,3 +1,5 @@
+{-# LANGUAGE CPP #-}
+
 import Test.Cabal.Prelude
 import Control.Monad.IO.Class
 import Control.Monad
@@ -11,6 +13,10 @@ import Distribution.Simple.Compiler
 import Distribution.Types.TargetInfo
 import Distribution.Types.LocalBuildInfo
 import Distribution.Types.UnqualComponentName
+#if MIN_VERSION_Cabal(3,11,0)
+import Distribution.Utils.Path (makeSymbolicPath)
+#endif
+
 import System.Directory
 
 -- Internal libraries used by a statically linked executable:
@@ -26,7 +32,12 @@ main = setupAndCabalTest $ do
                                             else "--disable-executable-dynamic"
                             , "--enable-shared"]
             dist_dir <- fmap testDistDir getTestEnv
-            lbi <- liftIO $ getPersistBuildConfig dist_dir
+            lbi <- liftIO $
+                     getPersistBuildConfig
+#if MIN_VERSION_Cabal(3,11,0)
+                     Nothing $ makeSymbolicPath
+#endif
+                     dist_dir
             let pkg_descr = localPkgDescr lbi
                 compiler_id = compilerId (compiler lbi)
                 cname = CLibName $ LSubLibName $ mkUnqualComponentName "foo-internal"
