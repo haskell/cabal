@@ -286,9 +286,9 @@ instance Structured MonitorStateGlobRel
 -- direction by just forgetting the extra info.
 reconstructMonitorFilePaths :: MonitorStateFileSet -> Set MonitorFilePath
 reconstructMonitorFilePaths (MonitorStateFileSet singlePaths globPaths) =
-  Set.fromList
-    $ map getSinglePath (Set.toList singlePaths)
-    <> map getGlobPath (Set.toList globPaths)
+  Set.fromList $
+    map getSinglePath (Set.toList singlePaths)
+      <> map getGlobPath (Set.toList globPaths)
   where
     getSinglePath :: MonitorStateFile -> MonitorFilePath
     getSinglePath (MonitorStateFile kindfile kinddir filepath _) =
@@ -576,10 +576,11 @@ probeFileSystem root (MonitorStateFileSet singlePaths globPaths) =
       ]
     -- The glob monitors can require state changes
     globPaths' <-
-      Set.fromList <$> sequence
-        [ probeMonitorStateGlob root globPath
-        | globPath <- Set.toList globPaths
-        ]
+      Set.fromList
+        <$> sequence
+          [ probeMonitorStateGlob root globPath
+          | globPath <- Set.toList globPaths
+          ]
     return (MonitorStateFileSet singlePaths globPaths')
 
 -----------------------------------------------

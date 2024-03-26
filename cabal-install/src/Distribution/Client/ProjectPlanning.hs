@@ -1165,11 +1165,11 @@ getPackageSourceHashes verbosity withRepoCtx solverPlan = do
             return (pkgid, srchash)
           | (pkgid, tarball) <- allTarballFilePkgs
           ]
-  monitorFiles
-    $ Set.fromList
-    [ monitorFile tarball
-    | (_pkgid, tarball) <- allTarballFilePkgs
-    ]
+  monitorFiles $
+    Set.fromList
+      [ monitorFile tarball
+      | (_pkgid, tarball) <- allTarballFilePkgs
+      ]
 
   -- Return the combination
   return $!

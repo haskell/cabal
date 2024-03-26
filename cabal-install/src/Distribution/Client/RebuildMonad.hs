@@ -69,8 +69,8 @@ import Distribution.Simple.Utils (debug)
 
 import Control.Concurrent.MVar (MVar, modifyMVar, newMVar)
 import Control.Monad.Reader as Reader
-import Control.Monad.Writer.CPS as Writer
 import Control.Monad.Trans.Writer.CPS (runWriterT)
+import Control.Monad.Writer.CPS as Writer
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
 import System.Directory
@@ -258,12 +258,12 @@ createDirectoryMonitored createParents dir = do
 monitorDirectoryStatus :: FilePath -> Rebuild Bool
 monitorDirectoryStatus dir = do
   exists <- liftIO $ doesDirectoryExist dir
-  monitorFiles
-    $ Set.singleton
-    ( if exists
-        then monitorDirectory dir
-        else monitorNonExistentDirectory dir
-    )
+  monitorFiles $
+    Set.singleton
+      ( if exists
+          then monitorDirectory dir
+          else monitorNonExistentDirectory dir
+      )
   return exists
 
 -- | Like 'doesFileExist', but in the 'Rebuild' monad.  This does
@@ -272,12 +272,12 @@ doesFileExistMonitored :: FilePath -> Rebuild Bool
 doesFileExistMonitored f = do
   root <- askRoot
   exists <- liftIO $ doesFileExist (root </> f)
-  monitorFiles
-    $ Set.singleton
-    ( if exists
-        then monitorFileExistence f
-        else monitorNonExistentFile f
-    )
+  monitorFiles $
+    Set.singleton
+      ( if exists
+          then monitorFileExistence f
+          else monitorNonExistentFile f
+      )
   return exists
 
 -- | Monitor a single file
@@ -293,12 +293,12 @@ needIfExists :: FilePath -> Rebuild ()
 needIfExists f = do
   root <- askRoot
   exists <- liftIO $ doesFileExist (root </> f)
-  monitorFiles
-    $ Set.singleton
-    ( if exists
-        then monitorFileHashed f
-        else monitorNonExistentFile f
-    )
+  monitorFiles $
+    Set.singleton
+      ( if exists
+          then monitorFileHashed f
+          else monitorNonExistentFile f
+      )
 
 -- | Like 'findFileWithExtension', but in the 'Rebuild' monad.
 findFileWithExtensionMonitored

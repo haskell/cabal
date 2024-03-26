@@ -473,7 +473,8 @@ buildInplaceUnpackedPackage
 
             let listSimple =
                   execRebuild srcdir (needElaboratedConfiguredPackage pkg)
-                listSdist = fmap (Set.fromList . map monitorFileHashed) $
+                listSdist =
+                  fmap (Set.fromList . map monitorFileHashed) $
                     allPackageSourceFiles verbosity srcdir
                 ifNullThen m m' = do
                   xs <- m
@@ -500,12 +501,12 @@ buildInplaceUnpackedPackage
 
             let dep_monitors =
                   Set.fromList $
-                  map monitorFileHashed $
-                    elabInplaceDependencyBuildCacheFiles
-                      distDirLayout
-                      pkgshared
-                      plan
-                      pkg
+                    map monitorFileHashed $
+                      elabInplaceDependencyBuildCacheFiles
+                        distDirLayout
+                        pkgshared
+                        plan
+                        pkg
             updatePackageBuildFileMonitor
               packageFileMonitor
               srcdir
