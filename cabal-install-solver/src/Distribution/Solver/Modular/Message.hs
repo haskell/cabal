@@ -7,13 +7,12 @@ module Distribution.Solver.Modular.Message (
     showMessages
   ) where
 
-import Data.Maybe (isJust)
 import qualified Data.List as L
 import Data.Map (Map)
 import qualified Data.Map as M
 import Data.Set (Set)
 import qualified Data.Set as S
-import Data.Maybe (catMaybes, mapMaybe)
+import Data.Maybe (catMaybes, mapMaybe, isJust)
 import Prelude hiding (pi)
 
 import Distribution.Pretty (prettyShow) -- from Cabal
@@ -234,7 +233,7 @@ blurbOption :: ProgressAction -> QPN -> POption -> String
 blurbOption a q p = blurb a ++ showOption q p
 
 blurbOptions :: ProgressAction -> QPN -> [POption] -> String
-blurbOptions a q ps = blurb a ++ showIsOrVs q (tryVs ps)
+blurbOptions a q ps = blurb a ++ showIsOrVs q ps
 
 showOption :: QPN -> POption -> String
 showOption qpn@(Q _pp pn) (POption i linkedTo) =
@@ -242,53 +241,29 @@ showOption qpn@(Q _pp pn) (POption i linkedTo) =
     Nothing  -> showPI (PI qpn i) -- Consistent with prior to POption
     Just pp' -> showQPN qpn ++ "~>" ++ showPI (PI (Q pp' pn) i)
 
--- | A list of versions, or a list of instances.
-data IsOrVs = Is [POption] | Vs [Ver] deriving Show
-
--- | Try to convert a list of options to a list of versions, or a list of
--- instances if any of the options is linked or installed.  Singleton lists or
--- empty lists are always converted to Is.
--- >>> tryVs [v0, v1]
--- Vs [mkVersion [0],mkVersion [1]]
--- >>> tryVs [v0]
--- Is [POption (I (mkVersion [0]) InRepo) Nothing]
--- >>> tryVs [i0, i1]
--- Is [POption (I (mkVersion [0]) (Inst (UnitId "foo-bar-0-inplace"))) Nothing,POption (I (mkVersion [1]) (Inst (UnitId "foo-bar-1-inplace"))) Nothing]
--- >>> tryVs [i0, v1]
--- Is [POption (I (mkVersion [0]) (Inst (UnitId "foo-bar-0-inplace"))) Nothing,POption (I (mkVersion [1]) InRepo) Nothing]
--- >>> tryVs [v0, i1]
--- Is [POption (I (mkVersion [0]) InRepo) Nothing,POption (I (mkVersion [1]) (Inst (UnitId "foo-bar-1-inplace"))) Nothing]
--- >>> tryVs [i0]
--- Is [POption (I (mkVersion [0]) (Inst (UnitId "foo-bar-0-inplace"))) Nothing]
--- >>> tryVs []
--- Is []
-tryVs :: [POption] -> IsOrVs
-tryVs xs@[] = Is xs
-tryVs xs@[_] = Is xs
-tryVs xs
-    | any (\(POption (instI -> b0) (isJust -> b1)) -> b0 || b1) xs = Is xs
-    | otherwise =
-      let (vs, is) = L.partition ((== InRepo) . snd) [(v, l) | POption i _ <- xs, let I v l = i]
-      in if null is then Vs (fst `map` vs) else Is xs
-
--- | Shows a list of versions in a human-friendly way, abbreviated. Shows a list
--- of instances in full.
--- >>> showIsOrVs foobarQPN $ tryVs [v0, v1]
+-- | Shows a mixed list of instances and versions in a human-friendly way,
+-- abbreviated.
+-- >>> showIsOrVs foobarQPN [v0, v1]
 -- "foo-bar; 0, 1"
--- >>> showIsOrVs foobarQPN $ tryVs [v0]
+-- >>> showIsOrVs foobarQPN [v0]
 -- "foo-bar-0"
--- >>> showIsOrVs foobarQPN $ tryVs [i0, i1]
--- "foo-bar-0/installed-inplace, foo-bar-1/installed-inplace"
--- >>> showIsOrVs foobarQPN $ tryVs [i0, v1]
--- "foo-bar-0/installed-inplace, foo-bar-1"
--- >>> showIsOrVs foobarQPN $ tryVs [v0, i1]
--- "foo-bar-0, foo-bar-1/installed-inplace"
--- >>> showIsOrVs foobarQPN $ tryVs []
+-- >>> showIsOrVs foobarQPN [i0, i1]
+-- "foo-bar; 0/installed-inplace, 1/installed-inplace"
+-- >>> showIsOrVs foobarQPN [i0, v1]
+-- "foo-bar; 0/installed-inplace, 1"
+-- >>> showIsOrVs foobarQPN [v0, i1]
+-- "foo-bar; 0, 1/installed-inplace"
+-- >>> showIsOrVs foobarQPN []
 -- "unexpected empty list of versions"
-showIsOrVs :: QPN -> IsOrVs -> String
-showIsOrVs _ (Is []) = "unexpected empty list of versions"
-showIsOrVs q (Is xs) = L.intercalate ", " (showOption q `map` xs)
-showIsOrVs q (Vs xs) = showQPN q ++ "; " ++ L.intercalate ", " (showVer `map` xs)
+showIsOrVs :: QPN -> [POption] -> String
+showIsOrVs _ [] = "unexpected empty list of versions"
+showIsOrVs q [x] = showOption q x
+showIsOrVs q xs = showQPN q ++ "; " ++ (L.intercalate ", "
+  [if isJust linkedTo
+    then showOption q x
+    else showI i -- Don't show the package, just the version
+  | x@(POption i linkedTo) <- xs
+  ])
 
 showGR :: QGoalReason -> String
 showGR UserGoal            = " (user goal)"
