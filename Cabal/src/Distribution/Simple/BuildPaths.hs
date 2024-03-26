@@ -18,6 +18,7 @@ module Distribution.Simple.BuildPaths
   , srcPref
   , buildInfoPref
   , haddockDirName
+  , haddockLibraryDirName
   , hscolourPref
   , haddockPref
   , autogenPackageModulesDir
@@ -25,7 +26,12 @@ module Distribution.Simple.BuildPaths
   , autogenPathsModuleName
   , autogenPackageInfoModuleName
   , cppHeaderName
-  , haddockName
+  , haddockPath
+  , haddockPackageLibraryName
+  , haddockPackageLibraryName'
+  , haddockPackageLibraryDirName
+  , haddockLibraryName
+  , haddockLibraryPath
   , mkGenericStaticLibName
   , mkLibName
   , mkProfLibName
@@ -82,9 +88,29 @@ buildInfoPref distPref = distPref </> "build-info.json"
 
 -- | This is the name of the directory in which the generated haddocks
 -- should be stored. It does not include the @<dist>/doc/html@ prefix.
+--
+-- It is also used by `haddock-project` when constructing its output directory.
 haddockDirName :: HaddockTarget -> PackageDescription -> FilePath
 haddockDirName ForDevelopment = prettyShow . packageName
 haddockDirName ForHackage = (++ "-docs") . prettyShow . packageId
+
+-- | This is the name of the directory in which the generated haddocks for
+-- a (sub)library should be stored. It does not include the @<dist>/doc/html@
+-- prefix.
+--
+-- It is also used by `haddock-project` when constructing its output directory.
+haddockLibraryDirName
+  :: HaddockTarget
+  -> PackageDescription
+  -> Library
+  -> FilePath
+haddockLibraryDirName ForDevelopment pkg_descr lib =
+  case libName lib of
+    LSubLibName sublib_name ->
+      prettyShow (packageName pkg_descr) ++ "-" ++ prettyShow sublib_name
+    _ -> prettyShow (packageName pkg_descr)
+-- TODO: how Hackage should deal with sublibraries?
+haddockLibraryDirName ForHackage pkg_descr _lib = (++ "-docs") . prettyShow . packageId $ pkg_descr
 
 -- | The directory to which generated haddock documentation should be written.
 haddockPref :: HaddockTarget -> FilePath -> PackageDescription -> FilePath
@@ -125,8 +151,46 @@ autogenPackageInfoModuleName pkg_descr =
     fixchar '-' = '_'
     fixchar c = c
 
-haddockName :: PackageDescription -> FilePath
-haddockName pkg_descr = prettyShow (packageName pkg_descr) <.> "haddock"
+haddockPath :: PackageDescription -> FilePath
+haddockPath pkg_descr = prettyShow (packageName pkg_descr) <.> "haddock"
+
+-- | A name of a (sub)library used by haddock, in the form
+-- `<package>:<library>` if it is a sublibrary, or `<package>` if it is the
+-- main library.
+--
+-- Used by `haddock-project` and `Distribution.Simple.Haddock`.
+haddockPackageLibraryName :: PackageDescription -> Library -> String
+haddockPackageLibraryName pkg_descr lib =
+  haddockPackageLibraryName' (packageName pkg_descr) (libName lib)
+
+haddockPackageLibraryName' :: PackageName -> LibraryName -> String
+haddockPackageLibraryName' pkg_name lib_name =
+  case lib_name of
+    LSubLibName sublib_name ->
+      prettyShow pkg_name ++ ":" ++ prettyShow sublib_name
+    LMainLibName -> prettyShow pkg_name
+
+-- | A name of a (sub)library directory.
+--
+-- This is different from `haddockPackageLibraryName` as it contains `:` which
+-- is not a valid char in file path on Windows.
+haddockPackageLibraryDirName :: PackageDescription -> Library -> String
+haddockPackageLibraryDirName pkg_descr lib =
+  case libName lib of
+    LSubLibName sublib_name ->
+      prettyShow (packageName pkg_descr) ++ "-" ++ prettyShow sublib_name
+    LMainLibName -> prettyShow (packageName pkg_descr)
+
+-- | A name of a (sub)library used by haddock.
+haddockLibraryName :: PackageDescription -> Library -> String
+haddockLibraryName pkg_descr lib =
+  case libName lib of
+    LSubLibName sublib_name -> prettyShow sublib_name
+    LMainLibName -> prettyShow (packageName pkg_descr)
+
+-- | File path of the ".haddock" file.
+haddockLibraryPath :: PackageDescription -> Library -> FilePath
+haddockLibraryPath pkg_descr lib = haddockLibraryName pkg_descr lib <.> "haddock"
 
 -- -----------------------------------------------------------------------------
 -- Source File helper

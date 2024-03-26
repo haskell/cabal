@@ -94,6 +94,9 @@ data HaddockArgs = HaddockArgs
   -- ^ Path to the interface file, relative to argOutputDir, required.
   , argPackageName :: Flag PackageIdentifier
   -- ^ Package name, required.
+  , argLibraryName :: Flag LibraryName
+  -- ^ Optional library name used to construct haddock's `--package-name`
+  -- option for for sublibraries.
   , argHideModules :: (All, [ModuleName.ModuleName])
   -- ^ (Hide modules ?, modules to hide)
   , argIgnoreExports :: Any
@@ -317,6 +320,8 @@ haddock pkg_descr lbi suffixes flags' = do
                   clbi
                   htmlTemplate
                   version
+                  haddockTarget
+                  pkg_descr
                   exe
               let exeArgs' = commonArgs `mappend` exeArgs
               runHaddock
@@ -356,6 +361,8 @@ haddock pkg_descr lbi suffixes flags' = do
                 clbi
                 htmlTemplate
                 version
+                haddockTarget
+                pkg_descr
                 lib
             let libArgs' = commonArgs `mappend` libArgs
             runHaddock verbosity tmpFileOpts comp platform haddockProg True libArgs'
@@ -403,6 +410,8 @@ haddock pkg_descr lbi suffixes flags' = do
                       clbi
                       htmlTemplate
                       version
+                      haddockTarget
+                      pkg_descr
                       flib
                   let libArgs' = commonArgs `mappend` flibArgs
                   runHaddock verbosity tmpFileOpts comp platform haddockProg True libArgs'
@@ -495,13 +504,11 @@ fromHaddockProjectFlags flags =
     }
 
 fromPackageDescription :: HaddockTarget -> PackageDescription -> HaddockArgs
-fromPackageDescription haddockTarget pkg_descr =
+fromPackageDescription _haddockTarget pkg_descr =
   mempty
-    { argInterfaceFile = Flag $ haddockName pkg_descr
+    { argInterfaceFile = Flag $ haddockPath pkg_descr
     , argPackageName = Flag $ packageId $ pkg_descr
-    , argOutputDir =
-        Dir $
-          "doc" </> "html" </> haddockDirName haddockTarget pkg_descr
+    , argOutputDir = Dir $ "doc" </> "html" -- </> haddockDirName haddockTarget pkg_descr
     , argPrologue =
         Flag $
           ShortText.fromShortText $
@@ -589,9 +596,11 @@ fromLibrary
   -> Maybe PathTemplate
   -- ^ template for HTML location
   -> Version
+  -> HaddockTarget
+  -> PackageDescription
   -> Library
   -> IO HaddockArgs
-fromLibrary verbosity tmp lbi clbi htmlTemplate haddockVersion lib = do
+fromLibrary verbosity tmp lbi clbi htmlTemplate haddockVersion haddockTarget pkg_descr lib = do
   inFiles <- map snd `fmap` getLibSourceFiles verbosity lbi lib clbi
   args <-
     mkHaddockArgs
@@ -606,6 +615,11 @@ fromLibrary verbosity tmp lbi clbi htmlTemplate haddockVersion lib = do
   return
     args
       { argHideModules = (mempty, otherModules (libBuildInfo lib))
+      , argLibraryName = toFlag (libName lib)
+      , argInterfaceFile = Flag $ haddockLibraryPath pkg_descr lib
+      , argOutputDir =
+          Dir $ haddockLibraryDirName haddockTarget pkg_descr lib
+      , argTitle = Flag $ haddockPackageLibraryName pkg_descr lib
       }
 
 fromExecutable
@@ -616,9 +630,11 @@ fromExecutable
   -> Maybe PathTemplate
   -- ^ template for HTML location
   -> Version
+  -> HaddockTarget
+  -> PackageDescription
   -> Executable
   -> IO HaddockArgs
-fromExecutable verbosity tmp lbi clbi htmlTemplate haddockVersion exe = do
+fromExecutable verbosity tmp lbi clbi htmlTemplate haddockVersion haddockTarget pkg_descr exe = do
   inFiles <- map snd `fmap` getExeSourceFiles verbosity lbi exe clbi
   args <-
     mkHaddockArgs
@@ -632,7 +648,10 @@ fromExecutable verbosity tmp lbi clbi htmlTemplate haddockVersion exe = do
       (buildInfo exe)
   return
     args
-      { argOutputDir = Dir $ unUnqualComponentName $ exeName exe
+      { argOutputDir =
+          Dir $
+            haddockDirName haddockTarget pkg_descr
+              </> unUnqualComponentName (exeName exe)
       , argTitle = Flag $ unUnqualComponentName $ exeName exe
       }
 
@@ -644,9 +663,11 @@ fromForeignLib
   -> Maybe PathTemplate
   -- ^ template for HTML location
   -> Version
+  -> HaddockTarget
+  -> PackageDescription
   -> ForeignLib
   -> IO HaddockArgs
-fromForeignLib verbosity tmp lbi clbi htmlTemplate haddockVersion flib = do
+fromForeignLib verbosity tmp lbi clbi htmlTemplate haddockVersion haddockTarget pkg_descr flib = do
   inFiles <- map snd `fmap` getFLibSourceFiles verbosity lbi flib clbi
   args <-
     mkHaddockArgs
@@ -660,7 +681,10 @@ fromForeignLib verbosity tmp lbi clbi htmlTemplate haddockVersion flib = do
       (foreignLibBuildInfo flib)
   return
     args
-      { argOutputDir = Dir $ unUnqualComponentName $ foreignLibName flib
+      { argOutputDir =
+          Dir $
+            haddockDirName haddockTarget pkg_descr
+              </> unUnqualComponentName (foreignLibName flib)
       , argTitle = Flag $ unUnqualComponentName $ foreignLibName flib
       }
 
@@ -863,7 +887,11 @@ renderPureArgs version comp platform args =
           maybe
             []
             ( \pkg ->
-                [ "--package-name=" ++ prettyShow (pkgName pkg)
+                [ "--package-name="
+                    ++ case argLibraryName args of
+                      Flag libName ->
+                        haddockPackageLibraryName' (pkgName pkg) libName
+                      _ -> prettyShow (pkgName pkg)
                 , "--package-version=" ++ prettyShow (pkgVersion pkg)
                 ]
             )
@@ -1005,11 +1033,15 @@ haddockPackagePaths
       , Maybe String -- warning about
       -- missing documentation
       )
+-- TODO @coot: Track where ipkgs are coming from and let the
+-- `haddockInterfaces` be set right! They come from
+-- 'InstalledPackageIndex' in 'LocalBuildInfo' ('installedPkgs' field).
 haddockPackagePaths ipkgs mkHtmlPath = do
   interfaces <-
     sequenceA
       [ case interfaceAndHtmlPath ipkg of
-        Nothing -> return (Left (packageId ipkg))
+        Nothing -> do
+          return (Left (packageId ipkg))
         Just (interface, html) -> do
           (html', hypsrc') <-
             case html of

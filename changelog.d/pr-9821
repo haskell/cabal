@@ -1,0 +1,17 @@
+synopsis: `haddock-project` support for sublibraries
+packages: cabal-install
+prs: #9821
+issues:
+significance: significant
+
+description: {
+
+- `haddock-project` handles sublibraries.
+- `haddock-project` subcommand installs documentation in the output directory
+  using `haddock` subcommand.
+- The directory structure of `./dist-newstyle` has changed.  `haddock`
+  subcommand will install `package:sublib` component in a directory
+  `package-sublib` under `l/sublib/doc/html/`.
+
+}
+

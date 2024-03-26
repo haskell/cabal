@@ -11,7 +11,6 @@ import qualified Distribution.Client.CmdHaddock as CmdHaddock
 
 import Distribution.Client.DistDirLayout
   ( CabalDirLayout (..)
-  , DistDirLayout (..)
   , StoreDirLayout (..)
   )
 import Distribution.Client.InstallPlan (foldPlanPackage)
@@ -36,9 +35,6 @@ import Distribution.Client.ProjectPlanning
   , ElaboratedSharedConfig (..)
   , TargetAction (..)
   )
-import Distribution.Client.ProjectPlanning.Types
-  ( elabDistDirParams
-  )
 import Distribution.Client.ScriptUtils
   ( AcceptNoTargets (..)
   , TargetContext (..)
@@ -51,6 +47,13 @@ import Distribution.Client.Setup
   )
 import Distribution.Client.TargetProblem (TargetProblem (..))
 
+import Distribution.Simple.BuildPaths
+  ( haddockDirName
+  , haddockLibraryDirName
+  , haddockLibraryPath
+  , haddockPackageLibraryDirName
+  , haddockPath
+  )
 import Distribution.Simple.Command
   ( CommandUI (..)
   )
@@ -74,6 +77,7 @@ import Distribution.Simple.Program.Db
 import Distribution.Simple.Setup
   ( HaddockFlags (..)
   , HaddockProjectFlags (..)
+  , HaddockTarget (..)
   , Visibility (..)
   , defaultHaddockFlags
   , haddockProjectCommand
@@ -82,9 +86,11 @@ import Distribution.Simple.Utils
   ( copyDirectoryRecursive
   , createDirectoryIfMissingVerbose
   , dieWithException
+  , info
   , warn
   )
 import Distribution.Types.InstalledPackageInfo (InstalledPackageInfo (..))
+import Distribution.Types.PackageDescription (PackageDescription (subLibraries))
 import Distribution.Types.PackageId (pkgName)
 import Distribution.Types.PackageName (unPackageName)
 import Distribution.Types.UnitId (unUnitId)
@@ -96,7 +102,7 @@ import Distribution.Verbosity as Verbosity
 
 import Distribution.Client.Errors
 import System.Directory (doesDirectoryExist, doesFileExist)
-import System.FilePath (normalise, takeDirectory, (<.>), (</>))
+import System.FilePath (normalise, takeDirectory, (</>))
 
 haddockProjectAction :: HaddockProjectFlags -> [String] -> GlobalFlags -> IO ()
 haddockProjectAction flags _extraArgs globalFlags = do
@@ -143,7 +149,7 @@ haddockProjectAction flags _extraArgs globalFlags = do
           , haddockKeepTempFiles = haddockProjectKeepTempFiles flags
           , haddockVerbosity = haddockProjectVerbosity flags
           , haddockLib = haddockProjectLib flags
-          , haddockOutputDir = haddockProjectOutputDir flags
+          , haddockOutputDir = haddockProjectDir flags
           }
       nixFlags =
         (commandDefaultFlags CmdHaddock.haddockCommand)
@@ -171,8 +177,7 @@ haddockProjectAction flags _extraArgs globalFlags = do
         ProjectContext -> return ctx
         GlobalContext -> return ctx
         ScriptContext path exemeta -> updateContextAndWriteProjectFile ctx path exemeta
-      let distLayout = distDirLayout baseCtx
-          cabalLayout = cabalDirLayout baseCtx
+      let cabalLayout = cabalDirLayout baseCtx
       buildCtx <-
         runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
           -- Interpret the targets on the command line as build targets
@@ -253,102 +258,80 @@ haddockProjectAction flags _extraArgs globalFlags = do
             | not localStyle ->
                 return []
           Left package -> do
-            -- TODO: this might not work for public packages with sublibraries.
-            -- Issue #9026.
             let packageName = unPackageName (pkgName $ sourcePackageId package)
                 destDir = outputDir </> packageName
             fmap catMaybes $ for (haddockInterfaces package) $ \interfacePath -> do
               let docDir = takeDirectory interfacePath
               a <- doesFileExist interfacePath
               case a of
-                True ->
+                True -> do
                   copyDirectoryRecursive verbosity docDir destDir
-                    >> return
-                      ( Just
-                          ( packageName
-                          , interfacePath
-                          , Hidden
-                          )
-                      )
+                  return $ Just $ Right (packageName, interfacePath, Hidden)
                 False -> return Nothing
           Right package ->
             case elabLocalToProject package of
               True -> do
-                let distDirParams = elabDistDirParams sharedConfig' package
-                    unitId = unUnitId (elabUnitId package)
-                    buildDir = distBuildDirectory distLayout distDirParams
-                    packageName = unPackageName (pkgName $ elabPkgSourceId package)
-                let docDir =
-                      buildDir
-                        </> "doc"
-                        </> "html"
-                        </> packageName
-                    destDir = outputDir </> unitId
-                    interfacePath =
-                      destDir
-                        </> packageName
-                        <.> "haddock"
-                a <- doesDirectoryExist docDir
-                case a of
-                  True ->
-                    copyDirectoryRecursive verbosity docDir destDir
-                      >> return
-                        [
-                          ( unitId
-                          , interfacePath
-                          , Visible
-                          )
-                        ]
-                  False -> do
-                    warn
-                      verbosity
-                      ( "haddocks of "
-                          ++ show unitId
-                          ++ " not found in the store"
-                      )
+                let pkg_descr = elabPkgDescription package
+
+                    packageName = pkgName $ elabPkgSourceId package
+                    packageDir = haddockDirName ForDevelopment pkg_descr
+                    interfacePath = outputDir </> packageDir </> haddockPath pkg_descr
+
+                a <- doesFileExist interfacePath
+                if a
+                  then
+                    return $
+                      Right (unPackageName packageName, interfacePath, Visible)
+                        : [ Right (sublibDirName, sublibInterfacePath, Visible)
+                          | lib <- subLibraries pkg_descr
+                          , let sublibDirName = haddockPackageLibraryDirName pkg_descr lib
+                                sublibDirPath = haddockLibraryDirName ForDevelopment pkg_descr lib
+                                sublibInterfacePath =
+                                  outputDir
+                                    </> sublibDirPath
+                                    </> haddockLibraryPath pkg_descr lib
+                          ]
+                  else do
+                    -- if the directory does not exist, it means the package has
+                    -- no haddocks, e.g. doesn't have a library component.
                     return []
               False
                 | not localStyle ->
                     return []
               False -> do
-                let packageName = unPackageName (pkgName $ elabPkgSourceId package)
+                let pkg_descr = elabPkgDescription package
                     unitId = unUnitId (elabUnitId package)
                     packageDir =
                       storePackageDirectory
                         (cabalStoreDirLayout cabalLayout)
                         (pkgConfigCompiler sharedConfig')
                         (elabUnitId package)
+                    -- TODO: use `InstallDirTemplates`
                     docDir = packageDir </> "share" </> "doc" </> "html"
-                    destDir = outputDir </> packageName
-                    interfacePath =
-                      destDir
-                        </> packageName
-                        <.> "haddock"
+                    destDir = outputDir </> haddockDirName ForDevelopment pkg_descr
+                    interfacePath = destDir </> haddockPath pkg_descr
                 a <- doesDirectoryExist docDir
                 case a of
-                  True ->
+                  True -> do
                     copyDirectoryRecursive verbosity docDir destDir
-                      -- non local packages will be hidden in haddock's
-                      -- generated contents page
-                      >> return
-                        [
-                          ( unitId
-                          , interfacePath
-                          , Hidden
-                          )
-                        ]
+                    -- non local packages will be hidden in haddock's
+                    -- generated contents page
+                    return [Right (unitId, interfacePath, Hidden)]
                   False -> do
-                    warn
-                      verbosity
-                      ( "haddocks of "
-                          ++ show unitId
-                          ++ " not found in the store"
-                      )
-                    return []
+                    return [Left unitId]
 
       --
       -- generate index, content, etc.
       --
+
+      let (missingHaddocks, packageInfos') = partitionEithers packageInfos
+      when (not (null missingHaddocks)) $ do
+        warn verbosity "missing haddocks for some packages from the store"
+        -- Show the package list if `-v1` is passed; it's usually a long list.
+        -- One needs to add `package` stantza in `cabal.project` file for
+        -- `cabal` to include a version which has haddocks (or set
+        -- `documentation: True` in the global config).
+        info verbosity (intercalate "\n" missingHaddocks)
 
       let flags' =
             flags
@@ -356,11 +339,11 @@ haddockProjectAction flags _extraArgs globalFlags = do
               , haddockProjectInterfaces =
                   Flag
                     [ ( interfacePath
-                      , Just name
-                      , Just name
+                      , Just url
+                      , Just url
                       , visibility
                       )
-                    | (name, interfacePath, visibility) <- packageInfos
+                    | (url, interfacePath, visibility) <- packageInfos'
                     ]
               }
       createHaddockIndex

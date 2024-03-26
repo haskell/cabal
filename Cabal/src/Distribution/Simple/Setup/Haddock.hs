@@ -414,7 +414,6 @@ data HaddockProjectFlags = HaddockProjectFlags
   , haddockProjectVerbosity :: Flag Verbosity
   , -- haddockBaseUrl is not supported, a fixed value is provided
     haddockProjectLib :: Flag String
-  , haddockProjectOutputDir :: Flag FilePath
   }
   deriving (Show, Generic, Typeable)
 
@@ -438,7 +437,6 @@ defaultHaddockProjectFlags =
     , haddockProjectKeepTempFiles = Flag False
     , haddockProjectVerbosity = Flag normal
     , haddockProjectLib = NoFlag
-    , haddockProjectOutputDir = NoFlag
     , haddockProjectInterfaces = NoFlag
     }
 
@@ -585,13 +583,6 @@ haddockProjectOptions _showOrParseArgs =
       "location of Haddocks static / auxiliary files"
       haddockProjectLib
       (\v flags -> flags{haddockProjectLib = v})
-      (reqArgFlag "DIR")
-  , option
-      ""
-      ["output-dir"]
-      "Generate haddock documentation into this directory. This flag is provided as a technology preview and is subject to change in the next releases."
-      haddockProjectOutputDir
-      (\v flags -> flags{haddockProjectOutputDir = v})
       (reqArgFlag "DIR")
   ]
 
