@@ -14,6 +14,7 @@ module Distribution.Utils.Path
   ( -- * Symbolic path endpoints
     FileOrDir (..)
   , AllowAbsolute (..)
+
     -- ** Abstract directory locations
   , CWD
   , Pkg
@@ -36,7 +37,7 @@ module Distribution.Utils.Path
   , SymbolicPath
   , SymbolicPathX -- NB: constructor not exposed, to retain type safety.
 
-  -- ** Symbolic path API
+    -- ** Symbolic path API
   , getSymbolicPath
   , sameDirectory
   , makeRelativePathEx
@@ -48,7 +49,7 @@ module Distribution.Utils.Path
   , symbolicPathRelative_maybe
   , interpretSymbolicPath
 
-  -- ** General filepath API
+    -- ** General filepath API
   , (</>)
   , (<.>)
   , takeDirectorySymbolicPath
@@ -56,14 +57,14 @@ module Distribution.Utils.Path
   , replaceExtensionSymbolicPath
   , normaliseSymbolicPath
 
-  -- ** Working directory handling
+    -- ** Working directory handling
   , IsCWD
   , interpretSymbolicPathCWD
   , changingWorkingDir
   , absoluteWorkingDir
   , tryMakeRelativeToWorkingDir
 
-  -- ** Module names
+    -- ** Module names
   , moduleNameSymbolicPath
   ) where
 
@@ -86,14 +87,18 @@ import qualified System.Directory as Directory
 import qualified System.FilePath as FilePath
 
 import Data.Kind
-  ( Type, Constraint )
+  ( Constraint
+  , Type
+  )
 import Data.Typeable
-  ( (:~:)(Refl) )
+  ( (:~:) (Refl)
+  )
 import GHC.Stack
   ( HasCallStack
   )
 import Unsafe.Coerce
-  ( unsafeCoerce )
+  ( unsafeCoerce
+  )
 
 -------------------------------------------------------------------------------
 
@@ -352,7 +357,7 @@ interpretSymbolicPath mbWorkDir (SymbolicPath p) =
 -- accidentally discarding a working directory argument.
 --
 -- See Note [Working directory proof tokens] in Distribution.Utils.Path.
-type family IsCWD (dir :: Type) :: Constraint where {}
+type family IsCWD (dir :: Type) :: Constraint where
 
 -- | Interpret a symbolic path, requiring that the directory it is relative to
 -- is the same as the working directory (via a proof token of type @'IsCWD' from@;
@@ -384,8 +389,8 @@ interpretSymbolicPathCWD (SymbolicPath p) = p
 -- See Note [Working directory proof tokens] in Distribution.Utils.Path.
 changingWorkingDir :: forall to r. Maybe (SymbolicPath CWD (Dir to)) -> (IsCWD to => r) -> r
 changingWorkingDir _ f
-  | Refl <- ( unsafeCoerce Refl :: IsCWD to :~: ( () :: Constraint ) )
-  = f
+  | Refl <- (unsafeCoerce Refl :: IsCWD to :~: (() :: Constraint)) =
+      f
 
 -- | Change what a symbolic path is pointing to.
 coerceSymbolicPath :: SymbolicPathX allowAbsolute from to1 -> SymbolicPathX allowAbsolute from to2

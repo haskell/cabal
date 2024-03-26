@@ -110,7 +110,7 @@ programInvocation prog args =
 
 programInvocationCwd
   :: forall to
-  .  Maybe (SymbolicPath CWD (Dir to))
+   . Maybe (SymbolicPath CWD (Dir to))
   -> ConfiguredProgram
   -> (IsCWD to => [String])
   -> ProgramInvocation

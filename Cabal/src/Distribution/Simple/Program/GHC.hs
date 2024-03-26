@@ -636,9 +636,11 @@ ghcInvocation verbosity ghcProg comp platform mbWorkDir opts = do
   -- the standard @extra-prog-path@, namely the folders of the executables in
   -- the components, see @componentGhcOptions@.
   let envOverrides = programOverrideEnv ghcProg
-  extraPath <- getExtraPathEnv verbosity envOverrides $
-               map getSymbolicPath $ fromNubListR $
-               ghcOptExtraPath opts
+  extraPath <-
+    getExtraPathEnv verbosity envOverrides $
+      map getSymbolicPath $
+        fromNubListR $
+          ghcOptExtraPath opts
   let ghcProg' = ghcProg{programOverrideEnv = envOverrides ++ extraPath}
   return $
     programInvocationCwd mbWorkDir ghcProg' $

@@ -44,8 +44,10 @@ withResponseFile verbosity tmpFileOpts mbWorkDir responseDir fileNameTemplate en
     withTempFileEx tmpFileOpts mbWorkDir responseDir fileNameTemplate $ \responsePath hf -> do
       let responseFileName = getSymbolicPath responsePath
       traverse_ (hSetEncoding hf) encoding
-      let responseContents = unlines $ map escapeResponseFileArg
-                                     $ arguments
+      let responseContents =
+            unlines $
+              map escapeResponseFileArg $
+                arguments
       hPutStr hf responseContents
       hClose hf
       debug verbosity $ responseFileName ++ " contents: <<<"

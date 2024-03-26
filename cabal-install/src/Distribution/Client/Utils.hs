@@ -70,7 +70,9 @@ import Distribution.Compat.Time (getModTime)
 import Distribution.Simple.Setup (Flag (..))
 import Distribution.Simple.Utils (dieWithException, findPackageDesc, noticeNoWrap)
 import Distribution.Utils.Path
-  ( FileOrDir (..), CWD, Pkg
+  ( CWD
+  , FileOrDir (..)
+  , Pkg
   , RelativePath
   , SymbolicPath
   , makeSymbolicPath

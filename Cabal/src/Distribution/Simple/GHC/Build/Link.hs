@@ -130,8 +130,8 @@ linkOrLoadComponent ghcProg pkg_descr extraSources (buildTargetDir, targetDir) (
         , ghcOptLinkLibPath =
             toNubListR $
               if withFullyStaticExe lbi
-              then cleanedExtraLibDirsStatic
-              else cleanedExtraLibDirs
+                then cleanedExtraLibDirsStatic
+                else cleanedExtraLibDirs
         , ghcOptLinkFrameworks = toNubListR $ map getSymbolicPath $ PD.frameworks bi
         , ghcOptLinkFrameworkDirs = toNubListR $ PD.extraFrameworkDirs bi
         , ghcOptInputFiles =

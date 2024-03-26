@@ -775,7 +775,7 @@ runHaddock verbosity mbWorkDir tmpFileOpts comp platform haddockProg requireTarg
               (error "unable to determine haddock version")
               (programVersion haddockProg)
       renderArgs verbosity mbWorkDir tmpFileOpts haddockVersion comp platform args $
-        \ flags result -> do
+        \flags result -> do
           runProgramCwd verbosity mbWorkDir haddockProg flags
           notice verbosity $ "Documentation created: " ++ result
 
