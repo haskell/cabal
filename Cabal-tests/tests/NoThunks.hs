@@ -16,7 +16,6 @@ import Control.Applicative                    ((<|>))
 import Data.Foldable                          (toList)
 import Data.Proxy                             (Proxy (..))
 import Data.Typeable                          (Typeable, typeRep)
-import GHC.TypeLits                           ( KnownSymbol )
 import Distribution.CabalSpecVersion          (CabalSpecVersion)
 import Distribution.Compat.NonEmptySet        (NonEmptySet)
 import Distribution.Compiler                  (CompilerFlavor, PerCompilerFlavor)
@@ -122,7 +121,7 @@ instance NoThunks ShortText where
 
 instance NoThunks a => NoThunks (PerCompilerFlavor a)
 
-instance (Typeable allowAbs, KnownSymbol from, Typeable to)
+instance (Typeable allowAbs, Typeable from, Typeable to)
        => NoThunks (SymbolicPathX allowAbs from to)
 
 deriving via (OnlyCheckWhnf LicenseId) instance NoThunks LicenseId
