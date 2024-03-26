@@ -43,13 +43,9 @@ jobs:
       #     ghcup set ghc recommended
       - name: Update Hackage index
         run: cabal v2-update
-      - name: Install alex
-        run: cabal v2-install alex --constraint='alex >=3.2.7.3'
-      - run: alex --version
       - uses: actions/checkout@v4
       - name: Regenerate files
         run: |
-          make -B lexer
           make -B spdx
           make -B templates
       - name: Check that diff is clean

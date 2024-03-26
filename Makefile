@@ -1,5 +1,6 @@
-.PHONY : all lexer sdpx lib exe doctest
-.PHONY : phony
+.PHONY: phony
+  # Adding dependency "phony" is like declaring a target as ".PHONY":
+  # See https://www.gnu.org/software/make/manual/html_node/Force-Targets.html
 
 CABALBUILD := cabal build
 CABALRUN   := cabal run
@@ -13,25 +14,32 @@ DOCTEST := cabal repl --with-ghc=doctest --repl-options="-w" --ghc-options="-Wwa
 
 # default rules
 
+.PHONY: all
 all : exe lib
 
-lib : $(LEXER_HS)
+.PHONY: lib
+lib :
 	$(CABALBUILD) Cabal:libs
 
-exe : $(LEXER_HS)
+.PHONY: exe
+exe :
 	$(CABALBUILD) cabal-install:exes
 
+.PHONY: init
 init: ## Set up git hooks and ignored revisions
 	@git config core.hooksPath .githooks
 	## TODO
 
+.PHONY: style
 style: ## Run the code styler
 	@fourmolu -q -i Cabal Cabal-syntax cabal-install
 
+.PHONY: style-modified
 style-modified: ## Run the code styler on modified files
 	@git ls-files --modified Cabal Cabal-syntax cabal-install \
 		| grep '.hs$$' | xargs -P $(PROCS) -I {} fourmolu -q -i {}
 
+.PHONY: style-commit
 style-commit: ## Run the code styler on the previous commit
 	@git diff --name-only HEAD $(COMMIT) Cabal Cabal-syntax cabal-install \
 		| grep '.hs$$' | xargs -P $(PROCS) -I {} fourmolu -q -i {}
@@ -41,6 +49,7 @@ style-commit: ## Run the code styler on the previous commit
 SPDX_LICENSE_HS:=Cabal-syntax/src/Distribution/SPDX/LicenseId.hs
 SPDX_EXCEPTION_HS:=Cabal-syntax/src/Distribution/SPDX/LicenseExceptionId.hs
 
+.PHONY: spdx
 spdx : $(SPDX_LICENSE_HS) $(SPDX_EXCEPTION_HS)
 
 SPDX_LICENSE_VERSIONS:=3.0 3.2 3.6 3.9 3.10 3.16 3.23
@@ -56,7 +65,8 @@ $(SPDX_EXCEPTION_HS) : templates/SPDX.LicenseExceptionId.template.hs cabal-dev-s
 TEMPLATE_MACROS:=Cabal/src/Distribution/Simple/Build/Macros/Z.hs
 TEMPLATE_PATHS:=Cabal/src/Distribution/Simple/Build/PathsModule/Z.hs
 
-templates : phony $(TEMPLATE_MACROS) $(TEMPLATE_PATHS)
+.PHONY: templates
+templates : $(TEMPLATE_MACROS) $(TEMPLATE_PATHS)
 
 $(TEMPLATE_MACROS) : templates/cabal_macros.template.h cabal-dev-scripts/src/GenCabalMacros.hs
 	cabal run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-cabal-macros -- $< $@
@@ -75,18 +85,21 @@ doc/buildinfo-fields-reference.rst : \
 	cabal run buildinfo-reference-generator buildinfo-reference-generator/template.zinza | tee $@
 	git diff --exit-code $@
 
-# analyse-imports
-analyse-imports : phony
+.PHONY: analyse-imports
+analyse-imports :
 	find Cabal-syntax/src Cabal/src cabal-install/src -type f -name '*.hs' | xargs cabal run --builddir=dist-newstyle-meta --project-file=cabal.project.meta analyse-imports --
 
 # ghcid
 
+.PHONY: ghcid-lib
 ghcid-lib :
 	ghcid -c 'cabal repl Cabal'
 
+.PHONY: ghcid-cli
 ghcid-cli :
 	ghcid -c 'cabal repl cabal-install'
 
+.PHONY: doctest
 doctest :
 	$(DOCTEST) Cabal-syntax
 	$(DOCTEST) Cabal-described
@@ -95,32 +108,41 @@ doctest :
 	$(DOCTEST) cabal-install
 
 # This is not run as part of validate.sh (we need hackage-security, which is tricky to get).
+.PHONY: doctest-cli
 doctest-cli :
 	doctest -D__DOCTEST__ --fast cabal-install/src cabal-install-solver/src cabal-install-solver/src-assertion
 
+.PHONY: doctest-install
 doctest-install:
 	cabal install doctest --overwrite-policy=always --ignore-project
 
 # tests
 
+.PHONY: check-tests
 check-tests :
 	$(CABALRUN) check-tests -- --cwd Cabal-tests ${TEST}
 
+.PHONY: parser-tests
 parser-tests :
 	$(CABALRUN) parser-tests -- --cwd Cabal-tests ${TEST}
 
+.PHONY: parser-tests-accept
 parser-tests-accept :
 	$(CABALRUN) parser-tests -- --cwd Cabal-tests --accept ${TEST}
 
+.PHONY: custom-setup-tests
 custom-setup-tests :
 	$(CABALRUN) custom-setup-tests --
 
+.PHONY: hackage-parsec-tests
 hackage-parsec-tests :
 	$(CABALRUN) hackage-tests -- parsec +RTS -s -qg -I0 -A64M -N${THREADS} -RTS ${TEST}
 
+.PHONY: hackage-rountrip-tests
 hackage-roundtrip-tests :
 	$(CABALRUN) hackage-tests -- roundtrip +RTS -s -qg -I0 -A64M -N${THREADS} -RTS ${TEST}
 
+.PHONY: cabal-install-test
 cabal-install-test:
 	$(CABALBUILD) -j3 cabal-tests cabal
 	rm -rf .ghc.environment.*
@@ -128,6 +150,7 @@ cabal-install-test:
 
 # hackage-benchmarks (solver)
 
+.PHONY: hackage-benchmarks-run
 hackage-benchmarks-run:
 	$(CABALBUILD) -j3 hackage-benchmark cabal
 	rm -rf .ghc.environment.*
@@ -135,6 +158,7 @@ hackage-benchmarks-run:
 
 
 # This doesn't run build, as you first need to test with cabal-install-test :)
+.PHONY: cabal-install-test-accept
 cabal-install-test-accept:
 	rm -rf .ghc.environment.*
 	cd cabal-testsuite && `cabal list-bin cabal-tests` --with-cabal=`cabal list-bin cabal` --hide-successes -j3 --accept ${TEST}
@@ -145,12 +169,14 @@ cabal-install-test-accept:
 #
 #   make validate-via-docker-all -j4 -O
 #
+.PHONY: validate-via-docker-all
 validate-via-docker-all : validate-via-docker-8.2.2
 validate-via-docker-all : validate-via-docker-8.4.4
 validate-via-docker-all : validate-via-docker-8.6.5
 validate-via-docker-all : validate-via-docker-8.8.4
 validate-via-docker-all : validate-via-docker-8.10.4
 
+.PHONY: validate-dockerfiles
 validate-dockerfiles : .docker/validate-8.10.4.dockerfile
 validate-dockerfiles : .docker/validate-8.8.4.dockerfile
 validate-dockerfiles : .docker/validate-8.6.5.dockerfile
@@ -164,21 +190,27 @@ validate-dockerfiles : .docker/validate-8.2.2.dockerfile
 # and we have a test relying on this limit being sufficiently small
 DOCKERARGS:=--ulimit nofile=1024:1024
 
+.PHONY: validate-via-docker-8.2.2
 validate-via-docker-8.2.2:
 	docker build $(DOCKERARGS) -t cabal-validate:8.2.2 -f .docker/validate-8.2.2.dockerfile .
 
+.PHONY: validate-via-docker-8.4.4
 validate-via-docker-8.4.4:
 	docker build $(DOCKERARGS) -t cabal-validate:8.4.4 -f .docker/validate-8.4.4.dockerfile .
 
+.PHONY: validate-via-docker-8.6.5
 validate-via-docker-8.6.5:
 	docker build $(DOCKERARGS) -t cabal-validate:8.6.5 -f .docker/validate-8.6.5.dockerfile .
 
+.PHONY: validate-via-docker-8.8.4
 validate-via-docker-8.8.4:
 	docker build $(DOCKERARGS) -t cabal-validate:8.8.4 -f .docker/validate-8.8.4.dockerfile .
 
+.PHONY: validate-via-docker-8.10.4
 validate-via-docker-8.10.4:
 	docker build $(DOCKERARGS) -t cabal-validate:8.10.4 -f .docker/validate-8.10.4.dockerfile .
 
+.PHONY: validate-via-docker-old
 validate-via-docker-old:
 	docker build $(DOCKERARGS) -t cabal-validate:older -f .docker/validate-old.dockerfile .
 
@@ -199,6 +231,7 @@ bootstrap-json-%: phony
 
 BOOTSTRAP_GHC_VERSIONS := 9.0.2 9.2.8 9.4.8 9.6.4 9.8.2
 
+.PHONY: bootstrap-jsons
 bootstrap-jsons: $(BOOTSTRAP_GHC_VERSIONS:%=bootstrap-json-%)
 
 # documentation
