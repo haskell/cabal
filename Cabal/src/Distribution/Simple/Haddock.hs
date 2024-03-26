@@ -1202,6 +1202,11 @@ hscolour' onNoHsColour haddockTarget pkg_descr lbi suffixes flags =
 
     stylesheet = flagToMaybe (hscolourCSS flags)
 
+    runHsColour
+      :: ConfiguredProgram
+      -> SymbolicPath Pkg to
+      -> [(ModuleName.ModuleName, SymbolicPath Pkg to1)]
+      -> IO ()
     runHsColour prog outputDir moduleFiles = do
       createDirectoryIfMissingVerbose verbosity True (i outputDir)
 
@@ -1212,7 +1217,7 @@ hscolour' onNoHsColour haddockTarget pkg_descr lbi suffixes flags =
                 verbosity
                 mbWorkDir
                 prog
-                ["-print-css", "-o" ++ interpretSymbolicPathCWD outputDir </> "hscolour.css"]
+                ["-print-css", "-o" ++ u outputDir </> "hscolour.css"]
           | otherwise -> return ()
         Just s -> copyFileVerbose verbosity s (i outputDir </> "hscolour.css")
 

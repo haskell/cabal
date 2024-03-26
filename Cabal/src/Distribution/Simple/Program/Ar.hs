@@ -113,7 +113,8 @@ createArLibArchive verbosity lbi targetPath files = do
     -- When we need to call ar multiple times we use "ar q" and for the last
     -- call on OSX we use "ar qs" so that it'll make the index.
 
-    let simpleArgs = case hostOS of
+    let simpleArgs, initialArgs, finalArgs :: [String]
+        simpleArgs = case hostOS of
           OSX -> ["-r", "-s"]
           _ | dashLSupported -> ["-qL"]
           _ -> ["-r"]
@@ -127,6 +128,7 @@ createArLibArchive verbosity lbi targetPath files = do
         extraArgs :: IsCWD Pkg => [String]
         extraArgs = verbosityOpts verbosity ++ [u tmpPath]
 
+        ar :: (IsCWD Pkg => [String]) -> ProgramInvocation
         ar = programInvocationCwd mbWorkDir arProg
         simple = ar (simpleArgs ++ extraArgs)
         initial = ar (initialArgs ++ extraArgs)

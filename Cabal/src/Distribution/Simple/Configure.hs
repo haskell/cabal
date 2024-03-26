@@ -2422,8 +2422,6 @@ checkForeignDeps pkg lbi verbosity =
 
     -- See Note [Symbolic paths] in Distribution.Utils.Path
     i = interpretSymbolicPathLBI lbi
-    u :: IsCWD Pkg => SymbolicPath Pkg to -> FilePath
-    u = interpretSymbolicPathCWD
     mbWorkDir = mbWorkDirLBI lbi
 
     commonCppArgs =
@@ -2506,6 +2504,7 @@ checkForeignDeps pkg lbi verbosity =
     allBi = enabledBuildInfos pkg (componentEnabledSpec lbi)
     deps = PackageIndex.topologicalOrder (installedPkgs lbi)
 
+    builds :: String -> [ProgArg] -> IO Bool
     builds program args =
       do
         tempDir <- makeSymbolicPath <$> getTemporaryDirectory
@@ -2520,7 +2519,7 @@ checkForeignDeps pkg lbi verbosity =
                 mbWorkDir
                 gccProgram
                 (withPrograms lbi)
-                (u cName : "-o" : u oNname : args)
+                (getSymbolicPath cName : "-o" : getSymbolicPath oNname : args)
             return True
         `catchIO` (\_ -> return False)
         `catchExit` (\_ -> return False)

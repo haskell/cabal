@@ -201,8 +201,8 @@ getCompilerArgs
   -> ([String], [String])
 getCompilerArgs bi lbi clbi =
   case compilerFlavor $ compiler lbi of
-    GHC -> ([], ghc)
-    GHCJS -> ([], ghc)
+    GHC -> ([], ghcArgs)
+    GHCJS -> ([], ghcArgs)
     c ->
       (
         [ "ShowBuildInfo.getCompilerArgs: Don't know how to get build "
@@ -212,11 +212,11 @@ getCompilerArgs bi lbi clbi =
       , []
       )
   where
-    ghc =
+    ghcArgs :: [String]
+    ghcArgs =
       changingWorkingDir (mbWorkDirLBI lbi) $
         -- This is absolutely awful
         GHC.renderGhcOptions (compiler lbi) (hostPlatform lbi) baseOpts
-      where
-        baseOpts =
-          GHC.componentGhcOptions normal lbi bi clbi $
-            buildDir lbi
+    baseOpts =
+      GHC.componentGhcOptions normal lbi bi clbi $
+        buildDir lbi

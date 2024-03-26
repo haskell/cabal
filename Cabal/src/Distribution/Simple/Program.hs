@@ -188,8 +188,8 @@ runDbProgram
   -> [ProgArg]
   -- ^ Any /extra/ arguments to add
   -> IO ()
-runDbProgram verbosity =
-  runDbProgramCwd verbosity Nothing
+runDbProgram verbosity prog progDb args =
+  runDbProgramCwd verbosity Nothing prog progDb args
 
 -- | Looks up the given program in the program database and runs it.
 runDbProgramCwd
@@ -221,7 +221,8 @@ getDbProgramOutput
   -> [ProgArg]
   -- ^ Any /extra/ arguments to add
   -> IO String
-getDbProgramOutput verb = getDbProgramOutputCwd verb Nothing
+getDbProgramOutput verb prog progDb args =
+  getDbProgramOutputCwd verb Nothing prog progDb args
 
 -- | Looks up the given program in the program database and runs it.
 getDbProgramOutputCwd
