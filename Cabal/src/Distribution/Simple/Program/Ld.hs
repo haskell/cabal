@@ -67,12 +67,11 @@ combineObjectFiles verbosity lbi ldProg target files = do
 
   let
     -- See Note [Symbolic paths] in Distribution.Utils.Path
-    u :: IsCWD Pkg => SymbolicPath Pkg to -> FilePath
+    u :: SymbolicPath Pkg to -> FilePath
     u = interpretSymbolicPathCWD
     i = interpretSymbolicPath mbWorkDir
     mbWorkDir = mbWorkDirLBI lbi
 
-    simpleArgs, initialArgs, middleArgs, finalArgs :: IsCWD Pkg => [String]
     simpleArgs = ["-r", "-o", u target]
     initialArgs = ["-r", "-o", u target]
     middleArgs = ["-r", "-o", u target, u tmpfile]

@@ -88,7 +88,7 @@ createArLibArchive verbosity lbi targetPath files = do
       mbWorkDir = mbWorkDirLBI lbi
       -- See Note [Symbolic paths] in Distribution.Utils.Path
       i = interpretSymbolicPath mbWorkDir
-      u :: IsCWD Pkg => SymbolicPath Pkg to -> FilePath
+      u :: SymbolicPath Pkg to -> FilePath
       u = interpretSymbolicPathCWD
   withTempDirectoryCwd verbosity mbWorkDir targetDir "objs" $ \tmpDir -> do
     let tmpPath = tmpDir </> targetName
@@ -125,10 +125,8 @@ createArLibArchive verbosity lbi targetPath files = do
           _ | dashLSupported -> ["-qL"]
           _ -> ["-q"]
 
-        extraArgs :: IsCWD Pkg => [String]
         extraArgs = verbosityOpts verbosity ++ [u tmpPath]
 
-        ar :: (IsCWD Pkg => [String]) -> ProgramInvocation
         ar = programInvocationCwd mbWorkDir arProg
         simple = ar (simpleArgs ++ extraArgs)
         initial = ar (initialArgs ++ extraArgs)

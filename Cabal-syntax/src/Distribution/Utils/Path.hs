@@ -5,7 +5,6 @@
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RoleAnnotations #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -58,9 +57,7 @@ module Distribution.Utils.Path
   , normaliseSymbolicPath
 
     -- ** Working directory handling
-  , IsCWD
   , interpretSymbolicPathCWD
-  , changingWorkingDir
   , absoluteWorkingDir
   , tryMakeRelativeToWorkingDir
 
@@ -87,17 +84,10 @@ import qualified System.Directory as Directory
 import qualified System.FilePath as FilePath
 
 import Data.Kind
-  ( Constraint
-  , Type
-  )
-import Data.Typeable
-  ( (:~:) (Refl)
+  ( Type
   )
 import GHC.Stack
   ( HasCallStack
-  )
-import Unsafe.Coerce
-  ( unsafeCoerce
   )
 
 -------------------------------------------------------------------------------
@@ -160,55 +150,9 @@ In practice, we often use:
   i = interpretSymbolicPath mbWorkDir
 
   -- Interpret a symbolic path, provided that the current working directory
-  -- is the package directory. See Note [Working directory proof tokens].
-  u :: IsCWD Pkg => SymbolicPath Pkg to -> FilePath
+  -- is the package directory.
+  u :: SymbolicPath Pkg to -> FilePath
   u = interpretSymbolicPathCWD
-
-Note [Working directory proof tokens]
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-The function
-
-  interpretSymbolicPathCWD :: IsCWD from => SymbolicPathX allowAbsolute from to -> FilePath
-  interpretSymbolicPathCWD (SymbolicPath p) = p
-
-allows us to interpret a symbolic path, assuming that the directory the path is
-relative to – if it is indeed relative – is the current working directory.
-This assumption is captured in the proof token `IsCWD from :: Constraint`, which
-allows us to statically see in the code where this assumption is made.
-
-Such a proof token can either be manually discharged using 'changingWorkingDir',
-or deferred to the caller.
-
-For instance, we have:
-
-  renderGhcOptions :: IsCWD Pkg => Compiler -> Platform -> GhcOptions -> [String]
-  renderGhcOptions comp platform opts =
-    concat
-      [ concat [["-odir", u dir] | dir <- flag ghcOptObjDir]
-      , ["-i" ++ u dir | dir <- flags ghcOptSourcePath]
-      ...
-      ]
-    where
-      u :: IsCWD Pkg => SymbolicPath Pkg to -> FilePath
-      u = interpretSymbolicPathCWD
-
-This indicates that these command-line options are only valid once we have
-changed the working directory to the package directory, which in practice is
-done using the fact that programInvokationCwd changes the working directory:
-
-  programInvocationCwd
-    :: Maybe (SymbolicPath CWD (Dir to))
-    -> ConfiguredProgram
-    -> (IsCWD to => [String])
-    -> ProgramInvocation
-  programInvocationCwd mbWorkDir prog args =
-    changingWorkingDir mbWorkDir $
-      (programInvocation prog args)
-        { progInvokeCwd = fmap getSymbolicPath mbWorkDir
-        }
-
-Here, programInvocationCwd changes the working directory of the sub-process it
-spawns, discharging the constraint 'IsCWD to' using 'changingWorkingDir'.
 
 Note [Symbolic relative paths]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -351,17 +295,8 @@ interpretSymbolicPath mbWorkDir (SymbolicPath p) =
   -- because if @q@ is absolute, then @p </> q = q@.
   maybe p ((</> p) . getSymbolicPath) mbWorkDir
 
--- | A proof token that the given directory is the current working directory.
---
--- This proof token guards uses of 'interpretSymbolicPathCWD', to avoid
--- accidentally discarding a working directory argument.
---
--- See Note [Working directory proof tokens] in Distribution.Utils.Path.
-type family IsCWD (dir :: Type) :: Constraint where
-
--- | Interpret a symbolic path, requiring that the directory it is relative to
--- is the same as the working directory (via a proof token of type @'IsCWD' from@;
--- use 'changingWorkingDirTo' to provide such a proof token).
+-- | Interpret a symbolic path, assuming that the directory it is relative to
+-- is the same as the working directory.
 --
 -- Use 'interpretSymbolicPath' instead if you need to take into account a
 -- working directory argument before directly interacting with the file system.
@@ -378,19 +313,8 @@ type family IsCWD (dir :: Type) :: Constraint where
 -- >     programInvocationCwd mbWorkDir ghcProg [interpretSymbolicPathCWD inputFile]
 --
 -- See Note [Symbolic paths] in Distribution.Utils.Path.
-interpretSymbolicPathCWD :: IsCWD from => SymbolicPathX allowAbsolute from to -> FilePath
+interpretSymbolicPathCWD :: SymbolicPathX allowAbsolute from to -> FilePath
 interpretSymbolicPathCWD (SymbolicPath p) = p
-
--- | Claim that the inner function takes into account the working directory,
--- e.g. it spawns a process with a changed working directory.
---
--- This ensures that 'interpretSymbolicPathCWD' is sound.
---
--- See Note [Working directory proof tokens] in Distribution.Utils.Path.
-changingWorkingDir :: forall to r. Maybe (SymbolicPath CWD (Dir to)) -> (IsCWD to => r) -> r
-changingWorkingDir _ f
-  | Refl <- (unsafeCoerce Refl :: IsCWD to :~: (() :: Constraint)) =
-      f
 
 -- | Change what a symbolic path is pointing to.
 coerceSymbolicPath :: SymbolicPathX allowAbsolute from to1 -> SymbolicPathX allowAbsolute from to2

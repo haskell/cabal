@@ -451,7 +451,7 @@ ppGhcCpp program xHs extraArgs _bi lbi clbi =
     }
   where
     -- See Note [Symbolic paths] in Distribution.Utils.Path
-    u :: IsCWD Pkg => SymbolicPath Pkg to -> FilePath
+    u :: SymbolicPath Pkg to -> FilePath
     u = interpretSymbolicPathCWD
 
 ppCpphs :: [String] -> BuildInfo -> LocalBuildInfo -> ComponentLocalBuildInfo -> PreProcessor
@@ -479,7 +479,7 @@ ppCpphs extraArgs _bi lbi clbi =
     }
   where
     -- See Note [Symbolic paths] in Distribution.Utils.Path
-    u :: IsCWD Pkg => SymbolicPath Pkg to -> FilePath
+    u :: SymbolicPath Pkg to -> FilePath
     u = interpretSymbolicPathCWD
 
 ppHsc2hs :: BuildInfo -> LocalBuildInfo -> ComponentLocalBuildInfo -> PreProcessor
@@ -495,14 +495,11 @@ ppHsc2hs bi lbi clbi =
             hsc2hsProgram
             anyVersion
             (withPrograms lbi)
-        let runHsc2hs :: (IsCWD Pkg => [ProgArg]) -> IO ()
-            runHsc2hs = runProgramCwd verbosity mbWorkDir hsc2hsProg
+        let runHsc2hs = runProgramCwd verbosity mbWorkDir hsc2hsProg
         -- See Trac #13896 and https://github.com/haskell/cabal/issues/3122.
         let isCross = hostPlatform lbi /= buildPlatform
-            prependCrossFlags :: IsCWD Pkg => [String] -> [String]
             prependCrossFlags = if isCross then ("-x" :) else id
         let hsc2hsSupportsResponseFiles = hsc2hsVersion >= mkVersion [0, 68, 4]
-            pureArgs :: IsCWD Pkg => [String]
             pureArgs = genPureArgs hsc2hsVersion gccProg inFile outFile
         if hsc2hsSupportsResponseFiles
           then
@@ -521,13 +518,13 @@ ppHsc2hs bi lbi clbi =
     }
   where
     -- See Note [Symbolic paths] in Distribution.Utils.Path
-    u :: IsCWD Pkg => SymbolicPathX allowAbs Pkg to -> FilePath
+    u :: SymbolicPathX allowAbs Pkg to -> FilePath
     u = interpretSymbolicPathCWD
     mbWorkDir = mbWorkDirLBI lbi
 
     -- Returns a list of command line arguments that can either be passed
     -- directly, or via a response file.
-    genPureArgs :: IsCWD Pkg => Version -> ConfiguredProgram -> String -> String -> [String]
+    genPureArgs :: Version -> ConfiguredProgram -> String -> String -> [String]
     genPureArgs hsc2hsVersion gccProg inFile outFile =
       -- Additional gcc options
       [ "--cflag=" ++ opt
@@ -723,7 +720,7 @@ ppC2hs bi lbi clbi =
     pkgs = PackageIndex.topologicalOrder (installedPkgs lbi)
     mbWorkDir = mbWorkDirLBI lbi
     -- See Note [Symbolic paths] in Distribution.Utils.Path
-    u :: IsCWD Pkg => SymbolicPath Pkg to -> FilePath
+    u :: SymbolicPath Pkg to -> FilePath
     u = interpretSymbolicPathCWD
 
 ppC2hsExtras :: PreProcessorExtras

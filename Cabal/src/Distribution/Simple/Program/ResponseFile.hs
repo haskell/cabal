@@ -35,25 +35,24 @@ withResponseFile
   -- ^ Template for response file name.
   -> Maybe TextEncoding
   -- ^ Encoding to use for response file contents.
-  -> (IsCWD Pkg => [String])
+  -> [String]
   -- ^ Arguments to put into response file.
-  -> (IsCWD Pkg => FilePath -> IO a)
+  -> (FilePath -> IO a)
   -> IO a
 withResponseFile verbosity tmpFileOpts mbWorkDir responseDir fileNameTemplate encoding arguments f =
-  changingWorkingDir mbWorkDir $
-    withTempFileEx tmpFileOpts mbWorkDir responseDir fileNameTemplate $ \responsePath hf -> do
-      let responseFileName = getSymbolicPath responsePath
-      traverse_ (hSetEncoding hf) encoding
-      let responseContents =
-            unlines $
-              map escapeResponseFileArg $
-                arguments
-      hPutStr hf responseContents
-      hClose hf
-      debug verbosity $ responseFileName ++ " contents: <<<"
-      debug verbosity responseContents
-      debug verbosity $ ">>> " ++ responseFileName
-      f responseFileName
+  withTempFileEx tmpFileOpts mbWorkDir responseDir fileNameTemplate $ \responsePath hf -> do
+    let responseFileName = getSymbolicPath responsePath
+    traverse_ (hSetEncoding hf) encoding
+    let responseContents =
+          unlines $
+            map escapeResponseFileArg $
+              arguments
+    hPutStr hf responseContents
+    hClose hf
+    debug verbosity $ responseFileName ++ " contents: <<<"
+    debug verbosity responseContents
+    debug verbosity $ ">>> " ++ responseFileName
+    f responseFileName
 
 -- Support a gcc-like response file syntax.  Each separate
 -- argument and its possible parameter(s), will be separated in the

@@ -709,10 +709,9 @@ runReplOrWriteFlags ghcProg lbi rflags ghcOpts pkg_name target =
           -- Write out options for this component into a file ready for loading into
           -- the multi-repl
           writeFileAtomic (out_dir </> this_unit) $
-            changingWorkingDir mbWorkDir $
-              BS.pack $
-                escapeArgs $
-                  extra_opts ++ renderGhcOptions comp platform (ghcOpts{ghcOptMode = NoFlag})
+            BS.pack $
+              escapeArgs $
+                extra_opts ++ renderGhcOptions comp platform (ghcOpts{ghcOptMode = NoFlag})
 
 replNoLoad :: Ord a => ReplOptions -> NubListR a -> NubListR a
 replNoLoad replFlags l

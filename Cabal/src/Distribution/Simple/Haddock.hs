@@ -788,16 +788,14 @@ renderArgs
   -> Compiler
   -> Platform
   -> HaddockArgs
-  -> ((IsCWD Pkg => [String]) -> FilePath -> IO a)
+  -> ([String] -> FilePath -> IO a)
   -> IO a
 renderArgs verbosity mbWorkDir tmpFileOpts version comp platform args k = do
   let haddockSupportsUTF8 = version >= mkVersion [2, 14, 4]
       haddockSupportsResponseFiles = version > mkVersion [2, 16, 2]
   createDirectoryIfMissingVerbose verbosity True (i outputDir)
-  let withPrologueArgs :: (IsCWD Pkg => [String]) -> IO a
-      withPrologueArgs prologueArgs =
-        let renderedArgs :: IsCWD Pkg => [String]
-            renderedArgs = prologueArgs <> renderPureArgs version comp platform args
+  let withPrologueArgs prologueArgs =
+        let renderedArgs = prologueArgs <> renderPureArgs version comp platform args
          in if haddockSupportsResponseFiles
               then
                 withResponseFile
@@ -827,7 +825,7 @@ renderArgs verbosity mbWorkDir tmpFileOpts version comp platform args k = do
   where
     -- See Note [Symbolic paths] in Distribution.Utils.Path
     i = interpretSymbolicPath mbWorkDir
-    u :: IsCWD Pkg => SymbolicPath Pkg to -> FilePath
+    u :: SymbolicPath Pkg to -> FilePath
     u = interpretSymbolicPathCWD
 
     outputDir = coerceSymbolicPath $ unDir $ argOutputDir args
@@ -860,7 +858,7 @@ renderArgs verbosity mbWorkDir tmpFileOpts version comp platform args k = do
         pkgid = arg argPackageName
     arg f = fromFlag $ f args
 
-renderPureArgs :: IsCWD Pkg => Version -> Compiler -> Platform -> HaddockArgs -> [String]
+renderPureArgs :: Version -> Compiler -> Platform -> HaddockArgs -> [String]
 renderPureArgs version comp platform args =
   concat
     [ map (\f -> "--dump-interface=" ++ u (unDir (argOutputDir args)) </> f)
@@ -1157,7 +1155,7 @@ hscolour' onNoHsColour haddockTarget pkg_descr lbi suffixes flags =
     distPref = fromFlag $ setupDistPref common
     mbWorkDir = mbWorkDirLBI lbi
     i = interpretSymbolicPathLBI lbi -- See Note [Symbolic paths] in Distribution.Utils.Path
-    u :: IsCWD Pkg => SymbolicPath Pkg to -> FilePath
+    u :: SymbolicPath Pkg to -> FilePath
     u = interpretSymbolicPathCWD
     go :: ConfiguredProgram -> IO ()
     go hscolourProg = do

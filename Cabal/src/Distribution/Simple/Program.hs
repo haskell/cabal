@@ -159,7 +159,7 @@ runProgramCwd
   -- ^ Working directory
   -> ConfiguredProgram
   -- ^ The program to run
-  -> (IsCWD to => [ProgArg])
+  -> [ProgArg]
   -- ^ Any /extra/ arguments to add
   -> IO ()
 runProgramCwd verbosity mbWorkDir prog args =
@@ -201,7 +201,7 @@ runDbProgramCwd
   -- ^ The program to run
   -> ProgramDb
   -- ^ look up the program here
-  -> (IsCWD to => [ProgArg])
+  -> [ProgArg]
   -- ^ Any /extra/ arguments to add
   -> IO ()
 runDbProgramCwd verbosity mbWorkDir prog programDb args =
@@ -234,7 +234,7 @@ getDbProgramOutputCwd
   -- ^ The program to run
   -> ProgramDb
   -- ^ look up the program here
-  -> (IsCWD to => [ProgArg])
+  -> [ProgArg]
   -- ^ Any /extra/ arguments to add
   -> IO String
 getDbProgramOutputCwd verbosity mbWorkDir prog programDb args =

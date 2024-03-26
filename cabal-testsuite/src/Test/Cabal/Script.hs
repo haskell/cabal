@@ -8,7 +8,6 @@ module Test.Cabal.Script (
     ScriptEnv(..),
     mkScriptEnv,
     runnerGhcArgs,
-    RunnerCommand(..),
     runnerCommand,
     runghc,
 ) where
@@ -76,33 +75,25 @@ mkScriptEnv verbosity =
 runghc :: ScriptEnv -> Maybe (SymbolicPath CWD (Dir Pkg)) -> [(String, Maybe String)]
        -> FilePath -> [String] -> IO Result
 runghc senv mb_cwd env_overrides script_path args = do
-    RunnerCommand real_path real_args <- runnerCommand senv mb_cwd env_overrides script_path args
-    changingWorkingDir mb_cwd $
-      run (runnerVerbosity senv) mb_cwd env_overrides real_path real_args Nothing
-
-data RunnerCommand =
-  RunnerCommand
-    { runnerProgramPath :: FilePath
-    , runnerArgs :: IsCWD Pkg => [String]
-    }
+    (real_path, real_args) <- runnerCommand senv mb_cwd env_overrides script_path args
+    run (runnerVerbosity senv) mb_cwd env_overrides real_path real_args Nothing
 
 -- | Compute the command line which should be used to run a Haskell
 -- script with 'runghc'.
 runnerCommand :: ScriptEnv -> Maybe (SymbolicPath CWD (Dir Pkg)) -> [(String, Maybe String)]
-              -> FilePath -> [String] -> IO RunnerCommand
+              -> FilePath -> [String] -> IO (FilePath, [String])
 runnerCommand senv mb_cwd _env_overrides script_path args = do
     (prog, _) <- requireProgram verbosity runghcProgram (runnerProgramDb senv)
     return $
-      RunnerCommand (programPath prog) $
-        runghc_args ++ ["--"] ++ map ("--ghc-arg="++) ghc_args ++ [script_path] ++ args
+      (programPath prog,
+        runghc_args ++ ["--"] ++ map ("--ghc-arg="++) ghc_args ++ [script_path] ++ args)
   where
     verbosity = runnerVerbosity senv
     runghc_args = []
-    ghc_args :: IsCWD Pkg => [String]
     ghc_args = runnerGhcArgs senv mb_cwd
 
 -- | Compute the GHC flags to invoke 'runghc' with under a 'ScriptEnv'.
-runnerGhcArgs :: IsCWD Pkg => ScriptEnv -> Maybe (SymbolicPath CWD (Dir Pkg)) -> [String]
+runnerGhcArgs :: ScriptEnv -> Maybe (SymbolicPath CWD (Dir Pkg)) -> [String]
 runnerGhcArgs senv mb_cwd =
     renderGhcOptions (runnerCompiler senv) (runnerPlatform senv) ghc_options
   where

@@ -212,11 +212,9 @@ getCompilerArgs bi lbi clbi =
       , []
       )
   where
-    ghcArgs :: [String]
+    -- This is absolutely awful
     ghcArgs =
-      changingWorkingDir (mbWorkDirLBI lbi) $
-        -- This is absolutely awful
-        GHC.renderGhcOptions (compiler lbi) (hostPlatform lbi) baseOpts
+      GHC.renderGhcOptions (compiler lbi) (hostPlatform lbi) baseOpts
     baseOpts =
       GHC.componentGhcOptions normal lbi bi clbi $
         buildDir lbi

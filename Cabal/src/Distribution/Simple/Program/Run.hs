@@ -112,13 +112,12 @@ programInvocationCwd
   :: forall to
    . Maybe (SymbolicPath CWD (Dir to))
   -> ConfiguredProgram
-  -> (IsCWD to => [String])
+  -> [String]
   -> ProgramInvocation
 programInvocationCwd mbWorkDir prog args =
-  changingWorkingDir mbWorkDir $
-    (programInvocation prog args)
-      { progInvokeCwd = fmap getSymbolicPath mbWorkDir
-      }
+  (programInvocation prog args)
+    { progInvokeCwd = fmap getSymbolicPath mbWorkDir
+    }
 
 runProgramInvocation :: Verbosity -> ProgramInvocation -> IO ()
 runProgramInvocation

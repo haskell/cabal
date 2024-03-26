@@ -649,7 +649,7 @@ ghcInvocation verbosity ghcProg comp platform mbWorkDir opts = do
 -- TODO: use the -working-dir GHC flag instead of setting the process
 -- working directory, as this improves error messages.
 
-renderGhcOptions :: IsCWD Pkg => Compiler -> Platform -> GhcOptions -> [String]
+renderGhcOptions :: Compiler -> Platform -> GhcOptions -> [String]
 renderGhcOptions comp _platform@(Platform _arch os) opts
   | compilerFlavor comp `notElem` [GHC, GHCJS] =
       error $
@@ -878,7 +878,7 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
         ]
   where
     -- See Note [Symbolic paths] in Distribution.Utils.Path
-    u :: IsCWD Pkg => SymbolicPath Pkg to -> FilePath
+    u :: SymbolicPath Pkg to -> FilePath
     u = interpretSymbolicPathCWD
     implInfo = getImplInfo comp
     isOSX = os == OSX

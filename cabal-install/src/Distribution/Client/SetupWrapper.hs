@@ -1101,8 +1101,7 @@ getExternalSetupMethod verbosity options pkg bt = do
                         ]
                   , ghcOptExtra = extraOpts
                   }
-          let ghcCmdLine :: IsCWD Pkg => [String]
-              ghcCmdLine = renderGhcOptions compiler platform ghcOptions
+          let ghcCmdLine = renderGhcOptions compiler platform ghcOptions
           when (useVersionMacros options') $
             rewriteFileEx verbosity (i cppMacrosFile) $
               generatePackageVersionMacros (pkgVersion $ package pkg) (map snd selectedDeps)
