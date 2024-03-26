@@ -305,7 +305,7 @@ componentInputs
   -> PD.PackageDescription
   -> PreBuildComponentInputs
   -- ^ The context and component being built in it.
-  -> IO ([SymbolicPath "Package" (File "Source")], [ModuleName])
+  -> IO ([SymbolicPath "Package" File], [ModuleName])
   -- ^ The Haskell input files, and the Haskell modules
 componentInputs buildTargetDir pkg_descr pbci =
   case component of

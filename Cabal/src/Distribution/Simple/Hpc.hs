@@ -97,7 +97,7 @@ tixFilePath
   -> Way
   -> FilePath
   -- ^ Component name
-  -> SymbolicPath "Package" (File "tix")
+  -> SymbolicPath "Package" File
   -- ^ Path to test suite's .tix file
 tixFilePath distPref way name = tixDir distPref way </> makeRelativePathEx (name <.> "tix")
 

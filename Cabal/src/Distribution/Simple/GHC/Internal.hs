@@ -364,7 +364,7 @@ componentCcGhcOptions
   -> BuildInfo
   -> ComponentLocalBuildInfo
   -> SymbolicPath "Package" (Dir "Artifacts")
-  -> SymbolicPath "Package" (File "Source")
+  -> SymbolicPath "Package" File
   -> GhcOptions
 componentCcGhcOptions verbosity lbi bi clbi odir filename =
   mempty
@@ -403,7 +403,7 @@ componentCxxGhcOptions
   -> BuildInfo
   -> ComponentLocalBuildInfo
   -> SymbolicPath "Package" (Dir "Artifacts")
-  -> SymbolicPath "Package" (File "Source")
+  -> SymbolicPath "Package" File
   -> GhcOptions
 componentCxxGhcOptions verbosity lbi bi clbi odir filename =
   mempty
@@ -442,7 +442,7 @@ componentAsmGhcOptions
   -> BuildInfo
   -> ComponentLocalBuildInfo
   -> SymbolicPath "Package" (Dir "Artifacts")
-  -> SymbolicPath "Package" (File "Source")
+  -> SymbolicPath "Package" File
   -> GhcOptions
 componentAsmGhcOptions verbosity lbi bi clbi odir filename =
   mempty
@@ -476,7 +476,7 @@ componentJsGhcOptions
   -> BuildInfo
   -> ComponentLocalBuildInfo
   -> SymbolicPath "Package" (Dir "Artifacts")
-  -> SymbolicPath "Package" (File "Source")
+  -> SymbolicPath "Package" File
   -> GhcOptions
 componentJsGhcOptions verbosity lbi bi clbi odir filename =
   mempty
@@ -584,7 +584,7 @@ componentCmmGhcOptions
   -> BuildInfo
   -> ComponentLocalBuildInfo
   -> SymbolicPath "Package" (Dir "Artifacts")
-  -> SymbolicPath "Package" (File "Source")
+  -> SymbolicPath "Package" File
   -> GhcOptions
 componentCmmGhcOptions verbosity lbi bi clbi odir filename =
   mempty
@@ -642,7 +642,7 @@ getHaskellObjects
   -> SymbolicPath "Package" (Dir "Artifacts")
   -> String
   -> Bool
-  -> IO [SymbolicPath "Package" (File obj)]
+  -> IO [SymbolicPath "Package" File]
 getHaskellObjects _implInfo lib lbi clbi pref wanted_obj_ext allow_split_objs
   | splitObjs lbi && allow_split_objs = do
       let splitSuffix = "_" ++ wanted_obj_ext ++ "_split"

@@ -406,7 +406,7 @@ try_find_package_desc
   :: Verbosity
   -> SymbolicPath "CWD" (Dir "Package")
   -> String
-  -> IO (RelativePath "Package" (File ".cabal"))
+  -> IO (RelativePath "Package" File)
 try_find_package_desc verbosity pkgDir err = do
   errOrCabalFile <- findPackageDesc (Just pkgDir)
   case errOrCabalFile of

@@ -49,7 +49,7 @@ readGenericPackageDescription
   :: HasCallStack
   => Verbosity
   -> Maybe (SymbolicPath "CWD" (Dir "Package"))
-  -> SymbolicPath "Package" (File ".cabal")
+  -> SymbolicPath "Package" File
   -> IO GenericPackageDescription
 readGenericPackageDescription =
   readAndParseFile parseGenericPackageDescription
@@ -58,7 +58,7 @@ readHookedBuildInfo
   :: Verbosity
   -> Maybe (SymbolicPath "CWD" (Dir "Package"))
   -- ^ working directory
-  -> SymbolicPath "Package" (File "BuildInfo")
+  -> SymbolicPath "Package" File
   -> IO HookedBuildInfo
 readHookedBuildInfo =
   readAndParseFile parseHookedBuildInfo
@@ -76,7 +76,7 @@ readAndParseFile
   -- ^ Verbosity level
   -> Maybe (SymbolicPath "CWD" (Dir "Package"))
   -- ^ Working directory
-  -> SymbolicPath "Package" (File file)
+  -> SymbolicPath "Package" File
   -- ^ File to read
   -> IO a
 readAndParseFile parser verbosity mbWorkDir fpath = do

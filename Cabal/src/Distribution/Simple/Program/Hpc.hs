@@ -41,7 +41,7 @@ markup
   -> ConfiguredProgram
   -> Version
   -> Verbosity
-  -> SymbolicPath "Package" (File "tix")
+  -> SymbolicPath "Package" File
   -- ^ Path to .tix file
   -> [SymbolicPath "Package" (Dir "mix")]
   -- ^ Paths to .mix file directories
@@ -82,7 +82,7 @@ markup mbWorkDir hpc hpcVer verbosity tixFile hpcDirs destDir included = do
 markupInvocation
   :: Maybe (SymbolicPath "CWD" (Dir "Package"))
   -> ConfiguredProgram
-  -> SymbolicPath "Package" (File "tix")
+  -> SymbolicPath "Package" File
   -- ^ Path to .tix file
   -> [SymbolicPath "Package" (Dir "mix")]
   -- ^ Paths to .mix file directories
@@ -108,9 +108,9 @@ union
   :: Maybe (SymbolicPath "CWD" (Dir "Package"))
   -> ConfiguredProgram
   -> Verbosity
-  -> [SymbolicPath "Package" (File "tix")]
+  -> [SymbolicPath "Package" File]
   -- ^ Paths to .tix files
-  -> SymbolicPath "Package" (File "tix")
+  -> SymbolicPath "Package" File
   -- ^ Path to resultant .tix file
   -> [ModuleName]
   -- ^ List of modules to exclude from union
@@ -123,9 +123,9 @@ union mbWorkDir hpc verbosity tixFiles outFile excluded =
 unionInvocation
   :: Maybe (SymbolicPath "CWD" (Dir "Package"))
   -> ConfiguredProgram
-  -> [SymbolicPath "Package" (File "tix")]
+  -> [SymbolicPath "Package" File]
   -- ^ Paths to .tix files
-  -> SymbolicPath "Package" (File "tix")
+  -> SymbolicPath "Package" File
   -- ^ Path to resultant .tix file
   -> [ModuleName]
   -- ^ List of modules to exclude from union

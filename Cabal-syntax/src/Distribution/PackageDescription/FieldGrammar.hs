@@ -296,7 +296,7 @@ executableFieldGrammar n =
 -- After validation it is converted into the proper 'TestSuite' type.
 data TestSuiteStanza = TestSuiteStanza
   { _testStanzaTestType :: Maybe TestType
-  , _testStanzaMainIs :: Maybe (RelativePath "Source" (File "Source"))
+  , _testStanzaMainIs :: Maybe (RelativePath "Source" File)
   , _testStanzaTestModule :: Maybe ModuleName
   , _testStanzaBuildInfo :: BuildInfo
   , _testStanzaCodeGenerators :: [String]
@@ -309,7 +309,7 @@ testStanzaTestType :: Lens' TestSuiteStanza (Maybe TestType)
 testStanzaTestType f s = fmap (\x -> s{_testStanzaTestType = x}) (f (_testStanzaTestType s))
 {-# INLINE testStanzaTestType #-}
 
-testStanzaMainIs :: Lens' TestSuiteStanza (Maybe (RelativePath "Source" (File "Source")))
+testStanzaMainIs :: Lens' TestSuiteStanza (Maybe (RelativePath "Source" File))
 testStanzaMainIs f s = fmap (\x -> s{_testStanzaMainIs = x}) (f (_testStanzaMainIs s))
 {-# INLINE testStanzaMainIs #-}
 
@@ -446,7 +446,7 @@ unvalidateTestSuite t =
 -- After validation it is converted into the proper 'Benchmark' type.
 data BenchmarkStanza = BenchmarkStanza
   { _benchmarkStanzaBenchmarkType :: Maybe BenchmarkType
-  , _benchmarkStanzaMainIs :: Maybe (RelativePath "Source" (File "Source"))
+  , _benchmarkStanzaMainIs :: Maybe (RelativePath "Source" File)
   , _benchmarkStanzaBenchmarkModule :: Maybe ModuleName
   , _benchmarkStanzaBuildInfo :: BuildInfo
   }
@@ -458,7 +458,7 @@ benchmarkStanzaBenchmarkType :: Lens' BenchmarkStanza (Maybe BenchmarkType)
 benchmarkStanzaBenchmarkType f s = fmap (\x -> s{_benchmarkStanzaBenchmarkType = x}) (f (_benchmarkStanzaBenchmarkType s))
 {-# INLINE benchmarkStanzaBenchmarkType #-}
 
-benchmarkStanzaMainIs :: Lens' BenchmarkStanza (Maybe (RelativePath "Source" (File "Source")))
+benchmarkStanzaMainIs :: Lens' BenchmarkStanza (Maybe (RelativePath "Source" File))
 benchmarkStanzaMainIs f s = fmap (\x -> s{_benchmarkStanzaMainIs = x}) (f (_benchmarkStanzaMainIs s))
 {-# INLINE benchmarkStanzaMainIs #-}
 
@@ -803,7 +803,7 @@ formatDependencyList = alaList CommaVCat
 formatMixinList :: [Mixin] -> List CommaVCat (Identity Mixin) Mixin
 formatMixinList = alaList CommaVCat
 
-formatExtraSourceFiles :: [RelativePath "Package" (File src)] -> List VCat (RelativePathNT "Package" (File src)) (RelativePath "Package" (File src))
+formatExtraSourceFiles :: [RelativePath "Package" File] -> List VCat (RelativePathNT "Package" File) (RelativePath "Package" File)
 formatExtraSourceFiles = alaList' VCat RelativePathNT
 
 formatExposedModules :: [ModuleName] -> List VCat (MQuoted ModuleName) ModuleName
@@ -847,9 +847,9 @@ instance Parsec CompatDataDir where
 instance Pretty CompatDataDir where
   pretty = showToken . getSymbolicPath . getCompatDataDir
 
-newtype CompatLicenseFile = CompatLicenseFile {getCompatLicenseFile :: [RelativePath "Package" (File "License")]}
+newtype CompatLicenseFile = CompatLicenseFile {getCompatLicenseFile :: [RelativePath "Package" File]}
 
-instance Newtype [RelativePath "Package" (File "License")] CompatLicenseFile
+instance Newtype [RelativePath "Package" File] CompatLicenseFile
 
 -- TODO
 instance Parsec CompatLicenseFile where

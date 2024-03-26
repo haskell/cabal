@@ -86,7 +86,7 @@ hscolourPref = haddockPref
 -- | Build info json file, generated in every build
 buildInfoPref
   :: SymbolicPath root (Dir "Dist")
-  -> SymbolicPath root (File "build-info.json")
+  -> SymbolicPath root File
 buildInfoPref distPref = distPref </> makeRelativePathEx "build-info.json"
 
 -- | This is the name of the directory in which the generated haddocks
@@ -149,7 +149,7 @@ getLibSourceFiles
   -> LocalBuildInfo
   -> Library
   -> ComponentLocalBuildInfo
-  -> IO [(ModuleName.ModuleName, SymbolicPath "Package" (File "Source"))]
+  -> IO [(ModuleName.ModuleName, SymbolicPath "Package" File)]
 getLibSourceFiles verbosity lbi lib clbi =
   getSourceFiles verbosity mbWorkDir searchpaths modules
   where
@@ -168,7 +168,7 @@ getExeSourceFiles
   -> LocalBuildInfo
   -> Executable
   -> ComponentLocalBuildInfo
-  -> IO [(ModuleName.ModuleName, SymbolicPath "Package" ('File "Source"))]
+  -> IO [(ModuleName.ModuleName, SymbolicPath "Package" 'File)]
 getExeSourceFiles verbosity lbi exe clbi = do
   moduleFiles <- getSourceFiles verbosity mbWorkDir searchpaths modules
   srcMainPath <- findFileCwd verbosity mbWorkDir (hsSourceDirs bi) (modulePath exe)
@@ -188,7 +188,7 @@ getFLibSourceFiles
   -> LocalBuildInfo
   -> ForeignLib
   -> ComponentLocalBuildInfo
-  -> IO [(ModuleName.ModuleName, SymbolicPath "Package" (File "Source"))]
+  -> IO [(ModuleName.ModuleName, SymbolicPath "Package" File)]
 getFLibSourceFiles verbosity lbi flib clbi =
   getSourceFiles verbosity mbWorkDir searchpaths modules
   where
@@ -206,7 +206,7 @@ getSourceFiles
   -> Maybe (SymbolicPath "CWD" ('Dir "Package"))
   -> [SymbolicPathX allowAbsolute "Package" (Dir "Source")]
   -> [ModuleName.ModuleName]
-  -> IO [(ModuleName.ModuleName, SymbolicPathX allowAbsolute "Package" (File "Source"))]
+  -> IO [(ModuleName.ModuleName, SymbolicPathX allowAbsolute "Package" File)]
 getSourceFiles verbosity mbWorkDir dirs modules = flip traverse modules $ \m ->
   fmap ((,) m) $
     findFileCwdWithExtension

@@ -43,6 +43,6 @@ foreignLibVersionLinux :: Lens' ForeignLib (Maybe Version)
 foreignLibVersionLinux f s = fmap (\x -> s{T.foreignLibVersionLinux = x}) (f (T.foreignLibVersionLinux s))
 {-# INLINE foreignLibVersionLinux #-}
 
-foreignLibModDefFile :: Lens' ForeignLib [RelativePath "Source" (File "Source")]
+foreignLibModDefFile :: Lens' ForeignLib [RelativePath "Source" File]
 foreignLibModDefFile f s = fmap (\x -> s{T.foreignLibModDefFile = x}) (f (T.foreignLibModDefFile s))
 {-# INLINE foreignLibModDefFile #-}

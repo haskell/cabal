@@ -1207,15 +1207,15 @@ xargs maxSize rawSystemFun fixedArgs bigArgs =
 --
 -- @since 3.4.0.0
 findFileCwd
-  :: forall dir1 dir2 file allowAbsolute
+  :: forall dir1 dir2 allowAbsolute
    . Verbosity
   -> Maybe (SymbolicPath "CWD" (Dir dir1))
   -- ^ working directory
   -> [SymbolicPathX allowAbsolute dir1 (Dir dir2)]
   -- ^ search directories
-  -> RelativePath dir2 (File file)
+  -> RelativePath dir2 File
   -- ^ File Name
-  -> IO (SymbolicPathX allowAbsolute dir1 (File file))
+  -> IO (SymbolicPathX allowAbsolute dir1 File)
 findFileCwd verbosity mbWorkDir searchPath fileName =
   findFirstFile
     (interpretSymbolicPath mbWorkDir)
@@ -1226,13 +1226,13 @@ findFileCwd verbosity mbWorkDir searchPath fileName =
 
 -- | Find a file by looking in a search path. The file path must match exactly.
 findFileEx
-  :: forall dir1 dir2 file allowAbsolute
+  :: forall dir1 dir2 allowAbsolute
    . Verbosity
   -> [SymbolicPathX allowAbsolute dir1 (Dir dir2)]
   -- ^ search directories
-  -> RelativePath dir2 (File file)
+  -> RelativePath dir2 File
   -- ^ File Name
-  -> IO (SymbolicPathX allowAbsolute dir1 (File file))
+  -> IO (SymbolicPathX allowAbsolute dir1 File)
 findFileEx v = findFileCwd v Nothing
 
 -- | Find a file by looking in a search path with one of a list of possible
@@ -1241,8 +1241,8 @@ findFileEx v = findFileCwd v Nothing
 findFileWithExtension
   :: [Suffix]
   -> [SymbolicPathX allowAbsolute dir1 (Dir dir2)]
-  -> RelativePath dir2 (File file)
-  -> IO (Maybe (SymbolicPathX allowAbsolute dir1 (File file)))
+  -> RelativePath dir2 File
+  -> IO (Maybe (SymbolicPathX allowAbsolute dir1 File))
 findFileWithExtension =
   findFileCwdWithExtension Nothing
 
@@ -1251,28 +1251,28 @@ findFileWithExtension =
 --
 -- @since 3.4.0.0
 findFileCwdWithExtension
-  :: forall dir1 dir2 file allowAbsolute
+  :: forall dir1 dir2 allowAbsolute
    . Maybe (SymbolicPath "CWD" (Dir dir1))
   -> [Suffix]
   -> [SymbolicPathX allowAbsolute dir1 (Dir dir2)]
-  -> RelativePath dir2 (File file)
-  -> IO (Maybe (SymbolicPathX allowAbsolute dir1 (File file)))
+  -> RelativePath dir2 File
+  -> IO (Maybe (SymbolicPathX allowAbsolute dir1 File))
 findFileCwdWithExtension cwd extensions searchPath baseName =
   fmap (uncurry (</>))
     <$> findFileCwdWithExtension' cwd extensions searchPath baseName
 
 -- | @since 3.4.0.0
 findAllFilesCwdWithExtension
-  :: forall dir1 dir2 file allowAbsolute
+  :: forall dir1 dir2 allowAbsolute
    . Maybe (SymbolicPath "CWD" (Dir dir1))
   -- ^ working directory
   -> [Suffix]
   -- ^ extensions
   -> [SymbolicPathX allowAbsolute dir1 (Dir dir2)]
   -- ^ relative search locations
-  -> RelativePath dir2 (File file)
+  -> RelativePath dir2 File
   -- ^ basename
-  -> IO [SymbolicPathX allowAbsolute dir1 (File file)]
+  -> IO [SymbolicPathX allowAbsolute dir1 File]
 findAllFilesCwdWithExtension mbWorkDir extensions searchPath basename =
   findAllFiles
     (interpretSymbolicPath mbWorkDir)
@@ -1284,8 +1284,8 @@ findAllFilesCwdWithExtension mbWorkDir extensions searchPath basename =
 findAllFilesWithExtension
   :: [Suffix]
   -> [SymbolicPathX allowAbsolute dir1 (Dir dir2)]
-  -> RelativePath dir2 (File file)
-  -> IO [SymbolicPathX allowAbsolute dir1 (File file)]
+  -> RelativePath dir2 File
+  -> IO [SymbolicPathX allowAbsolute dir1 File]
 findAllFilesWithExtension =
   findAllFilesCwdWithExtension Nothing
 
@@ -1294,20 +1294,20 @@ findAllFilesWithExtension =
 findFileWithExtension'
   :: [Suffix]
   -> [SymbolicPathX allowAbsolute dir1 (Dir dir2)]
-  -> RelativePath dir2 (File file)
-  -> IO (Maybe (SymbolicPathX allowAbsolute dir1 (Dir dir2), RelativePath dir2 (File file)))
+  -> RelativePath dir2 File
+  -> IO (Maybe (SymbolicPathX allowAbsolute dir1 (Dir dir2), RelativePath dir2 File))
 findFileWithExtension' =
   findFileCwdWithExtension' Nothing
 
 -- | Like 'findFileCwdWithExtension' but returns which element of the search path
 -- the file was found in, and the file path relative to that base directory.
 findFileCwdWithExtension'
-  :: forall dir1 dir2 file allowAbsolute
+  :: forall dir1 dir2 allowAbsolute
    . Maybe (SymbolicPath "CWD" (Dir dir1))
   -> [Suffix]
   -> [SymbolicPathX allowAbsolute dir1 (Dir dir2)]
-  -> RelativePath dir2 (File file)
-  -> IO (Maybe (SymbolicPathX allowAbsolute dir1 (Dir dir2), RelativePath dir2 (File file)))
+  -> RelativePath dir2 File
+  -> IO (Maybe (SymbolicPathX allowAbsolute dir1 (Dir dir2), RelativePath dir2 File))
 findFileCwdWithExtension' cwd extensions searchPath baseName =
   findFirstFile
     (uncurry mkPath)
@@ -1316,7 +1316,7 @@ findFileCwdWithExtension' cwd extensions searchPath baseName =
     , Suffix ext <- ordNub extensions
     ]
   where
-    mkPath :: SymbolicPathX allowAbsolute dir1 (Dir dir2) -> RelativePath dir2 (File file) -> FilePath
+    mkPath :: SymbolicPathX allowAbsolute dir1 (Dir dir2) -> RelativePath dir2 File -> FilePath
     mkPath base file =
       interpretSymbolicPath cwd (base </> file)
 
@@ -1337,7 +1337,7 @@ findAllFiles file = filterM (doesFileExist . file)
 --
 -- As 'findModuleFile' but for a list of module names.
 findModuleFilesEx
-  :: forall dir1 dir2 file allowAbsolute
+  :: forall dir1 dir2 allowAbsolute
    . Verbosity
   -> [SymbolicPathX allowAbsolute dir1 (Dir dir2)]
   -- ^ build prefix (location of objects)
@@ -1345,7 +1345,7 @@ findModuleFilesEx
   -- ^ search suffixes
   -> [ModuleName]
   -- ^ modules
-  -> IO [(SymbolicPathX allowAbsolute dir1 (Dir dir2), RelativePath dir2 (File file))]
+  -> IO [(SymbolicPathX allowAbsolute dir1 (Dir dir2), RelativePath dir2 File)]
 findModuleFilesEx verbosity searchPath extensions moduleNames =
   traverse (findModuleFileEx verbosity searchPath extensions) moduleNames
 
@@ -1353,7 +1353,7 @@ findModuleFilesEx verbosity searchPath extensions moduleNames =
 --
 -- As 'findModuleFileCwd' but for a list of module names.
 findModuleFilesCwd
-  :: forall dir1 dir2 file allowAbsolute
+  :: forall dir1 dir2 allowAbsolute
    . Verbosity
   -> Maybe (SymbolicPath "CWD" (Dir dir1))
   -> [SymbolicPathX allowAbsolute dir1 (Dir dir2)]
@@ -1362,7 +1362,7 @@ findModuleFilesCwd
   -- ^ search suffixes
   -> [ModuleName]
   -- ^ modules
-  -> IO [(SymbolicPathX allowAbsolute dir1 (Dir dir2), RelativePath dir2 (File file))]
+  -> IO [(SymbolicPathX allowAbsolute dir1 (Dir dir2), RelativePath dir2 File)]
 findModuleFilesCwd verbosity cwd searchPath extensions moduleNames =
   traverse (findModuleFileCwd verbosity cwd searchPath extensions) moduleNames
 
@@ -1371,7 +1371,7 @@ findModuleFilesCwd verbosity cwd searchPath extensions moduleNames =
 -- This is similar to 'findFileWithExtension'' but specialised to a module
 -- name. The function fails if the file corresponding to the module is missing.
 findModuleFileEx
-  :: forall dir1 dir2 file allowAbsolute
+  :: forall dir1 dir2 allowAbsolute
    . Verbosity
   -> [SymbolicPathX allowAbsolute dir1 (Dir dir2)]
   -- ^ build prefix (location of objects)
@@ -1379,7 +1379,7 @@ findModuleFileEx
   -- ^ search suffixes
   -> ModuleName
   -- ^ module
-  -> IO (SymbolicPathX allowAbsolute dir1 (Dir dir2), RelativePath dir2 (File file))
+  -> IO (SymbolicPathX allowAbsolute dir1 (Dir dir2), RelativePath dir2 File)
 findModuleFileEx verbosity =
   findModuleFileCwd verbosity Nothing
 
@@ -1388,7 +1388,7 @@ findModuleFileEx verbosity =
 -- This is similar to 'findFileCwdWithExtension'' but specialised to a module
 -- name. The function fails if the file corresponding to the module is missing.
 findModuleFileCwd
-  :: forall dir1 dir2 file allowAbsolute
+  :: forall dir1 dir2 allowAbsolute
    . Verbosity
   -> Maybe (SymbolicPath "CWD" (Dir dir1))
   -> [SymbolicPathX allowAbsolute dir1 (Dir dir2)]
@@ -1397,7 +1397,7 @@ findModuleFileCwd
   -- ^ search suffixes
   -> ModuleName
   -- ^ module
-  -> IO (SymbolicPathX allowAbsolute dir1 (Dir dir2), RelativePath dir2 (File file))
+  -> IO (SymbolicPathX allowAbsolute dir1 (Dir dir2), RelativePath dir2 File)
 findModuleFileCwd verbosity cwd searchPath extensions mod_name = do
   mbRes <-
     findFileCwdWithExtension'
@@ -1602,7 +1602,7 @@ copyFileToCwd
   :: Verbosity
   -> Maybe (SymbolicPath "CWD" (Dir "Package"))
   -> SymbolicPath "Package" (Dir target)
-  -> RelativePath "Package" (File to)
+  -> RelativePath "Package" File
   -> IO ()
 copyFileToCwd verbosity mbWorkDir dir file = withFrozenCallStack $ do
   let targetFile = i $ dir </> unsafeCoerceSymbolicPath file
@@ -1743,14 +1743,14 @@ withTempFileCwd
   -- ^ Temp dir to create the file in
   -> String
   -- ^ File name template. See 'openTempFile'.
-  -> (SymbolicPath "Package" (File tmpFile) -> Handle -> IO a)
+  -> (SymbolicPath "Package" File -> Handle -> IO a)
   -> IO a
 withTempFileCwd = withFrozenCallStack $ withTempFileEx defaultTempFileOptions
 
 -- | A version of 'withTempFile' that additionally takes a 'TempFileOptions'
 -- argument.
 withTempFileEx
-  :: forall a tmpDir tmpFile
+  :: forall a tmpDir
    . TempFileOptions
   -> Maybe (SymbolicPath "CWD" (Dir "Package"))
   -- ^ Working directory
@@ -1758,7 +1758,7 @@ withTempFileEx
   -- ^ Temp dir to create the file in
   -> String
   -- ^ File name template. See 'openTempFile'.
-  -> (SymbolicPath "Package" (File tmpFile) -> Handle -> IO a)
+  -> (SymbolicPath "Package" File -> Handle -> IO a)
   -> IO a
 withTempFileEx opts mbWorkDir tmpDir template action =
   withFrozenCallStack $
@@ -1774,7 +1774,7 @@ withTempFileEx opts mbWorkDir tmpDir template action =
       (withLexicalCallStack (\(fn, h) -> action (mkRelToPkg fn) h))
   where
     i = interpretSymbolicPath mbWorkDir -- See Note [Symbolic paths] in Distribution.Utils.Path
-    mkRelToPkg :: FilePath -> SymbolicPath "Package" (File tmpFile)
+    mkRelToPkg :: FilePath -> SymbolicPath "Package" File
     mkRelToPkg fp =
       tmpDir </> makeRelativePathEx (takeFileName fp)
 
@@ -1955,7 +1955,7 @@ exeExtensions = case (buildArch, buildOS) of
 
 -- | Package description file (/pkgname/@.cabal@) in the current
 -- working directory.
-defaultPackageDescCwd :: Verbosity -> IO (RelativePath "Package" (File ".cabal"))
+defaultPackageDescCwd :: Verbosity -> IO (RelativePath "Package" File)
 defaultPackageDescCwd verbosity = tryFindPackageDesc verbosity Nothing
 
 -- | Find a package description file in the given directory.  Looks for
@@ -1963,7 +1963,7 @@ defaultPackageDescCwd verbosity = tryFindPackageDesc verbosity Nothing
 findPackageDesc
   :: Maybe (SymbolicPath "CWD" (Dir "Package"))
   -- ^ package directory
-  -> IO (Either CabalException (RelativePath "Package" (File ".cabal")))
+  -> IO (Either CabalException (RelativePath "Package" File))
 findPackageDesc mbPkgDir =
   do
     let pkgDir = maybe "." getSymbolicPath mbPkgDir
@@ -1988,7 +1988,7 @@ tryFindPackageDesc
   :: Verbosity
   -> Maybe (SymbolicPath "CWD" (Dir "Package"))
   -- ^ directory in which to look
-  -> IO (RelativePath "Package" (File ".cabal"))
+  -> IO (RelativePath "Package" File)
 tryFindPackageDesc verbosity dir =
   either (dieWithException verbosity) return =<< findPackageDesc dir
 
@@ -2000,7 +2000,7 @@ findHookedPackageDesc
   -- ^ Working directory
   -> SymbolicPath "Package" (Dir "Build")
   -- ^ Directory to search
-  -> IO (Maybe (SymbolicPath "Package" (File "BuildInfo")))
+  -> IO (Maybe (SymbolicPath "Package" File))
   -- ^ /dir/@\/@/pkgname/@.buildinfo@, if present
 findHookedPackageDesc verbosity mbWorkDir dir = do
   files <- getDirectoryContents $ interpretSymbolicPath mbWorkDir dir

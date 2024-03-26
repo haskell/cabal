@@ -62,7 +62,7 @@ pattern BenchmarkCommonFlags
   :: Flag Verbosity
   -> Flag (SymbolicPath "Package" (Dir "Dist"))
   -> Flag (SymbolicPath "CWD" (Dir "Package"))
-  -> Flag (SymbolicPath "Package" (File ".cabal"))
+  -> Flag (SymbolicPath "Package" File)
   -> [String]
   -> BenchmarkFlags
 pattern BenchmarkCommonFlags

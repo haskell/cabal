@@ -64,7 +64,7 @@ pattern CopyCommonFlags
   :: Flag Verbosity
   -> Flag (SymbolicPath "Package" (Dir "Dist"))
   -> Flag (SymbolicPath "CWD" (Dir "Package"))
-  -> Flag (SymbolicPath "Package" (File ".cabal"))
+  -> Flag (SymbolicPath "Package" File)
   -> [String]
   -> CopyFlags
 pattern CopyCommonFlags

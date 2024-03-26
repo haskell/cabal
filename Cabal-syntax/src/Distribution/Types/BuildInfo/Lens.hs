@@ -71,7 +71,7 @@ class HasBuildInfo a where
   pkgconfigDepends = buildInfo . pkgconfigDepends
   {-# INLINE pkgconfigDepends #-}
 
-  frameworks :: Lens' a [RelativePath "Framework" (File "Framework")]
+  frameworks :: Lens' a [RelativePath "Framework" File]
   frameworks = buildInfo . frameworks
   {-# INLINE frameworks #-}
 
@@ -79,23 +79,23 @@ class HasBuildInfo a where
   extraFrameworkDirs = buildInfo . extraFrameworkDirs
   {-# INLINE extraFrameworkDirs #-}
 
-  asmSources :: Lens' a [SymbolicPath "Package" (File "Source")]
+  asmSources :: Lens' a [SymbolicPath "Package" File]
   asmSources = buildInfo . asmSources
   {-# INLINE asmSources #-}
 
-  cmmSources :: Lens' a [SymbolicPath "Package" (File "Source")]
+  cmmSources :: Lens' a [SymbolicPath "Package" File]
   cmmSources = buildInfo . cmmSources
   {-# INLINE cmmSources #-}
 
-  cSources :: Lens' a [SymbolicPath "Package" (File "Source")]
+  cSources :: Lens' a [SymbolicPath "Package" File]
   cSources = buildInfo . cSources
   {-# INLINE cSources #-}
 
-  cxxSources :: Lens' a [SymbolicPath "Package" (File "Source")]
+  cxxSources :: Lens' a [SymbolicPath "Package" File]
   cxxSources = buildInfo . cxxSources
   {-# INLINE cxxSources #-}
 
-  jsSources :: Lens' a [SymbolicPath "Package" (File "Source")]
+  jsSources :: Lens' a [SymbolicPath "Package" File]
   jsSources = buildInfo . jsSources
   {-# INLINE jsSources #-}
 
@@ -171,15 +171,15 @@ class HasBuildInfo a where
   includeDirs = buildInfo . includeDirs
   {-# INLINE includeDirs #-}
 
-  includes :: Lens' a [SymbolicPath "Include" (File "Include")]
+  includes :: Lens' a [SymbolicPath "Include" File]
   includes = buildInfo . includes
   {-# INLINE includes #-}
 
-  autogenIncludes :: Lens' a [RelativePath "Include" (File "Include")]
+  autogenIncludes :: Lens' a [RelativePath "Include" File]
   autogenIncludes = buildInfo . autogenIncludes
   {-# INLINE autogenIncludes #-}
 
-  installIncludes :: Lens' a [RelativePath "Include" (File "Include")]
+  installIncludes :: Lens' a [RelativePath "Include" File]
   installIncludes = buildInfo . installIncludes
   {-# INLINE installIncludes #-}
 

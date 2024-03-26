@@ -76,8 +76,8 @@ import System.IO
 createArLibArchive
   :: Verbosity
   -> LocalBuildInfo
-  -> SymbolicPath "Package" (File "Target")
-  -> [SymbolicPath "Package" (File obj)]
+  -> SymbolicPath "Package" File
+  -> [SymbolicPath "Package" File]
   -> IO ()
 createArLibArchive verbosity lbi targetPath files = do
   (arProg, _) <- requireProgram verbosity arProgram progDb

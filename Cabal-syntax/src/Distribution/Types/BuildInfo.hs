@@ -66,17 +66,17 @@ data BuildInfo = BuildInfo
   -- ^ options for hsc2hs
   , pkgconfigDepends :: [PkgconfigDependency]
   -- ^ pkg-config packages that are used
-  , frameworks :: [RelativePath "Framework" (File "Framework")]
+  , frameworks :: [RelativePath "Framework" File]
   -- ^ support frameworks for Mac OS X
   , extraFrameworkDirs :: [SymbolicPath "Package" (Dir "Framework")]
   -- ^ extra locations to find frameworks.
-  , asmSources :: [SymbolicPath "Package" (File "Source")]
+  , asmSources :: [SymbolicPath "Package" File]
   -- ^ Assembly files.
-  , cmmSources :: [SymbolicPath "Package" (File "Source")]
+  , cmmSources :: [SymbolicPath "Package" File]
   -- ^ C-- files.
-  , cSources :: [SymbolicPath "Package" (File "Source")]
-  , cxxSources :: [SymbolicPath "Package" (File "Source")]
-  , jsSources :: [SymbolicPath "Package" (File "Source")]
+  , cSources :: [SymbolicPath "Package" File]
+  , cxxSources :: [SymbolicPath "Package" File]
+  , jsSources :: [SymbolicPath "Package" File]
   , hsSourceDirs :: [SymbolicPath "Package" (Dir "Source")]
   -- ^ where to look for the Haskell module hierarchy
   , -- NB: these are symbolic paths are not relative paths,
@@ -124,11 +124,11 @@ data BuildInfo = BuildInfo
   , extraLibDirsStatic :: [SymbolicPath "Package" (Dir "Lib")]
   , includeDirs :: [SymbolicPath "Package" (Dir "Include")]
   -- ^ directories to find .h files
-  , includes :: [SymbolicPath "Include" (File "Include")]
+  , includes :: [SymbolicPath "Include" File]
   -- ^ The .h files to be found in includeDirs
-  , autogenIncludes :: [RelativePath "Include" (File "Include")]
+  , autogenIncludes :: [RelativePath "Include" File]
   -- ^ The .h files to be generated (e.g. by @autoconf@)
-  , installIncludes :: [RelativePath "Include" (File "Include")]
+  , installIncludes :: [RelativePath "Include" File]
   -- ^ .h files to install with the package
   , options :: PerCompilerFlavor [String]
   , profOptions :: PerCompilerFlavor [String]

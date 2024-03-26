@@ -28,9 +28,9 @@ findFileCwd
   -- ^ working directory
   -> [SymbolicPath dir1 (Dir dir2)]
   -- ^ search directories
-  -> RelativePath dir2 (File file)
+  -> RelativePath dir2 File
   -- ^ filename
-  -> IO (SymbolicPath dir1 (File file))
+  -> IO (SymbolicPath dir1 File)
 ```
 
 See Note [Symbolic paths] in `Distribution.Utils.Path` for further information

@@ -56,8 +56,8 @@ combineObjectFiles
   :: Verbosity
   -> LocalBuildInfo
   -> ConfiguredProgram
-  -> SymbolicPath "Package" (File "Target")
-  -> [SymbolicPath "Package" (File "Object")]
+  -> SymbolicPath "Package" File
+  -> [SymbolicPath "Package" File]
   -> IO ()
 combineObjectFiles verbosity lbi ldProg target files = do
   -- Unlike "ar", the "ld" tool is not designed to be used with xargs. That is,

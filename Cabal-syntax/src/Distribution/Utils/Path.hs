@@ -100,6 +100,11 @@ current working directory. We achieve this with the following API:
   - interpretSymbolicPath
       :: Maybe (SymbolicPath "CWD" (Dir from)) -> SymbolicPath from to -> FilePath
 
+Note that, in the type @SymbolicPath from to@, @from@ is the name of a directory,
+whereas @to@ is either @Dir toDir@ or @File@. For example, a source directory
+typically has the type @SymbolicPath "Package" (Dir "Source")@, while a source
+file has a type such as @SymbolicPath "Source" File@.
+
 Here, a symbolic path refers to an **uninterpreted** file path, i.e. any
 passed in working directory **has not** been taken into account.
 Whenever we see a symbolic path, it is a sign we must take into account this
@@ -110,7 +115,7 @@ Thus, whenever we interact with the file system, we do the following:
     path relative to a working directory argument, e.g.
 
       doCheck :: Maybe (SymbolicPath "CWD" (Dir from))
-              -> SymbolicPath from (File to)
+              -> SymbolicPath from File
               -> Bool
       doCheck mbWorkDir file = doesFileExist $ interpretSymbolicPath mbWorkDir file
 
@@ -119,7 +124,7 @@ Thus, whenever we interact with the file system, we do the following:
     case we interpret the symbolic paths by using `interpretSymbolicPathCWD`:
 
       callGhc :: Maybe (SymbolicPath "CWD" (Dir "Package"))
-              -> SymbolicPath (Dir "Package") (File "Source")
+              -> SymbolicPath (Dir "Package") File
               -> IO ()
       callGhc mbWorkDir inputFile =
         runProgramInvocation $
@@ -188,7 +193,7 @@ Note [Symbolic relative paths]
 This module defines:
 
   data kind AllowAbsolute = AllowAbsolute | OnlyRelative
-  data kind FileOrDir = File Symbol | Dir Symbol
+  data kind FileOrDir = File | Dir Symbol
 
   type SymbolicPathX :: AllowAbsolute -> Symbol -> FileOrDir -> Type
   newtype SymbolicPathX allowAbsolute from to = SymbolicPath FilePath
@@ -206,11 +211,10 @@ relative.
 -- | A type-level symbolic name, to an abstract file or directory
 -- (e.g. the Cabal package directory).
 data FileOrDir
-  = -- | The abstract name of a file or category of files,
-    -- e.g. source files or data files.
-    File Symbol
+  = -- | A file (with no further information).
+    File
   | -- | The abstract name of a directory or category of directories,
-    -- e.g. the package directory or source directories.
+    -- e.g. the package directory or a source directory.
     Dir Symbol
 
 -- | Is this symbolic path allowed to be absolute, or must it be relative?
@@ -287,15 +291,15 @@ unsafeMakeSymbolicPath :: FilePath -> SymbolicPathX allowAbs from to
 unsafeMakeSymbolicPath fp = SymbolicPath fp
 
 -- | Like 'System.FilePath.takeDirectory', for symbolic paths.
-takeDirectorySymbolicPath :: SymbolicPathX allowAbsolute from (File to) -> SymbolicPathX allowAbsolute from (Dir to')
+takeDirectorySymbolicPath :: SymbolicPathX allowAbsolute from File -> SymbolicPathX allowAbsolute from (Dir to')
 takeDirectorySymbolicPath (SymbolicPath fp) = SymbolicPath (FilePath.takeDirectory fp)
 
 -- | Like 'System.FilePath.dropExtensions', for symbolic paths.
-dropExtensionsSymbolicPath :: SymbolicPathX allowAbsolute from (File to) -> SymbolicPathX allowAbsolute from (File to')
+dropExtensionsSymbolicPath :: SymbolicPathX allowAbsolute from File -> SymbolicPathX allowAbsolute from File
 dropExtensionsSymbolicPath (SymbolicPath fp) = SymbolicPath (FilePath.dropExtensions fp)
 
 -- | Like 'System.FilePath.replaceExtension', for symbolic paths.
-replaceExtensionSymbolicPath :: SymbolicPathX allowAbsolute from (File to) -> String -> SymbolicPathX allowAbsolute from (File to')
+replaceExtensionSymbolicPath :: SymbolicPathX allowAbsolute from File -> String -> SymbolicPathX allowAbsolute from File
 replaceExtensionSymbolicPath (SymbolicPath fp) ext = SymbolicPath (FilePath.replaceExtension fp ext)
 
 -- | Like 'System.FilePath.normalise', for symbolic paths.
@@ -303,7 +307,7 @@ normaliseSymbolicPath :: SymbolicPathX allowAbsolute from to -> SymbolicPathX al
 normaliseSymbolicPath (SymbolicPath fp) = SymbolicPath (FilePath.normalise fp)
 
 -- | Retrieve the relative symbolic path to a Haskell module.
-moduleNameSymbolicPath :: ModuleName -> SymbolicPathX allowAbsolute "Source" (File "Source")
+moduleNameSymbolicPath :: ModuleName -> SymbolicPathX allowAbsolute "Source" File
 moduleNameSymbolicPath modNm = SymbolicPath $ ModuleName.toFilePath modNm
 
 -- | Interpret a symbolic path with respect to the given directory.
@@ -345,7 +349,7 @@ type family IsCWD (dir :: Symbol) :: Constraint where {}
 -- e.g.:
 --
 -- > callGhc :: Maybe (SymbolicPath "CWD" (Dir "Package"))
--- >         -> SymbolicPath (Dir "Package") (File "Source")
+-- >         -> SymbolicPath (Dir "Package") File
 -- >         -> IO ()
 -- > callGhc mbWorkDir inputFile =
 -- >   runProgramInvocation $
@@ -443,7 +447,7 @@ class FileLike p where
 instance FileLike FilePath where
   (<.>) = (FilePath.<.>)
 
-instance p ~ File f => FileLike (SymbolicPathX allowAbsolute dir p) where
+instance p ~ File => FileLike (SymbolicPathX allowAbsolute dir p) where
   SymbolicPath p <.> ext = SymbolicPath (p <.> ext)
 
 infixr 5 </>

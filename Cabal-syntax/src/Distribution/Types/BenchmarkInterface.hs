@@ -23,7 +23,7 @@ data BenchmarkInterface
     -- for success, non-zero for failure. The stdout and stderr
     -- channels may be logged. Test tooling may pass command line
     -- arguments and/or connect the stdin channel to the test.
-    BenchmarkExeV10 Version (RelativePath "Source" (File "Source"))
+    BenchmarkExeV10 Version (RelativePath "Source" File)
   | -- | A benchmark that does not conform to one of the above
     -- interfaces for the given reason (e.g. unknown benchmark type).
     BenchmarkUnsupported BenchmarkType

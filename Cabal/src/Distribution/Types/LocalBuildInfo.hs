@@ -153,7 +153,7 @@ pattern LocalBuildInfo
   -> InstallDirTemplates
   -> Compiler
   -> Platform
-  -> Maybe (SymbolicPath "Package" (File ".cabal"))
+  -> Maybe (SymbolicPath "Package" File)
   -> Graph ComponentLocalBuildInfo
   -> Map ComponentName [ComponentLocalBuildInfo]
   -> Map (PackageName, ComponentName) ComponentId

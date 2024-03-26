@@ -100,7 +100,7 @@ unsorted _ _ ms = pure ms
 type PreProcessorExtras =
   Maybe (SymbolicPath "CWD" (Dir "Package"))
   -> SymbolicPath "Package" (Dir "Source")
-  -> IO [RelativePath "Source" (File "Source")]
+  -> IO [RelativePath "Source" File]
 
 mkSimplePreProcessor
   :: (FilePath -> FilePath -> Verbosity -> IO ())
@@ -228,7 +228,7 @@ preprocessComponent pd comp lbi clbi isSrcDist verbosity handlers =
     preProcessComponent
       :: BuildInfo
       -> [ModuleName]
-      -> RelativePath "Source" (File "Source")
+      -> RelativePath "Source" File
       -> SymbolicPath "Package" (Dir "Build")
       -> IO ()
     preProcessComponent bi modules exePath outputDir = do
@@ -279,7 +279,7 @@ preprocessFile
   -- ^ build directory
   -> Bool
   -- ^ preprocess for sdist
-  -> RelativePath "Source" (File "Source")
+  -> RelativePath "Source" File
   -- ^ module file name
   -> Verbosity
   -- ^ verbosity
@@ -895,7 +895,7 @@ preprocessExtras
   :: Verbosity
   -> Component
   -> LocalBuildInfo
-  -> IO [SymbolicPath "Package" (File "Source")]
+  -> IO [SymbolicPath "Package" File]
 preprocessExtras verbosity comp lbi = case comp of
   CLib _ -> pp $ buildDir lbi
   (CExe exe@Executable{}) -> pp $ exeBuildDir lbi exe
@@ -911,7 +911,7 @@ preprocessExtras verbosity comp lbi = case comp of
         dieWithException verbosity $ NoSupportPreProcessingBenchmarkExtras tt
       _ -> pp $ benchmarkBuildDir lbi bm
   where
-    pp :: SymbolicPath "Package" (Dir "Build") -> IO [SymbolicPath "Package" (File "Source")]
+    pp :: SymbolicPath "Package" (Dir "Build") -> IO [SymbolicPath "Package" File]
     pp builddir = do
       -- Use the build dir as a source dir.
       let dir :: SymbolicPath "Package" (Dir "Source")

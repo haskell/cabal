@@ -784,7 +784,7 @@ checkCabalFile pn = do
 
 checkLicFileExist
   :: Monad m
-  => RelativePath "Package" (File "License")
+  => RelativePath "Package" File
   -> CheckM m ()
 checkLicFileExist sp = do
   let fp = getSymbolicPath sp

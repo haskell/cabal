@@ -59,7 +59,7 @@ data PackageBuildDescr = PackageBuildDescr
   -- ^ The compiler we're building with
   , hostPlatform :: Platform
   -- ^ The platform we're building for
-  , pkgDescrFile :: Maybe (SymbolicPath "Package" (File ".cabal"))
+  , pkgDescrFile :: Maybe (SymbolicPath "Package" File)
   -- ^ the filename containing the .cabal file, if available
   , localPkgDescr :: PackageDescription
   -- ^ WARNING WARNING WARNING Be VERY careful about using

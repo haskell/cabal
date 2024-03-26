@@ -275,7 +275,7 @@ data CheckExplanation
   | NotPackageName FilePath String
   | NoDesc
   | MultiDesc [String]
-  | UnknownFile String (RelativePath "Package" (File "License"))
+  | UnknownFile String (RelativePath "Package" File)
   | MissingSetupFile
   | MissingConfigureScript
   | UnknownDirectory String FilePath

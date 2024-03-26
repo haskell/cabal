@@ -553,7 +553,7 @@ mkHaddockArgs
   -> Maybe PathTemplate
   -- ^ template for HTML location
   -> Version
-  -> [SymbolicPath "Package" (File "Source")]
+  -> [SymbolicPath "Package" File]
   -> BuildInfo
   -> IO HaddockArgs
 mkHaddockArgs verbosity tmp lbi clbi htmlTemplate haddockVersion inFiles bi = do

@@ -37,7 +37,7 @@ buildAllExtraSources
   -- ^ The build directory for this target
   -> PreBuildComponentInputs
   -- ^ The context and component being built in it.
-  -> IO (NubListR (SymbolicPath "Package" (File "Source")))
+  -> IO (NubListR (SymbolicPath "Package" File))
   -- ^ Returns the (nubbed) list of extra sources that were built
 buildAllExtraSources =
   mconcat
@@ -59,7 +59,7 @@ buildCSources
     -- ^ The build directory for this target
     -> PreBuildComponentInputs
     -- ^ The context and component being built in it.
-    -> IO (NubListR (SymbolicPath "Package" (File "Source")))
+    -> IO (NubListR (SymbolicPath "Package" File))
     -- ^ Returns the list of extra sources that were built
 buildCSources =
   buildExtraSources
@@ -135,7 +135,7 @@ buildExtraSources
        -> BuildInfo
        -> ComponentLocalBuildInfo
        -> SymbolicPath "Package" (Dir "Artifacts")
-       -> SymbolicPath "Package" (File "Source")
+       -> SymbolicPath "Package" File
        -> GhcOptions
      )
   -- ^ Function to determine the @'GhcOptions'@ for the
@@ -146,7 +146,7 @@ buildExtraSources
   -- ^ Some types of build sources should not be built in the dynamic way, namely, JS sources.
   -- I'm not entirely sure this remains true after we migrate to supporting GHC's JS backend rather than GHCJS.
   -- Boolean for "do we allow building these sources the dynamic way?"
-  -> (Component -> [SymbolicPath "Package" (File "Source")])
+  -> (Component -> [SymbolicPath "Package" File])
   -- ^ View the extra sources of a component, typically from
   -- the build info (e.g. @'asmSources'@, @'cSources'@).
   -- @'Executable'@ components might additionally add the
@@ -158,7 +158,7 @@ buildExtraSources
   -- ^ The build directory for this target
   -> PreBuildComponentInputs
   -- ^ The context and component being built in it.
-  -> IO (NubListR (SymbolicPath "Package" (File "Source")))
+  -> IO (NubListR (SymbolicPath "Package" File))
   -- ^ Returns the list of extra sources that were built
 buildExtraSources description componentSourceGhcOptions wantDyn viewSources ghcProg buildTargetDir =
   \PreBuildComponentInputs{buildingWhat, localBuildInfo = lbi, targetInfo} -> do
@@ -180,7 +180,7 @@ buildExtraSources description componentSourceGhcOptions wantDyn viewSources ghcP
       forceSharedLib = doingTH && isGhcDynamic
       runGhcProg = runGHC verbosity ghcProg comp platform
 
-      buildAction :: SymbolicPath "Package" (File "Source") -> IO ()
+      buildAction :: SymbolicPath "Package" File -> IO ()
       buildAction sourceFile = do
         let baseSrcOpts =
               componentSourceGhcOptions

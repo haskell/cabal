@@ -1051,7 +1051,7 @@ gbuildNeedDynamic lbi bm =
         ForeignLibTypeUnknown ->
           cabalBug "unknown foreign lib type"
 
-gbuildModDefFiles :: GBuildMode -> [RelativePath "Source" (File "Source")]
+gbuildModDefFiles :: GBuildMode -> [RelativePath "Source" File]
 gbuildModDefFiles (GBuildExe _) = []
 gbuildModDefFiles (GReplExe _ _) = []
 gbuildModDefFiles (GBuildFLib flib) = foreignLibModDefFile flib
@@ -1117,9 +1117,9 @@ decodeMainIsArg arg
 --
 -- Used to correctly build and link sources.
 data BuildSources = BuildSources
-  { cSourcesFiles :: [SymbolicPath "Package" (File "Source")]
-  , cxxSourceFiles :: [SymbolicPath "Package" (File "Source")]
-  , inputSourceFiles :: [SymbolicPath "Package" (File "Source")]
+  { cSourcesFiles :: [SymbolicPath "Package" File]
+  , cxxSourceFiles :: [SymbolicPath "Package" File]
+  , inputSourceFiles :: [SymbolicPath "Package" File]
   , inputSourceModules :: [ModuleName]
   }
 
@@ -1655,7 +1655,7 @@ extractRtsInfo lbi =
 -- the object file we last compiled for it, or if no object file exists yet.
 checkNeedsRecompilation
   :: Maybe (SymbolicPath "CWD" (Dir "Package"))
-  -> SymbolicPath "Package" (File file)
+  -> SymbolicPath "Package" File
   -> GhcOptions
   -> IO Bool
 checkNeedsRecompilation mbWorkDir filename opts =
@@ -1667,7 +1667,7 @@ checkNeedsRecompilation mbWorkDir filename opts =
 -- | Finds the object file name of the given source file
 getObjectFileName
   :: Maybe (SymbolicPath "CWD" (Dir "Package"))
-  -> SymbolicPath "Package" (File file)
+  -> SymbolicPath "Package" File
   -> GhcOptions
   -> FilePath
 getObjectFileName mbWorkDir filename opts = oname

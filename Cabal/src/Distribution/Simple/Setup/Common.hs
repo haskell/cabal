@@ -78,7 +78,7 @@ data CommonSetupFlags = CommonSetupFlags
   -- ^ Working directory (optional)
   , setupDistPref :: !(Flag (SymbolicPath "Package" (Dir "Dist")))
   -- ^ Build directory
-  , setupCabalFilePath :: !(Flag (SymbolicPath "Package" (File ".cabal")))
+  , setupCabalFilePath :: !(Flag (SymbolicPath "Package" File))
   -- ^ Which Cabal file to use (optional)
   , setupTargets :: [String]
   -- ^ Which targets is this Setup invocation relative to?

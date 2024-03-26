@@ -47,7 +47,7 @@ licenseRaw :: Lens' PackageDescription (Either SPDX.License License)
 licenseRaw f s = fmap (\x -> s{T.licenseRaw = x}) (f (T.licenseRaw s))
 {-# INLINE licenseRaw #-}
 
-licenseFiles :: Lens' PackageDescription [RelativePath "Package" (File "License")]
+licenseFiles :: Lens' PackageDescription [RelativePath "Package" File]
 licenseFiles f s = fmap (\x -> s{T.licenseFiles = x}) (f (T.licenseFiles s))
 {-# INLINE licenseFiles #-}
 
@@ -139,7 +139,7 @@ benchmarks :: Lens' PackageDescription [Benchmark]
 benchmarks f s = fmap (\x -> s{T.benchmarks = x}) (f (T.benchmarks s))
 {-# INLINE benchmarks #-}
 
-dataFiles :: Lens' PackageDescription [RelativePath "Data" (File "Data")]
+dataFiles :: Lens' PackageDescription [RelativePath "Data" File]
 dataFiles f s = fmap (\x -> s{T.dataFiles = x}) (f (T.dataFiles s))
 {-# INLINE dataFiles #-}
 
@@ -147,15 +147,15 @@ dataDir :: Lens' PackageDescription (SymbolicPath "Package" (Dir "Data"))
 dataDir f s = fmap (\x -> s{T.dataDir = x}) (f (T.dataDir s))
 {-# INLINE dataDir #-}
 
-extraSrcFiles :: Lens' PackageDescription [RelativePath "Package" (File "Source")]
+extraSrcFiles :: Lens' PackageDescription [RelativePath "Package" File]
 extraSrcFiles f s = fmap (\x -> s{T.extraSrcFiles = x}) (f (T.extraSrcFiles s))
 {-# INLINE extraSrcFiles #-}
 
-extraTmpFiles :: Lens' PackageDescription [RelativePath "Package" (File "Tmp")]
+extraTmpFiles :: Lens' PackageDescription [RelativePath "Package" File]
 extraTmpFiles f s = fmap (\x -> s{T.extraTmpFiles = x}) (f (T.extraTmpFiles s))
 {-# INLINE extraTmpFiles #-}
 
-extraDocFiles :: Lens' PackageDescription [RelativePath "Package" (File "Doc")]
+extraDocFiles :: Lens' PackageDescription [RelativePath "Package" File]
 extraDocFiles f s = fmap (\x -> s{T.extraDocFiles = x}) (f (T.extraDocFiles s))
 {-# INLINE extraDocFiles #-}
 

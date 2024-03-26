@@ -402,13 +402,13 @@ data GhcOptions = GhcOptions
   , -----------------------
     -- Inputs and outputs
 
-    ghcOptInputFiles :: NubListR (SymbolicPath "Package" (File "Source"))
+    ghcOptInputFiles :: NubListR (SymbolicPath "Package" File)
   -- ^ The main input files; could be .hs, .hi, .c, .o, depending on mode.
-  , ghcOptInputScripts :: NubListR (SymbolicPath "Package" (File "Source"))
+  , ghcOptInputScripts :: NubListR (SymbolicPath "Package" File)
   -- ^ Script files with irregular extensions that need -x hs.
   , ghcOptInputModules :: NubListR ModuleName
   -- ^ The names of input Haskell modules, mainly for @--make@ mode.
-  , ghcOptOutputFile :: Flag (SymbolicPath "Package" (File "Output"))
+  , ghcOptOutputFile :: Flag (SymbolicPath "Package" File)
   -- ^ Location for output file; the @ghc -o@ flag.
   , ghcOptOutputDynFile :: Flag FilePath
   -- ^ Location for dynamic output file in 'GhcStaticAndDynamic' mode;
@@ -488,7 +488,7 @@ data GhcOptions = GhcOptions
   -- ^ Options to pass through to CPP; the @ghc -optP@ flag.
   , ghcOptCppIncludePath :: NubListR (SymbolicPath "Package" (Dir "Include"))
   -- ^ Search path for CPP includes like header files; the @ghc -I@ flag.
-  , ghcOptCppIncludes :: NubListR (SymbolicPath "Package" (File "Include"))
+  , ghcOptCppIncludes :: NubListR (SymbolicPath "Package" File)
   -- ^ Extra header files to include at CPP stage; the @ghc -optP-include@ flag.
   , ghcOptFfiIncludes :: NubListR FilePath
   -- ^ Extra header files to include for old-style FFI; the @ghc -#include@ flag.

@@ -181,7 +181,7 @@ data ConfigStateFileError
   | -- | No file!
     ConfigStateFileMissing
       { cfgStateFileErrorCwd :: Maybe (SymbolicPath "CWD" (Dir "Package"))
-      , cfgStateFileErrorFile :: SymbolicPath "Package" (File "BuildInfo")
+      , cfgStateFileErrorFile :: SymbolicPath "Package" File
       }
   | -- | Mismatched version.
     ConfigStateFileBadVersion
@@ -232,7 +232,7 @@ instance Exception ConfigStateFileError
 -- version of Cabal.
 getConfigStateFile
   :: Maybe (SymbolicPath "CWD" (Dir "Package"))
-  -> SymbolicPath "Package" (File "BuildInfo")
+  -> SymbolicPath "Package" File
   -- ^ The file path of the @setup-config@ file.
   -> IO LocalBuildInfo
 getConfigStateFile mbWorkDir setupConfigFile = do
@@ -265,7 +265,7 @@ getConfigStateFile mbWorkDir setupConfigFile = do
 tryGetConfigStateFile
   :: Maybe (SymbolicPath "CWD" (Dir "Package"))
   -- ^ Working directory.
-  -> SymbolicPath "Package" (File "BuildInfo")
+  -> SymbolicPath "Package" File
   -- ^ The file path of the @setup-config@ file.
   -> IO (Either ConfigStateFileError LocalBuildInfo)
 tryGetConfigStateFile mbWorkDir = try . getConfigStateFile mbWorkDir
@@ -379,7 +379,7 @@ showHeader pkgId =
 checkPersistBuildConfigOutdated
   :: Maybe (SymbolicPath "CWD" (Dir "Package"))
   -> SymbolicPath "Package" (Dir "Dist")
-  -> SymbolicPath "Package" (File ".cabal")
+  -> SymbolicPath "Package" File
   -> IO Bool
 checkPersistBuildConfigOutdated mbWorkDir distPref pkg_descr_file =
   i pkg_descr_file `moreRecentFile` i (localBuildInfoFile distPref)
@@ -390,7 +390,7 @@ checkPersistBuildConfigOutdated mbWorkDir distPref pkg_descr_file =
 localBuildInfoFile
   :: SymbolicPath "Package" (Dir "Dist")
   -- ^ The @dist@ directory path.
-  -> SymbolicPath "Package" (File "BuildInfo")
+  -> SymbolicPath "Package" File
 localBuildInfoFile distPref = distPref </> makeRelativePathEx "setup-config"
 
 -- -----------------------------------------------------------------------------

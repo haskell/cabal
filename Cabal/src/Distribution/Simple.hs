@@ -275,8 +275,8 @@ confPkgDescr
   :: UserHooks
   -> Verbosity
   -> Maybe (SymbolicPath "CWD" (Dir "Package"))
-  -> Maybe (SymbolicPath "Package" (File ".cabal"))
-  -> IO (Maybe (SymbolicPath "Package" (File ".cabal")), GenericPackageDescription)
+  -> Maybe (SymbolicPath "Package" File)
+  -> IO (Maybe (SymbolicPath "Package" File), GenericPackageDescription)
 confPkgDescr hooks verbosity cwd mb_path = do
   mdescr <- readDesc hooks
   case mdescr of
@@ -690,7 +690,7 @@ getBuildConfig globalFlags hooks verbosity distPref = do
         else return lbi
   where
     mbWorkDir = flagToMaybe $ globalWorkingDir globalFlags
-    reconfigure :: SymbolicPath "Package" ('File ".cabal") -> LocalBuildInfo -> IO LocalBuildInfo
+    reconfigure :: SymbolicPath "Package" File -> LocalBuildInfo -> IO LocalBuildInfo
     reconfigure pkg_descr_file lbi = do
       notice verbosity $
         getSymbolicPath pkg_descr_file
