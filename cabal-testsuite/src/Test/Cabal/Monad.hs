@@ -76,6 +76,7 @@ import qualified Distribution.Simple.Utils as U (cabalVersion)
 import Distribution.Text
 
 import Test.Utils.TempTestDir (removeDirectoryRecursiveHack)
+import Distribution.Utils.Path (makeSymbolicPath)
 import Distribution.Verbosity
 import Distribution.Version
 
@@ -453,7 +454,7 @@ getSourceFiles = do
     env <- getTestEnv
     configured_prog <- requireProgramM gitProgram
     r <- liftIO $ run (testVerbosity env)
-                 (Just (testSourceDir env))
+                 (Just $ makeSymbolicPath $ testSourceDir env)
                  (testEnvironment env)
                  (programPath configured_prog)
                  ["ls-files", "--cached", "--modified"]

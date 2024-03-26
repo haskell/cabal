@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE NondecreasingIndentation #-}
 -- | A module for running commands in a chatty way.
 module Test.Cabal.Run (
@@ -7,6 +8,13 @@ module Test.Cabal.Run (
 ) where
 
 import Distribution.Simple.Program.Run
+import Distribution.Utils.Path
+  ( SymbolicPath
+  , FileOrDir(..)
+  , CWD
+  , Pkg
+  , getSymbolicPath
+  )
 import Distribution.Verbosity
 
 import Control.Concurrent.Async
@@ -25,12 +33,12 @@ data Result = Result
 
 -- | Run a command, streaming its output to stdout, and return a 'Result'
 -- with this information.
-run :: Verbosity -> Maybe FilePath -> [(String, Maybe String)] -> FilePath -> [String]
+run :: Verbosity -> Maybe (SymbolicPath CWD (Dir Pkg)) -> [(String, Maybe String)] -> FilePath -> [String]
     -> Maybe String -> IO Result
 run verbosity mb_cwd env_overrides path0 args input =
     runAction verbosity mb_cwd env_overrides path0 args input (\_ -> return ())
 
-runAction :: Verbosity -> Maybe FilePath -> [(String, Maybe String)] -> FilePath -> [String]
+runAction :: Verbosity -> Maybe (SymbolicPath CWD (Dir Pkg)) -> [(String, Maybe String)] -> FilePath -> [String]
     -> Maybe String -> (ProcessHandle -> IO ()) -> IO Result
 runAction _verbosity mb_cwd env_overrides path0 args input action = do
     -- In our test runner, we allow a path to be relative to the
@@ -63,7 +71,7 @@ runAction _verbosity mb_cwd env_overrides path0 args input action = do
     withAsync drain $ \sync -> do
 
     let prc = (proc path args)
-          { cwd = mb_cwd
+          { cwd = fmap getSymbolicPath mb_cwd
           , env = mb_env
           , std_in = case input of { Just _ -> CreatePipe; Nothing -> Inherit }
           , std_out = UseHandle writeh

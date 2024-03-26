@@ -1,5 +1,7 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE NondecreasingIndentation #-}
 -- | A GHC run-server, which supports running multiple GHC scripts
 -- without having to restart from scratch.
@@ -27,6 +29,9 @@ import System.Exit
 import Data.List (intercalate, isPrefixOf)
 import Distribution.Simple.Program.Db
 import Distribution.Simple.Program
+import Distribution.Utils.Path
+  ( SymbolicPath, FileOrDir(..), CWD, Pkg
+  , changingWorkingDir )
 import Control.Exception
 import qualified Control.Exception as E
 import Control.Monad
@@ -132,11 +137,11 @@ bracketWithInit before initialize after thing =
 --      * Current working directory and environment overrides
 --        are currently not implemented.
 --
-runOnServer :: Server -> Maybe FilePath -> [(String, Maybe String)]
+runOnServer :: Server -> Maybe (SymbolicPath CWD (Dir Pkg)) -> [(String, Maybe String)]
             -> FilePath -> [String] -> IO ServerResult
 runOnServer s mb_cwd env_overrides script_path args = do
     -- TODO: cwd not implemented
-    when (isJust mb_cwd)            $ error "runOnServer change directory not implemented"
+    when (isJust mb_cwd)        $ error "runOnServer change directory not implemented"
     -- TODO: env_overrides not implemented
     unless (null env_overrides) $ error "runOnServer set environment not implemented"
 
@@ -180,13 +185,14 @@ runOnServer s mb_cwd env_overrides script_path args = do
 
     -- Give the user some indication about how they could run the
     -- command by hand.
-    (real_path, real_args) <- runnerCommand (serverScriptEnv s) mb_cwd env_overrides script_path args
-    return ServerResult {
-            serverResultTestCode = code,
-            serverResultCommand = showCommandForUser real_path real_args,
-            serverResultStdout = out,
-            serverResultStderr = err
-        }
+    RunnerCommand real_path real_args <- runnerCommand (serverScriptEnv s) mb_cwd env_overrides script_path args
+    return $ changingWorkingDir mb_cwd $
+      ServerResult {
+              serverResultTestCode = code,
+              serverResultCommand = showCommandForUser real_path real_args,
+              serverResultStdout = out,
+              serverResultStderr = err
+          }
 
 -- | Helper function which we use in the GHCi session to communicate
 -- the exit code of the process.
@@ -215,7 +221,9 @@ runMain ref m = do
 startServer :: Chan ServerLogMsg -> ScriptEnv -> IO Server
 startServer chan senv = do
     (prog, _) <- requireProgram verbosity ghcProgram (runnerProgramDb senv)
-    let ghc_args = runnerGhcArgs senv Nothing ++ ["--interactive", "-v0", "-ignore-dot-ghci"]
+    let ghc_args :: [String]
+        ghc_args = changingWorkingDir @Pkg Nothing
+                 $ runnerGhcArgs senv Nothing ++ ["--interactive", "-v0", "-ignore-dot-ghci"]
         proc_spec = (proc (programPath prog) ghc_args) {
                         create_group = True,
                         -- Closing fds is VERY important to avoid

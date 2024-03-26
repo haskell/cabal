@@ -1,9 +1,14 @@
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TypeApplications #-}
+
 -- | Functionality for invoking Haskell scripts with the correct
 -- package database setup.
 module Test.Cabal.Script (
     ScriptEnv(..),
     mkScriptEnv,
     runnerGhcArgs,
+    RunnerCommand(..),
     runnerCommand,
     runghc,
 ) where
@@ -14,6 +19,7 @@ import Test.Cabal.ScriptEnv0
 import Distribution.Backpack
 import Distribution.Types.ModuleRenaming
 import Distribution.Utils.NubList
+import Distribution.Utils.Path
 import Distribution.Simple.Program.Db
 import Distribution.Simple.Program.Builtin
 import Distribution.Simple.Program.GHC
@@ -67,27 +73,36 @@ mkScriptEnv verbosity =
     }
 
 -- | Run a script with 'runghc', under the 'ScriptEnv'.
-runghc :: ScriptEnv -> Maybe FilePath -> [(String, Maybe String)]
+runghc :: ScriptEnv -> Maybe (SymbolicPath CWD (Dir Pkg)) -> [(String, Maybe String)]
        -> FilePath -> [String] -> IO Result
 runghc senv mb_cwd env_overrides script_path args = do
-    (real_path, real_args) <- runnerCommand senv mb_cwd env_overrides script_path args
-    run (runnerVerbosity senv) mb_cwd env_overrides real_path real_args Nothing
+    RunnerCommand real_path real_args <- runnerCommand senv mb_cwd env_overrides script_path args
+    changingWorkingDir mb_cwd $
+      run (runnerVerbosity senv) mb_cwd env_overrides real_path real_args Nothing
+
+data RunnerCommand =
+  RunnerCommand
+    { runnerProgramPath :: FilePath
+    , runnerArgs :: IsCWD Pkg => [String]
+    }
 
 -- | Compute the command line which should be used to run a Haskell
 -- script with 'runghc'.
-runnerCommand :: ScriptEnv -> Maybe FilePath -> [(String, Maybe String)]
-              -> FilePath -> [String] -> IO (FilePath, [String])
+runnerCommand :: ScriptEnv -> Maybe (SymbolicPath CWD (Dir Pkg)) -> [(String, Maybe String)]
+              -> FilePath -> [String] -> IO RunnerCommand
 runnerCommand senv mb_cwd _env_overrides script_path args = do
     (prog, _) <- requireProgram verbosity runghcProgram (runnerProgramDb senv)
-    return (programPath prog,
-            runghc_args ++ ["--"] ++ map ("--ghc-arg="++) ghc_args ++ [script_path] ++ args)
+    return $
+      RunnerCommand (programPath prog) $
+        runghc_args ++ ["--"] ++ map ("--ghc-arg="++) ghc_args ++ [script_path] ++ args
   where
     verbosity = runnerVerbosity senv
     runghc_args = []
+    ghc_args :: IsCWD Pkg => [String]
     ghc_args = runnerGhcArgs senv mb_cwd
 
 -- | Compute the GHC flags to invoke 'runghc' with under a 'ScriptEnv'.
-runnerGhcArgs :: ScriptEnv -> Maybe FilePath -> [String]
+runnerGhcArgs :: IsCWD Pkg => ScriptEnv -> Maybe (SymbolicPath CWD (Dir Pkg)) -> [String]
 runnerGhcArgs senv mb_cwd =
     renderGhcOptions (runnerCompiler senv) (runnerPlatform senv) ghc_options
   where
@@ -104,5 +119,5 @@ runnerGhcArgs senv mb_cwd =
                            , ghcOptSourcePath = toNubListR $
                               case mb_cwd of
                                 Nothing -> []
-                                Just wd -> [wd]
+                                Just {} -> [sameDirectory]
                             }

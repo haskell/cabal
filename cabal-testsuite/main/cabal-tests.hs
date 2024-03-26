@@ -2,6 +2,7 @@
 {-# LANGUAGE NondecreasingIndentation #-}
 {-# LANGUAGE PatternGuards            #-}
 {-# LANGUAGE ScopedTypeVariables      #-}
+{-# LANGUAGE TypeApplications         #-}
 
 import Test.Cabal.Workdir
 import Test.Cabal.Script
@@ -12,7 +13,7 @@ import Test.Cabal.TestCode
 import Distribution.Verbosity        (normal, verbose, Verbosity)
 import Distribution.Simple.Utils     (getDirectoryContentsRecursive)
 import Distribution.Simple.Program
-import Distribution.Utils.Path       (getSymbolicPath)
+import Distribution.Utils.Path       (Pkg, changingWorkingDir, getSymbolicPath)
 
 import Options.Applicative
 import Control.Concurrent.MVar
@@ -228,9 +229,11 @@ main = do
     case mainArgTestPaths args of
         [path] -> do
             -- Simple runner
-            (real_path, real_args) <- runTest (runnerCommand senv) path
-            hPutStrLn stderr $ showCommandForUser real_path real_args
-            callProcess real_path real_args
+            RunnerCommand real_path real_args <- runTest (runnerCommand senv) path
+            -- Changing working dir: 'runTest' uses 'Nothing' for working dir.
+            changingWorkingDir @Pkg Nothing $ do
+              hPutStrLn stderr $ showCommandForUser real_path real_args
+              callProcess real_path real_args
             hPutStrLn stderr "OK"
         user_paths -> do
             -- Read out tests from filesystem
