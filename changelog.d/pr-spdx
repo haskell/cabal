@@ -1,0 +1,10 @@
+synopsis: Update SPDX License List to version `3.23 2024-02-08`
+packages: Cabal-syntax
+prs: #9818
+
+description: {
+
+- LicenseId and LicenseExceptionId now conform to SPDX License List
+  version 3.23 2024-02-08.
+
+}
