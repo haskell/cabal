@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
@@ -58,10 +59,16 @@ import Distribution.Simple.Utils
 import Distribution.Types.ComponentId
 import Distribution.Types.PackageId
 import Distribution.Types.UnitId
+import Distribution.Utils.Path
 import Distribution.Verbosity
 
 import Data.List (stripPrefix)
-import System.FilePath as FilePath (isPathSeparator, joinPath, splitDirectories, splitPath, (<.>), (</>))
+import System.FilePath as FilePath
+  ( isPathSeparator
+  , joinPath
+  , splitDirectories
+  , splitPath
+  )
 
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
@@ -103,12 +110,18 @@ init hpi verbosity preferCompat path
 
 -- | Run @hc-pkg@ using a given package DB stack, directly forwarding the
 -- provided command-line arguments to it.
-invoke :: HcPkgInfo -> Verbosity -> PackageDBStack -> [String] -> IO ()
-invoke hpi verbosity dbStack extraArgs =
+invoke
+  :: HcPkgInfo
+  -> Verbosity
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
+  -> PackageDBStack
+  -> [String]
+  -> IO ()
+invoke hpi verbosity mbWorkDir dbStack extraArgs =
   runProgramInvocation verbosity invocation
   where
     args = packageDbStackOpts hpi dbStack ++ extraArgs
-    invocation = programInvocation (hcPkgProgram hpi) args
+    invocation = programInvocationCwd mbWorkDir (hcPkgProgram hpi) args
 
 -- | Additional variations in the behaviour for 'register'.
 data RegisterOptions = RegisterOptions
@@ -141,11 +154,12 @@ defaultRegisterOptions =
 register
   :: HcPkgInfo
   -> Verbosity
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -> PackageDBStack
   -> InstalledPackageInfo
   -> RegisterOptions
   -> IO ()
-register hpi verbosity packagedbs pkgInfo registerOptions
+register hpi verbosity mbWorkDir packagedbs pkgInfo registerOptions
   | registerMultiInstance registerOptions
   , not (nativeMultiInstance hpi || recacheMultiInstance hpi) =
       dieWithException verbosity RegMultipleInstancePkg
@@ -166,11 +180,11 @@ register hpi verbosity packagedbs pkgInfo registerOptions
       do
         let pkgdb = registrationPackageDB packagedbs
         writeRegistrationFileDirectly verbosity hpi pkgdb pkgInfo
-        recache hpi verbosity pkgdb
+        recache hpi verbosity mbWorkDir pkgdb
   | otherwise =
       runProgramInvocation
         verbosity
-        (registerInvocation hpi verbosity packagedbs pkgInfo registerOptions)
+        (registerInvocation hpi verbosity mbWorkDir packagedbs pkgInfo registerOptions)
 
 writeRegistrationFileDirectly
   :: Verbosity
@@ -193,39 +207,51 @@ writeRegistrationFileDirectly verbosity _ _ _ =
 -- | Call @hc-pkg@ to unregister a package
 --
 -- > hc-pkg unregister [pkgid] [--user | --global | --package-db]
-unregister :: HcPkgInfo -> Verbosity -> PackageDB -> PackageId -> IO ()
-unregister hpi verbosity packagedb pkgid =
+unregister :: HcPkgInfo -> Verbosity -> Maybe (SymbolicPath CWD (Dir Pkg)) -> PackageDB -> PackageId -> IO ()
+unregister hpi verbosity mbWorkDir packagedb pkgid =
   runProgramInvocation
     verbosity
-    (unregisterInvocation hpi verbosity packagedb pkgid)
+    (unregisterInvocation hpi verbosity mbWorkDir packagedb pkgid)
 
 -- | Call @hc-pkg@ to recache the registered packages.
 --
 -- > hc-pkg recache [--user | --global | --package-db]
-recache :: HcPkgInfo -> Verbosity -> PackageDB -> IO ()
-recache hpi verbosity packagedb =
+recache :: HcPkgInfo -> Verbosity -> Maybe (SymbolicPath CWD (Dir Pkg)) -> PackageDB -> IO ()
+recache hpi verbosity mbWorkDir packagedb =
   runProgramInvocation
     verbosity
-    (recacheInvocation hpi verbosity packagedb)
+    (recacheInvocation hpi verbosity mbWorkDir packagedb)
 
 -- | Call @hc-pkg@ to expose a package.
 --
 -- > hc-pkg expose [pkgid] [--user | --global | --package-db]
-expose :: HcPkgInfo -> Verbosity -> PackageDB -> PackageId -> IO ()
-expose hpi verbosity packagedb pkgid =
+expose
+  :: HcPkgInfo
+  -> Verbosity
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
+  -> PackageDB
+  -> PackageId
+  -> IO ()
+expose hpi verbosity mbWorkDir packagedb pkgid =
   runProgramInvocation
     verbosity
-    (exposeInvocation hpi verbosity packagedb pkgid)
+    (exposeInvocation hpi verbosity mbWorkDir packagedb pkgid)
 
 -- | Call @hc-pkg@ to retrieve a specific package
 --
 -- > hc-pkg describe [pkgid] [--user | --global | --package-db]
-describe :: HcPkgInfo -> Verbosity -> PackageDBStack -> PackageId -> IO [InstalledPackageInfo]
-describe hpi verbosity packagedb pid = do
+describe
+  :: HcPkgInfo
+  -> Verbosity
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
+  -> PackageDBStack
+  -> PackageId
+  -> IO [InstalledPackageInfo]
+describe hpi verbosity mbWorkDir packagedb pid = do
   output <-
     getProgramInvocationLBS
       verbosity
-      (describeInvocation hpi verbosity packagedb pid)
+      (describeInvocation hpi verbosity mbWorkDir packagedb pid)
       `catchIO` \_ -> return mempty
 
   case parsePackages output of
@@ -235,20 +261,31 @@ describe hpi verbosity packagedb pid = do
 -- | Call @hc-pkg@ to hide a package.
 --
 -- > hc-pkg hide [pkgid] [--user | --global | --package-db]
-hide :: HcPkgInfo -> Verbosity -> PackageDB -> PackageId -> IO ()
-hide hpi verbosity packagedb pkgid =
+hide
+  :: HcPkgInfo
+  -> Verbosity
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
+  -> PackageDB
+  -> PackageId
+  -> IO ()
+hide hpi verbosity mbWorkDir packagedb pkgid =
   runProgramInvocation
     verbosity
-    (hideInvocation hpi verbosity packagedb pkgid)
+    (hideInvocation hpi verbosity mbWorkDir packagedb pkgid)
 
 -- | Call @hc-pkg@ to get all the details of all the packages in the given
 -- package database.
-dump :: HcPkgInfo -> Verbosity -> PackageDB -> IO [InstalledPackageInfo]
-dump hpi verbosity packagedb = do
+dump
+  :: HcPkgInfo
+  -> Verbosity
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
+  -> PackageDB
+  -> IO [InstalledPackageInfo]
+dump hpi verbosity mbWorkDir packagedb = do
   output <-
     getProgramInvocationLBS
       verbosity
-      (dumpInvocation hpi verbosity packagedb)
+      (dumpInvocation hpi verbosity mbWorkDir packagedb)
       `catchIO` \e ->
         dieWithException verbosity $ DumpFailed (programId (hcPkgProgram hpi)) (displayException e)
 
@@ -364,13 +401,14 @@ setUnitId pkginfo = pkginfo
 list
   :: HcPkgInfo
   -> Verbosity
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -> PackageDB
   -> IO [PackageId]
-list hpi verbosity packagedb = do
+list hpi verbosity mbWorkDir packagedb = do
   output <-
     getProgramInvocationOutput
       verbosity
-      (listInvocation hpi verbosity packagedb)
+      (listInvocation hpi verbosity mbWorkDir packagedb)
       `catchIO` \_ -> dieWithException verbosity $ ListFailed (programId (hcPkgProgram hpi))
 
   case parsePackageIds output of
@@ -394,12 +432,13 @@ initInvocation hpi verbosity path =
 registerInvocation
   :: HcPkgInfo
   -> Verbosity
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -> PackageDBStack
   -> InstalledPackageInfo
   -> RegisterOptions
   -> ProgramInvocation
-registerInvocation hpi verbosity packagedbs pkgInfo registerOptions =
-  (programInvocation (hcPkgProgram hpi) (args "-"))
+registerInvocation hpi verbosity mbWorkDir packagedbs pkgInfo registerOptions =
+  (programInvocationCwd mbWorkDir (hcPkgProgram hpi) (args "-"))
     { progInvokeInput = Just $ IODataText $ showInstalledPackageInfo pkgInfo
     , progInvokeInputEncoding = IOEncodingUTF8
     }
@@ -423,43 +462,47 @@ registerInvocation hpi verbosity packagedbs pkgInfo registerOptions =
 unregisterInvocation
   :: HcPkgInfo
   -> Verbosity
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -> PackageDB
   -> PackageId
   -> ProgramInvocation
-unregisterInvocation hpi verbosity packagedb pkgid =
-  programInvocation (hcPkgProgram hpi) $
+unregisterInvocation hpi verbosity mbWorkDir packagedb pkgid =
+  programInvocationCwd mbWorkDir (hcPkgProgram hpi) $
     ["unregister", packageDbOpts hpi packagedb, prettyShow pkgid]
       ++ verbosityOpts hpi verbosity
 
 recacheInvocation
   :: HcPkgInfo
   -> Verbosity
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -> PackageDB
   -> ProgramInvocation
-recacheInvocation hpi verbosity packagedb =
-  programInvocation (hcPkgProgram hpi) $
+recacheInvocation hpi verbosity mbWorkDir packagedb =
+  programInvocationCwd mbWorkDir (hcPkgProgram hpi) $
     ["recache", packageDbOpts hpi packagedb]
       ++ verbosityOpts hpi verbosity
 
 exposeInvocation
   :: HcPkgInfo
   -> Verbosity
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -> PackageDB
   -> PackageId
   -> ProgramInvocation
-exposeInvocation hpi verbosity packagedb pkgid =
-  programInvocation (hcPkgProgram hpi) $
+exposeInvocation hpi verbosity mbWorkDir packagedb pkgid =
+  programInvocationCwd mbWorkDir (hcPkgProgram hpi) $
     ["expose", packageDbOpts hpi packagedb, prettyShow pkgid]
       ++ verbosityOpts hpi verbosity
 
 describeInvocation
   :: HcPkgInfo
   -> Verbosity
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -> PackageDBStack
   -> PackageId
   -> ProgramInvocation
-describeInvocation hpi verbosity packagedbs pkgid =
-  programInvocation (hcPkgProgram hpi) $
+describeInvocation hpi verbosity mbWorkDir packagedbs pkgid =
+  programInvocationCwd mbWorkDir (hcPkgProgram hpi) $
     ["describe", prettyShow pkgid]
       ++ packageDbStackOpts hpi packagedbs
       ++ verbosityOpts hpi verbosity
@@ -467,17 +510,23 @@ describeInvocation hpi verbosity packagedbs pkgid =
 hideInvocation
   :: HcPkgInfo
   -> Verbosity
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -> PackageDB
   -> PackageId
   -> ProgramInvocation
-hideInvocation hpi verbosity packagedb pkgid =
-  programInvocation (hcPkgProgram hpi) $
+hideInvocation hpi verbosity mbWorkDir packagedb pkgid =
+  programInvocationCwd mbWorkDir (hcPkgProgram hpi) $
     ["hide", packageDbOpts hpi packagedb, prettyShow pkgid]
       ++ verbosityOpts hpi verbosity
 
-dumpInvocation :: HcPkgInfo -> Verbosity -> PackageDB -> ProgramInvocation
-dumpInvocation hpi _verbosity packagedb =
-  (programInvocation (hcPkgProgram hpi) args)
+dumpInvocation
+  :: HcPkgInfo
+  -> Verbosity
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
+  -> PackageDB
+  -> ProgramInvocation
+dumpInvocation hpi _verbosity mbWorkDir packagedb =
+  (programInvocationCwd mbWorkDir (hcPkgProgram hpi) args)
     { progInvokeOutputEncoding = IOEncodingUTF8
     }
   where
@@ -488,9 +537,14 @@ dumpInvocation hpi _verbosity packagedb =
 -- We use verbosity level 'silent' because it is important that we
 -- do not contaminate the output with info/debug messages.
 
-listInvocation :: HcPkgInfo -> Verbosity -> PackageDB -> ProgramInvocation
-listInvocation hpi _verbosity packagedb =
-  (programInvocation (hcPkgProgram hpi) args)
+listInvocation
+  :: HcPkgInfo
+  -> Verbosity
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
+  -> PackageDB
+  -> ProgramInvocation
+listInvocation hpi _verbosity mbWorkDir packagedb =
+  (programInvocationCwd mbWorkDir (hcPkgProgram hpi) args)
     { progInvokeOutputEncoding = IOEncodingUTF8
     }
   where

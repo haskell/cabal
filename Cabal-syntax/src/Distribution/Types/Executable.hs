@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 
@@ -15,12 +16,13 @@ import Distribution.ModuleName
 import Distribution.Types.BuildInfo
 import Distribution.Types.ExecutableScope
 import Distribution.Types.UnqualComponentName
+import Distribution.Utils.Path
 
 import qualified Distribution.Types.BuildInfo.Lens as L
 
 data Executable = Executable
   { exeName :: UnqualComponentName
-  , modulePath :: FilePath
+  , modulePath :: RelativePath Source File
   , exeScope :: ExecutableScope
   , buildInfo :: BuildInfo
   }
@@ -34,14 +36,20 @@ instance Structured Executable
 instance NFData Executable where rnf = genericRnf
 
 instance Monoid Executable where
-  mempty = gmempty
+  mempty =
+    Executable
+      { exeName = mempty
+      , modulePath = unsafeMakeSymbolicPath ""
+      , exeScope = mempty
+      , buildInfo = mempty
+      }
   mappend = (<>)
 
 instance Semigroup Executable where
   a <> b =
     Executable
       { exeName = combineNames a b exeName "executable"
-      , modulePath = combineNames a b modulePath "modulePath"
+      , modulePath = unsafeMakeSymbolicPath $ combineNames a b (getSymbolicPath . modulePath) "modulePath"
       , exeScope = combine exeScope
       , buildInfo = combine buildInfo
       }

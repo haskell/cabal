@@ -1,7 +1,10 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 
 -----------------------------------------------------------------------------
 
@@ -37,6 +40,7 @@ import qualified Distribution.Simple.GHCJS as GHCJS
 
 import Distribution.Backpack (OpenModule)
 import Distribution.Backpack.DescribeUnitId
+import Distribution.Compat.Semigroup (All (..), Any (..))
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
 import qualified Distribution.ModuleName as ModuleName
@@ -48,6 +52,7 @@ import Distribution.Simple.Build
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.BuildTarget
 import Distribution.Simple.Compiler
+import Distribution.Simple.Errors
 import Distribution.Simple.Flag
 import Distribution.Simple.Glob (matchDirFileGlob)
 import Distribution.Simple.InstallDirs
@@ -59,6 +64,7 @@ import Distribution.Simple.Program.GHC
 import qualified Distribution.Simple.Program.HcPkg as HcPkg
 import Distribution.Simple.Program.ResponseFile
 import Distribution.Simple.Register
+import Distribution.Simple.Setup.Common
 import Distribution.Simple.Setup.Haddock
 import Distribution.Simple.Setup.Hscolour
 import Distribution.Simple.Utils
@@ -68,20 +74,20 @@ import Distribution.Types.ExposedModule
 import Distribution.Types.LocalBuildInfo
 import Distribution.Types.TargetInfo
 import Distribution.Utils.NubList
+import Distribution.Utils.Path hiding
+  ( Dir
+  )
+import qualified Distribution.Utils.Path as Path
 import qualified Distribution.Utils.ShortText as ShortText
+import Distribution.Verbosity
 import Distribution.Version
 
-import Distribution.Verbosity
 import Language.Haskell.Extension
-
-import Distribution.Compat.Semigroup (All (..), Any (..))
 
 import Control.Monad
 import Data.Either (rights)
-
-import Distribution.Simple.Errors
-import System.Directory (doesDirectoryExist, doesFileExist, getCurrentDirectory)
-import System.FilePath (isAbsolute, normalise, (<.>), (</>))
+import System.Directory (doesDirectoryExist, doesFileExist)
+import System.FilePath (isAbsolute, normalise)
 import System.IO (hClose, hPutStrLn, hSetEncoding, utf8)
 
 -- ------------------------------------------------------------------------------
@@ -145,8 +151,10 @@ data HaddockArgs = HaddockArgs
 -- | The FilePath of a directory, it's a monoid under '(</>)'.
 newtype Directory = Dir {unDir' :: FilePath} deriving (Read, Show, Eq, Ord)
 
-unDir :: Directory -> FilePath
-unDir = normalise . unDir'
+-- NB: only correct at the top-level, after we have combined monoidally
+-- the top-level output directory with the component subdir.
+unDir :: Directory -> SymbolicPath Pkg (Path.Dir Artifacts)
+unDir = makeSymbolicPath . normalise . unDir'
 
 type Template = String
 
@@ -216,12 +224,13 @@ haddock pkg_descr _ _ haddockFlags
       && not (fromFlag $ haddockTestSuites haddockFlags)
       && not (fromFlag $ haddockBenchmarks haddockFlags)
       && not (fromFlag $ haddockForeignLibs haddockFlags) =
-      warn (fromFlag $ haddockVerbosity haddockFlags) $
+      warn (fromFlag $ setupVerbosity $ haddockCommonFlags haddockFlags) $
         "No documentation was generated as this package does not contain "
           ++ "a library. Perhaps you want to use the --executables, --tests,"
           ++ " --benchmarks or --foreign-libraries flags."
 haddock pkg_descr lbi suffixes flags' = do
-  let verbosity = flag haddockVerbosity
+  let verbosity = fromFlag $ haddockVerbosity flags
+      mbWorkDir = flagToMaybe $ haddockWorkingDir flags
       comp = compiler lbi
       platform = hostPlatform lbi
 
@@ -279,7 +288,7 @@ haddock pkg_descr lbi suffixes flags' = do
       suffixes
       (defaultHscolourFlags `mappend` haddockToHscolour flags)
 
-  targets <- readTargetInfos verbosity pkg_descr lbi (haddockArgs flags)
+  targets <- readTargetInfos verbosity pkg_descr lbi (haddockTargets flags)
 
   let
     targets' =
@@ -288,7 +297,7 @@ haddock pkg_descr lbi suffixes flags' = do
         _ -> targets
 
   internalPackageDB <-
-    createInternalPackageDB verbosity lbi (flag haddockDistPref)
+    createInternalPackageDB verbosity lbi (flag $ setupDistPref . haddockCommonFlags)
 
   (\f -> foldM_ f (installedPkgs lbi) targets') $ \index target -> do
     let component = targetComponent target
@@ -307,7 +316,7 @@ haddock pkg_descr lbi suffixes flags' = do
     let
       doExe com = case (compToExe com) of
         Just exe -> do
-          withTempDirectoryEx verbosity tmpFileOpts (buildDir lbi') "tmp" $
+          withTempDirectoryCwdEx verbosity tmpFileOpts mbWorkDir (buildDir lbi') "tmp" $
             \tmp -> do
               exeArgs <-
                 fromExecutable
@@ -321,6 +330,7 @@ haddock pkg_descr lbi suffixes flags' = do
               let exeArgs' = commonArgs `mappend` exeArgs
               runHaddock
                 verbosity
+                mbWorkDir
                 tmpFileOpts
                 comp
                 platform
@@ -329,9 +339,8 @@ haddock pkg_descr lbi suffixes flags' = do
                 exeArgs'
         Nothing -> do
           warn
-            (fromFlag $ haddockVerbosity flags)
+            verbosity
             "Unsupported component, skipping..."
-          return ()
       -- We define 'smsg' once and then reuse it inside the case, so that
       -- we don't say we are running Haddock when we actually aren't
       -- (e.g., Haddock is not run on non-libraries)
@@ -345,7 +354,7 @@ haddock pkg_descr lbi suffixes flags' = do
           (maybeComponentInstantiatedWith clbi)
     case component of
       CLib lib -> do
-        withTempDirectoryEx verbosity tmpFileOpts (buildDir lbi) "tmp" $
+        withTempDirectoryCwdEx verbosity tmpFileOpts mbWorkDir (buildDir lbi) "tmp" $
           \tmp -> do
             smsg
             libArgs <-
@@ -358,15 +367,13 @@ haddock pkg_descr lbi suffixes flags' = do
                 version
                 lib
             let libArgs' = commonArgs `mappend` libArgs
-            runHaddock verbosity tmpFileOpts comp platform haddockProg True libArgs'
-
-            pwd <- getCurrentDirectory
-
+            runHaddock verbosity mbWorkDir tmpFileOpts comp platform haddockProg True libArgs'
+            inplaceDir <- absoluteWorkingDirLBI lbi
             let
               ipi =
                 inplaceInstalledPackageInfo
-                  pwd
-                  (flag haddockDistPref)
+                  inplaceDir
+                  (flag $ setupDistPref . haddockCommonFlags)
                   pkg_descr
                   (mkAbiHash "inplace")
                   lib
@@ -381,6 +388,7 @@ haddock pkg_descr lbi suffixes flags' = do
               verbosity
               (compiler lbi')
               (withPrograms lbi')
+              mbWorkDir
               (withPackageDB lbi')
               ipi
               HcPkg.defaultRegisterOptions
@@ -392,7 +400,7 @@ haddock pkg_descr lbi suffixes flags' = do
         when
           (flag haddockForeignLibs)
           ( do
-              withTempDirectoryEx verbosity tmpFileOpts (buildDir lbi') "tmp" $
+              withTempDirectoryCwdEx verbosity tmpFileOpts mbWorkDir (buildDir lbi') "tmp" $
                 \tmp -> do
                   smsg
                   flibArgs <-
@@ -405,7 +413,7 @@ haddock pkg_descr lbi suffixes flags' = do
                       version
                       flib
                   let libArgs' = commonArgs `mappend` flibArgs
-                  runHaddock verbosity tmpFileOpts comp platform haddockProg True libArgs'
+                  runHaddock verbosity mbWorkDir tmpFileOpts comp platform haddockProg True libArgs'
           )
           >> return index
       CExe _ -> when (flag haddockExecutables) (smsg >> doExe component) >> return index
@@ -413,8 +421,9 @@ haddock pkg_descr lbi suffixes flags' = do
       CBench _ -> when (flag haddockBenchmarks) (smsg >> doExe component) >> return index
 
   for_ (extraDocFiles pkg_descr) $ \fpath -> do
-    files <- matchDirFileGlob verbosity (specVersion pkg_descr) "." fpath
-    for_ files $ copyFileTo verbosity (unDir $ argOutputDir commonArgs)
+    files <- matchDirFileGlob verbosity (specVersion pkg_descr) mbWorkDir fpath
+    for_ files $
+      copyFileToCwd verbosity mbWorkDir (unDir $ argOutputDir commonArgs)
 
 -- | Execute 'Haddock' configured with 'HaddocksFlags'.  It is used to build
 -- index and contents for documentation of multiple packages.
@@ -423,13 +432,14 @@ createHaddockIndex
   -> ProgramDb
   -> Compiler
   -> Platform
+  -> Maybe (SymbolicPath CWD (Path.Dir Pkg))
   -> HaddockProjectFlags
   -> IO ()
-createHaddockIndex verbosity programDb comp platform flags = do
+createHaddockIndex verbosity programDb comp platform mbWorkDir flags = do
   let args = fromHaddockProjectFlags flags
   (haddockProg, _version) <-
     getHaddockProg verbosity programDb comp args (Flag True)
-  runHaddock verbosity defaultTempFileOptions comp platform haddockProg False args
+  runHaddock verbosity mbWorkDir defaultTempFileOptions comp platform haddockProg False args
 
 -- ------------------------------------------------------------------------------
 -- Contributions to HaddockArgs (see also Doctest.hs for very similar code).
@@ -469,17 +479,18 @@ fromFlags env flags =
     , argVerbose =
         maybe mempty (Any . (>= deafening))
           . flagToMaybe
-          $ haddockVerbosity flags
+          $ setupVerbosity commonFlags
     , argOutput =
         Flag $ case [Html | Flag True <- [haddockHtml flags]]
           ++ [Hoogle | Flag True <- [haddockHoogle flags]] of
           [] -> [Html]
           os -> os
-    , argOutputDir = maybe mempty Dir . flagToMaybe $ haddockDistPref flags
+    , argOutputDir = maybe mempty (Dir . getSymbolicPath) . flagToMaybe $ setupDistPref commonFlags
     , argGhcOptions = mempty{ghcOptExtra = ghcArgs}
     }
   where
     ghcArgs = fromMaybe [] . lookup "ghc" . haddockProgramArgs $ flags
+    commonFlags = haddockCommonFlags flags
 
 fromHaddockProjectFlags :: HaddockProjectFlags -> HaddockArgs
 fromHaddockProjectFlags flags =
@@ -522,7 +533,7 @@ componentGhcOptions
   -> LocalBuildInfo
   -> BuildInfo
   -> ComponentLocalBuildInfo
-  -> FilePath
+  -> SymbolicPath Pkg (Path.Dir build)
   -> GhcOptions
 componentGhcOptions verbosity lbi bi clbi odir =
   let f = case compilerFlavor (compiler lbi) of
@@ -536,13 +547,13 @@ componentGhcOptions verbosity lbi bi clbi odir =
 
 mkHaddockArgs
   :: Verbosity
-  -> FilePath
+  -> SymbolicPath Pkg (Path.Dir Tmp)
   -> LocalBuildInfo
   -> ComponentLocalBuildInfo
   -> Maybe PathTemplate
   -- ^ template for HTML location
   -> Version
-  -> [FilePath]
+  -> [SymbolicPath Pkg File]
   -> BuildInfo
   -> IO HaddockArgs
 mkHaddockArgs verbosity tmp lbi clbi htmlTemplate haddockVersion inFiles bi = do
@@ -553,9 +564,9 @@ mkHaddockArgs verbosity tmp lbi clbi htmlTemplate haddockVersion inFiles bi = do
             -- haddock stomps on our precious .hi
             -- and .o files. Workaround by telling
             -- haddock to write them elsewhere.
-            ghcOptObjDir = toFlag tmp
-          , ghcOptHiDir = toFlag tmp
-          , ghcOptStubDir = toFlag tmp
+            ghcOptObjDir = toFlag $ coerceSymbolicPath tmp
+          , ghcOptHiDir = toFlag $ coerceSymbolicPath tmp
+          , ghcOptStubDir = toFlag $ coerceSymbolicPath tmp
           }
           `mappend` getGhcCppOpts haddockVersion bi
       sharedOpts =
@@ -577,13 +588,13 @@ mkHaddockArgs verbosity tmp lbi clbi htmlTemplate haddockVersion inFiles bi = do
   return
     ifaceArgs
       { argGhcOptions = opts
-      , argTargets = inFiles
+      , argTargets = map getSymbolicPath inFiles
       , argReexports = getReexports clbi
       }
 
 fromLibrary
   :: Verbosity
-  -> FilePath
+  -> SymbolicPath Pkg (Path.Dir Tmp)
   -> LocalBuildInfo
   -> ComponentLocalBuildInfo
   -> Maybe PathTemplate
@@ -610,7 +621,7 @@ fromLibrary verbosity tmp lbi clbi htmlTemplate haddockVersion lib = do
 
 fromExecutable
   :: Verbosity
-  -> FilePath
+  -> SymbolicPath Pkg (Path.Dir Tmp)
   -> LocalBuildInfo
   -> ComponentLocalBuildInfo
   -> Maybe PathTemplate
@@ -638,7 +649,7 @@ fromExecutable verbosity tmp lbi clbi htmlTemplate haddockVersion exe = do
 
 fromForeignLib
   :: Verbosity
-  -> FilePath
+  -> SymbolicPath Pkg (Path.Dir Tmp)
   -> LocalBuildInfo
   -> ComponentLocalBuildInfo
   -> Maybe PathTemplate
@@ -744,6 +755,7 @@ getGhcLibDir verbosity lbi = do
 -- | Call haddock with the specified arguments.
 runHaddock
   :: Verbosity
+  -> Maybe (SymbolicPath CWD (Path.Dir Pkg))
   -> TempFileOptions
   -> Compiler
   -> Platform
@@ -752,7 +764,7 @@ runHaddock
   -- ^ require targets
   -> HaddockArgs
   -> IO ()
-runHaddock verbosity tmpFileOpts comp platform haddockProg requireTargets args
+runHaddock verbosity mbWorkDir tmpFileOpts comp platform haddockProg requireTargets args
   | requireTargets && null (argTargets args) =
       warn verbosity $
         "Haddocks are being requested, but there aren't any modules given "
@@ -762,66 +774,61 @@ runHaddock verbosity tmpFileOpts comp platform haddockProg requireTargets args
             fromMaybe
               (error "unable to determine haddock version")
               (programVersion haddockProg)
-      renderArgs verbosity tmpFileOpts haddockVersion comp platform args $
-        \(flags, result) -> do
-          runProgram verbosity haddockProg flags
-
+      renderArgs verbosity mbWorkDir tmpFileOpts haddockVersion comp platform args $
+        \flags result -> do
+          runProgramCwd verbosity mbWorkDir haddockProg flags
           notice verbosity $ "Documentation created: " ++ result
 
 renderArgs
-  :: Verbosity
+  :: forall a
+   . Verbosity
+  -> Maybe (SymbolicPath CWD (Path.Dir Pkg))
   -> TempFileOptions
   -> Version
   -> Compiler
   -> Platform
   -> HaddockArgs
-  -> (([String], FilePath) -> IO a)
+  -> ([String] -> FilePath -> IO a)
   -> IO a
-renderArgs verbosity tmpFileOpts version comp platform args k = do
+renderArgs verbosity mbWorkDir tmpFileOpts version comp platform args k = do
   let haddockSupportsUTF8 = version >= mkVersion [2, 14, 4]
       haddockSupportsResponseFiles = version > mkVersion [2, 16, 2]
-  createDirectoryIfMissingVerbose verbosity True outputDir
-  case argPrologue args of
-    Flag prologueText ->
-      withTempFileEx tmpFileOpts outputDir "haddock-prologue.txt" $
-        \prologueFileName h -> do
-          do
-            when haddockSupportsUTF8 (hSetEncoding h utf8)
-            hPutStrLn h prologueText
-            hClose h
-            let pflag = "--prologue=" ++ prologueFileName
-                renderedArgs = pflag : renderPureArgs version comp platform args
-            if haddockSupportsResponseFiles
+  createDirectoryIfMissingVerbose verbosity True (i outputDir)
+  let withPrologueArgs prologueArgs =
+        let renderedArgs = prologueArgs <> renderPureArgs version comp platform args
+         in if haddockSupportsResponseFiles
               then
                 withResponseFile
                   verbosity
                   tmpFileOpts
+                  mbWorkDir
                   outputDir
                   "haddock-response.txt"
                   (if haddockSupportsUTF8 then Just utf8 else Nothing)
                   renderedArgs
-                  (\responseFileName -> k (["@" ++ responseFileName], result))
-              else k (renderedArgs, result)
-    _ -> do
-      let renderedArgs =
-            ( case argPrologueFile args of
-                Flag pfile -> ["--prologue=" ++ pfile]
-                _ -> []
-            )
-              <> renderPureArgs version comp platform args
-      if haddockSupportsResponseFiles
-        then
-          withResponseFile
-            verbosity
-            tmpFileOpts
-            outputDir
-            "haddock-response.txt"
-            (if haddockSupportsUTF8 then Just utf8 else Nothing)
-            renderedArgs
-            (\responseFileName -> k (["@" ++ responseFileName], result))
-        else k (renderedArgs, result)
+                  (\responseFileName -> k ["@" ++ responseFileName] result)
+              else k renderedArgs result
+  case argPrologue args of
+    Flag prologueText ->
+      withTempFileEx tmpFileOpts mbWorkDir outputDir "haddock-prologue.txt" $
+        \prologueFileName h -> do
+          when haddockSupportsUTF8 (hSetEncoding h utf8)
+          hPutStrLn h prologueText
+          hClose h
+          withPrologueArgs ["--prologue=" ++ u prologueFileName]
+    _ ->
+      withPrologueArgs
+        ( case argPrologueFile args of
+            Flag pfile -> ["--prologue=" ++ pfile]
+            _ -> []
+        )
   where
-    outputDir = (unDir $ argOutputDir args)
+    -- See Note [Symbolic paths] in Distribution.Utils.Path
+    i = interpretSymbolicPath mbWorkDir
+    u :: SymbolicPath Pkg to -> FilePath
+    u = interpretSymbolicPathCWD
+
+    outputDir = coerceSymbolicPath $ unDir $ argOutputDir args
     isNotArgContents = isNothing (flagToMaybe $ argContents args)
     isNotArgIndex = isNothing (flagToMaybe $ argIndex args)
     isArgGenIndex = fromFlagOrDefault False (argGenIndex args)
@@ -833,7 +840,7 @@ renderArgs verbosity tmpFileOpts version comp platform args k = do
       intercalate ", "
         . map
           ( \o ->
-              outputDir
+              i outputDir
                 </> case o of
                   Html
                     | isIndexGenerated ->
@@ -854,7 +861,7 @@ renderArgs verbosity tmpFileOpts version comp platform args k = do
 renderPureArgs :: Version -> Compiler -> Platform -> HaddockArgs -> [String]
 renderPureArgs version comp platform args =
   concat
-    [ map (\f -> "--dump-interface=" ++ unDir (argOutputDir args) </> f)
+    [ map (\f -> "--dump-interface=" ++ u (unDir (argOutputDir args)) </> f)
         . flagToList
         . argInterfaceFile
         $ args
@@ -912,7 +919,7 @@ renderPureArgs version comp platform args =
         . argOutput
         $ args
     , renderInterfaces . argInterfaces $ args
-    , (: []) . ("--odir=" ++) . unDir . argOutputDir $ args
+    , (: []) . ("--odir=" ++) . u . unDir . argOutputDir $ args
     , maybe
         []
         ( (: [])
@@ -939,6 +946,8 @@ renderPureArgs version comp platform args =
     , maybe [] ((: []) . ("--lib=" ++)) . flagToMaybe . argLib $ args
     ]
   where
+    -- See Note [Symbolic paths] in Distribution.Utils.Path
+    u = interpretSymbolicPathCWD
     renderInterfaces = map renderInterface
 
     renderInterface :: (FilePath, Maybe FilePath, Maybe FilePath, Visibility) -> String
@@ -1141,6 +1150,13 @@ hscolour' onNoHsColour haddockTarget pkg_descr lbi suffixes flags =
       (orLaterVersion (mkVersion [1, 8]))
       (withPrograms lbi)
   where
+    common = hscolourCommonFlags flags
+    verbosity = fromFlag $ setupVerbosity common
+    distPref = fromFlag $ setupDistPref common
+    mbWorkDir = mbWorkDirLBI lbi
+    i = interpretSymbolicPathLBI lbi -- See Note [Symbolic paths] in Distribution.Utils.Path
+    u :: SymbolicPath Pkg to -> FilePath
+    u = interpretSymbolicPathCWD
     go :: ConfiguredProgram -> IO ()
     go hscolourProg = do
       warn verbosity $
@@ -1150,7 +1166,8 @@ hscolour' onNoHsColour haddockTarget pkg_descr lbi suffixes flags =
 
       setupMessage verbosity "Running hscolour for" (packageId pkg_descr)
       createDirectoryIfMissingVerbose verbosity True $
-        hscolourPref haddockTarget distPref pkg_descr
+        i $
+          hscolourPref haddockTarget distPref pkg_descr
 
       withAllComponentsInBuildOrder pkg_descr lbi $ \comp clbi -> do
         let tgt = TargetInfo clbi comp
@@ -1161,23 +1178,21 @@ hscolour' onNoHsColour haddockTarget pkg_descr lbi suffixes flags =
             Just exe -> do
               let outputDir =
                     hscolourPref haddockTarget distPref pkg_descr
-                      </> unUnqualComponentName (exeName exe)
-                      </> "src"
+                      </> makeRelativePathEx (unUnqualComponentName (exeName exe) </> "src")
               runHsColour hscolourProg outputDir =<< getExeSourceFiles verbosity lbi exe clbi
             Nothing -> do
-              warn
-                (fromFlag $ hscolourVerbosity flags)
-                "Unsupported component, skipping..."
-              return ()
+              warn verbosity "Unsupported component, skipping..."
         case comp of
           CLib lib -> do
-            let outputDir = hscolourPref haddockTarget distPref pkg_descr </> "src"
+            let outputDir = hscolourPref haddockTarget distPref pkg_descr </> makeRelativePathEx "src"
             runHsColour hscolourProg outputDir =<< getLibSourceFiles verbosity lbi lib clbi
           CFLib flib -> do
             let outputDir =
                   hscolourPref haddockTarget distPref pkg_descr
-                    </> unUnqualComponentName (foreignLibName flib)
-                    </> "src"
+                    </> makeRelativePathEx
+                      ( unUnqualComponentName (foreignLibName flib)
+                          </> "src"
+                      )
             runHsColour hscolourProg outputDir =<< getFLibSourceFiles verbosity lbi flib clbi
           CExe _ -> when (fromFlag (hscolourExecutables flags)) $ doExe comp
           CTest _ -> when (fromFlag (hscolourTestSuites flags)) $ doExe comp
@@ -1185,43 +1200,45 @@ hscolour' onNoHsColour haddockTarget pkg_descr lbi suffixes flags =
 
     stylesheet = flagToMaybe (hscolourCSS flags)
 
-    verbosity = fromFlag (hscolourVerbosity flags)
-    distPref = fromFlag (hscolourDistPref flags)
-
+    runHsColour
+      :: ConfiguredProgram
+      -> SymbolicPath Pkg to
+      -> [(ModuleName.ModuleName, SymbolicPath Pkg to1)]
+      -> IO ()
     runHsColour prog outputDir moduleFiles = do
-      createDirectoryIfMissingVerbose verbosity True outputDir
+      createDirectoryIfMissingVerbose verbosity True (i outputDir)
 
       case stylesheet of -- copy the CSS file
         Nothing
           | programVersion prog >= Just (mkVersion [1, 9]) ->
-              runProgram
+              runProgramCwd
                 verbosity
+                mbWorkDir
                 prog
-                ["-print-css", "-o" ++ outputDir </> "hscolour.css"]
+                ["-print-css", "-o" ++ u outputDir </> "hscolour.css"]
           | otherwise -> return ()
-        Just s -> copyFileVerbose verbosity s (outputDir </> "hscolour.css")
+        Just s -> copyFileVerbose verbosity s (i outputDir </> "hscolour.css")
 
       for_ moduleFiles $ \(m, inFile) ->
-        runProgram
+        runProgramCwd
           verbosity
+          mbWorkDir
           prog
-          ["-css", "-anchor", "-o" ++ outFile m, inFile]
+          ["-css", "-anchor", "-o" ++ outFile m, u inFile]
       where
         outFile m =
-          outputDir
+          i outputDir
             </> intercalate "-" (ModuleName.components m) <.> "html"
 
 haddockToHscolour :: HaddockFlags -> HscolourFlags
 haddockToHscolour flags =
   HscolourFlags
-    { hscolourCSS = haddockHscolourCss flags
+    { hscolourCommonFlags = haddockCommonFlags flags
+    , hscolourCSS = haddockHscolourCss flags
     , hscolourExecutables = haddockExecutables flags
     , hscolourTestSuites = haddockTestSuites flags
     , hscolourBenchmarks = haddockBenchmarks flags
     , hscolourForeignLibs = haddockForeignLibs flags
-    , hscolourVerbosity = haddockVerbosity flags
-    , hscolourDistPref = haddockDistPref flags
-    , hscolourCabalFilePath = haddockCabalFilePath flags
     }
 
 -- ------------------------------------------------------------------------------

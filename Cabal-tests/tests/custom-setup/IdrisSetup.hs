@@ -65,6 +65,10 @@ import Distribution.Simple.Utils (rewriteFileEx)
 import Distribution.Compiler
 import Distribution.PackageDescription
 import Distribution.Text
+#if MIN_VERSION_Cabal(3,11,0)
+import Distribution.Utils.Path
+  (getSymbolicPath, makeSymbolicPath)
+#endif
 
 import System.Environment
 import System.Exit
@@ -93,11 +97,16 @@ lookupEnv v = lookup v `fmap` getEnvironment
 
 -- make on mingw32 expects unix style separators
 #ifdef mingw32_HOST_OS
-(<//>) = (Px.</>)
-idrisCmd local = Px.joinPath $ splitDirectories $ ".." <//> ".." <//> buildDir local <//> "idris" <//> "idris"
+idrisCmd local = Px.joinPath $ splitDirectories $ ".." Px.</> ".." Px.</> bd Px.</> "idris" Px.</> "idris"
 #else
-idrisCmd local = ".." </> ".." </>  buildDir local </>  "idris" </>  "idris"
+idrisCmd local = ".." </> ".." </> bd </> "idris" </> "idris"
 #endif
+  where
+    bd =
+#if MIN_VERSION_Cabal(3,11,0)
+        getSymbolicPath $
+#endif
+        buildDir local
 
 -- -----------------------------------------------------------------------------
 -- Make Commands
@@ -109,11 +118,14 @@ mymake = "gmake"
 #else
 mymake = "make"
 #endif
-make verbosity =
-   P.runProgramInvocation verbosity . P.simpleProgramInvocation mymake
+
+make verbosity dir args =
+  P.runProgramInvocation verbosity $ P.simpleProgramInvocation mymake $
+    [ "-C", dir ] ++ args
 
 #ifdef mingw32_HOST_OS
-windres verbosity = P.runProgramInvocation verbosity . P.simpleProgramInvocation "windres"
+windres verbosity =
+  P.runProgramInvocation verbosity . P.simpleProgramInvocation "windres"
 #endif
 -- -----------------------------------------------------------------------------
 -- Flags
@@ -160,7 +172,7 @@ idrisClean _ flags _ _ = cleanStdLib
 
       cleanStdLib = makeClean "libs"
 
-      makeClean dir = make verbosity [ "-C", dir, "clean", "IDRIS=idris" ]
+      makeClean dir = make verbosity dir [ "clean", "IDRIS=idris" ]
 
 -- -----------------------------------------------------------------------------
 -- Configure
@@ -223,7 +235,11 @@ generateToolchainModule verbosity srcDir toolDir = do
 idrisConfigure _ flags pkgdesc local = do
     configureRTS
     withLibLBI pkgdesc local $ \_ libcfg -> do
-      let libAutogenDir = autogenComponentModulesDir local libcfg
+      let libAutogenDir =
+#if MIN_VERSION_Cabal(3,11,0)
+            getSymbolicPath $
+#endif
+            autogenComponentModulesDir local libcfg
       generateVersionModule verbosity libAutogenDir (isRelease (configFlags local))
       if isFreestanding $ configFlags local
           then do
@@ -244,7 +260,7 @@ idrisConfigure _ flags pkgdesc local = do
       -- installing but shouldn't be in the distribution. And it won't make the
       -- distribution if it's not there, so instead I just delete
       -- the file after configure.
-      configureRTS = make verbosity ["-C", "rts", "clean"]
+      configureRTS = make verbosity "rts" ["clean"]
 
 #if !(MIN_VERSION_Cabal(2,0,0))
       autogenComponentModulesDir lbi _ = autogenModulesDir lbi
@@ -297,7 +313,14 @@ idrisPreBuild args flags = do
         return (Nothing, [(fromString "idris", emptyBuildInfo { ldOptions = [dir ++ "/idris_icon.o"] })])
      where
         verbosity = S.fromFlag $ S.buildVerbosity flags
-        dir = S.fromFlagOrDefault "dist" $ S.buildDistPref flags
+
+        dir =
+#if MIN_VERSION_Cabal(3,11,0)
+           getSymbolicPath $ S.fromFlagOrDefault (makeSymbolicPath "dist") $
+#else
+           S.fromFlagOrDefault "dist" $
+#endif
+           S.buildDistPref flags
 #else
         return (Nothing, [])
 #endif
@@ -313,10 +336,9 @@ idrisBuild _ flags _ local
             putStrLn "Building libraries..."
             makeBuild "libs"
          where
-            makeBuild dir = make verbosity [ "-C", dir, "build" , "IDRIS=" ++ idrisCmd local]
+            makeBuild dir = make verbosity dir ["IDRIS=" ++ idrisCmd local]
 
-      buildRTS = make verbosity (["-C", "rts", "build"] ++
-                                   gmpflag (usesGMP (configFlags local)))
+      buildRTS = make verbosity "rts" $ gmpflag (usesGMP (configFlags local))
 
       gmpflag False = []
       gmpflag True = ["GMP=-DIDRIS_GMP"]
@@ -348,7 +370,7 @@ idrisInstall verbosity copy pkg local
          installOrdinaryFiles verbosity mandest [("man", "idris.1")]
 
       makeInstall src target =
-         make verbosity [ "-C", src, "install" , "TARGET=" ++ target, "IDRIS=" ++ idrisCmd local]
+         make verbosity src [ "install", "TARGET=" ++ target, "IDRIS=" ++ idrisCmd local]
 
 -- -----------------------------------------------------------------------------
 -- Test
@@ -360,7 +382,11 @@ idrisInstall verbosity copy pkg local
 fixPkg pkg target = pkg { dataDir = target }
 
 idrisTestHook args pkg local hooks flags = do
-  let target = datadir $ L.absoluteInstallDirs pkg local NoCopyDest
+  let target =
+#if MIN_VERSION_Cabal(3,11,0)
+        makeSymbolicPath $
+#endif
+        datadir $ L.absoluteInstallDirs pkg local NoCopyDest
   testHook simpleUserHooks args (fixPkg pkg target) local hooks flags
 
 -- -----------------------------------------------------------------------------

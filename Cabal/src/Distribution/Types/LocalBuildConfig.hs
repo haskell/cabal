@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -36,9 +37,10 @@ import Distribution.Simple.InstallDirs hiding
   , substPathTemplate
   )
 import Distribution.Simple.PackageIndex
-import Distribution.Simple.Program
+import Distribution.Simple.Program.Db (ProgramDb)
 import Distribution.Simple.Setup.Config
 import Distribution.System
+import Distribution.Utils.Path
 
 import Distribution.Compat.Graph (Graph)
 
@@ -57,7 +59,7 @@ data PackageBuildDescr = PackageBuildDescr
   -- ^ The compiler we're building with
   , hostPlatform :: Platform
   -- ^ The platform we're building for
-  , pkgDescrFile :: Maybe FilePath
+  , pkgDescrFile :: Maybe (SymbolicPath Pkg File)
   -- ^ the filename containing the .cabal file, if available
   , localPkgDescr :: PackageDescription
   -- ^ WARNING WARNING WARNING Be VERY careful about using

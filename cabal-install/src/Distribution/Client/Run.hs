@@ -1,4 +1,5 @@
 -----------------------------------------------------------------------------
+{-# LANGUAGE DataKinds #-}
 
 -----------------------------------------------------------------------------
 
@@ -34,12 +35,14 @@ import Distribution.Simple.LocalBuildInfo
   , LocalBuildInfo (..)
   , buildDir
   , depLibraryPaths
+  , interpretSymbolicPathLBI
+  , mbWorkDirLBI
   )
 import Distribution.Simple.Utils
   ( addLibraryPath
   , dieWithException
   , notice
-  , rawSystemExitWithEnv
+  , rawSystemExitWithEnvCwd
   , warn
   )
 import Distribution.System (Platform (..))
@@ -49,8 +52,7 @@ import qualified Distribution.Simple.GHCJS as GHCJS
 
 import Distribution.Client.Errors
 import Distribution.Compat.Environment (getEnvironment)
-import System.Directory (getCurrentDirectory)
-import System.FilePath ((<.>), (</>))
+import Distribution.Utils.Path
 
 -- | Return the executable to run and any extra arguments that should be
 -- forwarded to it. Die in case of error.
@@ -133,12 +135,19 @@ splitRunArgs verbosity lbi args =
 -- | Run a given executable.
 run :: Verbosity -> LocalBuildInfo -> Executable -> [String] -> IO ()
 run verbosity lbi exe exeArgs = do
-  curDir <- getCurrentDirectory
   let buildPref = buildDir lbi
       pkg_descr = localPkgDescr lbi
+      i = interpretSymbolicPathLBI lbi -- See Note [Symbolic paths] in Distribution.Utils.Path
+      mbWorkDir = mbWorkDirLBI lbi
+      rawDataDir = dataDir pkg_descr
+      datDir
+        | null $ getSymbolicPath rawDataDir =
+            i sameDirectory
+        | otherwise =
+            i rawDataDir
       dataDirEnvVar =
         ( pkgPathEnvVar pkg_descr "datadir"
-        , curDir </> dataDir pkg_descr
+        , datDir
         )
 
   (path, runArgs) <-
@@ -148,13 +157,13 @@ run verbosity lbi exe exeArgs = do
             let (script, cmd, cmdArgs) =
                   GHCJS.runCmd
                     (withPrograms lbi)
-                    (buildPref </> exeName' </> exeName')
+                    (i buildPref </> exeName' </> exeName')
             script' <- tryCanonicalizePath script
             return (cmd, cmdArgs ++ [script'])
           _ -> do
             p <-
               tryCanonicalizePath $
-                buildPref </> exeName' </> (exeName' <.> exeExtension (hostPlatform lbi))
+                i buildPref </> exeName' </> (exeName' <.> exeExtension (hostPlatform lbi))
             return (p, [])
 
   env <- (dataDirEnvVar :) <$> getEnvironment
@@ -171,4 +180,4 @@ run verbosity lbi exe exeArgs = do
         return (addLibraryPath os paths env)
       else return env
   notice verbosity $ "Running " ++ prettyShow (exeName exe) ++ "..."
-  rawSystemExitWithEnv verbosity path (runArgs ++ exeArgs) env'
+  rawSystemExitWithEnvCwd verbosity mbWorkDir path (runArgs ++ exeArgs) env'

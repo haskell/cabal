@@ -58,7 +58,7 @@ import Distribution.Types.ComponentRequestedSpec
 import Distribution.Types.DependencyMap
 import Distribution.Types.PackageVersionConstraint
 import Distribution.Utils.Generic
-import Distribution.Utils.Path
+import Distribution.Utils.Path (sameDirectory)
 import Distribution.Version
 
 import qualified Data.Map.Lazy as Map

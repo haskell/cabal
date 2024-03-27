@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
@@ -36,7 +37,11 @@ import Distribution.PackageDescription
   )
 import qualified Distribution.PackageDescription as PD
 import Distribution.Pretty
-import Distribution.Simple.LocalBuildInfo (LocalBuildInfo (..))
+import Distribution.Simple.LocalBuildInfo
+  ( LocalBuildInfo (..)
+  , interpretSymbolicPathLBI
+  , mbWorkDirLBI
+  )
 import Distribution.Simple.Program
   ( hpcProgram
   , requireProgramVersion
@@ -44,10 +49,11 @@ import Distribution.Simple.Program
 import Distribution.Simple.Program.Hpc (markup, union)
 import Distribution.Simple.Utils (notice)
 import Distribution.Types.UnqualComponentName
+import Distribution.Utils.Path
 import Distribution.Verbosity (Verbosity ())
 import Distribution.Version (anyVersion)
+
 import System.Directory (createDirectoryIfMissing, doesFileExist)
-import System.FilePath
 
 -- -------------------------------------------------------------------------
 -- Haskell Program Coverage
@@ -56,12 +62,12 @@ data Way = Vanilla | Prof | Dyn
   deriving (Bounded, Enum, Eq, Read, Show)
 
 hpcDir
-  :: FilePath
+  :: SymbolicPath Pkg (Dir Dist)
   -- ^ \"dist/\" prefix
   -> Way
-  -> FilePath
+  -> SymbolicPath Pkg (Dir Artifacts)
   -- ^ Directory containing component's HPC .mix files
-hpcDir distPref way = distPref </> "hpc" </> wayDir
+hpcDir distPref way = distPref </> makeRelativePathEx ("hpc" </> wayDir)
   where
     wayDir = case way of
       Vanilla -> "vanilla"
@@ -69,39 +75,39 @@ hpcDir distPref way = distPref </> "hpc" </> wayDir
       Dyn -> "dyn"
 
 mixDir
-  :: FilePath
+  :: SymbolicPath Pkg (Dir Dist)
   -- ^ \"dist/\" prefix
   -> Way
-  -> FilePath
+  -> SymbolicPath Pkg (Dir Mix)
   -- ^ Directory containing test suite's .mix files
-mixDir distPref way = hpcDir distPref way </> "mix"
+mixDir distPref way = hpcDir distPref way </> makeRelativePathEx "mix"
 
 tixDir
-  :: FilePath
+  :: SymbolicPath Pkg (Dir Dist)
   -- ^ \"dist/\" prefix
   -> Way
-  -> FilePath
+  -> SymbolicPath Pkg (Dir Tix)
   -- ^ Directory containing test suite's .tix files
-tixDir distPref way = hpcDir distPref way </> "tix"
+tixDir distPref way = hpcDir distPref way </> makeRelativePathEx "tix"
 
 -- | Path to the .tix file containing a test suite's sum statistics.
 tixFilePath
-  :: FilePath
+  :: SymbolicPath Pkg (Dir Dist)
   -- ^ \"dist/\" prefix
   -> Way
   -> FilePath
   -- ^ Component name
-  -> FilePath
+  -> SymbolicPath Pkg File
   -- ^ Path to test suite's .tix file
-tixFilePath distPref way name = tixDir distPref way </> name <.> "tix"
+tixFilePath distPref way name = tixDir distPref way </> makeRelativePathEx (name <.> "tix")
 
 htmlDir
-  :: FilePath
+  :: SymbolicPath Pkg (Dir Dist)
   -- ^ \"dist/\" prefix
   -> Way
-  -> FilePath
+  -> SymbolicPath Pkg (Dir Artifacts)
   -- ^ Path to test suite's HTML markup directory
-htmlDir distPref way = hpcDir distPref way </> "html"
+htmlDir distPref way = hpcDir distPref way </> makeRelativePathEx "html"
 
 -- | Attempt to guess the way the test suites in this package were compiled
 -- and linked with the library so the correct module interfaces are found.
@@ -114,7 +120,7 @@ guessWay lbi
 -- | Haskell Program Coverage information required to produce a valid HPC
 -- report through the `hpc markup` call for the package libraries.
 data HPCMarkupInfo = HPCMarkupInfo
-  { pathsToLibsArtifacts :: [FilePath]
+  { pathsToLibsArtifacts :: [SymbolicPath Pkg (Dir Artifacts)]
   -- ^ The paths to the library components whose modules are included in the
   -- coverage report
   , libsModulesToInclude :: [ModuleName]
@@ -126,14 +132,16 @@ markupPackage
   :: Verbosity
   -> HPCMarkupInfo
   -> LocalBuildInfo
-  -> FilePath
+  -> SymbolicPath Pkg (Dir Dist)
   -- ^ Testsuite \"dist/\" prefix
   -> PD.PackageDescription
   -> [TestSuite]
   -> IO ()
 markupPackage verbosity HPCMarkupInfo{pathsToLibsArtifacts, libsModulesToInclude} lbi testDistPref pkg_descr suites = do
   let tixFiles = map (tixFilePath testDistPref way) testNames
-  tixFilesExist <- traverse doesFileExist tixFiles
+      mbWorkDir = mbWorkDirLBI lbi
+      i = interpretSymbolicPathLBI lbi -- See Note [Symbolic paths] in Distribution.Utils.Path
+  tixFilesExist <- traverse (doesFileExist . i) tixFiles
   when (and tixFilesExist) $ do
     -- behaviour of 'markup' depends on version, so we need *a* version
     -- but no particular one
@@ -165,16 +173,16 @@ markupPackage verbosity HPCMarkupInfo{pathsToLibsArtifacts, libsModulesToInclude
         let excluded = concatMap testModules suites ++ [main]
             pkgName = prettyShow $ PD.package pkg_descr
             summedTixFile = tixFilePath testDistPref way pkgName
-        createDirectoryIfMissing True $ takeDirectory summedTixFile
-        union hpc verbosity tixFiles summedTixFile excluded
+        createDirectoryIfMissing True $ i $ takeDirectorySymbolicPath summedTixFile
+        union mbWorkDir hpc verbosity tixFiles summedTixFile excluded
         return summedTixFile
 
-    markup hpc hpcVer verbosity tixFile mixDirs htmlDir' libsModulesToInclude
+    markup mbWorkDir hpc hpcVer verbosity tixFile mixDirs htmlDir' libsModulesToInclude
     notice verbosity $
       "Package coverage report written to "
-        ++ htmlDir'
+        ++ i htmlDir'
         </> "hpc_index.html"
   where
     way = guessWay lbi
     testNames = fmap (unUnqualComponentName . testName) suites
-    mixDirs = map (`mixDir` way) pathsToLibsArtifacts
+    mixDirs = map ((`mixDir` way) . coerceSymbolicPath) pathsToLibsArtifacts

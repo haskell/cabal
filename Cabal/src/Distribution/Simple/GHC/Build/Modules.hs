@@ -1,6 +1,8 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TupleSections #-}
 
 module Distribution.Simple.GHC.Build.Modules (buildHaskellModules, BuildWay (..), buildWayPrefix) where
@@ -34,7 +36,8 @@ import Distribution.Types.ParStrat
 import Distribution.Types.TestSuite
 import Distribution.Types.TestSuiteInterface
 import Distribution.Utils.NubList
-import System.FilePath
+import Distribution.Utils.Path
+import System.FilePath ()
 
 {-
 Note [Building Haskell Modules accounting for TH]
@@ -96,7 +99,7 @@ buildHaskellModules
   -- ^ The GHC configured program
   -> PD.PackageDescription
   -- ^ The package description
-  -> FilePath
+  -> SymbolicPath Pkg ('Dir Artifacts)
   -- ^ The path to the build directory for this target, which
   -- has already been created.
   -> Set.Set BuildWay
@@ -119,6 +122,7 @@ buildHaskellModules numJobs ghcProg pkg_descr buildTargetDir wantedWays pbci = d
     bi = buildBI pbci
     what = buildingWhat pbci
     comp = buildCompiler pbci
+    i = interpretSymbolicPathLBI lbi -- See Note [Symbolic paths] in Distribution.Utils.Path
 
     -- If this component will be loaded into a repl, we don't compile the modules at all.
     forRepl
@@ -133,13 +137,14 @@ buildHaskellModules numJobs ghcProg pkg_descr buildTargetDir wantedWays pbci = d
   let isCoverageEnabled = if isLib then libCoverage lbi else exeCoverage lbi
       hpcdir way
         | forRepl = mempty -- HPC is not supported in ghci
-        | isCoverageEnabled = Flag $ Hpc.mixDir (buildTargetDir </> extraCompilationArtifacts) way
+        | isCoverageEnabled = Flag $ Hpc.mixDir (coerceSymbolicPath $ coerceSymbolicPath buildTargetDir </> extraCompilationArtifacts) way
         | otherwise = mempty
 
   (inputFiles, inputModules) <- componentInputs buildTargetDir pkg_descr pbci
 
   let
-    runGhcProg = runGHC verbosity ghcProg comp platform
+    mbWorkDir = mbWorkDirLBI lbi
+    runGhcProg = runGHC verbosity ghcProg comp platform mbWorkDir
     platform = hostPlatform lbi
 
     -- See Note [Building Haskell Modules accounting for TH]
@@ -161,12 +166,12 @@ buildHaskellModules numJobs ghcProg pkg_descr buildTargetDir wantedWays pbci = d
           , ghcOptInputFiles =
               toNubListR $
                 if PD.package pkg_descr == fakePackageId
-                  then filter isHaskell inputFiles
+                  then filter (isHaskell . getSymbolicPath) inputFiles
                   else inputFiles
           , ghcOptInputScripts =
               toNubListR $
                 if PD.package pkg_descr == fakePackageId
-                  then filter (not . isHaskell) inputFiles
+                  then filter (not . isHaskell . getSymbolicPath) inputFiles
                   else []
           , ghcOptExtra = buildWayExtraHcOptions way GHC bi
           , ghcOptHiSuffix = optSuffixFlag (buildWayPrefix way) "hi"
@@ -257,7 +262,7 @@ buildHaskellModules numJobs ghcProg pkg_descr buildTargetDir wantedWays pbci = d
             -- static and dynamically linked executables. We copy
             -- the modules interfaces so they are available under
             -- both ways.
-            copyDirectoryRecursive verbosity dynDir vanillaDir
+            copyDirectoryRecursive verbosity (i dynDir) (i vanillaDir)
           _ -> return ()
      in
       -- REVIEW:ADD? info verbosity "Building Haskell Sources..."
@@ -295,40 +300,39 @@ buildWayExtraHcOptions = \case
 -- The "input files" are either the path to the main Haskell module, or a repl
 -- script (that does not necessarily have an extension).
 componentInputs
-  :: FilePath
+  :: SymbolicPath Pkg (Dir Artifacts)
   -- ^ Target build dir
   -> PD.PackageDescription
   -> PreBuildComponentInputs
   -- ^ The context and component being built in it.
-  -> IO ([FilePath], [ModuleName])
+  -> IO ([SymbolicPath Pkg File], [ModuleName])
   -- ^ The Haskell input files, and the Haskell modules
-componentInputs buildTargetDir pkg_descr pbci = do
-  let
-    verbosity = buildVerbosity pbci
-    component = buildComponent pbci
-    clbi = buildCLBI pbci
-
+componentInputs buildTargetDir pkg_descr pbci =
   case component of
     CLib lib ->
       pure ([], allLibModules lib clbi)
     CFLib flib ->
       pure ([], foreignLibModules flib)
     CExe Executable{buildInfo = bi', modulePath} ->
-      exeLikeInputs verbosity bi' modulePath
+      exeLikeInputs bi' modulePath
     CTest TestSuite{testBuildInfo = bi', testInterface = TestSuiteExeV10 _ mainFile} ->
-      exeLikeInputs verbosity bi' mainFile
+      exeLikeInputs bi' mainFile
     CBench Benchmark{benchmarkBuildInfo = bi', benchmarkInterface = BenchmarkExeV10 _ mainFile} ->
-      exeLikeInputs verbosity bi' mainFile
+      exeLikeInputs bi' mainFile
     CTest TestSuite{} -> error "testSuiteExeV10AsExe: wrong kind"
     CBench Benchmark{} -> error "benchmarkExeV10asExe: wrong kind"
   where
-    exeLikeInputs verbosity bnfo modulePath = liftIO $ do
-      main <- findExecutableMain verbosity buildTargetDir (bnfo, modulePath)
+    verbosity = buildVerbosity pbci
+    component = buildComponent pbci
+    clbi = buildCLBI pbci
+    mbWorkDir = mbWorkDirLBI $ localBuildInfo pbci
+    exeLikeInputs bnfo modulePath = liftIO $ do
+      main <- findExecutableMain verbosity mbWorkDir buildTargetDir (bnfo, modulePath)
       let mainModName = exeMainModuleName bnfo
           otherModNames = otherModules bnfo
 
       -- Scripts have fakePackageId and are always Haskell but can have any extension.
-      if isHaskell main || PD.package pkg_descr == fakePackageId
+      if isHaskell (getSymbolicPath main) || PD.package pkg_descr == fakePackageId
         then
           if PD.specVersion pkg_descr < CabalSpecV2_0 && (mainModName `elem` otherModNames)
             then do

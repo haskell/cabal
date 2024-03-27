@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE RecordWildCards #-}
 
 module Distribution.Client.CmdClean (cleanCommand, cleanAction) where
@@ -51,6 +52,10 @@ import Distribution.Simple.Utils
   , info
   , wrapText
   )
+import Distribution.Utils.Path hiding
+  ( (<.>)
+  , (</>)
+  )
 import Distribution.Verbosity
   ( normal
   )
@@ -77,7 +82,7 @@ import System.FilePath
 data CleanFlags = CleanFlags
   { cleanSaveConfig :: Flag Bool
   , cleanVerbosity :: Flag Verbosity
-  , cleanDistDir :: Flag FilePath
+  , cleanDistDir :: Flag (SymbolicPath Pkg (Dir Dist))
   }
   deriving (Eq)
 
@@ -132,7 +137,7 @@ cleanAction :: (ProjectFlags, CleanFlags) -> [String] -> GlobalFlags -> IO ()
 cleanAction (ProjectFlags{..}, CleanFlags{..}) extraArgs _ = do
   let verbosity = fromFlagOrDefault normal cleanVerbosity
       saveConfig = fromFlagOrDefault False cleanSaveConfig
-      mdistDirectory = flagToMaybe cleanDistDir
+      mdistDirectory = fmap getSymbolicPath $ flagToMaybe cleanDistDir
       mprojectDir = flagToMaybe flagProjectDir
       mprojectFile = flagToMaybe flagProjectFile
 
@@ -165,7 +170,7 @@ cleanAction (ProjectFlags{..}, CleanFlags{..}) extraArgs _ = do
         info verbosity ("Deleting dist-newstyle (" ++ distRoot ++ ")")
         handleDoesNotExist () $ removeDirectoryRecursive distRoot
 
-    removeEnvFiles (distProjectRootDirectory distLayout)
+    removeEnvFiles $ distProjectRootDirectory distLayout
 
   -- Clean specified script build caches and orphaned caches.
   -- There is currently no good way to specify to only clean orphaned caches.

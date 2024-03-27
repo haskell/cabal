@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -496,12 +497,12 @@ pkgComponentInfo pkg =
     , cinfoStrName = componentStringName pkg (componentName c)
     , cinfoSrcDirs = map getSymbolicPath $ hsSourceDirs bi
     , cinfoModules = componentModules c
-    , cinfoHsFiles = componentHsFiles c
-    , cinfoAsmFiles = asmSources bi
-    , cinfoCmmFiles = cmmSources bi
-    , cinfoCFiles = cSources bi
-    , cinfoCxxFiles = cxxSources bi
-    , cinfoJsFiles = jsSources bi
+    , cinfoHsFiles = map getSymbolicPath $ componentHsFiles c
+    , cinfoAsmFiles = map getSymbolicPath $ asmSources bi
+    , cinfoCmmFiles = map getSymbolicPath $ cmmSources bi
+    , cinfoCFiles = map getSymbolicPath $ cSources bi
+    , cinfoCxxFiles = map getSymbolicPath $ cxxSources bi
+    , cinfoJsFiles = map getSymbolicPath $ jsSources bi
     }
   | c <- pkgComponents pkg
   , let bi = componentBuildInfo c
@@ -529,7 +530,7 @@ componentModules (CExe exe) = exeModules exe
 componentModules (CTest test) = testModules test
 componentModules (CBench bench) = benchmarkModules bench
 
-componentHsFiles :: Component -> [FilePath]
+componentHsFiles :: Component -> [RelativePath Source File]
 componentHsFiles (CExe exe) = [modulePath exe]
 componentHsFiles
   ( CTest

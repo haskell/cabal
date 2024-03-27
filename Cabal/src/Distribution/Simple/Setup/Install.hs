@@ -1,8 +1,11 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ViewPatterns #-}
 
 -----------------------------------------------------------------------------
 
@@ -18,7 +21,15 @@
 -- Definition of the install command-line options.
 -- See: @Distribution.Simple.Setup@
 module Distribution.Simple.Setup.Install
-  ( InstallFlags (..)
+  ( InstallFlags
+      ( InstallCommonFlags
+      , installVerbosity
+      , installDistPref
+      , installCabalFilePath
+      , installWorkingDir
+      , installTargets
+      , ..
+      )
   , emptyInstallFlags
   , defaultInstallFlags
   , installCommand
@@ -32,10 +43,10 @@ import Distribution.Simple.Command hiding (boolOpt, boolOpt')
 import Distribution.Simple.Compiler
 import Distribution.Simple.Flag
 import Distribution.Simple.InstallDirs
-import Distribution.Simple.Utils
-import Distribution.Verbosity
-
 import Distribution.Simple.Setup.Common
+import Distribution.Simple.Utils
+import Distribution.Utils.Path
+import Distribution.Verbosity
 
 -- ------------------------------------------------------------
 
@@ -45,28 +56,46 @@ import Distribution.Simple.Setup.Common
 
 -- | Flags to @install@: (package db, verbosity)
 data InstallFlags = InstallFlags
-  { installPackageDB :: Flag PackageDB
+  { installCommonFlags :: !CommonSetupFlags
+  , installPackageDB :: Flag PackageDB
   , installDest :: Flag CopyDest
-  , installDistPref :: Flag FilePath
   , installUseWrapper :: Flag Bool
   , installInPlace :: Flag Bool
-  , installVerbosity :: Flag Verbosity
-  , -- this is only here, because we can not
-    -- change the hooks API.
-    installCabalFilePath :: Flag FilePath
   }
   deriving (Show, Generic)
+
+pattern InstallCommonFlags
+  :: Flag Verbosity
+  -> Flag (SymbolicPath Pkg (Dir Dist))
+  -> Flag (SymbolicPath CWD (Dir Pkg))
+  -> Flag (SymbolicPath Pkg File)
+  -> [String]
+  -> InstallFlags
+pattern InstallCommonFlags
+  { installVerbosity
+  , installDistPref
+  , installWorkingDir
+  , installCabalFilePath
+  , installTargets
+  } <-
+  ( installCommonFlags ->
+      CommonSetupFlags
+        { setupVerbosity = installVerbosity
+        , setupDistPref = installDistPref
+        , setupWorkingDir = installWorkingDir
+        , setupCabalFilePath = installCabalFilePath
+        , setupTargets = installTargets
+        }
+    )
 
 defaultInstallFlags :: InstallFlags
 defaultInstallFlags =
   InstallFlags
-    { installPackageDB = NoFlag
+    { installCommonFlags = defaultCommonSetupFlags
+    , installPackageDB = NoFlag
     , installDest = Flag NoCopyDest
-    , installDistPref = NoFlag
     , installUseWrapper = Flag False
     , installInPlace = Flag False
-    , installVerbosity = Flag normal
-    , installCabalFilePath = mempty
     }
 
 installCommand :: CommandUI InstallFlags
@@ -84,24 +113,24 @@ installCommand =
     , commandUsage = \pname ->
         "Usage: " ++ pname ++ " install [FLAGS]\n"
     , commandDefaultFlags = defaultInstallFlags
-    , commandOptions = \showOrParseArgs -> case showOrParseArgs of
-        ShowArgs ->
-          filter
-            ( (`notElem` ["target-package-db"])
-                . optionName
-            )
-            $ installOptions ShowArgs
-        ParseArgs -> installOptions ParseArgs
+    , commandOptions = \showOrParseArgs ->
+        withCommonSetupOptions
+          installCommonFlags
+          (\c f -> f{installCommonFlags = c})
+          showOrParseArgs
+          $ case showOrParseArgs of
+            ShowArgs ->
+              filter
+                ( (`notElem` ["target-package-db"])
+                    . optionName
+                )
+                installOptions
+            ParseArgs -> installOptions
     }
 
-installOptions :: ShowOrParseArgs -> [OptionField InstallFlags]
-installOptions showOrParseArgs =
-  [ optionVerbosity installVerbosity (\v flags -> flags{installVerbosity = v})
-  , optionDistPref
-      installDistPref
-      (\d flags -> flags{installDistPref = d})
-      showOrParseArgs
-  , option
+installOptions :: [OptionField InstallFlags]
+installOptions =
+  [ option
       ""
       ["inplace"]
       "install the package in the install subdirectory of the dist prefix, so it can be used without being installed"

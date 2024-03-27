@@ -40,7 +40,8 @@ import Distribution.Solver.Types.PackageConstraint
   )
 
 import Distribution.Client.Setup
-  ( ConfigFlags (..)
+  ( CommonSetupFlags (setupVerbosity)
+  , ConfigFlags (..)
   , GlobalFlags
   )
 import Distribution.Package
@@ -157,9 +158,9 @@ freezeAction flags@NixStyleFlags{..} extraArgs globalFlags = do
     else do
       writeProjectLocalFreezeConfig distDirLayout freezeConfig
       notice verbosity $
-        "Wrote freeze file: " ++ distProjectFile distDirLayout "freeze"
+        "Wrote freeze file: " ++ (distProjectFile distDirLayout "freeze")
   where
-    verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
+    verbosity = fromFlagOrDefault normal (setupVerbosity $ configCommonFlags configFlags)
     cliConfig =
       commandLineFlagsToProjectConfig
         globalFlags

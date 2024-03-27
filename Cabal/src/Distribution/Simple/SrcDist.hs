@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
 
@@ -47,17 +48,18 @@ import Distribution.Compat.Prelude
 import Prelude ()
 
 import Distribution.ModuleName
-import qualified Distribution.ModuleName as ModuleName
 import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.PackageDescription.Check hiding (doesFileExist)
 import Distribution.Pretty
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Configure (findDistPrefOrDefault)
+import Distribution.Simple.Errors
 import Distribution.Simple.Flag
 import Distribution.Simple.Glob (matchDirFileGlobWithDie)
 import Distribution.Simple.PreProcess
 import Distribution.Simple.Program
+import Distribution.Simple.Setup.Common
 import Distribution.Simple.Setup.SDist
 import Distribution.Simple.Utils
 import Distribution.Utils.Path
@@ -66,9 +68,7 @@ import Distribution.Version
 
 import qualified Data.Map as Map
 import Data.Time (UTCTime, getCurrentTime, toGregorian, utctDay)
-import Distribution.Simple.Errors
 import System.Directory (doesFileExist)
-import System.FilePath (dropExtension, isRelative, (<.>), (</>))
 import System.IO (IOMode (WriteMode), hPutStrLn, withFile)
 
 -- | Create a source distribution.
@@ -83,15 +83,15 @@ sdist
   -- ^ extra preprocessors (includes suffixes)
   -> IO ()
 sdist pkg flags mkTmpDir pps = do
-  distPref <- findDistPrefOrDefault $ sDistDistPref flags
-  let targetPref = distPref
-      tmpTargetDir = mkTmpDir distPref
+  distPref <- findDistPrefOrDefault $ setupDistPref common
+  let targetPref = i distPref
+      tmpTargetDir = mkTmpDir (i distPref)
 
   -- When given --list-sources, just output the list of sources to a file.
   case sDistListSources flags of
     Flag path -> withFile path WriteMode $ \outHandle -> do
-      ordinary <- listPackageSources verbosity "." pkg pps
-      traverse_ (hPutStrLn outHandle) ordinary
+      ordinary <- listPackageSources verbosity mbWorkDir pkg pps
+      traverse_ (hPutStrLn outHandle . getSymbolicPath) ordinary
       notice verbosity $ "List of package sources written to file '" ++ path ++ "'"
     NoFlag -> do
       -- do some QA
@@ -117,11 +117,14 @@ sdist pkg flags mkTmpDir pps = do
     generateSourceDir :: FilePath -> PackageDescription -> IO ()
     generateSourceDir targetDir pkg' = do
       setupMessage verbosity "Building source dist for" (packageId pkg')
-      prepareTree verbosity pkg' targetDir pps
+      prepareTree verbosity mbWorkDir pkg' targetDir pps
       when snapshot $
         overwriteSnapshotPackageDesc verbosity pkg' targetDir
 
-    verbosity = fromFlag (sDistVerbosity flags)
+    common = sDistCommonFlags flags
+    verbosity = fromFlag $ setupVerbosity common
+    mbWorkDir = flagToMaybe $ setupWorkingDir common
+    i = interpretSymbolicPath mbWorkDir -- See Note [Symbolic paths] in Distribution.Utils.Path
     snapshot = fromFlag (sDistSnapshot flags)
 
 -- | List all source files of a package.
@@ -131,14 +134,13 @@ sdist pkg flags mkTmpDir pps = do
 listPackageSources
   :: Verbosity
   -- ^ verbosity
-  -> FilePath
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -- ^ directory with cabal file
   -> PackageDescription
   -- ^ info from the cabal file
   -> [PPSuffixHandler]
   -- ^ extra preprocessors (include suffixes)
-  -> IO [FilePath]
-  -- ^ relative paths
+  -> IO [SymbolicPath Pkg File]
 listPackageSources verbosity cwd pkg_descr0 pps = do
   -- Call helpers that actually do all work.
   listPackageSources' verbosity dieWithException cwd pkg_descr pps
@@ -153,19 +155,18 @@ listPackageSources verbosity cwd pkg_descr0 pps = do
 listPackageSourcesWithDie
   :: Verbosity
   -- ^ verbosity
-  -> (Verbosity -> CabalException -> IO [FilePath])
+  -> (forall res. Verbosity -> CabalException -> IO [res])
   -- ^ 'die'' alternative.
   -- Since 'die'' prefixes the error message with 'errorPrefix',
   -- whatever is passed in here and wants to die should do the same.
   -- See issue #7331.
-  -> FilePath
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -- ^ directory with cabal file
   -> PackageDescription
   -- ^ info from the cabal file
   -> [PPSuffixHandler]
   -- ^ extra preprocessors (include suffixes)
-  -> IO [FilePath]
-  -- ^ relative paths
+  -> IO [SymbolicPath Pkg File]
 listPackageSourcesWithDie verbosity rip cwd pkg_descr0 pps = do
   -- Call helpers that actually do all work.
   listPackageSources' verbosity rip cwd pkg_descr pps
@@ -175,20 +176,19 @@ listPackageSourcesWithDie verbosity rip cwd pkg_descr0 pps = do
 listPackageSources'
   :: Verbosity
   -- ^ verbosity
-  -> (Verbosity -> CabalException -> IO [FilePath])
+  -> (forall res. Verbosity -> CabalException -> IO [res])
   -- ^ 'die'' alternative.
   -- Since 'die'' prefixes the error message with 'errorPrefix',
   -- whatever is passed in here and wants to die should do the same.
   -- See issue #7331.
-  -> FilePath
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -- ^ directory with cabal file
   -> PackageDescription
   -- ^ info from the cabal file
   -> [PPSuffixHandler]
   -- ^ extra preprocessors (include suffixes)
-  -> IO [FilePath]
-  -- ^ relative paths
-listPackageSources' verbosity rip cwd pkg_descr pps =
+  -> IO [SymbolicPath Pkg File]
+listPackageSources' verbosity rip mbWorkDir pkg_descr pps =
   fmap concat . sequenceA $
     [ -- Library sources.
       fmap concat
@@ -198,22 +198,22 @@ listPackageSources' verbosity rip cwd pkg_descr pps =
             , signatures = sigs
             , libBuildInfo = libBi
             } ->
-            allSourcesBuildInfo verbosity rip cwd libBi pps (modules ++ sigs)
+            allSourcesBuildInfo verbosity rip mbWorkDir libBi pps (modules ++ sigs)
     , -- Executables sources.
       fmap concat
         . withAllExe
         $ \Executable{modulePath = mainPath, buildInfo = exeBi} -> do
-          biSrcs <- allSourcesBuildInfo verbosity rip cwd exeBi pps []
-          mainSrc <- findMainExeFile verbosity cwd exeBi pps mainPath
+          biSrcs <- allSourcesBuildInfo verbosity rip mbWorkDir exeBi pps []
+          mainSrc <- findMainExeFile verbosity mbWorkDir exeBi pps mainPath
           return (mainSrc : biSrcs)
     , -- Foreign library sources
       fmap concat
         . withAllFLib
         $ \flib@(ForeignLib{foreignLibBuildInfo = flibBi}) -> do
-          biSrcs <- allSourcesBuildInfo verbosity rip cwd flibBi pps []
+          biSrcs <- allSourcesBuildInfo verbosity rip mbWorkDir flibBi pps []
           defFiles <-
             traverse
-              (findModDefFile verbosity cwd flibBi pps)
+              (findModDefFile verbosity mbWorkDir flibBi pps)
               (foreignLibModDefFile flib)
           return (defFiles ++ biSrcs)
     , -- Test suites sources.
@@ -223,11 +223,11 @@ listPackageSources' verbosity rip cwd pkg_descr pps =
           let bi = testBuildInfo t
           case testInterface t of
             TestSuiteExeV10 _ mainPath -> do
-              biSrcs <- allSourcesBuildInfo verbosity rip cwd bi pps []
-              srcMainFile <- findMainExeFile verbosity cwd bi pps mainPath
+              biSrcs <- allSourcesBuildInfo verbosity rip mbWorkDir bi pps []
+              srcMainFile <- findMainExeFile verbosity mbWorkDir bi pps mainPath
               return (srcMainFile : biSrcs)
             TestSuiteLibV09 _ m ->
-              allSourcesBuildInfo verbosity rip cwd bi pps [m]
+              allSourcesBuildInfo verbosity rip mbWorkDir bi pps [m]
             TestSuiteUnsupported tp ->
               rip verbosity $ UnsupportedTestSuite (show tp)
     , -- Benchmarks sources.
@@ -237,8 +237,8 @@ listPackageSources' verbosity rip cwd pkg_descr pps =
           let bi = benchmarkBuildInfo bm
           case benchmarkInterface bm of
             BenchmarkExeV10 _ mainPath -> do
-              biSrcs <- allSourcesBuildInfo verbosity rip cwd bi pps []
-              srcMainFile <- findMainExeFile verbosity cwd bi pps mainPath
+              biSrcs <- allSourcesBuildInfo verbosity rip mbWorkDir bi pps []
+              srcMainFile <- findMainExeFile verbosity mbWorkDir bi pps mainPath
               return (srcMainFile : biSrcs)
             BenchmarkUnsupported tp ->
               rip verbosity $ UnsupportedBenchMark (show tp)
@@ -248,34 +248,39 @@ listPackageSources' verbosity rip cwd pkg_descr pps =
         $ \filename ->
           do
             let srcDataDirRaw = dataDir pkg_descr
-                srcDataDir
-                  | null srcDataDirRaw = "."
-                  | otherwise = srcDataDirRaw
-            matchDirFileGlobWithDie verbosity rip (specVersion pkg_descr) cwd (srcDataDir </> filename)
+                srcDataFile :: SymbolicPath Pkg File
+                srcDataFile
+                  | null (getSymbolicPath srcDataDirRaw) = sameDirectory </> filename
+                  | otherwise = srcDataDirRaw </> filename
+            fmap coerceSymbolicPath
+              <$> matchDirFileGlobWithDie verbosity rip (specVersion pkg_descr) mbWorkDir srcDataFile
     , -- Extra source files.
       fmap concat . for (extraSrcFiles pkg_descr) $ \fpath ->
-        matchDirFileGlobWithDie verbosity rip (specVersion pkg_descr) cwd fpath
+        fmap relativeSymbolicPath
+          <$> matchDirFileGlobWithDie verbosity rip (specVersion pkg_descr) mbWorkDir fpath
     , -- Extra doc files.
       fmap concat
         . for (extraDocFiles pkg_descr)
         $ \filename ->
-          matchDirFileGlobWithDie verbosity rip (specVersion pkg_descr) cwd filename
+          fmap (coerceSymbolicPath . relativeSymbolicPath)
+            <$> matchDirFileGlobWithDie verbosity rip (specVersion pkg_descr) mbWorkDir filename
     , -- License file(s).
-      return (map getSymbolicPath $ licenseFiles pkg_descr)
+      return (map (relativeSymbolicPath . coerceSymbolicPath) $ licenseFiles pkg_descr)
     , -- Install-include files, without autogen-include files
       fmap concat
         . withAllLib
         $ \l -> do
           let lbi = libBuildInfo l
-              incls = filter (`notElem` autogenIncludes lbi) (installIncludes lbi)
-              relincdirs = "." : filter isRelative (includeDirs lbi)
-          traverse (fmap snd . findIncludeFile verbosity cwd relincdirs) incls
+              incls = fmap getSymbolicPath $ filter (`notElem` autogenIncludes lbi) (installIncludes lbi)
+              relincdirs = fmap getSymbolicPath $ sameDirectory : mapMaybe symbolicPathRelative_maybe (includeDirs lbi)
+          traverse (fmap (makeSymbolicPath . snd) . findIncludeFile verbosity cwd relincdirs) incls
     , -- Setup script, if it exists.
-      fmap (maybe [] (\f -> [f])) $ findSetupFile cwd
+      fmap (maybe [] (\f -> [makeSymbolicPath f])) $ findSetupFile cwd
     , -- The .cabal file itself.
-      fmap (\d -> [d]) (tryFindPackageDescCwd verbosity cwd ".")
+      fmap (\d -> [d]) (coerceSymbolicPath . relativeSymbolicPath <$> tryFindPackageDesc verbosity mbWorkDir)
     ]
   where
+    cwd = maybe "." getSymbolicPath mbWorkDir
     -- We have to deal with all libs and executables, so we have local
     -- versions of these functions that ignore the 'buildable' attribute:
     withAllLib action = traverse action (allLibraries pkg_descr)
@@ -288,6 +293,8 @@ listPackageSources' verbosity rip cwd pkg_descr pps =
 prepareTree
   :: Verbosity
   -- ^ verbosity
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
+  -- ^ working directory
   -> PackageDescription
   -- ^ info from the cabal file
   -> FilePath
@@ -295,11 +302,12 @@ prepareTree
   -> [PPSuffixHandler]
   -- ^ extra preprocessors (includes suffixes)
   -> IO ()
-prepareTree verbosity pkg_descr0 targetDir pps = do
-  ordinary <- listPackageSources verbosity "." pkg_descr pps
-  installOrdinaryFiles verbosity targetDir (zip (repeat []) ordinary)
+prepareTree verbosity mbWorkDir pkg_descr0 targetDir pps = do
+  ordinary <- listPackageSources verbosity mbWorkDir pkg_descr pps
+  installOrdinaryFiles verbosity targetDir (zip (repeat []) $ map i ordinary)
   maybeCreateDefaultSetupScript targetDir
   where
+    i = interpretSymbolicPath mbWorkDir -- See Note [Symbolic paths] in Distribution.Utils.Path
     pkg_descr = filterAutogenModules pkg_descr0
 
 -- | Find the setup script file, if it exists.
@@ -333,31 +341,36 @@ maybeCreateDefaultSetupScript targetDir = do
 -- | Find the main executable file.
 findMainExeFile
   :: Verbosity
-  -> FilePath
-  -- ^ cwd
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
+  -- ^ working directory
   -> BuildInfo
   -> [PPSuffixHandler]
-  -> FilePath
+  -> RelativePath Source File
   -- ^ main-is
-  -> IO FilePath
+  -> IO (SymbolicPath Pkg File)
 findMainExeFile verbosity cwd exeBi pps mainPath = do
   ppFile <-
     findFileCwdWithExtension
       cwd
       (ppSuffixes pps)
-      (map getSymbolicPath (hsSourceDirs exeBi))
-      (dropExtension mainPath)
+      (hsSourceDirs exeBi)
+      (dropExtensionsSymbolicPath mainPath)
   case ppFile of
-    Nothing -> findFileCwd verbosity cwd (map getSymbolicPath (hsSourceDirs exeBi)) mainPath
+    Nothing -> findFileCwd verbosity cwd (hsSourceDirs exeBi) mainPath
     Just pp -> return pp
 
 -- | Find a module definition file
 --
 -- TODO: I don't know if this is right
 findModDefFile
-  :: Verbosity -> FilePath -> BuildInfo -> [PPSuffixHandler] -> FilePath -> IO FilePath
+  :: Verbosity
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
+  -> BuildInfo
+  -> [PPSuffixHandler]
+  -> RelativePath Source File
+  -> IO (SymbolicPath Pkg File)
 findModDefFile verbosity cwd flibBi _pps modDefPath =
-  findFileCwd verbosity cwd ("." : map getSymbolicPath (hsSourceDirs flibBi)) modDefPath
+  findFileCwd verbosity cwd (sameDirectory : hsSourceDirs flibBi) modDefPath
 
 -- | Given a list of include paths, try to find the include file named
 -- @f@. Return the name of the file and the full path, or exit with error if
@@ -365,7 +378,7 @@ findModDefFile verbosity cwd flibBi _pps modDefPath =
 findIncludeFile :: Verbosity -> FilePath -> [FilePath] -> String -> IO (String, FilePath)
 findIncludeFile verbosity _ [] f = dieWithException verbosity $ NoIncludeFileFound f
 findIncludeFile verbosity cwd (d : ds) f = do
-  let path = (d </> f)
+  let path = d </> f
   b <- doesFileExist (cwd </> path)
   if b then return (f, path) else findIncludeFile verbosity cwd ds f
 
@@ -402,6 +415,8 @@ filterAutogenModules pkg_descr0 =
 prepareSnapshotTree
   :: Verbosity
   -- ^ verbosity
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
+  -- ^ working directory
   -> PackageDescription
   -- ^ info from the cabal file
   -> FilePath
@@ -409,8 +424,8 @@ prepareSnapshotTree
   -> [PPSuffixHandler]
   -- ^ extra preprocessors (includes suffixes)
   -> IO ()
-prepareSnapshotTree verbosity pkg targetDir pps = do
-  prepareTree verbosity pkg targetDir pps
+prepareSnapshotTree verbosity mbWorkDir pkg targetDir pps = do
+  prepareTree verbosity mbWorkDir pkg targetDir pps
   overwriteSnapshotPackageDesc verbosity pkg targetDir
 
 overwriteSnapshotPackageDesc
@@ -424,7 +439,7 @@ overwriteSnapshotPackageDesc
 overwriteSnapshotPackageDesc verbosity pkg targetDir = do
   -- We could just writePackageDescription targetDescFile pkg_descr,
   -- but that would lose comments and formatting.
-  descFile <- defaultPackageDesc verbosity
+  descFile <- getSymbolicPath <$> defaultPackageDescCwd verbosity
   withUTF8FileContents descFile $
     writeUTF8File (targetDir </> descFile)
       . unlines
@@ -493,37 +508,37 @@ createArchive verbosity pkg_descr tmpDir targetPref = do
 -- | Given a buildinfo, return the names of all source files.
 allSourcesBuildInfo
   :: Verbosity
-  -> (Verbosity -> CabalException -> IO [FilePath])
+  -> (Verbosity -> CabalException -> IO [SymbolicPath Pkg File])
   -- ^ 'die'' alternative.
   -- Since 'die'' prefixes the error message with 'errorPrefix',
   -- whatever is passed in here and wants to die should do the same.
   -- See issue #7331.
-  -> FilePath
-  -- ^ cwd -- change me to 'BuildPath Absolute PackageDir'
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
+  -- ^ working directory
   -> BuildInfo
   -> [PPSuffixHandler]
   -- ^ Extra preprocessors
   -> [ModuleName]
   -- ^ Exposed modules
-  -> IO [FilePath]
-allSourcesBuildInfo verbosity rip cwd bi pps modules = do
-  let searchDirs = map getSymbolicPath (hsSourceDirs bi)
+  -> IO [SymbolicPath Pkg File]
+allSourcesBuildInfo verbosity rip mbWorkDir bi pps modules = do
+  let searchDirs = hsSourceDirs bi
   sources <-
     fmap concat $
       sequenceA $
-        [ let file = ModuleName.toFilePath module_
+        [ let file = moduleNameSymbolicPath module_
            in -- NB: *Not* findFileWithExtension, because the same source
               -- file may show up in multiple paths due to a conditional;
               -- we need to package all of them.  See #367.
-              findAllFilesCwdWithExtension cwd suffixes searchDirs file
+              findAllFilesCwdWithExtension mbWorkDir suffixes searchDirs file
                 >>= nonEmpty' (notFound module_) return
         | module_ <- modules ++ otherModules bi
         ]
   bootFiles <-
     sequenceA
-      [ let file = ModuleName.toFilePath module_
+      [ let file = moduleNameSymbolicPath module_
             fileExts = builtinHaskellBootSuffixes
-         in findFileCwdWithExtension cwd fileExts (map getSymbolicPath (hsSourceDirs bi)) file
+         in findFileCwdWithExtension mbWorkDir fileExts (hsSourceDirs bi) file
       | module_ <- modules ++ otherModules bi
       ]
 
@@ -542,7 +557,7 @@ allSourcesBuildInfo verbosity rip cwd bi pps modules = do
 
     suffixes = ppSuffixes pps ++ builtinHaskellSuffixes
 
-    notFound :: ModuleName -> IO [FilePath]
+    notFound :: ModuleName -> IO [SymbolicPath Pkg File]
     notFound m =
       rip verbosity $ NoModuleFound m suffixes
 

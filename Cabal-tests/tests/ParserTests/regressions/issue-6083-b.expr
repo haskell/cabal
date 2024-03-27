@@ -29,7 +29,7 @@ GenericPackageDescription {
     testSuites = [],
     benchmarks = [],
     dataFiles = [],
-    dataDir = ".",
+    dataDir = SymbolicPath ".",
     extraSrcFiles = [],
     extraTmpFiles = [],
     extraDocFiles = []},
@@ -204,7 +204,8 @@ GenericPackageDescription {
         condTreeData = Executable {
           exeName = UnqualComponentName
             "demo-a",
-          modulePath = "Main.hs",
+          modulePath = SymbolicPath
+            "Main.hs",
           exeScope = ExecutablePublic,
           buildInfo = BuildInfo {
             buildable = True,
@@ -293,7 +294,8 @@ GenericPackageDescription {
         condTreeData = Executable {
           exeName = UnqualComponentName
             "demo-b",
-          modulePath = "Main.hs",
+          modulePath = SymbolicPath
+            "Main.hs",
           exeScope = ExecutablePublic,
           buildInfo = BuildInfo {
             buildable = True,

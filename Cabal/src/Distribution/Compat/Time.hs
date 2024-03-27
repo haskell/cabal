@@ -21,7 +21,8 @@ import Prelude ()
 
 import System.Directory (getModificationTime)
 
-import Distribution.Simple.Utils (withTempDirectory)
+import Distribution.Simple.Utils (withTempDirectoryCwd)
+import Distribution.Utils.Path (getSymbolicPath, sameDirectory)
 import Distribution.Verbosity (silent)
 
 import System.FilePath
@@ -177,8 +178,8 @@ getCurTime = posixTimeToModTime `fmap` getPOSIXTime -- Uses 'gettimeofday'.
 -- than 10 ms, but never larger than 1 second.
 calibrateMtimeChangeDelay :: IO (Int, Int)
 calibrateMtimeChangeDelay =
-  withTempDirectory silent "." "calibration-" $ \dir -> do
-    let fileName = dir </> "probe"
+  withTempDirectoryCwd silent Nothing sameDirectory "calibration-" $ \dir -> do
+    let fileName = getSymbolicPath dir </> "probe"
     mtimes <- for [1 .. 25] $ \(i :: Int) -> time $ do
       writeFile fileName $ show i
       t0 <- getModTime fileName

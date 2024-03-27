@@ -97,7 +97,8 @@ import Distribution.Client.RebuildMonad
   ( runRebuild
   )
 import Distribution.Client.Setup
-  ( ConfigFlags (..)
+  ( CommonSetupFlags (..)
+  , ConfigFlags (..)
   , GlobalFlags (..)
   , InstallFlags (..)
   )
@@ -538,7 +539,7 @@ installAction flags@NixStyleFlags{extraFlags, configFlags, installFlags, project
           traverseInstall (installCheckUnitExes InstallCheckInstall) installCfg
   where
     configFlags' = disableTestsBenchsByDefault configFlags
-    verbosity = fromFlagOrDefault normal (configVerbosity configFlags')
+    verbosity = fromFlagOrDefault normal (setupVerbosity $ configCommonFlags configFlags')
     ignoreProject = flagIgnoreProject projectFlags
     cliConfig =
       commandLineFlagsToProjectConfig

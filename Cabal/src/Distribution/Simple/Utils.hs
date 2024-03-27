@@ -1,5 +1,6 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -61,6 +62,7 @@ module Distribution.Simple.Utils
   , rawSystemProc
   , rawSystemProcAction
   , rawSystemExitWithEnv
+  , rawSystemExitWithEnvCwd
   , rawSystemStdout
   , rawSystemStdInOut
   , rawSystemIOWithEnv
@@ -86,6 +88,7 @@ module Distribution.Simple.Utils
   , copyFileVerbose
   , copyFiles
   , copyFileTo
+  , copyFileToCwd
 
     -- * installing files
   , installOrdinaryFile
@@ -103,7 +106,6 @@ module Distribution.Simple.Utils
   , setFileExecutable
 
     -- * file names
-  , currentDir
   , shortRelativePath
   , dropExeExtension
   , exeExtensions
@@ -115,10 +117,13 @@ module Distribution.Simple.Utils
   , findFileWithExtension
   , findFileCwdWithExtension
   , findFileWithExtension'
+  , findFileCwdWithExtension'
   , findAllFilesWithExtension
   , findAllFilesCwdWithExtension
   , findModuleFileEx
+  , findModuleFileCwd
   , findModuleFilesEx
+  , findModuleFilesCwd
   , getDirectoryContentsRecursive
 
     -- * environment variables
@@ -133,17 +138,18 @@ module Distribution.Simple.Utils
   , TempFileOptions (..)
   , defaultTempFileOptions
   , withTempFile
+  , withTempFileCwd
   , withTempFileEx
   , withTempDirectory
+  , withTempDirectoryCwd
   , withTempDirectoryEx
+  , withTempDirectoryCwdEx
   , createTempDirectory
 
     -- * .cabal and .buildinfo files
-  , defaultPackageDesc
+  , defaultPackageDescCwd
   , findPackageDesc
-  , findPackageDescCwd
   , tryFindPackageDesc
-  , tryFindPackageDescCwd
   , findHookedPackageDesc
 
     -- * reading and writing files safely
@@ -207,6 +213,7 @@ import Distribution.Types.PackageId
 import Distribution.Utils.Generic
 import Distribution.Utils.IOData (IOData (..), IODataMode (..), KnownIODataMode (..))
 import qualified Distribution.Utils.IOData as IOData
+import Distribution.Utils.Path
 import Distribution.Verbosity
 import Distribution.Version
 import Prelude ()
@@ -248,6 +255,7 @@ import System.Directory
 import System.Environment
   ( getProgName
   )
+import System.FilePath (takeFileName)
 import System.FilePath as FilePath
   ( getSearchPath
   , joinPath
@@ -256,8 +264,6 @@ import System.FilePath as FilePath
   , splitDirectories
   , splitExtension
   , takeDirectory
-  , (<.>)
-  , (</>)
   )
 import System.IO
   ( BufferMode (..)
@@ -853,19 +859,21 @@ logCommand verbosity cp = do
 
 -- | Execute the given command with the given arguments, exiting
 -- with the same exit code if the command fails.
-rawSystemExit :: Verbosity -> FilePath -> [String] -> IO ()
-rawSystemExit verbosity path args =
+rawSystemExit :: Verbosity -> Maybe (SymbolicPath CWD (Dir Pkg)) -> FilePath -> [String] -> IO ()
+rawSystemExit verbosity mbWorkDir path args =
   withFrozenCallStack $
     maybeExit $
-      rawSystemExitCode verbosity path args
+      rawSystemExitCode verbosity mbWorkDir path args
 
 -- | Execute the given command with the given arguments, returning
 -- the command's exit code.
-rawSystemExitCode :: Verbosity -> FilePath -> [String] -> IO ExitCode
-rawSystemExitCode verbosity path args =
+rawSystemExitCode :: Verbosity -> Maybe (SymbolicPath CWD (Dir Pkg)) -> FilePath -> [String] -> IO ExitCode
+rawSystemExitCode verbosity mbWorkDir path args =
   withFrozenCallStack $
     rawSystemProc verbosity $
-      proc path args
+      (proc path args)
+        { Process.cwd = fmap getSymbolicPath mbWorkDir
+        }
 
 -- | Execute the given command with the given arguments, returning
 -- the command's exit code.
@@ -918,12 +926,24 @@ rawSystemExitWithEnv
   -> [String]
   -> [(String, String)]
   -> IO ()
-rawSystemExitWithEnv verbosity path args env =
+rawSystemExitWithEnv verbosity =
+  rawSystemExitWithEnvCwd verbosity Nothing
+
+-- | Like 'rawSystemExitWithEnv', but setting a working directory.
+rawSystemExitWithEnvCwd
+  :: Verbosity
+  -> Maybe (SymbolicPath CWD to)
+  -> FilePath
+  -> [String]
+  -> [(String, String)]
+  -> IO ()
+rawSystemExitWithEnvCwd verbosity mbWorkDir path args env =
   withFrozenCallStack $
     maybeExit $
       rawSystemProc verbosity $
         (proc path args)
           { Process.env = Just env
+          , Process.cwd = getSymbolicPath <$> mbWorkDir
           }
 
 -- | Execute the given command with the given arguments, returning
@@ -1187,83 +1207,75 @@ xargs maxSize rawSystemFun fixedArgs bigArgs =
 --
 -- @since 3.4.0.0
 findFileCwd
-  :: Verbosity
-  -> FilePath
-  -- ^ cwd
-  -> [FilePath]
-  -- ^ relative search location
-  -> FilePath
+  :: forall searchDir allowAbsolute
+   . Verbosity
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
+  -- ^ working directory
+  -> [SymbolicPathX allowAbsolute Pkg (Dir searchDir)]
+  -- ^ search directories
+  -> RelativePath searchDir File
   -- ^ File Name
-  -> IO FilePath
-findFileCwd verbosity cwd searchPath fileName =
+  -> IO (SymbolicPathX allowAbsolute Pkg File)
+findFileCwd verbosity mbWorkDir searchPath fileName =
   findFirstFile
-    (cwd </>)
+    (interpretSymbolicPath mbWorkDir)
     [ path </> fileName
     | path <- ordNub searchPath
     ]
-    >>= maybe (dieWithException verbosity $ FindFileCwd fileName) return
+    >>= maybe (dieWithException verbosity $ FindFile $ getSymbolicPath fileName) return
 
 -- | Find a file by looking in a search path. The file path must match exactly.
 findFileEx
-  :: Verbosity
-  -> [FilePath]
-  -- ^ search locations
-  -> FilePath
+  :: forall searchDir allowAbsolute
+   . Verbosity
+  -> [SymbolicPathX allowAbsolute Pkg (Dir searchDir)]
+  -- ^ search directories
+  -> RelativePath searchDir File
   -- ^ File Name
-  -> IO FilePath
-findFileEx verbosity searchPath fileName =
-  findFirstFile
-    id
-    [ path </> fileName
-    | path <- ordNub searchPath
-    ]
-    >>= maybe (dieWithException verbosity $ FindFileEx fileName) return
+  -> IO (SymbolicPathX allowAbsolute Pkg File)
+findFileEx v = findFileCwd v Nothing
 
 -- | Find a file by looking in a search path with one of a list of possible
 -- file extensions. The file base name should be given and it will be tried
 -- with each of the extensions in each element of the search path.
 findFileWithExtension
   :: [Suffix]
-  -> [FilePath]
-  -> FilePath
-  -> IO (Maybe FilePath)
-findFileWithExtension extensions searchPath baseName =
-  findFirstFile
-    id
-    [ path </> baseName <.> ext
-    | path <- ordNub searchPath
-    , Suffix ext <- ordNub extensions
-    ]
+  -> [SymbolicPathX allowAbsolute Pkg (Dir searchDir)]
+  -> RelativePath searchDir File
+  -> IO (Maybe (SymbolicPathX allowAbsolute Pkg File))
+findFileWithExtension =
+  findFileCwdWithExtension Nothing
 
--- | @since 3.4.0.0
+-- | Find a file by looking in a search path with one of a list of possible
+-- file extensions.
+--
+-- @since 3.4.0.0
 findFileCwdWithExtension
-  :: FilePath
+  :: forall searchDir allowAbsolute
+   . Maybe (SymbolicPath CWD (Dir Pkg))
   -> [Suffix]
-  -> [FilePath]
-  -> FilePath
-  -> IO (Maybe FilePath)
+  -> [SymbolicPathX allowAbsolute Pkg (Dir searchDir)]
+  -> RelativePath searchDir File
+  -> IO (Maybe (SymbolicPathX allowAbsolute Pkg File))
 findFileCwdWithExtension cwd extensions searchPath baseName =
-  findFirstFile
-    (cwd </>)
-    [ path </> baseName <.> ext
-    | path <- ordNub searchPath
-    , Suffix ext <- ordNub extensions
-    ]
+  fmap (uncurry (</>))
+    <$> findFileCwdWithExtension' cwd extensions searchPath baseName
 
 -- | @since 3.4.0.0
 findAllFilesCwdWithExtension
-  :: FilePath
-  -- ^ cwd
+  :: forall searchDir allowAbsolute
+   . Maybe (SymbolicPath CWD (Dir Pkg))
+  -- ^ working directory
   -> [Suffix]
   -- ^ extensions
-  -> [FilePath]
+  -> [SymbolicPathX allowAbsolute Pkg (Dir searchDir)]
   -- ^ relative search locations
-  -> FilePath
+  -> RelativePath searchDir File
   -- ^ basename
-  -> IO [FilePath]
-findAllFilesCwdWithExtension cwd extensions searchPath basename =
+  -> IO [SymbolicPathX allowAbsolute Pkg File]
+findAllFilesCwdWithExtension mbWorkDir extensions searchPath basename =
   findAllFiles
-    (cwd </>)
+    (interpretSymbolicPath mbWorkDir)
     [ path </> basename <.> ext
     | path <- ordNub searchPath
     , Suffix ext <- ordNub extensions
@@ -1271,31 +1283,42 @@ findAllFilesCwdWithExtension cwd extensions searchPath basename =
 
 findAllFilesWithExtension
   :: [Suffix]
-  -> [FilePath]
-  -> FilePath
-  -> IO [FilePath]
-findAllFilesWithExtension extensions searchPath basename =
-  findAllFiles
-    id
-    [ path </> basename <.> ext
-    | path <- ordNub searchPath
-    , Suffix ext <- ordNub extensions
-    ]
+  -> [SymbolicPathX allowAbsolute Pkg (Dir searchDir)]
+  -> RelativePath searchDir File
+  -> IO [SymbolicPathX allowAbsolute Pkg File]
+findAllFilesWithExtension =
+  findAllFilesCwdWithExtension Nothing
 
 -- | Like 'findFileWithExtension' but returns which element of the search path
 -- the file was found in, and the file path relative to that base directory.
 findFileWithExtension'
   :: [Suffix]
-  -> [FilePath]
-  -> FilePath
-  -> IO (Maybe (FilePath, FilePath))
-findFileWithExtension' extensions searchPath baseName =
+  -> [SymbolicPathX allowAbsolute Pkg (Dir searchDir)]
+  -> RelativePath searchDir File
+  -> IO (Maybe (SymbolicPathX allowAbsolute Pkg (Dir searchDir), RelativePath searchDir File))
+findFileWithExtension' =
+  findFileCwdWithExtension' Nothing
+
+-- | Like 'findFileCwdWithExtension' but returns which element of the search path
+-- the file was found in, and the file path relative to that base directory.
+findFileCwdWithExtension'
+  :: forall searchDir allowAbsolute
+   . Maybe (SymbolicPath CWD (Dir Pkg))
+  -> [Suffix]
+  -> [SymbolicPathX allowAbsolute Pkg (Dir searchDir)]
+  -> RelativePath searchDir File
+  -> IO (Maybe (SymbolicPathX allowAbsolute Pkg (Dir searchDir), RelativePath searchDir File))
+findFileCwdWithExtension' cwd extensions searchPath baseName =
   findFirstFile
-    (uncurry (</>))
+    (uncurry mkPath)
     [ (path, baseName <.> ext)
     | path <- ordNub searchPath
     , Suffix ext <- ordNub extensions
     ]
+  where
+    mkPath :: SymbolicPathX allowAbsolute Pkg (Dir searchDir) -> RelativePath searchDir File -> FilePath
+    mkPath base file =
+      interpretSymbolicPath cwd (base </> file)
 
 findFirstFile :: (a -> FilePath) -> [a] -> IO (Maybe a)
 findFirstFile file = findFirst
@@ -1314,39 +1337,79 @@ findAllFiles file = filterM (doesFileExist . file)
 --
 -- As 'findModuleFile' but for a list of module names.
 findModuleFilesEx
-  :: Verbosity
-  -> [FilePath]
+  :: forall searchDir allowAbsolute
+   . Verbosity
+  -> [SymbolicPathX allowAbsolute Pkg (Dir searchDir)]
   -- ^ build prefix (location of objects)
   -> [Suffix]
   -- ^ search suffixes
   -> [ModuleName]
   -- ^ modules
-  -> IO [(FilePath, FilePath)]
+  -> IO [(SymbolicPathX allowAbsolute Pkg (Dir searchDir), RelativePath searchDir File)]
 findModuleFilesEx verbosity searchPath extensions moduleNames =
   traverse (findModuleFileEx verbosity searchPath extensions) moduleNames
+
+-- | Finds the files corresponding to a list of Haskell module names.
+--
+-- As 'findModuleFileCwd' but for a list of module names.
+findModuleFilesCwd
+  :: forall searchDir allowAbsolute
+   . Verbosity
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
+  -> [SymbolicPathX allowAbsolute Pkg (Dir searchDir)]
+  -- ^ build prefix (location of objects)
+  -> [Suffix]
+  -- ^ search suffixes
+  -> [ModuleName]
+  -- ^ modules
+  -> IO [(SymbolicPathX allowAbsolute Pkg (Dir searchDir), RelativePath searchDir File)]
+findModuleFilesCwd verbosity cwd searchPath extensions moduleNames =
+  traverse (findModuleFileCwd verbosity cwd searchPath extensions) moduleNames
 
 -- | Find the file corresponding to a Haskell module name.
 --
 -- This is similar to 'findFileWithExtension'' but specialised to a module
 -- name. The function fails if the file corresponding to the module is missing.
 findModuleFileEx
-  :: Verbosity
-  -> [FilePath]
+  :: forall searchDir allowAbsolute
+   . Verbosity
+  -> [SymbolicPathX allowAbsolute Pkg (Dir searchDir)]
   -- ^ build prefix (location of objects)
   -> [Suffix]
   -- ^ search suffixes
   -> ModuleName
   -- ^ module
-  -> IO (FilePath, FilePath)
-findModuleFileEx verbosity searchPath extensions mod_name =
-  maybe notFound return
-    =<< findFileWithExtension'
+  -> IO (SymbolicPathX allowAbsolute Pkg (Dir searchDir), RelativePath searchDir File)
+findModuleFileEx verbosity =
+  findModuleFileCwd verbosity Nothing
+
+-- | Find the file corresponding to a Haskell module name.
+--
+-- This is similar to 'findFileCwdWithExtension'' but specialised to a module
+-- name. The function fails if the file corresponding to the module is missing.
+findModuleFileCwd
+  :: forall searchDir allowAbsolute
+   . Verbosity
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
+  -> [SymbolicPathX allowAbsolute Pkg (Dir searchDir)]
+  -- ^ build prefix (location of objects)
+  -> [Suffix]
+  -- ^ search suffixes
+  -> ModuleName
+  -- ^ module
+  -> IO (SymbolicPathX allowAbsolute Pkg (Dir searchDir), RelativePath searchDir File)
+findModuleFileCwd verbosity cwd searchPath extensions mod_name = do
+  mbRes <-
+    findFileCwdWithExtension'
+      cwd
       extensions
       searchPath
-      (ModuleName.toFilePath mod_name)
-  where
-    notFound =
-      dieWithException verbosity $ FindModuleFileEx mod_name extensions searchPath
+      (makeRelativePathEx $ ModuleName.toFilePath mod_name)
+  case mbRes of
+    Nothing ->
+      dieWithException verbosity $
+        FindModuleFileEx mod_name extensions (map getSymbolicPath searchPath)
+    Just res -> return res
 
 -- | List all the files in a directory and all subdirectories.
 --
@@ -1520,11 +1583,34 @@ installMaybeExecutableFile verbosity src dest = withFrozenCallStack $ do
 
 -- | Given a relative path to a file, copy it to the given directory, preserving
 -- the relative path and creating the parent directories if needed.
-copyFileTo :: Verbosity -> FilePath -> FilePath -> IO ()
-copyFileTo verbosity dir file = withFrozenCallStack $ do
-  let targetFile = dir </> file
+copyFileTo
+  :: Verbosity
+  -> FilePath
+  -> FilePath
+  -> IO ()
+copyFileTo verbosity dir file =
+  withFrozenCallStack $
+    copyFileToCwd
+      verbosity
+      Nothing
+      (makeSymbolicPath dir)
+      (makeRelativePathEx file)
+
+-- | Given a relative path to a file, copy it to the given directory, preserving
+-- the relative path and creating the parent directories if needed.
+copyFileToCwd
+  :: Verbosity
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
+  -> SymbolicPath Pkg (Dir target)
+  -> RelativePath Pkg File
+  -> IO ()
+copyFileToCwd verbosity mbWorkDir dir file = withFrozenCallStack $ do
+  let targetFile = i $ dir </> unsafeCoerceSymbolicPath file
   createDirectoryIfMissingVerbose verbosity True (takeDirectory targetFile)
-  installOrdinaryFile verbosity file targetFile
+  installOrdinaryFile verbosity (i file) targetFile
+  where
+    i :: SymbolicPathX allowAbs Pkg to -> FilePath
+    i = interpretSymbolicPath mbWorkDir
 
 -- | Common implementation of 'copyFiles', 'installOrdinaryFiles',
 -- 'installExecutableFiles' and 'installMaybeExecutableFiles'.
@@ -1637,7 +1723,7 @@ data TempFileOptions = TempFileOptions
 defaultTempFileOptions :: TempFileOptions
 defaultTempFileOptions = TempFileOptions{optKeepTempFiles = False}
 
--- | Use a temporary filename that doesn't already exist.
+-- | Use a temporary filename that doesn't already exist
 withTempFile
   :: FilePath
   -- ^ Temp dir to create the file in
@@ -1645,29 +1731,58 @@ withTempFile
   -- ^ File name template. See 'openTempFile'.
   -> (FilePath -> Handle -> IO a)
   -> IO a
-withTempFile tmpDir template action =
-  withTempFileEx defaultTempFileOptions tmpDir template action
+withTempFile tmpDir template f = withFrozenCallStack $
+  withTempFileCwd Nothing (makeSymbolicPath tmpDir) template $
+    \fp h -> f (getSymbolicPath fp) h
+
+-- | Use a temporary filename that doesn't already exist.
+withTempFileCwd
+  :: Maybe (SymbolicPath CWD (Dir Pkg))
+  -- ^ Working directory
+  -> SymbolicPath Pkg (Dir tmpDir)
+  -- ^ Temp dir to create the file in
+  -> String
+  -- ^ File name template. See 'openTempFile'.
+  -> (SymbolicPath Pkg File -> Handle -> IO a)
+  -> IO a
+withTempFileCwd = withFrozenCallStack $ withTempFileEx defaultTempFileOptions
 
 -- | A version of 'withTempFile' that additionally takes a 'TempFileOptions'
 -- argument.
 withTempFileEx
-  :: TempFileOptions
-  -> FilePath
+  :: forall a tmpDir
+   . TempFileOptions
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
+  -- ^ Working directory
+  -> SymbolicPath Pkg (Dir tmpDir)
   -- ^ Temp dir to create the file in
   -> String
   -- ^ File name template. See 'openTempFile'.
-  -> (FilePath -> Handle -> IO a)
+  -> (SymbolicPath Pkg File -> Handle -> IO a)
   -> IO a
-withTempFileEx opts tmpDir template action =
-  Exception.bracket
-    (openTempFile tmpDir template)
-    ( \(name, handle) -> do
-        hClose handle
-        unless (optKeepTempFiles opts) $
-          handleDoesNotExist () . removeFile $
-            name
-    )
-    (withLexicalCallStack (\x -> uncurry action x))
+withTempFileEx opts mbWorkDir tmpDir template action =
+  withFrozenCallStack $
+    Exception.bracket
+      (openTempFile (i tmpDir) template)
+      ( \(name, handle) -> do
+          hClose handle
+          unless (optKeepTempFiles opts) $
+            handleDoesNotExist () $
+              removeFile $
+                name
+      )
+      (withLexicalCallStack (\(fn, h) -> action (mkRelToPkg fn) h))
+  where
+    i = interpretSymbolicPath mbWorkDir -- See Note [Symbolic paths] in Distribution.Utils.Path
+    mkRelToPkg :: FilePath -> SymbolicPath Pkg File
+    mkRelToPkg fp =
+      tmpDir </> makeRelativePathEx (takeFileName fp)
+
+-- 'openTempFile' returns a path of the form @i tmpDir </> fn@, but we
+-- want 'withTempFileEx' to return @tmpDir </> fn@. So we split off
+-- the filename and add back the (un-interpreted) directory.
+-- This assumes 'openTempFile' returns a filepath of the form
+-- @inputDir </> fn@, where @fn@ does not contain any path separators.
 
 -- | Create and use a temporary directory.
 --
@@ -1678,12 +1793,44 @@ withTempFileEx opts tmpDir template action =
 --
 -- The @tmpDir@ will be a new subdirectory of the given directory, e.g.
 -- @src/sdist.342@.
-withTempDirectory :: Verbosity -> FilePath -> String -> (FilePath -> IO a) -> IO a
-withTempDirectory verbosity targetDir template f =
+withTempDirectory
+  :: Verbosity
+  -> FilePath
+  -> String
+  -> (FilePath -> IO a)
+  -> IO a
+withTempDirectory verb targetDir template f =
   withFrozenCallStack $
-    withTempDirectoryEx
+    withTempDirectoryCwd
+      verb
+      Nothing
+      (makeSymbolicPath targetDir)
+      template
+      (f . getSymbolicPath)
+
+-- | Create and use a temporary directory.
+--
+-- Creates a new temporary directory inside the given directory, making use
+-- of the template. The temp directory is deleted after use. For example:
+--
+-- > withTempDirectory verbosity "src" "sdist." $ \tmpDir -> do ...
+--
+-- The @tmpDir@ will be a new subdirectory of the given directory, e.g.
+-- @src/sdist.342@.
+withTempDirectoryCwd
+  :: Verbosity
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
+  -- ^ Working directory
+  -> SymbolicPath Pkg (Dir tmpDir1)
+  -> String
+  -> (SymbolicPath Pkg (Dir tmpDir2) -> IO a)
+  -> IO a
+withTempDirectoryCwd verbosity mbWorkDir targetDir template f =
+  withFrozenCallStack $
+    withTempDirectoryCwdEx
       verbosity
       defaultTempFileOptions
+      mbWorkDir
       targetDir
       template
       (withLexicalCallStack (\x -> f x))
@@ -1697,15 +1844,35 @@ withTempDirectoryEx
   -> String
   -> (FilePath -> IO a)
   -> IO a
-withTempDirectoryEx _verbosity opts targetDir template f =
+withTempDirectoryEx verbosity opts targetDir template f =
+  withFrozenCallStack $
+    withTempDirectoryCwdEx verbosity opts Nothing (makeSymbolicPath targetDir) template $
+      \fp -> f (getSymbolicPath fp)
+
+-- | A version of 'withTempDirectoryCwd' that additionally takes a
+-- 'TempFileOptions' argument.
+withTempDirectoryCwdEx
+  :: forall a tmpDir1 tmpDir2
+   . Verbosity
+  -> TempFileOptions
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
+  -- ^ Working directory
+  -> SymbolicPath Pkg (Dir tmpDir1)
+  -> String
+  -> (SymbolicPath Pkg (Dir tmpDir2) -> IO a)
+  -> IO a
+withTempDirectoryCwdEx _verbosity opts mbWorkDir targetDir template f =
   withFrozenCallStack $
     Exception.bracket
-      (createTempDirectory targetDir template)
-      ( unless (optKeepTempFiles opts)
-          . handleDoesNotExist ()
-          . removeDirectoryRecursive
+      (createTempDirectory (i targetDir) template)
+      ( \tmpDirRelPath ->
+          unless (optKeepTempFiles opts) $
+            handleDoesNotExist () $
+              removeDirectoryRecursive (i targetDir </> tmpDirRelPath)
       )
-      (withLexicalCallStack (\x -> f x))
+      (withLexicalCallStack (\tmpDirRelPath -> f $ targetDir </> makeRelativePathEx tmpDirRelPath))
+  where
+    i = interpretSymbolicPath mbWorkDir -- See Note [Symbolic paths] in Distribution.Utils.Path
 
 -----------------------------------
 -- Safely reading and writing files
@@ -1736,12 +1903,6 @@ rewriteFileLBS verbosity path newContent =
           annotateIO verbosity $ writeFileAtomic path newContent
       | otherwise =
           ioError e
-
--- | The path name that represents the current directory.
--- In Unix, it's @\".\"@, but this is system-specific.
--- (E.g. AmigaOS uses the empty string @\"\"@ for the current directory.)
-currentDir :: FilePath
-currentDir = "."
 
 shortRelativePath :: FilePath -> FilePath -> FilePath
 shortRelativePath from to =
@@ -1792,71 +1953,61 @@ exeExtensions = case (buildArch, buildOS) of
 
 -- ------------------------------------------------------------
 
--- | Package description file (/pkgname/@.cabal@)
-defaultPackageDesc :: Verbosity -> IO FilePath
-defaultPackageDesc verbosity = tryFindPackageDesc verbosity currentDir
+-- | Package description file (/pkgname/@.cabal@) in the current
+-- working directory.
+defaultPackageDescCwd :: Verbosity -> IO (RelativePath Pkg File)
+defaultPackageDescCwd verbosity = tryFindPackageDesc verbosity Nothing
 
 -- | Find a package description file in the given directory.  Looks for
 --  @.cabal@ files.
 findPackageDesc
-  :: FilePath
-  -- ^ Where to look
-  -> IO (Either CabalException FilePath)
-  -- ^ <pkgname>.cabal
-findPackageDesc = findPackageDescCwd "."
-
--- | @since 3.4.0.0
-findPackageDescCwd
-  :: FilePath
-  -- ^ project root
-  -> FilePath
-  -- ^ relative directory
-  -> IO (Either CabalException FilePath)
-  -- ^ <pkgname>.cabal relative to the project root
-findPackageDescCwd cwd dir =
+  :: Maybe (SymbolicPath CWD (Dir Pkg))
+  -- ^ package directory
+  -> IO (Either CabalException (RelativePath Pkg File))
+findPackageDesc mbPkgDir =
   do
-    files <- getDirectoryContents (cwd </> dir)
+    let pkgDir = maybe "." getSymbolicPath mbPkgDir
+    files <- getDirectoryContents pkgDir
     -- to make sure we do not mistake a ~/.cabal/ dir for a <pkgname>.cabal
     -- file we filter to exclude dirs and null base file names:
     cabalFiles <-
       filterM
-        (doesFileExist . snd)
-        [ (dir </> file, cwd </> dir </> file)
+        (doesFileExist . uncurry (</>))
+        [ (pkgDir, file)
         | file <- files
         , let (name, ext) = splitExtension file
         , not (null name) && ext == ".cabal"
         ]
-    case map fst cabalFiles of
+    case map snd cabalFiles of
       [] -> return (Left NoDesc)
-      [cabalFile] -> return (Right cabalFile)
+      [cabalFile] -> return (Right $ makeRelativePathEx cabalFile)
       multiple -> return (Left $ MultiDesc multiple)
 
 -- | Like 'findPackageDesc', but calls 'die' in case of error.
-tryFindPackageDesc :: Verbosity -> FilePath -> IO FilePath
+tryFindPackageDesc
+  :: Verbosity
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
+  -- ^ directory in which to look
+  -> IO (RelativePath Pkg File)
 tryFindPackageDesc verbosity dir =
   either (dieWithException verbosity) return =<< findPackageDesc dir
-
--- | Like 'findPackageDescCwd', but calls 'die' in case of error.
---
--- @since 3.4.0.0
-tryFindPackageDescCwd :: Verbosity -> FilePath -> FilePath -> IO FilePath
-tryFindPackageDescCwd verbosity cwd dir =
-  either (dieWithException verbosity) return =<< findPackageDescCwd cwd dir
 
 -- | Find auxiliary package information in the given directory.
 --  Looks for @.buildinfo@ files.
 findHookedPackageDesc
   :: Verbosity
-  -> FilePath
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
+  -- ^ Working directory
+  -> SymbolicPath Pkg (Dir Build)
   -- ^ Directory to search
-  -> IO (Maybe FilePath)
+  -> IO (Maybe (SymbolicPath Pkg File))
   -- ^ /dir/@\/@/pkgname/@.buildinfo@, if present
-findHookedPackageDesc verbosity dir = do
-  files <- getDirectoryContents dir
+findHookedPackageDesc verbosity mbWorkDir dir = do
+  files <- getDirectoryContents $ interpretSymbolicPath mbWorkDir dir
   buildInfoFiles <-
     filterM
-      doesFileExist
-      [ dir </> file
+      (doesFileExist . interpretSymbolicPath mbWorkDir)
+      [ dir </> makeRelativePathEx file
       | file <- files
       , let (name, ext) = splitExtension file
       , not (null name) && ext == buildInfoExt

@@ -1,225 +1,239 @@
-GenericPackageDescription
-  {condBenchmarks = [],
-   condExecutables = [_×_
-                        (UnqualComponentName "wl-pprint-string-example")
-                        CondNode
-                          {condTreeComponents = [],
-                           condTreeConstraints = [Dependency
-                                                    (PackageName "base")
-                                                    (EarlierVersion (mkVersion [5]))
-                                                    mainLibSet,
-                                                  Dependency
-                                                    (PackageName "str-string")
-                                                    (OrLaterVersion (mkVersion [0, 1, 0, 0]))
-                                                    mainLibSet,
-                                                  Dependency
-                                                    (PackageName "wl-pprint-indef")
-                                                    (OrLaterVersion (mkVersion [0]))
-                                                    mainLibSet],
-                           condTreeData = Executable
-                                            {buildInfo = BuildInfo
-                                                           {asmOptions = [],
-                                                            asmSources = [],
-                                                            autogenIncludes = [],
-                                                            autogenModules = [],
-                                                            buildToolDepends = [],
-                                                            buildTools = [],
-                                                            buildable = True,
-                                                            cSources = [],
-                                                            ccOptions = [],
-                                                            cmmOptions = [],
-                                                            cmmSources = [],
-                                                            cppOptions = [],
-                                                            customFieldsBI = [],
-                                                            cxxOptions = [],
-                                                            cxxSources = [],
-                                                            defaultExtensions = [],
-                                                            defaultLanguage = Nothing,
-                                                            extraBundledLibs = [],
-                                                            extraDynLibFlavours = [],
-                                                            extraFrameworkDirs = [],
-                                                            extraGHCiLibs = [],
-                                                            extraLibDirs = [],
-                                                            extraLibDirsStatic = [],
-                                                            extraLibFlavours = [],
-                                                            extraLibs = [],
-                                                            extraLibsStatic = [],
-                                                            frameworks = [],
-                                                            hsSourceDirs = [SymbolicPath
-                                                                              "example-string"],
-                                                            hsc2hsOptions = [],
-                                                            includeDirs = [],
-                                                            includes = [],
-                                                            installIncludes = [],
-                                                            jsSources = [],
-                                                            ldOptions = [],
-                                                            mixins = [],
-                                                            oldExtensions = [],
-                                                            options = PerCompilerFlavor [] [],
-                                                            otherExtensions = [],
-                                                            otherLanguages = [],
-                                                            otherModules = [ModuleName
-                                                                              "StringImpl"],
-                                                            pkgconfigDepends = [],
-                                                            profOptions = PerCompilerFlavor [] [],
-                                                            sharedOptions = PerCompilerFlavor [] [],
-                                                            staticOptions = PerCompilerFlavor [] [],
-                                                            targetBuildDepends = [Dependency
-                                                                                    (PackageName
-                                                                                       "base")
-                                                                                    (EarlierVersion
-                                                                                       (mkVersion
-                                                                                          [5]))
-                                                                                    mainLibSet,
-                                                                                  Dependency
-                                                                                    (PackageName
-                                                                                       "str-string")
-                                                                                    (OrLaterVersion
-                                                                                       (mkVersion
-                                                                                          [0,
-                                                                                           1,
-                                                                                           0,
-                                                                                           0]))
-                                                                                    mainLibSet,
-                                                                                  Dependency
-                                                                                    (PackageName
-                                                                                       "wl-pprint-indef")
-                                                                                    (OrLaterVersion
-                                                                                       (mkVersion
-                                                                                          [0]))
-                                                                                    mainLibSet],
-                                                            virtualModules = []},
-                                             exeName = UnqualComponentName
-                                                         "wl-pprint-string-example",
-                                             exeScope = ExecutablePublic,
-                                             modulePath = "Main.hs"}}],
-   condForeignLibs = [],
-   condLibrary = Just
-                   CondNode
-                     {condTreeComponents = [],
-                      condTreeConstraints = [Dependency
-                                               (PackageName "base")
-                                               (EarlierVersion (mkVersion [5]))
-                                               mainLibSet,
-                                             Dependency
-                                               (PackageName "str-sig")
-                                               (OrLaterVersion (mkVersion [0, 1, 0, 0]))
-                                               mainLibSet],
-                      condTreeData = Library
-                                       {exposedModules = [ModuleName "Text.PrettyPrint.Leijen"],
-                                        libBuildInfo = BuildInfo
-                                                         {asmOptions = [],
-                                                          asmSources = [],
-                                                          autogenIncludes = [],
-                                                          autogenModules = [],
-                                                          buildToolDepends = [],
-                                                          buildTools = [],
-                                                          buildable = True,
-                                                          cSources = [],
-                                                          ccOptions = [],
-                                                          cmmOptions = [],
-                                                          cmmSources = [],
-                                                          cppOptions = [],
-                                                          customFieldsBI = [],
-                                                          cxxOptions = [],
-                                                          cxxSources = [],
-                                                          defaultExtensions = [],
-                                                          defaultLanguage = Nothing,
-                                                          extraBundledLibs = [],
-                                                          extraDynLibFlavours = [],
-                                                          extraFrameworkDirs = [],
-                                                          extraGHCiLibs = [],
-                                                          extraLibDirs = [],
-                                                          extraLibDirsStatic = [],
-                                                          extraLibFlavours = [],
-                                                          extraLibs = [],
-                                                          extraLibsStatic = [],
-                                                          frameworks = [],
-                                                          hsSourceDirs = [],
-                                                          hsc2hsOptions = [],
-                                                          includeDirs = [],
-                                                          includes = [],
-                                                          installIncludes = [],
-                                                          jsSources = [],
-                                                          ldOptions = [],
-                                                          mixins = [],
-                                                          oldExtensions = [],
-                                                          options = PerCompilerFlavor [] [],
-                                                          otherExtensions = [],
-                                                          otherLanguages = [],
-                                                          otherModules = [],
-                                                          pkgconfigDepends = [],
-                                                          profOptions = PerCompilerFlavor [] [],
-                                                          sharedOptions = PerCompilerFlavor [] [],
-                                                          staticOptions = PerCompilerFlavor [] [],
-                                                          targetBuildDepends = [Dependency
-                                                                                  (PackageName
-                                                                                     "base")
-                                                                                  (EarlierVersion
-                                                                                     (mkVersion
-                                                                                        [5]))
-                                                                                  mainLibSet,
-                                                                                Dependency
-                                                                                  (PackageName
-                                                                                     "str-sig")
-                                                                                  (OrLaterVersion
-                                                                                     (mkVersion
-                                                                                        [0,
-                                                                                         1,
-                                                                                         0,
-                                                                                         0]))
-                                                                                  mainLibSet],
-                                                          virtualModules = []},
-                                        libExposed = True,
-                                        libName = LMainLibName,
-                                        libVisibility = LibraryVisibilityPublic,
-                                        reexportedModules = [],
-                                        signatures = []}},
-   condSubLibraries = [],
-   condTestSuites = [],
-   genPackageFlags = [],
-   gpdScannedVersion = Nothing,
-   packageDescription = PackageDescription
-                          {author = "Daan Leijen",
-                           benchmarks = [],
-                           bugReports = "",
-                           buildTypeRaw = Just Simple,
-                           category = "Text",
-                           copyright = "",
-                           customFieldsPD = [],
-                           dataDir = ".",
-                           dataFiles = [],
-                           description = concat
-                                           ["This is a pretty printing library based on Wadler's paper \"A Prettier\n",
-                                            "Printer\".  See the haddocks for full info.  This version allows the\n",
-                                            "library user to declare overlapping instances of the 'Pretty' class."],
-                           executables = [],
-                           extraDocFiles = [],
-                           extraSrcFiles = [],
-                           extraTmpFiles = [],
-                           foreignLibs = [],
-                           homepage = "",
-                           library = Nothing,
-                           licenseFiles = [SymbolicPath "LICENSE"],
-                           licenseRaw = Right BSD3,
-                           maintainer = "Noam Lewis <jones.noamle@gmail.com>",
-                           package = PackageIdentifier
-                                       {pkgName = PackageName "wl-pprint-indef",
-                                        pkgVersion = mkVersion [1, 2]},
-                           pkgUrl = "",
-                           setupBuildInfo = Nothing,
-                           sourceRepos = [SourceRepo
-                                            {repoBranch = Nothing,
-                                             repoKind = RepoHead,
-                                             repoLocation = Just
-                                                              "git@github.com:danidiaz/wl-pprint-indef.git",
-                                             repoModule = Nothing,
-                                             repoSubdir = Nothing,
-                                             repoTag = Nothing,
-                                             repoType = Just (KnownRepoType Git)}],
-                           specVersion = CabalSpecV1_6,
-                           stability = "",
-                           subLibraries = [],
-                           synopsis = "The Wadler/Leijen Pretty Printer",
-                           testSuites = [],
-                           testedWith = []}}
+GenericPackageDescription {
+  packageDescription =
+  PackageDescription {
+    specVersion = CabalSpecV1_6,
+    package = PackageIdentifier {
+      pkgName = PackageName
+        "wl-pprint-indef",
+      pkgVersion = mkVersion [1, 2]},
+    licenseRaw = Right BSD3,
+    licenseFiles = [
+      SymbolicPath "LICENSE"],
+    copyright = "",
+    maintainer =
+    "Noam Lewis <jones.noamle@gmail.com>",
+    author = "Daan Leijen",
+    stability = "",
+    testedWith = [],
+    homepage = "",
+    pkgUrl = "",
+    bugReports = "",
+    sourceRepos = [
+      SourceRepo {
+        repoKind = RepoHead,
+        repoType = Just
+          (KnownRepoType Git),
+        repoLocation = Just
+          "git@github.com:danidiaz/wl-pprint-indef.git",
+        repoModule = Nothing,
+        repoBranch = Nothing,
+        repoTag = Nothing,
+        repoSubdir = Nothing}],
+    synopsis =
+    "The Wadler/Leijen Pretty Printer",
+    description =
+    concat
+      [
+        "This is a pretty printing library based on Wadler's paper \"A Prettier\n",
+        "Printer\".  See the haddocks for full info.  This version allows the\n",
+        "library user to declare overlapping instances of the 'Pretty' class."],
+    category = "Text",
+    customFieldsPD = [],
+    buildTypeRaw = Just Simple,
+    setupBuildInfo = Nothing,
+    library = Nothing,
+    subLibraries = [],
+    executables = [],
+    foreignLibs = [],
+    testSuites = [],
+    benchmarks = [],
+    dataFiles = [],
+    dataDir = SymbolicPath ".",
+    extraSrcFiles = [],
+    extraTmpFiles = [],
+    extraDocFiles = []},
+  gpdScannedVersion = Nothing,
+  genPackageFlags = [],
+  condLibrary = Just
+    CondNode {
+      condTreeData = Library {
+        libName = LMainLibName,
+        exposedModules = [
+          ModuleName
+            "Text.PrettyPrint.Leijen"],
+        reexportedModules = [],
+        signatures = [],
+        libExposed = True,
+        libVisibility =
+        LibraryVisibilityPublic,
+        libBuildInfo = BuildInfo {
+          buildable = True,
+          buildTools = [],
+          buildToolDepends = [],
+          cppOptions = [],
+          asmOptions = [],
+          cmmOptions = [],
+          ccOptions = [],
+          cxxOptions = [],
+          ldOptions = [],
+          hsc2hsOptions = [],
+          pkgconfigDepends = [],
+          frameworks = [],
+          extraFrameworkDirs = [],
+          asmSources = [],
+          cmmSources = [],
+          cSources = [],
+          cxxSources = [],
+          jsSources = [],
+          hsSourceDirs = [],
+          otherModules = [],
+          virtualModules = [],
+          autogenModules = [],
+          defaultLanguage = Nothing,
+          otherLanguages = [],
+          defaultExtensions = [],
+          otherExtensions = [],
+          oldExtensions = [],
+          extraLibs = [],
+          extraLibsStatic = [],
+          extraGHCiLibs = [],
+          extraBundledLibs = [],
+          extraLibFlavours = [],
+          extraDynLibFlavours = [],
+          extraLibDirs = [],
+          extraLibDirsStatic = [],
+          includeDirs = [],
+          includes = [],
+          autogenIncludes = [],
+          installIncludes = [],
+          options = PerCompilerFlavor
+            []
+            [],
+          profOptions = PerCompilerFlavor
+            []
+            [],
+          sharedOptions =
+          PerCompilerFlavor [] [],
+          staticOptions =
+          PerCompilerFlavor [] [],
+          customFieldsBI = [],
+          targetBuildDepends = [
+            Dependency
+              (PackageName "base")
+              (EarlierVersion (mkVersion [5]))
+              mainLibSet,
+            Dependency
+              (PackageName "str-sig")
+              (OrLaterVersion
+                (mkVersion [0, 1, 0, 0]))
+              mainLibSet],
+          mixins = []}},
+      condTreeConstraints = [
+        Dependency
+          (PackageName "base")
+          (EarlierVersion (mkVersion [5]))
+          mainLibSet,
+        Dependency
+          (PackageName "str-sig")
+          (OrLaterVersion
+            (mkVersion [0, 1, 0, 0]))
+          mainLibSet],
+      condTreeComponents = []},
+  condSubLibraries = [],
+  condForeignLibs = [],
+  condExecutables = [
+    _×_
+      (UnqualComponentName
+        "wl-pprint-string-example")
+      CondNode {
+        condTreeData = Executable {
+          exeName = UnqualComponentName
+            "wl-pprint-string-example",
+          modulePath = SymbolicPath
+            "Main.hs",
+          exeScope = ExecutablePublic,
+          buildInfo = BuildInfo {
+            buildable = True,
+            buildTools = [],
+            buildToolDepends = [],
+            cppOptions = [],
+            asmOptions = [],
+            cmmOptions = [],
+            ccOptions = [],
+            cxxOptions = [],
+            ldOptions = [],
+            hsc2hsOptions = [],
+            pkgconfigDepends = [],
+            frameworks = [],
+            extraFrameworkDirs = [],
+            asmSources = [],
+            cmmSources = [],
+            cSources = [],
+            cxxSources = [],
+            jsSources = [],
+            hsSourceDirs = [
+              SymbolicPath "example-string"],
+            otherModules = [
+              ModuleName "StringImpl"],
+            virtualModules = [],
+            autogenModules = [],
+            defaultLanguage = Nothing,
+            otherLanguages = [],
+            defaultExtensions = [],
+            otherExtensions = [],
+            oldExtensions = [],
+            extraLibs = [],
+            extraLibsStatic = [],
+            extraGHCiLibs = [],
+            extraBundledLibs = [],
+            extraLibFlavours = [],
+            extraDynLibFlavours = [],
+            extraLibDirs = [],
+            extraLibDirsStatic = [],
+            includeDirs = [],
+            includes = [],
+            autogenIncludes = [],
+            installIncludes = [],
+            options = PerCompilerFlavor
+              []
+              [],
+            profOptions = PerCompilerFlavor
+              []
+              [],
+            sharedOptions =
+            PerCompilerFlavor [] [],
+            staticOptions =
+            PerCompilerFlavor [] [],
+            customFieldsBI = [],
+            targetBuildDepends = [
+              Dependency
+                (PackageName "base")
+                (EarlierVersion (mkVersion [5]))
+                mainLibSet,
+              Dependency
+                (PackageName "str-string")
+                (OrLaterVersion
+                  (mkVersion [0, 1, 0, 0]))
+                mainLibSet,
+              Dependency
+                (PackageName "wl-pprint-indef")
+                (OrLaterVersion (mkVersion [0]))
+                mainLibSet],
+            mixins = []}},
+        condTreeConstraints = [
+          Dependency
+            (PackageName "base")
+            (EarlierVersion (mkVersion [5]))
+            mainLibSet,
+          Dependency
+            (PackageName "str-string")
+            (OrLaterVersion
+              (mkVersion [0, 1, 0, 0]))
+            mainLibSet,
+          Dependency
+            (PackageName "wl-pprint-indef")
+            (OrLaterVersion (mkVersion [0]))
+            mainLibSet],
+        condTreeComponents = []}],
+  condTestSuites = [],
+  condBenchmarks = []}

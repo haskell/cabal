@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
 
@@ -22,14 +23,14 @@ import Distribution.Simple.Compiler (arResponseFilesSupported)
 import Distribution.Simple.Flag
   ( fromFlagOrDefault
   )
-import Distribution.Simple.LocalBuildInfo (LocalBuildInfo (..))
+import Distribution.Simple.LocalBuildInfo (LocalBuildInfo (..), mbWorkDirLBI)
 import Distribution.Simple.Program.ResponseFile
   ( withResponseFile
   )
 import Distribution.Simple.Program.Run
   ( ProgramInvocation
   , multiStageProgramInvocation
-  , programInvocation
+  , programInvocationCwd
   , runProgramInvocation
   )
 import Distribution.Simple.Program.Types
@@ -41,6 +42,7 @@ import Distribution.Simple.Setup.Config
 import Distribution.Simple.Utils
   ( defaultTempFileOptions
   )
+import Distribution.Utils.Path
 import Distribution.Verbosity
   ( Verbosity
   )
@@ -48,59 +50,63 @@ import Distribution.Verbosity
 import System.Directory
   ( renameFile
   )
-import System.FilePath
-  ( takeDirectory
-  , (<.>)
-  )
 
 -- | Call @ld -r@ to link a bunch of object files together.
 combineObjectFiles
   :: Verbosity
   -> LocalBuildInfo
   -> ConfiguredProgram
-  -> FilePath
-  -> [FilePath]
+  -> SymbolicPath Pkg File
+  -> [SymbolicPath Pkg File]
   -> IO ()
-combineObjectFiles verbosity lbi ld target files = do
+combineObjectFiles verbosity lbi ldProg target files = do
   -- Unlike "ar", the "ld" tool is not designed to be used with xargs. That is,
   -- if we have more object files than fit on a single command line then we
   -- have a slight problem. What we have to do is link files in batches into
   -- a temp object file and then include that one in the next batch.
 
-  let simpleArgs = ["-r", "-o", target]
+  let
+    -- See Note [Symbolic paths] in Distribution.Utils.Path
+    u :: SymbolicPath Pkg to -> FilePath
+    u = interpretSymbolicPathCWD
+    i = interpretSymbolicPath mbWorkDir
+    mbWorkDir = mbWorkDirLBI lbi
 
-      initialArgs = ["-r", "-o", target]
-      middleArgs = ["-r", "-o", target, tmpfile]
-      finalArgs = middleArgs
+    simpleArgs = ["-r", "-o", u target]
+    initialArgs = ["-r", "-o", u target]
+    middleArgs = ["-r", "-o", u target, u tmpfile]
+    finalArgs = middleArgs
 
-      simple = programInvocation ld simpleArgs
-      initial = programInvocation ld initialArgs
-      middle = programInvocation ld middleArgs
-      final = programInvocation ld finalArgs
+    ld = programInvocationCwd (mbWorkDirLBI lbi) ldProg
+    simple = ld simpleArgs
+    initial = ld initialArgs
+    middle = ld middleArgs
+    final = ld finalArgs
 
-      targetDir = takeDirectory target
+    targetDir = takeDirectorySymbolicPath target
 
-      invokeWithResponesFile :: FilePath -> ProgramInvocation
-      invokeWithResponesFile atFile =
-        programInvocation ld $ simpleArgs ++ ['@' : atFile]
+    invokeWithResponseFile :: FilePath -> ProgramInvocation
+    invokeWithResponseFile atFile =
+      ld $ simpleArgs ++ ['@' : atFile]
 
-      oldVersionManualOverride =
-        fromFlagOrDefault False $ configUseResponseFiles $ configFlags lbi
-      -- Whether ghc's ar supports response files is a good proxy for
-      -- whether ghc's ld supports them as well.
-      responseArgumentsNotSupported =
-        not (arResponseFilesSupported (compiler lbi))
+    oldVersionManualOverride =
+      fromFlagOrDefault False $ configUseResponseFiles $ configFlags lbi
+    -- Whether ghc's ar supports response files is a good proxy for
+    -- whether ghc's ld supports them as well.
+    responseArgumentsNotSupported =
+      not (arResponseFilesSupported (compiler lbi))
 
-  if oldVersionManualOverride || responseArgumentsNotSupported
-    then run $ multiStageProgramInvocation simple (initial, middle, final) files
-    else withResponseFile verbosity defaultTempFileOptions targetDir "ld.rsp" Nothing files $
-      \path -> runProgramInvocation verbosity $ invokeWithResponesFile path
-  where
-    tmpfile = target <.> "tmp" -- perhaps should use a proper temp file
     run :: [ProgramInvocation] -> IO ()
     run [] = return ()
     run [inv] = runProgramInvocation verbosity inv
     run (inv : invs) = do
       runProgramInvocation verbosity inv
-      renameFile target tmpfile
+      renameFile (i target) (i tmpfile)
       run invs
+
+  if oldVersionManualOverride || responseArgumentsNotSupported
+    then run $ multiStageProgramInvocation simple (initial, middle, final) (map getSymbolicPath files)
+    else withResponseFile verbosity defaultTempFileOptions mbWorkDir targetDir "ld.rsp" Nothing (map getSymbolicPath files) $
+      \path -> runProgramInvocation verbosity $ invokeWithResponseFile path
+  where
+    tmpfile = target <.> "tmp" -- perhaps should use a proper temp file

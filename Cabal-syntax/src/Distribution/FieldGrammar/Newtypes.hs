@@ -1,6 +1,8 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -42,6 +44,8 @@ module Distribution.FieldGrammar.Newtypes
   , Token' (..)
   , MQuoted (..)
   , FilePathNT (..)
+  , SymbolicPathNT (..)
+  , RelativePathNT (..)
   ) where
 
 import Distribution.Compat.Newtype
@@ -53,6 +57,7 @@ import Distribution.Compiler (CompilerFlavor)
 import Distribution.License (License)
 import Distribution.Parsec
 import Distribution.Pretty
+import Distribution.Utils.Path
 import Distribution.Version
   ( LowerBound (..)
   , Version
@@ -276,6 +281,41 @@ instance Parsec FilePathNT where
 
 instance Pretty FilePathNT where
   pretty = showFilePath . unpack
+
+-- | Newtype for 'SymbolicPath', with a different 'Parsec' instance
+-- to disallow empty paths.
+newtype SymbolicPathNT from to = SymbolicPathNT {getSymbolicPathNT :: SymbolicPath from to}
+
+instance Newtype (SymbolicPath from to) (SymbolicPathNT from to)
+
+instance Parsec (SymbolicPathNT from to) where
+  parsec = do
+    token <- parsecToken
+    if null token
+      then P.unexpected "empty FilePath"
+      else return (SymbolicPathNT $ makeSymbolicPath token)
+
+instance Pretty (SymbolicPathNT from to) where
+  pretty = showFilePath . getSymbolicPath . getSymbolicPathNT
+
+-- | Newtype for 'RelativePath', with a different 'Parsec' instance
+-- to disallow empty paths but allow non-relative paths (which get rejected
+-- later with a different error message, see 'Distribution.PackageDescription.Check.Paths.checkPath')
+newtype RelativePathNT from to = RelativePathNT {getRelativePathNT :: RelativePath from to}
+
+instance Newtype (RelativePath from to) (RelativePathNT from to)
+
+-- NB: we don't reject non-relative paths here; we allow them here and reject
+-- later (see 'Distribution.PackageDescription.Check.Paths.checkPath').
+instance Parsec (RelativePathNT from to) where
+  parsec = do
+    token <- parsecToken
+    if null token
+      then P.unexpected "empty FilePath"
+      else return (RelativePathNT $ unsafeMakeSymbolicPath token)
+
+instance Pretty (RelativePathNT from to) where
+  pretty = showFilePath . getSymbolicPath . getRelativePathNT
 
 -------------------------------------------------------------------------------
 -- SpecVersion

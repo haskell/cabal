@@ -103,6 +103,7 @@ import Distribution.Simple.Compiler
   )
 import Distribution.Simple.Setup
   ( ReplOptions (..)
+  , setupVerbosity
   )
 import Distribution.Simple.Utils
   ( TempFileOptions (..)
@@ -500,7 +501,7 @@ replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings g
         go m ("PATH", Just s) = foldl' (\m' f -> Map.insertWith (+) f 1 m') m (splitSearchPath s)
         go m _ = m
 
-    verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
+    verbosity = fromFlagOrDefault normal (setupVerbosity $ configCommonFlags configFlags)
     keepTempFiles = fromFlagOrDefault False replKeepTempFiles
 
     validatedTargets ctx compiler elaboratedPlan targetSelectors = do

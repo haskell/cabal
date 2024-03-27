@@ -63,7 +63,7 @@ GenericPackageDescription {
     testSuites = [],
     benchmarks = [],
     dataFiles = [],
-    dataDir = ".",
+    dataDir = SymbolicPath ".",
     extraSrcFiles = [],
     extraTmpFiles = [],
     extraDocFiles = []},
@@ -188,7 +188,8 @@ GenericPackageDescription {
             "",
           testInterface = TestSuiteExeV10
             (mkVersion [1, 0])
-            "tests/test_Octree.hs",
+            (SymbolicPath
+              "tests/test_Octree.hs"),
           testBuildInfo = BuildInfo {
             buildable = True,
             buildTools = [],
@@ -289,7 +290,7 @@ GenericPackageDescription {
             "",
           testInterface = TestSuiteExeV10
             (mkVersion [1, 0])
-            "README.lhs",
+            (SymbolicPath "README.lhs"),
           testBuildInfo = BuildInfo {
             buildable = True,
             buildTools = [],

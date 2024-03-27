@@ -1,6 +1,7 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -80,6 +81,10 @@ import qualified Distribution.Simple.Register as Cabal
 
 import Distribution.Compat.Graph (IsNode (..))
 import Distribution.Simple.Utils
+import Distribution.Utils.Path hiding
+  ( (<.>)
+  , (</>)
+  )
 import Distribution.Version
 
 import qualified Data.Map as Map
@@ -89,7 +94,7 @@ import qualified Text.PrettyPrint as Disp
 
 import Control.Exception (assert, bracket, handle)
 import System.Directory (doesDirectoryExist, doesFileExist, renameDirectory)
-import System.FilePath (makeRelative, takeDirectory, (<.>), (</>))
+import System.FilePath (makeRelative, normalise, takeDirectory, (<.>), (</>))
 import System.Semaphore (SemaphoreName (..))
 
 import Distribution.Client.Errors
@@ -533,7 +538,7 @@ rebuildTarget
         case pkgBuildStatus of
           BuildStatusDownload -> downloadPhase
           BuildStatusUnpack tarball -> unpackTarballPhase tarball
-          BuildStatusRebuild srcdir status -> rebuildPhase status srcdir
+          BuildStatusRebuild srcdir status -> rebuildPhase status (makeSymbolicPath srcdir)
           -- TODO: perhaps re-nest the types to make these impossible
           BuildStatusPreExisting{} -> unexpectedState
           BuildStatusInstalled{} -> unexpectedState
@@ -570,7 +575,7 @@ rebuildTarget
       -- 'BuildInplaceOnly' style packages. 'BuildAndInstall' style packages
       -- would only start from download or unpack phases.
       --
-      rebuildPhase :: BuildStatusRebuild -> FilePath -> IO BuildResult
+      rebuildPhase :: BuildStatusRebuild -> SymbolicPath CWD (Dir Pkg) -> IO BuildResult
       rebuildPhase buildStatus srcdir =
         assert
           (isInplaceBuildStyle $ elabBuildStyle pkg)
@@ -579,11 +584,13 @@ rebuildTarget
           srcdir
           builddir
         where
+          distdir = distBuildDirectory (elabDistDirParams sharedPackageConfig pkg)
           builddir =
-            distBuildDirectory
-              (elabDistDirParams sharedPackageConfig pkg)
+            makeSymbolicPath $
+              makeRelative (normalise $ getSymbolicPath srcdir) distdir
+      -- TODO: [nice to have] ^^ do this relative stuff better
 
-      buildAndInstall :: FilePath -> FilePath -> IO BuildResult
+      buildAndInstall :: SymbolicPath CWD (Dir Pkg) -> SymbolicPath Pkg (Dir Dist) -> IO BuildResult
       buildAndInstall srcdir builddir =
         buildAndInstallUnpackedPackage
           verbosity
@@ -597,12 +604,9 @@ rebuildTarget
           plan
           rpkg
           srcdir
-          builddir'
-        where
-          builddir' = makeRelative srcdir builddir
-      -- TODO: [nice to have] ^^ do this relative stuff better
+          builddir
 
-      buildInplace :: BuildStatusRebuild -> FilePath -> FilePath -> IO BuildResult
+      buildInplace :: BuildStatusRebuild -> SymbolicPath CWD (Dir Pkg) -> SymbolicPath Pkg (Dir Dist) -> IO BuildResult
       buildInplace buildStatus srcdir builddir =
         -- TODO: [nice to have] use a relative build dir rather than absolute
         buildInplaceUnpackedPackage
@@ -698,8 +702,8 @@ withTarballLocalDirectory
   -> DistDirParams
   -> BuildStyle
   -> Maybe CabalFileText
-  -> ( FilePath -- Source directory
-       -> FilePath -- Build directory
+  -> ( SymbolicPath CWD (Dir Pkg) -- Source directory
+       -> SymbolicPath Pkg (Dir Dist) -- Build directory
        -> IO a
      )
   -> IO a
@@ -723,15 +727,15 @@ withTarballLocalDirectory
       -- this way we avoid breaking those packages
       BuildAndInstall ->
         let tmpdir = distTempDirectory
+            builddir = relativeSymbolicPath $ makeRelativePathEx "dist"
          in withTempDirectory verbosity tmpdir "src" $ \unpackdir -> do
+              let srcdir = makeSymbolicPath $ unpackdir </> prettyShow pkgid
               unpackPackageTarball
                 verbosity
                 tarball
                 unpackdir
                 pkgid
                 pkgTextOverride
-              let srcdir = unpackdir </> prettyShow pkgid
-                  builddir = srcdir </> "dist"
               buildPkg srcdir builddir
 
       -- In this case we make sure the tarball has been unpacked to the
@@ -740,10 +744,14 @@ withTarballLocalDirectory
       BuildInplaceOnly{} -> do
         let srcrootdir = distUnpackedSrcRootDirectory
             srcdir = distUnpackedSrcDirectory pkgid
-            builddir = distBuildDirectory dparams
+            builddir =
+              makeSymbolicPath $
+                makeRelative (normalise srcdir) $
+                  distBuildDirectory dparams
+        -- TODO: [nice to have] ^^ do this relative stuff better
+        exists <- doesDirectoryExist srcdir
         -- TODO: [nice to have] use a proper file monitor rather
         -- than this dir exists test
-        exists <- doesDirectoryExist srcdir
         unless exists $ do
           createDirectoryIfMissingVerbose verbosity True srcrootdir
           unpackPackageTarball
@@ -758,7 +766,7 @@ withTarballLocalDirectory
             srcrootdir
             pkgid
             dparams
-        buildPkg srcdir builddir
+        buildPkg (makeSymbolicPath srcdir) builddir
 
 unpackPackageTarball
   :: Verbosity

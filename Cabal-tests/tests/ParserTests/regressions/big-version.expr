@@ -31,7 +31,7 @@ GenericPackageDescription {
     testSuites = [],
     benchmarks = [],
     dataFiles = [],
-    dataDir = ".",
+    dataDir = SymbolicPath ".",
     extraSrcFiles = [],
     extraTmpFiles = [],
     extraDocFiles = []},

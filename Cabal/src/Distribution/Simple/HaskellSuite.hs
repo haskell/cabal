@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
 
@@ -22,7 +23,6 @@ import Distribution.Simple.Program
 import Distribution.Simple.Program.Builtin
 import Distribution.Simple.Utils
 import Distribution.System (Platform)
-import Distribution.Utils.Path
 import Distribution.Verbosity
 import Distribution.Version
 import Language.Haskell.Extension
@@ -179,23 +179,23 @@ buildLib verbosity pkg_descr lbi lib clbi = do
 
   let odir = buildDir lbi
       bi = libBuildInfo lib
-      srcDirs = map getSymbolicPath (hsSourceDirs bi) ++ [odir]
+      srcDirs = map i (hsSourceDirs bi) ++ [i odir]
       dbStack = withPackageDB lbi
       language = fromMaybe Haskell98 (defaultLanguage bi)
       progdb = withPrograms lbi
       pkgid = packageId pkg_descr
-
+      i = interpretSymbolicPathLBI lbi -- See Note [Symbolic paths] in Distribution.Utils.Path
   runDbProgram verbosity haskellSuiteProgram progdb $
-    ["compile", "--build-dir", odir]
+    ["compile", "--build-dir", i odir]
       ++ concat [["-i", d] | d <- srcDirs]
       ++ concat
         [ ["-I", d]
         | d <-
-            [ autogenComponentModulesDir lbi clbi
-            , autogenPackageModulesDir lbi
-            , odir
+            [ i $ autogenComponentModulesDir lbi clbi
+            , i $ autogenPackageModulesDir lbi
+            , i odir
             ]
-              ++ includeDirs bi
+              ++ map i (includeDirs bi)
         ]
       ++ [packageDbOpt pkgDb | pkgDb <- dbStack]
       ++ ["--package-name", prettyShow pkgid]

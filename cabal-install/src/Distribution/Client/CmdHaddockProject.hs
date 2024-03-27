@@ -46,7 +46,8 @@ import Distribution.Client.ScriptUtils
   , withContextAndSelectors
   )
 import Distribution.Client.Setup
-  ( ConfigFlags (..)
+  ( CommonSetupFlags (setupVerbosity)
+  , ConfigFlags (..)
   , GlobalFlags (..)
   )
 import Distribution.Client.TargetProblem (TargetProblem (..))
@@ -75,6 +76,7 @@ import Distribution.Simple.Setup
   ( HaddockFlags (..)
   , HaddockProjectFlags (..)
   , Visibility (..)
+  , defaultCommonSetupFlags
   , defaultHaddockFlags
   , haddockProjectCommand
   )
@@ -107,9 +109,14 @@ haddockProjectAction flags _extraArgs globalFlags = do
   warn verbosity "haddock-project command is experimental, it might break in the future"
 
   -- build all packages with appropriate haddock flags
-  let haddockFlags =
+  let commonFlags =
+        defaultCommonSetupFlags
+          { setupVerbosity = haddockProjectVerbosity flags
+          }
+      haddockFlags =
         defaultHaddockFlags
-          { haddockHtml = Flag True
+          { haddockCommonFlags = commonFlags
+          , haddockHtml = Flag True
           , -- one can either use `--haddock-base-url` or
             -- `--haddock-html-location`.
             haddockBaseUrl =
@@ -141,7 +148,6 @@ haddockProjectAction flags _extraArgs globalFlags = do
                 then Flag (toPathTemplate "../doc-index.html")
                 else NoFlag
           , haddockKeepTempFiles = haddockProjectKeepTempFiles flags
-          , haddockVerbosity = haddockProjectVerbosity flags
           , haddockLib = haddockProjectLib flags
           , haddockOutputDir = haddockProjectOutputDir flags
           }
@@ -150,7 +156,7 @@ haddockProjectAction flags _extraArgs globalFlags = do
           { NixStyleOptions.haddockFlags = haddockFlags
           , NixStyleOptions.configFlags =
               (NixStyleOptions.configFlags (commandDefaultFlags CmdBuild.buildCommand))
-                { configVerbosity = haddockProjectVerbosity flags
+                { configCommonFlags = commonFlags
                 }
           }
 
@@ -368,6 +374,7 @@ haddockProjectAction flags _extraArgs globalFlags = do
         (pkgConfigCompilerProgs sharedConfig')
         (pkgConfigCompiler sharedConfig')
         (pkgConfigPlatform sharedConfig')
+        Nothing
         flags'
   where
     verbosity = fromFlagOrDefault normal (haddockProjectVerbosity flags)

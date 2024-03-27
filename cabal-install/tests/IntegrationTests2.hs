@@ -59,7 +59,7 @@ import Distribution.System
 import Distribution.Version
 import Distribution.ModuleName (ModuleName)
 import Distribution.Text
-import Distribution.Utils.Path
+import Distribution.Utils.Path (unsafeMakeSymbolicPath)
 import qualified Distribution.Client.CmdHaddockProject as CmdHaddockProject
 import Distribution.Client.Setup (globalStoreDir)
 import Distribution.Client.GlobalFlags (defaultGlobalFlags)
@@ -486,7 +486,7 @@ testTargetSelectorAmbiguous reportSubCase = do
 
     withCFiles :: Executable -> [FilePath] -> Executable
     withCFiles exe files =
-      exe { buildInfo = (buildInfo exe) { cSources = files } }
+      exe { buildInfo = (buildInfo exe) { cSources = map unsafeMakeSymbolicPath files } }
 
     withHsSrcDirs :: Executable -> [FilePath] -> Executable
     withHsSrcDirs exe srcDirs =

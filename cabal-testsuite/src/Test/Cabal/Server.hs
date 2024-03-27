@@ -1,5 +1,7 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE NondecreasingIndentation #-}
 -- | A GHC run-server, which supports running multiple GHC scripts
 -- without having to restart from scratch.
@@ -136,7 +138,7 @@ runOnServer :: Server -> Maybe FilePath -> [(String, Maybe String)]
             -> FilePath -> [String] -> IO ServerResult
 runOnServer s mb_cwd env_overrides script_path args = do
     -- TODO: cwd not implemented
-    when (isJust mb_cwd)            $ error "runOnServer change directory not implemented"
+    when (isJust mb_cwd)        $ error "runOnServer change directory not implemented"
     -- TODO: env_overrides not implemented
     unless (null env_overrides) $ error "runOnServer set environment not implemented"
 
@@ -181,12 +183,13 @@ runOnServer s mb_cwd env_overrides script_path args = do
     -- Give the user some indication about how they could run the
     -- command by hand.
     (real_path, real_args) <- runnerCommand (serverScriptEnv s) mb_cwd env_overrides script_path args
-    return ServerResult {
-            serverResultTestCode = code,
-            serverResultCommand = showCommandForUser real_path real_args,
-            serverResultStdout = out,
-            serverResultStderr = err
-        }
+    return $
+      ServerResult {
+              serverResultTestCode = code,
+              serverResultCommand = showCommandForUser real_path real_args,
+              serverResultStdout = out,
+              serverResultStderr = err
+          }
 
 -- | Helper function which we use in the GHCi session to communicate
 -- the exit code of the process.

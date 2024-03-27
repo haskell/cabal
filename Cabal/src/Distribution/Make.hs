@@ -68,15 +68,13 @@ import Distribution.Compat.Prelude
 import Prelude ()
 
 -- local
+import Distribution.License
 import Distribution.Package
+import Distribution.Pretty
 import Distribution.Simple.Command
 import Distribution.Simple.Program
 import Distribution.Simple.Setup
-
 import Distribution.Simple.Utils
-
-import Distribution.License
-import Distribution.Pretty
 import Distribution.Version
 
 import System.Environment (getArgs, getProgName)
@@ -114,7 +112,6 @@ defaultMainHelper args = do
       putStrLn $
         "Cabal library version "
           ++ prettyShow cabalVersion
-
     progs = defaultProgramDb
     commands =
       [ configureCommand progs `commandAddAction` configureAction
@@ -131,8 +128,9 @@ defaultMainHelper args = do
 configureAction :: ConfigFlags -> [String] -> IO ()
 configureAction flags args = do
   noExtraFlags args
-  let verbosity = fromFlag (configVerbosity flags)
-  rawSystemExit verbosity "sh" $
+  let verbosity = fromFlag $ configVerbosity flags
+      mbWorkDir = flagToMaybe $ configWorkingDir flags
+  rawSystemExit verbosity mbWorkDir "sh" $
     "configure"
       : configureArgs backwardsCompatHack flags
   where
@@ -141,47 +139,63 @@ configureAction flags args = do
 copyAction :: CopyFlags -> [String] -> IO ()
 copyAction flags args = do
   noExtraFlags args
-  let destArgs = case fromFlag $ copyDest flags of
+  let verbosity = fromFlag $ copyVerbosity flags
+      mbWorkDir = flagToMaybe $ copyWorkingDir flags
+      destArgs = case fromFlag $ copyDest flags of
         NoCopyDest -> ["install"]
         CopyTo path -> ["copy", "destdir=" ++ path]
         CopyToDb _ -> error "CopyToDb not supported via Make"
 
-  rawSystemExit (fromFlag $ copyVerbosity flags) "make" destArgs
+  rawSystemExit verbosity mbWorkDir "make" destArgs
 
 installAction :: InstallFlags -> [String] -> IO ()
 installAction flags args = do
   noExtraFlags args
-  rawSystemExit (fromFlag $ installVerbosity flags) "make" ["install"]
-  rawSystemExit (fromFlag $ installVerbosity flags) "make" ["register"]
+  let verbosity = fromFlag $ installVerbosity flags
+      mbWorkDir = flagToMaybe $ installWorkingDir flags
+  rawSystemExit verbosity mbWorkDir "make" ["install"]
+  rawSystemExit verbosity mbWorkDir "make" ["register"]
 
 haddockAction :: HaddockFlags -> [String] -> IO ()
 haddockAction flags args = do
   noExtraFlags args
-  rawSystemExit (fromFlag $ haddockVerbosity flags) "make" ["docs"]
+  let verbosity = fromFlag $ haddockVerbosity flags
+      mbWorkDir = flagToMaybe $ haddockWorkingDir flags
+  rawSystemExit verbosity mbWorkDir "make" ["docs"]
     `catchIO` \_ ->
-      rawSystemExit (fromFlag $ haddockVerbosity flags) "make" ["doc"]
+      rawSystemExit verbosity mbWorkDir "make" ["doc"]
 
 buildAction :: BuildFlags -> [String] -> IO ()
 buildAction flags args = do
   noExtraFlags args
-  rawSystemExit (fromFlag $ buildVerbosity flags) "make" []
+  let verbosity = fromFlag $ buildVerbosity flags
+      mbWorkDir = flagToMaybe $ buildWorkingDir flags
+  rawSystemExit verbosity mbWorkDir "make" []
 
 cleanAction :: CleanFlags -> [String] -> IO ()
 cleanAction flags args = do
   noExtraFlags args
-  rawSystemExit (fromFlag $ cleanVerbosity flags) "make" ["clean"]
+  let verbosity = fromFlag $ cleanVerbosity flags
+      mbWorkDir = flagToMaybe $ cleanWorkingDir flags
+  rawSystemExit verbosity mbWorkDir "make" ["clean"]
 
 sdistAction :: SDistFlags -> [String] -> IO ()
 sdistAction flags args = do
   noExtraFlags args
-  rawSystemExit (fromFlag $ sDistVerbosity flags) "make" ["dist"]
+  let verbosity = fromFlag $ sDistVerbosity flags
+      mbWorkDir = flagToMaybe $ sDistWorkingDir flags
+  rawSystemExit verbosity mbWorkDir "make" ["dist"]
 
 registerAction :: RegisterFlags -> [String] -> IO ()
 registerAction flags args = do
   noExtraFlags args
-  rawSystemExit (fromFlag $ regVerbosity flags) "make" ["register"]
+  let verbosity = fromFlag $ registerVerbosity flags
+      mbWorkDir = flagToMaybe $ registerWorkingDir flags
+  rawSystemExit verbosity mbWorkDir "make" ["register"]
 
 unregisterAction :: RegisterFlags -> [String] -> IO ()
 unregisterAction flags args = do
   noExtraFlags args
-  rawSystemExit (fromFlag $ regVerbosity flags) "make" ["unregister"]
+  let verbosity = fromFlag $ registerVerbosity flags
+      mbWorkDir = flagToMaybe $ registerWorkingDir flags
+  rawSystemExit verbosity mbWorkDir "make" ["unregister"]

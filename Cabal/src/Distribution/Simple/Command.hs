@@ -1,6 +1,8 @@
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 -----------------------------------------------------------------------------
 
@@ -64,6 +66,7 @@ module Distribution.Simple.Command
 
     -- * Option Descriptions
   , OptDescr (..)
+  , fmapOptDescr
   , Description
   , SFlags
   , LFlags
@@ -150,6 +153,16 @@ data OptDescr a
       OptFlags {-False-}
       (Bool -> a -> a)
       (a -> Maybe Bool)
+
+fmapOptDescr :: forall a b. (b -> a) -> (a -> (b -> b)) -> OptDescr a -> OptDescr b
+fmapOptDescr x u = \case
+  ReqArg d o p upd get -> ReqArg d o p (fmap m upd) (get . x)
+  OptArg d o p upd (str, g) get -> OptArg d o p (fmap m upd) (str, m g) (get . x)
+  ChoiceOpt opts -> ChoiceOpt $ fmap (\(d, o, upd, get) -> (d, o, m upd, get . x)) opts
+  BoolOpt d true false upd get -> BoolOpt d true false (\b -> m $ upd b) (get . x)
+  where
+    m :: (a -> a) -> (b -> b)
+    m upd_a b = u (upd_a $ x b) b
 
 -- | Short command line option strings
 type SFlags = [Char]

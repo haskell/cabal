@@ -1,13 +1,15 @@
 {-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuantifiedConstraints #-}
 
 -- | 'GenericPackageDescription' Field descriptions
 module Distribution.PackageDescription.FieldGrammar
   ( -- * Package description
     packageDescriptionFieldGrammar
-  , CompatFilePath (..)
+  , CompatDataDir (..)
   , CompatLicenseFile (..)
 
     -- * Library
@@ -99,16 +101,11 @@ packageDescriptionFieldGrammar
      , c (Identity BuildType)
      , c (Identity PackageName)
      , c (Identity Version)
-     , c (List FSep FilePathNT String)
-     , c (List FSep CompatFilePath String)
-     , c (List FSep (Identity (SymbolicPath PackageDir LicenseFile)) (SymbolicPath PackageDir LicenseFile))
+     , forall from to. c (List FSep (RelativePathNT from to) (RelativePath from to))
+     , forall from to. c (List VCat (RelativePathNT from to) (RelativePath from to))
      , c (List FSep TestedWith (CompilerFlavor, VersionRange))
-     , c (List VCat FilePathNT String)
-     , c FilePathNT
      , c CompatLicenseFile
-     , c CompatFilePath
-     , c SpecLicense
-     , c SpecVersion
+     , c CompatDataDir
      )
   => g PackageDescription PackageDescription
 packageDescriptionFieldGrammar =
@@ -140,12 +137,12 @@ packageDescriptionFieldGrammar =
     <*> pure [] -- test suites
     <*> pure [] -- benchmarks
     --  * Files
-    <*> monoidalFieldAla "data-files" (alaList' VCat FilePathNT) L.dataFiles
-    <*> optionalFieldDefAla "data-dir" CompatFilePath L.dataDir "."
-      ^^^ fmap (\x -> if null x then "." else x) -- map empty directories to "."
+    <*> monoidalFieldAla "data-files" (alaList' VCat RelativePathNT) L.dataFiles
+    <*> optionalFieldDefAla "data-dir" CompatDataDir L.dataDir sameDirectory
+      ^^^ fmap (\x -> if null (getSymbolicPath x) then sameDirectory else x) -- map empty directories to "."
     <*> monoidalFieldAla "extra-source-files" formatExtraSourceFiles L.extraSrcFiles
-    <*> monoidalFieldAla "extra-tmp-files" (alaList' VCat FilePathNT) L.extraTmpFiles
-    <*> monoidalFieldAla "extra-doc-files" (alaList' VCat FilePathNT) L.extraDocFiles
+    <*> monoidalFieldAla "extra-tmp-files" (alaList' VCat RelativePathNT) L.extraTmpFiles
+    <*> monoidalFieldAla "extra-doc-files" formatExtraSourceFiles L.extraDocFiles
   where
     packageIdentifierGrammar =
       PackageIdentifier
@@ -158,7 +155,7 @@ packageDescriptionFieldGrammar =
         -- should we pretty print license-file if there's single license file
         -- and license-files when more
         <$> monoidalFieldAla "license-file" CompatLicenseFile L.licenseFiles
-        <*> monoidalFieldAla "license-files" (alaList FSep) L.licenseFiles
+        <*> monoidalFieldAla "license-files" (alaList' FSep RelativePathNT) L.licenseFiles
           ^^^ hiddenField
 
 -------------------------------------------------------------------------------
@@ -178,12 +175,12 @@ libraryFieldGrammar
      , c (List CommaVCat (Identity ModuleReexport) ModuleReexport)
      , c (List FSep (MQuoted Extension) Extension)
      , c (List FSep (MQuoted Language) Language)
-     , c (List FSep FilePathNT String)
      , c (List FSep Token String)
      , c (List NoCommaFSep Token' String)
      , c (List VCat (MQuoted ModuleName) ModuleName)
-     , c (List VCat FilePathNT String)
-     , c (List FSep (Identity (SymbolicPath PackageDir SourceDir)) (SymbolicPath PackageDir SourceDir))
+     , forall from to. c (List FSep (SymbolicPathNT from to) (SymbolicPath from to))
+     , forall from to. c (List FSep (RelativePathNT from to) (RelativePath from to))
+     , forall from to. c (List VCat (SymbolicPathNT from to) (SymbolicPath from to))
      , c (List VCat Token String)
      , c (MQuoted Language)
      )
@@ -228,12 +225,12 @@ foreignLibFieldGrammar
      , c (List FSep (Identity ForeignLibOption) ForeignLibOption)
      , c (List FSep (MQuoted Extension) Extension)
      , c (List FSep (MQuoted Language) Language)
-     , c (List FSep FilePathNT String)
      , c (List FSep Token String)
-     , c (List FSep (Identity (SymbolicPath PackageDir SourceDir)) (SymbolicPath PackageDir SourceDir))
+     , forall from to. c (List FSep (SymbolicPathNT from to) (SymbolicPath from to))
+     , forall from to. c (List FSep (RelativePathNT from to) (RelativePath from to))
+     , forall from to. c (List VCat (SymbolicPathNT from to) (SymbolicPath from to))
      , c (List NoCommaFSep Token' String)
      , c (List VCat (MQuoted ModuleName) ModuleName)
-     , c (List VCat FilePathNT String)
      , c (List VCat Token String)
      , c (MQuoted Language)
      )
@@ -246,7 +243,7 @@ foreignLibFieldGrammar n =
     <*> blurFieldGrammar L.foreignLibBuildInfo buildInfoFieldGrammar
     <*> optionalField "lib-version-info" L.foreignLibVersionInfo
     <*> optionalField "lib-version-linux" L.foreignLibVersionLinux
-    <*> monoidalFieldAla "mod-def-file" (alaList' FSep FilePathNT) L.foreignLibModDefFile
+    <*> monoidalFieldAla "mod-def-file" (alaList' FSep RelativePathNT) L.foreignLibModDefFile
 {-# SPECIALIZE foreignLibFieldGrammar :: UnqualComponentName -> ParsecFieldGrammar' ForeignLib #-}
 {-# SPECIALIZE foreignLibFieldGrammar :: UnqualComponentName -> PrettyFieldGrammar' ForeignLib #-}
 
@@ -266,12 +263,16 @@ executableFieldGrammar
      , c (List CommaVCat (Identity Mixin) Mixin)
      , c (List FSep (MQuoted Extension) Extension)
      , c (List FSep (MQuoted Language) Language)
-     , c (List FSep FilePathNT String)
      , c (List FSep Token String)
-     , c (List FSep (Identity (SymbolicPath PackageDir SourceDir)) (SymbolicPath PackageDir SourceDir))
+     , forall from to. c (List FSep (SymbolicPathNT from to) (SymbolicPath from to))
+     , forall from to. c (List FSep (RelativePathNT from to) (RelativePath from to))
+     , forall from to. c (List FSep (SymbolicPathNT from to) (SymbolicPath from to))
+     , forall from to. c (List FSep (RelativePathNT from to) (RelativePath from to))
+     , forall from to. c (List VCat (SymbolicPathNT from to) (SymbolicPath from to))
+     , forall from to. c (SymbolicPathNT from to)
+     , forall from to. c (RelativePathNT from to)
      , c (List NoCommaFSep Token' String)
      , c (List VCat (MQuoted ModuleName) ModuleName)
-     , c (List VCat FilePathNT String)
      , c (List VCat Token String)
      , c (MQuoted Language)
      )
@@ -280,7 +281,7 @@ executableFieldGrammar
 executableFieldGrammar n =
   Executable n
     -- main-is is optional as conditional blocks don't have it
-    <$> optionalFieldDefAla "main-is" FilePathNT L.modulePath ""
+    <$> optionalFieldDefAla "main-is" RelativePathNT L.modulePath (modulePath mempty)
     <*> optionalFieldDef "scope" L.exeScope ExecutablePublic
       ^^^ availableSince CabalSpecV2_0 ExecutablePublic
     <*> blurFieldGrammar L.buildInfo buildInfoFieldGrammar
@@ -295,7 +296,7 @@ executableFieldGrammar n =
 -- After validation it is converted into the proper 'TestSuite' type.
 data TestSuiteStanza = TestSuiteStanza
   { _testStanzaTestType :: Maybe TestType
-  , _testStanzaMainIs :: Maybe FilePath
+  , _testStanzaMainIs :: Maybe (RelativePath Source File)
   , _testStanzaTestModule :: Maybe ModuleName
   , _testStanzaBuildInfo :: BuildInfo
   , _testStanzaCodeGenerators :: [String]
@@ -308,7 +309,7 @@ testStanzaTestType :: Lens' TestSuiteStanza (Maybe TestType)
 testStanzaTestType f s = fmap (\x -> s{_testStanzaTestType = x}) (f (_testStanzaTestType s))
 {-# INLINE testStanzaTestType #-}
 
-testStanzaMainIs :: Lens' TestSuiteStanza (Maybe FilePath)
+testStanzaMainIs :: Lens' TestSuiteStanza (Maybe (RelativePath Source File))
 testStanzaMainIs f s = fmap (\x -> s{_testStanzaMainIs = x}) (f (_testStanzaMainIs s))
 {-# INLINE testStanzaMainIs #-}
 
@@ -338,12 +339,13 @@ testSuiteFieldGrammar
      , c (List CommaVCat (Identity Mixin) Mixin)
      , c (List FSep (MQuoted Extension) Extension)
      , c (List FSep (MQuoted Language) Language)
-     , c (List FSep FilePathNT String)
      , c (List FSep Token String)
      , c (List NoCommaFSep Token' String)
      , c (List VCat (MQuoted ModuleName) ModuleName)
-     , c (List VCat FilePathNT String)
-     , c (List FSep (Identity (SymbolicPath PackageDir SourceDir)) (SymbolicPath PackageDir SourceDir))
+     , forall from to. c (List FSep (SymbolicPathNT from to) (SymbolicPath from to))
+     , forall from to. c (List FSep (RelativePathNT from to) (RelativePath from to))
+     , forall from to. c (List VCat (SymbolicPathNT from to) (SymbolicPath from to))
+     , forall from to. c (RelativePathNT from to)
      , c (List VCat Token String)
      , c (MQuoted Language)
      )
@@ -351,7 +353,7 @@ testSuiteFieldGrammar
 testSuiteFieldGrammar =
   TestSuiteStanza
     <$> optionalField "type" testStanzaTestType
-    <*> optionalFieldAla "main-is" FilePathNT testStanzaMainIs
+    <*> optionalFieldAla "main-is" RelativePathNT testStanzaMainIs
     <*> optionalField "test-module" testStanzaTestModule
     <*> blurFieldGrammar testStanzaBuildInfo buildInfoFieldGrammar
     <*> monoidalFieldAla "code-generators" (alaList' CommaFSep Token) testStanzaCodeGenerators
@@ -444,7 +446,7 @@ unvalidateTestSuite t =
 -- After validation it is converted into the proper 'Benchmark' type.
 data BenchmarkStanza = BenchmarkStanza
   { _benchmarkStanzaBenchmarkType :: Maybe BenchmarkType
-  , _benchmarkStanzaMainIs :: Maybe FilePath
+  , _benchmarkStanzaMainIs :: Maybe (RelativePath Source File)
   , _benchmarkStanzaBenchmarkModule :: Maybe ModuleName
   , _benchmarkStanzaBuildInfo :: BuildInfo
   }
@@ -456,7 +458,7 @@ benchmarkStanzaBenchmarkType :: Lens' BenchmarkStanza (Maybe BenchmarkType)
 benchmarkStanzaBenchmarkType f s = fmap (\x -> s{_benchmarkStanzaBenchmarkType = x}) (f (_benchmarkStanzaBenchmarkType s))
 {-# INLINE benchmarkStanzaBenchmarkType #-}
 
-benchmarkStanzaMainIs :: Lens' BenchmarkStanza (Maybe FilePath)
+benchmarkStanzaMainIs :: Lens' BenchmarkStanza (Maybe (RelativePath Source File))
 benchmarkStanzaMainIs f s = fmap (\x -> s{_benchmarkStanzaMainIs = x}) (f (_benchmarkStanzaMainIs s))
 {-# INLINE benchmarkStanzaMainIs #-}
 
@@ -481,12 +483,13 @@ benchmarkFieldGrammar
      , c (List CommaVCat (Identity Mixin) Mixin)
      , c (List FSep (MQuoted Extension) Extension)
      , c (List FSep (MQuoted Language) Language)
-     , c (List FSep FilePathNT String)
      , c (List FSep Token String)
      , c (List NoCommaFSep Token' String)
      , c (List VCat (MQuoted ModuleName) ModuleName)
-     , c (List VCat FilePathNT String)
-     , c (List FSep (Identity (SymbolicPath PackageDir SourceDir)) (SymbolicPath PackageDir SourceDir))
+     , forall from to. c (List FSep (SymbolicPathNT from to) (SymbolicPath from to))
+     , forall from to. c (List FSep (RelativePathNT from to) (RelativePath from to))
+     , forall from to. c (List VCat (SymbolicPathNT from to) (SymbolicPath from to))
+     , forall from to. c (RelativePathNT from to)
      , c (List VCat Token String)
      , c (MQuoted Language)
      )
@@ -494,7 +497,7 @@ benchmarkFieldGrammar
 benchmarkFieldGrammar =
   BenchmarkStanza
     <$> optionalField "type" benchmarkStanzaBenchmarkType
-    <*> optionalFieldAla "main-is" FilePathNT benchmarkStanzaMainIs
+    <*> optionalFieldAla "main-is" RelativePathNT benchmarkStanzaMainIs
     <*> optionalField "benchmark-module" benchmarkStanzaBenchmarkModule
     <*> blurFieldGrammar benchmarkStanzaBuildInfo buildInfoFieldGrammar
 
@@ -561,8 +564,11 @@ unvalidateBenchmark b =
     }
   where
     (ty, ma, mo) = case benchmarkInterface b of
-      BenchmarkExeV10 ver "" -> (Just $ BenchmarkTypeExe ver, Nothing, Nothing)
-      BenchmarkExeV10 ver ma' -> (Just $ BenchmarkTypeExe ver, Just ma', Nothing)
+      BenchmarkExeV10 ver ma'
+        | getSymbolicPath ma' == "" ->
+            (Just $ BenchmarkTypeExe ver, Nothing, Nothing)
+        | otherwise ->
+            (Just $ BenchmarkTypeExe ver, Just ma', Nothing)
       _ -> (Nothing, Nothing, Nothing)
 
 -------------------------------------------------------------------------------
@@ -579,12 +585,12 @@ buildInfoFieldGrammar
      , c (List CommaVCat (Identity Mixin) Mixin)
      , c (List FSep (MQuoted Extension) Extension)
      , c (List FSep (MQuoted Language) Language)
-     , c (List FSep FilePathNT String)
      , c (List FSep Token String)
      , c (List NoCommaFSep Token' String)
      , c (List VCat (MQuoted ModuleName) ModuleName)
-     , c (List VCat FilePathNT String)
-     , c (List FSep (Identity (SymbolicPath PackageDir SourceDir)) (SymbolicPath PackageDir SourceDir))
+     , forall from to. c (List FSep (SymbolicPathNT from to) (SymbolicPath from to))
+     , forall from to. c (List FSep (RelativePathNT from to) (RelativePath from to))
+     , forall from to. c (List VCat (SymbolicPathNT from to) (SymbolicPath from to))
      , c (List VCat Token String)
      , c (MQuoted Language)
      )
@@ -617,16 +623,16 @@ buildInfoFieldGrammar =
     <*> monoidalFieldAla "hsc2hs-options" (alaList' NoCommaFSep Token') L.hsc2hsOptions
       ^^^ availableSince CabalSpecV3_6 []
     <*> monoidalFieldAla "pkgconfig-depends" (alaList CommaFSep) L.pkgconfigDepends
-    <*> monoidalFieldAla "frameworks" (alaList' FSep Token) L.frameworks
-    <*> monoidalFieldAla "extra-framework-dirs" (alaList' FSep FilePathNT) L.extraFrameworkDirs
-    <*> monoidalFieldAla "asm-sources" (alaList' VCat FilePathNT) L.asmSources
+    <*> monoidalFieldAla "frameworks" (alaList' FSep RelativePathNT) L.frameworks
+    <*> monoidalFieldAla "extra-framework-dirs" (alaList' FSep SymbolicPathNT) L.extraFrameworkDirs
+    <*> monoidalFieldAla "asm-sources" (alaList' VCat SymbolicPathNT) L.asmSources
       ^^^ availableSince CabalSpecV3_0 []
-    <*> monoidalFieldAla "cmm-sources" (alaList' VCat FilePathNT) L.cmmSources
+    <*> monoidalFieldAla "cmm-sources" (alaList' VCat SymbolicPathNT) L.cmmSources
       ^^^ availableSince CabalSpecV3_0 []
-    <*> monoidalFieldAla "c-sources" (alaList' VCat FilePathNT) L.cSources
-    <*> monoidalFieldAla "cxx-sources" (alaList' VCat FilePathNT) L.cxxSources
+    <*> monoidalFieldAla "c-sources" (alaList' VCat SymbolicPathNT) L.cSources
+    <*> monoidalFieldAla "cxx-sources" (alaList' VCat SymbolicPathNT) L.cxxSources
       ^^^ availableSince CabalSpecV2_2 []
-    <*> monoidalFieldAla "js-sources" (alaList' VCat FilePathNT) L.jsSources
+    <*> monoidalFieldAla "js-sources" (alaList' VCat SymbolicPathNT) L.jsSources
     <*> hsSourceDirsGrammar
     <*> monoidalFieldAla "other-modules" formatOtherModules L.otherModules
     <*> monoidalFieldAla "virtual-modules" (alaList' VCat MQuoted) L.virtualModules
@@ -656,14 +662,14 @@ buildInfoFieldGrammar =
     <*> monoidalFieldAla "extra-library-flavours" (alaList' VCat Token) L.extraLibFlavours
     <*> monoidalFieldAla "extra-dynamic-library-flavours" (alaList' VCat Token) L.extraDynLibFlavours
       ^^^ availableSince CabalSpecV3_0 []
-    <*> monoidalFieldAla "extra-lib-dirs" (alaList' FSep FilePathNT) L.extraLibDirs
-    <*> monoidalFieldAla "extra-lib-dirs-static" (alaList' FSep FilePathNT) L.extraLibDirsStatic
+    <*> monoidalFieldAla "extra-lib-dirs" (alaList' FSep SymbolicPathNT) L.extraLibDirs
+    <*> monoidalFieldAla "extra-lib-dirs-static" (alaList' FSep SymbolicPathNT) L.extraLibDirsStatic
       ^^^ availableSince CabalSpecV3_8 []
-    <*> monoidalFieldAla "include-dirs" (alaList' FSep FilePathNT) L.includeDirs
-    <*> monoidalFieldAla "includes" (alaList' FSep FilePathNT) L.includes
-    <*> monoidalFieldAla "autogen-includes" (alaList' FSep FilePathNT) L.autogenIncludes
+    <*> monoidalFieldAla "include-dirs" (alaList' FSep SymbolicPathNT) L.includeDirs
+    <*> monoidalFieldAla "includes" (alaList' FSep SymbolicPathNT) L.includes
+    <*> monoidalFieldAla "autogen-includes" (alaList' FSep RelativePathNT) L.autogenIncludes
       ^^^ availableSince CabalSpecV3_0 []
-    <*> monoidalFieldAla "install-includes" (alaList' FSep FilePathNT) L.installIncludes
+    <*> monoidalFieldAla "install-includes" (alaList' FSep RelativePathNT) L.installIncludes
     <*> optionsFieldGrammar
     <*> profOptionsFieldGrammar
     <*> sharedOptionsFieldGrammar
@@ -678,19 +684,19 @@ buildInfoFieldGrammar =
 hsSourceDirsGrammar
   :: ( FieldGrammar c g
      , Applicative (g BuildInfo)
-     , c (List FSep (Identity (SymbolicPath PackageDir SourceDir)) (SymbolicPath PackageDir SourceDir))
+     , forall from to. c (List FSep (SymbolicPathNT from to) (SymbolicPath from to))
      )
-  => g BuildInfo [SymbolicPath PackageDir SourceDir]
+  => g BuildInfo [SymbolicPath Pkg (Dir Source)]
 hsSourceDirsGrammar =
   (++)
     <$> monoidalFieldAla "hs-source-dirs" formatHsSourceDirs L.hsSourceDirs
-    <*> monoidalFieldAla "hs-source-dir" (alaList FSep) wrongLens
+    <*> monoidalFieldAla "hs-source-dir" (alaList' FSep SymbolicPathNT) wrongLens
       --- https://github.com/haskell/cabal/commit/49e3cdae3bdf21b017ccd42e66670ca402e22b44
       ^^^ deprecatedSince CabalSpecV1_2 "Please use 'hs-source-dirs'"
       ^^^ removedIn CabalSpecV3_0 "Please use 'hs-source-dirs' field."
   where
     -- TODO: make pretty printer aware of CabalSpecVersion
-    wrongLens :: Functor f => LensLike' f BuildInfo [SymbolicPath PackageDir SourceDir]
+    wrongLens :: Functor f => LensLike' f BuildInfo [SymbolicPath Pkg (Dir Source)]
     wrongLens f bi = (\fps -> set L.hsSourceDirs fps bi) <$> f []
 
 optionsFieldGrammar
@@ -797,14 +803,14 @@ formatDependencyList = alaList CommaVCat
 formatMixinList :: [Mixin] -> List CommaVCat (Identity Mixin) Mixin
 formatMixinList = alaList CommaVCat
 
-formatExtraSourceFiles :: [FilePath] -> List VCat FilePathNT FilePath
-formatExtraSourceFiles = alaList' VCat FilePathNT
+formatExtraSourceFiles :: [RelativePath Pkg File] -> List VCat (RelativePathNT Pkg File) (RelativePath Pkg File)
+formatExtraSourceFiles = alaList' VCat RelativePathNT
 
 formatExposedModules :: [ModuleName] -> List VCat (MQuoted ModuleName) ModuleName
 formatExposedModules = alaList' VCat MQuoted
 
-formatHsSourceDirs :: [SymbolicPath PackageDir SourceDir] -> List FSep (Identity (SymbolicPath PackageDir SourceDir)) (SymbolicPath PackageDir SourceDir)
-formatHsSourceDirs = alaList FSep
+formatHsSourceDirs :: [SymbolicPath Pkg (Dir Source)] -> List FSep (SymbolicPathNT Pkg (Dir Source)) (SymbolicPath Pkg (Dir Source))
+formatHsSourceDirs = alaList' FSep SymbolicPathNT
 
 formatOtherExtensions :: [Extension] -> List FSep (MQuoted Extension) Extension
 formatOtherExtensions = alaList' FSep MQuoted
@@ -816,16 +822,10 @@ formatOtherModules = alaList' VCat MQuoted
 -- newtypes
 -------------------------------------------------------------------------------
 
--- | Compat FilePath accepts empty file path,
--- but issues a warning.
+-- | Newtype for data directory (absolute or relative).
 --
--- There are simply too many (~1200) package definition files
---
--- @
--- license-file: ""
--- @
---
--- and
+-- Accepts empty file path, but issues a warning;
+-- there are simply too many (~1200) package definition files
 --
 -- @
 -- data-dir: ""
@@ -833,25 +833,23 @@ formatOtherModules = alaList' VCat MQuoted
 --
 -- across Hackage to outrule them completely.
 -- I suspect some of them are generated (e.g. formatted) by machine.
-newtype CompatFilePath = CompatFilePath {getCompatFilePath :: FilePath} -- TODO: Change to use SymPath
+newtype CompatDataDir = CompatDataDir {getCompatDataDir :: SymbolicPath Pkg (Dir DataDir)}
 
-instance Newtype String CompatFilePath
+instance Newtype (SymbolicPath Pkg (Dir DataDir)) CompatDataDir
 
-instance Parsec CompatFilePath where
+instance Parsec CompatDataDir where
   parsec = do
     token <- parsecToken
-    if null token
-      then do
-        parsecWarning PWTEmptyFilePath "empty FilePath"
-        return (CompatFilePath "")
-      else return (CompatFilePath token)
+    when (null token) $
+      parsecWarning PWTEmptyFilePath "empty FilePath"
+    return (CompatDataDir $ makeSymbolicPath token)
 
-instance Pretty CompatFilePath where
-  pretty = showToken . getCompatFilePath
+instance Pretty CompatDataDir where
+  pretty = showToken . getSymbolicPath . getCompatDataDir
 
-newtype CompatLicenseFile = CompatLicenseFile {getCompatLicenseFile :: [SymbolicPath PackageDir LicenseFile]}
+newtype CompatLicenseFile = CompatLicenseFile {getCompatLicenseFile :: [RelativePath Pkg File]}
 
-instance Newtype [SymbolicPath PackageDir LicenseFile] CompatLicenseFile
+instance Newtype [RelativePath Pkg File] CompatLicenseFile
 
 -- TODO
 instance Parsec CompatLicenseFile where

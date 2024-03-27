@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE DataKinds #-}
 
 -----------------------------------------------------------------------------
 
@@ -111,6 +112,7 @@ import Distribution.Client.Setup
   , InstallFlags (..)
   , RepoContext (..)
   , configureCommand
+  , filterCommonFlags
   , filterConfigureFlags
   , filterTestFlags
   )
@@ -193,30 +195,36 @@ import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.Program (ProgramDb)
 import Distribution.Simple.Register (defaultRegisterOptions, registerPackage)
 import Distribution.Simple.Setup
-  ( BenchmarkFlags
+  ( BenchmarkFlags (..)
   , BuildFlags (..)
+  , CommonSetupFlags (..)
+  , CopyFlags (..)
   , HaddockFlags (..)
-  , TestFlags
+  , RegisterFlags (..)
+  , TestFlags (..)
   , buildCommand
+  , copyCommonFlags
+  , defaultCommonSetupFlags
   , defaultDistPref
   , emptyBuildFlags
   , flagToMaybe
   , fromFlag
   , fromFlagOrDefault
   , haddockCommand
+  , maybeToFlag
+  , registerCommonFlags
+  , setupDistPref
+  , setupVerbosity
+  , setupWorkingDir
+  , testCommonFlags
   , toFlag
   )
 import qualified Distribution.Simple.Setup as Cabal
-  ( CopyFlags (..)
-  , Flag (..)
-  , RegisterFlags (..)
-  , TestFlags (..)
-  , copyCommand
-  , emptyCopyFlags
-  , emptyRegisterFlags
-  , registerCommand
-  , testCommand
+import Distribution.Utils.Path hiding
+  ( (<.>)
+  , (</>)
   )
+
 import Distribution.Simple.Utils
   ( VerboseException
   , createDirectoryIfMissingVerbose
@@ -1482,7 +1490,7 @@ performInstallations
       distPref =
         fromFlagOrDefault
           (useDistPref defaultSetupScriptOptions)
-          (configDistPref configFlags)
+          (setupDistPref $ configCommonFlags configFlags)
 
       setupScriptOptions index lock rpkg =
         configureSetupScript
@@ -1698,7 +1706,7 @@ installLocalPackage
   :: Verbosity
   -> PackageIdentifier
   -> ResolvedPkgLoc
-  -> FilePath
+  -> SymbolicPath Pkg (Dir Dist)
   -> (Maybe FilePath -> IO BuildOutcome)
   -> IO BuildOutcome
 installLocalPackage verbosity pkgid location distPref installPkg =
@@ -1733,7 +1741,7 @@ installLocalTarballPackage
   :: Verbosity
   -> PackageIdentifier
   -> FilePath
-  -> FilePath
+  -> SymbolicPath Pkg (Dir Dist)
   -> (Maybe FilePath -> IO BuildOutcome)
   -> IO BuildOutcome
 installLocalTarballPackage
@@ -1774,9 +1782,9 @@ installLocalTarballPackage
       -- fails even with this workaround. We probably can live with that.
       maybeRenameDistDir :: FilePath -> IO ()
       maybeRenameDistDir absUnpackedPath = do
-        let distDirPath = absUnpackedPath </> defaultDistPref
-            distDirPathTmp = absUnpackedPath </> (defaultDistPref ++ "-tmp")
-            distDirPathNew = absUnpackedPath </> distPref
+        let distDirPath = absUnpackedPath </> getSymbolicPath defaultDistPref
+            distDirPathTmp = absUnpackedPath </> (getSymbolicPath defaultDistPref ++ "-tmp")
+            distDirPathNew = absUnpackedPath </> getSymbolicPath distPref
         distDirExists <- doesDirectoryExist distDirPath
         when
           ( distDirExists
@@ -1854,6 +1862,15 @@ installUnpackedPackage
             ++ " with the latest revision from the index."
         writeFileAtomic descFilePath pkgtxt
 
+    let mbWorkDir = fmap makeSymbolicPath workingDir
+        commonFlags ver =
+          (`filterCommonFlags` ver) $
+            defaultCommonSetupFlags
+              { setupDistPref = setupDistPref $ configCommonFlags configFlags
+              , setupVerbosity = toFlag verbosity'
+              , setupWorkingDir = maybeToFlag mbWorkDir
+              }
+
     -- Make sure that we pass --libsubdir etc to 'setup configure' (necessary if
     -- the setup script was compiled against an old version of the Cabal lib).
     configFlags' <- addDefaultInstallDirs configFlags
@@ -1862,8 +1879,33 @@ installUnpackedPackage
         configureFlags =
           filterConfigureFlags
             configFlags'
-              { configVerbosity = toFlag verbosity'
+              { configCommonFlags =
+                  (configCommonFlags (configFlags'))
+                    { setupVerbosity = toFlag verbosity'
+                    }
               }
+
+        buildFlags vers =
+          emptyBuildFlags{buildCommonFlags = commonFlags vers}
+        shouldHaddock = fromFlag (installDocumentation installFlags)
+        haddockFlags' vers =
+          haddockFlags{haddockCommonFlags = commonFlags vers}
+        testsEnabled =
+          fromFlag (configTests configFlags)
+            && fromFlagOrDefault False (installRunTests installFlags)
+        testFlags' vers =
+          (`filterTestFlags` vers) $
+            testFlags{testCommonFlags = commonFlags vers}
+        copyFlags vers =
+          Cabal.emptyCopyFlags
+            { Cabal.copyDest = toFlag InstallDirs.NoCopyDest
+            , copyCommonFlags = commonFlags vers
+            }
+        shouldRegister = PackageDescription.hasLibs pkg
+        registerFlags vers =
+          Cabal.emptyRegisterFlags
+            { registerCommonFlags = commonFlags vers
+            }
 
     -- Path to the optional log file.
     mLogPath <- maybeLogPath
@@ -1872,19 +1914,19 @@ installUnpackedPackage
       -- Configure phase
       onFailure ConfigureFailed $ do
         noticeProgress ProgressStarting
-        setup configureCommand configureFlags mLogPath
+        setup configureCommand configCommonFlags configureFlags mLogPath
 
         -- Build phase
         onFailure BuildFailed $ do
           noticeProgress ProgressBuilding
-          setup buildCommand' buildFlags mLogPath
+          setup buildCommand' buildCommonFlags buildFlags mLogPath
 
           -- Doc generation phase
           docsResult <-
             if shouldHaddock
               then
                 ( do
-                    setup haddockCommand haddockFlags' mLogPath
+                    setup haddockCommand haddockCommonFlags haddockFlags' mLogPath
                     return DocsOk
                 )
                   `catchIO` (\_ -> return DocsFailed)
@@ -1894,7 +1936,7 @@ installUnpackedPackage
           -- Tests phase
           onFailure TestsFailed $ do
             when (testsEnabled && PackageDescription.hasTests pkg) $
-              setup Cabal.testCommand testFlags' mLogPath
+              setup Cabal.testCommand testCommonFlags testFlags' mLogPath
 
             let testsResult
                   | testsEnabled = TestsOk
@@ -1911,11 +1953,14 @@ installUnpackedPackage
                 platform
                 pkg
                 $ do
-                  setup Cabal.copyCommand copyFlags mLogPath
+                  setup Cabal.copyCommand copyCommonFlags copyFlags mLogPath
 
               -- Capture installed package configuration file, so that
               -- it can be incorporated into the final InstallPlan
-              ipkgs <- genPkgConfs mLogPath
+              ipkgs <-
+                if shouldRegister
+                  then genPkgConfs registerFlags mLogPath
+                  else return []
               let ipkgs' = case ipkgs of
                     [ipkg] -> [ipkg{Installed.installedUnitId = uid}]
                     _ -> ipkgs
@@ -1928,6 +1973,7 @@ installUnpackedPackage
                   verbosity
                   comp
                   progdb
+                  mbWorkDir
                   packageDBs
                   ipkg'
                   defaultRegisterOptions
@@ -1944,38 +1990,6 @@ installUnpackedPackage
       noticeProgress phase =
         when isParallelBuild $
           progressMessage verbosity phase dispname
-
-      buildFlags _ =
-        emptyBuildFlags
-          { buildDistPref = configDistPref configFlags
-          , buildVerbosity = toFlag verbosity'
-          }
-      shouldHaddock = fromFlag (installDocumentation installFlags)
-      haddockFlags' _ =
-        haddockFlags
-          { haddockVerbosity = toFlag verbosity'
-          , haddockDistPref = configDistPref configFlags
-          }
-      testsEnabled =
-        fromFlag (configTests configFlags)
-          && fromFlagOrDefault False (installRunTests installFlags)
-      testFlags' =
-        filterTestFlags
-          testFlags
-            { Cabal.testDistPref = configDistPref configFlags
-            }
-      copyFlags _ =
-        Cabal.emptyCopyFlags
-          { Cabal.copyDistPref = configDistPref configFlags
-          , Cabal.copyDest = toFlag InstallDirs.NoCopyDest
-          , Cabal.copyVerbosity = toFlag verbosity'
-          }
-      shouldRegister = PackageDescription.hasLibs pkg
-      registerFlags _ =
-        Cabal.emptyRegisterFlags
-          { Cabal.regDistPref = configDistPref configFlags
-          , Cabal.regVerbosity = toFlag verbosity'
-          }
       verbosity' = maybe verbosity snd useLogFile
       tempTemplate name = name ++ "-" ++ prettyShow pkgid
 
@@ -2001,30 +2015,32 @@ installUnpackedPackage
               (configUserInstall configFlags')
 
       genPkgConfs
-        :: Maybe FilePath
+        :: (Version -> Cabal.RegisterFlags)
+        -> Maybe FilePath
         -> IO [Installed.InstalledPackageInfo]
-      genPkgConfs mLogPath =
-        if shouldRegister
-          then do
-            tmp <- getTemporaryDirectory
-            withTempDirectory verbosity tmp (tempTemplate "pkgConf") $ \dir -> do
-              let pkgConfDest = dir </> "pkgConf"
-                  registerFlags' version =
-                    (registerFlags version)
-                      { Cabal.regGenPkgConf = toFlag (Just pkgConfDest)
-                      }
-              setup Cabal.registerCommand registerFlags' mLogPath
-              is_dir <- doesDirectoryExist pkgConfDest
-              let notHidden = not . isHidden
-                  isHidden name = "." `isPrefixOf` name
-              if is_dir
-                then -- Sort so that each prefix of the package
-                -- configurations is well formed
+      genPkgConfs flags mLogPath = do
+        tmp <- getTemporaryDirectory
+        withTempDirectory verbosity tmp (tempTemplate "pkgConf") $ \dir -> do
+          let pkgConfDest = dir </> "pkgConf"
+              registerFlags' version =
+                (flags version)
+                  { Cabal.regGenPkgConf = toFlag (Just pkgConfDest)
+                  }
+          setup
+            Cabal.registerCommand
+            registerCommonFlags
+            registerFlags'
+            mLogPath
+          is_dir <- doesDirectoryExist pkgConfDest
+          let notHidden = not . isHidden
+              isHidden name = "." `isPrefixOf` name
+          if is_dir
+            then -- Sort so that each prefix of the package
+            -- configurations is well formed
 
-                  traverse (readPkgConf pkgConfDest) . sort . filter notHidden
-                    =<< getDirectoryContents pkgConfDest
-                else fmap (: []) $ readPkgConf "." pkgConfDest
-          else return []
+              traverse (readPkgConf pkgConfDest) . sort . filter notHidden
+                =<< getDirectoryContents pkgConfDest
+            else fmap (: []) $ readPkgConf "." pkgConfDest
 
       readPkgConf
         :: FilePath
@@ -2056,7 +2072,7 @@ installUnpackedPackage
             when logFileExists $ removeFile logFileName
             return (Just logFileName)
 
-      setup cmd flags mLogPath =
+      setup cmd getCommonFlags flags mLogPath =
         Exception.bracket
           (traverse (\path -> openFile path AppendMode) mLogPath)
           (traverse_ hClose)
@@ -2065,10 +2081,11 @@ installUnpackedPackage
                 verbosity
                 scriptOptions
                   { useLoggingHandle = logFileHandle
-                  , useWorkingDir = workingDir
+                  , useWorkingDir = makeSymbolicPath <$> workingDir
                   }
                 (Just pkg)
                 cmd
+                getCommonFlags
                 flags
                 (const [])
           )

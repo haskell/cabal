@@ -1,151 +1,161 @@
-GenericPackageDescription
-  {condBenchmarks = [],
-   condExecutables = [_×_
-                        (UnqualComponentName "str-example")
-                        CondNode
-                          {condTreeComponents = [],
-                           condTreeConstraints = [Dependency
-                                                    (PackageName "base")
-                                                    (OrLaterVersion (mkVersion [0]))
-                                                    mainLibSet,
-                                                  Dependency
-                                                    (PackageName "str-string")
-                                                    (OrLaterVersion (mkVersion [0]))
-                                                    mainLibSet,
-                                                  Dependency
-                                                    (PackageName "str-bytestring")
-                                                    (OrLaterVersion (mkVersion [0]))
-                                                    mainLibSet],
-                           condTreeData = Executable
-                                            {buildInfo = BuildInfo
-                                                           {asmOptions = [],
-                                                            asmSources = [],
-                                                            autogenIncludes = [],
-                                                            autogenModules = [],
-                                                            buildToolDepends = [],
-                                                            buildTools = [],
-                                                            buildable = True,
-                                                            cSources = [],
-                                                            ccOptions = [],
-                                                            cmmOptions = [],
-                                                            cmmSources = [],
-                                                            cppOptions = [],
-                                                            customFieldsBI = [],
-                                                            cxxOptions = [],
-                                                            cxxSources = [],
-                                                            defaultExtensions = [],
-                                                            defaultLanguage = Nothing,
-                                                            extraBundledLibs = [],
-                                                            extraDynLibFlavours = [],
-                                                            extraFrameworkDirs = [],
-                                                            extraGHCiLibs = [],
-                                                            extraLibDirs = [],
-                                                            extraLibDirsStatic = [],
-                                                            extraLibFlavours = [],
-                                                            extraLibs = [],
-                                                            extraLibsStatic = [],
-                                                            frameworks = [],
-                                                            hsSourceDirs = [SymbolicPath
-                                                                              "str-example"],
-                                                            hsc2hsOptions = [],
-                                                            includeDirs = [],
-                                                            includes = [],
-                                                            installIncludes = [],
-                                                            jsSources = [],
-                                                            ldOptions = [],
-                                                            mixins = [Mixin
-                                                                        {mixinIncludeRenaming = IncludeRenaming
-                                                                                                  {includeProvidesRn = ModuleRenaming
-                                                                                                                         [_×_
-                                                                                                                            (ModuleName
-                                                                                                                               "Str")
-                                                                                                                            (ModuleName
-                                                                                                                               "Str.String")],
-                                                                                                   includeRequiresRn = DefaultRenaming},
-                                                                         mixinLibraryName = LMainLibName,
-                                                                         mixinPackageName = PackageName
-                                                                                              "str-string"},
-                                                                      Mixin
-                                                                        {mixinIncludeRenaming = IncludeRenaming
-                                                                                                  {includeProvidesRn = ModuleRenaming
-                                                                                                                         [_×_
-                                                                                                                            (ModuleName
-                                                                                                                               "Str")
-                                                                                                                            (ModuleName
-                                                                                                                               "Str.ByteString")],
-                                                                                                   includeRequiresRn = DefaultRenaming},
-                                                                         mixinLibraryName = LMainLibName,
-                                                                         mixinPackageName = PackageName
-                                                                                              "str-bytestring"}],
-                                                            oldExtensions = [],
-                                                            options = PerCompilerFlavor [] [],
-                                                            otherExtensions = [],
-                                                            otherLanguages = [],
-                                                            otherModules = [],
-                                                            pkgconfigDepends = [],
-                                                            profOptions = PerCompilerFlavor [] [],
-                                                            sharedOptions = PerCompilerFlavor [] [],
-                                                            staticOptions = PerCompilerFlavor [] [],
-                                                            targetBuildDepends = [Dependency
-                                                                                    (PackageName
-                                                                                       "base")
-                                                                                    (OrLaterVersion
-                                                                                       (mkVersion
-                                                                                          [0]))
-                                                                                    mainLibSet,
-                                                                                  Dependency
-                                                                                    (PackageName
-                                                                                       "str-string")
-                                                                                    (OrLaterVersion
-                                                                                       (mkVersion
-                                                                                          [0]))
-                                                                                    mainLibSet,
-                                                                                  Dependency
-                                                                                    (PackageName
-                                                                                       "str-bytestring")
-                                                                                    (OrLaterVersion
-                                                                                       (mkVersion
-                                                                                          [0]))
-                                                                                    mainLibSet],
-                                                            virtualModules = []},
-                                             exeName = UnqualComponentName "str-example",
-                                             exeScope = ExecutablePublic,
-                                             modulePath = "Main.hs"}}],
-   condForeignLibs = [],
-   condLibrary = Nothing,
-   condSubLibraries = [],
-   condTestSuites = [],
-   genPackageFlags = [],
-   gpdScannedVersion = Nothing,
-   packageDescription = PackageDescription
-                          {author = "",
-                           benchmarks = [],
-                           bugReports = "",
-                           buildTypeRaw = Just Simple,
-                           category = "",
-                           copyright = "",
-                           customFieldsPD = [],
-                           dataDir = ".",
-                           dataFiles = [],
-                           description = "",
-                           executables = [],
-                           extraDocFiles = [],
-                           extraSrcFiles = [],
-                           extraTmpFiles = [],
-                           foreignLibs = [],
-                           homepage = "",
-                           library = Nothing,
-                           licenseFiles = [],
-                           licenseRaw = Left NONE,
-                           maintainer = "",
-                           package = PackageIdentifier
-                                       {pkgName = PackageName "mixin", pkgVersion = mkVersion [0]},
-                           pkgUrl = "",
-                           setupBuildInfo = Nothing,
-                           sourceRepos = [],
-                           specVersion = CabalSpecV2_0,
-                           stability = "",
-                           subLibraries = [],
-                           synopsis = "",
-                           testSuites = [],
-                           testedWith = []}}
+GenericPackageDescription {
+  packageDescription =
+  PackageDescription {
+    specVersion = CabalSpecV2_0,
+    package = PackageIdentifier {
+      pkgName = PackageName "mixin",
+      pkgVersion = mkVersion [0]},
+    licenseRaw = Left NONE,
+    licenseFiles = [],
+    copyright = "",
+    maintainer = "",
+    author = "",
+    stability = "",
+    testedWith = [],
+    homepage = "",
+    pkgUrl = "",
+    bugReports = "",
+    sourceRepos = [],
+    synopsis = "",
+    description = "",
+    category = "",
+    customFieldsPD = [],
+    buildTypeRaw = Just Simple,
+    setupBuildInfo = Nothing,
+    library = Nothing,
+    subLibraries = [],
+    executables = [],
+    foreignLibs = [],
+    testSuites = [],
+    benchmarks = [],
+    dataFiles = [],
+    dataDir = SymbolicPath ".",
+    extraSrcFiles = [],
+    extraTmpFiles = [],
+    extraDocFiles = []},
+  gpdScannedVersion = Nothing,
+  genPackageFlags = [],
+  condLibrary = Nothing,
+  condSubLibraries = [],
+  condForeignLibs = [],
+  condExecutables = [
+    _×_
+      (UnqualComponentName
+        "str-example")
+      CondNode {
+        condTreeData = Executable {
+          exeName = UnqualComponentName
+            "str-example",
+          modulePath = SymbolicPath
+            "Main.hs",
+          exeScope = ExecutablePublic,
+          buildInfo = BuildInfo {
+            buildable = True,
+            buildTools = [],
+            buildToolDepends = [],
+            cppOptions = [],
+            asmOptions = [],
+            cmmOptions = [],
+            ccOptions = [],
+            cxxOptions = [],
+            ldOptions = [],
+            hsc2hsOptions = [],
+            pkgconfigDepends = [],
+            frameworks = [],
+            extraFrameworkDirs = [],
+            asmSources = [],
+            cmmSources = [],
+            cSources = [],
+            cxxSources = [],
+            jsSources = [],
+            hsSourceDirs = [
+              SymbolicPath "str-example"],
+            otherModules = [],
+            virtualModules = [],
+            autogenModules = [],
+            defaultLanguage = Nothing,
+            otherLanguages = [],
+            defaultExtensions = [],
+            otherExtensions = [],
+            oldExtensions = [],
+            extraLibs = [],
+            extraLibsStatic = [],
+            extraGHCiLibs = [],
+            extraBundledLibs = [],
+            extraLibFlavours = [],
+            extraDynLibFlavours = [],
+            extraLibDirs = [],
+            extraLibDirsStatic = [],
+            includeDirs = [],
+            includes = [],
+            autogenIncludes = [],
+            installIncludes = [],
+            options = PerCompilerFlavor
+              []
+              [],
+            profOptions = PerCompilerFlavor
+              []
+              [],
+            sharedOptions =
+            PerCompilerFlavor [] [],
+            staticOptions =
+            PerCompilerFlavor [] [],
+            customFieldsBI = [],
+            targetBuildDepends = [
+              Dependency
+                (PackageName "base")
+                (OrLaterVersion (mkVersion [0]))
+                mainLibSet,
+              Dependency
+                (PackageName "str-string")
+                (OrLaterVersion (mkVersion [0]))
+                mainLibSet,
+              Dependency
+                (PackageName "str-bytestring")
+                (OrLaterVersion (mkVersion [0]))
+                mainLibSet],
+            mixins = [
+              Mixin {
+                mixinPackageName = PackageName
+                  "str-string",
+                mixinLibraryName = LMainLibName,
+                mixinIncludeRenaming =
+                IncludeRenaming {
+                  includeProvidesRn =
+                  ModuleRenaming
+                    [
+                      _×_
+                        (ModuleName "Str")
+                        (ModuleName "Str.String")],
+                  includeRequiresRn =
+                  DefaultRenaming}},
+              Mixin {
+                mixinPackageName = PackageName
+                  "str-bytestring",
+                mixinLibraryName = LMainLibName,
+                mixinIncludeRenaming =
+                IncludeRenaming {
+                  includeProvidesRn =
+                  ModuleRenaming
+                    [
+                      _×_
+                        (ModuleName "Str")
+                        (ModuleName "Str.ByteString")],
+                  includeRequiresRn =
+                  DefaultRenaming}}]}},
+        condTreeConstraints = [
+          Dependency
+            (PackageName "base")
+            (OrLaterVersion (mkVersion [0]))
+            mainLibSet,
+          Dependency
+            (PackageName "str-string")
+            (OrLaterVersion (mkVersion [0]))
+            mainLibSet,
+          Dependency
+            (PackageName "str-bytestring")
+            (OrLaterVersion (mkVersion [0]))
+            mainLibSet],
+        condTreeComponents = []}],
+  condTestSuites = [],
+  condBenchmarks = []}

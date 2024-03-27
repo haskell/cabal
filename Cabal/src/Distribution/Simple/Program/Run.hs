@@ -1,6 +1,9 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 
 -----------------------------------------------------------------------------
 
@@ -19,6 +22,7 @@ module Distribution.Simple.Program.Run
   , emptyProgramInvocation
   , simpleProgramInvocation
   , programInvocation
+  , programInvocationCwd
   , multiStageProgramInvocation
   , runProgramInvocation
   , getProgramInvocationOutput
@@ -36,6 +40,7 @@ import Distribution.Simple.Errors
 import Distribution.Simple.Program.Types
 import Distribution.Simple.Utils
 import Distribution.Utils.Generic
+import Distribution.Utils.Path
 import Distribution.Verbosity
 
 import qualified Data.ByteString.Lazy as LBS
@@ -79,14 +84,20 @@ emptyProgramInvocation =
     , progInvokeOutputEncoding = IOEncodingText
     }
 
-simpleProgramInvocation :: FilePath -> [String] -> ProgramInvocation
+simpleProgramInvocation
+  :: FilePath
+  -> [String]
+  -> ProgramInvocation
 simpleProgramInvocation path args =
   emptyProgramInvocation
     { progInvokePath = path
     , progInvokeArgs = args
     }
 
-programInvocation :: ConfiguredProgram -> [String] -> ProgramInvocation
+programInvocation
+  :: ConfiguredProgram
+  -> [String]
+  -> ProgramInvocation
 programInvocation prog args =
   emptyProgramInvocation
     { progInvokePath = programPath prog
@@ -95,6 +106,17 @@ programInvocation prog args =
           ++ args
           ++ programOverrideArgs prog
     , progInvokeEnv = programOverrideEnv prog
+    }
+
+programInvocationCwd
+  :: forall to
+   . Maybe (SymbolicPath CWD (Dir to))
+  -> ConfiguredProgram
+  -> [String]
+  -> ProgramInvocation
+programInvocationCwd mbWorkDir prog args =
+  (programInvocation prog args)
+    { progInvokeCwd = fmap getSymbolicPath mbWorkDir
     }
 
 runProgramInvocation :: Verbosity -> ProgramInvocation -> IO ()
@@ -107,7 +129,7 @@ runProgramInvocation
     , progInvokeCwd = Nothing
     , progInvokeInput = Nothing
     } =
-    rawSystemExit verbosity path args
+    rawSystemExit verbosity Nothing path args
 runProgramInvocation
   verbosity
   ProgramInvocation

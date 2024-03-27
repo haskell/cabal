@@ -1,8 +1,11 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ViewPatterns #-}
 
 -----------------------------------------------------------------------------
 
@@ -18,7 +21,15 @@
 -- Definition of the repl command-line options.
 -- See: @Distribution.Simple.Setup@
 module Distribution.Simple.Setup.Repl
-  ( ReplFlags (..)
+  ( ReplFlags
+      ( ReplCommonFlags
+      , replVerbosity
+      , replDistPref
+      , replCabalFilePath
+      , replWorkingDir
+      , replTargets
+      , ..
+      )
   , defaultReplFlags
   , replCommand
   , ReplOptions (..)
@@ -32,10 +43,10 @@ import Distribution.ReadE
 import Distribution.Simple.Command hiding (boolOpt, boolOpt')
 import Distribution.Simple.Flag
 import Distribution.Simple.Program
-import Distribution.Simple.Utils
-import Distribution.Verbosity
-
 import Distribution.Simple.Setup.Common
+import Distribution.Simple.Utils
+import Distribution.Utils.Path
+import Distribution.Verbosity
 
 -- ------------------------------------------------------------
 
@@ -50,6 +61,30 @@ data ReplOptions = ReplOptions
   }
   deriving (Show, Generic, Typeable)
 
+pattern ReplCommonFlags
+  :: Flag Verbosity
+  -> Flag (SymbolicPath Pkg (Dir Dist))
+  -> Flag (SymbolicPath CWD (Dir Pkg))
+  -> Flag (SymbolicPath Pkg File)
+  -> [String]
+  -> ReplFlags
+pattern ReplCommonFlags
+  { replVerbosity
+  , replDistPref
+  , replWorkingDir
+  , replCabalFilePath
+  , replTargets
+  } <-
+  ( replCommonFlags ->
+      CommonSetupFlags
+        { setupVerbosity = replVerbosity
+        , setupDistPref = replDistPref
+        , setupWorkingDir = replWorkingDir
+        , setupCabalFilePath = replCabalFilePath
+        , setupTargets = replTargets
+        }
+    )
+
 instance Binary ReplOptions
 instance Structured ReplOptions
 
@@ -61,10 +96,9 @@ instance Semigroup ReplOptions where
   (<>) = gmappend
 
 data ReplFlags = ReplFlags
-  { replProgramPaths :: [(String, FilePath)]
+  { replCommonFlags :: !CommonSetupFlags
+  , replProgramPaths :: [(String, FilePath)]
   , replProgramArgs :: [(String, [String])]
-  , replDistPref :: Flag FilePath
-  , replVerbosity :: Flag Verbosity
   , replReload :: Flag Bool
   , replReplOptions :: ReplOptions
   }
@@ -76,10 +110,9 @@ instance Structured ReplFlags
 defaultReplFlags :: ReplFlags
 defaultReplFlags =
   ReplFlags
-    { replProgramPaths = mempty
+    { replCommonFlags = defaultCommonSetupFlags
+    , replProgramPaths = mempty
     , replProgramArgs = []
-    , replDistPref = NoFlag
-    , replVerbosity = Flag normal
     , replReload = Flag False
     , replReplOptions = mempty
     }
@@ -143,38 +176,37 @@ replCommand progDb =
       commandUsage = \pname -> "Usage: " ++ pname ++ " repl [COMPONENT] [FLAGS]\n"
     , commandDefaultFlags = defaultReplFlags
     , commandOptions = \showOrParseArgs ->
-        optionVerbosity replVerbosity (\v flags -> flags{replVerbosity = v})
-          : optionDistPref
-            replDistPref
-            (\d flags -> flags{replDistPref = d})
-            showOrParseArgs
-          : programDbPaths
+        withCommonSetupOptions
+          replCommonFlags
+          (\c f -> f{replCommonFlags = c})
+          showOrParseArgs
+          $ programDbPaths
             progDb
             showOrParseArgs
             replProgramPaths
             (\v flags -> flags{replProgramPaths = v})
-          ++ programDbOption
-            progDb
-            showOrParseArgs
-            replProgramArgs
-            (\v flags -> flags{replProgramArgs = v})
-          ++ programDbOptions
-            progDb
-            showOrParseArgs
-            replProgramArgs
-            (\v flags -> flags{replProgramArgs = v})
-          ++ case showOrParseArgs of
-            ParseArgs ->
-              [ option
-                  ""
-                  ["reload"]
-                  "Used from within an interpreter to update files."
-                  replReload
-                  (\v flags -> flags{replReload = v})
-                  trueArg
-              ]
-            _ -> []
-          ++ map liftReplOption (replOptions showOrParseArgs)
+            ++ programDbOption
+              progDb
+              showOrParseArgs
+              replProgramArgs
+              (\v flags -> flags{replProgramArgs = v})
+            ++ programDbOptions
+              progDb
+              showOrParseArgs
+              replProgramArgs
+              (\v flags -> flags{replProgramArgs = v})
+            ++ case showOrParseArgs of
+              ParseArgs ->
+                [ option
+                    ""
+                    ["reload"]
+                    "Used from within an interpreter to update files."
+                    replReload
+                    (\v flags -> flags{replReload = v})
+                    trueArg
+                ]
+              _ -> []
+            ++ map liftReplOption (replOptions showOrParseArgs)
     }
   where
     liftReplOption = liftOption replReplOptions (\v flags -> flags{replReplOptions = v})
