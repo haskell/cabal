@@ -44,6 +44,10 @@ jobs:
       #     ghcup config set cache true
       #     ghcup install ghc recommended
       #     ghcup set ghc recommended
+      - name: Haskell versions
+        run: |
+          ghc --version
+          cabal --version
       - name: Update Hackage index
         run: cabal v2-update
       - uses: actions/checkout@v4
