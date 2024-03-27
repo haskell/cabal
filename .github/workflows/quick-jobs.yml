@@ -81,10 +81,21 @@ jobs:
     name: Doctest Cabal
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/cache@v4
+      # It is complicated to get a proper cache key for the dependencies of a package
+      # (here: doctest) that we just `cabal install`.
+      # So, as a heuristics we update the cache once per day.
+      # Updating it with each run would be an alternative, but we a short of cache space,
+      # and this would generate too many new caches.
+      - name: Use date as cache key
+        run: |
+          echo "DATE=$(date +'%Y-%m-%d')" >> "${GITHUB_ENV}"
+      - name: Restore cached dependencies
+        uses: actions/cache/restore@v4
+        id: cache
         with:
           path: ~/.local/state/cabal
-          key: linux-store-doctest
+          key: linux-store-doctest-${{ env.DATE }}
+          restore-keys: linux-store-doctest
       - name: Update Hackage index
         run: cabal v2-update
       - uses: actions/checkout@v4
@@ -92,6 +103,13 @@ jobs:
         run: make doctest-install
       - name: Doctest
         run: make doctest
+      - name: Cache dependencies
+        if: always() && steps.cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ~/.local/state/cabal
+          key: ${{ steps.cache.outputs.cache-primary-key }}
+
   buildinfo:
     name: Check Field Syntax Reference
     runs-on: ubuntu-latest
