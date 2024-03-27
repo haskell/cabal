@@ -941,7 +941,6 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir pkg lib clbi = do
                 ]
   where
     -- See Note [Symbolic paths] in Distribution.Utils.Path
-    i :: SymbolicPathX allowAbsolute Pkg to -> FilePath
     i = interpretSymbolicPathLBI lbi
 
     builtDir = componentBuildDir lbi clbi

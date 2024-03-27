@@ -29,8 +29,6 @@ import System.Exit
 import Data.List (intercalate, isPrefixOf)
 import Distribution.Simple.Program.Db
 import Distribution.Simple.Program
-import Distribution.Utils.Path
-  ( SymbolicPath, FileOrDir(..), CWD, Pkg )
 import Control.Exception
 import qualified Control.Exception as E
 import Control.Monad
@@ -136,7 +134,7 @@ bracketWithInit before initialize after thing =
 --      * Current working directory and environment overrides
 --        are currently not implemented.
 --
-runOnServer :: Server -> Maybe (SymbolicPath CWD (Dir Pkg)) -> [(String, Maybe String)]
+runOnServer :: Server -> Maybe FilePath -> [(String, Maybe String)]
             -> FilePath -> [String] -> IO ServerResult
 runOnServer s mb_cwd env_overrides script_path args = do
     -- TODO: cwd not implemented

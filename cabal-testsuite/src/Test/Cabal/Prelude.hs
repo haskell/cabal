@@ -11,6 +11,7 @@ module Test.Cabal.Prelude (
     module Test.Cabal.Monad,
     module Test.Cabal.Run,
     module System.FilePath,
+    module Distribution.Utils.Path,
     module Control.Monad,
     module Control.Monad.IO.Class,
     module Distribution.Version,
@@ -83,7 +84,7 @@ runM :: FilePath -> [String] -> Maybe String -> TestM Result
 runM path args input = do
     env <- getTestEnv
     r <- liftIO $ run (testVerbosity env)
-                 (Just $ makeSymbolicPath $ testCurrentDir env)
+                 (Just $ testCurrentDir env)
                  (testEnvironment env)
                  path
                  args
@@ -200,7 +201,7 @@ setup'' prefix cmd args = do
             -- Run the Custom script!
             else do
               r <- liftIO $ runghc (testScriptEnv env)
-                                   (Just $ makeSymbolicPath $ testCurrentDir env)
+                                   (Just $ testCurrentDir env)
                                    (testEnvironment env)
                                    (testCurrentDir env </> prefix </> "Setup.hs")
                                    (NE.toList full_args)
@@ -834,7 +835,7 @@ hasProfiledLibraries = do
     ghc_path <- programPathM ghcProgram
     let prof_test_hs = testWorkDir env </> "Prof.hs"
     liftIO $ writeFile prof_test_hs "module Prof where"
-    r <- liftIO $ run (testVerbosity env) (Just $ makeSymbolicPath $ testCurrentDir env)
+    r <- liftIO $ run (testVerbosity env) (Just $ testCurrentDir env)
                       (testEnvironment env) ghc_path ["-prof", "-c", prof_test_hs]
                       Nothing
     return (resultExitCode r == ExitSuccess)

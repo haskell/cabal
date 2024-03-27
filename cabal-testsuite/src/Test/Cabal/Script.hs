@@ -72,7 +72,7 @@ mkScriptEnv verbosity =
     }
 
 -- | Run a script with 'runghc', under the 'ScriptEnv'.
-runghc :: ScriptEnv -> Maybe (SymbolicPath CWD (Dir Pkg)) -> [(String, Maybe String)]
+runghc :: ScriptEnv -> Maybe FilePath -> [(String, Maybe String)]
        -> FilePath -> [String] -> IO Result
 runghc senv mb_cwd env_overrides script_path args = do
     (real_path, real_args) <- runnerCommand senv mb_cwd env_overrides script_path args
@@ -80,7 +80,7 @@ runghc senv mb_cwd env_overrides script_path args = do
 
 -- | Compute the command line which should be used to run a Haskell
 -- script with 'runghc'.
-runnerCommand :: ScriptEnv -> Maybe (SymbolicPath CWD (Dir Pkg)) -> [(String, Maybe String)]
+runnerCommand :: ScriptEnv -> Maybe FilePath -> [(String, Maybe String)]
               -> FilePath -> [String] -> IO (FilePath, [String])
 runnerCommand senv mb_cwd _env_overrides script_path args = do
     (prog, _) <- requireProgram verbosity runghcProgram (runnerProgramDb senv)
@@ -93,9 +93,9 @@ runnerCommand senv mb_cwd _env_overrides script_path args = do
     ghc_args = runnerGhcArgs senv mb_cwd
 
 -- | Compute the GHC flags to invoke 'runghc' with under a 'ScriptEnv'.
-runnerGhcArgs :: ScriptEnv -> Maybe (SymbolicPath CWD (Dir Pkg)) -> [String]
+runnerGhcArgs :: ScriptEnv -> Maybe FilePath -> [String]
 runnerGhcArgs senv mb_cwd =
-    renderGhcOptions (runnerCompiler senv) (runnerPlatform senv) ghc_options
+  renderGhcOptions (runnerCompiler senv) (runnerPlatform senv) ghc_options
   where
     ghc_options = M.mempty { ghcOptPackageDBs = runnerPackageDbStack senv
                            , ghcOptPackages   = toNubListR (runnerPackages senv)

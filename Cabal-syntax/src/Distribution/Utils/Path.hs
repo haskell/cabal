@@ -289,14 +289,14 @@ moduleNameSymbolicPath modNm = SymbolicPath $ ModuleName.toFilePath modNm
 -- (because the program might expect certain paths to be relative).
 --
 -- See Note [Symbolic paths] in Distribution.Utils.Path.
-interpretSymbolicPath :: Maybe (SymbolicPath CWD (Dir from)) -> SymbolicPathX allowAbsolute from to -> FilePath
+interpretSymbolicPath :: Maybe (SymbolicPath CWD (Dir Pkg)) -> SymbolicPathX allowAbsolute Pkg to -> FilePath
 interpretSymbolicPath mbWorkDir (SymbolicPath p) =
   -- Note that this properly handles an absolute symbolic path,
   -- because if @q@ is absolute, then @p </> q = q@.
   maybe p ((</> p) . getSymbolicPath) mbWorkDir
 
--- | Interpret a symbolic path, assuming that the directory it is relative to
--- is the same as the working directory.
+-- | Interpret a symbolic path, **under the assumption that the working
+-- directory is the package directory**.
 --
 -- Use 'interpretSymbolicPath' instead if you need to take into account a
 -- working directory argument before directly interacting with the file system.
@@ -312,8 +312,11 @@ interpretSymbolicPath mbWorkDir (SymbolicPath p) =
 -- >   runProgramInvocation $
 -- >     programInvocationCwd mbWorkDir ghcProg [interpretSymbolicPathCWD inputFile]
 --
+-- In this example, 'programInvocationCwd' sets the working directory, so it is
+-- appropriate to use 'interpretSymbolicPathCWD' to provide its arguments.
+--
 -- See Note [Symbolic paths] in Distribution.Utils.Path.
-interpretSymbolicPathCWD :: SymbolicPathX allowAbsolute from to -> FilePath
+interpretSymbolicPathCWD :: SymbolicPathX allowAbsolute Pkg to -> FilePath
 interpretSymbolicPathCWD (SymbolicPath p) = p
 
 -- | Change what a symbolic path is pointing to.
