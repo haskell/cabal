@@ -1,0 +1,26 @@
+synopsis: Show provenance of project constraints
+description:
+  Show imports when the solver rejects a package version due to a project
+  constraint.  Even though imports are relative to their parent when imported,
+  their paths are shown relative to the directory of the project in the solver
+  output.
+
+  ```
+  $ cabal build all --dry-run
+  ...
+  [__1] next goal: hashable
+  [__1] rejecting: hashable-1.4.3.0
+        (constraint from cabal.project requires ==1.4.2.0)
+  [__1] rejecting: hashable-1.4.2.0
+        (constraint from project-stackage/nightly-2023-12-07.config requires ==1.4.3.0)
+          imported by: cabal.project
+  ```
+
+  Fixes some test failures detecting cycles in imports, when;
+  
+  - the wrong import was reported as starting the cycle
+  - a cycle was reported that wasn't actually a cycle
+
+packages: cabal-install-solver cabal-install
+prs: #9578
+issues: #9562

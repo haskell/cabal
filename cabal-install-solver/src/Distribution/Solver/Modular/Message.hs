@@ -31,8 +31,10 @@ import Distribution.Solver.Modular.Version
 import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.PackagePath
 import Distribution.Solver.Types.Progress
+import Distribution.Solver.Types.ProjectConfigPath (docProjectConfigPathFailReason)
 import Distribution.Types.LibraryName
 import Distribution.Types.UnqualComponentName
+import Text.PrettyPrint (nest, render)
 
 data Message =
     Enter           -- ^ increase indentation level
@@ -311,6 +313,7 @@ showFR _ NotExplicit                      = " (not a user-provided goal nor ment
 showFR _ Shadowed                         = " (shadowed by another installed package with same version)"
 showFR _ (Broken u)                       = " (package is broken, missing dependency " ++ prettyShow u ++ ")"
 showFR _ UnknownPackage                   = " (unknown package)"
+showFR _ (GlobalConstraintVersion vr (ConstraintSourceProjectConfig pc)) = '\n' : (render . nest 6 $ docProjectConfigPathFailReason vr pc)
 showFR _ (GlobalConstraintVersion vr src) = " (" ++ constraintSource src ++ " requires " ++ prettyShow vr ++ ")"
 showFR _ (GlobalConstraintInstalled src)  = " (" ++ constraintSource src ++ " requires installed instance)"
 showFR _ (GlobalConstraintSource src)     = " (" ++ constraintSource src ++ " requires source instance)"
