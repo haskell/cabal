@@ -184,7 +184,7 @@ import Distribution.Fields.ConfVar (parseConditionConfVarFromClause)
 
 import Distribution.Client.HttpUtils
 import Distribution.Client.ReplFlags (multiReplOption)
-import System.Directory (createDirectoryIfMissing)
+import System.Directory (createDirectoryIfMissing, makeAbsolute)
 import System.FilePath (isAbsolute, isPathSeparator, makeValid, splitFileName, (</>))
 
 ------------------------------------------------------------------
@@ -237,7 +237,7 @@ parseProject
   -> IO (ParseResult ProjectConfigSkeleton)
 parseProject rootPath cacheDir httpTransport verbosity configToParse = do
   let (dir, projectFileName) = splitFileName rootPath
-  projectDir <- mkAbsoluteDir dir
+  projectDir <- makeAbsolute dir
   projectPath <- canonicalizeConfigPath projectDir (ProjectConfigPath $ projectFileName :| [])
   parseProjectSkeleton cacheDir httpTransport verbosity projectDir projectPath configToParse
 
@@ -245,7 +245,7 @@ parseProjectSkeleton
   :: FilePath
   -> HttpTransport
   -> Verbosity
-  -> AbsoluteDir
+  -> FilePath
   -- ^ The directory of the project configuration, typically the directory of cabal.project
   -> ProjectConfigPath
   -- ^ The path of the file being parsed, either the root or an import
