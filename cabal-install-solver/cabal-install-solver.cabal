@@ -107,7 +107,7 @@ library
     , array         >=0.4      && <0.6
     , base          >=4.10     && <4.20
     , bytestring    >=0.10.6.0 && <0.13
-    , Cabal         ^>=3.10
+    , Cabal         ^>=3.10.3
     , Cabal-syntax  ^>=3.10
     , containers    >=0.5.6.2  && <0.8
     , edit-distance ^>= 0.2.2
