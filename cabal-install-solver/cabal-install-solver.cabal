@@ -40,10 +40,12 @@ library
     -Wall -Wcompat -Wnoncanonical-monad-instances
     -fwarn-tabs -fwarn-incomplete-uni-patterns
 
-  if impl(ghc <8.8)
+  if impl(ghc < 8.8)
     ghc-options: -Wnoncanonical-monadfail-instances
 
-  if impl(ghc >=8.10)
+  -- Warning: even though introduced with GHC 8.10, -Wunused-packages gives
+  -- false positives with GHC 8.10.
+  if impl(ghc >= 9)
     ghc-options: -Wunused-packages
 
   exposed-modules:
