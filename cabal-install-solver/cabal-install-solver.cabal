@@ -135,7 +135,6 @@ Test-Suite unit-tests
 
    build-depends:
      , base        >= 4.10  && <4.20
-     , Cabal
      , Cabal-syntax
      , cabal-install-solver
      , tasty       >= 1.2.3 && <1.6
