@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
 
 -----------------------------------------------------------------------------
@@ -176,6 +177,7 @@ import Distribution.Simple.Program
   )
 import Distribution.Simple.Setup
   ( BenchmarkFlags (..)
+  , CommonSetupFlags (..)
   , ConfigFlags (..)
   , Flag (..)
   , HaddockFlags (..)
@@ -203,6 +205,7 @@ import Distribution.Simple.Utils
   , warn
   )
 import Distribution.Solver.Types.ConstraintSource
+import Distribution.Utils.Path (getSymbolicPath, unsafeMakeSymbolicPath)
 import Distribution.Verbosity
   ( normal
   )
@@ -458,9 +461,21 @@ instance Semigroup SavedConfig where
         where
           combine = combine' savedClientInstallFlags
 
+      combinedSavedCommonFlags which =
+        CommonSetupFlags
+          { setupDistPref = combine setupDistPref
+          , setupWorkingDir = combine setupWorkingDir
+          , setupCabalFilePath = combine setupCabalFilePath
+          , setupVerbosity = combine setupVerbosity
+          , setupTargets = lastNonEmpty setupTargets
+          }
+        where
+          lastNonEmpty = lastNonEmpty' which
+          combine = combine' which
+
       combinedSavedConfigureFlags =
         ConfigFlags
-          { configArgs = lastNonEmpty configArgs
+          { configCommonFlags = combinedSavedCommonFlags (configCommonFlags . savedConfigureFlags)
           , configPrograms_ = configPrograms_ . savedConfigureFlags $ b
           , -- TODO: NubListify
             configProgramPaths = lastNonEmpty configProgramPaths
@@ -502,9 +517,6 @@ instance Semigroup SavedConfig where
           , configDeterministic = combine configDeterministic
           , configIPID = combine configIPID
           , configCID = combine configCID
-          , configDistPref = combine configDistPref
-          , configCabalFilePath = combine configCabalFilePath
-          , configVerbosity = combine configVerbosity
           , configUserInstall = combine configUserInstall
           , -- TODO: NubListify
             configPackageDBs = lastNonEmpty configPackageDBs
@@ -595,7 +607,8 @@ instance Semigroup SavedConfig where
 
       combinedSavedHaddockFlags =
         HaddockFlags
-          { -- TODO: NubListify
+          { haddockCommonFlags = combinedSavedCommonFlags (haddockCommonFlags . savedHaddockFlags)
+          , -- TODO: NubListify
             haddockProgramPaths = lastNonEmpty haddockProgramPaths
           , -- TODO: NubListify
             haddockProgramArgs = lastNonEmpty haddockProgramArgs
@@ -613,15 +626,11 @@ instance Semigroup SavedConfig where
           , haddockQuickJump = combine haddockQuickJump
           , haddockHscolourCss = combine haddockHscolourCss
           , haddockContents = combine haddockContents
-          , haddockDistPref = combine haddockDistPref
           , haddockKeepTempFiles = combine haddockKeepTempFiles
-          , haddockVerbosity = combine haddockVerbosity
-          , haddockCabalFilePath = combine haddockCabalFilePath
           , haddockIndex = combine haddockIndex
           , haddockBaseUrl = combine haddockBaseUrl
           , haddockLib = combine haddockLib
           , haddockOutputDir = combine haddockOutputDir
-          , haddockArgs = lastNonEmpty haddockArgs
           }
         where
           combine = combine' savedHaddockFlags
@@ -629,8 +638,7 @@ instance Semigroup SavedConfig where
 
       combinedSavedTestFlags =
         TestFlags
-          { testDistPref = combine testDistPref
-          , testVerbosity = combine testVerbosity
+          { testCommonFlags = combinedSavedCommonFlags (testCommonFlags . savedTestFlags)
           , testHumanLog = combine testHumanLog
           , testMachineLog = combine testMachineLog
           , testShowDetails = combine testShowDetails
@@ -645,12 +653,10 @@ instance Semigroup SavedConfig where
 
       combinedSavedBenchmarkFlags =
         BenchmarkFlags
-          { benchmarkDistPref = combine benchmarkDistPref
-          , benchmarkVerbosity = combine benchmarkVerbosity
+          { benchmarkCommonFlags = combinedSavedCommonFlags (benchmarkCommonFlags . savedBenchmarkFlags)
           , benchmarkOptions = lastNonEmpty benchmarkOptions
           }
         where
-          combine = combine' savedBenchmarkFlags
           lastNonEmpty = lastNonEmpty' savedBenchmarkFlags
 
       combinedSavedReplMulti = combine' savedReplMulti id
@@ -685,7 +691,10 @@ baseSavedConfig = do
           mempty
             { configHcFlavor = toFlag defaultCompiler
             , configUserInstall = toFlag defaultUserInstall
-            , configVerbosity = toFlag normal
+            , configCommonFlags =
+                mempty
+                  { setupVerbosity = toFlag normal
+                  }
             }
       , savedUserInstallDirs =
           mempty
@@ -1290,18 +1299,9 @@ configFieldDescriptions src =
       []
     ++ [ viewAsFieldDescr $
           optionDistPref
-            (configDistPref . savedConfigureFlags)
-            ( \distPref config ->
-                config
-                  { savedConfigureFlags =
-                      (savedConfigureFlags config)
-                        { configDistPref = distPref
-                        }
-                  , savedHaddockFlags =
-                      (savedHaddockFlags config)
-                        { haddockDistPref = distPref
-                        }
-                  }
+            (setupDistPref . configCommonFlags . savedConfigureFlags)
+            ( \distPref ->
+                updSavedCommonSetupFlags (\common -> common{setupDistPref = distPref})
             )
             ParseArgs
        ]
@@ -1322,6 +1322,30 @@ configFieldDescriptions src =
 
     toRelaxDeps True = RelaxDepsAll
     toRelaxDeps False = mempty
+
+updSavedCommonSetupFlags
+  :: (CommonSetupFlags -> CommonSetupFlags)
+  -> SavedConfig
+  -> SavedConfig
+updSavedCommonSetupFlags setFlag config =
+  config
+    { savedConfigureFlags =
+        let flags = savedConfigureFlags config
+            common = configCommonFlags flags
+         in flags{configCommonFlags = setFlag common}
+    , savedHaddockFlags =
+        let flags = savedHaddockFlags config
+            common = haddockCommonFlags flags
+         in flags{haddockCommonFlags = setFlag common}
+    , savedTestFlags =
+        let flags = savedTestFlags config
+            common = testCommonFlags flags
+         in flags{testCommonFlags = setFlag common}
+    , savedBenchmarkFlags =
+        let flags = savedBenchmarkFlags config
+            common = benchmarkCommonFlags flags
+         in flags{benchmarkCommonFlags = setFlag common}
+    }
 
 -- TODO: next step, make the deprecated fields elicit a warning.
 --
@@ -1512,6 +1536,9 @@ parseConfig src initial = \str -> do
       _ -> [s]
     splitMultiPath xs = xs
 
+    splitMultiSymPath =
+      map unsafeMakeSymbolicPath . splitMultiPath . map getSymbolicPath
+
     -- This is a fixup, pending a full config parser rewrite, to
     -- ensure that config fields which can be comma-separated lists
     -- actually parse as comma-separated lists.
@@ -1525,16 +1552,16 @@ parseConfig src initial = \str -> do
                         splitMultiPath
                           (fromNubList $ configProgramPathExtra scf)
                   , configExtraLibDirs =
-                      splitMultiPath
+                      splitMultiSymPath
                         (configExtraLibDirs scf)
                   , configExtraLibDirsStatic =
-                      splitMultiPath
+                      splitMultiSymPath
                         (configExtraLibDirsStatic scf)
                   , configExtraFrameworkDirs =
-                      splitMultiPath
+                      splitMultiSymPath
                         (configExtraFrameworkDirs scf)
                   , configExtraIncludeDirs =
-                      splitMultiPath
+                      splitMultiSymPath
                         (configExtraIncludeDirs scf)
                   , configConfigureArgs =
                       splitMultiPath

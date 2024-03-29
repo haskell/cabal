@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 -- |
@@ -70,14 +71,9 @@ import Distribution.Simple.Glob
 import Distribution.Simple.Utils hiding (findPackageDesc, notice)
 import Distribution.Utils.Generic (isAscii)
 import Distribution.Utils.Path
-  ( LicenseFile
-  , PackageDir
-  , SymbolicPath
-  , getSymbolicPath
-  )
 import Distribution.Verbosity
 import Distribution.Version
-import System.FilePath (splitExtension, takeFileName, (<.>), (</>))
+import System.FilePath (splitExtension, takeFileName)
 
 import qualified Data.ByteString.Lazy as BS
 import qualified Distribution.SPDX as SPDX
@@ -185,6 +181,7 @@ checkPackageFilesGPD verbosity gpd root =
         , getDirectoryContentsM = System.Directory.getDirectoryContents . relative
         }
 
+    relative :: FilePath -> FilePath
     relative path = root </> path
 
 -- | Same as  'checkPackageFilesGPD', but working with 'PackageDescription'.
@@ -456,19 +453,20 @@ checkPackageDescription
       (PackageDistSuspicious ShortDesc)
 
     -- § Paths.
-    mapM_ (checkPath False "extra-source-files" PathKindGlob) extraSrcFiles_
-    mapM_ (checkPath False "extra-tmp-files" PathKindFile) extraTmpFiles_
-    mapM_ (checkPath False "extra-doc-files" PathKindGlob) extraDocFiles_
-    mapM_ (checkPath False "data-files" PathKindGlob) dataFiles_
-    checkPath True "data-dir" PathKindDirectory dataDir_
+    mapM_ (checkPath False "extra-source-files" PathKindGlob . getSymbolicPath) extraSrcFiles_
+    mapM_ (checkPath False "extra-tmp-files" PathKindFile . getSymbolicPath) extraTmpFiles_
+    mapM_ (checkPath False "extra-doc-files" PathKindGlob . getSymbolicPath) extraDocFiles_
+    mapM_ (checkPath False "data-files" PathKindGlob . getSymbolicPath) dataFiles_
+    let rawDataDir = getSymbolicPath dataDir_
+    checkPath True "data-dir" PathKindDirectory rawDataDir
     let licPaths = map getSymbolicPath licenseFiles_
     mapM_ (checkPath False "license-file" PathKindFile) licPaths
     mapM_ checkLicFileExist licenseFiles_
 
     -- § Globs.
-    dataGlobs <- mapM (checkGlob "data-files") dataFiles_
-    extraGlobs <- mapM (checkGlob "extra-source-files") extraSrcFiles_
-    docGlobs <- mapM (checkGlob "extra-doc-files") extraDocFiles_
+    dataGlobs <- mapM (checkGlob "data-files" . getSymbolicPath) dataFiles_
+    extraGlobs <- mapM (checkGlob "extra-source-files" . getSymbolicPath) extraSrcFiles_
+    docGlobs <- mapM (checkGlob "extra-doc-files" . getSymbolicPath) extraDocFiles_
     -- We collect globs to feed them to checkMissingDocs.
 
     -- § Missing documentation.
@@ -519,9 +517,9 @@ checkPackageDescription
     checkConfigureExists (buildType pkg)
     checkSetupExists (buildType pkg)
     checkCabalFile (packageName pkg)
-    mapM_ (checkGlobFile specVersion_ "." "extra-source-files") extraSrcFiles_
-    mapM_ (checkGlobFile specVersion_ "." "extra-doc-files") extraDocFiles_
-    mapM_ (checkGlobFile specVersion_ dataDir_ "data-files") dataFiles_
+    mapM_ (checkGlobFile specVersion_ "." "extra-source-files" . getSymbolicPath) extraSrcFiles_
+    mapM_ (checkGlobFile specVersion_ "." "extra-doc-files" . getSymbolicPath) extraDocFiles_
+    mapM_ (checkGlobFile specVersion_ rawDataDir "data-files" . getSymbolicPath) dataFiles_
     where
       checkNull
         :: Monad m
@@ -786,7 +784,7 @@ checkCabalFile pn = do
 
 checkLicFileExist
   :: Monad m
-  => SymbolicPath PackageDir LicenseFile
+  => RelativePath Pkg File
   -> CheckM m ()
 checkLicFileExist sp = do
   let fp = getSymbolicPath sp

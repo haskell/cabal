@@ -70,7 +70,8 @@ import Distribution.Client.ScriptUtils
   , withContextAndSelectors
   )
 import Distribution.Client.Setup
-  ( ConfigFlags (..)
+  ( CommonSetupFlags (setupVerbosity)
+  , ConfigFlags (..)
   , GlobalFlags (..)
   )
 import Distribution.Client.TargetProblem
@@ -199,7 +200,7 @@ runAction flags@NixStyleFlags{..} targetAndArgs globalFlags =
       GlobalContext -> return (ctx, normal)
       ScriptContext path exemeta -> (,silent) <$> updateContextAndWriteProjectFile ctx path exemeta
 
-    let verbosity = fromFlagOrDefault defaultVerbosity (configVerbosity configFlags)
+    let verbosity = fromFlagOrDefault defaultVerbosity (setupVerbosity $ configCommonFlags configFlags)
 
     buildCtx <-
       runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do

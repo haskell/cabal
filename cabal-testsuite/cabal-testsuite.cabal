@@ -32,7 +32,11 @@ common shared
     , Cabal-syntax ^>= 3.11.0.0
     , Cabal-tests
 
-  ghc-options: -Wall -fwarn-tabs -fwarn-incomplete-uni-patterns
+  ghc-options:
+    -Wall
+    -fwarn-tabs
+    -fwarn-incomplete-uni-patterns
+    -fno-warn-unticked-promoted-constructors
 
 
 library

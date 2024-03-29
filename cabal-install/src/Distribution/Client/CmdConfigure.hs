@@ -22,6 +22,7 @@ import Distribution.Client.ProjectFlags
   )
 import Distribution.Client.ProjectOrchestration
 import Distribution.Simple.Flag
+import Distribution.Simple.Setup (CommonSetupFlags (..))
 
 import Distribution.Client.NixStyleOptions
   ( NixStyleFlags (..)
@@ -123,7 +124,7 @@ configureAction flags@NixStyleFlags{..} extraArgs globalFlags = do
     then notice v "Config file not written due to flag(s)."
     else writeProjectLocalExtraConfig (distDirLayout baseCtx) projConfig
   where
-    v = fromFlagOrDefault normal (configVerbosity configFlags)
+    v = fromFlagOrDefault normal (setupVerbosity $ configCommonFlags configFlags)
 
 configureAction' :: NixStyleFlags () -> [String] -> GlobalFlags -> IO (ProjectBaseContext, ProjectConfig)
 configureAction' flags@NixStyleFlags{..} _extraArgs globalFlags = do
@@ -164,7 +165,7 @@ configureAction' flags@NixStyleFlags{..} _extraArgs globalFlags = do
           return (baseCtx, conf <> cliConfig)
         else return (baseCtx, cliConfig)
   where
-    v = fromFlagOrDefault normal (configVerbosity configFlags)
+    v = fromFlagOrDefault normal (setupVerbosity $ configCommonFlags configFlags)
     cliConfig =
       commandLineFlagsToProjectConfig
         globalFlags

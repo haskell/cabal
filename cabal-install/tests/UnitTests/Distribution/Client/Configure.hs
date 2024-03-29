@@ -42,7 +42,8 @@ configureTests =
                 { configFlags =
                     mempty
                       { configOptimization = Flag MaximumOptimisation
-                      , configVerbosity = Flag silent
+                      , configCommonFlags =
+                          mempty{setupVerbosity = Flag silent}
                       }
                 }
         projConfig <- configureAction' flags [] defaultGlobalFlags
@@ -59,7 +60,8 @@ configureTests =
                 , configFlags =
                     mempty
                       { configOptimization = Flag NoOptimisation
-                      , configVerbosity = Flag silent
+                      , configCommonFlags =
+                          mempty{setupVerbosity = Flag silent}
                       }
                 }
         (_, ProjectConfig{..}) <- configureAction' flags [] defaultGlobalFlags
@@ -75,7 +77,8 @@ configureTests =
                       }
                 , configFlags =
                     mempty
-                      { configVerbosity = Flag silent
+                      { configCommonFlags =
+                          mempty{setupVerbosity = Flag silent}
                       }
                 }
         (_, ProjectConfig{..}) <- configureAction' flags [] defaultGlobalFlags
@@ -87,7 +90,8 @@ configureTests =
               defaultTestFlags
                 { configFlags =
                     mempty
-                      { configVerbosity = Flag silent
+                      { configCommonFlags =
+                          mempty{setupVerbosity = Flag silent}
                       }
                 }
         (_, ProjectConfig{..}) <- configureAction' flags [] defaultGlobalFlags
@@ -99,7 +103,8 @@ configureTests =
               defaultTestFlags
                 { configFlags =
                     mempty
-                      { configVerbosity = Flag silent
+                      { configCommonFlags =
+                          mempty{setupVerbosity = Flag silent}
                       }
                 }
             backup = projectDir </> "cabal.project.local~"
@@ -118,7 +123,8 @@ configureTests =
               defaultTestFlags
                 { configFlags =
                     mempty
-                      { configVerbosity = Flag silent
+                      { configCommonFlags =
+                          mempty{setupVerbosity = Flag silent}
                       , configProgramArgs = [("ghc", ghcFlags)]
                       }
                 }

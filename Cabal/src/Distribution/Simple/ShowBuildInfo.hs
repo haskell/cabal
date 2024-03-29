@@ -1,4 +1,6 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeApplications #-}
 
 -- |
 -- This module defines a simple JSON-based format for exporting basic
@@ -76,15 +78,14 @@ import Distribution.Compiler
 import Distribution.PackageDescription
 import Distribution.Pretty
 import Distribution.Simple.Compiler (Compiler, compilerFlavor, showCompilerId)
+import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Program
 import Distribution.Simple.Setup.Build (BuildFlags)
 import Distribution.Simple.Utils (cabalVersion)
 import Distribution.Text
-import Distribution.Types.Component
-import Distribution.Types.ComponentLocalBuildInfo
-import Distribution.Types.LocalBuildInfo
 import Distribution.Types.TargetInfo
 import Distribution.Utils.Json
+import Distribution.Utils.Path
 import Distribution.Verbosity
 
 -- | Construct a JSON document describing the build information for a
@@ -147,7 +148,7 @@ mkComponentInfo wdir pkg_descr lbi clbi =
       , "unit-id" .= JsonString (prettyShow $ componentUnitId clbi)
       , "compiler-args" .= JsonArray (map JsonString compilerArgs)
       , "modules" .= JsonArray (map (JsonString . display) modules)
-      , "src-files" .= JsonArray (map JsonString sourceFiles)
+      , "src-files" .= JsonArray (map (JsonString . getSymbolicPath) sourceFiles)
       , "hs-src-dirs" .= JsonArray (map (JsonString . prettyShow) $ hsSourceDirs bi)
       , "src-dir" .= JsonString (addTrailingPathSeparator wdir)
       ]
@@ -188,7 +189,7 @@ mkComponentInfo wdir pkg_descr lbi clbi =
         BenchmarkUnsupported _ -> []
       CFLib _ -> []
     cabalFile
-      | Just fp <- pkgDescrFile lbi = [("cabal-file", JsonString fp)]
+      | Just fp <- pkgDescrFile lbi = [("cabal-file", JsonString $ getSymbolicPath fp)]
       | otherwise = []
 
 -- | Get the command-line arguments that would be passed
@@ -200,8 +201,8 @@ getCompilerArgs
   -> ([String], [String])
 getCompilerArgs bi lbi clbi =
   case compilerFlavor $ compiler lbi of
-    GHC -> ([], ghc)
-    GHCJS -> ([], ghc)
+    GHC -> ([], ghcArgs)
+    GHCJS -> ([], ghcArgs)
     c ->
       (
         [ "ShowBuildInfo.getCompilerArgs: Don't know how to get build "
@@ -212,6 +213,8 @@ getCompilerArgs bi lbi clbi =
       )
   where
     -- This is absolutely awful
-    ghc = GHC.renderGhcOptions (compiler lbi) (hostPlatform lbi) baseOpts
-      where
-        baseOpts = GHC.componentGhcOptions normal lbi bi clbi (buildDir lbi)
+    ghcArgs =
+      GHC.renderGhcOptions (compiler lbi) (hostPlatform lbi) baseOpts
+    baseOpts =
+      GHC.componentGhcOptions normal lbi bi clbi $
+        buildDir lbi

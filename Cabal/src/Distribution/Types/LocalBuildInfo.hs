@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DuplicateRecordFields #-}
@@ -55,8 +56,8 @@ module Distribution.Types.LocalBuildInfo
   , localPackage
   , buildDir
   , buildDirPBD
-  , configFlagsBuildDir
-  , cabalFilePath
+  , setupFlagsBuildDir
+  , packageRoot
   , progPrefix
   , progSuffix
 
@@ -105,6 +106,8 @@ import Distribution.Types.PackageId
 import Distribution.Types.TargetInfo
 import Distribution.Types.UnitId
 
+import Distribution.Utils.Path
+
 import Distribution.PackageDescription
 import Distribution.Pretty
 import Distribution.Simple.Compiler
@@ -116,13 +119,15 @@ import Distribution.Simple.InstallDirs hiding
   )
 import Distribution.Simple.PackageIndex
 import Distribution.Simple.Program
+import Distribution.Simple.Setup.Common
 import Distribution.Simple.Setup.Config
 import Distribution.System
 
 import qualified Data.Map as Map
 import Distribution.Compat.Graph (Graph)
 import qualified Distribution.Compat.Graph as Graph
-import System.FilePath ((</>))
+
+import qualified System.FilePath as FilePath (takeDirectory)
 
 -- | Data cached after configuration step.  See also
 -- 'Distribution.Simple.Setup.ConfigFlags'.
@@ -148,7 +153,7 @@ pattern LocalBuildInfo
   -> InstallDirTemplates
   -> Compiler
   -> Platform
-  -> Maybe FilePath
+  -> Maybe (SymbolicPath Pkg File)
   -> Graph ComponentLocalBuildInfo
   -> Map ComponentName [ComponentLocalBuildInfo]
   -> Map (PackageName, ComponentName) ComponentId
@@ -273,20 +278,28 @@ instance Structured LocalBuildInfo
 -------------------------------------------------------------------------------
 -- Accessor functions
 
-buildDir :: LocalBuildInfo -> FilePath
+buildDir :: LocalBuildInfo -> SymbolicPath Pkg (Dir Build)
 buildDir lbi =
   buildDirPBD $ LBC.packageBuildDescr $ localBuildDescr lbi
 
-buildDirPBD :: LBC.PackageBuildDescr -> FilePath
+buildDirPBD :: LBC.PackageBuildDescr -> SymbolicPath Pkg (Dir Build)
 buildDirPBD (LBC.PackageBuildDescr{configFlags = cfg}) =
-  configFlagsBuildDir cfg
+  setupFlagsBuildDir $ configCommonFlags cfg
 
-configFlagsBuildDir :: ConfigFlags -> FilePath
-configFlagsBuildDir cfg = fromFlag (configDistPref cfg) </> "build"
+setupFlagsBuildDir :: CommonSetupFlags -> SymbolicPath Pkg (Dir Build)
+setupFlagsBuildDir cfg = fromFlag (setupDistPref cfg) </> makeRelativePathEx "build"
 
-cabalFilePath :: LocalBuildInfo -> Maybe FilePath
-cabalFilePath (LocalBuildInfo{configFlags = cfg}) =
-  flagToMaybe (configCabalFilePath cfg)
+-- | The (relative or absolute) path to the package root, based on
+--
+--  - the working directory flag
+--  - the @.cabal@ path
+packageRoot :: CommonSetupFlags -> FilePath
+packageRoot cfg =
+  case flagToMaybe (setupCabalFilePath cfg) of
+    Just cabalPath -> FilePath.takeDirectory $ interpretSymbolicPath mbWorkDir cabalPath
+    Nothing -> maybe "." getSymbolicPath mbWorkDir
+  where
+    mbWorkDir = flagToMaybe $ setupWorkingDir cfg
 
 progPrefix, progSuffix :: LocalBuildInfo -> PathTemplate
 progPrefix (LocalBuildInfo{configFlags = cfg}) =

@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 import Test.Cabal.Prelude
 
 import Distribution.Version
@@ -16,7 +17,11 @@ main = setupAndCabalTest $ do
     let gotTestSuite = head $ testSuites (localPkgDescr lbi)
     assertEqual "testName"  (mkUnqualComponentName "dummy")
                             (testName gotTestSuite)
-    assertEqual "testInterface" (TestSuiteExeV10 (mkVersion [1,0]) "dummy.hs")
+    assertEqual "testInterface" (TestSuiteExeV10 (mkVersion [1,0])
+#if MIN_VERSION_Cabal(3,11,0)
+                                  $ makeRelativePathEx
+#endif
+                                  "dummy.hs")
                                 (testInterface gotTestSuite)
     -- NB: Not testing targetBuildDepends (testBuildInfo gotTestSuite)
     -- as dependency varies with cabal-install

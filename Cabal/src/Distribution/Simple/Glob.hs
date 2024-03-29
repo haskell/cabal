@@ -1,6 +1,8 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE RankNTypes #-}
 
 -----------------------------------------------------------------------------
 
@@ -45,6 +47,7 @@ import Distribution.Simple.Errors
   )
 import Distribution.Simple.Glob.Internal
 import Distribution.Simple.Utils (dieWithException, warn)
+import Distribution.Utils.Path
 import Distribution.Verbosity (Verbosity)
 
 -------------------------------------------------------------------------------
@@ -75,7 +78,12 @@ globMatches input = [a | GlobMatch a <- input]
 -- prefix.
 --
 -- The second 'FilePath' is the glob itself.
-matchDirFileGlob :: Verbosity -> CabalSpecVersion -> FilePath -> FilePath -> IO [FilePath]
+matchDirFileGlob
+  :: Verbosity
+  -> CabalSpecVersion
+  -> Maybe (SymbolicPath CWD (Dir dir))
+  -> SymbolicPathX allowAbs dir file
+  -> IO [SymbolicPathX allowAbs dir file]
 matchDirFileGlob v = matchDirFileGlobWithDie v dieWithException
 
 -- | Like 'matchDirFileGlob' but with customizable 'die'
@@ -83,45 +91,48 @@ matchDirFileGlob v = matchDirFileGlobWithDie v dieWithException
 -- @since 3.6.0.0
 matchDirFileGlobWithDie
   :: Verbosity
-  -> (Verbosity -> CabalException -> IO [FilePath])
+  -> (forall res. Verbosity -> CabalException -> IO [res])
   -> CabalSpecVersion
-  -> FilePath
-  -> FilePath
-  -> IO [FilePath]
-matchDirFileGlobWithDie verbosity rip version dir filepath = case parseFileGlob version filepath of
-  Left err -> rip verbosity $ MatchDirFileGlob (explainGlobSyntaxError filepath err)
-  Right glob -> do
-    results <- runDirFileGlob verbosity (Just version) dir glob
-    let missingDirectories =
-          [missingDir | GlobMissingDirectory missingDir <- results]
-        matches = globMatches results
-        directoryMatches = [a | GlobMatchesDirectory a <- results]
+  -> Maybe (SymbolicPath CWD (Dir dir))
+  -> SymbolicPathX allowAbs dir file
+  -> IO [SymbolicPathX allowAbs dir file]
+matchDirFileGlobWithDie verbosity rip version mbWorkDir symPath =
+  let rawFilePath = getSymbolicPath symPath
+      dir = maybe "." getSymbolicPath mbWorkDir
+   in case parseFileGlob version rawFilePath of
+        Left err -> rip verbosity $ MatchDirFileGlob (explainGlobSyntaxError rawFilePath err)
+        Right glob -> do
+          results <- runDirFileGlob verbosity (Just version) dir glob
+          let missingDirectories =
+                [missingDir | GlobMissingDirectory missingDir <- results]
+              matches = globMatches results
+              directoryMatches = [a | GlobMatchesDirectory a <- results]
 
-    let errors :: [String]
-        errors =
-          [ "filepath wildcard '"
-            ++ filepath
-            ++ "' refers to the directory"
-            ++ " '"
-            ++ missingDir
-            ++ "', which does not exist or is not a directory."
-          | missingDir <- missingDirectories
-          ]
-            ++ [ "filepath wildcard '" ++ filepath ++ "' does not match any files."
-               | null matches && null directoryMatches
-               -- we don't error out on directory matches, simply warn about them and ignore.
-               ]
+          let errors :: [String]
+              errors =
+                [ "filepath wildcard '"
+                  ++ rawFilePath
+                  ++ "' refers to the directory"
+                  ++ " '"
+                  ++ missingDir
+                  ++ "', which does not exist or is not a directory."
+                | missingDir <- missingDirectories
+                ]
+                  ++ [ "filepath wildcard '" ++ rawFilePath ++ "' does not match any files."
+                     | null matches && null directoryMatches
+                     -- we don't error out on directory matches, simply warn about them and ignore.
+                     ]
 
-        warns :: [String]
-        warns =
-          [ "Ignoring directory '" ++ path ++ "'" ++ " listed in a Cabal package field which should only include files (not directories)."
-          | path <- directoryMatches
-          ]
+              warns :: [String]
+              warns =
+                [ "Ignoring directory '" ++ path ++ "'" ++ " listed in a Cabal package field which should only include files (not directories)."
+                | path <- directoryMatches
+                ]
 
-    if null errors
-      then do
-        unless (null warns) $
-          warn verbosity $
-            unlines warns
-        return matches
-      else rip verbosity $ MatchDirFileGlobErrors errors
+          if null errors
+            then do
+              unless (null warns) $
+                warn verbosity $
+                  unlines warns
+              return $ map unsafeMakeSymbolicPath matches
+            else rip verbosity $ MatchDirFileGlobErrors errors

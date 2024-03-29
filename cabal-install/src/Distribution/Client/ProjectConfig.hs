@@ -106,6 +106,7 @@ import Distribution.Solver.Types.PackageConstraint
 import Distribution.Solver.Types.Settings
 import Distribution.Solver.Types.SourcePackage
 
+import Distribution.Client.Errors
 import Distribution.Client.Setup
   ( defaultMaxBackjumps
   , defaultSolver
@@ -209,7 +210,6 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Numeric (showHex)
 
-import Distribution.Client.Errors
 import Network.URI
   ( URI (..)
   , URIAuth (..)
@@ -217,6 +217,13 @@ import Network.URI
   , uriToString
   )
 import System.Directory
+  ( canonicalizePath
+  , doesDirectoryExist
+  , doesFileExist
+  , getCurrentDirectory
+  , getDirectoryContents
+  , getHomeDirectory
+  )
 import System.FilePath hiding (combine)
 import System.IO
   ( IOMode (ReadMode)
@@ -552,7 +559,7 @@ findProjectRoot verbosity mprojectDir mprojectFile = do
 
 probeProjectRoot :: Maybe FilePath -> IO (Either BadProjectRoot ProjectRoot)
 probeProjectRoot mprojectFile = do
-  startdir <- getCurrentDirectory
+  startdir <- System.Directory.getCurrentDirectory
   homedir <- getHomeDirectory
   probe startdir homedir
   where

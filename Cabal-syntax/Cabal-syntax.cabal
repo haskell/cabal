@@ -45,7 +45,13 @@ library
     -- See also https://github.com/ekmett/transformers-compat/issues/35
     transformers (>= 0.3      && < 0.4) || (>=0.4.1.0 && <0.7)
 
-  ghc-options: -Wall -fno-ignore-asserts -fwarn-tabs -fwarn-incomplete-uni-patterns -fwarn-incomplete-record-updates
+  ghc-options:
+    -Wall
+    -fno-ignore-asserts
+    -fwarn-tabs
+    -fwarn-incomplete-uni-patterns
+    -fwarn-incomplete-record-updates
+    -fno-warn-unticked-promoted-constructors
 
   if impl(ghc >= 8.0)
     ghc-options: -Wcompat -Wnoncanonical-monad-instances

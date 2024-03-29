@@ -44,7 +44,7 @@ GenericPackageDescription {
     testSuites = [],
     benchmarks = [],
     dataFiles = [],
-    dataDir = ".",
+    dataDir = SymbolicPath ".",
     extraSrcFiles = [],
     extraTmpFiles = [],
     extraDocFiles = []},
@@ -137,7 +137,7 @@ GenericPackageDescription {
             "",
           testInterface = TestSuiteExeV10
             (mkVersion [1, 0])
-            "Tests.hs",
+            (SymbolicPath "Tests.hs"),
           testBuildInfo = BuildInfo {
             buildable = True,
             buildTools = [],

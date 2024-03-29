@@ -152,8 +152,7 @@ data CabalException
   | Couldn'tFindTestProgLibV09 FilePath
   | TestCoverageSupportLibV09
   | RawSystemStdout String
-  | FindFileCwd FilePath
-  | FindFileEx FilePath
+  | FindFile FilePath
   | FindModuleFileEx ModuleName [Suffix] [FilePath]
   | MultipleFilesWithExtension String
   | NoDesc
@@ -284,8 +283,7 @@ exceptionCode e = case e of
   Couldn'tFindTestProgLibV09{} -> 9012
   TestCoverageSupportLibV09{} -> 1076
   RawSystemStdout{} -> 3098
-  FindFileCwd{} -> 4765
-  FindFileEx{} -> 2115
+  FindFile{} -> 2115
   FindModuleFileEx{} -> 6663
   MultipleFilesWithExtension{} -> 3333
   NoDesc{} -> 7654
@@ -725,8 +723,7 @@ exceptionMessage e = case e of
       ++ "\". Did you build the package first?"
   TestCoverageSupportLibV09 -> "Test coverage is only supported for packages with a library component."
   RawSystemStdout errors -> errors
-  FindFileCwd fileName -> fileName ++ " doesn't exist"
-  FindFileEx fileName -> fileName ++ " doesn't exist"
+  FindFile fileName -> fileName ++ " doesn't exist"
   FindModuleFileEx mod_name extensions searchPath ->
     "Could not find module: "
       ++ prettyShow mod_name

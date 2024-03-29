@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE NondecreasingIndentation #-}
 -- | A module for running commands in a chatty way.
 module Test.Cabal.Run (
