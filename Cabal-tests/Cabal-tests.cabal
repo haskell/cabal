@@ -57,31 +57,23 @@ test-suite unit-tests
   main-is:          UnitTests.hs
   build-depends:
       array
-    , async               >=2.2.2 && <2.3
     , base                >=4.9     && <5
-    , binary
     , bytestring
     , Cabal
     , Cabal-described
     , Cabal-syntax
     , Cabal-QuickCheck
-    , Cabal-tests
     , containers
-    , deepseq
     , Diff                >=0.4   && <0.6
     , directory
     , filepath
-    , integer-logarithms  >=1.0.2 && <1.1
     , pretty
     , QuickCheck          >=2.14  && <2.15
-    , rere                >=0.1   && <0.3
-    , tagged
     , tasty               >=1.2.3 && <1.6
     , tasty-hunit
     , tasty-quickcheck
     , temporary
     , text
-    , transformers
 
   ghc-options:      -Wall
   default-language: Haskell2010
@@ -102,7 +94,6 @@ test-suite parser-tests
     , tasty             >=1.2.3   && <1.6
     , tasty-golden      >=2.3.1.1 && <2.4
     , tasty-hunit
-    , tasty-quickcheck
     , tree-diff         >=0.1     && <0.4
 
   ghc-options:      -Wall
@@ -121,7 +112,6 @@ test-suite check-tests
     , directory
     , filepath
     , tasty         >=1.2.3   && <1.6
-    , tasty-expected-failure
     , tasty-golden  >=2.3.1.1 && <2.4
 
   ghc-options:      -Wall
@@ -157,7 +147,6 @@ test-suite hackage-tests
     , Cabal
     , Cabal-syntax
     , Cabal-tree-diff
-    , containers
     , deepseq
     , directory
     , filepath
@@ -167,7 +156,6 @@ test-suite hackage-tests
     , base-orphans          >=0.6      && <0.10
     , clock                 >=0.8      && <0.9
     , optparse-applicative  >=0.13.2.0 && <0.19
-    , stm                   >=2.4.5.0  && <2.6
     , tar                   >=0.5.0.3  && <0.7
     , tree-diff             >=0.1      && <0.4
 
