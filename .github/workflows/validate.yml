@@ -258,7 +258,9 @@ jobs:
           apt-get update
           apt-get install -y ghc-${{ matrix.extra-ghc }}-dyn
 
-      - uses: haskell-actions/setup@v2
+      - uses: haskell-actions/setup@v2.6
+          # From 2.7 the setup action uses node20,
+          # which is not supported by the phadej/ghc:8.8.4-xenial container.
         id: setup-haskell
         with:
           ghc-version: ${{ matrix.ghc }}
