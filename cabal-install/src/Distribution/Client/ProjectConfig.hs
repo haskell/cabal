@@ -685,7 +685,7 @@ readProjectLocalConfigOrDefault verbosity httpTransport distDirLayout = do
     then do
       readProjectFileSkeleton verbosity httpTransport distDirLayout "" "project file"
     else do
-      monitorFiles [monitorNonExistentFile projectFile]
+      monitorFiles (Set.singleton (monitorNonExistentFile projectFile))
       return (singletonProjectConfigSkeleton defaultImplicitProjectConfig)
 
 defaultImplicitProjectConfig :: ProjectConfig
@@ -739,12 +739,12 @@ readProjectFileSkeleton
     exists <- liftIO $ doesFileExist extensionFile
     if exists
       then do
-        monitorFiles [monitorFileHashed extensionFile]
+        monitorFiles (Set.singleton (monitorFileHashed extensionFile))
         pcs <- liftIO readExtensionFile
-        monitorFiles $ map monitorFileHashed (projectSkeletonImports pcs)
+        monitorFiles (Set.fromList (map monitorFileHashed (projectSkeletonImports pcs)))
         pure pcs
       else do
-        monitorFiles [monitorNonExistentFile extensionFile]
+        monitorFiles (Set.singleton (monitorNonExistentFile extensionFile))
         return mempty
     where
       extensionFile = distProjectFile extensionName
@@ -782,7 +782,7 @@ readGlobalConfig :: Verbosity -> Flag FilePath -> Rebuild ProjectConfig
 readGlobalConfig verbosity configFileFlag = do
   config <- liftIO (loadConfig verbosity configFileFlag)
   configFile <- liftIO (getConfigFilePath configFileFlag)
-  monitorFiles [monitorFileHashed configFile]
+  monitorFiles (Set.singleton (monitorFileHashed configFile))
   return (convertLegacyGlobalConfig config)
 
 reportParseResult :: Verbosity -> String -> FilePath -> OldParser.ParseResult ProjectConfigSkeleton -> IO ProjectConfigSkeleton
@@ -1230,7 +1230,7 @@ readSourcePackageLocalDirectory
   -- ^ The package @.cabal@ file
   -> Rebuild (PackageSpecifier (SourcePackage UnresolvedPkgLoc))
 readSourcePackageLocalDirectory verbosity dir cabalFile = do
-  monitorFiles [monitorFileHashed cabalFile]
+  monitorFiles (Set.singleton (monitorFileHashed cabalFile))
   root <- askRoot
   let location = LocalUnpackedPackage (root </> dir)
   liftIO $
@@ -1246,7 +1246,7 @@ readSourcePackageLocalTarball
   -> FilePath
   -> Rebuild (PackageSpecifier (SourcePackage UnresolvedPkgLoc))
 readSourcePackageLocalTarball verbosity tarballFile = do
-  monitorFiles [monitorFile tarballFile]
+  monitorFiles (Set.singleton (monitorFile tarballFile))
   root <- askRoot
   let location = LocalTarballPackage (root </> tarballFile)
   liftIO $
@@ -1286,7 +1286,7 @@ fetchAndReadSourcePackageRemoteTarball
         return ()
 
       -- Read
-      monitorFiles [monitorFile tarballFile]
+      monitorFiles (Set.singleton (monitorFile tarballFile))
       let location = RemoteTarballPackage tarballUri tarballFile
       liftIO $
         fmap (mkSpecificSourcePackage location)
@@ -1437,7 +1437,7 @@ syncAndReadSourcePackagesRemoteRepos
           (_ : _ : _) -> liftIO $ throwIO $ MultipleCabalFilesFound packageDir
           [cabalFileName] -> do
             let cabalFilePath = packageDir </> cabalFileName
-            monitorFiles [monitorFileHashed cabalFilePath]
+            monitorFiles (Set.singleton (monitorFileHashed cabalFilePath))
             gpd <- liftIO $ readSourcePackageCabalFile verbosity cabalFilePath =<< BS.readFile cabalFilePath
 
             -- write sdist tarball, to repoPath-pgkid
