@@ -55,6 +55,7 @@ module Distribution.Client.RebuildMonad
   , findFileWithExtensionMonitored
   , findFirstFileMonitored
   , findFileMonitored
+  , sequenceConcurrentlyBoundedRebuild
   ) where
 
 import Distribution.Client.Compat.Prelude
@@ -65,19 +66,21 @@ import Distribution.Client.Glob hiding (matchFileGlob)
 import qualified Distribution.Client.Glob as Glob (matchFileGlob)
 import Distribution.Simple.PreProcess.Types (Suffix (..))
 
-import Distribution.Simple.Utils (debug)
+import Distribution.Simple.Utils (debug, sequenceConcurrentlyBounded)
 
 import Control.Concurrent.MVar (MVar, modifyMVar, newMVar)
 import Control.Monad.Reader as Reader
-import Control.Monad.State as State
+import Control.Monad.Trans.Writer.CPS (runWriterT)
+import Control.Monad.Writer.CPS as Writer
 import qualified Data.Map.Strict as Map
+import qualified Data.Set as Set
 import System.Directory
 import System.FilePath
 
 -- | A monad layered on top of 'IO' to help with re-running actions when the
 -- input files and values they depend on change. The crucial operations are
 -- 'rerunIfChanged' and 'monitorFiles'.
-newtype Rebuild a = Rebuild (ReaderT FilePath (StateT [MonitorFilePath] IO) a)
+newtype Rebuild a = Rebuild (ReaderT FilePath (WriterT (Set MonitorFilePath) IO) a)
   deriving (Functor, Applicative, Monad, MonadIO)
 
 -- | Use this within the body action of 'rerunIfChanged' to declare that the
@@ -87,20 +90,20 @@ newtype Rebuild a = Rebuild (ReaderT FilePath (StateT [MonitorFilePath] IO) a)
 --
 -- Relative paths are interpreted as relative to an implicit root, ultimately
 -- passed in to 'runRebuild'.
-monitorFiles :: [MonitorFilePath] -> Rebuild ()
-monitorFiles filespecs = Rebuild (State.modify (filespecs ++))
+monitorFiles :: Set MonitorFilePath -> Rebuild ()
+monitorFiles filespecs = Rebuild (Writer.tell filespecs)
 
 -- | Run a 'Rebuild' IO action.
-unRebuild :: FilePath -> Rebuild a -> IO (a, [MonitorFilePath])
-unRebuild rootDir (Rebuild action) = runStateT (runReaderT action rootDir) []
+unRebuild :: FilePath -> Rebuild a -> IO (a, Set MonitorFilePath)
+unRebuild rootDir (Rebuild action) = runWriterT (runReaderT action rootDir)
 
 -- | Run a 'Rebuild' IO action.
 runRebuild :: FilePath -> Rebuild a -> IO a
-runRebuild rootDir (Rebuild action) = evalStateT (runReaderT action rootDir) []
+runRebuild rootDir (Rebuild action) = fst <$> runWriterT (runReaderT action rootDir)
 
 -- | Run a 'Rebuild' IO action.
-execRebuild :: FilePath -> Rebuild a -> IO [MonitorFilePath]
-execRebuild rootDir (Rebuild action) = execStateT (runReaderT action rootDir) []
+execRebuild :: FilePath -> Rebuild a -> IO (Set MonitorFilePath)
+execRebuild rootDir (Rebuild action) = execWriterT (runReaderT action rootDir)
 
 -- | The root that relative paths are interpreted as being relative to.
 askRoot :: Rebuild FilePath
@@ -236,7 +239,7 @@ delayInitSharedResources action = do
 matchFileGlob :: RootedGlob -> Rebuild [FilePath]
 matchFileGlob glob = do
   root <- askRoot
-  monitorFiles [monitorFileGlobExistence glob]
+  monitorFiles (Set.singleton (monitorFileGlobExistence glob))
   liftIO $ Glob.matchFileGlob root glob
 
 getDirectoryContentsMonitored :: FilePath -> Rebuild [FilePath]
@@ -248,7 +251,7 @@ getDirectoryContentsMonitored dir = do
 
 createDirectoryMonitored :: Bool -> FilePath -> Rebuild ()
 createDirectoryMonitored createParents dir = do
-  monitorFiles [monitorDirectoryExistence dir]
+  monitorFiles (Set.singleton (monitorDirectoryExistence dir))
   liftIO $ createDirectoryIfMissing createParents dir
 
 -- | Monitor a directory as in 'monitorDirectory' if it currently exists or
@@ -256,11 +259,12 @@ createDirectoryMonitored createParents dir = do
 monitorDirectoryStatus :: FilePath -> Rebuild Bool
 monitorDirectoryStatus dir = do
   exists <- liftIO $ doesDirectoryExist dir
-  monitorFiles
-    [ if exists
-        then monitorDirectory dir
-        else monitorNonExistentDirectory dir
-    ]
+  monitorFiles $
+    Set.singleton
+      ( if exists
+          then monitorDirectory dir
+          else monitorNonExistentDirectory dir
+      )
   return exists
 
 -- | Like 'doesFileExist', but in the 'Rebuild' monad.  This does
@@ -269,16 +273,17 @@ doesFileExistMonitored :: FilePath -> Rebuild Bool
 doesFileExistMonitored f = do
   root <- askRoot
   exists <- liftIO $ doesFileExist (root </> f)
-  monitorFiles
-    [ if exists
-        then monitorFileExistence f
-        else monitorNonExistentFile f
-    ]
+  monitorFiles $
+    Set.singleton
+      ( if exists
+          then monitorFileExistence f
+          else monitorNonExistentFile f
+      )
   return exists
 
 -- | Monitor a single file
 need :: FilePath -> Rebuild ()
-need f = monitorFiles [monitorFileHashed f]
+need f = monitorFiles (Set.singleton (monitorFileHashed f))
 
 -- | Monitor a file if it exists; otherwise check for when it
 -- gets created.  This is a bit better for recompilation avoidance
@@ -289,11 +294,12 @@ needIfExists :: FilePath -> Rebuild ()
 needIfExists f = do
   root <- askRoot
   exists <- liftIO $ doesFileExist (root </> f)
-  monitorFiles
-    [ if exists
-        then monitorFileHashed f
-        else monitorNonExistentFile f
-    ]
+  monitorFiles $
+    Set.singleton
+      ( if exists
+          then monitorFileHashed f
+          else monitorNonExistentFile f
+      )
 
 -- | Like 'findFileWithExtension', but in the 'Rebuild' monad.
 findFileWithExtensionMonitored
@@ -329,3 +335,13 @@ findFileMonitored searchPath fileName =
     [ path </> fileName
     | path <- nub searchPath
     ]
+
+-- | Run multiple 'Rebuild' actions in parallel, collecting the final
+-- list of used files.
+sequenceConcurrentlyBoundedRebuild :: Int -> [Rebuild a] -> Rebuild [a]
+sequenceConcurrentlyBoundedRebuild n xs = do
+  root <- askRoot
+  results <- liftIO $ sequenceConcurrentlyBounded n (unRebuild root <$> xs)
+  for results $ \(a, files) -> do
+    monitorFiles files
+    return a
