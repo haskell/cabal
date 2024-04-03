@@ -105,10 +105,11 @@ GenericPackageDescription {
     testSuites = [],
     benchmarks = [],
     dataFiles = [],
-    dataDir = ".",
+    dataDir = SymbolicPath ".",
     extraSrcFiles = [
-      "cbits/noticehandlers.h",
-      "CHANGELOG.md"],
+      SymbolicPath
+        "cbits/noticehandlers.h",
+      SymbolicPath "CHANGELOG.md"],
     extraTmpFiles = [],
     extraDocFiles = []},
   gpdScannedVersion = Nothing,
@@ -154,7 +155,8 @@ GenericPackageDescription {
           asmSources = [],
           cmmSources = [],
           cSources = [
-            "cbits/noticehandlers.c"],
+            SymbolicPath
+              "cbits/noticehandlers.c"],
           cxxSources = [],
           jsSources = [],
           hsSourceDirs = [
@@ -175,7 +177,8 @@ GenericPackageDescription {
           extraDynLibFlavours = [],
           extraLibDirs = [],
           extraLibDirsStatic = [],
-          includeDirs = ["cbits"],
+          includeDirs = [
+            SymbolicPath "cbits"],
           includes = [],
           autogenIncludes = [],
           installIncludes = [],

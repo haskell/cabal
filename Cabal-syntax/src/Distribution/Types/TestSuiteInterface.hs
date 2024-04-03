@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 
@@ -10,6 +11,7 @@ import Prelude ()
 
 import Distribution.ModuleName
 import Distribution.Types.TestType
+import Distribution.Utils.Path
 import Distribution.Version
 
 -- | The test suite interfaces that are currently defined.
@@ -21,7 +23,7 @@ data TestSuiteInterface
     -- of an executable. It returns a zero exit code for success, non-zero for
     -- failure. The stdout and stderr channels may be logged. Test tooling may
     -- pass command line arguments and/or connect the stdin channel to the test.
-    TestSuiteExeV10 Version FilePath
+    TestSuiteExeV10 Version (RelativePath Source File)
   | -- | Test interface \"detailed-0.9\". The test-suite takes the form of a
     -- library containing a designated module that exports \"tests :: [Test]\".
     TestSuiteLibV09 Version ModuleName

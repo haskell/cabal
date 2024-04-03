@@ -248,7 +248,10 @@ python3Program = simpleProgram "python3"
 -- | Run a test in the test monad according to program's arguments.
 runTestM :: String -> TestM a -> IO a
 runTestM mode m =
-    liftIO $ getTemporaryDirectory >>= \systemTmpDir ->
+    liftIO $ (canonicalizePath =<< getTemporaryDirectory) >>= \systemTmpDir ->
+       -- canonicalizePath: cabal-install is inconsistent w.r.t. looking through
+       -- symlinks. We canonicalize here to avoid such issues when the temporary
+       -- directory contains symlinks. See #9763.
     execParser (info testArgParser Data.Monoid.mempty) >>= \args ->
     withTempDirectoryEx verbosity (defaultTempFileOptions { optKeepTempFiles = argKeepTmpFiles (testCommonArgs args) })
                                systemTmpDir
@@ -450,7 +453,7 @@ getSourceFiles = do
     env <- getTestEnv
     configured_prog <- requireProgramM gitProgram
     r <- liftIO $ run (testVerbosity env)
-                 (Just (testSourceDir env))
+                 (Just $ testSourceDir env)
                  (testEnvironment env)
                  (programPath configured_prog)
                  ["ls-files", "--cached", "--modified"]

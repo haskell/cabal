@@ -1,5 +1,7 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TypeApplications #-}
 
 -----------------------------------------------------------------------------
 
@@ -51,7 +53,6 @@ import Prelude ()
 import Distribution.Backpack.DescribeUnitId
 import qualified Distribution.InstalledPackageInfo as Installed
 import Distribution.ModuleName (ModuleName)
-import qualified Distribution.ModuleName as ModuleName
 import Distribution.Package
 import Distribution.PackageDescription as PD
 import Distribution.Simple.BuildPaths
@@ -71,16 +72,14 @@ import Distribution.Types.PackageName.Magic
 import Distribution.Utils.Path
 import Distribution.Verbosity
 import Distribution.Version
+
 import System.Directory (doesDirectoryExist, doesFileExist)
 import System.FilePath
-  ( dropExtensions
-  , normalise
+  ( normalise
   , replaceExtension
   , splitExtension
   , takeDirectory
   , takeExtensions
-  , (<.>)
-  , (</>)
   )
 import System.Info (arch, os)
 
@@ -89,7 +88,7 @@ import System.Info (arch, os)
 -- between modules.
 unsorted
   :: Verbosity
-  -> [FilePath]
+  -> [path]
   -> [ModuleName]
   -> IO [ModuleName]
 unsorted _ _ ms = pure ms
@@ -98,7 +97,10 @@ unsorted _ _ ms = pure ms
 -- preprocessor: just takes the path to the build directory and uses
 -- this to search for C sources with names that match the
 -- preprocessor's output name format.
-type PreProcessorExtras = FilePath -> IO [FilePath]
+type PreProcessorExtras =
+  Maybe (SymbolicPath CWD (Dir Pkg))
+  -> SymbolicPath Pkg (Dir Source)
+  -> IO [RelativePath Source File]
 
 mkSimplePreProcessor
   :: (FilePath -> FilePath -> Verbosity -> IO ())
@@ -157,58 +159,51 @@ preprocessComponent pd comp lbi clbi isSrcDist verbosity handlers =
     case comp of
       (CLib lib@Library{libBuildInfo = bi}) -> do
         let dirs =
-              map getSymbolicPath (hsSourceDirs bi)
+              hsSourceDirs bi
                 ++ [autogenComponentModulesDir lbi clbi, autogenPackageModulesDir lbi]
         let hndlrs = localHandlers bi
         mods <- orderingFromHandlers verbosity dirs hndlrs (allLibModules lib clbi)
-        for_ (map ModuleName.toFilePath mods) $
+        for_ (map moduleNameSymbolicPath mods) $
           pre dirs (componentBuildDir lbi clbi) hndlrs
-      (CFLib flib@ForeignLib{foreignLibBuildInfo = bi, foreignLibName = nm}) -> do
-        let nm' = unUnqualComponentName nm
-        let flibDir = buildDir lbi </> nm' </> nm' ++ "-tmp"
+      (CFLib flib@ForeignLib{foreignLibBuildInfo = bi}) -> do
+        let flibDir = flibBuildDir lbi flib
             dirs =
-              map getSymbolicPath (hsSourceDirs bi)
+              hsSourceDirs bi
                 ++ [ autogenComponentModulesDir lbi clbi
                    , autogenPackageModulesDir lbi
                    ]
         let hndlrs = localHandlers bi
         mods <- orderingFromHandlers verbosity dirs hndlrs (foreignLibModules flib)
-        for_ (map ModuleName.toFilePath mods) $
+        for_ (map moduleNameSymbolicPath mods) $
           pre dirs flibDir hndlrs
-      (CExe exe@Executable{buildInfo = bi, exeName = nm}) -> do
-        let nm' = unUnqualComponentName nm
-        let exeDir = buildDir lbi </> nm' </> nm' ++ "-tmp"
+      (CExe exe@Executable{buildInfo = bi}) -> do
+        let exeDir = exeBuildDir lbi exe
             dirs =
-              map getSymbolicPath (hsSourceDirs bi)
+              hsSourceDirs bi
                 ++ [ autogenComponentModulesDir lbi clbi
                    , autogenPackageModulesDir lbi
                    ]
         let hndlrs = localHandlers bi
         mods <- orderingFromHandlers verbosity dirs hndlrs (otherModules bi)
-        for_ (map ModuleName.toFilePath mods) $
+        for_ (map moduleNameSymbolicPath mods) $
           pre dirs exeDir hndlrs
-        pre (map getSymbolicPath (hsSourceDirs bi)) exeDir (localHandlers bi) $
-          dropExtensions (modulePath exe)
-      CTest test@TestSuite{testName = nm} -> do
-        let nm' = unUnqualComponentName nm
+        pre (hsSourceDirs bi) exeDir (localHandlers bi) $
+          dropExtensionsSymbolicPath (modulePath exe)
+      CTest test@TestSuite{} -> do
+        let testDir = testBuildDir lbi test
         case testInterface test of
           TestSuiteExeV10 _ f ->
-            preProcessTest test f $ buildDir lbi </> nm' </> nm' ++ "-tmp"
+            preProcessTest test f testDir
           TestSuiteLibV09 _ _ -> do
-            let testDir =
-                  buildDir lbi
-                    </> stubName test
-                    </> stubName test
-                    ++ "-tmp"
-            writeSimpleTestStub test testDir
-            preProcessTest test (stubFilePath test) testDir
+            writeSimpleTestStub test (i testDir)
+            preProcessTest test (makeRelativePathEx $ stubFilePath test) testDir
           TestSuiteUnsupported tt ->
             dieWithException verbosity $ NoSupportForPreProcessingTest tt
-      CBench bm@Benchmark{benchmarkName = nm} -> do
-        let nm' = unUnqualComponentName nm
+      CBench bm@Benchmark{} -> do
+        let benchDir = benchmarkBuildDir lbi bm
         case benchmarkInterface bm of
           BenchmarkExeV10 _ f ->
-            preProcessBench bm f $ buildDir lbi </> nm' </> nm' ++ "-tmp"
+            preProcessBench bm f benchDir
           BenchmarkUnsupported tt ->
             dieWithException verbosity $ NoSupportForPreProcessingBenchmark tt
   where
@@ -217,8 +212,10 @@ preprocessComponent pd comp lbi clbi isSrcDist verbosity handlers =
     builtinCSuffixes = map Suffix cSourceExtensions
     builtinSuffixes = builtinHaskellSuffixes ++ builtinCSuffixes
     localHandlers bi = [(ext, h bi lbi clbi) | (ext, h) <- handlers]
+    mbWorkDir = mbWorkDirLBI lbi
+    i = interpretSymbolicPathLBI lbi -- See Note [Symbolic paths] in Distribution.Utils.Path
     pre dirs dir lhndlrs fp =
-      preprocessFile (map unsafeMakeSymbolicPath dirs) dir isSrcDist fp verbosity builtinSuffixes lhndlrs True
+      preprocessFile mbWorkDir dirs dir isSrcDist fp verbosity builtinSuffixes lhndlrs True
     preProcessTest test =
       preProcessComponent
         (testBuildInfo test)
@@ -231,36 +228,37 @@ preprocessComponent pd comp lbi clbi isSrcDist verbosity handlers =
     preProcessComponent
       :: BuildInfo
       -> [ModuleName]
-      -> FilePath
-      -> FilePath
+      -> RelativePath Source File
+      -> SymbolicPath Pkg (Dir Build)
       -> IO ()
-    preProcessComponent bi modules exePath dir = do
+    preProcessComponent bi modules exePath outputDir = do
       let biHandlers = localHandlers bi
           sourceDirs =
-            map getSymbolicPath (hsSourceDirs bi)
+            hsSourceDirs bi
               ++ [ autogenComponentModulesDir lbi clbi
                  , autogenPackageModulesDir lbi
                  ]
       sequence_
         [ preprocessFile
-          (map unsafeMakeSymbolicPath sourceDirs)
-          dir
+          mbWorkDir
+          sourceDirs
+          outputDir
           isSrcDist
-          (ModuleName.toFilePath modu)
+          (moduleNameSymbolicPath modu)
           verbosity
           builtinSuffixes
           biHandlers
           False
         | modu <- modules
         ]
-      -- XXX: what we do here (re SymbolicPath dir)
-      -- XXX: 2020-10-15 do we rely here on CWD being the PackageDir?
-      -- Note we don't fail on missing in this case, because the main file may be generated later (i.e. by a test code generator)
+      -- Note we don't fail on missing in this case, because the main file
+      -- may be generated later (i.e. by a test code generator)
       preprocessFile
-        (unsafeMakeSymbolicPath dir : hsSourceDirs bi)
-        dir
+        mbWorkDir
+        (coerceSymbolicPath outputDir : hsSourceDirs bi)
+        outputDir
         isSrcDist
-        (dropExtensions $ exePath)
+        (dropExtensionsSymbolicPath $ exePath)
         verbosity
         builtinSuffixes
         biHandlers
@@ -273,13 +271,15 @@ preprocessComponent pd comp lbi clbi isSrcDist verbosity handlers =
 -- | Find the first extension of the file that exists, and preprocess it
 -- if required.
 preprocessFile
-  :: [SymbolicPath PackageDir SourceDir]
+  :: Maybe (SymbolicPath CWD (Dir Pkg))
+  -- ^ package directory location
+  -> [SymbolicPath Pkg (Dir Source)]
   -- ^ source directories
-  -> FilePath
+  -> SymbolicPath Pkg (Dir Build)
   -- ^ build directory
   -> Bool
   -- ^ preprocess for sdist
-  -> FilePath
+  -> RelativePath Source File
   -- ^ module file name
   -> Verbosity
   -- ^ verbosity
@@ -290,10 +290,10 @@ preprocessFile
   -> Bool
   -- ^ fail on missing file
   -> IO ()
-preprocessFile searchLoc buildLoc forSDist baseFile verbosity builtinSuffixes handlers failOnMissing = do
+preprocessFile mbWorkDir searchLoc buildLoc forSDist baseFile verbosity builtinSuffixes handlers failOnMissing = do
   -- look for files in the various source dirs with this module name
   -- and a file extension of a known preprocessor
-  psrcFiles <- findFileWithExtension' (map fst handlers) (map getSymbolicPath searchLoc) baseFile
+  psrcFiles <- findFileCwdWithExtension' mbWorkDir (map fst handlers) searchLoc baseFile
   case psrcFiles of
     -- no preprocessor file exists, look for an ordinary source file
     -- just to make sure one actually exists at all for this module.
@@ -303,19 +303,19 @@ preprocessFile searchLoc buildLoc forSDist baseFile verbosity builtinSuffixes ha
     -- files generate source modules directly into the build dir without
     -- the rest of the build system being aware of it (somewhat dodgy)
     Nothing -> do
-      bsrcFiles <- findFileWithExtension builtinSuffixes (buildLoc : map getSymbolicPath searchLoc) baseFile
+      bsrcFiles <- findFileCwdWithExtension mbWorkDir builtinSuffixes (buildAsSrcLoc : searchLoc) baseFile
       case (bsrcFiles, failOnMissing) of
         (Nothing, True) ->
           dieWithException verbosity $
             CantFindSourceForPreProcessFile $
               "can't find source for "
-                ++ baseFile
+                ++ getSymbolicPath baseFile
                 ++ " in "
                 ++ intercalate ", " (map getSymbolicPath searchLoc)
         _ -> return ()
     -- found a pre-processable file in one of the source dirs
     Just (psrcLoc, psrcRelFile) -> do
-      let (srcStem, ext) = splitExtension psrcRelFile
+      let (srcStem, ext) = splitExtension $ getSymbolicPath psrcRelFile
           psrcFile = psrcLoc </> psrcRelFile
           pp =
             fromMaybe
@@ -333,20 +333,22 @@ preprocessFile searchLoc buildLoc forSDist baseFile verbosity builtinSuffixes ha
       when (not forSDist || forSDist && platformIndependent pp) $ do
         -- look for existing pre-processed source file in the dest dir to
         -- see if we really have to re-run the preprocessor.
-        ppsrcFiles <- findFileWithExtension builtinSuffixes [buildLoc] baseFile
+        ppsrcFiles <- findFileCwdWithExtension mbWorkDir builtinSuffixes [buildAsSrcLoc] baseFile
         recomp <- case ppsrcFiles of
           Nothing -> return True
           Just ppsrcFile ->
-            psrcFile `moreRecentFile` ppsrcFile
+            i psrcFile `moreRecentFile` i ppsrcFile
         when recomp $ do
-          let destDir = buildLoc </> dirName srcStem
+          let destDir = i buildLoc </> takeDirectory srcStem
           createDirectoryIfMissingVerbose verbosity True destDir
           runPreProcessorWithHsBootHack
             pp
-            (psrcLoc, psrcRelFile)
-            (buildLoc, srcStem <.> "hs")
+            (i psrcLoc, getSymbolicPath $ psrcRelFile)
+            (i buildLoc, srcStem <.> "hs")
   where
-    dirName = takeDirectory
+    i = interpretSymbolicPath mbWorkDir -- See Note [Symbolic paths] in Distribution.Utils.Path
+    buildAsSrcLoc :: SymbolicPath Pkg (Dir Source)
+    buildAsSrcLoc = coerceSymbolicPath buildLoc
 
     -- FIXME: This is a somewhat nasty hack. GHC requires that hs-boot files
     -- be in the same place as the hs files, so if we put the hs file in dist/
@@ -435,7 +437,7 @@ ppGhcCpp program xHs extraArgs _bi lbi clbi =
             program
             anyVersion
             (withPrograms lbi)
-        runProgram verbosity prog $
+        runProgramCwd verbosity (mbWorkDirLBI lbi) prog $
           ["-E", "-cpp"]
             -- This is a bit of an ugly hack. We're going to
             -- unlit the file ourselves later on if appropriate,
@@ -443,10 +445,14 @@ ppGhcCpp program xHs extraArgs _bi lbi clbi =
             -- double-unlitted. In the future we might switch to
             -- using cpphs --unlit instead.
             ++ (if xHs version then ["-x", "hs"] else [])
-            ++ ["-optP-include", "-optP" ++ (autogenComponentModulesDir lbi clbi </> cppHeaderName)]
+            ++ ["-optP-include", "-optP" ++ u (autogenComponentModulesDir lbi clbi </> makeRelativePathEx cppHeaderName)]
             ++ ["-o", outFile, inFile]
             ++ extraArgs
     }
+  where
+    -- See Note [Symbolic paths] in Distribution.Utils.Path
+    u :: SymbolicPath Pkg to -> FilePath
+    u = interpretSymbolicPathCWD
 
 ppCpphs :: [String] -> BuildInfo -> LocalBuildInfo -> ComponentLocalBuildInfo -> PreProcessor
 ppCpphs extraArgs _bi lbi clbi =
@@ -460,17 +466,21 @@ ppCpphs extraArgs _bi lbi clbi =
             cpphsProgram
             anyVersion
             (withPrograms lbi)
-        runProgram verbosity cpphsProg $
+        runProgramCwd verbosity (mbWorkDirLBI lbi) cpphsProg $
           ("-O" ++ outFile)
             : inFile
             : "--noline"
             : "--strip"
             : ( if cpphsVersion >= mkVersion [1, 6]
-                  then ["--include=" ++ (autogenComponentModulesDir lbi clbi </> cppHeaderName)]
+                  then ["--include=" ++ u (autogenComponentModulesDir lbi clbi </> makeRelativePathEx cppHeaderName)]
                   else []
               )
             ++ extraArgs
     }
+  where
+    -- See Note [Symbolic paths] in Distribution.Utils.Path
+    u :: SymbolicPath Pkg to -> FilePath
+    u = interpretSymbolicPathCWD
 
 ppHsc2hs :: BuildInfo -> LocalBuildInfo -> ComponentLocalBuildInfo -> PreProcessor
 ppHsc2hs bi lbi clbi =
@@ -485,6 +495,7 @@ ppHsc2hs bi lbi clbi =
             hsc2hsProgram
             anyVersion
             (withPrograms lbi)
+        let runHsc2hs = runProgramCwd verbosity mbWorkDir hsc2hsProg
         -- See Trac #13896 and https://github.com/haskell/cabal/issues/3122.
         let isCross = hostPlatform lbi /= buildPlatform
             prependCrossFlags = if isCross then ("-x" :) else id
@@ -495,16 +506,22 @@ ppHsc2hs bi lbi clbi =
             withResponseFile
               verbosity
               defaultTempFileOptions
-              (takeDirectory outFile)
+              mbWorkDir
+              (makeSymbolicPath $ takeDirectory outFile)
               "hsc2hs-response.txt"
               Nothing
               pureArgs
               ( \responseFileName ->
-                  runProgram verbosity hsc2hsProg (prependCrossFlags ["@" ++ responseFileName])
+                  runHsc2hs (prependCrossFlags ["@" ++ responseFileName])
               )
-          else runProgram verbosity hsc2hsProg (prependCrossFlags pureArgs)
+          else runHsc2hs (prependCrossFlags pureArgs)
     }
   where
+    -- See Note [Symbolic paths] in Distribution.Utils.Path
+    u :: SymbolicPathX allowAbs Pkg to -> FilePath
+    u = interpretSymbolicPathCWD
+    mbWorkDir = mbWorkDirLBI lbi
+
     -- Returns a list of command line arguments that can either be passed
     -- directly, or via a response file.
     genPureArgs :: Version -> ConfiguredProgram -> String -> String -> [String]
@@ -528,7 +545,7 @@ ppHsc2hs bi lbi clbi =
            ]
         ++ [ "--lflag=" ++ arg
            | isOSX
-           , opt <- PD.frameworks bi ++ concatMap Installed.frameworks pkgs
+           , opt <- map getSymbolicPath (PD.frameworks bi) ++ concatMap Installed.frameworks pkgs
            , arg <- ["-framework", opt]
            ]
         -- Note that on ELF systems, wherever we use -L, we must also use -R
@@ -538,8 +555,10 @@ ppHsc2hs bi lbi clbi =
 
         ++ ["--cflag=" ++ opt | opt <- platformDefines lbi]
         -- Options from the current package:
-        ++ ["--cflag=-I" ++ dir | dir <- PD.includeDirs bi]
-        ++ ["--cflag=-I" ++ buildDir lbi </> dir | dir <- PD.includeDirs bi]
+        ++ ["--cflag=-I" ++ u dir | dir <- PD.includeDirs bi]
+        ++ [ "--cflag=-I" ++ u (buildDir lbi </> unsafeCoerceSymbolicPath relDir)
+           | relDir <- mapMaybe symbolicPathRelative_maybe $ PD.includeDirs bi
+           ]
         ++ [ "--cflag=" ++ opt
            | opt <-
               PD.ccOptions bi
@@ -555,19 +574,19 @@ ppHsc2hs bi lbi clbi =
            ]
         ++ [ "--cflag=" ++ opt
            | opt <-
-              [ "-I" ++ autogenComponentModulesDir lbi clbi
-              , "-I" ++ autogenPackageModulesDir lbi
+              [ "-I" ++ u (autogenComponentModulesDir lbi clbi)
+              , "-I" ++ u (autogenPackageModulesDir lbi)
               , "-include"
-              , autogenComponentModulesDir lbi clbi </> cppHeaderName
+              , u $ autogenComponentModulesDir lbi clbi </> makeRelativePathEx cppHeaderName
               ]
            ]
-        ++ [ "--lflag=-L" ++ opt
+        ++ [ "--lflag=-L" ++ u opt
            | opt <-
               if withFullyStaticExe lbi
                 then PD.extraLibDirsStatic bi
                 else PD.extraLibDirs bi
            ]
-        ++ [ "--lflag=-Wl,-R," ++ opt
+        ++ [ "--lflag=-Wl,-R," ++ u opt
            | isELF
            , opt <-
               if withFullyStaticExe lbi
@@ -643,9 +662,10 @@ ppHsc2hs bi lbi clbi =
         _ -> error "No (or multiple) ghc rts package is registered!!"
 
 ppHsc2hsExtras :: PreProcessorExtras
-ppHsc2hsExtras buildBaseDir =
-  filter ("_hsc.c" `isSuffixOf`)
-    `fmap` getDirectoryContentsRecursive buildBaseDir
+ppHsc2hsExtras mbWorkDir buildBaseDir = do
+  fs <- getDirectoryContentsRecursive $ interpretSymbolicPath mbWorkDir buildBaseDir
+  let hscCFiles = filter ("_hsc.c" `isSuffixOf`) fs
+  return $ map makeRelativePathEx hscCFiles
 
 ppC2hs :: BuildInfo -> LocalBuildInfo -> ComponentLocalBuildInfo -> PreProcessor
 ppC2hs bi lbi clbi =
@@ -663,11 +683,11 @@ ppC2hs bi lbi clbi =
                 (orLaterVersion (mkVersion [0, 15]))
                 (withPrograms lbi)
             (gccProg, _) <- requireProgram verbosity gccProgram (withPrograms lbi)
-            runProgram verbosity c2hsProg $
+            runProgramCwd verbosity mbWorkDir c2hsProg $
               -- Options from the current package:
               ["--cpp=" ++ programPath gccProg, "--cppopts=-E"]
                 ++ ["--cppopts=" ++ opt | opt <- getCppOptions bi lbi]
-                ++ ["--cppopts=-include" ++ (autogenComponentModulesDir lbi clbi </> cppHeaderName)]
+                ++ ["--cppopts=-include" ++ u (autogenComponentModulesDir lbi clbi </> makeRelativePathEx cppHeaderName)]
                 ++ ["--include=" ++ outBaseDir]
                 -- Options from dependent packages
                 ++ [ "--cppopts=" ++ opt
@@ -698,11 +718,17 @@ ppC2hs bi lbi clbi =
     }
   where
     pkgs = PackageIndex.topologicalOrder (installedPkgs lbi)
+    mbWorkDir = mbWorkDirLBI lbi
+    -- See Note [Symbolic paths] in Distribution.Utils.Path
+    u :: SymbolicPath Pkg to -> FilePath
+    u = interpretSymbolicPathCWD
 
 ppC2hsExtras :: PreProcessorExtras
-ppC2hsExtras d =
-  filter (\p -> takeExtensions p == ".chs.c")
-    `fmap` getDirectoryContentsRecursive d
+ppC2hsExtras mbWorkDir buildBaseDir = do
+  fs <- getDirectoryContentsRecursive $ interpretSymbolicPath mbWorkDir buildBaseDir
+  return $
+    map makeRelativePathEx $
+      filter (\p -> takeExtensions p == ".chs.c") fs
 
 -- TODO: perhaps use this with hsc2hs too
 -- TODO: remove cc-options from cpphs for cabal-version: >= 1.10
@@ -713,7 +739,7 @@ getCppOptions :: BuildInfo -> LocalBuildInfo -> [String]
 getCppOptions bi lbi =
   platformDefines lbi
     ++ cppOptions bi
-    ++ ["-I" ++ dir | dir <- PD.includeDirs bi]
+    ++ ["-I" ++ getSymbolicPath dir | dir <- PD.includeDirs bi]
     ++ [opt | opt@('-' : c : _) <- PD.ccOptions bi ++ PD.cxxOptions bi, c `elem` "DIU"]
 
 platformDefines :: LocalBuildInfo -> [String]
@@ -866,41 +892,37 @@ preprocessExtras
   :: Verbosity
   -> Component
   -> LocalBuildInfo
-  -> IO [FilePath]
+  -> IO [SymbolicPath Pkg File]
 preprocessExtras verbosity comp lbi = case comp of
   CLib _ -> pp $ buildDir lbi
-  (CExe Executable{exeName = nm}) -> do
-    let nm' = unUnqualComponentName nm
-    pp $ buildDir lbi </> nm' </> nm' ++ "-tmp"
-  (CFLib ForeignLib{foreignLibName = nm}) -> do
-    let nm' = unUnqualComponentName nm
-    pp $ buildDir lbi </> nm' </> nm' ++ "-tmp"
-  CTest test -> do
-    let nm' = unUnqualComponentName $ testName test
+  (CExe exe@Executable{}) -> pp $ exeBuildDir lbi exe
+  (CFLib flib@ForeignLib{}) -> pp $ flibBuildDir lbi flib
+  CTest test ->
     case testInterface test of
-      TestSuiteExeV10 _ _ ->
-        pp $ buildDir lbi </> nm' </> nm' ++ "-tmp"
-      TestSuiteLibV09 _ _ ->
-        pp $ buildDir lbi </> stubName test </> stubName test ++ "-tmp"
       TestSuiteUnsupported tt ->
         dieWithException verbosity $ NoSupportPreProcessingTestExtras tt
-  CBench bm -> do
-    let nm' = unUnqualComponentName $ benchmarkName bm
+      _ -> pp $ testBuildDir lbi test
+  CBench bm ->
     case benchmarkInterface bm of
-      BenchmarkExeV10 _ _ ->
-        pp $ buildDir lbi </> nm' </> nm' ++ "-tmp"
       BenchmarkUnsupported tt ->
         dieWithException verbosity $ NoSupportPreProcessingBenchmarkExtras tt
+      _ -> pp $ benchmarkBuildDir lbi bm
   where
-    pp :: FilePath -> IO [FilePath]
-    pp dir = do
-      b <- doesDirectoryExist dir
+    pp :: SymbolicPath Pkg (Dir Build) -> IO [SymbolicPath Pkg File]
+    pp builddir = do
+      -- Use the build dir as a source dir.
+      let dir :: SymbolicPath Pkg (Dir Source)
+          dir = coerceSymbolicPath builddir
+          mbWorkDir = mbWorkDirLBI lbi
+      b <- doesDirectoryExist (interpretSymbolicPathLBI lbi dir)
       if b
-        then
-          (map (dir </>) . filter not_sub . concat)
-            <$> for
-              knownExtrasHandlers
-              (withLexicalCallStack (\f -> f dir))
+        then do
+          xs <- for knownExtrasHandlers $ withLexicalCallStack $ \f -> f mbWorkDir dir
+          let not_subs =
+                map (dir </>) $
+                  filter (not_sub . getSymbolicPath) $
+                    concat xs
+          return not_subs
         else pure []
     -- TODO: This is a terrible hack to work around #3545 while we don't
     -- reorganize the directory layout.  Basically, for the main

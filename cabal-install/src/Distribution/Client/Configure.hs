@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE DataKinds #-}
 
 -----------------------------------------------------------------------------
 
@@ -23,7 +24,6 @@ module Distribution.Client.Configure
     -- * Saved configure flags
   , readConfigFlagsFrom
   , readConfigFlags
-  , cabalConfigFlagsFile
   , writeConfigFlagsTo
   , writeConfigFlags
   ) where
@@ -99,14 +99,16 @@ import Distribution.Simple.PackageIndex as PackageIndex
   )
 import Distribution.Simple.Program (ProgramDb)
 import Distribution.Simple.Setup
-  ( ConfigFlags (..)
+  ( CommonSetupFlags (..)
+  , ConfigFlags (..)
   , flagToMaybe
   , fromFlagOrDefault
+  , maybeToFlag
   , toFlag
   )
 import Distribution.Simple.Utils as Utils
   ( debug
-  , defaultPackageDesc
+  , defaultPackageDescCwd
   , dieWithException
   , notice
   , warn
@@ -121,6 +123,7 @@ import Distribution.Types.PackageVersionConstraint
   ( PackageVersionConstraint (..)
   , thisPackageVersionConstraint
   )
+import Distribution.Utils.Path
 import Distribution.Version
   ( Version
   , VersionRange
@@ -129,7 +132,6 @@ import Distribution.Version
   )
 
 import Distribution.Client.Errors
-import System.FilePath ((</>))
 
 -- | Choose the Cabal version such that the setup scripts compiled against this
 -- version will support the given command-line flags. Currently, it implements no
@@ -200,6 +202,7 @@ configure
           (setupScriptOptions installedPkgIndex Nothing)
           Nothing
           configureCommand
+          configCommonFlags
           (const configFlags)
           (const extraArgs)
       Right installPlan0 ->
@@ -238,7 +241,7 @@ configure
           progdb
           ( fromFlagOrDefault
               (useDistPref defaultSetupScriptOptions)
-              (configDistPref configFlags)
+              (setupDistPref $ configCommonFlags configFlags)
           )
           ( chooseCabalVersion
               configExFlags
@@ -254,7 +257,7 @@ configureSetupScript
   -> Compiler
   -> Platform
   -> ProgramDb
-  -> FilePath
+  -> SymbolicPath Pkg (Dir Dist)
   -> VersionRange
   -> Maybe Lock
   -> Bool
@@ -399,9 +402,9 @@ planLocalPackage
   (SourcePackageDb _ packagePrefs)
   pkgConfigDb = do
     pkg <-
-      readGenericPackageDescription verbosity
-        =<< case flagToMaybe (configCabalFilePath configFlags) of
-          Nothing -> defaultPackageDesc verbosity
+      readGenericPackageDescription verbosity Nothing
+        =<< case flagToMaybe (setupCabalFilePath $ configCommonFlags configFlags) of
+          Nothing -> relativeSymbolicPath <$> defaultPackageDescCwd verbosity
           Just fp -> return fp
 
     let
@@ -501,6 +504,7 @@ configurePackage
       scriptOptions
       (Just pkg)
       configureCommand
+      configCommonFlags
       configureFlags
       (const extraArgs)
     where
@@ -510,7 +514,12 @@ configurePackage
       configureFlags =
         filterConfigureFlags
           configFlags
-            { configIPID =
+            { configCommonFlags =
+                (configCommonFlags configFlags)
+                  { setupVerbosity = toFlag verbosity
+                  , setupWorkingDir = maybeToFlag $ useWorkingDir scriptOptions
+                  }
+            , configIPID =
                 if isJust (flagToMaybe (configIPID configFlags))
                   then -- Make sure cabal configure --ipid works.
                     configIPID configFlags
@@ -531,7 +540,6 @@ configurePackage
                 ]
             , -- Use '--exact-configuration' if supported.
               configExactConfiguration = toFlag True
-            , configVerbosity = toFlag verbosity
             , -- NB: if the user explicitly specified
               -- --enable-tests/--enable-benchmarks, always respect it.
               -- (But if they didn't, let solver decide.)
@@ -570,7 +578,7 @@ readConfigFlagsFrom
 readConfigFlagsFrom flags = do
   readCommandFlags flags configureExCommand
 
--- | The path (relative to @--build-dir@) where the arguments to @configure@
+-- | The path (relative to the package root) where the arguments to @configure@
 -- should be saved.
 cabalConfigFlagsFile :: FilePath -> FilePath
 cabalConfigFlagsFile dist = dist </> "cabal-config-flags"
@@ -586,12 +594,12 @@ readConfigFlags dist =
 
 -- | Save the configure flags and environment to the specified files.
 writeConfigFlagsTo
-  :: FilePath
+  :: Verbosity
+  -> FilePath
   -- ^ path to saved flags file
-  -> Verbosity
   -> (ConfigFlags, ConfigExFlags)
   -> IO ()
-writeConfigFlagsTo file verb flags = do
+writeConfigFlagsTo verb file flags = do
   writeCommandFlags verb file configureExCommand flags
 
 -- | Save the build flags to the usual location.
@@ -602,4 +610,4 @@ writeConfigFlags
   -> (ConfigFlags, ConfigExFlags)
   -> IO ()
 writeConfigFlags verb dist =
-  writeConfigFlagsTo (cabalConfigFlagsFile dist) verb
+  writeConfigFlagsTo verb (cabalConfigFlagsFile dist)

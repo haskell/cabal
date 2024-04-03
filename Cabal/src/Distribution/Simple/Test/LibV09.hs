@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
 
@@ -18,28 +19,29 @@ import Prelude ()
 
 import Distribution.Compat.Environment
 import Distribution.Compat.Internal.TempFile
+import Distribution.Compat.Process (proc)
 import Distribution.ModuleName
 import qualified Distribution.PackageDescription as PD
 import Distribution.Pretty
 import Distribution.Simple.Build.PathsModule
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Compiler
-import Distribution.Simple.Flag (Flag (Flag, NoFlag), fromFlag)
+import Distribution.Simple.Errors
 import Distribution.Simple.Hpc
 import Distribution.Simple.InstallDirs
 import qualified Distribution.Simple.LocalBuildInfo as LBI
+import Distribution.Simple.Setup.Common
 import Distribution.Simple.Setup.Test
 import Distribution.Simple.Test.Log
 import Distribution.Simple.Utils
 import Distribution.System
 import Distribution.TestSuite
 import qualified Distribution.Types.LocalBuildInfo as LBI
+import Distribution.Utils.Path
 import Distribution.Verbosity
 
 import qualified Control.Exception as CE
 import qualified Data.ByteString.Lazy as LBS
-import Distribution.Compat.Process (proc)
-import Distribution.Simple.Errors
 import System.Directory
   ( canonicalizePath
   , createDirectoryIfMissing
@@ -50,7 +52,6 @@ import System.Directory
   , removeFile
   , setCurrentDirectory
   )
-import System.FilePath ((<.>), (</>))
 import System.IO (hClose, hPutStr)
 import qualified System.Process as Process
 
@@ -66,13 +67,14 @@ runTest pkg_descr lbi clbi hpcMarkupInfo flags suite = do
   let isCoverageEnabled = LBI.testCoverage lbi
       way = guessWay lbi
 
-  pwd <- getCurrentDirectory
+  let mbWorkDir = LBI.mbWorkDirLBI lbi
   existingEnv <- getEnvironment
 
   let cmd =
-        LBI.buildDir lbi
+        interpretSymbolicPath mbWorkDir (LBI.buildDir lbi)
           </> stubName suite
           </> stubName suite <.> exeExtension (LBI.hostPlatform lbi)
+      tDir = i $ tixDir distPref way
   -- Check that the test executable exists.
   exists <- doesFileExist cmd
   unless exists $
@@ -81,12 +83,11 @@ runTest pkg_descr lbi clbi hpcMarkupInfo flags suite = do
 
   -- Remove old .tix files if appropriate.
   unless (fromFlag $ testKeepTix flags) $ do
-    let tDir = tixDir distPref way
     exists' <- doesDirectoryExist tDir
     when exists' $ removeDirectoryRecursive tDir
 
   -- Create directory for HPC files.
-  createDirectoryIfMissing True $ tixDir distPref way
+  createDirectoryIfMissing True tDir
 
   -- Write summary notices indicating start of test suite
   notice verbosity $ summarizeSuiteStart testName'
@@ -94,8 +95,13 @@ runTest pkg_descr lbi clbi hpcMarkupInfo flags suite = do
   suiteLog <- CE.bracket openCabalTemp deleteIfExists $ \tempLog -> do
     -- Run test executable
     let opts = map (testOption pkg_descr lbi suite) $ testOptions flags
-        dataDirPath = pwd </> PD.dataDir pkg_descr
-        tixFile = pwd </> tixFilePath distPref way testName'
+        rawDataDirPath = PD.dataDir pkg_descr
+        dataDirPath
+          | null $ getSymbolicPath rawDataDirPath =
+              i sameDirectory
+          | otherwise =
+              i rawDataDirPath
+        tixFile = i $ tixFilePath distPref way testName'
         pkgPathEnv =
           (pkgPathEnvVar pkg_descr "datadir", dataDirPath)
             : existingEnv
@@ -108,7 +114,7 @@ runTest pkg_descr lbi clbi hpcMarkupInfo flags suite = do
         then do
           let (Platform _ os) = LBI.hostPlatform lbi
           paths <- LBI.depLibraryPaths True False lbi clbi
-          cpath <- canonicalizePath $ LBI.componentBuildDir lbi clbi
+          cpath <- canonicalizePath $ i $ LBI.componentBuildDir lbi clbi
           return (addLibraryPath os (cpath : paths) shellEnv)
         else return shellEnv
     let (cmd', opts') = case testWrapper flags of
@@ -143,7 +149,7 @@ runTest pkg_descr lbi clbi hpcMarkupInfo flags suite = do
 
     -- Generate final log file name
     let finalLogName l =
-          testLogDir
+          interpretSymbolicPath mbWorkDir testLogDir
             </> testSuiteLogPath
               (fromFlag $ testHumanLog flags)
               pkg_descr
@@ -199,19 +205,21 @@ runTest pkg_descr lbi clbi hpcMarkupInfo flags suite = do
 
   return suiteLog
   where
+    i = LBI.interpretSymbolicPathLBI lbi
+    common = testCommonFlags flags
     testName' = unUnqualComponentName $ PD.testName suite
 
     deleteIfExists file = do
       exists <- doesFileExist file
       when exists $ removeFile file
 
-    testLogDir = distPref </> "test"
+    testLogDir = distPref </> makeRelativePathEx "test"
     openCabalTemp = do
-      (f, h) <- openTempFile testLogDir $ "cabal-test-" <.> "log"
+      (f, h) <- openTempFile (i testLogDir) $ "cabal-test-" <.> "log"
       hClose h >> return f
 
-    distPref = fromFlag $ testDistPref flags
-    verbosity = fromFlag $ testVerbosity flags
+    distPref = fromFlag $ setupDistPref common
+    verbosity = fromFlag $ setupVerbosity common
 
 -- TODO: This is abusing the notion of a 'PathTemplate'.  The result isn't
 -- necessarily a path.
@@ -233,10 +241,6 @@ testOption pkg_descr lbi suite template =
         ++ [(TestSuiteNameVar, toPathTemplate $ unUnqualComponentName $ PD.testName suite)]
 
 -- Test stub ----------
-
--- | The name of the stub executable associated with a library 'TestSuite'.
-stubName :: PD.TestSuite -> FilePath
-stubName t = unUnqualComponentName (PD.testName t) ++ "Stub"
 
 -- | The filename of the source file for the stub executable associated with a
 -- library 'TestSuite'.

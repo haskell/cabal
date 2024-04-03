@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Distribution.Client.Utils
@@ -7,7 +8,6 @@ module Distribution.Client.Utils
   , duplicates
   , duplicatesBy
   , readMaybe
-  , inDir
   , withEnv
   , withEnvOverrides
   , logDirChange
@@ -26,8 +26,8 @@ module Distribution.Client.Utils
   , canonicalizePathNoThrow
   , moreRecentFile
   , existsAndIsMoreRecentThan
-  , tryFindAddSourcePackageDesc
-  , tryFindPackageDesc
+  , tryReadAddSourcePackageDesc
+  , tryReadGenericPackageDesc
   , relaxEncodingErrors
   , ProgressPhase (..)
   , progressMessage
@@ -64,20 +64,30 @@ import Data.List
   ( elemIndex
   , groupBy
   )
+import Distribution.Client.Errors
 import Distribution.Compat.Environment
 import Distribution.Compat.Time (getModTime)
 import Distribution.Simple.Setup (Flag (..))
 import Distribution.Simple.Utils (dieWithException, findPackageDesc, noticeNoWrap)
+import Distribution.Utils.Path
+  ( CWD
+  , FileOrDir (..)
+  , Pkg
+  , RelativePath
+  , SymbolicPath
+  , makeSymbolicPath
+  , relativeSymbolicPath
+  )
 import Distribution.Version
+
 import System.Directory
   ( canonicalizePath
   , doesDirectoryExist
   , doesFileExist
-  , getCurrentDirectory
   , getDirectoryContents
   , removeFile
-  , setCurrentDirectory
   )
+import qualified System.Directory as Directory
 import System.FilePath
 import System.IO
   ( Handle
@@ -106,7 +116,8 @@ import qualified System.Directory as Dir
 import qualified System.IO.Error as IOError
 #endif
 import qualified Data.Set as Set
-import Distribution.Client.Errors
+import Distribution.Simple.PackageDescription (readGenericPackageDescription)
+import Distribution.Types.GenericPackageDescription (GenericPackageDescription)
 
 -- | Generic merging utility. For sorted input lists this is a full outer join.
 mergeBy :: forall a b. (a -> b -> Ordering) -> [a] -> [b] -> [MergeResult a b]
@@ -157,17 +168,6 @@ withTempFileName tmpDir template action =
     (openTempFile tmpDir template)
     (\(name, _) -> removeExistingFile name)
     (\(name, h) -> hClose h >> action name)
-
--- | Executes the action in the specified directory.
---
--- Warning: This operation is NOT thread-safe, because current
--- working directory is a process-global concept.
-inDir :: Maybe FilePath -> IO a -> IO a
-inDir Nothing m = m
-inDir (Just d) m = do
-  old <- getCurrentDirectory
-  setCurrentDirectory d
-  m `Exception.finally` setCurrentDirectory old
 
 -- | Executes the action with an environment variable set to some
 -- value.
@@ -248,14 +248,14 @@ makeAbsoluteToCwd :: FilePath -> IO FilePath
 makeAbsoluteToCwd path
   | isAbsolute path = return path
   | otherwise = do
-      cwd <- getCurrentDirectory
+      cwd <- Directory.getCurrentDirectory
       return $! cwd </> path
 
 -- | Given a path (relative or absolute), make it relative to the current
 -- directory, including using @../..@ if necessary.
 makeRelativeToCwd :: FilePath -> IO FilePath
 makeRelativeToCwd path =
-  makeRelativeCanonical <$> canonicalizePath path <*> getCurrentDirectory
+  makeRelativeCanonical <$> canonicalizePath path <*> Directory.getCurrentDirectory
 
 -- | Given a path (relative or absolute), make it relative to the given
 -- directory, including using @../..@ if necessary.
@@ -376,20 +376,41 @@ relaxEncodingErrors handle = do
       return ()
 
 -- | Like 'tryFindPackageDesc', but with error specific to add-source deps.
-tryFindAddSourcePackageDesc :: Verbosity -> FilePath -> String -> IO FilePath
-tryFindAddSourcePackageDesc verbosity depPath err =
-  tryFindPackageDesc verbosity depPath $
-    err
-      ++ "\n"
-      ++ "Failed to read cabal file of add-source dependency: "
-      ++ depPath
+tryReadAddSourcePackageDesc
+  :: Verbosity
+  -> FilePath
+  -> String
+  -> IO GenericPackageDescription
+tryReadAddSourcePackageDesc verbosity depPath err = do
+  let pkgDir = makeSymbolicPath depPath
+  pkgDescPath <-
+    try_find_package_desc verbosity pkgDir $
+      err
+        ++ "\n"
+        ++ "Failed to read cabal file of add-source dependency: "
+        ++ depPath
+  readGenericPackageDescription verbosity (Just pkgDir) (relativeSymbolicPath pkgDescPath)
 
--- | Try to find a @.cabal@ file, in directory @depPath@. Fails if one cannot be
+-- | Try to read a @.cabal@ file, in directory @depPath@. Fails if one cannot be
 --  found, with @err@ prefixing the error message. This function simply allows
 --  us to give a more descriptive error than that provided by @findPackageDesc@.
-tryFindPackageDesc :: Verbosity -> FilePath -> String -> IO FilePath
-tryFindPackageDesc verbosity depPath err = do
-  errOrCabalFile <- findPackageDesc depPath
+tryReadGenericPackageDesc
+  :: Verbosity
+  -> SymbolicPath CWD (Dir Pkg)
+  -> String
+  -> IO GenericPackageDescription
+tryReadGenericPackageDesc verbosity pkgDir err = do
+  pkgDescPath <- try_find_package_desc verbosity pkgDir err
+  readGenericPackageDescription verbosity (Just pkgDir) (relativeSymbolicPath pkgDescPath)
+
+-- | Internal helper function for 'tryReadAddSourcePackageDesc' and 'tryReadGenericPackageDesc'.
+try_find_package_desc
+  :: Verbosity
+  -> SymbolicPath CWD (Dir Pkg)
+  -> String
+  -> IO (RelativePath Pkg File)
+try_find_package_desc verbosity pkgDir err = do
+  errOrCabalFile <- findPackageDesc (Just pkgDir)
   case errOrCabalFile of
     Right file -> return file
     Left _ -> dieWithException verbosity $ TryFindPackageDescErr err
@@ -410,13 +431,20 @@ progressMessage verbosity phase subject = do
   noticeNoWrap verbosity $ phaseStr ++ subject ++ "\n"
   where
     phaseStr = case phase of
-      ProgressDownloading -> "Downloading  "
-      ProgressDownloaded -> "Downloaded   "
-      ProgressStarting -> "Starting     "
-      ProgressBuilding -> "Building     "
-      ProgressHaddock -> "Haddock      "
-      ProgressInstalling -> "Installing   "
-      ProgressCompleted -> "Completed    "
+      ProgressDownloading ->
+        "Downloading  "
+      ProgressDownloaded ->
+        "Downloaded   "
+      ProgressStarting ->
+        "Starting     "
+      ProgressBuilding ->
+        "Building     "
+      ProgressHaddock ->
+        "Haddock      "
+      ProgressInstalling ->
+        "Installing   "
+      ProgressCompleted ->
+        "Completed    "
 
 -- | Given a version, return an API-compatible (according to PVP) version range.
 --

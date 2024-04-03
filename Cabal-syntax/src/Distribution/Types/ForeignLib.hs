@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 
@@ -26,6 +27,7 @@ import Distribution.Types.BuildInfo
 import Distribution.Types.ForeignLibOption
 import Distribution.Types.ForeignLibType
 import Distribution.Types.UnqualComponentName
+import Distribution.Utils.Path
 import Distribution.Version
 
 import Data.Monoid
@@ -53,7 +55,7 @@ data ForeignLib = ForeignLib
   -- current:revision:age versioning scheme.
   , foreignLibVersionLinux :: Maybe Version
   -- ^ Linux library version
-  , foreignLibModDefFile :: [FilePath]
+  , foreignLibModDefFile :: [RelativePath Source File]
   -- ^ (Windows-specific) module definition files
   --
   -- This is a list rather than a maybe field so that we can flatten

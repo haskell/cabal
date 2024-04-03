@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
 {- FOURMOLU_DISABLE -}
@@ -82,11 +83,11 @@ import Distribution.Simple.PreProcess
 import Distribution.Simple.Program
   ( ProgramDb
   , emptyProgramDb
-  , getDbProgramOutput
+  , getDbProgramOutputCwd
   , getProgramSearchPath
   , ghcProgram
   , ghcjsProgram
-  , runDbProgram
+  , runDbProgramCwd
   )
 import Distribution.Simple.Program.Db
   ( prependProgramSearchPath
@@ -123,7 +124,6 @@ import Distribution.Client.JobControl
 import Distribution.Client.Types
 import Distribution.Client.Utils
   ( existsAndIsMoreRecentThan
-  , inDir
 #ifdef mingw32_HOST_OS
   , canonicalizePathNoThrow
 #endif
@@ -133,6 +133,9 @@ import Distribution.Client.Utils
   , withEnvOverrides
   , withExtraPathEnv
   )
+import Distribution.Utils.Path
+  hiding ( (</>), (<.>) )
+import qualified Distribution.Utils.Path as Cabal.Path
 import qualified Distribution.InstalledPackageInfo as IPI
 import Distribution.Simple.Command
   ( CommandUI (..)
@@ -146,7 +149,7 @@ import Distribution.Simple.Program.GHC
   , renderGhcOptions
   )
 import Distribution.Simple.Setup
-  ( Flag (..)
+  ( Flag (..), CommonSetupFlags (..), GlobalFlags (..)
   )
 import Distribution.Simple.Utils
   ( cabalVersion
@@ -176,6 +179,7 @@ import Distribution.Utils.NubList
 import Distribution.Verbosity
 
 import Data.List (foldl1')
+import Distribution.Simple.Setup (globalCommand)
 import Distribution.Client.Compat.ExecutablePath (getExecutablePath)
 import Distribution.Compat.Process (proc)
 import System.Directory (doesFileExist)
@@ -253,9 +257,9 @@ data SetupScriptOptions = SetupScriptOptions
   , usePackageDB :: PackageDBStack
   , usePackageIndex :: Maybe InstalledPackageIndex
   , useProgramDb :: ProgramDb
-  , useDistPref :: FilePath
+  , useDistPref :: SymbolicPath Pkg (Dir Dist)
   , useLoggingHandle :: Maybe Handle
-  , useWorkingDir :: Maybe FilePath
+  , useWorkingDir :: Maybe (SymbolicPath CWD (Dir Pkg))
   , useExtraPathEnv :: [FilePath]
   -- ^ Extra things to add to PATH when invoking the setup script.
   , useExtraEnvOverrides :: [(String, Maybe FilePath)]
@@ -339,10 +343,12 @@ defaultSetupScriptOptions =
     }
 
 workingDir :: SetupScriptOptions -> FilePath
-workingDir options =
-  case fromMaybe "" (useWorkingDir options) of
-    [] -> "."
-    dir -> dir
+workingDir options = case useWorkingDir options of
+  Just dir
+    | let fp = getSymbolicPath dir
+    , not $ null fp
+    -> fp
+  _ -> "."
 
 -- | A @SetupRunner@ implements a 'SetupMethod'.
 type SetupRunner =
@@ -382,9 +388,10 @@ getSetup verbosity options mpkg = do
       , setupPackage = pkg
       }
   where
+    mbWorkDir = useWorkingDir options
     getPkg =
-      tryFindPackageDesc verbosity (fromMaybe "." (useWorkingDir options))
-        >>= readGenericPackageDescription verbosity
+      (relativeSymbolicPath <$> tryFindPackageDesc verbosity mbWorkDir)
+        >>= readGenericPackageDescription verbosity mbWorkDir
         >>= return . packageDescription
 
 -- | Decide if we're going to be able to do a direct internal call to the
@@ -476,14 +483,20 @@ runSetupCommand
   -> Setup
   -> CommandUI flags
   -- ^ command definition
+  -> (flags -> CommonSetupFlags)
   -> flags
   -- ^ command flags
   -> [String]
   -- ^ extra command-line arguments
   -> IO ()
-runSetupCommand verbosity setup cmd flags extraArgs = do
-  let args = commandName cmd : commandShowOptions cmd flags ++ extraArgs
-  runSetup verbosity setup args
+runSetupCommand verbosity setup cmd getCommonFlags flags extraArgs =
+  -- The 'setupWorkingDir' flag corresponds to a global argument which needs to
+  -- be passed before the individual command (e.g. 'configure' or 'build').
+  let common = getCommonFlags flags
+      globalFlags = mempty { globalWorkingDir = setupWorkingDir common }
+      args = commandShowOptions (globalCommand []) globalFlags
+          ++ (commandName cmd : commandShowOptions cmd flags ++ extraArgs)
+  in runSetup verbosity setup args
 
 -- | Configure a 'Setup' and run a command in one step. The command flags
 -- may depend on the Cabal library version in use.
@@ -492,18 +505,23 @@ setupWrapper
   -> SetupScriptOptions
   -> Maybe PackageDescription
   -> CommandUI flags
+  -> (flags -> CommonSetupFlags)
   -> (Version -> flags)
   -- ^ produce command flags given the Cabal library version
   -> (Version -> [String])
   -> IO ()
-setupWrapper verbosity options mpkg cmd flags extraArgs = do
+setupWrapper verbosity options mpkg cmd getCommonFlags getFlags getExtraArgs = do
   setup <- getSetup verbosity options mpkg
+  let version = setupVersion setup
+      flags = getFlags version
+      extraArgs = getExtraArgs version
   runSetupCommand
     verbosity
     setup
     cmd
-    (flags $ setupVersion setup)
-    (extraArgs $ setupVersion setup)
+    getCommonFlags
+    flags
+    extraArgs
 
 -- ------------------------------------------------------------
 
@@ -511,6 +529,7 @@ setupWrapper verbosity options mpkg cmd flags extraArgs = do
 
 -- ------------------------------------------------------------
 
+-- | Run a Setup script by directly invoking the @Cabal@ library.
 internalSetupMethod :: SetupRunner
 internalSetupMethod verbosity options bt args = do
   info verbosity $
@@ -518,11 +537,18 @@ internalSetupMethod verbosity options bt args = do
       ++ show bt
       ++ " and args:\n  "
       ++ show args
-  inDir (useWorkingDir options) $ do
-    withEnv "HASKELL_DIST_DIR" (useDistPref options) $
-      withExtraPathEnv (useExtraPathEnv options) $
-        withEnvOverrides (useExtraEnvOverrides options) $
-          buildTypeAction bt args
+  -- NB: we do not set the working directory of the process here, because
+  -- we will instead pass the -working-dir flag when invoking the Setup script.
+  -- Note that the Setup script is guaranteed to support this flag, because
+  -- the logic in 'getSetupMethod' guarantees we have an up-to-date Cabal version.
+  --
+  -- In the future, it would be desirable to also stop relying on the following
+  -- pieces of process-global state, as this would allow us to use this internal
+  -- setup method in concurrent contexts.
+  withEnv "HASKELL_DIST_DIR" (getSymbolicPath $ useDistPref options) $
+    withExtraPathEnv (useExtraPathEnv options) $
+      withEnvOverrides (useExtraEnvOverrides options) $
+        buildTypeAction bt args
 
 buildTypeAction :: BuildType -> ([String] -> IO ())
 buildTypeAction Simple = Simple.defaultMainArgs
@@ -547,7 +573,7 @@ invoke verbosity path args options = do
   env <-
     getEffectiveEnvironment $
       [ ("PATH", Just searchpath)
-      , ("HASKELL_DIST_DIR", Just (useDistPref options))
+      , ("HASKELL_DIST_DIR", Just (getSymbolicPath $ useDistPref options))
       ]
         ++ useExtraEnvOverrides options
 
@@ -556,7 +582,7 @@ invoke verbosity path args options = do
         Just hdl -> UseHandle hdl
       cp =
         (proc path args)
-          { Process.cwd = useWorkingDir options
+          { Process.cwd = fmap getSymbolicPath $ useWorkingDir options
           , Process.env = env
           , Process.std_out = loggingHandle
           , Process.std_err = loggingHandle
@@ -642,7 +668,7 @@ getExternalSetupMethod verbosity options pkg bt = do
   debug verbosity $
     "Using explicit dependencies: "
       ++ show (useDependenciesExclusive options)
-  createDirectoryIfMissingVerbose verbosity True setupDir
+  createDirectoryIfMissingVerbose verbosity True $ i setupDir
   (cabalLibVersion, mCabalLibInstalledPkgId, options') <- cabalLibVersionToUse
   debug verbosity $ "Using Cabal library version " ++ prettyShow cabalLibVersion
   path <-
@@ -668,7 +694,7 @@ getExternalSetupMethod verbosity options pkg bt = do
   -- See 'Note: win32 clean hack' above.
 #ifdef mingw32_HOST_OS
   -- setupProgFile may not exist if we're using a cached program
-  setupProgFile' <- canonicalizePathNoThrow setupProgFile
+  setupProgFile' <- canonicalizePathNoThrow $ i setupProgFile
   let win32CleanHackNeeded =
         (useWin32CleanHack options)
           -- Skip when a cached setup script is used.
@@ -680,13 +706,18 @@ getExternalSetupMethod verbosity options pkg bt = do
 
   return (cabalLibVersion, ExternalMethod path', options'')
   where
-    setupDir = workingDir options </> useDistPref options </> "setup"
-    setupVersionFile = setupDir </> "setup" <.> "version"
-    setupHs = setupDir </> "setup" <.> "hs"
-    setupProgFile = setupDir </> "setup" <.> exeExtension buildPlatform
+    mbWorkDir = useWorkingDir options
+    -- See Note [Symbolic paths] in Distribution.Utils.Path
+    i = interpretSymbolicPath mbWorkDir
+    setupDir = useDistPref options Cabal.Path.</> makeRelativePathEx "setup"
+    setupVersionFile = setupDir Cabal.Path.</> makeRelativePathEx ("setup" <.> "version")
+    setupHs = setupDir Cabal.Path.</> makeRelativePathEx ("setup" <.> "hs")
+    setupProgFile = setupDir Cabal.Path.</> makeRelativePathEx ("setup" <.> exeExtension buildPlatform)
+
     platform = fromMaybe buildPlatform (usePlatform options)
 
-    useCachedSetupExecutable = (bt == Simple || bt == Configure || bt == Make)
+    useCachedSetupExecutable =
+      bt == Simple || bt == Configure || bt == Make
 
     maybeGetInstalledPackages
       :: SetupScriptOptions
@@ -760,12 +791,12 @@ getExternalSetupMethod verbosity options pkg bt = do
               doesFileExist cachedSetupProgFile
             else
               (&&)
-                <$> setupProgFile `existsAndIsMoreRecentThan` setupHs
-                <*> setupProgFile `existsAndIsMoreRecentThan` setupVersionFile
+                <$> i setupProgFile `existsAndIsMoreRecentThan` i setupHs
+                <*> i setupProgFile `existsAndIsMoreRecentThan` i setupVersionFile
 
         writeSetupVersionFile :: Version -> IO ()
         writeSetupVersionFile version =
-          writeFile setupVersionFile (show version ++ "\n")
+          writeFile (i setupVersionFile) (show version ++ "\n")
 
         installedVersion
           :: IO
@@ -786,7 +817,7 @@ getExternalSetupMethod verbosity options pkg bt = do
 
         savedVersion :: IO (Maybe Version)
         savedVersion = do
-          versionString <- readFile setupVersionFile `catchIO` \_ -> return ""
+          versionString <- readFile (i setupVersionFile) `catchIO` \_ -> return ""
           case reads versionString of
             [(version, s)] | all isSpace s -> return (Just version)
             _ -> return Nothing
@@ -799,16 +830,16 @@ getExternalSetupMethod verbosity options pkg bt = do
       unless (useHs || useLhs) $
         dieWithException verbosity UpdateSetupScript
       let src = (if useHs then customSetupHs else customSetupLhs)
-      srcNewer <- src `moreRecentFile` setupHs
+      srcNewer <- src `moreRecentFile` i setupHs
       when srcNewer $
         if useHs
-          then copyFileVerbose verbosity src setupHs
-          else runSimplePreProcessor ppUnlit src setupHs verbosity
+          then copyFileVerbose verbosity src (i setupHs)
+          else runSimplePreProcessor ppUnlit src (i setupHs) verbosity
       where
         customSetupHs = workingDir options </> "Setup.hs"
         customSetupLhs = workingDir options </> "Setup.lhs"
     updateSetupScript cabalLibVersion _ =
-      rewriteFileLBS verbosity setupHs (buildTypeScript cabalLibVersion)
+      rewriteFileLBS verbosity (i setupHs) (buildTypeScript cabalLibVersion)
 
     buildTypeScript :: Version -> BS.ByteString
     buildTypeScript cabalLibVersion = case bt of
@@ -1001,8 +1032,8 @@ getExternalSetupMethod verbosity options pkg bt = do
       cabalLibVersion
       maybeCabalLibInstalledPkgId
       forceCompile = do
-        setupHsNewer <- setupHs `moreRecentFile` setupProgFile
-        cabalVersionNewer <- setupVersionFile `moreRecentFile` setupProgFile
+        setupHsNewer <- i setupHs `moreRecentFile` i setupProgFile
+        cabalVersionNewer <- i setupVersionFile `moreRecentFile` i setupProgFile
         let outOfDate = setupHsNewer || cabalVersionNewer
         when (outOfDate || forceCompile) $ do
           debug verbosity "Setup executable needs to be updated, compiling..."
@@ -1043,7 +1074,7 @@ getExternalSetupMethod verbosity options pkg bt = do
                 ( Backpack.DefiniteUnitId (unsafeMkDefUnitId (newSimpleUnitId ipid))
                 , defaultRenaming
                 )
-              cppMacrosFile = setupDir </> "setup_macros.h"
+              cppMacrosFile = setupDir Cabal.Path.</> makeRelativePathEx "setup_macros.h"
               ghcOptions =
                 mempty
                   { -- Respect -v0, but don't crank up verbosity on GHC if
@@ -1052,12 +1083,12 @@ getExternalSetupMethod verbosity options pkg bt = do
                     ghcOptVerbosity = Flag (min verbosity normal)
                   , ghcOptMode = Flag GhcModeMake
                   , ghcOptInputFiles = toNubListR [setupHs]
-                  , ghcOptOutputFile = Flag setupProgFile
-                  , ghcOptObjDir = Flag setupDir
-                  , ghcOptHiDir = Flag setupDir
+                  , ghcOptOutputFile = Flag $ setupProgFile
+                  , ghcOptObjDir = Flag $ setupDir
+                  , ghcOptHiDir = Flag $ setupDir
                   , ghcOptSourcePathClear = Flag True
                   , ghcOptSourcePath = case bt of
-                      Custom -> toNubListR [workingDir options']
+                      Custom -> toNubListR [sameDirectory]
                       _ -> mempty
                   , ghcOptPackageDBs = usePackageDB options''
                   , ghcOptHideAllPackages = Flag (useDependenciesExclusive options')
@@ -1072,21 +1103,22 @@ getExternalSetupMethod verbosity options pkg bt = do
                   }
           let ghcCmdLine = renderGhcOptions compiler platform ghcOptions
           when (useVersionMacros options') $
-            rewriteFileEx verbosity cppMacrosFile $
+            rewriteFileEx verbosity (i cppMacrosFile) $
               generatePackageVersionMacros (pkgVersion $ package pkg) (map snd selectedDeps)
           case useLoggingHandle options of
-            Nothing -> runDbProgram verbosity program progdb ghcCmdLine
+            Nothing -> runDbProgramCwd verbosity mbWorkDir program progdb ghcCmdLine
             -- If build logging is enabled, redirect compiler output to
             -- the log file.
-            (Just logHandle) -> do
+            Just logHandle -> do
               output <-
-                getDbProgramOutput
+                getDbProgramOutputCwd
                   verbosity
+                  mbWorkDir
                   program
                   progdb
                   ghcCmdLine
               hPutStr logHandle output
-        return setupProgFile
+        return $ i setupProgFile
 
 isCabalPkgId :: PackageIdentifier -> Bool
 isCabalPkgId (PackageIdentifier pname _) = pname == mkPackageName "Cabal"

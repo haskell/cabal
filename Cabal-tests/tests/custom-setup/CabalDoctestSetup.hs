@@ -1,6 +1,8 @@
 -- This is Distribution.Extra.Doctest module from cabal-doctest-1.0.4
 -- This isn't technically a Custom-Setup script, but it /was/.
 
+{-# LANGUAGE FlexibleInstances #-}
+
 {-
 
 Copyright (c) 2017, Oleg Grenrus
@@ -104,15 +106,19 @@ import Distribution.Simple.Compiler
        (CompilerFlavor (GHC), CompilerId (..), PackageDB (..), compilerId)
 import Distribution.Simple.LocalBuildInfo
        (ComponentLocalBuildInfo (componentPackageDeps), LocalBuildInfo,
-       compiler, withExeLBI, withLibLBI, withPackageDB, withTestLBI)
+       compiler, withExeLBI, withLibLBI, withPackageDB, withTestLBI
+       )
 import Distribution.Simple.Setup
-       (BuildFlags (buildDistPref, buildVerbosity),
-       HaddockFlags (haddockDistPref, haddockVerbosity), emptyBuildFlags,
+       ( CommonSetupFlags(..)
+       , BuildFlags(..)
+       , HaddockFlags (..)
+       , emptyBuildFlags,
        fromFlag)
 import Distribution.Simple.Utils
        (createDirectoryIfMissingVerbose, info)
 import Distribution.Text
        (display)
+import Distribution.Verbosity
 import System.FilePath
        ((</>))
 
@@ -150,7 +156,20 @@ import Distribution.Package
        (PackageId)
 #endif
 
-#if MIN_VERSION_Cabal(3,0,0)
+#if MIN_VERSION_Cabal(3,11,0)
+import Distribution.Utils.Path
+       ( SymbolicPathX
+       , makeSymbolicPath
+       , makeRelativePathEx )
+import qualified Distribution.Utils.Path as Cabal
+       (getSymbolicPath)
+import Distribution.Simple.Utils
+       (findFileEx)
+#elif MIN_VERSION_Cabal(3,0,0)
+import Distribution.Utils.Path
+       (SymbolicPath)
+import qualified Distribution.Utils.Path as Cabal
+       (getSymbolicPath)
 import Distribution.Simple.Utils
        (findFileEx)
 #else
@@ -161,11 +180,6 @@ import Distribution.Simple.Utils
 #if MIN_VERSION_Cabal(3,0,0)
 import Distribution.Types.LibraryName
        (libraryNameString)
-#endif
-
-#if MIN_VERSION_Cabal(3,5,0)
-import Distribution.Utils.Path
-       (getSymbolicPath)
 #endif
 
 #if MIN_VERSION_directory(1,2,2)
@@ -184,9 +198,18 @@ makeAbsolute p | isAbsolute p = return p
     return $ cwd </> p
 #endif
 
-#if !MIN_VERSION_Cabal(3,0,0)
-findFileEx :: verbosity -> [FilePath] -> FilePath -> IO FilePath
-findFileEx _ = findFile
+findFile' :: Verbosity -> [FilePath] -> FilePath -> IO FilePath
+#if MIN_VERSION_Cabal(3,11,0)
+findFile' verbosity searchPath fileName
+  = toFilePath <$>
+    findFileEx verbosity
+      (fmap makeSymbolicPath searchPath) (makeRelativePathEx fileName)
+#elif MIN_VERSION_Cabal(3,0,0)
+findFile' verbosity searchPath fileName
+  = findFileEx verbosity searchPath fileName
+#else
+findFile' _verbosity searchPath fileName
+  = findFile searchPath fileName
 #endif
 
 #if !MIN_VERSION_Cabal(2,0,0)
@@ -194,9 +217,16 @@ mkVersion :: [Int] -> Version
 mkVersion ds = Version ds []
 #endif
 
-#if !MIN_VERSION_Cabal(3,5,0)
-getSymbolicPath :: FilePath -> FilePath
-getSymbolicPath = id
+class CompatPath p where
+  toFilePath :: p -> FilePath
+instance CompatPath FilePath where
+  toFilePath = id
+#if MIN_VERSION_Cabal(3,11,0)
+instance CompatPath (SymbolicPathX allowAbs from to) where
+  toFilePath = Cabal.getSymbolicPath
+#elif MIN_VERSION_Cabal(3,5,0)
+instance CompatPath (SymbolicPath from to) where
+  toFilePath = Cabal.getSymbolicPath
 #endif
 
 -------------------------------------------------------------------------------
@@ -253,10 +283,16 @@ addDoctestsUserHook testsuiteName uh = uh
 
 -- | Convert only flags used by 'generateBuildModule'.
 haddockToBuildFlags :: HaddockFlags -> BuildFlags
-haddockToBuildFlags f = emptyBuildFlags
+haddockToBuildFlags f =
+#if MIN_VERSION_Cabal(3,11,0)
+  emptyBuildFlags
+    { buildCommonFlags = haddockCommonFlags f }
+#else
+   emptyBuildFlags
     { buildVerbosity = haddockVerbosity f
     , buildDistPref  = haddockDistPref f
     }
+#endif
 
 data Name = NameLib (Maybe String) | NameExe String deriving (Eq, Show)
 
@@ -300,17 +336,18 @@ generateBuildModule testSuiteName flags pkg lbi = do
   let distPref = fromFlag (buildDistPref flags)
 
   -- Package DBs & environments
-  let dbStack = withPackageDB lbi ++ [ SpecificPackageDB $ distPref </> "package.conf.inplace" ]
+  let dbStack = withPackageDB lbi ++ [ SpecificPackageDB $ toFilePath distPref </> "package.conf.inplace" ]
   let dbFlags = "-hide-all-packages" : packageDbArgs dbStack
   let envFlags
         | ghcCanBeToldToIgnorePkgEnvs = [ "-package-env=-" ]
         | otherwise = []
 
   withTestLBI pkg lbi $ \suite suitecfg -> when (testName suite == fromString testSuiteName) $ do
+    let testAutogenDir = toFilePath $
 #if MIN_VERSION_Cabal(1,25,0)
-    let testAutogenDir = autogenComponentModulesDir lbi suitecfg
+          autogenComponentModulesDir lbi suitecfg
 #else
-    let testAutogenDir = autogenModulesDir lbi
+          autogenModulesDir lbi
 #endif
 
     createDirectoryIfMissingVerbose verbosity True testAutogenDir
@@ -363,19 +400,22 @@ generateBuildModule testSuiteName flags pkg lbi = do
            let module_sources = modules
 
            -- We need the directory with the component's cabal_macros.h!
+
+           let compAutogenDir =
+                 toFilePath $
 #if MIN_VERSION_Cabal(1,25,0)
-           let compAutogenDir = autogenComponentModulesDir lbi compCfg
+                 autogenComponentModulesDir lbi compCfg
 #else
-           let compAutogenDir = autogenModulesDir lbi
+                 autogenModulesDir lbi
 #endif
 
            -- Lib sources and includes
            iArgsNoPrefix
               <- mapM makeAbsolute
                $ compAutogenDir           -- autogenerated files
-               : (distPref ++ "/build")   -- preprocessed files (.hsc -> .hs); "build" is hardcoded in Cabal.
-               : map getSymbolicPath (hsSourceDirs compBI)
-           includeArgs <- mapM (fmap ("-I"++) . makeAbsolute) $ includeDirs compBI
+               : (toFilePath distPref ++ "/build")   -- preprocessed files (.hsc -> .hs); "build" is hardcoded in Cabal.
+               : map toFilePath (hsSourceDirs compBI)
+           includeArgs <- mapM (fmap ("-I"++) . makeAbsolute . toFilePath) $ includeDirs compBI
            -- We clear all includes, so the CWD isn't used.
            let iArgs' = map ("-i"++) iArgsNoPrefix
                iArgs  = "-i" : iArgs'
@@ -393,7 +433,7 @@ generateBuildModule testSuiteName flags pkg lbi = do
            -- even though the main-is module is named Main, its filepath might
            -- actually be Something.hs. To account for this possibility, we simply
            -- pass the full path to the main-is module instead.
-           mainIsPath <- T.traverse (findFileEx verbosity iArgsNoPrefix) (compMainIs comp)
+           mainIsPath <- T.traverse (findFile' verbosity iArgsNoPrefix) (compMainIs comp)
 
            let all_sources = map display module_sources
                              ++ additionalModules
@@ -419,7 +459,7 @@ generateBuildModule testSuiteName flags pkg lbi = do
 
     -- For now, we only check for doctests in libraries and executables.
     getBuildDoctests withLibLBI mbLibraryName           exposedModules (const Nothing)     libBuildInfo
-    getBuildDoctests withExeLBI (NameExe . executableName) (const [])     (Just . modulePath) buildInfo
+    getBuildDoctests withExeLBI (NameExe . executableName) (const []) (Just . toFilePath . modulePath) buildInfo
 
     components <- readIORef componentsRef
     F.for_ components $ \(Component cmpName cmpPkgs cmpFlags cmpSources) -> do
