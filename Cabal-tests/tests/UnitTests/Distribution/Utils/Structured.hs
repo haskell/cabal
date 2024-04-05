@@ -33,15 +33,15 @@ md5Check proxy md5Int = structureHash proxy @?= md5FromInteger md5Int
 md5CheckGenericPackageDescription :: Proxy GenericPackageDescription -> Assertion
 md5CheckGenericPackageDescription proxy = md5Check proxy
 #if MIN_VERSION_base(4,19,0)
-    0x5a48c6570cbcf96af4c51f38962e37b5
+    0x6639f65b143830a97e9c4f448b9cabb0
 #else
-    0xc5c0e54b95e651216e92db04c9cd4ecf
+    0x855933700dccfbcc1d642e3470c3702c
 #endif
 
 md5CheckLocalBuildInfo :: Proxy LocalBuildInfo -> Assertion
 md5CheckLocalBuildInfo proxy = md5Check proxy
 #if MIN_VERSION_base(4,19,0)
-    0x6d668de33d7b4d5df3830e65e6941373
+    0x2ae73730f60c7c947e2cb63c4aac1e54
 #else
-    0xcdf740970a7d37e5e7ca48ea5f4f25eb7
+    0x906cbfdef0bcdfe5734499cfabc615f5
 #endif
