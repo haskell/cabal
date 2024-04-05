@@ -3,10 +3,10 @@ stages:
 
 variables:
   # Commit of ghc/ci-images repository from which to pull Docker images
-  DOCKER_REV: "572353e0644044fe3a5465bba4342a9a0b0eb60e"
+  DOCKER_REV: "a9297a370025101b479cfd4977f8f910814e03ab"
 
-  GHC_VERSION: 9.2.3
-  CABAL_INSTALL_VERSION: 3.6.2.0
+  GHC_VERSION: 9.6.4
+  CABAL_INSTALL_VERSION: 3.10.2.0
 
 workflow:
   rules:
@@ -34,22 +34,28 @@ linux:
         TAG: x86_64-linux
         OS:
           - deb9
+          - deb10
       - ARCH: x86_64
         TAG: x86_64-linux
         OS:
           - centos7
           - deb9
+          - deb10
+          - deb11
+          - deb12
           - fedora33
+          - fedora36
+          - fedora38
           - rocky8
           - ubuntu18_04
           - ubuntu20_04
-          - deb10
-          - deb11
+          - ubuntu22_04
       - ARCH: aarch64
         TAG: aarch64-linux
         OS:
           - deb10
           - deb11
+          - deb12
   tags:
     - $TAG
   image: "registry.gitlab.haskell.org/ghc/ci-images/$PLATFORM:$DOCKER_REV"
@@ -63,13 +69,18 @@ alpine-linux:
   extends: .build
   parallel:
     matrix:
-      - ARCH: i386
-        OS: [alpine3_12]
-        GHC_VERSION: 9.0.2
+      - ARCH: [i386, x86_64]
+        OS: [alpine3_12, alpine3_15, alpine3_17]
+        TAG: x86_64-linux
+      # Was 3_18 for i386 intentionally left off?
       - ARCH: x86_64
-        OS: [alpine3_12]
+        OS: alpine3_18
+        TAG: x86_64-linux
+      - ARCH: [aarch64]
+        OS: [alpine3_18]
+        TAG: aarch64-linux
   tags:
-    - x86_64-linux
+    - $TAG
   before_script:
     # for cabal build
     - sudo apk add --no-cache zlib zlib-dev zlib-static
