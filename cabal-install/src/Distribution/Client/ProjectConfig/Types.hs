@@ -6,6 +6,7 @@
 module Distribution.Client.ProjectConfig.Types
   ( -- * Types for project config
     ProjectConfig (..)
+  , ProjectConfigToParse (..)
   , ProjectConfigBuildOnly (..)
   , ProjectConfigShared (..)
   , ProjectConfigProvenance (..)
@@ -26,6 +27,7 @@ module Distribution.Client.ProjectConfig.Types
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
+import qualified Data.ByteString.Char8 as BS
 import Distribution.Client.BuildReports.Types
   ( ReportLevel (..)
   )
@@ -94,11 +96,17 @@ import Distribution.Version
   )
 
 import qualified Data.Map as Map
+import Distribution.Solver.Types.ProjectConfigPath (ProjectConfigPath)
 import Distribution.Types.ParStrat
 
 -------------------------------
 -- Project config types
 --
+
+-- | The project configuration is configuration that is parsed but parse
+-- configuration may import more configuration. Holds the unparsed contents of
+-- an imported file contributing to the project config.
+newtype ProjectConfigToParse = ProjectConfigToParse BS.ByteString
 
 -- | This type corresponds directly to what can be written in the
 -- @cabal.project@ file. Other sources of configuration can also be injected
@@ -238,8 +246,8 @@ data ProjectConfigProvenance
     -- for how implicit configuration is determined.
     Implicit
   | -- | The path the project configuration was explicitly read from.
-    -- | The configuration was explicitly read from the specified 'FilePath'.
-    Explicit FilePath
+    -- | The configuration was explicitly read from the specified 'ProjectConfigPath'.
+    Explicit ProjectConfigPath
   deriving (Eq, Ord, Show, Generic)
 
 -- | Project configuration that is specific to each package, that is where we
