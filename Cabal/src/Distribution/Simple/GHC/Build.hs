@@ -136,5 +136,5 @@ build numJobs pkg_descr pbci = do
   -- after Haskell modules, because C sources may depend on stub headers
   -- generated from compiling Haskell modules (#842, #3294).
   buildOpts <- buildHaskellModules numJobs ghcProg pkg_descr buildTargetDir_absolute wantedWays pbci
-  extraSources <- buildAllExtraSources ghcProg buildTargetDir pbci
+  extraSources <- buildAllExtraSources numJobs ghcProg buildTargetDir pbci
   linkOrLoadComponent ghcProg pkg_descr (fromNubListR extraSources) (buildTargetDir, targetDir_absolute) (wantedWays, buildOpts) pbci

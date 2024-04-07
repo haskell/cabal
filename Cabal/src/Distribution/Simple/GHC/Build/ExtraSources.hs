@@ -4,7 +4,7 @@
 
 module Distribution.Simple.GHC.Build.ExtraSources where
 
-import Control.Monad
+import Control.Monad ( when, forM )
 import Data.Foldable
 import Distribution.Simple.Flag
 import qualified Distribution.Simple.GHC.Internal as Internal
@@ -14,6 +14,7 @@ import Distribution.Utils.NubList
 
 import Distribution.Types.BuildInfo
 import Distribution.Types.Component
+import Distribution.Types.ParStrat
 import Distribution.Types.TargetInfo
 
 import Distribution.Simple.GHC.Build.Utils
@@ -29,7 +30,8 @@ import Distribution.Simple.Build.Inputs
 -- | An action that builds all the extra build sources of a component, i.e. C,
 -- C++, Js, Asm, C-- sources.
 buildAllExtraSources
-  :: ConfiguredProgram
+  :: Flag ParStrat
+  -> ConfiguredProgram
   -- ^ The GHC configured program
   -> FilePath
   -- ^ The build directory for this target
@@ -51,7 +53,8 @@ buildCSources
   , buildJsSources
   , buildAsmSources
   , buildCmmSources
-    :: ConfiguredProgram
+    :: Flag ParStrat
+    -> ConfiguredProgram
     -- ^ The GHC configured program
     -> FilePath
     -- ^ The build directory for this target
@@ -81,7 +84,7 @@ buildCxxSources =
             CExe exe | isCxx (modulePath exe) -> [modulePath exe]
             _otherwise -> []
     )
-buildJsSources ghcProg buildTargetDir = do
+buildJsSources parStrat ghcProg buildTargetDir = do
   Platform hostArch _ <- hostPlatform <$> localBuildInfo
   let hasJsSupport = hostArch == JavaScript
   buildExtraSources
@@ -97,6 +100,7 @@ buildJsSources ghcProg buildTargetDir = do
             jsSources (componentBuildInfo c)
           else mempty
     )
+    parStrat
     ghcProg
     buildTargetDir
 buildAsmSources =
@@ -118,7 +122,7 @@ buildCmmSources =
 buildExtraSources
   :: String
   -- ^ String describing the extra sources being built, for printing.
-  -> (Verbosity -> LocalBuildInfo -> BuildInfo -> ComponentLocalBuildInfo -> FilePath -> FilePath -> GhcOptions)
+  -> (Verbosity -> LocalBuildInfo -> BuildInfo -> ComponentLocalBuildInfo -> FilePath -> GhcOptions)
   -- ^ Function to determine the @'GhcOptions'@ for the
   -- invocation of GHC when compiling these extra sources (e.g.
   -- @'Internal.componentCxxGhcOptions'@,
@@ -133,6 +137,7 @@ buildExtraSources
   -- @'Executable'@ components might additionally add the
   -- program entry point (@main-is@ file) to the extra sources,
   -- if it should be compiled as the rest of them.
+  -> Flag ParStrat
   -> ConfiguredProgram
   -- ^ The GHC configured program
   -> FilePath
@@ -141,7 +146,7 @@ buildExtraSources
   -- ^ The context and component being built in it.
   -> IO (NubListR FilePath)
   -- ^ Returns the list of extra sources that were built
-buildExtraSources description componentSourceGhcOptions wantDyn viewSources ghcProg buildTargetDir =
+buildExtraSources description componentSourceGhcOptions wantDyn viewSources parStrat ghcProg buildTargetDir =
   \PreBuildComponentInputs{buildingWhat, localBuildInfo = lbi, targetInfo} ->
     let
       bi = componentBuildInfo (targetComponent targetInfo)
@@ -159,9 +164,9 @@ buildExtraSources description componentSourceGhcOptions wantDyn viewSources ghcP
       isGhcDynamic = isDynamic comp
       doingTH = usesTemplateHaskellOrQQ bi
       forceSharedLib = doingTH && isGhcDynamic
-      runGhcProg = runGHC verbosity ghcProg comp platform
+      runGhcProg = runGHC verbosity ghcProg  comp platform
 
-      buildAction sourceFile = do
+      buildAction sourceFiles = do
         let baseSrcOpts =
               componentSourceGhcOptions
                 verbosity
@@ -169,12 +174,17 @@ buildExtraSources description componentSourceGhcOptions wantDyn viewSources ghcP
                 bi
                 clbi
                 buildTargetDir
-                sourceFile
+            parSrcOpts = baseSrcOpts
+                `mappend` mempty
+                  { ghcOptNumJobs = parStrat
+                  -- ^ note that because we don't use `--make` to build extra
+                  -- sources, the only option that adds parallelism is -jsem
+                  }
             vanillaSrcOpts
               -- Dynamic GHC requires C sources to be built
               -- with -fPIC for REPL to work. See #2207.
-              | isGhcDynamic && wantDyn = baseSrcOpts{ghcOptFPic = toFlag True}
-              | otherwise = baseSrcOpts
+              | isGhcDynamic && wantDyn = parSrcOpts `mappend` mempty {ghcOptFPic = toFlag True}
+              | otherwise = parSrcOpts
             profSrcOpts =
               vanillaSrcOpts
                 `mappend` mempty
@@ -191,52 +201,53 @@ buildExtraSources description componentSourceGhcOptions wantDyn viewSources ghcP
             --       consider this a user error. However, we should strive to
             --       add a warning if this occurs.
             odir = fromFlag (ghcOptObjDir vanillaSrcOpts)
-            compileIfNeeded opts = do
-              needsRecomp <- checkNeedsRecompilation sourceFile opts
-              when needsRecomp $ runGhcProg opts
 
         -- TODO: This whole section can be streamlined to the
         -- wantedWays+neededWays logic used in Build/Modules.hs
         createDirectoryIfMissingVerbose verbosity True odir
-        case targetComponent targetInfo of
-          -- For libraries, we compile extra objects in the three ways: vanilla, shared, and profiled.
-          -- We suffix shared objects with .dyn_o and profiled ones with .p_o.
-          CLib _lib
-            -- Unless for repl, in which case we only need the vanilla way
-            | BuildRepl _ <- buildingWhat ->
-                compileIfNeeded vanillaSrcOpts
-            | otherwise ->
-                do
-                  compileIfNeeded vanillaSrcOpts
-                  when (wantDyn && (forceSharedLib || withSharedLib lbi)) $
-                    compileIfNeeded sharedSrcOpts{ghcOptObjSuffix = toFlag "dyn_o"}
-                  when (withProfLib lbi) $
-                    compileIfNeeded profSrcOpts{ghcOptObjSuffix = toFlag "p_o"}
+        let allOpts =
+              case targetComponent targetInfo of
+                -- For libraries, we compile extra objects in the three ways: vanilla, shared, and profiled.
+                -- We suffix shared objects with .dyn_o and profiled ones with .p_o.
+                CLib _lib
+                  -- Unless for repl, in which case we only need the vanilla way
+                  | BuildRepl _ <- buildingWhat ->
+                      [vanillaSrcOpts]
+                  | otherwise ->
+                      [vanillaSrcOpts]
+                      ++ [sharedSrcOpts{ghcOptObjSuffix = toFlag "dyn_o"} | wantDyn && (forceSharedLib || withSharedLib lbi)]
+                      ++ [profSrcOpts{ghcOptObjSuffix = toFlag "p_o"} | withProfLib lbi]
 
-          -- For foreign libraries, we determine with which options to build the
-          -- objects (vanilla vs shared vs profiled)
-          CFLib flib
-            | withProfExe lbi -> -- It doesn't sound right to query "ProfExe" for a foreign library...
-                compileIfNeeded profSrcOpts
-            | withDynFLib flib && wantDyn ->
-                compileIfNeeded sharedSrcOpts
-            | otherwise ->
-                compileIfNeeded vanillaSrcOpts
-          -- For the remaining component types (Exec, Test, Bench), we also
-          -- determine with which options to build the objects (vanilla vs shared vs
-          -- profiled), but predicate is the same for the three kinds.
-          _exeLike
-            | withProfExe lbi ->
-                compileIfNeeded profSrcOpts
-            | withDynExe lbi && wantDyn ->
-                compileIfNeeded sharedSrcOpts
-            | otherwise ->
-                compileIfNeeded vanillaSrcOpts
+                -- For foreign libraries, we determine with which options to build the
+                -- objects (vanilla vs shared vs profiled)
+                CFLib flib
+                  | withProfExe lbi -> -- It doesn't sound right to query "ProfExe" for a foreign library...
+                      [profSrcOpts]
+                  | withDynFLib flib && wantDyn ->
+                      [sharedSrcOpts]
+                  | otherwise ->
+                      [vanillaSrcOpts]
+                -- For the remaining component types (Exec, Test, Bench), we also
+                -- determine with which options to build the objects (vanilla vs shared vs
+                -- profiled), but predicate is the same for the three kinds.
+                _exeLike
+                  | withProfExe lbi ->
+                      [profSrcOpts]
+                  | withDynExe lbi && wantDyn ->
+                      [sharedSrcOpts]
+                  | otherwise ->
+                      [vanillaSrcOpts]
+        forM_ allOpts $ \opts -> do
+          files <- fmap concat $ forM sourceFiles $ \sourceFile -> do
+            needsRecomp <- checkNeedsRecompilation sourceFile opts
+            return [sourceFile | needsRecomp]
+          when (not (null files)) $
+            runGhcProg opts { ghcOptInputFiles = toNubListR files }
      in
       -- build any sources
       if (null sources || componentIsIndefinite clbi)
         then return mempty
         else do
           info verbosity ("Building " ++ description ++ "...")
-          traverse_ buildAction sources
+          buildAction sources
           return (toNubListR sources)

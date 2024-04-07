@@ -344,15 +344,13 @@ componentCcGhcOptions
   -> BuildInfo
   -> ComponentLocalBuildInfo
   -> FilePath
-  -> FilePath
   -> GhcOptions
-componentCcGhcOptions verbosity lbi bi clbi odir filename =
+componentCcGhcOptions verbosity lbi bi clbi odir =
   mempty
     { -- Respect -v0, but don't crank up verbosity on GHC if
       -- Cabal verbosity is requested. For that, use --ghc-option=-v instead!
       ghcOptVerbosity = toFlag (min verbosity normal)
     , ghcOptMode = toFlag GhcModeCompile
-    , ghcOptInputFiles = toNubListR [filename]
     , ghcOptCppIncludePath =
         toNubListR $
           [ autogenComponentModulesDir lbi clbi
@@ -393,15 +391,13 @@ componentCxxGhcOptions
   -> BuildInfo
   -> ComponentLocalBuildInfo
   -> FilePath
-  -> FilePath
   -> GhcOptions
-componentCxxGhcOptions verbosity lbi bi clbi odir filename =
+componentCxxGhcOptions verbosity lbi bi clbi odir =
   mempty
     { -- Respect -v0, but don't crank up verbosity on GHC if
       -- Cabal verbosity is requested. For that, use --ghc-option=-v instead!
       ghcOptVerbosity = toFlag (min verbosity normal)
     , ghcOptMode = toFlag GhcModeCompile
-    , ghcOptInputFiles = toNubListR [filename]
     , ghcOptCppIncludePath =
         toNubListR $
           [ autogenComponentModulesDir lbi clbi
@@ -442,15 +438,13 @@ componentAsmGhcOptions
   -> BuildInfo
   -> ComponentLocalBuildInfo
   -> FilePath
-  -> FilePath
   -> GhcOptions
-componentAsmGhcOptions verbosity lbi bi clbi odir filename =
+componentAsmGhcOptions verbosity lbi bi clbi odir =
   mempty
     { -- Respect -v0, but don't crank up verbosity on GHC if
       -- Cabal verbosity is requested. For that, use --ghc-option=-v instead!
       ghcOptVerbosity = toFlag (min verbosity normal)
     , ghcOptMode = toFlag GhcModeCompile
-    , ghcOptInputFiles = toNubListR [filename]
     , ghcOptCppIncludePath =
         toNubListR $
           [ autogenComponentModulesDir lbi clbi
@@ -486,15 +480,13 @@ componentJsGhcOptions
   -> BuildInfo
   -> ComponentLocalBuildInfo
   -> FilePath
-  -> FilePath
   -> GhcOptions
-componentJsGhcOptions verbosity lbi bi clbi odir filename =
+componentJsGhcOptions verbosity lbi bi clbi odir =
   mempty
     { -- Respect -v0, but don't crank up verbosity on GHC if
       -- Cabal verbosity is requested. For that, use --ghc-option=-v instead!
       ghcOptVerbosity = toFlag (min verbosity normal)
     , ghcOptMode = toFlag GhcModeCompile
-    , ghcOptInputFiles = toNubListR [filename]
     , ghcOptCppIncludePath =
         toNubListR $
           [ autogenComponentModulesDir lbi clbi
@@ -614,15 +606,13 @@ componentCmmGhcOptions
   -> BuildInfo
   -> ComponentLocalBuildInfo
   -> FilePath
-  -> FilePath
   -> GhcOptions
-componentCmmGhcOptions verbosity lbi bi clbi odir filename =
+componentCmmGhcOptions verbosity lbi bi clbi odir =
   mempty
     { -- Respect -v0, but don't crank up verbosity on GHC if
       -- Cabal verbosity is requested. For that, use --ghc-option=-v instead!
       ghcOptVerbosity = toFlag (min verbosity normal)
     , ghcOptMode = toFlag GhcModeCompile
-    , ghcOptInputFiles = toNubListR [filename]
     , ghcOptCppIncludePath =
         toNubListR $
           [ autogenComponentModulesDir lbi clbi
