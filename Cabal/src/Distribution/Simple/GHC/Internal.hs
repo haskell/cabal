@@ -383,15 +383,13 @@ componentCcGhcOptions
   -> BuildInfo
   -> ComponentLocalBuildInfo
   -> SymbolicPath Pkg (Dir Artifacts)
-  -> SymbolicPath Pkg File
   -> GhcOptions
-componentCcGhcOptions verbosity lbi bi clbi odir filename =
+componentCcGhcOptions verbosity lbi bi clbi odir =
   mempty
     { -- Respect -v0, but don't crank up verbosity on GHC if
       -- Cabal verbosity is requested. For that, use --ghc-option=-v instead!
       ghcOptVerbosity = toFlag (min verbosity normal)
     , ghcOptMode = toFlag GhcModeCompile
-    , ghcOptInputFiles = toNubListR [filename]
     , ghcOptCppIncludePath = includePaths lbi bi clbi odir
     , ghcOptHideAllPackages = toFlag True
     , ghcOptPackageDBs = withPackageDB lbi
@@ -422,15 +420,13 @@ componentCxxGhcOptions
   -> BuildInfo
   -> ComponentLocalBuildInfo
   -> SymbolicPath Pkg (Dir Artifacts)
-  -> SymbolicPath Pkg File
   -> GhcOptions
-componentCxxGhcOptions verbosity lbi bi clbi odir filename =
+componentCxxGhcOptions verbosity lbi bi clbi odir =
   mempty
     { -- Respect -v0, but don't crank up verbosity on GHC if
       -- Cabal verbosity is requested. For that, use --ghc-option=-v instead!
       ghcOptVerbosity = toFlag (min verbosity normal)
     , ghcOptMode = toFlag GhcModeCompile
-    , ghcOptInputFiles = toNubListR [filename]
     , ghcOptCppIncludePath = includePaths lbi bi clbi odir
     , ghcOptHideAllPackages = toFlag True
     , ghcOptPackageDBs = withPackageDB lbi
@@ -461,15 +457,13 @@ componentAsmGhcOptions
   -> BuildInfo
   -> ComponentLocalBuildInfo
   -> SymbolicPath Pkg (Dir Artifacts)
-  -> SymbolicPath Pkg File
   -> GhcOptions
-componentAsmGhcOptions verbosity lbi bi clbi odir filename =
+componentAsmGhcOptions verbosity lbi bi clbi odir =
   mempty
     { -- Respect -v0, but don't crank up verbosity on GHC if
       -- Cabal verbosity is requested. For that, use --ghc-option=-v instead!
       ghcOptVerbosity = toFlag (min verbosity normal)
     , ghcOptMode = toFlag GhcModeCompile
-    , ghcOptInputFiles = toNubListR [filename]
     , ghcOptCppIncludePath = includePaths lbi bi clbi odir
     , ghcOptHideAllPackages = toFlag True
     , ghcOptPackageDBs = withPackageDB lbi
@@ -496,15 +490,13 @@ componentJsGhcOptions
   -> BuildInfo
   -> ComponentLocalBuildInfo
   -> SymbolicPath Pkg (Dir Artifacts)
-  -> SymbolicPath Pkg File
   -> GhcOptions
-componentJsGhcOptions verbosity lbi bi clbi odir filename =
+componentJsGhcOptions verbosity lbi bi clbi odir =
   mempty
     { -- Respect -v0, but don't crank up verbosity on GHC if
       -- Cabal verbosity is requested. For that, use --ghc-option=-v instead!
       ghcOptVerbosity = toFlag (min verbosity normal)
     , ghcOptMode = toFlag GhcModeCompile
-    , ghcOptInputFiles = toNubListR [filename]
     , ghcOptJSppOptions = jsppOptions bi
     , ghcOptCppIncludePath = includePaths lbi bi clbi odir
     , ghcOptHideAllPackages = toFlag True
@@ -607,15 +599,13 @@ componentCmmGhcOptions
   -> BuildInfo
   -> ComponentLocalBuildInfo
   -> SymbolicPath Pkg (Dir Artifacts)
-  -> SymbolicPath Pkg File
   -> GhcOptions
-componentCmmGhcOptions verbosity lbi bi clbi odir filename =
+componentCmmGhcOptions verbosity lbi bi clbi odir =
   mempty
     { -- Respect -v0, but don't crank up verbosity on GHC if
       -- Cabal verbosity is requested. For that, use --ghc-option=-v instead!
       ghcOptVerbosity = toFlag (min verbosity normal)
     , ghcOptMode = toFlag GhcModeCompile
-    , ghcOptInputFiles = toNubListR [filename]
     , ghcOptCppIncludePath = includePaths lbi bi clbi odir
     , ghcOptCppOptions = cppOptions bi
     , ghcOptCppIncludes =

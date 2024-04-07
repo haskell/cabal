@@ -10,7 +10,7 @@ import Distribution.Types.ParStrat
 import Distribution.Simple.Flag
 import Distribution.Simple.Compiler (Compiler(..), CompilerId(..), CompilerFlavor(..), AbiTag(NoAbiTag))
 import Distribution.PackageDescription (emptyPackageDescription)
-import Distribution.Simple.Program.GHC (normaliseGhcArgs, renderGhcOptions, ghcOptNumJobs)
+import Distribution.Simple.Program.GHC (normaliseGhcArgs, renderGhcOptions, GhcMode(..), ghcOptNumJobs, ghcOptMode)
 import Distribution.Version            (mkVersion)
 
 tests :: TestTree
@@ -44,7 +44,7 @@ tests = testGroup "Distribution.Simple.Program.GHC"
             assertListEquals flags options_9_0_affects
         ]
     , testGroup "renderGhcOptions"
-      [ testCase "options" $ do
+      [ testCase "parallel make" $ do
             let flags :: [String]
                 flags = renderGhcOptions
                   (Compiler
@@ -57,8 +57,27 @@ tests = testGroup "Distribution.Simple.Program.GHC"
                       , compilerWiredInUnitIds = Nothing
                       })
                   (Platform X86_64 Linux)
-                  (mempty { ghcOptNumJobs = Flag (NumJobs (Just 4)) })
-            assertListEquals flags ["-j4", "-clear-package-db"]
+                  (mempty
+                    { ghcOptMode = Flag GhcModeMake
+                    , ghcOptNumJobs = Flag (NumJobs (Just 4)) })
+            assertListEquals flags ["--make", "-j4", "-clear-package-db"]
+      , testCase "parallel batch" $ do
+            let flags :: [String]
+                flags = renderGhcOptions
+                  (Compiler
+                      { compilerId = CompilerId GHC (mkVersion [9,8,1])
+                      , compilerAbiTag = NoAbiTag
+                      , compilerCompat = []
+                      , compilerLanguages = []
+                      , compilerExtensions = []
+                      , compilerProperties = Map.singleton "Support parallel batch mode" "YES"
+                      , compilerWiredInUnitIds = Nothing
+                      })
+                  (Platform X86_64 Linux)
+                  (mempty
+                    { ghcOptMode = Flag GhcModeCompile
+                    , ghcOptNumJobs = Flag (NumJobs (Just 4)) })
+            assertListEquals flags ["-c", "-j4", "-clear-package-db"]
         ]
     ]
 
