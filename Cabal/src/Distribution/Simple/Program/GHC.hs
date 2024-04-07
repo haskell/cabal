@@ -803,7 +803,8 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
         , case flagToMaybe (ghcOptHPCDir opts) of
             Nothing -> []
             Just hpcdir -> ["-fhpc", "-hpcdir", u hpcdir]
-        , if parmakeSupported comp
+        , if parmakeSupported comp && ghcOptMode opts == toFlag GhcModeMake
+            || parBatchSupported comp && ghcOptMode opts == toFlag GhcModeCompile
             then case ghcOptNumJobs opts of
               NoFlag -> []
               Flag Serial -> []
