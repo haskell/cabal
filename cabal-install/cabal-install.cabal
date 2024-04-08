@@ -51,11 +51,6 @@ common warnings
     if impl(ghc < 8.8)
       ghc-options: -Wnoncanonical-monadfail-instances
 
-    if impl(ghc >=9.0)
-      -- Warning: even though introduced with GHC 8.10, -Wunused-packages
-      -- gives false positives with GHC 8.10.
-      ghc-options: -Wunused-packages
-
 common base-dep
     build-depends: base >=4.10 && <4.20
 
