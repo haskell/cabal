@@ -34,6 +34,7 @@ module Distribution.Types.PackageDescription
   , buildType
   , emptyPackageDescription
   , hasPublicLib
+  , hasPrivateDependencies
   , hasLibs
   , allLibraries
   , withLib
@@ -59,6 +60,7 @@ module Distribution.Types.PackageDescription
 
 import Distribution.Compat.Prelude
 import Prelude ()
+import qualified Data.List
 
 -- lens
 
@@ -365,6 +367,12 @@ allBuildDepends pd = do
   bi <- allBuildInfo pd
   [(Nothing, d) | d <- targetBuildDepends bi]
     ++ [(Just p, d) | PrivateDependency p ds <- targetPrivateBuildDepends bi, d <- ds]
+
+-- | Does this package have any private dependencies? At the moment, cabal
+-- check will reject any packages that do.
+hasPrivateDependencies :: PackageDescription -> Bool
+hasPrivateDependencies pd = not . Data.List.null $
+  concatMap targetPrivateBuildDepends (allBuildInfo pd)
 
 -- | Get the combined build-depends entries of all enabled components, per the
 -- given request spec.
