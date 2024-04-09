@@ -1,0 +1,9 @@
+name:           oops
+version:        0.1
+license:        BSD3
+cabal-version:  >= 1.2
+build-type:     Simple
+
+library
+    exposed-modules:    Foo
+    build-depends:      base, hashable
