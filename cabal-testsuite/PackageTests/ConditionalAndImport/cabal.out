@@ -13,33 +13,53 @@ Warning: The directory <ROOT>/cabal.dist/home/.cabal/store/ghc-<GHCVER>/incoming
 # checking cyclical loopback of a project importing itself
 # cabal v2-build
 Error: [Cabal-7090]
-Error parsing project file <ROOT>/cyclical-0-self.project:3:
-cyclical import of cyclical-0-self.project
+Error parsing project file <ROOT>/cyclical-0-self.project:
+cyclical import of cyclical-0-self.project;
+  cyclical-0-self.project
+    imported by: cyclical-0-self.project
 # checking cyclical with hops; out and back
 # cabal v2-build
 Error: [Cabal-7090]
-Error parsing project file <ROOT>/cyclical-1-out-back.project:3:
-cyclical import of cyclical-1-out-back.config
+Error parsing project file <ROOT>/cyclical-1-out-back.project:
+cyclical import of cyclical-1-out-back.project;
+  cyclical-1-out-back.project
+    imported by: cyclical-1-out-back.config
+    imported by: cyclical-1-out-back.project
 # checking cyclical with hops; out to a config that imports itself
 # cabal v2-build
 Error: [Cabal-7090]
-Error parsing project file <ROOT>/cyclical-1-out-self.project:1:
-cyclical import of cyclical-1-out-self.config
+Error parsing project file <ROOT>/cyclical-1-out-self.project:
+cyclical import of cyclical-1-out-self.config;
+  cyclical-1-out-self.config
+    imported by: cyclical-1-out-self.config
+    imported by: cyclical-1-out-self.project
 # checking cyclical with hops; out, out, twice back
 # cabal v2-build
 Error: [Cabal-7090]
-Error parsing project file <ROOT>/cyclical-2-out-out-backback.project:3:
-cyclical import of cyclical-2-out-out-backback-a.config
+Error parsing project file <ROOT>/cyclical-2-out-out-backback.project:
+cyclical import of cyclical-2-out-out-backback.project;
+  cyclical-2-out-out-backback.project
+    imported by: cyclical-2-out-out-backback-b.config
+    imported by: cyclical-2-out-out-backback-a.config
+    imported by: cyclical-2-out-out-backback.project
 # checking cyclical with hops; out, out, once back
 # cabal v2-build
 Error: [Cabal-7090]
-Error parsing project file <ROOT>/cyclical-2-out-out-back.project:1:
-cyclical import of cyclical-2-out-out-back-a.config
+Error parsing project file <ROOT>/cyclical-2-out-out-back.project:
+cyclical import of cyclical-2-out-out-back-a.config;
+  cyclical-2-out-out-back-a.config
+    imported by: cyclical-2-out-out-back-b.config
+    imported by: cyclical-2-out-out-back-a.config
+    imported by: cyclical-2-out-out-back.project
 # checking cyclical with hops; out, out to a config that imports itself
 # cabal v2-build
 Error: [Cabal-7090]
-Error parsing project file <ROOT>/cyclical-2-out-out-self.project:1:
-cyclical import of cyclical-2-out-out-self-b.config
+Error parsing project file <ROOT>/cyclical-2-out-out-self.project:
+cyclical import of cyclical-2-out-out-self-b.config;
+  cyclical-2-out-out-self-b.config
+    imported by: cyclical-2-out-out-self-b.config
+    imported by: cyclical-2-out-out-self-a.config
+    imported by: cyclical-2-out-out-self.project
 # checking that cyclical check doesn't false-positive on same file names in different folders; hoping within a folder and then into a subfolder
 # cabal v2-build
 Resolving dependencies...
@@ -51,23 +71,59 @@ Preprocessing library for my-0.1...
 Building library for my-0.1...
 # checking that cyclical check doesn't false-positive on same file names in different folders; hoping into a subfolder and then back out again
 # cabal v2-build
+Up to date
 # checking that cyclical check catches a same file name that imports itself
 # cabal v2-build
 Error: [Cabal-7090]
-Error parsing project file <ROOT>/cyclical-same-filename-out-out-self.project:1:
-cyclical import of cyclical-same-filename-out-out-self.config
+Error parsing project file <ROOT>/cyclical-same-filename-out-out-self.project:
+cyclical import of same-filename/cyclical-same-filename-out-out-self.config;
+  same-filename/cyclical-same-filename-out-out-self.config
+    imported by: same-filename/cyclical-same-filename-out-out-self.config
+    imported by: cyclical-same-filename-out-out-self.config
+    imported by: cyclical-same-filename-out-out-self.project
 # checking that cyclical check catches importing its importer (with the same file name)
 # cabal v2-build
 Error: [Cabal-7090]
-Error parsing project file <ROOT>/cyclical-same-filename-out-out-backback.project:3:
-cyclical import of cyclical-same-filename-out-out-backback.config
+Error parsing project file <ROOT>/cyclical-same-filename-out-out-backback.project:
+cyclical import of cyclical-same-filename-out-out-backback.project;
+  cyclical-same-filename-out-out-backback.project
+    imported by: same-filename/cyclical-same-filename-out-out-backback.config
+    imported by: cyclical-same-filename-out-out-backback.config
+    imported by: cyclical-same-filename-out-out-backback.project
 # checking that cyclical check catches importing its importer's importer (hopping over same file names)
 # cabal v2-build
 Error: [Cabal-7090]
-Error parsing project file <ROOT>/cyclical-same-filename-out-out-back.project:1:
-cyclical import of same-filename/cyclical-same-filename-out-out-back.config
+Error parsing project file <ROOT>/cyclical-same-filename-out-out-back.project:
+cyclical import of cyclical-same-filename-out-out-back.config;
+  cyclical-same-filename-out-out-back.config
+    imported by: same-filename/cyclical-same-filename-out-out-back.config
+    imported by: cyclical-same-filename-out-out-back.config
+    imported by: cyclical-same-filename-out-out-back.project
 # checking that imports work skipping into a subfolder and then back out again and again
 # cabal v2-build
+Up to date
+# checking conflicting constraints skipping into a subfolder and then back out again and again
+# cabal v2-build
+Resolving dependencies...
+Error: [Cabal-7107]
+Could not resolve dependencies:
+[__0] trying: oops-0.1 (user goal)
+[__1] next goal: hashable (dependency of oops)
+[__1] rejecting: hashable-1.4.3.0
+      (constraint from oops/oops-9.config requires ==1.4.2.0)
+        imported by: oops-8.config
+        imported by: oops/oops-7.config
+        imported by: oops-6.config
+        imported by: oops/oops-5.config
+        imported by: oops-4.config
+        imported by: oops/oops-3.config
+        imported by: oops-2.config
+        imported by: oops/oops-1.config
+        imported by: oops-0.project
+[__1] rejecting: hashable-1.4.2.0
+      (constraint from oops-0.project requires ==1.4.3.0)
+[__1] fail (backjumping, conflict set: hashable, oops)
+After searching the rest of the dependency tree exhaustively, these were the goals I've had most trouble fulfilling: hashable (3), oops (2)
 # checking bad conditional
 # cabal v2-build
 Error: [Cabal-7090]
