@@ -19,7 +19,6 @@ library
     , rere              >=0.1 && <0.3
     , tasty
     , tasty-quickcheck
-    , transformers
 
   exposed-modules:
     Distribution.Described

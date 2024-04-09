@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE NondecreasingIndentation #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -25,10 +26,7 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BS8
 import Distribution.Compat.CopyFile (filesEqual)
 import Distribution.Simple.Compiler (arDashLSupported, arResponseFilesSupported)
-import Distribution.Simple.Flag
-  ( fromFlagOrDefault
-  )
-import Distribution.Simple.LocalBuildInfo (LocalBuildInfo (..))
+import Distribution.Simple.LocalBuildInfo (LocalBuildInfo (..), mbWorkDirLBI)
 import Distribution.Simple.Program
   ( ProgramInvocation
   , arProgram
@@ -39,29 +37,32 @@ import Distribution.Simple.Program.ResponseFile
   )
 import Distribution.Simple.Program.Run
   ( multiStageProgramInvocation
-  , programInvocation
+  , programInvocationCwd
   , runProgramInvocation
   )
+import Distribution.Simple.Setup.Common
 import Distribution.Simple.Setup.Config
   ( configUseResponseFiles
   )
 import Distribution.Simple.Utils
   ( defaultTempFileOptions
   , dieWithLocation'
-  , withTempDirectory
+  , withTempDirectoryCwd
   )
 import Distribution.System
   ( Arch (..)
   , OS (..)
   , Platform (..)
   )
+import Distribution.Utils.Path
 import Distribution.Verbosity
   ( Verbosity
   , deafening
   , verbose
   )
+
 import System.Directory (doesFileExist, renameFile)
-import System.FilePath (splitFileName, (</>))
+import System.FilePath (splitFileName)
 import System.IO
   ( Handle
   , IOMode (ReadWriteMode)
@@ -75,14 +76,21 @@ import System.IO
 createArLibArchive
   :: Verbosity
   -> LocalBuildInfo
-  -> FilePath
-  -> [FilePath]
+  -> SymbolicPath Pkg File
+  -> [SymbolicPath Pkg File]
   -> IO ()
 createArLibArchive verbosity lbi targetPath files = do
-  (ar, _) <- requireProgram verbosity arProgram progDb
+  (arProg, _) <- requireProgram verbosity arProgram progDb
 
-  let (targetDir, targetName) = splitFileName targetPath
-  withTempDirectory verbosity targetDir "objs" $ \tmpDir -> do
+  let (targetDir0, targetName0) = splitFileName $ getSymbolicPath targetPath
+      targetDir = makeSymbolicPath targetDir0
+      targetName = makeRelativePathEx targetName0
+      mbWorkDir = mbWorkDirLBI lbi
+      -- See Note [Symbolic paths] in Distribution.Utils.Path
+      i = interpretSymbolicPath mbWorkDir
+      u :: SymbolicPath Pkg to -> FilePath
+      u = interpretSymbolicPathCWD
+  withTempDirectoryCwd verbosity mbWorkDir targetDir "objs" $ \tmpDir -> do
     let tmpPath = tmpDir </> targetName
 
     -- The args to use with "ar" are actually rather subtle and system-dependent.
@@ -105,7 +113,8 @@ createArLibArchive verbosity lbi targetPath files = do
     -- When we need to call ar multiple times we use "ar q" and for the last
     -- call on OSX we use "ar qs" so that it'll make the index.
 
-    let simpleArgs = case hostOS of
+    let simpleArgs, initialArgs, finalArgs :: [String]
+        simpleArgs = case hostOS of
           OSX -> ["-r", "-s"]
           _ | dashLSupported -> ["-qL"]
           _ -> ["-r"]
@@ -116,12 +125,13 @@ createArLibArchive verbosity lbi targetPath files = do
           _ | dashLSupported -> ["-qL"]
           _ -> ["-q"]
 
-        extraArgs = verbosityOpts verbosity ++ [tmpPath]
+        extraArgs = verbosityOpts verbosity ++ [u tmpPath]
 
-        simple = programInvocation ar (simpleArgs ++ extraArgs)
-        initial = programInvocation ar (initialArgs ++ extraArgs)
+        ar = programInvocationCwd mbWorkDir arProg
+        simple = ar (simpleArgs ++ extraArgs)
+        initial = ar (initialArgs ++ extraArgs)
         middle = initial
-        final = programInvocation ar (finalArgs ++ extraArgs)
+        final = ar (finalArgs ++ extraArgs)
 
         oldVersionManualOverride =
           fromFlagOrDefault False $ configUseResponseFiles $ configFlags lbi
@@ -130,10 +140,9 @@ createArLibArchive verbosity lbi targetPath files = do
         dashLSupported =
           arDashLSupported (compiler lbi)
 
-        invokeWithResponesFile :: FilePath -> ProgramInvocation
-        invokeWithResponesFile atFile =
-          programInvocation ar $
-            simpleArgs ++ extraArgs ++ ['@' : atFile]
+        invokeWithResponseFile :: FilePath -> ProgramInvocation
+        invokeWithResponseFile atFile =
+          (ar $ simpleArgs ++ extraArgs ++ ['@' : atFile])
 
     if oldVersionManualOverride || responseArgumentsNotSupported
       then
@@ -143,18 +152,18 @@ createArLibArchive verbosity lbi targetPath files = do
               multiStageProgramInvocation
                 simple
                 (initial, middle, final)
-                files
+                (map getSymbolicPath files)
           ]
-      else withResponseFile verbosity defaultTempFileOptions tmpDir "ar.rsp" Nothing files $
-        \path -> runProgramInvocation verbosity $ invokeWithResponesFile path
+      else withResponseFile verbosity defaultTempFileOptions mbWorkDir tmpDir "ar.rsp" Nothing (map getSymbolicPath files) $
+        \path -> runProgramInvocation verbosity $ invokeWithResponseFile path
 
     unless
       ( hostArch == Arm -- See #1537
           || hostOS == AIX
       )
-      $ wipeMetadata verbosity tmpPath -- AIX uses its own "ar" format variant
-    equal <- filesEqual tmpPath targetPath
-    unless equal $ renameFile tmpPath targetPath
+      $ wipeMetadata verbosity (i tmpPath) -- AIX uses its own "ar" format variant
+    equal <- filesEqual (i tmpPath) (i targetPath)
+    unless equal $ renameFile (i tmpPath) (i targetPath)
   where
     progDb = withPrograms lbi
     Platform hostArch hostOS = hostPlatform lbi

@@ -86,7 +86,7 @@ checkLibrary
     checkP
       ( not $
           all
-            (flip elem (allExplicitIncludes lib))
+            (flip elem (allExplicitIncludes lib) . getSymbolicPath)
             (view L.autogenIncludes lib)
       )
       $ (PackageBuildImpossible AutogenIncludesNotIncluded)
@@ -107,8 +107,8 @@ checkLibrary
     where
       allExplicitIncludes :: L.HasBuildInfo a => a -> [FilePath]
       allExplicitIncludes x =
-        view L.includes x
-          ++ view L.installIncludes x
+        map getSymbolicPath (view L.includes x)
+          ++ map getSymbolicPath (view L.installIncludes x)
 
 checkForeignLib :: Monad m => ForeignLib -> CheckM m ()
 checkForeignLib
@@ -136,12 +136,13 @@ checkExecutable
   ads
   exe@( Executable
           exeName_
-          modulePath_
+          symbolicModulePath_
           _exeScope_
           buildInfo_
         ) = do
     -- Target type/name (exe).
     let cet = CETExecutable exeName_
+        modulePath_ = getSymbolicPath symbolicModulePath_
 
     -- § Exe specific checks
     checkP
@@ -172,7 +173,7 @@ checkExecutable
     checkP
       ( not $
           all
-            (flip elem (view L.includes exe))
+            (flip elem (view L.includes exe) . relativeSymbolicPath)
             (view L.autogenIncludes exe)
       )
       (PackageBuildImpossible AutogenIncludesNotIncludedExe)
@@ -217,7 +218,7 @@ checkTestSuite
     checkP
       ( not $
           all
-            (flip elem (view L.includes ts))
+            (flip elem (view L.includes ts) . relativeSymbolicPath)
             (view L.autogenIncludes ts)
       )
       (PackageBuildImpossible AutogenIncludesNotIncludedExe)
@@ -233,12 +234,12 @@ checkTestSuite
     where
       mainIsWrongExt =
         case testInterface_ of
-          TestSuiteExeV10 _ f -> not (fileExtensionSupportedLanguage f)
+          TestSuiteExeV10 _ f -> not (fileExtensionSupportedLanguage $ getSymbolicPath f)
           _ -> False
 
       mainIsNotHsExt =
         case testInterface_ of
-          TestSuiteExeV10 _ f -> takeExtension f `notElem` [".hs", ".lhs"]
+          TestSuiteExeV10 _ f -> takeExtension (getSymbolicPath f) `notElem` [".hs", ".lhs"]
           _ -> False
 
 checkBenchmark
@@ -278,7 +279,7 @@ checkBenchmark
     checkP
       ( not $
           all
-            (flip elem (view L.includes bm))
+            (flip elem (view L.includes bm) . relativeSymbolicPath)
             (view L.autogenIncludes bm)
       )
       (PackageBuildImpossible AutogenIncludesNotIncludedExe)
@@ -290,7 +291,7 @@ checkBenchmark
       -- they are different.
       mainIsWrongExt =
         case benchmarkInterface_ of
-          BenchmarkExeV10 _ f -> takeExtension f `notElem` [".hs", ".lhs"]
+          BenchmarkExeV10 _ f -> takeExtension (getSymbolicPath f) `notElem` [".hs", ".lhs"]
           _ -> False
 
 -- ------------------------------------------------------------
@@ -346,14 +347,14 @@ checkBuildInfo cet ams ads bi = do
   mapM_ checkCustomField (customFieldsBI bi)
 
   -- Content.
-  mapM_ (checkLocalPathExist "extra-lib-dirs") (extraLibDirs bi)
+  mapM_ (checkLocalPathExist "extra-lib-dirs" . getSymbolicPath) (extraLibDirs bi)
   mapM_
-    (checkLocalPathExist "extra-lib-dirs-static")
+    (checkLocalPathExist "extra-lib-dirs-static" . getSymbolicPath)
     (extraLibDirsStatic bi)
   mapM_
-    (checkLocalPathExist "extra-framework-dirs")
+    (checkLocalPathExist "extra-framework-dirs" . getSymbolicPath)
     (extraFrameworkDirs bi)
-  mapM_ (checkLocalPathExist "include-dirs") (includeDirs bi)
+  mapM_ (checkLocalPathExist "include-dirs" . getSymbolicPath) (includeDirs bi)
   mapM_
     (checkLocalPathExist "hs-source-dirs" . getSymbolicPath)
     (hsSourceDirs bi)
@@ -431,27 +432,27 @@ checkBuildInfoPathsContent bi = do
 -- Paths well-formedness check for BuildInfo.
 checkBuildInfoPathsWellFormedness :: Monad m => BuildInfo -> CheckM m ()
 checkBuildInfoPathsWellFormedness bi = do
-  mapM_ (checkPath False "asm-sources" PathKindFile) (asmSources bi)
-  mapM_ (checkPath False "cmm-sources" PathKindFile) (cmmSources bi)
-  mapM_ (checkPath False "c-sources" PathKindFile) (cSources bi)
-  mapM_ (checkPath False "cxx-sources" PathKindFile) (cxxSources bi)
-  mapM_ (checkPath False "js-sources" PathKindFile) (jsSources bi)
+  mapM_ (checkPath False "asm-sources" PathKindFile . getSymbolicPath) (asmSources bi)
+  mapM_ (checkPath False "cmm-sources" PathKindFile . getSymbolicPath) (cmmSources bi)
+  mapM_ (checkPath False "c-sources" PathKindFile . getSymbolicPath) (cSources bi)
+  mapM_ (checkPath False "cxx-sources" PathKindFile . getSymbolicPath) (cxxSources bi)
+  mapM_ (checkPath False "js-sources" PathKindFile . getSymbolicPath) (jsSources bi)
   mapM_
-    (checkPath False "install-includes" PathKindFile)
+    (checkPath False "install-includes" PathKindFile . getSymbolicPath)
     (installIncludes bi)
   mapM_
     (checkPath False "hs-source-dirs" PathKindDirectory . getSymbolicPath)
     (hsSourceDirs bi)
   -- Possibly absolute paths.
-  mapM_ (checkPath True "includes" PathKindFile) (includes bi)
+  mapM_ (checkPath True "includes" PathKindFile . getSymbolicPath) (includes bi)
   mapM_
-    (checkPath True "include-dirs" PathKindDirectory)
+    (checkPath True "include-dirs" PathKindDirectory . getSymbolicPath)
     (includeDirs bi)
   mapM_
-    (checkPath True "extra-lib-dirs" PathKindDirectory)
+    (checkPath True "extra-lib-dirs" PathKindDirectory . getSymbolicPath)
     (extraLibDirs bi)
   mapM_
-    (checkPath True "extra-lib-dirs-static" PathKindDirectory)
+    (checkPath True "extra-lib-dirs-static" PathKindDirectory . getSymbolicPath)
     (extraLibDirsStatic bi)
   mapM_ checkOptionPath (perCompilerFlavorToList $ options bi)
   where
@@ -501,8 +502,8 @@ checkBuildInfoFeatures bi sv = do
     (PackageBuildWarning CVExtensionsDeprecated)
 
   -- asm-sources, cmm-sources and friends only w/ spec ≥ 1.10
-  checkCVSources (asmSources bi)
-  checkCVSources (cmmSources bi)
+  checkCVSources (map getSymbolicPath $ asmSources bi)
+  checkCVSources (map getSymbolicPath $ cmmSources bi)
   checkCVSources (extraBundledLibs bi)
   checkCVSources (extraLibFlavours bi)
 

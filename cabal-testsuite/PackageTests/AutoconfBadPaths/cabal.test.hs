@@ -58,7 +58,7 @@ main = cabalTest $ do
               ]
         configured_prog <- requireProgramM cabalProgram
         r <- liftIO $ run (testVerbosity env)
-                      (Just (testCurrentDir env </> dir))
+                      (Just $ testCurrentDir env </> dir)
                       (testEnvironment env)
                       (programPath configured_prog)
                       args Nothing

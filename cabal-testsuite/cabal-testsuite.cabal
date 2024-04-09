@@ -29,10 +29,12 @@ common shared
     , base >= 4.9 && <4.20
     -- this needs to match the in-tree lib:Cabal version
     , Cabal ^>= 3.11.0.0
-    , Cabal-syntax ^>= 3.11.0.0
-    , Cabal-tests
 
-  ghc-options: -Wall -fwarn-tabs -fwarn-incomplete-uni-patterns
+  ghc-options:
+    -Wall
+    -fwarn-tabs
+    -fwarn-incomplete-uni-patterns
+    -fno-warn-unticked-promoted-constructors
 
 
 library
@@ -58,9 +60,9 @@ library
     Test.Cabal.ScriptEnv0
 
   build-depends:
+    , Cabal-tests
     , aeson                 ^>= 1.4.2.0 || ^>=1.5.0.0 || ^>= 2.0.0.0 || ^>= 2.1.0.0 || ^>= 2.2.1.0
     , async                 ^>= 2.2.1
-    , attoparsec            ^>= 0.13.2.2 || ^>=0.14.1
     , base16-bytestring     ^>= 0.1.1.5 || ^>= 1.0
     , bytestring            ^>= 0.10.0.2 || ^>= 0.11.0.0 || ^>= 0.12.0.0
     , containers            ^>= 0.5.0.0 || ^>= 0.6.0.1 || ^>= 0.7
@@ -75,7 +77,6 @@ library
     , regex-tdfa            ^>= 1.2.3.1 || ^>=1.3.1.0
     , retry                 ^>= 0.9.1.0
     , array                 ^>= 0.4.0.1 || ^>= 0.5.0.0
-    , temporary             ^>= 1.3
     , text                  ^>= 1.2.3.1 || ^>= 2.0.1   || ^>= 2.1
     , transformers          ^>= 0.3.0.0 || ^>= 0.4.2.0 || ^>= 0.5.2.0 || ^>= 0.6.0.2
 
@@ -97,11 +98,9 @@ executable cabal-tests
     , cabal-testsuite
     -- constraints inherited via lib:cabal-testsuite component
     , async
-    , exceptions
     , filepath
     , optparse-applicative
     , process
-    , transformers
     -- dependencies specific to exe:cabal-tests
     , clock                 ^>= 0.7.2 || ^>=0.8
     , directory
@@ -123,23 +122,24 @@ executable setup
 -- If you require an external dependency for a test it must be listed here.
 executable test-runtime-deps
   default-language: Haskell2010
-  build-depends: cabal-testsuite,
-                 base,
-                 directory,
-                 Cabal,
-                 Cabal-syntax,
-                 filepath,
-                 transformers,
-                 bytestring,
-                 time,
-                 process,
-                 exceptions
+  -- Apart from base that is a compile-time dependency, the rest are runtime dependencies
+  build-depends:
+    , Cabal
+    , Cabal-syntax
+    , base
+    , bytestring
+    , cabal-testsuite
+    , directory
+    , exceptions
+    , filepath
+    , process
+    , time
+    , transformers
   main-is: static/Main.hs
   if !os(windows)
     build-depends: unix
   else
-    build-depends:
-      , Win32
+    build-depends: Win32
 
 custom-setup
   -- we only depend on even stable releases of lib:Cabal

@@ -11,6 +11,7 @@ module Test.Cabal.Prelude (
     module Test.Cabal.Monad,
     module Test.Cabal.Run,
     module System.FilePath,
+    module Distribution.Utils.Path,
     module Control.Monad,
     module Control.Monad.IO.Class,
     module Distribution.Version,
@@ -41,6 +42,8 @@ import Distribution.Types.LocalBuildInfo
 import Distribution.PackageDescription
 import Test.Utils.TempTestDir (withTestDir)
 import Distribution.Verbosity (normal)
+import Distribution.Utils.Path
+  ( makeSymbolicPath, relativeSymbolicPath )
 
 import Distribution.Compat.Stack
 
@@ -81,7 +84,7 @@ runM :: FilePath -> [String] -> Maybe String -> TestM Result
 runM path args input = do
     env <- getTestEnv
     r <- liftIO $ run (testVerbosity env)
-                 (Just (testCurrentDir env))
+                 (Just $ testCurrentDir env)
                  (testEnvironment env)
                  path
                  args
@@ -99,7 +102,7 @@ runProgramM prog args input = do
 getLocalBuildInfoM :: TestM LocalBuildInfo
 getLocalBuildInfoM = do
     env <- getTestEnv
-    liftIO $ getPersistBuildConfig (testDistDir env)
+    liftIO $ getPersistBuildConfig Nothing (makeSymbolicPath $ testDistDir env)
 
 ------------------------------------------------------------------------
 -- * Changing parameters
@@ -185,9 +188,9 @@ setup'' prefix cmd args = do
     --
     -- `cabal` and `Setup.hs` do have different interface.
     --
-
-    pdfile <- liftIO $ tryFindPackageDesc (testVerbosity env) (testCurrentDir env </> prefix)
-    pdesc <- liftIO $ readGenericPackageDescription (testVerbosity env) pdfile
+    let pkgDir = makeSymbolicPath $ testCurrentDir env </> prefix
+    pdfile <- liftIO $ tryFindPackageDesc (testVerbosity env) (Just pkgDir)
+    pdesc <- liftIO $ readGenericPackageDescription (testVerbosity env) (Just pkgDir) $ relativeSymbolicPath pdfile
     if testCabalInstallAsSetup env
     then if buildType (packageDescription pdesc) == Simple
          then runProgramM cabalProgram ("act-as-setup" : "--" : NE.toList full_args) Nothing
@@ -198,7 +201,7 @@ setup'' prefix cmd args = do
             -- Run the Custom script!
             else do
               r <- liftIO $ runghc (testScriptEnv env)
-                                   (Just (testCurrentDir env))
+                                   (Just $ testCurrentDir env)
                                    (testEnvironment env)
                                    (testCurrentDir env </> prefix </> "Setup.hs")
                                    (NE.toList full_args)
@@ -832,7 +835,7 @@ hasProfiledLibraries = do
     ghc_path <- programPathM ghcProgram
     let prof_test_hs = testWorkDir env </> "Prof.hs"
     liftIO $ writeFile prof_test_hs "module Prof where"
-    r <- liftIO $ run (testVerbosity env) (Just (testCurrentDir env))
+    r <- liftIO $ run (testVerbosity env) (Just $ testCurrentDir env)
                       (testEnvironment env) ghc_path ["-prof", "-c", prof_test_hs]
                       Nothing
     return (resultExitCode r == ExitSuccess)

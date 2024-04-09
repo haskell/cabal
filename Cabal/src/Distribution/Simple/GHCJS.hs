@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TupleSections #-}
@@ -84,6 +85,7 @@ import Distribution.Utils.Path
 import Distribution.Verbosity (Verbosity)
 import Distribution.Version
 
+import Control.Arrow ((***))
 import Control.Monad (msum)
 import Data.Char (isLower)
 import qualified Data.Map as Map
@@ -100,8 +102,6 @@ import System.FilePath
   , replaceExtension
   , takeDirectory
   , takeExtension
-  , (<.>)
-  , (</>)
   )
 import qualified System.Info
 
@@ -313,23 +313,25 @@ getGhcInfo verbosity ghcjsProg = Internal.getGhcInfo verbosity implInfo ghcjsPro
 -- | Given a single package DB, return all installed packages.
 getPackageDBContents
   :: Verbosity
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -> PackageDB
   -> ProgramDb
   -> IO InstalledPackageIndex
-getPackageDBContents verbosity packagedb progdb = do
-  pkgss <- getInstalledPackages' verbosity [packagedb] progdb
+getPackageDBContents verbosity mbWorkDir packagedb progdb = do
+  pkgss <- getInstalledPackages' verbosity mbWorkDir [packagedb] progdb
   toPackageIndex verbosity pkgss progdb
 
 -- | Given a package DB stack, return all installed packages.
 getInstalledPackages
   :: Verbosity
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -> PackageDBStack
   -> ProgramDb
   -> IO InstalledPackageIndex
-getInstalledPackages verbosity packagedbs progdb = do
+getInstalledPackages verbosity mbWorkDir packagedbs progdb = do
   checkPackageDbEnvVar verbosity
   checkPackageDbStack verbosity packagedbs
-  pkgss <- getInstalledPackages' verbosity packagedbs progdb
+  pkgss <- getInstalledPackages' verbosity mbWorkDir packagedbs progdb
   index <- toPackageIndex verbosity pkgss progdb
   return $! index
 
@@ -402,13 +404,14 @@ checkPackageDbStack verbosity _ =
 
 getInstalledPackages'
   :: Verbosity
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -> [PackageDB]
   -> ProgramDb
   -> IO [(PackageDB, [InstalledPackageInfo])]
-getInstalledPackages' verbosity packagedbs progdb =
+getInstalledPackages' verbosity mbWorkDir packagedbs progdb =
   sequenceA
     [ do
-      pkgs <- HcPkg.dump (hcPkgInfo progdb) verbosity packagedb
+      pkgs <- HcPkg.dump (hcPkgInfo progdb) verbosity mbWorkDir packagedb
       return (packagedb, pkgs)
     | packagedb <- packagedbs
     ]
@@ -417,10 +420,11 @@ getInstalledPackages' verbosity packagedbs progdb =
 getInstalledPackagesMonitorFiles
   :: Verbosity
   -> Platform
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -> ProgramDb
   -> [PackageDB]
   -> IO [FilePath]
-getInstalledPackagesMonitorFiles verbosity platform progdb =
+getInstalledPackagesMonitorFiles verbosity platform mbWorkDir progdb =
   traverse getPackageDBPath
   where
     getPackageDBPath :: PackageDB -> IO FilePath
@@ -434,7 +438,11 @@ getInstalledPackagesMonitorFiles verbosity platform progdb =
     -- Note that for dir style dbs, we only need to monitor the cache file, not
     -- the whole directory. The ghc program itself only reads the cache file
     -- so it's safe to only monitor this one file.
-    selectMonitorFile path = do
+    selectMonitorFile path0 = do
+      let path =
+            if isRelative path0
+              then interpretSymbolicPath mbWorkDir (makeRelativePathEx path0)
+              else path0
       isFileStyle <- doesFileExist path
       if isFileStyle
         then return path
@@ -499,9 +507,15 @@ buildOrReplLib mReplFlags verbosity numJobs _pkg_descr lbi lib clbi = do
       implInfo = getImplInfo comp
       platform@(Platform _hostArch _hostOS) = hostPlatform lbi
       has_code = not (componentIsIndefinite clbi)
+      mbWorkDir = mbWorkDirLBI lbi
+
+      -- See Note [Symbolic paths] in Distribution.Utils.Path
+      i = interpretSymbolicPathLBI lbi
+      u :: SymbolicPathX allowAbs Pkg to -> FilePath
+      u = getSymbolicPath
 
   (ghcjsProg, _) <- requireProgram verbosity ghcjsProgram (withPrograms lbi)
-  let runGhcjsProg = runGHC verbosity ghcjsProg comp platform
+  let runGhcjsProg = runGHC verbosity ghcjsProg comp platform mbWorkDir
 
   let libBi = libBuildInfo lib
 
@@ -518,15 +532,15 @@ buildOrReplLib mReplFlags verbosity numJobs _pkg_descr lbi lib clbi = do
   let isCoverageEnabled = libCoverage lbi
       hpcdir way
         | forRepl = mempty -- HPC is not supported in ghci
-        | isCoverageEnabled = toFlag $ Hpc.mixDir (libTargetDir </> extraCompilationArtifacts) way
+        | isCoverageEnabled = toFlag $ Hpc.mixDir (coerceSymbolicPath libTargetDir </> coerceSymbolicPath extraCompilationArtifacts) way
         | otherwise = mempty
 
-  createDirectoryIfMissingVerbose verbosity True libTargetDir
+  createDirectoryIfMissingVerbose verbosity True $ i libTargetDir
   -- TODO: do we need to put hs-boot files into place for mutually recursive
   -- modules?
   let cLikeFiles = fromNubListR $ toNubListR (cSources libBi) <> toNubListR (cxxSources libBi)
       jsSrcs = jsSources libBi
-      cObjs = map (`replaceExtension` objExtension) cLikeFiles
+      cObjs = map ((`replaceExtensionSymbolicPath` objExtension)) cLikeFiles
       baseOpts = componentGhcOptions verbosity lbi libBi clbi libTargetDir
       linkJsLibOpts =
         mempty
@@ -534,9 +548,9 @@ buildOrReplLib mReplFlags verbosity numJobs _pkg_descr lbi lib clbi = do
               [ "-link-js-lib"
               , getHSLibraryName uid
               , "-js-lib-outputdir"
-              , libTargetDir
+              , u libTargetDir
               ]
-                ++ jsSrcs
+                ++ map u jsSrcs
           }
       vanillaOptsNoJsLib =
         baseOpts
@@ -605,7 +619,7 @@ buildOrReplLib mReplFlags verbosity numJobs _pkg_descr lbi lib clbi = do
                   -- static and dynamically linked executables. We copy
                   -- the modules interfaces so they are available under
                   -- both ways.
-                  copyDirectoryRecursive verbosity dynDir vanillaDir
+                  copyDirectoryRecursive verbosity (i dynDir) (i vanillaDir)
                 _ -> return ()
             else
               if isGhcjsDynamic
@@ -690,11 +704,11 @@ buildOrReplLib mReplFlags verbosity numJobs _pkg_descr lbi lib clbi = do
     info verbosity "Linking..."
     let cSharedObjs =
           map
-            (`replaceExtension` ("dyn_" ++ objExtension))
+            ((`replaceExtensionSymbolicPath` ("dyn_" ++ objExtension)))
             (cSources libBi ++ cxxSources libBi)
         compiler_id = compilerId (compiler lbi)
-        sharedLibFilePath = libTargetDir </> mkSharedLibName (hostPlatform lbi) compiler_id uid
-        staticLibFilePath = libTargetDir </> mkStaticLibName (hostPlatform lbi) compiler_id uid
+        sharedLibFilePath = libTargetDir </> makeRelativePathEx (mkSharedLibName (hostPlatform lbi) compiler_id uid)
+        staticLibFilePath = libTargetDir </> makeRelativePathEx (mkStaticLibName (hostPlatform lbi) compiler_id uid)
 
     let stubObjs = []
         stubSharedObjs = []
@@ -722,7 +736,7 @@ buildOrReplLib mReplFlags verbosity numJobs _pkg_descr lbi lib clbi = do
         lib
         lbi
         clbi
-        libTargetDir
+        (coerceSymbolicPath libTargetDir)
         objExtension
         True
     hSharedObjs <-
@@ -733,7 +747,7 @@ buildOrReplLib mReplFlags verbosity numJobs _pkg_descr lbi lib clbi = do
             lib
             lbi
             clbi
-            libTargetDir
+            (coerceSymbolicPath libTargetDir)
             ("dyn_" ++ objExtension)
             False
         else return []
@@ -743,11 +757,11 @@ buildOrReplLib mReplFlags verbosity numJobs _pkg_descr lbi lib clbi = do
 
       let staticObjectFiles =
             hObjs
-              ++ map (libTargetDir </>) cObjs
+              ++ map (makeSymbolicPath . (getSymbolicPath libTargetDir </>) . getSymbolicPath) cObjs
               ++ stubObjs
           dynamicObjectFiles =
             hSharedObjs
-              ++ map (libTargetDir </>) cSharedObjs
+              ++ map (makeSymbolicPath . (getSymbolicPath libTargetDir </>) . getSymbolicPath) cSharedObjs
               ++ stubSharedObjs
           -- After the relocation lib is created we invoke ghc -shared
           -- with the dependencies spelled out as -package arguments
@@ -789,7 +803,7 @@ buildOrReplLib mReplFlags verbosity numJobs _pkg_descr lbi lib clbi = do
                     Internal.mkGhcOptPackages mempty clbi
               , ghcOptLinkLibs = extraLibs libBi
               , ghcOptLinkLibPath = toNubListR $ extraLibDirs libBi
-              , ghcOptLinkFrameworks = toNubListR $ PD.frameworks libBi
+              , ghcOptLinkFrameworks = toNubListR $ map getSymbolicPath $ PD.frameworks libBi
               , ghcOptLinkFrameworkDirs =
                   toNubListR $ PD.extraFrameworkDirs libBi
               , ghcOptRPaths = rpaths
@@ -863,7 +877,7 @@ startInterpreter verbosity progdb comp platform packageDBs = do
           }
   checkPackageDbStack verbosity packageDBs
   (ghcjsProg, _) <- requireProgram verbosity ghcjsProgram progdb
-  runGHC verbosity ghcjsProg comp platform replOpts
+  runGHC verbosity ghcjsProg comp platform Nothing replOpts
 
 -- -----------------------------------------------------------------------------
 -- Building an executable or foreign library
@@ -1037,7 +1051,7 @@ gbuildNeedDynamic lbi bm =
         ForeignLibTypeUnknown ->
           cabalBug "unknown foreign lib type"
 
-gbuildModDefFiles :: GBuildMode -> [FilePath]
+gbuildModDefFiles :: GBuildMode -> [RelativePath Source File]
 gbuildModDefFiles (GBuildExe _) = []
 gbuildModDefFiles (GReplExe _ _) = []
 gbuildModDefFiles (GBuildFLib flib) = foreignLibModDefFile flib
@@ -1103,21 +1117,22 @@ decodeMainIsArg arg
 --
 -- Used to correctly build and link sources.
 data BuildSources = BuildSources
-  { cSourcesFiles :: [FilePath]
-  , cxxSourceFiles :: [FilePath]
-  , inputSourceFiles :: [FilePath]
+  { cSourcesFiles :: [SymbolicPath Pkg File]
+  , cxxSourceFiles :: [SymbolicPath Pkg File]
+  , inputSourceFiles :: [SymbolicPath Pkg File]
   , inputSourceModules :: [ModuleName]
   }
 
 -- | Locate and return the 'BuildSources' required to build and link.
 gbuildSources
   :: Verbosity
+  -> Maybe (SymbolicPath CWD ('Dir Pkg))
   -> PackageId
   -> CabalSpecVersion
-  -> FilePath
+  -> SymbolicPath Pkg (Dir Source)
   -> GBuildMode
   -> IO BuildSources
-gbuildSources verbosity pkgId specVer tmpDir bm =
+gbuildSources verbosity mbWorkDir pkgId specVer tmpDir bm =
   case bm of
     GBuildExe exe -> exeSources exe
     GReplExe _ exe -> exeSources exe
@@ -1126,12 +1141,13 @@ gbuildSources verbosity pkgId specVer tmpDir bm =
   where
     exeSources :: Executable -> IO BuildSources
     exeSources exe@Executable{buildInfo = bnfo, modulePath = modPath} = do
-      main <- findFileEx verbosity (tmpDir : map getSymbolicPath (hsSourceDirs bnfo)) modPath
+      main <- findFileCwd verbosity mbWorkDir (tmpDir : hsSourceDirs bnfo) modPath
       let mainModName = fromMaybe ModuleName.main $ exeMainModuleName exe
           otherModNames = exeModules exe
+          haskellMain = isHaskell (getSymbolicPath main)
 
       -- Scripts have fakePackageId and are always Haskell but can have any extension.
-      if isHaskell main || pkgId == fakePackageId
+      if haskellMain || pkgId == fakePackageId
         then
           if specVer < CabalSpecV2_0 && (mainModName `elem` otherModNames)
             then do
@@ -1168,7 +1184,7 @@ gbuildSources verbosity pkgId specVer tmpDir bm =
                   }
         else
           let (csf, cxxsf)
-                | isCxx main = (cSources bnfo, main : cxxSources bnfo)
+                | isCxx (getSymbolicPath main) = (cSources bnfo, main : cxxSources bnfo)
                 -- if main is not a Haskell source
                 -- and main is not a C++ source
                 -- then we assume that it is a C source
@@ -1215,7 +1231,8 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
         GBuildFLib{} -> mempty
       comp = compiler lbi
       platform = hostPlatform lbi
-      runGhcProg = runGHC verbosity ghcjsProg comp platform
+      mbWorkDir = mbWorkDirLBI lbi
+      runGhcProg = runGHC verbosity ghcjsProg comp platform mbWorkDir
 
   let (bnfo, threaded) = case bm of
         GBuildFLib _ -> popThreadedFlag (gbuildInfo bm)
@@ -1223,10 +1240,14 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
 
   -- the name that GHC really uses (e.g., with .exe on Windows for executables)
   let targetName = gbuildTargetName lbi bm
-  let targetDir = buildDir lbi </> (gbuildName bm)
-  let tmpDir = targetDir </> (gbuildName bm ++ "-tmp")
-  createDirectoryIfMissingVerbose verbosity True targetDir
-  createDirectoryIfMissingVerbose verbosity True tmpDir
+      targetDir = buildDir lbi </> makeRelativePathEx (gbuildName bm)
+      tmpDir = targetDir </> makeRelativePathEx (gbuildName bm ++ "-tmp")
+
+      -- See Note [Symbolic paths] in Distribution.Utils.Path
+      i = interpretSymbolicPath mbWorkDir
+
+  createDirectoryIfMissingVerbose verbosity True $ i targetDir
+  createDirectoryIfMissingVerbose verbosity True $ i tmpDir
 
   -- TODO: do we need to put hs-boot files into place for mutually recursive
   -- modules?  FIX: what about exeName.hi-boot?
@@ -1236,11 +1257,11 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
   let isCoverageEnabled = exeCoverage lbi
       hpcdir way
         | gbuildIsRepl bm = mempty -- HPC is not supported in ghci
-        | isCoverageEnabled = toFlag $ Hpc.mixDir (tmpDir </> extraCompilationArtifacts) way
+        | isCoverageEnabled = toFlag $ Hpc.mixDir (tmpDir </> coerceSymbolicPath extraCompilationArtifacts) way
         | otherwise = mempty
 
   rpaths <- getRPaths lbi clbi
-  buildSources <- gbuildSources verbosity (package pkg_descr) (specVersion pkg_descr) tmpDir bm
+  buildSources <- gbuildSources verbosity mbWorkDir (package pkg_descr) (specVersion pkg_descr) tmpDir bm
 
   let cSrcs = cSourcesFiles buildSources
       cxxSrcs = cxxSourceFiles buildSources
@@ -1248,8 +1269,8 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
       inputModules = inputSourceModules buildSources
       isGhcDynamic = isDynamic comp
       dynamicTooSupported = supportsDynamicToo comp
-      cObjs = map (`replaceExtension` objExtension) cSrcs
-      cxxObjs = map (`replaceExtension` objExtension) cxxSrcs
+      cObjs = map ((`replaceExtensionSymbolicPath` objExtension)) cSrcs
+      cxxObjs = map ((`replaceExtensionSymbolicPath` objExtension)) cxxSrcs
       needDynamic = gbuildNeedDynamic lbi bm
       needProfiling = withProfExe lbi
 
@@ -1267,12 +1288,12 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
             , ghcOptInputFiles =
                 toNubListR $
                   if package pkg_descr == fakePackageId
-                    then filter isHaskell inputFiles
+                    then filter (isHaskell . getSymbolicPath) inputFiles
                     else inputFiles
             , ghcOptInputScripts =
                 toNubListR $
                   if package pkg_descr == fakePackageId
-                    then filter (not . isHaskell) inputFiles
+                    then filter (not . isHaskell . getSymbolicPath) inputFiles
                     else []
             , ghcOptInputModules = toNubListR inputModules
             , -- for all executable components (exe/test/bench),
@@ -1327,13 +1348,14 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
           , ghcOptLinkLibPath = toNubListR $ extraLibDirs bnfo
           , ghcOptLinkFrameworks =
               toNubListR $
-                PD.frameworks bnfo
+                map getSymbolicPath $
+                  PD.frameworks bnfo
           , ghcOptLinkFrameworkDirs =
               toNubListR $
                 PD.extraFrameworkDirs bnfo
           , ghcOptInputFiles =
               toNubListR
-                [tmpDir </> x | x <- cObjs ++ cxxObjs]
+                [makeSymbolicPath $ getSymbolicPath tmpDir </> getSymbolicPath x | x <- cObjs ++ cxxObjs]
           }
       dynLinkerOpts =
         mempty
@@ -1449,8 +1471,8 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
             --       consider this a user error. However, we should strive to
             --       add a warning if this occurs.
             odir = fromFlag (ghcOptObjDir opts)
-        createDirectoryIfMissingVerbose verbosity True odir
-        needsRecomp <- checkNeedsRecompilation filename opts
+        createDirectoryIfMissingVerbose verbosity True (i odir)
+        needsRecomp <- checkNeedsRecompilation mbWorkDir filename opts
         when needsRecomp $
           runGhcProg opts
       | filename <- cxxSrcs
@@ -1491,8 +1513,8 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
               | needDynamic = sharedCcOpts
               | otherwise = vanillaCcOpts
             odir = fromFlag (ghcOptObjDir opts)
-        createDirectoryIfMissingVerbose verbosity True odir
-        needsRecomp <- checkNeedsRecompilation filename opts
+        createDirectoryIfMissingVerbose verbosity True (i odir)
+        needsRecomp <- checkNeedsRecompilation mbWorkDir filename opts
         when needsRecomp $
           runGhcProg opts
       | filename <- cSrcs
@@ -1516,10 +1538,11 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
       info verbosity "Linking..."
       -- Work around old GHCs not relinking in this
       -- situation, see #3294
-      let target = targetDir </> targetName
+      let target = targetDir </> makeRelativePathEx targetName
       when (compilerVersion comp < mkVersion [7, 7]) $ do
-        e <- doesFileExist target
-        when e (removeFile target)
+        let targetPath = i target
+        e <- doesFileExist targetPath
+        when e (removeFile targetPath)
       runGhcProg linkOpts{ghcOptOutputFile = toFlag target}
     GBuildFLib flib -> do
       let rtsInfo = extractRtsInfo lbi
@@ -1543,9 +1566,9 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
                   { ghcOptLinkNoHsMain = toFlag True
                   , ghcOptShared = toFlag True
                   , ghcOptLinkLibs = rtsOptLinkLibs
-                  , ghcOptLinkLibPath = toNubListR $ rtsLibPaths rtsInfo
+                  , ghcOptLinkLibPath = toNubListR $ map makeSymbolicPath $ rtsLibPaths rtsInfo
                   , ghcOptFPic = toFlag True
-                  , ghcOptLinkModDefFiles = toNubListR $ gbuildModDefFiles bm
+                  , ghcOptLinkModDefFiles = toNubListR $ fmap getSymbolicPath $ gbuildModDefFiles bm
                   }
             ForeignLibNativeStatic ->
               -- this should be caught by buildFLib
@@ -1559,8 +1582,9 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
       -- @flibBuildName@.
       info verbosity "Linking..."
       let buildName = flibBuildName lbi flib
-      runGhcProg linkOpts{ghcOptOutputFile = toFlag (targetDir </> buildName)}
-      renameFile (targetDir </> buildName) (targetDir </> targetName)
+          buildFile = targetDir </> makeRelativePathEx buildName
+      runGhcProg linkOpts{ghcOptOutputFile = toFlag buildFile}
+      renameFile (i buildFile) (i targetDir </> targetName)
 
 data DynamicRtsInfo = DynamicRtsInfo
   { dynRtsVanillaLib :: FilePath
@@ -1629,18 +1653,31 @@ extractRtsInfo lbi =
 
 -- | Returns True if the modification date of the given source file is newer than
 -- the object file we last compiled for it, or if no object file exists yet.
-checkNeedsRecompilation :: FilePath -> GhcOptions -> IO Bool
-checkNeedsRecompilation filename opts = filename `moreRecentFile` oname
+checkNeedsRecompilation
+  :: Maybe (SymbolicPath CWD (Dir Pkg))
+  -> SymbolicPath Pkg File
+  -> GhcOptions
+  -> IO Bool
+checkNeedsRecompilation mbWorkDir filename opts =
+  i filename `moreRecentFile` oname
   where
-    oname = getObjectFileName filename opts
+    oname = getObjectFileName mbWorkDir filename opts
+    i = interpretSymbolicPath mbWorkDir -- See Note [Symbolic paths] in Distribution.Utils.Path
 
 -- | Finds the object file name of the given source file
-getObjectFileName :: FilePath -> GhcOptions -> FilePath
-getObjectFileName filename opts = oname
+getObjectFileName
+  :: Maybe (SymbolicPath CWD (Dir Pkg))
+  -> SymbolicPath Pkg File
+  -> GhcOptions
+  -> FilePath
+getObjectFileName mbWorkDir filename opts = oname
   where
-    odir = fromFlag (ghcOptObjDir opts)
+    i = interpretSymbolicPath mbWorkDir -- See Note [Symbolic paths] in Distribution.Utils.Path
+    odir = i $ fromFlag (ghcOptObjDir opts)
     oext = fromFlagOrDefault "o" (ghcOptObjSuffix opts)
-    oname = odir </> replaceExtension filename oext
+    -- NB: the filepath might be absolute, e.g. if it is the path to
+    -- an autogenerated .hs file.
+    oname = odir </> replaceExtension (getSymbolicPath filename) oext
 
 -- | Calculate the RPATHs for the component we are building.
 --
@@ -1730,6 +1767,7 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
     libBi = libBuildInfo lib
     comp = compiler lbi
     platform = hostPlatform lbi
+    mbWorkDir = mbWorkDirLBI lbi
     vanillaArgs =
       (componentGhcOptions verbosity lbi libBi clbi (componentBuildDir lbi clbi))
         `mappend` mempty
@@ -1767,7 +1805,7 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
   hash <-
     getProgramInvocationOutput
       verbosity
-      =<< ghcInvocation verbosity ghcjsProg comp platform ghcArgs
+      =<< ghcInvocation verbosity ghcjsProg comp platform mbWorkDir ghcArgs
   return (takeWhile (not . isSpace) hash)
 
 componentGhcOptions
@@ -1775,7 +1813,7 @@ componentGhcOptions
   -> LocalBuildInfo
   -> BuildInfo
   -> ComponentLocalBuildInfo
-  -> FilePath
+  -> SymbolicPath Pkg (Dir build)
   -> GhcOptions
 componentGhcOptions verbosity lbi bi clbi odir =
   let opts = Internal.componentGhcOptions verbosity lbi bi clbi odir
@@ -1891,10 +1929,12 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir _pkg lib clbi = do
         , f <- "" : extraDynLibFlavours (libBuildInfo lib)
         ]
   where
+    i = interpretSymbolicPathLBI lbi -- See Note [Symbolic paths] in Distribution.Utils.Path
     builtDir' = componentBuildDir lbi clbi
+    mbWorkDir = mbWorkDirLBI lbi
 
     install isShared isJS srcDir dstDir name = do
-      let src = srcDir </> name
+      let src = i $ srcDir </> makeRelativePathEx name
           dst = dstDir </> name
       createDirectoryIfMissingVerbose verbosity True dstDir
 
@@ -1912,9 +1952,10 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir _pkg lib clbi = do
     installOrdinary = install False True
     installShared = install True True
 
-    copyModuleFiles ext =
-      findModuleFilesEx verbosity [builtDir'] [ext] (allLibModules lib clbi)
-        >>= installOrdinaryFiles verbosity targetDir
+    copyModuleFiles ext = do
+      files <- findModuleFilesCwd verbosity mbWorkDir [builtDir'] [ext] (allLibModules lib clbi)
+      let files' = map (i *** getSymbolicPath) files
+      installOrdinaryFiles verbosity targetDir files'
 
     compiler_id = compilerId (compiler lbi)
     platform = hostPlatform lbi
@@ -1985,14 +2026,16 @@ hcPkgInfo progdb =
 registerPackage
   :: Verbosity
   -> ProgramDb
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -> PackageDBStack
   -> InstalledPackageInfo
   -> HcPkg.RegisterOptions
   -> IO ()
-registerPackage verbosity progdb packageDbs installedPkgInfo registerOptions =
+registerPackage verbosity progdb mbWorkDir packageDbs installedPkgInfo registerOptions =
   HcPkg.register
     (hcPkgInfo progdb)
     verbosity
+    mbWorkDir
     packageDbs
     installedPkgInfo
     registerOptions
@@ -2020,7 +2063,10 @@ pkgRoot verbosity lbi = pkgRoot'
       -- fail.
       createDirectoryIfMissing True rootDir
       return rootDir
-    pkgRoot' (SpecificPackageDB fp) = return (takeDirectory fp)
+    pkgRoot' (SpecificPackageDB fp) =
+      return $
+        takeDirectory $
+          interpretSymbolicPathLBI lbi (unsafeMakeSymbolicPath fp)
 
 -- | Get the JavaScript file name and command and arguments to run a
 --   program compiled by GHCJS

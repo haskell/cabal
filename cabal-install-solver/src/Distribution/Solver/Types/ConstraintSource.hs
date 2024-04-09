@@ -5,7 +5,8 @@ module Distribution.Solver.Types.ConstraintSource
     ) where
 
 import Distribution.Solver.Compat.Prelude
-import Prelude ()
+import Distribution.Solver.Types.ProjectConfigPath (ProjectConfigPath, docProjectConfigPath)
+import Text.PrettyPrint (render)
 
 -- | Source of a 'PackageConstraint'.
 data ConstraintSource =
@@ -14,7 +15,7 @@ data ConstraintSource =
   ConstraintSourceMainConfig FilePath
 
   -- | Local cabal.project file
-  | ConstraintSourceProjectConfig FilePath
+  | ConstraintSourceProjectConfig ProjectConfigPath
 
   -- | User config file, which is ./cabal.config by default.
   | ConstraintSourceUserConfig FilePath
@@ -60,7 +61,7 @@ showConstraintSource :: ConstraintSource -> String
 showConstraintSource (ConstraintSourceMainConfig path) =
     "main config " ++ path
 showConstraintSource (ConstraintSourceProjectConfig path) =
-    "project config " ++ path
+    "project config " ++ render (docProjectConfigPath path)
 showConstraintSource (ConstraintSourceUserConfig path)= "user config " ++ path
 showConstraintSource ConstraintSourceCommandlineFlag = "command line flag"
 showConstraintSource ConstraintSourceUserTarget = "user target"

@@ -86,6 +86,7 @@ import Distribution.Client.Types
 import Distribution.Backpack
 import Distribution.Backpack.ModuleShape
 
+import Distribution.Compat.Graph (IsNode (..))
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import Distribution.ModuleName (ModuleName)
 import Distribution.Package
@@ -106,19 +107,18 @@ import Distribution.Simple.Setup
   , ReplOptions
   , TestShowDetails
   )
+import Distribution.Simple.Utils (ordNub)
+import Distribution.Solver.Types.ComponentDeps (ComponentDeps)
+import qualified Distribution.Solver.Types.ComponentDeps as CD
+import Distribution.Solver.Types.OptionalStanza
 import Distribution.System
 import Distribution.Types.ComponentRequestedSpec
 import qualified Distribution.Types.LocalBuildConfig as LBC
 import Distribution.Types.PackageDescription (PackageDescription (..))
 import Distribution.Types.PkgconfigVersion
+import Distribution.Utils.Path (getSymbolicPath)
 import Distribution.Verbosity (normal)
 import Distribution.Version
-
-import Distribution.Compat.Graph (IsNode (..))
-import Distribution.Simple.Utils (ordNub)
-import Distribution.Solver.Types.ComponentDeps (ComponentDeps)
-import qualified Distribution.Solver.Types.ComponentDeps as CD
-import Distribution.Solver.Types.OptionalStanza
 
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.List.NonEmpty as NE
@@ -457,9 +457,7 @@ dataDirEnvVarForPackage distDirLayout pkg =
     BuildInplaceOnly{} ->
       Just
         ( pkgPathEnvVar (elabPkgDescription pkg) "datadir"
-        , Just $
-            srcPath (elabPkgSourceLocation pkg)
-              </> dataDir (elabPkgDescription pkg)
+        , Just dataDirPath
         )
   where
     srcPath (LocalUnpackedPackage path) = path
@@ -473,6 +471,16 @@ dataDirEnvVarForPackage distDirLayout pkg =
         "calling dataDirEnvVarForPackage on a not-downloaded repo is an error"
     unpackedPath =
       distUnpackedSrcDirectory distDirLayout $ elabPkgSourceId pkg
+    rawDataDir = getSymbolicPath $ dataDir (elabPkgDescription pkg)
+    pkgDir = srcPath (elabPkgSourceLocation pkg)
+    dataDirPath
+      | null rawDataDir =
+          pkgDir
+      | otherwise =
+          pkgDir </> rawDataDir
+
+-- NB: rawDataDir may be absolute, in which case
+-- (</>) drops its first argument.
 
 instance Package ElaboratedConfiguredPackage where
   packageId = elabPkgSourceId

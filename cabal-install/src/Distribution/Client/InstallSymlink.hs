@@ -84,6 +84,7 @@ import System.Directory
 import System.FilePath
   ( isAbsolute
   , joinPath
+  , normalise
   , splitPath
   , (</>)
   )
@@ -316,7 +317,7 @@ symlinkBinary :: Symlink -> IO Bool
 symlinkBinary inputs@Symlink{publicBindir, privateBindir, publicName, privateName} = do
   onSymlinkBinary mkLink overwrite (return False) maybeOverwrite inputs
   where
-    relativeBindir = makeRelative publicBindir privateBindir
+    relativeBindir = makeRelative (normalise publicBindir) privateBindir
 
     mkLink :: IO Bool
     mkLink = True <$ createFileLink (relativeBindir </> privateName) (publicBindir </> publicName)

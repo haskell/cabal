@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
 
@@ -28,7 +29,8 @@ import Distribution.Client.Config
   , loadConfig
   )
 import Distribution.Client.Setup
-  ( ConfigFlags (..)
+  ( CommonSetupFlags (..)
+  , ConfigFlags (..)
   , GlobalFlags (..)
   , configCompilerAux'
   )
@@ -56,8 +58,14 @@ import Distribution.Simple.Setup
   , fromFlagOrDefault
   )
 import Distribution.System (Platform)
+import Distribution.Utils.Path hiding
+  ( (<.>)
+  , (</>)
+  )
 
-import System.Directory (getCurrentDirectory)
+import System.Directory
+  ( getCurrentDirectory
+  )
 
 -- * Basic sandbox functions.
 
@@ -116,11 +124,11 @@ loadConfigOrSandboxConfig verbosity globalFlags = do
       return config'
 
 -- | Return the saved \"dist/\" prefix, or the default prefix.
-findSavedDistPref :: SavedConfig -> Flag FilePath -> IO FilePath
+findSavedDistPref :: SavedConfig -> Flag (SymbolicPath Pkg (Dir Dist)) -> IO (SymbolicPath Pkg (Dir Dist))
 findSavedDistPref config flagDistPref = do
   let defDistPref = useDistPref defaultSetupScriptOptions
       flagDistPref' =
-        configDistPref (savedConfigureFlags config)
+        (setupDistPref (configCommonFlags $ savedConfigureFlags config))
           `mappend` flagDistPref
   findDistPref defDistPref flagDistPref'
 
@@ -134,8 +142,9 @@ getPersistOrConfigCompiler
   :: ConfigFlags
   -> IO (Compiler, Platform, ProgramDb)
 getPersistOrConfigCompiler configFlags = do
-  distPref <- findDistPrefOrDefault (configDistPref configFlags)
-  mlbi <- maybeGetPersistBuildConfig distPref
+  let common = configCommonFlags configFlags
+  distPref <- findDistPrefOrDefault (setupDistPref common)
+  mlbi <- maybeGetPersistBuildConfig (flagToMaybe $ setupWorkingDir common) distPref
   case mlbi of
     Nothing -> do configCompilerAux' configFlags
     Just lbi ->

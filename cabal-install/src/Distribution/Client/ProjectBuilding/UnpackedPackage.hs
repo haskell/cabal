@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -42,7 +43,9 @@ import Distribution.Client.DistDirLayout
 import Distribution.Client.FileMonitor
 import Distribution.Client.JobControl
 import Distribution.Client.Setup
-  ( filterConfigureFlags
+  ( CommonSetupFlags
+  , filterCommonFlags
+  , filterConfigureFlags
   , filterHaddockArgs
   , filterHaddockFlags
   , filterTestFlags
@@ -85,6 +88,10 @@ import Distribution.Types.PackageDescription.Lens (componentModules)
 
 import Distribution.Simple.Utils
 import Distribution.System (Platform (..))
+import Distribution.Utils.Path hiding
+  ( (<.>)
+  , (</>)
+  )
 import Distribution.Version
 
 import qualified Data.ByteString as BS
@@ -151,9 +158,9 @@ buildAndRegisterUnpackedPackage
   -> ElaboratedSharedConfig
   -> ElaboratedInstallPlan
   -> ElaboratedReadyPackage
-  -> FilePath
-  -> FilePath
-  -> Maybe (FilePath)
+  -> SymbolicPath CWD (Dir Pkg)
+  -> SymbolicPath Pkg (Dir Dist)
+  -> Maybe FilePath
   -- ^ The path to an /initialized/ log file
   -> (PackageBuildingPhase -> IO ())
   -> IO ()
@@ -178,27 +185,27 @@ buildAndRegisterUnpackedPackage
     delegate $
       PBConfigurePhase $
         annotateFailure mlogFile ConfigureFailed $
-          setup configureCommand configureFlags configureArgs
+          setup configureCommand Cabal.configCommonFlags configureFlags configureArgs
 
     -- Build phase
     delegate $
       PBBuildPhase $
         annotateFailure mlogFile BuildFailed $ do
-          setup buildCommand buildFlags buildArgs
+          setup buildCommand Cabal.buildCommonFlags buildFlags buildArgs
 
     -- Haddock phase
     whenHaddock $
       delegate $
         PBHaddockPhase $
           annotateFailure mlogFile HaddocksFailed $ do
-            setup haddockCommand haddockFlags haddockArgs
+            setup haddockCommand Cabal.haddockCommonFlags haddockFlags haddockArgs
 
     -- Install phase
     delegate $
       PBInstallPhase
         { runCopy = \destdir ->
             annotateFailure mlogFile InstallFailed $
-              setup Cabal.copyCommand (copyFlags destdir) copyArgs
+              setup Cabal.copyCommand Cabal.copyCommonFlags (copyFlags destdir) copyArgs
         , runRegister = \pkgDBStack registerOpts ->
             annotateFailure mlogFile InstallFailed $ do
               -- We register ourselves rather than via Setup.hs. We need to
@@ -211,6 +218,7 @@ buildAndRegisterUnpackedPackage
                   verbosity
                   compiler
                   progdb
+                  Nothing
                   pkgDBStack
                   ipkg
                   registerOpts
@@ -222,21 +230,21 @@ buildAndRegisterUnpackedPackage
       delegate $
         PBTestPhase $
           annotateFailure mlogFile TestsFailed $
-            setup testCommand testFlags testArgs
+            setup testCommand Cabal.testCommonFlags testFlags testArgs
 
     -- Bench phase
     whenBench $
       delegate $
         PBBenchPhase $
           annotateFailure mlogFile BenchFailed $
-            setup benchCommand benchFlags benchArgs
+            setup benchCommand Cabal.benchmarkCommonFlags benchFlags benchArgs
 
     -- Repl phase
     whenRepl $
       delegate $
         PBReplPhase $
           annotateFailure mlogFile ReplFailed $
-            setupInteractive replCommand replFlags replArgs
+            setupInteractive replCommand Cabal.replCommonFlags replFlags replArgs
 
     return ()
     where
@@ -262,6 +270,11 @@ buildAndRegisterUnpackedPackage
         | hasValidHaddockTargets pkg = action
         | otherwise = return ()
 
+      mbWorkDir = useWorkingDir scriptOptions
+      commonFlags v =
+        flip filterCommonFlags v $
+          setupHsCommonFlags verbosity mbWorkDir builddir
+
       configureCommand = Cabal.configureCommand defaultProgramDb
       configureFlags v =
         flip filterConfigureFlags v $
@@ -269,20 +282,18 @@ buildAndRegisterUnpackedPackage
             plan
             rpkg
             pkgshared
-            verbosity
-            builddir
+            (commonFlags v)
       configureArgs _ = setupHsConfigureArgs pkg
 
       buildCommand = Cabal.buildCommand defaultProgramDb
-      buildFlags _ = setupHsBuildFlags comp_par_strat pkg pkgshared verbosity builddir
+      buildFlags v = setupHsBuildFlags comp_par_strat pkg pkgshared $ commonFlags v
       buildArgs _ = setupHsBuildArgs pkg
 
-      copyFlags destdir _ =
+      copyFlags destdir v =
         setupHsCopyFlags
           pkg
           pkgshared
-          verbosity
-          builddir
+          (commonFlags v)
           destdir
       -- In theory, we could want to copy less things than those that were
       -- built, but instead, we simply copy the targets that were built.
@@ -293,26 +304,23 @@ buildAndRegisterUnpackedPackage
         flip filterTestFlags v $
           setupHsTestFlags
             pkg
-            verbosity
-            builddir
+            (commonFlags v)
       testArgs _ = setupHsTestArgs pkg
 
       benchCommand = Cabal.benchmarkCommand
-      benchFlags _ =
+      benchFlags v =
         setupHsBenchFlags
           pkg
           pkgshared
-          verbosity
-          builddir
+          (commonFlags v)
       benchArgs _ = setupHsBenchArgs pkg
 
       replCommand = Cabal.replCommand defaultProgramDb
-      replFlags _ =
+      replFlags v =
         setupHsReplFlags
           pkg
           pkgshared
-          verbosity
-          builddir
+          (commonFlags v)
       replArgs _ = setupHsReplArgs pkg
 
       haddockCommand = Cabal.haddockCommand
@@ -321,8 +329,7 @@ buildAndRegisterUnpackedPackage
           setupHsHaddockFlags
             pkg
             pkgshared
-            verbosity
-            builddir
+            (commonFlags v)
       haddockArgs v =
         flip filterHaddockArgs v $
           setupHsHaddockArgs pkg
@@ -340,10 +347,11 @@ buildAndRegisterUnpackedPackage
 
       setup
         :: CommandUI flags
+        -> (flags -> CommonSetupFlags)
         -> (Version -> flags)
         -> (Version -> [String])
         -> IO ()
-      setup cmd flags args =
+      setup cmd getCommonFlags flags args =
         withLogging $ \mLogFileHandle ->
           setupWrapper
             verbosity
@@ -356,20 +364,23 @@ buildAndRegisterUnpackedPackage
               }
             (Just (elabPkgDescription pkg))
             cmd
+            getCommonFlags
             flags
             args
 
       setupInteractive
         :: CommandUI flags
+        -> (flags -> CommonSetupFlags)
         -> (Version -> flags)
         -> (Version -> [String])
         -> IO ()
-      setupInteractive cmd flags args =
+      setupInteractive cmd getCommonFlags flags args =
         setupWrapper
           verbosity
           scriptOptions{isInteractive = True}
           (Just (elabPkgDescription pkg))
           cmd
+          getCommonFlags
           flags
           args
 
@@ -379,14 +390,13 @@ buildAndRegisterUnpackedPackage
           verbosity
           distTempDirectory
           $ \pkgConfDest -> do
-            let registerFlags _ =
+            let registerFlags v =
                   setupHsRegisterFlags
                     pkg
                     pkgshared
-                    verbosity
-                    builddir
+                    (commonFlags v)
                     pkgConfDest
-            setup Cabal.registerCommand registerFlags (const [])
+            setup (Cabal.registerCommand) Cabal.registerCommonFlags registerFlags (const [])
 
       withLogging :: (Maybe Handle -> IO r) -> IO r
       withLogging action =
@@ -411,8 +421,8 @@ buildInplaceUnpackedPackage
   -> ElaboratedInstallPlan
   -> ElaboratedReadyPackage
   -> BuildStatusRebuild
-  -> FilePath
-  -> FilePath
+  -> SymbolicPath CWD (Dir Pkg)
+  -> SymbolicPath Pkg (Dir Dist)
   -> IO BuildResult
 buildInplaceUnpackedPackage
   verbosity
@@ -434,7 +444,7 @@ buildInplaceUnpackedPackage
     -- TODO: [code cleanup] there is duplication between the
     --      distdirlayout and the builddir here builddir is not
     --      enough, we also need the per-package cachedir
-    createDirectoryIfMissingVerbose verbosity True builddir
+    createDirectoryIfMissingVerbose verbosity True $ getSymbolicPath builddir
     createDirectoryIfMissingVerbose
       verbosity
       True
@@ -464,17 +474,17 @@ buildInplaceUnpackedPackage
           whenReConfigure $ do
             runConfigure
             invalidatePackageRegFileMonitor packageFileMonitor
-            updatePackageConfigFileMonitor packageFileMonitor srcdir pkg
+            updatePackageConfigFileMonitor packageFileMonitor (getSymbolicPath srcdir) pkg
         PBBuildPhase{runBuild} -> do
           whenRebuild $ do
             timestamp <- beginUpdateFileMonitor
             runBuild
 
             let listSimple =
-                  execRebuild srcdir (needElaboratedConfiguredPackage pkg)
+                  execRebuild (getSymbolicPath srcdir) (needElaboratedConfiguredPackage pkg)
                 listSdist =
                   fmap (map monitorFileHashed) $
-                    allPackageSourceFiles verbosity srcdir
+                    allPackageSourceFiles verbosity (getSymbolicPath srcdir)
                 ifNullThen m m' = do
                   xs <- m
                   if null xs then m' else return xs
@@ -507,7 +517,7 @@ buildInplaceUnpackedPackage
                       pkg
             updatePackageBuildFileMonitor
               packageFileMonitor
-              srcdir
+              (getSymbolicPath srcdir)
               timestamp
               pkg
               buildStatus
@@ -554,7 +564,7 @@ buildInplaceUnpackedPackage
                   return (Just ipkg)
                 else return Nothing
 
-            updatePackageRegFileMonitor packageFileMonitor srcdir mipkg
+            updatePackageRegFileMonitor packageFileMonitor (getSymbolicPath srcdir) mipkg
         PBTestPhase{runTest} -> runTest
         PBBenchPhase{runBench} -> runBench
         PBReplPhase{runRepl} -> runRepl
@@ -613,8 +623,8 @@ buildAndInstallUnpackedPackage
   -> ElaboratedSharedConfig
   -> ElaboratedInstallPlan
   -> ElaboratedReadyPackage
-  -> FilePath
-  -> FilePath
+  -> SymbolicPath CWD (Dir Pkg)
+  -> SymbolicPath Pkg (Dir Dist)
   -> IO BuildResult
 buildAndInstallUnpackedPackage
   verbosity
@@ -634,7 +644,7 @@ buildAndInstallUnpackedPackage
   rpkg@(ReadyPackage pkg)
   srcdir
   builddir = do
-    createDirectoryIfMissingVerbose verbosity True (srcdir </> builddir)
+    createDirectoryIfMissingVerbose verbosity True (interpretSymbolicPath (Just srcdir) builddir)
 
     -- TODO: [code cleanup] deal consistently with talking to older
     --      Setup.hs versions, much like we do for ghc, with a proper

@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -29,9 +30,12 @@ module Distribution.Simple.LocalBuildInfo
 
     -- * Convenience accessors
   , buildDir
-  , cabalFilePath
+  , packageRoot
   , progPrefix
   , progSuffix
+  , interpretSymbolicPathLBI
+  , mbWorkDirLBI
+  , absoluteWorkingDirLBI
 
     -- * Buildable package components
   , Component (..)
@@ -91,6 +95,7 @@ import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.Pretty
 import Distribution.Simple.Compiler
+import Distribution.Simple.Flag
 import Distribution.Simple.InstallDirs hiding
   ( absoluteInstallDirs
   , prefixRelativeInstallDirs
@@ -98,35 +103,66 @@ import Distribution.Simple.InstallDirs hiding
   )
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import Distribution.Simple.PackageIndex
+import Distribution.Simple.Setup.Common
+import Distribution.Simple.Setup.Config
 import Distribution.Simple.Utils
+import Distribution.Utils.Path
 
 import Data.List (stripPrefix)
-import System.FilePath
-
-import System.Directory (canonicalizePath, doesDirectoryExist)
+import qualified System.Directory as Directory
+  ( canonicalizePath
+  , doesDirectoryExist
+  )
 
 -- -----------------------------------------------------------------------------
 -- Configuration information of buildable components
 
-componentBuildDir :: LocalBuildInfo -> ComponentLocalBuildInfo -> FilePath
+componentBuildDir :: LocalBuildInfo -> ComponentLocalBuildInfo -> SymbolicPath Pkg (Dir Build)
 -- For now, we assume that libraries/executables/test-suites/benchmarks
 -- are only ever built once.  With Backpack, we need a special case for
 -- libraries so that we can handle building them multiple times.
 componentBuildDir lbi clbi =
-  buildDir lbi
-    </> case componentLocalName clbi of
-      CLibName LMainLibName ->
-        if prettyShow (componentUnitId clbi) == prettyShow (componentComponentId clbi)
-          then ""
-          else prettyShow (componentUnitId clbi)
-      CLibName (LSubLibName s) ->
-        if prettyShow (componentUnitId clbi) == prettyShow (componentComponentId clbi)
-          then unUnqualComponentName s
-          else prettyShow (componentUnitId clbi)
-      CFLibName s -> unUnqualComponentName s
-      CExeName s -> unUnqualComponentName s
-      CTestName s -> unUnqualComponentName s
-      CBenchName s -> unUnqualComponentName s
+  (buildDir lbi </>) $
+    makeRelativePathEx $
+      case componentLocalName clbi of
+        CLibName LMainLibName ->
+          if prettyShow (componentUnitId clbi) == prettyShow (componentComponentId clbi)
+            then ""
+            else prettyShow (componentUnitId clbi)
+        CLibName (LSubLibName s) ->
+          if prettyShow (componentUnitId clbi) == prettyShow (componentComponentId clbi)
+            then unUnqualComponentName s
+            else prettyShow (componentUnitId clbi)
+        CFLibName s -> unUnqualComponentName s
+        CExeName s -> unUnqualComponentName s
+        CTestName s -> unUnqualComponentName s
+        CBenchName s -> unUnqualComponentName s
+
+-- | Interpret a symbolic path with respect to the working directory
+-- stored in 'LocalBuildInfo'.
+--
+-- Use this before directly interacting with the file system.
+--
+-- NB: when invoking external programs (such as @GHC@), it is preferable to set
+-- the working directory of the process rather than calling this function, as
+-- this function will turn relative paths into absolute paths if the working
+-- directory is an absolute path. This can degrade error messages, or worse,
+-- break the behaviour entirely (because the program might expect certain paths
+-- to be relative).
+--
+-- See Note [Symbolic paths] in Distribution.Utils.Path
+interpretSymbolicPathLBI :: LocalBuildInfo -> SymbolicPathX allowAbsolute Pkg to -> FilePath
+interpretSymbolicPathLBI lbi =
+  interpretSymbolicPath (mbWorkDirLBI lbi)
+
+-- | Retrieve an optional working directory from 'LocalBuildInfo'.
+mbWorkDirLBI :: LocalBuildInfo -> Maybe (SymbolicPath CWD (Dir Pkg))
+mbWorkDirLBI =
+  flagToMaybe . setupWorkingDir . configCommonFlags . configFlags
+
+-- | Absolute path to the current working directory.
+absoluteWorkingDirLBI :: LocalBuildInfo -> IO FilePath
+absoluteWorkingDirLBI lbi = absoluteWorkingDir (mbWorkDirLBI lbi)
 
 -- | Perform the action on each enabled 'library' in the package
 -- description with the 'ComponentLocalBuildInfo'.
@@ -272,7 +308,7 @@ depLibraryPaths
           internalLibs = map getLibDir internalCLBIs
       -}
       getLibDir sub_clbi
-        | inplace = componentBuildDir lbi sub_clbi
+        | inplace = interpretSymbolicPathLBI lbi $ componentBuildDir lbi sub_clbi
         | otherwise = dynlibdir (absoluteComponentInstallDirs pkgDescr lbi (componentUnitId sub_clbi) NoCopyDest)
 
     -- Why do we go through all the trouble of a hand-crafting
@@ -318,9 +354,9 @@ depLibraryPaths
       -- 'canonicalizePath' fails on UNIX when the directory does not exists.
       -- So just don't canonicalize when it doesn't exist.
       canonicalizePathNoFail p = do
-        exists <- doesDirectoryExist p
+        exists <- Directory.doesDirectoryExist p
         if exists
-          then canonicalizePath p
+          then Directory.canonicalizePath p
           else return p
 
 -- | Get all module names that needed to be built by GHC; i.e., all

@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
 
@@ -19,13 +20,12 @@ module Distribution.Simple.Program.Hpc
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import System.Directory (makeRelativeToCurrentDirectory)
-
 import Distribution.ModuleName
 import Distribution.Pretty
 import Distribution.Simple.Program.Run
 import Distribution.Simple.Program.Types
 import Distribution.Simple.Utils
+import Distribution.Utils.Path
 import Distribution.Verbosity
 import Distribution.Version
 
@@ -37,19 +37,20 @@ import Distribution.Version
 -- library as a dependency can still work, but those that include the library
 -- modules directly (in other-modules) don't.
 markup
-  :: ConfiguredProgram
+  :: Maybe (SymbolicPath CWD (Dir Pkg))
+  -> ConfiguredProgram
   -> Version
   -> Verbosity
-  -> FilePath
+  -> SymbolicPath Pkg File
   -- ^ Path to .tix file
-  -> [FilePath]
+  -> [SymbolicPath Pkg (Dir Mix)]
   -- ^ Paths to .mix file directories
-  -> FilePath
+  -> SymbolicPath Pkg (Dir Artifacts)
   -- ^ Path where html output should be located
   -> [ModuleName]
   -- ^ List of modules to include in the report
   -> IO ()
-markup hpc hpcVer verbosity tixFile hpcDirs destDir included = do
+markup mbWorkDir hpc hpcVer verbosity tixFile hpcDirs destDir included = do
   hpcDirs' <-
     if withinRange hpcVer (orLaterVersion version07)
       then return hpcDirs
@@ -69,69 +70,72 @@ markup hpc hpcVer verbosity tixFile hpcDirs destDir included = do
         return passedDirs
 
   -- Prior to GHC 8.0, hpc assumes all .mix paths are relative.
-  hpcDirs'' <- traverse makeRelativeToCurrentDirectory hpcDirs'
+  hpcDirs'' <- traverse (tryMakeRelativeToWorkingDir mbWorkDir) hpcDirs'
 
   runProgramInvocation
     verbosity
-    (markupInvocation hpc tixFile hpcDirs'' destDir included)
+    (markupInvocation mbWorkDir hpc tixFile hpcDirs'' destDir included)
   where
     version07 = mkVersion [0, 7]
     (passedDirs, droppedDirs) = splitAt 1 hpcDirs
 
 markupInvocation
-  :: ConfiguredProgram
-  -> FilePath
+  :: Maybe (SymbolicPath CWD (Dir Pkg))
+  -> ConfiguredProgram
+  -> SymbolicPath Pkg File
   -- ^ Path to .tix file
-  -> [FilePath]
+  -> [SymbolicPath Pkg (Dir Mix)]
   -- ^ Paths to .mix file directories
-  -> FilePath
+  -> SymbolicPath Pkg (Dir Artifacts)
   -- ^ Path where html output should be
   -- located
   -> [ModuleName]
   -- ^ List of modules to include
   -> ProgramInvocation
-markupInvocation hpc tixFile hpcDirs destDir included =
+markupInvocation mbWorkDir hpc tixFile hpcDirs destDir included =
   let args =
         [ "markup"
-        , tixFile
-        , "--destdir=" ++ destDir
+        , getSymbolicPath tixFile
+        , "--destdir=" ++ getSymbolicPath destDir
         ]
-          ++ map ("--hpcdir=" ++) hpcDirs
+          ++ map (("--hpcdir=" ++) . getSymbolicPath) hpcDirs
           ++ [ "--include=" ++ prettyShow moduleName
              | moduleName <- included
              ]
-   in programInvocation hpc args
+   in programInvocationCwd mbWorkDir hpc args
 
 union
-  :: ConfiguredProgram
+  :: Maybe (SymbolicPath CWD (Dir Pkg))
+  -> ConfiguredProgram
   -> Verbosity
-  -> [FilePath]
+  -> [SymbolicPath Pkg File]
   -- ^ Paths to .tix files
-  -> FilePath
+  -> SymbolicPath Pkg File
   -- ^ Path to resultant .tix file
   -> [ModuleName]
   -- ^ List of modules to exclude from union
   -> IO ()
-union hpc verbosity tixFiles outFile excluded =
+union mbWorkDir hpc verbosity tixFiles outFile excluded =
   runProgramInvocation
     verbosity
-    (unionInvocation hpc tixFiles outFile excluded)
+    (unionInvocation mbWorkDir hpc tixFiles outFile excluded)
 
 unionInvocation
-  :: ConfiguredProgram
-  -> [FilePath]
+  :: Maybe (SymbolicPath CWD (Dir Pkg))
+  -> ConfiguredProgram
+  -> [SymbolicPath Pkg File]
   -- ^ Paths to .tix files
-  -> FilePath
+  -> SymbolicPath Pkg File
   -- ^ Path to resultant .tix file
   -> [ModuleName]
   -- ^ List of modules to exclude from union
   -> ProgramInvocation
-unionInvocation hpc tixFiles outFile excluded =
-  programInvocation hpc $
+unionInvocation mbWorkDir hpc tixFiles outFile excluded =
+  programInvocationCwd mbWorkDir hpc $
     concat
       [ ["sum", "--union"]
-      , tixFiles
-      , ["--output=" ++ outFile]
+      , map getSymbolicPath tixFiles
+      , ["--output=" ++ getSymbolicPath outFile]
       , [ "--exclude=" ++ prettyShow moduleName
         | moduleName <- excluded
         ]

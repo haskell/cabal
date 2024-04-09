@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
@@ -69,6 +70,10 @@ import Distribution.Simple.Utils
 import Distribution.System
 import Distribution.Types.Version
   ( mkVersion
+  )
+import Distribution.Utils.Path hiding
+  ( (<.>)
+  , (</>)
   )
 import Distribution.Verbosity
 
@@ -225,7 +230,7 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
           | elabSetupScriptCliVersion elab < mkVersion [3, 7, 0, 0] =
               "build-info" J..= J.Null
           | otherwise =
-              "build-info" J..= J.String (buildInfoPref dist_dir)
+              "build-info" J..= J.String (getSymbolicPath $ buildInfoPref $ makeSymbolicPath dist_dir)
 
         packageLocationToJ :: PackageLocation (Maybe FilePath) -> J.Value
         packageLocationToJ pkgloc =
@@ -1024,4 +1029,4 @@ relativePackageDBPath relroot pkgdb =
     UserPackageDB -> UserPackageDB
     SpecificPackageDB path -> SpecificPackageDB relpath
       where
-        relpath = makeRelative relroot path
+        relpath = makeRelative (normalise relroot) path

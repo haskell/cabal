@@ -15,9 +15,7 @@ import Control.Monad (when)
 
 import System.Directory
 import System.IO.Error
-#if !(MIN_VERSION_directory(1,2,7))
 import System.FilePath ((</>))
-#endif
 import qualified System.Info (os)
 
 -- | Much like 'withTemporaryDirectory' but with a number of hacks to make
@@ -26,7 +24,8 @@ withTestDir :: Verbosity -> String -> (FilePath -> IO a) -> IO a
 withTestDir verbosity template action = do
   systmpdir <- getTemporaryDirectory
   bracket
-    (createTempDirectory systmpdir template)
+    ( do { tmpRelDir <- createTempDirectory systmpdir template
+         ; return $ systmpdir </> tmpRelDir } )
     (removeDirectoryRecursiveHack verbosity)
     action
 

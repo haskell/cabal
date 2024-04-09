@@ -2,6 +2,7 @@
 {-# LANGUAGE NondecreasingIndentation #-}
 {-# LANGUAGE PatternGuards            #-}
 {-# LANGUAGE ScopedTypeVariables      #-}
+{-# LANGUAGE TypeApplications         #-}
 
 import Test.Cabal.Workdir
 import Test.Cabal.Script
@@ -12,6 +13,7 @@ import Test.Cabal.TestCode
 import Distribution.Verbosity        (normal, verbose, Verbosity)
 import Distribution.Simple.Utils     (getDirectoryContentsRecursive)
 import Distribution.Simple.Program
+import Distribution.Utils.Path       (getSymbolicPath)
 
 import Options.Applicative
 import Control.Concurrent.MVar
@@ -211,7 +213,7 @@ main = do
     -- for Custom.
     dist_dir <- case mainArgDistDir args of
                   Just dist_dir -> return dist_dir
-                  Nothing -> guessDistDir
+                  Nothing -> getSymbolicPath <$> guessDistDir
     when (verbosity >= verbose) $
         hPutStrLn stderr $ "Using dist dir: " ++ dist_dir
     -- Get ready to go!

@@ -144,7 +144,7 @@ data CabalDirLayout = CabalDirLayout
 --
 -- It can either be an implicit project root in the current dir if no
 -- @cabal.project@ file is found, or an explicit root if either
--- the file is found or the project root directory was specicied.
+-- the file is found or the project root directory was specified.
 data ProjectRoot
   = -- | An implicit project root. It contains the absolute project
     -- root dir.
@@ -167,8 +167,7 @@ defaultDistDirLayout
   :: ProjectRoot
   -- ^ the project root
   -> Maybe FilePath
-  -- ^ the @dist@ directory or default
-  -- (absolute or relative to the root)
+  -- ^ the @dist@ directory (relative to package root)
   -> Maybe FilePath
   -- ^ the documentation directory
   -> DistDirLayout

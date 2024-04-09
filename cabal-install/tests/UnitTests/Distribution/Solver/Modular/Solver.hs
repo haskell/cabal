@@ -13,6 +13,7 @@ import qualified Distribution.Version as V
 
 -- test-framework
 import Test.Tasty as TF
+import Test.Tasty.ExpectedFailure
 
 -- Cabal
 import Language.Haskell.Extension
@@ -181,6 +182,8 @@ tests =
       , runTest $ mkTest db9 "setupDeps7" ["F", "G"] (solverSuccess [("A", 1), ("B", 1), ("B", 2), ("C", 1), ("D", 1), ("E", 1), ("E", 2), ("F", 1), ("G", 1)])
       , runTest $ mkTest db10 "setupDeps8" ["C"] (solverSuccess [("C", 1)])
       , runTest $ indep $ mkTest dbSetupDeps "setupDeps9" ["A", "B"] (solverSuccess [("A", 1), ("B", 1), ("C", 1), ("D", 1), ("D", 2)])
+      , runTest $ setupStanzaTest1
+      , runTest $ setupStanzaTest2
       ]
   , testGroup
       "Base shim"
@@ -190,6 +193,9 @@ tests =
       , runTest $ mkTest db12 "baseShim4" ["C"] (solverSuccess [("A", 1), ("B", 1), ("C", 1)])
       , runTest $ mkTest db12 "baseShim5" ["D"] anySolverFailure
       , runTest $ mkTest db12 "baseShim6" ["E"] (solverSuccess [("E", 1), ("syb", 2)])
+      , expectFailBecause "#9467" $ runTest $ mkTest db12s "baseShim7" ["A"] (solverSuccess [("A", 1)])
+      , expectFailBecause "#9467" $ runTest $ mkTest db11s "baseShim7-simple" ["A"] (solverSuccess [("A", 1)])
+      , runTest $ mkTest db11s2 "baseShim8" ["A"] (solverSuccess [("A", 1)])
       ]
   , testGroup
       "Base and non-reinstallable"
@@ -357,6 +363,8 @@ tests =
       , runTest $ testIndepGoals5 "indepGoals5 - default goal order" DefaultGoalOrder
       , runTest $ testIndepGoals6 "indepGoals6 - fixed goal order" FixedGoalOrder
       , runTest $ testIndepGoals6 "indepGoals6 - default goal order" DefaultGoalOrder
+      , expectFailBecause "#9466" $ runTest $ testIndepGoals7 "indepGoals7"
+      , runTest $ testIndepGoals8 "indepGoals8"
       ]
   , -- Tests designed for the backjumping blog post
     testGroup
@@ -1325,6 +1333,61 @@ db12 =
       , Right $ exAv "E" 1 [ExFix "base" 4, ExFix "syb" 2]
       ]
 
+-- | A version of db12 where the dependency on base happens via a setup dependency
+--
+-- * The setup dependency is solved in it's own qualified scope, so should be solved
+-- independently of the rest of the build plan.
+--
+-- * The setup dependency depends on `base-3` and hence `syb1`
+--
+-- * A depends on `base-4` and `syb-2`, should be fine as the setup stanza should
+-- be solved independently.
+db12s :: ExampleDb
+db12s =
+  let base3 = exInst "base" 3 "base-3-inst" [base4, syb1]
+      base4 = exInst "base" 4 "base-4-inst" []
+      syb1 = exInst "syb" 1 "syb-1-inst" [base4]
+   in [ Left base3
+      , Left base4
+      , Left syb1
+      , Right $ exAv "syb" 2 [ExFix "base" 4]
+      , Right $
+          exAv "A" 1 [ExFix "base" 4, ExFix "syb" 2]
+            `withSetupDeps` [ExFix "base" 3]
+      ]
+
+-- | A version of db11 where the dependency on base happens via a setup dependency
+--
+-- * The setup dependency is solved in it's own qualified scope, so should be solved
+-- independently of the rest of the build plan.
+--
+-- * The setup dependency depends on `base-3`
+--
+-- * A depends on `base-4`, should be fine as the setup stanza should
+-- be solved independently.
+db11s :: ExampleDb
+db11s =
+  let base3 = exInst "base" 3 "base-3-inst" [base4]
+      base4 = exInst "base" 4 "base-4-inst" []
+   in [ Left base3
+      , Left base4
+      , Right $
+          exAv "A" 1 [ExFix "base" 4]
+            `withSetupDeps` [ExFix "base" 3]
+      ]
+
+-- Works without the base-shimness, choosing different versions of base
+db11s2 :: ExampleDb
+db11s2 =
+  let base3 = exInst "base" 3 "base-3-inst" []
+      base4 = exInst "base" 4 "base-4-inst" []
+   in [ Left base3
+      , Left base4
+      , Right $
+          exAv "A" 1 [ExFix "base" 4]
+            `withSetupDeps` [ExFix "base" 3]
+      ]
+
 dbBase :: ExampleDb
 dbBase =
   [ Right $
@@ -1954,6 +2017,33 @@ dbLangs1 =
   , Right $ exAv "C" 1 [ExLang (UnknownLanguage "Haskell3000"), ExAny "B"]
   ]
 
+-- This test checks how the scope of a constraint interacts with qualified goals.
+-- If you specify `A == 2`, that top-level should /not/ apply to an independent goal!
+testIndepGoals7 :: String -> SolverTest
+testIndepGoals7 name =
+  constraints [ExVersionConstraint (scopeToplevel "A") (V.thisVersion (V.mkVersion [2, 0, 0]))] $
+    independentGoals $
+      mkTest dbIndepGoals78 name ["A"] $
+        -- The more recent version should be picked by the solver. As said
+        -- above, the top-level A==2 should not apply to an independent goal.
+        solverSuccess [("A", 3)]
+
+dbIndepGoals78 :: ExampleDb
+dbIndepGoals78 =
+  [ Right $ exAv "A" 1 []
+  , Right $ exAv "A" 2 []
+  , Right $ exAv "A" 3 []
+  ]
+
+-- This test checks how the scope of a constraint interacts with qualified goals.
+-- If you specify `any.A == 2`, then that should apply inside an independent goal.
+testIndepGoals8 :: String -> SolverTest
+testIndepGoals8 name =
+  constraints [ExVersionConstraint (ScopeAnyQualifier "A") (V.thisVersion (V.mkVersion [2, 0, 0]))] $
+    independentGoals $
+      mkTest dbIndepGoals78 name ["A"] $
+        solverSuccess [("A", 2)]
+
 -- | cabal must set enable-exe to false in order to avoid the unavailable
 -- dependency. Flags are true by default. The flag choice causes "pkg" to
 -- depend on "false-dep".
@@ -2466,6 +2556,32 @@ dbIssue3775 =
     Right $ exAv "A" 2 [ExFix "warp" 1] `withExe` exExe "warp" [ExAny "A"]
   , Right $ exAv "B" 2 [ExAny "A", ExAny "warp"]
   ]
+
+-- A database where the setup depends on something which has a test stanza, does the
+-- test stanza get enabled?
+dbSetupStanza :: ExampleDb
+dbSetupStanza =
+  [ Right $
+      exAv "A" 1 []
+        `withSetupDeps` [ExAny "B"]
+  , Right $
+      exAv "B" 1 []
+        `withTest` exTest "test" [ExAny "C"]
+  ]
+
+-- With the "top-level" qualifier syntax
+setupStanzaTest1 :: SolverTest
+setupStanzaTest1 = constraints [ExStanzaConstraint (scopeToplevel "B") [TestStanzas]] $ mkTest dbSetupStanza "setupStanzaTest1" ["A"] (solverSuccess [("A", 1), ("B", 1)])
+
+-- With the "any" qualifier syntax
+setupStanzaTest2 :: SolverTest
+setupStanzaTest2 =
+  constraints [ExStanzaConstraint (ScopeAnyQualifier "B") [TestStanzas]] $
+    mkTest
+      dbSetupStanza
+      "setupStanzaTest2"
+      ["A"]
+      (solverFailure ("unknown package: A:setup.C (dependency of A:setup.B *test)" `isInfixOf`))
 
 -- | Returns true if the second list contains all elements of the first list, in
 -- order.

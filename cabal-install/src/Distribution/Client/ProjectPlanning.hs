@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE LambdaCase #-}
@@ -74,6 +75,7 @@ module Distribution.Client.ProjectPlanning
 
     -- * Setup.hs CLI flags for building
   , setupHsScriptOptions
+  , setupHsCommonFlags
   , setupHsConfigureFlags
   , setupHsConfigureArgs
   , setupHsBuildFlags
@@ -98,6 +100,7 @@ module Distribution.Client.ProjectPlanning
   ) where
 
 import Distribution.Client.Compat.Prelude
+import Text.PrettyPrint (render)
 import Prelude ()
 
 import Distribution.Client.Config
@@ -135,6 +138,10 @@ import Distribution.CabalSpecVersion
 import Distribution.Utils.LogProgress
 import Distribution.Utils.MapAccum
 import Distribution.Utils.NubList
+import Distribution.Utils.Path hiding
+  ( (<.>)
+  , (</>)
+  )
 
 import qualified Hackage.Security.Client as Sec
 
@@ -208,6 +215,7 @@ import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Distribution.Client.Errors
+import Distribution.Solver.Types.ProjectConfigPath
 import System.FilePath
 import Text.PrettyPrint (colon, comma, fsep, hang, punctuate, quotes, text, vcat, ($$))
 import qualified Text.PrettyPrint as Disp
@@ -384,12 +392,13 @@ rebuildProjectConfig
           localPackages <- phaseReadLocalPackages (projectConfig <> cliConfig)
           return (projectConfig, localPackages)
 
-    info verbosity $
-      unlines $
-        ("this build was affected by the following (project) config files:" :) $
-          [ "- " ++ path
-          | Explicit path <- Set.toList $ projectConfigProvenance projectConfig
-          ]
+    sequence_
+      [ do
+        info verbosity . render . vcat $
+          text "this build was affected by the following (project) config files:"
+            : [text "-" <+> docProjectConfigPath path]
+      | Explicit path <- Set.toList $ projectConfigProvenance projectConfig
+      ]
 
     return (projectConfig <> cliConfig, localPackages)
     where
@@ -456,7 +465,7 @@ configureCompiler
         , packageConfigProgramPathExtra
         }
     } = do
-    let fileMonitorCompiler = newFileMonitor . distProjectCacheFile $ "compiler"
+    let fileMonitorCompiler = newFileMonitor $ distProjectCacheFile "compiler"
 
     progsearchpath <- liftIO $ getSystemSearchPath
     rerunIfChanged
@@ -946,6 +955,7 @@ getInstalledPackages verbosity compiler progdb platform packagedbs = do
       ( IndexUtils.getInstalledPackagesMonitorFiles
           verbosity
           compiler
+          Nothing -- use ambient working directory
           packagedbs
           progdb
           platform
@@ -3649,8 +3659,8 @@ setupHsScriptOptions
   -> ElaboratedInstallPlan
   -> ElaboratedSharedConfig
   -> DistDirLayout
-  -> FilePath
-  -> FilePath
+  -> SymbolicPath CWD (Dir Pkg)
+  -> SymbolicPath Pkg (Dir Dist)
   -> Bool
   -> Lock
   -> SetupScriptOptions
@@ -3790,15 +3800,13 @@ setupHsConfigureFlags
   :: ElaboratedInstallPlan
   -> ElaboratedReadyPackage
   -> ElaboratedSharedConfig
-  -> Verbosity
-  -> FilePath
+  -> Cabal.CommonSetupFlags
   -> Cabal.ConfigFlags
 setupHsConfigureFlags
   plan
   (ReadyPackage elab@ElaboratedConfiguredPackage{..})
   sharedConfig@ElaboratedSharedConfig{..}
-  verbosity
-  builddir =
+  configCommonFlags =
     sanityCheckElaboratedConfiguredPackage
       sharedConfig
       elab
@@ -3828,11 +3836,6 @@ setupHsConfigureFlags
         } = LBC.buildOptionsConfigFlags elabBuildOptions
       configProfExe = mempty
       configProf = toFlag $ LBC.withProfExe elabBuildOptions
-
-      configArgs = mempty -- unused, passed via args
-      configDistPref = toFlag builddir
-      configCabalFilePath = mempty
-      configVerbosity = toFlag verbosity
 
       configInstantiateWith = Map.toList elabInstantiatedWith
 
@@ -3874,10 +3877,10 @@ setupHsConfigureFlags
 
       configConfigurationsFlags = elabFlagAssignment
       configConfigureArgs = elabConfigureScriptArgs
-      configExtraLibDirs = elabExtraLibDirs
-      configExtraLibDirsStatic = elabExtraLibDirsStatic
-      configExtraFrameworkDirs = elabExtraFrameworkDirs
-      configExtraIncludeDirs = elabExtraIncludeDirs
+      configExtraLibDirs = fmap makeSymbolicPath $ elabExtraLibDirs
+      configExtraLibDirsStatic = fmap makeSymbolicPath $ elabExtraLibDirsStatic
+      configExtraFrameworkDirs = fmap makeSymbolicPath $ elabExtraFrameworkDirs
+      configExtraIncludeDirs = fmap makeSymbolicPath $ elabExtraIncludeDirs
       configProgPrefix = maybe mempty toFlag elabProgPrefix
       configProgSuffix = maybe mempty toFlag elabProgSuffix
 
@@ -3953,27 +3956,37 @@ setupHsConfigureArgs elab@(ElaboratedConfiguredPackage{elabPkgOrComp = ElabCompo
         (error "setupHsConfigureArgs: trying to configure setup")
         (compComponentName comp)
 
+setupHsCommonFlags
+  :: Verbosity
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
+  -> SymbolicPath Pkg (Dir Dist)
+  -> Cabal.CommonSetupFlags
+setupHsCommonFlags verbosity mbWorkDir builddir =
+  Cabal.CommonSetupFlags
+    { setupDistPref = toFlag builddir
+    , setupVerbosity = toFlag verbosity
+    , setupCabalFilePath = mempty
+    , setupWorkingDir = maybeToFlag mbWorkDir
+    , setupTargets = []
+    }
+
 setupHsBuildFlags
   :: Flag String
   -> ElaboratedConfiguredPackage
   -> ElaboratedSharedConfig
-  -> Verbosity
-  -> FilePath
+  -> Cabal.CommonSetupFlags
   -> Cabal.BuildFlags
-setupHsBuildFlags par_strat elab _ verbosity builddir =
+setupHsBuildFlags par_strat elab _ common =
   Cabal.BuildFlags
-    { buildProgramPaths = mempty -- unused, set at configure time
+    { buildCommonFlags = common
+    , buildProgramPaths = mempty -- unused, set at configure time
     , buildProgramArgs = mempty -- unused, set at configure time
-    , buildVerbosity = toFlag verbosity
-    , buildDistPref = toFlag builddir
     , buildNumJobs = mempty -- TODO: [nice to have] sometimes want to use toFlag (Just numBuildJobs),
     , buildUseSemaphore =
         if elabSetupScriptCliVersion elab >= mkVersion [3, 11, 0, 0]
           then -- Cabal 3.11 is the first version that supports parallelism semaphores
             par_strat
           else mempty
-    , buildArgs = mempty -- unused, passed via args not flags
-    , buildCabalFilePath = mempty
     }
 
 setupHsBuildArgs :: ElaboratedConfiguredPackage -> [String]
@@ -3988,13 +4001,11 @@ setupHsBuildArgs (ElaboratedConfiguredPackage{elabPkgOrComp = ElabComponent _}) 
 
 setupHsTestFlags
   :: ElaboratedConfiguredPackage
-  -> Verbosity
-  -> FilePath
+  -> Cabal.CommonSetupFlags
   -> Cabal.TestFlags
-setupHsTestFlags (ElaboratedConfiguredPackage{..}) verbosity builddir =
+setupHsTestFlags (ElaboratedConfiguredPackage{..}) common =
   Cabal.TestFlags
-    { testDistPref = toFlag builddir
-    , testVerbosity = toFlag verbosity
+    { testCommonFlags = common
     , testMachineLog = maybe mempty toFlag elabTestMachineLog
     , testHumanLog = maybe mempty toFlag elabTestHumanLog
     , testShowDetails = maybe (Flag Cabal.Always) toFlag elabTestShowDetails
@@ -4012,13 +4023,11 @@ setupHsTestArgs elab =
 setupHsBenchFlags
   :: ElaboratedConfiguredPackage
   -> ElaboratedSharedConfig
-  -> Verbosity
-  -> FilePath
+  -> Cabal.CommonSetupFlags
   -> Cabal.BenchmarkFlags
-setupHsBenchFlags (ElaboratedConfiguredPackage{..}) _ verbosity builddir =
+setupHsBenchFlags (ElaboratedConfiguredPackage{..}) _ common =
   Cabal.BenchmarkFlags
-    { benchmarkDistPref = toFlag builddir
-    , benchmarkVerbosity = toFlag verbosity
+    { benchmarkCommonFlags = common
     , benchmarkOptions = elabBenchmarkOptions
     }
 
@@ -4029,15 +4038,13 @@ setupHsBenchArgs elab =
 setupHsReplFlags
   :: ElaboratedConfiguredPackage
   -> ElaboratedSharedConfig
-  -> Verbosity
-  -> FilePath
+  -> Cabal.CommonSetupFlags
   -> Cabal.ReplFlags
-setupHsReplFlags _ sharedConfig verbosity builddir =
+setupHsReplFlags _ sharedConfig common =
   Cabal.ReplFlags
-    { replProgramPaths = mempty -- unused, set at configure time
+    { replCommonFlags = common
+    , replProgramPaths = mempty -- unused, set at configure time
     , replProgramArgs = mempty -- unused, set at configure time
-    , replVerbosity = toFlag verbosity
-    , replDistPref = toFlag builddir
     , replReload = mempty -- only used as callback from repl
     , replReplOptions = pkgConfigReplOptions sharedConfig -- runtime override for repl flags
     }
@@ -4049,55 +4056,46 @@ setupHsReplArgs elab =
 setupHsCopyFlags
   :: ElaboratedConfiguredPackage
   -> ElaboratedSharedConfig
-  -> Verbosity
-  -> FilePath
+  -> Cabal.CommonSetupFlags
   -> FilePath
   -> Cabal.CopyFlags
-setupHsCopyFlags _ _ verbosity builddir destdir =
+setupHsCopyFlags _ _ common destdir =
   Cabal.CopyFlags
-    { copyArgs = [] -- TODO: could use this to only copy what we enabled
+    { copyCommonFlags = common
     , copyDest = toFlag (InstallDirs.CopyTo destdir)
-    , copyDistPref = toFlag builddir
-    , copyVerbosity = toFlag verbosity
-    , copyCabalFilePath = mempty
     }
 
 setupHsRegisterFlags
   :: ElaboratedConfiguredPackage
   -> ElaboratedSharedConfig
-  -> Verbosity
-  -> FilePath
+  -> Cabal.CommonSetupFlags
   -> FilePath
   -> Cabal.RegisterFlags
 setupHsRegisterFlags
   ElaboratedConfiguredPackage{..}
   _
-  verbosity
-  builddir
+  common
   pkgConfFile =
     Cabal.RegisterFlags
-      { regPackageDB = mempty -- misfeature
+      { registerCommonFlags = common
+      , regPackageDB = mempty -- misfeature
       , regGenScript = mempty -- never use
       , regGenPkgConf = toFlag (Just pkgConfFile)
       , regInPlace = case elabBuildStyle of
           BuildInplaceOnly{} -> toFlag True
           BuildAndInstall -> toFlag False
       , regPrintId = mempty -- never use
-      , regDistPref = toFlag builddir
-      , regArgs = []
-      , regVerbosity = toFlag verbosity
-      , regCabalFilePath = mempty
       }
 
 setupHsHaddockFlags
   :: ElaboratedConfiguredPackage
   -> ElaboratedSharedConfig
-  -> Verbosity
-  -> FilePath
+  -> Cabal.CommonSetupFlags
   -> Cabal.HaddockFlags
-setupHsHaddockFlags (ElaboratedConfiguredPackage{..}) (ElaboratedSharedConfig{..}) verbosity builddir =
+setupHsHaddockFlags (ElaboratedConfiguredPackage{..}) (ElaboratedSharedConfig{..}) common =
   Cabal.HaddockFlags
-    { haddockProgramPaths =
+    { haddockCommonFlags = common
+    , haddockProgramPaths =
         case lookupProgram haddockProgram pkgConfigCompilerProgs of
           Nothing -> mempty
           Just prg ->
@@ -4121,15 +4119,11 @@ setupHsHaddockFlags (ElaboratedConfiguredPackage{..}) (ElaboratedSharedConfig{..
     , haddockQuickJump = toFlag elabHaddockQuickJump
     , haddockHscolourCss = maybe mempty toFlag elabHaddockHscolourCss
     , haddockContents = maybe mempty toFlag elabHaddockContents
-    , haddockDistPref = toFlag builddir
     , haddockKeepTempFiles = mempty -- TODO: from build settings
-    , haddockVerbosity = toFlag verbosity
-    , haddockCabalFilePath = mempty
     , haddockIndex = maybe mempty toFlag elabHaddockIndex
     , haddockBaseUrl = maybe mempty toFlag elabHaddockBaseUrl
     , haddockLib = maybe mempty toFlag elabHaddockLib
     , haddockOutputDir = maybe mempty toFlag elabHaddockOutputDir
-    , haddockArgs = mempty
     }
 
 setupHsHaddockArgs :: ElaboratedConfiguredPackage -> [String]

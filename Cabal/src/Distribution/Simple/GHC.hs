@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
@@ -82,6 +83,7 @@ module Distribution.Simple.GHC
 import Distribution.Compat.Prelude
 import Prelude ()
 
+import Control.Arrow ((***))
 import Control.Monad (forM_)
 import Data.List (stripPrefix)
 import qualified Data.Map as Map
@@ -95,7 +97,6 @@ import Distribution.Simple.Build.Inputs (PreBuildComponentInputs (..))
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Compiler
 import Distribution.Simple.Errors
-import Distribution.Simple.Flag (Flag (..), toFlag)
 import qualified Distribution.Simple.GHC.Build as GHC
 import Distribution.Simple.GHC.Build.Utils
 import Distribution.Simple.GHC.EnvironmentParser
@@ -110,7 +111,7 @@ import Distribution.Simple.Program.Builtin (runghcProgram)
 import Distribution.Simple.Program.GHC
 import qualified Distribution.Simple.Program.HcPkg as HcPkg
 import qualified Distribution.Simple.Program.Strip as Strip
-import Distribution.Simple.Setup.Common (extraCompilationArtifacts)
+import Distribution.Simple.Setup.Common
 import Distribution.Simple.Setup.Repl
 import Distribution.Simple.Utils
 import Distribution.System
@@ -118,6 +119,7 @@ import Distribution.Types.ComponentLocalBuildInfo
 import Distribution.Types.ParStrat
 import Distribution.Types.TargetInfo
 import Distribution.Utils.NubList
+import Distribution.Utils.Path
 import Distribution.Verbosity
 import Distribution.Version
 import Language.Haskell.Extension
@@ -130,9 +132,8 @@ import System.Directory
   , getDirectoryContents
   )
 import System.FilePath
-  ( takeDirectory
-  , (<.>)
-  , (</>)
+  ( isRelative
+  , takeDirectory
   )
 import qualified System.Info
 #ifndef mingw32_HOST_OS
@@ -392,24 +393,26 @@ getGhcInfo verbosity ghcProg = Internal.getGhcInfo verbosity implInfo ghcProg
 -- | Given a single package DB, return all installed packages.
 getPackageDBContents
   :: Verbosity
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -> PackageDB
   -> ProgramDb
   -> IO InstalledPackageIndex
-getPackageDBContents verbosity packagedb progdb = do
-  pkgss <- getInstalledPackages' verbosity [packagedb] progdb
+getPackageDBContents verbosity mbWorkDir packagedb progdb = do
+  pkgss <- getInstalledPackages' verbosity mbWorkDir [packagedb] progdb
   toPackageIndex verbosity pkgss progdb
 
 -- | Given a package DB stack, return all installed packages.
 getInstalledPackages
   :: Verbosity
   -> Compiler
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -> PackageDBStack
   -> ProgramDb
   -> IO InstalledPackageIndex
-getInstalledPackages verbosity comp packagedbs progdb = do
+getInstalledPackages verbosity comp mbWorkDir packagedbs progdb = do
   checkPackageDbEnvVar verbosity
   checkPackageDbStack verbosity comp packagedbs
-  pkgss <- getInstalledPackages' verbosity packagedbs progdb
+  pkgss <- getInstalledPackages' verbosity mbWorkDir packagedbs progdb
   index <- toPackageIndex verbosity pkgss progdb
   return $! hackRtsPackage index
   where
@@ -525,24 +528,26 @@ removeMingwIncludeDir pkg =
 -- | Get the packages from specific PackageDBs, not cumulative.
 getInstalledPackages'
   :: Verbosity
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -> [PackageDB]
   -> ProgramDb
   -> IO [(PackageDB, [InstalledPackageInfo])]
-getInstalledPackages' verbosity packagedbs progdb =
+getInstalledPackages' verbosity mbWorkDir packagedbs progdb =
   sequenceA
     [ do
-      pkgs <- HcPkg.dump (hcPkgInfo progdb) verbosity packagedb
+      pkgs <- HcPkg.dump (hcPkgInfo progdb) verbosity mbWorkDir packagedb
       return (packagedb, pkgs)
     | packagedb <- packagedbs
     ]
 
 getInstalledPackagesMonitorFiles
   :: Verbosity
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -> Platform
   -> ProgramDb
   -> [PackageDB]
   -> IO [FilePath]
-getInstalledPackagesMonitorFiles verbosity platform progdb =
+getInstalledPackagesMonitorFiles verbosity mbWorkDir platform progdb =
   traverse getPackageDBPath
   where
     getPackageDBPath :: PackageDB -> IO FilePath
@@ -556,7 +561,11 @@ getInstalledPackagesMonitorFiles verbosity platform progdb =
     -- Note that for dir style dbs, we only need to monitor the cache file, not
     -- the whole directory. The ghc program itself only reads the cache file
     -- so it's safe to only monitor this one file.
-    selectMonitorFile path = do
+    selectMonitorFile path0 = do
+      let path =
+            if isRelative path0
+              then interpretSymbolicPath mbWorkDir (makeRelativePathEx path0)
+              else path0
       isFileStyle <- doesFileExist path
       if isFileStyle
         then return path
@@ -577,7 +586,11 @@ buildLib
   -> IO ()
 buildLib flags numJobs pkg lbi lib clbi =
   GHC.build numJobs pkg $
-    PreBuildComponentInputs (BuildNormal flags) lbi (TargetInfo clbi (CLib lib))
+    PreBuildComponentInputs
+      { buildingWhat = BuildNormal flags
+      , localBuildInfo = lbi
+      , targetInfo = TargetInfo clbi (CLib lib)
+      }
 
 replLib
   :: ReplFlags
@@ -589,7 +602,11 @@ replLib
   -> IO ()
 replLib flags numJobs pkg lbi lib clbi =
   GHC.build numJobs pkg $
-    PreBuildComponentInputs (BuildRepl flags) lbi (TargetInfo clbi (CLib lib))
+    PreBuildComponentInputs
+      { buildingWhat = BuildRepl flags
+      , localBuildInfo = lbi
+      , targetInfo = TargetInfo clbi (CLib lib)
+      }
 
 -- | Start a REPL without loading any source files.
 startInterpreter
@@ -607,7 +624,7 @@ startInterpreter verbosity progdb comp platform packageDBs = do
           }
   checkPackageDbStack verbosity comp packageDBs
   (ghcProg, _) <- requireProgram verbosity ghcProgram progdb
-  runGHC verbosity ghcProg comp platform replOpts
+  runGHC verbosity ghcProg comp platform Nothing replOpts
 
 -- -----------------------------------------------------------------------------
 -- Building an executable or foreign library
@@ -623,7 +640,16 @@ buildFLib
   -> IO ()
 buildFLib v numJobs pkg lbi flib clbi =
   GHC.build numJobs pkg $
-    PreBuildComponentInputs (BuildNormal mempty{buildVerbosity = toFlag v}) lbi (TargetInfo clbi (CFLib flib))
+    PreBuildComponentInputs
+      { buildingWhat =
+          BuildNormal $
+            mempty
+              { buildCommonFlags =
+                  mempty{setupVerbosity = toFlag v}
+              }
+      , localBuildInfo = lbi
+      , targetInfo = TargetInfo clbi (CFLib flib)
+      }
 
 replFLib
   :: ReplFlags
@@ -635,7 +661,11 @@ replFLib
   -> IO ()
 replFLib replFlags njobs pkg lbi flib clbi =
   GHC.build njobs pkg $
-    PreBuildComponentInputs (BuildRepl replFlags) lbi (TargetInfo clbi (CFLib flib))
+    PreBuildComponentInputs
+      { buildingWhat = BuildRepl replFlags
+      , localBuildInfo = lbi
+      , targetInfo = TargetInfo clbi (CFLib flib)
+      }
 
 -- | Build an executable with GHC.
 buildExe
@@ -648,7 +678,16 @@ buildExe
   -> IO ()
 buildExe v njobs pkg lbi exe clbi =
   GHC.build njobs pkg $
-    PreBuildComponentInputs (BuildNormal mempty{buildVerbosity = toFlag v}) lbi (TargetInfo clbi (CExe exe))
+    PreBuildComponentInputs
+      { buildingWhat =
+          BuildNormal $
+            mempty
+              { buildCommonFlags =
+                  mempty{setupVerbosity = toFlag v}
+              }
+      , localBuildInfo = lbi
+      , targetInfo = TargetInfo clbi (CExe exe)
+      }
 
 replExe
   :: ReplFlags
@@ -660,7 +699,11 @@ replExe
   -> IO ()
 replExe replFlags njobs pkg lbi exe clbi =
   GHC.build njobs pkg $
-    PreBuildComponentInputs (BuildRepl replFlags) lbi (TargetInfo clbi (CExe exe))
+    PreBuildComponentInputs
+      { buildingWhat = BuildRepl replFlags
+      , localBuildInfo = lbi
+      , targetInfo = TargetInfo clbi (CExe exe)
+      }
 
 -- | Extracts a String representing a hash of the ABI of a built
 -- library.  It can fail if the library has not yet been built.
@@ -676,6 +719,7 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
     libBi = libBuildInfo lib
     comp = compiler lbi
     platform = hostPlatform lbi
+    mbWorkDir = mbWorkDirLBI lbi
     vanillaArgs =
       (Internal.componentGhcOptions verbosity lbi libBi clbi (componentBuildDir lbi clbi))
         `mappend` mempty
@@ -714,7 +758,7 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
   hash <-
     getProgramInvocationOutput
       verbosity
-      =<< ghcInvocation verbosity ghcProg comp platform ghcArgs
+      =<< ghcInvocation verbosity ghcProg comp platform mbWorkDir ghcArgs
 
   return (takeWhile (not . isSpace) hash)
 
@@ -879,7 +923,7 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir pkg lib clbi = do
                 ]
               sequence_
                 [ do
-                  files <- getDirectoryContents builtDir
+                  files <- getDirectoryContents (i builtDir)
                   let l' =
                         mkGenericSharedBundledLibName
                           platform
@@ -887,7 +931,7 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir pkg lib clbi = do
                           l
                   forM_ files $ \file ->
                     when (l' `isPrefixOf` file) $ do
-                      isFile <- doesFileExist (builtDir </> file)
+                      isFile <- doesFileExist (i $ builtDir </> makeRelativePathEx file)
                       when isFile $ do
                         installShared
                           builtDir
@@ -896,10 +940,14 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir pkg lib clbi = do
                 | l <- extraBundledLibs (libBuildInfo lib)
                 ]
   where
+    -- See Note [Symbolic paths] in Distribution.Utils.Path
+    i = interpretSymbolicPathLBI lbi
+
     builtDir = componentBuildDir lbi clbi
+    mbWorkDir = mbWorkDirLBI lbi
 
     install isShared srcDir dstDir name = do
-      let src = srcDir </> name
+      let src = i $ srcDir </> makeRelativePathEx name
           dst = dstDir </> name
 
       createDirectoryIfMissingVerbose verbosity True dstDir
@@ -918,13 +966,15 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir pkg lib clbi = do
     installOrdinary = install False
     installShared = install True
 
-    copyModuleFiles ext =
-      findModuleFilesEx verbosity [builtDir] [ext] (allLibModules lib clbi)
-        >>= installOrdinaryFiles verbosity targetDir
+    copyModuleFiles ext = do
+      files <- findModuleFilesCwd verbosity mbWorkDir [builtDir] [ext] (allLibModules lib clbi)
+      let files' = map (i *** getSymbolicPath) files
+      installOrdinaryFiles verbosity targetDir files'
 
+    copyDirectoryIfExists :: RelativePath Build (Dir Artifacts) -> IO ()
     copyDirectoryIfExists dirName = do
-      let src = builtDir </> dirName
-          dst = targetDir </> dirName
+      let src = i $ builtDir </> dirName
+          dst = targetDir </> getSymbolicPath dirName
       dirExists <- doesDirectoryExist src
       when dirExists $ copyDirectoryRecursive verbosity src dst
 
@@ -977,20 +1027,22 @@ hcPkgInfo progdb =
 registerPackage
   :: Verbosity
   -> ProgramDb
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
   -> PackageDBStack
   -> InstalledPackageInfo
   -> HcPkg.RegisterOptions
   -> IO ()
-registerPackage verbosity progdb packageDbs installedPkgInfo registerOptions =
+registerPackage verbosity progdb mbWorkDir packageDbs installedPkgInfo registerOptions =
   HcPkg.register
     (hcPkgInfo progdb)
     verbosity
+    mbWorkDir
     packageDbs
     installedPkgInfo
     registerOptions
 
-pkgRoot :: Verbosity -> LocalBuildInfo -> PackageDB -> IO FilePath
-pkgRoot verbosity lbi = pkgRoot'
+pkgRoot :: Verbosity -> LocalBuildInfo -> PackageDB -> IO (SymbolicPath CWD (Dir Pkg))
+pkgRoot verbosity lbi = fmap makeSymbolicPath . pkgRoot'
   where
     pkgRoot' GlobalPackageDB =
       let ghcProg = fromMaybe (error "GHC.pkgRoot: no ghc program") $ lookupProgram ghcProgram (withPrograms lbi)
@@ -1006,9 +1058,12 @@ pkgRoot verbosity lbi = pkgRoot'
               : prettyShow ver
           rootDir = appDir </> subdir
       -- We must create the root directory for the user package database if it
-      -- does not yet exists. Otherwise '${pkgroot}' will resolve to a
+      -- does not yet exist. Otherwise '${pkgroot}' will resolve to a
       -- directory at the time of 'ghc-pkg register', and registration will
       -- fail.
       createDirectoryIfMissing True rootDir
       return rootDir
-    pkgRoot' (SpecificPackageDB fp) = return (takeDirectory fp)
+    pkgRoot' (SpecificPackageDB fp) =
+      return $
+        takeDirectory $
+          interpretSymbolicPathLBI lbi (unsafeMakeSymbolicPath fp)

@@ -59,8 +59,9 @@ import Distribution.Client.ProjectConfig
 import Distribution.Client.ProjectConfig.Legacy
   ( ProjectConfigSkeleton
   , instantiateProjectConfigSkeletonFetchingCompiler
-  , parseProjectSkeleton
+  , parseProject
   )
+import Distribution.Client.ProjectConfig.Types (ProjectConfigToParse (..))
 import Distribution.Client.ProjectFlags
   ( flagIgnoreProject
   )
@@ -74,7 +75,8 @@ import Distribution.Client.RebuildMonad
   ( runRebuild
   )
 import Distribution.Client.Setup
-  ( ConfigFlags (..)
+  ( CommonSetupFlags (..)
+  , ConfigFlags (..)
   , GlobalFlags (..)
   )
 import Distribution.Client.TargetSelector
@@ -194,6 +196,9 @@ import qualified Data.ByteString.Char8 as BS
 import Data.ByteString.Lazy ()
 import qualified Data.Set as S
 import Distribution.Client.Errors
+import Distribution.Utils.Path
+  ( unsafeMakeSymbolicPath
+  )
 import System.Directory
   ( canonicalizePath
   , doesFileExist
@@ -202,6 +207,7 @@ import System.Directory
   )
 import System.FilePath
   ( makeRelative
+  , normalise
   , takeDirectory
   , takeFileName
   , (</>)
@@ -323,7 +329,7 @@ withContextAndSelectors noTargets kind flags@NixStyleFlags{..} targetStrings glo
 
     act tc' ctx' sels
   where
-    verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
+    verbosity = fromFlagOrDefault normal (setupVerbosity $ configCommonFlags configFlags)
     ignoreProject = flagIgnoreProject projectFlags
     cliConfig = commandLineFlagsToProjectConfig globalFlags flags mempty
     globalConfigFlag = projectConfigConfigFile (projectConfigShared cliConfig)
@@ -373,7 +379,7 @@ withContextAndSelectors noTargets kind flags@NixStyleFlags{..} targetStrings glo
 
               build_dir = distBuildDirectory (distDirLayout ctx') $ (scriptDistDirParams script) ctx' compiler platform
               exePath = build_dir </> "bin" </> scriptExeFileName script
-              exePathRel = makeRelative projectRoot exePath
+              exePathRel = makeRelative (normalise projectRoot) exePath
 
               executable' =
                 executable
@@ -393,7 +399,9 @@ withTemporaryTempDirectory act = newEmptyMVar >>= \m -> bracket (getMkTmp m) (rm
     --    but still grantee that it's deleted if they do create it
     -- 2) Because the path returned by createTempDirectory is not predicable
     getMkTmp m = return $ do
-      tmpDir <- getTemporaryDirectory >>= flip createTempDirectory "cabal-repl."
+      tmpBaseDir <- getTemporaryDirectory
+      tmpRelDir <- createTempDirectory tmpBaseDir "cabal-repl."
+      let tmpDir = tmpBaseDir </> tmpRelDir
       putMVar m tmpDir
       return tmpDir
     rmTmp m _ = tryTakeMVar m >>= maybe (return ()) (handleDoesNotExist () . removeDirectoryRecursive)
@@ -449,12 +457,12 @@ updateContextAndWriteProjectFile' ctx srcPkg = do
     else writePackageFile
   return (ctx & lLocalPackages %~ (++ [SpecificSourcePackage srcPkg]))
 
--- | Add add the executable metadata to the context and write a .cabal file.
+-- | Add the executable metadata to the context and write a .cabal file.
 updateContextAndWriteProjectFile :: ProjectBaseContext -> FilePath -> Executable -> IO ProjectBaseContext
 updateContextAndWriteProjectFile ctx scriptPath scriptExecutable = do
   let projectRoot = distProjectRootDirectory $ distDirLayout ctx
 
-  absScript <- canonicalizePath scriptPath
+  absScript <- unsafeMakeSymbolicPath . makeRelative (normalise projectRoot) <$> canonicalizePath scriptPath
   let
     sourcePackage =
       fakeProjectSourcePackage projectRoot
@@ -510,7 +518,7 @@ readProjectBlockFromScript verbosity httpTransport DistDirLayout{distDownloadSrc
     Left _ -> return mempty
     Right x ->
       reportParseResult verbosity "script" scriptName
-        =<< parseProjectSkeleton distDownloadSrcDirectory httpTransport verbosity [] scriptName x
+        =<< parseProject scriptName distDownloadSrcDirectory httpTransport verbosity (ProjectConfigToParse x)
 
 -- | Extract the first encountered script metadata block started end
 -- terminated by the tokens
