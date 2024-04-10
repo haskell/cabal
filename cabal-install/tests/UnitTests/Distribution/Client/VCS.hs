@@ -1148,3 +1148,4 @@ vcsTestDriverFossil verbosity vcs _ repoRoot =
         }
     fossil = runProgramInvocation verbosity . fossilInvocation
     fossil' = getProgramInvocationOutput verbosity . fossilInvocation
+    verboseArg = ["--verbose" | verbosity > Verbosity.normal]
