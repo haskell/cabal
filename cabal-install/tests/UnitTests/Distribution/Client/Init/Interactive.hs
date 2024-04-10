@@ -1014,19 +1014,19 @@ interactiveTests srcDb =
             [ testNumberedPrompt
                 "Language indices"
                 (`languagePrompt` "test")
-                [Haskell2010, Haskell98, GHC2021]
+                [Haskell2010, Haskell98, GHC2021, GHC2024]
             , testSimplePrompt
                 "Other language"
                 (`languagePrompt` "test")
                 (UnknownLanguage "Haskell2022")
-                [ "4"
+                [ "5"
                 , "Haskell2022"
                 ]
             , testSimplePrompt
                 "Invalid language"
                 (`languagePrompt` "test")
                 (UnknownLanguage "Lang_TS!")
-                [ "4"
+                [ "5"
                 , "Lang_TS!"
                 ]
             ]
