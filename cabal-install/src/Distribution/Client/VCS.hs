@@ -464,7 +464,7 @@ vcsFossil =
         cloneArgs = ["open", srcuri, "--workdir", takeDirectory destdir] ++ tagArg ++ verboseArg
         tagArg :: [String]
         tagArg = case srpTag repo of
-          Nothing  -> []
+          Nothing -> []
           Just tag -> [tag]
         verboseArg :: [String]
         verboseArg = ["--verbose" | verbosity > Verbosity.normal]
@@ -505,7 +505,7 @@ vcsFossil =
         verboseArg = ["--verbose" | verbosity > Verbosity.normal]
         updateArgs = ["update"] ++ tagArgs ++ verboseArg
         tagArgs = case srpTag repo of
-          Just t  -> [t]
+          Just t -> [t]
           Nothing -> []
 
 fossilProgram :: Program
@@ -515,8 +515,9 @@ fossilProgram =
         case words str of
           -- "This is fossil version 2.23"
           (_ : _ : _ : _ : ver : _) -> ver
-          _                         -> ""
+          _ -> ""
     }
+
 -- | VCS driver for Git.
 vcsGit :: VCS Program
 vcsGit =
