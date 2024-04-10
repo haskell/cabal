@@ -1115,7 +1115,7 @@ vcsTestDriverFossil verbosity vcs _ repoRoot =
     , vcsIgnoreFiles = Set.empty
     , vcsInit = fossil $ ["init"] ++ verboseArg
     , vcsAddFile = \_ filename ->
-        fossil $ ["add"] ++ filename
+        fossil $ ["add"] ++ [filename]
     , vcsSubmoduleDriver = \_ ->
         fail "vcsSubmoduleDriver: fossil submodules not supported"
     , vcsAddSubmodule = \_ _ _ ->
