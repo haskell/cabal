@@ -1,43 +1,46 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE DataKinds           #-}
+{-# LANGUAGE KindSignatures      #-}
+{-# LANGUAGE NamedFieldPuns      #-}
+{-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeApplications    #-}
 
 module UnitTests.Distribution.Client.VCS (tests) where
 
-import Distribution.Client.Compat.Prelude
-import Distribution.Client.RebuildMonad
-  ( execRebuild
-  )
-import Distribution.Client.Types.SourceRepo (SourceRepoProxy, SourceRepositoryPackage (..))
-import Distribution.Client.VCS
-import Distribution.Simple.Program
-import Distribution.System (OS (Windows), buildOS)
-import Distribution.Verbosity as Verbosity
-import Test.Utils.TempTestDir (removeDirectoryRecursiveHack, withTestDir)
+import           Distribution.Client.Compat.Prelude
+import           Distribution.Client.RebuildMonad                 (execRebuild)
+import           Distribution.Client.Types.SourceRepo             (SourceRepoProxy,
+                                                                   SourceRepositoryPackage (..))
+import           Distribution.Client.VCS
+import           Distribution.Simple.Program
+import           Distribution.System                              (OS (Windows),
+                                                                   buildOS)
+import           Distribution.Verbosity                           as Verbosity
+import           Test.Utils.TempTestDir                           (removeDirectoryRecursiveHack,
+                                                                   withTestDir)
 
-import Data.List (mapAccumL)
-import qualified Data.Map as Map
-import qualified Data.Set as Set
-import Data.Tuple
+import           Data.List                                        (mapAccumL)
+import qualified Data.Map                                         as Map
+import qualified Data.Set                                         as Set
+import           Data.Tuple
 
-import Control.Concurrent (threadDelay)
-import Control.Exception
-import Control.Monad.State (StateT, execStateT, liftIO)
-import qualified Control.Monad.State as State
+import           Control.Concurrent                               (threadDelay)
+import           Control.Exception
+import           Control.Monad.State                              (StateT,
+                                                                   execStateT,
+                                                                   liftIO)
+import qualified Control.Monad.State                              as State
 
-import System.Directory
-import System.FilePath
-import System.IO
-import System.Random
+import           System.Directory
+import           System.FilePath
+import           System.IO
+import           System.Random
 
-import Test.Tasty
-import Test.Tasty.ExpectedFailure
-import Test.Tasty.QuickCheck
-import UnitTests.Distribution.Client.ArbitraryInstances
+import           Test.Tasty
+import           Test.Tasty.ExpectedFailure
+import           Test.Tasty.QuickCheck
+import           UnitTests.Distribution.Client.ArbitraryInstances
 
 -- | These tests take the following approach: we generate a pure representation
 -- of a repository plus a corresponding real repository, and then run various
@@ -97,7 +100,7 @@ tests mtimeChange =
   where
     ignoreInWindows msg = case buildOS of
       Windows -> ignoreTestBecause msg
-      _ -> id
+      _       -> id
 
 prop_framework_git :: BranchingRepoRecipe 'SubmodulesSupported -> Property
 prop_framework_git =
@@ -642,10 +645,10 @@ instance KnownSubmodulesSupport submodules => Arbitrary (BranchingRepoRecipe sub
 -- This allows us to compare expected working states with the actual files in
 -- the working directory of a repository. See 'checkExpectedWorkingState'.
 data RepoState = RepoState
-  { currentBranch :: BranchName
+  { currentBranch  :: BranchName
   , currentWorking :: RepoWorkingState
-  , allTags :: Map TagOrCommitId RepoWorkingState
-  , allBranches :: Map BranchName RepoWorkingState
+  , allTags        :: Map TagOrCommitId RepoWorkingState
+  , allBranches    :: Map BranchName RepoWorkingState
   }
   deriving (Show)
 
@@ -691,7 +694,7 @@ switchBranch branch state@RepoState{currentWorking, currentBranch, allBranches} 
             Just working -> working
             -- otherwise we're creating a new branch, which starts
             -- from our current branch state
-            Nothing -> currentWorking
+            Nothing      -> currentWorking
         , allBranches = allBranches'
         }
 
@@ -777,7 +780,7 @@ createRepo vcsDriver@VCSTestDriver{vcsRepoRoot, vcsInit} recipe = do
     createRepoAction :: StateT RepoState IO ()
     createRepoAction = case recipe of
       WithoutBranchingSupport r -> execNonBranchingRepoRecipe vcsDriver r
-      WithBranchingSupport r -> execBranchingRepoRecipe vcsDriver r
+      WithBranchingSupport r    -> execBranchingRepoRecipe vcsDriver r
 
 type CreateRepoAction a = VCSTestDriver -> a -> StateT RepoState IO ()
 
@@ -1092,7 +1095,7 @@ vcsTestDriverHg verbosity vcs _ repoRoot =
     verboseArg = ["--quiet" | verbosity < Verbosity.normal]
 
 vcsTestDriverFossil
-  :: Verbose
+  :: Verbosity
   -> VCS ConfiguredProgram
   -> FilePath
   -> FilePath
