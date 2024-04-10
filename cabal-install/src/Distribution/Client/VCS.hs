@@ -461,15 +461,13 @@ vcsFossil =
       [programInvocation prog cloneArgs]
       where
         cloneArgs :: [String]
-        cloneArgs = ["open", srcuri] ++ tagArg ++ verboseArg ++ workdirArg
+        cloneArgs = ["open", srcuri, "--workdir", takeDirectory destdir] ++ tagArg ++ verboseArg
         tagArg :: [String]
         tagArg = case srpTag repo of
           Nothing  -> []
           Just tag -> [tag]
         verboseArg :: [String]
         verboseArg = ["--verbose" | verbosity > Verbosity.normal]
-        workdirArg :: [String]
-        workdirArg = ["--workdir", (takeDirectory destdir)]
 
     vcsSyncRepos
       :: Verbosity
