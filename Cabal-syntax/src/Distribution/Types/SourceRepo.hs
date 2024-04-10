@@ -126,6 +126,8 @@ data KnownRepoType
   | Monotone
   | -- | @since 3.4.0.0
     Pijul
+  | -- | @since ?
+    Fossil
   deriving (Eq, Generic, Ord, Read, Show, Typeable, Data, Enum, Bounded)
 
 instance Binary KnownRepoType

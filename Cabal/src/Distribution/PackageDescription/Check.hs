@@ -716,6 +716,7 @@ checkMissingVcsInfo rs =
     repoTypeDirname Bazaar = [".bzr"]
     repoTypeDirname Monotone = ["_MTN"]
     repoTypeDirname Pijul = [".pijul"]
+    repoTypeDirname Fossil    = [".fossil"]
 
 -- ------------------------------------------------------------
 -- Package and distribution checks
