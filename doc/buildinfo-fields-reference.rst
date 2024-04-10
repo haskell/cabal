@@ -290,7 +290,7 @@ default-language
     * Documentation of :pkg-field:`library:default-language`
 
     .. math::
-        \left\{ \mathop{\mathord{``}\mathtt{GHC2021}\mathord{"}}\mid\mathop{\mathord{``}\mathtt{Haskell2010}\mathord{"}}\mid\mathop{\mathord{``}\mathtt{Haskell98}\mathord{"}} \right\}
+        \left\{ \begin{gathered}\mathop{\mathord{``}\mathtt{GHC2024}\mathord{"}}\\\mathop{\mathord{``}\mathtt{GHC2021}\mathord{"}}\\\mathop{\mathord{``}\mathtt{Haskell2010}\mathord{"}}\\\mathop{\mathord{``}\mathtt{Haskell98}\mathord{"}}\end{gathered} \right\}
 
 extensions
     * Monoidal field
@@ -494,7 +494,7 @@ other-languages
     * Documentation of :pkg-field:`library:other-languages`
 
     .. math::
-        \mathrm{optcommalist}\left\{ \mathop{\mathord{``}\mathtt{GHC2021}\mathord{"}}\mid\mathop{\mathord{``}\mathtt{Haskell2010}\mathord{"}}\mid\mathop{\mathord{``}\mathtt{Haskell98}\mathord{"}} \right\}
+        \mathrm{optcommalist}\left\{ \begin{gathered}\mathop{\mathord{``}\mathtt{GHC2024}\mathord{"}}\\\mathop{\mathord{``}\mathtt{GHC2021}\mathord{"}}\\\mathop{\mathord{``}\mathtt{Haskell2010}\mathord{"}}\\\mathop{\mathord{``}\mathtt{Haskell98}\mathord{"}}\end{gathered} \right\}
 
 other-modules
     * Monoidal field
