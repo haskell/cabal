@@ -181,13 +181,14 @@ buildOS = classifyOS Permissive System.Info.os
 
 -- ------------------------------------------------------------
 
--- | These are the known Arches: I386, X86_64, PPC, PPC64, Sparc,
+-- | These are the known Arches: I386, X86_64, PPC, PPC64, PPC64LE, Sparc,
 -- Sparc64, Arm, AArch64, Mips, SH, IA64, S390, S390X, Alpha, Hppa,
 -- Rs6000, M68k, Vax, RISCV64, LoongArch64, JavaScript and Wasm32.
 --
 -- The following aliases can also be used:
 --    * PPC alias: powerpc
---    * PPC64 alias : powerpc64, powerpc64le
+--    * PPC64 alias : powerpc64
+--    * PPC64LE alias : powerpc64le
 --    * Mips aliases: mipsel, mipseb
 --    * Arm aliases: armeb, armel
 --    * AArch64 aliases: arm64
@@ -196,6 +197,7 @@ data Arch
   | X86_64
   | PPC
   | PPC64
+  | PPC64LE
   | Sparc
   | Sparc64
   | Arm
@@ -227,6 +229,7 @@ knownArches =
   , X86_64
   , PPC
   , PPC64
+  , PPC64LE
   , Sparc
   , Sparc64
   , Arm
@@ -251,7 +254,8 @@ archAliases :: ClassificationStrictness -> Arch -> [String]
 archAliases Strict _ = []
 archAliases Compat _ = []
 archAliases _ PPC = ["powerpc"]
-archAliases _ PPC64 = ["powerpc64", "powerpc64le"]
+archAliases _ PPC64 = ["powerpc64"]
+archAliases _ PPC64LE = ["powerpc64le"]
 archAliases _ Mips = ["mipsel", "mipseb"]
 archAliases _ Arm = ["armeb", "armel"]
 archAliases _ AArch64 = ["arm64"]

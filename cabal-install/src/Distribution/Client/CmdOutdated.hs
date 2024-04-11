@@ -152,6 +152,7 @@ import Distribution.Version
 
 import qualified Data.Set as S
 import Distribution.Client.Errors
+import Distribution.Utils.Path (relativeSymbolicPath)
 import System.Directory
   ( doesFileExist
   , getCurrentDirectory
@@ -435,9 +436,8 @@ depsFromNewFreezeFile verbosity httpTransport compiler (Platform arch os) mproje
 -- | Read the list of dependencies from the package description.
 depsFromPkgDesc :: Verbosity -> Compiler -> Platform -> IO [PackageVersionConstraint]
 depsFromPkgDesc verbosity comp platform = do
-  cwd <- getCurrentDirectory
-  path <- tryFindPackageDesc verbosity cwd
-  gpd <- readGenericPackageDescription verbosity path
+  path <- tryFindPackageDesc verbosity Nothing
+  gpd <- readGenericPackageDescription verbosity Nothing (relativeSymbolicPath path)
   let cinfo = compilerInfo comp
       epd =
         finalizePD

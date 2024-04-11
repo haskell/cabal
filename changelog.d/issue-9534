@@ -1,0 +1,12 @@
+synopsis: Distinguish `powerpc64le`, by adding `PPC64LE` constructor to type `Arch`
+packages: Cabal Cabal-syntax
+prs: #9535
+issues: #9534
+
+description: {
+
+Adds constructor `PPC64LE` to type `Arch` to distinguish architecture
+powerpc64le from powerpc64. Existing constructor `PPC64` now exclusively
+represents powerpc64.
+
+}

@@ -15,6 +15,7 @@ import Distribution.Compat.Time
 
 import qualified UnitTests.Distribution.Compat.Time
 import qualified UnitTests.Distribution.Compat.Graph
+import qualified UnitTests.Distribution.PackageDescription.Check
 import qualified UnitTests.Distribution.Simple.Command
 import qualified UnitTests.Distribution.Simple.Glob
 import qualified UnitTests.Distribution.Simple.Program.GHC
@@ -62,6 +63,8 @@ tests mtimeChangeCalibrated =
         UnitTests.Distribution.Utils.Json.tests
     , testGroup "Distribution.Utils.NubList"
         UnitTests.Distribution.Utils.NubList.tests
+    , testGroup "Distribution.PackageDescription.Check"
+        UnitTests.Distribution.PackageDescription.Check.tests
     , testGroup "Distribution.Utils.ShortText"
         UnitTests.Distribution.Utils.ShortText.tests
     , testGroup "Distribution.System"

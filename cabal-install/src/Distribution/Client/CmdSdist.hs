@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -26,12 +27,14 @@ import Distribution.Client.DistDirLayout
 import Distribution.Client.NixStyleOptions
   ( NixStyleFlags (..)
   , defaultNixStyleFlags
+  , updNixStyleCommonSetupFlags
   )
 import Distribution.Client.ProjectConfig
   ( ProjectConfig
   , commandLineFlagsToProjectConfig
   , projectConfigConfigFile
   , projectConfigShared
+  , withGlobalConfig
   , withProjectOrGlobalConfig
   )
 import Distribution.Client.ProjectFlags
@@ -46,7 +49,8 @@ import Distribution.Client.ProjectOrchestration
   , establishProjectBaseContextWithRoot
   )
 import Distribution.Client.Setup
-  ( GlobalFlags (..)
+  ( CommonSetupFlags (..)
+  , GlobalFlags (..)
   )
 import Distribution.Client.TargetSelector
   ( ComponentKind
@@ -61,6 +65,10 @@ import Distribution.Client.Types
   )
 import Distribution.Solver.Types.SourcePackage
   ( SourcePackage (..)
+  )
+import Distribution.Utils.Path hiding
+  ( (<.>)
+  , (</>)
   )
 
 import Distribution.Client.Errors
@@ -93,8 +101,6 @@ import Distribution.Simple.PreProcess
   )
 import Distribution.Simple.Setup
   ( Flag (..)
-  , configDistPref
-  , configVerbosity
   , flagToList
   , flagToMaybe
   , fromFlagOrDefault
@@ -165,7 +171,7 @@ sdistCommand =
 
 data SdistFlags = SdistFlags
   { sdistVerbosity :: Flag Verbosity
-  , sdistDistDir :: Flag FilePath
+  , sdistDistDir :: Flag (SymbolicPath Pkg (Dir Dist))
   , sdistListSources :: Flag Bool
   , sdistNulSeparated :: Flag Bool
   , sdistOutputPath :: Flag FilePath
@@ -219,7 +225,11 @@ sdistOptions showOrParseArgs =
 
 sdistAction :: (ProjectFlags, SdistFlags) -> [String] -> GlobalFlags -> IO ()
 sdistAction (pf@ProjectFlags{..}, SdistFlags{..}) targetStrings globalFlags = do
-  (baseCtx, distDirLayout) <- withProjectOrGlobalConfig verbosity flagIgnoreProject globalConfigFlag withProject withoutProject
+  (baseCtx, distDirLayout) <-
+    withProjectOrGlobalConfig
+      flagIgnoreProject
+      withProject
+      (withGlobalConfig verbosity globalConfigFlag withoutProject)
 
   let localPkgs = localPackages baseCtx
 
@@ -265,7 +275,13 @@ sdistAction (pf@ProjectFlags{..}, SdistFlags{..}) targetStrings globalFlags = do
       , Just "-" <- mOutputPath' ->
           dieWithException verbosity Can'tWriteMultipleTarballs
       | otherwise ->
-          traverse_ (\pkg -> packageToSdist verbosity (distProjectRootDirectory distDirLayout) format (outputPath pkg) pkg) pkgs
+          for_ pkgs $ \pkg ->
+            packageToSdist
+              verbosity
+              (distProjectRootDirectory distDirLayout)
+              format
+              (outputPath pkg)
+              pkg
   where
     verbosity = fromFlagOrDefault normal sdistVerbosity
     listSources = fromFlagOrDefault False sdistListSources
@@ -276,15 +292,15 @@ sdistAction (pf@ProjectFlags{..}, SdistFlags{..}) targetStrings globalFlags = do
     prjConfig =
       commandLineFlagsToProjectConfig
         globalFlags
-        (defaultNixStyleFlags ())
-          { configFlags =
-              (configFlags $ defaultNixStyleFlags ())
-                { configVerbosity = sdistVerbosity
-                , configDistPref = sdistDistDir
-                }
-          , projectFlags = pf
+        (updNixStyleCommonSetupFlags (const commonFlags) $ defaultNixStyleFlags ())
+          { projectFlags = pf
           }
         mempty
+    commonFlags =
+      mempty
+        { setupVerbosity = sdistVerbosity
+        , setupDistPref = sdistDistDir
+        }
 
     globalConfigFlag = projectConfigConfigFile (projectConfigShared prjConfig)
 
@@ -336,17 +352,18 @@ packageToSdist verbosity projectRootDir format outputFile pkg = do
         TarGzArchive -> do
           writeLBS =<< BSL.readFile tgz
         _ -> dieWithException verbosity $ CannotConvertTarballPackage (show format)
-    Right dir -> case format of
-      SourceList nulSep -> do
-        let gpd :: GenericPackageDescription
-            gpd = srcpkgDescription pkg
+    Right dir -> do
+      case format of
+        SourceList nulSep -> do
+          let gpd :: GenericPackageDescription
+              gpd = srcpkgDescription pkg
 
-        files' <- listPackageSourcesWithDie verbosity dieWithException dir (flattenPackageDescription gpd) knownSuffixHandlers
-        let files = nub $ sort $ map normalise files'
-        let prefix = makeRelative projectRootDir dir
-        write $ concat [prefix </> i ++ [nulSep] | i <- files]
-      TarGzArchive -> do
-        packageDirToSdist verbosity (srcpkgDescription pkg) dir >>= writeLBS
+          files' <- listPackageSourcesWithDie verbosity dieWithException (Just $ makeSymbolicPath dir) (flattenPackageDescription gpd) knownSuffixHandlers
+          let files = nub $ sort $ map (normalise . getSymbolicPath) files'
+          let prefix = makeRelative (normalise projectRootDir) dir
+          write $ concat [prefix </> i ++ [nulSep] | i <- files]
+        TarGzArchive -> do
+          packageDirToSdist verbosity (srcpkgDescription pkg) dir >>= writeLBS
 
 --
 

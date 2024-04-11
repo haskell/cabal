@@ -1,4 +1,4 @@
 # cabal check
 The following errors are likely to affect your build negatively:
-Error: Ignoring the 'custom-setup' section because the 'build-type' is not 'Custom'. Use 'build-type: Custom' if you need to use a custom Setup.hs script.
+Error: [undeclared-custom-setup] Ignoring the 'custom-setup' section because the 'build-type' is not 'Custom'. Use 'build-type: Custom' if you need to use a custom Setup.hs script.
 Error: Hackage would reject this package.

@@ -1,4 +1,4 @@
 # cabal check
 The following errors will cause portability problems on other environments:
-Error: 'ghc-options: -fasm' is unnecessary and will not work on CPU architectures other than x86, x86-64, ppc or sparc.
+Error: [option-fasm] 'ghc-options: -fasm' is unnecessary and will not work on CPU architectures other than x86, x86-64, ppc or sparc.
 Error: Hackage would reject this package.

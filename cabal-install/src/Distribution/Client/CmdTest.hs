@@ -66,6 +66,7 @@ import Distribution.Verbosity
 import qualified System.Exit (exitSuccess)
 
 import Distribution.Client.Errors
+import Distribution.Client.Setup (CommonSetupFlags (..))
 import GHC.Environment
   ( getFullArgs
   )
@@ -163,7 +164,7 @@ testAction flags@NixStyleFlags{..} targetStrings globalFlags = do
   runProjectPostBuildPhase verbosity baseCtx buildCtx buildOutcomes
   where
     failWhenNoTestSuites = testFailWhenNoTestSuites testFlags
-    verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
+    verbosity = fromFlagOrDefault normal (setupVerbosity $ configCommonFlags configFlags)
     cliConfig = commandLineFlagsToProjectConfig globalFlags flags mempty -- ClientInstallFlags
 
 -- | This defines what a 'TargetSelector' means for the @test@ command.

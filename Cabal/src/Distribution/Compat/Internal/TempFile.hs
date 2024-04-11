@@ -126,10 +126,11 @@ createTempDirectory dir template = do
   findTempName pid
   where
     findTempName x = do
-      let dirpath = dir </> template ++ "-" ++ show x
+      let relpath = template ++ "-" ++ show x
+          dirpath = dir </> relpath
       r <- tryIO $ mkPrivateDir dirpath
       case r of
-        Right _ -> return dirpath
+        Right _ -> return relpath
         Left e
           | isAlreadyExistsError e -> findTempName (x + 1)
           | otherwise -> ioError e

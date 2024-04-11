@@ -12,7 +12,7 @@ Freeze file not written due to flag(s)
 Freeze file not written due to flag(s)
 # cabal v2-freeze
 Resolving dependencies...
-Wrote freeze file: <ROOT>/new_freeze.dist/source/cabal.project.freeze
+Wrote freeze file: <ROOT>/cabal.project.freeze
 # cabal v2-build
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
@@ -27,7 +27,7 @@ Configuring executable 'my-exe' for my-local-package-1.0...
 Preprocessing executable 'my-exe' for my-local-package-1.0...
 Building executable 'my-exe' for my-local-package-1.0...
 # cabal v2-freeze
-Wrote freeze file: <ROOT>/new_freeze.dist/source/cabal.project.freeze
+Wrote freeze file: <ROOT>/cabal.project.freeze
 # cabal v2-build
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
@@ -35,4 +35,4 @@ In order, the following would be built:
  - my-library-dep-2.0 (lib) (requires build)
  - my-local-package-1.0 (exe:my-exe) (configuration changed)
 # cabal v2-freeze
-Wrote freeze file: <ROOT>/new_freeze.dist/source/cabal.project.freeze
+Wrote freeze file: <ROOT>/cabal.project.freeze

@@ -4,7 +4,6 @@ module Main (main) where
 import Control.Lens     (imap)
 import Data.Aeson       (FromJSON (..), eitherDecode, withObject, (.:))
 import Data.List        (sortOn)
-import Data.Semigroup   ((<>))
 import Data.Text        (Text)
 import Data.Traversable (for)
 
@@ -35,6 +34,7 @@ main = generate =<< O.execParser opts where
         <*> licenses "3.9"
         <*> licenses "3.10"
         <*> licenses "3.16"
+        <*> licenses "3.23"
 
     template = O.strArgument $ mconcat
         [ O.metavar "SPDX.LicenseExceptionId.template.hs"

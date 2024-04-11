@@ -3,8 +3,8 @@
 module Distribution.Simple.Build.Macros.Z (render, Z(..), ZPackage (..), ZTool (..)) where
 import Distribution.ZinzaPrelude
 data Z
-    = Z {zPackages :: ([ZPackage]),
-         zTools :: ([ZTool]),
+    = Z {zPackages :: [ZPackage],
+         zTools :: [ZTool],
          zPackageKey :: String,
          zComponentId :: String,
          zPackageVersion :: Version,

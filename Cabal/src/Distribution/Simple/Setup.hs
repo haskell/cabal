@@ -1,7 +1,9 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RankNTypes #-}
 
 -----------------------------------------------------------------------------
@@ -37,12 +39,13 @@ module Distribution.Simple.Setup
   , emptyGlobalFlags
   , defaultGlobalFlags
   , globalCommand
+  , CommonSetupFlags (..)
+  , defaultCommonSetupFlags
   , ConfigFlags (..)
   , emptyConfigFlags
   , defaultConfigFlags
   , configureCommand
   , configPrograms
-  , configAbsolutePaths
   , readPackageDb
   , readPackageDbList
   , showPackageDb
@@ -131,9 +134,15 @@ module Distribution.Simple.Setup
   , trueArg
   , falseArg
   , optionVerbosity
+  , BuildingWhat (..)
+  , buildingWhatCommonFlags
+  , buildingWhatVerbosity
+  , buildingWhatWorkingDir
+  , buildingWhatDistPref
   ) where
 
-import Prelude ()
+import GHC.Generics (Generic)
+import Prelude (Maybe, Show, (.))
 
 import Distribution.Simple.Flag
 import Distribution.Simple.InstallDirs
@@ -150,9 +159,49 @@ import Distribution.Simple.Setup.Haddock
 import Distribution.Simple.Setup.Hscolour
 import Distribution.Simple.Setup.Install
 import Distribution.Simple.Setup.Register
+  ( RegisterFlags (..)
+  , defaultRegisterFlags
+  , emptyRegisterFlags
+  , registerCommand
+  , unregisterCommand
+  )
 import Distribution.Simple.Setup.Repl
 import Distribution.Simple.Setup.SDist
 import Distribution.Simple.Setup.Test
+import Distribution.Utils.Path
+
+import Distribution.Verbosity (Verbosity)
+
+-- | What kind of build are we doing?
+--
+-- Is this a normal build, or is it perhaps for running an interactive
+-- session or Haddock?
+data BuildingWhat
+  = -- | A normal build.
+    BuildNormal BuildFlags
+  | -- | Build steps for an interactive session.
+    BuildRepl ReplFlags
+  | -- | Build steps for generating documentation.
+    BuildHaddock HaddockFlags
+  | -- | Build steps for Hscolour.
+    BuildHscolour HscolourFlags
+  deriving (Generic, Show)
+
+buildingWhatCommonFlags :: BuildingWhat -> CommonSetupFlags
+buildingWhatCommonFlags = \case
+  BuildNormal flags -> buildCommonFlags flags
+  BuildRepl flags -> replCommonFlags flags
+  BuildHaddock flags -> haddockCommonFlags flags
+  BuildHscolour flags -> hscolourCommonFlags flags
+
+buildingWhatVerbosity :: BuildingWhat -> Verbosity
+buildingWhatVerbosity = fromFlag . setupVerbosity . buildingWhatCommonFlags
+
+buildingWhatWorkingDir :: BuildingWhat -> Maybe (SymbolicPath CWD (Dir Pkg))
+buildingWhatWorkingDir = flagToMaybe . setupWorkingDir . buildingWhatCommonFlags
+
+buildingWhatDistPref :: BuildingWhat -> SymbolicPath Pkg (Dir Dist)
+buildingWhatDistPref = fromFlag . setupDistPref . buildingWhatCommonFlags
 
 -- The test cases kinda have to be rewritten from the ground up... :/
 -- hunitTests :: [Test]

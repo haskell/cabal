@@ -1,3 +1,5 @@
+{-# LANGUAGE DataKinds #-}
+
 module Distribution.Types.BuildInfo.Lens
   ( BuildInfo
   , HasBuildInfo (..)
@@ -69,35 +71,35 @@ class HasBuildInfo a where
   pkgconfigDepends = buildInfo . pkgconfigDepends
   {-# INLINE pkgconfigDepends #-}
 
-  frameworks :: Lens' a [String]
+  frameworks :: Lens' a [RelativePath Framework File]
   frameworks = buildInfo . frameworks
   {-# INLINE frameworks #-}
 
-  extraFrameworkDirs :: Lens' a [String]
+  extraFrameworkDirs :: Lens' a [SymbolicPath Pkg (Dir Framework)]
   extraFrameworkDirs = buildInfo . extraFrameworkDirs
   {-# INLINE extraFrameworkDirs #-}
 
-  asmSources :: Lens' a [FilePath]
+  asmSources :: Lens' a [SymbolicPath Pkg File]
   asmSources = buildInfo . asmSources
   {-# INLINE asmSources #-}
 
-  cmmSources :: Lens' a [FilePath]
+  cmmSources :: Lens' a [SymbolicPath Pkg File]
   cmmSources = buildInfo . cmmSources
   {-# INLINE cmmSources #-}
 
-  cSources :: Lens' a [FilePath]
+  cSources :: Lens' a [SymbolicPath Pkg File]
   cSources = buildInfo . cSources
   {-# INLINE cSources #-}
 
-  cxxSources :: Lens' a [FilePath]
+  cxxSources :: Lens' a [SymbolicPath Pkg File]
   cxxSources = buildInfo . cxxSources
   {-# INLINE cxxSources #-}
 
-  jsSources :: Lens' a [FilePath]
+  jsSources :: Lens' a [SymbolicPath Pkg File]
   jsSources = buildInfo . jsSources
   {-# INLINE jsSources #-}
 
-  hsSourceDirs :: Lens' a [SymbolicPath PackageDir SourceDir]
+  hsSourceDirs :: Lens' a [SymbolicPath Pkg (Dir Source)]
   hsSourceDirs = buildInfo . hsSourceDirs
   {-# INLINE hsSourceDirs #-}
 
@@ -157,27 +159,27 @@ class HasBuildInfo a where
   extraDynLibFlavours = buildInfo . extraDynLibFlavours
   {-# INLINE extraDynLibFlavours #-}
 
-  extraLibDirs :: Lens' a [String]
+  extraLibDirs :: Lens' a [SymbolicPath Pkg (Dir Lib)]
   extraLibDirs = buildInfo . extraLibDirs
   {-# INLINE extraLibDirs #-}
 
-  extraLibDirsStatic :: Lens' a [String]
+  extraLibDirsStatic :: Lens' a [SymbolicPath Pkg (Dir Lib)]
   extraLibDirsStatic = buildInfo . extraLibDirsStatic
   {-# INLINE extraLibDirsStatic #-}
 
-  includeDirs :: Lens' a [FilePath]
+  includeDirs :: Lens' a [SymbolicPath Pkg (Dir Include)]
   includeDirs = buildInfo . includeDirs
   {-# INLINE includeDirs #-}
 
-  includes :: Lens' a [FilePath]
+  includes :: Lens' a [SymbolicPath Include File]
   includes = buildInfo . includes
   {-# INLINE includes #-}
 
-  autogenIncludes :: Lens' a [FilePath]
+  autogenIncludes :: Lens' a [RelativePath Include File]
   autogenIncludes = buildInfo . autogenIncludes
   {-# INLINE autogenIncludes #-}
 
-  installIncludes :: Lens' a [FilePath]
+  installIncludes :: Lens' a [RelativePath Include File]
   installIncludes = buildInfo . installIncludes
   {-# INLINE installIncludes #-}
 

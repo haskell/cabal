@@ -67,17 +67,27 @@ EOF
 
 OUTPUT=$(mktemp)
 
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-BLUE='\033[0;34m'
-CYAN='\033[0;96m'
-RESET='\033[0m' # No Color
+# `red` and `green` are used to output also the spent time in white at the end.
+# `blue` and `cyan` are used to print the spawned command, so they only have one
+# argument.
+red () {
+  printf "\033[0;31m%s\033[0m %s \n" "$1" "$2"
+}
+green () {
+  printf "\033[0;32m%s\033[0m %s \n" "$1" "$2"
+}
+blue () {
+  printf "\033[0;34m%s\033[0m\n" "$1"
+}
+cyan () {
+  printf "\033[0;96m%s\033[0m\n" "$1"
+}
 
 JOB_START_TIME=$(date +%s)
 
 timed() {
     PRETTYCMD=$(echo "$@" | sed -E 's/\/home[^ ]*\/([^\/])/**\/\1/g')
-    echo "$BLUE>>> $PRETTYCMD $RESET"
+    blue "$PRETTYCMD"
     start_time=$(date +%s)
 
     if $VERBOSE; then
@@ -105,7 +115,7 @@ timed() {
             rm -f "$OUTPUT"
         fi
 
-        echo "$GREEN<<< $PRETTYCMD $RESET ($duration/$tduration sec)"
+        green "<<< $PRETTYCMD" "($duration/$tduration sec)"
 
         # bottom-margin
         echo ""
@@ -114,8 +124,8 @@ timed() {
             cat "$OUTPUT"
         fi
 
-        echo "$RED<<< $PRETTYCMD $RESET ($duration/$tduration sec, $RET)"
-        echo "$RED<<< $* $RESET ($duration/$tduration sec, $RET)"
+        red "<<< $PRETTYCMD" "($duration/$tduration sec, $RET)"
+        red "<<< $*" "($duration/$tduration sec, $RET)"
         rm -f "$OUTPUT"
         exit 1
     fi
@@ -124,7 +134,7 @@ timed() {
 print_header() {
     TITLE=$1
     TITLEPAT="$(echo "$TITLE"|sed 's:.:=:g')"
-    echo "$CYAN===X============================================================ $(date +%T) ===$RESET" \
+    cyan "===X========================================================================== $(date +%T) ===" \
       | sed "s#X$TITLEPAT=# $TITLE #"
 
 }
@@ -287,15 +297,19 @@ TESTSUITEJOBS="-j$JOBS"
 JOBS="-j$JOBS"
 
 # assume compiler is GHC
-RUNHASKELL=$(echo $HC | sed -E 's/ghc(-[0-9.]*)$/runghc\1/')
+RUNHASKELL=$(echo "$HC" | sed -E 's/ghc(-[0-9.]*)$/runghc\1/')
 
-if [ "$OSTYPE" = "msys" ]; then
-    ARCH="x86_64-windows"
-elif [ "$(uname)" = "Linux" ]; then
-    ARCH="x86_64-linux"
-else
-    ARCH="x86_64-osx"
-fi
+case "$(uname)" in
+    MINGW64*)
+        ARCH="x86_64-windows"
+        ;;
+    Linux   )
+        ARCH="x86_64-linux"
+        ;;
+    *)
+        ARCH="x86_64-osx"
+        ;;
+esac
 
 if $LIBONLY; then
     PROJECTFILE=cabal.project.validate.libonly
@@ -337,11 +351,11 @@ EOF
 step_print_tool_versions() {
 print_header print-tool-versions
 
-timed $HC --version
-timed $CABAL --version
+timed "$HC" --version
+timed "$CABAL" --version
 
 for EXTRAHC in $EXTRAHCS; do
-    timed $EXTRAHC --version
+    timed "$EXTRAHC" --version
 done
 }
 
@@ -351,7 +365,7 @@ step_time_summary() {
     JOB_END_TIME=$(date +%s)
     tduration=$((JOB_END_TIME - JOB_START_TIME))
 
-    echo "$CYAN!!! Validation took $tduration seconds. $RESET"
+    cyan "!!! Validation took $tduration seconds."
 }
 
 # build
@@ -454,7 +468,7 @@ CMD="$($CABALLISTBIN cabal-install:test:integration-tests2) -j1 --hide-successes
 step_cli_suite() {
 print_header "cabal-install: cabal-testsuite"
 
-CMD="$($CABALLISTBIN cabal-testsuite:exe:cabal-tests) --builddir=$CABAL_TESTSUITE_BDIR --with-cabal=$($CABALLISTBIN cabal-install:exe:cabal) $TESTSUITEJOBS  --with-ghc=$HC --hide-successes"
+CMD="$($CABALLISTBIN cabal-testsuite:exe:cabal-tests) --builddir=$CABAL_TESTSUITE_BDIR --with-cabal=$($CABALLISTBIN cabal-install:exe:cabal) $TESTSUITEJOBS  --with-ghc=$HC --hide-successes --intree-cabal-lib=$PWD --test-tmp=$PWD/testdb"
 (cd cabal-testsuite && timed $CMD) || exit 1
 }
 

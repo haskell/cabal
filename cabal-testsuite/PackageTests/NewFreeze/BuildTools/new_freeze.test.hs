@@ -9,7 +9,7 @@ import System.Directory
 -- is one local package, which requires >= 2, and a library dependency of the
 -- local package, which requires < 2, so cabal should pick versions 1.0 and 3.0
 -- of the build tool when there are no constraints.
-main = cabalTest $ withSourceCopy $ do
+main = cabalTest $ do
   withRepo "repo" $ do
     cabal' "v2-build" ["--dry-run"] >>= assertUsesLatestBuildTool
 

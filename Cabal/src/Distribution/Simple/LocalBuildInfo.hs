@@ -1,5 +1,8 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
 
 -----------------------------------------------------------------------------
@@ -24,6 +27,15 @@ module Distribution.Simple.LocalBuildInfo
   , localComponentId
   , localUnitId
   , localCompatPackageKey
+
+    -- * Convenience accessors
+  , buildDir
+  , packageRoot
+  , progPrefix
+  , progSuffix
+  , interpretSymbolicPathLBI
+  , mbWorkDirLBI
+  , absoluteWorkingDirLBI
 
     -- * Buildable package components
   , Component (..)
@@ -83,6 +95,7 @@ import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.Pretty
 import Distribution.Simple.Compiler
+import Distribution.Simple.Flag
 import Distribution.Simple.InstallDirs hiding
   ( absoluteInstallDirs
   , prefixRelativeInstallDirs
@@ -90,35 +103,66 @@ import Distribution.Simple.InstallDirs hiding
   )
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import Distribution.Simple.PackageIndex
+import Distribution.Simple.Setup.Common
+import Distribution.Simple.Setup.Config
 import Distribution.Simple.Utils
+import Distribution.Utils.Path
 
 import Data.List (stripPrefix)
-import System.FilePath
-
-import System.Directory (canonicalizePath, doesDirectoryExist)
+import qualified System.Directory as Directory
+  ( canonicalizePath
+  , doesDirectoryExist
+  )
 
 -- -----------------------------------------------------------------------------
 -- Configuration information of buildable components
 
-componentBuildDir :: LocalBuildInfo -> ComponentLocalBuildInfo -> FilePath
+componentBuildDir :: LocalBuildInfo -> ComponentLocalBuildInfo -> SymbolicPath Pkg (Dir Build)
 -- For now, we assume that libraries/executables/test-suites/benchmarks
 -- are only ever built once.  With Backpack, we need a special case for
 -- libraries so that we can handle building them multiple times.
 componentBuildDir lbi clbi =
-  buildDir lbi
-    </> case componentLocalName clbi of
-      CLibName LMainLibName ->
-        if prettyShow (componentUnitId clbi) == prettyShow (componentComponentId clbi)
-          then ""
-          else prettyShow (componentUnitId clbi)
-      CLibName (LSubLibName s) ->
-        if prettyShow (componentUnitId clbi) == prettyShow (componentComponentId clbi)
-          then unUnqualComponentName s
-          else prettyShow (componentUnitId clbi)
-      CFLibName s -> unUnqualComponentName s
-      CExeName s -> unUnqualComponentName s
-      CTestName s -> unUnqualComponentName s
-      CBenchName s -> unUnqualComponentName s
+  (buildDir lbi </>) $
+    makeRelativePathEx $
+      case componentLocalName clbi of
+        CLibName LMainLibName ->
+          if prettyShow (componentUnitId clbi) == prettyShow (componentComponentId clbi)
+            then ""
+            else prettyShow (componentUnitId clbi)
+        CLibName (LSubLibName s) ->
+          if prettyShow (componentUnitId clbi) == prettyShow (componentComponentId clbi)
+            then unUnqualComponentName s
+            else prettyShow (componentUnitId clbi)
+        CFLibName s -> unUnqualComponentName s
+        CExeName s -> unUnqualComponentName s
+        CTestName s -> unUnqualComponentName s
+        CBenchName s -> unUnqualComponentName s
+
+-- | Interpret a symbolic path with respect to the working directory
+-- stored in 'LocalBuildInfo'.
+--
+-- Use this before directly interacting with the file system.
+--
+-- NB: when invoking external programs (such as @GHC@), it is preferable to set
+-- the working directory of the process rather than calling this function, as
+-- this function will turn relative paths into absolute paths if the working
+-- directory is an absolute path. This can degrade error messages, or worse,
+-- break the behaviour entirely (because the program might expect certain paths
+-- to be relative).
+--
+-- See Note [Symbolic paths] in Distribution.Utils.Path
+interpretSymbolicPathLBI :: LocalBuildInfo -> SymbolicPathX allowAbsolute Pkg to -> FilePath
+interpretSymbolicPathLBI lbi =
+  interpretSymbolicPath (mbWorkDirLBI lbi)
+
+-- | Retrieve an optional working directory from 'LocalBuildInfo'.
+mbWorkDirLBI :: LocalBuildInfo -> Maybe (SymbolicPath CWD (Dir Pkg))
+mbWorkDirLBI =
+  flagToMaybe . setupWorkingDir . configCommonFlags . configFlags
+
+-- | Absolute path to the current working directory.
+absoluteWorkingDirLBI :: LocalBuildInfo -> IO FilePath
+absoluteWorkingDirLBI lbi = absoluteWorkingDir (mbWorkDirLBI lbi)
 
 -- | Perform the action on each enabled 'library' in the package
 -- description with the 'ComponentLocalBuildInfo'.
@@ -200,8 +244,8 @@ withAllComponentsInBuildOrder pkg lbi f =
 allComponentsInBuildOrder
   :: LocalBuildInfo
   -> [ComponentLocalBuildInfo]
-allComponentsInBuildOrder lbi =
-  Graph.topSort (componentGraph lbi)
+allComponentsInBuildOrder (LocalBuildInfo{componentGraph = compGraph}) =
+  Graph.topSort compGraph
 
 -- -----------------------------------------------------------------------------
 -- A random function that has no business in this module
@@ -219,94 +263,101 @@ depLibraryPaths
   -> ComponentLocalBuildInfo
   -- ^ Component that is being built
   -> IO [FilePath]
-depLibraryPaths inplace relative lbi clbi = do
-  let pkgDescr = localPkgDescr lbi
-      installDirs = absoluteComponentInstallDirs pkgDescr lbi (componentUnitId clbi) NoCopyDest
-      executable = case clbi of
-        ExeComponentLocalBuildInfo{} -> True
-        _ -> False
-      relDir
-        | executable = bindir installDirs
-        | otherwise = libdir installDirs
+depLibraryPaths
+  inplace
+  relative
+  lbi@( LocalBuildInfo
+          { localPkgDescr = pkgDescr
+          , installedPkgs = installed
+          }
+        )
+  clbi = do
+    let installDirs = absoluteComponentInstallDirs pkgDescr lbi (componentUnitId clbi) NoCopyDest
+        executable = case clbi of
+          ExeComponentLocalBuildInfo{} -> True
+          _ -> False
+        relDir
+          | executable = bindir installDirs
+          | otherwise = libdir installDirs
 
-  let
-    -- TODO: this is kind of inefficient
-    internalDeps =
-      [ uid
-      | (uid, _) <- componentPackageDeps clbi
-      , -- Test that it's internal
-      sub_target <- allTargetsInBuildOrder' pkgDescr lbi
-      , componentUnitId (targetCLBI (sub_target)) == uid
-      ]
-    internalLibs =
-      [ getLibDir (targetCLBI sub_target)
-      | sub_target <-
-          neededTargetsInBuildOrder'
-            pkgDescr
-            lbi
-            internalDeps
-      ]
-    {-
-    -- This is better, but it doesn't work, because we may be passed a
-    -- CLBI which doesn't actually exist, and was faked up when we
-    -- were building a test suite/benchmark.  See #3599 for proposal
-    -- to fix this.
-    let internalCLBIs = filter ((/= componentUnitId clbi) . componentUnitId)
-                      . map targetCLBI
-                      $ neededTargetsInBuildOrder lbi [componentUnitId clbi]
-        internalLibs = map getLibDir internalCLBIs
-    -}
-    getLibDir sub_clbi
-      | inplace = componentBuildDir lbi sub_clbi
-      | otherwise = dynlibdir (absoluteComponentInstallDirs pkgDescr lbi (componentUnitId sub_clbi) NoCopyDest)
+    let
+      -- TODO: this is kind of inefficient
+      internalDeps =
+        [ uid
+        | (uid, _) <- componentPackageDeps clbi
+        , -- Test that it's internal
+        sub_target <- allTargetsInBuildOrder' pkgDescr lbi
+        , componentUnitId (targetCLBI (sub_target)) == uid
+        ]
+      internalLibs =
+        [ getLibDir (targetCLBI sub_target)
+        | sub_target <-
+            neededTargetsInBuildOrder'
+              pkgDescr
+              lbi
+              internalDeps
+        ]
+      {-
+      -- This is better, but it doesn't work, because we may be passed a
+      -- CLBI which doesn't actually exist, and was faked up when we
+      -- were building a test suite/benchmark.  See #3599 for proposal
+      -- to fix this.
+      let internalCLBIs = filter ((/= componentUnitId clbi) . componentUnitId)
+                        . map targetCLBI
+                        $ neededTargetsInBuildOrder lbi [componentUnitId clbi]
+          internalLibs = map getLibDir internalCLBIs
+      -}
+      getLibDir sub_clbi
+        | inplace = interpretSymbolicPathLBI lbi $ componentBuildDir lbi sub_clbi
+        | otherwise = dynlibdir (absoluteComponentInstallDirs pkgDescr lbi (componentUnitId sub_clbi) NoCopyDest)
 
-  -- Why do we go through all the trouble of a hand-crafting
-  -- internalLibs, when 'installedPkgs' actually contains the
-  -- internal libraries?  The trouble is that 'installedPkgs'
-  -- may contain *inplace* entries, which we must NOT use for
-  -- not inplace 'depLibraryPaths' (e.g., for RPATH calculation).
-  -- See #4025 for more details. This is all horrible but it
-  -- is a moot point if you are using a per-component build,
-  -- because you never have any internal libraries in this case;
-  -- they're all external.
-  let external_ipkgs = filter is_external (allPackages (installedPkgs lbi))
-      is_external ipkg = not (installedUnitId ipkg `elem` internalDeps)
-      -- First look for dynamic libraries in `dynamic-library-dirs`, and use
-      -- `library-dirs` as a fall back.
-      getDynDir pkg = case Installed.libraryDynDirs pkg of
-        [] -> Installed.libraryDirs pkg
-        d -> d
-      allDepLibDirs = concatMap getDynDir external_ipkgs
+    -- Why do we go through all the trouble of a hand-crafting
+    -- internalLibs, when 'installedPkgs' actually contains the
+    -- internal libraries?  The trouble is that 'installedPkgs'
+    -- may contain *inplace* entries, which we must NOT use for
+    -- not inplace 'depLibraryPaths' (e.g., for RPATH calculation).
+    -- See #4025 for more details. This is all horrible but it
+    -- is a moot point if you are using a per-component build,
+    -- because you never have any internal libraries in this case;
+    -- they're all external.
+    let external_ipkgs = filter is_external (allPackages installed)
+        is_external ipkg = not (installedUnitId ipkg `elem` internalDeps)
+        -- First look for dynamic libraries in `dynamic-library-dirs`, and use
+        -- `library-dirs` as a fall back.
+        getDynDir pkg = case Installed.libraryDynDirs pkg of
+          [] -> Installed.libraryDirs pkg
+          d -> d
+        allDepLibDirs = concatMap getDynDir external_ipkgs
 
-      allDepLibDirs' = internalLibs ++ allDepLibDirs
-  allDepLibDirsC <- traverse canonicalizePathNoFail allDepLibDirs'
+        allDepLibDirs' = internalLibs ++ allDepLibDirs
+    allDepLibDirsC <- traverse canonicalizePathNoFail allDepLibDirs'
 
-  let p = prefix installDirs
-      prefixRelative l = isJust (stripPrefix p l)
-      libPaths
-        | relative
-            && prefixRelative relDir =
-            map
-              ( \l ->
-                  if prefixRelative l
-                    then shortRelativePath relDir l
-                    else l
-              )
-              allDepLibDirsC
-        | otherwise = allDepLibDirsC
+    let p = prefix installDirs
+        prefixRelative l = isJust (stripPrefix p l)
+        libPaths
+          | relative
+              && prefixRelative relDir =
+              map
+                ( \l ->
+                    if prefixRelative l
+                      then shortRelativePath relDir l
+                      else l
+                )
+                allDepLibDirsC
+          | otherwise = allDepLibDirsC
 
-  -- For some reason, this function returns lots of duplicates. Avoid
-  -- exceeding `ARG_MAX` (the result of this function is used to populate
-  -- `LD_LIBRARY_PATH`) by deduplicating the list.
-  return $ ordNub libPaths
-  where
-    -- 'canonicalizePath' fails on UNIX when the directory does not exists.
-    -- So just don't canonicalize when it doesn't exist.
-    canonicalizePathNoFail p = do
-      exists <- doesDirectoryExist p
-      if exists
-        then canonicalizePath p
-        else return p
+    -- For some reason, this function returns lots of duplicates. Avoid
+    -- exceeding `ARG_MAX` (the result of this function is used to populate
+    -- `LD_LIBRARY_PATH`) by deduplicating the list.
+    return $ ordNub libPaths
+    where
+      -- 'canonicalizePath' fails on UNIX when the directory does not exists.
+      -- So just don't canonicalize when it doesn't exist.
+      canonicalizePathNoFail p = do
+        exists <- Directory.doesDirectoryExist p
+        if exists
+          then Directory.canonicalizePath p
+          else return p
 
 -- | Get all module names that needed to be built by GHC; i.e., all
 -- of these 'ModuleName's have interface files associated with them
@@ -341,14 +392,18 @@ absoluteComponentInstallDirs
   -> UnitId
   -> CopyDest
   -> InstallDirs FilePath
-absoluteComponentInstallDirs pkg lbi uid copydest =
-  InstallDirs.absoluteInstallDirs
-    (packageId pkg)
-    uid
-    (compilerInfo (compiler lbi))
-    copydest
-    (hostPlatform lbi)
-    (installDirTemplates lbi)
+absoluteComponentInstallDirs
+  pkg
+  (LocalBuildInfo{compiler = comp, hostPlatform = plat, installDirTemplates = installDirs})
+  uid
+  copydest =
+    InstallDirs.absoluteInstallDirs
+      (packageId pkg)
+      uid
+      (compilerInfo comp)
+      copydest
+      plat
+      installDirs
 
 absoluteInstallCommandDirs
   :: PackageDescription
@@ -397,13 +452,16 @@ prefixRelativeComponentInstallDirs
   -> LocalBuildInfo
   -> UnitId
   -> InstallDirs (Maybe FilePath)
-prefixRelativeComponentInstallDirs pkg_descr lbi uid =
-  InstallDirs.prefixRelativeInstallDirs
-    (packageId pkg_descr)
-    uid
-    (compilerInfo (compiler lbi))
-    (hostPlatform lbi)
-    (installDirTemplates lbi)
+prefixRelativeComponentInstallDirs
+  pkg_descr
+  (LocalBuildInfo{compiler = comp, hostPlatform = plat, installDirTemplates = installDirs})
+  uid =
+    InstallDirs.prefixRelativeInstallDirs
+      (packageId pkg_descr)
+      uid
+      (compilerInfo comp)
+      plat
+      installDirs
 
 substPathTemplate
   :: PackageId
@@ -411,13 +469,16 @@ substPathTemplate
   -> UnitId
   -> PathTemplate
   -> FilePath
-substPathTemplate pkgid lbi uid =
-  fromPathTemplate
-    . (InstallDirs.substPathTemplate env)
-  where
-    env =
-      initialPathTemplateEnv
-        pkgid
-        uid
-        (compilerInfo (compiler lbi))
-        (hostPlatform lbi)
+substPathTemplate
+  pkgid
+  (LocalBuildInfo{compiler = comp, hostPlatform = plat})
+  uid =
+    fromPathTemplate
+      . (InstallDirs.substPathTemplate env)
+    where
+      env =
+        initialPathTemplateEnv
+          pkgid
+          uid
+          (compilerInfo comp)
+          plat

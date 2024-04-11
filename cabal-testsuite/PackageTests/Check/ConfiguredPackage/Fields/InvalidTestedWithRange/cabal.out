@@ -1,4 +1,4 @@
 # cabal check
 The following errors will cause portability problems on other environments:
-Error: Invalid 'tested-with' version range: ghc ==6.10 && ==7.1. To indicate that you have tested a package with multiple different versions of the same compiler use multiple entries, for example 'tested-with: GHC==6.10.4, GHC==6.12.3' and not 'tested-with: GHC==6.10.4 && ==6.12.3'.
+Error: [invalid-range-tested] Invalid 'tested-with' version range: ghc ==6.10 && ==7.1. To indicate that you have tested a package with multiple different versions of the same compiler use multiple entries, for example 'tested-with: GHC==6.10.4, GHC==6.12.3' and not 'tested-with: GHC==6.10.4 && ==6.12.3'.
 Error: Hackage would reject this package.

@@ -1,4 +1,4 @@
 # cabal check
 The following errors are likely to affect your build negatively:
-Error: Instead of 'cc-options: -Ifolder' use 'include-dirs: folder'
+Error: [misplaced-c-opt] Instead of 'cc-options: -Ifolder' use 'include-dirs: folder'
 Error: Hackage would reject this package.

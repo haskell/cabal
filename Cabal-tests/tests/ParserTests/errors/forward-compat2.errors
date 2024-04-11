@@ -1,2 +1,3 @@
 VERSION: Just (mkVersion [2,2])
-forward-compat2.cabal:5:1: cabal-version should be at the beginning of the file starting with spec version 2.2. See https://github.com/haskell/cabal/issues/4899
+forward-compat2.cabal:5:1: cabal-version should be at the beginning of the file starting with spec version 2.2.
+Current cabal-version values are listed at https://cabal.readthedocs.io/en/stable/file-format-changelog.html.

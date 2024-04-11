@@ -1,130 +1,144 @@
-GenericPackageDescription
-  {condBenchmarks = [],
-   condExecutables = [],
-   condForeignLibs = [],
-   condLibrary = Just
-                   CondNode
-                     {condTreeComponents = [],
-                      condTreeConstraints = [Dependency
-                                               (PackageName "base")
-                                               (UnionVersionRanges
-                                                  (LaterVersion (mkVersion [4, 4]))
-                                                  (ThisVersion (mkVersion [4, 4])))
-                                               mainLibSet],
-                      condTreeData = Library
-                                       {exposedModules = [ModuleName "Data.Encoding"],
-                                        libBuildInfo = BuildInfo
-                                                         {asmOptions = [],
-                                                          asmSources = [],
-                                                          autogenIncludes = [],
-                                                          autogenModules = [],
-                                                          buildToolDepends = [],
-                                                          buildTools = [],
-                                                          buildable = True,
-                                                          cSources = [],
-                                                          ccOptions = [],
-                                                          cmmOptions = [],
-                                                          cmmSources = [],
-                                                          cppOptions = [],
-                                                          customFieldsBI = [],
-                                                          cxxOptions = [],
-                                                          cxxSources = [],
-                                                          defaultExtensions = [],
-                                                          defaultLanguage = Nothing,
-                                                          extraBundledLibs = [],
-                                                          extraDynLibFlavours = [],
-                                                          extraFrameworkDirs = [],
-                                                          extraGHCiLibs = [],
-                                                          extraLibDirs = [],
-                                                          extraLibDirsStatic = [],
-                                                          extraLibFlavours = [],
-                                                          extraLibs = [],
-                                                          extraLibsStatic = [],
-                                                          frameworks = [],
-                                                          hsSourceDirs = [],
-                                                          hsc2hsOptions = [],
-                                                          includeDirs = [],
-                                                          includes = [],
-                                                          installIncludes = [],
-                                                          jsSources = [],
-                                                          ldOptions = [],
-                                                          mixins = [],
-                                                          oldExtensions = [],
-                                                          options = PerCompilerFlavor
-                                                                      ["-Wall",
-                                                                       "-O2",
-                                                                       "-threaded",
-                                                                       "-rtsopts",
-                                                                       "-with-rtsopts=-N1 -A64m"]
-                                                                      [],
-                                                          otherExtensions = [],
-                                                          otherLanguages = [],
-                                                          otherModules = [],
-                                                          pkgconfigDepends = [],
-                                                          profOptions = PerCompilerFlavor [] [],
-                                                          sharedOptions = PerCompilerFlavor [] [],
-                                                          staticOptions = PerCompilerFlavor [] [],
-                                                          targetBuildDepends = [Dependency
-                                                                                  (PackageName
-                                                                                     "base")
-                                                                                  (UnionVersionRanges
-                                                                                     (LaterVersion
-                                                                                        (mkVersion
-                                                                                           [4, 4]))
-                                                                                     (ThisVersion
-                                                                                        (mkVersion
-                                                                                           [4, 4])))
-                                                                                  mainLibSet],
-                                                          virtualModules = []},
-                                        libExposed = True,
-                                        libName = LMainLibName,
-                                        libVisibility = LibraryVisibilityPublic,
-                                        reexportedModules = [],
-                                        signatures = []}},
-   condSubLibraries = [],
-   condTestSuites = [],
-   genPackageFlags = [],
-   gpdScannedVersion = Nothing,
-   packageDescription = PackageDescription
-                          {author = "",
-                           benchmarks = [],
-                           bugReports = "",
-                           buildTypeRaw = Nothing,
-                           category = "",
-                           copyright = "",
-                           customFieldsPD = [],
-                           dataDir = ".",
-                           dataFiles = [],
-                           description = "",
-                           executables = [],
-                           extraDocFiles = [],
-                           extraSrcFiles = ["README.md", "--", "--"],
-                           extraTmpFiles = [],
-                           foreignLibs = [],
-                           homepage = "",
-                           library = Nothing,
-                           licenseFiles = [],
-                           licenseRaw = Left NONE,
-                           maintainer = "",
-                           package = PackageIdentifier
-                                       {pkgName = PackageName "encoding",
-                                        pkgVersion = mkVersion [0, 8]},
-                           pkgUrl = "",
-                           setupBuildInfo = Just
-                                              SetupBuildInfo
-                                                {defaultSetupDepends = False,
-                                                 setupDepends = [Dependency
-                                                                   (PackageName "base")
-                                                                   (EarlierVersion (mkVersion [5]))
-                                                                   mainLibSet,
-                                                                 Dependency
-                                                                   (PackageName "ghc-prim")
-                                                                   (OrLaterVersion (mkVersion [0]))
-                                                                   mainLibSet]},
-                           sourceRepos = [],
-                           specVersion = CabalSpecV1_12,
-                           stability = "",
-                           subLibraries = [],
-                           synopsis = "",
-                           testSuites = [],
-                           testedWith = []}}
+GenericPackageDescription {
+  packageDescription =
+  PackageDescription {
+    specVersion = CabalSpecV1_12,
+    package = PackageIdentifier {
+      pkgName = PackageName
+        "encoding",
+      pkgVersion = mkVersion [0, 8]},
+    licenseRaw = Left NONE,
+    licenseFiles = [],
+    copyright = "",
+    maintainer = "",
+    author = "",
+    stability = "",
+    testedWith = [],
+    homepage = "",
+    pkgUrl = "",
+    bugReports = "",
+    sourceRepos = [],
+    synopsis = "",
+    description = "",
+    category = "",
+    customFieldsPD = [],
+    buildTypeRaw = Nothing,
+    setupBuildInfo = Just
+      SetupBuildInfo {
+        setupDepends = [
+          Dependency
+            (PackageName "base")
+            (EarlierVersion (mkVersion [5]))
+            mainLibSet,
+          Dependency
+            (PackageName "ghc-prim")
+            (OrLaterVersion (mkVersion [0]))
+            mainLibSet],
+        defaultSetupDepends = False},
+    library = Nothing,
+    subLibraries = [],
+    executables = [],
+    foreignLibs = [],
+    testSuites = [],
+    benchmarks = [],
+    dataFiles = [],
+    dataDir = SymbolicPath ".",
+    extraSrcFiles = [
+      SymbolicPath "README.md",
+      SymbolicPath "--",
+      SymbolicPath "--"],
+    extraTmpFiles = [],
+    extraDocFiles = []},
+  gpdScannedVersion = Nothing,
+  genPackageFlags = [],
+  condLibrary = Just
+    CondNode {
+      condTreeData = Library {
+        libName = LMainLibName,
+        exposedModules = [
+          ModuleName "Data.Encoding"],
+        reexportedModules = [],
+        signatures = [],
+        libExposed = True,
+        libVisibility =
+        LibraryVisibilityPublic,
+        libBuildInfo = BuildInfo {
+          buildable = True,
+          buildTools = [],
+          buildToolDepends = [],
+          cppOptions = [],
+          asmOptions = [],
+          cmmOptions = [],
+          ccOptions = [],
+          cxxOptions = [],
+          ldOptions = [],
+          hsc2hsOptions = [],
+          pkgconfigDepends = [],
+          frameworks = [],
+          extraFrameworkDirs = [],
+          asmSources = [],
+          cmmSources = [],
+          cSources = [],
+          cxxSources = [],
+          jsSources = [],
+          hsSourceDirs = [],
+          otherModules = [],
+          virtualModules = [],
+          autogenModules = [],
+          defaultLanguage = Nothing,
+          otherLanguages = [],
+          defaultExtensions = [],
+          otherExtensions = [],
+          oldExtensions = [],
+          extraLibs = [],
+          extraLibsStatic = [],
+          extraGHCiLibs = [],
+          extraBundledLibs = [],
+          extraLibFlavours = [],
+          extraDynLibFlavours = [],
+          extraLibDirs = [],
+          extraLibDirsStatic = [],
+          includeDirs = [],
+          includes = [],
+          autogenIncludes = [],
+          installIncludes = [],
+          options = PerCompilerFlavor
+            [
+              "-Wall",
+              "-O2",
+              "-threaded",
+              "-rtsopts",
+              "-with-rtsopts=-N1 -A64m"]
+            [],
+          profOptions = PerCompilerFlavor
+            []
+            [],
+          sharedOptions =
+          PerCompilerFlavor [] [],
+          staticOptions =
+          PerCompilerFlavor [] [],
+          customFieldsBI = [],
+          targetBuildDepends = [
+            Dependency
+              (PackageName "base")
+              (UnionVersionRanges
+                (LaterVersion
+                  (mkVersion [4, 4]))
+                (ThisVersion
+                  (mkVersion [4, 4])))
+              mainLibSet],
+          mixins = []}},
+      condTreeConstraints = [
+        Dependency
+          (PackageName "base")
+          (UnionVersionRanges
+            (LaterVersion
+              (mkVersion [4, 4]))
+            (ThisVersion
+              (mkVersion [4, 4])))
+          mainLibSet],
+      condTreeComponents = []},
+  condSubLibraries = [],
+  condForeignLibs = [],
+  condExecutables = [],
+  condTestSuites = [],
+  condBenchmarks = []}

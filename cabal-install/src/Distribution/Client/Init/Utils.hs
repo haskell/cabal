@@ -128,7 +128,7 @@ retrieveSourceFiles fp = do
               Nothing -> return Nothing
               Just moduleName -> do
                 let fileExtension = takeExtension f
-                relativeSourcePath <- makeRelative f <$> getCurrentDirectory
+                relativeSourcePath <- makeRelative (normalise f) <$> getCurrentDirectory
                 imports <- retrieveModuleImports f
                 extensions <- retrieveModuleExtensions f
 

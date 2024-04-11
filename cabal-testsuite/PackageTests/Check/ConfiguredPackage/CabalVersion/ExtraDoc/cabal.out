@@ -1,4 +1,4 @@
 # cabal check
 The following errors will cause portability problems on other environments:
-Error: To use the 'extra-doc-files' field the package needs to specify 'cabal-version: 1.18' or higher.
+Error: [extra-doc-files] To use the 'extra-doc-files' field the package needs to specify 'cabal-version: 1.18' or higher.
 Error: Hackage would reject this package.

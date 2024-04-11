@@ -1,4 +1,4 @@
 # cabal check
 The following errors will cause portability problems on other environments:
-Error: Unknown operating system name 'plan9'
+Error: [unknown-os] Unknown operating system name 'plan9'
 Error: Hackage would reject this package.

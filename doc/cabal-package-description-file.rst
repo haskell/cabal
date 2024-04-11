@@ -200,7 +200,7 @@ builds packages for all the Haskell implementations.
 The simple build infrastructure can also handle packages where building
 is governed by system-dependent parameters, if you specify a little more
 (see the section on `system-dependent parameters`_).
-A few packages require `more elaborate solutions <more complex packages>`_.
+A few packages require `more elaborate solutions <#more-complex-packages>`_.
 
 .. _pkg-desc:
 
@@ -1730,7 +1730,8 @@ system-dependent values for these fields.
 
     The possible values are:
 
-    -  ``GHC2021`` (only available for GHC version newer than ``9.2``)
+    -  ``GHC2024`` (only available for GHC version ``9.10`` or later)
+    -  ``GHC2021`` (only available for GHC version ``9.2`` or later)
     -  ``Haskell2010``
     -  ``Haskell98``
 

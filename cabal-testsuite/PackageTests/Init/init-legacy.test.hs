@@ -1,11 +1,10 @@
 import Test.Cabal.Prelude
 
-main = cabalTest $
-  withSourceCopyDir "app" $ do
-    cwd <- fmap testSourceCopyDir getTestEnv
+main = cabalTest $ do
+    cwd <- fmap testCurrentDir getTestEnv
 
-    buildOut <- withDirectory cwd $ do
-      cabal "init" ["-n", "--exe", "--application-dir=app", "--main-is=Main.hs", "--cabal-version=1.24"]
+    buildOut <- do
+      cabal "init" ["-n", "--exe", "-p", "app", "--application-dir=app", "--main-is=Main.hs", "--cabal-version=1.24"]
       setup "configure" []
       setup' "build" ["app"]
 

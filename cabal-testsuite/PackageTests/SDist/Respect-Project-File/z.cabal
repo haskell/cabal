@@ -1,0 +1,8 @@
+name: z
+version: 0.1
+build-type: Simple
+cabal-version: >= 1.2
+
+library
+  exposed-modules: Z
+  build-depends: base

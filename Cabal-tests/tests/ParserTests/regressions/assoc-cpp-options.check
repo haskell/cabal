@@ -1,1 +1,1 @@
-'cpp-options: -traditional' is not a portable C-preprocessor flag.
+[cpp-options] 'cpp-options: -traditional' is not a portable C-preprocessor flag.

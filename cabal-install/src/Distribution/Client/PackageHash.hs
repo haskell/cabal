@@ -10,6 +10,8 @@
 --   * the package tarball
 --   * the ids of all the direct dependencies
 --   * other local configuration (flags, profiling, etc)
+--
+-- See 'PackageHashInputs' for a detailed list of what determines the hash.
 module Distribution.Client.PackageHash
   ( -- * Calculating package hashes
     PackageHashInputs (..)
@@ -38,7 +40,8 @@ import Distribution.Package
   , mkComponentId
   )
 import Distribution.Simple.Compiler
-  ( CompilerId
+  ( AbiTag (..)
+  , CompilerId
   , DebugInfoLevel (..)
   , OptimisationLevel (..)
   , PackageDB
@@ -191,6 +194,7 @@ type PackageSourceHash = HashValue
 -- package hash.
 data PackageHashConfigInputs = PackageHashConfigInputs
   { pkgHashCompilerId :: CompilerId
+  , pkgHashCompilerABI :: AbiTag
   , pkgHashPlatform :: Platform
   , pkgHashFlagAssignment :: FlagAssignment -- complete not partial
   , pkgHashConfigureScriptArgs :: [String] -- just ./configure for build-type Configure
@@ -301,6 +305,7 @@ renderPackageHashInputs
               pkgHashDirectDeps
           , -- and then all the config
             entry "compilerid" prettyShow pkgHashCompilerId
+          , entry "compilerabi" prettyShow pkgHashCompilerABI
           , entry "platform" prettyShow pkgHashPlatform
           , opt "flags" mempty showFlagAssignment pkgHashFlagAssignment
           , opt "configure-script" [] unwords pkgHashConfigureScriptArgs

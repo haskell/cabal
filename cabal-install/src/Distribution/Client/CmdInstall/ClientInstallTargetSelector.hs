@@ -18,8 +18,6 @@ import Distribution.Compat.CharParsing (char, optional)
 import Distribution.Package
 import Distribution.Simple.LocalBuildInfo (ComponentName (CExeName))
 import Distribution.Simple.Utils (dieWithException)
-import Distribution.Solver.Types.PackageConstraint (PackageProperty (..))
-import Distribution.Version
 
 data WithoutProjectTargetSelector
   = WoPackageId PackageId
@@ -57,15 +55,6 @@ woPackageTargets (WoURI _) =
   TargetAllPackages (Just ExeKind)
 
 woPackageSpecifiers :: WithoutProjectTargetSelector -> Either URI (PackageSpecifier pkg)
-woPackageSpecifiers (WoPackageId pid) = Right (pidPackageSpecifiers pid)
-woPackageSpecifiers (WoPackageComponent pid _) = Right (pidPackageSpecifiers pid)
+woPackageSpecifiers (WoPackageId pid) = Right (mkNamedPackage pid)
+woPackageSpecifiers (WoPackageComponent pid _) = Right (mkNamedPackage pid)
 woPackageSpecifiers (WoURI uri) = Left uri
-
-pidPackageSpecifiers :: PackageId -> PackageSpecifier pkg
-pidPackageSpecifiers pid
-  | pkgVersion pid == nullVersion = NamedPackage (pkgName pid) []
-  | otherwise =
-      NamedPackage
-        (pkgName pid)
-        [ PackagePropertyVersion (thisVersion (pkgVersion pid))
-        ]

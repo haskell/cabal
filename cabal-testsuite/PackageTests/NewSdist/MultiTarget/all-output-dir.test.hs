@@ -1,6 +1,6 @@
 import Test.Cabal.Prelude
 import System.Directory
-main = cabalTest $ withSourceCopy $ do
+main = cabalTest $ do
   cwd <- fmap testCurrentDir getTestEnv
   liftIO $ createDirectoryIfMissing False $ cwd </> "archives"
   cabal "v2-sdist" ["all", "--output-dir", "archives"]

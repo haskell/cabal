@@ -1,3 +1,3 @@
 # cabal check
 These warnings will likely cause trouble when distributing the package:
-Warning: Deprecated extensions: 'RecordPuns'. Instead of 'RecordPuns' use 'NamedFieldPuns'.
+Warning: [deprecated-extensions] Deprecated extensions: 'RecordPuns'. Instead of 'RecordPuns' use 'NamedFieldPuns'.

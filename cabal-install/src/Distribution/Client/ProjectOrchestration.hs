@@ -216,6 +216,7 @@ import Distribution.Types.Flag
 import Distribution.Utils.NubList
   ( fromNubList
   )
+import Distribution.Utils.Path (makeSymbolicPath)
 import Distribution.Verbosity
 import Distribution.Version
   ( mkVersion
@@ -231,12 +232,15 @@ data CurrentCommand = InstallCommand | HaddockCommand | BuildCommand | ReplComma
   deriving (Show, Eq)
 
 -- | This holds the context of a project prior to solving: the content of the
--- @cabal.project@ and all the local package @.cabal@ files.
+-- @cabal.project@, @cabal/config@ and all the local package @.cabal@ files.
 data ProjectBaseContext = ProjectBaseContext
   { distDirLayout :: DistDirLayout
   , cabalDirLayout :: CabalDirLayout
   , projectConfig :: ProjectConfig
   , localPackages :: [PackageSpecifier UnresolvedSourcePackage]
+  -- ^ Note: these are all the packages mentioned in the project configuration.
+  -- Whether or not they will be considered local to the project will be decided
+  -- by `shouldBeLocal` in ProjectPlanning.
   , buildSettings :: BuildTimeSettings
   , currentCommand :: CurrentCommand
   , installedPackages :: Maybe InstalledPackageIndex
@@ -292,6 +296,7 @@ establishProjectBaseContextWithRoot verbosity cliConfig projectRoot currentComma
     sequenceA $
       makeAbsolute
         <$> Setup.flagToMaybe projectConfigStoreDir
+
   cabalDirLayout <- mkCabalDirLayout mstoreDir mlogsDir
 
   let buildSettings =
@@ -1038,13 +1043,17 @@ printPlan
 
       showConfigureFlags :: ElaboratedConfiguredPackage -> String
       showConfigureFlags elab =
-        let fullConfigureFlags =
+        let commonFlags =
+              setupHsCommonFlags
+                verbosity
+                Nothing -- omit working directory
+                (makeSymbolicPath "$builddir")
+            fullConfigureFlags =
               setupHsConfigureFlags
                 elaboratedPlan
                 (ReadyPackage elab)
                 elaboratedShared
-                verbosity
-                "$builddir"
+                commonFlags
             -- \| Given a default value @x@ for a flag, nub @Flag x@
             -- into @NoFlag@.  This gives us a tidier command line
             -- rendering.

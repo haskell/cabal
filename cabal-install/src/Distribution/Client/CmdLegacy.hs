@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -37,23 +38,37 @@ regularCmd :: HasVerbosity flags => CommandUI flags -> (flags -> [String] -> glo
 regularCmd ui action =
   CommandSpec ui ((flip commandAddAction) (\flags extra globals -> action flags extra globals)) NormalCommand
 
-wrapperCmd :: Monoid flags => CommandUI flags -> (flags -> Setup.Flag Verbosity) -> (flags -> Setup.Flag String) -> CommandSpec (Client.GlobalFlags -> IO ())
-wrapperCmd ui verbosity' distPref =
-  CommandSpec ui (\ui' -> wrapperAction ui' verbosity' distPref) NormalCommand
+wrapperCmd
+  :: Monoid flags
+  => CommandUI flags
+  -> (flags -> Setup.CommonSetupFlags)
+  -> CommandSpec (Client.GlobalFlags -> IO ())
+wrapperCmd ui getCommonFlags =
+  CommandSpec ui (\ui' -> wrapperAction ui' getCommonFlags) NormalCommand
 
-wrapperAction :: Monoid flags => CommandUI flags -> (flags -> Setup.Flag Verbosity) -> (flags -> Setup.Flag String) -> Command (Client.GlobalFlags -> IO ())
-wrapperAction command verbosityFlag distPrefFlag =
+wrapperAction
+  :: Monoid flags
+  => CommandUI flags
+  -> (flags -> Setup.CommonSetupFlags)
+  -> Command (Client.GlobalFlags -> IO ())
+wrapperAction command getCommonFlags =
   commandAddAction
     command
       { commandDefaultFlags = mempty
       }
     $ \flags extraArgs globalFlags -> do
-      let verbosity' = Setup.fromFlagOrDefault normal (verbosityFlag flags)
+      let common = getCommonFlags flags
+          verbosity' = Setup.fromFlagOrDefault normal (Setup.setupVerbosity common)
+          mbWorkDir = Setup.flagToMaybe $ Setup.setupWorkingDir common
 
       load <- try (loadConfigOrSandboxConfig verbosity' globalFlags)
       let config = either (\(SomeException _) -> mempty) id load
-      distPref <- findSavedDistPref config (distPrefFlag flags)
-      let setupScriptOptions = defaultSetupScriptOptions{useDistPref = distPref}
+      distPref <- findSavedDistPref config (Setup.setupDistPref common)
+      let setupScriptOptions =
+            defaultSetupScriptOptions
+              { useDistPref = distPref
+              , useWorkingDir = mbWorkDir
+              }
 
       let command' = command{commandName = T.unpack . T.replace "v1-" "" . T.pack . commandName $ command}
 
@@ -62,6 +77,7 @@ wrapperAction command verbosityFlag distPrefFlag =
         setupScriptOptions
         Nothing
         command'
+        getCommonFlags
         (const flags)
         (const extraArgs)
 
@@ -89,25 +105,25 @@ instance HasVerbosity a => HasVerbosity (a, b, c, d, e, f) where
   verbosity (a, _, _, _, _, _) = verbosity a
 
 instance HasVerbosity Setup.BuildFlags where
-  verbosity = verbosity . Setup.buildVerbosity
+  verbosity = verbosity . Setup.setupVerbosity . Setup.buildCommonFlags
 
 instance HasVerbosity Setup.ConfigFlags where
-  verbosity = verbosity . Setup.configVerbosity
+  verbosity = verbosity . Setup.setupVerbosity . Setup.configCommonFlags
 
 instance HasVerbosity Setup.ReplFlags where
-  verbosity = verbosity . Setup.replVerbosity
+  verbosity = verbosity . Setup.setupVerbosity . Setup.replCommonFlags
 
 instance HasVerbosity Client.FreezeFlags where
   verbosity = verbosity . Client.freezeVerbosity
 
 instance HasVerbosity Setup.HaddockFlags where
-  verbosity = verbosity . Setup.haddockVerbosity
+  verbosity = verbosity . Setup.setupVerbosity . Setup.haddockCommonFlags
 
 instance HasVerbosity Client.UpdateFlags where
   verbosity = verbosity . Client.updateVerbosity
 
 instance HasVerbosity Setup.CleanFlags where
-  verbosity = verbosity . Setup.cleanVerbosity
+  verbosity = verbosity . Setup.setupVerbosity . Setup.cleanCommonFlags
 
 --
 
@@ -138,8 +154,12 @@ toLegacyCmd mkSpec = [toLegacy mkSpec]
 legacyCmd :: HasVerbosity flags => CommandUI flags -> (flags -> [String] -> globals -> IO action) -> [CommandSpec (globals -> IO action)]
 legacyCmd ui action = toLegacyCmd (regularCmd ui action)
 
-legacyWrapperCmd :: Monoid flags => CommandUI flags -> (flags -> Setup.Flag Verbosity) -> (flags -> Setup.Flag String) -> [CommandSpec (Client.GlobalFlags -> IO ())]
-legacyWrapperCmd ui verbosity' distPref = toLegacyCmd (wrapperCmd ui verbosity' distPref)
+legacyWrapperCmd
+  :: Monoid flags
+  => CommandUI flags
+  -> (flags -> Setup.CommonSetupFlags)
+  -> [CommandSpec (Client.GlobalFlags -> IO ())]
+legacyWrapperCmd ui commonFlags = toLegacyCmd (wrapperCmd ui commonFlags)
 
 newCmd :: CommandUI flags -> (flags -> [String] -> globals -> IO action) -> [CommandSpec (globals -> IO action)]
 newCmd origUi@CommandUI{..} action = [cmd defaultUi, cmd newUi, cmd origUi]

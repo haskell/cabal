@@ -1,286 +1,263 @@
-GenericPackageDescription
-  {condBenchmarks = [],
-   condExecutables = [],
-   condForeignLibs = [],
-   condLibrary = Just
-                   CondNode
-                     {condTreeComponents = [],
-                      condTreeConstraints = [Dependency
-                                               (PackageName "network")
-                                               (MajorBoundVersion (mkVersion [0]))
-                                               mainLibSet,
-                                             Dependency
-                                               (PackageName "base")
-                                               (ThisVersion (mkVersion [1]))
-                                               mainLibSet,
-                                             Dependency
-                                               (PackageName "base")
-                                               (ThisVersion (mkVersion [1]))
-                                               mainLibSet,
-                                             Dependency
-                                               (PackageName "base")
-                                               (UnionVersionRanges
-                                                  (ThisVersion (mkVersion [1]))
-                                                  (ThisVersion (mkVersion [2])))
-                                               mainLibSet,
-                                             Dependency
-                                               (PackageName "base")
-                                               (ThisVersion (mkVersion [1, 2]))
-                                               mainLibSet,
-                                             Dependency
-                                               (PackageName "base")
-                                               (UnionVersionRanges
-                                                  (ThisVersion (mkVersion [1, 2]))
-                                                  (ThisVersion (mkVersion [3, 4])))
-                                               mainLibSet,
-                                             Dependency
-                                               (PackageName "ghc")
-                                               (UnionVersionRanges
-                                                  (ThisVersion (mkVersion [8, 6, 3]))
-                                                  (UnionVersionRanges
-                                                     (ThisVersion (mkVersion [8, 4, 4]))
-                                                     (UnionVersionRanges
-                                                        (ThisVersion (mkVersion [8, 2, 2]))
-                                                        (UnionVersionRanges
-                                                           (ThisVersion (mkVersion [8, 0, 2]))
-                                                           (UnionVersionRanges
-                                                              (ThisVersion (mkVersion [7, 10, 3]))
-                                                              (UnionVersionRanges
-                                                                 (ThisVersion (mkVersion [7, 8, 4]))
-                                                                 (UnionVersionRanges
-                                                                    (ThisVersion
-                                                                       (mkVersion [7, 6, 3]))
-                                                                    (ThisVersion
-                                                                       (mkVersion [7, 4, 2])))))))))
-                                               mainLibSet,
-                                             Dependency
-                                               (PackageName "Cabal")
-                                               (UnionVersionRanges
-                                                  (MajorBoundVersion (mkVersion [2, 4, 1, 1]))
-                                                  (MajorBoundVersion (mkVersion [2, 2, 0, 0])))
-                                               mainLibSet],
-                      condTreeData = Library
-                                       {exposedModules = [],
-                                        libBuildInfo = BuildInfo
-                                                         {asmOptions = [],
-                                                          asmSources = [],
-                                                          autogenIncludes = [],
-                                                          autogenModules = [],
-                                                          buildToolDepends = [],
-                                                          buildTools = [],
-                                                          buildable = True,
-                                                          cSources = [],
-                                                          ccOptions = [],
-                                                          cmmOptions = [],
-                                                          cmmSources = [],
-                                                          cppOptions = [],
-                                                          customFieldsBI = [],
-                                                          cxxOptions = [],
-                                                          cxxSources = [],
-                                                          defaultExtensions = [],
-                                                          defaultLanguage = Just Haskell2010,
-                                                          extraBundledLibs = [],
-                                                          extraDynLibFlavours = [],
-                                                          extraFrameworkDirs = [],
-                                                          extraGHCiLibs = [],
-                                                          extraLibDirs = [],
-                                                          extraLibDirsStatic = [],
-                                                          extraLibFlavours = [],
-                                                          extraLibs = [],
-                                                          extraLibsStatic = [],
-                                                          frameworks = [],
-                                                          hsSourceDirs = [],
-                                                          hsc2hsOptions = [],
-                                                          includeDirs = [],
-                                                          includes = [],
-                                                          installIncludes = [],
-                                                          jsSources = [],
-                                                          ldOptions = [],
-                                                          mixins = [],
-                                                          oldExtensions = [],
-                                                          options = PerCompilerFlavor [] [],
-                                                          otherExtensions = [],
-                                                          otherLanguages = [],
-                                                          otherModules = [],
-                                                          pkgconfigDepends = [],
-                                                          profOptions = PerCompilerFlavor [] [],
-                                                          sharedOptions = PerCompilerFlavor [] [],
-                                                          staticOptions = PerCompilerFlavor [] [],
-                                                          targetBuildDepends = [Dependency
-                                                                                  (PackageName
-                                                                                     "network")
-                                                                                  (MajorBoundVersion
-                                                                                     (mkVersion
-                                                                                        [0]))
-                                                                                  mainLibSet,
-                                                                                Dependency
-                                                                                  (PackageName
-                                                                                     "base")
-                                                                                  (ThisVersion
-                                                                                     (mkVersion
-                                                                                        [1]))
-                                                                                  mainLibSet,
-                                                                                Dependency
-                                                                                  (PackageName
-                                                                                     "base")
-                                                                                  (ThisVersion
-                                                                                     (mkVersion
-                                                                                        [1]))
-                                                                                  mainLibSet,
-                                                                                Dependency
-                                                                                  (PackageName
-                                                                                     "base")
-                                                                                  (UnionVersionRanges
-                                                                                     (ThisVersion
-                                                                                        (mkVersion
-                                                                                           [1]))
-                                                                                     (ThisVersion
-                                                                                        (mkVersion
-                                                                                           [2])))
-                                                                                  mainLibSet,
-                                                                                Dependency
-                                                                                  (PackageName
-                                                                                     "base")
-                                                                                  (ThisVersion
-                                                                                     (mkVersion
-                                                                                        [1, 2]))
-                                                                                  mainLibSet,
-                                                                                Dependency
-                                                                                  (PackageName
-                                                                                     "base")
-                                                                                  (UnionVersionRanges
-                                                                                     (ThisVersion
-                                                                                        (mkVersion
-                                                                                           [1, 2]))
-                                                                                     (ThisVersion
-                                                                                        (mkVersion
-                                                                                           [3, 4])))
-                                                                                  mainLibSet,
-                                                                                Dependency
-                                                                                  (PackageName
-                                                                                     "ghc")
-                                                                                  (UnionVersionRanges
-                                                                                     (ThisVersion
-                                                                                        (mkVersion
-                                                                                           [8,
-                                                                                            6,
-                                                                                            3]))
-                                                                                     (UnionVersionRanges
-                                                                                        (ThisVersion
-                                                                                           (mkVersion
-                                                                                              [8,
-                                                                                               4,
-                                                                                               4]))
-                                                                                        (UnionVersionRanges
-                                                                                           (ThisVersion
-                                                                                              (mkVersion
-                                                                                                 [8,
-                                                                                                  2,
-                                                                                                  2]))
-                                                                                           (UnionVersionRanges
-                                                                                              (ThisVersion
-                                                                                                 (mkVersion
-                                                                                                    [8,
-                                                                                                     0,
-                                                                                                     2]))
-                                                                                              (UnionVersionRanges
-                                                                                                 (ThisVersion
-                                                                                                    (mkVersion
-                                                                                                       [7,
-                                                                                                        10,
-                                                                                                        3]))
-                                                                                                 (UnionVersionRanges
-                                                                                                    (ThisVersion
-                                                                                                       (mkVersion
-                                                                                                          [7,
-                                                                                                           8,
-                                                                                                           4]))
-                                                                                                    (UnionVersionRanges
-                                                                                                       (ThisVersion
-                                                                                                          (mkVersion
-                                                                                                             [7,
-                                                                                                              6,
-                                                                                                              3]))
-                                                                                                       (ThisVersion
-                                                                                                          (mkVersion
-                                                                                                             [7,
-                                                                                                              4,
-                                                                                                              2])))))))))
-                                                                                  mainLibSet,
-                                                                                Dependency
-                                                                                  (PackageName
-                                                                                     "Cabal")
-                                                                                  (UnionVersionRanges
-                                                                                     (MajorBoundVersion
-                                                                                        (mkVersion
-                                                                                           [2,
-                                                                                            4,
-                                                                                            1,
-                                                                                            1]))
-                                                                                     (MajorBoundVersion
-                                                                                        (mkVersion
-                                                                                           [2,
-                                                                                            2,
-                                                                                            0,
-                                                                                            0])))
-                                                                                  mainLibSet],
-                                                          virtualModules = []},
-                                        libExposed = True,
-                                        libName = LMainLibName,
-                                        libVisibility = LibraryVisibilityPublic,
-                                        reexportedModules = [],
-                                        signatures = []}},
-   condSubLibraries = [],
-   condTestSuites = [],
-   genPackageFlags = [],
-   gpdScannedVersion = Nothing,
-   packageDescription = PackageDescription
-                          {author = "",
-                           benchmarks = [],
-                           bugReports = "",
-                           buildTypeRaw = Nothing,
-                           category = "",
-                           copyright = "",
-                           customFieldsPD = [],
-                           dataDir = ".",
-                           dataFiles = [],
-                           description = "",
-                           executables = [],
-                           extraDocFiles = [],
-                           extraSrcFiles = [],
-                           extraTmpFiles = [],
-                           foreignLibs = [],
-                           homepage = "",
-                           library = Nothing,
-                           licenseFiles = [],
-                           licenseRaw = Left NONE,
-                           maintainer = "",
-                           package = PackageIdentifier
-                                       {pkgName = PackageName "version-sets",
-                                        pkgVersion = mkVersion [0]},
-                           pkgUrl = "",
-                           setupBuildInfo = Nothing,
-                           sourceRepos = [],
-                           specVersion = CabalSpecV3_0,
-                           stability = "",
-                           subLibraries = [],
-                           synopsis = "version set notation",
-                           testSuites = [],
-                           testedWith = [_×_
-                                           GHC
-                                           (UnionVersionRanges
-                                              (ThisVersion (mkVersion [8, 6, 3]))
-                                              (UnionVersionRanges
-                                                 (ThisVersion (mkVersion [8, 4, 4]))
-                                                 (UnionVersionRanges
-                                                    (ThisVersion (mkVersion [8, 2, 2]))
-                                                    (UnionVersionRanges
-                                                       (ThisVersion (mkVersion [8, 0, 2]))
-                                                       (UnionVersionRanges
-                                                          (ThisVersion (mkVersion [7, 10, 3]))
-                                                          (UnionVersionRanges
-                                                             (ThisVersion (mkVersion [7, 8, 4]))
-                                                             (UnionVersionRanges
-                                                                (ThisVersion (mkVersion [7, 6, 3]))
-                                                                (ThisVersion
-                                                                   (mkVersion [7, 4, 2])))))))))]}}
+GenericPackageDescription {
+  packageDescription =
+  PackageDescription {
+    specVersion = CabalSpecV3_0,
+    package = PackageIdentifier {
+      pkgName = PackageName
+        "version-sets",
+      pkgVersion = mkVersion [0]},
+    licenseRaw = Left NONE,
+    licenseFiles = [],
+    copyright = "",
+    maintainer = "",
+    author = "",
+    stability = "",
+    testedWith = [
+      _×_
+        GHC
+        (UnionVersionRanges
+          (ThisVersion
+            (mkVersion [8, 6, 3]))
+          (UnionVersionRanges
+            (ThisVersion
+              (mkVersion [8, 4, 4]))
+            (UnionVersionRanges
+              (ThisVersion
+                (mkVersion [8, 2, 2]))
+              (UnionVersionRanges
+                (ThisVersion
+                  (mkVersion [8, 0, 2]))
+                (UnionVersionRanges
+                  (ThisVersion
+                    (mkVersion [7, 10, 3]))
+                  (UnionVersionRanges
+                    (ThisVersion
+                      (mkVersion [7, 8, 4]))
+                    (UnionVersionRanges
+                      (ThisVersion
+                        (mkVersion [7, 6, 3]))
+                      (ThisVersion
+                        (mkVersion [7, 4, 2])))))))))],
+    homepage = "",
+    pkgUrl = "",
+    bugReports = "",
+    sourceRepos = [],
+    synopsis =
+    "version set notation",
+    description = "",
+    category = "",
+    customFieldsPD = [],
+    buildTypeRaw = Nothing,
+    setupBuildInfo = Nothing,
+    library = Nothing,
+    subLibraries = [],
+    executables = [],
+    foreignLibs = [],
+    testSuites = [],
+    benchmarks = [],
+    dataFiles = [],
+    dataDir = SymbolicPath ".",
+    extraSrcFiles = [],
+    extraTmpFiles = [],
+    extraDocFiles = []},
+  gpdScannedVersion = Nothing,
+  genPackageFlags = [],
+  condLibrary = Just
+    CondNode {
+      condTreeData = Library {
+        libName = LMainLibName,
+        exposedModules = [],
+        reexportedModules = [],
+        signatures = [],
+        libExposed = True,
+        libVisibility =
+        LibraryVisibilityPublic,
+        libBuildInfo = BuildInfo {
+          buildable = True,
+          buildTools = [],
+          buildToolDepends = [],
+          cppOptions = [],
+          asmOptions = [],
+          cmmOptions = [],
+          ccOptions = [],
+          cxxOptions = [],
+          ldOptions = [],
+          hsc2hsOptions = [],
+          pkgconfigDepends = [],
+          frameworks = [],
+          extraFrameworkDirs = [],
+          asmSources = [],
+          cmmSources = [],
+          cSources = [],
+          cxxSources = [],
+          jsSources = [],
+          hsSourceDirs = [],
+          otherModules = [],
+          virtualModules = [],
+          autogenModules = [],
+          defaultLanguage = Just
+            Haskell2010,
+          otherLanguages = [],
+          defaultExtensions = [],
+          otherExtensions = [],
+          oldExtensions = [],
+          extraLibs = [],
+          extraLibsStatic = [],
+          extraGHCiLibs = [],
+          extraBundledLibs = [],
+          extraLibFlavours = [],
+          extraDynLibFlavours = [],
+          extraLibDirs = [],
+          extraLibDirsStatic = [],
+          includeDirs = [],
+          includes = [],
+          autogenIncludes = [],
+          installIncludes = [],
+          options = PerCompilerFlavor
+            []
+            [],
+          profOptions = PerCompilerFlavor
+            []
+            [],
+          sharedOptions =
+          PerCompilerFlavor [] [],
+          staticOptions =
+          PerCompilerFlavor [] [],
+          customFieldsBI = [],
+          targetBuildDepends = [
+            Dependency
+              (PackageName "network")
+              (MajorBoundVersion
+                (mkVersion [0]))
+              mainLibSet,
+            Dependency
+              (PackageName "base")
+              (ThisVersion (mkVersion [1]))
+              mainLibSet,
+            Dependency
+              (PackageName "base")
+              (ThisVersion (mkVersion [1]))
+              mainLibSet,
+            Dependency
+              (PackageName "base")
+              (UnionVersionRanges
+                (ThisVersion (mkVersion [1]))
+                (ThisVersion (mkVersion [2])))
+              mainLibSet,
+            Dependency
+              (PackageName "base")
+              (ThisVersion (mkVersion [1, 2]))
+              mainLibSet,
+            Dependency
+              (PackageName "base")
+              (UnionVersionRanges
+                (ThisVersion (mkVersion [1, 2]))
+                (ThisVersion
+                  (mkVersion [3, 4])))
+              mainLibSet,
+            Dependency
+              (PackageName "ghc")
+              (UnionVersionRanges
+                (ThisVersion
+                  (mkVersion [8, 6, 3]))
+                (UnionVersionRanges
+                  (ThisVersion
+                    (mkVersion [8, 4, 4]))
+                  (UnionVersionRanges
+                    (ThisVersion
+                      (mkVersion [8, 2, 2]))
+                    (UnionVersionRanges
+                      (ThisVersion
+                        (mkVersion [8, 0, 2]))
+                      (UnionVersionRanges
+                        (ThisVersion
+                          (mkVersion [7, 10, 3]))
+                        (UnionVersionRanges
+                          (ThisVersion
+                            (mkVersion [7, 8, 4]))
+                          (UnionVersionRanges
+                            (ThisVersion
+                              (mkVersion [7, 6, 3]))
+                            (ThisVersion
+                              (mkVersion [7, 4, 2])))))))))
+              mainLibSet,
+            Dependency
+              (PackageName "Cabal")
+              (UnionVersionRanges
+                (MajorBoundVersion
+                  (mkVersion [2, 4, 1, 1]))
+                (MajorBoundVersion
+                  (mkVersion [2, 2, 0, 0])))
+              mainLibSet],
+          mixins = []}},
+      condTreeConstraints = [
+        Dependency
+          (PackageName "network")
+          (MajorBoundVersion
+            (mkVersion [0]))
+          mainLibSet,
+        Dependency
+          (PackageName "base")
+          (ThisVersion (mkVersion [1]))
+          mainLibSet,
+        Dependency
+          (PackageName "base")
+          (ThisVersion (mkVersion [1]))
+          mainLibSet,
+        Dependency
+          (PackageName "base")
+          (UnionVersionRanges
+            (ThisVersion (mkVersion [1]))
+            (ThisVersion (mkVersion [2])))
+          mainLibSet,
+        Dependency
+          (PackageName "base")
+          (ThisVersion (mkVersion [1, 2]))
+          mainLibSet,
+        Dependency
+          (PackageName "base")
+          (UnionVersionRanges
+            (ThisVersion (mkVersion [1, 2]))
+            (ThisVersion
+              (mkVersion [3, 4])))
+          mainLibSet,
+        Dependency
+          (PackageName "ghc")
+          (UnionVersionRanges
+            (ThisVersion
+              (mkVersion [8, 6, 3]))
+            (UnionVersionRanges
+              (ThisVersion
+                (mkVersion [8, 4, 4]))
+              (UnionVersionRanges
+                (ThisVersion
+                  (mkVersion [8, 2, 2]))
+                (UnionVersionRanges
+                  (ThisVersion
+                    (mkVersion [8, 0, 2]))
+                  (UnionVersionRanges
+                    (ThisVersion
+                      (mkVersion [7, 10, 3]))
+                    (UnionVersionRanges
+                      (ThisVersion
+                        (mkVersion [7, 8, 4]))
+                      (UnionVersionRanges
+                        (ThisVersion
+                          (mkVersion [7, 6, 3]))
+                        (ThisVersion
+                          (mkVersion [7, 4, 2])))))))))
+          mainLibSet,
+        Dependency
+          (PackageName "Cabal")
+          (UnionVersionRanges
+            (MajorBoundVersion
+              (mkVersion [2, 4, 1, 1]))
+            (MajorBoundVersion
+              (mkVersion [2, 2, 0, 0])))
+          mainLibSet],
+      condTreeComponents = []},
+  condSubLibraries = [],
+  condForeignLibs = [],
+  condExecutables = [],
+  condTestSuites = [],
+  condBenchmarks = []}

@@ -1,4 +1,4 @@
 # cabal check
 The following errors will cause portability problems on other environments:
-Error: Unknown compiler name 'MHC'
+Error: [unknown-compiler] Unknown compiler name 'MHC'
 Error: Hackage would reject this package.

@@ -1,7 +1,7 @@
 cabal-version:      2.2
 name:               cabal-benchmarks
 version:            3
-copyright:          2003-2023, Cabal Development Team (see AUTHORS file)
+copyright:          2003-2024, Cabal Development Team (see AUTHORS file)
 license:            BSD-3-Clause
 license-file:       LICENSE
 author:             Cabal Development Team <cabal-devel@haskell.org>
@@ -31,4 +31,4 @@ test-suite cabal-benchmarks
       base
     , bytestring
     , Cabal-syntax
-    , criterion   >=1.5.6.2 && <1.7
+    , tasty-bench >= 0.3.5 && < 0.4

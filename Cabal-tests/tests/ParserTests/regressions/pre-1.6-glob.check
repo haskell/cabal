@@ -1,1 +1,1 @@
-In the 'extra-source-files' field: invalid file glob 'foo/*.hs'. Using star wildcards requires 'cabal-version: >= 1.6'. Alternatively if you require compatibility with earlier Cabal versions then list all the files explicitly.
+[glob-syntax-error] In the 'extra-source-files' field: invalid file glob 'foo/*.hs'. Using star wildcards requires 'cabal-version: >= 1.6'. Alternatively if you require compatibility with earlier Cabal versions then list all the files explicitly.

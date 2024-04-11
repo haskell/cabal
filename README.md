@@ -5,6 +5,7 @@
 [![Documentation Status](http://readthedocs.org/projects/cabal/badge/?version=latest)](http://cabal.readthedocs.io/en/latest/?badge=latest)
 [![IRC chat](https://img.shields.io/badge/chat-via%20libera-brightgreen.svg)](https://web.libera.chat/#hackage)
 [![Matrix chat](https://img.shields.io/badge/chat-via%20matrix-brightgreen.svg)](https://matrix.to/#/#hackage:matrix.org)
+[![GitLab pipeline status](https://gitlab.haskell.org/haskell/cabal/badges/cabal-head/pipeline.svg?key_text=Release%20CI%20Early%20Warning&key_width=150)](https://gitlab.haskell.org/haskell/cabal/-/commits/cabal-head)
 
 <img src="https://www.haskell.org/cabal/images/Cabal-light.png" align="right">
 
@@ -21,7 +22,7 @@ https://github.com/haskell/cabal.
 Ways to get the `cabal-install` binary
 --------------------------------
 
-1. _GHCup (**preferred**)_: get GHCup using [the directions on its website](https://www.haskell.org/ghcup/) and run:
+1. _GHCup_ (**preferred**): get GHCup using [the directions on its website](https://www.haskell.org/ghcup/) and run:
 
     ```
     ghcup install --set cabal latest
@@ -29,6 +30,8 @@ Ways to get the `cabal-install` binary
 
 2. _[Download from official website](https://www.haskell.org/cabal/download.html)_:
     the `cabal-install` binary download for your platform should contain the `cabal` executable.
+
+#### Preview Releases
 
 _Getting unreleased versions of `cabal-install`_: gives you a chance to try out yet-unreleased features.
 Currently, we only provide binaries for `x86_64` platforms.
@@ -41,9 +44,27 @@ Currently, we only provide binaries for `x86_64` platforms.
 
     Replace "Linux" with "Windows" or "macOS" as appropriate.
 
+    The default Linux build is dynamically linked against `zlib`, `gmp` and `glibc`.
+    You will need to have appropriate versions of these libraries installed to use it.
+    Alternatively a statically linked "Linux-static" binary is also provided.
+
+    You might need to add the following to your `cabal.project` file
+    if your build fails because of an out-of-date `Cabal` library:
+    ```
+    allow-newer:
+      *:Cabal,
+      *:Cabal-syntax
+
+    source-repository-package
+        type: git
+        location: https://github.com/haskell/cabal.git
+        subdir: Cabal Cabal-syntax
+    ```
+
 
 2. Even more cutting-edge binaries built from pull requests are always available
-   from the `Validate` worklow page on GitHub, at the very bottom of the page.
+   from the `Validate` worklow page on GitHub, at the very bottom of the page,
+   or from the `build-alpine` workflow for statically linked Linux builds.
 
 Ways to build `cabal-install` for everyday use
 --------------------------------------------

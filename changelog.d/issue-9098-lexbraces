@@ -1,6 +1,7 @@
 synopsis: Add LexBraces lexer warning
 packages: Cabal-syntax
-issues: #8577
+issues: #9098
+prs: #9099
 
 description: {
 

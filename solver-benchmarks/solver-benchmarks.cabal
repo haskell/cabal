@@ -1,7 +1,7 @@
 cabal-version:  2.2
 name:          solver-benchmarks
 version:       3
-copyright:     2003-2023, Cabal Development Team (see AUTHORS file)
+copyright:     2003-2024, Cabal Development Team (see AUTHORS file)
 license:       BSD-3-Clause
 license-file:  LICENSE
 author:        Cabal Development Team <cabal-devel@haskell.org>

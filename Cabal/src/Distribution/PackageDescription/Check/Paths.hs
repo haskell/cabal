@@ -24,6 +24,11 @@ import Distribution.PackageDescription.Check.Common
 import Distribution.PackageDescription.Check.Monad
 import Distribution.Simple.CCompiler
 import Distribution.Simple.Glob
+  ( Glob
+  , explainGlobSyntaxError
+  , isRecursiveInRoot
+  , parseFileGlob
+  )
 import Distribution.Simple.Utils hiding (findPackageDesc, notice)
 import System.FilePath (splitDirectories, splitPath, takeExtension)
 

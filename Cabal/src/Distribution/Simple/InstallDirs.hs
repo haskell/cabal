@@ -344,6 +344,8 @@ data CopyDest
     CopyToDb FilePath
   deriving (Eq, Show, Generic)
 
+-- TODO: are these paths absolute or relative? Relative to what?
+
 instance Binary CopyDest
 instance Structured CopyDest
 

@@ -1,3 +1,5 @@
+{-# LANGUAGE DataKinds #-}
+
 module Distribution.Types.Executable.Lens
   ( Executable
   , module Distribution.Types.Executable.Lens
@@ -11,6 +13,7 @@ import Distribution.Types.BuildInfo (BuildInfo)
 import Distribution.Types.Executable (Executable)
 import Distribution.Types.ExecutableScope (ExecutableScope)
 import Distribution.Types.UnqualComponentName (UnqualComponentName)
+import Distribution.Utils.Path
 
 import qualified Distribution.Types.Executable as T
 
@@ -18,7 +21,7 @@ exeName :: Lens' Executable UnqualComponentName
 exeName f s = fmap (\x -> s{T.exeName = x}) (f (T.exeName s))
 {-# INLINE exeName #-}
 
-modulePath :: Lens' Executable String
+modulePath :: Lens' Executable (RelativePath Source File)
 modulePath f s = fmap (\x -> s{T.modulePath = x}) (f (T.modulePath s))
 {-# INLINE modulePath #-}
 

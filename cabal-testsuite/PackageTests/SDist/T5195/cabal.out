@@ -1,3 +1,0 @@
-# cabal v2-sdist
-Error: [Cabal-6661]
-filepath wildcard './actually-a-directory' does not match any files.

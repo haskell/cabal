@@ -1,7 +1,7 @@
 cabal-version: 2.2
 name:          Cabal-syntax
 version:       3.11.0.0
-copyright:     2003-2023, Cabal Development Team (see AUTHORS file)
+copyright:     2003-2024, Cabal Development Team (see AUTHORS file)
 license:       BSD-3-Clause
 license-file:  LICENSE
 author:        Cabal Development Team <cabal-devel@haskell.org>
@@ -15,7 +15,7 @@ description:
 category:       Distribution
 build-type:     Simple
 
-extra-source-files:
+extra-doc-files:
   README.md ChangeLog.md
 
 source-repository head
@@ -32,7 +32,7 @@ library
     base       >= 4.9      && < 5,
     binary     >= 0.7      && < 0.9,
     bytestring >= 0.10.0.0 && < 0.13,
-    containers >= 0.5.0.0  && < 0.7,
+    containers >= 0.5.0.0  && < 0.8,
     deepseq    >= 1.3.0.1  && < 1.6,
     directory  >= 1.2      && < 1.4,
     filepath   >= 1.3.0.1  && < 1.6,
@@ -40,17 +40,18 @@ library
     parsec     >= 3.1.13.0 && < 3.2,
     pretty     >= 1.1.1    && < 1.2,
     text       (>= 1.2.3.0 && < 1.3) || (>= 2.0 && < 2.2),
-    time       >= 1.4.0.1  && < 1.13,
+    time       >= 1.4.0.1  && < 1.15,
     -- transformers-0.4.0.0 doesn't have record syntax e.g. for Identity
     -- See also https://github.com/ekmett/transformers-compat/issues/35
     transformers (>= 0.3      && < 0.4) || (>=0.4.1.0 && <0.7)
 
-  if os(windows)
-    build-depends: Win32 >= 2.3.0.0 && < 2.14
-  else
-    build-depends: unix  >= 2.6.0.0 && < 2.9
-
-  ghc-options: -Wall -fno-ignore-asserts -fwarn-tabs -fwarn-incomplete-uni-patterns -fwarn-incomplete-record-updates
+  ghc-options:
+    -Wall
+    -fno-ignore-asserts
+    -fwarn-tabs
+    -fwarn-incomplete-uni-patterns
+    -fwarn-incomplete-record-updates
+    -fno-warn-unticked-promoted-constructors
 
   if impl(ghc >= 8.0)
     ghc-options: -Wcompat -Wnoncanonical-monad-instances

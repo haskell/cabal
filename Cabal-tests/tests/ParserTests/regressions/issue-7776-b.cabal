@@ -15,6 +15,7 @@ library
     -- the base lower bound makes the package not buildable with ghc < 6.8
     -- but cabal is not smart enough to know it :-P
     build-depends: base >= 4.5 && < 4.15
+    default-language: Haskell2010
 
 benchmark benchmarks
     main-is: Benchmarks.hs
@@ -25,3 +26,4 @@ benchmark benchmarks
         Ghc-options: -fwarn-tabs
     else
         other-modules: Data.Hashable.RandomSource
+    default-language: Haskell2010

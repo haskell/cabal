@@ -50,6 +50,7 @@ import Distribution.Simple.Command
 import Distribution.Simple.Flag
   ( fromFlagOrDefault
   )
+import Distribution.Simple.Setup (CommonSetupFlags (..))
 import Distribution.Simple.Utils
   ( dieWithException
   , warn
@@ -150,7 +151,7 @@ benchAction flags@NixStyleFlags{..} targetStrings globalFlags = do
   buildOutcomes <- runProjectBuildPhase verbosity baseCtx buildCtx
   runProjectPostBuildPhase verbosity baseCtx buildCtx buildOutcomes
   where
-    verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
+    verbosity = fromFlagOrDefault normal (setupVerbosity $ configCommonFlags configFlags)
     cliConfig =
       commandLineFlagsToProjectConfig
         globalFlags

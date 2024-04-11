@@ -1,6 +1,8 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
 
@@ -18,7 +20,10 @@
 -- Common utilities for defining command-line options.
 -- See: @Distribution.Simple.Setup@
 module Distribution.Simple.Setup.Common
-  ( CopyDest (..)
+  ( CommonSetupFlags (..)
+  , defaultCommonSetupFlags
+  , withCommonSetupOptions
+  , CopyDest (..)
   , configureCCompiler
   , configureLinker
   , programDbOption
@@ -44,6 +49,7 @@ module Distribution.Simple.Setup.Common
   , trueArg
   , falseArg
   , reqArgFlag
+  , reqSymbolicPathArgFlag
   , optionVerbosity
   , optionNumJobs
   ) where
@@ -58,16 +64,92 @@ import Distribution.Simple.Flag
 import Distribution.Simple.InstallDirs
 import Distribution.Simple.Program
 import Distribution.Simple.Utils
+import Distribution.Utils.Path
 import Distribution.Verbosity
 
+--------------------------------------------------------------------------------
+
+-- | A datatype that stores common flags for different invocations
+-- of a @Setup@ executable, e.g. configure, build, install.
+data CommonSetupFlags = CommonSetupFlags
+  { setupVerbosity :: !(Flag Verbosity)
+  -- ^ Verbosity
+  , setupWorkingDir :: !(Flag (SymbolicPath CWD (Dir Pkg)))
+  -- ^ Working directory (optional)
+  , setupDistPref :: !(Flag (SymbolicPath Pkg (Dir Dist)))
+  -- ^ Build directory
+  , setupCabalFilePath :: !(Flag (SymbolicPath Pkg File))
+  -- ^ Which Cabal file to use (optional)
+  , setupTargets :: [String]
+  -- ^ Which targets is this Setup invocation relative to?
+  --
+  -- TODO: this one should not be here, it's just that the silly
+  -- UserHooks stop us from passing extra info in other ways
+  }
+  deriving (Eq, Show, Read, Generic)
+
+instance Binary CommonSetupFlags
+instance Structured CommonSetupFlags
+
+instance Semigroup CommonSetupFlags where
+  (<>) = gmappend
+
+instance Monoid CommonSetupFlags where
+  mempty = gmempty
+  mappend = (<>)
+
+defaultCommonSetupFlags :: CommonSetupFlags
+defaultCommonSetupFlags =
+  CommonSetupFlags
+    { setupVerbosity = Flag normal
+    , setupWorkingDir = NoFlag
+    , setupDistPref = NoFlag
+    , setupCabalFilePath = NoFlag
+    , setupTargets = []
+    }
+
+commonSetupOptions :: ShowOrParseArgs -> [OptionField CommonSetupFlags]
+commonSetupOptions showOrParseArgs =
+  [ optionVerbosity
+      setupVerbosity
+      (\v flags -> flags{setupVerbosity = v})
+  , optionDistPref
+      setupDistPref
+      (\d flags -> flags{setupDistPref = d})
+      showOrParseArgs
+  , option
+      ""
+      ["cabal-file"]
+      "use this Cabal file"
+      setupCabalFilePath
+      (\v flags -> flags{setupCabalFilePath = v})
+      (reqSymbolicPathArgFlag "PATH")
+      -- NB: no --working-dir flag, as that value is populated using the
+      -- global flag (see Distribution.Simple.Setup.Global.globalCommand).
+  ]
+
+withCommonSetupOptions
+  :: (flags -> CommonSetupFlags)
+  -> (CommonSetupFlags -> flags -> flags)
+  -> ShowOrParseArgs
+  -> [OptionField flags]
+  -> [OptionField flags]
+withCommonSetupOptions getCommon setCommon showOrParseArgs opts =
+  map fmapOptionField (commonSetupOptions showOrParseArgs) ++ opts
+  where
+    fmapOptionField (OptionField nm descr) =
+      OptionField nm (map (fmapOptDescr getCommon setCommon) descr)
+
+--------------------------------------------------------------------------------
+
 -- FIXME Not sure where this should live
-defaultDistPref :: FilePath
-defaultDistPref = "dist"
+defaultDistPref :: SymbolicPath Pkg (Dir Dist)
+defaultDistPref = makeSymbolicPath "dist"
 
 -- | The name of the directory where optional compilation artifacts
 -- go, such as ghc plugins and .hie files.
-extraCompilationArtifacts :: FilePath
-extraCompilationArtifacts = "extra-compilation-artifacts"
+extraCompilationArtifacts :: RelativePath Build (Dir Artifacts)
+extraCompilationArtifacts = makeRelativePathEx "extra-compilation-artifacts"
 
 -- | Help text for @test@ and @bench@ commands.
 testOrBenchmarkHelpText
@@ -248,8 +330,8 @@ reqArgFlag
 reqArgFlag ad = reqArg ad (succeedReadE Flag) flagToList
 
 optionDistPref
-  :: (flags -> Flag FilePath)
-  -> (Flag FilePath -> flags -> flags)
+  :: (flags -> Flag (SymbolicPath Pkg (Dir Dist)))
+  -> (Flag (SymbolicPath Pkg (Dir Dist)) -> flags -> flags)
   -> ShowOrParseArgs
   -> OptionField flags
 optionDistPref get set = \showOrParseArgs ->
@@ -258,15 +340,32 @@ optionDistPref get set = \showOrParseArgs ->
     (distPrefFlagName showOrParseArgs)
     ( "The directory where Cabal puts generated build files "
         ++ "(default "
-        ++ defaultDistPref
+        ++ getSymbolicPath defaultDistPref
         ++ ")"
     )
     get
     set
-    (reqArgFlag "DIR")
+    (reqSymbolicPathArgFlag "DIR")
   where
     distPrefFlagName ShowArgs = ["builddir"]
     distPrefFlagName ParseArgs = ["builddir", "distdir", "distpref"]
+
+reqSymbolicPathArgFlag
+  :: ArgPlaceHolder
+  -> SFlags
+  -> LFlags
+  -> Description
+  -> (b -> Flag (SymbolicPath from to))
+  -> (Flag (SymbolicPath from to) -> b -> b)
+  -> OptDescr b
+reqSymbolicPathArgFlag title sf lf d get set =
+  reqArgFlag
+    title
+    sf
+    lf
+    d
+    (fmap getSymbolicPath . get)
+    (set . fmap makeSymbolicPath)
 
 optionVerbosity
   :: (flags -> Flag Verbosity)

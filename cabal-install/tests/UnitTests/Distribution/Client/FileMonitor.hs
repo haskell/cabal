@@ -89,15 +89,15 @@ tests mtimeChange =
       _ -> id
     fingerprintStateGlob1, fingerprintStateGlob2, fingerprintStateFileSet1, fingerprintStateFileSet2 :: Word64
 #if MIN_VERSION_base(4,19,0)
-    fingerprintStateGlob1 = 0xae70229aabb1ba1f
-    fingerprintStateGlob2 = 0xb53ed324c96f0d0d
-    fingerprintStateFileSet1 = 0x8e509e16f973e036
-    fingerprintStateFileSet2 = 0xa23f21d8dc8a2dee
+    fingerprintStateGlob1 = 0x4ebc6a7d12bb2132
+    fingerprintStateGlob2 = 0x2c2292eeda0a9319
+    fingerprintStateFileSet1 = 0x01df5796f9030851
+    fingerprintStateFileSet2 = 0x2f5c472be17bee98
 #else
-    fingerprintStateGlob1 = 0xfd8f6be0e8258fe7
-    fingerprintStateGlob2 = 0xdb5fac737139bca6
-    fingerprintStateFileSet1 = 0xb745f4ea498389a5
-    fingerprintStateFileSet2 = 0x70db6adb5078aa27
+    fingerprintStateGlob1 = 0xf32c0d1644dd9ee5
+    fingerprintStateGlob2 = 0x0f2494f7b6031fb6
+    fingerprintStateFileSet1 = 0x06d4a13275c24282
+    fingerprintStateFileSet2 = 0x791b2a88684b5f37
 #endif
 
 -- Check the file system behaves the way we expect it to

@@ -21,6 +21,7 @@ module Distribution.Client.Check
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
+import Distribution.Client.Errors
 import Distribution.Client.Utils.Parsec (renderParseError)
 import Distribution.PackageDescription (GenericPackageDescription)
 import Distribution.PackageDescription.Check
@@ -29,7 +30,9 @@ import Distribution.PackageDescription.Parsec
   , runParseResult
   )
 import Distribution.Parsec (PWarning (..), showPError)
-import Distribution.Simple.Utils (defaultPackageDesc, dieWithException, notice, warn, warnError)
+import Distribution.Simple.Utils (defaultPackageDescCwd, dieWithException, notice, warn, warnError)
+import Distribution.Utils.Path (getSymbolicPath)
+
 import System.IO (hPutStr, stderr)
 
 import qualified Control.Monad as CM
@@ -37,7 +40,6 @@ import qualified Data.ByteString as BS
 import qualified Data.Function as F
 import qualified Data.List as L
 import qualified Data.List.NonEmpty as NE
-import Distribution.Client.Errors
 import qualified System.Directory as Dir
 
 readGenericPackageDescriptionCheck :: Verbosity -> FilePath -> IO ([PWarning], GenericPackageDescription)
@@ -59,14 +61,22 @@ readGenericPackageDescriptionCheck verbosity fpath = do
 -- is fit to upload to Hackage, @False@ otherwise.
 -- Note: must be called with the CWD set to the directory containing
 -- the '.cabal' file.
-check :: Verbosity -> IO Bool
-check verbosity = do
-  pdfile <- defaultPackageDesc verbosity
+check
+  :: Verbosity
+  -> [CheckExplanationIDString]
+  -- ^ List of check-ids in String form
+  -- (e.g. @invalid-path-win@) to ignore.
+  -> IO Bool
+check verbosity ignores = do
+  pdfile <- getSymbolicPath <$> defaultPackageDescCwd verbosity
   (ws, ppd) <- readGenericPackageDescriptionCheck verbosity pdfile
   -- convert parse warnings into PackageChecks
   let ws' = map (wrapParseWarning pdfile) ws
   ioChecks <- checkPackageFilesGPD verbosity ppd "."
-  let packageChecks = ioChecks ++ checkPackage ppd ++ ws'
+  let packageChecksPrim = ioChecks ++ checkPackage ppd ++ ws'
+      (packageChecks, unrecs) = filterPackageChecksByIdString packageChecksPrim ignores
+
+  CM.mapM_ (\s -> warn verbosity ("Unrecognised ignore \"" ++ s ++ "\"")) unrecs
 
   CM.mapM_ (outputGroupCheck verbosity) (groupChecks packageChecks)
 

@@ -11,6 +11,7 @@ module Test.Cabal.Prelude (
     module Test.Cabal.Monad,
     module Test.Cabal.Run,
     module System.FilePath,
+    module Distribution.Utils.Path,
     module Control.Monad,
     module Control.Monad.IO.Class,
     module Distribution.Version,
@@ -29,18 +30,20 @@ import Distribution.Simple.Program.Types
 import Distribution.Simple.Program.Db
 import Distribution.Simple.Program
 import Distribution.System (OS(Windows,Linux,OSX), Arch(JavaScript), buildOS, buildArch)
-import Distribution.Simple.Utils
-    ( withFileContents, tryFindPackageDesc )
 import Distribution.Simple.Configure
     ( getPersistBuildConfig )
+import Distribution.Simple.Utils
+    ( withFileContents, tryFindPackageDesc )
 import Distribution.Version
 import Distribution.Package
-import Distribution.Parsec (eitherParsec)
+import Distribution.Parsec (eitherParsec, simpleParsec)
 import Distribution.Types.UnqualComponentName
 import Distribution.Types.LocalBuildInfo
 import Distribution.PackageDescription
 import Test.Utils.TempTestDir (withTestDir)
 import Distribution.Verbosity (normal)
+import Distribution.Utils.Path
+  ( makeSymbolicPath, relativeSymbolicPath )
 
 import Distribution.Compat.Stack
 
@@ -81,7 +84,7 @@ runM :: FilePath -> [String] -> Maybe String -> TestM Result
 runM path args input = do
     env <- getTestEnv
     r <- liftIO $ run (testVerbosity env)
-                 (Just (testCurrentDir env))
+                 (Just $ testCurrentDir env)
                  (testEnvironment env)
                  path
                  args
@@ -99,7 +102,7 @@ runProgramM prog args input = do
 getLocalBuildInfoM :: TestM LocalBuildInfo
 getLocalBuildInfoM = do
     env <- getTestEnv
-    liftIO $ getPersistBuildConfig (testDistDir env)
+    liftIO $ getPersistBuildConfig Nothing (makeSymbolicPath $ testDistDir env)
 
 ------------------------------------------------------------------------
 -- * Changing parameters
@@ -185,9 +188,9 @@ setup'' prefix cmd args = do
     --
     -- `cabal` and `Setup.hs` do have different interface.
     --
-
-    pdfile <- liftIO $ tryFindPackageDesc (testVerbosity env) (testCurrentDir env </> prefix)
-    pdesc <- liftIO $ readGenericPackageDescription (testVerbosity env) pdfile
+    let pkgDir = makeSymbolicPath $ testCurrentDir env </> prefix
+    pdfile <- liftIO $ tryFindPackageDesc (testVerbosity env) (Just pkgDir)
+    pdesc <- liftIO $ readGenericPackageDescription (testVerbosity env) (Just pkgDir) $ relativeSymbolicPath pdfile
     if testCabalInstallAsSetup env
     then if buildType (packageDescription pdesc) == Simple
          then runProgramM cabalProgram ("act-as-setup" : "--" : NE.toList full_args) Nothing
@@ -198,7 +201,7 @@ setup'' prefix cmd args = do
             -- Run the Custom script!
             else do
               r <- liftIO $ runghc (testScriptEnv env)
-                                   (Just (testCurrentDir env))
+                                   (Just $ testCurrentDir env)
                                    (testEnvironment env)
                                    (testCurrentDir env </> prefix </> "Setup.hs")
                                    (NE.toList full_args)
@@ -289,9 +292,6 @@ cabalG' global_args cmd args = cabalGArgs global_args cmd args Nothing
 cabalGArgs :: [String] -> String -> [String] -> Maybe String -> TestM Result
 cabalGArgs global_args cmd args input = do
     env <- getTestEnv
-    -- Freeze writes out cabal.config to source directory, this is not
-    -- overwritable
-    when (cmd == "v1-freeze") requireHasSourceCopy
     let extra_args
           | cmd `elem`
               [ "v1-update"
@@ -311,16 +311,17 @@ cabalGArgs global_args cmd args input = do
 
           -- new-build commands are affected by testCabalProjectFile
           | cmd == "v2-sdist"
-          = [ "--project-file", testCabalProjectFile env ]
+          = [ "--project-file=" ++ fp | Just fp <- [testCabalProjectFile env] ]
 
           | cmd == "v2-clean"
-          = [ "--builddir", testDistDir env
-            , "--project-file", testCabalProjectFile env ]
+          = [ "--builddir", testDistDir env ]
+            ++ [ "--project-file=" ++ fp | Just fp <- [testCabalProjectFile env] ]
 
           | "v2-" `isPrefixOf` cmd
           = [ "--builddir", testDistDir env
-            , "--project-file", testCabalProjectFile env
             , "-j1" ]
+            ++ [ "--project-file=" ++ fp | Just fp <- [testCabalProjectFile env] ]
+            ++ ["--package-db=" ++ db | Just db <- [testPackageDbPath env]]
 
           | otherwise
           = [ "--builddir", testDistDir env ] ++
@@ -343,7 +344,7 @@ cabal_raw' cabal_args input = runProgramM cabalProgram cabal_args input
 
 withProjectFile :: FilePath -> TestM a -> TestM a
 withProjectFile fp m =
-    withReaderT (\env -> env { testCabalProjectFile = fp }) m
+    withReaderT (\env -> env { testCabalProjectFile = Just fp }) m
 
 -- | Assuming we've successfully configured a new-build project,
 -- read out the plan metadata so that we can use it to do other
@@ -401,6 +402,12 @@ withPackageDb m = do
                                 } )
                $ do ghcPkg "init" [db_path]
                     m
+
+-- | Don't pass `--package-db` to cabal-install, so it won't find the specific version of
+-- `Cabal` which you have configured the testsuite to run with. You probably don't want to use
+-- this unless you are testing the `--package-db` flag itself.
+noCabalPackageDb :: TestM a -> TestM a
+noCabalPackageDb m = withReaderT (\nenv -> nenv { testPackageDbPath = Nothing }) m
 
 ghcPkg :: String -> [String] -> TestM ()
 ghcPkg cmd args = void (ghcPkg' cmd args)
@@ -667,26 +674,6 @@ withRemoteRepo repoDir m = do
             runReaderT m (env { testHaveRepo = True }))
 
 
-------------------------------------------------------------------------
--- * Subprocess run results
-
-requireSuccess :: Result -> TestM Result
-requireSuccess r@Result { resultCommand = cmd
-                        , resultExitCode = exitCode
-                        , resultOutput = output } = withFrozenCallStack $ do
-    env <- getTestEnv
-    when (exitCode /= ExitSuccess && not (testShouldFail env)) $
-        assertFailure $ "Command " ++ cmd ++ " failed.\n" ++
-        "Output:\n" ++ output ++ "\n"
-    when (exitCode == ExitSuccess && testShouldFail env) $
-        assertFailure $ "Command " ++ cmd ++ " succeeded.\n" ++
-        "Output:\n" ++ output ++ "\n"
-    return r
-
-initWorkDir :: TestM ()
-initWorkDir = do
-    env <- getTestEnv
-    liftIO $ createDirectoryIfMissing True (testWorkDir env)
 
 -- | Record a header to help identify the output to the expect
 -- log.  Unlike the 'recordLog', we don't record all arguments;
@@ -698,46 +685,21 @@ recordHeader args = do
     env <- getTestEnv
     let mode = testRecordMode env
         str_header = "# " ++ intercalate " " args ++ "\n"
-        header = C.pack str_header
+        rec_header = C.pack str_header
     case mode of
         DoNotRecord -> return ()
         _ -> do
             initWorkDir
             liftIO $ putStr str_header
-            liftIO $ C.appendFile (testWorkDir env </> "test.log") header
-            liftIO $ C.appendFile (testActualFile env) header
+            liftIO $ C.appendFile (testWorkDir env </> "test.log") rec_header
+            liftIO $ C.appendFile (testActualFile env) rec_header
 
-recordLog :: Result -> TestM ()
-recordLog res = do
-    env <- getTestEnv
-    let mode = testRecordMode env
-    initWorkDir
-    liftIO $ C.appendFile (testWorkDir env </> "test.log")
-                         (C.pack $ "+ " ++ resultCommand res ++ "\n"
-                            ++ resultOutput res ++ "\n\n")
-    liftIO . C.appendFile (testActualFile env) . C.pack $
-        case mode of
-            RecordAll    -> unlines (lines (resultOutput res))
-            RecordMarked -> getMarkedOutput (resultOutput res)
-            DoNotRecord  -> ""
-
-getMarkedOutput :: String -> String -- trailing newline
-getMarkedOutput out = unlines (go (lines out) False)
-  where
-    go [] _ = []
-    go (x:xs) True
-        | "-----END CABAL OUTPUT-----"   `isPrefixOf` x
-                    =     go xs False
-        | otherwise = x : go xs True
-    go (x:xs) False
-        -- NB: Windows has extra goo at the end
-        | "-----BEGIN CABAL OUTPUT-----" `isPrefixOf` x
-                    = go xs True
-        | otherwise = go xs False
 
 ------------------------------------------------------------------------
 -- * Test helpers
 
+------------------------------------------------------------------------
+-- * Subprocess run results
 assertFailure :: WithCallStack (String -> m ())
 assertFailure msg = withFrozenCallStack $ error msg
 
@@ -873,7 +835,7 @@ hasProfiledLibraries = do
     ghc_path <- programPathM ghcProgram
     let prof_test_hs = testWorkDir env </> "Prof.hs"
     liftIO $ writeFile prof_test_hs "module Prof where"
-    r <- liftIO $ run (testVerbosity env) (Just (testCurrentDir env))
+    r <- liftIO $ run (testVerbosity env) (Just $ testCurrentDir env)
                       (testEnvironment env) ghc_path ["-prof", "-c", prof_test_hs]
                       Nothing
     return (resultExitCode r == ExitSuccess)
@@ -887,6 +849,44 @@ hasCabalShared :: TestM Bool
 hasCabalShared = do
   env <- getTestEnv
   return (testHaveCabalShared env)
+
+
+anyCabalVersion :: WithCallStack ( String -> TestM Bool )
+anyCabalVersion = isCabalVersion any
+
+allCabalVersion :: WithCallStack ( String -> TestM Bool )
+allCabalVersion = isCabalVersion all
+
+-- Used by cabal-install tests to determine which Cabal library versions are
+-- available. Given a version range, and a predicate on version ranges,
+-- are there any installed packages Cabal library
+-- versions which satisfy these.
+isCabalVersion :: WithCallStack (((Version -> Bool) -> [Version] -> Bool) -> String -> TestM Bool)
+isCabalVersion decide range = do
+  env <- getTestEnv
+  cabal_pkgs <- ghcPkg_raw' $ ["--global", "list", "Cabal", "--simple"] ++ ["--package-db=" ++ db | Just db <- [testPackageDbPath env]]
+  let pkg_versions :: [PackageIdentifier] = mapMaybe simpleParsec (words (resultOutput cabal_pkgs))
+  vr <- case eitherParsec range of
+          Left err -> fail err
+          Right vr -> return vr
+  return $ decide (`withinRange` vr)  (map pkgVersion pkg_versions)
+
+-- | Skip a test unless any available Cabal library version matches the predicate.
+skipUnlessAnyCabalVersion :: String -> TestM ()
+skipUnlessAnyCabalVersion range = skipUnless ("needs any Cabal " ++ range) =<< anyCabalVersion range
+
+
+-- | Skip a test if any available Cabal library version matches the predicate.
+skipIfAnyCabalVersion :: String -> TestM ()
+skipIfAnyCabalVersion range = skipIf ("incompatible with Cabal " ++ range) =<< anyCabalVersion range
+
+-- | Skip a test unless all Cabal library versions match the predicate.
+skipUnlessAllCabalVersion :: String -> TestM ()
+skipUnlessAllCabalVersion range = skipUnless ("needs all Cabal " ++ range) =<< allCabalVersion range
+
+-- | Skip a test if all the Cabal library version matches a predicate.
+skipIfAllCabalVersion :: String -> TestM ()
+skipIfAllCabalVersion range = skipIf ("incompatible with Cabal " ++ range) =<< allCabalVersion range
 
 isGhcVersion :: WithCallStack (String -> TestM Bool)
 isGhcVersion range = do
@@ -942,24 +942,6 @@ getOpenFilesLimit = liftIO $ do
         _                                     -> return Nothing
 #endif
 
-hasCabalForGhc :: TestM Bool
-hasCabalForGhc = do
-    env <- getTestEnv
-    ghc_program <- requireProgramM ghcProgram
-    (runner_ghc_program, _) <- liftIO $ requireProgram
-        (testVerbosity env)
-        ghcProgram
-        (runnerProgramDb (testScriptEnv env))
-
-    -- TODO: I guess, to be more robust what we should check for
-    -- specifically is that the Cabal library we want to use
-    -- will be picked up by the package db stack of ghc-program
-
-    -- liftIO $ putStrLn $ "ghc_program:        " ++ show ghc_program
-    -- liftIO $ putStrLn $ "runner_ghc_program: " ++ show runner_ghc_program
-
-    return (programPath ghc_program == programPath runner_ghc_program)
-
 -- | If you want to use a Custom setup with new-build, it needs to
 -- be 1.20 or later.  Ordinarily, Cabal can go off and build a
 -- sufficiently recent Cabal if necessary, but in our test suite,
@@ -994,8 +976,7 @@ expectBrokenIf True ticket m = expectBroken ticket m
 expectBrokenUnless :: Bool -> Int -> TestM a -> TestM ()
 expectBrokenUnless b = expectBrokenIf (not b)
 
-------------------------------------------------------------------------
--- * Miscellaneous
+-- * Programs
 
 git :: String -> [String] -> TestM ()
 git cmd args = void $ git' cmd args
@@ -1021,6 +1002,12 @@ ghc' args = do
     recordHeader ["ghc"]
     runProgramM ghcProgram args Nothing
 
+ghcPkg_raw' :: [String] -> TestM Result
+ghcPkg_raw' args = do
+  recordHeader ["ghc-pkg"]
+  runProgramM ghcPkgProgram args Nothing
+
+
 python3 :: [String] -> TestM ()
 python3 args = void $ python3' args
 
@@ -1029,41 +1016,6 @@ python3' args = do
     recordHeader ["python3"]
     runProgramM python3Program args Nothing
 
--- | If a test needs to modify or write out source files, it's
--- necessary to make a hermetic copy of the source files to operate
--- on.  This function arranges for this to be done.
---
--- This requires the test repository to be a Git checkout, because
--- we use the Git metadata to figure out what files to copy into the
--- hermetic copy.
---
--- Also see 'withSourceCopyDir'.
-withSourceCopy :: TestM a -> TestM a
-withSourceCopy m = do
-    env <- getTestEnv
-    let cwd  = testCurrentDir env
-        dest = testSourceCopyDir env
-    r <- git' "ls-files" ["--cached", "--modified"]
-    forM_ (lines (resultOutput r)) $ \f -> do
-        unless (isTestFile f) $ do
-            liftIO $ createDirectoryIfMissing True (takeDirectory (dest </> f))
-            liftIO $ copyFile (cwd </> f) (dest </> f)
-    withReaderT (\nenv -> nenv { testHaveSourceCopy = True }) m
-
--- | If a test needs to modify or write out source files, it's
--- necessary to make a hermetic copy of the source files to operate
--- on.  This function arranges for this to be done in a subdirectory
--- with a given name, so that tests that are sensitive to the path
--- that they're running in (e.g., autoconf tests) can run.
---
--- This requires the test repository to be a Git checkout, because
--- we use the Git metadata to figure out what files to copy into the
--- hermetic copy.
---
--- Also see 'withSourceCopy'.
-withSourceCopyDir :: FilePath -> TestM a -> TestM a
-withSourceCopyDir dir =
-  withReaderT (\nenv -> nenv { testSourceCopyRelativeDir = dir }) . withSourceCopy
 
 -- | Look up the 'InstalledPackageId' of a package name.
 getIPID :: String -> TestM String
@@ -1125,29 +1077,13 @@ withSymlink oldpath newpath0 act = do
 
 writeSourceFile :: FilePath -> String -> TestM ()
 writeSourceFile fp s = do
-    requireHasSourceCopy
     cwd <- fmap testCurrentDir getTestEnv
     liftIO $ writeFile (cwd </> fp) s
 
 copySourceFileTo :: FilePath -> FilePath -> TestM ()
 copySourceFileTo src dest = do
-    requireHasSourceCopy
     cwd <- fmap testCurrentDir getTestEnv
     liftIO $ copyFile (cwd </> src) (cwd </> dest)
-
-requireHasSourceCopy :: TestM ()
-requireHasSourceCopy = do
-    env <- getTestEnv
-    unless (testHaveSourceCopy env) $ do
-        error "This operation requires a source copy; use withSourceCopy and 'git add' all test files"
-
--- NB: Keep this synchronized with partitionTests
-isTestFile :: FilePath -> Bool
-isTestFile f =
-    case takeExtensions f of
-        ".test.hs"      -> True
-        ".multitest.hs" -> True
-        _               -> False
 
 -- | Work around issue #4515 (store paths exceeding the Windows path length
 -- limit) by creating a temporary directory for the new-build store. This

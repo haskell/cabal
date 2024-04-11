@@ -8,6 +8,7 @@
 module Distribution.Client.ProjectConfig
   ( -- * Types for project config
     ProjectConfig (..)
+  , ProjectConfigToParse (..)
   , ProjectConfigBuildOnly (..)
   , ProjectConfigShared (..)
   , ProjectConfigProvenance (..)
@@ -57,10 +58,11 @@ module Distribution.Client.ProjectConfig
   ) where
 
 import Distribution.Client.Compat.Prelude
+import Text.PrettyPrint (render)
 import Prelude ()
 
 import Distribution.Client.Glob
-  ( isTrivialFilePathGlob
+  ( isTrivialRootedGlob
   )
 import Distribution.Client.ProjectConfig.Legacy
 import Distribution.Client.ProjectConfig.Types
@@ -106,6 +108,7 @@ import Distribution.Solver.Types.PackageConstraint
 import Distribution.Solver.Types.Settings
 import Distribution.Solver.Types.SourcePackage
 
+import Distribution.Client.Errors
 import Distribution.Client.Setup
   ( defaultMaxBackjumps
   , defaultSolver
@@ -209,7 +212,6 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Numeric (showHex)
 
-import Distribution.Client.Errors
 import Network.URI
   ( URI (..)
   , URIAuth (..)
@@ -217,11 +219,20 @@ import Network.URI
   , uriToString
   )
 import System.Directory
+  ( canonicalizePath
+  , doesDirectoryExist
+  , doesFileExist
+  , getCurrentDirectory
+  , getDirectoryContents
+  , getHomeDirectory
+  )
 import System.FilePath hiding (combine)
 import System.IO
   ( IOMode (ReadMode)
   , withBinaryFile
   )
+
+import Distribution.Solver.Types.ProjectConfigPath
 
 ----------------------------------------
 -- Resolving configuration to settings
@@ -552,7 +563,7 @@ findProjectRoot verbosity mprojectDir mprojectFile = do
 
 probeProjectRoot :: Maybe FilePath -> IO (Either BadProjectRoot ProjectRoot)
 probeProjectRoot mprojectFile = do
-  startdir <- getCurrentDirectory
+  startdir <- System.Directory.getCurrentDirectory
   homedir <- getHomeDirectory
   probe startdir homedir
   where
@@ -621,32 +632,25 @@ withGlobalConfig verbosity gcf with = do
   with globalConfig
 
 withProjectOrGlobalConfig
-  :: Verbosity
-  -- ^ verbosity
-  -> Flag Bool
+  :: Flag Bool
   -- ^ whether to ignore local project (--ignore-project flag)
-  -> Flag FilePath
-  -- ^ @--cabal-config@
   -> IO a
-  -- ^ with project
-  -> (ProjectConfig -> IO a)
-  -- ^ without project
+  -- ^ continuation with project
   -> IO a
-withProjectOrGlobalConfig verbosity (Flag True) gcf _with without = do
-  globalConfig <- runRebuild "" $ readGlobalConfig verbosity gcf
-  without globalConfig
-withProjectOrGlobalConfig verbosity _ignorePrj gcf with without =
-  withProjectOrGlobalConfig' verbosity gcf with without
+  -- ^ continuation without project
+  -> IO a
+withProjectOrGlobalConfig (Flag True) _with without = do
+  without
+withProjectOrGlobalConfig _ignorePrj with without =
+  withProjectOrGlobalConfig' with without
 
 withProjectOrGlobalConfig'
-  :: Verbosity
-  -> Flag FilePath
+  :: IO a
+  -- ^ continuation with project
   -> IO a
-  -> (ProjectConfig -> IO a)
+  -- ^ continuation without project
   -> IO a
-withProjectOrGlobalConfig' verbosity globalConfigFlag with without = do
-  globalConfig <- runRebuild "" $ readGlobalConfig verbosity globalConfigFlag
-
+withProjectOrGlobalConfig' with without = do
   catch with $
     \case
       (BadPackageLocations prov locs)
@@ -654,8 +658,8 @@ withProjectOrGlobalConfig' verbosity globalConfigFlag with without = do
         , let
             isGlobErr (BadLocGlobEmptyMatch _) = True
             isGlobErr _ = False
-        , any isGlobErr locs ->
-            without globalConfig
+        , any isGlobErr locs -> do
+            without
       err -> throwIO err
 
 -- | Read all the config relevant for a project. This includes the project
@@ -748,7 +752,7 @@ readProjectFileSkeleton
       then do
         monitorFiles [monitorFileHashed extensionFile]
         pcs <- liftIO readExtensionFile
-        monitorFiles $ map monitorFileHashed (projectSkeletonImports pcs)
+        monitorFiles $ map monitorFileHashed (projectConfigPathRoot <$> projectSkeletonImports pcs)
         pure pcs
       else do
         monitorFiles [monitorNonExistentFile extensionFile]
@@ -758,7 +762,7 @@ readProjectFileSkeleton
 
       readExtensionFile =
         reportParseResult verbosity extensionDescription extensionFile
-          =<< parseProjectSkeleton distDownloadSrcDirectory httpTransport verbosity [] extensionFile
+          =<< parseProject extensionFile distDownloadSrcDirectory httpTransport verbosity . ProjectConfigToParse
           =<< BS.readFile extensionFile
 
 -- | Render the 'ProjectConfig' format.
@@ -795,7 +799,7 @@ readGlobalConfig verbosity configFileFlag = do
 reportParseResult :: Verbosity -> String -> FilePath -> OldParser.ParseResult ProjectConfigSkeleton -> IO ProjectConfigSkeleton
 reportParseResult verbosity _filetype filename (OldParser.ParseOk warnings x) = do
   unless (null warnings) $
-    let msg = unlines (map (OldParser.showPWarning (intercalate ", " $ filename : projectSkeletonImports x)) warnings)
+    let msg = unlines (map (OldParser.showPWarning (intercalate ", " $ filename : (projectConfigPathRoot <$> projectSkeletonImports x))) warnings)
      in warn verbosity msg
   return x
 reportParseResult verbosity filetype filename (OldParser.ParseFailed err) =
@@ -879,7 +883,7 @@ renderBadPackageLocations (BadPackageLocations provenance bpls)
 
     renderExplicit =
       "When using configuration(s) from "
-        ++ intercalate ", " (mapMaybe getExplicit (Set.toList provenance))
+        ++ intercalate ", " (render . docProjectConfigPath <$> mapMaybe getExplicit (Set.toList provenance))
         ++ ", the following errors occurred:\n"
         ++ renderErrors renderBadPackageLocation
 
@@ -956,7 +960,7 @@ renderBadPackageLocationMatch bplm = case bplm of
       ++ "' contains multiple "
       ++ ".cabal files (which is not currently supported)."
 
--- | Given the project config,
+-- | Determines the location of all packages mentioned in the project configuration.
 --
 -- Throws 'BadPackageLocations'.
 findProjectPackages
@@ -986,11 +990,7 @@ findProjectPackages
       findPackageLocation
         :: Bool
         -> String
-        -> Rebuild
-            ( Either
-                BadPackageLocation
-                [ProjectPackageLocation]
-            )
+        -> Rebuild (Either BadPackageLocation [ProjectPackageLocation])
       findPackageLocation _required@True pkglocstr =
         -- strategy: try first as a file:// or http(s):// URL.
         -- then as a file glob (usually encompassing single file)
@@ -1011,13 +1011,7 @@ findProjectPackages
         , checkIsFileGlobPackage
         , checkIsSingleFilePackage
           :: String
-          -> Rebuild
-              ( Maybe
-                  ( Either
-                      BadPackageLocation
-                      [ProjectPackageLocation]
-                  )
-              )
+          -> Rebuild (Maybe (Either BadPackageLocation [ProjectPackageLocation]))
       checkIsUriPackage pkglocstr =
         case parseAbsoluteURI pkglocstr of
           Just
@@ -1050,7 +1044,7 @@ findProjectPackages
             matches <- matchFileGlob glob
             case matches of
               []
-                | isJust (isTrivialFilePathGlob glob) ->
+                | isJust (isTrivialRootedGlob glob) ->
                     return
                       ( Left
                           ( BadPackageLocationFile
@@ -1064,7 +1058,7 @@ findProjectPackages
                     <$> traverse checkFilePackageMatch matches
                 return $! case (failures, pkglocs) of
                   ([failure], [])
-                    | isJust (isTrivialFilePathGlob glob) ->
+                    | isJust (isTrivialRootedGlob glob) ->
                         Left (BadPackageLocationFile failure)
                   (_, []) -> Left (BadLocGlobBadMatches pkglocstr failures)
                   _ -> Right pkglocs
@@ -1133,9 +1127,9 @@ findProjectPackages
 --
 -- For a directory @some/dir/@, this is a glob of the form @some/dir/\*.cabal@.
 -- The directory part can be either absolute or relative.
-globStarDotCabal :: FilePath -> FilePathGlob
+globStarDotCabal :: FilePath -> RootedGlob
 globStarDotCabal dir =
-  FilePathGlob
+  RootedGlob
     (if isAbsolute dir then FilePathRoot root else FilePathRelative)
     ( foldr
         (\d -> GlobDir [Literal d])
@@ -1209,6 +1203,7 @@ fetchAndReadSourcePackages
         verbosity
         distDirLayout
         projectConfigShared
+        (fromFlag (projectConfigOfflineMode projectConfigBuildOnly))
         [repo | ProjectPackageRemoteRepo repo <- pkgLocations]
 
     let pkgsNamed =
@@ -1325,6 +1320,7 @@ syncAndReadSourcePackagesRemoteRepos
   :: Verbosity
   -> DistDirLayout
   -> ProjectConfigShared
+  -> Bool
   -> [SourceRepoList]
   -> Rebuild [PackageSpecifier (SourcePackage UnresolvedPkgLoc)]
 syncAndReadSourcePackagesRemoteRepos
@@ -1333,6 +1329,7 @@ syncAndReadSourcePackagesRemoteRepos
   ProjectConfigShared
     { projectConfigProgPathExtra
     }
+  offlineMode
   repos = do
     repos' <-
       either reportSourceRepoProblems return $
@@ -1351,11 +1348,10 @@ syncAndReadSourcePackagesRemoteRepos
             | (repo, rloc, rtype, vcs) <- repos'
             ]
 
-    -- TODO: pass progPathExtra on to 'configureVCS'
-    let _progPathExtra = fromNubList projectConfigProgPathExtra
+    let progPathExtra = fromNubList projectConfigProgPathExtra
     getConfiguredVCS <- delayInitSharedResources $ \repoType ->
       let vcs = Map.findWithDefault (error $ "Unknown VCS: " ++ prettyShow repoType) repoType knownVCSs
-       in configureVCS verbosity {-progPathExtra-} vcs
+       in configureVCS verbosity progPathExtra vcs
 
     concat
       <$> sequenceA
@@ -1388,12 +1384,18 @@ syncAndReadSourcePackagesRemoteRepos
 
         -- For syncing we don't care about different 'SourceRepo' values that
         -- are just different subdirs in the same repo.
-        syncSourceRepos
-          verbosity
-          vcs
-          [ (repo, repoPath)
-          | (repo, _, repoPath) <- repoGroupWithPaths
-          ]
+        -- Do not sync source repositories when `--offline` flag applied.
+        if not offlineMode
+          then
+            syncSourceRepos
+              verbosity
+              vcs
+              [ (repo, repoPath)
+              | (repo, _, repoPath) <- repoGroupWithPaths
+              ]
+          else do
+            liftIO . warn verbosity $ "--offline was specified, skipping sync of repositories:"
+            liftIO . for_ repoGroupWithPaths $ \(repo, _, _) -> warn verbosity $ srpLocation repo
 
         -- Run post-checkout-command if it is specified
         for_ repoGroupWithPaths $ \(repo, _, repoPath) ->

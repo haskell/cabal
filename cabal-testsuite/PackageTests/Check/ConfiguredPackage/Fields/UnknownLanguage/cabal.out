@@ -1,4 +1,4 @@
 # cabal check
 The following errors are likely to affect your build negatively:
-Error: Unknown languages: Haskell2030
+Error: [unknown-languages] Unknown languages: Haskell2030
 Error: Hackage would reject this package.

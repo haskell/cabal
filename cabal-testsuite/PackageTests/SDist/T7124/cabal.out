@@ -1,4 +1,4 @@
 # cabal v2-sdist
-Wrote tarball sdist to <TMPDIR>/pkg-a-0.tar.gz
+Wrote tarball sdist to <ROOT>/pkg-a-0.tar.gz
 Error: [Cabal-6661]
 filepath wildcard './data.txt' does not match any files.
