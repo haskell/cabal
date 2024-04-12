@@ -21,11 +21,12 @@ module Distribution.Client.ProjectPlanOutput
   , argsEquivalentOfGhcEnvironmentFile
   ) where
 
+import Data.Either
 import Distribution.Client.DistDirLayout
 import Distribution.Client.HashValue (hashValue, showHashValue)
 import Distribution.Client.ProjectBuilding.Types
 import Distribution.Client.ProjectPlanning.Types
-import Distribution.Client.Types.ConfiguredId (confInstId)
+import Distribution.Client.Types.ConfiguredId (ConfiguredId, confInstId)
 import Distribution.Client.Types.PackageLocation (PackageLocation (..))
 import Distribution.Client.Types.Repo (RemoteRepo (..), Repo (..))
 import Distribution.Client.Types.SourceRepo (SourceRepoMaybe, SourceRepositoryPackage (..))
@@ -199,9 +200,9 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
                     J.object $
                       [ comp2str c
                         J..= J.object
-                          ( [ "depends" J..= map (jdisplay . confInstId) (map (\(p, _, _) -> p) ldeps)
-                            , "exe-depends" J..= map (jdisplay . confInstId) edeps
-                            ]
+                          ( handleLibDepends ldeps
+                              ++ [ "exe-depends" J..= map (jdisplay . confInstId) edeps
+                                 ]
                               ++ bin_file c
                           )
                       | (c, (ldeps, edeps)) <-
@@ -212,10 +213,10 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
                       ]
                in ["components" J..= components]
             ElabComponent comp ->
-              [ "depends" J..= map (jdisplay . confInstId) (map (\(p, _, _) -> p) $ elabLibDependencies elab)
-              , "exe-depends" J..= map jdisplay (elabExeDependencies elab)
-              , "component-name" J..= J.String (comp2str (compSolverName comp))
-              ]
+              handleLibDepends (elabLibDependencies elab)
+                ++ [ "exe-depends" J..= map jdisplay (elabExeDependencies elab)
+                   , "component-name" J..= J.String (comp2str (compSolverName comp))
+                   ]
                 ++ bin_file (compSolverName comp)
       where
         -- \| Only add build-info file location if the Setup.hs CLI
@@ -320,6 +321,20 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
               if isInplaceBuildStyle (elabBuildStyle elab)
                 then dist_dir </> "build" </> prettyShow s </> ("lib" ++ prettyShow s) <.> dllExtension plat
                 else InstallDirs.bindir (elabInstallDirs elab) </> ("lib" ++ prettyShow s) <.> dllExtension plat
+
+        handleLibDepends :: [(ConfiguredId, Bool, Maybe PrivateAlias)] -> [J.Pair]
+        handleLibDepends deps =
+          let (publicDeps, privateDeps) =
+                partitionEithers $
+                  map
+                    ( \(p, _, mb) -> case mb of
+                        Nothing -> Left p
+                        Just alias -> Right (alias, p)
+                    )
+                    deps
+           in [ "depends" J..= map (jdisplay . confInstId) publicDeps
+              , "private-depends" J..= J.object (map (\(al, p) -> prettyShow al J..= (jdisplay . confInstId) p) privateDeps)
+              ]
 
     comp2str :: ComponentDeps.Component -> String
     comp2str = prettyShow
