@@ -1,0 +1,23 @@
+synopsis: Add support for building profiled dynamic way
+packages: Cabal Cabal-syntax cabal-install
+prs: #9900
+issues: #4816
+
+description: {
+Add support for profiled dynamic way
+
+New options for cabal.project and ./Setup interface:
+
+* `profiling-shared`: Enable building profiling dynamic way
+* Passing `--enable-profiling` and `--enable-executable-dynamic` builds
+  profiled dynamic executables.
+
+Support for using `profiling-shared` is guarded behind a constraint
+which ensures you are using `Cabal >= 3.13`.
+
+In the cabal file:
+
+* `ghc-prof-shared-options`, for passing options when building in
+  profiling dynamic way
+
+}

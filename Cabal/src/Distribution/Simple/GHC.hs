@@ -61,7 +61,7 @@ module Distribution.Simple.GHC
   , Internal.componentCcGhcOptions
   , getGhcAppDir
   , getLibDir
-  , isDynamic
+  , compilerBuildWay
   , getGlobalPackageDB
   , pkgRoot
 
@@ -98,6 +98,7 @@ import Distribution.Simple.BuildPaths
 import Distribution.Simple.Compiler
 import Distribution.Simple.Errors
 import qualified Distribution.Simple.GHC.Build as GHC
+import Distribution.Simple.GHC.Build.Modules (BuildWay (..))
 import Distribution.Simple.GHC.Build.Utils
 import Distribution.Simple.GHC.EnvironmentParser
 import Distribution.Simple.GHC.ImplInfo
@@ -747,11 +748,28 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
           , ghcOptObjSuffix = toFlag "p_o"
           , ghcOptExtra = hcProfOptions GHC libBi
           }
-    ghcArgs
-      | withVanillaLib lbi = vanillaArgs
-      | withSharedLib lbi = sharedArgs
-      | withProfLib lbi = profArgs
-      | otherwise = error "libAbiHash: Can't find an enabled library way"
+    profDynArgs =
+      vanillaArgs
+        `mappend` mempty
+          { ghcOptProfilingMode = toFlag True
+          , ghcOptProfilingAuto =
+              Internal.profDetailLevelFlag
+                True
+                (withProfLibDetail lbi)
+          , ghcOptDynLinkMode = toFlag GhcDynamicOnly
+          , ghcOptFPic = toFlag True
+          , ghcOptHiSuffix = toFlag "p_dyn_hi"
+          , ghcOptObjSuffix = toFlag "p_dyn_o"
+          , ghcOptExtra = hcProfSharedOptions GHC libBi
+          }
+    ghcArgs =
+      let (libWays, _, _) = buildWays lbi
+       in case libWays (componentIsIndefinite clbi) of
+            (ProfDynWay : _) -> profDynArgs
+            (ProfWay : _) -> profArgs
+            (StaticWay : _) -> vanillaArgs
+            (DynWay : _) -> sharedArgs
+            _ -> error "libAbiHash: Can't find an enabled library way"
 
   (ghcProg, _) <- requireProgram verbosity ghcProgram (withPrograms lbi)
 
@@ -870,75 +888,90 @@ installLib
   -> ComponentLocalBuildInfo
   -> IO ()
 installLib verbosity lbi targetDir dynlibTargetDir _builtDir pkg lib clbi = do
+  let
+    (wantedLibWays, _, _) = buildWays lbi
+    isIndef = componentIsIndefinite clbi
+    libWays = wantedLibWays isIndef
+
+  info verbosity ("Wanted install ways: " ++ show libWays)
+
   -- copy .hi files over:
-  whenVanilla $ copyModuleFiles $ Suffix "hi"
-  whenProf $ copyModuleFiles $ Suffix "p_hi"
-  whenShared $ copyModuleFiles $ Suffix "dyn_hi"
+  forM_ (wantedLibWays isIndef) $ \w -> case w of
+    StaticWay -> copyModuleFiles (Suffix "hi")
+    DynWay -> copyModuleFiles (Suffix "dyn_hi")
+    ProfWay -> copyModuleFiles (Suffix "p_hi")
+    ProfDynWay -> copyModuleFiles (Suffix "p_dyn_hi")
 
   -- copy extra compilation artifacts that ghc plugins may produce
   copyDirectoryIfExists extraCompilationArtifacts
 
   -- copy the built library files over:
-  whenHasCode $ do
-    whenVanilla $ do
-      sequence_
-        [ installOrdinary
+  when (has_code && hasLib) $ do
+    forM_ libWays $ \w -> case w of
+      StaticWay -> do
+        sequence_
+          [ installOrdinary
+            builtDir
+            targetDir
+            (mkGenericStaticLibName (l ++ f))
+          | l <-
+              getHSLibraryName
+                (componentUnitId clbi)
+                : (extraBundledLibs (libBuildInfo lib))
+          , f <- "" : extraLibFlavours (libBuildInfo lib)
+          ]
+        whenGHCi $ installOrdinary builtDir targetDir ghciLibName
+      ProfWay -> do
+        installOrdinary builtDir targetDir profileLibName
+        whenGHCi $ installOrdinary builtDir targetDir ghciProfLibName
+      ProfDynWay -> do
+        installShared
           builtDir
-          targetDir
-          (mkGenericStaticLibName (l ++ f))
-        | l <-
-            getHSLibraryName
-              (componentUnitId clbi)
-              : (extraBundledLibs (libBuildInfo lib))
-        , f <- "" : extraLibFlavours (libBuildInfo lib)
-        ]
-      whenGHCi $ installOrdinary builtDir targetDir ghciLibName
-    whenProf $ do
-      installOrdinary builtDir targetDir profileLibName
-      whenGHCi $ installOrdinary builtDir targetDir ghciProfLibName
-    whenShared $
-      if
-          -- The behavior for "extra-bundled-libraries" changed in version 2.5.0.
-          -- See ghc issue #15837 and Cabal PR #5855.
-          | specVersion pkg < CabalSpecV3_0 -> do
-              sequence_
-                [ installShared
-                  builtDir
-                  dynlibTargetDir
-                  (mkGenericSharedLibName platform compiler_id (l ++ f))
-                | l <- getHSLibraryName uid : extraBundledLibs (libBuildInfo lib)
-                , f <- "" : extraDynLibFlavours (libBuildInfo lib)
-                ]
-          | otherwise -> do
-              sequence_
-                [ installShared
-                  builtDir
-                  dynlibTargetDir
-                  ( mkGenericSharedLibName
-                      platform
-                      compiler_id
-                      (getHSLibraryName uid ++ f)
-                  )
-                | f <- "" : extraDynLibFlavours (libBuildInfo lib)
-                ]
-              sequence_
-                [ do
-                  files <- getDirectoryContents (i builtDir)
-                  let l' =
-                        mkGenericSharedBundledLibName
-                          platform
-                          compiler_id
-                          l
-                  forM_ files $ \file ->
-                    when (l' `isPrefixOf` file) $ do
-                      isFile <- doesFileExist (i $ builtDir </> makeRelativePathEx file)
-                      when isFile $ do
-                        installShared
-                          builtDir
-                          dynlibTargetDir
-                          file
-                | l <- extraBundledLibs (libBuildInfo lib)
-                ]
+          dynlibTargetDir
+          (mkProfSharedLibName platform compiler_id uid)
+      DynWay -> do
+        if
+            -- The behavior for "extra-bundled-libraries" changed in version 2.5.0.
+            -- See ghc issue #15837 and Cabal PR #5855.
+            | specVersion pkg < CabalSpecV3_0 -> do
+                sequence_
+                  [ installShared
+                    builtDir
+                    dynlibTargetDir
+                    (mkGenericSharedLibName platform compiler_id (l ++ f))
+                  | l <- getHSLibraryName uid : extraBundledLibs (libBuildInfo lib)
+                  , f <- "" : extraDynLibFlavours (libBuildInfo lib)
+                  ]
+            | otherwise -> do
+                sequence_
+                  [ installShared
+                    builtDir
+                    dynlibTargetDir
+                    ( mkGenericSharedLibName
+                        platform
+                        compiler_id
+                        (getHSLibraryName uid ++ f)
+                    )
+                  | f <- "" : extraDynLibFlavours (libBuildInfo lib)
+                  ]
+                sequence_
+                  [ do
+                    files <- getDirectoryContents (i builtDir)
+                    let l' =
+                          mkGenericSharedBundledLibName
+                            platform
+                            compiler_id
+                            l
+                    forM_ files $ \file ->
+                      when (l' `isPrefixOf` file) $ do
+                        isFile <- doesFileExist (i $ builtDir </> makeRelativePathEx file)
+                        when isFile $ do
+                          installShared
+                            builtDir
+                            dynlibTargetDir
+                            file
+                  | l <- extraBundledLibs (libBuildInfo lib)
+                  ]
   where
     -- See Note [Symbolic paths] in Distribution.Utils.Path
     i = interpretSymbolicPathLBI lbi
@@ -997,11 +1030,7 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir pkg lib clbi = do
       Platform JavaScript _ -> True
       _ -> False
     has_code = not (componentIsIndefinite clbi)
-    whenHasCode = when has_code
-    whenVanilla = when (hasLib && withVanillaLib lbi)
-    whenProf = when (hasLib && withProfLib lbi && has_code)
     whenGHCi = when (hasLib && withGHCiLib lbi && has_code)
-    whenShared = when (hasLib && withSharedLib lbi && has_code)
 
 -- -----------------------------------------------------------------------------
 -- Registering

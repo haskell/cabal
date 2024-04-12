@@ -387,6 +387,14 @@ ghc-prof-options
     .. math::
         {\left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}]^c}}^+_{} \right\}}^\ast_{\bullet}
 
+ghc-prof-shared-options
+    * Monoidal field
+    * Available since ``cabal-version: 3.14``.
+    * Documentation of :pkg-field:`library:ghc-prof-shared-options`
+
+    .. math::
+        {\left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}]^c}}^+_{} \right\}}^\ast_{\bullet}
+
 ghc-shared-options
     * Monoidal field
     * Documentation of :pkg-field:`library:ghc-shared-options`
@@ -404,6 +412,14 @@ ghcjs-options
 ghcjs-prof-options
     * Monoidal field
     * Documentation of :pkg-field:`library:ghcjs-prof-options`
+
+    .. math::
+        {\left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}]^c}}^+_{} \right\}}^\ast_{\bullet}
+
+ghcjs-prof-shared-options
+    * Monoidal field
+    * Available since ``cabal-version: 3.14``.
+    * Documentation of :pkg-field:`library:ghcjs-prof-shared-options`
 
     .. math::
         {\left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}]^c}}^+_{} \right\}}^\ast_{\bullet}

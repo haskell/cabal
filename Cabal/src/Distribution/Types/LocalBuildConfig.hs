@@ -151,6 +151,8 @@ data BuildOptions = BuildOptions
   { withVanillaLib :: Bool
   -- ^ Whether to build normal libs.
   , withProfLib :: Bool
+  -- ^ Whether to build normal libs.
+  , withProfLibShared :: Bool
   -- ^ Whether to build profiling versions of libs.
   , withSharedLib :: Bool
   -- ^ Whether to build shared versions of libs.
@@ -211,6 +213,7 @@ buildOptionsConfigFlags (BuildOptions{..}) =
     , configGHCiLib = toFlag $ withGHCiLib
     , configProfExe = toFlag $ withProfExe
     , configProfLib = toFlag $ withProfLib
+    , configProfShared = toFlag $ withProfLibShared
     , configProf = mempty
     , -- configProfDetail is for exe+lib, but overridden by configProfLibDetail
       -- so we specify both so we can specify independently

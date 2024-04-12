@@ -81,6 +81,7 @@ import Distribution.PackageDescription.Configuration
 import Distribution.PackageDescription.PrettyPrint
 import Distribution.Simple.BuildTarget
 import Distribution.Simple.BuildToolDepends
+import Distribution.Simple.BuildWay
 import Distribution.Simple.Compiler
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.PackageIndex (InstalledPackageIndex, lookupUnitId)
@@ -709,7 +710,7 @@ computeLocalBuildConfig cfg comp programDb = do
             -- rely on them. By the time that bug was fixed, ghci had
             -- been changed to read shared libraries instead of archive
             -- files (see next code block).
-            not (GHC.isDynamic comp)
+            not (GHC.compilerBuildWay comp `elem` [DynWay, ProfDynWay])
           CompilerId GHCJS _ ->
             not (GHCJS.isDynamic comp)
           _ -> False
@@ -734,7 +735,7 @@ computeLocalBuildConfig cfg comp programDb = do
             CompilerId GHC _ ->
               -- if ghc is dynamic, then ghci needs a shared
               -- library, so we build one by default.
-              GHC.isDynamic comp
+              GHC.compilerBuildWay comp == DynWay
             CompilerId GHCJS _ ->
               GHCJS.isDynamic comp
             _ -> False
@@ -753,12 +754,6 @@ computeLocalBuildConfig cfg comp programDb = do
       withDynExe_ = fromFlag $ configDynExe cfg
 
       withFullyStaticExe_ = fromFlag $ configFullyStaticExe cfg
-
-  when (withDynExe_ && not withSharedLib_) $
-    warn verbosity $
-      "Executables will use dynamic linking, but a shared library "
-        ++ "is not being built. Linking will fail if any executables "
-        ++ "depend on the library."
 
   setProfiling <- configureProfiling verbosity cfg comp
 
@@ -792,6 +787,7 @@ computeLocalBuildConfig cfg comp programDb = do
             , withDynExe = withDynExe_
             , withFullyStaticExe = withFullyStaticExe_
             , withProfLib = False
+            , withProfLibShared = False
             , withProfLibDetail = ProfDetailNone
             , withProfExe = False
             , withProfExeDetail = ProfDetailNone
@@ -806,6 +802,20 @@ computeLocalBuildConfig cfg comp programDb = do
             , libCoverage = False
             , relocatable = fromFlagOrDefault False $ configRelocatable cfg
             }
+
+  -- Dynamic executable, but no shared vanilla libraries
+  when (LBC.withDynExe buildOptions && not (LBC.withProfExe buildOptions) && not (LBC.withSharedLib buildOptions)) $
+    warn verbosity $
+      "Executables will use dynamic linking, but a shared library "
+        ++ "is not being built. Linking will fail if any executables "
+        ++ "depend on the library."
+
+  -- Profiled dynamic executable, but no shared profiling libraries
+  when (LBC.withDynExe buildOptions && LBC.withProfExe buildOptions && not (LBC.withProfLibShared buildOptions)) $
+    warn verbosity $
+      "Executables will use profiled dynamic linking, but a profiled shared library "
+        ++ "is not being built. Linking will fail if any executables "
+        ++ "depend on the library."
 
   return $
     LBC.LocalBuildConfig
@@ -1732,7 +1742,7 @@ configureCoverage verbosity cfg comp = do
 --
 -- Note that @--enable-executable-profiling@ also affects profiling
 -- of benchmarks and (non-detailed) test suites.
-computeEffectiveProfiling :: ConfigFlags -> (Bool {- lib -}, Bool {- exe -})
+computeEffectiveProfiling :: ConfigFlags -> (Bool {- lib vanilla-}, Bool {- lib shared -}, Bool {- exe -})
 computeEffectiveProfiling cfg =
   -- The --profiling flag sets the default for both libs and exes,
   -- but can be overridden by --library-profiling, or the old deprecated
@@ -1740,15 +1750,20 @@ computeEffectiveProfiling cfg =
   --
   -- The --profiling-detail and --library-profiling-detail flags behave
   -- similarly
-  let tryExeProfiling =
+  let dynamicExe = fromFlagOrDefault False (configDynExe cfg)
+      tryExeProfiling =
         fromFlagOrDefault
           False
           (mappend (configProf cfg) (configProfExe cfg))
       tryLibProfiling =
         fromFlagOrDefault
-          tryExeProfiling
-          (mappend (configProf cfg) (configProfLib cfg))
-   in (tryLibProfiling, tryExeProfiling)
+          (tryExeProfiling && not dynamicExe)
+          (configProfLib cfg)
+      tryLibProfilingShared =
+        fromFlagOrDefault
+          (tryExeProfiling && dynamicExe)
+          (configProfShared cfg)
+   in (tryLibProfiling, tryLibProfilingShared, tryExeProfiling)
 
 -- | Select and apply profiling settings for the build based on the
 -- 'ConfigFlags' and 'Compiler'.
@@ -1758,7 +1773,7 @@ configureProfiling
   -> Compiler
   -> IO (LBC.BuildOptions -> LBC.BuildOptions)
 configureProfiling verbosity cfg comp = do
-  let (tryLibProfiling, tryExeProfiling) = computeEffectiveProfiling cfg
+  let (tryLibProfiling, tryLibProfilingShared, tryExeProfiling) = computeEffectiveProfiling cfg
 
       tryExeProfileLevel =
         fromFlagOrDefault
@@ -1785,8 +1800,8 @@ configureProfiling verbosity cfg comp = do
         return ProfDetailDefault
       checkProfileLevel other = return other
 
-  (exeProfWithoutLibProf, applyProfiling) <-
-    if profilingSupported comp
+  applyProfiling <-
+    if profilingSupported comp && (profilingVanillaSupportedOrUnknown comp || profilingDynamicSupportedOrUnknown comp)
       then do
         exeLevel <- checkProfileLevel tryExeProfileLevel
         libLevel <- checkProfileLevel tryLibProfileLevel
@@ -1797,11 +1812,46 @@ configureProfiling verbosity cfg comp = do
                 , LBC.withProfExe = tryExeProfiling
                 , LBC.withProfExeDetail = exeLevel
                 }
-        return (tryExeProfiling && not tryLibProfiling, apply)
+        let compilerSupportsProfilingDynamic = profilingDynamicSupportedOrUnknown comp
+        apply2 <-
+          if compilerSupportsProfilingDynamic
+            then -- Case 1: We support profiled shared libraries so turn on shared profiling
+            -- libraries if the user asked for it.
+            return $ \buildOptions -> apply buildOptions{LBC.withProfLibShared = tryLibProfilingShared}
+            else -- Case 2: Compiler doesn't support profiling shared so turn them off
+            do
+              -- If we wanted to enable profiling shared libraries.. tell the
+              -- user we couldn't.
+              when (profilingVanillaSupportedOrUnknown comp && tryLibProfilingShared) $
+                warn
+                  verbosity
+                  ( "The compiler "
+                      ++ showCompilerId comp
+                      ++ " does not support "
+                      ++ "profiling shared objects. Static profiled objects "
+                      ++ "will be built."
+                  )
+              return $ \buildOptions ->
+                let original_options = apply buildOptions
+                 in original_options
+                      { LBC.withProfLibShared = False
+                      , LBC.withProfLib = profilingVanillaSupportedOrUnknown comp && (tryLibProfilingShared || LBC.withProfLib original_options)
+                      , LBC.withDynExe = if LBC.withProfExe original_options then False else LBC.withDynExe original_options
+                      }
+
+        when (tryExeProfiling && not (tryLibProfiling || tryLibProfilingShared)) $ do
+          warn
+            verbosity
+            ( "Executables will be built with profiling, but library "
+                ++ "profiling is disabled. Linking will fail if any executables "
+                ++ "depend on the library."
+            )
+        return apply2
       else do
         let apply buildOptions =
               buildOptions
                 { LBC.withProfLib = False
+                , LBC.withProfLibShared = False
                 , LBC.withProfLibDetail = ProfDetailNone
                 , LBC.withProfExe = False
                 , LBC.withProfExeDetail = ProfDetailNone
@@ -1814,15 +1864,7 @@ configureProfiling verbosity cfg comp = do
                 ++ " does not support "
                 ++ "profiling. Profiling has been disabled."
             )
-        return (False, apply)
-
-  when exeProfWithoutLibProf $
-    warn
-      verbosity
-      ( "Executables will be built with profiling, but library "
-          ++ "profiling is disabled. Linking will fail if any executables "
-          ++ "depend on the library."
-      )
+        return apply
 
   return applyProfiling
 

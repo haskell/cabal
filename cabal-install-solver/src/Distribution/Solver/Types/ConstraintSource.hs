@@ -41,6 +41,10 @@ data ConstraintSource =
   -- from Cabal >= 3.11
   | ConstraintSourceMultiRepl
 
+  | ConstraintSourceProfiledDynamic
+  -- | Constraint introduced by --enable-profiling-shared, which requires features
+  -- from Cabal >= 3.13
+
   -- | The source of the constraint is not specified.
   | ConstraintSourceUnknown
 
@@ -72,6 +76,8 @@ showConstraintSource ConstraintSourceConfigFlagOrTarget =
     "config file, command line flag, or user target"
 showConstraintSource ConstraintSourceMultiRepl =
     "--enable-multi-repl"
+showConstraintSource ConstraintSourceProfiledDynamic =
+    "--enable-profiling-shared"
 showConstraintSource ConstraintSourceUnknown = "unknown source"
 showConstraintSource ConstraintSetupCabalMinVersion =
     "minimum version of Cabal used by Setup.hs"

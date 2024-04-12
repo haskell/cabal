@@ -58,7 +58,7 @@ import System.Directory (createDirectoryIfMissing, doesFileExist)
 -- -------------------------------------------------------------------------
 -- Haskell Program Coverage
 
-data Way = Vanilla | Prof | Dyn
+data Way = Vanilla | Prof | Dyn | ProfDyn
   deriving (Bounded, Enum, Eq, Read, Show)
 
 hpcDir
@@ -73,6 +73,7 @@ hpcDir distPref way = distPref </> makeRelativePathEx ("hpc" </> wayDir)
       Vanilla -> "vanilla"
       Prof -> "prof"
       Dyn -> "dyn"
+      ProfDyn -> "prof_dyn"
 
 mixDir
   :: SymbolicPath Pkg (Dir Dist)

@@ -1061,7 +1061,7 @@ printPlan
             nubFlag x (Setup.Flag x') | x == x' = Setup.NoFlag
             nubFlag _ f = f
 
-            (tryLibProfiling, tryExeProfiling) =
+            (tryLibProfiling, tryLibProfilingShared, tryExeProfiling) =
               computeEffectiveProfiling fullConfigureFlags
 
             partialConfigureFlags =
@@ -1072,7 +1072,8 @@ printPlan
                     nubFlag tryExeProfiling (configProfExe fullConfigureFlags)
                 , configProfLib =
                     nubFlag tryLibProfiling (configProfLib fullConfigureFlags)
-                    -- Maybe there are more we can add
+                , configProfShared =
+                    nubFlag tryLibProfilingShared (configProfShared fullConfigureFlags)
                 }
          in -- Not necessary to "escape" it, it's just for user output
             unwords . ("" :) $

@@ -490,6 +490,7 @@ instance Semigroup SavedConfig where
           , configVanillaLib = combine configVanillaLib
           , configProfLib = combine configProfLib
           , configProf = combine configProf
+          , configProfShared = combine configProfShared
           , configSharedLib = combine configSharedLib
           , configStaticLib = combine configStaticLib
           , configDynExe = combine configDynExe

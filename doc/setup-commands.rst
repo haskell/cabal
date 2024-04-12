@@ -795,9 +795,20 @@ Miscellaneous options
     Build shared library. This implies a separate compiler run to
     generate position independent code as required on most platforms.
 
+    ``--enable-shared`` is enabled automatically if GHC is dynamically linked or
+    you request to build dynamic executables.
+
 .. option:: --disable-shared
 
     (default) Do not build shared library.
+
+.. option:: --enable-profiling-shared
+
+   Build a profiling shared library.
+
+.. option:: --disable-profiling-shared
+
+   (default) Do not built a profiling shared library.
 
 .. option:: --enable-static
 

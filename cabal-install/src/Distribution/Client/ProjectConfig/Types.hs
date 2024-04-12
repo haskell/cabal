@@ -265,6 +265,7 @@ data PackageConfig = PackageConfig
   , packageConfigFullyStaticExe :: Flag Bool
   , packageConfigProf :: Flag Bool -- TODO: [code cleanup] sort out
   , packageConfigProfLib :: Flag Bool --      this duplication
+  , packageConfigProfShared :: Flag Bool
   , packageConfigProfExe :: Flag Bool --      and consistency
   , packageConfigProfDetail :: Flag ProfDetailLevel
   , packageConfigProfLibDetail :: Flag ProfDetailLevel
