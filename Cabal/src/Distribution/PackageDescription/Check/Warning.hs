@@ -279,7 +279,6 @@ data CheckExplanation
   | MissingSourceControl
   | MissingExpectedDocFiles Bool [FilePath]
   | WrongFieldForExpectedDocFiles Bool String [FilePath]
-  | HasPrivateDependencies
   deriving (Eq, Ord, Show)
 
 -- TODO Some checks have a constructor in list form
@@ -442,7 +441,6 @@ data CheckExplanationID
   | CIMissingSourceControl
   | CIMissingExpectedDocFiles
   | CIWrongFieldForExpectedDocFiles
-  | CIHasPrivateDependencies
   deriving (Eq, Ord, Show, Enum, Bounded)
 
 checkExplanationId :: CheckExplanation -> CheckExplanationID
@@ -584,7 +582,6 @@ checkExplanationId (UnknownDirectory{}) = CIUnknownDirectory
 checkExplanationId (MissingSourceControl{}) = CIMissingSourceControl
 checkExplanationId (MissingExpectedDocFiles{}) = CIMissingExpectedDocFiles
 checkExplanationId (WrongFieldForExpectedDocFiles{}) = CIWrongFieldForExpectedDocFiles
-checkExplanationId (HasPrivateDependencies{}) = CIHasPrivateDependencies
 
 type CheckExplanationIDString = String
 
@@ -731,7 +728,6 @@ ppCheckExplanationId CIUnknownDirectory = "unknown-directory"
 ppCheckExplanationId CIMissingSourceControl = "no-repository"
 ppCheckExplanationId CIMissingExpectedDocFiles = "no-docs"
 ppCheckExplanationId CIWrongFieldForExpectedDocFiles = "doc-place"
-ppCheckExplanationId CIHasPrivateDependencies = "has-private-deps"
 
 -- String: the unrecognised 'CheckExplanationIDString' itself.
 readExplanationID
@@ -1464,10 +1460,6 @@ ppExplanation (WrongFieldForExpectedDocFiles extraDocFileSupport field paths) =
       if extraDocFileSupport
         then "extra-doc-files"
         else "extra-source-files"
-ppExplanation HasPrivateDependencies =
-  "Private dependencies are in a feature-preview state, "
-  ++ "therefore packages using them cannot be uploaded to hackage.\n"
-  ++ "For instance, how would hackage display the private dependencies of the package?"
 
 -- * Formatting utilities
 

@@ -428,8 +428,6 @@ checkPackageDescription
       (PackageBuildImpossible $ IllegalLibraryName pn)
 
     -- § Fields check.
-    checkP (hasPrivateDependencies pkg)
-      (PackageDistInexcusable HasPrivateDependencies)
     checkNull
       category_
       (PackageDistSuspicious MissingFieldCategory)
