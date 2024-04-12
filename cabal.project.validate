@@ -5,3 +5,5 @@ import: project-cabal/constraints.config
 
 tests: True
 write-ghc-environment-files: never
+program-options
+  ghc-options: -Werror

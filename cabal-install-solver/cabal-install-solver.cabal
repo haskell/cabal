@@ -40,11 +40,8 @@ library
     -Wall -Wcompat -Wnoncanonical-monad-instances
     -fwarn-tabs -fwarn-incomplete-uni-patterns
 
-  if impl(ghc <8.8)
+  if impl(ghc < 8.8)
     ghc-options: -Wnoncanonical-monadfail-instances
-
-  if impl(ghc >=8.10)
-    ghc-options: -Wunused-packages
 
   exposed-modules:
     Distribution.Client.Utils.Assertion
@@ -135,7 +132,6 @@ Test-Suite unit-tests
 
    build-depends:
      , base        >= 4.10  && <4.20
-     , Cabal
      , Cabal-syntax
      , cabal-install-solver
      , tasty       >= 1.2.3 && <1.6
