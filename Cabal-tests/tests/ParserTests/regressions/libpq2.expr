@@ -195,6 +195,8 @@ GenericPackageDescription {
             [],
           sharedOptions =
           PerCompilerFlavor [] [],
+          profSharedOptions =
+          PerCompilerFlavor [] [],
           staticOptions =
           PerCompilerFlavor [] [],
           customFieldsBI = [],
@@ -294,6 +296,8 @@ GenericPackageDescription {
                   [],
                 sharedOptions =
                 PerCompilerFlavor [] [],
+                profSharedOptions =
+                PerCompilerFlavor [] [],
                 staticOptions =
                 PerCompilerFlavor [] [],
                 customFieldsBI = [],
@@ -377,6 +381,8 @@ GenericPackageDescription {
                   []
                   [],
                 sharedOptions =
+                PerCompilerFlavor [] [],
+                profSharedOptions =
                 PerCompilerFlavor [] [],
                 staticOptions =
                 PerCompilerFlavor [] [],
@@ -466,6 +472,8 @@ GenericPackageDescription {
                   [],
                 sharedOptions =
                 PerCompilerFlavor [] [],
+                profSharedOptions =
+                PerCompilerFlavor [] [],
                 staticOptions =
                 PerCompilerFlavor [] [],
                 customFieldsBI = [],
@@ -530,6 +538,8 @@ GenericPackageDescription {
                     []
                     [],
                   sharedOptions =
+                  PerCompilerFlavor [] [],
+                  profSharedOptions =
                   PerCompilerFlavor [] [],
                   staticOptions =
                   PerCompilerFlavor [] [],
@@ -598,6 +608,8 @@ GenericPackageDescription {
                           [],
                         sharedOptions =
                         PerCompilerFlavor [] [],
+                        profSharedOptions =
+                        PerCompilerFlavor [] [],
                         staticOptions =
                         PerCompilerFlavor [] [],
                         customFieldsBI = [],
@@ -662,6 +674,8 @@ GenericPackageDescription {
                             []
                             [],
                           sharedOptions =
+                          PerCompilerFlavor [] [],
+                          profSharedOptions =
                           PerCompilerFlavor [] [],
                           staticOptions =
                           PerCompilerFlavor [] [],
@@ -729,6 +743,8 @@ GenericPackageDescription {
                                   []
                                   [],
                                 sharedOptions =
+                                PerCompilerFlavor [] [],
+                                profSharedOptions =
                                 PerCompilerFlavor [] [],
                                 staticOptions =
                                 PerCompilerFlavor [] [],

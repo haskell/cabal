@@ -679,7 +679,7 @@ filterConfigureFlags' :: ConfigFlags -> Version -> ConfigFlags
 filterConfigureFlags' flags cabalLibVersion
   -- NB: we expect the latest version to be the most common case,
   -- so test it first.
-  | cabalLibVersion >= mkVersion [3, 11, 0] = flags_latest
+  | cabalLibVersion >= mkVersion [3, 13, 0] = flags_latest
   -- The naming convention is that flags_version gives flags with
   -- all flags *introduced* in version eliminated.
   -- It is NOT the latest version of Cabal library that
@@ -701,6 +701,7 @@ filterConfigureFlags' flags cabalLibVersion
   | cabalLibVersion < mkVersion [2, 5, 0] = flags_2_5_0
   | cabalLibVersion < mkVersion [3, 7, 0] = flags_3_7_0
   | cabalLibVersion < mkVersion [3, 11, 0] = flags_3_11_0
+  | cabalLibVersion < mkVersion [3, 13, 0] = flags_3_13_0
   | otherwise = error "the impossible just happened" -- see first guard
   where
     flags_latest =
@@ -712,8 +713,15 @@ filterConfigureFlags' flags cabalLibVersion
           configConstraints = []
         }
 
-    flags_3_11_0 =
+    flags_3_13_0 =
+      -- Earlier Cabal versions don't understand about ..
       flags_latest
+        { -- Building profiled shared libraries
+          configProfShared = NoFlag
+        }
+
+    flags_3_11_0 =
+      flags_3_13_0
         { -- It's too late to convert configPromisedDependencies to anything
           -- meaningful, so we just assert that it's empty.
           -- We add a Cabal>=3.11 constraint before solving when multi-repl is
@@ -783,7 +791,7 @@ filterConfigureFlags' flags cabalLibVersion
     -- Cabal < 1.23 doesn't know about '--profiling-detail'.
     -- Cabal < 1.23 has a hacked up version of 'enable-profiling'
     -- which we shouldn't use.
-    (tryLibProfiling, tryExeProfiling) = computeEffectiveProfiling flags
+    (tryLibProfiling, _tryLibProfilingShared, tryExeProfiling) = computeEffectiveProfiling flags
     flags_1_23_0 =
       flags_1_25_0
         { configProfDetail = NoFlag

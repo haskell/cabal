@@ -8,8 +8,6 @@ module Distribution.Simple.GHC.Build.Link where
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Control.Exception (assert)
-import Control.Monad (forM_)
 import Control.Monad.IO.Class
 import qualified Data.ByteString.Lazy.Char8 as BS
 import qualified Data.Set as Set
@@ -76,128 +74,148 @@ linkOrLoadComponent
   -> (SymbolicPath Pkg (Dir Artifacts), SymbolicPath Pkg (Dir Build))
   -- ^ The build target dir, and the target dir.
   -- See Note [Build Target Dir vs Target Dir] in Distribution.Simple.GHC.Build
-  -> (Set.Set BuildWay, BuildWay -> GhcOptions)
+  -> ((Bool -> [BuildWay], Bool -> BuildWay, BuildWay), BuildWay -> GhcOptions)
   -- ^ The set of build ways wanted based on the user opts, and a function to
   -- convert a build way into the set of ghc options that were used to build
   -- that way.
   -> PreBuildComponentInputs
   -- ^ The context and component being built in it.
   -> IO ()
-linkOrLoadComponent ghcProg pkg_descr extraSources (buildTargetDir, targetDir) (wantedWays, buildOpts) pbci = do
-  let
-    verbosity = buildVerbosity pbci
-    target = targetInfo pbci
-    component = buildComponent pbci
-    what = buildingWhat pbci
-    lbi = localBuildInfo pbci
-    bi = buildBI pbci
-    clbi = buildCLBI pbci
-    mbWorkDir = mbWorkDirLBI lbi
+linkOrLoadComponent
+  ghcProg
+  pkg_descr
+  extraSources
+  (buildTargetDir, targetDir)
+  ((wantedLibWays, wantedFLibWay, wantedExeWay), buildOpts)
+  pbci = do
+    let
+      verbosity = buildVerbosity pbci
+      target = targetInfo pbci
+      component = buildComponent pbci
+      what = buildingWhat pbci
+      lbi = localBuildInfo pbci
+      bi = buildBI pbci
+      clbi = buildCLBI pbci
+      isIndef = componentIsIndefinite clbi
+      mbWorkDir = mbWorkDirLBI lbi
 
-    -- See Note [Symbolic paths] in Distribution.Utils.Path
-    i = interpretSymbolicPathLBI lbi
+      -- See Note [Symbolic paths] in Distribution.Utils.Path
+      i = interpretSymbolicPathLBI lbi
 
-  -- ensure extra lib dirs exist before passing to ghc
-  cleanedExtraLibDirs <- liftIO $ filterM (doesDirectoryExist . i) (extraLibDirs bi)
-  cleanedExtraLibDirsStatic <- liftIO $ filterM (doesDirectoryExist . i) (extraLibDirsStatic bi)
+    -- ensure extra lib dirs exist before passing to ghc
+    cleanedExtraLibDirs <- liftIO $ filterM (doesDirectoryExist . i) (extraLibDirs bi)
+    cleanedExtraLibDirsStatic <- liftIO $ filterM (doesDirectoryExist . i) (extraLibDirsStatic bi)
 
-  let
-    extraSourcesObjs :: [RelativePath Artifacts File]
-    extraSourcesObjs =
-      [ makeRelativePathEx $ getSymbolicPath src `replaceExtension` objExtension
-      | src <- extraSources
-      ]
+    let
+      extraSourcesObjs :: [RelativePath Artifacts File]
+      extraSourcesObjs =
+        [ makeRelativePathEx $ getSymbolicPath src `replaceExtension` objExtension
+        | src <- extraSources
+        ]
 
-    -- TODO: Shouldn't we use withStaticLib for libraries and something else
-    -- for foreign libs in the three cases where we use `withFullyStaticExe` below?
-    linkerOpts rpaths =
-      mempty
-        { ghcOptLinkOptions =
-            PD.ldOptions bi
-              ++ [ "-static"
-                 | withFullyStaticExe lbi
-                 ]
-              -- Pass extra `ld-options` given
-              -- through to GHC's linker.
-              ++ maybe
-                []
-                programOverrideArgs
-                (lookupProgram ldProgram (withPrograms lbi))
-        , ghcOptLinkLibs =
-            if withFullyStaticExe lbi
-              then extraLibsStatic bi
-              else extraLibs bi
-        , ghcOptLinkLibPath =
-            toNubListR $
+      -- TODO: Shouldn't we use withStaticLib for libraries and something else
+      -- for foreign libs in the three cases where we use `withFullyStaticExe` below?
+      linkerOpts rpaths =
+        mempty
+          { ghcOptLinkOptions =
+              PD.ldOptions bi
+                ++ [ "-static"
+                   | withFullyStaticExe lbi
+                   ]
+                -- Pass extra `ld-options` given
+                -- through to GHC's linker.
+                ++ maybe
+                  []
+                  programOverrideArgs
+                  (lookupProgram ldProgram (withPrograms lbi))
+          , ghcOptLinkLibs =
               if withFullyStaticExe lbi
-                then cleanedExtraLibDirsStatic
-                else cleanedExtraLibDirs
-        , ghcOptLinkFrameworks = toNubListR $ map getSymbolicPath $ PD.frameworks bi
-        , ghcOptLinkFrameworkDirs = toNubListR $ PD.extraFrameworkDirs bi
-        , ghcOptInputFiles =
-            toNubListR
-              [ coerceSymbolicPath $ buildTargetDir </> obj
-              | obj <- extraSourcesObjs
-              ]
-        , ghcOptNoLink = Flag False
-        , ghcOptRPaths = rpaths
-        }
-  case what of
-    BuildRepl replFlags -> liftIO $ do
-      let
-        -- For repl we use the vanilla (static) ghc options
-        staticOpts = buildOpts StaticWay
-        replOpts =
-          staticOpts
-            { -- Repl options use Static as the base, but doesn't need to pass -static.
-              -- However, it maybe should, for uniformity.
-              ghcOptDynLinkMode = NoFlag
-            , ghcOptExtra =
-                Internal.filterGhciFlags
-                  (ghcOptExtra staticOpts)
-                  <> replOptionsFlags (replReplOptions replFlags)
-            , ghcOptInputModules = replNoLoad (replReplOptions replFlags) (ghcOptInputModules staticOpts)
-            , ghcOptInputFiles = replNoLoad (replReplOptions replFlags) (ghcOptInputFiles staticOpts)
-            }
-            -- For a normal compile we do separate invocations of ghc for
-            -- compiling as for linking. But for repl we have to do just
-            -- the one invocation, so that one has to include all the
-            -- linker stuff too, like -l flags and any .o files from C
-            -- files etc.
-            --
-            -- TODO: The repl doesn't use the runtime paths from linkerOpts
-            -- (ghcOptRPaths), which looks like a bug. After the refactor we
-            -- can fix this.
-            `mappend` linkerOpts mempty
-            `mappend` mempty
-              { ghcOptMode = toFlag GhcModeInteractive
-              , ghcOptOptimisation = toFlag GhcNoOptimisation
+                then extraLibsStatic bi
+                else extraLibs bi
+          , ghcOptLinkLibPath =
+              toNubListR $
+                if withFullyStaticExe lbi
+                  then cleanedExtraLibDirsStatic
+                  else cleanedExtraLibDirs
+          , ghcOptLinkFrameworks = toNubListR $ map getSymbolicPath $ PD.frameworks bi
+          , ghcOptLinkFrameworkDirs = toNubListR $ PD.extraFrameworkDirs bi
+          , ghcOptInputFiles =
+              toNubListR
+                [ coerceSymbolicPath $ buildTargetDir </> obj
+                | obj <- extraSourcesObjs
+                ]
+          , ghcOptNoLink = Flag False
+          , ghcOptRPaths = rpaths
+          }
+
+    case what of
+      BuildRepl replFlags -> liftIO $ do
+        let
+          -- For repl we use the vanilla (static) ghc options
+          staticOpts = buildOpts StaticWay
+          replOpts =
+            staticOpts
+              { -- Repl options use Static as the base, but doesn't need to pass -static.
+                -- However, it maybe should, for uniformity.
+                ghcOptDynLinkMode = NoFlag
+              , ghcOptExtra =
+                  Internal.filterGhciFlags
+                    (ghcOptExtra staticOpts)
+                    <> replOptionsFlags (replReplOptions replFlags)
+              }
+              -- For a normal compile we do separate invocations of ghc for
+              -- compiling as for linking. But for repl we have to do just
+              -- the one invocation, so that one has to include all the
+              -- linker stuff too, like -l flags and any .o files from C
+              -- files etc.
+              --
+              -- TODO: The repl doesn't use the runtime paths from linkerOpts
+              -- (ghcOptRPaths), which looks like a bug. After the refactor we
+              -- can fix this.
+              `mappend` linkerOpts mempty
+              `mappend` mempty
+                { ghcOptMode = toFlag GhcModeInteractive
+                , ghcOptOptimisation = toFlag GhcNoOptimisation
+                }
+          replOpts_final =
+            replOpts
+              { ghcOptInputModules = replNoLoad (replReplOptions replFlags) (ghcOptInputModules replOpts)
+              , ghcOptInputFiles = replNoLoad (replReplOptions replFlags) (ghcOptInputFiles replOpts)
               }
 
-      -- TODO: problem here is we need the .c files built first, so we can load them
-      -- with ghci, but .c files can depend on .h files generated by ghc by ffi
-      -- exports.
-      when (case component of CLib lib -> null (allLibModules lib clbi); _ -> False) $
-        warn verbosity "No exposed modules"
-      runReplOrWriteFlags ghcProg lbi replFlags replOpts (pkgName (PD.package pkg_descr)) target
-    _otherwise ->
-      let
-        runGhcProg = runGHC verbosity ghcProg comp platform mbWorkDir
-        platform = hostPlatform lbi
-        comp = compiler lbi
-       in
-        when (not $ componentIsIndefinite clbi) $ do
-          -- If not building dynamically, we don't pass any runtime paths.
-          rpaths <- if DynWay `Set.member` wantedWays then getRPaths pbci else return (toNubListR [])
-          liftIO $ do
-            info verbosity "Linking..."
-            let linkExeLike name = linkExecutable (linkerOpts rpaths) (wantedWays, buildOpts) targetDir name runGhcProg lbi
-            case component of
-              CLib lib -> linkLibrary buildTargetDir cleanedExtraLibDirs pkg_descr verbosity runGhcProg lib lbi clbi extraSources rpaths wantedWays
-              CFLib flib -> linkFLib flib bi lbi (linkerOpts rpaths) (wantedWays, buildOpts) targetDir runGhcProg
-              CExe exe -> linkExeLike (exeName exe)
-              CTest test -> linkExeLike (testName test)
-              CBench bench -> linkExeLike (benchmarkName bench)
+        -- TODO: problem here is we need the .c files built first, so we can load them
+        -- with ghci, but .c files can depend on .h files generated by ghc by ffi
+        -- exports.
+        when (case component of CLib lib -> null (allLibModules lib clbi); _ -> False) $
+          warn verbosity "No exposed modules"
+        runReplOrWriteFlags ghcProg lbi replFlags replOpts_final (pkgName (PD.package pkg_descr)) target
+      _otherwise ->
+        let
+          runGhcProg = runGHC verbosity ghcProg comp platform mbWorkDir
+          platform = hostPlatform lbi
+          comp = compiler lbi
+          get_rpaths ways =
+            if DynWay `Set.member` ways then getRPaths pbci else return (toNubListR [])
+         in
+          when (not $ componentIsIndefinite clbi) $ do
+            -- If not building dynamically, we don't pass any runtime paths.
+            liftIO $ do
+              info verbosity "Linking..."
+              let linkExeLike name = do
+                    rpaths <- get_rpaths (Set.singleton wantedExeWay)
+                    linkExecutable (linkerOpts rpaths) (wantedExeWay, buildOpts) targetDir name runGhcProg lbi
+              case component of
+                CLib lib -> do
+                  let libWays = wantedLibWays isIndef
+                  rpaths <- get_rpaths (Set.fromList libWays)
+                  linkLibrary buildTargetDir cleanedExtraLibDirs pkg_descr verbosity runGhcProg lib lbi clbi extraSources rpaths libWays
+                CFLib flib -> do
+                  let flib_way = wantedFLibWay (withDynFLib flib)
+                  rpaths <- get_rpaths (Set.singleton flib_way)
+                  linkFLib flib bi lbi (linkerOpts rpaths) (flib_way, buildOpts) targetDir runGhcProg
+                CExe exe -> linkExeLike (exeName exe)
+                CTest test -> linkExeLike (testName test)
+                CBench bench -> linkExeLike (benchmarkName bench)
 
 -- | Link a library component
 linkLibrary
@@ -217,7 +235,7 @@ linkLibrary
   -- ^ Extra build sources (that were compiled to objects)
   -> NubListR FilePath
   -- ^ A list with the runtime-paths (rpaths), or empty if not linking dynamically
-  -> Set.Set BuildWay
+  -> [BuildWay]
   -- ^ Wanted build ways and corresponding build options
   -> IO ()
 linkLibrary buildTargetDir cleanedExtraLibDirs pkg_descr verbosity runGhcProg lib lbi clbi extraSources rpaths wantedWays = do
@@ -237,6 +255,9 @@ linkLibrary buildTargetDir cleanedExtraLibDirs pkg_descr verbosity runGhcProg li
     sharedLibFilePath =
       buildTargetDir
         </> makeRelativePathEx (mkSharedLibName (hostPlatform lbi) compiler_id uid)
+    profSharedLibFilePath =
+      buildTargetDir
+        </> makeRelativePathEx (mkProfSharedLibName (hostPlatform lbi) compiler_id uid)
     staticLibFilePath =
       buildTargetDir
         </> makeRelativePathEx (mkStaticLibName (hostPlatform lbi) compiler_id uid)
@@ -252,6 +273,9 @@ linkLibrary buildTargetDir cleanedExtraLibDirs pkg_descr verbosity runGhcProg li
     sharedLibInstallPath =
       libInstallPath
         </> mkSharedLibName (hostPlatform lbi) compiler_id uid
+    profSharedLibInstallPath =
+      libInstallPath
+        </> mkProfSharedLibName (hostPlatform lbi) compiler_id uid
 
     getObjFiles :: BuildWay -> IO [SymbolicPath Pkg File]
     getObjFiles way =
@@ -358,6 +382,32 @@ linkLibrary buildTargetDir cleanedExtraLibDirs pkg_descr verbosity runGhcProg li
             toNubListR $ PD.extraFrameworkDirs libBi
         , ghcOptRPaths = rpaths
         }
+    ghcProfSharedLinkArgs pdynObjectFiles =
+      ghcBaseLinkArgs
+        { ghcOptShared = toFlag True
+        , ghcOptProfilingMode = toFlag True
+        , ghcOptProfilingAuto =
+            Internal.profDetailLevelFlag
+              True
+              (withProfLibDetail lbi)
+        , ghcOptDynLinkMode = toFlag GhcDynamicOnly
+        , ghcOptInputFiles = toNubListR pdynObjectFiles
+        , ghcOptOutputFile = toFlag profSharedLibFilePath
+        , -- For dynamic libs, Mac OS/X needs to know the install location
+          -- at build time. This only applies to GHC < 7.8 - see the
+          -- discussion in #1660.
+          ghcOptDylibName =
+            if hostOS == OSX
+              && ghcVersion < mkVersion [7, 8]
+              then toFlag profSharedLibInstallPath
+              else mempty
+        , ghcOptLinkLibs = extraLibs libBi
+        , ghcOptLinkLibPath = toNubListR $ cleanedExtraLibDirs
+        , ghcOptLinkFrameworks = toNubListR $ map getSymbolicPath $ PD.frameworks libBi
+        , ghcOptLinkFrameworkDirs =
+            toNubListR $ PD.extraFrameworkDirs libBi
+        , ghcOptRPaths = rpaths
+        }
     ghcStaticLinkArgs staticObjectFiles =
       ghcBaseLinkArgs
         { ghcOptStaticLib = toFlag True
@@ -371,6 +421,7 @@ linkLibrary buildTargetDir cleanedExtraLibDirs pkg_descr verbosity runGhcProg li
   staticObjectFiles <- getObjFiles StaticWay
   profObjectFiles <- getObjFiles ProfWay
   dynamicObjectFiles <- getObjFiles DynWay
+  profDynamicObjectFiles <- getObjFiles ProfDynWay
 
   let
     linkWay = \case
@@ -384,6 +435,8 @@ linkLibrary buildTargetDir cleanedExtraLibDirs pkg_descr verbosity runGhcProg li
             ldProg
             ghciProfLibFilePath
             profObjectFiles
+      ProfDynWay -> do
+        runGhcProg $ ghcProfSharedLinkArgs profDynamicObjectFiles
       DynWay -> do
         runGhcProg $ ghcSharedLinkArgs dynamicObjectFiles
       StaticWay -> do
@@ -413,7 +466,7 @@ linkLibrary buildTargetDir cleanedExtraLibDirs pkg_descr verbosity runGhcProg li
 linkExecutable
   :: (GhcOptions)
   -- ^ The linker-specific GHC options
-  -> (Set.Set BuildWay, BuildWay -> GhcOptions)
+  -> (BuildWay, BuildWay -> GhcOptions)
   -- ^ The wanted build ways and corresponding GhcOptions that were
   -- used to compile the modules in that way.
   -> SymbolicPath Pkg (Dir Build)
@@ -425,30 +478,27 @@ linkExecutable
   -- ^ Run the configured GHC program
   -> LocalBuildInfo
   -> IO ()
-linkExecutable linkerOpts (wantedWays, buildOpts) targetDir targetName runGhcProg lbi = do
-  -- When building an executable, we should only "want" one build way.
-  assert (Set.size wantedWays == 1) $
-    forM_ wantedWays $ \way -> do
-      let baseOpts = buildOpts way
-          linkOpts =
-            baseOpts
-              `mappend` linkerOpts
-              `mappend` mempty
-                { -- If there are no input Haskell files we pass -no-hs-main, and
-                  -- assume there is a main function in another non-haskell object
-                  ghcOptLinkNoHsMain = toFlag (ghcOptInputFiles baseOpts == mempty && ghcOptInputScripts baseOpts == mempty)
-                }
-          comp = compiler lbi
+linkExecutable linkerOpts (way, buildOpts) targetDir targetName runGhcProg lbi = do
+  let baseOpts = buildOpts way
+      linkOpts =
+        baseOpts
+          `mappend` linkerOpts
+          `mappend` mempty
+            { -- If there are no input Haskell files we pass -no-hs-main, and
+              -- assume there is a main function in another non-haskell object
+              ghcOptLinkNoHsMain = toFlag (ghcOptInputFiles baseOpts == mempty && ghcOptInputScripts baseOpts == mempty)
+            }
+      comp = compiler lbi
 
-      -- Work around old GHCs not relinking in this
-      -- situation, see #3294
-      let target =
-            targetDir </> makeRelativePathEx (exeTargetName (hostPlatform lbi) targetName)
-      when (compilerVersion comp < mkVersion [7, 7]) $ do
-        let targetPath = interpretSymbolicPathLBI lbi target
-        e <- doesFileExist targetPath
-        when e (removeFile targetPath)
-      runGhcProg linkOpts{ghcOptOutputFile = toFlag target}
+  -- Work around old GHCs not relinking in this
+  -- situation, see #3294
+  let target =
+        targetDir </> makeRelativePathEx (exeTargetName (hostPlatform lbi) targetName)
+  when (compilerVersion comp < mkVersion [7, 7]) $ do
+    let targetPath = interpretSymbolicPathLBI lbi target
+    e <- doesFileExist targetPath
+    when e (removeFile targetPath)
+  runGhcProg linkOpts{ghcOptOutputFile = toFlag target}
 
 -- | Link a foreign library component
 linkFLib
@@ -457,7 +507,7 @@ linkFLib
   -> LocalBuildInfo
   -> (GhcOptions)
   -- ^ The linker-specific GHC options
-  -> (Set.Set BuildWay, BuildWay -> GhcOptions)
+  -> (BuildWay, BuildWay -> GhcOptions)
   -- ^ The wanted build ways and corresponding GhcOptions that were
   -- used to compile the modules in that way.
   -> SymbolicPath Pkg (Dir Build)
@@ -466,7 +516,7 @@ linkFLib
   -> (GhcOptions -> IO ())
   -- ^ Run the configured GHC program
   -> IO ()
-linkFLib flib bi lbi linkerOpts (wantedWays, buildOpts) targetDir runGhcProg = do
+linkFLib flib bi lbi linkerOpts (way, buildOpts) targetDir runGhcProg = do
   let
     comp = compiler lbi
 
@@ -498,8 +548,8 @@ linkFLib flib bi lbi linkerOpts (wantedWays, buildOpts) targetDir runGhcProg = d
                   else statRtsVanillaLib (rtsStaticInfo rtsInfo)
           ]
 
-    linkOpts :: BuildWay -> GhcOptions
-    linkOpts way = case foreignLibType flib of
+    linkOpts :: GhcOptions
+    linkOpts = case foreignLibType flib of
       ForeignLibNativeShared ->
         (buildOpts way)
           `mappend` linkerOpts
@@ -521,13 +571,10 @@ linkFLib flib bi lbi linkerOpts (wantedWays, buildOpts) targetDir runGhcProg = d
   -- soname on supported platforms.  See also the note for
   -- @flibBuildName@.
   let buildName = flibBuildName lbi flib
-  -- There should not be more than one wanted way when building an flib
-  assert (Set.size wantedWays == 1) $
-    forM_ wantedWays $ \way -> do
-      let outFile = targetDir </> makeRelativePathEx buildName
-      runGhcProg (linkOpts way){ghcOptOutputFile = toFlag outFile}
-      let i = interpretSymbolicPathLBI lbi
-      renameFile (i outFile) (i targetDir </> flibTargetName lbi flib)
+  let outFile = targetDir </> makeRelativePathEx buildName
+  runGhcProg linkOpts{ghcOptOutputFile = toFlag outFile}
+  let i = interpretSymbolicPathLBI lbi
+  renameFile (i outFile) (i targetDir </> flibTargetName lbi flib)
 
 -- | Calculate the RPATHs for the component we are building.
 --
