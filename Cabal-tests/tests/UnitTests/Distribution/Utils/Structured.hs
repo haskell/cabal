@@ -30,8 +30,24 @@ md5Check proxy md5Int = structureHash proxy @?= md5FromInteger md5Int
 
 md5CheckGenericPackageDescription :: Proxy GenericPackageDescription -> Assertion
 md5CheckGenericPackageDescription proxy = md5Check proxy
+<<<<<<< HEAD
     0xe40d8d67b85712f245354657d7a80165
 
 md5CheckLocalBuildInfo :: Proxy LocalBuildInfo -> Assertion
 md5CheckLocalBuildInfo proxy = md5Check proxy
     0x94827844fdb1afedee525061749fb16f
+=======
+#if MIN_VERSION_base(4,19,0)
+    0x6639f65b143830a97e9c4f448b9cabb0
+#else
+    0x855933700dccfbcc1d642e3470c3702c
+#endif
+
+md5CheckLocalBuildInfo :: Proxy LocalBuildInfo -> Assertion
+md5CheckLocalBuildInfo proxy = md5Check proxy
+#if MIN_VERSION_base(4,19,0)
+    0x2ae73730f60c7c947e2cb63c4aac1e54
+#else
+    0x906cbfdef0bcdfe5734499cfabc615f5
+#endif
+>>>>>>> 00835c075 (Registered the NamedDefaults language extension (#9740))
