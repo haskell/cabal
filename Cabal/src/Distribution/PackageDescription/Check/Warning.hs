@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -15,14 +16,18 @@ module Distribution.PackageDescription.Check.Warning
   ( -- * Types and constructors
     PackageCheck (..)
   , CheckExplanation (..)
-  , CEField (..)
+  , CheckExplanationID
+  , CheckExplanationIDString
   , CEType (..)
   , WarnLang (..)
 
     -- * Operations
   , ppPackageCheck
+  , ppCheckExplanationId
   , isHackageDistError
   , extractCheckExplantion
+  , filterPackageChecksById
+  , filterPackageChecksByIdString
   ) where
 
 import Distribution.Compat.Prelude
@@ -43,13 +48,9 @@ import Distribution.Types.TestType (TestType, knownTestTypes)
 import Distribution.Types.UnqualComponentName
 import Distribution.Types.Version (Version)
 import Distribution.Utils.Path
-  ( LicenseFile
-  , PackageDir
-  , SymbolicPath
-  , getSymbolicPath
-  )
 import Language.Haskell.Extension (Extension)
 
+import qualified Data.Either as Either
 import qualified Data.List as List
 import qualified Data.Set as Set
 
@@ -89,7 +90,12 @@ data PackageCheck
 
 -- | Pretty printing 'PackageCheck'.
 ppPackageCheck :: PackageCheck -> String
-ppPackageCheck e = ppExplanation (explanation e)
+ppPackageCheck e =
+  let ex = explanation e
+   in "["
+        ++ (ppCheckExplanationId . checkExplanationId) ex
+        ++ "] "
+        ++ ppExplanation ex
 
 -- | Broken 'Show' instance (not bijective with Read), alas external packages
 -- depend on it.
@@ -105,11 +111,35 @@ isHackageDistError = \case
   (PackageDistSuspicious{}) -> False
   (PackageDistSuspiciousWarn{}) -> False
 
+-- | Filter Package Check by CheckExplanationID.
+filterPackageChecksById
+  :: [PackageCheck]
+  -- ^ Original checks.
+  -> [CheckExplanationID]
+  -- ^ IDs to omit.
+  -> [PackageCheck]
+filterPackageChecksById cs is = filter ff cs
+  where
+    ff :: PackageCheck -> Bool
+    ff c =
+      flip notElem is
+        . checkExplanationId
+        . extractCheckExplantion
+        $ c
+
+-- | Filter Package Check by Check explanation /string/.
+filterPackageChecksByIdString
+  :: [PackageCheck]
+  -- ^ Original checks.
+  -> [CheckExplanationIDString]
+  -- ^ IDs to omit, in @String@ format.
+  -> ([PackageCheck], [CheckExplanationIDString])
+-- Filtered checks plus unrecognised id strings.
+filterPackageChecksByIdString cs ss =
+  let (es, is) = Either.partitionEithers $ map readExplanationID ss
+   in (filterPackageChecksById cs is, es)
+
 -- | Explanations of 'PackageCheck`'s errors/warnings.
---
--- ☞ N.B: if you add a constructor here, remeber to change the documentation
--- in @doc/cabal-commands.rst@! Same if you modify it, you need to adjust the
--- documentation!
 data CheckExplanation
   = ParseWarning FilePath PWarning
   | NoNameField
@@ -141,7 +171,11 @@ data CheckExplanation
   | UnknownExtensions [String]
   | LanguagesAsExtension [String]
   | DeprecatedExtensions [(Extension, Maybe Extension)]
-  | MissingField CEField
+  | MissingFieldCategory
+  | MissingFieldMaintainer
+  | MissingFieldSynopsis
+  | MissingFieldDescription
+  | MissingFieldSynOrDesc
   | SynopsisTooLong
   | ShortDesc
   | InvalidTestWith [Dependency]
@@ -195,6 +229,7 @@ data CheckExplanation
   | CVTestSuite
   | CVDefaultLanguage
   | CVDefaultLanguageComponent
+  | CVDefaultLanguageComponentSoft
   | CVExtraDocFiles
   | CVMultiLib
   | CVReexported
@@ -211,6 +246,7 @@ data CheckExplanation
   | CVExpliticDepsCustomSetup
   | CVAutogenPaths
   | CVAutogenPackageInfo
+  | CVAutogenPackageInfoGuard
   | GlobNoMatch String String
   | GlobExactMatch String String FilePath
   | GlobNoDir String String FilePath
@@ -236,7 +272,7 @@ data CheckExplanation
   | NotPackageName FilePath String
   | NoDesc
   | MultiDesc [String]
-  | UnknownFile String (SymbolicPath PackageDir LicenseFile)
+  | UnknownFile String (RelativePath Pkg File)
   | MissingSetupFile
   | MissingConfigureScript
   | UnknownDirectory String FilePath
@@ -263,6 +299,445 @@ extractCheckExplantion (PackageDistSuspicious e) = e
 extractCheckExplantion (PackageDistSuspiciousWarn e) = e
 extractCheckExplantion (PackageDistInexcusable e) = e
 
+-- | Identifier for the speficic 'CheckExplanation'. This ensures `--ignore`
+-- can output a warning on unrecognised values.
+-- ☞ N.B.: should be kept in sync with 'CheckExplanation'.
+data CheckExplanationID
+  = CIParseWarning
+  | CINoNameField
+  | CINoVersionField
+  | CINoTarget
+  | CIUnnamedInternal
+  | CIDuplicateSections
+  | CIIllegalLibraryName
+  | CINoModulesExposed
+  | CISignaturesCabal2
+  | CIAutogenNotExposed
+  | CIAutogenIncludesNotIncluded
+  | CINoMainIs
+  | CINoHsLhsMain
+  | CIMainCCabal1_18
+  | CIAutogenNoOther
+  | CIAutogenIncludesNotIncludedExe
+  | CITestsuiteTypeNotKnown
+  | CITestsuiteNotSupported
+  | CIBenchmarkTypeNotKnown
+  | CIBenchmarkNotSupported
+  | CINoHsLhsMainBench
+  | CIInvalidNameWin
+  | CIZPrefix
+  | CINoBuildType
+  | CINoCustomSetup
+  | CIUnknownCompilers
+  | CIUnknownLanguages
+  | CIUnknownExtensions
+  | CILanguagesAsExtension
+  | CIDeprecatedExtensions
+  | CIMissingFieldCategory
+  | CIMissingFieldMaintainer
+  | CIMissingFieldSynopsis
+  | CIMissingFieldDescription
+  | CIMissingFieldSynOrDesc
+  | CISynopsisTooLong
+  | CIShortDesc
+  | CIInvalidTestWith
+  | CIImpossibleInternalDep
+  | CIImpossibleInternalExe
+  | CIMissingInternalExe
+  | CINONELicense
+  | CINoLicense
+  | CIAllRightsReservedLicense
+  | CILicenseMessParse
+  | CIUnrecognisedLicense
+  | CIUncommonBSD4
+  | CIUnknownLicenseVersion
+  | CINoLicenseFile
+  | CIUnrecognisedSourceRepo
+  | CIMissingType
+  | CIMissingLocation
+  | CIMissingModule
+  | CIMissingTag
+  | CISubdirRelPath
+  | CISubdirGoodRelPath
+  | CIOptFasm
+  | CIOptHpc
+  | CIOptProf
+  | CIOptO
+  | CIOptHide
+  | CIOptMake
+  | CIOptONot
+  | CIOptOOne
+  | CIOptOTwo
+  | CIOptSplitSections
+  | CIOptSplitObjs
+  | CIOptWls
+  | CIOptExts
+  | CIOptRts
+  | CIOptWithRts
+  | CICOptONumber
+  | CICOptCPP
+  | CIOptAlternatives
+  | CIRelativeOutside
+  | CIAbsolutePath
+  | CIBadRelativePath
+  | CIDistPoint
+  | CIGlobSyntaxError
+  | CIRecursiveGlobInRoot
+  | CIInvalidOnWin
+  | CIFilePathTooLong
+  | CIFilePathNameTooLong
+  | CIFilePathSplitTooLong
+  | CIFilePathEmpty
+  | CICVTestSuite
+  | CICVDefaultLanguage
+  | CICVDefaultLanguageComponent
+  | CICVDefaultLanguageComponentSoft
+  | CICVExtraDocFiles
+  | CICVMultiLib
+  | CICVReexported
+  | CICVMixins
+  | CICVExtraFrameworkDirs
+  | CICVDefaultExtensions
+  | CICVExtensionsDeprecated
+  | CICVSources
+  | CICVExtraDynamic
+  | CICVVirtualModules
+  | CICVSourceRepository
+  | CICVExtensions
+  | CICVCustomSetup
+  | CICVExpliticDepsCustomSetup
+  | CICVAutogenPaths
+  | CICVAutogenPackageInfo
+  | CICVAutogenPackageInfoGuard
+  | CIGlobNoMatch
+  | CIGlobExactMatch
+  | CIGlobNoDir
+  | CIUnknownOS
+  | CIUnknownArch
+  | CIUnknownCompiler
+  | CIBaseNoUpperBounds
+  | CIMissingUpperBounds
+  | CISuspiciousFlagName
+  | CIDeclaredUsedFlags
+  | CINonASCIICustomField
+  | CIRebindableClashPaths
+  | CIRebindableClashPackageInfo
+  | CIWErrorUnneeded
+  | CIJUnneeded
+  | CIFDeferTypeErrorsUnneeded
+  | CIDynamicUnneeded
+  | CIProfilingUnneeded
+  | CIUpperBoundSetup
+  | CIDuplicateModule
+  | CIPotentialDupModule
+  | CIBOMStart
+  | CINotPackageName
+  | CINoDesc
+  | CIMultiDesc
+  | CIUnknownFile
+  | CIMissingSetupFile
+  | CIMissingConfigureScript
+  | CIUnknownDirectory
+  | CIMissingSourceControl
+  | CIMissingExpectedDocFiles
+  | CIWrongFieldForExpectedDocFiles
+  deriving (Eq, Ord, Show, Enum, Bounded)
+
+checkExplanationId :: CheckExplanation -> CheckExplanationID
+checkExplanationId (ParseWarning{}) = CIParseWarning
+checkExplanationId (NoNameField{}) = CINoNameField
+checkExplanationId (NoVersionField{}) = CINoVersionField
+checkExplanationId (NoTarget{}) = CINoTarget
+checkExplanationId (UnnamedInternal{}) = CIUnnamedInternal
+checkExplanationId (DuplicateSections{}) = CIDuplicateSections
+checkExplanationId (IllegalLibraryName{}) = CIIllegalLibraryName
+checkExplanationId (NoModulesExposed{}) = CINoModulesExposed
+checkExplanationId (SignaturesCabal2{}) = CISignaturesCabal2
+checkExplanationId (AutogenNotExposed{}) = CIAutogenNotExposed
+checkExplanationId (AutogenIncludesNotIncluded{}) = CIAutogenIncludesNotIncluded
+checkExplanationId (NoMainIs{}) = CINoMainIs
+checkExplanationId (NoHsLhsMain{}) = CINoHsLhsMain
+checkExplanationId (MainCCabal1_18{}) = CIMainCCabal1_18
+checkExplanationId (AutogenNoOther{}) = CIAutogenNoOther
+checkExplanationId (AutogenIncludesNotIncludedExe{}) = CIAutogenIncludesNotIncludedExe
+checkExplanationId (TestsuiteTypeNotKnown{}) = CITestsuiteTypeNotKnown
+checkExplanationId (TestsuiteNotSupported{}) = CITestsuiteNotSupported
+checkExplanationId (BenchmarkTypeNotKnown{}) = CIBenchmarkTypeNotKnown
+checkExplanationId (BenchmarkNotSupported{}) = CIBenchmarkNotSupported
+checkExplanationId (NoHsLhsMainBench{}) = CINoHsLhsMainBench
+checkExplanationId (InvalidNameWin{}) = CIInvalidNameWin
+checkExplanationId (ZPrefix{}) = CIZPrefix
+checkExplanationId (NoBuildType{}) = CINoBuildType
+checkExplanationId (NoCustomSetup{}) = CINoCustomSetup
+checkExplanationId (UnknownCompilers{}) = CIUnknownCompilers
+checkExplanationId (UnknownLanguages{}) = CIUnknownLanguages
+checkExplanationId (UnknownExtensions{}) = CIUnknownExtensions
+checkExplanationId (LanguagesAsExtension{}) = CILanguagesAsExtension
+checkExplanationId (DeprecatedExtensions{}) = CIDeprecatedExtensions
+checkExplanationId (MissingFieldCategory{}) = CIMissingFieldCategory
+checkExplanationId (MissingFieldMaintainer{}) = CIMissingFieldMaintainer
+checkExplanationId (MissingFieldSynopsis{}) = CIMissingFieldSynopsis
+checkExplanationId (MissingFieldDescription{}) = CIMissingFieldDescription
+checkExplanationId (MissingFieldSynOrDesc{}) = CIMissingFieldSynOrDesc
+checkExplanationId (SynopsisTooLong{}) = CISynopsisTooLong
+checkExplanationId (ShortDesc{}) = CIShortDesc
+checkExplanationId (InvalidTestWith{}) = CIInvalidTestWith
+checkExplanationId (ImpossibleInternalDep{}) = CIImpossibleInternalDep
+checkExplanationId (ImpossibleInternalExe{}) = CIImpossibleInternalExe
+checkExplanationId (MissingInternalExe{}) = CIMissingInternalExe
+checkExplanationId (NONELicense{}) = CINONELicense
+checkExplanationId (NoLicense{}) = CINoLicense
+checkExplanationId (AllRightsReservedLicense{}) = CIAllRightsReservedLicense
+checkExplanationId (LicenseMessParse{}) = CILicenseMessParse
+checkExplanationId (UnrecognisedLicense{}) = CIUnrecognisedLicense
+checkExplanationId (UncommonBSD4{}) = CIUncommonBSD4
+checkExplanationId (UnknownLicenseVersion{}) = CIUnknownLicenseVersion
+checkExplanationId (NoLicenseFile{}) = CINoLicenseFile
+checkExplanationId (UnrecognisedSourceRepo{}) = CIUnrecognisedSourceRepo
+checkExplanationId (MissingType{}) = CIMissingType
+checkExplanationId (MissingLocation{}) = CIMissingLocation
+checkExplanationId (MissingModule{}) = CIMissingModule
+checkExplanationId (MissingTag{}) = CIMissingTag
+checkExplanationId (SubdirRelPath{}) = CISubdirRelPath
+checkExplanationId (SubdirGoodRelPath{}) = CISubdirGoodRelPath
+checkExplanationId (OptFasm{}) = CIOptFasm
+checkExplanationId (OptHpc{}) = CIOptHpc
+checkExplanationId (OptProf{}) = CIOptProf
+checkExplanationId (OptO{}) = CIOptO
+checkExplanationId (OptHide{}) = CIOptHide
+checkExplanationId (OptMake{}) = CIOptMake
+checkExplanationId (OptONot{}) = CIOptONot
+checkExplanationId (OptOOne{}) = CIOptOOne
+checkExplanationId (OptOTwo{}) = CIOptOTwo
+checkExplanationId (OptSplitSections{}) = CIOptSplitSections
+checkExplanationId (OptSplitObjs{}) = CIOptSplitObjs
+checkExplanationId (OptWls{}) = CIOptWls
+checkExplanationId (OptExts{}) = CIOptExts
+checkExplanationId (OptRts{}) = CIOptRts
+checkExplanationId (OptWithRts{}) = CIOptWithRts
+checkExplanationId (COptONumber{}) = CICOptONumber
+checkExplanationId (COptCPP{}) = CICOptCPP
+checkExplanationId (OptAlternatives{}) = CIOptAlternatives
+checkExplanationId (RelativeOutside{}) = CIRelativeOutside
+checkExplanationId (AbsolutePath{}) = CIAbsolutePath
+checkExplanationId (BadRelativePath{}) = CIBadRelativePath
+checkExplanationId (DistPoint{}) = CIDistPoint
+checkExplanationId (GlobSyntaxError{}) = CIGlobSyntaxError
+checkExplanationId (RecursiveGlobInRoot{}) = CIRecursiveGlobInRoot
+checkExplanationId (InvalidOnWin{}) = CIInvalidOnWin
+checkExplanationId (FilePathTooLong{}) = CIFilePathTooLong
+checkExplanationId (FilePathNameTooLong{}) = CIFilePathNameTooLong
+checkExplanationId (FilePathSplitTooLong{}) = CIFilePathSplitTooLong
+checkExplanationId (FilePathEmpty{}) = CIFilePathEmpty
+checkExplanationId (CVTestSuite{}) = CICVTestSuite
+checkExplanationId (CVDefaultLanguage{}) = CICVDefaultLanguage
+checkExplanationId (CVDefaultLanguageComponent{}) = CICVDefaultLanguageComponent
+checkExplanationId (CVDefaultLanguageComponentSoft{}) = CICVDefaultLanguageComponentSoft
+checkExplanationId (CVExtraDocFiles{}) = CICVExtraDocFiles
+checkExplanationId (CVMultiLib{}) = CICVMultiLib
+checkExplanationId (CVReexported{}) = CICVReexported
+checkExplanationId (CVMixins{}) = CICVMixins
+checkExplanationId (CVExtraFrameworkDirs{}) = CICVExtraFrameworkDirs
+checkExplanationId (CVDefaultExtensions{}) = CICVDefaultExtensions
+checkExplanationId (CVExtensionsDeprecated{}) = CICVExtensionsDeprecated
+checkExplanationId (CVSources{}) = CICVSources
+checkExplanationId (CVExtraDynamic{}) = CICVExtraDynamic
+checkExplanationId (CVVirtualModules{}) = CICVVirtualModules
+checkExplanationId (CVSourceRepository{}) = CICVSourceRepository
+checkExplanationId (CVExtensions{}) = CICVExtensions
+checkExplanationId (CVCustomSetup{}) = CICVCustomSetup
+checkExplanationId (CVExpliticDepsCustomSetup{}) = CICVExpliticDepsCustomSetup
+checkExplanationId (CVAutogenPaths{}) = CICVAutogenPaths
+checkExplanationId (CVAutogenPackageInfo{}) = CICVAutogenPackageInfo
+checkExplanationId (CVAutogenPackageInfoGuard{}) = CICVAutogenPackageInfoGuard
+checkExplanationId (GlobNoMatch{}) = CIGlobNoMatch
+checkExplanationId (GlobExactMatch{}) = CIGlobExactMatch
+checkExplanationId (GlobNoDir{}) = CIGlobNoDir
+checkExplanationId (UnknownOS{}) = CIUnknownOS
+checkExplanationId (UnknownArch{}) = CIUnknownArch
+checkExplanationId (UnknownCompiler{}) = CIUnknownCompiler
+checkExplanationId (BaseNoUpperBounds{}) = CIBaseNoUpperBounds
+checkExplanationId (MissingUpperBounds{}) = CIMissingUpperBounds
+checkExplanationId (SuspiciousFlagName{}) = CISuspiciousFlagName
+checkExplanationId (DeclaredUsedFlags{}) = CIDeclaredUsedFlags
+checkExplanationId (NonASCIICustomField{}) = CINonASCIICustomField
+checkExplanationId (RebindableClashPaths{}) = CIRebindableClashPaths
+checkExplanationId (RebindableClashPackageInfo{}) = CIRebindableClashPackageInfo
+checkExplanationId (WErrorUnneeded{}) = CIWErrorUnneeded
+checkExplanationId (JUnneeded{}) = CIJUnneeded
+checkExplanationId (FDeferTypeErrorsUnneeded{}) = CIFDeferTypeErrorsUnneeded
+checkExplanationId (DynamicUnneeded{}) = CIDynamicUnneeded
+checkExplanationId (ProfilingUnneeded{}) = CIProfilingUnneeded
+checkExplanationId (UpperBoundSetup{}) = CIUpperBoundSetup
+checkExplanationId (DuplicateModule{}) = CIDuplicateModule
+checkExplanationId (PotentialDupModule{}) = CIPotentialDupModule
+checkExplanationId (BOMStart{}) = CIBOMStart
+checkExplanationId (NotPackageName{}) = CINotPackageName
+checkExplanationId (NoDesc{}) = CINoDesc
+checkExplanationId (MultiDesc{}) = CIMultiDesc
+checkExplanationId (UnknownFile{}) = CIUnknownFile
+checkExplanationId (MissingSetupFile{}) = CIMissingSetupFile
+checkExplanationId (MissingConfigureScript{}) = CIMissingConfigureScript
+checkExplanationId (UnknownDirectory{}) = CIUnknownDirectory
+checkExplanationId (MissingSourceControl{}) = CIMissingSourceControl
+checkExplanationId (MissingExpectedDocFiles{}) = CIMissingExpectedDocFiles
+checkExplanationId (WrongFieldForExpectedDocFiles{}) = CIWrongFieldForExpectedDocFiles
+
+type CheckExplanationIDString = String
+
+-- A one-word identifier for each CheckExplanation
+--
+-- ☞ N.B: if you modify anything here, remeber to change the documentation
+-- in @doc/cabal-commands.rst@!
+ppCheckExplanationId :: CheckExplanationID -> CheckExplanationIDString
+ppCheckExplanationId CIParseWarning = "parser-warning"
+ppCheckExplanationId CINoNameField = "no-name-field"
+ppCheckExplanationId CINoVersionField = "no-version-field"
+ppCheckExplanationId CINoTarget = "no-target"
+ppCheckExplanationId CIUnnamedInternal = "unnamed-internal-library"
+ppCheckExplanationId CIDuplicateSections = "duplicate-sections"
+ppCheckExplanationId CIIllegalLibraryName = "illegal-library-name"
+ppCheckExplanationId CINoModulesExposed = "no-modules-exposed"
+ppCheckExplanationId CISignaturesCabal2 = "signatures"
+ppCheckExplanationId CIAutogenNotExposed = "autogen-not-exposed"
+ppCheckExplanationId CIAutogenIncludesNotIncluded = "autogen-not-included"
+ppCheckExplanationId CINoMainIs = "no-main-is"
+ppCheckExplanationId CINoHsLhsMain = "unknown-extension-main"
+ppCheckExplanationId CIMainCCabal1_18 = "c-like-main"
+ppCheckExplanationId CIAutogenNoOther = "autogen-other-modules"
+ppCheckExplanationId CIAutogenIncludesNotIncludedExe = "autogen-exe"
+ppCheckExplanationId CITestsuiteTypeNotKnown = "unknown-testsuite-type"
+ppCheckExplanationId CITestsuiteNotSupported = "unsupported-testsuite"
+ppCheckExplanationId CIBenchmarkTypeNotKnown = "unknown-bench"
+ppCheckExplanationId CIBenchmarkNotSupported = "unsupported-bench"
+ppCheckExplanationId CINoHsLhsMainBench = "bench-unknown-extension"
+ppCheckExplanationId CIInvalidNameWin = "invalid-name-win"
+ppCheckExplanationId CIZPrefix = "reserved-z-prefix"
+ppCheckExplanationId CINoBuildType = "no-build-type"
+ppCheckExplanationId CINoCustomSetup = "undeclared-custom-setup"
+ppCheckExplanationId CIUnknownCompilers = "unknown-compiler-tested"
+ppCheckExplanationId CIUnknownLanguages = "unknown-languages"
+ppCheckExplanationId CIUnknownExtensions = "unknown-extension"
+ppCheckExplanationId CILanguagesAsExtension = "languages-as-extensions"
+ppCheckExplanationId CIDeprecatedExtensions = "deprecated-extensions"
+ppCheckExplanationId CIMissingFieldCategory = "no-category"
+ppCheckExplanationId CIMissingFieldMaintainer = "no-maintainer"
+ppCheckExplanationId CIMissingFieldSynopsis = "no-synopsis"
+ppCheckExplanationId CIMissingFieldDescription = "no-description"
+ppCheckExplanationId CIMissingFieldSynOrDesc = "no-syn-desc"
+ppCheckExplanationId CISynopsisTooLong = "long-synopsis"
+ppCheckExplanationId CIShortDesc = "short-description"
+ppCheckExplanationId CIInvalidTestWith = "invalid-range-tested"
+ppCheckExplanationId CIImpossibleInternalDep = "impossible-dep"
+ppCheckExplanationId CIImpossibleInternalExe = "impossible-dep-exe"
+ppCheckExplanationId CIMissingInternalExe = "no-internal-exe"
+ppCheckExplanationId CINONELicense = "license-none"
+ppCheckExplanationId CINoLicense = "no-license"
+ppCheckExplanationId CIAllRightsReservedLicense = "all-rights-reserved"
+ppCheckExplanationId CILicenseMessParse = "license-parse"
+ppCheckExplanationId CIUnrecognisedLicense = "unknown-license"
+ppCheckExplanationId CIUncommonBSD4 = "bsd4-license"
+ppCheckExplanationId CIUnknownLicenseVersion = "unknown-license-version"
+ppCheckExplanationId CINoLicenseFile = "no-license-file"
+ppCheckExplanationId CIUnrecognisedSourceRepo = "unrecognised-repo-type"
+ppCheckExplanationId CIMissingType = "repo-no-type"
+ppCheckExplanationId CIMissingLocation = "repo-no-location"
+ppCheckExplanationId CIMissingModule = "repo-no-module"
+ppCheckExplanationId CIMissingTag = "repo-no-tag"
+ppCheckExplanationId CISubdirRelPath = "repo-relative-dir"
+ppCheckExplanationId CISubdirGoodRelPath = "repo-malformed-subdir"
+ppCheckExplanationId CIOptFasm = "option-fasm"
+ppCheckExplanationId CIOptHpc = "option-fhpc"
+ppCheckExplanationId CIOptProf = "option-prof"
+ppCheckExplanationId CIOptO = "option-o"
+ppCheckExplanationId CIOptHide = "option-hide-package"
+ppCheckExplanationId CIOptMake = "option-make"
+ppCheckExplanationId CIOptONot = "option-optimize"
+ppCheckExplanationId CIOptOOne = "option-o1"
+ppCheckExplanationId CIOptOTwo = "option-o2"
+ppCheckExplanationId CIOptSplitSections = "option-split-section"
+ppCheckExplanationId CIOptSplitObjs = "option-split-objs"
+ppCheckExplanationId CIOptWls = "option-optl-wl"
+ppCheckExplanationId CIOptExts = "use-extension"
+ppCheckExplanationId CIOptRts = "option-rtsopts"
+ppCheckExplanationId CIOptWithRts = "option-with-rtsopts"
+ppCheckExplanationId CICOptONumber = "option-opt-c"
+ppCheckExplanationId CICOptCPP = "cpp-options"
+ppCheckExplanationId CIOptAlternatives = "misplaced-c-opt"
+ppCheckExplanationId CIRelativeOutside = "relative-path-outside"
+ppCheckExplanationId CIAbsolutePath = "absolute-path"
+ppCheckExplanationId CIBadRelativePath = "malformed-relative-path"
+ppCheckExplanationId CIDistPoint = "unreliable-dist-path"
+ppCheckExplanationId CIGlobSyntaxError = "glob-syntax-error"
+ppCheckExplanationId CIRecursiveGlobInRoot = "recursive-glob"
+ppCheckExplanationId CIInvalidOnWin = "invalid-path-win"
+ppCheckExplanationId CIFilePathTooLong = "long-path"
+ppCheckExplanationId CIFilePathNameTooLong = "long-name"
+ppCheckExplanationId CIFilePathSplitTooLong = "name-not-portable"
+ppCheckExplanationId CIFilePathEmpty = "empty-path"
+ppCheckExplanationId CICVTestSuite = "test-cabal-ver"
+ppCheckExplanationId CICVDefaultLanguage = "default-language"
+ppCheckExplanationId CICVDefaultLanguageComponent = "no-default-language"
+ppCheckExplanationId CICVDefaultLanguageComponentSoft = "add-language"
+ppCheckExplanationId CICVExtraDocFiles = "extra-doc-files"
+ppCheckExplanationId CICVMultiLib = "multilib"
+ppCheckExplanationId CICVReexported = "reexported-modules"
+ppCheckExplanationId CICVMixins = "mixins"
+ppCheckExplanationId CICVExtraFrameworkDirs = "extra-framework-dirs"
+ppCheckExplanationId CICVDefaultExtensions = "default-extensions"
+ppCheckExplanationId CICVExtensionsDeprecated = "extensions-field"
+ppCheckExplanationId CICVSources = "unsupported-sources"
+ppCheckExplanationId CICVExtraDynamic = "extra-dynamic"
+ppCheckExplanationId CICVVirtualModules = "virtual-modules"
+ppCheckExplanationId CICVSourceRepository = "source-repository"
+ppCheckExplanationId CICVExtensions = "incompatible-extension"
+ppCheckExplanationId CICVCustomSetup = "no-setup-depends"
+ppCheckExplanationId CICVExpliticDepsCustomSetup = "dependencies-setup"
+ppCheckExplanationId CICVAutogenPaths = "no-autogen-paths"
+ppCheckExplanationId CICVAutogenPackageInfo = "no-autogen-pinfo"
+ppCheckExplanationId CICVAutogenPackageInfoGuard = "autogen-guard"
+ppCheckExplanationId CIGlobNoMatch = "no-glob-match"
+ppCheckExplanationId CIGlobExactMatch = "glob-no-extension"
+ppCheckExplanationId CIGlobNoDir = "glob-missing-dir"
+ppCheckExplanationId CIUnknownOS = "unknown-os"
+ppCheckExplanationId CIUnknownArch = "unknown-arch"
+ppCheckExplanationId CIUnknownCompiler = "unknown-compiler"
+ppCheckExplanationId CIBaseNoUpperBounds = "missing-bounds-important"
+ppCheckExplanationId CIMissingUpperBounds = "missing-upper-bounds"
+ppCheckExplanationId CISuspiciousFlagName = "suspicious-flag"
+ppCheckExplanationId CIDeclaredUsedFlags = "unused-flag"
+ppCheckExplanationId CINonASCIICustomField = "non-ascii"
+ppCheckExplanationId CIRebindableClashPaths = "rebindable-clash-paths"
+ppCheckExplanationId CIRebindableClashPackageInfo = "rebindable-clash-info"
+ppCheckExplanationId CIWErrorUnneeded = "werror"
+ppCheckExplanationId CIJUnneeded = "unneeded-j"
+ppCheckExplanationId CIFDeferTypeErrorsUnneeded = "fdefer-type-errors"
+ppCheckExplanationId CIDynamicUnneeded = "debug-flag"
+ppCheckExplanationId CIProfilingUnneeded = "fprof-flag"
+ppCheckExplanationId CIUpperBoundSetup = "missing-bounds-setup"
+ppCheckExplanationId CIDuplicateModule = "duplicate-modules"
+ppCheckExplanationId CIPotentialDupModule = "maybe-duplicate-modules"
+ppCheckExplanationId CIBOMStart = "bom"
+ppCheckExplanationId CINotPackageName = "name-no-match"
+ppCheckExplanationId CINoDesc = "no-cabal-file"
+ppCheckExplanationId CIMultiDesc = "multiple-cabal-file"
+ppCheckExplanationId CIUnknownFile = "unknown-file"
+ppCheckExplanationId CIMissingSetupFile = "missing-setup"
+ppCheckExplanationId CIMissingConfigureScript = "missing-conf-script"
+ppCheckExplanationId CIUnknownDirectory = "unknown-directory"
+ppCheckExplanationId CIMissingSourceControl = "no-repository"
+ppCheckExplanationId CIMissingExpectedDocFiles = "no-docs"
+ppCheckExplanationId CIWrongFieldForExpectedDocFiles = "doc-place"
+
+-- String: the unrecognised 'CheckExplanationIDString' itself.
+readExplanationID
+  :: CheckExplanationIDString
+  -> Either String CheckExplanationID
+readExplanationID s = maybe (Left s) Right (lookup s idsDict)
+  where
+    idsDict :: [(CheckExplanationIDString, CheckExplanationID)]
+    idsDict = map (\i -> (ppCheckExplanationId i, i)) [minBound .. maxBound]
+
 -- | Which stanza does `CheckExplanation` refer to?
 data CEType
   = CETLibrary LibraryName
@@ -285,23 +760,6 @@ ppCET cet = case cet of
   where
     qn :: UnqualComponentName -> String
     qn wn = (" " ++) . quote . prettyShow $ wn
-
--- | Which field does `CheckExplanation` refer to?
-data CEField
-  = CEFCategory
-  | CEFMaintainer
-  | CEFSynopsis
-  | CEFDescription
-  | CEFSynOrDesc
-  deriving (Eq, Ord, Show)
-
--- | Pretty printing `CEField`.
-ppCEField :: CEField -> String
-ppCEField CEFCategory = "category"
-ppCEField CEFMaintainer = "maintainer"
-ppCEField CEFSynopsis = "synopsis"
-ppCEField CEFDescription = "description"
-ppCEField CEFSynOrDesc = "synopsis' or 'description"
 
 -- | Which language are we referring to in our warning message?
 data WarnLang = LangC | LangCPlusPlus
@@ -431,8 +889,11 @@ ppExplanation (DeprecatedExtensions ourDeprecatedExtensions) =
         ++ "'."
       | (ext, Just replacement) <- ourDeprecatedExtensions
       ]
-ppExplanation (MissingField cef) =
-  "No '" ++ ppCEField cef ++ "' field."
+ppExplanation MissingFieldCategory = "No 'category' field."
+ppExplanation MissingFieldMaintainer = "No 'maintainer' field."
+ppExplanation MissingFieldSynopsis = "No 'synopsis' field."
+ppExplanation MissingFieldDescription = "No 'description' field."
+ppExplanation MissingFieldSynOrDesc = "No 'synopsis' or 'description' field."
 ppExplanation SynopsisTooLong =
   "The 'synopsis' field is rather long (max 80 chars is recommended)."
 ppExplanation ShortDesc =
@@ -652,9 +1113,9 @@ ppExplanation (InvalidOnWin paths) =
     ++ quotes paths
     ++ " invalid on Windows, which "
     ++ "would cause portability problems for this package. Windows file "
-    ++ "names cannot contain any of the characters \":*?<>|\" and there "
-    ++ "a few reserved names including \"aux\", \"nul\", \"con\", "
-    ++ "\"prn\", \"com1-9\", \"lpt1-9\" and \"clock$\"."
+    ++ "names cannot contain any of the characters \":*?<>|\", and there "
+    ++ "are a few reserved names including \"aux\", \"nul\", \"con\", "
+    ++ "\"prn\", \"com{1-9}\", \"lpt{1-9}\" and \"clock$\"."
   where
     quotes [failed] = "path " ++ quote failed ++ " is"
     quotes failed =
@@ -702,6 +1163,10 @@ ppExplanation CVDefaultLanguageComponent =
     ++ "Haskell98 or Haskell2010). If a component uses different languages "
     ++ "in different modules then list the other ones in the "
     ++ "'other-languages' field."
+ppExplanation CVDefaultLanguageComponentSoft =
+  "Without `default-language`, cabal will default to Haskell98, which is "
+    ++ "probably not what you want. Please add `default-language` to all "
+    ++ "targets."
 ppExplanation CVExtraDocFiles =
   "To use the 'extra-doc-files' field the package needs to specify "
     ++ "'cabal-version: 1.18' or higher."
@@ -778,6 +1243,9 @@ ppExplanation CVAutogenPackageInfo =
     ++ "the module does not come with the package and is generated on "
     ++ "setup. Modules built with a custom Setup.hs script also go here "
     ++ "to ensure that commands like sdist don't fail."
+ppExplanation CVAutogenPackageInfoGuard =
+  "To use the autogenerated module PackageInfo_* you need to specify "
+    ++ "`cabal-version: 3.12` or higher."
 ppExplanation (GlobNoMatch field glob) =
   "In '"
     ++ field

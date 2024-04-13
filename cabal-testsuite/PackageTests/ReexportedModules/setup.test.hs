@@ -3,5 +3,5 @@ import Test.Cabal.Prelude
 main = setupAndCabalTest $ do
     skipUnlessGhcVersion ">= 7.9"
     withPackageDb $ do
-        withDirectory "p" $ setup_install ["--cabal-file", "p.cabal"]
+        withDirectory "p" $ setup_install []
         withDirectory "q" $ setup_build []

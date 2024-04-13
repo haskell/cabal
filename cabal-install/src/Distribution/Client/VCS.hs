@@ -61,6 +61,9 @@ import Distribution.Simple.Program
   , runProgramInvocation
   , simpleProgram
   )
+import Distribution.Simple.Program.Db
+  ( prependProgramSearchPath
+  )
 import Distribution.Types.SourceRepo
   ( KnownRepoType (..)
   , RepoType (..)
@@ -198,18 +201,23 @@ validateSourceRepos rs =
 
 configureVCS
   :: Verbosity
+  -> [FilePath]
+  -- ^ Extra prog paths
   -> VCS Program
   -> IO (VCS ConfiguredProgram)
-configureVCS verbosity vcs@VCS{vcsProgram = prog} =
-  asVcsConfigured <$> requireProgram verbosity prog emptyProgramDb
+configureVCS verbosity progPaths vcs@VCS{vcsProgram = prog} = do
+  progPath <- prependProgramSearchPath verbosity progPaths emptyProgramDb
+  asVcsConfigured <$> requireProgram verbosity prog progPath
   where
     asVcsConfigured (prog', _) = vcs{vcsProgram = prog'}
 
 configureVCSs
   :: Verbosity
+  -> [FilePath]
+  -- ^ Extra prog paths
   -> Map RepoType (VCS Program)
   -> IO (Map RepoType (VCS ConfiguredProgram))
-configureVCSs verbosity = traverse (configureVCS verbosity)
+configureVCSs verbosity progPaths = traverse (configureVCS verbosity progPaths)
 
 -- ------------------------------------------------------------
 

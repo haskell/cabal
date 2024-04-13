@@ -40,13 +40,28 @@ directories when there is none in the current directory.
 Conditionals and imports
 ------------------------
 
-As of ``cabal-install`` version 3.8, cabal supports conditional logic
-and imports in ``cabal.project`` files. :ref:`conditions` in cabal
-may case on operating system, architecture, and
-compiler (i.e. there is no support for a notion of custom flags in
-project files). Imports may specify local filepaths or remote urls,
-and may reference either cabal.project files or v1-style cabal.config
-freeze files. As a usage example:
+As of ``cabal-install`` version 3.8, cabal supports conditional logic and
+imports in ``cabal.project`` files.
+
+    .. warning::
+
+      While :ref:`conditional blocks<conditional-blocks>` can appear anywhere
+      within component or common sections of a package, their placement within a
+      project is restricted.  Conditions may only be introduced at the top level
+      of a project.
+
+      Of the :ref:`condition tests<conditions>`, only packages can test for
+      flags. Projects can test for operating system, architecture, compiler and
+      the boolean constants.
+
+      - :samp:`os({name})`
+      - :samp:`arch({name})`
+      - :samp:`impl({compiler})`
+      - ``true``
+      - ``false``
+
+Imports may specify local filepaths or remote urls, and may reference either
+cabal.project files or v1-style cabal.config freeze files. As a usage example:
 
 ::
 
@@ -174,16 +189,16 @@ Formally, the format is described by the following BNF:
 
 .. code-block:: abnf
 
-    FilePathGlob    ::= FilePathRoot FilePathGlobRel
+    RootedGlob    ::= FilePathRoot Glob
     FilePathRoot    ::= {- empty -}        # relative to cabal.project
                       | "/"                # Unix root
                       | [a-zA-Z] ":" [/\\] # Windows root
                       | "~"                # home directory
-    FilePathGlobRel ::= Glob "/"  FilePathGlobRel # Unix directory
-                      | Glob "\\" FilePathGlobRel # Windows directory
-                      | Glob         # file
-                      | {- empty -}  # trailing slash
-    Glob      ::= GlobPiece *
+    Glob ::= GlobPieces [/\\] Glob   # Unix or Windows directory
+           | "..[**/\\]"  GlobPieces # Recursive directory glob
+           | GlobPieces              # file
+           | [/\\]                   # trailing slash
+    GlobPieces ::= GlobPiece *
     GlobPiece ::= "*"            # wildcard
                 | [^*{},/\\] *   # literal string
                 | "\\" [*{},]    # escaped reserved character
@@ -193,9 +208,11 @@ Formally, the format is described by the following BNF:
 Specifying Packages from Remote Version Control Locations
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Starting with Cabal 2.4, there is now a stanza
-``source-repository-package`` for specifying packages from an external
-version control.
+Since version 2.4, the ``source-repository-package`` stanza allows for
+specifying packages in a remote version control system that cabal should
+consider during package retrieval. This allows use of a package from a
+remote version control system, rather than looking for that package in
+Hackage.
 
 .. code-block:: cabal
 
@@ -218,8 +235,11 @@ version control.
         tag: e76fdc753e660dfa615af6c8b6a2ad9ddf6afe70
         post-checkout-command: autoreconf -i
 
-cabal-install 3.4 sdists the ``source-repository-package`` repositories and uses resulting tarballs as project packages.
-This allows sharing of packages across different projects.
+Since version 3.4, cabal-install creates tarballs for each package coming
+from a ``source-repository-package`` stanza (effectively applying cabal
+sdists to such packages). It gathers the names of the packages from the
+appropriate .cabal file in the version control repository, and allows
+their use just like Hackage or locally defined packages.
 
 .. cfg-field:: type: VCS kind
 
@@ -229,7 +249,7 @@ This allows sharing of packages across different projects.
 
 .. cfg-field:: subdir: subdirectory list
 
-    Use one or more subdirectories of the repository.
+    Look in one or more subdirectories of the repository for cabal files, rather than the root.
 
 .. cfg-field:: post-checkout-command: command
 
@@ -352,6 +372,11 @@ package, and thus apply globally:
     :synopsis: PackageDB stack manipulation
     :since: 3.7
 
+    By modifying ``package-dbs`` you can modify the default package environment
+    which ``cabal`` will see. The package databases you add using ``package-dbs``
+    will not be written into and only used as immutable package stores to initialise
+    the environment with additional packages that ``cabal`` can choose to use.
+
     There are three package databases involved with most builds:
 
     global
@@ -361,37 +386,42 @@ package, and thus apply globally:
     in-place
         Project-specific build directory
 
-    By default, the package stack you will have with v2 commands is:
+    By default, the initial package stack prefix you will have with v2 commands is:
 
     ::
 
-        -- [global, store]
+        -- prefix = [global]
 
-    So all remote packages required by your project will be
-    registered in the store package db (because it is last).
+    So the initial set of packages which is used by cabal is just the packages
+    installed in the global package database which comes with ``ghc``.
 
-    When cabal starts building your local projects, it appends the in-place db
-    to the end:
+    When cabal builds a package it will start populating the ``store`` package database,
+    whose packages will then be subsequently be available to be used in future runs.
 
     ::
 
-        -- [global, store, in-place]
+        -- prefix ++ [store]
 
-    So your local packages get put in ``dist-newstyle`` instead of the store.
+    When cabal builds your local projects, packages are registered into the local
+    in-place package database.
 
-    This flag manipulates the default prefix: ``[global, store]`` and accepts
+    ::
+
+        -- prefix ++ [store, in-place]
+
+    This flag manipulates the default prefix: ``[global]`` and accepts
     paths, the special value ``global`` referring to the global package db, and
     ``clear`` which removes all prior entries. For example,
 
     ::
 
-        -- [global, store, foo]
+        -- prefix = [global, foo]
         package-dbs: foo
 
-        -- [foo]
+        -- prefix = [foo]
         package-dbs: clear, foo
 
-        -- [bar, baz]
+        -- prefix = [bar, baz]
         package-dbs: clear, foo, clear, bar, baz
 
     The command line variant of this flag is ``--package-db=DB`` which can be

@@ -32,13 +32,17 @@ module Distribution.Simple.Program.Find
   , defaultProgramSearchPath
   , findProgramOnSearchPath
   , programSearchPathAsPATHVar
+  , logExtraProgramSearchPath
   , getSystemSearchPath
+  , getExtraPathEnv
+  , simpleProgram
   ) where
 
 import Distribution.Compat.Prelude
 import Prelude ()
 
 import Distribution.Compat.Environment
+import Distribution.Simple.Program.Types
 import Distribution.Simple.Utils
 import Distribution.System
 import Distribution.Verbosity
@@ -58,31 +62,17 @@ import System.FilePath as FilePath
 import qualified System.Win32 as Win32
 #endif
 
--- | A search path to use when locating executables. This is analogous
--- to the unix @$PATH@ or win32 @%PATH%@ but with the ability to use
--- the system default method for finding executables ('findExecutable' which
--- on unix is simply looking on the @$PATH@ but on win32 is a bit more
--- complicated).
---
--- The default to use is @[ProgSearchPathDefault]@ but you can add extra dirs
--- either before, after or instead of the default, e.g. here we add an extra
--- dir to search after the usual ones.
---
--- > ['ProgramSearchPathDefault', 'ProgramSearchPathDir' dir]
-type ProgramSearchPath = [ProgramSearchPathEntry]
-
-data ProgramSearchPathEntry
-  = -- | A specific dir
-    ProgramSearchPathDir FilePath
-  | -- | The system default
-    ProgramSearchPathDefault
-  deriving (Eq, Generic, Typeable)
-
-instance Binary ProgramSearchPathEntry
-instance Structured ProgramSearchPathEntry
-
 defaultProgramSearchPath :: ProgramSearchPath
 defaultProgramSearchPath = [ProgramSearchPathDefault]
+
+logExtraProgramSearchPath
+  :: Verbosity
+  -> [FilePath]
+  -> IO ()
+logExtraProgramSearchPath verbosity extraPaths =
+  info verbosity . unlines $
+    "Including the following directories in PATH:"
+      : map ("- " ++) extraPaths
 
 findProgramOnSearchPath
   :: Verbosity
@@ -154,6 +144,25 @@ findProgramOnSearchPath verbosity searchpath prog = do
         Just _ -> return a
         Nothing -> firstJustM mas
 
+-- | Adds some paths to the "PATH" entry in the key-value environment provided
+-- or if there is none, looks up @$PATH@ in the real environment.
+getExtraPathEnv
+  :: Verbosity
+  -> [(String, Maybe String)]
+  -> [FilePath]
+  -> IO [(String, Maybe String)]
+getExtraPathEnv _ _ [] = return []
+getExtraPathEnv verbosity env extras = do
+  mb_path <- case lookup "PATH" env of
+    Just x -> return x
+    Nothing -> lookupEnv "PATH"
+  logExtraProgramSearchPath verbosity extras
+  let extra = intercalate [searchPathSeparator] extras
+      path' = case mb_path of
+        Nothing -> extra
+        Just path -> extra ++ searchPathSeparator : path
+  return [("PATH", Just path')]
+
 -- | Interpret a 'ProgramSearchPath' to construct a new @$PATH@ env var.
 -- Note that this is close but not perfect because on Windows the search
 -- algorithm looks at more than just the @%PATH%@.
@@ -207,3 +216,19 @@ findExecutable prog = do
             else return Nothing
         _     -> return mExe
 #endif
+
+-- | Make a simple named program.
+--
+-- By default we'll just search for it in the path and not try to find the
+-- version name. You can override these behaviours if necessary, eg:
+--
+-- > (simpleProgram "foo") { programFindLocation = ... , programFindVersion ... }
+simpleProgram :: String -> Program
+simpleProgram name =
+  Program
+    { programName = name
+    , programFindLocation = \v p -> findProgramOnSearchPath v p name
+    , programFindVersion = \_ _ -> return Nothing
+    , programPostConf = \_ p -> return p
+    , programNormaliseArgs = \_ _ -> id
+    }

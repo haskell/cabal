@@ -1,5 +1,5 @@
 import Test.Cabal.Prelude
-main = cabalTest $ withSourceCopy $ do
+main = cabalTest $ do
   cwd <- fmap testCurrentDir getTestEnv
   cabal "v2-sdist" ["a", "b"]
   shouldExist $ cwd </> "dist-newstyle/sdist/a-0.1.tar.gz"

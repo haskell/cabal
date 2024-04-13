@@ -1,6 +1,7 @@
 synopsis: `cabal init` should not suggest Cabal < 2.0
 packages: Cabal
 issues: #8680
+prs: #8700
 
 description: {
 

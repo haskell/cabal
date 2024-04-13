@@ -38,6 +38,8 @@ data GhcImplInfo = GhcImplInfo
   -- ^ -XHaskell2010 and -XHaskell98 flags
   , supportsGHC2021 :: Bool
   -- ^ -XGHC2021 flag
+  , supportsGHC2024 :: Bool
+  -- ^ -XGHC2024 flag
   , reportsNoExt :: Bool
   -- ^ --supported-languages gives Ext and NoExt
   , alwaysNondecIndent :: Bool
@@ -88,6 +90,7 @@ ghcVersionImplInfo ver =
   GhcImplInfo
     { supportsHaskell2010 = v >= [7]
     , supportsGHC2021 = v >= [9, 1]
+    , supportsGHC2024 = v >= [9, 9]
     , reportsNoExt = v >= [7]
     , alwaysNondecIndent = v < [7, 1]
     , flagGhciScript = v >= [7, 2]
@@ -114,6 +117,7 @@ ghcjsVersionImplInfo _ghcjsver ghcver =
   GhcImplInfo
     { supportsHaskell2010 = True
     , supportsGHC2021 = True
+    , supportsGHC2024 = ghcv >= [9, 9]
     , reportsNoExt = True
     , alwaysNondecIndent = False
     , flagGhciScript = True

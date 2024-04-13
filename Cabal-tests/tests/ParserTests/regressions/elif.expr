@@ -1,184 +1,195 @@
-GenericPackageDescription
-  {condBenchmarks = [],
-   condExecutables = [],
-   condForeignLibs = [],
-   condLibrary = Just
-                   CondNode
-                     {condTreeComponents = [CondBranch
-                                              {condBranchCondition = `Var (OS Linux)`,
-                                               condBranchIfFalse = Nothing,
-                                               condBranchIfTrue = CondNode
-                                                                    {condTreeComponents = [],
-                                                                     condTreeConstraints = [Dependency
-                                                                                              (PackageName
-                                                                                                 "unix")
-                                                                                              (OrLaterVersion
-                                                                                                 (mkVersion
-                                                                                                    [0]))
-                                                                                              mainLibSet],
-                                                                     condTreeData = Library
-                                                                                      {exposedModules = [],
-                                                                                       libBuildInfo = BuildInfo
-                                                                                                        {asmOptions = [],
-                                                                                                         asmSources = [],
-                                                                                                         autogenIncludes = [],
-                                                                                                         autogenModules = [],
-                                                                                                         buildToolDepends = [],
-                                                                                                         buildTools = [],
-                                                                                                         buildable = True,
-                                                                                                         cSources = [],
-                                                                                                         ccOptions = [],
-                                                                                                         cmmOptions = [],
-                                                                                                         cmmSources = [],
-                                                                                                         cppOptions = [],
-                                                                                                         customFieldsBI = [],
-                                                                                                         cxxOptions = [],
-                                                                                                         cxxSources = [],
-                                                                                                         defaultExtensions = [],
-                                                                                                         defaultLanguage = Nothing,
-                                                                                                         extraBundledLibs = [],
-                                                                                                         extraDynLibFlavours = [],
-                                                                                                         extraFrameworkDirs = [],
-                                                                                                         extraGHCiLibs = [],
-                                                                                                         extraLibDirs = [],
-                                                                                                         extraLibDirsStatic = [],
-                                                                                                         extraLibFlavours = [],
-                                                                                                         extraLibs = [],
-                                                                                                         extraLibsStatic = [],
-                                                                                                         frameworks = [],
-                                                                                                         hsSourceDirs = [],
-                                                                                                         hsc2hsOptions = [],
-                                                                                                         includeDirs = [],
-                                                                                                         includes = [],
-                                                                                                         installIncludes = [],
-                                                                                                         jsSources = [],
-                                                                                                         ldOptions = [],
-                                                                                                         mixins = [],
-                                                                                                         oldExtensions = [],
-                                                                                                         options = PerCompilerFlavor
-                                                                                                                     []
-                                                                                                                     [],
-                                                                                                         otherExtensions = [],
-                                                                                                         otherLanguages = [],
-                                                                                                         otherModules = [],
-                                                                                                         pkgconfigDepends = [],
-                                                                                                         profOptions = PerCompilerFlavor
-                                                                                                                         []
-                                                                                                                         [],
-                                                                                                         sharedOptions = PerCompilerFlavor
-                                                                                                                           []
-                                                                                                                           [],
-                                                                                                         staticOptions = PerCompilerFlavor
-                                                                                                                           []
-                                                                                                                           [],
-                                                                                                         targetBuildDepends = [Dependency
-                                                                                                                                 (PackageName
-                                                                                                                                    "unix")
-                                                                                                                                 (OrLaterVersion
-                                                                                                                                    (mkVersion
-                                                                                                                                       [0]))
-                                                                                                                                 mainLibSet],
-                                                                                                         virtualModules = []},
-                                                                                       libExposed = True,
-                                                                                       libName = LMainLibName,
-                                                                                       libVisibility = LibraryVisibilityPublic,
-                                                                                       reexportedModules = [],
-                                                                                       signatures = []}}}],
-                      condTreeConstraints = [],
-                      condTreeData = Library
-                                       {exposedModules = [ModuleName "ElseIf"],
-                                        libBuildInfo = BuildInfo
-                                                         {asmOptions = [],
-                                                          asmSources = [],
-                                                          autogenIncludes = [],
-                                                          autogenModules = [],
-                                                          buildToolDepends = [],
-                                                          buildTools = [],
-                                                          buildable = True,
-                                                          cSources = [],
-                                                          ccOptions = [],
-                                                          cmmOptions = [],
-                                                          cmmSources = [],
-                                                          cppOptions = [],
-                                                          customFieldsBI = [],
-                                                          cxxOptions = [],
-                                                          cxxSources = [],
-                                                          defaultExtensions = [],
-                                                          defaultLanguage = Just Haskell2010,
-                                                          extraBundledLibs = [],
-                                                          extraDynLibFlavours = [],
-                                                          extraFrameworkDirs = [],
-                                                          extraGHCiLibs = [],
-                                                          extraLibDirs = [],
-                                                          extraLibDirsStatic = [],
-                                                          extraLibFlavours = [],
-                                                          extraLibs = [],
-                                                          extraLibsStatic = [],
-                                                          frameworks = [],
-                                                          hsSourceDirs = [],
-                                                          hsc2hsOptions = [],
-                                                          includeDirs = [],
-                                                          includes = [],
-                                                          installIncludes = [],
-                                                          jsSources = [],
-                                                          ldOptions = [],
-                                                          mixins = [],
-                                                          oldExtensions = [],
-                                                          options = PerCompilerFlavor [] [],
-                                                          otherExtensions = [],
-                                                          otherLanguages = [],
-                                                          otherModules = [],
-                                                          pkgconfigDepends = [],
-                                                          profOptions = PerCompilerFlavor [] [],
-                                                          sharedOptions = PerCompilerFlavor [] [],
-                                                          staticOptions = PerCompilerFlavor [] [],
-                                                          targetBuildDepends = [],
-                                                          virtualModules = []},
-                                        libExposed = True,
-                                        libName = LMainLibName,
-                                        libVisibility = LibraryVisibilityPublic,
-                                        reexportedModules = [],
-                                        signatures = []}},
-   condSubLibraries = [],
-   condTestSuites = [],
-   genPackageFlags = [],
-   gpdScannedVersion = Nothing,
-   packageDescription = PackageDescription
-                          {author = "",
-                           benchmarks = [],
-                           bugReports = "",
-                           buildTypeRaw = Just Simple,
-                           category = "",
-                           copyright = "",
-                           customFieldsPD = [],
-                           dataDir = ".",
-                           dataFiles = [],
-                           description = "",
-                           executables = [],
-                           extraDocFiles = [],
-                           extraSrcFiles = [],
-                           extraTmpFiles = [],
-                           foreignLibs = [],
-                           homepage = "",
-                           library = Nothing,
-                           licenseFiles = [],
-                           licenseRaw = Left NONE,
-                           maintainer = "",
-                           package = PackageIdentifier
-                                       {pkgName = PackageName "elif", pkgVersion = mkVersion [0]},
-                           pkgUrl = "",
-                           setupBuildInfo = Nothing,
-                           sourceRepos = [SourceRepo
-                                            {repoBranch = Nothing,
-                                             repoKind = RepoHead,
-                                             repoLocation = Just "https://github.com/hvr/-.git",
-                                             repoModule = Nothing,
-                                             repoSubdir = Nothing,
-                                             repoTag = Nothing,
-                                             repoType = Just (KnownRepoType Git)}],
-                           specVersion = CabalSpecV1_10,
-                           stability = "",
-                           subLibraries = [],
-                           synopsis = "The elif demo",
-                           testSuites = [],
-                           testedWith = []}}
+GenericPackageDescription {
+  packageDescription =
+  PackageDescription {
+    specVersion = CabalSpecV1_10,
+    package = PackageIdentifier {
+      pkgName = PackageName "elif",
+      pkgVersion = mkVersion [0]},
+    licenseRaw = Left NONE,
+    licenseFiles = [],
+    copyright = "",
+    maintainer = "",
+    author = "",
+    stability = "",
+    testedWith = [],
+    homepage = "",
+    pkgUrl = "",
+    bugReports = "",
+    sourceRepos = [
+      SourceRepo {
+        repoKind = RepoHead,
+        repoType = Just
+          (KnownRepoType Git),
+        repoLocation = Just
+          "https://github.com/hvr/-.git",
+        repoModule = Nothing,
+        repoBranch = Nothing,
+        repoTag = Nothing,
+        repoSubdir = Nothing}],
+    synopsis = "The elif demo",
+    description = "",
+    category = "",
+    customFieldsPD = [],
+    buildTypeRaw = Just Simple,
+    setupBuildInfo = Nothing,
+    library = Nothing,
+    subLibraries = [],
+    executables = [],
+    foreignLibs = [],
+    testSuites = [],
+    benchmarks = [],
+    dataFiles = [],
+    dataDir = SymbolicPath ".",
+    extraSrcFiles = [],
+    extraTmpFiles = [],
+    extraDocFiles = []},
+  gpdScannedVersion = Nothing,
+  genPackageFlags = [],
+  condLibrary = Just
+    CondNode {
+      condTreeData = Library {
+        libName = LMainLibName,
+        exposedModules = [
+          ModuleName "ElseIf"],
+        reexportedModules = [],
+        signatures = [],
+        libExposed = True,
+        libVisibility =
+        LibraryVisibilityPublic,
+        libBuildInfo = BuildInfo {
+          buildable = True,
+          buildTools = [],
+          buildToolDepends = [],
+          cppOptions = [],
+          asmOptions = [],
+          cmmOptions = [],
+          ccOptions = [],
+          cxxOptions = [],
+          ldOptions = [],
+          hsc2hsOptions = [],
+          pkgconfigDepends = [],
+          frameworks = [],
+          extraFrameworkDirs = [],
+          asmSources = [],
+          cmmSources = [],
+          cSources = [],
+          cxxSources = [],
+          jsSources = [],
+          hsSourceDirs = [],
+          otherModules = [],
+          virtualModules = [],
+          autogenModules = [],
+          defaultLanguage = Just
+            Haskell2010,
+          otherLanguages = [],
+          defaultExtensions = [],
+          otherExtensions = [],
+          oldExtensions = [],
+          extraLibs = [],
+          extraLibsStatic = [],
+          extraGHCiLibs = [],
+          extraBundledLibs = [],
+          extraLibFlavours = [],
+          extraDynLibFlavours = [],
+          extraLibDirs = [],
+          extraLibDirsStatic = [],
+          includeDirs = [],
+          includes = [],
+          autogenIncludes = [],
+          installIncludes = [],
+          options = PerCompilerFlavor
+            []
+            [],
+          profOptions = PerCompilerFlavor
+            []
+            [],
+          sharedOptions =
+          PerCompilerFlavor [] [],
+          staticOptions =
+          PerCompilerFlavor [] [],
+          customFieldsBI = [],
+          targetBuildDepends = [],
+          mixins = []}},
+      condTreeConstraints = [],
+      condTreeComponents = [
+        CondBranch {
+          condBranchCondition =
+          `Var (OS Linux)`,
+          condBranchIfTrue = CondNode {
+            condTreeData = Library {
+              libName = LMainLibName,
+              exposedModules = [],
+              reexportedModules = [],
+              signatures = [],
+              libExposed = True,
+              libVisibility =
+              LibraryVisibilityPublic,
+              libBuildInfo = BuildInfo {
+                buildable = True,
+                buildTools = [],
+                buildToolDepends = [],
+                cppOptions = [],
+                asmOptions = [],
+                cmmOptions = [],
+                ccOptions = [],
+                cxxOptions = [],
+                ldOptions = [],
+                hsc2hsOptions = [],
+                pkgconfigDepends = [],
+                frameworks = [],
+                extraFrameworkDirs = [],
+                asmSources = [],
+                cmmSources = [],
+                cSources = [],
+                cxxSources = [],
+                jsSources = [],
+                hsSourceDirs = [],
+                otherModules = [],
+                virtualModules = [],
+                autogenModules = [],
+                defaultLanguage = Nothing,
+                otherLanguages = [],
+                defaultExtensions = [],
+                otherExtensions = [],
+                oldExtensions = [],
+                extraLibs = [],
+                extraLibsStatic = [],
+                extraGHCiLibs = [],
+                extraBundledLibs = [],
+                extraLibFlavours = [],
+                extraDynLibFlavours = [],
+                extraLibDirs = [],
+                extraLibDirsStatic = [],
+                includeDirs = [],
+                includes = [],
+                autogenIncludes = [],
+                installIncludes = [],
+                options = PerCompilerFlavor
+                  []
+                  [],
+                profOptions = PerCompilerFlavor
+                  []
+                  [],
+                sharedOptions =
+                PerCompilerFlavor [] [],
+                staticOptions =
+                PerCompilerFlavor [] [],
+                customFieldsBI = [],
+                targetBuildDepends = [
+                  Dependency
+                    (PackageName "unix")
+                    (OrLaterVersion (mkVersion [0]))
+                    mainLibSet],
+                mixins = []}},
+            condTreeConstraints = [
+              Dependency
+                (PackageName "unix")
+                (OrLaterVersion (mkVersion [0]))
+                mainLibSet],
+            condTreeComponents = []},
+          condBranchIfFalse = Nothing}]},
+  condSubLibraries = [],
+  condForeignLibs = [],
+  condExecutables = [],
+  condTestSuites = [],
+  condBenchmarks = []}

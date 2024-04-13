@@ -1,13 +1,13 @@
+cabal-version: 3.12
 name: AutogenModules
 version: 0.1
-license: BSD3
+license: BSD-3-Clause
 license-file: LICENSE
 author: Federico Mastellone
 maintainer: Federico Mastellone
 synopsis: AutogenModules
 category: PackageTests
 build-type: Simple
-cabal-version: 2.0
 
 description:
     Check that Cabal recognizes the autogen-modules fields below.

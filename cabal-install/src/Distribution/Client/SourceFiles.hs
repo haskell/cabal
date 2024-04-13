@@ -103,7 +103,7 @@ needForeignLib
       }
     ) =
     do
-      traverse_ needIfExists fs
+      traverse_ (needIfExists . getSymbolicPath) fs
       needBuildInfo pkg_descr bi []
 
 needExecutable :: PackageDescription -> Executable -> Rebuild ()
@@ -116,14 +116,14 @@ needExecutable
     ) =
     do
       needBuildInfo pkg_descr bi []
-      needMainFile bi mainPath
+      needMainFile bi $ getSymbolicPath mainPath
 
 needTestSuite :: PackageDescription -> TestSuite -> Rebuild ()
 needTestSuite pkg_descr t =
   case testInterface t of
     TestSuiteExeV10 _ mainPath -> do
       needBuildInfo pkg_descr bi []
-      needMainFile bi mainPath
+      needMainFile bi $ getSymbolicPath mainPath
     TestSuiteLibV09 _ m ->
       needBuildInfo pkg_descr bi [m]
     TestSuiteUnsupported _ -> return () -- soft fail
@@ -157,7 +157,7 @@ needBenchmark pkg_descr bm =
   case benchmarkInterface bm of
     BenchmarkExeV10 _ mainPath -> do
       needBuildInfo pkg_descr bi []
-      needMainFile bi mainPath
+      needMainFile bi $ getSymbolicPath mainPath
     BenchmarkUnsupported _ -> return () -- soft fail
   where
     bi :: BuildInfo
@@ -167,29 +167,32 @@ needBuildInfo :: PackageDescription -> BuildInfo -> [ModuleName] -> Rebuild ()
 needBuildInfo pkg_descr bi modules = do
   -- NB: These are separate because there may be both A.hs and
   -- A.hs-boot; need to track both.
-  findNeededModules ["hs", "lhs", "hsig", "lhsig"]
-  findNeededModules ["hs-boot", "lhs-boot"]
+  findNeededModules builtinHaskellSuffixes
+  findNeededModules builtinHaskellBootSuffixes
   root <- askRoot
-  expandedExtraSrcFiles <- liftIO $ fmap concat . for (extraSrcFiles pkg_descr) $ \fpath -> matchDirFileGlobWithDie normal (\_ _ -> return []) (specVersion pkg_descr) root fpath
+  expandedExtraSrcFiles <- liftIO $
+    fmap concat . for (extraSrcFiles pkg_descr) $
+      \fpath ->
+        matchDirFileGlobWithDie normal (\_ _ -> return []) (specVersion pkg_descr) (Just $ makeSymbolicPath root) fpath
   traverse_ needIfExists $
     concat
-      [ cSources bi
-      , cxxSources bi
-      , jsSources bi
-      , cmmSources bi
-      , asmSources bi
-      , expandedExtraSrcFiles
+      [ map getSymbolicPath $ cSources bi
+      , map getSymbolicPath $ cxxSources bi
+      , map getSymbolicPath $ jsSources bi
+      , map getSymbolicPath $ cmmSources bi
+      , map getSymbolicPath $ asmSources bi
+      , map getSymbolicPath $ expandedExtraSrcFiles
       ]
-  for_ (installIncludes bi) $ \f ->
-    findFileMonitored ("." : includeDirs bi) f
+  for_ (fmap getSymbolicPath $ installIncludes bi) $ \f ->
+    findFileMonitored ("." : fmap getSymbolicPath (includeDirs bi)) f
       >>= maybe (return ()) need
   where
-    findNeededModules :: [String] -> Rebuild ()
+    findNeededModules :: [Suffix] -> Rebuild ()
     findNeededModules exts =
       traverse_
         (findNeededModule exts)
         (modules ++ otherModules bi)
-    findNeededModule :: [String] -> ModuleName -> Rebuild ()
+    findNeededModule :: [Suffix] -> ModuleName -> Rebuild ()
     findNeededModule exts m =
       findFileWithExtensionMonitored
         (ppSuffixes knownSuffixHandlers ++ exts)

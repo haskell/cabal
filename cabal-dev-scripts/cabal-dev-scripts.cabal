@@ -17,8 +17,8 @@ executable gen-spdx
   hs-source-dirs:   src
   ghc-options:      -Wall
   build-depends:
-    , aeson                 ^>=1.4.1.0 || ^>=1.5.2.0 || ^>=2.1.1.0
-    , base                  >=4.10     && <4.19
+    , aeson                 ^>=1.4.1.0 || ^>=1.5.2.0 || ^>=2.2.1.0
+    , base                  >=4.10     && <4.20
     , bytestring
     , containers
     , Diff                  ^>=0.4
@@ -34,8 +34,8 @@ executable gen-spdx-exc
   hs-source-dirs:   src
   ghc-options:      -Wall
   build-depends:
-    , aeson                 ^>=1.4.1.0 || ^>=1.5.2.0 || ^>=2.1.1.0
-    , base                  >=4.10     && <4.19
+    , aeson                 ^>=1.4.1.0 || ^>=1.5.2.0 || ^>=2.2.1.0
+    , base                  >=4.10     && <4.20
     , bytestring
     , containers
     , Diff                  ^>=0.4

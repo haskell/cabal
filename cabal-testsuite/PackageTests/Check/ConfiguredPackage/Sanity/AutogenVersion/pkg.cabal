@@ -1,0 +1,16 @@
+cabal-version: 2.4
+name: pkg
+version: 0
+license: GPL-3.0-or-later
+maintainer: Someone
+category: Example
+synopsis: Foo
+description: FooBar
+build-type: Simple
+
+library
+    default-language: Haskell2010
+    build-depends: base <5
+    autogen-modules: PackageInfo_pkg
+    exposed-modules: PackageInfo_pkg
+

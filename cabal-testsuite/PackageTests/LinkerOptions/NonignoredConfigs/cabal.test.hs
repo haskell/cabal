@@ -1,4 +1,5 @@
 import Test.Cabal.Prelude
+import Distribution.Simple.Utils
 
 -- This test ensures the following fix holds:
 -- > Fix project-local build flags being ignored.
@@ -59,16 +60,12 @@ main = cabalTest $ do
     -- dynamic flags.
     skipIfWindows
 
+    env <- getTestEnv
     withPackageDb $ do
         -- Phase 1: get 4 hashes according to config flags.
         results <- forM (zip [0..] lrun) $ \(idx, linking) -> do
-            withDirectory "basic" $ do
-                withSourceCopyDir ("basic" ++ show idx) $ do
-                    -- (Now do ‘cd ..’, since withSourceCopyDir made our previous
-                    -- previous such withDirectories now accumulate to be
-                    -- relative to setup.dist/basic0, not testSourceDir
-                    -- (see 'testCurrentDir').)
-                    withDirectory ".." $ do
+            liftIO $ copyDirectoryRecursive minBound (testCurrentDir env </> "basic") (testCurrentDir env </> "basic" ++ show idx)
+            withDirectory ("basic" ++ show idx) $ do
                         packageEnv <- (</> ("basic" ++ show idx ++ ".env")) . testWorkDir <$> getTestEnv
                         let installOptions = ["--disable-deterministic", "--lib", "--package-env=" ++ packageEnv] ++ linkConfigFlags linking ++ ["basic"]
                         recordMode RecordMarked $ do

@@ -1,28 +1,8 @@
-packages: Cabal-syntax/
-packages: Cabal/
-packages: cabal-testsuite/
-packages: Cabal-QuickCheck/
-packages: Cabal-tree-diff
-packages: Cabal-described
-packages: Cabal-tests
+import: project-cabal/ghc-options.config
+import: project-cabal/pkgs/cabal.config
+import: project-cabal/pkgs/tests.config
+import: project-cabal/pkgs/integration-tests.config
+import: project-cabal/constraints.config
 
 tests: True
-
 write-ghc-environment-files: never
-
--- avoiding extra dependencies
-constraints: rere -rere-cfg
-constraints: these -assoc
-
-program-options
-  ghc-options: -fno-ignore-asserts
-
-package Cabal-syntax
-  ghc-options: -Werror
-package Cabal
-  ghc-options: -Werror
-package cabal-testsuite
-  ghc-options: -Werror
-
--- https://github.com/haskell-hvr/cryptohash-sha256/issues/12
-allow-newer: cryptohash-sha256:base

@@ -128,7 +128,7 @@ retrieveSourceFiles fp = do
               Nothing -> return Nothing
               Just moduleName -> do
                 let fileExtension = takeExtension f
-                relativeSourcePath <- makeRelative f <$> getCurrentDirectory
+                relativeSourcePath <- makeRelative (normalise f) <$> getCurrentDirectory
                 imports <- retrieveModuleImports f
                 extensions <- retrieveModuleExtensions f
 
@@ -214,7 +214,7 @@ retrieveDependencies v flags mods' pkgIx = do
       modDeps = map (\(mn, ds) -> (mn, ds, M.lookup ds modMap)) mods
   -- modDeps = map (id &&& flip M.lookup modMap) mods
 
-  message v Log "Guessing dependencies..."
+  message v Info "Guessing dependencies..."
   nub . catMaybes <$> traverse (chooseDep v flags) modDeps
 
 -- Given a module and a list of installed packages providing it,

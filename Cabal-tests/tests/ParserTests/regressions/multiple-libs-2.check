@@ -1,6 +1,6 @@
 multiple-libs-2.cabal:17:3: The field "visibility" is available only since the Cabal specification version 3.0. This field will be ignored.
-No 'category' field.
-No 'maintainer' field.
-No 'description' field.
-The 'license' field is missing or is NONE.
-The dependency 'build-depends: base' does not specify an upper bound on the version number. Each major release of the 'base' package changes the API in various ways and most packages will need some changes to compile with it. The recommended practice is to specify an upper bound on the version of the 'base' package. This ensures your package will continue to build when a new major version of the 'base' package is released. If you are not sure what upper bound to use then use the next  major version. For example if you have tested your package with 'base' version 4.5 and 4.6 then use 'build-depends: base >= 4.5 && < 4.7'.
+[no-category] No 'category' field.
+[no-maintainer] No 'maintainer' field.
+[no-description] No 'description' field.
+[license-none] The 'license' field is missing or is NONE.
+[missing-bounds-important] The dependency 'build-depends: base' does not specify an upper bound on the version number. Each major release of the 'base' package changes the API in various ways and most packages will need some changes to compile with it. The recommended practice is to specify an upper bound on the version of the 'base' package. This ensures your package will continue to build when a new major version of the 'base' package is released. If you are not sure what upper bound to use then use the next  major version. For example if you have tested your package with 'base' version 4.5 and 4.6 then use 'build-depends: base >= 4.5 && < 4.7'.

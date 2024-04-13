@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 if which cc >/dev/null 2>&1; then
     cc -DNOERROR6 "${@}"

@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
 
@@ -50,7 +51,7 @@ import Language.Haskell.Extension
 
 import qualified Data.Map as Map (empty)
 import System.Directory
-import System.FilePath
+import System.FilePath (pathSeparator)
 
 -- -----------------------------------------------------------------------------
 -- Configuring
@@ -242,8 +243,11 @@ buildExe
 buildExe verbosity _pkg_descr lbi exe clbi = do
   systemPkgDir <- getGlobalPackageDir verbosity (withPrograms lbi)
   userPkgDir <- getUserPackageDir
+  let mbWorkDir = mbWorkDirLBI lbi
+  srcMainPath <- findFileCwd verbosity mbWorkDir (hsSourceDirs $ buildInfo exe) (modulePath exe)
   let runUhcProg = runDbProgram verbosity uhcProgram (withPrograms lbi)
-  let uhcArgs =
+      i = interpretSymbolicPathLBI lbi -- See Note [Symbolic paths] in Distribution.Utils.Path
+      uhcArgs =
         -- common flags lib/exe
         constructUHCCmdLine
           userPkgDir
@@ -254,9 +258,9 @@ buildExe verbosity _pkg_descr lbi exe clbi = do
           (buildDir lbi)
           verbosity
           -- output file
-          ++ ["--output", buildDir lbi </> prettyShow (exeName exe)]
+          ++ ["--output", i $ buildDir lbi </> makeRelativePathEx (prettyShow (exeName exe))]
           -- main source module
-          ++ [modulePath exe]
+          ++ [i $ srcMainPath]
   runUhcProg uhcArgs
 
 constructUHCCmdLine
@@ -265,7 +269,7 @@ constructUHCCmdLine
   -> LocalBuildInfo
   -> BuildInfo
   -> ComponentLocalBuildInfo
-  -> FilePath
+  -> SymbolicPath Pkg (Dir Build)
   -> Verbosity
   -> [String]
 constructUHCCmdLine user system lbi bi clbi odir verbosity =
@@ -287,20 +291,22 @@ constructUHCCmdLine user system lbi bi clbi odir verbosity =
     ++ ["--package=uhcbase"]
     ++ ["--package=" ++ prettyShow (mungedName pkgid) | (_, pkgid) <- componentPackageDeps clbi]
     -- search paths
-    ++ ["-i" ++ odir]
-    ++ ["-i" ++ getSymbolicPath l | l <- nub (hsSourceDirs bi)]
-    ++ ["-i" ++ autogenComponentModulesDir lbi clbi]
-    ++ ["-i" ++ autogenPackageModulesDir lbi]
+    ++ ["-i" ++ i odir]
+    ++ ["-i" ++ i l | l <- nub (hsSourceDirs bi)]
+    ++ ["-i" ++ i (autogenComponentModulesDir lbi clbi)]
+    ++ ["-i" ++ i (autogenPackageModulesDir lbi)]
     -- cpp options
     ++ ["--optP=" ++ opt | opt <- cppOptions bi]
     -- output path
-    ++ ["--odir=" ++ odir]
+    ++ ["--odir=" ++ i odir]
     -- optimization
     ++ ( case withOptimization lbi of
           NoOptimisation -> ["-O0"]
           NormalOptimisation -> ["-O1"]
           MaximumOptimisation -> ["-O2"]
        )
+  where
+    i = interpretSymbolicPathLBI lbi -- See Note [Symbolic paths] in Distribution.Utils.Path
 
 uhcPackageDbOptions :: FilePath -> FilePath -> PackageDBStack -> [String]
 uhcPackageDbOptions user system db =
@@ -361,5 +367,5 @@ registerPackage verbosity comp progdb packageDbs installedPkgInfo = do
     pkgid = sourcePackageId installedPkgInfo
     compilerid = compilerId comp
 
-inplacePackageDbPath :: LocalBuildInfo -> FilePath
-inplacePackageDbPath lbi = buildDir lbi
+inplacePackageDbPath :: LocalBuildInfo -> SymbolicPath Pkg (Dir PkgDB)
+inplacePackageDbPath lbi = coerceSymbolicPath $ buildDir lbi

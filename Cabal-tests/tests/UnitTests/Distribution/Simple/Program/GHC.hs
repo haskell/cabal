@@ -53,12 +53,12 @@ tests = testGroup "Distribution.Simple.Program.GHC"
                       , compilerCompat = []
                       , compilerLanguages = []
                       , compilerExtensions = []
-                      , compilerProperties = Map.singleton "Support parallel --make" "YES" 
+                      , compilerProperties = Map.singleton "Support parallel --make" "YES"
                       })
                   (Platform X86_64 Linux)
                   (mempty { ghcOptNumJobs = Flag (NumJobs (Just 4)) })
             assertListEquals flags ["-j4", "-clear-package-db"]
-        ]        
+        ]
     ]
 
 assertListEquals :: (Eq a, Show a) => [a] -> [a] -> Assertion
@@ -190,35 +190,4 @@ options_9_0_all =
 options_9_0_affects :: [String]
 options_9_0_affects =
     [ "-fcmm-static-pred"
-    ]
-
--------------------------------------------------------------------------------
--- GHC-9.2
--------------------------------------------------------------------------------
-
-options_9_2_all :: [String]
-options_9_2_all =
-    [ "-dynohi"
-    , "-ddump-c-backend"
-    , "-ddump-stg-from-core"
-    , "-ddump-stg"
-    , "-ddump-faststrings"
-    , "--run"
-    , "-ffamily-application-cache"
-    , "-fno-family-application-cache"
-    ] ++ options_9_2_affects
-
-options_9_2_affects :: [String]
-options_9_2_affects =
-    [ "-fprof-callers"
-    , "-funfolding-case-threshold"
-    , "-funfolding-case-scaling"
-    , "-fdistinct-constructor-tables"
-    , "-finfo-table-map"
-    , "-fexpose-internal-symbols"
-    , "-finline-generics"
-    , "-finline-generics-aggressively"
-    , "-fno-expose-internal-symbols"
-    , "-fno-inline-generics"
-    , "-fno-inline-generics-aggressively"
     ]

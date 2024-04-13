@@ -1,7 +1,7 @@
+cabal-version: 3.12
 name: foo
 version: 1.0
 build-type: Simple
-cabal-version: >= 1.10
 data-dir: data
 data-files: hello.txt
 

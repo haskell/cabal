@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
 
@@ -51,6 +52,7 @@ module Distribution.Simple.Program
   , ProgArg
   , ProgramLocation (..)
   , runProgram
+  , runProgramCwd
   , getProgramOutput
   , suppressOverrideArgs
 
@@ -93,7 +95,9 @@ module Distribution.Simple.Program
   , requireProgramVersion
   , needProgram
   , runDbProgram
+  , runDbProgramCwd
   , getDbProgramOutput
+  , getDbProgramOutputCwd
 
     -- * Programs that Cabal knows about
   , ghcProgram
@@ -132,6 +136,7 @@ import Distribution.Simple.Program.Find
 import Distribution.Simple.Program.Run
 import Distribution.Simple.Program.Types
 import Distribution.Simple.Utils
+import Distribution.Utils.Path
 import Distribution.Verbosity
 
 -- | Runs the given configured program.
@@ -145,6 +150,20 @@ runProgram
   -> IO ()
 runProgram verbosity prog args =
   runProgramInvocation verbosity (programInvocation prog args)
+
+-- | Runs the given configured program.
+runProgramCwd
+  :: Verbosity
+  -- ^ Verbosity
+  -> Maybe (SymbolicPath CWD (Dir to))
+  -- ^ Working directory
+  -> ConfiguredProgram
+  -- ^ The program to run
+  -> [ProgArg]
+  -- ^ Any /extra/ arguments to add
+  -> IO ()
+runProgramCwd verbosity mbWorkDir prog args =
+  runProgramInvocation verbosity (programInvocationCwd mbWorkDir prog args)
 
 -- | Runs the given configured program and gets the output.
 getProgramOutput
@@ -169,11 +188,27 @@ runDbProgram
   -> [ProgArg]
   -- ^ Any /extra/ arguments to add
   -> IO ()
-runDbProgram verbosity prog programDb args =
+runDbProgram verbosity prog progDb args =
+  runDbProgramCwd verbosity Nothing prog progDb args
+
+-- | Looks up the given program in the program database and runs it.
+runDbProgramCwd
+  :: Verbosity
+  -- ^ verbosity
+  -> Maybe (SymbolicPath CWD (Dir to))
+  -- ^ working directory
+  -> Program
+  -- ^ The program to run
+  -> ProgramDb
+  -- ^ look up the program here
+  -> [ProgArg]
+  -- ^ Any /extra/ arguments to add
+  -> IO ()
+runDbProgramCwd verbosity mbWorkDir prog programDb args =
   case lookupProgram prog programDb of
     Nothing ->
       dieWithException verbosity $ ProgramNotFound (programName prog)
-    Just configuredProg -> runProgram verbosity configuredProg args
+    Just configuredProg -> runProgramCwd verbosity mbWorkDir configuredProg args
 
 -- | Looks up the given program in the program database and runs it.
 getDbProgramOutput
@@ -186,7 +221,25 @@ getDbProgramOutput
   -> [ProgArg]
   -- ^ Any /extra/ arguments to add
   -> IO String
-getDbProgramOutput verbosity prog programDb args =
+getDbProgramOutput verb prog progDb args =
+  getDbProgramOutputCwd verb Nothing prog progDb args
+
+-- | Looks up the given program in the program database and runs it.
+getDbProgramOutputCwd
+  :: Verbosity
+  -- ^ verbosity
+  -> Maybe (SymbolicPath CWD (Dir to))
+  -- ^ working directory
+  -> Program
+  -- ^ The program to run
+  -> ProgramDb
+  -- ^ look up the program here
+  -> [ProgArg]
+  -- ^ Any /extra/ arguments to add
+  -> IO String
+getDbProgramOutputCwd verbosity mbWorkDir prog programDb args =
   case lookupProgram prog programDb of
     Nothing -> dieWithException verbosity $ ProgramNotFound (programName prog)
-    Just configuredProg -> getProgramOutput verbosity configuredProg args
+    Just configuredProg ->
+      getProgramInvocationOutput verbosity $
+        programInvocationCwd mbWorkDir configuredProg args

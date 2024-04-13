@@ -10,54 +10,62 @@ import Prelude ()
 
 import Distribution.Compat.Environment
 import qualified Distribution.PackageDescription as PD
-import Distribution.Pretty
 import Distribution.Simple.Build.PathsModule
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Compiler
+import Distribution.Simple.Errors
 import Distribution.Simple.Flag
 import Distribution.Simple.Hpc
 import Distribution.Simple.InstallDirs
 import qualified Distribution.Simple.LocalBuildInfo as LBI
+  ( ComponentLocalBuildInfo (..)
+  , buildDir
+  , depLibraryPaths
+  )
+import Distribution.Simple.Setup.Common
 import Distribution.Simple.Setup.Test
 import Distribution.Simple.Test.Log
 import Distribution.Simple.Utils
 import Distribution.System
 import Distribution.TestSuite
 import qualified Distribution.Types.LocalBuildInfo as LBI
+  ( LocalBuildInfo (..)
+  , localUnitId
+  , testCoverage
+  )
 import Distribution.Types.UnqualComponentName
 import Distribution.Verbosity
 
+import Distribution.Utils.Path
+
+import qualified Data.ByteString.Lazy as LBS
+import Distribution.Simple.LocalBuildInfo (interpretSymbolicPathLBI, packageRoot)
 import System.Directory
   ( createDirectoryIfMissing
   , doesDirectoryExist
   , doesFileExist
-  , getCurrentDirectory
   , removeDirectoryRecursive
   )
-import System.FilePath ((<.>), (</>))
 import System.IO (stderr, stdout)
 import System.Process (createPipe)
-
-import qualified Data.ByteString.Lazy as LBS
-import Distribution.Simple.Errors
 
 runTest
   :: PD.PackageDescription
   -> LBI.LocalBuildInfo
   -> LBI.ComponentLocalBuildInfo
+  -> HPCMarkupInfo
   -> TestFlags
   -> PD.TestSuite
   -> IO TestSuiteLog
-runTest pkg_descr lbi clbi flags suite = do
+runTest pkg_descr lbi clbi hpcMarkupInfo flags suite = do
   let isCoverageEnabled = LBI.testCoverage lbi
       way = guessWay lbi
-      tixDir_ = tixDir distPref way testName'
+      tixDir_ = i $ tixDir distPref way
 
-  pwd <- getCurrentDirectory
   existingEnv <- getEnvironment
 
   let cmd =
-        LBI.buildDir lbi
+        i (LBI.buildDir lbi)
           </> testName'
           </> testName' <.> exeExtension (LBI.hostPlatform lbi)
   -- Check that the test executable exists.
@@ -82,8 +90,13 @@ runTest pkg_descr lbi clbi flags suite = do
         map
           (testOption pkg_descr lbi suite)
           (testOptions flags)
-      dataDirPath = pwd </> PD.dataDir pkg_descr
-      tixFile = pwd </> tixFilePath distPref way (testName')
+      rawDataDir = PD.dataDir pkg_descr
+      dataDirPath
+        | null $ getSymbolicPath rawDataDir =
+            interpretSymbolicPath mbWorkDir sameDirectory
+        | otherwise =
+            interpretSymbolicPath mbWorkDir rawDataDir
+      tixFile = packageRoot (testCommonFlags flags) </> getSymbolicPath (tixFilePath distPref way (testName'))
       pkgPathEnv =
         (pkgPathEnvVar pkg_descr "datadir", dataDirPath)
           : existingEnv
@@ -170,21 +183,29 @@ runTest pkg_descr lbi clbi flags suite = do
   -- Write summary notice to terminal indicating end of test suite
   notice verbosity $ summarizeSuiteFinish suiteLog
 
-  when isCoverageEnabled $
-    case PD.library pkg_descr of
-      Nothing ->
-        dieWithException verbosity TestCoverageSupport
-      Just library ->
-        markupTest verbosity lbi distPref (prettyShow $ PD.package pkg_descr) suite library
+  when isCoverageEnabled $ do
+    -- Until #9493 is fixed, we expect cabal-install to pass one dist dir per
+    -- library and there being at least one library in the package with the
+    -- testsuite.  When it is fixed, we can remove this predicate and allow a
+    -- testsuite without a library to cover libraries in other packages of the
+    -- same project
+    when (null $ PD.allLibraries pkg_descr) $
+      dieWithException verbosity TestCoverageSupport
+
+    markupPackage verbosity hpcMarkupInfo lbi distPref pkg_descr [suite]
 
   return suiteLog
   where
+    i = interpretSymbolicPathLBI lbi -- See Note [Symbolic paths] in Distribution.Utils.Path
+    commonFlags = testCommonFlags flags
+    mbWorkDir = flagToMaybe $ setupWorkingDir commonFlags
+
     testName' = unUnqualComponentName $ PD.testName suite
 
-    distPref = fromFlag $ testDistPref flags
-    verbosity = fromFlag $ testVerbosity flags
+    distPref = fromFlag $ setupDistPref commonFlags
+    verbosity = fromFlag $ setupVerbosity commonFlags
     details = fromFlag $ testShowDetails flags
-    testLogDir = distPref </> "test"
+    testLogDir = distPref </> makeRelativePathEx "test"
 
     buildLog exit =
       let r = case exit of
@@ -201,7 +222,7 @@ runTest pkg_descr lbi clbi flags suite = do
             { testSuiteName = PD.testName suite
             , testLogs = l
             , logFile =
-                testLogDir
+                i testLogDir
                   </> testSuiteLogPath
                     (fromFlag $ testHumanLog flags)
                     pkg_descr

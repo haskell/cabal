@@ -142,7 +142,7 @@ and should be written in the body of the ticket or PR under their own heading, l
 For instance:
 
 > \#\# QA Notes
-> 
+>
 > Calling `cabal haddock-project` should produce documentation for the whole cabal project with the following defaults enabled:
 > * Documentation lives in ./haddocks
 > * The file `./haddocks/index.html` should exist
@@ -163,7 +163,12 @@ the code base.
 * `make style-modified` - Format files modified in the current tree.
 * `make style-commit COMMIT=<ref>` - Format files modified between HEAD and the given reference.
 
+Whitespace Conventions
+----------------------
 
+We use automated whitespace convention checking. Violations can be fixed by
+running [fix-whitespace](https://hackage.haskell.org/package/fix-whitespace). If
+you push a fix of a whitespace violation, please do so in a _separate commit_.
 
 Other Conventions
 -----------------
@@ -265,6 +270,23 @@ severely complicates Git history. It is intended for special circumstances, as w
 the PR branch cannot or should not be modified. If you have any questions about it,
 please ask us.
 
+### Pull Requests & Issues
+
+A pull request *fixes* a problem that is *described* in an issue. Make sure to
+file an issue before opening a pull request. In the issue you can illustrate
+your proposed design, UX considerations, tradeoffs etc. and work them out with
+other contributors. The PR itself is for implementation.
+
+If a PR becomes out of sync with its issue, go back to the issue, update
+it, and continue the conversation there. Telltale signs of Issue/PR diverging
+are, for example: the PR growing bigger in scope; lengthy discussions
+about things that are *not* implementation choices; a change in design.
+
+If your PR is trivial you can omit this process (but explain in the PR why you
+think it does not warrant an issue). Feel free to open a new issue (or new
+issues) when appropriate.
+
+
 Changelog
 ---------
 
@@ -337,6 +359,25 @@ Currently, [@emilypi](https://github.com/emilypi), [@fgaz](https://github.com/fg
 `haskell.org/cabal`, and [@Mikolaj](https://github.com/Mikolaj) is the point of contact for getting
 permissions.
 
+Preview Releases
+----------------
+
+We make preview releases available to facilitate testing of development builds.
+
+Artifacts can be found on the [`cabal-head` release page](https://github.com/haskell/cabal/releases/tag/cabal-head).
+The Validate CI pipeline generates tarballs with a `cabal` executable. The executable gets uploaded to this release by the pipelines that run on `master`.
+
+We currently make available builds for:
+  - Linux, dynamically linked (requiring `zlib`, `gmp`, `glibc`)
+  - Linux, statically linked
+  - MacOS
+  - Windows
+
+The statically linked Linux executables are built using Alpine.
+To reproduce these locally, set up an Alpine build environment using GHCup,
+and then build by calling `cabal build cabal-install --enable-executable-static`.
+
+
 API Documentation
 -----------------
 
@@ -345,3 +386,35 @@ Auto-generated API documentation for the `master` branch of Cabal is automatical
 ## Issue triage [![Open Source Helpers](https://www.codetriage.com/haskell/cabal/badges/users.svg)](https://www.codetriage.com/haskell/cabal)
 
 You can contribute by triaging issues which may include reproducing bug reports or asking for vital information, such as version numbers or reproduction instructions. If you would like to start triaging issues, one easy way to get started is to [subscribe to cabal on CodeTriage](https://www.codetriage.com/haskell/cabal).
+
+Hackage Revisions
+-----------------
+
+We are reactive rather than proactive with revising bounds on our dependencies
+for code already released on Hackage. If you would benefit from a version bump,
+please, open a ticket and get familiar with
+[our revision policy](https://github.com/haskell/cabal/issues/9531#issuecomment-1866930240).
+
+The burden of proof that the bump is harmless remains with you, but we have a CI
+setup to show that our main pipeline ("Validate") is fine with the bump. To use
+it, someone with enough permissions needs to go on the
+[Validate workflow page](https://github.com/haskell/cabal/actions/workflows/validate.yml)
+and dispatch it manually by clicking "Run workflow".
+
+Running workflow manually as discussed above requires you to supply two inputs:
+
+> allow-newer line
+> constraints line
+
+Going via an example, imagine that Cabal only allows `tar` or version less then
+or equal to 0.6, and you want to bump it to 0.6. Then, to show that Validate
+succeeds with `tar` 0.6, you should input
+
+- `tar` to the "allow-newer line"
+- `tar ==0.6` to the "constraints line"
+
+Hopefully, running the Validate pipeline with these inputs succeeds and you
+supply the link to the run in the ticket about bumping the bound and making a revision.
+
+If interested in technical details, refer to the parts of `validate.yml` that
+mention `hackage-revisions`.

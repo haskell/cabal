@@ -1,3 +1,5 @@
+{-# LANGUAGE DataKinds #-}
+
 -----------------------------------------------------------------------------
 
 -- |
@@ -37,15 +39,29 @@ import Distribution.Parsec.Warning
   )
 import Distribution.Simple.Errors
 import Distribution.Simple.Utils (dieWithException, equating, warn)
+import Distribution.Utils.Path
 import Distribution.Verbosity (Verbosity, normal)
+import GHC.Stack
 import System.Directory (doesFileExist)
 import Text.Printf (printf)
 
-readGenericPackageDescription :: Verbosity -> FilePath -> IO GenericPackageDescription
-readGenericPackageDescription = readAndParseFile parseGenericPackageDescription
+readGenericPackageDescription
+  :: HasCallStack
+  => Verbosity
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
+  -> SymbolicPath Pkg File
+  -> IO GenericPackageDescription
+readGenericPackageDescription =
+  readAndParseFile parseGenericPackageDescription
 
-readHookedBuildInfo :: Verbosity -> FilePath -> IO HookedBuildInfo
-readHookedBuildInfo = readAndParseFile parseHookedBuildInfo
+readHookedBuildInfo
+  :: Verbosity
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
+  -- ^ working directory
+  -> SymbolicPath Pkg File
+  -> IO HookedBuildInfo
+readHookedBuildInfo =
+  readAndParseFile parseHookedBuildInfo
 
 -- | Helper combinator to do parsing plumbing for files.
 --
@@ -58,16 +74,20 @@ readAndParseFile
   -- ^ File contents to final value parser
   -> Verbosity
   -- ^ Verbosity level
-  -> FilePath
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
+  -- ^ Working directory
+  -> SymbolicPath Pkg File
   -- ^ File to read
   -> IO a
-readAndParseFile parser verbosity fpath = do
-  exists <- doesFileExist fpath
+readAndParseFile parser verbosity mbWorkDir fpath = do
+  let ipath = interpretSymbolicPath mbWorkDir fpath
+      upath = getSymbolicPath fpath
+  exists <- doesFileExist ipath
   unless exists $
     dieWithException verbosity $
-      ErrorParsingFileDoesntExist fpath
-  bs <- BS.readFile fpath
-  parseString parser verbosity fpath bs
+      ErrorParsingFileDoesntExist upath
+  bs <- BS.readFile ipath
+  parseString parser verbosity upath bs
 
 parseString
   :: (BS.ByteString -> ParseResult a)

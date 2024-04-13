@@ -4,7 +4,7 @@ import Test.Cabal.Prelude
 
 -- Test that `cabal haddock --haddock-output-dir` works from the config file.
 main = cabalTest . withRepo "repo" $ do
-  testDir <- testSourceDir <$> getTestEnv
+  testDir <- testCurrentDir <$> getTestEnv
   let docsDir = testDir </> "docs"
   liftIO (removePathForcibly docsDir)
   r <- cabal' "haddock" ["A"]

@@ -48,6 +48,7 @@ import Distribution.Client.ProjectConfig
   ( ProjectConfig (..)
   , ProjectConfigShared (projectConfigConfigFile)
   , projectConfigWithSolverRepoContext
+  , withGlobalConfig
   , withProjectOrGlobalConfig
   )
 import Distribution.Client.ProjectFlags
@@ -55,7 +56,8 @@ import Distribution.Client.ProjectFlags
   )
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.Setup
-  ( ConfigFlags (..)
+  ( CommonSetupFlags (..)
+  , ConfigFlags (..)
   , GlobalFlags
   , RepoContext (..)
   , UpdateFlags
@@ -162,11 +164,9 @@ updateAction flags@NixStyleFlags{..} extraArgs globalFlags = do
 
   projectConfig <-
     withProjectOrGlobalConfig
-      verbosity
       ignoreProject
-      globalConfigFlag
       (projectConfig <$> establishProjectBaseContext verbosity cliConfig OtherCommand)
-      (\globalConfig -> return $ globalConfig <> cliConfig)
+      (withGlobalConfig verbosity globalConfigFlag $ \globalConfig -> return $ globalConfig <> cliConfig)
 
   projectConfigWithSolverRepoContext
     verbosity
@@ -224,7 +224,7 @@ updateAction flags@NixStyleFlags{..} extraArgs globalFlags = do
           reposToUpdate
         traverse_ (\_ -> collectJob jobCtrl) reposToUpdate
   where
-    verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
+    verbosity = fromFlagOrDefault normal (setupVerbosity $ configCommonFlags configFlags)
     cliConfig = commandLineFlagsToProjectConfig globalFlags flags mempty -- ClientInstallFlags, not needed here
     globalConfigFlag = projectConfigConfigFile (projectConfigShared cliConfig)
 

@@ -1,5 +1,5 @@
 # cabal check
 These warnings may cause trouble when distributing the package:
-Warning: In 'extra-source-files': the pattern 'dir/*.html' does not match any files.
-Warning: In 'extra-source-files': the pattern 'dir/*.html' does not match the file 'dir/foo.en.html' because the extensions do not exactly match (e.g., foo.en.html does not exactly match *.html). To enable looser suffix-only matching, set 'cabal-version: 2.4' or higher.
-Warning: In 'data-files': the pattern 'non-existent-directory/*.dat' attempts to match files in the directory 'non-existent-directory', but there is no directory by that name.
+Warning: [no-glob-match] In 'extra-source-files': the pattern 'dir/*.html' does not match any files.
+Warning: [glob-no-extension] In 'extra-source-files': the pattern 'dir/*.html' does not match the file 'dir/foo.en.html' because the extensions do not exactly match (e.g., foo.en.html does not exactly match *.html). To enable looser suffix-only matching, set 'cabal-version: 2.4' or higher.
+Warning: [glob-missing-dir] In 'data-files': the pattern 'non-existent-directory/*.dat' attempts to match files in the directory 'non-existent-directory', but there is no directory by that name.

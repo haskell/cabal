@@ -20,9 +20,9 @@ import System.Exit
 import System.FilePath
 import System.IO.Error
 
-import Distribution.Utils.TempTestDir (withTestDir)
 import Test.Tasty
 import Test.Tasty.HUnit
+import Test.Utils.TempTestDir (withTestDir)
 import UnitTests.Options (RunNetworkTests (..))
 
 tests :: [TestTree]
@@ -64,7 +64,7 @@ testNoRepos :: Assertion
 testNoRepos = do
   e <-
     assertException $
-      clonePackagesFromSourceRepo verbosity "." Nothing pkgrepos
+      clonePackagesFromSourceRepo verbosity "." Nothing [] pkgrepos
   e @?= ClonePackageNoSourceRepos pkgidfoo
   where
     pkgrepos = [(pkgidfoo, [])]
@@ -73,7 +73,7 @@ testNoReposOfKind :: Assertion
 testNoReposOfKind = do
   e <-
     assertException $
-      clonePackagesFromSourceRepo verbosity "." repokind pkgrepos
+      clonePackagesFromSourceRepo verbosity "." repokind [] pkgrepos
   e @?= ClonePackageNoSourceReposOfKind pkgidfoo repokind
   where
     pkgrepos = [(pkgidfoo, [repo])]
@@ -84,7 +84,7 @@ testNoRepoType :: Assertion
 testNoRepoType = do
   e <-
     assertException $
-      clonePackagesFromSourceRepo verbosity "." Nothing pkgrepos
+      clonePackagesFromSourceRepo verbosity "." Nothing [] pkgrepos
   e @?= ClonePackageNoRepoType pkgidfoo repo
   where
     pkgrepos = [(pkgidfoo, [repo])]
@@ -94,7 +94,7 @@ testUnsupportedRepoType :: Assertion
 testUnsupportedRepoType = do
   e <-
     assertException $
-      clonePackagesFromSourceRepo verbosity "." Nothing pkgrepos
+      clonePackagesFromSourceRepo verbosity "." Nothing [] pkgrepos
   e @?= ClonePackageUnsupportedRepoType pkgidfoo repo' repotype
   where
     pkgrepos = [(pkgidfoo, [repo])]
@@ -118,7 +118,7 @@ testNoRepoLocation :: Assertion
 testNoRepoLocation = do
   e <-
     assertException $
-      clonePackagesFromSourceRepo verbosity "." Nothing pkgrepos
+      clonePackagesFromSourceRepo verbosity "." Nothing [] pkgrepos
   e @?= ClonePackageNoRepoLocation pkgidfoo repo
   where
     pkgrepos = [(pkgidfoo, [repo])]
@@ -139,7 +139,7 @@ testSelectRepoKind =
       e' @?= ClonePackageNoRepoType pkgidfoo expectedRepo
     | let test rt rs =
             assertException $
-              clonePackagesFromSourceRepo verbosity "." rt rs
+              clonePackagesFromSourceRepo verbosity "." rt [] rs
     , (requestedRepoType, expectedRepo) <- cases
     ]
   where
@@ -161,14 +161,14 @@ testRepoDestinationExists =
     createDirectory pkgdir
     e1 <-
       assertException $
-        clonePackagesFromSourceRepo verbosity tmpdir Nothing pkgrepos
+        clonePackagesFromSourceRepo verbosity tmpdir Nothing [] pkgrepos
     e1 @?= ClonePackageDestinationExists pkgidfoo pkgdir True {- isdir -}
     removeDirectory pkgdir
 
     writeFile pkgdir ""
     e2 <-
       assertException $
-        clonePackagesFromSourceRepo verbosity tmpdir Nothing pkgrepos
+        clonePackagesFromSourceRepo verbosity tmpdir Nothing [] pkgrepos
     e2 @?= ClonePackageDestinationExists pkgidfoo pkgdir False {- isfile -}
   where
     pkgrepos = [(pkgidfoo, [repo])]
@@ -199,7 +199,7 @@ testGitFetchFailed =
         pkgrepos = [(pkgidfoo, [repo])]
     e1 <-
       assertException $
-        clonePackagesFromSourceRepo verbosity tmpdir Nothing pkgrepos
+        clonePackagesFromSourceRepo verbosity tmpdir Nothing [] pkgrepos
     e1 @?= ClonePackageFailedWithExitCode pkgidfoo repo' "git" (ExitFailure 128)
 
 testNetworkGitClone :: Assertion
@@ -214,6 +214,7 @@ testNetworkGitClone =
       verbosity
       tmpdir
       Nothing
+      []
       [(mkpkgid "zlib1", [repo1])]
     assertFileContains (tmpdir </> "zlib1/zlib.cabal") ["name:", "zlib"]
 
@@ -226,6 +227,7 @@ testNetworkGitClone =
       verbosity
       tmpdir
       Nothing
+      []
       [(mkpkgid "zlib2", [repo2])]
     assertFileContains (tmpdir </> "zlib2/zlib.cabal") ["name:", "zlib"]
 
@@ -239,6 +241,7 @@ testNetworkGitClone =
       verbosity
       tmpdir
       Nothing
+      []
       [(mkpkgid "zlib3", [repo3])]
     assertFileContains (tmpdir </> "zlib3/zlib.cabal") ["version:", "0.5.0.0"]
   where

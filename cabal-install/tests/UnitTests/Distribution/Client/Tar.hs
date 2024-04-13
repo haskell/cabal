@@ -3,13 +3,10 @@ module UnitTests.Distribution.Client.Tar
   ) where
 
 import Codec.Archive.Tar
-  ( Entries (..)
-  , foldEntries
+  ( foldEntries
   )
 import Codec.Archive.Tar.Entry
-  ( Entry (..)
-  , EntryContent (..)
-  , simpleEntry
+  ( simpleEntry
   , toTarPath
   )
 import Distribution.Client.Tar
@@ -23,6 +20,8 @@ import Test.Tasty.HUnit
 import Control.Monad.Writer.Lazy (runWriterT, tell)
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
+
+import Distribution.Client.Compat.Tar
 
 tests :: [TestTree]
 tests =

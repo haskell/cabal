@@ -59,7 +59,7 @@ import Distribution.System
 import Distribution.Version
 import Distribution.ModuleName (ModuleName)
 import Distribution.Text
-import Distribution.Utils.Path
+import Distribution.Utils.Path (unsafeMakeSymbolicPath)
 import qualified Distribution.Client.CmdHaddockProject as CmdHaddockProject
 import Distribution.Client.Setup (globalStoreDir)
 import Distribution.Client.GlobalFlags (defaultGlobalFlags)
@@ -80,7 +80,6 @@ import Test.Tasty
 import Test.Tasty.HUnit
 import Test.Tasty.Options
 import Data.Tagged (Tagged(..))
-import qualified Data.List as L
 
 import qualified Data.ByteString as BS
 import Distribution.Client.GlobalFlags (GlobalFlags, globalNix)
@@ -487,7 +486,7 @@ testTargetSelectorAmbiguous reportSubCase = do
 
     withCFiles :: Executable -> [FilePath] -> Executable
     withCFiles exe files =
-      exe { buildInfo = (buildInfo exe) { cSources = files } }
+      exe { buildInfo = (buildInfo exe) { cSources = map unsafeMakeSymbolicPath files } }
 
     withHsSrcDirs :: Executable -> [FilePath] -> Executable
     withHsSrcDirs exe srcDirs =
@@ -2180,9 +2179,10 @@ testConfigOptionComments = do
   where
     -- | Find lines containing a target string.
     findLineWith :: Bool -> String -> String -> String
-    findLineWith isComment target text
-      | not . null $ findLinesWith isComment target text = removeCommentValue . L.head $ findLinesWith isComment target text
-      | otherwise  = text
+    findLineWith isComment target text =
+      case findLinesWith isComment target text of
+        [] -> text
+        (l : _) -> removeCommentValue l
     findLinesWith :: Bool -> String -> String -> [String]
     findLinesWith isComment target
       | isComment = filter (isInfixOf (" " ++ target ++ ":")) . lines

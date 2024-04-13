@@ -1,4 +1,4 @@
 # cabal check
 The following errors are likely to affect your build negatively:
-Error: 'extra-lib-dirs: lib-folder' specifies a directory which does not exist.
+Error: [unknown-directory] 'extra-lib-dirs: lib-folder' specifies a directory which does not exist.
 Error: Hackage would reject this package.

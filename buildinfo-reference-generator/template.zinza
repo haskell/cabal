@@ -157,7 +157,7 @@ Build info fields
 {# We show documentation link only for non deprecated fields #}
 {% if null field.deprecatedSince.fst %}
 {% if null field.removedIn.fst %}
-    * Documentation of :pkg-field:`{{field.name}}`
+    * Documentation of :pkg-field:`library:{{field.name}}`
 {% endif %}
 {% endif %}
 {% if notNull field.syntax %}

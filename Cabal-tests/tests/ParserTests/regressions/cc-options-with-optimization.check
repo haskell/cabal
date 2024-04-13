@@ -1,1 +1,1 @@
-'cc-options: -O[n]' is generally not needed. When building with  optimisations Cabal automatically adds '-O2' for C code. Setting it yourself interferes with the --disable-optimization flag.
+[option-opt-c] 'cc-options: -O[n]' is generally not needed. When building with  optimisations Cabal automatically adds '-O2' for C code. Setting it yourself interferes with the --disable-optimization flag.

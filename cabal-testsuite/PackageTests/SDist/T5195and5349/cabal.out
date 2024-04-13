@@ -1,0 +1,5 @@
+# cabal v2-sdist
+Warning: Ignoring directory '././actually-a-directory' listed in a Cabal package field which should only include files (not directories).
+Warning: Ignoring directory './actually-a-directory' listed in a Cabal package field which should only include files (not directories).
+Warning: Ignoring directory './actually-a-directory' listed in a Cabal package field which should only include files (not directories).
+Wrote source list to <ROOT>/t5195and5349-0.list

@@ -1,4 +1,4 @@
 # cabal check
 The package will not build sanely due to these errors:
-Error: On executable 'exe' an 'autogen-module' is not on 'other-modules'
+Error: [autogen-other-modules] On executable 'exe' an 'autogen-module' is not on 'other-modules'
 Error: Hackage would reject this package.

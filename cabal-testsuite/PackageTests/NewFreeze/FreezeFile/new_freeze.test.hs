@@ -6,7 +6,7 @@ import System.Directory
 -- Test for 'cabal v2-freeze' with only a single library dependency.
 -- my-local-package depends on my-library-dep, which has versions 1.0 and 2.0.
 main = withShorterPathForNewBuildStore $ \storeDir ->
-  cabalTest $ withSourceCopy $
+  cabalTest $
     withRepo "repo" $ do
       cwd <- fmap testCurrentDir getTestEnv
       let freezeFile = cwd </> "cabal.project.freeze"

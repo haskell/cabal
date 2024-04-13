@@ -57,6 +57,22 @@ if [ "$(getconf LONG_BIT)" = "32" -o "${PLATFORM:=xxx}" = "x86_64-linux-centos7"
     echo 'constraints: lukko -ofd-locking' >> cabal.project.release.local
 fi
 
+# In February 2024, cabal started using zlib-0.7.0.0, which uses pkg-config by
+# default. The GitLab CI environment doesn't (yet) supply pkg-config, and zlib
+# does just fine without it on modern GHCs. That said, the CI environment
+# probably *should* have pkg-config installed. See
+# https://github.com/haskell/cabal/issues/9774.
+echo 'constraints: zlib -pkg-config' >> cabal.project.release.local
+# Furthermore, on Windows, zlib claims that libz is shipped with GHC, so it just
+# uses @extra-libraries: z@ if pkg-config is False. If you are reading this
+# comment, however, this didn't work. Thus we switch to using the bundled libz,
+# as was done in zlib <0.7.0.0.
+case "$(uname)" in
+    MSYS_*|MINGW*)
+        echo 'constraints: zlib +bundled-c-zlib' >> cabal.project.release.local
+    ;;
+esac
+
 args=(
     -w "ghc-$GHC_VERSION"
     --disable-profiling

@@ -9,7 +9,7 @@ In order, the following would be built:
  - my-local-package-1.0 (lib) (first run)
 # cabal v2-freeze
 Resolving dependencies...
-Wrote freeze file: <ROOT>/new_freeze.dist/source/cabal.project.freeze
+Wrote freeze file: <ROOT>/cabal.project.freeze
 # cabal v2-build
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1

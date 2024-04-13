@@ -1,6 +1,0 @@
-# cabal check
-The following errors are likely to affect your build negatively:
-Error: 'extra-source-files: ../outside' is a relative path outside of the source tree. This will not work when generating a tarball with 'sdist'.
-The following errors will cause portability problems on other environments:
-Error: 'extra-source-files: ../outside' is not a good relative path: "parent directory segment: .."
-Error: Hackage would reject this package.

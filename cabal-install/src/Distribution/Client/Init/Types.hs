@@ -368,7 +368,7 @@ instance Interactive IO where
   hFlush = System.IO.hFlush
   message q severity msg
     | q == silent = pure ()
-    | otherwise = putStrLn $ "[" ++ show severity ++ "] " ++ msg
+    | otherwise = putStrLn $ "[" ++ displaySeverity severity ++ "] " ++ msg
   break = return False
   throwPrompt = throwM
 
@@ -407,7 +407,7 @@ instance Interactive PurePrompt where
     Error -> PurePrompt $ \_ ->
       Left $
         BreakException
-          (show severity ++ ": " ++ msg)
+          (displaySeverity severity ++ ": " ++ msg)
     _ -> return ()
 
   break = return True
@@ -455,7 +455,13 @@ newtype BreakException = BreakException String deriving (Eq, Show)
 instance Exception BreakException
 
 -- | Used to inform the intent of prompted messages.
-data Severity = Log | Info | Warning | Error deriving (Eq, Show)
+data Severity = Info | Warning | Error deriving (Eq)
+
+displaySeverity :: Severity -> String
+displaySeverity severity = case severity of
+  Info -> "Info"
+  Warning -> "Warn"
+  Error -> "Err"
 
 -- | Convenience alias for the literate haskell flag
 type IsLiterate = Bool

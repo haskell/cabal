@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 -- |
@@ -23,12 +24,17 @@
 module Distribution.PackageDescription.Check
   ( -- * Package Checking
     CheckExplanation (..)
+  , CheckExplanationID
+  , CheckExplanationIDString
   , PackageCheck (..)
   , checkPackage
   , checkConfiguredPackage
   , wrapParseWarning
   , ppPackageCheck
+  , ppCheckExplanationId
   , isHackageDistError
+  , filterPackageChecksById
+  , filterPackageChecksByIdString
 
     -- ** Checking package contents
   , checkPackageFiles
@@ -52,15 +58,22 @@ import Distribution.PackageDescription.Check.Conditional
 import Distribution.PackageDescription.Check.Monad
 import Distribution.PackageDescription.Check.Paths
 import Distribution.PackageDescription.Check.Target
+import Distribution.PackageDescription.Check.Warning
 import Distribution.Parsec.Warning (PWarning)
 import Distribution.Pretty (prettyShow)
 import Distribution.Simple.Glob
+  ( Glob
+  , GlobResult (..)
+  , globMatches
+  , parseFileGlob
+  , runDirFileGlob
+  )
 import Distribution.Simple.Utils hiding (findPackageDesc, notice)
 import Distribution.Utils.Generic (isAscii)
 import Distribution.Utils.Path
 import Distribution.Verbosity
 import Distribution.Version
-import System.FilePath (splitExtension, takeFileName, (<.>), (</>))
+import System.FilePath (splitExtension, takeFileName)
 
 import qualified Data.ByteString.Lazy as BS
 import qualified Distribution.SPDX as SPDX
@@ -164,10 +177,11 @@ checkPackageFilesGPD verbosity gpd root =
 
     checkPreIO =
       CheckPreDistributionOps
-        { runDirFileGlobM = \fp g -> runDirFileGlob verbosity (root </> fp) g
+        { runDirFileGlobM = \fp g -> runDirFileGlob verbosity (Just . specVersion $ packageDescription gpd) (root </> fp) g
         , getDirectoryContentsM = System.Directory.getDirectoryContents . relative
         }
 
+    relative :: FilePath -> FilePath
     relative path = root </> path
 
 -- | Same as  'checkPackageFilesGPD', but working with 'PackageDescription'.
@@ -416,19 +430,19 @@ checkPackageDescription
     -- § Fields check.
     checkNull
       category_
-      (PackageDistSuspicious $ MissingField CEFCategory)
+      (PackageDistSuspicious MissingFieldCategory)
     checkNull
       maintainer_
-      (PackageDistSuspicious $ MissingField CEFMaintainer)
+      (PackageDistSuspicious MissingFieldMaintainer)
     checkP
       (ShortText.null synopsis_ && not (ShortText.null description_))
-      (PackageDistSuspicious $ MissingField CEFSynopsis)
+      (PackageDistSuspicious MissingFieldSynopsis)
     checkP
       (ShortText.null description_ && not (ShortText.null synopsis_))
-      (PackageDistSuspicious $ MissingField CEFDescription)
+      (PackageDistSuspicious MissingFieldDescription)
     checkP
       (all ShortText.null [synopsis_, description_])
-      (PackageDistInexcusable $ MissingField CEFSynOrDesc)
+      (PackageDistInexcusable MissingFieldSynOrDesc)
     checkP
       (ShortText.length synopsis_ > 80)
       (PackageDistSuspicious SynopsisTooLong)
@@ -439,19 +453,20 @@ checkPackageDescription
       (PackageDistSuspicious ShortDesc)
 
     -- § Paths.
-    mapM_ (checkPath False "extra-source-files" PathKindGlob) extraSrcFiles_
-    mapM_ (checkPath False "extra-tmp-files" PathKindFile) extraTmpFiles_
-    mapM_ (checkPath False "extra-doc-files" PathKindGlob) extraDocFiles_
-    mapM_ (checkPath False "data-files" PathKindGlob) dataFiles_
-    checkPath True "data-dir" PathKindDirectory dataDir_
+    mapM_ (checkPath False "extra-source-files" PathKindGlob . getSymbolicPath) extraSrcFiles_
+    mapM_ (checkPath False "extra-tmp-files" PathKindFile . getSymbolicPath) extraTmpFiles_
+    mapM_ (checkPath False "extra-doc-files" PathKindGlob . getSymbolicPath) extraDocFiles_
+    mapM_ (checkPath False "data-files" PathKindGlob . getSymbolicPath) dataFiles_
+    let rawDataDir = getSymbolicPath dataDir_
+    checkPath True "data-dir" PathKindDirectory rawDataDir
     let licPaths = map getSymbolicPath licenseFiles_
     mapM_ (checkPath False "license-file" PathKindFile) licPaths
     mapM_ checkLicFileExist licenseFiles_
 
     -- § Globs.
-    dataGlobs <- mapM (checkGlob "data-files") dataFiles_
-    extraGlobs <- mapM (checkGlob "extra-source-files") extraSrcFiles_
-    docGlobs <- mapM (checkGlob "extra-doc-files") extraDocFiles_
+    dataGlobs <- mapM (checkGlob "data-files" . getSymbolicPath) dataFiles_
+    extraGlobs <- mapM (checkGlob "extra-source-files" . getSymbolicPath) extraSrcFiles_
+    docGlobs <- mapM (checkGlob "extra-doc-files" . getSymbolicPath) extraDocFiles_
     -- We collect globs to feed them to checkMissingDocs.
 
     -- § Missing documentation.
@@ -502,9 +517,9 @@ checkPackageDescription
     checkConfigureExists (buildType pkg)
     checkSetupExists (buildType pkg)
     checkCabalFile (packageName pkg)
-    mapM_ (checkGlobFile specVersion_ "." "extra-source-files") extraSrcFiles_
-    mapM_ (checkGlobFile specVersion_ "." "extra-doc-files") extraDocFiles_
-    mapM_ (checkGlobFile specVersion_ dataDir_ "data-files") dataFiles_
+    mapM_ (checkGlobFile specVersion_ "." "extra-source-files" . getSymbolicPath) extraSrcFiles_
+    mapM_ (checkGlobFile specVersion_ "." "extra-doc-files" . getSymbolicPath) extraDocFiles_
+    mapM_ (checkGlobFile specVersion_ rawDataDir "data-files" . getSymbolicPath) dataFiles_
     where
       checkNull
         :: Monad m
@@ -769,7 +784,7 @@ checkCabalFile pn = do
 
 checkLicFileExist
   :: Monad m
-  => SymbolicPath PackageDir LicenseFile
+  => RelativePath Pkg File
   -> CheckM m ()
 checkLicFileExist sp = do
   let fp = getSymbolicPath sp
@@ -847,13 +862,14 @@ checkGlobResult title fp rs = dirCheck ++ catMaybes (map getWarning rs)
           [PackageDistSuspiciousWarn $ GlobNoMatch title fp]
       | otherwise = []
 
-    -- If there's a missing directory in play, since our globs don't
-    -- (currently) support disjunction, that will always mean there are
+    -- If there's a missing directory in play, since globs in Cabal packages
+    -- don't (currently) support disjunction, that will always mean there are
     -- no matches. The no matches error in this case is strictly less
     -- informative than the missing directory error.
     withoutNoMatchesWarning (GlobMatch _) = True
     withoutNoMatchesWarning (GlobWarnMultiDot _) = False
     withoutNoMatchesWarning (GlobMissingDirectory _) = True
+    withoutNoMatchesWarning (GlobMatchesDirectory _) = True
 
     getWarning :: GlobResult FilePath -> Maybe PackageCheck
     getWarning (GlobMatch _) = Nothing
@@ -865,6 +881,9 @@ checkGlobResult title fp rs = dirCheck ++ catMaybes (map getWarning rs)
       Just $ PackageDistSuspiciousWarn (GlobExactMatch title fp file)
     getWarning (GlobMissingDirectory dir) =
       Just $ PackageDistSuspiciousWarn (GlobNoDir title fp dir)
+    -- GlobMatchesDirectory is handled elsewhere if relevant;
+    -- we can discard it here.
+    getWarning (GlobMatchesDirectory _) = Nothing
 
 -- ------------------------------------------------------------
 -- Other exports
@@ -1006,10 +1025,6 @@ checkMissingDocs dgs esgs edgs = do
         return (mcs ++ pcs)
     )
   where
-    -- From Distribution.Simple.Glob.
-    globMatches :: [GlobResult a] -> [a]
-    globMatches input = [a | GlobMatch a <- input]
-
     checkDoc
       :: Bool -- Cabal spec ≥ 1.18?
       -> [FilePath] -- Desirables.

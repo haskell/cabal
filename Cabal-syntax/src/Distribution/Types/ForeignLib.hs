@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 
@@ -26,8 +27,10 @@ import Distribution.Types.BuildInfo
 import Distribution.Types.ForeignLibOption
 import Distribution.Types.ForeignLibType
 import Distribution.Types.UnqualComponentName
+import Distribution.Utils.Path
 import Distribution.Version
 
+import Data.Monoid
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
 import qualified Text.Read as Read
@@ -52,7 +55,7 @@ data ForeignLib = ForeignLib
   -- current:revision:age versioning scheme.
   , foreignLibVersionLinux :: Maybe Version
   -- ^ Linux library version
-  , foreignLibModDefFile :: [FilePath]
+  , foreignLibModDefFile :: [RelativePath Source File]
   -- ^ (Windows-specific) module definition files
   --
   -- This is a list rather than a maybe field so that we can flatten
@@ -144,13 +147,14 @@ instance Semigroup ForeignLib where
       , foreignLibType = combine foreignLibType
       , foreignLibOptions = combine foreignLibOptions
       , foreignLibBuildInfo = combine foreignLibBuildInfo
-      , foreignLibVersionInfo = combine'' foreignLibVersionInfo
-      , foreignLibVersionLinux = combine'' foreignLibVersionLinux
+      , foreignLibVersionInfo = chooseLast foreignLibVersionInfo
+      , foreignLibVersionLinux = chooseLast foreignLibVersionLinux
       , foreignLibModDefFile = combine foreignLibModDefFile
       }
     where
       combine field = field a `mappend` field b
-      combine'' field = field b
+      -- chooseLast: the second field overrides the first, unless it is Nothing
+      chooseLast field = getLast (Last (field a) <> Last (field b))
 
 instance Monoid ForeignLib where
   mempty =

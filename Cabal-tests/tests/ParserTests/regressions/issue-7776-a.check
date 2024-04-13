@@ -1,1 +1,1 @@
-Potential duplicate modules (subject to conditionals) in library: GHC.Hs.Type
+[maybe-duplicate-modules] Potential duplicate modules (subject to conditionals) in library: GHC.Hs.Type

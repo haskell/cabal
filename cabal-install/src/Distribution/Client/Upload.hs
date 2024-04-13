@@ -1,7 +1,7 @@
 module Distribution.Client.Upload (upload, uploadDoc, report) where
 
 import Distribution.Client.Compat.Prelude
-import qualified Prelude as Unsafe (head, read, tail)
+import qualified Prelude as Unsafe (read)
 
 import Distribution.Client.HttpUtils
   ( HttpTransport (..)
@@ -155,11 +155,13 @@ uploadDoc verbosity repoCtxt mToken mUsername mPassword isCandidate path = do
         break
           (== '-')
           (reverse (takeFileName path))
-      pkgid = reverse $ Unsafe.tail reversePkgid
+      pkgid = reverse $ drop 1 reversePkgid
   when
     ( reverse reverseSuffix /= "docs.tar.gz"
-        || null reversePkgid
-        || Unsafe.head reversePkgid /= '-'
+        || ( case reversePkgid of
+              [] -> True
+              (c : _) -> c /= '-'
+           )
     )
     $ dieWithException verbosity ExpectedMatchingFileName
 

@@ -1,4 +1,4 @@
 # cabal check
 The following errors are likely to affect your build negatively:
-Error: Unknown extensions: ObliqueTypes
+Error: [unknown-extension] Unknown extensions: ObliqueTypes
 Error: Hackage would reject this package.

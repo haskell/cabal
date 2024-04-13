@@ -14,7 +14,7 @@ module Distribution.Client.FileMonitor
     MonitorFilePath (..)
   , MonitorKindFile (..)
   , MonitorKindDir (..)
-  , FilePathGlob (..)
+  , RootedGlob (..)
   , monitorFile
   , monitorFileHashed
   , monitorNonExistentFile
@@ -91,7 +91,7 @@ data MonitorFilePath
   | MonitorFileGlob
       { monitorKindFile :: !MonitorKindFile
       , monitorKindDir :: !MonitorKindDir
-      , monitorPathGlob :: !FilePathGlob
+      , monitorPathGlob :: !RootedGlob
       }
   deriving (Eq, Show, Generic)
 
@@ -168,13 +168,13 @@ monitorFileOrDirectory = MonitorFile FileModTime DirModTime
 -- The monitored glob is considered to have changed if the set of files
 -- matching the glob changes (i.e. creations or deletions), or for files if the
 -- modification time and content hash of any matching file has changed.
-monitorFileGlob :: FilePathGlob -> MonitorFilePath
+monitorFileGlob :: RootedGlob -> MonitorFilePath
 monitorFileGlob = MonitorFileGlob FileHashed DirExists
 
 -- | Monitor a set of files (or directories) identified by a file glob for
 -- existence only. The monitored glob is considered to have changed if the set
 -- of files matching the glob changes (i.e. creations or deletions).
-monitorFileGlobExistence :: FilePathGlob -> MonitorFilePath
+monitorFileGlobExistence :: RootedGlob -> MonitorFilePath
 monitorFileGlobExistence = MonitorFileGlob FileExists DirExists
 
 -- | Creates a list of files to monitor when you search for a file which
@@ -263,12 +263,12 @@ data MonitorStateGlob
 
 data MonitorStateGlobRel
   = MonitorStateGlobDirs
+      !GlobPieces
       !Glob
-      !FilePathGlobRel
       !ModTime
       ![(FilePath, MonitorStateGlobRel)] -- invariant: sorted
   | MonitorStateGlobFiles
-      !Glob
+      !GlobPieces
       !ModTime
       ![(FilePath, MonitorStateFileStatus)] -- invariant: sorted
   | MonitorStateGlobDirTrailing
@@ -294,7 +294,7 @@ reconstructMonitorFilePaths (MonitorStateFileSet singlePaths globPaths) =
     getGlobPath :: MonitorStateGlob -> MonitorFilePath
     getGlobPath (MonitorStateGlob kindfile kinddir root gstate) =
       MonitorFileGlob kindfile kinddir $
-        FilePathGlob root $
+        RootedGlob root $
           case gstate of
             MonitorStateGlobDirs glob globs _ _ -> GlobDir glob globs
             MonitorStateGlobFiles glob _ _ -> GlobFile glob
@@ -698,7 +698,7 @@ probeMonitorStateGlobRel
                 let subdir = root </> dirName </> entry
                  in liftIO $ doesDirectoryExist subdir
             )
-            . filter (matchGlob glob)
+            . filter (matchGlobPieces glob)
             =<< liftIO (getDirectoryContents (root </> dirName))
 
         children' <-
@@ -784,7 +784,7 @@ probeMonitorStateGlobRel
         -- directory modification time changed:
         -- a matching file may have been added or deleted
         matches <-
-          return . filter (matchGlob glob)
+          return . filter (matchGlobPieces glob)
             =<< liftIO (getDirectoryContents (root </> dirName))
 
         traverse_ probeMergeResult $
@@ -1002,7 +1002,7 @@ buildMonitorStateGlob
   -> MonitorKindDir
   -> FilePath
   -- ^ the root directory
-  -> FilePathGlob
+  -> RootedGlob
   -- ^ the matching glob
   -> IO MonitorStateGlob
 buildMonitorStateGlob
@@ -1011,7 +1011,7 @@ buildMonitorStateGlob
   kindfile
   kinddir
   relroot
-  (FilePathGlob globroot globPath) = do
+  (RootedGlob globroot globPath) = do
     root <- liftIO $ getFilePathRootDirectory globroot relroot
     MonitorStateGlob kindfile kinddir globroot
       <$> buildMonitorStateGlobRel
@@ -1035,7 +1035,7 @@ buildMonitorStateGlobRel
   -> FilePath
   -- ^ directory we are examining
   --   relative to the root
-  -> FilePathGlobRel
+  -> Glob
   -- ^ the matching glob
   -> IO MonitorStateGlobRel
 buildMonitorStateGlobRel
@@ -1050,10 +1050,11 @@ buildMonitorStateGlobRel
     dirEntries <- getDirectoryContents absdir
     dirMTime <- getModTime absdir
     case globPath of
+      GlobDirRecursive{} -> error "Monitoring directory-recursive globs (i.e. ../**/...) is currently unsupported"
       GlobDir glob globPath' -> do
         subdirs <-
           filterM (\subdir -> doesDirectoryExist (absdir </> subdir)) $
-            filter (matchGlob glob) dirEntries
+            filter (matchGlobPieces glob) dirEntries
         subdirStates <-
           for (sort subdirs) $ \subdir -> do
             fstate <-
@@ -1068,7 +1069,7 @@ buildMonitorStateGlobRel
             return (subdir, fstate)
         return $! MonitorStateGlobDirs glob globPath' dirMTime subdirStates
       GlobFile glob -> do
-        let files = filter (matchGlob glob) dirEntries
+        let files = filter (matchGlobPieces glob) dirEntries
         filesStates <-
           for (sort files) $ \file -> do
             fstate <-

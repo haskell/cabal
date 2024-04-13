@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
@@ -32,9 +33,9 @@ module Distribution.Client.RebuildMonad
     -- ** Monitoring file globs
   , monitorFileGlob
   , monitorFileGlobExistence
-  , FilePathGlob (..)
+  , RootedGlob (..)
   , FilePathRoot (..)
-  , FilePathGlobRel (..)
+  , Glob (..)
   , GlobPiece (..)
 
     -- * Using a file monitor
@@ -63,6 +64,7 @@ import Prelude ()
 import Distribution.Client.FileMonitor
 import Distribution.Client.Glob hiding (matchFileGlob)
 import qualified Distribution.Client.Glob as Glob (matchFileGlob)
+import Distribution.Simple.PreProcess.Types (Suffix (..))
 
 import Distribution.Simple.Utils (debug)
 
@@ -232,7 +234,7 @@ delayInitSharedResources action = do
 --
 -- Since this operates in the 'Rebuild' monad, it also monitors the given glob
 -- for changes.
-matchFileGlob :: FilePathGlob -> Rebuild [FilePath]
+matchFileGlob :: RootedGlob -> Rebuild [FilePath]
 matchFileGlob glob = do
   root <- askRoot
   monitorFiles [monitorFileGlobExistence glob]
@@ -296,7 +298,7 @@ needIfExists f = do
 
 -- | Like 'findFileWithExtension', but in the 'Rebuild' monad.
 findFileWithExtensionMonitored
-  :: [String]
+  :: [Suffix]
   -> [FilePath]
   -> FilePath
   -> Rebuild (Maybe FilePath)
@@ -305,7 +307,7 @@ findFileWithExtensionMonitored extensions searchPath baseName =
     id
     [ path </> baseName <.> ext
     | path <- nub searchPath
-    , ext <- nub extensions
+    , Suffix ext <- nub extensions
     ]
 
 -- | Like 'findFirstFile', but in the 'Rebuild' monad.

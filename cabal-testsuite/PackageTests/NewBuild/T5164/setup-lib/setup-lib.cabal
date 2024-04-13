@@ -1,7 +1,7 @@
+cabal-version: 3.12
 name: setup-lib
 version: 1.0
 build-type: Simple
-cabal-version: >= 1.10
 data-files: example.txt
 
 library

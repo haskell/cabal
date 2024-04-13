@@ -1,3 +1,3 @@
 # cabal check
 These warnings will likely cause trouble when distributing the package:
-Warning: Using 'license: BSD4' is almost always a misunderstanding. 'BSD4' refers to the old 4-clause BSD license with the advertising clause. 'BSD3' refers the new 3-clause BSD license.
+Warning: [bsd4-license] Using 'license: BSD4' is almost always a misunderstanding. 'BSD4' refers to the old 4-clause BSD license with the advertising clause. 'BSD3' refers the new 3-clause BSD license.

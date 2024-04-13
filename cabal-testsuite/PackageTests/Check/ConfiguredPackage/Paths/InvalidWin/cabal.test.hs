@@ -3,7 +3,7 @@ import Test.Cabal.Prelude
 import System.Directory (createDirectoryIfMissing)
 
 -- Invalid Windows filepath.
-main = cabalTest . withSourceCopy $ do
+main = cabalTest $ do
   skipIfWindows
   cwd <- testCurrentDir <$> getTestEnv
   liftIO $ createDirectoryIfMissing False $ cwd </> "n?ul"

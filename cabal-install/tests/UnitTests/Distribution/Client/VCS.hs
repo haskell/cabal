@@ -16,8 +16,8 @@ import Distribution.Client.Types.SourceRepo (SourceRepoProxy, SourceRepositoryPa
 import Distribution.Client.VCS
 import Distribution.Simple.Program
 import Distribution.System (OS (Windows), buildOS)
-import Distribution.Utils.TempTestDir (removeDirectoryRecursiveHack, withTestDir)
 import Distribution.Verbosity as Verbosity
+import Test.Utils.TempTestDir (removeDirectoryRecursiveHack, withTestDir)
 
 import Data.List (mapAccumL)
 import qualified Data.Map as Map
@@ -57,7 +57,7 @@ tests :: MTimeChange -> [TestTree]
 tests mtimeChange =
   map
     (localOption $ QuickCheckTests 10)
-    [ ignoreInWindows "See issue #8048" $
+    [ ignoreInWindows "See issue #8048 and #9519" $
         testGroup
           "git"
           [ testProperty "check VCS test framework" prop_framework_git
@@ -227,7 +227,7 @@ testSetup
   -> IO a
 testSetup vcs mkVCSTestDriver repoRecipe theTest = do
   -- test setup
-  vcs' <- configureVCS verbosity vcs
+  vcs' <- configureVCS verbosity [] vcs
   withTestDir verbosity "vcstest" $ \tmpdir -> do
     let srcRepoPath = tmpdir </> "src"
         submodulesPath = tmpdir </> "submodules"

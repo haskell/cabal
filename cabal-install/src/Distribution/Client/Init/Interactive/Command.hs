@@ -312,6 +312,7 @@ cabalVersionPrompt flags = getCabalVersion flags $ do
     parseCabalVersion "2.4" = CabalSpecV2_4
     parseCabalVersion "3.0" = CabalSpecV3_0
     parseCabalVersion "3.4" = CabalSpecV3_4
+    parseCabalVersion "3.12" = CabalSpecV3_12
     parseCabalVersion _ = defaultCabalVersion -- 2.4
     displayCabalVersion :: CabalSpecVersion -> String
     displayCabalVersion v = case v of
@@ -455,11 +456,12 @@ languagePrompt flags pkgType = getLanguage flags $ do
   let h2010 = "Haskell2010"
       h98 = "Haskell98"
       ghc2021 = "GHC2021 (requires at least GHC 9.2)"
+      ghc2024 = "GHC2024 (requires at least GHC 9.10)"
 
   l <-
     promptList
       ("Choose a language for your " ++ pkgType)
-      [h2010, h98, ghc2021]
+      [h2010, h98, ghc2021, ghc2024]
       (DefaultPrompt h2010)
       Nothing
       True
@@ -468,6 +470,7 @@ languagePrompt flags pkgType = getLanguage flags $ do
       | l == h2010 -> return Haskell2010
       | l == h98 -> return Haskell98
       | l == ghc2021 -> return GHC2021
+      | l == ghc2024 -> return GHC2024
       | otherwise -> return $ UnknownLanguage l
 
 noCommentsPrompt :: Interactive m => InitFlags -> m Bool

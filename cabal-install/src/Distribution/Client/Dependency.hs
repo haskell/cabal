@@ -67,7 +67,6 @@ module Distribution.Client.Dependency
   ) where
 
 import Distribution.Client.Compat.Prelude
-import qualified Prelude as Unsafe (head)
 
 import Distribution.Client.Dependency.Types
   ( PackagesPreferenceDefault (..)
@@ -950,8 +949,11 @@ planPackagesProblems platform cinfo pkgs =
   , let packageProblems = configuredPackageProblems platform cinfo pkg
   , not (null packageProblems)
   ]
-    ++ [ DuplicatePackageSolverId (Graph.nodeKey (Unsafe.head dups)) dups
+    ++ [ DuplicatePackageSolverId (Graph.nodeKey aDup) dups
        | dups <- duplicatesBy (comparing Graph.nodeKey) pkgs
+       , aDup <- case dups of
+          [] -> []
+          (ad : _) -> [ad]
        ]
 
 data PackageProblem

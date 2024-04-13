@@ -21,8 +21,7 @@
 
 import Test.Cabal.Prelude
 main = withShorterPathForNewBuildStore $ \storeDir ->
-  cabalTest $
-    withSourceCopy . withDelay $ do
+  cabalTest $ withDelay $ do
         writeSourceFile "issue5782/src/Module.hs" "module Module where\nf = \"AAA\""
         recordMode DoNotRecord $
           cabalG ["--store-dir=" ++ storeDir, "--installdir=" ++ storeDir, "--overwrite-policy=always"] "v2-install" ["issue5782"]

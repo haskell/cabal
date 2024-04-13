@@ -67,6 +67,7 @@ import Distribution.Types.ComponentRequestedSpec
   ( defaultComponentRequestedSpec
   )
 import Distribution.Types.Dependency
+import Distribution.Utils.Path (relativeSymbolicPath)
 import Distribution.Version
   ( LowerBound (..)
   , UpperBound (..)
@@ -79,9 +80,6 @@ import Distribution.Version
   , hasUpperBound
   , intersectVersionRanges
   , orLaterVersion
-  )
-import System.Directory
-  ( getCurrentDirectory
   )
 
 -- | Given a version, return an API-compatible (according to PVP) version range.
@@ -132,9 +130,8 @@ genBounds
 genBounds verbosity packageDBs repoCtxt comp platform progdb globalFlags freezeFlags = do
   let cinfo = compilerInfo comp
 
-  cwd <- getCurrentDirectory
-  path <- tryFindPackageDesc verbosity cwd
-  gpd <- readGenericPackageDescription verbosity path
+  path <- relativeSymbolicPath <$> tryFindPackageDesc verbosity Nothing
+  gpd <- readGenericPackageDescription verbosity Nothing path
   -- NB: We don't enable tests or benchmarks, since often they
   -- don't really have useful bounds.
   let epd =

@@ -1,4 +1,3 @@
-{-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -19,7 +18,6 @@ import Control.Monad (forM, replicateM, unless, when)
 import qualified Data.ByteString as BS
 import Data.List (nub, unzip4)
 import Data.Maybe (isJust, catMaybes)
-import Data.Monoid ((<>))
 import Data.String (fromString)
 import Data.Function ((&))
 import Data.Time (NominalDiffTime, diffUTCTime, getCurrentTime)
@@ -187,7 +185,7 @@ hackageBenchmarkMain = do
           then do
             putStrLn $ "Obtaining the package list (using " ++ argCabal1 ++ ") ..."
             list <- readProcess argCabal1 ["list", "--simple-output"] ""
-            return $ nub [mkPackageName $ head (words line) | line <- lines list]
+            return $ nub [mkPackageName n | n : _ <- words <$> lines list]
           else do
             putStrLn "Using given package list ..."
             return argPackages
@@ -220,17 +218,12 @@ runCabal timeoutSeconds cabalUnderTest cabal flags = do
           & Map.insert "CABAL_CONFIG" (cabalDir </> "config")
           & Map.insert "CABAL_DIR"     cabalDir
 
-  -- Run cabal update,
+  -- Initialize the config file, whether or not it already exists
+  runCabalCmdWithEnv cabalDir thisEnv ["user-config", "init", "--force"]
+
+  -- Run cabal update
   putStrLn $ "Running cabal update (using " ++ cabal ++ ") ..."
-  (ec, uout, uerr) <- readCreateProcessWithExitCode (proc cabal ["update"])
-      { cwd = Just cabalDir
-      , env = Just thisEnv
-      }
-      ""
-  unless (ec == ExitSuccess) $ do
-      putStrLn uout
-      putStrLn uerr
-      exitWith ec
+  runCabalCmdWithEnv cabalDir thisEnv ["update"]
 
   -- return an actual runner
   return $ \pkg -> do
@@ -289,6 +282,17 @@ runCabal timeoutSeconds cabalUnderTest cabal flags = do
           | fromString "There is no package named" `BS.isInfixOf` err                         = PkgNotFound
           | otherwise                                                                        = Unknown
     return (CabalTrial time result)
+  where
+    runCabalCmdWithEnv cabalDir thisEnv args = do
+      (ec, uout, uerr) <- readCreateProcessWithExitCode (proc cabal args)
+          { cwd = Just cabalDir
+          , env = Just thisEnv
+          }
+          ""
+      unless (ec == ExitSuccess) $ do
+          putStrLn uout
+          putStrLn uerr
+          exitWith ec
 
 isSampleLargeEnough :: PValue Double -> Int -> Bool
 isSampleLargeEnough pvalue trials =
@@ -339,7 +343,8 @@ isExpectedResult Unknown        = False
 -- should be the same. If they aren't the same, we returns Unknown.
 combineTrialResults :: [CabalResult] -> CabalResult
 combineTrialResults rs
-  | allEqual rs                          = head rs
+  | r:_ <- rs
+  , allEqual rs                          = r
   | allEqual [r | r <- rs, r /= Timeout] = Timeout
   | otherwise                            = Unknown
   where

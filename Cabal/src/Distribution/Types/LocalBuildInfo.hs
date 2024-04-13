@@ -1,17 +1,65 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
 
 module Distribution.Types.LocalBuildInfo
-  ( -- * The type
-    LocalBuildInfo (..)
+  ( -- * The types
+    LocalBuildInfo
+      ( LocalBuildInfo
+      , configFlags
+      , flagAssignment
+      , componentEnabledSpec
+      , extraConfigArgs
+      , installDirTemplates
+      , compiler
+      , hostPlatform
+      , pkgDescrFile
+      , componentGraph
+      , componentNameMap
+      , promisedPkgs
+      , installedPkgs
+      , localPkgDescr
+      , withPrograms
+      , withPackageDB
+      , withVanillaLib
+      , withProfLib
+      , withSharedLib
+      , withStaticLib
+      , withDynExe
+      , withFullyStaticExe
+      , withProfExe
+      , withProfLibDetail
+      , withProfExeDetail
+      , withOptimization
+      , withDebugInfo
+      , withGHCiLib
+      , splitSections
+      , splitObjs
+      , stripExes
+      , stripLibs
+      , exeCoverage
+      , libCoverage
+      , extraCoverageFor
+      , relocatable
+      , ..
+      )
 
     -- * Convenience accessors
   , localComponentId
   , localUnitId
   , localCompatPackageKey
   , localPackage
+  , buildDir
+  , buildDirPBD
+  , setupFlagsBuildDir
+  , packageRoot
+  , progPrefix
+  , progSuffix
 
     -- * Build targets of the 'LocalBuildInfo'.
   , componentNameCLBIs
@@ -52,14 +100,18 @@ import Prelude ()
 import Distribution.Types.ComponentId
 import Distribution.Types.ComponentLocalBuildInfo
 import Distribution.Types.ComponentRequestedSpec
+import qualified Distribution.Types.LocalBuildConfig as LBC
 import Distribution.Types.PackageDescription
 import Distribution.Types.PackageId
 import Distribution.Types.TargetInfo
 import Distribution.Types.UnitId
 
+import Distribution.Utils.Path
+
 import Distribution.PackageDescription
 import Distribution.Pretty
 import Distribution.Simple.Compiler
+import Distribution.Simple.Flag
 import Distribution.Simple.InstallDirs hiding
   ( absoluteInstallDirs
   , prefixRelativeInstallDirs
@@ -67,6 +119,7 @@ import Distribution.Simple.InstallDirs hiding
   )
 import Distribution.Simple.PackageIndex
 import Distribution.Simple.Program
+import Distribution.Simple.Setup.Common
 import Distribution.Simple.Setup.Config
 import Distribution.System
 
@@ -74,121 +127,185 @@ import qualified Data.Map as Map
 import Distribution.Compat.Graph (Graph)
 import qualified Distribution.Compat.Graph as Graph
 
+import qualified System.FilePath as FilePath (takeDirectory)
+
 -- | Data cached after configuration step.  See also
 -- 'Distribution.Simple.Setup.ConfigFlags'.
-data LocalBuildInfo = LocalBuildInfo
-  { configFlags :: ConfigFlags
-  -- ^ Options passed to the configuration step.
-  -- Needed to re-run configuration when .cabal is out of date
-  , flagAssignment :: FlagAssignment
-  -- ^ The final set of flags which were picked for this package
-  , componentEnabledSpec :: ComponentRequestedSpec
-  -- ^ What components were enabled during configuration, and why.
-  , extraConfigArgs :: [String]
-  -- ^ Extra args on the command line for the configuration step.
-  -- Needed to re-run configuration when .cabal is out of date
-  , installDirTemplates :: InstallDirTemplates
-  -- ^ The installation directories for the various different
-  -- kinds of files
-  -- TODO: inplaceDirTemplates :: InstallDirs FilePath
-  , compiler :: Compiler
-  -- ^ The compiler we're building with
-  , hostPlatform :: Platform
-  -- ^ The platform we're building for
-  , buildDir :: FilePath
-  -- ^ Where to build the package.
-  , cabalFilePath :: Maybe FilePath
-  -- ^ Path to the cabal file, if given during configuration.
-  , componentGraph :: Graph ComponentLocalBuildInfo
-  -- ^ All the components to build, ordered by topological
-  -- sort, and with their INTERNAL dependencies over the
-  -- intrapackage dependency graph.
-  -- TODO: this is assumed to be short; otherwise we want
-  -- some sort of ordered map.
-  , componentNameMap :: Map ComponentName [ComponentLocalBuildInfo]
-  -- ^ A map from component name to all matching
-  -- components.  These coincide with 'componentGraph'
-  , promisedPkgs :: Map (PackageName, ComponentName) ComponentId
-  -- ^ The packages we were promised, but aren't already installed.
-  -- MP: Perhaps this just needs to be a Set UnitId at this stage.
-  , installedPkgs :: InstalledPackageIndex
-  -- ^ All the info about the installed packages that the
-  -- current package depends on (directly or indirectly).
-  -- The copy saved on disk does NOT include internal
-  -- dependencies (because we just don't have enough
-  -- information at this point to have an
-  -- 'InstalledPackageInfo' for an internal dep), but we
-  -- will often update it with the internal dependencies;
-  -- see for example 'Distribution.Simple.Build.build'.
-  -- (This admonition doesn't apply for per-component builds.)
-  , pkgDescrFile :: Maybe FilePath
-  -- ^ the filename containing the .cabal file, if available
-  , localPkgDescr :: PackageDescription
-  -- ^ WARNING WARNING WARNING Be VERY careful about using
-  -- this function; we haven't deprecated it but using it
-  -- could introduce subtle bugs related to
-  -- 'HookedBuildInfo'.
-  --
-  -- In principle, this is supposed to contain the
-  -- resolved package description, that does not contain
-  -- any conditionals.  However, it MAY NOT contain
-  -- the description with a 'HookedBuildInfo' applied
-  -- to it; see 'HookedBuildInfo' for the whole sordid saga.
-  -- As much as possible, Cabal library should avoid using
-  -- this parameter.
-  , withPrograms :: ProgramDb
-  -- ^ Location and args for all programs
-  , withPackageDB :: PackageDBStack
-  -- ^ What package database to use, global\/user
-  , withVanillaLib :: Bool
-  -- ^ Whether to build normal libs.
-  , withProfLib :: Bool
-  -- ^ Whether to build profiling versions of libs.
-  , withSharedLib :: Bool
-  -- ^ Whether to build shared versions of libs.
-  , withStaticLib :: Bool
-  -- ^ Whether to build static versions of libs (with all other libs rolled in)
-  , withDynExe :: Bool
-  -- ^ Whether to link executables dynamically
-  , withFullyStaticExe :: Bool
-  -- ^ Whether to link executables fully statically
-  , withProfExe :: Bool
-  -- ^ Whether to build executables for profiling.
-  , withProfLibDetail :: ProfDetailLevel
-  -- ^ Level of automatic profile detail.
-  , withProfExeDetail :: ProfDetailLevel
-  -- ^ Level of automatic profile detail.
-  , withOptimization :: OptimisationLevel
-  -- ^ Whether to build with optimization (if available).
-  , withDebugInfo :: DebugInfoLevel
-  -- ^ Whether to emit debug info (if available).
-  , withGHCiLib :: Bool
-  -- ^ Whether to build libs suitable for use with GHCi.
-  , splitSections :: Bool
-  -- ^ Use -split-sections with GHC, if available
-  , splitObjs :: Bool
-  -- ^ Use -split-objs with GHC, if available
-  , stripExes :: Bool
-  -- ^ Whether to strip executables during install
-  , stripLibs :: Bool
-  -- ^ Whether to strip libraries during install
-  , exeCoverage :: Bool
-  -- ^ Whether to enable executable program coverage
-  , libCoverage :: Bool
-  -- ^ Whether to enable library program coverage
-  , progPrefix :: PathTemplate
-  -- ^ Prefix to be prepended to installed executables
-  , progSuffix :: PathTemplate
-  -- ^ Suffix to be appended to installed executables
-  , relocatable :: Bool --  ^Whether to build a relocatable package
+data LocalBuildInfo = NewLocalBuildInfo
+  { localBuildDescr :: LBC.LocalBuildDescr
+  -- ^ Information about a package determined by Cabal
+  -- after the configuration step.
+  , localBuildConfig :: LBC.LocalBuildConfig
+  -- ^ Information about a package configuration
+  -- that can be modified by the user at configuration time.
   }
   deriving (Generic, Read, Show, Typeable)
+
+{-# COMPLETE LocalBuildInfo #-}
+
+-- | This pattern synonym is for backwards compatibility, to adapt
+-- to 'LocalBuildInfo' being split into 'LocalBuildDescr' and 'LocalBuildConfig'.
+pattern LocalBuildInfo
+  :: ConfigFlags
+  -> FlagAssignment
+  -> ComponentRequestedSpec
+  -> [String]
+  -> InstallDirTemplates
+  -> Compiler
+  -> Platform
+  -> Maybe (SymbolicPath Pkg File)
+  -> Graph ComponentLocalBuildInfo
+  -> Map ComponentName [ComponentLocalBuildInfo]
+  -> Map (PackageName, ComponentName) ComponentId
+  -> InstalledPackageIndex
+  -> PackageDescription
+  -> ProgramDb
+  -> PackageDBStack
+  -> Bool
+  -> Bool
+  -> Bool
+  -> Bool
+  -> Bool
+  -> Bool
+  -> Bool
+  -> ProfDetailLevel
+  -> ProfDetailLevel
+  -> OptimisationLevel
+  -> DebugInfoLevel
+  -> Bool
+  -> Bool
+  -> Bool
+  -> Bool
+  -> Bool
+  -> Bool
+  -> Bool
+  -> [UnitId]
+  -> Bool
+  -> LocalBuildInfo
+pattern LocalBuildInfo
+  { configFlags
+  , flagAssignment
+  , componentEnabledSpec
+  , extraConfigArgs
+  , installDirTemplates
+  , compiler
+  , hostPlatform
+  , pkgDescrFile
+  , componentGraph
+  , componentNameMap
+  , promisedPkgs
+  , installedPkgs
+  , localPkgDescr
+  , withPrograms
+  , withPackageDB
+  , withVanillaLib
+  , withProfLib
+  , withSharedLib
+  , withStaticLib
+  , withDynExe
+  , withFullyStaticExe
+  , withProfExe
+  , withProfLibDetail
+  , withProfExeDetail
+  , withOptimization
+  , withDebugInfo
+  , withGHCiLib
+  , splitSections
+  , splitObjs
+  , stripExes
+  , stripLibs
+  , exeCoverage
+  , libCoverage
+  , extraCoverageFor
+  , relocatable
+  } =
+  NewLocalBuildInfo
+    { localBuildDescr =
+      LBC.LocalBuildDescr
+        { packageBuildDescr =
+          LBC.PackageBuildDescr
+            { configFlags
+            , flagAssignment
+            , componentEnabledSpec
+            , compiler
+            , hostPlatform
+            , localPkgDescr
+            , installDirTemplates
+            , withPackageDB
+            , pkgDescrFile
+            , extraCoverageFor
+            }
+        , componentBuildDescr =
+          LBC.ComponentBuildDescr
+            { componentGraph
+            , componentNameMap
+            , promisedPkgs
+            , installedPkgs
+            }
+        }
+    , localBuildConfig =
+      LBC.LocalBuildConfig
+        { extraConfigArgs
+        , withPrograms
+        , withBuildOptions =
+          LBC.BuildOptions
+            { withVanillaLib
+            , withProfLib
+            , withSharedLib
+            , withStaticLib
+            , withDynExe
+            , withFullyStaticExe
+            , withProfExe
+            , withProfLibDetail
+            , withProfExeDetail
+            , withOptimization
+            , withDebugInfo
+            , withGHCiLib
+            , splitSections
+            , splitObjs
+            , stripExes
+            , stripLibs
+            , exeCoverage
+            , libCoverage
+            , relocatable
+            }
+        }
+    }
 
 instance Binary LocalBuildInfo
 instance Structured LocalBuildInfo
 
 -------------------------------------------------------------------------------
 -- Accessor functions
+
+buildDir :: LocalBuildInfo -> SymbolicPath Pkg (Dir Build)
+buildDir lbi =
+  buildDirPBD $ LBC.packageBuildDescr $ localBuildDescr lbi
+
+buildDirPBD :: LBC.PackageBuildDescr -> SymbolicPath Pkg (Dir Build)
+buildDirPBD (LBC.PackageBuildDescr{configFlags = cfg}) =
+  setupFlagsBuildDir $ configCommonFlags cfg
+
+setupFlagsBuildDir :: CommonSetupFlags -> SymbolicPath Pkg (Dir Build)
+setupFlagsBuildDir cfg = fromFlag (setupDistPref cfg) </> makeRelativePathEx "build"
+
+-- | The (relative or absolute) path to the package root, based on
+--
+--  - the working directory flag
+--  - the @.cabal@ path
+packageRoot :: CommonSetupFlags -> FilePath
+packageRoot cfg =
+  case flagToMaybe (setupCabalFilePath cfg) of
+    Just cabalPath -> FilePath.takeDirectory $ interpretSymbolicPath mbWorkDir cabalPath
+    Nothing -> maybe "." getSymbolicPath mbWorkDir
+  where
+    mbWorkDir = flagToMaybe $ setupWorkingDir cfg
+
+progPrefix, progSuffix :: LocalBuildInfo -> PathTemplate
+progPrefix (LocalBuildInfo{configFlags = cfg}) =
+  fromFlag $ configProgPrefix cfg
+progSuffix (LocalBuildInfo{configFlags = cfg}) =
+  fromFlag $ configProgSuffix cfg
 
 -- TODO: Get rid of these functions, as much as possible.  They are
 -- a bit useful in some cases, but you should be very careful!
@@ -206,7 +323,7 @@ localComponentId lbi =
 -- | Extract the 'PackageIdentifier' of a 'LocalBuildInfo'.
 -- This is a "safe" use of 'localPkgDescr'
 localPackage :: LocalBuildInfo -> PackageId
-localPackage lbi = package (localPkgDescr lbi)
+localPackage (LocalBuildInfo{localPkgDescr = pkg}) = package pkg
 
 -- | Extract the 'UnitId' from the library component of a
 -- 'LocalBuildInfo' if it exists, or make a fake unit ID based on
@@ -247,22 +364,22 @@ mkTargetInfo pkg_descr _lbi clbi =
 -- Has a prime because it takes a 'PackageDescription' argument
 -- which may disagree with 'localPkgDescr' in 'LocalBuildInfo'.
 componentNameTargets' :: PackageDescription -> LocalBuildInfo -> ComponentName -> [TargetInfo]
-componentNameTargets' pkg_descr lbi cname =
-  case Map.lookup cname (componentNameMap lbi) of
+componentNameTargets' pkg_descr lbi@(LocalBuildInfo{componentNameMap = comps}) cname =
+  case Map.lookup cname comps of
     Just clbis -> map (mkTargetInfo pkg_descr lbi) clbis
     Nothing -> []
 
 unitIdTarget' :: PackageDescription -> LocalBuildInfo -> UnitId -> Maybe TargetInfo
-unitIdTarget' pkg_descr lbi uid =
-  case Graph.lookup uid (componentGraph lbi) of
+unitIdTarget' pkg_descr lbi@(LocalBuildInfo{componentGraph = compsGraph}) uid =
+  case Graph.lookup uid compsGraph of
     Just clbi -> Just (mkTargetInfo pkg_descr lbi clbi)
     Nothing -> Nothing
 
 -- | Return all 'ComponentLocalBuildInfo's associated with 'ComponentName'.
 -- In the presence of Backpack there may be more than one!
 componentNameCLBIs :: LocalBuildInfo -> ComponentName -> [ComponentLocalBuildInfo]
-componentNameCLBIs lbi cname =
-  case Map.lookup cname (componentNameMap lbi) of
+componentNameCLBIs (LocalBuildInfo{componentNameMap = comps}) cname =
+  case Map.lookup cname comps of
     Just clbis -> clbis
     Nothing -> []
 
@@ -273,8 +390,8 @@ componentNameCLBIs lbi cname =
 -- Has a prime because it takes a 'PackageDescription' argument
 -- which may disagree with 'localPkgDescr' in 'LocalBuildInfo'.
 allTargetsInBuildOrder' :: PackageDescription -> LocalBuildInfo -> [TargetInfo]
-allTargetsInBuildOrder' pkg_descr lbi =
-  map (mkTargetInfo pkg_descr lbi) (Graph.revTopSort (componentGraph lbi))
+allTargetsInBuildOrder' pkg_descr lbi@(LocalBuildInfo{componentGraph = compsGraph}) =
+  map (mkTargetInfo pkg_descr lbi) (Graph.revTopSort compsGraph)
 
 -- | Execute @f@ for every 'TargetInfo' in the package, respecting the
 -- build dependency order.  (TODO: We should use Shake!)
@@ -289,8 +406,8 @@ withAllTargetsInBuildOrder' pkg_descr lbi f =
 -- Has a prime because it takes a 'PackageDescription' argument
 -- which may disagree with 'localPkgDescr' in 'LocalBuildInfo'.
 neededTargetsInBuildOrder' :: PackageDescription -> LocalBuildInfo -> [UnitId] -> [TargetInfo]
-neededTargetsInBuildOrder' pkg_descr lbi uids =
-  case Graph.closure (componentGraph lbi) uids of
+neededTargetsInBuildOrder' pkg_descr lbi@(LocalBuildInfo{componentGraph = compsGraph}) uids =
+  case Graph.closure compsGraph uids of
     Nothing -> error $ "localBuildPlan: missing uids " ++ intercalate ", " (map prettyShow uids)
     Just clos -> map (mkTargetInfo pkg_descr lbi) (Graph.revTopSort (Graph.fromDistinctList clos))
 
@@ -305,21 +422,28 @@ withNeededTargetsInBuildOrder' pkg_descr lbi uids f =
 -- | Is coverage enabled for test suites? In practice, this requires library
 -- and executable profiling to be enabled.
 testCoverage :: LocalBuildInfo -> Bool
-testCoverage lbi = exeCoverage lbi && libCoverage lbi
+testCoverage (LocalBuildInfo{exeCoverage = exes, libCoverage = libs}) =
+  exes && libs
 
 -------------------------------------------------------------------------------
 -- Stub functions to prevent someone from accidentally defining them
 
 {-# WARNING componentNameTargets, unitIdTarget, allTargetsInBuildOrder, withAllTargetsInBuildOrder, neededTargetsInBuildOrder, withNeededTargetsInBuildOrder "By using this function, you may be introducing a bug where you retrieve a 'Component' which does not have 'HookedBuildInfo' applied to it.  See the documentation for 'HookedBuildInfo' for an explanation of the issue.  If you have a 'PackageDescription' handy (NOT from the 'LocalBuildInfo'), try using the primed version of the function, which takes it as an extra argument." #-}
 componentNameTargets :: LocalBuildInfo -> ComponentName -> [TargetInfo]
-componentNameTargets lbi = componentNameTargets' (localPkgDescr lbi) lbi
+componentNameTargets lbi@(LocalBuildInfo{localPkgDescr = pkg}) =
+  componentNameTargets' pkg lbi
 unitIdTarget :: LocalBuildInfo -> UnitId -> Maybe TargetInfo
-unitIdTarget lbi = unitIdTarget' (localPkgDescr lbi) lbi
+unitIdTarget lbi@(LocalBuildInfo{localPkgDescr = pkg}) =
+  unitIdTarget' pkg lbi
 allTargetsInBuildOrder :: LocalBuildInfo -> [TargetInfo]
-allTargetsInBuildOrder lbi = allTargetsInBuildOrder' (localPkgDescr lbi) lbi
+allTargetsInBuildOrder lbi@(LocalBuildInfo{localPkgDescr = pkg}) =
+  allTargetsInBuildOrder' pkg lbi
 withAllTargetsInBuildOrder :: LocalBuildInfo -> (TargetInfo -> IO ()) -> IO ()
-withAllTargetsInBuildOrder lbi = withAllTargetsInBuildOrder' (localPkgDescr lbi) lbi
+withAllTargetsInBuildOrder lbi@(LocalBuildInfo{localPkgDescr = pkg}) =
+  withAllTargetsInBuildOrder' pkg lbi
 neededTargetsInBuildOrder :: LocalBuildInfo -> [UnitId] -> [TargetInfo]
-neededTargetsInBuildOrder lbi = neededTargetsInBuildOrder' (localPkgDescr lbi) lbi
+neededTargetsInBuildOrder lbi@(LocalBuildInfo{localPkgDescr = pkg}) =
+  neededTargetsInBuildOrder' pkg lbi
 withNeededTargetsInBuildOrder :: LocalBuildInfo -> [UnitId] -> (TargetInfo -> IO ()) -> IO ()
-withNeededTargetsInBuildOrder lbi = withNeededTargetsInBuildOrder' (localPkgDescr lbi) lbi
+withNeededTargetsInBuildOrder lbi@(LocalBuildInfo{localPkgDescr = pkg}) =
+  withNeededTargetsInBuildOrder' pkg lbi
