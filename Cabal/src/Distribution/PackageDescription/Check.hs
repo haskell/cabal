@@ -88,6 +88,7 @@ import qualified Distribution.Utils.ShortText as ShortText
 import qualified Distribution.Types.GenericPackageDescription.Lens as L
 
 import Control.Monad
+import qualified Distribution.Compat.Directory as Compat (doesPathExist)
 
 -- $setup
 -- >>> import Control.Arrow ((&&&))
