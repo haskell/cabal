@@ -288,19 +288,43 @@ cabal preferences. It is very useful when you are e.g. first configuring
 cabal path
 ^^^^^^^^^^
 
-``cabal path`` prints the file system paths used by ``cabal`` for
-cache, store, installed binaries, and so on. When run without any
-options, it will show all paths, labeled with how they are namen in
-the configuration file:
+``cabal path`` allows to query for paths used by ``cabal``.
+For example, it allows to query for the directories of the cache, store,
+installed binaries, and so on.
 
 ::
-   $ cabal path
-   cache-dir: /home/haskell/.cache/cabal/packages
-   logs-dir: /home/haskell/.cache/cabal/logs
-   store-dir: /home/haskell/.local/state/cabal/store
-   config-file: /home/haskell/.config/cabal/config
-   installdir: /home/haskell/.local/bin
-   ...
+
+    $ cabal path
+    cache-home: /home/haskell/.cache/cabal/
+    remote-repo-cache: /home/haskell/.cache/cabal/packages
+    logs-dir: /home/haskell/.cache/cabal/logs
+    store-dir: /home/haskell/.local/state/cabal/store
+    config-file: /home/haskell/.config/cabal/config
+    installdir: /home/haskell/.local/bin
+    ...
+
+Or using the json output:
+
+::
+
+    $ cabal path --output-format=json
+
+.. code-block:: json
+
+    {
+        "cabal-version": "3.11.0.0",
+        "compiler": {
+            "flavour": "ghc",
+            "id": "ghc-9.6.4",
+            "path": "/home/user/.ghcup/bin/ghc"
+        },
+        "cache-home": "/home/user/.cabal",
+        "remote-repo-cache": "/home/user/.cabal/packages",
+        "logs-dir": "/home/user/.cabal/logs",
+        "store-dir": "/home/user/.cabal/store",
+        "config-file": "/home/user/.cabal/config",
+        "installdir": "/home/user/.cabal/bin"
+    }
 
 If ``cabal path`` is passed a single option naming a path, then that
 path will be printed *without* any label:
@@ -310,8 +334,8 @@ path will be printed *without* any label:
    $ cabal path --installdir
    /home/haskell/.local/bin
 
-This is a stable interface and is intended to be used for scripting.
-For example:
+While this interface is intended to be used for scripting, it is an experimental command.
+Scripting example:
 
 ::
    $ ls $(cabal path --installdir)

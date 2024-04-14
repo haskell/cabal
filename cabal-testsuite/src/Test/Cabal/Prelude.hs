@@ -302,12 +302,11 @@ cabalGArgs global_args cmd args input = do
               , "info"
               , "init"
               , "haddock-project"
-              , "path"
               ]
           = [ ]
 
           -- new-build commands are affected by testCabalProjectFile
-          | cmd == "v2-sdist"
+          | cmd `elem` ["v2-sdist", "path"]
           = [ "--project-file=" ++ fp | Just fp <- [testCabalProjectFile env] ]
 
           | cmd == "v2-clean"

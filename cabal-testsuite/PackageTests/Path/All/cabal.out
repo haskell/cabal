@@ -1,6 +1,98 @@
 # cabal path
-cache-dir: <ROOT>/cabal.dist/home/.cabal/packages
+{"cabal-version":"<CABAL_INSTALL_VER>","compiler":{"flavour":"ghc","id":"ghc-<GHCVER>","path":"<GHCPATH>"},"logs-dir":"<ROOT>/cabal.dist/home/.cabal/logs","installdir":"<ROOT>/cabal.dist/home/.cabal/bin"}
+# cabal path
+{"cabal-version":"<CABAL_INSTALL_VER>","compiler":{"flavour":"ghc","id":"ghc-<GHCVER>","path":"<GHCPATH>"},"store-dir":"<ROOT>/cabal.dist/home/.cabal/store","config-file":"<ROOT>/cabal.dist/home/.cabal/config"}
+# cabal path
+{"cabal-version":"<CABAL_INSTALL_VER>","compiler":{"flavour":"ghc","id":"ghc-<GHCVER>","path":"<GHCPATH>"},"remote-repo-cache":"<ROOT>/cabal.dist/home/.cabal/packages"}
+# cabal path
+{"cabal-version":"<CABAL_INSTALL_VER>","compiler":{"flavour":"ghc","id":"ghc-<GHCVER>","path":"<GHCPATH>"},"cache-home":"<ROOT>/cabal.dist/home/.cabal","remote-repo-cache":"<ROOT>/cabal.dist/home/.cabal/packages","logs-dir":"<ROOT>/cabal.dist/home/.cabal/logs","store-dir":"<ROOT>/cabal.dist/home/.cabal/store","config-file":"<ROOT>/cabal.dist/home/.cabal/config","installdir":"<ROOT>/cabal.dist/home/.cabal/bin"}
+# cabal path
+{"cabal-version":"<CABAL_INSTALL_VER>","cache-home":"<ROOT>/cabal.dist/home/.cabal"}
+# cabal path
+{"cabal-version":"<CABAL_INSTALL_VER>","remote-repo-cache":"<ROOT>/cabal.dist/home/.cabal/packages"}
+# cabal path
+{"cabal-version":"<CABAL_INSTALL_VER>","logs-dir":"<ROOT>/cabal.dist/home/.cabal/logs"}
+# cabal path
+{"cabal-version":"<CABAL_INSTALL_VER>","store-dir":"<ROOT>/cabal.dist/home/.cabal/store"}
+# cabal path
+{"cabal-version":"<CABAL_INSTALL_VER>","config-file":"<ROOT>/cabal.dist/home/.cabal/config"}
+# cabal path
+{"cabal-version":"<CABAL_INSTALL_VER>","installdir":"<ROOT>/cabal.dist/home/.cabal/bin"}
+# cabal path
+compiler-flavour: ghc
+compiler-id: ghc-<GHCVER>
+compiler-path: <GHCPATH>
+logs-dir: <ROOT>/cabal.dist/home/.cabal/logs
+installdir: <ROOT>/cabal.dist/home/.cabal/bin
+# cabal path
+compiler-flavour: ghc
+compiler-id: ghc-<GHCVER>
+compiler-path: <GHCPATH>
+store-dir: <ROOT>/cabal.dist/home/.cabal/store
+config-file: <ROOT>/cabal.dist/home/.cabal/config
+# cabal path
+compiler-flavour: ghc
+compiler-id: ghc-<GHCVER>
+compiler-path: <GHCPATH>
+remote-repo-cache: <ROOT>/cabal.dist/home/.cabal/packages
+# cabal path
+compiler-flavour: ghc
+compiler-id: ghc-<GHCVER>
+compiler-path: <GHCPATH>
+cache-home: <ROOT>/cabal.dist/home/.cabal
+remote-repo-cache: <ROOT>/cabal.dist/home/.cabal/packages
 logs-dir: <ROOT>/cabal.dist/home/.cabal/logs
 store-dir: <ROOT>/cabal.dist/home/.cabal/store
 config-file: <ROOT>/cabal.dist/home/.cabal/config
 installdir: <ROOT>/cabal.dist/home/.cabal/bin
+# cabal path
+<ROOT>/cabal.dist/home/.cabal
+# cabal path
+<ROOT>/cabal.dist/home/.cabal/packages
+# cabal path
+<ROOT>/cabal.dist/home/.cabal/logs
+# cabal path
+<ROOT>/cabal.dist/home/.cabal/store
+# cabal path
+<ROOT>/cabal.dist/home/.cabal/config
+# cabal path
+<ROOT>/cabal.dist/home/.cabal/bin
+# cabal path
+compiler-flavour: ghc
+compiler-id: ghc-<GHCVER>
+compiler-path: <GHCPATH>
+logs-dir: <ROOT>/cabal.dist/home/.cabal/logs
+installdir: <ROOT>/cabal.dist/home/.cabal/bin
+# cabal path
+compiler-flavour: ghc
+compiler-id: ghc-<GHCVER>
+compiler-path: <GHCPATH>
+store-dir: <ROOT>/cabal.dist/home/.cabal/store
+config-file: <ROOT>/cabal.dist/home/.cabal/config
+# cabal path
+compiler-flavour: ghc
+compiler-id: ghc-<GHCVER>
+compiler-path: <GHCPATH>
+remote-repo-cache: <ROOT>/cabal.dist/home/.cabal/packages
+# cabal path
+compiler-flavour: ghc
+compiler-id: ghc-<GHCVER>
+compiler-path: <GHCPATH>
+cache-home: <ROOT>/cabal.dist/home/.cabal
+remote-repo-cache: <ROOT>/cabal.dist/home/.cabal/packages
+logs-dir: <ROOT>/cabal.dist/home/.cabal/logs
+store-dir: <ROOT>/cabal.dist/home/.cabal/store
+config-file: <ROOT>/cabal.dist/home/.cabal/config
+installdir: <ROOT>/cabal.dist/home/.cabal/bin
+# cabal path
+<ROOT>/cabal.dist/home/.cabal
+# cabal path
+<ROOT>/cabal.dist/home/.cabal/packages
+# cabal path
+<ROOT>/cabal.dist/home/.cabal/logs
+# cabal path
+<ROOT>/cabal.dist/home/.cabal/store
+# cabal path
+<ROOT>/cabal.dist/home/.cabal/config
+# cabal path
+<ROOT>/cabal.dist/home/.cabal/bin
