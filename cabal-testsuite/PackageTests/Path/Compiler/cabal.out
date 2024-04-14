@@ -1,0 +1,10 @@
+# cabal path
+compiler-flavour: ghc
+compiler-id: ghc-<GHCVER>
+compiler-path: <GHCPATH>
+# cabal path
+{"cabal-version":"<CABAL_INSTALL_VER>","compiler":{"flavour":"ghc","id":"ghc-<GHCVER>","path":"<GHCPATH>"}}
+# cabal path
+compiler-flavour: ghc
+compiler-id: ghc-<GHCVER>
+compiler-path: <GHCPATH>
