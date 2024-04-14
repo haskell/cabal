@@ -170,8 +170,9 @@ identify the result of a build; if we compute this identifier and we
 find that we already have this ID built, we can just use the already
 built version.
 
-The global package store is ``~/.cabal/store`` (configurable via
-global `store-dir` option); if you need to clear your store for
+Use ``cabal path --store-dir`` to show where your global package store is located.
+This is configurable via the global ``store-dir`` option.
+If you need to clear your store for
 whatever reason (e.g., to reclaim disk space or because the global
 store is corrupted), deleting this directory is safe (``build``
 will just rebuild everything it needs on its next invocation).
