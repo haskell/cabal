@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Distribution.Types.Dependency
@@ -16,6 +17,7 @@ module Distribution.Types.Dependency
   , Dependencies (..)
   , IsPrivate (..)
   , mapDependencies
+  , foldIsPrivate
   ) where
 
 import Distribution.Compat.Prelude
@@ -38,7 +40,7 @@ import qualified Distribution.Compat.NonEmptySet as NES
 import Distribution.ModuleName
 import qualified Text.PrettyPrint as PP
 
-data IsPrivate = Private PrivateAlias | Public deriving (Show, Ord, Read, Eq)
+data IsPrivate = Private PrivateAlias | Public deriving (Show, Ord, Read, Eq, Generic, Data)
 
 data Dependencies = Dependencies {publicDependencies :: [Dependency], privateDependencies :: [PrivateDependency]} deriving (Eq, Show, Generic, Data)
 
@@ -124,6 +126,10 @@ mkDependency pn vr lb = Dependency pn vr (NES.map conv lb)
     conv l@(LSubLibName ln)
       | ln == pn' = LMainLibName
       | otherwise = l
+
+instance Binary IsPrivate
+instance Structured IsPrivate
+instance NFData IsPrivate where rnf = genericRnf
 
 instance Binary Dependency
 instance Structured Dependency
@@ -247,3 +253,9 @@ mainLibSet = NES.singleton LMainLibName
 simplifyDependency :: Dependency -> Dependency
 simplifyDependency (Dependency name range comps) =
   Dependency name (simplifyVersionRange range) comps
+
+-- | Deconstruct 'IsPrivate' using a function on a 'PrivateAlias' or a default value; akin to 'maybe'.
+foldIsPrivate :: a -> (PrivateAlias -> a) -> IsPrivate -> a
+foldIsPrivate d f = \case
+  Public -> d
+  Private a -> f a

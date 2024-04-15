@@ -534,7 +534,7 @@ configurePackage
                     CD.nonSetupDeps deps
                 ]
             , configDependencies =
-                [ GivenComponent (packageName srcid) cname uid Nothing
+                [ GivenComponent (packageName srcid) cname uid PkgDesc.Public
                 | ConfiguredId srcid (Just (PkgDesc.CLibName cname)) uid <-
                     CD.nonSetupDeps deps
                 ]

@@ -12,7 +12,7 @@ import Distribution.Solver.Types.ComponentDeps ( ComponentDeps )
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.SolverId
 import Distribution.Solver.Types.SourcePackage
-import Distribution.Types.Dependency (PrivateAlias)
+import Distribution.Types.Dependency (IsPrivate)
 
 -- | A 'SolverPackage' is a package specified by the dependency solver.
 -- It will get elaborated into a 'ConfiguredPackage' or even an
@@ -25,7 +25,7 @@ data SolverPackage loc = SolverPackage {
         solverPkgSource  :: SourcePackage loc,
         solverPkgFlags   :: FlagAssignment,
         solverPkgStanzas :: OptionalStanzaSet,
-        solverPkgLibDeps :: ComponentDeps [(SolverId, Maybe PrivateAlias)],
+        solverPkgLibDeps :: ComponentDeps [(SolverId, IsPrivate)],
         solverPkgExeDeps :: ComponentDeps [SolverId]
     }
   deriving (Eq, Show, Generic)

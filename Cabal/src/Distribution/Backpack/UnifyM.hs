@@ -625,16 +625,16 @@ convertInclude
 
     -- Expand the alias
     let prepend_alias mn = case alias of
-          Just (PrivateAlias alias_mn) -> combineModuleName alias_mn mn
-          Nothing -> mn
+          Private (PrivateAlias alias_mn) -> combineModuleName alias_mn mn
+          Public -> mn
 
     let pre_prov_scope' = map (first prepend_alias) pre_prov_scope
 
     let prov_rns'' =
           case prov_rns' of
             DefaultRenaming -> case alias of
-              Nothing -> DefaultRenaming
-              Just{} -> ModuleRenaming (map ((\x -> (x, prepend_alias x)) . fst) (pre_prov_scope))
+              Public -> DefaultRenaming
+              Private{} -> ModuleRenaming (map ((\x -> (x, prepend_alias x)) . fst) (pre_prov_scope))
             ModuleRenaming rn -> ModuleRenaming (map (\(x, y) -> (x, prepend_alias y)) rn)
             -- Can't happen, expanded above
             HidingRenaming{} -> error "unreachable"

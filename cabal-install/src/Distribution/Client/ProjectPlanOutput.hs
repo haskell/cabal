@@ -322,14 +322,14 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
                 then dist_dir </> "build" </> prettyShow s </> ("lib" ++ prettyShow s) <.> dllExtension plat
                 else InstallDirs.bindir (elabInstallDirs elab) </> ("lib" ++ prettyShow s) <.> dllExtension plat
 
-        handleLibDepends :: [(ConfiguredId, Bool, Maybe PrivateAlias)] -> [J.Pair]
+        handleLibDepends :: [(ConfiguredId, Bool, IsPrivate)] -> [J.Pair]
         handleLibDepends deps =
           let (publicDeps, privateDeps) =
                 partitionEithers $
                   map
                     ( \(p, _, mb) -> case mb of
-                        Nothing -> Left p
-                        Just alias -> Right (alias, p)
+                        Public -> Left p
+                        Private alias -> Right (alias, p)
                     )
                     deps
            in [ "depends" J..= map (jdisplay . confInstId) publicDeps

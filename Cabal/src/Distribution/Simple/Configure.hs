@@ -819,9 +819,9 @@ computeLocalBuildConfig cfg comp programDb = do
 
 data PackageInfo = PackageInfo
   { internalPackageSet :: Set LibraryName
-  , promisedDepsSet :: Map (PackageName, ComponentName, Maybe PrivateAlias) ComponentId
+  , promisedDepsSet :: Map (PackageName, ComponentName, IsPrivate) ComponentId
   , installedPackageSet :: InstalledPackageIndex
-  , requiredDepsMap :: Map (PackageName, ComponentName, Maybe PrivateAlias) InstalledPackageInfo
+  , requiredDepsMap :: Map (PackageName, ComponentName, IsPrivate) InstalledPackageInfo
   }
 
 configurePackage
@@ -975,7 +975,7 @@ finalizeAndConfigurePackage cfg lbc0 g_pkg_descr comp platform enabled = do
   -- that is not possible to configure a test-suite to use one
   -- version of a dependency, and the executable to use another.
   ( allConstraints :: [(IsPrivate, PackageVersionConstraint)]
-    , requiredDepsMap :: Map (PackageName, ComponentName, Maybe PrivateAlias) InstalledPackageInfo
+    , requiredDepsMap :: Map (PackageName, ComponentName, IsPrivate) InstalledPackageInfo
     ) <-
     either (dieWithException verbosity) return $
       combinedConstraints
@@ -1355,7 +1355,7 @@ configureComponents
 
       return lbi
 
-mkPromisedDepsSet :: [GivenComponent] -> Map (PackageName, ComponentName, Maybe PrivateAlias) ComponentId
+mkPromisedDepsSet :: [GivenComponent] -> Map (PackageName, ComponentName, IsPrivate) ComponentId
 mkPromisedDepsSet comps = Map.fromList [((pn, CLibName ln, alias), cid) | GivenComponent pn ln cid alias <- comps]
 
 -- | Adds the extra program paths from the flags provided to @configure@ as
@@ -1459,10 +1459,10 @@ dependencySatisfiable
   -- ^ installed set
   -> Set LibraryName
   -- ^ library components
-  -> Map (PackageName, ComponentName, Maybe PrivateAlias) ComponentId
-  -> Map (PackageName, ComponentName, Maybe PrivateAlias) InstalledPackageInfo
+  -> Map (PackageName, ComponentName, IsPrivate) ComponentId
+  -> Map (PackageName, ComponentName, IsPrivate) InstalledPackageInfo
   -- ^ required dependencies
-  -> (Maybe PrivateAlias -> Dependency -> Bool)
+  -> (IsPrivate -> Dependency -> Bool)
 dependencySatisfiable
   use_external_internal_deps
   exact_config
@@ -1556,7 +1556,7 @@ configureFinalizedPackage
   -> ConfigFlags
   -> ComponentRequestedSpec
   -> [(IsPrivate, PackageVersionConstraint)]
-  -> (Maybe PrivateAlias -> Dependency -> Bool)
+  -> (IsPrivate -> Dependency -> Bool)
   -- ^ tests if a dependency is satisfiable.
   -- Might say it's satisfiable even when not.
   -> Compiler
@@ -1623,10 +1623,10 @@ configureDependencies
   :: Verbosity
   -> UseExternalInternalDeps
   -> Set LibraryName
-  -> Map (PackageName, ComponentName, Maybe PrivateAlias) ComponentId
+  -> Map (PackageName, ComponentName, IsPrivate) ComponentId
   -> InstalledPackageIndex
   -- ^ installed packages
-  -> Map (PackageName, ComponentName, Maybe PrivateAlias) InstalledPackageInfo
+  -> Map (PackageName, ComponentName, IsPrivate) InstalledPackageInfo
   -- ^ required deps
   -> PackageDescription
   -> ComponentRequestedSpec
@@ -1878,17 +1878,17 @@ selectDependency
   -- ^ Package id of current package
   -> Set LibraryName
   -- ^ package libraries
-  -> Map (PackageName, ComponentName, Maybe PrivateAlias) ComponentId
+  -> Map (PackageName, ComponentName, IsPrivate) ComponentId
   -- ^ Set of components that are promised, i.e. are not installed already. See 'PromisedDependency' for more details.
   -> InstalledPackageIndex
   -- ^ Installed packages
-  -> Map (PackageName, ComponentName, Maybe PrivateAlias) InstalledPackageInfo
+  -> Map (PackageName, ComponentName, IsPrivate) InstalledPackageInfo
   -- ^ Packages for which we have been given specific deps to
   -- use
   -> UseExternalInternalDeps
   -- ^ Are we configuring a
   -- single component?
-  -> Maybe PrivateAlias
+  -> IsPrivate
   -> Dependency
   -> [Either FailedDependency DependencyResolution]
 selectDependency
@@ -2129,7 +2129,7 @@ combinedConstraints
   -> Either
       CabalException
       ( [(IsPrivate, PackageVersionConstraint)]
-      , Map (PackageName, ComponentName, Maybe PrivateAlias) InstalledPackageInfo
+      , Map (PackageName, ComponentName, IsPrivate) InstalledPackageInfo
       )
 combinedConstraints constraints dependencies installedPackages = do
   when (not (null badComponentIds)) $
@@ -2143,11 +2143,11 @@ combinedConstraints constraints dependencies installedPackages = do
     allConstraints :: [(IsPrivate, PackageVersionConstraint)]
     allConstraints =
       constraints
-        ++ [ (case mAlias of Nothing -> Public; Just a -> Private a, thisPackageVersionConstraint (packageId pkg))
+        ++ [ (mAlias, thisPackageVersionConstraint (packageId pkg))
            | (_, _, mAlias, _, Just pkg) <- dependenciesPkgInfo
            ]
 
-    idConstraintMap :: Map (PackageName, ComponentName, Maybe PrivateAlias) InstalledPackageInfo
+    idConstraintMap :: Map (PackageName, ComponentName, IsPrivate) InstalledPackageInfo
     idConstraintMap =
       Map.fromList
         -- NB: do NOT use the packageName from
@@ -2157,7 +2157,7 @@ combinedConstraints constraints dependencies installedPackages = do
         ]
 
     -- The dependencies along with the installed package info, if it exists
-    dependenciesPkgInfo :: [(PackageName, ComponentName, Maybe PrivateAlias, ComponentId, Maybe InstalledPackageInfo)]
+    dependenciesPkgInfo :: [(PackageName, ComponentName, IsPrivate, ComponentId, Maybe InstalledPackageInfo)]
     dependenciesPkgInfo =
       [ (pkgname, CLibName lname, alias, cid, mpkg)
       | GivenComponent pkgname lname cid alias <- dependencies
@@ -2186,7 +2186,7 @@ combinedConstraints constraints dependencies installedPackages = do
                   _ -> ":" <<>> pretty cname
                 <<>> char '='
                 <<>> pretty cid
-                <<>> maybe "" (\a -> "=" <<>> pretty a) alias
+                <<>> foldIsPrivate "" (\a -> "=" <<>> pretty a) alias
             )
         | (pkgname, cname, alias, cid) <- deps
         ]

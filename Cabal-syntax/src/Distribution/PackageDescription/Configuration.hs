@@ -464,7 +464,7 @@ finalizePD
   :: FlagAssignment
   -- ^ Explicitly specified flag assignments
   -> ComponentRequestedSpec
-  -> (Maybe PrivateAlias -> Dependency -> Bool)
+  -> (IsPrivate -> Dependency -> Bool)
   -- ^ Is a given dependency satisfiable from the set of
   -- available packages?  If this is unknown then use
   -- True.
@@ -539,8 +539,8 @@ finalizePD
       check ds =
         let missingDeps =
               Dependencies
-                (filter (not . satisfyDep Nothing) (publicDependencies ds))
-                (mapMaybe (\(PrivateDependency priv pds) -> case filter (not . satisfyDep (Just priv)) pds of [] -> Nothing; pds' -> Just (PrivateDependency priv pds')) (privateDependencies ds))
+                (filter (not . satisfyDep Public) (publicDependencies ds))
+                (mapMaybe (\(PrivateDependency priv pds) -> case filter (not . satisfyDep (Private priv)) pds of [] -> Nothing; pds' -> Just (PrivateDependency priv pds')) (privateDependencies ds))
          in if null (publicDependencies missingDeps) && null (privateDependencies missingDeps)
               then DepOk
               else MissingDeps missingDeps

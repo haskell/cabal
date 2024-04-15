@@ -23,7 +23,7 @@ data GivenComponent = GivenComponent
   , givenComponentName :: LibraryName -- --dependency is for libraries
   -- only, not for any component
   , givenComponentId :: ComponentId
-  , givenComponentAlias :: Maybe PrivateAlias
+  , givenComponentAlias :: IsPrivate
   }
   deriving (Generic, Read, Show, Eq, Typeable)
 

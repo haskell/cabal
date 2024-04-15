@@ -183,8 +183,8 @@ showElaboratedInstallPlan = InstallPlan.showInstallPlan_gen showNode
           [ (if internal then text "+" else mempty) <> mpalias <> pretty (confInstId uid)
           | (uid, internal, alias) <- elabLibDependencies cfg
           , let mpalias = case alias of
-                  Nothing -> mempty
-                  Just al -> pretty al <> text "."
+                  Public -> mempty
+                  Private al -> pretty al <> text "."
           ]
 
 -- TODO: [code cleanup] decide if we really need this, there's not much in it, and in principle
@@ -581,7 +581,7 @@ elabOrderLibDependencies elab =
 -- | The library dependencies (i.e., the libraries we depend on, NOT
 -- the dependencies of the library), NOT including setup dependencies.
 -- These are passed to the @Setup@ script via @--dependency@ or @--promised-dependency@.
-elabLibDependencies :: ElaboratedConfiguredPackage -> [(ConfiguredId, Bool, Maybe PrivateAlias)]
+elabLibDependencies :: ElaboratedConfiguredPackage -> [(ConfiguredId, Bool, IsPrivate)]
 elabLibDependencies elab =
   case elabPkgOrComp elab of
     ElabPackage pkg -> ordNub (CD.nonSetupDeps (pkgLibDependencies pkg))
@@ -615,7 +615,7 @@ elabExeDependencyPaths elab =
 -- | The setup dependencies (the library dependencies of the setup executable;
 -- note that it is not legal for setup scripts to have executable
 -- dependencies at the moment.)
-elabSetupDependencies :: ElaboratedConfiguredPackage -> [(ConfiguredId, Bool, Maybe PrivateAlias)]
+elabSetupDependencies :: ElaboratedConfiguredPackage -> [(ConfiguredId, Bool, IsPrivate)]
 elabSetupDependencies elab =
   case elabPkgOrComp elab of
     ElabPackage pkg -> CD.setupDeps (pkgLibDependencies pkg)
@@ -675,7 +675,7 @@ data ElaboratedComponent = ElaboratedComponent
   , compComponentName :: Maybe ComponentName
   -- ^ The name of the component to be built.  Nothing if
   -- it's a setup dep.
-  , compLibDependencies :: [(ConfiguredId, Bool, Maybe PrivateAlias)]
+  , compLibDependencies :: [(ConfiguredId, Bool, IsPrivate)]
   -- ^ The *external* library dependencies of this component.  We
   -- pass this to the configure script. The Bool indicates whether the
   -- dependency is a promised dependency (True) or not (False).
@@ -722,7 +722,7 @@ compOrderExeDependencies = map (newSimpleUnitId . confInstId) . compExeDependenc
 
 data ElaboratedPackage = ElaboratedPackage
   { pkgInstalledId :: InstalledPackageId
-  , pkgLibDependencies :: ComponentDeps [(ConfiguredId, Bool, Maybe PrivateAlias)]
+  , pkgLibDependencies :: ComponentDeps [(ConfiguredId, Bool, IsPrivate)]
   -- ^ The exact dependencies (on other plan packages)
   -- The boolean value indicates whether the dependency is a promised dependency
   -- or not.

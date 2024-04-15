@@ -910,9 +910,9 @@ parsecGivenComponent = do
         else LSubLibName ucn
   _ <- P.char '='
   cid <- parsec
-  alias <- P.option Nothing $ do
+  alias <- P.option Public $ do
     _ <- P.char '='
-    Just <$> parsec
+    Private <$> parsec
   return $ GivenComponent pn ln cid alias
 
 prettyGivenComponent :: GivenComponent -> String
@@ -923,7 +923,7 @@ prettyGivenComponent (GivenComponent pn cn cid alias) =
       LSubLibName n -> ":" ++ prettyShow n
     ++ "="
     ++ prettyShow cid
-    ++ maybe "" (\a -> "=" ++ prettyShow a) alias
+    ++ (case alias of Public -> ""; Private a -> "=" ++ prettyShow a)
 
 installDirsOptions :: [OptionField (InstallDirs (Flag PathTemplate))]
 installDirsOptions =

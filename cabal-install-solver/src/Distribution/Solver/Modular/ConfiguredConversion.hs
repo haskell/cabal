@@ -20,7 +20,7 @@ import           Distribution.Solver.Types.SolverId
 import           Distribution.Solver.Types.SolverPackage
 import           Distribution.Solver.Types.InstSolverPackage
 import           Distribution.Solver.Types.SourcePackage
-import Distribution.Types.Dependency (PrivateAlias)
+import Distribution.Types.Dependency (IsPrivate(..), PrivateAlias)
 
 -- | Converts from the solver specific result @CP QPN@ into
 -- a 'ResolverPackage', which can then be converted into
@@ -49,16 +49,16 @@ convCP iidx sidx (CP qpi fa es ds) =
         srcpkg = fromMaybe (error "convCP: lookupPackageId failed") $ CI.lookupPackageId sidx pi
   where
 
-    ds' :: Maybe PackageName -> ComponentDeps (([(SolverId, Maybe PrivateAlias)] {- lib -}, [SolverId] {- exe -}))
+    ds' :: Maybe PackageName -> ComponentDeps (([(SolverId, IsPrivate)] {- lib -}, [SolverId] {- exe -}))
     ds' pn = fmap (partitionDeps . map (convConfId pn)) ds
 
-partitionDeps :: [Converted] -> (([(SolverId, Maybe PrivateAlias)], [SolverId]))
+partitionDeps :: [Converted] -> (([(SolverId, IsPrivate)], [SolverId]))
 partitionDeps [] = ([], [])
 partitionDeps (dep:deps) =
   let (p, e) = partitionDeps deps
   in case dep of
-        AliasPkg sid pn -> ((sid, Just pn) : p, e)
-        NormalPkg sid -> ((sid, Nothing) :p, e)
+        AliasPkg sid pn -> ((sid, Private pn) : p, e)
+        NormalPkg sid -> ((sid, Public) :p, e)
         NormalExe sid -> (p, sid:e)
 
 convPI :: PI QPN -> Either UnitId PackageId

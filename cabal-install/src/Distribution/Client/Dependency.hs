@@ -962,10 +962,10 @@ data PackageProblem
   = DuplicateFlag PD.FlagName
   | MissingFlag PD.FlagName
   | ExtraFlag PD.FlagName
-  | DuplicateDeps [(PackageId, Maybe PrivateAlias)]
-  | MissingDep Dependency (Maybe PrivateAlias)
-  | ExtraDep PackageId (Maybe PrivateAlias)
-  | InvalidDep Dependency PackageId (Maybe PrivateAlias)
+  | DuplicateDeps [(PackageId, IsPrivate)]
+  | MissingDep Dependency (IsPrivate)
+  | ExtraDep PackageId (IsPrivate)
+  | InvalidDep Dependency PackageId (IsPrivate)
 
 showPackageProblem :: PackageProblem -> String
 showPackageProblem (DuplicateFlag flag) =
@@ -976,15 +976,15 @@ showPackageProblem (ExtraFlag flag) =
   "extra flag given that is not used by the package: " ++ PD.unFlagName flag
 showPackageProblem (DuplicateDeps pkgids) =
   "duplicate packages specified as selected dependencies: "
-    ++ intercalate ", " (map (\(x, y) -> maybe "" ((<> ".") . prettyShow) y <> prettyShow x) pkgids)
+    ++ intercalate ", " (map (\(x, y) -> foldIsPrivate "" ((<> ".") . prettyShow) y <> prettyShow x) pkgids)
 showPackageProblem (MissingDep dep palias) =
   "the package has a dependency "
-    ++ maybe "" ((<> ".") . prettyShow) palias
+    ++ foldIsPrivate "" ((<> ".") . prettyShow) palias
     ++ prettyShow dep
     ++ " but no package has been selected to satisfy it."
 showPackageProblem (ExtraDep pkgid palias) =
   "the package configuration specifies "
-    ++ maybe "" ((<> ".") . prettyShow) palias
+    ++ foldIsPrivate "" ((<> ".") . prettyShow) palias
     ++ prettyShow pkgid
     ++ " but (with the given flag assignment) the package does not actually"
     ++ " depend on any version of that package."
@@ -992,7 +992,7 @@ showPackageProblem (InvalidDep dep pkgid palias) =
   "the package depends on "
     ++ prettyShow dep
     ++ " but the configuration specifies "
-    ++ maybe "" ((<> ".") . prettyShow) palias
+    ++ foldIsPrivate "" ((<> ".") . prettyShow) palias
     ++ prettyShow pkgid
     ++ " which does not satisfy the dependency."
 
@@ -1036,10 +1036,10 @@ configuredPackageProblems
       thisPkgName :: PackageName
       thisPkgName = packageName (srcpkgDescription pkg)
 
-      specifiedDeps1 :: ComponentDeps [(PackageId, Maybe PrivateAlias)]
+      specifiedDeps1 :: ComponentDeps [(PackageId, IsPrivate)]
       specifiedDeps1 = fmap (map (first solverSrcId)) specifiedDeps0
 
-      specifiedDeps :: [(PackageId, Maybe PrivateAlias)]
+      specifiedDeps :: [(PackageId, IsPrivate)]
       specifiedDeps = CD.flatDeps specifiedDeps1
 
       mergedFlags :: [MergeResult PD.FlagName PD.FlagName]
@@ -1057,13 +1057,13 @@ configuredPackageProblems
 
       dependencyName (Dependency name _ _) = name
 
-      mergedDeps :: [MergeResult (Dependency, Maybe PrivateAlias) (PackageId, Maybe PrivateAlias)]
+      mergedDeps :: [MergeResult (Dependency, IsPrivate) (PackageId, IsPrivate)]
       mergedDeps = mergeDeps requiredDeps specifiedDeps
 
       mergeDeps
-        :: [(Dependency, Maybe PrivateAlias)]
-        -> [(PackageId, Maybe PrivateAlias)]
-        -> [MergeResult (Dependency, Maybe PrivateAlias) (PackageId, Maybe PrivateAlias)]
+        :: [(Dependency, IsPrivate)]
+        -> [(PackageId, IsPrivate)]
+        -> [MergeResult (Dependency, IsPrivate) (PackageId, IsPrivate)]
       mergeDeps required specified =
         let sortNubOn f = nubBy ((==) `on` f) . sortBy (compare `on` f)
          in mergeBy
@@ -1078,7 +1078,7 @@ configuredPackageProblems
       -- have to allow for duplicates when we fold specifiedDeps; once we have
       -- proper ComponentDeps here we should get rid of the `nubOn` in
       -- `mergeDeps`.
-      requiredDeps :: [(Dependency, Maybe PrivateAlias)]
+      requiredDeps :: [(Dependency, IsPrivate)]
       requiredDeps =
         -- TODO: use something lower level than finalizePD
         case finalizePD
@@ -1102,7 +1102,7 @@ configuredPackageProblems
               ( map (\(x, y) -> (y, x)) $
                   PD.enabledBuildDepends resolvedPkg compSpec
               )
-              ++ maybe [] (map (,Nothing) . PD.setupDepends) (PD.setupBuildInfo resolvedPkg)
+              ++ maybe [] (map (,Public) . PD.setupDepends) (PD.setupBuildInfo resolvedPkg)
           Left _ ->
             error "configuredPackageInvalidDeps internal error"
 

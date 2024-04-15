@@ -101,7 +101,7 @@ data ComponentBuildDescr = ComponentBuildDescr
   -- ^ A map from component name to all matching
   -- components.  These coincide with 'componentGraph'
   -- There may be more than one matching component because of backpack instantiations
-  , promisedPkgs :: Map (PackageName, ComponentName, Maybe PrivateAlias) ComponentId
+  , promisedPkgs :: Map (PackageName, ComponentName, IsPrivate) ComponentId
   -- ^ The packages we were promised, but aren't already installed.
   -- MP: Perhaps this just needs to be a Set UnitId at this stage.
   , installedPkgs :: InstalledPackageIndex

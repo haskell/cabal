@@ -154,6 +154,7 @@ import Distribution.Client.Utils
 import Distribution.Package
   ( HasMungedPackageId (..)
   , HasUnitId (..)
+  , IsPrivate (..)
   , Package (..)
   , PackageId
   , PackageIdentifier (..)
@@ -1661,7 +1662,7 @@ installReadyPackage
                 CD.nonSetupDeps deps
             ]
         , configDependencies =
-            [ GivenComponent (packageName srcid) cname dep_ipid Nothing
+            [ GivenComponent (packageName srcid) cname dep_ipid Public
             | ConfiguredId srcid (Just (PackageDescription.CLibName cname)) dep_ipid <-
                 CD.nonSetupDeps deps
             ]

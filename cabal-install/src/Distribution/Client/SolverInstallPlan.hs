@@ -56,11 +56,11 @@ import Prelude ()
 
 import Distribution.Package
   ( HasUnitId (..)
+  , IsPrivate (..)
   , Package (..)
   , PackageId
   , PackageIdentifier (..)
   , PackageName
-  , PrivateAlias (..)
   , packageName
   , packageVersion
   )
@@ -376,8 +376,8 @@ dependencyInconsistencies' index =
       -- (because, across packages, there may exist scopes with the same name).
       List.groupBy
         ( \x y -> case (x, y) of
-            (((Nothing, _), _), (_, _)) -> False
-            ((_, _), ((Nothing, _), _)) -> False
+            (((Public, _), _), (_, _)) -> False
+            ((_, _), ((Public, _), _)) -> False
             (((aliasA, sidA), _), ((aliasB, sidB), _))
               | aliasA == aliasB ->
                   sidA == sidB
@@ -391,7 +391,7 @@ dependencyInconsistencies' index =
     --   and each installed ID of that package
     --     the associated package instance
     --     and a list of reverse dependencies (as source IDs) and the possible private scope of each revdep
-    inverseIndex :: Map PackageName (Map (Maybe PrivateAlias, SolverId) (SolverPlanPackage, [PackageId]))
+    inverseIndex :: Map PackageName (Map (IsPrivate, SolverId) (SolverPlanPackage, [PackageId]))
     inverseIndex =
       Map.fromListWith
         (Map.unionWith (\(a, b) (_, b') -> (a, b ++ b')))
