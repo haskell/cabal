@@ -16,6 +16,7 @@ Welcome to the Cabal User Guide
    how-to-package-haskell-code
    how-to-build-like-nix
    how-to-use-backpack
+   how-to-use-private-dependencies
    how-to-report-bugs
 
 .. toctree::

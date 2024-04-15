@@ -2145,7 +2145,7 @@ system-dependent values for these fields.
 
 .. pkg-field:: private-build-depends: private scope
 
-    A private dependency can be introduced in a cabal file in the
+    A `private dependency <Private dependencies>` can be introduced in a cabal file in the
     ``private-build-depends`` field. The specification starts with the name of the
     private dependency *scope* and then contains a list of normal dependency
     specifications which dictate the packages included in that private scope.
