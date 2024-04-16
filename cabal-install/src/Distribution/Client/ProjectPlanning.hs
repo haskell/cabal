@@ -1369,6 +1369,7 @@ planPackages
       -- TODO: long-term, this compatibility matrix should be
       --       stored as a field inside 'Distribution.Compiler.Compiler'
       setupMinCabalVersionConstraint
+        | isGHC, compVer >= mkVersion [9, 10] = mkVersion [3, 12]
         | isGHC, compVer >= mkVersion [9, 6] = mkVersion [3, 10]
         | isGHC, compVer >= mkVersion [9, 4] = mkVersion [3, 8]
         | isGHC, compVer >= mkVersion [9, 2] = mkVersion [3, 6]
