@@ -140,9 +140,11 @@ outdatedAction flags _extraArgs globalFlags = do
       pkgVerConstraints <-
         if v2FreezeFile
           then do
-            putStrLn "\n\n***** v2FreezeFile ******\n"
             let mprojectDir = flagToMaybe $ flagProjectDir (projectFlags flags)
                 mprojectFile = flagToMaybe $ flagProjectFile (projectFlags flags)
+            putStrLn "\n\n***** v2FreezeFile ******"
+            print (newFreezeFile, mprojectDir, mprojectFile)
+            putStrLn "\n"
             when (not newFreezeFile && (isJust mprojectDir || isJust mprojectFile)) $
               dieWithException verbosity OutdatedAction
 
