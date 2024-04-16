@@ -3,10 +3,10 @@ stages:
 
 variables:
   # Commit of ghc/ci-images repository from which to pull Docker images
-  DOCKER_REV: "572353e0644044fe3a5465bba4342a9a0b0eb60e"
+  DOCKER_REV: "a9297a370025101b479cfd4977f8f910814e03ab"
 
-  GHC_VERSION: 9.2.3
-  CABAL_INSTALL_VERSION: 3.6.2.0
+  GHC_VERSION: 9.6.4
+  CABAL_INSTALL_VERSION: 3.10.2.0
 
 workflow:
   rules:
@@ -26,7 +26,7 @@ workflow:
     paths:
       - out/*
 
-build-linux:
+linux:
   extends: .build
   parallel:
     matrix:
@@ -34,22 +34,28 @@ build-linux:
         TAG: x86_64-linux
         OS:
           - deb9
+          - deb10
       - ARCH: x86_64
         TAG: x86_64-linux
         OS:
           - centos7
           - deb9
+          - deb10
+          - deb11
+          - deb12
           - fedora33
+          - fedora36
+          - fedora38
           - rocky8
           - ubuntu18_04
           - ubuntu20_04
-          - deb10
-          - deb11
+          - ubuntu22_04
       - ARCH: aarch64
         TAG: aarch64-linux
         OS:
           - deb10
           - deb11
+          - deb12
   tags:
     - $TAG
   image: "registry.gitlab.haskell.org/ghc/ci-images/$PLATFORM:$DOCKER_REV"
@@ -59,17 +65,22 @@ build-linux:
     TARBALL_EXT: tar.xz
     ADD_CABAL_ARGS: "--enable-split-sections"
 
-build-linux-alpine:
+alpine-linux:
   extends: .build
   parallel:
     matrix:
-      - ARCH: i386
-        OS: [alpine3_12]
-        GHC_VERSION: 9.0.2
+      - ARCH: [i386, x86_64]
+        OS: [alpine3_12, alpine3_15, alpine3_17]
+        TAG: x86_64-linux
+      # Was 3_18 for i386 intentionally left off?
       - ARCH: x86_64
-        OS: [alpine3_12]
+        OS: alpine3_18
+        TAG: x86_64-linux
+      - ARCH: [aarch64]
+        OS: [alpine3_18]
+        TAG: aarch64-linux
   tags:
-    - x86_64-linux
+    - $TAG
   before_script:
     # for cabal build
     - sudo apk add --no-cache zlib zlib-dev zlib-static
@@ -80,50 +91,28 @@ build-linux-alpine:
     TARBALL_EXT: tar.xz
     ADD_CABAL_ARGS: "--enable-split-sections --enable-executable-static"
 
-build-x86_64-darwin:
+darwin:
   extends: .build
+  parallel:
+    matrix:
+      # Help me with names pls
+      - ARCH: x86_64
+        ARCHARCH: x86_64
+      - ARCH: aarch64
+        ARCHARCH: arm64
   tags:
-    - x86_64-darwin
+    - ${ARCH}-darwin-m1
   variables:
-    TARBALL_ARCHIVE_SUFFIX: x86_64-darwin
+    # Using 9.8.2 to work around
+    # https://gitlab.haskell.org/ghc/ghc/-/issues/24050
+    GHC_VERSION: 9.8.2
+    TARBALL_ARCHIVE_SUFFIX: ${ARCH}-darwin
     TARBALL_EXT: tar.xz
     ADD_CABAL_ARGS: ""
+  script:
+    - arch -${ARCHARCH} /bin/bash .gitlab/ci.sh
 
-build-aarch64-darwin:
-  stage: build
-  tags:
-    - aarch64-darwin-m1
-  before_script:
-    - export HOMEBREW_CHANGE_ARCH_TO_ARM=1
-    - arch -arm64 /bin/bash ./.gitlab/brew.sh llvm autoconf automake coreutils make tree
-  # C_INCLUDE_PATH: https://gitlab.haskell.org/ghc/ghc/-/issues/20592
-  script: |
-    export PATH="$CI_PROJECT_DIR/.brew/opt/llvm/bin:$CI_PROJECT_DIR/.brew/bin:$CI_PROJECT_DIR/.brew/sbin:$PATH"
-    export CC=$CI_PROJECT_DIR/.brew/opt/llvm/bin/clang
-    export CXX=$CI_PROJECT_DIR/.brew/opt/llvm/bin/clang++
-    export LD=ld
-    export AR=$CI_PROJECT_DIR/.brew/opt/llvm/bin/llvm-ar
-    export RANLIB=$CI_PROJECT_DIR/.brew/opt/llvm/bin/llvm-ranlib
-    export C_INCLUDE_PATH="`xcrun --show-sdk-path`/usr/include/ffi"
-    arch -arm64 /bin/bash ./.gitlab/ci.sh
-  after_script:
-    - rm -Rf /private/tmp/.brew_tmp
-  variables:
-    MACOSX_DEPLOYMENT_TARGET: "10.7"
-    TARBALL_ARCHIVE_SUFFIX: aarch64-darwin
-    TARBALL_EXT: tar.xz
-    ADD_CABAL_ARGS: ""
-    # Update periodically.
-    BREW_VERSION: 4.0.5
-  artifacts:
-    expire_in: 2 week
-    paths:
-      - out/*
-  cache:
-    paths:
-      - .brew
-
-build-x86_64-windows:
+x86_64-windows:
   extends: .build
   script:
     - $env:CHERE_INVOKING = "yes"
