@@ -1,4 +1,6 @@
+{-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
 
 -----------------------------------------------------------------------------
@@ -53,13 +55,13 @@ bench args pkg_descr lbi flags = do
   let verbosity = fromFlag $ benchmarkVerbosity flags
       benchmarkNames = args
       pkgBenchmarks = PD.benchmarks pkg_descr
-      enabledBenchmarks = map fst (LBI.enabledBenchLBIs pkg_descr lbi)
+      enabledBenchmarks = LBI.enabledBenchLBIs pkg_descr lbi
       mbWorkDir = flagToMaybe $ benchmarkWorkingDir flags
       i = interpretSymbolicPath mbWorkDir -- See Note [Symbolic paths] in Distribution.Utils.Path
 
       -- Run the benchmark
-      doBench :: PD.Benchmark -> IO ExitCode
-      doBench bm =
+      doBench :: (PD.Benchmark, LBI.ComponentLocalBuildInfo) -> IO ExitCode
+      doBench (bm, _clbi) =
         case PD.benchmarkInterface bm of
           PD.BenchmarkExeV10 _ _ -> do
             let cmd = i $ LBI.buildDir lbi </> makeRelativePathEx (name </> name <.> exeExtension (LBI.hostPlatform lbi))
@@ -100,7 +102,7 @@ bench args pkg_descr lbi flags = do
     [] -> return enabledBenchmarks
     names -> for names $ \bmName ->
       let benchmarkMap = zip enabledNames enabledBenchmarks
-          enabledNames = map PD.benchmarkName enabledBenchmarks
+          enabledNames = map (PD.benchmarkName . fst) enabledBenchmarks
           allNames = map PD.benchmarkName pkgBenchmarks
        in case lookup (mkUnqualComponentName bmName) benchmarkMap of
             Just t -> return t
@@ -112,6 +114,7 @@ bench args pkg_descr lbi flags = do
   let totalBenchmarks = length bmsToRun
   notice verbosity $ "Running " ++ show totalBenchmarks ++ " benchmarks..."
   exitcodes <- traverse doBench bmsToRun
+
   let allOk = totalBenchmarks == length (filter (== ExitSuccess) exitcodes)
   unless allOk exitFailure
   where

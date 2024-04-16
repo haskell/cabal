@@ -1631,6 +1631,7 @@ elaborateInstallPlan
                 4
                 (vcat (map (text . componentNameStanza) cns))
         where
+          bt = PD.buildType (elabPkgDescription elab0)
           -- You are eligible to per-component build if this list is empty
           why_not_per_component g =
             cuz_buildtype ++ cuz_spec ++ cuz_length ++ cuz_flag
@@ -1646,11 +1647,12 @@ elaborateInstallPlan
               -- type, and teach all of the code paths how to handle it.
               -- Once you've implemented this, swap it for the code below.
               cuz_buildtype =
-                case PD.buildType (elabPkgDescription elab0) of
+                case bt of
                   PD.Configure -> [CuzBuildType CuzConfigureBuildType]
                   PD.Custom -> [CuzBuildType CuzCustomBuildType]
+                  PD.Hooks -> [CuzBuildType CuzHooksBuildType]
                   PD.Make -> [CuzBuildType CuzMakeBuildType]
-                  _ -> []
+                  PD.Simple -> []
               -- cabal-format versions prior to 1.8 have different build-depends semantics
               -- for now it's easier to just fallback to legacy-mode when specVersion < 1.8
               -- see, https://github.com/haskell/cabal/issues/4121
@@ -1694,7 +1696,7 @@ elaborateInstallPlan
           -- have to add dependencies on this from all other components
           setupComponent :: Maybe ElaboratedConfiguredPackage
           setupComponent
-            | PD.buildType (elabPkgDescription elab0) == PD.Custom =
+            | bt `elem` [PD.Custom, PD.Hooks] =
                 Just
                   elab0
                     { elabModuleShape = emptyModuleShape
@@ -3678,7 +3680,14 @@ setupHsScriptOptions
   cacheLock =
     SetupScriptOptions
       { useCabalVersion = thisVersion elabSetupScriptCliVersion
-      , useCabalSpecVersion = Just elabSetupScriptCliVersion
+      , useCabalSpecVersion =
+          if PD.buildType elabPkgDescription == PD.Hooks
+            then -- NB: we don't want to commit to a Cabal version here:
+            --   - all that should matter for Hooks build-type is the
+            --     version of Cabal-hooks, not of Cabal,
+            --   - if we commit to a Cabal version, the logic in
+              Nothing
+            else Just elabSetupScriptCliVersion
       , useCompiler = Just pkgConfigCompiler
       , usePlatform = Just pkgConfigPlatform
       , usePackageDB = elabSetupPackageDBStack

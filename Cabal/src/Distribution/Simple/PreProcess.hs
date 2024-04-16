@@ -24,6 +24,7 @@
 module Distribution.Simple.PreProcess
   ( preprocessComponent
   , preprocessExtras
+  , preprocessFile
   , knownSuffixHandlers
   , ppSuffixes
   , PPSuffixHandler
@@ -297,7 +298,10 @@ preprocessFile mbWorkDir searchLoc buildLoc forSDist baseFile verbosity builtinS
   case psrcFiles of
     -- no preprocessor file exists, look for an ordinary source file
     -- just to make sure one actually exists at all for this module.
-    -- Note: by looking in the target/output build dir too, we allow
+
+    -- Note [Dodgy build dirs for preprocessors]
+    -- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    -- By looking in the target/output build dir too, we allow
     -- source files to appear magically in the target build dir without
     -- any corresponding "real" source file. This lets custom Setup.hs
     -- files generate source modules directly into the build dir without

@@ -17,7 +17,8 @@ This module defines the interface for the @Hooks@ @build-type@.
 
 To write a package that implements @build-type: Hooks@, you should define
 a module @SetupHooks.hs@ which exports a value @setupHooks :: 'SetupHooks'@.
-This is a record that declares actions to hook into the cabal build process.
+This is a record that declares actions that should be hooked into the
+cabal build process.
 
 See 'SetupHooks' for more details.
 -}
@@ -69,7 +70,7 @@ module Distribution.Simple.SetupHooks
   , Rules
   , rules
   , noRules
-  , Rule(..) -- See Note [Not hiding SetupHooks constructors]
+  , Rule
   , Dependency (..)
   , RuleOutput (..)
   , RuleId
@@ -84,7 +85,7 @@ module Distribution.Simple.SetupHooks
 
     -- *** Actions
   , RuleCommands(..)
-  , Command(..) -- See Note [Not hiding SetupHooks constructors]
+  , Command
   , mkCommand
   , Dict(..)
 
@@ -97,9 +98,7 @@ module Distribution.Simple.SetupHooks
 
   -- **** File/directory monitoring
   , addRuleMonitors
-  , MonitorFilePath(..)
-  , MonitorKindFile(..)
-  , MonitorKindDir(..)
+  , module Distribution.Simple.FileMonitor.Types
 
     -- * Install hooks
   , InstallHooks(..), noInstallHooks
@@ -120,17 +119,27 @@ module Distribution.Simple.SetupHooks
     -- | These are functions provided as part of the @Hooks@ API.
     -- It is recommended to import them from this module as opposed to
     -- manually importing them from inside the Cabal module hierarchy.
-  , installFileGlob, addKnownPrograms
+
+    -- *** Copy/install functions
+  , installFileGlob
+
+    -- *** Interacting with the program database
+  , Program(..), ConfiguredProgram(..), ProgArg
+  , ProgramLocation(..)
+  , ProgramDb
+  , addKnownPrograms
+  , configureUnconfiguredProgram
+  , simpleProgram
 
     -- ** General @Cabal@ datatypes
   , Verbosity, Compiler(..), Platform(..), Suffix(..)
 
     -- *** Package information
   , LocalBuildConfig, LocalBuildInfo, PackageBuildDescr
-      -- SetupHooks TODO: we can't simply re-export all the fields of
-      -- LocalBuildConfig etc, due to the presence of duplicate record fields.
-      -- Ideally we'd like to e.g. re-export LocalBuildConfig
-      -- qualified, but qualified re-exports aren't a thing currently.
+      -- NB: we can't simply re-export all the fields of LocalBuildConfig etc,
+      -- due to the presence of duplicate record fields.
+      -- Ideally, we'd like to e.g. re-export LocalBuildConfig qualified,
+      -- but qualified re-exports aren't a thing currently.
 
   , PackageDescription(..)
 
@@ -145,9 +154,6 @@ module Distribution.Simple.SetupHooks
   , LibraryName(..)
   , emptyLibrary, emptyForeignLib, emptyExecutable
   , emptyTestSuite, emptyBenchmark
-
-    -- ** Programs
-  , Program, ConfiguredProgram, ProgramDb, ProgArg
 
   )
 where
@@ -166,6 +172,7 @@ import Distribution.Simple.Compiler
   ( Compiler(..) )
 import Distribution.Simple.Errors
   ( CabalException(SetupHooksException) )
+import Distribution.Simple.FileMonitor.Types
 import Distribution.Simple.Install
   ( installFileGlob )
 import Distribution.Simple.LocalBuildInfo
@@ -173,9 +180,16 @@ import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.PreProcess.Types
   ( Suffix(..) )
 import Distribution.Simple.Program.Db
-  ( ProgramDb, addKnownPrograms )
+  ( ProgramDb, addKnownPrograms
+  , configureUnconfiguredProgram
+  )
+import Distribution.Simple.Program.Find
+  ( simpleProgram )
 import Distribution.Simple.Program.Types
-  ( Program, ConfiguredProgram, ProgArg )
+  ( Program(..), ConfiguredProgram(..)
+  , ProgArg
+  , ProgramLocation(..)
+  )
 import Distribution.Simple.Setup
   ( BuildFlags(..)
   , ConfigFlags(..)
@@ -250,7 +264,9 @@ Usage example:
 > custom-setup
 >   setup-depends:
 >     base        >= 4.18 && < 5,
->     Cabal-hooks >= 0.1  && < 0.3
+>     Cabal-hooks >= 0.1  && < 0.2
+>
+> The declared Cabal version should also be at least 3.12.
 
 > -- In SetupHooks.hs, next to your .cabal file
 > module SetupHooks where
@@ -304,26 +320,31 @@ For example, to generate modules inside a given component, you should:
 -}
 
 {- $preBuildRules
-Pre-build hooks are specified in the form of a collection of pre-build 'Rules'.
+Pre-build hooks are specified as a collection of pre-build 'Rules'.
+Each t'Rule' consists of:
 
-Pre-build rules are specified as a collection of rules. Each t'Rule' declares
-its dependencies, its outputs, and refers to a command to run in order to
-execute the rule in the form of a t'RuleCommands'.
+  - a specification of its static dependencies and outputs,
+  - the commands that execute the rule.
+
+Rules are constructed using either one of the 'staticRule' or 'dynamicRule'
+smart constructors. Directly constructing a t'Rule' using the constructors of
+that data type is not advised, as this relies on internal implementation details
+which are subject to change in between versions of the `Cabal-hooks` library.
 
 Note that:
 
-  - file dependencies are not specified directly by 'FilePath' but rather use
-    the 'Location' type,
-  - rules can directly depend on other rules, which requires the ability to
-    refer to a rule by 'RuleId',
-  - rules refer to the actions that execute them using static pointers, in order
-    to enable serialisation/deserialisation of rules,
-  - rules can additionally monitor files or directories, which determines
+  - To declare the dependency on the output of a rule, one must refer to the
+    rule directly, and not to the path to the output executing that rule will
+    eventually produce.
+    To do so, registering a t'Rule' with the API returns a unique identifier
+    for that rule, in the form of a t'RuleId'.
+  - File dependencies and outputs are not specified directly by
+    'FilePath', but rather use the 'Location' type (which is more convenient
+    when working with preprocessors).
+  - Rules refer to the actions that execute them using static pointers, in order
+    to enable serialisation/deserialisation of rules.
+  - Rules can additionally monitor files or directories, which determines
     when to re-compute the entire set of rules.
-
-To construct a t'Rule', you should use one of the 'staticRule' or 'dynamicRule'
-smart constructors, to avoid relying on internal implementation details of
-the t'Rule' datatype.
 -}
 
 {- $rulesDemand
@@ -331,7 +352,7 @@ Rules can declare various kinds of dependencies:
 
   - 'staticDependencies': files or other rules that a rule statically depends on,
   - extra dynamic dependencies, using the 'DynamicRuleCommands' constructor,
-  - 'MonitoredFileOrDir': additional files or directories to monitor.
+  - 'MonitorFilePath': additional files and directories to monitor.
 
 Rules are considered __out-of-date__ precisely when any of the following
 conditions apply:
@@ -371,17 +392,15 @@ Defining pre-build rules can be done in the following style:
 
 > {-# LANGUAGE BlockArguments, StaticPointers #-}
 > myPreBuildRules :: PreBuildComponentRules
-> myPreBuildRules = rules $ static myRulesFromEnv
->   where
->     myRulesFromEnv preBuildEnvironment = do
->       let cmd1 = mkCommand (static Dict) $ static \ arg -> do { .. }
->           cmd2 = mkCommand (static Dict) $ static \ arg -> do { .. }
->       myData <- liftIO someIOAction
->       addRuleMonitors [ MonitorDir "someSearchDir" DirContents ]
->       registerRule_ $ staticRule (cmd1 arg1) deps1 outs1
->       registerRule_ $ staticRule (cmd1 arg2) deps2 outs2
->       registerRule_ $ staticRule (cmd1 arg3) deps3 outs3
->       registerRule_ $ staticRule (cmd2 arg4) deps4 outs4
+> myPreBuildRules = rules (static ()) $ \ preBuildEnvironment -> do
+>   let cmd1 = mkCommand (static Dict) $ static \ arg -> do { .. }
+>       cmd2 = mkCommand (static Dict) $ static \ arg -> do { .. }
+>   myData <- liftIO someIOAction
+>   addRuleMonitors [ monitorDirectory "someSearchDir" ]
+>   registerRule_ "rule_1_1" $ staticRule (cmd1 arg1) deps1 outs1
+>   registerRule_ "rule_1_2" $ staticRule (cmd1 arg2) deps2 outs2
+>   registerRule_ "rule_1_3" $ staticRule (cmd1 arg3) deps3 outs3
+>   registerRule_ "rule_2_4" $ staticRule (cmd2 arg4) deps4 outs4
 
 Here we use the 'rules', 'staticRule' and 'mkCommand' smart constructors,
 rather than directly using the v'Rules', v'Rule' and v'Command' constructors,
@@ -413,12 +432,12 @@ registerRule
   :: ShortText -- ^ user-given rule name;
                -- these should be unique on a per-package level
   -> Rule      -- ^ the rule to register
-  -> RulesT IO RuleId
+  -> RulesM RuleId
 registerRule nm !newRule = RulesT $ do
-  RulesEnv { rulesEnvUnitId = unitId
+  RulesEnv { rulesEnvNameSpace = ns
            , rulesEnvVerbosity = verbosity } <- Reader.ask
   oldRules <- lift $ State.get
-  let rId = RuleId { ruleUnitId = unitId, ruleName = nm }
+  let rId = RuleId { ruleNameSpace = ns, ruleName = nm }
       (mbDup, newRules) = Map.insertLookupWithKey (\ _ new _old -> new) rId newRule oldRules
   for_ mbDup $ \ oldRule ->
     liftIO $ dieWithException verbosity
@@ -456,5 +475,5 @@ findFileInDirs file dirs =
       | path <- nub dirs
       ]
 
-  -- SetupHooks TODO: add API functions that do searching and declare
-  -- the appropriate monitoring at the same time.
+  -- TODO: add API functions that search and declare the appropriate monitoring
+  -- at the same time.

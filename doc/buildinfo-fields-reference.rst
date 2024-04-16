@@ -535,7 +535,7 @@ build-type
     * Documentation of :pkg-field:`build-type`
 
     .. math::
-        \left\{ \begin{gathered}\mathop{\mathord{``}\mathtt{Simple}\mathord{"}}\\\mathop{\mathord{``}\mathtt{Configure}\mathord{"}}\\\mathop{\mathord{``}\mathtt{Custom}\mathord{"}}\\\mathop{\mathord{``}\mathtt{Make}\mathord{"}}\\\mathop{\mathord{``}\mathtt{Default}\mathord{"}}\end{gathered} \right\}
+        \left\{ \begin{gathered}\mathop{\mathord{``}\mathtt{Simple}\mathord{"}}\\\mathop{\mathord{``}\mathtt{Configure}\mathord{"}}\\\mathop{\mathord{``}\mathtt{Custom}\mathord{"}}\\\mathop{\mathord{``}\mathtt{Hooks}\mathord{"}}\\\mathop{\mathord{``}\mathtt{Make}\mathord{"}}\\\mathop{\mathord{``}\mathtt{Default}\mathord{"}}\end{gathered} \right\}
 
 cabal-version
     * Optional field

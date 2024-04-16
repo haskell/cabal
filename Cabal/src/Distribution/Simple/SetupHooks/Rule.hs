@@ -1,8 +1,11 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE InstanceSigs #-}
@@ -10,11 +13,14 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE QuantifiedConstraints #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeFamilyDependencies #-}
+{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 -- |
@@ -26,14 +32,16 @@ module Distribution.Simple.SetupHooks.Rule
   ( -- * Rules
 
     -- ** Rule
-    Rule (..)
+    Rule
+  , RuleData (..)
   , RuleId (..)
   , staticRule
   , dynamicRule
 
     -- ** Commands
   , RuleCommands (..)
-  , Command (..)
+  , Command
+  , CommandData (..)
   , runCommand
   , mkCommand
   , Dict (..)
@@ -69,12 +77,22 @@ module Distribution.Simple.SetupHooks.Rule
   , RulesT (..)
   , RulesEnv (..)
   , computeRules
+
+    -- * Internals
+  , Scope (..)
+  , SScope (..)
+  , Static (..)
+  , RuleBinary
+  , ruleBinary
   )
 where
 
 import qualified Distribution.Compat.Binary as Binary
 import Distribution.Compat.Prelude
 
+import Distribution.ModuleName
+  ( ModuleName
+  )
 import Distribution.Simple.FileMonitor.Types
 import Distribution.Types.UnitId
 import Distribution.Utils.ShortText
@@ -105,12 +123,12 @@ import qualified Data.Map.Strict as Map
   )
 
 import qualified Data.Kind as Hs
-import Data.Type.Equality
-  ( (:~:) (Refl)
-  , (:~~:) (HRefl)
+import Data.Type.Bool
+  ( If
   )
-import Data.Typeable
-  ( eqT
+import Data.Type.Equality
+  ( (:~~:) (HRefl)
+  , type (==)
   )
 import GHC.Show (showCommaSpace)
 import GHC.StaticPtr
@@ -124,6 +142,7 @@ import qualified Type.Reflection as Typeable
   , typeRep
   , typeRepKind
   , withTypeable
+  , pattern App
   )
 
 --------------------------------------------------------------------------------
@@ -158,11 +177,52 @@ a separate executable which can be invoked in the manner described above.
 
 -- | A unique identifier for a t'Rule'.
 data RuleId = RuleId
-  { ruleUnitId :: !UnitId
+  { ruleNameSpace :: !RulesNameSpace
   , ruleName :: !ShortText
   }
   deriving stock (Show, Eq, Ord, Generic)
   deriving anyclass (Binary, Structured)
+
+data RulesNameSpace = RulesNameSpace
+  { rulesUnitId :: !UnitId
+  , rulesModuleName :: !ModuleName
+  , rulesSrcLoc :: !(Int, Int)
+  }
+  deriving stock (Show, Eq, Ord, Generic)
+  deriving anyclass (Binary, Structured)
+
+-- | Internal function: create a 'RulesNameSpace' from a 'StaticPtrInfo'.
+staticPtrNameSpace :: StaticPtrInfo -> RulesNameSpace
+staticPtrNameSpace
+  StaticPtrInfo
+    { spInfoUnitId = unitId
+    , spInfoModuleName = modName
+    , spInfoSrcLoc = srcLoc
+    } =
+    RulesNameSpace
+      { rulesUnitId = mkUnitId unitId
+      , rulesModuleName = fromString modName
+      , rulesSrcLoc = srcLoc
+      }
+
+-- | 'Rule's are defined with rich types by the package.
+--
+-- The build system only has a limited view of these; most data consists of
+-- opaque 'ByteString's.
+--
+-- The 'Scope' data-type describes which side of this divide we are on.
+data Scope
+  = -- | User space (with rich types).
+    User
+  | -- | Build-system space (manipulation of raw data).
+    System
+
+data SScope (scope :: Scope) where
+  SUser :: SScope User
+  SSystem :: SScope System
+
+type Rule = RuleData User
+type RuleBinary = RuleData System
 
 -- | A rule consists of:
 --
@@ -171,33 +231,61 @@ data RuleId = RuleId
 --
 -- Use 'staticRule' or 'dynamicRule' to construct a rule, overriding specific
 -- fields, rather than directly using the 'Rule' constructor.
-data Rule
+data RuleData (scope :: Scope)
   = -- | Please use the 'staticRule' or 'dynamicRule' smart constructors
     -- instead of this constructor, in order to avoid relying on internal
     -- implementation details.
     Rule
-    { ruleCommands :: !RuleCmds
+    { ruleCommands :: !(RuleCmds scope)
     -- ^ To run this rule, which t'Command's should we execute?
     , staticDependencies :: ![Dependency]
     -- ^ Static dependencies of this rule.
     , results :: !(NE.NonEmpty Location)
     -- ^ Results of this rule.
     }
-  deriving stock (Show, Eq, Generic)
-  deriving anyclass (Binary)
+  deriving stock (Generic)
+
+deriving stock instance Show (RuleData User)
+deriving stock instance Eq (RuleData User)
+deriving stock instance Eq (RuleData System)
+deriving anyclass instance Binary (RuleData User)
+deriving anyclass instance Binary (RuleData System)
+
+-- | Trimmed down 'Show' instance, mostly for error messages.
+instance Show RuleBinary where
+  show (Rule{staticDependencies = deps, results = reslts, ruleCommands = cmds}) =
+    what ++ ": " ++ showDeps deps ++ " --> " ++ showLocs (NE.toList reslts)
+    where
+      what = case cmds of
+        StaticRuleCommand{} -> "Rule"
+        DynamicRuleCommands{} -> "Rule (dyn-deps)"
+      showDeps :: [Dependency] -> String
+      showDeps ds = "[" ++ intercalate ", " (map showDep ds) ++ "]"
+      showDep :: Dependency -> String
+      showDep = \case
+        RuleDependency (RuleOutput{outputOfRule = rId, outputIndex = i}) ->
+          "(" ++ show rId ++ ")[" ++ show i ++ "]"
+        FileDependency loc -> show loc
+      showLocs :: [Location] -> String
+      showLocs locs = "[" ++ intercalate ", " (map show locs) ++ "]"
 
 -- | A rule with static dependencies.
 --
 -- Prefer using this smart constructor instead of v'Rule' whenever possible.
 staticRule
-  :: Typeable arg
+  :: forall arg
+   . Typeable arg
   => Command arg (IO ())
   -> [Dependency]
   -> NE.NonEmpty Location
   -> Rule
 staticRule cmd dep res =
   Rule
-    { ruleCommands = StaticRuleCommand{staticRuleCommand = cmd}
+    { ruleCommands =
+        StaticRuleCommand
+          { staticRuleCommand = cmd
+          , staticRuleArgRep = Typeable.typeRep @arg
+          }
     , staticDependencies = dep
     , results = res
     }
@@ -206,7 +294,8 @@ staticRule cmd dep res =
 --
 -- Prefer using this smart constructor instead of v'Rule' whenever possible.
 dynamicRule
-  :: (Typeable depsArg, Typeable depsRes, Typeable arg)
+  :: forall depsArg depsRes arg
+   . (Typeable depsArg, Typeable depsRes, Typeable arg)
   => StaticPtr (Dict (Binary depsRes, Show depsRes, Eq depsRes))
   -> Command depsArg (IO ([Dependency], depsRes))
   -> Command arg (depsRes -> IO ())
@@ -217,9 +306,10 @@ dynamicRule dict depsCmd action dep res =
   Rule
     { ruleCommands =
         DynamicRuleCommands
-          { dynamicRuleInstances = dict
+          { dynamicRuleInstances = UserStatic dict
           , dynamicDeps = DynDepsCmd{dynDepsCmd = depsCmd}
           , dynamicRuleCommand = action
+          , dynamicRuleTypeRep = Typeable.typeRep @(depsArg, depsRes, arg)
           }
     , staticDependencies = dep
     , results = res
@@ -284,7 +374,7 @@ type RulesM a = RulesT IO a
 -- | The environment within the monadic API.
 data RulesEnv = RulesEnv
   { rulesEnvVerbosity :: !Verbosity
-  , rulesEnvUnitId :: !UnitId
+  , rulesEnvNameSpace :: !RulesNameSpace
   }
 
 -- | Monad transformer for defining rules. Usually wraps the 'IO' monad,
@@ -333,25 +423,38 @@ instance Monoid (Rules env) where
 noRules :: RulesM ()
 noRules = return ()
 
--- | Construct a collection of rules.
+-- | Construct a collection of rules with a given label.
 --
--- Usage:
+-- A label for the rules can be constructed using the @static@ keyword,
+-- using the @StaticPointers@ extension.
+-- NB: separate calls to 'rules' should have different labels.
+--
+-- Example usage:
 --
 -- > myRules :: Rules env
--- > myRules = rules $ static f
--- >   where
--- >     f :: env -> RulesM ()
--- >     f env = do { ... } -- use the monadic API here
+-- > myRules = rules (static ()) $ \ env -> do { .. } -- use the monadic API here
 rules
-  :: StaticPtr (env -> RulesM ())
-  -- ^ a static computation of rules
+  :: StaticPtr label
+  -- ^ unique label for this collection of rules
+  -> (env -> RulesM ())
+  -- ^ the computation of rules
   -> Rules env
-rules f = Rules $ \env -> RulesT $ do
-  Reader.withReaderT (\rulesEnv -> rulesEnv{rulesEnvUnitId = unitId}) $
-    runRulesT $
-      deRefStaticPtr f env
-  where
-    unitId = mkUnitId $ spInfoUnitId $ staticPtrInfo f
+rules label = rulesInNameSpace (staticPtrNameSpace $ staticPtrInfo label)
+
+-- | Internal function to create a collection of rules.
+--
+-- API users should go through the 'rules' function instead.
+rulesInNameSpace
+  :: RulesNameSpace
+  -- ^ rule namespace
+  -> (env -> RulesM ())
+  -- ^ the computation of rules
+  -> Rules env
+rulesInNameSpace nameSpace f =
+  Rules $ \env -> RulesT $ do
+    Reader.withReaderT (\rulesEnv -> rulesEnv{rulesEnvNameSpace = nameSpace}) $
+      runRulesT $
+        f env
 
 -- | Internal function: run the monadic 'Rules' computations in order
 -- to obtain all the 'Rule's with their 'RuleId's.
@@ -361,13 +464,18 @@ computeRules
   -> Rules env
   -> IO (Map RuleId Rule, [MonitorFilePath])
 computeRules verbosity inputs (Rules rs) = do
-  -- Bogus UnitId to start with. This will be the first thing
+  -- Bogus namespace to start with. This will be the first thing
   -- to be set when users use the 'rules' smart constructor.
-  let noUnitId = mkUnitId ""
+  let noNameSpace =
+        RulesNameSpace
+          { rulesUnitId = mkUnitId ""
+          , rulesModuleName = fromString ""
+          , rulesSrcLoc = (0, 0)
+          }
       env0 =
         RulesEnv
           { rulesEnvVerbosity = verbosity
-          , rulesEnvUnitId = noUnitId
+          , rulesEnvNameSpace = noNameSpace
           }
   Writer.runWriterT $
     (`State.execStateT` Map.empty) $
@@ -378,18 +486,51 @@ computeRules verbosity inputs (Rules rs) = do
 ------------
 -- Commands
 
+-- | A static pointer (in user scope) or its key (in system scope).
+data family Static (scope :: Scope) :: Hs.Type -> Hs.Type
+
+newtype instance Static User fnTy = UserStatic {userStaticPtr :: StaticPtr fnTy}
+newtype instance Static System fnTy = SystemStatic {userStaticKey :: StaticKey}
+  deriving newtype (Eq, Ord, Show, Binary)
+
+systemStatic :: Static User fnTy -> Static System fnTy
+systemStatic (UserStatic ptr) = SystemStatic (staticKey ptr)
+
+instance Show (Static User fnTy) where
+  showsPrec p ptr = showsPrec p (systemStatic ptr)
+instance Eq (Static User fnTy) where
+  (==) = (==) `on` systemStatic
+instance Ord (Static User fnTy) where
+  compare = compare `on` systemStatic
+instance Binary (Static User fnTy) where
+  put = put . systemStatic
+  get = do
+    ptrKey <- get @StaticKey
+    case unsafePerformIO $ unsafeLookupStaticPtr ptrKey of
+      Just ptr -> return $ UserStatic ptr
+      Nothing ->
+        fail $
+          unlines
+            [ "Failed to look up static pointer key for action."
+            , "NB: Binary instances for 'User' types cannot be used in external executables."
+            ]
+
 -- | A command consists of a statically-known action together with a
 -- (possibly dynamic) argument to that action.
 --
 -- For example, the action can consist of running an executable
 -- (such as @happy@ or @c2hs@), while the argument consists of the variable
 -- component of the command, e.g. the specific file to run @happy@ on.
-data Command arg res = Command
-  { actionPtr :: !(StaticPtr (arg -> res))
+type Command = CommandData User
+
+-- | Internal datatype used for commands, both for the Hooks API ('Command')
+-- and for the build system.
+data CommandData (scope :: Scope) (arg :: Hs.Type) (res :: Hs.Type) = Command
+  { actionPtr :: !(Static scope (arg -> res))
   -- ^ The (statically-known) action to execute.
-  , actionArg :: !arg
+  , actionArg :: !(ScopedArgument scope arg)
   -- ^ The (possibly dynamic) argument to pass to the action.
-  , cmdInstances :: !(StaticPtr (Dict (Binary arg, Show arg)))
+  , cmdInstances :: !(Static scope (Dict (Binary arg, Show arg)))
   -- ^ Static evidence that the argument can be serialised and deserialised.
   }
 
@@ -404,14 +545,14 @@ mkCommand
   -> Command arg res
 mkCommand dict actionPtr arg =
   Command
-    { actionPtr = actionPtr
-    , actionArg = arg
-    , cmdInstances = dict
+    { actionPtr = UserStatic actionPtr
+    , actionArg = ScopedArgument arg
+    , cmdInstances = UserStatic dict
     }
 
 -- | Run a 'Command'.
 runCommand :: Command args res -> res
-runCommand (Command{actionPtr = ptr, actionArg = arg}) =
+runCommand (Command{actionPtr = UserStatic ptr, actionArg = ScopedArgument arg}) =
   deRefStaticPtr ptr arg
 
 -- | Commands to execute a rule:
@@ -421,21 +562,30 @@ runCommand (Command{actionPtr = ptr, actionArg = arg}) =
 --     dependencies, and a command for executing the rule.
 data
   RuleCommands
-    (deps :: Hs.Type -> Hs.Type -> Hs.Type)
-    (ruleCmd :: Hs.Type -> Hs.Type -> Hs.Type)
+    (scope :: Scope)
+    (deps :: Scope -> Hs.Type -> Hs.Type -> Hs.Type)
+    (ruleCmd :: Scope -> Hs.Type -> Hs.Type -> Hs.Type)
   where
   -- | A rule with statically-known dependencies.
   StaticRuleCommand
-    :: forall arg deps ruleCmd
-     . Typeable arg
-    => { staticRuleCommand :: !(ruleCmd arg (IO ()))
+    :: forall arg deps ruleCmd scope
+     . If
+        (scope == System)
+        (arg ~ LBS.ByteString)
+        (() :: Hs.Constraint)
+    => { staticRuleCommand :: !(ruleCmd scope arg (IO ()))
         -- ^ The command to execute the rule.
+       , staticRuleArgRep :: !(If (scope == System) Typeable.SomeTypeRep (Typeable.TypeRep arg))
+        -- ^ A 'TypeRep' for 'arg'.
        }
-    -> RuleCommands deps ruleCmd
+    -> RuleCommands scope deps ruleCmd
   DynamicRuleCommands
-    :: forall depsArg depsRes arg deps ruleCmd
-     . (Typeable depsArg, Typeable depsRes, Typeable arg)
-    => { dynamicRuleInstances :: !(StaticPtr (Dict (Binary depsRes, Show depsRes, Eq depsRes)))
+    :: forall depsArg depsRes arg deps ruleCmd scope
+     . If
+        (scope == System)
+        (depsArg ~ LBS.ByteString, depsRes ~ LBS.ByteString, arg ~ LBS.ByteString)
+        (() :: Hs.Constraint)
+    => { dynamicRuleInstances :: !(Static scope (Dict (Binary depsRes, Show depsRes, Eq depsRes)))
         -- ^ A rule with dynamic dependencies, which consists of two parts:
         --
         --  - a dynamic dependency computation, that returns additional edges to
@@ -444,82 +594,187 @@ data
         --    piece of data returned by the dependency computation.
        , -- \^ Static evidence used for serialisation, in order to pass the result
          -- of the dependency computation to the main rule action.
-         dynamicDeps :: !(deps depsArg depsRes)
+         dynamicDeps :: !(deps scope depsArg depsRes)
         -- ^ A dynamic dependency computation. The resulting dependencies
         -- will be injected into the build graph, and the result of the computation
         -- will be passed on to the command that executes the rule.
-       , dynamicRuleCommand :: !(ruleCmd arg (depsRes -> IO ()))
+       , dynamicRuleCommand :: !(ruleCmd scope arg (depsRes -> IO ()))
         -- ^ The command to execute the rule. It will receive the result
         -- of the dynamic dependency computation.
+       , dynamicRuleTypeRep
+          :: !( If
+                  (scope == System)
+                  Typeable.SomeTypeRep
+                  (Typeable.TypeRep (depsArg, depsRes, arg))
+              )
+        -- ^ A 'TypeRep' for the triple @(depsArg,depsRes,arg)@.
        }
-    -> RuleCommands deps ruleCmd
+    -> RuleCommands scope deps ruleCmd
+
+{- Note [Hooks Binary instances]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+The Hooks API is strongly typed: users can declare rule commands with varying
+types, e.g.
+
+  staticRule
+  :: forall arg
+   . Typeable arg
+  => Command arg (IO ())
+  -> [Dependency]
+  -> NE.NonEmpty Location
+  -> Rule
+
+allows a user to declare a 'Command' that receives an argument of type 'arg'
+of their choosing.
+
+This all makes sense within the Hooks API, but when communicating with an
+external build system (such as cabal-install or HLS), these arguments are
+treated as opaque blobs of data (in particular if the Hooks are compiled into
+a separate executable, then the static pointers that contain the relevant
+instances for these user-chosen types can only be dereferenced from within that
+executable, and not on the side of the build system).
+
+This means that, to enable Hooks to be communicated between the package and the
+build system, we need:
+
+  1. Two representations of rules: one for the package author using the Hooks API,
+     and one for the build system.
+  2. Compatibility in the 'Binary' instances for these two types. One needs to be
+     able to serialise a 'User'-side 'Rule', and de-serialise it on the build system
+     into a 'System'-side 'Rule' which contains some opaque bits of data, and
+     vice-versa.
+
+(1) is achieved using the 'Scope' parameter to the 'RuleData' datatype.
+@Rule = RuleData User@ is the API-side representation, whereas
+@RuleBinary = RuleData System@ is the build-system-side representation.
+
+For (2), note that when we serialise a value of known type and known size, e.g.
+an 'Int64', we are nevertheless required to also serialise its size. This is because,
+on the build-system side, we don't have access to any of the types, and thus don't know
+how much to read in order to reconstruct the associated opaque 'ByteString'.
+To ensure we always serialise/deserialise including the length of the data,
+the 'ScopedArgument' newtype is used, with a custom 'Binary' instance that always
+incldues the length. We use this newtype:
+
+  - in the definition of 'CommandData', for arguments to rules,
+  - in the definition of 'DepsRes', for the result of dynamic dependency computations.
+-}
+
+newtype ScopedArgument (scope :: Scope) arg = ScopedArgument {getArg :: arg}
+  deriving newtype (Eq, Ord, Show)
+
+-- | Serialise/deserialise, always including the length of the payload.
+instance Binary arg => Binary (ScopedArgument User arg) where
+  put (ScopedArgument arg) = put @LBS.ByteString (Binary.encode arg)
+  get = do
+    dat <- get @LBS.ByteString
+    case Binary.decodeOrFail dat of
+      Left (_, _, err) -> fail err
+      Right (_, _, res) -> return $ ScopedArgument res
+
+-- | Serialise and deserialise a raw ByteString, leaving it untouched.
+instance arg ~ LBS.ByteString => Binary (ScopedArgument System arg) where
+  put (ScopedArgument arg) = put arg
+  get = ScopedArgument <$> get
 
 -- | A placeholder for a command that has been omitted, e.g. when we don't
 -- care about serialising/deserialising one particular command in a datatype.
-data NoCmd arg res = CmdOmitted
+data NoCmd (scope :: Scope) arg res = CmdOmitted
   deriving stock (Generic, Eq, Ord, Show)
   deriving anyclass (Binary)
 
 -- | A dynamic dependency command.
-newtype DynDepsCmd depsArg depsRes = DynDepsCmd {dynDepsCmd :: Command depsArg (IO ([Dependency], depsRes))}
-  deriving newtype (Show, Eq, Binary)
+newtype DynDepsCmd scope depsArg depsRes = DynDepsCmd
+  { dynDepsCmd
+      :: CommandData scope depsArg (IO ([Dependency], depsRes))
+  }
+
+deriving newtype instance Show (DynDepsCmd User depsArg depsRes)
+deriving newtype instance Eq (DynDepsCmd User depsArg depsRes)
+deriving newtype instance Binary (DynDepsCmd User depsArg depsRes)
+deriving newtype instance
+  (arg ~ LBS.ByteString, depsRes ~ LBS.ByteString)
+  => Eq (DynDepsCmd System arg depsRes)
+deriving newtype instance
+  (arg ~ LBS.ByteString, depsRes ~ LBS.ByteString)
+  => Binary (DynDepsCmd System arg depsRes)
 
 -- | The result of a dynamic dependency computation.
-newtype DepsRes depsArg depsRes = DepsRes {depsRes :: depsRes}
-  deriving newtype (Show, Eq, Binary)
+newtype DepsRes (scope :: Scope) depsArg depsRes = DepsRes
+  { depsRes
+      :: ScopedArgument scope depsRes -- See Note [Hooks Binary instances]
+  }
+  deriving newtype (Show, Eq, Ord)
+
+deriving newtype instance
+  Binary (ScopedArgument scope depsRes)
+  => Binary (DepsRes scope depsArg depsRes)
 
 -- | Both the rule command and the (optional) dynamic dependency command.
-type RuleCmds = RuleCommands DynDepsCmd Command
+type RuleCmds scope = RuleCommands scope DynDepsCmd CommandData
 
 -- | Only the (optional) dynamic dependency command.
-type RuleDynDepsCmd = RuleCommands DynDepsCmd NoCmd
+type RuleDynDepsCmd scope = RuleCommands scope DynDepsCmd NoCmd
 
 -- | The rule command together with the result of the (optional) dynamic
 -- dependency computation.
-type RuleExecCmd = RuleCommands DepsRes Command
+type RuleExecCmd scope = RuleCommands scope DepsRes CommandData
 
 -- | Project out the (optional) dependency computation command, so that
 -- it can be serialised without serialising anything else.
-ruleDepsCmd :: RuleCmds -> RuleDynDepsCmd
+ruleDepsCmd :: RuleCmds scope -> RuleDynDepsCmd scope
 ruleDepsCmd = \case
-  StaticRuleCommand{staticRuleCommand = _ :: Command args (IO ())} ->
-    StaticRuleCommand{staticRuleCommand = CmdOmitted :: NoCmd args (IO ())}
+  StaticRuleCommand
+    { staticRuleCommand = _ :: CommandData scope args (IO ())
+    , staticRuleArgRep = tr
+    } ->
+      StaticRuleCommand
+        { staticRuleCommand = CmdOmitted :: NoCmd scope args (IO ())
+        , staticRuleArgRep = tr
+        }
   DynamicRuleCommands
-    { dynamicRuleCommand = _ :: Command args (depsRes -> IO ())
+    { dynamicRuleCommand = _ :: CommandData scope args (depsRes -> IO ())
     , dynamicRuleInstances = instsPtr
     , dynamicDeps = deps
+    , dynamicRuleTypeRep = tr
     } ->
       DynamicRuleCommands
         { dynamicRuleInstances = instsPtr
         , dynamicDeps = deps
-        , dynamicRuleCommand = CmdOmitted :: NoCmd args (depsRes -> IO ())
+        , dynamicRuleCommand = CmdOmitted :: NoCmd scope args (depsRes -> IO ())
+        , dynamicRuleTypeRep = tr
         }
 
 -- | Obtain the (optional) 'IO' action that computes dynamic dependencies.
-runRuleDynDepsCmd :: RuleDynDepsCmd -> Maybe (IO ([Dependency], LBS.ByteString))
+runRuleDynDepsCmd :: RuleDynDepsCmd User -> Maybe (IO ([Dependency], LBS.ByteString))
 runRuleDynDepsCmd = \case
   StaticRuleCommand{} -> Nothing
   DynamicRuleCommands
-    { dynamicRuleInstances = instsPtr
+    { dynamicRuleInstances = UserStatic instsPtr
     , dynamicDeps = DynDepsCmd{dynDepsCmd = depsCmd}
     }
       | Dict <- deRefStaticPtr instsPtr ->
           Just $ do
             (deps, depsRes) <- runCommand depsCmd
-            return $ (deps, Binary.encode depsRes)
+            -- See Note [Hooks Binary instances]
+            return $ (deps, Binary.encode $ ScopedArgument @User depsRes)
 
 -- | Project out the command for running the rule, passing in the result of
 -- the dependency computation if there was one.
-ruleExecCmd :: RuleCmds -> Maybe LBS.ByteString -> RuleExecCmd
-ruleExecCmd (StaticRuleCommand{staticRuleCommand = cmd}) _ =
-  StaticRuleCommand{staticRuleCommand = cmd}
+ruleExecCmd :: SScope scope -> RuleCmds scope -> Maybe LBS.ByteString -> RuleExecCmd scope
 ruleExecCmd
-  ( DynamicRuleCommands
-      { dynamicRuleInstances = instsPtr
-      , dynamicRuleCommand = cmd :: Command arg (depsRes -> IO ())
-      , dynamicDeps = _ :: DynDepsCmd depsArg depsRes
-      }
-    )
+  _
+  StaticRuleCommand{staticRuleCommand = cmd, staticRuleArgRep = tr}
+  _ =
+    StaticRuleCommand{staticRuleCommand = cmd, staticRuleArgRep = tr}
+ruleExecCmd
+  scope
+  DynamicRuleCommands
+    { dynamicRuleInstances = instsPtr
+    , dynamicRuleCommand = cmd :: CommandData scope arg (depsRes -> IO ())
+    , dynamicDeps = _ :: DynDepsCmd scope depsArg depsRes
+    , dynamicRuleTypeRep = tr
+    }
   mbDepsResBinary =
     case mbDepsResBinary of
       Nothing ->
@@ -528,20 +783,33 @@ ruleExecCmd
             [ "Missing ByteString argument in 'ruleExecCmd'."
             , "Run 'runRuleDynDepsCmd' on the rule to obtain this data."
             ]
-      Just depsResBinary
-        | Dict <- deRefStaticPtr instsPtr ->
+      Just depsResBinary ->
+        case scope of
+          SUser
+            | Dict <- deRefStaticPtr (userStaticPtr instsPtr) ->
+                DynamicRuleCommands
+                  { dynamicRuleInstances = instsPtr
+                  , dynamicRuleCommand = cmd
+                  , dynamicDeps = Binary.decode depsResBinary :: DepsRes User depsArg depsRes
+                  , dynamicRuleTypeRep = tr
+                  }
+          SSystem ->
             DynamicRuleCommands
               { dynamicRuleInstances = instsPtr
               , dynamicRuleCommand = cmd
-              , dynamicDeps = DepsRes (Binary.decode depsResBinary) :: DepsRes depsArg depsRes
+              , dynamicDeps = DepsRes $ ScopedArgument depsResBinary
+              , dynamicRuleTypeRep = tr
               }
 
 -- | Obtain the 'IO' action that executes a rule.
-runRuleExecCmd :: RuleExecCmd -> IO ()
+runRuleExecCmd :: RuleExecCmd User -> IO ()
 runRuleExecCmd = \case
   StaticRuleCommand{staticRuleCommand = cmd} -> runCommand cmd
-  DynamicRuleCommands{dynamicDeps = DepsRes res, dynamicRuleCommand = cmd} ->
-    runCommand cmd res
+  DynamicRuleCommands
+    { dynamicDeps = DepsRes (ScopedArgument{getArg = res})
+    , dynamicRuleCommand = cmd
+    } ->
+      runCommand cmd res
 
 --------------------------------------------------------------------------------
 -- Instances
@@ -550,52 +818,67 @@ runRuleExecCmd = \case
 data Dict c where
   Dict :: c => Dict c
 
-instance Show (Command arg res) where
+instance Show (CommandData User arg res) where
   showsPrec prec (Command{actionPtr = cmdPtr, actionArg = arg, cmdInstances = insts})
-    | Dict <- deRefStaticPtr insts =
+    | Dict <- deRefStaticPtr (userStaticPtr insts) =
         showParen (prec >= 11) $
           showString "Command {"
             . showString "actionPtrKey = "
-            . shows (staticKey cmdPtr)
+            . shows cmdPtr
             . showCommaSpace
             . showString "actionArg = "
             . shows arg
             . showString "}"
 
-instance Eq (Command arg res) where
+instance Eq (CommandData User arg res) where
   Command{actionPtr = cmdPtr1, actionArg = arg1, cmdInstances = insts1}
     == Command{actionPtr = cmdPtr2, actionArg = arg2, cmdInstances = insts2}
-      | staticKey cmdPtr1 == staticKey cmdPtr2
-      , staticKey insts1 == staticKey insts2
-      , Dict <- deRefStaticPtr insts1 =
+      | cmdPtr1 == cmdPtr2
+      , insts1 == insts2
+      , Dict <- deRefStaticPtr (userStaticPtr insts1) =
           Binary.encode arg1 == Binary.encode arg2
       | otherwise =
           False
+instance arg ~ LBS.ByteString => Eq (CommandData System arg res) where
+  Command a1 b1 c1 == Command a2 b2 c2 =
+    a1 == a2 && b1 == b2 && c1 == c2
 
-instance Binary (Command arg res) where
+instance Binary (CommandData User arg res) where
   put (Command{actionPtr = cmdPtr, actionArg = arg, cmdInstances = insts})
-    | Dict <- deRefStaticPtr insts =
+    | Dict <- deRefStaticPtr (userStaticPtr insts) =
         do
-          put (staticKey cmdPtr)
-          put (staticKey insts)
+          put cmdPtr
+          put insts
           put arg
   get = do
-    cmdKey <- get @StaticKey
-    instsKey <- get @StaticKey
-    case unsafePerformIO $ unsafeLookupStaticPtr cmdKey of
-      Just cmdPtr
-        | Just instsPtr <- unsafePerformIO $ unsafeLookupStaticPtr instsKey
-        , Dict <- deRefStaticPtr @(Dict (Binary arg, Show arg)) instsPtr ->
-            do
-              arg <- get
-              return $ Command{actionPtr = cmdPtr, actionArg = arg, cmdInstances = instsPtr}
-      _ -> error "failed to look up static pointer key for action"
+    cmdPtr <- get
+    instsPtr <- get
+    case deRefStaticPtr @(Dict (Binary arg, Show arg)) $ userStaticPtr instsPtr of
+      Dict -> do
+        arg <- get
+        return $
+          Command
+            { actionPtr = cmdPtr
+            , actionArg = arg
+            , cmdInstances = instsPtr
+            }
+instance arg ~ LBS.ByteString => Binary (CommandData System arg res) where
+  put (Command{actionPtr = cmdPtr, actionArg = arg, cmdInstances = insts}) =
+    do
+      put cmdPtr
+      put insts
+      put arg
+  get = do
+    cmdKey <- get
+    instsKey <- get
+    arg <- get
+    return $ Command{actionPtr = cmdKey, actionArg = arg, cmdInstances = instsKey}
 
 instance
-  ( forall arg res. Show (ruleCmd arg res)
-  , forall depsArg depsRes. Show depsRes => Show (deps depsArg depsRes)
+  ( forall arg res. Show (ruleCmd User arg res)
+  , forall depsArg depsRes. Show depsRes => Show (deps User depsArg depsRes)
   )
-  => Show (RuleCommands deps ruleCmd)
+  => Show (RuleCommands User deps ruleCmd)
   where
   showsPrec prec (StaticRuleCommand{staticRuleCommand = cmd}) =
     showParen (prec >= 11) $
@@ -608,7 +891,7 @@ instance
     ( DynamicRuleCommands
         { dynamicDeps = deps
         , dynamicRuleCommand = cmd
-        , dynamicRuleInstances = instsPtr
+        , dynamicRuleInstances = UserStatic instsPtr
         }
       )
       | Dict <- deRefStaticPtr instsPtr =
@@ -622,28 +905,28 @@ instance
               . showString "}"
 
 instance
-  ( forall arg res. Eq (ruleCmd arg res)
-  , forall depsArg depsRes. Eq depsRes => Eq (deps depsArg depsRes)
+  ( forall arg res. Eq (ruleCmd User arg res)
+  , forall depsArg depsRes. Eq depsRes => Eq (deps User depsArg depsRes)
   )
-  => Eq (RuleCommands deps ruleCmd)
+  => Eq (RuleCommands User deps ruleCmd)
   where
-  StaticRuleCommand{staticRuleCommand = ruleCmd1 :: ruleCmd arg1 (IO ())}
-    == StaticRuleCommand{staticRuleCommand = ruleCmd2 :: ruleCmd arg2 (IO ())}
-      | Just Refl <- eqT @arg1 @arg2 =
+  StaticRuleCommand{staticRuleCommand = ruleCmd1 :: ruleCmd User arg1 (IO ()), staticRuleArgRep = tr1}
+    == StaticRuleCommand{staticRuleCommand = ruleCmd2 :: ruleCmd User arg2 (IO ()), staticRuleArgRep = tr2}
+      | Just HRefl <- Typeable.eqTypeRep tr1 tr2 =
           ruleCmd1 == ruleCmd2
   DynamicRuleCommands
-    { dynamicDeps = depsCmd1 :: deps depsArg1 depsRes1
-    , dynamicRuleCommand = ruleCmd1 :: ruleCmd arg1 (depsRes1 -> IO ())
-    , dynamicRuleInstances = instsPtr1
+    { dynamicDeps = depsCmd1 :: deps User depsArg1 depsRes1
+    , dynamicRuleCommand = ruleCmd1 :: ruleCmd User arg1 (depsRes1 -> IO ())
+    , dynamicRuleInstances = UserStatic instsPtr1
+    , dynamicRuleTypeRep = tr1
     }
     == DynamicRuleCommands
-      { dynamicDeps = depsCmd2 :: deps depsArg2 depsRes2
-      , dynamicRuleCommand = ruleCmd2 :: ruleCmd arg2 (depsRes2 -> IO ())
-      , dynamicRuleInstances = instsPtr2
+      { dynamicDeps = depsCmd2 :: deps User depsArg2 depsRes2
+      , dynamicRuleCommand = ruleCmd2 :: ruleCmd User arg2 (depsRes2 -> IO ())
+      , dynamicRuleInstances = UserStatic instsPtr2
+      , dynamicRuleTypeRep = tr2
       }
-      | Just Refl <- eqT @depsArg1 @depsArg2
-      , Just Refl <- eqT @depsRes1 @depsRes2
-      , Just Refl <- eqT @arg1 @arg2
+      | Just HRefl <- Typeable.eqTypeRep tr1 tr2
       , Dict <- deRefStaticPtr instsPtr1 =
           depsCmd1 == depsCmd2
             && ruleCmd1 == ruleCmd2
@@ -651,27 +934,40 @@ instance
   _ == _ = False
 
 instance
-  ( forall arg res. Binary (ruleCmd arg res)
-  , forall depsArg depsRes. Binary depsRes => Binary (deps depsArg depsRes)
+  ( forall res. Eq (ruleCmd System LBS.ByteString res)
+  , Eq (deps System LBS.ByteString LBS.ByteString)
   )
-  => Binary (RuleCommands deps ruleCmd)
+  => Eq (RuleCommands System deps ruleCmd)
+  where
+  StaticRuleCommand c1 d1 == StaticRuleCommand c2 d2 = c1 == c2 && d1 == d2
+  DynamicRuleCommands a1 b1 c1 d1 == DynamicRuleCommands a2 b2 c2 d2 =
+    a1 == a2 && b1 == b2 && c1 == c2 && d1 == d2
+  _ == _ = False
+
+instance
+  ( forall arg res. Binary (ruleCmd User arg res)
+  , forall depsArg depsRes. Binary depsRes => Binary (deps User depsArg depsRes)
+  )
+  => Binary (RuleCommands User deps ruleCmd)
   where
   put = \case
-    StaticRuleCommand{staticRuleCommand = ruleCmd :: ruleCmd arg (IO ())} -> do
-      put @Word 0
-      put $ Typeable.SomeTypeRep (Typeable.typeRep @arg)
-      put ruleCmd
+    StaticRuleCommand
+      { staticRuleCommand = ruleCmd :: ruleCmd User arg (IO ())
+      , staticRuleArgRep = tr
+      } -> do
+        put @Word 0
+        put (Typeable.SomeTypeRep tr)
+        put ruleCmd
     DynamicRuleCommands
-      { dynamicDeps = deps :: deps depsArg depsRes
-      , dynamicRuleCommand = ruleCmd :: ruleCmd arg (depsRes -> IO ())
+      { dynamicDeps = deps :: deps User depsArg depsRes
+      , dynamicRuleCommand = ruleCmd :: ruleCmd User arg (depsRes -> IO ())
       , dynamicRuleInstances = instsPtr
-      } | Dict <- deRefStaticPtr instsPtr ->
+      , dynamicRuleTypeRep = tr
+      } | Dict <- deRefStaticPtr (userStaticPtr instsPtr) ->
         do
           put @Word 1
-          put $ Typeable.SomeTypeRep (Typeable.typeRep @depsArg)
-          put $ Typeable.SomeTypeRep (Typeable.typeRep @depsRes)
-          put $ Typeable.SomeTypeRep (Typeable.typeRep @arg)
-          put $ staticKey instsPtr
+          put (Typeable.SomeTypeRep tr)
+          put instsPtr
           put ruleCmd
           put deps
   get = do
@@ -682,37 +978,92 @@ instance
         if
             | Just HRefl <- Typeable.eqTypeRep (Typeable.typeRepKind trArg) (Typeable.typeRep @Hs.Type) ->
                 do
-                  ruleCmd <- get @(ruleCmd arg (IO ()))
+                  ruleCmd <- get @(ruleCmd User arg (IO ()))
                   return $
                     Typeable.withTypeable trArg $
                       StaticRuleCommand
                         { staticRuleCommand = ruleCmd
+                        , staticRuleArgRep = trArg
                         }
             | otherwise ->
                 error "internal error when decoding static rule command"
       _ -> do
-        Typeable.SomeTypeRep (trDepsArg :: Typeable.TypeRep depsArg) <- get
-        Typeable.SomeTypeRep (trDepsRes :: Typeable.TypeRep depsRes) <- get
-        Typeable.SomeTypeRep (trArg :: Typeable.TypeRep arg) <- get
-        instsKey <- get @StaticKey
-        if
-            | Just HRefl <- Typeable.eqTypeRep (Typeable.typeRepKind trDepsArg) (Typeable.typeRep @Hs.Type)
-            , Just HRefl <- Typeable.eqTypeRep (Typeable.typeRepKind trDepsRes) (Typeable.typeRep @Hs.Type)
-            , Just HRefl <- Typeable.eqTypeRep (Typeable.typeRepKind trArg) (Typeable.typeRep @Hs.Type)
-            , Just instsPtr <- unsafePerformIO $ unsafeLookupStaticPtr instsKey
-            , Dict :: Dict (Binary depsRes, Show depsRes, Eq depsRes) <-
-                deRefStaticPtr instsPtr ->
-                do
-                  ruleCmd <- get @(ruleCmd arg (depsRes -> IO ()))
-                  deps <- get @(deps depsArg depsRes)
-                  return $
-                    Typeable.withTypeable trDepsArg $
-                      Typeable.withTypeable trDepsRes $
-                        Typeable.withTypeable trArg $
-                          DynamicRuleCommands
-                            { dynamicDeps = deps
-                            , dynamicRuleCommand = ruleCmd
-                            , dynamicRuleInstances = instsPtr
-                            }
-            | otherwise ->
-                error "internal error when decoding dynamic rule commands"
+        Typeable.SomeTypeRep (tr :: Typeable.TypeRep ty) <- get
+        case tr of
+          Typeable.App
+            ( Typeable.App
+                (Typeable.App (tup3Tr :: Typeable.TypeRep tup3) (trDepsArg :: Typeable.TypeRep depsArg))
+                (trDepsRes :: Typeable.TypeRep depsRes)
+              )
+            (trArg :: Typeable.TypeRep arg)
+              | Just HRefl <- Typeable.eqTypeRep tup3Tr (Typeable.typeRep @(,,)) -> do
+                  instsPtr <- get
+                  case deRefStaticPtr $ userStaticPtr instsPtr of
+                    (Dict :: Dict (Binary depsRes, Show depsRes, Eq depsRes)) ->
+                      do
+                        ruleCmd <- get @(ruleCmd User arg (depsRes -> IO ()))
+                        deps <- get @(deps User depsArg depsRes)
+                        return $
+                          Typeable.withTypeable trDepsArg $
+                            Typeable.withTypeable trDepsRes $
+                              Typeable.withTypeable trArg $
+                                DynamicRuleCommands
+                                  { dynamicDeps = deps
+                                  , dynamicRuleCommand = ruleCmd
+                                  , dynamicRuleInstances = instsPtr
+                                  , dynamicRuleTypeRep = tr
+                                  }
+          _ -> error "internal error when decoding dynamic rule commands"
+
+instance
+  ( forall res. Binary (ruleCmd System LBS.ByteString res)
+  , Binary (deps System LBS.ByteString LBS.ByteString)
+  )
+  => Binary (RuleCommands System deps ruleCmd)
+  where
+  put = \case
+    StaticRuleCommand{staticRuleCommand = ruleCmd, staticRuleArgRep = sTr} -> do
+      put @Word 0
+      put sTr
+      put ruleCmd
+    DynamicRuleCommands
+      { dynamicDeps = deps
+      , dynamicRuleCommand = ruleCmd
+      , dynamicRuleInstances = instsKey
+      , dynamicRuleTypeRep = sTr
+      } ->
+        do
+          put @Word 1
+          put sTr
+          put instsKey
+          put ruleCmd
+          put deps
+  get = do
+    tag <- get @Word
+    case tag of
+      0 -> do
+        sTr <- get @Typeable.SomeTypeRep
+        ruleCmd <- get
+        return $
+          StaticRuleCommand
+            { staticRuleCommand = ruleCmd
+            , staticRuleArgRep = sTr
+            }
+      _ -> do
+        sTr <- get @Typeable.SomeTypeRep
+        instsKey <- get
+        ruleCmd <- get
+        deps <- get
+        return $
+          DynamicRuleCommands
+            { dynamicDeps = deps
+            , dynamicRuleCommand = ruleCmd
+            , dynamicRuleInstances = instsKey
+            , dynamicRuleTypeRep = sTr
+            }
+
+--------------------------------------------------------------------------------
+-- Showing rules
+
+ruleBinary :: Rule -> RuleBinary
+ruleBinary = Binary.decode . Binary.encode

@@ -313,6 +313,7 @@ cabalVersionPrompt flags = getCabalVersion flags $ do
     parseCabalVersion "3.0" = CabalSpecV3_0
     parseCabalVersion "3.4" = CabalSpecV3_4
     parseCabalVersion "3.12" = CabalSpecV3_12
+    parseCabalVersion "3.14" = CabalSpecV3_14
     parseCabalVersion _ = defaultCabalVersion -- 2.4
     displayCabalVersion :: CabalSpecVersion -> String
     displayCabalVersion v = case v of
@@ -321,6 +322,7 @@ cabalVersionPrompt flags = getCabalVersion flags $ do
       CabalSpecV2_4 -> "2.4   (+ support for '**' globbing)"
       CabalSpecV3_0 -> "3.0   (+ set notation for ==, common stanzas in ifs, more redundant commas, better pkgconfig-depends)"
       CabalSpecV3_4 -> "3.4   (+ sublibraries in 'mixins', optional 'default-language')"
+      CabalSpecV3_14 -> "3.14  (+ build-type: Hooks)"
       _ -> showCabalSpecVersion v
 
 packageNamePrompt :: Interactive m => SourcePackageDb -> InitFlags -> m PackageName

@@ -32,7 +32,7 @@ module Distribution.Simple.UserHooks
   , emptyUserHooks
   ) where
 
-import Distribution.Compat.Prelude
+import Distribution.Compat.Prelude hiding (getContents, putStr)
 import Prelude ()
 
 import Distribution.PackageDescription

@@ -141,8 +141,8 @@ module Distribution.Simple.Setup
   , buildingWhatDistPref
   ) where
 
-import GHC.Generics (Generic)
-import Prelude (Maybe, Show, (.))
+import Distribution.Compat.Prelude
+import Prelude ()
 
 import Distribution.Simple.Flag
 import Distribution.Simple.InstallDirs
@@ -172,7 +172,7 @@ import Distribution.Utils.Path
 
 import Distribution.Verbosity (Verbosity)
 
--- | What kind of build are we doing?
+-- | What kind of build phase are we doing/hooking into?
 --
 -- Is this a normal build, or is it perhaps for running an interactive
 -- session or Haddock?
@@ -246,3 +246,6 @@ buildingWhatDistPref = fromFlag . setupDistPref . buildingWhatCommonFlags
    * quickCheck to test permutations of arguments
    * what other options can we over-ride with a command-line flag?
 -}
+
+instance Binary BuildingWhat
+instance Structured BuildingWhat

@@ -66,7 +66,7 @@ import Distribution.Verbosity
 import Control.Monad (mapM)
 import Data.List (stripPrefix)
 import System.Directory
-import System.FilePath
+import System.FilePath hiding ((<.>), (</>))
 
 -------------------------------------------------------------------------------
 

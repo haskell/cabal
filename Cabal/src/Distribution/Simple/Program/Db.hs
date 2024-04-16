@@ -26,7 +26,7 @@
 -- don't have to write all the PATH logic inside Setup.lhs.
 module Distribution.Simple.Program.Db
   ( -- * The collection of configured programs we can run
-    ProgramDb
+    ProgramDb (..)
   , emptyProgramDb
   , defaultProgramDb
   , restoreProgramDb
@@ -53,6 +53,7 @@ module Distribution.Simple.Program.Db
 
     -- ** Query and manipulate the program db
   , configureProgram
+  , configureUnconfiguredProgram
   , configureAllKnownPrograms
   , unconfigureProgram
   , lookupProgramVersion
@@ -60,6 +61,12 @@ module Distribution.Simple.Program.Db
   , requireProgram
   , requireProgramVersion
   , needProgram
+
+    -- * Internal functions
+  , UnconfiguredProgs
+  , ConfiguredProgs
+  , updateUnconfiguredProgs
+  , updateConfiguredProgs
   ) where
 
 import Distribution.Compat.Prelude
@@ -338,10 +345,12 @@ configuredPrograms = Map.elems . configuredProgs
 -- ---------------------------
 -- Configuring known programs
 
--- | Try to configure a specific program. If the program is already included in
--- the collection of unconfigured programs then we use any user-supplied
--- location and arguments. If the program gets configured successfully it gets
--- added to the configured collection.
+-- | Try to configure a specific program and add it to the program database.
+--
+-- If the program is already included in the collection of unconfigured programs,
+-- then we use any user-supplied location and arguments.
+-- If the program gets configured successfully, it gets added to the configured
+-- collection.
 --
 -- Note that it is not a failure if the program cannot be configured. It's only
 -- a failure if the user supplied a location and the program could not be found
@@ -357,6 +366,25 @@ configureProgram
   -> ProgramDb
   -> IO ProgramDb
 configureProgram verbosity prog progdb = do
+  mbConfiguredProg <- configureUnconfiguredProgram verbosity prog progdb
+  case mbConfiguredProg of
+    Nothing -> return progdb
+    Just configuredProg -> do
+      let progdb' =
+            updateConfiguredProgs
+              (Map.insert (programName prog) configuredProg)
+              progdb
+      return progdb'
+
+-- | Try to configure a specific program. If the program is already included in
+-- the collection of unconfigured programs then we use any user-supplied
+-- location and arguments.
+configureUnconfiguredProgram
+  :: Verbosity
+  -> Program
+  -> ProgramDb
+  -> IO (Maybe ConfiguredProgram)
+configureUnconfiguredProgram verbosity prog progdb = do
   let name = programName prog
   maybeLocation <- case userSpecifiedPath prog progdb of
     Nothing ->
@@ -372,7 +400,7 @@ configureProgram verbosity prog progdb = do
               (dieWithException verbosity $ ConfigureProgram name path)
               (return . Just . swap . fmap UserSpecified . swap)
   case maybeLocation of
-    Nothing -> return progdb
+    Nothing -> return Nothing
     Just (location, triedLocations) -> do
       version <- programFindVersion prog verbosity (locationPath location)
       newPath <- programSearchPathAsPATHVar (progSearchPath progdb)
@@ -388,7 +416,7 @@ configureProgram verbosity prog progdb = do
               , programMonitorFiles = triedLocations
               }
       configuredProg' <- programPostConf prog verbosity configuredProg
-      return (updateConfiguredProgs (Map.insert name configuredProg') progdb)
+      return $ Just configuredProg'
 
 -- | Configure a bunch of programs using 'configureProgram'. Just a 'foldM'.
 configurePrograms
