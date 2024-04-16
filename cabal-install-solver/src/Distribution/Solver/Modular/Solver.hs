@@ -36,6 +36,7 @@ import Distribution.Solver.Modular.Log
 import Distribution.Solver.Modular.Message
 import Distribution.Solver.Modular.Package
 import qualified Distribution.Solver.Modular.Preference as P
+import Distribution.Solver.Modular.ValidateDependencies
 import Distribution.Solver.Modular.PrivateScopeClosure
 import Distribution.Solver.Modular.Validate
 import Distribution.Solver.Modular.Linking
@@ -99,10 +100,11 @@ solve :: SolverConfig                         -- ^ solver parameters
       -> RetryLog Message SolverFailure (Assignment, RevDepMap)
 solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
   explorePhase      .
-  traceTree "invalid-scopes.json" id .
-  detectInvalidPrivateScopesPhase .
-  traceTree "cycles.json" id .
-  detectCycles      .
+  traceTree "invalid-dep-graph.json" id .
+  detectInvalidDepGraphPhase
+    [ findCycles          -- this first
+    , findBadPrivClosures -- then this
+    ] .
   traceTree "heuristics.json" id .
   trav (
    heuristicsPhase  .
@@ -121,7 +123,6 @@ solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
                                           (fineGrainedConflicts sc)
                                           (countConflicts sc)
                                           idx
-    detectCycles     = detectCyclesPhase
     heuristicsPhase  =
       let
           sortGoals = case goalOrder sc of

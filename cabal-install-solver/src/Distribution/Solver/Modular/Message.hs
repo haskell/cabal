@@ -181,7 +181,6 @@ showConflicts conflicts =
             Just (qpn, MergedPackageConflict False [v] Nothing)
         toMergedConflict (CS.VersionConflict qpn (CS.OrderedVersionRange vr)) =
             Just (qpn, MergedPackageConflict False [] (Just vr))
-        toMergedConflict (CS.PrivateScopeClosureConflict _ _) = Nothing
         toMergedConflict CS.OtherConflict = Nothing
 
     showConflict :: QPN -> MergedPackageConflict -> String
@@ -303,7 +302,12 @@ showFR c Backjump                         = " (backjumping, conflict set: " ++ s
 showFR _ MultipleInstances                = " (multiple instances)"
 showFR c (DependenciesNotLinked msg)      = " (dependencies not linked: " ++ msg ++ "; conflict set: " ++ showConflictSet c ++ ")"
 showFR c CyclicDependencies               = " (cyclic dependencies; conflict set: " ++ showConflictSet c ++ ")"
-showFR c (InvalidPrivateScope qual)       = " (private scopes must contain its closure, but package " ++ showConflictSet c ++ " is not included in the private scope " ++ prettyShow qual ++ ")"
+showFR c (InvalidPrivateScope qual)
+  = " (a private scope must contain its closure, but package" ++ plural ++ " " ++ showConflictSet c ++ " " ++ isOrAre ++ " not included in the private scope " ++ prettyShow qual ++ ")"
+    where
+      (plural, isOrAre)
+        | [_] <- CS.toList c = ("", "is")
+        | otherwise = ("s", "are")
 showFR _ (UnsupportedSpecVer ver)         = " (unsupported spec-version " ++ prettyShow ver ++ ")"
 -- The following are internal failures. They should not occur. In the
 -- interest of not crashing unnecessarily, we still just print an error

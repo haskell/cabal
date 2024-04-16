@@ -3,7 +3,6 @@ name:            libA
 version:         0.1.0.0
 license:         NONE
 build-type:      Simple
-extra-doc-files: CHANGELOG.md
 
 common warnings
     ghc-options: -Wall

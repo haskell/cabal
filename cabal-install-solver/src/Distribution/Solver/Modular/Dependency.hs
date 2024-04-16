@@ -25,7 +25,7 @@ module Distribution.Solver.Modular.Dependency (
   , qualifyDeps
   , unqualifyDeps
     -- * Reverse dependency map
-  , RevDepMap
+  , RevDepMap(..)
     -- * Goals
   , Goal(..)
   , GoalReason(..)
@@ -226,7 +226,7 @@ qualifyDeps QO{..} rdm (Q pp@(PackagePath ns q) pn) = go
                      -- with the package-path of the package that introduced
                      -- this dependency, which will match if this dependency is
                      -- included in the same private scope.
-                     case M.lookup (Q pp pnx) rdm of
+                     case M.lookup (Q pp pnx) (revDeps rdm) of
                        Just _x -> q -- found, use same private qualifier
                        Nothing -> QualToplevel -- not found, use top level qual
 
@@ -268,7 +268,12 @@ unqualifyDeps = go
 
 -- | A map containing reverse dependencies between qualified
 -- package names.
-type RevDepMap = Map QPN [(Component, QPN)]
+data RevDepMap = RevDepMap
+  { revDeps :: Map QPN [(Component, QPN)]
+    -- ^ The reverse dependencies
+  , privScopes :: Map Qualifier {- a private qualifier -} (S.Set QPN) {- caches the packages in this private scope -}
+    -- ^ Information related to reverse dependency mapped additionally cached here.
+  }
 
 {-------------------------------------------------------------------------------
   Goals

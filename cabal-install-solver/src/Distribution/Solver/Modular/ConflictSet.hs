@@ -74,15 +74,6 @@ data Conflict =
     -- means that package y's constraint 'x >= 2.0' excluded some version of x.
   | VersionConflict QPN OrderedVersionRange
 
-    -- | The conflict set variable represents a package that was excluded for
-    -- violating the closure property of a private-scope, because that package is part of
-    -- the closure of the private scope, but it itself is not
-    -- included in it. For example, the conflict set entry '(P pkgC,
-    -- PrivateScopeClosureConflict pkgA:lib:G0:pkgB pkgA:lib:G0:pkgD)' means
-    -- that pkgC is in the (private-deps) closure from pkgA:lib:G0:pkgB to
-    -- pkgA:lib:G0:pkgD, but pkgC is not included in the private scope pkgA:lib:G0.
-  | PrivateScopeClosureConflict QPN QPN
-
     -- | Any other conflict.
   | OtherConflict
   deriving (Eq, Ord, Show)

@@ -81,10 +81,19 @@ extendOpen qpn' gs s@(BS { rdeps = gs', open = o' }) = go gs' o' gs
             -- instance for the setup script. We may need to track other
             -- self-dependencies once we implement component-based solving.
           case c of
-            ComponentSetup -> go (M.adjust (addIfAbsent (ComponentSetup, qpn')) qpn g) o ngs
+            ComponentSetup -> go g{revDeps = M.adjust (addIfAbsent (ComponentSetup, qpn')) qpn (revDeps g)} o ngs
             _              -> go                                                    g  o ngs
-      | qpn `M.member` g  = go (M.adjust (addIfAbsent (c, qpn')) qpn g)   o  ngs
-      | otherwise         = go (M.insert qpn [(c, qpn')]  g) (PkgGoal qpn (DependencyGoal dr) : o) ngs
+      | qpn `M.member` (revDeps g)
+      = go g{ revDeps = M.adjust (addIfAbsent (c, qpn')) qpn (revDeps g)
+            -- If qpn is already a member of revDeps, it is already in the privScopes mapping.
+            } o ngs
+      | otherwise
+      = go g{ revDeps = M.insert qpn [(c, qpn')]  (revDeps g)
+            , privScopes = case qpn of
+                Q (PackagePath _ ql@QualAlias{}) _ ->
+                  M.insertWith(<>) ql (S.singleton qpn) (privScopes g)
+                _ -> privScopes g
+            } (PkgGoal qpn (DependencyGoal dr) : o) ngs
           -- code above is correct; insert/adjust have different arg order
     go g o ((Simple (LDep _dr (Ext _ext )) _)  : ngs) = go g o ngs
     go g o ((Simple (LDep _dr (Lang _lang))_)  : ngs) = go g o ngs
@@ -252,7 +261,7 @@ buildTree idx (IndependentGoals ind) igs =
     build Linker {
         buildState = BS {
             index = idx
-          , rdeps = M.fromList (L.map (\ qpn -> (qpn, []))              qpns)
+          , rdeps = RevDepMap { revDeps = M.fromList (L.map (\ qpn -> (qpn, [])) qpns), privScopes = mempty }
           , open  = L.map topLevelGoal qpns
           , next  = Goals
           , qualifyOptions = defaultQualifyOptions idx

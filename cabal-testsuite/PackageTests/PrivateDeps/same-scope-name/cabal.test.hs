@@ -16,16 +16,14 @@ because of the conflict too
 
 main =
   cabalTest $ recordMode DoNotRecord $ do
-    withProjectFile "cabal.project.scenea" $
+    -- withProjectFile "cabal.project.scenea" $ -- For some reason this doesn't work...
       withRepo "repo" $ do
         -- Succeeds because SameName from pkgA and SameName from pkgB do not collide.
-        cabal "build" ["pkgA"]
-    withProjectFile "cabal.project.sceneb" $
+        cabal "build" ["pkgA", "--project-file=cabal.project.scenea"]
       withRepo "repo" $ do
         -- Fails because SameName from pkgC in its two separate components
-        cabal "build" ["pkgC"]
-    withProjectFile "cabal.project.scenec" $
+        cabal "build" ["pkgC", "--project-file=cabal.project.sceneb"]
       withRepo "repo" $ do
         -- Fails because SameName from pkgD in the same component
-        cabal "build" ["pkgD"]
+        cabal "build" ["pkgD", "--project-file=cabal.project.scenec"]
 

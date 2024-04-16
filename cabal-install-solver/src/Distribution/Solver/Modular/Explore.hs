@@ -274,7 +274,6 @@ exploreLog mbj enableBj fineGrainedConflicts (CountConflicts countConflicts) idx
 
           couldBeResolved :: CS.Conflict -> Maybe ConflictSet
           couldBeResolved CS.OtherConflict = Nothing
-          couldBeResolved (CS.PrivateScopeClosureConflict _ _) = Nothing -- Could we optimise here?
           couldBeResolved (CS.GoalConflict conflictingDep) =
               -- Check whether this package instance also has 'conflictingDep'
               -- as a dependency (ignoring flag and stanza choices).

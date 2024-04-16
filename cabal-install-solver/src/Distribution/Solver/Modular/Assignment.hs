@@ -54,7 +54,7 @@ toCPs (A pa fa sa) rdm =
     cvm :: QPN -> Maybe Vertex
     -- Note that the RevDepMap contains duplicate dependencies. Therefore the nub.
     (g, vm, cvm) = graphFromEdges (L.map (\ (x, xs) -> ((), x, nub xs))
-                                  (M.toList rdm))
+                                  (M.toList $ revDeps rdm))
     tg :: Graph Component
     tg = transposeG g
     -- Topsort the dependency graph, yielding a list of pkgs in the right order.

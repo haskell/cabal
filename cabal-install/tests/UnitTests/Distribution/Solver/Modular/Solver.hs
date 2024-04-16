@@ -1,3 +1,4 @@
+{-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 -- | This is a set of unit tests for the dependency solver,
@@ -7,9 +8,14 @@ module UnitTests.Distribution.Solver.Modular.Solver (tests)
 where
 
 -- base
+
+import Control.Monad
 import Data.List (isInfixOf)
 
 import qualified Distribution.Version as V
+
+-- mtl
+import Control.Monad.State
 
 -- test-framework
 import Test.Tasty as TF
@@ -24,6 +30,7 @@ import Language.Haskell.Extension
 
 -- cabal-install
 
+import Data.Bifunctor
 import qualified Distribution.Solver.Types.ComponentDeps as P
 import Distribution.Solver.Types.Flag
 import Distribution.Solver.Types.OptionalStanza
@@ -881,6 +888,9 @@ tests =
       , runTest privDep13
       , runTest privDep14
       , runTest privDep15
+      -- These tests should only be run manually! (Not enabled by default)
+      -- , runTest $ _manualPrivDepsStressTest True
+      -- , runTest $ _manualPrivDepsStressTestWithBacktracking True
       ]
   , -- Tests for the contents of the solver's log
     testGroup
@@ -2786,7 +2796,7 @@ privDep10 =
       priv_db10
       "private-dependencies-10"
       ["P"]
-      (solverResult (any ("private scopes must contain its closure, but package B is not included in the private scope P:lib:G0." `isInfixOf`)) [("P", 1)])
+      (solverResult (any ("a private scope must contain its closure, but package B is not included in the private scope P:G0" `isInfixOf`)) [("P", 1)])
 
 -- Testing constraints DON'T apply to private dependencies
 priv_db11 :: ExampleDb
@@ -2845,6 +2855,87 @@ privDep15 :: SolverTest
 privDep15 =
   setVerbose $
     mkTest priv_db15 "private-dependencies-15" ["P"] (solverSuccess [("A", 1), ("P", 1)])
+
+uniqPkgName :: State Int String
+uniqPkgName = do
+  i <- get
+  modify' (+ 1)
+  return ("pkgN" ++ show i)
+uniqScope :: State Int String
+uniqScope = do
+  i <- get
+  modify' (+ 1)
+  return ("S" ++ show i)
+
+-- The stress test for private dependencies without backtracking
+manual_priv_stress
+  :: Bool
+  -- ^ Use private scopes?
+  -> ExampleDb
+manual_priv_stress usePrivScopes = (`evalState` 1) do
+  (deps, depsOfDeps) <- bimap concat concat . unzip <$> forM [1 .. param] (const $ mkPkg param)
+  return ([Right $ exAv "P" 1 $ map (ExAny . exAvName) deps] ++ map Right (deps ++ depsOfDeps))
+  where
+    param :: Int
+    param = 6
+
+    mkPkg :: Int -> State Int ([ExampleAvailable], [ExampleAvailable])
+    mkPkg 0 = return ([], [])
+    mkPkg i = do
+      (depPkgs, depsOfDeps) <- bimap concat concat . unzip <$> forM [1 .. param] (const $ mkPkg (i - 1))
+      deps <-
+        concat <$> forM (zip depPkgs [(1 :: Int) ..]) \(p, ix) ->
+          if even ix && usePrivScopes
+            then do
+              sc <- uniqScope
+              return [ExAnyPriv sc (exAvName p)]
+            else return [ExAny (exAvName p)] -- note, no backtracking so no constraints.
+      pkgid <- uniqPkgName
+      return ([exAv pkgid 1 deps], (depPkgs ++ depsOfDeps))
+
+-- The stress test for private dependencies with backtracking
+manual_priv_stress_with_bt
+  :: Bool
+  -- ^ Use private scopes?
+  -> ExampleDb
+manual_priv_stress_with_bt usePrivScopes = (`evalState` 1) do
+  (deps, depsOfDeps) <- bimap concat concat . unzip <$> forM [1 .. param] (const $ mkPkg param)
+  return ([Right $ exAv "P" 1 $ map (ExAny . exAvName) deps] ++ map Right (deps ++ depsOfDeps))
+  where
+    param :: Int
+    param = 5
+
+    mkPkg :: Int -> State Int ([ExampleAvailable], [ExampleAvailable])
+    mkPkg 0 = return ([], [])
+    mkPkg i = do
+      (depPkgs, depsOfDeps) <- bimap concat concat . unzip <$> forM [1 .. param] (const $ mkPkg (i - 1))
+      let nn n =
+            concat <$> forM (zip depPkgs [(1 :: Int) ..]) \(p, ix) ->
+              let ver = if ix `mod` n == 0 then 1 else 2
+               in if even ix && usePrivScopes
+                    then do
+                      sc <- uniqScope
+                      return [ExFixPriv sc (exAvName p) ver]
+                    else return [ExFix (exAvName p) ver]
+      deps <- nn 13
+      deps' <- nn 14
+      pkgid <- uniqPkgName
+      return ([exAv pkgid 1 deps, exAv pkgid 2 deps'], (depPkgs ++ depsOfDeps))
+
+-- | This is a stress test of private dependencies which should be manually
+-- enabled for local testing, but not enabled in CI.
+_manualPrivDepsStressTest :: Bool -> SolverTest
+_manualPrivDepsStressTest b =
+  setVerbose $
+    mkTest (manual_priv_stress b) "manual-private-dependencies-stress-test" ["P"] (solverSuccess [("P", 1)])
+
+-- | This is a stress test of private dependencies which should be manually
+-- enabled for local testing, but not enabled in CI.
+-- It is quite hard to provoke backtracking in a procedural test, but here's an attempt.
+_manualPrivDepsStressTestWithBacktracking :: Bool -> SolverTest
+_manualPrivDepsStressTestWithBacktracking b =
+  setVerbose $
+    mkTest (manual_priv_stress_with_bt b) "manual-private-dependencies-stress-test-backtrack" ["P"] (solverSuccess [("P", 1)])
 
 -- | Returns true if the second list contains all elements of the first list, in
 -- order.

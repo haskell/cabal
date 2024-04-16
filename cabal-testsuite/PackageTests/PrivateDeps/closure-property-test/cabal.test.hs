@@ -7,7 +7,7 @@ main = do
     withProjectFile "cabal.project.1" $
       withRepo "repo" $
         fails (cabal' "v2-build" ["libA"])
-          >>= assertOutputContains "private scopes must contain its closure, but package libC is not included in the private scope libA:lib:G0"
+          >>= assertOutputContains "a private scope must contain its closure, but package libC is not included in the private scope libA:G0"
 
     -- Must pick libC == 0.1
     withProjectFile "cabal.project.2" $
