@@ -442,8 +442,8 @@ installAction flags@NixStyleFlags{extraFlags, configFlags, installFlags, project
   let
     GhcImplInfo{supportsPkgEnvFiles} = getImplInfo compiler
 
-  envFile <- getEnvFile clientInstallFlags platform compilerVersion
-  existingEnvEntries <-
+  (usedPackageEnvFlag, envFile) <- getEnvFile clientInstallFlags platform compilerVersion
+  (usedExistingPkgEnvFile, existingEnvEntries) <-
     getExistingEnvEntries verbosity compilerFlavor supportsPkgEnvFiles envFile
   packageDbs <- getPackageDbStack compiler projectConfigStoreDir projectConfigLogsDir projectConfigPackageDBs
   installedIndex <- getInstalledPackages verbosity compiler packageDbs progDb
@@ -534,6 +534,7 @@ installAction flags@NixStyleFlags{extraFlags, configFlags, installFlags, project
             packageDbs
             envFile
             nonGlobalEnvEntries'
+            (not usedExistingPkgEnvFile && not usedPackageEnvFlag)
         else -- Install any built exe by symlinking or copying it we don't use
         -- BuildOutcomes because we also need the component names
           traverseInstall (installCheckUnitExes InstallCheckInstall) installCfg
@@ -960,6 +961,9 @@ installLibraries
   -> FilePath
   -- ^ Environment file
   -> [GhcEnvironmentFileEntry]
+  -> Bool
+  -- ^ Whether we need to show a warning (i.e. we created a new environment
+  --   file, and the user did not use --package-env)
   -> IO ()
 installLibraries
   verbosity
@@ -968,7 +972,8 @@ installLibraries
   compiler
   packageDbs'
   envFile
-  envEntries = do
+  envEntries
+  showWarning = do
     if supportsPkgEnvFiles $ getImplInfo compiler
       then do
         let validDb (SpecificPackageDB fp) = doesPathExist fp
@@ -994,6 +999,27 @@ installLibraries
           contents' = renderGhcEnvironmentFile (baseEntries ++ pkgEntries)
         createDirectoryIfMissing True (takeDirectory envFile)
         writeFileAtomic envFile (BS.pack contents')
+        when showWarning $
+          warn verbosity $
+            "The libraries were installed by creating a global GHC environment file at:\n"
+              ++ envFile
+              ++ "\n"
+              ++ "\n"
+              ++ "The presence of such an environment file is likely to confuse or break other "
+              ++ "tools because it changes GHC's behaviour: it changes the default package set in "
+              ++ "ghc and ghci from its normal value (which is \"all boot libraries\"). GHC "
+              ++ "environment files are little-used and often not tested for.\n"
+              ++ "\n"
+              ++ "Furthermore, management of these environment files is still more difficult than "
+              ++ "it could be; see e.g. https://github.com/haskell/cabal/issues/6481 .\n"
+              ++ "\n"
+              ++ "Double-check that creating a global GHC environment file is really what you "
+              ++ "wanted! You can limit the effects of the environment file by creating it in a "
+              ++ "specific directory using the --package-env flag. For example, use:\n"
+              ++ "\n"
+              ++ "cabal install --lib <packages...> --package-env .\n"
+              ++ "\n"
+              ++ "to create the file in the current directory."
       else
         warn verbosity $
           "The current compiler doesn't support safely installing libraries, "
@@ -1224,8 +1250,10 @@ entriesForLibraryComponents = Map.foldrWithKey' (\k v -> mappend (go k v)) []
       | any hasLib targets = [GhcEnvFilePackageId unitId]
       | otherwise = []
 
--- | Gets the file path to the request environment file.
-getEnvFile :: ClientInstallFlags -> Platform -> Version -> IO FilePath
+-- | Gets the file path to the request environment file. The @Bool@ is @True@
+-- if we got an explicit instruction using @--package-env@, @False@ if we used
+-- the default.
+getEnvFile :: ClientInstallFlags -> Platform -> Version -> IO (Bool, FilePath)
 getEnvFile clientInstallFlags platform compilerVersion = do
   appDir <- getGhcAppDir
   case flagToMaybe (cinstEnvironmentPath clientInstallFlags) of
@@ -1233,37 +1261,39 @@ getEnvFile clientInstallFlags platform compilerVersion = do
       -- Is spec a bare word without any "pathy" content, then it refers to
       -- a named global environment.
       | takeBaseName spec == spec ->
-          return (getGlobalEnv appDir platform compilerVersion spec)
+          return (True, getGlobalEnv appDir platform compilerVersion spec)
       | otherwise -> do
           spec' <- makeAbsolute spec
           isDir <- doesDirectoryExist spec'
           if isDir
             then -- If spec is a directory, then make an ambient environment inside
             -- that directory.
-              return (getLocalEnv spec' platform compilerVersion)
+              return (True, getLocalEnv spec' platform compilerVersion)
             else -- Otherwise, treat it like a literal file path.
-              return spec'
+              return (True, spec')
     Nothing ->
-      return (getGlobalEnv appDir platform compilerVersion "default")
+      return (False, getGlobalEnv appDir platform compilerVersion "default")
 
--- | Returns the list of @GhcEnvFilePackageIj@ values already existing in the
---   environment being operated on.
-getExistingEnvEntries :: Verbosity -> CompilerFlavor -> Bool -> FilePath -> IO [GhcEnvironmentFileEntry]
+-- | Returns the list of @GhcEnvFilePackageId@ values already existing in the
+--   environment being operated on. The @Bool@ is @True@ if we took settings
+--   from an existing file, @False@ otherwise.
+getExistingEnvEntries :: Verbosity -> CompilerFlavor -> Bool -> FilePath -> IO (Bool, [GhcEnvironmentFileEntry])
 getExistingEnvEntries verbosity compilerFlavor supportsPkgEnvFiles envFile = do
   envFileExists <- doesFileExist envFile
-  filterEnvEntries
-    <$> if (compilerFlavor == GHC || compilerFlavor == GHCJS)
+  (usedExisting, allEntries) <-
+    if (compilerFlavor == GHC || compilerFlavor == GHCJS)
       && supportsPkgEnvFiles
       && envFileExists
-      then catch (readGhcEnvironmentFile envFile) $ \(_ :: ParseErrorExc) ->
+      then catch ((True,) <$> readGhcEnvironmentFile envFile) $ \(_ :: ParseErrorExc) ->
         warn
           verbosity
           ( "The environment file "
               ++ envFile
               ++ " is unparsable. Libraries cannot be installed."
           )
-          >> return []
-      else return []
+          >> return (False, [])
+      else return (False, [])
+  return (usedExisting, filterEnvEntries allEntries)
   where
     -- Why? We know what the first part will be, we only care about the packages.
     filterEnvEntries = filter $ \case

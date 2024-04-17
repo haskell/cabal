@@ -184,6 +184,8 @@ data CabalInstallException
   | CorruptedIndexCache String
   | UnusableIndexState RemoteRepo Timestamp Timestamp
   | MissingPackageList RemoteRepo
+  | CmdPathAcceptsNoTargets
+  | CmdPathCommandDoesn'tSupportDryRun
   deriving (Show, Typeable)
 
 exceptionCodeCabalInstall :: CabalInstallException -> Int
@@ -334,6 +336,8 @@ exceptionCodeCabalInstall e = case e of
   CorruptedIndexCache{} -> 7158
   UnusableIndexState{} -> 7159
   MissingPackageList{} -> 7160
+  CmdPathAcceptsNoTargets{} -> 7161
+  CmdPathCommandDoesn'tSupportDryRun -> 7163
 
 exceptionMessageCabalInstall :: CabalInstallException -> String
 exceptionMessageCabalInstall e = case e of
@@ -849,6 +853,10 @@ exceptionMessageCabalInstall e = case e of
     "The package list for '"
       ++ unRepoName (remoteRepoName repoRemote)
       ++ "' does not exist. Run 'cabal update' to download it."
+  CmdPathAcceptsNoTargets ->
+    "The 'path' command accepts no target arguments."
+  CmdPathCommandDoesn'tSupportDryRun ->
+    "The 'path' command doesn't support the flag '--dry-run'."
 
 instance Exception (VerboseException CabalInstallException) where
   displayException :: VerboseException CabalInstallException -> [Char]

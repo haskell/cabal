@@ -303,6 +303,8 @@ runTestM mode m =
                 program_db1
                 verbosity
 
+    (configuredGhcProg, _) <- requireProgram verbosity ghcProgram program_db2
+
     program_db3 <-
         reconfigurePrograms verbosity
             ([("cabal", p)   | p <- maybeToList (argCabalInstallPath cargs)] ++
@@ -324,6 +326,7 @@ runTestM mode m =
                     testProgramDb = program_db,
                     testPlatform = platform,
                     testCompiler = comp,
+                    testCompilerPath = programPath configuredGhcProg,
                     testPackageDBStack = db_stack,
                     testVerbosity = verbosity,
                     testMtimeChangeDelay = Nothing,
@@ -528,6 +531,16 @@ mkNormalizerEnv = do
 
     canonicalizedTestTmpDir <- liftIO $ canonicalizePath (testTmpDir env)
 
+    -- 'cabal' is configured in the package-db, but doesn't specify how to find the program version
+    -- Thus we find the program location, if it exists, and query for the program version for
+    -- output normalisation.
+    cabalVersionM <- do
+        cabalProgM <- needProgramM "cabal"
+        case cabalProgM of
+            Nothing -> pure Nothing
+            Just cabalProg -> do
+                liftIO (findProgramVersion "--numeric-version" id (testVerbosity env) (programPath cabalProg))
+
     return NormalizerEnv {
         normalizerRoot
             = addTrailingPathSeparator (testSourceDir env),
@@ -539,12 +552,16 @@ mkNormalizerEnv = do
             = addTrailingPathSeparator tmpDir,
         normalizerGhcVersion
             = compilerVersion (testCompiler env),
+        normalizerGhcPath
+            = testCompilerPath env,
         normalizerKnownPackages
             = mapMaybe simpleParse (words list_out),
         normalizerPlatform
             = testPlatform env,
         normalizerCabalVersion
-            = cabalVersionLibrary
+            = cabalVersionLibrary,
+        normalizerCabalInstallVersion
+            = cabalVersionM
     }
 
 cabalVersionLibrary :: Version
@@ -556,6 +573,11 @@ requireProgramM program = do
     (configured_program, _) <- liftIO $
         requireProgram (testVerbosity env) program (testProgramDb env)
     return configured_program
+
+needProgramM :: String -> TestM (Maybe ConfiguredProgram)
+needProgramM program = do
+    env <- getTestEnv
+    return $ lookupProgramByName program (testProgramDb env)
 
 programPathM :: Program -> TestM FilePath
 programPathM program = do
@@ -608,6 +630,7 @@ data TestEnv = TestEnv
     , testProgramDb     :: ProgramDb
     -- | Compiler we are running tests for
     , testCompiler      :: Compiler
+    , testCompilerPath  :: FilePath
     -- | Platform we are running tests on
     , testPlatform      :: Platform
     -- | Package database stack (actually this changes lol)

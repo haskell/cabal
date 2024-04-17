@@ -1,0 +1,150 @@
+# cabal path
+<ROOT>/cabal.dist/home/.cabal
+# cabal path
+{"cabal-version":"<CABAL_INSTALL_VER>","cache-home":"<ROOT>/cabal.dist/home/.cabal"}
+# cabal path
+<ROOT>/cabal.dist/home/.cabal
+# cabal path
+<ROOT>/cabal.dist/home/.cabal/packages
+# cabal path
+{"cabal-version":"<CABAL_INSTALL_VER>","remote-repo-cache":"<ROOT>/cabal.dist/home/.cabal/packages"}
+# cabal path
+<ROOT>/cabal.dist/home/.cabal/packages
+# cabal path
+<ROOT>/cabal.dist/home/.cabal/logs
+# cabal path
+{"cabal-version":"<CABAL_INSTALL_VER>","logs-dir":"<ROOT>/cabal.dist/home/.cabal/logs"}
+# cabal path
+<ROOT>/cabal.dist/home/.cabal/logs
+# cabal path
+<ROOT>/cabal.dist/home/.cabal/store
+# cabal path
+{"cabal-version":"<CABAL_INSTALL_VER>","store-dir":"<ROOT>/cabal.dist/home/.cabal/store"}
+# cabal path
+<ROOT>/cabal.dist/home/.cabal/store
+# cabal path
+<ROOT>/cabal.dist/home/.cabal/config
+# cabal path
+{"cabal-version":"<CABAL_INSTALL_VER>","config-file":"<ROOT>/cabal.dist/home/.cabal/config"}
+# cabal path
+<ROOT>/cabal.dist/home/.cabal/config
+# cabal path
+<ROOT>/cabal.dist/home/.cabal/bin
+# cabal path
+{"cabal-version":"<CABAL_INSTALL_VER>","installdir":"<ROOT>/cabal.dist/home/.cabal/bin"}
+# cabal path
+<ROOT>/cabal.dist/home/.cabal/bin
+# cabal path
+test-dir
+# cabal path
+{"cabal-version":"<CABAL_INSTALL_VER>","store-dir":"test-dir"}
+# cabal path
+test-dir
+# cabal path
+<ROOT>/cabal.dist/home/.cabal
+# cabal path
+{"cabal-version":"<CABAL_INSTALL_VER>","cache-home":"<ROOT>/cabal.dist/home/.cabal"}
+# cabal path
+<ROOT>/cabal.dist/home/.cabal
+# cabal path
+<ROOT>/cabal.dist/home/.cabal
+# cabal path
+{"cabal-version":"<CABAL_INSTALL_VER>","cache-home":"<ROOT>/cabal.dist/home/.cabal"}
+# cabal path
+<ROOT>/cabal.dist/home/.cabal
+# cabal path
+<ROOT>/cabal.dist/home/.cabal
+# cabal path
+{"cabal-version":"<CABAL_INSTALL_VER>","cache-home":"<ROOT>/cabal.dist/home/.cabal"}
+# cabal path
+<ROOT>/cabal.dist/home/.cabal
+# cabal path
+my-cache-dir
+# cabal path
+{"cabal-version":"<CABAL_INSTALL_VER>","remote-repo-cache":"my-cache-dir"}
+# cabal path
+my-cache-dir
+# cabal path
+<ROOT>/cabal.dist/home/.cabal/packages
+# cabal path
+{"cabal-version":"<CABAL_INSTALL_VER>","remote-repo-cache":"<ROOT>/cabal.dist/home/.cabal/packages"}
+# cabal path
+<ROOT>/cabal.dist/home/.cabal/packages
+# cabal path
+my-cache-dir
+# cabal path
+{"cabal-version":"<CABAL_INSTALL_VER>","remote-repo-cache":"my-cache-dir"}
+# cabal path
+my-cache-dir
+# cabal path
+my-logs-dir
+# cabal path
+{"cabal-version":"<CABAL_INSTALL_VER>","logs-dir":"my-logs-dir"}
+# cabal path
+my-logs-dir
+# cabal path
+<ROOT>/cabal.dist/home/.cabal/logs
+# cabal path
+{"cabal-version":"<CABAL_INSTALL_VER>","logs-dir":"<ROOT>/cabal.dist/home/.cabal/logs"}
+# cabal path
+<ROOT>/cabal.dist/home/.cabal/logs
+# cabal path
+my-logs-dir
+# cabal path
+{"cabal-version":"<CABAL_INSTALL_VER>","logs-dir":"my-logs-dir"}
+# cabal path
+my-logs-dir
+# cabal path
+my-store-dir
+# cabal path
+{"cabal-version":"<CABAL_INSTALL_VER>","store-dir":"my-store-dir"}
+# cabal path
+my-store-dir
+# cabal path
+<ROOT>/cabal.dist/home/.cabal/store
+# cabal path
+{"cabal-version":"<CABAL_INSTALL_VER>","store-dir":"<ROOT>/cabal.dist/home/.cabal/store"}
+# cabal path
+<ROOT>/cabal.dist/home/.cabal/store
+# cabal path
+my-store-dir
+# cabal path
+{"cabal-version":"<CABAL_INSTALL_VER>","store-dir":"my-store-dir"}
+# cabal path
+my-store-dir
+# cabal path
+fake-cabal.config
+# cabal path
+{"cabal-version":"<CABAL_INSTALL_VER>","config-file":"fake-cabal.config"}
+# cabal path
+fake-cabal.config
+# cabal path
+<ROOT>/cabal.dist/home/.cabal/config
+# cabal path
+{"cabal-version":"<CABAL_INSTALL_VER>","config-file":"<ROOT>/cabal.dist/home/.cabal/config"}
+# cabal path
+<ROOT>/cabal.dist/home/.cabal/config
+# cabal path
+fake-cabal.config
+# cabal path
+{"cabal-version":"<CABAL_INSTALL_VER>","config-file":"fake-cabal.config"}
+# cabal path
+fake-cabal.config
+# cabal path
+my-installdir
+# cabal path
+{"cabal-version":"<CABAL_INSTALL_VER>","installdir":"my-installdir"}
+# cabal path
+my-installdir
+# cabal path
+<ROOT>/cabal.dist/home/.cabal/bin
+# cabal path
+{"cabal-version":"<CABAL_INSTALL_VER>","installdir":"<ROOT>/cabal.dist/home/.cabal/bin"}
+# cabal path
+<ROOT>/cabal.dist/home/.cabal/bin
+# cabal path
+my-installdir
+# cabal path
+{"cabal-version":"<CABAL_INSTALL_VER>","installdir":"my-installdir"}
+# cabal path
+my-installdir
