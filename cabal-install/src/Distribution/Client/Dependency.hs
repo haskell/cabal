@@ -64,6 +64,8 @@ module Distribution.Client.Dependency
   , addDefaultSetupDependencies
   , addSetupCabalMinVersionConstraint
   , addSetupCabalMaxVersionConstraint
+  , setImplicitSetupInfo
+  , extendSetupInfoDeps
   ) where
 
 import Distribution.Client.Compat.Prelude
@@ -591,48 +593,68 @@ removeBound RelaxUpper RelaxDepModNone = removeUpperBound
 removeBound RelaxLower RelaxDepModCaret = transformCaretLower
 removeBound RelaxUpper RelaxDepModCaret = transformCaretUpper
 
--- | Supply defaults for packages without explicit Setup dependencies
+-- | Supply defaults for packages without explicit Setup dependencies.
+-- It also serves to add the implicit dependency on @hooks-exe@ needed to
+-- compile the @Setup.hs@ executable produced from 'SetupHooks' when
+-- @build-type: Hooks@. The first argument function determines which implicit
+-- dependencies are needed (including the one on @hooks-exe@).
 --
 -- Note: It's important to apply 'addDefaultSetupDepends' after
 -- 'addSourcePackages'. Otherwise, the packages inserted by
 -- 'addSourcePackages' won't have upper bounds in dependencies relaxed.
 addDefaultSetupDependencies
-  :: (UnresolvedSourcePackage -> Maybe [Dependency])
+  :: (Maybe [Dependency] -> PD.BuildType -> Maybe PD.SetupBuildInfo -> Maybe PD.SetupBuildInfo)
+  -- ^ Function to update the SetupBuildInfo of the package using those dependencies
+  -> (UnresolvedSourcePackage -> Maybe [Dependency])
+  -- ^ Function to determine extra setup dependencies
   -> DepResolverParams
   -> DepResolverParams
-addDefaultSetupDependencies defaultSetupDeps params =
+addDefaultSetupDependencies applyDefaultSetupDeps defaultSetupDeps params =
   params
     { depResolverSourcePkgIndex =
-        fmap applyDefaultSetupDeps (depResolverSourcePkgIndex params)
+        fmap go (depResolverSourcePkgIndex params)
     }
   where
-    applyDefaultSetupDeps :: UnresolvedSourcePackage -> UnresolvedSourcePackage
-    applyDefaultSetupDeps srcpkg =
+    go :: UnresolvedSourcePackage -> UnresolvedSourcePackage
+    go srcpkg =
       srcpkg
         { srcpkgDescription =
             gpkgdesc
               { PD.packageDescription =
                   pkgdesc
-                    { PD.setupBuildInfo =
-                        case PD.setupBuildInfo pkgdesc of
-                          Just sbi -> Just sbi
-                          Nothing -> case defaultSetupDeps srcpkg of
-                            Nothing -> Nothing
-                            Just deps
-                              | isCustom ->
-                                  Just
-                                    PD.SetupBuildInfo
-                                      { PD.defaultSetupDepends = True
-                                      , PD.setupDepends = deps
-                                      }
-                              | otherwise -> Nothing
+                    { PD.setupBuildInfo = applyDefaultSetupDeps (defaultSetupDeps srcpkg) (PD.buildType pkgdesc) (PD.setupBuildInfo pkgdesc)
                     }
               }
         }
       where
-        isCustom = PD.buildType pkgdesc == PD.Custom || PD.buildType pkgdesc == PD.Hooks
         gpkgdesc = srcpkgDescription srcpkg
         pkgdesc = PD.packageDescription gpkgdesc
+
+setImplicitSetupInfo :: Maybe [Dependency] -> PD.BuildType -> Maybe PD.SetupBuildInfo -> Maybe PD.SetupBuildInfo
+setImplicitSetupInfo mdeps buildty msetupinfo =
+  case msetupinfo of
+    Just sbi -> Just sbi
+    Nothing -> case mdeps of
+      Nothing -> Nothing
+      Just deps
+        | isCustom ->
+            Just
+              PD.SetupBuildInfo
+                { PD.defaultSetupDepends = True
+                , PD.setupDepends = deps
+                }
+        | otherwise -> Nothing
+  where
+    isCustom = buildty == PD.Custom || buildty == PD.Hooks
+
+extendSetupInfoDeps :: Maybe [Dependency] -> PD.BuildType -> Maybe PD.SetupBuildInfo -> Maybe PD.SetupBuildInfo
+extendSetupInfoDeps mDeps buildTy mSetupInfo
+  | Nothing <- mSetupInfo =
+      assert
+        (buildTy /= PD.Hooks) -- Hooks needs explicit setup-depends
+        Nothing
+  | Just setupInfo <- mSetupInfo =
+      Just setupInfo{PD.setupDepends = PD.setupDepends setupInfo ++ fromMaybe [] mDeps}
 
 -- | If a package has a custom setup then we need to add a setup-depends
 -- on Cabal.
@@ -713,7 +735,7 @@ standardInstallPolicy
   -> [PackageSpecifier UnresolvedSourcePackage]
   -> DepResolverParams
 standardInstallPolicy installedPkgIndex sourcePkgDb pkgSpecifiers =
-  addDefaultSetupDependencies mkDefaultSetupDeps $
+  addDefaultSetupDependencies setImplicitSetupInfo mkDefaultSetupDeps $
     basicInstallPolicy
       installedPkgIndex
       sourcePkgDb
