@@ -55,6 +55,12 @@ Cabal and Cabal-syntax 3.12.0.0 changelog and release notes
       `filterPackageChecksById`, this can be used by third-party
       tools to filter warnings.
 
+- Add support for `GHC2024` [#9736](https://github.com/haskell/cabal/issues/9736)
+
+  Support for the `GHC2024` language edition, introduced by GHC 9.10, has been
+  added. It can now be used in the `default-language` and `other-languages`
+  fields, and will be offered as an option by `cabal init`.
+
 ### Other changes
 
 - `cabal init` should not suggest Cabal < 2.0 [#8680](https://github.com/haskell/cabal/issues/8680)
@@ -246,3 +252,7 @@ Cabal and Cabal-syntax 3.12.0.0 changelog and release notes
 - Add support for 64-bit LoongArch architecture [#9215](https://github.com/haskell/cabal/pull/9215)
 - Add support for 64-bit SPARC as a separate architecture [#9445](https://github.com/haskell/cabal/pull/9445)
 
+- Update SPDX License List to version `3.23 2024-02-08` [#9818](https://github.com/haskell/cabal/pull/9818)
+
+  - LicenseId and LicenseExceptionId now conform to SPDX License List
+    version 3.23 2024-02-08.

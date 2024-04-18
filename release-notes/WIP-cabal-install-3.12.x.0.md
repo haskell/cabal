@@ -32,6 +32,29 @@ cabal-install and cabal-install-solver 3.12.1.0 changelog and release notes
     a flag which specifies which libraries should be included in the coverage
     report for some testsuite.
 
+- Redesign 'cabal path' command to account for projects [#9673](https://github.com/haskell/cabal/pull/9673)
+
+  Previously, `cabal path` was only able to query from the global configuration file, e.g., `~/.cabal/config` or the XDG equivalent.
+  We take the foundations and enhance `cabal path` to take project configuration, such as `cabal.project`, into account.
+
+  Additionally, we add support for multiple output formats, such as key-value pairs and json.
+
+  The key-value pair output prints a line for each queried key and its respective value:
+
+      key1: value2
+      key2: value2
+
+  If only a single key is queried, we print only the value, for example:
+
+      value1
+
+  The json output format is versioned by the cabal-install version, which is part of the json object.
+  Thus, all result objects contain at least the key "cabal-install-version".
+
+  We expand the `cabal path` to also produce information of the compiler that is going to be used in a `cabal build` or `cabal repl` invocation.
+  To do that, we re-configure the compiler program, and outputs the location, version and compiler flavour.
+  This is helpful for downstream tools, such as HLS, to figure out the GHC version required to compile a project with, without dependency solving.
+
 ### Other changes
 
 - Script cache dir is the base16 hash of the canonical path of the script. [#9459](https://github.com/haskell/cabal/pull/9459)
@@ -231,5 +254,34 @@ cabal-install and cabal-install-solver 3.12.1.0 changelog and release notes
     - pandoc-2.19.1, pandoc-2.19, pandoc-2.18, pandoc-2.17.1.1, pandoc-2.17.1,
     + [__0] rejecting: pandoc; 3.1.8, 3.1.7, 3.1.6.2, 3.1.6.1, 3.1.6, 3.1.5, 3.1.4,
     + 3.1.3, 3.1.2, 3.1.1, 3.1, 3.0.1, 3.0, 2.19.2, 2.19.1, 2.19, 2.18, 2.17.1.1,
-```
+    ```
+
+- Show provenance of project constraints [#9562](https://github.com/haskell/cabal/issues/9562) [#9578](https://github.com/haskell/cabal/pull/9578)
+
+  Show imports when the solver rejects a package version due to a project
+  constraint.  Even though imports are relative to their parent when imported,
+  their paths are shown relative to the directory of the project in the solver
+  output.
+
+  ```
+  $ cabal build all --dry-run
+  ...
+  [__1] next goal: hashable
+  [__1] rejecting: hashable-1.4.3.0
+        (constraint from cabal.project requires ==1.4.2.0)
+  [__1] rejecting: hashable-1.4.2.0
+        (constraint from project-stackage/nightly-2023-12-07.config requires ==1.4.3.0)
+          imported by: cabal.project
+  ```
+
+  Fixes some test failures detecting cycles in imports, when;
+
+  - the wrong import was reported as starting the cycle
+  - a cycle was reported that wasn't actually a cycle
+
+- Adjust BSD-2-Clause and BSD-3-Clause licence text [#9812](https://github.com/haskell/cabal/issues/9812) [#9813](https://github.com/haskell/cabal/pull/9813)
+
+  This change matters to BSD-2-Clause and BSD-3-Clause licences. For these two
+  licences, `cabal init` created a licence file that slightly differed from
+  wording published at SPDX.  This has been rectified.
 
