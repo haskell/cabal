@@ -126,6 +126,7 @@ import Distribution.Client.ProjectPlanOutput
 import Distribution.Client.ProjectPlanning.SetupPolicy
   ( NonSetupLibDepSolverPlanPackage (..)
   , mkDefaultSetupDeps
+  , mkHooksSetupImplicitDeps
   , packageSetupScriptSpecVersion
   , packageSetupScriptStyle
   )
@@ -1328,6 +1329,13 @@ planPackages
           . removeLowerBounds solverSettingAllowOlder
           . removeUpperBounds solverSettingAllowNewer
           . addDefaultSetupDependencies
+            extendSetupInfoDeps
+            ( mkHooksSetupImplicitDeps
+                . PD.packageDescription
+                . srcpkgDescription
+            )
+          . addDefaultSetupDependencies
+            setImplicitSetupInfo
             ( mkDefaultSetupDeps comp platform
                 . PD.packageDescription
                 . srcpkgDescription
