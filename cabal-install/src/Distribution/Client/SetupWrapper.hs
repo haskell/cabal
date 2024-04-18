@@ -156,6 +156,7 @@ import Distribution.Simple.Utils
   , copyFileVerbose
   , createDirectoryIfMissingVerbose
   , debug
+  , die'
   , dieWithException
   , info
   , infoNoWrap
@@ -405,6 +406,7 @@ getSetupMethod
   -> IO (Version, SetupMethod, SetupScriptOptions)
 getSetupMethod verbosity options pkg buildType'
   | buildType' == Custom
+      || buildType' == Hooks
       || maybe False (cabalVersion /=) (useCabalSpecVersion options)
       || not (cabalVersion `withinRange` useCabalVersion options) =
       getExternalSetupMethod verbosity options pkg buildType'
@@ -556,6 +558,7 @@ buildTypeAction Configure =
   Simple.defaultMainWithHooksArgs
     Simple.autoconfUserHooks
 buildTypeAction Make = Make.defaultMainArgs
+buildTypeAction Hooks  = error "buildTypeAction Hooks"
 buildTypeAction Custom = error "buildTypeAction Custom"
 
 invoke :: Verbosity -> FilePath -> [String] -> SetupScriptOptions -> IO ()
@@ -712,6 +715,7 @@ getExternalSetupMethod verbosity options pkg bt = do
     setupDir = useDistPref options Cabal.Path.</> makeRelativePathEx "setup"
     setupVersionFile = setupDir Cabal.Path.</> makeRelativePathEx ("setup" <.> "version")
     setupHs = setupDir Cabal.Path.</> makeRelativePathEx ("setup" <.> "hs")
+    setupHooks = setupDir Cabal.Path.</> makeRelativePathEx ("SetupHooks" <.> "hs")
     setupProgFile = setupDir Cabal.Path.</> makeRelativePathEx ("setup" <.> exeExtension buildPlatform)
 
     platform = fromMaybe buildPlatform (usePlatform options)
@@ -838,6 +842,17 @@ getExternalSetupMethod verbosity options pkg bt = do
       where
         customSetupHs = workingDir options </> "Setup.hs"
         customSetupLhs = workingDir options </> "Setup.lhs"
+    updateSetupScript cabalLibVersion Hooks = do
+
+      let customSetupHooks = workingDir options </> "SetupHooks.hs"
+      useHs <- doesFileExist customSetupHooks
+      unless (useHs) $
+        die'
+          verbosity
+          "Using 'build-type: Hooks' but there is no SetupHooks.hs file."
+      copyFileVerbose verbosity customSetupHooks (i setupHooks)
+      rewriteFileLBS verbosity (i setupHs) (buildTypeScript cabalLibVersion)
+--      rewriteFileLBS verbosity hooksHs hooksScript
     updateSetupScript cabalLibVersion _ =
       rewriteFileLBS verbosity (i setupHs) (buildTypeScript cabalLibVersion)
 
@@ -848,6 +863,7 @@ getExternalSetupMethod verbosity options pkg bt = do
         | cabalLibVersion >= mkVersion [1, 3, 10] -> "import Distribution.Simple; main = defaultMainWithHooks autoconfUserHooks\n"
         | otherwise -> "import Distribution.Simple; main = defaultMainWithHooks defaultUserHooks\n"
       Make -> "import Distribution.Make; main = defaultMain\n"
+      Hooks -> "import Distribution.Simple; import SetupHooks; main = defaultMainWithSetupHooks setupHooks\n"
       Custom -> error "buildTypeScript Custom"
 
     installedCabalVersion
@@ -1049,26 +1065,18 @@ getExternalSetupMethod verbosity options pkg bt = do
                   (\ipkgid -> [(ipkgid, cabalPkgid)])
                   maybeCabalLibInstalledPkgId
 
-              -- With 'useDependenciesExclusive' we enforce the deps specified,
-              -- so only the given ones can be used. Otherwise we allow the use
-              -- of packages in the ambient environment, and add on a dep on the
-              -- Cabal library (unless 'useDependencies' already contains one).
-              --
-              -- With 'useVersionMacros' we use a version CPP macros .h file.
-              --
-              -- Both of these options should be enabled for packages that have
-              -- opted-in and declared a custom-settup stanza.
-              --
+              -- With 'useDependenciesExclusive' and Custom build type,
+              -- we enforce the deps specified, so only the given ones can be used.
+              -- Otherwise we add on a dep on the Cabal library
+              -- (unless 'useDependencies' already contains one).
               selectedDeps
-                | useDependenciesExclusive options' =
-                    useDependencies options'
+                |  (useDependenciesExclusive options' && (bt /= Hooks))
+                -- NB: to compile build-type: Hooks packages, we need Cabal
+                -- in order to compile @main = defaultMainWithSetupHooks setupHooks@.
+                || any (isCabalPkgId . snd) (useDependencies options')
+                = useDependencies options'
                 | otherwise =
-                    useDependencies options'
-                      ++ if any
-                        (isCabalPkgId . snd)
-                        (useDependencies options')
-                        then []
-                        else cabalDep
+                    useDependencies options' ++ cabalDep
               addRenaming (ipid, _) =
                 -- Assert 'DefUnitId' invariant
                 ( Backpack.DefiniteUnitId (unsafeMkDefUnitId (newSimpleUnitId ipid))
@@ -1089,11 +1097,13 @@ getExternalSetupMethod verbosity options pkg bt = do
                   , ghcOptSourcePathClear = Flag True
                   , ghcOptSourcePath = case bt of
                       Custom -> toNubListR [sameDirectory]
+                      Hooks -> toNubListR [sameDirectory]
                       _ -> mempty
                   , ghcOptPackageDBs = usePackageDB options''
                   , ghcOptHideAllPackages = Flag (useDependenciesExclusive options')
                   , ghcOptCabal = Flag (useDependenciesExclusive options')
                   , ghcOptPackages = toNubListR $ map addRenaming selectedDeps
+                  -- With 'useVersionMacros', use a version CPP macros .h file.
                   , ghcOptCppIncludes =
                       toNubListR
                         [ cppMacrosFile

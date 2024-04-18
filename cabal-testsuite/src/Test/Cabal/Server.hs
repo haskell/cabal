@@ -42,6 +42,9 @@ import qualified GHC.IO.Exception as GHC
 import Distribution.Verbosity
 
 import System.Process.Internals
+  ( ProcessHandle__( OpenHandle )
+  , withProcessHandle
+  )
 #if mingw32_HOST_OS
 import qualified System.Win32.Process as Win32
 #endif
