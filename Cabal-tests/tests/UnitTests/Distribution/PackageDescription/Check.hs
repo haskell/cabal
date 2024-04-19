@@ -3,7 +3,7 @@
 
 module UnitTests.Distribution.PackageDescription.Check (tests) where
 
-import Distribution.Compat.Prelude.Internal
+import Distribution.Compat.Prelude
 import Prelude ()
 
 import Distribution.PackageDescription.Check
