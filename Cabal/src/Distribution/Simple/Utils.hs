@@ -114,6 +114,7 @@ module Distribution.Simple.Utils
   , findFileEx
   , findFileCwd
   , findFirstFile
+  , Suffix (..)
   , findFileWithExtension
   , findFileCwdWithExtension
   , findFileWithExtension'

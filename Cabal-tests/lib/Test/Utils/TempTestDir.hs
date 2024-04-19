@@ -10,8 +10,10 @@ import Distribution.Simple.Utils (warn)
 import Distribution.Verbosity
 
 import Control.Concurrent (threadDelay)
-import Control.Exception (bracket, throwIO, try)
+import Control.Exception (throwIO, try)
 import Control.Monad (when)
+import Control.Monad.Catch ( bracket, MonadMask)
+import Control.Monad.IO.Class
 
 import System.Directory
 import System.IO.Error
@@ -20,13 +22,13 @@ import qualified System.Info (os)
 
 -- | Much like 'withTemporaryDirectory' but with a number of hacks to make
 -- sure on windows that we can clean up the directory at the end.
-withTestDir :: Verbosity -> String -> (FilePath -> IO a) -> IO a
+withTestDir :: (MonadIO m, MonadMask m) => Verbosity -> String -> (FilePath -> m a) -> m a
 withTestDir verbosity template action = do
-  systmpdir <- getTemporaryDirectory
+  systmpdir <- liftIO getTemporaryDirectory
   bracket
-    ( do { tmpRelDir <- createTempDirectory systmpdir template
+    ( do { tmpRelDir <- liftIO $ createTempDirectory systmpdir template
          ; return $ systmpdir </> tmpRelDir } )
-    (removeDirectoryRecursiveHack verbosity)
+    (liftIO . removeDirectoryRecursiveHack verbosity)
     action
 
 -- | On Windows, file locks held by programs we run (in this case VCSs)

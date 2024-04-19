@@ -1,0 +1,16 @@
+cabal-version:       3.14
+name:                setup-hooks-duplicate-rule-id-test
+version:             0.1.0.0
+synopsis:            Test duplicate rule ids
+license:             BSD-3-Clause
+author:              NA
+maintainer:          NA
+category:            Testing
+build-type:          Hooks
+
+custom-setup
+  setup-depends: Cabal-hooks, base
+
+library
+  build-depends:       base
+  default-language:    Haskell2010

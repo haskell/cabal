@@ -106,6 +106,7 @@ library
     Distribution.Simple.Compiler
     Distribution.Simple.Configure
     Distribution.Simple.Errors
+    Distribution.Simple.FileMonitor.Types
     Distribution.Simple.Flag
     Distribution.Simple.GHC
     Distribution.Simple.GHCJS
@@ -148,6 +149,9 @@ library
     Distribution.Simple.Test.Log
     Distribution.Simple.UHC
     Distribution.Simple.UserHooks
+    Distribution.Simple.SetupHooks.Errors
+    Distribution.Simple.SetupHooks.Internal
+    Distribution.Simple.SetupHooks.Rule
     Distribution.Simple.Utils
     Distribution.TestSuite
     Distribution.Types.AnnotatedId

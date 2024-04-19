@@ -32,6 +32,7 @@
 -- level.
 module Distribution.Simple.Configure
   ( configure
+  , configure_setupHooks
   , writePersistBuildConfig
   , getConfigStateFile
   , getPersistBuildConfig
@@ -86,9 +87,21 @@ import Distribution.Simple.PackageIndex (InstalledPackageIndex, lookupUnitId)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.PreProcess
 import Distribution.Simple.Program
-import Distribution.Simple.Program.Db (lookupProgramByName, modifyProgramSearchPath, prependProgramSearchPath)
+import Distribution.Simple.Program.Db
+  ( ProgramDb (..)
+  , lookupProgramByName
+  , modifyProgramSearchPath
+  , prependProgramSearchPath
+  , updateConfiguredProgs
+  )
 import Distribution.Simple.Setup.Common as Setup
 import Distribution.Simple.Setup.Config as Setup
+import Distribution.Simple.SetupHooks.Internal
+  ( ConfigureHooks (..)
+  , applyComponentDiffs
+  , noConfigureHooks
+  )
+import qualified Distribution.Simple.SetupHooks.Internal as SetupHooks
 import Distribution.Simple.Utils
 import Distribution.System
 import Distribution.Types.ComponentRequestedSpec
@@ -435,17 +448,99 @@ configure
   :: (GenericPackageDescription, HookedBuildInfo)
   -> ConfigFlags
   -> IO LocalBuildInfo
-configure (g_pkg_descr, hookedBuildInfo) cfg = do
-  -- Cabal pre-configure
-  (lbc1, comp, platform, enabledComps) <- preConfigurePackage cfg g_pkg_descr
+configure = configure_setupHooks noConfigureHooks
 
-  -- Cabal package-wide configure
-  (lbc2, pbd2, pkg_info) <-
-    finalizeAndConfigurePackage cfg lbc1 g_pkg_descr comp platform enabledComps
+configure_setupHooks
+  :: ConfigureHooks
+  -> (GenericPackageDescription, HookedBuildInfo)
+  -> ConfigFlags
+  -> IO LocalBuildInfo
+configure_setupHooks
+  (ConfigureHooks{preConfPackageHook, postConfPackageHook, preConfComponentHook})
+  (g_pkg_descr, hookedBuildInfo)
+  cfg = do
+    -- Cabal pre-configure
+    let verbosity = fromFlag (configVerbosity cfg)
+        distPref = fromFlag $ configDistPref cfg
+        mbWorkDir = flagToMaybe $ configWorkingDir cfg
+    (lbc0, comp, platform, enabledComps) <- preConfigurePackage cfg g_pkg_descr
 
-  -- Cabal per-component configure
-  externalPkgDeps <- finalCheckPackage g_pkg_descr pbd2 hookedBuildInfo pkg_info
-  configureComponents lbc2 pbd2 pkg_info externalPkgDeps
+    -- Package-wide pre-configure hook
+    lbc1 <-
+      case preConfPackageHook of
+        Nothing -> return lbc0
+        Just pre_conf -> do
+          let programDb0 = LBC.withPrograms lbc0
+              programDb0' = programDb0{unconfiguredProgs = Map.empty}
+              input =
+                SetupHooks.PreConfPackageInputs
+                  { SetupHooks.configFlags = cfg
+                  , SetupHooks.localBuildConfig = lbc0{LBC.withPrograms = programDb0'}
+                  , -- Unconfigured programs are not supplied to the hook,
+                    -- as these cannot be passed over a serialisation boundary
+                    -- (see the "Binary ProgramDb" instance).
+                    SetupHooks.compiler = comp
+                  , SetupHooks.platform = platform
+                  }
+          SetupHooks.PreConfPackageOutputs
+            { SetupHooks.buildOptions = opts1
+            , SetupHooks.extraConfiguredProgs = progs1
+            } <-
+            pre_conf input
+          -- The package-wide pre-configure hook returns BuildOptions that
+          -- overrides the one it was passed in, as well as an update to
+          -- the ProgramDb in the form of new configured programs to add
+          -- to the program database.
+          return $
+            lbc0
+              { LBC.withBuildOptions = opts1
+              , LBC.withPrograms =
+                  updateConfiguredProgs
+                    (`Map.union` progs1)
+                    programDb0
+              }
+
+    -- Cabal package-wide configure
+    (lbc2, pbd2, pkg_info) <-
+      finalizeAndConfigurePackage cfg lbc1 g_pkg_descr comp platform enabledComps
+
+    -- Package-wide post-configure hook
+    for_ postConfPackageHook $ \postConfPkg -> do
+      let input =
+            SetupHooks.PostConfPackageInputs
+              { SetupHooks.localBuildConfig = lbc2
+              , SetupHooks.packageBuildDescr = pbd2
+              }
+      postConfPkg input
+
+    -- Per-component pre-configure hook
+    pkg_descr <- do
+      let pkg_descr2 = LBC.localPkgDescr pbd2
+      applyComponentDiffs
+        verbosity
+        ( \c -> for preConfComponentHook $ \computeDiff -> do
+            let input =
+                  SetupHooks.PreConfComponentInputs
+                    { SetupHooks.localBuildConfig = lbc2
+                    , SetupHooks.packageBuildDescr = pbd2
+                    , SetupHooks.component = c
+                    }
+            SetupHooks.PreConfComponentOutputs
+              { SetupHooks.componentDiff = diff
+              } <-
+              computeDiff input
+            return diff
+        )
+        pkg_descr2
+    let pbd3 = pbd2{LBC.localPkgDescr = pkg_descr}
+
+    -- Cabal per-component configure
+    externalPkgDeps <- finalCheckPackage g_pkg_descr pbd3 hookedBuildInfo pkg_info
+    lbi <- configureComponents lbc2 pbd3 pkg_info externalPkgDeps
+
+    writePersistBuildConfig mbWorkDir distPref lbi
+
+    return lbi
 
 preConfigurePackage
   :: ConfigFlags

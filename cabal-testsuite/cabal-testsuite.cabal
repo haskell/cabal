@@ -126,9 +126,11 @@ executable test-runtime-deps
   build-depends:
     , Cabal
     , Cabal-syntax
+    , Cabal-hooks
     , base
     , bytestring
     , cabal-testsuite
+    , containers
     , directory
     , exceptions
     , filepath

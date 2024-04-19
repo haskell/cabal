@@ -71,6 +71,21 @@ pull_request_rules:
       - body~=backport
       - '#approved-reviews-by>=1'
 
+  # merge+squash strategy for backports: require 1 approver instead of 2
+  - actions:
+      queue:
+        name: default
+        method: squash
+        # both update methods get absorbed by the squash, so we use the most
+        # reliable
+        update_method: merge
+    name: Put backports in the squash+merge queue
+    conditions:
+      - label=squash+merge me
+      - base!=master
+      - body~=backport
+      - '#approved-reviews-by>=1'
+
   # backports should be labeled as such
   - actions:
       label:

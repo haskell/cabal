@@ -1,3 +1,5 @@
+{-# LANGUAGE LambdaCase #-}
+
 -----------------------------------------------------------------------------
 
 -- Module      :  Distribution.Simple.Errors
@@ -20,18 +22,15 @@ import Distribution.Compiler
 import Distribution.InstalledPackageInfo
 import Distribution.ModuleName
 import Distribution.Package
-import Distribution.PackageDescription (FlagName, UnqualComponentName)
+import Distribution.PackageDescription
 import Distribution.Pretty
   ( Pretty (pretty)
   , prettyShow
   )
 import Distribution.Simple.InstallDirs
 import Distribution.Simple.PreProcess.Types (Suffix)
+import Distribution.Simple.SetupHooks.Errors
 import Distribution.System (OS)
-import Distribution.Types.BenchmarkType
-import Distribution.Types.LibraryName
-import Distribution.Types.PkgconfigVersion
-import Distribution.Types.TestType
 import Distribution.Types.VersionRange.Internal ()
 import Distribution.Version
 import Text.PrettyPrint
@@ -171,6 +170,7 @@ data CabalException
   | BadVersionDb String Version VersionRange FilePath
   | UnknownVersionDb String VersionRange FilePath
   | MissingCoveredInstalledLibrary UnitId
+  | SetupHooksException SetupHooksException
   deriving (Show, Typeable)
 
 exceptionCode :: CabalException -> Int
@@ -302,6 +302,8 @@ exceptionCode e = case e of
   BadVersionDb{} -> 8038
   UnknownVersionDb{} -> 1008
   MissingCoveredInstalledLibrary{} -> 9341
+  SetupHooksException err ->
+    setupHooksExceptionCode err
 
 versionRequirement :: VersionRange -> String
 versionRequirement range
@@ -317,7 +319,7 @@ exceptionMessage e = case e of
   NoLibraryFound -> "No executables and no library found. Nothing to do."
   CompilerNotInstalled compilerFlavor -> "installing with " ++ prettyShow compilerFlavor ++ "is not implemented"
   CantFindIncludeFile file -> "can't find include file " ++ file
-  UnsupportedTestSuite testType -> "Unsupported test suite type: " ++ testType
+  UnsupportedTestSuite test_type -> "Unsupported test suite type: " ++ test_type
   UnsupportedBenchMark benchMarkType -> "Unsupported benchmark type: " ++ benchMarkType
   NoIncludeFileFound f -> "can't find include file " ++ f
   NoModuleFound m suffixes ->
@@ -359,7 +361,7 @@ exceptionMessage e = case e of
   FailedToDetermineTarget -> "Failed to determine target."
   NoMultipleTargets -> "The 'repl' command does not support multiple targets at once."
   REPLNotSupported -> "A REPL is not supported with this compiler."
-  NoSupportBuildingTestSuite testType -> "No support for building test suite type " ++ show testType
+  NoSupportBuildingTestSuite test_type -> "No support for building test suite type " ++ show test_type
   NoSupportBuildingBenchMark benchMarkType -> "No support for building benchmark type " ++ show benchMarkType
   BuildingNotSupportedWithCompiler -> "Building is not supported with this compiler."
   ProvideHaskellSuiteTool msg -> show msg
@@ -795,3 +797,5 @@ exceptionMessage e = case e of
     "Failed to find the installed unit '"
       ++ prettyShow unitId
       ++ "' in package database stack."
+  SetupHooksException err ->
+    setupHooksExceptionMessage err

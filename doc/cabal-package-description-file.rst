@@ -441,6 +441,14 @@ describe the package as a whole:
         import Distribution.Simple
         main = defaultMain
 
+    For build type ``Hooks``, the contents of ``Setup.hs`` must be:
+
+    .. code-block:: haskell
+
+        import Distribution.Simple
+        import SetupHooks (setupHooks)
+        main = defaultMainWithSetupHooks setupHooks
+
     For build type ``Configure`` (see the section on `system-dependent
     parameters`_ below), the contents of
     ``Setup.hs`` must be:
@@ -461,7 +469,8 @@ describe the package as a whole:
     For build type ``Custom``, the file ``Setup.hs`` can be customized,
     and will be used both by ``cabal`` and other tools.
 
-    For most packages, the build type ``Simple`` is sufficient.
+    For most packages, the build type ``Simple`` is sufficient. For more exotic
+    needs, the ``Hooks`` build type is recommended; see :ref:`setup-hooks`.
 
 .. pkg-field:: license: SPDX expression
 
@@ -1869,7 +1878,8 @@ system-dependent values for these fields.
     | ``hspec-discover``       | ``hspec-discover:hspec-discover`` | since Cabal 2.0 |
     +--------------------------+-----------------------------------+-----------------+
 
-    This built-in set can be programmatically extended via ``Custom`` setup scripts; this, however, is of limited use since the Cabal solver cannot access information injected by ``Custom`` setup scripts.
+    This built-in set can be programmatically extended via use of the
+    :ref:`Hooks build type<setup-hooks>` .
 
 .. pkg-field:: buildable: boolean
 
@@ -2783,8 +2793,63 @@ The exact fields are as follows:
     root directory of the repository.
 
 
+.. _setup-hooks:
+
+Hooks
+-----
+The ``Hooks`` build type allows customising the configuration and the building
+of a package using a collection of **hooks** into the build system.
+
+Introduced in Cabal 3.14, this build type provides an alternative
+to :ref:`Custom setups <custom-setup>` which integrates better with the rest of the
+Haskell ecosystem.
+
+To use this build type in your package, you need to:
+
+  * Declare a ``cabal-version`` of at least 3.14 in your ``.cabal`` file.
+  * Declare ``build-type: Hooks`` in your ``.cabal`` file.
+  * Include a ``custom-setup`` stanza in your ``.cabal`` file, which declares
+    the version of the Hooks API your package is using.
+  * Define a ``SetupHooks.hs`` module next to your ``.cabal`` file. It must
+    export a value ``setupHooks :: SetupHooks``.
+
+More specifically, your ``.cabal`` file should resemble the following:
+
+    .. code-block:: cabal
+
+        cabal-version: 3.14
+        build-type: Hooks
+
+        custom-setup:
+          setup-depends:
+            base        >= 4.18 && < 5,
+            Cabal-hooks >= 0.1  && < 0.2
+
+while a basic ``SetupHooks.hs`` file might look like the following:
+
+    .. code-block:: haskell
+
+        module SetupHooks where
+        import Distribution.Simple.SetupHooks ( SetupHooks, noSetupHooks )
+
+        setupHooks :: SetupHooks
+        setupHooks =
+         noSetupHooks
+           { configureHooks = myConfigureHooks
+           , buildHooks = myBuildHooks }
+
+        -- ...
+
+Refer to the `Hackage documentation for the Distribution.Simple.SetupHooks module <https://hackage.haskell.org/package/Cabal-hooks/docs/Distribution-Simple-SetupHooks.html>`__
+for an overview of the ``Hooks`` API. Further motivation and a technical overview
+of the design is available in `Haskell Tech Proposal #60 <https://github.com/haskellfoundation/tech-proposals/blob/main/proposals/accepted/060-replacing-cabal-custom-build.md>`__ .
+
+.. _custom-setup:
+
 Custom setup scripts
 --------------------
+
+Deprecated since Cabal 3.14: prefer using the :ref:`Hooks build type<setup-hooks>` instead.
 
 Since Cabal 1.24, custom ``Setup.hs`` are required to accurately track
 their dependencies by declaring them in the ``.cabal`` file rather than
@@ -2801,13 +2866,13 @@ Declaring a ``custom-setup`` stanza also enables the generation of
 ``MIN_VERSION_package_(A,B,C)`` CPP macros for the Setup component.
 
 .. pkg-section:: custom-setup
-   :synopsis: Custom Setup.hs build information.
+   :synopsis: Build information for ``Custom`` and ``Hooks`` build types
    :since: 1.24
 
    A :pkg-section:`custom-setup` stanza is required for
    :pkg-field:`build-type` ``Custom`` and will be ignored (with a warning) for
    other build types. The stanza contains information needed for the compilation
-   of custom ``Setup.hs`` scripts. For example:
+   of custom ``Setup.hs`` scripts or ``SetupHooks.hs`` hooks modules. For example:
 
 ::
 
