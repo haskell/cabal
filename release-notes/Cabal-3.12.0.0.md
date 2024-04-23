@@ -66,7 +66,7 @@ Cabal and Cabal-syntax 3.12.0.0 changelog and release notes
 - `cabal init` should not suggest Cabal < 2.0 [#8680](https://github.com/haskell/cabal/issues/8680)
 
     'cabal init' no longer suggests users to set cabal-version to less than
-    2.0
+    2.0.
 
 - Remove Distribution.Utils.TempTestDir module from Cabal library [#9453](https://github.com/haskell/cabal/issues/9453) [#9454](https://github.com/haskell/cabal/pull/9454)
 
@@ -76,7 +76,7 @@ Cabal and Cabal-syntax 3.12.0.0 changelog and release notes
 - PkgConfig individual calls [#9134](https://github.com/haskell/cabal/pull/9134)
 
     `cabal` invokes `pkg-config` individually for each lib if querying for all
-    doesn't return the expected result
+    doesn't return the expected result.
 
 - Split up `Distribution.Simple.Setup` [#8130](https://github.com/haskell/cabal/pull/8130)
 
@@ -94,7 +94,7 @@ Cabal and Cabal-syntax 3.12.0.0 changelog and release notes
 
    - `checkPackage` signature has been simplified,
      you do not need to pass a specific configuration of the package, since
-     we do not flatten GenericPackageDescription no more.
+     we do not flatten GenericPackageDescription any more.
    - `checkPackageFileNames` has been removed,
      use `checkPackageFiles` instead.
    - `checkPackageFilesGPD` has been introduced,
