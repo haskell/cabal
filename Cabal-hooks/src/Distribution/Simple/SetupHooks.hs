@@ -266,7 +266,7 @@ Usage example:
 >     base        >= 4.18 && < 5,
 >     Cabal-hooks >= 0.1  && < 0.2
 >
-> The declared Cabal version should also be at least 3.12.
+> The declared Cabal version should also be at least 3.14.
 
 > -- In SetupHooks.hs, next to your .cabal file
 > module SetupHooks where

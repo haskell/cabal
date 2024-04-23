@@ -1,9 +1,10 @@
 cabal-version: 2.2
 name:          Cabal-described
-version:       3.11.0.0
+version:       3.13.0.0
 synopsis:      Described functionality for types in Cabal
 category:      Testing, Parsec
 description:   Provides rere bindings
+build-type:    Simple
 
 library
   default-language: Haskell2010
@@ -11,8 +12,8 @@ library
   ghc-options:      -Wall
   build-depends:
     , base
-    , Cabal             ^>=3.11.0.0
-    , Cabal-syntax      ^>=3.11.0.0
+    , Cabal             ^>=3.13.0.0
+    , Cabal-syntax      ^>=3.13.0.0
     , containers
     , pretty
     , QuickCheck

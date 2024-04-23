@@ -1,8 +1,9 @@
 cabal-version: 2.2
 name:          Cabal-QuickCheck
-version:       3.11.0.0
+version:       3.13.0.0
 synopsis:      QuickCheck instances for types in Cabal
 category:      Testing
+build-type:    Simple
 description:
   Provides QuickCheck Arbitrary instances for some types in Cabal
 
@@ -13,8 +14,8 @@ library
   build-depends:
     , base
     , bytestring
-    , Cabal         ^>=3.11.0.0
-    , Cabal-syntax  ^>=3.11.0.0
+    , Cabal         ^>=3.13.0.0
+    , Cabal-syntax  ^>=3.13.0.0
     , QuickCheck    ^>=2.13.2 || ^>=2.14
 
   exposed-modules:

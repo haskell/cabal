@@ -3,6 +3,7 @@ resolver: lts-18.28 # ghc-8.10.7
 packages:
 - Cabal-syntax/
 - Cabal/
+- Cabal-hooks/
 - Cabal-described
 - Cabal-QuickCheck/
 - Cabal-tests/
