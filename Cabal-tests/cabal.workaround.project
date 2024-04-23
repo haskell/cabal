@@ -1,4 +1,4 @@
--- WARNING: This project is a workaround, needed for cabal-3.10.*.
+-- WARNING: This project is a workaround, needed for cabal < 3.12.
 import: ../project-cabal/ghc-options.config
 import: ../project-cabal/ghc-latest.config
 import: ../project-cabal/constraints.config
