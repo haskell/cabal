@@ -168,9 +168,9 @@ Cabal and Cabal-syntax 3.12.0.0 changelog and release notes
 
 - Add support for a number of architectures:
 
-    - Add support for the 64-bit RISC-V architecture [#9062](https://github.com/haskell/cabal/pull/9062)
-    - Add support for 64-bit LoongArch architecture [#9215](https://github.com/haskell/cabal/pull/9215)
-    - Add support for 64-bit SPARC as a separate architecture [#9445](https://github.com/haskell/cabal/pull/9445)
+    - RISC-V [#9062](https://github.com/haskell/cabal/pull/9062)
+    - 64-bit LoongArch [#9215](https://github.com/haskell/cabal/pull/9215)
+    - 64-bit SPARC as a separate architecture [#9445](https://github.com/haskell/cabal/pull/9445)
 
 - Don't report `index.html` file as created, if not created by Haddock [#5120](https://github.com/haskell/cabal/issues/5120) [#9332](https://github.com/haskell/cabal/pull/9332)
 
