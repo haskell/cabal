@@ -9,7 +9,7 @@ extra-doc-files:    CHANGELOG.md
 
 custom-setup
   setup-depends:
-      Cabal <= 3.11
+      Cabal <= 3.13
     , base
 
 common warnings

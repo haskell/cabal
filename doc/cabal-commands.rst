@@ -312,7 +312,7 @@ Or using the json output:
 .. code-block:: json
 
     {
-        "cabal-version": "3.11.0.0",
+        "cabal-version": "3.13.0.0",
         "compiler": {
             "flavour": "ghc",
             "id": "ghc-9.6.4",
