@@ -22,6 +22,11 @@ import qualified Data.List.NonEmpty    as NE
 tests :: TestTree
 tests = checkTests
 
+-- | Relative path from the Cabal-tests package directory to this test suite's
+-- parser tests directory.
+testRelativePath :: FilePath
+testRelativePath = "tests" </> "ParserTests"
+
 -------------------------------------------------------------------------------
 -- Regressions
 -------------------------------------------------------------------------------
@@ -73,7 +78,7 @@ checkTest fp = cabalGoldenTest fp correct $ do
             unlines (map show (checkPackage gpd))
         Left (_, errs) -> unlines $ map (("ERROR: " ++) . showPError fp) $ NE.toList errs
   where
-    input = "tests" </> "ParserTests" </> "regressions" </> fp
+    input = testRelativePath </> "regressions" </> fp
     correct = replaceExtension input "check"
 
 -------------------------------------------------------------------------------

@@ -44,6 +44,11 @@ tests = testGroup "parsec tests"
     , ipiTests
     ]
 
+-- | Relative path from the Cabal-tests package directory to this test suite's
+-- parser tests directory.
+testRelativePath :: FilePath
+testRelativePath = "tests" </> "ParserTests"
+
 -------------------------------------------------------------------------------
 -- Warnings
 -------------------------------------------------------------------------------
@@ -77,7 +82,7 @@ warningTests = testGroup "warnings triggered"
 
 warningTest :: PWarnType -> FilePath -> TestTree
 warningTest wt fp = testCase (show wt) $ do
-    contents <- BS.readFile $ "tests" </> "ParserTests" </> "warnings" </> fp
+    contents <- BS.readFile $ testRelativePath </> "warnings" </> fp
 
     let res =  parseGenericPackageDescription contents
     let (warns, x) = runParseResult res
@@ -145,7 +150,7 @@ errorTest fp = cabalGoldenTest fp correct $ do
         Left (v, errs) ->
             unlines $ ("VERSION: " ++ show v) : map (showPError fp) (NE.toList errs)
   where
-    input = "tests" </> "ParserTests" </> "errors" </> fp
+    input = testRelativePath </> "errors" </> fp
     correct = replaceExtension input "errors"
 
 -------------------------------------------------------------------------------
@@ -223,7 +228,7 @@ formatGoldenTest fp = cabalGoldenTest "format" correct $ do
                 maybe "unknown-version" prettyShow csv :
                 map (showPError fp) (NE.toList errs)
   where
-    input = "tests" </> "ParserTests" </> "regressions" </> fp
+    input = testRelativePath </> "regressions" </> fp
     correct = replaceExtension input "format"
 
 #ifdef MIN_VERSION_tree_diff
@@ -236,7 +241,7 @@ treeDiffGoldenTest fp = ediffGolden goldenTest "expr" exprFile $ do
         Right gpd      -> pure (toExpr gpd)
         Left (_, errs) -> fail $ unlines $ "ERROR" : map (showPError fp) (NE.toList errs)
   where
-    input = "tests" </> "ParserTests" </> "regressions" </> fp
+    input = testRelativePath </> "regressions" </> fp
     exprFile = replaceExtension input "expr"
 #endif
 
@@ -272,7 +277,7 @@ formatRoundTripTest fp = testCase "roundtrip" $ do
             Left (_, errs) -> do
                 void $ assertFailure $ unlines (map (showPError fp) $ NE.toList errs)
                 fail "failure"
-    input = "tests" </> "ParserTests" </> "regressions" </> fp
+    input = testRelativePath </> "regressions" </> fp
 
 -------------------------------------------------------------------------------
 -- InstalledPackageInfo regressions
@@ -304,7 +309,7 @@ ipiFormatGoldenTest fp = cabalGoldenTest "format" correct $ do
         Right (ws, ipi)  ->
             unlines ws ++ IPI.showInstalledPackageInfo ipi
   where
-    input = "tests" </> "ParserTests" </> "ipi" </> fp
+    input = testRelativePath </> "ipi" </> fp
     correct = replaceExtension input "format"
 
 #ifdef MIN_VERSION_tree_diff
@@ -316,7 +321,7 @@ ipiTreeDiffGoldenTest fp = ediffGolden goldenTest "expr" exprFile $ do
         Left err -> fail $ "ERROR " ++ show err
         Right (_ws, ipi) -> pure (toExpr ipi)
   where
-    input = "tests" </> "ParserTests" </> "ipi" </> fp
+    input = testRelativePath </> "ipi" </> fp
     exprFile = replaceExtension input "expr"
 #endif
 
@@ -346,7 +351,7 @@ ipiFormatRoundTripTest fp = testCase "roundtrip" $ do
             Left err       -> do
               void $ assertFailure $ show err
               fail "failure"
-    input = "tests" </> "ParserTests" </> "ipi" </> fp
+    input = testRelativePath </> "ipi" </> fp
 
 -------------------------------------------------------------------------------
 -- Main

@@ -1,0 +1,14 @@
+-- WARNING: This project is a workaround, needed for cabal-3.10.*.
+import: ../project-cabal/ghc-options.config
+import: ../project-cabal/ghc-latest.config
+import: ../project-cabal/constraints.config
+
+packages:
+    ../Cabal
+  , ../Cabal-described
+  , ../Cabal-syntax
+  , ../Cabal-QuickCheck
+  , ../Cabal-tree-diff
+  , .
+
+tests: True
