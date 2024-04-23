@@ -57,8 +57,8 @@ cabal-install and cabal-install-solver 3.12.1.0 changelog and release notes
 
 - Add support for authentication tokens for uploading to Hackage [#6738](https://github.com/haskell/cabal/issues/6738) [#9058](https://github.com/haskell/cabal/pull/9058)
 
-    A new flag `--token` (`-t`) has been created. Token authentication takes 
-    precedence over username and password meaning that, if a token is set, 
+    A new flag `--token` (`-t`) has been created. Token authentication takes
+    precedence over username and password meaning that, if a token is set,
     the username and password flags are ignored.
 
 - Make --(test-)show-details=direct the default [#8942](https://github.com/haskell/cabal/pull/8942)
