@@ -38,7 +38,7 @@ Cabal and Cabal-syntax 3.12.0.0 changelog and release notes
     build the package. This allows us to configure all the packages we intend
     to load into the repl without building any dependenices which we will load
     in the same session, because the promise is satisifed due to loading the
-    package and it's dependency into one multi-session which ensures the
+    package and its dependency into one multi-session which ensures the
     dependency is built before it is needed.
 
     A user of ./Setup configure specifies a promised dependency by using the
@@ -72,12 +72,6 @@ Cabal and Cabal-syntax 3.12.0.0 changelog and release notes
 
     This library was only used by internal tests, and now lives in the
     `Cabal-tests` library which is shared across test components.
-
-- Distinguish `powerpc64le`, by adding `PPC64LE` constructor to type `Arch` [#9534](https://github.com/haskell/cabal/issues/9534) [#9535](https://github.com/haskell/cabal/pull/9535)
-
-    Adds constructor `PPC64LE` to type `Arch` to distinguish architecture
-    powerpc64le from powerpc64. Existing constructor `PPC64` now exclusively
-    represents powerpc64.
 
 - PkgConfig individual calls [#9134](https://github.com/haskell/cabal/pull/9134)
 
@@ -118,7 +112,7 @@ Cabal and Cabal-syntax 3.12.0.0 changelog and release notes
     the repl and instead instruct the command to write the necessary build
     flags to a directiory. The option is called `--repl-multi-file <DIR>`.
 
-    This is useful when starting multi-component sessions as we want to query
+    This is useful when starting multi-component sessions, as we want to query
     Setup.hs for the arguments which are needed to build each component but
     not for ./Setup to start the repl itself.
 
@@ -169,11 +163,17 @@ Cabal and Cabal-syntax 3.12.0.0 changelog and release notes
     to decide whether to allow or discard such inexact matches.
 
 - Document `remote-repo-cache` as implemented. [#8737](https://github.com/haskell/cabal/issues/8737) [#8738](https://github.com/haskell/cabal/pull/8738)
+
 - Deduplicate LD_LIBRARY_PATH when running tests [#8728](https://github.com/haskell/cabal/pull/8728)
+
 - Add support for the 64-bit RISC-V architecture [#9062](https://github.com/haskell/cabal/pull/9062)
+
 - Add support for 64-bit LoongArch architecture [#9215](https://github.com/haskell/cabal/pull/9215)
+
 - Don't report `index.html` file as created, if not created by Haddock [#5120](https://github.com/haskell/cabal/issues/5120) [#9332](https://github.com/haskell/cabal/pull/9332)
+
 - Enable using $ORIGIN in RPATH on GNU/Hurd [#9441](https://github.com/haskell/cabal/pull/9441)
+
 - Add support for 64-bit SPARC as a separate architecture [#9445](https://github.com/haskell/cabal/pull/9445)
 
 - Make check comply with Hackage requirements [#8897](https://github.com/haskell/cabal/pull/8897)
@@ -224,7 +224,7 @@ Cabal and Cabal-syntax 3.12.0.0 changelog and release notes
     This warning is not propagated to parser warnings, so e.g.
     readGenericPackageDescription doesn't warn about it.  This is because all
     parser warnings prevent uploads to Hackage, and using braces (or not) is
-    opinionated choice.
+    a matter of opinion.
 
 - Distinguish `powerpc64le`, by adding `PPC64LE` constructor to type `Arch` [#9534](https://github.com/haskell/cabal/issues/9534) [#9535](https://github.com/haskell/cabal/pull/9535)
 
@@ -248,8 +248,8 @@ Cabal and Cabal-syntax 3.12.0.0 changelog and release notes
 
 - Add language extension `TypeAbstractions` [#9496](https://github.com/haskell/cabal/issues/9496) [#9502](https://github.com/haskell/cabal/pull/9502)
 
-- Add support for the 64-bit RISC-V architecture [#9062](https://github.com/haskell/cabal/pull/9062)
 - Add support for 64-bit LoongArch architecture [#9215](https://github.com/haskell/cabal/pull/9215)
+
 - Add support for 64-bit SPARC as a separate architecture [#9445](https://github.com/haskell/cabal/pull/9445)
 
 - Update SPDX License List to version `3.23 2024-02-08` [#9818](https://github.com/haskell/cabal/pull/9818)
