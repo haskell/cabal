@@ -426,8 +426,9 @@ installAction flags@NixStyleFlags{extraFlags, configFlags, installFlags, project
     hcFlavor = flagToMaybe projectConfigHcFlavor
     hcPath = flagToMaybe projectConfigHcPath
     hcPkg = flagToMaybe projectConfigHcPkg
+    extraPath = fromNubList packageConfigProgramPathExtra ++ fromNubList projectConfigProgPathExtra
 
-  configProgDb <- prependProgramSearchPath verbosity ((fromNubList packageConfigProgramPathExtra) ++ (fromNubList projectConfigProgPathExtra)) defaultProgramDb
+  configProgDb <- prependProgramSearchPath verbosity extraPath [] defaultProgramDb
   let
     -- ProgramDb with directly user specified paths
     preProgDb =

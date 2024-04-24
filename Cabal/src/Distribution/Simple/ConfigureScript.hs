@@ -164,7 +164,7 @@ runConfigureScript verbosity flags lbi = do
       maybeHostFlag = if hp == buildPlatform then [] else ["--host=" ++ show (pretty hp)]
       args' = configureFile' : args ++ ["CC=" ++ ccProgShort] ++ maybeHostFlag
       shProg = simpleProgram "sh"
-  progDb <- prependProgramSearchPath verbosity extraPath emptyProgramDb
+  progDb <- prependProgramSearchPath verbosity extraPath [] emptyProgramDb
   shConfiguredProg <-
     lookupProgram shProg
       `fmap` configureProgram verbosity shProg progDb

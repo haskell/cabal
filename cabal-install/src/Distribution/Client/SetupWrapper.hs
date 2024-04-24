@@ -91,6 +91,7 @@ import Distribution.Simple.Program
   )
 import Distribution.Simple.Program.Db
   ( prependProgramSearchPath
+  , progOverrideEnv
   )
 import Distribution.Simple.Program.Find
   ( programSearchPathAsPATHVar
@@ -568,7 +569,7 @@ invoke verbosity path args options = do
     Nothing -> return ()
     Just logHandle -> info verbosity $ "Redirecting build log to " ++ show logHandle
 
-  progDb <- prependProgramSearchPath verbosity (useExtraPathEnv options) (useProgramDb options)
+  progDb <- prependProgramSearchPath verbosity (useExtraPathEnv options) (useExtraEnvOverrides options) (useProgramDb options)
 
   searchpath <-
     programSearchPathAsPATHVar $ getProgramSearchPath progDb
@@ -578,7 +579,7 @@ invoke verbosity path args options = do
       [ ("PATH", Just searchpath)
       , ("HASKELL_DIST_DIR", Just (getSymbolicPath $ useDistPref options))
       ]
-        ++ useExtraEnvOverrides options
+        ++ progOverrideEnv progDb
 
   let loggingHandle = case useLoggingHandle options of
         Nothing -> Inherit

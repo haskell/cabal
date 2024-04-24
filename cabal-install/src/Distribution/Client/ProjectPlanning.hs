@@ -480,7 +480,8 @@ configureCompiler
       )
       $ do
         liftIO $ info verbosity "Compiler settings changed, reconfiguring..."
-        progdb <- liftIO $ prependProgramSearchPath verbosity (fromNubList packageConfigProgramPathExtra) defaultProgramDb
+        let extraPath = fromNubList packageConfigProgramPathExtra
+        progdb <- liftIO $ prependProgramSearchPath verbosity extraPath [] defaultProgramDb
         let progdb' = userSpecifyPaths (Map.toList (getMapLast packageConfigProgramPaths)) progdb
         result@(_, _, progdb'') <-
           liftIO $

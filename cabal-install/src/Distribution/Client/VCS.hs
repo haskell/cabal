@@ -206,7 +206,7 @@ configureVCS
   -> VCS Program
   -> IO (VCS ConfiguredProgram)
 configureVCS verbosity progPaths vcs@VCS{vcsProgram = prog} = do
-  progPath <- prependProgramSearchPath verbosity progPaths emptyProgramDb
+  progPath <- prependProgramSearchPath verbosity progPaths [] emptyProgramDb
   asVcsConfigured <$> requireProgram verbosity prog progPath
   where
     asVcsConfigured (prog', _) = vcs{vcsProgram = prog'}

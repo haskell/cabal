@@ -1,0 +1,89 @@
+cabal-version: 3.14
+name:          pbts
+version:       0.1.0.0
+license:       BSD-3-Clause
+author:        sheaf
+maintainer:    sheaf
+category:      Testing
+build-type:    Hooks
+description:   A package with build-tool depends (external & internal)
+
+data-dir:
+  data
+data-files:
+  PP2.txt
+
+common warnings
+  ghc-options: -Wall
+
+custom-setup
+  setup-depends:
+    base,
+    containers,
+    filepath,
+    Cabal,
+    Cabal-hooks
+
+executable custom-pp2
+  import:           warnings
+  hs-source-dirs:   tool
+  main-is:          Main.hs
+  build-depends:    base, bt
+  autogen-modules:  Paths_pbts
+  other-modules:    Paths_pbts
+  default-language: Haskell2010
+
+library
+  import:           warnings
+  exposed-modules:  MyLib1, MyLib2
+  autogen-modules:  MyLib1, MyLib2
+  build-depends:    base
+  hs-source-dirs:   src
+  default-language: Haskell2010
+  build-tool-depends:
+    bt:custom-pp1,
+    pbts:custom-pp2
+
+executable pbts-exe
+  import:           warnings
+  default-language: Haskell2010
+  hs-source-dirs:   exe, src
+  other-modules:    Call
+  main-is:          Main.hs
+  build-depends:
+    base,
+    template-haskell,
+    process
+  build-tool-depends:
+    bt:custom-pp1,
+    pbts:custom-pp2
+
+test-suite pbts-test
+  import:           warnings
+  default-language: Haskell2010
+  type:             exitcode-stdio-1.0
+  hs-source-dirs:   test, src
+  other-modules:    Call
+  main-is:          Main.hs
+  build-depends:
+    base,
+    template-haskell,
+    process
+  build-tool-depends:
+    bt:custom-pp1,
+    pbts:custom-pp2
+
+benchmark pbts-bench
+  import:           warnings
+  default-language: Haskell2010
+  type:             exitcode-stdio-1.0
+  hs-source-dirs:   bench, src
+  other-modules:    Call
+  main-is:          Main.hs
+  build-depends:
+    base,
+    template-haskell,
+    process
+  build-tool-depends:
+    bt:custom-pp1,
+    pbts:custom-pp2

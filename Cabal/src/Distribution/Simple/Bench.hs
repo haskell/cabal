@@ -23,21 +23,27 @@ module Distribution.Simple.Bench
 import Distribution.Compat.Prelude
 import Prelude ()
 
+import Distribution.Compat.Environment
 import qualified Distribution.PackageDescription as PD
 import Distribution.Pretty
+import Distribution.Simple.Build (addInternalBuildTools)
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Compiler
+import Distribution.Simple.Errors
 import Distribution.Simple.InstallDirs
 import qualified Distribution.Simple.LocalBuildInfo as LBI
+import Distribution.Simple.Program.Db
+import Distribution.Simple.Program.Find
+import Distribution.Simple.Program.Run
 import Distribution.Simple.Setup.Benchmark
 import Distribution.Simple.Setup.Common
 import Distribution.Simple.UserHooks
 import Distribution.Simple.Utils
+import Distribution.System (Platform (Platform))
+import Distribution.Types.Benchmark (Benchmark (benchmarkBuildInfo))
+import Distribution.Types.UnqualComponentName
 import Distribution.Utils.Path
 
-import Distribution.Types.UnqualComponentName
-
-import Distribution.Simple.Errors
 import System.Directory (doesFileExist)
 
 -- | Perform the \"@.\/setup bench@\" action.
@@ -61,12 +67,22 @@ bench args pkg_descr lbi flags = do
 
       -- Run the benchmark
       doBench :: (PD.Benchmark, LBI.ComponentLocalBuildInfo) -> IO ExitCode
-      doBench (bm, _clbi) =
+      doBench (bm, clbi) = do
+        let lbiForBench =
+              lbi
+                { -- Include any build-tool-depends on build tools internal to the current package.
+                  LBI.withPrograms =
+                    addInternalBuildTools
+                      pkg_descr
+                      lbi
+                      (benchmarkBuildInfo bm)
+                      (LBI.withPrograms lbi)
+                }
         case PD.benchmarkInterface bm of
           PD.BenchmarkExeV10 _ _ -> do
-            let cmd = i $ LBI.buildDir lbi </> makeRelativePathEx (name </> name <.> exeExtension (LBI.hostPlatform lbi))
+            let cmd = i $ LBI.buildDir lbiForBench </> makeRelativePathEx (name </> name <.> exeExtension (LBI.hostPlatform lbi))
                 options =
-                  map (benchOption pkg_descr lbi bm) $
+                  map (benchOption pkg_descr lbiForBench bm) $
                     benchmarkOptions flags
             -- Check that the benchmark executable exists.
             exists <- doesFileExist cmd
@@ -74,10 +90,29 @@ bench args pkg_descr lbi flags = do
               dieWithException verbosity $
                 NoBenchMarkProgram cmd
 
+            existingEnv <- getEnvironment
+
+            -- Compute the appropriate environment for running the benchmark
+            let progDb = LBI.withPrograms lbiForBench
+                pathVar = progSearchPath progDb
+                envOverrides = progOverrideEnv progDb
+            newPath <- programSearchPathAsPATHVar pathVar
+            overrideEnv <- fromMaybe [] <$> getEffectiveEnvironment ([("PATH", Just newPath)] ++ envOverrides)
+            let shellEnv = overrideEnv ++ existingEnv
+
+            -- Add (DY)LD_LIBRARY_PATH if needed
+            shellEnv' <-
+              if LBI.withDynExe lbiForBench
+                then do
+                  let (Platform _ os) = LBI.hostPlatform lbiForBench
+                  paths <- LBI.depLibraryPaths True False lbiForBench clbi
+                  return (addLibraryPath os paths shellEnv)
+                else return shellEnv
+
             notice verbosity $ startMessage name
             -- This will redirect the child process
             -- stdout/stderr to the parent process.
-            exitcode <- rawSystemExitCode verbosity mbWorkDir cmd options
+            exitcode <- rawSystemExitCode verbosity mbWorkDir cmd options (Just shellEnv')
             notice verbosity $ finishMessage name exitcode
             return exitcode
           _ -> do

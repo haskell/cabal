@@ -336,6 +336,15 @@ haddock_setupHooks
       let
         component = targetComponent target
         clbi = targetCLBI target
+        bi = componentBuildInfo component
+        -- Include any build-tool-depends on build tools internal to the current package.
+        progs' = addInternalBuildTools pkg_descr lbi bi (withPrograms lbi)
+        lbi' =
+          lbi
+            { withPrograms = progs'
+            , withPackageDB = withPackageDB lbi ++ [internalPackageDB]
+            , installedPkgs = index
+            }
 
         runPreBuildHooks :: LocalBuildInfo -> TargetInfo -> IO ()
         runPreBuildHooks lbi2 tgt =
@@ -348,15 +357,7 @@ haddock_setupHooks
            in for_ mbPbcRules $ \pbcRules -> do
                 (ruleFromId, _mons) <- SetupHooks.computeRules verbosity inputs pbcRules
                 SetupHooks.executeRules verbosity lbi2 tgt ruleFromId
-      preBuildComponent runPreBuildHooks verbosity lbi target
-
-      let
-        lbi' =
-          lbi
-            { withPackageDB = withPackageDB lbi ++ [internalPackageDB]
-            , installedPkgs = index
-            }
-
+      preBuildComponent runPreBuildHooks verbosity lbi' target
       preprocessComponent pkg_descr component lbi' clbi False verbosity suffixes
       let
         doExe com = case (compToExe com) of
