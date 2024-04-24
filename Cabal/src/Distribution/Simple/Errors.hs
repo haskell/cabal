@@ -48,7 +48,8 @@ data CabalException
   | EnableBenchMark
   | BenchMarkNameDisabled String
   | NoBenchMark String
-  | NoLibraryFound
+  | -- | @NoLibraryFound@ has been downgraded to a warning, and is therefore no longer emitted.
+    NoLibraryFound
   | CompilerNotInstalled CompilerFlavor
   | CantFindIncludeFile String
   | UnsupportedTestSuite String

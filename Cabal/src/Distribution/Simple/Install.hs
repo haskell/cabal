@@ -112,9 +112,34 @@ install pkg_descr lbi flags = do
     verbosity = fromFlag (copyVerbosity flags)
     copydest = fromFlag (copyDest flags)
 
+<<<<<<< HEAD
     checkHasLibsOrExes =
       unless (hasLibs pkg_descr || hasForeignLibs pkg_descr || hasExes pkg_descr) $
         dieWithException verbosity NoLibraryFound
+=======
+    -- It's not necessary to do these in build-order, but it's harmless
+    withNeededTargetsInBuildOrder' pkg_descr lbi (map nodeKey targets) $ \target -> do
+      let comp = targetComponent target
+          clbi = targetCLBI target
+      copyComponent verbosity pkg_descr lbi comp clbi copydest
+      for_ installComponentHook $ \instAction ->
+        let inputs =
+              SetupHooks.InstallComponentInputs
+                { copyFlags = flags
+                , localBuildInfo = lbi
+                , targetInfo = target
+                }
+         in instAction inputs
+    where
+      common = copyCommonFlags flags
+      distPref = fromFlag $ setupDistPref common
+      verbosity = fromFlag $ setupVerbosity common
+      copydest = fromFlag (copyDest flags)
+
+      checkHasLibsOrExes =
+        unless (hasLibs pkg_descr || hasForeignLibs pkg_descr || hasExes pkg_descr) $
+          warn verbosity "No executables and no library found. Nothing to do."
+>>>>>>> 312a4124e (Downgrade NoLibraryFound from an error to a warning)
 
 -- | Copy package global files.
 copyPackage
