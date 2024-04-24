@@ -2869,10 +2869,13 @@ Declaring a ``custom-setup`` stanza also enables the generation of
    :synopsis: Build information for ``Custom`` and ``Hooks`` build types
    :since: 1.24
 
-   A :pkg-section:`custom-setup` stanza is required for
-   :pkg-field:`build-type` ``Custom`` and will be ignored (with a warning) for
-   other build types. The stanza contains information needed for the compilation
-   of custom ``Setup.hs`` scripts or ``SetupHooks.hs`` hooks modules. For example:
+   A :pkg-section:`custom-setup` stanza is required for ``Custom`` and ``Hooks``
+   :pkg-field:`build-type`, and will be ignored (with a warning)
+   for other build types.
+
+   The stanza contains information needed for the compilation
+   of custom ``Setup.hs`` scripts, and of ``SetupHooks.hs`` hooks.
+   For example:
 
 ::
 
@@ -2884,7 +2887,7 @@ Declaring a ``custom-setup`` stanza also enables the generation of
 .. pkg-field:: setup-depends: package list
     :since: 1.24
 
-    The dependencies needed to compile ``Setup.hs``. See the
+    The dependencies needed to compile ``Setup.hs`` or ``SetupHooks.hs``. See the
     :pkg-field:`build-depends` field for a description of the syntax expected by
     this field.
 
