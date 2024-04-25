@@ -4,5 +4,6 @@ import Test.Cabal.Prelude
 -- build failure.
 main = cabalTest $ do
   withProjectFile "cabal.project" $ do
-    fails $ cabal "v2-build" ["pkg"]
+    res <- recordMode DoNotRecord $ fails $ cabal' "v2-build" ["pkg"]
+    assertOutputContains "[autogen-guard]" res
 

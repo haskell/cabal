@@ -2128,9 +2128,21 @@ getProgArgs :: [ElaboratedConfiguredPackage] -> String -> Maybe [String]
 getProgArgs [] _ = Nothing
 getProgArgs (elab : pkgs) name
   | pkgName (elabPkgSourceId elab) == mkPackageName name =
-      Map.lookup "ghc" (elabProgramArgs elab)
+      removeHideAllPackages $ Map.lookup "ghc" (elabProgramArgs elab)
   | otherwise =
       getProgArgs pkgs name
+  where
+    removeHideAllPackages mbArgs =
+      -- Filter out "-hide-all-packages", as we pass that by default
+      -- to GHC invocations in order to avoid it picking up environment files.
+      -- See https://github.com/haskell/cabal/issues/4010
+      case filter (/= "-hide-all-packages") <$> mbArgs of
+        Just args'
+          | null args' ->
+              Nothing
+          | otherwise ->
+              Just args'
+        Nothing -> Nothing
 
 ---------------------------------
 -- Test utils to plan and build
