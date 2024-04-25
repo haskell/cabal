@@ -34,8 +34,8 @@ Cabal's users what their most pressing problems are with Cabal and
 [Hackage]. You may have a favourite Cabal bug or limitation. Look at
 Cabal's [bug tracker]. Ensure that the problem is reported there and
 adequately described. Comment on the issue to report how much of a
-problem the bug is for you. Subscribe to the issues's notifications to
-discussed requirements and keep informed on progress. For feature
+problem the bug is for you. Subscribe to the issue's notifications to
+discuss requirements and keep informed on progress. For feature
 requests, it is helpful if there is a description of how you would
 expect to interact with the new feature.
 
