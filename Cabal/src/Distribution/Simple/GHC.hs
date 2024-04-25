@@ -89,6 +89,7 @@ import Control.Arrow ((***))
 import Control.Monad (forM_)
 import Data.List (stripPrefix)
 import qualified Data.Map as Map
+import Data.Maybe (fromJust)
 import Distribution.CabalSpecVersion
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
@@ -99,6 +100,7 @@ import Distribution.Simple.Build.Inputs (PreBuildComponentInputs (..))
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Compiler
 import Distribution.Simple.Errors
+import Distribution.Simple.Flag
 import qualified Distribution.Simple.GHC.Build as GHC
 import Distribution.Simple.GHC.Build.Modules (BuildWay (..))
 import Distribution.Simple.GHC.Build.Utils
@@ -126,7 +128,6 @@ import Distribution.Utils.Path
 import Distribution.Verbosity
 import Distribution.Version
 import Language.Haskell.Extension
-import Data.Maybe (fromJust)
 import System.FilePath
   ( isRelative
   , takeDirectory
@@ -160,8 +161,10 @@ import Distribution.Simple.Setup.Build
 -- as well as toolchain programs such as @ar@, @ld.
 configure
   :: Verbosity
-  -> Maybe FilePath -- ^ user-specified @ghc@ path (optional)
-  -> Maybe FilePath -- ^ user-specified @ghc-pkg@ path (optional)
+  -> Maybe FilePath
+  -- ^ user-specified @ghc@ path (optional)
+  -> Maybe FilePath
+  -- ^ user-specified @ghc-pkg@ path (optional)
   -> ProgramDb
   -> IO (Compiler, Maybe Platform, ProgramDb)
 configure verbosity hcPath hcPkgPath conf0 = do
@@ -172,11 +175,11 @@ configure verbosity hcPath hcPkgPath conf0 = do
 -- | Configure GHC.
 configureCompiler
   :: Verbosity
-  -> Maybe FilePath -- ^ user-specified @ghc@ path (optional)
+  -> Maybe FilePath
+  -- ^ user-specified @ghc@ path (optional)
   -> ProgramDb
   -> IO (Compiler, Maybe Platform, ProgramDb)
 configureCompiler verbosity hcPath conf0 = do
-
   (ghcProg, ghcVersion, progdb1) <-
     requireProgramVersion
       verbosity
@@ -230,9 +233,12 @@ configureCompiler verbosity hcPath conf0 = do
 
       compilerAbiTag :: AbiTag
       compilerAbiTag =
-        maybe NoAbiTag AbiTag
-          (Map.lookup "Project Unit Id" ghcInfoMap
-            >>= stripPrefix (prettyShow compilerId <> "-"))
+        maybe
+          NoAbiTag
+          AbiTag
+          ( Map.lookup "Project Unit Id" ghcInfoMap
+              >>= stripPrefix (prettyShow compilerId <> "-")
+          )
 
   let comp =
         Compiler
@@ -256,10 +262,10 @@ compilerProgramDb
   :: Verbosity
   -> Compiler
   -> ProgramDb
-  -> Maybe FilePath -- ^ user-specified @ghc-pkg@ path (optional)
+  -> Maybe FilePath
+  -- ^ user-specified @ghc-pkg@ path (optional)
   -> IO ProgramDb
 compilerProgramDb verbosity comp progdb1 hcPkgPath = do
-
   let
     ghcProg = fromJust $ lookupProgram ghcProgram progdb1
     ghcVersion = compilerVersion comp

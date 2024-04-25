@@ -502,11 +502,11 @@ profilingVanillaSupported comp = waySupported "p" comp
 profilingDynamicSupported :: Compiler -> Maybe Bool
 profilingDynamicSupported comp
   | GHC <- compilerFlavor comp
-  -- Certainly not before 9.11, as prof+dyn was not implemented yet.
-  , compilerVersion comp <= mkVersion [9, 11, 0]
-  = Just False
-  | otherwise
-  = waySupported "p_dyn" comp
+  , -- Certainly not before 9.11, as prof+dyn was not implemented yet.
+    compilerVersion comp <= mkVersion [9, 11, 0] =
+      Just False
+  | otherwise =
+      waySupported "p_dyn" comp
 
 -- | Either profiling dynamic is definitely supported or we don't know (so assume
 -- it is)

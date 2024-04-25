@@ -88,8 +88,8 @@ import Distribution.Version
 import Control.Arrow ((***))
 import Control.Monad (msum)
 import Data.Char (isLower)
-import Data.Maybe (fromJust)
 import qualified Data.Map as Map
+import Data.Maybe (fromJust)
 import System.Directory
   ( canonicalizePath
   , createDirectoryIfMissing
@@ -113,8 +113,10 @@ import qualified System.Info
 -- as well as toolchain programs such as @ar@, @ld.
 configure
   :: Verbosity
-  -> Maybe FilePath -- ^ user-specified @ghcjs@ path (optional)
-  -> Maybe FilePath -- ^ user-specified @ghcjs-pkg@ path (optional)
+  -> Maybe FilePath
+  -- ^ user-specified @ghcjs@ path (optional)
+  -> Maybe FilePath
+  -- ^ user-specified @ghcjs-pkg@ path (optional)
   -> ProgramDb
   -> IO (Compiler, Maybe Platform, ProgramDb)
 configure verbosity hcPath hcPkgPath conf0 = do
@@ -125,7 +127,8 @@ configure verbosity hcPath hcPkgPath conf0 = do
 -- | Configure GHCJS.
 configureCompiler
   :: Verbosity
-  -> Maybe FilePath -- ^ user-specified @ghc@ path (optional)
+  -> Maybe FilePath
+  -- ^ user-specified @ghc@ path (optional)
   -> ProgramDb
   -> IO (Compiler, Maybe Platform, ProgramDb)
 configureCompiler verbosity hcPath conf0 = do
@@ -175,10 +178,10 @@ compilerProgramDb
   :: Verbosity
   -> Compiler
   -> ProgramDb
-  -> Maybe FilePath -- ^ user-specified @ghc-pkg@ path (optional)
+  -> Maybe FilePath
+  -- ^ user-specified @ghc-pkg@ path (optional)
   -> IO ProgramDb
 compilerProgramDb verbosity comp progdb1 hcPkgPath = do
-
   let
     ghcjsProg = fromJust $ lookupProgram ghcjsProgram progdb1
     ghcjsVersion = compilerVersion comp
