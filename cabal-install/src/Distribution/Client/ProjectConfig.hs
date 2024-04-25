@@ -186,6 +186,14 @@ import Distribution.Simple.Setup
   , toFlag
   , pattern Flag
   )
+import Distribution.Simple.Utils
+  ( createDirectoryIfMissingVerbose
+  , dieWithException
+  , maybeExit
+  , notice
+  , rawSystemIOWithEnv
+  , warn
+  )
 import Distribution.System
   ( Platform
   )
