@@ -1,0 +1,70 @@
+cabal-version: 3.0
+name:          hooks-exe
+version:       0.1
+copyright:     2024, Cabal Development Team
+license:       BSD-3-Clause
+author:        Cabal Development Team <cabal-devel@haskell.org>
+maintainer:    cabal-devel@haskell.org
+homepage:      http://www.haskell.org/cabal/
+bug-reports:   https://github.com/haskell/cabal/issues
+synopsis:      cabal-install integration for Hooks build-type
+description:
+  Layer for integrating Hooks build-type with cabal-install
+category:      Distribution
+build-type:    Simple
+
+extra-source-files:
+  readme.md changelog.md
+
+common warnings
+  ghc-options:
+    -Wall
+    -Wcompat
+    -Wnoncanonical-monad-instances -Wincomplete-uni-patterns
+    -Wincomplete-record-updates
+    -fno-warn-unticked-promoted-constructors
+  if impl(ghc < 8.8)
+    ghc-options: -Wnoncanonical-monadfail-instances
+  if impl(ghc >=9.0)
+    -- Warning: even though introduced with GHC 8.10, -Wunused-packages
+    -- gives false positives with GHC 8.10.
+    ghc-options: -Wunused-packages
+
+-- NB: we are not using named sub-libraries, as the cabal-install bootstrap
+-- script does not currently support them.
+library
+  import: warnings
+  hs-source-dirs:
+    -- Component that defines a hooks version, to ensure compatibility between the
+    -- hooks executable and the executable it communicates with.
+    version,
+    -- Component imported by cabal-install to interface with an external
+    -- hooks executable.
+    cli,
+    -- Component used to create an external hooks executable
+    -- from a SetupHooks.hs module.
+    exe
+
+  build-depends:
+    base
+      >= 4.10     && < 4.20,
+    bytestring
+      >= 0.10.6.0 && < 0.13,
+    containers
+      >= 0.5.6.2  && < 0.8 ,
+    filepath
+      >= 1.4.0.0  && < 1.6 ,
+    process
+      >= 1.6.20.0 && < 1.8 ,
+    Cabal-syntax, Cabal
+
+  exposed-modules:
+    Distribution.Client.SetupHooks.CallHooksExe
+    Distribution.Client.SetupHooks.HooksExe
+    Distribution.Client.SetupHooks.Version
+  other-modules:
+    Distribution.Client.SetupHooks.CallHooksExe.Errors
+    Distribution.Client.SetupHooks.HooksExe.Errors
+
+  default-language:
+    Haskell2010

@@ -4,9 +4,10 @@ packages:
   , Cabal-hooks
   , cabal-install
   , cabal-install-solver
+  , hooks-exe
 
 -- Don't include tests or benchmarks for bootstrapping
 tests: False
 benchmarks: False
 
-index-state: hackage.haskell.org 2024-04-22T06:16:57Z
+index-state: hackage.haskell.org 2024-04-29T14:30:15Z
