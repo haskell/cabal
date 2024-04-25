@@ -63,7 +63,6 @@ import Distribution.Client.ProjectPlanning.Types
   , dataDirsEnvironmentForPlan
   , elabExeDependencyPaths
   )
-
 import Distribution.Client.ScriptUtils
   ( AcceptNoTargets (..)
   , TargetContext (..)
@@ -118,9 +117,6 @@ import Distribution.Types.ComponentName
   ( componentNameRaw
   )
 import Distribution.Types.Executable as PD
-  ( buildInfo
-  , exeName
-  )
 import qualified Distribution.Types.PackageDescription as PD
   ( executables
   )

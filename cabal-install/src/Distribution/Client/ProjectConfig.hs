@@ -169,7 +169,6 @@ import Distribution.Simple.Setup
 import Distribution.Simple.Utils
   ( createDirectoryIfMissingVerbose
   , dieWithException
-  , info
   , maybeExit
   , notice
   , rawSystemIOWithEnv

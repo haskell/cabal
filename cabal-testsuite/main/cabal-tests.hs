@@ -143,7 +143,7 @@ buildCabalLibsProject projString verb mbGhc dir = do
       , "--project-file=" ++ dir </> "cabal.project-test"
       , "build"
       , "-w", programPath ghc
-      , "Cabal", "Cabal-syntax", "Cabal-hooks"
+      , "Cabal", "Cabal-syntax", "Cabal-hooks", "hooks-exe"
       ] ) { progInvokeCwd = Just dir })
 
   -- Determine the path to the packagedb in the store for this ghc version
@@ -178,7 +178,8 @@ buildCabalLibsSpecific ver verb mbGhc builddir_rel = do
 buildCabalLibsIntree :: String -> Verbosity -> Maybe FilePath -> FilePath -> IO [FilePath]
 buildCabalLibsIntree root verb mbGhc builddir_rel = do
   dir <- canonicalizePath (builddir_rel </> "intree")
-  buildCabalLibsProject ("packages: " ++ root </> "Cabal" ++ " " ++ root </> "Cabal-syntax" ++ " " ++ root </> "Cabal-hooks") verb mbGhc dir
+  let libs = [ "Cabal", "Cabal-syntax", "Cabal-hooks", "hooks-exe" ]
+  buildCabalLibsProject ("packages: " ++ unwords ( map ( root </> ) libs ) ) verb mbGhc dir
 
 main :: IO ()
 main = do

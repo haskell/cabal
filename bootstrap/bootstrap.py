@@ -87,7 +87,9 @@ local_packages: List[PackageName] = [ "Cabal-syntax"
                                     , "Cabal-tests"
                                     , "Cabal-tree-diff"
                                     , "cabal-install-solver"
-                                    , "cabal-install" ]
+                                    , "cabal-install"
+                                    , "hooks-exe"
+                                    ]
 
 class Compiler:
     def __init__(self, ghc_path: Path):
