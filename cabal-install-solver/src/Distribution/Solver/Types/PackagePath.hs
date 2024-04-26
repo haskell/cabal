@@ -60,7 +60,7 @@ data Qualifier =
   | QualBase PackageName
 
   -- A goal which is solved per-component
-  | QualAlias PackageName Component PrivateAlias
+  | QualAlias PackageName PrivateAlias
 
   deriving (Eq, Ord, Show)
 
@@ -75,7 +75,7 @@ data Qualifier =
 dispQualifier :: Qualifier -> Disp.Doc
 dispQualifier QualToplevel = Disp.empty
 dispQualifier (QualBase pn)  = pretty pn <<>> Disp.text ".bb."
-dispQualifier (QualAlias pn c alias) = pretty pn <<>> Disp.text ":" <<>> pretty c <<>> Disp.text ":" <<>> pretty alias <<>> Disp.text "."
+dispQualifier (QualAlias pn alias) = pretty pn <<>> Disp.text ":" <<>> pretty alias <<>> Disp.text "."
 
 instance Pretty Qualifier where
   pretty = dispQualifier

@@ -204,7 +204,7 @@ qualifyDeps QO{..} rdm (Q pp@(PackagePath ns q) pn) = go
     goD (Dep dep@(PkgComponent qpn (ExposedExe _)) is_private ci) _ =
         Dep (Q (PackagePath (IndependentBuildTool pn qpn) QualToplevel) <$> dep) is_private ci
     goD (Dep dep@(PkgComponent qpn (ExposedLib _)) is_private ci) comp
-      | Private pq <- is_private  = Dep (Q (PackagePath ns (QualAlias pn comp pq))  <$> dep) is_private ci
+      | Private pq <- is_private  = Dep (Q (PackagePath ns (QualAlias pn pq))  <$> dep) is_private ci
       | qBase qpn   = Dep (Q (PackagePath ns (QualBase pn)) <$> dep) is_private ci
       | qSetup comp = Dep (Q (PackagePath (IndependentComponent pn ComponentSetup) QualToplevel) <$> dep) is_private ci
       | otherwise   = Dep (Q (PackagePath ns (inheritedQ qpn)    ) <$> dep) is_private ci

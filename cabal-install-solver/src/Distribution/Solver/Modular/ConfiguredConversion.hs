@@ -75,7 +75,7 @@ convConfId parent (PI (Q (PackagePath ns qn) pn) (I v loc)) =
           -- As below, we need to identify where `AliasPkg` applies. This is
           -- needed to qualify `solverPkgLibDeps` since we may have multiple
           -- instances of the same package qualified.
-          | QualAlias pn' _ alias <- qn
+          | QualAlias pn' alias <- qn
           , parent == Just pn' -> AliasPkg (PreExistingId sourceId pi) alias
 
           | otherwise
@@ -84,7 +84,7 @@ convConfId parent (PI (Q (PackagePath ns qn) pn) (I v loc)) =
           -- Same reasoning as for exes, the "top" qualified goal is the one
           -- which is private and needs to be aliased, but there might be other goals underneath which
           -- are solved in the same scope (but are not private)
-          | QualAlias pn' _ alias <- qn
+          | QualAlias pn' alias <- qn
           , parent == Just pn' -> AliasPkg (PlannedId sourceId) alias
 
           | IndependentBuildTool _ pn' <- ns

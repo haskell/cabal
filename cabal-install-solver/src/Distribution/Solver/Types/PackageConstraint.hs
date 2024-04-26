@@ -87,7 +87,7 @@ constraintScopeMatches (ScopeTarget pn) (Q (PackagePath ns q) pn') =
       namespaceMatches (IndependentBuildTool {}) = False
   in namespaceMatches ns && q == QualToplevel && pn == pn'
 constraintScopeMatches (ScopePrivate spn alias c_pn) (Q (PackagePath _qual_ns q) c_pn') =
-  let qualMatches (QualAlias qual_pn _ qual_alias) = spn == qual_pn && alias == qual_alias
+  let qualMatches (QualAlias qual_pn qual_alias) = spn == qual_pn && alias == qual_alias
       qualMatches _ = False
     -- TODO: Check whether any ns should subsume qual_ns (if private constraint scopes grow namespaces...)
   in qualMatches q && c_pn == c_pn'
