@@ -646,7 +646,8 @@ fromUserQualifier (UserQualComp pn cn) = IndependentComponent pn (componentNameT
 fromUserConstraintScope :: UserConstraintScope -> ConstraintScope
 fromUserConstraintScope (UserQualified q pn) =
   ScopeQualified (fromUserQualifier q) QualToplevel pn
-fromUserConstraintScope (UserPrivateQualifier pn alias cpn) = ScopePrivate pn alias cpn
+fromUserConstraintScope (UserPrivateQualifier pn alias cpn) =
+  ScopeQualified DefaultNamespace (QualAlias pn alias) cpn
 fromUserConstraintScope (UserAnySetupQualifier pn) = ScopeAnySetupQualifier pn
 fromUserConstraintScope (UserAnyQualifier pn) = ScopeAnyQualifier pn
 

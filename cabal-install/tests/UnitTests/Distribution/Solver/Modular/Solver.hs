@@ -2815,7 +2815,7 @@ privDep11 =
 privDep12 :: SolverTest
 privDep12 =
   setVerbose $
-    constraints [ExVersionConstraint (ScopePrivate "P" "G0" "A") (V.thisVersion (V.mkVersion [2]))] $
+    constraints [ExVersionConstraint (ScopeQualified P.DefaultNamespace (P.QualAlias "P" "G0") "A") (V.thisVersion (V.mkVersion [2]))] $
       mkTest priv_db11 "private-dependencies-12" ["P"] (solverFailure ("constraint from unknown source requires ==2" `isInfixOf`))
 
 -- Testing that `any` qualifier applies to private deps
