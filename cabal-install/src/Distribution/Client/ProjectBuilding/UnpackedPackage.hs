@@ -168,7 +168,7 @@ buildAndRegisterUnpackedPackage
   verbosity
   distDirLayout@DistDirLayout{distTempDirectory}
   maybe_semaphore
-  BuildTimeSettings{buildSettingNumJobs}
+  buildTimeSettings@BuildTimeSettings{buildSettingNumJobs}
   registerLock
   cacheLock
   pkgshared@ElaboratedSharedConfig
@@ -329,6 +329,7 @@ buildAndRegisterUnpackedPackage
           setupHsHaddockFlags
             pkg
             pkgshared
+            buildTimeSettings
             (commonFlags v)
       haddockArgs v =
         flip filterHaddockArgs v $
