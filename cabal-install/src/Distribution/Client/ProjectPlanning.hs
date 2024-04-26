@@ -4096,6 +4096,7 @@ setupHsRegisterFlags
 setupHsHaddockFlags
   :: ElaboratedConfiguredPackage
   -> ElaboratedSharedConfig
+<<<<<<< HEAD
   -> Verbosity
   -> FilePath
   -> Cabal.HaddockFlags
@@ -4135,6 +4136,48 @@ setupHsHaddockFlags (ElaboratedConfiguredPackage{..}) (ElaboratedSharedConfig{..
     , haddockOutputDir = maybe mempty toFlag elabHaddockOutputDir
     , haddockArgs = mempty
     }
+=======
+  -> BuildTimeSettings
+  -> Cabal.CommonSetupFlags
+  -> Cabal.HaddockFlags
+setupHsHaddockFlags
+  (ElaboratedConfiguredPackage{..})
+  (ElaboratedSharedConfig{..})
+  (BuildTimeSettings{buildSettingKeepTempFiles = keepTmpFiles})
+  common =
+    Cabal.HaddockFlags
+      { haddockCommonFlags = common
+      , haddockProgramPaths =
+          case lookupProgram haddockProgram pkgConfigCompilerProgs of
+            Nothing -> mempty
+            Just prg ->
+              [
+                ( programName haddockProgram
+                , locationPath (programLocation prg)
+                )
+              ]
+      , haddockProgramArgs = mempty -- unused, set at configure time
+      , haddockHoogle = toFlag elabHaddockHoogle
+      , haddockHtml = toFlag elabHaddockHtml
+      , haddockHtmlLocation = maybe mempty toFlag elabHaddockHtmlLocation
+      , haddockForHackage = toFlag elabHaddockForHackage
+      , haddockForeignLibs = toFlag elabHaddockForeignLibs
+      , haddockExecutables = toFlag elabHaddockExecutables
+      , haddockTestSuites = toFlag elabHaddockTestSuites
+      , haddockBenchmarks = toFlag elabHaddockBenchmarks
+      , haddockInternal = toFlag elabHaddockInternal
+      , haddockCss = maybe mempty toFlag elabHaddockCss
+      , haddockLinkedSource = toFlag elabHaddockLinkedSource
+      , haddockQuickJump = toFlag elabHaddockQuickJump
+      , haddockHscolourCss = maybe mempty toFlag elabHaddockHscolourCss
+      , haddockContents = maybe mempty toFlag elabHaddockContents
+      , haddockKeepTempFiles = toFlag keepTmpFiles
+      , haddockIndex = maybe mempty toFlag elabHaddockIndex
+      , haddockBaseUrl = maybe mempty toFlag elabHaddockBaseUrl
+      , haddockLib = maybe mempty toFlag elabHaddockLib
+      , haddockOutputDir = maybe mempty toFlag elabHaddockOutputDir
+      }
+>>>>>>> e35c0dcca (Haddock: use buildSettingKeepTempFiles)
 
 setupHsHaddockArgs :: ElaboratedConfiguredPackage -> [String]
 -- TODO: Does the issue #3335 affects test as well
