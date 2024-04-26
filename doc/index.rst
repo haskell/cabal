@@ -13,6 +13,7 @@ Welcome to the Cabal User Guide
    :numbered:
    :maxdepth: 2
 
+   how-to-freeze-versions
    how-to-package-haskell-code
    how-to-source-packages
    how-to-enable-profiling
