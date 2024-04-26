@@ -4291,7 +4291,7 @@ setupHsHaddockFlags
 setupHsHaddockFlags
   (ElaboratedConfiguredPackage{..})
   (ElaboratedSharedConfig{..})
-  _buildTimeSettings
+  (BuildTimeSettings{buildSettingKeepTempFiles = keepTmpFiles})
   common =
     Cabal.HaddockFlags
       { haddockCommonFlags = common
@@ -4319,6 +4319,7 @@ setupHsHaddockFlags
       , haddockQuickJump = toFlag elabHaddockQuickJump
       , haddockHscolourCss = maybe mempty toFlag elabHaddockHscolourCss
       , haddockContents = maybe mempty toFlag elabHaddockContents
+      , haddockKeepTempFiles = toFlag keepTmpFiles
       , haddockIndex = maybe mempty toFlag elabHaddockIndex
       , haddockBaseUrl = maybe mempty toFlag elabHaddockBaseUrl
       , haddockResourcesDir = maybe mempty toFlag elabHaddockResourcesDir
