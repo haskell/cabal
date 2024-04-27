@@ -2,7 +2,7 @@ Please read [Github PR Conventions](https://github.com/haskell/cabal/blob/master
 
 ---
 
-**Template Α: This PR modifies `cabal` behaviour**
+**Template Α: This PR modifies [behaviour or interface](https://github.com/cabalism/cabal/blob/master/CONTRIBUTING.md#changelog)**
 
 Include the following checklist in your PR:
 
@@ -14,10 +14,11 @@ Include the following checklist in your PR:
 
 ---
 
-**Template Β: This PR does not modify `cabal` behaviour (documentation, tests, refactoring, etc.)**
+**Template B: This PR does not modify behaviour or interface**
+
+*E.g. the PR only touches documentation or tests, does refactorings, etc.*
 
 Include the following checklist in your PR:
 
 * [ ] Patches conform to the [coding conventions](https://github.com/haskell/cabal/blob/master/CONTRIBUTING.md#other-conventions).
 * [ ] Is this a PR that fixes CI? If so, it will need to be backported to older cabal release branches (ask maintainers for directions).
-
