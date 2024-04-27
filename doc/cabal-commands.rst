@@ -1193,7 +1193,7 @@ after ensuring they are up to date and building them, if necessary.
 
     Taking the cabal project as an example that has a ``Cabal-tests`` package
     with multiples test suites, the following two commands are effectively the
-    same and will test the test suites of the ``Cabal-tests`` package;
+    same and will test the test suites of the ``Cabal-tests`` package:
 
     ::
 
@@ -1201,7 +1201,7 @@ after ensuring they are up to date and building them, if necessary.
         $ cd Cabal-tests && cabal test && cd ..
 
     If you want to test all of the test suites in a project then from the
-    project directory ``cabal build`` with no target will fail;
+    project directory ``cabal build`` with no target will fail:
 
     .. code-block:: text
 
