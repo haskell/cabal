@@ -1177,7 +1177,7 @@ after ensuring they are up to date and building them, if necessary.
 
     For a test suite, there's a difference between testing it with ``cabal
     test`` and running it with ``cabal run`` to do with the working directory.
-    The former tests the test suite that is to say that it "runs" the test suite
+    The former tests the test suite; that is to say that it "runs" the test suite
     from the package directory (from the directory of the package that has the
     test suite as a component), while the latter runs the test suite from
     whatever directory is current when the ``cabal run`` command is issued.
