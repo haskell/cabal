@@ -1192,7 +1192,7 @@ after ensuring they are up to date and building them, if necessary.
     selects that package for the test command.
 
     Taking the cabal project as an example that has a ``Cabal-tests`` package
-    with multiples test suites, the following two commands are effectively the
+    with multiple test suites, the following two commands are effectively the
     same and will test the test suites of the ``Cabal-tests`` package:
 
     ::
