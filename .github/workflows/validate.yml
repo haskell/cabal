@@ -68,7 +68,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         # If you remove something from here.. then add it to the old-ghcs job.
-        ghc: ['9.8.2', '9.6.4', '9.4.8', '9.2.8', '9.0.2', '8.10.7', '8.8.4', '8.6.5']
+        ghc: ['9.8.2', '9.6.4', '9.4.8', '9.2.8', '9.0.2', '8.10.7']
         exclude:
           # corrupts GHA cache or the fabric of reality itself, see https://github.com/haskell/cabal/issues/8356
           - os: windows-latest
@@ -215,7 +215,7 @@ jobs:
 
     strategy:
       matrix:
-        extra-ghc: ['8.4.4', '8.2.2', '8.0.2']
+        extra-ghc: ['8.8.4', '8.6.5', '8.4.4', '8.2.2', '8.0.2']
           ## GHC 7.10.3 does not install on ubuntu-22.04 with ghcup.
           ## Older GHCs are not supported by ghcup in the first place.
       fail-fast: false
