@@ -13,7 +13,7 @@ library intern6440
   exposed-modules: Inn
   build-depends: base
   hs-source-dirs: srcint
-
+  default-language: Haskell2010
 
 test-suite tests
   main-is:             Main.hs
