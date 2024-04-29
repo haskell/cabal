@@ -1,7 +1,11 @@
 # cabal v2-build
+<<<<<<< HEAD
 Warning: The package description file ./issue7234.cabal has warnings: issue7234.cabal:13:3: The field "other-extensions" is available only since the Cabal specification version 1.10.
 Configuration is affected by the following files:
 - cabal.project
+=======
+The package description file ./issue7234.cabal has warnings: issue7234.cabal:13:3: The field "other-extensions" is available only since the Cabal specification version 1.10.
+>>>>>>> 5487b0069 (cabal-install in-library Cabal: test changes)
 Resolving dependencies...
 Error: [Cabal-7107]
 Could not resolve dependencies:

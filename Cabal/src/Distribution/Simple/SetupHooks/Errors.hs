@@ -169,8 +169,8 @@ rulesExceptionMessage = \case
   DuplicateRuleId rId r1 r2 ->
     unlines $
       [ "Duplicate pre-build rule (" <> show rId <> ")"
-      , "  - " <> show r1
-      , "  - " <> show r2
+      , "  - " <> show (ruleBinary r1)
+      , "  - " <> show (ruleBinary r2)
       ]
 
 cannotApplyComponentDiffCode :: CannotApplyComponentDiffReason -> Int
