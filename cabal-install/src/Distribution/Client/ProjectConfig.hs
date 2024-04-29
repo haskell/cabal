@@ -1522,8 +1522,8 @@ renderCabalFileParseError :: CabalFileParseError -> String
 renderCabalFileParseError (CabalFileParseError filePath contents errors _ warnings) =
   renderParseError filePath contents errors warnings
 
--- | Wrapper for the @.cabal@ file parser. It reports warnings on higher
--- verbosity levels and throws 'CabalFileParseError' on failure.
+-- | Wrapper for the @.cabal@ file parser. It reports warnings at normal
+-- verbosity level, and throws 'CabalFileParseError' on failure.
 readSourcePackageCabalFile
   :: Verbosity
   -> FilePath
@@ -1533,7 +1533,7 @@ readSourcePackageCabalFile verbosity pkgfilename content =
   case runParseResult (parseGenericPackageDescription content) of
     (warnings, Right pkg) -> do
       unless (null warnings) $
-        info verbosity (formatWarnings warnings)
+        notice verbosity (formatWarnings warnings)
       return pkg
     (warnings, Left (mspecVersion, errors)) ->
       throwIO $ CabalFileParseError pkgfilename content errors mspecVersion warnings
