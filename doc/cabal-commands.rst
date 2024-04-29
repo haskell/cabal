@@ -1170,9 +1170,53 @@ they are up to date.
 cabal test
 ^^^^^^^^^^
 
-``cabal test [TARGETS] [FLAGS]`` runs the specified test suites
-(all the test suites in the current package by default), first ensuring
-they are up to date.
+``cabal test [TARGETS] [FLAGS]`` tests test suites specified as targets
+after ensuring they are up to date and building them, if necessary.
+
+.. Warning::
+
+    For a test suite, there's a difference between testing it with ``cabal
+    test`` and running it with ``cabal run`` to do with the working directory.
+    The former tests the test suite; that is to say that it "runs" the test suite
+    from the package directory (from the directory of the package that has the
+    test suite as a component), while the latter runs the test suite from
+    whatever directory is current when the ``cabal run`` command is issued.
+    This is important because the test suite may depend on files in the package
+    directory, and so may not work correctly if run from another directory.
+
+.. Note::
+
+    Even though ``[TARGETS]`` are optional, ``cabal test`` will only test test
+    suites without specifying a target if in the directory of a package,
+    alongside a ``.cabal`` file. Being in the directory of a package implicitly
+    selects that package for the test command.
+
+    Taking the cabal project as an example that has a ``Cabal-tests`` package
+    with multiple test suites, the following two commands are effectively the
+    same and will test the test suites of the ``Cabal-tests`` package:
+
+    ::
+
+        $ cabal test Cabal-tests
+        $ cd Cabal-tests && cabal test && cd ..
+
+    If you want to test all of the test suites in a project then from the
+    project directory ``cabal build`` with no target will fail:
+
+    .. code-block:: text
+
+        $ cabal test
+        Error: [Cabal-7134]
+        No targets given and there is no package in the current directory. Use
+        the target 'all' for all packages in the project or specify packages or
+        components by name or location. See 'cabal build --help' for more
+        details on target options.
+
+    Both ``cabal test all:tests`` and ``cabal test all`` use explicit targets
+    for testing all test suites of a project; the former's ``all:tests`` target
+    will select all test suites of the project, while the latter's ``all``
+    target will select all packages of the project and, from those, test all
+    their test suites.
 
 ``cabal test`` inherits flags of the ``test`` subcommand of ``Setup.hs``
 (:ref:`see the corresponding section <setup-test>`) with one caveat: every
