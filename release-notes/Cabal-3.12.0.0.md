@@ -61,6 +61,18 @@ Cabal and Cabal-syntax 3.12.0.0 changelog and release notes
   added. It can now be used in the `default-language` and `other-languages`
   fields, and will be offered as an option by `cabal init`.
 
+- Remove `initialBuildSteps` from `Distribution.Simple.Build` [#9474](https://github.com/haskell/cabal/pull/9474)
+
+  Calling `initialBuildSteps` to prepare source files for a package is error
+  prone, as `initialBuildSteps` only handles things like the paths module
+  and nothing else.
+
+  To mimick `initialBuildSteps` behaviour when there is no custom Setup, you
+  can call `repl_setupHooks`.
+
+  If you are dealing with a custom setup, you have to invoke
+  `./Setup repl --repl-multi-file`.
+
 ### Other changes
 
 - `cabal init` should not suggest Cabal < 2.0 [#8680](https://github.com/haskell/cabal/issues/8680)
