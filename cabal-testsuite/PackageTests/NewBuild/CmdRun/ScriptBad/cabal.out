@@ -1,3 +1,4 @@
 # cabal v2-run
+The package description file ./script.cabal has warnings: script.cabal:0:0: A package using 'cabal-version: >=1.10' must use section syntax. See the Cabal user guide for details.
 Error: [Cabal-7121]
 Failed extracting script block: `{- cabal:` start marker not found

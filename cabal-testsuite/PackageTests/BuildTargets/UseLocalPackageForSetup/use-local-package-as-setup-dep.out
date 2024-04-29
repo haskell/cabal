@@ -1,6 +1,8 @@
 # cabal v2-update
 Downloading the latest package list from test-local-repo
 # cabal v2-build
+The package description file setup-dep/setup-dep.cabal has warnings: setup-dep/setup-dep.cabal:4:23: Packages with 'cabal-version: 1.12' or later should specify a specific version of the Cabal spec of the form 'cabal-version: x.y'. Use 'cabal-version: 1.20'.
+The package description file pkg/pkg.cabal has warnings: pkg/pkg.cabal:4:23: Packages with 'cabal-version: 1.12' or later should specify a specific version of the Cabal spec of the form 'cabal-version: x.y'. Use 'cabal-version: 1.20'.
 Resolving dependencies...
 Error: [Cabal-7107]
 Could not resolve dependencies:

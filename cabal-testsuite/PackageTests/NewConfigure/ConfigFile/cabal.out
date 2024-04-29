@@ -1,4 +1,5 @@
 # cabal v2-configure
+The package description file ./ConfigFile.cabal has warnings: ConfigFile.cabal:0:0: A package using 'cabal-version: >=1.10' must use section syntax. See the Cabal user guide for details.
 Config file not written due to flag(s).
 # cabal v2-configure
 Config file not written due to flag(s).
