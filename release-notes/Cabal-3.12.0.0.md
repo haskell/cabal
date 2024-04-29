@@ -70,7 +70,7 @@ Cabal and Cabal-syntax 3.12.0.0 changelog and release notes
   To mimick `initialBuildSteps` behaviour when there is no custom Setup, you
   can call `repl_setupHooks`.
 
-  If you are dealing with a custion setup, you have to invoke
+  If you are dealing with a custom setup, you have to invoke
   `./Setup repl --repl-multi-file`.
 
 ### Other changes
