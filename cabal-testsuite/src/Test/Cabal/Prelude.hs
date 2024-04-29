@@ -313,7 +313,7 @@ cabalGArgs global_args cmd args input = do
           | cmd `elem` ["v2-sdist", "path"]
           = [ "--project-file=" ++ fp | Just fp <- [testCabalProjectFile env] ]
 
-          | cmd == "v2-clean"
+          | cmd == "v2-clean" || cmd == "clean"
           = [ "--builddir", testDistDir env ]
             ++ [ "--project-file=" ++ fp | Just fp <- [testCabalProjectFile env] ]
 
@@ -322,10 +322,14 @@ cabalGArgs global_args cmd args input = do
             , "-j1" ]
             ++ [ "--project-file=" ++ fp | Just fp <- [testCabalProjectFile env] ]
             ++ ["--package-db=" ++ db | Just db <- [testPackageDbPath env]]
+          | "v1-" `isPrefixOf` cmd
+          = [ "--builddir", testDistDir env ]
+            ++ install_args
 
           | otherwise
-          = [ "--builddir", testDistDir env ] ++
-            install_args
+          = [ "--builddir", testDistDir env ]
+            ++ ["--package-db=" ++ db | Just db <- [testPackageDbPath env]]
+            ++ install_args
 
         install_args
           | cmd == "v1-install" || cmd == "v1-build" = [ "-j1" ]
