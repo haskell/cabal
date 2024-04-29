@@ -191,7 +191,9 @@ findBadPrivClosures pkg rdm = do
           | stopAtPkg && x == pkg
           = (M.insert x (dontLook x) s, path)
           | otherwise
-          = foldl go (M.insert x (dontLook x) s, x:path) $ neighbors x
+          = let nbs = neighbors x
+             in foldl go (M.insert x (dontLook x) s, if null nbs then path else x:path) nbs
+             -- \^ We don't add x to the path if this is a terminal node.
 
         dontLook x = error $ "We should only lookup privately-qualified pkgs, but instead " ++ show x ++ " was looked up -- it is only inserted in the map for de-duplication purposes."
 
