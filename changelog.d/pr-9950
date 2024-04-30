@@ -1,0 +1,21 @@
+synopsis: Re-instate `initialBuildSteps`
+packages: Cabal
+issues: #9856
+prs: #9950
+
+description: {
+
+The `initialBuildSteps` function from `Distribution.Simple.Build`, which had
+been hastily removed, has been reinstated.
+
+It now comes with a deprecation warning: calling that function does not suffice
+to prepare the sources for a package, as there are other steps that one might
+also need to perform:
+
+  - running pre-processors (such as alex/happy)
+  - running pre-build hooks or custom logic
+    (in build-type: Hooks or build-type: Custom or Configure)
+
+Consumers wanting to prepare the sources of a package, e.g. in order to launch a
+REPL session, are advised to run `setup repl --repl-multi-file=<fn>` instead.
+}
