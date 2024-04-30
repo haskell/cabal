@@ -635,22 +635,22 @@ filterCommonFlags :: CommonSetupFlags -> Version -> CommonSetupFlags
 filterCommonFlags flags cabalLibVersion
   -- NB: we expect the latest version to be the most common case,
   -- so test it first.
-  | cabalLibVersion >= mkVersion [3, 11, 0] = flags_latest
+  | cabalLibVersion >= mkVersion [3, 13, 0] = flags_latest
   | cabalLibVersion < mkVersion [1, 2, 5] = flags_1_2_5
   | cabalLibVersion < mkVersion [2, 1, 0] = flags_2_1_0
-  | cabalLibVersion < mkVersion [3, 11, 0] = flags_3_11_0
+  | cabalLibVersion < mkVersion [3, 13, 0] = flags_3_13_0
   | otherwise = error "the impossible just happened" -- see first guard
   where
     flags_latest = flags
-    flags_3_11_0 =
+    flags_3_13_0 =
       flags_latest
         { setupWorkingDir = NoFlag
         }
-    -- Cabal < 3.11 does not support the --working-dir flag.
+    -- Cabal < 3.13 does not support the --working-dir flag.
     flags_2_1_0 =
-      flags_3_11_0
+      flags_3_13_0
         { -- Cabal < 2.1 doesn't know about -v +timestamp modifier
-          setupVerbosity = fmap verboseNoTimestamp (setupVerbosity flags_3_11_0)
+          setupVerbosity = fmap verboseNoTimestamp (setupVerbosity flags_3_13_0)
         }
     flags_1_2_5 =
       flags_2_1_0
