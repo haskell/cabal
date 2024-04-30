@@ -312,9 +312,9 @@ case "$(uname)" in
 esac
 
 if $LIBONLY; then
-    PROJECTFILE=cabal.project.validate.libonly
+    PROJECTFILE=cabal.validate-libonly.project
 else
-    PROJECTFILE=cabal.project.validate
+    PROJECTFILE=cabal.validate.project
 fi
 
 BASEHC=ghc-$($HC --numeric-version)

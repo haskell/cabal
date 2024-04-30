@@ -84,7 +84,7 @@ Ways to build `cabal-install` for everyday use
     Git repository, move to its root, and run:
 
     ```
-    cabal install --project-file=cabal.project.release cabal-install
+    cabal install --project-file=cabal.release.project cabal-install
     ```
 
 3. _Bootstrapping_:
