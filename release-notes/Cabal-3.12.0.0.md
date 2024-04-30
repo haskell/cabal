@@ -73,6 +73,10 @@ Cabal and Cabal-syntax 3.12.0.0 changelog and release notes
   If you are dealing with a custom setup, you have to invoke
   `./Setup repl --repl-multi-file`.
 
+- Cabal and Cabal-syntax 3.12 support GHC version 8.4.4 and up.
+
+  Support for all previous GHC versions is deprecated.
+
 ### Other changes
 
 - `cabal init` should not suggest Cabal < 2.0 [#8680](https://github.com/haskell/cabal/issues/8680)
