@@ -1,23 +1,27 @@
 # Warnings currently triggered by your code
+- ignore: {name: "Avoid NonEmpty.unzip"} # 1 hint
 - ignore: {name: "Avoid lambda"} # 46 hints
 - ignore: {name: "Avoid lambda using `infix`"} # 22 hints
 - ignore: {name: "Eta reduce"} # 116 hints
 - ignore: {name: "Evaluate"} # 10 hints
-- ignore: {name: "Functor law"} # 14 hints
+- ignore: {name: "Functor law"} # 10 hints
 - ignore: {name: "Fuse concatMap/map"} # 3 hints
 - ignore: {name: "Fuse foldr/map"} # 3 hints
 - ignore: {name: "Fuse mapMaybe/map"} # 1 hint
+- ignore: {name: "Fuse traverse_/fmap"} # 1 hint
 - ignore: {name: "Fuse traverse_/map"} # 1 hint
 - ignore: {name: "Hoist not"} # 16 hints
 - ignore: {name: "Missing NOINLINE pragma"} # 1 hint
 - ignore: {name: "Monoid law, left identity"} # 3 hints
 - ignore: {name: "Monoid law, right identity"} # 3 hints
+- ignore: {name: "Move filter"} # 4 hints
 - ignore: {name: "Move guards forward"} # 4 hints
 - ignore: {name: "Redundant $"} # 175 hints
 - ignore: {name: "Redundant $!"} # 1 hint
-- ignore: {name: "Redundant <$>"} # 7 hints
+- ignore: {name: "Redundant <$>"} # 16 hints
 - ignore: {name: "Redundant =="} # 1 hint
 - ignore: {name: "Redundant bracket"} # 232 hints
+- ignore: {name: "Redundant fmap"} # 1 hint
 - ignore: {name: "Redundant guard"} # 2 hints
 - ignore: {name: "Redundant if"} # 3 hints
 - ignore: {name: "Redundant lambda"} # 19 hints
@@ -37,6 +41,7 @@
 - ignore: {name: "Use =="} # 3 hints
 - ignore: {name: "Use >=>"} # 3 hints
 - ignore: {name: "Use ?~"} # 1 hint
+- ignore: {name: "Use Down"} # 3 hints
 - ignore: {name: "Use Just"} # 2 hints
 - ignore: {name: "Use bimap"} # 7 hints
 - ignore: {name: "Use camelCase"} # 96 hints
@@ -65,11 +70,12 @@
 - ignore: {name: "Use list comprehension"} # 16 hints
 - ignore: {name: "Use list literal"} # 3 hints
 - ignore: {name: "Use list literal pattern"} # 11 hints
-- ignore: {name: "Use map"} # 3 hints
 - ignore: {name: "Use map once"} # 7 hints
+- ignore: {name: "Use map with tuple-section"} # 3 hints
 - ignore: {name: "Use mapMaybe"} # 13 hints
 - ignore: {name: "Use max"} # 1 hint
 - ignore: {name: "Use maybe"} # 8 hints
+- ignore: {name: "Use minimumBy"} # 1 hint
 - ignore: {name: "Use newtype instead of data"} # 26 hints
 - ignore: {name: "Use notElem"} # 8 hints
 - ignore: {name: "Use null"} # 2 hints
@@ -79,7 +85,6 @@
 - ignore: {name: "Use rights"} # 2 hints
 - ignore: {name: "Use second"} # 7 hints
 - ignore: {name: "Use section"} # 17 hints
-- ignore: {name: "Use sortOn"} # 15 hints
 - ignore: {name: "Use traverse"} # 1 hint
 - ignore: {name: "Use tuple-section"} # 28 hints
 - ignore: {name: "Use typeRep"} # 2 hints
