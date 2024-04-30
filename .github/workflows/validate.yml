@@ -96,8 +96,8 @@ jobs:
       - name: Manually supplied constraints/allow-newer
         if: github.event_name == 'workflow_dispatch'
         run: |
-          echo "allow-newer: ${ALLOWNEWER}"  >> cabal.project.validate
-          echo "constraints: ${CONSTRAINTS}" >> cabal.project.validate
+          echo "allow-newer: ${ALLOWNEWER}"  >> cabal.validate.project
+          echo "constraints: ${CONSTRAINTS}" >> cabal.validate.project
 
       - uses: haskell-actions/setup@v2
         id: setup-haskell
@@ -156,7 +156,7 @@ jobs:
       - name: Tar cabal head executable
         if: matrix.ghc == env.GHC_FOR_RELEASE
         run: |
-          CABAL_EXEC=$(cabal list-bin --builddir=dist-newstyle-validate-ghc-${{ matrix.ghc }} --project-file=cabal.project.validate cabal-install:exe:cabal)
+          CABAL_EXEC=$(cabal list-bin --builddir=dist-newstyle-validate-ghc-${{ matrix.ghc }} --project-file=cabal.validate.project cabal-install:exe:cabal)
           # We have to tar the executable to preserve executable permissions
           # see https://github.com/actions/upload-artifact/issues/38
           if [[ "${{ runner.os }}" == "Windows" ]]; then
@@ -288,8 +288,8 @@ jobs:
       - name: Manually supplied constraints/allow-newer
         if: github.event_name == 'workflow_dispatch'
         run: |
-          echo "allow-newer: ${ALLOWNEWER}"  >> cabal.project.validate
-          echo "constraints: ${CONSTRAINTS}" >> cabal.project.validate
+          echo "allow-newer: ${ALLOWNEWER}"  >> cabal.validate.project
+          echo "constraints: ${CONSTRAINTS}" >> cabal.validate.project
 
       - uses: haskell-actions/setup@v2
         id: setup-haskell
@@ -310,14 +310,14 @@ jobs:
 
       - name: Enable statically linked executables
         run: |
-          echo 'executable-static: true' >> cabal.project.validate
+          echo 'executable-static: true' >> cabal.validate.project
 
       - name: Build
         run: sh validate.sh $FLAGS -s build
 
       - name: Tar cabal head executable
         run: |
-          CABAL_EXEC=$(cabal list-bin --builddir=dist-newstyle-validate-ghc-${{ env.GHC_FOR_RELEASE }} --project-file=cabal.project.validate cabal-install:exe:cabal)
+          CABAL_EXEC=$(cabal list-bin --builddir=dist-newstyle-validate-ghc-${{ env.GHC_FOR_RELEASE }} --project-file=cabal.validate.project cabal-install:exe:cabal)
           # We have to tar the executable to preserve executable permissions
           # see https://github.com/actions/upload-artifact/issues/38
           DIR=$(dirname "$CABAL_EXEC")

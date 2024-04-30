@@ -65,7 +65,7 @@ cabal install doctest --overwrite-policy=always --ignore-project
 After that you can run doctests for a component of your choice via the following command:
 
 ``` shellsession
-cabal repl --with-ghc=doctest --build-depends=QuickCheck --build-depends=template-haskell --repl-options="-w" --project-file="cabal.project.validate" Cabal-syntax
+cabal repl --with-ghc=doctest --build-depends=QuickCheck --build-depends=template-haskell --repl-options="-w" --project-file="cabal.validate.project" Cabal-syntax
 ```
 
 In this example we have run doctests in `Cabal-syntax`. Notice, that some
