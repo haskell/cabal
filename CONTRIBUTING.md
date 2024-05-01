@@ -290,9 +290,15 @@ issues) when appropriate.
 Changelog
 ---------
 
-When opening a pull request with a user-visible change, you should write one changelog entry
-(or more in case of multiple independent changes) — the information will end up in
-our release notes.
+Anything that changes `cabal-install:exe:cabal` or changes exports from library
+modules or changes behaviour of functions exported from packages published to
+hackage is a <a id="user-visible-change">user-visible change</a>. Raising the
+lower bound on `base` is most definitely a user-visible change because it
+excludes versions of GHC from being able to build these packages.
+
+When opening a pull request with a user-visible change, you should write one
+changelog entry (or more in case of multiple independent changes) — the
+information will end up in our release notes.
 
 Changelogs for the next release are stored in the `changelog.d` directory.
 The files follow a simple key-value format similar to the one for `.cabal` files.
