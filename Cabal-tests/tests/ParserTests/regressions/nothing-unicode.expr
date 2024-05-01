@@ -116,8 +116,12 @@ GenericPackageDescription {
           PerCompilerFlavor [] [],
           customFieldsBI = [],
           targetBuildDepends = [],
+          targetPrivateBuildDepends = [],
           mixins = []}},
-      condTreeConstraints = [],
+      condTreeConstraints =
+      Dependencies {
+        publicDependencies = [],
+        privateDependencies = []},
       condTreeComponents = [
         CondBranch {
           condBranchCondition =
@@ -183,8 +187,12 @@ GenericPackageDescription {
                 PerCompilerFlavor [] [],
                 customFieldsBI = [],
                 targetBuildDepends = [],
+                targetPrivateBuildDepends = [],
                 mixins = []}},
-            condTreeConstraints = [],
+            condTreeConstraints =
+            Dependencies {
+              publicDependencies = [],
+              privateDependencies = []},
             condTreeComponents = []},
           condBranchIfFalse = Nothing}]},
   condSubLibraries = [],

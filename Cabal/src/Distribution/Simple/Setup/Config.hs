@@ -756,7 +756,7 @@ configureOptions showOrParseArgs =
           configDependencies
           (\v flags -> flags{configDependencies = v})
           ( reqArg
-              "NAME[:COMPONENT_NAME]=CID"
+              "NAME[:COMPONENT_NAME]=CID[=ALIAS]"
               (parsecToReadE (const "dependency expected") ((\x -> [x]) `fmap` parsecGivenComponent))
               (map prettyGivenComponent)
           )
@@ -767,7 +767,7 @@ configureOptions showOrParseArgs =
           configPromisedDependencies
           (\v flags -> flags{configPromisedDependencies = v})
           ( reqArg
-              "NAME[:COMPONENT_NAME]=CID"
+              "NAME[:COMPONENT_NAME]=CID[=ALIAS]"
               (parsecToReadE (const "dependency expected") ((\x -> [x]) `fmap` parsecGivenComponent))
               (map prettyGivenComponent)
           )
@@ -910,16 +910,20 @@ parsecGivenComponent = do
         else LSubLibName ucn
   _ <- P.char '='
   cid <- parsec
-  return $ GivenComponent pn ln cid
+  alias <- P.option Public $ do
+    _ <- P.char '='
+    Private <$> parsec
+  return $ GivenComponent pn ln cid alias
 
 prettyGivenComponent :: GivenComponent -> String
-prettyGivenComponent (GivenComponent pn cn cid) =
+prettyGivenComponent (GivenComponent pn cn cid alias) =
   prettyShow pn
     ++ case cn of
       LMainLibName -> ""
       LSubLibName n -> ":" ++ prettyShow n
     ++ "="
     ++ prettyShow cid
+    ++ (case alias of Public -> ""; Private a -> "=" ++ prettyShow a)
 
 installDirsOptions :: [OptionField (InstallDirs (Flag PathTemplate))]
 installDirsOptions =

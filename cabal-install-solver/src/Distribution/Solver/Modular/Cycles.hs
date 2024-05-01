@@ -1,6 +1,7 @@
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeFamilies #-}
 module Distribution.Solver.Modular.Cycles (
-    detectCyclesPhase
+    findCycles
   ) where
 
 import Prelude hiding (cycle)
@@ -8,51 +9,20 @@ import qualified Data.Map as M
 import qualified Data.Set as S
 
 import qualified Distribution.Compat.Graph as G
-import Distribution.Simple.Utils (ordNub)
 import Distribution.Solver.Modular.Dependency
-import Distribution.Solver.Modular.Flag
 import Distribution.Solver.Modular.Tree
 import qualified Distribution.Solver.Modular.ConflictSet as CS
-import Distribution.Solver.Types.ComponentDeps (Component)
 import Distribution.Solver.Types.PackagePath
+import Distribution.Solver.Modular.ValidateDependencies
 
--- | Find and reject any nodes with cyclic dependencies
-detectCyclesPhase :: Tree d c -> Tree d c
-detectCyclesPhase = go
-  where
-    -- Only check children of choice nodes.
-    go :: Tree d c -> Tree d c
-    go (PChoice qpn rdm gr                         cs) =
-        PChoice qpn rdm gr     $ fmap (checkChild qpn)   (fmap go cs)
-    go (FChoice qfn@(FN qpn _) rdm gr w m d cs) =
-        FChoice qfn rdm gr w m d $ fmap (checkChild qpn) (fmap go cs)
-    go (SChoice qsn@(SN qpn _) rdm gr w     cs) =
-        SChoice qsn rdm gr w   $ fmap (checkChild qpn)   (fmap go cs)
-    go (GoalChoice rdm cs) = GoalChoice rdm (fmap go cs)
-    go x@(Fail _ _) = x
-    go x@(Done _ _) = x
-
-    checkChild :: QPN -> Tree d c -> Tree d c
-    checkChild qpn x@(PChoice _  rdm _       _) = failIfCycle qpn rdm x
-    checkChild qpn x@(FChoice _  rdm _ _ _ _ _) = failIfCycle qpn rdm x
-    checkChild qpn x@(SChoice _  rdm _ _     _) = failIfCycle qpn rdm x
-    checkChild qpn x@(GoalChoice rdm         _) = failIfCycle qpn rdm x
-    checkChild _   x@(Fail _ _)                 = x
-    checkChild qpn x@(Done       rdm _)         = failIfCycle qpn rdm x
-
-    failIfCycle :: QPN -> RevDepMap -> Tree d c -> Tree d c
-    failIfCycle qpn rdm x =
-      case findCycles qpn rdm of
-        Nothing     -> x
-        Just relSet -> Fail relSet CyclicDependencies
 
 -- | Given the reverse dependency map from a node in the tree, check
 -- if the solution is cyclic. If it is, return the conflict set containing
 -- all decisions that could potentially break the cycle.
 --
 -- TODO: The conflict set should also contain flag and stanza variables.
-findCycles :: QPN -> RevDepMap -> Maybe ConflictSet
-findCycles pkg rdm =
+findCycles :: QPN -> RevDepMap -> Maybe (ConflictSet, FailReason)
+findCycles pkg rdm = (,CyclicDependencies) <$>
     -- This function has two parts: a faster cycle check that is called at every
     -- step and a slower calculation of the conflict set.
     --
@@ -102,19 +72,9 @@ findCycles pkg rdm =
             else foldl go (S.insert x s) $ neighbors x
 
     neighbors :: QPN -> [QPN]
-    neighbors x = case x `M.lookup` rdm of
+    neighbors x = case x `M.lookup` revDeps rdm of
                     Nothing -> findCyclesError "cannot find node"
                     Just xs -> map snd xs
 
     findCyclesError = error . ("Distribution.Solver.Modular.Cycles.findCycles: " ++)
 
-data RevDepMapNode = RevDepMapNode QPN [(Component, QPN)]
-
-instance G.IsNode RevDepMapNode where
-  type Key RevDepMapNode = QPN
-  nodeKey (RevDepMapNode qpn _) = qpn
-  nodeNeighbors (RevDepMapNode _ ns) = ordNub $ map snd ns
-
-revDepMapToGraph :: RevDepMap -> G.Graph RevDepMapNode
-revDepMapToGraph rdm = G.fromDistinctList
-                       [RevDepMapNode qpn ns | (qpn, ns) <- M.toList rdm]

@@ -18,6 +18,7 @@ module Distribution.ModuleName
   ( ModuleName
   , fromString
   , fromComponents
+  , combineModuleName
   , components
   , toFilePath
   , main
@@ -99,12 +100,6 @@ validModuleComponent (c : cs) = isUpper c && all validModuleChar cs
 instance IsString ModuleName where
   fromString = ModuleName . toShortText
 
--- | Construct a 'ModuleName' from valid module components, i.e. parts
--- separated by dots.
-fromComponents :: [String] -> ModuleName
-fromComponents comps = fromString (intercalate "." comps)
-{-# DEPRECATED fromComponents "Exists for cabal-install only" #-}
-
 -- | The module name @Main@.
 main :: ModuleName
 main = ModuleName (fromString "Main")
@@ -118,6 +113,19 @@ components mn = split (unModuleName mn)
     split cs = case break (== '.') cs of
       (chunk, []) -> chunk : []
       (chunk, _ : rest) -> chunk : split rest
+
+-- | Construct a 'ModuleName' from valid module components, i.e. parts
+-- separated by dots.
+--
+-- Inverse of 'components', i.e. @fromComponents (components x) = x@
+fromComponents :: [String] -> ModuleName
+fromComponents comps = fromString (intercalate "." comps)
+{-# DEPRECATED fromComponents "Exists for cabal-install only" #-}
+
+-- | Append one valid module name onto another valid module name
+-- This is used when adding the module suffix to private dependencies
+combineModuleName :: ModuleName -> ModuleName -> ModuleName
+combineModuleName mn1 mn2 = fromComponents (components mn1 ++ components mn2)
 
 -- | Convert a module name to a file path, but without any file extension.
 -- For example:

@@ -178,7 +178,7 @@ instance IsNode NonSetupLibDepSolverPlanPackage where
     nodeKey spkg
 
   nodeNeighbors (NonSetupLibDepSolverPlanPackage spkg) =
-    ordNub $ CD.nonSetupDeps (resolverPackageLibDeps spkg)
+    ordNub $ map fst (CD.nonSetupDeps (resolverPackageLibDeps spkg))
 
 -- | Work out which version of the Cabal we will be using to talk to the
 -- Setup.hs interface for this package.

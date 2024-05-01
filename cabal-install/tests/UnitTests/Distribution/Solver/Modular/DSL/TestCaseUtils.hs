@@ -18,6 +18,7 @@ module UnitTests.Distribution.Solver.Modular.DSL.TestCaseUtils
   , preferences
   , setVerbose
   , enableAllTests
+  , solverResult
   , solverSuccess
   , solverFailure
   , anySolverFailure
@@ -46,6 +47,7 @@ import Language.Haskell.Extension (Extension (..), Language (..))
 -- cabal-install
 
 import Distribution.Client.Dependency (foldProgress)
+import qualified Distribution.Solver.Types.ComponentDeps as C
 import qualified Distribution.Solver.Types.PackagePath as P
 import Distribution.Solver.Types.PkgConfigDb (PkgConfigDb (..), pkgConfigDbFromList)
 import Distribution.Solver.Types.Settings
@@ -143,6 +145,9 @@ data SolverResult = SolverResult
   -- ^ Fails with an error message satisfying the predicate, or succeeds with
   -- the given plan.
   }
+
+solverResult :: ([String] -> Bool) -> [(String, Int)] -> SolverResult
+solverResult slog r = SolverResult slog (Right r)
 
 solverSuccess :: [(String, Int)] -> SolverResult
 solverSuccess = SolverResult (const True) . Right
@@ -314,13 +319,9 @@ runTest SolverTest{..} = askOption $ \(OptionShowSolverLog showSolverLog) ->
               P.QualToplevel
           QualSetup s ->
             P.PackagePath
-              P.DefaultNamespace
-              (P.QualSetup (C.mkPackageName s))
-          QualIndepSetup p s ->
-            P.PackagePath
-              (P.Independent $ C.mkPackageName p)
-              (P.QualSetup (C.mkPackageName s))
+              (P.IndependentComponent (C.mkPackageName s) C.ComponentSetup)
+              (P.QualToplevel)
           QualExe p1 p2 ->
             P.PackagePath
-              P.DefaultNamespace
-              (P.QualExe (C.mkPackageName p1) (C.mkPackageName p2))
+              (P.IndependentBuildTool (C.mkPackageName p1) (C.mkPackageName p2))
+              P.QualToplevel

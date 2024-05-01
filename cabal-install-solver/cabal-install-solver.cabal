@@ -66,11 +66,13 @@ library
     Distribution.Solver.Modular.MessageUtils
     Distribution.Solver.Modular.Package
     Distribution.Solver.Modular.Preference
+    Distribution.Solver.Modular.PrivateScopeClosure
     Distribution.Solver.Modular.PSQ
     Distribution.Solver.Modular.RetryLog
     Distribution.Solver.Modular.Solver
     Distribution.Solver.Modular.Tree
     Distribution.Solver.Modular.Validate
+    Distribution.Solver.Modular.ValidateDependencies
     Distribution.Solver.Modular.Var
     Distribution.Solver.Modular.Version
     Distribution.Solver.Modular.WeightedPSQ

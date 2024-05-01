@@ -6,6 +6,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections #-}
 
 -----------------------------------------------------------------------------
 
@@ -818,9 +819,9 @@ computeLocalBuildConfig cfg comp programDb = do
 
 data PackageInfo = PackageInfo
   { internalPackageSet :: Set LibraryName
-  , promisedDepsSet :: Map (PackageName, ComponentName) ComponentId
+  , promisedDepsSet :: Map (PackageName, ComponentName, IsPrivate) ComponentId
   , installedPackageSet :: InstalledPackageIndex
-  , requiredDepsMap :: Map (PackageName, ComponentName) InstalledPackageInfo
+  , requiredDepsMap :: Map (PackageName, ComponentName, IsPrivate) InstalledPackageInfo
   }
 
 configurePackage
@@ -973,12 +974,12 @@ finalizeAndConfigurePackage cfg lbc0 g_pkg_descr comp platform enabled = do
   -- NB: The fact that we bundle all the constraints together means
   -- that is not possible to configure a test-suite to use one
   -- version of a dependency, and the executable to use another.
-  ( allConstraints :: [PackageVersionConstraint]
-    , requiredDepsMap :: Map (PackageName, ComponentName) InstalledPackageInfo
+  ( allConstraints :: [(IsPrivate, PackageVersionConstraint)]
+    , requiredDepsMap :: Map (PackageName, ComponentName, IsPrivate) InstalledPackageInfo
     ) <-
     either (dieWithException verbosity) return $
       combinedConstraints
-        (configConstraints cfg)
+        (map (Public,) $ configConstraints cfg) -- configConstraints are per package and can't specify private aliases
         (configDependencies cfg)
         installedPackageSet
 
@@ -1354,8 +1355,8 @@ configureComponents
 
       return lbi
 
-mkPromisedDepsSet :: [GivenComponent] -> Map (PackageName, ComponentName) ComponentId
-mkPromisedDepsSet comps = Map.fromList [((pn, CLibName ln), cid) | GivenComponent pn ln cid <- comps]
+mkPromisedDepsSet :: [GivenComponent] -> Map (PackageName, ComponentName, IsPrivate) ComponentId
+mkPromisedDepsSet comps = Map.fromList [((pn, CLibName ln, alias), cid) | GivenComponent pn ln cid alias <- comps]
 
 -- | Adds the extra program paths from the flags provided to @configure@ as
 -- well as specified locations for certain known programs and their default
@@ -1458,10 +1459,10 @@ dependencySatisfiable
   -- ^ installed set
   -> Set LibraryName
   -- ^ library components
-  -> Map (PackageName, ComponentName) ComponentId
-  -> Map (PackageName, ComponentName) InstalledPackageInfo
+  -> Map (PackageName, ComponentName, IsPrivate) ComponentId
+  -> Map (PackageName, ComponentName, IsPrivate) InstalledPackageInfo
   -- ^ required dependencies
-  -> (Dependency -> Bool)
+  -> (IsPrivate -> Dependency -> Bool)
 dependencySatisfiable
   use_external_internal_deps
   exact_config
@@ -1471,6 +1472,7 @@ dependencySatisfiable
   packageLibraries
   promisedDeps
   requiredDepsMap
+  alias
   (Dependency depName vr sublibs)
     | exact_config =
         -- When we're given '--exact-configuration', we assume that all
@@ -1493,6 +1495,7 @@ dependencySatisfiable
                   , CLibName $
                       LSubLibName $
                         packageNameToUnqualComponentName depName
+                  , alias
                   )
                   requiredDepsMap
             )
@@ -1542,8 +1545,8 @@ dependencySatisfiable
           -- Don't check if it's visible, we promise to build it before we need it.
           || promised
         where
-          maybeIPI = Map.lookup (depName, CLibName lib) requiredDepsMap
-          promised = isJust $ Map.lookup (depName, CLibName lib) promisedDeps
+          maybeIPI = Map.lookup (depName, CLibName lib, alias) requiredDepsMap
+          promised = isJust $ Map.lookup (depName, CLibName lib, alias) promisedDeps
 
 -- | Finalize a generic package description.
 --
@@ -1552,8 +1555,8 @@ configureFinalizedPackage
   :: Verbosity
   -> ConfigFlags
   -> ComponentRequestedSpec
-  -> [PackageVersionConstraint]
-  -> (Dependency -> Bool)
+  -> [(IsPrivate, PackageVersionConstraint)]
+  -> (IsPrivate -> Dependency -> Bool)
   -- ^ tests if a dependency is satisfiable.
   -- Might say it's satisfiable even when not.
   -> Compiler
@@ -1620,10 +1623,10 @@ configureDependencies
   :: Verbosity
   -> UseExternalInternalDeps
   -> Set LibraryName
-  -> Map (PackageName, ComponentName) ComponentId
+  -> Map (PackageName, ComponentName, IsPrivate) ComponentId
   -> InstalledPackageIndex
   -- ^ installed packages
-  -> Map (PackageName, ComponentName) InstalledPackageInfo
+  -> Map (PackageName, ComponentName, IsPrivate) InstalledPackageInfo
   -- ^ required deps
   -> PackageDescription
   -> ComponentRequestedSpec
@@ -1643,7 +1646,7 @@ configureDependencies
           partitionEithers $
             concat
               [ fmap (\s -> (dep, s)) <$> status
-              | dep <- enabledBuildDepends pkg_descr enableSpec
+              | (alias, dep) <- enabledBuildDepends pkg_descr enableSpec
               , let status =
                       selectDependency
                         (package pkg_descr)
@@ -1652,6 +1655,7 @@ configureDependencies
                         installedPackageSet
                         requiredDepsMap
                         use_external_internal_deps
+                        alias
                         dep
               ]
 
@@ -1874,16 +1878,17 @@ selectDependency
   -- ^ Package id of current package
   -> Set LibraryName
   -- ^ package libraries
-  -> Map (PackageName, ComponentName) ComponentId
+  -> Map (PackageName, ComponentName, IsPrivate) ComponentId
   -- ^ Set of components that are promised, i.e. are not installed already. See 'PromisedDependency' for more details.
   -> InstalledPackageIndex
   -- ^ Installed packages
-  -> Map (PackageName, ComponentName) InstalledPackageInfo
+  -> Map (PackageName, ComponentName, IsPrivate) InstalledPackageInfo
   -- ^ Packages for which we have been given specific deps to
   -- use
   -> UseExternalInternalDeps
   -- ^ Are we configuring a
   -- single component?
+  -> IsPrivate
   -> Dependency
   -> [Either FailedDependency DependencyResolution]
 selectDependency
@@ -1893,6 +1898,7 @@ selectDependency
   installedIndex
   requiredDepsMap
   use_external_internal_deps
+  alias
   (Dependency dep_pkgname vr libs) =
     -- If the dependency specification matches anything in the internal package
     -- index, then we prefer that match to anything in the second.
@@ -1926,31 +1932,31 @@ selectDependency
       -- We have to look it up externally
       do_external_external :: LibraryName -> Either FailedDependency DependencyResolution
       do_external_external lib
-        | Just cid <- Map.lookup (dep_pkgname, CLibName lib) promisedIndex =
-            return $ PromisedDependency (PromisedComponent dep_pkgname (AnnotatedId currentCabalId (CLibName lib) cid))
+        | Just cid <- Map.lookup (dep_pkgname, CLibName lib, alias) promisedIndex =
+            return $ PromisedDependency (PromisedComponent dep_pkgname (AnnotatedId currentCabalId (CLibName lib) cid) alias)
       do_external_external lib = do
-        ipi <- case Map.lookup (dep_pkgname, CLibName lib) requiredDepsMap of
+        ipi <- case Map.lookup (dep_pkgname, CLibName lib, alias) requiredDepsMap of
           -- If we know the exact pkg to use, then use it.
           Just pkginstance -> Right pkginstance
           -- Otherwise we just pick an arbitrary instance of the latest version.
           Nothing -> case pickLastIPI $ PackageIndex.lookupInternalDependency installedIndex dep_pkgname vr lib of
             Nothing -> Left (DependencyNotExists dep_pkgname)
             Just pkg -> Right pkg
-        return $ ExternalDependency $ ipiToPreExistingComponent ipi
+        return $ ExternalDependency $ ipiToPreExistingComponent alias ipi
 
       do_external_internal :: LibraryName -> Either FailedDependency DependencyResolution
       do_external_internal lib
-        | Just cid <- Map.lookup (dep_pkgname, CLibName lib) promisedIndex =
-            return $ PromisedDependency (PromisedComponent dep_pkgname (AnnotatedId currentCabalId (CLibName lib) cid))
+        | Just cid <- Map.lookup (dep_pkgname, CLibName lib, alias) promisedIndex =
+            return $ PromisedDependency (PromisedComponent dep_pkgname (AnnotatedId currentCabalId (CLibName lib) cid) alias)
       do_external_internal lib = do
-        ipi <- case Map.lookup (dep_pkgname, CLibName lib) requiredDepsMap of
+        ipi <- case Map.lookup (dep_pkgname, CLibName lib, alias) requiredDepsMap of
           -- If we know the exact pkg to use, then use it.
           Just pkginstance -> Right pkginstance
           Nothing -> case pickLastIPI $ PackageIndex.lookupInternalDependency installedIndex pn vr lib of
             -- It's an internal library, being looked up externally
             Nothing -> Left (DependencyMissingInternal dep_pkgname lib)
             Just pkg -> Right pkg
-        return $ ExternalDependency $ ipiToPreExistingComponent ipi
+        return $ ExternalDependency $ ipiToPreExistingComponent alias ipi
 
       pickLastIPI :: [(Version, [InstalledPackageInfo])] -> Maybe InstalledPackageInfo
       pickLastIPI pkgs = safeHead . snd . last =<< nonEmpty pkgs
@@ -2116,14 +2122,14 @@ interpretPackageDbFlags userInstall specificDBs =
 -- deps in the end. So we still need to remember which installed packages to
 -- pick.
 combinedConstraints
-  :: [PackageVersionConstraint]
+  :: [(IsPrivate, PackageVersionConstraint)]
   -> [GivenComponent]
   -- ^ installed dependencies
   -> InstalledPackageIndex
   -> Either
       CabalException
-      ( [PackageVersionConstraint]
-      , Map (PackageName, ComponentName) InstalledPackageInfo
+      ( [(IsPrivate, PackageVersionConstraint)]
+      , Map (PackageName, ComponentName, IsPrivate) InstalledPackageInfo
       )
 combinedConstraints constraints dependencies installedPackages = do
   when (not (null badComponentIds)) $
@@ -2134,27 +2140,27 @@ combinedConstraints constraints dependencies installedPackages = do
 
   return (allConstraints, idConstraintMap)
   where
-    allConstraints :: [PackageVersionConstraint]
+    allConstraints :: [(IsPrivate, PackageVersionConstraint)]
     allConstraints =
       constraints
-        ++ [ thisPackageVersionConstraint (packageId pkg)
-           | (_, _, _, Just pkg) <- dependenciesPkgInfo
+        ++ [ (mAlias, thisPackageVersionConstraint (packageId pkg))
+           | (_, _, mAlias, _, Just pkg) <- dependenciesPkgInfo
            ]
 
-    idConstraintMap :: Map (PackageName, ComponentName) InstalledPackageInfo
+    idConstraintMap :: Map (PackageName, ComponentName, IsPrivate) InstalledPackageInfo
     idConstraintMap =
       Map.fromList
         -- NB: do NOT use the packageName from
         -- dependenciesPkgInfo!
-        [ ((pn, cname), pkg)
-        | (pn, cname, _, Just pkg) <- dependenciesPkgInfo
+        [ ((pn, cname, alias), pkg)
+        | (pn, cname, alias, _, Just pkg) <- dependenciesPkgInfo
         ]
 
     -- The dependencies along with the installed package info, if it exists
-    dependenciesPkgInfo :: [(PackageName, ComponentName, ComponentId, Maybe InstalledPackageInfo)]
+    dependenciesPkgInfo :: [(PackageName, ComponentName, IsPrivate, ComponentId, Maybe InstalledPackageInfo)]
     dependenciesPkgInfo =
-      [ (pkgname, CLibName lname, cid, mpkg)
-      | GivenComponent pkgname lname cid <- dependencies
+      [ (pkgname, CLibName lname, alias, cid, mpkg)
+      | GivenComponent pkgname lname cid alias <- dependencies
       , let mpkg =
               PackageIndex.lookupComponentId
                 installedPackages
@@ -2165,8 +2171,8 @@ combinedConstraints constraints dependencies installedPackages = do
     -- (i.e. someone has written a hash) and didn't find it then it's
     -- an error.
     badComponentIds =
-      [ (pkgname, cname, cid)
-      | (pkgname, cname, cid, Nothing) <- dependenciesPkgInfo
+      [ (pkgname, cname, alias, cid)
+      | (pkgname, cname, alias, cid, Nothing) <- dependenciesPkgInfo
       ]
 
     dispDependencies deps =
@@ -2180,8 +2186,9 @@ combinedConstraints constraints dependencies installedPackages = do
                   _ -> ":" <<>> pretty cname
                 <<>> char '='
                 <<>> pretty cid
+                <<>> foldIsPrivate "" (\a -> "=" <<>> pretty a) alias
             )
-        | (pkgname, cname, cid) <- deps
+        | (pkgname, cname, alias, cid) <- deps
         ]
 
 -- -----------------------------------------------------------------------------

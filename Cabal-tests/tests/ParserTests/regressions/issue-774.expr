@@ -112,8 +112,12 @@ GenericPackageDescription {
           PerCompilerFlavor [] [],
           customFieldsBI = [],
           targetBuildDepends = [],
+          targetPrivateBuildDepends = [],
           mixins = []}},
-      condTreeConstraints = [],
+      condTreeConstraints =
+      Dependencies {
+        publicDependencies = [],
+        privateDependencies = []},
       condTreeComponents = []},
   condSubLibraries = [],
   condForeignLibs = [],

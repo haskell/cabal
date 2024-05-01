@@ -510,6 +510,13 @@ pkgconfig-depends
     .. math::
         \mathrm{commalist}\mathsf{\color{red}{TODO}}
 
+private-build-depends
+    * Monoidal field
+    * Documentation of :pkg-field:`library:private-build-depends`
+
+    .. math::
+        \mathrm{commalist}\left(\mathop{\mathit{alias}}\bullet\mathop{\mathord{``}\mathtt{with}\mathord{"}}\bullet\mathop{\mathord{``}\mathtt{\text{(}}\mathord{"}}\circ{\left(\mathop{\mathit{pkg\text{-}name}}{\left(\mathop{\mathord{``}\mathtt{\text{:}}\mathord{"}}\left\{ \mathop{\mathit{unqual\text{-}name}}\mid\mathop{\mathord{``}\mathtt{\{}\mathord{"}}\circ{\mathop{\mathit{unqual\text{-}name}}}^+_{\left(\circ\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}\circ\right)}\circ\mathop{\mathord{``}\mathtt{\}}\mathord{"}} \right\}\right)}^?{\left(\circ\mathop{\mathit{version\text{-}range}}\right)}^?\right)}^\ast_{\left(\circ\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}\circ\right)}\circ\mathop{\mathord{``}\mathtt{\text{)}}\mathord{"}}\right)
+
 virtual-modules
     * Monoidal field
     * Available since ``cabal-version: 2.2``.

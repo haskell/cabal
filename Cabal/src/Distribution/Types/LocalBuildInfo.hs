@@ -156,7 +156,7 @@ pattern LocalBuildInfo
   -> Maybe (SymbolicPath Pkg File)
   -> Graph ComponentLocalBuildInfo
   -> Map ComponentName [ComponentLocalBuildInfo]
-  -> Map (PackageName, ComponentName) ComponentId
+  -> Map (PackageName, ComponentName, IsPrivate) ComponentId
   -> InstalledPackageIndex
   -> PackageDescription
   -> ProgramDb

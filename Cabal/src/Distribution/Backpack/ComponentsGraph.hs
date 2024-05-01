@@ -73,7 +73,7 @@ mkComponentsGraph enabled pkg_descr =
         toolDependencies = CExeName <$> getAllInternalToolDependencies pkg_descr bi
 
         libDependencies = do
-          Dependency pkgname _ lns <- targetBuildDepends bi
+          Dependency pkgname _ lns <- (targetBuildDepends bi ++ concatMap private_depends (targetPrivateBuildDepends bi))
           guard (pkgname == packageName pkg_descr)
 
           ln <- NES.toList lns

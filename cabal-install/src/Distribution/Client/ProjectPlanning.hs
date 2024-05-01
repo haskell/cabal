@@ -6,7 +6,10 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE NoMonoLocalBinds #-}
 
 -- |
 -- /Elaborated: worked out with great care and nicety of detail; executed with great minuteness: elaborate preparations; elaborate care./
@@ -1711,12 +1714,10 @@ elaborateInstallPlan
             where
               compSolverName = CD.ComponentSetup
               compComponentName = Nothing
-
-              dep_pkgs = elaborateLibSolverId mapDep =<< CD.setupDeps deps0
-
+              dep_pkgs = [(d', rn) | (d, rn) <- CD.setupDeps deps0, d' <- elaborateLibSolverId mapDep d]
               compLibDependencies =
                 -- MP: No idea what this function does
-                map (\cid -> (configuredId cid, False)) dep_pkgs
+                map (\(cid, rn) -> (configuredId cid, False, rn)) dep_pkgs
               compLinkedLibDependencies = notImpl "compLinkedLibDependencies"
               compOrderLibDependencies = notImpl "compOrderLibDependencies"
 
@@ -1766,7 +1767,7 @@ elaborateInstallPlan
 
                 let do_ cid =
                       let cid' = annotatedIdToConfiguredId . ci_ann_id $ cid
-                       in (cid', False) -- filled in later in pruneInstallPlanPhase2)
+                       in (cid', False, ci_alias cid) -- filled in later in pruneInstallPlanPhase2)
                       -- 2. Read out the dependencies from the ConfiguredComponent cc0
                 let compLibDependencies =
                       -- Nub because includes can show up multiple times
@@ -1881,35 +1882,35 @@ elaborateInstallPlan
               external_lib_dep_sids = CD.select (== compSolverName) deps0
               external_exe_dep_sids = CD.select (== compSolverName) exe_deps0
 
-              external_lib_dep_pkgs = concatMap mapDep external_lib_dep_sids
+              external_exe_dep_sids_raw = [(sid, Public) | sid <- external_exe_dep_sids]
 
               -- Combine library and build-tool dependencies, for backwards
               -- compatibility (See issue #5412 and the documentation for
               -- InstallPlan.fromSolverInstallPlan), but prefer the versions
               -- specified as build-tools.
               external_exe_dep_pkgs =
-                concatMap mapDep $
-                  ordNubBy (pkgName . packageId) $
-                    external_exe_dep_sids ++ external_lib_dep_sids
+                [(d, alias) | (sid, alias) <- ordNubBy (pkgName . packageId . fst) $ external_exe_dep_sids_raw ++ external_lib_dep_sids, d <- mapDep sid]
+
+              external_lib_dep_pkgs = [(d, alias) | (sid, alias) <- external_lib_dep_sids, d <- mapDep sid]
 
               external_exe_map =
                 Map.fromList $
                   [ (getComponentId pkg, paths)
-                  | pkg <- external_exe_dep_pkgs
+                  | (pkg, _) <- external_exe_dep_pkgs
                   , let paths = planPackageExePaths pkg
                   ]
               exe_map1 = Map.union external_exe_map $ fmap (\x -> [x]) exe_map
 
               external_lib_cc_map =
-                Map.fromListWith Map.union $
-                  map mkCCMapping external_lib_dep_pkgs
+                Map.fromListWith Map.union (map mkCCMapping external_lib_dep_pkgs)
               external_exe_cc_map =
                 Map.fromListWith Map.union $
                   map mkCCMapping external_exe_dep_pkgs
               external_lc_map =
                 Map.fromList $
                   map mkShapeMapping $
-                    external_lib_dep_pkgs ++ concatMap mapDep external_exe_dep_sids
+                    -- MP: TODO... should these aliases work here as well
+                    (map fst external_lib_dep_pkgs ++ concatMap (mapDep . fst) external_exe_dep_sids_raw)
 
               compPkgConfigDependencies =
                 [ ( pn
@@ -2043,9 +2044,10 @@ elaborateInstallPlan
 
             filterExt' :: [(ConfiguredId, a)] -> [(ConfiguredId, a)]
             filterExt' = filter (isExt . fst)
+            filterExt'' = filter (isExt . (\(d, _, _) -> d))
 
             pkgLibDependencies =
-              buildComponentDeps (filterExt' . compLibDependencies)
+              buildComponentDeps (filterExt'' . compLibDependencies)
             pkgExeDependencies =
               buildComponentDeps (filterExt . compExeDependencies)
             pkgExeDependencyPaths =
@@ -2112,7 +2114,7 @@ elaborateInstallPlan
             elabPkgDescription = case PD.finalizePD
               flags
               elabEnabledSpec
-              (const True)
+              (\_ _ -> True)
               platform
               (compilerInfo compiler)
               []
@@ -2179,7 +2181,7 @@ elaborateInstallPlan
                 elabSetupScriptStyle
                 elabPkgDescription
                 libDepGraph
-                deps0
+                (fmap (map fst) deps0)
             elabSetupPackageDBStack = buildAndRegisterDbs
 
             elabInplaceBuildPackageDBStack = inplacePackageDbs
@@ -2458,42 +2460,45 @@ matchElabPkg p elab =
 -- and 'ComponentName' to the 'ComponentId' that should be used
 -- in this case.
 mkCCMapping
-  :: ElaboratedPlanPackage
-  -> (PackageName, Map ComponentName (AnnotatedId ComponentId))
-mkCCMapping =
-  InstallPlan.foldPlanPackage
-    ( \ipkg ->
-        ( packageName ipkg
-        , Map.singleton
-            (ipiComponentName ipkg)
-            -- TODO: libify
-            ( AnnotatedId
-                { ann_id = IPI.installedComponentId ipkg
-                , ann_pid = packageId ipkg
-                , ann_cname = IPI.sourceComponentName ipkg
-                }
+  :: (ElaboratedPlanPackage, IsPrivate)
+  -> ((PackageName, IsPrivate), Map ComponentName ((AnnotatedId ComponentId)))
+mkCCMapping (ep, alias) = foldpp ep
+  where
+    foldpp =
+      InstallPlan.foldPlanPackage
+        ( \ipkg ->
+            ( (packageName ipkg, alias)
+            , Map.singleton
+                (ipiComponentName ipkg)
+                -- TODO: libify
+                ( AnnotatedId
+                    { ann_id = IPI.installedComponentId ipkg
+                    , ann_pid = packageId ipkg
+                    , ann_cname = IPI.sourceComponentName ipkg
+                    }
+                )
             )
         )
-    )
-    $ \elab ->
-      let mk_aid cn =
-            AnnotatedId
-              { ann_id = elabComponentId elab
-              , ann_pid = packageId elab
-              , ann_cname = cn
-              }
-       in ( packageName elab
-          , case elabPkgOrComp elab of
-              ElabComponent comp ->
-                case compComponentName comp of
-                  Nothing -> Map.empty
-                  Just n -> Map.singleton n (mk_aid n)
-              ElabPackage _ ->
-                Map.fromList $
-                  map
-                    (\comp -> let cn = Cabal.componentName comp in (cn, mk_aid cn))
-                    (Cabal.pkgBuildableComponents (elabPkgDescription elab))
-          )
+        $ \elab ->
+          let mk_aid cn =
+                ( AnnotatedId
+                    { ann_id = elabComponentId elab
+                    , ann_pid = packageId elab
+                    , ann_cname = cn
+                    }
+                )
+           in ( (packageName elab, alias)
+              , case elabPkgOrComp elab of
+                  ElabComponent comp ->
+                    case compComponentName comp of
+                      Nothing -> Map.empty
+                      Just n -> Map.singleton n (mk_aid n)
+                  ElabPackage _ ->
+                    Map.fromList $
+                      map
+                        (\comp -> let cn = Cabal.componentName comp in (cn, mk_aid cn))
+                        (Cabal.pkgBuildableComponents (elabPkgDescription elab))
+              )
 
 -- | Given an 'ElaboratedPlanPackage', generate the mapping from 'ComponentId'
 -- to the shape of this package, as per mix-in linking.
@@ -3525,7 +3530,7 @@ pruneInstallPlanPass2 pkgs =
       where
         -- We initially assume that all the dependencies are external (hence the boolean is always
         -- False) and here we correct the dependencies so the right packages are marked promised.
-        addInternal (cid, _) = (cid, (cid `Set.member` inMemoryTargets))
+        addInternal (cid, _, pn) = (cid, (cid `Set.member` inMemoryTargets), pn)
 
         libTargetsRequiredForRevDeps =
           [ c
@@ -3694,7 +3699,7 @@ setupHsScriptOptions
       , usePackageIndex = Nothing
       , useDependencies =
           [ (uid, srcid)
-          | (ConfiguredId srcid (Just (CLibName LMainLibName)) uid, _) <-
+          | (ConfiguredId srcid (Just (CLibName LMainLibName)) uid, _, _) <-
               elabSetupDependencies elab
           ]
       , useDependenciesExclusive = True
@@ -3906,14 +3911,14 @@ setupHsConfigureFlags
       -- enough info anyway)
       --
       configDependencies =
-        [ cidToGivenComponent cid
-        | (cid, is_internal) <- elabLibDependencies elab
+        [ cidToGivenComponent alias cid
+        | (cid, is_internal, alias) <- elabLibDependencies elab
         , not is_internal
         ]
 
       configPromisedDependencies =
-        [ cidToGivenComponent cid
-        | (cid, is_internal) <- elabLibDependencies elab
+        [ cidToGivenComponent alias cid
+        | (cid, is_internal, alias) <- elabLibDependencies elab
         , is_internal
         ]
 
@@ -3921,7 +3926,7 @@ setupHsConfigureFlags
         case elabPkgOrComp of
           ElabPackage _ ->
             [ thisPackageVersionConstraint srcid
-            | (ConfiguredId srcid _ _uid, _) <- elabLibDependencies elab
+            | (ConfiguredId srcid _ _uid, _, _) <- elabLibDependencies elab
             ]
           ElabComponent _ -> []
 
@@ -3944,8 +3949,8 @@ setupHsConfigureFlags
       configUseResponseFiles = mempty
       configAllowDependingOnPrivateLibs = Flag $ not $ libraryVisibilitySupported pkgConfigCompiler
 
-      cidToGivenComponent :: ConfiguredId -> GivenComponent
-      cidToGivenComponent (ConfiguredId srcid mb_cn cid) = GivenComponent (packageName srcid) ln cid
+      cidToGivenComponent :: IsPrivate -> ConfiguredId -> GivenComponent
+      cidToGivenComponent alias (ConfiguredId srcid mb_cn cid) = GivenComponent (packageName srcid) ln cid alias
         where
           ln = case mb_cn of
             Just (CLibName lname) -> lname
@@ -4208,7 +4213,7 @@ packageHashInputs
             ElabPackage (ElaboratedPackage{..}) ->
               Set.fromList $
                 [ confInstId dep
-                | (dep, _) <- CD.select relevantDeps pkgLibDependencies
+                | (dep, _, _) <- CD.select relevantDeps pkgLibDependencies
                 ]
                   ++ [ confInstId dep
                      | dep <- CD.select relevantDeps pkgExeDependencies
@@ -4217,7 +4222,7 @@ packageHashInputs
               Set.fromList
                 ( map
                     confInstId
-                    ( map fst (compLibDependencies comp)
+                    ( map (\(d, _, _) -> d) (compLibDependencies comp)
                         ++ compExeDependencies comp
                     )
                 )

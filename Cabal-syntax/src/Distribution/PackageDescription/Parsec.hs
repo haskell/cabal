@@ -64,6 +64,7 @@ import qualified Data.Set as Set
 import qualified Distribution.Compat.Newtype as Newtype
 import qualified Distribution.Compat.NonEmptySet as NES
 import qualified Distribution.Types.BuildInfo.Lens as L
+import qualified Distribution.Types.Dependency.Lens as L
 import qualified Distribution.Types.Executable.Lens as L
 import qualified Distribution.Types.ForeignLib.Lens as L
 import qualified Distribution.Types.GenericPackageDescription.Lens as L
@@ -264,7 +265,7 @@ goSections specVer = traverse_ process
       -> Map String CondTreeBuildInfo
       -- \^ common stanzas
       -> [Field Position]
-      -> ParseResult (CondTree ConfVar [Dependency] a)
+      -> ParseResult (CondTree ConfVar Dependencies a)
     parseCondTree' = parseCondTreeWithCommonStanzas specVer
 
     parseSection :: Name Position -> [SectionArg Position] -> [Field Position] -> SectionParser ()
@@ -480,10 +481,10 @@ parseCondTree
   -- ^ common stanzas
   -> (BuildInfo -> a)
   -- ^ constructor from buildInfo
-  -> (a -> [Dependency])
+  -> (a -> Dependencies)
   -- ^ condition extractor
   -> [Field Position]
-  -> ParseResult (CondTree ConfVar [Dependency] a)
+  -> ParseResult (CondTree ConfVar Dependencies a)
 parseCondTree v hasElif grammar commonStanzas fromBuildInfo cond = go
   where
     go fields0 = do
@@ -497,7 +498,7 @@ parseCondTree v hasElif grammar commonStanzas fromBuildInfo cond = go
       branches <- concat <$> traverse parseIfs ss
       return $ endo $ CondNode x (cond x) branches
 
-    parseIfs :: [Section Position] -> ParseResult [CondBranch ConfVar [Dependency] a]
+    parseIfs :: [Section Position] -> ParseResult [CondBranch ConfVar Dependencies a]
     parseIfs [] = return []
     parseIfs (MkSection (Name _ name) test fields : sections) | name == "if" = do
       test' <- parseConditionConfVar test
@@ -510,7 +511,7 @@ parseCondTree v hasElif grammar commonStanzas fromBuildInfo cond = go
 
     parseElseIfs
       :: [Section Position]
-      -> ParseResult (Maybe (CondTree ConfVar [Dependency] a), [CondBranch ConfVar [Dependency] a])
+      -> ParseResult (Maybe (CondTree ConfVar Dependencies a), [CondBranch ConfVar Dependencies a])
     parseElseIfs [] = return (Nothing, [])
     parseElseIfs (MkSection (Name pos name) args fields : sections) | name == "else" = do
       unless (null args) $
@@ -589,7 +590,7 @@ with new AST, this all need to be rewritten.
 -- The approach is simple, and have good properties:
 --
 -- * Common stanzas are parsed exactly once, even if not-used. Thus we report errors in them.
-type CondTreeBuildInfo = CondTree ConfVar [Dependency] BuildInfo
+type CondTreeBuildInfo = CondTree ConfVar Dependencies BuildInfo
 
 -- | Create @a@ from 'BuildInfo'.
 -- This class is used to implement common stanza parsing.
@@ -631,10 +632,10 @@ parseCondTreeWithCommonStanzas
   -> Map String CondTreeBuildInfo
   -- ^ common stanzas
   -> [Field Position]
-  -> ParseResult (CondTree ConfVar [Dependency] a)
+  -> ParseResult (CondTree ConfVar Dependencies a)
 parseCondTreeWithCommonStanzas v grammar fromBuildInfo commonStanzas fields = do
   (fields', endo) <- processImports v fromBuildInfo commonStanzas fields
-  x <- parseCondTree v hasElif grammar commonStanzas fromBuildInfo (view L.targetBuildDepends) fields'
+  x <- parseCondTree v hasElif grammar commonStanzas fromBuildInfo (\bi -> Dependencies (view L.targetBuildDepends bi) (view L.targetPrivateBuildDepends bi)) fields'
   return (endo x)
   where
     hasElif = specHasElif v
@@ -648,7 +649,7 @@ processImports
   -> Map String CondTreeBuildInfo
   -- ^ common stanzas
   -> [Field Position]
-  -> ParseResult ([Field Position], CondTree ConfVar [Dependency] a -> CondTree ConfVar [Dependency] a)
+  -> ParseResult ([Field Position], CondTree ConfVar Dependencies a -> CondTree ConfVar Dependencies a)
 processImports v fromBuildInfo commonStanzas = go []
   where
     hasCommonStanzas = specHasCommonStanzas v
@@ -691,11 +692,11 @@ warnImport _ f = pure (Just f)
 mergeCommonStanza
   :: L.HasBuildInfo a
   => (BuildInfo -> a)
-  -> CondTree ConfVar [Dependency] BuildInfo
-  -> CondTree ConfVar [Dependency] a
-  -> CondTree ConfVar [Dependency] a
+  -> CondTree ConfVar Dependencies BuildInfo
+  -> CondTree ConfVar Dependencies a
+  -> CondTree ConfVar Dependencies a
 mergeCommonStanza fromBuildInfo (CondNode bi _ bis) (CondNode x _ cs) =
-  CondNode x' (x' ^. L.targetBuildDepends) cs'
+  CondNode x' (Dependencies (view L.targetBuildDepends x') (view L.targetPrivateBuildDepends x')) cs'
   where
     -- new value is old value with buildInfo field _prepended_.
     x' = x & L.buildInfo %~ (bi <>)
@@ -814,7 +815,8 @@ postProcessInternalDeps specVer gpd
   where
     transformBI :: BuildInfo -> BuildInfo
     transformBI =
-      over L.targetBuildDepends (concatMap transformD)
+      over (L.targetPrivateBuildDepends . traverse . L.private_depends) (concatMap transformD)
+        . over L.targetBuildDepends (concatMap transformD)
         . over L.mixins (map transformM)
 
     transformSBI :: SetupBuildInfo -> SetupBuildInfo

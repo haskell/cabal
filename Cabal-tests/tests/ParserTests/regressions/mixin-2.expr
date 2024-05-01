@@ -114,6 +114,7 @@ GenericPackageDescription {
                 (PackageName "str-bytestring")
                 (OrLaterVersion (mkVersion [0]))
                 mainLibSet],
+            targetPrivateBuildDepends = [],
             mixins = [
               Mixin {
                 mixinPackageName = PackageName
@@ -143,19 +144,22 @@ GenericPackageDescription {
                         (ModuleName "Str.ByteString")],
                   includeRequiresRn =
                   DefaultRenaming}}]}},
-        condTreeConstraints = [
-          Dependency
-            (PackageName "base")
-            (OrLaterVersion (mkVersion [0]))
-            mainLibSet,
-          Dependency
-            (PackageName "str-string")
-            (OrLaterVersion (mkVersion [0]))
-            mainLibSet,
-          Dependency
-            (PackageName "str-bytestring")
-            (OrLaterVersion (mkVersion [0]))
-            mainLibSet],
+        condTreeConstraints =
+        Dependencies {
+          publicDependencies = [
+            Dependency
+              (PackageName "base")
+              (OrLaterVersion (mkVersion [0]))
+              mainLibSet,
+            Dependency
+              (PackageName "str-string")
+              (OrLaterVersion (mkVersion [0]))
+              mainLibSet,
+            Dependency
+              (PackageName "str-bytestring")
+              (OrLaterVersion (mkVersion [0]))
+              mainLibSet],
+          privateDependencies = []},
         condTreeComponents = []}],
   condTestSuites = [],
   condBenchmarks = []}
