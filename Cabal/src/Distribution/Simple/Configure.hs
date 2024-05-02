@@ -1364,7 +1364,7 @@ mkProgramDb :: ConfigFlags -> ProgramDb -> IO ProgramDb
 mkProgramDb cfg initialProgramDb = do
   programDb <-
     modifyProgramSearchPath (getProgramSearchPath initialProgramDb ++) -- We need to have the paths to programs installed by build-tool-depends before all other paths
-      <$> prependProgramSearchPath (fromFlagOrDefault normal (configVerbosity cfg)) searchpath initialProgramDb
+      <$> prependProgramSearchPath (fromFlagOrDefault normal (configVerbosity cfg)) searchpath [] initialProgramDb
   pure
     . userSpecifyArgss (configProgramArgs cfg)
     . userSpecifyPaths (configProgramPaths cfg)

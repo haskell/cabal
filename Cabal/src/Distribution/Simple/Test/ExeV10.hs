@@ -10,7 +10,6 @@ import Prelude ()
 
 import Distribution.Compat.Environment
 import qualified Distribution.PackageDescription as PD
-import Distribution.Simple.Build.PathsModule
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Compiler
 import Distribution.Simple.Errors
@@ -22,6 +21,9 @@ import qualified Distribution.Simple.LocalBuildInfo as LBI
   , buildDir
   , depLibraryPaths
   )
+import Distribution.Simple.Program.Db
+import Distribution.Simple.Program.Find
+import Distribution.Simple.Program.Run
 import Distribution.Simple.Setup.Common
 import Distribution.Simple.Setup.Test
 import Distribution.Simple.Test.Log
@@ -85,22 +87,18 @@ runTest pkg_descr lbi clbi hpcMarkupInfo flags suite = do
   -- Write summary notices indicating start of test suite
   notice verbosity $ summarizeSuiteStart $ testName'
 
-  -- Run the test executable
+  -- Run the test executable (with the appropriate environment set)
+  let progDb = LBI.withPrograms lbi
+      pathVar = progSearchPath progDb
+      envOverrides = progOverrideEnv progDb
+  newPath <- programSearchPathAsPATHVar pathVar
+  overrideEnv <- fromMaybe [] <$> getEffectiveEnvironment ([("PATH", Just newPath)] ++ envOverrides)
   let opts =
         map
           (testOption pkg_descr lbi suite)
           (testOptions flags)
-      rawDataDir = PD.dataDir pkg_descr
-      dataDirPath
-        | null $ getSymbolicPath rawDataDir =
-            interpretSymbolicPath mbWorkDir sameDirectory
-        | otherwise =
-            interpretSymbolicPath mbWorkDir rawDataDir
       tixFile = packageRoot (testCommonFlags flags) </> getSymbolicPath (tixFilePath distPref way (testName'))
-      pkgPathEnv =
-        (pkgPathEnvVar pkg_descr "datadir", dataDirPath)
-          : existingEnv
-      shellEnv = [("HPCTIXFILE", tixFile) | isCoverageEnabled] ++ pkgPathEnv
+      shellEnv = [("HPCTIXFILE", tixFile) | isCoverageEnabled] ++ overrideEnv ++ existingEnv
 
   -- Add (DY)LD_LIBRARY_PATH if needed
   shellEnv' <-
@@ -198,7 +196,6 @@ runTest pkg_descr lbi clbi hpcMarkupInfo flags suite = do
   where
     i = interpretSymbolicPathLBI lbi -- See Note [Symbolic paths] in Distribution.Utils.Path
     commonFlags = testCommonFlags flags
-    mbWorkDir = flagToMaybe $ setupWorkingDir commonFlags
 
     testName' = unUnqualComponentName $ PD.testName suite
 

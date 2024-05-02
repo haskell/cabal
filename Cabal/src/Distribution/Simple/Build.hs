@@ -45,6 +45,9 @@ module Distribution.Simple.Build
 
     -- * Internal package database creation
   , createInternalPackageDB
+
+    -- * Handling of internal build tools
+  , addInternalBuildTools
   ) where
 
 import Distribution.Compat.Prelude
@@ -76,7 +79,7 @@ import qualified Distribution.Simple.UHC as UHC
 
 import Distribution.Simple.Build.Macros (generateCabalMacrosHeader)
 import Distribution.Simple.Build.PackageInfoModule (generatePackageInfoModule)
-import Distribution.Simple.Build.PathsModule (generatePathsModule)
+import Distribution.Simple.Build.PathsModule (generatePathsModule, pkgPathEnvVar)
 import qualified Distribution.Simple.Program.HcPkg as HcPkg
 
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
@@ -95,6 +98,7 @@ import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.PreProcess
 import Distribution.Simple.Program
 import Distribution.Simple.Program.Builtin (haskellSuiteProgram)
+import Distribution.Simple.Program.Db
 import qualified Distribution.Simple.Program.GHC as GHC
 import Distribution.Simple.Program.Types
 import Distribution.Simple.Register
@@ -189,6 +193,7 @@ build_setupHooks
       let comp = targetComponent target
           clbi = targetCLBI target
           bi = componentBuildInfo comp
+          -- Include any build-tool-depends on build tools internal to the current package.
           progs' = addInternalBuildTools pkg_descr lbi bi (withPrograms lbi)
           lbi' =
             lbi
@@ -208,7 +213,6 @@ build_setupHooks
                   (ruleFromId, _mons) <- SetupHooks.computeRules verbosity inputs pbcRules
                   SetupHooks.executeRules verbosity lbi2 tgt ruleFromId
       preBuildComponent runPreBuildHooks verbosity lbi' target
-
       let numJobs = buildNumJobs flags
       par_strat <-
         toFlag <$> case buildUseSemaphore flags of
@@ -378,6 +382,7 @@ repl_setupHooks
           lbi'
             { withPackageDB = withPackageDB lbi ++ [internalPackageDB]
             , withPrograms =
+                -- Include any build-tool-depends on build tools internal to the current package.
                 addInternalBuildTools
                   pkg_descr
                   lbi'
@@ -911,6 +916,17 @@ createInternalPackageDB verbosity lbi distPref = do
     dbRelPath = internalPackageDBPath lbi distPref
     dbPath = interpretSymbolicPathLBI lbi dbRelPath
 
+-- | Update the program database to include any build-tool-depends specified
+-- in the given 'BuildInfo' on build tools internal to the current package.
+--
+-- This function:
+--
+--  - adds these internal build tools to the 'ProgramDb', including
+--    paths to their respective data directories,
+--  - adds their paths to the current 'progSearchPath', and adds the data
+--    directory environment variable for the current package to the current
+--    'progOverrideEnv', so that any programs configured from now on will be
+--    able to invoke these build tools.
 addInternalBuildTools
   :: PackageDescription
   -> LocalBuildInfo
@@ -918,10 +934,17 @@ addInternalBuildTools
   -> ProgramDb
   -> ProgramDb
 addInternalBuildTools pkg lbi bi progs =
-  foldr updateProgram progs internalBuildTools
+  prependProgramSearchPathNoLogging
+    internalToolPaths
+    [pkgDataDirVar]
+    $ foldr updateProgram progs internalBuildTools
   where
+    internalToolPaths = map (takeDirectory . programPath) internalBuildTools
+    pkgDataDirVar = (pkgPathEnvVar pkg "datadir", Just dataDirPath)
     internalBuildTools =
-      [ simpleConfiguredProgram toolName' (FoundOnSystem toolLocation)
+      [ (simpleConfiguredProgram toolName' (FoundOnSystem toolLocation))
+        { programOverrideEnv = [pkgDataDirVar]
+        }
       | toolName <- getAllInternalToolDependencies pkg bi
       , let toolName' = unUnqualComponentName toolName
       , let toolLocation =
@@ -929,6 +952,13 @@ addInternalBuildTools pkg lbi bi progs =
                 buildDir lbi
                   </> makeRelativePathEx (toolName' </> toolName' <.> exeExtension (hostPlatform lbi))
       ]
+    mbWorkDir = mbWorkDirLBI lbi
+    rawDataDir = dataDir pkg
+    dataDirPath
+      | null $ getSymbolicPath rawDataDir =
+          interpretSymbolicPath mbWorkDir sameDirectory
+      | otherwise =
+          interpretSymbolicPath mbWorkDir rawDataDir
 
 -- TODO: build separate libs in separate dirs so that we can build
 -- multiple libs, e.g. for 'LibTest' library-style test suites

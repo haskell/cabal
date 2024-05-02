@@ -57,8 +57,8 @@ Where are these environments specified:
 2. The build-depends of `test-runtime-deps` executable in `cabal-testsuite.cabal`
    These dependencies are injected in a special module (`Test.Cabal.ScriptEnv0`) which
    then is consulted in `Test.Cabal.Monad` in order to pass the right environmnet.
-   This is mechanism by which the `./Setup` tests have access to the in-tree `Cabal`
-   and `Cabal-syntax` libraries.
+   This is the mechanism by which the `./Setup` tests have access to the in-tree
+   `Cabal`, `Cabal-syntax` and `Cabal-hooks` libraries.
 3. No specification, only the `GlobalPackageDb` is available (see
    `testPackageDBStack`) unless the test itself augments the environment with
    `withPackageDb`.
@@ -142,7 +142,8 @@ buildCabalLibsProject projString verb mbGhc dir = do
       , "--project-file=" ++ dir </> "cabal.project-test"
       , "build"
       , "-w", programPath ghc
-      , "Cabal", "Cabal-syntax"] ) { progInvokeCwd = Just dir })
+      , "Cabal", "Cabal-syntax", "Cabal-hooks"
+      ] ) { progInvokeCwd = Just dir })
   return final_package_db
 
 
@@ -157,15 +158,18 @@ buildCabalLibsSpecific ver verb mbGhc builddir_rel = do
   csgot <- doesDirectoryExist (dir </> "Cabal-syntax-" ++ ver)
   unless csgot $
     runProgramInvocation verb ((programInvocation cabal ["get", "Cabal-syntax-" ++ ver]) { progInvokeCwd = Just dir })
-
-  buildCabalLibsProject ("packages: Cabal-" ++ ver ++ " Cabal-syntax-" ++ ver) verb mbGhc dir
+  let hooksVerFromVer _ = "0.1"
+      hooksVer = hooksVerFromVer ver
+  chgot <- doesDirectoryExist (dir </> "Cabal-hooks-" ++ hooksVer)
+  unless chgot $
+    runProgramInvocation verb ((programInvocation cabal ["get", "Cabal-hooks-" ++ hooksVer]) { progInvokeCwd = Just dir })
+  buildCabalLibsProject ("packages: Cabal-" ++ ver ++ " Cabal-syntax-" ++ ver ++ " Cabal-hooks-" ++ hooksVer) verb mbGhc dir
 
 
 buildCabalLibsIntree :: String -> Verbosity -> Maybe FilePath -> FilePath -> IO FilePath
 buildCabalLibsIntree root verb mbGhc builddir_rel = do
   dir <- canonicalizePath (builddir_rel </> "intree")
-  buildCabalLibsProject ("packages: " ++ root </> "Cabal" ++ " " ++ root </> "Cabal-syntax") verb mbGhc dir
-
+  buildCabalLibsProject ("packages: " ++ root </> "Cabal" ++ " " ++ root </> "Cabal-syntax" ++ " " ++ root </> "Cabal-hooks") verb mbGhc dir
 
 main :: IO ()
 main = do
