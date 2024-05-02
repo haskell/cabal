@@ -1,96 +1,96 @@
 # Warnings currently triggered by your code
-- ignore: {name: "Avoid lambda"} # 49 hints
-- ignore: {name: "Avoid lambda using `infix`"} # 19 hints
-- ignore: {name: "Eta reduce"} # 91 hints
-- ignore: {name: "Evaluate"} # 9 hints
-- ignore: {name: "Functor law"} # 14 hints
+- ignore: {name: "Avoid NonEmpty.unzip"} # 1 hint
+- ignore: {name: "Avoid lambda"} # 46 hints
+- ignore: {name: "Avoid lambda using `infix`"} # 22 hints
+- ignore: {name: "Eta reduce"} # 116 hints
+- ignore: {name: "Evaluate"} # 10 hints
+- ignore: {name: "Functor law"} # 10 hints
 - ignore: {name: "Fuse concatMap/map"} # 3 hints
 - ignore: {name: "Fuse foldr/map"} # 3 hints
-- ignore: {name: "Fuse mapMaybe/map"} # 2 hints
+- ignore: {name: "Fuse mapMaybe/map"} # 1 hint
+- ignore: {name: "Fuse traverse_/fmap"} # 1 hint
 - ignore: {name: "Fuse traverse_/map"} # 1 hint
-- ignore: {name: "Hoist not"} # 30 hints
+- ignore: {name: "Hoist not"} # 16 hints
 - ignore: {name: "Missing NOINLINE pragma"} # 1 hint
 - ignore: {name: "Monoid law, left identity"} # 3 hints
 - ignore: {name: "Monoid law, right identity"} # 3 hints
+- ignore: {name: "Move filter"} # 4 hints
 - ignore: {name: "Move guards forward"} # 4 hints
-- ignore: {name: "Redundant $"} # 125 hints
-- ignore: {name: "Redundant $!"} # 4 hints
-- ignore: {name: "Redundant <$>"} # 6 hints
+- ignore: {name: "Redundant $"} # 175 hints
+- ignore: {name: "Redundant $!"} # 1 hint
+- ignore: {name: "Redundant <$>"} # 16 hints
 - ignore: {name: "Redundant =="} # 1 hint
-- ignore: {name: "Redundant bracket"} # 206 hints
+- ignore: {name: "Redundant bracket"} # 232 hints
+- ignore: {name: "Redundant fmap"} # 1 hint
 - ignore: {name: "Redundant guard"} # 2 hints
-- ignore: {name: "Redundant if"} # 1 hint
-- ignore: {name: "Redundant lambda"} # 22 hints
-- ignore: {name: "Redundant map"} # 1 hint
+- ignore: {name: "Redundant if"} # 3 hints
+- ignore: {name: "Redundant lambda"} # 19 hints
 - ignore: {name: "Redundant multi-way if"} # 1 hint
-- ignore: {name: "Redundant return"} # 4 hints
+- ignore: {name: "Redundant return"} # 7 hints
 - ignore: {name: "Replace case with fromMaybe"} # 5 hints
 - ignore: {name: "Replace case with maybe"} # 10 hints
-- ignore: {name: "Unused LANGUAGE pragma"} # 121 hints
+- ignore: {name: "Unused LANGUAGE pragma"} # 167 hints
 - ignore: {name: "Use $>"} # 5 hints
 - ignore: {name: "Use ++"} # 4 hints
-- ignore: {name: "Use :"} # 28 hints
+- ignore: {name: "Use :"} # 25 hints
 - ignore: {name: "Use <$"} # 2 hints
-- ignore: {name: "Use <$>"} # 67 hints
+- ignore: {name: "Use <$>"} # 86 hints
 - ignore: {name: "Use <&>"} # 14 hints
 - ignore: {name: "Use <=<"} # 5 hints
-- ignore: {name: "Use =<<"} # 6 hints
-- ignore: {name: "Use =="} # 2 hints
+- ignore: {name: "Use =<<"} # 7 hints
+- ignore: {name: "Use =="} # 3 hints
 - ignore: {name: "Use >=>"} # 3 hints
 - ignore: {name: "Use ?~"} # 1 hint
+- ignore: {name: "Use Down"} # 3 hints
 - ignore: {name: "Use Just"} # 2 hints
-- ignore: {name: "Use all"} # 8 hints
-- ignore: {name: "Use bimap"} # 1 hint
-- ignore: {name: "Use camelCase"} # 68 hints
+- ignore: {name: "Use bimap"} # 7 hints
+- ignore: {name: "Use camelCase"} # 96 hints
 - ignore: {name: "Use catMaybes"} # 3 hints
 - ignore: {name: "Use concatMap"} # 1 hint
-- ignore: {name: "Use const"} # 38 hints
-- ignore: {name: "Use elem"} # 3 hints
-- ignore: {name: "Use fewer imports"} # 13 hints
-- ignore: {name: "Use first"} # 2 hints
-- ignore: {name: "Use fmap"} # 28 hints
+- ignore: {name: "Use const"} # 36 hints
+- ignore: {name: "Use elem"} # 2 hints
+- ignore: {name: "Use fewer imports"} # 19 hints
+- ignore: {name: "Use first"} # 4 hints
+- ignore: {name: "Use fmap"} # 24 hints
 - ignore: {name: "Use fold"} # 1 hint
 - ignore: {name: "Use for"} # 1 hint
 - ignore: {name: "Use forM_"} # 1 hint
-- ignore: {name: "Use for_"} # 1 hint
-- ignore: {name: "Use fromMaybe"} # 2 hints
+- ignore: {name: "Use fromMaybe"} # 1 hint
 - ignore: {name: "Use fromRight"} # 1 hint
 - ignore: {name: "Use fst"} # 1 hint
 - ignore: {name: "Use if"} # 4 hints
-- ignore: {name: "Use infix"} # 19 hints
+- ignore: {name: "Use infix"} # 20 hints
 - ignore: {name: "Use isAsciiLower"} # 2 hints
 - ignore: {name: "Use isAsciiUpper"} # 2 hints
 - ignore: {name: "Use isDigit"} # 2 hints
-- ignore: {name: "Use isJust"} # 2 hints
-- ignore: {name: "Use isNothing"} # 3 hints
-- ignore: {name: "Use lambda-case"} # 49 hints
+- ignore: {name: "Use isJust"} # 1 hint
+- ignore: {name: "Use isNothing"} # 1 hint
+- ignore: {name: "Use lambda-case"} # 47 hints
 - ignore: {name: "Use lefts"} # 1 hint
-- ignore: {name: "Use list comprehension"} # 11 hints
+- ignore: {name: "Use list comprehension"} # 16 hints
 - ignore: {name: "Use list literal"} # 3 hints
 - ignore: {name: "Use list literal pattern"} # 11 hints
-- ignore: {name: "Use map"} # 5 hints
-- ignore: {name: "Use map once"} # 6 hints
-- ignore: {name: "Use mapMaybe"} # 11 hints
+- ignore: {name: "Use map once"} # 7 hints
+- ignore: {name: "Use map with tuple-section"} # 3 hints
+- ignore: {name: "Use mapMaybe"} # 13 hints
 - ignore: {name: "Use max"} # 1 hint
-- ignore: {name: "Use maybe"} # 10 hints
-- ignore: {name: "Use newtype instead of data"} # 19 hints
-- ignore: {name: "Use notElem"} # 11 hints
-- ignore: {name: "Use null"} # 3 hints
-- ignore: {name: "Use or"} # 1 hint
+- ignore: {name: "Use maybe"} # 8 hints
+- ignore: {name: "Use minimumBy"} # 1 hint
+- ignore: {name: "Use newtype instead of data"} # 26 hints
+- ignore: {name: "Use notElem"} # 8 hints
+- ignore: {name: "Use null"} # 2 hints
 - ignore: {name: "Use record patterns"} # 16 hints
 - ignore: {name: "Use replicateM"} # 1 hint
-- ignore: {name: "Use replicateM_"} # 6 hints
+- ignore: {name: "Use replicateM_"} # 2 hints
 - ignore: {name: "Use rights"} # 2 hints
 - ignore: {name: "Use second"} # 7 hints
-- ignore: {name: "Use section"} # 19 hints
-- ignore: {name: "Use sortOn"} # 15 hints
+- ignore: {name: "Use section"} # 17 hints
 - ignore: {name: "Use traverse"} # 1 hint
-- ignore: {name: "Use traverse_"} # 1 hint
 - ignore: {name: "Use tuple-section"} # 28 hints
 - ignore: {name: "Use typeRep"} # 2 hints
-- ignore: {name: "Use unless"} # 17 hints
+- ignore: {name: "Use unless"} # 20 hints
 - ignore: {name: "Use unwords"} # 8 hints
-- ignore: {name: "Use void"} # 17 hints
+- ignore: {name: "Use void"} # 22 hints
 - ignore: {name: "Use when"} # 1 hint
 
 - arguments:
