@@ -1,21 +1,25 @@
-☞ N.B.: this is a WIP release-note file for 3.12.x.0 cabal-install.
+Pre-release cabal-install 3.12.0.0/3.11.0.0 changelog and release notes.
 
-cabal-install and cabal-install-solver 3.12.1.0 changelog and release notes
+This file will be edited and the changes incorprated into the official
+3.12.1.0 cabal-install and cabal-install-solver release notes.
+
 ---
+
+### Significant changes
+
+- Add support for asm, cmm, and js sources in executable components [#8639](https://github.com/haskell/cabal/issues/8639) [#9061](https://github.com/haskell/cabal/pull/9061)
+
+    Executable components now support the inclusion of asm, cmm, and js source
+    files in a cabal file using the same syntax as is used for these sources
+    in library components, similar to how c and c++ sources are supported in
+    both types of components. This syntax was already parsed in cabal files,
+    but was silently ignored in the build step, so no changes to syntax are
+    made.
 
 - Add `--project-dir` flag [#7695](https://github.com/haskell/cabal/issues/7695) [#7940](https://github.com/haskell/cabal/issues/7940) [#8454](https://github.com/haskell/cabal/pull/8454)
 
     - Added `--project-dir` flag for specifying the project's root directory
     - Deprecated using `--project-file` with an absolute filepath without also using `--project-dir`.
-
-- Remove useles "Log" log level [#9151](https://github.com/haskell/cabal/issues/9151) [#9346](https://github.com/haskell/cabal/pull/9346)
-
-    - Remove "Log" as a log level in favour of "Info".
-    - Remove "Show" in Severity and replace by "displaySeverity" function
-
-- Add `--haddock-output-dir` flag to `cabal haddock`. [#8720](https://github.com/haskell/cabal/issues/8720) [#8788](https://github.com/haskell/cabal/pull/8788)
-
-  This flag gives the user full control over the directory where the documentation is placed. It allows both relative and absolute paths.
 
 - Support per-component builds when coverage is enabled [#4798](https://github.com/haskell/cabal/issues/4798) [#5213](https://github.com/haskell/cabal/issues/5213) [#6397](https://github.com/haskell/cabal/issues/6397) [#6440](https://github.com/haskell/cabal/issues/6440) [#9464](https://github.com/haskell/cabal/pull/9464)
 
@@ -31,6 +35,13 @@ cabal-install and cabal-install-solver 3.12.1.0 changelog and release notes
     Cabal configure (via the Setup interface) now accepts --coverage-for=<unit-id>,
     a flag which specifies which libraries should be included in the coverage
     report for some testsuite.
+
+- Add `cabal path` command [#8879](https://github.com/haskell/cabal/pull/8879)
+
+    The `cabal path` command prints the file system paths used by Cabal.
+    It is intended for use by tooling that needs to read or modify Cabal
+    data, such that it does not need to replicate the complicated logic
+    for respecting `CABAL_DIR`, `CABAL_CONFIG`, etc.
 
 - Redesign `cabal path` command to account for projects [#9673](https://github.com/haskell/cabal/pull/9673)
 
@@ -71,12 +82,6 @@ cabal-install and cabal-install-solver 3.12.1.0 changelog and release notes
     If you prefer a log file, consider setting `--test-show-details=streaming` (or something
     else) manually.
 
-### Other changes
-
-- Script cache dir is the base16 hash of the canonical path of the script. [#9459](https://github.com/haskell/cabal/pull/9459)
-
-    This fixes sporadic path failures on both Windows and Linux (e.g. [#9334](https://github.com/haskell/cabal/issues/9334)).
-
 - Die if package list is missing [#8944](https://github.com/haskell/cabal/pull/8944)
 
     If a package list is missing, `cabal` will now die and suggest the user to run
@@ -105,17 +110,6 @@ cabal-install and cabal-install-solver 3.12.1.0 changelog and release notes
     directories explicitly specified in cabal file will be considered
     before Cabal’s internal build directory.
 
-- Also render short options with arguments [#8785](https://github.com/haskell/cabal/issues/8785) [#9043](https://github.com/haskell/cabal/pull/9043)
-
-    Show how arguments are used with both short and long forms of options:
-
-    ```diff
-    <-v, --verbose[=n]Control verbosity (n is 0--3, default
-    >-v[n], --verbose[=n] Control verbosity (n is 0--3, default
-    <-w, --with-compiler=PATH give the path to a particular compiler
-    >-w PATH or -wPATH, --with-compiler=PATH
-    ```
-
 - config file: allow more flags in the init section [#8835](https://github.com/haskell/cabal/issues/8835) [#8839](https://github.com/haskell/cabal/pull/8839)
 
     The init section of config file now allows the following fields:
@@ -136,8 +130,6 @@ cabal-install and cabal-install-solver 3.12.1.0 changelog and release notes
     This fixes an assertion failure which was triggered when using `--package-db` and also
     clarifies how it should interact with `--store-dir` and `--dist-dir` flags.
 
-- PkgConfig individual calls [#9134](https://github.com/haskell/cabal/pull/9134)
-
 - Add `--semaphore` flag to enable interaction with GHC Job Server protocol [#8557](https://github.com/haskell/cabal/pull/8557)
 
     When cabal-install is passed the `--semaphore` flag it will now act as a job server
@@ -150,11 +142,6 @@ cabal-install and cabal-install-solver 3.12.1.0 changelog and release notes
 
     This feature requires ghc-9.8 in order to use, as this is the first version of GHC
     which implements the protocol.
-
-- Reimplementing `cabal check` [#7423](https://github.com/haskell/cabal/issues/7423) [#8427](https://github.com/haskell/cabal/pull/8427)
-
-  - For `cabal-install` users: `cabal check` do not warn on -O2 or similar
-    options if under an off-by-default cabal flag.
 
 - Add `--ignore` to `cabal check` [#8587](https://github.com/haskell/cabal/issues/8587) [#9442](https://github.com/haskell/cabal/pull/9442)
 
@@ -192,19 +179,6 @@ cabal-install and cabal-install-solver 3.12.1.0 changelog and release notes
     The feature is fully explained in [this blog
     post](https://well-typed.com/blog/2023/03/cabal-multi-unit/).
 
-- Add `cabal path` command [#8879](https://github.com/haskell/cabal/pull/8879)
-
-    The `cabal path` command prints the file system paths used by Cabal.
-    It is intended for use by tooling that needs to read or modify Cabal
-    data, such that it does not need to replicate the complicated logic
-    for respecting `CABAL_DIR`, `CABAL_CONFIG`, etc.
-
-- `cabal check`: clearly mark Errors [#8908](https://github.com/haskell/cabal/pull/8908)
-
-    `cabal check` will now mark errors (which make the program return 1 and
-    Hackage refuse the package) by prepending them with an "Error: " string in
-    the output.
-
 - Warn when project configuration options are going to be ignored. [#8949](https://github.com/haskell/cabal/pull/8949)
 
     Some project configuration options can only be specified from the command
@@ -216,17 +190,6 @@ cabal-install and cabal-install-solver 3.12.1.0 changelog and release notes
 
     Fixes a bug introduced in #8506 that caused executables in the path to
     take precedence over those specified in `build-tools-depends`.
-
-- Remove `--cabal-file` flags from v2 commands [#6880](https://github.com/haskell/cabal/issues/6880) [#7225](https://github.com/haskell/cabal/issues/7225) [#8395](https://github.com/haskell/cabal/issues/8395) [#9123](https://github.com/haskell/cabal/pull/9123)
-
-    The `--cabal-file` flag was never meant for public use but only for testing.
-    To avoid confusing the users any further we removed the flag from v2
-    commands.
-
-- Avoid a double space in "Executing install plan ..." [#9376](https://github.com/haskell/cabal/pull/9376)
-
-    The "Executing·install·plan··serially" and other similar "Executing
-    install plan··..." outputs no longer contain double spaces.
 
 - Guard `PackageInfo_*` modules behind `cabal-version` ≥ 3.12 [#9331](https://github.com/haskell/cabal/issues/9331) [#9481](https://github.com/haskell/cabal/pull/9481)
 
@@ -240,8 +203,6 @@ cabal-install and cabal-install-solver 3.12.1.0 changelog and release notes
 - `cabal init`: suggest BSD-3 as default license [#8757](https://github.com/haskell/cabal/issues/8757) [#8764](https://github.com/haskell/cabal/pull/8764)
 
 - Do not ask overwrite permissions on blank project [#9150](https://github.com/haskell/cabal/issues/9150) [#9155](https://github.com/haskell/cabal/pull/9155)
-
-- Don't report `index.html` file as created, if not created by Haddock [#5120](https://github.com/haskell/cabal/issues/5120) [#9332](https://github.com/haskell/cabal/pull/9332)
 
 - Shorten solver rejection messages by removing repetition [#4251](https://github.com/haskell/cabal/issues/4251) [#9559](https://github.com/haskell/cabal/issues/9559) [#9560](https://github.com/haskell/cabal/pull/9560)
 
@@ -287,3 +248,96 @@ cabal-install and cabal-install-solver 3.12.1.0 changelog and release notes
   This change matters to BSD-2-Clause and BSD-3-Clause licences. For these two
   licences, `cabal init` created a licence file that slightly differed from
   wording published at SPDX.  This has been rectified.
+
+- Include the GHC "Project Unit Id" in the cabal store path [#8114](https://github.com/haskell/cabal/issues/8114) [#9326](https://github.com/haskell/cabal/pull/9326)
+
+    This allows the use of several **API incompatible builds of the same
+    version of GHC** without corrupting the cabal store.
+
+    This relies on the "Project Unit Id" which is available since GHC 9.8.1,
+    older versions of GHC do not benefit from this change.
+
+- Add support for `GHC2024` [#9736](https://github.com/haskell/cabal/issues/9736)
+
+  Support for the `GHC2024` language edition, introduced by GHC 9.10, has been
+  added. It can now be used in the `default-language` and `other-languages`
+  fields, and will be offered as an option by `cabal init`.
+
+- Add language extension `ExtendedLiterals` [#8992](https://github.com/haskell/cabal/pull/8992)
+
+    Adds support for the `ExtendedLiterals` language extension (GHC proposal #451)
+
+- Add language extension `ListTuplePuns` [#8854](https://github.com/haskell/cabal/pull/8854)
+
+    Adds support for the `ListTuplePuns` language extension (GHC proposal #475)
+
+- Add language extension `TypeAbstractions` [#9496](https://github.com/haskell/cabal/issues/9496) [#9502](https://github.com/haskell/cabal/pull/9502)
+
+### Other changes
+
+- Script cache dir is the base16 hash of the canonical path of the script. [#9459](https://github.com/haskell/cabal/pull/9459)
+
+    This fixes sporadic path failures on both Windows and Linux (e.g. [#9334](https://github.com/haskell/cabal/issues/9334)).
+
+- Add `--haddock-output-dir` flag to `cabal haddock`. [#8720](https://github.com/haskell/cabal/issues/8720) [#8788](https://github.com/haskell/cabal/pull/8788)
+
+  This flag gives the user full control over the directory where the documentation is placed. It allows both relative and absolute paths.
+
+- Remove useles "Log" log level [#9151](https://github.com/haskell/cabal/issues/9151) [#9346](https://github.com/haskell/cabal/pull/9346)
+
+    - Remove "Log" as a log level in favour of "Info".
+    - Remove "Show" in Severity and replace by "displaySeverity" function
+
+- `cabal init` should not suggest Cabal < 2.0 [#8680](https://github.com/haskell/cabal/issues/8680)
+
+    'cabal init' no longer suggests users to set cabal-version to less than
+    2.0.
+
+- PkgConfig individual calls [#9134](https://github.com/haskell/cabal/pull/9134)
+
+    `cabal` invokes `pkg-config` individually for each lib if querying for all
+    doesn't return the expected result.
+
+- Reimplementing `cabal check` [#7423](https://github.com/haskell/cabal/issues/7423) [#8427](https://github.com/haskell/cabal/pull/8427)
+
+  - For `cabal-install` users: `cabal check` do not warn on -O2 or similar
+    options if under an off-by-default cabal flag.
+
+- `cabal check`: clearly mark Errors [#8908](https://github.com/haskell/cabal/pull/8908)
+
+    `cabal check` will now mark errors (which make the program return 1 and
+    Hackage refuse the package) by prepending them with an "Error: " string in
+    the output.
+
+- Don't report `index.html` file as created, if not created by Haddock [#5120](https://github.com/haskell/cabal/issues/5120) [#9332](https://github.com/haskell/cabal/pull/9332)
+
+- Make check comply with Hackage requirements [#8897](https://github.com/haskell/cabal/pull/8897)
+
+  - `cabal check` will only return exitcode 1 when the package is not fit
+    for Hackage. E.g. it will not error anymore when your `synopsis:` is
+    larger than `description:`, just emit a warning.
+  - Cabal: Distribution.Client.Check now exports `isHackageDistError`, for
+    third-party tools to know if a specific error will preclude a package
+    from being uploaded to Hacakge.
+
+- Also render short options with arguments [#8785](https://github.com/haskell/cabal/issues/8785) [#9043](https://github.com/haskell/cabal/pull/9043)
+
+    Show how arguments are used with both short and long forms of options:
+
+    ```diff
+    <-v, --verbose[=n]Control verbosity (n is 0--3, default
+    >-v[n], --verbose[=n] Control verbosity (n is 0--3, default
+    <-w, --with-compiler=PATH give the path to a particular compiler
+    >-w PATH or -wPATH, --with-compiler=PATH
+    ```
+
+- Remove `--cabal-file` flags from v2 commands [#6880](https://github.com/haskell/cabal/issues/6880) [#7225](https://github.com/haskell/cabal/issues/7225) [#8395](https://github.com/haskell/cabal/issues/8395) [#9123](https://github.com/haskell/cabal/pull/9123)
+
+    The `--cabal-file` flag was never meant for public use but only for testing.
+    To avoid confusing the users any further we removed the flag from v2
+    commands.
+
+- Avoid a double space in "Executing install plan ..." [#9376](https://github.com/haskell/cabal/pull/9376)
+
+    The "Executing·install·plan··serially" and other similar "Executing
+    install plan··..." outputs no longer contain double spaces.
