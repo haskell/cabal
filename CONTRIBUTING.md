@@ -12,7 +12,7 @@ cabal build cabal
 If not, you aren't able to build the testsuite, so you need to disable the default `cabal.project` that implies configuring the testsuite, e.g., with:
 
 ```
-cabal build --project-file=cabal.project.release cabal
+cabal build --project-file=cabal.release.project cabal
 ```
 
 > **Note**
