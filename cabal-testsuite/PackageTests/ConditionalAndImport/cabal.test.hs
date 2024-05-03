@@ -226,4 +226,15 @@ main = cabalTest . withRepo "repo" . recordMode RecordMarked $ do
   badIf <- fails $ cabal' "v2-build" [ "--project-file=bad-conditional.project" ]
   assertOutputContains "Cannot set compiler in a conditional clause of a cabal project file" badIf
 
+  log "checking that missing package message lists configuration provenance"
+  missing <- fails $ cabal' "v2-build" [ "--project-file=cabal-missing-package.project" ]
+  assertOutputContains
+    "When using configuration from: \
+    \  - cabal-missing-package.project \
+    \  - missing/pkgs.config \
+    \  - missing/pkgs/default.config \
+    \The following errors occurred: \
+    \  - The package location 'pkg-doesnt-exist' does not exist."
+    missing
+
   return ()
