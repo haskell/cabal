@@ -557,8 +557,8 @@ internalSetupMethod verbosity options bt args = do
 buildTypeAction :: BuildType -> ([String] -> IO ())
 buildTypeAction Simple = Simple.defaultMainArgs
 buildTypeAction Configure =
-  Simple.defaultMainWithHooksArgs
-    Simple.autoconfUserHooks
+  Simple.defaultMainWithSetupHooksArgs
+    Simple.autoconfSetupHooks
 buildTypeAction Make = Make.defaultMainArgs
 buildTypeAction Hooks  = error "buildTypeAction Hooks"
 buildTypeAction Custom = error "buildTypeAction Custom"
@@ -862,10 +862,18 @@ getExternalSetupMethod verbosity options pkg bt = do
     buildTypeScript cabalLibVersion = case bt of
       Simple -> "import Distribution.Simple; main = defaultMain\n"
       Configure
-        | cabalLibVersion >= mkVersion [1, 3, 10] -> "import Distribution.Simple; main = defaultMainWithHooks autoconfUserHooks\n"
-        | otherwise -> "import Distribution.Simple; main = defaultMainWithHooks defaultUserHooks\n"
+        | cabalLibVersion >= mkVersion [3, 13, 0]
+        -> "import Distribution.Simple; main = defaultMainWithSetupHooks autoconfSetupHooks\n"
+        | cabalLibVersion >= mkVersion [1, 3, 10]
+        -> "import Distribution.Simple; main = defaultMainWithHooks autoconfUserHooks\n"
+        | otherwise
+        -> "import Distribution.Simple; main = defaultMainWithHooks defaultUserHooks\n"
       Make -> "import Distribution.Make; main = defaultMain\n"
-      Hooks -> "import Distribution.Simple; import SetupHooks; main = defaultMainWithSetupHooks setupHooks\n"
+      Hooks
+        | cabalLibVersion >= mkVersion [3, 13, 0]
+        -> "import Distribution.Simple; import SetupHooks; main = defaultMainWithSetupHooks setupHooks\n"
+        | otherwise
+        -> error "buildTypeScript Hooks with Cabal < 3.13"
       Custom -> error "buildTypeScript Custom"
 
     installedCabalVersion
