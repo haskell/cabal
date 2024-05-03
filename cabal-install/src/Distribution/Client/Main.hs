@@ -1470,8 +1470,8 @@ actAsSetupAction actAsSetupFlags args _globalFlags =
    in case bt of
         Simple -> Simple.defaultMainArgs args
         Configure ->
-          Simple.defaultMainWithHooksArgs
-            Simple.autoconfUserHooks
+          Simple.defaultMainWithSetupHooksArgs
+            Simple.autoconfSetupHooks
             args
         Make -> Make.defaultMainArgs args
         Hooks -> error "actAsSetupAction Hooks"

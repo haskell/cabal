@@ -1,0 +1,18 @@
+synopsis: Configure build-type in terms of Hooks
+packages: Cabal cabal-install
+prs: #9969
+
+description: {
+
+The `build-type: Configure` is now implemented in terms of `build-type: Hooks`
+rather than in terms of `build-type: Custom`. This moves the `Configure`
+build-type away from the `Custom` issues. Eventually, `build-type: Hooks` will
+no longer imply packages are built in legacy-fallback mode. Now, when that
+happens, `Configure` will also stop implying `legacy-fallback`.
+
+The observable aspect of this change is `runConfigureScript` now having a
+different type, and `autoconfSetupHooks` being exposed `Distribution.Simple`.
+The former is motivated by internal implementation details, while the latter
+provides the `SetupHooks` value for the `Configure` build type, which can be
+consumed by other `Hooks` clients (e.g. eventually HLS).
+}
