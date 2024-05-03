@@ -90,7 +90,8 @@ import Distribution.Simple.Program
   , runDbProgramCwd
   )
 import Distribution.Simple.Program.Db
-  ( prependProgramSearchPath
+  ( configureAllKnownPrograms
+  , prependProgramSearchPath
   , progOverrideEnv
   )
 import Distribution.Simple.Program.Find
@@ -1026,11 +1027,19 @@ getExternalSetupMethod verbosity options pkg bt = do
                 createDirectoryIfMissingVerbose verbosity True setupCacheDir
                 installExecutableFile verbosity src cachedSetupProgFile
                 -- Do not strip if we're using GHCJS, since the result may be a script
-                when (maybe True ((/= GHCJS) . compilerFlavor) $ useCompiler options') $
+                when (maybe True ((/= GHCJS) . compilerFlavor) $ useCompiler options') $ do
+                  -- Add the relevant PATH overrides for the package to the
+                  -- program database.
+                  setupProgDb
+                    <- prependProgramSearchPath verbosity
+                          (useExtraPathEnv options)
+                          (useExtraEnvOverrides options)
+                          (useProgramDb options')
+                         >>= configureAllKnownPrograms verbosity
                   Strip.stripExe
                     verbosity
                     platform
-                    (useProgramDb options')
+                    setupProgDb
                     cachedSetupProgFile
         return cachedSetupProgFile
         where
