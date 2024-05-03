@@ -67,6 +67,7 @@ module Distribution.Simple
     -- ** Standard sets of hooks
   , simpleUserHooks
   , autoconfUserHooks
+  , autoconfSetupHooks
   , emptyUserHooks
   ) where
 
@@ -110,6 +111,7 @@ import Distribution.Simple.SetupHooks.Internal
   )
 import Distribution.Simple.Test
 import Distribution.Simple.Utils
+import qualified Distribution.Types.LocalBuildConfig as LBC
 import Distribution.Utils.Path
 import Distribution.Verbosity
 import Distribution.Version
@@ -935,16 +937,11 @@ autoconfUserHooks =
         let common = configCommonFlags flags
             verbosity = fromFlag $ setupVerbosity common
             mbWorkDir = flagToMaybe $ setupWorkingDir common
-            baseDir = packageRoot common
-        confExists <- doesFileExist $ baseDir </> "configure"
-        if confExists
-          then
-            runConfigureScript
-              verbosity
-              flags
-              lbi
-          else dieWithException verbosity ConfigureScriptNotFound
-
+        runConfigureScript
+          flags
+          (flagAssignment lbi)
+          (withPrograms lbi)
+          (hostPlatform lbi)
         pbi <- getHookedBuildInfo verbosity mbWorkDir (buildDir lbi)
         sanityCheckHookedBuildInfo verbosity pkg_descr pbi
         let pkg_descr' = updatePackageDescription pbi pkg_descr
@@ -990,6 +987,65 @@ getHookedBuildInfo verbosity mbWorkDir build_dir = do
     Just infoFile -> do
       info verbosity $ "Reading parameters from " ++ getSymbolicPath infoFile
       readHookedBuildInfo verbosity mbWorkDir infoFile
+
+autoconfSetupHooks :: SetupHooks
+autoconfSetupHooks =
+  SetupHooks.noSetupHooks
+    { SetupHooks.configureHooks =
+        SetupHooks.noConfigureHooks
+          { SetupHooks.postConfPackageHook = Just post_conf_pkg
+          , SetupHooks.preConfComponentHook = Just pre_conf_comp
+          }
+    }
+  where
+    post_conf_pkg
+      :: SetupHooks.PostConfPackageInputs
+      -> IO ()
+    post_conf_pkg
+      ( SetupHooks.PostConfPackageInputs
+          { SetupHooks.localBuildConfig =
+            LBC.LocalBuildConfig{LBC.withPrograms = progs}
+          , SetupHooks.packageBuildDescr =
+            LBC.PackageBuildDescr
+              { LBC.configFlags = cfg
+              , LBC.flagAssignment = flags
+              , LBC.hostPlatform = plat
+              }
+          }
+        ) = runConfigureScript cfg flags progs plat
+
+    pre_conf_comp
+      :: SetupHooks.PreConfComponentInputs
+      -> IO SetupHooks.PreConfComponentOutputs
+    pre_conf_comp
+      ( SetupHooks.PreConfComponentInputs
+          { SetupHooks.packageBuildDescr =
+            LBC.PackageBuildDescr
+              { LBC.configFlags = cfg
+              , localPkgDescr = pkg_descr
+              }
+          , SetupHooks.component = component
+          }
+        ) = do
+        let verbosity = fromFlag $ configVerbosity cfg
+            mbWorkDir = flagToMaybe $ configWorkingDir cfg
+            distPref = configDistPref cfg
+        dist_dir <- findDistPrefOrDefault distPref
+        -- Read the ".buildinfo" file and use that to update
+        -- the components (main library + executables only).
+        hbi <- getHookedBuildInfo verbosity mbWorkDir (dist_dir </> makeRelativePathEx "build")
+        sanityCheckHookedBuildInfo verbosity pkg_descr hbi
+        -- SetupHooks TODO: we are reading getHookedBuildInfo once
+        -- for each component. I think this is inherent to the SetupHooks
+        -- approach.
+        let comp_name = componentName component
+        diff <- case SetupHooks.hookedBuildInfoComponentDiff_maybe hbi comp_name of
+          Nothing -> return $ SetupHooks.emptyComponentDiff comp_name
+          Just do_diff -> do_diff
+        return $
+          SetupHooks.PreConfComponentOutputs
+            { SetupHooks.componentDiff = diff
+            }
 
 defaultTestHook
   :: Args
