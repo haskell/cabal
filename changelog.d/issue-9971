@@ -1,0 +1,6 @@
+synopsis: Renders project configuration provenance as a list of canonical paths
+packages: cabal-install cabal-install-solver
+prs: #9985
+issues: #9971
+
+description: Removes interleaved rendering of project imports.
