@@ -2210,55 +2210,77 @@ configureRequiredProgram
   verbosity
   progdb
   (LegacyExeDependency progName verRange) =
-    case lookupKnownProgram progName progdb of
+    case lookupProgramByName progName progdb of
+      Just prog ->
+        -- If the program has already been configured, use it
+        -- (as long as the version is compatible).
+        --
+        -- Not doing so means falling back to the "simpleProgram" path below,
+        -- which might fail if the program has custom logic to find a version
+        -- (such as hsc2hs).
+        let loc = locationPath $ programLocation prog
+         in case programVersion prog of
+              Nothing
+                | verRange == anyVersion ->
+                    return progdb
+                | otherwise ->
+                    dieWithException verbosity $!
+                      UnknownVersionDb (programId prog) verRange loc
+              Just version
+                | withinRange version verRange ->
+                    return progdb
+                | otherwise ->
+                    dieWithException verbosity $!
+                      BadVersionDb (programId prog) version verRange loc
       Nothing ->
-        -- Try to configure it as a 'simpleProgram' automatically
-        --
-        -- There's a bit of a story behind this line.  In old versions
-        -- of Cabal, there were only internal build-tools dependencies.  So the
-        -- behavior in this case was:
-        --
-        --    - If a build-tool dependency was internal, don't do
-        --      any checking.
-        --
-        --    - If it was external, call 'configureRequiredProgram' to
-        --      "configure" the executable.  In particular, if
-        --      the program was not "known" (present in 'ProgramDb'),
-        --      then we would just error.  This was fine, because
-        --      the only way a program could be executed from 'ProgramDb'
-        --      is if some library code from Cabal actually called it,
-        --      and the pre-existing Cabal code only calls known
-        --      programs from 'defaultProgramDb', and so if it
-        --      is calling something else, you have a Custom setup
-        --      script, and in that case you are expected to register
-        --      the program you want to call in the ProgramDb.
-        --
-        -- OK, so that was fine, until I (ezyang, in 2016) refactored
-        -- Cabal to support per-component builds.  In this case, what
-        -- was previously an internal build-tool dependency now became
-        -- an external one, and now previously "internal" dependencies
-        -- are now external.  But these are permitted to exist even
-        -- when they are not previously configured (something that
-        -- can only occur by a Custom script.)
-        --
-        -- So, I decided, "Fine, let's just accept these in any
-        -- case."  Thus this line.  The alternative would have been to
-        -- somehow detect when a build-tools dependency was "internal" (by
-        -- looking at the unflattened package description) but this
-        -- would also be incompatible with future work to support
-        -- external executable dependencies: we definitely cannot
-        -- assume they will be preinitialized in the 'ProgramDb'.
-        configureProgram verbosity (simpleProgram progName) progdb
-      Just prog
-        -- requireProgramVersion always requires the program have a version
-        -- but if the user says "build-depends: foo" ie no version constraint
-        -- then we should not fail if we cannot discover the program version.
-        | verRange == anyVersion -> do
-            (_, progdb') <- requireProgram verbosity prog progdb
-            return progdb'
-        | otherwise -> do
-            (_, _, progdb') <- requireProgramVersion verbosity prog verRange progdb
-            return progdb'
+        -- Otherwise, try to configure it as a 'simpleProgram' automatically
+        case lookupKnownProgram progName progdb of
+          Nothing ->
+            -- There's a bit of a story behind this line.  In old versions
+            -- of Cabal, there were only internal build-tools dependencies.  So the
+            -- behavior in this case was:
+            --
+            --    - If a build-tool dependency was internal, don't do
+            --      any checking.
+            --
+            --    - If it was external, call 'configureRequiredProgram' to
+            --      "configure" the executable.  In particular, if
+            --      the program was not "known" (present in 'ProgramDb'),
+            --      then we would just error.  This was fine, because
+            --      the only way a program could be executed from 'ProgramDb'
+            --      is if some library code from Cabal actually called it,
+            --      and the pre-existing Cabal code only calls known
+            --      programs from 'defaultProgramDb', and so if it
+            --      is calling something else, you have a Custom setup
+            --      script, and in that case you are expected to register
+            --      the program you want to call in the ProgramDb.
+            --
+            -- OK, so that was fine, until I (ezyang, in 2016) refactored
+            -- Cabal to support per-component builds.  In this case, what
+            -- was previously an internal build-tool dependency now became
+            -- an external one, and now previously "internal" dependencies
+            -- are now external.  But these are permitted to exist even
+            -- when they are not previously configured (something that
+            -- can only occur by a Custom script.)
+            --
+            -- So, I decided, "Fine, let's just accept these in any
+            -- case."  Thus this line.  The alternative would have been to
+            -- somehow detect when a build-tools dependency was "internal" (by
+            -- looking at the unflattened package description) but this
+            -- would also be incompatible with future work to support
+            -- external executable dependencies: we definitely cannot
+            -- assume they will be preinitialized in the 'ProgramDb'.
+            configureProgram verbosity (simpleProgram progName) progdb
+          Just prog
+            -- requireProgramVersion always requires the program have a version
+            -- but if the user says "build-depends: foo" ie no version constraint
+            -- then we should not fail if we cannot discover the program version.
+            | verRange == anyVersion -> do
+                (_, progdb') <- requireProgram verbosity prog progdb
+                return progdb'
+            | otherwise -> do
+                (_, _, progdb') <- requireProgramVersion verbosity prog verRange progdb
+                return progdb'
 
 -- -----------------------------------------------------------------------------
 -- Configuring pkg-config package dependencies
