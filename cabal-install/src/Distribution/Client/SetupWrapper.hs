@@ -89,13 +89,8 @@ import Distribution.Simple.Program
   , runDbProgram
   )
 import Distribution.Simple.Program.Db
-<<<<<<< HEAD
-  ( prependProgramSearchPath
-=======
   ( configureAllKnownPrograms
   , prependProgramSearchPath
-  , progOverrideEnv
->>>>>>> 0a0cc19f1 (SetupWrapper: configure progs when building Setup)
   )
 import Distribution.Simple.Program.Find
   ( programSearchPathAsPATHVar
