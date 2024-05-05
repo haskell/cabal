@@ -892,7 +892,7 @@ By default the documentation will be put in ``./haddocks`` folder, this can be
 modified with the ``--output`` flag.
 
 This command supports two primary modes: building a self contained directory
-(which is the default mode) or documentation that links to hackage (with
+(which is the default mode) or documentation that links to Hackage (with
 ``--hackage`` flag).
 
 In both cases the html index as well as quickjump index will include all terms

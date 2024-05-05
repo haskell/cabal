@@ -1510,7 +1510,7 @@ system-dependent values for these fields.
        `containers <https://hackage.haskell.org/package/containers/preferred>`_
        and `aeson <https://hackage.haskell.org/package/aeson/preferred>`_ for
        example. Deprecating package versions is not the same deprecating a
-       package as a whole, for which hackage keeps a `deprecated packages list
+       package as a whole, for which Hackage keeps a `deprecated packages list
        <https://hackage.haskell.org/packages/deprecated>`_.
 
     If no version constraint is specified, any version is assumed to be
