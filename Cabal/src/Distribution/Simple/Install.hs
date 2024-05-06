@@ -147,7 +147,7 @@ install_setupHooks
 
       checkHasLibsOrExes =
         unless (hasLibs pkg_descr || hasForeignLibs pkg_descr || hasExes pkg_descr) $
-          dieWithException verbosity NoLibraryFound
+          warn verbosity "No executables and no library found. Nothing to do."
 
 -- | Copy package global files.
 copyPackage
