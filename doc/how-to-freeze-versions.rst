@@ -18,7 +18,7 @@ meantime you are guaranteed no surprises will happen.
 This consistency can be valuable as it ensures that all teammates, deployments,
 and continuous integration are installing the exactly same dependencies.  So if
 you are running and testing the code on your local machine, you are guaranteed
-that your teammate and your continuos integration will be running the exact same
+that your teammate and your continuous integration will be running the exact same
 code, and that at the end that exact same code will get deployed.
 
 Usual use-case for using ``cabal freeze`` is when developing end-user code, for
