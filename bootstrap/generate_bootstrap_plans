@@ -10,7 +10,7 @@ run() {
   local drv="ghc-$ver"
   echo "$ver"
   nix build -f "$ghcs_nix" $drv
-  (cd ../; rm -r dist-bootstrap; cabal --distdir=dist-bootstrap build --project-file=cabal.release.project --dry-run cabal-install:exe:cabal -w bootstrap/result/bin/ghc)
+  (cd ../; rm -r dist-bootstrap; cabal --distdir=dist-bootstrap build --project-file=cabal.bootstrap.project--dry-run cabal-install:exe:cabal -w bootstrap/result/bin/ghc)
   jq --sort-keys < ../dist-bootstrap/cache/plan.json > "plan-$ver.json"
   cabal run --with-ghc-pkg $PWD/boot_ghc/bin/ghc-pkg -w $PWD/boot_ghc/bin/ghc -v0 cabal-bootstrap-gen -- "plan-$ver.json" | jq --sort-keys | tee "linux-$(echo $ver | tr "_" ".").json"
 }
