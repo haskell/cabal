@@ -87,10 +87,6 @@
     {
       "package": "parsec",
       "version": "3.1.16.1"
-    },
-    {
-      "package": "process",
-      "version": "1.6.19.0"
     }
   ],
   "dependencies": [
@@ -113,6 +109,16 @@
       "source": "local",
       "src_sha256": null,
       "version": "3.15.0.0"
+    },
+    {
+      "cabal_sha256": "092ab61596e914d21983aa2e9206a74c4faa38a5a636446b5c954305821cb496",
+      "component": "lib:process",
+      "flags": [],
+      "package": "process",
+      "revision": 1,
+      "source": "hackage",
+      "src_sha256": "496fe0566c3915b112e9772ac9c967dfeb8d5ca04895e54ae0160522bee76e65",
+      "version": "1.6.25.0"
     },
     {
       "cabal_sha256": null,
@@ -181,7 +187,7 @@
       "version": "2.6.4.2"
     },
     {
-      "cabal_sha256": "75ada03bd2d2b747319e38877a55bf8be529db4520a07d4e5ffbd24c5e850dcb",
+      "cabal_sha256": "ad36c6a1b3bc203b02751c8bffae8a684cc755661a2a567362cd4a0da1193c5e",
       "component": "lib:HTTP",
       "flags": [
         "-conduit10",
@@ -190,7 +196,7 @@
         "-warp-tests"
       ],
       "package": "HTTP",
-      "revision": 5,
+      "revision": 6,
       "source": "hackage",
       "src_sha256": "df31d8efec775124dab856d7177ddcba31be9f9e0836ebdab03d94392f2dd453",
       "version": "4000.4.1"
@@ -432,7 +438,17 @@
       "version": "0.6.2.6"
     },
     {
-      "cabal_sha256": "5b6ade9c872ff68b1c1c2ac7cd51441ae1ab7557020e744a3f60413938b9121c",
+      "cabal_sha256": null,
+      "component": "lib:hooks-exe",
+      "flags": [],
+      "package": "hooks-exe",
+      "revision": null,
+      "source": "local",
+      "src_sha256": null,
+      "version": "0.1"
+    },
+    {
+      "cabal_sha256": "a5effff3d14a0bbfde51dd62e72cff069b56be4298f16a78db7d3cc0c678c859",
       "component": "lib:open-browser",
       "flags": [
         "-example"
@@ -440,8 +456,8 @@
       "package": "open-browser",
       "revision": 0,
       "source": "hackage",
-      "src_sha256": "c2ab01c3238e31b1560114bf8311a70a6c3538e643d3035286a166d137957804",
-      "version": "0.2.1.1"
+      "src_sha256": "deff01d066a027bfb609522465e8e0580d8b56004cebb5b1f3e0f05f79cbf85d",
+      "version": "0.4.0.0"
     },
     {
       "cabal_sha256": "d6c0c6d1136f5046207a331114ff4130e70640452096de7719bf03e3fceb7c7b",
