@@ -10,8 +10,4 @@ packages:
 tests: False
 benchmarks: False
 
-<<<<<<< HEAD
 index-state: hackage.haskell.org 2025-04-08T00:00:00Z
-=======
-index-state: hackage.haskell.org 2024-04-29T14:30:15Z
->>>>>>> b0aee57d7 (cabal-install: call Cabal in-library)
