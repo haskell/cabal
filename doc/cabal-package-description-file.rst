@@ -2813,7 +2813,7 @@ while a basic ``SetupHooks.hs`` file might look like the following:
 
 Refer to the `Hackage documentation for the Distribution.Simple.SetupHooks module <https://hackage.haskell.org/package/Cabal-hooks/docs/Distribution-Simple-SetupHooks.html>`__
 for an overview of the ``Hooks`` API. Further motivation and a technical overview
-of the design is available in `Haskell Tech Proposal #60 <https://github.com/haskellfoundation/tech-proposals/blob/main/proposals/accepted/060-replacing-cabal-custom-build.md>`__ .
+of the design is available in `Haskell Tech Proposal #60 <https://github.com/haskellfoundation/tech-proposals/blob/main/rfc/060-replacing-cabal-custom-build.md>`__ .
 
 .. _custom-setup:
 
