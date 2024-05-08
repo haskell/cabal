@@ -21,7 +21,7 @@ import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.Types.UnqualComponentName
 
-import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.Parsec as P
 import qualified Text.PrettyPrint as Disp
 
 data LibraryName
@@ -42,7 +42,7 @@ prettyLibraryNameComponent :: LibraryName -> Disp.Doc
 prettyLibraryNameComponent LMainLibName = Disp.text "lib"
 prettyLibraryNameComponent (LSubLibName str) = Disp.text "lib:" <<>> pretty str
 
-parsecLibraryNameComponent :: CabalParsing m => m LibraryName
+parsecLibraryNameComponent :: ParsecParser LibraryName
 parsecLibraryNameComponent = do
   _ <- P.string "lib"
   parseComposite <|> parseSingle

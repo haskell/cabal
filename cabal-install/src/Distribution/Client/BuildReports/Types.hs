@@ -23,7 +23,7 @@ module Distribution.Client.BuildReports.Types
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
-import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.Parsec as P
 import qualified Text.PrettyPrint as Disp
 
 import Distribution.Compiler (CompilerId (..))
@@ -46,7 +46,7 @@ instance Pretty ReportLevel where
   pretty AnonymousReports = Disp.text "anonymous"
   pretty DetailedReports = Disp.text "detailed"
 
-instance Parsec ReportLevel where
+instance CabalParsec ReportLevel where
   parsec = do
     name <- P.munch1 isAlpha
     case lowercase name of
@@ -120,7 +120,7 @@ instance Pretty InstallOutcome where
   pretty InstallFailed = Disp.text "InstallFailed"
   pretty InstallOk = Disp.text "InstallOk"
 
-instance Parsec InstallOutcome where
+instance CabalParsec InstallOutcome where
   parsec = do
     name <- P.munch1 isAlpha
     case name of
@@ -148,7 +148,7 @@ instance Pretty Outcome where
   pretty Failed = Disp.text "Failed"
   pretty Ok = Disp.text "Ok"
 
-instance Parsec Outcome where
+instance CabalParsec Outcome where
   parsec = do
     name <- P.munch1 isAlpha
     case name of

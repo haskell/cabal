@@ -78,7 +78,7 @@ import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.Utils.Generic (isAbsoluteOnAnyPlatform)
 
-import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.Parsec as P
 
 import qualified System.Directory as Directory
 import qualified System.FilePath as FilePath
@@ -360,7 +360,7 @@ tryMakeRelativeToWorkingDir mbWorkDir (SymbolicPath fp) = do
 
 -------------------------------------------------------------------------------
 
-instance Parsec (SymbolicPathX 'OnlyRelative from to) where
+instance CabalParsec (SymbolicPathX 'OnlyRelative from to) where
   parsec = do
     token <- parsecToken
     if null token
@@ -370,7 +370,7 @@ instance Parsec (SymbolicPathX 'OnlyRelative from to) where
           then P.unexpected "absolute FilePath"
           else return (SymbolicPath token)
 
-instance Parsec (SymbolicPathX 'AllowAbsolute from to) where
+instance CabalParsec (SymbolicPathX 'AllowAbsolute from to) where
   parsec = do
     token <- parsecToken
     if null token

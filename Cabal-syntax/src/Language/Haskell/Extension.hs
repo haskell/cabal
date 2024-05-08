@@ -31,7 +31,7 @@ import Data.Array (Array, Ix (inRange), accumArray, bounds, (!))
 import Distribution.Parsec
 import Distribution.Pretty
 
-import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.Parsec as P
 import qualified Text.PrettyPrint as Disp
 
 -- ------------------------------------------------------------
@@ -74,7 +74,7 @@ instance Pretty Language where
   pretty (UnknownLanguage other) = Disp.text other
   pretty other = Disp.text (show other)
 
-instance Parsec Language where
+instance CabalParsec Language where
   parsec = classifyLanguage <$> P.munch1 isAlphaNum
 
 classifyLanguage :: String -> Language
@@ -578,23 +578,23 @@ instance Pretty Extension where
   pretty (EnableExtension ke) = Disp.text (show ke)
   pretty (DisableExtension ke) = Disp.text ("No" ++ show ke)
 
-instance Parsec Extension where
+instance CabalParsec Extension where
   parsec = classifyExtension <$> P.munch1 isAlphaNum
 
 instance Pretty KnownExtension where
   pretty ke = Disp.text (show ke)
 
 classifyExtension :: String -> Extension
-classifyExtension string =
-  case classifyKnownExtension string of
+classifyExtension str =
+  case classifyKnownExtension str of
     Just ext -> EnableExtension ext
     Nothing ->
-      case string of
-        'N' : 'o' : string' ->
-          case classifyKnownExtension string' of
+      case str of
+        'N' : 'o' : str' ->
+          case classifyKnownExtension str' of
             Just ext -> DisableExtension ext
-            Nothing -> UnknownExtension string
-        _ -> UnknownExtension string
+            Nothing -> UnknownExtension str
+        _ -> UnknownExtension str
 
 -- | 'read' for 'KnownExtension's is really really slow so for the Text
 -- instance
@@ -607,9 +607,9 @@ classifyExtension string =
 -- also allow us to do case insensitive matches in future if we prefer.
 classifyKnownExtension :: String -> Maybe KnownExtension
 classifyKnownExtension "" = Nothing
-classifyKnownExtension string@(c : _)
+classifyKnownExtension str@(c : _)
   | inRange (bounds knownExtensionTable) c =
-      lookup string (knownExtensionTable ! c)
+      lookup str (knownExtensionTable ! c)
   | otherwise = Nothing
 
 knownExtensionTable :: Array Char [(String, KnownExtension)]

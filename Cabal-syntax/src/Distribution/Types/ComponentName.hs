@@ -18,7 +18,7 @@ import Distribution.Pretty
 import Distribution.Types.LibraryName
 import Distribution.Types.UnqualComponentName
 
-import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.Parsec as P
 import qualified Text.PrettyPrint as Disp
 
 -- Libraries live in a separate namespace, so must distinguish
@@ -61,7 +61,7 @@ instance Pretty ComponentName where
   pretty (CTestName str) = Disp.text "test:" <<>> pretty str
   pretty (CBenchName str) = Disp.text "bench:" <<>> pretty str
 
-instance Parsec ComponentName where
+instance CabalParsec ComponentName where
   -- note: this works as lib/flib/... all start with different character!
   parsec = parseComposite <|> parseLib
     where

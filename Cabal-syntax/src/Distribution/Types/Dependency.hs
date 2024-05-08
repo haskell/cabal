@@ -18,8 +18,6 @@ import Distribution.Types.VersionRange (isAnyVersionLight)
 import Distribution.Version (VersionRange, anyVersion, simplifyVersionRange)
 
 import Distribution.CabalSpecVersion
-import Distribution.Compat.CharParsing (char, spaces)
-import Distribution.Compat.Parsing (between, option)
 import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.Types.LibraryName
@@ -138,7 +136,7 @@ instance Pretty Dependency where
 --
 -- >>> map (`simpleParsec'` "mylib:sub") [CabalSpecV2_4, CabalSpecV3_0] :: [Maybe Dependency]
 -- [Nothing,Just (Dependency (PackageName "mylib") (OrLaterVersion (mkVersion [0])) (fromNonEmpty (LSubLibName (UnqualComponentName "sub") :| [])))]
-instance Parsec Dependency where
+instance CabalParsec Dependency where
   parsec = do
     name <- parsec
 
@@ -158,7 +156,7 @@ instance Parsec Dependency where
           (spaces *> char '}')
           (NES.fromNonEmpty <$> parsecCommaNonEmpty parseLib)
 
-versionGuardMultilibs :: CabalParsing m => m ()
+versionGuardMultilibs :: ParsecParser ()
 versionGuardMultilibs = do
   csv <- askCabalSpecVersion
   when (csv < CabalSpecV3_0) $

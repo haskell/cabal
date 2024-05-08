@@ -153,7 +153,7 @@ warnMultipleSingularFields fn (x : xs) = do
   parseWarning pos PWTMultipleSingularField $
     "The field " <> show fn <> " is specified more than once at positions " ++ intercalate ", " (map showPos (pos : poss))
 
-instance FieldGrammar Parsec ParsecFieldGrammar where
+instance FieldGrammar CabalParsec ParsecFieldGrammar where
   blurFieldGrammar _ (ParsecFG s s' parser) = ParsecFG s s' parser
 
   uniqueFieldAla fn _pack _extract = ParsecFG (Set.singleton fn) Set.empty parser

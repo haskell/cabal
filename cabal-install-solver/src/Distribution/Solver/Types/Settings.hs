@@ -21,9 +21,9 @@ import Prelude ()
 
 import Distribution.Simple.Setup ( BooleanFlag(..) )
 import Distribution.Pretty ( Pretty(pretty) )
-import Distribution.Parsec ( Parsec(parsec) )
+import Distribution.Parsec ( CabalParsec(parsec) )
 
-import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.Parsec as P
 import qualified Text.PrettyPrint as PP
 
 newtype ReorderGoals = ReorderGoals Bool
@@ -99,7 +99,7 @@ instance Pretty OnlyConstrained where
   pretty OnlyConstrainedAll  = PP.text "all"
   pretty OnlyConstrainedNone = PP.text "none"
 
-instance Parsec OnlyConstrained where
+instance CabalParsec OnlyConstrained where
   parsec = P.choice
     [ P.string "all"  >> return OnlyConstrainedAll
     , P.string "none" >> return OnlyConstrainedNone

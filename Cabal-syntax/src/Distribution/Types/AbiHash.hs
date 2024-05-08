@@ -12,8 +12,8 @@ import Distribution.Compat.Prelude
 import Distribution.Utils.ShortText
 import Prelude ()
 
-import qualified Distribution.Compat.CharParsing as P
 import Distribution.Parsec
+import qualified Distribution.Parsec as P
 import Distribution.Pretty
 
 import Text.PrettyPrint (text)
@@ -59,5 +59,5 @@ instance NFData AbiHash where rnf = genericRnf
 instance Pretty AbiHash where
   pretty = text . unAbiHash
 
-instance Parsec AbiHash where
+instance CabalParsec AbiHash where
   parsec = fmap mkAbiHash (P.munch isAlphaNum)

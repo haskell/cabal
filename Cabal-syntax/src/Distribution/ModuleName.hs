@@ -34,8 +34,8 @@ import Distribution.Pretty
 import Distribution.Utils.ShortText (ShortText, fromShortText, toShortText)
 import System.FilePath (pathSeparator)
 
-import qualified Distribution.Compat.CharParsing as P
 import qualified Distribution.Compat.DList as DList
+import qualified Distribution.Parsec as P
 import qualified Text.PrettyPrint as Disp
 
 -- | A valid Haskell module name.
@@ -54,30 +54,30 @@ instance NFData ModuleName where
 instance Pretty ModuleName where
   pretty = Disp.text . unModuleName
 
-instance Parsec ModuleName where
+instance CabalParsec ModuleName where
   parsec = parsecModuleName
 
-parsecModuleName :: forall m. CabalParsing m => m ModuleName
+parsecModuleName :: ParsecParser ModuleName
 parsecModuleName = state0 DList.empty
   where
-    upper :: m Char
+    upper :: ParsecParser Char
     !upper = P.satisfy isUpper
 
-    ch :: m Char
+    ch :: ParsecParser Char
     !ch = P.satisfy (\c -> validModuleChar c || c == '.')
 
-    alt :: m ModuleName -> m ModuleName -> m ModuleName
+    alt :: ParsecParser ModuleName -> ParsecParser ModuleName -> ParsecParser ModuleName
     !alt = (<|>)
 
-    state0 :: DList.DList Char -> m ModuleName
+    state0 :: DList.DList Char -> ParsecParser ModuleName
     state0 acc = do
       c <- upper
       state1 (DList.snoc acc c)
 
-    state1 :: DList.DList Char -> m ModuleName
+    state1 :: DList.DList Char -> ParsecParser ModuleName
     state1 acc = state1' acc `alt` return (fromString (DList.toList acc))
 
-    state1' :: DList.DList Char -> m ModuleName
+    state1' :: DList.DList Char -> ParsecParser ModuleName
     state1' acc = do
       c <- ch
       case c of

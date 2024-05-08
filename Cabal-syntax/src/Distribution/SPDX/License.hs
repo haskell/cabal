@@ -12,7 +12,7 @@ import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.SPDX.LicenseExpression
 
-import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.Parsec as P
 import qualified Text.PrettyPrint as Disp
 
 -- | Declared license.
@@ -60,5 +60,5 @@ instance Pretty License where
 --
 -- >>> eitherParsec "NONE" :: Either String License
 -- Right NONE
-instance Parsec License where
+instance CabalParsec License where
   parsec = NONE <$ P.try (P.string "NONE") <|> License <$> parsec

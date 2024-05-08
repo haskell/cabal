@@ -9,5 +9,5 @@ import Distribution.Pretty
 display :: Pretty a => a -> String
 display = prettyShow
 
-simpleParse :: Parsec a => String -> Maybe a
+simpleParse :: CabalParsec a => String -> Maybe a
 simpleParse = simpleParsec

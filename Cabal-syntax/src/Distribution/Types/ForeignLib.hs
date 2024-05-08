@@ -31,7 +31,7 @@ import Distribution.Utils.Path
 import Distribution.Version
 
 import Data.Monoid
-import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.Parsec as P
 import qualified Text.PrettyPrint as Disp
 import qualified Text.Read as Read
 
@@ -91,7 +91,7 @@ instance Pretty LibVersionInfo where
   pretty (LibVersionInfo c r a) =
     Disp.hcat $ Disp.punctuate (Disp.char ':') $ map Disp.int [c, r, a]
 
-instance Parsec LibVersionInfo where
+instance CabalParsec LibVersionInfo where
   parsec = do
     c <- P.integral
     (r, a) <- P.option (0, 0) $ do

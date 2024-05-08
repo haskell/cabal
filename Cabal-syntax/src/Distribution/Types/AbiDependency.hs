@@ -9,8 +9,8 @@ import Prelude ()
 import Distribution.Parsec
 import Distribution.Pretty
 
-import qualified Distribution.Compat.CharParsing as P
 import qualified Distribution.Package as Package
+import qualified Distribution.Parsec as P
 import qualified Text.PrettyPrint as Disp
 
 -- | An ABI dependency is a dependency on a library which also
@@ -33,7 +33,7 @@ instance Pretty AbiDependency where
   pretty (AbiDependency uid abi) =
     pretty uid <<>> Disp.char '=' <<>> pretty abi
 
-instance Parsec AbiDependency where
+instance CabalParsec AbiDependency where
   parsec = do
     uid <- parsec
     _ <- P.char '='

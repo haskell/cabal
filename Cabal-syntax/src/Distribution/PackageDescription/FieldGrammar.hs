@@ -86,7 +86,7 @@ import Distribution.Utils.Path
 import Distribution.Version (Version, VersionRange)
 
 import qualified Data.ByteString.Char8 as BS8
-import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.Parsec as P
 import qualified Distribution.SPDX as SPDX
 import qualified Distribution.Types.Lens as L
 
@@ -837,7 +837,7 @@ newtype CompatDataDir = CompatDataDir {getCompatDataDir :: SymbolicPath Pkg (Dir
 
 instance Newtype (SymbolicPath Pkg (Dir DataDir)) CompatDataDir
 
-instance Parsec CompatDataDir where
+instance CabalParsec CompatDataDir where
   parsec = do
     token <- parsecToken
     when (null token) $
@@ -852,7 +852,7 @@ newtype CompatLicenseFile = CompatLicenseFile {getCompatLicenseFile :: [Relative
 instance Newtype [RelativePath Pkg File] CompatLicenseFile
 
 -- TODO
-instance Parsec CompatLicenseFile where
+instance CabalParsec CompatLicenseFile where
   parsec = emptyToken <|> CompatLicenseFile . unpack' (alaList FSep) <$> parsec
     where
       emptyToken = P.try $ do

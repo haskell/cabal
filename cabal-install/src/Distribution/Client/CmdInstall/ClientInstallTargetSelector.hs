@@ -14,8 +14,8 @@ import Network.URI (URI, parseURI)
 import Distribution.Client.Errors
 import Distribution.Client.TargetSelector
 import Distribution.Client.Types
-import Distribution.Compat.CharParsing (char, optional)
 import Distribution.Package
+import Distribution.Parsec (ParsecParser, char, optional)
 import Distribution.Simple.LocalBuildInfo (ComponentName (CExeName))
 import Distribution.Simple.Utils (dieWithException)
 
@@ -33,7 +33,7 @@ parseWithoutProjectTargetSelector verbosity input =
       Just uri -> return (WoURI uri)
       Nothing -> dieWithException verbosity $ ProjectTargetSelector input err
   where
-    parser :: CabalParsing m => m WithoutProjectTargetSelector
+    parser :: ParsecParser WithoutProjectTargetSelector
     parser = do
       pid <- parsec
       cn <- optional (char ':' *> parsec)

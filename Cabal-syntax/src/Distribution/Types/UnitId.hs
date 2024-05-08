@@ -19,8 +19,8 @@ import Distribution.Compat.Prelude
 import Distribution.Utils.ShortText
 import Prelude ()
 
-import qualified Distribution.Compat.CharParsing as P
 import Distribution.Parsec
+import qualified Distribution.Parsec as P
 import Distribution.Pretty
 import Distribution.Types.ComponentId
 import Distribution.Types.PackageId
@@ -76,7 +76,7 @@ instance Pretty UnitId where
 
 -- | The textual format for 'UnitId' coincides with the format
 -- GHC accepts for @-package-id@.
-instance Parsec UnitId where
+instance CabalParsec UnitId where
   parsec = mkUnitId <$> P.munch1 isUnitChar
     where
       -- https://gitlab.haskell.org/ghc/ghc/issues/17752
@@ -124,7 +124,7 @@ instance Structured DefUnitId
 
 -- Workaround for a GHC 8.0.1 bug, see
 -- https://github.com/haskell/cabal/issues/4793#issuecomment-334258288
-instance Parsec DefUnitId where
+instance CabalParsec DefUnitId where
   parsec = DefUnitId <$> parsec
 
 -- | Unsafely create a 'DefUnitId' from a 'UnitId'.  Your responsibility

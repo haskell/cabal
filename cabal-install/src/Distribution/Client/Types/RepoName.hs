@@ -7,7 +7,7 @@ module Distribution.Client.Types.RepoName
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
-import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.Parsec as P
 import qualified Text.PrettyPrint as Disp
 
 -- $setup
@@ -33,7 +33,7 @@ instance Pretty RepoName where
 --
 -- >>> simpleParsec "0123" :: Maybe RepoName
 -- Nothing
-instance Parsec RepoName where
+instance CabalParsec RepoName where
   parsec = RepoName <$> parser
     where
       parser = (:) <$> lead <*> rest

@@ -21,15 +21,15 @@ import Distribution.Pretty (Pretty (..), showFreeText)
 import Distribution.Utils.String (trim)
 
 import qualified Data.Map as Map
-import qualified Distribution.Compat.CharParsing as C
 import qualified Distribution.Fields as P
+import qualified Distribution.Parsec as C
 import qualified Distribution.Parsec as P
 import qualified Text.PrettyPrint as Disp
 
 -- strict pair
 data SP s = SP
   { pPretty :: !(s -> Disp.Doc)
-  , pParse :: !(forall m. P.CabalParsing m => s -> m s)
+  , pParse :: !(s -> P.ParsecParser s)
   }
 
 -- | A collection of field parsers and pretty-printers.
@@ -40,7 +40,7 @@ instance Applicative (FieldDescrs s) where
   pure _ = F mempty
   f <*> x = F (mappend (runF f) (runF x))
 
-singletonF :: P.FieldName -> (s -> Disp.Doc) -> (forall m. P.CabalParsing m => s -> m s) -> FieldDescrs s a
+singletonF :: P.FieldName -> (s -> Disp.Doc) -> (s -> P.ParsecParser s) -> FieldDescrs s a
 singletonF fn f g = F $ Map.singleton fn (SP f g)
 
 -- | Lookup a field value pretty-printer.
@@ -48,13 +48,12 @@ fieldDescrPretty :: FieldDescrs s a -> P.FieldName -> Maybe (s -> Disp.Doc)
 fieldDescrPretty (F m) fn = pPretty <$> Map.lookup fn m
 
 -- | Lookup a field value parser.
-fieldDescrParse :: P.CabalParsing m => FieldDescrs s a -> P.FieldName -> Maybe (s -> m s)
+fieldDescrParse :: FieldDescrs s a -> P.FieldName -> Maybe (s -> P.ParsecParser s)
 fieldDescrParse (F m) fn = (\f -> pParse f) <$> Map.lookup fn m
 
 fieldDescrsToList
-  :: P.CabalParsing m
-  => FieldDescrs s a
-  -> [(P.FieldName, s -> Disp.Doc, s -> m s)]
+  :: FieldDescrs s a
+  -> [(P.FieldName, s -> Disp.Doc, s -> P.ParsecParser s)]
 fieldDescrsToList = map mk . Map.toList . runF
   where
     mk (name, SP ppr parse) = (name, ppr, parse)
@@ -111,7 +110,7 @@ instance FieldGrammar ParsecPretty FieldDescrs where
   availableSince _ _ = id
   hiddenField _ = F mempty
 
-parsecFreeText :: P.CabalParsing m => m String
+parsecFreeText :: P.ParsecParser String
 parsecFreeText = dropDotLines <$ C.spaces <*> many C.anyChar
   where
     -- Example package with dot lines
@@ -125,5 +124,5 @@ parsecFreeText = dropDotLines <$ C.spaces <*> many C.anyChar
     trim' :: String -> String
     trim' = dropWhileEnd (`elem` (" \t" :: String))
 
-class (P.Parsec a, Pretty a) => ParsecPretty a
-instance (P.Parsec a, Pretty a) => ParsecPretty a
+class (P.CabalParsec a, Pretty a) => ParsecPretty a
+instance (P.CabalParsec a, Pretty a) => ParsecPretty a

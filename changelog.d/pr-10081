@@ -1,0 +1,16 @@
+synopsis: Remove the `CabalParsing`, `CharParsing`, and `Parsing` classes
+packages: Cabal-syntax
+prs: #10081
+issues: #10080
+
+description: {
+
+- The `CabalParsing` class has been removed. All bindings which were previously
+  overloaded in `CabalParsing` will have been specialized to `ParsecParser`.
+- The `Distribution.Parsec.Parsec` class is renamed to
+  `Distribution.Parsec.CabalParsec` to avoid ambiguity with
+  `Text.Parsec.Parsec`.
+- The `CharParsing` and `Parsing` classes and modules have been removed, and
+  their methods are moved into `Distribution.Parsec`.
+
+}

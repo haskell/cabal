@@ -87,7 +87,7 @@ import Distribution.Verbosity
   )
 
 import qualified Data.Maybe as Unsafe (fromJust)
-import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.Parsec as P
 import qualified Text.PrettyPrint as Disp
 
 import qualified Data.ByteString.Lazy as BS
@@ -152,7 +152,7 @@ data UpdateRequest = UpdateRequest
 instance Pretty UpdateRequest where
   pretty (UpdateRequest n s) = pretty n <<>> Disp.comma <<>> pretty s
 
-instance Parsec UpdateRequest where
+instance CabalParsec UpdateRequest where
   parsec = do
     name <- parsec
     state <- P.char ',' *> parsec <|> pure IndexStateHead

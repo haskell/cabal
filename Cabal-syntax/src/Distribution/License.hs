@@ -57,7 +57,7 @@ import Distribution.Pretty
 import Distribution.Version
 
 import qualified Data.Map.Strict as Map
-import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.Parsec as P
 import qualified Distribution.SPDX as SPDX
 import qualified Text.PrettyPrint as Disp
 
@@ -224,7 +224,7 @@ instance Pretty License where
   pretty (UnknownLicense other) = Disp.text other
   pretty other = Disp.text (show other)
 
-instance Parsec License where
+instance CabalParsec License where
   parsec = do
     name <- P.munch1 isAlphaNum
     version <- P.optional (P.char '-' *> parsec)

@@ -9,13 +9,13 @@ module Distribution.Types.PackageId
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Distribution.Parsec (Parsec (..), simpleParsec)
+import Distribution.Parsec (CabalParsec (..), simpleParsec)
 import Distribution.Pretty
 import Distribution.Types.PackageName
 import Distribution.Version (Version, nullVersion)
 
 import qualified Data.List.NonEmpty as NE
-import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.Parsec as P
 import qualified Text.PrettyPrint as Disp
 
 -- | Type alias so we can use the shorter name PackageId.
@@ -59,7 +59,7 @@ instance Pretty PackageIdentifier where
 --
 -- >>> simpleParsec "1.2.3" :: Maybe PackageIdentifier
 -- Nothing
-instance Parsec PackageIdentifier where
+instance CabalParsec PackageIdentifier where
   parsec = do
     xs' <- P.sepByNonEmpty component (P.char '-')
     (v, xs) <- case simpleParsec (NE.last xs') of

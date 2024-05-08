@@ -46,8 +46,7 @@ module Distribution.Simple.Setup.Haddock
 import Distribution.Compat.Prelude hiding (get)
 import Prelude ()
 
-import qualified Distribution.Compat.CharParsing as P
-import Distribution.Parsec
+import qualified Distribution.Parsec as P
 import Distribution.Pretty
 import Distribution.Simple.Command hiding (boolOpt, boolOpt')
 import Distribution.Simple.Flag
@@ -85,7 +84,7 @@ instance Pretty HaddockTarget where
   pretty ForHackage = Disp.text "for-hackage"
   pretty ForDevelopment = Disp.text "for-development"
 
-instance Parsec HaddockTarget where
+instance P.CabalParsec HaddockTarget where
   parsec =
     P.choice
       [ P.try $ P.string "for-hackage" >> return ForHackage

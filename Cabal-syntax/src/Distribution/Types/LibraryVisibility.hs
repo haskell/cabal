@@ -12,7 +12,7 @@ import Prelude ()
 import Distribution.Parsec
 import Distribution.Pretty
 
-import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.Parsec as P
 import qualified Text.PrettyPrint as Disp
 
 -- | Multi-lib visibility
@@ -29,7 +29,7 @@ instance Pretty LibraryVisibility where
   pretty LibraryVisibilityPublic = Disp.text "public"
   pretty LibraryVisibilityPrivate = Disp.text "private"
 
-instance Parsec LibraryVisibility where
+instance CabalParsec LibraryVisibility where
   parsec = do
     name <- P.munch1 isAlpha
     case name of

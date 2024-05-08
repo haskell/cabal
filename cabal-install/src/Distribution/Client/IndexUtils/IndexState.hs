@@ -25,7 +25,7 @@ import Distribution.Client.Types.RepoName (RepoName (..))
 import Distribution.Parsec (parsecLeadingCommaNonEmpty)
 
 import qualified Data.Map.Strict as Map
-import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.Parsec as P
 import qualified Text.PrettyPrint as Disp
 
 -- $setup
@@ -72,7 +72,7 @@ instance Pretty TotalIndexState where
 --
 -- >>> simpleParsec "hackage.haskell.org 2020-02-04T12:34:56Z" :: Maybe TotalIndexState
 -- Just (TIS IndexStateHead (fromList [(RepoName {unRepoName = "hackage.haskell.org"},IndexStateTime (TS 1580819696))]))
-instance Parsec TotalIndexState where
+instance CabalParsec TotalIndexState where
   parsec = normalise . foldl' add headTotalIndexState <$> parsecLeadingCommaNonEmpty single0
     where
       single0 = startsWithRepoName <|> TokTimestamp <$> parsec
@@ -138,7 +138,7 @@ instance Pretty RepoIndexState where
   pretty IndexStateHead = Disp.text "HEAD"
   pretty (IndexStateTime ts) = pretty ts
 
-instance Parsec RepoIndexState where
+instance CabalParsec RepoIndexState where
   parsec = parseHead <|> parseTime
     where
       parseHead = IndexStateHead <$ P.string "HEAD"

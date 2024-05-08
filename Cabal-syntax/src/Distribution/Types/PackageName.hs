@@ -69,7 +69,7 @@ instance Structured PackageName
 instance Pretty PackageName where
   pretty = Disp.text . unPackageName
 
-instance Parsec PackageName where
+instance CabalParsec PackageName where
   parsec = mkPackageName <$> parsecUnqualComponentName
 
 instance NFData PackageName where

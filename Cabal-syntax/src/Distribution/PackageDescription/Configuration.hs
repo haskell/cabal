@@ -44,13 +44,12 @@ import qualified Distribution.Types.GenericPackageDescription.Lens as L
 import qualified Distribution.Types.PackageDescription.Lens as L
 import qualified Distribution.Types.SetupBuildInfo.Lens as L
 
-import Distribution.Compat.CharParsing hiding (char)
-import qualified Distribution.Compat.CharParsing as P
 import Distribution.Compat.Lens
 import Distribution.Compiler
 import Distribution.PackageDescription
 import Distribution.PackageDescription.Utils
-import Distribution.Parsec
+import Distribution.Parsec hiding (char)
+import qualified Distribution.Parsec as P
 import Distribution.Pretty
 import Distribution.System
 import Distribution.Types.Component
@@ -108,7 +107,7 @@ simplifyWithSysParams os arch cinfo cond = (cond', flags)
 --
 
 -- | Parse a configuration condition from a string.
-parseCondition :: CabalParsing m => m (Condition ConfVar)
+parseCondition :: ParsecParser (Condition ConfVar)
 parseCondition = condOr
   where
     condOr = sepByNonEmpty condAnd (oper "||") >>= return . foldl1 COr

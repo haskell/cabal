@@ -17,7 +17,7 @@ import Prelude ()
 
 import Distribution.Parsec (parsecLeadingCommaNonEmpty)
 
-import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.Parsec as P
 import qualified Text.PrettyPrint as Disp
 
 -- $setup
@@ -71,7 +71,7 @@ instance Pretty ActiveRepos where
 --
 -- >>> simpleParsec "hackage.haskell.org, :rest, head.hackage:override" :: Maybe ActiveRepos
 -- Just (ActiveRepos [ActiveRepo (RepoName {unRepoName = "hackage.haskell.org"}) CombineStrategyMerge,ActiveRepoRest CombineStrategyMerge,ActiveRepo (RepoName {unRepoName = "head.hackage"}) CombineStrategyOverride])
-instance Parsec ActiveRepos where
+instance CabalParsec ActiveRepos where
   parsec =
     ActiveRepos [] <$ P.try (P.string ":none")
       <|> do
@@ -95,7 +95,7 @@ instance Pretty ActiveRepoEntry where
   pretty (ActiveRepo r s) =
     pretty r <<>> Disp.colon <<>> pretty s
 
-instance Parsec ActiveRepoEntry where
+instance CabalParsec ActiveRepoEntry where
   parsec = leadColon <|> leadRepo
     where
       leadColon = do
@@ -132,7 +132,7 @@ instance Pretty CombineStrategy where
   pretty CombineStrategyMerge = Disp.text "merge"
   pretty CombineStrategyOverride = Disp.text "override"
 
-instance Parsec CombineStrategy where
+instance CabalParsec CombineStrategy where
   parsec =
     P.choice
       [ CombineStrategySkip <$ P.string "skip"

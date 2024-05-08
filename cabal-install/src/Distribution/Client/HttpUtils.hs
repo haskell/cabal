@@ -127,7 +127,7 @@ import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString.Lazy.Char8 as LBS8
 import qualified Data.Char as Char
 import Distribution.Client.Errors
-import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.Parsec as P
 
 ------------------------------------------------------------------------------
 -- Downloading a URI, given an HttpTransport

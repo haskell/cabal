@@ -2533,7 +2533,7 @@ matchInexactly cannonicalise key xs =
     -- the map of canonicalised keys to groups of inexact matches
     m' = Map.mapKeysWith (++) cannonicalise m
 
-matchParse :: Parsec a => String -> Match a
+matchParse :: CabalParsec a => String -> Match a
 matchParse = maybe mzero return . simpleParsec
 
 ------------------------------

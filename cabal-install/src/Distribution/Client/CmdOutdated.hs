@@ -74,7 +74,6 @@ import Distribution.Utils.Generic
   )
 
 import Distribution.Client.HttpUtils
-import qualified Distribution.Compat.CharParsing as P
 import Distribution.Package
   ( PackageName
   , packageVersion
@@ -85,6 +84,7 @@ import Distribution.PackageDescription
 import Distribution.PackageDescription.Configuration
   ( finalizePD
   )
+import qualified Distribution.Parsec as P
 import Distribution.ReadE
   ( parsecToReadE
   )

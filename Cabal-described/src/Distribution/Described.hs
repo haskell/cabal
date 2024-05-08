@@ -55,7 +55,7 @@ import Test.Tasty            (TestTree, testGroup)
 import Test.Tasty.QuickCheck (testProperty)
 
 import Distribution.Compat.Semigroup (Semigroup (..))
-import Distribution.Parsec           (Parsec, eitherParsec)
+import Distribution.Parsec           (CabalParsec, eitherParsec)
 import Distribution.Pretty           (Pretty, prettyShow)
 
 import qualified Distribution.Utils.CharSet as CS
@@ -105,7 +105,7 @@ import Distribution.Version                        (Version, VersionRange)
 import Language.Haskell.Extension                  (Extension, Language, knownLanguages)
 
 -- | Class describing the pretty/parsec format of a.
-class (Pretty a, Parsec a) => Described a where
+class (Pretty a, CabalParsec a) => Described a where
     -- | A pretty document of "regex" describing the field format
     describe :: proxy a -> GrammarRegex void
 

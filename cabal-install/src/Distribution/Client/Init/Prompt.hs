@@ -54,7 +54,7 @@ promptYesNo =
 
 -- | Create a prompt with optional default value that returns a value
 --   of some Text instance.
-prompt :: (Interactive m, Parsec t, Pretty t) => String -> DefaultPrompt t -> m t
+prompt :: (Interactive m, CabalParsec t, Pretty t) => String -> DefaultPrompt t -> m t
 prompt = promptDefault eitherParsec prettyShow
 
 -- | Create a prompt from a prompt string and a String representation

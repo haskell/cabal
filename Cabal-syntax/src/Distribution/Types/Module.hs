@@ -9,9 +9,9 @@ module Distribution.Types.Module
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import qualified Distribution.Compat.CharParsing as P
 import Distribution.ModuleName
 import Distribution.Parsec
+import qualified Distribution.Parsec as P
 import Distribution.Pretty
 import Distribution.Types.UnitId
 import qualified Text.PrettyPrint as Disp
@@ -35,7 +35,7 @@ instance Pretty Module where
   pretty (Module uid mod_name) =
     pretty uid <<>> Disp.text ":" <<>> pretty mod_name
 
-instance Parsec Module where
+instance CabalParsec Module where
   parsec = do
     uid <- parsec
     _ <- P.char ':'

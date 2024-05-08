@@ -16,7 +16,7 @@ import Distribution.Utils.Generic (isAsciiAlphaNum)
 
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BS8
-import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.Parsec as P
 import qualified Text.PrettyPrint as PP
 
 -- | @pkg-config@ versions.
@@ -48,7 +48,7 @@ instance Pretty PkgconfigVersion where
 --
 -- >>> simpleParsec "0.3.5+ds" :: Maybe PkgconfigVersion
 -- Nothing
-instance Parsec PkgconfigVersion where
+instance CabalParsec PkgconfigVersion where
   parsec = PkgconfigVersion . BS8.pack <$> P.munch1 predicate
     where
       predicate c = isAsciiAlphaNum c || c == '.' || c == '-'

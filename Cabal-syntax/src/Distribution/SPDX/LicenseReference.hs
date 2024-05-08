@@ -16,7 +16,7 @@ import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.Utils.Generic (isAsciiAlphaNum)
 
-import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.Parsec as P
 import qualified Text.PrettyPrint as Disp
 
 -- | A user defined license reference denoted by @LicenseRef-[idstring]@ (for a license not on the SPDX License List);
@@ -45,7 +45,7 @@ instance Pretty LicenseRef where
   pretty (LicenseRef (Just d) l) =
     Disp.text "DocumentRef-" <<>> Disp.text d <<>> Disp.char ':' <<>> Disp.text "LicenseRef-" <<>> Disp.text l
 
-instance Parsec LicenseRef where
+instance CabalParsec LicenseRef where
   parsec = name <|> doc
     where
       name = do

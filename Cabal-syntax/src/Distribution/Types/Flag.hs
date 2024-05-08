@@ -42,7 +42,7 @@ import Distribution.Parsec
 import Distribution.Pretty
 
 import qualified Data.Map as Map
-import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.Parsec as P
 import qualified Text.PrettyPrint as Disp
 
 -- -----------------------------------------------------------------------------
@@ -111,7 +111,7 @@ instance Structured FlagName
 instance Pretty FlagName where
   pretty = Disp.text . unFlagName
 
-instance Parsec FlagName where
+instance CabalParsec FlagName where
   -- Note:  we don't check that FlagName doesn't have leading dash,
   -- cabal check will do that.
   parsec = mkFlagName . lowercase <$> parsec'
@@ -278,7 +278,7 @@ instance Pretty FlagAssignment where
 -- Nothing
 --
 -- @since 3.4.0.0
-instance Parsec FlagAssignment where
+instance CabalParsec FlagAssignment where
   parsec = parsecFlagAssignment
 
 -- | Pretty-prints a flag assignment.
@@ -286,7 +286,7 @@ dispFlagAssignment :: FlagAssignment -> Disp.Doc
 dispFlagAssignment = Disp.hsep . map (Disp.text . showFlagValue) . unFlagAssignment
 
 -- | Parses a flag assignment.
-parsecFlagAssignment :: CabalParsing m => m FlagAssignment
+parsecFlagAssignment :: ParsecParser FlagAssignment
 parsecFlagAssignment = mkFlagAssignment <$> sepByEnding (onFlag <|> offFlag) P.skipSpaces1
   where
     onFlag = do
@@ -298,7 +298,7 @@ parsecFlagAssignment = mkFlagAssignment <$> sepByEnding (onFlag <|> offFlag) P.s
       f <- parsec
       return (f, False)
 
-    sepByEnding :: CabalParsing m => m a -> m b -> m [a]
+    sepByEnding :: ParsecParser a -> ParsecParser b -> ParsecParser [a]
     sepByEnding p sep = afterSeparator
       where
         element = (:) <$> p <*> afterElement
@@ -310,7 +310,7 @@ parsecFlagAssignment = mkFlagAssignment <$> sepByEnding (onFlag <|> offFlag) P.s
 -- The flags have to explicitly start with minus or plus.
 --
 -- @since 3.4.0.0
-parsecFlagAssignmentNonEmpty :: CabalParsing m => m FlagAssignment
+parsecFlagAssignmentNonEmpty :: ParsecParser FlagAssignment
 parsecFlagAssignmentNonEmpty = mkFlagAssignment <$> sepByEnding1 (onFlag <|> offFlag) P.skipSpaces1
   where
     onFlag = do
@@ -322,7 +322,7 @@ parsecFlagAssignmentNonEmpty = mkFlagAssignment <$> sepByEnding1 (onFlag <|> off
       f <- parsec
       return (f, False)
 
-    sepByEnding1 :: CabalParsing m => m a -> m b -> m [a]
+    sepByEnding1 :: ParsecParser a -> ParsecParser b -> ParsecParser [a]
     sepByEnding1 p sep = element
       where
         element = (:) <$> p <*> afterElement
@@ -359,7 +359,7 @@ legacyShowFlagValue (f, False) = '-' : unFlagName f
 -- We need this as far as we support custom setups older than 2.2.0.0
 --
 -- @since 3.4.0.0
-legacyParsecFlagAssignment :: CabalParsing m => m FlagAssignment
+legacyParsecFlagAssignment :: ParsecParser FlagAssignment
 legacyParsecFlagAssignment =
   mkFlagAssignment
     <$> P.sepBy (onFlag <|> offFlag) P.skipSpaces1

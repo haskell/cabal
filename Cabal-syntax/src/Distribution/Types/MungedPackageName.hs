@@ -16,7 +16,7 @@ import Distribution.Types.LibraryName
 import Distribution.Types.PackageName
 import Distribution.Types.UnqualComponentName
 
-import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.Parsec as P
 import qualified Text.PrettyPrint as Disp
 
 -- | A combination of a package and component name used in various legacy
@@ -87,7 +87,7 @@ instance Pretty MungedPackageName where
 --
 -- >>> simpleParsec "z-servant-zz" :: Maybe MungedPackageName
 -- Just (MungedPackageName (PackageName "z-servant-zz") LMainLibName)
-instance Parsec MungedPackageName where
+instance CabalParsec MungedPackageName where
   parsec = decodeCompatPackageName' <$> parsecUnqualComponentName
 
 -------------------------------------------------------------------------------
@@ -136,7 +136,7 @@ zdashcode s = go s (Nothing :: Maybe Int) []
     go ('z' : z) (Just n) r = go z (Just (n + 1)) ('z' : r)
     go (c : z) _ r = go z Nothing (c : r)
 
-parseZDashCode :: CabalParsing m => m [String]
+parseZDashCode :: ParsecParser [String]
 parseZDashCode = do
   ns <- toList <$> P.sepByNonEmpty (some (P.satisfy (/= '-'))) (P.char '-')
   return (go ns)

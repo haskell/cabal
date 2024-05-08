@@ -12,7 +12,7 @@ import Prelude ()
 import Distribution.Parsec
 import Distribution.Pretty
 
-import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.Parsec as P
 import qualified Text.PrettyPrint as Disp
 
 data ExecutableScope
@@ -24,7 +24,7 @@ instance Pretty ExecutableScope where
   pretty ExecutablePublic = Disp.text "public"
   pretty ExecutablePrivate = Disp.text "private"
 
-instance Parsec ExecutableScope where
+instance CabalParsec ExecutableScope where
   parsec = P.try pub <|> pri
     where
       pub = ExecutablePublic <$ P.string "public"

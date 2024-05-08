@@ -13,7 +13,7 @@ import Distribution.Compat.Prelude
 import Distribution.Version
 import Prelude ()
 
-import Distribution.Parsec
+import Distribution.Parsec hiding (char)
 import Distribution.Pretty
 import Text.PrettyPrint (char, text)
 
@@ -49,7 +49,7 @@ instance Pretty TestType where
   pretty (TestTypeLib ver) = text "detailed-" <<>> pretty ver
   pretty (TestTypeUnknown name ver) = text name <<>> char '-' <<>> pretty ver
 
-instance Parsec TestType where
+instance CabalParsec TestType where
   parsec = parsecStandard $ \ver name -> case name of
     "exitcode-stdio" -> TestTypeExe ver
     "detailed" -> TestTypeLib ver

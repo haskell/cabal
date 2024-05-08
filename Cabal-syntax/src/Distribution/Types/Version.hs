@@ -24,7 +24,7 @@ import Distribution.Parsec
 import Distribution.Pretty
 
 import qualified Data.Version as Base
-import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.Parsec as P
 import qualified Text.PrettyPrint as Disp
 import qualified Text.Read as Read
 
@@ -98,7 +98,7 @@ instance Pretty Version where
           (map Disp.int $ versionNumbers ver)
       )
 
-instance Parsec Version where
+instance CabalParsec Version where
   parsec = mkVersion <$> toList <$> P.sepByNonEmpty versionDigitParser (P.char '.') <* tags
     where
       tags = do
@@ -110,10 +110,10 @@ instance Parsec Version where
 -- | An integral without leading zeroes.
 --
 -- @since 3.0
-versionDigitParser :: CabalParsing m => m Int
+versionDigitParser :: ParsecParser Int
 versionDigitParser = (some d >>= toNumber) P.<?> "version digit (integral without leading zeroes)"
   where
-    toNumber :: CabalParsing m => [Int] -> m Int
+    toNumber :: [Int] -> ParsecParser Int
     toNumber [0] = return 0
     toNumber (0 : _) = P.unexpected "Version digit with leading zero"
     toNumber xs
@@ -124,7 +124,7 @@ versionDigitParser = (some d >>= toNumber) P.<?> "version digit (integral withou
       | length xs > 9 = P.unexpected "At most 9 numbers are allowed per version number part"
       | otherwise = return $ foldl' (\a b -> a * 10 + b) 0 xs
 
-    d :: P.CharParsing m => m Int
+    d :: ParsecParser Int
     d = f <$> P.satisfyRange '0' '9'
     f c = ord c - ord '0'
 

@@ -16,7 +16,7 @@ import Distribution.Types.PackageName
 import Distribution.Types.UnqualComponentName
 import Distribution.Version (VersionRange, anyVersion, isAnyVersion)
 
-import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.Parsec as P
 import qualified Text.PrettyPrint as PP
 
 -- | Describes a dependency on an executable from a package
@@ -60,7 +60,7 @@ instance Pretty ExeDependency where
 --
 -- >>> simpleParsec "happy :happy >= 1.19.12" :: Maybe ExeDependency
 -- Nothing
-instance Parsec ExeDependency where
+instance CabalParsec ExeDependency where
   parsec = do
     name <- parsec
     _ <- P.char ':'

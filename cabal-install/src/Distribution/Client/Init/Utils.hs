@@ -22,7 +22,7 @@ module Distribution.Client.Init.Utils
   , addLibDepToTest
   ) where
 
-import Distribution.Client.Compat.Prelude hiding (Parsec, empty, many, putStrLn, readFile)
+import Distribution.Client.Compat.Prelude hiding (CabalParsec, empty, many, putStrLn, readFile)
 import Distribution.Utils.Generic (isInfixOf, safeLast)
 import qualified Prelude ()
 

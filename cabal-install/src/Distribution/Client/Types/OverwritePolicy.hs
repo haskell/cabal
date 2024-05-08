@@ -5,7 +5,7 @@ module Distribution.Client.Types.OverwritePolicy where
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
-import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.Parsec as P
 import qualified Text.PrettyPrint as PP
 
 data OverwritePolicy
@@ -17,7 +17,7 @@ data OverwritePolicy
 instance Binary OverwritePolicy
 instance Structured OverwritePolicy
 
-instance Parsec OverwritePolicy where
+instance CabalParsec OverwritePolicy where
   parsec = do
     name <- P.munch1 isAlpha
     case name of

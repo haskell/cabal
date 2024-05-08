@@ -36,8 +36,8 @@ import Distribution.Simple.Glob.Internal
   ( Glob (..)
   )
 
-import qualified Distribution.Compat.CharParsing as P
 import Distribution.Parsec
+import qualified Distribution.Parsec as P
 import Distribution.Pretty
 import qualified Text.PrettyPrint as Disp
 
@@ -193,7 +193,7 @@ monitorFileHashedSearchPath notFoundAtPaths foundAtPath =
 instance Pretty RootedGlob where
   pretty (RootedGlob root pathglob) = pretty root Disp.<> pretty pathglob
 
-instance Parsec RootedGlob where
+instance CabalParsec RootedGlob where
   parsec = do
     root <- parsec
     case root of
@@ -205,7 +205,7 @@ instance Pretty FilePathRoot where
   pretty (FilePathRoot root) = Disp.text root
   pretty FilePathHomeDir = Disp.char '~' Disp.<> Disp.char '/'
 
-instance Parsec FilePathRoot where
+instance CabalParsec FilePathRoot where
   parsec = root <|> P.try home <|> P.try drive <|> pure FilePathRelative
     where
       root = FilePathRoot "/" <$ P.char '/'

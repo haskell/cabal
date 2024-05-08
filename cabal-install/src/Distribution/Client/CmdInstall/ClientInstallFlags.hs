@@ -11,6 +11,7 @@ module Distribution.Client.CmdInstall.ClientInstallFlags
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
+import Distribution.Parsec (ParsecParser)
 import Distribution.ReadE
   ( parsecToReadE
   , succeedReadE
@@ -35,7 +36,7 @@ import Distribution.Client.Types.OverwritePolicy
   ( OverwritePolicy (..)
   )
 
-import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.Parsec as P
 
 data ClientInstallFlags = ClientInstallFlags
   { cinstInstallLibs :: Flag Bool
@@ -113,7 +114,7 @@ clientInstallOptions _ =
       $ reqArg "DIR" (succeedReadE Flag) flagToList
   ]
 
-parsecInstallMethod :: CabalParsing m => m InstallMethod
+parsecInstallMethod :: ParsecParser InstallMethod
 parsecInstallMethod = do
   name <- P.munch1 isAlpha
   case name of

@@ -12,7 +12,7 @@ import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.Version (VersionRange, anyVersion)
 
-import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.Parsec as P
 import qualified Text.PrettyPrint as Disp
 
 -- | Describes a legacy `build-tools`-style dependency on an executable
@@ -36,7 +36,7 @@ instance Pretty LegacyExeDependency where
   pretty (LegacyExeDependency name ver) =
     Disp.text name <+> pretty ver
 
-instance Parsec LegacyExeDependency where
+instance CabalParsec LegacyExeDependency where
   parsec = do
     name <- parsecMaybeQuoted nameP
     P.spaces

@@ -86,6 +86,7 @@ import Distribution.Types.PackageVersionConstraint
 import Distribution.PackageDescription
   ( GenericPackageDescription
   )
+import Distribution.Parsec (ParsecParser)
 import Distribution.Simple.Utils
   ( dieWithException
   , lowercase
@@ -105,7 +106,7 @@ import qualified Data.ByteString.Lazy as BS
 import qualified Data.Map as Map
 import Distribution.Client.Errors
 import qualified Distribution.Client.GZipUtils as GZipUtils
-import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.Parsec as P
 import Distribution.Utils.Path (makeSymbolicPath)
 import Network.URI
   ( URI (..)
@@ -678,7 +679,7 @@ instance Pretty UserConstraint where
   pretty (UserConstraint scope prop) =
     dispPackageConstraint $ PackageConstraint (fromUserConstraintScope scope) prop
 
-instance Parsec UserConstraint where
+instance CabalParsec UserConstraint where
   parsec = do
     scope <- parseConstraintScope
     P.spaces
@@ -693,7 +694,7 @@ instance Parsec UserConstraint where
         ]
     return (UserConstraint scope prop)
     where
-      parseConstraintScope :: forall m. CabalParsing m => m UserConstraintScope
+      parseConstraintScope :: ParsecParser UserConstraintScope
       parseConstraintScope = do
         pn <- parsec
         P.choice
@@ -702,13 +703,13 @@ instance Parsec UserConstraint where
           , return (UserQualified UserQualToplevel pn)
           ]
         where
-          withDot :: PackageName -> m UserConstraintScope
+          withDot :: PackageName -> ParsecParser UserConstraintScope
           withDot pn
             | pn == mkPackageName "any" = UserAnyQualifier <$> parsec
             | pn == mkPackageName "setup" = UserAnySetupQualifier <$> parsec
             | otherwise = P.unexpected $ "constraint scope: " ++ unPackageName pn
 
-          withColon :: PackageName -> m UserConstraintScope
+          withColon :: PackageName -> ParsecParser UserConstraintScope
           withColon pn =
             UserQualified (UserQualSetup pn)
               <$ P.string "setup."

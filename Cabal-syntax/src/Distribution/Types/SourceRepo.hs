@@ -21,7 +21,7 @@ import Distribution.Parsec
 import Distribution.Pretty
 
 import qualified Data.Map.Strict as M
-import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.Parsec as P
 import qualified Text.PrettyPrint as Disp
 
 -- ------------------------------------------------------------
@@ -132,7 +132,7 @@ instance Binary KnownRepoType
 instance Structured KnownRepoType
 instance NFData KnownRepoType where rnf = genericRnf
 
-instance Parsec KnownRepoType where
+instance CabalParsec KnownRepoType where
   parsec = do
     str <- P.munch1 isIdent
     maybe
@@ -166,7 +166,7 @@ instance Pretty RepoKind where
   pretty RepoThis = Disp.text "this"
   pretty (RepoKindUnknown other) = Disp.text other
 
-instance Parsec RepoKind where
+instance CabalParsec RepoKind where
   parsec = classifyRepoKind <$> P.munch1 isIdent
 
 classifyRepoKind :: String -> RepoKind
@@ -175,7 +175,7 @@ classifyRepoKind name = case lowercase name of
   "this" -> RepoThis
   _ -> RepoKindUnknown name
 
-instance Parsec RepoType where
+instance CabalParsec RepoType where
   parsec = classifyRepoType <$> P.munch1 isIdent
 
 instance Pretty RepoType where

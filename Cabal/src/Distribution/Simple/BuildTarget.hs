@@ -50,11 +50,11 @@ import Distribution.Types.LocalBuildInfo
 import Distribution.Types.TargetInfo
 import Distribution.Types.UnqualComponentName
 
-import qualified Distribution.Compat.CharParsing as P
 import Distribution.ModuleName
 import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.Parsec
+import qualified Distribution.Parsec as P
 import Distribution.Pretty
 import Distribution.Simple.Errors
 import Distribution.Simple.LocalBuildInfo
@@ -218,7 +218,7 @@ readUserBuildTarget targetstr =
     Left _ -> Left (UserBuildTargetUnrecognised targetstr)
     Right tgt -> Right tgt
   where
-    parseTargetApprox :: CabalParsing m => m UserBuildTarget
+    parseTargetApprox :: ParsecParser UserBuildTarget
     parseTargetApprox = do
       -- read one, two, or three tokens, where last could be "hs-string"
       ts <- tokens
@@ -227,17 +227,17 @@ readUserBuildTarget targetstr =
         (a, Just (b, Nothing)) -> UserBuildTargetDouble a b
         (a, Just (b, Just c)) -> UserBuildTargetTriple a b c
 
-    tokens :: CabalParsing m => m (String, Maybe (String, Maybe String))
+    tokens :: ParsecParser (String, Maybe (String, Maybe String))
     tokens =
       (\s -> (s, Nothing)) <$> parsecHaskellString
         <|> (,) <$> token <*> P.optional (P.char ':' *> tokens2)
 
-    tokens2 :: CabalParsing m => m (String, Maybe String)
+    tokens2 :: ParsecParser (String, Maybe String)
     tokens2 =
       (\s -> (s, Nothing)) <$> parsecHaskellString
         <|> (,) <$> token <*> P.optional (P.char ':' *> (parsecHaskellString <|> token))
 
-    token :: CabalParsing m => m String
+    token :: ParsecParser String
     token = P.munch1 (\x -> not (isSpace x) && x /= ':')
 
 data UserBuildTargetProblem

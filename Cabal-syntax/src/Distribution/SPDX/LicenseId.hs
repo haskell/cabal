@@ -26,7 +26,7 @@ import Distribution.SPDX.LicenseListVersion
 import qualified Data.Binary.Get as Binary
 import qualified Data.Binary.Put as Binary
 import qualified Data.Map.Strict as Map
-import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.Parsec as P
 import qualified Text.PrettyPrint as Disp
 
 -------------------------------------------------------------------------------
@@ -671,7 +671,7 @@ instance Pretty LicenseId where
 -- >>> eitherParsec "BSD3" :: Either String LicenseId
 -- Left "...Unknown SPDX license identifier: 'BSD3' Do you mean BSD-3-Clause?"
 --
-instance Parsec LicenseId where
+instance CabalParsec LicenseId where
     parsec = do
         n <- some $ P.satisfy $ \c -> isAsciiAlphaNum c || c == '-' || c == '.'
         v <- askCabalSpecVersion

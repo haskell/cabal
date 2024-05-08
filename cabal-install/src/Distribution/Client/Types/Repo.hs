@@ -27,7 +27,7 @@ import Distribution.Simple.Utils (toUTF8BS)
 import Distribution.Client.HashValue (hashValue, showHashValue, truncateHash)
 
 import qualified Data.ByteString.Lazy.Char8 as LBS
-import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.Parsec as P
 import qualified Text.PrettyPrint as Disp
 
 import Distribution.Client.Types.RepoName
@@ -70,7 +70,7 @@ instance Pretty RemoteRepo where
       <<>> Disp.text (uriToString id (remoteRepoURI r) [])
 
 -- | Note: serialised format represents 'RemoteRepo' only partially.
-instance Parsec RemoteRepo where
+instance CabalParsec RemoteRepo where
   parsec = do
     name <- parsec
     _ <- P.char ':'
@@ -108,7 +108,7 @@ instance Binary LocalRepo
 instance Structured LocalRepo
 
 -- | Note: doesn't parse 'localRepoSharedCache' field.
-instance Parsec LocalRepo where
+instance CabalParsec LocalRepo where
   parsec = do
     n <- parsec
     _ <- P.char ':'

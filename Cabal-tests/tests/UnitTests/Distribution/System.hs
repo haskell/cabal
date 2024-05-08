@@ -11,7 +11,7 @@ import Test.Tasty.QuickCheck (testProperty)
 import Test.QuickCheck (Property, (===))
 import Test.QuickCheck.Instances.Cabal ()
 
-textRoundtrip :: (Show a, Eq a, Pretty a, Parsec a) => a -> Property
+textRoundtrip :: (Show a, Eq a, Pretty a, CabalParsec a) => a -> Property
 textRoundtrip x = simpleParsec (prettyShow x) === Just x
 
 tests :: [TestTree]

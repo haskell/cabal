@@ -56,7 +56,7 @@ import qualified System.Info (arch, os)
 import Distribution.Parsec
 import Distribution.Pretty
 
-import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.Parsec as P
 import qualified Text.PrettyPrint as Disp
 
 -- | How strict to be when classifying strings into the 'OS' and 'Arch' enums.
@@ -159,7 +159,7 @@ instance Pretty OS where
   pretty (OtherOS name) = Disp.text name
   pretty other = Disp.text (lowercase (show other))
 
-instance Parsec OS where
+instance CabalParsec OS where
   parsec = classifyOS Compat <$> parsecIdent
 
 classifyOS :: ClassificationStrictness -> String -> OS
@@ -265,7 +265,7 @@ instance Pretty Arch where
   pretty (OtherArch name) = Disp.text name
   pretty other = Disp.text (lowercase (show other))
 
-instance Parsec Arch where
+instance CabalParsec Arch where
   parsec = classifyArch Strict <$> parsecIdent
 
 classifyArch :: ClassificationStrictness -> String -> Arch
@@ -297,7 +297,7 @@ instance NFData Platform where rnf = genericRnf
 instance Pretty Platform where
   pretty (Platform arch os) = pretty arch <<>> Disp.char '-' <<>> pretty os
 
-instance Parsec Platform where
+instance CabalParsec Platform where
   -- TODO: there are ambiguous platforms like: `arch-word-os`
   -- which could be parsed as
   --   * Platform "arch-word" "os"
@@ -326,7 +326,7 @@ buildPlatform = Platform buildArch buildOS
 
 -- Utils:
 
-parsecIdent :: CabalParsing m => m String
+parsecIdent :: ParsecParser String
 parsecIdent = (:) <$> firstChar <*> rest
   where
     firstChar = P.satisfy isAlpha

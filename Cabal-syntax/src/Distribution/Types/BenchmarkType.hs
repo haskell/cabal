@@ -11,7 +11,7 @@ module Distribution.Types.BenchmarkType
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Distribution.Parsec
+import Distribution.Parsec hiding (char)
 import Distribution.Pretty
 import Distribution.Version
 import Text.PrettyPrint (char, text)
@@ -38,7 +38,7 @@ instance Pretty BenchmarkType where
   pretty (BenchmarkTypeExe ver) = text "exitcode-stdio-" <<>> pretty ver
   pretty (BenchmarkTypeUnknown name ver) = text name <<>> char '-' <<>> pretty ver
 
-instance Parsec BenchmarkType where
+instance CabalParsec BenchmarkType where
   parsec = parsecStandard $ \ver name -> case name of
     "exitcode-stdio" -> BenchmarkTypeExe ver
     _ -> BenchmarkTypeUnknown name ver

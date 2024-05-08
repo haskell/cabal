@@ -84,7 +84,7 @@ import Distribution.Utils.Generic (isAsciiAlpha)
 import Distribution.Verbosity.Internal
 
 import qualified Data.Set as Set
-import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.Parsec as P
 import qualified Text.PrettyPrint as PP
 
 data Verbosity = Verbosity
@@ -193,13 +193,13 @@ intToVerbosity _ = Nothing
 -- Right (Verbosity {vLevel = Deafening, vFlags = fromList [VCallStack,VCallSite,VNoWrap,VStderr], vQuiet = False})
 --
 -- /Note:/ this parser will eat trailing spaces.
-instance Parsec Verbosity where
+instance CabalParsec Verbosity where
   parsec = parsecVerbosity
 
 instance Pretty Verbosity where
   pretty = PP.text . showForCabal
 
-parsecVerbosity :: CabalParsing m => m Verbosity
+parsecVerbosity :: ParsecParser Verbosity
 parsecVerbosity = parseIntVerbosity <|> parseStringVerbosity
   where
     parseIntVerbosity = do

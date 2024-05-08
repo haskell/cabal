@@ -15,7 +15,7 @@ import Prelude ()
 import Distribution.Parsec
 import Distribution.Pretty
 
-import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.Parsec as P
 import qualified Text.PrettyPrint as Disp
 
 -- | A pkg-config library name
@@ -58,7 +58,7 @@ instance Structured PkgconfigName
 instance Pretty PkgconfigName where
   pretty = Disp.text . unPkgconfigName
 
-instance Parsec PkgconfigName where
+instance CabalParsec PkgconfigName where
   parsec = mkPkgconfigName <$> P.munch1 isNameChar
     where
       -- https://gitlab.haskell.org/ghc/ghc/issues/17752

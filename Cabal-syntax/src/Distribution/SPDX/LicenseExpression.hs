@@ -18,7 +18,7 @@ import Distribution.SPDX.LicenseListVersion
 import Distribution.SPDX.LicenseReference
 import Distribution.Utils.Generic (isAsciiAlphaNum)
 
-import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.Parsec as P
 import qualified Text.PrettyPrint as Disp
 
 -- | SPDX License Expression.
@@ -81,7 +81,7 @@ instance Pretty SimpleLicenseExpression where
   pretty (ELicenseIdPlus i) = pretty i <<>> Disp.char '+'
   pretty (ELicenseRef r) = pretty r
 
-instance Parsec SimpleLicenseExpression where
+instance CabalParsec SimpleLicenseExpression where
   parsec = idstring >>= simple
     where
       simple n
@@ -101,7 +101,7 @@ instance Parsec SimpleLicenseExpression where
               then return (ELicenseIdPlus l)
               else return (ELicenseId l)
 
-idstring :: P.CharParsing m => m String
+idstring :: ParsecParser String
 idstring = P.munch1 $ \c -> isAsciiAlphaNum c || c == '-' || c == '.'
 
 -- returns suffix part
@@ -110,7 +110,7 @@ isPrefixOfMaybe pfx s
   | pfx `isPrefixOf` s = Just (drop (length pfx) s)
   | otherwise = Nothing
 
-instance Parsec LicenseExpression where
+instance CabalParsec LicenseExpression where
   parsec = expr
     where
       expr = compoundOr

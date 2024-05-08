@@ -15,7 +15,7 @@ import Prelude ()
 import Distribution.Parsec
 import Distribution.Pretty
 
-import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.Parsec as P
 import qualified Text.PrettyPrint as Disp
 
 -- | What kind of foreign library is to be built?
@@ -34,7 +34,7 @@ instance Pretty ForeignLibType where
   pretty ForeignLibNativeStatic = Disp.text "native-static"
   pretty ForeignLibTypeUnknown = Disp.text "unknown"
 
-instance Parsec ForeignLibType where
+instance CabalParsec ForeignLibType where
   parsec = do
     name <- P.munch1 (\c -> isAlphaNum c || c == '-')
     return $ case name of

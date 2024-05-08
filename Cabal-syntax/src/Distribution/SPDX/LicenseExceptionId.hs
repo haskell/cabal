@@ -23,7 +23,7 @@ import Distribution.SPDX.LicenseListVersion
 import qualified Data.Binary.Get as Binary
 import qualified Data.Binary.Put as Binary
 import qualified Data.Map.Strict as Map
-import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.Parsec as P
 import qualified Text.PrettyPrint as Disp
 
 -------------------------------------------------------------------------------
@@ -116,7 +116,7 @@ instance Structured LicenseExceptionId where
 instance Pretty LicenseExceptionId where
     pretty = Disp.text . licenseExceptionId
 
-instance Parsec LicenseExceptionId where
+instance CabalParsec LicenseExceptionId where
     parsec = do
         n <- some $ P.satisfy $ \c -> isAsciiAlphaNum c || c == '-' || c == '.'
         v <- askCabalSpecVersion

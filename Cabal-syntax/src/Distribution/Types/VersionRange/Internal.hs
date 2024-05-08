@@ -45,8 +45,8 @@ import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.Utils.Generic (unsnoc)
 
-import qualified Distribution.Compat.CharParsing as P
 import qualified Distribution.Compat.DList as DList
+import qualified Distribution.Parsec as P
 import qualified Text.PrettyPrint as Disp
 
 data VersionRange
@@ -331,7 +331,7 @@ prettyVersionRange16 vr = prettyVersionRange vr
 --
 -- >>> map (`simpleParsecW'` "== 1.2.*") [CabalSpecV1_4, CabalSpecV1_6] :: [Maybe VersionRange]
 -- [Nothing,Just (IntersectVersionRanges (OrLaterVersion (mkVersion [1,2])) (EarlierVersion (mkVersion [1,3])))]
-instance Parsec VersionRange where
+instance CabalParsec VersionRange where
   parsec = askCabalSpecVersion >>= versionRangeParser versionDigitParser
 
 -- | 'VersionRange' parser parametrised by version digit parser.
@@ -341,7 +341,7 @@ instance Parsec VersionRange where
 --   versions, 'PkgConfigVersionRange'.
 --
 -- @since 3.0
-versionRangeParser :: forall m. CabalParsing m => m Int -> CabalSpecVersion -> m VersionRange
+versionRangeParser :: ParsecParser Int -> CabalSpecVersion -> ParsecParser VersionRange
 versionRangeParser digitParser csv = expr
   where
     expr = do
@@ -489,7 +489,7 @@ versionRangeParser digitParser csv = expr
               , prettyShow (foldr1 unionVersionRanges (fmap op vs))
               ]
 
-    verSet :: CabalParsing m => m (NonEmpty Version)
+    verSet :: ParsecParser (NonEmpty Version)
     verSet = do
       _ <- P.char '{'
       P.spaces
@@ -498,27 +498,27 @@ versionRangeParser digitParser csv = expr
       pure vs
 
     -- a plain version without tags or wildcards
-    verPlain :: CabalParsing m => m Version
+    verPlain :: ParsecParser Version
     verPlain = mkVersion <$> toList <$> P.sepByNonEmpty digitParser (P.char '.')
 
     -- either wildcard or normal version
-    verOrWild :: CabalParsing m => m (Bool, Version)
+    verOrWild :: ParsecParser (Bool, Version)
     verOrWild = do
       x <- digitParser
       verLoop (DList.singleton x)
 
     -- trailing: wildcard (.y.*) or normal version (optional tags) (.y.z-tag)
-    verLoop :: CabalParsing m => DList.DList Int -> m (Bool, Version)
+    verLoop :: DList.DList Int -> ParsecParser (Bool, Version)
     verLoop acc =
       verLoop' acc
         <|> (tags *> pure (False, mkVersion (DList.toList acc)))
 
-    verLoop' :: CabalParsing m => DList.DList Int -> m (Bool, Version)
+    verLoop' :: DList.DList Int -> ParsecParser (Bool, Version)
     verLoop' acc = do
       _ <- P.char '.'
-      let digit = digitParser >>= verLoop . DList.snoc acc
+      let dig = digitParser >>= verLoop . DList.snoc acc
       let wild = (True, mkVersion (DList.toList acc)) <$ P.char '*'
-      digit <|> wild
+      dig <|> wild
 
     parens p = P.between
       ((P.char '(' P.<?> "opening paren") >> P.spaces)
@@ -528,7 +528,7 @@ versionRangeParser digitParser csv = expr
         P.spaces
         return a
 
-    tags :: CabalParsing m => m ()
+    tags :: ParsecParser ()
     tags = do
       ts <- many $ P.char '-' *> some (P.satisfy isAlphaNum)
       case ts of

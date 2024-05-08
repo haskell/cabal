@@ -11,7 +11,7 @@ import Distribution.ModuleName
 import Distribution.Parsec
 import Distribution.Pretty
 
-import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.Parsec as P
 import qualified Text.PrettyPrint as Disp
 
 data ExposedModule = ExposedModule
@@ -29,7 +29,7 @@ instance Pretty ExposedModule where
           Nothing -> Disp.empty
       ]
 
-instance Parsec ExposedModule where
+instance CabalParsec ExposedModule where
   parsec = do
     m <- parsecMaybeQuoted parsec
     P.spaces

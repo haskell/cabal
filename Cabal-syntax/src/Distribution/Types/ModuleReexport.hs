@@ -13,7 +13,7 @@ import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.Types.PackageName
 
-import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.Parsec as P
 import qualified Text.PrettyPrint as Disp
 
 -- -----------------------------------------------------------------------------
@@ -38,7 +38,7 @@ instance Pretty ModuleReexport where
         then Disp.empty
         else Disp.text "as" <+> pretty newname
 
-instance Parsec ModuleReexport where
+instance CabalParsec ModuleReexport where
   parsec = do
     mpkgname <- P.optional (P.try $ parsec <* P.char ':')
     origname <- parsec

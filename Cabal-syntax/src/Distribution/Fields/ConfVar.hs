@@ -2,12 +2,11 @@
 
 module Distribution.Fields.ConfVar (parseConditionConfVar, parseConditionConfVarFromClause) where
 
-import Distribution.Compat.CharParsing (char, integral)
 import Distribution.Compat.Prelude
 import Distribution.Fields.Field (Field (..), SectionArg (..))
 import Distribution.Fields.ParseResult
 import Distribution.Fields.Parser (readFields)
-import Distribution.Parsec (Parsec (..), Position (..), runParsecParser)
+import Distribution.Parsec (CabalParsec (..), Position (..), char, integral, runParsecParser)
 import Distribution.Parsec.FieldLineStream (fieldLineStreamFromBS)
 import Distribution.Types.Condition
 import Distribution.Types.ConfVar (ConfVar (..))
@@ -147,7 +146,7 @@ parser = condOr
     updatePosition x _ _ = x
     prettySectionArg = show
 
-    fromParsec :: Parsec a => Parser a
+    fromParsec :: CabalParsec a => Parser a
     fromParsec = fromParsec' parsec
 
     fromParsec' p = do

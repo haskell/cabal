@@ -14,7 +14,7 @@ import Distribution.Types.PkgconfigVersionRange
 import Distribution.Parsec
 import Distribution.Pretty
 
-import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.Parsec as P
 
 -- | Describes a dependency on a pkg-config library
 --
@@ -33,7 +33,7 @@ instance Pretty PkgconfigDependency where
   pretty (PkgconfigDependency name PcAnyVersion) = pretty name
   pretty (PkgconfigDependency name ver) = pretty name <+> pretty ver
 
-instance Parsec PkgconfigDependency where
+instance CabalParsec PkgconfigDependency where
   parsec = do
     name <- parsec
     P.spaces

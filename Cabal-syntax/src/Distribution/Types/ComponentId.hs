@@ -15,7 +15,7 @@ import Prelude ()
 import Distribution.Parsec
 import Distribution.Pretty
 
-import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.Parsec as P
 import Text.PrettyPrint (text)
 
 -- | A 'ComponentId' uniquely identifies the transitive source
@@ -63,7 +63,7 @@ instance Structured ComponentId
 instance Pretty ComponentId where
   pretty = text . unComponentId
 
-instance Parsec ComponentId where
+instance CabalParsec ComponentId where
   parsec = mkComponentId `fmap` P.munch1 abi_char
     where
       abi_char c = isAlphaNum c || c `elem` "-_."

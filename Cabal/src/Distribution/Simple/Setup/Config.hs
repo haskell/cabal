@@ -46,13 +46,13 @@ module Distribution.Simple.Setup.Config
 import Distribution.Compat.Prelude hiding (get)
 import Prelude ()
 
-import qualified Distribution.Compat.CharParsing as P
 import Distribution.Compat.Semigroup (Last' (..), Option' (..))
 import Distribution.Compat.Stack
 import Distribution.Compiler
 import Distribution.ModuleName
 import Distribution.PackageDescription
-import Distribution.Parsec
+import Distribution.Parsec hiding (option)
+import qualified Distribution.Parsec as P
 import Distribution.Pretty
 import Distribution.ReadE
 import Distribution.Simple.Command hiding (boolOpt, boolOpt')

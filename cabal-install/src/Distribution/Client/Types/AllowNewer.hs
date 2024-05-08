@@ -15,12 +15,12 @@ module Distribution.Client.Types.AllowNewer
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
-import Distribution.Parsec (parsecLeadingCommaNonEmpty)
+import Distribution.Parsec (ParsecParser, parsecLeadingCommaNonEmpty)
 import Distribution.Types.PackageId (PackageId, PackageIdentifier (..))
 import Distribution.Types.PackageName (PackageName, mkPackageName)
 import Distribution.Types.Version (nullVersion)
 
-import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.Parsec as P
 import qualified Text.PrettyPrint as Disp
 
 -- $setup
@@ -98,17 +98,17 @@ instance Pretty RelaxedDep where
         RelaxDepModNone -> pretty subj
         RelaxDepModCaret -> Disp.char '^' Disp.<> pretty subj
 
-instance Parsec RelaxedDep where
+instance CabalParsec RelaxedDep where
   parsec = P.char '*' *> relaxedDepStarP <|> (parsec >>= relaxedDepPkgidP)
 
 -- continuation after *
-relaxedDepStarP :: CabalParsing m => m RelaxedDep
+relaxedDepStarP :: ParsecParser RelaxedDep
 relaxedDepStarP =
   RelaxedDep RelaxDepScopeAll <$ P.char ':' <*> modP <*> parsec
     <|> pure (RelaxedDep RelaxDepScopeAll RelaxDepModNone RelaxDepSubjectAll)
 
 -- continuation after package identifier
-relaxedDepPkgidP :: CabalParsing m => PackageIdentifier -> m RelaxedDep
+relaxedDepPkgidP :: PackageIdentifier -> ParsecParser RelaxedDep
 relaxedDepPkgidP pid@(PackageIdentifier pn v)
   | pn == mkPackageName "all"
   , v == nullVersion =
@@ -120,14 +120,14 @@ relaxedDepPkgidP pid@(PackageIdentifier pn v)
   | otherwise =
       RelaxedDep (RelaxDepScopePackageId pid) <$ P.char ':' <*> modP <*> parsec
 
-modP :: P.CharParsing m => m RelaxDepMod
+modP :: P.ParsecParser RelaxDepMod
 modP = RelaxDepModCaret <$ P.char '^' <|> pure RelaxDepModNone
 
 instance Pretty RelaxDepSubject where
   pretty RelaxDepSubjectAll = Disp.text "*"
   pretty (RelaxDepSubjectPkg pn) = pretty pn
 
-instance Parsec RelaxDepSubject where
+instance CabalParsec RelaxDepSubject where
   parsec = RelaxDepSubjectAll <$ P.char '*' <|> pkgn
     where
       pkgn = do
@@ -170,7 +170,7 @@ instance Pretty RelaxDeps where
 --
 -- >>> simpleParsec "" :: Maybe RelaxDeps
 -- Nothing
-instance Parsec RelaxDeps where
+instance CabalParsec RelaxDeps where
   parsec = do
     xs <- parsecLeadingCommaNonEmpty parsec
     pure $ case toList xs of

@@ -28,7 +28,7 @@ import Data.Time (UTCTime (..), fromGregorianValid, makeTimeOfDayValid, showGreg
 import Data.Time.Clock.POSIX (posixSecondsToUTCTime, utcTimeToPOSIXSeconds)
 
 import qualified Codec.Archive.Tar.Entry as Tar
-import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.Parsec as P
 import qualified Text.PrettyPrint as Disp
 
 -- | UNIX timestamp (expressed in seconds since unix epoch, i.e. 1970).
@@ -84,7 +84,7 @@ instance Structured Timestamp
 instance Pretty Timestamp where
   pretty = Disp.text . showTimestamp
 
-instance Parsec Timestamp where
+instance CabalParsec Timestamp where
   parsec = parsePosix <|> parseUTC
     where
       -- \| Parses unix timestamps, e.g. @"\@1474626019"@

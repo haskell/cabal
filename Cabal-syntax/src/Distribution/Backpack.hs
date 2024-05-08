@@ -43,7 +43,7 @@ import Distribution.Pretty
 import Text.PrettyPrint (hcat)
 import Prelude ()
 
-import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.Parsec as P
 import qualified Text.PrettyPrint as Disp
 
 import Distribution.ModuleName
@@ -116,7 +116,7 @@ instance Pretty OpenUnitId where
 --
 -- >>> eitherParsec "foo[Str=text-1.2.3:Data.Text.Text]" :: Either String OpenUnitId
 -- Right (IndefFullUnitId (ComponentId "foo") (fromList [(ModuleName "Str",OpenModule (DefiniteUnitId (DefUnitId {unDefUnitId = UnitId "text-1.2.3"})) (ModuleName "Data.Text.Text"))]))
-instance Parsec OpenUnitId where
+instance CabalParsec OpenUnitId where
   parsec = P.try parseOpenUnitId <|> fmap DefiniteUnitId parsec
     where
       parseOpenUnitId = do
@@ -184,7 +184,7 @@ instance Pretty OpenModule where
 --
 -- >>> eitherParsec "Includes2-0.1.0.0-inplace-mysql:Database.MySQL" :: Either String OpenModule
 -- Right (OpenModule (DefiniteUnitId (DefUnitId {unDefUnitId = UnitId "Includes2-0.1.0.0-inplace-mysql"})) (ModuleName "Database.MySQL"))
-instance Parsec OpenModule where
+instance CabalParsec OpenModule where
   parsec = parsecModuleVar <|> parsecOpenModule
     where
       parsecOpenModule = do
@@ -228,7 +228,7 @@ dispOpenModuleSubstEntry (k, v) = pretty k <<>> Disp.char '=' <<>> pretty v
 -- | Inverse to 'dispModSubst'.
 --
 -- @since 2.2
-parsecOpenModuleSubst :: CabalParsing m => m OpenModuleSubst
+parsecOpenModuleSubst :: ParsecParser OpenModuleSubst
 parsecOpenModuleSubst =
   fmap Map.fromList
     . flip P.sepBy (P.char ',')
@@ -237,7 +237,7 @@ parsecOpenModuleSubst =
 -- | Inverse to 'dispModSubstEntry'.
 --
 -- @since 2.2
-parsecOpenModuleSubstEntry :: CabalParsing m => m (ModuleName, OpenModule)
+parsecOpenModuleSubstEntry :: ParsecParser (ModuleName, OpenModule)
 parsecOpenModuleSubstEntry =
   do
     k <- parsec

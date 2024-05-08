@@ -30,7 +30,7 @@ import Distribution.Version
 
 import qualified Data.Char as Char
 import qualified Data.Map as Map
-import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.Parsec as P
 import qualified Distribution.SPDX as SPDX
 import qualified Text.PrettyPrint as Disp
 
@@ -201,7 +201,7 @@ newtype ExposedModules = ExposedModules {getExposedModules :: [ExposedModule]}
 
 instance Newtype [ExposedModule] ExposedModules
 
-instance Parsec ExposedModules where
+instance CabalParsec ExposedModules where
   parsec = ExposedModules <$> parsecOptCommaList parsec
 
 instance Pretty ExposedModules where
@@ -214,7 +214,7 @@ instance Newtype String CompatPackageKey
 instance Pretty CompatPackageKey where
   pretty = Disp.text . getCompatPackageKey
 
-instance Parsec CompatPackageKey where
+instance CabalParsec CompatPackageKey where
   parsec = CompatPackageKey <$> P.munch1 uid_char
     where
       uid_char c = Char.isAlphaNum c || c `elem` ("-_.=[],:<>+" :: String)
@@ -226,7 +226,7 @@ instance Newtype [(ModuleName, OpenModule)] InstWith
 instance Pretty InstWith where
   pretty = dispOpenModuleSubst . Map.fromList . getInstWith
 
-instance Parsec InstWith where
+instance CabalParsec InstWith where
   parsec = InstWith . Map.toList <$> parsecOpenModuleSubst
 
 -- | SPDX License expression or legacy license. Lenient parser, accepts either.
@@ -234,7 +234,7 @@ newtype SpecLicenseLenient = SpecLicenseLenient {getSpecLicenseLenient :: Either
 
 instance Newtype (Either SPDX.License License) SpecLicenseLenient
 
-instance Parsec SpecLicenseLenient where
+instance CabalParsec SpecLicenseLenient where
   parsec = fmap SpecLicenseLenient $ Left <$> P.try parsec <|> Right <$> parsec
 
 instance Pretty SpecLicenseLenient where

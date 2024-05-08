@@ -12,8 +12,8 @@ import Prelude ()
 
 import Distribution.Types.ModuleRenaming
 
-import qualified Distribution.Compat.CharParsing as P
 import Distribution.Parsec
+import qualified Distribution.Parsec as P
 import Distribution.Pretty
 import Text.PrettyPrint (text)
 import qualified Text.PrettyPrint as Disp
@@ -50,7 +50,7 @@ instance Pretty IncludeRenaming where
               else text "requires" <+> pretty req_rn
           )
 
-instance Parsec IncludeRenaming where
+instance CabalParsec IncludeRenaming where
   parsec = do
     prov_rn <- parsec
     req_rn <- P.option defaultRenaming $ P.try $ do

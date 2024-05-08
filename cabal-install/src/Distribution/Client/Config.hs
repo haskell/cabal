@@ -125,7 +125,6 @@ import Distribution.Client.ReplFlags
 import Distribution.Client.Version
   ( cabalInstallVersion
   )
-import qualified Distribution.Compat.CharParsing as P
 import Distribution.Compat.Environment
   ( getEnvironment
   )
@@ -158,6 +157,7 @@ import qualified Distribution.Deprecated.ParseUtils as ParseUtils
   ( Field (..)
   )
 import Distribution.Parsec (ParsecParser, parsecFilePath, parsecOptCommaList, parsecToken)
+import qualified Distribution.Parsec as P
 import Distribution.Simple.Command
   ( CommandUI (commandOptions)
   , ShowOrParseArgs (..)

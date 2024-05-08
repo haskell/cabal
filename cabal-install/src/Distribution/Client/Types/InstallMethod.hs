@@ -5,7 +5,7 @@ module Distribution.Client.Types.InstallMethod where
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
-import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.Parsec as P
 import qualified Text.PrettyPrint as PP
 
 data InstallMethod
@@ -20,7 +20,7 @@ instance Structured InstallMethod
 instance Semigroup InstallMethod where
   _ <> x = x
 
-instance Parsec InstallMethod where
+instance CabalParsec InstallMethod where
   parsec = do
     name <- P.munch1 isAlpha
     case name of

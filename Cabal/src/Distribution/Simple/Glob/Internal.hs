@@ -20,8 +20,8 @@ module Distribution.Simple.Glob.Internal where
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import qualified Distribution.Compat.CharParsing as P
 import Distribution.Parsec
+import qualified Distribution.Parsec as P
 import Distribution.Pretty
 import qualified Text.PrettyPrint as Disp
 
@@ -73,17 +73,17 @@ instance Pretty Glob where
   pretty (GlobFile glob) = dispGlobPieces glob
   pretty GlobDirTrailing = Disp.empty
 
-instance Parsec Glob where
+instance CabalParsec Glob where
   parsec = parsecPath
     where
-      parsecPath :: CabalParsing m => m Glob
+      parsecPath :: ParsecParser Glob
       parsecPath = do
         glob <- parsecGlob
         dirSep *> (GlobDir glob <$> parsecPath <|> pure (GlobDir glob GlobDirTrailing)) <|> pure (GlobFile glob)
       -- We could support parsing recursive directory search syntax
       -- @**@ here too, rather than just in 'parseFileGlob'
 
-      dirSep :: CabalParsing m => m ()
+      dirSep :: ParsecParser ()
       dirSep =
         () <$ P.char '/'
           <|> P.try
@@ -93,7 +93,7 @@ instance Parsec Glob where
                 P.notFollowedBy (P.satisfy isGlobEscapedChar)
             )
 
-      parsecGlob :: CabalParsing m => m GlobPieces
+      parsecGlob :: ParsecParser GlobPieces
       parsecGlob = some parsecPiece
         where
           parsecPiece = P.choice [literal, wildcard, union]

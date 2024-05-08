@@ -12,7 +12,7 @@ import Prelude ()
 import Distribution.Parsec
 import Distribution.Pretty
 
-import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.Parsec as P
 import qualified Text.PrettyPrint as Disp
 
 data ForeignLibOption
@@ -27,7 +27,7 @@ data ForeignLibOption
 instance Pretty ForeignLibOption where
   pretty ForeignLibStandalone = Disp.text "standalone"
 
-instance Parsec ForeignLibOption where
+instance CabalParsec ForeignLibOption where
   parsec = do
     name <- P.munch1 (\c -> isAlphaNum c || c == '-')
     case name of

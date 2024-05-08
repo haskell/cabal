@@ -18,7 +18,7 @@ import Distribution.Types.LibraryName
 import Distribution.Types.PackageName
 import Distribution.Types.UnqualComponentName
 
-import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.Parsec as P
 import qualified Text.PrettyPrint as PP
 
 -- |
@@ -57,7 +57,7 @@ instance Pretty Mixin where
 --
 -- >>> map (`simpleParsec'` "mylib:sub") [CabalSpecV3_0, CabalSpecV3_4] :: [Maybe Mixin]
 -- [Nothing,Just (Mixin {mixinPackageName = PackageName "mylib", mixinLibraryName = LSubLibName (UnqualComponentName "sub"), mixinIncludeRenaming = IncludeRenaming {includeProvidesRn = DefaultRenaming, includeRequiresRn = DefaultRenaming}})]
-instance Parsec Mixin where
+instance CabalParsec Mixin where
   parsec = do
     pn <- parsec
     ln <- P.option LMainLibName $ do
@@ -68,7 +68,7 @@ instance Parsec Mixin where
     incl <- parsec
     return (mkMixin pn ln incl)
 
-versionGuardMultilibs :: CabalParsing m => m ()
+versionGuardMultilibs :: ParsecParser ()
 versionGuardMultilibs = do
   csv <- askCabalSpecVersion
   when (csv < CabalSpecV3_4) $

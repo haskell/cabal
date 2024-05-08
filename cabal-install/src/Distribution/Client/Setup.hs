@@ -137,7 +137,6 @@ import Distribution.Client.GlobalFlags
   , withRepoContext
   )
 import Distribution.Client.ManpageFlags (ManpageFlags, defaultManpageFlags, manpageOptions)
-import qualified Distribution.Compat.CharParsing as P
 import Distribution.FieldGrammar.Newtypes (SpecVersion (..))
 import Distribution.PackageDescription
   ( BuildType (..)
@@ -147,8 +146,10 @@ import Distribution.PackageDescription
   )
 import Distribution.PackageDescription.Check (CheckExplanationIDString)
 import Distribution.Parsec
-  ( parsecCommaList
+  ( ParsecParser
+  , parsecCommaList
   )
+import qualified Distribution.Parsec as P
 import Distribution.ReadE
   ( ReadE (..)
   , parsecToReadE
@@ -1035,7 +1036,7 @@ writeGhcEnvironmentFilesPolicyPrinter = \case
   (Flag WriteGhcEnvironmentFilesOnlyForGhc844AndNewer) -> ["ghc8.4.4+"]
   NoFlag -> []
 
-relaxDepsParser :: CabalParsing m => m (Maybe RelaxDeps)
+relaxDepsParser :: ParsecParser (Maybe RelaxDeps)
 relaxDepsParser = do
   rs <- P.sepBy parsec (P.char ',')
   if null rs

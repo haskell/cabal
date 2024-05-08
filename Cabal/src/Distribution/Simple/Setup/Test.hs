@@ -40,8 +40,7 @@ module Distribution.Simple.Setup.Test
 import Distribution.Compat.Prelude hiding (get)
 import Prelude ()
 
-import qualified Distribution.Compat.CharParsing as P
-import Distribution.Parsec
+import qualified Distribution.Parsec as P
 import Distribution.Pretty
 import Distribution.ReadE
 import Distribution.Simple.Command hiding (boolOpt, boolOpt')
@@ -72,7 +71,7 @@ knownTestShowDetails = [minBound .. maxBound]
 instance Pretty TestShowDetails where
   pretty = Disp.text . lowercase . show
 
-instance Parsec TestShowDetails where
+instance P.CabalParsec TestShowDetails where
   parsec = maybe (fail "invalid TestShowDetails") return . classify =<< ident
     where
       ident = P.munch1 (\c -> isAlpha c || c == '_' || c == '-')
@@ -216,7 +215,7 @@ testOptions' showOrParseArgs =
                         ", "
                         (map prettyShow knownTestShowDetails)
                 )
-                (fmap toFlag parsec)
+                (fmap toFlag P.parsec)
             )
             (flagToList . fmap prettyShow)
         )

@@ -64,7 +64,7 @@ instance Pretty MungedPackageId where
 --
 -- >>> simpleParsec "foo-bar.4-2" :: Maybe MungedPackageId
 -- Nothing
-instance Parsec MungedPackageId where
+instance CabalParsec MungedPackageId where
   parsec = do
     PackageIdentifier pn v <- parsec
     return $ MungedPackageId (decodeCompatPackageName pn) v

@@ -19,7 +19,7 @@ import Distribution.Pretty
 
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.Parsec as P
 import Text.PrettyPrint (comma, hsep, parens, punctuate, text)
 
 -- | Renaming applied to the modules provided by a package.
@@ -83,7 +83,7 @@ instance Pretty ModuleRenaming where
         | orig == new = pretty orig
         | otherwise = pretty orig <+> text "as" <+> pretty new
 
-instance Parsec ModuleRenaming where
+instance CabalParsec ModuleRenaming where
   parsec = do
     csv <- askCabalSpecVersion
     if csv >= CabalSpecV3_0
@@ -102,12 +102,11 @@ instance Parsec ModuleRenaming where
           P.space *> fail "space after parenthesis, use cabal-version: 3.0 or higher"
 
 moduleRenamingParsec
-  :: CabalParsing m
-  => (forall a. m a -> m a)
+  :: (forall a. ParsecParser a -> ParsecParser a)
   -- ^ between parens
-  -> m ModuleName
+  -> ParsecParser ModuleName
   -- ^ module name parser
-  -> m ModuleRenaming
+  -> ParsecParser ModuleRenaming
 moduleRenamingParsec bp mn =
   -- NB: try not necessary as the first token is obvious
   P.choice [parseRename, parseHiding, return DefaultRenaming]

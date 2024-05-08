@@ -72,7 +72,7 @@ instance Structured UnqualComponentName
 instance Pretty UnqualComponentName where
   pretty = showToken . unUnqualComponentName
 
-instance Parsec UnqualComponentName where
+instance CabalParsec UnqualComponentName where
   parsec = mkUnqualComponentName <$> parsecUnqualComponentName
 
 instance NFData UnqualComponentName where

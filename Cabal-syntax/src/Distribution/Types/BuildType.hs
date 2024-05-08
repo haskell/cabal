@@ -14,7 +14,7 @@ import Distribution.CabalSpecVersion (CabalSpecVersion (..))
 import Distribution.Parsec
 import Distribution.Pretty
 
-import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.Parsec as P
 import qualified Text.PrettyPrint as Disp
 
 -- | The type of build system used by this package.
@@ -42,7 +42,7 @@ knownBuildTypes = [Simple, Configure, Make, Custom, Hooks]
 instance Pretty BuildType where
   pretty = Disp.text . show
 
-instance Parsec BuildType where
+instance CabalParsec BuildType where
   parsec = do
     name <- P.munch1 isAlphaNum
     case name of

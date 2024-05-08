@@ -11,7 +11,7 @@ import Prelude ()
 
 import Text.PrettyPrint (text)
 
-import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.Parsec as P
 
 -- | All the solvers that can be selected.
 data PreSolver = AlwaysModular
@@ -30,7 +30,7 @@ instance Structured Solver
 instance Pretty PreSolver where
   pretty AlwaysModular = text "modular"
 
-instance Parsec PreSolver where
+instance CabalParsec PreSolver where
   parsec = do
     name <- P.munch1 isAlpha
     case map toLower name of

@@ -18,7 +18,7 @@ import Distribution.Types.Version
 import Distribution.Types.VersionRange.Internal
 import Distribution.Version (simplifyVersionRange)
 
-import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.Parsec as P
 
 -- | A version constraint on a package. Different from 'ExeDependency' and
 -- 'Dependency' since it does not specify the need for a component, not even
@@ -51,7 +51,7 @@ instance Pretty PackageVersionConstraint where
 --
 -- >>> simpleParsec "foo-2.0" :: Maybe PackageVersionConstraint
 -- Just (PackageVersionConstraint (PackageName "foo") (ThisVersion (mkVersion [2,0])))
-instance Parsec PackageVersionConstraint where
+instance CabalParsec PackageVersionConstraint where
   parsec = do
     PackageIdentifier name ver <- parsec
     if ver == nullVersion

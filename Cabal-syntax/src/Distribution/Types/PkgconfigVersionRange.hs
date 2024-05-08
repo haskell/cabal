@@ -24,7 +24,7 @@ import Distribution.Types.VersionInterval
 import Distribution.Types.VersionRange
 
 import qualified Data.ByteString.Char8 as BS8
-import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.Parsec as P
 import qualified Text.PrettyPrint as PP
 
 -- | @since 3.0
@@ -63,7 +63,7 @@ instance Pretty PkgconfigVersionRange where
       parens True = PP.parens
       parens False = id
 
-instance Parsec PkgconfigVersionRange where
+instance CabalParsec PkgconfigVersionRange where
   -- note: the wildcard is used in some places, e.g
   -- http://hackage.haskell.org/package/bindings-libzip-0.10.1/bindings-libzip.cabal
   --
@@ -77,7 +77,7 @@ instance Parsec PkgconfigVersionRange where
       else versionRangeToPkgconfigVersionRange <$> versionRangeParser P.integral csv
 
 -- "modern" parser of @pkg-config@ package versions.
-pkgconfigParser :: CabalParsing m => m PkgconfigVersionRange
+pkgconfigParser :: ParsecParser PkgconfigVersionRange
 pkgconfigParser = P.spaces >> expr
   where
     -- every parser here eats trailing space

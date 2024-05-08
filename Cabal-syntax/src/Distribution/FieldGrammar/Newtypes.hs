@@ -75,7 +75,7 @@ import Text.PrettyPrint (Doc, comma, fsep, punctuate, text, vcat)
 
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Set as Set
-import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.Parsec as P
 import qualified Distribution.SPDX as SPDX
 
 -- | Vertical list with commas. Displayed with 'vcat'
@@ -96,8 +96,8 @@ data NoCommaFSep = NoCommaFSep
 class Sep sep where
   prettySep :: Proxy sep -> [Doc] -> Doc
 
-  parseSep :: CabalParsing m => Proxy sep -> m a -> m [a]
-  parseSepNE :: CabalParsing m => Proxy sep -> m a -> m (NonEmpty a)
+  parseSep :: Proxy sep -> ParsecParser a -> ParsecParser [a]
+  parseSepNE :: Proxy sep -> ParsecParser a -> ParsecParser (NonEmpty a)
 
 instance Sep CommaVCat where
   prettySep _ = vcat . punctuate comma
@@ -153,7 +153,7 @@ alaList' _ _ = List
 
 instance Newtype [a] (List sep wrapper a)
 
-instance (Newtype a b, Sep sep, Parsec b) => Parsec (List sep b a) where
+instance (Newtype a b, Sep sep, CabalParsec b) => CabalParsec (List sep b a) where
   parsec = pack . map (unpack :: b -> a) <$> parseSep (Proxy :: Proxy sep) parsec
 
 instance (Newtype a b, Sep sep, Pretty b) => Pretty (List sep b a) where
@@ -190,7 +190,7 @@ alaSet' _ _ = Set'
 
 instance Newtype (Set a) (Set' sep wrapper a)
 
-instance (Newtype a b, Ord a, Sep sep, Parsec b) => Parsec (Set' sep b a) where
+instance (Newtype a b, Ord a, Sep sep, CabalParsec b) => CabalParsec (Set' sep b a) where
   parsec = pack . Set.fromList . map (unpack :: b -> a) <$> parseSep (Proxy :: Proxy sep) parsec
 
 instance (Newtype a b, Sep sep, Pretty b) => Pretty (Set' sep b a) where
@@ -224,7 +224,7 @@ alaNonEmpty' _ _ = NonEmpty'
 
 instance Newtype (NonEmpty a) (NonEmpty' sep wrapper a)
 
-instance (Newtype a b, Sep sep, Parsec b) => Parsec (NonEmpty' sep b a) where
+instance (Newtype a b, Sep sep, CabalParsec b) => CabalParsec (NonEmpty' sep b a) where
   parsec = pack . fmap (unpack :: b -> a) <$> parseSepNE (Proxy :: Proxy sep) parsec
 
 instance (Newtype a b, Sep sep, Pretty b) => Pretty (NonEmpty' sep b a) where
@@ -239,7 +239,7 @@ newtype Token = Token {getToken :: String}
 
 instance Newtype String Token
 
-instance Parsec Token where
+instance CabalParsec Token where
   parsec = pack <$> parsecToken
 
 instance Pretty Token where
@@ -250,7 +250,7 @@ newtype Token' = Token' {getToken' :: String}
 
 instance Newtype String Token'
 
-instance Parsec Token' where
+instance CabalParsec Token' where
   parsec = pack <$> parsecToken'
 
 instance Pretty Token' where
@@ -261,7 +261,7 @@ newtype MQuoted a = MQuoted {getMQuoted :: a}
 
 instance Newtype a (MQuoted a)
 
-instance Parsec a => Parsec (MQuoted a) where
+instance CabalParsec a => CabalParsec (MQuoted a) where
   parsec = pack <$> parsecMaybeQuoted parsec
 
 instance Pretty a => Pretty (MQuoted a) where
@@ -272,7 +272,7 @@ newtype FilePathNT = FilePathNT {getFilePathNT :: String}
 
 instance Newtype String FilePathNT
 
-instance Parsec FilePathNT where
+instance CabalParsec FilePathNT where
   parsec = do
     token <- parsecToken
     if null token
@@ -288,7 +288,7 @@ newtype SymbolicPathNT from to = SymbolicPathNT {getSymbolicPathNT :: SymbolicPa
 
 instance Newtype (SymbolicPath from to) (SymbolicPathNT from to)
 
-instance Parsec (SymbolicPathNT from to) where
+instance CabalParsec (SymbolicPathNT from to) where
   parsec = do
     token <- parsecToken
     if null token
@@ -307,7 +307,7 @@ instance Newtype (RelativePath from to) (RelativePathNT from to)
 
 -- NB: we don't reject non-relative paths here; we allow them here and reject
 -- later (see 'Distribution.PackageDescription.Check.Paths.checkPath').
-instance Parsec (RelativePathNT from to) where
+instance CabalParsec (RelativePathNT from to) where
   parsec = do
     token <- parsecToken
     if null token
@@ -338,7 +338,7 @@ newtype SpecVersion = SpecVersion {getSpecVersion :: CabalSpecVersion}
 
 instance Newtype CabalSpecVersion SpecVersion
 
-instance Parsec SpecVersion where
+instance CabalParsec SpecVersion where
   parsec = do
     e <- parsecSpecVersion
     let ver :: Version
@@ -423,7 +423,7 @@ newtype SpecLicense = SpecLicense {getSpecLicense :: Either SPDX.License License
 
 instance Newtype (Either SPDX.License License) SpecLicense
 
-instance Parsec SpecLicense where
+instance CabalParsec SpecLicense where
   parsec = do
     v <- askCabalSpecVersion
     if v >= CabalSpecV2_2
@@ -442,14 +442,14 @@ newtype TestedWith = TestedWith {getTestedWith :: (CompilerFlavor, VersionRange)
 
 instance Newtype (CompilerFlavor, VersionRange) TestedWith
 
-instance Parsec TestedWith where
+instance CabalParsec TestedWith where
   parsec = pack <$> parsecTestedWith
 
 instance Pretty TestedWith where
   pretty x = case unpack x of
     (compiler, vr) -> pretty compiler <+> pretty vr
 
-parsecTestedWith :: CabalParsing m => m (CompilerFlavor, VersionRange)
+parsecTestedWith :: ParsecParser (CompilerFlavor, VersionRange)
 parsecTestedWith = do
   name <- lexemeParsec
   ver <- parsec <|> pure anyVersion

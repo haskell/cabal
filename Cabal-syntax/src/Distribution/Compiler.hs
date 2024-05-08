@@ -57,8 +57,8 @@ import Language.Haskell.Extension
 
 import Distribution.Version (Version, mkVersion', nullVersion)
 
-import qualified Distribution.Compat.CharParsing as P
-import Distribution.Parsec (Parsec (..))
+import Distribution.Parsec (CabalParsec (..))
+import qualified Distribution.Parsec as P
 import Distribution.Pretty (Pretty (..), prettyShow)
 import qualified System.Info (compilerName, compilerVersion)
 import qualified Text.PrettyPrint as Disp
@@ -94,7 +94,7 @@ instance Pretty CompilerFlavor where
   pretty NHC = Disp.text "nhc98"
   pretty other = Disp.text (lowercase (show other))
 
-instance Parsec CompilerFlavor where
+instance CabalParsec CompilerFlavor where
   parsec = classifyCompilerFlavor <$> component
     where
       component = do
@@ -185,7 +185,7 @@ instance Pretty CompilerId where
     | v == nullVersion = pretty f
     | otherwise = pretty f <<>> Disp.char '-' <<>> pretty v
 
-instance Parsec CompilerId where
+instance CabalParsec CompilerId where
   parsec = do
     flavour <- parsec
     version <- (P.char '-' >> parsec) <|> return nullVersion
@@ -233,7 +233,7 @@ instance Pretty AbiTag where
   pretty NoAbiTag = Disp.empty
   pretty (AbiTag tag) = Disp.text tag
 
-instance Parsec AbiTag where
+instance CabalParsec AbiTag where
   parsec = do
     tag <- P.munch (\c -> isAlphaNum c || c == '_')
     if null tag then return NoAbiTag else return (AbiTag tag)
