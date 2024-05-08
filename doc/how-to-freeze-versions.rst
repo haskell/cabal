@@ -27,19 +27,44 @@ developing a library, you will not want to distribute it together with the
 ``cabal.project.freeze`` file, as it would make it very hard for cabal to
 resolve dependencies for users of the library.
 
-Common workflow
-^^^^^^^^^^^^^^^
+Common workflows
+^^^^^^^^^^^^^^^^
 
-Common workflow for using ``cabal freeze``, if you changed any dependencies in
-``<yourproject>.cabal`` file or want to update their versions, is to delete
-``cabal.project.freeze`` file (if it already exists) and run ``cabal freeze`` to
-generate fresh version of ``cabal.project.freeze``.  You might in some cases
-want to skip deletion of ``cabal.project.freeze``, but keep in mind that in that
-case ``cabal freeze`` will use existing ``cabal.project.freeze`` when resolving
-dependencies, therefore not updating any existing dependencies, only adding new
-ones.  If not sure, best to delete ``cabal.project.freeze`` first and then run
-``cabal freeze``.  Finally, you will always want to committ the new
-``cabal.project.freeze`` to the version control.
+.. Warning::
+    For each of these workflows, you may have to first delete the
+    ``index-state`` line from ``cabal.project`` (and from
+    ``cabal.project.freeze`` if it exists) and then run ``cabal update`` to
+    ensure that cabal will have newer versions to re-resolve the dependencies
+    with. Alternatively, you can run ``cabal update
+    --ignore-project``.
+
+Freeze
+    If the ``cabal.project.freeze`` file doesn't exist, generating one is a
+    great way to see what versions of dependencies are currently being used even
+    if you choose to discard the ``.freeze`` file after inspecting it.
+
+Thaw, Freeze
+    If you changed the version ranges of any of the dependencies in any of your
+    project's package descriptions, in any ``.cabal`` file, then delete the
+    ``cabal.project.freeze`` file if it already exists and run ``cabal freeze``
+    to generate fresh version of ``cabal.project.freeze``.
+
+Freeze, Freeze
+    You might in some cases want to skip deletion of ``cabal.project.freeze``,
+    but keep in mind that in that case ``cabal freeze`` will use existing
+    ``cabal.project.freeze`` when resolving dependencies, therefore not updating
+    any existing dependencies, only adding new ones.
+
+Partial Thaw, Freeze
+    If you want to a pick up a different version of a single dependency, you can
+    delete its constraint from ``cabal.project.freeze`` and then run ``cabal
+    freeze`` again.
+
+.. Note::
+
+    If not sure, pick the "thaw, freeze" workflow, as it is the safest, the
+    simplest and the most common. Finally, you will always want to commit the
+    changed ``cabal.project.freeze`` to version control.
 
 Ensuring everything is frozen
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
