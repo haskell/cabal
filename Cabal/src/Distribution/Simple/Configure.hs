@@ -33,6 +33,17 @@
 module Distribution.Simple.Configure
   ( configure
   , configure_setupHooks
+  , runPreConfPackageHook
+  , runPostConfPackageHook
+  , runPreConfComponentHook
+  , configurePackage
+  , PackageInfo (..)
+  , mkProgramDb
+  , finalCheckPackage
+  , configureComponents
+  , configureDependencies
+  , mkPromisedDepsSet
+  , combinedConstraints
   , writePersistBuildConfig
   , getConfigStateFile
   , getPersistBuildConfig
@@ -467,80 +478,144 @@ configure_setupHooks
 
     -- Package-wide pre-configure hook
     lbc1 <-
-      case preConfPackageHook of
-        Nothing -> return lbc0
-        Just pre_conf -> do
-          let programDb0 = LBC.withPrograms lbc0
-              programDb0' = programDb0{unconfiguredProgs = Map.empty}
-              input =
-                SetupHooks.PreConfPackageInputs
-                  { SetupHooks.configFlags = cfg
-                  , SetupHooks.localBuildConfig = lbc0{LBC.withPrograms = programDb0'}
-                  , -- Unconfigured programs are not supplied to the hook,
-                    -- as these cannot be passed over a serialisation boundary
-                    -- (see the "Binary ProgramDb" instance).
-                    SetupHooks.compiler = comp
-                  , SetupHooks.platform = platform
-                  }
-          SetupHooks.PreConfPackageOutputs
-            { SetupHooks.buildOptions = opts1
-            , SetupHooks.extraConfiguredProgs = progs1
-            } <-
-            pre_conf input
-          -- The package-wide pre-configure hook returns BuildOptions that
-          -- overrides the one it was passed in, as well as an update to
-          -- the ProgramDb in the form of new configured programs to add
-          -- to the program database.
-          return $
-            lbc0
-              { LBC.withBuildOptions = opts1
-              , LBC.withPrograms =
-                  updateConfiguredProgs
-                    (`Map.union` progs1)
-                    programDb0
-              }
+      maybe
+        (return lbc0)
+        (runPreConfPackageHook cfg comp platform lbc0)
+        preConfPackageHook
 
     -- Cabal package-wide configure
-    (lbc2, pbd2, pkg_info) <-
+    ( lbc2
+      , pbd2
+      , pkg_info@( PackageInfo
+                    { installedPackageSet = installedPkgSet
+                    , promisedDepsSet = promisedDeps
+                    }
+                  )
+      ) <-
       finalizeAndConfigurePackage cfg lbc1 g_pkg_descr comp platform enabledComps
 
     -- Package-wide post-configure hook
-    for_ postConfPackageHook $ \postConfPkg -> do
-      let input =
-            SetupHooks.PostConfPackageInputs
-              { SetupHooks.localBuildConfig = lbc2
-              , SetupHooks.packageBuildDescr = pbd2
-              }
-      postConfPkg input
+    for_ postConfPackageHook $ runPostConfPackageHook lbc2 pbd2
 
     -- Per-component pre-configure hook
     pkg_descr <- do
       let pkg_descr2 = LBC.localPkgDescr pbd2
       applyComponentDiffs
         verbosity
-        ( \c -> for preConfComponentHook $ \computeDiff -> do
-            let input =
-                  SetupHooks.PreConfComponentInputs
-                    { SetupHooks.localBuildConfig = lbc2
-                    , SetupHooks.packageBuildDescr = pbd2
-                    , SetupHooks.component = c
-                    }
-            SetupHooks.PreConfComponentOutputs
-              { SetupHooks.componentDiff = diff
-              } <-
-              computeDiff input
-            return diff
-        )
+        (for preConfComponentHook . runPreConfComponentHook lbc2 pbd2)
         pkg_descr2
     let pbd3 = pbd2{LBC.localPkgDescr = pkg_descr}
 
     -- Cabal per-component configure
-    externalPkgDeps <- finalCheckPackage g_pkg_descr pbd3 hookedBuildInfo pkg_info
-    lbi <- configureComponents lbc2 pbd3 pkg_info externalPkgDeps
+    finalCheckPackage g_pkg_descr pbd3 hookedBuildInfo
 
+    let
+      use_external_internal_deps =
+        case enabledComps of
+          OneComponentRequestedSpec{} -> True
+          ComponentRequestedSpec{} -> False
+    -- The list of 'InstalledPackageInfo' recording the selected
+    -- dependencies on external packages.
+    --
+    -- Invariant: For any package name, there is at most one package
+    -- in externalPackageDeps which has that name.
+    --
+    -- NB: The dependency selection is global over ALL components
+    -- in the package (similar to how allConstraints and
+    -- requiredDepsMap are global over all components).  In particular,
+    -- if *any* component (post-flag resolution) has an unsatisfiable
+    -- dependency, we will fail.  This can sometimes be undesirable
+    -- for users, see #1786 (benchmark conflicts with executable),
+    --
+    -- In the presence of Backpack, these package dependencies are
+    -- NOT complete: they only ever include the INDEFINITE
+    -- dependencies.  After we apply an instantiation, we'll get
+    -- definite references which constitute extra dependencies.
+    -- (Why not have cabal-install pass these in explicitly?
+    -- For one it's deterministic; for two, we need to associate
+    -- them with renamings which would require a far more complicated
+    -- input scheme than what we have today.)
+    externalPkgDeps <-
+      configureDependencies
+        verbosity
+        use_external_internal_deps
+        pkg_info
+        pkg_descr
+        enabledComps
+    lbi <- configureComponents lbc2 pbd3 installedPkgSet promisedDeps externalPkgDeps
     writePersistBuildConfig mbWorkDir distPref lbi
 
     return lbi
+
+runPreConfPackageHook
+  :: ConfigFlags
+  -> Compiler
+  -> Platform
+  -> LBC.LocalBuildConfig
+  -> (SetupHooks.PreConfPackageInputs -> IO SetupHooks.PreConfPackageOutputs)
+  -> IO LBC.LocalBuildConfig
+runPreConfPackageHook cfg comp platform lbc0 pre_conf = do
+  let programDb0 = LBC.withPrograms lbc0
+      programDb0' = programDb0{unconfiguredProgs = Map.empty}
+      input =
+        SetupHooks.PreConfPackageInputs
+          { SetupHooks.configFlags = cfg
+          , SetupHooks.localBuildConfig = lbc0{LBC.withPrograms = programDb0'}
+          , -- Unconfigured programs are not supplied to the hook,
+            -- as these cannot be passed over a serialisation boundary
+            -- (see the "Binary ProgramDb" instance).
+            SetupHooks.compiler = comp
+          , SetupHooks.platform = platform
+          }
+  SetupHooks.PreConfPackageOutputs
+    { SetupHooks.buildOptions = opts1
+    , SetupHooks.extraConfiguredProgs = progs1
+    } <-
+    pre_conf input
+  -- The package-wide pre-configure hook returns BuildOptions that
+  -- overrides the one it was passed in, as well as an update to
+  -- the ProgramDb in the form of new configured programs to add
+  -- to the program database.
+  return $
+    lbc0
+      { LBC.withBuildOptions = opts1
+      , LBC.withPrograms =
+          updateConfiguredProgs
+            (`Map.union` progs1)
+            programDb0
+      }
+
+runPostConfPackageHook
+  :: LBC.LocalBuildConfig
+  -> LBC.PackageBuildDescr
+  -> (SetupHooks.PostConfPackageInputs -> IO ())
+  -> IO ()
+runPostConfPackageHook lbc2 pbd2 postConfPkg =
+  let input =
+        SetupHooks.PostConfPackageInputs
+          { SetupHooks.localBuildConfig = lbc2
+          , SetupHooks.packageBuildDescr = pbd2
+          }
+   in postConfPkg input
+
+runPreConfComponentHook
+  :: LBC.LocalBuildConfig
+  -> LBC.PackageBuildDescr
+  -> Component
+  -> (SetupHooks.PreConfComponentInputs -> IO SetupHooks.PreConfComponentOutputs)
+  -> IO SetupHooks.ComponentDiff
+runPreConfComponentHook lbc pbd c hook = do
+  let input =
+        SetupHooks.PreConfComponentInputs
+          { SetupHooks.localBuildConfig = lbc
+          , SetupHooks.packageBuildDescr = pbd
+          , SetupHooks.component = c
+          }
+  SetupHooks.PreConfComponentOutputs
+    { SetupHooks.componentDiff = diff
+    } <-
+    hook input
+  return diff
 
 preConfigurePackage
   :: ConfigFlags
@@ -809,18 +884,25 @@ computeLocalBuildConfig cfg comp programDb = do
 
   return $
     LBC.LocalBuildConfig
-      { extraConfigArgs = [] -- Currently configure does not
-      -- take extra args, but if it
-      -- did they would go here.
-      , withPrograms = programDb
+      { extraConfigArgs = []
+      , -- Currently configure does not
+        -- take extra args, but if it
+        -- did they would go here.
+        withPrograms = programDb
       , withBuildOptions = buildOptions
       }
 
 data PackageInfo = PackageInfo
   { internalPackageSet :: Set LibraryName
+  -- ^ Libraries internal to the package
   , promisedDepsSet :: Map (PackageName, ComponentName) ComponentId
+  -- ^ Collection of components that are promised, i.e. are not installed already.
+  --
+  -- See 'PromisedDependency' for more details.
   , installedPackageSet :: InstalledPackageIndex
+  -- ^ Installed packages
   , requiredDepsMap :: Map (PackageName, ComponentName) InstalledPackageInfo
+  -- ^ Packages for which we have been given specific deps to use
   }
 
 configurePackage
@@ -831,12 +913,11 @@ configurePackage
   -> ComponentRequestedSpec
   -> Compiler
   -> Platform
-  -> ProgramDb
   -> PackageDBStack
   -> IO (LBC.LocalBuildConfig, LBC.PackageBuildDescr)
-configurePackage cfg lbc0 pkg_descr00 flags enabled comp platform programDb0 packageDbs = do
-  let common = configCommonFlags cfg
-      verbosity = fromFlag $ setupVerbosity common
+configurePackage cfg lbc0 pkg_descr00 flags enabled comp platform packageDbs = do
+  let verbosity = fromFlag (configVerbosity cfg)
+      programDb0 = LBC.withPrograms lbc0
 
       -- add extra include/lib dirs as specified in cfg
       pkg_descr0 = addExtraIncludeLibDirsFromConfigFlags pkg_descr00 cfg
@@ -892,7 +973,7 @@ configurePackage cfg lbc0 pkg_descr00 flags enabled comp platform programDb0 pac
     defaultInstallDirs'
       use_external_internal_deps
       (compilerFlavor comp)
-      (fromFlag (configUserInstall cfg))
+      (fromFlagOrDefault True (configUserInstall cfg))
       (hasLibs pkg_descr2)
   let
     installDirs =
@@ -939,7 +1020,7 @@ finalizeAndConfigurePackage cfg lbc0 g_pkg_descr comp platform enabled = do
       packageDbs :: PackageDBStack
       packageDbs =
         interpretPackageDbFlags
-          (fromFlag (configUserInstall cfg))
+          (fromFlagOrDefault True (configUserInstall cfg))
           (configPackageDBs cfg)
 
   -- The InstalledPackageIndex of all installed packages
@@ -1041,7 +1122,6 @@ finalizeAndConfigurePackage cfg lbc0 g_pkg_descr comp platform enabled = do
       enabled
       comp
       platform
-      programDb0
       packageDbs
   return (lbc, pbd, pkg_info)
 
@@ -1098,8 +1178,7 @@ finalCheckPackage
   :: GenericPackageDescription
   -> LBC.PackageBuildDescr
   -> HookedBuildInfo
-  -> PackageInfo
-  -> IO ([PreExistingComponent], [PromisedComponent])
+  -> IO ()
 finalCheckPackage
   g_pkg_descr
   ( LBC.PackageBuildDescr
@@ -1110,16 +1189,11 @@ finalCheckPackage
       , componentEnabledSpec = enabled
       }
     )
-  hookedBuildInfo
-  (PackageInfo{internalPackageSet, promisedDepsSet, installedPackageSet, requiredDepsMap}) =
+  hookedBuildInfo =
     do
       let common = configCommonFlags cfg
           verbosity = fromFlag $ setupVerbosity common
           cabalFileDir = packageRoot common
-          use_external_internal_deps =
-            case enabled of
-              OneComponentRequestedSpec{} -> True
-              ComponentRequestedSpec{} -> False
 
       checkCompilerProblems verbosity comp pkg_descr enabled
       checkPackageProblems
@@ -1161,41 +1235,12 @@ finalCheckPackage
         dieWithException verbosity $
           CantFindForeignLibraries unsupportedFLibs
 
-      -- The list of 'InstalledPackageInfo' recording the selected
-      -- dependencies on external packages.
-      --
-      -- Invariant: For any package name, there is at most one package
-      -- in externalPackageDeps which has that name.
-      --
-      -- NB: The dependency selection is global over ALL components
-      -- in the package (similar to how allConstraints and
-      -- requiredDepsMap are global over all components).  In particular,
-      -- if *any* component (post-flag resolution) has an unsatisfiable
-      -- dependency, we will fail.  This can sometimes be undesirable
-      -- for users, see #1786 (benchmark conflicts with executable),
-      --
-      -- In the presence of Backpack, these package dependencies are
-      -- NOT complete: they only ever include the INDEFINITE
-      -- dependencies.  After we apply an instantiation, we'll get
-      -- definite references which constitute extra dependencies.
-      -- (Why not have cabal-install pass these in explicitly?
-      -- For one it's deterministic; for two, we need to associate
-      -- them with renamings which would require a far more complicated
-      -- input scheme than what we have today.)
-      configureDependencies
-        verbosity
-        use_external_internal_deps
-        internalPackageSet
-        promisedDepsSet
-        installedPackageSet
-        requiredDepsMap
-        pkg_descr
-        enabled
-
 configureComponents
   :: LBC.LocalBuildConfig
   -> LBC.PackageBuildDescr
-  -> PackageInfo
+  -> InstalledPackageIndex
+  -> Map (PackageName, ComponentName) ComponentId
+  -- ^ collection of promised dependencies
   -> ([PreExistingComponent], [PromisedComponent])
   -> IO LocalBuildInfo
 configureComponents
@@ -1207,7 +1252,8 @@ configureComponents
           , componentEnabledSpec = enabled
           }
         )
-  (PackageInfo{promisedDepsSet, installedPackageSet})
+  installedPackageSet
+  promisedDepsSet
   externalPkgDeps =
     do
       let common = configCommonFlags cfg
@@ -1619,22 +1665,14 @@ checkCompilerProblems verbosity comp pkg_descr enabled = do
 configureDependencies
   :: Verbosity
   -> UseExternalInternalDeps
-  -> Set LibraryName
-  -> Map (PackageName, ComponentName) ComponentId
-  -> InstalledPackageIndex
-  -- ^ installed packages
-  -> Map (PackageName, ComponentName) InstalledPackageInfo
-  -- ^ required deps
+  -> PackageInfo
   -> PackageDescription
   -> ComponentRequestedSpec
   -> IO ([PreExistingComponent], [PromisedComponent])
 configureDependencies
   verbosity
   use_external_internal_deps
-  packageLibraries
-  promisedDeps
-  installedPackageSet
-  requiredDepsMap
+  pkg_info
   pkg_descr
   enableSpec = do
     let failedDeps :: [FailedDependency]
@@ -1647,10 +1685,7 @@ configureDependencies
               , let status =
                       selectDependency
                         (package pkg_descr)
-                        packageLibraries
-                        promisedDeps
-                        installedPackageSet
-                        requiredDepsMap
+                        pkg_info
                         use_external_internal_deps
                         dep
               ]
@@ -1872,15 +1907,7 @@ data DependencyResolution
 selectDependency
   :: PackageId
   -- ^ Package id of current package
-  -> Set LibraryName
-  -- ^ package libraries
-  -> Map (PackageName, ComponentName) ComponentId
-  -- ^ Set of components that are promised, i.e. are not installed already. See 'PromisedDependency' for more details.
-  -> InstalledPackageIndex
-  -- ^ Installed packages
-  -> Map (PackageName, ComponentName) InstalledPackageInfo
-  -- ^ Packages for which we have been given specific deps to
-  -- use
+  -> PackageInfo
   -> UseExternalInternalDeps
   -- ^ Are we configuring a
   -- single component?
@@ -1888,10 +1915,13 @@ selectDependency
   -> [Either FailedDependency DependencyResolution]
 selectDependency
   pkgid
-  internalIndex
-  promisedIndex
-  installedIndex
-  requiredDepsMap
+  ( PackageInfo
+      { internalPackageSet = internalIndex
+      , promisedDepsSet = promisedIndex
+      , installedPackageSet = installedIndex
+      , requiredDepsMap
+      }
+    )
   use_external_internal_deps
   (Dependency dep_pkgname vr libs) =
     -- If the dependency specification matches anything in the internal package
@@ -2210,55 +2240,77 @@ configureRequiredProgram
   verbosity
   progdb
   (LegacyExeDependency progName verRange) =
-    case lookupKnownProgram progName progdb of
+    case lookupProgramByName progName progdb of
+      Just prog ->
+        -- If the program has already been configured, use it
+        -- (as long as the version is compatible).
+        --
+        -- Not doing so means falling back to the "simpleProgram" path below,
+        -- which might fail if the program has custom logic to find a version
+        -- (such as hsc2hs).
+        let loc = locationPath $ programLocation prog
+         in case programVersion prog of
+              Nothing
+                | verRange == anyVersion ->
+                    return progdb
+                | otherwise ->
+                    dieWithException verbosity $!
+                      UnknownVersionDb (programId prog) verRange loc
+              Just version
+                | withinRange version verRange ->
+                    return progdb
+                | otherwise ->
+                    dieWithException verbosity $!
+                      BadVersionDb (programId prog) version verRange loc
       Nothing ->
-        -- Try to configure it as a 'simpleProgram' automatically
-        --
-        -- There's a bit of a story behind this line.  In old versions
-        -- of Cabal, there were only internal build-tools dependencies.  So the
-        -- behavior in this case was:
-        --
-        --    - If a build-tool dependency was internal, don't do
-        --      any checking.
-        --
-        --    - If it was external, call 'configureRequiredProgram' to
-        --      "configure" the executable.  In particular, if
-        --      the program was not "known" (present in 'ProgramDb'),
-        --      then we would just error.  This was fine, because
-        --      the only way a program could be executed from 'ProgramDb'
-        --      is if some library code from Cabal actually called it,
-        --      and the pre-existing Cabal code only calls known
-        --      programs from 'defaultProgramDb', and so if it
-        --      is calling something else, you have a Custom setup
-        --      script, and in that case you are expected to register
-        --      the program you want to call in the ProgramDb.
-        --
-        -- OK, so that was fine, until I (ezyang, in 2016) refactored
-        -- Cabal to support per-component builds.  In this case, what
-        -- was previously an internal build-tool dependency now became
-        -- an external one, and now previously "internal" dependencies
-        -- are now external.  But these are permitted to exist even
-        -- when they are not previously configured (something that
-        -- can only occur by a Custom script.)
-        --
-        -- So, I decided, "Fine, let's just accept these in any
-        -- case."  Thus this line.  The alternative would have been to
-        -- somehow detect when a build-tools dependency was "internal" (by
-        -- looking at the unflattened package description) but this
-        -- would also be incompatible with future work to support
-        -- external executable dependencies: we definitely cannot
-        -- assume they will be preinitialized in the 'ProgramDb'.
-        configureProgram verbosity (simpleProgram progName) progdb
-      Just prog
-        -- requireProgramVersion always requires the program have a version
-        -- but if the user says "build-depends: foo" ie no version constraint
-        -- then we should not fail if we cannot discover the program version.
-        | verRange == anyVersion -> do
-            (_, progdb') <- requireProgram verbosity prog progdb
-            return progdb'
-        | otherwise -> do
-            (_, _, progdb') <- requireProgramVersion verbosity prog verRange progdb
-            return progdb'
+        -- Otherwise, try to configure it as a 'simpleProgram' automatically
+        case lookupKnownProgram progName progdb of
+          Nothing ->
+            -- There's a bit of a story behind this line.  In old versions
+            -- of Cabal, there were only internal build-tools dependencies.  So the
+            -- behavior in this case was:
+            --
+            --    - If a build-tool dependency was internal, don't do
+            --      any checking.
+            --
+            --    - If it was external, call 'configureRequiredProgram' to
+            --      "configure" the executable.  In particular, if
+            --      the program was not "known" (present in 'ProgramDb'),
+            --      then we would just error.  This was fine, because
+            --      the only way a program could be executed from 'ProgramDb'
+            --      is if some library code from Cabal actually called it,
+            --      and the pre-existing Cabal code only calls known
+            --      programs from 'defaultProgramDb', and so if it
+            --      is calling something else, you have a Custom setup
+            --      script, and in that case you are expected to register
+            --      the program you want to call in the ProgramDb.
+            --
+            -- OK, so that was fine, until I (ezyang, in 2016) refactored
+            -- Cabal to support per-component builds.  In this case, what
+            -- was previously an internal build-tool dependency now became
+            -- an external one, and now previously "internal" dependencies
+            -- are now external.  But these are permitted to exist even
+            -- when they are not previously configured (something that
+            -- can only occur by a Custom script.)
+            --
+            -- So, I decided, "Fine, let's just accept these in any
+            -- case."  Thus this line.  The alternative would have been to
+            -- somehow detect when a build-tools dependency was "internal" (by
+            -- looking at the unflattened package description) but this
+            -- would also be incompatible with future work to support
+            -- external executable dependencies: we definitely cannot
+            -- assume they will be preinitialized in the 'ProgramDb'.
+            configureProgram verbosity (simpleProgram progName) progdb
+          Just prog
+            -- requireProgramVersion always requires the program have a version
+            -- but if the user says "build-depends: foo" ie no version constraint
+            -- then we should not fail if we cannot discover the program version.
+            | verRange == anyVersion -> do
+                (_, progdb') <- requireProgram verbosity prog progdb
+                return progdb'
+            | otherwise -> do
+                (_, _, progdb') <- requireProgramVersion verbosity prog verRange progdb
+                return progdb'
 
 -- -----------------------------------------------------------------------------
 -- Configuring pkg-config package dependencies

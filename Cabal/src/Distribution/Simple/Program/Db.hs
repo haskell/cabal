@@ -68,6 +68,7 @@ module Distribution.Simple.Program.Db
   , ConfiguredProgs
   , updateUnconfiguredProgs
   , updateConfiguredProgs
+  , updatePathProgDb
   ) where
 
 import Distribution.Compat.Prelude
@@ -484,6 +485,39 @@ reconfigurePrograms verbosity paths argss progdb = do
     $ progdb
   where
     progs = catMaybes [lookupKnownProgram name progdb | (name, _) <- paths]
+
+-- | Update the PATH and environment variables of already-configured programs
+-- in the program database.
+--
+-- This is a somewhat sketchy operation, but it handles the following situation:
+--
+--  - we add a build-tool-depends executable to the program database, with its
+--    associated data directory environment variables;
+--  - we want invocations of GHC (an already configured program) to be able to
+--    find this program (e.g. if the build-tool-depends executable is used
+--    in a Template Haskell splice).
+--
+-- In this case, we want to add the build tool to the PATH of GHC, even though
+-- GHC is already configured which in theory means we shouldn't touch it any
+-- more.
+updatePathProgDb :: Verbosity -> ProgramDb -> IO ProgramDb
+updatePathProgDb verbosity progdb =
+  updatePathProgs verbosity progs progdb
+  where
+    progs = Map.elems $ configuredProgs progdb
+
+-- | See 'updatePathProgDb'
+updatePathProgs :: Verbosity -> [ConfiguredProgram] -> ProgramDb -> IO ProgramDb
+updatePathProgs verbosity progs progdb =
+  foldM (flip (updatePathProg verbosity)) progdb progs
+
+-- | See 'updatePathProgDb'.
+updatePathProg :: Verbosity -> ConfiguredProgram -> ProgramDb -> IO ProgramDb
+updatePathProg _verbosity prog progdb = do
+  newPath <- programSearchPathAsPATHVar (progSearchPath progdb)
+  let envOverrides = progOverrideEnv progdb
+      prog' = prog{programOverrideEnv = [("PATH", Just newPath)] ++ envOverrides}
+  return $ updateProgram prog' progdb
 
 -- | Check that a program is configured and available to be run.
 --

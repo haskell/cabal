@@ -56,6 +56,9 @@ import Distribution.Simple.BuildPaths
 import Distribution.Simple.BuildTarget
 import Distribution.Simple.Compiler
 import Distribution.Simple.Errors
+import Distribution.Simple.FileMonitor.Types
+  ( MonitorFilePath
+  )
 import Distribution.Simple.Flag
 import Distribution.Simple.Glob (matchDirFileGlob)
 import Distribution.Simple.InstallDirs
@@ -71,12 +74,11 @@ import Distribution.Simple.Setup.Common
 import Distribution.Simple.Setup.Haddock
 import Distribution.Simple.Setup.Hscolour
 import Distribution.Simple.SetupHooks.Internal
-  ( BuildHooks (..)
-  , BuildingWhat (..)
-  , noBuildHooks
+  ( BuildingWhat (..)
   )
 import qualified Distribution.Simple.SetupHooks.Internal as SetupHooks
-import qualified Distribution.Simple.SetupHooks.Rule as SetupHooks
+  ( PreBuildComponentInputs (..)
+  )
 import Distribution.Simple.Utils
 import Distribution.System
 import Distribution.Types.ComponentLocalBuildInfo
@@ -94,7 +96,6 @@ import Distribution.Version
 
 import Language.Haskell.Extension
 
-import Control.Monad
 import Data.Either (rights)
 import System.Directory (doesDirectoryExist, doesFileExist)
 import System.FilePath (isAbsolute, normalise)
@@ -228,15 +229,17 @@ haddock
   -> [PPSuffixHandler]
   -> HaddockFlags
   -> IO ()
-haddock = haddock_setupHooks noBuildHooks
+haddock pkg lbi suffixHandlers flags =
+  void $ haddock_setupHooks (const $ return []) pkg lbi suffixHandlers flags
 
 haddock_setupHooks
-  :: BuildHooks
+  :: (SetupHooks.PreBuildComponentInputs -> IO [MonitorFilePath])
+  -- ^ pre-build hook
   -> PackageDescription
   -> LocalBuildInfo
   -> [PPSuffixHandler]
   -> HaddockFlags
-  -> IO ()
+  -> IO [MonitorFilePath]
 haddock_setupHooks
   _
   pkg_descr
@@ -247,13 +250,14 @@ haddock_setupHooks
         && not (fromFlag $ haddockExecutables haddockFlags)
         && not (fromFlag $ haddockTestSuites haddockFlags)
         && not (fromFlag $ haddockBenchmarks haddockFlags)
-        && not (fromFlag $ haddockForeignLibs haddockFlags) =
-        warn (fromFlag $ setupVerbosity $ haddockCommonFlags haddockFlags) $
+        && not (fromFlag $ haddockForeignLibs haddockFlags) = do
+        warn (fromFlag $ haddockVerbosity haddockFlags) $
           "No documentation was generated as this package does not contain "
             ++ "a library. Perhaps you want to use the --executables, --tests,"
             ++ " --benchmarks or --foreign-libraries flags."
+        return []
 haddock_setupHooks
-  (BuildHooks{preBuildComponentRules = mbPbcRules})
+  preBuildHook
   pkg_descr
   lbi
   suffixes
@@ -310,7 +314,7 @@ haddock_setupHooks
     let using_hscolour = flag haddockLinkedSource && version < mkVersion [2, 17]
     when using_hscolour $
       hscolour'
-        noBuildHooks
+        (const $ return [])
         -- NB: we are not passing the user BuildHooks here,
         -- because we are already running the pre/post build hooks
         -- for Haddock.
@@ -332,7 +336,7 @@ haddock_setupHooks
     internalPackageDB <-
       createInternalPackageDB verbosity lbi (flag $ setupDistPref . haddockCommonFlags)
 
-    (\f -> foldM_ f (installedPkgs lbi) targets') $ \index target -> do
+    (mons, _mbIPI) <- (\f -> foldM f ([], installedPkgs lbi) targets') $ \(monsAcc, index) target -> do
       let
         component = targetComponent target
         clbi = targetCLBI target
@@ -345,19 +349,8 @@ haddock_setupHooks
             , withPackageDB = withPackageDB lbi ++ [internalPackageDB]
             , installedPkgs = index
             }
-
-        runPreBuildHooks :: LocalBuildInfo -> TargetInfo -> IO ()
-        runPreBuildHooks lbi2 tgt =
-          let inputs =
-                SetupHooks.PreBuildComponentInputs
-                  { SetupHooks.buildingWhat = BuildHaddock flags
-                  , SetupHooks.localBuildInfo = lbi2
-                  , SetupHooks.targetInfo = tgt
-                  }
-           in for_ mbPbcRules $ \pbcRules -> do
-                (ruleFromId, _mons) <- SetupHooks.computeRules verbosity inputs pbcRules
-                SetupHooks.executeRules verbosity lbi2 tgt ruleFromId
-      preBuildComponent runPreBuildHooks verbosity lbi' target
+        pbci = SetupHooks.PreBuildComponentInputs (BuildHaddock flags) lbi' target
+      mons <- preBuildComponent (preBuildHook pbci) verbosity lbi' target
       preprocessComponent pkg_descr component lbi' clbi False verbosity suffixes
       let
         doExe com = case (compToExe com) of
@@ -468,12 +461,14 @@ haddock_setupHooks
         CTest _ -> when (flag haddockTestSuites) (smsg >> doExe component) >> return index
         CBench _ -> when (flag haddockBenchmarks) (smsg >> doExe component) >> return index
 
-      return ipi
+      return (monsAcc ++ mons, ipi)
 
     for_ (extraDocFiles pkg_descr) $ \fpath -> do
       files <- matchDirFileGlob verbosity (specVersion pkg_descr) mbWorkDir fpath
       for_ files $
         copyFileToCwd verbosity mbWorkDir (unDir $ argOutputDir commonArgs)
+
+    return mons
 
 -- | Execute 'Haddock' configured with 'HaddocksFlags'.  It is used to build
 -- index and contents for documentation of multiple packages.
@@ -1181,20 +1176,22 @@ hscolour
   -> [PPSuffixHandler]
   -> HscolourFlags
   -> IO ()
-hscolour = hscolour_setupHooks noBuildHooks
+hscolour = hscolour_setupHooks (const $ return [])
 
 hscolour_setupHooks
-  :: BuildHooks
+  :: (SetupHooks.PreBuildComponentInputs -> IO [MonitorFilePath])
+  -- ^ pre-build hook
   -> PackageDescription
   -> LocalBuildInfo
   -> [PPSuffixHandler]
   -> HscolourFlags
   -> IO ()
-hscolour_setupHooks setupHooks =
-  hscolour' setupHooks dieNoVerbosity ForDevelopment
+hscolour_setupHooks preBuildHook =
+  hscolour' preBuildHook dieNoVerbosity ForDevelopment
 
 hscolour'
-  :: BuildHooks
+  :: (SetupHooks.PreBuildComponentInputs -> IO [MonitorFilePath])
+  -- ^ pre-build hook
   -> (String -> IO ())
   -- ^ Called when the 'hscolour' exe is not found.
   -> HaddockTarget
@@ -1204,7 +1201,7 @@ hscolour'
   -> HscolourFlags
   -> IO ()
 hscolour'
-  (BuildHooks{preBuildComponentRules = mbPbcRules})
+  preBuildHook
   onNoHsColour
   haddockTarget
   pkg_descr
@@ -1239,19 +1236,10 @@ hscolour'
             hscolourPref haddockTarget distPref pkg_descr
 
         withAllComponentsInBuildOrder pkg_descr lbi $ \comp clbi -> do
-          let tgt = TargetInfo clbi comp
-              runPreBuildHooks :: LocalBuildInfo -> TargetInfo -> IO ()
-              runPreBuildHooks lbi2 target =
-                let inputs =
-                      SetupHooks.PreBuildComponentInputs
-                        { SetupHooks.buildingWhat = BuildHscolour flags
-                        , SetupHooks.localBuildInfo = lbi2
-                        , SetupHooks.targetInfo = target
-                        }
-                 in for_ mbPbcRules $ \pbcRules -> do
-                      (ruleFromId, _mons) <- SetupHooks.computeRules verbosity inputs pbcRules
-                      SetupHooks.executeRules verbosity lbi2 tgt ruleFromId
-          preBuildComponent runPreBuildHooks verbosity lbi tgt
+          let
+            target = TargetInfo clbi comp
+            pbci = SetupHooks.PreBuildComponentInputs (BuildHscolour flags) lbi target
+          _monitors <- preBuildComponent (preBuildHook pbci) verbosity lbi target
           preprocessComponent pkg_descr comp lbi clbi False verbosity suffixes
           let
             doExe com = case (compToExe com) of

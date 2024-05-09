@@ -22,9 +22,16 @@
 -- In cases 1 and 2 we obviously have to build an external Setup.hs script,
 -- while in case 4 we can use the internal library API.
 --
+-- Since @3.14.0.0@ we must also consider the @Setup.hs@ scripts constructed
+-- from 'SetupHooks' values, because these generated @Setup.hs@ scripts depend
+-- on the @hooks-exe@ package (which creates an executable from 'SetupHooks').
+-- Therefore, 'SetupPolicy' is also concerned with augmenting the setup
+-- dependencies with @hooks-exe@ when @build-type: Hooks@.
+--
 -- @since 3.12.0.0
 module Distribution.Client.ProjectPlanning.SetupPolicy
   ( mkDefaultSetupDeps
+  , mkHooksSetupImplicitDeps
   , packageSetupScriptStyle
   , packageSetupScriptSpecVersion
   , NonSetupLibDepSolverPlanPackage (..)
@@ -133,11 +140,10 @@ mkDefaultSetupDeps compiler platform pkg =
 
     -- For other build types (like Simple) if we still need to compile an
     -- external Setup.hs, it'll be one of the simple ones that only depends
-    -- on Cabal and base.
+    -- on Cabal.
     SetupNonCustomExternalLib ->
       Just
         [ Dependency cabalPkgname cabalConstraint mainLibSet
-        , Dependency basePkgname anyVersion mainLibSet
         ]
       where
         cabalConstraint = orLaterVersion (csvToVersion (specVersion pkg))
@@ -157,6 +163,30 @@ mkDefaultSetupDeps compiler platform pkg =
     -- This maps e.g. CabalSpecV3_0 to mkVersion [2,5]
     csvToVersion :: CabalSpecVersion -> Version
     csvToVersion = mkVersion . cabalSpecMinimumLibraryVersion
+
+-- | Returns an implicit dependency on @hooks-exe@ needed to create a
+-- @Setup.hs@ executable from a 'SetupHooks' value, if @build-type: Hooks@,
+-- as well as a dependency on @Cabal@ if there isn't one already.
+--
+-- @since 3.14.0.0
+mkHooksSetupImplicitDeps
+  :: PackageDescription
+  -> Maybe [Dependency]
+mkHooksSetupImplicitDeps pkg
+  | Hooks <- buildType pkg =
+      Just $
+        [Dependency hooksExePkgname anyVersion mainLibSet]
+          -- Add a dependency on Cabal if there isn't one, so that we can compile:
+          --   module Main where
+          --     import Distribution.Simple (defaultMainWithSetupHooks)
+          --     import SetupHooks (setupHooks)
+          --     main = defaultMainWithSetupHooks setupHooks
+          ++ [ Dependency cabalPkgname (orLaterVersion $ mkVersion [3, 13, 0]) mainLibSet
+             | setupBI <- maybeToList $ setupBuildInfo pkg
+             , not $ any ((== cabalPkgname) . depPkgName) $ setupDepends setupBI
+             ]
+  | otherwise =
+      Nothing
 
 -- | A newtype for 'SolverPlanPackage' for which the
 -- dependency graph considers only dependencies on libraries which are
@@ -217,9 +247,9 @@ packageSetupScriptSpecVersion _ pkg libDepGraph deps =
         fromMaybe [] $
           Graph.closure libDepGraph (CD.setupDeps deps)
 
-cabalPkgname, basePkgname :: PackageName
+cabalPkgname, hooksExePkgname :: PackageName
 cabalPkgname = mkPackageName "Cabal"
-basePkgname = mkPackageName "base"
+hooksExePkgname = mkPackageName "hooks-exe"
 
 legacyCustomSetupPkgs :: Compiler -> Platform -> [PackageName]
 legacyCustomSetupPkgs compiler (Platform _ os) =

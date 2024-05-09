@@ -20,7 +20,6 @@ module Distribution.Simple.SetupHooks.Errors
   , RulesException (..)
   , setupHooksExceptionCode
   , setupHooksExceptionMessage
-  , showLocs
   ) where
 
 import Distribution.PackageDescription
@@ -29,13 +28,8 @@ import qualified Distribution.Simple.SetupHooks.Rule as Rule
 import Distribution.Types.Component
 
 import qualified Data.Graph as Graph
-import Data.List
-  ( intercalate
-  )
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Tree as Tree
-
-import System.FilePath (normalise, (</>))
 
 --------------------------------------------------------------------------------
 
@@ -132,12 +126,12 @@ rulesExceptionMessage = \case
       showCycle (r, rs) =
         unlines . map ("  " ++) . lines $
           Tree.drawTree $
-            fmap showRule $
+            fmap show $
               Tree.Node r rs
   CantFindSourceForRuleDependencies _r deps ->
     unlines $
       ("Pre-build rules: can't find source for rule " ++ what ++ ":")
-        : map (\d -> "  - " <> locPath d) depsL
+        : map (\d -> "  - " <> show d) depsL
     where
       depsL = NE.toList deps
       what
@@ -148,7 +142,7 @@ rulesExceptionMessage = \case
   MissingRuleOutputs _r reslts ->
     unlines $
       ("Pre-build rule did not generate expected result" <> plural <> ":")
-        : map (\res -> "  - " <> locPath res) resultsL
+        : map (\res -> "  - " <> show res) resultsL
     where
       resultsL = NE.toList reslts
       plural
@@ -175,28 +169,9 @@ rulesExceptionMessage = \case
   DuplicateRuleId rId r1 r2 ->
     unlines $
       [ "Duplicate pre-build rule (" <> show rId <> ")"
-      , "  - " <> showRule (ruleBinary r1)
-      , "  - " <> showRule (ruleBinary r2)
+      , "  - " <> show (ruleBinary r1)
+      , "  - " <> show (ruleBinary r2)
       ]
-  where
-    showRule :: RuleBinary -> String
-    showRule (Rule{staticDependencies = deps, results = reslts}) =
-      "Rule: " ++ showDeps deps ++ " --> " ++ showLocs (NE.toList reslts)
-
-locPath :: Location -> String
-locPath (base, fp) = normalise $ base </> fp
-
-showLocs :: [Location] -> String
-showLocs locs = "[" ++ intercalate ", " (map locPath locs) ++ "]"
-
-showDeps :: [Rule.Dependency] -> String
-showDeps deps = "[" ++ intercalate ", " (map showDep deps) ++ "]"
-
-showDep :: Rule.Dependency -> String
-showDep = \case
-  RuleDependency (RuleOutput{outputOfRule = rId, outputIndex = i}) ->
-    "(" ++ show rId ++ ")[" ++ show i ++ "]"
-  FileDependency loc -> locPath loc
 
 cannotApplyComponentDiffCode :: CannotApplyComponentDiffReason -> Int
 cannotApplyComponentDiffCode = \case

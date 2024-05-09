@@ -3,4 +3,4 @@ Configuring setup-hooks-missing-rule-res-test-0.1.0.0...
 # Setup build
 Error: [Cabal-3498]
 Pre-build rule did not generate expected result:
-  - setup.dist/work/dist/build/autogen/G.hs
+  - setup.dist/work/dist/build/autogen </> G.hs

@@ -97,6 +97,7 @@ import Distribution.Simple.Build.Inputs (PreBuildComponentInputs (..))
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Compiler
 import Distribution.Simple.Errors
+import Distribution.Simple.Flag
 import qualified Distribution.Simple.GHC.Build as GHC
 import Distribution.Simple.GHC.Build.Utils
 import Distribution.Simple.GHC.EnvironmentParser

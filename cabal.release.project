@@ -2,4 +2,4 @@ import: project-cabal/pkgs/cabal.config
 import: project-cabal/pkgs/install.config
 import: project-cabal/pkgs/tests.config
 
-index-state: hackage.haskell.org 2024-04-22T06:16:57Z
+index-state: hackage.haskell.org 2024-04-29T14:30:15Z
