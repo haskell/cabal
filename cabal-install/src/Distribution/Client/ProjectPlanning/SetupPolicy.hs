@@ -133,11 +133,10 @@ mkDefaultSetupDeps compiler platform pkg =
 
     -- For other build types (like Simple) if we still need to compile an
     -- external Setup.hs, it'll be one of the simple ones that only depends
-    -- on Cabal and base.
+    -- on Cabal.
     SetupNonCustomExternalLib ->
       Just
         [ Dependency cabalPkgname cabalConstraint mainLibSet
-        , Dependency basePkgname anyVersion mainLibSet
         ]
       where
         cabalConstraint = orLaterVersion (csvToVersion (specVersion pkg))
@@ -217,9 +216,8 @@ packageSetupScriptSpecVersion _ pkg libDepGraph deps =
         fromMaybe [] $
           Graph.closure libDepGraph (CD.setupDeps deps)
 
-cabalPkgname, basePkgname :: PackageName
+cabalPkgname :: PackageName
 cabalPkgname = mkPackageName "Cabal"
-basePkgname = mkPackageName "base"
 
 legacyCustomSetupPkgs :: Compiler -> Platform -> [PackageName]
 legacyCustomSetupPkgs compiler (Platform _ os) =

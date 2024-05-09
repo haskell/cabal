@@ -182,6 +182,7 @@ import Distribution.Utils.NubList
 import Distribution.Verbosity
 
 import Data.List (foldl1')
+import qualified Data.Map.Lazy as Map
 import Distribution.Simple.Setup (globalCommand)
 import Distribution.Client.Compat.ExecutablePath (getExecutablePath)
 import Distribution.Compat.Process (proc)
@@ -859,7 +860,7 @@ getExternalSetupMethod verbosity options pkg bt = do
       rewriteFileLBS verbosity (i setupHs) (buildTypeScript cabalLibVersion)
 
     buildTypeScript :: Version -> BS.ByteString
-    buildTypeScript cabalLibVersion = case bt of
+    buildTypeScript cabalLibVersion = "{-# LANGUAGE NoImplicitPrelude #-}\n" <> case bt of
       Simple -> "import Distribution.Simple; main = defaultMain\n"
       Configure
         | cabalLibVersion >= mkVersion [3, 13, 0]
@@ -1128,6 +1129,13 @@ getExternalSetupMethod verbosity options pkg bt = do
                         | useVersionMacros options'
                         ]
                   , ghcOptExtra = extraOpts
+                  , ghcOptExtensions = toNubListR $
+                      if bt == Custom || any (isBasePkgId . snd) selectedDeps
+                      then []
+                      else [ Simple.DisableExtension Simple.ImplicitPrelude ]
+                        -- Pass -WNoImplicitPrelude to avoid depending on base
+                        -- when compiling a Simple Setup.hs file.
+                  , ghcOptExtensionMap = Map.fromList . Simple.compilerExtensions $ compiler
                   }
           let ghcCmdLine = renderGhcOptions compiler platform ghcOptions
           when (useVersionMacros options') $
@@ -1148,5 +1156,6 @@ getExternalSetupMethod verbosity options pkg bt = do
               hPutStr logHandle output
         return $ i setupProgFile
 
-isCabalPkgId :: PackageIdentifier -> Bool
+isCabalPkgId, isBasePkgId :: PackageIdentifier -> Bool
 isCabalPkgId (PackageIdentifier pname _) = pname == mkPackageName "Cabal"
+isBasePkgId (PackageIdentifier pname _) = pname == mkPackageName "base"
