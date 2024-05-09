@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingStrategies #-}
@@ -15,6 +16,7 @@ import Distribution.ModuleName
 import Distribution.Simple.LocalBuildInfo (interpretSymbolicPathLBI)
 import Distribution.Simple.SetupHooks
 import Distribution.Simple.Utils
+import Distribution.Utils.Path
 
 import Data.Foldable ( for_ )
 import Data.List ( isPrefixOf )
@@ -24,7 +26,6 @@ import Data.Traversable ( for )
 import GHC.Generics
 
 import qualified Data.Map as Map
-import System.FilePath
 
 setupHooks :: SetupHooks
 setupHooks =
@@ -39,12 +40,11 @@ preBuildRules :: PreBuildComponentInputs -> RulesM ()
 preBuildRules (PreBuildComponentInputs { buildingWhat = what, localBuildInfo = lbi, targetInfo = tgt }) = mdo
   let verbosity = buildingWhatVerbosity what
       clbi = targetCLBI tgt
-      i = interpretSymbolicPathLBI lbi
-      autogenDir = i (autogenComponentModulesDir lbi clbi)
-      buildDir = i (componentBuildDir lbi clbi)
+      autogenDir = autogenComponentModulesDir lbi clbi
+      buildDir = componentBuildDir lbi clbi
 
       computeC2HsDepsAction (C2HsDepsInput {..}) = do
-        importLine : _srcLines <- lines <$> readFile (inDir </> toFilePath modNm <.> "myChs")
+        importLine : _srcLines <- lines <$> readFile (getSymbolicPath $ inDir </> moduleNameSymbolicPath modNm <.> "myChs")
         let imports :: [ModuleName]
             imports
               | "imports:" `isPrefixOf` importLine
@@ -60,24 +60,24 @@ preBuildRules (PreBuildComponentInputs { buildingWhat = what, localBuildInfo = l
           , imports )
 
       runC2HsAction (C2HsInput {..}) importModNms = do
-        let modPath = toFilePath modNm
+        let modPath = moduleNameSymbolicPath modNm
         warn verbosity $ "Running C2Hs on " ++ modName modNm ++ ".myChs.\n C2Hs dependencies: " ++ modNames importModNms
-        _importLine : srcLines <- lines <$> readFile (inDir </> modPath <.> "myChs")
+        _importLine : srcLines <- lines <$> readFile (getSymbolicPath $ inDir </> modPath <.> "myChs")
 
-        rewriteFileEx verbosity (hsDir </> modPath <.> "hs") $
+        rewriteFileEx verbosity (getSymbolicPath $ hsDir </> modPath <.> "hs") $
           unlines $ ("module " ++ modName modNm ++ " where\n") :
             (map ( ( "import " ++ ) . modName ) importModNms ++ srcLines)
-        rewriteFileEx verbosity (chiDir </> modPath <.> "myChi") ""
+        rewriteFileEx verbosity (getSymbolicPath $ chiDir </> unsafeCoerceSymbolicPath modPath <.> "myChi") ""
 
       mkRule modNm =
         dynamicRule (static Dict)
           (mkCommand (static Dict) (static computeC2HsDepsAction) $ C2HsDepsInput { ruleIds = modToRuleId, ..})
           (mkCommand (static Dict) (static runC2HsAction) $ C2HsInput {hsDir = autogenDir, chiDir = buildDir, ..})
-          [ FileDependency (inDir, modPath <.> "myChs") ]
-          ( ( autogenDir, modPath <.> "hs" ) NE.:| [ ( buildDir, modPath <.> "myChi" ) ] )
+          [ FileDependency $ Location inDir (modPath <.> "myChs") ]
+          ( Location autogenDir (modPath <.> "hs" ) NE.:| [ Location buildDir (unsafeCoerceSymbolicPath modPath <.> "myChi") ] )
         where
-          modPath = toFilePath modNm
-          inDir = "."
+          modPath = moduleNameSymbolicPath modNm
+          inDir = sameDirectory
 
   -- NB: in practice, we would get the module names by looking at the .cabal
   -- file and performing a search for `.chs` files on disk, but for this test
@@ -94,7 +94,7 @@ preBuildRules (PreBuildComponentInputs { buildingWhat = what, localBuildInfo = l
 data C2HsDepsInput
   = C2HsDepsInput
   { verbosity :: Verbosity
-  , inDir :: FilePath
+  , inDir :: SymbolicPath Pkg (Dir Source)
   , modNm :: ModuleName
   , ruleIds :: Map.Map ModuleName RuleId
   }
@@ -106,9 +106,9 @@ data C2HsInput
   = C2HsInput
   { verbosity :: Verbosity
   , modNm :: ModuleName
-  , inDir :: FilePath
-  , hsDir :: FilePath
-  , chiDir :: FilePath
+  , inDir :: SymbolicPath Pkg (Dir Source)
+  , hsDir :: SymbolicPath Pkg (Dir Source)
+  , chiDir :: SymbolicPath Pkg (Dir Build)
   }
   deriving stock ( Show, Generic )
   deriving anyclass Binary

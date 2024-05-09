@@ -3,4 +3,4 @@ Configuring setup-hooks-missing-rule-dep-test-0.1.0.0...
 # Setup build
 Error: [Cabal-1071]
 Pre-build rules: can't find source for rule dependency:
-  - Missing.hs
+  - . </> Missing.hs

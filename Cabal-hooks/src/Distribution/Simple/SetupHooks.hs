@@ -78,8 +78,8 @@ module Distribution.Simple.SetupHooks
     -- *** Rule inputs/outputs
 
     -- $rulesDemand
-  , Location
-  , findFileInDirs
+  , Location(..)
+  , location
   , autogenComponentModulesDir
   , componentBuildDir
 
@@ -202,7 +202,7 @@ import Distribution.Simple.SetupHooks.Errors
 import Distribution.Simple.SetupHooks.Internal
 import Distribution.Simple.SetupHooks.Rule as Rule
 import Distribution.Simple.Utils
-  ( dieWithException, findFirstFile)
+  ( dieWithException )
 import Distribution.System
   ( Platform(..) )
 import Distribution.Types.Component
@@ -235,12 +235,8 @@ import qualified Control.Monad.Trans.Writer.Strict as Writer
 #endif
 import Data.Foldable
   ( for_ )
-import Data.List
-  ( nub )
 import Data.Map.Strict as Map
   ( insertLookupWithKey )
-import System.FilePath
-  ( (</>) )
 
 --------------------------------------------------------------------------------
 -- Haddocks for the SetupHooks API
@@ -466,14 +462,5 @@ addRuleMonitors :: Monad m => [MonitorFilePath] -> RulesT m ()
 addRuleMonitors = RulesT . lift . lift . Writer.tell
 {-# INLINEABLE addRuleMonitors #-}
 
--- | Find a file in the given search directories.
-findFileInDirs :: FilePath -> [FilePath] -> IO (Maybe Location)
-findFileInDirs file dirs =
-  findFirstFile
-    (uncurry (</>))
-      [ (path, file)
-      | path <- nub dirs
-      ]
-
-  -- TODO: add API functions that search and declare the appropriate monitoring
-  -- at the same time.
+-- TODO: add API functions that search and declare the appropriate monitoring
+-- at the same time.

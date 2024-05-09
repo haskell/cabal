@@ -20,7 +20,6 @@ module Distribution.Simple.SetupHooks.Errors
   , RulesException (..)
   , setupHooksExceptionCode
   , setupHooksExceptionMessage
-  , showLocs
   ) where
 
 import Distribution.PackageDescription
@@ -34,8 +33,6 @@ import Data.List
   )
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Tree as Tree
-
-import System.FilePath (normalise, (</>))
 
 --------------------------------------------------------------------------------
 
@@ -137,7 +134,7 @@ rulesExceptionMessage = \case
   CantFindSourceForRuleDependencies _r deps ->
     unlines $
       ("Pre-build rules: can't find source for rule " ++ what ++ ":")
-        : map (\d -> "  - " <> locPath d) depsL
+        : map (\d -> "  - " <> show d) depsL
     where
       depsL = NE.toList deps
       what
@@ -148,7 +145,7 @@ rulesExceptionMessage = \case
   MissingRuleOutputs _r reslts ->
     unlines $
       ("Pre-build rule did not generate expected result" <> plural <> ":")
-        : map (\res -> "  - " <> locPath res) resultsL
+        : map (\res -> "  - " <> show res) resultsL
     where
       resultsL = NE.toList reslts
       plural
@@ -181,13 +178,7 @@ rulesExceptionMessage = \case
   where
     showRule :: RuleBinary -> String
     showRule (Rule{staticDependencies = deps, results = reslts}) =
-      "Rule: " ++ showDeps deps ++ " --> " ++ showLocs (NE.toList reslts)
-
-locPath :: Location -> String
-locPath (base, fp) = normalise $ base </> fp
-
-showLocs :: [Location] -> String
-showLocs locs = "[" ++ intercalate ", " (map locPath locs) ++ "]"
+      "Rule: " ++ showDeps deps ++ " --> " ++ show (NE.toList reslts)
 
 showDeps :: [Rule.Dependency] -> String
 showDeps deps = "[" ++ intercalate ", " (map showDep deps) ++ "]"
@@ -196,7 +187,7 @@ showDep :: Rule.Dependency -> String
 showDep = \case
   RuleDependency (RuleOutput{outputOfRule = rId, outputIndex = i}) ->
     "(" ++ show rId ++ ")[" ++ show i ++ "]"
-  FileDependency loc -> locPath loc
+  FileDependency loc -> show loc
 
 cannotApplyComponentDiffCode :: CannotApplyComponentDiffReason -> Int
 cannotApplyComponentDiffCode = \case
