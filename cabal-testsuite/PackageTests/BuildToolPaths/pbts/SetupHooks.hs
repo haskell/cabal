@@ -38,15 +38,12 @@ import Distribution.Types.Component
 import Distribution.Types.LocalBuildInfo
   ( withPrograms )
 import Distribution.Utils.Path
-  ( SymbolicPath, FileOrDir(Dir), CWD, Pkg
-  , getSymbolicPath, moduleNameSymbolicPath
-  )
 import Distribution.Utils.ShortText
   ( toShortText )
 
 -- filepath
 import System.FilePath
-  ( (</>), replaceExtension, takeDirectory, takeExtension )
+  ( takeExtension )
 
 --------------------------------------------------------------------------------
 
@@ -120,7 +117,7 @@ preBuildRules
               Just ( base, rel ) ->
                 return $
                   Just
-                    ( md, ( getSymbolicPath base, getSymbolicPath rel ) )
+                    ( md, Location base rel )
               Nothing ->
                 return Nothing
       let ppMods = catMaybes ppMbMods
@@ -131,23 +128,27 @@ preBuildRules
     -- above search (it would be nice to be able to use findFileWithExtensionMonitored).
 
     -- 5. Declare a rule for each custom-pp module that runs the pre-processor.
-      for_ ppMods $ \ ( md, inputLoc@( _inputBaseDir, inputRelPath ) ) -> do
-        let ext = takeExtension inputRelPath
+      for_ ppMods $ \ ( md, inputLoc@(Location _inputBaseDir inputRelPath ) ) -> do
+        let ext = takeExtension $ getSymbolicPath inputRelPath
             customPp = case ext of
               ".hs-pp1" -> customPp1
               ".hs-pp2" -> customPp2
               _ -> error $ "internal error: unhandled extension " ++ ext
-            outputBaseLoc = getSymbolicPath $ autogenComponentModulesDir lbi clbi
-            outputLoc = ( outputBaseLoc, replaceExtension inputRelPath "hs" )
+            outputBaseLoc = autogenComponentModulesDir lbi clbi
+            outputLoc =
+              Location
+                outputBaseLoc
+                ( unsafeCoerceSymbolicPath $ replaceExtensionSymbolicPath inputRelPath "hs" )
         registerRule_ ( toShortText $ show md ) $
           staticRule ( ppCmd customPp inputLoc outputLoc ) [] ( outputLoc NE.:| [] )
 
 ppModule :: ( Verbosity, Maybe (SymbolicPath CWD (Dir Pkg)), ConfiguredProgram, Location, Location ) -> IO ()
-ppModule ( verbosity, mbWorkDir, customPp, ( inputBaseDir, inputRelPath ), ( outputBaseDir, outputRelPath ) ) = do
-  let inputPath  = inputBaseDir </> inputRelPath
-      outputPath = outputBaseDir </> outputRelPath
-  createDirectoryIfMissingVerbose verbosity True $ takeDirectory outputPath
-  runProgramCwd verbosity mbWorkDir customPp [ inputPath, outputPath ]
+ppModule ( verbosity, mbWorkDir, customPp, inputLoc, outputLoc ) = do
+  let inputPath  = location inputLoc
+      outputPath = location outputLoc
+  createDirectoryIfMissingVerbose verbosity True $
+    interpretSymbolicPath mbWorkDir (takeDirectorySymbolicPath outputPath)
+  runProgramCwd verbosity mbWorkDir customPp [ getSymbolicPath inputPath, getSymbolicPath outputPath ]
 
 componentModules :: Component -> [ ModuleName ]
 componentModules comp = libMods ++ otherModules ( componentBuildInfo comp )
