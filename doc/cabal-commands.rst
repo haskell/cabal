@@ -457,6 +457,8 @@ e.g. you plan to work on a project with unreliable or no internet access.
 
 Check ``cabal fetch --help`` for a complete list of options.
 
+.. _cabal-get:
+
 cabal get
 ^^^^^^^^^
 
@@ -1399,6 +1401,7 @@ A list of all warnings with their constructor:
 - ``no-docs``: missing expected documentation files (changelog).
 - ``doc-place``: documentation files listed in ``extra-source-files`` instead of ``extra-doc-files``.
 
+.. _cabal-sdist:
 
 cabal sdist
 ^^^^^^^^^^^
