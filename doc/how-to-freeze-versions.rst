@@ -34,6 +34,11 @@ Version constraints
 Curated version sets
 --------------------
 
+Stackage provides curated sets of packages and versions that are known to work
+together and are updated regularly.  The latest resolver is the nightly and this
+typically lags a bit behind the latest available GHC version. The LTS resolvers
+will each follow a specific GHC version and are updated less frequently.
+
 Capped repository versions
 --------------------------
 
