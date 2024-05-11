@@ -1,5 +1,3 @@
-.. _freeze-versions:
-
 How to control versions
 =======================
 
@@ -14,21 +12,35 @@ Version constraints
     Within a project, version constraints for dependencies limit the versions
     that the solver can pick.
 
-Curated sets
+Curated version sets
     A project can import curated sets of packages and versions that are known to
     work together, such as those Stackage provides for Cabal's use.
 
-Pinning Hackage versions
+Capped repository versions
     Adding ``index-state`` to a project limits versions coming from Hackage to
     include only those that were available at the cutoff time.
 
-Freezing
+Frozen versions
     Pins the versions picked by the solver for all dependencies. This is a way
     to preserve a set of versions found by the solver, a solver-curated set, if
     you will.
 
-Freezing versions
------------------
+Version ranges
+--------------
+
+Version constraints
+-------------------
+
+Curated version sets
+--------------------
+
+Capped repository versions
+--------------------------
+
+.. _freeze-versions:
+
+Frozen versions
+---------------
 
 Pinning adds a version equality constraint for each package in the set of
 project dependencies, explicit and transitive.  The ``cabal freeze`` command
