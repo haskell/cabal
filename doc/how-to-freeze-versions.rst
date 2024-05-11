@@ -5,7 +5,7 @@ How to freeze versions
 
 Freezing
     Pins the versions picked by the solver for all dependencies.
-    
+
 Pinning adds a version equality constraint for each package in the set of
 project dependencies, explicit and transitive.  The ``cabal freeze`` command
 saves these to a file named the same as the whole of the project file name but
@@ -19,29 +19,39 @@ import, same as the ``.local`` file for projects.
     ``.local`` file is imported last, after the ``.freeze`` file, giving the
     user a final say in the setting of any fields that have override semantics.
 
-Do you need this?
-^^^^^^^^^^^^^^^^^
+Do you need to freeze?
+^^^^^^^^^^^^^^^^^^^^^^
 
-Why would you want this? Don't we want to get minor updates of our dependencies,
-or at least patches, as soon as we can?  Well, although they shouldn't, it is
-possible that any kind of update introduces new bugs, performance issues, or
-some other kind of unexpected behaviour.  This is where ``cabal.project.freeze``
-comes in, as it ensures that dependencies don't unexpectedly change.  You can
-still update your dependencies, but you have to do it on purpose, by modifying
-or by deleting and regenerating ``cabal.project.freeze`` file, and in the
-meantime you are guaranteed no surprises will happen.
+Why would you want to freeze? Don't we want to get minor updates of our
+dependencies, or at least patches, as soon as we can?  Well, although they
+shouldn't, it is possible that any kind of update introduces new bugs,
+performance issues, or some other kind of unexpected behaviour.  This is where
+``cabal.project.freeze`` comes in, as it ensures that dependencies don't
+unexpectedly change.  You can still update your dependencies, but you have to do
+it on purpose, by modifying or by deleting and regenerating
+``cabal.project.freeze`` file, and in the meantime you are guaranteed no
+surprises will happen.
 
 This consistency can be valuable as it ensures that all teammates, deployments,
 and continuous integration are installing the exactly same dependencies.  So if
 you are running and testing the code on your local machine, you are guaranteed
-that your teammate and your continuous integration will be running the exact same
-code, and that at the end that exact same code will get deployed.
+that your teammate and your continuous integration will be running the exact
+same code, and that at the end that exact same code will get deployed.
 
-Usual use-case for using ``cabal freeze`` is when developing end-user code, for
-example an executable that you will distribute.  On the other hand, if you are
-developing a library, you will not want to distribute it together with the
-``cabal.project.freeze`` file, as it would make it very hard for cabal to
-resolve dependencies for users of the library.
+A ``.freeze`` file can be good to have when developing for yourself or within a
+private team.  If anyone using it can somehow have different inputs to
+the solver then the ``.freeze`` file can be troublesome.  It can prevent the
+solver from finding a different version of a dependency that would satisfy a
+different architecture or a different compiler version and boot libraries.
+
+.. Warning::
+
+    If publishing a package to Hackage, not matter what kind of component it
+    contains, don't include a ``.freeze`` file, don't add it to any field of the
+    package description that would have ``cabal sdist`` include it in the
+    ``.tar.gz``. In general, don't include anything in the package description
+    that relates to the project environment, like ``cabal.project`` or
+    ``cabal.project.local``.
 
 Common workflows
 ^^^^^^^^^^^^^^^^
