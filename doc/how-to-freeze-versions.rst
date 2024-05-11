@@ -9,7 +9,7 @@ Freezing
 Pinning adds a version equality constraint for each package in the set of
 project dependencies, explicit and transitive.  The ``cabal freeze`` command
 saves these to a file named the same as the whole of the project file name but
-with a ``.freeze`` extension, so the freeze file for ``cabal.project`` is
+with a extra ``.freeze`` extension, so the freeze file for ``cabal.project`` is
 ``cabal.project.freeze``. Effectively a ``.freeze`` file is an implicit project
 import, same as the ``.local`` file for projects.
 
