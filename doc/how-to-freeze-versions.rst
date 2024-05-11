@@ -65,7 +65,7 @@ Thaw, Freeze
     ``cabal.project.freeze`` file if it already exists and run ``cabal freeze``
     to generate fresh version of ``cabal.project.freeze``.
 
-Freeze, Freeze
+Freeze, Freeze (Freezing Harder)
     You might in some cases want to skip deletion of ``cabal.project.freeze``,
     but keep in mind that in that case ``cabal freeze`` will use existing
     ``cabal.project.freeze`` when resolving dependencies, therefore not updating
@@ -85,21 +85,26 @@ Partial Thaw, Freeze
 Ensuring everything is frozen
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Since ``cabal`` reads both ``<yourproject>.cabal`` and ``cabal.project.freeze``
-files and combines version constraints from them, you can get into a state where
-not all dependencies are frozen, i.e. if you add a dependency to
-``<yourproject>.cabal`` but forget to regenerate ``cabal.project.freeze`` after
-it -> now this new dependency will not be frozen and might get updated
-unexpectedly.
+.. Note::
 
-To check if you are in such state, you can just run ``cabal freeze`` and check
-if ``cabal.project.freeze`` changed its contents -> if so, somebody forgot to
-regenerate ``cabal.project.freeze`` previously.
+    If the ``.freeze`` file already has version equality constraints for every
+    package that is a dependency of the project, then the solver will not be
+    able to find a different version for any of them, the ``.freeze`` file
+    cannot change and, at that point when every dependency is frozen, ``cabal
+    freeze`` becomes an idempotent operation.
 
-To automate this check, you can make it a part of your continuous integration,
-or a part of your pre-commit hook.
+Adding a dependency to one of the packages in a project without freezing harder
+leaves the newly added dependency susceptible to getting updated unexpectedly
+when the solver can find a different version for it.  Running ``cabal freeze``
+will show this vulnerability to a human or an automated check that notices a new
+version equality constraint in the ``.freeze`` file, a constraint for a package
+that wasn't in the ``.freeze`` file before.
 
-Example of how this can be done via bash script:
+To automate this check, make it a part of continuous integration or make a
+pre-commit hook for it. A simple check for this might be to compare the md5sum
+of the ``.freeze`` file before and after running ``cabal freeze``.  If the
+checksums are the same, then the ``.freeze`` file didn't change, and all
+versions are frozen.
 
 .. code-block:: bash
 
