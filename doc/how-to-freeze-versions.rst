@@ -1,7 +1,7 @@
 .. _freeze-versions:
 
-How to freeze versions
-======================
+How to control versions
+=======================
 
 Freezing
     Pins the versions picked by the solver for all dependencies.
