@@ -3,8 +3,32 @@
 How to control versions
 =======================
 
+There are various ways and places to limit what versions the solver can pick for
+dependencies.
+
+Version ranges
+    Within a package description, version ranges for dependencies can be; tight
+    or loose or missing altogether.
+
+Version constraints
+    Within a project, version constraints for dependencies limit the versions
+    that the solver can pick.
+
+Curated sets
+    A project can import curated sets of packages and versions that are known to
+    work together, such as those Stackage provides for Cabal's use.
+
+Pinning Hackage versions
+    Adding ``index-state`` to a project limits versions coming from Hackage to
+    include only those that were available at the cutoff time.
+
 Freezing
-    Pins the versions picked by the solver for all dependencies.
+    Pins the versions picked by the solver for all dependencies. This is a way
+    to preserve a set of versions found by the solver, a solver-curated set, if
+    you will.
+
+Freezing versions
+-----------------
 
 Pinning adds a version equality constraint for each package in the set of
 project dependencies, explicit and transitive.  The ``cabal freeze`` command
@@ -53,8 +77,8 @@ different architecture or a different compiler version and boot libraries.
     that relates to the project environment, like ``cabal.project`` or
     ``cabal.project.local``.
 
-Common workflows
-^^^^^^^^^^^^^^^^
+Freezing workflows
+^^^^^^^^^^^^^^^^^^
 
 .. Warning::
     For each of these workflows, you may have to first delete the
