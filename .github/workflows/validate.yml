@@ -271,13 +271,8 @@ jobs:
 
   build-alpine:
     name: Build statically linked using alpine
-<<<<<<< HEAD
-    runs-on: ubuntu-latest
-    container: 'alpine:3.19'
-=======
     runs-on: "ubuntu-latest"
     container: "alpine:3.19"
->>>>>>> c31ca12e9 (Fix whitespace in workflows)
     steps:
       - name: Install extra dependencies
         shell: sh
