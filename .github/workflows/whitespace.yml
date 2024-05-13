@@ -1,0 +1,14 @@
+name: Whitespace
+
+on:
+  pull_request:
+  push:
+    branches: ["master"]
+
+jobs:
+  whitespace:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - uses: andreasabel/fix-whitespace-action@v1
