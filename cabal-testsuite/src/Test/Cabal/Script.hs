@@ -77,23 +77,32 @@ runghc senv mb_cwd env_overrides script_path args = do
 -- script with 'runghc'.
 runnerCommand :: ScriptEnv -> Maybe FilePath -> [(String, Maybe String)]
               -> FilePath -> [String] -> IO (FilePath, [String])
-runnerCommand senv _mb_cwd _env_overrides script_path args = do
+runnerCommand senv mb_cwd _env_overrides script_path args = do
     (prog, _) <- requireProgram verbosity runghcProgram (runnerProgramDb senv)
     return (programPath prog,
             runghc_args ++ ["--"] ++ map ("--ghc-arg="++) ghc_args ++ [script_path] ++ args)
   where
     verbosity = runnerVerbosity senv
     runghc_args = []
-    ghc_args = runnerGhcArgs senv
+    ghc_args = runnerGhcArgs senv mb_cwd
 
 -- | Compute the GHC flags to invoke 'runghc' with under a 'ScriptEnv'.
-runnerGhcArgs :: ScriptEnv -> [String]
-runnerGhcArgs senv =
+runnerGhcArgs :: ScriptEnv -> Maybe FilePath -> [String]
+runnerGhcArgs senv mb_cwd =
     renderGhcOptions (runnerCompiler senv) (runnerPlatform senv) ghc_options
   where
     ghc_options = M.mempty { ghcOptPackageDBs = runnerPackageDbStack senv
                            , ghcOptPackages   = toNubListR (runnerPackages senv)
                            , ghcOptHideAllPackages = Flag True
                            -- Avoid picking stray module files that look
-                           -- like our imports
-                           , ghcOptSourcePathClear = Flag True }
+                           -- like our imports...
+                           , ghcOptSourcePathClear = Flag True
+                           -- ... yet retain the current directory as an included
+                           -- directory, e.g. so that we can compile a Setup.hs
+                           -- script which imports a locally defined module.
+                           -- See the PackageTests/SetupDep test.
+                           , ghcOptSourcePath = toNubListR $
+                              case mb_cwd of
+                                Nothing -> []
+                                Just wd -> [wd]
+                            }
