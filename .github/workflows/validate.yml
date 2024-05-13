@@ -271,8 +271,8 @@ jobs:
 
   build-alpine:
     name: Build statically linked using alpine
-    runs-on: ubuntu-latest
-    container: 'alpine:3.19'
+    runs-on: "ubuntu-latest"
+    container: "alpine:3.19"
     steps:
       - name: Install extra dependencies
         shell: sh

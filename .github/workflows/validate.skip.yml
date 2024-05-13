@@ -6,7 +6,7 @@ name: Validate Skip
 # to the docs, since these jobs take a long time to complete without providing any benefit.
 # We therefore use path-filtering in the workflow triggers for the validate jobs, namely
 # "paths-ignore: doc/**". But the "Validate post job" is a required job, therefore a PR cannot
-# be merged unless the "Validate post job" completes succesfully, which it doesn't do if we 
+# be merged unless the "Validate post job" completes succesfully, which it doesn't do if we
 # filter it out.
 #
 # The solution: We use a second job with the same name which always returns the exit code 0.

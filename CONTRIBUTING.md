@@ -142,7 +142,7 @@ and should be written in the body of the ticket or PR under their own heading, l
 For instance:
 
 > \#\# QA Notes
-> 
+>
 > Calling `cabal haddock-project` should produce documentation for the whole cabal project with the following defaults enabled:
 > * Documentation lives in ./haddocks
 > * The file `./haddocks/index.html` should exist
@@ -163,7 +163,12 @@ the code base.
 * `make style-modified` - Format files modified in the current tree.
 * `make style-commit COMMIT=<ref>` - Format files modified between HEAD and the given reference.
 
+Whitespace Conventions
+----------------------
 
+We use automated whitespace convention checking. Violations can be fixed by
+running [fix-whitespace](https://hackage.haskell.org/package/fix-whitespace). If
+you push a fix of a whitespace violation, please do so in a _separate commit_.
 
 Other Conventions
 -----------------
@@ -386,7 +391,7 @@ Running workflow manually as discussed above requires you to supply two inputs:
 
 Going via an example, imagine that Cabal only allows `tar` or version less then
 or equal to 0.6, and you want to bump it to 0.6. Then, to show that Validate
-succeeds with `tar` 0.6, you should input 
+succeeds with `tar` 0.6, you should input
 
 - `tar` to the "allow-newer line"
 - `tar ==0.6` to the "constraints line"
