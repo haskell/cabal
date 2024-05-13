@@ -1,8 +1,5 @@
-packages: Cabal-syntax/
-packages: Cabal/
-packages: cabal-install-solver/
-packages: cabal-install/
-tests: False
-benchmarks: False
-optimization: True
-index-state: hackage.haskell.org 2024-03-20T08:02:24Z
+import: project-cabal/pkgs/cabal.config
+import: project-cabal/pkgs/install.config
+import: project-cabal/pkgs/tests.config
+
+index-state: hackage.haskell.org 2024-02-13T10:16:13Z
