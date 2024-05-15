@@ -1,0 +1,11 @@
+synopsis: Update ghc args normalization and ghc option rendering
+packages: Cabal
+issues: #9729
+prs: #10014
+
+description: {
+
+The flags fdiagnostics-as-json, fprint-error-index-lists, fbreak-points, dipe-stats, ffamily-application-cache, fprint-redundant-promotion-ticks, show-error-context and unoptimized-core-for-interpreter have been added to the flags that do not cause recompilation. 
+
+--{enable,disable}-split-objs is not shown on in the helper for GHC >= 9.8
+}
