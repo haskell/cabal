@@ -1196,6 +1196,7 @@ fetchAndReadSourcePackages
         verbosity
         distDirLayout
         projectConfigShared
+        (fromFlag (projectConfigOfflineMode projectConfigBuildOnly))
         [repo | ProjectPackageRemoteRepo repo <- pkgLocations]
 
     let pkgsNamed =
@@ -1312,6 +1313,7 @@ syncAndReadSourcePackagesRemoteRepos
   :: Verbosity
   -> DistDirLayout
   -> ProjectConfigShared
+  -> Bool
   -> [SourceRepoList]
   -> Rebuild [PackageSpecifier (SourcePackage UnresolvedPkgLoc)]
 syncAndReadSourcePackagesRemoteRepos
@@ -1320,6 +1322,7 @@ syncAndReadSourcePackagesRemoteRepos
   ProjectConfigShared
     { projectConfigProgPathExtra
     }
+  offlineMode
   repos = do
     repos' <-
       either reportSourceRepoProblems return $
@@ -1374,12 +1377,18 @@ syncAndReadSourcePackagesRemoteRepos
 
         -- For syncing we don't care about different 'SourceRepo' values that
         -- are just different subdirs in the same repo.
-        syncSourceRepos
-          verbosity
-          vcs
-          [ (repo, repoPath)
-          | (repo, _, repoPath) <- repoGroupWithPaths
-          ]
+        -- Do not sync source repositories when `--offline` flag applied.
+        if not offlineMode
+          then
+            syncSourceRepos
+              verbosity
+              vcs
+              [ (repo, repoPath)
+              | (repo, _, repoPath) <- repoGroupWithPaths
+              ]
+          else do
+            liftIO . warn verbosity $ "--offline was specified, skipping sync of repositories:"
+            liftIO . for_ repoGroupWithPaths $ \(repo, _, _) -> warn verbosity $ srpLocation repo
 
         -- Run post-checkout-command if it is specified
         for_ repoGroupWithPaths $ \(repo, _, repoPath) ->
