@@ -1,5 +1,4 @@
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE LambdaCase #-}
 
 module Distribution.Solver.Types.ProjectConfigPath
     (
@@ -11,7 +10,7 @@ module Distribution.Solver.Types.ProjectConfigPath
 
     -- * Messages
     , docProjectConfigPath
-    , cyclicalImportMsg
+    , duplicateImportMsg
     , docProjectConfigPathFailReason
 
     -- * Checks and Normalization
@@ -63,13 +62,18 @@ docProjectConfigPath (ProjectConfigPath (p :| [])) = text p
 docProjectConfigPath (ProjectConfigPath (p :| ps)) = vcat $
     text p : [ text " " <+> text "imported by:" <+> text l | l <- ps ]
 
--- | A message for a cyclical import, assuming the head of the path is the
--- duplicate.
-cyclicalImportMsg :: ProjectConfigPath -> Doc
-cyclicalImportMsg path@(ProjectConfigPath (duplicate :| _)) =
+-- | A message for a duplicate import. Useful for reporting cyclical imports and
+-- duplicate imports by different import paths.
+duplicateImportMsg :: String -> FilePath -> ProjectConfigPath -> [(FilePath, ProjectConfigPath)] -> Doc
+duplicateImportMsg description duplicate path seenImportsBy =
     vcat
-    [ text "cyclical import of" <+> text duplicate <> semi
+    [ text description <+> text "import of" <+> text duplicate <> semi
     , nest 2 (docProjectConfigPath path)
+    , nest 2 $
+        vcat
+        [ docProjectConfigPath dib
+        | (_, dib) <- filter ((duplicate ==) . fst) seenImportsBy
+        ]
     ]
 
 docProjectConfigPathFailReason :: VR -> ProjectConfigPath -> Doc
