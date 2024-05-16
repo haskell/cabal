@@ -711,7 +711,9 @@ runReplOrWriteFlags ghcProg lbi rflags ghcOpts pkg_name target =
           writeFileAtomic (out_dir </> this_unit) $
             BS.pack $
               escapeArgs $
-                extra_opts ++ renderGhcOptions comp platform (ghcOpts{ghcOptMode = NoFlag})
+                extra_opts
+                  ++ renderGhcOptions comp platform (ghcOpts{ghcOptMode = NoFlag})
+                  ++ programOverrideArgs ghcProg
 
 replNoLoad :: Ord a => ReplOptions -> NubListR a -> NubListR a
 replNoLoad replFlags l
