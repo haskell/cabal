@@ -240,7 +240,6 @@ data PackageHashConfigInputs = PackageHashConfigInputs
   , pkgHashHaddockBaseUrl :: Maybe String
   , pkgHashHaddockResourcesDir :: Maybe String
   , pkgHashHaddockOutputDir :: Maybe FilePath
-  , pkgHashHaddockVersionCPP :: Bool
   --     TODO: [required eventually] pkgHashToolsVersions     ?
   --     TODO: [required eventually] pkgHashToolsExtraOptions ?
   }
@@ -350,7 +349,6 @@ renderPackageHashInputs
           , opt "haddock-base-url" Nothing (fromMaybe "") pkgHashHaddockBaseUrl
           , opt "haddock-resources-dir" Nothing (fromMaybe "") pkgHashHaddockResourcesDir
           , opt "haddock-output-dir" Nothing (fromMaybe "") pkgHashHaddockOutputDir
-          , opt "haddock-version-cpp" False prettyShow pkgHashHaddockVersionCPP
           ]
             ++ Map.foldrWithKey (\prog args acc -> opt (prog ++ "-options") [] unwords args : acc) [] pkgHashProgramArgs
     where

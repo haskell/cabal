@@ -632,7 +632,6 @@ instance Semigroup SavedConfig where
           , haddockBaseUrl = combine haddockBaseUrl
           , haddockResourcesDir = combine haddockResourcesDir
           , haddockOutputDir = combine haddockOutputDir
-          , haddockVersionCPP = combine haddockVersionCPP
           }
         where
           combine = combine' savedHaddockFlags

@@ -823,7 +823,6 @@ convertLegacyPerPackageFlags
         , haddockBaseUrl = packageConfigHaddockBaseUrl
         , haddockResourcesDir = packageConfigHaddockResourcesDir
         , haddockOutputDir = packageConfigHaddockOutputDir
-        , haddockVersionCPP = packageConfigHaddockVersionCPP
         } = haddockFlags
 
       TestFlags
@@ -1221,7 +1220,6 @@ convertToLegacyPerPackageConfig PackageConfig{..} =
         , haddockBaseUrl = packageConfigHaddockBaseUrl
         , haddockResourcesDir = packageConfigHaddockResourcesDir
         , haddockOutputDir = packageConfigHaddockOutputDir
-        , haddockVersionCPP = packageConfigHaddockVersionCPP
         }
 
     testFlags =
@@ -1623,7 +1621,6 @@ legacyPackageConfigFieldDescrs =
             , "base-url"
             , "resources-dir"
             , "output-dir"
-            , "version-cpp"
             ]
           . commandOptionsToFields
        )

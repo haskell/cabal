@@ -302,7 +302,6 @@ data ElaboratedConfiguredPackage = ElaboratedConfiguredPackage
   , elabHaddockBaseUrl :: Maybe String
   , elabHaddockResourcesDir :: Maybe String
   , elabHaddockOutputDir :: Maybe FilePath
-  , elabHaddockVersionCPP :: Bool
   , elabTestMachineLog :: Maybe PathTemplate
   , elabTestHumanLog :: Maybe PathTemplate
   , elabTestShowDetails :: Maybe TestShowDetails

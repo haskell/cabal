@@ -115,7 +115,6 @@ data HaddockFlags = HaddockFlags
   , haddockBaseUrl :: Flag String
   , haddockResourcesDir :: Flag String
   , haddockOutputDir :: Flag FilePath
-  , haddockVersionCPP :: Flag Bool
   }
   deriving (Show, Generic, Typeable)
 
@@ -171,7 +170,6 @@ defaultHaddockFlags =
     , haddockBaseUrl = NoFlag
     , haddockResourcesDir = NoFlag
     , haddockOutputDir = NoFlag
-    , haddockVersionCPP = Flag False
     }
 
 haddockCommand :: CommandUI HaddockFlags
@@ -380,13 +378,6 @@ haddockOptions showOrParseArgs =
         haddockOutputDir
         (\v flags -> flags{haddockOutputDir = v})
         (reqArgFlag "DIR")
-    , option
-        ""
-        ["version-cpp"]
-        "Define the __HADDOCK_VERSION__ macro when invoking GHC through Haddock. This will likely trigger recompilation during documentation generation."
-        haddockVersionCPP
-        (\v flags -> flags{haddockVersionCPP = v})
-        trueArg
     ]
 
 emptyHaddockFlags :: HaddockFlags
@@ -451,7 +442,6 @@ data HaddockProjectFlags = HaddockProjectFlags
   , -- haddockBaseUrl is not supported, a fixed value is provided
     haddockProjectResourcesDir :: Flag String
   , haddockProjectOutputDir :: Flag FilePath
-  , haddockProjectVersionCPP :: Flag Bool
   }
   deriving (Show, Generic, Typeable)
 
@@ -477,7 +467,6 @@ defaultHaddockProjectFlags =
     , haddockProjectResourcesDir = NoFlag
     , haddockProjectOutputDir = NoFlag
     , haddockProjectInterfaces = NoFlag
-    , haddockProjectVersionCPP = Flag False
     }
 
 haddockProjectCommand :: CommandUI HaddockProjectFlags
@@ -631,13 +620,6 @@ haddockProjectOptions _showOrParseArgs =
       haddockProjectOutputDir
       (\v flags -> flags{haddockProjectOutputDir = v})
       (reqArgFlag "DIR")
-  , option
-      ""
-      ["version-cpp"]
-      "Define the __HADDOCK_VERSION__ macro when invoking GHC through Haddock. This will likely trigger recompilation during documentation generation."
-      haddockProjectVersionCPP
-      (\v flags -> flags{haddockProjectVersionCPP = v})
-      trueArg
   ]
 
 emptyHaddockProjectFlags :: HaddockProjectFlags

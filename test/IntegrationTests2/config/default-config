@@ -143,7 +143,6 @@ haddock
   -- base-url:
   -- resources-dir:
   -- output-dir:
-  -- version-cpp: False
 
 init
   -- interactive: False

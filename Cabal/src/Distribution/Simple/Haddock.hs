@@ -83,7 +83,6 @@ import Distribution.Types.ComponentLocalBuildInfo
 import Distribution.Types.ExposedModule
 import Distribution.Types.LocalBuildInfo
 import Distribution.Types.TargetInfo
-import Distribution.Utils.NubList
 import Distribution.Utils.Path hiding
   ( Dir
   )
@@ -91,8 +90,6 @@ import qualified Distribution.Utils.Path as Path
 import qualified Distribution.Utils.ShortText as ShortText
 import Distribution.Verbosity
 import Distribution.Version
-
-import Language.Haskell.Extension
 
 import Control.Monad
 import Data.Either (rights)
@@ -329,11 +326,6 @@ haddock_setupHooks
           [] -> allTargetsInBuildOrder' pkg_descr lbi
           _ -> targets
 
-      version' =
-        if flag haddockVersionCPP
-          then Just version
-          else Nothing
-
       mtmp
         | version >= mkVersion [2, 28, 0] = const Nothing
         | otherwise = Just
@@ -380,7 +372,6 @@ haddock_setupHooks
                     lbi'
                     clbi
                     htmlTemplate
-                    version'
                     exe
                 let exeArgs' = commonArgs `mappend` exeArgs
                 runHaddock
@@ -420,7 +411,6 @@ haddock_setupHooks
                   lbi'
                   clbi
                   htmlTemplate
-                  version'
                   lib
               let libArgs' = commonArgs `mappend` libArgs
               runHaddock verbosity mbWorkDir tmpFileOpts comp platform haddockProg True libArgs'
@@ -467,7 +457,6 @@ haddock_setupHooks
                         lbi'
                         clbi
                         htmlTemplate
-                        version'
                         flib
                 let libArgs' = commonArgs `mappend` flibArgs
                 runHaddock verbosity mbWorkDir tmpFileOpts comp platform haddockProg True libArgs'
@@ -613,17 +602,13 @@ mkHaddockArgs
   -> ComponentLocalBuildInfo
   -> Maybe PathTemplate
   -- ^ template for HTML location
-  -> Maybe Version
-  -- ^ 'Nothing' if the user requested not to define the __HADDOCK_VERSION__
-  -- macro
   -> [SymbolicPath Pkg File]
   -> BuildInfo
   -> IO HaddockArgs
-mkHaddockArgs verbosity mtmp lbi clbi htmlTemplate haddockVersion inFiles bi = do
+mkHaddockArgs verbosity mtmp lbi clbi htmlTemplate inFiles bi = do
   ifaceArgs <- getInterfaces verbosity lbi clbi htmlTemplate
   let vanillaOpts' =
         componentGhcOptions normal lbi bi clbi (buildDir lbi)
-          `mappend` getGhcCppOpts haddockVersion bi
       vanillaOpts =
         vanillaOpts'
           { -- Starting with Haddock 2.28, we no longer want to run Haddock's
@@ -635,7 +620,6 @@ mkHaddockArgs verbosity mtmp lbi clbi htmlTemplate haddockVersion inFiles bi = d
           , ghcOptHiDir = maybe (ghcOptHiDir vanillaOpts') (toFlag . coerceSymbolicPath) mtmp
           , ghcOptStubDir = maybe (ghcOptStubDir vanillaOpts') (toFlag . coerceSymbolicPath) mtmp
           }
-          `mappend` getGhcCppOpts haddockVersion bi
       sharedOpts =
         vanillaOpts
           { ghcOptDynLinkMode = toFlag GhcDynamicOnly
@@ -668,12 +652,9 @@ fromLibrary
   -> ComponentLocalBuildInfo
   -> Maybe PathTemplate
   -- ^ template for HTML location
-  -> Maybe Version
-  -- ^ 'Nothing' if the user requested not to define the __HADDOCK_VERSION__
-  -- macro
   -> Library
   -> IO HaddockArgs
-fromLibrary verbosity mtmp lbi clbi htmlTemplate haddockVersion lib = do
+fromLibrary verbosity mtmp lbi clbi htmlTemplate lib = do
   inFiles <- map snd `fmap` getLibSourceFiles verbosity lbi lib clbi
   args <-
     mkHaddockArgs
@@ -682,7 +663,6 @@ fromLibrary verbosity mtmp lbi clbi htmlTemplate haddockVersion lib = do
       lbi
       clbi
       htmlTemplate
-      haddockVersion
       inFiles
       (libBuildInfo lib)
   return
@@ -699,12 +679,9 @@ fromExecutable
   -> ComponentLocalBuildInfo
   -> Maybe PathTemplate
   -- ^ template for HTML location
-  -> Maybe Version
-  -- ^ 'Nothing' if the user requested not to define the __HADDOCK_VERSION__
-  -- macro
   -> Executable
   -> IO HaddockArgs
-fromExecutable verbosity mtmp lbi clbi htmlTemplate haddockVersion exe = do
+fromExecutable verbosity mtmp lbi clbi htmlTemplate exe = do
   inFiles <- map snd `fmap` getExeSourceFiles verbosity lbi exe clbi
   args <-
     mkHaddockArgs
@@ -713,7 +690,6 @@ fromExecutable verbosity mtmp lbi clbi htmlTemplate haddockVersion exe = do
       lbi
       clbi
       htmlTemplate
-      haddockVersion
       inFiles
       (buildInfo exe)
   return
@@ -731,12 +707,9 @@ fromForeignLib
   -> ComponentLocalBuildInfo
   -> Maybe PathTemplate
   -- ^ template for HTML location
-  -> Maybe Version
-  -- ^ 'Nothing' if the user requested not to define the __HADDOCK_VERSION__
-  -- macro
   -> ForeignLib
   -> IO HaddockArgs
-fromForeignLib verbosity mtmp lbi clbi htmlTemplate haddockVersion flib = do
+fromForeignLib verbosity mtmp lbi clbi htmlTemplate flib = do
   inFiles <- map snd `fmap` getFLibSourceFiles verbosity lbi flib clbi
   args <-
     mkHaddockArgs
@@ -745,7 +718,6 @@ fromForeignLib verbosity mtmp lbi clbi htmlTemplate haddockVersion flib = do
       lbi
       clbi
       htmlTemplate
-      haddockVersion
       inFiles
       (foreignLibBuildInfo flib)
   return
@@ -795,35 +767,6 @@ getReexports :: ComponentLocalBuildInfo -> [OpenModule]
 getReexports LibComponentLocalBuildInfo{componentExposedModules = mods} =
   mapMaybe exposedReexport mods
 getReexports _ = []
-
-getGhcCppOpts
-  :: Maybe Version
-  -- ^ 'Nothing' if the user requested not to define the __HADDOCK_VERSION__
-  -- macro
-  -> BuildInfo
-  -> GhcOptions
-getGhcCppOpts haddockVersion bi =
-  mempty
-    { ghcOptExtensions = toNubListR [EnableExtension CPP | needsCpp]
-    , ghcOptCppOptions = defines
-    }
-  where
-    needsCpp = EnableExtension CPP `elem` usedExtensions bi
-    defines =
-      [ "-D__HADDOCK_VERSION__=" ++ show vn
-      | Just vn <- [versionInt . versionNumbers <$> haddockVersion]
-      ]
-      where
-        -- For some list xs = [x, y, z ...], versionInt xs results in
-        -- x * 1000 + y * 10 + z. E.g.:
-        -- >>> versionInt [2, 29, 0]
-        -- 2290
-        -- >>> versionInt [3, 4]
-        -- 3040
-        -- >>> versionInt []
-        -- 0
-        versionInt :: [Int] -> Int
-        versionInt = foldr ((+) . uncurry (*)) 0 . zip [1000, 10, 1]
 
 getGhcLibDir
   :: Verbosity

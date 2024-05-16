@@ -2437,7 +2437,6 @@ haddockOptions showOrParseArgs =
              , "base-url"
              , "resources-dir"
              , "output-dir"
-             , "version-cpp"
              ]
   ]
 

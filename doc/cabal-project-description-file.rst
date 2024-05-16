@@ -1619,16 +1619,6 @@ running ``setup haddock``.
     be automatically inferred. For Haddock built from source, however, this path
     should likely be explicitly set for every Haddock invocation.
 
-.. cfg-field:: haddock-no-version-cpp: boolean
-               --haddock-no-version-cpp
-    :synopsis: Do not define the ``__HADDOCK_VERSION__`` macro when invoking GHC
-               through Haddock.
-
-    Do not define the ``__HADDOCK_VERSION__`` macro when invoking GHC through
-    Haddock. This is critical for avoiding recompilation during documentation
-    generation, since such a macro definition will trigger recompilation if the
-    interface files on disk were compiled without it, as they likely were.
-
 .. cfg-field:: open: boolean
                --open
     :synopsis: Open generated documentation in-browser.

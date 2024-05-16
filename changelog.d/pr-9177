@@ -13,10 +13,13 @@ description: {
 
 * We no longer define the `__HADDOCK_VERSION__` macro when invoking GHC through
   Haddock, since doing so essentially guarantees recompilation during
-  documentation generation. Since a very limited set of users may still rely on
-  this flag, we introduce the `--haddock-version-cpp` flag and
-  `haddock-version-cpp:` cabal.project field, which enables the definition of
-  the `__HADDOCK_VERSION__` macro when invoking GHC through Haddock.
+  documentation generation. We audited all uses of `__HADDOCK_VERSION__` in
+  hackage, ensuring there was a reasonable path forward to migrate away from
+  using `__HADDOCK_VERSION__` for each, while generating the same documentation
+  as it did before.
+  If you are a user of `__HADDOCK_VERSION__`, please take a look at the
+  discussion in https://github.com/haskell/cabal/pull/9177 and reach out to us
+  if your use case is not covered.
 
 * Rename the `--haddock-lib` flag to `--haddock-resources-dir` (and
   `haddock-lib:` cabal.project field to `haddock-resources-dir:`), and add this

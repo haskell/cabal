@@ -150,7 +150,6 @@ haddockProjectAction flags _extraArgs globalFlags = do
           , haddockKeepTempFiles = haddockProjectKeepTempFiles flags
           , haddockResourcesDir = haddockProjectResourcesDir flags
           , haddockOutputDir = haddockProjectOutputDir flags
-          , haddockVersionCPP = haddockProjectVersionCPP flags
           }
       nixFlags =
         (commandDefaultFlags CmdHaddock.haddockCommand)
