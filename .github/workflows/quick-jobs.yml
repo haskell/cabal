@@ -14,14 +14,35 @@ on:
     types:
       - created
 
+env:
+  GHC_FOR_QUICK_JOBS: 9.6.5
+
 jobs:
   meta:
     name: Meta checks
     runs-on: ubuntu-latest
+<<<<<<< HEAD
     # This job is not run in a container, any recent GHC should be fine
     steps:
       - name: Set PATH
         # https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-commands-for-github-actions#adding-a-system-path
+=======
+    env:
+      cabal_build: >-
+        cabal build --builddir=dist-newstyle-meta --project-file=cabal.meta.project
+        gen-cabal-macros
+        gen-paths-module
+        gen-spdx
+        gen-spdx-exc
+    steps:
+      - name: ghcup
+        run: |
+          ghcup --version
+          ghcup config set cache true
+          ghcup install ghc $GHC_FOR_QUICK_JOBS
+          ghcup set ghc $GHC_FOR_QUICK_JOBS
+      - name: Haskell versions
+>>>>>>> 305033b30 (ci: Fix quick-jobs GHC version to 9.6 (#10026))
         run: |
           echo "$HOME/.cabal/bin" >> $GITHUB_PATH
       - uses: actions/cache@v3
@@ -62,7 +83,26 @@ jobs:
     name: Doctest Cabal
     runs-on: ubuntu-latest
     steps:
+<<<<<<< HEAD
       - name: Set PATH
+=======
+      - name: ghcup
+        run: |
+          ghcup --version
+          ghcup config set cache true
+          ghcup install ghc $GHC_FOR_QUICK_JOBS
+          ghcup set ghc $GHC_FOR_QUICK_JOBS
+      - name: Haskell versions
+        run: |
+          ghc --version
+          cabal --version
+      # It is complicated to get a proper cache key for the dependencies of a package
+      # (here: doctest) that we just `cabal install`.
+      # So, as a heuristics we update the cache once per day.
+      # Updating it with each run would be an alternative, but we a short of cache space,
+      # and this would generate too many new caches.
+      - name: Use date as cache key
+>>>>>>> 305033b30 (ci: Fix quick-jobs GHC version to 9.6 (#10026))
         run: |
           echo "$HOME/.cabal/bin" >> $GITHUB_PATH
       - uses: actions/cache@v3
@@ -96,6 +136,7 @@ jobs:
     name: Check Field Syntax Reference
     runs-on: ubuntu-latest
     steps:
+<<<<<<< HEAD
       - name: Set PATH
         run: |
           echo "$HOME/.cabal/bin" >> $GITHUB_PATH
@@ -113,12 +154,23 @@ jobs:
             sudo chown -R $USER /usr/local/.ghcup
             sudo chmod -R 777 /usr/local/.ghcup
           fi
+=======
+>>>>>>> 305033b30 (ci: Fix quick-jobs GHC version to 9.6 (#10026))
       - name: ghcup
         run: |
           ghcup --version
           ghcup config set cache true
+<<<<<<< HEAD
           ghcup install ghc --set recommended
           ghcup install cabal --set latest
+=======
+          ghcup install ghc $GHC_FOR_QUICK_JOBS
+          ghcup set ghc $GHC_FOR_QUICK_JOBS
+      - name: Haskell versions
+        run: |
+          ghc --version
+          cabal --version
+>>>>>>> 305033b30 (ci: Fix quick-jobs GHC version to 9.6 (#10026))
       - name: Update Hackage index
         run: cabal v2-update
       - uses: actions/checkout@v4
@@ -128,15 +180,27 @@ jobs:
     name: Check Release Project
     runs-on: ubuntu-latest
     steps:
+<<<<<<< HEAD
       - name: Set PATH
         run: |
           echo "$HOME/.cabal/bin" >> $GITHUB_PATH
+=======
+>>>>>>> 305033b30 (ci: Fix quick-jobs GHC version to 9.6 (#10026))
       - name: ghcup
         run: |
           ghcup --version
           ghcup config set cache true
+<<<<<<< HEAD
           ghcup install ghc --set recommended
           ghcup install cabal --set latest
+=======
+          ghcup install ghc $GHC_FOR_QUICK_JOBS
+          ghcup set ghc $GHC_FOR_QUICK_JOBS
+      - name: Haskell versions
+        run: |
+          ghc --version
+          cabal --version
+>>>>>>> 305033b30 (ci: Fix quick-jobs GHC version to 9.6 (#10026))
       - name: Update Hackage Index
         run: cabal v2-update
       - uses: actions/checkout@v4
