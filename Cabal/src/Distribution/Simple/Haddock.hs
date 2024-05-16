@@ -326,6 +326,7 @@ haddock_setupHooks
           [] -> allTargetsInBuildOrder' pkg_descr lbi
           _ -> targets
 
+      -- See Note [Hi Haddock Recompilation Avoidance]
       mtmp
         | version >= mkVersion [2, 28, 0] = const Nothing
         | otherwise = Just
@@ -593,6 +594,17 @@ componentGhcOptions verbosity lbi bi clbi odir =
               ++ "haddock only supports GHC and GHCJS"
    in f verbosity lbi bi clbi odir
 
+{-
+Note [Hi Haddock Recompilation Avoidance]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Starting with Haddock 2.28, we no longer want to run Haddock's
+GHC session in a temporary directory. Doing so always causes
+recompilation during documentation generation, which can now be
+avoided thanks to Hi Haddock.
+
+See https://github.com/haskell/cabal/pull/9177 for discussion.
+-}
+
 mkHaddockArgs
   :: Verbosity
   -> Maybe (SymbolicPath Pkg (Path.Dir Tmp))
@@ -611,11 +623,7 @@ mkHaddockArgs verbosity mtmp lbi clbi htmlTemplate inFiles bi = do
         componentGhcOptions normal lbi bi clbi (buildDir lbi)
       vanillaOpts =
         vanillaOpts'
-          { -- Starting with Haddock 2.28, we no longer want to run Haddock's
-            -- GHC session in a temporary directory. Doing so always causes
-            -- recompilation during documentation generation, which can now be
-            -- avoided thanks to Hi Haddock. See
-            -- https://github.com/haskell/cabal/pull/9177 for discussion.
+          { -- See Note [Hi Haddock Recompilation Avoidance]
             ghcOptObjDir = maybe (ghcOptObjDir vanillaOpts') (toFlag . coerceSymbolicPath) mtmp
           , ghcOptHiDir = maybe (ghcOptHiDir vanillaOpts') (toFlag . coerceSymbolicPath) mtmp
           , ghcOptStubDir = maybe (ghcOptStubDir vanillaOpts') (toFlag . coerceSymbolicPath) mtmp
@@ -973,6 +981,10 @@ renderPureArgs version comp platform args =
       ]
     , argTargets $ args
     , maybe [] ((: []) . (resourcesDirFlag ++)) . flagToMaybe . argResourcesDir $ args
+    -- Do not re-direct compilation output to a temporary directory (--no-tmp-comp-dir)
+    -- We pass this option by default to haddock to avoid recompilation
+    -- See Note [Hi Haddock Recompilation Avoidance]
+    , [ "--no-tmp-comp-dir" | version >= mkVersion [2, 28, 0] ]
     ]
   where
     -- See Note [Symbolic paths] in Distribution.Utils.Path
