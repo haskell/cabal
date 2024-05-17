@@ -326,11 +326,6 @@ haddock_setupHooks
           [] -> allTargetsInBuildOrder' pkg_descr lbi
           _ -> targets
 
-      -- See Note [Hi Haddock Recompilation Avoidance]
-      mtmp
-        | version >= mkVersion [2, 28, 0] = const Nothing
-        | otherwise = Just
-
     internalPackageDB <-
       createInternalPackageDB verbosity lbi (flag $ setupDistPref . haddockCommonFlags)
 
@@ -359,115 +354,112 @@ haddock_setupHooks
            in for_ mbPbcRules $ \pbcRules -> do
                 (ruleFromId, _mons) <- SetupHooks.computeRules verbosity inputs pbcRules
                 SetupHooks.executeRules verbosity lbi2 tgt ruleFromId
-      preBuildComponent runPreBuildHooks verbosity lbi' target
-      preprocessComponent pkg_descr component lbi' clbi False verbosity suffixes
-      let
-        doExe com = case (compToExe com) of
-          Just exe -> do
-            withTempDirectoryCwdEx verbosity tmpFileOpts mbWorkDir (buildDir lbi') "tmp" $
-              \tmp -> do
-                exeArgs <-
-                  fromExecutable
-                    verbosity
-                    (mtmp tmp)
-                    lbi'
-                    clbi
-                    htmlTemplate
-                    exe
-                let exeArgs' = commonArgs `mappend` exeArgs
-                runHaddock
+
+      -- See Note [Hi Haddock Recompilation Avoidance]
+      reusingGHCCompilationArtifacts verbosity tmpFileOpts mbWorkDir lbi bi clbi version $ \haddockArtifactsDirs -> do
+        preBuildComponent runPreBuildHooks verbosity lbi' target
+        preprocessComponent pkg_descr component lbi' clbi False verbosity suffixes
+        let
+          doExe com = case (compToExe com) of
+            Just exe -> do
+              exeArgs <-
+                fromExecutable
                   verbosity
-                  mbWorkDir
-                  tmpFileOpts
-                  comp
-                  platform
-                  haddockProg
-                  True
-                  exeArgs'
-          Nothing -> do
-            warn
-              verbosity
-              "Unsupported component, skipping..."
-            return ()
-        -- We define 'smsg' once and then reuse it inside the case, so that
-        -- we don't say we are running Haddock when we actually aren't
-        -- (e.g., Haddock is not run on non-libraries)
-        smsg :: IO ()
-        smsg =
-          setupMessage'
-            verbosity
-            "Running Haddock on"
-            (packageId pkg_descr)
-            (componentLocalName clbi)
-            (maybeComponentInstantiatedWith clbi)
-      ipi <- case component of
-        CLib lib -> do
-          withTempDirectoryCwdEx verbosity tmpFileOpts mbWorkDir (buildDir lbi') "tmp" $
-            \tmp -> do
-              smsg
-              libArgs <-
-                fromLibrary
-                  verbosity
-                  (mtmp tmp)
+                  haddockArtifactsDirs
                   lbi'
                   clbi
                   htmlTemplate
-                  lib
-              let libArgs' = commonArgs `mappend` libArgs
-              runHaddock verbosity mbWorkDir tmpFileOpts comp platform haddockProg True libArgs'
-              inplaceDir <- absoluteWorkingDirLBI lbi
-
-              let
-                ipi =
-                  inplaceInstalledPackageInfo
-                    inplaceDir
-                    (flag $ setupDistPref . haddockCommonFlags)
-                    pkg_descr
-                    (mkAbiHash "inplace")
-                    lib
-                    lbi'
-                    clbi
-
-              debug verbosity $
-                "Registering inplace:\n"
-                  ++ (InstalledPackageInfo.showInstalledPackageInfo ipi)
-
-              registerPackage
+                  exe
+              let exeArgs' = commonArgs `mappend` exeArgs
+              runHaddock
                 verbosity
-                (compiler lbi')
-                (withPrograms lbi')
                 mbWorkDir
-                (withPackageDB lbi')
-                ipi
-                HcPkg.defaultRegisterOptions
-                  { HcPkg.registerMultiInstance = True
-                  }
+                tmpFileOpts
+                comp
+                platform
+                haddockProg
+                True
+                exeArgs'
+            Nothing -> do
+              warn
+                verbosity
+                "Unsupported component, skipping..."
+              return ()
+          -- We define 'smsg' once and then reuse it inside the case, so that
+          -- we don't say we are running Haddock when we actually aren't
+          -- (e.g., Haddock is not run on non-libraries)
+          smsg :: IO ()
+          smsg =
+            setupMessage'
+              verbosity
+              "Running Haddock on"
+              (packageId pkg_descr)
+              (componentLocalName clbi)
+              (maybeComponentInstantiatedWith clbi)
+        ipi <- case component of
+          CLib lib -> do
+            smsg
+            libArgs <-
+              fromLibrary
+                verbosity
+                haddockArtifactsDirs
+                lbi'
+                clbi
+                htmlTemplate
+                lib
+            let libArgs' = commonArgs `mappend` libArgs
+            runHaddock verbosity mbWorkDir tmpFileOpts comp platform haddockProg True libArgs'
+            inplaceDir <- absoluteWorkingDirLBI lbi
 
-              return $ PackageIndex.insert ipi index
-        CFLib flib ->
-          when
-            (flag haddockForeignLibs)
-            ( do
-                smsg
-                flibArgs <-
-                  withTempDirectoryCwdEx verbosity tmpFileOpts mbWorkDir (buildDir lbi') "tmp" $
-                    \tmp -> do
-                      fromForeignLib
-                        verbosity
-                        (mtmp tmp)
-                        lbi'
-                        clbi
-                        htmlTemplate
-                        flib
-                let libArgs' = commonArgs `mappend` flibArgs
-                runHaddock verbosity mbWorkDir tmpFileOpts comp platform haddockProg True libArgs'
-            )
-            >> return index
-        CExe _ -> when (flag haddockExecutables) (smsg >> doExe component) >> return index
-        CTest _ -> when (flag haddockTestSuites) (smsg >> doExe component) >> return index
-        CBench _ -> when (flag haddockBenchmarks) (smsg >> doExe component) >> return index
+            let
+              ipi =
+                inplaceInstalledPackageInfo
+                  inplaceDir
+                  (flag $ setupDistPref . haddockCommonFlags)
+                  pkg_descr
+                  (mkAbiHash "inplace")
+                  lib
+                  lbi'
+                  clbi
 
-      return ipi
+            debug verbosity $
+              "Registering inplace:\n"
+                ++ (InstalledPackageInfo.showInstalledPackageInfo ipi)
+
+            registerPackage
+              verbosity
+              (compiler lbi')
+              (withPrograms lbi')
+              mbWorkDir
+              (withPackageDB lbi')
+              ipi
+              HcPkg.defaultRegisterOptions
+                { HcPkg.registerMultiInstance = True
+                }
+
+            return $ PackageIndex.insert ipi index
+          CFLib flib ->
+            when
+              (flag haddockForeignLibs)
+              ( do
+                  smsg
+                  flibArgs <-
+                    fromForeignLib
+                      verbosity
+                      haddockArtifactsDirs
+                      lbi'
+                      clbi
+                      htmlTemplate
+                      flib
+                  let libArgs' = commonArgs `mappend` flibArgs
+                  runHaddock verbosity mbWorkDir tmpFileOpts comp platform haddockProg True libArgs'
+              )
+              >> return index
+          CExe _ -> when (flag haddockExecutables) (smsg >> doExe component) >> return index
+          CTest _ -> when (flag haddockTestSuites) (smsg >> doExe component) >> return index
+          CBench _ -> when (flag haddockBenchmarks) (smsg >> doExe component) >> return index
+
+        return ipi
 
     for_ (extraDocFiles pkg_descr) $ \fpath -> do
       files <- matchDirFileGlob verbosity (specVersion pkg_descr) mbWorkDir fpath
@@ -597,19 +589,40 @@ componentGhcOptions verbosity lbi bi clbi odir =
 {-
 Note [Hi Haddock Recompilation Avoidance]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-Starting with Haddock 2.28, we no longer want to run Haddock's
-GHC session in a temporary directory. Doing so always causes
-recompilation during documentation generation, which can now be
-avoided thanks to Hi Haddock.
+Starting with Haddock 2.28, we no longer want to run Haddock's GHC session in
+an arbitrary temporary directory. Doing so always causes recompilation during
+documentation generation, which can now be avoided thanks to Hi Haddock.
+
+Instead, we want to re-use the interface and object files produced by GHC.
+We copy these intermediate files produced by GHC to temporary directories and
+point haddock to them.
+
+The reason why we can't use the GHC files /inplace/ is that haddock may have to
+recompile (e.g. because of `haddock-options`). In that case, we want to be sure
+the files produced by GHC do not get overwritten.
 
 See https://github.com/haskell/cabal/pull/9177 for discussion.
+
+(W.1) As it turns out, -stubdir is included in GHC's recompilation fingerprint.
+This means that if we use a temporary directory for stubfiles produced by GHC
+for the haddock invocation, haddock will trigger full recompilation since the
+stubdir would be different.
+
+So we don't use a temporary stubdir, despite the tmp o-dir and hi-dir:
+
+We want to avoid at all costs haddock accidentally overwriting o-files and
+hi-files (e.g. if a user specified haddock-option triggers recompilation), and
+thus copy them to a temporary directory to pass them on to haddock. However,
+stub files are much less problematic since ABI-incompatibility isn't at play
+here, that is, there doesn't seem to be a GHC flag that could accidentally make
+a stub file incompatible with the one produced by GHC from the same module.
 -}
 
 mkHaddockArgs
   :: Verbosity
-  -> Maybe (SymbolicPath Pkg (Path.Dir Tmp))
-  -- ^ 'Nothing' to prevent passing temporary directories for -hidir, -odir, and
-  -- -stubdir to GHC through Haddock
+  -> (SymbolicPath Pkg (Path.Dir Artifacts), SymbolicPath Pkg (Path.Dir Artifacts), SymbolicPath Pkg (Path.Dir Artifacts))
+  -- ^ Directories for -hidir, -odir, and -stubdir to GHC through Haddock.
+  -- See Note [Hi Haddock Recompilation Avoidance]
   -> LocalBuildInfo
   -> ComponentLocalBuildInfo
   -> Maybe PathTemplate
@@ -617,25 +630,26 @@ mkHaddockArgs
   -> [SymbolicPath Pkg File]
   -> BuildInfo
   -> IO HaddockArgs
-mkHaddockArgs verbosity mtmp lbi clbi htmlTemplate inFiles bi = do
+mkHaddockArgs verbosity (tmpObjDir, tmpHiDir, tmpStubDir) lbi clbi htmlTemplate inFiles bi = do
+  let
+    vanillaOpts' =
+      componentGhcOptions normal lbi bi clbi (buildDir lbi)
+    vanillaOpts =
+      vanillaOpts'
+        { -- See Note [Hi Haddock Recompilation Avoidance]
+          ghcOptObjDir = toFlag tmpObjDir
+        , ghcOptHiDir = toFlag tmpHiDir
+        , ghcOptStubDir = toFlag tmpStubDir
+        }
+    sharedOpts =
+      vanillaOpts
+        { ghcOptDynLinkMode = toFlag GhcDynamicOnly
+        , ghcOptFPic = toFlag True
+        , ghcOptHiSuffix = toFlag "dyn_hi"
+        , ghcOptObjSuffix = toFlag "dyn_o"
+        , ghcOptExtra = hcSharedOptions GHC bi
+        }
   ifaceArgs <- getInterfaces verbosity lbi clbi htmlTemplate
-  let vanillaOpts' =
-        componentGhcOptions normal lbi bi clbi (buildDir lbi)
-      vanillaOpts =
-        vanillaOpts'
-          { -- See Note [Hi Haddock Recompilation Avoidance]
-            ghcOptObjDir = maybe (ghcOptObjDir vanillaOpts') (toFlag . coerceSymbolicPath) mtmp
-          , ghcOptHiDir = maybe (ghcOptHiDir vanillaOpts') (toFlag . coerceSymbolicPath) mtmp
-          , ghcOptStubDir = maybe (ghcOptStubDir vanillaOpts') (toFlag . coerceSymbolicPath) mtmp
-          }
-      sharedOpts =
-        vanillaOpts
-          { ghcOptDynLinkMode = toFlag GhcDynamicOnly
-          , ghcOptFPic = toFlag True
-          , ghcOptHiSuffix = toFlag "dyn_hi"
-          , ghcOptObjSuffix = toFlag "dyn_o"
-          , ghcOptExtra = hcSharedOptions GHC bi
-          }
   opts <-
     if withVanillaLib lbi
       then return vanillaOpts
@@ -653,21 +667,21 @@ mkHaddockArgs verbosity mtmp lbi clbi htmlTemplate inFiles bi = do
 
 fromLibrary
   :: Verbosity
-  -> Maybe (SymbolicPath Pkg (Path.Dir Tmp))
-  -- ^ 'Nothing' to prevent passing temporary directories for -hidir, -odir, and
-  -- -stubdir to GHC through Haddock
+  -> (SymbolicPath Pkg (Path.Dir Artifacts), SymbolicPath Pkg (Path.Dir Artifacts), SymbolicPath Pkg (Path.Dir Artifacts))
+  -- ^ Directories for -hidir, -odir, and -stubdir to GHC through Haddock.
+  -- See Note [Hi Haddock Recompilation Avoidance]
   -> LocalBuildInfo
   -> ComponentLocalBuildInfo
   -> Maybe PathTemplate
   -- ^ template for HTML location
   -> Library
   -> IO HaddockArgs
-fromLibrary verbosity mtmp lbi clbi htmlTemplate lib = do
+fromLibrary verbosity haddockArtifactsDirs lbi clbi htmlTemplate lib = do
   inFiles <- map snd `fmap` getLibSourceFiles verbosity lbi lib clbi
   args <-
     mkHaddockArgs
       verbosity
-      mtmp
+      haddockArtifactsDirs
       lbi
       clbi
       htmlTemplate
@@ -680,21 +694,21 @@ fromLibrary verbosity mtmp lbi clbi htmlTemplate lib = do
 
 fromExecutable
   :: Verbosity
-  -> Maybe (SymbolicPath Pkg (Path.Dir Tmp))
-  -- ^ 'Nothing' to prevent passing temporary directories for -hidir, -odir, and
-  -- -stubdir to GHC through Haddock
+  -> (SymbolicPath Pkg (Path.Dir Artifacts), SymbolicPath Pkg (Path.Dir Artifacts), SymbolicPath Pkg (Path.Dir Artifacts))
+  -- ^ Directories for -hidir, -odir, and -stubdir to GHC through Haddock.
+  -- See Note [Hi Haddock Recompilation Avoidance]
   -> LocalBuildInfo
   -> ComponentLocalBuildInfo
   -> Maybe PathTemplate
   -- ^ template for HTML location
   -> Executable
   -> IO HaddockArgs
-fromExecutable verbosity mtmp lbi clbi htmlTemplate exe = do
+fromExecutable verbosity haddockArtifactsDirs lbi clbi htmlTemplate exe = do
   inFiles <- map snd `fmap` getExeSourceFiles verbosity lbi exe clbi
   args <-
     mkHaddockArgs
       verbosity
-      mtmp
+      haddockArtifactsDirs
       lbi
       clbi
       htmlTemplate
@@ -708,21 +722,21 @@ fromExecutable verbosity mtmp lbi clbi htmlTemplate exe = do
 
 fromForeignLib
   :: Verbosity
-  -> Maybe (SymbolicPath Pkg (Path.Dir Tmp))
-  -- ^ 'Nothing' to prevent passing temporary directories for -hidir, -odir, and
-  -- -stubdir to GHC through Haddock
+  -> (SymbolicPath Pkg (Path.Dir Artifacts), SymbolicPath Pkg (Path.Dir Artifacts), SymbolicPath Pkg (Path.Dir Artifacts))
+  -- ^ Directories for -hidir, -odir, and -stubdir to GHC through Haddock.
+  -- See Note [Hi Haddock Recompilation Avoidance]
   -> LocalBuildInfo
   -> ComponentLocalBuildInfo
   -> Maybe PathTemplate
   -- ^ template for HTML location
   -> ForeignLib
   -> IO HaddockArgs
-fromForeignLib verbosity mtmp lbi clbi htmlTemplate flib = do
+fromForeignLib verbosity haddockArtifactsDirs lbi clbi htmlTemplate flib = do
   inFiles <- map snd `fmap` getFLibSourceFiles verbosity lbi flib clbi
   args <-
     mkHaddockArgs
       verbosity
-      mtmp
+      haddockArtifactsDirs
       lbi
       clbi
       htmlTemplate
@@ -786,6 +800,47 @@ getGhcLibDir verbosity lbi = do
     GHCJS -> GHCJS.getLibDir verbosity lbi
     _ -> error "haddock only supports GHC and GHCJS"
   return $ mempty{argGhcLibDir = Flag l}
+
+-- | If Hi Haddock is supported, this function creates temporary directories
+-- and copies existing interface and object files produced by GHC into them,
+-- then passes them off to the given continuation.
+--
+-- If Hi Haddock is _not_ supported, we can't re-use GHC's compilation files.
+-- Instead, we use a clean temporary directory to the continuation,
+-- with no hope for recompilation avoidance.
+--
+-- See Note [Hi Haddock Recompilation Avoidance]
+reusingGHCCompilationArtifacts
+  :: Verbosity
+  -> TempFileOptions
+  -> Maybe (SymbolicPath CWD (Path.Dir Pkg))
+  -- ^ Working directory
+  -> LocalBuildInfo
+  -> BuildInfo
+  -> ComponentLocalBuildInfo
+  -> Version
+  -- ^ Haddock's version
+  -> ((SymbolicPath Pkg (Path.Dir Artifacts), SymbolicPath Pkg (Path.Dir Artifacts), SymbolicPath Pkg (Path.Dir Artifacts)) -> IO r)
+  -- ^ Continuation
+  -> IO r
+reusingGHCCompilationArtifacts verbosity tmpFileOpts mbWorkDir lbi bi clbi version act
+  | version >= mkVersion [2, 28, 0] = do
+      withTempDirectoryCwdEx verbosity tmpFileOpts mbWorkDir (distPrefLBI lbi) "haddock-objs" $ \tmpObjDir ->
+        withTempDirectoryCwdEx verbosity tmpFileOpts mbWorkDir (distPrefLBI lbi) "haddock-his" $ \tmpHiDir -> do
+          -- Re-use ghc's interface and obj files, but first copy them to
+          -- somewhere where it is safe if haddock overwrites them
+          let
+            vanillaOpts = componentGhcOptions normal lbi bi clbi (buildDir lbi)
+            i = interpretSymbolicPath mbWorkDir
+            copyDir ghcDir tmpDir = copyDirectoryRecursive verbosity (i $ fromFlag $ ghcDir vanillaOpts) (i tmpDir)
+          copyDir ghcOptObjDir tmpObjDir
+          copyDir ghcOptHiDir tmpHiDir
+          -- copyDir ghcOptStubDir tmpStubDir -- (see W.1 in Note [Hi Haddock Recompilation Avoidance])
+
+          act (tmpObjDir, tmpHiDir, fromFlag $ ghcOptHiDir vanillaOpts)
+  | otherwise = do
+      withTempDirectoryCwdEx verbosity tmpFileOpts mbWorkDir (distPrefLBI lbi) "tmp" $
+        \tmpFallback -> act (tmpFallback, tmpFallback, tmpFallback)
 
 -- ------------------------------------------------------------------------------
 
@@ -981,10 +1036,10 @@ renderPureArgs version comp platform args =
       ]
     , argTargets $ args
     , maybe [] ((: []) . (resourcesDirFlag ++)) . flagToMaybe . argResourcesDir $ args
-    -- Do not re-direct compilation output to a temporary directory (--no-tmp-comp-dir)
-    -- We pass this option by default to haddock to avoid recompilation
-    -- See Note [Hi Haddock Recompilation Avoidance]
-    , [ "--no-tmp-comp-dir" | version >= mkVersion [2, 28, 0] ]
+    , -- Do not re-direct compilation output to a temporary directory (--no-tmp-comp-dir)
+      -- We pass this option by default to haddock to avoid recompilation
+      -- See Note [Hi Haddock Recompilation Avoidance]
+      ["--no-tmp-comp-dir" | version >= mkVersion [2, 28, 0]]
     ]
   where
     -- See Note [Symbolic paths] in Distribution.Utils.Path
@@ -1303,7 +1358,8 @@ hscolour'
         where
           outFile m =
             i outputDir
-              </> intercalate "-" (ModuleName.components m) <.> "html"
+              </> intercalate "-" (ModuleName.components m)
+                <.> "html"
 
 haddockToHscolour :: HaddockFlags -> HscolourFlags
 haddockToHscolour flags =
