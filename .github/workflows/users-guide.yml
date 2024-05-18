@@ -62,7 +62,7 @@ jobs:
 
     - name: Create requirements.txt from requirements.in
       run: |
-        cd doc && pip-compile requirements.in
+        make users-guide-requirements
 
     # Subsumed by make users-guide
     # - name: Install dependencies

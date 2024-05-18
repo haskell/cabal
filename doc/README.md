@@ -11,7 +11,7 @@ http://cabal.readthedocs.io/
 
 ### How to build it
 
-Building the documentation requires Python 3, PIP, and pip-tools. Run the following command either from the root of the cabal repository or from the `docs/` subdirectory:
+Building the documentation requires Python 3, PIP, and `pip-tools` (see the second note below for how to install it). Run the following command either from the root of the cabal repository or from the `docs/` subdirectory:
 
 ``` console
 > make users-guide
@@ -23,7 +23,7 @@ and instead set `LC_ALL=en_US.UTF-8`.
 Note: You can use a vendor package for `pip-tools`, or run
 
 ``` console
-pip install pip-tools
+> pip install pip-tools
 ```
 
 Make sure the installation directory (often `$HOME/.local/bin`) is on your `$PATH`.
@@ -36,9 +36,9 @@ The list of transitive dependencies (`requirements.txt`) is generated from the l
 > make users-guide-requirements
 ```
 
-either from the root of the cabal repository or from the `docs/` subdirectory. You will need to do this before building documentation the first time, but should only need to repeat it after a `git clean` or if the dependencies change.
+either from the root of the cabal repository or from the `docs/` subdirectory. You will need to do this before building documentation the first time, but should only need to repeat it after a `git clean` or if the dependencies in `requirements.in` change.
 
-In some cases you may have to add a bound manually to `requirements.in`, e.g. `requests >= 2.31.0`.
+In some cases, you may have to add a bound manually to `requirements.in`, e.g. `requests >= 2.31.0`.
 
 ### Gitpod workflow
 

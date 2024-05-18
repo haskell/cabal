@@ -10,7 +10,7 @@ build:
   jobs:
     post_create_environment:
       - pip install pip-tools
-      - cd doc && pip-compile requirements.in
+      - make users-guide-requirements
 
 python:
   install:
