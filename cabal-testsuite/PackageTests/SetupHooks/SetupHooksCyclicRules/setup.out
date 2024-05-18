@@ -3,9 +3,9 @@ Configuring setup-hooks-cyclic-rules-test-0.1.0.0...
 # Setup build
 Error: [Cabal-9077]
 Hooks: cycles in dependency structure of rules:
-  Rule: [(RuleId {ruleNameSpace = RulesNameSpace {rulesUnitId = UnitId "main", rulesModuleName = ModuleName "SetupHooks", rulesSrcLoc = (18,59)}, ruleName = "r3"})[0]] --> [setup.dist/work/dist/build/autogen/G3.hs]
+  Rule: [(RuleId {ruleNameSpace = RulesNameSpace {rulesUnitId = UnitId "main", rulesModuleName = ModuleName "SetupHooks", rulesSrcLoc = (19,59)}, ruleName = "r3"})[0]] --> [setup.dist/work/dist/build/autogen </> G3.hs]
 
-  Rule: [(RuleId {ruleNameSpace = RulesNameSpace {rulesUnitId = UnitId "main", rulesModuleName = ModuleName "SetupHooks", rulesSrcLoc = (18,59)}, ruleName = "r2"})[0]] --> [setup.dist/work/dist/build/autogen/G1.hs]
+  Rule: [(RuleId {ruleNameSpace = RulesNameSpace {rulesUnitId = UnitId "main", rulesModuleName = ModuleName "SetupHooks", rulesSrcLoc = (19,59)}, ruleName = "r2"})[0]] --> [setup.dist/work/dist/build/autogen </> G1.hs]
   |
-  `- Rule: [(RuleId {ruleNameSpace = RulesNameSpace {rulesUnitId = UnitId "main", rulesModuleName = ModuleName "SetupHooks", rulesSrcLoc = (18,59)}, ruleName = "r1"})[0]] --> [setup.dist/work/dist/build/autogen/G2.hs]
+  `- Rule: [(RuleId {ruleNameSpace = RulesNameSpace {rulesUnitId = UnitId "main", rulesModuleName = ModuleName "SetupHooks", rulesSrcLoc = (19,59)}, ruleName = "r1"})[0]] --> [setup.dist/work/dist/build/autogen </> G2.hs]
 

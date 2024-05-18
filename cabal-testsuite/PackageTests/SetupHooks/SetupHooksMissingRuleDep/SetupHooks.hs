@@ -6,6 +6,7 @@ module SetupHooks where
 
 import Distribution.Simple.LocalBuildInfo (interpretSymbolicPathLBI)
 import Distribution.Simple.SetupHooks
+import Distribution.Utils.Path (sameDirectory, makeRelativePathEx)
 
 import qualified Data.List.NonEmpty as NE ( NonEmpty(..) )
 
@@ -21,10 +22,9 @@ setupHooks =
 missingDepRules :: PreBuildComponentInputs -> RulesM ()
 missingDepRules (PreBuildComponentInputs { localBuildInfo = lbi, targetInfo = tgt }) = do
   let clbi = targetCLBI tgt
-      i = interpretSymbolicPathLBI lbi
-      autogenDir = i (autogenComponentModulesDir lbi clbi)
+      autogenDir = autogenComponentModulesDir lbi clbi
       action = mkCommand (static Dict) (static (\ _ -> error "This should not run")) ()
   registerRule_ "r" $
     staticRule action
-      [ FileDependency ( ".", "Missing.hs" ) ]
-      ( ( autogenDir, "G.hs" ) NE.:| [] )
+      [ FileDependency $ Location sameDirectory (makeRelativePathEx "Missing.hs") ]
+      ( Location autogenDir (makeRelativePathEx "G.hs") NE.:| [] )

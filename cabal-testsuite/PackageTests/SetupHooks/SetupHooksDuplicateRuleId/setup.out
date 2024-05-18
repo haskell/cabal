@@ -2,6 +2,6 @@
 Configuring setup-hooks-duplicate-rule-id-test-0.1.0.0...
 # Setup build
 Error: [Cabal-7717]
-Duplicate pre-build rule (RuleId {ruleNameSpace = RulesNameSpace {rulesUnitId = UnitId "main", rulesModuleName = ModuleName "SetupHooks", rulesSrcLoc = (17,59)}, ruleName = "myRule"})
-  - Rule: [] --> [src/A.hs]
-  - Rule: [] --> [src/B.hs]
+Duplicate pre-build rule (RuleId {ruleNameSpace = RulesNameSpace {rulesUnitId = UnitId "main", rulesModuleName = ModuleName "SetupHooks", rulesSrcLoc = (18,59)}, ruleName = "myRule"})
+  - Rule: [] --> [. </> A.hs]
+  - Rule: [] --> [. </> B.hs]

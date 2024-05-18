@@ -14,6 +14,7 @@
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE QuantifiedConstraints #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -65,7 +66,8 @@ module Distribution.Simple.SetupHooks.Rule
   , noRules
 
     -- ** Rule inputs/outputs
-  , Location
+  , Location (..)
+  , location
 
     -- ** File/directory monitoring
   , MonitorFilePath (..)
@@ -95,8 +97,21 @@ import Distribution.ModuleName
   )
 import Distribution.Simple.FileMonitor.Types
 import Distribution.Types.UnitId
+import Distribution.Utils.Path
+  ( FileOrDir (..)
+  , Pkg
+  , RelativePath
+  , SymbolicPath
+  , getSymbolicPath
+  , (</>)
+  )
 import Distribution.Utils.ShortText
   ( ShortText
+  )
+import Distribution.Utils.Structured
+  ( Structure (..)
+  , Structured (..)
+  , nominalStructure
   )
 import Distribution.Verbosity
   ( Verbosity
@@ -130,8 +145,13 @@ import Data.Type.Equality
   ( (:~~:) (HRefl)
   , type (==)
   )
-import GHC.Show (showCommaSpace)
+import GHC.Show
+  ( showCommaSpace
+  )
 import GHC.StaticPtr
+import GHC.TypeLits
+  ( Symbol
+  )
 import System.IO.Unsafe
   ( unsafePerformIO
   )
@@ -143,6 +163,10 @@ import qualified Type.Reflection as Typeable
   , typeRepKind
   , withTypeable
   , pattern App
+  )
+
+import System.FilePath
+  ( normalise
   )
 
 --------------------------------------------------------------------------------
@@ -254,7 +278,7 @@ deriving anyclass instance Binary (RuleData System)
 -- | Trimmed down 'Show' instance, mostly for error messages.
 instance Show RuleBinary where
   show (Rule{staticDependencies = deps, results = reslts, ruleCommands = cmds}) =
-    what ++ ": " ++ showDeps deps ++ " --> " ++ showLocs (NE.toList reslts)
+    what ++ ": " ++ showDeps deps ++ " --> " ++ show (NE.toList reslts)
     where
       what = case cmds of
         StaticRuleCommand{} -> "Rule"
@@ -266,8 +290,6 @@ instance Show RuleBinary where
         RuleDependency (RuleOutput{outputOfRule = rId, outputIndex = i}) ->
           "(" ++ show rId ++ ")[" ++ show i ++ "]"
         FileDependency loc -> show loc
-      showLocs :: [Location] -> String
-      showLocs locs = "[" ++ intercalate ", " (map show locs) ++ "]"
 
 -- | A rule with static dependencies.
 --
@@ -322,13 +344,60 @@ dynamicRule dict depsCmd action dep res =
 -- consisting of a base directory and of a file path relative to that base
 -- directory path.
 --
--- In practice, this will be something like @( dir, toFilePath modName )@,
+-- In practice, this will be something like @'Location' dir ('moduleNameSymbolicPath' mod <.> "hs")@,
 -- where:
 --
 --  - for a file dependency, @dir@ is one of the Cabal search directories,
 --  - for an output, @dir@ is a directory such as @autogenComponentModulesDir@
 --    or @componentBuildDir@.
-type Location = (FilePath, FilePath)
+data Location where
+  Location
+    :: { locationBaseDir :: !(SymbolicPath Pkg (Dir baseDir))
+        -- ^ Base directory.
+       , locationRelPath :: !(RelativePath baseDir File)
+        -- ^ File path relative to base directory (including file extension).
+       }
+    -> Location
+
+instance Eq Location where
+  Location b1 l1 == Location b2 l2 =
+    (getSymbolicPath b1 == getSymbolicPath b2)
+      && (getSymbolicPath l1 == getSymbolicPath l2)
+instance Ord Location where
+  compare (Location b1 l1) (Location b2 l2) =
+    compare
+      (getSymbolicPath b1, getSymbolicPath l1)
+      (getSymbolicPath b2, getSymbolicPath l2)
+instance Binary Location where
+  put (Location base loc) = put (base, loc)
+  get = Location <$> get <*> get
+instance Structured Location where
+  structure _ =
+    Structure
+      tr
+      0
+      (show tr)
+      [
+        ( "Location"
+        ,
+          [ nominalStructure $ Proxy @(SymbolicPath Pkg (Dir (Tok "baseDir")))
+          , nominalStructure $ Proxy @(RelativePath (Tok "baseDir") File)
+          ]
+        )
+      ]
+    where
+      tr = Typeable.SomeTypeRep $ Typeable.typeRep @Location
+
+-- | Get a (relative or absolute) un-interpreted path to a 'Location'.
+location :: Location -> SymbolicPath Pkg File
+location (Location base rel) = base </> rel
+
+instance Show Location where
+  showsPrec p (Location base rel) =
+    showParen (p > 5) $
+      showString (normalise $ getSymbolicPath base)
+        . showString " </> "
+        . showString (normalise $ getSymbolicPath rel)
 
 -- The reason for splitting it up this way is that some pre-processors don't
 -- simply generate one output @.hs@ file from one input file, but have
@@ -1014,6 +1083,10 @@ instance
                                   , dynamicRuleTypeRep = tr
                                   }
           _ -> error "internal error when decoding dynamic rule commands"
+
+-- | A token constructor used to define 'Structured' instances on types
+-- that involve existential quantification.
+data family Tok (arg :: Symbol) :: k
 
 instance
   ( forall res. Binary (ruleCmd System LBS.ByteString res)
