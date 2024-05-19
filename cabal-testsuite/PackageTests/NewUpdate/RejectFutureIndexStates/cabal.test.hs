@@ -1,9 +1,13 @@
 import Test.Cabal.Prelude
 import Data.List (isPrefixOf)
 
-main = cabalTest $ withProjectFile "cabal.project" $ withRemoteRepo "repo" $ do
+main = cabalTest $ do
 
   skip "Flaky test failing in `curl`, see #9530"
+
+  testBody
+
+testBody = withProjectFile "cabal.project" $ withRemoteRepo "repo" $ do
 
   output <- last
           . words
