@@ -260,11 +260,14 @@ testTargetSelectors reportSubCase = do
                                   ":pkg:q:lib:q:file:Q.y"
                      , "app/Main.hs", "p:app/Main.hs", "exe:ppexe:app/Main.hs", "p:ppexe:app/Main.hs",
                                   ":pkg:p:exe:ppexe:file:app/Main.hs"
+                     , "a p p/Main.hs", "p:a p p/Main.hs", "exe:pppexe:a p p/Main.hs", "p:pppexe:a p p/Main.hs",
+                                  ":pkg:p:exe:pppexe:file:a p p/Main.hs"
                      ]
        ts @?= replicate 5 (TargetComponent "p-0.1" (CLibName LMainLibName) (FileTarget "P"))
            ++ replicate 5 (TargetComponent "q-0.1" (CLibName LMainLibName) (FileTarget "QQ"))
            ++ replicate 5 (TargetComponent "q-0.1" (CLibName LMainLibName) (FileTarget "Q"))
            ++ replicate 5 (TargetComponent "p-0.1" (CExeName "ppexe") (FileTarget ("app" </> "Main.hs")))
+           ++ replicate 5 (TargetComponent "p-0.1" (CExeName "pppexe") (FileTarget ("a p p" </> "Main.hs")))
        -- Note there's a bit of an inconsistency here: for the single-part
        -- syntax the target has to point to a file that exists, whereas for
        -- all the other forms we don't require that.
@@ -278,9 +281,8 @@ testTargetSelectors reportSubCase = do
 testTargetSelectorBadSyntax :: Assertion
 testTargetSelectorBadSyntax = do
     (_, _, _, localPackages, _) <- configureProject testdir config
-    let targets = [ "foo bar",  " foo"
-                  , "foo:", "foo::bar"
-                  , "foo: ", "foo: :bar"
+    let targets = [ "foo:", "foo::bar"
+                  , " :foo", "foo: :bar"
                   , "a:b:c:d:e:f", "a:b:c:d:e:f:g:h" ]
     Left errs <- readTargetSelectors localPackages Nothing targets
     zipWithM_ (@?=) errs (map TargetSelectorUnrecognised targets)
