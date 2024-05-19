@@ -300,9 +300,9 @@ withContextAndSelectors noTargets kind flags@NixStyleFlags{..} targetStrings glo
         (withGlobalConfig verbosity globalConfigFlag $ withoutProject mkTmpDir)
 
     (tc', ctx', sels) <- case targetStrings of
-      -- Only script targets may contain spaces and or end with ':'.
+      -- Only script targets may end with ':'.
       -- Trying to readTargetSelectors such a target leads to a parse error.
-      [target] | any (\c -> isSpace c) target || ":" `isSuffixOf` target -> do
+      [target] | ":" `isSuffixOf` target -> do
         scriptOrError target [TargetSelectorNoScript $ TargetString1 target]
       _ -> do
         -- In the case where a selector is both a valid target and script, assume it is a target,

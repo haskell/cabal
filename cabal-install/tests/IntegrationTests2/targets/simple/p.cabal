@@ -15,3 +15,8 @@ executable ppexe
   main-is: Main.hs
   hs-source-dirs: app
   other-modules: PMain
+
+executable pppexe
+  main-is: Main.hs
+  hs-source-dirs: "a p p"
+  other-modules: PMain

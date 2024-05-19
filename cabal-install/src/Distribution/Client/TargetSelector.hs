@@ -327,13 +327,13 @@ parseTargetString =
     parseTargetApprox :: Parse.ReadP r TargetString
     parseTargetApprox =
       ( do
-          a <- tokenQ
+          a <- tokenQEnd
           return (TargetString1 a)
       )
         +++ ( do
                 a <- tokenQ0
                 _ <- Parse.char ':'
-                b <- tokenQ
+                b <- tokenQEnd
                 return (TargetString2 a b)
             )
         +++ ( do
@@ -341,7 +341,7 @@ parseTargetString =
                 _ <- Parse.char ':'
                 b <- tokenQ
                 _ <- Parse.char ':'
-                c <- tokenQ
+                c <- tokenQEnd
                 return (TargetString3 a b c)
             )
         +++ ( do
@@ -351,7 +351,7 @@ parseTargetString =
                 _ <- Parse.char ':'
                 c <- tokenQ
                 _ <- Parse.char ':'
-                d <- tokenQ
+                d <- tokenQEnd
                 return (TargetString4 a b c d)
             )
         +++ ( do
@@ -363,7 +363,7 @@ parseTargetString =
                 _ <- Parse.char ':'
                 d <- tokenQ
                 _ <- Parse.char ':'
-                e <- tokenQ
+                e <- tokenQEnd
                 return (TargetString5 a b c d e)
             )
         +++ ( do
@@ -379,7 +379,7 @@ parseTargetString =
                 _ <- Parse.char ':'
                 f <- tokenQ
                 _ <- Parse.char ':'
-                g <- tokenQ
+                g <- tokenQEnd
                 return (TargetString7 a b c d e f g)
             )
 
@@ -387,6 +387,8 @@ parseTargetString =
     tokenQ = parseHaskellString <++ token
     token0 = Parse.munch (\x -> not (isSpace x) && x /= ':')
     tokenQ0 = parseHaskellString <++ token0
+    tokenEnd = Parse.munch1 (/= ':')
+    tokenQEnd = parseHaskellString <++ tokenEnd
     parseHaskellString :: Parse.ReadP r String
     parseHaskellString = Parse.readS_to_P reads
 
