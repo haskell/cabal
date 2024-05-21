@@ -18,8 +18,6 @@ jobs:
   meta:
     name: Meta checks
     runs-on: ubuntu-latest
-<<<<<<< HEAD
-=======
     env:
       cabal_build: >-
         cabal build --builddir=dist-newstyle-meta --project-file=cabal.meta.project
@@ -27,7 +25,6 @@ jobs:
         gen-paths-module
         gen-spdx
         gen-spdx-exc
->>>>>>> d8147f62c (Rename projects to cabal.*.project)
     # This job is not run in a container, any recent GHC should be fine
     steps:
       - name: Set PATH
@@ -153,9 +150,4 @@ jobs:
       - name: Check Release with Pinned Hackage
         run: cabal build all --dry-run --project-file=cabal.release.project
       - name: Check Release with Latest Hackage
-<<<<<<< HEAD
-        run: cabal build all --dry-run --project-file=cabal.project.release --index-state="hackage.haskell.org HEAD"
-
-=======
         run: cabal build all --dry-run --project-file=cabal.release.project --index-state="hackage.haskell.org HEAD"
->>>>>>> d8147f62c (Rename projects to cabal.*.project)

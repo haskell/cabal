@@ -75,15 +75,9 @@ doc/buildinfo-fields-reference.rst : \
 	cabal run buildinfo-reference-generator buildinfo-reference-generator/template.zinza | tee $@
 	git diff --exit-code $@
 
-<<<<<<< HEAD
 # analyse-imports
 analyse-imports : phony
-	find Cabal-syntax/src Cabal/src cabal-install/src -type f -name '*.hs' | xargs cabal run --builddir=dist-newstyle-meta --project-file=cabal.project.meta analyse-imports --
-=======
-.PHONY: analyse-imports
-analyse-imports :
 	find Cabal-syntax/src Cabal/src cabal-install/src -type f -name '*.hs' | xargs cabal run --builddir=dist-newstyle-meta --project-file=cabal.meta.project analyse-imports --
->>>>>>> d8147f62c (Rename projects to cabal.*.project)
 
 # ghcid
 
@@ -197,11 +191,7 @@ tags :
 ##############################################################################
 
 bootstrap-json-%: phony
-<<<<<<< HEAD
-	cabal build --project-file=cabal.project.release --with-compiler=ghc-$* --dry-run cabal-install:exe:cabal
-=======
 	cabal build --project-file=cabal.bootstrap.project --with-compiler=ghc-$* --dry-run cabal-install:exe:cabal
->>>>>>> d8147f62c (Rename projects to cabal.*.project)
 	cp dist-newstyle/cache/plan.json bootstrap/linux-$*.plan.json
 	@# -v0 to avoid build output on stdout
 	cd bootstrap && cabal run -v0 cabal-bootstrap-gen -- linux-$*.plan.json \
