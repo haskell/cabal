@@ -15,7 +15,6 @@ on:
     - 'doc/Makefile'
     - 'doc/pyproject.toml'
     - 'doc/requirements.in'
-    - 'doc/requirements.txt'
     - 'doc/*.inc'
     - 'doc/*.py'
     - 'doc/*.rst'
@@ -26,7 +25,6 @@ on:
     - 'doc/Makefile'
     - 'doc/pyproject.toml'
     - 'doc/requirements.in'
-    - 'doc/requirements.txt'
     - 'doc/*.inc'
     - 'doc/*.py'
     - 'doc/*.rst'
@@ -57,6 +55,14 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
+
+    - name: Install pip-compile
+      run: |
+        pip install pip-tools
+
+    - name: Create requirements.txt from requirements.in
+      run: |
+        make users-guide-requirements
 
     # Subsumed by make users-guide
     # - name: Install dependencies
