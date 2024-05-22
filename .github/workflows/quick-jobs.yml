@@ -14,6 +14,9 @@ on:
     types:
       - created
 
+env:
+  GHC_FOR_QUICK_JOBS: 9.6.5
+
 jobs:
   meta:
     name: Meta checks
@@ -28,22 +31,12 @@ jobs:
         with:
           path: ~/.cabal/store
           key: linux-store-meta
-      # See https://github.com/haskell/cabal/pull/8739
-      - name: Sudo chmod to permit ghcup to update its cache
-        run: |
-          if [[ "${{ runner.os }}" == "Linux" ]]; then
-            sudo ls -lah /usr/local/.ghcup/cache
-            sudo mkdir -p /usr/local/.ghcup/cache
-            sudo ls -lah /usr/local/.ghcup/cache
-            sudo chown -R $USER /usr/local/.ghcup
-            sudo chmod -R 777 /usr/local/.ghcup
-          fi
       - name: ghcup
         run: |
           ghcup --version
           ghcup config set cache true
-          ghcup install ghc recommended
-          ghcup set ghc recommended
+          ghcup install ghc $GHC_FOR_QUICK_JOBS
+          ghcup set ghc $GHC_FOR_QUICK_JOBS
       - name: Update Hackage index
         run: cabal v2-update
       - name: Install alex
@@ -69,22 +62,16 @@ jobs:
         with:
           path: ~/.cabal/store
           key: linux-store-doctest
-      # See https://github.com/haskell/cabal/pull/8739
-      - name: Sudo chmod to permit ghcup to update its cache
-        run: |
-          if [[ "${{ runner.os }}" == "Linux" ]]; then
-            sudo ls -lah /usr/local/.ghcup/cache
-            sudo mkdir -p /usr/local/.ghcup/cache
-            sudo ls -lah /usr/local/.ghcup/cache
-            sudo chown -R $USER /usr/local/.ghcup
-            sudo chmod -R 777 /usr/local/.ghcup
-          fi
       - name: ghcup
         run: |
           ghcup --version
           ghcup config set cache true
-          ghcup install ghc --set recommended
-          ghcup install cabal --set latest
+          ghcup install ghc $GHC_FOR_QUICK_JOBS
+          ghcup set ghc $GHC_FOR_QUICK_JOBS
+      - name: Haskell versions
+        run: |
+          ghc --version
+          cabal --version
       - name: Update Hackage index
         run: cabal v2-update
       - uses: actions/checkout@v4
@@ -103,22 +90,16 @@ jobs:
         with:
           path: ~/.cabal/store
           key: linux-store-buildinfo-doc-diff
-      # See https://github.com/haskell/cabal/pull/8739
-      - name: Sudo chmod to permit ghcup to update its cache
-        run: |
-          if [[ "${{ runner.os }}" == "Linux" ]]; then
-            sudo ls -lah /usr/local/.ghcup/cache
-            sudo mkdir -p /usr/local/.ghcup/cache
-            sudo ls -lah /usr/local/.ghcup/cache
-            sudo chown -R $USER /usr/local/.ghcup
-            sudo chmod -R 777 /usr/local/.ghcup
-          fi
       - name: ghcup
         run: |
           ghcup --version
           ghcup config set cache true
-          ghcup install ghc --set recommended
-          ghcup install cabal --set latest
+          ghcup install ghc $GHC_FOR_QUICK_JOBS
+          ghcup set ghc $GHC_FOR_QUICK_JOBS
+      - name: Haskell versions
+        run: |
+          ghc --version
+          cabal --version
       - name: Update Hackage index
         run: cabal v2-update
       - uses: actions/checkout@v4
@@ -135,8 +116,12 @@ jobs:
         run: |
           ghcup --version
           ghcup config set cache true
-          ghcup install ghc --set recommended
-          ghcup install cabal --set latest
+          ghcup install ghc $GHC_FOR_QUICK_JOBS
+          ghcup set ghc $GHC_FOR_QUICK_JOBS
+      - name: Haskell versions
+        run: |
+          ghc --version
+          cabal --version
       - name: Update Hackage Index
         run: cabal v2-update
       - uses: actions/checkout@v4
