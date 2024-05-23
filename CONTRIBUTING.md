@@ -15,7 +15,7 @@ If you have trouble building the testsuite for this initial build, try building
 with the release project that excludes this testsuite:
 
 ```
-$ cabal build cabal --project-file=cabal.release.project
+cabal build --project-file=cabal.release.project cabal
 ```
 
 > [!NOTE]
