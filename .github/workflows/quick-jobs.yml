@@ -36,6 +36,10 @@ jobs:
           ghcup config set cache true
           ghcup install ghc $GHC_FOR_QUICK_JOBS
           ghcup set ghc $GHC_FOR_QUICK_JOBS
+      - name: Haskell versions
+        run: |
+          ghc --version
+          cabal --version
       - name: Update Hackage index
         run: cabal v2-update
       - uses: actions/checkout@v4
@@ -84,6 +88,12 @@ jobs:
           path: ~/.local/state/cabal
           key: linux-store-doctest-${{ env.DATE }}
           restore-keys: linux-store-doctest
+      - name: ghcup
+        run: |
+          ghcup --version
+          ghcup config set cache true
+          ghcup install ghc $GHC_FOR_QUICK_JOBS
+          ghcup set ghc $GHC_FOR_QUICK_JOBS
       - name: Haskell versions
         run: |
           ghc --version
