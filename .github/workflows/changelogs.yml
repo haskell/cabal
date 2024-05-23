@@ -26,43 +26,12 @@ jobs:
 
     steps:
 
-      # Cannot install changelog-d directly from remote tarball due to
-      # https://github.com/haskell/cabal/issues/7360
-      # Also, we would like to get the build plan for the cache key.
-      - name: Fetch changelog-d
-        run: |
-          changelog_d_latest="$(curl https://codeberg.org/api/v1/repos/fgaz/changelog-d/branches/master | jq -r .commit.id)"
-          echo "Using changelog-d revision $changelog_d_latest"
-          curl "https://codeberg.org/fgaz/changelog-d/archive/$changelog_d_latest.tar.gz" -o changelog-d.tar.gz
-          tar -xf changelog-d.tar.gz
-
-      - name: Update Hackage index
-        run: cabal v2-update
-
-      - name: Build plan for changelog-d
-        working-directory: changelog-d
-        run: |
-          cabal v2-build --dry-run --allow-newer=changelog-d:base
-
-      - name: Restore dependencies of changelog-d
-        uses: actions/cache/restore@v4
-        id: cache
-        with:
-          path: ~/.local/state/cabal
-          key: linux-store-changelogs-${{ hashfiles('changelog-d/dist-newstyle/cache/plan.json') }}
-          restore-keys: linux-store-changelogs
-
       - name: Install changelog-d
-        working-directory: changelog-d
         run: |
-          cabal v2-install --allow-newer=changelog-d:base
-
-      - name: Cache dependencies of changelog-d
-        uses: actions/cache/save@v4
-        if: always() && steps.cache.outputs.cache-hit != 'true'
-        with:
-          path: ~/.local/state/cabal
-          key: ${{ steps.cache.outputs.cache-primary-key }}
+          curl --create-dirs -o "$HOME/.local/bin/changelog-d" "https://codeberg.org/fgaz/changelog-d/releases/download/v1.0/changelog-d-v1.0-x86_64-linux"
+          chmod +x "$HOME/.local/bin/changelog-d"
+          # https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#adding-a-system-path
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
 
       - name: Checkout cabal sources
         uses: actions/checkout@v4
