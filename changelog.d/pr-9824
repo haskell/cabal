@@ -1,0 +1,10 @@
+synopsis: Abbrevate solver rejection messages with installed versions
+packages: cabal-install-solver
+prs: #9824
+issues: #9823
+
+description: {
+
+Abbreviate solver rejection messages even in the presence of installed versions.
+
+}
