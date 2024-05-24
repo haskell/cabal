@@ -1,0 +1,10 @@
+synopsis: Fix behaviour of --disable-shared
+packages: cabal-install
+prs: #10054
+issues: #10050
+
+description: Previously `--disable-shared` was not applied unless `--disable-executable-dynamic` was
+also explicitly configured.
+
+Now `--disable-shared` will turn off building shared libraries irrespective of whether
+`--disable-executable-dynamic` is specified.

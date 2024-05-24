@@ -219,6 +219,7 @@ import Distribution.Solver.Types.ProjectConfigPath
 import System.FilePath
 import Text.PrettyPrint (colon, comma, fsep, hang, punctuate, quotes, text, vcat, ($$))
 import qualified Text.PrettyPrint as Disp
+import Data.Semigroup
 
 -- | Check that an 'ElaboratedConfiguredPackage' actually makes
 -- sense under some 'ElaboratedSharedConfig'.
@@ -2365,7 +2366,7 @@ elaborateInstallPlan
           needsSharedLib pkg =
             fromMaybe
               compilerShouldUseSharedLibByDefault
-              (liftM2 (||) pkgSharedLib pkgDynExe)
+              (getMax <$> ((Max <$> pkgSharedLib) <> (Max <$> pkgDynExe)))
             where
               pkgid = packageId pkg
               pkgSharedLib = perPkgOptionMaybe pkgid packageConfigSharedLib
