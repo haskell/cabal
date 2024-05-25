@@ -258,28 +258,31 @@ configure verbosity hcPath hcPkgPath conf0 = do
       progdb4 = Internal.configureToolchain implInfo ghcProg ghcInfoMap progdb3
   return (comp, compPlatform, progdb4)
 
+-- | Output of @ghc --info@ parsed as a map
 type GhcInfo = Map String String
 
-resloveGhcPath :: ConfiguredProgram -> GhcInfo -> FilePath
-resloveGhcPath ghcProg ghcInfo = fromMaybe (programPath ghcProg) realGhcPath
-  where
-    realGhcPath :: Maybe FilePath
-    --
-    -- This will give us the path to the actual `ghc` executable when `doctest`
-    -- is invoked via `cabal repl --with-ghc=doctest`.
-    --
-    -- Context:
-    --
-    -- If `doctest` is invoked via `cabal repl` it acts as a proxy for `ghc`.
-    -- It forwards all non-interactive invocations to `ghc` and only takes
-    -- responsibility when invoked with `--interactive`.  On `--info` it
-    -- augments the result of `ghc --info` with three additional fields:
-    --
-    -- 1. ghc: The path to the `ghc` executable that is used by `doctest`.
-    -- 2. ghc_version: The version of `ghc`
-    -- 3. version: The version of `doctest` itself.
-    --
-    realGhcPath = Map.lookup "ghc" ghcInfo
+-- | Resolve the path of GHC to either:
+--
+--   * the value of the @ghc@ key in the 'GhcInfo' table, if defined, or
+--   * the path as defined in 'ConfiguredProgram'.
+--
+-- This is useful when the program configured with @--with-ghc=prog@ is in fact
+-- a /proxy/ to ghc, e.g. @doctest@ or @hie-bios@. Such program may augment the
+-- output of @ghc --info@ to provide further information, such as the path to
+-- the real ghc which it acts as proxy for.
+--
+-- Example with the @doctest@ package:
+--
+-- If `doctest` is invoked via `cabal repl` it acts as a proxy for `ghc`.
+-- It forwards all non-interactive invocations to `ghc` and only takes
+-- responsibility when invoked with `--interactive`.  On `--info` it
+-- augments the result of `ghc --info` with three additional fields:
+--
+-- 1. ghc: The path to the `ghc` executable that is used by `doctest`.
+-- 2. ghc_version: The version of `ghc`
+-- 3. version: The version of `doctest` itself.
+resolveGhcPath :: ConfiguredProgram -> GhcInfo -> FilePath
+resolveGhcPath ghcProg = fromMaybe (programPath ghcProg) . Map.lookup "ghc"
 
 -- | Given something like /usr/local/bin/ghc-6.6.1(.exe) we try and find
 -- the corresponding tool; e.g. if the tool is ghc-pkg, we try looking
@@ -298,7 +301,7 @@ guessToolFromGhcPath
 guessToolFromGhcPath tool ghcProg ghcInfo verbosity searchpath =
   do
     let toolname = programName tool
-        given_path = resloveGhcPath ghcProg ghcInfo
+        given_path = resolveGhcPath ghcProg ghcInfo
         given_dir = takeDirectory given_path
     real_path <- canonicalizePath given_path
     let real_dir = takeDirectory real_path
