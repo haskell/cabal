@@ -1,0 +1,9 @@
+synopsis: Don't recommend deprecated/removed 'extensions:' field
+packages: Cabal
+prs: #10044
+issues: #10042
+
+description: {
+  When applicable, field 'default-extensions:' is recommended (rather than
+  deprecated/removed 'extensions:').
+}
