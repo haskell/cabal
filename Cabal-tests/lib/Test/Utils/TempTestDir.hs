@@ -28,14 +28,9 @@ withTestDir :: (MonadIO m, MonadMask m) => Verbosity -> String -> (FilePath -> m
 withTestDir verbosity template action = do
   systmpdir <- liftIO getTemporaryDirectory
   bracket
-<<<<<<< HEAD
-    (createTempDirectory systmpdir template)
-    (removeDirectoryRecursiveHack verbosity)
-=======
     ( do { tmpRelDir <- liftIO $ createTempDirectory systmpdir template
          ; return $ systmpdir </> tmpRelDir } )
     (liftIO . removeDirectoryRecursiveHack verbosity)
->>>>>>> 2a2d0b304 (testsuite: Refactor withShorterPathForNewBuildStore)
     action
 
 -- | On Windows, file locks held by programs we run (in this case VCSs)
