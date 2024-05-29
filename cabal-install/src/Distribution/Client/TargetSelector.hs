@@ -101,6 +101,11 @@ import Control.Arrow ((&&&))
 import Control.Monad hiding
   ( mfilter
   )
+#if MIN_VERSION_base(4,20,0)
+import Data.Functor as UZ (unzip)
+#else
+import qualified Data.List.NonEmpty as UZ (unzip)
+#endif
 import Data.List
   ( stripPrefix
   )
@@ -585,7 +590,7 @@ resolveTargetSelector knowntargets@KnownTargets{..} mfilter targetStrStatus =
 
     classifyMatchErrors errs
       | Just expectedNE <- NE.nonEmpty expected =
-          let (things, got :| _) = NE.unzip expectedNE
+          let (things, got :| _) = UZ.unzip expectedNE
            in TargetSelectorExpected targetStr (NE.toList things) got
       | not (null nosuch) =
           TargetSelectorNoSuch targetStr nosuch
