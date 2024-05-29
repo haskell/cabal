@@ -17,9 +17,7 @@ import Control.Monad.IO.Class
 
 import System.Directory
 import System.IO.Error
-#if !(MIN_VERSION_directory(1,2,7))
 import System.FilePath ((</>))
-#endif
 import qualified System.Info (os)
 
 -- | Much like 'withTemporaryDirectory' but with a number of hacks to make
