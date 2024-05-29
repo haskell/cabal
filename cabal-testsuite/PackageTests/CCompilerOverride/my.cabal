@@ -9,5 +9,5 @@ executable foo
     main-is:          Main.hs
     c-sources:        foo.c
     build-depends:    base
-    ghc-options:      -DNOERROR4
+    ghc-options:      -optc=-DNOERROR4
     cc-options:       -DNOERROR5 -march=native
