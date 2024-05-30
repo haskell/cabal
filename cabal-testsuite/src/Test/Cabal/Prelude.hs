@@ -108,6 +108,10 @@ withDirectory :: FilePath -> TestM a -> TestM a
 withDirectory f = withReaderT
     (\env -> env { testRelativeCurrentDir = testRelativeCurrentDir env </> f })
 
+withStoreDir :: FilePath -> TestM a -> TestM a
+withStoreDir fp =
+  withReaderT (\env -> env { testMaybeStoreDir = Just fp })
+
 -- We append to the environment list, as per 'getEffectiveEnvironment'
 -- which prefers the latest override.
 withEnv :: [(String, Maybe String)] -> TestM a -> TestM a
@@ -327,7 +331,11 @@ cabalGArgs global_args cmd args input = do
           | cmd == "v1-install" || cmd == "v1-build" = [ "-j1" ]
           | otherwise                                = []
 
-        cabal_args = global_args
+        global_args' =
+            [ "--store-dir=" ++ storeDir | Just storeDir <- [testMaybeStoreDir env] ]
+            ++ global_args
+
+        cabal_args = global_args'
                   ++ [ cmd, marked_verbose ]
                   ++ extra_args
                   ++ args
@@ -1085,26 +1093,27 @@ copySourceFileTo src dest = do
 -- limit) by creating a temporary directory for the new-build store. This
 -- function creates a directory immediately under the current drive on Windows.
 -- The directory must be passed to new- commands with --store-dir.
-withShorterPathForNewBuildStore :: (FilePath -> IO a) -> IO a
+withShorterPathForNewBuildStore :: TestM a -> TestM a
 withShorterPathForNewBuildStore test =
-  withTestDir normal "cabal-test-store" test
+  withTestDir normal "cabal-test-store" (\f -> withStoreDir f test)
 
 -- | Find where a package locates in the store dir. This works only if there is exactly one 1 ghc version
 -- and exactly 1 directory for the given package in the store dir.
-findDependencyInStore :: FilePath -- ^store dir
-                      -> String -- ^package name prefix
-                      -> IO FilePath -- ^package dir
-findDependencyInStore storeDir pkgName = do
-    (storeDirForGhcVersion : _) <- listDirectory storeDir
-    packageDirs <- listDirectory (storeDir </> storeDirForGhcVersion)
-    -- Ideally, we should call 'hashedInstalledPackageId' from 'Distribution.Client.PackageHash'.
-    -- But 'PackageHashInputs', especially 'PackageHashConfigInputs', is too hard to construct.
-    let pkgName' =
-            if buildOS == OSX
-            then filter (not . flip elem "aeiou") pkgName
-                -- simulates the way 'hashedInstalledPackageId' uses to compress package name
-            else pkgName
-    let libDir = case filter (pkgName' `isPrefixOf`) packageDirs of
-                    [] -> error $ "Could not find " <> pkgName' <> " when searching for " <> pkgName' <> " in\n" <> show packageDirs
-                    (dir:_) -> dir
-    pure (storeDir </> storeDirForGhcVersion </> libDir)
+findDependencyInStore :: String -- ^package name prefix
+                      -> TestM FilePath -- ^package dir
+findDependencyInStore pkgName = do
+    storeDir <- testStoreDir <$> getTestEnv
+    liftIO $ do
+      storeDirForGhcVersion:_ <- listDirectory storeDir
+      packageDirs <- listDirectory (storeDir </> storeDirForGhcVersion)
+      -- Ideally, we should call 'hashedInstalledPackageId' from 'Distribution.Client.PackageHash'.
+      -- But 'PackageHashInputs', especially 'PackageHashConfigInputs', is too hard to construct.
+      let pkgName' =
+              if buildOS == OSX
+              then filter (not . flip elem "aeiou") pkgName
+                  -- simulates the way 'hashedInstalledPackageId' uses to compress package name
+              else pkgName
+      let libDir = case filter (pkgName' `isPrefixOf`) packageDirs of
+                      [] -> error $ "Could not find " <> pkgName' <> " when searching for " <> pkgName' <> " in\n" <> show packageDirs
+                      (dir:_) -> dir
+      pure (storeDir </> storeDirForGhcVersion </> libDir)
