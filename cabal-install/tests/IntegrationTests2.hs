@@ -2099,6 +2099,7 @@ testConfigOptionComments = do
   "  -- contents-location" @=? findLineWith True "contents-location" defaultConfigFile
   "  -- index-location" @=? findLineWith True "index-location" defaultConfigFile
   "  -- base-url" @=? findLineWith True "base-url" defaultConfigFile
+  "  -- resources-dir" @=? findLineWith True "resources-dir" defaultConfigFile
   "  -- output-dir" @=? findLineWith True "output-dir" defaultConfigFile
 
   "  -- interactive" @=? findLineWith True "interactive" defaultConfigFile

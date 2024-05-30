@@ -2163,6 +2163,13 @@ elaborateInstallPlan
             elabBuildHaddocks =
               perPkgOptionFlag pkgid False packageConfigDocumentation
 
+            -- `documentation: true` should imply `-haddock` for GHC
+            addHaddockIfDocumentationEnabled :: ConfiguredProgram -> ConfiguredProgram
+            addHaddockIfDocumentationEnabled cp@ConfiguredProgram{..} =
+              if programId == "ghc" && elabBuildHaddocks
+                then cp{programOverrideArgs = "-haddock" : programOverrideArgs}
+                else cp
+
             elabPkgSourceLocation = srcloc
             elabPkgSourceHash = Map.lookup pkgid sourcePackageHashes
             elabLocalToProject = isLocalToProject pkg
@@ -2242,7 +2249,7 @@ elaborateInstallPlan
               Map.fromList
                 [ (programId prog, args)
                 | prog <- configuredPrograms compilerprogdb
-                , let args = programOverrideArgs prog
+                , let args = programOverrideArgs $ addHaddockIfDocumentationEnabled prog
                 , not (null args)
                 ]
                 <> perPkgOptionMapMappend pkgid packageConfigProgramArgs
@@ -2271,7 +2278,7 @@ elaborateInstallPlan
             elabHaddockContents = perPkgOptionMaybe pkgid packageConfigHaddockContents
             elabHaddockIndex = perPkgOptionMaybe pkgid packageConfigHaddockIndex
             elabHaddockBaseUrl = perPkgOptionMaybe pkgid packageConfigHaddockBaseUrl
-            elabHaddockLib = perPkgOptionMaybe pkgid packageConfigHaddockLib
+            elabHaddockResourcesDir = perPkgOptionMaybe pkgid packageConfigHaddockResourcesDir
             elabHaddockOutputDir = perPkgOptionMaybe pkgid packageConfigHaddockOutputDir
 
             elabTestMachineLog = perPkgOptionMaybe pkgid packageConfigTestMachineLog
@@ -4138,7 +4145,7 @@ setupHsHaddockFlags
       , haddockKeepTempFiles = toFlag keepTmpFiles
       , haddockIndex = maybe mempty toFlag elabHaddockIndex
       , haddockBaseUrl = maybe mempty toFlag elabHaddockBaseUrl
-      , haddockLib = maybe mempty toFlag elabHaddockLib
+      , haddockResourcesDir = maybe mempty toFlag elabHaddockResourcesDir
       , haddockOutputDir = maybe mempty toFlag elabHaddockOutputDir
       }
 
@@ -4296,7 +4303,7 @@ packageHashConfigInputs shared@ElaboratedSharedConfig{..} pkg =
     , pkgHashHaddockContents = elabHaddockContents
     , pkgHashHaddockIndex = elabHaddockIndex
     , pkgHashHaddockBaseUrl = elabHaddockBaseUrl
-    , pkgHashHaddockLib = elabHaddockLib
+    , pkgHashHaddockResourcesDir = elabHaddockResourcesDir
     , pkgHashHaddockOutputDir = elabHaddockOutputDir
     }
   where

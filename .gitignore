@@ -98,6 +98,9 @@ bench.html
 # Emacs
 .projectile
 
+# direnv
+.envrc
+
 ## Release Scripts
 
 # ignore the downloaded binary files

@@ -791,7 +791,7 @@ instance Arbitrary PackageConfig where
       , packageConfigHaddockForHackage = x41
       , packageConfigHaddockIndex = x54
       , packageConfigHaddockBaseUrl = x55
-      , packageConfigHaddockLib = x56
+      , packageConfigHaddockResourcesDir = x56
       , packageConfigHaddockOutputDir = x57
       , packageConfigTestHumanLog = x44
       , packageConfigTestMachineLog = x45
@@ -854,7 +854,7 @@ instance Arbitrary PackageConfig where
         , packageConfigHaddockForHackage = x41'
         , packageConfigHaddockIndex = x54'
         , packageConfigHaddockBaseUrl = x55'
-        , packageConfigHaddockLib = x56'
+        , packageConfigHaddockResourcesDir = x56'
         , packageConfigHaddockOutputDir = x57'
         , packageConfigTestHumanLog = x44'
         , packageConfigTestMachineLog = x45'

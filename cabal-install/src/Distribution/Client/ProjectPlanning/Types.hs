@@ -300,7 +300,7 @@ data ElaboratedConfiguredPackage = ElaboratedConfiguredPackage
   , elabHaddockContents :: Maybe PathTemplate
   , elabHaddockIndex :: Maybe PathTemplate
   , elabHaddockBaseUrl :: Maybe String
-  , elabHaddockLib :: Maybe String
+  , elabHaddockResourcesDir :: Maybe String
   , elabHaddockOutputDir :: Maybe FilePath
   , elabTestMachineLog :: Maybe PathTemplate
   , elabTestHumanLog :: Maybe PathTemplate

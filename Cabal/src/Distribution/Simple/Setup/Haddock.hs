@@ -113,7 +113,7 @@ data HaddockFlags = HaddockFlags
   , haddockIndex :: Flag PathTemplate
   , haddockKeepTempFiles :: Flag Bool
   , haddockBaseUrl :: Flag String
-  , haddockLib :: Flag String
+  , haddockResourcesDir :: Flag String
   , haddockOutputDir :: Flag FilePath
   }
   deriving (Show, Generic, Typeable)
@@ -168,7 +168,7 @@ defaultHaddockFlags =
     , haddockKeepTempFiles = Flag False
     , haddockIndex = NoFlag
     , haddockBaseUrl = NoFlag
-    , haddockLib = NoFlag
+    , haddockResourcesDir = NoFlag
     , haddockOutputDir = NoFlag
     }
 
@@ -366,10 +366,10 @@ haddockOptions showOrParseArgs =
         (reqArgFlag "URL")
     , option
         ""
-        ["lib"]
+        ["resources-dir"]
         "location of Haddocks static / auxiliary files"
-        haddockLib
-        (\v flags -> flags{haddockLib = v})
+        haddockResourcesDir
+        (\v flags -> flags{haddockResourcesDir = v})
         (reqArgFlag "DIR")
     , option
         ""
@@ -440,7 +440,7 @@ data HaddockProjectFlags = HaddockProjectFlags
     haddockProjectKeepTempFiles :: Flag Bool
   , haddockProjectVerbosity :: Flag Verbosity
   , -- haddockBaseUrl is not supported, a fixed value is provided
-    haddockProjectLib :: Flag String
+    haddockProjectResourcesDir :: Flag String
   , haddockProjectOutputDir :: Flag FilePath
   }
   deriving (Show, Generic, Typeable)
@@ -464,7 +464,7 @@ defaultHaddockProjectFlags =
     , haddockProjectHscolourCss = NoFlag
     , haddockProjectKeepTempFiles = Flag False
     , haddockProjectVerbosity = Flag normal
-    , haddockProjectLib = NoFlag
+    , haddockProjectResourcesDir = NoFlag
     , haddockProjectOutputDir = NoFlag
     , haddockProjectInterfaces = NoFlag
     }
@@ -608,10 +608,10 @@ haddockProjectOptions _showOrParseArgs =
       (\v flags -> flags{haddockProjectVerbosity = v})
   , option
       ""
-      ["lib"]
+      ["resources-dir"]
       "location of Haddocks static / auxiliary files"
-      haddockProjectLib
-      (\v flags -> flags{haddockProjectLib = v})
+      haddockProjectResourcesDir
+      (\v flags -> flags{haddockProjectResourcesDir = v})
       (reqArgFlag "DIR")
   , option
       ""

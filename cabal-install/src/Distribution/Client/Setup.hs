@@ -2435,7 +2435,7 @@ haddockOptions showOrParseArgs =
              , "use-index"
              , "for-hackage"
              , "base-url"
-             , "lib"
+             , "resources-dir"
              , "output-dir"
              ]
   ]

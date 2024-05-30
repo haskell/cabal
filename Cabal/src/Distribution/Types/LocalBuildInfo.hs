@@ -57,6 +57,7 @@ module Distribution.Types.LocalBuildInfo
   , buildDir
   , buildDirPBD
   , setupFlagsBuildDir
+  , distPrefLBI
   , packageRoot
   , progPrefix
   , progSuffix
@@ -288,6 +289,9 @@ buildDirPBD (LBC.PackageBuildDescr{configFlags = cfg}) =
 
 setupFlagsBuildDir :: CommonSetupFlags -> SymbolicPath Pkg (Dir Build)
 setupFlagsBuildDir cfg = fromFlag (setupDistPref cfg) </> makeRelativePathEx "build"
+
+distPrefLBI :: LocalBuildInfo -> SymbolicPath Pkg (Dir Dist)
+distPrefLBI = fromFlag . setupDistPref . configCommonFlags . LBC.configFlags . LBC.packageBuildDescr . localBuildDescr
 
 -- | The (relative or absolute) path to the package root, based on
 --

@@ -25,8 +25,8 @@ repository hackage.haskell.org
 -- store-dir:
 -- active-repositories:
 -- local-no-index-repo:
-remote-repo-cache: /home/colton/.cabal/packages
--- logs-dir: /home/colton/.cabal/logs
+remote-repo-cache: /Users/finley/.cabal/packages
+-- logs-dir: /Users/finley/.cabal/logs
 -- default-user-config:
 -- verbose: 1
 -- compiler: ghc
@@ -63,7 +63,7 @@ remote-repo-cache: /home/colton/.cabal/packages
 -- extra-lib-dirs:
 -- extra-lib-dirs-static:
 -- extra-framework-dirs:
-extra-prog-path: /home/colton/.cabal/bin
+-- extra-prog-path:
 -- instantiate-with:
 -- tests: False
 -- coverage: False
@@ -104,12 +104,13 @@ extra-prog-path: /home/colton/.cabal/bin
 -- index-state:
 -- root-cmd:
 -- symlink-bindir:
-build-summary: /home/colton/.cabal/logs/build.log
+build-summary: /Users/finley/.cabal/logs/build.log
 -- build-log:
 remote-build-reporting: none
 -- report-planning-failure: False
 -- per-component: True
 -- run-tests:
+-- semaphore: False
 jobs: $ncpus
 -- keep-going: False
 -- offline: False
@@ -117,10 +118,11 @@ jobs: $ncpus
 -- package-env:
 -- overwrite-policy:
 -- install-method:
-installdir: /home/colton/.cabal/bin
+installdir: /Users/finley/.cabal/bin
 -- username:
 -- password:
 -- password-command:
+-- multi-repl:
 -- builddir:
 
 haddock
@@ -141,7 +143,7 @@ haddock
   -- contents-location:
   -- index-location:
   -- base-url:
-  -- lib:
+  -- resources-dir:
   -- output-dir:
 
 init
@@ -160,7 +162,7 @@ init
   -- source-dir: src
 
 install-dirs user
-  -- prefix: /home/colton/.cabal
+  -- prefix: /Users/finley/.cabal
   -- bindir: $prefix/bin
   -- libdir: $prefix/lib
   -- libsubdir: $abi/$libname

@@ -630,7 +630,7 @@ instance Semigroup SavedConfig where
           , haddockKeepTempFiles = combine haddockKeepTempFiles
           , haddockIndex = combine haddockIndex
           , haddockBaseUrl = combine haddockBaseUrl
-          , haddockLib = combine haddockLib
+          , haddockResourcesDir = combine haddockResourcesDir
           , haddockOutputDir = combine haddockOutputDir
           }
         where
