@@ -16,6 +16,7 @@ module Distribution.Fields.ParseResult
   , getCabalSpecVersion
   , setCabalSpecVersion
   , withoutWarnings
+  , liftPR
   ) where
 
 import Distribution.Compat.Prelude
@@ -61,6 +62,16 @@ runParseResult pr = unPR pr emptyPRState failure success
     success (PRState warns [] _) x = (warns, Right x)
     -- If there are any errors, don't return the result
     success (PRState warns (err : errs) v) _ = (warns, Left (v, err :| errs))
+
+liftPR :: (a -> IO (ParseResult b)) -> ParseResult a -> IO (ParseResult b)
+liftPR f pr = unPR pr emptyPRState failure success
+  where
+    failure s = return $ PR $ \s' failure' _ -> failure' (concatPRState s s')
+    success s a = do
+      pr' <- f a
+      return $ PR $ \s' failure' success' -> unPR pr' (concatPRState s s') failure' success'
+    concatPRState (PRState warnings errors version) (PRState warnings' errors' version') =
+      (PRState (warnings ++ warnings') (toList errors ++ errors') (version <|> version'))
 
 instance Functor ParseResult where
   fmap f (PR pr) = PR $ \ !s failure success ->

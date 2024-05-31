@@ -1,0 +1,7 @@
+package *
+    static: True
+    ghc-options: -Wall
+
+package *
+    shared: True
+    ghc-options: -fwarn-tabs
