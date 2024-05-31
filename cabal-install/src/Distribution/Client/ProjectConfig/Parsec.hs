@@ -216,7 +216,7 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
       | otherwise = mapM_ sanityWalkBranch comps >> pure t
 
     sanityWalkBranch :: CondBranch ConfVar [ProjectConfigPath] ProjectConfig -> ParseResult ()
-    sanityWalkBranch (CondBranch _c t f) = traverse (sanityWalkPCS True) f >> sanityWalkPCS True t >> pure ()
+    sanityWalkBranch (CondBranch _c t f) = traverse_ (sanityWalkPCS True) f >> sanityWalkPCS True t >> pure ()
 
     programDb = defaultProgramDb
 

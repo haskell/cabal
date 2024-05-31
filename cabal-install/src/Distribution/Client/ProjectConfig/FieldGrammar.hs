@@ -158,7 +158,7 @@ packageConfigFieldGrammar knownPrograms =
     <*> optionalFieldDef "haddock-contents-location" L.packageConfigHaddockContents mempty
     <*> optionalFieldDef "haddock-index-location" L.packageConfigHaddockIndex mempty
     <*> optionalFieldDefAla "haddock-base-url" (alaFlag Token) L.packageConfigHaddockBaseUrl mempty
-    <*> optionalFieldDefAla "haddock-lib" (alaFlag Token) L.packageConfigHaddockLib mempty
+    <*> optionalFieldDefAla "haddock-resources-dir" (alaFlag Token) L.packageConfigHaddockResourcesDir mempty
     <*> optionalFieldDefAla "haddock-output-dir" (alaFlag FilePathNT) L.packageConfigHaddockOutputDir mempty
     <*> optionalFieldDef "haddock-for-hackage" L.packageConfigHaddockForHackage mempty
     <*> optionalFieldDef "test-log" L.packageConfigTestHumanLog mempty
