@@ -16,6 +16,7 @@ import Distribution.Client.Utils.Parsec
 import Distribution.Compat.Prelude
 import Distribution.FieldGrammar
 import Distribution.Simple.Flag
+import Distribution.Simple.InstallDirs
 import Distribution.Solver.Types.ConstraintSource (ConstraintSource (..))
 import Distribution.Solver.Types.ProjectConfigPath
 import Distribution.Types.PackageVersionConstraint (PackageVersionConstraint (..))
@@ -77,7 +78,7 @@ projectConfigSharedFieldGrammar source =
     <*> optionalFieldDefAla "with-compiler" (alaFlag FilePathNT) L.projectConfigHcPath mempty
     <*> optionalFieldDefAla "with-hc-pkg" (alaFlag FilePathNT) L.projectConfigHcPkg mempty
     <*> optionalFieldDef "doc-index-file" L.projectConfigHaddockIndex mempty
-    <*> pure mempty -- cli flag: projectConfigInstallDirs
+    <*> blurFieldGrammar L.projectConfigInstallDirs installDirsGrammar
     <*> monoidalFieldAla "package-dbs" (alaList' CommaFSep PackageDBNT) L.projectConfigPackageDBs
     <*> pure mempty -- cli flag: projectConfigRemoteRepos
     <*> pure mempty -- cli flag: projectConfigLocalNoIndexRepos
