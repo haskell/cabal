@@ -37,3 +37,18 @@ prefer-oldest: True
 extra-prog-path: /foo/bar, /baz/quux
 extra-prog-path-shared-only: /foo/bar, /baz/quux
 multi-repl: True
+
+-- InstallDirs
+prefix: my/prefix-path
+bindir: bin/dir/
+libdir: lib/dir/path
+libsubdir: /lib/sub/dir
+dynlibdir: dyn/lib/dir/path
+libexecdir: lib/exec/dir/
+libexecsubdir: libexec/subdir
+datadir: path/to/datadir/
+datasubdir: a/datadir/subdir
+docdir: path/to/docs
+htmldir: dir/html/
+haddockdir: haddock/dir
+sysconfdir: sys/conf/dir
