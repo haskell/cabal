@@ -1,0 +1,7 @@
+package foo
+    static: True
+    ghc-options: -fno-state-hack
+
+package foo
+    shared: True
+    ghc-options: -threaded
