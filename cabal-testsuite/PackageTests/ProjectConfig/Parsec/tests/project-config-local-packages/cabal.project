@@ -1,0 +1,68 @@
+program-options
+    ghc-options: -fno-state-hack -foo
+    gcc-options: -baz -quux
+
+program-locations
+    ghc-location: /tmp/bin/ghc
+    gcc-location: /tmp/bin/gcc
+
+extra-prog-path: /tmp/bin/extra, /usr/local/bin
+flags: +foo -bar
+library-vanilla: False
+shared: True
+static: True
+executable-dynamic: True
+executable-static: True
+profiling: True
+library-profiling: True
+executable-profiling: True
+profiling-detail: all-functions
+library-profiling-detail: exported-functions
+configure-options: -some-arg /some/path
+optimization: 2
+program-prefix: another/path
+program-suffix: and/another/path
+extra-lib-dirs: so, many, lib/dirs
+extra-lib-dirs-static: a/few, static/lib/dirs
+extra-framework-dirs: osx/framework, dirs
+extra-include-dirs: incredible/amount, of, include, directories
+library-for-ghci: False
+split-sections: True
+split-objs: True
+executable-stripping: False
+library-stripping: False
+tests: True
+benchmarks: True
+coverage: True
+relocatable: True
+debug-info: 3
+build-info: True
+run-tests: True
+documentation: True
+haddock-hoogle: True
+haddock-html: False
+haddock-html-location: http://hackage.haskell.org/packages/archive/$pkg/latest/doc/html
+haddock-foreign-libraries: True
+haddock-executables: True
+haddock-tests: True
+haddock-benchmarks: True
+haddock-internal: True
+haddock-css: some/path/to/file.css
+haddock-hyperlink-source: True
+haddock-quickjump: True
+haddock-hscolour-css: another/path/to/hscolour.css
+haddock-contents-location: https://example.com/$pkg/contents
+haddock-index-location: separately-generated/HTML/index
+haddock-base-url: https://example.com/haddock-base-url
+haddock-lib: /haddock/static
+haddock-output-dir: /haddock/output
+haddock-for-hackage: for-hackage
+
+test-log: human-log.log
+test-machine-log: machine.log
+test-keep-tix-files: True
+test-wrapper: /test-wrapper-path/
+test-fail-when-no-test-suites: True
+test-show-details: streaming
+test-options: --some-option 42
+benchmark-options: --some-benchmark-option --another-option

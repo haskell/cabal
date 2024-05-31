@@ -126,6 +126,8 @@ executable test-runtime-deps
   build-depends:
     , Cabal
     , Cabal-syntax
+    , cabal-install
+    , cabal-install-solver
     , Cabal-hooks
     , base
     , bytestring
