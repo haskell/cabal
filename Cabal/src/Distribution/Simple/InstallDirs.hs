@@ -2,6 +2,7 @@
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 
 -----------------------------------------------------------------------------
@@ -44,6 +45,7 @@ module Distribution.Simple.InstallDirs
   , compilerTemplateEnv
   , packageTemplateEnv
   , abiTemplateEnv
+  , installDirsGrammar
   , installDirsTemplateEnv
   ) where
 
@@ -51,10 +53,13 @@ import Distribution.Compat.Prelude
 import Prelude ()
 
 import Distribution.Compat.Environment (lookupEnv)
+import Distribution.Compat.Lens (Lens')
 import Distribution.Compiler
+import Distribution.FieldGrammar
 import Distribution.Package
 import Distribution.Parsec
 import Distribution.Pretty
+import Distribution.Simple.Flag
 import Distribution.Simple.InstallDirs.Internal
 import Distribution.System
 
@@ -559,3 +564,81 @@ foreign import CALLCONV unsafe "shlobj.h SHGetFolderPathW"
                               -> Prelude.IO CInt
 #endif
 {- FOURMOLU_ENABLE -}
+
+-- ---------------------------------------------------------------------------
+-- FieldGrammar
+
+installDirsGrammar :: ParsecFieldGrammar' (InstallDirs (Flag PathTemplate))
+installDirsGrammar =
+  InstallDirs
+    <$> optionalFieldDef "prefix" installDirsPrefixLens mempty
+    <*> optionalFieldDef "bindir" installDirsBindirLens mempty
+    <*> optionalFieldDef "libdir" installDirsLibdirLens mempty
+    <*> optionalFieldDef "libsubdir" installDirsLibsubdirLens mempty
+    <*> optionalFieldDef "dynlibdir" installDirsDynlibdirLens mempty
+    <*> (pure NoFlag) -- flibdir
+    <*> optionalFieldDef "libexecdir" installDirsLibexecdirLens mempty
+    <*> optionalFieldDef "libexecsubdir" installDirsLibexecsubdirLens mempty
+    <*> (pure NoFlag) -- includedir
+    <*> optionalFieldDef "datadir" installDirsDatadirLens mempty
+    <*> optionalFieldDef "datasubdir" installDirsDatasubdirLens mempty
+    <*> optionalFieldDef "docdir" installDirsDocdirLens mempty
+    <*> (pure NoFlag) -- mandir
+    <*> optionalFieldDef "htmldir" installDirsHtmldirLens mempty
+    <*> optionalFieldDef "haddockdir" installDirsHaddockdirLens mempty
+    <*> optionalFieldDef "sysconfdir" installDirsSysconfdirLens mempty
+
+-- ---------------------------------------------------------------------------
+-- Lenses
+
+installDirsPrefixLens :: Lens' (InstallDirs a) a
+installDirsPrefixLens f c = fmap (\x -> c{prefix = x}) (f (prefix c))
+{-# INLINEABLE installDirsPrefixLens #-}
+
+installDirsBindirLens :: Lens' (InstallDirs a) a
+installDirsBindirLens f c = fmap (\x -> c{bindir = x}) (f (bindir c))
+{-# INLINEABLE installDirsBindirLens #-}
+
+installDirsLibdirLens :: Lens' (InstallDirs a) a
+installDirsLibdirLens f c = fmap (\x -> c{libdir = x}) (f (libdir c))
+{-# INLINEABLE installDirsLibdirLens #-}
+
+installDirsLibsubdirLens :: Lens' (InstallDirs a) a
+installDirsLibsubdirLens f c = fmap (\x -> c{libsubdir = x}) (f (libsubdir c))
+{-# INLINEABLE installDirsLibsubdirLens #-}
+
+installDirsDynlibdirLens :: Lens' (InstallDirs a) a
+installDirsDynlibdirLens f c = fmap (\x -> c{dynlibdir = x}) (f (dynlibdir c))
+{-# INLINEABLE installDirsDynlibdirLens #-}
+
+installDirsLibexecdirLens :: Lens' (InstallDirs a) a
+installDirsLibexecdirLens f c = fmap (\x -> c{libexecdir = x}) (f (libexecdir c))
+{-# INLINEABLE installDirsLibexecdirLens #-}
+
+installDirsLibexecsubdirLens :: Lens' (InstallDirs a) a
+installDirsLibexecsubdirLens f c = fmap (\x -> c{libexecsubdir = x}) (f (libexecsubdir c))
+{-# INLINEABLE installDirsLibexecsubdirLens #-}
+
+installDirsDatadirLens :: Lens' (InstallDirs a) a
+installDirsDatadirLens f c = fmap (\x -> c{datadir = x}) (f (datadir c))
+{-# INLINEABLE installDirsDatadirLens #-}
+
+installDirsDatasubdirLens :: Lens' (InstallDirs a) a
+installDirsDatasubdirLens f c = fmap (\x -> c{datasubdir = x}) (f (datasubdir c))
+{-# INLINEABLE installDirsDatasubdirLens #-}
+
+installDirsDocdirLens :: Lens' (InstallDirs a) a
+installDirsDocdirLens f c = fmap (\x -> c{docdir = x}) (f (docdir c))
+{-# INLINEABLE installDirsDocdirLens #-}
+
+installDirsHtmldirLens :: Lens' (InstallDirs a) a
+installDirsHtmldirLens f c = fmap (\x -> c{htmldir = x}) (f (htmldir c))
+{-# INLINEABLE installDirsHtmldirLens #-}
+
+installDirsHaddockdirLens :: Lens' (InstallDirs a) a
+installDirsHaddockdirLens f c = fmap (\x -> c{haddockdir = x}) (f (haddockdir c))
+{-# INLINEABLE installDirsHaddockdirLens #-}
+
+installDirsSysconfdirLens :: Lens' (InstallDirs a) a
+installDirsSysconfdirLens f c = fmap (\x -> c{sysconfdir = x}) (f (sysconfdir c))
+{-# INLINEABLE installDirsSysconfdirLens #-}

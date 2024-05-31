@@ -29,7 +29,8 @@ import Distribution.Simple.Compiler
   , ProfDetailLevel
   )
 import Distribution.Simple.InstallDirs
-  ( PathTemplate
+  ( InstallDirs
+  , PathTemplate
   )
 import Distribution.Simple.Setup
   ( DumpBuildInfo (..)
@@ -205,6 +206,10 @@ projectConfigHcPkg f s = fmap (\x -> s{T.projectConfigHcPkg = x}) (f (T.projectC
 projectConfigHaddockIndex :: Lens' ProjectConfigShared (Flag PathTemplate)
 projectConfigHaddockIndex f s = fmap (\x -> s{T.projectConfigHaddockIndex = x}) (f (T.projectConfigHaddockIndex s))
 {-# INLINEABLE projectConfigHaddockIndex #-}
+
+projectConfigInstallDirs :: Lens' ProjectConfigShared (InstallDirs (Flag PathTemplate))
+projectConfigInstallDirs f s = fmap (\x -> s{T.projectConfigInstallDirs = x}) (f (T.projectConfigInstallDirs s))
+{-# INLINEABLE projectConfigInstallDirs #-}
 
 projectConfigPackageDBs :: Lens' ProjectConfigShared [Maybe PackageDB]
 projectConfigPackageDBs f s = fmap (\x -> s{T.projectConfigPackageDBs = x}) (f (T.projectConfigPackageDBs s))

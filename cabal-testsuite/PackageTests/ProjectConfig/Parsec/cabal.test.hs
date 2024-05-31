@@ -28,7 +28,7 @@ import Distribution.Compiler (CompilerFlavor (..))
 import Distribution.Parsec (simpleParsec)
 import Distribution.Simple.Compiler (DebugInfoLevel (..), OptimisationLevel (..), PackageDB (..), ProfDetailLevel (..))
 import Distribution.Simple.Flag
-import Distribution.Simple.InstallDirs (toPathTemplate)
+import Distribution.Simple.InstallDirs (InstallDirs (..), toPathTemplate)
 import Distribution.Simple.Setup (DumpBuildInfo (..), Flag, HaddockTarget (..), TestShowDetails (..))
 import Distribution.Solver.Types.ConstraintSource (ConstraintSource (..))
 import Distribution.Solver.Types.ProjectConfigPath (ProjectConfigPath (..))
@@ -173,7 +173,25 @@ testProjectConfigShared = do
     projectConfigHcPath = toFlag "/some/path/to/compiler"
     projectConfigHcPkg = toFlag "/some/path/to/ghc-pkg"
     projectConfigHaddockIndex = toFlag $ toPathTemplate "/path/to/haddock-index"
-    projectConfigInstallDirs = mempty -- cli only
+    projectConfigInstallDirs =
+      InstallDirs
+        { prefix = Flag $ toPathTemplate "my/prefix-path"
+        , bindir = Flag $ toPathTemplate "bin/dir/"
+        , libdir = Flag $ toPathTemplate "lib/dir/path"
+        , libsubdir = Flag $ toPathTemplate "/lib/sub/dir"
+        , dynlibdir = Flag $ toPathTemplate "dyn/lib/dir/path"
+        , flibdir = mempty
+        , libexecdir = Flag $ toPathTemplate "lib/exec/dir/"
+        , libexecsubdir = Flag $ toPathTemplate "libexec/subdir"
+        , includedir = mempty
+        , datadir = Flag $ toPathTemplate "path/to/datadir/"
+        , datasubdir = Flag $ toPathTemplate "a/datadir/subdir"
+        , docdir = Flag $ toPathTemplate "path/to/docs"
+        , mandir = mempty
+        , htmldir = Flag $ toPathTemplate "dir/html/"
+        , haddockdir = Flag $ toPathTemplate "haddock/dir"
+        , sysconfdir = Flag $ toPathTemplate "sys/conf/dir"
+        }
     projectConfigPackageDBs = [Nothing, Just (SpecificPackageDB "foo"), Nothing, Just (SpecificPackageDB "bar"), Just (SpecificPackageDB "baz")]
     projectConfigRemoteRepos = mempty -- cli only
     projectConfigLocalNoIndexRepos = mempty -- cli only
