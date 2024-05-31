@@ -8,6 +8,7 @@ import qualified Data.Map as Map
 import Data.Maybe
 import qualified Data.Set as Set
 import Distribution.Client.BuildReports.Types (ReportLevel (..))
+import Distribution.Client.CmdInstall.ClientInstallFlags (ClientInstallFlags (..))
 import Distribution.Client.Dependency.Types (PreSolver (..))
 import Distribution.Client.DistDirLayout
 import Distribution.Client.HttpUtils
@@ -18,6 +19,8 @@ import Distribution.Client.ProjectConfig.Parsec
 import Distribution.Client.RebuildMonad (runRebuild)
 import Distribution.Client.Targets (readUserConstraint)
 import Distribution.Client.Types.AllowNewer (AllowNewer (..), AllowOlder (..), RelaxDepMod (..), RelaxDepScope (..), RelaxDepSubject (..), RelaxDeps (..), RelaxedDep (..))
+import Distribution.Client.Types.InstallMethod (InstallMethod (..))
+import Distribution.Client.Types.OverwritePolicy (OverwritePolicy (..))
 import Distribution.Client.Types.RepoName (RepoName (..))
 import Distribution.Client.Types.SourceRepo
 import Distribution.Client.Types.WriteGhcEnvironmentFilesPolicy (WriteGhcEnvironmentFilesPolicy (..))
@@ -142,7 +145,14 @@ testProjectConfigBuildOnly = do
     projectConfigIgnoreExpiry = toFlag True
     projectConfigCacheDir = toFlag "some-cache-dir"
     projectConfigLogsDir = toFlag "logs-directory"
-    projectConfigClientInstallFlags = mempty -- cli only
+    projectConfigClientInstallFlags =
+      ClientInstallFlags
+        { cinstInstallLibs = Flag True
+        , cinstEnvironmentPath = Flag "path/to/env"
+        , cinstOverwritePolicy = Flag AlwaysOverwrite
+        , cinstInstallMethod = Flag InstallMethodSymlink
+        , cinstInstalldir = Flag "path/to/installdir"
+        }
 
 testProjectConfigShared :: TestM ()
 testProjectConfigShared = do
