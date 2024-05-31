@@ -1,6 +1,7 @@
 module Distribution.Client.ProjectConfig.Lens where
 
 import Distribution.Client.BuildReports.Types (ReportLevel (..))
+import Distribution.Client.CmdInstall.ClientInstallFlags (ClientInstallFlags (..))
 import Distribution.Client.Dependency.Types (PreSolver (..))
 import Distribution.Client.IndexUtils.ActiveRepos
   ( ActiveRepos
@@ -156,6 +157,10 @@ projectConfigCacheDir f s = fmap (\x -> s{T.projectConfigCacheDir = x}) (f (T.pr
 projectConfigLogsDir :: Lens' ProjectConfigBuildOnly (Flag FilePath)
 projectConfigLogsDir f s = fmap (\x -> s{T.projectConfigLogsDir = x}) (f (T.projectConfigLogsDir s))
 {-# INLINEABLE projectConfigLogsDir #-}
+
+projectConfigClientInstallFlags :: Lens' ProjectConfigBuildOnly (ClientInstallFlags)
+projectConfigClientInstallFlags f s = fmap (\x -> s{T.projectConfigClientInstallFlags = x}) (f (T.projectConfigClientInstallFlags s))
+{-# INLINEABLE projectConfigClientInstallFlags #-}
 
 projectConfigDistDir :: Lens' ProjectConfigShared (Flag FilePath)
 projectConfigDistDir f s = fmap (\x -> s{T.projectConfigDistDir = x}) (f (T.projectConfigDistDir s))
