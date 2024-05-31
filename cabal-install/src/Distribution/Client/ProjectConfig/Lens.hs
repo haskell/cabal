@@ -477,9 +477,9 @@ packageConfigHaddockBaseUrl :: Lens' PackageConfig (Flag String)
 packageConfigHaddockBaseUrl f s = fmap (\x -> s{T.packageConfigHaddockBaseUrl = x}) (f (T.packageConfigHaddockBaseUrl s))
 {-# INLINEABLE packageConfigHaddockBaseUrl #-}
 
-packageConfigHaddockLib :: Lens' PackageConfig (Flag String)
-packageConfigHaddockLib f s = fmap (\x -> s{T.packageConfigHaddockLib = x}) (f (T.packageConfigHaddockLib s))
-{-# INLINEABLE packageConfigHaddockLib #-}
+packageConfigHaddockResourcesDir :: Lens' PackageConfig (Flag String)
+packageConfigHaddockResourcesDir f s = fmap (\x -> s{T.packageConfigHaddockResourcesDir = x}) (f (T.packageConfigHaddockResourcesDir s))
+{-# INLINEABLE packageConfigHaddockResourcesDir #-}
 
 packageConfigHaddockOutputDir :: Lens' PackageConfig (Flag FilePath)
 packageConfigHaddockOutputDir f s = fmap (\x -> s{T.packageConfigHaddockOutputDir = x}) (f (T.packageConfigHaddockOutputDir s))
