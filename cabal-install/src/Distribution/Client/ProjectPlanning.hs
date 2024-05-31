@@ -122,6 +122,7 @@ import Distribution.Client.JobControl
 import Distribution.Client.PackageHash
 import Distribution.Client.ProjectConfig
 import Distribution.Client.ProjectConfig.Legacy
+import Distribution.Client.ProjectConfig.Types (defaultProjectFileParser)
 import Distribution.Client.ProjectPlanOutput
 import Distribution.Client.ProjectPlanning.SetupPolicy
   ( NonSetupLibDepSolverPlanPackage (..)
@@ -380,6 +381,7 @@ rebuildProjectConfig
         ( configPath
         , distProjectFile ""
         , (projectConfigHcFlavor, projectConfigHcPath, projectConfigHcPkg)
+        , projectConfigProjectFileParser
         , progsearchpath
         , packageConfigProgramPaths
         , packageConfigProgramPathExtra
@@ -412,7 +414,7 @@ rebuildProjectConfig
 
     return (projectConfig <> cliConfig, localPackages)
     where
-      ProjectConfigShared{projectConfigHcFlavor, projectConfigHcPath, projectConfigHcPkg, projectConfigIgnoreProject, projectConfigConfigFile} =
+      ProjectConfigShared{projectConfigHcFlavor, projectConfigHcPath, projectConfigHcPkg, projectConfigProjectFileParser, projectConfigIgnoreProject, projectConfigConfigFile} =
         projectConfigShared cliConfig
 
       PackageConfig{packageConfigProgramPaths, packageConfigProgramPathExtra} =
@@ -420,10 +422,12 @@ rebuildProjectConfig
 
       -- Read the cabal.project (or implicit config) and combine it with
       -- arguments from the command line
+
+      configFileParser = fromFlagOrDefault defaultProjectFileParser projectConfigProjectFileParser
       --
       phaseReadProjectConfig :: Rebuild ProjectConfigSkeleton
       phaseReadProjectConfig = do
-        readProjectConfig verbosity httpTransport projectConfigIgnoreProject projectConfigConfigFile distDirLayout
+        readProjectConfig verbosity configFileParser httpTransport projectConfigIgnoreProject projectConfigConfigFile distDirLayout
 
       -- Look for all the cabal packages in the project
       -- some of which may be local src dirs, tarballs etc

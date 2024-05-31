@@ -6,10 +6,11 @@ import Test.Tasty
 import Test.Tasty.Golden.Advanced (goldenTest)
 
 import Data.Algorithm.Diff                    (PolyDiff (..), getGroupedDiff)
-import Distribution.Fields                    (runParseResult)
+import Distribution.Fields.ParseResult
 import Distribution.PackageDescription.Check  (checkPackage)
 import Distribution.PackageDescription.Parsec (parseGenericPackageDescription)
 import Distribution.Parsec
+import Distribution.Parsec.Source
 import Distribution.Utils.Generic             (fromUTF8BS, toUTF8BS)
 import System.Directory                       (setCurrentDirectory)
 import System.Environment                     (getArgs, withArgs)
@@ -62,16 +63,16 @@ checkTests = testGroup "regressions"
 checkTest :: FilePath -> TestTree
 checkTest fp = cabalGoldenTest fp correct $ do
     contents <- BS.readFile input
-    let res =  parseGenericPackageDescription contents
+    let res =  withSource (PCabalFile (fp, contents)) $ parseGenericPackageDescription contents
     let (ws, x) = runParseResult res
 
     return $ toUTF8BS $ case x of
         Right gpd      ->
             -- Note: parser warnings are reported by `cabal check`, but not by
             -- D.PD.Check functionality.
-            unlines (map (showPWarning fp) ws) ++
+            unlines (map (showPWarningWithSource . fmap renderCabalFileSource) ws) ++
             unlines (map show (checkPackage gpd))
-        Left (_, errs) -> unlines $ map (("ERROR: " ++) . showPError fp) $ NE.toList errs
+        Left (_, errs) -> unlines $ map (("ERROR: " ++) . showPErrorWithSource . fmap renderCabalFileSource) $ NE.toList errs
   where
     input = "tests" </> "ParserTests" </> "regressions" </> fp
     correct = replaceExtension input "check"
