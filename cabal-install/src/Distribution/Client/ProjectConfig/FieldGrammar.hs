@@ -9,6 +9,7 @@ module Distribution.Client.ProjectConfig.FieldGrammar
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.Set as Set
 import Distribution.CabalSpecVersion (CabalSpecVersion (..))
+import Distribution.Client.CmdInstall.ClientInstallFlags (clientInstallFlagsGrammar)
 import qualified Distribution.Client.ProjectConfig.Lens as L
 import Distribution.Client.ProjectConfig.Types (PackageConfig (..), ProjectConfig (..), ProjectConfigBuildOnly (..), ProjectConfigProvenance (..), ProjectConfigShared (..))
 import Distribution.Client.Utils.Parsec
@@ -62,7 +63,7 @@ projectConfigBuildOnlyFieldGrammar =
     <*> optionalFieldDef "ignore-expiry" L.projectConfigIgnoreExpiry mempty
     <*> optionalFieldDefAla "remote-repo-cache" (alaFlag FilePathNT) L.projectConfigCacheDir mempty
     <*> optionalFieldDefAla "logs-dir" (alaFlag FilePathNT) L.projectConfigLogsDir mempty
-    <*> pure mempty -- cli flag: projectConfigClientInstallFlags
+    <*> blurFieldGrammar L.projectConfigClientInstallFlags clientInstallFlagsGrammar
 
 projectConfigSharedFieldGrammar :: ProjectConfigPath -> ParsecFieldGrammar' ProjectConfigShared
 projectConfigSharedFieldGrammar source =
