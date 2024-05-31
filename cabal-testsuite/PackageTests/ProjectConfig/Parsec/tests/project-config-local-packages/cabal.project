@@ -54,7 +54,7 @@ haddock-hscolour-css: another/path/to/hscolour.css
 haddock-contents-location: https://example.com/$pkg/contents
 haddock-index-location: separately-generated/HTML/index
 haddock-base-url: https://example.com/haddock-base-url
-haddock-lib: /haddock/static
+haddock-resources-dir: /haddock/static
 haddock-output-dir: /haddock/output
 haddock-for-hackage: for-hackage
 
