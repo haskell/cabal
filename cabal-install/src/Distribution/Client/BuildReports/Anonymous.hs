@@ -140,10 +140,10 @@ fieldDescrs =
 
 parseBuildReport :: BS.ByteString -> Either String BuildReport
 parseBuildReport s = case snd $ runParseResult $ parseFields s of
-  Left (_, perrors) -> Left $ unlines [err | PError _ err <- toList perrors]
+  Left (_, perrors) -> Left $ unlines [err | PErrorWithSource _ (PError _ err) <- toList perrors]
   Right report -> Right report
 
-parseFields :: BS.ByteString -> ParseResult BuildReport
+parseFields :: BS.ByteString -> ParseResult src BuildReport
 parseFields input = do
   fields <- either (parseFatalFailure zeroPos . show) pure $ readFields input
   case partitionFields fields of

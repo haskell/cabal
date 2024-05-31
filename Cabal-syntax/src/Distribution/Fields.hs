@@ -25,11 +25,16 @@ module Distribution.Fields
     -- ** Warnings
   , PWarnType (..)
   , PWarning (..)
+  , PWarningWithSource (..)
+  , PSource (..)
   , showPWarning
+  , showPWarningWithSource
 
     -- ** Errors
   , PError (..)
+  , PErrorWithSource (..)
   , showPError
+  , showPErrorWithSource
 
     -- * Pretty printing
   , CommentPosition (..)

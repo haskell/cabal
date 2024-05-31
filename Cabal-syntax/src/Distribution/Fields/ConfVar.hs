@@ -4,11 +4,12 @@ module Distribution.Fields.ConfVar (parseConditionConfVar, parseConditionConfVar
 
 import Distribution.Compat.CharParsing (char, integral)
 import Distribution.Compat.Prelude
-import Distribution.Fields.Field (Field (..), SectionArg (..))
+import Distribution.Fields.Field (Field (..), SectionArg (..), sectionArgAnn)
 import Distribution.Fields.ParseResult
 import Distribution.Fields.Parser (readFields)
-import Distribution.Parsec (Parsec (..), Position (..), runParsecParser)
+import Distribution.Parsec (Parsec (..), runParsecParser)
 import Distribution.Parsec.FieldLineStream (fieldLineStreamFromBS)
+import Distribution.Parsec.Position
 import Distribution.Types.Condition
 import Distribution.Types.ConfVar (ConfVar (..))
 import Distribution.Version
@@ -40,10 +41,10 @@ parseConditionConfVarFromClause x =
 
 -- | Parse @'Condition' 'ConfVar'@ from section arguments provided by parsec
 -- based outline parser.
-parseConditionConfVar :: [SectionArg Position] -> ParseResult (Condition ConfVar)
-parseConditionConfVar args =
+parseConditionConfVar :: Position -> [SectionArg Position] -> ParseResult src (Condition ConfVar)
+parseConditionConfVar start_pos args =
   -- The name of the input file is irrelevant, as we reformat the error message.
-  case P.runParser (parser <* P.eof) () "<condition>" args of
+  case P.runParser (P.setPosition startPos >> parser <* P.eof) () "<condition>" args of
     Right x -> pure x
     Left err -> do
       -- Mangle the position to the actual one
@@ -59,7 +60,10 @@ parseConditionConfVar args =
               (P.errorMessages err)
       parseFailure epos msg
       pure $ Lit True
+  where
+    startPos = P.newPos "<condition>" (positionRow start_pos) (positionCol start_pos)
 
+-- | Parser for 'Condition' 'ConfVar'
 type Parser = P.Parsec [SectionArg Position] ()
 
 sepByNonEmpty :: Parser a -> Parser sep -> Parser (NonEmpty a)
@@ -132,6 +136,7 @@ parser = condOr
         | s == "false" -> Just False
       _ -> Nothing
 
+    string :: B8.ByteString -> Parser ()
     string s = tokenPrim $ \t -> case t of
       SecArgName _ s' | s == s' -> Just ()
       _ -> Nothing
@@ -142,9 +147,12 @@ parser = condOr
 
     parens = P.between (oper "(") (oper ")")
 
+    tokenPrim :: (SectionArg Position -> Maybe a) -> Parser a
     tokenPrim = P.tokenPrim prettySectionArg updatePosition
-    -- TODO: check where the errors are reported
-    updatePosition x _ _ = x
+    updatePosition :: P.SourcePos -> SectionArg Position -> [SectionArg Position] -> P.SourcePos
+    updatePosition x s _ =
+      let Position line col = sectionArgAnn s
+       in P.setSourceLine (P.setSourceColumn x col) (line)
     prettySectionArg = show
 
     fromParsec :: Parsec a => Parser a

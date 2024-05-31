@@ -5,6 +5,8 @@ module Distribution.Client.Types.WriteGhcEnvironmentFilesPolicy
   ) where
 
 import Distribution.Client.Compat.Prelude
+import qualified Distribution.Compat.CharParsing as P
+import Distribution.Parsec
 import Prelude ()
 
 -- | Whether 'v2-build' should write a .ghc.environment file after
@@ -19,3 +21,16 @@ data WriteGhcEnvironmentFilesPolicy
 
 instance Binary WriteGhcEnvironmentFilesPolicy
 instance Structured WriteGhcEnvironmentFilesPolicy
+
+instance Parsec WriteGhcEnvironmentFilesPolicy where
+  parsec = do
+    token <- parsecToken
+    case token of
+      "always" -> return AlwaysWriteGhcEnvironmentFiles
+      "never" -> return NeverWriteGhcEnvironmentFiles
+      "ghc8.4.4+" -> return WriteGhcEnvironmentFilesOnlyForGhc844AndNewer
+      policy ->
+        P.unexpected $
+          "Cannot parse the GHC environment file write policy '"
+            <> policy
+            <> "'"

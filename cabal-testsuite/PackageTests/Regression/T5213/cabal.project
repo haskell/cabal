@@ -1,4 +1,4 @@
 packages: .
 
 package cabal-gh5213
-  library-coverage: true
+  library-coverage: True

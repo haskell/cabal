@@ -9,9 +9,11 @@ module Distribution.Solver.Types.ProjectConfigPath
     , nullProjectConfigPath
     , consProjectConfigPath
     , unconsProjectConfigPath
+    , currentProjectConfigPath
 
     -- * Messages
     , docProjectConfigPath
+    , docProjectImportedBy
     , docProjectConfigFiles
     , cyclicalImportMsg
     , untrimmedUriImportMsg
@@ -131,6 +133,13 @@ docProjectConfigPath (ProjectConfigPath (p :| [])) = quoteUntrimmed p
 docProjectConfigPath (ProjectConfigPath (p :| ps)) = vcat $ quoteUntrimmed p :
     [ text " " <+> text "imported by:" <+> quoteUntrimmed l | l <- ps ]
 
+-- | Render the paths which imports this config.
+docProjectImportedBy :: ProjectConfigPath -> Doc
+docProjectImportedBy (ProjectConfigPath (_ :| [])) = text ""
+docProjectImportedBy (ProjectConfigPath (_ :| ps)) = vcat $
+    [ text " " <+> text "imported by:" <+> quoteUntrimmed l | l <- ps ]
+
+
 -- | If the path has leading or trailing spaces then show it quoted.
 quoteUntrimmed :: FilePath -> Doc
 quoteUntrimmed s = if trim s /= s then quotes (text s) else text s
@@ -236,6 +245,9 @@ consProjectConfigPath p ps = ProjectConfigPath (p <| coerce ps)
 -- | Split the path into the importee and the importer path.
 unconsProjectConfigPath :: ProjectConfigPath -> (FilePath, Maybe ProjectConfigPath)
 unconsProjectConfigPath ps = fmap ProjectConfigPath <$> NE.uncons (coerce ps)
+
+currentProjectConfigPath :: ProjectConfigPath -> FilePath
+currentProjectConfigPath (ProjectConfigPath (p :| _)) = p
 
 -- | Make paths relative to the directory of the root of the project, not
 -- relative to the file they were imported from.
