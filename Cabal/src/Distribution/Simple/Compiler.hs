@@ -50,6 +50,7 @@ module Distribution.Simple.Compiler
   , interpretPackageDBStack
   , coercePackageDB
   , coercePackageDBStack
+  , readPackageDb
 
     -- * Support for optimisation levels
   , OptimisationLevel (..)
@@ -92,7 +93,9 @@ module Distribution.Simple.Compiler
   , showProfDetailLevel
   ) where
 
+import Distribution.Compat.CharParsing
 import Distribution.Compat.Prelude
+import Distribution.Parsec
 import Distribution.Pretty
 import Prelude ()
 
@@ -103,6 +106,7 @@ import Distribution.Version
 
 import Language.Haskell.Extension
 
+import Data.Bool (bool)
 import qualified Data.Map as Map (lookup)
 import System.Directory (canonicalizePath)
 
@@ -202,6 +206,15 @@ data PackageDBX fp
 instance Binary fp => Binary (PackageDBX fp)
 instance Structured fp => Structured (PackageDBX fp)
 
+-- | Parse a PackageDB stack entry
+--
+-- @since 3.7.0.0
+readPackageDb :: String -> Maybe PackageDB
+readPackageDb "clear" = Nothing
+readPackageDb "global" = Just GlobalPackageDB
+readPackageDb "user" = Just UserPackageDB
+readPackageDb other = Just (SpecificPackageDB (makeSymbolicPath other))
+
 -- | We typically get packages from several databases, and stack them
 -- together. This type lets us be explicit about that stacking. For example
 -- typical stacks include:
@@ -293,19 +306,31 @@ data OptimisationLevel
 instance Binary OptimisationLevel
 instance Structured OptimisationLevel
 
+instance Parsec OptimisationLevel where
+  parsec = parsecOptimisationLevel
+
+parsecOptimisationLevel :: CabalParsing m => m OptimisationLevel
+parsecOptimisationLevel = boolParser <|> intParser
+  where
+    boolParser = (bool NoOptimisation NormalOptimisation) <$> parsec
+    intParser = intToOptimisationLevel <$> integral
+
 flagToOptimisationLevel :: Maybe String -> OptimisationLevel
 flagToOptimisationLevel Nothing = NormalOptimisation
 flagToOptimisationLevel (Just s) = case reads s of
-  [(i, "")]
-    | i >= fromEnum (minBound :: OptimisationLevel)
-        && i <= fromEnum (maxBound :: OptimisationLevel) ->
-        toEnum i
-    | otherwise ->
-        error $
-          "Bad optimisation level: "
-            ++ show i
-            ++ ". Valid values are 0..2"
+  [(i, "")] -> intToOptimisationLevel i
   _ -> error $ "Can't parse optimisation level " ++ s
+
+intToOptimisationLevel :: Int -> OptimisationLevel
+intToOptimisationLevel i
+  | i >= fromEnum (minBound :: OptimisationLevel)
+      && i <= fromEnum (maxBound :: OptimisationLevel) =
+      toEnum i
+  | otherwise =
+      error $
+        "Bad optimisation level: "
+          ++ show i
+          ++ ". Valid values are 0..2"
 
 -- ------------------------------------------------------------
 
@@ -325,6 +350,12 @@ data DebugInfoLevel
 
 instance Binary DebugInfoLevel
 instance Structured DebugInfoLevel
+
+instance Parsec DebugInfoLevel where
+  parsec = parsecDebugInfoLevel
+
+parsecDebugInfoLevel :: CabalParsing m => m DebugInfoLevel
+parsecDebugInfoLevel = flagToDebugInfoLevel <$> pure <$> parsecToken
 
 flagToDebugInfoLevel :: Maybe String -> DebugInfoLevel
 flagToDebugInfoLevel Nothing = NormalDebugInfo
@@ -562,6 +593,12 @@ data ProfDetailLevel
 
 instance Binary ProfDetailLevel
 instance Structured ProfDetailLevel
+
+instance Parsec ProfDetailLevel where
+  parsec = parsecProfDetailLevel
+
+parsecProfDetailLevel :: CabalParsing m => m ProfDetailLevel
+parsecProfDetailLevel = flagToProfDetailLevel <$> parsecToken
 
 flagToProfDetailLevel :: String -> ProfDetailLevel
 flagToProfDetailLevel "" = ProfDetailDefault

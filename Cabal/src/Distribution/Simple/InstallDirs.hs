@@ -53,6 +53,7 @@ import Prelude ()
 import Distribution.Compat.Environment (lookupEnv)
 import Distribution.Compiler
 import Distribution.Package
+import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.Simple.InstallDirs.Internal
 import Distribution.System
@@ -505,6 +506,12 @@ instance Read PathTemplate where
     | (path, s') <- readsPrec p s
     , (template, "") <- reads path
     ]
+
+instance Parsec PathTemplate where
+  parsec = parsecPathTemplate
+
+parsecPathTemplate :: CabalParsing m => m PathTemplate
+parsecPathTemplate = parsecFilePath >>= return . toPathTemplate
 
 -- ---------------------------------------------------------------------------
 -- Internal utilities

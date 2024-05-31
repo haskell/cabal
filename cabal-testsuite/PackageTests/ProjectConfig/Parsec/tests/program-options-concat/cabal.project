@@ -1,0 +1,7 @@
+program-options
+    ghc-options: -fno-state-hack
+    gcc-options: -foo -bar
+
+program-options
+    ghc-options: -threaded -Wall
+    gcc-options: -baz

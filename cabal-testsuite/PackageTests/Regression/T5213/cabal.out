@@ -1,6 +1,5 @@
 # cabal new-test
-Configuration is affected by the following files:
-- cabal.project
+Warning: <ROOT>/cabal.project:4:3: The field "library-coverage" is deprecated in the Cabal specification version 1.22. Please use 'coverage' field instead.
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
