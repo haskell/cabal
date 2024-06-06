@@ -538,13 +538,8 @@ installAction flags@NixStyleFlags{extraFlags, configFlags, installFlags, project
         -- BuildOutcomes because we also need the component names
           traverseInstall (installCheckUnitExes InstallCheckInstall) installCfg
   where
-<<<<<<< HEAD
-    configFlags' = disableTestsBenchsByDefault configFlags
-    verbosity = fromFlagOrDefault normal (configVerbosity configFlags')
-=======
     configFlags' = disableTestsBenchsByDefault . ignoreProgramAffixes $ configFlags
-    verbosity = fromFlagOrDefault normal (setupVerbosity $ configCommonFlags configFlags')
->>>>>>> 859347426 (Fix --program-{prefix,suffix} resulting in invalid installation)
+    verbosity = fromFlagOrDefault normal (configVerbosity configFlags')
     ignoreProject = flagIgnoreProject projectFlags
     cliConfig =
       commandLineFlagsToProjectConfig
