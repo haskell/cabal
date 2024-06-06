@@ -2804,8 +2804,10 @@ Declaring a ``custom-setup`` stanza also enables the generation of
    :synopsis: Custom Setup.hs build information.
    :since: 1.24
 
-   The optional :pkg-section:`custom-setup` stanza contains information needed
-   for the compilation of custom ``Setup.hs`` scripts,
+   A :pkg-section:`custom-setup` stanza is required for
+   :pkg-field:`build-type` ``Custom`` and will be ignored (with a warning) for
+   other build types. The stanza contains information needed for the compilation
+   of custom ``Setup.hs`` scripts. For example:
 
 ::
 
@@ -2838,7 +2840,7 @@ Backward compatibility and ``custom-setup``
 
 Versions prior to Cabal 1.24 don't recognise ``custom-setup`` stanzas,
 and will behave agnostic to them (except for warning about an unknown
-section). Consequently, versions prior to Cabal 1.24 can't ensure the
+'section'). Consequently, versions prior to Cabal 1.24 can't ensure the
 declared dependencies ``setup-depends`` are in scope, and instead
 whatever is registered in the current package database environment
 will become eligible (and resolved by the compiler) for the
@@ -2848,8 +2850,9 @@ The availability of the
 ``MIN_VERSION_package_(A,B,C)`` CPP macros
 inside ``Setup.hs`` scripts depends on the condition that either
 
-- a ``custom-setup`` section has been declared (or ``cabal build`` is being
-  used which injects an implicit hard-coded ``custom-setup`` stanza if it's missing), or
+- a ``custom-setup`` stanza has been declared (or ``cabal build`` is being used
+  which injects an implicit hard-coded ``custom-setup`` stanza if it's missing),
+  or
 - GHC 8.0 or later is used (which natively injects package version CPP macros)
 
 Consequently, if you need to write backward compatible ``Setup.hs``
