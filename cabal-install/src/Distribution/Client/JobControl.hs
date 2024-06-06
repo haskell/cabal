@@ -45,7 +45,6 @@ import Control.Monad (forever, replicateM_)
 import Distribution.Client.Compat.Semaphore
 import Distribution.Compat.Stack
 import Distribution.Simple.Utils
-import Distribution.Verbosity
 import System.Semaphore
 
 -- | A simple concurrency abstraction. Jobs can be spawned and can complete
@@ -171,13 +170,13 @@ readAllTChan qvar = go []
 --
 -- This uses the GHC -jsem option to allow GHC to take additional semaphore slots
 -- if we are not using them all.
-newSemaphoreJobControl :: WithCallStack (Int -> IO (JobControl IO a))
-newSemaphoreJobControl n
+newSemaphoreJobControl :: WithCallStack (Verbosity -> Int -> IO (JobControl IO a))
+newSemaphoreJobControl _ n
   | n < 1 || n > 1000 =
       error $ "newParallelJobControl: not a sensible number of jobs: " ++ show n
-newSemaphoreJobControl maxJobLimit = do
+newSemaphoreJobControl verbosity maxJobLimit = do
   sem <- freshSemaphore "cabal_semaphore" maxJobLimit
-  notice normal $
+  notice verbosity $
     "Created semaphore called "
       ++ getSemaphoreName (semaphoreName sem)
       ++ " with "

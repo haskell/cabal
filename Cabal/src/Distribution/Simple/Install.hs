@@ -282,7 +282,7 @@ copyComponent _ _ _ (CTest _) _ _ = return ()
 -- | Install the files listed in data-files
 installDataFiles :: Verbosity -> PackageDescription -> FilePath -> IO ()
 installDataFiles verbosity pkg_descr destDataDir =
-  flip traverse_ (dataFiles pkg_descr) $ \glob -> do
+  for_ (dataFiles pkg_descr) $ \glob -> do
     let srcDataDirRaw = dataDir pkg_descr
         srcDataDir =
           if null srcDataDirRaw

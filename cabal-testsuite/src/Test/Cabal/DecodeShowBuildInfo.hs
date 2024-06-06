@@ -21,7 +21,7 @@ import           System.Exit
 --
 -- Results can be read via 'withPlan', 'buildInfoFile' and 'decodeBuildInfoFile'.
 runShowBuildInfo :: [String] -> TestM ()
-runShowBuildInfo args = cabal "build" ("--enable-build-info":args)
+runShowBuildInfo args = noCabalPackageDb $ cabal "build" ("--enable-build-info":args)
 
 -- | Read 'build-info.json' for a given package and component
 -- from disk and record the content. Helpful for defining test-cases

@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE LambdaCase #-}
 
 module UnitTests.Distribution.Client.Init.NonInteractive
@@ -12,7 +13,9 @@ import UnitTests.Distribution.Client.Init.Utils
 import qualified Data.List.NonEmpty as NEL
 import qualified Distribution.SPDX as SPDX
 
+#if !MIN_VERSION_base(4,20,0)
 import Data.List (foldl')
+#endif
 import qualified Data.Set as Set
 import Distribution.CabalSpecVersion
 import Distribution.Client.Init.Defaults
