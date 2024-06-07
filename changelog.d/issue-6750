@@ -1,0 +1,13 @@
+synopsis: Make Setup copy/install succeed when there's no executable or library
+packages: Cabal
+prs: #9926
+issues: #6750
+
+description: {
+  Historically the Setup copy and install steps would fail if the package didn't
+  contain an executable or library component. In this case there's nothing to do.
+
+  This required workarounds for downstream users of Cabal to handle this edge case.
+  Now that this error has been downgraded to a warning, Cabal will succeed if 
+  there's nothing to do.
+}
