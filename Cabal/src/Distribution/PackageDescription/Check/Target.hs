@@ -858,14 +858,14 @@ checkGHCOptions title t opts = do
       let ghcNoRts = rmRtsOpts opts
       checkAlternatives
         title
-        "extensions"
+        "default-extensions"
         [ (flag, prettyShow extension)
         | flag <- ghcNoRts
         , Just extension <- [ghcExtension flag]
         ]
       checkAlternatives
         title
-        "extensions"
+        "default-extensions"
         [ (flag, extension)
         | flag@('-' : 'X' : extension) <- ghcNoRts
         ]
