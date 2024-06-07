@@ -538,7 +538,7 @@ installAction flags@NixStyleFlags{extraFlags, configFlags, installFlags, project
         -- BuildOutcomes because we also need the component names
           traverseInstall (installCheckUnitExes InstallCheckInstall) installCfg
   where
-    configFlags' = disableTestsBenchsByDefault configFlags
+    configFlags' = disableTestsBenchsByDefault . ignoreProgramAffixes $ configFlags
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags')
     ignoreProject = flagIgnoreProject projectFlags
     cliConfig =
@@ -1097,6 +1097,18 @@ disableTestsBenchsByDefault configFlags =
   configFlags
     { configTests = Flag False <> configTests configFlags
     , configBenchmarks = Flag False <> configBenchmarks configFlags
+    }
+
+-- | Disables program prefix and suffix, in order to get the /canonical/
+-- executable name in the store and thus:
+--
+-- * avoid making the package hash depend on these options and needless rebuild;
+-- * provide the correct executable path to the install methods (copy, symlink).
+ignoreProgramAffixes :: ConfigFlags -> ConfigFlags
+ignoreProgramAffixes configFlags =
+  configFlags
+    { configProgPrefix = NoFlag
+    , configProgSuffix = NoFlag
     }
 
 -- | Prepares a record containing the information needed to either symlink or
