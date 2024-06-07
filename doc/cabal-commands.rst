@@ -245,8 +245,8 @@ A cabal command target can take any of the following forms:
    component of which the given filepath is a part of will be built.
 
 -  A script target: ``path/to/script``, which specifies the path to a script
-   file. This is supported by ``build``, ``repl``, ``run``, and ``clean``.
-   Script targets are not part of a package.
+   file. This is supported by ``build``, ``repl``, ``run``, ``list-bin``, and
+   ``clean``. Script targets are not part of a package.
 
 .. _command-group-global:
 
@@ -963,6 +963,14 @@ We can also scope to test suite targets as they produce binaries.
     $ cabal list-bin cabal-install:unit-tests
     /.../dist-newstyle/.../unit-tests/unit-tests
 
+It can also be used to display the location of the cached executable for a
+cabal script.
+
+::
+
+    $ cabal list-bin path/to/script
+    $XDG_CACHE_HOME/cabal/script-builds/.../bin/script
+
 Note that ``cabal list-bin`` will print the executables' location, but
 will not make sure that these executables actually exist (i.e., have
 been successfully built).  In order to determine the correct location,
@@ -1132,6 +1140,9 @@ with the command:
 The executable is cached under the cabal directory, and can be pre-built with
 ``cabal build path/to/script`` and the cache can be removed with
 ``cabal clean path/to/script``.
+
+The location of the cached executable can be displayed with
+``cabal list-bin path/to/script``.
 
 A note on targets: Whenever a command takes a script target and it matches the
 name of another target, the other target is preferred. To load the script
