@@ -58,7 +58,7 @@ module Distribution.Client.ProjectConfig
   ) where
 
 import Distribution.Client.Compat.Prelude
-import Text.PrettyPrint (render)
+import Text.PrettyPrint (nest, render, text, vcat)
 import Prelude ()
 
 import Distribution.Client.Glob
@@ -875,10 +875,10 @@ renderBadPackageLocations (BadPackageLocations provenance bpls)
     renderErrors f = unlines (map f bpls)
 
     renderExplicit =
-      "When using configuration(s) from "
-        ++ intercalate ", " (render . docProjectConfigPath <$> mapMaybe getExplicit (Set.toList provenance))
-        ++ ", the following errors occurred:\n"
-        ++ renderErrors renderBadPackageLocation
+      "When using configuration from:\n"
+        ++ render (nest 2 . docProjectConfigPaths $ mapMaybe getExplicit (Set.toList provenance))
+        ++ "\nThe following errors occurred:\n"
+        ++ render (nest 2 $ vcat ((text "-" <+>) . text <$> map renderBadPackageLocation bpls))
 
     getExplicit (Explicit path) = Just path
     getExplicit Implicit = Nothing

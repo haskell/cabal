@@ -1,5 +1,4 @@
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE LambdaCase #-}
 
 module Distribution.Solver.Types.ProjectConfigPath
     (
@@ -11,6 +10,7 @@ module Distribution.Solver.Types.ProjectConfigPath
 
     -- * Messages
     , docProjectConfigPath
+    , docProjectConfigPaths
     , cyclicalImportMsg
     , docProjectConfigPathFailReason
 
@@ -56,12 +56,50 @@ instance Structured ProjectConfigPath
 --   imported by: B.config
 --   imported by: A.project
 -- @
--- >>> render . docProjectConfigPath $ ProjectConfigPath $ "D.config" :| ["C.config", "B.config", "A.project" ]
+-- >>> render . docProjectConfigPath $ ProjectConfigPath $ "D.config" :| ["C.config", "B.config", "A.project"]
 -- "D.config\n  imported by: C.config\n  imported by: B.config\n  imported by: A.project"
 docProjectConfigPath :: ProjectConfigPath -> Doc
 docProjectConfigPath (ProjectConfigPath (p :| [])) = text p
 docProjectConfigPath (ProjectConfigPath (p :| ps)) = vcat $
     text p : [ text " " <+> text "imported by:" <+> text l | l <- ps ]
+
+-- | Renders the paths as a list without showing which path imports another,
+-- like this;
+-- @
+-- - cabal.project
+-- - project-cabal/constraints.config
+-- - project-cabal/ghc-latest.config
+-- - project-cabal/ghc-options.config
+-- - project-cabal/pkgs.config
+-- - project-cabal/pkgs/benchmarks.config
+-- - project-cabal/pkgs/buildinfo.config
+-- - project-cabal/pkgs/cabal.config
+-- - project-cabal/pkgs/install.config
+-- - project-cabal/pkgs/integration-tests.config
+-- - project-cabal/pkgs/tests.config
+-- @
+--
+-- >>> :{
+--   do
+--     let ps =
+--              [ ProjectConfigPath ("cabal.project" :| [])
+--              , ProjectConfigPath ("project-cabal/constraints.config" :| ["cabal.project"])
+--              , ProjectConfigPath ("project-cabal/ghc-latest.config" :| ["cabal.project"])
+--              , ProjectConfigPath ("project-cabal/ghc-options.config" :| ["cabal.project"])
+--              , ProjectConfigPath ("project-cabal/pkgs.config" :| ["cabal.project"])
+--              , ProjectConfigPath ("project-cabal/pkgs/benchmarks.config" :| ["project-cabal/pkgs.config","cabal.project"])
+--              , ProjectConfigPath ("project-cabal/pkgs/buildinfo.config" :| ["project-cabal/pkgs.config","cabal.project"])
+--              , ProjectConfigPath ("project-cabal/pkgs/cabal.config" :| ["project-cabal/pkgs.config","cabal.project"])
+--              , ProjectConfigPath ("project-cabal/pkgs/install.config" :| ["project-cabal/pkgs.config","cabal.project"])
+--              , ProjectConfigPath ("project-cabal/pkgs/integration-tests.config" :| ["project-cabal/pkgs.config","cabal.project"])
+--              , ProjectConfigPath ("project-cabal/pkgs/tests.config" :| ["project-cabal/pkgs.config","cabal.project"])
+--              ]
+--     return . render $ docProjectConfigPaths ps
+-- :}
+-- "- cabal.project\n- project-cabal/constraints.config\n- project-cabal/ghc-latest.config\n- project-cabal/ghc-options.config\n- project-cabal/pkgs.config\n- project-cabal/pkgs/benchmarks.config\n- project-cabal/pkgs/buildinfo.config\n- project-cabal/pkgs/cabal.config\n- project-cabal/pkgs/install.config\n- project-cabal/pkgs/integration-tests.config\n- project-cabal/pkgs/tests.config"
+docProjectConfigPaths :: [ProjectConfigPath] -> Doc
+docProjectConfigPaths ps = vcat
+    [ text "-" <+> text p | ProjectConfigPath (p :| _) <- ps ]
 
 -- | A message for a cyclical import, assuming the head of the path is the
 -- duplicate.
