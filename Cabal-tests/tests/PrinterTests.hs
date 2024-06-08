@@ -42,8 +42,8 @@ printExact = testGroup "printExact"
       testParsePrintExact "bounded.cabal"
     , testParsePrintExact "two-sections.cabal"
     , testParsePrintExact "two-sections-spacing.cabal"
-    -- , testParsePrintExact "comment.cabal" -- TODO this is required
-    , testParsePrintExact "commas.cabal" -- TODO dear lord is this also requried?!
+    , testParsePrintExact "comment.cabal" -- TODO this is required
+    -- , testParsePrintExact "commas.cabal" -- TODO dear lord is this also requried?!
     -- , testParsePrintExact "comments.cabal" -- TODO this is required
     -- , testParsePrintExact "anynone.cabal" -- TODO is this neccessary? I think we're allowed to pretty print a range?
     -- , testParsePrintExact "multiple-depends.cabal" -- TODO is this neccisary? I think we're allowed to be oppinionated on comma placement?
