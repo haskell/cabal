@@ -361,7 +361,7 @@ sectionLayoutOrBraces ilevel = do
       closeBrace
       return elems
     )
-    <|> (elements zeroIndentLevel) -- TODO this used to be ilevel ??
+    <|> (elements ilevel) -- TODO this used to be ilevel ??
 
 -- The body of a field, using either inline style or braces.
 --
