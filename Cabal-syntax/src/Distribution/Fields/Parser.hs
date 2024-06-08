@@ -2,6 +2,8 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE GeneralisedNewtypeDeriving #-}
 
 -----------------------------------------------------------------------------
 
@@ -179,6 +181,7 @@ fieldContent :: Parser (FieldLine Position)
 fieldContent = tokFieldLine <?> "field contents"
 
 newtype IndentLevel = IndentLevel Int
+                    deriving newtype Show
 
 zeroIndentLevel :: IndentLevel
 zeroIndentLevel = IndentLevel 0
@@ -274,14 +277,14 @@ elements ilevel = many (element ilevel)
 -- element ::= '\\n' name elementInLayoutContext
 --           |      name elementInNonLayoutContext
 element :: IndentLevel -> Parser (Field Position)
-element ilevel = do
+element ilevel = trace "element" $ do
   skipMany tokWhitespace
-  ( do
-      ilevel' <- indentOfAtLeast ilevel
-      name <- fieldSecName
+  ( trace "indent-element" $ do
+      ilevel' <- trace "at-least" $ indentOfAtLeast ilevel
+      name <- trace "secname" $ fieldSecName
       elementInLayoutContext (incIndentLevel ilevel') name
     )
-    <|> ( do
+    <|> ( trace "indent-2-element" $ do
             name <- fieldSecName
             elementInNonLayoutContext name
         )
@@ -293,11 +296,12 @@ element ilevel = do
 -- elementInLayoutContext ::= ':'  fieldLayoutOrBraces
 --                          | arg* sectionLayoutOrBraces
 elementInLayoutContext :: IndentLevel -> Name Position -> Parser (Field Position)
-elementInLayoutContext ilevel name = do
+elementInLayoutContext ilevel name = trace ("elementInLayoutContext" <> show ilevel) $ do
   skipMany tokWhitespace
-  (do colon; fieldLayoutOrBraces ilevel name)
+  (do trace "colon" colon
+      fieldLayoutOrBraces ilevel name)
     <|> ( do
-            args <- parserTraced "many sectionArg" (many (sectionArg <* tokWhitespace))
+            args <- trace "many sectionArg" (many (sectionArg <* tokWhitespace))
             skipMany tokComment
             elems <- sectionLayoutOrBraces ilevel
             return (Section name args elems)
@@ -312,7 +316,7 @@ elementInLayoutContext ilevel name = do
 elementInNonLayoutContext :: Name Position -> Parser (Field Position)
 elementInNonLayoutContext name = do
   skipMany tokWhitespace
-  (do parserTraced "colon" colon; fieldInlineOrBraces name)
+  (do trace "colon" colon; fieldInlineOrBraces name)
     <|> ( do
             args <- many sectionArg
             openBrace
@@ -348,7 +352,7 @@ fieldLayoutOrBraces ilevel name = do
 -- sectionLayoutOrBraces ::= '\\n'? '{' elements \\n? '}'
 --                         | elements
 sectionLayoutOrBraces :: IndentLevel -> Parser [Field Position]
-sectionLayoutOrBraces ilevel = parserTraced "sectionLayoutOrBraces" $ do
+sectionLayoutOrBraces ilevel = trace "sectionLayoutOrBraces" $ do
   skipMany tokWhitespace
   ( do
       openBrace
@@ -357,7 +361,7 @@ sectionLayoutOrBraces ilevel = parserTraced "sectionLayoutOrBraces" $ do
       closeBrace
       return elems
     )
-    <|> elements ilevel
+    <|> trace ("section-layout" <> show ilevel) (elements zeroIndentLevel)
 
 -- The body of a field, using either inline style or braces.
 --
@@ -443,7 +447,7 @@ checkIndentation'' a b
   | positionCol a == positionCol b = id
   | otherwise = (LexWarning LexInconsistentIndentation b :)
 
--- #ifdef CABAL_PARSEC_DEBUG
+#ifdef CABAL_PARSEC_DEBUG
 parseTest' :: Show a => Parsec LexState' () a -> SourceName -> B8.ByteString -> IO ()
 parseTest' p fname s =
   case parse p fname (lexSt s) of
@@ -494,7 +498,7 @@ lines' s1
               _ -> l : lines' s3
         | otherwise -> [l]
 
--- #endif
+#endif
 
 eof :: Parser ()
 eof = notFollowedBy anyToken <?> "end of file"
