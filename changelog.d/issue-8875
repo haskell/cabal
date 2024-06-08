@@ -1,0 +1,10 @@
+synopsis: Allow whitespace in targets
+packages: cabal-install
+prs: #10032
+issues: #8875
+
+description: {
+Allow spaces in the final component of target selectors. This resolves an issue
+where using absolute paths in selectors can fail if there is whitespace in the
+parent directories of the project.
+}
