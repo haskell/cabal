@@ -277,14 +277,14 @@ elements ilevel = many (element ilevel)
 -- element ::= '\\n' name elementInLayoutContext
 --           |      name elementInNonLayoutContext
 element :: IndentLevel -> Parser (Field Position)
-element ilevel = trace "element" $ do
+element ilevel = do
   skipMany tokWhitespace
-  ( trace "indent-element" $ do
-      ilevel' <- trace "at-least" $ indentOfAtLeast ilevel
-      name <- trace "secname" $ fieldSecName
+  ( do
+      ilevel' <- indentOfAtLeast ilevel
+      name <- fieldSecName
       elementInLayoutContext (incIndentLevel ilevel') name
     )
-    <|> ( trace "indent-2-element" $ do
+    <|> ( do
             name <- fieldSecName
             elementInNonLayoutContext name
         )
@@ -296,12 +296,12 @@ element ilevel = trace "element" $ do
 -- elementInLayoutContext ::= ':'  fieldLayoutOrBraces
 --                          | arg* sectionLayoutOrBraces
 elementInLayoutContext :: IndentLevel -> Name Position -> Parser (Field Position)
-elementInLayoutContext ilevel name = trace ("elementInLayoutContext" <> show ilevel) $ do
+elementInLayoutContext ilevel name = do
   skipMany tokWhitespace
-  (do trace "colon" colon
+  (do colon
       fieldLayoutOrBraces ilevel name)
     <|> ( do
-            args <- trace "many sectionArg" (many (sectionArg <* tokWhitespace))
+            args <- many (sectionArg <* tokWhitespace)
             skipMany tokComment
             elems <- sectionLayoutOrBraces ilevel
             return (Section name args elems)
@@ -316,7 +316,7 @@ elementInLayoutContext ilevel name = trace ("elementInLayoutContext" <> show ile
 elementInNonLayoutContext :: Name Position -> Parser (Field Position)
 elementInNonLayoutContext name = do
   skipMany tokWhitespace
-  (do trace "colon" colon; fieldInlineOrBraces name)
+  (do colon; fieldInlineOrBraces name)
     <|> ( do
             args <- many sectionArg
             openBrace
@@ -352,7 +352,7 @@ fieldLayoutOrBraces ilevel name = do
 -- sectionLayoutOrBraces ::= '\\n'? '{' elements \\n? '}'
 --                         | elements
 sectionLayoutOrBraces :: IndentLevel -> Parser [Field Position]
-sectionLayoutOrBraces ilevel = trace "sectionLayoutOrBraces" $ do
+sectionLayoutOrBraces ilevel = do
   skipMany tokWhitespace
   ( do
       openBrace
@@ -361,7 +361,7 @@ sectionLayoutOrBraces ilevel = trace "sectionLayoutOrBraces" $ do
       closeBrace
       return elems
     )
-    <|> trace ("section-layout" <> show ilevel) (elements zeroIndentLevel)
+    <|> (elements zeroIndentLevel) -- TODO this used to be ilevel ??
 
 -- The body of a field, using either inline style or braces.
 --
