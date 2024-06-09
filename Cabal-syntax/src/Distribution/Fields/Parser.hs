@@ -278,15 +278,15 @@ elements ilevel = many (element ilevel)
 --           |      name elementInNonLayoutContext
 element :: IndentLevel -> Parser (Field Position)
 element ilevel = do
-  result <- choice [(trace "layout element" $ do
+  result <- choice [(parserTraced "layout element" $ do
       ilevel' <- indentOfAtLeast ilevel
       name <- fieldSecName
       elementInLayoutContext (incIndentLevel ilevel') name
-    ), ( trace "non-layout element" $ do
+    ), ( parserTraced "non-layout element" $ do
             name <- fieldSecName
             elementInNonLayoutContext name
         )]
-  result <$ many tokWhitespace
+  result <$ many (tokWhitespace <|> tokComment)
 
 -- An element (field or section) that is valid in a layout context.
 -- In a layout context we can have fields and sections that themselves
