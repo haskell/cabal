@@ -520,12 +520,18 @@ curlTransport prog =
             (Just (Left (uname, passwd)), _) -> Just $ Left (uname ++ ":" ++ passwd)
             (Nothing, Just a) -> Just $ Left a
             (Nothing, Nothing) -> Nothing
+      let authnSchemeArg
+            -- When using TLS, we can accept Basic authentication.  Let curl
+            -- decide based on the scheme(s) offered by the server.
+            | isHttpsURI uri = "--anyauth"
+            -- When not using TLS, force Digest scheme
+            | otherwise = "--digest"
       case mbAuthStringToken of
         Just (Left up) ->
           progInvocation
             { progInvokeInput =
                 Just . IODataText . unlines $
-                  [ "--digest"
+                  [ authnSchemeArg
                   , "--user " ++ up
                   ]
             , progInvokeArgs = ["--config", "-"] ++ progInvokeArgs progInvocation
