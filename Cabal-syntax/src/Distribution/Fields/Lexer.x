@@ -124,7 +124,7 @@ tokens :-
   @nl            { \pos len inp -> do
                       adjustPos retPos
                       setStartCode bol_section
-                      toki Whitespace pos len inp }
+                      lexToken }
 }
 
 <bol_field_layout> {
@@ -147,7 +147,7 @@ tokens :-
   @nl                              { \pos len inp -> do
                                         adjustPos retPos
                                         setStartCode bol_field_layout
-                                        toki Whitespace pos len inp }
+                                        lexToken }
 }
 
 <bol_field_braces> {
@@ -162,7 +162,7 @@ tokens :-
   @nl                              { \pos len inp -> do
                                         adjustPos retPos
                                         setStartCode bol_field_braces
-                                        toki Whitespace pos len inp }
+                                        lexToken }
 }
 
 {
