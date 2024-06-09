@@ -280,7 +280,7 @@ elements ilevel = many (element ilevel)
 --           |      name elementInNonLayoutContext
 element :: IndentLevel -> Parser (Field Position)
 element ilevel = do
-  result <- choice [(trace "layout element" $ do
+  result <- choice [(parserTraced "layout element" $ do
       ilevel' <- indentOfAtLeast ilevel
       name <- fieldSecName
       elementInLayoutContext (incIndentLevel ilevel') name
