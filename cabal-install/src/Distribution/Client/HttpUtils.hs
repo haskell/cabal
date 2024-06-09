@@ -251,18 +251,27 @@ downloadURI transport verbosity uri path = do
 -- Utilities for repo url management
 --
 
+-- | If the remote repo is accessed over HTTPS, ensure that the transport
+-- supports HTTPS.
 remoteRepoCheckHttps :: Verbosity -> HttpTransport -> RemoteRepo -> IO ()
-remoteRepoCheckHttps verbosity transport repo
-  | isHttpsURI (remoteRepoURI repo)
-  , not (transportSupportsHttps transport) =
-      dieWithException verbosity $ RemoteRepoCheckHttps (unRepoName (remoteRepoName repo)) requiresHttpsErrorMessage
-  | otherwise = return ()
+remoteRepoCheckHttps verbosity transport repo =
+  transportCheckHttpsWithError verbosity transport (remoteRepoURI repo) $
+    RemoteRepoCheckHttps (unRepoName (remoteRepoName repo)) requiresHttpsErrorMessage
 
+-- | If the URI scheme is HTTPS, ensure the transport supports HTTPS.
 transportCheckHttps :: Verbosity -> HttpTransport -> URI -> IO ()
-transportCheckHttps verbosity transport uri
+transportCheckHttps verbosity transport uri =
+  transportCheckHttpsWithError verbosity transport uri $
+    TransportCheckHttps uri requiresHttpsErrorMessage
+
+-- | If the URI scheme is HTTPS, ensure the transport supports HTTPS.
+-- If not, fail with the given error.
+transportCheckHttpsWithError
+  :: Verbosity -> HttpTransport -> URI -> CabalInstallException -> IO ()
+transportCheckHttpsWithError verbosity transport uri err
   | isHttpsURI uri
-  , not (transportSupportsHttps transport) =
-      dieWithException verbosity $ TransportCheckHttps uri requiresHttpsErrorMessage
+  , not (transportSupportsHttps transport)
+  = dieWithException verbosity err
   | otherwise = return ()
 
 isHttpsURI :: URI -> Bool
