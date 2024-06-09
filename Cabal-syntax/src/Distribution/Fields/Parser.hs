@@ -299,11 +299,12 @@ element ilevel = do
 --                          | arg* sectionLayoutOrBraces
 elementInLayoutContext :: IndentLevel -> Name Position -> Parser (Field Position)
 elementInLayoutContext ilevel name = trace ("layoutcontext " <> show (getName name)) $ do
-  () <$ many (tokWhitespace <|> tokComment)
   result <- choice [(trace "colon" $ do
       colon
+      () <$ many (tokWhitespace <|> tokComment)
       fieldLayoutOrBraces ilevel name)
-                   , (parserTraced "section" $ do
+                   , (trace "section" $ do
+            () <$ many (tokWhitespace <|> tokComment)
             args <- trace "args" $ many (many tokWhitespace *> sectionArg <* many tokWhitespace)
             () <$ trace "comments" (many (tokWhitespace <|> tokComment))
             elems <- sectionLayoutOrBraces ilevel
@@ -335,7 +336,7 @@ elementInNonLayoutContext name = trace "non-layoutcontext" $ do
 -- fieldLayoutOrBraces   ::= '\\n'? '{' content '}'
 --                         | line? ('\\n' line)*
 fieldLayoutOrBraces :: IndentLevel -> Name Position -> Parser (Field Position)
-fieldLayoutOrBraces ilevel name = parserTraced "fieldLayoutOrBraces" $ do
+fieldLayoutOrBraces ilevel name = trace "fieldLayoutOrBraces" $ do
   () <$ many tokWhitespace
   braces <|> fieldLayout
   where
