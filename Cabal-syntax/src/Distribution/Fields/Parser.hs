@@ -180,7 +180,8 @@ closeBrace :: Parser ()
 closeBrace = tokCloseBrace <?> "\"}\""
 
 fieldContent :: Parser (FieldLine Position)
-fieldContent = tokFieldLine <?> "field contents"
+fieldContent = (tokFieldLine) <?> "field contents"
+
 
 newtype IndentLevel = IndentLevel Int
                     deriving newtype Show
@@ -297,10 +298,11 @@ element ilevel = do
 -- elementInLayoutContext ::= ':'  fieldLayoutOrBraces
 --                          | arg* sectionLayoutOrBraces
 elementInLayoutContext :: IndentLevel -> Name Position -> Parser (Field Position)
-elementInLayoutContext ilevel name = trace "layoutcontext" $ do
+elementInLayoutContext ilevel name = parserTraced ("layoutcontext " <> show (getName name)) $ do
 
   result <- choice [(trace "colon" $ do
       colon
+      many (tokWhitespace <|> tokComment)
       fieldLayoutOrBraces ilevel name)
                    , (trace "section" $ do
             args <- many (many tokWhitespace *> sectionArg <* many tokWhitespace)
@@ -334,8 +336,8 @@ elementInNonLayoutContext name = trace "non-layoutcontext" $ do
 -- fieldLayoutOrBraces   ::= '\\n'? '{' content '}'
 --                         | line? ('\\n' line)*
 fieldLayoutOrBraces :: IndentLevel -> Name Position -> Parser (Field Position)
-fieldLayoutOrBraces ilevel name = do
-  skipMany tokWhitespace
+fieldLayoutOrBraces ilevel name = trace "fieldLayoutOrBraces" $ do
+  () <$ many tokWhitespace
   braces <|> fieldLayout
   where
     braces = do
@@ -343,7 +345,8 @@ fieldLayoutOrBraces ilevel name = do
       ls <- inLexerMode (LexerMode in_field_braces) (many fieldContent)
       closeBrace
       return (Field name ls)
-    fieldLayout = inLexerMode (LexerMode in_field_layout) $ do
+    fieldLayout = inLexerMode (LexerMode in_field_layout) $ parserTraced "fieldLayout" $ do
+      () <$ many tokWhitespace
       l <- optionMaybe fieldContent
       ls <- many (do _ <- indentOfAtLeast ilevel; fieldContent)
       return $ case l of
