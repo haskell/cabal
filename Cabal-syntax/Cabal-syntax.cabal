@@ -76,7 +76,6 @@ library
     Distribution.Compat.Parsing
     Distribution.Compat.Prelude
     Distribution.Compat.Semigroup
-    Distribution.Compat.Typeable
     Distribution.Compiler
     Distribution.FieldGrammar
     Distribution.FieldGrammar.Class

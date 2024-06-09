@@ -15,9 +15,8 @@ import Distribution.Utils.Path
   )
 
 import System.Directory
-import System.FilePath
-
 import System.Environment ( getExecutablePath )
+import System.FilePath
 
 -- | Guess what the dist directory of a running executable is,
 -- by using the conventional layout of built executables

@@ -38,11 +38,7 @@ import System.Environment (getExecutablePath)
 {% if supportsCpp %}
 #if defined(VERSION_base)
 
-#if MIN_VERSION_base(4,0,0)
 catchIO :: IO a -> (Exception.IOException -> IO a) -> IO a
-#else
-catchIO :: IO a -> (Exception.Exception -> IO a) -> IO a
-#endif
 
 #else
 catchIO :: IO a -> (Exception.IOException -> IO a) -> IO a
