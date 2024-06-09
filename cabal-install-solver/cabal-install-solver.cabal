@@ -134,12 +134,8 @@ Test-Suite unit-tests
      UnitTests.Distribution.Solver.Modular.MessageUtils
 
    build-depends:
-<<<<<<< HEAD
-     , base        >= 4.11  && <4.20
-     , Cabal
-=======
      , base        >= 4.11  && <4.21
->>>>>>> 5226cd8c9 (Bump a number of dependencies)
+     , Cabal
      , Cabal-syntax
      , cabal-install-solver
      , tasty       >= 1.2.3 && <1.6
