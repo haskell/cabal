@@ -278,11 +278,11 @@ elements ilevel = many (element ilevel)
 --           |      name elementInNonLayoutContext
 element :: IndentLevel -> Parser (Field Position)
 element ilevel = do
-  result <- choice [( do
+  result <- choice [(trace "layout element" $ do
       ilevel' <- indentOfAtLeast ilevel
       name <- fieldSecName
       elementInLayoutContext (incIndentLevel ilevel') name
-    ), ( do
+    ), ( trace "non-layout element" $ do
             name <- fieldSecName
             elementInNonLayoutContext name
         )]
@@ -295,16 +295,18 @@ element ilevel = do
 -- elementInLayoutContext ::= ':'  fieldLayoutOrBraces
 --                          | arg* sectionLayoutOrBraces
 elementInLayoutContext :: IndentLevel -> Name Position -> Parser (Field Position)
-elementInLayoutContext ilevel name = trace "layoutcontext" $ do
-  skipMany tokWhitespace
-  (do colon
+elementInLayoutContext ilevel name = parserTraced "layoutcontext" $ do
+
+  result <- choice [(trace "colon" $ do
+      colon
       fieldLayoutOrBraces ilevel name)
-    <|> ( do
-            args <- many (sectionArg <* tokWhitespace)
-            skipMany tokComment
+                   , (parserTraced "section" $ do
+            args <- many (many tokWhitespace *> sectionArg <* many tokWhitespace)
+            () <$ many tokComment
             elems <- sectionLayoutOrBraces ilevel
             return (Section name args elems)
-        )
+        )]
+  result <$ many tokWhitespace
 
 -- An element (field or section) that is valid in a non-layout context.
 -- In a non-layout context we can have only have fields and sections that
@@ -351,16 +353,15 @@ fieldLayoutOrBraces ilevel name = do
 -- sectionLayoutOrBraces ::= '\\n'? '{' elements \\n? '}'
 --                         | elements
 sectionLayoutOrBraces :: IndentLevel -> Parser [Field Position]
-sectionLayoutOrBraces ilevel = do
-  skipMany tokWhitespace
-  ( do
+sectionLayoutOrBraces ilevel =
+  (trace "braces" $ do
       openBrace
       elems <- elements zeroIndentLevel
       optional tokIndent
       closeBrace
       return elems
     )
-    <|> (elements ilevel) -- TODO this used to be ilevel ??
+    <|> (trace "elements" $ elements ilevel) -- TODO this used to be ilevel ??
 
 -- The body of a field, using either inline style or braces.
 --
