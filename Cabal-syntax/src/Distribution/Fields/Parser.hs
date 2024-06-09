@@ -172,7 +172,9 @@ colon :: Parser ()
 colon = tokColon <?> "\":\""
 
 openBrace :: Parser ()
-openBrace = tokOpenBrace <?> "\"{\""
+openBrace = do
+  pos <- tokOpenBrace <?> "\"{\""
+  addLexerWarning (LexWarning LexBraces pos)
 
 closeBrace :: Parser ()
 closeBrace = tokCloseBrace <?> "\"}\""
@@ -278,7 +280,7 @@ elements ilevel = many (element ilevel)
 --           |      name elementInNonLayoutContext
 element :: IndentLevel -> Parser (Field Position)
 element ilevel = do
-  result <- choice [(parserTraced "layout element" $ do
+  result <- choice [(trace "layout element" $ do
       ilevel' <- indentOfAtLeast ilevel
       name <- fieldSecName
       elementInLayoutContext (incIndentLevel ilevel') name
@@ -295,7 +297,7 @@ element ilevel = do
 -- elementInLayoutContext ::= ':'  fieldLayoutOrBraces
 --                          | arg* sectionLayoutOrBraces
 elementInLayoutContext :: IndentLevel -> Name Position -> Parser (Field Position)
-elementInLayoutContext ilevel name = parserTraced "layoutcontext" $ do
+elementInLayoutContext ilevel name = trace "layoutcontext" $ do
 
   result <- choice [(trace "colon" $ do
       colon
