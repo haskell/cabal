@@ -163,7 +163,7 @@ tokWhitespace :: Parser B8.ByteString
 tokWhitespace = getToken (\case Whitespace s -> Just s; _ -> Nothing)
 
 sectionArg :: Parser (SectionArg Position)
-sectionArg = tokSym' <|> tokStr <|> tokOther <?> "section parameter"
+sectionArg = trace "sectionArg" (tokSym' <|> tokStr <|> tokOther <?> "section parameter")
 
 fieldSecName :: Parser (Name Position)
 fieldSecName = tokSym <?> "field or section name"
@@ -281,11 +281,11 @@ elements ilevel = many (element ilevel)
 --           |      name elementInNonLayoutContext
 element :: IndentLevel -> Parser (Field Position)
 element ilevel = do
-  result <- choice [(parserTraced "layout element" $ do
+  result <- choice [(trace "layout element" $ do
       ilevel' <- indentOfAtLeast ilevel
       name <- fieldSecName
       elementInLayoutContext (incIndentLevel ilevel') name
-    ), ( parserTraced "non-layout element" $ do
+    ), ( trace "non-layout element" $ do
             name <- fieldSecName
             elementInNonLayoutContext name
         )]
@@ -298,15 +298,14 @@ element ilevel = do
 -- elementInLayoutContext ::= ':'  fieldLayoutOrBraces
 --                          | arg* sectionLayoutOrBraces
 elementInLayoutContext :: IndentLevel -> Name Position -> Parser (Field Position)
-elementInLayoutContext ilevel name = parserTraced ("layoutcontext " <> show (getName name)) $ do
-
+elementInLayoutContext ilevel name = trace ("layoutcontext " <> show (getName name)) $ do
+  () <$ many (tokWhitespace <|> tokComment)
   result <- choice [(trace "colon" $ do
       colon
-      many (tokWhitespace <|> tokComment)
       fieldLayoutOrBraces ilevel name)
-                   , (trace "section" $ do
-            args <- many (many tokWhitespace *> sectionArg <* many tokWhitespace)
-            () <$ many tokComment
+                   , (parserTraced "section" $ do
+            args <- trace "args" $ many (many tokWhitespace *> sectionArg <* many tokWhitespace)
+            () <$ trace "comments" (many (tokWhitespace <|> tokComment))
             elems <- sectionLayoutOrBraces ilevel
             return (Section name args elems)
         )]
@@ -336,16 +335,18 @@ elementInNonLayoutContext name = trace "non-layoutcontext" $ do
 -- fieldLayoutOrBraces   ::= '\\n'? '{' content '}'
 --                         | line? ('\\n' line)*
 fieldLayoutOrBraces :: IndentLevel -> Name Position -> Parser (Field Position)
-fieldLayoutOrBraces ilevel name = trace "fieldLayoutOrBraces" $ do
+fieldLayoutOrBraces ilevel name = parserTraced "fieldLayoutOrBraces" $ do
   () <$ many tokWhitespace
   braces <|> fieldLayout
   where
     braces = do
       openBrace
+      () <$ many tokWhitespace
       ls <- inLexerMode (LexerMode in_field_braces) (many fieldContent)
+      () <$ many tokWhitespace
       closeBrace
       return (Field name ls)
-    fieldLayout = inLexerMode (LexerMode in_field_layout) $ parserTraced "fieldLayout" $ do
+    fieldLayout = inLexerMode (LexerMode in_field_layout) $ trace "fieldLayout" $ do
       () <$ many tokWhitespace
       l <- optionMaybe fieldContent
       ls <- many (do _ <- indentOfAtLeast ilevel; fieldContent)
@@ -361,6 +362,7 @@ sectionLayoutOrBraces :: IndentLevel -> Parser [Field Position]
 sectionLayoutOrBraces ilevel =
   (trace "braces" $ do
       openBrace
+      void $ many (tokWhitespace <|> tokComment)
       elems <- elements zeroIndentLevel
       optional tokIndent
       closeBrace
