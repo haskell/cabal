@@ -42,7 +42,7 @@ printExact = testGroup "printExact"
       testParsePrintExact "bounded.cabal"
     , testParsePrintExact "two-sections-no-depends.cabal"
     , testParsePrintExact "two-sections-build-depends.cabal"
-    -- , testParsePrintExact "two-sections.cabal"
+    , testParsePrintExact "two-sections.cabal"
     -- , testParsePrintExact "two-sections-spacing.cabal"
     -- , testParsePrintExact "comment.cabal" -- TODO this is required
     -- -- , testParsePrintExact "commas.cabal" -- TODO dear lord is this also requried?!

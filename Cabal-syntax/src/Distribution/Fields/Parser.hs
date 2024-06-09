@@ -300,7 +300,7 @@ elementInLayoutContext ilevel name = parserTraced "layoutcontext" $ do
   result <- choice [(trace "colon" $ do
       colon
       fieldLayoutOrBraces ilevel name)
-                   , (parserTraced "section" $ do
+                   , (trace "section" $ do
             args <- many (many tokWhitespace *> sectionArg <* many tokWhitespace)
             () <$ many tokComment
             elems <- sectionLayoutOrBraces ilevel
