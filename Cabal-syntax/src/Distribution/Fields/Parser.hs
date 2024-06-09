@@ -147,8 +147,8 @@ tokIndent = getToken (\t -> case t of Indent x -> Just x; _ -> Nothing)
 tokColon :: Parser ()
 tokColon = getToken (\t -> case t of Colon -> Just (); _ -> Nothing)
 
-tokOpenBrace :: Parser ()
-tokOpenBrace = getToken (\t -> case t of OpenBrace -> Just (); _ -> Nothing)
+tokOpenBrace :: Parser Position
+tokOpenBrace = getTokenWithPos $ \t -> case t of L pos OpenBrace -> Just pos; _ -> Nothing
 
 tokCloseBrace :: Parser ()
 tokCloseBrace = getToken (\t -> case t of CloseBrace -> Just (); _ -> Nothing)
