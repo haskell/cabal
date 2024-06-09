@@ -13,8 +13,6 @@ import Distribution.Types.VersionRange (VersionRange)
 import Distribution.Types.GenericPackageDescription (GenericPackageDescription)
 import Distribution.Types.LocalBuildInfo            (LocalBuildInfo)
 
-import UnitTests.Orphans ()
-
 tests :: TestTree
 tests = testGroup "Distribution.Utils.Structured"
     -- This test also verifies that structureHash doesn't loop.

@@ -128,11 +128,6 @@ instance Monad ParseResult where
   ParseOk ws x >>= f = case f x of
     ParseFailed err -> ParseFailed err
     ParseOk ws' x' -> ParseOk (ws' ++ ws) x'
-#if !(MIN_VERSION_base(4,9,0))
-  fail = parseResultFail
-#elif !(MIN_VERSION_base(4,13,0))
-  fail = Fail.fail
-#endif
 {- FOURMOLU_ENABLE -}
 
 instance Foldable ParseResult where

@@ -189,13 +189,8 @@ instance HC.Pretty UnexpectedResponse where
       ++ " for "
       ++ show uri
 
-#if MIN_VERSION_base(4,8,0)
 deriving instance Show UnexpectedResponse
 instance Exception UnexpectedResponse where displayException = HC.pretty
-#else
-instance Show UnexpectedResponse where show = HC.pretty
-instance Exception UnexpectedResponse
-#endif
 
 wrapCustomEx
   :: ( ( HC.Throws UnexpectedResponse

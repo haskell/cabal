@@ -148,24 +148,20 @@ instance (Eq (Key a), Eq a) => Eq (Graph a) where
   g1 == g2 = graphMap g1 == graphMap g2
 
 instance Foldable.Foldable Graph where
-  fold = Foldable.fold . graphMap
-  foldr f z = Foldable.foldr f z . graphMap
-  foldl f z = Foldable.foldl f z . graphMap
-  foldMap f = Foldable.foldMap f . graphMap
-  foldl' f z = Foldable.foldl' f z . graphMap
-  foldr' f z = Foldable.foldr' f z . graphMap
-#ifdef MIN_VERSION_base
-#if MIN_VERSION_base(4,8,0)
-  length = Foldable.length . graphMap
-  null   = Foldable.null   . graphMap
-  toList = Foldable.toList . graphMap
   elem x = Foldable.elem x . graphMap
+  fold = Foldable.fold . graphMap
+  foldl f z = Foldable.foldl f z . graphMap
+  foldl' f z = Foldable.foldl' f z . graphMap
+  foldr f z = Foldable.foldr f z . graphMap
+  foldr' f z = Foldable.foldr' f z . graphMap
+  foldMap f = Foldable.foldMap f . graphMap
+  length = Foldable.length . graphMap
   maximum = Foldable.maximum . graphMap
   minimum = Foldable.minimum . graphMap
-  sum     = Foldable.sum     . graphMap
+  null = Foldable.null . graphMap
   product = Foldable.product . graphMap
-#endif
-#endif
+  sum = Foldable.sum . graphMap
+  toList = Foldable.toList . graphMap
 
 instance (NFData a, NFData (Key a)) => NFData (Graph a) where
   rnf
