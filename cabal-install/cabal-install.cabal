@@ -1,4 +1,4 @@
-Cabal-Version:      2.2
+Cabal-Version:      3.0
 
 Name:               cabal-install
 Version:            3.13.0.0
@@ -52,7 +52,7 @@ common warnings
       ghc-options: -Wnoncanonical-monadfail-instances
 
 common base-dep
-    build-depends: base >=4.11 && <4.20
+    build-depends: base >=4.11 && <4.21
 
 common cabal-dep
     build-depends: Cabal ^>=3.13
@@ -354,7 +354,7 @@ test-suite unit-tests
           tasty-expected-failure,
           tasty-hunit >= 0.10,
           tree-diff,
-          QuickCheck >= 2.14.3 && <2.15
+          QuickCheck >= 2.14.3 && <2.16
 
 
 -- Tests to run with a limited stack and heap size
@@ -439,5 +439,5 @@ test-suite long-tests
         tasty-expected-failure,
         tasty-hunit >= 0.10,
         tasty-quickcheck,
-        QuickCheck >= 2.14 && <2.15,
+        QuickCheck >= 2.14 && <2.16,
         pretty-show >= 1.6.15
