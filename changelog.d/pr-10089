@@ -1,0 +1,12 @@
+synopsis: `curl` transport now supports Basic authentication
+packages: cabal-install
+prs: #10089
+
+description: {
+
+- The `curl` HTTP transport previously only supported the HTTP Digest
+  authentication scheme.  Basic authentication is now supported
+  when using HTTPS; Curl will use the scheme offered by the server.
+  The `wget` transport already supports HTTPS.
+
+}
