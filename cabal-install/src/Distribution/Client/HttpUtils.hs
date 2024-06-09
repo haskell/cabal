@@ -192,7 +192,7 @@ downloadURI transport verbosity uri path = do
   -- Only use the external http transports if we actually have to
   -- (or have been told to do so)
   let transport'
-        | uriScheme uri == "http:"
+        | isHttpURI uri
         , not (transportManuallySelected transport) =
             plainHttpTransport
         | otherwise =
@@ -253,17 +253,23 @@ downloadURI transport verbosity uri path = do
 
 remoteRepoCheckHttps :: Verbosity -> HttpTransport -> RemoteRepo -> IO ()
 remoteRepoCheckHttps verbosity transport repo
-  | uriScheme (remoteRepoURI repo) == "https:"
+  | isHttpsURI (remoteRepoURI repo)
   , not (transportSupportsHttps transport) =
       dieWithException verbosity $ RemoteRepoCheckHttps (unRepoName (remoteRepoName repo)) requiresHttpsErrorMessage
   | otherwise = return ()
 
 transportCheckHttps :: Verbosity -> HttpTransport -> URI -> IO ()
 transportCheckHttps verbosity transport uri
-  | uriScheme uri == "https:"
+  | isHttpsURI uri
   , not (transportSupportsHttps transport) =
       dieWithException verbosity $ TransportCheckHttps uri requiresHttpsErrorMessage
   | otherwise = return ()
+
+isHttpsURI :: URI -> Bool
+isHttpsURI uri = uriScheme uri == "https:"
+
+isHttpURI :: URI -> Bool
+isHttpURI uri = uriScheme uri == "http:"
 
 requiresHttpsErrorMessage :: String
 requiresHttpsErrorMessage =
@@ -280,12 +286,12 @@ requiresHttpsErrorMessage =
 remoteRepoTryUpgradeToHttps :: Verbosity -> HttpTransport -> RemoteRepo -> IO RemoteRepo
 remoteRepoTryUpgradeToHttps verbosity transport repo
   | remoteRepoShouldTryHttps repo
-  , uriScheme (remoteRepoURI repo) == "http:"
+  , isHttpURI (remoteRepoURI repo)
   , not (transportSupportsHttps transport)
   , not (transportManuallySelected transport) =
       dieWithException verbosity $ TryUpgradeToHttps [name | (name, _, True, _) <- supportedTransports]
   | remoteRepoShouldTryHttps repo
-  , uriScheme (remoteRepoURI repo) == "http:"
+  , isHttpURI (remoteRepoURI repo)
   , transportSupportsHttps transport =
       return
         repo
