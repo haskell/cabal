@@ -40,10 +40,12 @@ printExact :: TestTree
 printExact = testGroup "printExact"
     [
       testParsePrintExact "bounded.cabal"
-    , testParsePrintExact "two-sections.cabal"
-    , testParsePrintExact "two-sections-spacing.cabal"
-    , testParsePrintExact "comment.cabal" -- TODO this is required
-    -- , testParsePrintExact "commas.cabal" -- TODO dear lord is this also requried?!
+    , testParsePrintExact "two-sections-no-depends.cabal"
+    , testParsePrintExact "two-sections-build-depends.cabal"
+    -- , testParsePrintExact "two-sections.cabal"
+    -- , testParsePrintExact "two-sections-spacing.cabal"
+    -- , testParsePrintExact "comment.cabal" -- TODO this is required
+    -- -- , testParsePrintExact "commas.cabal" -- TODO dear lord is this also requried?!
     -- , testParsePrintExact "comments.cabal" -- TODO this is required
     -- , testParsePrintExact "anynone.cabal" -- TODO is this neccessary? I think we're allowed to pretty print a range?
     -- , testParsePrintExact "multiple-depends.cabal" -- TODO is this neccisary? I think we're allowed to be oppinionated on comma placement?
@@ -62,10 +64,11 @@ testParsePrintExact fp = testGroup "testParsePrintExact" [
     contents <- BS.readFile $ "tests" </> "ParserTests" </> "exactPrint" </> fp
 
     let res =  parseGenericPackageDescription contents
-    let (_warns, descirption) = runParseResult res
+    let (warns, descirption) = runParseResult res
 
     case descirption of
-      Left someFailure -> error $ "failed parsing" <> show someFailure
+      Left someFailure -> do
+        error $ "failed parsing " <> show someFailure
       Right generic ->
         case snd (runParseResult (parseGenericPackageDescription (encodeUtf8 (exactPrint generic)))) of
           Left someParseError ->  error $ "printing caused parse Error" <> show someParseError

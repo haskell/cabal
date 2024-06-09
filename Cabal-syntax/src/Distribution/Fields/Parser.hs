@@ -130,19 +130,19 @@ describeToken t = case t of
   LexicalError is -> "character in input " ++ show (B8.head is)
 
 tokSym :: Parser (Name Position)
-tokSym = many tokWhitespace *> getTokenWithPos (\t -> case t of L pos (TokSym x) -> Just (mkName pos x); _ -> Nothing)
+tokSym = getTokenWithPos (\t -> case t of L pos (TokSym x) -> Just (mkName pos x); _ -> Nothing)
 
 tokSym' :: Parser (SectionArg Position)
-tokSym' = many tokWhitespace *> getTokenWithPos (\t -> case t of L pos (TokSym x) -> Just (SecArgName pos x); _ -> Nothing)
+tokSym' = getTokenWithPos (\t -> case t of L pos (TokSym x) -> Just (SecArgName pos x); _ -> Nothing)
 
 tokStr :: Parser (SectionArg Position)
-tokStr = many tokWhitespace *> getTokenWithPos (\t -> case t of L pos (TokStr x) -> Just (SecArgStr pos x); _ -> Nothing)
+tokStr = getTokenWithPos (\t -> case t of L pos (TokStr x) -> Just (SecArgStr pos x); _ -> Nothing)
 
 tokOther :: Parser (SectionArg Position)
-tokOther = many tokWhitespace *> getTokenWithPos (\t -> case t of L pos (TokOther x) -> Just (SecArgOther pos x); _ -> Nothing)
+tokOther = getTokenWithPos (\t -> case t of L pos (TokOther x) -> Just (SecArgOther pos x); _ -> Nothing)
 
 tokIndent :: Parser Int
-tokIndent = many tokWhitespace *> getToken (\t -> case t of Indent x -> Just x; _ -> Nothing)
+tokIndent = getToken (\t -> case t of Indent x -> Just x; _ -> Nothing)
 
 tokColon :: Parser ()
 tokColon = getToken (\t -> case t of Colon -> Just (); _ -> Nothing)
@@ -154,7 +154,7 @@ tokCloseBrace :: Parser ()
 tokCloseBrace = getToken (\t -> case t of CloseBrace -> Just (); _ -> Nothing)
 
 tokFieldLine :: Parser (FieldLine Position)
-tokFieldLine = many tokWhitespace *> getTokenWithPos (\t -> case t of L pos (TokFieldLine s) -> Just (FieldLine pos s); _ -> Nothing)
+tokFieldLine = getTokenWithPos (\t -> case t of L pos (TokFieldLine s) -> Just (FieldLine pos s); _ -> Nothing)
 
 tokComment :: Parser B8.ByteString
 tokComment = getToken (\case Comment s -> Just s; _ -> Nothing) *> tokWhitespace
@@ -278,16 +278,15 @@ elements ilevel = many (element ilevel)
 --           |      name elementInNonLayoutContext
 element :: IndentLevel -> Parser (Field Position)
 element ilevel = do
-  skipMany tokWhitespace
-  ( do
+  result <- choice [( do
       ilevel' <- indentOfAtLeast ilevel
       name <- fieldSecName
       elementInLayoutContext (incIndentLevel ilevel') name
-    )
-    <|> ( do
+    ), ( do
             name <- fieldSecName
             elementInNonLayoutContext name
-        )
+        )]
+  result <$ many tokWhitespace
 
 -- An element (field or section) that is valid in a layout context.
 -- In a layout context we can have fields and sections that themselves
@@ -296,7 +295,7 @@ element ilevel = do
 -- elementInLayoutContext ::= ':'  fieldLayoutOrBraces
 --                          | arg* sectionLayoutOrBraces
 elementInLayoutContext :: IndentLevel -> Name Position -> Parser (Field Position)
-elementInLayoutContext ilevel name = do
+elementInLayoutContext ilevel name = trace "layoutcontext" $ do
   skipMany tokWhitespace
   (do colon
       fieldLayoutOrBraces ilevel name)
@@ -314,7 +313,7 @@ elementInLayoutContext ilevel name = do
 -- elementInNonLayoutContext ::= ':' FieldInlineOrBraces
 --                             | arg* '\\n'? '{' elements '\\n'? '}'
 elementInNonLayoutContext :: Name Position -> Parser (Field Position)
-elementInNonLayoutContext name = do
+elementInNonLayoutContext name = trace "non-layoutcontext" $ do
   skipMany tokWhitespace
   (do colon; fieldInlineOrBraces name)
     <|> ( do

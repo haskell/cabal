@@ -1,0 +1,15 @@
+cabal-version:           3.0
+name:                    two-sections
+version:                 0
+synopsis:                The -any none demo
+build-type:              Simple
+
+library
+  default-language:  Haskell2010
+  exposed-modules:   AnyNone
+  build-depends:     base <5
+
+executable two
+  default-language:  Haskell2010
+  main-is: main.hs
+  build-depends:     base <5
