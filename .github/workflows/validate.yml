@@ -67,7 +67,7 @@ jobs:
         # If you remove something from here, then add it to the old-ghcs job.
         # Also a removed GHC from here means that we are actually dropping
         # support, so the PR *must* have a changelog entry.
-        ghc: ['9.10.1', '9.8.2', '9.6.4', '9.4.8', '9.2.8', '9.0.2', '8.10.7', '8.8.4', '8.6.5']
+        ghc: ['9.10.1', '9.8.2', '9.6.4', '9.4.8', '9.2.8', '9.0.2', '8.10.7', '8.8.4']
         exclude:
           # corrupts GHA cache or the fabric of reality itself, see https://github.com/haskell/cabal/issues/8356
           - sys: { os: windows-latest, shell: 'C:/msys64/usr/bin/bash.exe -e {0}' }
@@ -75,12 +75,7 @@ jobs:
           # lot of segfaults caused by ghc bugs
           - sys: { os: windows-latest, shell: 'C:/msys64/usr/bin/bash.exe -e {0}' }
             ghc: '8.8.4'
-          # it often randomly does "C:\Users\RUNNER~1\AppData\Local\Temp\ghcFEDE.c: DeleteFile "\\\\?\\C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\ghcFEDE.c": permission denied (Access is denied.)"
-          - sys: { os: windows-latest, shell: 'C:/msys64/usr/bin/bash.exe -e {0}' }
-            ghc: '8.6.5'
-    defaults:
-        run:
-          shell: ${{ matrix.sys.shell }}
+
     steps:
 
       - name: Work around XDG directories existence (haskell-actions/setup#62)
