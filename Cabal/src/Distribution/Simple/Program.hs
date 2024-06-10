@@ -1,3 +1,10 @@
+{- FUTUREWORK:
+ -
+ - Currently the logic in this module is not tested.
+ -
+ - Ideally, a set of unit tests that check whether certain
+ - flags trigger recompilation should be added.
+ - -}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
