@@ -267,17 +267,21 @@ toExactStep prevNamespace field prev =  case field of
     Map.insert nameSpace
                (ExactPosition { namePosition = (nameAnn name), argumentPosition = (sectionArgAnn <$> args)})
                           $ foldr (toExactStep nameSpace) prev fields'
+  Meta _ -> prev
   where
-    nameSpace = prevNamespace <> [toNameSpace field]
+    nameSpace = prevNamespace <> toNameSpace field
 
-toNameSpace :: Field a -> NameSpace
+toNameSpace :: Field a -> [NameSpace]
 toNameSpace = \case
-  Field name _ -> NameSpace { nameSpaceName = getName name, nameSpaceSectionArgs = [] }
-  Section name args _ -> NameSpace { nameSpaceName = getName name, nameSpaceSectionArgs = sectionArgContent <$> args }
+  Field name _ -> [NameSpace { nameSpaceName = getName name, nameSpaceSectionArgs = [] }]
+  Section name args _ -> [NameSpace { nameSpaceName = getName name, nameSpaceSectionArgs = sectionArgContent <$> args }]
+  Meta _ -> []
+
 
 goSections :: CabalSpecVersion -> [Field Position] -> SectionParser ()
 goSections specVer = traverse_ process
   where
+    process (Meta _) = pure ()
     process (Field (Name pos name) _) =
       lift $
         parseWarning pos PWTTrailingFields $

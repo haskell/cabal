@@ -260,8 +260,8 @@ inLexerMode (LexerMode mode) p =
 -- Top level of a file using cabal syntax
 --
 cabalStyleFile :: Parser [Field Position]
-cabalStyleFile = do
-  comments <- many tokComment
+cabalStyleFile = parserTraced "cabalStyleFile" $ do
+  comments <- many (tokComment <|> tokWhitespace)
   es <- elements zeroIndentLevel
   eof
   return $ (Meta <$> comments) <> es
@@ -271,7 +271,15 @@ cabalStyleFile = do
 --
 -- elements ::= element*
 elements :: IndentLevel -> Parser [Field Position]
-elements ilevel = many (element ilevel)
+elements ilevel = do
+   res <- many $ do
+            element <- element ilevel
+            after <- fmap Meta <$> many (tokWhitespace <|> tokComment)
+            pure (element, after)
+   pure $ flatten =<< res
+
+flatten :: (Field Position, [Field Position]) -> [Field Position]
+flatten (y, mz) = y : mz
 
 -- An individual element, ie a field or a section. These can either use
 -- layout style or braces style. For layout style then it must start on
@@ -280,8 +288,8 @@ elements ilevel = many (element ilevel)
 -- element ::= '\\n' name elementInLayoutContext
 --           |      name elementInNonLayoutContext
 element :: IndentLevel -> Parser (Field Position)
-element ilevel = do
-  result <- choice [(trace "layout element" $ do
+element ilevel =
+  choice [(trace "layout element" $ do
       ilevel' <- indentOfAtLeast ilevel
       name <- fieldSecName
       elementInLayoutContext (incIndentLevel ilevel') name
@@ -289,7 +297,6 @@ element ilevel = do
             name <- fieldSecName
             elementInNonLayoutContext name
         )]
-  result <$ many (tokWhitespace <|> tokComment)
 
 -- An element (field or section) that is valid in a layout context.
 -- In a layout context we can have fields and sections that themselves
@@ -442,12 +449,14 @@ checkIndentation :: [Field Position] -> [LexWarning] -> [LexWarning]
 checkIndentation [] = id
 checkIndentation (Field name _ : fs') = checkIndentation' (nameAnn name) fs'
 checkIndentation (Section name _ fs : fs') = checkIndentation fs . checkIndentation' (nameAnn name) fs'
+checkIndentation (Meta x : fs' ) = checkIndentation' (metaAnn x) fs'
 
 -- | We compare adjacent fields to reduce the amount of reported indentation warnings.
 checkIndentation' :: Position -> [Field Position] -> [LexWarning] -> [LexWarning]
 checkIndentation' _ [] = id
 checkIndentation' pos (Field name _ : fs') = checkIndentation'' pos (nameAnn name) . checkIndentation' (nameAnn name) fs'
 checkIndentation' pos (Section name _ fs : fs') = checkIndentation'' pos (nameAnn name) . checkIndentation fs . checkIndentation' (nameAnn name) fs'
+checkIndentation' pos (Meta x : fs' ) = checkIndentation'' pos (metaAnn x) . checkIndentation' (metaAnn x) fs'
 
 -- | Check that positions' columns are the same.
 checkIndentation'' :: Position -> Position -> [LexWarning] -> [LexWarning]
