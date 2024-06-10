@@ -646,42 +646,24 @@ describe the package as a whole:
 
     ::
 
-        tested-with: GHC == 9.0.1, GHC == 8.10.4, GHC == 8.8.4,
-                     GHC == 8.6.5, GHC == 8.4.4, GHC == 8.2.2, GHC == 8.0.2,
-                     GHC == 7.10.3, GHC == 7.8.4, GHC == 7.6.3, GHC == 7.4.2
+        tested-with: GHC == 9.10.1, GHC == 9.8.2, GHC == 9.6.5
 
     The same can be spread over several lines, for instance:
 
     ::
 
-        tested-with: GHC == 9.0.1
-                   , GHC == 8.10.4
-                   , GHC == 8.8.4
-                   , GHC == 8.6.5
-                   , GHC == 8.4.4
-                   , GHC == 8.2.2
-                   , GHC == 8.0.2
-                   , GHC == 7.10.3
-                   , GHC == 7.8.4
-                   , GHC == 7.6.3
-                   , GHC == 7.4.2
+        tested-with: GHC == 9.10.1
+                   , GHC == 9.8.2
+                   , GHC == 9.6.5
 
     The separating comma can also be dropped altogether:
 
     ::
 
         tested-with:
-          GHC == 9.0.1
-          GHC == 8.10.4
-          GHC == 8.8.4
-          GHC == 8.6.5
-          GHC == 8.4.4
-          GHC == 8.2.2
-          GHC == 8.0.2
-          GHC == 7.10.3
-          GHC == 7.8.4
-          GHC == 7.6.3
-          GHC == 7.4.2
+          GHC == 9.10.1
+          GHC == 9.8.2
+          GHC == 9.6.5
 
     However, this alternative might
     `disappear <https://github.com/haskell/cabal/issues/4894#issuecomment-909008657>`__
@@ -696,24 +678,16 @@ describe the package as a whole:
         ::
 
             tested-with:
-              , GHC == 9.0.1
-              , GHC == 8.10.4
-              , GHC == 8.8.4
-              , GHC == 8.6.5
-              , GHC == 8.4.4
-              , GHC == 8.2.2
-              , GHC == 8.0.2
-              , GHC == 7.10.3
-              , GHC == 7.8.4
-              , GHC == 7.6.3
-              , GHC == 7.4.2
+              , GHC == 9.10.1
+              , GHC == 9.8.2
+              , GHC == 9.6.5
 
 
     2. A concise set notation syntax is available:
 
        ::
 
-           tested-with: GHC == { 9.0.1, 8.10.4, 8.8.4, 8.6.5, 8.4.4, 8.2.2, 8.0.2, 7.10.3, 7.8.4, 7.6.3, 7.4.2 }
+          tested-with: GHC == { 9.10.1, 9.8.2, 9.6.5 }
 
 .. pkg-field:: data-files: filename list
 
