@@ -3,6 +3,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TypeApplications #-}
 
 -- | Handling project configuration.
 module Distribution.Client.ProjectConfig
@@ -18,8 +19,10 @@ module Distribution.Client.ProjectConfig
 
     -- * Project root
   , findProjectRoot
+  , getProjectRootUsability
   , ProjectRoot (..)
-  , BadProjectRoot
+  , BadProjectRoot (..)
+  , ProjectRootUsability (..)
 
     -- * Project config files
   , readProjectConfig
@@ -196,6 +199,7 @@ import qualified Codec.Archive.Tar.Entry as Tar
 import qualified Distribution.Client.GZipUtils as GZipUtils
 import qualified Distribution.Client.Tar as Tar
 
+import Control.Exception (handle)
 import Control.Monad.Trans (liftIO)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
@@ -215,9 +219,11 @@ import System.Directory
   ( canonicalizePath
   , doesDirectoryExist
   , doesFileExist
+  , doesPathExist
   , getCurrentDirectory
   , getDirectoryContents
   , getHomeDirectory
+  , pathIsSymbolicLink
   )
 import System.FilePath hiding (combine)
 import System.IO
@@ -526,8 +532,24 @@ resolveBuildTimeSettings
         | otherwise = False
 
 ---------------------------------------------
--- Reading and writing project config files
---
+
+-- | Get @ProjectRootUsability@ of a given file
+getProjectRootUsability :: FilePath -> IO ProjectRootUsability
+getProjectRootUsability filePath = do
+  exists <- doesFileExist filePath
+  if exists
+    then return ProjectRootUsabilityPresentAndUsable
+    else do
+      let isUsableAciton =
+            handle @IOException
+              -- NOTE: if any IOException is raised, we assume the file does not exist.
+              -- That is what happen when we call @pathIsSymbolicLink@ on an @FilePath@
+              (const $ pure False)
+              ((||) <$> pathIsSymbolicLink filePath <*> doesPathExist filePath)
+      isUnusable <- isUsableAciton
+      if isUnusable
+        then return ProjectRootUsabilityPresentAndUnusable
+        else return ProjectRootUsabilityNotPresent
 
 -- | Find the root of this project.
 --
@@ -624,7 +646,17 @@ renderBadProjectRoot = \case
   BadProjectRootAbsoluteFile file ->
     "The given project file '" <> file <> "' does not exist."
   BadProjectRootDirFile dir file ->
-    "The given project directory/file combination '" <> dir </> file <> "' does not exist."
+    "The given projectdirectory/file combination '" <> dir </> file <> "' does not exist."
+
+-- | State of the project file, encodes if the file can be used
+data ProjectRootUsability
+  = -- | The file is present and can be used
+    ProjectRootUsabilityPresentAndUsable
+  | -- | The file is present but can't be used (e.g. broken symlink)
+    ProjectRootUsabilityPresentAndUnusable
+  | -- | The file is not present
+    ProjectRootUsabilityNotPresent
+  deriving (Eq, Show)
 
 withGlobalConfig
   :: Verbosity

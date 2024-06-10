@@ -98,6 +98,7 @@ tests =
       , testProperty "specific" prop_roundtrip_printparse_specific
       , testProperty "all" prop_roundtrip_printparse_all
       ]
+  , testGetProjectRootUsability
   , testFindProjectRoot
   ]
   where
@@ -105,6 +106,31 @@ tests =
       case buildCompilerId of
         CompilerId GHC v -> v < mkVersion [7, 7]
         _ -> False
+
+testGetProjectRootUsability :: TestTree
+testGetProjectRootUsability =
+  testGroup
+    "getProjectRootUsability"
+    [ test "relative path" file ProjectRootUsabilityPresentAndUsable
+    , test "absolute path" absFile ProjectRootUsabilityPresentAndUsable
+    , test "symbolic link" fileSymlink ProjectRootUsabilityPresentAndUsable
+    , test "file not present" fileNotPresent ProjectRootUsabilityNotPresent
+    , test "directory" brokenDirCabalProject ProjectRootUsabilityPresentAndUnusable
+    , test "broken symbolic link" fileSymlinkBroken ProjectRootUsabilityPresentAndUnusable
+    ]
+  where
+    dir = fixturesDir </> "project-root"
+    file = defaultProjectFile
+    absFile = dir </> file
+    fileNotPresent = file <.> "not-present"
+    fileSymlink = file <.> "symlink"
+    fileSymlinkBroken = fileSymlink <.> "broken"
+    brokenDirCabalProject = "cabal" <.> "project" <.> "dir" <.> "broken"
+    test name fileName expectedState =
+      testCase name $
+        withCurrentDirectory dir $
+          getProjectRootUsability fileName >>=
+          (@?= expectedState)
 
 testFindProjectRoot :: TestTree
 testFindProjectRoot =
