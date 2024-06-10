@@ -156,11 +156,11 @@ tokCloseBrace = getToken (\t -> case t of CloseBrace -> Just (); _ -> Nothing)
 tokFieldLine :: Parser (FieldLine Position)
 tokFieldLine = getTokenWithPos (\t -> case t of L pos (TokFieldLine s) -> Just (FieldLine pos s); _ -> Nothing)
 
-tokComment :: Parser B8.ByteString
-tokComment = getToken (\case Comment s -> Just s; _ -> Nothing) *> tokWhitespace
+tokComment :: Parser (MetaField Position)
+tokComment = getTokenWithPos (\case L pos (Comment s) -> Just (MetaComment pos s); _ -> Nothing) *> tokWhitespace
 
-tokWhitespace :: Parser B8.ByteString
-tokWhitespace = getToken (\case Whitespace s -> Just s; _ -> Nothing)
+tokWhitespace :: Parser (MetaField Position)
+tokWhitespace = getTokenWithPos (\case L pos (Whitespace s) -> Just (MetaWhitespace pos s); _ -> Nothing)
 
 sectionArg :: Parser (SectionArg Position)
 sectionArg = trace "sectionArg" (tokSym' <|> tokStr <|> tokOther <?> "section parameter")
@@ -261,10 +261,10 @@ inLexerMode (LexerMode mode) p =
 --
 cabalStyleFile :: Parser [Field Position]
 cabalStyleFile = do
-  skipMany tokComment
+  comments <- many tokComment
   es <- elements zeroIndentLevel
   eof
-  return es
+  return $ (Meta <$> comments) <> es
 
 -- Elements that live at the top level or inside a section, i.e. fields
 -- and sections content

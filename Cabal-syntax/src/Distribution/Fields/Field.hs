@@ -3,6 +3,7 @@
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE StrictData #-}
 
 -- | Cabal-like file AST types: 'Field', 'Section' etc
 --
@@ -13,6 +14,7 @@ module Distribution.Fields.Field
   , fieldName
   , fieldAnn
   , fieldUniverse
+  , fieldMeta
   , FieldLine (..)
   , fieldLineAnn
   , fieldLineBS
@@ -30,6 +32,12 @@ module Distribution.Fields.Field
     -- * Conversions to String
   , sectionArgsToString
   , fieldLinesToString
+
+  -- * meta data
+  , MetaField(..)
+  , fieldMeta
+  , metaComment
+  , metaAnn
   ) where
 
 import Data.ByteString (ByteString)
@@ -49,17 +57,43 @@ import qualified Data.Foldable1 as F1
 
 -- | A Cabal-like file consists of a series of fields (@foo: bar@) and sections (@library ...@).
 data Field ann
-  = Field !(Name ann) [FieldLine ann]
-  | Section !(Name ann) [SectionArg ann] [Field ann]
+  = Field (Name ann) [FieldLine ann]
+  | Section (Name ann) [SectionArg ann] [Field ann]
+  | Meta (MetaField ann)
   deriving (Eq, Show, Functor, Foldable, Traversable)
 
+data MetaField ann = MetaComment ann ByteString
+                   | MetaWhitespace ann ByteString
+  deriving (Eq, Show, Functor, Foldable, Traversable)
+
+metaComment :: MetaField ann -> Maybe ByteString
+metaComment = \case
+  (MetaComment _ bs) -> Just bs
+  (MetaWhitespace _ _) -> Nothing
+
+
+
+metaAnn :: MetaField ann -> ann
+metaAnn = \case
+  (MetaComment ann _) -> ann
+  (MetaWhitespace ann _) ->  ann
+
 -- | Section of field name
-fieldName :: Field ann -> Name ann
-fieldName (Field n _) = n
-fieldName (Section n _ _) = n
+fieldName :: Field ann -> (Maybe (Name ann))
+fieldName (Field n _) = Just n
+fieldName (Section n _ _) = Just n
+fieldName (Meta _) = Nothing
+
+fieldMeta :: Field ann -> Maybe (MetaField ann)
+fieldMeta = \case
+  (Field n _) -> Nothing
+  (Section n _ _) -> Nothing
+  (Meta x) -> Just x
 
 fieldAnn :: Field ann -> ann
-fieldAnn = nameAnn . fieldName
+fieldAnn (Field n _) = nameAnn n
+fieldAnn (Section n _ _) = nameAnn n
+fieldAnn (Meta x) = metaAnn x
 
 -- | All transitive descendants of 'Field', including itself.
 --
@@ -67,12 +101,13 @@ fieldAnn = nameAnn . fieldName
 fieldUniverse :: Field ann -> [Field ann]
 fieldUniverse f@(Section _ _ fs) = f : concatMap fieldUniverse fs
 fieldUniverse f@(Field _ _) = [f]
+fieldUniverse (Meta _) = []
 
 -- | A line of text representing the value of a field from a Cabal file.
 -- A field may contain multiple lines.
 --
 -- /Invariant:/ 'ByteString' has no newlines.
-data FieldLine ann = FieldLine !ann !ByteString
+data FieldLine ann = FieldLine ann ByteString
   deriving (Eq, Show, Functor, Foldable, Traversable)
 
 -- | @since 3.0.0.0
@@ -86,11 +121,11 @@ fieldLineBS (FieldLine _ bs) = bs
 -- | Section arguments, e.g. name of the library
 data SectionArg ann
   = -- | identifier, or something which looks like number. Also many dot numbers, i.e. "7.6.3"
-    SecArgName !ann !ByteString
+    SecArgName ann ByteString
   | -- | quoted string
-    SecArgStr !ann !ByteString
+    SecArgStr ann ByteString
   | -- | everything else, mm. operators (e.g. in if-section conditionals)
-    SecArgOther !ann !ByteString
+    SecArgOther ann ByteString
   deriving (Eq, Show, Functor, Foldable, Traversable)
 
 -- | Extract annotation from 'SectionArg'.
@@ -114,7 +149,7 @@ type FieldName = ByteString
 -- | A field name.
 --
 -- /Invariant/: 'ByteString' is lower-case ASCII.
-data Name ann = Name !ann !FieldName
+data Name ann = Name ann FieldName
   deriving (Eq, Show, Functor, Foldable, Traversable)
 
 mkName :: ann -> FieldName -> Name ann
@@ -166,6 +201,7 @@ instance F1.Foldable1 Field where
     F1.fold1 (F1.foldMap1 f x :| map (F1.foldMap1 f) ys)
   foldMap1 f (Section x ys zs) =
     F1.fold1 (F1.foldMap1 f x :| map (F1.foldMap1 f) ys ++ map (F1.foldMap1 f) zs)
+  foldMap1 f (Meta x) = (Meta x)
 
 -- | @since 3.12.0.0
 instance F1.Foldable1 FieldLine where
