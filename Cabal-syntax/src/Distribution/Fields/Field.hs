@@ -199,7 +199,7 @@ instance F1.Foldable1 Field where
     F1.fold1 (F1.foldMap1 f x :| map (F1.foldMap1 f) ys)
   foldMap1 f (Section x ys zs) =
     F1.fold1 (F1.foldMap1 f x :| map (F1.foldMap1 f) ys ++ map (F1.foldMap1 f) zs)
-  foldMap1 f (Meta x) = (Meta x)
+  foldMap1 f (Meta x) = f $ metaAnn x
 
 -- | @since 3.12.0.0
 instance F1.Foldable1 FieldLine where
