@@ -86,19 +86,25 @@ would not be necessitated.
 Specifying the local packages
 -----------------------------
 
+You *must* provide a non-empty list of local packages in your project, filling
+out either a ``packages`` field or an ``optional-packages`` field or both to
+satisfy this requirement.
+
+When ``cabal.project`` doesn't exist, ``cabal-install`` fabricates an ephemeral
+project for its own use with this simple content, a glob that will find any (but
+expects to find one) package in the current directory:
+
+.. code-block:: cabal
+
+        packages: ./*.cabal
+
 The following top-level options specify what the local packages of a
 project are:
 
 .. cfg-field:: packages: package location list (space or comma separated)
     :synopsis: Project packages.
 
-    :default: ``./*.cabal``
-
-    .. warning::
-
-      The default value ``./*.cabal`` only takes effect if there is no explicit
-      ``cabal.project`` file.
-      If you use such explicit file you *must* fill the field.
+    :default: empty
 
     Specifies the list of package locations which contain the local
     packages to be built by this project. Package locations can take the
