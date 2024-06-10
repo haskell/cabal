@@ -157,7 +157,7 @@ tokFieldLine :: Parser (FieldLine Position)
 tokFieldLine = getTokenWithPos (\t -> case t of L pos (TokFieldLine s) -> Just (FieldLine pos s); _ -> Nothing)
 
 tokComment :: Parser (MetaField Position)
-tokComment = getTokenWithPos (\case L pos (Comment s) -> Just (MetaComment pos s); _ -> Nothing) *> tokWhitespace
+tokComment = getTokenWithPos (\case L pos (Comment s) -> Just (MetaComment pos s); _ -> Nothing)
 
 tokWhitespace :: Parser (MetaField Position)
 tokWhitespace = getTokenWithPos (\case L pos (Whitespace s) -> Just (MetaWhitespace pos s); _ -> Nothing)
@@ -274,9 +274,9 @@ elements :: IndentLevel -> Parser [Field Position]
 elements ilevel = do
    res <- many $ do
             element <- element ilevel
-            after <- fmap Meta <$> many (tokWhitespace <|> tokComment)
+            after <- fmap Meta <$> many (parserTraced "whitespaces" $ tokWhitespace <|> tokComment)
             pure (element, after)
-   pure $ flatten =<< res
+   pure $ concat $ flatten <$> res
 
 flatten :: (Field Position, [Field Position]) -> [Field Position]
 flatten (y, mz) = y : mz

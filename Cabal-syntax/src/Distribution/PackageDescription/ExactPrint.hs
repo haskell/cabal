@@ -82,10 +82,20 @@ renderLine field previous =
     (ExactPretty prettyField) -> renderPrettyLine prettyField previous
     (ExactMeta ExactMetaField{..}) ->
       let
-        newPosition = retManyPos 1 $ currentPosition previous
+        currentPos = currentPosition previous
+        Position rows columns = position `difference` currentPos
+
+        ppDocs = PP.text (Text.unpack text)
+
+        out = spaceOutput rows $ PP.nest columns ppDocs
+
+        docLines :: Int
+        docLines = (length $ lines $ PP.render ppDocs)
+
+        newPosition = retManyPos (docLines + 1) $ currentPosition previous
       in
       MkRenderState
-          { currentDoc = currentDoc previous $$ PP.text (Text.unpack text),
+          { currentDoc = currentDoc previous $$ out,
             currentPosition = newPosition
           }
 
@@ -122,8 +132,8 @@ renderPrettyLine field (previous@MkRenderState {..}) = case field of
 decodeFieldname :: FieldName -> String
 decodeFieldname = unpack . Text.decodeUtf8
 
-renderWithPositionAdjustment :: (Maybe ExactPosition) -> Position -> String -> [Doc] -> Doc
-renderWithPositionAdjustment mAnn current fieldName doc =
+spaceOutput :: Int -> Doc -> Doc
+spaceOutput rows output =
   if rows < 0
     then -- this is a failure mode
     -- error ("unexpected empty negative rows" <> show (mAnn, current, fieldName, res))
@@ -133,9 +143,11 @@ renderWithPositionAdjustment mAnn current fieldName doc =
       let spacing :: Doc
           spacing = foldr ($+$) mempty ("" <$ [1 .. rows])
        in spacing $$ output
-  where
-    -- <+> "--" <+> PP.text (show (("rows=", rows, "columns=", columns), mAnn, ("current=", current), docLines )) -- DEBUG
 
+renderWithPositionAdjustment :: (Maybe ExactPosition) -> Position -> String -> [Doc] -> Doc
+renderWithPositionAdjustment mAnn current fieldName doc =
+    spaceOutput rows output
+  where
     output :: Doc
     output =
       ( PP.nest
@@ -150,9 +162,6 @@ renderWithPositionAdjustment mAnn current fieldName doc =
 
     arguments :: [Position]
     arguments = foldMap argumentPosition mAnn
-
-    docLines :: Int
-    docLines = (length $ lines $ PP.render $ fold doc) - 1
 
     offset :: Int
     offset =
