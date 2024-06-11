@@ -514,6 +514,8 @@ resolveBuildTimeSettings
         | otherwise = False
 
 ---------------------------------------------
+-- Reading and writing project config files
+--
 
 -- | Get @ProjectRootUsability@ of a given file
 getProjectRootUsability :: FilePath -> IO ProjectRootUsability
@@ -525,7 +527,7 @@ getProjectRootUsability filePath = do
       let isUsableAciton =
             handle @IOException
               -- NOTE: if any IOException is raised, we assume the file does not exist.
-              -- That is what happen when we call @pathIsSymbolicLink@ on an @FilePath@
+              -- That is what happen when we call @pathIsSymbolicLink@ on an @FilePath@ that does not exist.
               (const $ pure False)
               ((||) <$> pathIsSymbolicLink filePath <*> doesPathExist filePath)
       isUnusable <- isUsableAciton
@@ -556,13 +558,18 @@ findProjectRoot verbosity mprojectDir mprojectFile = do
             "Specifying an absolute path to the project file is deprecated."
               <> " Use --project-dir to set the project's directory."
 
-          doesFileExist file >>= \case
-            False -> left (BadProjectRootExplicitFile file)
-            True -> uncurry projectRoot =<< first dropTrailingPathSeparator . splitFileName <$> canonicalizePath file
+          getProjectRootUsability file >>= \case
+            ProjectRootUsabilityPresentAndUsable ->
+              uncurry projectRoot
+                =<< first dropTrailingPathSeparator . splitFileName <$> canonicalizePath file
+            ProjectRootUsabilityNotPresent ->
+              left (BadProjectRootExplicitFileNotFound file)
+            ProjectRootUsabilityPresentAndUnusable ->
+              left (BadProjectRootFileBroken file)
       | otherwise -> probeProjectRoot mprojectFile
     Just dir ->
       doesDirectoryExist dir >>= \case
-        False -> left (BadProjectRootDir dir)
+        False -> left (BadProjectRootDirNotFound dir)
         True -> do
           projectDir <- canonicalizePath dir
 
@@ -570,13 +577,21 @@ findProjectRoot verbosity mprojectDir mprojectFile = do
             Nothing -> pure $ Right (ProjectRootExplicit projectDir defaultProjectFile)
             Just projectFile
               | isAbsolute projectFile ->
-                  doesFileExist projectFile >>= \case
-                    False -> left (BadProjectRootAbsoluteFile projectFile)
-                    True -> Right . ProjectRootExplicitAbsolute dir <$> canonicalizePath projectFile
+                  getProjectRootUsability projectFile >>= \case
+                    ProjectRootUsabilityNotPresent ->
+                      left (BadProjectRootAbsoluteFileNotFound projectFile)
+                    ProjectRootUsabilityPresentAndUsable ->
+                      Right . ProjectRootExplicitAbsolute dir <$> canonicalizePath projectFile
+                    ProjectRootUsabilityPresentAndUnusable ->
+                      left (BadProjectRootFileBroken projectFile)
               | otherwise ->
-                  doesFileExist (projectDir </> projectFile) >>= \case
-                    False -> left (BadProjectRootDirFile dir projectFile)
-                    True -> projectRoot projectDir projectFile
+                  getProjectRootUsability (projectDir </> projectFile) >>= \case
+                    ProjectRootUsabilityNotPresent ->
+                      left (BadProjectRootDirFileNotFound dir projectFile)
+                    ProjectRootUsabilityPresentAndUsable ->
+                      projectRoot projectDir projectFile
+                    ProjectRootUsabilityPresentAndUnusable ->
+                      left (BadProjectRootFileBroken projectFile)
   where
     left = pure . Left
 
@@ -601,23 +616,28 @@ probeProjectRoot mprojectFile = do
         go dir | isDrive dir || dir == homedir =
           case mprojectFile of
             Nothing -> return (Right (ProjectRootImplicit startdir))
-            Just file -> return (Left (BadProjectRootExplicitFile file))
+            Just file -> return (Left (BadProjectRootExplicitFileNotFound file))
         go dir = do
-          exists <- doesFileExist (dir </> projectFileName)
-          if exists
-            then return (Right (ProjectRootExplicit dir projectFileName))
-            else go (takeDirectory dir)
+          getProjectRootUsability (dir </> projectFileName) >>= \case
+            ProjectRootUsabilityNotPresent ->
+              go (takeDirectory dir)
+            ProjectRootUsabilityPresentAndUsable ->
+              return (Right $ ProjectRootExplicit dir projectFileName)
+            ProjectRootUsabilityPresentAndUnusable ->
+              return (Left $ BadProjectRootFileBroken projectFileName)
 
 -- | Errors returned by 'findProjectRoot'.
 data BadProjectRoot
-  = BadProjectRootExplicitFile FilePath
-  | BadProjectRootDir FilePath
-  | BadProjectRootAbsoluteFile FilePath
-  | BadProjectRootDirFile FilePath FilePath
+  = BadProjectRootExplicitFileNotFound FilePath
+  | BadProjectRootDirNotFound FilePath
+  | BadProjectRootAbsoluteFileNotFound FilePath
+  | BadProjectRootDirFileNotFound FilePath FilePath
+  | BadProjectRootFileBroken FilePath
+
 #if MIN_VERSION_base(4,8,0)
-  deriving (Show, Typeable)
+  deriving (Show, Typeable, Eq)
 #else
-  deriving (Typeable)
+  deriving (Typeable, Eq)
 
 instance Show BadProjectRoot where
   show = renderBadProjectRoot
@@ -632,14 +652,16 @@ instance Exception BadProjectRoot
 
 renderBadProjectRoot :: BadProjectRoot -> String
 renderBadProjectRoot = \case
-  BadProjectRootExplicitFile projectFile ->
+  BadProjectRootExplicitFileNotFound projectFile ->
     "The given project file '" ++ projectFile ++ "' does not exist."
-  BadProjectRootDir dir ->
+  BadProjectRootDirNotFound dir ->
     "The given project directory '" <> dir <> "' does not exist."
-  BadProjectRootAbsoluteFile file ->
+  BadProjectRootAbsoluteFileNotFound file ->
     "The given project file '" <> file <> "' does not exist."
-  BadProjectRootDirFile dir file ->
-    "The given projectdirectory/file combination '" <> dir </> file <> "' does not exist."
+  BadProjectRootDirFileNotFound dir file ->
+    "The given project directory/file combination '" <> dir </> file <> "' does not exist."
+  BadProjectRootFileBroken file ->
+    "The given project file '" <> file <> "' is broken. Is it a broken symbolic link?"
 
 -- | State of the project file, encodes if the file can be used
 data ProjectRootUsability

@@ -133,8 +133,8 @@ testGetProjectRootUsability =
     test name fileName expectedState =
       testCase name $
         withCurrentDirectory dir $
-          getProjectRootUsability fileName >>=
-          (@?= expectedState)
+          getProjectRootUsability fileName
+            >>= (@?= expectedState)
 
 testFindProjectRoot :: TestTree
 testFindProjectRoot =
@@ -146,6 +146,10 @@ testFindProjectRoot =
     , test "explicit file in lib" (cd libDir) Nothing (Just file) (succeeds dir file)
     , test "other file" (cd dir) Nothing (Just fileOther) (succeeds dir fileOther)
     , test "other file in lib" (cd libDir) Nothing (Just fileOther) (succeeds dir fileOther)
+    , test "symbolic link" (cd dir) Nothing (Just fileSymlink) (succeeds dir fileSymlink)
+    , test "symbolic link in lib" (cd libDir) Nothing (Just fileSymlink) (succeeds dir fileSymlink)
+    , test "broken symbolic link" (cd dir) Nothing (Just fileSymlinkBroken) (failsWith $ BadProjectRootFileBroken fileSymlinkBroken)
+    , test "broken symbolic link in lib" (cd libDir) Nothing (Just fileSymlinkBroken) (failsWith $ BadProjectRootFileBroken fileSymlinkBroken)
     , -- Deprecated use-case
       test "absolute file" Nothing Nothing (Just absFile) (succeeds dir file)
     , test "nested file" (cd dir) Nothing (Just nixFile) (succeeds dir nixFile)
@@ -166,6 +170,9 @@ testFindProjectRoot =
 
     nixFile = "nix" </> file
     nixOther = nixFile <.> "other"
+
+    fileSymlink = file <.> "symlink"
+    fileSymlinkBroken = fileSymlink <.> "broken"
 
     missing path = Just (path <.> "does_not_exist")
 
@@ -193,6 +200,18 @@ testFindProjectRoot =
 
     fails result = case result of
       Left _ -> pure ()
+      Right x -> assertFailure $ "Expected an error, but found " <> show x
+
+    failsWith expectedError result = case result of
+      Left actualError ->
+        if actualError == expectedError
+          then pure ()
+          else
+            assertFailure $
+              "Expected an error "
+                <> show expectedError
+                <> ", but found "
+                <> show actualError
       Right x -> assertFailure $ "Expected an error, but found " <> show x
 
 fixturesDir :: FilePath
