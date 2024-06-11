@@ -102,7 +102,7 @@ library
 
   build-depends:
     , array         >=0.4      && <0.6
-    , base          >=4.11     && <4.20
+    , base          >=4.11     && <4.21
     , bytestring    >=0.10.6.0 && <0.13
     , Cabal         ^>=3.12
     , Cabal-syntax  ^>=3.12
@@ -134,7 +134,7 @@ Test-Suite unit-tests
      UnitTests.Distribution.Solver.Modular.MessageUtils
 
    build-depends:
-     , base        >= 4.11  && <4.20
+     , base        >= 4.11  && <4.21
      , Cabal
      , Cabal-syntax
      , cabal-install-solver
