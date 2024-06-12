@@ -1,14 +1,3 @@
-<<<<<<< HEAD
-=======
-{- FUTUREWORK:
- -
- - Currently the logic in this module is not tested.
- -
- - Ideally, a set of unit tests that check whether certain
- - flags trigger recompilation should be added.
- - -}
-{-# LANGUAGE DataKinds #-}
->>>>>>> be10be836 (add the applicable new (version 9.10) GHC flags to normaliseGhcArgs (#10014))
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
 
