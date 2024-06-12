@@ -23,6 +23,11 @@ source-repository head
   location: https://github.com/haskell/cabal/
   subdir:   Cabal-syntax
 
+flag no-alex
+  description: Disable the build-tool dependency on alex
+  manual: True
+  default: False
+
 library
   default-language: Haskell2010
   hs-source-dirs: src
@@ -59,7 +64,8 @@ library
   if impl(ghc >= 8.0) && impl(ghc < 8.8)
     ghc-options: -Wnoncanonical-monadfail-instances
 
-  build-tool-depends: alex:alex
+  if !flag(no-alex)
+    build-tool-depends: alex:alex
 
   exposed-modules:
     Distribution.Backpack
