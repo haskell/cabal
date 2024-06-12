@@ -264,6 +264,10 @@ listPackageSources' verbosity rip mbWorkDir pkg_descr pps =
         $ \filename ->
           fmap (coerceSymbolicPath . relativeSymbolicPath)
             <$> matchDirFileGlobWithDie verbosity rip (specVersion pkg_descr) mbWorkDir filename
+    , -- Extra files.
+      fmap concat . for (extraFiles pkg_descr) $ \fpath ->
+        fmap relativeSymbolicPath
+          <$> matchDirFileGlobWithDie verbosity rip (specVersion pkg_descr) mbWorkDir fpath
     , -- License file(s).
       return (map (relativeSymbolicPath . coerceSymbolicPath) $ licenseFiles pkg_descr)
     , -- Install-include files, without autogen-include files

@@ -80,6 +80,7 @@ syn keyword cabalFieldName contained
   \ extra-bundled-libraries
   \ extra-doc-files
   \ extra-dynamic-library-flavours
+  \ extra-files
   \ extra-framework-dirs
   \ extra-ghci-libraries
   \ extra-lib-dirs
