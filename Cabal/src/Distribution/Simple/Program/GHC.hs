@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -223,8 +224,27 @@ normaliseGhcArgs (Just ghcVersion) PackageDescription{..} ghcArgs
                   , "keep-going" -- try harder, the build will still fail if it's erroneous
                   , "print-axiom-incomps" -- print more debug info for closed type families
                   ]
+              , from
+                  [9, 2]
+                  [ "family-application-cache"
+                  ]
+              , from
+                  [9, 6]
+                  [ "print-redundant-promotion-ticks"
+                  , "show-error-context"
+                  ]
+              , from
+                  [9, 8]
+                  [ "unoptimized-core-for-interpreter"
+                  ]
+              , from
+                  [9, 10]
+                  [ "diagnostics-as-json"
+                  , "print-error-index-links"
+                  , "break-points"
+                  ]
               ]
-          , flagIn . invertibleFlagSet "-d" $ ["ppr-case-as-let", "ppr-ticks"]
+          , flagIn $ invertibleFlagSet "-d" ["ppr-case-as-let", "ppr-ticks"]
           , isOptIntFlag
           , isIntFlag
           , if safeToFilterWarnings
@@ -285,6 +305,7 @@ normaliseGhcArgs (Just ghcVersion) PackageDescription{..} ghcArgs
         , from [8, 6] ["-dhex-word-literals"]
         , from [8, 8] ["-fshow-docs-of-hole-fits", "-fno-show-docs-of-hole-fits"]
         , from [9, 0] ["-dlinear-core-lint"]
+        , from [9, 10] ["-dipe-stats"]
         ]
 
     isOptIntFlag :: String -> Any
@@ -694,7 +715,10 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
               | flagProfAuto implInfo -> ["-fprof-auto-exported"]
               | otherwise -> ["-auto"]
         , ["-split-sections" | flagBool ghcOptSplitSections]
-        , ["-split-objs" | flagBool ghcOptSplitObjs]
+        , case compilerCompatVersion GHC comp of
+            -- the -split-objs flag was removed in GHC 9.8
+            Just ver | ver >= mkVersion [9, 8] -> []
+            _ -> ["-split-objs" | flagBool ghcOptSplitObjs]
         , case flagToMaybe (ghcOptHPCDir opts) of
             Nothing -> []
             Just hpcdir -> ["-fhpc", "-hpcdir", hpcdir]
@@ -784,8 +808,7 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
           -- Packages
 
           concat
-            [ [ case () of
-                  _
+            [ [ if
                     | unitIdSupported comp -> "-this-unit-id"
                     | packageKeySupported comp -> "-this-package-key"
                     | otherwise -> "-package-name"
