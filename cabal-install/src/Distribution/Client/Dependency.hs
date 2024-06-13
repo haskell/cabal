@@ -463,6 +463,7 @@ nonReinstallablePackages :: [PackageName]
 nonReinstallablePackages =
   [ mkPackageName "base"
   , mkPackageName "ghc-bignum"
+  , mkPackageName "ghc-internal"
   , mkPackageName "ghc-prim"
   , mkPackageName "ghc"
   , mkPackageName "integer-gmp"
