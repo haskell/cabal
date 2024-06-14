@@ -6,7 +6,13 @@ repository packages.example.org
 
 repository more-packages.example.org
   url: https://more-packages.example.org/
-  secure: True
+  secure: False
   root-keys: foo
            , bar
   key-threshold: 42
+
+repository my-secure-local-repository
+  url: file:/path/to/secure/repo
+  secure: True
+  root-keys: 123
+  key-threshold: 1

@@ -54,9 +54,9 @@ import Distribution.Types.Version (mkVersion)
 import Distribution.Types.VersionRange.Internal (VersionRange (..))
 import Distribution.Utils.NubList
 import Distribution.Verbosity
+import Network.URI (parseURI)
 import System.Directory
 import System.FilePath
-import Network.URI (parseURI)
 
 import Test.Cabal.Prelude hiding (cabal)
 import qualified Test.Cabal.Prelude as P
@@ -262,16 +262,25 @@ testRemoteRepos = do
         , remoteRepoSecure = pure True
         , remoteRepoRootKeys = ["21", "42"]
         , remoteRepoKeyThreshold = 123
-        , remoteRepoShouldTryHttps = True
+        , remoteRepoShouldTryHttps = False
         }
     morePackagesRepository =
       RemoteRepo
         { remoteRepoName = RepoName $ "more-packages.example.org"
         , remoteRepoURI = fromJust $ parseURI "https://more-packages.example.org/"
-        , remoteRepoSecure = pure True
+        , remoteRepoSecure = pure False
         , remoteRepoRootKeys = ["foo", "bar"]
         , remoteRepoKeyThreshold = 42
-        , remoteRepoShouldTryHttps = True
+        , remoteRepoShouldTryHttps = False
+        }
+    secureLocalRepository =
+      RemoteRepo
+        { remoteRepoName = RepoName $ "my-secure-local-repository"
+        , remoteRepoURI = fromJust $ parseURI "file:/path/to/secure/repo"
+        , remoteRepoSecure = pure True
+        , remoteRepoRootKeys = ["123"]
+        , remoteRepoKeyThreshold = 1
+        , remoteRepoShouldTryHttps = False
         }
 
 testLocalNoIndexRepos :: TestM ()
@@ -282,7 +291,19 @@ testLocalNoIndexRepos = do
   assertConfig' expected config (projectConfigLocalNoIndexRepos . projectConfigShared . condTreeData)
   assertConfig' mempty config (projectConfigRemoteRepos . projectConfigShared . condTreeData)
   where
-    expected = mempty
+    expected = toNubList [myRepository, mySecureRepository]
+    myRepository =
+      LocalRepo
+        { localRepoName = RepoName $ "my-repository"
+        , localRepoPath = "/absolute/path/to/directory"
+        , localRepoSharedCache = False
+        }
+    mySecureRepository =
+      LocalRepo
+        { localRepoName = RepoName $ "my-other-repository"
+        , localRepoPath = "/another/path/to/repository"
+        , localRepoSharedCache = False
+        }
 
 testProjectConfigProvenance :: TestM ()
 testProjectConfigProvenance = do
