@@ -349,8 +349,8 @@ data Session m = Session
   , setLastChosenLanguage :: (Maybe String) -> m ()
   }
 
-newIOSession :: IO (Session IO)
-newIOSession = do
+newSessionIO :: IO (Session IO)
+newSessionIO = do
   lastChosenLanguage <- Data.IORef.newIORef Nothing
   pure
     Session
@@ -389,7 +389,7 @@ instance Interactive IO where
   break = return False
   throwPrompt = throwM
 
-  newSession = newIOSession
+  newSession = newSessionIO
 
 instance Interactive PurePrompt where
   getLine = pop
