@@ -63,6 +63,7 @@ runParseResult pr = unPR pr emptyPRState failure success
     -- If there are any errors, don't return the result
     success (PRState warns (err : errs) v) _ = (warns, Left (v, err :| errs))
 
+-- | Chain parsing operations that involve 'IO' actions.
 liftPR :: (a -> IO (ParseResult b)) -> ParseResult a -> IO (ParseResult b)
 liftPR f pr = unPR pr emptyPRState failure success
   where
