@@ -208,7 +208,6 @@ jobs:
         run: sh validate.sh $FLAGS -s cli-tests
 
       - name: Validate cli-suite
-        if: runner.os != 'Windows'
         run: sh validate.sh $FLAGS -s cli-suite
 
       - name: Validate solver-benchmarks-tests
