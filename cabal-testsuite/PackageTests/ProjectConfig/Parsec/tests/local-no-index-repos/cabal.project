@@ -1,0 +1,5 @@
+repository my-repository
+  url: file+noindex:///absolute/path/to/directory
+
+repository my-other-repository
+  url: file+noindex:/another/path/to/repository
