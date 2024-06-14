@@ -90,7 +90,7 @@ executable cabal-tests
   import: shared
   main-is: cabal-tests.hs
   hs-source-dirs: main
-  ghc-options: -threaded
+  ghc-options: -threaded -rtsopts
   -- Make sure these are built before the executable is run
   build-tool-depends: cabal-testsuite:test-runtime-deps
   build-depends:
