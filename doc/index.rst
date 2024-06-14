@@ -18,6 +18,7 @@ Welcome to the Cabal User Guide
    how-to-build-like-nix
    how-to-run-in-windows
    how-to-use-backpack
+   how-to-access-package-info
    how-to-report-bugs
 
 .. toctree::
