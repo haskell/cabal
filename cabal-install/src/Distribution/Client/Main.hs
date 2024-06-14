@@ -256,10 +256,8 @@ import Distribution.Version
 
 import Control.Exception (AssertionFailed, assert, try)
 import Data.Monoid (Any (..))
-import System.Directory
-  ( doesFileExist
-  , withCurrentDirectory
-  )
+import Data.Traversable (mapM)
+import qualified System.Directory as Directory
 import System.Environment (getEnvironment, getExecutablePath, getProgName)
 import System.FilePath
   ( dropExtension
@@ -401,7 +399,7 @@ mainWorker args = do
           ++ "  "
           ++ configFile
           ++ "\n"
-      exists <- doesFileExist configFile
+      exists <- Directory.doesFileExist configFile
       unless exists $
         putStrLn $
           "This file will be generated with sensible "
@@ -1146,13 +1144,14 @@ listAction :: ListFlags -> [String] -> Action
 listAction listFlags extraArgs globalFlags = do
   let verbosity = fromFlag (listVerbosity listFlags)
   config <- loadConfigOrSandboxConfig verbosity globalFlags
+  canonicalizedHcPath <- mapM Directory.canonicalizePath (listHcPath listFlags)
   let configFlags' = savedConfigureFlags config
       configFlags =
         configFlags'
           { configPackageDBs =
               configPackageDBs configFlags'
                 `mappend` listPackageDBs listFlags
-          , configHcPath = listHcPath listFlags
+          , configHcPath = canonicalizedHcPath
           }
       globalFlags' = savedGlobalFlags config `mappend` globalFlags
   compProgdb <-
@@ -1305,7 +1304,7 @@ uploadAction uploadFlags extraArgs globalFlags = do
       | otherwise =
           sequence_
             [ do
-              exists <- doesFileExist tarfile
+              exists <- Directory.doesFileExist tarfile
               unless exists $ dieWithException verbosity $ FileNotFound tarfile
             | tarfile <- tarfiles
             ]
@@ -1418,7 +1417,7 @@ initAction initFlags extraArgs globalFlags = do
     [] -> initAction'
     [projectDir] -> do
       createDirectoryIfMissingVerbose verbosity True projectDir
-      withCurrentDirectory projectDir initAction'
+      Directory.withCurrentDirectory projectDir initAction'
     _ -> dieWithException verbosity InitAction
   where
     initAction' = do
@@ -1450,7 +1449,7 @@ userConfigAction ucflags extraArgs globalFlags = do
   case extraArgs of
     ("init" : _) -> do
       path <- configFile
-      fileExists <- doesFileExist path
+      fileExists <- Directory.doesFileExist path
       if (not fileExists || (fileExists && frc))
         then void $ createDefaultConfigFile verbosity extraLines path
         else dieWithException verbosity $ UserConfigAction path
