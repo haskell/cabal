@@ -115,7 +115,7 @@ data CabalException
   | CheckSemaphoreSupport
   | NoLibraryForPackage
   | SanityCheckHookedBuildInfo UnqualComponentName
-  | ConfigureScriptNotFound
+  | ConfigureScriptNotFound FilePath
   | NoValidComponent
   | ConfigureEitherSingleOrAll
   | ConfigCIDValidForPreComponent
@@ -513,7 +513,7 @@ exceptionMessage e = case e of
       ++ prettyShow exe1
       ++ "' but the package does not have a "
       ++ "executable with that name."
-  ConfigureScriptNotFound -> "configure script not found."
+  ConfigureScriptNotFound fp -> "configure script not found at " ++ fp ++ "."
   NoValidComponent -> "No valid component targets found"
   ConfigureEitherSingleOrAll -> "Can only configure either single component or all of them"
   ConfigCIDValidForPreComponent -> "--cid is only supported for per-component configure"
