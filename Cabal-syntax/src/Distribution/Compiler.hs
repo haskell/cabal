@@ -75,7 +75,7 @@ data CompilerFlavor
   | LHC
   | UHC
   | Eta
-  | MHS
+  | MHS -- MicroHS, see https://github.com/augustss/MicroHs
   | HaskellSuite String -- string is the id of the actual compiler
   | OtherCompiler String
   deriving (Generic, Show, Read, Eq, Ord, Typeable, Data)
