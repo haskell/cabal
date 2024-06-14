@@ -166,8 +166,8 @@ testProjectConfigShared = do
   let
     projectConfigConstraints = getProjectConfigConstraints (testDirProjectConfigFp testDir)
     expected = ProjectConfigShared{..}
-  (config, _) <- readConfigDefault rootFp
-  assertConfig' expected config (projectConfigShared . condTreeData)
+  (config, legacy) <- readConfigDefault rootFp
+  assertConfig expected config legacy (projectConfigShared . condTreeData)
   where
     projectConfigDistDir = toFlag "something"
     projectConfigConfigFile = mempty -- cli only
@@ -222,9 +222,8 @@ testProjectConfigShared = do
 testInstallDirs :: TestM ()
 testInstallDirs = do
   let rootFp = "install-dirs"
-  testDir <- testDirInfo rootFp "cabal.project"
-  (config, _) <- readConfigDefault rootFp
-  assertConfig' expected config (projectConfigInstallDirs . projectConfigShared . condTreeData)
+  (config, legacy) <- readConfigDefault rootFp
+  assertConfig expected config legacy (projectConfigInstallDirs . projectConfigShared . condTreeData)
   where
     expected =
       InstallDirs
@@ -249,12 +248,12 @@ testInstallDirs = do
 testRemoteRepos :: TestM ()
 testRemoteRepos = do
   let rootFp = "remote-repos"
-  testDir <- testDirInfo rootFp "cabal.project"
-  (config, _) <- readConfigDefault rootFp
-  assertConfig' expected config (projectConfigRemoteRepos . projectConfigShared . condTreeData)
-  assertConfig' mempty config (projectConfigLocalNoIndexRepos . projectConfigShared . condTreeData)
+  (config, legacy) <- readConfigDefault rootFp
+  let actualRemoteRepos = (fromNubList . projectConfigRemoteRepos . projectConfigShared . condTreeData) config
+  assertBool "Expected RemoteRepos do not match parsed values" $ compareLists expected actualRemoteRepos compareRemoteRepos
+  assertConfig mempty config legacy (projectConfigLocalNoIndexRepos . projectConfigShared . condTreeData)
   where
-    expected = toNubList [packagesRepository, morePackagesRepository]
+    expected = [packagesRepository, morePackagesRepository, secureLocalRepository]
     packagesRepository =
       RemoteRepo
         { remoteRepoName = RepoName $ "packages.example.org"
@@ -283,15 +282,24 @@ testRemoteRepos = do
         , remoteRepoShouldTryHttps = False
         }
 
+-- We do not parse remoteRepoShouldTryHttps, so we skip it
+compareRemoteRepos :: RemoteRepo -> RemoteRepo -> Bool
+compareRemoteRepos repo1 repo2 =
+  remoteRepoName repo1 == remoteRepoName repo2
+    && remoteRepoURI repo1 == remoteRepoURI repo2
+    && remoteRepoSecure repo1 == remoteRepoSecure repo2
+    && remoteRepoRootKeys repo1 == remoteRepoRootKeys repo2
+    && remoteRepoKeyThreshold repo1 == remoteRepoKeyThreshold repo2
+
 testLocalNoIndexRepos :: TestM ()
 testLocalNoIndexRepos = do
   let rootFp = "local-no-index-repos"
-  testDir <- testDirInfo rootFp "cabal.project"
-  (config, _) <- readConfigDefault rootFp
-  assertConfig' expected config (projectConfigLocalNoIndexRepos . projectConfigShared . condTreeData)
-  assertConfig' mempty config (projectConfigRemoteRepos . projectConfigShared . condTreeData)
+  (config, legacy) <- readConfigDefault rootFp
+  let actualLocalRepos = (fromNubList . projectConfigLocalNoIndexRepos . projectConfigShared . condTreeData) config
+  assertBool "Expected LocalNoIndexRepos do not match parsed values" $ compareLists expected actualLocalRepos compareLocalRepos
+  assertConfig mempty config legacy (projectConfigRemoteRepos . projectConfigShared . condTreeData)
   where
-    expected = toNubList [myRepository, mySecureRepository]
+    expected = [myRepository, mySecureRepository]
     myRepository =
       LocalRepo
         { localRepoName = RepoName $ "my-repository"
@@ -305,10 +313,15 @@ testLocalNoIndexRepos = do
         , localRepoSharedCache = False
         }
 
+-- We do not parse localRepoSharedCache, so we skip it
+compareLocalRepos :: LocalRepo -> LocalRepo -> Bool
+compareLocalRepos repo1 repo2 =
+  localRepoName repo1 == localRepoName repo2
+    && localRepoPath repo1 == localRepoPath repo2
+
 testProjectConfigProvenance :: TestM ()
 testProjectConfigProvenance = do
   let rootFp = "empty"
-  testDir <- testDirInfo rootFp "cabal.project"
   let
     expected = Set.singleton (Explicit (ProjectConfigPath $ "cabal.project" :| []))
   (config, legacy) <- readConfigDefault rootFp
@@ -519,15 +532,10 @@ testDirInfo testSubDir projectFileName = do
   where
     extensionName = ""
 
-assertConfig' :: (Eq a, Show a) => a -> ProjectConfigSkeleton -> (ProjectConfigSkeleton -> a) -> TestM ()
-assertConfig' expected config access = assertEqual "Parsec Config" expected actual
-  where
-    actual = access config
-
 assertConfig :: (Eq a, Show a) => a -> ProjectConfigSkeleton -> ProjectConfigSkeleton -> (ProjectConfigSkeleton -> a) -> TestM ()
 assertConfig expected config configLegacy access = do
-  assertEqual "Equal Legacy Config" expected actualLegacy
-  assertEqual "Equal Parsec Config" expected actual
+  assertEqual "Expectation does not match result of Legacy parser" expected actualLegacy
+  assertEqual "Parsed Config does not match expected" expected actual
   where
     actual = access config
     actualLegacy = access configLegacy
@@ -535,3 +543,6 @@ assertConfig expected config configLegacy access = do
 -- | Test Utilities
 verbosity :: Verbosity
 verbosity = normal -- minBound --normal --verbose --maxBound --minBound
+
+compareLists :: [a] -> [a] -> (a -> a -> Bool) -> Bool
+compareLists xs ys compare = length xs == length ys && all (uncurry compare) (zip xs ys)
