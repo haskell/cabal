@@ -18,21 +18,11 @@ module Distribution.Fields.ParseResult
   , withoutWarnings
   ) where
 
-import Data.List.NonEmpty (NonEmpty (..))
+import Distribution.Compat.Prelude
 import Distribution.Parsec.Error (PError (..))
 import Distribution.Parsec.Position (Position (..), zeroPos)
 import Distribution.Parsec.Warning (PWarnType (..), PWarning (..))
 import Distribution.Version (Version)
-import Prelude
-  ( Applicative (..)
-  , Either (..)
-  , Functor (..)
-  , Maybe (..)
-  , Monad (..)
-  , String
-  , ($)
-  , (++)
-  )
 
 -- | A monad with failure and accumulating errors and warnings.
 newtype ParseResult a = PR
