@@ -124,8 +124,8 @@ createProject v pkgIx srcDb initFlags = do
 
       comments <- noCommentsPrompt initFlags'
 
-      return
-        $ ProjectSettings
+      return $
+        ProjectSettings
           (mkOpts comments cabalSpec)
           pkgDesc
           (Just libTarget)
@@ -135,8 +135,8 @@ createProject v pkgIx srcDb initFlags = do
       exeTarget <- genExeTarget session initFlags' pkgIx
       comments <- noCommentsPrompt initFlags'
 
-      return
-        $ ProjectSettings
+      return $
+        ProjectSettings
           (mkOpts comments cabalSpec)
           pkgDesc
           Nothing
@@ -155,8 +155,8 @@ createProject v pkgIx srcDb initFlags = do
 
       comments <- noCommentsPrompt initFlags'
 
-      return
-        $ ProjectSettings
+      return $
+        ProjectSettings
           (mkOpts comments cabalSpec)
           pkgDesc
           (Just libTarget)
@@ -172,8 +172,8 @@ createProject v pkgIx srcDb initFlags = do
 
       comments <- noCommentsPrompt initFlags''
 
-      return
-        $ ProjectSettings
+      return $
+        ProjectSettings
           (mkOpts comments cabalSpec)
           pkgDesc
           Nothing
@@ -266,15 +266,15 @@ genTestTarget session flags pkgs = initializeTestSuitePrompt flags >>= go
     go initialized
       | not initialized = return Nothing
       | otherwise =
-          fmap Just
-            $ TestTarget
-            <$> testMainPrompt
-            <*> testDirsPrompt flags
-            <*> languagePrompt session flags "test suite"
-            <*> getOtherModules flags
-            <*> getOtherExts flags
-            <*> dependenciesPrompt pkgs flags
-            <*> getBuildTools flags
+          fmap Just $
+            TestTarget
+              <$> testMainPrompt
+              <*> testDirsPrompt flags
+              <*> languagePrompt session flags "test suite"
+              <*> getOtherModules flags
+              <*> getOtherExts flags
+              <*> dependenciesPrompt pkgs flags
+              <*> getBuildTools flags
 
 -- -------------------------------------------------------------------- --
 -- Prompts
@@ -364,9 +364,9 @@ versionPrompt flags = getVersion flags go
       vv <- promptStr "Package version" (DefaultPrompt $ prettyShow defaultVersion)
       case simpleParsec vv of
         Nothing -> do
-          putStrLn
-            $ "Version must be a valid PVP format (e.g. 0.1.0.0): "
-            ++ vv
+          putStrLn $
+            "Version must be a valid PVP format (e.g. 0.1.0.0): "
+              ++ vv
           go
         Just v -> return v
 
@@ -405,18 +405,18 @@ emailPrompt flags = getEmail flags $ guessAuthorEmail >>= promptOrDefault "Maint
 
 homepagePrompt :: Interactive m => InitFlags -> m String
 homepagePrompt flags =
-  getHomepage flags
-    $ promptStr "Project homepage URL" OptionalPrompt
+  getHomepage flags $
+    promptStr "Project homepage URL" OptionalPrompt
 
 synopsisPrompt :: Interactive m => InitFlags -> m String
 synopsisPrompt flags =
-  getSynopsis flags
-    $ promptStr "Project synopsis" OptionalPrompt
+  getSynopsis flags $
+    promptStr "Project synopsis" OptionalPrompt
 
 categoryPrompt :: Interactive m => InitFlags -> m String
 categoryPrompt flags =
-  getCategory flags
-    $ promptList
+  getCategory flags $
+    promptList
       "Project category"
       defaultCategories
       (DefaultPrompt "")
@@ -444,8 +444,8 @@ mainFilePrompt flags = getMainFile flags go
 
       case _hsFileType hs of
         InvalidHsPath -> do
-          putStrLn
-            $ concat
+          putStrLn $
+            concat
               [ "Main file "
               , show hs
               , " is not a valid haskell file. Source files must end in .hs or .lhs."
@@ -478,11 +478,11 @@ languagePrompt session flags pkgType = getLanguage flags $ do
   setLastChosenLanguage session (Just l)
 
   if
-    | l == h2010 -> return Haskell2010
-    | l == h98 -> return Haskell98
-    | l == ghc2021 -> return GHC2021
-    | l == ghc2024 -> return GHC2024
-    | otherwise -> return $ UnknownLanguage l
+      | l == h2010 -> return Haskell2010
+      | l == h98 -> return Haskell98
+      | l == ghc2021 -> return GHC2021
+      | l == ghc2024 -> return GHC2024
+      | otherwise -> return $ UnknownLanguage l
 
 noCommentsPrompt :: Interactive m => InitFlags -> m Bool
 noCommentsPrompt flags = getNoComments flags $ do
