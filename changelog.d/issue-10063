@@ -1,0 +1,14 @@
+synopsis: External commands now propagate exit code from child process
+packages: cabal-install
+prs: #10100
+issues: #10063
+
+description: {
+  The exit code from an external command is now propagated as the exit code of
+  cabal-install when invoked by calling an external command.
+
+  For example, if your external command exits with code 1, then cabal-install will
+  also exit with code 1.
+
+  This mechanism can be used by an external command to signal failure.
+}
