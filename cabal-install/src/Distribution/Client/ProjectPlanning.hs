@@ -127,7 +127,7 @@ import Distribution.Client.SetupWrapper
 import Distribution.Client.Store
 import Distribution.Client.Targets (userToPackageConstraint)
 import Distribution.Client.Types
-import Distribution.Client.Utils (incVersion)
+import Distribution.Client.Utils (concatMapM, incVersion)
 
 import qualified Distribution.Client.BuildReports.Storage as BuildReports
 import qualified Distribution.Client.IndexUtils as IndexUtils
@@ -206,7 +206,7 @@ import qualified Distribution.Solver.Types.ComponentDeps as CD
 import qualified Distribution.Compat.Graph as Graph
 
 import Control.Exception (assert)
-import Control.Monad (forM, sequence)
+import Control.Monad (sequence)
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.State as State (State, execState, runState, state)
 import Data.Foldable (fold)
@@ -1069,25 +1069,29 @@ getPackageSourceHashes verbosity withRepoCtx solverPlan = do
       -- Tarballs from repositories, either where the repository provides
       -- hashes as part of the repo metadata, or where we will have to
       -- download and hash the tarball.
-      repoTarballPkgsWithMetadataUnvalidated :: [(PackageId, Repo)]
-      repoTarballPkgsWithoutMetadata :: [(PackageId, Repo)]
+      repoTarballPkgsWithMetadataUnvalidated :: [(Repo, [PackageId])]
+      repoTarballPkgsWithoutMetadata :: [(Repo, PackageId)]
       ( repoTarballPkgsWithMetadataUnvalidated
         , repoTarballPkgsWithoutMetadata
         ) =
           partitionEithers
             [ case repo of
-              RepoSecure{} -> Left (pkgid, repo)
-              _ -> Right (pkgid, repo)
+              RepoSecure{} -> Left (repo, [pkgid])
+              _ -> Right (repo, pkgid)
             | (pkgid, RepoTarballPackage repo _ _) <- allPkgLocations
             ]
 
+      -- Group up the unvalidated packages by repo so we only read the remote
+      -- index once per repo (see #10110). The packages are ungrouped here and then regrouped
+      -- below, it would be better in future to refactor this whole code path so that we don't
+      -- repeatedly group and ungroup.
+      repoTarballPkgsWithMetadataUnvalidatedMap = Map.fromListWith (++) repoTarballPkgsWithMetadataUnvalidated
+
   (repoTarballPkgsWithMetadata, repoTarballPkgsToDownloadWithMeta) <- fmap partitionEithers $
     liftIO $
-      withRepoCtx $ \repoctx -> forM repoTarballPkgsWithMetadataUnvalidated $
-        \x@(pkg, repo) ->
-          verifyFetchedTarball verbosity repoctx repo pkg >>= \b -> case b of
-            True -> return $ Left x
-            False -> return $ Right x
+      withRepoCtx $ \repoctx -> flip concatMapM (Map.toList repoTarballPkgsWithMetadataUnvalidatedMap) $
+        \(repo, pkgids) ->
+          verifyFetchedTarballs verbosity repoctx repo pkgids
 
   -- For tarballs from repos that do not have hashes available we now have
   -- to check if the packages were downloaded already.
@@ -1101,9 +1105,9 @@ getPackageSourceHashes verbosity withRepoCtx solverPlan = do
           [ do
             mtarball <- checkRepoTarballFetched repo pkgid
             case mtarball of
-              Nothing -> return (Left (pkgid, repo))
+              Nothing -> return (Left (repo, pkgid))
               Just tarball -> return (Right (pkgid, tarball))
-          | (pkgid, repo) <- repoTarballPkgsWithoutMetadata
+          | (repo, pkgid) <- repoTarballPkgsWithoutMetadata
           ]
 
   let repoTarballPkgsToDownload = repoTarballPkgsToDownloadWithMeta ++ repoTarballPkgsToDownloadWithNoMeta
@@ -1139,9 +1143,9 @@ getPackageSourceHashes verbosity withRepoCtx solverPlan = do
                       | pkgid <- pkgids
                       ]
                 | (repo, pkgids) <-
-                    map (\grp@((_, repo) :| _) -> (repo, map fst (NE.toList grp)))
-                      . NE.groupBy ((==) `on` (remoteRepoName . repoRemote . snd))
-                      . sortBy (compare `on` (remoteRepoName . repoRemote . snd))
+                    map (\grp@((repo, _) :| _) -> (repo, map snd (NE.toList grp)))
+                      . NE.groupBy ((==) `on` (remoteRepoName . repoRemote . fst))
+                      . sortBy (compare `on` (remoteRepoName . repoRemote . fst))
                       $ repoTarballPkgsWithMetadata
                 ]
 
@@ -1153,7 +1157,7 @@ getPackageSourceHashes verbosity withRepoCtx solverPlan = do
             [ do
               tarball <- fetchRepoTarball verbosity repoctx repo pkgid
               return (pkgid, tarball)
-            | (pkgid, repo) <- repoTarballPkgsToDownload
+            | (repo, pkgid) <- repoTarballPkgsToDownload
             ]
 
         return
