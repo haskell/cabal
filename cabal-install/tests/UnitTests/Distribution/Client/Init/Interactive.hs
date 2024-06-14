@@ -780,7 +780,7 @@ fileCreatorTests pkgIx srcDb _pkgName =
                     , "2" -- pick the second language in the list
                     ]
 
-            runGenTest inputs $ genLibTarget emptyFlags pkgIx
+            runGenTestWithSession inputs $ (\session -> genLibTarget session emptyFlags pkgIx)
         ]
     , testGroup
         "genExeTarget"
@@ -792,7 +792,7 @@ fileCreatorTests pkgIx srcDb _pkgName =
                     , "1" -- pick the first language in the list
                     ]
 
-            runGenTest inputs $ genExeTarget emptyFlags pkgIx
+            runGenTestWithSession inputs $ (\session -> genExeTarget session emptyFlags pkgIx)
         ]
     , testGroup
         "genTestTarget"
@@ -805,11 +805,13 @@ fileCreatorTests pkgIx srcDb _pkgName =
                     , "1" -- pick the first language in the list
                     ]
 
-            runGenTest inputs $ genTestTarget emptyFlags pkgIx
+            runGenTestWithSession inputs $ (\session -> genTestTarget session emptyFlags pkgIx)
         ]
     ]
   where
-    runGenTest inputs go = case _runPrompt go inputs of
+    runGenTest inputs go = runGenTestWithSession inputs (\_ -> go)
+
+    runGenTestWithSession inputs go = case _runPrompt (newSession >>= go) inputs of
       Left e -> assertFailure $ show e
       Right{} -> return ()
 
@@ -1011,20 +1013,20 @@ interactiveTests srcDb =
                 ]
         , testGroup
             "Check languagePrompt output"
-            [ testNumberedPrompt
+            [ testNumberedPromptWithSession
                 "Language indices"
-                (`languagePrompt` "test")
+                (\s f -> languagePrompt s f "test")
                 [Haskell2010, Haskell98, GHC2021, GHC2024]
-            , testSimplePrompt
+            , testSimplePromptWithSession
                 "Other language"
-                (`languagePrompt` "test")
+                (\s f -> languagePrompt s f "test")
                 (UnknownLanguage "Haskell2022")
                 [ "5"
                 , "Haskell2022"
                 ]
-            , testSimplePrompt
+            , testSimplePromptWithSession
                 "Invalid language"
-                (`languagePrompt` "test")
+                (\s f -> languagePrompt s f "test")
                 (UnknownLanguage "Lang_TS!")
                 [ "5"
                 , "Lang_TS!"
@@ -1087,8 +1089,18 @@ testSimplePrompt
   -> a
   -> [String]
   -> TestTree
-testSimplePrompt label f target =
-  testPrompt label f (assertFailure . show) (\(a, _) -> target @=? a)
+testSimplePrompt label f = testSimplePromptWithSession label (\_ -> f)
+
+testSimplePromptWithSession
+  :: Eq a
+  => Show a
+  => String
+  -> (Session PurePrompt -> InitFlags -> PurePrompt a)
+  -> a
+  -> [String]
+  -> TestTree
+testSimplePromptWithSession label f target =
+  testPromptWithSession label f (assertFailure . show) (\(a, _) -> target @=? a)
 
 testPromptBreak
   :: Eq a
@@ -1097,28 +1109,40 @@ testPromptBreak
   -> (InitFlags -> PurePrompt a)
   -> [String]
   -> TestTree
-testPromptBreak label f =
-  testPrompt label f go (assertFailure . show)
+testPromptBreak label f = testPromptBreakWithSession label (\_ -> f)
+
+testPromptBreakWithSession
+  :: Eq a
+  => Show a
+  => String
+  -> (Session PurePrompt -> InitFlags -> PurePrompt a)
+  -> [String]
+  -> TestTree
+testPromptBreakWithSession label f =
+  testPromptWithSession label f go (assertFailure . show)
   where
     go BreakException{} =
       return ()
 
-testPrompt
+testPromptWithSession
   :: Eq a
   => Show a
   => String
-  -> (InitFlags -> PurePrompt a)
+  -> (Session PurePrompt -> InitFlags -> PurePrompt a)
   -> (BreakException -> Assertion)
   -> ((a, NonEmpty String) -> Assertion)
   -> [String]
   -> TestTree
-testPrompt label f g h input = testCase label $
-  case (_runPrompt $ f emptyFlags) (fromList input) of
+testPromptWithSession label f g h input = testCase label $
+  case (_runPrompt $ newSession >>= \session -> f session emptyFlags) (fromList input) of
     Left x -> g x -- :: BreakException
     Right x -> h x -- :: (a, other inputs)
 
 testNumberedPrompt :: (Eq a, Show a) => String -> (InitFlags -> PurePrompt a) -> [a] -> TestTree
-testNumberedPrompt label act = testGroup label . (++ goBreak) . fmap go . indexed1
+testNumberedPrompt label act = testNumberedPromptWithSession label (\_ -> act)
+
+testNumberedPromptWithSession :: (Eq a, Show a) => String -> (Session PurePrompt -> InitFlags -> PurePrompt a) -> [a] -> TestTree
+testNumberedPromptWithSession label act = testGroup label . (++ goBreak) . fmap go . indexed1
   where
     indexed1 = zip [1 :: Int ..]
     mkLabel a n =
@@ -1128,10 +1152,10 @@ testNumberedPrompt label act = testGroup label . (++ goBreak) . fmap go . indexe
         ++ show a
 
     go (n, a) =
-      testSimplePrompt (mkLabel a n) act a [show n]
+      testSimplePromptWithSession (mkLabel a n) act a [show n]
     goBreak =
-      [ testPromptBreak "testing index -1" act ["-1"]
-      , testPromptBreak "testing index 1000" act ["1000"]
+      [ testPromptBreakWithSession "testing index -1" act ["-1"]
+      , testPromptBreakWithSession "testing index 1000" act ["1000"]
       ]
 
 testBoolPrompt
