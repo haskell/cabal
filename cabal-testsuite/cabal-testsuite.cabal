@@ -136,6 +136,7 @@ executable test-runtime-deps
     , directory
     , exceptions
     , filepath
+    , network-uri
     , process
     , time
     , transformers
