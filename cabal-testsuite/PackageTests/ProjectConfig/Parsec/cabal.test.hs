@@ -66,6 +66,7 @@ main = do
   cabalTest' "read source-repository-package" testSourceRepoList
   cabalTest' "read project-config-build-only" testProjectConfigBuildOnly
   cabalTest' "read project-config-shared" testProjectConfigShared
+  cabalTest' "read install-dirs" testInstallDirs
   cabalTest' "set explicit provenance" testProjectConfigProvenance
   cabalTest' "read project-config-local-packages" testProjectConfigLocalPackages
   cabalTest' "read project-config-all-packages" testProjectConfigAllPackages
@@ -173,25 +174,7 @@ testProjectConfigShared = do
     projectConfigHcPath = toFlag "/some/path/to/compiler"
     projectConfigHcPkg = toFlag "/some/path/to/ghc-pkg"
     projectConfigHaddockIndex = toFlag $ toPathTemplate "/path/to/haddock-index"
-    projectConfigInstallDirs =
-      InstallDirs
-        { prefix = Flag $ toPathTemplate "my/prefix-path"
-        , bindir = Flag $ toPathTemplate "bin/dir/"
-        , libdir = Flag $ toPathTemplate "lib/dir/path"
-        , libsubdir = Flag $ toPathTemplate "/lib/sub/dir"
-        , dynlibdir = Flag $ toPathTemplate "dyn/lib/dir/path"
-        , flibdir = mempty
-        , libexecdir = Flag $ toPathTemplate "lib/exec/dir/"
-        , libexecsubdir = Flag $ toPathTemplate "libexec/subdir"
-        , includedir = mempty
-        , datadir = Flag $ toPathTemplate "path/to/datadir/"
-        , datasubdir = Flag $ toPathTemplate "a/datadir/subdir"
-        , docdir = Flag $ toPathTemplate "path/to/docs"
-        , mandir = mempty
-        , htmldir = Flag $ toPathTemplate "dir/html/"
-        , haddockdir = Flag $ toPathTemplate "haddock/dir"
-        , sysconfdir = Flag $ toPathTemplate "sys/conf/dir"
-        }
+    projectConfigInstallDirs = mempty -- tested below in testInstallDirs
     projectConfigPackageDBs = [Nothing, Just (SpecificPackageDB "foo"), Nothing, Just (SpecificPackageDB "bar"), Just (SpecificPackageDB "baz")]
     projectConfigRemoteRepos = mempty -- cli only
     projectConfigLocalNoIndexRepos = mempty -- cli only
@@ -231,6 +214,33 @@ testProjectConfigShared = do
     projectConfigPreferOldest = Flag (PreferOldest True)
     projectConfigProgPathExtra = toNubList ["/foo/bar", "/baz/quux"]
     projectConfigMultiRepl = toFlag True
+
+testInstallDirs :: TestM ()
+testInstallDirs = do
+  let rootFp = "install-dirs"
+  testDir <- testDirInfo rootFp "cabal.project"
+  (config, _) <- readConfigDefault rootFp
+  assertConfig' expected config (projectConfigInstallDirs . projectConfigShared . condTreeData)
+  where
+    expected =
+      InstallDirs
+        { prefix = Flag $ toPathTemplate "my/prefix-path"
+        , bindir = Flag $ toPathTemplate "bin/dir/"
+        , libdir = Flag $ toPathTemplate "lib/dir/path"
+        , libsubdir = Flag $ toPathTemplate "/lib/sub/dir"
+        , dynlibdir = Flag $ toPathTemplate "dyn/lib/dir/path"
+        , flibdir = mempty
+        , libexecdir = Flag $ toPathTemplate "lib/exec/dir/"
+        , libexecsubdir = Flag $ toPathTemplate "libexec/subdir"
+        , includedir = mempty
+        , datadir = Flag $ toPathTemplate "path/to/datadir/"
+        , datasubdir = Flag $ toPathTemplate "a/datadir/subdir"
+        , docdir = Flag $ toPathTemplate "path/to/docs"
+        , mandir = mempty
+        , htmldir = Flag $ toPathTemplate "dir/html/"
+        , haddockdir = Flag $ toPathTemplate "haddock/dir"
+        , sysconfdir = Flag $ toPathTemplate "sys/conf/dir"
+        }
 
 testProjectConfigProvenance :: TestM ()
 testProjectConfigProvenance = do
