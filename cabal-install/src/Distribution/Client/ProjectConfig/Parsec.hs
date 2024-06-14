@@ -106,7 +106,7 @@ parseProjectSkeleton
   -> ProjectConfigToParse
   -- ^ The contents of the file to parse
   -> IO (ParseResult ProjectConfigSkeleton)
-parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (ProjectConfigToParse bs) = (sanityWalkPCS False =<<) <$> liftPR (go []) (readPreprocessFields bs) -- (ParseUtils.readFields bs)
+parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (ProjectConfigToParse bs) = (sanityWalkPCS False =<<) <$> liftPR (go []) (readPreprocessFields bs)
   where
     go :: [Field Position] -> [Field Position] -> IO (ParseResult ProjectConfigSkeleton)
     go acc (x : xs) = case x of
