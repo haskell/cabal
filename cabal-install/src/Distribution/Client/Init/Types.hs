@@ -38,6 +38,7 @@ module Distribution.Client.Init.Types
 
     -- * Typeclasses
   , Interactive (..)
+  , Session (..)
   , BreakException (..)
   , PurePrompt (..)
   , evalPrompt
@@ -66,6 +67,7 @@ import Control.Monad.Catch
 
 import Data.List.NonEmpty (fromList)
 
+import qualified Data.IORef
 import Distribution.CabalSpecVersion
 import Distribution.Client.Utils as P
 import Distribution.Fields.Pretty
@@ -340,6 +342,21 @@ class Monad m => Interactive m where
   -- misc functions
   break :: m Bool
   throwPrompt :: BreakException -> m a
+  newSession :: m (Session m)
+
+data Session m = Session
+  { getLastChosenLanguage :: m (Maybe String)
+  , setLastChosenLanguage :: (Maybe String) -> m ()
+  }
+
+newIOSession :: IO (Session IO)
+newIOSession = do
+  lastChosenLanguage <- Data.IORef.newIORef Nothing
+  pure
+    Session
+      { getLastChosenLanguage = Data.IORef.readIORef lastChosenLanguage
+      , setLastChosenLanguage = Data.IORef.writeIORef lastChosenLanguage
+      }
 
 instance Interactive IO where
   getLine = P.getLine
@@ -371,6 +388,8 @@ instance Interactive IO where
     | otherwise = putStrLn $ "[" ++ displaySeverity severity ++ "] " ++ msg
   break = return False
   throwPrompt = throwM
+
+  newSession = newIOSession
 
 instance Interactive PurePrompt where
   getLine = pop
@@ -415,6 +434,13 @@ instance Interactive PurePrompt where
     Left
       $ BreakException
         ("Error: " ++ e ++ "\nStacktrace: " ++ show s)
+
+  newSession =
+    return
+      Session
+        { getLastChosenLanguage = return Nothing
+        , setLastChosenLanguage = \_ -> return ()
+        }
 
 pop :: PurePrompt String
 pop = PurePrompt $ \(p :| ps) -> Right (p, fromList ps)

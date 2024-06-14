@@ -94,6 +94,8 @@ createProject v pkgIx srcDb initFlags = do
   --     being generated as a final result.
   --
 
+  session <- newSession
+
   pkgType <- packageTypePrompt initFlags
   isMinimal <- getMinimal initFlags
   doOverwrite <- overwritePrompt initFlags
@@ -115,46 +117,46 @@ createProject v pkgIx srcDb initFlags = do
 
   case pkgType of
     Library -> do
-      libTarget <- genLibTarget initFlags' pkgIx
+      libTarget <- genLibTarget session initFlags' pkgIx
       testTarget <-
         addLibDepToTest pkgName
-          <$> genTestTarget initFlags' pkgIx
+          <$> genTestTarget session initFlags' pkgIx
 
       comments <- noCommentsPrompt initFlags'
 
-      return $
-        ProjectSettings
+      return
+        $ ProjectSettings
           (mkOpts comments cabalSpec)
           pkgDesc
           (Just libTarget)
           Nothing
           testTarget
     Executable -> do
-      exeTarget <- genExeTarget initFlags' pkgIx
+      exeTarget <- genExeTarget session initFlags' pkgIx
       comments <- noCommentsPrompt initFlags'
 
-      return $
-        ProjectSettings
+      return
+        $ ProjectSettings
           (mkOpts comments cabalSpec)
           pkgDesc
           Nothing
           (Just exeTarget)
           Nothing
     LibraryAndExecutable -> do
-      libTarget <- genLibTarget initFlags' pkgIx
+      libTarget <- genLibTarget session initFlags' pkgIx
 
       exeTarget <-
         addLibDepToExe pkgName
-          <$> genExeTarget initFlags' pkgIx
+          <$> genExeTarget session initFlags' pkgIx
 
       testTarget <-
         addLibDepToTest pkgName
-          <$> genTestTarget initFlags' pkgIx
+          <$> genTestTarget session initFlags' pkgIx
 
       comments <- noCommentsPrompt initFlags'
 
-      return $
-        ProjectSettings
+      return
+        $ ProjectSettings
           (mkOpts comments cabalSpec)
           pkgDesc
           (Just libTarget)
@@ -166,12 +168,12 @@ createProject v pkgIx srcDb initFlags = do
       -- includes TestSuite in the list). It prevents that the user end up with a
       -- TestSuite target with initializeTestSuite set to NoFlag, thus avoiding the prompt.
       let initFlags'' = initFlags'{initializeTestSuite = Flag True}
-      testTarget <- genTestTarget initFlags'' pkgIx
+      testTarget <- genTestTarget session initFlags'' pkgIx
 
       comments <- noCommentsPrompt initFlags''
 
-      return $
-        ProjectSettings
+      return
+        $ ProjectSettings
           (mkOpts comments cabalSpec)
           pkgDesc
           Nothing
@@ -211,13 +213,14 @@ genPkgDescription flags' srcDb = do
 -- is generated.
 genLibTarget
   :: Interactive m
-  => InitFlags
+  => Session m
+  -> InitFlags
   -> InstalledPackageIndex
   -> m LibTarget
-genLibTarget flags pkgs =
+genLibTarget session flags pkgs =
   LibTarget
     <$> srcDirsPrompt flags
-    <*> languagePrompt flags "library"
+    <*> languagePrompt session flags "library"
     <*> getExposedModules flags
     <*> getOtherModules flags
     <*> getOtherExts flags
@@ -230,14 +233,15 @@ genLibTarget flags pkgs =
 -- is generated.
 genExeTarget
   :: Interactive m
-  => InitFlags
+  => Session m
+  -> InitFlags
   -> InstalledPackageIndex
   -> m ExeTarget
-genExeTarget flags pkgs =
+genExeTarget session flags pkgs =
   ExeTarget
     <$> mainFilePrompt flags
     <*> appDirsPrompt flags
-    <*> languagePrompt flags "executable"
+    <*> languagePrompt session flags "executable"
     <*> getOtherModules flags
     <*> getOtherExts flags
     <*> dependenciesPrompt pkgs flags
@@ -253,23 +257,24 @@ genExeTarget flags pkgs =
 -- test suites at command line.
 genTestTarget
   :: Interactive m
-  => InitFlags
+  => Session m
+  -> InitFlags
   -> InstalledPackageIndex
   -> m (Maybe TestTarget)
-genTestTarget flags pkgs = initializeTestSuitePrompt flags >>= go
+genTestTarget session flags pkgs = initializeTestSuitePrompt flags >>= go
   where
     go initialized
       | not initialized = return Nothing
       | otherwise =
-          fmap Just $
-            TestTarget
-              <$> testMainPrompt
-              <*> testDirsPrompt flags
-              <*> languagePrompt flags "test suite"
-              <*> getOtherModules flags
-              <*> getOtherExts flags
-              <*> dependenciesPrompt pkgs flags
-              <*> getBuildTools flags
+          fmap Just
+            $ TestTarget
+            <$> testMainPrompt
+            <*> testDirsPrompt flags
+            <*> languagePrompt session flags "test suite"
+            <*> getOtherModules flags
+            <*> getOtherExts flags
+            <*> dependenciesPrompt pkgs flags
+            <*> getBuildTools flags
 
 -- -------------------------------------------------------------------- --
 -- Prompts
@@ -359,9 +364,9 @@ versionPrompt flags = getVersion flags go
       vv <- promptStr "Package version" (DefaultPrompt $ prettyShow defaultVersion)
       case simpleParsec vv of
         Nothing -> do
-          putStrLn $
-            "Version must be a valid PVP format (e.g. 0.1.0.0): "
-              ++ vv
+          putStrLn
+            $ "Version must be a valid PVP format (e.g. 0.1.0.0): "
+            ++ vv
           go
         Just v -> return v
 
@@ -400,18 +405,18 @@ emailPrompt flags = getEmail flags $ guessAuthorEmail >>= promptOrDefault "Maint
 
 homepagePrompt :: Interactive m => InitFlags -> m String
 homepagePrompt flags =
-  getHomepage flags $
-    promptStr "Project homepage URL" OptionalPrompt
+  getHomepage flags
+    $ promptStr "Project homepage URL" OptionalPrompt
 
 synopsisPrompt :: Interactive m => InitFlags -> m String
 synopsisPrompt flags =
-  getSynopsis flags $
-    promptStr "Project synopsis" OptionalPrompt
+  getSynopsis flags
+    $ promptStr "Project synopsis" OptionalPrompt
 
 categoryPrompt :: Interactive m => InitFlags -> m String
 categoryPrompt flags =
-  getCategory flags $
-    promptList
+  getCategory flags
+    $ promptList
       "Project category"
       defaultCategories
       (DefaultPrompt "")
@@ -439,8 +444,8 @@ mainFilePrompt flags = getMainFile flags go
 
       case _hsFileType hs of
         InvalidHsPath -> do
-          putStrLn $
-            concat
+          putStrLn
+            $ concat
               [ "Main file "
               , show hs
               , " is not a valid haskell file. Source files must end in .hs or .lhs."
@@ -453,27 +458,31 @@ testDirsPrompt flags = getTestDirs flags $ do
   dir <- promptStr "Test directory" (DefaultPrompt defaultTestDir)
   return [dir]
 
-languagePrompt :: Interactive m => InitFlags -> String -> m Language
-languagePrompt flags pkgType = getLanguage flags $ do
+languagePrompt :: Interactive m => Session m -> InitFlags -> String -> m Language
+languagePrompt session flags pkgType = getLanguage flags $ do
   let h2010 = "Haskell2010"
       h98 = "Haskell98"
       ghc2021 = "GHC2021 (requires at least GHC 9.2)"
       ghc2024 = "GHC2024 (requires at least GHC 9.10)"
 
+  lastChosenLanguage <- getLastChosenLanguage session
+
   l <-
     promptList
       ("Choose a language for your " ++ pkgType)
       [h2010, h98, ghc2021, ghc2024]
-      (DefaultPrompt h2010)
+      (DefaultPrompt (maybe h2010 id lastChosenLanguage))
       Nothing
       True
 
+  setLastChosenLanguage session (Just l)
+
   if
-      | l == h2010 -> return Haskell2010
-      | l == h98 -> return Haskell98
-      | l == ghc2021 -> return GHC2021
-      | l == ghc2024 -> return GHC2024
-      | otherwise -> return $ UnknownLanguage l
+    | l == h2010 -> return Haskell2010
+    | l == h98 -> return Haskell98
+    | l == ghc2021 -> return GHC2021
+    | l == ghc2024 -> return GHC2024
+    | otherwise -> return $ UnknownLanguage l
 
 noCommentsPrompt :: Interactive m => InitFlags -> m Bool
 noCommentsPrompt flags = getNoComments flags $ do
