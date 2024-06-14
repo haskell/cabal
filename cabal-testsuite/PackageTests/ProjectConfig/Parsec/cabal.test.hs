@@ -56,6 +56,7 @@ import Distribution.Utils.NubList
 import Distribution.Verbosity
 import System.Directory
 import System.FilePath
+import Network.URI (parseURI)
 
 import Test.Cabal.Prelude hiding (cabal)
 import qualified Test.Cabal.Prelude as P
@@ -253,7 +254,25 @@ testRemoteRepos = do
   assertConfig' expected config (projectConfigRemoteRepos . projectConfigShared . condTreeData)
   assertConfig' mempty config (projectConfigLocalNoIndexRepos . projectConfigShared . condTreeData)
   where
-    expected = mempty
+    expected = toNubList [packagesRepository, morePackagesRepository]
+    packagesRepository =
+      RemoteRepo
+        { remoteRepoName = RepoName $ "packages.example.org"
+        , remoteRepoURI = fromJust $ parseURI "http://packages.example.org/"
+        , remoteRepoSecure = pure True
+        , remoteRepoRootKeys = ["21", "42"]
+        , remoteRepoKeyThreshold = 123
+        , remoteRepoShouldTryHttps = True
+        }
+    morePackagesRepository =
+      RemoteRepo
+        { remoteRepoName = RepoName $ "more-packages.example.org"
+        , remoteRepoURI = fromJust $ parseURI "https://more-packages.example.org/"
+        , remoteRepoSecure = pure True
+        , remoteRepoRootKeys = ["foo", "bar"]
+        , remoteRepoKeyThreshold = 42
+        , remoteRepoShouldTryHttps = True
+        }
 
 testLocalNoIndexRepos :: TestM ()
 testLocalNoIndexRepos = do
