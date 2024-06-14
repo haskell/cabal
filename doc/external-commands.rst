@@ -4,7 +4,8 @@ External Commands
 ``cabal-install`` provides a system for external commands, akin to the ones used by tools like ``git`` or ``cargo``.
 
 If you execute ``cabal <cmd>``, ``cabal-install`` will search the path for an executable named ``cabal-<cmd>`` and execute it. The name of the command is passed as the first argument and
-the remaining arguments are passed afterwards. An error will be thrown in case the custom command is not found.
+the remaining arguments are passed afterwards. An error will be thrown in case the custom command is not found. The exit code of cabal when calling an external command is the same as the exit code
+of the command.
 
 The ``$CABAL`` environment variable is set to the path of the ``cabal-install`` executable
 which invoked the subcommand.
