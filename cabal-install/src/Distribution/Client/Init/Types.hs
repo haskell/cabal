@@ -405,15 +405,15 @@ instance Interactive PurePrompt where
   hFlush _ = return ()
   message !_ !severity !msg = case severity of
     Error -> PurePrompt $ \_ ->
-      Left $
-        BreakException
+      Left
+        $ BreakException
           (displaySeverity severity ++ ": " ++ msg)
     _ -> return ()
 
   break = return True
   throwPrompt (BreakException e) = PurePrompt $ \s ->
-    Left $
-      BreakException
+    Left
+      $ BreakException
         ("Error: " ++ e ++ "\nStacktrace: " ++ show s)
 
 pop :: PurePrompt String
