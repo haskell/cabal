@@ -21,6 +21,7 @@ import Distribution.Client.Targets (readUserConstraint)
 import Distribution.Client.Types.AllowNewer (AllowNewer (..), AllowOlder (..), RelaxDepMod (..), RelaxDepScope (..), RelaxDepSubject (..), RelaxDeps (..), RelaxedDep (..))
 import Distribution.Client.Types.InstallMethod (InstallMethod (..))
 import Distribution.Client.Types.OverwritePolicy (OverwritePolicy (..))
+import Distribution.Client.Types.Repo (LocalRepo (..), RemoteRepo (..))
 import Distribution.Client.Types.RepoName (RepoName (..))
 import Distribution.Client.Types.SourceRepo
 import Distribution.Client.Types.WriteGhcEnvironmentFilesPolicy (WriteGhcEnvironmentFilesPolicy (..))
@@ -67,6 +68,8 @@ main = do
   cabalTest' "read project-config-build-only" testProjectConfigBuildOnly
   cabalTest' "read project-config-shared" testProjectConfigShared
   cabalTest' "read install-dirs" testInstallDirs
+  cabalTest' "read remote-repos" testRemoteRepos
+  cabalTest' "read local-no-index-repos" testLocalNoIndexRepos
   cabalTest' "set explicit provenance" testProjectConfigProvenance
   cabalTest' "read project-config-local-packages" testProjectConfigLocalPackages
   cabalTest' "read project-config-all-packages" testProjectConfigAllPackages
@@ -176,8 +179,8 @@ testProjectConfigShared = do
     projectConfigHaddockIndex = toFlag $ toPathTemplate "/path/to/haddock-index"
     projectConfigInstallDirs = mempty -- tested below in testInstallDirs
     projectConfigPackageDBs = [Nothing, Just (SpecificPackageDB "foo"), Nothing, Just (SpecificPackageDB "bar"), Just (SpecificPackageDB "baz")]
-    projectConfigRemoteRepos = mempty -- cli only
-    projectConfigLocalNoIndexRepos = mempty -- cli only
+    projectConfigRemoteRepos = mempty -- tested below in testRemoteRepos
+    projectConfigLocalNoIndexRepos = mempty -- tested below in testLocalNoIndexRepos
     projectConfigActiveRepos = Flag (ActiveRepos [ActiveRepo (RepoName "hackage.haskell.org") CombineStrategyMerge, ActiveRepo (RepoName "my-repository") CombineStrategyOverride])
     projectConfigIndexState =
       let
@@ -241,6 +244,26 @@ testInstallDirs = do
         , haddockdir = Flag $ toPathTemplate "haddock/dir"
         , sysconfdir = Flag $ toPathTemplate "sys/conf/dir"
         }
+
+testRemoteRepos :: TestM ()
+testRemoteRepos = do
+  let rootFp = "remote-repos"
+  testDir <- testDirInfo rootFp "cabal.project"
+  (config, _) <- readConfigDefault rootFp
+  assertConfig' expected config (projectConfigRemoteRepos . projectConfigShared . condTreeData)
+  assertConfig' mempty config (projectConfigLocalNoIndexRepos . projectConfigShared . condTreeData)
+  where
+    expected = mempty
+
+testLocalNoIndexRepos :: TestM ()
+testLocalNoIndexRepos = do
+  let rootFp = "local-no-index-repos"
+  testDir <- testDirInfo rootFp "cabal.project"
+  (config, _) <- readConfigDefault rootFp
+  assertConfig' expected config (projectConfigLocalNoIndexRepos . projectConfigShared . condTreeData)
+  assertConfig' mempty config (projectConfigRemoteRepos . projectConfigShared . condTreeData)
+  where
+    expected = mempty
 
 testProjectConfigProvenance :: TestM ()
 testProjectConfigProvenance = do
