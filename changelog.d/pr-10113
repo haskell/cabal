@@ -1,10 +1,10 @@
-synopsis: Canonilise path passed via `--with-compiler`.
+synopsis: Canonicalise path passed via `--with-compiler`.
 packages: cabal-install
 issues: #3411 #758
 prs: #10113
 
 description: {
 
-* Cabal is now able to properly handle relative paths when using `--with-compiler` by canonilising it instead of passing the relative path around, breaking when trying to resolve it outside of the current working directory.
+* Cabal is now able to properly handle relative paths when using `--with-compiler` by canonicalising it instead of passing the relative path around, breaking when trying to resolve it outside of the current working directory.
 
 }
