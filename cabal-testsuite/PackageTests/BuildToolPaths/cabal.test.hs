@@ -10,16 +10,19 @@ main = cabalTest $ do
     -- shipped with a version of Cabal with SetupHooks).
     -- Ever since 716b109c4ae908458b16af5d75c233c7d9fdfc06, we use --intree-cabal-lib in
     -- CI, so we should always take the "Just" case which actually runs the test.
+    --
+    -- NB: be sure to use v2 commands, as otherwise the testsuite driver will not
+    -- pass --package-db flags.
     Nothing -> skip "Cabal-hooks library unavailable."
-    Just pkgdb -> recordMode DoNotRecord $ do
+    Just _pkgdb -> recordMode DoNotRecord $ do
       -- At build-time:
       --
       --  - in a pre-build hook
       --  - in a Template Haskell splice
-      cabal "build" [ "all", "--enable-tests", "--enable-benchmarks", "--package-db=" ++ pkgdb ]
+      cabal "v2-build" [ "all", "--enable-tests", "--enable-benchmarks"]
       -- At runtime of a test-suite
-      cabal "test" [ "pbts", "--package-db=" ++ pkgdb ]
+      cabal "v2-test" [ "pbts" ]
       -- At runtime of a benchmark
-      cabal "bench" [ "pbts", "--package-db=" ++ pkgdb ]
+      cabal "v2-bench" [ "pbts" ]
       -- At runtime of an executable
-      cabal "run" [ "pbts-exe", "--package-db=" ++ pkgdb ]
+      cabal "v2-run" [ "pbts-exe" ]

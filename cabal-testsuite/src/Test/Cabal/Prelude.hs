@@ -324,14 +324,13 @@ cabalGArgs global_args cmd args input = do
           = [ "--builddir", testDistDir env
             , "-j1" ]
             ++ [ "--project-file=" ++ fp | Just fp <- [testCabalProjectFile env] ]
-            ++ ["--package-db=" ++ db | Just db <- [testPackageDbPath env]]
+            ++ ["--package-db=" ++ db | Just dbs <- [testPackageDbPath env], db <- dbs]
           | "v1-" `isPrefixOf` cmd
           = [ "--builddir", testDistDir env ]
             ++ install_args
-
           | otherwise
           = [ "--builddir", testDistDir env ]
-            ++ ["--package-db=" ++ db | Just db <- [testPackageDbPath env]]
+            ++ ["--package-db=" ++ db | Just dbs <- [testPackageDbPath env], db <- dbs]
             ++ install_args
 
         install_args
@@ -875,7 +874,7 @@ allCabalVersion = isCabalVersion all
 isCabalVersion :: WithCallStack (((Version -> Bool) -> [Version] -> Bool) -> String -> TestM Bool)
 isCabalVersion decide range = do
   env <- getTestEnv
-  cabal_pkgs <- ghcPkg_raw' $ ["--global", "list", "Cabal", "--simple"] ++ ["--package-db=" ++ db | Just db <- [testPackageDbPath env]]
+  cabal_pkgs <- ghcPkg_raw' $ ["--global", "list", "Cabal", "--simple"] ++ ["--package-db=" ++ db | Just dbs <- [testPackageDbPath env], db <- dbs]
   let pkg_versions :: [PackageIdentifier] = mapMaybe simpleParsec (words (resultOutput cabal_pkgs))
   vr <- case eitherParsec range of
           Left err -> fail err
