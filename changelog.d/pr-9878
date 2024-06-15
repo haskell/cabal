@@ -1,0 +1,8 @@
+synopsis: Add mhs as a known Haskell compiler
+packages: Cabal
+issues:
+prs: #9878
+
+description: {
+This simply add MHS to the enumeration of known Haskell compilers.
+}
