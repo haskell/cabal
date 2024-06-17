@@ -90,7 +90,8 @@ import Distribution.Simple.Program
   , runDbProgramCwd
   )
 import Distribution.Simple.Program.Db
-  ( prependProgramSearchPath
+  ( configureAllKnownPrograms
+  , prependProgramSearchPath
   , progOverrideEnv
   )
 import Distribution.Simple.Program.Find
@@ -557,8 +558,8 @@ internalSetupMethod verbosity options bt args = do
 buildTypeAction :: BuildType -> ([String] -> IO ())
 buildTypeAction Simple = Simple.defaultMainArgs
 buildTypeAction Configure =
-  Simple.defaultMainWithHooksArgs
-    Simple.autoconfUserHooks
+  Simple.defaultMainWithSetupHooksArgs
+    Simple.autoconfSetupHooks
 buildTypeAction Make = Make.defaultMainArgs
 buildTypeAction Hooks  = error "buildTypeAction Hooks"
 buildTypeAction Custom = error "buildTypeAction Custom"
@@ -862,10 +863,18 @@ getExternalSetupMethod verbosity options pkg bt = do
     buildTypeScript cabalLibVersion = "{-# LANGUAGE NoImplicitPrelude #-}\n" <> case bt of
       Simple -> "import Distribution.Simple; main = defaultMain\n"
       Configure
-        | cabalLibVersion >= mkVersion [1, 3, 10] -> "import Distribution.Simple; main = defaultMainWithHooks autoconfUserHooks\n"
-        | otherwise -> "import Distribution.Simple; main = defaultMainWithHooks defaultUserHooks\n"
+        | cabalLibVersion >= mkVersion [3, 13, 0]
+        -> "import Distribution.Simple; main = defaultMainWithSetupHooks autoconfSetupHooks\n"
+        | cabalLibVersion >= mkVersion [1, 3, 10]
+        -> "import Distribution.Simple; main = defaultMainWithHooks autoconfUserHooks\n"
+        | otherwise
+        -> "import Distribution.Simple; main = defaultMainWithHooks defaultUserHooks\n"
       Make -> "import Distribution.Make; main = defaultMain\n"
-      Hooks -> "import Distribution.Simple; import SetupHooks; main = defaultMainWithSetupHooks setupHooks\n"
+      Hooks
+        | cabalLibVersion >= mkVersion [3, 13, 0]
+        -> "import Distribution.Simple; import SetupHooks; main = defaultMainWithSetupHooks setupHooks\n"
+        | otherwise
+        -> error "buildTypeScript Hooks with Cabal < 3.13"
       Custom -> error "buildTypeScript Custom"
 
     installedCabalVersion
@@ -1027,11 +1036,19 @@ getExternalSetupMethod verbosity options pkg bt = do
                 createDirectoryIfMissingVerbose verbosity True setupCacheDir
                 installExecutableFile verbosity src cachedSetupProgFile
                 -- Do not strip if we're using GHCJS, since the result may be a script
-                when (maybe True ((/= GHCJS) . compilerFlavor) $ useCompiler options') $
+                when (maybe True ((/= GHCJS) . compilerFlavor) $ useCompiler options') $ do
+                  -- Add the relevant PATH overrides for the package to the
+                  -- program database.
+                  setupProgDb
+                    <- prependProgramSearchPath verbosity
+                          (useExtraPathEnv options)
+                          (useExtraEnvOverrides options)
+                          (useProgramDb options')
+                         >>= configureAllKnownPrograms verbosity
                   Strip.stripExe
                     verbosity
                     platform
-                    (useProgramDb options')
+                    setupProgDb
                     cachedSetupProgFile
         return cachedSetupProgFile
         where

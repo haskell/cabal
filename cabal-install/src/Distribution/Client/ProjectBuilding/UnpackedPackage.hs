@@ -99,7 +99,7 @@ import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString.Lazy.Char8 as LBS.Char8
 import qualified Data.List.NonEmpty as NE
 
-import Control.Exception (ErrorCall, Handler (..), SomeAsyncException, assert, catches)
+import Control.Exception (ErrorCall, Handler (..), SomeAsyncException, assert, catches, onException)
 import System.Directory (canonicalizePath, createDirectoryIfMissing, doesDirectoryExist, doesFileExist, removeFile)
 import System.FilePath (dropDrive, normalise, takeDirectory, (<.>), (</>))
 import System.IO (Handle, IOMode (AppendMode), withFile)
@@ -480,6 +480,10 @@ buildInplaceUnpackedPackage
           whenRebuild $ do
             timestamp <- beginUpdateFileMonitor
             runBuild
+              -- Be sure to invalidate the cache if building throws an exception!
+              -- If not, we'll abort execution with a stale recompilation cache.
+              -- See ghc#24926 for an example of how this can go wrong.
+              `onException` invalidatePackageRegFileMonitor packageFileMonitor
 
             let listSimple =
                   execRebuild (getSymbolicPath srcdir) (needElaboratedConfiguredPackage pkg)

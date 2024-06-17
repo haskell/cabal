@@ -275,7 +275,7 @@ import System.IO
   , stderr
   , stdout
   )
-import System.Process (createProcess, env, proc)
+import System.Process (createProcess, env, proc, waitForProcess)
 
 -- | Entry point
 --
@@ -383,7 +383,7 @@ mainWorker args = do
       result <- try $ createProcess ((proc exec (name : cmdArgs)){env = Just new_env})
       case result of
         Left ex -> printErrors ["Error executing external command: " ++ show (ex :: SomeException)]
-        Right _ -> return ()
+        Right (_, _, _, ph) -> waitForProcess ph >>= exitWith
 
     printCommandHelp help = do
       pname <- getProgName
@@ -1470,8 +1470,8 @@ actAsSetupAction actAsSetupFlags args _globalFlags =
    in case bt of
         Simple -> Simple.defaultMainArgs args
         Configure ->
-          Simple.defaultMainWithHooksArgs
-            Simple.autoconfUserHooks
+          Simple.defaultMainWithSetupHooksArgs
+            Simple.autoconfSetupHooks
             args
         Make -> Make.defaultMainArgs args
         Hooks -> error "actAsSetupAction Hooks"

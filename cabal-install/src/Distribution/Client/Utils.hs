@@ -38,6 +38,7 @@ module Distribution.Client.Utils
   , listFilesInside
   , safeRead
   , hasElem
+  , concatMapM
   , occursOnlyOrBefore
   , giveRTSWarning
   ) where
