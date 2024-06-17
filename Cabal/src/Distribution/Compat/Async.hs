@@ -146,13 +146,11 @@ data AsyncCancelled = AsyncCancelled
     , Typeable
     )
 
-{- FOURMOLU_DISABLE -}
 instance Exception AsyncCancelled where
   -- wraps in SomeAsyncException
   -- See https://github.com/ghc/ghc/commit/756a970eacbb6a19230ee3ba57e24999e4157b09
   fromException = asyncExceptionFromException
   toException = asyncExceptionToException
-{- FOURMOLU_ENABLE -}
 
 -- | Cancel an asynchronous action
 --
