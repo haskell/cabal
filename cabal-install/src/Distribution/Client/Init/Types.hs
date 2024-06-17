@@ -342,6 +342,11 @@ class Monad m => Interactive m where
   -- misc functions
   break :: m Bool
   throwPrompt :: BreakException -> m a
+
+  -- This function returns the state of a session.
+  -- It's passed explicitly on functions that needs
+  -- some state like *languagePrompt*. Eventually if session
+  -- is refactored to a *ReaderT* *Session* could be its state.
   newSession :: m (Session m)
 
 data Session m = Session
@@ -424,15 +429,15 @@ instance Interactive PurePrompt where
   hFlush _ = return ()
   message !_ !severity !msg = case severity of
     Error -> PurePrompt $ \_ ->
-      Left $
-        BreakException
+      Left
+        $ BreakException
           (displaySeverity severity ++ ": " ++ msg)
     _ -> return ()
 
   break = return True
   throwPrompt (BreakException e) = PurePrompt $ \s ->
-    Left $
-      BreakException
+    Left
+      $ BreakException
         ("Error: " ++ e ++ "\nStacktrace: " ++ show s)
 
   newSession =
