@@ -340,24 +340,24 @@
       "version": "2.0.2"
     },
     {
-      "cabal_sha256": "3ed979ee1bb00b4e488537988ee6bb3c2c67e66678804125e2df08a527822b4e",
+      "cabal_sha256": "b853b4296cb23386feda17dc0d9065af6709d22d684ec734aab65403d59ed547",
       "component": "lib:tar-internal",
       "flags": [],
       "package": "tar",
       "revision": 0,
       "source": "hackage",
-      "src_sha256": "edfef2e126440839d34f23fff7f3616d0bfffa0345ea13d4d0fee9a669d305da",
-      "version": "0.6.1.0"
+      "src_sha256": "50bb660feec8a524416d6934251b996eaa7e39d49ae107ad505ab700d43f6814",
+      "version": "0.6.3.0"
     },
     {
-      "cabal_sha256": "3ed979ee1bb00b4e488537988ee6bb3c2c67e66678804125e2df08a527822b4e",
+      "cabal_sha256": "b853b4296cb23386feda17dc0d9065af6709d22d684ec734aab65403d59ed547",
       "component": "lib:tar",
       "flags": [],
       "package": "tar",
       "revision": 0,
       "source": "hackage",
-      "src_sha256": "edfef2e126440839d34f23fff7f3616d0bfffa0345ea13d4d0fee9a669d305da",
-      "version": "0.6.1.0"
+      "src_sha256": "50bb660feec8a524416d6934251b996eaa7e39d49ae107ad505ab700d43f6814",
+      "version": "0.6.3.0"
     },
     {
       "cabal_sha256": "13aee0a157b2362cf079a4fa0156927403aef2a9540694c9d170ac8339d17bda",
