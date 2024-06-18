@@ -46,20 +46,14 @@ import Distribution.Types.PkgconfigVersion
 import Distribution.Types.PkgconfigVersionRange
 import Distribution.Verbosity                   (Verbosity)
 
+-- | The list of packages installed in the system visible to
+-- @pkg-config@.
+--
+-- If an entry is `Nothing`, this means that the package seems to be present,
+-- but we don't know the exact version (because parsing of the version number
+-- failed).
 newtype PkgConfigDb = PkgConfigDb (M.Map PkgconfigName (Maybe PkgconfigVersion))
      deriving (Show, Generic, Typeable)
-
--- -- | The list of packages installed in the system visible to
--- -- @pkg-config@. This is an opaque datatype, to be constructed with
--- -- `readPkgConfigDb` and queried with `pkgConfigPkgPresent`.
--- data PkgConfigDb =  PkgConfigDb (M.Map PkgconfigName (Maybe PkgconfigVersion))
---                  -- ^ If an entry is `Nothing`, this means that the
---                  -- package seems to be present, but we don't know the
---                  -- exact version (because parsing of the version
---                  -- number failed).
---                  | NoPkgConfigDb
---                  -- ^ For when we could not run pkg-config successfully.
---      deriving (Show, Generic, Typeable)
 
 instance Binary PkgConfigDb
 instance Structured PkgConfigDb
@@ -71,7 +65,7 @@ readPkgConfigDb :: Verbosity -> ProgramDb -> IO (Maybe PkgConfigDb)
 readPkgConfigDb verbosity progdb = handle ioErrorHandler $ do
     mpkgConfig <- needProgram verbosity pkgConfigProgram progdb
     case mpkgConfig of
-      Nothing             -> noPkgConfig "Cannot find pkg-config program"
+      Nothing             -> noPkgConfig "cannot find pkg-config program"
       Just (pkgConfig, _) -> do
         -- To prevent malformed Unicode in the descriptions from crashing cabal,
         -- read without interpreting any encoding first. (#9608)
@@ -124,8 +118,8 @@ readPkgConfigDb verbosity progdb = handle ioErrorHandler $ do
     -- For when pkg-config invocation fails (possibly because of a
     -- too long command line).
     noPkgConfig extra = do
-        info verbosity ("Failed to query pkg-config, Cabal will continue"
-                        ++ " without solving for pkg-config constraints: "
+        info verbosity ("Warning: Failed to query pkg-config, Cabal will backtrack "
+                        ++ "if a package from pkg-config is requested. Error message: "
                         ++ extra)
         return Nothing
 
