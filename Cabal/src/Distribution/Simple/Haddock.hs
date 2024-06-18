@@ -485,8 +485,9 @@ haddock_setupHooks
 
     for_ (extraDocFiles pkg_descr) $ \fpath -> do
       files <- matchDirFileGlob verbosity (specVersion pkg_descr) mbWorkDir fpath
+      let targetDir = Dir $ unDir' (argOutputDir commonArgs) </> haddockDirName haddockTarget pkg_descr
       for_ files $
-        copyFileToCwd verbosity mbWorkDir (unDir $ argOutputDir commonArgs)
+        copyFileToCwd verbosity mbWorkDir (unDir targetDir)
 
 -- | Execute 'Haddock' configured with 'HaddocksFlags'.  It is used to build
 -- index and contents for documentation of multiple packages.
