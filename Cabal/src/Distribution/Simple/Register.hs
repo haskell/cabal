@@ -548,8 +548,8 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
     , IPI.ldOptions = ldOptions bi
     , IPI.frameworks = map getSymbolicPath $ frameworks bi
     , IPI.frameworkDirs = map getSymbolicPath $ extraFrameworkDirs bi
-    , IPI.haddockInterfaces = [haddockdir installDirs </> haddockName pkg]
-    , IPI.haddockHTMLs = [htmldir installDirs]
+    , IPI.haddockInterfaces = [haddockdir installDirs </> haddockName pkg | hasModules]
+    , IPI.haddockHTMLs = [htmldir installDirs | hasModules]
     , IPI.pkgRoot = Nothing
     , IPI.libVisibility = libVisibility lib
     }
