@@ -115,6 +115,7 @@ data HaddockFlags = HaddockFlags
   , haddockBaseUrl :: Flag String
   , haddockResourcesDir :: Flag String
   , haddockOutputDir :: Flag FilePath
+  , haddockUseUnicode :: Flag Bool
   }
   deriving (Show, Generic, Typeable)
 
@@ -170,6 +171,7 @@ defaultHaddockFlags =
     , haddockBaseUrl = NoFlag
     , haddockResourcesDir = NoFlag
     , haddockOutputDir = NoFlag
+    , haddockUseUnicode = Flag False
     }
 
 haddockCommand :: CommandUI HaddockFlags
@@ -378,6 +380,13 @@ haddockOptions showOrParseArgs =
         haddockOutputDir
         (\v flags -> flags{haddockOutputDir = v})
         (reqArgFlag "DIR")
+    , option
+        ""
+        ["use-unicode"]
+        "Pass --use-unicode option to haddock"
+        haddockUseUnicode
+        (\v flags -> flags{haddockUseUnicode = v})
+        trueArg
     ]
 
 emptyHaddockFlags :: HaddockFlags
@@ -441,6 +450,7 @@ data HaddockProjectFlags = HaddockProjectFlags
   , haddockProjectVerbosity :: Flag Verbosity
   , -- haddockBaseUrl is not supported, a fixed value is provided
     haddockProjectResourcesDir :: Flag String
+  , haddockProjectUseUnicode :: Flag Bool
   }
   deriving (Show, Generic, Typeable)
 
@@ -465,6 +475,7 @@ defaultHaddockProjectFlags =
     , haddockProjectVerbosity = Flag normal
     , haddockProjectResourcesDir = NoFlag
     , haddockProjectInterfaces = NoFlag
+    , haddockProjectUseUnicode = NoFlag
     }
 
 haddockProjectCommand :: CommandUI HaddockProjectFlags
@@ -611,6 +622,13 @@ haddockProjectOptions _showOrParseArgs =
       haddockProjectResourcesDir
       (\v flags -> flags{haddockProjectResourcesDir = v})
       (reqArgFlag "DIR")
+  , option
+      ""
+      ["use-unicode"]
+      "Pass --use-unicode option to haddock"
+      haddockProjectUseUnicode
+      (\v flags -> flags{haddockProjectUseUnicode = v})
+      trueArg
   ]
 
 emptyHaddockProjectFlags :: HaddockProjectFlags

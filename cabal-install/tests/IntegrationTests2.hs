@@ -2101,6 +2101,7 @@ testConfigOptionComments = do
   "  -- base-url" @=? findLineWith True "base-url" defaultConfigFile
   "  -- resources-dir" @=? findLineWith True "resources-dir" defaultConfigFile
   "  -- output-dir" @=? findLineWith True "output-dir" defaultConfigFile
+  "  -- use-unicode" @=? findLineWith True "use-unicode" defaultConfigFile
 
   "  -- interactive" @=? findLineWith True "interactive" defaultConfigFile
   "  -- quiet" @=? findLineWith True "quiet" defaultConfigFile
