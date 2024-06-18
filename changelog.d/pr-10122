@@ -1,0 +1,10 @@
+synopsis: Clarify error message when pkg-config is not found
+packages: cabal-install-solver
+prs: #10122
+
+description: {
+
+- The error message when pkg-config is not found or querying it fails will no
+longer incorrectly claim that the package is missing in the database.
+
+}
