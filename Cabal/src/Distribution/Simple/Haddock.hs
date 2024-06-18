@@ -155,6 +155,8 @@ data HaddockArgs = HaddockArgs
   -- ^ Modules to process.
   , argResourcesDir :: Flag String
   -- ^ haddock's static \/ auxiliary files.
+  , argUseUnicode :: Flag Bool
+  -- ^ haddock's `--use-unicode` flag
   }
   deriving (Generic)
 
@@ -554,6 +556,7 @@ fromFlags env flags =
           os -> os
     , argOutputDir = maybe mempty (Dir . getSymbolicPath) . flagToMaybe $ setupDistPref commonFlags
     , argGhcOptions = mempty{ghcOptExtra = ghcArgs}
+    , argUseUnicode = haddockUseUnicode flags
     }
   where
     ghcArgs = fromMaybe [] . lookup "ghc" . haddockProgramArgs $ flags
@@ -1133,6 +1136,7 @@ renderPureArgs version comp platform args =
       -- We pass this option by default to haddock to avoid recompilation
       -- See Note [Hi Haddock Recompilation Avoidance]
       ["--no-tmp-comp-dir" | version >= mkVersion [2, 28, 0]]
+    , bool ["--use-unicode"] [] . fromFlagOrDefault False . argUseUnicode $ args
     ]
   where
     -- See Note [Symbolic paths] in Distribution.Utils.Path

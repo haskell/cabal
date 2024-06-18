@@ -508,6 +508,7 @@ commandLineFlagsToProjectConfig globalFlags NixStyleFlags{..} clientInstallFlags
           , packageConfigHaddockInternal = packageConfigHaddockInternal pc
           , packageConfigHaddockQuickJump = packageConfigHaddockQuickJump pc
           , packageConfigHaddockLinkedSource = packageConfigHaddockLinkedSource pc
+          , packageConfigHaddockUseUnicode = packageConfigHaddockUseUnicode pc
           }
       )
 
@@ -824,6 +825,7 @@ convertLegacyPerPackageFlags
         , haddockBaseUrl = packageConfigHaddockBaseUrl
         , haddockResourcesDir = packageConfigHaddockResourcesDir
         , haddockOutputDir = packageConfigHaddockOutputDir
+        , haddockUseUnicode = packageConfigHaddockUseUnicode
         } = haddockFlags
 
       TestFlags
@@ -1225,6 +1227,7 @@ convertToLegacyPerPackageConfig PackageConfig{..} =
         , haddockBaseUrl = packageConfigHaddockBaseUrl
         , haddockResourcesDir = packageConfigHaddockResourcesDir
         , haddockOutputDir = packageConfigHaddockOutputDir
+        , haddockUseUnicode = packageConfigHaddockUseUnicode
         }
 
     testFlags =
@@ -1628,6 +1631,7 @@ legacyPackageConfigFieldDescrs =
             , "base-url"
             , "resources-dir"
             , "output-dir"
+            , "use-unicode"
             ]
           . commandOptionsToFields
        )

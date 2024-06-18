@@ -158,6 +158,7 @@ haddockProjectAction flags _extraArgs globalFlags = do
                 else NoFlag
           , haddockKeepTempFiles = haddockProjectKeepTempFiles flags
           , haddockResourcesDir = haddockProjectResourcesDir flags
+          , haddockUseUnicode = haddockProjectUseUnicode flags
           -- NOTE: we don't pass `haddockOutputDir`. If we do, we'll need to
           -- make sure `InstalledPackageInfo` contains the right path to
           -- haddock interfaces.  Instead we build documentation inside
@@ -380,6 +381,7 @@ haddockProjectAction flags _extraArgs globalFlags = do
                       )
                     | (url, interfacePath, visibility) <- packageInfos'
                     ]
+              , haddockProjectUseUnicode = NoFlag
               }
       createHaddockIndex
         verbosity
