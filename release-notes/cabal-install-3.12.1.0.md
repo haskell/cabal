@@ -3,6 +3,14 @@ cabal-install 3.12.1.0 changelog and release notes.
 
 ### Significant changes
 
+- Cabal 3.12 support [#9917](https://github.com/haskell/cabal/issues/9917)
+
+    This is the first release of `cabal-install` that is fully compatible with `Cabal` 3.12.0.0 as released with GHC 9.10.1. In particular, it means custom setup builds will work with GHC 9.10.
+
+- `cabal-install` has been built against `tar` 0.6.3.0 [#10123](https://github.com/haskell/cabal/pull/10123)
+
+    The new release of `tar` has significant performance improvements, making `cabal update` in particular much faster.
+
 - Add support for asm, cmm, and js sources in executable components [#8639](https://github.com/haskell/cabal/issues/8639) [#9061](https://github.com/haskell/cabal/pull/9061)
 
     Executable components now support the inclusion of asm, cmm, and js source
@@ -363,3 +371,7 @@ cabal-install 3.12.1.0 changelog and release notes.
   Removes interleaved rendering of project imports.
 
 - Abbrevate solver rejection messages with installed versions [#9823](https://github.com/haskell/cabal/issues/9823) [#9824](https://github.com/haskell/cabal/pull/9824)
+
+- solver: Prevent `ghc-internal` from being reinstalled [#10108](https://github.com/haskell/cabal/pull/10108)
+
+    GHC 9.10 ships with a new wired-in package, `ghc-internal`, which cannot be reinstalled. This commit prevents cabal-install from attempting it.
