@@ -53,10 +53,12 @@ import Distribution.Client.Setup
 import Distribution.Client.TargetProblem (TargetProblem (..))
 
 import Distribution.Simple.BuildPaths
-  ( haddockDirName
+  ( haddockBenchmarkDirPath
+  , haddockDirName
   , haddockLibraryDirPath
   , haddockLibraryPath
   , haddockPath
+  , haddockTestDirPath
   )
 import Distribution.Simple.Command
   ( CommandUI (..)
@@ -95,7 +97,7 @@ import Distribution.Simple.Utils
   , warn
   )
 import Distribution.Types.InstalledPackageInfo (InstalledPackageInfo (..))
-import Distribution.Types.PackageDescription (PackageDescription (subLibraries))
+import Distribution.Types.PackageDescription (PackageDescription (benchmarks, subLibraries, testSuites))
 import Distribution.Types.PackageId (pkgName)
 import Distribution.Types.PackageName (unPackageName)
 import Distribution.Types.UnitId (unUnitId)
@@ -312,6 +314,22 @@ haddockProjectAction flags _extraArgs globalFlags = do
                                         </> sublibDirPath
                                         </> haddockLibraryPath pkg_descr lib
                               ]
+                            ++ [ (testPath, testInterfacePath, Visible)
+                               | test <- testSuites pkg_descr
+                               , let testPath = haddockTestDirPath ForDevelopment pkg_descr test
+                                     testInterfacePath =
+                                      outputDir
+                                        </> testPath
+                                        </> haddockPath pkg_descr
+                               ]
+                            ++ [ (benchPath, benchInterfacePath, Visible)
+                               | bench <- benchmarks pkg_descr
+                               , let benchPath = haddockBenchmarkDirPath ForDevelopment pkg_descr bench
+                                     benchInterfacePath =
+                                      outputDir
+                                        </> benchPath
+                                        </> haddockPath pkg_descr
+                               ]
                     infos' <-
                       mapM
                         ( \x@(_, path, _) -> do
