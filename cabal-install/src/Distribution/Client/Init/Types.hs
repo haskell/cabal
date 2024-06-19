@@ -1,7 +1,9 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 
 -- |
 -- Module      :  Distribution.Client.Init.Types
@@ -38,8 +40,9 @@ module Distribution.Client.Init.Types
 
     -- * Typeclasses
   , Interactive (..)
-  , Session (..)
   , BreakException (..)
+  , PromptIO
+  , runPromptIO
   , PurePrompt (..)
   , evalPrompt
   , Severity (..)
@@ -64,6 +67,7 @@ import qualified Distribution.Client.Compat.Prelude as P
 import Prelude (read)
 
 import Control.Monad.Catch
+import Control.Monad.Reader
 
 import Data.List.NonEmpty (fromList)
 
@@ -284,6 +288,12 @@ mkLiterate _ hs = hs
 -- -------------------------------------------------------------------- --
 -- Interactive prompt monad
 
+type PromptIO = ReaderT (Data.IORef.IORef SessionState) IO
+
+runPromptIO :: PromptIO a -> IO a
+runPromptIO pio =
+  (Data.IORef.newIORef newSessionState) >>= (runReaderT pio)
+
 newtype PurePrompt a = PurePrompt
   { _runPrompt
       :: NonEmpty String
@@ -343,58 +353,61 @@ class Monad m => Interactive m where
   break :: m Bool
   throwPrompt :: BreakException -> m a
 
-  -- This function returns the state of a session.
-  -- It's passed explicitly on functions that needs
-  -- some state like *languagePrompt*. Eventually if session
-  -- is refactored to a *ReaderT* *Session* could be its state.
-  newSession :: m (Session m)
+  -- session state functions
+  getLastChosenLanguage :: m (Maybe String)
+  setLastChosenLanguage :: (Maybe String) -> m ()
 
-data Session m = Session
-  { getLastChosenLanguage :: m (Maybe String)
-  , setLastChosenLanguage :: (Maybe String) -> m ()
+newtype SessionState = SessionState
+  { lastChosenLanguage :: (Maybe String)
   }
 
-newSessionIO :: IO (Session IO)
-newSessionIO = do
-  lastChosenLanguage <- Data.IORef.newIORef Nothing
-  pure
-    Session
-      { getLastChosenLanguage = Data.IORef.readIORef lastChosenLanguage
-      , setLastChosenLanguage = Data.IORef.writeIORef lastChosenLanguage
-      }
+newSessionState :: SessionState
+newSessionState = SessionState{lastChosenLanguage = Nothing}
 
-instance Interactive IO where
-  getLine = P.getLine
-  readFile = P.readFile
-  getCurrentDirectory = P.getCurrentDirectory
-  getHomeDirectory = P.getHomeDirectory
-  getDirectoryContents = P.getDirectoryContents
-  listDirectory = P.listDirectory
-  doesDirectoryExist = P.doesDirectoryExist
-  doesFileExist = P.doesFileExist
-  canonicalizePathNoThrow = P.canonicalizePathNoThrow
-  readProcessWithExitCode = Process.readProcessWithExitCode
-  getEnvironment = P.getEnvironment
-  getCurrentYear = P.getCurrentYear
-  listFilesInside = P.listFilesInside
-  listFilesRecursive = P.listFilesRecursive
+instance Interactive PromptIO where
+  getLine = liftIO P.getLine
+  readFile = liftIO <$> P.readFile
+  getCurrentDirectory = liftIO P.getCurrentDirectory
+  getHomeDirectory = liftIO P.getHomeDirectory
+  getDirectoryContents = liftIO <$> P.getDirectoryContents
+  listDirectory = liftIO <$> P.listDirectory
+  doesDirectoryExist = liftIO <$> P.doesDirectoryExist
+  doesFileExist = liftIO <$> P.doesFileExist
+  canonicalizePathNoThrow = liftIO <$> P.canonicalizePathNoThrow
+  readProcessWithExitCode a b c = liftIO $ Process.readProcessWithExitCode a b c
+  getEnvironment = liftIO P.getEnvironment
+  getCurrentYear = liftIO P.getCurrentYear
+  listFilesInside test dir = do
+    sessionState <- ask
+    -- test is run within the same env
+    liftIO $ P.listFilesInside (\f -> liftIO $ runReaderT (test f) sessionState) dir
+  listFilesRecursive = liftIO <$> P.listFilesRecursive
 
-  putStr = P.putStr
-  putStrLn = P.putStrLn
-  createDirectory = P.createDirectory
-  removeDirectory = P.removeDirectoryRecursive
-  writeFile = P.writeFile
-  removeExistingFile = P.removeExistingFile
-  copyFile = P.copyFile
-  renameDirectory = P.renameDirectory
-  hFlush = System.IO.hFlush
+  putStr = liftIO <$> P.putStr
+  putStrLn = liftIO <$> P.putStrLn
+  createDirectory = liftIO <$> P.createDirectory
+  removeDirectory = liftIO <$> P.removeDirectoryRecursive
+  writeFile a b = liftIO $ P.writeFile a b
+  removeExistingFile = liftIO <$> P.removeExistingFile
+  copyFile a b = liftIO $ P.copyFile a b
+  renameDirectory a b = liftIO $ P.renameDirectory a b
+  hFlush = liftIO <$> System.IO.hFlush
   message q severity msg
     | q == silent = pure ()
     | otherwise = putStrLn $ "[" ++ displaySeverity severity ++ "] " ++ msg
   break = return False
-  throwPrompt = throwM
+  throwPrompt = liftIO <$> throwM
 
-  newSession = newSessionIO
+  getLastChosenLanguage = do
+    stateRef <- ask
+    state <- liftIO $ Data.IORef.readIORef stateRef
+    pure $ lastChosenLanguage state
+
+  setLastChosenLanguage value = do
+    stateRef <- ask
+    state <- liftIO $ Data.IORef.readIORef stateRef
+    let state' = state{lastChosenLanguage = value}
+    liftIO $ Data.IORef.writeIORef stateRef state'
 
 instance Interactive PurePrompt where
   getLine = pop
@@ -440,12 +453,8 @@ instance Interactive PurePrompt where
       BreakException
         ("Error: " ++ e ++ "\nStacktrace: " ++ show s)
 
-  newSession =
-    return
-      Session
-        { getLastChosenLanguage = return Nothing
-        , setLastChosenLanguage = \_ -> return ()
-        }
+  getLastChosenLanguage = return Nothing
+  setLastChosenLanguage = \_ -> return ()
 
 pop :: PurePrompt String
 pop = PurePrompt $ \(p :| ps) -> Right (p, fromList ps)

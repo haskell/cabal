@@ -94,8 +94,6 @@ createProject v pkgIx srcDb initFlags = do
   --     being generated as a final result.
   --
 
-  session <- newSession
-
   pkgType <- packageTypePrompt initFlags
   isMinimal <- getMinimal initFlags
   doOverwrite <- overwritePrompt initFlags
@@ -117,10 +115,10 @@ createProject v pkgIx srcDb initFlags = do
 
   case pkgType of
     Library -> do
-      libTarget <- genLibTarget session initFlags' pkgIx
+      libTarget <- genLibTarget initFlags' pkgIx
       testTarget <-
         addLibDepToTest pkgName
-          <$> genTestTarget session initFlags' pkgIx
+          <$> genTestTarget initFlags' pkgIx
 
       comments <- noCommentsPrompt initFlags'
 
@@ -132,7 +130,7 @@ createProject v pkgIx srcDb initFlags = do
           Nothing
           testTarget
     Executable -> do
-      exeTarget <- genExeTarget session initFlags' pkgIx
+      exeTarget <- genExeTarget initFlags' pkgIx
       comments <- noCommentsPrompt initFlags'
 
       return $
@@ -143,15 +141,15 @@ createProject v pkgIx srcDb initFlags = do
           (Just exeTarget)
           Nothing
     LibraryAndExecutable -> do
-      libTarget <- genLibTarget session initFlags' pkgIx
+      libTarget <- genLibTarget initFlags' pkgIx
 
       exeTarget <-
         addLibDepToExe pkgName
-          <$> genExeTarget session initFlags' pkgIx
+          <$> genExeTarget initFlags' pkgIx
 
       testTarget <-
         addLibDepToTest pkgName
-          <$> genTestTarget session initFlags' pkgIx
+          <$> genTestTarget initFlags' pkgIx
 
       comments <- noCommentsPrompt initFlags'
 
@@ -168,7 +166,7 @@ createProject v pkgIx srcDb initFlags = do
       -- includes TestSuite in the list). It prevents that the user end up with a
       -- TestSuite target with initializeTestSuite set to NoFlag, thus avoiding the prompt.
       let initFlags'' = initFlags'{initializeTestSuite = Flag True}
-      testTarget <- genTestTarget session initFlags'' pkgIx
+      testTarget <- genTestTarget initFlags'' pkgIx
 
       comments <- noCommentsPrompt initFlags''
 
@@ -213,14 +211,13 @@ genPkgDescription flags' srcDb = do
 -- is generated.
 genLibTarget
   :: Interactive m
-  => Session m
-  -> InitFlags
+  => InitFlags
   -> InstalledPackageIndex
   -> m LibTarget
-genLibTarget session flags pkgs =
+genLibTarget flags pkgs =
   LibTarget
     <$> srcDirsPrompt flags
-    <*> languagePrompt session flags "library"
+    <*> languagePrompt flags "library"
     <*> getExposedModules flags
     <*> getOtherModules flags
     <*> getOtherExts flags
@@ -233,15 +230,14 @@ genLibTarget session flags pkgs =
 -- is generated.
 genExeTarget
   :: Interactive m
-  => Session m
-  -> InitFlags
+  => InitFlags
   -> InstalledPackageIndex
   -> m ExeTarget
-genExeTarget session flags pkgs =
+genExeTarget flags pkgs =
   ExeTarget
     <$> mainFilePrompt flags
     <*> appDirsPrompt flags
-    <*> languagePrompt session flags "executable"
+    <*> languagePrompt flags "executable"
     <*> getOtherModules flags
     <*> getOtherExts flags
     <*> dependenciesPrompt pkgs flags
@@ -257,11 +253,10 @@ genExeTarget session flags pkgs =
 -- test suites at command line.
 genTestTarget
   :: Interactive m
-  => Session m
-  -> InitFlags
+  => InitFlags
   -> InstalledPackageIndex
   -> m (Maybe TestTarget)
-genTestTarget session flags pkgs = initializeTestSuitePrompt flags >>= go
+genTestTarget flags pkgs = initializeTestSuitePrompt flags >>= go
   where
     go initialized
       | not initialized = return Nothing
@@ -270,7 +265,7 @@ genTestTarget session flags pkgs = initializeTestSuitePrompt flags >>= go
             TestTarget
               <$> testMainPrompt
               <*> testDirsPrompt flags
-              <*> languagePrompt session flags "test suite"
+              <*> languagePrompt flags "test suite"
               <*> getOtherModules flags
               <*> getOtherExts flags
               <*> dependenciesPrompt pkgs flags
@@ -458,14 +453,14 @@ testDirsPrompt flags = getTestDirs flags $ do
   dir <- promptStr "Test directory" (DefaultPrompt defaultTestDir)
   return [dir]
 
-languagePrompt :: Interactive m => Session m -> InitFlags -> String -> m Language
-languagePrompt session flags pkgType = getLanguage flags $ do
+languagePrompt :: Interactive m => InitFlags -> String -> m Language
+languagePrompt flags pkgType = getLanguage flags $ do
   let h2010 = "Haskell2010"
       h98 = "Haskell98"
       ghc2021 = "GHC2021 (requires at least GHC 9.2)"
       ghc2024 = "GHC2024 (requires at least GHC 9.10)"
 
-  lastChosenLanguage <- getLastChosenLanguage session
+  lastChosenLanguage <- getLastChosenLanguage
 
   l <-
     promptList
@@ -475,7 +470,7 @@ languagePrompt session flags pkgType = getLanguage flags $ do
       Nothing
       True
 
-  setLastChosenLanguage session (Just l)
+  setLastChosenLanguage (Just l)
 
   if
       | l == h2010 -> return Haskell2010

@@ -146,7 +146,7 @@ goldenExeTests v pkgIx pkgDir pkgName =
     ]
   where
     runGoldenExe opts args flags =
-      case _runPrompt (newSession >>= \session -> genExeTarget session flags pkgIx) args of
+      case _runPrompt (genExeTarget flags pkgIx) args of
         Right (t, _) -> mkStanza [mkExeStanza opts $ t{_exeDependencies = mangleBaseDep t _exeDependencies}]
         Left e -> assertFailure $ show e
 
@@ -192,7 +192,7 @@ goldenLibTests v pkgIx pkgDir pkgName =
     ]
   where
     runGoldenLib opts args flags =
-      case _runPrompt (newSession >>= \session -> genLibTarget session flags pkgIx) args of
+      case _runPrompt (genLibTarget flags pkgIx) args of
         Right (t, _) -> mkStanza [mkLibStanza opts $ t{_libDependencies = mangleBaseDep t _libDependencies}]
         Left e -> assertFailure $ show e
 
@@ -243,7 +243,7 @@ goldenTestTests v pkgIx pkgDir pkgName =
     ]
   where
     runGoldenTest opts args flags =
-      case _runPrompt (newSession >>= \session -> genTestTarget session flags pkgIx) args of
+      case _runPrompt (genTestTarget flags pkgIx) args of
         Left e -> assertFailure $ show e
         Right (Nothing, _) ->
           assertFailure
