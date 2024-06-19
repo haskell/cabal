@@ -20,6 +20,8 @@ module Distribution.Simple.BuildPaths
   , buildInfoPref
   , haddockDirName
   , haddockLibraryDirPath
+  , haddockTestDirPath
+  , haddockBenchmarkDirPath
   , hscolourPref
   , haddockPref
   , autogenPackageModulesDir
@@ -49,6 +51,8 @@ module Distribution.Simple.BuildPaths
   , getSourceFiles
   , getLibSourceFiles
   , getExeSourceFiles
+  , getTestSourceFiles
+  , getBenchmarkSourceFiles
   , getFLibSourceFiles
   , exeBuildDir
   , flibBuildDir
@@ -118,6 +122,22 @@ haddockLibraryDirPath haddockTarget pkg_descr lib =
     LSubLibName sublib_name ->
       haddockDirName haddockTarget pkg_descr </> prettyShow sublib_name
     _ -> haddockDirName haddockTarget pkg_descr
+
+haddockTestDirPath
+  :: HaddockTarget
+  -> PackageDescription
+  -> TestSuite
+  -> FilePath
+haddockTestDirPath haddockTarget pkg_descr test =
+  haddockDirName haddockTarget pkg_descr </> prettyShow (testName test)
+
+haddockBenchmarkDirPath
+  :: HaddockTarget
+  -> PackageDescription
+  -> Benchmark
+  -> FilePath
+haddockBenchmarkDirPath haddockTarget pkg_descr bench =
+  haddockDirName haddockTarget pkg_descr </> prettyShow (benchmarkName bench)
 
 -- | The directory to which generated haddock documentation should be written.
 haddockPref
@@ -233,6 +253,48 @@ getExeSourceFiles verbosity lbi exe clbi = do
         : autogenPackageModulesDir lbi
         : coerceSymbolicPath (exeBuildDir lbi exe)
         : hsSourceDirs bi
+
+getTestSourceFiles
+  :: Verbosity
+  -> LocalBuildInfo
+  -> TestSuite
+  -> ComponentLocalBuildInfo
+  -> IO [(ModuleName.ModuleName, SymbolicPath Pkg 'File)]
+getTestSourceFiles verbosity lbi test@TestSuite{testInterface = TestSuiteExeV10 _ path} clbi = do
+  moduleFiles <- getSourceFiles verbosity mbWorkDir searchpaths modules
+  srcMainPath <- findFileCwd verbosity mbWorkDir (hsSourceDirs bi) path
+  return ((ModuleName.main, srcMainPath) : moduleFiles)
+  where
+    mbWorkDir = mbWorkDirLBI lbi
+    bi = testBuildInfo test
+    modules = otherModules bi
+    searchpaths =
+      autogenComponentModulesDir lbi clbi
+        : autogenPackageModulesDir lbi
+        : coerceSymbolicPath (testBuildDir lbi test)
+        : hsSourceDirs bi
+getTestSourceFiles _ _ _ _ = return []
+
+getBenchmarkSourceFiles
+  :: Verbosity
+  -> LocalBuildInfo
+  -> Benchmark
+  -> ComponentLocalBuildInfo
+  -> IO [(ModuleName.ModuleName, SymbolicPath Pkg 'File)]
+getBenchmarkSourceFiles verbosity lbi bench@Benchmark{benchmarkInterface = BenchmarkExeV10 _ path} clbi = do
+  moduleFiles <- getSourceFiles verbosity mbWorkDir searchpaths modules
+  srcMainPath <- findFileCwd verbosity mbWorkDir (hsSourceDirs bi) path
+  return ((ModuleName.main, srcMainPath) : moduleFiles)
+  where
+    mbWorkDir = mbWorkDirLBI lbi
+    bi = benchmarkBuildInfo bench
+    modules = otherModules bi
+    searchpaths =
+      autogenComponentModulesDir lbi clbi
+        : autogenPackageModulesDir lbi
+        : coerceSymbolicPath (benchmarkBuildDir lbi bench)
+        : hsSourceDirs bi
+getBenchmarkSourceFiles _ _ _ _ = return []
 
 getFLibSourceFiles
   :: Verbosity

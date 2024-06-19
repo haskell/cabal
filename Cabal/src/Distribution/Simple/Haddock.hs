@@ -92,6 +92,7 @@ import Distribution.Verbosity
 import Distribution.Version
 
 import Control.Monad
+import Data.Bool (bool)
 import Data.Either (rights)
 import System.Directory (doesDirectoryExist, doesFileExist)
 import System.FilePath (isAbsolute, normalise)
@@ -483,8 +484,54 @@ haddock_setupHooks
               )
               >> return index
           CExe _ -> when (flag haddockExecutables) (smsg >> doExe component) >> return index
-          CTest _ -> when (flag haddockTestSuites) (smsg >> doExe component) >> return index
-          CBench _ -> when (flag haddockBenchmarks) (smsg >> doExe component) >> return index
+          CTest test -> do
+            when (flag haddockTestSuites) $ do
+              smsg
+              testArgs <-
+                fromTest
+                  verbosity
+                  haddockArtifactsDirs
+                  lbi'
+                  clbi
+                  htmlTemplate
+                  haddockTarget
+                  pkg_descr
+                  test
+                  commonArgs
+              runHaddock
+                verbosity
+                mbWorkDir
+                tmpFileOpts
+                comp
+                platform
+                haddockProg
+                True
+                testArgs
+            return index
+          CBench bench -> do
+            when (flag haddockBenchmarks) $ do
+              smsg
+              benchArgs <-
+                fromBenchmark
+                  verbosity
+                  haddockArtifactsDirs
+                  lbi'
+                  clbi
+                  htmlTemplate
+                  haddockTarget
+                  pkg_descr
+                  bench
+                  commonArgs
+              runHaddock
+                verbosity
+                mbWorkDir
+                tmpFileOpts
+                comp
+                platform
+                haddockProg
+                True
+                benchArgs
+            return index
 
         return ipi
 
@@ -792,6 +839,106 @@ fromExecutable verbosity haddockArtifactsDirs lbi clbi htmlTemplate haddockTarge
           NoFlag -> NoFlag
       }
 
+fromTest
+  :: Verbosity
+  -> (SymbolicPath Pkg (Path.Dir Artifacts), SymbolicPath Pkg (Path.Dir Artifacts), SymbolicPath Pkg (Path.Dir Artifacts))
+  -- ^ Directories for -hidir, -odir, and -stubdir to GHC through Haddock.
+  -- See Note [Hi Haddock Recompilation Avoidance]
+  -> LocalBuildInfo
+  -> ComponentLocalBuildInfo
+  -> Maybe PathTemplate
+  -- ^ template for HTML location
+  -> HaddockTarget
+  -> PackageDescription
+  -> TestSuite
+  -> HaddockArgs
+  -- ^ common args
+  -> IO HaddockArgs
+fromTest verbosity haddockArtifactsDirs lbi clbi htmlTemplate haddockTarget pkg_descr test commonArgs = do
+  inFiles <- map snd `fmap` getTestSourceFiles verbosity lbi test clbi
+  args <-
+    mkHaddockArgs
+      verbosity
+      haddockArtifactsDirs
+      lbi
+      clbi
+      htmlTemplate
+      inFiles
+      (testBuildInfo test)
+  let args' =
+        commonArgs
+          <> args
+            { argOutputDir =
+                Dir $
+                  haddockDirName haddockTarget pkg_descr
+                    </> unUnqualComponentName (testName test)
+            }
+  return
+    args'
+      { argTitle = Flag $ prettyShow (packageName pkg_descr)
+      , argComponentName = Flag $ prettyShow (packageName pkg_descr) ++ ":" ++ unUnqualComponentName (testName test)
+      , -- we need to accommodate `argOutputDir`
+        argBaseUrl = case argBaseUrl args' of
+          Flag url -> Flag $ ".." </> url
+          NoFlag -> NoFlag
+      , argContents = case argContents args' of
+          Flag url -> Flag $ ".." </> url
+          NoFlag -> NoFlag
+      , argIndex = case argIndex args' of
+          Flag url -> Flag $ ".." </> url
+          NoFlag -> NoFlag
+      }
+
+fromBenchmark
+  :: Verbosity
+  -> (SymbolicPath Pkg (Path.Dir Artifacts), SymbolicPath Pkg (Path.Dir Artifacts), SymbolicPath Pkg (Path.Dir Artifacts))
+  -- ^ Directories for -hidir, -odir, and -stubdir to GHC through Haddock.
+  -- See Note [Hi Haddock Recompilation Avoidance]
+  -> LocalBuildInfo
+  -> ComponentLocalBuildInfo
+  -> Maybe PathTemplate
+  -- ^ template for HTML location
+  -> HaddockTarget
+  -> PackageDescription
+  -> Benchmark
+  -> HaddockArgs
+  -- ^ common args
+  -> IO HaddockArgs
+fromBenchmark verbosity haddockArtifactsDirs lbi clbi htmlTemplate haddockTarget pkg_descr bench commonArgs = do
+  inFiles <- map snd `fmap` getBenchmarkSourceFiles verbosity lbi bench clbi
+  args <-
+    mkHaddockArgs
+      verbosity
+      haddockArtifactsDirs
+      lbi
+      clbi
+      htmlTemplate
+      inFiles
+      (benchmarkBuildInfo bench)
+  let args' =
+        commonArgs
+          <> args
+            { argOutputDir =
+                Dir $
+                  haddockDirName haddockTarget pkg_descr
+                    </> unUnqualComponentName (benchmarkName bench)
+            }
+  return
+    args'
+      { argTitle = Flag $ prettyShow (packageName pkg_descr)
+      , argComponentName = Flag $ prettyShow (packageName pkg_descr) ++ ":" ++ unUnqualComponentName (benchmarkName bench)
+      , -- we need to accommodate `argOutputDir`
+        argBaseUrl = case argBaseUrl args' of
+          Flag url -> Flag $ ".." </> url
+          NoFlag -> NoFlag
+      , argContents = case argContents args' of
+          Flag url -> Flag $ ".." </> url
+          NoFlag -> NoFlag
+      , argIndex = case argIndex args' of
+          Flag url -> Flag $ ".." </> url
+          NoFlag -> NoFlag
+      }
+
 fromForeignLib
   :: Verbosity
   -> (SymbolicPath Pkg (Path.Dir Artifacts), SymbolicPath Pkg (Path.Dir Artifacts), SymbolicPath Pkg (Path.Dir Artifacts))
@@ -1068,10 +1215,10 @@ renderPureArgs version comp platform args =
     , [ "--quickjump" | isVersion 2 19, True <- flagToList . argQuickJump $ args
       ]
     , ["--hyperlinked-source" | isHyperlinkedSource]
-    , (\(All b, xs) -> bool (map (("--hide=" ++) . prettyShow) xs) [] b)
+    , (\(All b, xs) -> bool [] (map (("--hide=" ++) . prettyShow) xs) b)
         . argHideModules
         $ args
-    , bool ["--ignore-all-exports"] [] . getAny . argIgnoreExports $ args
+    , bool [] ["--ignore-all-exports"] . getAny . argIgnoreExports $ args
     , -- Haddock's --source-* options are ignored once --hyperlinked-source is
       -- set.
       -- See https://haskell-haddock.readthedocs.io/en/latest/invoking.html#cmdoption-hyperlinked-source
@@ -1095,11 +1242,11 @@ renderPureArgs version comp platform args =
             $ args
     , maybe [] ((: []) . ("--css=" ++)) . flagToMaybe . argCssFile $ args
     , maybe [] ((: []) . ("--use-contents=" ++)) . flagToMaybe . argContents $ args
-    , bool ["--gen-contents"] [] . fromFlagOrDefault False . argGenContents $ args
+    , bool [] ["--gen-contents"] . fromFlagOrDefault False . argGenContents $ args
     , maybe [] ((: []) . ("--use-index=" ++)) . flagToMaybe . argIndex $ args
-    , bool ["--gen-index"] [] . fromFlagOrDefault False . argGenIndex $ args
+    , bool [] ["--gen-index"] . fromFlagOrDefault False . argGenIndex $ args
     , maybe [] ((: []) . ("--base-url=" ++)) . flagToMaybe . argBaseUrl $ args
-    , bool [] [verbosityFlag] . getAny . argVerbose $ args
+    , bool [verbosityFlag] [] . getAny . argVerbose $ args
     , map (\o -> case o of Hoogle -> "--hoogle"; Html -> "--html")
         . fromFlagOrDefault []
         . argOutput
@@ -1111,8 +1258,8 @@ renderPureArgs version comp platform args =
         ( (: [])
             . ("--title=" ++)
             . ( bool
-                  (++ " (internal documentation)")
                   id
+                  (++ " (internal documentation)")
                   (getAny $ argIgnoreExports args)
               )
         )
@@ -1134,7 +1281,7 @@ renderPureArgs version comp platform args =
       -- We pass this option by default to haddock to avoid recompilation
       -- See Note [Hi Haddock Recompilation Avoidance]
       ["--no-tmp-comp-dir" | version >= mkVersion [2, 28, 0]]
-    , bool ["--use-unicode"] [] . fromFlagOrDefault False . argUseUnicode $ args
+    , bool [] ["--use-unicode"] . fromFlagOrDefault False . argUseUnicode $ args
     ]
   where
     -- See Note [Symbolic paths] in Distribution.Utils.Path
@@ -1173,7 +1320,6 @@ renderPureArgs version comp platform args =
               ]
           )
 
-    bool a b c = if c then a else b
     isVersion major minor = version >= mkVersion [major, minor]
     verbosityFlag
       | isVersion 2 5 = "--verbosity=1"
