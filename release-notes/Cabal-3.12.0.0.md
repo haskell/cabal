@@ -73,7 +73,7 @@ Cabal and Cabal-syntax 3.12.0.0 changelog and release notes
   If you are dealing with a custom setup, you have to invoke
   `./Setup repl --repl-multi-file`.
 
-- Cabal labeled messages
+- Label error messages with codes (following GHC, Stack)
 
     As with GHC and Stack, Cabal and cabal-install now generate warnings and errors prefixed with error codes of the form `[Cabal-xxxxx]`. These will be documented on https://errors.haskell.org, although very few are as yet.
 
@@ -84,7 +84,7 @@ Cabal and Cabal-syntax 3.12.0.0 changelog and release notes
     'cabal init' no longer suggests users to set cabal-version to less than
     2.0.
 
-- Remove Distribution.Utils.TempTestDir module from Cabal library [#9453](https://github.com/haskell/cabal/issues/9453) [#9454](https://github.com/haskell/cabal/pull/9454)
+- Remove `Distribution.Utils.TempTestDir` module from Cabal library [#9453](https://github.com/haskell/cabal/issues/9453) [#9454](https://github.com/haskell/cabal/pull/9454)
 
     This library was only used by internal tests, and now lives in the
     `Cabal-tests` library which is shared across test components.
@@ -110,7 +110,7 @@ Cabal and Cabal-syntax 3.12.0.0 changelog and release notes
 
    - `checkPackage` signature has been simplified,
      you do not need to pass a specific configuration of the package, since
-     we do not flatten GenericPackageDescription any more.
+     we do not flatten `GenericPackageDescription` any more.
    - `checkPackageFileNames` has been removed,
      use `checkPackageFiles` instead.
    - `checkPackageFilesGPD` has been introduced,
