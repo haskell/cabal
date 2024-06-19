@@ -4,9 +4,9 @@ Cabal and Cabal-syntax 3.12.1.0 changelog and release notes
 
 ### Significant changes
 
-- Update ghc args normalization and ghc option rendering [#9729](https://github.com/haskell/cabal/issues/9729) [#10014](https://github.com/haskell/cabal/pull/10014)
+- Update GHC arguments normalization and GHC options rendering [#9729](https://github.com/haskell/cabal/issues/9729) [#10014](https://github.com/haskell/cabal/pull/10014)
 
-  The flags -fdiagnostics-as-json, -fprint-error-index-lists, -fbreak-points, -dipe-stats, -ffamily-application-cache, -fprint-redundant-promotion-ticks, -fshow-error-context and -funoptimized-core-for-interpreter have been added to the flags that do not cause recompilation.
+  The flags `-fdiagnostics-as-json`, `-fprint-error-index-lists`, `-fbreak-points`, `-dipe-stats`, `-ffamily-application-cache`, `-fprint-redundant-promotion-ticks`, `-fshow-error-context` and `-funoptimized-core-for-interpreter` have been added to the flags that do not cause recompilation.
 
 - Warn on missing `default-language` [#9620](https://github.com/haskell/cabal/issues/9620) [#9766](https://github.com/haskell/cabal/pull/9766)
 
@@ -14,8 +14,6 @@ Cabal and Cabal-syntax 3.12.1.0 changelog and release notes
     warn about missing `default-language`.
 
 - Add mhs as a known Haskell compiler [#9878](https://github.com/haskell/cabal/pull/9878)
-
-  This simply add MHS to the enumeration of known Haskell compilers.
 
 - Re-instate `initialBuildSteps` [#9856](https://github.com/haskell/cabal/issues/9856) [#9950](https://github.com/haskell/cabal/pull/9950)
 
@@ -33,7 +31,7 @@ Cabal and Cabal-syntax 3.12.1.0 changelog and release notes
   Consumers wanting to prepare the sources of a package, e.g. in order to launch a
   REPL session, are advised to run `setup repl --repl-multi-file=<fn>` instead.
 
-- Cabal labeled messages
+- Label error messages with codes (following GHC, Stack)
 
     As with GHC and Stack, Cabal and cabal-install now generate warnings and errors prefixed with error codes of the form `[Cabal-xxxxx]`. These will be documented on https://errors.haskell.org, although very few are as yet.
 
@@ -41,12 +39,12 @@ Cabal and Cabal-syntax 3.12.1.0 changelog and release notes
 
 ### Other changes
 
-- Don't recommend deprecated/removed 'extensions:' field [#10042](https://github.com/haskell/cabal/issues/10042) [#10044](https://github.com/haskell/cabal/pull/10044)
+- Don't recommend deprecated/removed `extensions` field [#10042](https://github.com/haskell/cabal/issues/10042) [#10044](https://github.com/haskell/cabal/pull/10044)
 
-  When applicable, field 'default-extensions:' is recommended (rather than
-  deprecated/removed 'extensions:').
+  When applicable, field `default-extensions` is recommended (rather than
+  deprecated/removed `extensions:`).
 
-- Make Setup copy/install succeed when there's no executable or library [#6750](https://github.com/haskell/cabal/issues/6750) [#9926](https://github.com/haskell/cabal/pull/9926)
+- Make `Setup copy` and `Setup install` succeed when there's no executable or library [#6750](https://github.com/haskell/cabal/issues/6750) [#9926](https://github.com/haskell/cabal/pull/9926)
 
   Historically the Setup copy and install steps would fail if the package didn't
   contain an executable or library component. In this case there's nothing to do.

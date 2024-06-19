@@ -266,15 +266,15 @@ cabal-install 3.12.1.0 changelog and release notes.
 
 - Add language extension `TypeAbstractions` [#9496](https://github.com/haskell/cabal/issues/9496) [#9502](https://github.com/haskell/cabal/pull/9502)
 
-- cabal-install labeled messages
+- Label error messages with codes (following GHC, Stack)
 
     As with GHC and Stack, Cabal and cabal-install now generate warnings and errors prefixed with error codes of the form `[Cabal-xxxxx]`. These will be documented on https://errors.haskell.org, although very few are as yet.
 
-- offline flag applied to `source-repository-package`s [#9641](https://github.com/haskell/cabal/issues/9641) [#9771](https://github.com/haskell/cabal/pull/9771)
+- The `--offline` flag applied to `source-repository-package`s [#9641](https://github.com/haskell/cabal/issues/9641) [#9771](https://github.com/haskell/cabal/pull/9771)
 
-  `--offline` flag is already used to block access to Hackage. Now with this PR, this also applies to remote dependency `source-repository-package` in `cabal.project`.
+  The `--offline` flag is already used to block access to Hackage. Now with this PR, this also applies to remote dependency `source-repository-package` in `cabal.project`.
 
-- Fix --program-suffix resulting in invalid installation [#8823](https://github.com/haskell/cabal/issues/8823) [#9919](https://github.com/haskell/cabal/issues/9919) [#10056](https://github.com/haskell/cabal/pull/10056)
+- Fix `--program-suffix` resulting in invalid installation [#8823](https://github.com/haskell/cabal/issues/8823) [#9919](https://github.com/haskell/cabal/issues/9919) [#10056](https://github.com/haskell/cabal/pull/10056)
 
     Formerly, using `--program-suffix` resulted in bad symlinks into the store. This has been corrected.
 
@@ -363,5 +363,3 @@ cabal-install 3.12.1.0 changelog and release notes.
   Removes interleaved rendering of project imports.
 
 - Abbrevate solver rejection messages with installed versions [#9823](https://github.com/haskell/cabal/issues/9823) [#9824](https://github.com/haskell/cabal/pull/9824)
-
-  Abbreviate solver rejection messages even in the presence of installed versions.
