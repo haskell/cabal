@@ -1,11 +1,5 @@
 name: Validate
 
-# We use bash as default even in windows
-# to try keep the workflow as uniform as possible
-defaults:
-  run:
-    shell: bash
-
 # See: https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#concurrency.
 concurrency:
   group: ${{ github.ref }}-${{ github.workflow }}
@@ -60,28 +54,33 @@ env:
 
 jobs:
   validate:
-    name: Validate ${{ matrix.os }} ghc-${{ matrix.ghc }}
-    runs-on: ${{ matrix.os }}
+    name: Validate ${{ matrix.sys.os }} ghc-${{ matrix.ghc }}
+    runs-on: ${{ matrix.sys.os }}
     outputs:
       GHC_FOR_RELEASE: ${{ format('["{0}"]', env.GHC_FOR_RELEASE) }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-13, windows-latest]
+        sys:
+          - { os: windows-latest, shell: 'C:/msys64/usr/bin/bash.exe -e {0}' }
+          - { os: ubuntu-latest,  shell: bash }
+          - { os: macos-13,       shell: bash}
         # If you remove something from here, then add it to the old-ghcs job.
         # Also a removed GHC from here means that we are actually dropping
         # support, so the PR *must* have a changelog entry.
         ghc: ['9.10.1', '9.8.2', '9.6.4', '9.4.8', '9.2.8', '9.0.2', '8.10.7', '8.8.4', '8.6.5']
         exclude:
           # corrupts GHA cache or the fabric of reality itself, see https://github.com/haskell/cabal/issues/8356
-          - os: windows-latest
+          - sys: { os: windows-latest, shell: 'C:/msys64/usr/bin/bash.exe -e {0}' }
             ghc: '8.10.7'
           # lot of segfaults caused by ghc bugs
-          - os: windows-latest
+          - sys: { os: windows-latest, shell: 'C:/msys64/usr/bin/bash.exe -e {0}' }
             ghc: '8.8.4'
           # it often randomly does "C:\Users\RUNNER~1\AppData\Local\Temp\ghcFEDE.c: DeleteFile "\\\\?\\C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\ghcFEDE.c": permission denied (Access is denied.)"
-          - os: windows-latest
+          - sys: { os: windows-latest, shell: 'C:/msys64/usr/bin/bash.exe -e {0}' }
             ghc: '8.6.5'
-
+    defaults:
+        run:
+          shell: ${{ matrix.sys.shell }}
     steps:
 
       - name: Work around XDG directories existence (haskell-actions/setup#62)
