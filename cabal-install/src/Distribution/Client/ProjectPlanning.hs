@@ -461,11 +461,7 @@ configureCompiler
         , projectConfigHcPath
         , projectConfigHcPkg
         }
-    , projectConfigLocalPackages =
-      PackageConfig
-        { packageConfigProgramPaths
-        , packageConfigProgramPathExtra
-        }
+    , projectConfigLocalPackages
     } = do
     let fileMonitorCompiler = newFileMonitor $ distProjectCacheFile "compiler"
 
@@ -477,22 +473,13 @@ configureCompiler
       , hcPath
       , hcPkg
       , progsearchpath
-      , packageConfigProgramPaths
-      , packageConfigProgramPathExtra
+      , projectConfigLocalPackages
       )
       $ do
         liftIO $ info verbosity "Compiler settings changed, reconfiguring..."
-        let extraPath = fromNubList packageConfigProgramPathExtra
-        progdb <- liftIO $ prependProgramSearchPath verbosity extraPath [] defaultProgramDb
-        let progdb' = userSpecifyPaths (Map.toList (getMapLast packageConfigProgramPaths)) progdb
-        (comp, plat, progdb'') <-
-          liftIO $
-            Cabal.configCompilerEx
-              hcFlavor
-              hcPath
-              hcPkg
-              progdb'
-              verbosity
+        progdb <- liftIO $ resolveProgramDb verbosity projectConfigLocalPackages
+        (comp, plat, progdb') <-
+          liftIO $ Cabal.configCompilerEx hcFlavor hcPath hcPkg progdb verbosity
 
         -- Note that we added the user-supplied program locations and args
         -- for /all/ programs, not just those for the compiler prog and
@@ -500,12 +487,12 @@ configureCompiler
         -- the compiler will configure (and it does vary between compilers).
         -- We do know however that the compiler will only configure the
         -- programs it cares about, and those are the ones we monitor here.
-        monitorFiles (programsMonitorFiles progdb'')
+        monitorFiles (programsMonitorFiles progdb')
 
         -- Configure the unconfigured programs in the program database,
         -- as we can't serialise unconfigured programs.
         -- See also #2241 and #9840.
-        finalProgDb <- liftIO $ configureAllKnownPrograms verbosity progdb''
+        finalProgDb <- liftIO $ configureAllKnownPrograms verbosity progdb'
 
         return (comp, plat, finalProgDb)
     where
@@ -557,8 +544,13 @@ rebuildInstallPlan
     { cabalStoreDirLayout
     } = \projectConfig localPackages mbInstalledPackages ->
     runRebuild distProjectRootDirectory $ do
-      progsearchpath <- liftIO $ getSystemSearchPath
+      progsearchpath <- liftIO getSystemSearchPath
       let projectConfigMonitored = projectConfig{projectConfigBuildOnly = mempty}
+
+      progdb <- liftIO $ resolveProgramDb verbosity (projectConfigLocalPackages projectConfig)
+      monitorFiles (programsMonitorFiles progdb)
+
+      pkgConfigDB <- getPkgConfigDb verbosity distDirLayout progdb
 
       -- The overall improved plan is cached
       rerunIfChanged
@@ -580,15 +572,15 @@ rebuildInstallPlan
               $ do
                 compilerEtc <- phaseConfigureCompiler projectConfig
                 _ <- phaseConfigurePrograms projectConfig compilerEtc
-                (solverPlan, pkgConfigDB, totalIndexState, activeRepos) <-
+                (solverPlan, totalIndexState, activeRepos) <-
                   phaseRunSolver
                     projectConfig
                     compilerEtc
+                    pkgConfigDB
                     localPackages
                     (fromMaybe mempty mbInstalledPackages)
-                ( elaboratedPlan
-                  , elaboratedShared
-                  ) <-
+
+                (elaboratedPlan, elaboratedShared) <-
                   phaseElaboratePlan
                     projectConfig
                     compilerEtc
@@ -622,7 +614,8 @@ rebuildInstallPlan
       phaseConfigureCompiler
         :: ProjectConfig
         -> Rebuild (Compiler, Platform, ProgramDb)
-      phaseConfigureCompiler = configureCompiler verbosity distDirLayout
+      phaseConfigureCompiler projectConfig =
+        configureCompiler verbosity distDirLayout projectConfig
 
       -- Configuring other programs.
       --
@@ -662,15 +655,17 @@ rebuildInstallPlan
       phaseRunSolver
         :: ProjectConfig
         -> (Compiler, Platform, ProgramDb)
+        -> PkgConfigDb
         -> [PackageSpecifier UnresolvedSourcePackage]
         -> InstalledPackageIndex
-        -> Rebuild (SolverInstallPlan, PkgConfigDb, IndexUtils.TotalIndexState, IndexUtils.ActiveRepos)
+        -> Rebuild (SolverInstallPlan, IndexUtils.TotalIndexState, IndexUtils.ActiveRepos)
       phaseRunSolver
         projectConfig@ProjectConfig
           { projectConfigShared
           , projectConfigBuildOnly
           }
         (compiler, platform, progdb)
+        pkgConfigDB
         localPackages
         installedPackages =
           rerunIfChanged
@@ -697,7 +692,6 @@ rebuildInstallPlan
                   withRepoCtx
                   (solverSettingIndexState solverSettings)
                   (solverSettingActiveRepos solverSettings)
-              pkgConfigDB <- getPkgConfigDb verbosity progdb
 
               -- TODO: [code cleanup] it'd be better if the Compiler contained the
               -- ConfiguredPrograms that it needs, rather than relying on the progdb
@@ -722,7 +716,7 @@ rebuildInstallPlan
                   Left msg -> do
                     reportPlanningFailure projectConfig compiler platform localPackages
                     dieWithException verbosity $ PhaseRunSolverErr msg
-                  Right plan -> return (plan, pkgConfigDB, tis, ar)
+                  Right plan -> return (plan, tis, ar)
           where
             corePackageDbs :: [PackageDB]
             corePackageDbs =
@@ -1010,13 +1004,23 @@ getSourcePackages verbosity withRepoCtx idxState activeRepos = do
     $ repos
   return sourcePkgDbWithTIS
 
-getPkgConfigDb :: Verbosity -> ProgramDb -> Rebuild PkgConfigDb
-getPkgConfigDb verbosity progdb = do
-  dirs <- liftIO $ getPkgConfigDbDirs verbosity progdb
-  -- Just monitor the dirs so we'll notice new .pc files.
-  -- Alternatively we could monitor all the .pc files too.
-  traverse_ monitorDirectoryStatus dirs
-  liftIO $ readPkgConfigDb verbosity progdb
+getPkgConfigDb :: Verbosity -> DistDirLayout -> ProgramDb -> Rebuild PkgConfigDb
+getPkgConfigDb verbosity distDirLayout progdb = do
+  mpkgConfig <- liftIO $ needProgram verbosity pkgConfigProgram progdb
+  case mpkgConfig of
+    Nothing -> do
+      liftIO $ info verbosity "Cannot find pkg-config program. Cabal will continue without solving for pkg-config constraints."
+      return NoPkgConfigDb
+    Just (pkgConfig, progdb') -> do
+      dirs <- liftIO $ getPkgConfigDbDirs verbosity progdb'
+      rerunIfChanged verbosity fileMonitorPkgConfigDb (pkgConfig, dirs) $ do
+        -- By monitoring the dirs, we'll notice new .pc files. We do not monitor changes in the .pc files themselves.
+        traverse_ monitorDirectoryStatus dirs
+        liftIO $ do
+          info verbosity "Querying pkg-config database..."
+          readPkgConfigDb verbosity progdb'
+  where
+    fileMonitorPkgConfigDb = newFileMonitor $ distProjectCacheFile distDirLayout "pkg-config-db"
 
 -- | Select the config values to monitor for changes package source hashes.
 packageLocationsSignature
