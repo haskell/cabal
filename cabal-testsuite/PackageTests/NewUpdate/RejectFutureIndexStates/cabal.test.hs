@@ -11,8 +11,7 @@ main = skipIfCIAndWindows 10230 >> cabalTest (flakyIfCI 9530 $ withProjectFile "
           . resultOutput
         <$> recordMode DoNotRecord (cabal' "update" [])
   -- update golden output with actual timestamp
-  shell "cp" ["cabal.out.in", "cabal.out"]
-  shell "sed" [ "-i" ++ if not isWindows then "''" else "", "-e", "s/REPLACEME/" <> output <> "/g", "cabal.out"]
+  shell "sed" ["-e", "s/REPLACEME/" <> output <> "/g; w cabal.out", "cabal.out.in"]
   -- This shall fail with an error message as specified in `cabal.out`
   fails $ cabal "build" ["--index-state=4000-01-01T00:00:00Z", "fake-pkg"]
   -- This shall fail by not finding the package, what indicates that it
