@@ -51,7 +51,7 @@ import Distribution.Verbosity                   (Verbosity)
 -- but we don't know the exact version (because parsing of the version number
 -- failed).
 newtype PkgConfigDb = PkgConfigDb (M.Map PkgconfigName (Maybe PkgconfigVersion))
-     deriving (Show, Generic)
+     deriving (Eq, Show, Generic)
 
 instance Binary PkgConfigDb
 instance Structured PkgConfigDb
