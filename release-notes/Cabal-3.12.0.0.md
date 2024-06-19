@@ -55,7 +55,7 @@ Cabal and Cabal-syntax 3.12.0.0 changelog and release notes
       `filterPackageChecksById`, this can be used by third-party
       tools to filter warnings.
 
-- Add support for `GHC2024` [#9736](https://github.com/haskell/cabal/issues/9736)
+- Add support for `GHC2024` [#9736](https://github.com/haskell/cabal/issues/9736) [#9791](https://github.com/haskell/cabal/pull/9791)
 
   Support for the `GHC2024` language edition, introduced by GHC 9.10, has been
   added. It can now be used in the `default-language` and `other-languages`
@@ -73,9 +73,13 @@ Cabal and Cabal-syntax 3.12.0.0 changelog and release notes
   If you are dealing with a custom setup, you have to invoke
   `./Setup repl --repl-multi-file`.
 
+- Cabal labeled messages
+
+    As with GHC and Stack, Cabal and cabal-install now generate warnings and errors prefixed with error codes of the form `[Cabal-xxxxx]`. These will be documented on https://errors.haskell.org, although very few are as yet.
+
 ### Other changes
 
-- `cabal init` should not suggest Cabal < 2.0 [#8680](https://github.com/haskell/cabal/issues/8680)
+- `cabal init` should not suggest Cabal < 2.0 [#8680](https://github.com/haskell/cabal/issues/8680) [#8700](https://github.com/haskell/cabal/pull/8700)
 
     'cabal init' no longer suggests users to set cabal-version to less than
     2.0.
