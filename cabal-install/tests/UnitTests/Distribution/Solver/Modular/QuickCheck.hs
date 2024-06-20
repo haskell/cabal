@@ -227,7 +227,7 @@ solve enableBj fineGrainedConflicts reorder countConflicts indep prefOldest goal
             (unTestDb (testDb test))
             Nothing
             Nothing
-            (pkgConfigDbFromList [])
+            (Just $ pkgConfigDbFromList [])
             (map unPN (testTargets test))
             -- The backjump limit prevents individual tests from using
             -- too much time and memory.

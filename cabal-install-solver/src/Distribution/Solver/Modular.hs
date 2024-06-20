@@ -116,7 +116,7 @@ modularResolver sc (Platform arch os) cinfo iidx sidx pkgConfigDB pprefs pcs pns
 solve' :: SolverConfig
        -> CompilerInfo
        -> Index
-       -> PkgConfigDb
+       -> Maybe PkgConfigDb
        -> (PN -> PackagePreferences)
        -> Map PN [LabeledPackageConstraint]
        -> Set PN

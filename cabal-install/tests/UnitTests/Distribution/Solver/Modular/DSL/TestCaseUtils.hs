@@ -130,7 +130,7 @@ data SolverTest = SolverTest
   , testDb :: ExampleDb
   , testSupportedExts :: Maybe [Extension]
   , testSupportedLangs :: Maybe [Language]
-  , testPkgConfigDb :: PkgConfigDb
+  , testPkgConfigDb :: Maybe PkgConfigDb
   , testEnableAllTests :: EnableAllTests
   }
 
@@ -233,7 +233,7 @@ mkTestExtLangPC exts langs mPkgConfigDb db label targets result =
     , testDb = db
     , testSupportedExts = exts
     , testSupportedLangs = langs
-    , testPkgConfigDb = maybe NoPkgConfigDb pkgConfigDbFromList mPkgConfigDb
+    , testPkgConfigDb = pkgConfigDbFromList <$> mPkgConfigDb
     , testEnableAllTests = EnableAllTests False
     }
 

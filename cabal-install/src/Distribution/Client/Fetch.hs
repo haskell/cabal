@@ -161,7 +161,7 @@ planPackages
   -> FetchFlags
   -> InstalledPackageIndex
   -> SourcePackageDb
-  -> PkgConfigDb
+  -> Maybe PkgConfigDb
   -> [PackageSpecifier UnresolvedSourcePackage]
   -> IO [UnresolvedSourcePackage]
 planPackages

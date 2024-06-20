@@ -30,7 +30,7 @@ type DependencyResolver loc = Platform
                            -> CompilerInfo
                            -> InstalledPackageIndex
                            -> PackageIndex (SourcePackage loc)
-                           -> PkgConfigDb
+                           -> Maybe PkgConfigDb
                            -> (PackageName -> PackagePreferences)
                            -> [LabeledPackageConstraint]
                            -> Set PackageName
