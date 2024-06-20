@@ -672,6 +672,17 @@ filterConfigureFlags flags cabalLibVersion
           configConstraints = []
         }
 
+<<<<<<< HEAD
+=======
+    flags_3_13_0 =
+      -- Earlier Cabal versions don't understand about ..
+      flags_latest
+        { -- Building profiled shared libraries
+          configProfShared = NoFlag
+        , configIgnoreBuildTools = NoFlag
+        }
+
+>>>>>>> ef56d7257 (Cabal: Add flag to ignore build tool dependencies)
     flags_3_11_0 =
       flags_latest
         { -- It's too late to convert configPromisedDependencies to anything

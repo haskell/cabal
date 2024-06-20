@@ -41,7 +41,13 @@ md5CheckGenericPackageDescription proxy = md5Check proxy
 md5CheckLocalBuildInfo :: Proxy LocalBuildInfo -> Assertion
 md5CheckLocalBuildInfo proxy = md5Check proxy
 #if MIN_VERSION_base(4,19,0)
+<<<<<<< HEAD
     0x1be858ee00c3e2d4be5331d5f07bfdf7
 #else
     0x8a5431ab053f8f48c15b303444fa2c39
+=======
+    0x6809d4d86ae1810f2a032bc90c952b76
+#else
+    0x9409dca80a2e1522b1c3a39356e9aaef
+>>>>>>> ef56d7257 (Cabal: Add flag to ignore build tool dependencies)
 #endif

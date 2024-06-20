@@ -1093,6 +1093,7 @@ convertToLegacyAllPackageConfig
           , configDumpBuildInfo = mempty
           , configAllowDependingOnPrivateLibs = mempty
           , configCoverageFor = mempty
+          , configIgnoreBuildTools = mempty
           }
 
       haddockFlags =
@@ -1170,6 +1171,7 @@ convertToLegacyPerPackageConfig PackageConfig{..} =
         , configDumpBuildInfo = packageConfigDumpBuildInfo
         , configAllowDependingOnPrivateLibs = mempty
         , configCoverageFor = mempty
+        , configIgnoreBuildTools = mempty
         }
 
     installFlags =
