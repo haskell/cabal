@@ -13,7 +13,7 @@ Cabal and Cabal-syntax 3.12.1.0 changelog and release notes
   - To help the adoption of GHC language editions, `cabal check` will now
     warn about missing `default-language`.
 
-- Add mhs as a known Haskell compiler [#9878](https://github.com/haskell/cabal/pull/9878)
+- Add MHS ([MicroHS](https://github.com/augustss/MicroHs)) as a known Haskell compiler [#9878](https://github.com/haskell/cabal/pull/9878)
 
 - Re-instate `initialBuildSteps` [#9856](https://github.com/haskell/cabal/issues/9856) [#9950](https://github.com/haskell/cabal/pull/9950)
 
