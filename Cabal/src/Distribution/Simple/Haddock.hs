@@ -993,20 +993,18 @@ renderArgs verbosity mbWorkDir tmpFileOpts version comp platform args k = do
                   renderedArgs
                   (\responseFileName -> k ["@" ++ responseFileName] result)
               else k renderedArgs result
-  case argPrologue args of
-    Flag prologueText ->
+  case (argPrologueFile args, argPrologue args) of
+    (Flag pfile, _) ->
+      withPrologueArgs ["--prologue=" ++ pfile]
+    (_, Flag prologueText) ->
       withTempFileEx tmpFileOpts mbWorkDir outputDir "haddock-prologue.txt" $
         \prologueFileName h -> do
           when haddockSupportsUTF8 (hSetEncoding h utf8)
           hPutStrLn h prologueText
           hClose h
           withPrologueArgs ["--prologue=" ++ u prologueFileName]
-    _ ->
-      withPrologueArgs
-        ( case argPrologueFile args of
-            Flag pfile -> ["--prologue=" ++ pfile]
-            _ -> []
-        )
+    (NoFlag, NoFlag) ->
+      withPrologueArgs []
   where
     -- See Note [Symbolic paths] in Distribution.Utils.Path
     i = interpretSymbolicPath mbWorkDir
