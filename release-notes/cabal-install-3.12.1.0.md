@@ -370,7 +370,7 @@ cabal-install 3.12.1.0 changelog and release notes.
 
   Removes interleaved rendering of project imports.
 
-- Abbrevate solver rejection messages with installed versions [#9823](https://github.com/haskell/cabal/issues/9823) [#9824](https://github.com/haskell/cabal/pull/9824)
+- Abbreviate solver rejection messages with installed versions [#9823](https://github.com/haskell/cabal/issues/9823) [#9824](https://github.com/haskell/cabal/pull/9824)
 
 - solver: Prevent `ghc-internal` from being reinstalled [#10108](https://github.com/haskell/cabal/pull/10108)
 
