@@ -24,9 +24,9 @@ Cabal and Cabal-syntax 3.12.1.0 changelog and release notes
   to prepare the sources for a package, as there are other steps that one might
   also need to perform:
 
-    - running pre-processors (such as alex/happy)
+    - running pre-processors (such as alex/happy);
     - running pre-build hooks or custom logic
-      (in build-type: Hooks or build-type: Custom or Configure)
+      (in build-type: Hooks or build-type: Custom or Configure).
 
   Consumers wanting to prepare the sources of a package, e.g. in order to launch a
   REPL session, are advised to run `setup repl --repl-multi-file=<fn>` instead.
