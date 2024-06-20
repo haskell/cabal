@@ -11,6 +11,8 @@ cabal-install 3.12.1.0 changelog and release notes.
 
     The new release of `tar` has significant performance improvements, making `cabal update` in particular much faster.
 
+    For anyone building from the source, we suggest making sure that the version of `tar` in your plan is at least 0.6.3.0. (For example, we bumped the `index-state` in our `cabal.project.release` in the `Cabal` repository.)
+
 - Add support for asm, cmm, and js sources in executable components [#8639](https://github.com/haskell/cabal/issues/8639) [#9061](https://github.com/haskell/cabal/pull/9061)
 
     Executable components now support the inclusion of asm, cmm, and js source
