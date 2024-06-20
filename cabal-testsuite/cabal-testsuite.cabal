@@ -28,8 +28,8 @@ common shared
   build-depends:
     , base >= 4.11 && < 4.20
     -- this needs to match the in-tree lib:Cabal version
-    , Cabal ^>= 3.12.0.0
-    , Cabal-syntax ^>= 3.12.0.0
+    , Cabal ^>= 3.12.1.0
+    , Cabal-syntax ^>= 3.12.1.0
     , Cabal-tests
 
   ghc-options: -Wall -fwarn-tabs -fwarn-incomplete-uni-patterns
@@ -146,6 +146,6 @@ custom-setup
   -- and due to Custom complexity and ConstraintSetupCabalMaxVersion
   -- it has to be the latest release version plus
   -- you have to use the latest cabal-install release
-  setup-depends: Cabal == 3.10.*,
-                 Cabal-syntax == 3.10.*,
+  setup-depends: Cabal == 3.12.*,
+                 Cabal-syntax == 3.12.*,
                  base, filepath, directory
