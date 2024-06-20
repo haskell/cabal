@@ -41,7 +41,7 @@ md5CheckGenericPackageDescription proxy = md5Check proxy
 md5CheckLocalBuildInfo :: Proxy LocalBuildInfo -> Assertion
 md5CheckLocalBuildInfo proxy = md5Check proxy
 #if MIN_VERSION_base(4,19,0)
-    0x31b94dc3e61eb01fea1a1c3c73d984ee
+    0x6809d4d86ae1810f2a032bc90c952b76
 #else
-    0xdc2f5e7a9c696a4e0bd64f02a0140b74
+    0x9409dca80a2e1522b1c3a39356e9aaef
 #endif
