@@ -1,9 +1,0 @@
-synopsis: PkgConfig individual calls
-prs: #9134
-packages: cabal-install-solver
-
-description: {
-
-- `cabal` invokes `pkg-config` individually for each lib if querying for all doesn't return the expected result
-
-}
