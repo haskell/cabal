@@ -73,15 +73,13 @@ Cabal and Cabal-syntax 3.12.0.0 changelog and release notes
   If you are dealing with a custom setup, you have to invoke
   `./Setup repl --repl-multi-file`.
 
-<<<<<<< HEAD
 - Cabal and Cabal-syntax 3.12 support GHC version 8.4.4 and up.
 
   Support for all previous GHC versions is deprecated.
-=======
+
 - Label error messages with codes (following GHC, Stack)
 
     As with GHC and Stack, Cabal and cabal-install now generate warnings and errors prefixed with error codes of the form `[Cabal-xxxxx]`. These will be documented on https://errors.haskell.org, although very few are as yet.
->>>>>>> 2067ed198 (Changelogs for 3.12.1.0 (#10124))
 
 ### Other changes
 
