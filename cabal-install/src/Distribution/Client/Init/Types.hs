@@ -313,9 +313,9 @@ evalPrompt act s = case _runPrompt act s of
 
 instance Applicative PurePrompt where
   pure a = PurePrompt $ \s -> Right (a, s)
-  PurePrompt ff <*> PurePrompt aa = PurePrompt $ \s -> case ff (s) of
+  PurePrompt ff <*> PurePrompt aa = PurePrompt $ \s -> case ff s of
     Left e -> Left e
-    Right (f, s') -> case aa (s') of
+    Right (f, s') -> case aa s' of
       Left e -> Left e
       Right (a, s'') -> Right (f a, s'')
 
@@ -458,8 +458,10 @@ instance Interactive PurePrompt where
       BreakException
         ("Error: " ++ e ++ "\nStacktrace: " ++ show s)
 
-  getLastChosenLanguage = return Nothing
-  setLastChosenLanguage = \_ -> return ()
+  getLastChosenLanguage = PurePrompt $ \(s, ss) ->
+    Right (lastChosenLanguage ss, (s, ss))
+  setLastChosenLanguage l = PurePrompt $ \(s, ss) ->
+    Right ((), (s, ss{lastChosenLanguage = l}))
 
 pop :: PurePrompt String
 pop = PurePrompt $ \(p :| ps, ss) -> Right (p, (fromList ps, ss))
