@@ -313,24 +313,39 @@ describe the package as a whole:
     tools require the package-name specified for this field to match
     the package description's file-name :file:`{package-name}.cabal`.
 
-    Package names are case-sensitive and must match the regular expression
-    (i.e. alphanumeric "words" separated by dashes; each alphanumeric
-    word must contain at least one letter):
-    ``[[:digit:]]*[[:alpha:]][[:alnum:]]*(-[[:digit:]]*[[:alpha:]][[:alnum:]]*)*``.
+    A valid package name comprises an alphanumeric 'word'; or two or more
+    such words separated by a hyphen character (``-``). A word cannot be
+    comprised only of the digits ``0`` to ``9``.
 
-    Or, expressed in ABNF_:
+    An alphanumeric character belongs to one of the Unicode Letter categories
+    (Lu (uppercase), Ll (lowercase), Lt (titlecase), Lm (modifier), or
+    Lo (other)) or Number categories (Nd (decimal), Nl (letter), or No (other)).
+
+    Package names are case-sensitive.
+
+    Expressed as a regular expression:
+
+    ``[0-9]*[\p{L}\p{N}-[0-9]][\p{L}\p{N}]*(-[0-9]*[\p{L}\p{N}-[0-9]][\p{L}\p{N}]*)*``
+
+    Expressed in ABNF_:
 
     .. code-block:: abnf
 
         package-name      = package-name-part *("-" package-name-part)
-        package-name-part = *DIGIT UALPHA *UALNUM
+        package-name-part = *DIGIT UALPHANUM-NOT-DIGIT *UALNUM
 
-        UALNUM = UALPHA / DIGIT
-        UALPHA = ... ; set of alphabetic Unicode code-points
+        DIGIT = %x30-39 ; 0-9
+
+        UALNUM = UALPHANUM-NOT-DIGIT / DIGIT
+        UALPHANUM-NOT-DIGIT = ... ; set of Unicode code-points in Letter or
+                                  ; Number categories, other than the DIGIT
+                                  ; code-points
 
     .. note::
 
-        Hackage restricts package names to the ASCII subset.
+        Hackage will not accept package names that use alphanumeric characters
+        other than ``A`` to ``Z``, ``a`` to ``z``, and ``0`` to ``9``
+        (the ASCII subset).
 
 .. pkg-field:: version: numbers (required)
 
