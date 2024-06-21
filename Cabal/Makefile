@@ -1,4 +1,4 @@
-VERSION=3.12.0.0
+VERSION=3.12.1.0
 
 #KIND=devel
 KIND=rc

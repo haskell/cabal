@@ -1,7 +1,6 @@
 packages:
     Cabal
   , Cabal-syntax
-  , Cabal-hooks
   , cabal-install
   , cabal-install-solver
 
