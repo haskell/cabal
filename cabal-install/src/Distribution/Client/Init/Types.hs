@@ -405,14 +405,14 @@ instance Interactive PromptIO where
 
   getLastChosenLanguage = do
     stateRef <- ask
-    state <- liftIO $ Data.IORef.readIORef stateRef
-    pure $ lastChosenLanguage state
+    liftIO $ lastChosenLanguage <$> Data.IORef.readIORef stateRef
 
   setLastChosenLanguage value = do
     stateRef <- ask
-    state <- liftIO $ Data.IORef.readIORef stateRef
-    let state' = state{lastChosenLanguage = value}
-    liftIO $ Data.IORef.writeIORef stateRef state'
+    liftIO $
+      Data.IORef.modifyIORef
+        stateRef
+        (\state -> state{lastChosenLanguage = value})
 
 instance Interactive PurePrompt where
   getLine = pop
