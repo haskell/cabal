@@ -43,7 +43,8 @@ module Distribution.Client.Init.Types
   , BreakException (..)
   , PromptIO
   , runPromptIO
-  , PurePrompt (..)
+  , PurePrompt
+  , _runPrompt
   , evalPrompt
   , Severity (..)
 
@@ -292,14 +293,18 @@ type PromptIO = ReaderT (Data.IORef.IORef SessionState) IO
 
 runPromptIO :: PromptIO a -> IO a
 runPromptIO pio =
-  (Data.IORef.newIORef newSessionState) >>= (runReaderT pio)
+  (Data.IORef.newIORef _newSessionState) >>= (runReaderT pio)
 
 newtype PurePrompt a = PurePrompt
-  { _runPrompt
-      :: NonEmpty String
-      -> Either BreakException (a, NonEmpty String)
+  { _runPromptState
+      :: (NonEmpty String, SessionState)
+      -> Either BreakException (a, (NonEmpty String, SessionState))
   }
   deriving (Functor)
+
+_runPrompt :: PurePrompt a -> NonEmpty String -> Either BreakException (a, NonEmpty String)
+_runPrompt act args =
+  (fmap (\(a, (s, _)) -> (a, s))) (_runPromptState act (args, _newSessionState))
 
 evalPrompt :: PurePrompt a -> NonEmpty String -> a
 evalPrompt act s = case _runPrompt act s of
@@ -308,9 +313,9 @@ evalPrompt act s = case _runPrompt act s of
 
 instance Applicative PurePrompt where
   pure a = PurePrompt $ \s -> Right (a, s)
-  PurePrompt ff <*> PurePrompt aa = PurePrompt $ \s -> case ff s of
+  PurePrompt ff <*> PurePrompt aa = PurePrompt $ \s -> case ff (s) of
     Left e -> Left e
-    Right (f, s') -> case aa s' of
+    Right (f, s') -> case aa (s') of
       Left e -> Left e
       Right (a, s'') -> Right (f a, s'')
 
@@ -318,7 +323,7 @@ instance Monad PurePrompt where
   return = pure
   PurePrompt a >>= k = PurePrompt $ \s -> case a s of
     Left e -> Left e
-    Right (a', s') -> _runPrompt (k a') s'
+    Right (a', s') -> _runPromptState (k a') s'
 
 class Monad m => Interactive m where
   -- input functions
@@ -361,8 +366,8 @@ newtype SessionState = SessionState
   { lastChosenLanguage :: (Maybe String)
   }
 
-newSessionState :: SessionState
-newSessionState = SessionState{lastChosenLanguage = Nothing}
+_newSessionState :: SessionState
+_newSessionState = SessionState{lastChosenLanguage = Nothing}
 
 instance Interactive PromptIO where
   getLine = liftIO P.getLine
@@ -448,7 +453,7 @@ instance Interactive PurePrompt where
     _ -> return ()
 
   break = return True
-  throwPrompt (BreakException e) = PurePrompt $ \s ->
+  throwPrompt (BreakException e) = PurePrompt $ \(s, _) ->
     Left $
       BreakException
         ("Error: " ++ e ++ "\nStacktrace: " ++ show s)
@@ -457,7 +462,7 @@ instance Interactive PurePrompt where
   setLastChosenLanguage = \_ -> return ()
 
 pop :: PurePrompt String
-pop = PurePrompt $ \(p :| ps) -> Right (p, fromList ps)
+pop = PurePrompt $ \(p :| ps, ss) -> Right (p, (fromList ps, ss))
 
 popAbsolute :: PurePrompt String
 popAbsolute = do
