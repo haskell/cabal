@@ -780,7 +780,7 @@ fileCreatorTests pkgIx srcDb _pkgName =
                     , "2" -- pick the second language in the list
                     ]
 
-            runGenTest inputs $ (genLibTarget emptyFlags pkgIx)
+            runGenTest inputs $ genLibTarget emptyFlags pkgIx
         ]
     , testGroup
         "genExeTarget"
