@@ -32,6 +32,7 @@ pull_request_rules:
       - label=merge me
       - label=merge delay passed
       - '#approved-reviews-by>=2'
+      - '-label~=^blocked:'
 
   # merge+squash strategy
   - actions:
@@ -47,6 +48,7 @@ pull_request_rules:
       - label=squash+merge me
       - label=merge delay passed
       - '#approved-reviews-by>=2'
+      - '-label~=^blocked:'
 
   # merge+no rebase strategy
   - actions:
@@ -58,6 +60,7 @@ pull_request_rules:
       - label=merge+no rebase
       - label=merge delay passed
       - '#approved-reviews-by>=2'
+      - '-label~=^blocked:'
 
   # merge strategy for release branches
   - actions:
@@ -73,6 +76,7 @@ pull_request_rules:
       - base!=master
       - -body~=backport
       - '#approved-reviews-by>=2'
+      - '-label~=^blocked:'
 
   # merge+squash strategy for release branches
   - actions:
@@ -88,6 +92,7 @@ pull_request_rules:
       - label=squash+merge me
       - -body~=backport
       - '#approved-reviews-by>=2'
+      - '-label~=^blocked:'
 
   # merge strategy for backports: require 1 approver instead of 2
   - actions:
@@ -103,6 +108,7 @@ pull_request_rules:
       - base!=master
       - body~=backport
       - '#approved-reviews-by>=1'
+      - '-label~=^blocked:'
 
   # merge+squash strategy for backports: require 1 approver instead of 2
   - actions:
@@ -118,6 +124,7 @@ pull_request_rules:
       - base!=master
       - body~=backport
       - '#approved-reviews-by>=1'
+      - '-label~=^blocked:'
 
   # backports should be labeled as such
   - actions:
