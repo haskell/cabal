@@ -349,7 +349,7 @@ test-suite unit-tests
           zlib,
           tasty >= 1.2.3 && <1.6,
           tasty-golden >=2.3.1.1 && <2.4,
-          tasty-quickcheck,
+          tasty-quickcheck <0.11,
           tasty-expected-failure,
           tasty-hunit >= 0.10,
           tree-diff,
@@ -437,6 +437,6 @@ test-suite long-tests
         tasty >= 1.2.3 && <1.6,
         tasty-expected-failure,
         tasty-hunit >= 0.10,
-        tasty-quickcheck,
+        tasty-quickcheck <0.11,
         QuickCheck >= 2.14 && <2.16,
         pretty-show >= 1.6.15
