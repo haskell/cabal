@@ -7,3 +7,8 @@ tests: True
 write-ghc-environment-files: never
 program-options
   ghc-options: -Werror
+
+-- This project file is used to distribute the cabal-head binary,
+-- as such we cannot enable "-march=native".
+constraints:
+  hashable -arch-native
