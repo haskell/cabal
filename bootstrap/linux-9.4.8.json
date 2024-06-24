@@ -227,7 +227,7 @@
             "cabal_sha256": "82503a1ef0a625c210e118f2785c4138f8502aacbbfd4e5d987f6baffbb87115",
             "component": "lib:hashable",
             "flags": [
-                "+arch-native",
+                "-arch-native",
                 "+integer-gmp",
                 "-random-initial-seed"
             ],
