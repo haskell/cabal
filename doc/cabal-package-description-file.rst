@@ -1954,6 +1954,11 @@ system-dependent values for these fields.
    Like :pkg-field:`ghc-prof-shared-options` but applies to GHCJS
 
 .. pkg-field:: includes: filename list
+    :since: 1.0
+    :deprecated: 2.0
+
+    From GHC 6.10.1, :pkg-field:`includes` has no effect when compiling with
+    GHC. From Cabal 2.0, support for GHC versions before GHC 6.12 was removed.
 
     A list of header files to be included in any compilations via C.
     This field applies to both header files that are already installed
