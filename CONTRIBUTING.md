@@ -283,9 +283,9 @@ Currently there is a 2 day buffer for potential extra feedback between the last
 update of a pull request (e.g. a commit, a rebase, an addition of the `merge me`
 label) and the moment the Mergify bot picks up the pull request for a merge.
 
-If your pull request consists of several commits, consider using `squash+merge
-me` instead of `merge me`: the Mergify bot will squash all the commits into one
-and concatenate the commit messages of the commits before merging.
+Currently `merge me` and `squash+merge me` do the same thing. If you need to
+preserve the individual commits, you must use `merge+no rebase` (see below).
+Please rebase manually beforehand, if you can.
 
 There is also a `merge+no rebase` label. Use this very sparingly, as not rebasing
 severely complicates Git history. It is intended for special circumstances, as when
