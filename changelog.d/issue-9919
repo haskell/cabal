@@ -1,4 +1,0 @@
-synopsis: Fix --program-suffix resulting in invalid installation
-packages: cabal-install
-issues: #8823 #9919
-prs: #10056
