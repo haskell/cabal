@@ -1,0 +1,26 @@
+synopsis: Fix interaction of `--*-shared` and `--*-executable-dynamic` options.
+packages: cabal-install
+prs: #9900
+issues: #10050
+
+description: {
+
+If you explicitly request `--disable-shared` it should disable the building of
+a shared library and override any automatic ways this option is turned on.
+
+Passing `--enable-executable-dynamic` turns on `--enable-shared` if the option is
+not specified explicitly.
+
+Before this patch, writing `--disable-shared` on its own would not disable the building of shared libraries. Writing `--disable-shared` and `--disable-executable-dynamic` would disable shared library
+creation (despite `--disable-executable-dynamic` being the default).
+
+Now:
+
+* If you specify `--enable-shared` then shared objects are built.
+* If you specify `--disabled-shared` then shared objects are not built.
+* If you don't explicitly specify whether you want to build shared libraries then
+  * `--enable-executable-dynamic` will automatically turn on building shared libraries
+  * `--enable-executable-dynamic --enable-profiling` will automatically turn on building
+    shared profiling libraries (if supported by your compiler).
+
+}

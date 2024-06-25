@@ -36,6 +36,7 @@ module Distribution.Simple.LocalBuildInfo
   , interpretSymbolicPathLBI
   , mbWorkDirLBI
   , absoluteWorkingDirLBI
+  , buildWays
 
     -- * Buildable package components
   , Component (..)

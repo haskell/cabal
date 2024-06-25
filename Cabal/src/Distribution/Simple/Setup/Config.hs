@@ -127,6 +127,8 @@ data ConfigFlags = ConfigFlags
   , configProf :: Flag Bool
   -- ^ Enable profiling in the library
   --  and executables.
+  , configProfShared :: Flag Bool
+  -- ^ Enable shared profiling objects
   , configProfDetail :: Flag ProfDetailLevel
   -- ^ Profiling detail level
   --   in the library and executables.
@@ -286,6 +288,7 @@ instance Eq ConfigFlags where
       && equal configProfExe
       && equal configProf
       && equal configProfDetail
+      && equal configProfShared
       && equal configProfLibDetail
       && equal configConfigureArgs
       && equal configOptimization
@@ -517,6 +520,13 @@ configureOptions showOrParseArgs =
           "Executable and library profiling"
           configProf
           (\v flags -> flags{configProf = v})
+          (boolOpt [] [])
+       , option
+          ""
+          ["profiling-shared"]
+          "Build profiling shared libraries"
+          configProfShared
+          (\v flags -> flags{configProfShared = v})
           (boolOpt [] [])
        , option
           ""

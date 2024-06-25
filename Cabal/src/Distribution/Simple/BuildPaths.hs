@@ -32,6 +32,7 @@ module Distribution.Simple.BuildPaths
   , mkProfLibName
   , mkGenericSharedLibName
   , mkSharedLibName
+  , mkProfSharedLibName
   , mkStaticLibName
   , mkGenericSharedBundledLibName
   , exeExtension
@@ -282,6 +283,10 @@ mkGenericSharedLibName platform (CompilerId compilerFlavor compilerVersion) lib 
 mkSharedLibName :: Platform -> CompilerId -> UnitId -> String
 mkSharedLibName platform comp lib =
   mkGenericSharedLibName platform comp (getHSLibraryName lib)
+
+mkProfSharedLibName :: Platform -> CompilerId -> UnitId -> String
+mkProfSharedLibName platform comp lib =
+  mkGenericSharedLibName platform comp (getHSLibraryName lib ++ "_p")
 
 -- Static libs are named the same as shared libraries, only with
 -- a different extension.

@@ -1930,6 +1930,13 @@ system-dependent values for these fields.
     ones specified via :pkg-field:`ghc-options`, and are passed to GHC during
     both the compile and link phases.
 
+.. pkg-field:: ghc-prof-shared-options: token list
+
+    Additional options for GHC when the package is built as shared profiling
+    library. The options specified via this field are combined with the
+    ones specified via :pkg-field:`ghc-options`, and are passed to GHC during
+    both the compile and link phases.
+
 .. pkg-field:: ghcjs-options: token list
 
    Like :pkg-field:`ghc-options` but applies to GHCJS
@@ -1941,6 +1948,10 @@ system-dependent values for these fields.
 .. pkg-field:: ghcjs-shared-options: token list
 
    Like :pkg-field:`ghc-shared-options` but applies to GHCJS
+
+.. pkg-field:: ghcjs-prof-shared-options: token list
+
+   Like :pkg-field:`ghc-prof-shared-options` but applies to GHCJS
 
 .. pkg-field:: includes: filename list
 

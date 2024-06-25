@@ -6,19 +6,17 @@ import Distribution.Compat.Prelude
 import Prelude ()
 
 import Control.Monad.IO.Class
-import qualified Data.Set as Set
 import Distribution.PackageDescription as PD hiding (buildInfo)
 import Distribution.Simple.Build.Inputs
 import Distribution.Simple.Flag (Flag)
 import Distribution.Simple.GHC.Build.ExtraSources
 import Distribution.Simple.GHC.Build.Link
 import Distribution.Simple.GHC.Build.Modules
-import Distribution.Simple.GHC.Build.Utils (withDynFLib)
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Program.Builtin (ghcProgram)
 import Distribution.Simple.Program.Db (requireProgram)
 import Distribution.Simple.Utils
-import Distribution.Types.ComponentLocalBuildInfo (componentIsIndefinite)
+import Distribution.Types.ComponentLocalBuildInfo
 import Distribution.Types.ParStrat
 import Distribution.Utils.NubList (fromNubListR)
 import Distribution.Utils.Path
@@ -70,10 +68,10 @@ build
 build numJobs pkg_descr pbci = do
   let
     verbosity = buildVerbosity pbci
-    component = buildComponent pbci
     isLib = buildIsLib pbci
     lbi = localBuildInfo pbci
     clbi = buildCLBI pbci
+    isIndef = componentIsIndefinite clbi
     mbWorkDir = mbWorkDirLBI lbi
     i = interpretSymbolicPathLBI lbi -- See Note [Symbolic paths] in Distribution.Utils.Path
 
@@ -110,41 +108,14 @@ build numJobs pkg_descr pbci = do
 
   (ghcProg, _) <- liftIO $ requireProgram verbosity ghcProgram (withPrograms lbi)
 
-  -- Determine in which ways we want to build the component
-  let
-    wantVanilla = if isLib then withVanillaLib lbi else False
-    -- Arguably, wantStatic should be "withFullyStaticExe lbi" for executables,
-    -- but it was not before the refactor.
-    wantStatic = if isLib then withStaticLib lbi else not (wantDynamic || wantProf)
-    wantDynamic = case component of
-      CLib{} -> withSharedLib lbi
-      CFLib flib -> withDynFLib flib
-      CExe{} -> withDynExe lbi
-      CTest{} -> withDynExe lbi
-      CBench{} -> withDynExe lbi
-    wantProf = if isLib then withProfLib lbi else withProfExe lbi
+  let wantedWays@(wantedLibWays, _, wantedExeWay) = buildWays lbi
 
-    -- See also Note [Building Haskell Modules accounting for TH] in Distribution.Simple.GHC.Build.Modules
-    -- We build static by default if no other way is wanted.
-    -- For executables and foreign libraries, there should only be one wanted way.
-    wantedWays =
-      Set.fromList $
-        -- If building a library, we accumulate all the ways,
-        -- otherwise, we take just one.
-        (if isLib then id else take 1) $
-          [ProfWay | wantProf]
-            -- I don't see why we shouldn't build with dynamic
-            -- indefinite components.
-            <> [DynWay | wantDynamic && not (componentIsIndefinite clbi)]
-            <> [StaticWay | wantStatic || wantVanilla || not (wantDynamic || wantProf)]
-
-  liftIO $ info verbosity ("Wanted build ways: " ++ show (Set.toList wantedWays))
-
+  liftIO $ info verbosity ("Wanted build ways(" ++ show isLib ++ "): " ++ show (if isLib then wantedLibWays isIndef else [wantedExeWay]))
   -- We need a separate build and link phase, and C sources must be compiled
   -- after Haskell modules, because C sources may depend on stub headers
   -- generated from compiling Haskell modules (#842, #3294).
-  buildOpts <- buildHaskellModules numJobs ghcProg pkg_descr buildTargetDir wantedWays pbci
-  extraSources <- buildAllExtraSources ghcProg buildTargetDir pbci
+  buildOpts <- buildHaskellModules numJobs ghcProg pkg_descr buildTargetDir (wantedLibWays isIndef) pbci
+  extraSources <- buildAllExtraSources ghcProg buildTargetDir wantedWays pbci
   linkOrLoadComponent
     ghcProg
     pkg_descr

@@ -12,6 +12,7 @@ module Distribution.Types.BuildInfo
   , hcOptions
   , hcProfOptions
   , hcSharedOptions
+  , hcProfSharedOptions
   , hcStaticOptions
   ) where
 
@@ -133,6 +134,7 @@ data BuildInfo = BuildInfo
   , options :: PerCompilerFlavor [String]
   , profOptions :: PerCompilerFlavor [String]
   , sharedOptions :: PerCompilerFlavor [String]
+  , profSharedOptions :: PerCompilerFlavor [String]
   , staticOptions :: PerCompilerFlavor [String]
   , customFieldsBI :: [(String, String)]
   -- ^ Custom fields starting
@@ -193,6 +195,7 @@ instance Monoid BuildInfo where
       , options = mempty
       , profOptions = mempty
       , sharedOptions = mempty
+      , profSharedOptions = mempty
       , staticOptions = mempty
       , customFieldsBI = []
       , targetBuildDepends = []
@@ -245,6 +248,7 @@ instance Semigroup BuildInfo where
       , options = combine options
       , profOptions = combine profOptions
       , sharedOptions = combine sharedOptions
+      , profSharedOptions = combine profSharedOptions
       , staticOptions = combine staticOptions
       , customFieldsBI = combine customFieldsBI
       , targetBuildDepends = combineNub targetBuildDepends
@@ -294,6 +298,9 @@ hcProfOptions = lookupHcOptions profOptions
 
 hcSharedOptions :: CompilerFlavor -> BuildInfo -> [String]
 hcSharedOptions = lookupHcOptions sharedOptions
+
+hcProfSharedOptions :: CompilerFlavor -> BuildInfo -> [String]
+hcProfSharedOptions = lookupHcOptions profSharedOptions
 
 hcStaticOptions :: CompilerFlavor -> BuildInfo -> [String]
 hcStaticOptions = lookupHcOptions staticOptions

@@ -64,6 +64,7 @@ module Distribution.Client.Dependency
   , addDefaultSetupDependencies
   , addSetupCabalMinVersionConstraint
   , addSetupCabalMaxVersionConstraint
+  , addSetupCabalProfiledDynamic
   ) where
 
 import Distribution.Client.Compat.Prelude
@@ -667,6 +668,22 @@ addSetupCabalMaxVersionConstraint maxVersion =
             (PackagePropertyVersion $ earlierVersion maxVersion)
         )
         ConstraintSetupCabalMaxVersion
+    ]
+  where
+    cabalPkgname = mkPackageName "Cabal"
+
+-- | Add an a lower bound @setup.Cabal >= 3.13@ labeled with 'ConstraintSourceProfiledDynamic'
+addSetupCabalProfiledDynamic
+  :: DepResolverParams
+  -> DepResolverParams
+addSetupCabalProfiledDynamic =
+  addConstraints
+    [ LabeledPackageConstraint
+        ( PackageConstraint
+            (ScopeAnySetupQualifier cabalPkgname)
+            (PackagePropertyVersion $ orLaterVersion (mkVersion [3, 13, 0]))
+        )
+        ConstraintSourceProfiledDynamic
     ]
   where
     cabalPkgname = mkPackageName "Cabal"
