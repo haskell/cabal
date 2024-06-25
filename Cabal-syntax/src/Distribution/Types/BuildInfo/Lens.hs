@@ -195,6 +195,10 @@ class HasBuildInfo a where
   sharedOptions = buildInfo . sharedOptions
   {-# INLINE sharedOptions #-}
 
+  profSharedOptions :: Lens' a (PerCompilerFlavor [String])
+  profSharedOptions = buildInfo . profSharedOptions
+  {-# INLINE profSharedOptions #-}
+
   staticOptions :: Lens' a (PerCompilerFlavor [String])
   staticOptions = buildInfo . staticOptions
   {-# INLINE staticOptions #-}
@@ -340,6 +344,9 @@ instance HasBuildInfo BuildInfo where
 
   sharedOptions f s = fmap (\x -> s{T.sharedOptions = x}) (f (T.sharedOptions s))
   {-# INLINE sharedOptions #-}
+
+  profSharedOptions f s = fmap (\x -> s{T.profSharedOptions = x}) (f (T.profSharedOptions s))
+  {-# INLINE profSharedOptions #-}
 
   staticOptions f s = fmap (\x -> s{T.staticOptions = x}) (f (T.staticOptions s))
   {-# INLINE staticOptions #-}
