@@ -1,0 +1,12 @@
+synopsis: Implement `default-package-bounds` field
+packages: Cabal-syntax
+prs: #9462
+
+description: {
+
+The new `default-package-bounds` stanza can be used to default versions that are
+ommitted in the build-depends fields. This could be done previously by means of
+common stanzas, but it was too verbose and obscure (dependencies came sometimes
+from stanzas).
+
+}

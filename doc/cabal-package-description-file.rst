@@ -1528,12 +1528,12 @@ system-dependent values for these fields.
     common because it is recommended practice for package versions to
     correspond to API versions (see PVP_).
 
-    Since Cabal 1.6, there is a special wildcard syntax to help with
+    Since **Cabal 1.6**, there is a special wildcard syntax to help with
     such ranges
 
     ::
 
-        build-depends: foo ==1.2.*
+        build-depends: foo ==1.2.***
 
     It is only syntactic sugar. It is exactly equivalent to
     ``foo >= 1.2 && < 1.3``.
@@ -1546,7 +1546,7 @@ system-dependent values for these fields.
        than ``1.0``. This is not an issue with the caret-operator
        ``^>=`` described below.
 
-    Starting with Cabal 2.0, there's a new version operator to express
+    Starting with **Cabal 2.0**, there's a new version operator to express
     PVP_-style major upper bounds conveniently, and is inspired by similar
     syntactic sugar found in other language ecosystems where it's often
     called the "Caret" operator:
@@ -1637,8 +1637,8 @@ system-dependent values for these fields.
        renaming in ``build-depends``; however, this support has since been
        removed and should not be used.
 
-    Starting with Cabal 3.0, a set notation for the ``==`` and ``^>=`` operator
-    is available. For instance,
+    Starting with **Cabal 3.0**, a set notation for the ``==`` and ``^>=``
+    operator is available. For instance,
 
     ::
 
@@ -1654,7 +1654,6 @@ system-dependent values for these fields.
         tested-with: GHC == { 8.6.3, 8.4.4, 8.2.2, 8.0.2, 7.10.3, 7.8.4, 7.6.3, 7.4.2 }
 
         build-depends: network ^>= { 2.6.3.6, 2.7.0.2, 2.8.0.0, 3.0.1.0 }
-
 
 .. pkg-field:: other-modules: identifier list
 
@@ -2687,6 +2686,94 @@ Starting with Cabal-2.2 it's possible to use common build info stanzas.
 
     TBW
 
+.. _default-package-bounds:
+
+Default package bounds
+^^^^^^^^^^^^^^^^^^^^^^
+
+.. pkg-section:: default-package-bounds
+   :since: 3.14
+
+Starting with **Cabal 3.14**, a new section ``default-package-bounds`` can be
+declared on the package description to provide version bounds that will be used
+when there is no explicit bound on an entry on:
+
+- :pkg-field:`build-depends<None:build-depends>`
+- :pkg-field:`build-tool-depends<None:build-depends>`
+
+So the package description:
+
+::
+
+    default-package-bounds
+        build-depends:
+          , awesome-package ^>= 5
+        build-tool-depends:
+          , markdown-unlit:markdown-unlit < 100
+
+    custom-setup
+      setup-depends:
+        awesome-package
+
+    library a
+        build-depends:
+          , awesome-package
+        build-tool-depends:
+          , markdown-unlit:markdown-unlit
+
+    library b
+        build-depends:
+          , awesome-package >5.5
+        build-tool-depends:
+          , markdown-unlit:markdown-unlit >1
+
+    library c
+        build-depends: y
+
+will be equivalent to:
+
+::
+
+    custom-setup
+      setup-depends:
+        awesome-package
+
+    library a
+        build-depends:
+          , awesome-package ^>= 5
+        build-tool-depends:
+          , markdown-unlit:markdown-unlit < 100
+
+    library b
+        build-depends:
+          , awesome-package >5.5
+        build-tool-depends:
+          , markdown-unlit:markdown-unlit >1
+
+    library c
+        build-depends: y
+
+Notice only ``library a`` had its bounds modified. This process is only applied
+as a syntactic desugaring, only to avoid duplication and verbosity on the cabal
+file. More concretely,
+
+- it will **not** apply version bounds on transitive dependencies that are not explicitly listed as a dependency,
+- it will **not** add the listed dependencies to any component in which they were not already listed,
+- it will **not** modify bounds on :pkg-field:`pkgconfig-depends` entries.
+- it will **not** modify bounds on :pkg-field:`custom-setup:setup-depends` entries.
+
+Using ``--allow-newer`` or ``--allow-older`` will relax the ``default-package-bounds`` constraints
+in the same way as is done for normal :pkg-field:`build-depends<None:build-depends>` dependencies.
+
+.. pkg-field:: build-depends: library list
+
+    The bounds declared here will be applied to entries without explicit bounds in every
+    :pkg-field:`build-depends<None:build-depends>`.
+
+.. pkg-field:: build-tool-depends: package:executable list
+
+    The bounds declared here will be applied to entries without explicit bounds in every
+    :pkg-field:`build-tool-depends<None:build-tool-depends>`.
 
 .. _pkg-author-source:
 
