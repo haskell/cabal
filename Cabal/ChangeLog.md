@@ -1,3 +1,7 @@
+# 3.12.0.0 [Francesco Ariis](mailto:fa-ml@ariis.it) May 2024
+# 3.12.0.0 [Francesco Ariis](mailto:fa-ml@ariis.it) March 2024
+* See https://github.com/haskell/cabal/blob/master/release-notes/Cabal-3.12.0.0.md
+
 # 3.10.3.0 [Hécate](mailto:hecate+github@glitchbra.in) January 2024
 * See https://github.com/haskell/cabal/blob/master/release-notes/Cabal-3.10.3.0.md
 

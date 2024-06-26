@@ -441,6 +441,14 @@ describe the package as a whole:
         import Distribution.Simple
         main = defaultMain
 
+    For build type ``Hooks``, the contents of ``Setup.hs`` must be:
+
+    .. code-block:: haskell
+
+        import Distribution.Simple
+        import SetupHooks (setupHooks)
+        main = defaultMainWithSetupHooks setupHooks
+
     For build type ``Configure`` (see the section on `system-dependent
     parameters`_ below), the contents of
     ``Setup.hs`` must be:
@@ -461,7 +469,8 @@ describe the package as a whole:
     For build type ``Custom``, the file ``Setup.hs`` can be customized,
     and will be used both by ``cabal`` and other tools.
 
-    For most packages, the build type ``Simple`` is sufficient.
+    For most packages, the build type ``Simple`` is sufficient. For more exotic
+    needs, the ``Hooks`` build type is recommended; see :ref:`setup-hooks`.
 
 .. pkg-field:: license: SPDX expression
 
@@ -1501,7 +1510,7 @@ system-dependent values for these fields.
        `containers <https://hackage.haskell.org/package/containers/preferred>`_
        and `aeson <https://hackage.haskell.org/package/aeson/preferred>`_ for
        example. Deprecating package versions is not the same deprecating a
-       package as a whole, for which hackage keeps a `deprecated packages list
+       package as a whole, for which Hackage keeps a `deprecated packages list
        <https://hackage.haskell.org/packages/deprecated>`_.
 
     If no version constraint is specified, any version is assumed to be
@@ -1869,7 +1878,8 @@ system-dependent values for these fields.
     | ``hspec-discover``       | ``hspec-discover:hspec-discover`` | since Cabal 2.0 |
     +--------------------------+-----------------------------------+-----------------+
 
-    This built-in set can be programmatically extended via ``Custom`` setup scripts; this, however, is of limited use since the Cabal solver cannot access information injected by ``Custom`` setup scripts.
+    This built-in set can be programmatically extended via use of the
+    :ref:`Hooks build type<setup-hooks>` .
 
 .. pkg-field:: buildable: boolean
 
@@ -1920,6 +1930,13 @@ system-dependent values for these fields.
     ones specified via :pkg-field:`ghc-options`, and are passed to GHC during
     both the compile and link phases.
 
+.. pkg-field:: ghc-prof-shared-options: token list
+
+    Additional options for GHC when the package is built as shared profiling
+    library. The options specified via this field are combined with the
+    ones specified via :pkg-field:`ghc-options`, and are passed to GHC during
+    both the compile and link phases.
+
 .. pkg-field:: ghcjs-options: token list
 
    Like :pkg-field:`ghc-options` but applies to GHCJS
@@ -1931,6 +1948,10 @@ system-dependent values for these fields.
 .. pkg-field:: ghcjs-shared-options: token list
 
    Like :pkg-field:`ghc-shared-options` but applies to GHCJS
+
+.. pkg-field:: ghcjs-prof-shared-options: token list
+
+   Like :pkg-field:`ghc-prof-shared-options` but applies to GHCJS
 
 .. pkg-field:: includes: filename list
 
@@ -2666,25 +2687,19 @@ Starting with Cabal-2.2 it's possible to use common build info stanzas.
 
     TBW
 
-Source Repositories
-^^^^^^^^^^^^^^^^^^^
+
+.. _pkg-author-source:
+
+*Source code* repository marker
+-------------------------------
 
 .. pkg-section:: source-repository
     :since: 1.6
 
-It is often useful to be able to specify a source revision control
-repository for a package. Cabal lets you specify this information in
-a relatively structured form which enables other tools to interpret and
-make effective use of the information. For example the information
-should be sufficient for an automatic tool to checkout the sources.
+A marker that points to the *source code* for this package within a
+**source code repository**.
 
-Cabal supports specifying different information for various common
-source control systems. Obviously not all automated tools will support
-all source control systems.
-
-Cabal supports specifying repositories for different use cases. By
-declaring which case we mean automated tools can be more useful. There
-are currently two kinds defined:
+There are two kinds. You can specify one or the other or both at once:
 
 -  The ``head`` kind refers to the latest development branch of the
    package. This may be used for example to track activity of a project
@@ -2692,17 +2707,12 @@ are currently two kinds defined:
    making new contributions.
 
 -  The ``this`` kind refers to the branch and tag of a repository that
-   contains the sources for this version or release of a package. For
-   most source control systems this involves specifying a tag, id or
-   hash of some form and perhaps a branch. The purpose is to be able to
-   reconstruct the sources corresponding to a particular package
-   version. This might be used to indicate what sources to get if
-   someone needs to fix a bug in an older branch that is no longer an
-   active head branch.
+   contains the sources for this version or release of a package.  For most
+   source control systems this involves specifying a tag, id or hash of some
+   form and perhaps a branch.
 
-You can specify one kind or the other or both. As an example here are
-the repositories for the Cabal library. Note that the ``this`` kind of
-repository specifies a tag.
+As an example, here are the repositories for the Cabal library. Note that the
+``this`` kind of repository specifies a tag.
 
 ::
 
@@ -2715,32 +2725,29 @@ repository specifies a tag.
       location: https://github.com/haskell/cabal
       tag:      1.6.1
 
-The exact fields are as follows:
+The :ref:`cabal get<cabal-get>` command uses the kind of repository with
+its ``--source-repository`` option, if provided.
 
-.. pkg-field:: type: token
+.. _source-repository-fields:
 
-    The name of the source control system used for this repository. The
-    currently recognised types are:
+The :ref:`VCS fields<vcs-fields>` of ``source-repository`` are:
 
-    -  ``darcs``
-    -  ``git``
-    -  ``svn``
-    -  ``cvs``
-    -  ``mercurial`` (or alias ``hg``)
-    -  ``bazaar`` (or alias ``bzr``)
-    -  ``arch``
-    -  ``monotone``
+..
+  data SourceRepo = SourceRepo
+    { repoKind :: RepoKind
+    , repoType :: Maybe RepoType
+    , repoLocation :: Maybe String
+    , repoModule :: Maybe String
+    , repoBranch :: Maybe String
+    , repoTag :: Maybe String
+    , repoSubdir :: Maybe FilePath
+    }
+
+.. pkg-field:: type: VCS kind
 
     This field is required.
 
-.. pkg-field:: location: URL
-
-    The location of the repository. The exact form of this field depends
-    on the repository type. For example:
-
-    -  for darcs: ``http://code.haskell.org/foo/``
-    -  for git: ``git://github.com/foo/bar.git``
-    -  for CVS: ``anoncvs@cvs.foo.org:/cvs``
+.. pkg-field:: location: VCS location
 
     This field is required.
 
@@ -2752,39 +2759,79 @@ The exact fields are as follows:
     This field is required for the CVS repository type and should not be
     used otherwise.
 
-.. pkg-field:: branch: token
-
-    Many source control systems support the notion of a branch, as a
-    distinct concept from having repositories in separate locations. For
-    example CVS, SVN and git use branches while darcs uses different
-    locations for different branches. If you need to specify a branch to
-    identify a your repository then specify it in this field.
+.. pkg-field:: branch: VCS branch
 
     This field is optional.
 
-.. pkg-field:: tag: token
-
-    A tag identifies a particular state of a source repository. The tag
-    can be used with a ``this`` repository kind to identify the state of
-    a repository corresponding to a particular package version or
-    release. The exact form of the tag depends on the repository type.
+.. pkg-field:: tag: VCS tag
 
     This field is required for the ``this`` repository kind.
 
-.. pkg-field:: subdir: directory
+    This might be used to indicate what sources to get if someone needs to fix a
+    bug in an older branch that is no longer an active head branch.
 
-    Some projects put the sources for multiple packages under a single
-    source repository. This field lets you specify the relative path
-    from the root of the repository to the top directory for the
-    package, i.e. the directory containing the package's ``.cabal``
-    file.
+.. pkg-field:: subdir: VCS subdirectory
 
-    This field is optional. It defaults to empty which corresponds to the
-    root directory of the repository.
+    This field is optional but, if given, specifies a single subdirectory.
 
+
+.. _setup-hooks:
+
+Hooks
+-----
+The ``Hooks`` build type allows customising the configuration and the building
+of a package using a collection of **hooks** into the build system.
+
+Introduced in Cabal 3.14, this build type provides an alternative
+to :ref:`Custom setups <custom-setup>` which integrates better with the rest of the
+Haskell ecosystem.
+
+To use this build type in your package, you need to:
+
+  * Declare a ``cabal-version`` of at least 3.14 in your ``.cabal`` file.
+  * Declare ``build-type: Hooks`` in your ``.cabal`` file.
+  * Include a ``custom-setup`` stanza in your ``.cabal`` file, which declares
+    the version of the Hooks API your package is using.
+  * Define a ``SetupHooks.hs`` module next to your ``.cabal`` file. It must
+    export a value ``setupHooks :: SetupHooks``.
+
+More specifically, your ``.cabal`` file should resemble the following:
+
+    .. code-block:: cabal
+
+        cabal-version: 3.14
+        build-type: Hooks
+
+        custom-setup:
+          setup-depends:
+            base        >= 4.18 && < 5,
+            Cabal-hooks >= 0.1  && < 0.2
+
+while a basic ``SetupHooks.hs`` file might look like the following:
+
+    .. code-block:: haskell
+
+        module SetupHooks where
+        import Distribution.Simple.SetupHooks ( SetupHooks, noSetupHooks )
+
+        setupHooks :: SetupHooks
+        setupHooks =
+         noSetupHooks
+           { configureHooks = myConfigureHooks
+           , buildHooks = myBuildHooks }
+
+        -- ...
+
+Refer to the `Hackage documentation for the Distribution.Simple.SetupHooks module <https://hackage.haskell.org/package/Cabal-hooks/docs/Distribution-Simple-SetupHooks.html>`__
+for an overview of the ``Hooks`` API. Further motivation and a technical overview
+of the design is available in `Haskell Tech Proposal #60 <https://github.com/haskellfoundation/tech-proposals/blob/main/rfc/060-replacing-cabal-custom-build.md>`__ .
+
+.. _custom-setup:
 
 Custom setup scripts
 --------------------
+
+Deprecated since Cabal 3.14: prefer using the :ref:`Hooks build type<setup-hooks>` instead.
 
 Since Cabal 1.24, custom ``Setup.hs`` are required to accurately track
 their dependencies by declaring them in the ``.cabal`` file rather than
@@ -2801,11 +2848,16 @@ Declaring a ``custom-setup`` stanza also enables the generation of
 ``MIN_VERSION_package_(A,B,C)`` CPP macros for the Setup component.
 
 .. pkg-section:: custom-setup
-   :synopsis: Custom Setup.hs build information.
+   :synopsis: Build information for ``Custom`` and ``Hooks`` build types
    :since: 1.24
 
-   The optional :pkg-section:`custom-setup` stanza contains information needed
-   for the compilation of custom ``Setup.hs`` scripts,
+   A :pkg-section:`custom-setup` stanza is required for ``Custom`` and ``Hooks``
+   :pkg-field:`build-type`, and will be ignored (with a warning)
+   for other build types.
+
+   The stanza contains information needed for the compilation
+   of custom ``Setup.hs`` scripts, and of ``SetupHooks.hs`` hooks.
+   For example:
 
 ::
 
@@ -2817,7 +2869,7 @@ Declaring a ``custom-setup`` stanza also enables the generation of
 .. pkg-field:: setup-depends: package list
     :since: 1.24
 
-    The dependencies needed to compile ``Setup.hs``. See the
+    The dependencies needed to compile ``Setup.hs`` or ``SetupHooks.hs``. See the
     :pkg-field:`build-depends` field for a description of the syntax expected by
     this field.
 
@@ -2838,7 +2890,7 @@ Backward compatibility and ``custom-setup``
 
 Versions prior to Cabal 1.24 don't recognise ``custom-setup`` stanzas,
 and will behave agnostic to them (except for warning about an unknown
-section). Consequently, versions prior to Cabal 1.24 can't ensure the
+'section'). Consequently, versions prior to Cabal 1.24 can't ensure the
 declared dependencies ``setup-depends`` are in scope, and instead
 whatever is registered in the current package database environment
 will become eligible (and resolved by the compiler) for the
@@ -2848,8 +2900,9 @@ The availability of the
 ``MIN_VERSION_package_(A,B,C)`` CPP macros
 inside ``Setup.hs`` scripts depends on the condition that either
 
-- a ``custom-setup`` section has been declared (or ``cabal build`` is being
-  used which injects an implicit hard-coded ``custom-setup`` stanza if it's missing), or
+- a ``custom-setup`` stanza has been declared (or ``cabal build`` is being used
+  which injects an implicit hard-coded ``custom-setup`` stanza if it's missing),
+  or
 - GHC 8.0 or later is used (which natively injects package version CPP macros)
 
 Consequently, if you need to write backward compatible ``Setup.hs``

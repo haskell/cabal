@@ -114,6 +114,7 @@ module Distribution.Simple.Utils
   , findFileEx
   , findFileCwd
   , findFirstFile
+  , Suffix (..)
   , findFileWithExtension
   , findFileCwdWithExtension
   , findFileWithExtension'
@@ -863,16 +864,23 @@ rawSystemExit :: Verbosity -> Maybe (SymbolicPath CWD (Dir Pkg)) -> FilePath -> 
 rawSystemExit verbosity mbWorkDir path args =
   withFrozenCallStack $
     maybeExit $
-      rawSystemExitCode verbosity mbWorkDir path args
+      rawSystemExitCode verbosity mbWorkDir path args Nothing
 
 -- | Execute the given command with the given arguments, returning
 -- the command's exit code.
-rawSystemExitCode :: Verbosity -> Maybe (SymbolicPath CWD (Dir Pkg)) -> FilePath -> [String] -> IO ExitCode
-rawSystemExitCode verbosity mbWorkDir path args =
+rawSystemExitCode
+  :: Verbosity
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
+  -> FilePath
+  -> [String]
+  -> Maybe [(String, String)]
+  -> IO ExitCode
+rawSystemExitCode verbosity mbWorkDir path args menv =
   withFrozenCallStack $
     rawSystemProc verbosity $
       (proc path args)
         { Process.cwd = fmap getSymbolicPath mbWorkDir
+        , Process.env = menv
         }
 
 -- | Execute the given command with the given arguments, returning

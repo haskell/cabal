@@ -366,7 +366,7 @@ rebuildTargets
           NumJobs n -> newParallelJobControl (fromMaybe numberOfProcessors n)
           UseSem n ->
             if jsemSupported compiler
-              then newSemaphoreJobControl n
+              then newSemaphoreJobControl verbosity n
               else do
                 warn verbosity "-jsem is not supported by the selected compiler, falling back to normal parallelism control."
                 newParallelJobControl n

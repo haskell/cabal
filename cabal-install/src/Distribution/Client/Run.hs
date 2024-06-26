@@ -27,9 +27,11 @@ import Distribution.PackageDescription
   , PackageDescription (..)
   , TestSuite (..)
   )
-import Distribution.Simple.Build.PathsModule (pkgPathEnvVar)
+import Distribution.Simple (PackageDB (..))
+import Distribution.Simple.Build (addInternalBuildTools)
 import Distribution.Simple.BuildPaths (exeExtension)
 import Distribution.Simple.Compiler (CompilerFlavor (..), compilerFlavor)
+import Distribution.Simple.Flag (fromFlag)
 import Distribution.Simple.LocalBuildInfo
   ( ComponentName (..)
   , LocalBuildInfo (..)
@@ -38,6 +40,12 @@ import Distribution.Simple.LocalBuildInfo
   , interpretSymbolicPathLBI
   , mbWorkDirLBI
   )
+import Distribution.Simple.Program.Db
+import Distribution.Simple.Program.Find
+import Distribution.Simple.Program.Run
+import Distribution.Simple.Register (internalPackageDBPath)
+
+import Distribution.Simple.Setup (ConfigFlags (..))
 import Distribution.Simple.Utils
   ( addLibraryPath
   , dieWithException
@@ -135,49 +143,61 @@ splitRunArgs verbosity lbi args =
 -- | Run a given executable.
 run :: Verbosity -> LocalBuildInfo -> Executable -> [String] -> IO ()
 run verbosity lbi exe exeArgs = do
-  let buildPref = buildDir lbi
+  let distPref = fromFlag $ configDistPref $ configFlags lbi
+      buildPref = buildDir lbi
       pkg_descr = localPkgDescr lbi
       i = interpretSymbolicPathLBI lbi -- See Note [Symbolic paths] in Distribution.Utils.Path
       mbWorkDir = mbWorkDirLBI lbi
-      rawDataDir = dataDir pkg_descr
-      datDir
-        | null $ getSymbolicPath rawDataDir =
-            i sameDirectory
-        | otherwise =
-            i rawDataDir
-      dataDirEnvVar =
-        ( pkgPathEnvVar pkg_descr "datadir"
-        , datDir
-        )
+      internalPkgDb = i $ internalPackageDBPath lbi distPref
+      lbiForExe =
+        lbi
+          { withPackageDB = withPackageDB lbi ++ [SpecificPackageDB internalPkgDb]
+          , -- Include any build-tool-depends on build tools internal to the current package.
+            withPrograms =
+              addInternalBuildTools
+                pkg_descr
+                lbi
+                (buildInfo exe)
+                (withPrograms lbi)
+          }
 
   (path, runArgs) <-
     let exeName' = prettyShow $ exeName exe
-     in case compilerFlavor (compiler lbi) of
+     in case compilerFlavor (compiler lbiForExe) of
           GHCJS -> do
             let (script, cmd, cmdArgs) =
                   GHCJS.runCmd
-                    (withPrograms lbi)
+                    (withPrograms lbiForExe)
                     (i buildPref </> exeName' </> exeName')
             script' <- tryCanonicalizePath script
             return (cmd, cmdArgs ++ [script'])
           _ -> do
             p <-
               tryCanonicalizePath $
-                i buildPref </> exeName' </> (exeName' <.> exeExtension (hostPlatform lbi))
+                i buildPref </> exeName' </> (exeName' <.> exeExtension (hostPlatform lbiForExe))
             return (p, [])
 
-  env <- (dataDirEnvVar :) <$> getEnvironment
+  -- Compute the appropriate environment for running the executable
+  existingEnv <- getEnvironment
+  let progDb = withPrograms lbiForExe
+      pathVar = progSearchPath progDb
+      envOverrides = progOverrideEnv progDb
+  newPath <- programSearchPathAsPATHVar pathVar
+  overrideEnv <- fromMaybe [] <$> getEffectiveEnvironment ([("PATH", Just newPath)] ++ envOverrides)
+  let env = overrideEnv ++ existingEnv
+
   -- Add (DY)LD_LIBRARY_PATH if needed
   env' <-
-    if withDynExe lbi
+    if withDynExe lbiForExe
       then do
-        let (Platform _ os) = hostPlatform lbi
-        clbi <- case componentNameTargets' pkg_descr lbi (CExeName (exeName exe)) of
+        let (Platform _ os) = hostPlatform lbiForExe
+        clbi <- case componentNameTargets' pkg_descr lbiForExe (CExeName (exeName exe)) of
           [target] -> return (targetCLBI target)
           [] -> dieWithException verbosity CouldNotFindExecutable
           _ -> dieWithException verbosity FoundMultipleMatchingExes
-        paths <- depLibraryPaths True False lbi clbi
+        paths <- depLibraryPaths True False lbiForExe clbi
         return (addLibraryPath os paths env)
       else return env
+
   notice verbosity $ "Running " ++ prettyShow (exeName exe) ++ "..."
   rawSystemExitWithEnvCwd verbosity mbWorkDir path (runArgs ++ exeArgs) env'

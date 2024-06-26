@@ -683,6 +683,7 @@ instance Arbitrary PackageConfig where
       <*> arbitrary
       <*> arbitrary
       <*> arbitrary
+      <*> arbitrary
       <*> shortListOf 5 arbitraryShortToken
       <*> arbitrary
       <*> arbitrary
@@ -751,6 +752,7 @@ instance Arbitrary PackageConfig where
       , packageConfigFullyStaticExe = x50
       , packageConfigProf = x07
       , packageConfigProfLib = x08
+      , packageConfigProfShared = x08_1
       , packageConfigProfExe = x09
       , packageConfigProfDetail = x10
       , packageConfigProfLibDetail = x11
@@ -791,7 +793,7 @@ instance Arbitrary PackageConfig where
       , packageConfigHaddockForHackage = x41
       , packageConfigHaddockIndex = x54
       , packageConfigHaddockBaseUrl = x55
-      , packageConfigHaddockLib = x56
+      , packageConfigHaddockResourcesDir = x56
       , packageConfigHaddockOutputDir = x57
       , packageConfigTestHumanLog = x44
       , packageConfigTestMachineLog = x45
@@ -814,6 +816,7 @@ instance Arbitrary PackageConfig where
         , packageConfigFullyStaticExe = x50'
         , packageConfigProf = x07'
         , packageConfigProfLib = x08'
+        , packageConfigProfShared = x08_1'
         , packageConfigProfExe = x09'
         , packageConfigProfDetail = x10'
         , packageConfigProfLibDetail = x11'
@@ -854,7 +857,7 @@ instance Arbitrary PackageConfig where
         , packageConfigHaddockForHackage = x41'
         , packageConfigHaddockIndex = x54'
         , packageConfigHaddockBaseUrl = x55'
-        , packageConfigHaddockLib = x56'
+        , packageConfigHaddockResourcesDir = x56'
         , packageConfigHaddockOutputDir = x57'
         , packageConfigTestHumanLog = x44'
         , packageConfigTestMachineLog = x45'
@@ -866,7 +869,7 @@ instance Arbitrary PackageConfig where
         , packageConfigBenchmarkOptions = x52'
         }
       | ( ( (x00', x01', x02', x03', x04')
-            , (x05', x42', x06', x50', x07', x08', x09')
+            , (x05', x42', x06', x50', x07', x08', x08_1', x09')
             , (x10', x11', x12', x13', x14')
             , (x15', x16', x53', x17', x18', x19')
             )
@@ -883,7 +886,7 @@ instance Arbitrary PackageConfig where
           shrink
             (
               ( (preShrink_Paths x00, preShrink_Args x01, x02, x03, x04)
-              , (x05, x42, x06, x50, x07, x08, x09)
+              , (x05, x42, x06, x50, x07, x08, x08_1, x09)
               , (x10, x11, map NonEmpty x12, x13, x14)
               ,
                 ( x15

@@ -54,6 +54,9 @@ import Distribution.Client.ProjectPlanning
   , ElaboratedSharedConfig (..)
   )
 import qualified Distribution.Client.ProjectPlanning as Planning
+import Distribution.Client.ProjectPlanning.Types
+  ( dataDirsEnvironmentForPlan
+  )
 import Distribution.Client.Setup
   ( ConfigFlags (configCommonFlags)
   , GlobalFlags
@@ -167,14 +170,14 @@ execAction flags@NixStyleFlags{..} extraArgs globalFlags = do
 
   -- Some dependencies may have executables. Let's put those on the PATH.
   let extraPaths = pathAdditions baseCtx buildCtx
+      pkgProgs = pkgConfigCompilerProgs (elaboratedShared buildCtx)
+      extraEnvVars =
+        dataDirsEnvironmentForPlan
+          (distDirLayout baseCtx)
+          (elaboratedPlanToExecute buildCtx)
 
   programDb <-
-    prependProgramSearchPath
-      verbosity
-      extraPaths
-      . pkgConfigCompilerProgs
-      . elaboratedShared
-      $ buildCtx
+    prependProgramSearchPath verbosity extraPaths extraEnvVars pkgProgs
 
   -- Now that we have the packages, set up the environment. We accomplish this
   -- by creating an environment file that selects the databases and packages we

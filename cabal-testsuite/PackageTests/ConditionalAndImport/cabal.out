@@ -129,3 +129,5 @@ After searching the rest of the dependency tree exhaustively, these were the goa
 Error: [Cabal-7090]
 Error parsing project file <ROOT>/bad-conditional.project:
 Cannot set compiler in a conditional clause of a cabal project file
+# checking that missing package message lists configuration provenance
+# cabal v2-build

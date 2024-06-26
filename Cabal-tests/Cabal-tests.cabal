@@ -22,7 +22,7 @@ source-repository head
 library
   hs-source-dirs: lib
   exposed-modules: Test.Utils.TempTestDir
-  build-depends: base, directory, Cabal, filepath
+  build-depends: base, directory, Cabal, filepath, exceptions
 
 -- Small, fast running tests.
 test-suite unit-tests
@@ -57,7 +57,7 @@ test-suite unit-tests
   main-is:          UnitTests.hs
   build-depends:
       array
-    , base                >=4.9     && <5
+    , base                >=4.11    && <5
     , bytestring
     , Cabal
     , Cabal-described
@@ -71,7 +71,7 @@ test-suite unit-tests
     , QuickCheck          >=2.14  && <2.15
     , tasty               >=1.2.3 && <1.6
     , tasty-hunit
-    , tasty-quickcheck
+    , tasty-quickcheck    <0.11
     , temporary
     , text
 
@@ -176,7 +176,7 @@ test-suite rpmvercmp
       QuickCheck
     , tasty             >=1.2.3 && <1.6
     , tasty-hunit
-    , tasty-quickcheck
+    , tasty-quickcheck  <0.11
 
   c-sources:        tests/cbits/rpmvercmp.c
   cc-options:       -Wall

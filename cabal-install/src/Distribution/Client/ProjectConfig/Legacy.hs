@@ -768,6 +768,7 @@ convertLegacyPerPackageFlags
         , configFullyStaticExe = packageConfigFullyStaticExe
         , configProfExe = packageConfigProfExe
         , configProf = packageConfigProf
+        , configProfShared = packageConfigProfShared
         , configProfDetail = packageConfigProfDetail
         , configProfLibDetail = packageConfigProfLibDetail
         , configConfigureArgs = packageConfigConfigureArgs
@@ -821,7 +822,7 @@ convertLegacyPerPackageFlags
         , haddockContents = packageConfigHaddockContents
         , haddockIndex = packageConfigHaddockIndex
         , haddockBaseUrl = packageConfigHaddockBaseUrl
-        , haddockLib = packageConfigHaddockLib
+        , haddockResourcesDir = packageConfigHaddockResourcesDir
         , haddockOutputDir = packageConfigHaddockOutputDir
         } = haddockFlags
 
@@ -1074,6 +1075,7 @@ convertToLegacyAllPackageConfig
           , configFullyStaticExe = mempty
           , configProfExe = mempty
           , configProf = mempty
+          , configProfShared = mempty
           , configProfDetail = mempty
           , configProfLibDetail = mempty
           , configConfigureArgs = mempty
@@ -1150,6 +1152,7 @@ convertToLegacyPerPackageConfig PackageConfig{..} =
         , configFullyStaticExe = packageConfigFullyStaticExe
         , configProfExe = packageConfigProfExe
         , configProf = packageConfigProf
+        , configProfShared = packageConfigProfShared
         , configProfDetail = packageConfigProfDetail
         , configProfLibDetail = packageConfigProfLibDetail
         , configConfigureArgs = packageConfigConfigureArgs
@@ -1218,7 +1221,7 @@ convertToLegacyPerPackageConfig PackageConfig{..} =
         , haddockKeepTempFiles = mempty
         , haddockIndex = packageConfigHaddockIndex
         , haddockBaseUrl = packageConfigHaddockBaseUrl
-        , haddockLib = packageConfigHaddockLib
+        , haddockResourcesDir = packageConfigHaddockResourcesDir
         , haddockOutputDir = packageConfigHaddockOutputDir
         }
 
@@ -1545,11 +1548,13 @@ legacyPackageConfigFieldDescrs =
         , "program-suffix"
         , "library-vanilla"
         , "library-profiling"
+        , "library-vanilla"
         , "shared"
         , "static"
         , "executable-dynamic"
         , "executable-static"
         , "profiling"
+        , "profiling-shared"
         , "executable-profiling"
         , "profiling-detail"
         , "library-profiling-detail"
@@ -1619,7 +1624,7 @@ legacyPackageConfigFieldDescrs =
             , "index-location"
             , "keep-temp-files"
             , "base-url"
-            , "lib"
+            , "resources-dir"
             , "output-dir"
             ]
           . commandOptionsToFields

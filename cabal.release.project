@@ -1,0 +1,8 @@
+import: project-cabal/pkgs/cabal.config
+import: project-cabal/pkgs/install.config
+import: project-cabal/pkgs/tests.config
+
+constraints:
+  hashable -arch-native
+
+index-state: hackage.haskell.org 2024-06-17T00:00:01Z

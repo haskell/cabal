@@ -4,49 +4,26 @@ set -Eeuo pipefail
 
 source "$CI_PROJECT_DIR/.gitlab/common.sh"
 
-export GHCUP_INSTALL_BASE_PREFIX="$CI_PROJECT_DIR/toolchain"
+if [[ "$(uname)" == "Linux" ]]; then
+    export PATH="/opt/ghc/${GHC_VERSION}/bin:${PATH}"
+# Not all runners use ci-images, so ghcup is used.
+else
+    . "$CI_PROJECT_DIR/.gitlab/ghcup.sh"
+fi
+
 export CABAL_DIR="$CI_PROJECT_DIR/cabal"
 
 case "$(uname)" in
     MSYS_*|MINGW*)
         export CABAL_DIR="$(cygpath -w "$CABAL_DIR")"
-        GHCUP_BINDIR="${GHCUP_INSTALL_BASE_PREFIX}/ghcup/bin"
         EXE_EXT=".exe"
         ;;
     *)
-        GHCUP_BINDIR="${GHCUP_INSTALL_BASE_PREFIX}/.ghcup/bin"
         EXE_EXT=""
         ;;
 esac
 
 mkdir -p "$CABAL_DIR"
-mkdir -p "$GHCUP_BINDIR"
-export PATH="$GHCUP_BINDIR:$PATH"
-
-export BOOTSTRAP_HASKELL_NONINTERACTIVE=1
-export BOOTSTRAP_HASKELL_GHC_VERSION=$GHC_VERSION
-export BOOTSTRAP_HASKELL_CABAL_VERSION=$CABAL_INSTALL_VERSION
-export BOOTSTRAP_HASKELL_ADJUST_CABAL_CONFIG=yes
-# We don't use stack, and it isn't available on i386-deb9
-export BOOTSTRAP_HASKELL_INSTALL_NO_STACK=yes
-
-# for some reason the subshell doesn't pick up the arm64 environment on darwin
-# and starts installing x86_64 GHC
-case "$(uname -s)" in
-    "Darwin"|"darwin")
-        case "$(/usr/bin/arch)" in
-            aarch64|arm64|armv8l)
-                curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | arch -arm64 /bin/bash
-                ;;
-            *)
-                curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | sh
-                ;;
-        esac
-        ;;
-    *)
-        curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | sh
-        ;;
-esac
 
 # https://github.com/haskell/cabal/issues/7313#issuecomment-811851884
 # and
@@ -54,7 +31,7 @@ esac
 #
 # $PLATFORM comes from CI.
 if [ "$(getconf LONG_BIT)" = "32" -o "${PLATFORM:=xxx}" = "x86_64-linux-centos7" ] ; then
-    echo 'constraints: lukko -ofd-locking' >> cabal.project.release.local
+    echo 'constraints: lukko -ofd-locking' >> cabal.release.project.local
 fi
 
 # In February 2024, cabal started using zlib-0.7.0.0, which uses pkg-config by
@@ -62,22 +39,21 @@ fi
 # does just fine without it on modern GHCs. That said, the CI environment
 # probably *should* have pkg-config installed. See
 # https://github.com/haskell/cabal/issues/9774.
-echo 'constraints: zlib -pkg-config' >> cabal.project.release.local
+echo 'constraints: zlib -pkg-config' >> cabal.release.project.local
 # Furthermore, on Windows, zlib claims that libz is shipped with GHC, so it just
 # uses @extra-libraries: z@ if pkg-config is False. If you are reading this
 # comment, however, this didn't work. Thus we switch to using the bundled libz,
 # as was done in zlib <0.7.0.0.
 case "$(uname)" in
     MSYS_*|MINGW*)
-        echo 'constraints: zlib +bundled-c-zlib' >> cabal.project.release.local
+        echo 'constraints: zlib +bundled-c-zlib' >> cabal.release.project.local
     ;;
 esac
 
 args=(
-    -w "ghc-$GHC_VERSION"
     --disable-profiling
     --enable-executable-stripping
-    --project-file=cabal.project.release
+    --project-file=cabal.release.project
     ${ADD_CABAL_ARGS}
 )
 

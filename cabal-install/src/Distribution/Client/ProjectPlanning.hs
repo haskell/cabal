@@ -127,7 +127,7 @@ import Distribution.Client.SetupWrapper
 import Distribution.Client.Store
 import Distribution.Client.Targets (userToPackageConstraint)
 import Distribution.Client.Types
-import Distribution.Client.Utils (incVersion)
+import Distribution.Client.Utils (concatMapM, incVersion)
 
 import qualified Distribution.Client.BuildReports.Storage as BuildReports
 import qualified Distribution.Client.IndexUtils as IndexUtils
@@ -165,6 +165,8 @@ import Distribution.Simple.LocalBuildInfo
   , componentName
   , pkgComponents
   )
+
+import Distribution.Simple.BuildWay
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import Distribution.Simple.Program
 import Distribution.Simple.Program.Db
@@ -206,7 +208,7 @@ import qualified Distribution.Solver.Types.ComponentDeps as CD
 import qualified Distribution.Compat.Graph as Graph
 
 import Control.Exception (assert)
-import Control.Monad (forM, sequence)
+import Control.Monad (sequence)
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.State as State (State, execState, runState, state)
 import Data.Foldable (fold)
@@ -480,9 +482,10 @@ configureCompiler
       )
       $ do
         liftIO $ info verbosity "Compiler settings changed, reconfiguring..."
-        progdb <- liftIO $ prependProgramSearchPath verbosity (fromNubList packageConfigProgramPathExtra) defaultProgramDb
+        let extraPath = fromNubList packageConfigProgramPathExtra
+        progdb <- liftIO $ prependProgramSearchPath verbosity extraPath [] defaultProgramDb
         let progdb' = userSpecifyPaths (Map.toList (getMapLast packageConfigProgramPaths)) progdb
-        result@(_, _, progdb'') <-
+        (comp, plat, progdb'') <-
           liftIO $
             Cabal.configCompilerEx
               hcFlavor
@@ -499,7 +502,12 @@ configureCompiler
         -- programs it cares about, and those are the ones we monitor here.
         monitorFiles (programsMonitorFiles progdb'')
 
-        return result
+        -- Configure the unconfigured programs in the program database,
+        -- as we can't serialise unconfigured programs.
+        -- See also #2241 and #9840.
+        finalProgDb <- liftIO $ configureAllKnownPrograms verbosity progdb''
+
+        return (comp, plat, finalProgDb)
     where
       hcFlavor = flagToMaybe projectConfigHcFlavor
       hcPath = flagToMaybe projectConfigHcPath
@@ -1063,25 +1071,29 @@ getPackageSourceHashes verbosity withRepoCtx solverPlan = do
       -- Tarballs from repositories, either where the repository provides
       -- hashes as part of the repo metadata, or where we will have to
       -- download and hash the tarball.
-      repoTarballPkgsWithMetadataUnvalidated :: [(PackageId, Repo)]
-      repoTarballPkgsWithoutMetadata :: [(PackageId, Repo)]
+      repoTarballPkgsWithMetadataUnvalidated :: [(Repo, [PackageId])]
+      repoTarballPkgsWithoutMetadata :: [(Repo, PackageId)]
       ( repoTarballPkgsWithMetadataUnvalidated
         , repoTarballPkgsWithoutMetadata
         ) =
           partitionEithers
             [ case repo of
-              RepoSecure{} -> Left (pkgid, repo)
-              _ -> Right (pkgid, repo)
+              RepoSecure{} -> Left (repo, [pkgid])
+              _ -> Right (repo, pkgid)
             | (pkgid, RepoTarballPackage repo _ _) <- allPkgLocations
             ]
 
+      -- Group up the unvalidated packages by repo so we only read the remote
+      -- index once per repo (see #10110). The packages are ungrouped here and then regrouped
+      -- below, it would be better in future to refactor this whole code path so that we don't
+      -- repeatedly group and ungroup.
+      repoTarballPkgsWithMetadataUnvalidatedMap = Map.fromListWith (++) repoTarballPkgsWithMetadataUnvalidated
+
   (repoTarballPkgsWithMetadata, repoTarballPkgsToDownloadWithMeta) <- fmap partitionEithers $
     liftIO $
-      withRepoCtx $ \repoctx -> forM repoTarballPkgsWithMetadataUnvalidated $
-        \x@(pkg, repo) ->
-          verifyFetchedTarball verbosity repoctx repo pkg >>= \b -> case b of
-            True -> return $ Left x
-            False -> return $ Right x
+      withRepoCtx $ \repoctx -> flip concatMapM (Map.toList repoTarballPkgsWithMetadataUnvalidatedMap) $
+        \(repo, pkgids) ->
+          verifyFetchedTarballs verbosity repoctx repo pkgids
 
   -- For tarballs from repos that do not have hashes available we now have
   -- to check if the packages were downloaded already.
@@ -1095,9 +1107,9 @@ getPackageSourceHashes verbosity withRepoCtx solverPlan = do
           [ do
             mtarball <- checkRepoTarballFetched repo pkgid
             case mtarball of
-              Nothing -> return (Left (pkgid, repo))
+              Nothing -> return (Left (repo, pkgid))
               Just tarball -> return (Right (pkgid, tarball))
-          | (pkgid, repo) <- repoTarballPkgsWithoutMetadata
+          | (repo, pkgid) <- repoTarballPkgsWithoutMetadata
           ]
 
   let repoTarballPkgsToDownload = repoTarballPkgsToDownloadWithMeta ++ repoTarballPkgsToDownloadWithNoMeta
@@ -1133,9 +1145,9 @@ getPackageSourceHashes verbosity withRepoCtx solverPlan = do
                       | pkgid <- pkgids
                       ]
                 | (repo, pkgids) <-
-                    map (\grp@((_, repo) :| _) -> (repo, map fst (NE.toList grp)))
-                      . NE.groupBy ((==) `on` (remoteRepoName . repoRemote . snd))
-                      . sortBy (compare `on` (remoteRepoName . repoRemote . snd))
+                    map (\grp@((repo, _) :| _) -> (repo, map snd (NE.toList grp)))
+                      . NE.groupBy ((==) `on` (remoteRepoName . repoRemote . fst))
+                      . sortBy (compare `on` (remoteRepoName . repoRemote . fst))
                       $ repoTarballPkgsWithMetadata
                 ]
 
@@ -1147,7 +1159,7 @@ getPackageSourceHashes verbosity withRepoCtx solverPlan = do
             [ do
               tarball <- fetchRepoTarball verbosity repoctx repo pkgid
               return (pkgid, tarball)
-            | (pkgid, repo) <- repoTarballPkgsToDownload
+            | (repo, pkgid) <- repoTarballPkgsToDownload
             ]
 
         return
@@ -1617,13 +1629,18 @@ elaborateInstallPlan
                 (map fst src_comps)
             let whyNotPerComp = why_not_per_component src_comps
             case NE.nonEmpty whyNotPerComp of
-              Nothing -> return comps
+              Nothing -> do
+                elaborationWarnings
+                return comps
               Just notPerCompReasons -> do
                 checkPerPackageOk comps notPerCompReasons
-                return
-                  [ elaborateSolverToPackage notPerCompReasons spkg g $
-                      comps ++ maybeToList setupComponent
-                  ]
+                pkgComp <-
+                  elaborateSolverToPackage
+                    notPerCompReasons
+                    spkg
+                    g
+                    (comps ++ maybeToList setupComponent)
+                return [pkgComp]
           Left cns ->
             dieProgress $
               hang
@@ -1631,6 +1648,7 @@ elaborateInstallPlan
                 4
                 (vcat (map (text . componentNameStanza) cns))
         where
+          bt = PD.buildType (elabPkgDescription elab0)
           -- You are eligible to per-component build if this list is empty
           why_not_per_component g =
             cuz_buildtype ++ cuz_spec ++ cuz_length ++ cuz_flag
@@ -1646,11 +1664,12 @@ elaborateInstallPlan
               -- type, and teach all of the code paths how to handle it.
               -- Once you've implemented this, swap it for the code below.
               cuz_buildtype =
-                case PD.buildType (elabPkgDescription elab0) of
+                case bt of
                   PD.Configure -> [CuzBuildType CuzConfigureBuildType]
                   PD.Custom -> [CuzBuildType CuzCustomBuildType]
+                  PD.Hooks -> [CuzBuildType CuzHooksBuildType]
                   PD.Make -> [CuzBuildType CuzMakeBuildType]
-                  _ -> []
+                  PD.Simple -> []
               -- cabal-format versions prior to 1.8 have different build-depends semantics
               -- for now it's easier to just fallback to legacy-mode when specVersion < 1.8
               -- see, https://github.com/haskell/cabal/issues/4121
@@ -1684,7 +1703,7 @@ elaborateInstallPlan
                   <+> fsep (punctuate comma $ map (text . whyNotPerComponent) $ toList reasons)
           -- TODO: Maybe exclude Backpack too
 
-          elab0 = elaborateSolverToCommon spkg
+          (elab0, elaborationWarnings) = elaborateSolverToCommon spkg
           pkgid = elabPkgSourceId elab0
           pd = elabPkgDescription elab0
 
@@ -1694,7 +1713,7 @@ elaborateInstallPlan
           -- have to add dependencies on this from all other components
           setupComponent :: Maybe ElaboratedConfiguredPackage
           setupComponent
-            | PD.buildType (elabPkgDescription elab0) == PD.Custom =
+            | bt `elem` [PD.Custom, PD.Hooks] =
                 Just
                   elab0
                     { elabModuleShape = emptyModuleShape
@@ -1980,7 +1999,7 @@ elaborateInstallPlan
         -> SolverPackage UnresolvedPkgLoc
         -> ComponentsGraph
         -> [ElaboratedConfiguredPackage]
-        -> ElaboratedConfiguredPackage
+        -> LogProgress ElaboratedConfiguredPackage
       elaborateSolverToPackage
         pkgWhyNotPerComponent
         pkg@( SolverPackage
@@ -1991,13 +2010,14 @@ elaborateInstallPlan
                 _exe_deps0
               )
         compGraph
-        comps =
+        comps = do
           -- Knot tying: the final elab includes the
           -- pkgInstalledId, which is calculated by hashing many
           -- of the other fields of the elaboratedPackage.
-          elab
+          elaborationWarnings
+          return elab
           where
-            elab0@ElaboratedConfiguredPackage{..} =
+            (elab0@ElaboratedConfiguredPackage{..}, elaborationWarnings) =
               elaborateSolverToCommon pkg
 
             elab1 =
@@ -2083,7 +2103,7 @@ elaborateInstallPlan
 
       elaborateSolverToCommon
         :: SolverPackage UnresolvedPkgLoc
-        -> ElaboratedConfiguredPackage
+        -> (ElaboratedConfiguredPackage, LogProgress ())
       elaborateSolverToCommon
         pkg@( SolverPackage
                 (SourcePackage pkgid gdesc srcloc descOverride)
@@ -2092,7 +2112,7 @@ elaborateInstallPlan
                 deps0
                 _exe_deps0
               ) =
-          elaboratedPackage
+          (elaboratedPackage, wayWarnings pkgid)
           where
             elaboratedPackage = ElaboratedConfiguredPackage{..}
 
@@ -2160,6 +2180,13 @@ elaborateInstallPlan
             elabBuildHaddocks =
               perPkgOptionFlag pkgid False packageConfigDocumentation
 
+            -- `documentation: true` should imply `-haddock` for GHC
+            addHaddockIfDocumentationEnabled :: ConfiguredProgram -> ConfiguredProgram
+            addHaddockIfDocumentationEnabled cp@ConfiguredProgram{..} =
+              if programId == "ghc" && elabBuildHaddocks
+                then cp{programOverrideArgs = "-haddock" : programOverrideArgs}
+                else cp
+
             elabPkgSourceLocation = srcloc
             elabPkgSourceHash = Map.lookup pkgid sourcePackageHashes
             elabLocalToProject = isLocalToProject pkg
@@ -2193,13 +2220,14 @@ elaborateInstallPlan
             elabBuildOptions =
               LBC.BuildOptions
                 { withVanillaLib = perPkgOptionFlag pkgid True packageConfigVanillaLib -- TODO: [required feature]: also needs to be handled recursively
-                , withSharedLib = pkgid `Set.member` pkgsUseSharedLibrary
+                , withSharedLib = canBuildSharedLibs && pkgid `Set.member` pkgsUseSharedLibrary
                 , withStaticLib = perPkgOptionFlag pkgid False packageConfigStaticLib
                 , withDynExe = perPkgOptionFlag pkgid False packageConfigDynExe
                 , withFullyStaticExe = perPkgOptionFlag pkgid False packageConfigFullyStaticExe
                 , withGHCiLib = perPkgOptionFlag pkgid False packageConfigGHCiLib -- TODO: [required feature] needs to default to enabled on windows still
                 , withProfExe = perPkgOptionFlag pkgid False packageConfigProf
-                , withProfLib = pkgid `Set.member` pkgsUseProfilingLibrary
+                , withProfLib = canBuildProfilingLibs && pkgid `Set.member` pkgsUseProfilingLibrary
+                , withProfLibShared = canBuildProfilingSharedLibs && pkgid `Set.member` pkgsUseProfilingLibraryShared
                 , exeCoverage = perPkgOptionFlag pkgid False packageConfigCoverage
                 , libCoverage = perPkgOptionFlag pkgid False packageConfigCoverage
                 , withOptimization = perPkgOptionFlag pkgid NormalOptimisation packageConfigOptimization
@@ -2239,7 +2267,7 @@ elaborateInstallPlan
               Map.fromList
                 [ (programId prog, args)
                 | prog <- configuredPrograms compilerprogdb
-                , let args = programOverrideArgs prog
+                , let args = programOverrideArgs $ addHaddockIfDocumentationEnabled prog
                 , not (null args)
                 ]
                 <> perPkgOptionMapMappend pkgid packageConfigProgramArgs
@@ -2268,7 +2296,7 @@ elaborateInstallPlan
             elabHaddockContents = perPkgOptionMaybe pkgid packageConfigHaddockContents
             elabHaddockIndex = perPkgOptionMaybe pkgid packageConfigHaddockIndex
             elabHaddockBaseUrl = perPkgOptionMaybe pkgid packageConfigHaddockBaseUrl
-            elabHaddockLib = perPkgOptionMaybe pkgid packageConfigHaddockLib
+            elabHaddockResourcesDir = perPkgOptionMaybe pkgid packageConfigHaddockResourcesDir
             elabHaddockOutputDir = perPkgOptionMaybe pkgid packageConfigHaddockOutputDir
 
             elabTestMachineLog = perPkgOptionMaybe pkgid packageConfigTestMachineLog
@@ -2358,35 +2386,112 @@ elaborateInstallPlan
       pkgsUseSharedLibrary :: Set PackageId
       pkgsUseSharedLibrary =
         packagesWithLibDepsDownwardClosedProperty needsSharedLib
+
+      needsSharedLib pkgid =
+        fromMaybe
+          compilerShouldUseSharedLibByDefault
+          -- Case 1: --enable-shared or --disable-shared is passed explicitly, honour that.
+          ( case pkgSharedLib of
+              Just v -> Just v
+              Nothing -> case pkgDynExe of
+                -- case 2: If --enable-executable-dynamic is passed then turn on
+                -- shared library generation.
+                Just True ->
+                  -- Case 3: If --enable-profiling is passed, then we are going to
+                  -- build profiled dynamic, so no need for shared libraries.
+                  case pkgProf of
+                    Just True -> if canBuildProfilingSharedLibs then Nothing else Just True
+                    _ -> Just True
+                -- But don't necessarily turn off shared library generation if
+                -- --disable-executable-dynamic is passed. The shared objects might
+                -- be needed for something different.
+                _ -> Nothing
+          )
         where
-          needsSharedLib pkg =
-            fromMaybe
-              compilerShouldUseSharedLibByDefault
-              (liftM2 (||) pkgSharedLib pkgDynExe)
-            where
-              pkgid = packageId pkg
-              pkgSharedLib = perPkgOptionMaybe pkgid packageConfigSharedLib
-              pkgDynExe = perPkgOptionMaybe pkgid packageConfigDynExe
+          pkgSharedLib = perPkgOptionMaybe pkgid packageConfigSharedLib
+          pkgDynExe = perPkgOptionMaybe pkgid packageConfigDynExe
+          pkgProf = perPkgOptionMaybe pkgid packageConfigProf
 
       -- TODO: [code cleanup] move this into the Cabal lib. It's currently open
       -- coded in Distribution.Simple.Configure, but should be made a proper
       -- function of the Compiler or CompilerInfo.
       compilerShouldUseSharedLibByDefault =
         case compilerFlavor compiler of
-          GHC -> GHC.isDynamic compiler
+          GHC -> GHC.compilerBuildWay compiler == DynWay && canBuildSharedLibs
           GHCJS -> GHCJS.isDynamic compiler
           _ -> False
+
+      compilerShouldUseProfilingLibByDefault =
+        case compilerFlavor compiler of
+          GHC -> GHC.compilerBuildWay compiler == ProfWay && canBuildProfilingLibs
+          _ -> False
+
+      compilerShouldUseProfilingSharedLibByDefault =
+        case compilerFlavor compiler of
+          GHC -> GHC.compilerBuildWay compiler == ProfDynWay && canBuildProfilingSharedLibs
+          _ -> False
+
+      -- Returns False if we definitely can't build shared libs
+      canBuildWayLibs predicate = case predicate compiler of
+        Just can_build -> can_build
+        -- If we don't know for certain, just assume we can
+        -- which matches behaviour in previous cabal releases
+        Nothing -> True
+
+      canBuildSharedLibs = canBuildWayLibs dynamicSupported
+      canBuildProfilingLibs = canBuildWayLibs profilingVanillaSupported
+      canBuildProfilingSharedLibs = canBuildWayLibs profilingDynamicSupported
+
+      wayWarnings pkg = do
+        when
+          (needsProfilingLib pkg && not canBuildProfilingLibs)
+          (warnProgress (text "Compiler does not support building p libraries, profiling is disabled"))
+        when
+          (needsSharedLib pkg && not canBuildSharedLibs)
+          (warnProgress (text "Compiler does not support building dyn libraries, dynamic libraries are disabled"))
+        when
+          (needsProfilingLibShared pkg && not canBuildProfilingSharedLibs)
+          (warnProgress (text "Compiler does not support building p_dyn libraries, profiling dynamic libraries are disabled."))
 
       pkgsUseProfilingLibrary :: Set PackageId
       pkgsUseProfilingLibrary =
         packagesWithLibDepsDownwardClosedProperty needsProfilingLib
+
+      needsProfilingLib pkg =
+        fromFlagOrDefault compilerShouldUseProfilingLibByDefault (profBothFlag <> profLibFlag)
         where
-          needsProfilingLib pkg =
-            fromFlagOrDefault False (profBothFlag <> profLibFlag)
-            where
-              pkgid = packageId pkg
-              profBothFlag = lookupPerPkgOption pkgid packageConfigProf
-              profLibFlag = lookupPerPkgOption pkgid packageConfigProfLib
+          pkgid = packageId pkg
+          profBothFlag = lookupPerPkgOption pkgid packageConfigProf
+          profLibFlag = lookupPerPkgOption pkgid packageConfigProfLib
+
+      pkgsUseProfilingLibraryShared :: Set PackageId
+      pkgsUseProfilingLibraryShared =
+        packagesWithLibDepsDownwardClosedProperty needsProfilingLibShared
+
+      needsProfilingLibShared pkg =
+        fromMaybe
+          compilerShouldUseProfilingSharedLibByDefault
+          -- case 1: If --enable-profiling-shared is passed explicitly, honour that
+          ( case profLibSharedFlag of
+              Just v -> Just v
+              Nothing -> case pkgDynExe of
+                Just True ->
+                  case pkgProf of
+                    -- case 2: --enable-executable-dynamic + --enable-profiling
+                    -- turn on shared profiling libraries
+                    Just True -> if canBuildProfilingSharedLibs then Just True else Nothing
+                    _ -> Nothing
+                -- But don't necessarily turn off shared library generation is
+                -- --disable-executable-dynamic is passed. The shared objects might
+                -- be needed for something different.
+                _ -> Nothing
+          )
+        where
+          pkgid = packageId pkg
+          profLibSharedFlag = perPkgOptionMaybe pkgid packageConfigProfShared
+          pkgDynExe = perPkgOptionMaybe pkgid packageConfigDynExe
+          pkgProf = perPkgOptionMaybe pkgid packageConfigProf
+
       -- TODO: [code cleanup] unused: the old deprecated packageConfigProfExe
 
       libDepGraph =
@@ -2403,7 +2508,7 @@ elaborateInstallPlan
             libDepGraph
             [ Graph.nodeKey pkg
             | pkg <- SolverInstallPlan.toList solverPlan
-            , property pkg -- just the packages that satisfy the property
+            , property (packageId pkg) -- just the packages that satisfy the property
             -- TODO: [nice to have] this does not check the config consistency,
             -- e.g. a package explicitly turning off profiling, but something
             -- depending on it that needs profiling. This really needs a separate
@@ -3678,7 +3783,14 @@ setupHsScriptOptions
   cacheLock =
     SetupScriptOptions
       { useCabalVersion = thisVersion elabSetupScriptCliVersion
-      , useCabalSpecVersion = Just elabSetupScriptCliVersion
+      , useCabalSpecVersion =
+          if PD.buildType elabPkgDescription == PD.Hooks
+            then -- NB: we don't want to commit to a Cabal version here:
+            --   - all that should matter for Hooks build-type is the
+            --     version of Cabal-hooks, not of Cabal,
+            --   - if we commit to a Cabal version, the logic in
+              Nothing
+            else Just elabSetupScriptCliVersion
       , useCompiler = Just pkgConfigCompiler
       , usePlatform = Just pkgConfigPlatform
       , usePackageDB = elabSetupPackageDBStack
@@ -3811,7 +3923,7 @@ setupHsConfigureFlags
     sanityCheckElaboratedConfiguredPackage
       sharedConfig
       elab
-      (Cabal.ConfigFlags{..})
+      Cabal.ConfigFlags{..}
     where
       Cabal.ConfigFlags
         { configVanillaLib
@@ -3822,6 +3934,7 @@ setupHsConfigureFlags
         , configGHCiLib
         , -- , configProfExe -- overridden
         configProfLib
+        , configProfShared
         , -- , configProf -- overridden
         configProfDetail
         , configProfLibDetail
@@ -4091,41 +4204,46 @@ setupHsRegisterFlags
 setupHsHaddockFlags
   :: ElaboratedConfiguredPackage
   -> ElaboratedSharedConfig
+  -> BuildTimeSettings
   -> Cabal.CommonSetupFlags
   -> Cabal.HaddockFlags
-setupHsHaddockFlags (ElaboratedConfiguredPackage{..}) (ElaboratedSharedConfig{..}) common =
-  Cabal.HaddockFlags
-    { haddockCommonFlags = common
-    , haddockProgramPaths =
-        case lookupProgram haddockProgram pkgConfigCompilerProgs of
-          Nothing -> mempty
-          Just prg ->
-            [
-              ( programName haddockProgram
-              , locationPath (programLocation prg)
-              )
-            ]
-    , haddockProgramArgs = mempty -- unused, set at configure time
-    , haddockHoogle = toFlag elabHaddockHoogle
-    , haddockHtml = toFlag elabHaddockHtml
-    , haddockHtmlLocation = maybe mempty toFlag elabHaddockHtmlLocation
-    , haddockForHackage = toFlag elabHaddockForHackage
-    , haddockForeignLibs = toFlag elabHaddockForeignLibs
-    , haddockExecutables = toFlag elabHaddockExecutables
-    , haddockTestSuites = toFlag elabHaddockTestSuites
-    , haddockBenchmarks = toFlag elabHaddockBenchmarks
-    , haddockInternal = toFlag elabHaddockInternal
-    , haddockCss = maybe mempty toFlag elabHaddockCss
-    , haddockLinkedSource = toFlag elabHaddockLinkedSource
-    , haddockQuickJump = toFlag elabHaddockQuickJump
-    , haddockHscolourCss = maybe mempty toFlag elabHaddockHscolourCss
-    , haddockContents = maybe mempty toFlag elabHaddockContents
-    , haddockKeepTempFiles = mempty -- TODO: from build settings
-    , haddockIndex = maybe mempty toFlag elabHaddockIndex
-    , haddockBaseUrl = maybe mempty toFlag elabHaddockBaseUrl
-    , haddockLib = maybe mempty toFlag elabHaddockLib
-    , haddockOutputDir = maybe mempty toFlag elabHaddockOutputDir
-    }
+setupHsHaddockFlags
+  (ElaboratedConfiguredPackage{..})
+  (ElaboratedSharedConfig{..})
+  (BuildTimeSettings{buildSettingKeepTempFiles = keepTmpFiles})
+  common =
+    Cabal.HaddockFlags
+      { haddockCommonFlags = common
+      , haddockProgramPaths =
+          case lookupProgram haddockProgram pkgConfigCompilerProgs of
+            Nothing -> mempty
+            Just prg ->
+              [
+                ( programName haddockProgram
+                , locationPath (programLocation prg)
+                )
+              ]
+      , haddockProgramArgs = mempty -- unused, set at configure time
+      , haddockHoogle = toFlag elabHaddockHoogle
+      , haddockHtml = toFlag elabHaddockHtml
+      , haddockHtmlLocation = maybe mempty toFlag elabHaddockHtmlLocation
+      , haddockForHackage = toFlag elabHaddockForHackage
+      , haddockForeignLibs = toFlag elabHaddockForeignLibs
+      , haddockExecutables = toFlag elabHaddockExecutables
+      , haddockTestSuites = toFlag elabHaddockTestSuites
+      , haddockBenchmarks = toFlag elabHaddockBenchmarks
+      , haddockInternal = toFlag elabHaddockInternal
+      , haddockCss = maybe mempty toFlag elabHaddockCss
+      , haddockLinkedSource = toFlag elabHaddockLinkedSource
+      , haddockQuickJump = toFlag elabHaddockQuickJump
+      , haddockHscolourCss = maybe mempty toFlag elabHaddockHscolourCss
+      , haddockContents = maybe mempty toFlag elabHaddockContents
+      , haddockKeepTempFiles = toFlag keepTmpFiles
+      , haddockIndex = maybe mempty toFlag elabHaddockIndex
+      , haddockBaseUrl = maybe mempty toFlag elabHaddockBaseUrl
+      , haddockResourcesDir = maybe mempty toFlag elabHaddockResourcesDir
+      , haddockOutputDir = maybe mempty toFlag elabHaddockOutputDir
+      }
 
 setupHsHaddockArgs :: ElaboratedConfiguredPackage -> [String]
 -- TODO: Does the issue #3335 affects test as well
@@ -4281,7 +4399,7 @@ packageHashConfigInputs shared@ElaboratedSharedConfig{..} pkg =
     , pkgHashHaddockContents = elabHaddockContents
     , pkgHashHaddockIndex = elabHaddockIndex
     , pkgHashHaddockBaseUrl = elabHaddockBaseUrl
-    , pkgHashHaddockLib = elabHaddockLib
+    , pkgHashHaddockResourcesDir = elabHaddockResourcesDir
     , pkgHashHaddockOutputDir = elabHaddockOutputDir
     }
   where

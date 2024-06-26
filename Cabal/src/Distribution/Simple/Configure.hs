@@ -32,6 +32,7 @@
 -- level.
 module Distribution.Simple.Configure
   ( configure
+  , configure_setupHooks
   , writePersistBuildConfig
   , getConfigStateFile
   , getPersistBuildConfig
@@ -80,15 +81,28 @@ import Distribution.PackageDescription.Configuration
 import Distribution.PackageDescription.PrettyPrint
 import Distribution.Simple.BuildTarget
 import Distribution.Simple.BuildToolDepends
+import Distribution.Simple.BuildWay
 import Distribution.Simple.Compiler
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.PackageIndex (InstalledPackageIndex, lookupUnitId)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.PreProcess
 import Distribution.Simple.Program
-import Distribution.Simple.Program.Db (lookupProgramByName, modifyProgramSearchPath, prependProgramSearchPath)
+import Distribution.Simple.Program.Db
+  ( ProgramDb (..)
+  , lookupProgramByName
+  , modifyProgramSearchPath
+  , prependProgramSearchPath
+  , updateConfiguredProgs
+  )
 import Distribution.Simple.Setup.Common as Setup
 import Distribution.Simple.Setup.Config as Setup
+import Distribution.Simple.SetupHooks.Internal
+  ( ConfigureHooks (..)
+  , applyComponentDiffs
+  , noConfigureHooks
+  )
+import qualified Distribution.Simple.SetupHooks.Internal as SetupHooks
 import Distribution.Simple.Utils
 import Distribution.System
 import Distribution.Types.ComponentRequestedSpec
@@ -435,17 +449,99 @@ configure
   :: (GenericPackageDescription, HookedBuildInfo)
   -> ConfigFlags
   -> IO LocalBuildInfo
-configure (g_pkg_descr, hookedBuildInfo) cfg = do
-  -- Cabal pre-configure
-  (lbc1, comp, platform, enabledComps) <- preConfigurePackage cfg g_pkg_descr
+configure = configure_setupHooks noConfigureHooks
 
-  -- Cabal package-wide configure
-  (lbc2, pbd2, pkg_info) <-
-    finalizeAndConfigurePackage cfg lbc1 g_pkg_descr comp platform enabledComps
+configure_setupHooks
+  :: ConfigureHooks
+  -> (GenericPackageDescription, HookedBuildInfo)
+  -> ConfigFlags
+  -> IO LocalBuildInfo
+configure_setupHooks
+  (ConfigureHooks{preConfPackageHook, postConfPackageHook, preConfComponentHook})
+  (g_pkg_descr, hookedBuildInfo)
+  cfg = do
+    -- Cabal pre-configure
+    let verbosity = fromFlag (configVerbosity cfg)
+        distPref = fromFlag $ configDistPref cfg
+        mbWorkDir = flagToMaybe $ configWorkingDir cfg
+    (lbc0, comp, platform, enabledComps) <- preConfigurePackage cfg g_pkg_descr
 
-  -- Cabal per-component configure
-  externalPkgDeps <- finalCheckPackage g_pkg_descr pbd2 hookedBuildInfo pkg_info
-  configureComponents lbc2 pbd2 pkg_info externalPkgDeps
+    -- Package-wide pre-configure hook
+    lbc1 <-
+      case preConfPackageHook of
+        Nothing -> return lbc0
+        Just pre_conf -> do
+          let programDb0 = LBC.withPrograms lbc0
+              programDb0' = programDb0{unconfiguredProgs = Map.empty}
+              input =
+                SetupHooks.PreConfPackageInputs
+                  { SetupHooks.configFlags = cfg
+                  , SetupHooks.localBuildConfig = lbc0{LBC.withPrograms = programDb0'}
+                  , -- Unconfigured programs are not supplied to the hook,
+                    -- as these cannot be passed over a serialisation boundary
+                    -- (see the "Binary ProgramDb" instance).
+                    SetupHooks.compiler = comp
+                  , SetupHooks.platform = platform
+                  }
+          SetupHooks.PreConfPackageOutputs
+            { SetupHooks.buildOptions = opts1
+            , SetupHooks.extraConfiguredProgs = progs1
+            } <-
+            pre_conf input
+          -- The package-wide pre-configure hook returns BuildOptions that
+          -- overrides the one it was passed in, as well as an update to
+          -- the ProgramDb in the form of new configured programs to add
+          -- to the program database.
+          return $
+            lbc0
+              { LBC.withBuildOptions = opts1
+              , LBC.withPrograms =
+                  updateConfiguredProgs
+                    (`Map.union` progs1)
+                    programDb0
+              }
+
+    -- Cabal package-wide configure
+    (lbc2, pbd2, pkg_info) <-
+      finalizeAndConfigurePackage cfg lbc1 g_pkg_descr comp platform enabledComps
+
+    -- Package-wide post-configure hook
+    for_ postConfPackageHook $ \postConfPkg -> do
+      let input =
+            SetupHooks.PostConfPackageInputs
+              { SetupHooks.localBuildConfig = lbc2
+              , SetupHooks.packageBuildDescr = pbd2
+              }
+      postConfPkg input
+
+    -- Per-component pre-configure hook
+    pkg_descr <- do
+      let pkg_descr2 = LBC.localPkgDescr pbd2
+      applyComponentDiffs
+        verbosity
+        ( \c -> for preConfComponentHook $ \computeDiff -> do
+            let input =
+                  SetupHooks.PreConfComponentInputs
+                    { SetupHooks.localBuildConfig = lbc2
+                    , SetupHooks.packageBuildDescr = pbd2
+                    , SetupHooks.component = c
+                    }
+            SetupHooks.PreConfComponentOutputs
+              { SetupHooks.componentDiff = diff
+              } <-
+              computeDiff input
+            return diff
+        )
+        pkg_descr2
+    let pbd3 = pbd2{LBC.localPkgDescr = pkg_descr}
+
+    -- Cabal per-component configure
+    externalPkgDeps <- finalCheckPackage g_pkg_descr pbd3 hookedBuildInfo pkg_info
+    lbi <- configureComponents lbc2 pbd3 pkg_info externalPkgDeps
+
+    writePersistBuildConfig mbWorkDir distPref lbi
+
+    return lbi
 
 preConfigurePackage
   :: ConfigFlags
@@ -614,7 +710,7 @@ computeLocalBuildConfig cfg comp programDb = do
             -- rely on them. By the time that bug was fixed, ghci had
             -- been changed to read shared libraries instead of archive
             -- files (see next code block).
-            not (GHC.isDynamic comp)
+            not (GHC.compilerBuildWay comp `elem` [DynWay, ProfDynWay])
           CompilerId GHCJS _ ->
             not (GHCJS.isDynamic comp)
           _ -> False
@@ -639,7 +735,7 @@ computeLocalBuildConfig cfg comp programDb = do
             CompilerId GHC _ ->
               -- if ghc is dynamic, then ghci needs a shared
               -- library, so we build one by default.
-              GHC.isDynamic comp
+              GHC.compilerBuildWay comp == DynWay
             CompilerId GHCJS _ ->
               GHCJS.isDynamic comp
             _ -> False
@@ -658,12 +754,6 @@ computeLocalBuildConfig cfg comp programDb = do
       withDynExe_ = fromFlag $ configDynExe cfg
 
       withFullyStaticExe_ = fromFlag $ configFullyStaticExe cfg
-
-  when (withDynExe_ && not withSharedLib_) $
-    warn verbosity $
-      "Executables will use dynamic linking, but a shared library "
-        ++ "is not being built. Linking will fail if any executables "
-        ++ "depend on the library."
 
   setProfiling <- configureProfiling verbosity cfg comp
 
@@ -697,6 +787,7 @@ computeLocalBuildConfig cfg comp programDb = do
             , withDynExe = withDynExe_
             , withFullyStaticExe = withFullyStaticExe_
             , withProfLib = False
+            , withProfLibShared = False
             , withProfLibDetail = ProfDetailNone
             , withProfExe = False
             , withProfExeDetail = ProfDetailNone
@@ -711,6 +802,20 @@ computeLocalBuildConfig cfg comp programDb = do
             , libCoverage = False
             , relocatable = fromFlagOrDefault False $ configRelocatable cfg
             }
+
+  -- Dynamic executable, but no shared vanilla libraries
+  when (LBC.withDynExe buildOptions && not (LBC.withProfExe buildOptions) && not (LBC.withSharedLib buildOptions)) $
+    warn verbosity $
+      "Executables will use dynamic linking, but a shared library "
+        ++ "is not being built. Linking will fail if any executables "
+        ++ "depend on the library."
+
+  -- Profiled dynamic executable, but no shared profiling libraries
+  when (LBC.withDynExe buildOptions && LBC.withProfExe buildOptions && not (LBC.withProfLibShared buildOptions)) $
+    warn verbosity $
+      "Executables will use profiled dynamic linking, but a profiled shared library "
+        ++ "is not being built. Linking will fail if any executables "
+        ++ "depend on the library."
 
   return $
     LBC.LocalBuildConfig
@@ -1269,7 +1374,7 @@ mkProgramDb :: ConfigFlags -> ProgramDb -> IO ProgramDb
 mkProgramDb cfg initialProgramDb = do
   programDb <-
     modifyProgramSearchPath (getProgramSearchPath initialProgramDb ++) -- We need to have the paths to programs installed by build-tool-depends before all other paths
-      <$> prependProgramSearchPath (fromFlagOrDefault normal (configVerbosity cfg)) searchpath initialProgramDb
+      <$> prependProgramSearchPath (fromFlagOrDefault normal (configVerbosity cfg)) searchpath [] initialProgramDb
   pure
     . userSpecifyArgss (configProgramArgs cfg)
     . userSpecifyPaths (configProgramPaths cfg)
@@ -1637,7 +1742,7 @@ configureCoverage verbosity cfg comp = do
 --
 -- Note that @--enable-executable-profiling@ also affects profiling
 -- of benchmarks and (non-detailed) test suites.
-computeEffectiveProfiling :: ConfigFlags -> (Bool {- lib -}, Bool {- exe -})
+computeEffectiveProfiling :: ConfigFlags -> (Bool {- lib vanilla-}, Bool {- lib shared -}, Bool {- exe -})
 computeEffectiveProfiling cfg =
   -- The --profiling flag sets the default for both libs and exes,
   -- but can be overridden by --library-profiling, or the old deprecated
@@ -1645,15 +1750,20 @@ computeEffectiveProfiling cfg =
   --
   -- The --profiling-detail and --library-profiling-detail flags behave
   -- similarly
-  let tryExeProfiling =
+  let dynamicExe = fromFlagOrDefault False (configDynExe cfg)
+      tryExeProfiling =
         fromFlagOrDefault
           False
           (mappend (configProf cfg) (configProfExe cfg))
       tryLibProfiling =
         fromFlagOrDefault
-          tryExeProfiling
-          (mappend (configProf cfg) (configProfLib cfg))
-   in (tryLibProfiling, tryExeProfiling)
+          (tryExeProfiling && not dynamicExe)
+          (configProfLib cfg)
+      tryLibProfilingShared =
+        fromFlagOrDefault
+          (tryExeProfiling && dynamicExe)
+          (configProfShared cfg)
+   in (tryLibProfiling, tryLibProfilingShared, tryExeProfiling)
 
 -- | Select and apply profiling settings for the build based on the
 -- 'ConfigFlags' and 'Compiler'.
@@ -1663,7 +1773,7 @@ configureProfiling
   -> Compiler
   -> IO (LBC.BuildOptions -> LBC.BuildOptions)
 configureProfiling verbosity cfg comp = do
-  let (tryLibProfiling, tryExeProfiling) = computeEffectiveProfiling cfg
+  let (tryLibProfiling, tryLibProfilingShared, tryExeProfiling) = computeEffectiveProfiling cfg
 
       tryExeProfileLevel =
         fromFlagOrDefault
@@ -1690,8 +1800,8 @@ configureProfiling verbosity cfg comp = do
         return ProfDetailDefault
       checkProfileLevel other = return other
 
-  (exeProfWithoutLibProf, applyProfiling) <-
-    if profilingSupported comp
+  applyProfiling <-
+    if profilingSupported comp && (profilingVanillaSupportedOrUnknown comp || profilingDynamicSupportedOrUnknown comp)
       then do
         exeLevel <- checkProfileLevel tryExeProfileLevel
         libLevel <- checkProfileLevel tryLibProfileLevel
@@ -1702,11 +1812,46 @@ configureProfiling verbosity cfg comp = do
                 , LBC.withProfExe = tryExeProfiling
                 , LBC.withProfExeDetail = exeLevel
                 }
-        return (tryExeProfiling && not tryLibProfiling, apply)
+        let compilerSupportsProfilingDynamic = profilingDynamicSupportedOrUnknown comp
+        apply2 <-
+          if compilerSupportsProfilingDynamic
+            then -- Case 1: We support profiled shared libraries so turn on shared profiling
+            -- libraries if the user asked for it.
+            return $ \buildOptions -> apply buildOptions{LBC.withProfLibShared = tryLibProfilingShared}
+            else -- Case 2: Compiler doesn't support profiling shared so turn them off
+            do
+              -- If we wanted to enable profiling shared libraries.. tell the
+              -- user we couldn't.
+              when (profilingVanillaSupportedOrUnknown comp && tryLibProfilingShared) $
+                warn
+                  verbosity
+                  ( "The compiler "
+                      ++ showCompilerId comp
+                      ++ " does not support "
+                      ++ "profiling shared objects. Static profiled objects "
+                      ++ "will be built."
+                  )
+              return $ \buildOptions ->
+                let original_options = apply buildOptions
+                 in original_options
+                      { LBC.withProfLibShared = False
+                      , LBC.withProfLib = profilingVanillaSupportedOrUnknown comp && (tryLibProfilingShared || LBC.withProfLib original_options)
+                      , LBC.withDynExe = if LBC.withProfExe original_options then False else LBC.withDynExe original_options
+                      }
+
+        when (tryExeProfiling && not (tryLibProfiling || tryLibProfilingShared)) $ do
+          warn
+            verbosity
+            ( "Executables will be built with profiling, but library "
+                ++ "profiling is disabled. Linking will fail if any executables "
+                ++ "depend on the library."
+            )
+        return apply2
       else do
         let apply buildOptions =
               buildOptions
                 { LBC.withProfLib = False
+                , LBC.withProfLibShared = False
                 , LBC.withProfLibDetail = ProfDetailNone
                 , LBC.withProfExe = False
                 , LBC.withProfExeDetail = ProfDetailNone
@@ -1719,15 +1864,7 @@ configureProfiling verbosity cfg comp = do
                 ++ " does not support "
                 ++ "profiling. Profiling has been disabled."
             )
-        return (False, apply)
-
-  when exeProfWithoutLibProf $
-    warn
-      verbosity
-      ( "Executables will be built with profiling, but library "
-          ++ "profiling is disabled. Linking will fail if any executables "
-          ++ "depend on the library."
-      )
+        return apply
 
   return applyProfiling
 
@@ -2115,55 +2252,77 @@ configureRequiredProgram
   verbosity
   progdb
   (LegacyExeDependency progName verRange) =
-    case lookupKnownProgram progName progdb of
+    case lookupProgramByName progName progdb of
+      Just prog ->
+        -- If the program has already been configured, use it
+        -- (as long as the version is compatible).
+        --
+        -- Not doing so means falling back to the "simpleProgram" path below,
+        -- which might fail if the program has custom logic to find a version
+        -- (such as hsc2hs).
+        let loc = locationPath $ programLocation prog
+         in case programVersion prog of
+              Nothing
+                | verRange == anyVersion ->
+                    return progdb
+                | otherwise ->
+                    dieWithException verbosity $!
+                      UnknownVersionDb (programId prog) verRange loc
+              Just version
+                | withinRange version verRange ->
+                    return progdb
+                | otherwise ->
+                    dieWithException verbosity $!
+                      BadVersionDb (programId prog) version verRange loc
       Nothing ->
-        -- Try to configure it as a 'simpleProgram' automatically
-        --
-        -- There's a bit of a story behind this line.  In old versions
-        -- of Cabal, there were only internal build-tools dependencies.  So the
-        -- behavior in this case was:
-        --
-        --    - If a build-tool dependency was internal, don't do
-        --      any checking.
-        --
-        --    - If it was external, call 'configureRequiredProgram' to
-        --      "configure" the executable.  In particular, if
-        --      the program was not "known" (present in 'ProgramDb'),
-        --      then we would just error.  This was fine, because
-        --      the only way a program could be executed from 'ProgramDb'
-        --      is if some library code from Cabal actually called it,
-        --      and the pre-existing Cabal code only calls known
-        --      programs from 'defaultProgramDb', and so if it
-        --      is calling something else, you have a Custom setup
-        --      script, and in that case you are expected to register
-        --      the program you want to call in the ProgramDb.
-        --
-        -- OK, so that was fine, until I (ezyang, in 2016) refactored
-        -- Cabal to support per-component builds.  In this case, what
-        -- was previously an internal build-tool dependency now became
-        -- an external one, and now previously "internal" dependencies
-        -- are now external.  But these are permitted to exist even
-        -- when they are not previously configured (something that
-        -- can only occur by a Custom script.)
-        --
-        -- So, I decided, "Fine, let's just accept these in any
-        -- case."  Thus this line.  The alternative would have been to
-        -- somehow detect when a build-tools dependency was "internal" (by
-        -- looking at the unflattened package description) but this
-        -- would also be incompatible with future work to support
-        -- external executable dependencies: we definitely cannot
-        -- assume they will be preinitialized in the 'ProgramDb'.
-        configureProgram verbosity (simpleProgram progName) progdb
-      Just prog
-        -- requireProgramVersion always requires the program have a version
-        -- but if the user says "build-depends: foo" ie no version constraint
-        -- then we should not fail if we cannot discover the program version.
-        | verRange == anyVersion -> do
-            (_, progdb') <- requireProgram verbosity prog progdb
-            return progdb'
-        | otherwise -> do
-            (_, _, progdb') <- requireProgramVersion verbosity prog verRange progdb
-            return progdb'
+        -- Otherwise, try to configure it as a 'simpleProgram' automatically
+        case lookupKnownProgram progName progdb of
+          Nothing ->
+            -- There's a bit of a story behind this line.  In old versions
+            -- of Cabal, there were only internal build-tools dependencies.  So the
+            -- behavior in this case was:
+            --
+            --    - If a build-tool dependency was internal, don't do
+            --      any checking.
+            --
+            --    - If it was external, call 'configureRequiredProgram' to
+            --      "configure" the executable.  In particular, if
+            --      the program was not "known" (present in 'ProgramDb'),
+            --      then we would just error.  This was fine, because
+            --      the only way a program could be executed from 'ProgramDb'
+            --      is if some library code from Cabal actually called it,
+            --      and the pre-existing Cabal code only calls known
+            --      programs from 'defaultProgramDb', and so if it
+            --      is calling something else, you have a Custom setup
+            --      script, and in that case you are expected to register
+            --      the program you want to call in the ProgramDb.
+            --
+            -- OK, so that was fine, until I (ezyang, in 2016) refactored
+            -- Cabal to support per-component builds.  In this case, what
+            -- was previously an internal build-tool dependency now became
+            -- an external one, and now previously "internal" dependencies
+            -- are now external.  But these are permitted to exist even
+            -- when they are not previously configured (something that
+            -- can only occur by a Custom script.)
+            --
+            -- So, I decided, "Fine, let's just accept these in any
+            -- case."  Thus this line.  The alternative would have been to
+            -- somehow detect when a build-tools dependency was "internal" (by
+            -- looking at the unflattened package description) but this
+            -- would also be incompatible with future work to support
+            -- external executable dependencies: we definitely cannot
+            -- assume they will be preinitialized in the 'ProgramDb'.
+            configureProgram verbosity (simpleProgram progName) progdb
+          Just prog
+            -- requireProgramVersion always requires the program have a version
+            -- but if the user says "build-depends: foo" ie no version constraint
+            -- then we should not fail if we cannot discover the program version.
+            | verRange == anyVersion -> do
+                (_, progdb') <- requireProgram verbosity prog progdb
+                return progdb'
+            | otherwise -> do
+                (_, _, progdb') <- requireProgramVersion verbosity prog verRange progdb
+                return progdb'
 
 -- -----------------------------------------------------------------------------
 -- Configuring pkg-config package dependencies

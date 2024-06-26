@@ -50,7 +50,6 @@ normalizeOutput nenv =
           "/incoming/new-<RAND>"
     -- Normalize architecture
   . resub (posixRegexEscape (display (normalizerPlatform nenv))) "<ARCH>"
-  . normalizeBuildInfoJson
     -- Some GHC versions are chattier than others
   . resub "^ignoring \\(possibly broken\\) abi-depends field for packages" ""
     -- Normalize the current GHC version.  Apply this BEFORE packageIdRegex,
@@ -64,6 +63,8 @@ normalizeOutput nenv =
                         ++ "(-[a-z0-9]+)?")
                    "<GHCVER>"
         else id)
+  . normalizeBuildInfoJson
+  . maybe id normalizePathCmdOutput (normalizerCabalInstallVersion nenv)
   -- hackage-security locks occur non-deterministically
   . resub "(Released|Acquired|Waiting) .*hackage-security-lock\n" ""
   where
@@ -72,16 +73,27 @@ normalizeOutput nenv =
         resub (posixRegexEscape (display pid) ++ "(-[A-Za-z0-9.-]+)?")
               (prettyShow (packageName pid) ++ "-<VERSION>")
 
+    normalizePathCmdOutput cabalInstallVersion =
+      -- clear the ghc path out of all supported output formats
+      resub ("compiler-path: " <> posixRegexEscape (normalizerGhcPath nenv))
+          "compiler-path: <GHCPATH>"
+      -- ghc compiler path is already covered by 'normalizeBuildInfoJson'
+      . resub ("{\"cabal-version\":\"" ++ posixRegexEscape (display cabalInstallVersion) ++ "\"")
+          "{\"cabal-version\":\"<CABAL_INSTALL_VER>\""
+      -- Replace windows filepaths that contain `\\` in the json output.
+      -- since we need to escape each '\' ourselves, these 8 backslashes match on exactly 2 backslashes
+      -- in the test output.
+      -- As the json output is escaped, we need to re-escape the path.
+      . resub "\\\\\\\\" "\\"
+
     -- 'build-info.json' contains a plethora of host system specific information.
     --
     -- This must happen before the root-dir normalisation.
     normalizeBuildInfoJson =
         -- Remove ghc path from show-build-info output
-        resub ("\"path\":\"[^\"]*\"}")
-          "\"path\":\"<GHCPATH>\"}"
+        resub ("\"path\":\"" <> posixRegexEscape (normalizerGhcPath nenv) <> "\"")
+          "\"path\":\"<GHCPATH>\""
         -- Remove cabal version output from show-build-info output
-      . resub ("{\"cabal-version\":\"" ++ posixRegexEscape (display (normalizerCabalVersion nenv)) ++ "\"")
-              "{\"cabal-version\":\"<CABALVER>\""
       . resub ("{\"cabal-lib-version\":\"" ++ posixRegexEscape (display (normalizerCabalVersion nenv)) ++ "\"")
               "{\"cabal-lib-version\":\"<CABALVER>\""
         -- Remove the package id for stuff such as:
@@ -106,9 +118,11 @@ data NormalizerEnv = NormalizerEnv
     -- `/var` is a symlink for `/private/var`.
     , normalizerGblTmpDir     :: FilePath
     , normalizerGhcVersion    :: Version
+    , normalizerGhcPath    :: FilePath
     , normalizerKnownPackages :: [PackageId]
     , normalizerPlatform      :: Platform
     , normalizerCabalVersion  :: Version
+    , normalizerCabalInstallVersion :: Maybe Version
     }
 
 posixSpecialChars :: [Char]

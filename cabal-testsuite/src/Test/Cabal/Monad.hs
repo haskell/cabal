@@ -40,6 +40,7 @@ module Test.Cabal.Monad (
     testKeysDir,
     testSourceCopyDir,
     testCabalDir,
+    testStoreDir,
     testUserCabalConfigFile,
     testActualFile,
     -- * Skipping tests
@@ -157,7 +158,7 @@ renderCommonArgs args =
 
 data TestArgs = TestArgs {
         testArgDistDir    :: FilePath,
-        testArgPackageDb  :: Maybe FilePath,
+        testArgPackageDb  :: [FilePath],
         testArgScriptPath :: FilePath,
         testCommonArgs    :: CommonArgs
     }
@@ -168,7 +169,7 @@ testArgParser = TestArgs
         ( help "Build directory of cabal-testsuite"
        <> long "builddir"
        <> metavar "DIR")
-    <*> optional (option str
+    <*> many (option str
         ( help "Package DB which contains Cabal and Cabal-syntax"
        <> long "extra-package-db"
        <> metavar "DIR"))
@@ -303,6 +304,8 @@ runTestM mode m =
                 program_db1
                 verbosity
 
+    (configuredGhcProg, _) <- requireProgram verbosity ghcProgram program_db2
+
     program_db3 <-
         reconfigurePrograms verbosity
             ([("cabal", p)   | p <- maybeToList (argCabalInstallPath cargs)] ++
@@ -324,12 +327,13 @@ runTestM mode m =
                     testProgramDb = program_db,
                     testPlatform = platform,
                     testCompiler = comp,
+                    testCompilerPath = programPath configuredGhcProg,
                     testPackageDBStack = db_stack,
                     testVerbosity = verbosity,
                     testMtimeChangeDelay = Nothing,
                     testScriptEnv = senv,
                     testSetupPath = dist_dir </> "build" </> "setup" </> "setup",
-                    testPackageDbPath = testArgPackageDb args,
+                    testPackageDbPath = case testArgPackageDb args of [] -> Nothing; xs -> Just xs,
                     testSkipSetupTests =  argSkipSetupTests (testCommonArgs args),
                     testHaveCabalShared = runnerWithSharedLib senv,
                     testEnvironment =
@@ -350,7 +354,8 @@ runTestM mode m =
                     testCabalProjectFile = Nothing,
                     testPlan = Nothing,
                     testRecordDefaultMode = DoNotRecord,
-                    testRecordUserMode = Nothing
+                    testRecordUserMode = Nothing,
+                    testMaybeStoreDir = Nothing
                 }
     let go = do cleanup
                 r <- withSourceCopy m
@@ -528,6 +533,16 @@ mkNormalizerEnv = do
 
     canonicalizedTestTmpDir <- liftIO $ canonicalizePath (testTmpDir env)
 
+    -- 'cabal' is configured in the package-db, but doesn't specify how to find the program version
+    -- Thus we find the program location, if it exists, and query for the program version for
+    -- output normalisation.
+    cabalVersionM <- do
+        cabalProgM <- needProgramM "cabal"
+        case cabalProgM of
+            Nothing -> pure Nothing
+            Just cabalProg -> do
+                liftIO (findProgramVersion "--numeric-version" id (testVerbosity env) (programPath cabalProg))
+
     return NormalizerEnv {
         normalizerRoot
             = addTrailingPathSeparator (testSourceDir env),
@@ -539,12 +554,16 @@ mkNormalizerEnv = do
             = addTrailingPathSeparator tmpDir,
         normalizerGhcVersion
             = compilerVersion (testCompiler env),
+        normalizerGhcPath
+            = testCompilerPath env,
         normalizerKnownPackages
             = mapMaybe simpleParse (words list_out),
         normalizerPlatform
             = testPlatform env,
         normalizerCabalVersion
-            = cabalVersionLibrary
+            = cabalVersionLibrary,
+        normalizerCabalInstallVersion
+            = cabalVersionM
     }
 
 cabalVersionLibrary :: Version
@@ -556,6 +575,11 @@ requireProgramM program = do
     (configured_program, _) <- liftIO $
         requireProgram (testVerbosity env) program (testProgramDb env)
     return configured_program
+
+needProgramM :: String -> TestM (Maybe ConfiguredProgram)
+needProgramM program = do
+    env <- getTestEnv
+    return $ lookupProgramByName program (testProgramDb env)
 
 programPathM :: Program -> TestM FilePath
 programPathM program = do
@@ -598,6 +622,7 @@ data TestEnv = TestEnv
       testSourceDir     :: FilePath
     -- | Somewhere to stow temporary files needed by the test.
     , testTmpDir        :: FilePath
+
     -- | Test sub-name, used to qualify dist/database directory to avoid
     -- conflicts.
     , testSubName       :: String
@@ -608,6 +633,7 @@ data TestEnv = TestEnv
     , testProgramDb     :: ProgramDb
     -- | Compiler we are running tests for
     , testCompiler      :: Compiler
+    , testCompilerPath  :: FilePath
     -- | Platform we are running tests on
     , testPlatform      :: Platform
     -- | Package database stack (actually this changes lol)
@@ -623,8 +649,8 @@ data TestEnv = TestEnv
     -- | Setup script path
     , testSetupPath :: FilePath
     -- | Setup package-db path which contains Cabal and Cabal-syntax for cabal-install to
-    -- use when compiling custom setups.
-    , testPackageDbPath :: Maybe FilePath
+    -- use when compiling custom setups, plus the store with possible dependencies of those setup packages.
+    , testPackageDbPath :: Maybe [FilePath]
     -- | Skip Setup tests?
     , testSkipSetupTests :: Bool
     -- | Do we have shared libraries for the Cabal-under-tests?
@@ -655,6 +681,8 @@ data TestEnv = TestEnv
     , testRecordDefaultMode :: RecordMode
     -- | User explicitly set record mode.  Not implemented ATM.
     , testRecordUserMode :: Maybe RecordMode
+    -- | Path to the storedir used by the test, if not the default
+    , testMaybeStoreDir      :: Maybe FilePath
     }
     deriving Show
 
@@ -729,6 +757,11 @@ testSourceCopyDir env = testTmpDir env
 -- | The user cabal directory
 testCabalDir :: TestEnv -> FilePath
 testCabalDir env = testHomeDir env </> ".cabal"
+
+testStoreDir :: TestEnv -> FilePath
+testStoreDir env = case testMaybeStoreDir env of
+                      Just dir -> dir
+                      Nothing -> testCabalDir env </> "store"
 
 -- | The user cabal config file
 testUserCabalConfigFile :: TestEnv -> FilePath

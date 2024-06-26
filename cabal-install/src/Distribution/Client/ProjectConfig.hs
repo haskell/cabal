@@ -58,7 +58,7 @@ module Distribution.Client.ProjectConfig
   ) where
 
 import Distribution.Client.Compat.Prelude
-import Text.PrettyPrint (render)
+import Text.PrettyPrint (nest, render, text, vcat)
 import Prelude ()
 
 import Distribution.Client.Glob
@@ -102,9 +102,8 @@ import Distribution.Client.HttpUtils
 import Distribution.Client.Types
 import Distribution.Client.Utils.Parsec (renderParseError)
 
+import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.PackageConstraint
-  ( PackageProperty (..)
-  )
 import Distribution.Solver.Types.Settings
 import Distribution.Solver.Types.SourcePackage
 
@@ -116,6 +115,7 @@ import Distribution.Client.Setup
 import Distribution.Client.SrcDist
   ( packageDirToSdist
   )
+import Distribution.Client.Targets
 import Distribution.Client.Types.SourceRepo
   ( SourceRepoList
   , SourceRepositoryPackage (..)
@@ -136,11 +136,6 @@ import Distribution.Fields
   , showPWarning
   )
 import Distribution.Package
-  ( PackageId
-  , PackageName
-  , UnitId
-  , packageId
-  )
 import Distribution.PackageDescription.Parsec
   ( parseGenericPackageDescription
   )
@@ -195,8 +190,6 @@ import Distribution.Verbosity
   , verbose
   )
 import Distribution.Version
-  ( Version
-  )
 
 import qualified Codec.Archive.Tar as Tar
 import qualified Codec.Archive.Tar.Entry as Tar
@@ -317,9 +310,34 @@ resolveSolverSettings
     where
       -- TODO: [required eventually] some of these settings need validation, e.g.
       -- the flag assignments need checking.
+      cabalPkgname = mkPackageName "Cabal"
+
+      profilingDynamicConstraint =
+        ( UserConstraint
+            (UserAnySetupQualifier cabalPkgname)
+            (PackagePropertyVersion $ orLaterVersion (mkVersion [3, 13, 0]))
+        , ConstraintSourceProfiledDynamic
+        )
+
+      profDynEnabledGlobally = fromFlagOrDefault False (packageConfigProfShared projectConfigLocalPackages)
+
+      profDynEnabledAnyLocally =
+        or
+          [ fromFlagOrDefault False (packageConfigProfShared ppc)
+          | (_, ppc) <- Map.toList (getMapMappend projectConfigSpecificPackage)
+          ]
+
+      -- Add a setup.Cabal >= 3.13 constraint if prof+dyn is enabled globally
+      -- or any package in the project enables it.
+      -- Ideally we'd apply this constraint only on the closure of packages requiring prof+dyn,
+      -- but that would require another solver run for marginal advantages that
+      -- will further shrink as 3.13 is adopted.
+      solverCabalLibConstraints =
+        [profilingDynamicConstraint | profDynEnabledGlobally || profDynEnabledAnyLocally]
+
       solverSettingRemoteRepos = fromNubList projectConfigRemoteRepos
       solverSettingLocalNoIndexRepos = fromNubList projectConfigLocalNoIndexRepos
-      solverSettingConstraints = projectConfigConstraints
+      solverSettingConstraints = solverCabalLibConstraints ++ projectConfigConstraints
       solverSettingPreferences = projectConfigPreferences
       solverSettingFlagAssignment = packageConfigFlagAssignment projectConfigLocalPackages
       solverSettingFlagAssignments =
@@ -882,10 +900,10 @@ renderBadPackageLocations (BadPackageLocations provenance bpls)
     renderErrors f = unlines (map f bpls)
 
     renderExplicit =
-      "When using configuration(s) from "
-        ++ intercalate ", " (render . docProjectConfigPath <$> mapMaybe getExplicit (Set.toList provenance))
-        ++ ", the following errors occurred:\n"
-        ++ renderErrors renderBadPackageLocation
+      "When using configuration from:\n"
+        ++ render (nest 2 . docProjectConfigPaths $ mapMaybe getExplicit (Set.toList provenance))
+        ++ "\nThe following errors occurred:\n"
+        ++ render (nest 2 $ vcat ((text "-" <+>) . text <$> map renderBadPackageLocation bpls))
 
     getExplicit (Explicit path) = Just path
     getExplicit Implicit = Nothing

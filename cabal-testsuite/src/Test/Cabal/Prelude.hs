@@ -111,6 +111,10 @@ withDirectory :: FilePath -> TestM a -> TestM a
 withDirectory f = withReaderT
     (\env -> env { testRelativeCurrentDir = testRelativeCurrentDir env </> f })
 
+withStoreDir :: FilePath -> TestM a -> TestM a
+withStoreDir fp =
+  withReaderT (\env -> env { testMaybeStoreDir = Just fp })
+
 -- We append to the environment list, as per 'getEffectiveEnvironment'
 -- which prefers the latest override.
 withEnv :: [(String, Maybe String)] -> TestM a -> TestM a
@@ -305,15 +309,14 @@ cabalGArgs global_args cmd args input = do
               , "info"
               , "init"
               , "haddock-project"
-              , "path"
               ]
           = [ ]
 
           -- new-build commands are affected by testCabalProjectFile
-          | cmd == "v2-sdist"
+          | cmd `elem` ["v2-sdist", "path"]
           = [ "--project-file=" ++ fp | Just fp <- [testCabalProjectFile env] ]
 
-          | cmd == "v2-clean"
+          | cmd == "v2-clean" || cmd == "clean"
           = [ "--builddir", testDistDir env ]
             ++ [ "--project-file=" ++ fp | Just fp <- [testCabalProjectFile env] ]
 
@@ -321,17 +324,24 @@ cabalGArgs global_args cmd args input = do
           = [ "--builddir", testDistDir env
             , "-j1" ]
             ++ [ "--project-file=" ++ fp | Just fp <- [testCabalProjectFile env] ]
-            ++ ["--package-db=" ++ db | Just db <- [testPackageDbPath env]]
-
+            ++ ["--package-db=" ++ db | Just dbs <- [testPackageDbPath env], db <- dbs]
+          | "v1-" `isPrefixOf` cmd
+          = [ "--builddir", testDistDir env ]
+            ++ install_args
           | otherwise
-          = [ "--builddir", testDistDir env ] ++
-            install_args
+          = [ "--builddir", testDistDir env ]
+            ++ ["--package-db=" ++ db | Just dbs <- [testPackageDbPath env], db <- dbs]
+            ++ install_args
 
         install_args
           | cmd == "v1-install" || cmd == "v1-build" = [ "-j1" ]
           | otherwise                                = []
 
-        cabal_args = global_args
+        global_args' =
+            [ "--store-dir=" ++ storeDir | Just storeDir <- [testMaybeStoreDir env] ]
+            ++ global_args
+
+        cabal_args = global_args'
                   ++ [ cmd, marked_verbose ]
                   ++ extra_args
                   ++ args
@@ -824,21 +834,21 @@ getScriptCacheDirectory script = do
 ------------------------------------------------------------------------
 -- * Skipping tests
 
-hasSharedLibraries  :: TestM Bool
-hasSharedLibraries = do
-    shared_libs_were_removed <- isGhcVersion ">= 7.8"
-    return (not (buildOS == Windows && shared_libs_were_removed))
-
-hasProfiledLibraries :: TestM Bool
-hasProfiledLibraries = do
+testCompilerWithArgs :: [String] -> TestM Bool
+testCompilerWithArgs args = do
     env <- getTestEnv
     ghc_path <- programPathM ghcProgram
     let prof_test_hs = testWorkDir env </> "Prof.hs"
     liftIO $ writeFile prof_test_hs "module Prof where"
     r <- liftIO $ run (testVerbosity env) (Just $ testCurrentDir env)
-                      (testEnvironment env) ghc_path ["-prof", "-c", prof_test_hs]
+                      (testEnvironment env) ghc_path (["-c", prof_test_hs] ++ args)
                       Nothing
     return (resultExitCode r == ExitSuccess)
+
+hasProfiledLibraries, hasProfiledSharedLibraries, hasSharedLibraries :: TestM Bool
+hasProfiledLibraries = testCompilerWithArgs ["-prof"]
+hasProfiledSharedLibraries = testCompilerWithArgs ["-prof", "-dynamic"]
+hasSharedLibraries = testCompilerWithArgs ["-dynamic"]
 
 -- | Check if the GHC that is used for compiling package tests has
 -- a shared library of the cabal library under test in its database.
@@ -864,7 +874,7 @@ allCabalVersion = isCabalVersion all
 isCabalVersion :: WithCallStack (((Version -> Bool) -> [Version] -> Bool) -> String -> TestM Bool)
 isCabalVersion decide range = do
   env <- getTestEnv
-  cabal_pkgs <- ghcPkg_raw' $ ["--global", "list", "Cabal", "--simple"] ++ ["--package-db=" ++ db | Just db <- [testPackageDbPath env]]
+  cabal_pkgs <- ghcPkg_raw' $ ["--global", "list", "Cabal", "--simple"] ++ ["--package-db=" ++ db | Just dbs <- [testPackageDbPath env], db <- dbs]
   let pkg_versions :: [PackageIdentifier] = mapMaybe simpleParsec (words (resultOutput cabal_pkgs))
   vr <- case eitherParsec range of
           Left err -> fail err
@@ -1089,26 +1099,27 @@ copySourceFileTo src dest = do
 -- limit) by creating a temporary directory for the new-build store. This
 -- function creates a directory immediately under the current drive on Windows.
 -- The directory must be passed to new- commands with --store-dir.
-withShorterPathForNewBuildStore :: (FilePath -> IO a) -> IO a
+withShorterPathForNewBuildStore :: TestM a -> TestM a
 withShorterPathForNewBuildStore test =
-  withTestDir normal "cabal-test-store" test
+  withTestDir normal "cabal-test-store" (\f -> withStoreDir f test)
 
 -- | Find where a package locates in the store dir. This works only if there is exactly one 1 ghc version
 -- and exactly 1 directory for the given package in the store dir.
-findDependencyInStore :: FilePath -- ^store dir
-                      -> String -- ^package name prefix
-                      -> IO FilePath -- ^package dir
-findDependencyInStore storeDir pkgName = do
-    (storeDirForGhcVersion : _) <- listDirectory storeDir
-    packageDirs <- listDirectory (storeDir </> storeDirForGhcVersion)
-    -- Ideally, we should call 'hashedInstalledPackageId' from 'Distribution.Client.PackageHash'.
-    -- But 'PackageHashInputs', especially 'PackageHashConfigInputs', is too hard to construct.
-    let pkgName' =
-            if buildOS == OSX
-            then filter (not . flip elem "aeiou") pkgName
-                -- simulates the way 'hashedInstalledPackageId' uses to compress package name
-            else pkgName
-    let libDir = case filter (pkgName' `isPrefixOf`) packageDirs of
-                    [] -> error $ "Could not find " <> pkgName' <> " when searching for " <> pkgName' <> " in\n" <> show packageDirs
-                    (dir:_) -> dir
-    pure (storeDir </> storeDirForGhcVersion </> libDir)
+findDependencyInStore :: String -- ^package name prefix
+                      -> TestM FilePath -- ^package dir
+findDependencyInStore pkgName = do
+    storeDir <- testStoreDir <$> getTestEnv
+    liftIO $ do
+      storeDirForGhcVersion:_ <- listDirectory storeDir
+      packageDirs <- listDirectory (storeDir </> storeDirForGhcVersion)
+      -- Ideally, we should call 'hashedInstalledPackageId' from 'Distribution.Client.PackageHash'.
+      -- But 'PackageHashInputs', especially 'PackageHashConfigInputs', is too hard to construct.
+      let pkgName' =
+              if buildOS == OSX
+              then filter (not . flip elem "aeiou") pkgName
+                  -- simulates the way 'hashedInstalledPackageId' uses to compress package name
+              else pkgName
+      let libDir = case filter (pkgName' `isPrefixOf`) packageDirs of
+                      [] -> error $ "Could not find " <> pkgName' <> " when searching for " <> pkgName' <> " in\n" <> show packageDirs
+                      (dir:_) -> dir
+      pure (storeDir </> storeDirForGhcVersion </> libDir)

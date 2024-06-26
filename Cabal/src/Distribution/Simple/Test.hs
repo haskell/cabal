@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
@@ -26,6 +27,7 @@ import Prelude ()
 
 import qualified Distribution.PackageDescription as PD
 import Distribution.Pretty
+import Distribution.Simple.Build (addInternalBuildTools)
 import Distribution.Simple.Compiler
 import Distribution.Simple.Hpc
 import Distribution.Simple.InstallDirs
@@ -71,8 +73,7 @@ test args pkg_descr lbi0 flags = do
   let common = testCommonFlags flags
       verbosity = fromFlag $ setupVerbosity common
       distPref = fromFlag $ setupDistPref common
-      mbWorkDir = flagToMaybe $ setupWorkingDir common
-      i = interpretSymbolicPath mbWorkDir -- See Note [Symbolic paths] in Distribution.Utils.Path
+      i = LBI.interpretSymbolicPathLBI lbi -- See Note [Symbolic paths] in Distribution.Utils.Path
       machineTemplate = fromFlag $ testMachineLog flags
       testLogDir = distPref </> makeRelativePathEx "test"
       testNames = args
@@ -80,8 +81,8 @@ test args pkg_descr lbi0 flags = do
       enabledTests = LBI.enabledTestLBIs pkg_descr lbi
       -- We must add the internalPkgDB to the package database stack to lookup
       -- the path to HPC dirs of libraries local to this package
-      internalPkgDB = LBI.interpretSymbolicPathLBI lbi $ internalPackageDBPath lbi distPref
-      lbi = lbi0{withPackageDB = withPackageDB lbi0 ++ [SpecificPackageDB internalPkgDB]}
+      internalPkgDb = i $ internalPackageDBPath lbi0 distPref
+      lbi = lbi0{withPackageDB = withPackageDB lbi0 ++ [SpecificPackageDB internalPkgDb]}
 
       doTest
         :: HPCMarkupInfo
@@ -89,12 +90,22 @@ test args pkg_descr lbi0 flags = do
            , Maybe TestSuiteLog
            )
         -> IO TestSuiteLog
-      doTest hpcMarkupInfo ((suite, clbi), _) =
+      doTest hpcMarkupInfo ((suite, clbi), _) = do
+        let lbiForTest =
+              lbi
+                { withPrograms =
+                    -- Include any build-tool-depends on build tools internal to the current package.
+                    addInternalBuildTools
+                      pkg_descr
+                      lbi
+                      (PD.testBuildInfo suite)
+                      (withPrograms lbi)
+                }
         case PD.testInterface suite of
           PD.TestSuiteExeV10 _ _ ->
-            ExeV10.runTest pkg_descr lbi clbi hpcMarkupInfo flags suite
+            ExeV10.runTest pkg_descr lbiForTest clbi hpcMarkupInfo flags suite
           PD.TestSuiteLibV09 _ _ ->
-            LibV09.runTest pkg_descr lbi clbi hpcMarkupInfo flags suite
+            LibV09.runTest pkg_descr lbiForTest clbi hpcMarkupInfo flags suite
           _ ->
             return
               TestSuiteLog

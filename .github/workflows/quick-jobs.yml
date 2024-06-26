@@ -14,26 +14,27 @@ on:
     types:
       - created
 
+env:
+  GHC_FOR_QUICK_JOBS: 9.6.5
+
 jobs:
   meta:
     name: Meta checks
     runs-on: ubuntu-latest
     env:
       cabal_build: >-
-        cabal build --builddir=dist-newstyle-meta --project-file=cabal.project.meta
+        cabal build --builddir=dist-newstyle-meta --project-file=cabal.meta.project
         gen-cabal-macros
         gen-paths-module
         gen-spdx
         gen-spdx-exc
-    # This job is not run in a container, any recent GHC should be fine
     steps:
-      # SKIP installation of ghc and cabal and use the preinstalled versions.
-      # - name: ghcup
-      #   run: |
-      #     ghcup --version
-      #     ghcup config set cache true
-      #     ghcup install ghc recommended
-      #     ghcup set ghc recommended
+      - name: ghcup
+        run: |
+          ghcup --version
+          ghcup config set cache true
+          ghcup install ghc $GHC_FOR_QUICK_JOBS
+          ghcup set ghc $GHC_FOR_QUICK_JOBS
       - name: Haskell versions
         run: |
           ghc --version
@@ -71,6 +72,16 @@ jobs:
     name: Doctest Cabal
     runs-on: ubuntu-latest
     steps:
+      - name: ghcup
+        run: |
+          ghcup --version
+          ghcup config set cache true
+          ghcup install ghc $GHC_FOR_QUICK_JOBS
+          ghcup set ghc $GHC_FOR_QUICK_JOBS
+      - name: Haskell versions
+        run: |
+          ghc --version
+          cabal --version
       # It is complicated to get a proper cache key for the dependencies of a package
       # (here: doctest) that we just `cabal install`.
       # So, as a heuristics we update the cache once per day.
@@ -106,6 +117,16 @@ jobs:
     env:
       cabal_build: cabal build buildinfo-reference-generator
     steps:
+      - name: ghcup
+        run: |
+          ghcup --version
+          ghcup config set cache true
+          ghcup install ghc $GHC_FOR_QUICK_JOBS
+          ghcup set ghc $GHC_FOR_QUICK_JOBS
+      - name: Haskell versions
+        run: |
+          ghc --version
+          cabal --version
       - name: Update Hackage index
         run: cabal v2-update
       - uses: actions/checkout@v4
@@ -133,10 +154,20 @@ jobs:
     name: Check Release Project
     runs-on: ubuntu-latest
     steps:
+      - name: ghcup
+        run: |
+          ghcup --version
+          ghcup config set cache true
+          ghcup install ghc $GHC_FOR_QUICK_JOBS
+          ghcup set ghc $GHC_FOR_QUICK_JOBS
+      - name: Haskell versions
+        run: |
+          ghc --version
+          cabal --version
       - name: Update Hackage Index
         run: cabal v2-update
       - uses: actions/checkout@v4
       - name: Check Release with Pinned Hackage
-        run: cabal build all --dry-run --project-file=cabal.project.release
+        run: cabal build all --dry-run --project-file=cabal.release.project
       - name: Check Release with Latest Hackage
-        run: cabal build all --dry-run --project-file=cabal.project.release --index-state="hackage.haskell.org HEAD"
+        run: cabal build all --dry-run --project-file=cabal.release.project --index-state="hackage.haskell.org HEAD"

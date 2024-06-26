@@ -245,8 +245,8 @@ A cabal command target can take any of the following forms:
    component of which the given filepath is a part of will be built.
 
 -  A script target: ``path/to/script``, which specifies the path to a script
-   file. This is supported by ``build``, ``repl``, ``run``, and ``clean``.
-   Script targets are not part of a package.
+   file. This is supported by ``build``, ``repl``, ``run``, ``list-bin``, and
+   ``clean``. Script targets are not part of a package.
 
 .. _command-group-global:
 
@@ -288,19 +288,48 @@ cabal preferences. It is very useful when you are e.g. first configuring
 cabal path
 ^^^^^^^^^^
 
-``cabal path`` prints the file system paths used by ``cabal`` for
-cache, store, installed binaries, and so on. When run without any
-options, it will show all paths, labeled with how they are namen in
-the configuration file:
+``cabal path`` allows to query for paths used by ``cabal``.
+For example, it allows to query for the directories of the cache, store,
+installed binaries, and so on.
 
 ::
-   $ cabal path
-   cache-dir: /home/haskell/.cache/cabal/packages
-   logs-dir: /home/haskell/.cache/cabal/logs
-   store-dir: /home/haskell/.local/state/cabal/store
-   config-file: /home/haskell/.config/cabal/config
-   installdir: /home/haskell/.local/bin
-   ...
+
+    $ whoami
+    alice
+
+    $ cabal path
+    compiler-flavour: ghc
+    compiler-id: ghc-9.8.2
+    compiler-path: /home/alice/.ghcup/bin/ghc
+    cache-home: /home/alice/.cabal
+    remote-repo-cache: /home/alice/.cabal/packages
+    logs-dir: /home/alice/.cabal/logs
+    store-dir: /home/alice/.cabal/store
+    config-file: /home/alice/.cabal/config
+    installdir: /home/alice/.cabal/bin
+
+Or using the json output:
+
+::
+
+    $ cabal path --output-format=json | jq
+
+.. code-block:: json
+
+    {
+      "cabal-version": "3.13.0.0",
+      "compiler": {
+        "flavour": "ghc",
+        "id": "ghc-9.8.2",
+        "path": "/home/alice/.ghcup/bin/ghc"
+      },
+      "cache-home": "/home/alice/.cabal",
+      "remote-repo-cache": "/home/alice/.cabal/packages",
+      "logs-dir": "/home/alice/.cabal/logs",
+      "store-dir": "/home/alice/.cabal/store",
+      "config-file": "/home/alice/.cabal/config",
+      "installdir": "/home/alice/.cabal/bin"
+    }
 
 If ``cabal path`` is passed a single option naming a path, then that
 path will be printed *without* any label:
@@ -308,10 +337,10 @@ path will be printed *without* any label:
 ::
 
    $ cabal path --installdir
-   /home/haskell/.local/bin
+   /home/alice/.cabal/bin
 
-This is a stable interface and is intended to be used for scripting.
-For example:
+While this interface is intended to be used for scripting, it is an experimental command.
+Scripting example:
 
 ::
    $ ls $(cabal path --installdir)
@@ -427,6 +456,8 @@ e.g. you plan to work on a project with unreliable or no internet access.
     description file.
 
 Check ``cabal fetch --help`` for a complete list of options.
+
+.. _cabal-get:
 
 cabal get
 ^^^^^^^^^
@@ -863,7 +894,7 @@ By default the documentation will be put in ``./haddocks`` folder, this can be
 modified with the ``--output`` flag.
 
 This command supports two primary modes: building a self contained directory
-(which is the default mode) or documentation that links to hackage (with
+(which is the default mode) or documentation that links to Hackage (with
 ``--hackage`` flag).
 
 In both cases the html index as well as quickjump index will include all terms
@@ -938,6 +969,14 @@ We can also scope to test suite targets as they produce binaries.
 
     $ cabal list-bin cabal-install:unit-tests
     /.../dist-newstyle/.../unit-tests/unit-tests
+
+It can also be used to display the location of the cached executable for a
+cabal script.
+
+::
+
+    $ cabal list-bin path/to/script
+    $XDG_CACHE_HOME/cabal/script-builds/.../bin/script
 
 Note that ``cabal list-bin`` will print the executables' location, but
 will not make sure that these executables actually exist (i.e., have
@@ -1109,6 +1148,9 @@ The executable is cached under the cabal directory, and can be pre-built with
 ``cabal build path/to/script`` and the cache can be removed with
 ``cabal clean path/to/script``.
 
+The location of the cached executable can be displayed with
+``cabal list-bin path/to/script``.
+
 A note on targets: Whenever a command takes a script target and it matches the
 name of another target, the other target is preferred. To load the script
 instead pass it as an explicit path: ./script
@@ -1141,9 +1183,53 @@ they are up to date.
 cabal test
 ^^^^^^^^^^
 
-``cabal test [TARGETS] [FLAGS]`` runs the specified test suites
-(all the test suites in the current package by default), first ensuring
-they are up to date.
+``cabal test [TARGETS] [FLAGS]`` tests test suites specified as targets
+after ensuring they are up to date and building them, if necessary.
+
+.. Warning::
+
+    For a test suite, there's a difference between testing it with ``cabal
+    test`` and running it with ``cabal run`` to do with the working directory.
+    The former tests the test suite; that is to say that it "runs" the test suite
+    from the package directory (from the directory of the package that has the
+    test suite as a component), while the latter runs the test suite from
+    whatever directory is current when the ``cabal run`` command is issued.
+    This is important because the test suite may depend on files in the package
+    directory, and so may not work correctly if run from another directory.
+
+.. Note::
+
+    Even though ``[TARGETS]`` are optional, ``cabal test`` will only test test
+    suites without specifying a target if in the directory of a package,
+    alongside a ``.cabal`` file. Being in the directory of a package implicitly
+    selects that package for the test command.
+
+    Taking the cabal project as an example that has a ``Cabal-tests`` package
+    with multiple test suites, the following two commands are effectively the
+    same and will test the test suites of the ``Cabal-tests`` package:
+
+    ::
+
+        $ cabal test Cabal-tests
+        $ cd Cabal-tests && cabal test && cd ..
+
+    If you want to test all of the test suites in a project then from the
+    project directory ``cabal build`` with no target will fail:
+
+    .. code-block:: text
+
+        $ cabal test
+        Error: [Cabal-7134]
+        No targets given and there is no package in the current directory. Use
+        the target 'all' for all packages in the project or specify packages or
+        components by name or location. See 'cabal build --help' for more
+        details on target options.
+
+    Both ``cabal test all:tests`` and ``cabal test all`` use explicit targets
+    for testing all test suites of a project; the former's ``all:tests`` target
+    will select all test suites of the project, while the latter's ``all``
+    target will select all packages of the project and, from those, test all
+    their test suites.
 
 ``cabal test`` inherits flags of the ``test`` subcommand of ``Setup.hs``
 (:ref:`see the corresponding section <setup-test>`) with one caveat: every
@@ -1326,6 +1412,7 @@ A list of all warnings with their constructor:
 - ``no-docs``: missing expected documentation files (changelog).
 - ``doc-place``: documentation files listed in ``extra-source-files`` instead of ``extra-doc-files``.
 
+.. _cabal-sdist:
 
 cabal sdist
 ^^^^^^^^^^^

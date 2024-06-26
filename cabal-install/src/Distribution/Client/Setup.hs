@@ -88,10 +88,6 @@ module Distribution.Client.Setup
   , cleanCommand
   , copyCommand
   , registerCommand
-  , Path (..)
-  , pathName
-  , PathFlags (..)
-  , pathCommand
   , liftOptions
   , yesNoOpt
   ) where
@@ -358,7 +354,6 @@ globalCommand commands =
             ++ unlines
               ( [ startGroup "global"
                 , addCmd "user-config"
-                , addCmd "path"
                 , addCmd "help"
                 , par
                 , startGroup "package database"
@@ -376,6 +371,7 @@ globalCommand commands =
                 , addCmd "freeze"
                 , addCmd "gen-bounds"
                 , addCmd "outdated"
+                , addCmd "path"
                 , par
                 , startGroup "project building and installing"
                 , addCmd "build"
@@ -639,22 +635,22 @@ filterCommonFlags :: CommonSetupFlags -> Version -> CommonSetupFlags
 filterCommonFlags flags cabalLibVersion
   -- NB: we expect the latest version to be the most common case,
   -- so test it first.
-  | cabalLibVersion >= mkVersion [3, 11, 0] = flags_latest
+  | cabalLibVersion >= mkVersion [3, 13, 0] = flags_latest
   | cabalLibVersion < mkVersion [1, 2, 5] = flags_1_2_5
   | cabalLibVersion < mkVersion [2, 1, 0] = flags_2_1_0
-  | cabalLibVersion < mkVersion [3, 11, 0] = flags_3_11_0
+  | cabalLibVersion < mkVersion [3, 13, 0] = flags_3_13_0
   | otherwise = error "the impossible just happened" -- see first guard
   where
     flags_latest = flags
-    flags_3_11_0 =
+    flags_3_13_0 =
       flags_latest
         { setupWorkingDir = NoFlag
         }
-    -- Cabal < 3.11 does not support the --working-dir flag.
+    -- Cabal < 3.13 does not support the --working-dir flag.
     flags_2_1_0 =
-      flags_3_11_0
+      flags_3_13_0
         { -- Cabal < 2.1 doesn't know about -v +timestamp modifier
-          setupVerbosity = fmap verboseNoTimestamp (setupVerbosity flags_3_11_0)
+          setupVerbosity = fmap verboseNoTimestamp (setupVerbosity flags_3_13_0)
         }
     flags_1_2_5 =
       flags_2_1_0
@@ -683,7 +679,7 @@ filterConfigureFlags' :: ConfigFlags -> Version -> ConfigFlags
 filterConfigureFlags' flags cabalLibVersion
   -- NB: we expect the latest version to be the most common case,
   -- so test it first.
-  | cabalLibVersion >= mkVersion [3, 11, 0] = flags_latest
+  | cabalLibVersion >= mkVersion [3, 13, 0] = flags_latest
   -- The naming convention is that flags_version gives flags with
   -- all flags *introduced* in version eliminated.
   -- It is NOT the latest version of Cabal library that
@@ -705,6 +701,7 @@ filterConfigureFlags' flags cabalLibVersion
   | cabalLibVersion < mkVersion [2, 5, 0] = flags_2_5_0
   | cabalLibVersion < mkVersion [3, 7, 0] = flags_3_7_0
   | cabalLibVersion < mkVersion [3, 11, 0] = flags_3_11_0
+  | cabalLibVersion < mkVersion [3, 13, 0] = flags_3_13_0
   | otherwise = error "the impossible just happened" -- see first guard
   where
     flags_latest =
@@ -716,8 +713,15 @@ filterConfigureFlags' flags cabalLibVersion
           configConstraints = []
         }
 
-    flags_3_11_0 =
+    flags_3_13_0 =
+      -- Earlier Cabal versions don't understand about ..
       flags_latest
+        { -- Building profiled shared libraries
+          configProfShared = NoFlag
+        }
+
+    flags_3_11_0 =
+      flags_3_13_0
         { -- It's too late to convert configPromisedDependencies to anything
           -- meaningful, so we just assert that it's empty.
           -- We add a Cabal>=3.11 constraint before solving when multi-repl is
@@ -787,7 +791,7 @@ filterConfigureFlags' flags cabalLibVersion
     -- Cabal < 1.23 doesn't know about '--profiling-detail'.
     -- Cabal < 1.23 has a hacked up version of 'enable-profiling'
     -- which we shouldn't use.
-    (tryLibProfiling, tryExeProfiling) = computeEffectiveProfiling flags
+    (tryLibProfiling, _tryLibProfilingShared, tryExeProfiling) = computeEffectiveProfiling flags
     flags_1_23_0 =
       flags_1_25_0
         { configProfDetail = NoFlag
@@ -2439,7 +2443,7 @@ haddockOptions showOrParseArgs =
              , "use-index"
              , "for-hackage"
              , "base-url"
-             , "lib"
+             , "resources-dir"
              , "output-dir"
              ]
   ]
@@ -3422,73 +3426,6 @@ userConfigCommand =
             (reqArg' "CONFIGLINE" (Flag . (: [])) (fromMaybe [] . flagToMaybe))
         ]
     }
-
--- ------------------------------------------------------------
-
--- * Dirs
-
--- ------------------------------------------------------------
-
--- | A path that can be retrieved by the @cabal path@ command.
-data Path
-  = PathCacheDir
-  | PathLogsDir
-  | PathStoreDir
-  | PathConfigFile
-  | PathInstallDir
-  deriving (Eq, Ord, Show, Enum, Bounded)
-
--- | The configuration name for this path.
-pathName :: Path -> String
-pathName PathCacheDir = "cache-dir"
-pathName PathLogsDir = "logs-dir"
-pathName PathStoreDir = "store-dir"
-pathName PathConfigFile = "config-file"
-pathName PathInstallDir = "installdir"
-
-data PathFlags = PathFlags
-  { pathVerbosity :: Flag Verbosity
-  , pathDirs :: Flag [Path]
-  }
-  deriving (Generic)
-
-instance Monoid PathFlags where
-  mempty =
-    PathFlags
-      { pathVerbosity = toFlag normal
-      , pathDirs = toFlag []
-      }
-  mappend = (<>)
-
-instance Semigroup PathFlags where
-  (<>) = gmappend
-
-pathCommand :: CommandUI PathFlags
-pathCommand =
-  CommandUI
-    { commandName = "path"
-    , commandSynopsis = "Display paths used by cabal."
-    , commandDescription = Just $ \_ ->
-        wrapText $
-          "This command prints the directories that are used by cabal,"
-            ++ " taking into account the contents of the configuration file and any"
-            ++ " environment variables."
-    , commandNotes = Nothing
-    , commandUsage = \pname -> "Usage: " ++ pname ++ " path\n"
-    , commandDefaultFlags = mempty
-    , commandOptions = \_ ->
-        map pathOption [minBound .. maxBound]
-          ++ [optionVerbosity pathVerbosity (\v flags -> flags{pathVerbosity = v})]
-    }
-  where
-    pathOption s =
-      option
-        []
-        [pathName s]
-        ("Print " <> pathName s)
-        pathDirs
-        (\v flags -> flags{pathDirs = Flag $ concat (flagToList (pathDirs flags) ++ flagToList v)})
-        (noArg (Flag [s]))
 
 -- ------------------------------------------------------------
 

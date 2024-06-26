@@ -30,7 +30,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        ghc: ["8.10.7", "9.0.2", "9.2.8", "9.4.8", "9.6.4", "9.8.1"]
+        ghc: ["8.10.7", "9.0.2", "9.2.8", "9.4.8", "9.6.4", "9.8.2"]
         include:
           - os: macos-latest
             ghc: "9.2.8"
@@ -52,28 +52,18 @@ jobs:
           restore-keys: bootstrap-${{ runner.os }}-${{ matrix.ghc }}-20221115-
 
       - uses: actions/checkout@v4
-      # See https://github.com/haskell/cabal/pull/8739
-      - name: Sudo chmod to permit ghcup to update its cache
-        run: |
-          if [[ "${{ runner.os }}" == "Linux" ]]; then
-            sudo ls -lah /usr/local/.ghcup/cache
-            sudo mkdir -p /usr/local/.ghcup/cache
-            sudo ls -lah /usr/local/.ghcup/cache
-            sudo chown -R $USER /usr/local/.ghcup
-            sudo chmod -R 777 /usr/local/.ghcup
-          fi
+      - uses: haskell-actions/setup@v2
+        with:
+          ghc-version: ${{ matrix.ghc }}
+
       - name: bootstrap.py
         run: |
           GHC_VERSION=${{ matrix.ghc }}
-          ghcup --version
-          ghcup config set cache true
-          ghcup install ghc $GHC_VERSION
-
           # Fetch the bootstrap sources (we use linux dependencies also on macos)
-          python3 bootstrap/bootstrap.py -w $(ghcup whereis ghc $GHC_VERSION) -d bootstrap/linux-$GHC_VERSION.json fetch
+          python3 bootstrap/bootstrap.py -d bootstrap/linux-$GHC_VERSION.json fetch
 
           # Bootstrap using the bootstrap sources
-          python3 bootstrap/bootstrap.py -w $(ghcup whereis ghc $GHC_VERSION) --bootstrap-sources bootstrap-sources.tar.gz
+          python3 bootstrap/bootstrap.py --bootstrap-sources bootstrap-sources.tar.gz
 
       - name: Smoke test
         run: |

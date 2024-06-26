@@ -761,6 +761,10 @@ checkForUndefinedCustomSetup gpd = do
       parseFailure zeroPos $
         "Since cabal-version: 1.24 specifying custom-setup section is mandatory"
 
+  when (buildType pd == Hooks && isNothing (setupBuildInfo pd)) $
+    parseFailure zeroPos $
+      "Packages with build-type: Hooks require a custom-setup stanza"
+
 -------------------------------------------------------------------------------
 -- Post processing of internal dependencies
 -------------------------------------------------------------------------------
@@ -988,7 +992,7 @@ parseHookedBuildInfo' lexWarnings fs = do
 -- RFC5234 ABNF):
 --
 -- @
--- newstyle-spec-version-decl = "cabal-version" *WS ":" *WS newstyle-pec-version *WS
+-- newstyle-spec-version-decl = "cabal-version" *WS ":" *WS newstyle-spec-version *WS
 --
 -- spec-version               = NUM "." NUM [ "." NUM ]
 --

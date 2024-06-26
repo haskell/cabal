@@ -1,0 +1,6 @@
+packages: .
+
+tests: True
+
+program-options
+  ghc-options: -XCPP -DFOO

@@ -1,0 +1,4 @@
+# Setup configure
+Configuring prof-shared-0.1...
+Warning: The flag --enable-executable-profiling is deprecated. Please use --enable-profiling instead.
+Warning: Executables will use profiled dynamic linking, but a profiled shared library is not being built. Linking will fail if any executables depend on the library.

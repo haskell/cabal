@@ -1,0 +1,31 @@
+synopsis: Enable recompilation avoidance during Haddock generation
+packages: cabal-install
+prs: #9177
+issues: #9175
+
+description: {
+
+* Haddock no longer writes compilation files by default, so we do not need to
+  pass tmp dirs for `-hidir`, `-stubdir`, and `-odir` via `--optghc`. Indeed, we
+  do not *want* to do so, since it results in recompilation for every invocation
+  of Haddock via Cabal. We now stop this from happening for Haddock versions
+  2.28 and greater, since that is when Hi Haddock was introduced.
+
+* We no longer define the `__HADDOCK_VERSION__` macro when invoking GHC through
+  Haddock, since doing so essentially guarantees recompilation during
+  documentation generation. We audited all uses of `__HADDOCK_VERSION__` in
+  hackage, ensuring there was a reasonable path forward to migrate away from
+  using `__HADDOCK_VERSION__` for each, while generating the same documentation
+  as it did before.
+  If you are a user of `__HADDOCK_VERSION__`, please take a look at the
+  discussion in https://github.com/haskell/cabal/pull/9177 and reach out to us
+  if your use case is not covered.
+
+* Rename the `--haddock-lib` flag to `--haddock-resources-dir` (and
+  `haddock-lib:` cabal.project field to `haddock-resources-dir:`), and add this
+  flag to the users guide since it was missing an entry.
+
+* `documentation: true` or `--enable-documentation` now implies `-haddock` for
+  GHC.
+
+}

@@ -33,6 +33,7 @@ module Distribution.Simple.Program.Find
   , findProgramOnSearchPath
   , programSearchPathAsPATHVar
   , logExtraProgramSearchPath
+  , logExtraProgramOverrideEnv
   , getSystemSearchPath
   , getExtraPathEnv
   , simpleProgram
@@ -73,6 +74,19 @@ logExtraProgramSearchPath verbosity extraPaths =
   info verbosity . unlines $
     "Including the following directories in PATH:"
       : map ("- " ++) extraPaths
+
+logExtraProgramOverrideEnv
+  :: Verbosity
+  -> [(String, Maybe String)]
+  -> IO ()
+logExtraProgramOverrideEnv verbosity extraEnv =
+  info verbosity . unlines $
+    "Including the following environment variable overrides:"
+      : [ "- " ++ case mbVal of
+          Nothing -> "unset " ++ var
+          Just val -> var ++ "=" ++ val
+        | (var, mbVal) <- extraEnv
+        ]
 
 findProgramOnSearchPath
   :: Verbosity

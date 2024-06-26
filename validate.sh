@@ -280,7 +280,7 @@ if [ -z "$STEPS" ]; then
     STEPS="$STEPS time-summary"
 fi
 
-TARGETS="Cabal cabal-testsuite Cabal-tests Cabal-QuickCheck Cabal-tree-diff Cabal-described"
+TARGETS="Cabal Cabal-hooks cabal-testsuite Cabal-tests Cabal-QuickCheck Cabal-tree-diff Cabal-described"
 if ! $LIBONLY;  then TARGETS="$TARGETS cabal-install cabal-install-solver cabal-benchmarks"; fi
 if $BENCHMARKS; then TARGETS="$TARGETS solver-benchmarks"; fi
 
@@ -312,9 +312,9 @@ case "$(uname)" in
 esac
 
 if $LIBONLY; then
-    PROJECTFILE=cabal.project.validate.libonly
+    PROJECTFILE=cabal.validate-libonly.project
 else
-    PROJECTFILE=cabal.project.validate
+    PROJECTFILE=cabal.validate.project
 fi
 
 BASEHC=ghc-$($HC --numeric-version)
@@ -323,6 +323,13 @@ CABAL_TESTSUITE_BDIR="$(pwd)/$BUILDDIR/build/$ARCH/$BASEHC/cabal-testsuite-3"
 
 CABALNEWBUILD="${CABAL} build $JOBS -w $HC --builddir=$BUILDDIR --project-file=$PROJECTFILE"
 CABALLISTBIN="${CABAL} list-bin --builddir=$BUILDDIR --project-file=$PROJECTFILE"
+
+# This was needed in some local Windows MSYS2 environments
+# but breaks CI for Windows + GHC 9.0.2, thus it is set only on non-CI executions
+# of validate.sh
+# https://github.com/haskell/cabal/issues/9571
+# https://github.com/haskell/cabal/pull/10114
+RTSOPTS="$([[ $ARCH = "x86_64-windows" && -z "$CI" ]] && echo "+RTS --io-manager=native" || echo "")"
 
 # header
 #######################################################################
@@ -344,6 +351,7 @@ doctest:             $DOCTEST
 benchmarks:          $BENCHMARKS
 verbose:             $VERBOSE
 extra compilers:     $EXTRAHCS
+extra RTS options:   $RTSOPTS
 
 EOF
 }
@@ -426,7 +434,7 @@ fi
 step_lib_suite() {
 print_header "Cabal: cabal-testsuite"
 
-CMD="$($CABALLISTBIN cabal-testsuite:exe:cabal-tests) --builddir=$CABAL_TESTSUITE_BDIR $TESTSUITEJOBS --with-ghc=$HC --hide-successes"
+CMD="$($CABALLISTBIN cabal-testsuite:exe:cabal-tests) --builddir=$CABAL_TESTSUITE_BDIR $TESTSUITEJOBS --with-ghc=$HC --hide-successes $RTSOPTS"
 (cd cabal-testsuite && timed $CMD) || exit 1
 }
 
@@ -468,7 +476,7 @@ CMD="$($CABALLISTBIN cabal-install:test:integration-tests2) -j1 --hide-successes
 step_cli_suite() {
 print_header "cabal-install: cabal-testsuite"
 
-CMD="$($CABALLISTBIN cabal-testsuite:exe:cabal-tests) --builddir=$CABAL_TESTSUITE_BDIR --with-cabal=$($CABALLISTBIN cabal-install:exe:cabal) $TESTSUITEJOBS  --with-ghc=$HC --hide-successes --intree-cabal-lib=$PWD --test-tmp=$PWD/testdb"
+CMD="$($CABALLISTBIN cabal-testsuite:exe:cabal-tests) --builddir=$CABAL_TESTSUITE_BDIR --with-cabal=$($CABALLISTBIN cabal-install:exe:cabal) $TESTSUITEJOBS  --with-ghc=$HC --hide-successes --intree-cabal-lib=$PWD --test-tmp=$PWD/testdb $RTSOPTS"
 (cd cabal-testsuite && timed $CMD) || exit 1
 }
 

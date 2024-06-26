@@ -1,0 +1,68 @@
+cabal-version: 2.2
+name:          Cabal-hooks
+version:       0.1
+copyright:     2023, Cabal Development Team
+license:       BSD-3-Clause
+license-file:  LICENSE
+author:        Cabal Development Team <cabal-devel@haskell.org>
+maintainer:    cabal-devel@haskell.org
+homepage:      http://www.haskell.org/cabal/
+bug-reports:   https://github.com/haskell/cabal/issues
+synopsis:      API for the Hooks build-type
+description:
+  User-facing API for the Hooks build-type.
+category:       Distribution
+build-type:     Simple
+
+extra-source-files:
+  readme.md changelog.md
+
+source-repository head
+  type:     git
+  location: https://github.com/haskell/cabal/
+  subdir:   Cabal-hooks
+
+library
+  default-language: Haskell2010
+  hs-source-dirs: src
+
+  build-depends:
+    Cabal-syntax    >= 3.13      && < 3.15,
+    Cabal           >= 3.13      && < 3.15,
+    base            >= 4.11      && < 5,
+    containers      >= 0.5.0.0   && < 0.8,
+    transformers    >= 0.5.6.0   && < 0.7
+
+  ghc-options: -Wall -fno-ignore-asserts -fwarn-tabs -fwarn-incomplete-uni-patterns -fwarn-incomplete-record-updates
+
+  exposed-modules:
+    Distribution.Simple.SetupHooks
+
+  other-extensions:
+    BangPatterns
+    CPP
+    DefaultSignatures
+    DeriveDataTypeable
+    DeriveFoldable
+    DeriveFunctor
+    DeriveGeneric
+    DeriveTraversable
+    ExistentialQuantification
+    FlexibleContexts
+    FlexibleInstances
+    GeneralizedNewtypeDeriving
+    ImplicitParams
+    KindSignatures
+    LambdaCase
+    NondecreasingIndentation
+    OverloadedStrings
+    PatternSynonyms
+    RankNTypes
+    RecordWildCards
+    ScopedTypeVariables
+    StandaloneDeriving
+    Trustworthy
+    TypeFamilies
+    TypeOperators
+    TypeSynonymInstances
+    UndecidableInstances

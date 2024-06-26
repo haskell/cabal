@@ -31,7 +31,7 @@ library
     base,
     bytestring,
     containers,
-    Cabal-syntax ^>= 3.11,
+    Cabal-syntax ^>= 3.13,
     directory,
     filepath,
     optparse-applicative,

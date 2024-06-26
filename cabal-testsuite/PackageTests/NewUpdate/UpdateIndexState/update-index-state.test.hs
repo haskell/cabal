@@ -1,8 +1,12 @@
 import Test.Cabal.Prelude
 
-main = cabalTest $ withRemoteRepo "repo" $ do
+main = cabalTest $ do
 
   skip "Flaky test failing in `curl`, see #9530"
+
+  testBody
+
+testBody = withRemoteRepo "repo" $ do
 
   -- The _first_ update call causes a warning about missing mirrors, the warning
   -- is platform-dependent and it's not part of the test expectations, so we

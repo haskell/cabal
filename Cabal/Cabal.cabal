@@ -1,6 +1,6 @@
-cabal-version: 2.2
+cabal-version: 3.0
 name:          Cabal
-version:       3.11.0.0
+version:       3.13.0.0
 copyright:     2003-2024, Cabal Development Team (see AUTHORS file)
 license:       BSD-3-Clause
 license-file:  LICENSE
@@ -34,9 +34,9 @@ library
   hs-source-dirs: src
 
   build-depends:
-    Cabal-syntax ^>= 3.11,
+    Cabal-syntax ^>= 3.13,
     array      >= 0.4.0.1  && < 0.6,
-    base       >= 4.9      && < 5,
+    base       >= 4.11     && < 5,
     bytestring >= 0.10.0.0 && < 0.13,
     containers >= 0.5.0.0  && < 0.8,
     deepseq    >= 1.3.0.1  && < 1.6,
@@ -101,11 +101,13 @@ library
     Distribution.Simple.BuildPaths
     Distribution.Simple.BuildTarget
     Distribution.Simple.BuildToolDepends
+    Distribution.Simple.BuildWay
     Distribution.Simple.CCompiler
     Distribution.Simple.Command
     Distribution.Simple.Compiler
     Distribution.Simple.Configure
     Distribution.Simple.Errors
+    Distribution.Simple.FileMonitor.Types
     Distribution.Simple.Flag
     Distribution.Simple.GHC
     Distribution.Simple.GHCJS
@@ -148,6 +150,9 @@ library
     Distribution.Simple.Test.Log
     Distribution.Simple.UHC
     Distribution.Simple.UserHooks
+    Distribution.Simple.SetupHooks.Errors
+    Distribution.Simple.SetupHooks.Internal
+    Distribution.Simple.SetupHooks.Rule
     Distribution.Simple.Utils
     Distribution.TestSuite
     Distribution.Types.AnnotatedId

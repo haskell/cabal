@@ -23,13 +23,15 @@ import Distribution.Compat.Process (proc)
 import Distribution.ModuleName
 import qualified Distribution.PackageDescription as PD
 import Distribution.Pretty
-import Distribution.Simple.Build.PathsModule
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Compiler
 import Distribution.Simple.Errors
 import Distribution.Simple.Hpc
 import Distribution.Simple.InstallDirs
 import qualified Distribution.Simple.LocalBuildInfo as LBI
+import Distribution.Simple.Program.Db
+import Distribution.Simple.Program.Find
+import Distribution.Simple.Program.Run
 import Distribution.Simple.Setup.Common
 import Distribution.Simple.Setup.Test
 import Distribution.Simple.Test.Log
@@ -93,21 +95,20 @@ runTest pkg_descr lbi clbi hpcMarkupInfo flags suite = do
   notice verbosity $ summarizeSuiteStart testName'
 
   suiteLog <- CE.bracket openCabalTemp deleteIfExists $ \tempLog -> do
+    -- Compute the appropriate environment for running the test suite
+    let progDb = LBI.withPrograms lbi
+        pathVar = progSearchPath progDb
+        envOverrides = progOverrideEnv progDb
+    newPath <- programSearchPathAsPATHVar pathVar
+    overrideEnv <- fromMaybe [] <$> getEffectiveEnvironment ([("PATH", Just newPath)] ++ envOverrides)
+
     -- Run test executable
     let opts = map (testOption pkg_descr lbi suite) $ testOptions flags
-        rawDataDirPath = PD.dataDir pkg_descr
-        dataDirPath
-          | null $ getSymbolicPath rawDataDirPath =
-              i sameDirectory
-          | otherwise =
-              i rawDataDirPath
         tixFile = i $ tixFilePath distPref way testName'
-        pkgPathEnv =
-          (pkgPathEnvVar pkg_descr "datadir", dataDirPath)
-            : existingEnv
         shellEnv =
           [("HPCTIXFILE", tixFile) | isCoverageEnabled]
-            ++ pkgPathEnv
+            ++ overrideEnv
+            ++ existingEnv
     -- Add (DY)LD_LIBRARY_PATH if needed
     shellEnv' <-
       if LBI.withDynExe lbi
