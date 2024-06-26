@@ -1,4 +1,4 @@
-synopsis: clarify Cabal "configure messages
+synopsis: clarify Cabal "configure" messages
 packages: Cabal
 prs: #9476
 
@@ -7,7 +7,7 @@ synopsis: {
 	Cabal can issue a number of error messages referencing "Setup configure",
 	but it simply references "configure" which could mean any of three
 	things (Setup configure, the package's "configure" script, or "cabal
-	configure". This has recently caught out even Cabal devs. Clarify these
+	configure"). This has recently caught out even Cabal devs. Clarify these
 	messages.
 
 }
