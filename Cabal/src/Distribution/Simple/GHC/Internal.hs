@@ -550,7 +550,6 @@ componentGhcOptions verbosity lbi bi clbi odir =
         , ghcOptCppIncludes =
             toNubListR $
               [coerceSymbolicPath (autogenComponentModulesDir lbi clbi </> makeRelativePathEx cppHeaderName)]
-        , ghcOptFfiIncludes = toNubListR $ map getSymbolicPath $ includes bi
         , ghcOptObjDir = toFlag $ coerceSymbolicPath odir
         , ghcOptHiDir = toFlag $ coerceSymbolicPath odir
         , ghcOptHieDir = bool NoFlag (toFlag $ coerceSymbolicPath odir </> (extraCompilationArtifacts </> makeRelativePathEx "hie")) $ flagHie implInfo

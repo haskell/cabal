@@ -511,8 +511,6 @@ data GhcOptions = GhcOptions
   -- ^ Search path for CPP includes like header files; the @ghc -I@ flag.
   , ghcOptCppIncludes :: NubListR (SymbolicPath Pkg File)
   -- ^ Extra header files to include at CPP stage; the @ghc -optP-include@ flag.
-  , ghcOptFfiIncludes :: NubListR FilePath
-  -- ^ Extra header files to include for old-style FFI; the @ghc -#include@ flag.
   , ghcOptCcProgram :: Flag FilePath
   -- ^ Program to use for the C and C++ compiler; the @ghc -pgmc@ flag.
   , ----------------------------
