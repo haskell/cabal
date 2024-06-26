@@ -443,8 +443,6 @@ checkBuildInfoPathsWellFormedness bi = do
   mapM_
     (checkPath False "hs-source-dirs" PathKindDirectory . getSymbolicPath)
     (hsSourceDirs bi)
-  -- Possibly absolute paths.
-  mapM_ (checkPath True "includes" PathKindFile . getSymbolicPath) (includes bi)
   mapM_
     (checkPath True "include-dirs" PathKindDirectory . getSymbolicPath)
     (includeDirs bi)

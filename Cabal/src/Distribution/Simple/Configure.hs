@@ -2499,7 +2499,7 @@ checkForeignDeps pkg lbi verbosity =
         explainErrors missingHdr missingLibs
     )
   where
-    allHeaders = collectField (fmap getSymbolicPath . includes)
+    allHeaders = []
     allLibs =
       collectField $
         if withFullyStaticExe lbi

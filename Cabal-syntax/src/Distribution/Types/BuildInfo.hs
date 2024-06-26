@@ -125,8 +125,6 @@ data BuildInfo = BuildInfo
   , extraLibDirsStatic :: [SymbolicPath Pkg (Dir Lib)]
   , includeDirs :: [SymbolicPath Pkg (Dir Include)]
   -- ^ directories to find .h files
-  , includes :: [SymbolicPath Include File]
-  -- ^ The .h files to be found in includeDirs
   , autogenIncludes :: [RelativePath Include File]
   -- ^ The .h files to be generated (e.g. by @autoconf@)
   , installIncludes :: [RelativePath Include File]
@@ -189,7 +187,6 @@ instance Monoid BuildInfo where
       , extraLibDirs = []
       , extraLibDirsStatic = []
       , includeDirs = []
-      , includes = []
       , autogenIncludes = []
       , installIncludes = []
       , options = mempty
@@ -242,7 +239,6 @@ instance Semigroup BuildInfo where
       , extraLibDirs = combineNub extraLibDirs
       , extraLibDirsStatic = combineNub extraLibDirsStatic
       , includeDirs = combineNub includeDirs
-      , includes = combineNub includes
       , autogenIncludes = combineNub autogenIncludes
       , installIncludes = combineNub installIncludes
       , options = combine options

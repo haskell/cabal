@@ -666,7 +666,6 @@ buildInfoFieldGrammar =
     <*> monoidalFieldAla "extra-lib-dirs-static" (alaList' FSep SymbolicPathNT) L.extraLibDirsStatic
       ^^^ availableSince CabalSpecV3_8 []
     <*> monoidalFieldAla "include-dirs" (alaList' FSep SymbolicPathNT) L.includeDirs
-    <*> monoidalFieldAla "includes" (alaList' FSep SymbolicPathNT) L.includes
     <*> monoidalFieldAla "autogen-includes" (alaList' FSep RelativePathNT) L.autogenIncludes
       ^^^ availableSince CabalSpecV3_0 []
     <*> monoidalFieldAla "install-includes" (alaList' FSep RelativePathNT) L.installIncludes

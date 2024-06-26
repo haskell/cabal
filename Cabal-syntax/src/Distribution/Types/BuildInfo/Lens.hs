@@ -327,9 +327,6 @@ instance HasBuildInfo BuildInfo where
   includeDirs f s = fmap (\x -> s{T.includeDirs = x}) (f (T.includeDirs s))
   {-# INLINE includeDirs #-}
 
-  includes f s = fmap (\x -> s{T.includes = x}) (f (T.includes s))
-  {-# INLINE includes #-}
-
   autogenIncludes f s = fmap (\x -> s{T.autogenIncludes = x}) (f (T.autogenIncludes s))
   {-# INLINE autogenIncludes #-}
 

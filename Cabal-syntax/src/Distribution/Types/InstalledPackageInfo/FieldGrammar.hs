@@ -114,7 +114,6 @@ ipiFieldGrammar =
     <@> monoidalFieldAla "extra-libraries-static" (alaList' FSep Token) L.extraLibrariesStatic
     <@> monoidalFieldAla "extra-ghci-libraries" (alaList' FSep Token) L.extraGHCiLibraries
     <@> monoidalFieldAla "include-dirs" (alaList' FSep FilePathNT) L.includeDirs
-    <@> monoidalFieldAla "includes" (alaList' FSep FilePathNT) L.includes
     <@> monoidalFieldAla "depends" (alaList FSep) L.depends
     <@> monoidalFieldAla "abi-depends" (alaList FSep) L.abiDepends
     <@> monoidalFieldAla "cc-options" (alaList' FSep Token) L.ccOptions

@@ -147,10 +147,6 @@ includeDirs :: Lens' InstalledPackageInfo [FilePath]
 includeDirs f s = fmap (\x -> s{T.includeDirs = x}) (f (T.includeDirs s))
 {-# INLINE includeDirs #-}
 
-includes :: Lens' InstalledPackageInfo [String]
-includes f s = fmap (\x -> s{T.includes = x}) (f (T.includes s))
-{-# INLINE includes #-}
-
 depends :: Lens' InstalledPackageInfo [UnitId]
 depends f s = fmap (\x -> s{T.depends = x}) (f (T.depends s))
 {-# INLINE depends #-}

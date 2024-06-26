@@ -538,7 +538,6 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
     , IPI.extraLibrariesStatic = extraLibsStatic bi
     , IPI.extraGHCiLibraries = extraGHCiLibs bi
     , IPI.includeDirs = absinc ++ adjustRelIncDirs relinc
-    , IPI.includes = map getSymbolicPath $ includes bi
     , IPI.depends = depends
     , IPI.abiDepends = [] -- due to #5465
     , IPI.ccOptions = [] -- Note. NOT ccOptions bi!
