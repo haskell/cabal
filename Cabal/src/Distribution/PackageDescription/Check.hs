@@ -226,6 +226,7 @@ checkGenericPackageDescription
           packageDescription_
           _gpdScannedVersion_
           genPackageFlags_
+          genDefaultPackageBounds_
           condLibrary_
           condSubLibraries_
           condForeignLibs_
@@ -272,6 +273,8 @@ checkGenericPackageDescription
       checkPackageDescription packageDescription_
       -- Flag names.
       mapM_ checkFlagName genPackageFlags_
+      -- default package bounds
+      mapM_ checkDefaultBounds genDefaultPackageBounds_
 
       -- § Feature checks.
       checkSpecVer
@@ -294,9 +297,11 @@ checkGenericPackageDescription
               . pnPackageId
               . ccNames
           )
+
       let ads =
             maybe [] ((: []) . extractAssocDeps pName) condLibrary_
               ++ map (uncurry extractAssocDeps) condSubLibraries_
+              ++ maybe [] ((: []) . Left . defaultTargetBuildDepends) genDefaultPackageBounds_
 
       case condLibrary_ of
         Just cl ->
@@ -361,6 +366,26 @@ checkGenericPackageDescription
          in checkP
               (invalidFlagName fn)
               (PackageDistInexcusable $ SuspiciousFlagName [fn])
+
+      checkDefaultBounds :: Monad m => DefaultBounds -> CheckM m ()
+      checkDefaultBounds (DefaultBounds db dbt) =
+        let noBound = isAnyVersion . depVerRange
+            noExeBound = isAnyVersion . exeDepVerRange
+         in do
+              mapM_
+                ( \b ->
+                    checkP
+                      (noBound b)
+                      (PackageDistInexcusable $ DefaultBoundsNoBound [unPackageName $ depPkgName b])
+                )
+                db
+              mapM_
+                ( \b ->
+                    checkP
+                      (noExeBound b)
+                      (PackageDistInexcusable $ DefaultBoundsNoBound [unPackageName $ exeDepPkgName b])
+                )
+                dbt
 
       decFlags :: Set.Set FlagName
       decFlags = toSetOf (L.genPackageFlags . traverse . L.flagName) gpd
@@ -916,7 +941,7 @@ extractAssocDeps n ct =
    in -- Merging is fine here, remember the specific
       -- library dependencies will be checked branch
       -- by branch.
-      (n, snd a)
+      Right (n, snd a)
 
 -- | August 2022: this function is an oddity due to the historical
 -- GenericPackageDescription/PackageDescription split (check

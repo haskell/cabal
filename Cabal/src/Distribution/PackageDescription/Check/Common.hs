@@ -54,7 +54,7 @@ checkCustomField (n, _) =
 
 -- A library name / dependencies association list. Ultimately to be
 -- fed to PVP check.
-type AssocDep = (UnqualComponentName, [Dependency])
+type AssocDep = Either [Dependency] (UnqualComponentName, [Dependency])
 
 -- Convenience function to partition important dependencies by name. To
 -- be used together with checkPVP. Important: usually “base” or “Cabal”,
@@ -67,7 +67,7 @@ type AssocDep = (UnqualComponentName, [Dependency])
 partitionDeps
   :: Monad m
   => [AssocDep] -- Possibly inherited dependencies, i.e.
-  -- dependencies from internal/main libs.
+  -- dependencies from internal/main libs
   -> [UnqualComponentName] -- List of package names ("base", "Cabal"…)
   -> [Dependency] -- Dependencies to check.
   -> CheckM m ([Dependency], [Dependency])
@@ -77,11 +77,17 @@ partitionDeps ads ns ds = do
     -- names of our dependencies
     dqs = map unqualName ds
     -- shared targets that match
-    fads = filter (flip elem dqs . fst) ads
+    fads =
+      filter
+        ( \ad -> case ad of
+            Left{} -> True
+            Right (x, _) -> elem x dqs
+        )
+        ads
     -- the names of such targets
-    inNam = nub $ map fst fads :: [UnqualComponentName]
+    inNam = nub $ mapMaybe (either (const Nothing) (Just . fst)) fads :: [UnqualComponentName]
     -- the dependencies of such targets
-    inDep = concatMap snd fads :: [Dependency]
+    inDep = concatMap (either id snd) fads :: [Dependency]
 
   -- We exclude from checks:
   -- 1. dependencies which are shared with main library / a
@@ -89,6 +95,7 @@ partitionDeps ads ns ds = do
   -- 2. the names of main library / sub libraries themselves.
   --
   -- So in myPackage.cabal
+  --
   -- library
   --      build-depends: text < 5
   -- ⁝

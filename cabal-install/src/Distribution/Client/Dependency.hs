@@ -554,13 +554,14 @@ relaxPackageDeps
   -> PD.GenericPackageDescription
   -> PD.GenericPackageDescription
 relaxPackageDeps _ rd gpd | not (isRelaxDeps rd) = gpd -- subsumed by no-op case in 'removeBounds'
-relaxPackageDeps relKind RelaxDepsAll gpd = PD.transformAllBuildDepends relaxAll gpd
+relaxPackageDeps relKind RelaxDepsAll gpd =
+  PD.transformDefaultBuildDepends relaxAll $ PD.transformAllBuildDepends relaxAll gpd
   where
     relaxAll :: Dependency -> Dependency
     relaxAll (Dependency pkgName verRange cs) =
       Dependency pkgName (removeBound relKind RelaxDepModNone verRange) cs
 relaxPackageDeps relKind (RelaxDepsSome depsToRelax0) gpd =
-  PD.transformAllBuildDepends relaxSome gpd
+  PD.transformDefaultBuildDepends relaxSome $ PD.transformAllBuildDepends relaxSome gpd
   where
     thisPkgName = packageName gpd
     thisPkgId = packageId gpd

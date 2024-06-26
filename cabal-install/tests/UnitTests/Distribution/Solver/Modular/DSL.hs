@@ -455,6 +455,7 @@ exAvSrcPkg ex =
                       }
                 , C.gpdScannedVersion = Nothing
                 , C.genPackageFlags = flags
+                , C.genDefaultPackageBounds = Nothing
                 , C.condLibrary =
                     let mkLib v bi = mempty{C.libVisibility = v, C.libBuildInfo = bi}
                         -- Avoid using the Monoid instance for [a] when getting
