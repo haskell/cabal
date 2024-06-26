@@ -52,6 +52,8 @@ GenericPackageDescription {
       flagDescription = "",
       flagDefault = True,
       flagManual = True}],
+  genDefaultPackageBounds =
+  Nothing,
   condLibrary = Just
     CondNode {
       condTreeData = Library {

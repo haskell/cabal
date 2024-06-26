@@ -72,6 +72,7 @@ instance ToExpr CompilerFlavor
 instance ToExpr CompilerId
 instance ToExpr ComponentId
 instance ToExpr DebugInfoLevel
+instance ToExpr DefaultBounds
 instance ToExpr DefUnitId
 instance ToExpr DumpBuildInfo
 instance ToExpr ExeDependency
