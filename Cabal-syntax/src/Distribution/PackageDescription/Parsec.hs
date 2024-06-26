@@ -247,7 +247,7 @@ goSections specVer = traverse_ process
     process (Field (Name pos name) _) =
       lift $
         parseWarning pos PWTTrailingFields $
-          "Ignoring trailing fields after sections: " ++ show name
+          "Ignoring trailing fields after sections: " ++ show name ++ ". Consider moving these fields before any stanzas in your cabal file."
     process (Section name args secFields) =
       parseSection name args secFields
 
@@ -395,6 +395,12 @@ goSections specVer = traverse_ process
           flag <- lift $ parseFields specVer fields (flagFieldGrammar name'')
           -- Check default flag
           stateGpd . L.genPackageFlags %= snoc flag
+      | name == "default-package-bounds" =
+          if specVer >= CabalSpecV3_14
+            then do
+              sbi <- lift $ parseFields specVer fields defaultPackageBoundsFieldGrammar
+              stateGpd . L.genDefaultPackageBounds .= Just sbi
+            else lift $ parseWarning pos PWTUnknownSection $ "Ignoring section: default-package-bounds. You should set cabal-version: 3.14 or larger to use default-package-bounds."
       | name == "custom-setup" && null args = do
           sbi <- lift $ parseFields specVer fields (setupBInfoFieldGrammar False)
           stateGpd . L.packageDescription . L.setupBuildInfo ?= sbi

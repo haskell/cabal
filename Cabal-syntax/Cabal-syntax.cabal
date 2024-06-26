@@ -134,6 +134,8 @@ library
     Distribution.Types.CondTree
     Distribution.Types.Condition
     Distribution.Types.ConfVar
+    Distribution.Types.DefaultBounds
+    Distribution.Types.DefaultBounds.Lens
     Distribution.Types.Dependency
     Distribution.Types.DependencyMap
     Distribution.Types.ExeDependency

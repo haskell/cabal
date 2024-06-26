@@ -231,6 +231,7 @@ pdToGpd pd =
     { packageDescription = pd
     , gpdScannedVersion = Nothing
     , genPackageFlags = []
+    , genDefaultPackageBounds = Nothing
     , condLibrary = mkCondTree <$> library pd
     , condSubLibraries = mkCondTreeL <$> subLibraries pd
     , condForeignLibs = mkCondTree' foreignLibName <$> foreignLibs pd

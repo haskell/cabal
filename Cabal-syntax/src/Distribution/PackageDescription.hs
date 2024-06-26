@@ -62,6 +62,7 @@ module Distribution.PackageDescription
   , module Distribution.Types.PkgconfigVersionRange
 
     -- * Dependencies
+  , module Distribution.Types.DefaultBounds
   , module Distribution.Types.Dependency
   , module Distribution.Types.ExeDependency
   , module Distribution.Types.LegacyExeDependency
@@ -95,6 +96,7 @@ import Distribution.Types.ComponentName
 import Distribution.Types.CondTree
 import Distribution.Types.Condition
 import Distribution.Types.ConfVar
+import Distribution.Types.DefaultBounds
 import Distribution.Types.Dependency
 import Distribution.Types.ExeDependency
 import Distribution.Types.Executable
