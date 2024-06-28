@@ -4047,6 +4047,7 @@ setupHsConfigureFlags
       configPrograms_ = mempty -- never use, shouldn't exist
       configUseResponseFiles = mempty
       configAllowDependingOnPrivateLibs = Flag $ not $ libraryVisibilitySupported pkgConfigCompiler
+      configIgnoreBuildTools = mempty
 
       cidToGivenComponent :: ConfiguredId -> GivenComponent
       cidToGivenComponent (ConfiguredId srcid mb_cn cid) = GivenComponent (packageName srcid) ln cid
