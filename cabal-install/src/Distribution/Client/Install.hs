@@ -381,7 +381,7 @@ install
 type InstallContext =
   ( InstalledPackageIndex
   , SourcePackageDb
-  , PkgConfigDb
+  , Maybe PkgConfigDb
   , [UserTarget]
   , [PackageSpecifier UnresolvedSourcePackage]
   , HttpTransport
@@ -567,7 +567,7 @@ planPackages
   -> InstallFlags
   -> InstalledPackageIndex
   -> SourcePackageDb
-  -> PkgConfigDb
+  -> Maybe PkgConfigDb
   -> [PackageSpecifier UnresolvedSourcePackage]
   -> Progress String String SolverInstallPlan
 planPackages

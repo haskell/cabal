@@ -199,7 +199,7 @@ planPackages
   -> FreezeFlags
   -> InstalledPackageIndex
   -> SourcePackageDb
-  -> PkgConfigDb
+  -> Maybe PkgConfigDb
   -> [PackageSpecifier UnresolvedSourcePackage]
   -> IO [SolverPlanPackage]
 planPackages
