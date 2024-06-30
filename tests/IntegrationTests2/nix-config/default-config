@@ -143,6 +143,7 @@ haddock
   -- base-url:
   -- resources-dir:
   -- output-dir:
+  -- use-unicode: False
 
 init
   -- interactive: False

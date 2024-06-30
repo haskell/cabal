@@ -2298,6 +2298,7 @@ elaborateInstallPlan
             elabHaddockBaseUrl = perPkgOptionMaybe pkgid packageConfigHaddockBaseUrl
             elabHaddockResourcesDir = perPkgOptionMaybe pkgid packageConfigHaddockResourcesDir
             elabHaddockOutputDir = perPkgOptionMaybe pkgid packageConfigHaddockOutputDir
+            elabHaddockUseUnicode = perPkgOptionFlag pkgid False packageConfigHaddockUseUnicode
 
             elabTestMachineLog = perPkgOptionMaybe pkgid packageConfigTestMachineLog
             elabTestHumanLog = perPkgOptionMaybe pkgid packageConfigTestHumanLog
@@ -4244,6 +4245,7 @@ setupHsHaddockFlags
       , haddockBaseUrl = maybe mempty toFlag elabHaddockBaseUrl
       , haddockResourcesDir = maybe mempty toFlag elabHaddockResourcesDir
       , haddockOutputDir = maybe mempty toFlag elabHaddockOutputDir
+      , haddockUseUnicode = toFlag elabHaddockUseUnicode
       }
 
 setupHsHaddockArgs :: ElaboratedConfiguredPackage -> [String]
@@ -4402,6 +4404,7 @@ packageHashConfigInputs shared@ElaboratedSharedConfig{..} pkg =
     , pkgHashHaddockBaseUrl = elabHaddockBaseUrl
     , pkgHashHaddockResourcesDir = elabHaddockResourcesDir
     , pkgHashHaddockOutputDir = elabHaddockOutputDir
+    , pkgHashHaddockUseUnicode = elabHaddockUseUnicode
     }
   where
     ElaboratedConfiguredPackage{..} = normaliseConfiguredPackage shared pkg

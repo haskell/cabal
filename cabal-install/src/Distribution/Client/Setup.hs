@@ -2446,6 +2446,7 @@ haddockOptions showOrParseArgs =
              , "base-url"
              , "resources-dir"
              , "output-dir"
+             , "use-unicode"
              ]
   ]
 
