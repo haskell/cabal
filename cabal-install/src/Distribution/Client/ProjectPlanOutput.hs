@@ -19,6 +19,9 @@ module Distribution.Client.ProjectPlanOutput
   , createPackageEnvironment
   , writePlanGhcEnvironment
   , argsEquivalentOfGhcEnvironmentFile
+
+  -- * Store garbage collection
+  , writeGcRoot
   ) where
 
 import Distribution.Client.DistDirLayout
@@ -40,7 +43,7 @@ import qualified Distribution.Solver.Types.ComponentDeps as ComponentDeps
 import qualified Distribution.Compat.Binary as Binary
 import Distribution.Compat.Graph (Graph, Node)
 import qualified Distribution.Compat.Graph as Graph
-import Distribution.Compiler (CompilerFlavor (GHC, GHCJS))
+import Distribution.Compiler (CompilerFlavor (..), AbiTag (..))
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import Distribution.Package
 import qualified Distribution.PackageDescription as PD
@@ -50,7 +53,7 @@ import Distribution.Simple.BuildPaths
   , exeExtension
   )
 import Distribution.Simple.Compiler
-  ( Compiler
+  ( Compiler (compilerAbiTag)
   , CompilerId (..)
   , PackageDB (..)
   , PackageDBStack
@@ -66,6 +69,7 @@ import Distribution.Simple.GHC
   , simpleGhcEnvironmentFile
   , writeGhcEnvironmentFile
   )
+import Distribution.Simple.Program.GHC (packageDbArgsDb)
 import Distribution.Simple.Utils
 import Distribution.System
 import Distribution.Types.Version
@@ -75,9 +79,11 @@ import Distribution.Utils.Path hiding
   ( (<.>)
   , (</>)
   )
+import Distribution.Utils.String (encodeStringUtf8)
 import Distribution.Verbosity
 
 import Distribution.Client.Compat.Prelude
+import Distribution.Client.Compat.Directory (createFileLink)
 import Prelude ()
 
 import qualified Data.ByteString.Builder as BB
@@ -87,8 +93,11 @@ import qualified Data.Set as Set
 
 import System.FilePath
 import System.IO
+import System.Directory (removeFile)
+import Control.Exception (handleJust)
+import System.IO.Error (isDoesNotExistError)
+import Data.Containers.ListUtils (nubOrd)
 
-import Distribution.Simple.Program.GHC (packageDbArgsDb)
 
 -----------------------------------------------------------------------------
 -- Writing plan.json files
@@ -1030,3 +1039,49 @@ relativePackageDBPath relroot pkgdb =
     SpecificPackageDB path -> SpecificPackageDB relpath
       where
         relpath = makeRelative (normalise relroot) path
+
+-- | Establish backlinks for garbage collection of the store
+writeGcRoot ::
+  Verbosity ->
+  StoreDirLayout ->
+  DistDirLayout ->
+  ElaboratedSharedConfig ->
+  ElaboratedInstallPlan ->
+  IO ()
+writeGcRoot verbosity storeDirLayout distDirLayout elaboratedSharedConfig elaboratedInstallPlan = do
+  -- NOTE: this needs some thinking
+  -- We need to establish backlinks for the store so that we can collect garbage later on.
+  -- We have the whole build graph here so, to be pragmatic we are going to list all the
+  -- non-inplace units in the plan, irrespectively of whether they are direct or transitive
+  -- dependencies.
+  let refsUnitIds = [ elabUnitId elab
+                    | InstallPlan.Configured elab <- InstallPlan.toList elaboratedInstallPlan
+                    , not (isInplaceBuildStyle (elabBuildStyle elab))
+                    ]
+  writeFile referencesFile $ unlines $ map unUnitId $ nubOrd refsUnitIds
+
+  -- Write the gc root
+  createDirectoryIfMissingVerbose verbosity True storeGcRootsDir
+
+  -- To avoid collision we name the link with the hash of the dist directory.
+  let gcRootPath = storeGcRootsDir </> showHashValue (hashValue (encodePath distDir))
+
+  handleJust (\e -> if isDoesNotExistError e then Just () else Nothing) mempty $
+    removeFile gcRootPath
+
+  createFileLink distDir gcRootPath
+  where
+    storeGcRootsDir = storeGcRootsDirectory storeDirLayout
+    distDir = distDirectory distDirLayout
+    referencesFile = distProjectCacheFile distDirLayout "store-refs-" <> compilerTag
+    compiler = pkgConfigCompiler elaboratedSharedConfig
+    -- NOTE: It would be a good idea to expose this in StoreDirLayoyt
+    compilerTag = case compilerAbiTag compiler of
+        NoAbiTag -> prettyShow (compilerId compiler)
+        AbiTag tag -> prettyShow (compilerId compiler) <> "-" <> tag
+
+    -- NOTE: A FilePath should never represented as a String as we should never
+    -- have to do this. Nevetheless we do not need this to be stable as changes
+    -- will only mean a new root is created in place of the old one. Two roots
+    -- pointing to the same directory should never be a problem.
+    encodePath = BS.pack . encodeStringUtf8
