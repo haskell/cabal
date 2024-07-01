@@ -65,6 +65,20 @@ x ^^^ f = f x
 data PS ann = PS (Fields ann) [Section ann] [[Section ann]]
 
 -- | Partition field list into field map and groups of sections.
+-- Groups sections between fields. This means that the following snippet contains
+-- two section groups:
+--
+-- @
+-- -- first group
+-- some-section
+--     field: value
+-- another-section
+--     field: value
+-- foo: bar
+-- -- second group
+-- yet-another-section
+--     field: value
+-- @
 partitionFields :: [Field ann] -> (Fields ann, [[Section ann]])
 partitionFields = finalize . foldl' f (PS mempty mempty mempty)
   where
