@@ -52,7 +52,6 @@ test-suite unit-tests
     UnitTests.Distribution.Utils.ShortText
     UnitTests.Distribution.Utils.Structured
     UnitTests.Distribution.Version
-    UnitTests.Orphans
 
   main-is:          UnitTests.hs
   build-depends:

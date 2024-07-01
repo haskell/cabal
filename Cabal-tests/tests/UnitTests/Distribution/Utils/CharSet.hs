@@ -1,8 +1,4 @@
 {-# LANGUAGE CPP #-}
--- isAlpha and isAlphaNum definitions change from base to base
-#if MIN_VERSION_base(4,12,0) && !MIN_VERSION_base(4,13,0)
-#define HAS_TESTS
-#endif
 module UnitTests.Distribution.Utils.CharSet where
 
 import Prelude hiding (Foldable(..))

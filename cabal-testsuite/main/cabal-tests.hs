@@ -33,12 +33,6 @@ import System.Directory
 import Distribution.Pretty
 import Data.Maybe
 
-#if !MIN_VERSION_base(4,12,0)
-import Data.Monoid ((<>))
-#endif
-#if !MIN_VERSION_base(4,8,0)
-import Data.Monoid (mempty)
-#endif
 
 {- Note [Testsuite package environments]
 
