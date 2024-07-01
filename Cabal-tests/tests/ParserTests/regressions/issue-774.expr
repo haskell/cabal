@@ -41,7 +41,8 @@ GenericPackageDescription {
     dataDir = SymbolicPath ".",
     extraSrcFiles = [],
     extraTmpFiles = [],
-    extraDocFiles = []},
+    extraDocFiles = [],
+    extraFiles = []},
   gpdScannedVersion = Nothing,
   genPackageFlags = [],
   condLibrary = Just

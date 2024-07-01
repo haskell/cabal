@@ -1,0 +1,12 @@
+synopsis: Neutral field to add files to sdist
+packages: Cabal-syntax
+prs: #10107
+issues: #8817
+significance: significant
+
+description: {
+  Adds the `extra-files` field to the cabal file specification. This is like
+  the other `extra-*` fields (e.g. `extra-source-files`, `extra-doc-files`)
+  exception it does _not_ add any other semantics (cf. `extra-source-files`
+  is tracked by `cabal build`).
+}
