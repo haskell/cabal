@@ -8,7 +8,7 @@ more explanations. For a TL;DR, jump to the :ref:`Complete configuration`.
 Install the Haskell environment
 -------------------------------
 
-Haskell development on Windows makes use of the `MSYS2 <https://www.msys2.org/>`_ 
+Haskell development on Windows makes use of the `MSYS2 <https://www.msys2.org/>`_
 tools.
 
 The recommended way of setting up a Haskell environment in Windows is by using
@@ -19,8 +19,8 @@ system in your computer unless told not to do so: refer to `its documentation
 
 .. NOTE::
    Stack is another tool you can use to set up a Haskell environment on Windows. Stack
-   can be installed on its own or via GHCup. See 
-   `Stack's webpage <https://docs.haskellstack.org/en/stable/>`_ and/or 
+   can be installed on its own or via GHCup. See
+   `Stack's webpage <https://docs.haskellstack.org/en/stable/>`_ and/or
    `GHCup's section on Stack integration <https://www.haskell.org/ghcup/guide/#stack-integration>`_,
    in particular the `Windows related subsection <https://www.haskell.org/ghcup/guide/#windows>`_.
 
@@ -44,6 +44,16 @@ GHCup's documentation on the default location of this directory.
 ``<environment>`` has to be one of the environments of MSYS2, which for GHCup is
 ``mingw64``. You can learn more about the different environments in the `MSYS2
 documentation <https://www.msys2.org/docs/environments/>`_.
+
+.. warning::
+
+   Apparently, UCRT-based GHCs can work while the ``cabal`` config points to
+   ``mingw64`` but not the other way round.
+
+   Therefore when using GHC 9.4.1 or higher, a UCRT-based environment **should** be
+   used (like ``UCRT64`` or ``CLANG64``). When using GHC 9.2 or lower, a MSVCRT-based
+   environment **must** be used (like ``MINGW64``). Not respecting this might lead to
+   missing symbol errors during compilation.
 
 .. note::
 
