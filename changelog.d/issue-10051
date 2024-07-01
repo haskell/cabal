@@ -1,0 +1,4 @@
+synopsis: Added `--all` and `--haddock-all` switches to `haddock-project` subcommand
+packages: cabal-install
+issues: #10051
+prs: #2272
