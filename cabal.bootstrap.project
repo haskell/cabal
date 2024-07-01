@@ -9,4 +9,9 @@ packages:
 tests: False
 benchmarks: False
 
+-- This project file is used to generate bootstrap plans,
+-- as such we cannot enable "-march=native".
+constraints:
+  hashable -arch-native
+
 index-state: hackage.haskell.org 2024-06-17T00:00:01Z
