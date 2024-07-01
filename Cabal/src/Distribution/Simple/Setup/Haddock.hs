@@ -586,6 +586,27 @@ haddockProjectOptions _showOrParseArgs =
       trueArg
   , option
       ""
+      ["all", "haddock-all"]
+      "Run haddock for all targets"
+      ( \f ->
+          allFlags
+            [ haddockProjectExecutables f
+            , haddockProjectTestSuites f
+            , haddockProjectBenchmarks f
+            , haddockProjectForeignLibs f
+            ]
+      )
+      ( \v flags ->
+          flags
+            { haddockProjectExecutables = v
+            , haddockProjectTestSuites = v
+            , haddockProjectBenchmarks = v
+            , haddockProjectForeignLibs = v
+            }
+      )
+      trueArg
+  , option
+      ""
       ["internal"]
       "Run haddock for internal modules and include all symbols"
       haddockProjectInternal
