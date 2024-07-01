@@ -69,6 +69,8 @@ GenericPackageDescription {
       "only build with Double and Long support",
       flagDefault = False,
       flagManual = False}],
+  genDefaultPackageBounds =
+  Nothing,
   condLibrary = Just
     CondNode {
       condTreeData = Library {

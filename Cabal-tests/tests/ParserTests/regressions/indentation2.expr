@@ -40,6 +40,8 @@ GenericPackageDescription {
     extraDocFiles = []},
   gpdScannedVersion = Nothing,
   genPackageFlags = [],
+  genDefaultPackageBounds =
+  Nothing,
   condLibrary = Just
     CondNode {
       condTreeData = Library {

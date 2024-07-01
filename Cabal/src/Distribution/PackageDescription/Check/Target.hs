@@ -13,6 +13,8 @@ module Distribution.PackageDescription.Check.Target
   , checkExecutable
   , checkTestSuite
   , checkBenchmark
+  -- Utils
+  , mergeDependencies
   ) where
 
 import Distribution.Compat.Prelude
@@ -336,6 +338,7 @@ checkBuildInfo cet ams ads bi = do
       ads
       [mkUnqualComponentName "base"]
       (mergeDependencies $ targetBuildDepends bi)
+
   let ick = const (PackageDistInexcusable BaseNoUpperBounds)
       rck = PackageDistSuspiciousWarn . MissingUpperBounds cet
   checkPVP ick ids
@@ -760,6 +763,7 @@ isInternalTarget (CETExecutable{}) = False
 isInternalTarget (CETTest{}) = True
 isInternalTarget (CETBenchmark{}) = True
 isInternalTarget (CETSetup{}) = False
+isInternalTarget (CETDefaultPackageBounds{}) = True
 
 -- ------------------------------------------------------------
 -- Options
@@ -776,6 +780,7 @@ cet2bit (CETExecutable{}) = BITOther
 cet2bit (CETTest{}) = BITTestBench
 cet2bit (CETBenchmark{}) = BITTestBench
 cet2bit CETSetup = BITOther
+cet2bit CETDefaultPackageBounds = BITOther
 
 -- General check on all options (ghc, C, C++, …) for common inaccuracies.
 checkBuildInfoOptions :: Monad m => BITarget -> BuildInfo -> CheckM m ()

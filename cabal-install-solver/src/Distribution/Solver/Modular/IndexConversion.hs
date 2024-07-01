@@ -14,6 +14,7 @@ import qualified Distribution.InstalledPackageInfo as IPI
 import Distribution.Compiler
 import Distribution.Package                          -- from Cabal
 import Distribution.Simple.BuildToolDepends          -- from Cabal
+import Distribution.Types.BuildInfo.Lens (HasBuildInfo)
 import Distribution.Types.ExeDependency              -- from Cabal
 import Distribution.Types.PkgconfigDependency        -- from Cabal
 import Distribution.Types.ComponentName              -- from Cabal
@@ -176,10 +177,13 @@ convGPD :: OS -> Arch -> CompilerInfo -> [LabeledPackageConstraint]
         -> StrongFlags -> SolveExecutables -> PN -> GenericPackageDescription
         -> PInfo
 convGPD os arch cinfo constraints strfl solveExes pn
-        (GenericPackageDescription pkg scannedVersion flags mlib sub_libs flibs exes tests benchs) =
+        (GenericPackageDescription pkg scannedVersion flags defBounds mlib sub_libs flibs exes tests benchs) =
   let
     fds  = flagInfo strfl flags
 
+    appBounds :: HasBuildInfo a => CondTree cv [Dependency] a
+                      -> CondTree cv [Dependency] a
+    appBounds = maybe id applyDefaultBoundsToCondTree defBounds
 
     conv :: Monoid a => Component -> (a -> BuildInfo) -> DependencyReason PN ->
             CondTree ConfVar [Dependency] a -> FlaggedDeps PN
@@ -190,15 +194,15 @@ convGPD os arch cinfo constraints strfl solveExes pn
     initDR = DependencyReason pn M.empty S.empty
 
     flagged_deps
-        = concatMap (\ds ->       conv ComponentLib         libBuildInfo        initDR ds) (maybeToList mlib)
-       ++ concatMap (\(nm, ds) -> conv (ComponentSubLib nm) libBuildInfo        initDR ds) sub_libs
-       ++ concatMap (\(nm, ds) -> conv (ComponentFLib nm)   foreignLibBuildInfo initDR ds) flibs
-       ++ concatMap (\(nm, ds) -> conv (ComponentExe nm)    buildInfo           initDR ds) exes
+        = concatMap (\ds ->       conv ComponentLib         libBuildInfo        initDR (appBounds ds)) (maybeToList mlib)
+       ++ concatMap (\(nm, ds) -> conv (ComponentSubLib nm) libBuildInfo        initDR (appBounds ds)) sub_libs
+       ++ concatMap (\(nm, ds) -> conv (ComponentFLib nm)   foreignLibBuildInfo initDR (appBounds ds)) flibs
+       ++ concatMap (\(nm, ds) -> conv (ComponentExe nm)    buildInfo           initDR (appBounds ds)) exes
        ++ prefix (Stanza (SN pn TestStanzas))
-            (L.map  (\(nm, ds) -> conv (ComponentTest nm)   testBuildInfo (addStanza TestStanzas initDR) ds)
+            (L.map  (\(nm, ds) -> conv (ComponentTest nm)   testBuildInfo (addStanza TestStanzas initDR) (appBounds ds))
                     tests)
        ++ prefix (Stanza (SN pn BenchStanzas))
-            (L.map  (\(nm, ds) -> conv (ComponentBench nm)  benchmarkBuildInfo (addStanza BenchStanzas initDR) ds)
+            (L.map  (\(nm, ds) -> conv (ComponentBench nm)  benchmarkBuildInfo (addStanza BenchStanzas initDR) (appBounds ds))
                     benchs)
        ++ maybe []  (convSetupBuildInfo pn) (setupBuildInfo pkg)
 
@@ -340,7 +344,6 @@ convCondTree flags dr pkg os arch cinfo pn fds comp getInfo solveExes@(SolveExec
                  [ D.Simple singleDep comp
                  | dep <- ds
                  , singleDep <- convLibDeps dr dep ]  -- unconditional package dependencies
-
               ++ L.map (\e -> D.Simple (LDep dr (Ext  e)) comp) (allExtensions bi) -- unconditional extension dependencies
               ++ L.map (\l -> D.Simple (LDep dr (Lang l)) comp) (allLanguages  bi) -- unconditional language dependencies
               ++ L.map (\(PkgconfigDependency pkn vr) -> D.Simple (LDep dr (Pkg pkn vr)) comp) (pkgconfigDepends bi) -- unconditional pkg-config dependencies

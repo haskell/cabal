@@ -158,6 +158,8 @@ GenericPackageDescription {
       "Obtain FileTime using portable functions",
       flagDefault = False,
       flagManual = True}],
+  genDefaultPackageBounds =
+  Nothing,
   condLibrary = Just
     CondNode {
       condTreeData = Library {

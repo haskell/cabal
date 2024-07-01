@@ -4,6 +4,9 @@
 module Distribution.Types.ExeDependency
   ( ExeDependency (..)
   , qualifiedExeName
+  , exeDepPkgName
+  , exeDepUnqualComp
+  , exeDepVerRange
   ) where
 
 import Distribution.Compat.Prelude
@@ -30,6 +33,15 @@ data ExeDependency
 instance Binary ExeDependency
 instance Structured ExeDependency
 instance NFData ExeDependency where rnf = genericRnf
+
+exeDepPkgName :: ExeDependency -> PackageName
+exeDepPkgName (ExeDependency pn _ _) = pn
+
+exeDepUnqualComp :: ExeDependency -> UnqualComponentName
+exeDepUnqualComp (ExeDependency _ uc _) = uc
+
+exeDepVerRange :: ExeDependency -> VersionRange
+exeDepVerRange (ExeDependency _ _ vr) = vr
 
 instance Pretty ExeDependency where
   pretty (ExeDependency name exe ver) =

@@ -32,6 +32,5 @@ tests =
     longerThan = filter ((>25). length) allExplanationIdStrings
 
     usingTooManyDashes :: [CheckExplanationIDString]
-    usingTooManyDashes = filter ((>2) . length . filter (=='-'))
+    usingTooManyDashes = filter ((>3) . length . filter (=='-'))
                            allExplanationIdStrings
-

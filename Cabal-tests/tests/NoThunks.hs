@@ -69,6 +69,7 @@ instance NoThunks BuildType
 instance NoThunks CabalSpecVersion
 instance NoThunks CompilerFlavor
 instance NoThunks ConfVar
+instance NoThunks DefaultBounds
 instance NoThunks Dependency
 instance NoThunks Executable
 instance NoThunks ExecutableScope

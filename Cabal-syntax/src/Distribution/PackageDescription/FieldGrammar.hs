@@ -65,6 +65,9 @@ module Distribution.PackageDescription.FieldGrammar
 
     -- * Component build info
   , buildInfoFieldGrammar
+
+    -- * default-package-bounds
+  , defaultPackageBoundsFieldGrammar
   ) where
 
 import Distribution.Compat.Lens
@@ -806,6 +809,24 @@ setupBInfoFieldGrammar def =
     <$> monoidalFieldAla "setup-depends" (alaList CommaVCat) L.setupDepends
 {-# SPECIALIZE setupBInfoFieldGrammar :: Bool -> ParsecFieldGrammar' SetupBuildInfo #-}
 {-# SPECIALIZE setupBInfoFieldGrammar :: Bool -> PrettyFieldGrammar' SetupBuildInfo #-}
+
+-------------------------------------------------------------------------------
+-- default-package-bounds
+-------------------------------------------------------------------------------
+
+defaultPackageBoundsFieldGrammar
+  :: ( FieldGrammar c g
+     , Applicative (g DefaultBounds)
+     , c (List CommaVCat (Identity Dependency) Dependency)
+     , c (List CommaFSep (Identity ExeDependency) ExeDependency)
+     )
+  => g DefaultBounds DefaultBounds
+defaultPackageBoundsFieldGrammar =
+  DefaultBounds
+    <$> (monoidalFieldAla "build-depends" formatDependencyList L.defaultTargetBuildDepends)
+    <*> (monoidalFieldAla "build-tool-depends" (alaList CommaFSep) L.defaultBuildToolDepends)
+{-# SPECIALIZE defaultPackageBoundsFieldGrammar :: ParsecFieldGrammar' DefaultBounds #-}
+{-# SPECIALIZE defaultPackageBoundsFieldGrammar :: PrettyFieldGrammar' DefaultBounds #-}
 
 -------------------------------------------------------------------------------
 -- Define how field values should be formatted for 'pretty'.

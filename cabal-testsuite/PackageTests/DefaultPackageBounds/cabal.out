@@ -1,0 +1,37 @@
+# cabal build
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following would be built:
+ - bar-0.1.0.0 (exe:bar) (first run)
+ - foo-0.1.0.0 (lib) (first run)
+# cabal build
+Resolving dependencies...
+Error: [Cabal-7107]
+Could not resolve dependencies:
+[__0] trying: foo-0.1.0.0 (user goal)
+[__1] rejecting: foo:-build-depends-conflict (constraint from config file, command line flag, or user target requires opposite flag selection)
+[__1] trying: foo:+build-depends-conflict
+[__2] next goal: time (dependency of foo +/-build-depends-conflict)
+[__2] rejecting: time-<VERSION>/installed-<HASH> (conflict: foo +build-depends-conflict => time<0.1)
+[__2] fail (backjumping, conflict set: foo, time, foo:build-depends-conflict)
+After searching the rest of the dependency tree exhaustively, these were the goals I've had most trouble fulfilling: foo (4), foo:build-depends-conflict (3), time (2)
+# cabal build
+Resolving dependencies...
+Error: [Cabal-7107]
+Could not resolve dependencies:
+[__0] trying: bar-0.1.0.0 (user goal)
+[__1] trying: foo-0.1.0.0 (user goal)
+[__2] rejecting: foo:-build-tool-conflict (constraint from config file, command line flag, or user target requires opposite flag selection)
+[__2] trying: foo:+build-tool-conflict
+[__3] next goal: foo:bar:exe.bar (dependency of foo +/-build-tool-conflict)
+[__3] rejecting: foo:bar:exe.bar~>bar-0.1.0.0 (conflict: foo +build-tool-conflict => foo:bar:exe.bar (exe bar)<0.1)
+[__3] rejecting: foo:bar:exe.bar-0.1.0.0 (multiple instances)
+[__3] fail (backjumping, conflict set: bar, foo, foo:bar:exe.bar, foo:build-tool-conflict)
+After searching the rest of the dependency tree exhaustively, these were the goals I've had most trouble fulfilling: foo (4), foo:bar:exe.bar (3), foo:build-tool-conflict (3), bar (2)
+Try running with --minimize-conflict-set to improve the error message.
+# cabal build
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following would be built:
+ - bar-0.1.0.0 (exe:bar) (first run)
+ - foo-0.1.0.0 (lib) (first run)

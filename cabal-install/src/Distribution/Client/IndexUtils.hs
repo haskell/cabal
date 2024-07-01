@@ -1075,6 +1075,7 @@ packageListFromCache verbosity mkPkg hnd Cache{..} = accum mempty [] mempty cach
                   }
             , gpdScannedVersion = Just specVer -- tells index scanner to skip this file.
             , genPackageFlags = []
+            , genDefaultPackageBounds = Nothing
             , condLibrary = Nothing
             , condSubLibraries = []
             , condForeignLibs = []

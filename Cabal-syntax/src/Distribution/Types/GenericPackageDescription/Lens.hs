@@ -22,6 +22,7 @@ import Distribution.System (Arch, OS)
 import Distribution.Types.Benchmark (Benchmark)
 import Distribution.Types.CondTree (CondTree)
 import Distribution.Types.ConfVar (ConfVar (..))
+import Distribution.Types.DefaultBounds (DefaultBounds)
 import Distribution.Types.Dependency (Dependency)
 import Distribution.Types.Executable (Executable)
 import Distribution.Types.Flag (FlagName, PackageFlag (MkPackageFlag))
@@ -48,6 +49,10 @@ gpdScannedVersion f s = fmap (\x -> s{T.gpdScannedVersion = x}) (f (T.gpdScanned
 genPackageFlags :: Lens' GenericPackageDescription [PackageFlag]
 genPackageFlags f s = fmap (\x -> s{T.genPackageFlags = x}) (f (T.genPackageFlags s))
 {-# INLINE genPackageFlags #-}
+
+genDefaultPackageBounds :: Lens' GenericPackageDescription (Maybe DefaultBounds)
+genDefaultPackageBounds f s = fmap (\x -> s{T.genDefaultPackageBounds = x}) (f (T.genDefaultPackageBounds s))
+{-# INLINE genDefaultPackageBounds #-}
 
 condLibrary :: Lens' GenericPackageDescription (Maybe (CondTree ConfVar [Dependency] Library))
 condLibrary f s = fmap (\x -> s{T.condLibrary = x}) (f (T.condLibrary s))
@@ -81,11 +86,12 @@ allCondTrees
      )
   -> GenericPackageDescription
   -> f GenericPackageDescription
-allCondTrees f (GenericPackageDescription p v a1 x1 x2 x3 x4 x5 x6) =
+allCondTrees f (GenericPackageDescription p v a1 bs x1 x2 x3 x4 x5 x6) =
   GenericPackageDescription
     <$> pure p
     <*> pure v
     <*> pure a1
+    <*> pure bs
     <*> traverse f x1
     <*> (traverse . _2) f x2
     <*> (traverse . _2) f x3

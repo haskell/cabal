@@ -32,6 +32,7 @@ module Distribution.PackageDescription.Configuration
   , transformAllBuildInfos
   , transformAllBuildDepends
   , transformAllBuildDependsN
+  , transformDefaultBuildDepends
   , simplifyWithSysParams
   ) where
 
@@ -40,6 +41,7 @@ import Prelude ()
 
 -- lens
 import qualified Distribution.Types.BuildInfo.Lens as L
+import qualified Distribution.Types.DefaultBounds.Lens as L
 import qualified Distribution.Types.GenericPackageDescription.Lens as L
 import qualified Distribution.Types.PackageDescription.Lens as L
 import qualified Distribution.Types.SetupBuildInfo.Lens as L
@@ -476,7 +478,7 @@ finalizePD
   (Platform arch os)
   impl
   constraints
-  (GenericPackageDescription pkg _ver flags mb_lib0 sub_libs0 flibs0 exes0 tests0 bms0) = do
+  (GenericPackageDescription pkg _ver flags defBounds mb_lib0 sub_libs0 flibs0 exes0 tests0 bms0) = do
     (targetSet, flagVals) <-
       resolveWithFlags flagChoices enabled os arch impl constraints condTrees check
     let
@@ -509,14 +511,25 @@ finalizePD
       , flagVals
       )
     where
+      appBounds :: L.HasBuildInfo a => a -> a
+      appBounds = maybe id applyDefaultBoundsToBuildInfo defBounds
+
+      appBoundsConstrs
+        :: [CondTree v [Dependency] a]
+        -> [CondTree v [Dependency] a]
+      appBoundsConstrs = case defBounds of
+        Nothing -> id
+        Just db -> map (mapTreeConstrs (applyDefaultBoundsToDependencies db))
+
       -- Combine lib, exes, and tests into one list of @CondTree@s with tagged data
       condTrees =
-        maybeToList (fmap (mapTreeData Lib) mb_lib0)
-          ++ map (\(name, tree) -> mapTreeData (SubComp name . CLib) tree) sub_libs0
-          ++ map (\(name, tree) -> mapTreeData (SubComp name . CFLib) tree) flibs0
-          ++ map (\(name, tree) -> mapTreeData (SubComp name . CExe) tree) exes0
-          ++ map (\(name, tree) -> mapTreeData (SubComp name . CTest) tree) tests0
-          ++ map (\(name, tree) -> mapTreeData (SubComp name . CBench) tree) bms0
+        appBoundsConstrs $
+          maybeToList (fmap (mapTreeData (Lib . appBounds)) mb_lib0)
+            ++ map (\(name, tree) -> mapTreeData (SubComp name . CLib . appBounds) tree) sub_libs0
+            ++ map (\(name, tree) -> mapTreeData (SubComp name . CFLib . appBounds) tree) flibs0
+            ++ map (\(name, tree) -> mapTreeData (SubComp name . CExe . appBounds) tree) exes0
+            ++ map (\(name, tree) -> mapTreeData (SubComp name . CTest . appBounds) tree) tests0
+            ++ map (\(name, tree) -> mapTreeData (SubComp name . CBench . appBounds) tree) bms0
 
       flagChoices = map (\(MkPackageFlag n _ d manual) -> (n, d2c manual n d)) flags
       d2c manual n b = case lookupFlagAssignment n userflags of
@@ -556,7 +569,7 @@ resolveWithFlags [] Distribution.System.Linux Distribution.System.I386 (Distribu
 -- function.
 flattenPackageDescription :: GenericPackageDescription -> PackageDescription
 flattenPackageDescription
-  (GenericPackageDescription pkg _ _ mlib0 sub_libs0 flibs0 exes0 tests0 bms0) =
+  (GenericPackageDescription pkg _ _ _ mlib0 sub_libs0 flibs0 exes0 tests0 bms0) =
     pkg
       { library = mlib
       , subLibraries = reverse sub_libs
@@ -668,3 +681,11 @@ transformAllBuildDependsN f =
     . over (L.packageDescription . L.setupBuildInfo . traverse . L.setupDepends) f
     -- cannot be point-free as normal because of higher rank
     . over (\f' -> L.allCondTrees $ traverseCondTreeC f') f
+
+-- | Apply @f@ to the default bounds in the 'PackageDescription'.
+transformDefaultBuildDepends
+  :: (Dependency -> Dependency)
+  -> GenericPackageDescription
+  -> GenericPackageDescription
+transformDefaultBuildDepends f =
+  over (L.genDefaultPackageBounds . traverse . L.defaultTargetBuildDepends . traverse) f

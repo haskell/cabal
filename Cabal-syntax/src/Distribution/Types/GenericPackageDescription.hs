@@ -44,6 +44,7 @@ data GenericPackageDescription = GenericPackageDescription
   --   Perfectly, PackageIndex should have sum type, so we don't need to
   --   have dummy GPDs.
   , genPackageFlags :: [PackageFlag]
+  , genDefaultPackageBounds :: Maybe DefaultBounds
   , condLibrary :: Maybe (CondTree ConfVar [Dependency] Library)
   , condSubLibraries
       :: [ ( UnqualComponentName
@@ -81,17 +82,18 @@ instance Structured GenericPackageDescription
 instance NFData GenericPackageDescription where rnf = genericRnf
 
 emptyGenericPackageDescription :: GenericPackageDescription
-emptyGenericPackageDescription = GenericPackageDescription emptyPackageDescription Nothing [] Nothing [] [] [] [] []
+emptyGenericPackageDescription = GenericPackageDescription emptyPackageDescription Nothing [] Nothing Nothing [] [] [] [] []
 
 -- -----------------------------------------------------------------------------
 -- Traversal Instances
 
 instance L.HasBuildInfos GenericPackageDescription where
-  traverseBuildInfos f (GenericPackageDescription p v a1 x1 x2 x3 x4 x5 x6) =
+  traverseBuildInfos f (GenericPackageDescription p v a1 bs x1 x2 x3 x4 x5 x6) =
     GenericPackageDescription
       <$> L.traverseBuildInfos f p
       <*> pure v
       <*> pure a1
+      <*> pure bs
       <*> (traverse . traverseCondTreeBuildInfo) f x1
       <*> (traverse . L._2 . traverseCondTreeBuildInfo) f x2
       <*> (traverse . L._2 . traverseCondTreeBuildInfo) f x3
