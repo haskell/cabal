@@ -961,7 +961,7 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir pkg lib clbi = do
                           mkGenericSharedBundledLibName
                             platform
                             compiler_id
-                            l
+                            (l ++ f)
                     forM_ files $ \file ->
                       when (l' `isPrefixOf` file) $ do
                         isFile <- doesFileExist (i $ builtDir </> makeRelativePathEx file)
@@ -971,6 +971,7 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir pkg lib clbi = do
                             dynlibTargetDir
                             file
                   | l <- extraBundledLibs (libBuildInfo lib)
+                  , f <- "" : extraDynLibFlavours (libBuildInfo lib)
                   ]
   where
     -- See Note [Symbolic paths] in Distribution.Utils.Path
