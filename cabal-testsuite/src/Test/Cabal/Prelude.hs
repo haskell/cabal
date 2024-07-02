@@ -834,21 +834,21 @@ getScriptCacheDirectory script = do
 ------------------------------------------------------------------------
 -- * Skipping tests
 
-hasSharedLibraries  :: TestM Bool
-hasSharedLibraries = do
-    shared_libs_were_removed <- isGhcVersion ">= 7.8"
-    return (not (buildOS == Windows && shared_libs_were_removed))
-
-hasProfiledLibraries :: TestM Bool
-hasProfiledLibraries = do
+testCompilerWithArgs :: [String] -> TestM Bool
+testCompilerWithArgs args = do
     env <- getTestEnv
     ghc_path <- programPathM ghcProgram
     let prof_test_hs = testWorkDir env </> "Prof.hs"
     liftIO $ writeFile prof_test_hs "module Prof where"
     r <- liftIO $ run (testVerbosity env) (Just $ testCurrentDir env)
-                      (testEnvironment env) ghc_path ["-prof", "-c", prof_test_hs]
+                      (testEnvironment env) ghc_path (["-c", prof_test_hs] ++ args)
                       Nothing
     return (resultExitCode r == ExitSuccess)
+
+hasProfiledLibraries, hasProfiledSharedLibraries, hasSharedLibraries :: TestM Bool
+hasProfiledLibraries = testCompilerWithArgs ["-prof"]
+hasProfiledSharedLibraries = testCompilerWithArgs ["-prof", "-dynamic"]
+hasSharedLibraries = testCompilerWithArgs ["-dynamic"]
 
 -- | Check if the GHC that is used for compiling package tests has
 -- a shared library of the cabal library under test in its database.

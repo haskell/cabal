@@ -1,11 +1,17 @@
-Pre-release cabal-install 3.12.0.0/3.11.0.0 changelog and release notes.
-
-This file will be edited and the changes incorprated into the official
-3.12.1.0 cabal-install and cabal-install-solver release notes.
-
+cabal-install 3.12.1.0 changelog and release notes.
 ---
 
 ### Significant changes
+
+- Cabal 3.12 support [#9917](https://github.com/haskell/cabal/issues/9917)
+
+    This is the first release of `cabal-install` that is fully compatible with `Cabal` 3.12.0.0 as released with GHC 9.10.1. In particular, it means custom setup builds will work with GHC 9.10.
+
+- `cabal-install` has been built against `tar` 0.6.3.0 [#10123](https://github.com/haskell/cabal/pull/10123)
+
+    The new release of `tar` has significant performance improvements, making `cabal update` in particular much faster.
+
+    For anyone building from the source, we suggest making sure that the version of `tar` in your plan is at least 0.6.3.0. (For example, we bumped the `index-state` in our `cabal.project.release` in the `Cabal` repository.)
 
 - Add support for asm, cmm, and js sources in executable components [#8639](https://github.com/haskell/cabal/issues/8639) [#9061](https://github.com/haskell/cabal/pull/9061)
 
@@ -36,17 +42,14 @@ This file will be edited and the changes incorprated into the official
     a flag which specifies which libraries should be included in the coverage
     report for some testsuite.
 
-- Add `cabal path` command [#8879](https://github.com/haskell/cabal/pull/8879)
+- Add `cabal path` command [#8879](https://github.com/haskell/cabal/pull/8879) [#9673](https://github.com/haskell/cabal/pull/9673)
 
     The `cabal path` command prints the file system paths used by Cabal.
     It is intended for use by tooling that needs to read or modify Cabal
     data, such that it does not need to replicate the complicated logic
     for respecting `CABAL_DIR`, `CABAL_CONFIG`, etc.
 
-- Redesign `cabal path` command to account for projects [#9673](https://github.com/haskell/cabal/pull/9673)
-
-  Previously, `cabal path` was only able to query from the global configuration file, e.g., `~/.cabal/config` or the XDG equivalent.
-  We take the foundations and enhance `cabal path` to take project configuration, such as `cabal.project`, into account.
+    It will obey a `cabal.project` if present.
 
   Additionally, we add support for multiple output formats, such as key-value pairs and json.
 
@@ -62,7 +65,7 @@ This file will be edited and the changes incorprated into the official
   The json output format is versioned by the cabal-install version, which is part of the json object.
   Thus, all result objects contain at least the key "cabal-install-version".
 
-  We expand the `cabal path` to also produce information of the compiler that is going to be used in a `cabal build` or `cabal repl` invocation.
+  It also produces information of the compiler that is going to be used in a `cabal build` or `cabal repl` invocation.
   To do that, we re-configure the compiler program, and outputs the location, version and compiler flavour.
   This is helpful for downstream tools, such as HLS, to figure out the GHC version required to compile a project with, without dependency solving.
 
@@ -121,7 +124,7 @@ This file will be edited and the changes incorprated into the official
     name did not match exactly. Now they will be cached even if the header's
     capitalization is different.
 
-- Clarify the semantics of the `--package-db` flag [#9678](https://github.com/haskell/cabal/issues/9678)
+- Clarify the semantics of the `--package-db` flag [#9678](https://github.com/haskell/cabal/issues/9678) [#9683](https://github.com/haskell/cabal/pull/9683)
 
     The `--package-db` flag now only applies to the default
     immutable initial package stack rather than also applying to the store
@@ -257,7 +260,7 @@ This file will be edited and the changes incorprated into the official
     This relies on the "Project Unit Id" which is available since GHC 9.8.1,
     older versions of GHC do not benefit from this change.
 
-- Add support for `GHC2024` [#9736](https://github.com/haskell/cabal/issues/9736)
+- Add support for `GHC2024` [#9736](https://github.com/haskell/cabal/issues/9736) [#9791](https://github.com/haskell/cabal/pull/9791)
 
   Support for the `GHC2024` language edition, introduced by GHC 9.10, has been
   added. It can now be used in the `default-language` and `other-languages`
@@ -272,6 +275,23 @@ This file will be edited and the changes incorprated into the official
     Adds support for the `ListTuplePuns` language extension (GHC proposal #475)
 
 - Add language extension `TypeAbstractions` [#9496](https://github.com/haskell/cabal/issues/9496) [#9502](https://github.com/haskell/cabal/pull/9502)
+
+- Label error messages with codes (following GHC, Stack)
+
+    As with GHC and Stack, Cabal and cabal-install now generate warnings and errors prefixed with error codes of the form `[Cabal-xxxxx]`. These will be documented on https://errors.haskell.org, although very few are as yet.
+
+- The `--offline` flag applied to `source-repository-package`s [#9641](https://github.com/haskell/cabal/issues/9641) [#9771](https://github.com/haskell/cabal/pull/9771)
+
+  The `--offline` flag is already used to block access to Hackage. Now with this PR, this also applies to remote dependency `source-repository-package` in `cabal.project`.
+
+- Fix `--program-suffix` resulting in invalid installation [#8823](https://github.com/haskell/cabal/issues/8823) [#9919](https://github.com/haskell/cabal/issues/9919) [#10056](https://github.com/haskell/cabal/pull/10056)
+
+    Formerly, using `--program-suffix` resulted in bad symlinks into the store. This has been corrected.
+
+- Warn on missing `default-language` [#9620](https://github.com/haskell/cabal/issues/9620) [#9766](https://github.com/haskell/cabal/pull/9766)
+
+  - To help the adoption of GHC language editions, `cabal check` will now
+    warn about missing `default-language`.
 
 ### Other changes
 
@@ -341,3 +361,19 @@ This file will be edited and the changes incorprated into the official
 
     The "Executing·install·plan··serially" and other similar "Executing
     install plan··..." outputs no longer contain double spaces.
+
+- Allow whitespace in targets [#8875](https://github.com/haskell/cabal/issues/8875) [#10032](https://github.com/haskell/cabal/pull/10032)
+
+  Allow spaces in the final component of target selectors. This resolves an issue
+  where using absolute paths in selectors can fail if there is whitespace in the
+  parent directories of the project.
+
+- Renders project configuration provenance as a list of canonical paths [#9971](https://github.com/haskell/cabal/issues/9971) [#9985](https://github.com/haskell/cabal/pull/9985)
+
+  Removes interleaved rendering of project imports.
+
+- Abbreviate solver rejection messages with installed versions [#9823](https://github.com/haskell/cabal/issues/9823) [#9824](https://github.com/haskell/cabal/pull/9824)
+
+- solver: Prevent `ghc-internal` from being reinstalled [#10108](https://github.com/haskell/cabal/pull/10108)
+
+    GHC 9.10 ships with a new wired-in package, `ghc-internal`, which cannot be reinstalled. This commit prevents cabal-install from attempting it.

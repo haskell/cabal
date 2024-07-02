@@ -683,17 +683,18 @@ instance Arbitrary PackageConfig where
       <*> arbitrary
       <*> arbitrary
       <*> arbitrary
+      <*> arbitrary
+      <*> shortListOf 5 arbitraryShortToken
+      <*> arbitrary
+      <*> arbitrary
+      <*> arbitrary
+      <*> shortListOf 5 arbitraryShortToken
+      <*> shortListOf 5 arbitraryShortToken
+      <*> shortListOf 5 arbitraryShortToken
       <*> shortListOf 5 arbitraryShortToken
       <*> arbitrary
       <*> arbitrary
       <*> arbitrary
-      <*> shortListOf 5 arbitraryShortToken
-      <*> shortListOf 5 arbitraryShortToken
-      <*> shortListOf 5 arbitraryShortToken
-      <*> shortListOf 5 arbitraryShortToken
-      <*> arbitrary
-      <*> arbitrary
-      <*> arbitrary
       <*> arbitrary
       <*> arbitrary
       <*> arbitrary
@@ -721,6 +722,7 @@ instance Arbitrary PackageConfig where
       <*> arbitraryFlag arbitraryShortToken
       <*> arbitraryFlag arbitraryShortToken
       <*> arbitraryFlag arbitraryShortToken
+      <*> arbitrary
       <*> arbitrary
       <*> arbitrary
       <*> arbitrary
@@ -751,6 +753,7 @@ instance Arbitrary PackageConfig where
       , packageConfigFullyStaticExe = x50
       , packageConfigProf = x07
       , packageConfigProfLib = x08
+      , packageConfigProfShared = x08_1
       , packageConfigProfExe = x09
       , packageConfigProfDetail = x10
       , packageConfigProfLibDetail = x11
@@ -793,6 +796,7 @@ instance Arbitrary PackageConfig where
       , packageConfigHaddockBaseUrl = x55
       , packageConfigHaddockResourcesDir = x56
       , packageConfigHaddockOutputDir = x57
+      , packageConfigHaddockUseUnicode = x58
       , packageConfigTestHumanLog = x44
       , packageConfigTestMachineLog = x45
       , packageConfigTestShowDetails = x46
@@ -814,6 +818,7 @@ instance Arbitrary PackageConfig where
         , packageConfigFullyStaticExe = x50'
         , packageConfigProf = x07'
         , packageConfigProfLib = x08'
+        , packageConfigProfShared = x08_1'
         , packageConfigProfExe = x09'
         , packageConfigProfDetail = x10'
         , packageConfigProfLibDetail = x11'
@@ -856,6 +861,7 @@ instance Arbitrary PackageConfig where
         , packageConfigHaddockBaseUrl = x55'
         , packageConfigHaddockResourcesDir = x56'
         , packageConfigHaddockOutputDir = x57'
+        , packageConfigHaddockUseUnicode = x58'
         , packageConfigTestHumanLog = x44'
         , packageConfigTestMachineLog = x45'
         , packageConfigTestShowDetails = x46'
@@ -866,7 +872,7 @@ instance Arbitrary PackageConfig where
         , packageConfigBenchmarkOptions = x52'
         }
       | ( ( (x00', x01', x02', x03', x04')
-            , (x05', x42', x06', x50', x07', x08', x09')
+            , (x05', x42', x06', x50', x07', x08', x08_1', x09')
             , (x10', x11', x12', x13', x14')
             , (x15', x16', x53', x17', x18', x19')
             )
@@ -878,12 +884,13 @@ instance Arbitrary PackageConfig where
               , (x44', x45', x46', x47', x48', x49', x51', x52', x54', x55')
               , x56'
               , x57'
+              , x58'
               )
           ) <-
           shrink
             (
               ( (preShrink_Paths x00, preShrink_Args x01, x02, x03, x04)
-              , (x05, x42, x06, x50, x07, x08, x09)
+              , (x05, x42, x06, x50, x07, x08, x08_1, x09)
               , (x10, x11, map NonEmpty x12, x13, x14)
               ,
                 ( x15
@@ -903,6 +910,7 @@ instance Arbitrary PackageConfig where
               , (x44, x45, x46, x47, x48, x49, x51, x52, x54, x55)
               , x56
               , x57
+              , x58
               )
             )
       ]

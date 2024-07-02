@@ -19,6 +19,9 @@ module Distribution.Simple.BuildPaths
   , srcPref
   , buildInfoPref
   , haddockDirName
+  , haddockLibraryDirPath
+  , haddockTestDirPath
+  , haddockBenchmarkDirPath
   , hscolourPref
   , haddockPref
   , autogenPackageModulesDir
@@ -26,12 +29,17 @@ module Distribution.Simple.BuildPaths
   , autogenPathsModuleName
   , autogenPackageInfoModuleName
   , cppHeaderName
-  , haddockName
+  , haddockPath
+  , haddockPackageLibraryName
+  , haddockPackageLibraryName'
+  , haddockLibraryName
+  , haddockLibraryPath
   , mkGenericStaticLibName
   , mkLibName
   , mkProfLibName
   , mkGenericSharedLibName
   , mkSharedLibName
+  , mkProfSharedLibName
   , mkStaticLibName
   , mkGenericSharedBundledLibName
   , exeExtension
@@ -43,6 +51,8 @@ module Distribution.Simple.BuildPaths
   , getSourceFiles
   , getLibSourceFiles
   , getExeSourceFiles
+  , getTestSourceFiles
+  , getBenchmarkSourceFiles
   , getFLibSourceFiles
   , exeBuildDir
   , flibBuildDir
@@ -91,9 +101,43 @@ buildInfoPref distPref = distPref </> makeRelativePathEx "build-info.json"
 
 -- | This is the name of the directory in which the generated haddocks
 -- should be stored. It does not include the @<dist>/doc/html@ prefix.
+--
+-- It is also used by `haddock-project` when constructing its output directory.
 haddockDirName :: HaddockTarget -> PackageDescription -> FilePath
 haddockDirName ForDevelopment = prettyShow . packageName
 haddockDirName ForHackage = (++ "-docs") . prettyShow . packageId
+
+-- | This is the name of the directory in which the generated haddocks for
+-- a (sub)library should be stored. It does not include the @<dist>/doc/html@
+-- prefix.
+--
+-- It is also used by `haddock-project` when constructing its output directory.
+haddockLibraryDirPath
+  :: HaddockTarget
+  -> PackageDescription
+  -> Library
+  -> FilePath
+haddockLibraryDirPath haddockTarget pkg_descr lib =
+  case libName lib of
+    LSubLibName sublib_name ->
+      haddockDirName haddockTarget pkg_descr </> prettyShow sublib_name
+    _ -> haddockDirName haddockTarget pkg_descr
+
+haddockTestDirPath
+  :: HaddockTarget
+  -> PackageDescription
+  -> TestSuite
+  -> FilePath
+haddockTestDirPath haddockTarget pkg_descr test =
+  haddockDirName haddockTarget pkg_descr </> prettyShow (testName test)
+
+haddockBenchmarkDirPath
+  :: HaddockTarget
+  -> PackageDescription
+  -> Benchmark
+  -> FilePath
+haddockBenchmarkDirPath haddockTarget pkg_descr bench =
+  haddockDirName haddockTarget pkg_descr </> prettyShow (benchmarkName bench)
 
 -- | The directory to which generated haddock documentation should be written.
 haddockPref
@@ -138,8 +182,35 @@ autogenPackageInfoModuleName pkg_descr =
     fixchar '-' = '_'
     fixchar c = c
 
-haddockName :: PackageDescription -> FilePath
-haddockName pkg_descr = prettyShow (packageName pkg_descr) <.> "haddock"
+haddockPath :: PackageDescription -> FilePath
+haddockPath pkg_descr = prettyShow (packageName pkg_descr) <.> "haddock"
+
+-- | A name of a (sub)library used by haddock, in the form
+-- `<package>:<library>` if it is a sublibrary, or `<package>` if it is the
+-- main library.
+--
+-- Used by `haddock-project` and `Distribution.Simple.Haddock`.
+haddockPackageLibraryName :: PackageDescription -> Library -> String
+haddockPackageLibraryName pkg_descr lib =
+  haddockPackageLibraryName' (packageName pkg_descr) (libName lib)
+
+haddockPackageLibraryName' :: PackageName -> LibraryName -> String
+haddockPackageLibraryName' pkg_name lib_name =
+  case lib_name of
+    LSubLibName sublib_name ->
+      prettyShow pkg_name ++ ":" ++ prettyShow sublib_name
+    LMainLibName -> prettyShow pkg_name
+
+-- | A name of a (sub)library used by haddock.
+haddockLibraryName :: PackageDescription -> Library -> String
+haddockLibraryName pkg_descr lib =
+  case libName lib of
+    LSubLibName sublib_name -> prettyShow sublib_name
+    LMainLibName -> prettyShow (packageName pkg_descr)
+
+-- | File path of the ".haddock" file.
+haddockLibraryPath :: PackageDescription -> Library -> FilePath
+haddockLibraryPath pkg_descr lib = haddockLibraryName pkg_descr lib <.> "haddock"
 
 -- -----------------------------------------------------------------------------
 -- Source File helper
@@ -182,6 +253,48 @@ getExeSourceFiles verbosity lbi exe clbi = do
         : autogenPackageModulesDir lbi
         : coerceSymbolicPath (exeBuildDir lbi exe)
         : hsSourceDirs bi
+
+getTestSourceFiles
+  :: Verbosity
+  -> LocalBuildInfo
+  -> TestSuite
+  -> ComponentLocalBuildInfo
+  -> IO [(ModuleName.ModuleName, SymbolicPath Pkg 'File)]
+getTestSourceFiles verbosity lbi test@TestSuite{testInterface = TestSuiteExeV10 _ path} clbi = do
+  moduleFiles <- getSourceFiles verbosity mbWorkDir searchpaths modules
+  srcMainPath <- findFileCwd verbosity mbWorkDir (hsSourceDirs bi) path
+  return ((ModuleName.main, srcMainPath) : moduleFiles)
+  where
+    mbWorkDir = mbWorkDirLBI lbi
+    bi = testBuildInfo test
+    modules = otherModules bi
+    searchpaths =
+      autogenComponentModulesDir lbi clbi
+        : autogenPackageModulesDir lbi
+        : coerceSymbolicPath (testBuildDir lbi test)
+        : hsSourceDirs bi
+getTestSourceFiles _ _ _ _ = return []
+
+getBenchmarkSourceFiles
+  :: Verbosity
+  -> LocalBuildInfo
+  -> Benchmark
+  -> ComponentLocalBuildInfo
+  -> IO [(ModuleName.ModuleName, SymbolicPath Pkg 'File)]
+getBenchmarkSourceFiles verbosity lbi bench@Benchmark{benchmarkInterface = BenchmarkExeV10 _ path} clbi = do
+  moduleFiles <- getSourceFiles verbosity mbWorkDir searchpaths modules
+  srcMainPath <- findFileCwd verbosity mbWorkDir (hsSourceDirs bi) path
+  return ((ModuleName.main, srcMainPath) : moduleFiles)
+  where
+    mbWorkDir = mbWorkDirLBI lbi
+    bi = benchmarkBuildInfo bench
+    modules = otherModules bi
+    searchpaths =
+      autogenComponentModulesDir lbi clbi
+        : autogenPackageModulesDir lbi
+        : coerceSymbolicPath (benchmarkBuildDir lbi bench)
+        : hsSourceDirs bi
+getBenchmarkSourceFiles _ _ _ _ = return []
 
 getFLibSourceFiles
   :: Verbosity
@@ -282,6 +395,10 @@ mkGenericSharedLibName platform (CompilerId compilerFlavor compilerVersion) lib 
 mkSharedLibName :: Platform -> CompilerId -> UnitId -> String
 mkSharedLibName platform comp lib =
   mkGenericSharedLibName platform comp (getHSLibraryName lib)
+
+mkProfSharedLibName :: Platform -> CompilerId -> UnitId -> String
+mkProfSharedLibName platform comp lib =
+  mkGenericSharedLibName platform comp (getHSLibraryName lib ++ "_p")
 
 -- Static libs are named the same as shared libraries, only with
 -- a different extension.

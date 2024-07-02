@@ -1,0 +1,12 @@
+synopsis: Add flag ignore-build-tools
+packages: Cabal
+prs: #10128
+
+description: {
+
+- Adds flag --ignore-build-tools which allows a user to ignore the tool
+  dependencies declared in build-tool-depends. For general use, this flag
+  should never be needed, but it may be useful for packagers.
+
+}
+

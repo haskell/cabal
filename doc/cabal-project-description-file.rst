@@ -1616,6 +1616,12 @@ running ``setup haddock``.
     This flag is provided as a technology preview and is subject to change in the
     next releases.
 
+.. cfg-field:: haddock-use-unicode: boolean
+               --haddock-use-unicode
+    :synopsis: Pass --use-unicode option to haddock.
+
+    Generate HTML documentation which contains unicode characters.
+
 .. cfg-field:: haddock-resources-dir: DIR
                --haddock-resources-dir=DIR
     :synopsis: Location of Haddock's static/auxiliary files.

@@ -38,7 +38,7 @@ import Distribution.Types.UnqualComponentName
 
 import Distribution.Package
 import Distribution.PackageDescription
-import Distribution.Simple.BuildPaths (haddockName, haddockPref)
+import Distribution.Simple.BuildPaths (haddockPath, haddockPref)
 import Distribution.Simple.BuildTarget
 import Distribution.Simple.Compiler
   ( CompilerFlavor (..)
@@ -199,8 +199,8 @@ copyPackage verbosity pkg_descr lbi distPref copydest = do
     -- copy in htmlPref first.
     let haddockInterfaceFileSrc =
           haddockPref ForDevelopment distPref pkg_descr
-            </> makeRelativePathEx (haddockName pkg_descr)
-        haddockInterfaceFileDest = interfacePref </> haddockName pkg_descr
+            </> makeRelativePathEx (haddockPath pkg_descr)
+        haddockInterfaceFileDest = interfacePref </> haddockPath pkg_descr
     -- We only generate the haddock interface file for libs, So if the
     -- package consists only of executables there will not be one:
     exists <- doesFileExist $ i haddockInterfaceFileSrc

@@ -101,6 +101,7 @@ library
     Distribution.Simple.BuildPaths
     Distribution.Simple.BuildTarget
     Distribution.Simple.BuildToolDepends
+    Distribution.Simple.BuildWay
     Distribution.Simple.CCompiler
     Distribution.Simple.Command
     Distribution.Simple.Compiler

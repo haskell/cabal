@@ -91,7 +91,7 @@ newtype PruneAfterFirstSuccess = PruneAfterFirstSuccess Bool
 solve :: SolverConfig                         -- ^ solver parameters
       -> CompilerInfo
       -> Index                                -- ^ all available packages as an index
-      -> PkgConfigDb                          -- ^ available pkg-config pkgs
+      -> Maybe PkgConfigDb                    -- ^ available pkg-config pkgs
       -> (PN -> PackagePreferences)           -- ^ preferences
       -> M.Map PN [LabeledPackageConstraint]  -- ^ global constraints
       -> S.Set PN                             -- ^ global goals

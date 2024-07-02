@@ -390,7 +390,7 @@ planLocalPackage
   -> ConfigExFlags
   -> InstalledPackageIndex
   -> SourcePackageDb
-  -> PkgConfigDb
+  -> Maybe PkgConfigDb
   -> IO (Progress String String SolverInstallPlan)
 planLocalPackage
   verbosity

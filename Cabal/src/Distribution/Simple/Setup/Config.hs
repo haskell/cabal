@@ -127,6 +127,8 @@ data ConfigFlags = ConfigFlags
   , configProf :: Flag Bool
   -- ^ Enable profiling in the library
   --  and executables.
+  , configProfShared :: Flag Bool
+  -- ^ Enable shared profiling objects
   , configProfDetail :: Flag ProfDetailLevel
   -- ^ Profiling detail level
   --   in the library and executables.
@@ -228,6 +230,10 @@ data ConfigFlags = ConfigFlags
   -- testsuites run with @--enable-coverage@. Notably, this list must exclude
   -- indefinite libraries and instantiations because HPC does not support
   -- backpack (Nov. 2023).
+  , configIgnoreBuildTools :: Flag Bool
+  -- ^ When this flag is set, all tools declared in `build-tool`s and
+  -- `build-tool-depends` will be ignored. This allows a Cabal package with
+  -- build-tool-dependencies to be built even if the tool is not found.
   }
   deriving (Generic, Read, Show, Typeable)
 
@@ -286,6 +292,7 @@ instance Eq ConfigFlags where
       && equal configProfExe
       && equal configProf
       && equal configProfDetail
+      && equal configProfShared
       && equal configProfLibDetail
       && equal configConfigureArgs
       && equal configOptimization
@@ -319,7 +326,9 @@ instance Eq ConfigFlags where
       && equal configDebugInfo
       && equal configDumpBuildInfo
       && equal configUseResponseFiles
+      && equal configAllowDependingOnPrivateLibs
       && equal configCoverageFor
+      && equal configIgnoreBuildTools
     where
       equal f = on (==) f a b
 
@@ -517,6 +526,13 @@ configureOptions showOrParseArgs =
           "Executable and library profiling"
           configProf
           (\v flags -> flags{configProf = v})
+          (boolOpt [] [])
+       , option
+          ""
+          ["profiling-shared"]
+          "Build profiling shared libraries"
+          configProfShared
+          (\v flags -> flags{configProfShared = v})
           (boolOpt [] [])
        , option
           ""
@@ -856,6 +872,15 @@ configureOptions showOrParseArgs =
               (Flag . (: []) . fromString)
               (fmap prettyShow . fromFlagOrDefault [])
           )
+       , option
+          ""
+          ["ignore-build-tools"]
+          ( "Ignore build tool dependencies. "
+              ++ "If set, declared build tools needn't be found for compilation to proceed."
+          )
+          configIgnoreBuildTools
+          (\v flags -> flags{configIgnoreBuildTools = v})
+          trueArg
        ]
   where
     liftInstallDirs =

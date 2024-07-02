@@ -265,6 +265,7 @@ data PackageConfig = PackageConfig
   , packageConfigFullyStaticExe :: Flag Bool
   , packageConfigProf :: Flag Bool -- TODO: [code cleanup] sort out
   , packageConfigProfLib :: Flag Bool --      this duplication
+  , packageConfigProfShared :: Flag Bool
   , packageConfigProfExe :: Flag Bool --      and consistency
   , packageConfigProfDetail :: Flag ProfDetailLevel
   , packageConfigProfLibDetail :: Flag ProfDetailLevel
@@ -307,6 +308,7 @@ data PackageConfig = PackageConfig
   , packageConfigHaddockBaseUrl :: Flag String -- TODO: [required eventually] use this
   , packageConfigHaddockResourcesDir :: Flag String -- TODO: [required eventually] use this
   , packageConfigHaddockOutputDir :: Flag FilePath -- TODO: [required eventually] use this
+  , packageConfigHaddockUseUnicode :: Flag Bool -- TODO: [required eventually] use this
   , packageConfigHaddockForHackage :: Flag HaddockTarget
   , -- Test options
     packageConfigTestHumanLog :: Flag PathTemplate

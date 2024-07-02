@@ -47,15 +47,12 @@ import Distribution.Types.PkgconfigVersionRange
 import Distribution.Verbosity                   (Verbosity)
 
 -- | The list of packages installed in the system visible to
--- @pkg-config@. This is an opaque datatype, to be constructed with
--- `readPkgConfigDb` and queried with `pkgConfigPkgPresent`.
-data PkgConfigDb =  PkgConfigDb (M.Map PkgconfigName (Maybe PkgconfigVersion))
-                 -- ^ If an entry is `Nothing`, this means that the
-                 -- package seems to be present, but we don't know the
-                 -- exact version (because parsing of the version
-                 -- number failed).
-                 | NoPkgConfigDb
-                 -- ^ For when we could not run pkg-config successfully.
+-- @pkg-config@.
+--
+-- If an entry is `Nothing`, this means that the package seems to be present,
+-- but we don't know the exact version (because parsing of the version number
+-- failed).
+newtype PkgConfigDb = PkgConfigDb (M.Map PkgconfigName (Maybe PkgconfigVersion))
      deriving (Show, Generic, Typeable)
 
 instance Binary PkgConfigDb
@@ -64,11 +61,11 @@ instance Structured PkgConfigDb
 -- | Query pkg-config for the list of installed packages, together
 -- with their versions. Return a `PkgConfigDb` encapsulating this
 -- information.
-readPkgConfigDb :: Verbosity -> ProgramDb -> IO PkgConfigDb
+readPkgConfigDb :: Verbosity -> ProgramDb -> IO (Maybe PkgConfigDb)
 readPkgConfigDb verbosity progdb = handle ioErrorHandler $ do
     mpkgConfig <- needProgram verbosity pkgConfigProgram progdb
     case mpkgConfig of
-      Nothing             -> noPkgConfig "Cannot find pkg-config program"
+      Nothing             -> noPkgConfig "cannot find pkg-config program"
       Just (pkgConfig, _) -> do
         -- To prevent malformed Unicode in the descriptions from crashing cabal,
         -- read without interpreting any encoding first. (#9608)
@@ -106,7 +103,7 @@ readPkgConfigDb verbosity progdb = handle ioErrorHandler $ do
                        (programInvocation pkgConfig ("--modversion" : pkgNames))
         let pkgVersions = lines outs
         if exitCode == ExitSuccess && length pkgVersions == length pkgNames
-          then (return . pkgConfigDbFromList . zip pkgNames) pkgVersions
+          then (return . Just . pkgConfigDbFromList . zip pkgNames) pkgVersions
           else
           -- if there's a single broken pc file the above fails, so we fall back
           -- into calling it individually
@@ -116,17 +113,17 @@ readPkgConfigDb verbosity progdb = handle ioErrorHandler $ do
           -- requested one, we fall back to querying one by one.
           do
             info verbosity ("call to pkg-config --modversion on all packages failed. Falling back to querying pkg-config individually on each package")
-            pkgConfigDbFromList . catMaybes <$> mapM (getIndividualVersion pkgConfig) pkgNames
+            Just . pkgConfigDbFromList . catMaybes <$> mapM (getIndividualVersion pkgConfig) pkgNames
   where
     -- For when pkg-config invocation fails (possibly because of a
     -- too long command line).
     noPkgConfig extra = do
-        info verbosity ("Failed to query pkg-config, Cabal will continue"
-                        ++ " without solving for pkg-config constraints: "
+        info verbosity ("Warning: Failed to query pkg-config, Cabal will backtrack "
+                        ++ "if a package from pkg-config is requested. Error message: "
                         ++ extra)
-        return NoPkgConfigDb
+        return Nothing
 
-    ioErrorHandler :: IOException -> IO PkgConfigDb
+    ioErrorHandler :: IOException -> IO (Maybe PkgConfigDb)
     ioErrorHandler e = noPkgConfig (show e)
 
     getIndividualVersion :: ConfiguredProgram -> String -> IO (Maybe (String, String))
@@ -162,13 +159,6 @@ pkgConfigPkgIsPresent (PkgConfigDb db) pn vr =
       Nothing       -> False    -- Package not present in the DB.
       Just Nothing  -> True     -- Package present, but version unknown.
       Just (Just v) -> withinPkgconfigVersionRange v vr
--- If we could not read the pkg-config database successfully we fail.
--- The plan found by the solver can't be executed later, because pkg-config itself
--- is going to be called in the build phase to get the library location for linking
--- so even if there is a library, it would need to be passed manual flags anyway.
-pkgConfigPkgIsPresent NoPkgConfigDb _ _ = False
-
-
 
 -- | Query the version of a package in the @pkg-config@ database.
 -- @Nothing@ indicates the package is not in the database, while
@@ -176,12 +166,6 @@ pkgConfigPkgIsPresent NoPkgConfigDb _ _ = False
 -- but its version is not known.
 pkgConfigDbPkgVersion :: PkgConfigDb -> PkgconfigName -> Maybe (Maybe PkgconfigVersion)
 pkgConfigDbPkgVersion (PkgConfigDb db) pn = M.lookup pn db
--- NB: Since the solver allows solving to succeed if there is
--- NoPkgConfigDb, we should report that we *guess* that there
--- is a matching pkg-config configuration, but that we just
--- don't know about it.
-pkgConfigDbPkgVersion NoPkgConfigDb _ = Just Nothing
-
 
 -- | Query pkg-config for the locations of pkg-config's package files. Use this
 -- to monitor for changes in the pkg-config DB.
