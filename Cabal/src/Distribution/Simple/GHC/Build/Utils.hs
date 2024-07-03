@@ -31,7 +31,7 @@ import System.FilePath
   )
 
 -- | Find the path to the entry point of an executable (typically specified in
--- @main-is@, and found in @hs-source-dirs@).
+-- @main-is@, and found in @hs-source-dirs@ -- yes, even when @main-is@ is not a Haskell file).
 findExecutableMain
   :: Verbosity
   -> Maybe (SymbolicPath CWD (Dir Pkg))
