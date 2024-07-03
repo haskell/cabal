@@ -12,11 +12,14 @@ import Distribution.Simple.Flag (Flag)
 import Distribution.Simple.GHC.Build.ExtraSources
 import Distribution.Simple.GHC.Build.Link
 import Distribution.Simple.GHC.Build.Modules
+import Distribution.Simple.GHC.Build.Utils (isHaskell)
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Program.Builtin (ghcProgram)
 import Distribution.Simple.Program.Db (requireProgram)
 import Distribution.Simple.Utils
+
 import Distribution.Types.ComponentLocalBuildInfo
+import Distribution.Types.PackageName.Magic (fakePackageId)
 import Distribution.Types.ParStrat
 import Distribution.Utils.NubList (fromNubListR)
 import Distribution.Utils.Path
@@ -114,8 +117,18 @@ build numJobs pkg_descr pbci = do
   -- We need a separate build and link phase, and C sources must be compiled
   -- after Haskell modules, because C sources may depend on stub headers
   -- generated from compiling Haskell modules (#842, #3294).
-  buildOpts <- buildHaskellModules numJobs ghcProg pkg_descr buildTargetDir (wantedLibWays isIndef) pbci
-  extraSources <- buildAllExtraSources ghcProg buildTargetDir wantedWays pbci
+  (mbMainFile, inputModules) <- componentInputs buildTargetDir pkg_descr pbci
+  let (hsMainFile, nonHsMainFile) =
+        case mbMainFile of
+          Just mainFile
+            | PD.package pkg_descr == fakePackageId
+                || isHaskell (getSymbolicPath mainFile) ->
+                (Just mainFile, Nothing)
+            | otherwise ->
+                (Nothing, Just mainFile)
+          Nothing -> (Nothing, Nothing)
+  buildOpts <- buildHaskellModules numJobs ghcProg hsMainFile inputModules buildTargetDir (wantedLibWays isIndef) pbci
+  extraSources <- buildAllExtraSources nonHsMainFile ghcProg buildTargetDir wantedWays pbci
   linkOrLoadComponent
     ghcProg
     pkg_descr
