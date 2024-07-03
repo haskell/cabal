@@ -1451,6 +1451,8 @@ to have a way of finding out where a platform library got installed (other than 
 searching the ``lib/`` directory). Instead, we install foreign libraries in
 ``~/.local/lib``.
 
+.. _build-info:
+
 Build information
 ^^^^^^^^^^^^^^^^^
 .. pkg-section:: None
@@ -1892,8 +1894,11 @@ system-dependent values for these fields.
 
 .. pkg-field:: ghc-options: token list
 
-    Additional options for GHC. You can often achieve the same effect
-    using the :pkg-field:`default-extensions` field, which is preferred.
+    Additional options for GHC.
+
+    If specifying extensions (via ``-X<Extension>`` flags) one can often achieve
+    the same effect using the :pkg-field:`default-extensions` field, which is
+    preferred.
 
     Options required only by one module may be specified by placing an
     ``OPTIONS_GHC`` pragma in the source file affected.
