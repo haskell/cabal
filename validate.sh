@@ -324,6 +324,13 @@ CABAL_TESTSUITE_BDIR="$(pwd)/$BUILDDIR/build/$ARCH/$BASEHC/cabal-testsuite-3"
 CABALNEWBUILD="${CABAL} build $JOBS -w $HC --builddir=$BUILDDIR --project-file=$PROJECTFILE"
 CABALLISTBIN="${CABAL} list-bin --builddir=$BUILDDIR --project-file=$PROJECTFILE"
 
+# This was needed in some local Windows MSYS2 environments
+# but breaks CI for Windows + GHC 9.0.2, thus it is set only on non-CI executions
+# of validate.sh
+# https://github.com/haskell/cabal/issues/9571
+# https://github.com/haskell/cabal/pull/10114
+RTSOPTS="$([ $ARCH = "x86_64-windows" ] &&  [ -z "$CI" ] && echo "+RTS --io-manager=native" || echo "")"
+
 # header
 #######################################################################
 
