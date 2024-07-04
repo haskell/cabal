@@ -29,12 +29,12 @@ jobs:
         gen-spdx
         gen-spdx-exc
     steps:
-      - name: ghcup
-        run: |
-          ghcup --version
-          ghcup config set cache true
-          ghcup install ghc $GHC_FOR_QUICK_JOBS
-          ghcup set ghc $GHC_FOR_QUICK_JOBS
+      - name: Install primary compiler
+        uses: haskell-actions/setup@v2
+        id: setup-haskell
+        with:
+          ghc-version: ${{ env.GHC_FOR_QUICK_JOBS }}
+          cabal-version: latest
       - name: Haskell versions
         run: |
           ghc --version
@@ -72,12 +72,12 @@ jobs:
     name: Doctest Cabal
     runs-on: ubuntu-latest
     steps:
-      - name: ghcup
-        run: |
-          ghcup --version
-          ghcup config set cache true
-          ghcup install ghc $GHC_FOR_QUICK_JOBS
-          ghcup set ghc $GHC_FOR_QUICK_JOBS
+      - name: Install primary compiler
+        uses: haskell-actions/setup@v2
+        id: setup-haskell
+        with:
+          ghc-version: ${{ env.GHC_FOR_QUICK_JOBS }}
+          cabal-version: latest
       - name: Haskell versions
         run: |
           ghc --version
@@ -117,12 +117,12 @@ jobs:
     env:
       cabal_build: cabal build buildinfo-reference-generator
     steps:
-      - name: ghcup
-        run: |
-          ghcup --version
-          ghcup config set cache true
-          ghcup install ghc $GHC_FOR_QUICK_JOBS
-          ghcup set ghc $GHC_FOR_QUICK_JOBS
+      - name: Install primary compiler
+        uses: haskell-actions/setup@v2
+        id: setup-haskell
+        with:
+          ghc-version: ${{ env.GHC_FOR_QUICK_JOBS }}
+          cabal-version: latest
       - name: Haskell versions
         run: |
           ghc --version
@@ -154,12 +154,12 @@ jobs:
     name: Check Release Project
     runs-on: ubuntu-latest
     steps:
-      - name: ghcup
-        run: |
-          ghcup --version
-          ghcup config set cache true
-          ghcup install ghc $GHC_FOR_QUICK_JOBS
-          ghcup set ghc $GHC_FOR_QUICK_JOBS
+      - name: Install primary compiler
+        uses: haskell-actions/setup@v2
+        id: setup-haskell
+        with:
+          ghc-version: ${{ env.GHC_FOR_QUICK_JOBS }}
+          cabal-version: latest
       - name: Haskell versions
         run: |
           ghc --version
