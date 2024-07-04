@@ -73,8 +73,6 @@ jobs:
     name: Doctest Cabal
     runs-on: ubuntu-latest
     steps:
-<<<<<<< HEAD
-=======
       - name: Install primary compiler
         uses: haskell-actions/setup@v2
         id: setup-haskell
@@ -85,7 +83,6 @@ jobs:
         run: |
           ghc --version
           cabal --version
->>>>>>> e9d41c87b (ci: Use latest cabal-install for quick-jobs)
       # It is complicated to get a proper cache key for the dependencies of a package
       # (here: doctest) that we just `cabal install`.
       # So, as a heuristics we update the cache once per day.
@@ -101,16 +98,6 @@ jobs:
           path: ~/.local/state/cabal
           key: linux-store-doctest-${{ env.DATE }}
           restore-keys: linux-store-doctest
-      - name: ghcup
-        run: |
-          ghcup --version
-          ghcup config set cache true
-          ghcup install ghc $GHC_FOR_QUICK_JOBS
-          ghcup set ghc $GHC_FOR_QUICK_JOBS
-      - name: Haskell versions
-        run: |
-          ghc --version
-          cabal --version
       - name: Update Hackage index
         run: cabal v2-update
       - uses: actions/checkout@v4
@@ -131,28 +118,12 @@ jobs:
     env:
       cabal_build: cabal build buildinfo-reference-generator
     steps:
-<<<<<<< HEAD
-      - name: Set PATH
-        run: |
-          echo "$HOME/.cabal/bin" >> $GITHUB_PATH
-      - uses: actions/cache@v3
-        with:
-          path: ~/.cabal/store
-          key: linux-store-buildinfo-doc-diff
-      - name: ghcup
-        run: |
-          ghcup --version
-          ghcup config set cache true
-          ghcup install ghc $GHC_FOR_QUICK_JOBS
-          ghcup set ghc $GHC_FOR_QUICK_JOBS
-=======
       - name: Install primary compiler
         uses: haskell-actions/setup@v2
         id: setup-haskell
         with:
           ghc-version: ${{ env.GHC_FOR_QUICK_JOBS }}
           cabal-version: latest
->>>>>>> e9d41c87b (ci: Use latest cabal-install for quick-jobs)
       - name: Haskell versions
         run: |
           ghc --version
@@ -184,24 +155,12 @@ jobs:
     name: Check Release Project
     runs-on: ubuntu-latest
     steps:
-<<<<<<< HEAD
-      - name: Set PATH
-        run: |
-          echo "$HOME/.cabal/bin" >> $GITHUB_PATH
-      - name: ghcup
-        run: |
-          ghcup --version
-          ghcup config set cache true
-          ghcup install ghc $GHC_FOR_QUICK_JOBS
-          ghcup set ghc $GHC_FOR_QUICK_JOBS
-=======
       - name: Install primary compiler
         uses: haskell-actions/setup@v2
         id: setup-haskell
         with:
           ghc-version: ${{ env.GHC_FOR_QUICK_JOBS }}
           cabal-version: latest
->>>>>>> e9d41c87b (ci: Use latest cabal-install for quick-jobs)
       - name: Haskell versions
         run: |
           ghc --version
