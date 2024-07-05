@@ -520,11 +520,11 @@ finalizePD
       -- Combine lib, exes, and tests into one list of @CondTree@s with tagged data
       condTrees =
         maybeToList (fmap (mapTreeData Lib . appBounds) mb_lib0)
-            ++ map (\(name, tree) -> mapTreeData (SubComp name . CLib)   $ appBounds tree) sub_libs0
-            ++ map (\(name, tree) -> mapTreeData (SubComp name . CFLib)  $ appBounds tree) flibs0
-            ++ map (\(name, tree) -> mapTreeData (SubComp name . CExe)   $ appBounds tree) exes0
-            ++ map (\(name, tree) -> mapTreeData (SubComp name . CTest)  $ appBounds tree) tests0
-            ++ map (\(name, tree) -> mapTreeData (SubComp name . CBench) $ appBounds tree) bms0
+          ++ map (\(name, tree) -> mapTreeData (SubComp name . CLib) $ appBounds tree) sub_libs0
+          ++ map (\(name, tree) -> mapTreeData (SubComp name . CFLib) $ appBounds tree) flibs0
+          ++ map (\(name, tree) -> mapTreeData (SubComp name . CExe) $ appBounds tree) exes0
+          ++ map (\(name, tree) -> mapTreeData (SubComp name . CTest) $ appBounds tree) tests0
+          ++ map (\(name, tree) -> mapTreeData (SubComp name . CBench) $ appBounds tree) bms0
 
       flagChoices = map (\(MkPackageFlag n _ d manual) -> (n, d2c manual n d)) flags
       d2c manual n b = case lookupFlagAssignment n userflags of

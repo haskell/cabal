@@ -35,14 +35,14 @@ applyDefaultBoundsToCondTree
   -> CondTree cv [Dependency] a
   -> CondTree cv [Dependency] a
 applyDefaultBoundsToCondTree db =
-    mapTreeData (applyDefaultBoundsToBuildInfo db)
-  . mapTreeConstrs (applyDefaultBoundsToDependencies db)
+  mapTreeData (applyDefaultBoundsToBuildInfo db)
+    . mapTreeConstrs (applyDefaultBoundsToDependencies db)
 
 applyDefaultBoundsToBuildInfo :: L.HasBuildInfo a => DefaultBounds -> a -> a
 applyDefaultBoundsToBuildInfo db bi =
   bi
     & L.targetBuildDepends %~ applyDefaultBoundsToDependencies db
-    & L.buildToolDepends   %~ applyDefaultBoundsToExeDependencies db
+    & L.buildToolDepends %~ applyDefaultBoundsToExeDependencies db
 
 applyDefaultBoundsToDependencies :: DefaultBounds -> [Dependency] -> [Dependency]
 applyDefaultBoundsToDependencies (DefaultBounds [] _) = id
