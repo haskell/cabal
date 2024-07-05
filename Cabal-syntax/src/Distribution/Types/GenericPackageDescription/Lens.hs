@@ -50,7 +50,7 @@ genPackageFlags :: Lens' GenericPackageDescription [PackageFlag]
 genPackageFlags f s = fmap (\x -> s{T.genPackageFlags = x}) (f (T.genPackageFlags s))
 {-# INLINE genPackageFlags #-}
 
-genDefaultPackageBounds :: Lens' GenericPackageDescription (Maybe DefaultBounds)
+genDefaultPackageBounds :: Lens' GenericPackageDescription DefaultBounds
 genDefaultPackageBounds f s = fmap (\x -> s{T.genDefaultPackageBounds = x}) (f (T.genDefaultPackageBounds s))
 {-# INLINE genDefaultPackageBounds #-}
 

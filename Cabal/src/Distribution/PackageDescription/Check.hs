@@ -274,7 +274,7 @@ checkGenericPackageDescription
       -- Flag names.
       mapM_ checkFlagName genPackageFlags_
       -- default package bounds
-      mapM_ checkDefaultBounds genDefaultPackageBounds_
+      checkDefaultBounds genDefaultPackageBounds_
 
       -- § Feature checks.
       checkSpecVer
@@ -301,7 +301,7 @@ checkGenericPackageDescription
       let ads =
             maybe [] ((: []) . extractAssocDeps pName) condLibrary_
               ++ map (uncurry extractAssocDeps) condSubLibraries_
-              ++ maybe [] ((: []) . Left . defaultTargetBuildDepends) genDefaultPackageBounds_
+              ++ ((: []) . Left . defaultTargetBuildDepends) genDefaultPackageBounds_
 
       case condLibrary_ of
         Just cl ->

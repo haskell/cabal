@@ -44,7 +44,7 @@ data GenericPackageDescription = GenericPackageDescription
   --   Perfectly, PackageIndex should have sum type, so we don't need to
   --   have dummy GPDs.
   , genPackageFlags :: [PackageFlag]
-  , genDefaultPackageBounds :: Maybe DefaultBounds
+  , genDefaultPackageBounds :: DefaultBounds
   , condLibrary :: Maybe (CondTree ConfVar [Dependency] Library)
   , condSubLibraries
       :: [ ( UnqualComponentName
@@ -82,7 +82,7 @@ instance Structured GenericPackageDescription
 instance NFData GenericPackageDescription where rnf = genericRnf
 
 emptyGenericPackageDescription :: GenericPackageDescription
-emptyGenericPackageDescription = GenericPackageDescription emptyPackageDescription Nothing [] Nothing Nothing [] [] [] [] []
+emptyGenericPackageDescription = GenericPackageDescription emptyPackageDescription Nothing [] emptyDefaultBounds Nothing [] [] [] [] []
 
 -- -----------------------------------------------------------------------------
 -- Traversal Instances

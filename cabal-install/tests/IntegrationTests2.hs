@@ -467,7 +467,7 @@ testTargetSelectorAmbiguous reportSubCase = do
           packageDescription = emptyPackageDescription { package = pkgid },
           gpdScannedVersion  = Nothing,
           genPackageFlags    = [],
-          genDefaultPackageBounds = Nothing,
+          genDefaultPackageBounds = emptyDefaultBounds,
           condLibrary        = Nothing,
           condSubLibraries   = [],
           condForeignLibs    = [],

@@ -398,8 +398,8 @@ goSections specVer = traverse_ process
       | name == "default-package-bounds" =
           if specVer >= CabalSpecV3_14
             then do
-              sbi <- lift $ parseFields specVer fields defaultPackageBoundsFieldGrammar
-              stateGpd . L.genDefaultPackageBounds .= Just sbi
+              dpb <- lift $ parseFields specVer fields defaultPackageBoundsFieldGrammar
+              stateGpd . L.genDefaultPackageBounds .= dpb
             else lift $ parseWarning pos PWTUnknownSection $ "Ignoring section: default-package-bounds. You should set cabal-version: 3.14 or larger to use default-package-bounds."
       | name == "custom-setup" && null args = do
           sbi <- lift $ parseFields specVer fields (setupBInfoFieldGrammar False)

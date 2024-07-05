@@ -79,6 +79,7 @@ import Distribution.Package
 import Distribution.PackageDescription
   ( GenericPackageDescription (..)
   , PackageDescription (..)
+  , emptyDefaultBounds
   , emptyPackageDescription
   )
 import Distribution.Simple.Compiler
@@ -1075,7 +1076,7 @@ packageListFromCache verbosity mkPkg hnd Cache{..} = accum mempty [] mempty cach
                   }
             , gpdScannedVersion = Just specVer -- tells index scanner to skip this file.
             , genPackageFlags = []
-            , genDefaultPackageBounds = Nothing
+            , genDefaultPackageBounds = emptyDefaultBounds
             , condLibrary = Nothing
             , condSubLibraries = []
             , condForeignLibs = []

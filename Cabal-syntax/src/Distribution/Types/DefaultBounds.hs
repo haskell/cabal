@@ -3,10 +3,8 @@
 
 module Distribution.Types.DefaultBounds
   ( DefaultBounds (..)
-  , applyDefaultBoundsToBuildInfo
-  , applyDefaultBoundsToDependencies
-  , applyDefaultBoundsToExeDependencies
   , applyDefaultBoundsToCondTree
+  , emptyDefaultBounds
   ) where
 
 import Distribution.Compat.Lens
@@ -28,21 +26,26 @@ instance Binary DefaultBounds
 instance Structured DefaultBounds
 instance NFData DefaultBounds where rnf = genericRnf
 
+emptyDefaultBounds :: DefaultBounds
+emptyDefaultBounds = DefaultBounds [] []
+
 applyDefaultBoundsToCondTree
   :: L.HasBuildInfo a
   => DefaultBounds
   -> CondTree cv [Dependency] a
   -> CondTree cv [Dependency] a
 applyDefaultBoundsToCondTree db =
-  mapTreeData (applyDefaultBoundsToBuildInfo db) . mapTreeConstrs (applyDefaultBoundsToDependencies db)
+    mapTreeData (applyDefaultBoundsToBuildInfo db)
+  . mapTreeConstrs (applyDefaultBoundsToDependencies db)
 
 applyDefaultBoundsToBuildInfo :: L.HasBuildInfo a => DefaultBounds -> a -> a
 applyDefaultBoundsToBuildInfo db bi =
   bi
     & L.targetBuildDepends %~ applyDefaultBoundsToDependencies db
-    & L.buildToolDepends %~ applyDefaultBoundsToExeDependencies db
+    & L.buildToolDepends   %~ applyDefaultBoundsToExeDependencies db
 
 applyDefaultBoundsToDependencies :: DefaultBounds -> [Dependency] -> [Dependency]
+applyDefaultBoundsToDependencies (DefaultBounds [] _) = id
 applyDefaultBoundsToDependencies (DefaultBounds bd _) =
   map
     ( \dep@(Dependency pkg vorig l) ->
@@ -52,6 +55,7 @@ applyDefaultBoundsToDependencies (DefaultBounds bd _) =
     )
 
 applyDefaultBoundsToExeDependencies :: DefaultBounds -> [ExeDependency] -> [ExeDependency]
+applyDefaultBoundsToExeDependencies (DefaultBounds _ []) = id
 applyDefaultBoundsToExeDependencies (DefaultBounds _ btd) =
   map
     ( \dep@(ExeDependency pkg comp vorig) ->

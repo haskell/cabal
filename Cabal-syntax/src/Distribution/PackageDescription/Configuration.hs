@@ -511,25 +511,20 @@ finalizePD
       , flagVals
       )
     where
-      appBounds :: L.HasBuildInfo a => a -> a
-      appBounds = maybe id applyDefaultBoundsToBuildInfo defBounds
-
-      appBoundsConstrs
-        :: [CondTree v [Dependency] a]
-        -> [CondTree v [Dependency] a]
-      appBoundsConstrs = case defBounds of
-        Nothing -> id
-        Just db -> map (mapTreeConstrs (applyDefaultBoundsToDependencies db))
+      appBounds
+        :: L.HasBuildInfo a
+        => CondTree v [Dependency] a
+        -> CondTree v [Dependency] a
+      appBounds = applyDefaultBoundsToCondTree defBounds
 
       -- Combine lib, exes, and tests into one list of @CondTree@s with tagged data
       condTrees =
-        appBoundsConstrs $
-          maybeToList (fmap (mapTreeData (Lib . appBounds)) mb_lib0)
-            ++ map (\(name, tree) -> mapTreeData (SubComp name . CLib . appBounds) tree) sub_libs0
-            ++ map (\(name, tree) -> mapTreeData (SubComp name . CFLib . appBounds) tree) flibs0
-            ++ map (\(name, tree) -> mapTreeData (SubComp name . CExe . appBounds) tree) exes0
-            ++ map (\(name, tree) -> mapTreeData (SubComp name . CTest . appBounds) tree) tests0
-            ++ map (\(name, tree) -> mapTreeData (SubComp name . CBench . appBounds) tree) bms0
+        maybeToList (fmap (mapTreeData Lib . appBounds) mb_lib0)
+            ++ map (\(name, tree) -> mapTreeData (SubComp name . CLib)   $ appBounds tree) sub_libs0
+            ++ map (\(name, tree) -> mapTreeData (SubComp name . CFLib)  $ appBounds tree) flibs0
+            ++ map (\(name, tree) -> mapTreeData (SubComp name . CExe)   $ appBounds tree) exes0
+            ++ map (\(name, tree) -> mapTreeData (SubComp name . CTest)  $ appBounds tree) tests0
+            ++ map (\(name, tree) -> mapTreeData (SubComp name . CBench) $ appBounds tree) bms0
 
       flagChoices = map (\(MkPackageFlag n _ d manual) -> (n, d2c manual n d)) flags
       d2c manual n b = case lookupFlagAssignment n userflags of
@@ -688,4 +683,4 @@ transformDefaultBuildDepends
   -> GenericPackageDescription
   -> GenericPackageDescription
 transformDefaultBuildDepends f =
-  over (L.genDefaultPackageBounds . traverse . L.defaultTargetBuildDepends . traverse) f
+  over (L.genDefaultPackageBounds . L.defaultTargetBuildDepends . traverse) f

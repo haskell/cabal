@@ -183,7 +183,7 @@ convGPD os arch cinfo constraints strfl solveExes pn
 
     appBounds :: HasBuildInfo a => CondTree cv [Dependency] a
                       -> CondTree cv [Dependency] a
-    appBounds = maybe id applyDefaultBoundsToCondTree defBounds
+    appBounds = applyDefaultBoundsToCondTree defBounds
 
     conv :: Monoid a => Component -> (a -> BuildInfo) -> DependencyReason PN ->
             CondTree ConfVar [Dependency] a -> FlaggedDeps PN
