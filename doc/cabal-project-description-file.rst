@@ -1661,7 +1661,7 @@ Program options
 
 .. cfg-section:: program-options
 
-Program options can be specified once for all local packages by means of the
+:ref:`Program options<program_options>` can be specified once for all local packages by means of the
 ``program-options`` stanza. For example:
 
 ::

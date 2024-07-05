@@ -1310,147 +1310,6 @@ Example:
         end <- getCurrentTime
         putStrLn $ "fib 20 took " ++ show (diffUTCTime end start)
 
-
-Foreign libraries
-^^^^^^^^^^^^^^^^^
-
-Foreign libraries are system libraries intended to be linked against
-programs written in C or other "foreign" languages. They
-come in two primary flavours: dynamic libraries (``.so`` files on Linux,
-``.dylib`` files on OSX, ``.dll`` files on Windows, etc.) are linked against
-executables when the executable is run (or even lazily during
-execution), while static libraries (``.a`` files on Linux/OSX, ``.lib``
-files on Windows) get linked against the executable at compile time.
-
-Foreign libraries only work with GHC 7.8 and later.
-
-A typical stanza for a foreign library looks like
-
-::
-
-    foreign-library myforeignlib
-      type:                native-shared
-      lib-version-info:    6:3:2
-
-      if os(Windows)
-        options: standalone
-        mod-def-file: MyForeignLib.def
-
-      other-modules:       MyForeignLib.SomeModule
-                           MyForeignLib.SomeOtherModule
-      build-depends:       base >=4.7 && <4.9
-      hs-source-dirs:      src
-      c-sources:           csrc/MyForeignLibWrapper.c
-      default-language:    Haskell2010
-
-
-.. pkg-section:: foreign-library name
-    :since: 2.0
-    :synopsis: Foreign library build information.
-
-    Build information for `foreign libraries`_.
-
-.. pkg-field:: type: foreign library type
-
-   Cabal recognizes ``native-static`` and ``native-shared`` here, although
-   we currently only support building `native-shared` libraries.
-
-.. pkg-field:: options: foreign library option list
-
-   Options for building the foreign library, typically specific to the
-   specified type of foreign library. Currently we only support
-   ``standalone`` here. A standalone dynamic library is one that does not
-   have any dependencies on other (Haskell) shared libraries; without
-   the ``standalone`` option the generated library would have dependencies
-   on the Haskell runtime library (``libHSrts``), the base library
-   (``libHSbase``), etc. Currently, ``standalone`` *must* be used on Windows
-   and *must not* be used on any other platform.
-
-.. pkg-field:: mod-def-file: filename
-
-   This option can only be used when creating dynamic Windows libraries
-   (that is, when using ``native-shared`` and the ``os`` is ``Windows``). If
-   used, it must be a path to a *module definition file*. The details of
-   module definition files are beyond the scope of this document; see the
-   `GHC <https://downloads.haskell.org/~ghc/latest/docs/html/users_guide/win32-dlls.html>`_
-   manual for some details and some further pointers.
-
-.. pkg-field:: lib-version-info: current:revision:age
-
-   This field is currently only used on Linux.
-
-   This field specifies a Libtool-style version-info field that sets
-   an appropriate ABI version for the foreign library. Note that the
-   three numbers specified in this field do not directly specify the
-   actual ABI version: ``6:3:2`` results in library version ``4.2.3``.
-
-   With this field set, the SONAME of the library is set, and symlinks
-   are installed.
-
-   How you should bump this field on an ABI change depends on the
-   breakage you introduce:
-
-   -  Programs using the previous version may use the new version as
-      drop-in replacement, and programs using the new version can also
-      work with the previous one. In other words, no recompiling nor
-      relinking is needed. In this case, bump ``revision`` only, don't
-      touch current nor age.
-   -  Programs using the previous version may use the new version as
-      drop-in replacement, but programs using the new version may use
-      APIs not present in the previous one. In other words, a program
-      linking against the new version may fail with "unresolved
-      symbols" if linking against the old version at runtime: set
-      revision to 0, bump current and age.
-   -  Programs may need to be changed, recompiled, and relinked in
-      order to use the new version. Bump current, set revision and age
-      to 0.
-
-   Also refer to the Libtool documentation on the version-info field.
-
-.. pkg-field:: lib-version-linux: version
-
-   This field is only used on Linux.
-
-   Specifies the library ABI version directly for foreign libraries
-   built on Linux: so specifying ``4.2.3`` causes a library
-   ``libfoo.so.4.2.3`` to be built with SONAME ``libfoo.so.4``, and
-   appropriate symlinks ``libfoo.so.4`` and ``libfoo.so`` to be
-   installed.
-
-Note that typically foreign libraries should export a way to initialize
-and shutdown the Haskell runtime. In the example above, this is done by
-the ``csrc/MyForeignLibWrapper.c`` file, which might look something like
-
-.. code-block:: c
-
-    #include <stdlib.h>
-    #include "HsFFI.h"
-
-    HsBool myForeignLibInit(void){
-      int argc = 2;
-      char *argv[] = { "+RTS", "-A32m", NULL };
-      char **pargv = argv;
-
-      // Initialize Haskell runtime
-      hs_init(&argc, &pargv);
-
-      // do any other initialization here and
-      // return false if there was a problem
-      return HS_BOOL_TRUE;
-    }
-
-    void myForeignLibExit(void){
-      hs_exit();
-    }
-
-With modern ghc regular libraries are installed in directories that contain
-package keys. This isn't usually a problem because the package gets registered
-in ghc's package DB and so we can figure out what the location of the library
-is. Foreign libraries however don't get registered, which means that we'd have
-to have a way of finding out where a platform library got installed (other than by
-searching the ``lib/`` directory). Instead, we install foreign libraries in
-``~/.local/lib``.
-
 .. _build-info:
 
 Build information
@@ -2014,6 +1873,8 @@ system-dependent values for these fields.
     locate files listed in :pkg-field:`includes` and
     :pkg-field:`install-includes`.
 
+    Directories here will be passed as ``-I<dir>`` flags to GHC.
+
 .. pkg-field:: c-sources: filename list
 
     A list of C source files to be compiled and linked with the Haskell
@@ -2050,7 +1911,7 @@ system-dependent values for these fields.
 .. pkg-field:: extra-libraries: token list
 
     A list of extra libraries to link with (when not linking fully static
-    executables).
+    executables). Libraries will be passed as ``-optl-l<lib>`` flags to GHC.
 
 .. pkg-field:: extra-libraries-static: token list
 
@@ -2084,7 +1945,7 @@ system-dependent values for these fields.
 .. pkg-field:: extra-lib-dirs: directory list
 
     A list of directories to search for libraries (when not linking fully static
-    executables).
+    executables). Directories will be passed as ``-optl-L<dir>`` flags to GHC.
 
 .. pkg-field:: extra-lib-dirs-static: directory list
 
@@ -2101,7 +1962,8 @@ system-dependent values for these fields.
 
 .. pkg-field:: cc-options: token list
 
-    Command-line arguments to be passed to the C compiler. Since the
+    Command-line arguments to be passed to the Haskell compiler for the C
+    compiling phase (as ``-optc`` flags for GHC). Since the
     arguments are compiler-dependent, this field is more useful with the
     setup described in the section on `system-dependent parameters`_.
 
@@ -2110,12 +1972,14 @@ system-dependent values for these fields.
     Command-line arguments for pre-processing Haskell code. Applies to
     Haskell source and other pre-processed Haskell source like .hsc
     .chs. Does not apply to C code, that's what cc-options is for.
+    Flags here will be passed as ``-optP`` flags to GHC.
 
 .. pkg-field:: cxx-options: token list
     :since: 2.2
 
-    Command-line arguments to be passed to the compiler when compiling
-    C++ code. The C++ sources to which these command-line arguments
+    Command-line arguments to be passed to the Haskell compiler for the C++
+    compiling phase (as ``-optcxx`` flags for GHC).
+    The C++ sources to which these command-line arguments
     should be applied can be specified with the :pkg-field:`cxx-sources`
     field. Command-line options for C and C++ can be passed separately to
     the compiler when compiling both C and C++ sources by segregating the C
@@ -2127,20 +1991,22 @@ system-dependent values for these fields.
 .. pkg-field:: cmm-options: token list
     :since: 3.0
 
-    Command-line arguments to be passed to the compiler when compiling
+    Command-line arguments to be passed to the Haskell compiler when compiling
     C-- code. See also :pkg-field:`cmm-sources`.
 
 .. pkg-field:: asm-options: token list
     :since: 3.0
 
-    Command-line arguments to be passed to the assembler when compiling
-    assembler code. See also :pkg-field:`asm-sources`.
+    Command-line arguments to be passed to the Haskell compiler (as ``-opta``
+    flags for GHC) when compiling assembler code. See also :pkg-field:`asm-sources`.
 
 .. pkg-field:: ld-options: token list
 
-    Command-line arguments to be passed to the linker. Since the
-    arguments are compiler-dependent, this field is more useful with the
-    setup described in the section on `system-dependent parameters`_.
+    Command-line arguments to be passed to the Haskell compiler (as ``-optl``
+    flags for GHC) for the linking phase. Note that only executables (including
+    test-suites and benchmarks) are linked so this has no effect in libraries.
+    Since the arguments are compiler-dependent, this field is more useful with
+    the setup described in the section on `system-dependent parameters`_.
 
 .. pkg-field:: hsc2hs-options: token list
     :since: 3.6
@@ -2286,6 +2152,146 @@ system-dependent values for these fields.
        reside in the same component that has the dependency. They must reside
        in a different package dependency, or at least in a separate internal
        library.
+
+Foreign libraries
+^^^^^^^^^^^^^^^^^
+
+Foreign libraries are system libraries intended to be linked against
+programs written in C or other "foreign" languages. They
+come in two primary flavours: dynamic libraries (``.so`` files on Linux,
+``.dylib`` files on OSX, ``.dll`` files on Windows, etc.) are linked against
+executables when the executable is run (or even lazily during
+execution), while static libraries (``.a`` files on Linux/OSX, ``.lib``
+files on Windows) get linked against the executable at compile time.
+
+Foreign libraries only work with GHC 7.8 and later.
+
+A typical stanza for a foreign library looks like
+
+::
+
+    foreign-library myforeignlib
+      type:                native-shared
+      lib-version-info:    6:3:2
+
+      if os(Windows)
+        options: standalone
+        mod-def-file: MyForeignLib.def
+
+      other-modules:       MyForeignLib.SomeModule
+                           MyForeignLib.SomeOtherModule
+      build-depends:       base >=4.7 && <4.9
+      hs-source-dirs:      src
+      c-sources:           csrc/MyForeignLibWrapper.c
+      default-language:    Haskell2010
+
+
+.. pkg-section:: foreign-library name
+    :since: 2.0
+    :synopsis: Foreign library build information.
+
+    Build information for `foreign libraries`_.
+
+.. pkg-field:: type: foreign library type
+
+   Cabal recognizes ``native-static`` and ``native-shared`` here, although
+   we currently only support building `native-shared` libraries.
+
+.. pkg-field:: options: foreign library option list
+
+   Options for building the foreign library, typically specific to the
+   specified type of foreign library. Currently we only support
+   ``standalone`` here. A standalone dynamic library is one that does not
+   have any dependencies on other (Haskell) shared libraries; without
+   the ``standalone`` option the generated library would have dependencies
+   on the Haskell runtime library (``libHSrts``), the base library
+   (``libHSbase``), etc. Currently, ``standalone`` *must* be used on Windows
+   and *must not* be used on any other platform.
+
+.. pkg-field:: mod-def-file: filename
+
+   This option can only be used when creating dynamic Windows libraries
+   (that is, when using ``native-shared`` and the ``os`` is ``Windows``). If
+   used, it must be a path to a *module definition file*. The details of
+   module definition files are beyond the scope of this document; see the
+   `GHC <https://downloads.haskell.org/~ghc/latest/docs/html/users_guide/win32-dlls.html>`_
+   manual for some details and some further pointers.
+
+.. pkg-field:: lib-version-info: current:revision:age
+
+   This field is currently only used on Linux.
+
+   This field specifies a Libtool-style version-info field that sets
+   an appropriate ABI version for the foreign library. Note that the
+   three numbers specified in this field do not directly specify the
+   actual ABI version: ``6:3:2`` results in library version ``4.2.3``.
+
+   With this field set, the SONAME of the library is set, and symlinks
+   are installed.
+
+   How you should bump this field on an ABI change depends on the
+   breakage you introduce:
+
+   -  Programs using the previous version may use the new version as
+      drop-in replacement, and programs using the new version can also
+      work with the previous one. In other words, no recompiling nor
+      relinking is needed. In this case, bump ``revision`` only, don't
+      touch current nor age.
+   -  Programs using the previous version may use the new version as
+      drop-in replacement, but programs using the new version may use
+      APIs not present in the previous one. In other words, a program
+      linking against the new version may fail with "unresolved
+      symbols" if linking against the old version at runtime: set
+      revision to 0, bump current and age.
+   -  Programs may need to be changed, recompiled, and relinked in
+      order to use the new version. Bump current, set revision and age
+      to 0.
+
+   Also refer to the Libtool documentation on the version-info field.
+
+.. pkg-field:: lib-version-linux: version
+
+   This field is only used on Linux.
+
+   Specifies the library ABI version directly for foreign libraries
+   built on Linux: so specifying ``4.2.3`` causes a library
+   ``libfoo.so.4.2.3`` to be built with SONAME ``libfoo.so.4``, and
+   appropriate symlinks ``libfoo.so.4`` and ``libfoo.so`` to be
+   installed.
+
+Note that typically foreign libraries should export a way to initialize
+and shutdown the Haskell runtime. In the example above, this is done by
+the ``csrc/MyForeignLibWrapper.c`` file, which might look something like
+
+.. code-block:: c
+
+    #include <stdlib.h>
+    #include "HsFFI.h"
+
+    HsBool myForeignLibInit(void){
+      int argc = 2;
+      char *argv[] = { "+RTS", "-A32m", NULL };
+      char **pargv = argv;
+
+      // Initialize Haskell runtime
+      hs_init(&argc, &pargv);
+
+      // do any other initialization here and
+      // return false if there was a problem
+      return HS_BOOL_TRUE;
+    }
+
+    void myForeignLibExit(void){
+      hs_exit();
+    }
+
+With modern ghc regular libraries are installed in directories that contain
+package keys. This isn't usually a problem because the package gets registered
+in ghc's package DB and so we can figure out what the location of the library
+is. Foreign libraries however don't get registered, which means that we'd have
+to have a way of finding out where a platform library got installed (other than by
+searching the ``lib/`` directory). Instead, we install foreign libraries in
+``~/.local/lib``.
 
 Configurations
 ^^^^^^^^^^^^^^
