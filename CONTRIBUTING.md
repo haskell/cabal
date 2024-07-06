@@ -344,7 +344,7 @@ description: {
 }
 ```
 
-Only the `synopsis` field is actually required, but you should also set the others where applicable.
+Only the `synopsis` and `prs` fields are required, but you should also set the others where applicable.
 
 | Field          | Description                                                                                                        |
 | -----          | -----------                                                                                                        |
