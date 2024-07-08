@@ -149,7 +149,7 @@ import System.FilePath
   , (<.>)
   , (</>)
   )
-import qualified System.FilePath.Posix as FilePath.Posix
+import qualified System.FilePath as FilePath
 import System.IO
 import System.IO.Error (isDoesNotExistError)
 import System.IO.Unsafe (unsafeInterleaveIO)
@@ -928,7 +928,7 @@ withIndexEntries verbosity (RepoIndex _repoCtxt (RepoLocalNoIndex (LocalRepo nam
           let bs = BS.toStrict contents
            in ((`CacheGPD` bs) <$> parseGenericPackageDescriptionMaybe bs)
       where
-        filename = prettyShow pkgId FilePath.Posix.</> prettyShow (packageName pkgId) ++ ".cabal"
+        filename = prettyShow pkgId FilePath.</> prettyShow (packageName pkgId) ++ ".cabal"
     readCabalEntry _ _ x = x
 withIndexEntries verbosity index callback _ = do
   -- non-secure repositories
