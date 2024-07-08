@@ -1385,7 +1385,8 @@ The files placed in this distribution are the package description file,
 the setup script, the sources of the modules named in the package
 description file, and files named in the ``license-file``, ``main-is``,
 ``c-sources``, ``asm-sources``, ``cmm-sources``, ``js-sources``,
-``data-files``, ``extra-source-files`` and ``extra-doc-files`` fields.
+``data-files``, ``extra-source-files``, ``extra-doc-files``, and
+``extra-files`` fields.
 
 This command takes the following option:
 
