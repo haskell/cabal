@@ -45,12 +45,14 @@ module Test.Cabal.Monad (
     testActualFile,
     -- * Skipping tests
     skip,
+    skipIO,
     skipIf,
+    skipIfIO,
     skipUnless,
+    skipUnlessIO,
     -- * Known broken tests
     expectedBroken,
     unexpectedSuccess,
-    -- whenHasSharedLibraries,
     -- * Arguments (TODO: move me)
     CommonArgs(..),
     renderCommonArgs,
@@ -176,23 +178,32 @@ testArgParser = TestArgs
     <*> argument str ( metavar "FILE")
     <*> commonArgParser
 
-skip :: String -> TestM ()
-skip reason = liftIO $ do
+skipIO :: String -> IO ()
+skipIO reason = do
     putStrLn ("SKIP " ++ reason)
     E.throwIO (TestCodeSkip reason)
+
+skip :: String -> TestM ()
+skip = liftIO . skipIO
+
+skipIfIO :: String -> Bool -> IO ()
+skipIfIO reason b = when b (skipIO reason)
 
 skipIf :: String -> Bool -> TestM ()
 skipIf reason b = when b (skip reason)
 
+skipUnlessIO :: String -> Bool -> IO ()
+skipUnlessIO reason b = unless b (skipIO reason)
+
 skipUnless :: String -> Bool -> TestM ()
 skipUnless reason b = unless b (skip reason)
 
-expectedBroken :: TestM ()
-expectedBroken = liftIO $ do
+expectedBroken :: Int -> TestM a
+expectedBroken t = liftIO $ do
     putStrLn "EXPECTED FAIL"
-    E.throwIO TestCodeKnownFail
+    E.throwIO (TestCodeKnownFail t)
 
-unexpectedSuccess :: TestM ()
+unexpectedSuccess :: TestM a
 unexpectedSuccess = liftIO $ do
     putStrLn "UNEXPECTED OK"
     E.throwIO TestCodeUnexpectedOk
