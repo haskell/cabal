@@ -846,6 +846,9 @@ hasProfiledLibraries = testCompilerWithArgs ["-prof"]
 hasProfiledSharedLibraries = testCompilerWithArgs ["-prof", "-dynamic"]
 hasSharedLibraries = testCompilerWithArgs ["-dynamic"]
 
+skipIfNoSharedLibraries :: TestM ()
+skipIfNoSharedLibraries = skipUnless "no shared libraries" =<< hasSharedLibraries
+
 -- | Check if the GHC that is used for compiling package tests has
 -- a shared library of the cabal library under test in its database.
 --
@@ -881,7 +884,6 @@ isCabalVersion decide range = do
 skipUnlessAnyCabalVersion :: String -> TestM ()
 skipUnlessAnyCabalVersion range = skipUnless ("needs any Cabal " ++ range) =<< anyCabalVersion range
 
-
 -- | Skip a test if any available Cabal library version matches the predicate.
 skipIfAnyCabalVersion :: String -> TestM ()
 skipIfAnyCabalVersion range = skipIf ("incompatible with Cabal " ++ range) =<< anyCabalVersion range
@@ -912,28 +914,28 @@ skipUnlessGhcVersion range = skipUnless ("needs ghc " ++ range) =<< isGhcVersion
 skipIfGhcVersion :: String -> TestM ()
 skipIfGhcVersion range = skipIf ("incompatible with ghc " ++ range) =<< isGhcVersion range
 
-skipUnlessJavaScript :: TestM ()
-skipUnlessJavaScript = skipUnless "needs the JavaScript backend" =<< isJavaScript
+skipUnlessJavaScript :: IO ()
+skipUnlessJavaScript = skipUnlessIO "needs the JavaScript backend" isJavaScript
 
-skipIfJavaScript :: TestM ()
-skipIfJavaScript = skipIf "incompatible with the JavaScript backend" =<< isJavaScript
+skipIfJavaScript :: IO ()
+skipIfJavaScript = skipIfIO "incompatible with the JavaScript backend" isJavaScript
 
-isWindows :: TestM Bool
-isWindows = return (buildOS == Windows)
+isWindows :: Bool
+isWindows = buildOS == Windows
 
-isOSX :: TestM Bool
-isOSX = return (buildOS == OSX)
+isOSX :: Bool
+isOSX = buildOS == OSX
 
-isLinux :: TestM Bool
-isLinux = return (buildOS == Linux)
+isLinux :: Bool
+isLinux = buildOS == Linux
 
-isJavaScript :: TestM Bool
-isJavaScript = return (buildArch == JavaScript)
+isJavaScript :: Bool
+isJavaScript = buildArch == JavaScript
   -- should probably be `hostArch` but Cabal doesn't distinguish build platform
   -- and host platform
 
-skipIfWindows :: TestM ()
-skipIfWindows = skipIf "Windows" =<< isWindows
+skipIfWindows :: String -> IO ()
+skipIfWindows why = skipIfIO ("Windows " <> why) isWindows
 
 getOpenFilesLimit :: TestM (Maybe Integer)
 #ifdef mingw32_HOST_OS
@@ -962,7 +964,7 @@ hasNewBuildCompatBootCabal = isGhcVersion ">= 7.9"
 ------------------------------------------------------------------------
 -- * Broken tests
 
-expectBroken :: Int -> TestM a -> TestM ()
+expectBroken :: Int -> TestM a -> TestM a
 expectBroken ticket m = do
     env <- getTestEnv
     liftIO . withAsync (runReaderT m env) $ \a -> do
@@ -971,15 +973,15 @@ expectBroken ticket m = do
             Left e  -> do
                 putStrLn $ "This test is known broken, see #" ++ show ticket ++ ":"
                 print e
-                runReaderT expectedBroken env
+                runReaderT (expectedBroken ticket) env
             Right _ -> do
                 runReaderT unexpectedSuccess env
 
-expectBrokenIf :: Bool -> Int -> TestM a -> TestM ()
-expectBrokenIf False _ m = void $ m
+expectBrokenIf :: Bool -> Int -> TestM a -> TestM a
+expectBrokenIf False _ m = m
 expectBrokenIf True ticket m = expectBroken ticket m
 
-expectBrokenUnless :: Bool -> Int -> TestM a -> TestM ()
+expectBrokenUnless :: Bool -> Int -> TestM a -> TestM a
 expectBrokenUnless b = expectBrokenIf (not b)
 
 -- * Programs
