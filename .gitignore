@@ -78,7 +78,6 @@ testdb/intree/store/*/package.db/package.cache.lock
 
 # windows test artifacts
 cabal-testsuite/**/*.exe
-cabal-testsuite/**/*.bat
 cabal-testsuite/**/haddocks
 
 # python artifacts from documentation builds
