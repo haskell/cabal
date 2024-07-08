@@ -542,7 +542,6 @@ src `archiveTo` dst = do
     -- TODO: --format ustar, like createArchive?
     -- --force-local is necessary for handling colons in Windows paths.
     tar $ ["-czf", dst]
-       ++ ["--force-local" | buildOS == Windows]
        ++ ["-C", src_parent, src_dir]
 
 infixr 4 `archiveTo`
@@ -552,10 +551,6 @@ infixr 4 `archiveTo`
 -- external repository corresponding to all of these packages
 withRepo :: FilePath -> TestM a -> TestM a
 withRepo repo_dir m = do
-    -- https://github.com/haskell/cabal/issues/7065
-    -- you don't simply put a windows path into URL...
-    skipIfWindows
-
     env <- getTestEnv
 
     -- 1. Initialize repo directory
@@ -601,16 +596,17 @@ withRepo repo_dir m = do
     withReaderT (\env' -> env' { testHaveRepo = True }) m
     -- TODO: Arguably should undo everything when we're done...
   where
-    repoUri env ="file+noindex://" ++ testRepoDir env
+    repoUri env ="file+noindex://" ++ (if isWindows
+                                        then map (\x -> case x of
+                                            '\\' -> '/'
+                                            _ -> x)
+                                        else id) (testRepoDir env)
 
 -- | Given a directory (relative to the 'testCurrentDir') containing
 -- a series of directories representing packages, generate an
 -- remote repository corresponding to all of these packages
 withRemoteRepo :: FilePath -> TestM a -> TestM a
 withRemoteRepo repoDir m = do
-    -- https://github.com/haskell/cabal/issues/7065
-    -- you don't simply put a windows path into URL...
-    skipIfWindows
 
     -- we rely on the presence of python3 for a simple http server
     skipUnless "no python3" =<< isAvailableProgram python3Program
