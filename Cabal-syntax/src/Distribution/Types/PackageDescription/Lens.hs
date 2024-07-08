@@ -159,6 +159,10 @@ extraDocFiles :: Lens' PackageDescription [RelativePath Pkg File]
 extraDocFiles f s = fmap (\x -> s{T.extraDocFiles = x}) (f (T.extraDocFiles s))
 {-# INLINE extraDocFiles #-}
 
+extraFiles :: Lens' PackageDescription [RelativePath Pkg File]
+extraFiles f s = fmap (\x -> s{T.extraFiles = x}) (f (T.extraFiles s))
+{-# INLINE extraFiles #-}
+
 -- | @since 3.0.0.0
 allLibraries :: Traversal' PackageDescription Library
 allLibraries f pd = mk <$> traverse f (T.library pd) <*> traverse f (T.subLibraries pd)

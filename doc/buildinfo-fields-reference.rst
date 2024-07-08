@@ -595,6 +595,14 @@ extra-doc-files
     .. math::
         \mathrm{commalist}\left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}]^c}}^+_{} \right\}
 
+extra-files
+    * Monoidal field
+    * Available since ``cabal-version: 3.14``.
+    * Documentation of :pkg-field:`extra-files`
+
+    .. math::
+        \mathrm{commalist}\left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}]^c}}^+_{} \right\}
+
 extra-source-files
     * Monoidal field
     * Documentation of :pkg-field:`extra-source-files`
