@@ -553,13 +553,25 @@ mkNormalizerEnv = do
 
     return NormalizerEnv {
         normalizerRoot
-            = addTrailingPathSeparator (testSourceDir env),
+            = (if buildOS == Windows
+              then joinDrive "\\" . dropDrive
+              else id)
+                $ addTrailingPathSeparator (testSourceDir env),
         normalizerTmpDir
-            = addTrailingPathSeparator (testTmpDir env),
+            = (if buildOS == Windows
+              then joinDrive "\\" . dropDrive
+              else id)
+                $ addTrailingPathSeparator (testTmpDir env),
         normalizerCanonicalTmpDir
-            = addTrailingPathSeparator canonicalizedTestTmpDir,
+            = (if buildOS == Windows
+              then joinDrive "\\" . dropDrive
+              else id)
+                $ addTrailingPathSeparator canonicalizedTestTmpDir,
         normalizerGblTmpDir
-            = addTrailingPathSeparator tmpDir,
+            = (if buildOS == Windows
+              then joinDrive "\\" . dropDrive
+              else id)
+                $ addTrailingPathSeparator tmpDir,
         normalizerGhcVersion
             = compilerVersion (testCompiler env),
         normalizerGhcPath
