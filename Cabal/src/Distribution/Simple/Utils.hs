@@ -1950,6 +1950,13 @@ exeExtensions = case (buildArch, buildOS) of
   -- Possible improvement: on Windows, read the list of extensions from the
   -- PATHEXT environment variable. By default PATHEXT is ".com; .exe; .bat;
   -- .cmd".
+  --
+  -- See also #10179.
+  --
+  -- Also we cannot actually run @.bat@ files as we do now, because of
+  -- https://github.com/haskell/process/issues/140. If we detect one of those,
+  -- we should record that the program is a script and run a @Process.shell@ instead
+  -- of a @Process.proc@.
   (_, Windows) -> ["", "exe"]
   (_, Ghcjs) -> ["", "exe"]
   (Wasm32, _) -> ["", "wasm"]
