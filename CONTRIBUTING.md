@@ -406,7 +406,7 @@ it, someone with enough permissions needs to go on the
 [Validate workflow page](https://github.com/haskell/cabal/actions/workflows/validate.yml)
 and dispatch it manually by clicking "Run workflow".
 
-Running workflow manually as discussed above requires you to supply two inputs:
+Running workflow manually as discussed above allows you to supply two inputs:
 
 > allow-newer line
 > constraints line
