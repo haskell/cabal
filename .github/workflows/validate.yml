@@ -31,11 +31,11 @@ on:
     inputs:
       allow-newer:
         description: allow-newer line
-        required: true
+        required: false
         type: string
       constraints:
         description: constraints line
-        required: true
+        required: false
         type: string
 
 env:
@@ -92,11 +92,15 @@ jobs:
       - uses: actions/checkout@v4
 
       # See https://github.com/haskell/cabal/blob/master/CONTRIBUTING.md#hackage-revisions
-      - name: Manually supplied constraints/allow-newer
-        if: github.event_name == 'workflow_dispatch'
+      - name: Add manually supplied allow-newer
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.allow-newer != ''
         run: |
-          echo "allow-newer: ${ALLOWNEWER}"  >> cabal.validate.project
-          echo "constraints: ${CONSTRAINTS}" >> cabal.validate.project
+          echo "allow-newer: ${{ github.event.inputs.allow-newer }}" >> cabal.validate.project
+
+      - name: Add manually supplied constraints
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.constraints != ''
+        run: |
+          echo "constraints: ${{ github.event.inputs.constraints }}" >> cabal.validate.project
 
       - uses: haskell-actions/setup@v2
         id: setup-haskell
