@@ -4,6 +4,7 @@
 
 module Distribution.Client.Utils.Parsec
   ( renderParseError
+  , remoteRepoGrammar
 
     -- ** Flag
   , alaFlag
@@ -15,25 +16,21 @@ module Distribution.Client.Utils.Parsec
   , NubList'
 
     -- ** Newtype wrappers
-  , NumJobs (..)
-  , PackageDBNT (..)
-  , ProjectConstraints (..)
-  , MaxBackjumps (..)
+  , module Distribution.Client.Utils.Newtypes
   ) where
 
 import Distribution.Client.Compat.Prelude
-import Distribution.Client.Targets (UserConstraint)
 import Distribution.Compat.Newtype
-import Distribution.Solver.Types.ConstraintSource (ConstraintSource (..))
 import System.FilePath (normalise)
 import Prelude ()
 
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BS8
-import Distribution.Compat.CharParsing
-import Distribution.FieldGrammar.Newtypes
-import Distribution.Parsec (PError (..), PWarnType (..), PWarning (..), Position (..), parsecToken, parsecWarning, showPos, zeroPos)
-import Distribution.Simple.Compiler (PackageDB (..), readPackageDb)
+import Distribution.Client.Types.Repo
+import Distribution.Client.Types.RepoName
+import Distribution.Client.Utils.Newtypes
+import Distribution.FieldGrammar
+import Distribution.Parsec
 import Distribution.Simple.Flag
 import Distribution.Simple.Utils (fromUTF8BS)
 import Distribution.Utils.NubList (NubList (..))
@@ -179,57 +176,13 @@ instance (Newtype a b, Ord a, Sep sep, Parsec b) => Parsec (NubList' sep b a) wh
 instance (Newtype a b, Sep sep, Pretty b) => Pretty (NubList' sep b a) where
   pretty = prettySep (Proxy :: Proxy sep) . map (pretty . (pack :: a -> b)) . NubList.fromNubList . unpack
 
--- | We can't write a Parsec instance for Maybe PackageDB. We need to wrap it in a newtype and define the instance.
-newtype PackageDBNT = PackageDBNT {getPackageDBNT :: Maybe PackageDB}
-
-instance Newtype (Maybe PackageDB) PackageDBNT
-
-instance Parsec PackageDBNT where
-  parsec = parsecPackageDB
-
-parsecPackageDB :: CabalParsing m => m PackageDBNT
-parsecPackageDB = PackageDBNT . readPackageDb <$> parsecToken
-
--- | We can't write a Parsec instance for Maybe Int. We need to wrap it in a newtype and define the instance.
-newtype NumJobs = NumJobs {getNumJobs :: Maybe Int}
-
-instance Newtype (Maybe Int) NumJobs
-
-instance Parsec NumJobs where
-  parsec = parsecNumJobs
-
-parsecNumJobs :: CabalParsing m => m NumJobs
-parsecNumJobs = ncpus <|> numJobs
-  where
-    ncpus = string "$ncpus" >> return (NumJobs Nothing)
-    numJobs = do
-      num <- integral
-      if num < (1 :: Int)
-        then do
-          parsecWarning PWTOther "The number of jobs should be 1 or more."
-          return (NumJobs Nothing)
-        else return (NumJobs $ Just num)
-
-newtype ProjectConstraints = ProjectConstraints {getProjectConstraints :: (UserConstraint, ConstraintSource)}
-
-instance Newtype (UserConstraint, ConstraintSource) ProjectConstraints
-
-instance Parsec ProjectConstraints where
-  parsec = parsecProjectConstraints
-
--- | Parse 'ProjectConstraints'. As the 'CabalParsing' class does not have access to the file we parse,
--- ConstraintSource is first unknown and we set it afterwards
-parsecProjectConstraints :: CabalParsing m => m ProjectConstraints
-parsecProjectConstraints = do
-  userConstraint <- parsec
-  return $ ProjectConstraints (userConstraint, ConstraintSourceUnknown)
-
-newtype MaxBackjumps = MaxBackjumps {getMaxBackjumps :: Int}
-
-instance Newtype Int MaxBackjumps
-
-instance Parsec MaxBackjumps where
-  parsec = parseMaxBackjumps
-
-parseMaxBackjumps :: CabalParsing m => m MaxBackjumps
-parseMaxBackjumps = MaxBackjumps <$> integral
+remoteRepoGrammar :: RepoName -> ParsecFieldGrammar RemoteRepo RemoteRepo
+remoteRepoGrammar name =
+  RemoteRepo
+    <$> pure name
+    -- <*> uniqueFieldAla "url" URI_NT undefined -- remoteRepoURI "url"
+    <*> undefined
+    <*> undefined -- remoteRepoSecure "secure"
+    <*> undefined -- remoteRepoRootKeys "root-keys"
+    <*> undefined -- remoteRepoKeyThreshold "key-threshold"
+    <*> undefined -- remoteRepoShouldTryHttps --nope
