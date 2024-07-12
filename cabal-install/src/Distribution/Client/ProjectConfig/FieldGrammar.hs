@@ -80,8 +80,8 @@ projectConfigSharedFieldGrammar source =
     <*> optionalFieldDef "doc-index-file" L.projectConfigHaddockIndex mempty
     <*> blurFieldGrammar L.projectConfigInstallDirs installDirsGrammar
     <*> monoidalFieldAla "package-dbs" (alaList' CommaFSep PackageDBNT) L.projectConfigPackageDBs
-    <*> pure mempty -- cli flag: projectConfigRemoteRepos
-    <*> pure mempty -- cli flag: projectConfigLocalNoIndexRepos
+    <*> pure mempty -- repository stanza for projectConfigRemoteRepos
+    <*> pure mempty -- repository stanza for projectConfigLocalNoIndexRepos
     <*> monoidalField "active-repositories" L.projectConfigActiveRepos
     <*> monoidalField "index-state" L.projectConfigIndexState
     <*> optionalFieldDefAla "store-dir" (alaFlag FilePathNT) L.projectConfigStoreDir mempty
