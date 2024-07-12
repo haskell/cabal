@@ -56,7 +56,7 @@ test-suite unit-tests
   main-is:          UnitTests.hs
   build-depends:
       array
-    , base                >=4.11    && <5
+    , base                >=4.13    && <5
     , bytestring
     , Cabal
     , Cabal-described
