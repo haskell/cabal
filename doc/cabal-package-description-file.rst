@@ -967,10 +967,10 @@ is an example:
 
     library
       build-depends:
-        , base         ^>= 4.11.1.0
-        , bytestring   ^>= 0.10.2.0
-        , containers   ^>= 0.4.2.1 || ^>= 0.5.0.0
-        , transformers ^>= 0.5.0.0
+        , base         ^>= 4.19.0.0
+        , bytestring   ^>= 0.12.0.0
+        , containers   ^>= 0.6.8 || ^>= 0.7.0
+        , transformers ^>= 0.6.1.0
 
       hs-source-dirs:       src
 
@@ -984,9 +984,9 @@ is an example:
 
     library attoparsec
       build-depends:
-        , base         ^>= 4.11.1.0
-        , bytestring   ^>= 0.10.2.0
-        , deepseq      ^>= 1.4.0.0
+        , base         ^>= 4.19.0.0
+        , bytestring   ^>= 0.12.0.0
+        , deepseq      ^>= 1.5.0.0
 
       hs-source-dirs:       vendor/attoparsec-0.13.1.0
 
@@ -2638,11 +2638,11 @@ Starting with Cabal-2.2 it's possible to use common build info stanzas.
 ::
 
       common deps
-        build-depends: base ^>= 4.11
+        build-depends: base ^>= 4.18
         ghc-options: -Wall
 
       common test-deps
-        build-depends: tasty ^>= 0.12.0.1
+        build-depends: tasty ^>= 1.4
 
       library
         import:           deps
@@ -2853,8 +2853,8 @@ Declaring a ``custom-setup`` stanza also enables the generation of
 
     custom-setup
       setup-depends:
-        base  >= 4.5 && < 4.11,
-        Cabal >= 1.14 && < 1.25
+        base   >= 4.18 && < 5,
+        Cabal  >= 3.10
 
 .. pkg-field:: setup-depends: package list
     :since: 1.24
