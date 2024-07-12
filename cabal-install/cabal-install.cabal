@@ -216,6 +216,7 @@ library
         Distribution.Client.Upload
         Distribution.Client.Utils
         Distribution.Client.Utils.Json
+        Distribution.Client.Utils.Newtypes
         Distribution.Client.Utils.Parsec
         Distribution.Client.VCS
         Distribution.Client.Version
