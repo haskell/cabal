@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Distribution.Client.Utils.Parsec
@@ -180,9 +181,8 @@ remoteRepoGrammar :: RepoName -> ParsecFieldGrammar RemoteRepo RemoteRepo
 remoteRepoGrammar name =
   RemoteRepo
     <$> pure name
-    -- <*> uniqueFieldAla "url" URI_NT undefined -- remoteRepoURI "url"
-    <*> undefined
-    <*> undefined -- remoteRepoSecure "secure"
-    <*> undefined -- remoteRepoRootKeys "root-keys"
-    <*> undefined -- remoteRepoKeyThreshold "key-threshold"
-    <*> undefined -- remoteRepoShouldTryHttps --nope
+    <*> uniqueFieldAla "url" URI_NT remoteRepoURILens
+    <*> optionalField "secure" remoteRepoSecureLens
+    <*> monoidalFieldAla "root-keys" (alaList' FSep Token) remoteRepoRootKeysLens
+    <*> optionalFieldDefAla "key-threshold" KeyThreshold remoteRepoKeyThresholdLens 0
+    <*> pure False -- we don't parse remoteRepoShouldTryHttps

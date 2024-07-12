@@ -9,6 +9,7 @@ module Distribution.Client.Utils.Newtypes
   , ProjectConstraints (..)
   , MaxBackjumps (..)
   , URI_NT (..)
+  , KeyThreshold (..)
   )
 where
 
@@ -51,6 +52,13 @@ parsecURI_NT = do
   case parseURI token of
     Nothing -> fail $ "failed to parse URI " <> token
     Just uri -> return $ URI_NT uri
+
+newtype KeyThreshold = KeyThreshold {getKeyThreshold :: Int}
+
+instance Newtype Int KeyThreshold
+
+instance Parsec KeyThreshold where
+  parsec = KeyThreshold <$> integral
 
 parsecNumJobs :: CabalParsing m => m NumJobs
 parsecNumJobs = ncpus <|> numJobs
