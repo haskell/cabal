@@ -1,7 +1,6 @@
 import Test.Cabal.Prelude
--- TODO: Enable this test on Windows
-main = setupAndCabalTest $ do
-    skipIfWindows
+
+main = setupAndCabalTest $ expectBrokenIf isWindows 10179 $ do
     withSymlink "bin/ghc-7.10" "ghc" $ do
         env <- getTestEnv
         let cwd = testCurrentDir env

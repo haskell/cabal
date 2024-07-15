@@ -2,11 +2,7 @@ import Test.Cabal.Prelude
 
 -- The one local package, pkg, has a dependency on remote-pkg-2.0, which has a
 -- setup dependency on remote-setup-dep-3.0.
-main =
-  cabalTest $ withShorterPathForNewBuildStore $ do
-
-    -- TODO: Debug this failure on Windows.
-    skipIfWindows
+main = cabalTest $ withShorterPathForNewBuildStore $ do
 
     skipUnless "no v2-build compatible boot-Cabal" =<< hasNewBuildCompatBootCabal
     withRepo "repo" $ do

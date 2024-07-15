@@ -8,11 +8,9 @@ data BuildWay = StaticWay | DynWay | ProfWay | ProfDynWay
 -- Test building with profiling shared support
 main = do
     setupTest $ recordMode DoNotRecord $ do
-        has_prof_shared <- hasProfiledSharedLibraries
-        has_shared <- hasSharedLibraries
         -- Tests are not robust against missing dynamic libraries yet. Would
         -- be better to fix this.
-        skipUnless "Missing shared libraries" has_shared
+        skipIfNoSharedLibraries
 
     let analyse_result expected r = do
 
@@ -142,4 +140,3 @@ main = do
     run_cabal_test ["--enable-profiling", "--enable-executable-dynamic"] ([ProfDynWay, ProfWay, DynWay, StaticWay], [ProfDynWay])
 
     run_cabal_test ["prof-shared", "--disable-library-profiling", "--enable-profiling", "--enable-executable-dynamic"] ([ProfDynWay, DynWay, StaticWay], [])
-

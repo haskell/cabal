@@ -1,4 +1,4 @@
-name:                Includes2
+name:                I
 version:             0.1.0.0
 license:             BSD3
 author:              Edward Z. Yang
@@ -35,7 +35,7 @@ library
   default-language:    Haskell2010
 
 executable exe
-  build-depends:       base, Includes2
+  build-depends:       base, I
   main-is:             Main.hs
   hs-source-dirs:      exe
   default-language:    Haskell2010

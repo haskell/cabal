@@ -11,4 +11,3 @@ executable my-executable
   main-is:        Main.hs
   build-depends:  base
   other-modules:  Foo
-  hsc2hs-options: "--cc=g++"

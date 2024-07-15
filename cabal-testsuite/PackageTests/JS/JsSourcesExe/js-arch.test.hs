@@ -1,9 +1,9 @@
 import Test.Cabal.Prelude
 
-main = setupAndCabalTest $ do
-    skipUnlessGhcVersion ">= 9.6"
+main = do
     skipUnlessJavaScript
-    skipIfWindows
-
-    res <- cabal' "v2-run" ["demo"]
-    assertOutputContains "Hello JS!" res
+    skipIfWindows ""
+    setupAndCabalTest $ do
+        skipUnlessGhcVersion ">= 9.6"
+        res <- cabal' "v2-run" ["demo"]
+        assertOutputContains "Hello JS!" res

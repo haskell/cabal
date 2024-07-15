@@ -1,7 +1,8 @@
 import Test.Cabal.Prelude
 
-main = cabalTest $ do
-    skipIfWindows
+main = do
+  skipIfWindows "see #10182"
+  cabalTest $ do
     withProjectFile "cabal.positive.project" $ do
         cabal "v2-build" ["-v0"]
     withProjectFile "cabal.negative.project" $ do

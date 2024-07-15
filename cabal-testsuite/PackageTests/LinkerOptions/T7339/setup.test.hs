@@ -18,8 +18,7 @@ import Test.Cabal.Prelude
 
 
 main = setupTest $ do
-
-  skipIfWindows
+  skipIfNoSharedLibraries
   skipUnlessGhcVersion ">= 8.4"
 
   withPackageDb $ do
@@ -59,9 +58,9 @@ main = setupTest $ do
     pkgDb <- testPackageDbDir <$> getTestEnv
     ghciScript <- liftIO $ readFile (cwd </> "T19350.script")
     _ <- runProgramM ghcProgram
-         [ "--interactive"
-         , "-package", "T7339"
-         , "-package-db", pkgDb
-         ] (Just ghciScript)
+        [ "--interactive"
+        , "-package", "T7339"
+        , "-package-db", pkgDb
+        ] (Just ghciScript)
 
     return ()
