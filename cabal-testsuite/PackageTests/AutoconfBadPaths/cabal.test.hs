@@ -2,36 +2,38 @@ import Test.Cabal.Prelude
 import Data.Foldable (traverse_)
 import Distribution.Simple.Utils
 import System.Directory
-main = cabalTest $ do
-  -- Test the forbidden characters except NUL. Reference:
-  -- https://www.gnu.org/software/autoconf/manual/autoconf.html#File-System-Conventions
+main = do
   -- Most of these are magic on Windows, so don't bother testing there.
-  --
-  -- Note: we bundle the configure script so no need to autoreconf
-  -- while building
-  skipIfWindows
-  traverse_ check
-    [ "foo bar"
-    , "foo\tbar"
-    , "foo\nbar"
-    , "foo\"bar"
-    , "foo#bar"
-    , "foo$bar"
-    , "foo&bar"
-    , "foo'bar"
-    , "foo(bar"
-    , "foo)bar"
-    , "foo*bar"
-    , "foo;bar"
-    , "foo<bar"
-    , "foo=bar"
-    , "foo>bar"
-    , "foo?bar"
-    , "foo[bar"
-    , "foo\\bar"
-    , "foo`bar"
-    , "foo|bar"
-    ]
+  skipIfWindows "uninteresting"
+  cabalTest $
+    -- Test the forbidden characters except NUL. Reference:
+    -- https://www.gnu.org/software/autoconf/manual/autoconf.html#File-System-Conventions
+    --
+    -- Note: we bundle the configure script so no need to autoreconf
+    -- while building
+
+    traverse_ check
+      [ "foo bar"
+      , "foo\tbar"
+      , "foo\nbar"
+      , "foo\"bar"
+      , "foo#bar"
+      , "foo$bar"
+      , "foo&bar"
+      , "foo'bar"
+      , "foo(bar"
+      , "foo)bar"
+      , "foo*bar"
+      , "foo;bar"
+      , "foo<bar"
+      , "foo=bar"
+      , "foo>bar"
+      , "foo?bar"
+      , "foo[bar"
+      , "foo\\bar"
+      , "foo`bar"
+      , "foo|bar"
+      ]
   where
     setup dir = do
       env <- getTestEnv
