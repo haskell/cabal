@@ -14,6 +14,6 @@ main = setupTest $ do
                       "--instantiate-with", "Database=mysql-0.1.0.0:Database.MySQL"]
         setup_install' ["mylib", "--cid", "mylib-0.1.0.0",
                       "--instantiate-with", "Database=postgresql-0.1.0.0:Database.PostgreSQL"]
-        setup_install' ["Includes2"]
+        setup_install' ["I"]
         setup_install' ["exe"]
         runExe' "exe" [] >>= assertOutputContains "minemysql minepostgresql"
