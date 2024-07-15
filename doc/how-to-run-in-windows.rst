@@ -8,7 +8,7 @@ more explanations. For a TL;DR, jump to the :ref:`Complete configuration`.
 Install the Haskell environment
 -------------------------------
 
-Haskell development on Windows makes use of the `MSYS2 <https://www.msys2.org/>`_ 
+Haskell development on Windows makes use of the `MSYS2 <https://www.msys2.org/>`_
 tools.
 
 The recommended way of setting up a Haskell environment in Windows is by using
@@ -19,10 +19,42 @@ system in your computer unless told not to do so: refer to `its documentation
 
 .. NOTE::
    Stack is another tool you can use to set up a Haskell environment on Windows. Stack
-   can be installed on its own or via GHCup. See 
-   `Stack's webpage <https://docs.haskellstack.org/en/stable/>`_ and/or 
+   can be installed on its own or via GHCup. See
+   `Stack's webpage <https://docs.haskellstack.org/en/stable/>`_ and/or
    `GHCup's section on Stack integration <https://www.haskell.org/ghcup/guide/#stack-integration>`_,
    in particular the `Windows related subsection <https://www.haskell.org/ghcup/guide/#windows>`_.
+
+MSYS2 environments and packages
+-------------------------------
+
+A particular environment has to be chosen when using MSYS2. By default GHCup will
+use ``MINGW64``. You can learn more about the different environments in the `MSYS2
+documentation <https://www.msys2.org/docs/environments/>`_.
+
+GHCs before 9.4.1 are shipped with a minimal set of packages based on the
+``MINGW64`` environment, and GHC 9.4.1 and newer are shipped with a minimal set
+of packages based on the ``CLANG64`` environment. It is in general advisable to
+work inside the same environment as your GHC uses, but (with some exceptions)
+it shouldn't matter whether environments are mixed. Stay warned that it can
+sometimes lead to undecipherable errors.
+
+We will refer to the chosen environment as ``<environment>`` through this
+documentation.
+
+Third-party libraries and tools can be installed using the ``pacman`` package
+manager on the MSYS2 installation
+(`see <https://www.msys2.org/docs/package-management/>`_). If MSYS2 was
+installed via GHCup, check GHCup's documentation on how to call ``pacman``. Note
+that installing a package ``mingw-w64-<environment>-x86_64-<pkg>`` will install
+it in the ``<msys-dir>\<environment>`` tree of directories, and might not be
+visible if working on a different environment than ``<environment>``. In
+general, it is advisable to install only packages for the environment that was
+chosen above.
+
+Apart from these environments, there is the ``msys`` environment which is based
+on Cygwin. Some tools only exist for this environment. Tools from this environment
+are callable when working in any other environment. It is in general not possible
+to link to libraries installed in the ``msys`` environment.
 
 Ensure that Cabal can call the tools it needs
 ---------------------------------------------
@@ -39,11 +71,10 @@ Windows. The directories where those are located need to be made visible in the
    extra-prog-path: <msys-dir>\<environment>\bin
                     <msys-dir>\usr\bin
 
-Where ``<msys-dir>`` points to the location of your MSYS2 installation. Refer to
-GHCup's documentation on the default location of this directory.
-``<environment>`` has to be one of the environments of MSYS2, which for GHCup is
-``mingw64``. You can learn more about the different environments in the `MSYS2
-documentation <https://www.msys2.org/docs/environments/>`_.
+Where ``<msys-dir>`` points to the location of your MSYS2 installation. If MSYS2
+was installed via GHCup, refer to GHCup's documentation on the default location
+of this directory. If MSYS2 was installed system-wide this is usually
+``C:\msys64``.
 
 .. note::
 
@@ -53,8 +84,7 @@ documentation <https://www.msys2.org/docs/environments/>`_.
 Ensure that Cabal can use system libraries
 ------------------------------------------
 
-Third-party libraries can be installed using the ``pacman`` package manager on
-the MSYS2 installation. When installing a third party package its libraries and
+When installing a third party package its libraries and
 header files will (usually) be placed in
 ``<msys-dir>\<environment>\{lib,include}`` respectively. These directories need
 to be specified in the ``extra-lib-dirs`` and ``extra-include-dirs``
@@ -74,11 +104,18 @@ include these options:
 
 .. warning::
 
-   Packages in the ``msys/`` repo are not native Windows libraries and will
-   probably not work when one tries to link to them. Install the packages for
-   your selected environment, which for GHCup is ``mingw64/``. Refer to `MSYS2's
-   package management documentation
-   <https://www.msys2.org/docs/package-management/>`_ for more information.
+   GHCs older than 9.4.1 will crash if a recent
+   ``mingw-w64-<environment>-x86_64-crt-git`` is installed for whichever ``<environment>`` and
+   these directories are set globally .
+
+   Effectively this means that if you have installed ``mingw-w64-<environment>-x86_64-crt-git``
+   (which you probably have if you are using ``clang`` in the ``CLANG64``
+   environment or ``gcc`` in the ``UCRT64`` or ``MINGW64`` environments outside of
+   Haskell, as this package is part of the ``mingw-w64-<environment>-x86_64-toolchain``
+   meta-packages) and are using a GHC older than 9.4.1, you cannot simply depend on system
+   libraries by adding these paths to the global config, and instead you will
+   have to go through some other method to depend on those libraries like
+   :pkg-field:`pkgconfig-depends`.
 
 Ensure that Cabal can call Haskell tools
 ----------------------------------------
