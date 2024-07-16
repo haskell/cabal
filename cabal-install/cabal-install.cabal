@@ -398,6 +398,7 @@ test-suite integration-tests2
         containers,
         directory,
         filepath,
+        process,
         tasty >= 1.2.3 && <1.6,
         tasty-hunit >= 0.10,
         tagged
