@@ -24,6 +24,7 @@ bootstrap/*.plan.json
 /cabal-install/dist/
 /cabal-install/Setup
 /cabal-install/source-file-list
+/cabal-install/tests/IntegrationTests2/config/cabal-config
 
 .stylish-haskell.yaml
 .stylish-haskell.yml
