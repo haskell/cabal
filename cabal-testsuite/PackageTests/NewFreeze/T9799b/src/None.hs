@@ -3,8 +3,11 @@ module None where
 
 import MyLib
 import Language.Haskell.TH
+import System.IO
 
 $(do
-    runIO $ putStrLn $ "Building: " ++ renamedVers
+    runIO $ do
+        putStrLn $ "Building: " ++ renamedVers
+        hFlush stdout
     [d| x = () |]
  )
