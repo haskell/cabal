@@ -338,6 +338,7 @@ While this interface is intended to be used for scripting, it is an experimental
 Scripting example:
 
 ::
+
    $ ls $(cabal path --installdir)
    ...
 
