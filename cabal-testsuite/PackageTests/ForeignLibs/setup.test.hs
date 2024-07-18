@@ -29,8 +29,12 @@ main = setupAndCabalTest . recordMode DoNotRecord $ do
   skipUnlessGhcVersion ">= 7.8"
   win <- isWindows
   ghc94 <- isGhcVersion ">= 9.4.1"
+<<<<<<< HEAD
   expectBrokenIf (win && ghc94) 8451 $
     withPackageDb $ do
+=======
+  withPackageDb $ do
+>>>>>>> be1ae3183 (Fix ForeignLibs test for Windows)
         setup_install []
         setup "copy" [] -- regression test #4156
         dist_dir <- fmap testDistDir getTestEnv
