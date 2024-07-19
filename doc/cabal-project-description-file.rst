@@ -1694,7 +1694,7 @@ Advanced global configuration options
     should be created after a successful build.
 
     Since Cabal 3.0, defaults to ``never``. Before that, defaulted to
-    creating them only when compiling with GHC 8.4.4 and older (GHC
+    creating them only when compiling with GHC 8.4.4 and later (GHC
     8.4.4 `is the first version
     <https://gitlab.haskell.org/ghc/ghc/-/issues/13753>`_ that supports
     the ``-package-env -`` option that allows ignoring the package
