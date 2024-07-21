@@ -1,0 +1,4 @@
+EXPORTS
+  sayHi
+  myForeignLibExit
+  myForeignLibInit

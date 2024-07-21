@@ -16,7 +16,8 @@ foreign-library myforeignlib
   type:                native-shared
 
   if os(windows)
-    options: standalone
+    options:      standalone
+    mod-def-file: MyForeignLib.def
 
   other-modules:       MyForeignLib.Hello
                        MyForeignLib.SomeBindings

@@ -28,8 +28,7 @@ main = setupAndCabalTest . recordMode DoNotRecord $ do
   -- Foreign libraries don't work with GHC 7.6 and earlier
   skipUnlessGhcVersion ">= 7.8"
   ghc94 <- isGhcVersion ">= 9.4.1"
-  expectBrokenIf (isWindows && ghc94) 8451 $
-    withPackageDb $ do
+  withPackageDb $ do
         setup_install []
         setup "copy" [] -- regression test #4156
         dist_dir <- fmap testDistDir getTestEnv
