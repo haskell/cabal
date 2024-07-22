@@ -1305,6 +1305,9 @@ configureComponents
       when (LBC.relocatable $ LBC.withBuildOptions lbc) $
         checkRelocatable verbosity pkg_descr lbi
 
+      when (LBC.withDynExe $ LBC.withBuildOptions lbc) $
+        checkSharedExes verbosity lbi
+
       -- TODO: This is not entirely correct, because the dirs may vary
       -- across libraries/executables
       let dirs = absoluteInstallDirs pkg_descr lbi NoCopyDest
@@ -2719,6 +2722,18 @@ checkPackageProblems verbosity dir gpkg pkg = do
     classEW (PackageDistSuspiciousWarn _) = Nothing
     classEW (PackageDistInexcusable _) = Nothing
 
+-- | Perform checks if a shared executable can be built
+checkSharedExes
+  :: Verbosity
+  -> LocalBuildInfo
+  -> IO ()
+checkSharedExes verbosity lbi =
+  when (os == Windows) $
+    dieWithException verbosity $
+      NoOSSupport os "shared executables"
+  where
+    (Platform _ os) = hostPlatform lbi
+
 -- | Preform checks if a relocatable build is allowed
 checkRelocatable
   :: Verbosity
@@ -2741,7 +2756,7 @@ checkRelocatable verbosity pkg lbi =
     checkOS =
       unless (os `elem` [OSX, Linux]) $
         dieWithException verbosity $
-          NoOSSupport os
+          NoOSSupport os "relocatable builds"
       where
         (Platform _ os) = hostPlatform lbi
 

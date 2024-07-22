@@ -138,7 +138,7 @@ data CabalException
   | BadVersion String String PkgconfigVersion
   | UnknownCompilerException
   | NoWorkingGcc
-  | NoOSSupport OS
+  | NoOSSupport OS String
   | NoCompilerSupport String
   | InstallDirsNotPrefixRelative (InstallDirs FilePath)
   | ExplainErrors (Maybe (Either [Char] [Char])) [String]
@@ -622,10 +622,11 @@ exceptionMessage e = case e of
           ++ "non-standard location you can use the --with-gcc "
           ++ "flag to specify it."
       ]
-  NoOSSupport os ->
+  NoOSSupport os what ->
     "Operating system: "
       ++ prettyShow os
-      ++ ", does not support relocatable builds"
+      ++ ", does not support "
+      ++ what
   NoCompilerSupport comp ->
     "Compiler: "
       ++ comp
