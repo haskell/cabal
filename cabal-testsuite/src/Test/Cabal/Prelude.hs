@@ -937,6 +937,9 @@ isJavaScript = buildArch == JavaScript
 skipIfWindows :: String -> IO ()
 skipIfWindows why = skipIfIO ("Windows " <> why) isWindows
 
+skipUnlessWindows :: IO ()
+skipUnlessWindows = skipIfIO "Only interesting in Windows" (not isWindows)
+
 getOpenFilesLimit :: TestM (Maybe Integer)
 #ifdef mingw32_HOST_OS
 -- No MS-specified limit, was determined experimentally on Windows 10 Pro x64,
