@@ -454,7 +454,7 @@ parseSpaceList p = sepBy p skipSpaces
 -- This version avoid parse ambiguity for list element parsers
 -- that have multiple valid parses of prefixes.
 parseOptCommaList :: ReadP r a -> ReadP r [a]
-parseOptCommaList p = sepBy p localSep
+parseOptCommaList p = sepBy p localSep +++ endBy p localSep
   where
     -- The separator must not be empty or it introduces ambiguity
     localSep =
