@@ -33,10 +33,6 @@ import qualified Text.PrettyPrint as PP
 --
 -- /Invariant:/ package name does not appear as 'LSubLibName' in
 -- set of library names.
---
--- /Note:/ 'Dependency' is not an instance of 'Ord', and so it cannot be used
--- in 'Set' or as the key to a 'Map'.  For these and similar use cases see
--- 'DependencyMap'.
 data Dependency
   = -- | The set of libraries required from the package.
     -- Only the selected libraries will be built.
