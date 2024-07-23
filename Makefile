@@ -178,14 +178,12 @@ cabal-install-test-accept:
 .PHONY: validate-via-docker-all
 validate-via-docker-all : validate-via-docker-8.2.2
 validate-via-docker-all : validate-via-docker-8.4.4
-validate-via-docker-all : validate-via-docker-8.6.5
 validate-via-docker-all : validate-via-docker-8.8.4
 validate-via-docker-all : validate-via-docker-8.10.4
 
 .PHONY: validate-dockerfiles
 validate-dockerfiles : .docker/validate-8.10.4.dockerfile
 validate-dockerfiles : .docker/validate-8.8.4.dockerfile
-validate-dockerfiles : .docker/validate-8.6.5.dockerfile
 validate-dockerfiles : .docker/validate-8.4.4.dockerfile
 validate-dockerfiles : .docker/validate-8.2.2.dockerfile
 
@@ -203,10 +201,6 @@ validate-via-docker-8.2.2:
 .PHONY: validate-via-docker-8.4.4
 validate-via-docker-8.4.4:
 	docker build $(DOCKERARGS) -t cabal-validate:8.4.4 -f .docker/validate-8.4.4.dockerfile .
-
-.PHONY: validate-via-docker-8.6.5
-validate-via-docker-8.6.5:
-	docker build $(DOCKERARGS) -t cabal-validate:8.6.5 -f .docker/validate-8.6.5.dockerfile .
 
 .PHONY: validate-via-docker-8.8.4
 validate-via-docker-8.8.4:
