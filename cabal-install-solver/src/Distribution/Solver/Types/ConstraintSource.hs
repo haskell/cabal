@@ -41,9 +41,9 @@ data ConstraintSource =
   -- from Cabal >= 3.11
   | ConstraintSourceMultiRepl
 
-  | ConstraintSourceProfiledDynamic
   -- | Constraint introduced by --enable-profiling-shared, which requires features
   -- from Cabal >= 3.13
+  | ConstraintSourceProfiledDynamic
 
   -- | The source of the constraint is not specified.
   | ConstraintSourceUnknown
