@@ -28,7 +28,7 @@ import qualified System.Clock as Clock
 import System.IO
 import System.FilePath
 import System.Exit
-import System.Process (callProcess, showCommandForUser)
+import System.Process (readProcessWithExitCode, showCommandForUser)
 import System.Directory
 import Distribution.Pretty
 import Data.Maybe
@@ -238,7 +238,21 @@ main = do
             -- Simple runner
             (real_path, real_args) <- runTest (runnerCommand senv) path
             hPutStrLn stderr $ showCommandForUser real_path real_args
-            callProcess real_path real_args
+            -- If the test was reported flaky, the `runghc` call will exit
+            -- with exit code 1, and report `TestCodeFlaky` on the stderr output
+            --
+            -- This seems to be the only way to catch this case.
+            --
+            -- Sadly it means that stdout and stderr are not interleaved
+            -- directly anymore.
+            (e, out, err) <- readProcessWithExitCode real_path real_args ""
+            putStrLn "# STDOUT:"
+            putStrLn out
+            putStrLn "# STDERR:"
+            putStrLn err
+            if "TestCodeFlaky" `isInfixOf` err
+              then pure ()
+              else throwIO e
             hPutStrLn stderr "OK"
         user_paths -> do
             -- Read out tests from filesystem
@@ -263,6 +277,8 @@ main = do
             unexpected_fails_var  <- newMVar []
             unexpected_passes_var <- newMVar []
             skipped_var <- newMVar []
+            flaky_pass_var <- newMVar []
+            flaky_fail_var <- newMVar []
 
             chan <- newChan
             let logAll msg = writeChan chan (ServerLogMsg AllServers msg)
@@ -315,12 +331,18 @@ main = do
                                 modifyMVar_ unexpected_fails_var $ \paths ->
                                     return (path:paths)
 
-                            when (code == TestCodeUnexpectedOk) $
+                            when (isJust $ isTestCodeUnexpectedSuccess code) $
                                 modifyMVar_ unexpected_passes_var $ \paths ->
                                     return (path:paths)
 
                             when (isTestCodeSkip code) $
                                 modifyMVar_ skipped_var $ \paths ->
+                                    return (path:paths)
+
+                            case isTestCodeFlaky code of
+                              NotFlaky  -> pure ()
+                              Flaky b _ ->
+                                modifyMVar_ (if b then flaky_pass_var else flaky_fail_var) $ \paths ->
                                     return (path:paths)
 
                             go server
@@ -333,13 +355,17 @@ main = do
             unexpected_fails  <- takeMVar unexpected_fails_var
             unexpected_passes <- takeMVar unexpected_passes_var
             skipped           <- takeMVar skipped_var
+            flaky_passes      <- takeMVar flaky_pass_var
+            flaky_fails       <- takeMVar flaky_fail_var
 
             -- print summary
             let sl = show . length
                 testSummary =
                   sl all_tests ++ " tests, " ++ sl skipped ++ " skipped, "
                     ++ sl unexpected_passes ++ " unexpected passes, "
-                    ++ sl unexpected_fails ++ " unexpected fails."
+                    ++ sl unexpected_fails ++ " unexpected fails, "
+                    ++ sl flaky_passes ++ " flaky passes, "
+                    ++ sl flaky_fails ++ " flaky fails."
             logAll testSummary
 
             -- print failed or unexpected ok
