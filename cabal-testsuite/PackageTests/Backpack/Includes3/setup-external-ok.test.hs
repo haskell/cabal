@@ -3,8 +3,7 @@ import Data.List
 import qualified Data.Char as Char
 main = setupAndCabalTest $ do
   skipUnlessGhcVersion ">= 8.1"
-  ghc <- isGhcVersion "== 9.0.2 || == 9.2.* || == 9.4.* || == 9.6.*"
-  expectBrokenIf ghc 7987 $
+  expectBrokenIfGhc "== 9.0.2 || == 9.2.* || == 9.4.* || == 9.6.*" 7987 $
     withPackageDb $ do
       containers_id <- getIPID "containers"
       withDirectory "repo/sigs-0.1.0.0" $ setup_install_with_docs ["--ipid", "sigs-0.1.0.0"]
@@ -21,4 +20,3 @@ main = setupAndCabalTest $ do
       withDirectory "repo/exe-0.1.0.0" $ do
         setup_install []
         runExe' "exe" [] >>= assertOutputContains "fromList [(0,2),(2,4)]"
-

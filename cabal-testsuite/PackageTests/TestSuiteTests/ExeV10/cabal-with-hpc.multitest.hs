@@ -8,10 +8,9 @@ import qualified Distribution.Verbosity as Verbosity
 
 import Test.Cabal.Prelude
 
-main = cabalTest $ do
-    skipIf "osx" isOSX -- TODO: re-enable this once the macOS CI
-                       -- issues are resolved, see discussion in #4902.
-
+main = do
+  skipIfCIAndOSX 4902
+  cabalTest $ do
     hasShared   <- hasSharedLibraries
     hasProfiled <- hasProfiledLibraries
     hpcOk       <- correctHpcVersion
