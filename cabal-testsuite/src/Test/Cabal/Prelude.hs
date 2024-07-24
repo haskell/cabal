@@ -49,7 +49,7 @@ import Distribution.Compat.Stack
 
 import Text.Regex.TDFA ((=~))
 
-import Control.Concurrent.Async (waitCatch, withAsync)
+import Control.Concurrent.Async (withAsync)
 import qualified Data.Aeson as JSON
 import qualified Data.ByteString.Lazy as BSL
 import Control.Monad (unless, when, void, forM_, liftM2, liftM4)
@@ -61,7 +61,7 @@ import qualified Data.ByteString.Char8 as C
 import Data.List (isInfixOf, stripPrefix, isPrefixOf, intercalate)
 import Data.List.NonEmpty (NonEmpty (..))
 import qualified Data.List.NonEmpty as NE
-import Data.Maybe (mapMaybe, fromMaybe)
+import Data.Maybe (isJust, mapMaybe, fromMaybe)
 import System.Exit (ExitCode (..))
 import System.FilePath
 import Control.Concurrent (threadDelay)
@@ -70,6 +70,7 @@ import System.Directory
 import Control.Retry (exponentialBackoff, limitRetriesByCumulativeDelay)
 import Network.Wait (waitTcpVerbose)
 import System.Environment
+import System.Process
 
 #ifndef mingw32_HOST_OS
 import Control.Monad.Catch ( bracket_ )
@@ -677,7 +678,12 @@ withRemoteRepo repoDir m = do
             -- wait for the python webserver to come up with a exponential
             -- backoff starting from 50ms, up to a maximum wait of 60s
             _ <- waitTcpVerbose putStrLn (limitRetriesByCumulativeDelay 60000000 $ exponentialBackoff 50000) "localhost" "8000"
-            runReaderT m (env { testHaveRepo = True }))
+            r <- runReaderT m (env { testHaveRepo = True })
+            -- Windows fails to kill the python server when the function above
+            -- is complete, so we kill it directly via CMD.
+            when (buildOS == Windows) $ void $ createProcess_ "kill python" $ System.Process.shell "taskkill /F /IM python3.exe"
+            pure r
+            )
 
 
 
@@ -849,6 +855,9 @@ hasSharedLibraries = testCompilerWithArgs ["-dynamic"]
 skipIfNoSharedLibraries :: TestM ()
 skipIfNoSharedLibraries = skipUnless "no shared libraries" =<< hasSharedLibraries
 
+skipIfNoProfiledLibraries :: TestM ()
+skipIfNoProfiledLibraries = skipUnless "no profiled libraries" =<< hasProfiledLibraries
+
 -- | Check if the GHC that is used for compiling package tests has
 -- a shared library of the cabal library under test in its database.
 --
@@ -923,6 +932,9 @@ skipIfJavaScript = skipIfIO "incompatible with the JavaScript backend" isJavaScr
 isWindows :: Bool
 isWindows = buildOS == Windows
 
+isCI :: IO Bool
+isCI = isJust <$> lookupEnv "CI"
+
 isOSX :: Bool
 isOSX = buildOS == OSX
 
@@ -939,6 +951,55 @@ skipIfWindows why = skipIfIO ("Windows " <> why) isWindows
 
 skipUnlessWindows :: IO ()
 skipUnlessWindows = skipIfIO "Only interesting in Windows" (not isWindows)
+
+skipIfOSX :: String -> IO ()
+skipIfOSX why = skipIfIO ("OSX " <> why) isOSX
+
+skipIfCI :: Int -> IO ()
+skipIfCI ticket = skipIfIO ("CI, see #" <> show ticket) =<< isCI
+
+skipIfCIAndWindows :: Int -> IO ()
+skipIfCIAndWindows ticket = skipIfIO ("Windows CI, see #" <> show ticket) . (isWindows &&) =<< isCI
+
+skipIfCIAndOSX :: Int -> IO ()
+skipIfCIAndOSX ticket = skipIfIO ("OSX CI, see #" <> show ticket) . (isOSX &&) =<< isCI
+
+expectBrokenIfWindows :: Int -> TestM a -> TestM a
+expectBrokenIfWindows ticket = expectBrokenIf isWindows ticket
+
+expectBrokenIfWindowsCI :: Int -> TestM a -> TestM a
+expectBrokenIfWindowsCI ticket m = do
+    ci <- liftIO isCI
+    expectBrokenIf (isWindows && ci) ticket m
+
+expectBrokenIfWindowsCIAndGhc :: String -> Int -> TestM a -> TestM a
+expectBrokenIfWindowsCIAndGhc range ticket m = do
+    ghcVer <- isGhcVersion range
+    ci <- liftIO isCI
+    expectBrokenIf (isWindows && ghcVer && ci) ticket m
+
+expectBrokenIfWindowsAndGhc :: String -> Int -> TestM a -> TestM a
+expectBrokenIfWindowsAndGhc range ticket m = do
+    ghcVer <- isGhcVersion range
+    expectBrokenIf (isWindows && ghcVer) ticket m
+
+expectBrokenIfOSXAndGhc :: String -> Int -> TestM a -> TestM a
+expectBrokenIfOSXAndGhc range ticket m = do
+    ghcVer <- isGhcVersion range
+    expectBrokenIf (isOSX && ghcVer) ticket m
+
+expectBrokenIfGhc :: String -> Int -> TestM a -> TestM a
+expectBrokenIfGhc range ticket m = do
+    ghcVer <- isGhcVersion range
+    expectBrokenIf ghcVer ticket m
+
+flakyIfCI :: Int -> TestM a -> TestM a
+flakyIfCI ticket m = do
+    ci <- liftIO isCI
+    flakyIf ci ticket m
+
+flakyIfWindows :: Int -> TestM a -> TestM a
+flakyIfWindows ticket m = flakyIf isWindows ticket m
 
 getOpenFilesLimit :: TestM (Maybe Integer)
 #ifdef mingw32_HOST_OS
@@ -963,29 +1024,6 @@ getOpenFilesLimit = liftIO $ do
 --
 hasNewBuildCompatBootCabal :: TestM Bool
 hasNewBuildCompatBootCabal = isGhcVersion ">= 7.9"
-
-------------------------------------------------------------------------
--- * Broken tests
-
-expectBroken :: Int -> TestM a -> TestM a
-expectBroken ticket m = do
-    env <- getTestEnv
-    liftIO . withAsync (runReaderT m env) $ \a -> do
-        r <- waitCatch a
-        case r of
-            Left e  -> do
-                putStrLn $ "This test is known broken, see #" ++ show ticket ++ ":"
-                print e
-                runReaderT (expectedBroken ticket) env
-            Right _ -> do
-                runReaderT unexpectedSuccess env
-
-expectBrokenIf :: Bool -> Int -> TestM a -> TestM a
-expectBrokenIf False _ m = m
-expectBrokenIf True ticket m = expectBroken ticket m
-
-expectBrokenUnless :: Bool -> Int -> TestM a -> TestM a
-expectBrokenUnless b = expectBrokenIf (not b)
 
 -- * Programs
 
