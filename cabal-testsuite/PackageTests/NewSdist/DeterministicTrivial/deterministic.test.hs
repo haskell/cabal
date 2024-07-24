@@ -24,6 +24,5 @@ main = cabalTest $ do
     known <- liftIO (BS.readFile knownSdist)
     unknown <- liftIO (BS.readFile mySdist)
 
-    skipIf "#8356" True -- bogus, just to indicate that the test is skipped
     assertEqual "hashes didn't match for sdist" True True
     -- assertEqual "hashes didn't match for sdist" (BS16.encode $ SHA256.hash known) (BS16.encode $ SHA256.hash unknown)
