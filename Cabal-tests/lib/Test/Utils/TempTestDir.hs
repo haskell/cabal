@@ -2,11 +2,12 @@
 
 module Test.Utils.TempTestDir
   ( withTestDir
+  , withTestDir'
   , removeDirectoryRecursiveHack
   ) where
 
 import Distribution.Compat.Internal.TempFile (createTempDirectory)
-import Distribution.Simple.Utils (warn)
+import Distribution.Simple.Utils (warn, TempFileOptions (..), defaultTempFileOptions)
 import Distribution.Verbosity
 
 import Control.Concurrent (threadDelay)
@@ -23,12 +24,21 @@ import qualified System.Info (os)
 -- | Much like 'withTemporaryDirectory' but with a number of hacks to make
 -- sure on windows that we can clean up the directory at the end.
 withTestDir :: (MonadIO m, MonadMask m) => Verbosity -> String -> (FilePath -> m a) -> m a
-withTestDir verbosity template action = do
+withTestDir verbosity template action = withTestDir' verbosity defaultTempFileOptions template action
+
+withTestDir' :: (MonadIO m, MonadMask m) => Verbosity -> TempFileOptions -> String -> (FilePath -> m a) -> m a
+withTestDir' verbosity tempFileOpts template action = do
   systmpdir <- liftIO getTemporaryDirectory
   bracket
     ( do { tmpRelDir <- liftIO $ createTempDirectory systmpdir template
          ; return $ systmpdir </> tmpRelDir } )
-    (liftIO . removeDirectoryRecursiveHack verbosity)
+    (liftIO
+      -- This ensures that the temp files are not deleted at the end of the test.
+      -- It replicates the behavior of @withTempDirectoryEx@.
+      . when (not (optKeepTempFiles tempFileOpts))
+      -- This is the bit that helps with Windows deleting all files.
+      . removeDirectoryRecursiveHack verbosity
+      )
     action
 
 -- | On Windows, file locks held by programs we run (in this case VCSs)
