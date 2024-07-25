@@ -200,16 +200,28 @@ and stderr.
 these with include `hasSharedLibraries`, `hasProfiledLibraries`,
 `hasCabalShared`, `isGhcVersion`, `isWindows`, `isLinux`, `isOSX`.
 
+There are some pre-defined versions of those combinators like `skipIfWindows`
+or `skipIfCI`. If possible try to use those as the error message will be uniform
+with other tests, allowing for `grep`ing the output more easily.
+
+Make sure that you only skip tests which cannot be run by fundamental reasons,
+like the OS or the capabilities of the GHC version. If a test is failing do not
+skip it, mark it as broken instead (see next question).
+
+**How do I mark a test as broken?**  Use `expectBroken`, which takes
+the ticket number as its first argument.
+
+**How do I mark a flaky test?** If a test passes only sometimes for unknown
+reasons, it is better to mark it as flaky with the `flaky` and `flakyIf`
+combinators. They both take a ticket number so the flaky tests has to be tracked
+in an issue. Flaky tests are executed, and the outcome is reported by the
+test-suite but even if they fail they won't make the test-suite fail.
+
 **I programmatically modified a file in my test suite, but Cabal/GHC
 doesn't seem to be picking it up.**  You need to sleep sufficiently
 long before editing a file, in order for file system timestamp
 resolution to pick it up.  Use `withDelay` and `delay` prior to
 making a modification.
-
-**How do I mark a test as broken?**  Use `expectBroken`, which takes
-the ticket number as its first argument.  Note that this does NOT
-handle accept-test brokenness, so you will have to add a manual
-string output test, if that is how your test is "failing."
 
 Hermetic tests
 --------------
