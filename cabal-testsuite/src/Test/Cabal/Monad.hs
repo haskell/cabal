@@ -630,6 +630,7 @@ mkNormalizerEnv = do
     tmpDir <- liftIO $ getTemporaryDirectory
 
     canonicalizedTestTmpDir <- liftIO $ canonicalizePath (testTmpDir env)
+    canonicalizedGblDir <- liftIO $ canonicalizePath tmpDir
 
     -- 'cabal' is configured in the package-db, but doesn't specify how to find the program version
     -- Thus we find the program location, if it exists, and query for the program version for
@@ -642,11 +643,6 @@ mkNormalizerEnv = do
                 liftIO (findProgramVersion "--numeric-version" id (testVerbosity env) (programPath cabalProg))
 
     return NormalizerEnv {
-        normalizerRoot
-            = (if buildOS == Windows
-              then joinDrive "\\" . dropDrive
-              else id)
-                $ addTrailingPathSeparator (testSourceDir env),
         normalizerTmpDir
             = (if buildOS == Windows
               then joinDrive "\\" . dropDrive
@@ -662,6 +658,11 @@ mkNormalizerEnv = do
               then joinDrive "\\" . dropDrive
               else id)
                 $ addTrailingPathSeparator tmpDir,
+        normalizerCanonicalGblTmpDir
+            = (if buildOS == Windows
+              then joinDrive "\\" . dropDrive
+              else id)
+                $ addTrailingPathSeparator canonicalizedGblDir,
         normalizerGhcVersion
             = compilerVersion (testCompiler env),
         normalizerGhcPath

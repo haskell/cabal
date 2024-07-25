@@ -28,7 +28,12 @@ withTestDir verbosity template action = withTestDir' verbosity defaultTempFileOp
 
 withTestDir' :: (MonadIO m, MonadMask m) => Verbosity -> TempFileOptions -> String -> (FilePath -> m a) -> m a
 withTestDir' verbosity tempFileOpts template action = do
-  systmpdir <- liftIO getTemporaryDirectory
+  systmpdir <-
+    -- MacOS returns /var/folders/... which is a symlink (/var -> /private/var),
+    -- so the test-suite struggles to make the build cwd-agnostic in particular
+    -- for the ShowBuildInfo tests. This canonicalizePath call makes it
+    -- /private/var/folders/... which will work.
+    liftIO $ canonicalizePath =<< getTemporaryDirectory
   bracket
     ( do { tmpRelDir <- liftIO $ createTempDirectory systmpdir template
          ; return $ systmpdir </> tmpRelDir } )
