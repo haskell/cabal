@@ -542,13 +542,13 @@ getProjectRootUsability filePath = do
   if exists
     then return ProjectRootUsabilityPresentAndUsable
     else do
-      let isUsableAciton =
+      let isUsableAction =
             handle @IOException
               -- NOTE: if any IOException is raised, we assume the file does not exist.
-              -- That is what happen when we call @pathIsSymbolicLink@ on an @FilePath@ that does not exist.
+              -- That is what happen when we call @pathIsSymbolicLink@ on a @FilePath@ that does not exist.
               (const $ pure False)
               ((||) <$> pathIsSymbolicLink filePath <*> doesPathExist filePath)
-      isUnusable <- isUsableAciton
+      isUnusable <- isUsableAction
       if isUnusable
         then return ProjectRootUsabilityPresentAndUnusable
         else return ProjectRootUsabilityNotPresent
@@ -651,7 +651,6 @@ data BadProjectRoot
   | BadProjectRootAbsoluteFileNotFound FilePath
   | BadProjectRootDirFileNotFound FilePath FilePath
   | BadProjectRootFileBroken FilePath
-
   deriving (Show, Typeable, Eq)
 
 instance Exception BadProjectRoot where
