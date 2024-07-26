@@ -251,12 +251,12 @@ parseSection programDb (MkSection (Name pos name) args secFields)
   | name == "program-options" = do
       verifyNullSubsections
       verifyNullSectionArgs
-      opts' <- lift $ parseProgramArgs Warn programDb fields
+      opts' <- lift $ parseProgramArgs programDb fields
       stateConfig . L.projectConfigLocalPackages . L.packageConfigProgramArgs %= (opts' <>)
   | name == "program-locations" = do
       verifyNullSubsections
       verifyNullSectionArgs
-      paths' <- lift $ parseProgramPaths Warn programDb fields
+      paths' <- lift $ parseProgramPaths programDb fields
       stateConfig . L.projectConfigLocalPackages . L.packageConfigProgramPaths %= (paths' <>)
   | name == "repository" = do
       verifyNullSubsections
@@ -292,8 +292,8 @@ parseSection programDb (MkSection (Name pos name) args secFields)
     verifyNullSectionArgs = unless (null args) (lift $ parseFailure pos $ "The section '" <> (show name) <> "' takes no arguments")
     parsePackageConfig = do
       packageCfg <- lift $ parseFieldGrammar cabalSpec fields (packageConfigFieldGrammar programNames)
-      args' <- lift $ parseProgramArgs Ignore programDb fields
-      paths <- lift $ parseProgramPaths Ignore programDb fields
+      args' <- lift $ parseProgramArgs programDb fields
+      paths <- lift $ parseProgramPaths programDb fields
       return packageCfg{packageConfigProgramPaths = paths, packageConfigProgramArgs = args'}
 
 -- | Currently a duplicate of 'Distribution.Client.Config.postProcessRepo' but migrated to Parsec ParseResult.
@@ -355,37 +355,32 @@ parsePackageName pos args = case args of
     parser =
       P.choice [P.try (P.char '*' >> return AllPackages), SpecificPackage <$> parsec]
 
--- | Decide whether to issue Warnings on unknown fields -- TODO 6101 why decide? document the decision here
-data WarnUnknownFields = Ignore | Warn
-
 -- | Parse fields of a program-options stanza.
-parseProgramArgs :: WarnUnknownFields -> ProgramDb -> Fields Position -> ParseResult (MapMappend String [String])
-parseProgramArgs warnLevel programDb fields = foldM parseField mempty (Map.toList fields)
+parseProgramArgs :: ProgramDb -> Fields Position -> ParseResult (MapMappend String [String])
+parseProgramArgs programDb fields = foldM parseField mempty (filter hasOptionsSuffix $ Map.toList fields)
   where
     parseField programArgs (fieldName, fieldLines) = do
       case readProgramName "-options" programDb fieldName of
-        Nothing -> case warnLevel of
-          Ignore -> return programArgs
-          Warn -> warnUnknownFields fieldName fieldLines >> return programArgs
+        Nothing -> warnUnknownFields fieldName fieldLines >> return programArgs
         Just program -> do
           args <- parseProgramArgsField fieldLines
           return $ programArgs <> MapMappend (Map.singleton program args)
+    hasOptionsSuffix (fieldName, _) = BS.isSuffixOf "-options" fieldName
 
 -- | Parse fields of a program-locations stanza.
-parseProgramPaths :: WarnUnknownFields -> ProgramDb -> Fields Position -> ParseResult (MapLast String FilePath)
-parseProgramPaths warnLevel programDb fields = foldM parseField mempty (Map.toList fields)
+parseProgramPaths :: ProgramDb -> Fields Position -> ParseResult (MapLast String FilePath)
+parseProgramPaths programDb fields = foldM parseField mempty (filter hasLocationSuffix $ Map.toList fields)
   where
     parseField paths (fieldName, fieldLines) = do
       case readProgramName "-location" programDb fieldName of
-        Nothing -> case warnLevel of
-          Ignore -> return paths
-          Warn -> warnUnknownFields fieldName fieldLines >> return paths
+        Nothing -> warnUnknownFields fieldName fieldLines >> return paths
         Just program -> do
           case fieldLines of
             (MkNamelessField pos lines') : _ -> do
               fp <- runFieldParser pos parsecFilePath cabalSpec lines'
               return $ paths <> MapLast (Map.singleton program fp)
             [] -> return mempty
+    hasLocationSuffix (fieldName, _) = BS.isSuffixOf "-location" fieldName
 
 -- | Parse all arguments to a single program in program-options stanza.
 -- By processing '[NamelessField Position]', we support multiple occurrences of the field, concatenating the arguments.
