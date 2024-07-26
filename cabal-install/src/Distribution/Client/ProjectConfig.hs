@@ -610,21 +610,10 @@ data BadProjectRoot
   | BadProjectRootDir FilePath
   | BadProjectRootAbsoluteFile FilePath
   | BadProjectRootDirFile FilePath FilePath
-#if MIN_VERSION_base(4,8,0)
   deriving (Show, Typeable)
-#else
-  deriving (Typeable)
 
-instance Show BadProjectRoot where
-  show = renderBadProjectRoot
-#endif
-
-#if MIN_VERSION_base(4,8,0)
 instance Exception BadProjectRoot where
   displayException = renderBadProjectRoot
-#else
-instance Exception BadProjectRoot
-#endif
 
 renderBadProjectRoot :: BadProjectRoot -> String
 renderBadProjectRoot = \case
@@ -844,21 +833,11 @@ data ProjectPackageLocation
 -- | Exception thrown by 'findProjectPackages'.
 data BadPackageLocations
   = BadPackageLocations (Set ProjectConfigProvenance) [BadPackageLocation]
-#if MIN_VERSION_base(4,8,0)
   deriving (Show, Typeable)
-#else
-  deriving (Typeable)
 
-instance Show BadPackageLocations where
-  show = renderBadPackageLocations
-#endif
-
-#if MIN_VERSION_base(4,8,0)
 instance Exception BadPackageLocations where
   displayException = renderBadPackageLocations
-#else
-instance Exception BadPackageLocations
-#endif
+
 -- TODO: [nice to have] custom exception subclass for Doc rendering, colour etc
 
 data BadPackageLocation
@@ -1530,11 +1509,8 @@ instance Show CabalFileParseError where
         . showChar ' '
         . showsPrec 11 ws
 
-instance Exception CabalFileParseError
-#if MIN_VERSION_base(4,8,0)
-  where
+instance Exception CabalFileParseError where
   displayException = renderCabalFileParseError
-#endif
 
 renderCabalFileParseError :: CabalFileParseError -> String
 renderCabalFileParseError (CabalFileParseError filePath contents errors _ warnings) =
@@ -1676,21 +1652,11 @@ truncateString n s
 
 data BadPerPackageCompilerPaths
   = BadPerPackageCompilerPaths [(PackageName, String)]
-#if MIN_VERSION_base(4,8,0)
   deriving (Show, Typeable)
-#else
-  deriving (Typeable)
 
-instance Show BadPerPackageCompilerPaths where
-  show = renderBadPerPackageCompilerPaths
-#endif
-
-#if MIN_VERSION_base(4,8,0)
 instance Exception BadPerPackageCompilerPaths where
   displayException = renderBadPerPackageCompilerPaths
-#else
-instance Exception BadPerPackageCompilerPaths
-#endif
+
 -- TODO: [nice to have] custom exception subclass for Doc rendering, colour etc
 
 renderBadPerPackageCompilerPaths :: BadPerPackageCompilerPaths -> String

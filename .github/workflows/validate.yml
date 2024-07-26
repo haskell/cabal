@@ -11,16 +11,16 @@ concurrency:
 on:
   push:
     paths-ignore:
-      - 'doc/**'
-      - '**/README.md'
-      - 'CONTRIBUTING.md'
+      - "doc/**"
+      - "**/README.md"
+      - "CONTRIBUTING.md"
     branches:
       - master
   pull_request:
     paths-ignore:
-      - 'doc/**'
-      - '**/README.md'
-      - 'CONTRIBUTING.md'
+      - "doc/**"
+      - "**/README.md"
+      - "CONTRIBUTING.md"
   release:
     types:
       - created
@@ -41,16 +41,15 @@ on:
 env:
   # We choose a stable ghc version across all os's
   # which will be used to do the next release
-  GHC_FOR_RELEASE: '9.4.8'
+  GHC_FOR_RELEASE: "9.4.8"
   # Ideally we should use the version about to be released for hackage tests and benchmarks
-  GHC_FOR_SOLVER_BENCHMARKS: '9.4.8'
-  GHC_FOR_COMPLETE_HACKAGE_TESTS: '9.4.8'
-  COMMON_FLAGS: '-j 2 -v'
+  GHC_FOR_SOLVER_BENCHMARKS: "9.4.8"
+  GHC_FOR_COMPLETE_HACKAGE_TESTS: "9.4.8"
+  COMMON_FLAGS: "-j 2 -v"
 
   # See https://github.com/haskell/cabal/blob/master/CONTRIBUTING.md#hackage-revisions
   ALLOWNEWER: ${{ github.event.inputs.allow-newer }}
   CONSTRAINTS: ${{ github.event.inputs.constraints }}
-
 
 jobs:
   validate:
@@ -61,28 +60,36 @@ jobs:
     strategy:
       matrix:
         sys:
-          - { os: windows-latest, shell: 'C:/msys64/usr/bin/bash.exe -e {0}' }
-          - { os: ubuntu-latest,  shell: bash }
-          - { os: macos-13,       shell: bash}
+          - { os: windows-latest, shell: "C:/msys64/usr/bin/bash.exe -e {0}" }
+          - { os: ubuntu-latest, shell: bash }
+          - { os: macos-13, shell: bash }
         # If you remove something from here, then add it to the old-ghcs job.
         # Also a removed GHC from here means that we are actually dropping
         # support, so the PR *must* have a changelog entry.
-        ghc: ['9.10.1', '9.8.2', '9.6.4', '9.4.8', '9.2.8', '9.0.2', '8.10.7', '8.8.4', '8.6.5']
+        ghc:
+          [
+            "9.10.1",
+            "9.8.2",
+            "9.6.4",
+            "9.4.8",
+            "9.2.8",
+            "9.0.2",
+            "8.10.7",
+            "8.8.4",
+          ]
         exclude:
           # corrupts GHA cache or the fabric of reality itself, see https://github.com/haskell/cabal/issues/8356
-          - sys: { os: windows-latest, shell: 'C:/msys64/usr/bin/bash.exe -e {0}' }
-            ghc: '8.10.7'
+          - sys:
+              { os: windows-latest, shell: "C:/msys64/usr/bin/bash.exe -e {0}" }
+            ghc: "8.10.7"
           # lot of segfaults caused by ghc bugs
-          - sys: { os: windows-latest, shell: 'C:/msys64/usr/bin/bash.exe -e {0}' }
-            ghc: '8.8.4'
-          # it often randomly does "C:\Users\RUNNER~1\AppData\Local\Temp\ghcFEDE.c: DeleteFile "\\\\?\\C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\ghcFEDE.c": permission denied (Access is denied.)"
-          - sys: { os: windows-latest, shell: 'C:/msys64/usr/bin/bash.exe -e {0}' }
-            ghc: '8.6.5'
+          - sys:
+              { os: windows-latest, shell: "C:/msys64/usr/bin/bash.exe -e {0}" }
+            ghc: "8.8.4"
     defaults:
-        run:
-          shell: ${{ matrix.sys.shell }}
+      run:
+        shell: ${{ matrix.sys.shell }}
     steps:
-
       - name: Work around XDG directories existence (haskell-actions/setup#62)
         if: runner.os == 'macOS'
         run: |
@@ -213,7 +220,6 @@ jobs:
         if: matrix.ghc == env.GHC_FOR_SOLVER_BENCHMARKS
         run: sh validate.sh $FLAGS -s solver-benchmarks-run
 
-
   validate-old-ghcs:
     name: Validate old ghcs ${{ matrix.extra-ghc }}
     runs-on: ubuntu-latest
@@ -221,13 +227,13 @@ jobs:
 
     strategy:
       matrix:
-        extra-ghc: ['8.4.4', '8.2.2', '8.0.2']
+        extra-ghc:
+          ["8.4.4", "8.2.2", "8.0.2"]
           ## GHC 7.10.3 does not install on ubuntu-22.04 with ghcup.
           ## Older GHCs are not supported by ghcup in the first place.
       fail-fast: false
 
     steps:
-
       - uses: actions/checkout@v4
 
       - name: Install prerequisites for old GHCs
@@ -276,7 +282,7 @@ jobs:
   build-alpine:
     name: Build statically linked using alpine
     runs-on: ubuntu-latest
-    container: 'alpine:3.19'
+    container: "alpine:3.19"
     steps:
       - name: Install extra dependencies
         shell: sh
@@ -336,7 +342,6 @@ jobs:
           name: cabal-${{ runner.os }}-static-x86_64
           path: ${{ env.CABAL_EXEC_TAR }}
 
-
   # The previous jobs use a released version of cabal to build cabal HEAD itself
   # This one uses the cabal HEAD generated executable in the previous step
   # to build itself again, as sanity check
@@ -393,34 +398,34 @@ jobs:
     needs: [validate, validate-old-ghcs, build-alpine, dogfooding]
 
     steps:
-    - uses: actions/download-artifact@v3
-      with:
-        name: cabal-Windows-x86_64
+      - uses: actions/download-artifact@v3
+        with:
+          name: cabal-Windows-x86_64
 
-    - uses: actions/download-artifact@v3
-      with:
-        name: cabal-Linux-x86_64
+      - uses: actions/download-artifact@v3
+        with:
+          name: cabal-Linux-x86_64
 
-    - uses: actions/download-artifact@v3
-      with:
-        name: cabal-Linux-static-x86_64
+      - uses: actions/download-artifact@v3
+        with:
+          name: cabal-Linux-static-x86_64
 
-    - uses: actions/download-artifact@v3
-      with:
-        name: cabal-macOS-x86_64
+      - uses: actions/download-artifact@v3
+        with:
+          name: cabal-macOS-x86_64
 
-    - name: Create GitHub prerelease
-      uses: marvinpinto/action-automatic-releases@v1.2.1
-      with:
-        repo_token: ${{ secrets.GITHUB_TOKEN }}
-        automatic_release_tag: cabal-head
-        prerelease: true
-        title: cabal-head
-        files: |
-          cabal-head-Windows-x86_64.tar.gz
-          cabal-head-Linux-x86_64.tar.gz
-          cabal-head-Linux-static-x86_64.tar.gz
-          cabal-head-macOS-x86_64.tar.gz
+      - name: Create GitHub prerelease
+        uses: marvinpinto/action-automatic-releases@v1.2.1
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          automatic_release_tag: cabal-head
+          prerelease: true
+          title: cabal-head
+          files: |
+            cabal-head-Windows-x86_64.tar.gz
+            cabal-head-Linux-x86_64.tar.gz
+            cabal-head-Linux-static-x86_64.tar.gz
+            cabal-head-macOS-x86_64.tar.gz
 
   # We use this job as a summary of the workflow
   # It will fail if any of the previous jobs does it

@@ -52,12 +52,11 @@ test-suite unit-tests
     UnitTests.Distribution.Utils.ShortText
     UnitTests.Distribution.Utils.Structured
     UnitTests.Distribution.Version
-    UnitTests.Orphans
 
   main-is:          UnitTests.hs
   build-depends:
       array
-    , base                >=4.11    && <5
+    , base                >=4.13    && <5
     , bytestring
     , Cabal
     , Cabal-described
