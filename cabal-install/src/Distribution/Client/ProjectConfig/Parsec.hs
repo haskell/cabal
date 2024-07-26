@@ -13,12 +13,15 @@ module Distribution.Client.ProjectConfig.Parsec
   , runParseResult
   ) where
 
-import Network.URI (parseURI)
+import Network.URI (parseURI, uriFragment, uriPath, uriScheme)
 
 import Control.Monad.State.Strict (StateT, execStateT, lift)
 import qualified Data.Map.Strict as Map
 import Distribution.CabalSpecVersion
 import Distribution.Client.HttpUtils
+import Distribution.Client.Types.Repo hiding (repoName)
+import Distribution.Client.Types.RepoName (RepoName (..))
+import Distribution.Client.Utils.Parsec
 import Distribution.Compat.Lens
 import Distribution.Compat.Prelude
 import Distribution.FieldGrammar
@@ -36,10 +39,9 @@ import Distribution.Fields.ConfVar (parseConditionConfVar)
 import Distribution.Fields.ParseResult
 import Distribution.Solver.Types.ProjectConfigPath
 
--- AST type
 import Distribution.Fields (Field (..), FieldLine (..), FieldName, Name (..), SectionArg (..), readFields', showPWarning)
 import Distribution.Fields.LexerMonad (toPWarnings)
-import Distribution.Parsec (CabalParsing, PError (..), ParsecParser, parsec, parsecFilePath, parsecToken, runParsecParser)
+import Distribution.Parsec (CabalParsing, PError (..), ParsecParser, eitherParsec, parsec, parsecFilePath, parsecToken, runParsecParser)
 import Distribution.Parsec.Position (Position (..), zeroPos)
 import Distribution.Parsec.Warning (PWarnType (..))
 import Distribution.Simple.Program.Db (ProgramDb, defaultProgramDb, knownPrograms, lookupKnownProgram)
@@ -49,6 +51,7 @@ import Distribution.Types.CondTree (CondBranch (..), CondTree (..))
 import Distribution.Types.ConfVar (ConfVar (..))
 import Distribution.Types.PackageName (PackageName)
 import Distribution.Utils.Generic (fromUTF8BS, toUTF8BS, validateUTF8)
+import Distribution.Utils.NubList (toNubList)
 
 import qualified Data.ByteString as BS
 import Data.Coerce (coerce)
@@ -255,6 +258,17 @@ parseSection programDb (MkSection (Name pos name) args secFields)
       verifyNullSectionArgs
       paths <- lift $ parseProgramPaths Warn programDb fields
       stateConfig . L.projectConfigLocalPackages %= (\cfg -> cfg{packageConfigProgramPaths = (paths <> packageConfigProgramPaths cfg)})
+  | name == "repository" = do
+      verifyNullSubsections
+      mRepoName <- lift $ parseRepoName pos args
+      case mRepoName of
+        Just repoName -> do
+          remoteRepo <- lift $ parseFieldGrammar cabalSpec fields (remoteRepoGrammar repoName)
+          remoteOrLocalRepo <- lift $ postProcessRemoteRepo pos remoteRepo
+          case remoteOrLocalRepo of
+            Left local -> stateConfig . L.projectConfigShared %= (\pcs -> pcs{projectConfigLocalNoIndexRepos = (toNubList [local] <> projectConfigLocalNoIndexRepos pcs)})
+            Right remote -> stateConfig . L.projectConfigShared %= (\pcs -> pcs{projectConfigRemoteRepos = (toNubList [remote] <> projectConfigRemoteRepos pcs)})
+        Nothing -> lift $ parseFailure pos "a 'repository' section requires the repository name as an argument"
   | name == "package" = do
       verifyNullSubsections
       package <- lift $ parsePackageName pos args
@@ -265,7 +279,9 @@ parseSection programDb (MkSection (Name pos name) args secFields)
         Just (SpecificPackage packageName) -> do
           packageCfg <- parsePackageConfig
           stateConfig . L.projectConfigSpecificPackage %= (\spcs -> spcs <> MapMappend (Map.singleton packageName packageCfg))
-        Nothing -> return ()
+        Nothing -> do
+          lift $ parseWarning pos PWTUnknownSection "target package name or * required"
+          return ()
   | otherwise = do
       warnInvalidSubsection pos name
   where
@@ -280,25 +296,66 @@ parseSection programDb (MkSection (Name pos name) args secFields)
       paths <- lift $ parseProgramPaths Ignore programDb fields
       return packageCfg{packageConfigProgramPaths = paths, packageConfigProgramArgs = args'}
 
-data PackageConfigTarget = AllPackages | SpecificPackage PackageName
+-- | Currently a duplicate of 'Distribution.Client.Config.postProcessRepo' but migrated to Parsec ParseResult.
+postProcessRemoteRepo :: Position -> RemoteRepo -> ParseResult (Either LocalRepo RemoteRepo)
+postProcessRemoteRepo pos repo = case uriScheme (remoteRepoURI repo) of
+  -- TODO: check that there are no authority, query or fragment
+  -- Note: the trailing colon is important
+  "file+noindex:" -> do
+    let uri = remoteRepoURI repo
+    return $ Left $ LocalRepo (remoteRepoName repo) (uriPath uri) (uriFragment uri == "#shared-cache")
+  _ -> do
+    when (remoteRepoKeyThreshold repo > length (remoteRepoRootKeys repo)) $
+      warning $
+        "'key-threshold' for repository "
+          ++ show (remoteRepoName repo)
+          ++ " higher than number of keys"
+
+    when (not (null (remoteRepoRootKeys repo)) && remoteRepoSecure repo /= Just True) $
+      warning $
+        "'root-keys' for repository "
+          ++ show (remoteRepoName repo)
+          ++ " non-empty, but 'secure' not set to True."
+
+    return $ Right repo
+    where
+      warning msg = parseWarning pos PWTOther msg
+
+parseRepoName :: Position -> [SectionArg Position] -> ParseResult (Maybe RepoName)
+parseRepoName pos args = case args of
+  [SecArgName _ secName] -> parseName secName
+  [SecArgStr _ secName] -> parseName secName
+  [SecArgOther _ secName] -> parseName secName
+  _ -> return Nothing
+  where
+    parseName :: BS.ByteString -> ParseResult (Maybe RepoName)
+    parseName str =
+      let repoNameStr = fromUTF8BS str
+       in case eitherParsec repoNameStr of
+            Left _ -> do
+              parseFailure pos ("Invalid repository name" ++ repoNameStr)
+              return Nothing
+            Right name -> return $ Just name
+
+data PackageConfigTarget = AllPackages | SpecificPackage !PackageName
 
 parsePackageName :: Position -> [SectionArg Position] -> ParseResult (Maybe PackageConfigTarget)
 parsePackageName pos args = case args of
   [SecArgName _ secName] -> parseName secName
   [SecArgStr _ secName] -> parseName secName
   [SecArgOther _ secName] -> parseName secName
-  _ -> do
-    parseWarning pos PWTUnknownSection "target package name or * required"
-    return Nothing
+  _ -> return Nothing
   where
     parseName secName = case runParsecParser parser "<parsePackageName>" (fieldLineStreamFromBS secName) of
-      Left _ -> return Nothing
+      Left _ -> do
+        parseFailure pos ("Invalid package name" ++ fromUTF8BS secName)
+        return Nothing
       Right cfgTarget -> return $ pure cfgTarget
     parser :: ParsecParser PackageConfigTarget
     parser =
       P.choice [P.try (P.char '*' >> return AllPackages), SpecificPackage <$> parsec]
 
--- | Decide whether to issue Warnings on unknown fields
+-- | Decide whether to issue Warnings on unknown fields -- TODO 6101 why decide? document the decision here
 data WarnUnknownFields = Ignore | Warn
 
 -- | Parse fields of a program-options stanza.
