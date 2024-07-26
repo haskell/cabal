@@ -11,6 +11,7 @@ import Distribution.Client.ProjectConfig.Types (MapMappend, PackageConfig, Proje
 import qualified Distribution.Client.ProjectConfig.Types as T
 import Distribution.Client.Targets (UserConstraint)
 import Distribution.Client.Types.AllowNewer (AllowNewer, AllowOlder)
+import Distribution.Client.Types.Repo (LocalRepo, RemoteRepo)
 import Distribution.Client.Types.SourceRepo (SourceRepoList)
 import Distribution.Client.Types.WriteGhcEnvironmentFilesPolicy (WriteGhcEnvironmentFilesPolicy)
 import Distribution.Compat.Lens
@@ -214,6 +215,14 @@ projectConfigInstallDirs f s = fmap (\x -> s{T.projectConfigInstallDirs = x}) (f
 projectConfigPackageDBs :: Lens' ProjectConfigShared [Maybe PackageDB]
 projectConfigPackageDBs f s = fmap (\x -> s{T.projectConfigPackageDBs = x}) (f (T.projectConfigPackageDBs s))
 {-# INLINEABLE projectConfigPackageDBs #-}
+
+projectConfigLocalNoIndexRepos :: Lens' ProjectConfigShared (NubList LocalRepo)
+projectConfigLocalNoIndexRepos f s = fmap (\x -> s{T.projectConfigLocalNoIndexRepos = x}) (f (T.projectConfigLocalNoIndexRepos s))
+{-# INLINEABLE projectConfigLocalNoIndexRepos #-}
+
+projectConfigRemoteRepos :: Lens' ProjectConfigShared (NubList RemoteRepo)
+projectConfigRemoteRepos f s = fmap (\x -> s{T.projectConfigRemoteRepos = x}) (f (T.projectConfigRemoteRepos s))
+{-# INLINEABLE projectConfigRemoteRepos #-}
 
 projectConfigActiveRepos :: Lens' ProjectConfigShared (Flag ActiveRepos)
 projectConfigActiveRepos f s = fmap (\x -> s{T.projectConfigActiveRepos = x}) (f (T.projectConfigActiveRepos s))
