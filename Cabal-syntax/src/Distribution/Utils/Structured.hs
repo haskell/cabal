@@ -106,8 +106,8 @@ import qualified Data.Aeson as Aeson
 #endif
 
 import Data.Kind (Type)
+import Data.Typeable (TypeRep, Typeable, typeRep)
 
-import Distribution.Compat.Typeable (TypeRep, Typeable, typeRep)
 import Distribution.Utils.MD5
 
 import Data.Monoid (mconcat)

@@ -4,8 +4,8 @@
 module Distribution.Client.Compat.Orphans () where
 
 import Control.Exception (SomeException)
+import Data.Typeable (typeRep)
 import Distribution.Compat.Binary (Binary (..))
-import Distribution.Compat.Typeable (typeRep)
 import Distribution.Utils.Structured (Structure (Nominal), Structured (..))
 import Network.URI (URI (..), URIAuth (..))
 import Prelude (error, return)

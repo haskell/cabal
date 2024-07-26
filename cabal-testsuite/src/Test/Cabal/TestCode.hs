@@ -25,10 +25,8 @@ data TestCode
   deriving (Eq, Show, Read, Typeable)
 
 instance Exception TestCode
-#if MIN_VERSION_base(4,8,0)
   where
     displayException = displayTestCode
-#endif
 
 displayTestCode :: TestCode -> String
 displayTestCode TestCodeOk            = "OK"
