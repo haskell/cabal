@@ -247,17 +247,17 @@ parseSection programDb (MkSection (Name pos name) args secFields)
       verifyNullSubsections
       verifyNullSectionArgs
       srp <- lift $ parseFieldGrammar cabalSpec fields sourceRepositoryPackageGrammar
-      stateConfig . L.projectPackagesRepo %= (++ [srp])
+      stateConfig . L.projectPackagesRepo %= (<> [srp])
   | name == "program-options" = do
       verifyNullSubsections
       verifyNullSectionArgs
-      opts <- lift $ parseProgramArgs Warn programDb fields
-      stateConfig . L.projectConfigLocalPackages %= (\cfg -> cfg{packageConfigProgramArgs = (opts <> packageConfigProgramArgs cfg)})
+      opts' <- lift $ parseProgramArgs Warn programDb fields
+      stateConfig . L.projectConfigLocalPackages . L.packageConfigProgramArgs %= (opts' <>)
   | name == "program-locations" = do
       verifyNullSubsections
       verifyNullSectionArgs
-      paths <- lift $ parseProgramPaths Warn programDb fields
-      stateConfig . L.projectConfigLocalPackages %= (\cfg -> cfg{packageConfigProgramPaths = (paths <> packageConfigProgramPaths cfg)})
+      paths' <- lift $ parseProgramPaths Warn programDb fields
+      stateConfig . L.projectConfigLocalPackages . L.packageConfigProgramPaths %= (paths' <>)
   | name == "repository" = do
       verifyNullSubsections
       mRepoName <- lift $ parseRepoName pos args
@@ -266,8 +266,8 @@ parseSection programDb (MkSection (Name pos name) args secFields)
           remoteRepo <- lift $ parseFieldGrammar cabalSpec fields (remoteRepoGrammar repoName)
           remoteOrLocalRepo <- lift $ postProcessRemoteRepo pos remoteRepo
           case remoteOrLocalRepo of
-            Left local -> stateConfig . L.projectConfigShared %= (\pcs -> pcs{projectConfigLocalNoIndexRepos = (projectConfigLocalNoIndexRepos pcs <> toNubList [local])})
-            Right remote -> stateConfig . L.projectConfigShared %= (\pcs -> pcs{projectConfigRemoteRepos = (projectConfigRemoteRepos pcs <> toNubList [remote])})
+            Left local -> stateConfig . L.projectConfigShared . L.projectConfigLocalNoIndexRepos %= (<> toNubList [local])
+            Right remote -> stateConfig . L.projectConfigShared . L.projectConfigRemoteRepos %= (<> toNubList [remote])
         Nothing -> lift $ parseFailure pos "a 'repository' section requires the repository name as an argument"
   | name == "package" = do
       verifyNullSubsections
@@ -275,10 +275,10 @@ parseSection programDb (MkSection (Name pos name) args secFields)
       case package of
         Just AllPackages -> do
           packageCfg' <- parsePackageConfig
-          stateConfig . L.projectConfigAllPackages %= (\packageCfg -> packageCfg' <> packageCfg)
+          stateConfig . L.projectConfigAllPackages %= (packageCfg' <>)
         Just (SpecificPackage packageName) -> do
           packageCfg <- parsePackageConfig
-          stateConfig . L.projectConfigSpecificPackage %= (\spcs -> spcs <> MapMappend (Map.singleton packageName packageCfg))
+          stateConfig . L.projectConfigSpecificPackage %= (<> MapMappend (Map.singleton packageName packageCfg))
         Nothing -> do
           lift $ parseWarning pos PWTUnknownSection "target package name or * required"
           return ()
