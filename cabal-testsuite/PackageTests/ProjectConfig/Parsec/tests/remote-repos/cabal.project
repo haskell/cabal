@@ -2,14 +2,14 @@ repository packages.example.org
   url: http://packages.example.org/
   secure: True
   root-keys: 21, 42
-  key-threshold: 123
+  key-threshold: 2
 
 repository more-packages.example.org
   url: https://more-packages.example.org/
-  secure: False
+  secure: True
   root-keys: foo
            , bar
-  key-threshold: 42
+  key-threshold: 1
 
 repository my-secure-local-repository
   url: file:/path/to/secure/repo

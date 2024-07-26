@@ -266,8 +266,8 @@ parseSection programDb (MkSection (Name pos name) args secFields)
           remoteRepo <- lift $ parseFieldGrammar cabalSpec fields (remoteRepoGrammar repoName)
           remoteOrLocalRepo <- lift $ postProcessRemoteRepo pos remoteRepo
           case remoteOrLocalRepo of
-            Left local -> stateConfig . L.projectConfigShared %= (\pcs -> pcs{projectConfigLocalNoIndexRepos = (toNubList [local] <> projectConfigLocalNoIndexRepos pcs)})
-            Right remote -> stateConfig . L.projectConfigShared %= (\pcs -> pcs{projectConfigRemoteRepos = (toNubList [remote] <> projectConfigRemoteRepos pcs)})
+            Left local -> stateConfig . L.projectConfigShared %= (\pcs -> pcs{projectConfigLocalNoIndexRepos = (projectConfigLocalNoIndexRepos pcs <> toNubList [local])})
+            Right remote -> stateConfig . L.projectConfigShared %= (\pcs -> pcs{projectConfigRemoteRepos = (projectConfigRemoteRepos pcs <> toNubList [remote])})
         Nothing -> lift $ parseFailure pos "a 'repository' section requires the repository name as an argument"
   | name == "package" = do
       verifyNullSubsections
