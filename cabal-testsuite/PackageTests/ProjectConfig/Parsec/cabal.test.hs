@@ -260,16 +260,16 @@ testRemoteRepos = do
         , remoteRepoURI = fromJust $ parseURI "http://packages.example.org/"
         , remoteRepoSecure = pure True
         , remoteRepoRootKeys = ["21", "42"]
-        , remoteRepoKeyThreshold = 123
+        , remoteRepoKeyThreshold = 2
         , remoteRepoShouldTryHttps = False
         }
     morePackagesRepository =
       RemoteRepo
         { remoteRepoName = RepoName $ "more-packages.example.org"
         , remoteRepoURI = fromJust $ parseURI "https://more-packages.example.org/"
-        , remoteRepoSecure = pure False
+        , remoteRepoSecure = pure True
         , remoteRepoRootKeys = ["foo", "bar"]
-        , remoteRepoKeyThreshold = 42
+        , remoteRepoKeyThreshold = 1
         , remoteRepoShouldTryHttps = False
         }
     secureLocalRepository =
