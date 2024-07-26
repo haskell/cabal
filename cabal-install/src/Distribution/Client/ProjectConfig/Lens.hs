@@ -7,7 +7,7 @@ import Distribution.Client.IndexUtils.ActiveRepos
   ( ActiveRepos
   )
 import Distribution.Client.IndexUtils.IndexState (TotalIndexState)
-import Distribution.Client.ProjectConfig.Types (MapMappend, PackageConfig, ProjectConfig (..), ProjectConfigBuildOnly (..), ProjectConfigProvenance, ProjectConfigShared)
+import Distribution.Client.ProjectConfig.Types (MapLast, MapMappend, PackageConfig, ProjectConfig (..), ProjectConfigBuildOnly (..), ProjectConfigProvenance, ProjectConfigShared)
 import qualified Distribution.Client.ProjectConfig.Types as T
 import Distribution.Client.Targets (UserConstraint)
 import Distribution.Client.Types.AllowNewer (AllowNewer, AllowOlder)
@@ -303,6 +303,14 @@ projectConfigProgPathExtra f s = fmap (\x -> s{T.projectConfigProgPathExtra = x}
 projectConfigMultiRepl :: Lens' ProjectConfigShared (Flag Bool)
 projectConfigMultiRepl f s = fmap (\x -> s{T.projectConfigMultiRepl = x}) (f (T.projectConfigMultiRepl s))
 {-# INLINEABLE projectConfigMultiRepl #-}
+
+packageConfigProgramPaths :: Lens' PackageConfig (MapLast String FilePath)
+packageConfigProgramPaths f s = fmap (\x -> s{T.packageConfigProgramPaths = x}) (f (T.packageConfigProgramPaths s))
+{-# INLINEABLE packageConfigProgramPaths #-}
+
+packageConfigProgramArgs :: Lens' PackageConfig (MapMappend String [String])
+packageConfigProgramArgs f s = fmap (\x -> s{T.packageConfigProgramArgs = x}) (f (T.packageConfigProgramArgs s))
+{-# INLINEABLE packageConfigProgramArgs #-}
 
 packageConfigProgramPathExtra :: Lens' PackageConfig (NubList FilePath)
 packageConfigProgramPathExtra f s = fmap (\x -> s{T.packageConfigProgramPathExtra = x}) (f (T.packageConfigProgramPathExtra s))
