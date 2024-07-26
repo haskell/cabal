@@ -1,7 +1,9 @@
 import Test.Cabal.Prelude
 import Data.List (isPrefixOf)
 
-main = cabalTest $ flakyIfCI 9530 $ withProjectFile "cabal.project" $ withRemoteRepo "repo" $ do
+main = do
+  skipIfCIAndWindows 10230
+  cabalTest $ flakyIfCI 9530 $ withProjectFile "cabal.project" $ withRemoteRepo "repo" $ do
 
     output <- last
             . words

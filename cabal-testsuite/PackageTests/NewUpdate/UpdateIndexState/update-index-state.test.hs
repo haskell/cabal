@@ -1,6 +1,8 @@
 import Test.Cabal.Prelude
 
-main = cabalTest $ flakyIfCI 9530 $ withRemoteRepo "repo" $ do
+main = do
+  skipIfCIAndWindows 10230
+  cabalTest $ flakyIfCI 9530 $ withRemoteRepo "repo" $ do
 
     -- The _first_ update call causes a warning about missing mirrors, the warning
     -- is platform-dependent and it's not part of the test expectations, so we
