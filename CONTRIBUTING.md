@@ -38,10 +38,11 @@ $ cabal run cabal -- build --help
 ```
 
 > [!NOTE]
-> If you're using Nix, you might find it convenient to work within a shell that has all the `Cabal` development dependencies:
+> If you're using Nix, you might find it convenient to work within a shell that has the following `Cabal` development dependencies:
+> ```bash
+> $ nix-shell -p cabal-install ghc ghcid pkg-config zlib.dev # incomplete
 > ```
-> $ nix-shell -p cabal-install ghc ghcid haskellPackages.fourmolu_0_12_0_0 pkgconfig zlib.dev
-> ```
+> One dependency that we left out in the above command is `haskellPackages.fourmolu_0_12_0_0` which would need to be installed manually.
 > A Nix flake developer shell with these dependencies is also available, supported solely by the community, through the command `nix develop github:yvan-sraka/cabal.nix`.
 
 The location of your build products will vary depending on which version of
