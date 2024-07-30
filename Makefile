@@ -5,12 +5,9 @@
 CABALBUILD := cabal build
 CABALRUN   := cabal run
 
-# The newer and prefered way to call the doctest tool is:
-#   $ cabal repl --with-ghc=doctest
-# SEE: https://github.com/haskell/cabal/issues/8504
-# There is but one caveat, we have to avoid allow-newer.
+# We have to avoid allow-newer.
 # SEE: https://github.com/haskell/cabal/issues/6859
-DOCTEST := cabal repl --with-ghc=doctest --repl-options="-w" --ghc-options="-Wwarn" --allow-newer=False
+DOCTEST := cabal doctest --allow-newer=False
 
 # default rules
 
@@ -107,11 +104,11 @@ ghcid-cli :
 
 .PHONY: doctest
 doctest :
-	$(DOCTEST) Cabal-syntax
-	$(DOCTEST) Cabal-described
-	$(DOCTEST) --build-depends=QuickCheck Cabal
-	$(DOCTEST) cabal-install-solver
-	$(DOCTEST) cabal-install
+	cd Cabal-syntax && $(DOCTEST)
+	cd Cabal-described && $(DOCTEST)
+	cd Cabal && $(DOCTEST)
+	cd cabal-install-solver && $(DOCTEST)
+	cd cabal-install && $(DOCTEST)
 
 # This is not run as part of validate.sh (we need hackage-security, which is tricky to get).
 .PHONY: doctest-cli
@@ -120,7 +117,7 @@ doctest-cli :
 
 .PHONY: doctest-install
 doctest-install:
-	cabal install doctest --overwrite-policy=always --ignore-project
+	cabal install doctest --overwrite-policy=always --ignore-project --flag cabal-doctest
 
 # tests
 
