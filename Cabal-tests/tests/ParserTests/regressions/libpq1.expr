@@ -120,6 +120,10 @@ GenericPackageDescription {
       flagDescription = "",
       flagDefault = False,
       flagManual = True}],
+  genDefaultPackageBounds =
+  DefaultBounds {
+    defaultTargetBuildDepends = [],
+    defaultBuildToolDepends = []},
   condLibrary = Just
     CondNode {
       condTreeData = Library {

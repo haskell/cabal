@@ -45,6 +45,10 @@ GenericPackageDescription {
     extraDocFiles = []},
   gpdScannedVersion = Nothing,
   genPackageFlags = [],
+  genDefaultPackageBounds =
+  DefaultBounds {
+    defaultTargetBuildDepends = [],
+    defaultBuildToolDepends = []},
   condLibrary = Just
     CondNode {
       condTreeData = Library {

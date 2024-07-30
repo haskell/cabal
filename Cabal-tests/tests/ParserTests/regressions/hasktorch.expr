@@ -69,6 +69,10 @@ GenericPackageDescription {
       "only build with Double and Long support",
       flagDefault = False,
       flagManual = False}],
+  genDefaultPackageBounds =
+  DefaultBounds {
+    defaultTargetBuildDepends = [],
+    defaultBuildToolDepends = []},
   condLibrary = Just
     CondNode {
       condTreeData = Library {
