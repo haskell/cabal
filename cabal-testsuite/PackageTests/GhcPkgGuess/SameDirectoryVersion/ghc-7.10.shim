@@ -1,0 +1,2 @@
+path = "FINDSH\sh.exe"
+args = "ghc-7.10"
