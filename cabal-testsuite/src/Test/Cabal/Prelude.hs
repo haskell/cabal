@@ -54,6 +54,7 @@ import Control.Concurrent.Async (withAsync)
 import qualified Data.Aeson as JSON
 import qualified Data.ByteString.Lazy as BSL
 import Control.Monad (unless, when, void, forM_, liftM2, liftM4)
+import Control.Monad.Catch ( bracket_ )
 import Control.Monad.Trans.Reader (withReaderT, runReaderT)
 import Control.Monad.IO.Class (MonadIO (..))
 import qualified Crypto.Hash.SHA256 as SHA256
@@ -70,10 +71,9 @@ import Control.Retry (exponentialBackoff, limitRetriesByCumulativeDelay)
 import Network.Wait (waitTcpVerbose)
 import System.Environment
 import System.Process
+import System.IO
 
 #ifndef mingw32_HOST_OS
-import Control.Monad.Catch ( bracket_ )
-import System.Posix.Files  ( createSymbolicLink )
 import System.Posix.Resource
 #endif
 
@@ -1123,19 +1123,20 @@ withDelay m = do
         Just _ -> m
 
 -- | Create a symlink for the duration of the provided action. If the symlink
--- already exists, it is deleted. Does not work on Windows.
+-- already exists, it is deleted.
 withSymlink :: FilePath -> FilePath -> TestM a -> TestM a
-#ifdef mingw32_HOST_OS
+#if defined(mingw32_HOST_OS) && !MIN_VERSION_directory(1,3,1)
 withSymlink _oldpath _newpath _act =
-  error "PackageTests.PackageTester.withSymlink: does not work on Windows!"
+  error "Test.Cabal.Prelude.withSymlink: does not work on Windows with directory <1.3.1!"
 #else
 withSymlink oldpath newpath0 act = do
+  liftIO $ hPutStrLn stderr $ "Symlinking " <> oldpath <> " <== " <> newpath0
   env <- getTestEnv
   let newpath = testCurrentDir env </> newpath0
   symlinkExists <- liftIO $ doesFileExist newpath
   when symlinkExists $ liftIO $ removeFile newpath
-  bracket_ (liftIO $ createSymbolicLink oldpath newpath)
-           (liftIO $ removeFile newpath) act
+  bracket_ (liftIO $ createFileLink oldpath newpath)
+           (liftIO $ pure ()) act
 #endif
 
 writeSourceFile :: FilePath -> String -> TestM ()
