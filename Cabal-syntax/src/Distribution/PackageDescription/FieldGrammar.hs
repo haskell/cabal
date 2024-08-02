@@ -143,6 +143,8 @@ packageDescriptionFieldGrammar =
     <*> monoidalFieldAla "extra-source-files" formatExtraSourceFiles L.extraSrcFiles
     <*> monoidalFieldAla "extra-tmp-files" (alaList' VCat RelativePathNT) L.extraTmpFiles
     <*> monoidalFieldAla "extra-doc-files" formatExtraSourceFiles L.extraDocFiles
+    <*> monoidalFieldAla "extra-files" formatExtraSourceFiles L.extraFiles
+      ^^^ availableSince CabalSpecV3_14 []
   where
     packageIdentifierGrammar =
       PackageIdentifier

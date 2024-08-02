@@ -773,6 +773,11 @@ describe the package as a whole:
     additional hooks, such as the scheme described in the section on
     `system-dependent parameters`_.
 
+.. pkg-field:: extra-files: filename list
+
+    A list of additional files to be included in source distributions built with :ref:`setup-sdist`.
+    As with :pkg-field:`data-files` it can use a limited form of ``*`` wildcards in file names.
+
 Library
 ^^^^^^^
 
