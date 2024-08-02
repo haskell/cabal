@@ -324,6 +324,8 @@ normaliseGhcArgs (Just ghcVersion) PackageDescription{..} ghcArgs
           , "-ddpr-cols"
           , "-dtrace-level"
           , "-fghci-hist-size"
+          , "-dinitial-unique"
+          , "-dunique-increment"
           ]
         , from [8, 2] ["-fmax-uncovered-patterns", "-fmax-errors"]
         , from [8, 4] $ to [8, 6] ["-fmax-valid-substitutions"]
