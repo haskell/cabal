@@ -70,7 +70,7 @@ test-suite unit-tests
     , QuickCheck          >=2.14  && <2.15
     , tasty               >=1.2.3 && <1.6
     , tasty-hunit
-    , tasty-quickcheck    <0.11
+    , tasty-quickcheck    <0.12
     , temporary
     , text
 
@@ -175,7 +175,7 @@ test-suite rpmvercmp
       QuickCheck
     , tasty             >=1.2.3 && <1.6
     , tasty-hunit
-    , tasty-quickcheck  <0.11
+    , tasty-quickcheck  <0.12
 
   c-sources:        tests/cbits/rpmvercmp.c
   cc-options:       -Wall

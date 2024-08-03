@@ -31,7 +31,7 @@ instance IsTest QCWithSeed where
 
   run options (QCWithSeed test) progress = do
     replay <- case lookupOption options of
-      QuickCheckReplay (Just override) -> return override
-      QuickCheckReplay Nothing -> getStdRandom random
+      QuickCheckReplayLegacy override -> return override
+      _ -> getStdRandom random
     notice normal $ "Using --quickcheck-replay=" ++ show replay
-    run (setOption (QuickCheckReplay (Just replay)) options) test progress
+    run (setOption (QuickCheckReplayLegacy replay) options) test progress

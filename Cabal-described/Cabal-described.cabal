@@ -19,7 +19,7 @@ library
     , QuickCheck
     , rere              >=0.1 && <0.3
     , tasty             <1.6
-    , tasty-quickcheck  <0.11
+    , tasty-quickcheck  <0.12
 
   exposed-modules:
     Distribution.Described
