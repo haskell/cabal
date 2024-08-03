@@ -219,6 +219,7 @@ syn keyword cabalExtension contained
   \ MonoLocalBinds
   \ MonoPatBinds
   \ MonomorphismRestriction
+  \ MultilineStrings
   \ MultiParamTypeClasses
   \ MultiWayIf
   \ NPlusKPatterns
