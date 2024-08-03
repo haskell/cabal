@@ -1,0 +1,21 @@
+synopsis: `haddock-project` support for subcomponents
+packages: cabal-install
+prs: #9821
+issues:
+significance: significant
+
+description: {
+
+- `haddock-project` handles sublibraries, test suites and benchmarks.
+- `haddock` receives `--package-name` flag whcih allows to set names of
+  components which are included in the main `index.html` file.
+- added `--use-unicode` flag to `haddock` and `haddock-project` commands.
+- The directory structure of `./dist-newstyle` has changed.  `haddock`
+  subcommand will install `package:sublib` component in a directory
+  `package/sublib` under `l/sublib/doc/html/`.  This is important for
+  `haddock-project` command and in the future might will be useful for hackage
+  support of sublibraries.  See
+  https://github.com/haskell/cabal/pull/9821#discussion_r1548557115.
+
+}
+

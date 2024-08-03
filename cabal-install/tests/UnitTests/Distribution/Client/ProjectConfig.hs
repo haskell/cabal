@@ -10,10 +10,6 @@
 
 module UnitTests.Distribution.Client.ProjectConfig (tests) where
 
-#if !MIN_VERSION_base(4,8,0)
-import Data.Monoid
-import Control.Applicative
-#endif
 import Control.Monad
 import Data.Either (isRight)
 import Data.Foldable (for_)
@@ -727,6 +723,7 @@ instance Arbitrary PackageConfig where
       <*> arbitrary
       <*> arbitrary
       <*> arbitrary
+      <*> arbitrary
       <*> arbitraryFlag arbitraryShortToken
       <*> arbitrary
       <*> shortListOf 5 arbitrary
@@ -795,6 +792,7 @@ instance Arbitrary PackageConfig where
       , packageConfigHaddockBaseUrl = x55
       , packageConfigHaddockResourcesDir = x56
       , packageConfigHaddockOutputDir = x57
+      , packageConfigHaddockUseUnicode = x58
       , packageConfigTestHumanLog = x44
       , packageConfigTestMachineLog = x45
       , packageConfigTestShowDetails = x46
@@ -859,6 +857,7 @@ instance Arbitrary PackageConfig where
         , packageConfigHaddockBaseUrl = x55'
         , packageConfigHaddockResourcesDir = x56'
         , packageConfigHaddockOutputDir = x57'
+        , packageConfigHaddockUseUnicode = x58'
         , packageConfigTestHumanLog = x44'
         , packageConfigTestMachineLog = x45'
         , packageConfigTestShowDetails = x46'
@@ -881,6 +880,7 @@ instance Arbitrary PackageConfig where
               , (x44', x45', x46', x47', x48', x49', x51', x52', x54', x55')
               , x56'
               , x57'
+              , x58'
               )
           ) <-
           shrink
@@ -906,6 +906,7 @@ instance Arbitrary PackageConfig where
               , (x44, x45, x46, x47, x48, x49, x51, x52, x54, x55)
               , x56
               , x57
+              , x58
               )
             )
       ]

@@ -783,7 +783,7 @@ exResolve
   -> Maybe [Extension]
   -- List of languages supported by the compiler, or Nothing if unknown.
   -> Maybe [Language]
-  -> PC.PkgConfigDb
+  -> Maybe PC.PkgConfigDb
   -> [ExamplePkgName]
   -> Maybe Int
   -> CountConflicts

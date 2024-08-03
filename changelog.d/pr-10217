@@ -1,0 +1,10 @@
+synopsis: Do not try to build dynamic executables on Windows
+packages: Cabal
+prs: #10217
+
+description: {
+
+- Cabal will now exit with a descriptive error message instead of attempting to
+  build a dynamic executable on Windows.
+
+}

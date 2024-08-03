@@ -149,7 +149,8 @@ GenericPackageDescription {
     extraTmpFiles = [],
     extraDocFiles = [
       SymbolicPath "CHANGES.txt",
-      SymbolicPath "README.md"]},
+      SymbolicPath "README.md"],
+    extraFiles = []},
   gpdScannedVersion = Nothing,
   genPackageFlags = [
     MkPackageFlag {

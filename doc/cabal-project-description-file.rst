@@ -785,20 +785,17 @@ ways a package option can be specified:
    apply to all packages, local ones from the project and also external
    dependencies.
 
-
 For example, the following options specify that :cfg-field:`optimization`
-should be turned off for all local packages, and that ``bytestring`` (possibly
-an external dependency) should be built with ``-fno-state-hack``::
+should be turned off for all local packages, and that ``awesome-package`` (possibly
+an external dependency) should have the flag ``some-flag`` disabled ::
 
     optimization: False
 
-    package bytestring
-        ghc-options: -fno-state-hack
+    package awesome-package
+        flags: -some-flag
 
-``ghc-options`` is not specifically described in this documentation, but is one
-of many fields for configuring programs.  They take the form
-``progname-options`` and ``progname-location``, and can be set for all local
-packages in a ``program-options`` stanza or under a package stanza.
+Note that options at the top level take precedence over those at the ``package``
+stanza for local packages.
 
 On the command line, these options are applied to all local packages.
 There is no per-package command line interface.
@@ -807,6 +804,26 @@ Some flags were added by more recent versions of the Cabal library. This
 means that they are NOT supported by packages which use Custom setup
 scripts that require a version of the Cabal library older than when the
 feature was added.
+
+.. cfg-section:: package name or *
+
+    Specify package configuration options for the specific package (be it an
+    external or local package) or for all packages (external and local).
+
+    A ``package`` stanza can contain the configuration fields listed in this
+    section and ``<progname>-options``:
+
+    ::
+
+        package awesome-package
+          flags: -some-flag
+          profiling: True
+          cxx-options: -Wall
+
+    Program options are not extensively described in this documentation but a
+    good amount of them can be found in the :ref:`build-info` section.
+
+.. cfg-section:: None
 
 .. cfg-field:: flags: list of +flagname or -flagname (space separated)
                -f FLAGS or -fFLAGS, --flags=FLAGS
@@ -1616,6 +1633,12 @@ running ``setup haddock``.
     This flag is provided as a technology preview and is subject to change in the
     next releases.
 
+.. cfg-field:: haddock-use-unicode: boolean
+               --haddock-use-unicode
+    :synopsis: Pass --use-unicode option to haddock.
+
+    Generate HTML documentation which contains unicode characters.
+
 .. cfg-field:: haddock-resources-dir: DIR
                --haddock-resources-dir=DIR
     :synopsis: Location of Haddock's static/auxiliary files.
@@ -1633,11 +1656,36 @@ running ``setup haddock``.
     when complete. This will use ``xdg-open`` on Linux and BSD systems,
     ``open`` on macOS, and ``start`` on Windows.
 
+Program options
+^^^^^^^^^^^^^^^
+
+.. cfg-section:: program-options
+
+:ref:`Program options<program_options>` can be specified once for all local packages by means of the
+``program-options`` stanza. For example:
+
+::
+
+    program-options
+        ghc-options: -Werror
+
+indicates that all **local packages** will provide ``-Werror`` to GHC when being
+built. On the other hand, the following snippet:
+
+::
+
+    package *
+        ghc-options: -Werror
+
+will apply ``-Werror`` to all packages, local and remote.
+
 Advanced global configuration options
 -------------------------------------
 
+.. cfg-section:: None
+
 .. cfg-field:: write-ghc-environment-files: always, never, or ghc8.4.4+
-               --write-ghc-environment-files=always\|never\|ghc8.4.4+
+               --write-ghc-environment-files=always|never|ghc8.4.4+
     :synopsis: Whether a ``.ghc.environment`` should be created after a successful build.
 
     :default: ``never``
@@ -1646,7 +1694,7 @@ Advanced global configuration options
     should be created after a successful build.
 
     Since Cabal 3.0, defaults to ``never``. Before that, defaulted to
-    creating them only when compiling with GHC 8.4.4 and older (GHC
+    creating them only when compiling with GHC 8.4.4 and later (GHC
     8.4.4 `is the first version
     <https://gitlab.haskell.org/ghc/ghc/-/issues/13753>`_ that supports
     the ``-package-env -`` option that allows ignoring the package

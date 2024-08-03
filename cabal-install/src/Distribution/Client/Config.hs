@@ -546,6 +546,7 @@ instance Semigroup SavedConfig where
           , configAllowDependingOnPrivateLibs =
               combine configAllowDependingOnPrivateLibs
           , configCoverageFor = combine configCoverageFor
+          , configIgnoreBuildTools = combine configIgnoreBuildTools
           }
         where
           combine = combine' savedConfigureFlags
@@ -633,6 +634,7 @@ instance Semigroup SavedConfig where
           , haddockBaseUrl = combine haddockBaseUrl
           , haddockResourcesDir = combine haddockResourcesDir
           , haddockOutputDir = combine haddockOutputDir
+          , haddockUseUnicode = combine haddockUseUnicode
           }
         where
           combine = combine' savedHaddockFlags

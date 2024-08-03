@@ -74,7 +74,9 @@ import Control.Concurrent (threadDelay)
 import Control.Exception hiding (assert)
 import System.FilePath
 import System.Directory
+import System.Environment (setEnv)
 import System.IO (hPutStrLn, stderr)
+import System.Process (callProcess)
 
 import Test.Tasty
 import Test.Tasty.HUnit
@@ -93,7 +95,16 @@ removePathForcibly = removeDirectoryRecursive
 #endif
 
 main :: IO ()
-main =
+main = do
+  -- this is needed to ensure tests aren't affected by the user's cabal config
+  cwd <- getCurrentDirectory
+  let configDir = cwd </> basedir </> "config" </> "cabal-config"
+  setEnv "CABAL_DIR" configDir
+  removeDirectoryRecursive configDir <|> return ()
+  createDirectoryIfMissing True configDir
+  -- sigh
+  callProcess "cabal" ["user-config", "init", "-f"]
+  callProcess "cabal" ["update"]
   defaultMainWithIngredients
     (defaultIngredients ++ [includingOptions projectConfigOptionDescriptions])
     (withProjectConfig $ \config ->
@@ -1971,8 +1982,8 @@ testNixFlags = do
 -- Tests whether config options are commented or not
 testConfigOptionComments :: Assertion
 testConfigOptionComments = do
-  _ <- createDefaultConfigFile verbosity [] (basedir </> "config/default-config")
-  defaultConfigFile <- readFile (basedir </> "config/default-config")
+  _ <- createDefaultConfigFile verbosity [] (basedir </> "config" </> "default-config")
+  defaultConfigFile <- readFile (basedir </> "config" </> "default-config")
 
   "  url" @=? findLineWith False "url" defaultConfigFile
   "  -- secure" @=? findLineWith True "secure" defaultConfigFile
@@ -2101,6 +2112,7 @@ testConfigOptionComments = do
   "  -- base-url" @=? findLineWith True "base-url" defaultConfigFile
   "  -- resources-dir" @=? findLineWith True "resources-dir" defaultConfigFile
   "  -- output-dir" @=? findLineWith True "output-dir" defaultConfigFile
+  "  -- use-unicode" @=? findLineWith True "use-unicode" defaultConfigFile
 
   "  -- interactive" @=? findLineWith True "interactive" defaultConfigFile
   "  -- quiet" @=? findLineWith True "quiet" defaultConfigFile

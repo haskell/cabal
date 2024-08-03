@@ -858,29 +858,33 @@ configurePackage cfg lbc0 pkg_descr00 flags enabled comp platform programDb0 pac
   -- right before calling configurePackage?
 
   -- Configure certain external build tools, see below for which ones.
-  let requiredBuildTools = do
-        bi <- enabledBuildInfos pkg_descr0 enabled
-        -- First, we collect any tool dep that we know is external. This is,
-        -- in practice:
-        --
-        -- 1. `build-tools` entries on the whitelist
-        --
-        -- 2. `build-tool-depends` that aren't from the current package.
-        let externBuildToolDeps =
-              [ LegacyExeDependency (unUnqualComponentName eName) versionRange
-              | buildTool@(ExeDependency _ eName versionRange) <-
-                  getAllToolDependencies pkg_descr0 bi
-              , not $ isInternal pkg_descr0 buildTool
-              ]
-        -- Second, we collect any build-tools entry we don't know how to
-        -- desugar. We'll never have any idea how to build them, so we just
-        -- hope they are already on the PATH.
-        let unknownBuildTools =
-              [ buildTool
-              | buildTool <- buildTools bi
-              , Nothing == desugarBuildTool pkg_descr0 buildTool
-              ]
-        externBuildToolDeps ++ unknownBuildTools
+  let requiredBuildTools
+        -- If --ignore-build-tools is set, no build tool is required:
+        | fromFlagOrDefault False $ configIgnoreBuildTools cfg =
+            []
+        | otherwise = do
+            bi <- enabledBuildInfos pkg_descr0 enabled
+            -- First, we collect any tool dep that we know is external. This is,
+            -- in practice:
+            --
+            -- 1. `build-tools` entries on the whitelist
+            --
+            -- 2. `build-tool-depends` that aren't from the current package.
+            let externBuildToolDeps =
+                  [ LegacyExeDependency (unUnqualComponentName eName) versionRange
+                  | buildTool@(ExeDependency _ eName versionRange) <-
+                      getAllToolDependencies pkg_descr0 bi
+                  , not $ isInternal pkg_descr0 buildTool
+                  ]
+            -- Second, we collect any build-tools entry we don't know how to
+            -- desugar. We'll never have any idea how to build them, so we just
+            -- hope they are already on the PATH.
+            let unknownBuildTools =
+                  [ buildTool
+                  | buildTool <- buildTools bi
+                  , Nothing == desugarBuildTool pkg_descr0 buildTool
+                  ]
+            externBuildToolDeps ++ unknownBuildTools
 
   programDb1 <-
     configureAllKnownPrograms (lessVerbose verbosity) programDb0
@@ -1300,6 +1304,9 @@ configureComponents
 
       when (LBC.relocatable $ LBC.withBuildOptions lbc) $
         checkRelocatable verbosity pkg_descr lbi
+
+      when (LBC.withDynExe $ LBC.withBuildOptions lbc) $
+        checkSharedExes verbosity lbi
 
       -- TODO: This is not entirely correct, because the dirs may vary
       -- across libraries/executables
@@ -2715,6 +2722,18 @@ checkPackageProblems verbosity dir gpkg pkg = do
     classEW (PackageDistSuspiciousWarn _) = Nothing
     classEW (PackageDistInexcusable _) = Nothing
 
+-- | Perform checks if a shared executable can be built
+checkSharedExes
+  :: Verbosity
+  -> LocalBuildInfo
+  -> IO ()
+checkSharedExes verbosity lbi =
+  when (os == Windows) $
+    dieWithException verbosity $
+      NoOSSupport os "shared executables"
+  where
+    (Platform _ os) = hostPlatform lbi
+
 -- | Preform checks if a relocatable build is allowed
 checkRelocatable
   :: Verbosity
@@ -2737,7 +2756,7 @@ checkRelocatable verbosity pkg lbi =
     checkOS =
       unless (os `elem` [OSX, Linux]) $
         dieWithException verbosity $
-          NoOSSupport os
+          NoOSSupport os "relocatable builds"
       where
         (Platform _ os) = hostPlatform lbi
 

@@ -718,6 +718,7 @@ filterConfigureFlags' flags cabalLibVersion
       flags_latest
         { -- Building profiled shared libraries
           configProfShared = NoFlag
+        , configIgnoreBuildTools = NoFlag
         }
 
     flags_3_11_0 =
@@ -2445,6 +2446,7 @@ haddockOptions showOrParseArgs =
              , "base-url"
              , "resources-dir"
              , "output-dir"
+             , "use-unicode"
              ]
   ]
 

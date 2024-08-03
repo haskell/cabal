@@ -115,6 +115,7 @@ data HaddockFlags = HaddockFlags
   , haddockBaseUrl :: Flag String
   , haddockResourcesDir :: Flag String
   , haddockOutputDir :: Flag FilePath
+  , haddockUseUnicode :: Flag Bool
   }
   deriving (Show, Generic, Typeable)
 
@@ -170,6 +171,7 @@ defaultHaddockFlags =
     , haddockBaseUrl = NoFlag
     , haddockResourcesDir = NoFlag
     , haddockOutputDir = NoFlag
+    , haddockUseUnicode = Flag False
     }
 
 haddockCommand :: CommandUI HaddockFlags
@@ -378,6 +380,13 @@ haddockOptions showOrParseArgs =
         haddockOutputDir
         (\v flags -> flags{haddockOutputDir = v})
         (reqArgFlag "DIR")
+    , option
+        ""
+        ["use-unicode"]
+        "Pass --use-unicode option to haddock"
+        haddockUseUnicode
+        (\v flags -> flags{haddockUseUnicode = v})
+        trueArg
     ]
 
 emptyHaddockFlags :: HaddockFlags
@@ -441,7 +450,7 @@ data HaddockProjectFlags = HaddockProjectFlags
   , haddockProjectVerbosity :: Flag Verbosity
   , -- haddockBaseUrl is not supported, a fixed value is provided
     haddockProjectResourcesDir :: Flag String
-  , haddockProjectOutputDir :: Flag FilePath
+  , haddockProjectUseUnicode :: Flag Bool
   }
   deriving (Show, Generic, Typeable)
 
@@ -465,8 +474,8 @@ defaultHaddockProjectFlags =
     , haddockProjectKeepTempFiles = Flag False
     , haddockProjectVerbosity = Flag normal
     , haddockProjectResourcesDir = NoFlag
-    , haddockProjectOutputDir = NoFlag
     , haddockProjectInterfaces = NoFlag
+    , haddockProjectUseUnicode = NoFlag
     }
 
 haddockProjectCommand :: CommandUI HaddockProjectFlags
@@ -577,6 +586,27 @@ haddockProjectOptions _showOrParseArgs =
       trueArg
   , option
       ""
+      ["all", "haddock-all"]
+      "Run haddock for all targets"
+      ( \f ->
+          allFlags
+            [ haddockProjectExecutables f
+            , haddockProjectTestSuites f
+            , haddockProjectBenchmarks f
+            , haddockProjectForeignLibs f
+            ]
+      )
+      ( \v flags ->
+          flags
+            { haddockProjectExecutables = v
+            , haddockProjectTestSuites = v
+            , haddockProjectBenchmarks = v
+            , haddockProjectForeignLibs = v
+            }
+      )
+      trueArg
+  , option
+      ""
       ["internal"]
       "Run haddock for internal modules and include all symbols"
       haddockProjectInternal
@@ -615,11 +645,11 @@ haddockProjectOptions _showOrParseArgs =
       (reqArgFlag "DIR")
   , option
       ""
-      ["output-dir"]
-      "Generate haddock documentation into this directory. This flag is provided as a technology preview and is subject to change in the next releases."
-      haddockProjectOutputDir
-      (\v flags -> flags{haddockProjectOutputDir = v})
-      (reqArgFlag "DIR")
+      ["use-unicode"]
+      "Pass --use-unicode option to haddock"
+      haddockProjectUseUnicode
+      (\v flags -> flags{haddockProjectUseUnicode = v})
+      trueArg
   ]
 
 emptyHaddockProjectFlags :: HaddockProjectFlags
