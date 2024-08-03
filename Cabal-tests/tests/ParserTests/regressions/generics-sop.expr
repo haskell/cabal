@@ -123,7 +123,8 @@ GenericPackageDescription {
     extraSrcFiles = [
       SymbolicPath "CHANGELOG.md"],
     extraTmpFiles = [],
-    extraDocFiles = []},
+    extraDocFiles = [],
+    extraFiles = []},
   gpdScannedVersion = Nothing,
   genPackageFlags = [],
   condLibrary = Just

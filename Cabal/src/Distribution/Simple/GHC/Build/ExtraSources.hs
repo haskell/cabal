@@ -25,14 +25,15 @@ import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Program.Types
 import Distribution.System (Arch (JavaScript), Platform (..))
 import Distribution.Types.ComponentLocalBuildInfo
-import Distribution.Types.Executable
 import Distribution.Utils.Path
 import Distribution.Verbosity (Verbosity)
 
 -- | An action that builds all the extra build sources of a component, i.e. C,
 -- C++, Js, Asm, C-- sources.
 buildAllExtraSources
-  :: ConfiguredProgram
+  :: Maybe (SymbolicPath Pkg File)
+  -- ^ An optional non-Haskell Main file
+  -> ConfiguredProgram
   -- ^ The GHC configured program
   -> SymbolicPath Pkg (Dir Artifacts)
   -- ^ The build directory for this target
@@ -56,7 +57,9 @@ buildCSources
   , buildJsSources
   , buildAsmSources
   , buildCmmSources
-    :: ConfiguredProgram
+    :: Maybe (SymbolicPath Pkg File)
+    -- ^ An optional non-Haskell Main file
+    -> ConfiguredProgram
     -- ^ The GHC configured program
     -> SymbolicPath Pkg (Dir Artifacts)
     -- ^ The build directory for this target
@@ -66,37 +69,33 @@ buildCSources
     -- ^ The context and component being built in it.
     -> IO (NubListR (SymbolicPath Pkg File))
     -- ^ Returns the list of extra sources that were built
-buildCSources =
+buildCSources mbMainFile =
   buildExtraSources
     "C Sources"
     Internal.componentCcGhcOptions
     ( \c -> do
         let cFiles = cSources (componentBuildInfo c)
         case c of
-          CExe exe
-            | let mainPath = getSymbolicPath $ modulePath exe
-            , isC mainPath ->
-                cFiles ++ [makeSymbolicPath mainPath]
-          -- NB: Main.hs is relative to hs-source-dirs, but Main.c
-          -- is relative to the package.
+          CExe{}
+            | Just main <- mbMainFile
+            , isC $ getSymbolicPath main ->
+                cFiles ++ [main]
           _otherwise -> cFiles
     )
-buildCxxSources =
+buildCxxSources mbMainFile =
   buildExtraSources
     "C++ Sources"
     Internal.componentCxxGhcOptions
     ( \c -> do
         let cxxFiles = cxxSources (componentBuildInfo c)
         case c of
-          CExe exe
-            | let mainPath = getSymbolicPath $ modulePath exe
-            , isCxx mainPath ->
-                do cxxFiles ++ [makeSymbolicPath mainPath]
-          -- NB: Main.hs is relative to hs-source-dirs, but Main.c++
-          -- is relative to the package.
+          CExe{}
+            | Just main <- mbMainFile
+            , isCxx $ getSymbolicPath main ->
+                cxxFiles ++ [main]
           _otherwise -> cxxFiles
     )
-buildJsSources ghcProg buildTargetDir neededWays = do
+buildJsSources _mbMainFile ghcProg buildTargetDir neededWays = do
   Platform hostArch _ <- hostPlatform <$> localBuildInfo
   let hasJsSupport = hostArch == JavaScript
   buildExtraSources
@@ -114,12 +113,12 @@ buildJsSources ghcProg buildTargetDir neededWays = do
     ghcProg
     buildTargetDir
     neededWays
-buildAsmSources =
+buildAsmSources _mbMainFile =
   buildExtraSources
     "Assembler Sources"
     Internal.componentAsmGhcOptions
     (asmSources . componentBuildInfo)
-buildCmmSources =
+buildCmmSources _mbMainFile =
   buildExtraSources
     "C-- Sources"
     Internal.componentCmmGhcOptions

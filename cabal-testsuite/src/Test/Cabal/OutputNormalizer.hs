@@ -19,32 +19,44 @@ import qualified Data.Foldable as F
 
 normalizeOutput :: NormalizerEnv -> String -> String
 normalizeOutput nenv =
-    -- Munge away .exe suffix on filenames (Windows)
-    resub "([A-Za-z0-9.-]+)\\.exe" "\\1"
     -- Normalize backslashes to forward slashes to normalize
     -- file paths
-  . map (\c -> if c == '\\' then '/' else c)
+    map (\c -> if c == '\\' then '/' else c)
     -- Install path frequently has architecture specific elements, so
     -- nub it out
   . resub "Installing (.+) in .+" "Installing \\1 in <PATH>"
     -- Things that look like libraries
   . resub "libHS[A-Za-z0-9.-]+\\.(so|dll|a|dynlib)" "<LIBRARY>"
     -- look for PackageHash directories
+  . (if buildOS == Windows
+     then resub "\\\\(([A-Za-z0-9_]+)(-[A-Za-z0-9\\._]+)*)-[0-9a-f]{4,64}\\\\"
+                "\\\\<PACKAGE>-<HASH>\\\\"
+     else id)
   . resub "/(([A-Za-z0-9_]+)(-[A-Za-z0-9\\._]+)*)-[0-9a-f]{4,64}/"
           "/<PACKAGE>-<HASH>/"
     -- This is dumb but I don't feel like pulling in another dep for
     -- string search-replace.  Make sure we do this before backslash
     -- normalization!
   . resub (posixRegexEscape (normalizerGblTmpDir nenv) ++ "[a-z0-9\\.-]+") "<GBLTMPDIR>"
+    -- Munge away .exe suffix on filenames (Windows)
+  . (if buildOS == Windows then resub "([A-Za-z0-9.-]+)\\.exe" "\\1" else id)
+    -- tmp/src-[0-9]+ is tmp\src-[0-9]+ in Windows
+  . (if buildOS == Windows then resub (posixRegexEscape "tmp\\src-" ++ "[0-9]+") "<TMPDIR>" else id)
   . resub (posixRegexEscape "tmp/src-" ++ "[0-9]+") "<TMPDIR>"
   . resub (posixRegexEscape (normalizerTmpDir nenv) ++ sameDir) "<ROOT>/"
   . resub (posixRegexEscape (normalizerCanonicalTmpDir nenv) ++ sameDir) "<ROOT>/"
+      -- Munge away C: prefix on filenames (Windows). We convert C:\\ to \\.
+  . (if buildOS == Windows then resub "([A-Z]):\\\\" "\\\\" else id)
   . appEndo (F.fold (map (Endo . packageIdRegex) (normalizerKnownPackages nenv)))
     -- Look for 0.1/installed-0d6uzW7Ubh1Fb4TB5oeQ3G
     -- These installed packages will vary depending on GHC version
     -- Apply this before packageIdRegex, otherwise this regex doesn't match.
   . resub "[0-9]+(\\.[0-9]+)*/installed-[A-Za-z0-9.+]+"
           "<VERSION>/installed-<HASH>"
+    -- incoming directories in the store
+  . (if buildOS == Windows then resub "\\\\incoming\\\\new-[0-9]+"
+                                      "\\\\incoming\\\\new-<RAND>"
+                           else id)
     -- incoming directories in the store
   . resub "/incoming/new-[0-9]+"
           "/incoming/new-<RAND>"

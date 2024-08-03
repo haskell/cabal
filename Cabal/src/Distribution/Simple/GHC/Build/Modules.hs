@@ -5,7 +5,12 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TupleSections #-}
 
-module Distribution.Simple.GHC.Build.Modules (buildHaskellModules, BuildWay (..), buildWayPrefix) where
+module Distribution.Simple.GHC.Build.Modules
+  ( buildHaskellModules
+  , BuildWay (..)
+  , buildWayPrefix
+  , componentInputs
+  ) where
 
 import Control.Monad.IO.Class
 import Distribution.Compat.Prelude
@@ -98,8 +103,10 @@ buildHaskellModules
   -- ^ The parallelism strategy (e.g. num of jobs)
   -> ConfiguredProgram
   -- ^ The GHC configured program
-  -> PD.PackageDescription
-  -- ^ The package description
+  -> Maybe (SymbolicPath Pkg File)
+  -- ^ Optional path to a Haskell Main file to build
+  -> [ModuleName]
+  -- ^ The Haskell modules to build
   -> SymbolicPath Pkg ('Dir Artifacts)
   -- ^ The path to the build directory for this target, which
   -- has already been created.
@@ -112,7 +119,7 @@ buildHaskellModules
   -- invocation used to compile the component in that 'BuildWay'.
   -- This can be useful in, eg, a linker invocation, in which we want to use the
   -- same options and list the same inputs as those used for building.
-buildHaskellModules numJobs ghcProg pkg_descr buildTargetDir neededLibWays pbci = do
+buildHaskellModules numJobs ghcProg mbMainFile inputModules buildTargetDir neededLibWays pbci = do
   -- See Note [Building Haskell Modules accounting for TH]
 
   let
@@ -141,12 +148,13 @@ buildHaskellModules numJobs ghcProg pkg_descr buildTargetDir neededLibWays pbci 
         | isCoverageEnabled = Flag $ Hpc.mixDir (coerceSymbolicPath $ coerceSymbolicPath buildTargetDir </> extraCompilationArtifacts) way
         | otherwise = mempty
 
-  (inputFiles, inputModules) <- componentInputs buildTargetDir pkg_descr pbci
-
   let
     mbWorkDir = mbWorkDirLBI lbi
     runGhcProg = runGHC verbosity ghcProg comp platform mbWorkDir
     platform = hostPlatform lbi
+
+    (hsMains, scriptMains) =
+      partition (isHaskell . getSymbolicPath) (maybeToList mbMainFile)
 
     -- We define the base opts which are shared across different build ways in
     -- 'buildHaskellModules'
@@ -161,16 +169,8 @@ buildHaskellModules numJobs ghcProg pkg_descr buildTargetDir neededLibWays pbci 
             ghcOptNoLink = if isLib then NoFlag else toFlag True
           , ghcOptNumJobs = numJobs
           , ghcOptInputModules = toNubListR inputModules
-          , ghcOptInputFiles =
-              toNubListR $
-                if PD.package pkg_descr == fakePackageId
-                  then filter (isHaskell . getSymbolicPath) inputFiles
-                  else inputFiles
-          , ghcOptInputScripts =
-              toNubListR $
-                if PD.package pkg_descr == fakePackageId
-                  then filter (not . isHaskell . getSymbolicPath) inputFiles
-                  else []
+          , ghcOptInputFiles = toNubListR hsMains
+          , ghcOptInputScripts = toNubListR scriptMains
           , ghcOptExtra = buildWayExtraHcOptions way GHC bi
           , ghcOptHiSuffix = optSuffixFlag (buildWayPrefix way) "hi"
           , ghcOptObjSuffix = optSuffixFlag (buildWayPrefix way) "o"
@@ -248,7 +248,7 @@ buildHaskellModules numJobs ghcProg pkg_descr buildTargetDir neededLibWays pbci 
       ProfDynWay -> profDynOpts
 
   -- If there aren't modules, or if we're loading the modules in repl, don't build.
-  unless (forRepl || (null inputFiles && null inputModules)) $ liftIO $ do
+  unless (forRepl || (isNothing mbMainFile && null inputModules)) $ liftIO $ do
     -- See Note [Building Haskell Modules accounting for TH]
     let
       neededLibWaysSet = Set.fromList neededLibWays
@@ -348,25 +348,26 @@ buildWayExtraHcOptions = \case
   DynWay -> hcSharedOptions
   ProfDynWay -> hcProfSharedOptions
 
--- | Returns a pair of the Haskell input files and Haskell modules of the
--- component being built.
+-- | Returns a pair of the main file and Haskell modules of the component being
+-- built. The main file is not necessarily a Haskell file. It could also be
+-- e.g. a C source, or, a Haskell repl script (that does not necessarily have
+-- an extension).
 --
--- The "input files" are either the path to the main Haskell module, or a repl
--- script (that does not necessarily have an extension).
+-- The main file is Nothing if the component is not executable.
 componentInputs
   :: SymbolicPath Pkg (Dir Artifacts)
   -- ^ Target build dir
   -> PD.PackageDescription
   -> PreBuildComponentInputs
   -- ^ The context and component being built in it.
-  -> IO ([SymbolicPath Pkg File], [ModuleName])
-  -- ^ The Haskell input files, and the Haskell modules
+  -> IO (Maybe (SymbolicPath Pkg File), [ModuleName])
+  -- ^ The main input file, and the Haskell modules
 componentInputs buildTargetDir pkg_descr pbci =
   case component of
     CLib lib ->
-      pure ([], allLibModules lib clbi)
+      pure (Nothing, allLibModules lib clbi)
     CFLib flib ->
-      pure ([], foreignLibModules flib)
+      pure (Nothing, foreignLibModules flib)
     CExe Executable{buildInfo = bi', modulePath} ->
       exeLikeInputs bi' modulePath
     CTest TestSuite{testBuildInfo = bi', testInterface = TestSuiteExeV10 _ mainFile} ->
@@ -405,6 +406,6 @@ componentInputs buildTargetDir pkg_descr pbci =
                 "Enabling workaround for Main module '"
                   ++ prettyShow mainModName
                   ++ "' listed in 'other-modules' illegally!"
-              return ([main], filter (/= mainModName) otherModNames)
-            else return ([main], otherModNames)
-        else return ([], otherModNames)
+              return (Just main, filter (/= mainModName) otherModNames)
+            else return (Just main, otherModNames)
+        else return (Just main, otherModNames)

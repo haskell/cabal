@@ -13,8 +13,6 @@ import Distribution.Types.VersionRange (VersionRange)
 import Distribution.Types.GenericPackageDescription (GenericPackageDescription)
 import Distribution.Types.LocalBuildInfo            (LocalBuildInfo)
 
-import UnitTests.Orphans ()
-
 tests :: TestTree
 tests = testGroup "Distribution.Utils.Structured"
     -- This test also verifies that structureHash doesn't loop.
@@ -33,15 +31,15 @@ md5Check proxy md5Int = structureHash proxy @?= md5FromInteger md5Int
 md5CheckGenericPackageDescription :: Proxy GenericPackageDescription -> Assertion
 md5CheckGenericPackageDescription proxy = md5Check proxy
 #if MIN_VERSION_base(4,19,0)
-    0xe28f08e7ac644f836d8b3fe7f9428dcf
+    0x3da8883a286b8fbfd9f94790d57cc06e
 #else
-    0x3442058190aa48c2f795b83ee995f702
+    0x245e544da05f50f9dd0339a96ac99860
 #endif
 
 md5CheckLocalBuildInfo :: Proxy LocalBuildInfo -> Assertion
 md5CheckLocalBuildInfo proxy = md5Check proxy
 #if MIN_VERSION_base(4,19,0)
-    0x6809d4d86ae1810f2a032bc90c952b76
+    0x7683c2daece12ba7982e80f860454f47
 #else
-    0x9409dca80a2e1522b1c3a39356e9aaef
+    0xe694b39b10bc861f47ea9c7b926a422a
 #endif

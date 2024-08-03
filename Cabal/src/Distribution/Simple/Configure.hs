@@ -208,20 +208,20 @@ data ConfigStateFileError
 dispConfigStateFileError :: ConfigStateFileError -> Doc
 dispConfigStateFileError ConfigStateFileNoHeader =
   text "Saved package config file header is missing."
-    <+> text "Re-run the 'configure' command."
+    <+> text "Re-run the 'Setup configure' command."
 dispConfigStateFileError ConfigStateFileBadHeader =
   text "Saved package config file header is corrupt."
-    <+> text "Re-run the 'configure' command."
+    <+> text "Re-run the 'Setup configure' command."
 dispConfigStateFileError ConfigStateFileNoParse =
   text "Saved package config file is corrupt."
-    <+> text "Re-run the 'configure' command."
+    <+> text "Re-run the 'Setup configure' command."
 dispConfigStateFileError ConfigStateFileMissing{} =
-  text "Run the 'configure' command first."
+  text "Run the 'Setup configure' command first."
 dispConfigStateFileError (ConfigStateFileBadVersion oldCabal oldCompiler _) =
   text "Saved package config file is outdated:"
     $+$ badCabal
     $+$ badCompiler
-    $+$ text "Re-run the 'configure' command."
+    $+$ text "Re-run the 'Setup configure' command."
   where
     badCabal =
       text "• the Cabal version changed from"
@@ -1304,6 +1304,9 @@ configureComponents
 
       when (LBC.relocatable $ LBC.withBuildOptions lbc) $
         checkRelocatable verbosity pkg_descr lbi
+
+      when (LBC.withDynExe $ LBC.withBuildOptions lbc) $
+        checkSharedExes verbosity lbi
 
       -- TODO: This is not entirely correct, because the dirs may vary
       -- across libraries/executables
@@ -2719,6 +2722,18 @@ checkPackageProblems verbosity dir gpkg pkg = do
     classEW (PackageDistSuspiciousWarn _) = Nothing
     classEW (PackageDistInexcusable _) = Nothing
 
+-- | Perform checks if a shared executable can be built
+checkSharedExes
+  :: Verbosity
+  -> LocalBuildInfo
+  -> IO ()
+checkSharedExes verbosity lbi =
+  when (os == Windows) $
+    dieWithException verbosity $
+      NoOSSupport os "shared executables"
+  where
+    (Platform _ os) = hostPlatform lbi
+
 -- | Preform checks if a relocatable build is allowed
 checkRelocatable
   :: Verbosity
@@ -2741,7 +2756,7 @@ checkRelocatable verbosity pkg lbi =
     checkOS =
       unless (os `elem` [OSX, Linux]) $
         dieWithException verbosity $
-          NoOSSupport os
+          NoOSSupport os "relocatable builds"
       where
         (Platform _ os) = hostPlatform lbi
 

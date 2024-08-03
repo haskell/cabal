@@ -24,6 +24,7 @@ bootstrap/*.plan.json
 /cabal-install/dist/
 /cabal-install/Setup
 /cabal-install/source-file-list
+/cabal-install/tests/IntegrationTests2/config/cabal-config
 
 .stylish-haskell.yaml
 .stylish-haskell.yml
@@ -68,6 +69,7 @@ register.sh
 # listed explicitly to show which files are generated but ignored
 testdb/intree/cabal.project-test
 testdb/intree/store/**/bin/alex
+testdb/intree/store/**/bin/alex.exe
 testdb/intree/store/**/cabal-hash.txt
 testdb/intree/store/**/share/AlexTemplate.hs
 testdb/intree/store/**/share/AlexWrappers.hs
@@ -78,7 +80,6 @@ testdb/intree/store/*/package.db/package.cache.lock
 
 # windows test artifacts
 cabal-testsuite/**/*.exe
-cabal-testsuite/**/*.bat
 cabal-testsuite/**/haddocks
 
 # python artifacts from documentation builds

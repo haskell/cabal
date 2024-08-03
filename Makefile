@@ -5,12 +5,9 @@
 CABALBUILD := cabal build
 CABALRUN   := cabal run
 
-# The newer and prefered way to call the doctest tool is:
-#   $ cabal repl --with-ghc=doctest
-# SEE: https://github.com/haskell/cabal/issues/8504
-# There is but one caveat, we have to avoid allow-newer.
+# We have to avoid allow-newer.
 # SEE: https://github.com/haskell/cabal/issues/6859
-DOCTEST := cabal repl --with-ghc=doctest --repl-options="-w" --ghc-options="-Wwarn" --allow-newer=False
+DOCTEST := cabal doctest --allow-newer=False
 
 # default rules
 
@@ -107,11 +104,11 @@ ghcid-cli :
 
 .PHONY: doctest
 doctest :
-	$(DOCTEST) Cabal-syntax
-	$(DOCTEST) Cabal-described
-	$(DOCTEST) --build-depends=QuickCheck Cabal
-	$(DOCTEST) cabal-install-solver
-	$(DOCTEST) cabal-install
+	cd Cabal-syntax && $(DOCTEST)
+	cd Cabal-described && $(DOCTEST)
+	cd Cabal && $(DOCTEST)
+	cd cabal-install-solver && $(DOCTEST)
+	cd cabal-install && $(DOCTEST)
 
 # This is not run as part of validate.sh (we need hackage-security, which is tricky to get).
 .PHONY: doctest-cli
@@ -120,7 +117,7 @@ doctest-cli :
 
 .PHONY: doctest-install
 doctest-install:
-	cabal install doctest --overwrite-policy=always --ignore-project
+	cabal install doctest --overwrite-policy=always --ignore-project --flag cabal-doctest
 
 # tests
 
@@ -178,14 +175,12 @@ cabal-install-test-accept:
 .PHONY: validate-via-docker-all
 validate-via-docker-all : validate-via-docker-8.2.2
 validate-via-docker-all : validate-via-docker-8.4.4
-validate-via-docker-all : validate-via-docker-8.6.5
 validate-via-docker-all : validate-via-docker-8.8.4
 validate-via-docker-all : validate-via-docker-8.10.4
 
 .PHONY: validate-dockerfiles
 validate-dockerfiles : .docker/validate-8.10.4.dockerfile
 validate-dockerfiles : .docker/validate-8.8.4.dockerfile
-validate-dockerfiles : .docker/validate-8.6.5.dockerfile
 validate-dockerfiles : .docker/validate-8.4.4.dockerfile
 validate-dockerfiles : .docker/validate-8.2.2.dockerfile
 
@@ -203,10 +198,6 @@ validate-via-docker-8.2.2:
 .PHONY: validate-via-docker-8.4.4
 validate-via-docker-8.4.4:
 	docker build $(DOCKERARGS) -t cabal-validate:8.4.4 -f .docker/validate-8.4.4.dockerfile .
-
-.PHONY: validate-via-docker-8.6.5
-validate-via-docker-8.6.5:
-	docker build $(DOCKERARGS) -t cabal-validate:8.6.5 -f .docker/validate-8.6.5.dockerfile .
 
 .PHONY: validate-via-docker-8.8.4
 validate-via-docker-8.8.4:
@@ -235,7 +226,7 @@ bootstrap-json-%: phony
 	cd bootstrap && cabal run -v0 cabal-bootstrap-gen -- linux-$*.plan.json \
 		| python3 -m json.tool > linux-$*.json
 
-BOOTSTRAP_GHC_VERSIONS := 8.10.7 9.0.2 9.2.8 9.4.8 9.6.4 9.8.2
+BOOTSTRAP_GHC_VERSIONS := 9.0.2 9.2.8 9.4.8 9.6.4 9.8.2
 
 .PHONY: bootstrap-jsons
 bootstrap-jsons: $(BOOTSTRAP_GHC_VERSIONS:%=bootstrap-json-%)
