@@ -210,7 +210,9 @@ import Distribution.Simple.Utils
 import Distribution.System (Platform)
 import Distribution.Types.GivenComponent
   ( GivenComponent (..)
+  , PromisedComponent (..)
   )
+import Distribution.Types.PackageId
 import Distribution.Types.PackageVersionConstraint
   ( PackageVersionConstraint (..)
   )
@@ -226,6 +228,7 @@ import Distribution.Verbosity
 import Distribution.Version
   ( Version
   , mkVersion
+  , nullVersion
   )
 
 import Control.Exception
@@ -714,12 +717,22 @@ filterConfigureFlags' flags cabalLibVersion
         }
 
     flags_3_13_0 =
-      -- Earlier Cabal versions don't understand about ..
-      flags_latest
-        { -- Building profiled shared libraries
-          configProfShared = NoFlag
-        , configIgnoreBuildTools = NoFlag
-        }
+      let scrubVersion pc =
+            pc
+              { promisedComponentPackage =
+                  (promisedComponentPackage pc){pkgVersion = nullVersion}
+              }
+       in -- Earlier Cabal versions don't understand about ..
+          flags_latest
+            { -- Building profiled shared libraries
+              configProfShared = NoFlag
+            , configIgnoreBuildTools = NoFlag
+            , -- Older versions of Cabal don't include the package version in the
+              -- --promised-dependency flag, by setting the version to nullVersion,
+              -- it won't be printed.
+              configPromisedDependencies =
+                map scrubVersion (configPromisedDependencies flags)
+            }
 
     flags_3_11_0 =
       flags_3_13_0

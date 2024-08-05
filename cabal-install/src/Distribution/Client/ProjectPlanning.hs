@@ -4017,7 +4017,7 @@ setupHsConfigureFlags
         ]
 
       configPromisedDependencies =
-        [ cidToGivenComponent cid
+        [ cidToPromisedComponent cid
         | (cid, is_internal) <- elabLibDependencies elab
         , is_internal
         ]
@@ -4052,6 +4052,15 @@ setupHsConfigureFlags
 
       cidToGivenComponent :: ConfiguredId -> GivenComponent
       cidToGivenComponent (ConfiguredId srcid mb_cn cid) = GivenComponent (packageName srcid) ln cid
+        where
+          ln = case mb_cn of
+            Just (CLibName lname) -> lname
+            Just _ -> error "non-library dependency"
+            Nothing -> LMainLibName
+
+      cidToPromisedComponent :: ConfiguredId -> PromisedComponent
+      cidToPromisedComponent (ConfiguredId srcid mb_cn cid) =
+        PromisedComponent srcid ln cid
         where
           ln = case mb_cn of
             Just (CLibName lname) -> lname

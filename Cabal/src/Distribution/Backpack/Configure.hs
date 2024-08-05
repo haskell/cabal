@@ -70,7 +70,7 @@ configureComponentLocalBuildInfos
   -> Flag String -- configIPID
   -> Flag ComponentId -- configCID
   -> PackageDescription
-  -> ([PreExistingComponent], [PromisedComponent])
+  -> ([PreExistingComponent], [ConfiguredPromisedComponent])
   -> FlagAssignment -- configConfigurationsFlags
   -> [(ModuleName, Module)] -- configInstantiateWith
   -> InstalledPackageIndex
@@ -118,7 +118,7 @@ configureComponentLocalBuildInfos
             `Map.union` Map.fromListWith
               Map.union
               [ (pkg, Map.singleton (ann_cname aid) aid)
-              | PromisedComponent pkg aid <- promisedPkgDeps
+              | ConfiguredPromisedComponent pkg aid <- promisedPkgDeps
               ]
     graph1 <-
       toConfiguredComponents
@@ -151,7 +151,7 @@ configureComponentLocalBuildInfos
                   , emptyModuleShape
                   )
                 )
-              | PromisedComponent _ aid <- promisedPkgDeps
+              | ConfiguredPromisedComponent _ aid <- promisedPkgDeps
               ]
         uid_lookup def_uid
           | Just pkg <- PackageIndex.lookupUnitId installedPackageSet uid =
@@ -208,7 +208,7 @@ configureComponentLocalBuildInfos
 toComponentLocalBuildInfos
   :: Compiler
   -> InstalledPackageIndex -- FULL set
-  -> [PromisedComponent]
+  -> [ConfiguredPromisedComponent]
   -> PackageDescription
   -> [PreExistingComponent] -- external package deps
   -> [ReadyComponent]
