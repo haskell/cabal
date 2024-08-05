@@ -185,7 +185,7 @@ data ConfigFlags = ConfigFlags
   --  dependencies.
   , configDependencies :: [GivenComponent]
   -- ^ The packages depended on which already exist
-  , configPromisedDependencies :: [GivenComponent]
+  , configPromisedDependencies :: [PromisedComponent]
   -- ^ The packages depended on which doesn't yet exist (i.e. promised).
   --  Promising dependencies enables us to configure components in parallel,
   --  and avoids expensive builds if they are not necessary.
@@ -779,13 +779,13 @@ configureOptions showOrParseArgs =
        , option
           ""
           ["promised-dependency"]
-          "A list of promised dependencies. E.g., --promised-dependency=\"void=void-0.5.8-177d5cdf20962d0581fe2e4932a6c309\""
+          "A list of promised dependencies. E.g., --promised-dependency=\"void-0.5.8=void-0.5.8-177d5cdf20962d0581fe2e4932a6c309\""
           configPromisedDependencies
           (\v flags -> flags{configPromisedDependencies = v})
           ( reqArg
-              "NAME[:COMPONENT_NAME]=CID"
-              (parsecToReadE (const "dependency expected") ((\x -> [x]) `fmap` parsecGivenComponent))
-              (map prettyGivenComponent)
+              "NAME-VER[:COMPONENT_NAME]=CID"
+              (parsecToReadE (const "dependency expected") ((\x -> [x]) `fmap` parsecPromisedComponent))
+              (map prettyPromisedComponent)
           )
        , option
           ""
@@ -922,6 +922,29 @@ showPackageDb (Just (SpecificPackageDB db)) = db
 showProfDetailLevelFlag :: Flag ProfDetailLevel -> [String]
 showProfDetailLevelFlag NoFlag = []
 showProfDetailLevelFlag (Flag dl) = [showProfDetailLevel dl]
+
+parsecPromisedComponent :: ParsecParser PromisedComponent
+parsecPromisedComponent = do
+  pn <- parsec
+  ln <- P.option LMainLibName $ do
+    _ <- P.char ':'
+    ucn <- parsec
+    return $
+      if unUnqualComponentName ucn == unPackageName (pkgName pn)
+        then LMainLibName
+        else LSubLibName ucn
+  _ <- P.char '='
+  cid <- parsec
+  return $ PromisedComponent pn ln cid
+
+prettyPromisedComponent :: PromisedComponent -> String
+prettyPromisedComponent (PromisedComponent pn cn cid) =
+  prettyShow pn
+    ++ case cn of
+      LMainLibName -> ""
+      LSubLibName n -> ":" ++ prettyShow n
+    ++ "="
+    ++ prettyShow cid
 
 parsecGivenComponent :: ParsecParser GivenComponent
 parsecGivenComponent = do
