@@ -460,7 +460,7 @@ vcsGit =
     vcsCloneRepo verbosity prog repo srcuri destdir =
       [programInvocation prog cloneArgs]
         -- And if there's a tag, we have to do that in a second step:
-        ++ [git (resetArgs tag) | tag <- maybeToList (srpTag repo)]
+        ++ [git (step tag) | tag <- maybeToList (srpTag repo), step <- [resetArgs]]
         ++ [ git (["submodule", "sync", "--recursive"] ++ verboseArg)
            , git (["submodule", "update", "--init", "--force", "--recursive"] ++ verboseArg)
            ]
@@ -475,6 +475,9 @@ vcsGit =
           Nothing -> []
         resetArgs tag = "reset" : verboseArg ++ ["--hard", tag, "--"]
         verboseArg = ["--quiet" | verbosity < Verbosity.normal]
+
+    -- Note: No --depth=1 for vcsCloneRepo since that is used for `cabal get -s`,
+    -- whereas `vcsSyncRepo` is used for source-repository-package where we do want shallow clones.
 
     vcsSyncRepos
       :: Verbosity
@@ -510,7 +513,9 @@ vcsGit =
       let gitModulesDir = localDir </> ".git" </> "modules"
       gitModulesExists <- doesDirectoryExist gitModulesDir
       when gitModulesExists $ removeDirectoryRecursive gitModulesDir
-      git localDir resetArgs
+      when (resetTarget /= "HEAD") $ do
+        git localDir fetchArgs -- first fetch the tag if needed
+      git localDir resetArgs -- only then reset to the commit
       git localDir $ ["submodule", "sync", "--recursive"] ++ verboseArg
       git localDir $ ["submodule", "update", "--force", "--init", "--recursive"] ++ verboseArg
       git localDir $ ["submodule", "foreach", "--recursive"] ++ verboseArg ++ ["git clean -ffxdq"]
@@ -524,13 +529,15 @@ vcsGit =
               }
 
         cloneArgs =
-          ["clone", "--no-checkout", loc, localDir]
+          ["clone", "--depth=1", "--no-checkout", loc, localDir]
             ++ case peer of
               Nothing -> []
               Just peerLocalDir -> ["--reference", peerLocalDir]
             ++ verboseArg
           where
             loc = srpLocation
+        -- To checkout/reset to a particular commit, we must first fetch it (since the base clone is shallow).
+        fetchArgs = "fetch" : verboseArg ++ ["origin", resetTarget]
         resetArgs = "reset" : verboseArg ++ ["--hard", resetTarget, "--"]
         resetTarget = fromMaybe "HEAD" (srpBranch `mplus` srpTag)
         verboseArg = ["--quiet" | verbosity < Verbosity.normal]
