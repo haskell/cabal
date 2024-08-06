@@ -483,6 +483,9 @@ vcsGit =
         resetArgs tag = "reset" : verboseArg ++ ["--hard", tag, "--"]
         verboseArg = ["--quiet" | verbosity < Verbosity.normal]
 
+    -- Note: No --depth=1 for vcsCloneRepo since that is used for `cabal get -s`,
+    -- whereas `vcsSyncRepo` is used for source-repository-package where we do want shallow clones.
+
     vcsSyncRepos
       :: Verbosity
       -> ConfiguredProgram
@@ -529,7 +532,10 @@ vcsGit =
               (removePathForcibly gitModulesDir)
               (\e -> if isPermissionError e then removePathForcibly gitModulesDir else throw e)
           else removeDirectoryRecursive gitModulesDir
-      git localDir resetArgs
+      when (resetTarget /= "HEAD") $ do
+        git localDir fetchArgs -- first fetch the tag if needed
+        git localDir setTagArgs
+      git localDir resetArgs -- only then reset to the commit
       git localDir $ ["submodule", "sync", "--recursive"] ++ verboseArg
       git localDir $ ["submodule", "update", "--force", "--init", "--recursive"] ++ verboseArg
       git localDir $ ["submodule", "foreach", "--recursive"] ++ verboseArg ++ ["git clean -ffxdq"]
@@ -543,13 +549,20 @@ vcsGit =
               }
 
         cloneArgs =
-          ["clone", "--no-checkout", loc, localDir]
+          ["clone", "--depth=1", "--no-checkout", loc, localDir]
             ++ case peer of
               Nothing -> []
               Just peerLocalDir -> ["--reference", peerLocalDir]
             ++ verboseArg
           where
             loc = srpLocation
+        -- To checkout/reset to a particular commit, we must first fetch it
+        -- (since the base clone is shallow).
+        fetchArgs = "fetch" : verboseArg ++ ["origin", resetTarget]
+        -- And then create the Tag from the FETCH_HEAD (which we should have just fetched)
+        setTagArgs = ["tag", "-f", resetTarget, "FETCH_HEAD"]
+        -- Then resetting to that tag will work (if we don't create the tag
+        -- locally from FETCH_HEAD, it won't exist).
         resetArgs = "reset" : verboseArg ++ ["--hard", resetTarget, "--"]
         resetTarget = fromMaybe "HEAD" (srpBranch `mplus` srpTag)
         verboseArg = ["--quiet" | verbosity < Verbosity.normal]
