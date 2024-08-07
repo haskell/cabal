@@ -55,10 +55,14 @@ module Distribution.Client.ProjectConfig
   , resolveSolverSettings
   , BuildTimeSettings (..)
   , resolveBuildTimeSettings
+  , resolveNumJobsSetting
 
     -- * Checking configuration
   , checkBadPerPackageCompilerPaths
   , BadPerPackageCompilerPaths (..)
+
+    -- * Globals
+  , maxNumFetchJobs
   ) where
 
 import Distribution.Client.Compat.Prelude
@@ -68,6 +72,7 @@ import Prelude ()
 import Distribution.Client.Glob
   ( isTrivialRootedGlob
   )
+import Distribution.Client.JobControl
 import Distribution.Client.ProjectConfig.Legacy
 import Distribution.Client.ProjectConfig.Types
 import Distribution.Client.RebuildMonad
@@ -434,12 +439,7 @@ resolveBuildTimeSettings
       -- buildSettingLogVerbosity  -- defined below, more complicated
       buildSettingBuildReports = fromFlag projectConfigBuildReports
       buildSettingSymlinkBinDir = flagToList projectConfigSymlinkBinDir
-      buildSettingNumJobs =
-        if fromFlag projectConfigUseSemaphore
-          then UseSem (determineNumJobs projectConfigNumJobs)
-          else case (determineNumJobs projectConfigNumJobs) of
-            1 -> Serial
-            n -> NumJobs (Just n)
+      buildSettingNumJobs = resolveNumJobsSetting projectConfigUseSemaphore projectConfigNumJobs
       buildSettingKeepGoing = fromFlag projectConfigKeepGoing
       buildSettingOfflineMode = fromFlag projectConfigOfflineMode
       buildSettingKeepTempFiles = fromFlag projectConfigKeepTempFiles
@@ -534,6 +534,20 @@ resolveBuildTimeSettings
         | isJust givenTemplate = True
         | isParallelBuild buildSettingNumJobs = False
         | otherwise = False
+
+-- | Determine the number of jobs (ParStrat) from the project config
+resolveNumJobsSetting
+  :: Flag Bool
+  -- ^ Whether to use a semaphore (-jsem)
+  -> Flag (Maybe Int)
+  -- ^ The number of jobs to run concurrently
+  -> ParStratX Int
+resolveNumJobsSetting projectConfigUseSemaphore projectConfigNumJobs =
+  if fromFlag projectConfigUseSemaphore
+    then UseSem (determineNumJobs projectConfigNumJobs)
+    else case (determineNumJobs projectConfigNumJobs) of
+      1 -> Serial
+      n -> NumJobs (Just n)
 
 ---------------------------------------------
 -- Reading and writing project config files
@@ -1213,6 +1227,7 @@ mplusMaybeT ma mb = do
 fetchAndReadSourcePackages
   :: Verbosity
   -> DistDirLayout
+  -> Compiler
   -> ProjectConfigShared
   -> ProjectConfigBuildOnly
   -> [ProjectPackageLocation]
@@ -1220,6 +1235,7 @@ fetchAndReadSourcePackages
 fetchAndReadSourcePackages
   verbosity
   distDirLayout
+  compiler
   projectConfigShared
   projectConfigBuildOnly
   pkgLocations = do
@@ -1256,7 +1272,9 @@ fetchAndReadSourcePackages
       syncAndReadSourcePackagesRemoteRepos
         verbosity
         distDirLayout
+        compiler
         projectConfigShared
+        projectConfigBuildOnly
         (fromFlag (projectConfigOfflineMode projectConfigBuildOnly))
         [repo | ProjectPackageRemoteRepo repo <- pkgLocations]
 
@@ -1373,15 +1391,22 @@ fetchAndReadSourcePackageRemoteTarball
 syncAndReadSourcePackagesRemoteRepos
   :: Verbosity
   -> DistDirLayout
+  -> Compiler
   -> ProjectConfigShared
+  -> ProjectConfigBuildOnly
   -> Bool
   -> [SourceRepoList]
   -> Rebuild [PackageSpecifier (SourcePackage UnresolvedPkgLoc)]
 syncAndReadSourcePackagesRemoteRepos
   verbosity
   DistDirLayout{distDownloadSrcDirectory}
+  compiler
   ProjectConfigShared
     { projectConfigProgPathExtra
+    }
+  ProjectConfigBuildOnly
+    { projectConfigUseSemaphore
+    , projectConfigNumJobs
     }
   offlineMode
   repos = do
@@ -1408,10 +1433,15 @@ syncAndReadSourcePackagesRemoteRepos
        in configureVCS verbosity progPathExtra vcs
 
     concat
-      <$> sequenceA
-        [ rerunIfChanged verbosity monitor repoGroup' $ do
-          vcs' <- getConfiguredVCS repoType
-          syncRepoGroupAndReadSourcePackages vcs' pathStem repoGroup'
+      <$> rerunConcurrentlyIfChanged
+        verbosity
+        (newJobControlFromParStrat verbosity compiler parStrat (Just maxNumFetchJobs))
+        [ ( monitor
+          , repoGroup'
+          , do
+              vcs' <- getConfiguredVCS repoType
+              syncRepoGroupAndReadSourcePackages vcs' pathStem repoGroup'
+          )
         | repoGroup@((primaryRepo, repoType) : _) <- Map.elems reposByLocation
         , let repoGroup' = map fst repoGroup
               pathStem =
@@ -1424,6 +1454,7 @@ syncAndReadSourcePackagesRemoteRepos
               monitor = newFileMonitor (pathStem <.> "cache")
         ]
     where
+      parStrat = resolveNumJobsSetting projectConfigUseSemaphore projectConfigNumJobs
       syncRepoGroupAndReadSourcePackages
         :: VCS ConfiguredProgram
         -> FilePath
@@ -1760,3 +1791,10 @@ onlyTopLevelProvenance :: Set ProjectConfigProvenance -> Set ProjectConfigProven
 onlyTopLevelProvenance = Set.filter $ \case
   Implicit -> False
   Explicit ps -> isTopLevelConfigPath ps
+
+-- | The maximum amount of fetch jobs that can run concurrently.
+-- For instance, this is used to limit the amount of concurrent downloads from
+-- hackage, or the amount of concurrent git clones for
+-- source-repository-package stanzas.
+maxNumFetchJobs :: Int
+maxNumFetchJobs = 2
