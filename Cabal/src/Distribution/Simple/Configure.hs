@@ -1280,7 +1280,9 @@ configureComponents
           extraCoverageUnitIds = case enabled of
             -- Whole package configure, add package libs
             ComponentRequestedSpec{} -> mapMaybe mbCompUnitId buildComponents
-            -- Component configure, no need to do anything
+            -- Component configure, no need to do anything since
+            -- extra-coverage-for will be passed for all other components that
+            -- should be covered.
             OneComponentRequestedSpec{} -> []
           mbCompUnitId LibComponentLocalBuildInfo{componentUnitId} = Just componentUnitId
           mbCompUnitId _ = Nothing
