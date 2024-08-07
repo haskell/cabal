@@ -208,20 +208,20 @@ data ConfigStateFileError
 dispConfigStateFileError :: ConfigStateFileError -> Doc
 dispConfigStateFileError ConfigStateFileNoHeader =
   text "Saved package config file header is missing."
-    <+> text "Re-run the 'configure' command."
+    <+> text "Re-run the 'Setup configure' command."
 dispConfigStateFileError ConfigStateFileBadHeader =
   text "Saved package config file header is corrupt."
-    <+> text "Re-run the 'configure' command."
+    <+> text "Re-run the 'Setup configure' command."
 dispConfigStateFileError ConfigStateFileNoParse =
   text "Saved package config file is corrupt."
-    <+> text "Re-run the 'configure' command."
+    <+> text "Re-run the 'Setup configure' command."
 dispConfigStateFileError ConfigStateFileMissing{} =
-  text "Run the 'configure' command first."
+  text "Run the 'Setup configure' command first."
 dispConfigStateFileError (ConfigStateFileBadVersion oldCabal oldCompiler _) =
   text "Saved package config file is outdated:"
     $+$ badCabal
     $+$ badCompiler
-    $+$ text "Re-run the 'configure' command."
+    $+$ text "Re-run the 'Setup configure' command."
   where
     badCabal =
       text "• the Cabal version changed from"
