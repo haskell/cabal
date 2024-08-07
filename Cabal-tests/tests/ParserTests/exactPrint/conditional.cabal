@@ -1,0 +1,17 @@
+cabal-version:           3.0
+name:                    bounded
+version:                 0
+synopsis:                The -any none demo
+build-type:              Simple
+
+flag foo
+  manual: True
+  default: True
+
+library
+  default-language:  Haskell2010
+  exposed-modules:   AnyNone
+  if flag(foo)
+    build-depends:     base <5
+  else
+    build-depends:     base <5.5
