@@ -4058,7 +4058,7 @@ setupHsConfigureFlags
             Just _ -> error "non-library dependency"
             Nothing -> LMainLibName
 
-      configCoverageFor = determineCoverageFor elabPkgSourceId plan
+      configCoverageFor = determineCoverageFor elab plan
 
 setupHsConfigureArgs
   :: ElaboratedConfiguredPackage
@@ -4469,13 +4469,14 @@ inplaceBinRoot layout config package =
 
 -- The list of non-pre-existing libraries without module holes, i.e. the
 -- main library and sub-libraries components of all the local packages in
--- the project that do not require instantiations or are instantiations.
+-- the project that are dependencies of the components being built and that do
+-- not require instantiations or are instantiations.
 determineCoverageFor
-  :: PackageId
-  -- ^ The 'PackageId' of the package or component being configured
+  :: ElaboratedConfiguredPackage
+  -- ^ The package or component being configured
   -> ElaboratedInstallPlan
   -> Flag [UnitId]
-determineCoverageFor configuredPkgSourceId plan =
+determineCoverageFor configuredPkg plan =
   Flag
     $ mapMaybe
       ( \case
@@ -4488,15 +4489,18 @@ determineCoverageFor configuredPkgSourceId plan =
     $ Graph.toList
     $ InstallPlan.toGraph plan
   where
-    shouldCoverPkg elab@ElaboratedConfiguredPackage{elabModuleShape, elabPkgSourceId, elabLocalToProject} =
+    libDeps = elabLibDependencies configuredPkg
+    shouldCoverPkg elab@ElaboratedConfiguredPackage{elabModuleShape, elabPkgSourceId = pkgSID, elabLocalToProject} =
       elabLocalToProject
         && not (isIndefiniteOrInstantiation elabModuleShape)
         -- TODO(#9493): We can only cover libraries in the same package
         -- as the testsuite
-        && configuredPkgSourceId == elabPkgSourceId
+        && elabPkgSourceId configuredPkg == pkgSID
         -- Libraries only! We don't cover testsuite modules, so we never need
         -- the paths to their mix dirs. Furthermore, we do not install testsuites...
         && maybe False (\case CLibName{} -> True; CNotLibName{} -> False) (elabComponentName elab)
+        -- We only want coverage for libraries which are dependencies of the given one
+        && pkgSID `elem` map (confSrcId . fst) libDeps
 
     isIndefiniteOrInstantiation :: ModuleShape -> Bool
     isIndefiniteOrInstantiation = not . Set.null . modShapeRequires
