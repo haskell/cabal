@@ -136,7 +136,7 @@ spaceOutput :: Int -> Doc -> Doc
 spaceOutput rows output =
   if rows < 0
     then -- this is a failure mode
-    -- error ("unexpected empty negative rows" <> show (mAnn, current, fieldName, res))
+    -- error ("unexpected empty negative rows" <> show (rows))
       output
     else -- <+> "--" <+> PP.text (show (("rows=", rows, "columns=", columns), mAnn, ("current=", current), docLines )) -- DEBUG
 
