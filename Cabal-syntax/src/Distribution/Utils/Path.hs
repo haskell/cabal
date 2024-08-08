@@ -35,10 +35,12 @@ module Distribution.Utils.Path
     -- * Symbolic paths
   , RelativePath
   , SymbolicPath
+  , AbsolutePath (..)
   , SymbolicPathX -- NB: constructor not exposed, to retain type safety.
 
     -- ** Symbolic path API
   , getSymbolicPath
+  , getAbsolutePath
   , sameDirectory
   , makeRelativePathEx
   , makeSymbolicPath
@@ -48,6 +50,7 @@ module Distribution.Utils.Path
   , relativeSymbolicPath
   , symbolicPathRelative_maybe
   , interpretSymbolicPath
+  , interpretSymbolicPathAbsolute
 
     -- ** General filepath API
   , (</>)
@@ -215,6 +218,11 @@ type RelativePath = SymbolicPathX 'OnlyRelative
 -- until we interpret them (using e.g. 'interpretSymbolicPath').
 type SymbolicPath = SymbolicPathX 'AllowAbsolute
 
+newtype AbsolutePath (to :: FileOrDir) = AbsolutePath (forall from. SymbolicPath from to)
+
+unsafeMakeAbsolutePath :: FilePath -> AbsolutePath to
+unsafeMakeAbsolutePath fp = AbsolutePath (makeSymbolicPath fp)
+
 instance Binary (SymbolicPathX allowAbsolute from to)
 instance
   (Typeable allowAbsolute, Typeable from, Typeable to)
@@ -320,6 +328,12 @@ interpretSymbolicPath mbWorkDir (SymbolicPath p) =
 interpretSymbolicPathCWD :: SymbolicPathX allowAbsolute from to -> FilePath
 interpretSymbolicPathCWD (SymbolicPath p) = p
 
+getAbsolutePath :: AbsolutePath to -> FilePath
+getAbsolutePath (AbsolutePath p) = getSymbolicPath p
+
+interpretSymbolicPathAbsolute :: AbsolutePath (Dir Pkg) -> SymbolicPathX allowAbsolute Pkg to -> FilePath
+interpretSymbolicPathAbsolute (AbsolutePath p) sym = interpretSymbolicPath (Just p) sym
+
 -- | Change what a symbolic path is pointing to.
 coerceSymbolicPath :: SymbolicPathX allowAbsolute from to1 -> SymbolicPathX allowAbsolute from to2
 coerceSymbolicPath = coerce
@@ -343,9 +357,9 @@ symbolicPathRelative_maybe (SymbolicPath fp) =
     else Just $ SymbolicPath fp
 
 -- | Absolute path to the current working directory.
-absoluteWorkingDir :: Maybe (SymbolicPath CWD to) -> IO FilePath
-absoluteWorkingDir Nothing = Directory.getCurrentDirectory
-absoluteWorkingDir (Just wd) = Directory.makeAbsolute $ getSymbolicPath wd
+absoluteWorkingDir :: Maybe (SymbolicPath CWD to) -> IO (AbsolutePath to)
+absoluteWorkingDir Nothing = unsafeMakeAbsolutePath <$> Directory.getCurrentDirectory
+absoluteWorkingDir (Just wd) = unsafeMakeAbsolutePath <$> Directory.makeAbsolute (getSymbolicPath wd)
 
 -- | Try to make a symbolic path relative.
 --
@@ -354,8 +368,8 @@ absoluteWorkingDir (Just wd) = Directory.makeAbsolute $ getSymbolicPath wd
 -- NB: this function may fail to make the path relative.
 tryMakeRelative :: Maybe (SymbolicPath CWD (Dir dir)) -> SymbolicPath dir to -> IO (SymbolicPath dir to)
 tryMakeRelative mbWorkDir (SymbolicPath fp) = do
-  wd <- absoluteWorkingDir mbWorkDir
-  return $ SymbolicPath (FilePath.makeRelative wd fp)
+  AbsolutePath wd <- absoluteWorkingDir mbWorkDir
+  return $ SymbolicPath (FilePath.makeRelative (getSymbolicPath wd) fp)
 
 -------------------------------------------------------------------------------
 
@@ -424,6 +438,16 @@ instance
       (SymbolicPathX allowAbsolute a3 c3)
   where
   SymbolicPath p1 </> SymbolicPath p2 = SymbolicPath (p1 </> p2)
+
+instance
+  (b1 ~ 'Dir b2, c2 ~ c3, midAbsolute ~ OnlyRelative)
+  => PathLike
+      (AbsolutePath b1)
+      (SymbolicPathX midAbsolute b2 c2)
+      (AbsolutePath c3)
+  where
+  AbsolutePath (SymbolicPath p1) </> SymbolicPath p2 =
+    unsafeMakeAbsolutePath (p1 </> p2)
 
 --------------------------------------------------------------------------------
 -- Abstract directory locations.
