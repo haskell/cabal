@@ -76,7 +76,7 @@ import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import qualified Distribution.InstalledPackageInfo as IPI
 import Distribution.Package
 import Distribution.PackageDescription
-import Distribution.PackageDescription.Check hiding (doesFileExist)
+import Distribution.PackageDescription.Check hiding (doesFileExist, doesPathExist)
 import Distribution.PackageDescription.Configuration
 import Distribution.PackageDescription.PrettyPrint
 import Distribution.Simple.BuildTarget
