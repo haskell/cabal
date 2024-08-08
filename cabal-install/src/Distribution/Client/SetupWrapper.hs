@@ -498,7 +498,9 @@ runSetupCommand verbosity setup cmd getCommonFlags flags extraArgs =
   -- The 'setupWorkingDir' flag corresponds to a global argument which needs to
   -- be passed before the individual command (e.g. 'configure' or 'build').
   let common = getCommonFlags flags
-      globalFlags = mempty { globalWorkingDir = setupWorkingDir common }
+      globalFlags = case setupMethod setup of
+                      InternalMethod -> mempty { globalWorkingDir = setupWorkingDir common }
+                      _ -> mempty
       args = commandShowOptions (globalCommand []) globalFlags
           ++ (commandName cmd : commandShowOptions cmd flags ++ extraArgs)
   in runSetup verbosity setup args
