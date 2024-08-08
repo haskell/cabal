@@ -143,9 +143,8 @@ executable test-runtime-deps
 
 custom-setup
   -- we only depend on even stable releases of lib:Cabal
-  -- and due to Custom complexity and ConstraintSetupCabalMaxVersion
-  -- it has to be the latest release version plus
-  -- you have to use the latest cabal-install release
-  setup-depends: Cabal == 3.12.*,
-                 Cabal-syntax == 3.12.*,
+  -- and must match the release used in validate.yml (see
+  -- https://github.com/haskell/cabal/pull/10251)
+  setup-depends: Cabal ^>= 3.12.1,
+                 Cabal-syntax ^>= 3.12.1,
                  base, filepath, directory

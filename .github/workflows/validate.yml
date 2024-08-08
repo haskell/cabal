@@ -111,7 +111,7 @@ jobs:
         id: setup-haskell
         with:
           ghc-version: ${{ matrix.ghc }}
-          cabal-version: latest # latest is mandatory for cabal-testsuite, see https://github.com/haskell/cabal/issues/8133
+          cabal-version: 3.12.1.0 # see https://github.com/haskell/cabal/pull/10251
           ghcup-release-channel: https://raw.githubusercontent.com/haskell/ghcup-metadata/master/ghcup-prereleases-0.0.8.yaml
 
       #  See the following link for a breakdown of the following step
