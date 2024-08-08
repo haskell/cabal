@@ -131,8 +131,9 @@ import Distribution.Simple.Compiler
   ( Compiler (..)
   , CompilerFlavor (..)
   , CompilerId (..)
-  , PackageDB (..)
-  , PackageDBStack
+  , PackageDBCWD
+  , PackageDBStackCWD
+  , PackageDBX (..)
   )
 import Distribution.Simple.Configure
   ( configCompilerEx
@@ -958,10 +959,10 @@ installLibraries
   -> ProjectBuildContext
   -> PI.PackageIndex InstalledPackageInfo
   -> Compiler
-  -> PackageDBStack
+  -> PackageDBStackCWD
   -> FilePath
   -- ^ Environment file
-  -> [GhcEnvironmentFileEntry]
+  -> [GhcEnvironmentFileEntry FilePath]
   -> Bool
   -- ^ Whether we need to show a warning (i.e. we created a new environment
   --   file, and the user did not use --package-env)
@@ -1064,9 +1065,9 @@ warnIfNoExes verbosity buildCtx =
 -- | Return the package specifiers and non-global environment file entries.
 getEnvSpecsAndNonGlobalEntries
   :: PI.InstalledPackageIndex
-  -> [GhcEnvironmentFileEntry]
+  -> [GhcEnvironmentFileEntry FilePath]
   -> Bool
-  -> ([PackageSpecifier a], [(PackageName, GhcEnvironmentFileEntry)])
+  -> ([PackageSpecifier a], [(PackageName, GhcEnvironmentFileEntry FilePath)])
 getEnvSpecsAndNonGlobalEntries installedIndex entries installLibs =
   if installLibs
     then (envSpecs, envEntries')
@@ -1076,8 +1077,8 @@ getEnvSpecsAndNonGlobalEntries installedIndex entries installLibs =
 
 environmentFileToSpecifiers
   :: PI.InstalledPackageIndex
-  -> [GhcEnvironmentFileEntry]
-  -> ([PackageSpecifier a], [(PackageName, GhcEnvironmentFileEntry)])
+  -> [GhcEnvironmentFileEntry FilePath]
+  -> ([PackageSpecifier a], [(PackageName, GhcEnvironmentFileEntry FilePath)])
 environmentFileToSpecifiers ipi = foldMap $ \case
   (GhcEnvFilePackageId unitId)
     | Just
@@ -1248,7 +1249,7 @@ installBuiltExe
           overwrite
 
 -- | Create 'GhcEnvironmentFileEntry's for packages with exposed libraries.
-entriesForLibraryComponents :: TargetsMap -> [GhcEnvironmentFileEntry]
+entriesForLibraryComponents :: TargetsMap -> [GhcEnvironmentFileEntry FilePath]
 entriesForLibraryComponents = Map.foldrWithKey' (\k v -> mappend (go k v)) []
   where
     hasLib :: (ComponentTarget, NonEmpty TargetSelector) -> Bool
@@ -1258,7 +1259,7 @@ entriesForLibraryComponents = Map.foldrWithKey' (\k v -> mappend (go k v)) []
     go
       :: UnitId
       -> [(ComponentTarget, NonEmpty TargetSelector)]
-      -> [GhcEnvironmentFileEntry]
+      -> [GhcEnvironmentFileEntry FilePath]
     go unitId targets
       | any hasLib targets = [GhcEnvFilePackageId unitId]
       | otherwise = []
@@ -1290,7 +1291,7 @@ getEnvFile clientInstallFlags platform compilerVersion = do
 -- | Returns the list of @GhcEnvFilePackageId@ values already existing in the
 --   environment being operated on. The @Bool@ is @True@ if we took settings
 --   from an existing file, @False@ otherwise.
-getExistingEnvEntries :: Verbosity -> CompilerFlavor -> Bool -> FilePath -> IO (Bool, [GhcEnvironmentFileEntry])
+getExistingEnvEntries :: Verbosity -> CompilerFlavor -> Bool -> FilePath -> IO (Bool, [GhcEnvironmentFileEntry FilePath])
 getExistingEnvEntries verbosity compilerFlavor supportsPkgEnvFiles envFile = do
   envFileExists <- doesFileExist envFile
   (usedExisting, allEntries) <-
@@ -1334,8 +1335,8 @@ getPackageDbStack
   :: Compiler
   -> Flag FilePath
   -> Flag FilePath
-  -> [Maybe PackageDB]
-  -> IO PackageDBStack
+  -> [Maybe PackageDBCWD]
+  -> IO PackageDBStackCWD
 getPackageDbStack compiler storeDirFlag logsDirFlag packageDbs = do
   mstoreDir <- traverse makeAbsolute $ flagToMaybe storeDirFlag
   let

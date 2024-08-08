@@ -2036,8 +2036,8 @@ reportFailedDependencies verbosity failed =
 getInstalledPackages
   :: Verbosity
   -> Compiler
-  -> Maybe (SymbolicPath CWD (Dir Pkg))
-  -> PackageDBStack
+  -> Maybe (SymbolicPath CWD (Dir from))
+  -> PackageDBStackX (SymbolicPath from (Dir PkgDB))
   -- ^ The stack of package databases.
   -> ProgramDb
   -> IO InstalledPackageIndex
@@ -2051,14 +2051,14 @@ getInstalledPackages verbosity comp mbWorkDir packageDBs progdb = do
   case compilerFlavor comp of
     GHC -> GHC.getInstalledPackages verbosity comp mbWorkDir packageDBs' progdb
     GHCJS -> GHCJS.getInstalledPackages verbosity mbWorkDir packageDBs' progdb
-    UHC -> UHC.getInstalledPackages verbosity comp packageDBs' progdb
+    UHC -> UHC.getInstalledPackages verbosity comp mbWorkDir packageDBs' progdb
     HaskellSuite{} ->
       HaskellSuite.getInstalledPackages verbosity packageDBs' progdb
     flv ->
       dieWithException verbosity $ HowToFindInstalledPackages flv
   where
     packageDBExists (SpecificPackageDB path0) = do
-      let path = interpretSymbolicPath mbWorkDir $ makeSymbolicPath path0
+      let path = interpretSymbolicPath mbWorkDir path0
       exists <- doesPathExist path
       unless exists $
         warn verbosity $
@@ -2096,8 +2096,8 @@ getPackageDBContents verbosity comp mbWorkDir packageDB progdb = do
 getInstalledPackagesMonitorFiles
   :: Verbosity
   -> Compiler
-  -> Maybe (SymbolicPath CWD ('Dir Pkg))
-  -> PackageDBStack
+  -> Maybe (SymbolicPath CWD ('Dir from))
+  -> PackageDBStackS from
   -> ProgramDb
   -> Platform
   -> IO [FilePath]
@@ -2144,7 +2144,7 @@ getInstalledPackagesById verbosity lbi@LocalBuildInfo{compiler = comp, withPacka
 -- @--global@, @--user@ and @--package-db=global|user|clear|$file@.
 -- This function combines the global/user flag and interprets the package-db
 -- flag into a single package db stack.
-interpretPackageDbFlags :: Bool -> [Maybe PackageDB] -> PackageDBStack
+interpretPackageDbFlags :: Bool -> [Maybe (PackageDBX fp)] -> PackageDBStackX fp
 interpretPackageDbFlags userInstall specificDBs =
   extra initialStack specificDBs
   where

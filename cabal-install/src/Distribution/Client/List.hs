@@ -43,9 +43,6 @@ import Distribution.Types.Dependency
 import Distribution.Types.UnqualComponentName
 
 import Distribution.Simple.Compiler
-  ( Compiler
-  , PackageDBStack
-  )
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.Simple.PackageIndex as InstalledPackageIndex
 import Distribution.Simple.Program (ProgramDb)
@@ -141,7 +138,7 @@ import qualified Text.Regex.Posix.String as Regex
 -- | Return a list of packages matching given search strings.
 getPkgList
   :: Verbosity
-  -> PackageDBStack
+  -> PackageDBStackCWD
   -> RepoContext
   -> Maybe (Compiler, ProgramDb)
   -> ListFlags
@@ -213,7 +210,7 @@ getPkgList verbosity packageDBs repoCtxt mcompprogdb listFlags pats = do
 -- | Show information about packages.
 list
   :: Verbosity
-  -> PackageDBStack
+  -> PackageDBStackCWD
   -> RepoContext
   -> Maybe (Compiler, ProgramDb)
   -> ListFlags
@@ -249,7 +246,7 @@ list verbosity packageDBs repos mcompProgdb listFlags pats = do
 
 info
   :: Verbosity
-  -> PackageDBStack
+  -> PackageDBStackCWD
   -> RepoContext
   -> Compiler
   -> ProgramDb

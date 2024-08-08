@@ -19,6 +19,7 @@ module Distribution.Client.Utils
   , makeAbsoluteToCwd
   , makeRelativeToCwd
   , makeRelativeToDir
+  , makeRelativeToDirS
   , makeRelativeCanonical
   , filePathToByteString
   , byteStringToFilePath
@@ -76,8 +77,11 @@ import Distribution.Utils.Path
   , Pkg
   , RelativePath
   , SymbolicPath
+  , getSymbolicPath
   , makeSymbolicPath
   , relativeSymbolicPath
+  , sameDirectory
+  , symbolicPathRelative_maybe
   )
 import Distribution.Version
 
@@ -263,6 +267,16 @@ makeRelativeToCwd path =
 makeRelativeToDir :: FilePath -> FilePath -> IO FilePath
 makeRelativeToDir path dir =
   makeRelativeCanonical <$> canonicalizePath path <*> canonicalizePath dir
+
+-- | makeRelativeToDir for SymbolicPath
+makeRelativeToDirS :: Maybe (SymbolicPath CWD (Dir dir)) -> SymbolicPath CWD to -> IO (SymbolicPath dir to)
+makeRelativeToDirS Nothing s = makeRelativeToDirS (Just sameDirectory) s
+makeRelativeToDirS (Just root) p =
+  case symbolicPathRelative_maybe p of
+    -- TODO: Use AbsolutePath
+    Nothing -> return $ makeSymbolicPath (getSymbolicPath p)
+    Just rel_path ->
+      makeSymbolicPath <$> makeRelativeToDir (getSymbolicPath root) (getSymbolicPath rel_path)
 
 -- | Given a canonical absolute path and canonical absolute dir, make the path
 -- relative to the directory, including using @../..@ if necessary. Returns

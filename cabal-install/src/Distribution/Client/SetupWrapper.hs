@@ -34,10 +34,6 @@ import Prelude ()
 
 import qualified Distribution.Backpack as Backpack
 import Distribution.CabalSpecVersion (cabalSpecMinimumLibraryVersion)
-import Distribution.Compiler
-  ( CompilerFlavor (GHC, GHCJS)
-  , buildCompilerId
-  )
 import qualified Distribution.Make as Make
 import Distribution.Package
   ( ComponentId
@@ -65,11 +61,6 @@ import Distribution.Simple.BuildPaths
   , exeExtension
   )
 import Distribution.Simple.Compiler
-  ( Compiler (compilerId)
-  , PackageDB (..)
-  , PackageDBStack
-  , compilerFlavor
-  )
 import Distribution.Simple.Configure
   ( configCompilerEx
   )
@@ -126,6 +117,7 @@ import Distribution.Client.JobControl
 import Distribution.Client.Types
 import Distribution.Client.Utils
   ( existsAndIsMoreRecentThan
+  , makeRelativeToDirS
 #ifdef mingw32_HOST_OS
   , canonicalizePathNoThrow
 #endif
@@ -258,7 +250,7 @@ data SetupScriptOptions = SetupScriptOptions
   -- if needed.
   , useCompiler :: Maybe Compiler
   , usePlatform :: Maybe Platform
-  , usePackageDB :: PackageDBStack
+  , usePackageDB :: PackageDBStackCWD
   , usePackageIndex :: Maybe InstalledPackageIndex
   , useProgramDb :: ProgramDb
   , useDistPref :: SymbolicPath Pkg (Dir Dist)
@@ -511,15 +503,15 @@ setupWrapper
   -> Maybe PackageDescription
   -> CommandUI flags
   -> (flags -> CommonSetupFlags)
-  -> (Version -> flags)
+  -> (Version -> IO flags)
   -- ^ produce command flags given the Cabal library version
   -> (Version -> [String])
   -> IO ()
 setupWrapper verbosity options mpkg cmd getCommonFlags getFlags getExtraArgs = do
   setup <- getSetup verbosity options mpkg
   let version = setupVersion setup
-      flags = getFlags version
       extraArgs = getExtraArgs version
+  flags <- getFlags version
   runSetupCommand
     verbosity
     setup
@@ -1073,6 +1065,7 @@ getExternalSetupMethod verbosity options pkg bt = do
         when (outOfDate || forceCompile) $ do
           debug verbosity "Setup executable needs to be updated, compiling..."
           (compiler, progdb, options'') <- configureCompiler options'
+          pkgDbs <- traverse (traverse (makeRelativeToDirS mbWorkDir)) (coercePackageDBStack (usePackageDB options''))
           let cabalPkgid = PackageIdentifier (mkPackageName "Cabal") cabalLibVersion
               (program, extraOpts) =
                 case compilerFlavor compiler of
@@ -1118,7 +1111,7 @@ getExternalSetupMethod verbosity options pkg bt = do
                       Custom -> toNubListR [sameDirectory]
                       Hooks -> toNubListR [sameDirectory]
                       _ -> mempty
-                  , ghcOptPackageDBs = usePackageDB options''
+                  , ghcOptPackageDBs = pkgDbs
                   , ghcOptHideAllPackages = Flag (useDependenciesExclusive options')
                   , ghcOptCabal = Flag (useDependenciesExclusive options')
                   , ghcOptPackages = toNubListR $ map addRenaming selectedDeps

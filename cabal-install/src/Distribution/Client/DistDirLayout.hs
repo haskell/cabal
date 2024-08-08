@@ -43,8 +43,9 @@ import Distribution.Package
 import Distribution.Simple.Compiler
   ( Compiler (..)
   , OptimisationLevel (..)
-  , PackageDB (..)
-  , PackageDBStack
+  , PackageDBCWD
+  , PackageDBStackCWD
+  , PackageDBX (..)
   )
 import Distribution.Simple.Configure (interpretPackageDbFlags)
 import Distribution.System
@@ -111,7 +112,7 @@ data DistDirLayout = DistDirLayout
   , distSdistDirectory :: FilePath
   , distTempDirectory :: FilePath
   , distBinDirectory :: FilePath
-  , distPackageDB :: CompilerId -> PackageDB
+  , distPackageDB :: CompilerId -> PackageDBCWD
   , distHaddockOutputDir :: Maybe FilePath
   -- ^ Is needed when `--haddock-output-dir` flag is used.
   }
@@ -121,8 +122,8 @@ data StoreDirLayout = StoreDirLayout
   { storeDirectory :: Compiler -> FilePath
   , storePackageDirectory :: Compiler -> UnitId -> FilePath
   , storePackageDBPath :: Compiler -> FilePath
-  , storePackageDB :: Compiler -> PackageDB
-  , storePackageDBStack :: Compiler -> [Maybe PackageDB] -> PackageDBStack
+  , storePackageDB :: Compiler -> PackageDBCWD
+  , storePackageDBStack :: Compiler -> [Maybe PackageDBCWD] -> PackageDBStackCWD
   , storeIncomingDirectory :: Compiler -> FilePath
   , storeIncomingLock :: Compiler -> UnitId -> FilePath
   }
@@ -258,7 +259,7 @@ defaultDistDirLayout projectRoot mdistDirectory haddockOutputDir =
     distPackageDBPath :: CompilerId -> FilePath
     distPackageDBPath compid = distDirectory </> "packagedb" </> prettyShow compid
 
-    distPackageDB :: CompilerId -> PackageDB
+    distPackageDB :: CompilerId -> PackageDBCWD
     distPackageDB = SpecificPackageDB . distPackageDBPath
 
     distHaddockOutputDir :: Maybe FilePath
@@ -282,11 +283,11 @@ defaultStoreDirLayout storeRoot =
     storePackageDBPath compiler =
       storeDirectory compiler </> "package.db"
 
-    storePackageDB :: Compiler -> PackageDB
+    storePackageDB :: Compiler -> PackageDBCWD
     storePackageDB compiler =
       SpecificPackageDB (storePackageDBPath compiler)
 
-    storePackageDBStack :: Compiler -> [Maybe PackageDB] -> PackageDBStack
+    storePackageDBStack :: Compiler -> [Maybe PackageDBCWD] -> PackageDBStackCWD
     storePackageDBStack compiler extraPackageDB =
       (interpretPackageDbFlags False extraPackageDB)
         ++ [storePackageDB compiler]

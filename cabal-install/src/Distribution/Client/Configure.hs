@@ -86,8 +86,8 @@ import Distribution.PackageDescription.Configuration
 import Distribution.Simple.Compiler
   ( Compiler
   , CompilerInfo
-  , PackageDB (..)
-  , PackageDBStack
+  , PackageDBStackCWD
+  , PackageDBX (..)
   , compilerInfo
   )
 import Distribution.Simple.PackageDescription
@@ -144,7 +144,7 @@ chooseCabalVersion _configExFlags maybeVersion =
 -- | Configure the package found in the local directory
 configure
   :: Verbosity
-  -> PackageDBStack
+  -> PackageDBStackCWD
   -> RepoContext
   -> Compiler
   -> Platform
@@ -203,7 +203,7 @@ configure
           Nothing
           configureCommand
           configCommonFlags
-          (const configFlags)
+          (const (return configFlags))
           (const extraArgs)
       Right installPlan0 ->
         let installPlan = InstallPlan.configureInstallPlan configFlags installPlan0
@@ -253,7 +253,7 @@ configure
       logMsg message rest = debug verbosity message >> rest
 
 configureSetupScript
-  :: PackageDBStack
+  :: PackageDBStackCWD
   -> Compiler
   -> Platform
   -> ProgramDb
@@ -308,7 +308,7 @@ configureSetupScript
       -- finding the Cabal lib when compiling any Setup.hs even if we're doing
       -- a global install. However we also allow looking in a specific package
       -- db.
-      packageDBs' :: PackageDBStack
+      packageDBs' :: PackageDBStackCWD
       index' :: Maybe InstalledPackageIndex
       (packageDBs', index') =
         case packageDBs of
@@ -505,7 +505,7 @@ configurePackage
       (Just pkg)
       configureCommand
       configCommonFlags
-      configureFlags
+      (return . configureFlags)
       (const extraArgs)
     where
       gpkg :: PkgDesc.GenericPackageDescription

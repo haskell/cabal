@@ -856,7 +856,7 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
         , ["-hide-all-packages" | flagBool ghcOptHideAllPackages]
         , ["-Wmissing-home-modules" | flagBool ghcOptWarnMissingHomeModules]
         , ["-no-auto-link-packages" | flagBool ghcOptNoAutoLinkPackages]
-        , packageDbArgs implInfo (ghcOptPackageDBs opts)
+        , packageDbArgs implInfo (interpretPackageDBStack Nothing (ghcOptPackageDBs opts))
         , concat $
             let space "" = ""
                 space xs = ' ' : xs
@@ -918,7 +918,7 @@ verbosityOpts verbosity
   | otherwise = ["-w", "-v0"]
 
 -- | GHC <7.6 uses '-package-conf' instead of '-package-db'.
-packageDbArgsConf :: PackageDBStack -> [String]
+packageDbArgsConf :: PackageDBStackCWD -> [String]
 packageDbArgsConf dbstack = case dbstack of
   (GlobalPackageDB : UserPackageDB : dbs) -> concatMap specific dbs
   (GlobalPackageDB : dbs) ->
@@ -935,7 +935,7 @@ packageDbArgsConf dbstack = case dbstack of
 
 -- | GHC >= 7.6 uses the '-package-db' flag. See
 -- https://gitlab.haskell.org/ghc/ghc/-/issues/5977.
-packageDbArgsDb :: PackageDBStack -> [String]
+packageDbArgsDb :: PackageDBStackCWD -> [String]
 -- special cases to make arguments prettier in common scenarios
 packageDbArgsDb dbstack = case dbstack of
   (GlobalPackageDB : UserPackageDB : dbs)
@@ -954,7 +954,7 @@ packageDbArgsDb dbstack = case dbstack of
     isSpecific (SpecificPackageDB _) = True
     isSpecific _ = False
 
-packageDbArgs :: GhcImplInfo -> PackageDBStack -> [String]
+packageDbArgs :: GhcImplInfo -> PackageDBStackCWD -> [String]
 packageDbArgs implInfo
   | flagPackageConf implInfo = packageDbArgsConf
   | otherwise = packageDbArgsDb

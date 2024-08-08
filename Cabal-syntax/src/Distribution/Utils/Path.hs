@@ -60,7 +60,7 @@ module Distribution.Utils.Path
     -- ** Working directory handling
   , interpretSymbolicPathCWD
   , absoluteWorkingDir
-  , tryMakeRelativeToWorkingDir
+  , tryMakeRelative
 
     -- ** Module names
   , moduleNameSymbolicPath
@@ -290,7 +290,7 @@ moduleNameSymbolicPath modNm = SymbolicPath $ ModuleName.toFilePath modNm
 -- (because the program might expect certain paths to be relative).
 --
 -- See Note [Symbolic paths] in Distribution.Utils.Path.
-interpretSymbolicPath :: Maybe (SymbolicPath CWD (Dir Pkg)) -> SymbolicPathX allowAbsolute Pkg to -> FilePath
+interpretSymbolicPath :: Maybe (SymbolicPath CWD (Dir from)) -> SymbolicPathX allowAbsolute from to -> FilePath
 interpretSymbolicPath mbWorkDir (SymbolicPath p) =
   -- Note that this properly handles an absolute symbolic path,
   -- because if @q@ is absolute, then @p </> q = q@.
@@ -317,7 +317,7 @@ interpretSymbolicPath mbWorkDir (SymbolicPath p) =
 -- appropriate to use 'interpretSymbolicPathCWD' to provide its arguments.
 --
 -- See Note [Symbolic paths] in Distribution.Utils.Path.
-interpretSymbolicPathCWD :: SymbolicPathX allowAbsolute Pkg to -> FilePath
+interpretSymbolicPathCWD :: SymbolicPathX allowAbsolute from to -> FilePath
 interpretSymbolicPathCWD (SymbolicPath p) = p
 
 -- | Change what a symbolic path is pointing to.
@@ -347,11 +347,13 @@ absoluteWorkingDir :: Maybe (SymbolicPath CWD to) -> IO FilePath
 absoluteWorkingDir Nothing = Directory.getCurrentDirectory
 absoluteWorkingDir (Just wd) = Directory.makeAbsolute $ getSymbolicPath wd
 
--- | Try to make a path relative to the current working directory.
+-- | Try to make a symbolic path relative.
+--
+-- This function does nothing if the path is already relative.
 --
 -- NB: this function may fail to make the path relative.
-tryMakeRelativeToWorkingDir :: Maybe (SymbolicPath CWD (Dir dir)) -> SymbolicPath dir to -> IO (SymbolicPath dir to)
-tryMakeRelativeToWorkingDir mbWorkDir (SymbolicPath fp) = do
+tryMakeRelative :: Maybe (SymbolicPath CWD (Dir dir)) -> SymbolicPath dir to -> IO (SymbolicPath dir to)
+tryMakeRelative mbWorkDir (SymbolicPath fp) = do
   wd <- absoluteWorkingDir mbWorkDir
   return $ SymbolicPath (FilePath.makeRelative wd fp)
 

@@ -85,6 +85,7 @@ import Distribution.Simple.Compiler
   ( CompilerInfo (..)
   , DebugInfoLevel (..)
   , OptimisationLevel (..)
+  , interpretPackageDB
   )
 import Distribution.Simple.InstallDirs (CopyDest (NoCopyDest))
 import Distribution.Simple.LocalBuildInfo
@@ -685,6 +686,8 @@ convertLegacyAllPackageFlags globalFlags configFlags configExFlags installFlags 
       , globalStoreDir = projectConfigStoreDir
       } = globalFlags
 
+    projectConfigPackageDBs = (fmap . fmap) (interpretPackageDB Nothing) projectConfigPackageDBs_
+
     ConfigFlags
       { configCommonFlags = commonFlags
       , configHcFlavor = projectConfigHcFlavor
@@ -693,7 +696,7 @@ convertLegacyAllPackageFlags globalFlags configFlags configExFlags installFlags 
       , -- configProgramPathExtra    = projectConfigProgPathExtra DELETE ME
       configInstallDirs = projectConfigInstallDirs
       , -- configUserInstall         = projectConfigUserInstall,
-      configPackageDBs = projectConfigPackageDBs
+      configPackageDBs = projectConfigPackageDBs_
       } = configFlags
 
     CommonSetupFlags
@@ -977,7 +980,7 @@ convertToLegacySharedConfig
       configFlags =
         mempty
           { configCommonFlags = commonFlags
-          , configPackageDBs = projectConfigPackageDBs
+          , configPackageDBs = fmap (fmap (fmap unsafeMakeSymbolicPath)) projectConfigPackageDBs
           , configInstallDirs = projectConfigInstallDirs
           }
 

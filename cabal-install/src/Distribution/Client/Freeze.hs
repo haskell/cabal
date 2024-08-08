@@ -61,10 +61,6 @@ import Distribution.Package
   , packageVersion
   )
 import Distribution.Simple.Compiler
-  ( Compiler
-  , PackageDBStack
-  , compilerInfo
-  )
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import Distribution.Simple.Program
   ( ProgramDb
@@ -98,7 +94,7 @@ import Distribution.Version
 -- constraining each dependency to an exact version.
 freeze
   :: Verbosity
-  -> PackageDBStack
+  -> PackageDBStackCWD
   -> RepoContext
   -> Compiler
   -> Platform
@@ -146,7 +142,7 @@ freeze
 -- command.
 getFreezePkgs
   :: Verbosity
-  -> PackageDBStack
+  -> PackageDBStackCWD
   -> RepoContext
   -> Compiler
   -> Platform

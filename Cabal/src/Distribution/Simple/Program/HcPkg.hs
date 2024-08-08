@@ -154,8 +154,8 @@ defaultRegisterOptions =
 register
   :: HcPkgInfo
   -> Verbosity
-  -> Maybe (SymbolicPath CWD (Dir Pkg))
-  -> PackageDBStack
+  -> Maybe (SymbolicPath CWD (Dir from))
+  -> PackageDBStackS from
   -> InstalledPackageInfo
   -> RegisterOptions
   -> IO ()
@@ -179,7 +179,7 @@ register hpi verbosity mbWorkDir packagedbs pkgInfo registerOptions
   , recacheMultiInstance hpi =
       do
         let pkgdb = registrationPackageDB packagedbs
-        writeRegistrationFileDirectly verbosity hpi pkgdb pkgInfo
+        writeRegistrationFileDirectly verbosity hpi mbWorkDir pkgdb pkgInfo
         recache hpi verbosity mbWorkDir pkgdb
   | otherwise =
       runProgramInvocation
@@ -189,17 +189,18 @@ register hpi verbosity mbWorkDir packagedbs pkgInfo registerOptions
 writeRegistrationFileDirectly
   :: Verbosity
   -> HcPkgInfo
-  -> PackageDB
+  -> Maybe (SymbolicPath CWD (Dir from))
+  -> PackageDBS from
   -> InstalledPackageInfo
   -> IO ()
-writeRegistrationFileDirectly verbosity hpi (SpecificPackageDB dir) pkgInfo
+writeRegistrationFileDirectly verbosity hpi mbWorkDir (SpecificPackageDB dir) pkgInfo
   | supportsDirDbs hpi =
       do
-        let pkgfile = dir </> prettyShow (installedUnitId pkgInfo) <.> "conf"
+        let pkgfile = interpretSymbolicPath mbWorkDir dir </> prettyShow (installedUnitId pkgInfo) <.> "conf"
         writeUTF8File pkgfile (showInstalledPackageInfo pkgInfo)
   | otherwise =
       dieWithException verbosity NoSupportDirStylePackageDb
-writeRegistrationFileDirectly verbosity _ _ _ =
+writeRegistrationFileDirectly verbosity _ _ _ _ =
   -- We don't know here what the dir for the global or user dbs are,
   -- if that's needed it'll require a bit more plumbing to support.
   dieWithException verbosity OnlySupportSpecificPackageDb
@@ -216,7 +217,7 @@ unregister hpi verbosity mbWorkDir packagedb pkgid =
 -- | Call @hc-pkg@ to recache the registered packages.
 --
 -- > hc-pkg recache [--user | --global | --package-db]
-recache :: HcPkgInfo -> Verbosity -> Maybe (SymbolicPath CWD (Dir Pkg)) -> PackageDB -> IO ()
+recache :: HcPkgInfo -> Verbosity -> Maybe (SymbolicPath CWD (Dir from)) -> PackageDBS from -> IO ()
 recache hpi verbosity mbWorkDir packagedb =
   runProgramInvocation
     verbosity
@@ -278,8 +279,8 @@ hide hpi verbosity mbWorkDir packagedb pkgid =
 dump
   :: HcPkgInfo
   -> Verbosity
-  -> Maybe (SymbolicPath CWD (Dir Pkg))
-  -> PackageDB
+  -> Maybe (SymbolicPath CWD (Dir from))
+  -> PackageDBX (SymbolicPath from (Dir PkgDB))
   -> IO [InstalledPackageInfo]
 dump hpi verbosity mbWorkDir packagedb = do
   output <-
@@ -432,8 +433,8 @@ initInvocation hpi verbosity path =
 registerInvocation
   :: HcPkgInfo
   -> Verbosity
-  -> Maybe (SymbolicPath CWD (Dir Pkg))
-  -> PackageDBStack
+  -> Maybe (SymbolicPath CWD (Dir from))
+  -> PackageDBStackS from
   -> InstalledPackageInfo
   -> RegisterOptions
   -> ProgramInvocation
@@ -474,8 +475,8 @@ unregisterInvocation hpi verbosity mbWorkDir packagedb pkgid =
 recacheInvocation
   :: HcPkgInfo
   -> Verbosity
-  -> Maybe (SymbolicPath CWD (Dir Pkg))
-  -> PackageDB
+  -> Maybe (SymbolicPath CWD (Dir from))
+  -> PackageDBS from
   -> ProgramInvocation
 recacheInvocation hpi verbosity mbWorkDir packagedb =
   programInvocationCwd mbWorkDir (hcPkgProgram hpi) $
@@ -522,8 +523,8 @@ hideInvocation hpi verbosity mbWorkDir packagedb pkgid =
 dumpInvocation
   :: HcPkgInfo
   -> Verbosity
-  -> Maybe (SymbolicPath CWD (Dir Pkg))
-  -> PackageDB
+  -> Maybe (SymbolicPath CWD (Dir from))
+  -> PackageDBX (SymbolicPath from (Dir PkgDB))
   -> ProgramInvocation
 dumpInvocation hpi _verbosity mbWorkDir packagedb =
   (programInvocationCwd mbWorkDir (hcPkgProgram hpi) args)
@@ -555,7 +556,7 @@ listInvocation hpi _verbosity mbWorkDir packagedb =
 -- We use verbosity level 'silent' because it is important that we
 -- do not contaminate the output with info/debug messages.
 
-packageDbStackOpts :: HcPkgInfo -> PackageDBStack -> [String]
+packageDbStackOpts :: HcPkgInfo -> PackageDBStackS from -> [String]
 packageDbStackOpts hpi dbstack
   | noPkgDbStack hpi = [packageDbOpts hpi (registrationPackageDB dbstack)]
   | otherwise = case dbstack of
@@ -569,7 +570,7 @@ packageDbStackOpts hpi dbstack
           : map specific dbs
       _ -> ierror
   where
-    specific (SpecificPackageDB db) = "--" ++ packageDbFlag hpi ++ "=" ++ db
+    specific (SpecificPackageDB db) = "--" ++ packageDbFlag hpi ++ "=" ++ interpretSymbolicPathCWD db
     specific _ = ierror
     ierror :: a
     ierror = error ("internal error: unexpected package db stack: " ++ show dbstack)
@@ -581,10 +582,10 @@ packageDbFlag hpi
   | otherwise =
       "package-db"
 
-packageDbOpts :: HcPkgInfo -> PackageDB -> String
+packageDbOpts :: HcPkgInfo -> PackageDBX (SymbolicPath from (Dir PkgDB)) -> String
 packageDbOpts _ GlobalPackageDB = "--global"
 packageDbOpts _ UserPackageDB = "--user"
-packageDbOpts hpi (SpecificPackageDB db) = "--" ++ packageDbFlag hpi ++ "=" ++ db
+packageDbOpts hpi (SpecificPackageDB db) = "--" ++ packageDbFlag hpi ++ "=" ++ interpretSymbolicPathCWD db
 
 verbosityOpts :: HcPkgInfo -> Verbosity -> [String]
 verbosityOpts hpi v

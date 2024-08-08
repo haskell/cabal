@@ -69,7 +69,7 @@ import Distribution.Simple.Compiler
   , CompilerFlavor
   , DebugInfoLevel (..)
   , OptimisationLevel (..)
-  , PackageDB
+  , PackageDBCWD
   , ProfDetailLevel
   )
 import Distribution.Simple.InstallDirs
@@ -198,7 +198,7 @@ data ProjectConfigShared = ProjectConfigShared
     -- projectConfigUserInstall       :: Flag Bool,
 
     projectConfigInstallDirs :: InstallDirs (Flag PathTemplate)
-  , projectConfigPackageDBs :: [Maybe PackageDB]
+  , projectConfigPackageDBs :: [Maybe PackageDBCWD]
   , -- configuration used both by the solver and other phases
     projectConfigRemoteRepos :: NubList RemoteRepo
   -- ^ Available Hackage servers.

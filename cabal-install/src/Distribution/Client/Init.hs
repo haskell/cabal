@@ -31,7 +31,7 @@ import System.IO (BufferMode (NoBuffering), hSetBuffering, stdout)
 -- | This is the main driver for the init script.
 initCmd
   :: Verbosity
-  -> PackageDBStack
+  -> PackageDBStackCWD
   -> RepoContext
   -> Compiler
   -> ProgramDb

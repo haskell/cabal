@@ -101,7 +101,7 @@ build numJobs pkg_descr pbci = do
     if isLib
       then -- NB: this might fail to make the buildTargetDir relative,
       -- as noted in #9776. Oh well.
-        tryMakeRelativeToWorkingDir mbWorkDir buildTargetDir0
+        tryMakeRelative mbWorkDir buildTargetDir0
       else return buildTargetDir0
   -- To preserve the previous behaviour, we don't use relative dirs for
   -- executables. Historically, this isn't needed to reduce the CLI limit

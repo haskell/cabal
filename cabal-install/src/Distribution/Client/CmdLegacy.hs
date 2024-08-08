@@ -78,7 +78,7 @@ wrapperAction command getCommonFlags =
         Nothing
         command'
         getCommonFlags
-        (const flags)
+        (const (return flags))
         (const extraArgs)
 
 --

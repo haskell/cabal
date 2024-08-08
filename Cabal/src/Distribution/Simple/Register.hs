@@ -282,7 +282,7 @@ generateRegistrationInfo verbosity pkg lib lbi clbi inplace reloc distPref packa
               clbi
           )
       else do
-        abi_hash <- abiHash verbosity pkg inplaceDir distPref lbi lib clbi
+        abi_hash <- abiHash verbosity pkg distPref lbi lib clbi
         if reloc
           then
             relocRegistrationInfo
@@ -309,13 +309,12 @@ generateRegistrationInfo verbosity pkg lib lbi clbi inplace reloc distPref packa
 abiHash
   :: Verbosity
   -> PackageDescription
-  -> FilePath
   -> SymbolicPath Pkg (Dir Dist)
   -> LocalBuildInfo
   -> Library
   -> ComponentLocalBuildInfo
   -> IO AbiHash
-abiHash verbosity pkg inplaceDir distPref lbi lib clbi =
+abiHash verbosity pkg distPref lbi lib clbi =
   case compilerFlavor comp of
     GHC -> do
       fmap mkAbiHash $ GHC.libAbiHash verbosity pkg lbi' lib clbi
@@ -328,7 +327,7 @@ abiHash verbosity pkg inplaceDir distPref lbi lib clbi =
       lbi
         { withPackageDB =
             withPackageDB lbi
-              ++ [SpecificPackageDB (inplaceDir </> getSymbolicPath (internalPackageDBPath lbi distPref))]
+              ++ [SpecificPackageDB (internalPackageDBPath lbi distPref)]
         }
 
 relocRegistrationInfo
@@ -428,8 +427,8 @@ registerPackage
   :: Verbosity
   -> Compiler
   -> ProgramDb
-  -> Maybe (SymbolicPath CWD (Dir Pkg))
-  -> PackageDBStack
+  -> Maybe (SymbolicPath CWD (Dir from))
+  -> PackageDBStackS from
   -> InstalledPackageInfo
   -> HcPkg.RegisterOptions
   -> IO ()
@@ -442,7 +441,7 @@ registerPackage verbosity comp progdb mbWorkDir packageDbs installedPkgInfo regi
     _
       | HcPkg.registerMultiInstance registerOptions ->
           dieWithException verbosity RegisMultiplePkgNotSupported
-    UHC -> UHC.registerPackage verbosity comp progdb packageDbs installedPkgInfo
+    UHC -> UHC.registerPackage verbosity mbWorkDir comp progdb packageDbs installedPkgInfo
     _ -> dieWithException verbosity RegisteringNotImplemented
 
 writeHcPkgRegisterScript

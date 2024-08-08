@@ -72,10 +72,6 @@ import Distribution.Client.Types hiding
 
 import Distribution.Package
 import Distribution.Simple.Compiler
-  ( Compiler
-  , PackageDB (..)
-  , jsemSupported
-  )
 import Distribution.Simple.Program
 import qualified Distribution.Simple.Register as Cabal
 
@@ -478,7 +474,7 @@ createPackageDBIfMissing
   :: Verbosity
   -> Compiler
   -> ProgramDb
-  -> PackageDB
+  -> PackageDBCWD
   -> IO ()
 createPackageDBIfMissing
   verbosity

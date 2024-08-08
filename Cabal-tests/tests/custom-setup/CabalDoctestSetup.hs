@@ -103,7 +103,7 @@ import Distribution.Simple
        (UserHooks (..), autoconfUserHooks, defaultMainWithHooks,
        simpleUserHooks)
 import Distribution.Simple.Compiler
-       (CompilerFlavor (GHC), CompilerId (..), PackageDB (..), compilerId)
+       (CompilerFlavor (GHC), CompilerId (..), PackageDB, PackageDBX (..), compilerId)
 import Distribution.Simple.LocalBuildInfo
        (ComponentLocalBuildInfo (componentPackageDeps), LocalBuildInfo,
        compiler, withExeLBI, withLibLBI, withPackageDB, withTestLBI
@@ -119,8 +119,6 @@ import Distribution.Simple.Utils
 import Distribution.Text
        (display)
 import Distribution.Verbosity
-import System.FilePath
-       ((</>))
 
 import qualified Data.Foldable    as F
                  (for_)
@@ -160,7 +158,9 @@ import Distribution.Package
 import Distribution.Utils.Path
        ( SymbolicPathX
        , makeSymbolicPath
-       , makeRelativePathEx )
+       , makeRelativePathEx
+       , interpretSymbolicPathCWD
+       , (</>))
 import qualified Distribution.Utils.Path as Cabal
        (getSymbolicPath)
 import Distribution.Simple.Utils
@@ -336,7 +336,7 @@ generateBuildModule testSuiteName flags pkg lbi = do
   let distPref = fromFlag (buildDistPref flags)
 
   -- Package DBs & environments
-  let dbStack = withPackageDB lbi ++ [ SpecificPackageDB $ toFilePath distPref </> "package.conf.inplace" ]
+  let dbStack = withPackageDB lbi ++ [ SpecificPackageDB $ distPref </>  makeRelativePathEx "package.conf.inplace" ]
   let dbFlags = "-hide-all-packages" : packageDbArgs dbStack
   let envFlags
         | ghcCanBeToldToIgnorePkgEnvs = [ "-package-env=-" ]
@@ -539,7 +539,7 @@ generateBuildModule testSuiteName flags pkg lbi = do
                                            : concatMap specific dbs
       _ -> ierror
       where
-        specific (SpecificPackageDB db) = [ "-package-conf=" ++ db ]
+        specific (SpecificPackageDB db) = [ "-package-conf=" ++ interpretSymbolicPathCWD db ]
         specific _                      = ierror
         ierror = error $ "internal error: unexpected package db stack: "
                       ++ show dbstack
@@ -557,7 +557,7 @@ generateBuildModule testSuiteName flags pkg lbi = do
       dbs                                 -> "-clear-package-db"
                                            : concatMap single dbs
      where
-       single (SpecificPackageDB db) = [ "-package-db=" ++ db ]
+       single (SpecificPackageDB db) = [ "-package-db=" ++ interpretSymbolicPathCWD db ]
        single GlobalPackageDB        = [ "-global-package-db" ]
        single UserPackageDB          = [ "-user-package-db" ]
        isSpecific (SpecificPackageDB _) = True

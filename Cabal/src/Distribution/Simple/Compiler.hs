@@ -1,6 +1,9 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveFoldable #-}
+{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveTraversable #-}
 
 -----------------------------------------------------------------------------
 
@@ -35,11 +38,21 @@ module Distribution.Simple.Compiler
   , compilerInfo
 
     -- * Support for package databases
-  , PackageDB (..)
+  , PackageDB
   , PackageDBStack
+  , PackageDBCWD
+  , PackageDBStackCWD
+  , PackageDBX (..)
+  , PackageDBStackX
+  , PackageDBS
+  , PackageDBStackS
   , registrationPackageDB
   , absolutePackageDBPaths
   , absolutePackageDBPath
+  , interpretPackageDB
+  , interpretPackageDBStack
+  , coercePackageDB
+  , coercePackageDBStack
 
     -- * Support for optimisation levels
   , OptimisationLevel (..)
@@ -95,7 +108,6 @@ import Language.Haskell.Extension
 
 import qualified Data.Map as Map (lookup)
 import System.Directory (canonicalizePath)
-import System.FilePath (isRelative)
 
 data Compiler = Compiler
   { compilerId :: CompilerId
@@ -181,15 +193,17 @@ compilerInfo c =
 --  the file system. This can be used to build isolated environments of
 --  packages, for example to build a collection of related packages
 --  without installing them globally.
-data PackageDB
+--
+--  Abstracted over
+data PackageDBX fp
   = GlobalPackageDB
   | UserPackageDB
   | -- | NB: the path might be relative or it might be absolute
-    SpecificPackageDB FilePath
-  deriving (Eq, Generic, Ord, Show, Read, Typeable)
+    SpecificPackageDB fp
+  deriving (Eq, Generic, Ord, Show, Read, Typeable, Functor, Foldable, Traversable)
 
-instance Binary PackageDB
-instance Structured PackageDB
+instance Binary fp => Binary (PackageDBX fp)
+instance Structured fp => Structured (PackageDBX fp)
 
 -- | We typically get packages from several databases, and stack them
 -- together. This type lets us be explicit about that stacking. For example
@@ -206,11 +220,20 @@ instance Structured PackageDB
 -- we can use several custom package dbs and the user package db together.
 --
 -- When it comes to writing, the top most (last) package is used.
-type PackageDBStack = [PackageDB]
+type PackageDBStackX from = [PackageDBX from]
+
+type PackageDB = PackageDBX (SymbolicPath Pkg (Dir PkgDB))
+type PackageDBStack = PackageDBStackX (SymbolicPath Pkg (Dir PkgDB))
+
+type PackageDBS from = PackageDBX (SymbolicPath from (Dir PkgDB))
+type PackageDBStackS from = PackageDBStackX (SymbolicPath from (Dir PkgDB))
+
+type PackageDBCWD = PackageDBX FilePath
+type PackageDBStackCWD = PackageDBStackX FilePath
 
 -- | Return the package that we should register into. This is the package db at
 -- the top of the stack.
-registrationPackageDB :: PackageDBStack -> PackageDB
+registrationPackageDB :: PackageDBStackX from -> PackageDBX from
 registrationPackageDB dbs = case safeLast dbs of
   Nothing -> error "internal error: empty package db set"
   Just p -> p
@@ -230,10 +253,30 @@ absolutePackageDBPath _ GlobalPackageDB = return GlobalPackageDB
 absolutePackageDBPath _ UserPackageDB = return UserPackageDB
 absolutePackageDBPath mbWorkDir (SpecificPackageDB db) = do
   let db' =
-        if isRelative db
-          then interpretSymbolicPath mbWorkDir (makeRelativePathEx db)
-          else db
-  SpecificPackageDB <$> canonicalizePath db'
+        case symbolicPathRelative_maybe db of
+          Nothing -> getSymbolicPath db
+          Just rel_path -> interpretSymbolicPath mbWorkDir rel_path
+  SpecificPackageDB . makeSymbolicPath <$> canonicalizePath db'
+
+interpretPackageDB :: Maybe (SymbolicPath CWD (Dir Pkg)) -> PackageDB -> PackageDBCWD
+interpretPackageDB _ GlobalPackageDB = GlobalPackageDB
+interpretPackageDB _ UserPackageDB = UserPackageDB
+interpretPackageDB mbWorkDir (SpecificPackageDB db) =
+  SpecificPackageDB (interpretSymbolicPath mbWorkDir db)
+
+interpretPackageDBStack :: Maybe (SymbolicPath CWD (Dir Pkg)) -> PackageDBStack -> PackageDBStackCWD
+interpretPackageDBStack mbWorkDir = map (interpretPackageDB mbWorkDir)
+
+-- | Transform a package db using a FilePath into one using symbolic paths.
+coercePackageDB :: PackageDBCWD -> PackageDBX (SymbolicPath CWD (Dir PkgDB))
+coercePackageDB GlobalPackageDB = GlobalPackageDB
+coercePackageDB UserPackageDB = UserPackageDB
+coercePackageDB (SpecificPackageDB db) = SpecificPackageDB (makeSymbolicPath db)
+
+coercePackageDBStack
+  :: [PackageDBCWD]
+  -> [PackageDBX (SymbolicPath CWD (Dir PkgDB))]
+coercePackageDBStack = map coercePackageDB
 
 -- ------------------------------------------------------------
 

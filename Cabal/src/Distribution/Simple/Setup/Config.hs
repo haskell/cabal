@@ -905,7 +905,7 @@ readPackageDb :: String -> Maybe PackageDB
 readPackageDb "clear" = Nothing
 readPackageDb "global" = Just GlobalPackageDB
 readPackageDb "user" = Just UserPackageDB
-readPackageDb other = Just (SpecificPackageDB other)
+readPackageDb other = Just (SpecificPackageDB (makeSymbolicPath other))
 
 showPackageDbList :: [Maybe PackageDB] -> [String]
 showPackageDbList = map showPackageDb
@@ -917,7 +917,7 @@ showPackageDb :: Maybe PackageDB -> String
 showPackageDb Nothing = "clear"
 showPackageDb (Just GlobalPackageDB) = "global"
 showPackageDb (Just UserPackageDB) = "user"
-showPackageDb (Just (SpecificPackageDB db)) = db
+showPackageDb (Just (SpecificPackageDB db)) = getSymbolicPath db
 
 showProfDetailLevelFlag :: Flag ProfDetailLevel -> [String]
 showProfDetailLevelFlag NoFlag = []
