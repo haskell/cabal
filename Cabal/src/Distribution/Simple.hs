@@ -550,7 +550,7 @@ cleanAction globalFlags hooks flags args = do
       flags' =
         flags{cleanCommonFlags = common'}
 
-      mbWorkDirFlag = cleanWorkingDir flags
+      mbWorkDirFlag = cleanWorkingDir flags'
       mbWorkDir = flagToMaybe mbWorkDirFlag
 
   pbi <- preClean hooks args flags'
