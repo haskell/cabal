@@ -347,8 +347,8 @@ preprocessFile mbWorkDir searchLoc buildLoc forSDist baseFile verbosity builtinS
           createDirectoryIfMissingVerbose verbosity True destDir
           runPreProcessorWithHsBootHack
             pp
-            (i psrcLoc, getSymbolicPath $ psrcRelFile)
-            (i buildLoc, srcStem <.> "hs")
+            (getSymbolicPath $ psrcLoc, getSymbolicPath $ psrcRelFile)
+            (getSymbolicPath $ buildLoc, srcStem <.> "hs")
   where
     i = interpretSymbolicPath mbWorkDir -- See Note [Symbolic paths] in Distribution.Utils.Path
     buildAsSrcLoc :: SymbolicPath Pkg (Dir Source)

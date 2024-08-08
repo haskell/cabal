@@ -609,8 +609,7 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
 --
 -- This function knows about the layout of in place packages.
 inplaceInstalledPackageInfo
-  :: FilePath
-  -- ^ top of the build tree (absolute path)
+  :: AbsolutePath (Dir Pkg)
   -> SymbolicPath Pkg (Dir Dist)
   -- ^ location of the dist tree
   -> PackageDescription
@@ -629,7 +628,7 @@ inplaceInstalledPackageInfo inplaceDir distPref pkg abi_hash lib lbi clbi =
     clbi
     installDirs
   where
-    i = interpretSymbolicPath (Just $ makeSymbolicPath inplaceDir) -- See Note [Symbolic paths] in Distribution.Utils.Path
+    i = interpretSymbolicPathAbsolute inplaceDir -- See Note [Symbolic paths] in Distribution.Utils.Path
     adjustRelativeIncludeDirs = concatMap $ \d ->
       [ i $ makeRelativePathEx d -- local include-dir
       , i $ libTargetDir </> makeRelativePathEx d -- autogen include-dir
