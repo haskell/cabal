@@ -52,6 +52,10 @@ import Distribution.Simple.Utils
   , info
   , wrapText
   )
+import Distribution.System
+  ( OS (Windows)
+  , buildOS
+  )
 import Distribution.Utils.Path hiding
   ( (<.>)
   , (</>)
@@ -60,6 +64,9 @@ import Distribution.Verbosity
   ( normal
   )
 
+import Control.Exception
+  ( throw
+  )
 import Control.Monad
   ( forM
   , forM_
@@ -78,6 +85,10 @@ import System.Directory
 import System.FilePath
   ( (</>)
   )
+import System.IO.Error
+  ( isPermissionError
+  )
+import qualified System.Process as Process
 
 data CleanFlags = CleanFlags
   { cleanSaveConfig :: Flag Bool
@@ -168,7 +179,15 @@ cleanAction (ProjectFlags{..}, CleanFlags{..}) extraArgs _ = do
         let distRoot = distDirectory distLayout
 
         info verbosity ("Deleting dist-newstyle (" ++ distRoot ++ ")")
-        handleDoesNotExist () $ removeDirectoryRecursive distRoot
+        handleDoesNotExist () $ do
+          if buildOS == Windows
+            then do
+              -- Windows can't delete some git files #10182
+              void $ Process.createProcess_ "attrib" $ Process.shell $ "attrib -s -h -r " <> distRoot <> "\\*.* /s /d"
+              catch
+                (removeDirectoryRecursive distRoot)
+                (\e -> if isPermissionError e then removeDirectoryRecursive distRoot else throw e)
+            else removeDirectoryRecursive distRoot
 
     removeEnvFiles $ distProjectRootDirectory distLayout
 

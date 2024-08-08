@@ -1,6 +1,6 @@
 import Test.Cabal.Prelude
 
-main = setupAndCabalTest $ expectBrokenIf isWindows 10179 $ do
+main = setupAndCabalTest $ expectBrokenIfWindows 10179 $ do
     withSymlink "bin/ghc" "ghc" $ do
         env <- getTestEnv
         let cwd = testCurrentDir env
