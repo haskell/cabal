@@ -898,15 +898,6 @@ configureOptions showOrParseArgs =
 readPackageDbList :: String -> [Maybe PackageDB]
 readPackageDbList str = [readPackageDb str]
 
--- | Parse a PackageDB stack entry
---
--- @since 3.7.0.0
-readPackageDb :: String -> Maybe PackageDB
-readPackageDb "clear" = Nothing
-readPackageDb "global" = Just GlobalPackageDB
-readPackageDb "user" = Just UserPackageDB
-readPackageDb other = Just (SpecificPackageDB other)
-
 showPackageDbList :: [Maybe PackageDB] -> [String]
 showPackageDbList = map showPackageDb
 

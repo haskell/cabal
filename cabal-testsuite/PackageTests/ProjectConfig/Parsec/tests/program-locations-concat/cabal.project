@@ -1,0 +1,5 @@
+program-locations
+    gcc-location: /tmp/bin/gcc
+
+program-locations
+    ghc-location: /tmp/bin/ghc

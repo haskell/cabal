@@ -1,0 +1,12 @@
+package foo
+    profiling-detail: all-functions
+    library-profiling-detail: exported-functions
+    library-vanilla: True
+
+package bar
+    profiling-detail: late-toplevel
+    library-profiling-detail: none
+    program-prefix: prefix/path
+
+package baz
+    shared: True

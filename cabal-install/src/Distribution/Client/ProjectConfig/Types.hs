@@ -169,6 +169,7 @@ data ProjectConfigBuildOnly = ProjectConfigBuildOnly
   , projectConfigReportPlanningFailure :: Flag Bool
   , projectConfigSymlinkBinDir :: Flag FilePath
   , projectConfigNumJobs :: Flag (Maybe Int)
+  -- ^ Use 'Just n' for number of jobs, 'Nothing' for number of jobs equal to the number of CPUs and 'NoFlag' if flag is not given.
   , projectConfigUseSemaphore :: Flag Bool
   , projectConfigKeepGoing :: Flag Bool
   , projectConfigOfflineMode :: Flag Bool
