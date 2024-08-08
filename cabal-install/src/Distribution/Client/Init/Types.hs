@@ -1,7 +1,9 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 
 -- |
 -- Module      :  Distribution.Client.Init.Types
@@ -39,7 +41,10 @@ module Distribution.Client.Init.Types
     -- * Typeclasses
   , Interactive (..)
   , BreakException (..)
-  , PurePrompt (..)
+  , PromptIO
+  , runPromptIO
+  , PurePrompt
+  , _runPrompt
   , evalPrompt
   , Severity (..)
 
@@ -63,9 +68,11 @@ import qualified Distribution.Client.Compat.Prelude as P
 import Prelude (read)
 
 import Control.Monad.Catch
+import Control.Monad.Reader
 
 import Data.List.NonEmpty (fromList)
 
+import qualified Data.IORef
 import Distribution.CabalSpecVersion
 import Distribution.Client.Utils as P
 import Distribution.Fields.Pretty
@@ -282,12 +289,22 @@ mkLiterate _ hs = hs
 -- -------------------------------------------------------------------- --
 -- Interactive prompt monad
 
+type PromptIO = ReaderT (Data.IORef.IORef SessionState) IO
+
+runPromptIO :: PromptIO a -> IO a
+runPromptIO pio =
+  (Data.IORef.newIORef _newSessionState) >>= (runReaderT pio)
+
 newtype PurePrompt a = PurePrompt
-  { _runPrompt
-      :: NonEmpty String
-      -> Either BreakException (a, NonEmpty String)
+  { _runPromptState
+      :: (NonEmpty String, SessionState)
+      -> Either BreakException (a, (NonEmpty String, SessionState))
   }
   deriving (Functor)
+
+_runPrompt :: PurePrompt a -> NonEmpty String -> Either BreakException (a, NonEmpty String)
+_runPrompt act args =
+  (fmap (\(a, (s, _)) -> (a, s))) (_runPromptState act (args, _newSessionState))
 
 evalPrompt :: PurePrompt a -> NonEmpty String -> a
 evalPrompt act s = case _runPrompt act s of
@@ -306,7 +323,7 @@ instance Monad PurePrompt where
   return = pure
   PurePrompt a >>= k = PurePrompt $ \s -> case a s of
     Left e -> Left e
-    Right (a', s') -> _runPrompt (k a') s'
+    Right (a', s') -> _runPromptState (k a') s'
 
 class Monad m => Interactive m where
   -- input functions
@@ -341,36 +358,61 @@ class Monad m => Interactive m where
   break :: m Bool
   throwPrompt :: BreakException -> m a
 
-instance Interactive IO where
-  getLine = P.getLine
-  readFile = P.readFile
-  getCurrentDirectory = P.getCurrentDirectory
-  getHomeDirectory = P.getHomeDirectory
-  getDirectoryContents = P.getDirectoryContents
-  listDirectory = P.listDirectory
-  doesDirectoryExist = P.doesDirectoryExist
-  doesFileExist = P.doesFileExist
-  canonicalizePathNoThrow = P.canonicalizePathNoThrow
-  readProcessWithExitCode = Process.readProcessWithExitCode
-  getEnvironment = P.getEnvironment
-  getCurrentYear = P.getCurrentYear
-  listFilesInside = P.listFilesInside
-  listFilesRecursive = P.listFilesRecursive
+  -- session state functions
+  getLastChosenLanguage :: m (Maybe String)
+  setLastChosenLanguage :: (Maybe String) -> m ()
 
-  putStr = P.putStr
-  putStrLn = P.putStrLn
-  createDirectory = P.createDirectory
-  removeDirectory = P.removeDirectoryRecursive
-  writeFile = P.writeFile
-  removeExistingFile = P.removeExistingFile
-  copyFile = P.copyFile
-  renameDirectory = P.renameDirectory
-  hFlush = System.IO.hFlush
+newtype SessionState = SessionState
+  { lastChosenLanguage :: (Maybe String)
+  }
+
+_newSessionState :: SessionState
+_newSessionState = SessionState{lastChosenLanguage = Nothing}
+
+instance Interactive PromptIO where
+  getLine = liftIO P.getLine
+  readFile = liftIO <$> P.readFile
+  getCurrentDirectory = liftIO P.getCurrentDirectory
+  getHomeDirectory = liftIO P.getHomeDirectory
+  getDirectoryContents = liftIO <$> P.getDirectoryContents
+  listDirectory = liftIO <$> P.listDirectory
+  doesDirectoryExist = liftIO <$> P.doesDirectoryExist
+  doesFileExist = liftIO <$> P.doesFileExist
+  canonicalizePathNoThrow = liftIO <$> P.canonicalizePathNoThrow
+  readProcessWithExitCode a b c = liftIO $ Process.readProcessWithExitCode a b c
+  getEnvironment = liftIO P.getEnvironment
+  getCurrentYear = liftIO P.getCurrentYear
+  listFilesInside test dir = do
+    sessionState <- ask
+    -- test is run within the same env
+    liftIO $ P.listFilesInside (\f -> liftIO $ runReaderT (test f) sessionState) dir
+  listFilesRecursive = liftIO <$> P.listFilesRecursive
+
+  putStr = liftIO <$> P.putStr
+  putStrLn = liftIO <$> P.putStrLn
+  createDirectory = liftIO <$> P.createDirectory
+  removeDirectory = liftIO <$> P.removeDirectoryRecursive
+  writeFile a b = liftIO $ P.writeFile a b
+  removeExistingFile = liftIO <$> P.removeExistingFile
+  copyFile a b = liftIO $ P.copyFile a b
+  renameDirectory a b = liftIO $ P.renameDirectory a b
+  hFlush = liftIO <$> System.IO.hFlush
   message q severity msg
     | q == silent = pure ()
     | otherwise = putStrLn $ "[" ++ displaySeverity severity ++ "] " ++ msg
   break = return False
-  throwPrompt = throwM
+  throwPrompt = liftIO <$> throwM
+
+  getLastChosenLanguage = do
+    stateRef <- ask
+    liftIO $ lastChosenLanguage <$> Data.IORef.readIORef stateRef
+
+  setLastChosenLanguage value = do
+    stateRef <- ask
+    liftIO $
+      Data.IORef.modifyIORef
+        stateRef
+        (\state -> state{lastChosenLanguage = value})
 
 instance Interactive PurePrompt where
   getLine = pop
@@ -411,13 +453,18 @@ instance Interactive PurePrompt where
     _ -> return ()
 
   break = return True
-  throwPrompt (BreakException e) = PurePrompt $ \s ->
+  throwPrompt (BreakException e) = PurePrompt $ \(s, _) ->
     Left $
       BreakException
         ("Error: " ++ e ++ "\nStacktrace: " ++ show s)
 
+  getLastChosenLanguage = PurePrompt $ \(s, ss) ->
+    Right (lastChosenLanguage ss, (s, ss))
+  setLastChosenLanguage l = PurePrompt $ \(s, ss) ->
+    Right ((), (s, ss{lastChosenLanguage = l}))
+
 pop :: PurePrompt String
-pop = PurePrompt $ \(p :| ps) -> Right (p, fromList ps)
+pop = PurePrompt $ \(p :| ps, ss) -> Right (p, (fromList ps, ss))
 
 popAbsolute :: PurePrompt String
 popAbsolute = do
