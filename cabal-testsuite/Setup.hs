@@ -30,7 +30,10 @@ generateScriptEnvModule lbi verbosity = do
 
     createDirectoryIfMissing True moduledir
     rewriteFileEx verbosity (moduledir </> "ScriptEnv0.hs") $ unlines
-      [ "module Test.Cabal.ScriptEnv0 where"
+      [ "{-# LANGUAGE OverloadedStrings #-}"
+      , "{-# LANGUAGE FlexibleInstances #-}"
+      , "{-# OPTIONS_GHC -Wno-orphans   #-}"
+      , "module Test.Cabal.ScriptEnv0 where"
       , ""
       , "import Distribution.Simple"
       , "import Distribution.System (Platform(..), Arch(..), OS(..))"
@@ -38,6 +41,8 @@ generateScriptEnvModule lbi verbosity = do
       , "import Distribution.Simple.Program.Db"
       , "import Distribution.Backpack (OpenUnitId)"
       , "import Data.Map (fromList)"
+      , "import Data.String (IsString(..))"
+      , "import Distribution.Utils.Path"
       , ""
       , "lbiPackageDbStack :: PackageDBStackCWD"
       , "lbiPackageDbStack = " ++ show lbiPackageDbStack
@@ -56,6 +61,9 @@ generateScriptEnvModule lbi verbosity = do
       , ""
       , "lbiWithSharedLib :: Bool"
       , "lbiWithSharedLib = " ++ show (withSharedLib lbi)
+      , ""
+      , "instance IsString (SymbolicPath from to) where"
+      , "  fromString = makeSymbolicPath"
       ]
   where
     moduledir = libAutogenDir </> "Test" </> "Cabal"
