@@ -30,6 +30,7 @@ module Distribution.Utils.Path
   , Tix
   , Tmp
   , Response
+  , PkgConf
 
     -- * Symbolic paths
   , RelativePath
@@ -499,3 +500,8 @@ data Tmp
 --
 -- See Note [Symbolic paths] in Distribution.Utils.Path.
 data Response
+
+-- | Abstract directory: directory for pkg-config files.
+--
+-- See Note [Symbolic paths] in Distribution.Utils.Path.
+data PkgConf

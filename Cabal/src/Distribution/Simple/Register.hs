@@ -203,9 +203,10 @@ registerAll pkg lbi regFlags ipis =
   where
     modeGenerateRegFile = isJust (flagToMaybe (regGenPkgConf regFlags))
     regFile =
-      fromMaybe
-        (prettyShow (packageId pkg) <.> "conf")
-        (fromFlag (regGenPkgConf regFlags))
+      interpretSymbolicPathLBI lbi $
+        fromMaybe
+          (makeSymbolicPath (prettyShow (packageId pkg) <.> "conf"))
+          (fromFlag (regGenPkgConf regFlags))
 
     modeGenerateRegScript = fromFlag (regGenScript regFlags)
 

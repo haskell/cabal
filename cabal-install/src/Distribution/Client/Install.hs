@@ -57,7 +57,6 @@ import System.FilePath
   ( equalFilePath
   , takeDirectory
   , (<.>)
-  , (</>)
   )
 import System.IO
   ( IOMode (AppendMode)
@@ -222,7 +221,6 @@ import Distribution.Simple.Setup
 import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Utils.Path hiding
   ( (<.>)
-  , (</>)
   )
 
 import Distribution.Simple.Utils
@@ -2021,7 +2019,7 @@ installUnpackedPackage
       genPkgConfs flags mLogPath = do
         tmp <- getTemporaryDirectory
         withTempDirectory verbosity tmp (tempTemplate "pkgConf") $ \dir -> do
-          let pkgConfDest = dir </> "pkgConf"
+          let pkgConfDest = makeSymbolicPath dir </> makeRelativePathEx "pkgConf"
               registerFlags' version =
                 (flags version)
                   { Cabal.regGenPkgConf = toFlag (Just pkgConfDest)
@@ -2031,16 +2029,16 @@ installUnpackedPackage
             registerCommonFlags
             registerFlags'
             mLogPath
-          is_dir <- doesDirectoryExist pkgConfDest
+          is_dir <- doesDirectoryExist (interpretSymbolicPathCWD pkgConfDest)
           let notHidden = not . isHidden
               isHidden name = "." `isPrefixOf` name
           if is_dir
             then -- Sort so that each prefix of the package
             -- configurations is well formed
 
-              traverse (readPkgConf pkgConfDest) . sort . filter notHidden
-                =<< getDirectoryContents pkgConfDest
-            else fmap (: []) $ readPkgConf "." pkgConfDest
+              traverse (readPkgConf (getSymbolicPath pkgConfDest)) . sort . filter notHidden
+                =<< getDirectoryContents (getSymbolicPath pkgConfDest)
+            else fmap (: []) $ readPkgConf "." (getSymbolicPath pkgConfDest)
 
       readPkgConf
         :: FilePath

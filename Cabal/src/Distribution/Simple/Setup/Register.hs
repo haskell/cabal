@@ -58,7 +58,7 @@ data RegisterFlags = RegisterFlags
   { registerCommonFlags :: !CommonSetupFlags
   , regPackageDB :: Flag PackageDB
   , regGenScript :: Flag Bool
-  , regGenPkgConf :: Flag (Maybe FilePath)
+  , regGenPkgConf :: Flag (Maybe (SymbolicPath Pkg (Dir PkgConf)))
   , regInPlace :: Flag Bool
   , regPrintId :: Flag Bool
   }
@@ -154,7 +154,7 @@ registerCommand =
                 "instead of registering, generate a package registration file/directory"
                 regGenPkgConf
                 (\v flags -> flags{regGenPkgConf = v})
-                (optArg' "PKG" Flag flagToList)
+                (optArg' "PKG" (Flag . fmap makeSymbolicPath) (flagToList . fmap (fmap getSymbolicPath)))
             , option
                 ""
                 ["print-ipid"]
