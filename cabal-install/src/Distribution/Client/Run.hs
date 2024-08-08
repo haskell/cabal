@@ -27,7 +27,7 @@ import Distribution.PackageDescription
   , PackageDescription (..)
   , TestSuite (..)
   )
-import Distribution.Simple (PackageDB (..))
+import Distribution.Simple (PackageDBX (..))
 import Distribution.Simple.Build (addInternalBuildTools)
 import Distribution.Simple.BuildPaths (exeExtension)
 import Distribution.Simple.Compiler (CompilerFlavor (..), compilerFlavor)
@@ -148,7 +148,7 @@ run verbosity lbi exe exeArgs = do
       pkg_descr = localPkgDescr lbi
       i = interpretSymbolicPathLBI lbi -- See Note [Symbolic paths] in Distribution.Utils.Path
       mbWorkDir = mbWorkDirLBI lbi
-      internalPkgDb = i $ internalPackageDBPath lbi distPref
+      internalPkgDb = internalPackageDBPath lbi distPref
       lbiForExe =
         lbi
           { withPackageDB = withPackageDB lbi ++ [SpecificPackageDB internalPkgDb]

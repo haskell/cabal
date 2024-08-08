@@ -39,7 +39,7 @@ generateScriptEnvModule lbi verbosity = do
       , "import Distribution.Backpack (OpenUnitId)"
       , "import Data.Map (fromList)"
       , ""
-      , "lbiPackageDbStack :: PackageDBStack"
+      , "lbiPackageDbStack :: PackageDBStackCWD"
       , "lbiPackageDbStack = " ++ show lbiPackageDbStack
       , ""
       , "lbiPlatform :: Platform"

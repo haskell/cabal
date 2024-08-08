@@ -262,13 +262,13 @@ data ElaboratedConfiguredPackage = ElaboratedConfiguredPackage
   -- that a user enabled tests globally, and some local packages
   -- just happen not to have any tests.  (But perhaps we should
   -- warn if ALL local packages don't have any tests.)
-  , elabPackageDbs :: [Maybe PackageDB]
-  , elabSetupPackageDBStack :: PackageDBStack
-  , elabBuildPackageDBStack :: PackageDBStack
-  , elabRegisterPackageDBStack :: PackageDBStack
-  , elabInplaceSetupPackageDBStack :: PackageDBStack
-  , elabInplaceBuildPackageDBStack :: PackageDBStack
-  , elabInplaceRegisterPackageDBStack :: PackageDBStack
+  , elabPackageDbs :: [Maybe PackageDBCWD]
+  , elabSetupPackageDBStack :: PackageDBStackCWD
+  , elabBuildPackageDBStack :: PackageDBStackCWD
+  , elabRegisterPackageDBStack :: PackageDBStackCWD
+  , elabInplaceSetupPackageDBStack :: PackageDBStackCWD
+  , elabInplaceBuildPackageDBStack :: PackageDBStackCWD
+  , elabInplaceRegisterPackageDBStack :: PackageDBStackCWD
   , elabPkgDescriptionOverride :: Maybe CabalFileText
   , -- TODO: make per-component variants of these flags
     elabBuildOptions :: LBC.BuildOptions

@@ -911,7 +911,7 @@ createInternalPackageDB verbosity lbi distPref = do
   existsAlready <- doesPackageDBExist dbPath
   when existsAlready $ deletePackageDB dbPath
   createPackageDB verbosity (compiler lbi) (withPrograms lbi) False dbPath
-  return (SpecificPackageDB dbPath)
+  return (SpecificPackageDB dbRelPath)
   where
     dbRelPath = internalPackageDBPath lbi distPref
     dbPath = interpretSymbolicPathLBI lbi dbRelPath

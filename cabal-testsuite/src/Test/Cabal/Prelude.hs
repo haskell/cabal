@@ -24,7 +24,7 @@ import Test.Cabal.Monad
 import Test.Cabal.Plan
 
 import Distribution.Compat.Time (calibrateMtimeChangeDelay)
-import Distribution.Simple.Compiler (PackageDBStack, PackageDB(..))
+import Distribution.Simple.Compiler (PackageDBStackCWD, PackageDBCWD, PackageDBX(..))
 import Distribution.Simple.PackageDescription (readGenericPackageDescription)
 import Distribution.Simple.Program.Types
 import Distribution.Simple.Program.Db
@@ -264,11 +264,11 @@ setup_install_with_docs args = do
     setup "register" []
     return ()
 
-packageDBParams :: PackageDBStack -> [String]
+packageDBParams :: PackageDBStackCWD -> [String]
 packageDBParams dbs = "--package-db=clear"
                     : map (("--package-db=" ++) . convert) dbs
   where
-    convert :: PackageDB -> String
+    convert :: PackageDBCWD -> String
     convert  GlobalPackageDB         = "global"
     convert  UserPackageDB           = "user"
     convert (SpecificPackageDB path) = path
@@ -438,9 +438,9 @@ ghcPkg' cmd args = do
     recordHeader ["ghc-pkg", cmd]
     runProgramM ghcPkgProgram (cmd : extraArgs ++ args) Nothing
 
-ghcPkgPackageDBParams :: Version -> PackageDBStack -> [String]
+ghcPkgPackageDBParams :: Version -> PackageDBStackCWD -> [String]
 ghcPkgPackageDBParams version dbs = concatMap convert dbs where
-    convert :: PackageDB -> [String]
+    convert :: PackageDBCWD -> [String]
     -- Ignoring global/user is dodgy but there's no way good
     -- way to give ghc-pkg the correct flags in this case.
     convert  GlobalPackageDB         = []

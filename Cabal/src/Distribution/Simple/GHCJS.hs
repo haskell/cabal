@@ -313,8 +313,8 @@ getGhcInfo verbosity ghcjsProg = Internal.getGhcInfo verbosity implInfo ghcjsPro
 -- | Given a single package DB, return all installed packages.
 getPackageDBContents
   :: Verbosity
-  -> Maybe (SymbolicPath CWD (Dir Pkg))
-  -> PackageDB
+  -> Maybe (SymbolicPath CWD (Dir from))
+  -> PackageDBX (SymbolicPath from (Dir PkgDB))
   -> ProgramDb
   -> IO InstalledPackageIndex
 getPackageDBContents verbosity mbWorkDir packagedb progdb = do
@@ -324,8 +324,8 @@ getPackageDBContents verbosity mbWorkDir packagedb progdb = do
 -- | Given a package DB stack, return all installed packages.
 getInstalledPackages
   :: Verbosity
-  -> Maybe (SymbolicPath CWD (Dir Pkg))
-  -> PackageDBStack
+  -> Maybe (SymbolicPath CWD (Dir from))
+  -> PackageDBStackX (SymbolicPath from (Dir PkgDB))
   -> ProgramDb
   -> IO InstalledPackageIndex
 getInstalledPackages verbosity mbWorkDir packagedbs progdb = do
@@ -337,7 +337,7 @@ getInstalledPackages verbosity mbWorkDir packagedbs progdb = do
 
 toPackageIndex
   :: Verbosity
-  -> [(PackageDB, [InstalledPackageInfo])]
+  -> [(PackageDBX a, [InstalledPackageInfo])]
   -> ProgramDb
   -> IO InstalledPackageIndex
 toPackageIndex verbosity pkgss progdb = do
@@ -393,7 +393,7 @@ checkPackageDbEnvVar :: Verbosity -> IO ()
 checkPackageDbEnvVar verbosity =
   Internal.checkPackageDbEnvVar verbosity "GHCJS" "GHCJS_PACKAGE_PATH"
 
-checkPackageDbStack :: Verbosity -> PackageDBStack -> IO ()
+checkPackageDbStack :: Eq fp => Verbosity -> PackageDBStackX fp -> IO ()
 checkPackageDbStack _ (GlobalPackageDB : rest)
   | GlobalPackageDB `notElem` rest = return ()
 checkPackageDbStack verbosity rest
@@ -404,10 +404,10 @@ checkPackageDbStack verbosity _ =
 
 getInstalledPackages'
   :: Verbosity
-  -> Maybe (SymbolicPath CWD (Dir Pkg))
-  -> [PackageDB]
+  -> Maybe (SymbolicPath CWD (Dir from))
+  -> [PackageDBX (SymbolicPath from (Dir PkgDB))]
   -> ProgramDb
-  -> IO [(PackageDB, [InstalledPackageInfo])]
+  -> IO [(PackageDBX (SymbolicPath from (Dir PkgDB)), [InstalledPackageInfo])]
 getInstalledPackages' verbosity mbWorkDir packagedbs progdb =
   sequenceA
     [ do
@@ -432,7 +432,7 @@ getInstalledPackagesMonitorFiles verbosity platform mbWorkDir progdb =
       selectMonitorFile =<< getGlobalPackageDB verbosity ghcjsProg
     getPackageDBPath UserPackageDB =
       selectMonitorFile =<< getUserPackageDB verbosity ghcjsProg platform
-    getPackageDBPath (SpecificPackageDB path) = selectMonitorFile path
+    getPackageDBPath (SpecificPackageDB path) = selectMonitorFile (interpretSymbolicPath mbWorkDir path)
 
     -- GHC has old style file dbs, and new style directory dbs.
     -- Note that for dir style dbs, we only need to monitor the cache file, not
@@ -2026,8 +2026,8 @@ hcPkgInfo progdb =
 registerPackage
   :: Verbosity
   -> ProgramDb
-  -> Maybe (SymbolicPath CWD (Dir Pkg))
-  -> PackageDBStack
+  -> Maybe (SymbolicPath CWD (Dir from))
+  -> PackageDBStackS from
   -> InstalledPackageInfo
   -> HcPkg.RegisterOptions
   -> IO ()
@@ -2066,7 +2066,7 @@ pkgRoot verbosity lbi = pkgRoot'
     pkgRoot' (SpecificPackageDB fp) =
       return $
         takeDirectory $
-          interpretSymbolicPathLBI lbi (unsafeMakeSymbolicPath fp)
+          interpretSymbolicPathLBI lbi fp
 
 -- | Get the JavaScript file name and command and arguments to run a
 --   program compiled by GHCJS

@@ -1,5 +1,6 @@
 {-# LANGUAGE CPP           #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 module Test.QuickCheck.Instances.Cabal () where
 
@@ -18,7 +19,7 @@ import Distribution.Compat.NonEmptySet             (NonEmptySet)
 import Distribution.Compiler
 import Distribution.FieldGrammar.Newtypes
 import Distribution.ModuleName
-import Distribution.Simple.Compiler                (DebugInfoLevel (..), OptimisationLevel (..), PackageDB (..), ProfDetailLevel (..), knownProfDetailLevels)
+import Distribution.Simple.Compiler
 import Distribution.Simple.Flag                    (Flag (..))
 import Distribution.Simple.InstallDirs
 import Distribution.Simple.Setup                   (HaddockTarget (..), TestShowDetails (..), DumpBuildInfo)
@@ -476,7 +477,7 @@ instance Arbitrary TestShowDetails where
 -- PackageDB
 -------------------------------------------------------------------------------
 
-instance Arbitrary PackageDB where
+instance Arbitrary (PackageDBX FilePath) where
     arbitrary = oneof [ pure GlobalPackageDB
                       , pure UserPackageDB
                       , SpecificPackageDB <$> arbitraryShortPath

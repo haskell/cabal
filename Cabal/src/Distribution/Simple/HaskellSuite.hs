@@ -23,6 +23,7 @@ import Distribution.Simple.Program
 import Distribution.Simple.Program.Builtin
 import Distribution.Simple.Utils
 import Distribution.System (Platform)
+import Distribution.Utils.Path
 import Distribution.Verbosity
 import Distribution.Version
 import Language.Haskell.Extension
@@ -129,7 +130,8 @@ getLanguages verbosity prog = do
 -- if we need something like that as well.
 getInstalledPackages
   :: Verbosity
-  -> PackageDBStack
+  -- Not migrated to work with --working-dir but this is legacy dead code
+  -> PackageDBStackX (SymbolicPath from (Dir PkgDB))
   -> ProgramDb
   -> IO InstalledPackageIndex
 getInstalledPackages verbosity packagedbs progdb =
@@ -239,7 +241,7 @@ installLib verbosity lbi targetDir dynlibTargetDir builtDir pkg lib clbi = do
 registerPackage
   :: Verbosity
   -> ProgramDb
-  -> PackageDBStack
+  -> PackageDBStackS from
   -> InstalledPackageInfo
   -> IO ()
 registerPackage verbosity progdb packageDbs installedPkgInfo = do
@@ -261,7 +263,7 @@ initPackageDB verbosity progdb dbPath =
     progdb
     ["init", dbPath]
 
-packageDbOpt :: PackageDB -> String
+packageDbOpt :: PackageDBX (SymbolicPath from (Dir PkgDB)) -> String
 packageDbOpt GlobalPackageDB = "--global"
 packageDbOpt UserPackageDB = "--user"
-packageDbOpt (SpecificPackageDB db) = "--package-db=" ++ db
+packageDbOpt (SpecificPackageDB db) = "--package-db=" ++ interpretSymbolicPathCWD db

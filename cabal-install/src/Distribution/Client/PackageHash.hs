@@ -44,7 +44,7 @@ import Distribution.Simple.Compiler
   , CompilerId
   , DebugInfoLevel (..)
   , OptimisationLevel (..)
-  , PackageDB
+  , PackageDBCWD
   , ProfDetailLevel (..)
   , showProfDetailLevel
   )
@@ -221,7 +221,7 @@ data PackageHashConfigInputs = PackageHashConfigInputs
   , pkgHashExtraIncludeDirs :: [FilePath]
   , pkgHashProgPrefix :: Maybe PathTemplate
   , pkgHashProgSuffix :: Maybe PathTemplate
-  , pkgHashPackageDbs :: [Maybe PackageDB]
+  , pkgHashPackageDbs :: [Maybe PackageDBCWD]
   , -- Haddock options
     pkgHashDocumentation :: Bool
   , pkgHashHaddockHoogle :: Bool

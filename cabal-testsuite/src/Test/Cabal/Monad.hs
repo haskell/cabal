@@ -68,7 +68,7 @@ import Test.Cabal.TestCode
 
 import Distribution.Pretty (prettyShow)
 import Distribution.Simple.Compiler
-    ( PackageDBStack, PackageDB(..), compilerFlavor
+    ( PackageDBStackCWD, PackageDBX(..), compilerFlavor
     , Compiler, compilerVersion, showCompilerIdWithAbi )
 import Distribution.System
 import Distribution.Simple.Program.Db
@@ -660,7 +660,7 @@ data TestEnv = TestEnv
     -- | Platform we are running tests on
     , testPlatform      :: Platform
     -- | Package database stack (actually this changes lol)
-    , testPackageDBStack :: PackageDBStack
+    , testPackageDBStack :: PackageDBStackCWD
     -- | How verbose to be
     , testVerbosity     :: Verbosity
     -- | How long we should 'threadDelay' to make sure the file timestamp is
