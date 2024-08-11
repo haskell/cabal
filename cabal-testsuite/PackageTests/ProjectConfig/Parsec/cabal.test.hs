@@ -2,10 +2,10 @@
 {-# LANGUAGE RecordWildCards #-}
 
 import qualified Data.ByteString as BS
-import Data.Either
+import Data.Either (fromRight)
 import Data.List.NonEmpty (NonEmpty (..))
 import qualified Data.Map as Map
-import Data.Maybe
+import Data.Maybe (fromJust)
 import qualified Data.Set as Set
 import Distribution.Client.BuildReports.Types (ReportLevel (..))
 import Distribution.Client.CmdInstall.ClientInstallFlags (ClientInstallFlags (..))
@@ -55,8 +55,7 @@ import Distribution.Types.VersionRange.Internal (VersionRange (..))
 import Distribution.Utils.NubList
 import Distribution.Verbosity
 import Network.URI (parseURI)
-import System.Directory
-import System.FilePath
+import System.Directory (canonicalizePath, doesFileExist)
 
 import Test.Cabal.Prelude hiding (cabal)
 import qualified Test.Cabal.Prelude as P
