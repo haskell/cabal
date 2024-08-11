@@ -121,6 +121,7 @@ packageConfigFieldGrammar knownPrograms =
     <*> optionalFieldDef "executable-static" L.packageConfigFullyStaticExe mempty
     <*> optionalFieldDef "profiling" L.packageConfigProf mempty
     <*> optionalFieldDef "library-profiling" L.packageConfigProfLib mempty
+    <*> optionalFieldDef "profiling-shared" L.packageConfigProfShared mempty
     <*> optionalFieldDef "executable-profiling" L.packageConfigProfExe mempty
     <*> optionalFieldDef "profiling-detail" L.packageConfigProfDetail mempty
     <*> optionalFieldDef "library-profiling-detail" L.packageConfigProfLibDetail mempty
@@ -162,6 +163,7 @@ packageConfigFieldGrammar knownPrograms =
     <*> optionalFieldDefAla "haddock-base-url" (alaFlag Token) L.packageConfigHaddockBaseUrl mempty
     <*> optionalFieldDefAla "haddock-resources-dir" (alaFlag Token) L.packageConfigHaddockResourcesDir mempty
     <*> optionalFieldDefAla "haddock-output-dir" (alaFlag FilePathNT) L.packageConfigHaddockOutputDir mempty
+    <*> optionalFieldDef "haddock-use-unicode" L.packageConfigHaddockUseUnicode mempty
     <*> optionalFieldDef "haddock-for-hackage" L.packageConfigHaddockForHackage mempty
     <*> optionalFieldDef "test-log" L.packageConfigTestHumanLog mempty
     <*> optionalFieldDef "test-machine-log" L.packageConfigTestMachineLog mempty
