@@ -15,6 +15,7 @@ executable-dynamic: True
 executable-static: True
 profiling: True
 library-profiling: True
+profiling-shared: False
 executable-profiling: True
 profiling-detail: all-functions
 library-profiling-detail: exported-functions
@@ -56,6 +57,7 @@ haddock-index-location: separately-generated/HTML/index
 haddock-base-url: https://example.com/haddock-base-url
 haddock-resources-dir: /haddock/static
 haddock-output-dir: /haddock/output
+haddock-use-unicode: False
 haddock-for-hackage: for-hackage
 
 test-log: human-log.log

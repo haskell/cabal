@@ -348,6 +348,10 @@ packageConfigProfLib :: Lens' PackageConfig (Flag Bool)
 packageConfigProfLib f s = fmap (\x -> s{T.packageConfigProfLib = x}) (f (T.packageConfigProfLib s))
 {-# INLINEABLE packageConfigProfLib #-}
 
+packageConfigProfShared :: Lens' PackageConfig (Flag Bool)
+packageConfigProfShared f s = fmap (\x -> s{T.packageConfigProfShared = x}) (f (T.packageConfigProfShared s))
+{-# INLINEABLE packageConfigProfShared #-}
+
 packageConfigProfExe :: Lens' PackageConfig (Flag Bool)
 packageConfigProfExe f s = fmap (\x -> s{T.packageConfigProfExe = x}) (f (T.packageConfigProfExe s))
 {-# INLINEABLE packageConfigProfExe #-}
@@ -511,6 +515,10 @@ packageConfigHaddockResourcesDir f s = fmap (\x -> s{T.packageConfigHaddockResou
 packageConfigHaddockOutputDir :: Lens' PackageConfig (Flag FilePath)
 packageConfigHaddockOutputDir f s = fmap (\x -> s{T.packageConfigHaddockOutputDir = x}) (f (T.packageConfigHaddockOutputDir s))
 {-# INLINEABLE packageConfigHaddockOutputDir #-}
+
+packageConfigHaddockUseUnicode :: Lens' PackageConfig (Flag Bool)
+packageConfigHaddockUseUnicode f s = fmap (\x -> s{T.packageConfigHaddockUseUnicode = x}) (f (T.packageConfigHaddockUseUnicode s))
+{-# INLINEABLE packageConfigHaddockUseUnicode #-}
 
 packageConfigHaddockForHackage :: Lens' PackageConfig (Flag HaddockTarget)
 packageConfigHaddockForHackage f s = fmap (\x -> s{T.packageConfigHaddockForHackage = x}) (f (T.packageConfigHaddockForHackage s))
