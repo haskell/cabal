@@ -15,7 +15,7 @@ import Distribution.Simple
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.PreProcess
 import Distribution.Simple.Utils
-#if MIN_VERSION_Cabal(3,11,0)
+#if MIN_VERSION_Cabal(3,13,0)
 import Distribution.Utils.Path (getSymbolicPath)
 #endif
 
@@ -47,7 +47,7 @@ main = defaultMainWithHooks
         }
       where
         builddir =
-#if MIN_VERSION_Cabal(3,11,0)
+#if MIN_VERSION_Cabal(3,13,0)
           getSymbolicPath $
 #endif
           buildDir lbi
