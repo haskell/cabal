@@ -1,0 +1,13 @@
+synopsis: Replace cabal project parsing with Parsec
+packages: cabal-install Cabal Cabal-syntax
+prs: #8889
+issues: #6101 #7748
+
+description: {
+
+Replaced the legacy cabal.project parser with a new implementation based on Parsec.
+The new parser replicates the grammar of the legacy parser, ensuring that it generates identical ProjectConfig values for the same input.
+The implementation leverages existing Parsec infrastructure, including FieldGrammar and other utilities from the .cabal file parser.
+Legacy parsing functions are still accessible but will be removed in the future.
+
+}
