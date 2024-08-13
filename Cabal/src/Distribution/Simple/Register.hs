@@ -466,14 +466,15 @@ writeHcPkgRegisterScript verbosity mbWorkDir ipis packageDbs hpi = do
       -- TODO: Do something more robust here
       regScript = unlines scripts
 
-  info verbosity ("Creating package registration script: " ++ regScriptFileName)
-  writeUTF8File regScriptFileName regScript
-  setFileExecutable regScriptFileName
+  let out_file = interpretSymbolicPath mbWorkDir regScriptFileName
+  info verbosity ("Creating package registration script: " ++ out_file)
+  writeUTF8File out_file regScript
+  setFileExecutable out_file
 
-regScriptFileName :: FilePath
+regScriptFileName :: SymbolicPath Pkg File
 regScriptFileName = case buildOS of
-  Windows -> "register.bat"
-  _ -> "register.sh"
+  Windows -> makeSymbolicPath "register.bat"
+  _ -> makeSymbolicPath "register.sh"
 
 -- -----------------------------------------------------------------------------
 -- Making the InstalledPackageInfo
