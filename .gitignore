@@ -108,3 +108,6 @@ bench.html
 
 # ignore the downloaded binary files
 scripts/release/binary-downloads/
+
+# ignore generated API files
+/*.api
