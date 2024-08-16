@@ -19,10 +19,6 @@ pull_request_rules:
   - actions:
       queue:
         name: default
-        # Merge into master with a merge commit
-        method: merge
-        # Update the pr branch with rebase, so the history is clean
-        update_method: rebase
     name: Put pull requests in the rebase+merge queue
     conditions:
       - base=master
@@ -33,11 +29,7 @@ pull_request_rules:
   # merge+squash strategy
   - actions:
       queue:
-        name: default
-        method: squash
-        # both update methods get absorbed by the squash, so we use the most
-        # reliable
-        update_method: merge
+        name: squash-merge
     name: Put pull requests in the squash+merge queue
     conditions:
       - base=master
@@ -61,9 +53,6 @@ pull_request_rules:
       queue:
         name: default
         # Merge with a merge commit
-        method: merge
-        # Update the pr branch with rebase, so the history is clean
-        update_method: rebase
     name: Put backports in the rebase+merge queue
     conditions:
       - label=merge me
@@ -74,11 +63,7 @@ pull_request_rules:
   # merge+squash strategy for backports: require 1 approver instead of 2
   - actions:
       queue:
-        name: default
-        method: squash
-        # both update methods get absorbed by the squash, so we use the most
-        # reliable
-        update_method: merge
+        name: squash-merge
     name: Put backports in the squash+merge queue
     conditions:
       - label=squash+merge me
@@ -96,5 +81,12 @@ pull_request_rules:
       - body~=automatic backport
 
 queue_rules:
+  # Mergify now requires different queues for different strategies
   - name: default
     update_bot_account: Mikolaj
+    merge_method: merge
+    update_method: rebase
+  - name: squash-merge
+    update_bot_account: Mikolaj
+    merge_method: squash
+    update_method: merge
