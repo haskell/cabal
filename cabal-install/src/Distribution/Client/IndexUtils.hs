@@ -1138,7 +1138,13 @@ readNoIndexCache verbosity index = do
       either (dieWithException verbosity . CorruptedIndexCache) return =<< readNoIndexCache' index
 
     -- we don't hash cons local repository cache, they are hopefully small
-    Right res -> return res
+    Right res -> do
+      warn verbosity $
+        concat
+          [ "Cabal is reading .cache file. "
+          , "Delete this file if the repository has changed."
+          ]
+      return res
 
 -- | Read the 'Index' cache from the filesystem. Throws IO exceptions
 -- if any arise and returns Left on invalid input.
