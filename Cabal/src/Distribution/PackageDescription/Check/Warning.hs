@@ -970,7 +970,8 @@ ppExplanation MissingLocation =
   "The source-repository 'location' is a required field."
 ppExplanation GitProtocol =
   "Cloning over git:// might lead to an arbitrary code execution "
-    ++ "vulnerability. Use https:// or ssh:// instead."
+    ++ "vulnerability. Furthermore, popular forges like GitHub do "
+    ++ "not support it. Use https:// or ssh:// instead."
 ppExplanation MissingModule =
   "For a CVS source-repository, the 'module' is a required field."
 ppExplanation MissingTag =
