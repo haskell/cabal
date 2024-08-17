@@ -1031,6 +1031,20 @@ interactiveTests srcDb =
                 ]
             ]
         , testGroup
+            "Check languagePrompt session state"
+            [ testSimplePrompt
+                "Use last language"
+                ( \flags -> do
+                    a <- languagePrompt flags "first language"
+                    b <- languagePrompt flags "second language"
+                    pure (a, b)
+                )
+                (GHC2024, GHC2024)
+                [ "4"
+                , "" -- default
+                ]
+            ]
+        , testGroup
             "Check srcDirsPrompt output"
             [ testNumberedPrompt
                 "Source dirs indices"
