@@ -1,0 +1,12 @@
+synopsis: Warn about git:// protocol
+packages: cabal-install
+prs: #10261
+
+description: {
+
+`cabal check` will warn about insecure git:// protocol in `source-repository`.
+
+See [Git Book](https://git-scm.com/book/en/v2/Git-on-the-Server-The-Protocols#_the_cons_4)
+for an explanation.
+
+}
