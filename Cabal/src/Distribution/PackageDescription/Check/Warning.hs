@@ -193,6 +193,7 @@ data CheckExplanation
   | UnrecognisedSourceRepo String
   | MissingType
   | MissingLocation
+  | GitProtocol
   | MissingModule
   | MissingTag
   | SubdirRelPath
@@ -355,6 +356,7 @@ data CheckExplanationID
   | CIUnrecognisedSourceRepo
   | CIMissingType
   | CIMissingLocation
+  | CIGitProtocol
   | CIMissingModule
   | CIMissingTag
   | CISubdirRelPath
@@ -496,6 +498,7 @@ checkExplanationId (NoLicenseFile{}) = CINoLicenseFile
 checkExplanationId (UnrecognisedSourceRepo{}) = CIUnrecognisedSourceRepo
 checkExplanationId (MissingType{}) = CIMissingType
 checkExplanationId (MissingLocation{}) = CIMissingLocation
+checkExplanationId (GitProtocol{}) = CIGitProtocol
 checkExplanationId (MissingModule{}) = CIMissingModule
 checkExplanationId (MissingTag{}) = CIMissingTag
 checkExplanationId (SubdirRelPath{}) = CISubdirRelPath
@@ -642,6 +645,7 @@ ppCheckExplanationId CINoLicenseFile = "no-license-file"
 ppCheckExplanationId CIUnrecognisedSourceRepo = "unrecognised-repo-type"
 ppCheckExplanationId CIMissingType = "repo-no-type"
 ppCheckExplanationId CIMissingLocation = "repo-no-location"
+ppCheckExplanationId CIGitProtocol = "git-protocol"
 ppCheckExplanationId CIMissingModule = "repo-no-module"
 ppCheckExplanationId CIMissingTag = "repo-no-tag"
 ppCheckExplanationId CISubdirRelPath = "repo-relative-dir"
@@ -964,6 +968,9 @@ ppExplanation MissingType =
   "The source-repository 'type' is a required field."
 ppExplanation MissingLocation =
   "The source-repository 'location' is a required field."
+ppExplanation GitProtocol =
+  "Cloning over git:// might lead to an arbitrary code execution "
+    ++ "vulnerability. Use https:// or ssh:// instead."
 ppExplanation MissingModule =
   "For a CVS source-repository, the 'module' is a required field."
 ppExplanation MissingTag =

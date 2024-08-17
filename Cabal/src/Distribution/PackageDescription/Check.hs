@@ -684,6 +684,7 @@ checkSourceRepos rs = do
         checkP
           (isNothing repoLocation_)
           (PackageDistInexcusable MissingLocation)
+        checkGitProtocol repoLocation_
         checkP
           ( repoType_ == Just (KnownRepoType CVS)
               && isNothing repoModule_
@@ -721,6 +722,17 @@ checkMissingVcsInfo rs =
     repoTypeDirname Bazaar = [".bzr"]
     repoTypeDirname Monotone = ["_MTN"]
     repoTypeDirname Pijul = [".pijul"]
+
+-- git:// lacks TLS or other encryption, see
+-- https://git-scm.com/book/en/v2/Git-on-the-Server-The-Protocols#_the_cons_4
+checkGitProtocol
+  :: Monad m
+  => Maybe String -- Repository location
+  -> CheckM m ()
+checkGitProtocol mloc =
+  checkP
+    (fmap (isPrefixOf "git://") mloc == Just True)
+    (PackageBuildWarning GitProtocol)
 
 -- ------------------------------------------------------------
 -- Package and distribution checks
