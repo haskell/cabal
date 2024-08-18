@@ -291,7 +291,10 @@ mkLiterate _ hs = hs
 -- Interactive prompt monad
 
 newtype PromptIO a = PromptIO (ReaderT (Data.IORef.IORef SessionState) IO a)
-  deriving (Functor, Applicative, Monad, MonadIO, MonadReader (Data.IORef.IORef SessionState))
+  deriving (Functor, Applicative, Monad, MonadIO)
+
+sessionState :: PromptIO (Data.IORef.IORef SessionState)
+sessionState = PromptIO ask
 
 runPromptIO :: PromptIO a -> IO a
 runPromptIO (PromptIO pio) =
@@ -410,11 +413,11 @@ instance Interactive PromptIO where
   throwPrompt = liftIO <$> throwM
 
   getLastChosenLanguage = do
-    stateRef <- ask
+    stateRef <- sessionState
     liftIO $ lastChosenLanguage <$> Data.IORef.readIORef stateRef
 
   setLastChosenLanguage value = do
-    stateRef <- ask
+    stateRef <- sessionState
     liftIO $
       Data.IORef.modifyIORef
         stateRef
