@@ -296,7 +296,7 @@ runPromptIO pio =
   (Data.IORef.newIORef _newSessionState) >>= (runReaderT pio)
 
 newtype PurePrompt a = PurePrompt
-  { _runPromptState
+  { runPromptState
       :: (NonEmpty String, SessionState)
       -> Either BreakException (a, (NonEmpty String, SessionState))
   }
@@ -304,7 +304,7 @@ newtype PurePrompt a = PurePrompt
 
 runPrompt :: PurePrompt a -> NonEmpty String -> Either BreakException (a, NonEmpty String)
 runPrompt act args =
-  (fmap (\(a, (s, _)) -> (a, s))) (_runPromptState act (args, _newSessionState))
+  (fmap (\(a, (s, _)) -> (a, s))) (runPromptState act (args, _newSessionState))
 
 evalPrompt :: PurePrompt a -> NonEmpty String -> a
 evalPrompt act s = case runPrompt act s of
@@ -323,7 +323,7 @@ instance Monad PurePrompt where
   return = pure
   PurePrompt a >>= k = PurePrompt $ \s -> case a s of
     Left e -> Left e
-    Right (a', s') -> _runPromptState (k a') s'
+    Right (a', s') -> runPromptState (k a') s'
 
 class Monad m => Interactive m where
   -- input functions
