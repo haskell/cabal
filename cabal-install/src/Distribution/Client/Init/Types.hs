@@ -44,7 +44,7 @@ module Distribution.Client.Init.Types
   , PromptIO
   , runPromptIO
   , PurePrompt
-  , _runPrompt
+  , runPrompt
   , evalPrompt
   , Severity (..)
 
@@ -302,12 +302,12 @@ newtype PurePrompt a = PurePrompt
   }
   deriving (Functor)
 
-_runPrompt :: PurePrompt a -> NonEmpty String -> Either BreakException (a, NonEmpty String)
-_runPrompt act args =
+runPrompt :: PurePrompt a -> NonEmpty String -> Either BreakException (a, NonEmpty String)
+runPrompt act args =
   (fmap (\(a, (s, _)) -> (a, s))) (_runPromptState act (args, _newSessionState))
 
 evalPrompt :: PurePrompt a -> NonEmpty String -> a
-evalPrompt act s = case _runPrompt act s of
+evalPrompt act s = case runPrompt act s of
   Left e -> error $ show e
   Right (a, _) -> a
 
