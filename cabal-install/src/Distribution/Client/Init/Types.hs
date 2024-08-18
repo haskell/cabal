@@ -2,9 +2,9 @@
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TypeSynonymInstances #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 -- |
 -- Module      :  Distribution.Client.Init.Types
@@ -310,8 +310,8 @@ newtype PurePrompt a = PurePrompt
 
 runPrompt :: PurePrompt a -> Inputs -> Either BreakException (a, Inputs)
 runPrompt act args =
-  fmap 
-    (\(a, (s, _)) -> (a, s)) 
+  fmap
+    (\(a, (s, _)) -> (a, s))
     (runPromptState act (args, newSessionState))
 
 evalPrompt :: PurePrompt a -> Inputs -> a
