@@ -294,7 +294,7 @@ type PromptIO = ReaderT (Data.IORef.IORef SessionState) IO
 
 runPromptIO :: PromptIO a -> IO a
 runPromptIO pio =
-  (Data.IORef.newIORef _newSessionState) >>= (runReaderT pio)
+  (Data.IORef.newIORef newSessionState) >>= (runReaderT pio)
 
 type Inputs = NonEmpty String
 
@@ -307,7 +307,9 @@ newtype PurePrompt a = PurePrompt
 
 runPrompt :: PurePrompt a -> Inputs -> Either BreakException (a, Inputs)
 runPrompt act args =
-  (fmap (\(a, (s, _)) -> (a, s))) (runPromptState act (args, _newSessionState))
+  fmap 
+    (\(a, (s, _)) -> (a, s)) 
+    (runPromptState act (args, newSessionState))
 
 evalPrompt :: PurePrompt a -> Inputs -> a
 evalPrompt act s = case runPrompt act s of
@@ -369,8 +371,8 @@ newtype SessionState = SessionState
   { lastChosenLanguage :: (Maybe String)
   }
 
-_newSessionState :: SessionState
-_newSessionState = SessionState{lastChosenLanguage = Nothing}
+newSessionState :: SessionState
+newSessionState = SessionState{lastChosenLanguage = Nothing}
 
 instance Interactive PromptIO where
   getLine = liftIO P.getLine
