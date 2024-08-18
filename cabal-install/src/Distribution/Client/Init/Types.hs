@@ -458,18 +458,18 @@ instance Interactive PurePrompt where
     _ -> return ()
 
   break = return True
-  throwPrompt (BreakException e) = PurePrompt $ \(s, _) ->
+  throwPrompt (BreakException e) = PurePrompt $ \(i, _) ->
     Left $
       BreakException
-        ("Error: " ++ e ++ "\nStacktrace: " ++ show s)
+        ("Error: " ++ e ++ "\nStacktrace: " ++ show i)
 
-  getLastChosenLanguage = PurePrompt $ \(s, ss) ->
-    Right (lastChosenLanguage ss, (s, ss))
-  setLastChosenLanguage l = PurePrompt $ \(s, ss) ->
-    Right ((), (s, ss{lastChosenLanguage = l}))
+  getLastChosenLanguage = PurePrompt $ \(i, s) ->
+    Right (lastChosenLanguage s, (i, s))
+  setLastChosenLanguage l = PurePrompt $ \(i, s) ->
+    Right ((), (i, s{lastChosenLanguage = l}))
 
 pop :: PurePrompt String
-pop = PurePrompt $ \(p :| ps, ss) -> Right (p, (fromList ps, ss))
+pop = PurePrompt $ \(i :| is, s) -> Right (i, (fromList is, s))
 
 popAbsolute :: PurePrompt String
 popAbsolute = do
@@ -481,7 +481,7 @@ popBool =
   pop >>= \case
     "True" -> pure True
     "False" -> pure False
-    s -> throwPrompt $ BreakException $ "popBool: " ++ s
+    i -> throwPrompt $ BreakException $ "popBool: " ++ i
 
 popList :: PurePrompt [String]
 popList =
