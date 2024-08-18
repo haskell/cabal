@@ -43,6 +43,7 @@ module Distribution.Client.Init.Types
   , BreakException (..)
   , PromptIO
   , runPromptIO
+  , Inputs
   , PurePrompt
   , runPrompt
   , evalPrompt
@@ -295,18 +296,20 @@ runPromptIO :: PromptIO a -> IO a
 runPromptIO pio =
   (Data.IORef.newIORef _newSessionState) >>= (runReaderT pio)
 
+type Inputs = NonEmpty String
+
 newtype PurePrompt a = PurePrompt
   { runPromptState
-      :: (NonEmpty String, SessionState)
-      -> Either BreakException (a, (NonEmpty String, SessionState))
+      :: (Inputs, SessionState)
+      -> Either BreakException (a, (Inputs, SessionState))
   }
   deriving (Functor)
 
-runPrompt :: PurePrompt a -> NonEmpty String -> Either BreakException (a, NonEmpty String)
+runPrompt :: PurePrompt a -> Inputs -> Either BreakException (a, Inputs)
 runPrompt act args =
   (fmap (\(a, (s, _)) -> (a, s))) (runPromptState act (args, _newSessionState))
 
-evalPrompt :: PurePrompt a -> NonEmpty String -> a
+evalPrompt :: PurePrompt a -> Inputs -> a
 evalPrompt act s = case runPrompt act s of
   Left e -> error $ show e
   Right (a, _) -> a
