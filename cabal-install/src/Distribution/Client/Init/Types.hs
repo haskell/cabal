@@ -4,6 +4,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 -- |
 -- Module      :  Distribution.Client.Init.Types
@@ -69,6 +70,7 @@ import qualified Distribution.Client.Compat.Prelude as P
 import Prelude (read)
 
 import Control.Monad.Catch
+import Control.Monad.IO.Class
 import Control.Monad.Reader
 
 import Data.List.NonEmpty (fromList)
@@ -290,10 +292,11 @@ mkLiterate _ hs = hs
 -- -------------------------------------------------------------------- --
 -- Interactive prompt monad
 
-type PromptIO = ReaderT (Data.IORef.IORef SessionState) IO
+newtype PromptIO a = PromptIO (ReaderT (Data.IORef.IORef SessionState) IO a)
+  deriving (Functor, Applicative, Monad, MonadIO, MonadReader (Data.IORef.IORef SessionState))
 
 runPromptIO :: PromptIO a -> IO a
-runPromptIO pio =
+runPromptIO (PromptIO pio) =
   (Data.IORef.newIORef newSessionState) >>= (runReaderT pio)
 
 type Inputs = NonEmpty String
@@ -388,9 +391,9 @@ instance Interactive PromptIO where
   getEnvironment = liftIO P.getEnvironment
   getCurrentYear = liftIO P.getCurrentYear
   listFilesInside test dir = do
-    sessionState <- ask
-    -- test is run within the same env
-    liftIO $ P.listFilesInside (\f -> liftIO $ runReaderT (test f) sessionState) dir
+    -- test is run within a new env and not the current env
+    -- all usages of listFilesInside are pure functions actually
+    liftIO $ P.listFilesInside (\f -> liftIO $ runPromptIO (test f)) dir
   listFilesRecursive = liftIO <$> P.listFilesRecursive
 
   putStr = liftIO <$> P.putStr
