@@ -689,7 +689,7 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
           , ghcOptFPic = toFlag True
           , ghcOptHiSuffix = toFlag "dyn_hi"
           , ghcOptObjSuffix = toFlag "dyn_o"
-          , ghcOptExtra = hcSharedOptions GHC libBi
+          , ghcOptExtra = hcOptions GHC libBi ++ hcSharedOptions GHC libBi
           }
     profArgs =
       vanillaArgs
@@ -701,7 +701,7 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
                 (withProfLibDetail lbi)
           , ghcOptHiSuffix = toFlag "p_hi"
           , ghcOptObjSuffix = toFlag "p_o"
-          , ghcOptExtra = hcProfOptions GHC libBi
+          , ghcOptExtra = hcOptions GHC libBi ++ hcProfOptions GHC libBi
           }
     ghcArgs
       | withVanillaLib lbi = vanillaArgs
