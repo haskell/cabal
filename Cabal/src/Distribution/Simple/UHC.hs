@@ -251,8 +251,8 @@ buildExe verbosity _pkg_descr lbi exe clbi = do
   userPkgDir <- getUserPackageDir
   let mbWorkDir = mbWorkDirLBI lbi
   srcMainPath <- findFileCwd verbosity mbWorkDir (hsSourceDirs $ buildInfo exe) (modulePath exe)
-  let runUhcProg = runDbProgram verbosity uhcProgram (withPrograms lbi)
-      i = interpretSymbolicPathLBI lbi -- See Note [Symbolic paths] in Distribution.Utils.Path
+  let runUhcProg = runDbProgramCwd verbosity (mbWorkDirLBI lbi) uhcProgram (withPrograms lbi)
+      u = interpretSymbolicPathCWD
       uhcArgs =
         -- common flags lib/exe
         constructUHCCmdLine
@@ -264,9 +264,9 @@ buildExe verbosity _pkg_descr lbi exe clbi = do
           (buildDir lbi)
           verbosity
           -- output file
-          ++ ["--output", i $ buildDir lbi </> makeRelativePathEx (prettyShow (exeName exe))]
+          ++ ["--output", u $ buildDir lbi </> makeRelativePathEx (prettyShow (exeName exe))]
           -- main source module
-          ++ [i $ srcMainPath]
+          ++ [u $ srcMainPath]
   runUhcProg uhcArgs
 
 constructUHCCmdLine
@@ -297,14 +297,14 @@ constructUHCCmdLine user system lbi bi clbi odir verbosity =
     ++ ["--package=uhcbase"]
     ++ ["--package=" ++ prettyShow (mungedName pkgid) | (_, pkgid) <- componentPackageDeps clbi]
     -- search paths
-    ++ ["-i" ++ i odir]
-    ++ ["-i" ++ i l | l <- nub (hsSourceDirs bi)]
-    ++ ["-i" ++ i (autogenComponentModulesDir lbi clbi)]
-    ++ ["-i" ++ i (autogenPackageModulesDir lbi)]
+    ++ ["-i" ++ u odir]
+    ++ ["-i" ++ u l | l <- nub (hsSourceDirs bi)]
+    ++ ["-i" ++ u (autogenComponentModulesDir lbi clbi)]
+    ++ ["-i" ++ u (autogenPackageModulesDir lbi)]
     -- cpp options
     ++ ["--optP=" ++ opt | opt <- cppOptions bi]
     -- output path
-    ++ ["--odir=" ++ i odir]
+    ++ ["--odir=" ++ u odir]
     -- optimization
     ++ ( case withOptimization lbi of
           NoOptimisation -> ["-O0"]
@@ -312,7 +312,7 @@ constructUHCCmdLine user system lbi bi clbi odir verbosity =
           MaximumOptimisation -> ["-O2"]
        )
   where
-    i = interpretSymbolicPathCWD -- See Note [Symbolic paths] in Distribution.Utils.Path
+    u = interpretSymbolicPathCWD -- See Note [Symbolic paths] in Distribution.Utils.Path
 
 uhcPackageDbOptions :: FilePath -> FilePath -> PackageDBStack -> [String]
 uhcPackageDbOptions user system db =

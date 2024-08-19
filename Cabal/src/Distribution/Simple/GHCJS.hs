@@ -1850,7 +1850,7 @@ installExe
         exeFileName = exeName'
         fixedExeBaseName = progprefix ++ exeName' ++ progsuffix
         installBinary dest = do
-          runDbProgram verbosity ghcjsProgram (withPrograms lbi) $
+          runDbProgramCwd verbosity (mbWorkDirLBI lbi) ghcjsProgram (withPrograms lbi) $
             [ "--install-executable"
             , buildPref </> exeName' </> exeFileName
             , "-o"

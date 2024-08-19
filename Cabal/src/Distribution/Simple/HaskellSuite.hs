@@ -181,23 +181,23 @@ buildLib verbosity pkg_descr lbi lib clbi = do
 
   let odir = buildDir lbi
       bi = libBuildInfo lib
-      srcDirs = map i (hsSourceDirs bi) ++ [i odir]
+      srcDirs = map u (hsSourceDirs bi) ++ [u odir]
       dbStack = withPackageDB lbi
       language = fromMaybe Haskell98 (defaultLanguage bi)
       progdb = withPrograms lbi
       pkgid = packageId pkg_descr
-      i = interpretSymbolicPathLBI lbi -- See Note [Symbolic paths] in Distribution.Utils.Path
-  runDbProgram verbosity haskellSuiteProgram progdb $
-    ["compile", "--build-dir", i odir]
+      u = interpretSymbolicPathCWD -- See Note [Symbolic paths] in Distribution.Utils.Path
+  runDbProgramCwd verbosity (mbWorkDirLBI lbi) haskellSuiteProgram progdb $
+    ["compile", "--build-dir", u odir]
       ++ concat [["-i", d] | d <- srcDirs]
       ++ concat
         [ ["-I", d]
         | d <-
-            [ i $ autogenComponentModulesDir lbi clbi
-            , i $ autogenPackageModulesDir lbi
-            , i odir
+            [ u $ autogenComponentModulesDir lbi clbi
+            , u $ autogenPackageModulesDir lbi
+            , u odir
             ]
-              ++ map i (includeDirs bi)
+              ++ map u (includeDirs bi)
         ]
       ++ [packageDbOpt pkgDb | pkgDb <- dbStack]
       ++ ["--package-name", prettyShow pkgid]
@@ -225,7 +225,8 @@ installLib
   -> IO ()
 installLib verbosity lbi targetDir dynlibTargetDir builtDir pkg lib clbi = do
   let progdb = withPrograms lbi
-  runDbProgram verbosity haskellSuitePkgProgram progdb $
+      wdir = mbWorkDirLBI lbi
+  runDbProgramCwd verbosity wdir haskellSuitePkgProgram progdb $
     [ "install-library"
     , "--build-dir"
     , builtDir

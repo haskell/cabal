@@ -390,8 +390,9 @@ ppGreenCard _ lbi _ =
     { platformIndependent = False
     , ppOrdering = unsorted
     , runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity ->
-        runDbProgram
+        runDbProgramCwd
           verbosity
+          (mbWorkDirLBI lbi)
           greencardProgram
           (withPrograms lbi)
           (["-tffi", "-o" ++ outFile, inFile])
@@ -863,8 +864,9 @@ standardPP lbi prog args =
     { platformIndependent = False
     , ppOrdering = unsorted
     , runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity ->
-        runDbProgram
+        runDbProgramCwd
           verbosity
+          (mbWorkDirLBI lbi)
           prog
           (withPrograms lbi)
           (args ++ ["-o", outFile, inFile])
