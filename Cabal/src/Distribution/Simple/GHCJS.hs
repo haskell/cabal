@@ -583,7 +583,7 @@ buildOrReplLib mReplFlags verbosity numJobs _pkg_descr lbi lib clbi = do
             , ghcOptFPic = toFlag True
             , --  ghcOptHiSuffix    = toFlag "dyn_hi",
               --  ghcOptObjSuffix   = toFlag "dyn_o",
-              ghcOptExtra = hcSharedOptions GHC libBi
+              ghcOptExtra = hcOptions GHC libBi ++ hcSharedOptions GHC libBi
             , ghcOptHPCDir = hpcdir Hpc.Dyn
             }
 
@@ -772,7 +772,7 @@ buildOrReplLib mReplFlags verbosity numJobs _pkg_descr lbi lib clbi = do
               , ghcOptDynLinkMode = toFlag GhcDynamicOnly
               , ghcOptInputFiles = toNubListR dynamicObjectFiles
               , ghcOptOutputFile = toFlag sharedLibFilePath
-              , ghcOptExtra = hcSharedOptions GHC libBi
+              , ghcOptExtra = hcOptions GHC libBi ++ hcSharedOptions GHC libBi
               , -- For dynamic libs, Mac OS/X needs to know the install location
                 -- at build time. This only applies to GHC < 7.8 - see the
                 -- discussion in #1660.
@@ -1330,7 +1330,7 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
               ghcOptFPic = toFlag True
             , ghcOptHiSuffix = toFlag "dyn_hi"
             , ghcOptObjSuffix = toFlag "dyn_o"
-            , ghcOptExtra = hcSharedOptions GHC bnfo
+            , ghcOptExtra = hcOptions GHC bnfo ++ hcSharedOptions GHC bnfo
             , ghcOptHPCDir = hpcdir Hpc.Dyn
             }
       dynTooOpts =
@@ -1781,7 +1781,7 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
           , ghcOptFPic = toFlag True
           , ghcOptHiSuffix = toFlag "js_dyn_hi"
           , ghcOptObjSuffix = toFlag "js_dyn_o"
-          , ghcOptExtra = hcSharedOptions GHC libBi
+          , ghcOptExtra = hcOptions GHC libBi ++ hcSharedOptions GHC libBi
           }
     profArgs =
       vanillaArgs
