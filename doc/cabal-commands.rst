@@ -1327,6 +1327,9 @@ A list of all warnings with their constructor:
 - ``unrecognised-repo-type``: unrecognised kind of source-repository.
 - ``repo-no-type``: missing ``type`` in ``source-repository``.
 - ``repo-no-location``: missing ``location`` in ``source-repository``.
+- ``git-protocol``: using insecure ``git://`` protocol
+  (`explanation <https://git-scm.com/book/en/v2/Git-on-the-Server-The-Protocols#_the_cons_4>`__
+  in Git Book).
 - ``repo-no-module``: missing ``module`` in ``source-repository``.
 - ``repo-no-tag``: missing ``tag`` in ``source-repository``.
 - ``repo-relative-dir``: ``subdir`` in ``source-repository`` must be relative.
