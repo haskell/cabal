@@ -41,6 +41,7 @@ _build
 *~
 .*.swp
 *.bak
+.vscode
 
 # GHC build
 
