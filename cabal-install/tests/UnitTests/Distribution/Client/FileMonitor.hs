@@ -88,17 +88,10 @@ tests mtimeChange =
       Windows -> expectFailBecause msg
       _ -> id
     fingerprintStateGlob1, fingerprintStateGlob2, fingerprintStateFileSet1, fingerprintStateFileSet2 :: Word64
-#if MIN_VERSION_base(4,19,0)
-    fingerprintStateGlob1 = 0x4ebc6a7d12bb2132
-    fingerprintStateGlob2 = 0x2c2292eeda0a9319
-    fingerprintStateFileSet1 = 0x01df5796f9030851
-    fingerprintStateFileSet2 = 0x2f5c472be17bee98
-#else
-    fingerprintStateGlob1 = 0xf32c0d1644dd9ee5
-    fingerprintStateGlob2 = 0x0f2494f7b6031fb6
-    fingerprintStateFileSet1 = 0x06d4a13275c24282
-    fingerprintStateFileSet2 = 0x791b2a88684b5f37
-#endif
+    fingerprintStateGlob1 = 0x8d6292a27f48ab78
+    fingerprintStateGlob2 = 0xa69393cf17cb6c71
+    fingerprintStateFileSet1 = 0x441fcb5eaf403013
+    fingerprintStateFileSet2 = 0x129db82bba47f56f
 
 -- Check the file system behaves the way we expect it to
 
