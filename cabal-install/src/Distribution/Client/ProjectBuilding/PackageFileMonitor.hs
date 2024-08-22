@@ -26,7 +26,7 @@ import Distribution.Simple.LocalBuildInfo
   )
 
 import qualified Data.Set as Set
-import Distribution.Client.Init.Types (removeExistingFile)
+import Distribution.Client.Init.Types (removeExistingFile, runPromptIO)
 
 -----------------------------
 -- Package change detection
@@ -291,4 +291,4 @@ updatePackageRegFileMonitor
 
 invalidatePackageRegFileMonitor :: PackageFileMonitor -> IO ()
 invalidatePackageRegFileMonitor PackageFileMonitor{pkgFileMonitorReg} =
-  removeExistingFile (fileMonitorCacheFile pkgFileMonitorReg)
+  runPromptIO $ removeExistingFile (fileMonitorCacheFile pkgFileMonitorReg)

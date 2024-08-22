@@ -105,7 +105,7 @@ goldenPkgDescTests v srcDb pkgDir pkgName =
     ]
   where
     runPkgDesc opts flags args = do
-      case _runPrompt (genPkgDescription flags srcDb) args of
+      case runPrompt (genPkgDescription flags srcDb) args of
         Left e -> assertFailure $ show e
         Right (pkg, _) -> mkStanza $ mkPkgDescription opts pkg
 
@@ -146,7 +146,7 @@ goldenExeTests v pkgIx pkgDir pkgName =
     ]
   where
     runGoldenExe opts args flags =
-      case _runPrompt (genExeTarget flags pkgIx) args of
+      case runPrompt (genExeTarget flags pkgIx) args of
         Right (t, _) -> mkStanza [mkExeStanza opts $ t{_exeDependencies = mangleBaseDep t _exeDependencies}]
         Left e -> assertFailure $ show e
 
@@ -192,7 +192,7 @@ goldenLibTests v pkgIx pkgDir pkgName =
     ]
   where
     runGoldenLib opts args flags =
-      case _runPrompt (genLibTarget flags pkgIx) args of
+      case runPrompt (genLibTarget flags pkgIx) args of
         Right (t, _) -> mkStanza [mkLibStanza opts $ t{_libDependencies = mangleBaseDep t _libDependencies}]
         Left e -> assertFailure $ show e
 
@@ -243,7 +243,7 @@ goldenTestTests v pkgIx pkgDir pkgName =
     ]
   where
     runGoldenTest opts args flags =
-      case _runPrompt (genTestTarget flags pkgIx) args of
+      case runPrompt (genTestTarget flags pkgIx) args of
         Left e -> assertFailure $ show e
         Right (Nothing, _) ->
           assertFailure
@@ -286,7 +286,7 @@ goldenCabalTests v pkgIx srcDb =
     ]
   where
     runGoldenTest args flags =
-      case _runPrompt (createProject v pkgIx srcDb flags) args of
+      case runPrompt (createProject v pkgIx srcDb flags) args of
         Left e -> assertFailure $ show e
         (Right (ProjectSettings opts pkgDesc (Just libTarget) (Just exeTarget) (Just testTarget), _)) -> do
           let pkgFields = mkPkgDescription opts pkgDesc

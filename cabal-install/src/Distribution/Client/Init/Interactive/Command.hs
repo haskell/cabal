@@ -460,13 +460,17 @@ languagePrompt flags pkgType = getLanguage flags $ do
       ghc2021 = "GHC2021 (requires at least GHC 9.2)"
       ghc2024 = "GHC2024 (requires at least GHC 9.10)"
 
+  lastChosenLanguage <- getLastChosenLanguage
+
   l <-
     promptList
       ("Choose a language for your " ++ pkgType)
       [h2010, h98, ghc2021, ghc2024]
-      (DefaultPrompt h2010)
+      (DefaultPrompt (maybe h2010 id lastChosenLanguage))
       Nothing
       True
+
+  setLastChosenLanguage (Just l)
 
   if
       | l == h2010 -> return Haskell2010
