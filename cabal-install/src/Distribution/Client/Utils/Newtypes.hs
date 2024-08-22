@@ -6,6 +6,8 @@
 module Distribution.Client.Utils.Newtypes
   ( NumJobs (..)
   , PackageDBNT (..)
+  , AllowNewerNT (..)
+  , AllowOlderNT (..)
   , ProjectConstraints (..)
   , MaxBackjumps (..)
   , URI_NT (..)
@@ -15,6 +17,7 @@ where
 
 import Distribution.Client.Compat.Prelude
 import Distribution.Client.Targets (UserConstraint)
+import Distribution.Client.Types.AllowNewer (AllowNewer (..), AllowOlder (..))
 import Distribution.Compat.CharParsing
 import Distribution.Compat.Newtype
 import Distribution.Parsec
@@ -39,6 +42,18 @@ instance Newtype (Maybe Int) NumJobs
 instance Parsec NumJobs where
   parsec = parsecNumJobs
 
+parsecNumJobs :: CabalParsing m => m NumJobs
+parsecNumJobs = ncpus <|> numJobs
+  where
+    ncpus = string "$ncpus" >> return (NumJobs Nothing)
+    numJobs = do
+      num <- integral
+      if num < (1 :: Int)
+        then do
+          parsecWarning PWTOther "The number of jobs should be 1 or more."
+          return (NumJobs Nothing)
+        else return (NumJobs $ Just num)
+
 newtype URI_NT = URI_NT {getURI_NT :: URI}
 
 instance Newtype (URI) URI_NT
@@ -59,18 +74,6 @@ instance Newtype Int KeyThreshold
 
 instance Parsec KeyThreshold where
   parsec = KeyThreshold <$> integral
-
-parsecNumJobs :: CabalParsing m => m NumJobs
-parsecNumJobs = ncpus <|> numJobs
-  where
-    ncpus = string "$ncpus" >> return (NumJobs Nothing)
-    numJobs = do
-      num <- integral
-      if num < (1 :: Int)
-        then do
-          parsecWarning PWTOther "The number of jobs should be 1 or more."
-          return (NumJobs Nothing)
-        else return (NumJobs $ Just num)
 
 newtype ProjectConstraints = ProjectConstraints {getProjectConstraints :: (UserConstraint, ConstraintSource)}
 
@@ -95,3 +98,23 @@ instance Parsec MaxBackjumps where
 
 parseMaxBackjumps :: CabalParsing m => m MaxBackjumps
 parseMaxBackjumps = MaxBackjumps <$> integral
+
+newtype AllowNewerNT = AllowNewerNT {getAllowNewerNT :: Maybe AllowNewer}
+
+instance Newtype (Maybe AllowNewer) AllowNewerNT
+
+instance Parsec AllowNewerNT where
+  parsec = parsecAllowNewer
+
+parsecAllowNewer :: CabalParsing m => m AllowNewerNT
+parsecAllowNewer = AllowNewerNT . Just <$> parsec
+
+newtype AllowOlderNT = AllowOlderNT {getAllowOlderNT :: Maybe AllowOlder}
+
+instance Newtype (Maybe AllowOlder) AllowOlderNT
+
+instance Parsec AllowOlderNT where
+  parsec = parsecAllowOlder
+
+parsecAllowOlder :: CabalParsing m => m AllowOlderNT
+parsecAllowOlder = AllowOlderNT . Just <$> parsec
