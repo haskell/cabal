@@ -87,6 +87,7 @@ parserTests =
     , testCase "test projectConfigSpecificPackages concatenation" testSpecificPackagesConcat
     , testCase "test program-locations concatenation" testProgramLocationsConcat
     , testCase "test program-options concatenation" testProgramOptionsConcat
+    , testCase "test allow-newer and allow-older concatenation" testRelaxDepsConcat
     ]
 
 testPackages :: Assertion
@@ -469,6 +470,31 @@ testProgramOptionsConcat = do
       mempty
         { packageConfigProgramArgs = MapMappend $ Map.fromList [("ghc", ["-threaded", "-Wall", "-fno-state-hack"]), ("gcc", ["-baz", "-foo", "-bar"])]
         }
+
+testRelaxDepsConcat :: Assertion
+testRelaxDepsConcat = do
+  (config, legacy) <- readConfigDefault "relax-deps-concat"
+  assertConfigEquals expectedAllowNewer config legacy (projectConfigAllowNewer . projectConfigShared . condTreeData)
+  assertConfigEquals expectedAllowOlder config legacy (projectConfigAllowOlder . projectConfigShared . condTreeData)
+  where
+    expectedAllowNewer :: Maybe AllowNewer
+    expectedAllowNewer =
+      pure $
+        AllowNewer $
+          RelaxDepsSome
+            [ RelaxedDep (RelaxDepScopePackageId (PackageIdentifier (mkPackageName "cassava") (mkVersion [0, 5, 2, 0]))) RelaxDepModNone (RelaxDepSubjectPkg (mkPackageName "base"))
+            , RelaxedDep (RelaxDepScopePackageId (PackageIdentifier (mkPackageName "vector-th-unbox") (mkVersion [0, 2, 1, 7]))) RelaxDepModNone (RelaxDepSubjectPkg (mkPackageName "base"))
+            , RelaxedDep (RelaxDepScopePackageId (PackageIdentifier (mkPackageName "vector-th-unbox") (mkVersion [0, 2, 1, 7]))) RelaxDepModNone (RelaxDepSubjectPkg (mkPackageName "template-haskell"))
+            ]
+    expectedAllowOlder :: Maybe AllowOlder
+    expectedAllowOlder =
+      pure $
+        AllowOlder $
+          RelaxDepsSome
+            [ RelaxedDep (RelaxDepScopePackageId (PackageIdentifier (mkPackageName "mtl") (mkVersion [2, 3, 1]))) RelaxDepModNone (RelaxDepSubjectPkg (mkPackageName "base"))
+            , RelaxedDep (RelaxDepScopePackageId (PackageIdentifier (mkPackageName "aeson") (mkVersion [2, 2, 3, 0]))) RelaxDepModNone (RelaxDepSubjectPkg (mkPackageName "bytestring"))
+            , RelaxedDep (RelaxDepScopePackageId (PackageIdentifier (mkPackageName "containers") (mkVersion [0, 7]))) RelaxDepModNone (RelaxDepSubjectPkg (mkPackageName "array"))
+            ]
 
 -------------------------------------------------------------------------------
 -- Test Utilities
