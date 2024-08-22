@@ -81,7 +81,7 @@ tests _v _initFlags comp pkgIx srcDb =
                 "False"
               ]
 
-        case flip _runPrompt inputs $ do
+        case flip runPrompt inputs $ do
           projSettings <- createProject comp silent pkgIx srcDb dummyFlags'
           writeProject projSettings of
           Left (BreakException ex) -> assertFailure $ show ex
