@@ -90,8 +90,8 @@ projectConfigSharedFieldGrammar source =
     <*> monoidalFieldAla "preferences" formatPackageVersionConstraints L.projectConfigPreferences
     <*> optionalFieldDef "cabal-lib-version" L.projectConfigCabalVersion mempty
     <*> optionalFieldDef "solver" L.projectConfigSolver mempty
-    <*> optionalField "allow-older" L.projectConfigAllowOlder
-    <*> optionalField "allow-newer" L.projectConfigAllowNewer
+    <*> monoidalFieldAla "allow-older" AllowOlderNT L.projectConfigAllowOlder
+    <*> monoidalFieldAla "allow-newer" AllowNewerNT L.projectConfigAllowNewer
     <*> optionalFieldDef "write-ghc-environment-files" L.projectConfigWriteGhcEnvironmentFilesPolicy mempty
     <*> optionalFieldDefAla "max-backjumps" (alaFlag MaxBackjumps) L.projectConfigMaxBackjumps mempty
     <*> optionalFieldDef "reorder-goals" L.projectConfigReorderGoals mempty
