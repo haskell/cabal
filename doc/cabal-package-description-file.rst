@@ -3015,6 +3015,9 @@ Right now :pkg-field:`executable:main-is` modules are not supported on
 Accessing data files from package code
 --------------------------------------
 
+.. index:: Paths
+.. index:: Paths_
+
 The placement on the target system of files listed in
 the :pkg-field:`data-files` field varies between systems, and in some cases
 one can even move packages around after installation
@@ -3069,6 +3072,9 @@ the configured data directory for ``pretty-show`` is controlled with the
 
 Accessing the package version
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. index:: PackageInfo
+.. index:: PackageInfo_
 
 The auto generated :file:`PackageInfo_{pkgname}` module exports the constant
 ``version ::`` `Version <http://hackage.haskell.org/package/base/docs/Data-Version.html>`__
