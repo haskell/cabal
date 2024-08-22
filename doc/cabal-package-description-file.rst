@@ -1780,6 +1780,11 @@ system-dependent values for these fields.
     ones specified via :pkg-field:`ghc-options`, and are passed to GHC during
     both the compile and link phases.
 
+    Note that if any :pkg-field:`ghc-shared-options` are set, the
+    ``-dynamic-too` option will never be passed to GHC, leading to all modules
+    being compiled twice (once to generate the ``.o`` files and another to
+    generate the ``.dyn_o`` files).
+
 .. pkg-field:: ghcjs-options: token list
 
    Like :pkg-field:`ghc-options` but applies to GHCJS

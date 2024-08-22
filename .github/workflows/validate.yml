@@ -191,7 +191,7 @@ jobs:
       # - Make it available in the workflow to make easier testing it locally
       - name: Upload cabal-install executable to workflow artifacts
         if: matrix.ghc == env.GHC_FOR_RELEASE
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: cabal-${{ runner.os }}-x86_64
           path: ${{ env.CABAL_EXEC_TAR }}
@@ -338,7 +338,7 @@ jobs:
           echo "CABAL_EXEC_TAR=$CABAL_EXEC_TAR" >> "$GITHUB_ENV"
 
       - name: Upload cabal-install executable to workflow artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: cabal-${{ runner.os }}-static-x86_64
           path: ${{ env.CABAL_EXEC_TAR }}
@@ -374,7 +374,7 @@ jobs:
           cabal-version: latest # default, we are not using it in this job
 
       - name: Download cabal executable from workflow artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: cabal-${{ runner.os }}-x86_64
           path: cabal-head
@@ -399,19 +399,19 @@ jobs:
     needs: [validate, validate-old-ghcs, build-alpine, dogfooding]
 
     steps:
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: cabal-Windows-x86_64
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: cabal-Linux-x86_64
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: cabal-Linux-static-x86_64
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: cabal-macOS-x86_64
 
@@ -429,7 +429,7 @@ jobs:
             cabal-head-macOS-x86_64.tar.gz
 
   # We use this job as a summary of the workflow
-  # It will fail if any of the previous jobs does it
+  # It will fail if any of the previous jobs does
   # This way we can use it exclusively in branch protection rules
   # and abstract away the concrete jobs of the workflow, including their names
   validate-post-job:
