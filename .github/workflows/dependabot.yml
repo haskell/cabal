@@ -1,0 +1,17 @@
+# copied from https://github.com/ubuntu/authd/commit/3f9df8f21d952cd33fd44d3834d0edeec1f5766f
+
+name: Dependabot rules validation
+
+on:
+  pull_request:
+    paths:
+      - '.github/dependabot.yml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: marocchino/validate-dependabot@v3
+        id: validate
