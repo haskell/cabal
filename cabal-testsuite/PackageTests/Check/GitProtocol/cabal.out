@@ -1,0 +1,6 @@
+# cabal check
+The following errors are likely to affect your build negatively:
+Error: [git-protocol] Cloning over git:// might lead to an arbitrary code
+execution vulnerability. Furthermore, popular forges like GitHub do not
+support it. Use https:// or ssh:// instead.
+Error: Hackage would reject this package.

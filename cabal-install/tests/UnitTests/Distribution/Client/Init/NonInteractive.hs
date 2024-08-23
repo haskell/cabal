@@ -93,7 +93,7 @@ driverFunctionTest pkgIx srcDb comp =
                     , "[\"quxTest/Main.hs\"]"
                     ]
 
-            case (_runPrompt $ createProject comp silent pkgIx srcDb dummyFlags') inputs of
+            case (runPrompt $ createProject comp silent pkgIx srcDb dummyFlags') inputs of
               Right (ProjectSettings opts desc (Just lib) (Just exe) (Just test), _) -> do
                 _optOverwrite opts @?= False
                 _optMinimal opts @?= False
@@ -180,7 +180,7 @@ driverFunctionTest pkgIx srcDb comp =
                       "False"
                     ]
 
-            case (_runPrompt $ createProject comp silent pkgIx srcDb dummyFlags') inputs of
+            case (runPrompt $ createProject comp silent pkgIx srcDb dummyFlags') inputs of
               Right (ProjectSettings opts desc (Just lib) (Just exe) (Just test), _) -> do
                 _optOverwrite opts @?= False
                 _optMinimal opts @?= False
@@ -356,7 +356,7 @@ driverFunctionTest pkgIx srcDb comp =
                     , "[\"test/Main.hs\", \"test/Foo.hs\", \"test/bar.y\"]"
                     ]
 
-            case ( _runPrompt $
+            case ( runPrompt $
                     createProject
                       comp
                       silent
@@ -508,7 +508,7 @@ driverFunctionTest pkgIx srcDb comp =
                     , "[\"test/Main.hs\", \"test/Foo.hs\", \"test/bar.y\"]"
                     ]
 
-            case ( _runPrompt $
+            case ( runPrompt $
                     createProject
                       comp
                       silent
@@ -664,7 +664,7 @@ driverFunctionTest pkgIx srcDb comp =
                     , "[\"app/Main.hs\", \"src/Foo.hs\", \"src/bar.y\"]"
                     ]
 
-            case (_runPrompt $ createProject comp silent pkgIx srcDb emptyFlags) inputs of
+            case (runPrompt $ createProject comp silent pkgIx srcDb emptyFlags) inputs of
               Right (ProjectSettings opts desc (Just lib) (Just exe) Nothing, _) -> do
                 _optOverwrite opts @?= False
                 _optMinimal opts @?= False
@@ -774,7 +774,7 @@ driverFunctionTest pkgIx srcDb comp =
                     , "[\"app/Main.hs\", \"src/Foo.hs\", \"src/bar.y\"]"
                     ]
 
-            case (_runPrompt $ createProject comp silent pkgIx srcDb emptyFlags) inputs of
+            case (runPrompt $ createProject comp silent pkgIx srcDb emptyFlags) inputs of
               Right (ProjectSettings opts desc (Just lib) Nothing Nothing, _) -> do
                 _optOverwrite opts @?= False
                 _optMinimal opts @?= False
@@ -865,7 +865,7 @@ driverFunctionTest pkgIx srcDb comp =
                     , "[\"app/Main.hs\", \"src/Foo.hs\", \"src/bar.y\"]"
                     ]
 
-            case (_runPrompt $ createProject comp silent pkgIx srcDb emptyFlags) inputs of
+            case (runPrompt $ createProject comp silent pkgIx srcDb emptyFlags) inputs of
               Right (ProjectSettings opts desc Nothing (Just exe) Nothing, _) -> do
                 _optOverwrite opts @?= False
                 _optMinimal opts @?= False
@@ -931,7 +931,7 @@ fileCreatorTests pkgIx srcDb comp =
                     , "[]"
                     ]
 
-            case (_runPrompt $ genPkgDescription emptyFlags srcDb) inputs of
+            case (runPrompt $ genPkgDescription emptyFlags srcDb) inputs of
               Left e -> assertFailure $ show e
               Right{} -> return ()
         ]
@@ -980,7 +980,7 @@ fileCreatorTests pkgIx srcDb comp =
                     , "[\"app/Main.hs\", \"src/Foo.hs\", \"src/bar.y\"]"
                     ]
 
-            case (_runPrompt $ genLibTarget emptyFlags comp pkgIx defaultCabalVersion) inputs of
+            case (runPrompt $ genLibTarget emptyFlags comp pkgIx defaultCabalVersion) inputs of
               Left e -> assertFailure $ show e
               Right{} -> return ()
         ]
@@ -1021,7 +1021,7 @@ fileCreatorTests pkgIx srcDb comp =
                     , "[\"app/Main.hs\", \"src/Foo.hs\", \"src/bar.y\"]"
                     ]
 
-            case (_runPrompt $ genExeTarget emptyFlags comp pkgIx defaultCabalVersion) inputs of
+            case (runPrompt $ genExeTarget emptyFlags comp pkgIx defaultCabalVersion) inputs of
               Left e -> assertFailure $ show e
               Right{} -> return ()
         ]
@@ -1058,7 +1058,7 @@ fileCreatorTests pkgIx srcDb comp =
                     ]
                 flags = emptyFlags{initializeTestSuite = Flag True}
 
-            case (_runPrompt $ genTestTarget flags comp pkgIx defaultCabalVersion) inputs of
+            case (runPrompt $ genTestTarget flags comp pkgIx defaultCabalVersion) inputs of
               Left e -> assertFailure $ show e
               Right{} -> return ()
         ]
@@ -1403,7 +1403,7 @@ testGo
   -> [String]
   -> TestTree
 testGo label f g h inputs = testCase label $
-  case (_runPrompt $ f emptyFlags) (NEL.fromList inputs) of
+  case (runPrompt $ f emptyFlags) (NEL.fromList inputs) of
     Left x -> g x
     Right x -> h x
 
