@@ -28,7 +28,8 @@ jobs:
 
       - name: Install changelog-d
         run: |
-          curl --create-dirs -o "$HOME/.local/bin/changelog-d" "https://codeberg.org/fgaz/changelog-d/releases/download/v1.0/changelog-d-v1.0-x86_64-linux"
+          curl --create-dirs -o "$HOME/.local/bin/changelog-d" -sS --fail \
+            "https://codeberg.org/fgaz/changelog-d/releases/download/v1.0.1/changelog-d-v1.0.1-x86_64-linux"
           chmod +x "$HOME/.local/bin/changelog-d"
           # https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#adding-a-system-path
           echo "$HOME/.local/bin" >> $GITHUB_PATH
