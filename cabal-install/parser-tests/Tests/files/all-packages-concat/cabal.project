@@ -1,7 +1,8 @@
 package *
     static: True
-    ghc-options: -Wall
+    ghc-options: -fwrite-ide-info
+    ghc-options: -Wall -optc-fno-builtin-realloc
 
 package *
     shared: True
-    ghc-options: -fwarn-tabs
+    ghc-options: -fwarn-tabs -optc-fno-builtin-malloc
