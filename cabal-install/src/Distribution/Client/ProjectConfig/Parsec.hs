@@ -41,7 +41,7 @@ import Distribution.Solver.Types.ProjectConfigPath
 
 import Distribution.Fields (Field (..), FieldLine (..), FieldName, Name (..), SectionArg (..), readFields', showPWarning)
 import Distribution.Fields.LexerMonad (toPWarnings)
-import Distribution.Parsec (CabalParsing, PError (..), ParsecParser, eitherParsec, parsec, parsecFilePath, parsecToken, runParsecParser)
+import Distribution.Parsec (CabalParsing, PError (..), ParsecParser, eitherParsec, parsec, parsecFilePath, parsecToken', runParsecParser)
 import Distribution.Parsec.Position (Position (..), zeroPos)
 import Distribution.Parsec.Warning (PWarnType (..))
 import Distribution.Simple.Program.Db (ProgramDb, defaultProgramDb, knownPrograms, lookupKnownProgram)
@@ -393,7 +393,7 @@ parseProgramArgsFieldLines :: Position -> [FieldLine Position] -> ParseResult [S
 parseProgramArgsFieldLines pos = runFieldParser pos programArgsFieldParser cabalSpec
 
 programArgsFieldParser :: CabalParsing m => m [String]
-programArgsFieldParser = parseSep (Proxy :: Proxy FSep) parsecToken
+programArgsFieldParser = parseSep (Proxy :: Proxy NoCommaFSep) parsecToken'
 
 type FieldSuffix = String
 
