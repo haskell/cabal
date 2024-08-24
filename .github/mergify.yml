@@ -1,3 +1,6 @@
+# Note: We do not use the rebase strategy to merge PRs, because that
+# loses information needed by changelog-d to associate commits with PRs.
+
 pull_request_rules:
 
   # implementing PR delay logic: apply a label after 2 days of inactivity
@@ -25,6 +28,7 @@ pull_request_rules:
       - label=merge me
       - label=merge delay passed
       - '#approved-reviews-by>=2'
+      - '-label~=^blocked:'
 
   # merge+squash strategy
   - actions:
@@ -36,6 +40,7 @@ pull_request_rules:
       - label=squash+merge me
       - label=merge delay passed
       - '#approved-reviews-by>=2'
+      - '-label~=^blocked:'
 
   # merge+no rebase strategy
   - actions:
@@ -47,18 +52,43 @@ pull_request_rules:
       - label=merge+no rebase
       - label=merge delay passed
       - '#approved-reviews-by>=2'
+      - '-label~=^blocked:'
 
-  # rebase+merge strategy for backports: require 1 approver instead of 2
+  # merge strategy for release branches
   - actions:
       queue:
         name: default
-        # Merge with a merge commit
+    name: Put release branch pull requests in the rebase+merge queue
+    conditions:
+      - label=merge me
+      - base!=master
+      - -body~=backport
+      - '#approved-reviews-by>=2'
+      - '-label~=^blocked:'
+
+  # merge+squash strategy for release branches
+  - actions:
+      queue:
+        name: squash-merge
+    name: Put release branch pull requests in the squash+merge queue
+    conditions:
+      - base!=master
+      - label=squash+merge me
+      - -body~=backport
+      - '#approved-reviews-by>=2'
+      - '-label~=^blocked:'
+
+  # merge strategy for backports: require 1 approver instead of 2
+  - actions:
+      queue:
+        name: default
     name: Put backports in the rebase+merge queue
     conditions:
       - label=merge me
       - base!=master
       - body~=backport
       - '#approved-reviews-by>=1'
+      - '-label~=^blocked:'
 
   # merge+squash strategy for backports: require 1 approver instead of 2
   - actions:
@@ -70,6 +100,7 @@ pull_request_rules:
       - base!=master
       - body~=backport
       - '#approved-reviews-by>=1'
+      - '-label~=^blocked:'
 
   # backports should be labeled as such
   - actions:
@@ -86,6 +117,7 @@ queue_rules:
     update_bot_account: Mikolaj
     merge_method: merge
     update_method: rebase
+
   - name: squash-merge
     update_bot_account: Mikolaj
     merge_method: squash
