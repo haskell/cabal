@@ -363,7 +363,7 @@ parseProgramArgs programDb fields = foldM parseField mempty (filter hasOptionsSu
       case readProgramName "-options" programDb fieldName of
         Nothing -> warnUnknownFields fieldName fieldLines >> return programArgs
         Just program -> do
-          args <- parseProgramArgsField fieldLines
+          args <- parseProgramArgsField $ reverse fieldLines
           return $ programArgs <> MapMappend (Map.singleton program args)
     hasOptionsSuffix (fieldName, _) = BS.isSuffixOf "-options" fieldName
 

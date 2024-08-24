@@ -432,7 +432,11 @@ testAllPackagesConcat = do
       mempty
         { packageConfigSharedLib = Flag True
         , packageConfigStaticLib = Flag True
-        , packageConfigProgramArgs = MapMappend $ Map.fromList [("ghc", ["-fwarn-tabs", "-Wall"])]
+        , packageConfigProgramArgs =
+            MapMappend $
+              Map.fromList
+                [ ("ghc", ["-fwarn-tabs", "-optc-fno-builtin-malloc", "-Wall", "-optc-fno-builtin-realloc", "-fwrite-ide-info"])
+                ]
         }
 
 testSpecificPackagesConcat :: Assertion
