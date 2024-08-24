@@ -472,7 +472,13 @@ testProgramOptionsConcat = do
     expected :: PackageConfig
     expected =
       mempty
-        { packageConfigProgramArgs = MapMappend $ Map.fromList [("ghc", ["-threaded", "-Wall", "-fno-state-hack"]), ("gcc", ["-baz", "-foo", "-bar"])]
+        { packageConfigProgramArgs =
+            MapMappend $
+              Map.fromList
+                [ ("ghc", ["-threaded", "-Wall", "-fno-state-hack"])
+                , ("gcc", ["-baz", "-foo", "-bar"])
+                , ("ld", ["-Wl,--gc-sections"])
+                ]
         }
 
 testRelaxDepsConcat :: Assertion
