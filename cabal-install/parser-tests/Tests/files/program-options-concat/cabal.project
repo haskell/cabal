@@ -5,3 +5,4 @@ program-options
 program-options
     ghc-options: -threaded -Wall
     gcc-options: -baz
+    ld-options: -Wl,--gc-sections
