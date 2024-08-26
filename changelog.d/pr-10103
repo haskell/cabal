@@ -1,0 +1,14 @@
+synopsis: Enhance error detection for cabal root project files, including broken symlinks
+
+packages: cabal-install
+
+prs: #10103
+
+issues: #9937
+
+description: {
+
+- Added proper detection and reporting for issues with cabal root project files. Previously, these files were silently ignored if they were broken symlinks. Now, `cabal` will exit 
+with an error in such case.
+
+}
