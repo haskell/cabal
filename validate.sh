@@ -409,14 +409,18 @@ CMD="$($CABALLISTBIN Cabal-tests:test:rpmvercmp) $TESTSUITEJOBS --hide-successes
 CMD="$($CABALLISTBIN Cabal-tests:test:no-thunks-test) $TESTSUITEJOBS --hide-successes"
 (cd Cabal-tests && timed $CMD) || exit 1
 
+
+# See #10284 for why this value is pinned.
+HACKAGE_TESTS_INDEX_STATE="--index-state=2024-08-25"
+
 CMD=$($CABALLISTBIN Cabal-tests:test:hackage-tests)
-(cd Cabal-tests && timed $CMD read-fields) || exit 1
+(cd Cabal-tests && timed $CMD read-fields $HACKAGE_TESTS_INDEX_STATE) || exit 1
 if $HACKAGETESTSALL; then
-    (cd Cabal-tests && timed $CMD parsec)    || exit 1
-    (cd Cabal-tests && timed $CMD roundtrip) || exit 1
+    (cd Cabal-tests && timed $CMD parsec $HACKAGE_TESTS_INDEX_STATE)    || exit 1
+    (cd Cabal-tests && timed $CMD roundtrip $HACKAGE_TESTS_INDEX_STATE) || exit 1
 else
-    (cd Cabal-tests && timed $CMD parsec d)    || exit 1
-    (cd Cabal-tests && timed $CMD roundtrip k) || exit 1
+    (cd Cabal-tests && timed $CMD parsec d $HACKAGE_TESTS_INDEX_STATE)    || exit 1
+    (cd Cabal-tests && timed $CMD roundtrip k $HACKAGE_TESTS_INDEX_STATE) || exit 1
 fi
 }
 
