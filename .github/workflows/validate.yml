@@ -133,7 +133,7 @@ jobs:
           key: ${{ runner.os }}-${{ matrix.ghc }}-${{ github.sha }}
           restore-keys: ${{ runner.os }}-${{ matrix.ghc }}-
 
-      - name: Work around git problem https://bugs.launchpad.net/ubuntu/+source/git/+bug/1993586 (cabal PR #8546)
+      - name: "Work around git problem https://bugs.launchpad.net/ubuntu/+source/git/+bug/1993586 (cabal PR #8546)"
         run: git config --global protocol.file.allow always
 
       # The tool is not essential to the rest of the test suite. If
@@ -146,9 +146,14 @@ jobs:
         run: cabal install --ignore-project hackage-repo-tool
 
       # Needed by cabal-testsuite/PackageTests/Configure/setup.test.hs
-      - name: Install Autotools
+      - name: "MAC: Install Autotools"
         if: runner.os == 'macOS'
         run: brew install automake
+
+      # Needed by cabal-testsuite/PackageTests/Configure/setup.test.hs
+      - name: "WIN: Install Autotools"
+        if: runner.os == 'Windows'
+        run: /usr/bin/pacman --noconfirm -S autotools
 
       - name: Set validate inputs
         run: |
