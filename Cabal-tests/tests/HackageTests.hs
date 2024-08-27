@@ -33,6 +33,7 @@ import System.FilePath                             ((</>))
 import Data.Orphans ()
 
 import qualified Codec.Archive.Tar                      as Tar
+import qualified Codec.Archive.Tar.Entry                as Tar
 import qualified Data.ByteString                        as B
 import qualified Data.ByteString.Char8                  as B8
 import qualified Data.ByteString.Lazy                   as BSL
@@ -56,11 +57,14 @@ import Data.TreeDiff.Instances.Cabal ()
 import Data.TreeDiff.Pretty          (ansiWlEditExprCompact)
 #endif
 
+import Data.Time.Clock.System
+import Data.Time.Format
+
 -------------------------------------------------------------------------------
 -- parseIndex: Index traversal
 -------------------------------------------------------------------------------
 
-parseIndex :: (Monoid a, NFData a) => (FilePath -> Bool)
+parseIndex :: (Monoid a, NFData a) => (Tar.EpochTime -> FilePath -> Bool)
            -> (FilePath -> B.ByteString -> IO a) -> IO a
 parseIndex predicate action = do
     configPath <- getCabalConfigPath
@@ -99,7 +103,7 @@ parseIndex predicate action = do
 
 parseIndex'
     :: (Monoid a, NFData a)
-    => (FilePath -> Bool)
+    => (Tar.EpochTime -> FilePath -> Bool)
     -> (FilePath -> B.ByteString -> IO a) -> FilePath -> IO a
 parseIndex' predicate action path = do
     putStrLn $ "Reading index from: " ++ path
@@ -110,7 +114,7 @@ parseIndex' predicate action path = do
 
   where
     cons entry entries
-        | predicate (Tar.entryPath entry) = entry : entries
+        | predicate (Tar.entryTime entry) (Tar.entryPath entry) = entry : entries
         | otherwise = entries
 
     f entry = case Tar.entryContent entry of
@@ -320,6 +324,13 @@ main = join (O.execParser opts)
         , O.progDesc "tests using Hackage's index"
         ]
 
+    indexP =
+      fmap cvt <$> O.optional (O.strOption (O.long "index-state" <> O.metavar "YYYY-MM-DD"))
+      where
+       cvt =
+        systemSeconds . utcToSystemTime .
+          parseTimeOrError False defaultTimeLocale "%Y-%m-%d"
+
     optsP = subparser
         [ command "read-fields" readFieldsP
           "Parse outer format (to '[Field]', TODO: apply Quirks)"
@@ -330,20 +341,20 @@ main = join (O.execParser opts)
 
     defaultA = do
         putStrLn "Default action: parsec k"
-        parsecA (mkPredicate ["k"]) False
+        parsecA ["k"] False Nothing
 
-    readFieldsP = readFieldsA <$> prefixP
-    readFieldsA pfx = parseIndex pfx readFieldTest
+    readFieldsP = readFieldsA <$> prefixP <*> indexP
+    readFieldsA pfx idx = parseIndex (mkPredicate pfx idx) readFieldTest
 
-    parsecP = parsecA <$> prefixP <*> keepGoingP
+    parsecP = parsecA <$> prefixP <*> keepGoingP <*> indexP
     keepGoingP =
         O.flag' True  (O.long "keep-going") <|>
         O.flag' False (O.long "no-keep-going") <|>
         pure False
 
-    parsecA pfx keepGoing = do
+    parsecA pfx keepGoing idx = do
         begin <- Clock.getTime Clock.Monotonic
-        ParsecResult n w f <- parseIndex pfx (parseParsecTest keepGoing)
+        ParsecResult n w f <- parseIndex (mkPredicate pfx idx) (parseParsecTest keepGoing)
         end <- Clock.getTime Clock.Monotonic
         let diff = Clock.toNanoSecs $ Clock.diffTimeSpec end begin
 
@@ -353,14 +364,14 @@ main = join (O.execParser opts)
         putStrLn $ showFFloat (Just 6) (fromInteger diff / 1e9                  :: Double) " seconds elapsed"
         putStrLn $ showFFloat (Just 6) (fromInteger diff / 1e6 / fromIntegral n :: Double) " milliseconds per file"
 
-    roundtripP = roundtripA <$> prefixP <*> testFieldsP
-    roundtripA pfx testFieldsTransform = do
-        Sum n <- parseIndex pfx (roundtripTest testFieldsTransform)
+    roundtripP = roundtripA <$> prefixP <*> testFieldsP <*> indexP
+    roundtripA pfx testFieldsTransform idx = do
+        Sum n <- parseIndex (mkPredicate pfx idx) (roundtripTest testFieldsTransform)
         putStrLn $ show n ++ " files processed"
 
-    checkP = checkA <$> prefixP
-    checkA pfx = do
-        CheckResult n w x a b c d e <- parseIndex pfx parseCheckTest
+    checkP = checkA <$> prefixP <*> indexP
+    checkA pfx idx = do
+        CheckResult n w x a b c d e <- parseIndex (mkPredicate pfx idx) parseCheckTest
         putStrLn $ show n ++ " files processed"
         putStrLn $ show w ++ " files have lexer/parser warnings"
         putStrLn $ show x ++ " files have check warnings"
@@ -370,7 +381,7 @@ main = join (O.execParser opts)
         putStrLn $ show d ++ " build dist suspicious warning"
         putStrLn $ show e ++ " build dist inexcusable"
 
-    prefixP = fmap mkPredicate $ many $ O.strArgument $ mconcat
+    prefixP = many $ O.strArgument $ mconcat
         [ O.metavar "PREFIX"
         , O.help "Check only files starting with a prefix"
         ]
@@ -380,8 +391,14 @@ main = join (O.execParser opts)
         , O.help "Test also 'showFields . fromParsecFields . readFields' transform"
         ]
 
-    mkPredicate [] = const True
-    mkPredicate pfxs = \n -> any (`isPrefixOf` n) pfxs
+    indexPredicate :: Maybe Tar.EpochTime -> (k -> Bool) -> (Tar.EpochTime -> k -> Bool)
+    indexPredicate Nothing k = const k
+    indexPredicate (Just indexDate) k =
+        \e -> if (e <= indexDate) then k else const False
+
+    mkPredicate :: [String] -> Maybe Tar.EpochTime -> (Tar.EpochTime -> FilePath -> Bool)
+    mkPredicate [] idx = indexPredicate idx (const True)
+    mkPredicate pfxs idx = indexPredicate idx (\n -> any (`isPrefixOf` n) pfxs)
 
     command name p desc = O.command name
                           (O.info (p <**> O.helper) (O.progDesc desc))
