@@ -74,7 +74,6 @@ import Distribution.Package
 import Distribution.Simple.Compiler
   ( Compiler
   , PackageDB (..)
-  , jsemSupported
   )
 import Distribution.Simple.Program
 import qualified Distribution.Simple.Register as Cabal
@@ -92,7 +91,7 @@ import qualified Data.Set as Set
 
 import qualified Text.PrettyPrint as Disp
 
-import Control.Exception (assert, bracket, handle)
+import Control.Exception (assert, handle)
 import System.Directory (doesDirectoryExist, doesFileExist, renameDirectory)
 import System.FilePath (makeRelative, normalise, takeDirectory, (<.>), (</>))
 import System.Semaphore (SemaphoreName (..))
@@ -102,7 +101,6 @@ import Distribution.Simple.Flag (fromFlagOrDefault)
 
 import Distribution.Client.ProjectBuilding.PackageFileMonitor
 import Distribution.Client.ProjectBuilding.UnpackedPackage (annotateFailureNoLog, buildAndInstallUnpackedPackage, buildInplaceUnpackedPackage)
-import Distribution.Client.Utils (numberOfProcessors)
 
 ------------------------------------------------------------------------------
 
@@ -359,17 +357,6 @@ rebuildTargets
     }
     | fromFlagOrDefault False (projectConfigOfflineMode config) && not (null packagesToDownload) = return offlineError
     | otherwise = do
-        -- Concurrency control: create the job controller and concurrency limits
-        -- for downloading, building and installing.
-        mkJobControl <- case buildSettingNumJobs of
-          Serial -> newSerialJobControl
-          NumJobs n -> newParallelJobControl (fromMaybe numberOfProcessors n)
-          UseSem n ->
-            if jsemSupported compiler
-              then newSemaphoreJobControl verbosity n
-              else do
-                warn verbosity "-jsem is not supported by the selected compiler, falling back to normal parallelism control."
-                newParallelJobControl n
         registerLock <- newLock -- serialise registration
         cacheLock <- newLock -- serialise access to setup exe cache
         -- TODO: [code cleanup] eliminate setup exe cache
@@ -384,7 +371,9 @@ rebuildTargets
         createDirectoryIfMissingVerbose verbosity True distTempDirectory
         traverse_ (createPackageDBIfMissing verbosity compiler progdb) packageDBsToUse
 
-        bracket (pure mkJobControl) cleanupJobControl $ \jobControl -> do
+        -- Concurrency control: create the job controller and concurrency limits
+        -- for downloading, building and installing.
+        withJobControl (newJobControlFromParStrat verbosity compiler buildSettingNumJobs Nothing) $ \jobControl -> do
           -- Before traversing the install plan, preemptively find all packages that
           -- will need to be downloaded and start downloading them.
           asyncDownloadPackages
@@ -395,7 +384,7 @@ rebuildTargets
             $ \downloadMap ->
               -- For each package in the plan, in dependency order, but in parallel...
               InstallPlan.execute
-                mkJobControl
+                jobControl
                 keepGoing
                 (BuildFailure Nothing . DependentFailed . packageId)
                 installPlan

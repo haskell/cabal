@@ -466,6 +466,7 @@ installAction flags@NixStyleFlags{extraFlags, configFlags, installFlags, project
         fetchAndReadSourcePackages
           verbosity
           distDirLayout
+          compiler
           (projectConfigShared config)
           (projectConfigBuildOnly config)
           [ProjectPackageRemoteTarball uri | uri <- uris]
