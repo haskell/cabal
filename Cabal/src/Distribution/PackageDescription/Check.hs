@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 -- |
@@ -61,12 +62,18 @@ import Distribution.PackageDescription.Check.Warning
 import Distribution.Parsec.Warning (PWarning)
 import Distribution.Pretty (prettyShow)
 import Distribution.Simple.Glob
+  ( Glob
+  , GlobResult (..)
+  , globMatches
+  , parseFileGlob
+  , runDirFileGlob
+  )
 import Distribution.Simple.Utils hiding (findPackageDesc, notice)
 import Distribution.Utils.Generic (isAscii)
 import Distribution.Utils.Path
 import Distribution.Verbosity
 import Distribution.Version
-import System.FilePath (splitExtension, takeFileName, (<.>), (</>))
+import System.FilePath (splitExtension, takeFileName)
 
 import qualified Data.ByteString.Lazy as BS
 import qualified Distribution.SPDX as SPDX
@@ -170,10 +177,11 @@ checkPackageFilesGPD verbosity gpd root =
 
     checkPreIO =
       CheckPreDistributionOps
-        { runDirFileGlobM = \fp g -> runDirFileGlob verbosity (root </> fp) g
+        { runDirFileGlobM = \fp g -> runDirFileGlob verbosity (Just . specVersion $ packageDescription gpd) (root </> fp) g
         , getDirectoryContentsM = System.Directory.getDirectoryContents . relative
         }
 
+    relative :: FilePath -> FilePath
     relative path = root </> path
 
 -- | Same as  'checkPackageFilesGPD', but working with 'PackageDescription'.
@@ -401,6 +409,7 @@ checkPackageDescription
           extraSrcFiles_
           extraTmpFiles_
           extraDocFiles_
+          extraFiles_
         ) = do
     -- § Sanity checks.
     checkPackageId package_
@@ -445,26 +454,30 @@ checkPackageDescription
       (PackageDistSuspicious ShortDesc)
 
     -- § Paths.
-    mapM_ (checkPath False "extra-source-files" PathKindGlob) extraSrcFiles_
-    mapM_ (checkPath False "extra-tmp-files" PathKindFile) extraTmpFiles_
-    mapM_ (checkPath False "extra-doc-files" PathKindGlob) extraDocFiles_
-    mapM_ (checkPath False "data-files" PathKindGlob) dataFiles_
-    checkPath True "data-dir" PathKindDirectory dataDir_
+    mapM_ (checkPath False "extra-source-files" PathKindGlob . getSymbolicPath) extraSrcFiles_
+    mapM_ (checkPath False "extra-tmp-files" PathKindFile . getSymbolicPath) extraTmpFiles_
+    mapM_ (checkPath False "extra-doc-files" PathKindGlob . getSymbolicPath) extraDocFiles_
+    mapM_ (checkPath False "extra-files" PathKindGlob . getSymbolicPath) extraFiles_
+    mapM_ (checkPath False "data-files" PathKindGlob . getSymbolicPath) dataFiles_
+    let rawDataDir = getSymbolicPath dataDir_
+    checkPath True "data-dir" PathKindDirectory rawDataDir
     let licPaths = map getSymbolicPath licenseFiles_
     mapM_ (checkPath False "license-file" PathKindFile) licPaths
     mapM_ checkLicFileExist licenseFiles_
 
     -- § Globs.
-    dataGlobs <- mapM (checkGlob "data-files") dataFiles_
-    extraGlobs <- mapM (checkGlob "extra-source-files") extraSrcFiles_
-    docGlobs <- mapM (checkGlob "extra-doc-files") extraDocFiles_
+    dataGlobs <- mapM (checkGlob "data-files" . getSymbolicPath) dataFiles_
+    extraSrcGlobs <- mapM (checkGlob "extra-source-files" . getSymbolicPath) extraSrcFiles_
+    docGlobs <- mapM (checkGlob "extra-doc-files" . getSymbolicPath) extraDocFiles_
+    extraGlobs <- mapM (checkGlob "extra-files" . getSymbolicPath) extraFiles_
     -- We collect globs to feed them to checkMissingDocs.
 
     -- § Missing documentation.
     checkMissingDocs
       (catMaybes dataGlobs)
-      (catMaybes extraGlobs)
+      (catMaybes extraSrcGlobs)
       (catMaybes docGlobs)
+      (catMaybes extraGlobs)
 
     -- § Datafield checks.
     checkSetupBuildInfo setupBuildInfo_
@@ -501,16 +514,17 @@ checkPackageDescription
       (isNothing buildTypeRaw_ && specVersion_ < CabalSpecV2_2)
       (PackageBuildWarning NoBuildType)
     checkP
-      (isJust setupBuildInfo_ && buildType pkg /= Custom)
+      (isJust setupBuildInfo_ && buildType pkg `notElem` [Custom, Hooks])
       (PackageBuildWarning NoCustomSetup)
 
     -- Contents.
     checkConfigureExists (buildType pkg)
     checkSetupExists (buildType pkg)
     checkCabalFile (packageName pkg)
-    mapM_ (checkGlobFile specVersion_ "." "extra-source-files") extraSrcFiles_
-    mapM_ (checkGlobFile specVersion_ "." "extra-doc-files") extraDocFiles_
-    mapM_ (checkGlobFile specVersion_ dataDir_ "data-files") dataFiles_
+    mapM_ (checkGlobFile specVersion_ "." "extra-source-files" . getSymbolicPath) extraSrcFiles_
+    mapM_ (checkGlobFile specVersion_ "." "extra-doc-files" . getSymbolicPath) extraDocFiles_
+    mapM_ (checkGlobFile specVersion_ "." "extra-files" . getSymbolicPath) extraFiles_
+    mapM_ (checkGlobFile specVersion_ rawDataDir "data-files" . getSymbolicPath) dataFiles_
     where
       checkNull
         :: Monad m
@@ -670,6 +684,7 @@ checkSourceRepos rs = do
         checkP
           (isNothing repoLocation_)
           (PackageDistInexcusable MissingLocation)
+        checkGitProtocol repoLocation_
         checkP
           ( repoType_ == Just (KnownRepoType CVS)
               && isNothing repoModule_
@@ -707,6 +722,17 @@ checkMissingVcsInfo rs =
     repoTypeDirname Bazaar = [".bzr"]
     repoTypeDirname Monotone = ["_MTN"]
     repoTypeDirname Pijul = [".pijul"]
+
+-- git:// lacks TLS or other encryption, see
+-- https://git-scm.com/book/en/v2/Git-on-the-Server-The-Protocols#_the_cons_4
+checkGitProtocol
+  :: Monad m
+  => Maybe String -- Repository location
+  -> CheckM m ()
+checkGitProtocol mloc =
+  checkP
+    (fmap (isPrefixOf "git://") mloc == Just True)
+    (PackageBuildWarning GitProtocol)
 
 -- ------------------------------------------------------------
 -- Package and distribution checks
@@ -775,7 +801,7 @@ checkCabalFile pn = do
 
 checkLicFileExist
   :: Monad m
-  => SymbolicPath PackageDir LicenseFile
+  => RelativePath Pkg File
   -> CheckM m ()
 checkLicFileExist sp = do
   let fp = getSymbolicPath sp
@@ -853,13 +879,14 @@ checkGlobResult title fp rs = dirCheck ++ catMaybes (map getWarning rs)
           [PackageDistSuspiciousWarn $ GlobNoMatch title fp]
       | otherwise = []
 
-    -- If there's a missing directory in play, since our globs don't
-    -- (currently) support disjunction, that will always mean there are
+    -- If there's a missing directory in play, since globs in Cabal packages
+    -- don't (currently) support disjunction, that will always mean there are
     -- no matches. The no matches error in this case is strictly less
     -- informative than the missing directory error.
     withoutNoMatchesWarning (GlobMatch _) = True
     withoutNoMatchesWarning (GlobWarnMultiDot _) = False
     withoutNoMatchesWarning (GlobMissingDirectory _) = True
+    withoutNoMatchesWarning (GlobMatchesDirectory _) = True
 
     getWarning :: GlobResult FilePath -> Maybe PackageCheck
     getWarning (GlobMatch _) = Nothing
@@ -871,6 +898,9 @@ checkGlobResult title fp rs = dirCheck ++ catMaybes (map getWarning rs)
       Just $ PackageDistSuspiciousWarn (GlobExactMatch title fp file)
     getWarning (GlobMissingDirectory dir) =
       Just $ PackageDistSuspiciousWarn (GlobNoDir title fp dir)
+    -- GlobMatchesDirectory is handled elsewhere if relevant;
+    -- we can discard it here.
+    getWarning (GlobMatchesDirectory _) = Nothing
 
 -- ------------------------------------------------------------
 -- Other exports
@@ -972,8 +1002,9 @@ checkMissingDocs
   => [Glob] -- data-files globs.
   -> [Glob] -- extra-source-files globs.
   -> [Glob] -- extra-doc-files globs.
+  -> [Glob] -- extra-files globs.
   -> CheckM m ()
-checkMissingDocs dgs esgs edgs = do
+checkMissingDocs dgs esgs edgs efgs = do
   extraDocSupport <- (>= CabalSpecV1_18) <$> asksCM ccSpecVersion
 
   -- Everything in this block uses CheckPreDistributionOps interface.
@@ -992,9 +1023,10 @@ checkMissingDocs dgs esgs edgs = do
         rgs <- realGlob dgs
         res <- realGlob esgs
         red <- realGlob edgs
+        ref <- realGlob efgs
 
         -- 3. Check if anything in 1. is missing in 2.
-        let mcs = checkDoc extraDocSupport des (rgs ++ res ++ red)
+        let mcs = checkDoc extraDocSupport des (rgs ++ res ++ red ++ ref)
 
         -- 4. Check if files are present but in the wrong field.
         let pcsData = checkDocMove extraDocSupport "data-files" des rgs
@@ -1012,10 +1044,6 @@ checkMissingDocs dgs esgs edgs = do
         return (mcs ++ pcs)
     )
   where
-    -- From Distribution.Simple.Glob.
-    globMatches :: [GlobResult a] -> [a]
-    globMatches input = [a | GlobMatch a <- input]
-
     checkDoc
       :: Bool -- Cabal spec ≥ 1.18?
       -> [FilePath] -- Desirables.

@@ -68,7 +68,7 @@ import Distribution.Utils.GrammarRegex
 -- Types
 import Distribution.Compat.Newtype
 import Distribution.Compiler                       (CompilerFlavor, CompilerId, knownCompilerFlavors)
-import Distribution.PackageDescription.FieldGrammar (CompatFilePath, CompatLicenseFile)
+import Distribution.PackageDescription.FieldGrammar (CompatLicenseFile, CompatDataDir)
 import Distribution.FieldGrammar.Newtypes
 import Distribution.ModuleName                     (ModuleName)
 import Distribution.System                         (Arch, OS, knownArches, knownOSs)
@@ -99,7 +99,7 @@ import Distribution.Types.SourceRepo               (RepoType)
 import Distribution.Types.TestType                 (TestType)
 import Distribution.Types.UnitId                   (UnitId)
 import Distribution.Types.UnqualComponentName      (UnqualComponentName)
-import Distribution.Utils.Path                     (LicenseFile, PackageDir, SourceDir, SymbolicPath)
+import Distribution.Utils.Path                     (SymbolicPath, RelativePath)
 import Distribution.Verbosity                      (Verbosity)
 import Distribution.Version                        (Version, VersionRange)
 import Language.Haskell.Extension                  (Extension, Language, knownLanguages)
@@ -355,7 +355,7 @@ instance Described BenchmarkType where
     describe _ = "exitcode-stdio-1.0"
 
 instance Described BuildType where
-    describe _ = REUnion ["Simple","Configure","Custom","Make","Default"]
+    describe _ = REUnion ["Simple","Configure","Custom","Hooks","Make","Default"]
 
 instance Described CompilerFlavor where
     describe _ = REUnion
@@ -578,17 +578,24 @@ instance Described SpecLicense where
 instance Described TestedWith where
     describe _ = RETodo
 
-instance Described FilePathNT where
+
+instance Described (SymbolicPath from to) where
     describe _ = describe ([] :: [Token])
 
-instance Described (SymbolicPath PackageDir SourceDir) where
+instance Described (RelativePath from to) where
     describe _ = describe ([] :: [Token])
 
-instance Described (SymbolicPath PackageDir LicenseFile) where
+instance Described (SymbolicPathNT from to) where
+    describe _ = describe ([] :: [Token])
+
+instance Described (RelativePathNT from to) where
     describe _ = describe ([] :: [Token])
 
 instance Described CompatLicenseFile where
     describe _ = describe ([] :: [Token])
 
-instance Described CompatFilePath where
-    describe _ = describe ([] :: [Token]) 
+instance Described CompatDataDir where
+    describe _ = describe ([] :: [Token])
+
+instance Described FilePathNT where
+    describe _ = describe ([] :: [Token])

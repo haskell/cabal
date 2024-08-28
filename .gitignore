@@ -24,6 +24,7 @@ bootstrap/*.plan.json
 /cabal-install/dist/
 /cabal-install/Setup
 /cabal-install/source-file-list
+/cabal-install/tests/IntegrationTests2/config/cabal-config
 
 .stylish-haskell.yaml
 .stylish-haskell.yml
@@ -40,6 +41,7 @@ _build
 *~
 .*.swp
 *.bak
+.vscode
 
 # GHC build
 
@@ -65,9 +67,20 @@ progress.txt
 # test files
 register.sh
 
+# listed explicitly to show which files are generated but ignored
+testdb/intree/cabal.project-test
+testdb/intree/store/**/bin/alex
+testdb/intree/store/**/bin/alex.exe
+testdb/intree/store/**/cabal-hash.txt
+testdb/intree/store/**/share/AlexTemplate.hs
+testdb/intree/store/**/share/AlexWrappers.hs
+testdb/intree/store/**/share/doc/LICENSE
+testdb/intree/store/*/incoming/alex-*.lock
+testdb/intree/store/*/package.db/package.cache
+testdb/intree/store/*/package.db/package.cache.lock
+
 # windows test artifacts
 cabal-testsuite/**/*.exe
-cabal-testsuite/**/*.bat
 cabal-testsuite/**/haddocks
 
 # python artifacts from documentation builds
@@ -76,6 +89,7 @@ cabal-testsuite/**/haddocks
 venv
 .venv
 /doc/.skjold_cache/
+/doc/requirements.txt
 
 # macOS folder metadata
 .DS_Store
@@ -85,6 +99,9 @@ bench.html
 
 # Emacs
 .projectile
+
+# direnv
+.envrc
 
 ## Release Scripts
 

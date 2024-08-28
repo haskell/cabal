@@ -1,7 +1,7 @@
 cabal-version: 2.2
 name:          cabal-testsuite
 version:       3
-copyright:     2003-2023, Cabal Development Team (see AUTHORS file)
+copyright:     2003-2024, Cabal Development Team (see AUTHORS file)
 license:       BSD-3-Clause
 license-file:  LICENSE
 author:        Cabal Development Team <cabal-devel@haskell.org>
@@ -26,13 +26,15 @@ common shared
   default-language: Haskell2010
 
   build-depends:
-    , base >= 4.9 && <4.20
+    , base >= 4.11 && < 4.21
     -- this needs to match the in-tree lib:Cabal version
-    , Cabal ^>= 3.11.0.0
-    , Cabal-syntax ^>= 3.11.0.0
-    , Cabal-tests
+    , Cabal ^>= 3.13.0.0
 
-  ghc-options: -Wall -fwarn-tabs -fwarn-incomplete-uni-patterns
+  ghc-options:
+    -Wall
+    -fwarn-tabs
+    -fwarn-incomplete-uni-patterns
+    -fno-warn-unticked-promoted-constructors
 
 
 library
@@ -58,12 +60,12 @@ library
     Test.Cabal.ScriptEnv0
 
   build-depends:
+    , Cabal-tests
     , aeson                 ^>= 1.4.2.0 || ^>=1.5.0.0 || ^>= 2.0.0.0 || ^>= 2.1.0.0 || ^>= 2.2.1.0
     , async                 ^>= 2.2.1
-    , attoparsec            ^>= 0.13.2.2 || ^>=0.14.1
     , base16-bytestring     ^>= 0.1.1.5 || ^>= 1.0
     , bytestring            ^>= 0.10.0.2 || ^>= 0.11.0.0 || ^>= 0.12.0.0
-    , containers            ^>= 0.5.0.0 || ^>= 0.6.0.1
+    , containers            ^>= 0.5.0.0 || ^>= 0.6.0.1 || ^>= 0.7
     , cryptohash-sha256     ^>= 0.11.101.0
     , directory             ^>= 1.2.0.1 || ^>= 1.3.0.0
     , exceptions            ^>= 0.10.0
@@ -75,7 +77,6 @@ library
     , regex-tdfa            ^>= 1.2.3.1 || ^>=1.3.1.0
     , retry                 ^>= 0.9.1.0
     , array                 ^>= 0.4.0.1 || ^>= 0.5.0.0
-    , temporary             ^>= 1.3
     , text                  ^>= 1.2.3.1 || ^>= 2.0.1   || ^>= 2.1
     , transformers          ^>= 0.3.0.0 || ^>= 0.4.2.0 || ^>= 0.5.2.0 || ^>= 0.6.0.2
 
@@ -90,20 +91,19 @@ executable cabal-tests
   import: shared
   main-is: cabal-tests.hs
   hs-source-dirs: main
-  ghc-options: -threaded
+  ghc-options: -threaded -rtsopts
   -- Make sure these are built before the executable is run
   build-tool-depends: cabal-testsuite:test-runtime-deps
   build-depends:
     , cabal-testsuite
     -- constraints inherited via lib:cabal-testsuite component
     , async
-    , exceptions
     , filepath
     , optparse-applicative
     , process
-    , transformers
     -- dependencies specific to exe:cabal-tests
     , clock                 ^>= 0.7.2 || ^>=0.8
+    , directory
 
   build-tool-depends: cabal-testsuite:setup
   default-extensions: TypeOperators
@@ -122,29 +122,31 @@ executable setup
 -- If you require an external dependency for a test it must be listed here.
 executable test-runtime-deps
   default-language: Haskell2010
-  build-depends: cabal-testsuite,
-                 base,
-                 directory,
-                 Cabal,
-                 Cabal-syntax,
-                 filepath,
-                 transformers,
-                 bytestring,
-                 time,
-                 process,
-                 exceptions
+  -- Apart from base that is a compile-time dependency, the rest are runtime dependencies
+  build-depends:
+    , Cabal
+    , Cabal-syntax
+    , Cabal-hooks
+    , base
+    , bytestring
+    , cabal-testsuite
+    , containers
+    , directory
+    , exceptions
+    , filepath
+    , process
+    , time
+    , transformers
   main-is: static/Main.hs
   if !os(windows)
     build-depends: unix
   else
-    build-depends:
-      , Win32
+    build-depends: Win32
 
 custom-setup
   -- we only depend on even stable releases of lib:Cabal
-  -- and due to Custom complexity and ConstraintSetupCabalMaxVersion
-  -- it has to be the latest release version plus
-  -- you have to use the latest cabal-install release
-  setup-depends: Cabal == 3.10.*,
-                 Cabal-syntax == 3.10.*,
+  -- and must match the release used in validate.yml (see
+  -- https://github.com/haskell/cabal/pull/10251)
+  setup-depends: Cabal ^>= 3.12.1,
+                 Cabal-syntax ^>= 3.12.1,
                  base, filepath, directory

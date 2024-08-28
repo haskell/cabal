@@ -88,7 +88,10 @@ parseGenericPackageDescription bs = do
       Just csv -> return (Just csv)
       Nothing ->
         parseFatalFailure zeroPos $
-          "Unsupported cabal-version " ++ prettyShow v ++ ". See https://github.com/haskell/cabal/issues/4899."
+          "Unsupported cabal format version in cabal-version field: "
+            ++ prettyShow v
+            ++ ".\n"
+            ++ cabalFormatVersionsDesc
     _ -> pure Nothing
 
   case readFields' bs'' of
@@ -175,8 +178,8 @@ parseGenericPackageDescription' scannedVer lexWarnings utf8WarnPos fs = do
         -- if it were at the beginning, scanner would found it
         when (v >= CabalSpecV2_2) $
           parseFailure pos $
-            "cabal-version should be at the beginning of the file starting with spec version 2.2. "
-              ++ "See https://github.com/haskell/cabal/issues/4899"
+            "cabal-version should be at the beginning of the file starting with spec version 2.2.\n"
+              ++ cabalFormatVersionsDesc
 
         return v
 
@@ -233,6 +236,10 @@ parseGenericPackageDescription' scannedVer lexWarnings utf8WarnPos fs = do
               ++ prettyShow (SpecVersion (specVersion pkg))
               ++ "' must use section syntax. See the Cabal user guide for details."
     maybeWarnCabalVersion _ _ = return ()
+
+-- See #4899
+cabalFormatVersionsDesc :: String
+cabalFormatVersionsDesc = "Current cabal-version values are listed at https://cabal.readthedocs.io/en/stable/file-format-changelog.html."
 
 goSections :: CabalSpecVersion -> [Field Position] -> SectionParser ()
 goSections specVer = traverse_ process
@@ -754,6 +761,10 @@ checkForUndefinedCustomSetup gpd = do
       parseFailure zeroPos $
         "Since cabal-version: 1.24 specifying custom-setup section is mandatory"
 
+  when (buildType pd == Hooks && isNothing (setupBuildInfo pd)) $
+    parseFailure zeroPos $
+      "Packages with build-type: Hooks require a custom-setup stanza"
+
 -------------------------------------------------------------------------------
 -- Post processing of internal dependencies
 -------------------------------------------------------------------------------
@@ -981,7 +992,7 @@ parseHookedBuildInfo' lexWarnings fs = do
 -- RFC5234 ABNF):
 --
 -- @
--- newstyle-spec-version-decl = "cabal-version" *WS ":" *WS newstyle-pec-version *WS
+-- newstyle-spec-version-decl = "cabal-version" *WS ":" *WS newstyle-spec-version *WS
 --
 -- spec-version               = NUM "." NUM [ "." NUM ]
 --

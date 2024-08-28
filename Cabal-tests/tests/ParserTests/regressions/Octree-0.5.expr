@@ -63,10 +63,11 @@ GenericPackageDescription {
     testSuites = [],
     benchmarks = [],
     dataFiles = [],
-    dataDir = ".",
+    dataDir = SymbolicPath ".",
     extraSrcFiles = [],
     extraTmpFiles = [],
-    extraDocFiles = []},
+    extraDocFiles = [],
+    extraFiles = []},
   gpdScannedVersion = Nothing,
   genPackageFlags = [],
   condLibrary = Just
@@ -132,6 +133,8 @@ GenericPackageDescription {
             [],
           sharedOptions =
           PerCompilerFlavor [] [],
+          profSharedOptions =
+          PerCompilerFlavor [] [],
           staticOptions =
           PerCompilerFlavor [] [],
           customFieldsBI = [],
@@ -188,7 +191,8 @@ GenericPackageDescription {
             "",
           testInterface = TestSuiteExeV10
             (mkVersion [1, 0])
-            "tests/test_Octree.hs",
+            (SymbolicPath
+              "tests/test_Octree.hs"),
           testBuildInfo = BuildInfo {
             buildable = True,
             buildTools = [],
@@ -236,6 +240,8 @@ GenericPackageDescription {
               []
               [],
             sharedOptions =
+            PerCompilerFlavor [] [],
+            profSharedOptions =
             PerCompilerFlavor [] [],
             staticOptions =
             PerCompilerFlavor [] [],
@@ -289,7 +295,7 @@ GenericPackageDescription {
             "",
           testInterface = TestSuiteExeV10
             (mkVersion [1, 0])
-            "README.lhs",
+            (SymbolicPath "README.lhs"),
           testBuildInfo = BuildInfo {
             buildable = True,
             buildTools = [],
@@ -337,6 +343,8 @@ GenericPackageDescription {
               []
               [],
             sharedOptions =
+            PerCompilerFlavor [] [],
+            profSharedOptions =
             PerCompilerFlavor [] [],
             staticOptions =
             PerCompilerFlavor [] [],

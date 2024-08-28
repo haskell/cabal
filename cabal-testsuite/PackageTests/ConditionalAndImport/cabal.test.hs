@@ -1,5 +1,8 @@
 import Test.Cabal.Prelude
 
+normalizeWindowsOutput :: String -> String
+normalizeWindowsOutput = if isWindows then map (\x -> case x of '/' -> '\\'; _ -> x) else id
+
 main = cabalTest . withRepo "repo" . recordMode RecordMarked $ do
   let log = recordHeader . pure
 
@@ -18,8 +21,7 @@ main = cabalTest . withRepo "repo" . recordMode RecordMarked $ do
   --  +-- etc
   log "checking cyclical with hops; out and back"
   cyclical1a <- fails $ cabal' "v2-build" [ "--project-file=cyclical-1-out-back.project" ]
-  -- This test should pass the following check but doesn't:
-  -- assertOutputContains "cyclical import of cyclical-1-out-back.project" cyclical1a
+  assertOutputContains "cyclical import of cyclical-1-out-back.project" cyclical1a
 
   -- +-- cyclical-1-out-self.project
   --  +-- cyclical-1-out-self.config (imports cyclical-1-out-self.config)
@@ -36,8 +38,7 @@ main = cabalTest . withRepo "repo" . recordMode RecordMarked $ do
   --  +-- etc
   log "checking cyclical with hops; out, out, twice back"
   cyclical2a <- fails $ cabal' "v2-build" [ "--project-file=cyclical-2-out-out-backback.project" ]
-  -- This test should pass the following check but doesn't:
-  -- assertOutputContains "cyclical import of cyclical-2-out-out-backback.project" cyclical2a
+  assertOutputContains "cyclical import of cyclical-2-out-out-backback.project" cyclical2a
 
   -- +-- cyclical-2-out-out-back.project
   --  +-- cyclical-2-out-out-back-a.config
@@ -68,7 +69,7 @@ main = cabalTest . withRepo "repo" . recordMode RecordMarked $ do
   --  +-- same-filename/noncyclical-same-filename-b.config
   --    +-- noncyclical-same-filename-b.config (no further imports so not cyclical)
   log "checking that cyclical check doesn't false-positive on same file names in different folders; hoping into a subfolder and then back out again"
-  cyclical3c <- fails $ cabal' "v2-build" [ "--project-file=noncyclical-same-filename-b.project" ]
+  cyclical3c <- cabal' "v2-build" [ "--project-file=noncyclical-same-filename-b.project" ]
   assertOutputDoesNotContain "cyclical import of" cyclical3c
 
   -- +-- cyclical-same-filename-out-out-self.project
@@ -78,7 +79,7 @@ main = cabalTest . withRepo "repo" . recordMode RecordMarked $ do
   --    +-- etc
   log "checking that cyclical check catches a same file name that imports itself"
   cyclical4a <- fails $ cabal' "v2-build" [ "--project-file=cyclical-same-filename-out-out-self.project" ]
-  assertOutputContains "cyclical import of cyclical-same-filename-out-out-self.config" cyclical4a
+  assertOutputContains (normalizeWindowsOutput "cyclical import of same-filename/cyclical-same-filename-out-out-self.config") cyclical4a
 
   -- +-- cyclical-same-filename-out-out-backback.project
   --  +-- cyclical-same-filename-out-out-backback.config
@@ -87,8 +88,7 @@ main = cabalTest . withRepo "repo" . recordMode RecordMarked $ do
   -- +-- etc
   log "checking that cyclical check catches importing its importer (with the same file name)"
   cyclical4b <- fails $ cabal' "v2-build" [ "--project-file=cyclical-same-filename-out-out-backback.project" ]
-  -- This test should pass the following check but doesn't:
-  -- assertOutputContains "cyclical import of cyclical-same-filename-out-out-backback.project" cyclical4b
+  assertOutputContains "cyclical import of cyclical-same-filename-out-out-backback.project" cyclical4b
 
   -- +-- cyclical-same-filename-out-out-back.project
   --  +-- cyclical-same-filename-out-out-back.config
@@ -97,8 +97,7 @@ main = cabalTest . withRepo "repo" . recordMode RecordMarked $ do
   --  +-- etc
   log "checking that cyclical check catches importing its importer's importer (hopping over same file names)"
   cyclical4c <- fails $ cabal' "v2-build" [ "--project-file=cyclical-same-filename-out-out-back.project" ]
-  -- This test should pass the following check but doesn't:
-  -- assertOutputContains "cyclical import of cyclical-same-filename-out-out-back.config" cyclical4c
+  assertOutputContains "cyclical import of cyclical-same-filename-out-out-back.config" cyclical4c
 
   -- +-- hops-0.project
   --  +-- hops/hops-1.config
@@ -111,22 +110,134 @@ main = cabalTest . withRepo "repo" . recordMode RecordMarked $ do
   --         +-- hops-8.config
   --          +-- hops/hops-9.config (no further imports so not cyclical)
   log "checking that imports work skipping into a subfolder and then back out again and again"
-  -- This test should pass the following checks but doesn't, it fails (but it shouldn't):
-  hopping <- fails $ cabal' "v2-build" [ "--project-file=hops-0.project" ]
-  -- assertOutputContains "this build was affected by the following (project) config files:" hopping
-  -- assertOutputContains "hops-0.project" hopping
-  -- assertOutputContains "../hops-2.config" hopping
-  -- assertOutputContains "../hops-4.config" hopping
-  -- assertOutputContains "../hops-6.config" hopping
-  -- assertOutputContains "../hops-8.config" hopping
-  -- assertOutputContains "hops/hops-1.config" hopping
-  -- assertOutputContains "hops/hops-3.config" hopping
-  -- assertOutputContains "hops/hops-5.config" hopping
-  -- assertOutputContains "hops/hops-7.config" hopping
-  -- assertOutputContains "hops/hops-9.config" hopping
+  hopping <- cabal' "v2-build" [ "--project-file=hops-0.project" ]
+  assertOutputContains "this build was affected by the following (project) config files:" hopping
+  assertOutputContains "- hops-0.project" hopping
+
+  assertOutputContains
+    (normalizeWindowsOutput "- hops-2.config \
+    \    imported by: hops/hops-1.config \
+    \    imported by: hops-0.project")
+    hopping
+
+  assertOutputContains
+    (normalizeWindowsOutput "- hops-4.config \
+    \    imported by: hops/hops-3.config \
+    \    imported by: hops-2.config \
+    \    imported by: hops/hops-1.config \
+    \    imported by: hops-0.project")
+    hopping
+
+  assertOutputContains
+    (normalizeWindowsOutput "- hops-6.config \
+    \    imported by: hops/hops-5.config \
+    \    imported by: hops-4.config \
+    \    imported by: hops/hops-3.config \
+    \    imported by: hops-2.config \
+    \    imported by: hops/hops-1.config \
+    \    imported by: hops-0.project")
+    hopping
+
+  assertOutputContains
+    (normalizeWindowsOutput "- hops-8.config \
+    \    imported by: hops/hops-7.config \
+    \    imported by: hops-6.config \
+    \    imported by: hops/hops-5.config \
+    \    imported by: hops-4.config \
+    \    imported by: hops/hops-3.config \
+    \    imported by: hops-2.config \
+    \    imported by: hops/hops-1.config \
+    \    imported by: hops-0.project")
+    hopping
+
+  assertOutputContains
+    (normalizeWindowsOutput "- hops/hops-1.config \
+    \    imported by: hops-0.project")
+    hopping
+
+  assertOutputContains
+    (normalizeWindowsOutput "- hops/hops-3.config \
+    \    imported by: hops-2.config \
+    \    imported by: hops/hops-1.config \
+    \    imported by: hops-0.project")
+    hopping
+
+  assertOutputContains
+    (normalizeWindowsOutput "- hops/hops-5.config \
+    \    imported by: hops-4.config \
+    \    imported by: hops/hops-3.config \
+    \    imported by: hops-2.config \
+    \    imported by: hops/hops-1.config \
+    \    imported by: hops-0.project")
+    hopping
+
+  assertOutputContains
+    (normalizeWindowsOutput "- hops/hops-7.config \
+    \    imported by: hops-6.config \
+    \    imported by: hops/hops-5.config \
+    \    imported by: hops-4.config \
+    \    imported by: hops/hops-3.config \
+    \    imported by: hops-2.config \
+    \    imported by: hops/hops-1.config \
+    \    imported by: hops-0.project")
+    hopping
+
+  assertOutputContains
+    (normalizeWindowsOutput "- hops/hops-9.config \
+    \    imported by: hops-8.config \
+    \    imported by: hops/hops-7.config \
+    \    imported by: hops-6.config \
+    \    imported by: hops/hops-5.config \
+    \    imported by: hops-4.config \
+    \    imported by: hops/hops-3.config \
+    \    imported by: hops-2.config \
+    \    imported by: hops/hops-1.config \
+    \    imported by: hops-0.project")
+    hopping
+
+  -- The project is named oops as it is like hops but has conflicting constraints.
+  -- +-- oops-0.project
+  --  +-- oops/oops-1.config
+  --   +-- oops-2.config
+  --    +-- oops/oops-3.config
+  --     +-- oops-4.config
+  --      +-- oops/oops-5.config
+  --       +-- oops-6.config
+  --        +-- oops/oops-7.config
+  --         +-- oops-8.config
+  --          +-- oops/oops-9.config (has conflicting constraints)
+  log "checking conflicting constraints skipping into a subfolder and then back out again and again"
+  oopsing <- fails $ cabal' "v2-build" [ "all", "--project-file=oops-0.project" ]
+  assertOutputContains "rejecting: hashable-1.4.2.0" oopsing
+  assertOutputContains "rejecting: hashable-1.4.3.0" oopsing
+  assertOutputContains "(constraint from oops-0.project requires ==1.4.3.0)" oopsing
+
+  assertOutputContains
+    (normalizeWindowsOutput "      (constraint from oops/oops-9.config requires ==1.4.2.0) \
+    \        imported by: oops-8.config \
+    \        imported by: oops/oops-7.config \
+    \        imported by: oops-6.config \
+    \        imported by: oops/oops-5.config \
+    \        imported by: oops-4.config \
+    \        imported by: oops/oops-3.config \
+    \        imported by: oops-2.config \
+    \        imported by: oops/oops-1.config \
+    \        imported by: oops-0.project")
+    oopsing
 
   log "checking bad conditional"
   badIf <- fails $ cabal' "v2-build" [ "--project-file=bad-conditional.project" ]
   assertOutputContains "Cannot set compiler in a conditional clause of a cabal project file" badIf
+
+  log "checking that missing package message lists configuration provenance"
+  missing <- fails $ cabal' "v2-build" [ "--project-file=cabal-missing-package.project" ]
+  assertOutputContains
+    (normalizeWindowsOutput "When using configuration from: \
+    \  - cabal-missing-package.project \
+    \  - missing/pkgs.config \
+    \  - missing/pkgs/default.config \
+    \The following errors occurred: \
+    \  - The package location 'pkg-doesnt-exist' does not exist.")
+    missing
 
   return ()

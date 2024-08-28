@@ -216,7 +216,7 @@ testNetworkGitClone =
       Nothing
       []
       [(mkpkgid "zlib1", [repo1])]
-    assertFileContains (tmpdir </> "zlib1/zlib.cabal") ["name:", "zlib"]
+    assertFileContains (tmpdir </> "zlib1/zlib/zlib.cabal") ["name:", "zlib"]
 
     let repo2 =
           (emptySourceRepo RepoHead)
@@ -229,7 +229,7 @@ testNetworkGitClone =
       Nothing
       []
       [(mkpkgid "zlib2", [repo2])]
-    assertFileContains (tmpdir </> "zlib2/zlib.cabal") ["name:", "zlib"]
+    assertFileContains (tmpdir </> "zlib2/zlib/zlib.cabal") ["name:", "zlib"]
 
     let repo3 =
           (emptySourceRepo RepoHead)

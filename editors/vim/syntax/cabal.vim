@@ -39,6 +39,7 @@ syn keyword cabalLanguage contained
   \ Haskell98
   \ Haskell2010
   \ GHC2021
+  \ GHC2024
 
 " To update this in Cabal, `cabal repl Cabal` and:
 " >>> :m *Distribution.PackageDescription.FieldGrammar
@@ -79,6 +80,7 @@ syn keyword cabalFieldName contained
   \ extra-bundled-libraries
   \ extra-doc-files
   \ extra-dynamic-library-flavours
+  \ extra-files
   \ extra-framework-dirs
   \ extra-ghci-libraries
   \ extra-lib-dirs
@@ -209,6 +211,7 @@ syn keyword cabalExtension contained
   \ LexicalNegation
   \ LiberalTypeSynonyms
   \ LinearTypes
+  \ ListTuplePuns
   \ RequiredTypeArguments
   \ MagicHash
   \ MonadComprehensions
@@ -216,9 +219,11 @@ syn keyword cabalExtension contained
   \ MonoLocalBinds
   \ MonoPatBinds
   \ MonomorphismRestriction
+  \ MultilineStrings
   \ MultiParamTypeClasses
   \ MultiWayIf
   \ NPlusKPatterns
+  \ NamedDefaults
   \ NamedFieldPuns
   \ NamedWildCards
   \ NegativeLiterals
@@ -360,6 +365,7 @@ syn keyword cabalExtension contained
   \ NoMultiParamTypeClasses
   \ NoMultiWayIf
   \ NoNPlusKPatterns
+  \ NoNamedDefaults
   \ NoNamedFieldPuns
   \ NoNamedWildCards
   \ NoNegativeLiterals

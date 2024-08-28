@@ -54,8 +54,11 @@ import Distribution.Client.ProjectPlanning
   , ElaboratedSharedConfig (..)
   )
 import qualified Distribution.Client.ProjectPlanning as Planning
+import Distribution.Client.ProjectPlanning.Types
+  ( dataDirsEnvironmentForPlan
+  )
 import Distribution.Client.Setup
-  ( ConfigFlags (configVerbosity)
+  ( ConfigFlags (configCommonFlags)
   , GlobalFlags
   )
 import Distribution.Simple.Command
@@ -76,14 +79,15 @@ import Distribution.Simple.Program
   , simpleProgram
   )
 import Distribution.Simple.Program.Db
-  ( appendProgramSearchPath
-  , configuredPrograms
+  ( configuredPrograms
+  , prependProgramSearchPath
   , requireProgram
   )
 import Distribution.Simple.Program.Run
   ( programInvocation
   , runProgramInvocation
   )
+import Distribution.Simple.Setup (CommonSetupFlags (..))
 import Distribution.Simple.Utils
   ( createDirectoryIfMissingVerbose
   , dieWithException
@@ -166,14 +170,14 @@ execAction flags@NixStyleFlags{..} extraArgs globalFlags = do
 
   -- Some dependencies may have executables. Let's put those on the PATH.
   let extraPaths = pathAdditions baseCtx buildCtx
+      pkgProgs = pkgConfigCompilerProgs (elaboratedShared buildCtx)
+      extraEnvVars =
+        dataDirsEnvironmentForPlan
+          (distDirLayout baseCtx)
+          (elaboratedPlanToExecute buildCtx)
 
   programDb <-
-    appendProgramSearchPath
-      verbosity
-      extraPaths
-      . pkgConfigCompilerProgs
-      . elaboratedShared
-      $ buildCtx
+    prependProgramSearchPath verbosity extraPaths extraEnvVars pkgProgs
 
   -- Now that we have the packages, set up the environment. We accomplish this
   -- by creating an environment file that selects the databases and packages we
@@ -222,7 +226,7 @@ execAction flags@NixStyleFlags{..} extraArgs globalFlags = do
             then notice verbosity "Running of executable suppressed by flag(s)"
             else runProgramInvocation verbosity invocation
   where
-    verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
+    verbosity = fromFlagOrDefault normal (setupVerbosity $ configCommonFlags configFlags)
     cliConfig =
       commandLineFlagsToProjectConfig
         globalFlags
@@ -252,10 +256,11 @@ withTempEnvFile
   -> ([(String, Maybe String)] -> IO a)
   -> IO a
 withTempEnvFile verbosity baseCtx buildCtx buildStatus action = do
-  createDirectoryIfMissingVerbose verbosity True (distTempDirectory (distDirLayout baseCtx))
+  let tmpDirTemplate = distTempDirectory (distDirLayout baseCtx)
+  createDirectoryIfMissingVerbose verbosity True tmpDirTemplate
   withTempDirectory
     verbosity
-    (distTempDirectory (distDirLayout baseCtx))
+    tmpDirTemplate
     "environment."
     ( \tmpDir -> do
         envOverrides <-

@@ -28,7 +28,7 @@ Nix-style local builds combine the best of non-sandboxed and sandboxed Cabal:
    will rebuild all its dependencies with profiling automatically.
 
 2. Like non-sandboxed Cabal today, builds of external packages are
-   cached in ``~/.cabal/store``, so that a package can be built once,
+   cached in a global store, so that a package can be built once,
    and then reused anywhere else it is also used. No need to continually
    rebuild dependencies whenever you make a new sandbox: dependencies
    which can be shared, are shared.

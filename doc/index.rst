@@ -14,7 +14,9 @@ Welcome to the Cabal User Guide
    :maxdepth: 2
 
    how-to-package-haskell-code
+   how-to-source-packages
    how-to-build-like-nix
+   how-to-run-in-windows
    how-to-use-backpack
    how-to-report-bugs
 
@@ -25,6 +27,7 @@ Welcome to the Cabal User Guide
 
    cabal-package-description-file
    cabal-project-description-file
+   version-control-fields
    cabal-config-and-commands
    external-commands
    setup-commands

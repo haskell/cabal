@@ -3,7 +3,7 @@ import Test.Cabal.Prelude
 -- which is in the database, we can still use the test case (they
 -- should NOT shadow).
 main = setupAndCabalTest $ do
-    skipUnless "cabal for ghc" =<< hasCabalForGhc -- use of library test suite
+    skipIfAllCabalVersion "< 2.2"
     withPackageDb $ do
         withDirectory "parent" $ setup_install []
         withDirectory "child" $ do

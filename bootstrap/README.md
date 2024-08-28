@@ -47,3 +47,13 @@ in the same way as it is shown for Linux above. On a system with functional `cab
 
 There are rules in the top-level `Makefile` for generation of these files.
 
+# Updating Bootstrap Plans
+
+In order to update the bootstrap plans on linux there is the convenient `./generate_bootstrap_plans`
+script. You can modify this script with the GHC versions you want to generate the plans for and
+then run it to generate the plans.
+
+```
+./generate_bootstrap_plans
+```
+

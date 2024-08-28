@@ -3,11 +3,13 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TypeApplications #-}
 
 -- | Handling project configuration.
 module Distribution.Client.ProjectConfig
   ( -- * Types for project config
     ProjectConfig (..)
+  , ProjectConfigToParse (..)
   , ProjectConfigBuildOnly (..)
   , ProjectConfigShared (..)
   , ProjectConfigProvenance (..)
@@ -17,8 +19,10 @@ module Distribution.Client.ProjectConfig
 
     -- * Project root
   , findProjectRoot
+  , getProjectRootUsability
   , ProjectRoot (..)
-  , BadProjectRoot
+  , BadProjectRoot (..)
+  , ProjectRootUsability (..)
 
     -- * Project config files
   , readProjectConfig
@@ -57,10 +61,11 @@ module Distribution.Client.ProjectConfig
   ) where
 
 import Distribution.Client.Compat.Prelude
+import Text.PrettyPrint (nest, render, text, vcat)
 import Prelude ()
 
 import Distribution.Client.Glob
-  ( isTrivialFilePathGlob
+  ( isTrivialRootedGlob
   )
 import Distribution.Client.ProjectConfig.Legacy
 import Distribution.Client.ProjectConfig.Types
@@ -100,12 +105,12 @@ import Distribution.Client.HttpUtils
 import Distribution.Client.Types
 import Distribution.Client.Utils.Parsec (renderParseError)
 
+import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.PackageConstraint
-  ( PackageProperty (..)
-  )
 import Distribution.Solver.Types.Settings
 import Distribution.Solver.Types.SourcePackage
 
+import Distribution.Client.Errors
 import Distribution.Client.Setup
   ( defaultMaxBackjumps
   , defaultSolver
@@ -113,6 +118,7 @@ import Distribution.Client.Setup
 import Distribution.Client.SrcDist
   ( packageDirToSdist
   )
+import Distribution.Client.Targets
 import Distribution.Client.Types.SourceRepo
   ( SourceRepoList
   , SourceRepositoryPackage (..)
@@ -133,11 +139,6 @@ import Distribution.Fields
   , showPWarning
   )
 import Distribution.Package
-  ( PackageId
-  , PackageName
-  , UnitId
-  , packageId
-  )
 import Distribution.PackageDescription.Parsec
   ( parseGenericPackageDescription
   )
@@ -192,14 +193,13 @@ import Distribution.Verbosity
   , verbose
   )
 import Distribution.Version
-  ( Version
-  )
 
 import qualified Codec.Archive.Tar as Tar
 import qualified Codec.Archive.Tar.Entry as Tar
 import qualified Distribution.Client.GZipUtils as GZipUtils
 import qualified Distribution.Client.Tar as Tar
 
+import Control.Exception (handle)
 import Control.Monad.Trans (liftIO)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
@@ -209,7 +209,6 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Numeric (showHex)
 
-import Distribution.Client.Errors
 import Network.URI
   ( URI (..)
   , URIAuth (..)
@@ -217,11 +216,22 @@ import Network.URI
   , uriToString
   )
 import System.Directory
+  ( canonicalizePath
+  , doesDirectoryExist
+  , doesFileExist
+  , doesPathExist
+  , getCurrentDirectory
+  , getDirectoryContents
+  , getHomeDirectory
+  , pathIsSymbolicLink
+  )
 import System.FilePath hiding (combine)
 import System.IO
   ( IOMode (ReadMode)
   , withBinaryFile
   )
+
+import Distribution.Solver.Types.ProjectConfigPath
 
 ----------------------------------------
 -- Resolving configuration to settings
@@ -306,9 +316,34 @@ resolveSolverSettings
     where
       -- TODO: [required eventually] some of these settings need validation, e.g.
       -- the flag assignments need checking.
+      cabalPkgname = mkPackageName "Cabal"
+
+      profilingDynamicConstraint =
+        ( UserConstraint
+            (UserAnySetupQualifier cabalPkgname)
+            (PackagePropertyVersion $ orLaterVersion (mkVersion [3, 13, 0]))
+        , ConstraintSourceProfiledDynamic
+        )
+
+      profDynEnabledGlobally = fromFlagOrDefault False (packageConfigProfShared projectConfigLocalPackages)
+
+      profDynEnabledAnyLocally =
+        or
+          [ fromFlagOrDefault False (packageConfigProfShared ppc)
+          | (_, ppc) <- Map.toList (getMapMappend projectConfigSpecificPackage)
+          ]
+
+      -- Add a setup.Cabal >= 3.13 constraint if prof+dyn is enabled globally
+      -- or any package in the project enables it.
+      -- Ideally we'd apply this constraint only on the closure of packages requiring prof+dyn,
+      -- but that would require another solver run for marginal advantages that
+      -- will further shrink as 3.13 is adopted.
+      solverCabalLibConstraints =
+        [profilingDynamicConstraint | profDynEnabledGlobally || profDynEnabledAnyLocally]
+
       solverSettingRemoteRepos = fromNubList projectConfigRemoteRepos
       solverSettingLocalNoIndexRepos = fromNubList projectConfigLocalNoIndexRepos
-      solverSettingConstraints = projectConfigConstraints
+      solverSettingConstraints = solverCabalLibConstraints ++ projectConfigConstraints
       solverSettingPreferences = projectConfigPreferences
       solverSettingFlagAssignment = packageConfigFlagAssignment projectConfigLocalPackages
       solverSettingFlagAssignments =
@@ -500,6 +535,24 @@ resolveBuildTimeSettings
 -- Reading and writing project config files
 --
 
+-- | Get @ProjectRootUsability@ of a given file
+getProjectRootUsability :: FilePath -> IO ProjectRootUsability
+getProjectRootUsability filePath = do
+  exists <- doesFileExist filePath
+  if exists
+    then return ProjectRootUsabilityPresentAndUsable
+    else do
+      let isUsableAction =
+            handle @IOException
+              -- NOTE: if any IOException is raised, we assume the file does not exist.
+              -- That is what happen when we call @pathIsSymbolicLink@ on a @FilePath@ that does not exist.
+              (const $ pure False)
+              ((||) <$> pathIsSymbolicLink filePath <*> doesPathExist filePath)
+      isUnusable <- isUsableAction
+      if isUnusable
+        then return ProjectRootUsabilityPresentAndUnusable
+        else return ProjectRootUsabilityNotPresent
+
 -- | Find the root of this project.
 --
 -- The project directory will be one of the following:
@@ -523,13 +576,18 @@ findProjectRoot verbosity mprojectDir mprojectFile = do
             "Specifying an absolute path to the project file is deprecated."
               <> " Use --project-dir to set the project's directory."
 
-          doesFileExist file >>= \case
-            False -> left (BadProjectRootExplicitFile file)
-            True -> uncurry projectRoot =<< first dropTrailingPathSeparator . splitFileName <$> canonicalizePath file
+          getProjectRootUsability file >>= \case
+            ProjectRootUsabilityPresentAndUsable ->
+              uncurry projectRoot
+                =<< first dropTrailingPathSeparator . splitFileName <$> canonicalizePath file
+            ProjectRootUsabilityNotPresent ->
+              left (BadProjectRootExplicitFileNotFound file)
+            ProjectRootUsabilityPresentAndUnusable ->
+              left (BadProjectRootFileBroken file)
       | otherwise -> probeProjectRoot mprojectFile
     Just dir ->
       doesDirectoryExist dir >>= \case
-        False -> left (BadProjectRootDir dir)
+        False -> left (BadProjectRootDirNotFound dir)
         True -> do
           projectDir <- canonicalizePath dir
 
@@ -537,13 +595,21 @@ findProjectRoot verbosity mprojectDir mprojectFile = do
             Nothing -> pure $ Right (ProjectRootExplicit projectDir defaultProjectFile)
             Just projectFile
               | isAbsolute projectFile ->
-                  doesFileExist projectFile >>= \case
-                    False -> left (BadProjectRootAbsoluteFile projectFile)
-                    True -> Right . ProjectRootExplicitAbsolute dir <$> canonicalizePath projectFile
+                  getProjectRootUsability projectFile >>= \case
+                    ProjectRootUsabilityNotPresent ->
+                      left (BadProjectRootAbsoluteFileNotFound projectFile)
+                    ProjectRootUsabilityPresentAndUsable ->
+                      Right . ProjectRootExplicitAbsolute dir <$> canonicalizePath projectFile
+                    ProjectRootUsabilityPresentAndUnusable ->
+                      left (BadProjectRootFileBroken projectFile)
               | otherwise ->
-                  doesFileExist (projectDir </> projectFile) >>= \case
-                    False -> left (BadProjectRootDirFile dir projectFile)
-                    True -> projectRoot projectDir projectFile
+                  getProjectRootUsability (projectDir </> projectFile) >>= \case
+                    ProjectRootUsabilityNotPresent ->
+                      left (BadProjectRootDirFileNotFound dir projectFile)
+                    ProjectRootUsabilityPresentAndUsable ->
+                      projectRoot projectDir projectFile
+                    ProjectRootUsabilityPresentAndUnusable ->
+                      left (BadProjectRootFileBroken projectFile)
   where
     left = pure . Left
 
@@ -552,7 +618,7 @@ findProjectRoot verbosity mprojectDir mprojectFile = do
 
 probeProjectRoot :: Maybe FilePath -> IO (Either BadProjectRoot ProjectRoot)
 probeProjectRoot mprojectFile = do
-  startdir <- getCurrentDirectory
+  startdir <- System.Directory.getCurrentDirectory
   homedir <- getHomeDirectory
   probe startdir homedir
   where
@@ -568,45 +634,50 @@ probeProjectRoot mprojectFile = do
         go dir | isDrive dir || dir == homedir =
           case mprojectFile of
             Nothing -> return (Right (ProjectRootImplicit startdir))
-            Just file -> return (Left (BadProjectRootExplicitFile file))
+            Just file -> return (Left (BadProjectRootExplicitFileNotFound file))
         go dir = do
-          exists <- doesFileExist (dir </> projectFileName)
-          if exists
-            then return (Right (ProjectRootExplicit dir projectFileName))
-            else go (takeDirectory dir)
+          getProjectRootUsability (dir </> projectFileName) >>= \case
+            ProjectRootUsabilityNotPresent ->
+              go (takeDirectory dir)
+            ProjectRootUsabilityPresentAndUsable ->
+              return (Right $ ProjectRootExplicit dir projectFileName)
+            ProjectRootUsabilityPresentAndUnusable ->
+              return (Left $ BadProjectRootFileBroken projectFileName)
 
 -- | Errors returned by 'findProjectRoot'.
 data BadProjectRoot
-  = BadProjectRootExplicitFile FilePath
-  | BadProjectRootDir FilePath
-  | BadProjectRootAbsoluteFile FilePath
-  | BadProjectRootDirFile FilePath FilePath
-#if MIN_VERSION_base(4,8,0)
-  deriving (Show, Typeable)
-#else
-  deriving (Typeable)
+  = BadProjectRootExplicitFileNotFound FilePath
+  | BadProjectRootDirNotFound FilePath
+  | BadProjectRootAbsoluteFileNotFound FilePath
+  | BadProjectRootDirFileNotFound FilePath FilePath
+  | BadProjectRootFileBroken FilePath
+  deriving (Show, Typeable, Eq)
 
-instance Show BadProjectRoot where
-  show = renderBadProjectRoot
-#endif
-
-#if MIN_VERSION_base(4,8,0)
 instance Exception BadProjectRoot where
   displayException = renderBadProjectRoot
-#else
-instance Exception BadProjectRoot
-#endif
 
 renderBadProjectRoot :: BadProjectRoot -> String
 renderBadProjectRoot = \case
-  BadProjectRootExplicitFile projectFile ->
+  BadProjectRootExplicitFileNotFound projectFile ->
     "The given project file '" ++ projectFile ++ "' does not exist."
-  BadProjectRootDir dir ->
+  BadProjectRootDirNotFound dir ->
     "The given project directory '" <> dir <> "' does not exist."
-  BadProjectRootAbsoluteFile file ->
+  BadProjectRootAbsoluteFileNotFound file ->
     "The given project file '" <> file <> "' does not exist."
-  BadProjectRootDirFile dir file ->
+  BadProjectRootDirFileNotFound dir file ->
     "The given project directory/file combination '" <> dir </> file <> "' does not exist."
+  BadProjectRootFileBroken file ->
+    "The given project file '" <> file <> "' is broken. Is it a broken symbolic link?"
+
+-- | State of the project file, encodes if the file can be used
+data ProjectRootUsability
+  = -- | The file is present and can be used
+    ProjectRootUsabilityPresentAndUsable
+  | -- | The file is present but can't be used (e.g. broken symlink)
+    ProjectRootUsabilityPresentAndUnusable
+  | -- | The file is not present
+    ProjectRootUsabilityNotPresent
+  deriving (Eq, Show)
 
 withGlobalConfig
   :: Verbosity
@@ -621,32 +692,25 @@ withGlobalConfig verbosity gcf with = do
   with globalConfig
 
 withProjectOrGlobalConfig
-  :: Verbosity
-  -- ^ verbosity
-  -> Flag Bool
+  :: Flag Bool
   -- ^ whether to ignore local project (--ignore-project flag)
-  -> Flag FilePath
-  -- ^ @--cabal-config@
   -> IO a
-  -- ^ with project
-  -> (ProjectConfig -> IO a)
-  -- ^ without project
+  -- ^ continuation with project
   -> IO a
-withProjectOrGlobalConfig verbosity (Flag True) gcf _with without = do
-  globalConfig <- runRebuild "" $ readGlobalConfig verbosity gcf
-  without globalConfig
-withProjectOrGlobalConfig verbosity _ignorePrj gcf with without =
-  withProjectOrGlobalConfig' verbosity gcf with without
+  -- ^ continuation without project
+  -> IO a
+withProjectOrGlobalConfig (Flag True) _with without = do
+  without
+withProjectOrGlobalConfig _ignorePrj with without =
+  withProjectOrGlobalConfig' with without
 
 withProjectOrGlobalConfig'
-  :: Verbosity
-  -> Flag FilePath
+  :: IO a
+  -- ^ continuation with project
   -> IO a
-  -> (ProjectConfig -> IO a)
+  -- ^ continuation without project
   -> IO a
-withProjectOrGlobalConfig' verbosity globalConfigFlag with without = do
-  globalConfig <- runRebuild "" $ readGlobalConfig verbosity globalConfigFlag
-
+withProjectOrGlobalConfig' with without = do
   catch with $
     \case
       (BadPackageLocations prov locs)
@@ -654,8 +718,8 @@ withProjectOrGlobalConfig' verbosity globalConfigFlag with without = do
         , let
             isGlobErr (BadLocGlobEmptyMatch _) = True
             isGlobErr _ = False
-        , any isGlobErr locs ->
-            without globalConfig
+        , any isGlobErr locs -> do
+            without
       err -> throwIO err
 
 -- | Read all the config relevant for a project. This includes the project
@@ -748,7 +812,7 @@ readProjectFileSkeleton
       then do
         monitorFiles [monitorFileHashed extensionFile]
         pcs <- liftIO readExtensionFile
-        monitorFiles $ map monitorFileHashed (projectSkeletonImports pcs)
+        monitorFiles $ map monitorFileHashed (projectConfigPathRoot <$> projectSkeletonImports pcs)
         pure pcs
       else do
         monitorFiles [monitorNonExistentFile extensionFile]
@@ -758,7 +822,7 @@ readProjectFileSkeleton
 
       readExtensionFile =
         reportParseResult verbosity extensionDescription extensionFile
-          =<< parseProjectSkeleton distDownloadSrcDirectory httpTransport verbosity [] extensionFile
+          =<< parseProject extensionFile distDownloadSrcDirectory httpTransport verbosity . ProjectConfigToParse
           =<< BS.readFile extensionFile
 
 -- | Render the 'ProjectConfig' format.
@@ -795,7 +859,7 @@ readGlobalConfig verbosity configFileFlag = do
 reportParseResult :: Verbosity -> String -> FilePath -> OldParser.ParseResult ProjectConfigSkeleton -> IO ProjectConfigSkeleton
 reportParseResult verbosity _filetype filename (OldParser.ParseOk warnings x) = do
   unless (null warnings) $
-    let msg = unlines (map (OldParser.showPWarning (intercalate ", " $ filename : projectSkeletonImports x)) warnings)
+    let msg = unlines (map (OldParser.showPWarning (intercalate ", " $ filename : (projectConfigPathRoot <$> projectSkeletonImports x))) warnings)
      in warn verbosity msg
   return x
 reportParseResult verbosity filetype filename (OldParser.ParseFailed err) =
@@ -822,21 +886,11 @@ data ProjectPackageLocation
 -- | Exception thrown by 'findProjectPackages'.
 data BadPackageLocations
   = BadPackageLocations (Set ProjectConfigProvenance) [BadPackageLocation]
-#if MIN_VERSION_base(4,8,0)
   deriving (Show, Typeable)
-#else
-  deriving (Typeable)
 
-instance Show BadPackageLocations where
-  show = renderBadPackageLocations
-#endif
-
-#if MIN_VERSION_base(4,8,0)
 instance Exception BadPackageLocations where
   displayException = renderBadPackageLocations
-#else
-instance Exception BadPackageLocations
-#endif
+
 -- TODO: [nice to have] custom exception subclass for Doc rendering, colour etc
 
 data BadPackageLocation
@@ -878,10 +932,10 @@ renderBadPackageLocations (BadPackageLocations provenance bpls)
     renderErrors f = unlines (map f bpls)
 
     renderExplicit =
-      "When using configuration(s) from "
-        ++ intercalate ", " (mapMaybe getExplicit (Set.toList provenance))
-        ++ ", the following errors occurred:\n"
-        ++ renderErrors renderBadPackageLocation
+      "When using configuration from:\n"
+        ++ render (nest 2 . docProjectConfigPaths $ mapMaybe getExplicit (Set.toList provenance))
+        ++ "\nThe following errors occurred:\n"
+        ++ render (nest 2 $ vcat ((text "-" <+>) . text <$> map renderBadPackageLocation bpls))
 
     getExplicit (Explicit path) = Just path
     getExplicit Implicit = Nothing
@@ -956,7 +1010,7 @@ renderBadPackageLocationMatch bplm = case bplm of
       ++ "' contains multiple "
       ++ ".cabal files (which is not currently supported)."
 
--- | Given the project config,
+-- | Determines the location of all packages mentioned in the project configuration.
 --
 -- Throws 'BadPackageLocations'.
 findProjectPackages
@@ -986,11 +1040,7 @@ findProjectPackages
       findPackageLocation
         :: Bool
         -> String
-        -> Rebuild
-            ( Either
-                BadPackageLocation
-                [ProjectPackageLocation]
-            )
+        -> Rebuild (Either BadPackageLocation [ProjectPackageLocation])
       findPackageLocation _required@True pkglocstr =
         -- strategy: try first as a file:// or http(s):// URL.
         -- then as a file glob (usually encompassing single file)
@@ -1011,13 +1061,7 @@ findProjectPackages
         , checkIsFileGlobPackage
         , checkIsSingleFilePackage
           :: String
-          -> Rebuild
-              ( Maybe
-                  ( Either
-                      BadPackageLocation
-                      [ProjectPackageLocation]
-                  )
-              )
+          -> Rebuild (Maybe (Either BadPackageLocation [ProjectPackageLocation]))
       checkIsUriPackage pkglocstr =
         case parseAbsoluteURI pkglocstr of
           Just
@@ -1050,7 +1094,7 @@ findProjectPackages
             matches <- matchFileGlob glob
             case matches of
               []
-                | isJust (isTrivialFilePathGlob glob) ->
+                | isJust (isTrivialRootedGlob glob) ->
                     return
                       ( Left
                           ( BadPackageLocationFile
@@ -1064,7 +1108,7 @@ findProjectPackages
                     <$> traverse checkFilePackageMatch matches
                 return $! case (failures, pkglocs) of
                   ([failure], [])
-                    | isJust (isTrivialFilePathGlob glob) ->
+                    | isJust (isTrivialRootedGlob glob) ->
                         Left (BadPackageLocationFile failure)
                   (_, []) -> Left (BadLocGlobBadMatches pkglocstr failures)
                   _ -> Right pkglocs
@@ -1133,9 +1177,9 @@ findProjectPackages
 --
 -- For a directory @some/dir/@, this is a glob of the form @some/dir/\*.cabal@.
 -- The directory part can be either absolute or relative.
-globStarDotCabal :: FilePath -> FilePathGlob
+globStarDotCabal :: FilePath -> RootedGlob
 globStarDotCabal dir =
-  FilePathGlob
+  RootedGlob
     (if isAbsolute dir then FilePathRoot root else FilePathRelative)
     ( foldr
         (\d -> GlobDir [Literal d])
@@ -1209,6 +1253,7 @@ fetchAndReadSourcePackages
         verbosity
         distDirLayout
         projectConfigShared
+        (fromFlag (projectConfigOfflineMode projectConfigBuildOnly))
         [repo | ProjectPackageRemoteRepo repo <- pkgLocations]
 
     let pkgsNamed =
@@ -1325,6 +1370,7 @@ syncAndReadSourcePackagesRemoteRepos
   :: Verbosity
   -> DistDirLayout
   -> ProjectConfigShared
+  -> Bool
   -> [SourceRepoList]
   -> Rebuild [PackageSpecifier (SourcePackage UnresolvedPkgLoc)]
 syncAndReadSourcePackagesRemoteRepos
@@ -1333,6 +1379,7 @@ syncAndReadSourcePackagesRemoteRepos
   ProjectConfigShared
     { projectConfigProgPathExtra
     }
+  offlineMode
   repos = do
     repos' <-
       either reportSourceRepoProblems return $
@@ -1387,12 +1434,18 @@ syncAndReadSourcePackagesRemoteRepos
 
         -- For syncing we don't care about different 'SourceRepo' values that
         -- are just different subdirs in the same repo.
-        syncSourceRepos
-          verbosity
-          vcs
-          [ (repo, repoPath)
-          | (repo, _, repoPath) <- repoGroupWithPaths
-          ]
+        -- Do not sync source repositories when `--offline` flag applied.
+        if not offlineMode
+          then
+            syncSourceRepos
+              verbosity
+              vcs
+              [ (repo, repoPath)
+              | (repo, _, repoPath) <- repoGroupWithPaths
+              ]
+          else do
+            liftIO . warn verbosity $ "--offline was specified, skipping sync of repositories:"
+            liftIO . for_ repoGroupWithPaths $ \(repo, _, _) -> warn verbosity $ srpLocation repo
 
         -- Run post-checkout-command if it is specified
         for_ repoGroupWithPaths $ \(repo, _, repoPath) ->
@@ -1509,11 +1562,8 @@ instance Show CabalFileParseError where
         . showChar ' '
         . showsPrec 11 ws
 
-instance Exception CabalFileParseError
-#if MIN_VERSION_base(4,8,0)
-  where
+instance Exception CabalFileParseError where
   displayException = renderCabalFileParseError
-#endif
 
 renderCabalFileParseError :: CabalFileParseError -> String
 renderCabalFileParseError (CabalFileParseError filePath contents errors _ warnings) =
@@ -1655,21 +1705,11 @@ truncateString n s
 
 data BadPerPackageCompilerPaths
   = BadPerPackageCompilerPaths [(PackageName, String)]
-#if MIN_VERSION_base(4,8,0)
   deriving (Show, Typeable)
-#else
-  deriving (Typeable)
 
-instance Show BadPerPackageCompilerPaths where
-  show = renderBadPerPackageCompilerPaths
-#endif
-
-#if MIN_VERSION_base(4,8,0)
 instance Exception BadPerPackageCompilerPaths where
   displayException = renderBadPerPackageCompilerPaths
-#else
-instance Exception BadPerPackageCompilerPaths
-#endif
+
 -- TODO: [nice to have] custom exception subclass for Doc rendering, colour etc
 
 renderBadPerPackageCompilerPaths :: BadPerPackageCompilerPaths -> String

@@ -31,7 +31,8 @@ import Distribution.Client.ProjectPlanning
   ( ElaboratedSharedConfig (..)
   )
 import Distribution.Client.Setup
-  ( ConfigFlags (..)
+  ( CommonSetupFlags (..)
+  , ConfigFlags (..)
   , GlobalFlags
   , InstallFlags (..)
   )
@@ -147,7 +148,7 @@ haddockAction relFlags targetStrings globalFlags = do
   flags@NixStyleFlags{..} <- mkFlagsAbsolute relFlags
 
   let
-    verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
+    verbosity = fromFlagOrDefault normal (setupVerbosity $ configCommonFlags configFlags)
     installDoc = fromFlagOrDefault True (installDocumentation installFlags)
     flags' = flags{installFlags = installFlags{installDocumentation = Flag installDoc}}
     cliConfig = commandLineFlagsToProjectConfig globalFlags flags' mempty -- ClientInstallFlags, not needed here
@@ -268,7 +269,8 @@ selectPackageTargets haddockFlags targetSelector targets
 -- For the @haddock@ command we just need the basic checks on being buildable
 -- etc.
 selectComponentTarget
-  :: AvailableTarget k
+  :: SubComponentTarget
+  -> AvailableTarget k
   -> Either TargetProblem' k
 selectComponentTarget = selectComponentTargetBasic
 

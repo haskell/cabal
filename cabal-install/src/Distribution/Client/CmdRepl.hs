@@ -103,6 +103,7 @@ import Distribution.Simple.Compiler
   )
 import Distribution.Simple.Setup
   ( ReplOptions (..)
+  , setupVerbosity
   )
 import Distribution.Simple.Utils
   ( TempFileOptions (..)
@@ -138,6 +139,7 @@ import Distribution.Types.Library
   ( Library (..)
   , emptyLibrary
   )
+import Distribution.Types.ParStrat
 import Distribution.Types.Version
   ( Version
   , mkVersion
@@ -466,6 +468,10 @@ replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings g
                in -- GHC considers the last unit passed to be the active one
                   other_units ++ active_unit_files
 
+            render_j Serial = "1"
+            render_j (UseSem n) = show @Int n
+            render_j (NumJobs mn) = maybe "" (show @Int) mn
+
         -- run ghc --interactive with
         runProgramInvocation verbosity $
           programInvocation ghcProg' $
@@ -474,7 +480,7 @@ replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings g
               , "-package-env"
               , "-" -- to ignore ghc.environment.* files
               , "-j"
-              , show (buildSettingNumJobs (buildSettings ctx))
+              , render_j (buildSettingNumJobs (buildSettings ctx))
               ]
                 : [ ["-unit", "@" ++ dir </> unit]
                   | unit <- unit_files_ordered
@@ -500,7 +506,7 @@ replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings g
         go m ("PATH", Just s) = foldl' (\m' f -> Map.insertWith (+) f 1 m') m (splitSearchPath s)
         go m _ = m
 
-    verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
+    verbosity = fromFlagOrDefault normal (setupVerbosity $ configCommonFlags configFlags)
     keepTempFiles = fromFlagOrDefault False replKeepTempFiles
 
     validatedTargets ctx compiler elaboratedPlan targetSelectors = do
@@ -734,7 +740,8 @@ selectPackageTargetsSingle decision targetSelector targets
 --
 -- For the @repl@ command we just need the basic checks on being buildable etc.
 selectComponentTarget
-  :: AvailableTarget k
+  :: SubComponentTarget
+  -> AvailableTarget k
   -> Either ReplTargetProblem k
 selectComponentTarget = selectComponentTargetBasic
 

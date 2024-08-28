@@ -29,10 +29,11 @@ GenericPackageDescription {
     testSuites = [],
     benchmarks = [],
     dataFiles = [],
-    dataDir = ".",
+    dataDir = SymbolicPath ".",
     extraSrcFiles = [],
     extraTmpFiles = [],
-    extraDocFiles = []},
+    extraDocFiles = [],
+    extraFiles = []},
   gpdScannedVersion = Nothing,
   genPackageFlags = [],
   condLibrary = Just
@@ -93,6 +94,8 @@ GenericPackageDescription {
             []
             [],
           sharedOptions =
+          PerCompilerFlavor [] [],
+          profSharedOptions =
           PerCompilerFlavor [] [],
           staticOptions =
           PerCompilerFlavor [] [],
@@ -189,6 +192,8 @@ GenericPackageDescription {
               [],
             sharedOptions =
             PerCompilerFlavor [] [],
+            profSharedOptions =
+            PerCompilerFlavor [] [],
             staticOptions =
             PerCompilerFlavor [] [],
             customFieldsBI = [],
@@ -204,7 +209,8 @@ GenericPackageDescription {
         condTreeData = Executable {
           exeName = UnqualComponentName
             "demo-a",
-          modulePath = "Main.hs",
+          modulePath = SymbolicPath
+            "Main.hs",
           exeScope = ExecutablePublic,
           buildInfo = BuildInfo {
             buildable = True,
@@ -253,6 +259,8 @@ GenericPackageDescription {
               []
               [],
             sharedOptions =
+            PerCompilerFlavor [] [],
+            profSharedOptions =
             PerCompilerFlavor [] [],
             staticOptions =
             PerCompilerFlavor [] [],
@@ -283,7 +291,8 @@ GenericPackageDescription {
         condTreeData = Executable {
           exeName = UnqualComponentName
             "demo-b",
-          modulePath = "Main.hs",
+          modulePath = SymbolicPath
+            "Main.hs",
           exeScope = ExecutablePublic,
           buildInfo = BuildInfo {
             buildable = True,
@@ -332,6 +341,8 @@ GenericPackageDescription {
               []
               [],
             sharedOptions =
+            PerCompilerFlavor [] [],
+            profSharedOptions =
             PerCompilerFlavor [] [],
             staticOptions =
             PerCompilerFlavor [] [],

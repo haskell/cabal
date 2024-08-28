@@ -1,6 +1,9 @@
+-- For the deprecated import of Distribution.Compat.Prelude.Internal
+{-# OPTIONS_GHC -Wwarn=deprecations #-}
+
 module UnitTests.Distribution.PackageDescription.Check (tests) where
 
-import Distribution.Compat.Prelude.Internal
+import Distribution.Compat.Prelude
 import Prelude ()
 
 import Distribution.PackageDescription.Check

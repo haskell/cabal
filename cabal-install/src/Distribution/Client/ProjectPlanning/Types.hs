@@ -2,6 +2,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -42,12 +43,16 @@ module Distribution.Client.ProjectPlanning.Types
   , MemoryOrDisk (..)
   , isInplaceBuildStyle
   , CabalFileText
+  , NotPerComponentReason (..)
+  , NotPerComponentBuildType (..)
+  , whyNotPerComponent
 
     -- * Build targets
   , ComponentTarget (..)
   , showComponentTarget
   , showTestComponentTarget
   , showBenchComponentTarget
+  , SubComponentTarget (..)
   , isSubLibComponentTarget
   , isForeignLibComponentTarget
   , isExeComponentTarget
@@ -63,6 +68,9 @@ import Distribution.Client.Compat.Prelude
 import Prelude ()
 
 import Distribution.Client.PackageHash
+import Distribution.Client.TargetSelector
+  ( SubComponentTarget (..)
+  )
 
 import Distribution.Client.DistDirLayout
 import Distribution.Client.InstallPlan
@@ -78,6 +86,7 @@ import Distribution.Client.Types
 import Distribution.Backpack
 import Distribution.Backpack.ModuleShape
 
+import Distribution.Compat.Graph (IsNode (..))
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import Distribution.ModuleName (ModuleName)
 import Distribution.Package
@@ -98,21 +107,21 @@ import Distribution.Simple.Setup
   , ReplOptions
   , TestShowDetails
   )
+import Distribution.Simple.Utils (ordNub)
+import Distribution.Solver.Types.ComponentDeps (ComponentDeps)
+import qualified Distribution.Solver.Types.ComponentDeps as CD
+import Distribution.Solver.Types.OptionalStanza
 import Distribution.System
 import Distribution.Types.ComponentRequestedSpec
 import qualified Distribution.Types.LocalBuildConfig as LBC
 import Distribution.Types.PackageDescription (PackageDescription (..))
 import Distribution.Types.PkgconfigVersion
+import Distribution.Utils.Path (getSymbolicPath)
 import Distribution.Verbosity (normal)
 import Distribution.Version
 
-import Distribution.Compat.Graph (IsNode (..))
-import Distribution.Simple.Utils (ordNub)
-import Distribution.Solver.Types.ComponentDeps (ComponentDeps)
-import qualified Distribution.Solver.Types.ComponentDeps as CD
-import Distribution.Solver.Types.OptionalStanza
-
 import qualified Data.ByteString.Lazy as LBS
+import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as Map
 import qualified Data.Monoid as Mon
 import System.FilePath ((</>))
@@ -291,8 +300,9 @@ data ElaboratedConfiguredPackage = ElaboratedConfiguredPackage
   , elabHaddockContents :: Maybe PathTemplate
   , elabHaddockIndex :: Maybe PathTemplate
   , elabHaddockBaseUrl :: Maybe String
-  , elabHaddockLib :: Maybe String
+  , elabHaddockResourcesDir :: Maybe String
   , elabHaddockOutputDir :: Maybe FilePath
+  , elabHaddockUseUnicode :: Bool
   , elabTestMachineLog :: Maybe PathTemplate
   , elabTestHumanLog :: Maybe PathTemplate
   , elabTestShowDetails :: Maybe TestShowDetails
@@ -393,7 +403,7 @@ elabRequiresRegistration elab =
         -- redundant anymore.
         || any (depends_on_lib pkg) (elabBuildTargets elab)
   where
-    depends_on_lib pkg (ComponentTarget cn) =
+    depends_on_lib pkg (ComponentTarget cn _) =
       not
         ( null
             ( CD.select
@@ -408,11 +418,10 @@ elabRequiresRegistration elab =
         -- that means we have to look more carefully to see
         -- if there is anything to register
           Cabal.hasLibs (elabPkgDescription elab)
-
     -- NB: this means we DO NOT reregister if you just built a
     -- single file
-    is_lib_target (ComponentTarget cn) = is_lib cn
-
+    is_lib_target (ComponentTarget cn WholeComponent) = is_lib cn
+    is_lib_target _ = False
     is_lib (CLibName _) = True
     is_lib _ = False
 
@@ -449,9 +458,7 @@ dataDirEnvVarForPackage distDirLayout pkg =
     BuildInplaceOnly{} ->
       Just
         ( pkgPathEnvVar (elabPkgDescription pkg) "datadir"
-        , Just $
-            srcPath (elabPkgSourceLocation pkg)
-              </> dataDir (elabPkgDescription pkg)
+        , Just dataDirPath
         )
   where
     srcPath (LocalUnpackedPackage path) = path
@@ -465,6 +472,16 @@ dataDirEnvVarForPackage distDirLayout pkg =
         "calling dataDirEnvVarForPackage on a not-downloaded repo is an error"
     unpackedPath =
       distUnpackedSrcDirectory distDirLayout $ elabPkgSourceId pkg
+    rawDataDir = getSymbolicPath $ dataDir (elabPkgDescription pkg)
+    pkgDir = srcPath (elabPkgSourceLocation pkg)
+    dataDirPath
+      | null rawDataDir =
+          pkgDir
+      | otherwise =
+          pkgDir </> rawDataDir
+
+-- NB: rawDataDir may be absolute, in which case
+-- (</>) drops its first argument.
 
 instance Package ElaboratedConfiguredPackage where
   packageId = elabPkgSourceId
@@ -721,11 +738,54 @@ data ElaboratedPackage = ElaboratedPackage
   , pkgStanzasEnabled :: OptionalStanzaSet
   -- ^ Which optional stanzas (ie testsuites, benchmarks) will actually
   -- be enabled during the package configure step.
+  , pkgWhyNotPerComponent :: NE.NonEmpty NotPerComponentReason
+  -- ^ Why is this not a per-component build?
   }
   deriving (Eq, Show, Generic)
 
 instance Binary ElaboratedPackage
 instance Structured ElaboratedPackage
+
+-- | Why did we fall-back to a per-package build, instead of using
+-- a per-component build?
+data NotPerComponentReason
+  = -- | The build-type does not support per-component builds.
+    CuzBuildType !NotPerComponentBuildType
+  | -- | The Cabal spec version is too old for per-component builds.
+    CuzCabalSpecVersion
+  | -- | There are no buildable components, so we fall-back to a per-package
+    -- build for error-reporting purposes.
+    CuzNoBuildableComponents
+  | -- | The user passed @--disable-per-component@.
+    CuzDisablePerComponent
+  deriving (Eq, Show, Generic)
+
+data NotPerComponentBuildType
+  = CuzConfigureBuildType
+  | CuzCustomBuildType
+  | CuzHooksBuildType
+  | CuzMakeBuildType
+  deriving (Eq, Show, Generic)
+
+instance Binary NotPerComponentBuildType
+instance Structured NotPerComponentBuildType
+
+instance Binary NotPerComponentReason
+instance Structured NotPerComponentReason
+
+-- | Display the reason we had to fall-back to a per-package build instead
+-- of a per-component build.
+whyNotPerComponent :: NotPerComponentReason -> String
+whyNotPerComponent = \case
+  CuzBuildType bt ->
+    "build-type is " ++ case bt of
+      CuzConfigureBuildType -> "Configure"
+      CuzCustomBuildType -> "Custom"
+      CuzHooksBuildType -> "Hooks"
+      CuzMakeBuildType -> "Make"
+  CuzCabalSpecVersion -> "cabal-version is less than 1.8"
+  CuzNoBuildableComponents -> "there are no buildable components"
+  CuzDisablePerComponent -> "you passed --disable-per-component"
 
 -- | See 'elabOrderDependencies'.  This gives the unflattened version,
 -- which can be useful in some circumstances.
@@ -797,7 +857,7 @@ type ElaboratedReadyPackage = GenericReadyPackage ElaboratedConfiguredPackage
 
 -- | Specific targets within a package or component to act on e.g. to build,
 -- haddock or open a repl.
-data ComponentTarget = ComponentTarget ComponentName
+data ComponentTarget = ComponentTarget ComponentName SubComponentTarget
   deriving (Eq, Ord, Show, Generic)
 
 instance Binary ComponentTarget
@@ -810,35 +870,38 @@ showComponentTarget pkgid =
   Cabal.showBuildTarget pkgid . toBuildTarget
   where
     toBuildTarget :: ComponentTarget -> Cabal.BuildTarget
-    toBuildTarget (ComponentTarget cname) =
-      Cabal.BuildTargetComponent cname
+    toBuildTarget (ComponentTarget cname subtarget) =
+      case subtarget of
+        WholeComponent -> Cabal.BuildTargetComponent cname
+        ModuleTarget mname -> Cabal.BuildTargetModule cname mname
+        FileTarget fname -> Cabal.BuildTargetFile cname fname
 
 showTestComponentTarget :: PackageId -> ComponentTarget -> Maybe String
-showTestComponentTarget _ (ComponentTarget (CTestName n)) = Just $ prettyShow n
+showTestComponentTarget _ (ComponentTarget (CTestName n) _) = Just $ prettyShow n
 showTestComponentTarget _ _ = Nothing
 
 isTestComponentTarget :: ComponentTarget -> Bool
-isTestComponentTarget (ComponentTarget (CTestName _)) = True
+isTestComponentTarget (ComponentTarget (CTestName _) _) = True
 isTestComponentTarget _ = False
 
 showBenchComponentTarget :: PackageId -> ComponentTarget -> Maybe String
-showBenchComponentTarget _ (ComponentTarget (CBenchName n)) = Just $ prettyShow n
+showBenchComponentTarget _ (ComponentTarget (CBenchName n) _) = Just $ prettyShow n
 showBenchComponentTarget _ _ = Nothing
 
 isBenchComponentTarget :: ComponentTarget -> Bool
-isBenchComponentTarget (ComponentTarget (CBenchName _)) = True
+isBenchComponentTarget (ComponentTarget (CBenchName _) _) = True
 isBenchComponentTarget _ = False
 
 isForeignLibComponentTarget :: ComponentTarget -> Bool
-isForeignLibComponentTarget (ComponentTarget (CFLibName _)) = True
+isForeignLibComponentTarget (ComponentTarget (CFLibName _) _) = True
 isForeignLibComponentTarget _ = False
 
 isExeComponentTarget :: ComponentTarget -> Bool
-isExeComponentTarget (ComponentTarget (CExeName _)) = True
+isExeComponentTarget (ComponentTarget (CExeName _) _) = True
 isExeComponentTarget _ = False
 
 isSubLibComponentTarget :: ComponentTarget -> Bool
-isSubLibComponentTarget (ComponentTarget (CLibName (LSubLibName _))) = True
+isSubLibComponentTarget (ComponentTarget (CLibName (LSubLibName _)) _) = True
 isSubLibComponentTarget _ = False
 
 componentOptionalStanza :: CD.Component -> Maybe OptionalStanza

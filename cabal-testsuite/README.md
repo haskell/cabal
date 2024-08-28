@@ -25,6 +25,34 @@ There are a few useful flags:
   the autodetection doesn't work correctly (which may be the
   case for old versions of GHC.)
 
+* `--keep-tmp-files` can be used to keep the temporary directories that tests
+  are run in.
+
+## Which Cabal library version do cabal-install tests use?
+
+By default the `cabal-install` tests will use the `Cabal` library which comes with
+the boot compiler when it needs to build a custom `Setup.hs`.
+
+This can be very confusing if you are modifying the Cabal library, writing a test
+which relies on a custom setup script and you are wondering why the test is not
+responding at all to your changes.
+
+There are some flags which allow you to instruct `cabal-install` to use a different
+`Cabal` library version.
+
+1. `--boot-cabal-lib` specifies to use the Cabal library bundled with the
+   test compiler, this is the default.
+2. `--intree-cabal-lib=<root_dir>` specifies to use Cabal and Cabal-syntax
+   from a specific directory, and `--test-tmp` indicates where to put
+   the package database they are built into.
+3. `--specific-cabal-lib=<VERSION>` specifies to use a specific Cabal
+   version from hackage (ie 3.10.2.0) and installs the package database
+   into `--test-tmp=<DIR>`
+
+The CI scripts use the `--intree-cabal-lib` option for the most part but in
+the future there should be a variety of jobs which test `cabal-install` built
+against newer `Cabal` versions but forced to interact with older `Cabal` versions.
+
 ### How to run the doctests
 
 You need to install the `doctest` tool. Make sure it's compiled with your current
@@ -37,7 +65,7 @@ cabal install doctest --overwrite-policy=always --ignore-project
 After that you can run doctests for a component of your choice via the following command:
 
 ``` shellsession
-cabal repl --with-ghc=doctest --build-depends=QuickCheck --build-depends=template-haskell --repl-options="-w" --project-file="cabal.project.validate" Cabal-syntax
+cabal repl --with-ghc=doctest --build-depends=QuickCheck --build-depends=template-haskell --repl-options="-w" --project-file="cabal.validate.project" Cabal-syntax
 ```
 
 In this example we have run doctests in `Cabal-syntax`. Notice, that some
@@ -54,6 +82,16 @@ in `cabal-testsuite/PackageTests`; if you `git log -p`, you can
 see the full contents of various commits which added a test for
 various functionality.  See if you can find an existing test that
 is similar to what you want to test.
+
+Tests are all run in temporary system directories. At the start of a test
+all the files which are in the same folder as the test script are copied into
+a system temporary directory and then the rest of the script operates in this
+directory.
+
+**NOTE:** only files which are known to git are copied, so you have to
+`git add` any files which are part of a test before running the test.
+You can use the `--keep-tmp-files` flag to keep the temporary directories in
+order to inspect the result of running a test.
 
 Otherwise, here is a walkthrough:
 
@@ -128,11 +166,6 @@ test output?** Only "marked" output is picked up by Cabal; currently,
 only `notice`, `warn` and `die` produce marked output.  Use those
 combinators for your output.
 
-**How do I safely let my test modify version-controlled source files?**
-Use `withSourceCopy`.  Note that you MUST `git add`
-all files which are relevant to the test; otherwise they will not be
-available when running the test.
-
 **How can I add a dependency on a package from Hackage in a test?**
 By default, the test suite is completely independent of the contents
 of Hackage, to ensure that it keeps working across all GHC versions.
@@ -165,8 +198,7 @@ and stderr.
 **How do I skip running a test in some environments?**  Use the
 `skipIf` and `skipUnless` combinators.  Useful parameters to test
 these with include `hasSharedLibraries`, `hasProfiledLibraries`,
-`hasCabalShared`, `isGhcVersion`, `isWindows`, `isLinux`, `isOSX`
-and `hasCabalForGhc`.
+`hasCabalShared`, `isGhcVersion`, `isWindows`, `isLinux`, `isOSX`.
 
 **I programmatically modified a file in my test suite, but Cabal/GHC
 doesn't seem to be picking it up.**  You need to sleep sufficiently
@@ -182,23 +214,14 @@ string output test, if that is how your test is "failing."
 Hermetic tests
 --------------
 
-By default, we run tests directly on the source code that is checked into the
-source code repository.  However, some tests require programmatically
-modifying source files, or interact with Cabal commands which are
-not hermetic (e.g., `cabal freeze`).  In this case, cabal-testsuite
-supports opting into a hermetic test, where we first make copy of all
-the relevant source code before starting the test.  You can opt into
-this mode using the `withSourceCopy` combinator (search for examples!)
-This mode is subject to the following limitations:
+Tests are run in a fresh temporary system directory. This attempts to isolate the
+tests from anything specific to do with your directory structure. In particular
 
 * You must be running the test inside a valid Git checkout of the test
   suite (`withSourceCopy` uses Git to determine which files should be copied.)
 
 * You must `git add` all files which are relevant to the test, otherwise
   they will not be copied.
-
-* The source copy is still made at a well-known location, so running
-  a test is still not reentrant. (See also Known Limitations.)
 
 Design notes
 ------------
@@ -344,11 +367,3 @@ Here are some things we do not currently plan on supporting:
   of our tests need substantial setup; for example, tests that
   have to setup a package repository.  In this case, because there
   already is a setup necessary, we might consider making things easier here.)
-
-Known limitations
------------------
-
-* Tests are NOT reentrant: test build products are always built into
-  the same location, and if you run the same test at the same time,
-  you will clobber each other.  This is convenient for debugging and
-  doesn't seem to be a problem in practice.

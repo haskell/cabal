@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -38,12 +39,13 @@ module Distribution.Simple.Setup
   , emptyGlobalFlags
   , defaultGlobalFlags
   , globalCommand
+  , CommonSetupFlags (..)
+  , defaultCommonSetupFlags
   , ConfigFlags (..)
   , emptyConfigFlags
   , defaultConfigFlags
   , configureCommand
   , configPrograms
-  , configAbsolutePaths
   , readPackageDb
   , readPackageDbList
   , showPackageDb
@@ -133,12 +135,14 @@ module Distribution.Simple.Setup
   , falseArg
   , optionVerbosity
   , BuildingWhat (..)
+  , buildingWhatCommonFlags
   , buildingWhatVerbosity
+  , buildingWhatWorkingDir
   , buildingWhatDistPref
   ) where
 
-import GHC.Generics (Generic)
-import Prelude (FilePath, Show, ($))
+import Distribution.Compat.Prelude
+import Prelude ()
 
 import Distribution.Simple.Flag
 import Distribution.Simple.InstallDirs
@@ -155,13 +159,20 @@ import Distribution.Simple.Setup.Haddock
 import Distribution.Simple.Setup.Hscolour
 import Distribution.Simple.Setup.Install
 import Distribution.Simple.Setup.Register
+  ( RegisterFlags (..)
+  , defaultRegisterFlags
+  , emptyRegisterFlags
+  , registerCommand
+  , unregisterCommand
+  )
 import Distribution.Simple.Setup.Repl
 import Distribution.Simple.Setup.SDist
 import Distribution.Simple.Setup.Test
+import Distribution.Utils.Path
 
 import Distribution.Verbosity (Verbosity)
 
--- | What kind of build are we doing?
+-- | What kind of build phase are we doing/hooking into?
 --
 -- Is this a normal build, or is it perhaps for running an interactive
 -- session or Haddock?
@@ -176,19 +187,21 @@ data BuildingWhat
     BuildHscolour HscolourFlags
   deriving (Generic, Show)
 
-buildingWhatVerbosity :: BuildingWhat -> Verbosity
-buildingWhatVerbosity = \case
-  BuildNormal flags -> fromFlag $ buildVerbosity flags
-  BuildRepl flags -> fromFlag $ replVerbosity flags
-  BuildHaddock flags -> fromFlag $ haddockVerbosity flags
-  BuildHscolour flags -> fromFlag $ hscolourVerbosity flags
+buildingWhatCommonFlags :: BuildingWhat -> CommonSetupFlags
+buildingWhatCommonFlags = \case
+  BuildNormal flags -> buildCommonFlags flags
+  BuildRepl flags -> replCommonFlags flags
+  BuildHaddock flags -> haddockCommonFlags flags
+  BuildHscolour flags -> hscolourCommonFlags flags
 
-buildingWhatDistPref :: BuildingWhat -> FilePath
-buildingWhatDistPref = \case
-  BuildNormal flags -> fromFlag $ buildDistPref flags
-  BuildRepl flags -> fromFlag $ replDistPref flags
-  BuildHaddock flags -> fromFlag $ haddockDistPref flags
-  BuildHscolour flags -> fromFlag $ hscolourDistPref flags
+buildingWhatVerbosity :: BuildingWhat -> Verbosity
+buildingWhatVerbosity = fromFlag . setupVerbosity . buildingWhatCommonFlags
+
+buildingWhatWorkingDir :: BuildingWhat -> Maybe (SymbolicPath CWD (Dir Pkg))
+buildingWhatWorkingDir = flagToMaybe . setupWorkingDir . buildingWhatCommonFlags
+
+buildingWhatDistPref :: BuildingWhat -> SymbolicPath Pkg (Dir Dist)
+buildingWhatDistPref = fromFlag . setupDistPref . buildingWhatCommonFlags
 
 -- The test cases kinda have to be rewritten from the ground up... :/
 -- hunitTests :: [Test]
@@ -233,3 +246,6 @@ buildingWhatDistPref = \case
    * quickCheck to test permutations of arguments
    * what other options can we over-ride with a command-line flag?
 -}
+
+instance Binary BuildingWhat
+instance Structured BuildingWhat

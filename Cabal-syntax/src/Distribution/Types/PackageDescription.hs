@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -108,7 +109,7 @@ data PackageDescription = PackageDescription
   -- ^ The version of the Cabal spec that this package description uses.
   , package :: PackageIdentifier
   , licenseRaw :: Either SPDX.License License
-  , licenseFiles :: [SymbolicPath PackageDir LicenseFile]
+  , licenseFiles :: [RelativePath Pkg File]
   , copyright :: !ShortText
   , maintainer :: !ShortText
   , author :: !ShortText
@@ -141,11 +142,14 @@ data PackageDescription = PackageDescription
   , testSuites :: [TestSuite]
   , benchmarks :: [Benchmark]
   , -- files
-    dataFiles :: [FilePath]
-  , dataDir :: FilePath
-  , extraSrcFiles :: [FilePath]
-  , extraTmpFiles :: [FilePath]
-  , extraDocFiles :: [FilePath]
+    dataFiles :: [RelativePath DataDir File]
+  -- ^ data file globs, relative to data directory
+  , dataDir :: SymbolicPath Pkg (Dir DataDir)
+  -- ^ data directory (may be absolute, or relative to package)
+  , extraSrcFiles :: [RelativePath Pkg File]
+  , extraTmpFiles :: [RelativePath Pkg File]
+  , extraDocFiles :: [RelativePath Pkg File]
+  , extraFiles :: [RelativePath Pkg File]
   }
   deriving (Generic, Show, Read, Eq, Ord, Typeable, Data)
 
@@ -228,10 +232,11 @@ emptyPackageDescription =
     , testSuites = []
     , benchmarks = []
     , dataFiles = []
-    , dataDir = "."
+    , dataDir = sameDirectory
     , extraSrcFiles = []
     , extraTmpFiles = []
     , extraDocFiles = []
+    , extraFiles = []
     }
 
 -- ---------------------------------------------------------------------------
@@ -488,6 +493,7 @@ instance L.HasBuildInfos PackageDescription where
         a22
         a23
         a24
+        a25
       ) =
       PackageDescription a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17 a18 a19
         <$> (traverse . L.buildInfo) f x1 -- library
@@ -501,3 +507,4 @@ instance L.HasBuildInfos PackageDescription where
         <*> pure a22 -- extra src files
         <*> pure a23 -- extra temp files
         <*> pure a24 -- extra doc files
+        <*> pure a25 -- extra files

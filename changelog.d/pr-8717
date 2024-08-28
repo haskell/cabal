@@ -1,0 +1,25 @@
+synopsis: Always pass `ghc-options` to GHC
+packages: Cabal
+prs: #8717
+issues:
+
+description: {
+
+Previously, options set in the package field `ghc-options` would not be passed
+to GHC during the link phase for shared objects (where multiple `.o` or
+`.dyn_o` files are merged into a single object file). This made it impossible
+to use `ghc-options` to use a different linker by setting (for example)
+`ghc-options: -optl-fuse-ld=mold -optlm-fuse-ld=mold`; the options would be
+dropped in the link phase, falling back to the default linker.
+
+It was possible to work around this by duplicating the `ghc-options` to
+`ghc-shared-options`, which _are_ passed in the shared link phase, but that had
+the (undocumented and unfortunate) side-effect of disabling the GHC
+`-dynamic-too` flag, effectively doubling compilation times when
+`ghc-shared-options` are set.
+
+Now, `ghc-options` are combined with `ghc-shared-options` (to accurately
+reflect the documentation on this feature) and the fact that
+`ghc-shared-options` disables `-dynamic-too` is documented.
+
+}

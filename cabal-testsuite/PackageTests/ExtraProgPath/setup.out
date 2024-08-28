@@ -1,12 +1,10 @@
 # cabal v2-build
-Warning: cannot determine version of <ROOT>/./pkg-config :
-""
-Warning: cannot determine version of <ROOT>/./pkg-config :
+Warning: cannot determine version of <ROOT>/pkg-config :
 ""
 Resolving dependencies...
 Error: [Cabal-7107]
 Could not resolve dependencies:
 [__0] next goal: CheckExtraProgPath (user goal)
-[__0] rejecting: CheckExtraProgPath-0.1 (conflict: pkg-config package zlib-any, not found in the pkg-config database)
+[__0] rejecting: CheckExtraProgPath-0.1 (pkg-config package zlib-any is needed but no pkg-config executable was found or querying it failed)
 [__0] fail (backjumping, conflict set: CheckExtraProgPath)
 After searching the rest of the dependency tree exhaustively, these were the goals I've had most trouble fulfilling: CheckExtraProgPath (2)

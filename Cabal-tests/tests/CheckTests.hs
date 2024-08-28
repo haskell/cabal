@@ -3,7 +3,6 @@ module Main
     ) where
 
 import Test.Tasty
-import Test.Tasty.ExpectedFailure
 import Test.Tasty.Golden.Advanced (goldenTest)
 
 import Data.Algorithm.Diff                    (PolyDiff (..), getGroupedDiff)

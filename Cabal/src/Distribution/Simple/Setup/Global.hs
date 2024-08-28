@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -30,6 +31,7 @@ import Prelude ()
 import Distribution.Simple.Command hiding (boolOpt, boolOpt')
 import Distribution.Simple.Flag
 import Distribution.Simple.Setup.Common
+import Distribution.Utils.Path
 
 -- ------------------------------------------------------------
 
@@ -47,6 +49,7 @@ import Distribution.Simple.Setup.Common
 data GlobalFlags = GlobalFlags
   { globalVersion :: Flag Bool
   , globalNumericVersion :: Flag Bool
+  , globalWorkingDir :: Flag (SymbolicPath CWD (Dir Pkg))
   }
   deriving (Generic, Typeable)
 
@@ -55,6 +58,7 @@ defaultGlobalFlags =
   GlobalFlags
     { globalVersion = Flag False
     , globalNumericVersion = Flag False
+    , globalWorkingDir = NoFlag
     }
 
 globalCommand :: [Command action] -> CommandUI GlobalFlags
@@ -108,6 +112,13 @@ globalCommand commands =
             globalNumericVersion
             (\v flags -> flags{globalNumericVersion = v})
             trueArg
+        , option
+            ""
+            ["working-dir"]
+            "Set working directory"
+            globalWorkingDir
+            (\v flags -> flags{globalWorkingDir = v})
+            (reqSymbolicPathArgFlag "DIR")
         ]
     }
 

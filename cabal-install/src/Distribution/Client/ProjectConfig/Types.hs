@@ -6,6 +6,7 @@
 module Distribution.Client.ProjectConfig.Types
   ( -- * Types for project config
     ProjectConfig (..)
+  , ProjectConfigToParse (..)
   , ProjectConfigBuildOnly (..)
   , ProjectConfigShared (..)
   , ProjectConfigProvenance (..)
@@ -26,6 +27,7 @@ module Distribution.Client.ProjectConfig.Types
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
+import qualified Data.ByteString.Char8 as BS
 import Distribution.Client.BuildReports.Types
   ( ReportLevel (..)
   )
@@ -94,11 +96,17 @@ import Distribution.Version
   )
 
 import qualified Data.Map as Map
+import Distribution.Solver.Types.ProjectConfigPath (ProjectConfigPath)
 import Distribution.Types.ParStrat
 
 -------------------------------
 -- Project config types
 --
+
+-- | The project configuration is configuration that is parsed but parse
+-- configuration may import more configuration. Holds the unparsed contents of
+-- an imported file contributing to the project config.
+newtype ProjectConfigToParse = ProjectConfigToParse BS.ByteString
 
 -- | This type corresponds directly to what can be written in the
 -- @cabal.project@ file. Other sources of configuration can also be injected
@@ -238,8 +246,8 @@ data ProjectConfigProvenance
     -- for how implicit configuration is determined.
     Implicit
   | -- | The path the project configuration was explicitly read from.
-    -- | The configuration was explicitly read from the specified 'FilePath'.
-    Explicit FilePath
+    -- | The configuration was explicitly read from the specified 'ProjectConfigPath'.
+    Explicit ProjectConfigPath
   deriving (Eq, Ord, Show, Generic)
 
 -- | Project configuration that is specific to each package, that is where we
@@ -257,6 +265,7 @@ data PackageConfig = PackageConfig
   , packageConfigFullyStaticExe :: Flag Bool
   , packageConfigProf :: Flag Bool -- TODO: [code cleanup] sort out
   , packageConfigProfLib :: Flag Bool --      this duplication
+  , packageConfigProfShared :: Flag Bool
   , packageConfigProfExe :: Flag Bool --      and consistency
   , packageConfigProfDetail :: Flag ProfDetailLevel
   , packageConfigProfLibDetail :: Flag ProfDetailLevel
@@ -297,8 +306,9 @@ data PackageConfig = PackageConfig
   , packageConfigHaddockContents :: Flag PathTemplate -- TODO: [required eventually] use this
   , packageConfigHaddockIndex :: Flag PathTemplate -- TODO: [required eventually] use this
   , packageConfigHaddockBaseUrl :: Flag String -- TODO: [required eventually] use this
-  , packageConfigHaddockLib :: Flag String -- TODO: [required eventually] use this
+  , packageConfigHaddockResourcesDir :: Flag String -- TODO: [required eventually] use this
   , packageConfigHaddockOutputDir :: Flag FilePath -- TODO: [required eventually] use this
+  , packageConfigHaddockUseUnicode :: Flag Bool -- TODO: [required eventually] use this
   , packageConfigHaddockForHackage :: Flag HaddockTarget
   , -- Test options
     packageConfigTestHumanLog :: Flag PathTemplate

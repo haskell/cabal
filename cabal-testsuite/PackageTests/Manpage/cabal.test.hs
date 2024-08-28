@@ -7,8 +7,8 @@ main = cabalTest $ do
     assertOutputContains ".B cabal install" r
     assertOutputDoesNotContain ".B cabal manpage" r
 
-    -- The following test of `cabal man` needs `nroff` which is not available under Windows.
-    unless (buildOS == Windows) $ do
+    -- The following test of `cabal man` needs `nroff` which is not available under Windows and OSX.
+    unless (buildOS == Windows || buildOS ==OSX) $ do
 
       -- Check that output of `cabal man --raw` can be passed through `nroff -man`
       -- without producing any warnings (which are printed to stderr).

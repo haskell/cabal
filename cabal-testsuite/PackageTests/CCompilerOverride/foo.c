@@ -1,14 +1,6 @@
 
-#ifndef NOERROR1
-#error "NOERROR1 was not passed"
-#endif
-
 #ifndef NOERROR2
 #error "NOERROR2 was not passed"
-#endif
-
-#ifndef NOERROR3
-#error "NOERROR3 was not passed"
 #endif
 
 #ifndef NOERROR4

@@ -1,8 +1,11 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ViewPatterns #-}
 
 -----------------------------------------------------------------------------
 
@@ -18,12 +21,19 @@
 -- Definition of the configure command-line options.
 -- See: @Distribution.Simple.Setup@
 module Distribution.Simple.Setup.Config
-  ( ConfigFlags (..)
+  ( ConfigFlags
+      ( ConfigCommonFlags
+      , configVerbosity
+      , configDistPref
+      , configCabalFilePath
+      , configWorkingDir
+      , configTargets
+      , ..
+      )
   , emptyConfigFlags
   , defaultConfigFlags
   , configureCommand
   , configPrograms
-  , configAbsolutePaths
   , readPackageDb
   , readPackageDbList
   , showPackageDb
@@ -37,6 +47,8 @@ import Distribution.Compat.Prelude hiding (get)
 import Prelude ()
 
 import qualified Distribution.Compat.CharParsing as P
+import Distribution.Compat.Semigroup (Last' (..), Option' (..))
+import Distribution.Compat.Stack
 import Distribution.Compiler
 import Distribution.ModuleName
 import Distribution.PackageDescription
@@ -48,6 +60,7 @@ import Distribution.Simple.Compiler
 import Distribution.Simple.Flag
 import Distribution.Simple.InstallDirs
 import Distribution.Simple.Program
+import Distribution.Simple.Setup.Common
 import Distribution.Simple.Utils
 import Distribution.Types.ComponentId
 import Distribution.Types.DumpBuildInfo
@@ -56,13 +69,10 @@ import Distribution.Types.Module
 import Distribution.Types.PackageVersionConstraint
 import Distribution.Types.UnitId
 import Distribution.Utils.NubList
+import Distribution.Utils.Path
 import Distribution.Verbosity
+
 import qualified Text.PrettyPrint as Disp
-
-import Distribution.Compat.Semigroup (Last' (..), Option' (..))
-import Distribution.Compat.Stack
-
-import Distribution.Simple.Setup.Common
 
 -- ------------------------------------------------------------
 
@@ -76,9 +86,7 @@ import Distribution.Simple.Setup.Common
 -- should be updated.
 -- IMPORTANT: every time a new flag is added, it should be added to the Eq instance
 data ConfigFlags = ConfigFlags
-  { -- This is the same hack as in 'buildArgs' and 'copyArgs'.
-    -- TODO: Stop using this eventually when 'UserHooks' gets changed
-    configArgs :: [String]
+  { configCommonFlags :: !CommonSetupFlags
   , -- FIXME: the configPrograms is only here to pass info through to configure
     -- because the type of configure is constrained by the UserHooks.
     -- when we change UserHooks next we should pass the initial
@@ -119,6 +127,8 @@ data ConfigFlags = ConfigFlags
   , configProf :: Flag Bool
   -- ^ Enable profiling in the library
   --  and executables.
+  , configProfShared :: Flag Bool
+  -- ^ Enable shared profiling objects
   , configProfDetail :: Flag ProfDetailLevel
   -- ^ Profiling detail level
   --   in the library and executables.
@@ -137,16 +147,16 @@ data ConfigFlags = ConfigFlags
   -- ^ Installation
   --  paths
   , configScratchDir :: Flag FilePath
-  , configExtraLibDirs :: [FilePath]
+  , configExtraLibDirs :: [SymbolicPath Pkg (Dir Lib)]
   -- ^ path to search for extra libraries
-  , configExtraLibDirsStatic :: [FilePath]
+  , configExtraLibDirsStatic :: [SymbolicPath Pkg (Dir Lib)]
   -- ^ path to search for extra
   --   libraries when linking
   --   fully static executables
-  , configExtraFrameworkDirs :: [FilePath]
+  , configExtraFrameworkDirs :: [SymbolicPath Pkg (Dir Framework)]
   -- ^ path to search for extra
   -- frameworks (OS X only)
-  , configExtraIncludeDirs :: [FilePath]
+  , configExtraIncludeDirs :: [SymbolicPath Pkg (Dir Include)]
   -- ^ path to search for header files
   , configIPID :: Flag String
   -- ^ explicit IPID to be used
@@ -156,12 +166,6 @@ data ConfigFlags = ConfigFlags
   -- ^ be as deterministic as possible
   -- (e.g., invariant over GHC, database,
   -- etc).  Used by the test suite
-  , configDistPref :: Flag FilePath
-  -- ^ "dist" prefix
-  , configCabalFilePath :: Flag FilePath
-  -- ^ Cabal file to use
-  , configVerbosity :: Flag Verbosity
-  -- ^ verbosity level
   , configUserInstall :: Flag Bool
   -- ^ The --user\/--global flag
   , configPackageDBs :: [Maybe PackageDB]
@@ -226,8 +230,36 @@ data ConfigFlags = ConfigFlags
   -- testsuites run with @--enable-coverage@. Notably, this list must exclude
   -- indefinite libraries and instantiations because HPC does not support
   -- backpack (Nov. 2023).
+  , configIgnoreBuildTools :: Flag Bool
+  -- ^ When this flag is set, all tools declared in `build-tool`s and
+  -- `build-tool-depends` will be ignored. This allows a Cabal package with
+  -- build-tool-dependencies to be built even if the tool is not found.
   }
   deriving (Generic, Read, Show, Typeable)
+
+pattern ConfigCommonFlags
+  :: Flag Verbosity
+  -> Flag (SymbolicPath Pkg (Dir Dist))
+  -> Flag (SymbolicPath CWD (Dir Pkg))
+  -> Flag (SymbolicPath Pkg File)
+  -> [String]
+  -> ConfigFlags
+pattern ConfigCommonFlags
+  { configVerbosity
+  , configDistPref
+  , configWorkingDir
+  , configCabalFilePath
+  , configTargets
+  } <-
+  ( configCommonFlags ->
+      CommonSetupFlags
+        { setupVerbosity = configVerbosity
+        , setupDistPref = configDistPref
+        , setupWorkingDir = configWorkingDir
+        , setupCabalFilePath = configCabalFilePath
+        , setupTargets = configTargets
+        }
+    )
 
 instance Binary ConfigFlags
 instance Structured ConfigFlags
@@ -244,7 +276,8 @@ configPrograms =
 instance Eq ConfigFlags where
   (==) a b =
     -- configPrograms skipped: not user specified, has no Eq instance
-    equal configProgramPaths
+    equal configCommonFlags
+      && equal configProgramPaths
       && equal configProgramArgs
       && equal configProgramPathExtra
       && equal configHcFlavor
@@ -259,6 +292,7 @@ instance Eq ConfigFlags where
       && equal configProfExe
       && equal configProf
       && equal configProfDetail
+      && equal configProfShared
       && equal configProfLibDetail
       && equal configConfigureArgs
       && equal configOptimization
@@ -271,8 +305,6 @@ instance Eq ConfigFlags where
       && equal configExtraIncludeDirs
       && equal configIPID
       && equal configDeterministic
-      && equal configDistPref
-      && equal configVerbosity
       && equal configUserInstall
       && equal configPackageDBs
       && equal configGHCiLib
@@ -294,22 +326,17 @@ instance Eq ConfigFlags where
       && equal configDebugInfo
       && equal configDumpBuildInfo
       && equal configUseResponseFiles
+      && equal configAllowDependingOnPrivateLibs
       && equal configCoverageFor
+      && equal configIgnoreBuildTools
     where
       equal f = on (==) f a b
-
-configAbsolutePaths :: ConfigFlags -> IO ConfigFlags
-configAbsolutePaths f =
-  (\v -> f{configPackageDBs = v})
-    `liftM` traverse
-      (maybe (return Nothing) (liftM Just . absolutePackageDBPath))
-      (configPackageDBs f)
 
 {- FOURMOLU_DISABLE -}
 defaultConfigFlags :: ProgramDb -> ConfigFlags
 defaultConfigFlags progDb =
   emptyConfigFlags
-    { configArgs = []
+    { configCommonFlags = defaultCommonSetupFlags
     , configPrograms_ = Option' (Just (Last' progDb))
     , configHcFlavor = maybe NoFlag Flag defaultCompilerFlavor
     , configVanillaLib = Flag True
@@ -325,9 +352,6 @@ defaultConfigFlags progDb =
     , configOptimization = Flag NormalOptimisation
     , configProgPrefix = Flag (toPathTemplate "")
     , configProgSuffix = Flag (toPathTemplate "")
-    , configDistPref = NoFlag
-    , configCabalFilePath = NoFlag
-    , configVerbosity = Flag normal
     , configUserInstall = Flag False -- TODO: reverse this
 #if defined(mingw32_HOST_OS)
         -- See #8062 and GHC #21019.
@@ -401,54 +425,44 @@ dispModSubstEntry (k, v) = pretty k <<>> Disp.char '=' <<>> pretty v
 
 configureOptions :: ShowOrParseArgs -> [OptionField ConfigFlags]
 configureOptions showOrParseArgs =
-  [ optionVerbosity
-      configVerbosity
-      (\v flags -> flags{configVerbosity = v})
-  , optionDistPref
-      configDistPref
-      (\d flags -> flags{configDistPref = d})
-      showOrParseArgs
-  , option
-      []
-      ["compiler"]
-      "compiler"
-      configHcFlavor
-      (\v flags -> flags{configHcFlavor = v})
-      ( choiceOpt
-          [ (Flag GHC, ("g", ["ghc"]), "compile with GHC")
-          , (Flag GHCJS, ([], ["ghcjs"]), "compile with GHCJS")
-          , (Flag UHC, ([], ["uhc"]), "compile with UHC")
-          , -- "haskell-suite" compiler id string will be replaced
-            -- by a more specific one during the configure stage
+  withCommonSetupOptions
+    configCommonFlags
+    (\c f -> f{configCommonFlags = c})
+    showOrParseArgs
+    [ option
+        []
+        ["compiler"]
+        "compiler"
+        configHcFlavor
+        (\v flags -> flags{configHcFlavor = v})
+        ( choiceOpt
+            [ (Flag GHC, ("g", ["ghc"]), "compile with GHC")
+            , (Flag GHCJS, ([], ["ghcjs"]), "compile with GHCJS")
+            , (Flag UHC, ([], ["uhc"]), "compile with UHC")
+            , -- "haskell-suite" compiler id string will be replaced
+              -- by a more specific one during the configure stage
 
-            ( Flag (HaskellSuite "haskell-suite")
-            , ([], ["haskell-suite"])
-            , "compile with a haskell-suite compiler"
-            )
-          ]
-      )
-  , option
-      ""
-      ["cabal-file"]
-      "use this Cabal file"
-      configCabalFilePath
-      (\v flags -> flags{configCabalFilePath = v})
-      (reqArgFlag "PATH")
-  , option
-      "w"
-      ["with-compiler"]
-      "give the path to a particular compiler"
-      configHcPath
-      (\v flags -> flags{configHcPath = v})
-      (reqArgFlag "PATH")
-  , option
-      ""
-      ["with-hc-pkg"]
-      "give the path to the package tool"
-      configHcPkg
-      (\v flags -> flags{configHcPkg = v})
-      (reqArgFlag "PATH")
-  ]
+              ( Flag (HaskellSuite "haskell-suite")
+              , ([], ["haskell-suite"])
+              , "compile with a haskell-suite compiler"
+              )
+            ]
+        )
+    , option
+        "w"
+        ["with-compiler"]
+        "give the path to a particular compiler"
+        configHcPath
+        (\v flags -> flags{configHcPath = v})
+        (reqArgFlag "PATH")
+    , option
+        ""
+        ["with-hc-pkg"]
+        "give the path to the package tool"
+        configHcPkg
+        (\v flags -> flags{configHcPkg = v})
+        (reqArgFlag "PATH")
+    ]
     ++ map liftInstallDirs installDirsOptions
     ++ [ option
           ""
@@ -512,6 +526,13 @@ configureOptions showOrParseArgs =
           "Executable and library profiling"
           configProf
           (\v flags -> flags{configProf = v})
+          (boolOpt [] [])
+       , option
+          ""
+          ["profiling-shared"]
+          "Build profiling shared libraries"
+          configProfShared
+          (\v flags -> flags{configProfShared = v})
           (boolOpt [] [])
        , option
           ""
@@ -683,7 +704,7 @@ configureOptions showOrParseArgs =
           "A list of directories to search for header files"
           configExtraIncludeDirs
           (\v flags -> flags{configExtraIncludeDirs = v})
-          (reqArg' "PATH" (\x -> [x]) id)
+          (reqArg' "PATH" (\x -> [makeSymbolicPath x]) (fmap getSymbolicPath))
        , option
           ""
           ["deterministic"]
@@ -711,21 +732,21 @@ configureOptions showOrParseArgs =
           "A list of directories to search for external libraries"
           configExtraLibDirs
           (\v flags -> flags{configExtraLibDirs = v})
-          (reqArg' "PATH" (\x -> [x]) id)
+          (reqArg' "PATH" (\x -> [makeSymbolicPath x]) (fmap getSymbolicPath))
        , option
           ""
           ["extra-lib-dirs-static"]
           "A list of directories to search for external libraries when linking fully static executables"
           configExtraLibDirsStatic
           (\v flags -> flags{configExtraLibDirsStatic = v})
-          (reqArg' "PATH" (\x -> [x]) id)
+          (reqArg' "PATH" (\x -> [makeSymbolicPath x]) (fmap getSymbolicPath))
        , option
           ""
           ["extra-framework-dirs"]
           "A list of directories to search for external frameworks (OS X only)"
           configExtraFrameworkDirs
           (\v flags -> flags{configExtraFrameworkDirs = v})
-          (reqArg' "PATH" (\x -> [x]) id)
+          (reqArg' "PATH" (\x -> [makeSymbolicPath x]) (fmap getSymbolicPath))
        , option
           ""
           ["extra-prog-path"]
@@ -851,6 +872,15 @@ configureOptions showOrParseArgs =
               (Flag . (: []) . fromString)
               (fmap prettyShow . fromFlagOrDefault [])
           )
+       , option
+          ""
+          ["ignore-build-tools"]
+          ( "Ignore build tool dependencies. "
+              ++ "If set, declared build tools needn't be found for compilation to proceed."
+          )
+          configIgnoreBuildTools
+          (\v flags -> flags{configIgnoreBuildTools = v})
+          trueArg
        ]
   where
     liftInstallDirs =

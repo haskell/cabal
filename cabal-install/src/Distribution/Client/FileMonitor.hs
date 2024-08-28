@@ -11,22 +11,7 @@
 -- input values they depend on have changed.
 module Distribution.Client.FileMonitor
   ( -- * Declaring files to monitor
-    MonitorFilePath (..)
-  , MonitorKindFile (..)
-  , MonitorKindDir (..)
-  , FilePathGlob (..)
-  , monitorFile
-  , monitorFileHashed
-  , monitorNonExistentFile
-  , monitorFileExistence
-  , monitorDirectory
-  , monitorNonExistentDirectory
-  , monitorDirectoryExistence
-  , monitorFileOrDirectory
-  , monitorFileGlob
-  , monitorFileGlobExistence
-  , monitorFileSearchPath
-  , monitorFileHashedSearchPath
+      module Distribution.Simple.FileMonitor.Types
 
     -- * Creating and checking sets of monitored files
   , FileMonitor (..)
@@ -68,129 +53,13 @@ import Control.Monad.Trans (MonadIO, liftIO)
 import Distribution.Client.Glob
 import Distribution.Client.Utils (MergeResult (..), mergeBy)
 import Distribution.Compat.Time
+import Distribution.Simple.FileMonitor.Types
 import Distribution.Simple.Utils (handleDoesNotExist, writeFileAtomic)
 import Distribution.Utils.Structured (Tag (..), structuredEncode)
+
 import System.Directory
 import System.FilePath
 import System.IO
-
-------------------------------------------------------------------------------
--- Types for specifying files to monitor
---
-
--- | A description of a file (or set of files) to monitor for changes.
---
--- Where file paths are relative they are relative to a common directory
--- (e.g. project root), not necessarily the process current directory.
-data MonitorFilePath
-  = MonitorFile
-      { monitorKindFile :: !MonitorKindFile
-      , monitorKindDir :: !MonitorKindDir
-      , monitorPath :: !FilePath
-      }
-  | MonitorFileGlob
-      { monitorKindFile :: !MonitorKindFile
-      , monitorKindDir :: !MonitorKindDir
-      , monitorPathGlob :: !FilePathGlob
-      }
-  deriving (Eq, Show, Generic)
-
-data MonitorKindFile
-  = FileExists
-  | FileModTime
-  | FileHashed
-  | FileNotExists
-  deriving (Eq, Show, Generic)
-
-data MonitorKindDir
-  = DirExists
-  | DirModTime
-  | DirNotExists
-  deriving (Eq, Show, Generic)
-
-instance Binary MonitorFilePath
-instance Binary MonitorKindFile
-instance Binary MonitorKindDir
-
-instance Structured MonitorFilePath
-instance Structured MonitorKindFile
-instance Structured MonitorKindDir
-
--- | Monitor a single file for changes, based on its modification time.
--- The monitored file is considered to have changed if it no longer
--- exists or if its modification time has changed.
-monitorFile :: FilePath -> MonitorFilePath
-monitorFile = MonitorFile FileModTime DirNotExists
-
--- | Monitor a single file for changes, based on its modification time
--- and content hash. The monitored file is considered to have changed if
--- it no longer exists or if its modification time and content hash have
--- changed.
-monitorFileHashed :: FilePath -> MonitorFilePath
-monitorFileHashed = MonitorFile FileHashed DirNotExists
-
--- | Monitor a single non-existent file for changes. The monitored file
--- is considered to have changed if it exists.
-monitorNonExistentFile :: FilePath -> MonitorFilePath
-monitorNonExistentFile = MonitorFile FileNotExists DirNotExists
-
--- | Monitor a single file for existence only. The monitored file is
--- considered to have changed if it no longer exists.
-monitorFileExistence :: FilePath -> MonitorFilePath
-monitorFileExistence = MonitorFile FileExists DirNotExists
-
--- | Monitor a single directory for changes, based on its modification
--- time. The monitored directory is considered to have changed if it no
--- longer exists or if its modification time has changed.
-monitorDirectory :: FilePath -> MonitorFilePath
-monitorDirectory = MonitorFile FileNotExists DirModTime
-
--- | Monitor a single non-existent directory for changes.  The monitored
--- directory is considered to have changed if it exists.
-monitorNonExistentDirectory :: FilePath -> MonitorFilePath
--- Just an alias for monitorNonExistentFile, since you can't
--- tell the difference between a non-existent directory and
--- a non-existent file :)
-monitorNonExistentDirectory = monitorNonExistentFile
-
--- | Monitor a single directory for existence. The monitored directory is
--- considered to have changed only if it no longer exists.
-monitorDirectoryExistence :: FilePath -> MonitorFilePath
-monitorDirectoryExistence = MonitorFile FileNotExists DirExists
-
--- | Monitor a single file or directory for changes, based on its modification
--- time. The monitored file is considered to have changed if it no longer
--- exists or if its modification time has changed.
-monitorFileOrDirectory :: FilePath -> MonitorFilePath
-monitorFileOrDirectory = MonitorFile FileModTime DirModTime
-
--- | Monitor a set of files (or directories) identified by a file glob.
--- The monitored glob is considered to have changed if the set of files
--- matching the glob changes (i.e. creations or deletions), or for files if the
--- modification time and content hash of any matching file has changed.
-monitorFileGlob :: FilePathGlob -> MonitorFilePath
-monitorFileGlob = MonitorFileGlob FileHashed DirExists
-
--- | Monitor a set of files (or directories) identified by a file glob for
--- existence only. The monitored glob is considered to have changed if the set
--- of files matching the glob changes (i.e. creations or deletions).
-monitorFileGlobExistence :: FilePathGlob -> MonitorFilePath
-monitorFileGlobExistence = MonitorFileGlob FileExists DirExists
-
--- | Creates a list of files to monitor when you search for a file which
--- unsuccessfully looked in @notFoundAtPaths@ before finding it at
--- @foundAtPath@.
-monitorFileSearchPath :: [FilePath] -> FilePath -> [MonitorFilePath]
-monitorFileSearchPath notFoundAtPaths foundAtPath =
-  monitorFile foundAtPath
-    : map monitorNonExistentFile notFoundAtPaths
-
--- | Similar to 'monitorFileSearchPath', but also instructs us to
--- monitor the hash of the found file.
-monitorFileHashedSearchPath :: [FilePath] -> FilePath -> [MonitorFilePath]
-monitorFileHashedSearchPath notFoundAtPaths foundAtPath =
-  monitorFileHashed foundAtPath
-    : map monitorNonExistentFile notFoundAtPaths
 
 ------------------------------------------------------------------------------
 -- Implementation types, files status
@@ -263,12 +132,12 @@ data MonitorStateGlob
 
 data MonitorStateGlobRel
   = MonitorStateGlobDirs
+      !GlobPieces
       !Glob
-      !FilePathGlobRel
       !ModTime
       ![(FilePath, MonitorStateGlobRel)] -- invariant: sorted
   | MonitorStateGlobFiles
-      !Glob
+      !GlobPieces
       !ModTime
       ![(FilePath, MonitorStateFileStatus)] -- invariant: sorted
   | MonitorStateGlobDirTrailing
@@ -294,7 +163,7 @@ reconstructMonitorFilePaths (MonitorStateFileSet singlePaths globPaths) =
     getGlobPath :: MonitorStateGlob -> MonitorFilePath
     getGlobPath (MonitorStateGlob kindfile kinddir root gstate) =
       MonitorFileGlob kindfile kinddir $
-        FilePathGlob root $
+        RootedGlob root $
           case gstate of
             MonitorStateGlobDirs glob globs _ _ -> GlobDir glob globs
             MonitorStateGlobFiles glob _ _ -> GlobFile glob
@@ -698,7 +567,7 @@ probeMonitorStateGlobRel
                 let subdir = root </> dirName </> entry
                  in liftIO $ doesDirectoryExist subdir
             )
-            . filter (matchGlob glob)
+            . filter (matchGlobPieces glob)
             =<< liftIO (getDirectoryContents (root </> dirName))
 
         children' <-
@@ -784,7 +653,7 @@ probeMonitorStateGlobRel
         -- directory modification time changed:
         -- a matching file may have been added or deleted
         matches <-
-          return . filter (matchGlob glob)
+          return . filter (matchGlobPieces glob)
             =<< liftIO (getDirectoryContents (root </> dirName))
 
         traverse_ probeMergeResult $
@@ -1002,7 +871,7 @@ buildMonitorStateGlob
   -> MonitorKindDir
   -> FilePath
   -- ^ the root directory
-  -> FilePathGlob
+  -> RootedGlob
   -- ^ the matching glob
   -> IO MonitorStateGlob
 buildMonitorStateGlob
@@ -1011,7 +880,7 @@ buildMonitorStateGlob
   kindfile
   kinddir
   relroot
-  (FilePathGlob globroot globPath) = do
+  (RootedGlob globroot globPath) = do
     root <- liftIO $ getFilePathRootDirectory globroot relroot
     MonitorStateGlob kindfile kinddir globroot
       <$> buildMonitorStateGlobRel
@@ -1035,7 +904,7 @@ buildMonitorStateGlobRel
   -> FilePath
   -- ^ directory we are examining
   --   relative to the root
-  -> FilePathGlobRel
+  -> Glob
   -- ^ the matching glob
   -> IO MonitorStateGlobRel
 buildMonitorStateGlobRel
@@ -1050,10 +919,11 @@ buildMonitorStateGlobRel
     dirEntries <- getDirectoryContents absdir
     dirMTime <- getModTime absdir
     case globPath of
+      GlobDirRecursive{} -> error "Monitoring directory-recursive globs (i.e. ../**/...) is currently unsupported"
       GlobDir glob globPath' -> do
         subdirs <-
           filterM (\subdir -> doesDirectoryExist (absdir </> subdir)) $
-            filter (matchGlob glob) dirEntries
+            filter (matchGlobPieces glob) dirEntries
         subdirStates <-
           for (sort subdirs) $ \subdir -> do
             fstate <-
@@ -1068,7 +938,7 @@ buildMonitorStateGlobRel
             return (subdir, fstate)
         return $! MonitorStateGlobDirs glob globPath' dirMTime subdirStates
       GlobFile glob -> do
-        let files = filter (matchGlob glob) dirEntries
+        let files = filter (matchGlobPieces glob) dirEntries
         filesStates <-
           for (sort files) $ \file -> do
             fstate <-
@@ -1257,12 +1127,9 @@ checkDirectoryModificationTime dir mtime =
 -- | Run an IO computation, returning the first argument @e@ if there is an 'error'
 -- call. ('ErrorCall')
 handleErrorCall :: a -> IO a -> IO a
-handleErrorCall e = handle handler where
-#if MIN_VERSION_base(4,9,0)
+handleErrorCall e = handle handler
+  where
     handler (ErrorCallWithLocation _ _) = return e
-#else
-    handler (ErrorCall _) = return e
-#endif
 
 -- | Run an IO computation, returning @e@ if there is any 'IOException'.
 --

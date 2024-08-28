@@ -21,7 +21,8 @@ import Prelude ()
 
 import System.Directory (getModificationTime)
 
-import Distribution.Simple.Utils (withTempDirectory)
+import Distribution.Simple.Utils (withTempDirectoryCwd)
+import Distribution.Utils.Path (getSymbolicPath, sameDirectory)
 import Distribution.Verbosity (silent)
 
 import System.FilePath
@@ -33,11 +34,7 @@ import Data.Time.Clock.POSIX (POSIXTime, getPOSIXTime, posixDayLength)
 
 import qualified Prelude
 import Data.Bits          ((.|.), unsafeShiftL)
-#if MIN_VERSION_base(4,7,0)
 import Data.Bits          (finiteBitSize)
-#else
-import Data.Bits          (bitSize)
-#endif
 
 import Foreign            ( allocaBytes, peekByteOff )
 import System.IO.Error    ( mkIOError, doesNotExistErrorType )
@@ -91,15 +88,9 @@ getModTime path = allocaBytes size_WIN32_FILE_ATTRIBUTE_DATA $ \info -> do
                 index_WIN32_FILE_ATTRIBUTE_DATA_ftLastWriteTime_dwLowDateTime
       dwHigh <- peekByteOff info
                 index_WIN32_FILE_ATTRIBUTE_DATA_ftLastWriteTime_dwHighDateTime
-#if MIN_VERSION_base(4,7,0)
       let qwTime =
             (fromIntegral (dwHigh :: DWORD) `unsafeShiftL` finiteBitSize dwHigh)
             .|. (fromIntegral (dwLow :: DWORD))
-#else
-      let qwTime =
-            (fromIntegral (dwHigh :: DWORD) `unsafeShiftL` bitSize dwHigh)
-            .|. (fromIntegral (dwLow :: DWORD))
-#endif
       return $! ModTime (qwTime :: Word64)
 
 {- FOURMOLU_DISABLE -}
@@ -177,8 +168,8 @@ getCurTime = posixTimeToModTime `fmap` getPOSIXTime -- Uses 'gettimeofday'.
 -- than 10 ms, but never larger than 1 second.
 calibrateMtimeChangeDelay :: IO (Int, Int)
 calibrateMtimeChangeDelay =
-  withTempDirectory silent "." "calibration-" $ \dir -> do
-    let fileName = dir </> "probe"
+  withTempDirectoryCwd silent Nothing sameDirectory "calibration-" $ \dir -> do
+    let fileName = getSymbolicPath dir </> "probe"
     mtimes <- for [1 .. 25] $ \(i :: Int) -> time $ do
       writeFile fileName $ show i
       t0 <- getModTime fileName

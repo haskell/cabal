@@ -48,9 +48,7 @@ import Lukko
 #else
 import System.IO (openFile, IOMode(ReadWriteMode), hClose)
 import GHC.IO.Handle.Lock (hLock, hTryLock, LockMode(ExclusiveLock))
-#if MIN_VERSION_base(4,11,0)
 import GHC.IO.Handle.Lock (hUnlock)
-#endif
 #endif
 
 -- $concurrency
@@ -217,7 +215,7 @@ newStoreEntry
             -- Atomically rename the temp dir to the final store entry location.
             renameDirectory incomingEntryDir finalEntryDir
             for_ otherFiles $ \file -> do
-              let finalStoreFile = storeDirectory compiler </> makeRelative (incomingTmpDir </> (dropDrive (storeDirectory compiler))) file
+              let finalStoreFile = storeDirectory compiler </> makeRelative (normalise $ incomingTmpDir </> (dropDrive (storeDirectory compiler))) file
               createDirectoryIfMissing True (takeDirectory finalStoreFile)
               renameFile file finalStoreFile
 

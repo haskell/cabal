@@ -1,3 +1,5 @@
+{-# LANGUAGE DataKinds #-}
+
 module Distribution.Client.Reconfigure (Check (..), reconfigure) where
 
 import Distribution.Client.Compat.Prelude
@@ -8,10 +10,11 @@ import System.Directory (doesFileExist)
 import Distribution.Simple.Configure (localBuildInfoFile)
 import Distribution.Simple.Setup (Flag, flagToMaybe, toFlag)
 import Distribution.Simple.Utils
-  ( defaultPackageDesc
+  ( defaultPackageDescCwd
   , existsAndIsMoreRecentThan
   , info
   )
+import Distribution.Utils.Path
 
 import Distribution.Client.Config (SavedConfig (..))
 import Distribution.Client.Configure (readConfigFlags)
@@ -21,7 +24,8 @@ import Distribution.Client.Sandbox.PackageEnvironment
   ( userPackageEnvironmentFile
   )
 import Distribution.Client.Setup
-  ( ConfigExFlags
+  ( CommonSetupFlags (..)
+  , ConfigExFlags
   , ConfigFlags (..)
   , GlobalFlags (..)
   )
@@ -80,7 +84,7 @@ reconfigure
   -- ^ configure action
   -> Verbosity
   -- ^ Verbosity setting
-  -> FilePath
+  -> SymbolicPath Pkg (Dir Dist)
   -- ^ \"dist\" prefix
   -> Flag (Maybe Int)
   -- ^ -j flag for reinstalling add-source deps.
@@ -104,7 +108,7 @@ reconfigure
   globalFlags
   config =
     do
-      savedFlags@(_, _) <- readConfigFlags dist
+      savedFlags@(_, _) <- readConfigFlags $ getSymbolicPath dist
 
       useNix <- fmap isJust (findNixExpr globalFlags config)
       alreadyInNixShell <- inNixShell
@@ -121,7 +125,7 @@ reconfigure
           -- No, because 'nixShell' doesn't spawn a new process if it is already
           -- running in a Nix shell.
 
-          nixInstantiate verbosity dist False globalFlags config
+          nixInstantiate verbosity (getSymbolicPath dist) False globalFlags config
           return config
         else do
           let checks :: Check (ConfigFlags, ConfigExFlags)
@@ -138,12 +142,18 @@ reconfigure
           when frc $ configureAction flags extraArgs globalFlags
           return config'
     where
+      mbWorkDir = flagToMaybe $ configWorkingDir $ savedConfigureFlags config
       -- Changing the verbosity does not require reconfiguration, but the new
       -- verbosity should be used if reconfiguring.
       checkVerb :: Check (ConfigFlags, b)
       checkVerb = Check $ \_ (configFlags, configExFlags) -> do
-        let configFlags' :: ConfigFlags
-            configFlags' = configFlags{configVerbosity = toFlag verbosity}
+        let common = configCommonFlags configFlags
+            configFlags' :: ConfigFlags
+            configFlags' =
+              configFlags
+                { configCommonFlags =
+                    common{setupVerbosity = toFlag verbosity}
+                }
         return (mempty, (configFlags', configExFlags))
 
       -- Reconfiguration is required if @--build-dir@ changes.
@@ -151,18 +161,25 @@ reconfigure
       checkDist = Check $ \_ (configFlags, configExFlags) -> do
         -- Always set the chosen @--build-dir@ before saving the flags,
         -- or bad things could happen.
-        savedDist <- findSavedDistPref config (configDistPref configFlags)
+        let common = configCommonFlags configFlags
+        savedDist <- findSavedDistPref config (setupDistPref common)
         let distChanged :: Bool
             distChanged = dist /= savedDist
         when distChanged $ info verbosity "build directory changed"
         let configFlags' :: ConfigFlags
-            configFlags' = configFlags{configDistPref = toFlag dist}
+            configFlags' =
+              configFlags
+                { configCommonFlags =
+                    common{setupDistPref = toFlag dist}
+                }
         return (Any distChanged, (configFlags', configExFlags))
 
       checkOutdated :: Check (ConfigFlags, b)
       checkOutdated = Check $ \_ flags@(configFlags, _) -> do
-        let buildConfig :: FilePath
-            buildConfig = localBuildInfoFile dist
+        let common = configCommonFlags configFlags
+            buildConfig, userCabalConfig :: FilePath
+            buildConfig = interpretSymbolicPath mbWorkDir $ localBuildInfoFile dist
+            userCabalConfig = userPackageEnvironmentFile
 
         -- Has the package ever been configured? If not, reconfiguration is
         -- required.
@@ -173,7 +190,7 @@ reconfigure
         -- to force reconfigure. Note that it's possible to use @cabal.config@
         -- even without sandboxes.
         userPackageEnvironmentFileModified <-
-          existsAndIsMoreRecentThan userPackageEnvironmentFile buildConfig
+          existsAndIsMoreRecentThan userCabalConfig buildConfig
         when userPackageEnvironmentFileModified $
           info
             verbosity
@@ -185,11 +202,12 @@ reconfigure
         -- Is the configuration older than the package description?
         descrFile <-
           maybe
-            (defaultPackageDesc verbosity)
+            (relativeSymbolicPath <$> defaultPackageDescCwd verbosity)
             return
-            (flagToMaybe (configCabalFilePath configFlags))
-        outdated <- existsAndIsMoreRecentThan descrFile buildConfig
-        when outdated $ info verbosity (descrFile ++ " was changed")
+            (flagToMaybe (setupCabalFilePath common))
+        let descrPath = interpretSymbolicPath mbWorkDir descrFile
+        outdated <- existsAndIsMoreRecentThan descrPath buildConfig
+        when outdated $ info verbosity (getSymbolicPath descrFile ++ " was changed")
 
         let failed :: Any
             failed =

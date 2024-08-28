@@ -18,13 +18,17 @@ module Distribution.Simple.Build.Inputs
   , BuildingWhat (..)
   , LocalBuildInfo (..)
   , TargetInfo (..)
+  , buildingWhatCommonFlags
   , buildingWhatVerbosity
+  , buildingWhatWorkingDir
   , buildingWhatDistPref
   )
 where
 
 import Distribution.Simple.Compiler
-import Distribution.Simple.Setup (BuildingWhat (..), buildingWhatDistPref, buildingWhatVerbosity)
+import Distribution.Simple.Setup hiding
+  ( BuildFlags (buildVerbosity)
+  )
 import Distribution.Types.BuildInfo
 import Distribution.Types.Component
 import Distribution.Types.ComponentLocalBuildInfo

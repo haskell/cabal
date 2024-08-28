@@ -54,6 +54,9 @@ data Language
   | -- | The GHC2021 collection of language extensions.
     -- <https://github.com/ghc-proposals/ghc-proposals/blob/master/proposals/0380-ghc2021.rst>
     GHC2021
+  | -- | The GHC2024 collection of language extensions.
+    -- <https://github.com/ghc-proposals/ghc-proposals/blob/master/proposals/0613-ghc2024.rst>
+    GHC2024
   | -- | An unknown language, identified by its name.
     UnknownLanguage String
   deriving (Generic, Show, Read, Eq, Ord, Typeable, Data)
@@ -65,7 +68,7 @@ instance NFData Language where rnf = genericRnf
 
 -- | List of known (supported) languages for GHC, oldest first.
 knownLanguages :: [Language]
-knownLanguages = [Haskell98, Haskell2010, GHC2021]
+knownLanguages = [Haskell98, Haskell2010, GHC2021, GHC2024]
 
 instance Pretty Language where
   pretty (UnknownLanguage other) = Disp.text other
@@ -300,6 +303,9 @@ data KnownExtension
   | -- | Allow default instantiation of polymorphic types in more
     -- situations.
     ExtendedDefaultRules
+  | -- | Allow @default@ declarations to explicitly name the class and
+    -- be exported.
+    NamedDefaults
   | -- | Enable unboxed tuples.
     UnboxedTuples
   | -- | Enable @deriving@ for classes 'Data.Typeable.Typeable' and
@@ -542,6 +548,11 @@ data KnownExtension
     RelaxedLayout
   | -- | Allow the use of type abstraction syntax.
     TypeAbstractions
+  | -- | Allow the use of built-in syntax for list, tuple and sum type constructors
+    -- rather than being exclusive to data constructors.
+    ListTuplePuns
+  | -- | Support multiline strings
+    MultilineStrings
   deriving (Generic, Show, Read, Eq, Ord, Enum, Bounded, Typeable, Data)
 
 instance Binary KnownExtension

@@ -114,7 +114,6 @@ import Distribution.PackageDescription.Parsec
   , parseGenericPackageDescriptionMaybe
   )
 import qualified Distribution.PackageDescription.Parsec as PackageDesc.Parse
-import qualified Distribution.Simple.PackageDescription as PackageDesc.Parse
 
 import Distribution.Solver.Types.PackageIndex (PackageIndex)
 import qualified Distribution.Solver.Types.PackageIndex as PackageIndex
@@ -134,7 +133,7 @@ import qualified Data.Set as Set
 import Distribution.Client.GZipUtils (maybeDecompress)
 import Distribution.Client.Utils
   ( byteStringToFilePath
-  , tryFindAddSourcePackageDesc
+  , tryReadAddSourcePackageDesc
   )
 import Distribution.Compat.Directory (listDirectory)
 import Distribution.Compat.Time (getFileAge, getModTime)
@@ -150,7 +149,7 @@ import System.FilePath
   , (<.>)
   , (</>)
   )
-import qualified System.FilePath.Posix as FilePath.Posix
+import qualified System.FilePath as FilePath
 import System.IO
 import System.IO.Error (isDoesNotExistError)
 import System.IO.Unsafe (unsafeInterleaveIO)
@@ -167,7 +166,7 @@ getInstalledPackages
   -> ProgramDb
   -> IO InstalledPackageIndex
 getInstalledPackages verbosity comp packageDbs progdb =
-  Configure.getInstalledPackages verbosity' comp packageDbs progdb
+  Configure.getInstalledPackages verbosity' comp Nothing packageDbs progdb
   where
     verbosity' = lessVerbose verbosity
 
@@ -638,8 +637,7 @@ extractPkg verbosity entry blockNo = case Tar.entryContent entry of
           if not dirExists
             then return Nothing
             else do
-              cabalFile <- tryFindAddSourcePackageDesc verbosity path "Error reading package index."
-              descr <- PackageDesc.Parse.readGenericPackageDescription normal cabalFile
+              descr <- tryReadAddSourcePackageDesc verbosity path "Error reading package index."
               return . Just $
                 BuildTreeRef
                   (refTypeFromTypeCode typeCode)
@@ -930,7 +928,7 @@ withIndexEntries verbosity (RepoIndex _repoCtxt (RepoLocalNoIndex (LocalRepo nam
           let bs = BS.toStrict contents
            in ((`CacheGPD` bs) <$> parseGenericPackageDescriptionMaybe bs)
       where
-        filename = prettyShow pkgId FilePath.Posix.</> prettyShow (packageName pkgId) ++ ".cabal"
+        filename = prettyShow pkgId FilePath.</> prettyShow (packageName pkgId) ++ ".cabal"
     readCabalEntry _ _ x = x
 withIndexEntries verbosity index callback _ = do
   -- non-secure repositories
@@ -1044,8 +1042,7 @@ packageListFromCache verbosity mkPkg hnd Cache{..} = accum mempty [] mempty cach
       path <- fmap byteStringToFilePath . getEntryContent $ blockno
       pkg <- do
         let err = "Error reading package index from cache."
-        file <- tryFindAddSourcePackageDesc verbosity path err
-        PackageDesc.Parse.readGenericPackageDescription normal file
+        tryReadAddSourcePackageDesc verbosity path err
       let srcpkg = mkPkg (BuildTreeRef refType (packageId pkg) pkg path blockno)
       accum srcpkgs (srcpkg : btrs) prefs entries
     accum srcpkgs btrs prefs (CachePreference pref@(Dependency pn _ _) _ _ : entries) =

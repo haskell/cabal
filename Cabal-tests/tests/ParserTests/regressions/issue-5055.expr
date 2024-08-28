@@ -31,10 +31,11 @@ GenericPackageDescription {
     testSuites = [],
     benchmarks = [],
     dataFiles = [],
-    dataDir = ".",
+    dataDir = SymbolicPath ".",
     extraSrcFiles = [],
     extraTmpFiles = [],
-    extraDocFiles = []},
+    extraDocFiles = [],
+    extraFiles = []},
   gpdScannedVersion = Nothing,
   genPackageFlags = [],
   condLibrary = Nothing,
@@ -48,7 +49,8 @@ GenericPackageDescription {
         condTreeData = Executable {
           exeName = UnqualComponentName
             "flag-test-exe",
-          modulePath = "FirstMain.hs",
+          modulePath = SymbolicPath
+            "FirstMain.hs",
           exeScope = ExecutablePublic,
           buildInfo = BuildInfo {
             buildable = True,
@@ -99,6 +101,8 @@ GenericPackageDescription {
               [],
             sharedOptions =
             PerCompilerFlavor [] [],
+            profSharedOptions =
+            PerCompilerFlavor [] [],
             staticOptions =
             PerCompilerFlavor [] [],
             customFieldsBI = [],
@@ -132,7 +136,7 @@ GenericPackageDescription {
             "",
           testInterface = TestSuiteExeV10
             (mkVersion [1, 0])
-            "SecondMain.hs",
+            (SymbolicPath "SecondMain.hs"),
           testBuildInfo = BuildInfo {
             buildable = True,
             buildTools = [],
@@ -181,6 +185,8 @@ GenericPackageDescription {
               []
               [],
             sharedOptions =
+            PerCompilerFlavor [] [],
+            profSharedOptions =
             PerCompilerFlavor [] [],
             staticOptions =
             PerCompilerFlavor [] [],
@@ -265,6 +271,8 @@ GenericPackageDescription {
                     []
                     [],
                   sharedOptions =
+                  PerCompilerFlavor [] [],
+                  profSharedOptions =
                   PerCompilerFlavor [] [],
                   staticOptions =
                   PerCompilerFlavor [] [],

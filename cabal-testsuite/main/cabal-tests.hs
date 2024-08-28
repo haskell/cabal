@@ -2,6 +2,7 @@
 {-# LANGUAGE NondecreasingIndentation #-}
 {-# LANGUAGE PatternGuards            #-}
 {-# LANGUAGE ScopedTypeVariables      #-}
+{-# LANGUAGE TypeApplications         #-}
 
 import Test.Cabal.Workdir
 import Test.Cabal.Script
@@ -11,6 +12,8 @@ import Test.Cabal.TestCode
 
 import Distribution.Verbosity        (normal, verbose, Verbosity)
 import Distribution.Simple.Utils     (getDirectoryContentsRecursive)
+import Distribution.Simple.Program
+import Distribution.Utils.Path       (getSymbolicPath)
 
 import Options.Applicative
 import Control.Concurrent.MVar
@@ -26,13 +29,10 @@ import System.IO
 import System.FilePath
 import System.Exit
 import System.Process (callProcess, showCommandForUser)
+import System.Directory
+import Distribution.Pretty
+import Data.Maybe
 
-#if !MIN_VERSION_base(4,12,0)
-import Data.Monoid ((<>))
-#endif
-#if !MIN_VERSION_base(4,8,0)
-import Data.Monoid (mempty)
-#endif
 
 {- Note [Testsuite package environments]
 
@@ -51,8 +51,8 @@ Where are these environments specified:
 2. The build-depends of `test-runtime-deps` executable in `cabal-testsuite.cabal`
    These dependencies are injected in a special module (`Test.Cabal.ScriptEnv0`) which
    then is consulted in `Test.Cabal.Monad` in order to pass the right environmnet.
-   This is mechanism by which the `./Setup` tests have access to the in-tree `Cabal`
-   and `Cabal-syntax` libraries.
+   This is the mechanism by which the `./Setup` tests have access to the in-tree
+   `Cabal`, `Cabal-syntax` and `Cabal-hooks` libraries.
 3. No specification, only the `GlobalPackageDb` is available (see
    `testPackageDBStack`) unless the test itself augments the environment with
    `withPackageDb`.
@@ -71,8 +71,21 @@ data MainArgs = MainArgs {
         mainArgVerbose :: Bool,
         mainArgQuiet   :: Bool,
         mainArgDistDir :: Maybe FilePath,
+        mainArgCabalSpec :: Maybe CabalLibSpec,
         mainCommonArgs :: CommonArgs
     }
+
+data CabalLibSpec = BootCabalLib | InTreeCabalLib FilePath FilePath | SpecificCabalLib String FilePath
+
+cabalLibSpecParser :: Parser CabalLibSpec
+cabalLibSpecParser = bootParser <|> intreeParser <|> specificParser
+  where
+    bootParser = flag' BootCabalLib (long "boot-cabal-lib")
+    intreeParser = InTreeCabalLib <$> strOption (long "intree-cabal-lib" <> metavar "ROOT")
+                                  <*> option str ( help "Test TMP" <> long "test-tmp" )
+    specificParser = SpecificCabalLib <$> strOption (long "specific-cabal-lib" <> metavar "VERSION")
+                                      <*> option str ( help "Test TMP" <> long "test-tmp" )
+
 
 -- | optparse-applicative parser for 'MainArgs'
 mainArgParser :: Parser MainArgs
@@ -102,7 +115,64 @@ mainArgParser = MainArgs
         ( help "Dist directory we were built with"
        <> long "builddir"
        <> metavar "DIR"))
+    <*> optional cabalLibSpecParser
     <*> commonArgParser
+
+-- Unpack and build a specific released version of Cabal and Cabal-syntax libraries
+buildCabalLibsProject :: String -> Verbosity -> Maybe FilePath -> FilePath -> IO [FilePath]
+buildCabalLibsProject projString verb mbGhc dir = do
+  let prog_db = userSpecifyPaths [("ghc", path) | Just path <- [mbGhc] ]  defaultProgramDb
+  (cabal, _) <- requireProgram verb (simpleProgram "cabal") prog_db
+  (ghc, _) <- requireProgram verb ghcProgram prog_db
+
+  let storeRoot = dir </> "store"
+  let pv = fromMaybe (error "no ghc version") (programVersion ghc)
+  let final_package_db = dir </> "dist-newstyle" </> "packagedb" </> "ghc-" ++ prettyShow pv
+  createDirectoryIfMissing True dir
+  writeFile (dir </> "cabal.project-test") projString
+
+  runProgramInvocation verb
+    ((programInvocation cabal
+      ["--store-dir", storeRoot
+      , "--project-file=" ++ dir </> "cabal.project-test"
+      , "build"
+      , "-w", programPath ghc
+      , "Cabal", "Cabal-syntax", "Cabal-hooks"
+      ] ) { progInvokeCwd = Just dir })
+
+  -- Determine the path to the packagedb in the store for this ghc version
+  storesByGhc <- getDirectoryContents storeRoot
+  case filter (prettyShow pv `isInfixOf`) storesByGhc of
+    [] -> return [final_package_db]
+    storeForGhc:_ -> do
+      let storePackageDB = (storeRoot </> storeForGhc </> "package.db")
+      return [storePackageDB, final_package_db]
+
+
+
+buildCabalLibsSpecific :: String -> Verbosity -> Maybe FilePath -> FilePath -> IO [FilePath]
+buildCabalLibsSpecific ver verb mbGhc builddir_rel = do
+  let prog_db = userSpecifyPaths [("ghc", path) | Just path <- [mbGhc] ]  defaultProgramDb
+  (cabal, _) <- requireProgram verb (simpleProgram "cabal") prog_db
+  dir <- canonicalizePath (builddir_rel </> "specific" </> ver)
+  cgot <- doesDirectoryExist (dir </> "Cabal-" ++ ver)
+  unless cgot $
+    runProgramInvocation verb ((programInvocation cabal ["get", "Cabal-" ++ ver]) { progInvokeCwd = Just dir })
+  csgot <- doesDirectoryExist (dir </> "Cabal-syntax-" ++ ver)
+  unless csgot $
+    runProgramInvocation verb ((programInvocation cabal ["get", "Cabal-syntax-" ++ ver]) { progInvokeCwd = Just dir })
+  let hooksVerFromVer _ = "0.1"
+      hooksVer = hooksVerFromVer ver
+  chgot <- doesDirectoryExist (dir </> "Cabal-hooks-" ++ hooksVer)
+  unless chgot $
+    runProgramInvocation verb ((programInvocation cabal ["get", "Cabal-hooks-" ++ hooksVer]) { progInvokeCwd = Just dir })
+  buildCabalLibsProject ("packages: Cabal-" ++ ver ++ " Cabal-syntax-" ++ ver ++ " Cabal-hooks-" ++ hooksVer) verb mbGhc dir
+
+
+buildCabalLibsIntree :: String -> Verbosity -> Maybe FilePath -> FilePath -> IO [FilePath]
+buildCabalLibsIntree root verb mbGhc builddir_rel = do
+  dir <- canonicalizePath (builddir_rel </> "intree")
+  buildCabalLibsProject ("packages: " ++ root </> "Cabal" ++ " " ++ root </> "Cabal-syntax" ++ " " ++ root </> "Cabal-hooks") verb mbGhc dir
 
 main :: IO ()
 main = do
@@ -114,6 +184,27 @@ main = do
     -- Parse arguments.  N.B. 'helper' adds the option `--help`.
     args <- execParser $ info (mainArgParser <**> helper) mempty
     let verbosity = if mainArgVerbose args then verbose else normal
+
+    pkg_dbs <-
+      -- Not path to cabal-install so we're not going to run cabal-install tests so we
+      -- can skip setting up a Cabal library to use with cabal-install.
+      case argCabalInstallPath (mainCommonArgs args) of
+        Nothing -> do
+          when (isJust $ mainArgCabalSpec args)
+               (putStrLn "Ignoring Cabal library specification as cabal-install tests are not running")
+          return []
+        -- Path to cabal-install is passed, so need to install the requested relevant version of Cabal
+        -- library.
+        Just {} ->
+          case mainArgCabalSpec args of
+            Nothing -> do
+              putStrLn "No Cabal library specified, using boot Cabal library with cabal-install tests"
+              return []
+            Just BootCabalLib -> return []
+            Just (InTreeCabalLib root build_dir) ->
+              buildCabalLibsIntree root verbosity (argGhcPath (mainCommonArgs args)) build_dir
+            Just (SpecificCabalLib ver build_dir) ->
+              buildCabalLibsSpecific ver verbosity (argGhcPath (mainCommonArgs args)) build_dir
 
     -- To run our test scripts, we need to be able to run Haskell code
     -- linked against the Cabal library under test.  The most efficient
@@ -129,7 +220,7 @@ main = do
     -- for Custom.
     dist_dir <- case mainArgDistDir args of
                   Just dist_dir -> return dist_dir
-                  Nothing -> guessDistDir
+                  Nothing -> getSymbolicPath <$> guessDistDir
     when (verbosity >= verbose) $
         hPutStrLn stderr $ "Using dist dir: " ++ dist_dir
     -- Get ready to go!
@@ -140,7 +231,7 @@ main = do
                 -> IO result
         runTest runner path
             = runner Nothing [] path $
-                ["--builddir", dist_dir, path] ++ renderCommonArgs (mainCommonArgs args)
+                ["--builddir", dist_dir, path] ++ ["--extra-package-db=" ++ pkg_db | pkg_db <- pkg_dbs] ++ renderCommonArgs (mainCommonArgs args)
 
     case mainArgTestPaths args of
         [path] -> do

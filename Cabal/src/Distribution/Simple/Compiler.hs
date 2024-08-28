@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 
@@ -62,6 +63,11 @@ module Distribution.Simple.Compiler
   , unitIdSupported
   , coverageSupported
   , profilingSupported
+  , profilingDynamicSupported
+  , profilingDynamicSupportedOrUnknown
+  , profilingVanillaSupported
+  , profilingVanillaSupportedOrUnknown
+  , dynamicSupported
   , backpackSupported
   , arResponseFilesSupported
   , arDashLSupported
@@ -82,11 +88,14 @@ import Prelude ()
 
 import Distribution.Compiler
 import Distribution.Simple.Utils
+import Distribution.Utils.Path
 import Distribution.Version
+
 import Language.Haskell.Extension
 
 import qualified Data.Map as Map (lookup)
 import System.Directory (canonicalizePath)
+import System.FilePath (isRelative)
 
 data Compiler = Compiler
   { compilerId :: CompilerId
@@ -175,7 +184,8 @@ compilerInfo c =
 data PackageDB
   = GlobalPackageDB
   | UserPackageDB
-  | SpecificPackageDB FilePath
+  | -- | NB: the path might be relative or it might be absolute
+    SpecificPackageDB FilePath
   deriving (Eq, Generic, Ord, Show, Read, Typeable)
 
 instance Binary PackageDB
@@ -206,14 +216,24 @@ registrationPackageDB dbs = case safeLast dbs of
   Just p -> p
 
 -- | Make package paths absolute
-absolutePackageDBPaths :: PackageDBStack -> IO PackageDBStack
-absolutePackageDBPaths = traverse absolutePackageDBPath
+absolutePackageDBPaths
+  :: Maybe (SymbolicPath CWD (Dir Pkg))
+  -> PackageDBStack
+  -> IO PackageDBStack
+absolutePackageDBPaths mbWorkDir = traverse $ absolutePackageDBPath mbWorkDir
 
-absolutePackageDBPath :: PackageDB -> IO PackageDB
-absolutePackageDBPath GlobalPackageDB = return GlobalPackageDB
-absolutePackageDBPath UserPackageDB = return UserPackageDB
-absolutePackageDBPath (SpecificPackageDB db) =
-  SpecificPackageDB `liftM` canonicalizePath db
+absolutePackageDBPath
+  :: Maybe (SymbolicPath CWD (Dir Pkg))
+  -> PackageDB
+  -> IO PackageDB
+absolutePackageDBPath _ GlobalPackageDB = return GlobalPackageDB
+absolutePackageDBPath _ UserPackageDB = return UserPackageDB
+absolutePackageDBPath mbWorkDir (SpecificPackageDB db) = do
+  let db' =
+        if isRelative db
+          then interpretSymbolicPath mbWorkDir (makeRelativePathEx db)
+          else db
+  SpecificPackageDB <$> canonicalizePath db'
 
 -- ------------------------------------------------------------
 
@@ -412,6 +432,49 @@ profilingSupported comp =
     GHC -> True
     GHCJS -> True
     _ -> False
+
+-- | Returns Just if we can certainly determine whether a way is supported
+-- if we don't know, return Nothing
+waySupported :: String -> Compiler -> Maybe Bool
+waySupported way comp =
+  case compilerFlavor comp of
+    GHC ->
+      -- Infomation about compiler ways is only accurately reported after
+      -- 9.10.1. Which is useful as this is before profiling dynamic support
+      -- was introduced. (See GHC #24881)
+      if compilerVersion comp >= mkVersion [9, 10, 1]
+        then case Map.lookup "RTS ways" (compilerProperties comp) of
+          Just ways -> Just (way `elem` words ways)
+          Nothing -> Just False
+        else Nothing
+    _ -> Nothing
+
+-- | Either profiling is definitely supported or we don't know (so assume
+-- it is)
+profilingVanillaSupportedOrUnknown :: Compiler -> Bool
+profilingVanillaSupportedOrUnknown comp = profilingVanillaSupported comp `elem` [Just True, Nothing]
+
+-- | Is the compiler distributed with profiling libraries
+profilingVanillaSupported :: Compiler -> Maybe Bool
+profilingVanillaSupported comp = waySupported "p" comp
+
+-- | Is the compiler distributed with profiling dynamic libraries
+profilingDynamicSupported :: Compiler -> Maybe Bool
+profilingDynamicSupported comp =
+  -- Certainly not before this version, as it was not implemented yet.
+  if compilerVersion comp <= mkVersion [9, 11, 0]
+    then Just False
+    else waySupported "p_dyn" comp
+
+-- | Either profiling dynamic is definitely supported or we don't know (so assume
+-- it is)
+profilingDynamicSupportedOrUnknown :: Compiler -> Bool
+profilingDynamicSupportedOrUnknown comp =
+  profilingDynamicSupported comp `elem` [Just True, Nothing]
+
+-- | Is the compiler distributed with dynamic libraries
+dynamicSupported :: Compiler -> Maybe Bool
+dynamicSupported comp = waySupported "dyn" comp
 
 -- | Does this compiler support a package database entry with:
 -- "visibility"?

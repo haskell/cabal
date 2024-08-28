@@ -57,7 +57,9 @@ import Distribution.Simple.Command
 import qualified Distribution.Simple.Flag as Flag
 import Distribution.System
 import Distribution.Version
+import Distribution.ModuleName (ModuleName)
 import Distribution.Text
+import Distribution.Utils.Path (unsafeMakeSymbolicPath)
 import qualified Distribution.Client.CmdHaddockProject as CmdHaddockProject
 import Distribution.Client.Setup (globalStoreDir)
 import Distribution.Client.GlobalFlags (defaultGlobalFlags)
@@ -72,7 +74,9 @@ import Control.Concurrent (threadDelay)
 import Control.Exception hiding (assert)
 import System.FilePath
 import System.Directory
+import System.Environment (setEnv)
 import System.IO (hPutStrLn, stderr)
+import System.Process (callProcess)
 
 import Test.Tasty
 import Test.Tasty.HUnit
@@ -91,7 +95,16 @@ removePathForcibly = removeDirectoryRecursive
 #endif
 
 main :: IO ()
-main =
+main = do
+  -- this is needed to ensure tests aren't affected by the user's cabal config
+  cwd <- getCurrentDirectory
+  let configDir = cwd </> basedir </> "config" </> "cabal-config"
+  setEnv "CABAL_DIR" configDir
+  removeDirectoryRecursive configDir <|> return ()
+  createDirectoryIfMissing True configDir
+  -- sigh
+  callProcess "cabal" ["user-config", "init", "-f"]
+  callProcess "cabal" ["update"]
   defaultMainWithIngredients
     (defaultIngredients ++ [includingOptions projectConfigOptionDescriptions])
     (withProjectConfig $ \config ->
@@ -232,8 +245,43 @@ testTargetSelectors reportSubCase = do
     do Right ts <- readTargetSelectors'
                      [ "p", "lib:p", "p:lib:p", ":pkg:p:lib:p"
                      ,      "lib:q", "q:lib:q", ":pkg:q:lib:q" ]
-       ts @?= replicate 4 (TargetComponent "p-0.1" (CLibName LMainLibName))
-           ++ replicate 3 (TargetComponent "q-0.1" (CLibName LMainLibName))
+       ts @?= replicate 4 (TargetComponent "p-0.1" (CLibName LMainLibName) WholeComponent)
+           ++ replicate 3 (TargetComponent "q-0.1" (CLibName LMainLibName) WholeComponent)
+
+    reportSubCase "module"
+    do Right ts <- readTargetSelectors'
+                     [ "P", "lib:p:P", "p:p:P", ":pkg:p:lib:p:module:P"
+                     , "QQ", "lib:q:QQ", "q:q:QQ", ":pkg:q:lib:q:module:QQ"
+                     , "pexe:PMain" -- p:P or q:QQ would be ambiguous here
+                     , "qexe:QMain" -- package p vs component p
+                     ]
+       ts @?= replicate 4 (TargetComponent "p-0.1" (CLibName LMainLibName) (ModuleTarget "P"))
+           ++ replicate 4 (TargetComponent "q-0.1" (CLibName LMainLibName) (ModuleTarget "QQ"))
+           ++ [ TargetComponent "p-0.1" (CExeName "pexe") (ModuleTarget "PMain")
+              , TargetComponent "q-0.1" (CExeName "qexe") (ModuleTarget "QMain")
+              ]
+
+    reportSubCase "file"
+    do Right ts <- readTargetSelectors'
+                     [ "./P.hs", "p:P.lhs", "lib:p:P.hsc", "p:p:P.hsc",
+                                 ":pkg:p:lib:p:file:P.y"
+                     , "q/QQ.hs", "q:QQ.lhs", "lib:q:QQ.hsc", "q:q:QQ.hsc",
+                                  ":pkg:q:lib:q:file:QQ.y"
+                     , "q/Q.hs", "q:Q.lhs", "lib:q:Q.hsc", "q:q:Q.hsc",
+                                  ":pkg:q:lib:q:file:Q.y"
+                     , "app/Main.hs", "p:app/Main.hs", "exe:ppexe:app/Main.hs", "p:ppexe:app/Main.hs",
+                                  ":pkg:p:exe:ppexe:file:app/Main.hs"
+                     , "a p p/Main.hs", "p:a p p/Main.hs", "exe:pppexe:a p p/Main.hs", "p:pppexe:a p p/Main.hs",
+                                  ":pkg:p:exe:pppexe:file:a p p/Main.hs"
+                     ]
+       ts @?= replicate 5 (TargetComponent "p-0.1" (CLibName LMainLibName) (FileTarget "P"))
+           ++ replicate 5 (TargetComponent "q-0.1" (CLibName LMainLibName) (FileTarget "QQ"))
+           ++ replicate 5 (TargetComponent "q-0.1" (CLibName LMainLibName) (FileTarget "Q"))
+           ++ replicate 5 (TargetComponent "p-0.1" (CExeName "ppexe") (FileTarget ("app" </> "Main.hs")))
+           ++ replicate 5 (TargetComponent "p-0.1" (CExeName "pppexe") (FileTarget ("a p p" </> "Main.hs")))
+       -- Note there's a bit of an inconsistency here: for the single-part
+       -- syntax the target has to point to a file that exists, whereas for
+       -- all the other forms we don't require that.
 
     cleanProject testdir
   where
@@ -244,9 +292,8 @@ testTargetSelectors reportSubCase = do
 testTargetSelectorBadSyntax :: Assertion
 testTargetSelectorBadSyntax = do
     (_, _, _, localPackages, _) <- configureProject testdir config
-    let targets = [ "foo bar",  " foo"
-                  , "foo:", "foo::bar"
-                  , "foo: ", "foo: :bar"
+    let targets = [ "foo:", "foo::bar"
+                  , " :foo", "foo: :bar"
                   , "a:b:c:d:e:f", "a:b:c:d:e:f:g:h" ]
     Left errs <- readTargetSelectors localPackages Nothing targets
     zipWithM_ (@?=) errs (map TargetSelectorUnrecognised targets)
@@ -336,6 +383,24 @@ testTargetSelectorAmbiguous reportSubCase = do
                       , mkexe "other2" `withCFiles`  ["Foo"] ]
       ]
 
+    -- File target is ambiguous, part of multiple components
+    reportSubCase "ambiguous: file in multiple comps"
+    assertAmbiguous "Bar.hs"
+      [ mkTargetFile "foo" (CExeName "bar")  "Bar"
+      , mkTargetFile "foo" (CExeName "bar2") "Bar"
+      ]
+      [ mkpkg "foo" [ mkexe "bar"  `withModules` ["Bar"]
+                    , mkexe "bar2" `withModules` ["Bar"] ]
+      ]
+    reportSubCase "ambiguous: file in multiple comps with path"
+    assertAmbiguous ("src" </> "Bar.hs")
+      [ mkTargetFile "foo" (CExeName "bar")  ("src" </> "Bar")
+      , mkTargetFile "foo" (CExeName "bar2") ("src" </> "Bar")
+      ]
+      [ mkpkg "foo" [ mkexe "bar"  `withModules` ["Bar"] `withHsSrcDirs` ["src"]
+                    , mkexe "bar2" `withModules` ["Bar"] `withHsSrcDirs` ["src"] ]
+      ]
+
     -- non-exact case packages and components are ambiguous
     reportSubCase "ambiguous: non-exact-case pkg names"
     assertAmbiguous "Foo"
@@ -347,6 +412,19 @@ testTargetSelectorAmbiguous reportSubCase = do
       , mkTargetComponent "bar" (CExeName "FOO") ]
       [ mkpkg "bar" [mkexe "foo", mkexe "FOO"] ]
 
+    -- exact-case Module or File over non-exact case package or component
+    reportSubCase "unambiguous: module vs non-exact-case pkg, comp"
+    assertUnambiguous "Baz"
+      (mkTargetModule "other" (CExeName "other") "Baz")
+      [ mkpkg "baz" [mkexe "BAZ"]
+      , mkpkg "other" [ mkexe "other"  `withModules` ["Baz"] ]
+      ]
+    reportSubCase "unambiguous: file vs non-exact-case pkg, comp"
+    assertUnambiguous "Baz"
+      (mkTargetFile "other" (CExeName "other") "Baz")
+      [ mkpkg "baz" [mkexe "BAZ"]
+      , mkpkg "other" [ mkexe "other"  `withCFiles` ["Baz"] ]
+      ]
   where
     assertAmbiguous :: String
                     -> [TargetSelector]
@@ -421,7 +499,12 @@ testTargetSelectorAmbiguous reportSubCase = do
 
     withCFiles :: Executable -> [FilePath] -> Executable
     withCFiles exe files =
-      exe { buildInfo = (buildInfo exe) { cSources = files } }
+      exe { buildInfo = (buildInfo exe) { cSources = map unsafeMakeSymbolicPath files } }
+
+    withHsSrcDirs :: Executable -> [FilePath] -> Executable
+    withHsSrcDirs exe srcDirs =
+      exe { buildInfo = (buildInfo exe) { hsSourceDirs = map unsafeMakeSymbolicPath srcDirs }}
+
 
 mkTargetPackage :: PackageId -> TargetSelector
 mkTargetPackage pkgid =
@@ -429,7 +512,15 @@ mkTargetPackage pkgid =
 
 mkTargetComponent :: PackageId -> ComponentName -> TargetSelector
 mkTargetComponent pkgid cname =
-    TargetComponent pkgid cname
+    TargetComponent pkgid cname WholeComponent
+
+mkTargetModule :: PackageId -> ComponentName -> ModuleName -> TargetSelector
+mkTargetModule pkgid cname mname =
+    TargetComponent pkgid cname (ModuleTarget mname)
+
+mkTargetFile :: PackageId -> ComponentName -> String -> TargetSelector
+mkTargetFile pkgid cname fname =
+    TargetComponent pkgid cname (FileTarget fname)
 
 mkTargetAllPackages :: TargetSelector
 mkTargetAllPackages = TargetAllPackages Nothing
@@ -527,23 +618,23 @@ testTargetProblemsCommon config0 = do
             -- benchmarks from packages that are not local to the project
           , ( \_ -> TargetComponentNotProjectLocal
                       (pkgIdMap Map.! "filepath") (CTestName "filepath-tests")
-
+                      WholeComponent
             , mkTargetComponent (pkgIdMap Map.! "filepath")
                                 (CTestName "filepath-tests") )
 
             -- Components can be explicitly @buildable: False@
-          , ( \_ -> TargetComponentNotBuildable "q-0.1" (CExeName "buildable-false")
+          , ( \_ -> TargetComponentNotBuildable "q-0.1" (CExeName "buildable-false") WholeComponent
             , mkTargetComponent "q-0.1" (CExeName "buildable-false") )
 
             -- Testsuites and benchmarks can be disabled by the solver if it
             -- cannot satisfy deps
-          , ( \_ -> TargetOptionalStanzaDisabledBySolver "q-0.1" (CTestName "solver-disabled")
+          , ( \_ -> TargetOptionalStanzaDisabledBySolver "q-0.1" (CTestName "solver-disabled") WholeComponent
             , mkTargetComponent "q-0.1" (CTestName "solver-disabled") )
 
             -- Testsuites and benchmarks can be disabled explicitly by the
             -- user via config
           , ( \_ -> TargetOptionalStanzaDisabledByUser
-                      "q-0.1" (CBenchName "user-disabled")
+                      "q-0.1" (CBenchName "user-disabled") WholeComponent
             , mkTargetComponent "q-0.1" (CBenchName "user-disabled") )
 
             -- An unknown package. The target selector resolution should only
@@ -1007,6 +1098,23 @@ testTargetProblemsTest config reportSubCase = do
       , ( const (CmdTest.notTestProblem
                   "p-0.1" (CBenchName "a-benchmark"))
         , mkTargetComponent "p-0.1" (CBenchName "a-benchmark") )
+      ] ++
+      [ ( const (CmdTest.isSubComponentProblem
+                          "p-0.1" cname (ModuleTarget modname))
+        , mkTargetModule "p-0.1" cname modname )
+      | (cname, modname) <- [ (CTestName  "a-testsuite", "TestModule")
+                            , (CBenchName "a-benchmark", "BenchModule")
+                            , (CExeName   "an-exe",      "ExeModule")
+                            , ((CLibName LMainLibName),                 "P")
+                            ]
+      ] ++
+      [ ( const (CmdTest.isSubComponentProblem
+                          "p-0.1" cname (FileTarget fname))
+        , mkTargetFile "p-0.1" cname fname)
+      | (cname, fname) <- [ (CTestName  "a-testsuite", "Test.hs")
+                          , (CBenchName "a-benchmark", "Bench.hs")
+                          , (CExeName   "an-exe",      "Main.hs")
+                          ]
       ]
 
 
@@ -1092,7 +1200,25 @@ testTargetProblemsBench config reportSubCase = do
       , ( const (CmdBench.componentNotBenchmarkProblem
                   "p-0.1" (CTestName "a-testsuite"))
         , mkTargetComponent "p-0.1" (CTestName "a-testsuite") )
+      ] ++
+      [ ( const (CmdBench.isSubComponentProblem
+                          "p-0.1" cname (ModuleTarget modname))
+        , mkTargetModule "p-0.1" cname modname )
+      | (cname, modname) <- [ (CTestName  "a-testsuite", "TestModule")
+                            , (CBenchName "a-benchmark", "BenchModule")
+                            , (CExeName   "an-exe",      "ExeModule")
+                            , ((CLibName LMainLibName),                 "P")
+                            ]
+      ] ++
+      [ ( const (CmdBench.isSubComponentProblem
+                          "p-0.1" cname (FileTarget fname))
+        , mkTargetFile "p-0.1" cname fname)
+      | (cname, fname) <- [ (CTestName  "a-testsuite", "Test.hs")
+                          , (CBenchName "a-benchmark", "Bench.hs")
+                          , (CExeName   "an-exe",      "Main.hs")
+                          ]
       ]
+
 
 testTargetProblemsHaddock :: ProjectConfig -> (String -> IO ()) -> Assertion
 testTargetProblemsHaddock config reportSubCase = do
@@ -1185,7 +1311,7 @@ assertProjectDistinctTargets
   :: forall err. (Eq err, Show err) =>
      ElaboratedInstallPlan
   -> (forall k. TargetSelector -> [AvailableTarget k] -> Either (TargetProblem err) [k])
-  -> (forall k. AvailableTarget k  -> Either (TargetProblem err)  k )
+  -> (forall k. SubComponentTarget ->  AvailableTarget k  -> Either (TargetProblem err)  k )
   -> [TargetSelector]
   -> [(UnitId, ComponentName)]
   -> Assertion
@@ -1215,7 +1341,8 @@ assertProjectTargetProblems
   -> (forall k. TargetSelector
              -> [AvailableTarget k]
              -> Either (TargetProblem err) [k])
-  -> (forall k. AvailableTarget k
+  -> (forall k. SubComponentTarget
+             -> AvailableTarget k
              -> Either (TargetProblem err) k )
   -> [(TargetSelector -> TargetProblem err, TargetSelector)]
   -> Assertion
@@ -1235,7 +1362,7 @@ assertTargetProblems
   :: forall err. (Eq err, Show err) =>
      ElaboratedInstallPlan
   -> (forall k. TargetSelector -> [AvailableTarget k] -> Either (TargetProblem err) [k])
-  -> (forall k. AvailableTarget k  -> Either (TargetProblem err)  k )
+  -> (forall k. SubComponentTarget ->  AvailableTarget k  -> Either (TargetProblem err)  k )
   -> [(TargetSelector -> TargetProblem err, TargetSelector)]
   -> Assertion
 assertTargetProblems elaboratedPlan selectPackageTargets selectComponentTarget =
@@ -1322,9 +1449,11 @@ testSetupScriptStyles config reportSubCase = do
 
   let isOSX (Platform _ OSX) = True
       isOSX _ = False
+      compilerVer = compilerVersion (pkgConfigCompiler sharedConfig)
   -- Skip the Custom tests when the shipped Cabal library is buggy
-  unless (isOSX (pkgConfigPlatform sharedConfig)
-       && compilerVersion (pkgConfigCompiler sharedConfig) < mkVersion [7,10]) $ do
+  unless ((isOSX (pkgConfigPlatform sharedConfig) && (compilerVer < mkVersion [7,10]))
+       -- 9.10 ships Cabal 3.12.0.0 affected by #9940
+       || (mkVersion [9,10] <= compilerVer && compilerVer < mkVersion [9,11])) $ do
 
     (plan1, res1) <- executePlan plan0
     pkg1          <- expectPackageInstalled plan1 res1 pkgidA
@@ -1620,7 +1749,7 @@ executePlan ((distDirLayout, cabalDirLayout, config, _, buildSettings),
     let targets :: Map.Map UnitId [ComponentTarget]
         targets =
           Map.fromList
-            [ (unitid, [ComponentTarget cname])
+            [ (unitid, [ComponentTarget cname WholeComponent])
             | ts <- Map.elems (availableTargets elaboratedPlan)
             , AvailableTarget {
                 availableTargetStatus = TargetBuildable (unitid, cname) _
@@ -1853,8 +1982,8 @@ testNixFlags = do
 -- Tests whether config options are commented or not
 testConfigOptionComments :: Assertion
 testConfigOptionComments = do
-  _ <- createDefaultConfigFile verbosity [] (basedir </> "config/default-config")
-  defaultConfigFile <- readFile (basedir </> "config/default-config")
+  _ <- createDefaultConfigFile verbosity [] (basedir </> "config" </> "default-config")
+  defaultConfigFile <- readFile (basedir </> "config" </> "default-config")
 
   "  url" @=? findLineWith False "url" defaultConfigFile
   "  -- secure" @=? findLineWith True "secure" defaultConfigFile
@@ -1981,7 +2110,9 @@ testConfigOptionComments = do
   "  -- contents-location" @=? findLineWith True "contents-location" defaultConfigFile
   "  -- index-location" @=? findLineWith True "index-location" defaultConfigFile
   "  -- base-url" @=? findLineWith True "base-url" defaultConfigFile
+  "  -- resources-dir" @=? findLineWith True "resources-dir" defaultConfigFile
   "  -- output-dir" @=? findLineWith True "output-dir" defaultConfigFile
+  "  -- use-unicode" @=? findLineWith True "use-unicode" defaultConfigFile
 
   "  -- interactive" @=? findLineWith True "interactive" defaultConfigFile
   "  -- quiet" @=? findLineWith True "quiet" defaultConfigFile

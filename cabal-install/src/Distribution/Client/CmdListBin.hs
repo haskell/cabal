@@ -49,7 +49,7 @@ import Distribution.Client.Setup (GlobalFlags (..))
 import Distribution.Client.TargetProblem (TargetProblem (..))
 import Distribution.Simple.BuildPaths (dllExtension, exeExtension)
 import Distribution.Simple.Command (CommandUI (..))
-import Distribution.Simple.Setup (configVerbosity, fromFlagOrDefault)
+import Distribution.Simple.Setup (configCommonFlags, fromFlagOrDefault, setupVerbosity)
 import Distribution.Simple.Utils (dieWithException, withOutputMarker, wrapText)
 import Distribution.System (Platform)
 import Distribution.Types.ComponentName (showComponentName)
@@ -173,7 +173,7 @@ listbinAction flags@NixStyleFlags{..} args globalFlags = do
       _ -> dieWithException verbosity MultipleTargetsFound
   where
     defaultVerbosity = verboseStderr silent
-    verbosity = fromFlagOrDefault defaultVerbosity (configVerbosity configFlags)
+    verbosity = fromFlagOrDefault defaultVerbosity (setupVerbosity $ configCommonFlags configFlags)
 
     -- this is copied from
     elaboratedPackage
@@ -290,9 +290,10 @@ selectPackageTargets targetSelector targets
 -- (an executable, a test, or a benchmark), in addition
 -- to the basic checks on being buildable etc.
 selectComponentTarget
-  :: AvailableTarget k
+  :: SubComponentTarget
+  -> AvailableTarget k
   -> Either ListBinTargetProblem k
-selectComponentTarget t =
+selectComponentTarget subtarget@WholeComponent t =
   case availableTargetComponentName t of
     CExeName _ -> component
     CTestName _ -> component
@@ -302,7 +303,14 @@ selectComponentTarget t =
   where
     pkgid = availableTargetPackageId t
     cname = availableTargetComponentName t
-    component = selectComponentTargetBasic t
+    component = selectComponentTargetBasic subtarget t
+selectComponentTarget subtarget t =
+  Left
+    ( isSubComponentProblem
+        (availableTargetPackageId t)
+        (availableTargetComponentName t)
+        subtarget
+    )
 
 -- | The various error conditions that can occur when matching a
 -- 'TargetSelector' against 'AvailableTarget's for the @run@ command.
@@ -315,6 +323,8 @@ data ListBinProblem
     TargetProblemMultipleTargets TargetsMap
   | -- | The 'TargetSelector' refers to a component that is not an executable
     TargetProblemComponentNotRightKind PackageId ComponentName
+  | -- | Asking to run an individual file or module is not supported
+    TargetProblemIsSubComponent PackageId ComponentName SubComponentTarget
   deriving (Eq, Show)
 
 type ListBinTargetProblem = TargetProblem ListBinProblem
@@ -334,6 +344,15 @@ componentNotRightKindProblem :: PackageId -> ComponentName -> TargetProblem List
 componentNotRightKindProblem pkgid name =
   CustomTargetProblem $
     TargetProblemComponentNotRightKind pkgid name
+
+isSubComponentProblem
+  :: PackageId
+  -> ComponentName
+  -> SubComponentTarget
+  -> TargetProblem ListBinProblem
+isSubComponentProblem pkgid name subcomponent =
+  CustomTargetProblem $
+    TargetProblemIsSubComponent pkgid name subcomponent
 
 reportTargetProblems :: Verbosity -> [ListBinTargetProblem] -> IO a
 reportTargetProblems verbosity =
@@ -385,7 +404,16 @@ renderListBinProblem (TargetProblemComponentNotRightKind pkgid cname) =
     ++ prettyShow pkgid
     ++ "."
   where
-    targetSelector = TargetComponent pkgid cname
+    targetSelector = TargetComponent pkgid cname WholeComponent
+renderListBinProblem (TargetProblemIsSubComponent pkgid cname subtarget) =
+  "The list-bin command can only find a binary as a whole, "
+    ++ "not files or modules within them, but the target '"
+    ++ showTargetSelector targetSelector
+    ++ "' refers to "
+    ++ renderTargetSelector targetSelector
+    ++ "."
+  where
+    targetSelector = TargetComponent pkgid cname subtarget
 renderListBinProblem (TargetProblemNoRightComps targetSelector) =
   "Cannot list-bin the target '"
     ++ showTargetSelector targetSelector

@@ -1,6 +1,0 @@
-synopsis: Avoid a double space in "Executing install plan ..."
-description:
-  The "Executing·install·plan··serially" and other similar "Executing install
-  plan··..." outputs no longer contain double spaces.
-packages: cabal-install
-prs: #9376

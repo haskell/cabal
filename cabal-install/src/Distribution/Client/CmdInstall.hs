@@ -2,6 +2,7 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections #-}
 
 -- | cabal-install CLI command: build
 module Distribution.Client.CmdInstall
@@ -69,6 +70,7 @@ import Distribution.Client.ProjectConfig
   , fetchAndReadSourcePackages
   , projectConfigWithBuilderRepoContext
   , resolveBuildTimeSettings
+  , withGlobalConfig
   , withProjectOrGlobalConfig
   )
 import Distribution.Client.ProjectConfig.Types
@@ -95,7 +97,8 @@ import Distribution.Client.RebuildMonad
   ( runRebuild
   )
 import Distribution.Client.Setup
-  ( ConfigFlags (..)
+  ( CommonSetupFlags (..)
+  , ConfigFlags (..)
   , GlobalFlags (..)
   , InstallFlags (..)
   )
@@ -104,6 +107,8 @@ import Distribution.Client.Types
   , PackageSpecifier (..)
   , SourcePackageDb (..)
   , UnresolvedSourcePackage
+  , mkNamedPackage
+  , pkgSpecifierTarget
   )
 import Distribution.Client.Types.OverwritePolicy
   ( OverwritePolicy (..)
@@ -150,8 +155,8 @@ import Distribution.Simple.GHC
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import qualified Distribution.Simple.PackageIndex as PI
 import Distribution.Simple.Program.Db
-  ( appendProgramSearchPath
-  , defaultProgramDb
+  ( defaultProgramDb
+  , prependProgramSearchPath
   , userSpecifyArgss
   , userSpecifyPaths
   )
@@ -342,144 +347,58 @@ installCommand =
 -- For more details on how this works, see the module
 -- "Distribution.Client.ProjectOrchestration"
 installAction :: NixStyleFlags ClientInstallFlags -> [String] -> GlobalFlags -> IO ()
-installAction flags@NixStyleFlags{extraFlags = clientInstallFlags', ..} targetStrings globalFlags = do
+installAction flags@NixStyleFlags{extraFlags, configFlags, installFlags, projectFlags} targetStrings globalFlags = do
   -- Ensure there were no invalid configuration options specified.
   verifyPreconditionsOrDie verbosity configFlags'
 
   -- We cannot use establishDummyProjectBaseContext to get these flags, since
   -- it requires one of them as an argument. Normal establishProjectBaseContext
   -- does not, and this is why this is done only for the install command
-  clientInstallFlags <- getClientInstallFlags verbosity globalFlags clientInstallFlags'
-
+  clientInstallFlags <- getClientInstallFlags verbosity globalFlags extraFlags
   let
     installLibs = fromFlagOrDefault False (cinstInstallLibs clientInstallFlags)
-    targetFilter = if installLibs then Just LibKind else Just ExeKind
-    targetStrings' = if null targetStrings then ["."] else targetStrings
 
-    -- Note the logic here is rather goofy. Target selectors of the form "foo:bar" also parse as uris.
-    -- However, we want install to also take uri arguments. Hence, we only parse uri arguments in the case where
-    -- no project file is present (including an implicit one derived from being in a package directory)
-    -- or where the --ignore-project flag is passed explicitly. In such a case we only parse colon-free target selectors
-    -- as selectors, and otherwise parse things as URIs.
+    normalisedTargetStrings = if null targetStrings then ["."] else targetStrings
 
-    -- However, in the special case where --ignore-project is passed with no selectors, we want to act as though this is
-    -- a "normal" ignore project that actually builds and installs the selected package.
+  -- Note the logic here is rather goofy. Target selectors of the form "foo:bar" also parse as uris.
+  -- However, we want install to also take uri arguments. Hence, we only parse uri arguments in the case where
+  -- no project file is present (including an implicit one derived from being in a package directory)
+  -- or where the --ignore-project flag is passed explicitly. In such a case we only parse colon-free target selectors
+  -- as selectors, and otherwise parse things as URIs.
 
-    withProject :: IO ([PackageSpecifier UnresolvedSourcePackage], [URI], [TargetSelector], ProjectConfig)
-    withProject = do
-      let reducedVerbosity = lessVerbose verbosity
+  -- However, in the special case where --ignore-project is passed with no selectors, we want to act as though this is
+  -- a "normal" ignore project that actually builds and installs the selected package.
 
-      -- First, we need to learn about what's available to be installed.
-      localBaseCtx <-
-        establishProjectBaseContext reducedVerbosity cliConfig InstallCommand
-      let localDistDirLayout = distDirLayout localBaseCtx
-      pkgDb <-
-        projectConfigWithBuilderRepoContext
-          reducedVerbosity
-          (buildSettings localBaseCtx)
-          (getSourcePackages verbosity)
+  (pkgSpecs, uris, targetSelectors, config) <-
+    let
+      with = do
+        (pkgSpecs, targetSelectors, baseConfig) <-
+          withProject verbosity cliConfig normalisedTargetStrings installLibs
+        -- No URIs in this case, see note above
+        return (pkgSpecs, [], targetSelectors, baseConfig)
 
-      let
-        (targetStrings'', packageIds) =
-          partitionEithers
-            . flip fmap targetStrings'
-            $ \str -> case simpleParsec str of
-              Just (pkgId :: PackageId)
-                | pkgVersion pkgId /= nullVersion -> Right pkgId
-              _ -> Left str
-        packageSpecifiers =
-          flip fmap packageIds $ \case
-            PackageIdentifier{..}
-              | pkgVersion == nullVersion -> NamedPackage pkgName []
-              | otherwise ->
-                  NamedPackage
-                    pkgName
-                    [ PackagePropertyVersion
-                        (thisVersion pkgVersion)
-                    ]
-        packageTargets =
-          flip TargetPackageNamed targetFilter . pkgName <$> packageIds
+      without =
+        withGlobalConfig verbosity globalConfigFlag $ \globalConfig ->
+          withoutProject verbosity (globalConfig <> cliConfig) normalisedTargetStrings
+     in
+      -- If there's no targets it does not make sense to not be in a project.
+      if null targetStrings
+        then with
+        else withProjectOrGlobalConfig ignoreProject with without
 
-      if null targetStrings'' -- if every selector is already resolved as a packageid, return without further parsing.
-        then return (packageSpecifiers, [], packageTargets, projectConfig localBaseCtx)
-        else do
-          targetSelectors <-
-            either (reportTargetSelectorProblems verbosity) return
-              =<< readTargetSelectors
-                (localPackages localBaseCtx)
-                Nothing
-                targetStrings''
-
-          (specs, selectors) <-
-            getSpecsAndTargetSelectors
-              verbosity
-              reducedVerbosity
-              pkgDb
-              targetSelectors
-              localDistDirLayout
-              localBaseCtx
-              targetFilter
-
-          return
-            ( specs ++ packageSpecifiers
-            , []
-            , selectors ++ packageTargets
-            , projectConfig localBaseCtx
-            )
-
-    withoutProject :: ProjectConfig -> IO ([PackageSpecifier UnresolvedSourcePackage], [URI], [TargetSelector], ProjectConfig)
-    withoutProject _ | null targetStrings = withProject -- if there's no targets, we don't parse specially, but treat it as install in a standard cabal package dir
-    withoutProject globalConfig = do
-      tss <- traverse (parseWithoutProjectTargetSelector verbosity) targetStrings'
-      let
-        projectConfig = globalConfig <> cliConfig
-
-        ProjectConfigBuildOnly
-          { projectConfigLogsDir
-          } = projectConfigBuildOnly projectConfig
-
-        ProjectConfigShared
-          { projectConfigStoreDir
-          } = projectConfigShared projectConfig
-
-        mlogsDir = flagToMaybe projectConfigLogsDir
-        mstoreDir = flagToMaybe projectConfigStoreDir
-      cabalDirLayout <- mkCabalDirLayout mstoreDir mlogsDir
-
-      let
-        buildSettings =
-          resolveBuildTimeSettings
-            verbosity
-            cabalDirLayout
-            projectConfig
-
-      SourcePackageDb{packageIndex} <-
-        projectConfigWithBuilderRepoContext
-          verbosity
-          buildSettings
-          (getSourcePackages verbosity)
-
-      for_ (concatMap woPackageNames tss) $ \name -> do
-        when (null (lookupPackageName packageIndex name)) $ do
-          let xs = searchByName packageIndex (unPackageName name)
-          let emptyIf True _ = []
-              emptyIf False zs = zs
-              str2 =
-                emptyIf
-                  (null xs)
-                  [ "Did you mean any of the following?\n"
-                  , unlines (("- " ++) . unPackageName . fst <$> xs)
-                  ]
-          dieWithException verbosity $ WithoutProject (unPackageName name) str2
-
-      let
-        (uris, packageSpecifiers) = partitionEithers $ map woPackageSpecifiers tss
-        packageTargets = map woPackageTargets tss
-
-      return (packageSpecifiers, uris, packageTargets, projectConfig)
-
-  (specs, uris, targetSelectors, config) <-
-    withProjectOrGlobalConfig verbosity ignoreProject globalConfigFlag withProject withoutProject
+  -- NOTE: CmdInstall and project local packages.
+  --
+  -- CmdInstall always installs packages from a source distribution that, in case of unpackage
+  -- pacakges, is created automatically. This is implemented in getSpecsAndTargetSelectors.
+  --
+  -- This has the inconvenience that the planner will consider all packages as non-local
+  -- (see `ProjectPlanning.shouldBeLocal`) and that any project or cli configuration will
+  -- not apply to them.
+  --
+  -- We rectify this here. In the project configuration, we copy projectConfigLocalPackages to a
+  -- new projectConfigSpecificPackage entry for each package corresponding to a target selector.
+  --
+  -- See #8637 and later #7297, #8909, #7236.
 
   let
     ProjectConfig
@@ -494,6 +413,7 @@ installAction flags@NixStyleFlags{extraFlags = clientInstallFlags', ..} targetSt
           , projectConfigHcPkg
           , projectConfigStoreDir
           , projectConfigProgPathExtra
+          , projectConfigPackageDBs
           }
       , projectConfigLocalPackages =
         PackageConfig
@@ -506,8 +426,9 @@ installAction flags@NixStyleFlags{extraFlags = clientInstallFlags', ..} targetSt
     hcFlavor = flagToMaybe projectConfigHcFlavor
     hcPath = flagToMaybe projectConfigHcPath
     hcPkg = flagToMaybe projectConfigHcPkg
+    extraPath = fromNubList packageConfigProgramPathExtra ++ fromNubList projectConfigProgPathExtra
 
-  configProgDb <- appendProgramSearchPath verbosity ((fromNubList packageConfigProgramPathExtra) ++ (fromNubList projectConfigProgPathExtra)) defaultProgramDb
+  configProgDb <- prependProgramSearchPath verbosity extraPath [] defaultProgramDb
   let
     -- ProgramDb with directly user specified paths
     preProgDb =
@@ -516,21 +437,16 @@ installAction flags@NixStyleFlags{extraFlags = clientInstallFlags', ..} targetSt
         $ configProgDb
 
   -- progDb is a program database with compiler tools configured properly
-  ( compiler@Compiler
-      { compilerId = CompilerId compilerFlavor compilerVersion
-      }
-    , platform
-    , progDb
-    ) <-
+  (compiler@Compiler{compilerId = CompilerId compilerFlavor compilerVersion}, platform, progDb) <-
     configCompilerEx hcFlavor hcPath hcPkg preProgDb verbosity
 
   let
     GhcImplInfo{supportsPkgEnvFiles} = getImplInfo compiler
 
-  envFile <- getEnvFile clientInstallFlags platform compilerVersion
-  existingEnvEntries <-
+  (usedPackageEnvFlag, envFile) <- getEnvFile clientInstallFlags platform compilerVersion
+  (usedExistingPkgEnvFile, existingEnvEntries) <-
     getExistingEnvEntries verbosity compilerFlavor supportsPkgEnvFiles envFile
-  packageDbs <- getPackageDbStack compiler projectConfigStoreDir projectConfigLogsDir
+  packageDbs <- getPackageDbStack compiler projectConfigStoreDir projectConfigLogsDir projectConfigPackageDBs
   installedIndex <- getInstalledPackages verbosity compiler packageDbs progDb
 
   let
@@ -556,9 +472,8 @@ installAction flags@NixStyleFlags{extraFlags = clientInstallFlags', ..} targetSt
 
     -- check for targets already in env
     let getPackageName :: PackageSpecifier UnresolvedSourcePackage -> PackageName
-        getPackageName (NamedPackage pn _) = pn
-        getPackageName (SpecificSourcePackage (SourcePackage pkgId _ _ _)) = pkgName pkgId
-        targetNames = S.fromList $ map getPackageName (specs ++ uriSpecs)
+        getPackageName = pkgSpecifierTarget
+        targetNames = S.fromList $ map getPackageName (pkgSpecs ++ uriSpecs)
         envNames = S.fromList $ map getPackageName envSpecs
         forceInstall = fromFlagOrDefault False $ installOverrideReinstall installFlags
         nameIntersection = S.intersection targetNames envNames
@@ -575,7 +490,8 @@ installAction flags@NixStyleFlags{extraFlags = clientInstallFlags', ..} targetSt
                in pure (es, nge)
             else dieWithException verbosity $ PackagesAlreadyExistInEnvfile envFile (map prettyShow $ S.toList nameIntersection)
 
-    -- we construct an installed index of files in the cleaned target environment (absent overwrites) so that we can solve with regards to packages installed locally but not in the upstream repo
+    -- we construct an installed index of files in the cleaned target environment (absent overwrites) so that
+    -- we can solve with regards to packages installed locally but not in the upstream repo
     let installedPacks = PI.allPackagesByName installedIndex
         newEnvNames = S.fromList $ map getPackageName envSpecs'
         installedIndex' = PI.fromList . concatMap snd . filter (\p -> fst p `S.member` newEnvNames) $ installedPacks
@@ -585,7 +501,7 @@ installAction flags@NixStyleFlags{extraFlags = clientInstallFlags', ..} targetSt
         verbosity
         config
         distDirLayout
-        (envSpecs' ++ specs ++ uriSpecs)
+        (envSpecs' ++ pkgSpecs ++ uriSpecs)
         InstallCommand
 
     buildCtx <- constructProjectBuildContext verbosity (baseCtx{installedPackages = Just installedIndex'}) targetSelectors
@@ -619,19 +535,20 @@ installAction flags@NixStyleFlags{extraFlags = clientInstallFlags', ..} targetSt
             packageDbs
             envFile
             nonGlobalEnvEntries'
+            (not usedExistingPkgEnvFile && not usedPackageEnvFlag)
         else -- Install any built exe by symlinking or copying it we don't use
         -- BuildOutcomes because we also need the component names
           traverseInstall (installCheckUnitExes InstallCheckInstall) installCfg
   where
-    configFlags' = disableTestsBenchsByDefault configFlags
-    verbosity = fromFlagOrDefault normal (configVerbosity configFlags')
+    configFlags' = disableTestsBenchsByDefault . ignoreProgramAffixes $ configFlags
+    verbosity = fromFlagOrDefault normal (setupVerbosity $ configCommonFlags configFlags')
     ignoreProject = flagIgnoreProject projectFlags
-    baseCliConfig =
+    cliConfig =
       commandLineFlagsToProjectConfig
         globalFlags
         flags{configFlags = configFlags'}
-        clientInstallFlags'
-    cliConfig = addLocalConfigToTargets baseCliConfig targetStrings
+        extraFlags
+
     globalConfigFlag = projectConfigConfigFile (projectConfigShared cliConfig)
 
     -- Do the install action for each executable in the install configuration.
@@ -641,9 +558,145 @@ installAction flags@NixStyleFlags{extraFlags = clientInstallFlags', ..} targetSt
       actionOnExe <- action v overwritePolicy <$> prepareExeInstall cfg
       traverse_ actionOnExe . Map.toList $ targetsMap buildCtx
 
--- | Treat all direct targets of install command as local packages: #8637
-addLocalConfigToTargets :: ProjectConfig -> [String] -> ProjectConfig
-addLocalConfigToTargets config targetStrings =
+withProject
+  :: Verbosity
+  -> ProjectConfig
+  -> [String]
+  -> Bool
+  -> IO ([PackageSpecifier UnresolvedSourcePackage], [TargetSelector], ProjectConfig)
+withProject verbosity cliConfig targetStrings installLibs = do
+  -- First, we need to learn about what's available to be installed.
+  baseCtx <- establishProjectBaseContext reducedVerbosity cliConfig InstallCommand
+
+  (pkgSpecs, targetSelectors) <-
+    -- If every target is already resolved to a package id, we can return without any further parsing.
+    if null unresolvedTargetStrings
+      then return (parsedPkgSpecs, parsedTargets)
+      else do
+        -- Anything that could not be parsed as a packageId (e.g. a package name without a version or
+        -- a target syntax using colons) must be resolved inside the project context.
+        (resolvedPkgSpecs, resolvedTargets) <-
+          resolveTargetSelectorsInProjectBaseContext verbosity baseCtx unresolvedTargetStrings targetFilter
+        return (resolvedPkgSpecs ++ parsedPkgSpecs, resolvedTargets ++ parsedTargets)
+
+  -- Apply the local configuration (e.g. cli flags) to all direct targets of install command, see note
+  -- in 'installAction'.
+  --
+  -- NOTE: If a target string had to be resolved inside the project context, then pkgSpecs will include
+  -- the project packages turned into source distributions (getSpecsAndTargetSelectors does this).
+  -- We want to apply the local configuration only to the actual targets.
+  let config =
+        addLocalConfigToPkgs (projectConfig baseCtx) $
+          concatMap (targetPkgNames $ localPackages baseCtx) targetSelectors
+  return (pkgSpecs, targetSelectors, config)
+  where
+    reducedVerbosity = lessVerbose verbosity
+
+    -- We take the targets and try to parse them as package ids (with name and version).
+    -- The ones who don't parse will have to be resolved in the project context.
+    (unresolvedTargetStrings, parsedPackageIds) =
+      partitionEithers $
+        flip map targetStrings $ \s ->
+          case eitherParsec s of
+            Right pkgId@PackageIdentifier{pkgVersion}
+              | pkgVersion /= nullVersion ->
+                  pure pkgId
+            _ -> Left s
+
+    -- For each packageId, we output a NamedPackage specifier (i.e. a package only known by
+    -- its name) and a target selector.
+    (parsedPkgSpecs, parsedTargets) =
+      unzip
+        [ (mkNamedPackage pkgId, TargetPackageNamed (pkgName pkgId) targetFilter)
+        | pkgId <- parsedPackageIds
+        ]
+
+    targetFilter = if installLibs then Just LibKind else Just ExeKind
+
+resolveTargetSelectorsInProjectBaseContext
+  :: Verbosity
+  -> ProjectBaseContext
+  -> [String]
+  -> Maybe ComponentKindFilter
+  -> IO ([PackageSpecifier UnresolvedSourcePackage], [TargetSelector])
+resolveTargetSelectorsInProjectBaseContext verbosity baseCtx targetStrings targetFilter = do
+  let reducedVerbosity = lessVerbose verbosity
+
+  sourcePkgDb <-
+    projectConfigWithBuilderRepoContext
+      reducedVerbosity
+      (buildSettings baseCtx)
+      (getSourcePackages verbosity)
+
+  targetSelectors <-
+    readTargetSelectors (localPackages baseCtx) Nothing targetStrings
+      >>= \case
+        Left problems -> reportTargetSelectorProblems verbosity problems
+        Right ts -> return ts
+
+  getSpecsAndTargetSelectors
+    verbosity
+    reducedVerbosity
+    sourcePkgDb
+    targetSelectors
+    (distDirLayout baseCtx)
+    baseCtx
+    targetFilter
+
+withoutProject
+  :: Verbosity
+  -> ProjectConfig
+  -> [String]
+  -> IO ([PackageSpecifier UnresolvedSourcePackage], [URI], [TargetSelector], ProjectConfig)
+withoutProject verbosity globalConfig targetStrings = do
+  tss <- traverse (parseWithoutProjectTargetSelector verbosity) targetStrings
+  let
+    ProjectConfigBuildOnly
+      { projectConfigLogsDir
+      } = projectConfigBuildOnly globalConfig
+
+    ProjectConfigShared
+      { projectConfigStoreDir
+      } = projectConfigShared globalConfig
+
+    mlogsDir = flagToMaybe projectConfigLogsDir
+    mstoreDir = flagToMaybe projectConfigStoreDir
+
+  cabalDirLayout <- mkCabalDirLayout mstoreDir mlogsDir
+
+  let buildSettings = resolveBuildTimeSettings verbosity cabalDirLayout globalConfig
+
+  SourcePackageDb{packageIndex} <-
+    projectConfigWithBuilderRepoContext
+      verbosity
+      buildSettings
+      (getSourcePackages verbosity)
+
+  for_ (concatMap woPackageNames tss) $ \name -> do
+    when (null (lookupPackageName packageIndex name)) $ do
+      let xs = searchByName packageIndex (unPackageName name)
+      let emptyIf True _ = []
+          emptyIf False zs = zs
+          str2 =
+            emptyIf
+              (null xs)
+              [ "Did you mean any of the following?\n"
+              , unlines (("- " ++) . unPackageName . fst <$> xs)
+              ]
+      dieWithException verbosity $ WithoutProject (unPackageName name) str2
+
+  let
+    packageSpecifiers :: [PackageSpecifier UnresolvedSourcePackage]
+    (uris, packageSpecifiers) = partitionEithers $ map woPackageSpecifiers tss
+    packageTargets = map woPackageTargets tss
+
+  -- Apply the local configuration (e.g. cli flags) to all direct targets of install command,
+  -- see note in 'installAction'
+  let config = addLocalConfigToPkgs globalConfig (concatMap woPackageNames tss)
+  return (packageSpecifiers, uris, packageTargets, config)
+
+addLocalConfigToPkgs :: ProjectConfig -> [PackageName] -> ProjectConfig
+addLocalConfigToPkgs config pkgs =
   config
     { projectConfigSpecificPackage =
         projectConfigSpecificPackage config
@@ -651,7 +704,25 @@ addLocalConfigToTargets config targetStrings =
     }
   where
     localConfig = projectConfigLocalPackages config
-    targetPackageConfigs = map (\x -> (mkPackageName x, localConfig)) targetStrings
+    targetPackageConfigs = map (,localConfig) pkgs
+
+targetPkgNames
+  :: [PackageSpecifier UnresolvedSourcePackage]
+  -- ^ The local packages, to resolve 'TargetAllPackages' selectors
+  -> TargetSelector
+  -> [PackageName]
+targetPkgNames localPkgs = \case
+  TargetPackage _ pkgIds _ -> map pkgName pkgIds
+  TargetPackageNamed name _ -> [name]
+  TargetAllPackages _ -> map pkgSpecifierTarget localPkgs
+  -- Note how the target may select a component only, but we will always apply
+  -- the local flags to the whole package in which that component is contained.
+  -- The reason is that our finest level of configuration is per-package, so
+  -- there is no interface to configure options to a component only. It is not
+  -- trivial to say whether we could indeed support per-component configuration
+  -- because of legacy packages which we may always have to build whole.
+  TargetComponent pkgId _ _ -> [pkgName pkgId]
+  TargetComponentUnknown name _ _ -> [name]
 
 -- | Verify that invalid config options were not passed to the install command.
 --
@@ -666,6 +737,7 @@ verifyPreconditionsOrDie verbosity configFlags = do
   when (configBenchmarks configFlags == Flag True) $
     dieWithException verbosity ConfigBenchmarks
 
+-- | Apply the given 'ClientInstallFlags' on top of one coming from the global configuration.
 getClientInstallFlags :: Verbosity -> GlobalFlags -> ClientInstallFlags -> IO ClientInstallFlags
 getClientInstallFlags verbosity globalFlags existingClientInstallFlags = do
   let configFileFlag = globalConfigFile globalFlags
@@ -681,28 +753,27 @@ getSpecsAndTargetSelectors
   -> ProjectBaseContext
   -> Maybe ComponentKindFilter
   -> IO ([PackageSpecifier UnresolvedSourcePackage], [TargetSelector])
-getSpecsAndTargetSelectors verbosity reducedVerbosity pkgDb targetSelectors localDistDirLayout localBaseCtx targetFilter =
-  withInstallPlan reducedVerbosity localBaseCtx $ \elaboratedPlan _ -> do
+getSpecsAndTargetSelectors verbosity reducedVerbosity sourcePkgDb targetSelectors distDirLayout baseCtx targetFilter =
+  withInstallPlan reducedVerbosity baseCtx $ \elaboratedPlan _ -> do
     -- Split into known targets and hackage packages.
-    (targets, hackageNames) <-
+    (targetsMap, hackageNames) <-
       partitionToKnownTargetsAndHackagePackages
         verbosity
-        pkgDb
+        sourcePkgDb
         elaboratedPlan
         targetSelectors
 
     let
       planMap = InstallPlan.toMap elaboratedPlan
-      targetIds = Map.keys targets
 
       sdistize (SpecificSourcePackage spkg) =
         SpecificSourcePackage spkg'
         where
-          sdistPath = distSdistFile localDistDirLayout (packageId spkg)
+          sdistPath = distSdistFile distDirLayout (packageId spkg)
           spkg' = spkg{srcpkgSource = LocalTarballPackage sdistPath}
       sdistize named = named
 
-      local = sdistize <$> localPackages localBaseCtx
+      localPkgs = sdistize <$> localPackages baseCtx
 
       gatherTargets :: UnitId -> TargetSelector
       gatherTargets targetId = TargetPackageNamed pkgName targetFilter
@@ -710,30 +781,38 @@ getSpecsAndTargetSelectors verbosity reducedVerbosity pkgDb targetSelectors loca
           targetUnit = Map.findWithDefault (error "cannot find target unit") targetId planMap
           PackageIdentifier{..} = packageId targetUnit
 
-      targets' = fmap gatherTargets targetIds
+      localTargets = map gatherTargets (Map.keys targetsMap)
 
       hackagePkgs :: [PackageSpecifier UnresolvedSourcePackage]
-      hackagePkgs = flip NamedPackage [] <$> hackageNames
+      hackagePkgs = [NamedPackage pn [] | pn <- hackageNames]
 
       hackageTargets :: [TargetSelector]
-      hackageTargets =
-        flip TargetPackageNamed targetFilter <$> hackageNames
+      hackageTargets = [TargetPackageNamed pn targetFilter | pn <- hackageNames]
 
-    createDirectoryIfMissing True (distSdistDirectory localDistDirLayout)
+    createDirectoryIfMissing True (distSdistDirectory distDirLayout)
 
-    unless (Map.null targets) $ for_ (localPackages localBaseCtx) $ \lpkg -> case lpkg of
+    unless (Map.null targetsMap) $ for_ (localPackages baseCtx) $ \case
       SpecificSourcePackage pkg ->
         packageToSdist
           verbosity
-          (distProjectRootDirectory localDistDirLayout)
+          (distProjectRootDirectory distDirLayout)
           TarGzArchive
-          (distSdistFile localDistDirLayout (packageId pkg))
+          (distSdistFile distDirLayout (packageId pkg))
           pkg
-      NamedPackage pkgName _ -> error $ "Got NamedPackage " ++ prettyShow pkgName
+      NamedPackage _ _ ->
+        -- This may happen if 'extra-packages' are listed in the project file.
+        -- We don't need to do extra work for NamedPackages since they will be
+        -- fetched from Hackage rather than locally 'sdistize'-d. Note how,
+        -- below, we already return the local 'sdistize'-d packages together
+        -- with the 'hackagePkgs' (which are 'NamedPackage's), and that
+        -- 'sdistize' is a no-op for 'NamedPackages', meaning the
+        -- 'NamedPackage's in 'localPkgs' will be treated just like
+        -- 'hackagePkgs' as they should.
+        pure ()
 
-    if null targets
+    if null targetsMap
       then return (hackagePkgs, hackageTargets)
-      else return (local ++ hackagePkgs, targets' ++ hackageTargets)
+      else return (localPkgs ++ hackagePkgs, localTargets ++ hackageTargets)
 
 -- | Partitions the target selectors into known local targets and hackage packages.
 partitionToKnownTargetsAndHackagePackages
@@ -774,7 +853,7 @@ partitionToKnownTargetsAndHackagePackages verbosity pkgDb elaboratedPlan targetS
 
       let
         targetSelectors' = flip filter targetSelectors $ \case
-          TargetComponentUnknown name _
+          TargetComponentUnknown name _ _
             | name `elem` hackageNames -> False
           TargetPackageNamed name _
             | name `elem` hackageNames -> False
@@ -883,6 +962,9 @@ installLibraries
   -> FilePath
   -- ^ Environment file
   -> [GhcEnvironmentFileEntry]
+  -> Bool
+  -- ^ Whether we need to show a warning (i.e. we created a new environment
+  --   file, and the user did not use --package-env)
   -> IO ()
 installLibraries
   verbosity
@@ -891,7 +973,8 @@ installLibraries
   compiler
   packageDbs'
   envFile
-  envEntries = do
+  envEntries
+  showWarning = do
     if supportsPkgEnvFiles $ getImplInfo compiler
       then do
         let validDb (SpecificPackageDB fp) = doesPathExist fp
@@ -917,6 +1000,27 @@ installLibraries
           contents' = renderGhcEnvironmentFile (baseEntries ++ pkgEntries)
         createDirectoryIfMissing True (takeDirectory envFile)
         writeFileAtomic envFile (BS.pack contents')
+        when showWarning $
+          warn verbosity $
+            "The libraries were installed by creating a global GHC environment file at:\n"
+              ++ envFile
+              ++ "\n"
+              ++ "\n"
+              ++ "The presence of such an environment file is likely to confuse or break other "
+              ++ "tools because it changes GHC's behaviour: it changes the default package set in "
+              ++ "ghc and ghci from its normal value (which is \"all boot libraries\"). GHC "
+              ++ "environment files are little-used and often not tested for.\n"
+              ++ "\n"
+              ++ "Furthermore, management of these environment files is still more difficult than "
+              ++ "it could be; see e.g. https://github.com/haskell/cabal/issues/6481 .\n"
+              ++ "\n"
+              ++ "Double-check that creating a global GHC environment file is really what you "
+              ++ "wanted! You can limit the effects of the environment file by creating it in a "
+              ++ "specific directory using the --package-env flag. For example, use:\n"
+              ++ "\n"
+              ++ "cabal install --lib <packages...> --package-env .\n"
+              ++ "\n"
+              ++ "to create the file in the current directory."
       else
         warn verbosity $
           "The current compiler doesn't support safely installing libraries, "
@@ -954,7 +1058,7 @@ warnIfNoExes verbosity buildCtx =
     selectors = concatMap (NE.toList . snd) targets
     noExes = null $ catMaybes $ exeMaybe <$> components
 
-    exeMaybe (ComponentTarget (CExeName exe)) = Just exe
+    exeMaybe (ComponentTarget (CExeName exe) _) = Just exe
     exeMaybe _ = Nothing
 
 -- | Return the package specifiers and non-global environment file entries.
@@ -997,6 +1101,18 @@ disableTestsBenchsByDefault configFlags =
     , configBenchmarks = Flag False <> configBenchmarks configFlags
     }
 
+-- | Disables program prefix and suffix, in order to get the /canonical/
+-- executable name in the store and thus:
+--
+-- * avoid making the package hash depend on these options and needless rebuild;
+-- * provide the correct executable path to the install methods (copy, symlink).
+ignoreProgramAffixes :: ConfigFlags -> ConfigFlags
+ignoreProgramAffixes configFlags =
+  configFlags
+    { configProgPrefix = NoFlag
+    , configProgSuffix = NoFlag
+    }
+
 -- | Prepares a record containing the information needed to either symlink or
 -- copy an executable.
 symlink :: OverwritePolicy -> InstallExe -> UnitId -> UnqualComponentName -> Symlink
@@ -1034,7 +1150,7 @@ installCheckUnitExes
           else traverse_ warnAbout (zip symlinkables exes)
     where
       exes = catMaybes $ (exeMaybe . fst) <$> components
-      exeMaybe (ComponentTarget (CExeName exe)) = Just exe
+      exeMaybe (ComponentTarget (CExeName exe) _) = Just exe
       exeMaybe _ = Nothing
 
       warnAbout (True, _) = return ()
@@ -1136,7 +1252,7 @@ entriesForLibraryComponents :: TargetsMap -> [GhcEnvironmentFileEntry]
 entriesForLibraryComponents = Map.foldrWithKey' (\k v -> mappend (go k v)) []
   where
     hasLib :: (ComponentTarget, NonEmpty TargetSelector) -> Bool
-    hasLib (ComponentTarget (CLibName _), _) = True
+    hasLib (ComponentTarget (CLibName _) _, _) = True
     hasLib _ = False
 
     go
@@ -1147,8 +1263,10 @@ entriesForLibraryComponents = Map.foldrWithKey' (\k v -> mappend (go k v)) []
       | any hasLib targets = [GhcEnvFilePackageId unitId]
       | otherwise = []
 
--- | Gets the file path to the request environment file.
-getEnvFile :: ClientInstallFlags -> Platform -> Version -> IO FilePath
+-- | Gets the file path to the request environment file. The @Bool@ is @True@
+-- if we got an explicit instruction using @--package-env@, @False@ if we used
+-- the default.
+getEnvFile :: ClientInstallFlags -> Platform -> Version -> IO (Bool, FilePath)
 getEnvFile clientInstallFlags platform compilerVersion = do
   appDir <- getGhcAppDir
   case flagToMaybe (cinstEnvironmentPath clientInstallFlags) of
@@ -1156,37 +1274,39 @@ getEnvFile clientInstallFlags platform compilerVersion = do
       -- Is spec a bare word without any "pathy" content, then it refers to
       -- a named global environment.
       | takeBaseName spec == spec ->
-          return (getGlobalEnv appDir platform compilerVersion spec)
+          return (True, getGlobalEnv appDir platform compilerVersion spec)
       | otherwise -> do
           spec' <- makeAbsolute spec
           isDir <- doesDirectoryExist spec'
           if isDir
             then -- If spec is a directory, then make an ambient environment inside
             -- that directory.
-              return (getLocalEnv spec' platform compilerVersion)
+              return (True, getLocalEnv spec' platform compilerVersion)
             else -- Otherwise, treat it like a literal file path.
-              return spec'
+              return (True, spec')
     Nothing ->
-      return (getGlobalEnv appDir platform compilerVersion "default")
+      return (False, getGlobalEnv appDir platform compilerVersion "default")
 
--- | Returns the list of @GhcEnvFilePackageIj@ values already existing in the
---   environment being operated on.
-getExistingEnvEntries :: Verbosity -> CompilerFlavor -> Bool -> FilePath -> IO [GhcEnvironmentFileEntry]
+-- | Returns the list of @GhcEnvFilePackageId@ values already existing in the
+--   environment being operated on. The @Bool@ is @True@ if we took settings
+--   from an existing file, @False@ otherwise.
+getExistingEnvEntries :: Verbosity -> CompilerFlavor -> Bool -> FilePath -> IO (Bool, [GhcEnvironmentFileEntry])
 getExistingEnvEntries verbosity compilerFlavor supportsPkgEnvFiles envFile = do
   envFileExists <- doesFileExist envFile
-  filterEnvEntries
-    <$> if (compilerFlavor == GHC || compilerFlavor == GHCJS)
+  (usedExisting, allEntries) <-
+    if (compilerFlavor == GHC || compilerFlavor == GHCJS)
       && supportsPkgEnvFiles
       && envFileExists
-      then catch (readGhcEnvironmentFile envFile) $ \(_ :: ParseErrorExc) ->
+      then catch ((True,) <$> readGhcEnvironmentFile envFile) $ \(_ :: ParseErrorExc) ->
         warn
           verbosity
           ( "The environment file "
               ++ envFile
               ++ " is unparsable. Libraries cannot be installed."
           )
-          >> return []
-      else return []
+          >> return (False, [])
+      else return (False, [])
+  return (usedExisting, filterEnvEntries allEntries)
   where
     -- Why? We know what the first part will be, we only care about the packages.
     filterEnvEntries = filter $ \case
@@ -1214,13 +1334,14 @@ getPackageDbStack
   :: Compiler
   -> Flag FilePath
   -> Flag FilePath
+  -> [Maybe PackageDB]
   -> IO PackageDBStack
-getPackageDbStack compiler storeDirFlag logsDirFlag = do
+getPackageDbStack compiler storeDirFlag logsDirFlag packageDbs = do
   mstoreDir <- traverse makeAbsolute $ flagToMaybe storeDirFlag
   let
     mlogsDir = flagToMaybe logsDirFlag
   cabalLayout <- mkCabalDirLayout mstoreDir mlogsDir
-  pure $ storePackageDBStack (cabalStoreDirLayout cabalLayout) compiler
+  pure $ storePackageDBStack (cabalStoreDirLayout cabalLayout) compiler packageDbs
 
 -- | This defines what a 'TargetSelector' means for the @bench@ command.
 -- It selects the 'AvailableTarget's that the 'TargetSelector' refers to,
@@ -1262,7 +1383,8 @@ selectPackageTargets targetSelector targets
 --
 -- For the @build@ command we just need the basic checks on being buildable etc.
 selectComponentTarget
-  :: AvailableTarget k
+  :: SubComponentTarget
+  -> AvailableTarget k
   -> Either TargetProblem' k
 selectComponentTarget = selectComponentTargetBasic
 

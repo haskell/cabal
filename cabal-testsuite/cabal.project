@@ -1,0 +1,6 @@
+-- This intercepting project is here to avoid tests picking up a cabal.project
+-- from a parent directory, such as the one in the root of the `haskell/cabal`
+-- project itself. Having `optional-packages: .` avoids the folowing warning
+-- being added to the `.out` file:
+--   Warning: There are no packages or optional-packages in the project
+optional-packages: .

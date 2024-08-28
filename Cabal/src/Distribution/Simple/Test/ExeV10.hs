@@ -10,9 +10,9 @@ import Prelude ()
 
 import Distribution.Compat.Environment
 import qualified Distribution.PackageDescription as PD
-import Distribution.Simple.Build.PathsModule
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Compiler
+import Distribution.Simple.Errors
 import Distribution.Simple.Flag
 import Distribution.Simple.Hpc
 import Distribution.Simple.InstallDirs
@@ -21,6 +21,10 @@ import qualified Distribution.Simple.LocalBuildInfo as LBI
   , buildDir
   , depLibraryPaths
   )
+import Distribution.Simple.Program.Db
+import Distribution.Simple.Program.Find
+import Distribution.Simple.Program.Run
+import Distribution.Simple.Setup.Common
 import Distribution.Simple.Setup.Test
 import Distribution.Simple.Test.Log
 import Distribution.Simple.Utils
@@ -34,19 +38,18 @@ import qualified Distribution.Types.LocalBuildInfo as LBI
 import Distribution.Types.UnqualComponentName
 import Distribution.Verbosity
 
+import Distribution.Utils.Path
+
+import qualified Data.ByteString.Lazy as LBS
+import Distribution.Simple.LocalBuildInfo (interpretSymbolicPathLBI, packageRoot)
 import System.Directory
   ( createDirectoryIfMissing
   , doesDirectoryExist
   , doesFileExist
-  , getCurrentDirectory
   , removeDirectoryRecursive
   )
-import System.FilePath ((<.>), (</>))
 import System.IO (stderr, stdout)
 import System.Process (createPipe)
-
-import qualified Data.ByteString.Lazy as LBS
-import Distribution.Simple.Errors
 
 runTest
   :: PD.PackageDescription
@@ -59,13 +62,12 @@ runTest
 runTest pkg_descr lbi clbi hpcMarkupInfo flags suite = do
   let isCoverageEnabled = LBI.testCoverage lbi
       way = guessWay lbi
-      tixDir_ = tixDir distPref way
+      tixDir_ = i $ tixDir distPref way
 
-  pwd <- getCurrentDirectory
   existingEnv <- getEnvironment
 
   let cmd =
-        LBI.buildDir lbi
+        i (LBI.buildDir lbi)
           </> testName'
           </> testName' <.> exeExtension (LBI.hostPlatform lbi)
   -- Check that the test executable exists.
@@ -85,17 +87,18 @@ runTest pkg_descr lbi clbi hpcMarkupInfo flags suite = do
   -- Write summary notices indicating start of test suite
   notice verbosity $ summarizeSuiteStart $ testName'
 
-  -- Run the test executable
+  -- Run the test executable (with the appropriate environment set)
+  let progDb = LBI.withPrograms lbi
+      pathVar = progSearchPath progDb
+      envOverrides = progOverrideEnv progDb
+  newPath <- programSearchPathAsPATHVar pathVar
+  overrideEnv <- fromMaybe [] <$> getEffectiveEnvironment ([("PATH", Just newPath)] ++ envOverrides)
   let opts =
         map
           (testOption pkg_descr lbi suite)
           (testOptions flags)
-      dataDirPath = pwd </> PD.dataDir pkg_descr
-      tixFile = pwd </> tixFilePath distPref way (testName')
-      pkgPathEnv =
-        (pkgPathEnvVar pkg_descr "datadir", dataDirPath)
-          : existingEnv
-      shellEnv = [("HPCTIXFILE", tixFile) | isCoverageEnabled] ++ pkgPathEnv
+      tixFile = packageRoot (testCommonFlags flags) </> getSymbolicPath (tixFilePath distPref way (testName'))
+      shellEnv = [("HPCTIXFILE", tixFile) | isCoverageEnabled] ++ overrideEnv ++ existingEnv
 
   -- Add (DY)LD_LIBRARY_PATH if needed
   shellEnv' <-
@@ -191,12 +194,15 @@ runTest pkg_descr lbi clbi hpcMarkupInfo flags suite = do
 
   return suiteLog
   where
+    i = interpretSymbolicPathLBI lbi -- See Note [Symbolic paths] in Distribution.Utils.Path
+    commonFlags = testCommonFlags flags
+
     testName' = unUnqualComponentName $ PD.testName suite
 
-    distPref = fromFlag $ testDistPref flags
-    verbosity = fromFlag $ testVerbosity flags
+    distPref = fromFlag $ setupDistPref commonFlags
+    verbosity = fromFlag $ setupVerbosity commonFlags
     details = fromFlag $ testShowDetails flags
-    testLogDir = distPref </> "test"
+    testLogDir = distPref </> makeRelativePathEx "test"
 
     buildLog exit =
       let r = case exit of
@@ -213,7 +219,7 @@ runTest pkg_descr lbi clbi hpcMarkupInfo flags suite = do
             { testSuiteName = PD.testName suite
             , testLogs = l
             , logFile =
-                testLogDir
+                i testLogDir
                   </> testSuiteLogPath
                     (fromFlag $ testHumanLog flags)
                     pkg_descr

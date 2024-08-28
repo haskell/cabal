@@ -46,6 +46,7 @@ import Distribution.Simple.Compiler
   , PackageDB (..)
   , PackageDBStack
   )
+import Distribution.Simple.Configure (interpretPackageDbFlags)
 import Distribution.System
 import Distribution.Types.ComponentName
 import Distribution.Types.LibraryName
@@ -121,7 +122,7 @@ data StoreDirLayout = StoreDirLayout
   , storePackageDirectory :: Compiler -> UnitId -> FilePath
   , storePackageDBPath :: Compiler -> FilePath
   , storePackageDB :: Compiler -> PackageDB
-  , storePackageDBStack :: Compiler -> PackageDBStack
+  , storePackageDBStack :: Compiler -> [Maybe PackageDB] -> PackageDBStack
   , storeIncomingDirectory :: Compiler -> FilePath
   , storeIncomingLock :: Compiler -> UnitId -> FilePath
   }
@@ -143,7 +144,7 @@ data CabalDirLayout = CabalDirLayout
 --
 -- It can either be an implicit project root in the current dir if no
 -- @cabal.project@ file is found, or an explicit root if either
--- the file is found or the project root directory was specicied.
+-- the file is found or the project root directory was specified.
 data ProjectRoot
   = -- | An implicit project root. It contains the absolute project
     -- root dir.
@@ -166,8 +167,7 @@ defaultDistDirLayout
   :: ProjectRoot
   -- ^ the project root
   -> Maybe FilePath
-  -- ^ the @dist@ directory or default
-  -- (absolute or relative to the root)
+  -- ^ the @dist@ directory (relative to package root)
   -> Maybe FilePath
   -- ^ the documentation directory
   -> DistDirLayout
@@ -286,9 +286,10 @@ defaultStoreDirLayout storeRoot =
     storePackageDB compiler =
       SpecificPackageDB (storePackageDBPath compiler)
 
-    storePackageDBStack :: Compiler -> PackageDBStack
-    storePackageDBStack compiler =
-      [GlobalPackageDB, storePackageDB compiler]
+    storePackageDBStack :: Compiler -> [Maybe PackageDB] -> PackageDBStack
+    storePackageDBStack compiler extraPackageDB =
+      (interpretPackageDbFlags False extraPackageDB)
+        ++ [storePackageDB compiler]
 
     storeIncomingDirectory :: Compiler -> FilePath
     storeIncomingDirectory compiler =

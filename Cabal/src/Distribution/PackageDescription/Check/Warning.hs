@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -47,11 +48,6 @@ import Distribution.Types.TestType (TestType, knownTestTypes)
 import Distribution.Types.UnqualComponentName
 import Distribution.Types.Version (Version)
 import Distribution.Utils.Path
-  ( LicenseFile
-  , PackageDir
-  , SymbolicPath
-  , getSymbolicPath
-  )
 import Language.Haskell.Extension (Extension)
 
 import qualified Data.Either as Either
@@ -197,6 +193,7 @@ data CheckExplanation
   | UnrecognisedSourceRepo String
   | MissingType
   | MissingLocation
+  | GitProtocol
   | MissingModule
   | MissingTag
   | SubdirRelPath
@@ -233,6 +230,7 @@ data CheckExplanation
   | CVTestSuite
   | CVDefaultLanguage
   | CVDefaultLanguageComponent
+  | CVDefaultLanguageComponentSoft
   | CVExtraDocFiles
   | CVMultiLib
   | CVReexported
@@ -275,7 +273,7 @@ data CheckExplanation
   | NotPackageName FilePath String
   | NoDesc
   | MultiDesc [String]
-  | UnknownFile String (SymbolicPath PackageDir LicenseFile)
+  | UnknownFile String (RelativePath Pkg File)
   | MissingSetupFile
   | MissingConfigureScript
   | UnknownDirectory String FilePath
@@ -358,6 +356,7 @@ data CheckExplanationID
   | CIUnrecognisedSourceRepo
   | CIMissingType
   | CIMissingLocation
+  | CIGitProtocol
   | CIMissingModule
   | CIMissingTag
   | CISubdirRelPath
@@ -394,6 +393,7 @@ data CheckExplanationID
   | CICVTestSuite
   | CICVDefaultLanguage
   | CICVDefaultLanguageComponent
+  | CICVDefaultLanguageComponentSoft
   | CICVExtraDocFiles
   | CICVMultiLib
   | CICVReexported
@@ -498,6 +498,7 @@ checkExplanationId (NoLicenseFile{}) = CINoLicenseFile
 checkExplanationId (UnrecognisedSourceRepo{}) = CIUnrecognisedSourceRepo
 checkExplanationId (MissingType{}) = CIMissingType
 checkExplanationId (MissingLocation{}) = CIMissingLocation
+checkExplanationId (GitProtocol{}) = CIGitProtocol
 checkExplanationId (MissingModule{}) = CIMissingModule
 checkExplanationId (MissingTag{}) = CIMissingTag
 checkExplanationId (SubdirRelPath{}) = CISubdirRelPath
@@ -534,6 +535,7 @@ checkExplanationId (FilePathEmpty{}) = CIFilePathEmpty
 checkExplanationId (CVTestSuite{}) = CICVTestSuite
 checkExplanationId (CVDefaultLanguage{}) = CICVDefaultLanguage
 checkExplanationId (CVDefaultLanguageComponent{}) = CICVDefaultLanguageComponent
+checkExplanationId (CVDefaultLanguageComponentSoft{}) = CICVDefaultLanguageComponentSoft
 checkExplanationId (CVExtraDocFiles{}) = CICVExtraDocFiles
 checkExplanationId (CVMultiLib{}) = CICVMultiLib
 checkExplanationId (CVReexported{}) = CICVReexported
@@ -643,6 +645,7 @@ ppCheckExplanationId CINoLicenseFile = "no-license-file"
 ppCheckExplanationId CIUnrecognisedSourceRepo = "unrecognised-repo-type"
 ppCheckExplanationId CIMissingType = "repo-no-type"
 ppCheckExplanationId CIMissingLocation = "repo-no-location"
+ppCheckExplanationId CIGitProtocol = "git-protocol"
 ppCheckExplanationId CIMissingModule = "repo-no-module"
 ppCheckExplanationId CIMissingTag = "repo-no-tag"
 ppCheckExplanationId CISubdirRelPath = "repo-relative-dir"
@@ -679,6 +682,7 @@ ppCheckExplanationId CIFilePathEmpty = "empty-path"
 ppCheckExplanationId CICVTestSuite = "test-cabal-ver"
 ppCheckExplanationId CICVDefaultLanguage = "default-language"
 ppCheckExplanationId CICVDefaultLanguageComponent = "no-default-language"
+ppCheckExplanationId CICVDefaultLanguageComponentSoft = "add-language"
 ppCheckExplanationId CICVExtraDocFiles = "extra-doc-files"
 ppCheckExplanationId CICVMultiLib = "multilib"
 ppCheckExplanationId CICVReexported = "reexported-modules"
@@ -964,6 +968,10 @@ ppExplanation MissingType =
   "The source-repository 'type' is a required field."
 ppExplanation MissingLocation =
   "The source-repository 'location' is a required field."
+ppExplanation GitProtocol =
+  "Cloning over git:// might lead to an arbitrary code execution "
+    ++ "vulnerability. Furthermore, popular forges like GitHub do "
+    ++ "not support it. Use https:// or ssh:// instead."
 ppExplanation MissingModule =
   "For a CVS source-repository, the 'module' is a required field."
 ppExplanation MissingTag =
@@ -1113,9 +1121,9 @@ ppExplanation (InvalidOnWin paths) =
     ++ quotes paths
     ++ " invalid on Windows, which "
     ++ "would cause portability problems for this package. Windows file "
-    ++ "names cannot contain any of the characters \":*?<>|\" and there "
-    ++ "a few reserved names including \"aux\", \"nul\", \"con\", "
-    ++ "\"prn\", \"com1-9\", \"lpt1-9\" and \"clock$\"."
+    ++ "names cannot contain any of the characters \":*?<>|\", and there "
+    ++ "are a few reserved names including \"aux\", \"nul\", \"con\", "
+    ++ "\"prn\", \"com{1-9}\", \"lpt{1-9}\" and \"clock$\"."
   where
     quotes [failed] = "path " ++ quote failed ++ " is"
     quotes failed =
@@ -1163,6 +1171,10 @@ ppExplanation CVDefaultLanguageComponent =
     ++ "Haskell98 or Haskell2010). If a component uses different languages "
     ++ "in different modules then list the other ones in the "
     ++ "'other-languages' field."
+ppExplanation CVDefaultLanguageComponentSoft =
+  "Without `default-language`, cabal will default to Haskell98, which is "
+    ++ "probably not what you want. Please add `default-language` to all "
+    ++ "targets."
 ppExplanation CVExtraDocFiles =
   "To use the 'extra-doc-files' field the package needs to specify "
     ++ "'cabal-version: 1.18' or higher."

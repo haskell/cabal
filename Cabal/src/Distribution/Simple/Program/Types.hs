@@ -97,7 +97,7 @@ type ProgArg = String
 -- We also use this path to set the environment when running child processes.
 --
 -- The @ProgramDb@ is created with a @ProgramSearchPath@ to which we
--- @appendProgramSearchPath@ to add the ones that come from cli flags and from
+-- @prependProgramSearchPath@ to add the ones that come from cli flags and from
 -- configurations. Then each of the programs that are configured in the db
 -- inherits the same path as part of @configureProgram@.
 type ProgramSearchPath = [ProgramSearchPathEntry]
@@ -107,7 +107,7 @@ data ProgramSearchPathEntry
     ProgramSearchPathDir FilePath
   | -- | The system default
     ProgramSearchPathDefault
-  deriving (Eq, Generic, Typeable)
+  deriving (Show, Eq, Generic, Typeable)
 
 instance Binary ProgramSearchPathEntry
 instance Structured ProgramSearchPathEntry

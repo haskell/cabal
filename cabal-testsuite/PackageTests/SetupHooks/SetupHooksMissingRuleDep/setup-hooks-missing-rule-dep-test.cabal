@@ -1,0 +1,18 @@
+cabal-version:       3.14
+name:                setup-hooks-missing-rule-dep-test
+version:             0.1.0.0
+synopsis:            Test for missing dependency in rules
+license:             BSD-3-Clause
+author:              NA
+maintainer:          NA
+category:            Testing
+build-type:          Hooks
+
+custom-setup
+  setup-depends: Cabal-hooks, base
+
+library
+  exposed-modules:     G
+  autogen-modules:     G
+  build-depends:       base
+  default-language:    Haskell2010

@@ -76,7 +76,7 @@ createProjectTest pkgIx srcDb =
                     , dependencies = Flag []
                     }
 
-            case (_runPrompt $ createProject silent pkgIx srcDb dummyFlags') (fromList ["[]", "3", "quxTest/Main.hs"]) of
+            case (runPrompt $ createProject silent pkgIx srcDb dummyFlags') (fromList ["[]", "3", "quxTest/Main.hs"]) of
               Right (ProjectSettings opts desc (Just lib) (Just exe) (Just test), _) -> do
                 _optOverwrite opts @?= False
                 _optMinimal opts @?= False
@@ -186,7 +186,7 @@ createProjectTest pkgIx srcDb =
                       "y"
                     ]
 
-            case (_runPrompt $ createProject silent pkgIx srcDb emptyFlags) inputs of
+            case (runPrompt $ createProject silent pkgIx srcDb emptyFlags) inputs of
               Right (ProjectSettings opts desc (Just lib) (Just exe) (Just test), _) -> do
                 _optOverwrite opts @?= False
                 _optMinimal opts @?= False
@@ -286,7 +286,7 @@ createProjectTest pkgIx srcDb =
                       "y"
                     ]
 
-            case (_runPrompt $ createProject silent pkgIx srcDb emptyFlags) inputs of
+            case (runPrompt $ createProject silent pkgIx srcDb emptyFlags) inputs of
               Right (ProjectSettings opts desc (Just lib) Nothing (Just test), _) -> do
                 _optOverwrite opts @?= False
                 _optMinimal opts @?= False
@@ -372,7 +372,7 @@ createProjectTest pkgIx srcDb =
                       "y"
                     ]
 
-            case (_runPrompt $ createProject silent pkgIx srcDb emptyFlags) inputs of
+            case (runPrompt $ createProject silent pkgIx srcDb emptyFlags) inputs of
               Right (ProjectSettings opts desc Nothing Nothing (Just test), _) -> do
                 _optOverwrite opts @?= False
                 _optMinimal opts @?= False
@@ -460,7 +460,7 @@ createProjectTest pkgIx srcDb =
                       "y"
                     ]
 
-            case (_runPrompt $ createProject silent pkgIx srcDb emptyFlags) inputs of
+            case (runPrompt $ createProject silent pkgIx srcDb emptyFlags) inputs of
               Right (ProjectSettings opts desc (Just lib) (Just exe) Nothing, _) -> do
                 _optOverwrite opts @?= False
                 _optMinimal opts @?= False
@@ -546,7 +546,7 @@ createProjectTest pkgIx srcDb =
                       "y"
                     ]
 
-            case (_runPrompt $ createProject silent pkgIx srcDb emptyFlags) inputs of
+            case (runPrompt $ createProject silent pkgIx srcDb emptyFlags) inputs of
               Right (ProjectSettings opts desc (Just lib) Nothing Nothing, _) -> do
                 _optOverwrite opts @?= False
                 _optMinimal opts @?= False
@@ -631,7 +631,7 @@ createProjectTest pkgIx srcDb =
                     , extraSrc = Flag ["README.md"]
                     }
 
-            case (_runPrompt $ createProject silent pkgIx srcDb flags) inputs of
+            case (runPrompt $ createProject silent pkgIx srcDb flags) inputs of
               Right (ProjectSettings opts desc (Just lib) Nothing Nothing, _) -> do
                 _optOverwrite opts @?= False
                 _optMinimal opts @?= False
@@ -709,7 +709,7 @@ createProjectTest pkgIx srcDb =
                       "y"
                     ]
 
-            case (_runPrompt $ createProject silent pkgIx srcDb emptyFlags) inputs of
+            case (runPrompt $ createProject silent pkgIx srcDb emptyFlags) inputs of
               Right (ProjectSettings opts desc Nothing (Just exe) Nothing, _) -> do
                 _optOverwrite opts @?= False
                 _optMinimal opts @?= False
@@ -809,7 +809,7 @@ fileCreatorTests pkgIx srcDb _pkgName =
         ]
     ]
   where
-    runGenTest inputs go = case _runPrompt go inputs of
+    runGenTest inputs go = case runPrompt go inputs of
       Left e -> assertFailure $ show e
       Right{} -> return ()
 
@@ -1014,20 +1014,34 @@ interactiveTests srcDb =
             [ testNumberedPrompt
                 "Language indices"
                 (`languagePrompt` "test")
-                [Haskell2010, Haskell98, GHC2021]
+                [Haskell2010, Haskell98, GHC2021, GHC2024]
             , testSimplePrompt
                 "Other language"
                 (`languagePrompt` "test")
                 (UnknownLanguage "Haskell2022")
-                [ "4"
+                [ "5"
                 , "Haskell2022"
                 ]
             , testSimplePrompt
                 "Invalid language"
                 (`languagePrompt` "test")
                 (UnknownLanguage "Lang_TS!")
-                [ "4"
+                [ "5"
                 , "Lang_TS!"
+                ]
+            ]
+        , testGroup
+            "Check languagePrompt session state"
+            [ testSimplePrompt
+                "Use last language"
+                ( \flags -> do
+                    a <- languagePrompt flags "first language"
+                    b <- languagePrompt flags "second language"
+                    pure (a, b)
+                )
+                (GHC2024, GHC2024)
+                [ "4"
+                , "" -- default
                 ]
             ]
         , testGroup
@@ -1113,7 +1127,7 @@ testPrompt
   -> [String]
   -> TestTree
 testPrompt label f g h input = testCase label $
-  case (_runPrompt $ f emptyFlags) (fromList input) of
+  case (runPrompt $ f emptyFlags) (fromList input) of
     Left x -> g x -- :: BreakException
     Right x -> h x -- :: (a, other inputs)
 

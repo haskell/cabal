@@ -1,3 +1,3 @@
 # cabal v2-sdist
-Wrote tarball sdist to <ROOT>/all-output-dir.dist/source/archives/a-0.1.tar.gz
-Wrote tarball sdist to <ROOT>/all-output-dir.dist/source/archives/b-0.1.tar.gz
+Wrote tarball sdist to <ROOT>/archives/a-0.1.tar.gz
+Wrote tarball sdist to <ROOT>/archives/b-0.1.tar.gz

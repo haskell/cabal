@@ -1,0 +1,4 @@
+module MyLib2 (someFunc2) where
+
+someFunc2 :: Int -> Int
+someFunc2 x = x + {# MyConstant #}

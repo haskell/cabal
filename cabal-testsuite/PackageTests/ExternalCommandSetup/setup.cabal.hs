@@ -11,4 +11,3 @@ main = setupTest $ do
             res <- fails $ withDirectory "custom" $ setup' "aaaa" []
             assertOutputContains "unrecognised command" res
 
-

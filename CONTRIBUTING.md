@@ -3,23 +3,46 @@
 Building Cabal for hacking
 --------------------------
 
-If you use the latest version of cabal published on Hackage, it is sufficient to run:
+If you use the `cabal` executable from the latest version of the
+[cabal-install](https://hackage.haskell.org/package/cabal-install) package
+published on Hackage, it is sufficient to run:
 
 ```
-cabal build cabal
+$ cabal build cabal
 ```
 
-If not, you aren't able to build the testsuite, so you need to disable the default `cabal.project` that implies configuring the testsuite, e.g., with:
+If you have trouble building the testsuite for this initial build, try building
+with the release project that excludes this testsuite:
 
 ```
-cabal build --project-file=cabal.project.release cabal
+$ cabal build cabal --project-file=cabal.release.project
 ```
 
-> **Note**
-> If you're using Nix, you might find it convenient to work within a shell that has all the `Cabal` development dependencies:
+> [!NOTE]
+> The default `cabal.project` is picked up implicitly as if the
+> `--project-file=cabal.project` explicit option had been given.
+
+For developing, we recommend using the locally built version of `cabal`, the
+executable, if only because one of the released versions available may be
+lacking a fix. This can be installed:
+
+```
+$ cabal install cabal-install:exe:cabal --overwrite-policy=always
+```
+
+It can be run without first installing it with `cabal run cabal --` followed by
+its own arguments, as shown here for `build --help`:
+
+```
+$ cabal run cabal -- build --help
+```
+
+> [!NOTE]
+> If you're using Nix, you might find it convenient to work within a shell that has the following `Cabal` development dependencies:
+> ```bash
+> $ nix-shell -p cabal-install ghc ghcid pkg-config zlib.dev # incomplete
 > ```
-> $ nix-shell -p cabal-install ghc ghcid haskellPackages.fourmolu_0_12_0_0 pkgconfig zlib.dev
-> ```
+> One dependency that we left out in the above command is `haskellPackages.fourmolu_0_12_0_0` which would need to be installed manually.
 > A Nix flake developer shell with these dependencies is also available, supported solely by the community, through the command `nix develop github:yvan-sraka/cabal.nix`.
 
 The location of your build products will vary depending on which version of
@@ -30,9 +53,9 @@ to find the binary (or just run `find -type f -executable -name cabal`).
 Here are some other useful variations on the commands:
 
 ```
-cabal build Cabal # build library only
-cabal build Cabal-tests:unit-tests # build Cabal's unit test suite
-cabal build cabal-tests # etc...
+$ cabal build Cabal                  # build library only
+$ cabal build Cabal-tests:unit-tests # build Cabal's unit test suite
+$ cabal build cabal-tests            # etc...
 ```
 
 Running tests
@@ -142,7 +165,7 @@ and should be written in the body of the ticket or PR under their own heading, l
 For instance:
 
 > \#\# QA Notes
-> 
+>
 > Calling `cabal haddock-project` should produce documentation for the whole cabal project with the following defaults enabled:
 > * Documentation lives in ./haddocks
 > * The file `./haddocks/index.html` should exist
@@ -163,7 +186,12 @@ the code base.
 * `make style-modified` - Format files modified in the current tree.
 * `make style-commit COMMIT=<ref>` - Format files modified between HEAD and the given reference.
 
+Whitespace Conventions
+----------------------
 
+We use automated whitespace convention checking. Violations can be fixed by
+running [fix-whitespace](https://hackage.haskell.org/package/fix-whitespace). If
+you push a fix of a whitespace violation, please do so in a _separate commit_.
 
 Other Conventions
 -----------------
@@ -265,12 +293,35 @@ severely complicates Git history. It is intended for special circumstances, as w
 the PR branch cannot or should not be modified. If you have any questions about it,
 please ask us.
 
+### Pull Requests & Issues
+
+A pull request *fixes* a problem that is *described* in an issue. Make sure to
+file an issue before opening a pull request. In the issue you can illustrate
+your proposed design, UX considerations, tradeoffs etc. and work them out with
+other contributors. The PR itself is for implementation.
+
+If a PR becomes out of sync with its issue, go back to the issue, update
+it, and continue the conversation there. Telltale signs of Issue/PR diverging
+are, for example: the PR growing bigger in scope; lengthy discussions
+about things that are *not* implementation choices; a change in design.
+
+If your PR is trivial you can omit this process (but explain in the PR why you
+think it does not warrant an issue). Feel free to open a new issue (or new
+issues) when appropriate.
+
+
 Changelog
 ---------
 
-When opening a pull request with a user-visible change, you should write one changelog entry
-(or more in case of multiple independent changes) — the information will end up in
-our release notes.
+Anything that changes `cabal-install:exe:cabal` or changes exports from library
+modules or changes behaviour of functions exported from packages published to
+hackage is a <a id="user-visible-change">user-visible change</a>. Raising the
+lower bound on `base` is most definitely a user-visible change because it
+excludes versions of GHC from being able to build these packages.
+
+When opening a pull request with a user-visible change, you should write one
+changelog entry (or more in case of multiple independent changes) — the
+information will end up in our release notes.
 
 Changelogs for the next release are stored in the `changelog.d` directory.
 The files follow a simple key-value format similar to the one for `.cabal` files.
@@ -294,7 +345,7 @@ description: {
 }
 ```
 
-Only the `synopsis` field is actually required, but you should also set the others where applicable.
+Only the `synopsis` and `prs` fields are required, but you should also set the others where applicable.
 
 | Field          | Description                                                                                                        |
 | -----          | -----------                                                                                                        |
@@ -337,6 +388,25 @@ Currently, [@emilypi](https://github.com/emilypi), [@fgaz](https://github.com/fg
 `haskell.org/cabal`, and [@Mikolaj](https://github.com/Mikolaj) is the point of contact for getting
 permissions.
 
+Preview Releases
+----------------
+
+We make preview releases available to facilitate testing of development builds.
+
+Artifacts can be found on the [`cabal-head` release page](https://github.com/haskell/cabal/releases/tag/cabal-head).
+The Validate CI pipeline generates tarballs with a `cabal` executable. The executable gets uploaded to this release by the pipelines that run on `master`.
+
+We currently make available builds for:
+  - Linux, dynamically linked (requiring `zlib`, `gmp`, `glibc`)
+  - Linux, statically linked
+  - MacOS
+  - Windows
+
+The statically linked Linux executables are built using Alpine.
+To reproduce these locally, set up an Alpine build environment using GHCup,
+and then build by calling `cabal build cabal-install --enable-executable-static`.
+
+
 API Documentation
 -----------------
 
@@ -360,14 +430,14 @@ it, someone with enough permissions needs to go on the
 [Validate workflow page](https://github.com/haskell/cabal/actions/workflows/validate.yml)
 and dispatch it manually by clicking "Run workflow".
 
-Running workflow manually as discussed above requires you to supply two inputs:
+Running workflow manually as discussed above allows you to supply two inputs:
 
 > allow-newer line
 > constraints line
 
 Going via an example, imagine that Cabal only allows `tar` or version less then
 or equal to 0.6, and you want to bump it to 0.6. Then, to show that Validate
-succeeds with `tar` 0.6, you should input 
+succeeds with `tar` 0.6, you should input
 
 - `tar` to the "allow-newer line"
 - `tar ==0.6` to the "constraints line"

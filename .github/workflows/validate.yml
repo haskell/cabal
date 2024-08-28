@@ -1,11 +1,5 @@
 name: Validate
 
-# We use bash as default even in windows
-# to try keep the workflow as uniform as possible
-defaults:
-  run:
-    shell: bash
-
 # See: https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#concurrency.
 concurrency:
   group: ${{ github.ref }}-${{ github.workflow }}
@@ -17,16 +11,16 @@ concurrency:
 on:
   push:
     paths-ignore:
-      - 'doc/**'
-      - '**/README.md'
-      - 'CONTRIBUTING.md'
+      - "doc/**"
+      - "**/README.md"
+      - "CONTRIBUTING.md"
     branches:
       - master
   pull_request:
     paths-ignore:
-      - 'doc/**'
-      - '**/README.md'
-      - 'CONTRIBUTING.md'
+      - "doc/**"
+      - "**/README.md"
+      - "CONTRIBUTING.md"
   release:
     types:
       - created
@@ -37,55 +31,67 @@ on:
     inputs:
       allow-newer:
         description: allow-newer line
-        required: true
+        required: false
         type: string
       constraints:
         description: constraints line
-        required: true
+        required: false
         type: string
 
 env:
   # We choose a stable ghc version across all os's
   # which will be used to do the next release
-  GHC_FOR_RELEASE: '9.2.8'
+  GHC_FOR_RELEASE: "9.4.8"
   # Ideally we should use the version about to be released for hackage tests and benchmarks
-  GHC_FOR_SOLVER_BENCHMARKS: '9.2.8'
-  GHC_FOR_COMPLETE_HACKAGE_TESTS: '9.2.8'
-  COMMON_FLAGS: '-j 2 -v'
+  GHC_FOR_SOLVER_BENCHMARKS: "9.4.8"
+  GHC_FOR_COMPLETE_HACKAGE_TESTS: "9.4.8"
+  COMMON_FLAGS: "-j 2 -v"
 
   # See https://github.com/haskell/cabal/blob/master/CONTRIBUTING.md#hackage-revisions
   ALLOWNEWER: ${{ github.event.inputs.allow-newer }}
   CONSTRAINTS: ${{ github.event.inputs.constraints }}
 
-
 jobs:
   validate:
-    name: Validate ${{ matrix.os }} ghc-${{ matrix.ghc }}
-    runs-on: ${{ matrix.os }}
+    name: Validate ${{ matrix.sys.os }} ghc-${{ matrix.ghc }}
+    runs-on: ${{ matrix.sys.os }}
     outputs:
       GHC_FOR_RELEASE: ${{ format('["{0}"]', env.GHC_FOR_RELEASE) }}
     strategy:
       matrix:
-        os: ["ubuntu-latest", "macos-latest", "windows-latest"]
-        ghc: ["9.8.1", "9.6.3", "9.4.8", "9.2.8", "9.0.2", "8.10.7", "8.8.4", "8.6.5", "8.4.4"]
+        sys:
+          - { os: windows-latest, shell: "C:/msys64/usr/bin/bash.exe -e {0}" }
+          - { os: ubuntu-latest, shell: bash }
+          - { os: macos-13, shell: bash }
+        # If you remove something from here, then add it to the old-ghcs job.
+        # Also a removed GHC from here means that we are actually dropping
+        # support, so the PR *must* have a changelog entry.
+        ghc:
+          [
+            "9.10.1",
+            "9.8.2",
+            "9.6.4",
+            "9.4.8",
+            "9.2.8",
+            "9.0.2",
+            "8.10.7",
+            "8.8.4",
+          ]
         exclude:
           # corrupts GHA cache or the fabric of reality itself, see https://github.com/haskell/cabal/issues/8356
-          - os: "windows-latest"
+          - sys:
+              { os: windows-latest, shell: "C:/msys64/usr/bin/bash.exe -e {0}" }
             ghc: "8.10.7"
           # lot of segfaults caused by ghc bugs
-          - os: "windows-latest"
+          - sys:
+              { os: windows-latest, shell: "C:/msys64/usr/bin/bash.exe -e {0}" }
             ghc: "8.8.4"
-          # it also throws segfaults randomly
-          - os: "windows-latest"
-            ghc: "8.4.4"
-          # it often randomly does "C:\Users\RUNNER~1\AppData\Local\Temp\ghcFEDE.c: DeleteFile "\\\\?\\C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\ghcFEDE.c": permission denied (Access is denied.)"
-          - os: "windows-latest"
-            ghc: "8.6.5"
-
+    defaults:
+      run:
+        shell: ${{ matrix.sys.shell }}
     steps:
-
       - name: Work around XDG directories existence (haskell-actions/setup#62)
-        if: ${{ runner.os == 'macOS' }}
+        if: runner.os == 'macOS'
         run: |
           rm -rf ~/.config/cabal
           rm -rf ~/.cache/cabal
@@ -93,11 +99,22 @@ jobs:
       - uses: actions/checkout@v4
 
       # See https://github.com/haskell/cabal/blob/master/CONTRIBUTING.md#hackage-revisions
-      - name: Manually supplied constraints/allow-newer
-        if: ${{ github.event_name == 'workflow_dispatch' }}
+      - name: Add manually supplied allow-newer
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.allow-newer != ''
         run: |
-          echo 'allow-newer:' ${ALLOWNEWER}  >> cabal.project.validate
-          echo 'constraints:' ${CONSTRAINTS} >> cabal.project.validate
+          echo "allow-newer: ${{ github.event.inputs.allow-newer }}" >> cabal.validate.project
+
+      - name: Add manually supplied constraints
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.constraints != ''
+        run: |
+          echo "constraints: ${{ github.event.inputs.constraints }}" >> cabal.validate.project
+
+      - uses: haskell-actions/setup@v2
+        id: setup-haskell
+        with:
+          ghc-version: ${{ matrix.ghc }}
+          cabal-version: 3.12.1.0 # see https://github.com/haskell/cabal/pull/10251
+          ghcup-release-channel: https://raw.githubusercontent.com/haskell/ghcup-metadata/master/ghcup-prereleases-0.0.8.yaml
 
       #  See the following link for a breakdown of the following step
       #  https://github.com/haskell/actions/issues/7#issuecomment-745697160
@@ -110,15 +127,8 @@ jobs:
           key: ${{ runner.os }}-${{ matrix.ghc }}-${{ github.sha }}
           restore-keys: ${{ runner.os }}-${{ matrix.ghc }}-
 
-      - uses: haskell-actions/setup@v2
-        id: setup-haskell
-        with:
-          ghc-version: ${{ matrix.ghc }}
-          cabal-version: latest # latest is mandatory for cabal-testsuite, see https://github.com/haskell/cabal/issues/8133
-
       - name: Work around git problem https://bugs.launchpad.net/ubuntu/+source/git/+bug/1993586 (cabal PR #8546)
-        run: |
-          git config --global protocol.file.allow always
+        run: git config --global protocol.file.allow always
 
       # The tool is not essential to the rest of the test suite. If
       # hackage-repo-tool is not present, any test that requires it will
@@ -127,26 +137,23 @@ jobs:
       # hackage-repo-tool breaks or fails to support a newer GHC version.
       - name: Install hackage-repo-tool
         continue-on-error: true
-        run: |
-          cd $(mktemp -d)
-          cabal install hackage-repo-tool
+        run: cabal install --ignore-project hackage-repo-tool
 
       # Needed by cabal-testsuite/PackageTests/Configure/setup.test.hs
       - name: Install Autotools
         if: runner.os == 'macOS'
-        run: |
-          brew install automake
+        run: brew install automake
 
       - name: Set validate inputs
         run: |
           FLAGS="${{ env.COMMON_FLAGS }}"
-          if [[ ${{ matrix.ghc }} == ${{ env.GHC_FOR_SOLVER_BENCHMARKS }} ]]; then
+          if [[ "${{ matrix.ghc }}" == "${{ env.GHC_FOR_SOLVER_BENCHMARKS }}" ]]; then
             FLAGS="$FLAGS --solver-benchmarks"
           fi
-          if [[ ${{ matrix.ghc }} == ${{ env.GHC_FOR_COMPLETE_HACKAGE_TESTS }} ]]; then
+          if [[ "${{ matrix.ghc }}" == "${{ env.GHC_FOR_COMPLETE_HACKAGE_TESTS }}" ]]; then
             FLAGS="$FLAGS --complete-hackage-tests"
           fi
-          echo "FLAGS=$FLAGS" >> $GITHUB_ENV
+          echo "FLAGS=$FLAGS" >> "$GITHUB_ENV"
 
       - name: Validate print-config
         run: sh validate.sh $FLAGS -s print-config
@@ -160,12 +167,12 @@ jobs:
       - name: Tar cabal head executable
         if: matrix.ghc == env.GHC_FOR_RELEASE
         run: |
-          CABAL_EXEC=$(cabal list-bin --builddir=dist-newstyle-validate-ghc-${{ matrix.ghc }} --project-file=cabal.project.validate cabal-install:exe:cabal)
+          CABAL_EXEC=$(cabal list-bin --builddir=dist-newstyle-validate-ghc-${{ matrix.ghc }} --project-file=cabal.validate.project cabal-install:exe:cabal)
           # We have to tar the executable to preserve executable permissions
           # see https://github.com/actions/upload-artifact/issues/38
-          if [[ ${{ runner.os }} == 'Windows' ]]; then
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
             # `cabal list-bin` gives us a windows path but tar needs the posix one
-            CABAL_EXEC=$(cygpath $CABAL_EXEC)
+            CABAL_EXEC=$(cygpath "$CABAL_EXEC")
           fi
           if [[ "${{ runner.os }}" == "macOS" ]]; then
              # Workaround to avoid bsdtar corrupts the executable
@@ -173,16 +180,18 @@ jobs:
              # see https://github.com/actions/virtual-environments/issues/2619#issuecomment-788397841
              sudo /usr/sbin/purge
           fi
-          export CABAL_EXEC_TAR="cabal-head-${{ runner.os }}-x86_64.tar.gz"
-          tar -czvf $CABAL_EXEC_TAR -C $(dirname "$CABAL_EXEC") $(basename "$CABAL_EXEC")
-          echo "CABAL_EXEC_TAR=$CABAL_EXEC_TAR" >> $GITHUB_ENV
+          DIR=$(dirname "$CABAL_EXEC")
+          FILE=$(basename "$CABAL_EXEC")
+          CABAL_EXEC_TAR="cabal-head-${{ runner.os }}-x86_64.tar.gz"
+          tar -czvf "$CABAL_EXEC_TAR" -C "$DIR" "$FILE"
+          echo "CABAL_EXEC_TAR=$CABAL_EXEC_TAR" >> "$GITHUB_ENV"
 
       # We upload the cabal executable built with the ghc used in the release for:
       # - Reuse it in the dogfooding job (although we could use the cached build dir)
       # - Make it available in the workflow to make easier testing it locally
       - name: Upload cabal-install executable to workflow artifacts
         if: matrix.ghc == env.GHC_FOR_RELEASE
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: cabal-${{ runner.os }}-x86_64
           path: ${{ env.CABAL_EXEC_TAR }}
@@ -195,74 +204,62 @@ jobs:
         run: sh validate.sh $FLAGS -s lib-tests
 
       - name: Validate lib-suite
-        # Have to disable *-suite validation:
-        # - the Windows@9.6.1 problem is tracked at https://github.com/haskell/cabal/issues/8858
-        # - but curently can't run it with GHC 9.6, tracking: https://github.com/haskell/cabal/issues/8883
         run: sh validate.sh $FLAGS -s lib-suite
 
       - name: Validate cli-tests
         run: sh validate.sh $FLAGS -s cli-tests
 
       - name: Validate cli-suite
-        # Have to disable *-suite validation, see above the comment for lib-suite
+        if: runner.os != 'Windows'
         run: sh validate.sh $FLAGS -s cli-suite
 
       - name: Validate solver-benchmarks-tests
-        run: |
-          if [[ ${{ matrix.ghc }} == ${{ env.GHC_FOR_SOLVER_BENCHMARKS }} ]]; then
-            sh validate.sh $FLAGS -s solver-benchmarks-tests
-          fi
+        if: matrix.ghc == env.GHC_FOR_SOLVER_BENCHMARKS
+        run: sh validate.sh $FLAGS -s solver-benchmarks-tests
 
       - name: Validate solver-benchmarks-run
-        run: |
-          if [[ ${{ matrix.ghc }} == ${{ env.GHC_FOR_SOLVER_BENCHMARKS }} ]]; then
-            sh validate.sh $FLAGS -s solver-benchmarks-run
-          fi
+        if: matrix.ghc == env.GHC_FOR_SOLVER_BENCHMARKS
+        run: sh validate.sh $FLAGS -s solver-benchmarks-run
 
   validate-old-ghcs:
     name: Validate old ghcs ${{ matrix.extra-ghc }}
     runs-on: ubuntu-latest
     needs: validate
-    # This job needs an older ubuntu (16.04) cause
-    # the required old ghcs using the `-dyn` flavour
-    # are not installable from ppa/hvr in newer ones
-    # see https://github.com/haskell/cabal/issues/8011
-    container:
-      image: phadej/ghc:8.8.4-xenial
 
     strategy:
       matrix:
-        # Newer ghc versions than 8.8.4 have to be installed with ghcup cause
-        # they are not available in ppa/hvr. The ghcup installation
-        # needs `sudo` which is not available in the xenial container
-        ghc: ["8.8.4"]
-        extra-ghc: ["7.10.3", "7.8.4", "7.6.3", "7.4.2", "7.2.2", "7.0.4"]
+        extra-ghc:
+          ["8.4.4", "8.2.2", "8.0.2"]
+          ## GHC 7.10.3 does not install on ubuntu-22.04 with ghcup.
+          ## Older GHCs are not supported by ghcup in the first place.
+      fail-fast: false
 
     steps:
+      - uses: actions/checkout@v4
 
-      # We can't use actions/checkout with the xenial docker container
-      # cause it does not work with the git version included in it, see:
-      # https://github.com/actions/checkout/issues/170
-      # https://github.com/actions/checkout/issues/295
-      # - uses: actions/checkout@v4
-      - name: Checkout
+      - name: Install prerequisites for old GHCs
         run: |
-          echo $GITHUB_REF $GITHUB_SHA
-          git clone --depth 1 https://github.com/$GITHUB_REPOSITORY.git .
-          git fetch origin $GITHUB_SHA:temporary-ci-branch
-          git checkout $GITHUB_SHA || (git fetch && git checkout $GITHUB_SHA)
+          sudo apt-get update
+          sudo apt-get install libncurses5 libtinfo5
 
       - name: Install extra compiler
-        run: |
-          apt-get update
-          apt-get install -y ghc-${{ matrix.extra-ghc }}-dyn
+        run: ghcup install ghc ${{ matrix.extra-ghc }}
 
-      - uses: haskell-actions/setup@v2
+      - name: GHCup logs
+        if: always()
+        run: cat /usr/local/.ghcup/logs/*
+
+      - name: Install primary compiler
+        uses: haskell-actions/setup@v2
         id: setup-haskell
         with:
-          ghc-version: ${{ matrix.ghc }}
-          # Make sure this bindist works in this old environment
-          cabal-version: 3.10.1.0
+          ghc-version: ${{ env.GHC_FOR_RELEASE }}
+          cabal-version: latest
+
+      - name: GHC versions
+        run: |
+          ghc --version
+          "ghc-${{ matrix.extra-ghc }}" --version
 
       # As we are reusing the cached build dir from the previous step
       # the generated artifacts are available here,
@@ -272,16 +269,79 @@ jobs:
           path: |
             ${{ steps.setup-haskell.outputs.cabal-store }}
             dist-*
-          key: ${{ runner.os }}-${{ matrix.ghc }}-${{ github.sha }}
-          restore-keys: ${{ runner.os }}-${{ matrix.ghc }}-
+          key: ${{ runner.os }}-${{ env.GHC_FOR_RELEASE }}-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-${{ env.GHC_FOR_RELEASE }}-
 
       - name: Validate build
         run: sh validate.sh ${{ env.COMMON_FLAGS }} -s build
 
       - name: "Validate lib-suite-extras --extra-hc ghc-${{ matrix.extra-ghc }}"
         env:
-          EXTRA_GHC: "/opt/ghc/${{ matrix.extra-ghc }}/bin/ghc-${{ matrix.extra-ghc }}"
-        run: sh validate.sh ${{ env.COMMON_FLAGS }} --lib-only -s lib-suite-extras --extra-hc ${{ env.EXTRA_GHC }}
+          EXTRA_GHC: ghc-${{ matrix.extra-ghc }}
+        run: sh validate.sh ${{ env.COMMON_FLAGS }} --lib-only -s lib-suite-extras --extra-hc "${{ env.EXTRA_GHC }}"
+
+  build-alpine:
+    name: Build statically linked using alpine
+    runs-on: ubuntu-latest
+    container: "alpine:3.19"
+    steps:
+      - name: Install extra dependencies
+        shell: sh
+        run: |
+          apk add bash curl sudo jq pkgconfig \
+          zlib-dev zlib-static binutils-gold curl \
+          gcc g++ gmp-dev libc-dev libffi-dev make \
+          musl-dev ncurses-dev perl tar xz
+
+      - uses: actions/checkout@v4
+
+      # See https://github.com/haskell/cabal/blob/master/CONTRIBUTING.md#hackage-revisions
+      - name: Manually supplied constraints/allow-newer
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          echo "allow-newer: ${ALLOWNEWER}"  >> cabal.validate.project
+          echo "constraints: ${CONSTRAINTS}" >> cabal.validate.project
+
+      - uses: haskell-actions/setup@v2
+        id: setup-haskell
+        with:
+          ghc-version: ${{ env.GHC_FOR_RELEASE }}
+          cabal-version: latest # latest is mandatory for cabal-testsuite, see https://github.com/haskell/cabal/issues/8133
+
+      #  See the following link for a breakdown of the following step
+      #  https://github.com/haskell/actions/issues/7#issuecomment-745697160
+      - uses: actions/cache@v4
+        with:
+          # validate.sh uses a special build dir
+          path: |
+            ${{ steps.setup-haskell.outputs.cabal-store }}
+            dist-*
+          key: ${{ runner.os }}-${{ env.GHC_FOR_RELEASE }}-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-${{ env.GHC_FOR_RELEASE }}-
+
+      - name: Enable statically linked executables
+        run: |
+          echo 'executable-static: true' >> cabal.validate.project
+
+      - name: Build
+        run: sh validate.sh $FLAGS -s build
+
+      - name: Tar cabal head executable
+        run: |
+          CABAL_EXEC=$(cabal list-bin --builddir=dist-newstyle-validate-ghc-${{ env.GHC_FOR_RELEASE }} --project-file=cabal.validate.project cabal-install:exe:cabal)
+          # We have to tar the executable to preserve executable permissions
+          # see https://github.com/actions/upload-artifact/issues/38
+          DIR=$(dirname "$CABAL_EXEC")
+          FILE=$(basename "$CABAL_EXEC")
+          CABAL_EXEC_TAR="cabal-head-${{ runner.os }}-static-x86_64.tar.gz"
+          tar -czvf "$CABAL_EXEC_TAR" -C "$DIR" "$FILE"
+          echo "CABAL_EXEC_TAR=$CABAL_EXEC_TAR" >> "$GITHUB_ENV"
+
+      - name: Upload cabal-install executable to workflow artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: cabal-${{ runner.os }}-static-x86_64
+          path: ${{ env.CABAL_EXEC_TAR }}
 
   # The previous jobs use a released version of cabal to build cabal HEAD itself
   # This one uses the cabal HEAD generated executable in the previous step
@@ -292,7 +352,7 @@ jobs:
     needs: validate
     strategy:
       matrix:
-        os: ["ubuntu-latest", "macos-latest", "windows-latest"]
+        os: [ubuntu-latest, macos-13, windows-latest]
         # We only use one ghc version the used one for the next release (defined at top of the workflow)
         # We need to build an array dynamically to inject the appropiate env var in a previous job,
         # see https://docs.github.com/en/actions/learn-github-actions/expressions#fromjson
@@ -300,23 +360,13 @@ jobs:
 
     steps:
       - name: Work around XDG directories existence (haskell-actions/setup#62)
-        if: ${{ runner.os == 'macOS' }}
+        if: runner.os == 'macOS'
         run: |
           rm -rf ~/.config/cabal
           rm -rf ~/.cache/cabal
 
       - uses: actions/checkout@v4
 
-      # See https://github.com/haskell/cabal/pull/8739
-      - name: Sudo chmod to permit ghcup to update its cache
-        run: |
-          if [[ "${{ runner.os }}" == "Linux" ]]; then
-            sudo ls -lah /usr/local/.ghcup/cache
-            sudo mkdir -p /usr/local/.ghcup/cache
-            sudo ls -lah /usr/local/.ghcup/cache
-            sudo chown -R $USER /usr/local/.ghcup
-            sudo chmod -R 777 /usr/local/.ghcup
-          fi
       - uses: haskell-actions/setup@v2
         id: setup-haskell
         with:
@@ -324,13 +374,13 @@ jobs:
           cabal-version: latest # default, we are not using it in this job
 
       - name: Download cabal executable from workflow artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: cabal-${{ runner.os }}-x86_64
           path: cabal-head
 
       - name: Untar the cabal executable
-        run: tar -xzf ./cabal-head/cabal-head-${{ runner.os }}-x86_64.tar.gz -C cabal-head
+        run: tar -xzf "./cabal-head/cabal-head-${{ runner.os }}-x86_64.tar.gz" -C cabal-head
 
       - name: print-config using cabal HEAD
         run: sh validate.sh ${{ env.COMMON_FLAGS }} --with-cabal ./cabal-head/cabal -s print-config
@@ -346,35 +396,40 @@ jobs:
     if: github.ref == 'refs/heads/master'
 
     # IMPORTANT! Any job added to the workflow should be added here too
-    needs: [validate, validate-old-ghcs, dogfooding]
+    needs: [validate, validate-old-ghcs, build-alpine, dogfooding]
 
     steps:
-    - uses: actions/download-artifact@v3
-      with:
-        name: cabal-Windows-x86_64
+      - uses: actions/download-artifact@v4
+        with:
+          name: cabal-Windows-x86_64
 
-    - uses: actions/download-artifact@v3
-      with:
-        name: cabal-Linux-x86_64
+      - uses: actions/download-artifact@v4
+        with:
+          name: cabal-Linux-x86_64
 
-    - uses: actions/download-artifact@v3
-      with:
-        name: cabal-macOS-x86_64
+      - uses: actions/download-artifact@v4
+        with:
+          name: cabal-Linux-static-x86_64
 
-    - name: Create GitHub prerelease
-      uses: "marvinpinto/action-automatic-releases@v1.2.1"
-      with:
-        repo_token: "${{ secrets.GITHUB_TOKEN }}"
-        automatic_release_tag: "cabal-head"
-        prerelease: true
-        title: "cabal-head"
-        files: |
-          cabal-head-Windows-x86_64.tar.gz
-          cabal-head-Linux-x86_64.tar.gz
-          cabal-head-macOS-x86_64.tar.gz
+      - uses: actions/download-artifact@v4
+        with:
+          name: cabal-macOS-x86_64
+
+      - name: Create GitHub prerelease
+        uses: marvinpinto/action-automatic-releases@v1.2.1
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          automatic_release_tag: cabal-head
+          prerelease: true
+          title: cabal-head
+          files: |
+            cabal-head-Windows-x86_64.tar.gz
+            cabal-head-Linux-x86_64.tar.gz
+            cabal-head-Linux-static-x86_64.tar.gz
+            cabal-head-macOS-x86_64.tar.gz
 
   # We use this job as a summary of the workflow
-  # It will fail if any of the previous jobs does it
+  # It will fail if any of the previous jobs does
   # This way we can use it exclusively in branch protection rules
   # and abstract away the concrete jobs of the workflow, including their names
   validate-post-job:
@@ -382,7 +437,7 @@ jobs:
     name: Validate post job
     runs-on: ubuntu-latest
     # IMPORTANT! Any job added to the workflow should be added here too
-    needs: [validate, validate-old-ghcs, dogfooding]
+    needs: [validate, validate-old-ghcs, build-alpine, dogfooding]
 
     steps:
       - run: |

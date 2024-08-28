@@ -1,0 +1,3 @@
+# Setup configure
+Configuring prof-shared-0.1...
+Warning: Executables will use dynamic linking, but a shared library is not being built. Linking will fail if any executables depend on the library.

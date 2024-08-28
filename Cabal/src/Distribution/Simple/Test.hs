@@ -1,3 +1,5 @@
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
@@ -25,8 +27,8 @@ import Prelude ()
 
 import qualified Distribution.PackageDescription as PD
 import Distribution.Pretty
+import Distribution.Simple.Build (addInternalBuildTools)
 import Distribution.Simple.Compiler
-import Distribution.Simple.Flag (fromFlag)
 import Distribution.Simple.Hpc
 import Distribution.Simple.InstallDirs
 import qualified Distribution.Simple.LocalBuildInfo as LBI
@@ -39,12 +41,12 @@ import Distribution.Simple.Utils
 import Distribution.TestSuite
 import qualified Distribution.Types.LocalBuildInfo as LBI
 import Distribution.Types.UnqualComponentName
+import Distribution.Utils.Path
 
 import Distribution.Simple.Configure (getInstalledPackagesById)
 import Distribution.Simple.Errors
-import Distribution.Simple.Register
-import Distribution.Simple.Setup (fromFlagOrDefault)
-import Distribution.Simple.Setup.Common (extraCompilationArtifacts)
+import Distribution.Simple.Register (internalPackageDBPath)
+import Distribution.Simple.Setup.Common
 import Distribution.Simple.Setup.Config
 import Distribution.Types.ExposedModule
 import Distribution.Types.InstalledPackageInfo (InstalledPackageInfo (libraryDirs), exposedModules)
@@ -55,7 +57,6 @@ import System.Directory
   , getDirectoryContents
   , removeFile
   )
-import System.FilePath ((</>))
 
 -- | Perform the \"@.\/setup test@\" action.
 test
@@ -69,17 +70,19 @@ test
   -- ^ flags sent to test
   -> IO ()
 test args pkg_descr lbi0 flags = do
-  let verbosity = fromFlag $ testVerbosity flags
+  let common = testCommonFlags flags
+      verbosity = fromFlag $ setupVerbosity common
+      distPref = fromFlag $ setupDistPref common
+      i = LBI.interpretSymbolicPathLBI lbi -- See Note [Symbolic paths] in Distribution.Utils.Path
       machineTemplate = fromFlag $ testMachineLog flags
-      distPref = fromFlag $ testDistPref flags
-      testLogDir = distPref </> "test"
+      testLogDir = distPref </> makeRelativePathEx "test"
       testNames = args
       pkgTests = PD.testSuites pkg_descr
       enabledTests = LBI.enabledTestLBIs pkg_descr lbi
       -- We must add the internalPkgDB to the package database stack to lookup
       -- the path to HPC dirs of libraries local to this package
-      internalPkgDB = internalPackageDBPath lbi distPref
-      lbi = lbi0{withPackageDB = withPackageDB lbi0 ++ [SpecificPackageDB internalPkgDB]}
+      internalPkgDb = i $ internalPackageDBPath lbi0 distPref
+      lbi = lbi0{withPackageDB = withPackageDB lbi0 ++ [SpecificPackageDB internalPkgDb]}
 
       doTest
         :: HPCMarkupInfo
@@ -87,12 +90,22 @@ test args pkg_descr lbi0 flags = do
            , Maybe TestSuiteLog
            )
         -> IO TestSuiteLog
-      doTest hpcMarkupInfo ((suite, clbi), _) =
+      doTest hpcMarkupInfo ((suite, clbi), _) = do
+        let lbiForTest =
+              lbi
+                { withPrograms =
+                    -- Include any build-tool-depends on build tools internal to the current package.
+                    addInternalBuildTools
+                      pkg_descr
+                      lbi
+                      (PD.testBuildInfo suite)
+                      (withPrograms lbi)
+                }
         case PD.testInterface suite of
           PD.TestSuiteExeV10 _ _ ->
-            ExeV10.runTest pkg_descr lbi clbi hpcMarkupInfo flags suite
+            ExeV10.runTest pkg_descr lbiForTest clbi hpcMarkupInfo flags suite
           PD.TestSuiteLibV09 _ _ ->
-            LibV09.runTest pkg_descr lbi clbi hpcMarkupInfo flags suite
+            LibV09.runTest pkg_descr lbiForTest clbi hpcMarkupInfo flags suite
           _ ->
             return
               TestSuiteLog
@@ -130,11 +143,11 @@ test args pkg_descr lbi0 flags = do
                   dieWithException verbosity $ TestNameDisabled tName
               | otherwise -> dieWithException verbosity $ NoSuchTest tName
 
-  createDirectoryIfMissing True testLogDir
+  createDirectoryIfMissing True $ i testLogDir
 
   -- Delete ordinary files from test log directory.
-  getDirectoryContents testLogDir
-    >>= filterM doesFileExist . map (testLogDir </>)
+  getDirectoryContents (i testLogDir)
+    >>= filterM doesFileExist . map (i testLogDir </>)
     >>= traverse_ removeFile
 
   -- We configured the unit-ids of libraries we should cover in our coverage
@@ -154,7 +167,7 @@ test args pkg_descr lbi0 flags = do
           unzip $
             map
               ( \ip ->
-                  ( map (</> extraCompilationArtifacts) $ libraryDirs ip
+                  ( map ((</> coerceSymbolicPath extraCompilationArtifacts) . makeSymbolicPath) $ libraryDirs ip
                   , map exposedName $ exposedModules ip
                   )
               )
@@ -166,8 +179,8 @@ test args pkg_descr lbi0 flags = do
   suites <- traverse (doTest hpcMarkupInfo) testsToRun
   let packageLog = (localPackageLog pkg_descr lbi){testSuites = suites}
       packageLogFile =
-        (</>) testLogDir $
-          packageLogPath machineTemplate pkg_descr lbi
+        i testLogDir
+          </> packageLogPath machineTemplate pkg_descr lbi
   allOk <- summarizePackage verbosity packageLog
   writeFile packageLogFile $ show packageLog
 
