@@ -103,6 +103,7 @@ import Prelude ()
 import Distribution.Types.ComponentId
 import Distribution.Types.ComponentLocalBuildInfo
 import Distribution.Types.ComponentRequestedSpec
+import Distribution.Types.GivenComponent
 import qualified Distribution.Types.LocalBuildConfig as LBC
 import Distribution.Types.PackageDescription
 import Distribution.Types.PackageId
@@ -160,7 +161,7 @@ pattern LocalBuildInfo
   -> Maybe (SymbolicPath Pkg File)
   -> Graph ComponentLocalBuildInfo
   -> Map ComponentName [ComponentLocalBuildInfo]
-  -> Map (PackageName, ComponentName) ComponentId
+  -> Map (PackageName, ComponentName) PromisedComponent
   -> InstalledPackageIndex
   -> PackageDescription
   -> ProgramDb
