@@ -40,6 +40,7 @@ module Distribution.Client.IndexUtils
   , updatePackageIndexCacheFile
   , writeIndexTimestamp
   , currentIndexTimestamp
+  , getIndexHeadTimestamp
   , BuildTreeRefType (..)
   , refTypeFromTypeCode
   , typeCodeFromRefType
@@ -971,6 +972,10 @@ getIndexCache :: Verbosity -> Index -> RepoIndexState -> IO (Cache, IndexStateIn
 getIndexCache verbosity index idxState =
   filterCache idxState <$> readIndexCache verbosity index
 
+getIndexHeadTimestamp :: Verbosity -> Index -> IO Timestamp
+getIndexHeadTimestamp verbosity index =
+  cacheHeadTs <$> readIndexCache verbosity index
+
 packageIndexFromCache
   :: Package pkg
   => Verbosity
@@ -1186,7 +1191,7 @@ currentIndexTimestamp verbosity index = do
       return ts
     -- Otherwise used the head time as stored in the index cache
     _otherwise ->
-      fmap (isiHeadTime . snd) (getIndexCache verbosity index IndexStateHead)
+      getIndexHeadTimestamp verbosity index
         `catchIO` \e ->
           if isDoesNotExistError e
             then return NoTimestamp

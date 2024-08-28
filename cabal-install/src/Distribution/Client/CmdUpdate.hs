@@ -28,6 +28,7 @@ import Distribution.Client.HttpUtils
 import Distribution.Client.IndexUtils
   ( Index (..)
   , currentIndexTimestamp
+  , getIndexHeadTimestamp
   , indexBaseName
   , updatePackageIndexCacheFile
   , updateRepoIndexCache
@@ -280,30 +281,57 @@ updateRepo verbosity _updateFlags repoCtxt (repo, indexState) = do
           setModificationTime (indexBaseName repo <.> "tar") now
             `catchIO` \e ->
               warn verbosity $ "Could not set modification time of index tarball -- " ++ displayException e
+          head_ts <- getIndexHeadTimestamp verbosity index
           noticeNoWrap verbosity $
-            "Package list of " ++ prettyShow rname ++ " is up to date."
+            "The repository " ++ prettyShow rname ++ " is up to date. Its most recent known index-state is " ++ prettyShow head_ts ++ "."
+          noticeNoWrap verbosity $
+            "The default index-state for the repository "
+              ++ prettyShow rname
+              ++ " has been updated to "
+              ++ prettyShow indexState
+              ++ "."
+          -- This resolves indexState (which could be HEAD) into a timestamp.
+          -- This could be null but the above guarantees we have an updated index.
+          revertMessage index current_ts
         Sec.HasUpdates -> do
           updateRepoIndexCache verbosity index
-          noticeNoWrap verbosity $
-            "Package list of " ++ prettyShow rname ++ " has been updated."
-
-      -- This resolves indexState (which could be HEAD) into a timestamp
-      -- This could be null but should not be, since the above guarantees
-      -- we have an updated index.
+          head_ts <- getIndexHeadTimestamp verbosity index
+          -- This resolves indexState (which could be HEAD) into a timestamp
+          -- This could be null but should not be, since the above guarantees
+          -- we have an updated index.
+          new_ts <- currentIndexTimestamp (lessVerbose verbosity) index
+          if new_ts == head_ts
+            then
+              noticeNoWrap verbosity $
+                "The most recent known index-state and the default index-state timestamp for the repository "
+                  ++ prettyShow rname
+                  ++ " have both been updated to "
+                  ++ prettyShow (IndexStateTime new_ts)
+                  ++ "."
+            else do
+              noticeNoWrap verbosity $
+                "The most recent known index-state for the repository "
+                  ++ prettyShow rname
+                  ++ " has been updated to "
+                  ++ prettyShow head_ts
+                  ++ "."
+              noticeNoWrap verbosity $
+                "The default index-state for the repository "
+                  ++ prettyShow rname
+                  ++ " has been updated to "
+                  ++ prettyShow indexState
+                  ++ "."
+          revertMessage index current_ts
+  where
+    revertMessage index current_ts = do
+      -- This resolves indexState (which could be HEAD) into a timestamp.
+      -- This could be null if we have never run cabal update before.
       new_ts <- currentIndexTimestamp (lessVerbose verbosity) index
-
-      noticeNoWrap verbosity $
-        "The index-state is set to " ++ prettyShow (IndexStateTime new_ts) ++ "."
-
-      -- TODO: This will print multiple times if there are multiple
-      -- repositories: main problem is we don't have a way of updating
-      -- a specific repo.  Once we implement that, update this.
-
       -- In case current_ts is a valid timestamp different from new_ts, let
       -- the user know how to go back to current_ts
       when (current_ts /= NoTimestamp && new_ts /= current_ts) $
         noticeNoWrap verbosity $
-          "To revert to previous state run:\n"
-            ++ "    cabal v2-update '"
-            ++ prettyShow (UpdateRequest rname (IndexStateTime current_ts))
-            ++ "'\n"
+          unlines
+            [ "To revert to previous state run:"
+            , "    cabal v2-update '" ++ prettyShow (UpdateRequest (repoName repo) (IndexStateTime current_ts)) ++ "'"
+            ]
