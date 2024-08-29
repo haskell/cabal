@@ -65,6 +65,7 @@ jobs:
     outputs:
       GHC_FOR_RELEASE: ${{ format('["{0}"]', env.GHC_FOR_RELEASE) }}
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-13, windows-latest]
         # If you remove something from here, then add it to the old-ghcs job.
