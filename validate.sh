@@ -299,15 +299,35 @@ JOBS="-j$JOBS"
 # assume compiler is GHC
 RUNHASKELL=$(echo "$HC" | sed -E 's/ghc(-[0-9.]*)$/runghc\1/')
 
-case "$(uname)" in
-    MINGW64*)
-        ARCH="x86_64-windows"
+ARCH=$(uname -m)
+
+case "$ARCH" in
+    arm64)
+        ARCH=aarch64
         ;;
-    Linux   )
-        ARCH="x86_64-linux"
+    x86_64)
+        ARCH=x86_64
         ;;
     *)
-        ARCH="x86_64-osx"
+        echo "Warning: Unknown architecture '$ARCH'"
+        ;;
+esac
+
+OS=$(uname)
+
+case "$OS" in
+    MINGW64*)
+        ARCH="$ARCH-windows"
+        ;;
+    Linux)
+        ARCH="$ARCH-linux"
+        ;;
+    Darwin)
+        ARCH="$ARCH-osx"
+        ;;
+    *)
+        echo "Warning: Unknown operating system '$OS'"
+        ARCH="$ARCH-$OS"
         ;;
 esac
 
