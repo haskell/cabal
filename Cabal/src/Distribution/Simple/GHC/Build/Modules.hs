@@ -137,20 +137,29 @@ buildHaskellModules numJobs ghcProg mbMainFile inputModules buildTargetDir neede
       | BuildRepl{} <- what = True
       | otherwise = False
 
-  -- TODO: do we need to put hs-boot files into place for mutually recursive
-  -- modules?  FIX: what about exeName.hi-boot?
+    -- TODO: do we need to put hs-boot files into place for mutually recursive
+    -- modules?  FIX: what about exeName.hi-boot?
 
-  -- Determine if program coverage should be enabled and if so, what
-  -- '-hpcdir' should be.
-  let isCoverageEnabled = if isLib then libCoverage lbi else exeCoverage lbi
-      hpcdir way
-        | forRepl = mempty -- HPC is not supported in ghci
-        | isCoverageEnabled = Flag $ Hpc.mixDir (coerceSymbolicPath $ coerceSymbolicPath buildTargetDir </> extraCompilationArtifacts) way
-        | otherwise = mempty
+    -- Determine if program coverage should be enabled and if so, what
+    -- '-hpcdir' should be.
+    isCoverageEnabled = if isLib then libCoverage lbi else exeCoverage lbi
+    hpcdir way
+      | forRepl = mempty -- HPC is not supported in ghci
+      | isCoverageEnabled = Flag $ Hpc.mixDir (coerceSymbolicPath $ coerceSymbolicPath buildTargetDir </> extraCompilationArtifacts) way
+      | otherwise = mempty
 
-  let
     mbWorkDir = mbWorkDirLBI lbi
-    runGhcProg = runGHC verbosity ghcProg comp platform mbWorkDir
+    tempFileOptions = commonSetupTempFileOptions $ buildingWhatCommonFlags what
+    runGhcProg =
+      runGHCWithResponseFile
+        "ghc.rsp"
+        Nothing
+        tempFileOptions
+        verbosity
+        ghcProg
+        comp
+        platform
+        mbWorkDir
     platform = hostPlatform lbi
 
     (hsMains, scriptMains) =
