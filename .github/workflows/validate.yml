@@ -58,6 +58,7 @@ jobs:
     outputs:
       GHC_FOR_RELEASE: ${{ format('["{0}"]', env.GHC_FOR_RELEASE) }}
     strategy:
+      fail-fast: false
       matrix:
         sys:
           - { os: windows-latest, shell: "C:/msys64/usr/bin/bash.exe -e {0}" }
