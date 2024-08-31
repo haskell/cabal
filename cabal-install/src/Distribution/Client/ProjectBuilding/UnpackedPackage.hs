@@ -73,7 +73,8 @@ import qualified Distribution.PackageDescription as PD
 import Distribution.Simple.BuildPaths (haddockDirName)
 import Distribution.Simple.Command (CommandUI)
 import Distribution.Simple.Compiler
-  ( PackageDBStack
+  ( PackageDBStackCWD
+  , coercePackageDBStack
   )
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import Distribution.Simple.LocalBuildInfo
@@ -133,7 +134,7 @@ data PackageBuildingPhase
   | PBInstallPhase
       { runCopy :: FilePath -> IO ()
       , runRegister
-          :: PackageDBStack
+          :: PackageDBStackCWD
           -> Cabal.RegisterOptions
           -> IO InstalledPackageInfo
       }
@@ -191,21 +192,21 @@ buildAndRegisterUnpackedPackage
     delegate $
       PBBuildPhase $
         annotateFailure mlogFile BuildFailed $ do
-          setup buildCommand Cabal.buildCommonFlags buildFlags buildArgs
+          setup buildCommand Cabal.buildCommonFlags (return . buildFlags) buildArgs
 
     -- Haddock phase
     whenHaddock $
       delegate $
         PBHaddockPhase $
           annotateFailure mlogFile HaddocksFailed $ do
-            setup haddockCommand Cabal.haddockCommonFlags haddockFlags haddockArgs
+            setup haddockCommand Cabal.haddockCommonFlags (return . haddockFlags) haddockArgs
 
     -- Install phase
     delegate $
       PBInstallPhase
         { runCopy = \destdir ->
             annotateFailure mlogFile InstallFailed $
-              setup Cabal.copyCommand Cabal.copyCommonFlags (copyFlags destdir) copyArgs
+              setup Cabal.copyCommand Cabal.copyCommonFlags (return . copyFlags destdir) copyArgs
         , runRegister = \pkgDBStack registerOpts ->
             annotateFailure mlogFile InstallFailed $ do
               -- We register ourselves rather than via Setup.hs. We need to
@@ -219,7 +220,7 @@ buildAndRegisterUnpackedPackage
                   compiler
                   progdb
                   Nothing
-                  pkgDBStack
+                  (coercePackageDBStack pkgDBStack)
                   ipkg
                   registerOpts
               return ipkg
@@ -230,14 +231,14 @@ buildAndRegisterUnpackedPackage
       delegate $
         PBTestPhase $
           annotateFailure mlogFile TestsFailed $
-            setup testCommand Cabal.testCommonFlags testFlags testArgs
+            setup testCommand Cabal.testCommonFlags (return . testFlags) testArgs
 
     -- Bench phase
     whenBench $
       delegate $
         PBBenchPhase $
           annotateFailure mlogFile BenchFailed $
-            setup benchCommand Cabal.benchmarkCommonFlags benchFlags benchArgs
+            setup benchCommand Cabal.benchmarkCommonFlags (return . benchFlags) benchArgs
 
     -- Repl phase
     whenRepl $
@@ -277,8 +278,9 @@ buildAndRegisterUnpackedPackage
 
       configureCommand = Cabal.configureCommand defaultProgramDb
       configureFlags v =
-        flip filterConfigureFlags v $
-          setupHsConfigureFlags
+        flip filterConfigureFlags v
+          <$> setupHsConfigureFlags
+            (\p -> makeSymbolicPath <$> canonicalizePath p)
             plan
             rpkg
             pkgshared
@@ -349,11 +351,11 @@ buildAndRegisterUnpackedPackage
       setup
         :: CommandUI flags
         -> (flags -> CommonSetupFlags)
-        -> (Version -> flags)
+        -> (Version -> IO flags)
         -> (Version -> [String])
         -> IO ()
       setup cmd getCommonFlags flags args =
-        withLogging $ \mLogFileHandle ->
+        withLogging $ \mLogFileHandle -> do
           setupWrapper
             verbosity
             scriptOptions
@@ -382,7 +384,7 @@ buildAndRegisterUnpackedPackage
           (Just (elabPkgDescription pkg))
           cmd
           getCommonFlags
-          flags
+          (\v -> return (flags v))
           args
 
       generateInstalledPackageInfo :: IO InstalledPackageInfo
@@ -397,7 +399,7 @@ buildAndRegisterUnpackedPackage
                     pkgshared
                     (commonFlags v)
                     pkgConfDest
-            setup (Cabal.registerCommand) Cabal.registerCommonFlags registerFlags (const [])
+            setup (Cabal.registerCommand) Cabal.registerCommonFlags (\v -> return (registerFlags v)) (const [])
 
       withLogging :: (Maybe Handle -> IO r) -> IO r
       withLogging action =

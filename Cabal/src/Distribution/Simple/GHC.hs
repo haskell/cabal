@@ -4,6 +4,7 @@
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections #-}
 
 -----------------------------------------------------------------------------
@@ -394,8 +395,8 @@ getGhcInfo verbosity ghcProg = Internal.getGhcInfo verbosity implInfo ghcProg
 -- | Given a single package DB, return all installed packages.
 getPackageDBContents
   :: Verbosity
-  -> Maybe (SymbolicPath CWD (Dir Pkg))
-  -> PackageDB
+  -> Maybe (SymbolicPath CWD (Dir from))
+  -> PackageDBX (SymbolicPath from (Dir PkgDB))
   -> ProgramDb
   -> IO InstalledPackageIndex
 getPackageDBContents verbosity mbWorkDir packagedb progdb = do
@@ -406,8 +407,8 @@ getPackageDBContents verbosity mbWorkDir packagedb progdb = do
 getInstalledPackages
   :: Verbosity
   -> Compiler
-  -> Maybe (SymbolicPath CWD (Dir Pkg))
-  -> PackageDBStack
+  -> Maybe (SymbolicPath CWD (Dir from))
+  -> PackageDBStackX (SymbolicPath from (Dir PkgDB))
   -> ProgramDb
   -> IO InstalledPackageIndex
 getInstalledPackages verbosity comp mbWorkDir packagedbs progdb = do
@@ -429,7 +430,7 @@ getInstalledPackages verbosity comp mbWorkDir packagedbs progdb = do
 -- 'getInstalledPackages'.
 toPackageIndex
   :: Verbosity
-  -> [(PackageDB, [InstalledPackageInfo])]
+  -> [(PackageDBX a, [InstalledPackageInfo])]
   -> ProgramDb
   -> IO InstalledPackageIndex
 toPackageIndex verbosity pkgss progdb = do
@@ -492,7 +493,7 @@ checkPackageDbEnvVar :: Verbosity -> IO ()
 checkPackageDbEnvVar verbosity =
   Internal.checkPackageDbEnvVar verbosity "GHC" "GHC_PACKAGE_PATH"
 
-checkPackageDbStack :: Verbosity -> Compiler -> PackageDBStack -> IO ()
+checkPackageDbStack :: Eq fp => Verbosity -> Compiler -> PackageDBStackX fp -> IO ()
 checkPackageDbStack verbosity comp =
   if flagPackageConf implInfo
     then checkPackageDbStackPre76 verbosity
@@ -500,7 +501,7 @@ checkPackageDbStack verbosity comp =
   where
     implInfo = ghcVersionImplInfo (compilerVersion comp)
 
-checkPackageDbStackPost76 :: Verbosity -> PackageDBStack -> IO ()
+checkPackageDbStackPost76 :: Eq fp => Verbosity -> PackageDBStackX fp -> IO ()
 checkPackageDbStackPost76 _ (GlobalPackageDB : rest)
   | GlobalPackageDB `notElem` rest = return ()
 checkPackageDbStackPost76 verbosity rest
@@ -508,7 +509,7 @@ checkPackageDbStackPost76 verbosity rest
       dieWithException verbosity CheckPackageDbStackPost76
 checkPackageDbStackPost76 _ _ = return ()
 
-checkPackageDbStackPre76 :: Verbosity -> PackageDBStack -> IO ()
+checkPackageDbStackPre76 :: Eq fp => Verbosity -> PackageDBStackX fp -> IO ()
 checkPackageDbStackPre76 _ (GlobalPackageDB : rest)
   | GlobalPackageDB `notElem` rest = return ()
 checkPackageDbStackPre76 verbosity rest
@@ -529,10 +530,10 @@ removeMingwIncludeDir pkg =
 -- | Get the packages from specific PackageDBs, not cumulative.
 getInstalledPackages'
   :: Verbosity
-  -> Maybe (SymbolicPath CWD (Dir Pkg))
-  -> [PackageDB]
+  -> Maybe (SymbolicPath CWD (Dir from))
+  -> [PackageDBX (SymbolicPath from (Dir PkgDB))]
   -> ProgramDb
-  -> IO [(PackageDB, [InstalledPackageInfo])]
+  -> IO [(PackageDBX (SymbolicPath from (Dir PkgDB)), [InstalledPackageInfo])]
 getInstalledPackages' verbosity mbWorkDir packagedbs progdb =
   sequenceA
     [ do
@@ -542,21 +543,22 @@ getInstalledPackages' verbosity mbWorkDir packagedbs progdb =
     ]
 
 getInstalledPackagesMonitorFiles
-  :: Verbosity
-  -> Maybe (SymbolicPath CWD (Dir Pkg))
+  :: forall from
+   . Verbosity
+  -> Maybe (SymbolicPath CWD (Dir from))
   -> Platform
   -> ProgramDb
-  -> [PackageDB]
+  -> [PackageDBS from]
   -> IO [FilePath]
 getInstalledPackagesMonitorFiles verbosity mbWorkDir platform progdb =
   traverse getPackageDBPath
   where
-    getPackageDBPath :: PackageDB -> IO FilePath
+    getPackageDBPath :: PackageDBS from -> IO FilePath
     getPackageDBPath GlobalPackageDB =
       selectMonitorFile =<< getGlobalPackageDB verbosity ghcProg
     getPackageDBPath UserPackageDB =
       selectMonitorFile =<< getUserPackageDB verbosity ghcProg platform
-    getPackageDBPath (SpecificPackageDB path) = selectMonitorFile path
+    getPackageDBPath (SpecificPackageDB path) = selectMonitorFile (interpretSymbolicPath mbWorkDir path)
 
     -- GHC has old style file dbs, and new style directory dbs.
     -- Note that for dir style dbs, we only need to monitor the cache file, not
@@ -1057,8 +1059,8 @@ hcPkgInfo progdb =
 registerPackage
   :: Verbosity
   -> ProgramDb
-  -> Maybe (SymbolicPath CWD (Dir Pkg))
-  -> PackageDBStack
+  -> Maybe (SymbolicPath CWD (Dir from))
+  -> PackageDBStackS from
   -> InstalledPackageInfo
   -> HcPkg.RegisterOptions
   -> IO ()
@@ -1096,4 +1098,4 @@ pkgRoot verbosity lbi = fmap makeSymbolicPath . pkgRoot'
     pkgRoot' (SpecificPackageDB fp) =
       return $
         takeDirectory $
-          interpretSymbolicPathLBI lbi (unsafeMakeSymbolicPath fp)
+          interpretSymbolicPathLBI lbi fp

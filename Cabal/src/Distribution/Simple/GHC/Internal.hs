@@ -766,7 +766,7 @@ ghcPlatformAndVersionString (Platform arch os) version =
 -- Constructing GHC environment files
 
 -- | The kinds of entries we can stick in a @.ghc.environment@ file.
-data GhcEnvironmentFileEntry
+data GhcEnvironmentFileEntry fp
   = -- | @-- a comment@
     GhcEnvFileComment String
   | -- | @package-id foo-1.0-4fe301a...@
@@ -774,7 +774,7 @@ data GhcEnvironmentFileEntry
   | -- | @global-package-db@,
     --   @user-package-db@ or
     --   @package-db blah/package.conf.d/@
-    GhcEnvFilePackageDb PackageDB
+    GhcEnvFilePackageDb (PackageDBX fp)
   | -- | @clear-package-db@
     GhcEnvFileClearPackageDbStack
   deriving (Eq, Ord, Show)
@@ -785,9 +785,9 @@ data GhcEnvironmentFileEntry
 -- If you need to do anything more complicated then either use this as a basis
 -- and add more entries, or just make all the entries directly.
 simpleGhcEnvironmentFile
-  :: PackageDBStack
+  :: PackageDBStackX fp
   -> [UnitId]
-  -> [GhcEnvironmentFileEntry]
+  -> [GhcEnvironmentFileEntry fp]
 simpleGhcEnvironmentFile packageDBs pkgids =
   GhcEnvFileClearPackageDbStack
     : map GhcEnvFilePackageDb packageDBs
@@ -805,7 +805,7 @@ writeGhcEnvironmentFile
   -- ^ the GHC target platform
   -> Version
   -- ^ the GHC version
-  -> [GhcEnvironmentFileEntry]
+  -> [GhcEnvironmentFileEntry FilePath]
   -- ^ the content
   -> IO FilePath
 writeGhcEnvironmentFile directory platform ghcversion entries = do
@@ -820,12 +820,12 @@ ghcEnvironmentFileName platform ghcversion =
   ".ghc.environment." ++ ghcPlatformAndVersionString platform ghcversion
 
 -- | Render a bunch of GHC environment file entries
-renderGhcEnvironmentFile :: [GhcEnvironmentFileEntry] -> String
+renderGhcEnvironmentFile :: [GhcEnvironmentFileEntry FilePath] -> String
 renderGhcEnvironmentFile =
   unlines . map renderGhcEnvironmentFileEntry
 
 -- | Render an individual GHC environment file entry
-renderGhcEnvironmentFileEntry :: GhcEnvironmentFileEntry -> String
+renderGhcEnvironmentFileEntry :: GhcEnvironmentFileEntry FilePath -> String
 renderGhcEnvironmentFileEntry entry = case entry of
   GhcEnvFileComment comment -> format comment
     where

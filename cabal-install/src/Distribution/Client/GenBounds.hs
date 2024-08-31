@@ -46,10 +46,6 @@ import Distribution.PackageDescription.Configuration
   ( finalizePD
   )
 import Distribution.Simple.Compiler
-  ( Compiler
-  , PackageDBStack
-  , compilerInfo
-  )
 import Distribution.Simple.PackageDescription
   ( readGenericPackageDescription
   )
@@ -119,7 +115,7 @@ showBounds padTo p =
 -- | Entry point for the @gen-bounds@ command.
 genBounds
   :: Verbosity
-  -> PackageDBStack
+  -> PackageDBStackCWD
   -> RepoContext
   -> Compiler
   -> Platform

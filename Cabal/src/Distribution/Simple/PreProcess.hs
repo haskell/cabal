@@ -347,8 +347,8 @@ preprocessFile mbWorkDir searchLoc buildLoc forSDist baseFile verbosity builtinS
           createDirectoryIfMissingVerbose verbosity True destDir
           runPreProcessorWithHsBootHack
             pp
-            (i psrcLoc, getSymbolicPath $ psrcRelFile)
-            (i buildLoc, srcStem <.> "hs")
+            (getSymbolicPath $ psrcLoc, getSymbolicPath $ psrcRelFile)
+            (getSymbolicPath $ buildLoc, srcStem <.> "hs")
   where
     i = interpretSymbolicPath mbWorkDir -- See Note [Symbolic paths] in Distribution.Utils.Path
     buildAsSrcLoc :: SymbolicPath Pkg (Dir Source)
@@ -390,8 +390,9 @@ ppGreenCard _ lbi _ =
     { platformIndependent = False
     , ppOrdering = unsorted
     , runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity ->
-        runDbProgram
+        runDbProgramCwd
           verbosity
+          (mbWorkDirLBI lbi)
           greencardProgram
           (withPrograms lbi)
           (["-tffi", "-o" ++ outFile, inFile])
@@ -863,8 +864,9 @@ standardPP lbi prog args =
     { platformIndependent = False
     , ppOrdering = unsorted
     , runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity ->
-        runDbProgram
+        runDbProgramCwd
           verbosity
+          (mbWorkDirLBI lbi)
           prog
           (withPrograms lbi)
           (args ++ ["-o", outFile, inFile])

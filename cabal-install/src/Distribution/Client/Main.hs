@@ -206,7 +206,7 @@ import Distribution.Simple.Command
   , defaultCommandFallback
   , hiddenCommand
   )
-import Distribution.Simple.Compiler (PackageDBStack)
+import Distribution.Simple.Compiler (PackageDBStack, interpretPackageDBStack)
 import Distribution.Simple.Configure
   ( ConfigStateFileError (..)
   , configCompilerAuxEx
@@ -527,7 +527,7 @@ wrapperAction command getCommonFlags =
         Nothing
         command
         getCommonFlags
-        (const flags)
+        (const (return flags))
         (const extraArgs)
 
 configureAction
@@ -560,7 +560,7 @@ configureAction (configFlags, configExFlags) extraArgs globalFlags = do
     withRepoContext verbosity globalFlags' $ \repoContext ->
       configure
         verbosity
-        packageDBs
+        (interpretPackageDBStack Nothing packageDBs)
         repoContext
         comp
         platform
@@ -636,7 +636,7 @@ build verbosity config distPref buildFlags extraArgs =
     Nothing
     (Cabal.buildCommand progDb)
     buildCommonFlags
-    mkBuildFlags
+    (return . mkBuildFlags)
     (const extraArgs)
   where
     progDb = defaultProgramDb
@@ -729,7 +729,7 @@ replAction replFlags extraArgs globalFlags = do
           Nothing
           (Cabal.replCommand progDb)
           Cabal.replCommonFlags
-          (const replFlags')
+          (const (return replFlags'))
           (const extraArgs)
 
     -- No .cabal file in the current directory: just start the REPL (possibly
@@ -776,7 +776,7 @@ installAction (configFlags, _, installFlags, _, _, _) _ globalFlags
         Nothing
         installCommand
         (const common)
-        (const (mempty, mempty, mempty, mempty, mempty, mempty))
+        (const (return (mempty, mempty, mempty, mempty, mempty, mempty)))
         (const [])
 installAction
   ( configFlags
@@ -853,7 +853,7 @@ installAction
       withRepoContext verb globalFlags' $ \repoContext ->
         install
           verb
-          (configPackageDB' configFlags')
+          (interpretPackageDBStack Nothing (configPackageDB' configFlags'))
           repoContext
           comp
           platform
@@ -943,7 +943,7 @@ testAction (buildFlags, testFlags) extraArgs globalFlags = do
       Nothing
       Cabal.testCommand
       Cabal.testCommonFlags
-      (const testFlags')
+      (const (return testFlags'))
       (const extraArgs')
 
 data ComponentNames
@@ -1064,7 +1064,7 @@ benchmarkAction
         Nothing
         Cabal.benchmarkCommand
         Cabal.benchmarkCommonFlags
-        (const benchmarkFlags')
+        (const (return benchmarkFlags'))
         (const extraArgs')
 
 haddockAction :: HaddockFlags -> [String] -> Action
@@ -1104,7 +1104,7 @@ haddockAction haddockFlags extraArgs globalFlags = do
       Nothing
       haddockCommand
       haddockCommonFlags
-      (const haddockFlags')
+      (const (return haddockFlags'))
       (const extraArgs)
     when (haddockForHackage haddockFlags == Flag ForHackage) $ do
       pkg <- fmap LBI.localPkgDescr (getPersistBuildConfig mbWorkDir distPref)
@@ -1139,7 +1139,7 @@ cleanAction cleanFlags extraArgs globalFlags = do
     Nothing
     cleanCommand
     cleanCommonFlags
-    (const cleanFlags')
+    (const (return cleanFlags'))
     (const extraArgs)
 
 listAction :: ListFlags -> [String] -> Action
@@ -1164,7 +1164,7 @@ listAction listFlags extraArgs globalFlags = do
   withRepoContext verbosity globalFlags' $ \repoContext ->
     List.list
       verbosity
-      (configPackageDB' configFlags)
+      (interpretPackageDBStack Nothing (configPackageDB' configFlags))
       repoContext
       compProgdb
       listFlags
@@ -1187,7 +1187,7 @@ infoAction infoFlags extraArgs globalFlags = do
   withRepoContext verbosity globalFlags' $ \repoContext ->
     List.info
       verbosity
-      (configPackageDB' configFlags)
+      (interpretPackageDBStack Nothing (configPackageDB' configFlags))
       repoContext
       comp
       progdb
@@ -1206,7 +1206,7 @@ fetchAction fetchFlags extraArgs globalFlags = do
   withRepoContext verbosity globalFlags' $ \repoContext ->
     fetch
       verbosity
-      (configPackageDB' configFlags)
+      (interpretPackageDBStack Nothing (configPackageDB' configFlags))
       repoContext
       comp
       platform
@@ -1228,7 +1228,7 @@ freezeAction freezeFlags _extraArgs globalFlags = do
     withRepoContext verbosity globalFlags' $ \repoContext ->
       freeze
         verbosity
-        (configPackageDB' configFlags)
+        (interpretPackageDBStack Nothing (configPackageDB' configFlags))
         repoContext
         comp
         platform
@@ -1249,7 +1249,7 @@ genBoundsAction freezeFlags _extraArgs globalFlags = do
     withRepoContext verbosity globalFlags' $ \repoContext ->
       genBounds
         verbosity
-        (configPackageDB' configFlags)
+        (interpretPackageDBStack Nothing (configPackageDB' configFlags))
         repoContext
         comp
         platform
@@ -1433,7 +1433,7 @@ initAction initFlags extraArgs globalFlags = do
       withRepoContext verbosity globalFlags' $ \repoContext ->
         initCmd
           verbosity
-          (configPackageDB' confFlags')
+          (interpretPackageDBStack Nothing (configPackageDB' confFlags'))
           repoContext
           comp
           progdb

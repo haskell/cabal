@@ -1049,11 +1049,14 @@ printPlan
                 Nothing -- omit working directory
                 (makeSymbolicPath "$builddir")
             fullConfigureFlags =
-              setupHsConfigureFlags
-                elaboratedPlan
-                (ReadyPackage elab)
-                elaboratedShared
-                commonFlags
+              runIdentity $
+                ( setupHsConfigureFlags
+                    (\_ -> return (error "unused"))
+                    elaboratedPlan
+                    (ReadyPackage elab)
+                    elaboratedShared
+                    commonFlags
+                )
             -- \| Given a default value @x@ for a flag, nub @Flag x@
             -- into @NoFlag@.  This gives us a tidier command line
             -- rendering.

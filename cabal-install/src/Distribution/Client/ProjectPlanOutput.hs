@@ -40,7 +40,6 @@ import qualified Distribution.Solver.Types.ComponentDeps as ComponentDeps
 import qualified Distribution.Compat.Binary as Binary
 import Distribution.Compat.Graph (Graph, Node)
 import qualified Distribution.Compat.Graph as Graph
-import Distribution.Compiler (CompilerFlavor (GHC, GHCJS))
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import Distribution.Package
 import qualified Distribution.PackageDescription as PD
@@ -50,15 +49,6 @@ import Distribution.Simple.BuildPaths
   , exeExtension
   )
 import Distribution.Simple.Compiler
-  ( Compiler
-  , CompilerId (..)
-  , PackageDB (..)
-  , PackageDBStack
-  , compilerFlavor
-  , compilerId
-  , compilerVersion
-  , showCompilerId
-  )
 import Distribution.Simple.GHC
   ( GhcEnvironmentFileEntry (..)
   , GhcImplInfo (supportsPkgEnvFiles)
@@ -871,7 +861,7 @@ renderGhcEnvironmentFile
   :: FilePath
   -> ElaboratedInstallPlan
   -> PostBuildProjectStatus
-  -> [GhcEnvironmentFileEntry]
+  -> [GhcEnvironmentFileEntry FilePath]
 renderGhcEnvironmentFile
   projectRootDir
   elaboratedInstallPlan
@@ -977,7 +967,7 @@ selectGhcEnvironmentFileLibraries PostBuildProjectStatus{..} =
         elabRequiresRegistration pkg
           && installedUnitId pkg `Set.member` packagesProbablyUpToDate
 
-selectGhcEnvironmentFilePackageDbs :: ElaboratedInstallPlan -> PackageDBStack
+selectGhcEnvironmentFilePackageDbs :: ElaboratedInstallPlan -> PackageDBStackCWD
 selectGhcEnvironmentFilePackageDbs elaboratedInstallPlan =
   -- If we have any inplace packages then their package db stack is the
   -- one we should use since it'll include the store + the local db but
@@ -987,7 +977,7 @@ selectGhcEnvironmentFilePackageDbs elaboratedInstallPlan =
     ([], pkgs) -> checkSamePackageDBs pkgs
     (pkgs, _) -> checkSamePackageDBs pkgs
   where
-    checkSamePackageDBs :: [ElaboratedConfiguredPackage] -> PackageDBStack
+    checkSamePackageDBs :: [ElaboratedConfiguredPackage] -> PackageDBStackCWD
     checkSamePackageDBs pkgs =
       case ordNub (map elabBuildPackageDBStack pkgs) of
         [packageDbs] -> packageDbs
@@ -1019,10 +1009,10 @@ selectGhcEnvironmentFilePackageDbs elaboratedInstallPlan =
           InstallPlan.PreExisting _ -> Nothing
       ]
 
-relativePackageDBPaths :: FilePath -> PackageDBStack -> PackageDBStack
+relativePackageDBPaths :: FilePath -> PackageDBStackCWD -> PackageDBStackCWD
 relativePackageDBPaths relroot = map (relativePackageDBPath relroot)
 
-relativePackageDBPath :: FilePath -> PackageDB -> PackageDB
+relativePackageDBPath :: FilePath -> PackageDBCWD -> PackageDBCWD
 relativePackageDBPath relroot pkgdb =
   case pkgdb of
     GlobalPackageDB -> GlobalPackageDB
