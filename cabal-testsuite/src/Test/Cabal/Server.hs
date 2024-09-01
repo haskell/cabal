@@ -39,6 +39,7 @@ import Foreign.C.Error (Errno (..), ePIPE)
 
 import qualified GHC.IO.Exception as GHC
 
+import Distribution.System
 import Distribution.Verbosity
 
 import System.Process.Internals
@@ -306,7 +307,13 @@ stopServer s = do
             -- will actually die, and then hClose will fail because
             -- the ":quit" command was buffered up but never got
             -- flushed.
-            interruptProcessGroupOf (serverProcessHandle s)
+            --
+            -- On the "happy path" which is this soft killer, interrupting the
+            -- process on Windows would be an actual abortion of the program,
+            -- with a non-zero exit-code. Not doing this on Windows ensures that
+            -- the "happy path" if chosen, would exit with exit-code zero.
+            when (buildOS /= Windows) $
+              interruptProcessGroupOf (serverProcessHandle s)
 
             log ServerMeta s $ "Waiting..."
             -- Close input BEFORE waiting, close output AFTER waiting.
