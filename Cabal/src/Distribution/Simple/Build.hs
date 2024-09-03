@@ -275,7 +275,6 @@ dumpBuildInfo
   -- ^ Flags that the user passed to build
   -> IO ()
 dumpBuildInfo verbosity distPref dumpBuildInfoFlag pkg_descr lbi flags = do
-  let mbWorkDir = flagToMaybe $ buildWorkingDir flags
   when shouldDumpBuildInfo $ do
     -- Changing this line might break consumers of the dumped build info.
     -- Announce changes on mailing lists!
@@ -289,13 +288,12 @@ dumpBuildInfo verbosity distPref dumpBuildInfoFlag pkg_descr lbi flags = do
               activeTargets
           )
 
-    wdir <- absoluteWorkingDir mbWorkDir
-
     (compilerProg, _) <- case flavorToProgram (compilerFlavor (compiler lbi)) of
       Nothing ->
         dieWithException verbosity $ UnknownCompilerFlavor (compilerFlavor (compiler lbi))
       Just program -> requireProgram verbosity program (withPrograms lbi)
 
+    wdir <- absoluteWorkingDirLBI lbi
     let (warns, json) = mkBuildInfo wdir pkg_descr lbi flags (compilerProg, compiler lbi) activeTargets
         buildInfoText = renderJson json
     unless (null warns) $
@@ -791,7 +789,7 @@ testSuiteLibV09AsLibAndExe
   -> TestSuite
   -> ComponentLocalBuildInfo
   -> LocalBuildInfo
-  -> FilePath
+  -> AbsolutePath (Dir Pkg)
   -- ^ absolute inplace dir
   -> SymbolicPath Pkg (Dir Dist)
   -> ( PackageDescription
@@ -911,7 +909,7 @@ createInternalPackageDB verbosity lbi distPref = do
   existsAlready <- doesPackageDBExist dbPath
   when existsAlready $ deletePackageDB dbPath
   createPackageDB verbosity (compiler lbi) (withPrograms lbi) False dbPath
-  return (SpecificPackageDB dbPath)
+  return (SpecificPackageDB dbRelPath)
   where
     dbRelPath = internalPackageDBPath lbi distPref
     dbPath = interpretSymbolicPathLBI lbi dbRelPath

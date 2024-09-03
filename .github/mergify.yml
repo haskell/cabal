@@ -18,6 +18,32 @@ pull_request_rules:
         - label=merge+no rebase
       - '#approved-reviews-by>=2'
 
+  # label when Mergify is ready but waiting for the above
+  - actions:
+      label:
+        add:
+          - ready and waiting
+    name: Waiting out merge delay (used by bot)
+    conditions:
+      - base=master
+      - -draft
+      - -closed
+      - or:
+        - label=merge me
+        - label=squash+merge me
+        - label=merge+no rebase
+      - '#approved-reviews-by>=2'
+      - '#changes-requested-reviews-by=0'
+      # oy
+      # lifted these from branch protection imports
+      - check-success=fourmolu
+      - check-success=hlint
+      - check-success=Meta checks
+      - check-success=Doctest Cabal
+      - check-success=Validate post job
+      - check-success=Bootstrap post job
+      - 'check-success=docs/readthedocs.org:cabal'
+
   # rebase+merge strategy
   - actions:
       queue:

@@ -724,7 +724,7 @@ rebuildInstallPlan
                     dieWithException verbosity $ PhaseRunSolverErr msg
                   Right plan -> return (plan, pkgConfigDB, tis, ar)
           where
-            corePackageDbs :: [PackageDB]
+            corePackageDbs :: PackageDBStackCWD
             corePackageDbs =
               Cabal.interpretPackageDbFlags False (projectConfigPackageDBs projectConfigShared)
 
@@ -955,7 +955,7 @@ getInstalledPackages
   -> Compiler
   -> ProgramDb
   -> Platform
-  -> PackageDBStack
+  -> PackageDBStackCWD
   -> Rebuild InstalledPackageIndex
 getInstalledPackages verbosity compiler progdb platform packagedbs = do
   monitorFiles . map monitorFileOrDirectory
@@ -964,7 +964,7 @@ getInstalledPackages verbosity compiler progdb platform packagedbs = do
           verbosity
           compiler
           Nothing -- use ambient working directory
-          packagedbs
+          (coercePackageDBStack packagedbs)
           progdb
           platform
       )
@@ -3909,22 +3909,31 @@ computeInstallDirs storeDirLayout defaultInstallDirs elaboratedShared elab
 -- TODO: [code cleanup] perhaps reorder this code
 -- based on the ElaboratedInstallPlan + ElaboratedSharedConfig,
 -- make the various Setup.hs {configure,build,copy} flags
-
 setupHsConfigureFlags
-  :: ElaboratedInstallPlan
+  :: Monad m
+  => (FilePath -> m (SymbolicPath Pkg (Dir PkgDB)))
+  -- ^ How to transform a path which is relative to cabal-install cwd to one which
+  -- is relative to the route of the package about to be compiled. The simplest way
+  -- to do this is to convert the potentially relative path into an absolute path.
+  -> ElaboratedInstallPlan
   -> ElaboratedReadyPackage
   -> ElaboratedSharedConfig
   -> Cabal.CommonSetupFlags
-  -> Cabal.ConfigFlags
+  -> m Cabal.ConfigFlags
 setupHsConfigureFlags
+  mkSymbolicPath
   plan
   (ReadyPackage elab@ElaboratedConfiguredPackage{..})
   sharedConfig@ElaboratedSharedConfig{..}
-  configCommonFlags =
-    sanityCheckElaboratedConfiguredPackage
-      sharedConfig
-      elab
-      Cabal.ConfigFlags{..}
+  configCommonFlags = do
+    -- explicitly clear, then our package db stack
+    -- TODO: [required eventually] have to do this differently for older Cabal versions
+    configPackageDBs <- (traverse . traverse . traverse) mkSymbolicPath (Nothing : map Just elabBuildPackageDBStack)
+    return $
+      sanityCheckElaboratedConfiguredPackage
+        sharedConfig
+        elab
+        Cabal.ConfigFlags{..}
     where
       Cabal.ConfigFlags
         { configVanillaLib
@@ -4017,7 +4026,7 @@ setupHsConfigureFlags
         ]
 
       configPromisedDependencies =
-        [ cidToGivenComponent cid
+        [ cidToPromisedComponent cid
         | (cid, is_internal) <- elabLibDependencies elab
         , is_internal
         ]
@@ -4029,10 +4038,6 @@ setupHsConfigureFlags
             | (ConfiguredId srcid _ _uid, _) <- elabLibDependencies elab
             ]
           ElabComponent _ -> []
-
-      -- explicitly clear, then our package db stack
-      -- TODO: [required eventually] have to do this differently for older Cabal versions
-      configPackageDBs = Nothing : map Just elabBuildPackageDBStack
 
       configTests = case elabPkgOrComp of
         ElabPackage pkg -> toFlag (TestStanzas `optStanzaSetMember` pkgStanzasEnabled pkg)
@@ -4059,6 +4064,15 @@ setupHsConfigureFlags
             Nothing -> LMainLibName
 
       configCoverageFor = determineCoverageFor elab plan
+
+      cidToPromisedComponent :: ConfiguredId -> PromisedComponent
+      cidToPromisedComponent (ConfiguredId srcid mb_cn cid) =
+        PromisedComponent srcid ln cid
+        where
+          ln = case mb_cn of
+            Just (CLibName lname) -> lname
+            Just _ -> error "non-library dependency"
+            Nothing -> LMainLibName
 
 setupHsConfigureArgs
   :: ElaboratedConfiguredPackage
@@ -4196,7 +4210,7 @@ setupHsRegisterFlags
       { registerCommonFlags = common
       , regPackageDB = mempty -- misfeature
       , regGenScript = mempty -- never use
-      , regGenPkgConf = toFlag (Just pkgConfFile)
+      , regGenPkgConf = toFlag (Just (makeSymbolicPath pkgConfFile))
       , regInPlace = case elabBuildStyle of
           BuildInplaceOnly{} -> toFlag True
           BuildAndInstall -> toFlag False

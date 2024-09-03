@@ -1,5 +1,6 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
@@ -82,9 +83,6 @@ import Distribution.PackageDescription
   , emptyPackageDescription
   )
 import Distribution.Simple.Compiler
-  ( Compiler
-  , PackageDBStack
-  )
 import qualified Distribution.Simple.Configure as Configure
   ( getInstalledPackages
   , getInstalledPackagesMonitorFiles
@@ -162,11 +160,11 @@ import qualified Hackage.Security.Util.Some as Sec
 getInstalledPackages
   :: Verbosity
   -> Compiler
-  -> PackageDBStack
+  -> PackageDBStackCWD
   -> ProgramDb
   -> IO InstalledPackageIndex
 getInstalledPackages verbosity comp packageDbs progdb =
-  Configure.getInstalledPackages verbosity' comp Nothing packageDbs progdb
+  Configure.getInstalledPackages verbosity' comp Nothing (coercePackageDBStack packageDbs) progdb
   where
     verbosity' = lessVerbose verbosity
 

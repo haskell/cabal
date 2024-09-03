@@ -38,6 +38,7 @@ normalizeOutput nenv =
     -- string search-replace.  Make sure we do this before backslash
     -- normalization!
   . resub (posixRegexEscape (normalizerGblTmpDir nenv) ++ "[a-z0-9\\.-]+") "<GBLTMPDIR>"
+  . resub (posixRegexEscape (normalizerCanonicalGblTmpDir nenv) ++ "[a-z0-9\\.-]+") "<GBLTMPDIR>"
     -- Munge away .exe suffix on filenames (Windows)
   . (if buildOS == Windows then resub "([A-Za-z0-9.-]+)\\.exe" "\\1" else id)
     -- tmp/src-[0-9]+ is tmp\src-[0-9]+ in Windows
@@ -123,12 +124,21 @@ normalizeOutput nenv =
               "\"-package-id\",\"<PACKAGEDEP>\""
 
 data NormalizerEnv = NormalizerEnv
-    { normalizerRoot          :: FilePath
-    , normalizerTmpDir        :: FilePath
+    { normalizerTmpDir        :: FilePath
     , normalizerCanonicalTmpDir :: FilePath
     -- ^ May differ from 'normalizerTmpDir', especially e.g. on macos, where
     -- `/var` is a symlink for `/private/var`.
     , normalizerGblTmpDir     :: FilePath
+    -- ^ The global temp directory: @/tmp@ on Linux, @/var/folders/...@ on macos
+    -- and @\\msys64\\tmp@ on Windows.
+    --
+    -- Note that on windows the actual path would be @C:\\msys64\\tmp@ but we
+    -- drop the @C:@ prefix because this path appears sometimes
+    -- twice in the same path in some tests, and the second time it doesn't have a @C:@, so
+    -- the logic fails to catch it.
+    , normalizerCanonicalGblTmpDir :: FilePath
+    -- ^ The canonical version of 'normalizerGblTmpDir', might differ in the same
+    -- way as above on macos
     , normalizerGhcVersion    :: Version
     , normalizerGhcPath    :: FilePath
     , normalizerKnownPackages :: [PackageId]

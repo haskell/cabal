@@ -58,6 +58,7 @@ jobs:
     outputs:
       GHC_FOR_RELEASE: ${{ format('["{0}"]', env.GHC_FOR_RELEASE) }}
     strategy:
+      fail-fast: false
       matrix:
         sys:
           - { os: windows-latest, shell: "C:/msys64/usr/bin/bash.exe -e {0}" }
@@ -78,6 +79,11 @@ jobs:
             "8.8.4",
           ]
         exclude:
+          # Throws fatal "cabal-tests.exe: fd:8: hGetLine: end of file" exception
+          # even with --io-manager=native
+          - sys:
+              { os: windows-latest, shell: "C:/msys64/usr/bin/bash.exe -e {0}" }
+            ghc: "9.0.2"
           # corrupts GHA cache or the fabric of reality itself, see https://github.com/haskell/cabal/issues/8356
           - sys:
               { os: windows-latest, shell: "C:/msys64/usr/bin/bash.exe -e {0}" }
@@ -210,7 +216,6 @@ jobs:
         run: sh validate.sh $FLAGS -s cli-tests
 
       - name: Validate cli-suite
-        if: runner.os != 'Windows'
         run: sh validate.sh $FLAGS -s cli-suite
 
       - name: Validate solver-benchmarks-tests

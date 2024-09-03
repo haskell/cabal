@@ -70,7 +70,7 @@ markup mbWorkDir hpc hpcVer verbosity tixFile hpcDirs destDir included = do
         return passedDirs
 
   -- Prior to GHC 8.0, hpc assumes all .mix paths are relative.
-  hpcDirs'' <- traverse (tryMakeRelativeToWorkingDir mbWorkDir) hpcDirs'
+  hpcDirs'' <- traverse (tryMakeRelative mbWorkDir) hpcDirs'
 
   runProgramInvocation
     verbosity

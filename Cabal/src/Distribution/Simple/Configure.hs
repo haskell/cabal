@@ -828,7 +828,7 @@ computeLocalBuildConfig cfg comp programDb = do
 
 data PackageInfo = PackageInfo
   { internalPackageSet :: Set LibraryName
-  , promisedDepsSet :: Map (PackageName, ComponentName) ComponentId
+  , promisedDepsSet :: Map (PackageName, ComponentName) PromisedComponent
   , installedPackageSet :: InstalledPackageIndex
   , requiredDepsMap :: Map (PackageName, ComponentName) InstalledPackageInfo
   }
@@ -1113,7 +1113,7 @@ finalCheckPackage
   -> LBC.PackageBuildDescr
   -> HookedBuildInfo
   -> PackageInfo
-  -> IO ([PreExistingComponent], [PromisedComponent])
+  -> IO ([PreExistingComponent], [ConfiguredPromisedComponent])
 finalCheckPackage
   g_pkg_descr
   ( LBC.PackageBuildDescr
@@ -1210,7 +1210,7 @@ configureComponents
   :: LBC.LocalBuildConfig
   -> LBC.PackageBuildDescr
   -> PackageInfo
-  -> ([PreExistingComponent], [PromisedComponent])
+  -> ([PreExistingComponent], [ConfiguredPromisedComponent])
   -> IO LocalBuildInfo
 configureComponents
   lbc@(LBC.LocalBuildConfig{withPrograms = programDb})
@@ -1373,8 +1373,8 @@ configureComponents
 
       return lbi
 
-mkPromisedDepsSet :: [GivenComponent] -> Map (PackageName, ComponentName) ComponentId
-mkPromisedDepsSet comps = Map.fromList [((pn, CLibName ln), cid) | GivenComponent pn ln cid <- comps]
+mkPromisedDepsSet :: [PromisedComponent] -> Map (PackageName, ComponentName) PromisedComponent
+mkPromisedDepsSet comps = Map.fromList [((packageName pn, CLibName ln), p) | p@(PromisedComponent pn ln _) <- comps]
 
 -- | Adds the extra program paths from the flags provided to @configure@ as
 -- well as specified locations for certain known programs and their default
@@ -1477,7 +1477,7 @@ dependencySatisfiable
   -- ^ installed set
   -> Set LibraryName
   -- ^ library components
-  -> Map (PackageName, ComponentName) ComponentId
+  -> Map (PackageName, ComponentName) PromisedComponent
   -> Map (PackageName, ComponentName) InstalledPackageInfo
   -- ^ required dependencies
   -> (Dependency -> Bool)
@@ -1639,14 +1639,14 @@ configureDependencies
   :: Verbosity
   -> UseExternalInternalDeps
   -> Set LibraryName
-  -> Map (PackageName, ComponentName) ComponentId
+  -> Map (PackageName, ComponentName) PromisedComponent
   -> InstalledPackageIndex
   -- ^ installed packages
   -> Map (PackageName, ComponentName) InstalledPackageInfo
   -- ^ required deps
   -> PackageDescription
   -> ComponentRequestedSpec
-  -> IO ([PreExistingComponent], [PromisedComponent])
+  -> IO ([PreExistingComponent], [ConfiguredPromisedComponent])
 configureDependencies
   verbosity
   use_external_internal_deps
@@ -1912,7 +1912,7 @@ data DependencyResolution
     -- we need to build packages in the interactive ghci session, no matter
     -- whether they have been built before.
     -- Building them in the configure phase is then redundant and costs time.
-    PromisedDependency PromisedComponent
+    PromisedDependency ConfiguredPromisedComponent
   | -- | An internal dependency ('PackageId' should be a library name)
     -- which we are going to have to build.  (The
     -- 'PackageId' here is a hack to get a modest amount of
@@ -1925,7 +1925,7 @@ selectDependency
   -- ^ Package id of current package
   -> Set LibraryName
   -- ^ package libraries
-  -> Map (PackageName, ComponentName) ComponentId
+  -> Map (PackageName, ComponentName) PromisedComponent
   -- ^ Set of components that are promised, i.e. are not installed already. See 'PromisedDependency' for more details.
   -> InstalledPackageIndex
   -- ^ Installed packages
@@ -1977,8 +1977,8 @@ selectDependency
       -- We have to look it up externally
       do_external_external :: LibraryName -> Either FailedDependency DependencyResolution
       do_external_external lib
-        | Just cid <- Map.lookup (dep_pkgname, CLibName lib) promisedIndex =
-            return $ PromisedDependency (PromisedComponent dep_pkgname (AnnotatedId currentCabalId (CLibName lib) cid))
+        | Just pc <- Map.lookup (dep_pkgname, CLibName lib) promisedIndex =
+            return $ PromisedDependency (ConfiguredPromisedComponent dep_pkgname (AnnotatedId (promisedComponentPackage pc) (CLibName lib) (promisedComponentId pc)))
       do_external_external lib = do
         ipi <- case Map.lookup (dep_pkgname, CLibName lib) requiredDepsMap of
           -- If we know the exact pkg to use, then use it.
@@ -1991,8 +1991,8 @@ selectDependency
 
       do_external_internal :: LibraryName -> Either FailedDependency DependencyResolution
       do_external_internal lib
-        | Just cid <- Map.lookup (dep_pkgname, CLibName lib) promisedIndex =
-            return $ PromisedDependency (PromisedComponent dep_pkgname (AnnotatedId currentCabalId (CLibName lib) cid))
+        | Just pc <- Map.lookup (dep_pkgname, CLibName lib) promisedIndex =
+            return $ PromisedDependency (ConfiguredPromisedComponent dep_pkgname (AnnotatedId (promisedComponentPackage pc) (CLibName lib) (promisedComponentId pc)))
       do_external_internal lib = do
         ipi <- case Map.lookup (dep_pkgname, CLibName lib) requiredDepsMap of
           -- If we know the exact pkg to use, then use it.
@@ -2036,8 +2036,8 @@ reportFailedDependencies verbosity failed =
 getInstalledPackages
   :: Verbosity
   -> Compiler
-  -> Maybe (SymbolicPath CWD (Dir Pkg))
-  -> PackageDBStack
+  -> Maybe (SymbolicPath CWD (Dir from))
+  -> PackageDBStackX (SymbolicPath from (Dir PkgDB))
   -- ^ The stack of package databases.
   -> ProgramDb
   -> IO InstalledPackageIndex
@@ -2051,14 +2051,14 @@ getInstalledPackages verbosity comp mbWorkDir packageDBs progdb = do
   case compilerFlavor comp of
     GHC -> GHC.getInstalledPackages verbosity comp mbWorkDir packageDBs' progdb
     GHCJS -> GHCJS.getInstalledPackages verbosity mbWorkDir packageDBs' progdb
-    UHC -> UHC.getInstalledPackages verbosity comp packageDBs' progdb
+    UHC -> UHC.getInstalledPackages verbosity comp mbWorkDir packageDBs' progdb
     HaskellSuite{} ->
       HaskellSuite.getInstalledPackages verbosity packageDBs' progdb
     flv ->
       dieWithException verbosity $ HowToFindInstalledPackages flv
   where
     packageDBExists (SpecificPackageDB path0) = do
-      let path = interpretSymbolicPath mbWorkDir $ makeSymbolicPath path0
+      let path = interpretSymbolicPath mbWorkDir path0
       exists <- doesPathExist path
       unless exists $
         warn verbosity $
@@ -2096,8 +2096,8 @@ getPackageDBContents verbosity comp mbWorkDir packageDB progdb = do
 getInstalledPackagesMonitorFiles
   :: Verbosity
   -> Compiler
-  -> Maybe (SymbolicPath CWD ('Dir Pkg))
-  -> PackageDBStack
+  -> Maybe (SymbolicPath CWD ('Dir from))
+  -> PackageDBStackS from
   -> ProgramDb
   -> Platform
   -> IO [FilePath]
@@ -2144,7 +2144,7 @@ getInstalledPackagesById verbosity lbi@LocalBuildInfo{compiler = comp, withPacka
 -- @--global@, @--user@ and @--package-db=global|user|clear|$file@.
 -- This function combines the global/user flag and interprets the package-db
 -- flag into a single package db stack.
-interpretPackageDbFlags :: Bool -> [Maybe PackageDB] -> PackageDBStack
+interpretPackageDbFlags :: Bool -> [Maybe (PackageDBX fp)] -> PackageDBStackX fp
 interpretPackageDbFlags userInstall specificDBs =
   extra initialStack specificDBs
   where

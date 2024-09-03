@@ -75,8 +75,8 @@ import Distribution.Simple.Program.GHC
 import Distribution.Simple.Setup.Common (extraCompilationArtifacts)
 import Distribution.Simple.Utils
 import Distribution.System
-import Distribution.Types.ComponentId (ComponentId)
 import Distribution.Types.ComponentLocalBuildInfo
+import Distribution.Types.GivenComponent
 import Distribution.Types.LocalBuildInfo
 import Distribution.Types.TargetInfo
 import Distribution.Types.UnitId
@@ -672,7 +672,7 @@ getHaskellObjects _implInfo lib lbi clbi pref wanted_obj_ext allow_split_objs
 -- and is a hack to avoid passing bogus `-package` arguments to GHC. The assumption being that
 -- in 99% of cases we will include the right `-package` so that the C file finds the right headers.
 mkGhcOptPackages
-  :: Map (PackageName, ComponentName) ComponentId
+  :: Map (PackageName, ComponentName) PromisedComponent
   -> ComponentLocalBuildInfo
   -> [(OpenUnitId, ModuleRenaming)]
 mkGhcOptPackages promisedPkgsMap clbi =
@@ -680,7 +680,7 @@ mkGhcOptPackages promisedPkgsMap clbi =
   ]
   where
     -- Promised deps are going to be simple UnitIds
-    promised_cids = Set.fromList (map newSimpleUnitId (Map.elems promisedPkgsMap))
+    promised_cids = Set.fromList (map (newSimpleUnitId . promisedComponentId) (Map.elems promisedPkgsMap))
 
 substTopDir :: FilePath -> IPI.InstalledPackageInfo -> IPI.InstalledPackageInfo
 substTopDir topDir ipo =
@@ -766,7 +766,7 @@ ghcPlatformAndVersionString (Platform arch os) version =
 -- Constructing GHC environment files
 
 -- | The kinds of entries we can stick in a @.ghc.environment@ file.
-data GhcEnvironmentFileEntry
+data GhcEnvironmentFileEntry fp
   = -- | @-- a comment@
     GhcEnvFileComment String
   | -- | @package-id foo-1.0-4fe301a...@
@@ -774,7 +774,7 @@ data GhcEnvironmentFileEntry
   | -- | @global-package-db@,
     --   @user-package-db@ or
     --   @package-db blah/package.conf.d/@
-    GhcEnvFilePackageDb PackageDB
+    GhcEnvFilePackageDb (PackageDBX fp)
   | -- | @clear-package-db@
     GhcEnvFileClearPackageDbStack
   deriving (Eq, Ord, Show)
@@ -785,9 +785,9 @@ data GhcEnvironmentFileEntry
 -- If you need to do anything more complicated then either use this as a basis
 -- and add more entries, or just make all the entries directly.
 simpleGhcEnvironmentFile
-  :: PackageDBStack
+  :: PackageDBStackX fp
   -> [UnitId]
-  -> [GhcEnvironmentFileEntry]
+  -> [GhcEnvironmentFileEntry fp]
 simpleGhcEnvironmentFile packageDBs pkgids =
   GhcEnvFileClearPackageDbStack
     : map GhcEnvFilePackageDb packageDBs
@@ -805,7 +805,7 @@ writeGhcEnvironmentFile
   -- ^ the GHC target platform
   -> Version
   -- ^ the GHC version
-  -> [GhcEnvironmentFileEntry]
+  -> [GhcEnvironmentFileEntry FilePath]
   -- ^ the content
   -> IO FilePath
 writeGhcEnvironmentFile directory platform ghcversion entries = do
@@ -820,12 +820,12 @@ ghcEnvironmentFileName platform ghcversion =
   ".ghc.environment." ++ ghcPlatformAndVersionString platform ghcversion
 
 -- | Render a bunch of GHC environment file entries
-renderGhcEnvironmentFile :: [GhcEnvironmentFileEntry] -> String
+renderGhcEnvironmentFile :: [GhcEnvironmentFileEntry FilePath] -> String
 renderGhcEnvironmentFile =
   unlines . map renderGhcEnvironmentFileEntry
 
 -- | Render an individual GHC environment file entry
-renderGhcEnvironmentFileEntry :: GhcEnvironmentFileEntry -> String
+renderGhcEnvironmentFileEntry :: GhcEnvironmentFileEntry FilePath -> String
 renderGhcEnvironmentFileEntry entry = case entry of
   GhcEnvFileComment comment -> format comment
     where

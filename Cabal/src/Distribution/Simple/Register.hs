@@ -203,9 +203,10 @@ registerAll pkg lbi regFlags ipis =
   where
     modeGenerateRegFile = isJust (flagToMaybe (regGenPkgConf regFlags))
     regFile =
-      fromMaybe
-        (prettyShow (packageId pkg) <.> "conf")
-        (fromFlag (regGenPkgConf regFlags))
+      interpretSymbolicPathLBI lbi $
+        fromMaybe
+          (makeSymbolicPath (prettyShow (packageId pkg) <.> "conf"))
+          (fromFlag (regGenPkgConf regFlags))
 
     modeGenerateRegScript = fromFlag (regGenScript regFlags)
 
@@ -281,7 +282,7 @@ generateRegistrationInfo verbosity pkg lib lbi clbi inplace reloc distPref packa
               clbi
           )
       else do
-        abi_hash <- abiHash verbosity pkg inplaceDir distPref lbi lib clbi
+        abi_hash <- abiHash verbosity pkg distPref lbi lib clbi
         if reloc
           then
             relocRegistrationInfo
@@ -308,13 +309,12 @@ generateRegistrationInfo verbosity pkg lib lbi clbi inplace reloc distPref packa
 abiHash
   :: Verbosity
   -> PackageDescription
-  -> FilePath
   -> SymbolicPath Pkg (Dir Dist)
   -> LocalBuildInfo
   -> Library
   -> ComponentLocalBuildInfo
   -> IO AbiHash
-abiHash verbosity pkg inplaceDir distPref lbi lib clbi =
+abiHash verbosity pkg distPref lbi lib clbi =
   case compilerFlavor comp of
     GHC -> do
       fmap mkAbiHash $ GHC.libAbiHash verbosity pkg lbi' lib clbi
@@ -327,7 +327,7 @@ abiHash verbosity pkg inplaceDir distPref lbi lib clbi =
       lbi
         { withPackageDB =
             withPackageDB lbi
-              ++ [SpecificPackageDB (inplaceDir </> getSymbolicPath (internalPackageDBPath lbi distPref))]
+              ++ [SpecificPackageDB (internalPackageDBPath lbi distPref)]
         }
 
 relocRegistrationInfo
@@ -427,8 +427,8 @@ registerPackage
   :: Verbosity
   -> Compiler
   -> ProgramDb
-  -> Maybe (SymbolicPath CWD (Dir Pkg))
-  -> PackageDBStack
+  -> Maybe (SymbolicPath CWD (Dir from))
+  -> PackageDBStackS from
   -> InstalledPackageInfo
   -> HcPkg.RegisterOptions
   -> IO ()
@@ -441,7 +441,7 @@ registerPackage verbosity comp progdb mbWorkDir packageDbs installedPkgInfo regi
     _
       | HcPkg.registerMultiInstance registerOptions ->
           dieWithException verbosity RegisMultiplePkgNotSupported
-    UHC -> UHC.registerPackage verbosity comp progdb packageDbs installedPkgInfo
+    UHC -> UHC.registerPackage verbosity mbWorkDir comp progdb packageDbs installedPkgInfo
     _ -> dieWithException verbosity RegisteringNotImplemented
 
 writeHcPkgRegisterScript
@@ -466,14 +466,15 @@ writeHcPkgRegisterScript verbosity mbWorkDir ipis packageDbs hpi = do
       -- TODO: Do something more robust here
       regScript = unlines scripts
 
-  info verbosity ("Creating package registration script: " ++ regScriptFileName)
-  writeUTF8File regScriptFileName regScript
-  setFileExecutable regScriptFileName
+  let out_file = interpretSymbolicPath mbWorkDir regScriptFileName
+  info verbosity ("Creating package registration script: " ++ out_file)
+  writeUTF8File out_file regScript
+  setFileExecutable out_file
 
-regScriptFileName :: FilePath
+regScriptFileName :: SymbolicPath Pkg File
 regScriptFileName = case buildOS of
-  Windows -> "register.bat"
-  _ -> "register.sh"
+  Windows -> makeSymbolicPath "register.bat"
+  _ -> makeSymbolicPath "register.sh"
 
 -- -----------------------------------------------------------------------------
 -- Making the InstalledPackageInfo
@@ -609,8 +610,7 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
 --
 -- This function knows about the layout of in place packages.
 inplaceInstalledPackageInfo
-  :: FilePath
-  -- ^ top of the build tree (absolute path)
+  :: AbsolutePath (Dir Pkg)
   -> SymbolicPath Pkg (Dir Dist)
   -- ^ location of the dist tree
   -> PackageDescription
@@ -629,7 +629,7 @@ inplaceInstalledPackageInfo inplaceDir distPref pkg abi_hash lib lbi clbi =
     clbi
     installDirs
   where
-    i = interpretSymbolicPath (Just $ makeSymbolicPath inplaceDir) -- See Note [Symbolic paths] in Distribution.Utils.Path
+    i = interpretSymbolicPathAbsolute inplaceDir -- See Note [Symbolic paths] in Distribution.Utils.Path
     adjustRelativeIncludeDirs = concatMap $ \d ->
       [ i $ makeRelativePathEx d -- local include-dir
       , i $ libTargetDir </> makeRelativePathEx d -- autogen include-dir
