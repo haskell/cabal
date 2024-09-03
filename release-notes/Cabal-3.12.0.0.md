@@ -83,6 +83,42 @@ Cabal and Cabal-syntax 3.12.0.0 changelog and release notes
 
 ### Other changes
 
+- Installing a library with a Custom setup no longer requires building the executable [#9777](https://github.com/haskell/cabal/issues/9777) [#9650](https://github.com/haskell/cabal/pull/9650) [#10311](https://github.com/haskell/cabal/pull/10311)
+
+  For example, if we have `pkg-a.cabal`:
+
+  ```
+  library
+     build-depends: pkg-b
+  ```
+
+  and `pkg-b.cabal`:
+
+  ```
+  library
+      exposed-modules: ...
+
+  executable pkg-b-exe
+     main-is: ...
+  ```
+
+
+  An invocation `cabal build pkg-a` will build `lib:pkg-a` and `lib:pkg-b`, but
+  not `exe:pkg-b-exe` because it is not needed for building `pkg-a`! Previously the executable would be built unnecessarily.
+
+  If the invocation were `cabal build pkg-a exe:pkg-b-exe` then all `lib:pkg-a`, `lib:pkg-b`, and `exe:pkg-b-exe` would be built.
+
+  Note: There may be a package whose Custom setup expects the executable to be
+  built together with the library always. Unfortunately, this is a breaking
+  change for them. To migrate, packages should no longer assume the executable is
+  built when only the library is requested (e.g. `cabal install --lib Agda` will
+  *not* build the `Agda` executable, while `cabal install Agda` will).
+
+  Agda is an example of a package which expected in its `Setup.hs` copy hook the
+  executable to already be built. This was fixed by inspecting the copy arguments
+  and making sure we only use the executable when it is built, since it is only
+  needed when the executable too is needed.
+
 - `cabal init` should not suggest Cabal < 2.0 [#8680](https://github.com/haskell/cabal/issues/8680) [#8700](https://github.com/haskell/cabal/pull/8700)
 
     'cabal init' no longer suggests users to set cabal-version to less than
