@@ -2059,6 +2059,7 @@ testConfigOptionComments = do
   "-- verbose" `assertHasCommentLine` "verbose"
   "-- compiler" `assertHasCommentLine` "compiler"
   "-- cabal-file" `assertHasCommentLine` "cabal-file"
+  "-- keep-temp-files" `assertHasCommentLine` "keep-temp-files"
   "-- with-compiler" `assertHasCommentLine` "with-compiler"
   "-- with-hc-pkg" `assertHasCommentLine` "with-hc-pkg"
   "-- program-prefix" `assertHasCommentLine` "program-prefix"
@@ -2152,7 +2153,6 @@ testConfigOptionComments = do
   "-- password-command" `assertHasCommentLine` "password-command"
   "-- builddir" `assertHasCommentLine` "builddir"
 
-  "  -- keep-temp-files" `assertHasCommentLine` "keep-temp-files"
   "  -- hoogle" `assertHasCommentLine` "hoogle"
   "  -- html" `assertHasCommentLine` "html"
   "  -- html-location" `assertHasCommentLine` "html-location"

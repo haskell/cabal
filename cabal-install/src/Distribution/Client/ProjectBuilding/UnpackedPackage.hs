@@ -173,7 +173,7 @@ buildAndRegisterUnpackedPackage
   verbosity
   distDirLayout@DistDirLayout{distTempDirectory}
   maybe_semaphore
-  buildTimeSettings@BuildTimeSettings{buildSettingNumJobs}
+  buildTimeSettings@BuildTimeSettings{buildSettingNumJobs, buildSettingKeepTempFiles}
   registerLock
   cacheLock
   pkgshared@ElaboratedSharedConfig
@@ -276,7 +276,7 @@ buildAndRegisterUnpackedPackage
         | otherwise = return ()
 
       mbWorkDir = useWorkingDir scriptOptions
-      commonFlags = setupHsCommonFlags verbosity mbWorkDir builddir
+      commonFlags = setupHsCommonFlags verbosity mbWorkDir builddir buildSettingKeepTempFiles
 
       configureCommand = Cabal.configureCommand defaultProgramDb
       configureFlags v =

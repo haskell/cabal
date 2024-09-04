@@ -861,7 +861,7 @@ convertLegacyBuildOnlyFlags
   configFlags
   installFlags
   clientInstallFlags
-  haddockFlags
+  _haddockFlags
   _testFlags
   _benchmarkFlags =
     ProjectConfigBuildOnly{..}
@@ -880,6 +880,7 @@ convertLegacyBuildOnlyFlags
 
       CommonSetupFlags
         { setupVerbosity = projectConfigVerbosity
+        , setupKeepTempFiles = projectConfigKeepTempFiles
         } = commonFlags
 
       InstallFlags
@@ -898,10 +899,6 @@ convertLegacyBuildOnlyFlags
         , installKeepGoing = projectConfigKeepGoing
         , installOfflineMode = projectConfigOfflineMode
         } = installFlags
-
-      HaddockFlags
-        { haddockKeepTempFiles = projectConfigKeepTempFiles -- TODO: this ought to live elsewhere
-        } = haddockFlags
 
 convertToLegacyProjectConfig :: ProjectConfig -> LegacyProjectConfig
 convertToLegacyProjectConfig
@@ -975,6 +972,7 @@ convertToLegacySharedConfig
         mempty
           { setupVerbosity = projectConfigVerbosity
           , setupDistPref = fmap makeSymbolicPath $ projectConfigDistDir
+          , setupKeepTempFiles = projectConfigKeepTempFiles
           }
 
       configFlags =
@@ -1047,8 +1045,7 @@ convertToLegacySharedConfig
 convertToLegacyAllPackageConfig :: ProjectConfig -> LegacyPackageConfig
 convertToLegacyAllPackageConfig
   ProjectConfig
-    { projectConfigBuildOnly = ProjectConfigBuildOnly{..}
-    , projectConfigShared = ProjectConfigShared{..}
+    { projectConfigShared = ProjectConfigShared{..}
     } =
     LegacyPackageConfig
       { legacyConfigureFlags = configFlags
@@ -1124,8 +1121,6 @@ convertToLegacyAllPackageConfig
 
       haddockFlags =
         mempty
-          { haddockKeepTempFiles = projectConfigKeepTempFiles
-          }
 
 convertToLegacyPerPackageConfig :: PackageConfig -> LegacyPackageConfig
 convertToLegacyPerPackageConfig PackageConfig{..} =
@@ -1225,7 +1220,6 @@ convertToLegacyPerPackageConfig PackageConfig{..} =
         , haddockQuickJump = packageConfigHaddockQuickJump
         , haddockHscolourCss = packageConfigHaddockHscolourCss
         , haddockContents = packageConfigHaddockContents
-        , haddockKeepTempFiles = mempty
         , haddockIndex = packageConfigHaddockIndex
         , haddockBaseUrl = packageConfigHaddockBaseUrl
         , haddockResourcesDir = packageConfigHaddockResourcesDir
@@ -1631,7 +1625,6 @@ legacyPackageConfigFieldDescrs =
             , "hscolour-css"
             , "contents-location"
             , "index-location"
-            , "keep-temp-files"
             , "base-url"
             , "resources-dir"
             , "output-dir"

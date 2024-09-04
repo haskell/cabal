@@ -946,7 +946,7 @@ printPlan
 printPlan
   verbosity
   ProjectBaseContext
-    { buildSettings = BuildTimeSettings{buildSettingDryRun}
+    { buildSettings = BuildTimeSettings{buildSettingDryRun, buildSettingKeepTempFiles}
     , projectConfig =
       ProjectConfig
         { projectConfigAllPackages =
@@ -1048,6 +1048,7 @@ printPlan
                 verbosity
                 Nothing -- omit working directory
                 (makeSymbolicPath "$builddir")
+                buildSettingKeepTempFiles
             fullConfigureFlags =
               runIdentity $
                 ( setupHsConfigureFlags
