@@ -67,12 +67,9 @@ import Distribution.Simple.Program.GHC
 import qualified Distribution.Simple.Program.HcPkg as HcPkg
 import Distribution.Simple.Program.ResponseFile
 import Distribution.Simple.Register
-import Distribution.Simple.Setup.Common
-import Distribution.Simple.Setup.Haddock
-import Distribution.Simple.Setup.Hscolour
+import Distribution.Simple.Setup
 import Distribution.Simple.SetupHooks.Internal
   ( BuildHooks (..)
-  , BuildingWhat (..)
   , noBuildHooks
   )
 import qualified Distribution.Simple.SetupHooks.Internal as SetupHooks
@@ -265,6 +262,7 @@ haddock_setupHooks
         mbWorkDir = flagToMaybe $ haddockWorkingDir flags
         comp = compiler lbi
         platform = hostPlatform lbi
+        config = configFlags lbi
 
         quickJmpFlag = haddockQuickJump flags'
         flags = case haddockTarget of
@@ -282,9 +280,7 @@ haddock_setupHooks
         flag f = fromFlag $ f flags
 
         tmpFileOpts =
-          defaultTempFileOptions
-            { optKeepTempFiles = flag haddockKeepTempFiles
-            }
+          commonSetupTempFileOptions $ configCommonFlags config
         htmlTemplate =
           fmap toPathTemplate . flagToMaybe . haddockHtmlLocation $
             flags
