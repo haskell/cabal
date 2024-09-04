@@ -469,6 +469,7 @@ instance Semigroup SavedConfig where
           , setupCabalFilePath = combine setupCabalFilePath
           , setupVerbosity = combine setupVerbosity
           , setupTargets = lastNonEmpty setupTargets
+          , setupKeepTempFiles = combine setupKeepTempFiles
           }
         where
           lastNonEmpty = lastNonEmpty' which
@@ -629,7 +630,6 @@ instance Semigroup SavedConfig where
           , haddockQuickJump = combine haddockQuickJump
           , haddockHscolourCss = combine haddockHscolourCss
           , haddockContents = combine haddockContents
-          , haddockKeepTempFiles = combine haddockKeepTempFiles
           , haddockIndex = combine haddockIndex
           , haddockBaseUrl = combine haddockBaseUrl
           , haddockResourcesDir = combine haddockResourcesDir

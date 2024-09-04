@@ -391,7 +391,6 @@ haddockProjectAction flags _extraArgs globalFlags = do
             if localStyle
               then Flag (toPathTemplate "../doc-index.html")
               else NoFlag
-        , haddockKeepTempFiles = haddockProjectKeepTempFiles flags
         , haddockResourcesDir = haddockProjectResourcesDir flags
         , haddockUseUnicode = haddockProjectUseUnicode flags
         -- NOTE: we don't pass `haddockOutputDir`. If we do, we'll need to
