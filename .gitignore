@@ -76,6 +76,7 @@ testdb/intree/store/**/share/AlexTemplate.hs
 testdb/intree/store/**/share/AlexWrappers.hs
 testdb/intree/store/**/share/doc/LICENSE
 testdb/intree/store/*/incoming/alex-*.lock
+testdb/intree/store/*/incoming/lx-*.lock
 testdb/intree/store/*/package.db/package.cache
 testdb/intree/store/*/package.db/package.cache.lock
 
