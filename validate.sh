@@ -12,7 +12,7 @@
 #   See https://github.com/haskell/cabal/issues/8049
 HC=ghc
 CABAL=cabal
-JOBS=4
+JOBS=""
 LIBTESTS=true
 CLITESTS=true
 CABALSUITETESTS=true
@@ -292,6 +292,15 @@ fi
 
 # Adjust runtime configuration
 #######################################################################
+
+if [ -z "$JOBS" ]; then
+    if command -v nproc >/dev/null; then
+        JOBS=$(nproc)
+    else
+        echo "Warning: \`nproc\` not found, setting \`--jobs\` to default of 4."
+        JOBS=4
+    fi
+fi
 
 TESTSUITEJOBS="-j$JOBS"
 JOBS="-j$JOBS"
