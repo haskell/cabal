@@ -1,6 +1,6 @@
-#!/usr/bin/env bash
-# shellcheck disable=SC2086
+#!/usr/bin/env sh
 
+<<<<<<< HEAD
 # default config
 #######################################################################
 
@@ -532,3 +532,6 @@ for step in $STEPS; do
 done
 
 #######################################################################
+=======
+cabal run cabal-validate:exe:cabal-validate -- "$@"
+>>>>>>> 582a5c747 (Convert `validate.sh` to `cabal-validate`)
