@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 # shellcheck disable=SC2086
 
 # default config
