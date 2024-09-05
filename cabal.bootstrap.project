@@ -14,4 +14,4 @@ benchmarks: False
 constraints:
   hashable -arch-native
 
-index-state: hackage.haskell.org 2024-07-15T21:05:18Z
+index-state: hackage.haskell.org 2024-09-05T17:19:45Z
