@@ -198,8 +198,8 @@ the following file named ``myscript``:
     main :: IO ()
     main = haskellSay "Hello, Haskell!"
 
-The necessary sections of a ``.cabal`` file are placed
-directly into the script as a comment.
+The necessary sections of a package description that would otherwise be in a
+``.cabal`` file are placed directly into the script as a comment.
 
 Use the familiar ``cabal run`` command to execute this script:
 
@@ -221,6 +221,36 @@ can be run directly after setting the execute permission (+x):
            \ ... /
 
 See more in the documentation for :ref:`cabal run`.
+
+.. warning::
+
+    Single-file scripts cannot also be part of a package, as an executable or
+    listed as a module.
+
+    .. code-block:: console
+
+        $ cat script-exclusivity.cabal
+        cabal-version: 3.0
+        name: script-exclusitivity
+        version: 1
+
+        executable my-script-exe
+            build-depends:
+                base,
+                haskell-say
+            main-is: myscript.hs
+
+        $ ./myscript.hs
+        Error: [Cabal-7070]
+        The run command can only run an executable as a whole, not files or modules
+        within them, but the target 'myscript.hs' refers to the file myscript.hs in the
+        executable my-script-exe.
+
+        $ cabal run myscript.hs
+        Error: [Cabal-7070]
+        The run command can only run an executable as a whole, not files or modules
+        within them, but the target 'myscript.hs' refers to the file myscript.hs in the
+        executable my-script-exe.
 
 What Next?
 ----------
