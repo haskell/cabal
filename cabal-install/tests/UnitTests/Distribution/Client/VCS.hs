@@ -847,7 +847,7 @@ vcsTestDriverGit
   -> VCSTestDriver
 vcsTestDriverGit verbosity vcs submoduleDir repoRoot =
   VCSTestDriver
-    { vcsVCS = vcs
+    { vcsVCS = vcs'
     , vcsRepoRoot = repoRoot
     , vcsIgnoreFiles = Set.empty
     , vcsInit =
@@ -872,7 +872,7 @@ vcsTestDriverGit verbosity vcs submoduleDir repoRoot =
     , vcsTagState = \_ tagname ->
         git ["tag", "--force", "--no-sign", tagname]
     , vcsSubmoduleDriver =
-        pure . vcsTestDriverGit verbosity vcs submoduleDir . (submoduleDir </>)
+        pure . vcsTestDriverGit verbosity vcs' submoduleDir . (submoduleDir </>)
     , vcsAddSubmodule = \_ source dest -> do
         destExists <-
           (||)
@@ -897,8 +897,26 @@ vcsTestDriverGit verbosity vcs submoduleDir repoRoot =
         updateSubmodulesAndCleanup
     }
   where
+    -- Git 2.38.1 and newer fails to clone from local paths with `fatal: transport 'file'
+    -- not allowed` unless `protocol.file.allow=always` is set.
+    --
+    -- This is not safe in general, but it's fine in the test suite.
+    --
+    -- See: https://github.blog/open-source/git/git-security-vulnerabilities-announced/#fn-67904-1
+    -- See: https://git-scm.com/docs/git-config#Documentation/git-config.txt-protocolallow
+    vcs' =
+      vcs
+        { vcsProgram =
+            (vcsProgram vcs)
+              { programDefaultArgs =
+                  programDefaultArgs (vcsProgram vcs)
+                    ++ [ "-c"
+                       , "protocol.file.allow=always"
+                       ]
+              }
+        }
     gitInvocation args =
-      (programInvocation (vcsProgram vcs) args)
+      (programInvocation (vcsProgram vcs') args)
         { progInvokeCwd = Just repoRoot
         }
     git = runProgramInvocation verbosity . gitInvocation
