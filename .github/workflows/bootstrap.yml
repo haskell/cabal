@@ -43,7 +43,7 @@ jobs:
           rm -rf ~/.config/cabal
           rm -rf ~/.cache/cabal
 
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         name: Cache the downloads
         id: bootstrap-cache
         with:
