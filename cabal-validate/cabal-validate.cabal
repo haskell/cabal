@@ -7,26 +7,34 @@ author:        Cabal Development Team <cabal-devel@haskell.org>
 synopsis:      An internal tool for building and testing the Cabal package manager
 build-type:    Simple
 
-common warnings
+common common
     ghc-options: -Wall
-
-executable cabal-validate
-    import: warnings
-    default-language: Haskell2010
-    default-extensions:
-        OverloadedStrings
-        , TypeApplications
-    ghc-options: -O -threaded -rtsopts -with-rtsopts=-N
 
     if impl(ghc <9.6)
         -- Pattern exhaustiveness checker is not as good, misses a case.
         ghc-options: -Wno-incomplete-patterns
 
+    default-language: Haskell2010
+    default-extensions:
+        OverloadedStrings
+        , TypeApplications
+
+executable cabal-validate
+    import: common
+    ghc-options: -O -threaded -rtsopts -with-rtsopts=-N
+
     main-is: Main.hs
-    hs-source-dirs: main
+    hs-source-dirs: src
+
+    other-modules:
+        , Cli
+        , ClockUtil
+        , OutputUtil
+        , ProcessUtil
+        , Step
 
     build-depends:
-        base >=4 && <5
+        , base >=4 && <5
         , ansi-terminal >=1 && <2
         , bytestring >=0.11 && <1
         , containers >=0.6 && <1
