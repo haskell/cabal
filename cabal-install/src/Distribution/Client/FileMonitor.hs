@@ -35,7 +35,6 @@ import Prelude ()
 
 import Data.Binary.Get (runGetOrFail)
 import qualified Data.ByteString.Lazy as BS
-import qualified Data.Hashable as Hashable
 import qualified Data.Map.Strict as Map
 
 import Control.Exception
@@ -51,6 +50,7 @@ import qualified Control.Monad.State as State
 import Control.Monad.Trans (MonadIO, liftIO)
 
 import Distribution.Client.Glob
+import Distribution.Client.HashValue
 import Distribution.Client.Utils (MergeResult (..), mergeBy)
 import Distribution.Compat.Time
 import Distribution.Simple.FileMonitor.Types
@@ -83,8 +83,6 @@ data MonitorStateFileSet
 instance Binary MonitorStateFileSet
 instance Structured MonitorStateFileSet
 
-type Hash = Int
-
 -- | The state necessary to determine whether a monitored file has changed.
 --
 -- This covers all the cases of 'MonitorFilePath' except for globs which is
@@ -107,7 +105,7 @@ data MonitorStateFileStatus
   | -- | cached file mtime
     MonitorStateFileModTime !ModTime
   | -- | cached mtime and content hash
-    MonitorStateFileHashed !ModTime !Hash
+    MonitorStateFileHashed !ModTime !HashValue
   | MonitorStateDirExists
   | -- | cached dir mtime
     MonitorStateDirModTime !ModTime
@@ -961,21 +959,21 @@ buildMonitorStateGlobRel
 -- updating a file monitor the set of files is the same or largely the same so
 -- we can grab the previously known content hashes with their corresponding
 -- mtimes.
-type FileHashCache = Map FilePath (ModTime, Hash)
+type FileHashCache = Map FilePath (ModTime, HashValue)
 
 -- | We declare it a cache hit if the mtime of a file is the same as before.
-lookupFileHashCache :: FileHashCache -> FilePath -> ModTime -> Maybe Hash
+lookupFileHashCache :: FileHashCache -> FilePath -> ModTime -> Maybe HashValue
 lookupFileHashCache hashcache file mtime = do
   (mtime', hash) <- Map.lookup file hashcache
   guard (mtime' == mtime)
   return hash
 
 -- | Either get it from the cache or go read the file
-getFileHash :: FileHashCache -> FilePath -> FilePath -> ModTime -> IO Hash
+getFileHash :: FileHashCache -> FilePath -> FilePath -> ModTime -> IO HashValue
 getFileHash hashcache relfile absfile mtime =
   case lookupFileHashCache hashcache relfile mtime of
     Just hash -> return hash
-    Nothing -> readFileHash absfile
+    Nothing -> readFileHashValue absfile
 
 -- | Build a 'FileHashCache' from the previous 'MonitorStateFileSet'. While
 -- in principle we could preserve the structure of the previous state, given
@@ -998,7 +996,7 @@ readCacheFileHashes monitor =
       collectAllFileHashes singlePaths
         `Map.union` collectAllGlobHashes globPaths
 
-    collectAllFileHashes :: [MonitorStateFile] -> Map FilePath (ModTime, Hash)
+    collectAllFileHashes :: [MonitorStateFile] -> Map FilePath (ModTime, HashValue)
     collectAllFileHashes singlePaths =
       Map.fromList
         [ (fpath, (mtime, hash))
@@ -1010,7 +1008,7 @@ readCacheFileHashes monitor =
             singlePaths
         ]
 
-    collectAllGlobHashes :: [MonitorStateGlob] -> Map FilePath (ModTime, Hash)
+    collectAllGlobHashes :: [MonitorStateGlob] -> Map FilePath (ModTime, HashValue)
     collectAllGlobHashes globPaths =
       Map.fromList
         [ (fpath, (mtime, hash))
@@ -1018,7 +1016,7 @@ readCacheFileHashes monitor =
         , (fpath, (mtime, hash)) <- collectGlobHashes "" gstate
         ]
 
-    collectGlobHashes :: FilePath -> MonitorStateGlobRel -> [(FilePath, (ModTime, Hash))]
+    collectGlobHashes :: FilePath -> MonitorStateGlobRel -> [(FilePath, (ModTime, HashValue))]
     collectGlobHashes dir (MonitorStateGlobDirs _ _ _ entries) =
       [ res
       | (subdir, fstate) <- entries
@@ -1043,13 +1041,13 @@ probeFileModificationTime root file mtime = do
   unless unchanged (somethingChanged file)
 
 -- | Within the @root@ directory, check if @file@ has its 'ModTime' and
--- 'Hash' is the same as @mtime@ and @hash@, short-circuiting if it is
+-- 'HashValue' is the same as @mtime@ and @hash@, short-circuiting if it is
 -- different.
 probeFileModificationTimeAndHash
   :: FilePath
   -> FilePath
   -> ModTime
-  -> Hash
+  -> HashValue
   -> ChangedM ()
 probeFileModificationTimeAndHash root file mtime hash = do
   unchanged <-
@@ -1092,12 +1090,12 @@ checkModificationTimeUnchanged root file mtime =
     return (mtime == mtime')
 
 -- | Returns @True@ if, inside the @root@ directory, @file@ has the
--- same 'ModTime' and 'Hash' as @mtime and @chash@.
+-- same 'ModTime' and 'HashValue' as @mtime and @chash@.
 checkFileModificationTimeAndHashUnchanged
   :: FilePath
   -> FilePath
   -> ModTime
-  -> Hash
+  -> HashValue
   -> IO Bool
 checkFileModificationTimeAndHashUnchanged root file mtime chash =
   handleIOException False $ do
@@ -1105,14 +1103,8 @@ checkFileModificationTimeAndHashUnchanged root file mtime chash =
     if mtime == mtime'
       then return True
       else do
-        chash' <- readFileHash (root </> file)
+        chash' <- readFileHashValue (root </> file)
         return (chash == chash')
-
--- | Read a non-cryptographic hash of a @file@.
-readFileHash :: FilePath -> IO Hash
-readFileHash file =
-  withBinaryFile file ReadMode $ \hnd ->
-    evaluate . Hashable.hash =<< BS.hGetContents hnd
 
 -- | Given a directory @dir@, return @Nothing@ if its 'ModTime'
 -- is the same as @mtime@, and the new 'ModTime' if it is not.
