@@ -1,3 +1,4 @@
+-- | Utilities for printing terminal output.
 module OutputUtil
   ( printHeader
   , withTiming
@@ -19,10 +20,17 @@ import Cli (Opts (..))
 import ClockUtil (diffAbsoluteTime, formatDiffTime, getAbsoluteTime)
 import System.Exit (exitFailure)
 
+-- | Get the width of the current terminal, or 80 if no width can be determined.
 getTerminalWidth :: IO Int
 getTerminalWidth = maybe 80 Terminal.width <$> Terminal.size @Int
 
-printHeader :: String -> IO ()
+-- | Print a header for a given step.
+--
+-- This is colorful and hard to miss in the output.
+printHeader
+  :: String
+  -- ^ Title to print.
+  -> IO ()
 printHeader title = do
   columns <- getTerminalWidth
   let left = 3
@@ -37,7 +45,17 @@ printHeader title = do
           <> setSGRCode [Reset]
   putStrLn header
 
-withTiming :: Opts -> String -> IO a -> IO a
+-- | Run an `IO` action and print duration information after it finishes.
+withTiming
+  :: Opts
+  -- ^ @cabal-validate@ options.
+  -> String
+  -- ^ Name for describing the action.
+  --
+  -- Used in a sentence like "@title@ finished after 16.34s".
+  -> IO a
+  -- ^ Action to time.
+  -> IO a
 withTiming opts title action = do
   startTime' <- getAbsoluteTime
 

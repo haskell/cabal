@@ -1,3 +1,5 @@
+-- | The steps that can be run by @cabal-validate@.
+
 module Step
   ( Step (..)
   , displayStep
@@ -8,6 +10,7 @@ module Step
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
 
+-- | A step to be run by @cabal-validate@.
 data Step
   = PrintConfig
   | PrintToolVersions
@@ -23,6 +26,12 @@ data Step
   | TimeSummary
   deriving (Eq, Enum, Bounded, Show)
 
+-- | Get the display identifier for a given `Step`.
+--
+-- This is used to parse the @--step@ command-line argument.
+--
+-- Note that these names are just kebab-case variants of the `Step` constructor
+-- names; they do not attempt to describe the steps.
 displayStep :: Step -> String
 displayStep step =
   case step of
@@ -39,6 +48,9 @@ displayStep step =
     SolverBenchmarksRun -> "solver-benchmarks-run"
     TimeSummary -> "time-summary"
 
+-- | A map from step names to `Steps`.
+--
+-- This is an inverse of `displayStep`.
 nameToStep :: Map String Step
 nameToStep =
   Map.fromList
@@ -46,5 +58,6 @@ nameToStep =
     | step <- [minBound .. maxBound]
     ]
 
+-- | Parse a string as a `Step`.
 parseStep :: String -> Maybe Step
 parseStep step = Map.lookup step nameToStep
