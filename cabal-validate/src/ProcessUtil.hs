@@ -1,3 +1,4 @@
+-- | Utilities for running processes and timing them.
 module ProcessUtil
   ( timed
   , timedWithCwd
@@ -26,11 +27,33 @@ import System.Process.Typed (ExitCodeException (..), proc, readProcess, runProce
 import Cli (Opts (..))
 import ClockUtil (diffAbsoluteTime, formatDiffTime, getAbsoluteTime)
 
-timedWithCwd :: Opts -> FilePath -> String -> [String] -> IO ()
+-- | Like `timed`, but runs the command in a given directory.
+timedWithCwd
+  :: Opts
+  -- ^ @cabal-validate@ options.
+  -> FilePath
+  -- ^ Path to run the command in.
+  -> FilePath
+  -- ^ The command to run.
+  -> [String]
+  -- ^ Arguments to pass to the command.
+  -> IO ()
 timedWithCwd opts cdPath command args =
   withCurrentDirectory cdPath (timed opts command args)
 
-timed :: Opts -> String -> [String] -> IO ()
+-- | Run a command, displaying timing information after it finishes.
+--
+-- This prints out the command to be executed before it's run, handles hiding
+-- or showing output (according to the value of `verbose`), and throws an
+-- `ExitCodeException` if the command fails.
+timed
+  :: Opts
+  -- ^ @cabal-validate@ options.
+  -> FilePath
+  -- ^ The command to run.
+  -> [String]
+  -- ^ Arguments to pass to the command.
+  -> IO ()
 timed opts command args = do
   let prettyCommand = displayCommand command args
       process = proc command args
@@ -108,9 +131,13 @@ timed opts command args = do
           , eceStderr = rawStderr
           }
 
+-- | Decode `ByteString` output from a command and strip whitespace at the
+-- start and end.
 decodeStrip :: ByteString -> Text
 decodeStrip = T.strip . T.toStrict . T.decodeUtf8
 
+-- | Escape a shell command to display it to a user.
+--
 -- TODO: Shell escaping
 displayCommand :: String -> [String] -> String
 displayCommand command args = command <> " " <> unwords args
