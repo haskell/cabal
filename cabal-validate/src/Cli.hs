@@ -1,3 +1,5 @@
+-- | Parse CLI arguments and resolve defaults from the environment.
+
 module Cli
   ( Opts (..)
   , parseOpts
@@ -53,36 +55,74 @@ import Step (Step (..), displayStep, parseStep)
 -- | Command-line options, resolved with context from the environment.
 data Opts = Opts
   { verbose :: Bool
+    -- ^ Whether to display build and test output.
   , jobs :: Int
+    -- ^ How many jobs to use when running tests.
+    --
+    -- Defaults to the number of physical cores.
   , cwd :: FilePath
+    -- ^ Current working directory when @cabal-validate@ was started.
   , startTime :: AbsoluteTime
+    -- ^ System time when @cabal-validate@ was started.
+    --
+    -- Used to determine the total test duration so far.
   , compiler :: Compiler
+    -- ^ Compiler to build Cabal with.
+    --
+    -- Defaults to @ghc@.
   , extraCompilers :: [FilePath]
+    -- ^ Extra compilers to run @cabal-testsuite@ with.
   , cabal :: FilePath
+    -- ^ @cabal-install@ to build Cabal with.
+    --
+    -- Defaults to @cabal@.
   , hackageTests :: HackageTests
+    -- ^ Whether to run tests on Hackage data, and if so how much.
+    --
+    -- Defaults to `NoHackageTests`.
   , archPath :: FilePath
+    -- ^ The path for this system's architecture within the build directory.
+    --
+    -- Like @x86_64-windows@ or @aarch64-osx@ or @arm-linux@.
   , projectFile :: FilePath
+    -- ^ Path to the @cabal.project@ file to use for running tests.
   , tastyArgs :: [String]
+    -- ^ Extra arguments to pass to @tasty@ test suites.
+    --
+    -- This defaults to @--hide-successes@ (which cannot yet be changed) and
+    -- includes the @--pattern@ argument if one is given.
   , targets :: [String]
+    -- ^ Targets to build.
   , steps :: [Step]
+    -- ^ Steps to run.
   }
   deriving (Show)
 
+-- | Whether to run tests on Hackage data, and if so how much.
 data HackageTests
   = CompleteHackageTests
+  -- ^ Run tests on complete Hackage data.
   | PartialHackageTests
+   -- ^ Run tests on partial Hackage data.
   | NoHackageTests
+    -- ^ Do not run tests on Hackage data.
   deriving (Show)
 
+-- | A compiler executable and version number.
 data Compiler = Compiler
   { compilerExecutable :: FilePath
+  -- ^ The compiler's executable.
   , compilerVersion :: Version
+  -- ^ The compiler's version number.
   }
   deriving (Show)
 
+-- | An `Exception` thrown when parsing @--numeric-version@ output from a compiler.
 data VersionParseException = VersionParseException
   { versionInput :: String
+    -- ^ The string we attempted to parse.
   , versionExecutable :: FilePath
+    -- ^ The compiler which produced the string.
   }
   deriving (Typeable, Show)
 
@@ -93,6 +133,8 @@ instance Exception VersionParseException where
       <> " --numeric-version` output: "
       <> show (versionInput exception)
 
+-- | Runs @ghc --numeric-version@ for the given executable to construct a
+-- `Compiler`.
 makeCompiler :: FilePath -> IO Compiler
 makeCompiler executable = do
   stdout <-
@@ -121,6 +163,9 @@ makeCompiler executable = do
       , compilerVersion = parsedVersion
       }
 
+-- | Resolve options and default values from the environment.
+--
+-- This makes the `Opts` type much nicer to deal with than `RawOpts`.
 resolveOpts :: RawOpts -> IO Opts
 resolveOpts opts = do
   let optionals :: Bool -> [a] -> [a]
@@ -222,7 +267,7 @@ resolveOpts opts = do
       , steps = steps'
       }
 
--- | Command-line options.
+-- | Raw command-line options.
 data RawOpts = RawOpts
   { rawVerbose :: Bool
   , rawJobs :: Maybe Int
@@ -243,6 +288,9 @@ data RawOpts = RawOpts
   }
   deriving (Show)
 
+-- | `Parser` for `RawOpts`.
+--
+-- See: `fullOptsParser`
 optsParser :: Parser RawOpts
 optsParser =
   RawOpts
@@ -364,11 +412,13 @@ boolOption' defaultValue trueName falseName modifiers =
   flag' True (modifiers <> long trueName)
     <|> flag defaultValue False (modifiers <> hidden <> long falseName)
 
--- | Parse a boolean switch with a `--no-*` flag for setting the option to false.
+-- | Parse a boolean switch with a @--no-*@ flag for setting the option to false.
 boolOption :: Bool -> String -> Mod FlagFields Bool -> Parser Bool
 boolOption defaultValue trueName =
   boolOption' defaultValue trueName ("no-" <> trueName)
 
+-- | Full `Parser` for `RawOpts`, which includes a @--help@ argument and
+-- information about the program.
 fullOptsParser :: ParserInfo RawOpts
 fullOptsParser =
   info
@@ -377,5 +427,7 @@ fullOptsParser =
         <> progDesc "Test suite runner for `Cabal` and `cabal-install` developers"
     )
 
+-- | Parse command-line arguments and resolve defaults from the environment,
+-- producing `Opts`.
 parseOpts :: IO Opts
 parseOpts = execParser fullOptsParser >>= resolveOpts

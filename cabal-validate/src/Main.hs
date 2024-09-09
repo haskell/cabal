@@ -1,4 +1,11 @@
-module Main where
+-- | Entry-point to the @cabal-validate@ script.
+--
+-- This module encodes all the commands that are run for each step in
+-- `runStep`.
+module Main
+  ( main
+  , runStep
+  ) where
 
 import Control.Monad (forM_)
 import qualified Data.Text as T
@@ -23,67 +30,14 @@ import OutputUtil (printHeader, withTiming)
 import ProcessUtil (timed, timedWithCwd)
 import Step (Step (..), displayStep)
 
+-- | Entry-point for @cabal-validate@.
 main :: IO ()
 main = do
   opts <- parseOpts
   forM_ (steps opts) $ \step -> do
     runStep opts step
 
-baseHc :: Opts -> FilePath
-baseHc opts = "ghc-" <> showVersion (compilerVersion $ compiler opts)
-
-baseBuildDir :: Opts -> FilePath
-baseBuildDir opts = "dist-newstyle-validate-" <> baseHc opts
-
-buildDir :: Opts -> FilePath
-buildDir opts =
-  cwd opts
-    </> baseBuildDir opts
-    </> "build"
-    </> archPath opts
-    </> baseHc opts
-
-jobsArgs :: Opts -> [String]
-jobsArgs opts = ["--num-threads", show $ jobs opts]
-
-cabalArgs :: Opts -> [String]
-cabalArgs opts =
-  [ "--jobs=" <> show (jobs opts)
-  , "--with-compiler=" <> compilerExecutable (compiler opts)
-  , "--builddir=" <> baseBuildDir opts
-  , "--project-file=" <> projectFile opts
-  ]
-
-cabalTestsuiteBuildDir :: Opts -> FilePath
-cabalTestsuiteBuildDir opts =
-  buildDir opts
-    </> "cabal-testsuite-3"
-
-cabalNewBuildArgs :: Opts -> [String]
-cabalNewBuildArgs opts = "build" : cabalArgs opts
-
-cabalListBinArgs :: Opts -> [String]
-cabalListBinArgs opts = "list-bin" : cabalArgs opts
-
-cabalListBin :: Opts -> String -> IO FilePath
-cabalListBin opts target = do
-  let args = cabalListBinArgs opts ++ [target]
-  stdout <-
-    readProcessStdout_ $
-      proc (cabal opts) args
-
-  pure (T.unpack $ T.strip $ T.toStrict $ T.decodeUtf8 stdout)
-
-rtsArgs :: Opts -> [String]
-rtsArgs opts =
-  case archPath opts of
-    "x86_64-windows" ->
-      -- See: https://github.com/haskell/cabal/issues/9571
-      if compilerVersion (compiler opts) > makeVersion [9, 0, 2]
-        then ["+RTS", "--io-manager=native", "-RTS"]
-        else []
-    _ -> []
-
+-- | Run a given `Step` with the given `Opts`.
 runStep :: Opts -> Step -> IO ()
 runStep opts step = do
   let title = displayStep step
@@ -104,6 +58,83 @@ runStep opts step = do
   withTiming opts title action
   T.putStrLn ""
 
+-- | Compiler with version number like @ghc-9.6.6@.
+baseHc :: Opts -> FilePath
+baseHc opts = "ghc-" <> showVersion (compilerVersion $ compiler opts)
+
+-- | Base build directory for @cabal-validate@.
+baseBuildDir :: Opts -> FilePath
+baseBuildDir opts = "dist-newstyle-validate-" <> baseHc opts
+
+-- | Absolute path to the build directory for this architecture.
+--
+-- This is a path nested fairly deeply under `baseBuildDir`.
+buildDir :: Opts -> FilePath
+buildDir opts =
+  cwd opts
+    </> baseBuildDir opts
+    </> "build"
+    </> archPath opts
+    </> baseHc opts
+
+-- | @--num-threads@ argument for test suites.
+--
+-- This isn't always used because some test suites are finicky and only accept
+-- @-j@.
+jobsArgs :: Opts -> [String]
+jobsArgs opts = ["--num-threads", show $ jobs opts]
+
+-- | Default arguments for invoking @cabal@.
+cabalArgs :: Opts -> [String]
+cabalArgs opts =
+  [ "--jobs=" <> show (jobs opts)
+  , "--with-compiler=" <> compilerExecutable (compiler opts)
+  , "--builddir=" <> baseBuildDir opts
+  , "--project-file=" <> projectFile opts
+  ]
+
+-- | The `buildDir` for @cabal-testsuite-3@.
+cabalTestsuiteBuildDir :: Opts -> FilePath
+cabalTestsuiteBuildDir opts =
+  buildDir opts
+    </> "cabal-testsuite-3"
+
+-- | Arguments for @cabal build@.
+cabalNewBuildArgs :: Opts -> [String]
+cabalNewBuildArgs opts = "build" : cabalArgs opts
+
+-- | Arguments for @cabal list-bin@.
+--
+-- This is used to find the binaries for various test suites.
+cabalListBinArgs :: Opts -> [String]
+cabalListBinArgs opts = "list-bin" : cabalArgs opts
+
+-- | Get the binary for a given @cabal@ target by running @cabal list-bin@.
+cabalListBin :: Opts -> String -> IO FilePath
+cabalListBin opts target = do
+  let args = cabalListBinArgs opts ++ [target]
+  stdout <-
+    readProcessStdout_ $
+      proc (cabal opts) args
+
+  pure (T.unpack $ T.strip $ T.toStrict $ T.decodeUtf8 stdout)
+
+-- | Get the RTS arguments for invoking test suites.
+--
+-- These seem to only be used for some of the test suites, I'm not sure why.
+rtsArgs :: Opts -> [String]
+rtsArgs opts =
+  case archPath opts of
+    "x86_64-windows" ->
+      -- See: https://github.com/haskell/cabal/issues/9571
+      if compilerVersion (compiler opts) > makeVersion [9, 0, 2]
+        then ["+RTS", "--io-manager=native", "-RTS"]
+        else []
+    _ -> []
+
+-- | Run a binary built by @cabal@ and output timing information.
+--
+-- This is used to run many of the test suites.
 timedCabalBin :: Opts -> String -> String -> [String] -> IO ()
 timedCabalBin opts package component args = do
   command <- cabalListBin opts (package <> ":" <> component)
@@ -113,6 +144,7 @@ timedCabalBin opts package component args = do
     command
     args
 
+-- | Print the configuration for CI logs.
 printConfig :: Opts -> IO ()
 printConfig opts = do
   putStrLn $
@@ -133,6 +165,7 @@ printConfig opts = do
       <> "\nextra RTS options: "
       <> unwords (rtsArgs opts)
 
+-- | Print the versions of tools being used.
 printToolVersions :: Opts -> IO ()
 printToolVersions opts = do
   timed opts (compilerExecutable (compiler opts)) ["--version"]
@@ -141,6 +174,7 @@ printToolVersions opts = do
   forM_ (extraCompilers opts) $ \compiler' -> do
     timed opts compiler' ["--version"]
 
+-- | Run the build step.
 build :: Opts -> IO ()
 build opts = do
   printHeader "build (dry run)"
@@ -168,6 +202,10 @@ build opts = do
     (cabal opts)
     (cabalNewBuildArgs opts ++ targets opts)
 
+-- | Run doctests.
+--
+-- This doesn't work on my machine, maybe @cabal.nix@ needs some love to
+-- support @cabal-env@?
 doctest :: Opts -> IO ()
 doctest opts = do
   timed
@@ -209,6 +247,8 @@ doctest opts = do
     , "Cabal/Language"
     ]
 
+-- | Run tests for the @Cabal@ library, and also `runHackageTests` if those are
+-- enabled.
 libTests :: Opts -> IO ()
 libTests opts = do
   let runCabalTests' suite extraArgs =
@@ -231,6 +271,7 @@ libTests opts = do
 
   runHackageTests opts
 
+-- | Run Hackage tests, if enabled.
 runHackageTests :: Opts -> IO ()
 runHackageTests opts
   | NoHackageTests <- hackageTests opts = pure ()
@@ -258,6 +299,7 @@ runHackageTests opts
           hackageTest ["parsec", "d"]
           hackageTest ["roundtrip", "k"]
 
+-- | Run @cabal-testsuite@ with the @Cabal@ library with a non-default GHC.
 libSuiteWith :: Opts -> FilePath -> [String] -> IO ()
 libSuiteWith opts ghc extraArgs =
   timedCabalBin
@@ -273,13 +315,18 @@ libSuiteWith opts ghc extraArgs =
         ++ extraArgs
     )
 
+-- | Run @cabal-testsuite@ with the @Cabal@ library with the default GHC.
 libSuite :: Opts -> IO ()
 libSuite opts = libSuiteWith opts (compilerExecutable (compiler opts)) (rtsArgs opts)
 
+-- | Run @cabal-testsuite@ with the @Cabal@ library with all extra GHCs.
 libSuiteExtras :: Opts -> IO ()
 libSuiteExtras opts = forM_ (extraCompilers opts) $ \compiler' ->
   libSuiteWith opts compiler' []
 
+-- | Test the @cabal-install@ executable.
+--
+-- These tests mostly run sequentially, so they're pretty slow as a result.
 cliTests :: Opts -> IO ()
 cliTests opts = do
   -- These are sorted in asc time used, quicker tests first.
@@ -321,6 +368,7 @@ cliTests opts = do
         ++ tastyArgs opts
     )
 
+-- | Run @cabal-testsuite@ with the @cabal-install@ executable.
 cliSuite :: Opts -> IO ()
 cliSuite opts = do
   cabal' <- cabalListBin opts "cabal-install:exe:cabal"
@@ -342,6 +390,7 @@ cliSuite opts = do
         ++ rtsArgs opts
     )
 
+-- | Run the @solver-benchmarks@ unit tests.
 solverBenchmarksTests :: Opts -> IO ()
 solverBenchmarksTests opts = do
   command <- cabalListBin opts "solver-benchmarks:test:unit-tests"
@@ -352,6 +401,7 @@ solverBenchmarksTests opts = do
     command
     []
 
+-- | Run the @solver-benchmarks@.
 solverBenchmarksRun :: Opts -> IO ()
 solverBenchmarksRun opts = do
   command <- cabalListBin opts "solver-benchmarks:exe:hackage-benchmark"
@@ -368,6 +418,7 @@ solverBenchmarksRun opts = do
     , "--print-trials"
     ]
 
+-- | Print the total time taken so far.
 timeSummary :: Opts -> IO ()
 timeSummary opts = do
   endTime <- getAbsoluteTime
