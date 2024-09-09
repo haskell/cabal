@@ -225,32 +225,8 @@ See more in the documentation for :ref:`cabal run`.
 .. warning::
 
     Single-file scripts cannot also be part of a package, as an executable or
-    listed as a module.
-
-    .. code-block:: console
-
-        $ cat script-exclusivity.cabal
-        cabal-version: 3.0
-        name: script-exclusitivity
-        version: 1
-
-        executable my-script-exe
-            build-depends:
-                base,
-                haskell-say
-            main-is: myscript.hs
-
-        $ ./myscript.hs
-        Error: [Cabal-7070]
-        The run command can only run an executable as a whole, not files or modules
-        within them, but the target 'myscript.hs' refers to the file myscript.hs in the
-        executable my-script-exe.
-
-        $ cabal run myscript.hs
-        Error: [Cabal-7070]
-        The run command can only run an executable as a whole, not files or modules
-        within them, but the target 'myscript.hs' refers to the file myscript.hs in the
-        executable my-script-exe.
+    listed as a module. Trying to run a module that is included in a package
+    will error with `Cabal-7070`_.
 
 What Next?
 ----------
@@ -259,3 +235,5 @@ Now that you know how to set up a simple Haskell package using Cabal, check out
 some of the resources on the Haskell website's `documentation page
 <https://www.haskell.org/documentation/>`__ or read more about packages and
 Cabal on the :doc:`What Cabal does <cabal-context>` page.
+
+.. _Cabal-7070: https://errors.haskell.org/messages/Cabal-7070/
