@@ -1,11 +1,11 @@
 ### THIS iS A WIP CHANGELOG FOR 3.16
 
-**It will have to be updated with whaever gets added between 3.14 and 3.16**
+**It will have to be updated with whatever gets added between 3.14 and 3.16**
 
 
-- Clarify error message when pkg-config is not found [#10122](https://github.com/haskell/cabal/pull/10122)
+- Clarify error message when `pkg-config` is not found [#10122](https://github.com/haskell/cabal/pull/10122)
 
-  - The error message when pkg-config is not found or querying it fails will no
+  - The error message when `pkg-config` is not found or querying it fails will no
   longer incorrectly claim that the package is missing in the database.
 
 ### Significant changes
@@ -27,9 +27,8 @@
 
 - Add support for building profiled dynamic way [#4816](https://github.com/haskell/cabal/issues/4816) [#9900](https://github.com/haskell/cabal/pull/9900)
 
-  Add support for profiled dynamic way
 
-  New options for cabal.project and ./Setup interface:
+  New options for `cabal.project` and `./Setup` interface:
 
   * `profiling-shared`: Enable building profiling dynamic way
   * Passing `--enable-profiling` and `--enable-executable-dynamic` builds
@@ -73,7 +72,7 @@
   with respect to e.g. the package root, use `SymbolicPath` instead of `FilePath`.
 
   This means that many library functions in `Cabal` take an extra argument of type
-  `Maybe (SymbolicPath CWD (Dir "Package))`, which is an optional (relative or
+  `Maybe (SymbolicPath CWD (Dir "Package"))`, which is an optional (relative or
   absolute) path to the package root (if relative, relative to the current working
   directory). In addition, many functions that used to manipulate `FilePath`s now
   manipulate `SymbolicPath`s, require explicit conversion using e.g. `getSymbolicPath`.
@@ -110,9 +109,9 @@
 
 - Let cabal init remember chosen language within current session [#10096](https://github.com/haskell/cabal/issues/10096) [#10115](https://github.com/haskell/cabal/pull/10115)
 
-  When cabal init asks for a language, the last choice will be used as the new default for the current session.
+  When `cabal init` asks for a language, the last choice made will be used as the new default for the current prompt.
 
-- Filter out dinitial-unique and dunique-increment from package hash [#10122](https://github.com/haskell/cabal/pull/10122)
+- Filter out `-dinitial-unique` and `-dunique-increment` from package hash [#10122](https://github.com/haskell/cabal/pull/10122)
 
   `-dinitial-unique` and `-dunique-increment` are now filtered out when computing the
   store hash of a package.
@@ -120,9 +119,9 @@
   These options shouldn't affect the output of the package and hence
   shouldn't affect the store hash of a package.
 
-- Warn about git:// protocol [#10261](https://github.com/haskell/cabal/pull/10261)
+- Warn about `git://` protocol [#10261](https://github.com/haskell/cabal/pull/10261)
 
-  `cabal check` will warn about insecure git:// protocol in `source-repository`.
+  `cabal check` will warn about the insecure (and no longer supported by GitHub or Gitlab, among others) `git://` protocol in `source-repository`.
 
   See [Git Book](https://git-scm.com/book/en/v2/Git-on-the-Server-The-Protocols#_the_cons_4)
   for an explanation.
@@ -152,19 +151,20 @@
   * `documentation: true` or `--enable-documentation` now implies `-haddock` for
     GHC.
 
-- Configure build-type in terms of Hooks [#9969](https://github.com/haskell/cabal/pull/9969)
+- Redefine `build-type: Configure` in terms of `Hooks` [#9969](https://github.com/haskell/cabal/pull/9969)
 
   The `build-type: Configure` is now implemented in terms of `build-type: Hooks`
   rather than in terms of `build-type: Custom`. This moves the `Configure`
   build-type away from the `Custom` issues. Eventually, `build-type: Hooks` will
-  no longer imply packages are built in legacy-fallback mode. Now, when that
+  no longer imply packages are built in legacy-fallback mode. When that
   happens, `Configure` will also stop implying `legacy-fallback`.
 
   The observable aspect of this change is `runConfigureScript` now having a
-  different type, and `autoconfSetupHooks` being exposed `Distribution.Simple`.
+  different type, and `autoconfSetupHooks` being exposed from `Distribution.Simple`.
   The former is motivated by internal implementation details, while the latter
   provides the `SetupHooks` value for the `Configure` build type, which can be
   consumed by other `Hooks` clients (e.g. eventually HLS).
 
-- Bug fix - Don't pass --coverage-for for non-dependency libs of testsuite [#10046](https://github.com/haskell/cabal/issues/10046) [#10250](https://github.com/haskell/cabal/pull/10250)
+- Bug fix - Don't pass `--coverage-for` for non-dependency libs of testsuite [#10046](https://github.com/haskell/cabal/issues/10046) [#10250](https://github.com/haskell/cabal/pull/10250)
+
 - Added `--all` and `--haddock-all` switches to `haddock-project` subcommand [#10051](https://github.com/haskell/cabal/issues/10051) [#10163](https://github.com/haskell/cabal/pull/10163)

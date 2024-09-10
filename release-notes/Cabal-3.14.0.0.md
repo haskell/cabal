@@ -14,10 +14,10 @@
 
 - Include package version when passing `--promised-dependency` flag [#10166](https://github.com/haskell/cabal/issues/10166) [#10248](https://github.com/haskell/cabal/pull/10248)
 
-  The --promised dependency flag now expects an argument in format
+  The `--promised-dependency` flag now expects an argument in the format
 
   ```
-  NAME-VER[:COMPONENT_NAME]=CID`
+  NAME-VER[:COMPONENT_NAME]=CID
   ```
 
   rather than
@@ -30,7 +30,7 @@
 
   Add support for profiled dynamic way
 
-  New options for cabal.project and ./Setup interface:
+  New options for `cabal.project` and `./Setup` interface:
 
   * `profiling-shared`: Enable building profiling dynamic way
   * Passing `--enable-profiling` and `--enable-executable-dynamic` builds
@@ -54,7 +54,7 @@
   with respect to e.g. the package root, use `SymbolicPath` instead of `FilePath`.
 
   This means that many library functions in `Cabal` take an extra argument of type
-  `Maybe (SymbolicPath CWD (Dir "Package))`, which is an optional (relative or
+  `Maybe (SymbolicPath CWD (Dir "Package"))`, which is an optional (relative or
   absolute) path to the package root (if relative, relative to the current working
   directory). In addition, many functions that used to manipulate `FilePath`s now
   manipulate `SymbolicPath`s, require explicit conversion using e.g. `getSymbolicPath`.
@@ -88,10 +88,10 @@
 
 ### Other changes
 
-- Add flag ignore-build-tools [#10128](https://github.com/haskell/cabal/pull/10128)
+- Add flag `--ignore-build-tools` [#10128](https://github.com/haskell/cabal/pull/10128)
 
-  - Adds flag --ignore-build-tools which allows a user to ignore the tool
-    dependencies declared in build-tool-depends. For general use, this flag
+  - Adds flag `--ignore-build-tools` which allows a user to ignore the tool
+    dependencies declared in `build-tool-depends`. For general use, this flag
     should never be needed, but it may be useful for packagers.
 
 - Do not try to build dynamic executables on Windows [#10217](https://github.com/haskell/cabal/pull/10217)
@@ -110,7 +110,7 @@
 
   It was possible to work around this by duplicating the `ghc-options` to
   `ghc-shared-options`, which _are_ passed in the shared link phase, but that had
-  the (undocumented and unfortunate) side-effect of disabling the GHC
+  the undocumented and unfortunate side-effect of disabling the GHC
   `-dynamic-too` flag, effectively doubling compilation times when
   `ghc-shared-options` are set.
 
@@ -118,10 +118,10 @@
   reflect the documentation on this feature) and the fact that
   `ghc-shared-options` disables `-dynamic-too` is documented.
 
-- Introduce SetupHooks [#9551](https://github.com/haskell/cabal/pull/9551)
+- Introduce `SetupHooks` [#9551](https://github.com/haskell/cabal/pull/9551)
 
-  Introduction of a new build type: Hooks.
-  This build type, intended as replacement to the Custom build type, integrates
+  Introduction of a new build type: `Hooks`.
+  This build type, intended to eventually replace the `Custom` build type, integrates
   better with the rest of the ecosystem (`cabal-install`, Haskell Language Server).
 
   The motivation and full design of this new build-type are specified in the
@@ -129,22 +129,22 @@
   [Replacing the Cabal Custom build-type](https://github.com/haskellfoundation/tech-proposals/pull/60).
 
   Package authors willing to use this feature should declare `build-type: Hooks`
-  in their `.cabal` file, declare a custom-setup stanza with a dependency on the
+  in their `.cabal` file, declare a `custom-setup` stanza with a dependency on the
   `Cabal-hooks` package, and define a module `SetupHooks` that exports a value
   `setupHooks :: SetupHooks`, using the API exported by `Distribution.Simple.SetupHooks`
   from the `Cabal-hooks` package. Refer to the Haddock documentation of
   `Distribution.Simple.SetupHooks` for example usage.
 
-- Configure `build-type` in terms of Hooks [#9969](https://github.com/haskell/cabal/pull/9969)
+- Redefine `build-type: Configure` in terms of `Hooks` [#9969](https://github.com/haskell/cabal/pull/9969)
 
   The `build-type: Configure` is now implemented in terms of `build-type: Hooks`
   rather than in terms of `build-type: Custom`. This moves the `Configure`
   build-type away from the `Custom` issues. Eventually, `build-type: Hooks` will
-  no longer imply packages are built in legacy-fallback mode. Now, when that
+  no longer imply packages are built in legacy-fallback mode. When that
   happens, `Configure` will also stop implying `legacy-fallback`.
 
   The observable aspect of this change is `runConfigureScript` now having a
-  different type, and `autoconfSetupHooks` being exposed `Distribution.Simple`.
+  different type, and `autoconfSetupHooks` being exposed by `Distribution.Simple`.
   The former is motivated by internal implementation details, while the latter
   provides the `SetupHooks` value for the `Configure` build type, which can be
   consumed by other `Hooks` clients (e.g. eventually HLS).
