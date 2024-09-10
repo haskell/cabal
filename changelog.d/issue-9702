@@ -1,0 +1,39 @@
+synopsis: Working directory support for Cabal
+packages: Cabal-syntax Cabal cabal-install
+prs: #9718
+issues: #9702
+
+description: {
+
+The Cabal library is now able to handle a passed-in working directory, instead
+of always relying on the current working directory of the parent process.
+
+In order to achieve this, the `SymbolicPath` abstraction was fleshed out, and
+all fields of `PackageDescription` that, if relative, should be interpreted
+with respect to e.g. the package root, use `SymbolicPath` instead of `FilePath`.
+
+This means that many library functions in `Cabal` take an extra argument of type
+`Maybe (SymbolicPath CWD (Dir "Package))`, which is an optional (relative or
+absolute) path to the package root (if relative, relative to the current working
+directory). In addition, many functions that used to manipulate `FilePath`s now
+manipulate `SymbolicPath`s, require explicit conversion using e.g. `getSymbolicPath`.
+
+To illustrate with file searching, the `Cabal` library defines:
+
+```haskell
+findFileCwd
+  :: forall dir1 dir2 file
+   . Verbosity
+  -> Maybe (SymbolicPath CWD (Dir dir1))
+  -- ^ working directory
+  -> [SymbolicPath dir1 (Dir dir2)]
+  -- ^ search directories
+  -> RelativePath dir2 File
+  -- ^ filename
+  -> IO (SymbolicPath dir1 File)
+```
+
+See Note [Symbolic paths] in `Distribution.Utils.Path` for further information
+on the design of this API.
+}
+

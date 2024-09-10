@@ -1,0 +1,8 @@
+synopsis: Add MultilineStrings extension
+packages: Cabal-syntax
+prs: #10245
+description: {
+
+- adds support for the `MultilineStrings` language extension (GHC proposal #637)
+
+}
