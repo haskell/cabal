@@ -44,9 +44,9 @@
   * `ghc-prof-shared-options`, for passing options when building in
     profiling dynamic way
 
-- Working directory support for Cabal [#9702](https://github.com/haskell/cabal/issues/9702) [#9718](https://github.com/haskell/cabal/pull/9718)
+- Working directory support for `Cabal` [#9702](https://github.com/haskell/cabal/issues/9702) [#9718](https://github.com/haskell/cabal/pull/9718)
 
-  The Cabal library is now able to handle a passed-in working directory, instead
+  The `Cabal` library is now able to handle a passed-in working directory, instead
   of always relying on the current working directory of the parent process.
 
   In order to achieve this, the `SymbolicPath` abstraction was fleshed out, and
