@@ -77,13 +77,9 @@
   See Note [Symbolic paths] in `Distribution.Utils.Path` for further information
   on the design of this API.
 
-- Add `MultilineStrings` extension [#10245](https://github.com/haskell/cabal/pull/10245)
+- Add `MultilineStrings` extension (GHC proposal #637) [#10245](https://github.com/haskell/cabal/pull/10245)
 
-  - adds support for the `MultilineStrings` language extension (GHC proposal #637)
-
-- Add `NamedDefaults` extension [#9740](https://github.com/haskell/cabal/pull/9740)
-
-  - adds support for the `NamedDefaults` language extension (GHC proposal #409)
+- Add `NamedDefaults` extension (GHC proposal #409) [#9740](https://github.com/haskell/cabal/pull/9740)
 
 
 ### Other changes
@@ -128,7 +124,7 @@
   Haskell Foundation Tech Proposal
   [Replacing the Cabal Custom build-type](https://github.com/haskellfoundation/tech-proposals/pull/60).
 
-  Package authors willing to use this feature should declare `build-type: Hooks`
+  Package authors willing to use this feature should declare `cabal-version: 3.14` and `build-type: Hooks`
   in their `.cabal` file, declare a `custom-setup` stanza with a dependency on the
   `Cabal-hooks` package, and define a module `SetupHooks` that exports a value
   `setupHooks :: SetupHooks`, using the API exported by `Distribution.Simple.SetupHooks`
