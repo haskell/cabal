@@ -1,4 +1,0 @@
-synopsis: Bug fix - Don't pass --coverage-for for non-dependency libs of testsuite
-packages: cabal-install
-issues: #10046
-prs: #10250
