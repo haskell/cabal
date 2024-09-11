@@ -198,8 +198,8 @@ the following file named ``myscript``:
     main :: IO ()
     main = haskellSay "Hello, Haskell!"
 
-The necessary sections of a ``.cabal`` file are placed
-directly into the script as a comment.
+The necessary sections of a package description that would otherwise be in a
+``.cabal`` file are placed directly into the script as a comment.
 
 Use the familiar ``cabal run`` command to execute this script:
 
@@ -222,6 +222,12 @@ can be run directly after setting the execute permission (+x):
 
 See more in the documentation for :ref:`cabal run`.
 
+.. warning::
+
+    Single-file scripts cannot also be part of a package, as an executable or
+    listed as a module. Trying to run a module that is included in a package
+    will error with `Cabal-7070`_.
+
 What Next?
 ----------
 
@@ -229,3 +235,5 @@ Now that you know how to set up a simple Haskell package using Cabal, check out
 some of the resources on the Haskell website's `documentation page
 <https://www.haskell.org/documentation/>`__ or read more about packages and
 Cabal on the :doc:`What Cabal does <cabal-context>` page.
+
+.. _Cabal-7070: https://errors.haskell.org/messages/Cabal-7070/
