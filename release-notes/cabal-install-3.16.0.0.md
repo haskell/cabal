@@ -46,7 +46,7 @@
   Support for using `profiling-shared` is guarded behind a constraint
   which ensures you are using `Cabal >= 3.13`.
 
-  In the cabal file:
+  In the `.cabal` file:
 
   * `ghc-prof-shared-options`, for passing options when building in
     profiling dynamic way
