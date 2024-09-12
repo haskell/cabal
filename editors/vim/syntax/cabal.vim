@@ -363,6 +363,7 @@ syn keyword cabalExtension contained
   \ NoMonoLocalBinds
   \ NoMonoPatBinds
   \ NoMonomorphismRestriction
+  \ NoMultilineStrings
   \ NoMultiParamTypeClasses
   \ NoMultiWayIf
   \ NoNPlusKPatterns
