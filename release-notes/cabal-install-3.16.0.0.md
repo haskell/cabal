@@ -8,7 +8,7 @@
 - `haddock-project` support for subcomponents [#9821](https://github.com/haskell/cabal/pull/9821)
 
   - `haddock-project` handles sublibraries, test suites and benchmarks.
-  - `haddock` receives `--package-name` flag whcih allows to set names of
+  - `haddock` receives `--package-name` flag which allows to set names of
     components which are included in the main `index.html` file.
   - added `--use-unicode` flag to `haddock` and `haddock-project` commands.
   - The directory structure of `./dist-newstyle` has changed.  `haddock`
