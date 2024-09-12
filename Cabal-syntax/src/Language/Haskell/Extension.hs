@@ -553,6 +553,9 @@ data KnownExtension
     ListTuplePuns
   | -- | Support multiline strings
     MultilineStrings
+  | -- | Allow use of or-pattern syntax, condensing multiple patterns
+    -- into a single one.
+    OrPatterns
   deriving (Generic, Show, Read, Eq, Ord, Enum, Bounded, Typeable, Data)
 
 instance Binary KnownExtension
