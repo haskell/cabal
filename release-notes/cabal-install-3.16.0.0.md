@@ -71,39 +71,6 @@
     * `--enable-executable-dynamic --enable-profiling` will automatically turn on building
       shared profiling libraries (if supported by your compiler).
 
-- Working directory support for `Cabal` [#9702](https://github.com/haskell/cabal/issues/9702) [#9718](https://github.com/haskell/cabal/pull/9718)
-
-  The `Cabal` library is now able to handle a passed-in working directory, instead
-  of always relying on the current working directory of the parent process.
-
-  In order to achieve this, the `SymbolicPath` abstraction was fleshed out, and
-  all fields of `PackageDescription` that, if relative, should be interpreted
-  with respect to e.g. the package root, use `SymbolicPath` instead of `FilePath`.
-
-  This means that many library functions in `Cabal` take an extra argument of type
-  `Maybe (SymbolicPath CWD (Dir "Package"))`, which is an optional (relative or
-  absolute) path to the package root (if relative, relative to the current working
-  directory). In addition, many functions that used to manipulate `FilePath`s now
-  manipulate `SymbolicPath`s, require explicit conversion using e.g. `getSymbolicPath`.
-
-  To illustrate with file searching, the `Cabal` library defines:
-
-  ```haskell
-  findFileCwd
-    :: forall dir1 dir2 file
-     . Verbosity
-    -> Maybe (SymbolicPath CWD (Dir dir1))
-
-    -> [SymbolicPath dir1 (Dir dir2)]
-
-    -> RelativePath dir2 File
-
-    -> IO (SymbolicPath dir1 File)
-  ```
-
-  See Note [Symbolic paths] in `Distribution.Utils.Path` for further information
-  on the design of this API.
-
 - `curl` transport now supports Basic authentication [#10089](https://github.com/haskell/cabal/pull/10089)
 
   - The `curl` HTTP transport previously only supported the HTTP Digest
