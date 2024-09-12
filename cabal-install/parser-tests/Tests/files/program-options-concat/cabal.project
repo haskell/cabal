@@ -1,6 +1,7 @@
 program-options
     ghc-options: -fno-state-hack
     gcc-options: -foo -bar
+    haddock-options: --optghc="-optP -P"
 
 program-options
     ghc-options: -threaded -Wall
