@@ -3,11 +3,6 @@
 **It will have to be updated with whatever gets added between 3.14 and 3.16**
 
 
-- Clarify error message when `pkg-config` is not found [#10122](https://github.com/haskell/cabal/pull/10122)
-
-  - The error message when `pkg-config` is not found or querying it fails will no
-  longer incorrectly claim that the package is missing in the database.
-
 ### Significant changes
 
 - `haddock-project` support for subcomponents [#9821](https://github.com/haskell/cabal/pull/9821)
@@ -168,3 +163,8 @@
 - Bug fix - Don't pass `--coverage-for` for non-dependency libs of testsuite [#10046](https://github.com/haskell/cabal/issues/10046) [#10250](https://github.com/haskell/cabal/pull/10250)
 
 - Added `--all` and `--haddock-all` switches to `haddock-project` subcommand [#10051](https://github.com/haskell/cabal/issues/10051) [#10163](https://github.com/haskell/cabal/pull/10163)
+
+- Clarify error message when `pkg-config` is not found [#10122](https://github.com/haskell/cabal/pull/10122)
+
+  - The error message when `pkg-config` is not found or querying it fails will no
+  longer incorrectly claim that the package is missing in the database.
