@@ -23,6 +23,20 @@
     support of sublibraries.  See
     https://github.com/haskell/cabal/pull/9821#discussion_r1548557115.
 
+- Redefine `build-type: Configure` in terms of `Hooks` [#9969](https://github.com/haskell/cabal/pull/9969)
+
+  The `build-type: Configure` is now implemented in terms of `build-type: Hooks`
+  rather than in terms of `build-type: Custom`. This moves the `Configure`
+  build-type away from the `Custom` issues. Eventually, `build-type: Hooks` will
+  no longer imply packages are built in legacy-fallback mode. When that
+  happens, `Configure` will also stop implying `legacy-fallback`.
+
+  The observable aspect of this change is `runConfigureScript` now having a
+  different type, and `autoconfSetupHooks` being exposed from `Distribution.Simple`.
+  The former is motivated by internal implementation details, while the latter
+  provides the `SetupHooks` value for the `Configure` build type, which can be
+  consumed by other `Hooks` clients (e.g. eventually HLS).
+
 ### Other changes
 
 - Add support for building profiled dynamic way [#4816](https://github.com/haskell/cabal/issues/4816) [#9900](https://github.com/haskell/cabal/pull/9900)
@@ -150,20 +164,6 @@
 
   * `documentation: true` or `--enable-documentation` now implies `-haddock` for
     GHC.
-
-- Redefine `build-type: Configure` in terms of `Hooks` [#9969](https://github.com/haskell/cabal/pull/9969)
-
-  The `build-type: Configure` is now implemented in terms of `build-type: Hooks`
-  rather than in terms of `build-type: Custom`. This moves the `Configure`
-  build-type away from the `Custom` issues. Eventually, `build-type: Hooks` will
-  no longer imply packages are built in legacy-fallback mode. When that
-  happens, `Configure` will also stop implying `legacy-fallback`.
-
-  The observable aspect of this change is `runConfigureScript` now having a
-  different type, and `autoconfSetupHooks` being exposed from `Distribution.Simple`.
-  The former is motivated by internal implementation details, while the latter
-  provides the `SetupHooks` value for the `Configure` build type, which can be
-  consumed by other `Hooks` clients (e.g. eventually HLS).
 
 - Bug fix - Don't pass `--coverage-for` for non-dependency libs of testsuite [#10046](https://github.com/haskell/cabal/issues/10046) [#10250](https://github.com/haskell/cabal/pull/10250)
 
