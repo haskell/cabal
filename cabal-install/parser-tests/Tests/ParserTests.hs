@@ -477,6 +477,7 @@ testProgramOptionsConcat = do
               Map.fromList
                 [ ("ghc", ["-threaded", "-Wall", "-fno-state-hack"])
                 , ("gcc", ["-baz", "-foo", "-bar"])
+                , ("haddock", ["--optghc=-optP -P"])
                 , ("ld", ["-Wl,--gc-sections"])
                 ]
         }
