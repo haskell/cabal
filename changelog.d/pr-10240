@@ -1,0 +1,13 @@
+synopsis: Filter out dinitial-unique and dunique-increment from package hash
+packages: cabal-install
+prs: #10122
+
+description: {
+
+`-dinitial-unique` and `-dunique-increment` are now filtered out when computing the
+store hash of a package.
+
+These options shouldn't affect the output of the package and hence
+shouldn't affect the store hash of a package.
+
+}
