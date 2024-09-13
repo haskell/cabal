@@ -647,9 +647,11 @@ filterCommonFlags flags cabalLibVersion
     flags_latest = flags
     flags_3_13_0 =
       flags_latest
-        { setupWorkingDir = NoFlag
+        { -- Cabal < 3.13 does not support the --working-dir flag.
+          setupWorkingDir = NoFlag
+        , -- Or the --keep-temp-files flag.
+          setupKeepTempFiles = NoFlag
         }
-    -- Cabal < 3.13 does not support the --working-dir flag.
     flags_2_1_0 =
       flags_3_13_0
         { -- Cabal < 2.1 doesn't know about -v +timestamp modifier

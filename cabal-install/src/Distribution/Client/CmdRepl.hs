@@ -103,11 +103,11 @@ import Distribution.Simple.Compiler
   )
 import Distribution.Simple.Setup
   ( ReplOptions (..)
+  , commonSetupTempFileOptions
   , setupVerbosity
   )
 import Distribution.Simple.Utils
-  ( TempFileOptions (..)
-  , debugNoWrap
+  ( debugNoWrap
   , dieWithException
   , withTempDirectoryEx
   , wrapText
@@ -411,7 +411,7 @@ replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings g
     -- Multi Repl implemention see: https://well-typed.com/blog/2023/03/cabal-multi-unit/ for
     -- a high-level overview about how everything fits together.
     if Set.size (distinctTargetComponents targets) > 1
-      then withTempDirectoryEx verbosity (TempFileOptions keepTempFiles) distDir "multi-out" $ \dir' -> do
+      then withTempDirectoryEx verbosity tempFileOptions distDir "multi-out" $ \dir' -> do
         -- multi target repl
         dir <- makeAbsolute dir'
         -- Modify the replOptions so that the ./Setup repl command will write options
@@ -507,7 +507,7 @@ replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings g
         go m _ = m
 
     verbosity = fromFlagOrDefault normal (setupVerbosity $ configCommonFlags configFlags)
-    keepTempFiles = fromFlagOrDefault False replKeepTempFiles
+    tempFileOptions = commonSetupTempFileOptions $ configCommonFlags configFlags
 
     validatedTargets ctx compiler elaboratedPlan targetSelectors = do
       let multi_repl_enabled = multiReplDecision ctx compiler r

@@ -49,7 +49,7 @@ import qualified Distribution.Client.CmdListBin        as CmdListBin
 import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
-import Distribution.Simple.Setup (toFlag, HaddockFlags(..), defaultHaddockFlags)
+import Distribution.Simple.Setup (toFlag, HaddockFlags(..), CommonSetupFlags(..), defaultHaddockFlags, defaultCommonSetupFlags)
 import Distribution.Client.Setup (globalCommand)
 import Distribution.Client.Config (loadConfig, SavedConfig(savedGlobalFlags), createDefaultConfigFile)
 import Distribution.Simple.Compiler
@@ -2002,6 +2002,7 @@ testConfigOptionComments = do
   "-- verbose" @=? findLineWith True "verbose" defaultConfigFile
   "-- compiler" @=? findLineWith True "compiler" defaultConfigFile
   "-- cabal-file" @=? findLineWith True "cabal-file" defaultConfigFile
+  "-- keep-temp-files" @=? findLineWith True "keep-temp-files" defaultConfigFile
   "-- with-compiler" @=? findLineWith True "with-compiler" defaultConfigFile
   "-- with-hc-pkg" @=? findLineWith True "with-hc-pkg" defaultConfigFile
   "-- program-prefix" @=? findLineWith True "program-prefix" defaultConfigFile
@@ -2095,7 +2096,6 @@ testConfigOptionComments = do
   "-- password-command" @=? findLineWith True "password-command" defaultConfigFile
   "-- builddir" @=? findLineWith True "builddir" defaultConfigFile
 
-  "  -- keep-temp-files" @=? findLineWith True "keep-temp-files" defaultConfigFile
   "  -- hoogle" @=? findLineWith True "hoogle" defaultConfigFile
   "  -- html" @=? findLineWith True "html" defaultConfigFile
   "  -- html-location" @=? findLineWith True "html-location" defaultConfigFile
@@ -2245,7 +2245,12 @@ testHaddockProjectDependencies config = do
       cleanHaddockProject testdir
       withCurrentDirectory dir $ do
         CmdHaddockProject.haddockProjectAction
-          defaultHaddockProjectFlags { haddockProjectVerbosity = Flag verbosity }
+          defaultHaddockProjectFlags
+            { haddockProjectCommonFlags =
+                defaultCommonSetupFlags
+                  { setupVerbosity = Flag verbosity
+                  }
+            }
           ["all"]
           defaultGlobalFlags { globalStoreDir = Flag "store" }
 
