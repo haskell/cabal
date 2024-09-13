@@ -13,49 +13,47 @@ module Distribution.Client.ProjectConfig.Parsec
   , runParseResult
   ) where
 
-import Network.URI (parseURI, uriFragment, uriPath, uriScheme)
-
-import Control.Monad.State.Strict (StateT, execStateT, lift)
-import qualified Data.Map.Strict as Map
 import Distribution.CabalSpecVersion
 import Distribution.Client.HttpUtils
+import Distribution.Client.ProjectConfig.FieldGrammar (packageConfigFieldGrammar, projectConfigFieldGrammar)
+import Distribution.Client.ProjectConfig.Legacy (ProjectConfigSkeleton)
+import qualified Distribution.Client.ProjectConfig.Lens as L
+import Distribution.Client.ProjectConfig.Types (MapLast (..), MapMappend (..), PackageConfig (..), ProjectConfig (..), ProjectConfigShared (..), ProjectConfigToParse (..))
 import Distribution.Client.Types.Repo hiding (repoName)
 import Distribution.Client.Types.RepoName (RepoName (..))
+import Distribution.Client.Types.SourceRepo (sourceRepositoryPackageGrammar)
 import Distribution.Client.Utils.Parsec
 import Distribution.Compat.Lens
 import Distribution.Compat.Prelude
 import Distribution.FieldGrammar
 import Distribution.FieldGrammar.Parsec (NamelessField (..), namelessFieldAnn)
-import Distribution.Parsec.FieldLineStream (fieldLineStreamFromBS)
-import Distribution.Simple.Utils (debug, warn)
-import Distribution.Verbosity
-
-import Distribution.Client.ProjectConfig.FieldGrammar (packageConfigFieldGrammar, projectConfigFieldGrammar)
-import Distribution.Client.ProjectConfig.Legacy (ProjectConfigSkeleton)
-import qualified Distribution.Client.ProjectConfig.Lens as L
-import Distribution.Client.ProjectConfig.Types (MapLast (..), MapMappend (..), PackageConfig (..), ProjectConfig (..), ProjectConfigShared (..), ProjectConfigToParse (..))
-import Distribution.Client.Types.SourceRepo (sourceRepositoryPackageGrammar)
-import Distribution.Fields.ConfVar (parseConditionConfVar)
-import Distribution.Fields.ParseResult
-import Distribution.Solver.Types.ProjectConfigPath
-
 import Distribution.Fields (Field (..), FieldLine (..), FieldName, Name (..), SectionArg (..), readFields', showPWarning)
+import Distribution.Fields.ConfVar (parseConditionConfVar)
+import Distribution.Fields.Field (fieldLinesToString)
 import Distribution.Fields.LexerMonad (toPWarnings)
-import Distribution.Parsec (CabalParsing, PError (..), ParsecParser, eitherParsec, parsec, parsecFilePath, parsecToken', runParsecParser)
+import Distribution.Fields.ParseResult
+import Distribution.Parsec (PError (..), ParsecParser, eitherParsec, parsec, parsecFilePath, runParsecParser)
+import Distribution.Parsec.FieldLineStream (fieldLineStreamFromBS)
 import Distribution.Parsec.Position (Position (..), zeroPos)
 import Distribution.Parsec.Warning (PWarnType (..))
 import Distribution.Simple.Program.Db (ProgramDb, defaultProgramDb, knownPrograms, lookupKnownProgram)
 import Distribution.Simple.Program.Types (programName)
 import Distribution.Simple.Setup (Flag (..), splitArgs)
+import Distribution.Simple.Utils (debug, warn)
+import Distribution.Solver.Types.ProjectConfigPath
 import Distribution.Types.CondTree (CondBranch (..), CondTree (..))
 import Distribution.Types.ConfVar (ConfVar (..))
 import Distribution.Types.PackageName (PackageName)
 import Distribution.Utils.Generic (fromUTF8BS, toUTF8BS, validateUTF8)
 import Distribution.Utils.NubList (toNubList)
+import Distribution.Verbosity
 
+import Control.Monad.State.Strict (StateT, execStateT, lift)
 import qualified Data.ByteString as BS
 import Data.Coerce (coerce)
+import qualified Data.Map.Strict as Map
 import qualified Distribution.Compat.CharParsing as P
+import Network.URI (parseURI, uriFragment, uriPath, uriScheme)
 import System.Directory (createDirectoryIfMissing, makeAbsolute)
 import System.FilePath (isAbsolute, isPathSeparator, makeValid, splitFileName, (</>))
 import qualified Text.Parsec
