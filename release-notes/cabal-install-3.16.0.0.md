@@ -135,3 +135,9 @@
 
   - The error message when `pkg-config` is not found or querying it fails will no
   longer incorrectly claim that the package is missing in the database.
+
+- Update the SPDX License List to version 3.25
+
+  The LicenseId and LicenseExceptionId types are updated to reflect the SPDX
+  License List version 3.25 (2024-08-19).  LicenseId constructors `NullBSD`
+  and `DS389_exception` are now `NN_0BSD` and `NN_389_exception`.
