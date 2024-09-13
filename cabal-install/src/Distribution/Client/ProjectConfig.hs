@@ -221,7 +221,7 @@ import qualified Codec.Archive.Tar.Entry as Tar
 import qualified Distribution.Client.GZipUtils as GZipUtils
 import qualified Distribution.Client.Tar as Tar
 
-import Control.Exception (handle)
+import Control.Exception (handle, tryJust)
 import Control.Monad.Trans (liftIO)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
@@ -249,6 +249,9 @@ import System.FilePath hiding (combine)
 import System.IO
   ( IOMode (ReadMode)
   , withBinaryFile
+  )
+import System.IO.Error
+  ( isDoesNotExistError
   )
 
 import Distribution.Deprecated.ProjectParseUtils (ProjectParseError (..), ProjectParseWarning)
@@ -860,12 +863,10 @@ readAndParseFile
   -> FilePath
   -> IO a
 readAndParseFile parser verbosity fpath = do
-  exists <- doesFileExist fpath
-  unless exists $
-    dieWithException verbosity $
-      ErrorParsingFileDoesntExist fpath
-  bs <- BS.readFile fpath
-  parseString parser verbosity fpath bs
+  result <- tryJust (guard . isDoesNotExistError) (BS.readFile fpath)
+  case result of
+    Right bs -> parseString parser verbosity fpath bs
+    Left _ -> dieWithException verbosity $ ErrorParsingFileDoesntExist fpath
 
 parseString
   :: ( BS.ByteString
