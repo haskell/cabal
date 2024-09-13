@@ -46,7 +46,7 @@ import Distribution.Parsec.Position (Position (..), zeroPos)
 import Distribution.Parsec.Warning (PWarnType (..))
 import Distribution.Simple.Program.Db (ProgramDb, defaultProgramDb, knownPrograms, lookupKnownProgram)
 import Distribution.Simple.Program.Types (programName)
-import Distribution.Simple.Setup (Flag (..))
+import Distribution.Simple.Setup (Flag (..), splitArgs)
 import Distribution.Types.CondTree (CondBranch (..), CondTree (..))
 import Distribution.Types.ConfVar (ConfVar (..))
 import Distribution.Types.PackageName (PackageName)
@@ -386,14 +386,13 @@ parseProgramPaths programDb fields = foldM parseField mempty (filter hasLocation
 -- By processing '[NamelessField Position]', we support multiple occurrences of the field, concatenating the arguments.
 parseProgramArgsField :: [NamelessField Position] -> ParseResult ([String])
 parseProgramArgsField fieldLines =
-  concat <$> mapM (\(MkNamelessField pos lines') -> parseProgramArgsFieldLines pos lines') fieldLines
+  concat <$> mapM (\(MkNamelessField _ lines') -> parseProgramArgsFieldLines lines') fieldLines
 
 -- | Parse all fieldLines of a single field occurrence in a program-options stanza.
-parseProgramArgsFieldLines :: Position -> [FieldLine Position] -> ParseResult [String]
-parseProgramArgsFieldLines pos = runFieldParser pos programArgsFieldParser cabalSpec
-
-programArgsFieldParser :: CabalParsing m => m [String]
-programArgsFieldParser = parseSep (Proxy :: Proxy NoCommaFSep) parsecToken'
+parseProgramArgsFieldLines :: [FieldLine Position] -> ParseResult [String]
+parseProgramArgsFieldLines lines' = return $ splitArgs strLines
+  where
+    strLines = fieldLinesToString lines'
 
 type FieldSuffix = String
 
