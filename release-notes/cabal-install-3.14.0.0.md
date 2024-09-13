@@ -1,6 +1,5 @@
-### THIS iS A WIP CHANGELOG FOR 3.16
-
-**It will have to be updated with whatever gets added between 3.14 and 3.16**
+cabal-install 3.14.0.0 changelog and release notes.
+---
 
 
 ### Significant changes
