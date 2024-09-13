@@ -21,19 +21,19 @@ import Distribution.Client.Types.AllowNewer (AllowNewer (..), AllowOlder (..))
 import Distribution.Compat.CharParsing
 import Distribution.Compat.Newtype
 import Distribution.Parsec
-import Distribution.Simple.Compiler (PackageDB (..), readPackageDb)
+import Distribution.Simple.Compiler (PackageDBCWD, interpretPackageDB, readPackageDb)
 import Distribution.Solver.Types.ConstraintSource (ConstraintSource (..))
 import Network.URI (URI, parseURI)
 
-newtype PackageDBNT = PackageDBNT {getPackageDBNT :: Maybe PackageDB}
+newtype PackageDBNT = PackageDBNT {getPackageDBNT :: Maybe PackageDBCWD}
 
-instance Newtype (Maybe PackageDB) PackageDBNT
+instance Newtype (Maybe PackageDBCWD) PackageDBNT
 
 instance Parsec PackageDBNT where
   parsec = parsecPackageDB
 
 parsecPackageDB :: CabalParsing m => m PackageDBNT
-parsecPackageDB = PackageDBNT . readPackageDb <$> parsecToken
+parsecPackageDB = PackageDBNT . fmap (interpretPackageDB Nothing) . readPackageDb <$> parsecToken
 
 newtype NumJobs = NumJobs {getNumJobs :: Maybe Int}
 

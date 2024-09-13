@@ -26,7 +26,7 @@ import Distribution.PackageDescription
 import Distribution.Simple.Compiler
   ( DebugInfoLevel (..)
   , OptimisationLevel (..)
-  , PackageDB
+  , PackageDBCWD
   , ProfDetailLevel
   )
 import Distribution.Simple.InstallDirs
@@ -212,7 +212,7 @@ projectConfigInstallDirs :: Lens' ProjectConfigShared (InstallDirs (Flag PathTem
 projectConfigInstallDirs f s = fmap (\x -> s{T.projectConfigInstallDirs = x}) (f (T.projectConfigInstallDirs s))
 {-# INLINEABLE projectConfigInstallDirs #-}
 
-projectConfigPackageDBs :: Lens' ProjectConfigShared [Maybe PackageDB]
+projectConfigPackageDBs :: Lens' ProjectConfigShared [Maybe PackageDBCWD]
 projectConfigPackageDBs f s = fmap (\x -> s{T.projectConfigPackageDBs = x}) (f (T.projectConfigPackageDBs s))
 {-# INLINEABLE projectConfigPackageDBs #-}
 
