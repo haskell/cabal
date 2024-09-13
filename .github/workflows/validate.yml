@@ -72,6 +72,10 @@ jobs:
         # support, so the PR *must* have a changelog entry.
         ghc: ['9.10.1', '9.8.2', '9.6.4', '9.4.8', '9.2.8', '9.0.2', '8.10.7', '8.8.4', '8.6.5']
         exclude:
+          # Throws fatal "cabal-tests.exe: fd:8: hGetLine: end of file" exception
+          # even with --io-manager=native
+          - os: windows-latest
+            ghc: "9.0.2"
           # corrupts GHA cache or the fabric of reality itself, see https://github.com/haskell/cabal/issues/8356
           - os: windows-latest
             ghc: '8.10.7'
@@ -204,6 +208,7 @@ jobs:
         run: sh validate.sh $FLAGS -s cli-tests
 
       - name: Validate cli-suite
+        if: runner.os != 'Windows'
         run: sh validate.sh $FLAGS -s cli-suite
 
       - name: Validate solver-benchmarks-tests

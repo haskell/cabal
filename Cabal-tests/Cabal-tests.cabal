@@ -161,6 +161,7 @@ test-suite hackage-tests
     , deepseq
     , directory
     , filepath
+    , time
 
   build-depends:
       base-compat           >=0.11.0   && <0.14
