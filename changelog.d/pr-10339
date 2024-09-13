@@ -1,3 +1,0 @@
-synopsis: Add support for `OrPatterns` GHC extension
-packages: Cabal-syntax
-prs: #10339
