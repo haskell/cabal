@@ -81,6 +81,8 @@
 
 - Add `NamedDefaults` extension (GHC proposal #409) [#9740](https://github.com/haskell/cabal/pull/9740)
 
+- Add `OrPatterns` extension (GHC proposal #958) [#10339](https://github.com/haskell/cabal/pull/10339)
+
 
 ### Other changes
 
