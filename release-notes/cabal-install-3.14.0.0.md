@@ -138,5 +138,4 @@ cabal-install 3.14.0.0 changelog and release notes.
 - Update the SPDX License List to version 3.25
 
   The LicenseId and LicenseExceptionId types are updated to reflect the SPDX
-  License List version 3.25 (2024-08-19).  LicenseId constructors `NullBSD`
-  and `DS389_exception` are now `NN_0BSD` and `NN_389_exception`.
+  License List version 3.25 (2024-08-19).
