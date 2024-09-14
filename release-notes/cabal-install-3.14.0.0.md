@@ -1,19 +1,13 @@
-### THIS iS A WIP CHANGELOG FOR 3.16
+cabal-install 3.14.0.0 changelog and release notes.
+---
 
-**It will have to be updated with whatever gets added between 3.14 and 3.16**
-
-
-- Clarify error message when `pkg-config` is not found [#10122](https://github.com/haskell/cabal/pull/10122)
-
-  - The error message when `pkg-config` is not found or querying it fails will no
-  longer incorrectly claim that the package is missing in the database.
 
 ### Significant changes
 
 - `haddock-project` support for subcomponents [#9821](https://github.com/haskell/cabal/pull/9821)
 
   - `haddock-project` handles sublibraries, test suites and benchmarks.
-  - `haddock` receives `--package-name` flag whcih allows to set names of
+  - `haddock` receives `--package-name` flag which allows to set names of
     components which are included in the main `index.html` file.
   - added `--use-unicode` flag to `haddock` and `haddock-project` commands.
   - The directory structure of `./dist-newstyle` has changed.  `haddock`
@@ -22,6 +16,20 @@
     `haddock-project` command and in the future might will be useful for hackage
     support of sublibraries.  See
     https://github.com/haskell/cabal/pull/9821#discussion_r1548557115.
+
+- Redefine `build-type: Configure` in terms of `Hooks` [#9969](https://github.com/haskell/cabal/pull/9969)
+
+  The `build-type: Configure` is now implemented in terms of `build-type: Hooks`
+  rather than in terms of `build-type: Custom`. This moves the `Configure`
+  build-type away from the `Custom` issues. Eventually, `build-type: Hooks` will
+  no longer imply packages are built in legacy-fallback mode. When that
+  happens, `Configure` will also stop implying `legacy-fallback`.
+
+  The observable aspect of this change is `runConfigureScript` now having a
+  different type, and `autoconfSetupHooks` being exposed from `Distribution.Simple`.
+  The former is motivated by internal implementation details, while the latter
+  provides the `SetupHooks` value for the `Configure` build type, which can be
+  consumed by other `Hooks` clients (e.g. eventually HLS).
 
 ### Other changes
 
@@ -37,7 +45,7 @@
   Support for using `profiling-shared` is guarded behind a constraint
   which ensures you are using `Cabal >= 3.13`.
 
-  In the cabal file:
+  In the `.cabal` file:
 
   * `ghc-prof-shared-options`, for passing options when building in
     profiling dynamic way
@@ -61,39 +69,6 @@
     * `--enable-executable-dynamic` will automatically turn on building shared libraries
     * `--enable-executable-dynamic --enable-profiling` will automatically turn on building
       shared profiling libraries (if supported by your compiler).
-
-- Working directory support for `Cabal` [#9702](https://github.com/haskell/cabal/issues/9702) [#9718](https://github.com/haskell/cabal/pull/9718)
-
-  The `Cabal` library is now able to handle a passed-in working directory, instead
-  of always relying on the current working directory of the parent process.
-
-  In order to achieve this, the `SymbolicPath` abstraction was fleshed out, and
-  all fields of `PackageDescription` that, if relative, should be interpreted
-  with respect to e.g. the package root, use `SymbolicPath` instead of `FilePath`.
-
-  This means that many library functions in `Cabal` take an extra argument of type
-  `Maybe (SymbolicPath CWD (Dir "Package"))`, which is an optional (relative or
-  absolute) path to the package root (if relative, relative to the current working
-  directory). In addition, many functions that used to manipulate `FilePath`s now
-  manipulate `SymbolicPath`s, require explicit conversion using e.g. `getSymbolicPath`.
-
-  To illustrate with file searching, the `Cabal` library defines:
-
-  ```haskell
-  findFileCwd
-    :: forall dir1 dir2 file
-     . Verbosity
-    -> Maybe (SymbolicPath CWD (Dir dir1))
-
-    -> [SymbolicPath dir1 (Dir dir2)]
-
-    -> RelativePath dir2 File
-
-    -> IO (SymbolicPath dir1 File)
-  ```
-
-  See Note [Symbolic paths] in `Distribution.Utils.Path` for further information
-  on the design of this API.
 
 - `curl` transport now supports Basic authentication [#10089](https://github.com/haskell/cabal/pull/10089)
 
@@ -151,20 +126,16 @@
   * `documentation: true` or `--enable-documentation` now implies `-haddock` for
     GHC.
 
-- Redefine `build-type: Configure` in terms of `Hooks` [#9969](https://github.com/haskell/cabal/pull/9969)
-
-  The `build-type: Configure` is now implemented in terms of `build-type: Hooks`
-  rather than in terms of `build-type: Custom`. This moves the `Configure`
-  build-type away from the `Custom` issues. Eventually, `build-type: Hooks` will
-  no longer imply packages are built in legacy-fallback mode. When that
-  happens, `Configure` will also stop implying `legacy-fallback`.
-
-  The observable aspect of this change is `runConfigureScript` now having a
-  different type, and `autoconfSetupHooks` being exposed from `Distribution.Simple`.
-  The former is motivated by internal implementation details, while the latter
-  provides the `SetupHooks` value for the `Configure` build type, which can be
-  consumed by other `Hooks` clients (e.g. eventually HLS).
-
 - Bug fix - Don't pass `--coverage-for` for non-dependency libs of testsuite [#10046](https://github.com/haskell/cabal/issues/10046) [#10250](https://github.com/haskell/cabal/pull/10250)
 
 - Added `--all` and `--haddock-all` switches to `haddock-project` subcommand [#10051](https://github.com/haskell/cabal/issues/10051) [#10163](https://github.com/haskell/cabal/pull/10163)
+
+- Clarify error message when `pkg-config` is not found [#10122](https://github.com/haskell/cabal/pull/10122)
+
+  - The error message when `pkg-config` is not found or querying it fails will no
+  longer incorrectly claim that the package is missing in the database.
+
+- Update the SPDX License List to version 3.25
+
+  The LicenseId and LicenseExceptionId types are updated to reflect the SPDX
+  License List version 3.25 (2024-08-19).

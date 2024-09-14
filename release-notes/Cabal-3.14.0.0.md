@@ -81,6 +81,8 @@
 
 - Add `NamedDefaults` extension (GHC proposal #409) [#9740](https://github.com/haskell/cabal/pull/9740)
 
+- Add `OrPatterns` extension (GHC proposal #958) [#10339](https://github.com/haskell/cabal/pull/10339)
+
 
 ### Other changes
 
@@ -150,3 +152,8 @@
   things (Setup configure, the package's "configure" script, or "cabal
   configure"). This has recently caught out even Cabal devs. Clarify these
   messages. [#9476](https://github.com/haskell/cabal/pull/9476)
+
+- Update the SPDX License List to version 3.25
+
+  The LicenseId and LicenseExceptionId types are updated to reflect the SPDX
+  License List version 3.25 (2024-08-19).
