@@ -2739,7 +2739,7 @@ The exact fields are as follows:
     on the repository type. For example:
 
     -  for darcs: ``http://code.haskell.org/foo/``
-    -  for git: ``git://github.com/foo/bar.git``
+    -  for git: ``https://github.com/foo/bar.git``
     -  for CVS: ``anoncvs@cvs.foo.org:/cvs``
 
     This field is required.
