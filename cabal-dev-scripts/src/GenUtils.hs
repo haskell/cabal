@@ -162,6 +162,7 @@ toConstructorName t = t
     special :: Text -> Text
     special "0BSD"          = "NullBSD"
     special "389_exception" = "DS389_exception"
+    special "3D_Slicer_1_0" = "X3D_Slicer_1_0"
     special u               = u
 
 mkList :: [Text] -> Text
