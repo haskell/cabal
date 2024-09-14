@@ -15,6 +15,7 @@ import Data.Text    (Text)
 import GHC.Generics (Generic)
 
 import qualified Data.Algorithm.Diff as Diff
+import qualified Data.Char           as C
 import qualified Data.Map            as Map
 import qualified Data.Set            as Set
 import qualified Data.Text           as T
@@ -165,10 +166,10 @@ toConstructorName t = t
     f c   = c
 
     special :: Text -> Text
-    special "0BSD"          = "NullBSD"
-    special "389_exception" = "DS389_exception"
-    special "3D_Slicer_1_0" = "X3D_Slicer_1_0"
-    special u               = u
+    special u
+      | Just (c, _) <- T.uncons u
+      , C.isDigit c = "N_" <> u
+    special u = u
 
 mkList :: [Text] -> Text
 mkList []     = "    []"
