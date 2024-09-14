@@ -1,6 +1,22 @@
 # Note: We do not use the rebase strategy to merge PRs, because that
 # loses information needed by changelog-d to associate commits with PRs.
 
+priority_rules:
+
+  - name: high priority
+    conditions:
+      - 'label=priority: high :fire:'
+    priority: high
+
+  # The idea is we slightly prioritize those PRs because we're in
+  # a release cycle if a PR matches.
+  - name: release branch
+    conditions:
+      - 'base~=^3\.'
+      - 'label!=backport'
+    # 'normal' is 2000, 'high' is 3000
+    priority: 2500
+
 pull_request_rules:
 
   # implementing PR delay logic: apply a label after 2 days of inactivity
@@ -11,7 +27,9 @@ pull_request_rules:
           - merge delay passed
     name: Wait for 2 days before validating merge
     conditions:
-      - updated-at<2 days ago
+      - or:
+        - 'label=priority: high :fire:'
+        - updated-at<2 days ago
       - or:
         - label=merge me
         - label=squash+merge me
