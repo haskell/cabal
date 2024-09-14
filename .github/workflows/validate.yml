@@ -17,16 +17,25 @@ concurrency:
 on:
   push:
     paths-ignore:
-      - 'doc/**'
-      - '**/README.md'
-      - 'CONTRIBUTING.md'
+      - "doc/**"
+      - "**/README.md"
+      - "CONTRIBUTING.md"
+      - "changelog.d/**"
+      # only top level for these, because various test packages have them too
+      - "*/ChangeLog.md"
+      - "*/changelog.md"
+      - "release-notes/**"
     branches:
       - master
   pull_request:
     paths-ignore:
-      - 'doc/**'
-      - '**/README.md'
-      - 'CONTRIBUTING.md'
+      - "doc/**"
+      - "**/README.md"
+      - "CONTRIBUTING.md"
+      - "changelog.d/**"
+      - "*/ChangeLog.md"
+      - "*/changelog.md"
+      - "release-notes/**"
   release:
     types:
       - created
