@@ -41,6 +41,7 @@ on:
 
 jobs:
   validate-post-job:
+    # 'always()' makes this run even if the job is cancelled
     if: always()
     name: Validate post job
     runs-on: ubuntu-latest
