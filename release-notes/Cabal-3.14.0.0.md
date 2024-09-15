@@ -1,3 +1,7 @@
+Cabal and Cabal-syntax 3.14.0.0 changelog and release notes
+---
+
+
 ### Significant changes
 
 - Neutral field to add files to sdist [#8817](https://github.com/haskell/cabal/issues/8817) [#10107](https://github.com/haskell/cabal/pull/10107)
