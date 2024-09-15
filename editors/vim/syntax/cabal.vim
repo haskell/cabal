@@ -232,6 +232,7 @@ syn keyword cabalExtension contained
   \ NullaryTypeClasses
   \ NumDecimals
   \ NumericUnderscores
+  \ OrPatterns
   \ OverlappingInstances
   \ OverloadedLabels
   \ OverloadedLists
@@ -362,6 +363,7 @@ syn keyword cabalExtension contained
   \ NoMonoLocalBinds
   \ NoMonoPatBinds
   \ NoMonomorphismRestriction
+  \ NoMultilineStrings
   \ NoMultiParamTypeClasses
   \ NoMultiWayIf
   \ NoNPlusKPatterns
@@ -379,6 +381,7 @@ syn keyword cabalExtension contained
   \ NoOverloadedLists
   \ NoOverloadedRecordDot
   \ NoOverloadedStrings
+  \ NoOrPatterns
   \ NoPackageImports
   \ NoParallelArrays
   \ NoParallelListComp
