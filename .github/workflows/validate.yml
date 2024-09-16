@@ -72,7 +72,7 @@ jobs:
         sys:
           - { os: windows-latest, shell: "C:/msys64/usr/bin/bash.exe -e {0}" }
           - { os: ubuntu-latest, shell: bash }
-          - { os: macos-13, shell: bash }
+          - { os: macos-latest, shell: bash }
         # If you remove something from here, then add it to the old-ghcs job.
         # Also a removed GHC from here means that we are actually dropping
         # support, so the PR *must* have a changelog entry.
@@ -100,6 +100,19 @@ jobs:
           # lot of segfaults caused by ghc bugs
           - sys:
               { os: windows-latest, shell: "C:/msys64/usr/bin/bash.exe -e {0}" }
+            ghc: "8.8.4"
+          # ghc before 8.10.5 doesn't run on AArch64
+          # 9.0.2 suffers from https://gitlab.haskell.org/ghc/ghc/-/issues/20592
+          # 8.10.7 throws asm errors in hashable's cbits suggesting the runner doesn't
+          # support a CPU extension for hardware SHA; may be fixable with flags
+          - sys:
+              { os: macos-latest, shell: bash }
+            ghc: "9.0.2"
+          - sys:
+              { os: macos-latest, shell: bash }
+            ghc: "8.10.7"
+          - sys:
+              { os: macos-latest, shell: bash }
             ghc: "8.8.4"
     defaults:
       run:
@@ -181,6 +194,16 @@ jobs:
       - name: Validate build
         run: sh validate.sh $FLAGS -s build
 
+      - name: Canonicalize architecture
+        run: |
+          case ${{ runner.arch }} in
+            X86) arch=i386 ;;
+            X64) arch=x86_64 ;;
+            ARM64) arch=aarch64 ;;
+            *) echo "Unsupported architecture, please fix validate.yaml" 2>/dev/null; exit 1 ;;
+          esac
+          echo "CABAL_ARCH=$arch" >> "$GITHUB_ENV"
+
       - name: Tar cabal head executable
         if: matrix.ghc == env.GHC_FOR_RELEASE
         run: |
@@ -199,7 +222,7 @@ jobs:
           fi
           DIR=$(dirname "$CABAL_EXEC")
           FILE=$(basename "$CABAL_EXEC")
-          CABAL_EXEC_TAR="cabal-head-${{ runner.os }}-x86_64.tar.gz"
+          CABAL_EXEC_TAR="cabal-head-${{ runner.os }}-$CABAL_ARCH.tar.gz"
           tar -czvf "$CABAL_EXEC_TAR" -C "$DIR" "$FILE"
           echo "CABAL_EXEC_TAR=$CABAL_EXEC_TAR" >> "$GITHUB_ENV"
 
@@ -210,7 +233,7 @@ jobs:
         if: matrix.ghc == env.GHC_FOR_RELEASE
         uses: actions/upload-artifact@v4
         with:
-          name: cabal-${{ runner.os }}-x86_64
+          name: cabal-${{ runner.os }}-${{ env.CABAL_ARCH }}
           path: ${{ env.CABAL_EXEC_TAR }}
 
       - name: Validate lib-tests
@@ -363,18 +386,36 @@ jobs:
   # This one uses the cabal HEAD generated executable in the previous step
   # to build itself again, as sanity check
   dogfooding:
-    name: Dogfooding ${{ matrix.os }} ghc-${{ matrix.ghc }}
-    runs-on: ${{ matrix.os }}
+    name: Dogfooding ${{ matrix.sys.os }} ghc-${{ matrix.ghc }}
+    runs-on: ${{ matrix.sys.os }}
     needs: validate
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-13, windows-latest]
+        sys:
+          - { os: windows-latest, shell: "C:/msys64/usr/bin/bash.exe -e {0}" }
+          - { os: ubuntu-latest, shell: bash }
+          - { os: macos-latest, shell: bash }
         # We only use one ghc version the used one for the next release (defined at top of the workflow)
         # We need to build an array dynamically to inject the appropiate env var in a previous job,
         # see https://docs.github.com/en/actions/learn-github-actions/expressions#fromjson
         ghc: ${{ fromJSON (needs.validate.outputs.GHC_FOR_RELEASE) }}
 
+    defaults:
+      run:
+        shell: ${{ matrix.sys.shell }}
+
     steps:
+      # TODO: make a reusable action for this
+      - name: Canonicalize architecture
+        run: |
+          case ${{ runner.arch }} in
+            X86) arch=i386 ;;
+            X64) arch=x86_64 ;;
+            ARM64) arch=aarch64 ;;
+            *) echo "Unsupported architecture" 2>/dev/null; exit 1 ;;
+          esac
+          echo "CABAL_ARCH=$arch" >> "$GITHUB_ENV"
+
       - name: Work around XDG directories existence (haskell-actions/setup#62)
         if: runner.os == 'macOS'
         run: |
@@ -392,11 +433,11 @@ jobs:
       - name: Download cabal executable from workflow artifacts
         uses: actions/download-artifact@v4
         with:
-          name: cabal-${{ runner.os }}-x86_64
+          name: cabal-${{ runner.os }}-${{ env.CABAL_ARCH }}
           path: cabal-head
 
       - name: Untar the cabal executable
-        run: tar -xzf "./cabal-head/cabal-head-${{ runner.os }}-x86_64.tar.gz" -C cabal-head
+        run: tar -xzf "./cabal-head/cabal-head-${{ runner.os }}-$CABAL_ARCH.tar.gz" -C cabal-head
 
       - name: print-config using cabal HEAD
         run: sh validate.sh ${{ env.COMMON_FLAGS }} --with-cabal ./cabal-head/cabal -s print-config
@@ -415,6 +456,7 @@ jobs:
     needs: [validate, validate-old-ghcs, build-alpine, dogfooding]
 
     steps:
+      # for now this is hardcoded. is there a better way?
       - uses: actions/download-artifact@v4
         with:
           name: cabal-Windows-x86_64
@@ -429,7 +471,7 @@ jobs:
 
       - uses: actions/download-artifact@v4
         with:
-          name: cabal-macOS-x86_64
+          name: cabal-macOS-aarch64
 
       - name: Create GitHub prerelease
         uses: marvinpinto/action-automatic-releases@v1.2.1
@@ -442,7 +484,7 @@ jobs:
             cabal-head-Windows-x86_64.tar.gz
             cabal-head-Linux-x86_64.tar.gz
             cabal-head-Linux-static-x86_64.tar.gz
-            cabal-head-macOS-x86_64.tar.gz
+            cabal-head-macOS-aarch64.tar.gz
 
   prerelease-lts:
     name: Create a GitHub LTS prerelease with the binary artifacts
