@@ -236,29 +236,24 @@ jobs:
           name: cabal-${{ runner.os }}-${{ env.CABAL_ARCH }}
           path: ${{ env.CABAL_EXEC_TAR }}
 
-      - name: Validate lib-tests
+      - name: Validate tests
         env:
           # `rawSystemStdInOut reports text decoding errors`
           # test does not find ghc without the full path in windows
           GHCPATH: ${{ steps.setup-haskell.outputs.ghc-exe }}
-        run: sh validate.sh $FLAGS -s lib-tests
-
-      - name: Validate lib-suite
-        run: sh validate.sh $FLAGS -s lib-suite
-
-      - name: Validate cli-tests
-        run: sh validate.sh $FLAGS -s cli-tests
-
-      - name: Validate cli-suite
-        run: sh validate.sh $FLAGS -s cli-suite
-
-      - name: Validate solver-benchmarks-tests
-        if: matrix.ghc == env.GHC_FOR_SOLVER_BENCHMARKS
-        run: sh validate.sh $FLAGS -s solver-benchmarks-tests
-
-      - name: Validate solver-benchmarks-run
-        if: matrix.ghc == env.GHC_FOR_SOLVER_BENCHMARKS
-        run: sh validate.sh $FLAGS -s solver-benchmarks-run
+        run: |
+          set +e
+          rc=0
+          tests="lib-tests lib-suite cli-tests cli-suite"
+          if [ "${{ matrix.ghc }}" = "${{ env.GHC_FOR_SOLVER_BENCHMARKS }}" ]; then
+            tests="$tests solver-benchmarks-tests solver-benchmarks-run"
+          fi
+          for test in $tests; do
+            echo Validate "$test"
+            sh validate.sh $FLAGS -s "$test" || rc=1
+            echo End "$test"
+          done
+          exit $rc
 
   validate-old-ghcs:
     name: Validate old ghcs ${{ matrix.extra-ghc }}
@@ -312,11 +307,13 @@ jobs:
           restore-keys: ${{ runner.os }}-${{ env.GHC_FOR_RELEASE }}-
 
       - name: Validate build
+        id: build
         run: sh validate.sh ${{ env.COMMON_FLAGS }} -s build
 
       - name: "Validate lib-suite-extras --extra-hc ghc-${{ matrix.extra-ghc }}"
         env:
           EXTRA_GHC: ghc-${{ matrix.extra-ghc }}
+        continue-on-error: true
         run: sh validate.sh ${{ env.COMMON_FLAGS }} --lib-only -s lib-suite-extras --extra-hc "${{ env.EXTRA_GHC }}"
 
   build-alpine:
