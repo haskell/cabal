@@ -19,6 +19,12 @@ This Cabal Git repository contains the following main packages:
 The canonical upstream repository is located at
 https://github.com/haskell/cabal.
 
+## Support window for releases
+
+| Latest release | 3.14 |
+|---|---|
+| Long-Time Support release | 3.12 |
+
 ## Learn how to use `cabal` and get support
 
 `cabal` comes with a thorough [User Manual](https://cabal.readthedocs.io).
