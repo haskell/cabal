@@ -19,8 +19,16 @@ This Cabal Git repository contains the following main packages:
 The canonical upstream repository is located at
 https://github.com/haskell/cabal.
 
-Ways to get the `cabal-install` binary
---------------------------------
+## Learn how to use `cabal` and get support
+
+`cabal` comes with a thorough [User Manual](https://cabal.readthedocs.io).
+If you are new to `cabal` and want to quickly learn the basics, check
+[Getting Started With Haskell and Cabal](https://cabal.readthedocs.io/en/latest/getting-started.html).
+
+Got questions? Ask in [Haskell Matrix](https://matrix.to/#/#haskell:matrix.org)
+(online chat) or [Haskell Discourse](https://discourse.haskell.org).
+
+## Ways to get the `cabal-install` binary
 
 1. _GHCup_ (**preferred**): get GHCup using [the directions on its website](https://www.haskell.org/ghcup/) and run:
 
@@ -31,7 +39,7 @@ Ways to get the `cabal-install` binary
 2. _[Download from official website](https://www.haskell.org/cabal/download.html)_:
     the `cabal-install` binary download for your platform should contain the `cabal` executable.
 
-#### Preview Releases
+### Preview Releases
 
 _Getting unreleased versions of `cabal-install`_: gives you a chance to try out yet-unreleased features.
 Currently, we only provide binaries for `x86_64` platforms.
@@ -66,8 +74,7 @@ Currently, we only provide binaries for `x86_64` platforms.
    from the `Validate` worklow page on GitHub, at the very bottom of the page,
    or from the `build-alpine` workflow for statically linked Linux builds.
 
-Ways to build `cabal-install` for everyday use
---------------------------------------------
+## Ways to build `cabal-install` for everyday use
 
 1. _With cabal-install_:
     if you have a pre-existing version of `cabal-install`, run:
@@ -91,17 +98,6 @@ Ways to build `cabal-install` for everyday use
     if you don't have a pre-existing version of `cabal-install`,
     look into the [`bootstrap`](bootstrap) directory.
 
-Learn how to use `cabal` and get support
-----------------------------------------
-
-`cabal` comes with a thorough [User Manual](https://cabal.readthedocs.io).
-If you are new to `cabal` and want to quickly learn the basics, check
-[Getting Started With Haskell and Cabal](https://cabal.readthedocs.io/en/latest/getting-started.html).
-
-Got questions? Ask in [Haskell Matrix](https://matrix.to/#/#haskell:matrix.org)
-(online chat) or [Haskell Discourse](https://discourse.haskell.org).
-
-Build for hacking and contributing to cabal
--------------------------------------------
+## Contributing to cabal
 
 Refer to [CONTRIBUTING.md](CONTRIBUTING.md).
