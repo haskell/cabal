@@ -444,6 +444,52 @@ jobs:
             cabal-head-Linux-static-x86_64.tar.gz
             cabal-head-macOS-x86_64.tar.gz
 
+  prerelease-lts:
+    name: Create a GitHub LTS prerelease with the binary artifacts
+    runs-on: ubuntu-latest
+    # The LTS branch is hardcoded for now, update it on a new LTS!
+    if: github.ref == 'refs/heads/3.12'
+
+    # IMPORTANT! Any job added to the workflow should be added here too
+    needs: [validate, validate-old-ghcs, build-alpine, dogfooding]
+
+    steps:
+    - uses: actions/download-artifact@v4
+      with:
+        name: cabal-Windows-x86_64
+
+    - uses: actions/download-artifact@v4
+      with:
+        name: cabal-Linux-x86_64
+
+    - uses: actions/download-artifact@v4
+      with:
+        name: cabal-Linux-static-x86_64
+
+    - uses: actions/download-artifact@v4
+      with:
+        name: cabal-macOS-x86_64
+
+    - run: |
+        # bash-ism, but we forced bash above
+        mv cabal-{,lts-}head-Windows-x86_64.tar.gz
+        mv cabal-{,lts-}head-Linux-x86_64.tar.gz
+        mv cabal-{,lts-}head-Linux-static-x86_64.tar.gz
+        mv cabal-{,lts-}head-macOS-x86_64.tar.gz
+
+    - name: Create GitHub prerelease
+      uses: marvinpinto/action-automatic-releases@v1.2.1
+      with:
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        automatic_release_tag: cabal-lts-head
+        prerelease: true
+        title: cabal-lts-head
+        files: |
+          cabal-lts-head-Windows-x86_64.tar.gz
+          cabal-lts-head-Linux-x86_64.tar.gz
+          cabal-lts-head-Linux-static-x86_64.tar.gz
+          cabal-lts-head-macOS-x86_64.tar.gz
+
   # We use this job as a summary of the workflow
   # It will fail if any of the previous jobs does
   # This way we can use it exclusively in branch protection rules
