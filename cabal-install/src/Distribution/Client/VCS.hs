@@ -64,6 +64,10 @@ import Distribution.Simple.Program
 import Distribution.Simple.Program.Db
   ( prependProgramSearchPath
   )
+import Distribution.System
+  ( OS (Windows)
+  , buildOS
+  )
 import Distribution.Types.SourceRepo
   ( KnownRepoType (..)
   , RepoType (..)
@@ -93,6 +97,7 @@ import qualified Data.Map as Map
 import System.Directory
   ( doesDirectoryExist
   , removeDirectoryRecursive
+  , removePathForcibly
   )
 import System.FilePath
   ( takeDirectory
@@ -100,7 +105,9 @@ import System.FilePath
   )
 import System.IO.Error
   ( isDoesNotExistError
+  , isPermissionError
   )
+import qualified System.Process as Process
 
 -- | A driver for a version control system, e.g. git, darcs etc.
 data VCS program = VCS
@@ -206,7 +213,7 @@ configureVCS
   -> VCS Program
   -> IO (VCS ConfiguredProgram)
 configureVCS verbosity progPaths vcs@VCS{vcsProgram = prog} = do
-  progPath <- prependProgramSearchPath verbosity progPaths emptyProgramDb
+  progPath <- prependProgramSearchPath verbosity progPaths [] emptyProgramDb
   asVcsConfigured <$> requireProgram verbosity prog progPath
   where
     asVcsConfigured (prog', _) = vcs{vcsProgram = prog'}
@@ -509,7 +516,19 @@ vcsGit =
       git localDir ["submodule", "deinit", "--force", "--all"]
       let gitModulesDir = localDir </> ".git" </> "modules"
       gitModulesExists <- doesDirectoryExist gitModulesDir
-      when gitModulesExists $ removeDirectoryRecursive gitModulesDir
+      when gitModulesExists $
+        if buildOS == Windows
+          then do
+            -- Windows can't delete some git files #10182
+            void $
+              Process.createProcess_ "attrib" $
+                Process.shell $
+                  "attrib -s -h -r " <> gitModulesDir <> "\\*.* /s /d"
+
+            catch
+              (removePathForcibly gitModulesDir)
+              (\e -> if isPermissionError e then removePathForcibly gitModulesDir else throw e)
+          else removeDirectoryRecursive gitModulesDir
       git localDir resetArgs
       git localDir $ ["submodule", "sync", "--recursive"] ++ verboseArg
       git localDir $ ["submodule", "update", "--force", "--init", "--recursive"] ++ verboseArg

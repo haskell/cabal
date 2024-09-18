@@ -3,14 +3,14 @@
 We have these projects, all in the root:
 
 ```
-$ tree -P 'cabal.project*' --prune -L 1
+$ tree -P '*.project' --prune -L 1
 .
+├── cabal.bootstrap.project
+├── cabal.meta.project
 ├── cabal.project
-├── cabal.project.libonly
-├── cabal.project.meta
-├── cabal.project.release
-├── cabal.project.validate
-└── cabal.project.validate.libonly
+├── cabal.release.project
+├── cabal.validate-libonly.project
+└── cabal.validate.project
 ```
 
 Projects are expected to pass a `build --dry-run` standalone test,
@@ -85,7 +85,7 @@ package group.
 The `meta` project is a one-liner:
 
 ```
-$ cat cabal.project.meta
+$ cat cabal.meta.project
 packages: cabal-dev-scripts
 ```
 

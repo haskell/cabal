@@ -1,0 +1,16 @@
+cabal-version:       3.14
+name:                setup-hooks-no-base-test
+version:             0.1.0.0
+synopsis:            Test that we can build Setup.hs without base
+license:             BSD-3-Clause
+author:              NA
+maintainer:          NA
+category:            Testing
+build-type:          Hooks
+
+custom-setup
+  setup-depends: Cabal-hooks
+
+library
+  exposed-modules:  A
+  default-language: Haskell2010

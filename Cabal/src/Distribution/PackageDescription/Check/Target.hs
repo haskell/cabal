@@ -825,9 +825,10 @@ checkGHCOptions title t opts = do
       checkFlags
         ["-prof"]
         (PackageBuildWarning $ OptProf title)
-      -- Does not apply to scripts.
-      -- Why do we need this? See #8963.
       pid <- asksCM (pnPackageId . ccNames)
+      -- Scripts add the -o flag in the fake-package.cabal in order to have the
+      -- executable name match the script name even when there are characters
+      -- in the script name which are illegal to have as a target name.
       unless (pid == fakePackageId) $
         checkFlags
           ["-o"]
@@ -859,14 +860,14 @@ checkGHCOptions title t opts = do
       let ghcNoRts = rmRtsOpts opts
       checkAlternatives
         title
-        "extensions"
+        "default-extensions"
         [ (flag, prettyShow extension)
         | flag <- ghcNoRts
         , Just extension <- [ghcExtension flag]
         ]
       checkAlternatives
         title
-        "extensions"
+        "default-extensions"
         [ (flag, extension)
         | flag@('-' : 'X' : extension) <- ghcNoRts
         ]

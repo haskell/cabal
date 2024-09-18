@@ -85,6 +85,7 @@ import Distribution.Simple.Compiler
   ( CompilerInfo (..)
   , DebugInfoLevel (..)
   , OptimisationLevel (..)
+  , interpretPackageDB
   )
 import Distribution.Simple.InstallDirs (CopyDest (NoCopyDest))
 import Distribution.Simple.LocalBuildInfo
@@ -508,6 +509,7 @@ commandLineFlagsToProjectConfig globalFlags NixStyleFlags{..} clientInstallFlags
           , packageConfigHaddockInternal = packageConfigHaddockInternal pc
           , packageConfigHaddockQuickJump = packageConfigHaddockQuickJump pc
           , packageConfigHaddockLinkedSource = packageConfigHaddockLinkedSource pc
+          , packageConfigHaddockUseUnicode = packageConfigHaddockUseUnicode pc
           }
       )
 
@@ -684,6 +686,8 @@ convertLegacyAllPackageFlags globalFlags configFlags configExFlags installFlags 
       , globalStoreDir = projectConfigStoreDir
       } = globalFlags
 
+    projectConfigPackageDBs = (fmap . fmap) (interpretPackageDB Nothing) projectConfigPackageDBs_
+
     ConfigFlags
       { configCommonFlags = commonFlags
       , configHcFlavor = projectConfigHcFlavor
@@ -692,7 +696,7 @@ convertLegacyAllPackageFlags globalFlags configFlags configExFlags installFlags 
       , -- configProgramPathExtra    = projectConfigProgPathExtra DELETE ME
       configInstallDirs = projectConfigInstallDirs
       , -- configUserInstall         = projectConfigUserInstall,
-      configPackageDBs = projectConfigPackageDBs
+      configPackageDBs = projectConfigPackageDBs_
       } = configFlags
 
     CommonSetupFlags
@@ -768,6 +772,7 @@ convertLegacyPerPackageFlags
         , configFullyStaticExe = packageConfigFullyStaticExe
         , configProfExe = packageConfigProfExe
         , configProf = packageConfigProf
+        , configProfShared = packageConfigProfShared
         , configProfDetail = packageConfigProfDetail
         , configProfLibDetail = packageConfigProfLibDetail
         , configConfigureArgs = packageConfigConfigureArgs
@@ -821,8 +826,9 @@ convertLegacyPerPackageFlags
         , haddockContents = packageConfigHaddockContents
         , haddockIndex = packageConfigHaddockIndex
         , haddockBaseUrl = packageConfigHaddockBaseUrl
-        , haddockLib = packageConfigHaddockLib
+        , haddockResourcesDir = packageConfigHaddockResourcesDir
         , haddockOutputDir = packageConfigHaddockOutputDir
+        , haddockUseUnicode = packageConfigHaddockUseUnicode
         } = haddockFlags
 
       TestFlags
@@ -974,7 +980,7 @@ convertToLegacySharedConfig
       configFlags =
         mempty
           { configCommonFlags = commonFlags
-          , configPackageDBs = projectConfigPackageDBs
+          , configPackageDBs = fmap (fmap (fmap unsafeMakeSymbolicPath)) projectConfigPackageDBs
           , configInstallDirs = projectConfigInstallDirs
           }
 
@@ -1074,6 +1080,7 @@ convertToLegacyAllPackageConfig
           , configFullyStaticExe = mempty
           , configProfExe = mempty
           , configProf = mempty
+          , configProfShared = mempty
           , configProfDetail = mempty
           , configProfLibDetail = mempty
           , configConfigureArgs = mempty
@@ -1112,6 +1119,7 @@ convertToLegacyAllPackageConfig
           , configDumpBuildInfo = mempty
           , configAllowDependingOnPrivateLibs = mempty
           , configCoverageFor = mempty
+          , configIgnoreBuildTools = mempty
           }
 
       haddockFlags =
@@ -1150,6 +1158,7 @@ convertToLegacyPerPackageConfig PackageConfig{..} =
         , configFullyStaticExe = packageConfigFullyStaticExe
         , configProfExe = packageConfigProfExe
         , configProf = packageConfigProf
+        , configProfShared = packageConfigProfShared
         , configProfDetail = packageConfigProfDetail
         , configProfLibDetail = packageConfigProfLibDetail
         , configConfigureArgs = packageConfigConfigureArgs
@@ -1188,6 +1197,7 @@ convertToLegacyPerPackageConfig PackageConfig{..} =
         , configDumpBuildInfo = packageConfigDumpBuildInfo
         , configAllowDependingOnPrivateLibs = mempty
         , configCoverageFor = mempty
+        , configIgnoreBuildTools = mempty
         }
 
     installFlags =
@@ -1218,8 +1228,9 @@ convertToLegacyPerPackageConfig PackageConfig{..} =
         , haddockKeepTempFiles = mempty
         , haddockIndex = packageConfigHaddockIndex
         , haddockBaseUrl = packageConfigHaddockBaseUrl
-        , haddockLib = packageConfigHaddockLib
+        , haddockResourcesDir = packageConfigHaddockResourcesDir
         , haddockOutputDir = packageConfigHaddockOutputDir
+        , haddockUseUnicode = packageConfigHaddockUseUnicode
         }
 
     testFlags =
@@ -1545,11 +1556,13 @@ legacyPackageConfigFieldDescrs =
         , "program-suffix"
         , "library-vanilla"
         , "library-profiling"
+        , "library-vanilla"
         , "shared"
         , "static"
         , "executable-dynamic"
         , "executable-static"
         , "profiling"
+        , "profiling-shared"
         , "executable-profiling"
         , "profiling-detail"
         , "library-profiling-detail"
@@ -1619,8 +1632,9 @@ legacyPackageConfigFieldDescrs =
             , "index-location"
             , "keep-temp-files"
             , "base-url"
-            , "lib"
+            , "resources-dir"
             , "output-dir"
+            , "use-unicode"
             ]
           . commandOptionsToFields
        )

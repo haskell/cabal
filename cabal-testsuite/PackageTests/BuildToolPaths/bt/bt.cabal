@@ -1,0 +1,56 @@
+cabal-version: 3.0
+name:          bt
+version:       0.1.0.0
+license:       BSD-3-Clause
+author:        sheaf
+maintainer:    sheaf
+category:      Testing
+build-type:    Simple
+description:   A package defining custom build tools
+
+data-dir:
+  bt-data
+data-files:
+  PP1.txt
+
+common warnings
+  ghc-options: -Wall
+
+library
+
+  import:
+    warnings
+
+  hs-source-dirs:
+    src
+
+  exposed-modules:
+    Tool
+
+  build-depends:
+    base,
+    containers,
+    directory
+
+executable custom-pp1
+
+  import:
+    warnings
+
+  hs-source-dirs:
+    exe
+
+  main-is:
+    Main.hs
+
+  build-depends:
+    base,
+    bt
+
+  autogen-modules:
+    Paths_bt
+  other-modules:
+    Paths_bt
+
+  default-language:
+    Haskell2010

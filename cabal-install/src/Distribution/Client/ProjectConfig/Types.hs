@@ -69,7 +69,7 @@ import Distribution.Simple.Compiler
   , CompilerFlavor
   , DebugInfoLevel (..)
   , OptimisationLevel (..)
-  , PackageDB
+  , PackageDBCWD
   , ProfDetailLevel
   )
 import Distribution.Simple.InstallDirs
@@ -198,7 +198,7 @@ data ProjectConfigShared = ProjectConfigShared
     -- projectConfigUserInstall       :: Flag Bool,
 
     projectConfigInstallDirs :: InstallDirs (Flag PathTemplate)
-  , projectConfigPackageDBs :: [Maybe PackageDB]
+  , projectConfigPackageDBs :: [Maybe PackageDBCWD]
   , -- configuration used both by the solver and other phases
     projectConfigRemoteRepos :: NubList RemoteRepo
   -- ^ Available Hackage servers.
@@ -265,6 +265,7 @@ data PackageConfig = PackageConfig
   , packageConfigFullyStaticExe :: Flag Bool
   , packageConfigProf :: Flag Bool -- TODO: [code cleanup] sort out
   , packageConfigProfLib :: Flag Bool --      this duplication
+  , packageConfigProfShared :: Flag Bool
   , packageConfigProfExe :: Flag Bool --      and consistency
   , packageConfigProfDetail :: Flag ProfDetailLevel
   , packageConfigProfLibDetail :: Flag ProfDetailLevel
@@ -305,8 +306,9 @@ data PackageConfig = PackageConfig
   , packageConfigHaddockContents :: Flag PathTemplate -- TODO: [required eventually] use this
   , packageConfigHaddockIndex :: Flag PathTemplate -- TODO: [required eventually] use this
   , packageConfigHaddockBaseUrl :: Flag String -- TODO: [required eventually] use this
-  , packageConfigHaddockLib :: Flag String -- TODO: [required eventually] use this
+  , packageConfigHaddockResourcesDir :: Flag String -- TODO: [required eventually] use this
   , packageConfigHaddockOutputDir :: Flag FilePath -- TODO: [required eventually] use this
+  , packageConfigHaddockUseUnicode :: Flag Bool -- TODO: [required eventually] use this
   , packageConfigHaddockForHackage :: Flag HaddockTarget
   , -- Test options
     packageConfigTestHumanLog :: Flag PathTemplate

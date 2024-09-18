@@ -99,7 +99,7 @@ import System.IO.Error
 
 import Distribution.Client.Compat.Directory (createFileLink, getSymbolicLinkTarget, pathIsSymbolicLink)
 import Distribution.Client.Init.Prompt (promptYesNo)
-import Distribution.Client.Init.Types (DefaultPrompt (MandatoryPrompt))
+import Distribution.Client.Init.Types (DefaultPrompt (MandatoryPrompt), runPromptIO)
 import Distribution.Client.Types.OverwritePolicy
 
 import qualified Data.ByteString as BS
@@ -336,7 +336,7 @@ symlinkBinary inputs@Symlink{publicBindir, privateBindir, publicName, privateNam
 
 promptRun :: String -> IO Bool -> IO Bool
 promptRun s m = do
-  a <- promptYesNo s MandatoryPrompt
+  a <- runPromptIO $ promptYesNo s MandatoryPrompt
   if a then m else pure a
 
 -- | Check a file path of a symlink that we would like to create to see if it

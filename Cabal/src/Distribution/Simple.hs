@@ -1,8 +1,12 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
 -----------------------------------------------------------------------------
 {-
 Work around this warning:
@@ -54,6 +58,8 @@ module Distribution.Simple
   , UserHooks (..)
   , Args
   , defaultMainWithHooks
+  , defaultMainWithSetupHooks
+  , defaultMainWithSetupHooksArgs
   , defaultMainWithHooksArgs
   , defaultMainWithHooksNoRead
   , defaultMainWithHooksNoReadArgs
@@ -61,12 +67,14 @@ module Distribution.Simple
     -- ** Standard sets of hooks
   , simpleUserHooks
   , autoconfUserHooks
+  , autoconfSetupHooks
   , emptyUserHooks
   ) where
 
 import Control.Exception (try)
 
 import Distribution.Compat.Prelude
+import Distribution.Compat.ResponseFile (expandResponse)
 import Prelude ()
 
 -- local
@@ -80,6 +88,7 @@ import Distribution.Simple.PackageDescription
 import Distribution.Simple.PreProcess
 import Distribution.Simple.Program
 import Distribution.Simple.Setup
+import qualified Distribution.Simple.SetupHooks.Internal as SetupHooks
 import Distribution.Simple.UserHooks
 
 import Distribution.Simple.Build
@@ -92,21 +101,24 @@ import Distribution.License
 import Distribution.Pretty
 import Distribution.Simple.Bench
 import Distribution.Simple.BuildPaths
-import Distribution.Simple.ConfigureScript
+import Distribution.Simple.ConfigureScript (runConfigureScript)
 import Distribution.Simple.Errors
 import Distribution.Simple.Haddock
 import Distribution.Simple.Install
 import Distribution.Simple.LocalBuildInfo
+import Distribution.Simple.SetupHooks.Internal
+  ( SetupHooks
+  )
 import Distribution.Simple.Test
 import Distribution.Simple.Utils
+import qualified Distribution.Types.LocalBuildConfig as LBC
 import Distribution.Utils.Path
 import Distribution.Verbosity
 import Distribution.Version
 import Language.Haskell.Extension
 
 -- Base
-
-import Distribution.Compat.ResponseFile (expandResponse)
+import Data.List (unionBy, (\\))
 import System.Directory
   ( doesDirectoryExist
   , doesFileExist
@@ -114,8 +126,6 @@ import System.Directory
   , removeFile
   )
 import System.Environment (getArgs, getProgName)
-
-import Data.List (unionBy, (\\))
 
 -- | A simple implementation of @main@ for a Cabal setup script.
 -- It reads the package description file using IO, and performs the
@@ -127,6 +137,112 @@ defaultMain = getArgs >>= defaultMainHelper simpleUserHooks
 -- arguments, rather than getting them from the environment.
 defaultMainArgs :: [String] -> IO ()
 defaultMainArgs = defaultMainHelper simpleUserHooks
+
+defaultMainWithSetupHooks :: SetupHooks -> IO ()
+defaultMainWithSetupHooks setup_hooks =
+  getArgs >>= defaultMainWithSetupHooksArgs setup_hooks
+
+defaultMainWithSetupHooksArgs :: SetupHooks -> [String] -> IO ()
+defaultMainWithSetupHooksArgs setupHooks =
+  defaultMainHelper $
+    simpleUserHooks
+      { confHook = setup_confHook
+      , buildHook = setup_buildHook
+      , copyHook = setup_copyHook
+      , instHook = setup_installHook
+      , replHook = setup_replHook
+      , haddockHook = setup_haddockHook
+      , hscolourHook = setup_hscolourHook
+      }
+  where
+    setup_confHook
+      :: (GenericPackageDescription, HookedBuildInfo)
+      -> ConfigFlags
+      -> IO LocalBuildInfo
+    setup_confHook =
+      configure_setupHooks
+        (SetupHooks.configureHooks setupHooks)
+
+    setup_buildHook
+      :: PackageDescription
+      -> LocalBuildInfo
+      -> UserHooks
+      -> BuildFlags
+      -> IO ()
+    setup_buildHook pkg_descr lbi hooks flags =
+      build_setupHooks
+        (SetupHooks.buildHooks setupHooks)
+        pkg_descr
+        lbi
+        flags
+        (allSuffixHandlers hooks)
+
+    setup_copyHook
+      :: PackageDescription
+      -> LocalBuildInfo
+      -> UserHooks
+      -> CopyFlags
+      -> IO ()
+    setup_copyHook pkg_descr lbi _hooks flags =
+      install_setupHooks
+        (SetupHooks.installHooks setupHooks)
+        pkg_descr
+        lbi
+        flags
+
+    setup_installHook
+      :: PackageDescription
+      -> LocalBuildInfo
+      -> UserHooks
+      -> InstallFlags
+      -> IO ()
+    setup_installHook =
+      defaultInstallHook_setupHooks
+        (SetupHooks.installHooks setupHooks)
+
+    setup_replHook
+      :: PackageDescription
+      -> LocalBuildInfo
+      -> UserHooks
+      -> ReplFlags
+      -> [String]
+      -> IO ()
+    setup_replHook pkg_descr lbi hooks flags args =
+      repl_setupHooks
+        (SetupHooks.buildHooks setupHooks)
+        pkg_descr
+        lbi
+        flags
+        (allSuffixHandlers hooks)
+        args
+
+    setup_haddockHook
+      :: PackageDescription
+      -> LocalBuildInfo
+      -> UserHooks
+      -> HaddockFlags
+      -> IO ()
+    setup_haddockHook pkg_descr lbi hooks flags =
+      haddock_setupHooks
+        (SetupHooks.buildHooks setupHooks)
+        pkg_descr
+        lbi
+        (allSuffixHandlers hooks)
+        flags
+
+    setup_hscolourHook
+      :: PackageDescription
+      -> LocalBuildInfo
+      -> UserHooks
+      -> HscolourFlags
+      -> IO ()
+    setup_hscolourHook pkg_descr lbi hooks flags =
+      hscolour_setupHooks
+        (SetupHooks.buildHooks setupHooks)
+        pkg_descr
+        lbi
+        (allSuffixHandlers hooks)
+        flags
 
 -- | A customizable version of 'defaultMain'.
 defaultMainWithHooks :: UserHooks -> IO ()
@@ -256,12 +372,12 @@ configureAction globalFlags hooks flags args = do
 
   let epkg_descr = (pkg_descr0, pbi)
 
-  localbuildinfo0 <- confHook hooks epkg_descr flags'
+  lbi1 <- confHook hooks epkg_descr flags'
 
   -- remember the .cabal filename if we know it
   -- and all the extra command line args
   let localbuildinfo =
-        localbuildinfo0
+        lbi1
           { pkgDescrFile = mb_pd_file
           , extraConfigArgs = args
           }
@@ -434,7 +550,7 @@ cleanAction globalFlags hooks flags args = do
       flags' =
         flags{cleanCommonFlags = common'}
 
-      mbWorkDirFlag = cleanWorkingDir flags
+      mbWorkDirFlag = cleanWorkingDir flags'
       mbWorkDir = flagToMaybe mbWorkDirFlag
 
   pbi <- preClean hooks args flags'
@@ -769,9 +885,9 @@ simpleUserHooks =
     , replHook = defaultReplHook
     , copyHook = \desc lbi _ f -> install desc lbi f
     , -- 'install' has correct 'copy' behavior with params
-      testHook = defaultTestHook
+      instHook = defaultInstallHook
+    , testHook = defaultTestHook
     , benchHook = defaultBenchHook
-    , instHook = defaultInstallHook
     , cleanHook = \p _ _ f -> clean p f
     , hscolourHook = \p l h f -> hscolour p l (allSuffixHandlers h) f
     , haddockHook = \p l h f -> haddock p l (allSuffixHandlers h) f
@@ -821,16 +937,11 @@ autoconfUserHooks =
         let common = configCommonFlags flags
             verbosity = fromFlag $ setupVerbosity common
             mbWorkDir = flagToMaybe $ setupWorkingDir common
-            baseDir = packageRoot common
-        confExists <- doesFileExist $ baseDir </> "configure"
-        if confExists
-          then
-            runConfigureScript
-              verbosity
-              flags
-              lbi
-          else dieWithException verbosity ConfigureScriptNotFound
-
+        runConfigureScript
+          flags
+          (flagAssignment lbi)
+          (withPrograms lbi)
+          (hostPlatform lbi)
         pbi <- getHookedBuildInfo verbosity mbWorkDir (buildDir lbi)
         sanityCheckHookedBuildInfo verbosity pkg_descr pbi
         let pkg_descr' = updatePackageDescription pbi pkg_descr
@@ -877,6 +988,65 @@ getHookedBuildInfo verbosity mbWorkDir build_dir = do
       info verbosity $ "Reading parameters from " ++ getSymbolicPath infoFile
       readHookedBuildInfo verbosity mbWorkDir infoFile
 
+autoconfSetupHooks :: SetupHooks
+autoconfSetupHooks =
+  SetupHooks.noSetupHooks
+    { SetupHooks.configureHooks =
+        SetupHooks.noConfigureHooks
+          { SetupHooks.postConfPackageHook = Just post_conf_pkg
+          , SetupHooks.preConfComponentHook = Just pre_conf_comp
+          }
+    }
+  where
+    post_conf_pkg
+      :: SetupHooks.PostConfPackageInputs
+      -> IO ()
+    post_conf_pkg
+      ( SetupHooks.PostConfPackageInputs
+          { SetupHooks.localBuildConfig =
+            LBC.LocalBuildConfig{LBC.withPrograms = progs}
+          , SetupHooks.packageBuildDescr =
+            LBC.PackageBuildDescr
+              { LBC.configFlags = cfg
+              , LBC.flagAssignment = flags
+              , LBC.hostPlatform = plat
+              }
+          }
+        ) = runConfigureScript cfg flags progs plat
+
+    pre_conf_comp
+      :: SetupHooks.PreConfComponentInputs
+      -> IO SetupHooks.PreConfComponentOutputs
+    pre_conf_comp
+      ( SetupHooks.PreConfComponentInputs
+          { SetupHooks.packageBuildDescr =
+            LBC.PackageBuildDescr
+              { LBC.configFlags = cfg
+              , localPkgDescr = pkg_descr
+              }
+          , SetupHooks.component = component
+          }
+        ) = do
+        let verbosity = fromFlag $ configVerbosity cfg
+            mbWorkDir = flagToMaybe $ configWorkingDir cfg
+            distPref = configDistPref cfg
+        dist_dir <- findDistPrefOrDefault distPref
+        -- Read the ".buildinfo" file and use that to update
+        -- the components (main library + executables only).
+        hbi <- getHookedBuildInfo verbosity mbWorkDir (dist_dir </> makeRelativePathEx "build")
+        sanityCheckHookedBuildInfo verbosity pkg_descr hbi
+        -- SetupHooks TODO: we are reading getHookedBuildInfo once
+        -- for each component. I think this is inherent to the SetupHooks
+        -- approach.
+        let comp_name = componentName component
+        diff <- case SetupHooks.hookedBuildInfoComponentDiff_maybe hbi comp_name of
+          Nothing -> return $ SetupHooks.emptyComponentDiff comp_name
+          Just do_diff -> do_diff
+        return $
+          SetupHooks.PreConfComponentOutputs
+            { SetupHooks.componentDiff = diff
+            }
+
 defaultTestHook
   :: Args
   -> PackageDescription
@@ -903,19 +1073,30 @@ defaultInstallHook
   -> UserHooks
   -> InstallFlags
   -> IO ()
-defaultInstallHook pkg_descr localbuildinfo _ flags = do
+defaultInstallHook =
+  defaultInstallHook_setupHooks SetupHooks.noInstallHooks
+
+defaultInstallHook_setupHooks
+  :: SetupHooks.InstallHooks
+  -> PackageDescription
+  -> LocalBuildInfo
+  -> UserHooks
+  -> InstallFlags
+  -> IO ()
+defaultInstallHook_setupHooks inst_hooks pkg_descr localbuildinfo _ flags = do
   let copyFlags =
         defaultCopyFlags
           { copyDest = installDest flags
           , copyCommonFlags = installCommonFlags flags
           }
-  install pkg_descr localbuildinfo copyFlags
+  install_setupHooks inst_hooks pkg_descr localbuildinfo copyFlags
   let registerFlags =
         defaultRegisterFlags
           { regInPlace = installInPlace flags
           , regPackageDB = installPackageDB flags
           }
-  when (hasLibs pkg_descr) $ register pkg_descr localbuildinfo registerFlags
+  when (hasLibs pkg_descr) $
+    register pkg_descr localbuildinfo registerFlags
 
 defaultBuildHook
   :: PackageDescription

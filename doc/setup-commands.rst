@@ -795,9 +795,20 @@ Miscellaneous options
     Build shared library. This implies a separate compiler run to
     generate position independent code as required on most platforms.
 
+    ``--enable-shared`` is enabled automatically if GHC is dynamically linked or
+    you request to build dynamic executables.
+
 .. option:: --disable-shared
 
     (default) Do not build shared library.
+
+.. option:: --enable-profiling-shared
+
+   Build a profiling shared library.
+
+.. option:: --disable-profiling-shared
+
+   (default) Do not built a profiling shared library.
 
 .. option:: --enable-static
 
@@ -1374,7 +1385,8 @@ The files placed in this distribution are the package description file,
 the setup script, the sources of the modules named in the package
 description file, and files named in the ``license-file``, ``main-is``,
 ``c-sources``, ``asm-sources``, ``cmm-sources``, ``js-sources``,
-``data-files``, ``extra-source-files`` and ``extra-doc-files`` fields.
+``data-files``, ``extra-source-files``, ``extra-doc-files``, and
+``extra-files`` fields.
 
 This command takes the following option:
 

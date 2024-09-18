@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
@@ -21,7 +22,7 @@ import Distribution.Client.Types
 import Distribution.Client.Types.OverwritePolicy (OverwritePolicy)
 import Distribution.Client.Types.SourceRepo (SourceRepositoryPackage)
 
-import Distribution.Simple.Compiler (PackageDB)
+import Distribution.Simple.Compiler (PackageDBX)
 
 import Data.TreeDiff.Class
 import Data.TreeDiff.Instances.Cabal ()
@@ -54,7 +55,7 @@ instance ToExpr OptionalStanza
 instance ToExpr Outcome
 instance ToExpr OverwritePolicy
 instance ToExpr PackageConfig
-instance ToExpr PackageDB
+instance ToExpr (PackageDBX FilePath)
 instance ToExpr PackageProperty
 instance ToExpr PreferOldest
 instance ToExpr PreSolver

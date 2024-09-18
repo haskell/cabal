@@ -113,8 +113,9 @@ data HaddockFlags = HaddockFlags
   , haddockIndex :: Flag PathTemplate
   , haddockKeepTempFiles :: Flag Bool
   , haddockBaseUrl :: Flag String
-  , haddockLib :: Flag String
+  , haddockResourcesDir :: Flag String
   , haddockOutputDir :: Flag FilePath
+  , haddockUseUnicode :: Flag Bool
   }
   deriving (Show, Generic, Typeable)
 
@@ -168,8 +169,9 @@ defaultHaddockFlags =
     , haddockKeepTempFiles = Flag False
     , haddockIndex = NoFlag
     , haddockBaseUrl = NoFlag
-    , haddockLib = NoFlag
+    , haddockResourcesDir = NoFlag
     , haddockOutputDir = NoFlag
+    , haddockUseUnicode = Flag False
     }
 
 haddockCommand :: CommandUI HaddockFlags
@@ -366,10 +368,10 @@ haddockOptions showOrParseArgs =
         (reqArgFlag "URL")
     , option
         ""
-        ["lib"]
+        ["resources-dir"]
         "location of Haddocks static / auxiliary files"
-        haddockLib
-        (\v flags -> flags{haddockLib = v})
+        haddockResourcesDir
+        (\v flags -> flags{haddockResourcesDir = v})
         (reqArgFlag "DIR")
     , option
         ""
@@ -378,6 +380,13 @@ haddockOptions showOrParseArgs =
         haddockOutputDir
         (\v flags -> flags{haddockOutputDir = v})
         (reqArgFlag "DIR")
+    , option
+        ""
+        ["use-unicode"]
+        "Pass --use-unicode option to haddock"
+        haddockUseUnicode
+        (\v flags -> flags{haddockUseUnicode = v})
+        trueArg
     ]
 
 emptyHaddockFlags :: HaddockFlags
@@ -440,8 +449,8 @@ data HaddockProjectFlags = HaddockProjectFlags
     haddockProjectKeepTempFiles :: Flag Bool
   , haddockProjectVerbosity :: Flag Verbosity
   , -- haddockBaseUrl is not supported, a fixed value is provided
-    haddockProjectLib :: Flag String
-  , haddockProjectOutputDir :: Flag FilePath
+    haddockProjectResourcesDir :: Flag String
+  , haddockProjectUseUnicode :: Flag Bool
   }
   deriving (Show, Generic, Typeable)
 
@@ -464,9 +473,9 @@ defaultHaddockProjectFlags =
     , haddockProjectHscolourCss = NoFlag
     , haddockProjectKeepTempFiles = Flag False
     , haddockProjectVerbosity = Flag normal
-    , haddockProjectLib = NoFlag
-    , haddockProjectOutputDir = NoFlag
+    , haddockProjectResourcesDir = NoFlag
     , haddockProjectInterfaces = NoFlag
+    , haddockProjectUseUnicode = NoFlag
     }
 
 haddockProjectCommand :: CommandUI HaddockProjectFlags
@@ -577,6 +586,27 @@ haddockProjectOptions _showOrParseArgs =
       trueArg
   , option
       ""
+      ["all", "haddock-all"]
+      "Run haddock for all targets"
+      ( \f ->
+          allFlags
+            [ haddockProjectExecutables f
+            , haddockProjectTestSuites f
+            , haddockProjectBenchmarks f
+            , haddockProjectForeignLibs f
+            ]
+      )
+      ( \v flags ->
+          flags
+            { haddockProjectExecutables = v
+            , haddockProjectTestSuites = v
+            , haddockProjectBenchmarks = v
+            , haddockProjectForeignLibs = v
+            }
+      )
+      trueArg
+  , option
+      ""
       ["internal"]
       "Run haddock for internal modules and include all symbols"
       haddockProjectInternal
@@ -608,18 +638,18 @@ haddockProjectOptions _showOrParseArgs =
       (\v flags -> flags{haddockProjectVerbosity = v})
   , option
       ""
-      ["lib"]
+      ["resources-dir"]
       "location of Haddocks static / auxiliary files"
-      haddockProjectLib
-      (\v flags -> flags{haddockProjectLib = v})
+      haddockProjectResourcesDir
+      (\v flags -> flags{haddockProjectResourcesDir = v})
       (reqArgFlag "DIR")
   , option
       ""
-      ["output-dir"]
-      "Generate haddock documentation into this directory. This flag is provided as a technology preview and is subject to change in the next releases."
-      haddockProjectOutputDir
-      (\v flags -> flags{haddockProjectOutputDir = v})
-      (reqArgFlag "DIR")
+      ["use-unicode"]
+      "Pass --use-unicode option to haddock"
+      haddockProjectUseUnicode
+      (\v flags -> flags{haddockProjectUseUnicode = v})
+      trueArg
   ]
 
 emptyHaddockProjectFlags :: HaddockProjectFlags

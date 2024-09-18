@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -227,8 +228,27 @@ normaliseGhcArgs (Just ghcVersion) PackageDescription{..} ghcArgs
                   , "keep-going" -- try harder, the build will still fail if it's erroneous
                   , "print-axiom-incomps" -- print more debug info for closed type families
                   ]
+              , from
+                  [9, 2]
+                  [ "family-application-cache"
+                  ]
+              , from
+                  [9, 6]
+                  [ "print-redundant-promotion-ticks"
+                  , "show-error-context"
+                  ]
+              , from
+                  [9, 8]
+                  [ "unoptimized-core-for-interpreter"
+                  ]
+              , from
+                  [9, 10]
+                  [ "diagnostics-as-json"
+                  , "print-error-index-links"
+                  , "break-points"
+                  ]
               ]
-          , flagIn . invertibleFlagSet "-d" $ ["ppr-case-as-let", "ppr-ticks"]
+          , flagIn $ invertibleFlagSet "-d" ["ppr-case-as-let", "ppr-ticks"]
           , isOptIntFlag
           , isIntFlag
           , if safeToFilterWarnings
@@ -289,6 +309,7 @@ normaliseGhcArgs (Just ghcVersion) PackageDescription{..} ghcArgs
         , from [8, 6] ["-dhex-word-literals"]
         , from [8, 8] ["-fshow-docs-of-hole-fits", "-fno-show-docs-of-hole-fits"]
         , from [9, 0] ["-dlinear-core-lint"]
+        , from [9, 10] ["-dipe-stats"]
         ]
 
     isOptIntFlag :: String -> Any
@@ -303,6 +324,8 @@ normaliseGhcArgs (Just ghcVersion) PackageDescription{..} ghcArgs
           , "-ddpr-cols"
           , "-dtrace-level"
           , "-fghci-hist-size"
+          , "-dinitial-unique"
+          , "-dunique-increment"
           ]
         , from [8, 2] ["-fmax-uncovered-patterns", "-fmax-errors"]
         , from [8, 4] $ to [8, 6] ["-fmax-valid-substitutions"]
@@ -709,7 +732,10 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
               | flagProfAuto implInfo -> ["-fprof-auto-exported"]
               | otherwise -> ["-auto"]
         , ["-split-sections" | flagBool ghcOptSplitSections]
-        , ["-split-objs" | flagBool ghcOptSplitObjs]
+        , case compilerCompatVersion GHC comp of
+            -- the -split-objs flag was removed in GHC 9.8
+            Just ver | ver >= mkVersion [9, 8] -> []
+            _ -> ["-split-objs" | flagBool ghcOptSplitObjs]
         , case flagToMaybe (ghcOptHPCDir opts) of
             Nothing -> []
             Just hpcdir -> ["-fhpc", "-hpcdir", u hpcdir]
@@ -799,8 +825,7 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
           -- Packages
 
           concat
-            [ [ case () of
-                  _
+            [ [ if
                     | unitIdSupported comp -> "-this-unit-id"
                     | packageKeySupported comp -> "-this-package-key"
                     | otherwise -> "-package-name"
@@ -831,7 +856,7 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
         , ["-hide-all-packages" | flagBool ghcOptHideAllPackages]
         , ["-Wmissing-home-modules" | flagBool ghcOptWarnMissingHomeModules]
         , ["-no-auto-link-packages" | flagBool ghcOptNoAutoLinkPackages]
-        , packageDbArgs implInfo (ghcOptPackageDBs opts)
+        , packageDbArgs implInfo (interpretPackageDBStack Nothing (ghcOptPackageDBs opts))
         , concat $
             let space "" = ""
                 space xs = ' ' : xs
@@ -893,7 +918,7 @@ verbosityOpts verbosity
   | otherwise = ["-w", "-v0"]
 
 -- | GHC <7.6 uses '-package-conf' instead of '-package-db'.
-packageDbArgsConf :: PackageDBStack -> [String]
+packageDbArgsConf :: PackageDBStackCWD -> [String]
 packageDbArgsConf dbstack = case dbstack of
   (GlobalPackageDB : UserPackageDB : dbs) -> concatMap specific dbs
   (GlobalPackageDB : dbs) ->
@@ -910,7 +935,7 @@ packageDbArgsConf dbstack = case dbstack of
 
 -- | GHC >= 7.6 uses the '-package-db' flag. See
 -- https://gitlab.haskell.org/ghc/ghc/-/issues/5977.
-packageDbArgsDb :: PackageDBStack -> [String]
+packageDbArgsDb :: PackageDBStackCWD -> [String]
 -- special cases to make arguments prettier in common scenarios
 packageDbArgsDb dbstack = case dbstack of
   (GlobalPackageDB : UserPackageDB : dbs)
@@ -929,7 +954,7 @@ packageDbArgsDb dbstack = case dbstack of
     isSpecific (SpecificPackageDB _) = True
     isSpecific _ = False
 
-packageDbArgs :: GhcImplInfo -> PackageDBStack -> [String]
+packageDbArgs :: GhcImplInfo -> PackageDBStackCWD -> [String]
 packageDbArgs implInfo
   | flagPackageConf implInfo = packageDbArgsConf
   | otherwise = packageDbArgsDb

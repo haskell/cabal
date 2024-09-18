@@ -1,9 +1,0 @@
-synopsis: Warn early that overwrite policy is needed
-description:
-  Waiting for a long build and then seeing the install fail because a flag was
-  missing is frustrating.  With this change we skip the wait and warn early,
-  before the build, that an overwrite policy flag would be needed for the
-  install to succeed.
-packages: cabal-install
-prs: #9268
-issues: #5993

@@ -40,22 +40,30 @@ module Test.Cabal.Monad (
     testKeysDir,
     testSourceCopyDir,
     testCabalDir,
+    testStoreDir,
     testUserCabalConfigFile,
     testActualFile,
     -- * Skipping tests
     skip,
+    skipIO,
     skipIf,
+    skipIfIO,
     skipUnless,
+    skipUnlessIO,
     -- * Known broken tests
-    expectedBroken,
-    unexpectedSuccess,
-    -- whenHasSharedLibraries,
+    expectBroken,
+    expectBrokenIf,
+    expectBrokenUnless,
+    -- * Flaky tests
+    flaky,
+    flakyIf,
     -- * Arguments (TODO: move me)
     CommonArgs(..),
     renderCommonArgs,
     commonArgParser,
     -- * Version Constants
     cabalVersionLibrary,
+
 ) where
 
 import Test.Cabal.Script
@@ -65,7 +73,7 @@ import Test.Cabal.TestCode
 
 import Distribution.Pretty (prettyShow)
 import Distribution.Simple.Compiler
-    ( PackageDBStack, PackageDB(..), compilerFlavor
+    ( PackageDBStackCWD, PackageDBX(..), compilerFlavor
     , Compiler, compilerVersion, showCompilerIdWithAbi )
 import Distribution.System
 import Distribution.Simple.Program.Db
@@ -75,10 +83,11 @@ import Distribution.Simple.Configure
 import qualified Distribution.Simple.Utils as U (cabalVersion)
 import Distribution.Text
 
-import Test.Utils.TempTestDir (removeDirectoryRecursiveHack)
+import Test.Utils.TempTestDir (removeDirectoryRecursiveHack, withTestDir')
 import Distribution.Verbosity
 import Distribution.Version
 
+import Control.Concurrent.Async
 #if !MIN_VERSION_base(4,11,0)
 import Data.Monoid ((<>))
 #endif
@@ -157,7 +166,7 @@ renderCommonArgs args =
 
 data TestArgs = TestArgs {
         testArgDistDir    :: FilePath,
-        testArgPackageDb  :: Maybe FilePath,
+        testArgPackageDb  :: [FilePath],
         testArgScriptPath :: FilePath,
         testCommonArgs    :: CommonArgs
     }
@@ -168,34 +177,96 @@ testArgParser = TestArgs
         ( help "Build directory of cabal-testsuite"
        <> long "builddir"
        <> metavar "DIR")
-    <*> optional (option str
+    <*> many (option str
         ( help "Package DB which contains Cabal and Cabal-syntax"
        <> long "extra-package-db"
        <> metavar "DIR"))
     <*> argument str ( metavar "FILE")
     <*> commonArgParser
 
-skip :: String -> TestM ()
-skip reason = liftIO $ do
-    putStrLn ("SKIP " ++ reason)
+-- * skip tests
+
+skipIO :: String -> IO ()
+skipIO reason = do
+    putStrLn $ "SKIP (" <> reason <> ")"
     E.throwIO (TestCodeSkip reason)
+
+skip :: String -> TestM ()
+skip = liftIO . skipIO
+
+skipIfIO :: String -> Bool -> IO ()
+skipIfIO reason b = when b (skipIO reason)
 
 skipIf :: String -> Bool -> TestM ()
 skipIf reason b = when b (skip reason)
 
+skipUnlessIO :: String -> Bool -> IO ()
+skipUnlessIO reason b = unless b (skipIO reason)
+
 skipUnless :: String -> Bool -> TestM ()
 skipUnless reason b = unless b (skip reason)
 
-expectedBroken :: TestM ()
-expectedBroken = liftIO $ do
-    putStrLn "EXPECTED FAIL"
-    E.throwIO TestCodeKnownFail
+-- * Broken tests
 
-unexpectedSuccess :: TestM ()
-unexpectedSuccess = liftIO $ do
-    putStrLn "UNEXPECTED OK"
-    E.throwIO TestCodeUnexpectedOk
+expectBroken :: IssueID -> TestM a -> TestM a
+expectBroken ticket m = do
+    env <- getTestEnv
+    liftIO . withAsync (runReaderT m env) $ \a -> do
+        r <- waitCatch a
+        case r of
+            Left e  -> do
+                putStrLn $ "This test is known broken, see #" ++ show ticket ++ ":"
+                print e
+                throwExpectedBroken ticket
+            Right _ -> do
+                throwUnexpectedSuccess ticket
 
+expectBrokenIf :: Bool -> IssueID -> TestM a -> TestM a
+expectBrokenIf True ticket m = expectBroken ticket m
+expectBrokenIf False _ m = m
+
+expectBrokenUnless :: Bool -> IssueID -> TestM a -> TestM a
+expectBrokenUnless b = expectBrokenIf (not b)
+
+throwExpectedBroken :: IssueID -> IO a
+throwExpectedBroken ticket = do
+    putStrLn $ "EXPECTED FAIL (#" <> show ticket <> ")"
+    E.throwIO (TestCodeKnownFail ticket)
+
+throwUnexpectedSuccess :: IssueID -> IO a
+throwUnexpectedSuccess ticket = do
+    putStrLn $ "UNEXPECTED OK (#" <> show ticket <> ")"
+    E.throwIO (TestCodeUnexpectedOk ticket)
+
+-- * Flaky tests
+
+flaky :: IssueID -> TestM a -> TestM a
+flaky ticket m = do
+    env <- getTestEnv
+    liftIO . withAsync (runReaderT m env) $ \a -> do
+        r <- waitCatch a
+        case r of
+            Left e  -> do
+                putStrLn $ "This test is known flaky, and it failed, see #" ++ show ticket ++ ":"
+                print e
+                throwFlakyFail ticket
+            Right _ -> do
+                putStrLn $ "This test is known flaky, but it passed, see #" ++ show ticket ++ ":"
+                throwFlakyPass ticket
+
+flakyIf :: Bool -> IssueID -> TestM a -> TestM a
+flakyIf True ticket m = flaky ticket m
+flakyIf False _ m = m
+
+throwFlakyFail :: IssueID -> IO a
+throwFlakyFail ticket = do
+    putStrLn $ "FLAKY FAIL (#" <> show ticket <> ")"
+    E.throwIO (TestCodeFlakyFailed ticket)
+
+throwFlakyPass :: IssueID -> IO a
+throwFlakyPass ticket = do
+    putStrLn $ "FLAKY OK (#" <> show ticket <> ")"
+    E.throwIO (TestCodeFlakyPassed ticket)
 
 trySkip :: IO a -> IO (Either String a)
 trySkip m = fmap Right m `E.catch` \e -> case e of
@@ -246,15 +317,10 @@ python3Program :: Program
 python3Program = simpleProgram "python3"
 
 -- | Run a test in the test monad according to program's arguments.
-runTestM :: String -> TestM a -> IO a
+runTestM :: String -> TestM () -> IO ()
 runTestM mode m =
-    liftIO $ (canonicalizePath =<< getTemporaryDirectory) >>= \systemTmpDir ->
-       -- canonicalizePath: cabal-install is inconsistent w.r.t. looking through
-       -- symlinks. We canonicalize here to avoid such issues when the temporary
-       -- directory contains symlinks. See #9763.
     execParser (info testArgParser Data.Monoid.mempty) >>= \args ->
-    withTempDirectoryEx verbosity (defaultTempFileOptions { optKeepTempFiles = argKeepTmpFiles (testCommonArgs args) })
-                               systemTmpDir
+    withTestDir' verbosity (defaultTempFileOptions { optKeepTempFiles = argKeepTmpFiles (testCommonArgs args) })
                                "cabal-testsuite" $ \tmp_dir -> do
     let dist_dir = testArgDistDir args
         (script_dir0, script_filename) = splitFileName (testArgScriptPath args)
@@ -303,6 +369,8 @@ runTestM mode m =
                 program_db1
                 verbosity
 
+    (configuredGhcProg, _) <- requireProgram verbosity ghcProgram program_db2
+
     program_db3 <-
         reconfigurePrograms verbosity
             ([("cabal", p)   | p <- maybeToList (argCabalInstallPath cargs)] ++
@@ -324,12 +392,13 @@ runTestM mode m =
                     testProgramDb = program_db,
                     testPlatform = platform,
                     testCompiler = comp,
+                    testCompilerPath = programPath configuredGhcProg,
                     testPackageDBStack = db_stack,
                     testVerbosity = verbosity,
                     testMtimeChangeDelay = Nothing,
                     testScriptEnv = senv,
                     testSetupPath = dist_dir </> "build" </> "setup" </> "setup",
-                    testPackageDbPath = testArgPackageDb args,
+                    testPackageDbPath = case testArgPackageDb args of [] -> Nothing; xs -> Just xs,
                     testSkipSetupTests =  argSkipSetupTests (testCommonArgs args),
                     testHaveCabalShared = runnerWithSharedLib senv,
                     testEnvironment =
@@ -350,13 +419,29 @@ runTestM mode m =
                     testCabalProjectFile = Nothing,
                     testPlan = Nothing,
                     testRecordDefaultMode = DoNotRecord,
-                    testRecordUserMode = Nothing
+                    testRecordUserMode = Nothing,
+                    testMaybeStoreDir = Nothing
                 }
-    let go = do cleanup
-                r <- withSourceCopy m
-                check_expect (argAccept (testCommonArgs args))
-                return r
-    runReaderT go env
+    runReaderT cleanup env
+    join $ E.catch (runReaderT
+                (do
+                    withSourceCopy m
+                    check_expect (argAccept (testCommonArgs args)) Nothing
+                )
+                env
+        )
+        (\(e :: TestCode) -> do
+            -- A test that resulted in unexpected success should check its output
+            -- because maybe it is the output the one that makes it fail!
+            case isTestCodeUnexpectedSuccess e of
+                Just t  -> runReaderT (check_expect (argAccept (testCommonArgs args)) (Just (t, False))) env
+                Nothing ->
+                    -- A test that is reported flaky but passed might fail because of the output
+                    case isTestCodeFlaky e of
+                        Flaky True t  -> runReaderT (check_expect (argAccept (testCommonArgs args)) (Just (t, True))) env
+                        _             -> E.throwIO e
+        )
+
   where
     verbosity = normal -- TODO: configurable
 
@@ -372,13 +457,15 @@ runTestM mode m =
         liftIO $ writeFile (testUserCabalConfigFile env)
                $ unlines [ "with-compiler: " ++ ghc_path ]
 
-    check_expect accept = do
+    check_expect accept was_expected_to_fail = do
         env <- getTestEnv
         actual_raw <- liftIO $ readFileOrEmpty (testActualFile env)
         expect <- liftIO $ readFileOrEmpty (testExpectFile env)
         norm_env <- mkNormalizerEnv
         let actual = normalizeOutput norm_env actual_raw
-        when (words actual /= words expect) $ do
+        case (was_expected_to_fail, words actual /= words expect) of
+         -- normal test, output doesn't match
+         (Nothing, True) -> do
             -- First try whitespace insensitive diff
             let actual_fp = testNormalizedActualFile env
                 expect_fp = testNormalizedExpectFile env
@@ -390,7 +477,23 @@ runTestM mode m =
             if accept
                 then do liftIO $ putStrLn "Accepting new output."
                         liftIO $ writeFileNoCR (testExpectFile env) actual
-                else liftIO $ exitWith (ExitFailure 1)
+                        pure (pure ())
+                else pure (E.throwIO TestCodeFail)
+         -- normal test, output matches
+         (Nothing, False) -> pure (pure ())
+         -- expected fail, output matches
+         (Just (t, was_flaky), False) -> pure (E.throwIO $ if was_flaky then TestCodeFlakyPassed t else TestCodeUnexpectedOk t)
+         -- expected fail, output doesn't match
+         (Just (t, was_flaky), True) -> do
+            -- First try whitespace insensitive diff
+            let actual_fp = testNormalizedActualFile env
+                expect_fp = testNormalizedExpectFile env
+            liftIO $ writeFile actual_fp actual
+            liftIO $ writeFile expect_fp expect
+            liftIO $ putStrLn "Actual output differs from expected:"
+            b <- diff ["-uw"] expect_fp actual_fp
+            unless b . void $ diff ["-u"] expect_fp actual_fp
+            pure (E.throwIO $ if was_flaky then TestCodeFlakyFailed t else TestCodeKnownFail t)
 
 readFileOrEmpty :: FilePath -> IO String
 readFileOrEmpty f = readFile f `E.catch` \e ->
@@ -527,24 +630,51 @@ mkNormalizerEnv = do
     tmpDir <- liftIO $ getTemporaryDirectory
 
     canonicalizedTestTmpDir <- liftIO $ canonicalizePath (testTmpDir env)
+    canonicalizedGblDir <- liftIO $ canonicalizePath tmpDir
+
+    -- 'cabal' is configured in the package-db, but doesn't specify how to find the program version
+    -- Thus we find the program location, if it exists, and query for the program version for
+    -- output normalisation.
+    cabalVersionM <- do
+        cabalProgM <- needProgramM "cabal"
+        case cabalProgM of
+            Nothing -> pure Nothing
+            Just cabalProg -> do
+                liftIO (findProgramVersion "--numeric-version" id (testVerbosity env) (programPath cabalProg))
 
     return NormalizerEnv {
-        normalizerRoot
-            = addTrailingPathSeparator (testSourceDir env),
         normalizerTmpDir
-            = addTrailingPathSeparator (testTmpDir env),
+            = (if buildOS == Windows
+              then joinDrive "\\" . dropDrive
+              else id)
+                $ addTrailingPathSeparator (testTmpDir env),
         normalizerCanonicalTmpDir
-            = addTrailingPathSeparator canonicalizedTestTmpDir,
+            = (if buildOS == Windows
+              then joinDrive "\\" . dropDrive
+              else id)
+                $ addTrailingPathSeparator canonicalizedTestTmpDir,
         normalizerGblTmpDir
-            = addTrailingPathSeparator tmpDir,
+            = (if buildOS == Windows
+              then joinDrive "\\" . dropDrive
+              else id)
+                $ addTrailingPathSeparator tmpDir,
+        normalizerCanonicalGblTmpDir
+            = (if buildOS == Windows
+              then joinDrive "\\" . dropDrive
+              else id)
+                $ addTrailingPathSeparator canonicalizedGblDir,
         normalizerGhcVersion
             = compilerVersion (testCompiler env),
+        normalizerGhcPath
+            = testCompilerPath env,
         normalizerKnownPackages
             = mapMaybe simpleParse (words list_out),
         normalizerPlatform
             = testPlatform env,
         normalizerCabalVersion
-            = cabalVersionLibrary
+            = cabalVersionLibrary,
+        normalizerCabalInstallVersion
+            = cabalVersionM
     }
 
 cabalVersionLibrary :: Version
@@ -556,6 +686,11 @@ requireProgramM program = do
     (configured_program, _) <- liftIO $
         requireProgram (testVerbosity env) program (testProgramDb env)
     return configured_program
+
+needProgramM :: String -> TestM (Maybe ConfiguredProgram)
+needProgramM program = do
+    env <- getTestEnv
+    return $ lookupProgramByName program (testProgramDb env)
 
 programPathM :: Program -> TestM FilePath
 programPathM program = do
@@ -598,6 +733,7 @@ data TestEnv = TestEnv
       testSourceDir     :: FilePath
     -- | Somewhere to stow temporary files needed by the test.
     , testTmpDir        :: FilePath
+
     -- | Test sub-name, used to qualify dist/database directory to avoid
     -- conflicts.
     , testSubName       :: String
@@ -608,10 +744,11 @@ data TestEnv = TestEnv
     , testProgramDb     :: ProgramDb
     -- | Compiler we are running tests for
     , testCompiler      :: Compiler
+    , testCompilerPath  :: FilePath
     -- | Platform we are running tests on
     , testPlatform      :: Platform
     -- | Package database stack (actually this changes lol)
-    , testPackageDBStack :: PackageDBStack
+    , testPackageDBStack :: PackageDBStackCWD
     -- | How verbose to be
     , testVerbosity     :: Verbosity
     -- | How long we should 'threadDelay' to make sure the file timestamp is
@@ -623,8 +760,8 @@ data TestEnv = TestEnv
     -- | Setup script path
     , testSetupPath :: FilePath
     -- | Setup package-db path which contains Cabal and Cabal-syntax for cabal-install to
-    -- use when compiling custom setups.
-    , testPackageDbPath :: Maybe FilePath
+    -- use when compiling custom setups, plus the store with possible dependencies of those setup packages.
+    , testPackageDbPath :: Maybe [FilePath]
     -- | Skip Setup tests?
     , testSkipSetupTests :: Bool
     -- | Do we have shared libraries for the Cabal-under-tests?
@@ -655,6 +792,8 @@ data TestEnv = TestEnv
     , testRecordDefaultMode :: RecordMode
     -- | User explicitly set record mode.  Not implemented ATM.
     , testRecordUserMode :: Maybe RecordMode
+    -- | Path to the storedir used by the test, if not the default
+    , testMaybeStoreDir      :: Maybe FilePath
     }
     deriving Show
 
@@ -730,13 +869,21 @@ testSourceCopyDir env = testTmpDir env
 testCabalDir :: TestEnv -> FilePath
 testCabalDir env = testHomeDir env </> ".cabal"
 
+testStoreDir :: TestEnv -> FilePath
+testStoreDir env = case testMaybeStoreDir env of
+                      Just dir -> dir
+                      Nothing -> testCabalDir env </> "store"
+
 -- | The user cabal config file
 testUserCabalConfigFile :: TestEnv -> FilePath
 testUserCabalConfigFile env = testCabalDir env </> "config"
 
 -- | The file where the expected output of the test lives
+--
+-- Pointing to the @testTmpDir@ allows us to modify the expected output if
+-- needed, to adapt it to outcomes of previous steps in the test.
 testExpectFile :: TestEnv -> FilePath
-testExpectFile env = testSourceDir env </> testName env <.> "out"
+testExpectFile env = testTmpDir env </> testName env <.> "out"
 
 -- | Where we store the actual output
 testActualFile :: TestEnv -> FilePath

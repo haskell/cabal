@@ -36,6 +36,7 @@ module Distribution.Simple.LocalBuildInfo
   , interpretSymbolicPathLBI
   , mbWorkDirLBI
   , absoluteWorkingDirLBI
+  , buildWays
 
     -- * Buildable package components
   , Component (..)
@@ -161,7 +162,7 @@ mbWorkDirLBI =
   flagToMaybe . setupWorkingDir . configCommonFlags . configFlags
 
 -- | Absolute path to the current working directory.
-absoluteWorkingDirLBI :: LocalBuildInfo -> IO FilePath
+absoluteWorkingDirLBI :: LocalBuildInfo -> IO (AbsolutePath (Dir Pkg))
 absoluteWorkingDirLBI lbi = absoluteWorkingDir (mbWorkDirLBI lbi)
 
 -- | Perform the action on each enabled 'library' in the package

@@ -22,9 +22,9 @@ module Distribution.Types.LocalBuildConfig
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Distribution.Types.ComponentId
 import Distribution.Types.ComponentLocalBuildInfo
 import Distribution.Types.ComponentRequestedSpec
+import Distribution.Types.GivenComponent
 import Distribution.Types.PackageDescription
 import Distribution.Types.UnitId
 
@@ -101,7 +101,7 @@ data ComponentBuildDescr = ComponentBuildDescr
   -- ^ A map from component name to all matching
   -- components.  These coincide with 'componentGraph'
   -- There may be more than one matching component because of backpack instantiations
-  , promisedPkgs :: Map (PackageName, ComponentName) ComponentId
+  , promisedPkgs :: Map (PackageName, ComponentName) PromisedComponent
   -- ^ The packages we were promised, but aren't already installed.
   -- MP: Perhaps this just needs to be a Set UnitId at this stage.
   , installedPkgs :: InstalledPackageIndex
@@ -151,6 +151,8 @@ data BuildOptions = BuildOptions
   { withVanillaLib :: Bool
   -- ^ Whether to build normal libs.
   , withProfLib :: Bool
+  -- ^ Whether to build normal libs.
+  , withProfLibShared :: Bool
   -- ^ Whether to build profiling versions of libs.
   , withSharedLib :: Bool
   -- ^ Whether to build shared versions of libs.
@@ -211,6 +213,7 @@ buildOptionsConfigFlags (BuildOptions{..}) =
     , configGHCiLib = toFlag $ withGHCiLib
     , configProfExe = toFlag $ withProfExe
     , configProfLib = toFlag $ withProfLib
+    , configProfShared = toFlag $ withProfLibShared
     , configProf = mempty
     , -- configProfDetail is for exe+lib, but overridden by configProfLibDetail
       -- so we specify both so we can specify independently

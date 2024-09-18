@@ -69,7 +69,7 @@ simpleCreateProjectTests v pkgIx srcDb pkgName =
                 Nothing
                 Nothing
 
-        case _runPrompt (createProject v pkgIx srcDb flags) inputs of
+        case runPrompt (createProject v pkgIx srcDb flags) inputs of
           Left e -> assertFailure $ "Failed to create simple lib project: " ++ show e
           Right (settings', _) -> settings @=? settings'
     , testCase "Simple lib createProject - with tests" $ do
@@ -83,7 +83,7 @@ simpleCreateProjectTests v pkgIx srcDb pkgName =
                 Nothing
                 (Just $ simpleTestTarget (Just pkgName) baseDep)
 
-        case _runPrompt (createProject v pkgIx srcDb flags) inputs of
+        case runPrompt (createProject v pkgIx srcDb flags) inputs of
           Left e -> assertFailure $ "Failed to create simple lib (with tests)project: " ++ show e
           Right (settings', _) -> settings @=? settings'
     , testCase "Simple exe createProject" $ do
@@ -97,7 +97,7 @@ simpleCreateProjectTests v pkgIx srcDb pkgName =
                 (Just $ simpleExeTarget Nothing baseDep)
                 Nothing
 
-        case _runPrompt (createProject v pkgIx srcDb flags) inputs of
+        case runPrompt (createProject v pkgIx srcDb flags) inputs of
           Left e -> assertFailure $ "Failed to create simple exe project: " ++ show e
           Right (settings', _) -> settings @=? settings'
     , testCase "Simple lib+exe createProject - no tests" $ do
@@ -111,7 +111,7 @@ simpleCreateProjectTests v pkgIx srcDb pkgName =
                 (Just $ simpleExeTarget (Just pkgName) baseDep)
                 Nothing
 
-        case _runPrompt (createProject v pkgIx srcDb flags) inputs of
+        case runPrompt (createProject v pkgIx srcDb flags) inputs of
           Left e -> assertFailure $ "Failed to create simple lib+exe project: " ++ show e
           Right (settings', _) -> settings @=? settings'
     , testCase "Simple lib+exe createProject - with tests" $ do
@@ -125,7 +125,7 @@ simpleCreateProjectTests v pkgIx srcDb pkgName =
                 (Just $ simpleExeTarget (Just pkgName) baseDep)
                 (Just $ simpleTestTarget (Just pkgName) baseDep)
 
-        case _runPrompt (createProject v pkgIx srcDb flags) inputs of
+        case runPrompt (createProject v pkgIx srcDb flags) inputs of
           Left e -> assertFailure $ "Failed to create simple lib+exe (with tests) project: " ++ show e
           Right (settings', _) -> settings @=? settings'
     , testCase "Simple standalone tests" $ do
@@ -139,12 +139,12 @@ simpleCreateProjectTests v pkgIx srcDb pkgName =
                 Nothing
                 (Just $ simpleTestTarget Nothing baseDep)
 
-        case _runPrompt (createProject v pkgIx srcDb flags) inputs of
+        case runPrompt (createProject v pkgIx srcDb flags) inputs of
           Left e -> assertFailure $ "Failed to create simple standalone test project: " ++ show e
           Right (settings', _) -> settings @=? settings'
     ]
   where
-    baseDep = case _runPrompt (getBaseDep pkgIx emptyFlags) $ fromList [] of
+    baseDep = case runPrompt (getBaseDep pkgIx emptyFlags) $ fromList [] of
       Left e -> error $ show e
       Right a -> fst a
 

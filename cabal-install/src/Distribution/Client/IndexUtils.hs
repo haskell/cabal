@@ -1,5 +1,6 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
@@ -82,9 +83,6 @@ import Distribution.PackageDescription
   , emptyPackageDescription
   )
 import Distribution.Simple.Compiler
-  ( Compiler
-  , PackageDBStack
-  )
 import qualified Distribution.Simple.Configure as Configure
   ( getInstalledPackages
   , getInstalledPackagesMonitorFiles
@@ -149,7 +147,7 @@ import System.FilePath
   , (<.>)
   , (</>)
   )
-import qualified System.FilePath.Posix as FilePath.Posix
+import qualified System.FilePath as FilePath
 import System.IO
 import System.IO.Error (isDoesNotExistError)
 import System.IO.Unsafe (unsafeInterleaveIO)
@@ -162,11 +160,11 @@ import qualified Hackage.Security.Util.Some as Sec
 getInstalledPackages
   :: Verbosity
   -> Compiler
-  -> PackageDBStack
+  -> PackageDBStackCWD
   -> ProgramDb
   -> IO InstalledPackageIndex
 getInstalledPackages verbosity comp packageDbs progdb =
-  Configure.getInstalledPackages verbosity' comp Nothing packageDbs progdb
+  Configure.getInstalledPackages verbosity' comp Nothing (coercePackageDBStack packageDbs) progdb
   where
     verbosity' = lessVerbose verbosity
 
@@ -928,7 +926,7 @@ withIndexEntries verbosity (RepoIndex _repoCtxt (RepoLocalNoIndex (LocalRepo nam
           let bs = BS.toStrict contents
            in ((`CacheGPD` bs) <$> parseGenericPackageDescriptionMaybe bs)
       where
-        filename = prettyShow pkgId FilePath.Posix.</> prettyShow (packageName pkgId) ++ ".cabal"
+        filename = prettyShow pkgId FilePath.</> prettyShow (packageName pkgId) ++ ".cabal"
     readCabalEntry _ _ x = x
 withIndexEntries verbosity index callback _ = do
   -- non-secure repositories

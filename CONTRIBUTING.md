@@ -3,23 +3,46 @@
 Building Cabal for hacking
 --------------------------
 
-If you use the latest version of cabal published on Hackage, it is sufficient to run:
+If you use the `cabal` executable from the latest version of the
+[cabal-install](https://hackage.haskell.org/package/cabal-install) package
+published on Hackage, it is sufficient to run:
 
 ```
-cabal build cabal
+$ cabal build cabal
 ```
 
-If not, you aren't able to build the testsuite, so you need to disable the default `cabal.project` that implies configuring the testsuite, e.g., with:
+If you have trouble building the testsuite for this initial build, try building
+with the release project that excludes this testsuite:
 
 ```
-cabal build --project-file=cabal.project.release cabal
+$ cabal build cabal --project-file=cabal.release.project
 ```
 
-> **Note**
-> If you're using Nix, you might find it convenient to work within a shell that has all the `Cabal` development dependencies:
+> [!NOTE]
+> The default `cabal.project` is picked up implicitly as if the
+> `--project-file=cabal.project` explicit option had been given.
+
+For developing, we recommend using the locally built version of `cabal`, the
+executable, if only because one of the released versions available may be
+lacking a fix. This can be installed:
+
+```
+$ cabal install cabal-install:exe:cabal --overwrite-policy=always
+```
+
+It can be run without first installing it with `cabal run cabal --` followed by
+its own arguments, as shown here for `build --help`:
+
+```
+$ cabal run cabal -- build --help
+```
+
+> [!NOTE]
+> If you're using Nix, you might find it convenient to work within a shell that has the following `Cabal` development dependencies:
+> ```bash
+> $ nix-shell -p cabal-install ghc ghcid pkg-config zlib.dev # incomplete
 > ```
-> $ nix-shell -p cabal-install ghc ghcid haskellPackages.fourmolu_0_12_0_0 pkgconfig zlib.dev
-> ```
+> One dependency that we left out in the above command is `haskellPackages.fourmolu_0_12_0_0` which would need to be installed manually.
 > A Nix flake developer shell with these dependencies is also available, supported solely by the community, through the command `nix develop github:yvan-sraka/cabal.nix`.
 
 The location of your build products will vary depending on which version of
@@ -30,9 +53,9 @@ to find the binary (or just run `find -type f -executable -name cabal`).
 Here are some other useful variations on the commands:
 
 ```
-cabal build Cabal # build library only
-cabal build Cabal-tests:unit-tests # build Cabal's unit test suite
-cabal build cabal-tests # etc...
+$ cabal build Cabal                  # build library only
+$ cabal build Cabal-tests:unit-tests # build Cabal's unit test suite
+$ cabal build cabal-tests            # etc...
 ```
 
 Running tests
@@ -290,9 +313,15 @@ issues) when appropriate.
 Changelog
 ---------
 
-When opening a pull request with a user-visible change, you should write one changelog entry
-(or more in case of multiple independent changes) — the information will end up in
-our release notes.
+Anything that changes `cabal-install:exe:cabal` or changes exports from library
+modules or changes behaviour of functions exported from packages published to
+hackage is a <a id="user-visible-change">user-visible change</a>. Raising the
+lower bound on `base` is most definitely a user-visible change because it
+excludes versions of GHC from being able to build these packages.
+
+When opening a pull request with a user-visible change, you should write one
+changelog entry (or more in case of multiple independent changes) — the
+information will end up in our release notes.
 
 Changelogs for the next release are stored in the `changelog.d` directory.
 The files follow a simple key-value format similar to the one for `.cabal` files.
@@ -316,7 +345,7 @@ description: {
 }
 ```
 
-Only the `synopsis` field is actually required, but you should also set the others where applicable.
+Only the `synopsis` and `prs` fields are required, but you should also set the others where applicable.
 
 | Field          | Description                                                                                                        |
 | -----          | -----------                                                                                                        |
@@ -401,7 +430,7 @@ it, someone with enough permissions needs to go on the
 [Validate workflow page](https://github.com/haskell/cabal/actions/workflows/validate.yml)
 and dispatch it manually by clicking "Run workflow".
 
-Running workflow manually as discussed above requires you to supply two inputs:
+Running workflow manually as discussed above allows you to supply two inputs:
 
 > allow-newer line
 > constraints line

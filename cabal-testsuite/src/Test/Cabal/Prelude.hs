@@ -22,9 +22,10 @@ import Test.Cabal.Script
 import Test.Cabal.Run
 import Test.Cabal.Monad
 import Test.Cabal.Plan
+import Test.Cabal.TestCode
 
 import Distribution.Compat.Time (calibrateMtimeChangeDelay)
-import Distribution.Simple.Compiler (PackageDBStack, PackageDB(..))
+import Distribution.Simple.Compiler (PackageDBStackCWD, PackageDBCWD, PackageDBX(..))
 import Distribution.Simple.PackageDescription (readGenericPackageDescription)
 import Distribution.Simple.Program.Types
 import Distribution.Simple.Program.Db
@@ -43,25 +44,24 @@ import Distribution.PackageDescription
 import Test.Utils.TempTestDir (withTestDir)
 import Distribution.Verbosity (normal)
 import Distribution.Utils.Path
-  ( makeSymbolicPath, relativeSymbolicPath )
+  ( makeSymbolicPath, relativeSymbolicPath, interpretSymbolicPathCWD )
 
 import Distribution.Compat.Stack
 
 import Text.Regex.TDFA ((=~))
 
-import Control.Concurrent.Async (waitCatch, withAsync)
+import Control.Concurrent.Async (withAsync)
 import qualified Data.Aeson as JSON
 import qualified Data.ByteString.Lazy as BSL
 import Control.Monad (unless, when, void, forM_, liftM2, liftM4)
+import Control.Monad.Catch ( bracket_ )
 import Control.Monad.Trans.Reader (withReaderT, runReaderT)
 import Control.Monad.IO.Class (MonadIO (..))
 import qualified Crypto.Hash.SHA256 as SHA256
 import qualified Data.ByteString.Base16 as Base16
 import qualified Data.ByteString.Char8 as C
 import Data.List (isInfixOf, stripPrefix, isPrefixOf, intercalate)
-import Data.List.NonEmpty (NonEmpty (..))
-import qualified Data.List.NonEmpty as NE
-import Data.Maybe (mapMaybe, fromMaybe)
+import Data.Maybe (isJust, mapMaybe, fromMaybe)
 import System.Exit (ExitCode (..))
 import System.FilePath
 import Control.Concurrent (threadDelay)
@@ -70,21 +70,27 @@ import System.Directory
 import Control.Retry (exponentialBackoff, limitRetriesByCumulativeDelay)
 import Network.Wait (waitTcpVerbose)
 import System.Environment
+import System.Process
+import System.IO
 
 #ifndef mingw32_HOST_OS
-import Control.Monad.Catch ( bracket_ )
-import System.Posix.Files  ( createSymbolicLink )
 import System.Posix.Resource
 #endif
 
 ------------------------------------------------------------------------
 -- * Utilities
 
+
 runM :: FilePath -> [String] -> Maybe String -> TestM Result
 runM path args input = do
+  env <- getTestEnv
+  runM' (Just $ testCurrentDir env) path args input
+
+runM' :: Maybe FilePath -> FilePath -> [String] -> Maybe String -> TestM Result
+runM' run_dir path args input = do
     env <- getTestEnv
     r <- liftIO $ run (testVerbosity env)
-                 (Just $ testCurrentDir env)
+                 run_dir
                  (testEnvironment env)
                  path
                  args
@@ -92,12 +98,17 @@ runM path args input = do
     recordLog r
     requireSuccess r
 
-runProgramM :: Program -> [String] -> Maybe String -> TestM Result
+runProgramM  :: Program -> [String] -> Maybe String -> TestM Result
 runProgramM prog args input = do
+  env <- getTestEnv
+  runProgramM' (Just $ testCurrentDir env) prog args input
+
+runProgramM' :: Maybe FilePath -> Program -> [String] -> Maybe String -> TestM Result
+runProgramM' run_dir prog args input = do
     configured_prog <- requireProgramM prog
     -- TODO: Consider also using other information from
     -- ConfiguredProgram, e.g., env and args
-    runM (programPath configured_prog) args input
+    runM' run_dir (programPath configured_prog) args input
 
 getLocalBuildInfoM :: TestM LocalBuildInfo
 getLocalBuildInfoM = do
@@ -110,6 +121,10 @@ getLocalBuildInfoM = do
 withDirectory :: FilePath -> TestM a -> TestM a
 withDirectory f = withReaderT
     (\env -> env { testRelativeCurrentDir = testRelativeCurrentDir env </> f })
+
+withStoreDir :: FilePath -> TestM a -> TestM a
+withStoreDir fp =
+  withReaderT (\env -> env { testMaybeStoreDir = Just fp })
 
 -- We append to the environment list, as per 'getEffectiveEnvironment'
 -- which prefers the latest override.
@@ -152,6 +167,7 @@ setup''
   -> TestM Result
 setup'' prefix cmd args = do
     env <- getTestEnv
+    let work_dir = if testRelativeCurrentDir env == "." then Nothing else Just (testRelativeCurrentDir env)
     when ((cmd == "register" || cmd == "copy") && not (testHavePackageDb env)) $
         error "Cannot register/copy without using 'withPackageDb'"
     ghc_path     <- programPathM ghcProgram
@@ -180,7 +196,10 @@ setup'' prefix cmd args = do
                   ++ args
             _ -> args
     let rel_dist_dir = definitelyMakeRelative (testCurrentDir env) (testDistDir env)
-        full_args = cmd :| [marked_verbose, "--distdir", rel_dist_dir] ++ args'
+        work_dir_arg = case work_dir of
+                          Nothing -> []
+                          Just wd -> ["--working-dir", wd]
+        full_args = work_dir_arg ++ (cmd : [marked_verbose, "--distdir", rel_dist_dir] ++ args')
     defaultRecordMode RecordMarked $ do
     recordHeader ["Setup", cmd]
 
@@ -188,23 +207,23 @@ setup'' prefix cmd args = do
     --
     -- `cabal` and `Setup.hs` do have different interface.
     --
-    let pkgDir = makeSymbolicPath $ testCurrentDir env </> prefix
+    let pkgDir = makeSymbolicPath $ testTmpDir env </> testRelativeCurrentDir env </> prefix
     pdfile <- liftIO $ tryFindPackageDesc (testVerbosity env) (Just pkgDir)
     pdesc <- liftIO $ readGenericPackageDescription (testVerbosity env) (Just pkgDir) $ relativeSymbolicPath pdfile
     if testCabalInstallAsSetup env
     then if buildType (packageDescription pdesc) == Simple
-         then runProgramM cabalProgram ("act-as-setup" : "--" : NE.toList full_args) Nothing
+         then runProgramM' (Just (testTmpDir env)) cabalProgram ("act-as-setup" : "--" : full_args) Nothing
          else fail "Using act-as-setup for not 'build-type: Simple' package"
     else do
         if buildType (packageDescription pdesc) == Simple
-            then runM (testSetupPath env) (NE.toList full_args) Nothing
+            then runM' (Just $ testTmpDir env) (testSetupPath env) (full_args) Nothing
             -- Run the Custom script!
             else do
               r <- liftIO $ runghc (testScriptEnv env)
-                                   (Just $ testCurrentDir env)
+                                   (Just $ testTmpDir env)
                                    (testEnvironment env)
-                                   (testCurrentDir env </> prefix </> "Setup.hs")
-                                   (NE.toList full_args)
+                                   (testRelativeCurrentDir env </> prefix </> "Setup.hs")
+                                   (full_args)
               recordLog r
               requireSuccess r
 
@@ -260,11 +279,11 @@ setup_install_with_docs args = do
     setup "register" []
     return ()
 
-packageDBParams :: PackageDBStack -> [String]
+packageDBParams :: PackageDBStackCWD -> [String]
 packageDBParams dbs = "--package-db=clear"
                     : map (("--package-db=" ++) . convert) dbs
   where
-    convert :: PackageDB -> String
+    convert :: PackageDBCWD -> String
     convert  GlobalPackageDB         = "global"
     convert  UserPackageDB           = "user"
     convert (SpecificPackageDB path) = path
@@ -305,15 +324,14 @@ cabalGArgs global_args cmd args input = do
               , "info"
               , "init"
               , "haddock-project"
-              , "path"
               ]
           = [ ]
 
           -- new-build commands are affected by testCabalProjectFile
-          | cmd == "v2-sdist"
+          | cmd `elem` ["v2-sdist", "path"]
           = [ "--project-file=" ++ fp | Just fp <- [testCabalProjectFile env] ]
 
-          | cmd == "v2-clean"
+          | cmd == "v2-clean" || cmd == "clean"
           = [ "--builddir", testDistDir env ]
             ++ [ "--project-file=" ++ fp | Just fp <- [testCabalProjectFile env] ]
 
@@ -321,17 +339,24 @@ cabalGArgs global_args cmd args input = do
           = [ "--builddir", testDistDir env
             , "-j1" ]
             ++ [ "--project-file=" ++ fp | Just fp <- [testCabalProjectFile env] ]
-            ++ ["--package-db=" ++ db | Just db <- [testPackageDbPath env]]
-
+            ++ ["--package-db=" ++ db | Just dbs <- [testPackageDbPath env], db <- dbs]
+          | "v1-" `isPrefixOf` cmd
+          = [ "--builddir", testDistDir env ]
+            ++ install_args
           | otherwise
-          = [ "--builddir", testDistDir env ] ++
-            install_args
+          = [ "--builddir", testDistDir env ]
+            ++ ["--package-db=" ++ db | Just dbs <- [testPackageDbPath env], db <- dbs]
+            ++ install_args
 
         install_args
           | cmd == "v1-install" || cmd == "v1-build" = [ "-j1" ]
           | otherwise                                = []
 
-        cabal_args = global_args
+        global_args' =
+            [ "--store-dir=" ++ storeDir | Just storeDir <- [testMaybeStoreDir env] ]
+            ++ global_args
+
+        cabal_args = global_args'
                   ++ [ cmd, marked_verbose ]
                   ++ extra_args
                   ++ args
@@ -428,9 +453,9 @@ ghcPkg' cmd args = do
     recordHeader ["ghc-pkg", cmd]
     runProgramM ghcPkgProgram (cmd : extraArgs ++ args) Nothing
 
-ghcPkgPackageDBParams :: Version -> PackageDBStack -> [String]
+ghcPkgPackageDBParams :: Version -> PackageDBStackCWD -> [String]
 ghcPkgPackageDBParams version dbs = concatMap convert dbs where
-    convert :: PackageDB -> [String]
+    convert :: PackageDBCWD -> [String]
     -- Ignoring global/user is dodgy but there's no way good
     -- way to give ghc-pkg the correct flags in this case.
     convert  GlobalPackageDB         = []
@@ -534,7 +559,6 @@ src `archiveTo` dst = do
     -- TODO: --format ustar, like createArchive?
     -- --force-local is necessary for handling colons in Windows paths.
     tar $ ["-czf", dst]
-       ++ ["--force-local" | buildOS == Windows]
        ++ ["-C", src_parent, src_dir]
 
 infixr 4 `archiveTo`
@@ -544,10 +568,6 @@ infixr 4 `archiveTo`
 -- external repository corresponding to all of these packages
 withRepo :: FilePath -> TestM a -> TestM a
 withRepo repo_dir m = do
-    -- https://github.com/haskell/cabal/issues/7065
-    -- you don't simply put a windows path into URL...
-    skipIfWindows
-
     env <- getTestEnv
 
     -- 1. Initialize repo directory
@@ -593,16 +613,17 @@ withRepo repo_dir m = do
     withReaderT (\env' -> env' { testHaveRepo = True }) m
     -- TODO: Arguably should undo everything when we're done...
   where
-    repoUri env ="file+noindex://" ++ testRepoDir env
+    repoUri env ="file+noindex://" ++ (if isWindows
+                                        then map (\x -> case x of
+                                            '\\' -> '/'
+                                            _ -> x)
+                                        else id) (testRepoDir env)
 
 -- | Given a directory (relative to the 'testCurrentDir') containing
 -- a series of directories representing packages, generate an
 -- remote repository corresponding to all of these packages
 withRemoteRepo :: FilePath -> TestM a -> TestM a
 withRemoteRepo repoDir m = do
-    -- https://github.com/haskell/cabal/issues/7065
-    -- you don't simply put a windows path into URL...
-    skipIfWindows
 
     -- we rely on the presence of python3 for a simple http server
     skipUnless "no python3" =<< isAvailableProgram python3Program
@@ -671,7 +692,12 @@ withRemoteRepo repoDir m = do
             -- wait for the python webserver to come up with a exponential
             -- backoff starting from 50ms, up to a maximum wait of 60s
             _ <- waitTcpVerbose putStrLn (limitRetriesByCumulativeDelay 60000000 $ exponentialBackoff 50000) "localhost" "8000"
-            runReaderT m (env { testHaveRepo = True }))
+            r <- runReaderT m (env { testHaveRepo = True })
+            -- Windows fails to kill the python server when the function above
+            -- is complete, so we kill it directly via CMD.
+            when (buildOS == Windows) $ void $ createProcess_ "kill python" $ System.Process.shell "taskkill /F /IM python3.exe"
+            pure r
+            )
 
 
 
@@ -824,21 +850,27 @@ getScriptCacheDirectory script = do
 ------------------------------------------------------------------------
 -- * Skipping tests
 
-hasSharedLibraries  :: TestM Bool
-hasSharedLibraries = do
-    shared_libs_were_removed <- isGhcVersion ">= 7.8"
-    return (not (buildOS == Windows && shared_libs_were_removed))
-
-hasProfiledLibraries :: TestM Bool
-hasProfiledLibraries = do
+testCompilerWithArgs :: [String] -> TestM Bool
+testCompilerWithArgs args = do
     env <- getTestEnv
     ghc_path <- programPathM ghcProgram
     let prof_test_hs = testWorkDir env </> "Prof.hs"
     liftIO $ writeFile prof_test_hs "module Prof where"
     r <- liftIO $ run (testVerbosity env) (Just $ testCurrentDir env)
-                      (testEnvironment env) ghc_path ["-prof", "-c", prof_test_hs]
+                      (testEnvironment env) ghc_path (["-c", prof_test_hs] ++ args)
                       Nothing
     return (resultExitCode r == ExitSuccess)
+
+hasProfiledLibraries, hasProfiledSharedLibraries, hasSharedLibraries :: TestM Bool
+hasProfiledLibraries = testCompilerWithArgs ["-prof"]
+hasProfiledSharedLibraries = testCompilerWithArgs ["-prof", "-dynamic"]
+hasSharedLibraries = testCompilerWithArgs ["-dynamic"]
+
+skipIfNoSharedLibraries :: TestM ()
+skipIfNoSharedLibraries = skipUnless "no shared libraries" =<< hasSharedLibraries
+
+skipIfNoProfiledLibraries :: TestM ()
+skipIfNoProfiledLibraries = skipUnless "no profiled libraries" =<< hasProfiledLibraries
 
 -- | Check if the GHC that is used for compiling package tests has
 -- a shared library of the cabal library under test in its database.
@@ -864,7 +896,7 @@ allCabalVersion = isCabalVersion all
 isCabalVersion :: WithCallStack (((Version -> Bool) -> [Version] -> Bool) -> String -> TestM Bool)
 isCabalVersion decide range = do
   env <- getTestEnv
-  cabal_pkgs <- ghcPkg_raw' $ ["--global", "list", "Cabal", "--simple"] ++ ["--package-db=" ++ db | Just db <- [testPackageDbPath env]]
+  cabal_pkgs <- ghcPkg_raw' $ ["--global", "list", "Cabal", "--simple"] ++ ["--package-db=" ++ db | Just dbs <- [testPackageDbPath env], db <- dbs]
   let pkg_versions :: [PackageIdentifier] = mapMaybe simpleParsec (words (resultOutput cabal_pkgs))
   vr <- case eitherParsec range of
           Left err -> fail err
@@ -874,7 +906,6 @@ isCabalVersion decide range = do
 -- | Skip a test unless any available Cabal library version matches the predicate.
 skipUnlessAnyCabalVersion :: String -> TestM ()
 skipUnlessAnyCabalVersion range = skipUnless ("needs any Cabal " ++ range) =<< anyCabalVersion range
-
 
 -- | Skip a test if any available Cabal library version matches the predicate.
 skipIfAnyCabalVersion :: String -> TestM ()
@@ -906,28 +937,83 @@ skipUnlessGhcVersion range = skipUnless ("needs ghc " ++ range) =<< isGhcVersion
 skipIfGhcVersion :: String -> TestM ()
 skipIfGhcVersion range = skipIf ("incompatible with ghc " ++ range) =<< isGhcVersion range
 
-skipUnlessJavaScript :: TestM ()
-skipUnlessJavaScript = skipUnless "needs the JavaScript backend" =<< isJavaScript
+skipUnlessJavaScript :: IO ()
+skipUnlessJavaScript = skipUnlessIO "needs the JavaScript backend" isJavaScript
 
-skipIfJavaScript :: TestM ()
-skipIfJavaScript = skipIf "incompatible with the JavaScript backend" =<< isJavaScript
+skipIfJavaScript :: IO ()
+skipIfJavaScript = skipIfIO "incompatible with the JavaScript backend" isJavaScript
 
-isWindows :: TestM Bool
-isWindows = return (buildOS == Windows)
+isWindows :: Bool
+isWindows = buildOS == Windows
 
-isOSX :: TestM Bool
-isOSX = return (buildOS == OSX)
+isCI :: IO Bool
+isCI = isJust <$> lookupEnv "CI"
 
-isLinux :: TestM Bool
-isLinux = return (buildOS == Linux)
+isOSX :: Bool
+isOSX = buildOS == OSX
 
-isJavaScript :: TestM Bool
-isJavaScript = return (buildArch == JavaScript)
+isLinux :: Bool
+isLinux = buildOS == Linux
+
+isJavaScript :: Bool
+isJavaScript = buildArch == JavaScript
   -- should probably be `hostArch` but Cabal doesn't distinguish build platform
   -- and host platform
 
-skipIfWindows :: TestM ()
-skipIfWindows = skipIf "Windows" =<< isWindows
+skipIfWindows :: String -> IO ()
+skipIfWindows why = skipIfIO ("Windows " <> why) isWindows
+
+skipUnlessWindows :: IO ()
+skipUnlessWindows = skipIfIO "Only interesting in Windows" (not isWindows)
+
+skipIfOSX :: String -> IO ()
+skipIfOSX why = skipIfIO ("OSX " <> why) isOSX
+
+skipIfCI :: IssueID -> IO ()
+skipIfCI ticket = skipIfIO ("CI, see #" <> show ticket) =<< isCI
+
+skipIfCIAndWindows :: IssueID -> IO ()
+skipIfCIAndWindows ticket = skipIfIO ("Windows CI, see #" <> show ticket) . (isWindows &&) =<< isCI
+
+skipIfCIAndOSX :: IssueID -> IO ()
+skipIfCIAndOSX ticket = skipIfIO ("OSX CI, see #" <> show ticket) . (isOSX &&) =<< isCI
+
+expectBrokenIfWindows :: IssueID -> TestM a -> TestM a
+expectBrokenIfWindows ticket = expectBrokenIf isWindows ticket
+
+expectBrokenIfWindowsCI :: IssueID -> TestM a -> TestM a
+expectBrokenIfWindowsCI ticket m = do
+    ci <- liftIO isCI
+    expectBrokenIf (isWindows && ci) ticket m
+
+expectBrokenIfWindowsCIAndGhc :: String -> IssueID -> TestM a -> TestM a
+expectBrokenIfWindowsCIAndGhc range ticket m = do
+    ghcVer <- isGhcVersion range
+    ci <- liftIO isCI
+    expectBrokenIf (isWindows && ghcVer && ci) ticket m
+
+expectBrokenIfWindowsAndGhc :: String -> IssueID -> TestM a -> TestM a
+expectBrokenIfWindowsAndGhc range ticket m = do
+    ghcVer <- isGhcVersion range
+    expectBrokenIf (isWindows && ghcVer) ticket m
+
+expectBrokenIfOSXAndGhc :: String -> IssueID -> TestM a -> TestM a
+expectBrokenIfOSXAndGhc range ticket m = do
+    ghcVer <- isGhcVersion range
+    expectBrokenIf (isOSX && ghcVer) ticket m
+
+expectBrokenIfGhc :: String -> IssueID -> TestM a -> TestM a
+expectBrokenIfGhc range ticket m = do
+    ghcVer <- isGhcVersion range
+    expectBrokenIf ghcVer ticket m
+
+flakyIfCI :: IssueID -> TestM a -> TestM a
+flakyIfCI ticket m = do
+    ci <- liftIO isCI
+    flakyIf ci ticket m
+
+flakyIfWindows :: IssueID -> TestM a -> TestM a
+flakyIfWindows ticket m = flakyIf isWindows ticket m
 
 getOpenFilesLimit :: TestM (Maybe Integer)
 #ifdef mingw32_HOST_OS
@@ -952,29 +1038,6 @@ getOpenFilesLimit = liftIO $ do
 --
 hasNewBuildCompatBootCabal :: TestM Bool
 hasNewBuildCompatBootCabal = isGhcVersion ">= 7.9"
-
-------------------------------------------------------------------------
--- * Broken tests
-
-expectBroken :: Int -> TestM a -> TestM ()
-expectBroken ticket m = do
-    env <- getTestEnv
-    liftIO . withAsync (runReaderT m env) $ \a -> do
-        r <- waitCatch a
-        case r of
-            Left e  -> do
-                putStrLn $ "This test is known broken, see #" ++ show ticket ++ ":"
-                print e
-                runReaderT expectedBroken env
-            Right _ -> do
-                runReaderT unexpectedSuccess env
-
-expectBrokenIf :: Bool -> Int -> TestM a -> TestM ()
-expectBrokenIf False _ m = void $ m
-expectBrokenIf True ticket m = expectBroken ticket m
-
-expectBrokenUnless :: Bool -> Int -> TestM a -> TestM ()
-expectBrokenUnless b = expectBrokenIf (not b)
 
 -- * Programs
 
@@ -1060,19 +1123,20 @@ withDelay m = do
         Just _ -> m
 
 -- | Create a symlink for the duration of the provided action. If the symlink
--- already exists, it is deleted. Does not work on Windows.
+-- already exists, it is deleted.
 withSymlink :: FilePath -> FilePath -> TestM a -> TestM a
-#ifdef mingw32_HOST_OS
+#if defined(mingw32_HOST_OS) && !MIN_VERSION_directory(1,3,1)
 withSymlink _oldpath _newpath _act =
-  error "PackageTests.PackageTester.withSymlink: does not work on Windows!"
+  error "Test.Cabal.Prelude.withSymlink: does not work on Windows with directory <1.3.1!"
 #else
 withSymlink oldpath newpath0 act = do
+  liftIO $ hPutStrLn stderr $ "Symlinking " <> oldpath <> " <== " <> newpath0
   env <- getTestEnv
   let newpath = testCurrentDir env </> newpath0
   symlinkExists <- liftIO $ doesFileExist newpath
   when symlinkExists $ liftIO $ removeFile newpath
-  bracket_ (liftIO $ createSymbolicLink oldpath newpath)
-           (liftIO $ removeFile newpath) act
+  bracket_ (liftIO $ createFileLink oldpath newpath)
+           (liftIO $ pure ()) act
 #endif
 
 writeSourceFile :: FilePath -> String -> TestM ()
@@ -1089,26 +1153,27 @@ copySourceFileTo src dest = do
 -- limit) by creating a temporary directory for the new-build store. This
 -- function creates a directory immediately under the current drive on Windows.
 -- The directory must be passed to new- commands with --store-dir.
-withShorterPathForNewBuildStore :: (FilePath -> IO a) -> IO a
+withShorterPathForNewBuildStore :: TestM a -> TestM a
 withShorterPathForNewBuildStore test =
-  withTestDir normal "cabal-test-store" test
+  withTestDir normal "cabal-test-store" (\f -> withStoreDir f test)
 
 -- | Find where a package locates in the store dir. This works only if there is exactly one 1 ghc version
 -- and exactly 1 directory for the given package in the store dir.
-findDependencyInStore :: FilePath -- ^store dir
-                      -> String -- ^package name prefix
-                      -> IO FilePath -- ^package dir
-findDependencyInStore storeDir pkgName = do
-    (storeDirForGhcVersion : _) <- listDirectory storeDir
-    packageDirs <- listDirectory (storeDir </> storeDirForGhcVersion)
-    -- Ideally, we should call 'hashedInstalledPackageId' from 'Distribution.Client.PackageHash'.
-    -- But 'PackageHashInputs', especially 'PackageHashConfigInputs', is too hard to construct.
-    let pkgName' =
-            if buildOS == OSX
-            then filter (not . flip elem "aeiou") pkgName
-                -- simulates the way 'hashedInstalledPackageId' uses to compress package name
-            else pkgName
-    let libDir = case filter (pkgName' `isPrefixOf`) packageDirs of
-                    [] -> error $ "Could not find " <> pkgName' <> " when searching for " <> pkgName' <> " in\n" <> show packageDirs
-                    (dir:_) -> dir
-    pure (storeDir </> storeDirForGhcVersion </> libDir)
+findDependencyInStore :: String -- ^package name prefix
+                      -> TestM FilePath -- ^package dir
+findDependencyInStore pkgName = do
+    storeDir <- testStoreDir <$> getTestEnv
+    liftIO $ do
+      storeDirForGhcVersion:_ <- listDirectory storeDir
+      packageDirs <- listDirectory (storeDir </> storeDirForGhcVersion)
+      -- Ideally, we should call 'hashedInstalledPackageId' from 'Distribution.Client.PackageHash'.
+      -- But 'PackageHashInputs', especially 'PackageHashConfigInputs', is too hard to construct.
+      let pkgName' =
+              if buildOS == OSX
+              then filter (not . flip elem "aeiou") pkgName
+                  -- simulates the way 'hashedInstalledPackageId' uses to compress package name
+              else pkgName
+      let libDir = case filter (pkgName' `isPrefixOf`) packageDirs of
+                      [] -> error $ "Could not find " <> pkgName' <> " when searching for " <> pkgName' <> " in\n" <> show packageDirs
+                      (dir:_) -> dir
+      pure (storeDir </> storeDirForGhcVersion </> libDir)

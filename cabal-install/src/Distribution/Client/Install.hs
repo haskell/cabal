@@ -57,7 +57,6 @@ import System.FilePath
   ( equalFilePath
   , takeDirectory
   , (<.>)
-  , (</>)
   )
 import System.IO
   ( IOMode (AppendMode)
@@ -174,8 +173,9 @@ import Distribution.Simple.Compiler
   ( Compiler (compilerId)
   , CompilerId (..)
   , CompilerInfo (..)
-  , PackageDB (..)
-  , PackageDBStack
+  , PackageDBCWD
+  , PackageDBStackCWD
+  , PackageDBX (..)
   , compilerFlavor
   , compilerInfo
   )
@@ -222,7 +222,6 @@ import Distribution.Simple.Setup
 import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Utils.Path hiding
   ( (<.>)
-  , (</>)
   )
 
 import Distribution.Simple.Utils
@@ -301,7 +300,7 @@ import Distribution.Client.Errors
 -- | Installs the packages needed to satisfy a list of dependencies.
 install
   :: Verbosity
-  -> PackageDBStack
+  -> PackageDBStackCWD
   -> RepoContext
   -> Compiler
   -> Platform
@@ -381,7 +380,7 @@ install
 type InstallContext =
   ( InstalledPackageIndex
   , SourcePackageDb
-  , PkgConfigDb
+  , Maybe PkgConfigDb
   , [UserTarget]
   , [PackageSpecifier UnresolvedSourcePackage]
   , HttpTransport
@@ -392,7 +391,7 @@ type InstallContext =
 
 -- | Initial arguments given to 'install' or 'makeInstallContext'.
 type InstallArgs =
-  ( PackageDBStack
+  ( PackageDBStackCWD
   , RepoContext
   , Compiler
   , Platform
@@ -567,7 +566,7 @@ planPackages
   -> InstallFlags
   -> InstalledPackageIndex
   -> SourcePackageDb
-  -> PkgConfigDb
+  -> Maybe PkgConfigDb
   -> [PackageSpecifier UnresolvedSourcePackage]
   -> Progress String String SolverInstallPlan
 planPackages
@@ -1225,7 +1224,7 @@ storeDetailedBuildReports verbosity logsDir reports =
 
 regenerateHaddockIndex
   :: Verbosity
-  -> [PackageDB]
+  -> [PackageDBCWD]
   -> Compiler
   -> Platform
   -> ProgramDb
@@ -1914,19 +1913,19 @@ installUnpackedPackage
       -- Configure phase
       onFailure ConfigureFailed $ do
         noticeProgress ProgressStarting
-        setup configureCommand configCommonFlags configureFlags mLogPath
+        setup configureCommand configCommonFlags (return . configureFlags) mLogPath
 
         -- Build phase
         onFailure BuildFailed $ do
           noticeProgress ProgressBuilding
-          setup buildCommand' buildCommonFlags buildFlags mLogPath
+          setup buildCommand' buildCommonFlags (return . buildFlags) mLogPath
 
           -- Doc generation phase
           docsResult <-
             if shouldHaddock
               then
                 ( do
-                    setup haddockCommand haddockCommonFlags haddockFlags' mLogPath
+                    setup haddockCommand haddockCommonFlags (return . haddockFlags') mLogPath
                     return DocsOk
                 )
                   `catchIO` (\_ -> return DocsFailed)
@@ -1936,7 +1935,7 @@ installUnpackedPackage
           -- Tests phase
           onFailure TestsFailed $ do
             when (testsEnabled && PackageDescription.hasTests pkg) $
-              setup Cabal.testCommand testCommonFlags testFlags' mLogPath
+              setup Cabal.testCommand testCommonFlags (return . testFlags') mLogPath
 
             let testsResult
                   | testsEnabled = TestsOk
@@ -1953,7 +1952,7 @@ installUnpackedPackage
                 platform
                 pkg
                 $ do
-                  setup Cabal.copyCommand copyCommonFlags copyFlags mLogPath
+                  setup Cabal.copyCommand copyCommonFlags (return . copyFlags) mLogPath
 
               -- Capture installed package configuration file, so that
               -- it can be incorporated into the final InstallPlan
@@ -2021,7 +2020,7 @@ installUnpackedPackage
       genPkgConfs flags mLogPath = do
         tmp <- getTemporaryDirectory
         withTempDirectory verbosity tmp (tempTemplate "pkgConf") $ \dir -> do
-          let pkgConfDest = dir </> "pkgConf"
+          let pkgConfDest = makeSymbolicPath dir </> makeRelativePathEx "pkgConf"
               registerFlags' version =
                 (flags version)
                   { Cabal.regGenPkgConf = toFlag (Just pkgConfDest)
@@ -2029,18 +2028,18 @@ installUnpackedPackage
           setup
             Cabal.registerCommand
             registerCommonFlags
-            registerFlags'
+            (return . registerFlags')
             mLogPath
-          is_dir <- doesDirectoryExist pkgConfDest
+          is_dir <- doesDirectoryExist (interpretSymbolicPathCWD pkgConfDest)
           let notHidden = not . isHidden
               isHidden name = "." `isPrefixOf` name
           if is_dir
             then -- Sort so that each prefix of the package
             -- configurations is well formed
 
-              traverse (readPkgConf pkgConfDest) . sort . filter notHidden
-                =<< getDirectoryContents pkgConfDest
-            else fmap (: []) $ readPkgConf "." pkgConfDest
+              traverse (readPkgConf (getSymbolicPath pkgConfDest)) . sort . filter notHidden
+                =<< getDirectoryContents (getSymbolicPath pkgConfDest)
+            else fmap (: []) $ readPkgConf "." (getSymbolicPath pkgConfDest)
 
       readPkgConf
         :: FilePath

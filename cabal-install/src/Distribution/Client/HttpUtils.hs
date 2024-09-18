@@ -192,7 +192,7 @@ downloadURI transport verbosity uri path = do
   -- Only use the external http transports if we actually have to
   -- (or have been told to do so)
   let transport'
-        | uriScheme uri == "http:"
+        | isHttpURI uri
         , not (transportManuallySelected transport) =
             plainHttpTransport
         | otherwise =
@@ -251,19 +251,34 @@ downloadURI transport verbosity uri path = do
 -- Utilities for repo url management
 --
 
+-- | If the remote repo is accessed over HTTPS, ensure that the transport
+-- supports HTTPS.
 remoteRepoCheckHttps :: Verbosity -> HttpTransport -> RemoteRepo -> IO ()
-remoteRepoCheckHttps verbosity transport repo
-  | uriScheme (remoteRepoURI repo) == "https:"
+remoteRepoCheckHttps verbosity transport repo =
+  transportCheckHttpsWithError verbosity transport (remoteRepoURI repo) $
+    RemoteRepoCheckHttps (unRepoName (remoteRepoName repo)) requiresHttpsErrorMessage
+
+-- | If the URI scheme is HTTPS, ensure the transport supports HTTPS.
+transportCheckHttps :: Verbosity -> HttpTransport -> URI -> IO ()
+transportCheckHttps verbosity transport uri =
+  transportCheckHttpsWithError verbosity transport uri $
+    TransportCheckHttps uri requiresHttpsErrorMessage
+
+-- | If the URI scheme is HTTPS, ensure the transport supports HTTPS.
+-- If not, fail with the given error.
+transportCheckHttpsWithError
+  :: Verbosity -> HttpTransport -> URI -> CabalInstallException -> IO ()
+transportCheckHttpsWithError verbosity transport uri err
+  | isHttpsURI uri
   , not (transportSupportsHttps transport) =
-      dieWithException verbosity $ RemoteRepoCheckHttps (unRepoName (remoteRepoName repo)) requiresHttpsErrorMessage
+      dieWithException verbosity err
   | otherwise = return ()
 
-transportCheckHttps :: Verbosity -> HttpTransport -> URI -> IO ()
-transportCheckHttps verbosity transport uri
-  | uriScheme uri == "https:"
-  , not (transportSupportsHttps transport) =
-      dieWithException verbosity $ TransportCheckHttps uri requiresHttpsErrorMessage
-  | otherwise = return ()
+isHttpsURI :: URI -> Bool
+isHttpsURI uri = uriScheme uri == "https:"
+
+isHttpURI :: URI -> Bool
+isHttpURI uri = uriScheme uri == "http:"
 
 requiresHttpsErrorMessage :: String
 requiresHttpsErrorMessage =
@@ -280,12 +295,12 @@ requiresHttpsErrorMessage =
 remoteRepoTryUpgradeToHttps :: Verbosity -> HttpTransport -> RemoteRepo -> IO RemoteRepo
 remoteRepoTryUpgradeToHttps verbosity transport repo
   | remoteRepoShouldTryHttps repo
-  , uriScheme (remoteRepoURI repo) == "http:"
+  , isHttpURI (remoteRepoURI repo)
   , not (transportSupportsHttps transport)
   , not (transportManuallySelected transport) =
       dieWithException verbosity $ TryUpgradeToHttps [name | (name, _, True, _) <- supportedTransports]
   | remoteRepoShouldTryHttps repo
-  , uriScheme (remoteRepoURI repo) == "http:"
+  , isHttpURI (remoteRepoURI repo)
   , transportSupportsHttps transport =
       return
         repo
@@ -408,7 +423,7 @@ configureTransport verbosity extraPath (Just name) =
 
   case find (\(name', _, _, _) -> name' == name) supportedTransports of
     Just (_, mprog, _tls, mkTrans) -> do
-      baseProgDb <- prependProgramSearchPath verbosity extraPath emptyProgramDb
+      baseProgDb <- prependProgramSearchPath verbosity extraPath [] emptyProgramDb
       progdb <- case mprog of
         Nothing -> return emptyProgramDb
         Just prog -> snd <$> requireProgram verbosity prog baseProgDb
@@ -424,7 +439,7 @@ configureTransport verbosity extraPath Nothing = do
 
   -- for all the transports except plain-http we need to try and find
   -- their external executable
-  baseProgDb <- prependProgramSearchPath verbosity extraPath emptyProgramDb
+  baseProgDb <- prependProgramSearchPath verbosity extraPath [] emptyProgramDb
   progdb <-
     configureAllKnownPrograms verbosity $
       addKnownPrograms
@@ -505,12 +520,18 @@ curlTransport prog =
             (Just (Left (uname, passwd)), _) -> Just $ Left (uname ++ ":" ++ passwd)
             (Nothing, Just a) -> Just $ Left a
             (Nothing, Nothing) -> Nothing
+      let authnSchemeArg
+            -- When using TLS, we can accept Basic authentication.  Let curl
+            -- decide based on the scheme(s) offered by the server.
+            | isHttpsURI uri = "--anyauth"
+            -- When not using TLS, force Digest scheme
+            | otherwise = "--digest"
       case mbAuthStringToken of
         Just (Left up) ->
           progInvocation
             { progInvokeInput =
                 Just . IODataText . unlines $
-                  [ "--digest"
+                  [ authnSchemeArg
                   , "--user " ++ up
                   ]
             , progInvokeArgs = ["--config", "-"] ++ progInvokeArgs progInvocation

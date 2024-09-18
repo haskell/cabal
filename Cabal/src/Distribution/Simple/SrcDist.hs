@@ -264,6 +264,10 @@ listPackageSources' verbosity rip mbWorkDir pkg_descr pps =
         $ \filename ->
           fmap (coerceSymbolicPath . relativeSymbolicPath)
             <$> matchDirFileGlobWithDie verbosity rip (specVersion pkg_descr) mbWorkDir filename
+    , -- Extra files.
+      fmap concat . for (extraFiles pkg_descr) $ \fpath ->
+        fmap relativeSymbolicPath
+          <$> matchDirFileGlobWithDie verbosity rip (specVersion pkg_descr) mbWorkDir fpath
     , -- License file(s).
       return (map (relativeSymbolicPath . coerceSymbolicPath) $ licenseFiles pkg_descr)
     , -- Install-include files, without autogen-include files
@@ -276,6 +280,8 @@ listPackageSources' verbosity rip mbWorkDir pkg_descr pps =
           traverse (fmap (makeSymbolicPath . snd) . findIncludeFile verbosity cwd relincdirs) incls
     , -- Setup script, if it exists.
       fmap (maybe [] (\f -> [makeSymbolicPath f])) $ findSetupFile cwd
+    , -- SetupHooks script, if it exists.
+      fmap (maybe [] (\f -> [makeSymbolicPath f])) $ findSetupHooksFile cwd
     , -- The .cabal file itself.
       fmap (\d -> [d]) (coerceSymbolicPath . relativeSymbolicPath <$> tryFindPackageDesc verbosity mbWorkDir)
     ]
@@ -324,6 +330,21 @@ findSetupFile targetDir = do
   where
     setupHs = "Setup.hs"
     setupLhs = "Setup.lhs"
+
+-- | Find the setup hooks script file, if it exists.
+findSetupHooksFile :: FilePath -> IO (Maybe FilePath)
+findSetupHooksFile targetDir = do
+  hsExists <- doesFileExist (targetDir </> setupHs)
+  lhsExists <- doesFileExist (targetDir </> setupLhs)
+  if hsExists
+    then return (Just setupHs)
+    else
+      if lhsExists
+        then return (Just setupLhs)
+        else return Nothing
+  where
+    setupHs = "SetupHooks.hs"
+    setupLhs = "SetupHooks.lhs"
 
 -- | Create a default setup script in the target directory, if it doesn't exist.
 maybeCreateDefaultSetupScript :: FilePath -> IO ()

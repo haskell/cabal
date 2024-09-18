@@ -1,5 +1,0 @@
-import: project-cabal/pkgs/cabal.config
-import: project-cabal/pkgs/install.config
-import: project-cabal/pkgs/tests.config
-
-index-state: hackage.haskell.org 2024-02-13T10:16:13Z

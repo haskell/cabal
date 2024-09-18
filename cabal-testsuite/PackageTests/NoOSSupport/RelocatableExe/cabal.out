@@ -1,0 +1,10 @@
+# cabal build
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following will be built:
+ - aa-0.1.0.0 (exe:a) (first run)
+Configuring executable 'a' for aa-0.1.0.0...
+Error: [Cabal-3339]
+Operating system: windows, does not support relocatable builds
+Error: [Cabal-7125]
+Failed to build aa-0.1.0.0-inplace-a. The failure occurred during the configure step.

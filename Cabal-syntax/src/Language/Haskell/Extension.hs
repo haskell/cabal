@@ -303,6 +303,9 @@ data KnownExtension
   | -- | Allow default instantiation of polymorphic types in more
     -- situations.
     ExtendedDefaultRules
+  | -- | Allow @default@ declarations to explicitly name the class and
+    -- be exported.
+    NamedDefaults
   | -- | Enable unboxed tuples.
     UnboxedTuples
   | -- | Enable @deriving@ for classes 'Data.Typeable.Typeable' and
@@ -548,6 +551,11 @@ data KnownExtension
   | -- | Allow the use of built-in syntax for list, tuple and sum type constructors
     -- rather than being exclusive to data constructors.
     ListTuplePuns
+  | -- | Support multiline strings.
+    MultilineStrings
+  | -- | Allow use of or-pattern syntax, condensing multiple patterns
+    -- into a single one.
+    OrPatterns
   deriving (Generic, Show, Read, Eq, Ord, Enum, Bounded, Typeable, Data)
 
 instance Binary KnownExtension

@@ -127,6 +127,8 @@ data ConfigFlags = ConfigFlags
   , configProf :: Flag Bool
   -- ^ Enable profiling in the library
   --  and executables.
+  , configProfShared :: Flag Bool
+  -- ^ Enable shared profiling objects
   , configProfDetail :: Flag ProfDetailLevel
   -- ^ Profiling detail level
   --   in the library and executables.
@@ -183,7 +185,7 @@ data ConfigFlags = ConfigFlags
   --  dependencies.
   , configDependencies :: [GivenComponent]
   -- ^ The packages depended on which already exist
-  , configPromisedDependencies :: [GivenComponent]
+  , configPromisedDependencies :: [PromisedComponent]
   -- ^ The packages depended on which doesn't yet exist (i.e. promised).
   --  Promising dependencies enables us to configure components in parallel,
   --  and avoids expensive builds if they are not necessary.
@@ -228,6 +230,10 @@ data ConfigFlags = ConfigFlags
   -- testsuites run with @--enable-coverage@. Notably, this list must exclude
   -- indefinite libraries and instantiations because HPC does not support
   -- backpack (Nov. 2023).
+  , configIgnoreBuildTools :: Flag Bool
+  -- ^ When this flag is set, all tools declared in `build-tool`s and
+  -- `build-tool-depends` will be ignored. This allows a Cabal package with
+  -- build-tool-dependencies to be built even if the tool is not found.
   }
   deriving (Generic, Read, Show, Typeable)
 
@@ -286,6 +292,7 @@ instance Eq ConfigFlags where
       && equal configProfExe
       && equal configProf
       && equal configProfDetail
+      && equal configProfShared
       && equal configProfLibDetail
       && equal configConfigureArgs
       && equal configOptimization
@@ -319,7 +326,9 @@ instance Eq ConfigFlags where
       && equal configDebugInfo
       && equal configDumpBuildInfo
       && equal configUseResponseFiles
+      && equal configAllowDependingOnPrivateLibs
       && equal configCoverageFor
+      && equal configIgnoreBuildTools
     where
       equal f = on (==) f a b
 
@@ -517,6 +526,13 @@ configureOptions showOrParseArgs =
           "Executable and library profiling"
           configProf
           (\v flags -> flags{configProf = v})
+          (boolOpt [] [])
+       , option
+          ""
+          ["profiling-shared"]
+          "Build profiling shared libraries"
+          configProfShared
+          (\v flags -> flags{configProfShared = v})
           (boolOpt [] [])
        , option
           ""
@@ -763,13 +779,13 @@ configureOptions showOrParseArgs =
        , option
           ""
           ["promised-dependency"]
-          "A list of promised dependencies. E.g., --promised-dependency=\"void=void-0.5.8-177d5cdf20962d0581fe2e4932a6c309\""
+          "A list of promised dependencies. E.g., --promised-dependency=\"void-0.5.8=void-0.5.8-177d5cdf20962d0581fe2e4932a6c309\""
           configPromisedDependencies
           (\v flags -> flags{configPromisedDependencies = v})
           ( reqArg
-              "NAME[:COMPONENT_NAME]=CID"
-              (parsecToReadE (const "dependency expected") ((\x -> [x]) `fmap` parsecGivenComponent))
-              (map prettyGivenComponent)
+              "NAME-VER[:COMPONENT_NAME]=CID"
+              (parsecToReadE (const "dependency expected") ((\x -> [x]) `fmap` parsecPromisedComponent))
+              (map prettyPromisedComponent)
           )
        , option
           ""
@@ -856,6 +872,15 @@ configureOptions showOrParseArgs =
               (Flag . (: []) . fromString)
               (fmap prettyShow . fromFlagOrDefault [])
           )
+       , option
+          ""
+          ["ignore-build-tools"]
+          ( "Ignore build tool dependencies. "
+              ++ "If set, declared build tools needn't be found for compilation to proceed."
+          )
+          configIgnoreBuildTools
+          (\v flags -> flags{configIgnoreBuildTools = v})
+          trueArg
        ]
   where
     liftInstallDirs =
@@ -880,7 +905,7 @@ readPackageDb :: String -> Maybe PackageDB
 readPackageDb "clear" = Nothing
 readPackageDb "global" = Just GlobalPackageDB
 readPackageDb "user" = Just UserPackageDB
-readPackageDb other = Just (SpecificPackageDB other)
+readPackageDb other = Just (SpecificPackageDB (makeSymbolicPath other))
 
 showPackageDbList :: [Maybe PackageDB] -> [String]
 showPackageDbList = map showPackageDb
@@ -892,11 +917,34 @@ showPackageDb :: Maybe PackageDB -> String
 showPackageDb Nothing = "clear"
 showPackageDb (Just GlobalPackageDB) = "global"
 showPackageDb (Just UserPackageDB) = "user"
-showPackageDb (Just (SpecificPackageDB db)) = db
+showPackageDb (Just (SpecificPackageDB db)) = getSymbolicPath db
 
 showProfDetailLevelFlag :: Flag ProfDetailLevel -> [String]
 showProfDetailLevelFlag NoFlag = []
 showProfDetailLevelFlag (Flag dl) = [showProfDetailLevel dl]
+
+parsecPromisedComponent :: ParsecParser PromisedComponent
+parsecPromisedComponent = do
+  pn <- parsec
+  ln <- P.option LMainLibName $ do
+    _ <- P.char ':'
+    ucn <- parsec
+    return $
+      if unUnqualComponentName ucn == unPackageName (pkgName pn)
+        then LMainLibName
+        else LSubLibName ucn
+  _ <- P.char '='
+  cid <- parsec
+  return $ PromisedComponent pn ln cid
+
+prettyPromisedComponent :: PromisedComponent -> String
+prettyPromisedComponent (PromisedComponent pn cn cid) =
+  prettyShow pn
+    ++ case cn of
+      LMainLibName -> ""
+      LSubLibName n -> ":" ++ prettyShow n
+    ++ "="
+    ++ prettyShow cid
 
 parsecGivenComponent :: ParsecParser GivenComponent
 parsecGivenComponent = do

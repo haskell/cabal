@@ -28,17 +28,11 @@ import qualified System.Clock as Clock
 import System.IO
 import System.FilePath
 import System.Exit
-import System.Process (callProcess, showCommandForUser)
+import System.Process (readProcessWithExitCode, showCommandForUser)
 import System.Directory
 import Distribution.Pretty
 import Data.Maybe
 
-#if !MIN_VERSION_base(4,12,0)
-import Data.Monoid ((<>))
-#endif
-#if !MIN_VERSION_base(4,8,0)
-import Data.Monoid (mempty)
-#endif
 
 {- Note [Testsuite package environments]
 
@@ -57,8 +51,8 @@ Where are these environments specified:
 2. The build-depends of `test-runtime-deps` executable in `cabal-testsuite.cabal`
    These dependencies are injected in a special module (`Test.Cabal.ScriptEnv0`) which
    then is consulted in `Test.Cabal.Monad` in order to pass the right environmnet.
-   This is mechanism by which the `./Setup` tests have access to the in-tree `Cabal`
-   and `Cabal-syntax` libraries.
+   This is the mechanism by which the `./Setup` tests have access to the in-tree
+   `Cabal`, `Cabal-syntax` and `Cabal-hooks` libraries.
 3. No specification, only the `GlobalPackageDb` is available (see
    `testPackageDBStack`) unless the test itself augments the environment with
    `withPackageDb`.
@@ -125,12 +119,13 @@ mainArgParser = MainArgs
     <*> commonArgParser
 
 -- Unpack and build a specific released version of Cabal and Cabal-syntax libraries
-buildCabalLibsProject :: String -> Verbosity -> Maybe FilePath -> FilePath -> IO FilePath
+buildCabalLibsProject :: String -> Verbosity -> Maybe FilePath -> FilePath -> IO [FilePath]
 buildCabalLibsProject projString verb mbGhc dir = do
   let prog_db = userSpecifyPaths [("ghc", path) | Just path <- [mbGhc] ]  defaultProgramDb
   (cabal, _) <- requireProgram verb (simpleProgram "cabal") prog_db
   (ghc, _) <- requireProgram verb ghcProgram prog_db
 
+  let storeRoot = dir </> "store"
   let pv = fromMaybe (error "no ghc version") (programVersion ghc)
   let final_package_db = dir </> "dist-newstyle" </> "packagedb" </> "ghc-" ++ prettyShow pv
   createDirectoryIfMissing True dir
@@ -138,15 +133,24 @@ buildCabalLibsProject projString verb mbGhc dir = do
 
   runProgramInvocation verb
     ((programInvocation cabal
-      ["--store-dir", dir </> "store"
+      ["--store-dir", storeRoot
       , "--project-file=" ++ dir </> "cabal.project-test"
       , "build"
       , "-w", programPath ghc
-      , "Cabal", "Cabal-syntax"] ) { progInvokeCwd = Just dir })
-  return final_package_db
+      , "Cabal", "Cabal-syntax", "Cabal-hooks"
+      ] ) { progInvokeCwd = Just dir })
+
+  -- Determine the path to the packagedb in the store for this ghc version
+  storesByGhc <- getDirectoryContents storeRoot
+  case filter (prettyShow pv `isInfixOf`) storesByGhc of
+    [] -> return [final_package_db]
+    storeForGhc:_ -> do
+      let storePackageDB = (storeRoot </> storeForGhc </> "package.db")
+      return [storePackageDB, final_package_db]
 
 
-buildCabalLibsSpecific :: String -> Verbosity -> Maybe FilePath -> FilePath -> IO FilePath
+
+buildCabalLibsSpecific :: String -> Verbosity -> Maybe FilePath -> FilePath -> IO [FilePath]
 buildCabalLibsSpecific ver verb mbGhc builddir_rel = do
   let prog_db = userSpecifyPaths [("ghc", path) | Just path <- [mbGhc] ]  defaultProgramDb
   (cabal, _) <- requireProgram verb (simpleProgram "cabal") prog_db
@@ -157,15 +161,18 @@ buildCabalLibsSpecific ver verb mbGhc builddir_rel = do
   csgot <- doesDirectoryExist (dir </> "Cabal-syntax-" ++ ver)
   unless csgot $
     runProgramInvocation verb ((programInvocation cabal ["get", "Cabal-syntax-" ++ ver]) { progInvokeCwd = Just dir })
+  let hooksVerFromVer _ = "0.1"
+      hooksVer = hooksVerFromVer ver
+  chgot <- doesDirectoryExist (dir </> "Cabal-hooks-" ++ hooksVer)
+  unless chgot $
+    runProgramInvocation verb ((programInvocation cabal ["get", "Cabal-hooks-" ++ hooksVer]) { progInvokeCwd = Just dir })
+  buildCabalLibsProject ("packages: Cabal-" ++ ver ++ " Cabal-syntax-" ++ ver ++ " Cabal-hooks-" ++ hooksVer) verb mbGhc dir
 
-  buildCabalLibsProject ("packages: Cabal-" ++ ver ++ " Cabal-syntax-" ++ ver) verb mbGhc dir
 
-
-buildCabalLibsIntree :: String -> Verbosity -> Maybe FilePath -> FilePath -> IO FilePath
+buildCabalLibsIntree :: String -> Verbosity -> Maybe FilePath -> FilePath -> IO [FilePath]
 buildCabalLibsIntree root verb mbGhc builddir_rel = do
   dir <- canonicalizePath (builddir_rel </> "intree")
-  buildCabalLibsProject ("packages: " ++ root </> "Cabal" ++ " " ++ root </> "Cabal-syntax") verb mbGhc dir
-
+  buildCabalLibsProject ("packages: " ++ root </> "Cabal" ++ " " ++ root </> "Cabal-syntax" ++ " " ++ root </> "Cabal-hooks") verb mbGhc dir
 
 main :: IO ()
 main = do
@@ -178,26 +185,26 @@ main = do
     args <- execParser $ info (mainArgParser <**> helper) mempty
     let verbosity = if mainArgVerbose args then verbose else normal
 
-    mpkg_db <-
+    pkg_dbs <-
       -- Not path to cabal-install so we're not going to run cabal-install tests so we
       -- can skip setting up a Cabal library to use with cabal-install.
       case argCabalInstallPath (mainCommonArgs args) of
         Nothing -> do
           when (isJust $ mainArgCabalSpec args)
                (putStrLn "Ignoring Cabal library specification as cabal-install tests are not running")
-          return Nothing
+          return []
         -- Path to cabal-install is passed, so need to install the requested relevant version of Cabal
         -- library.
         Just {} ->
           case mainArgCabalSpec args of
             Nothing -> do
               putStrLn "No Cabal library specified, using boot Cabal library with cabal-install tests"
-              return Nothing
-            Just BootCabalLib -> return Nothing
+              return []
+            Just BootCabalLib -> return []
             Just (InTreeCabalLib root build_dir) ->
-              Just <$> buildCabalLibsIntree root verbosity (argGhcPath (mainCommonArgs args)) build_dir
+              buildCabalLibsIntree root verbosity (argGhcPath (mainCommonArgs args)) build_dir
             Just (SpecificCabalLib ver build_dir) ->
-              Just <$> buildCabalLibsSpecific ver verbosity (argGhcPath (mainCommonArgs args)) build_dir
+              buildCabalLibsSpecific ver verbosity (argGhcPath (mainCommonArgs args)) build_dir
 
     -- To run our test scripts, we need to be able to run Haskell code
     -- linked against the Cabal library under test.  The most efficient
@@ -224,14 +231,28 @@ main = do
                 -> IO result
         runTest runner path
             = runner Nothing [] path $
-                ["--builddir", dist_dir, path] ++ ["--extra-package-db=" ++ pkg_db | Just pkg_db <- [mpkg_db]] ++ renderCommonArgs (mainCommonArgs args)
+                ["--builddir", dist_dir, path] ++ ["--extra-package-db=" ++ pkg_db | pkg_db <- pkg_dbs] ++ renderCommonArgs (mainCommonArgs args)
 
     case mainArgTestPaths args of
         [path] -> do
             -- Simple runner
             (real_path, real_args) <- runTest (runnerCommand senv) path
             hPutStrLn stderr $ showCommandForUser real_path real_args
-            callProcess real_path real_args
+            -- If the test was reported flaky, the `runghc` call will exit
+            -- with exit code 1, and report `TestCodeFlaky` on the stderr output
+            --
+            -- This seems to be the only way to catch this case.
+            --
+            -- Sadly it means that stdout and stderr are not interleaved
+            -- directly anymore.
+            (e, out, err) <- readProcessWithExitCode real_path real_args ""
+            putStrLn "# STDOUT:"
+            putStrLn out
+            putStrLn "# STDERR:"
+            putStrLn err
+            if "TestCodeFlaky" `isInfixOf` err
+              then pure ()
+              else throwIO e
             hPutStrLn stderr "OK"
         user_paths -> do
             -- Read out tests from filesystem
@@ -256,6 +277,8 @@ main = do
             unexpected_fails_var  <- newMVar []
             unexpected_passes_var <- newMVar []
             skipped_var <- newMVar []
+            flaky_pass_var <- newMVar []
+            flaky_fail_var <- newMVar []
 
             chan <- newChan
             let logAll msg = writeChan chan (ServerLogMsg AllServers msg)
@@ -308,12 +331,18 @@ main = do
                                 modifyMVar_ unexpected_fails_var $ \paths ->
                                     return (path:paths)
 
-                            when (code == TestCodeUnexpectedOk) $
+                            when (isJust $ isTestCodeUnexpectedSuccess code) $
                                 modifyMVar_ unexpected_passes_var $ \paths ->
                                     return (path:paths)
 
                             when (isTestCodeSkip code) $
                                 modifyMVar_ skipped_var $ \paths ->
+                                    return (path:paths)
+
+                            case isTestCodeFlaky code of
+                              NotFlaky  -> pure ()
+                              Flaky b _ ->
+                                modifyMVar_ (if b then flaky_pass_var else flaky_fail_var) $ \paths ->
                                     return (path:paths)
 
                             go server
@@ -326,13 +355,17 @@ main = do
             unexpected_fails  <- takeMVar unexpected_fails_var
             unexpected_passes <- takeMVar unexpected_passes_var
             skipped           <- takeMVar skipped_var
+            flaky_passes      <- takeMVar flaky_pass_var
+            flaky_fails       <- takeMVar flaky_fail_var
 
             -- print summary
             let sl = show . length
                 testSummary =
                   sl all_tests ++ " tests, " ++ sl skipped ++ " skipped, "
                     ++ sl unexpected_passes ++ " unexpected passes, "
-                    ++ sl unexpected_fails ++ " unexpected fails."
+                    ++ sl unexpected_fails ++ " unexpected fails, "
+                    ++ sl flaky_passes ++ " flaky passes, "
+                    ++ sl flaky_fails ++ " flaky fails."
             logAll testSummary
 
             -- print failed or unexpected ok

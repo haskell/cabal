@@ -409,6 +409,7 @@ checkPackageDescription
           extraSrcFiles_
           extraTmpFiles_
           extraDocFiles_
+          extraFiles_
         ) = do
     -- § Sanity checks.
     checkPackageId package_
@@ -456,6 +457,7 @@ checkPackageDescription
     mapM_ (checkPath False "extra-source-files" PathKindGlob . getSymbolicPath) extraSrcFiles_
     mapM_ (checkPath False "extra-tmp-files" PathKindFile . getSymbolicPath) extraTmpFiles_
     mapM_ (checkPath False "extra-doc-files" PathKindGlob . getSymbolicPath) extraDocFiles_
+    mapM_ (checkPath False "extra-files" PathKindGlob . getSymbolicPath) extraFiles_
     mapM_ (checkPath False "data-files" PathKindGlob . getSymbolicPath) dataFiles_
     let rawDataDir = getSymbolicPath dataDir_
     checkPath True "data-dir" PathKindDirectory rawDataDir
@@ -465,15 +467,17 @@ checkPackageDescription
 
     -- § Globs.
     dataGlobs <- mapM (checkGlob "data-files" . getSymbolicPath) dataFiles_
-    extraGlobs <- mapM (checkGlob "extra-source-files" . getSymbolicPath) extraSrcFiles_
+    extraSrcGlobs <- mapM (checkGlob "extra-source-files" . getSymbolicPath) extraSrcFiles_
     docGlobs <- mapM (checkGlob "extra-doc-files" . getSymbolicPath) extraDocFiles_
+    extraGlobs <- mapM (checkGlob "extra-files" . getSymbolicPath) extraFiles_
     -- We collect globs to feed them to checkMissingDocs.
 
     -- § Missing documentation.
     checkMissingDocs
       (catMaybes dataGlobs)
-      (catMaybes extraGlobs)
+      (catMaybes extraSrcGlobs)
       (catMaybes docGlobs)
+      (catMaybes extraGlobs)
 
     -- § Datafield checks.
     checkSetupBuildInfo setupBuildInfo_
@@ -510,7 +514,7 @@ checkPackageDescription
       (isNothing buildTypeRaw_ && specVersion_ < CabalSpecV2_2)
       (PackageBuildWarning NoBuildType)
     checkP
-      (isJust setupBuildInfo_ && buildType pkg /= Custom)
+      (isJust setupBuildInfo_ && buildType pkg `notElem` [Custom, Hooks])
       (PackageBuildWarning NoCustomSetup)
 
     -- Contents.
@@ -519,6 +523,7 @@ checkPackageDescription
     checkCabalFile (packageName pkg)
     mapM_ (checkGlobFile specVersion_ "." "extra-source-files" . getSymbolicPath) extraSrcFiles_
     mapM_ (checkGlobFile specVersion_ "." "extra-doc-files" . getSymbolicPath) extraDocFiles_
+    mapM_ (checkGlobFile specVersion_ "." "extra-files" . getSymbolicPath) extraFiles_
     mapM_ (checkGlobFile specVersion_ rawDataDir "data-files" . getSymbolicPath) dataFiles_
     where
       checkNull
@@ -679,6 +684,7 @@ checkSourceRepos rs = do
         checkP
           (isNothing repoLocation_)
           (PackageDistInexcusable MissingLocation)
+        checkGitProtocol repoLocation_
         checkP
           ( repoType_ == Just (KnownRepoType CVS)
               && isNothing repoModule_
@@ -716,6 +722,17 @@ checkMissingVcsInfo rs =
     repoTypeDirname Bazaar = [".bzr"]
     repoTypeDirname Monotone = ["_MTN"]
     repoTypeDirname Pijul = [".pijul"]
+
+-- git:// lacks TLS or other encryption, see
+-- https://git-scm.com/book/en/v2/Git-on-the-Server-The-Protocols#_the_cons_4
+checkGitProtocol
+  :: Monad m
+  => Maybe String -- Repository location
+  -> CheckM m ()
+checkGitProtocol mloc =
+  checkP
+    (fmap (isPrefixOf "git://") mloc == Just True)
+    (PackageBuildWarning GitProtocol)
 
 -- ------------------------------------------------------------
 -- Package and distribution checks
@@ -985,8 +1002,9 @@ checkMissingDocs
   => [Glob] -- data-files globs.
   -> [Glob] -- extra-source-files globs.
   -> [Glob] -- extra-doc-files globs.
+  -> [Glob] -- extra-files globs.
   -> CheckM m ()
-checkMissingDocs dgs esgs edgs = do
+checkMissingDocs dgs esgs edgs efgs = do
   extraDocSupport <- (>= CabalSpecV1_18) <$> asksCM ccSpecVersion
 
   -- Everything in this block uses CheckPreDistributionOps interface.
@@ -1005,9 +1023,10 @@ checkMissingDocs dgs esgs edgs = do
         rgs <- realGlob dgs
         res <- realGlob esgs
         red <- realGlob edgs
+        ref <- realGlob efgs
 
         -- 3. Check if anything in 1. is missing in 2.
-        let mcs = checkDoc extraDocSupport des (rgs ++ res ++ red)
+        let mcs = checkDoc extraDocSupport des (rgs ++ res ++ red ++ ref)
 
         -- 4. Check if files are present but in the wrong field.
         let pcsData = checkDocMove extraDocSupport "data-files" des rgs

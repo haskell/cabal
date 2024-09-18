@@ -79,7 +79,15 @@ FetchInfo = NamedTuple('FetchInfo', [
 
 FetchPlan = Dict[Path, FetchInfo]
 
-local_packages: List[PackageName] = ["Cabal-syntax", "Cabal", "cabal-install-solver", "cabal-install"]
+local_packages: List[PackageName] = [ "Cabal-syntax"
+                                    , "Cabal"
+                                    , "Cabal-hooks"
+                                    , "Cabal-QuickCheck"
+                                    , "Cabal-described"
+                                    , "Cabal-tests"
+                                    , "Cabal-tree-diff"
+                                    , "cabal-install-solver"
+                                    , "cabal-install" ]
 
 class Compiler:
     def __init__(self, ghc_path: Path):

@@ -1049,11 +1049,14 @@ printPlan
                 Nothing -- omit working directory
                 (makeSymbolicPath "$builddir")
             fullConfigureFlags =
-              setupHsConfigureFlags
-                elaboratedPlan
-                (ReadyPackage elab)
-                elaboratedShared
-                commonFlags
+              runIdentity $
+                ( setupHsConfigureFlags
+                    (\_ -> return (error "unused"))
+                    elaboratedPlan
+                    (ReadyPackage elab)
+                    elaboratedShared
+                    commonFlags
+                )
             -- \| Given a default value @x@ for a flag, nub @Flag x@
             -- into @NoFlag@.  This gives us a tidier command line
             -- rendering.
@@ -1061,7 +1064,7 @@ printPlan
             nubFlag x (Setup.Flag x') | x == x' = Setup.NoFlag
             nubFlag _ f = f
 
-            (tryLibProfiling, tryExeProfiling) =
+            (tryLibProfiling, tryLibProfilingShared, tryExeProfiling) =
               computeEffectiveProfiling fullConfigureFlags
 
             partialConfigureFlags =
@@ -1072,7 +1075,8 @@ printPlan
                     nubFlag tryExeProfiling (configProfExe fullConfigureFlags)
                 , configProfLib =
                     nubFlag tryLibProfiling (configProfLib fullConfigureFlags)
-                    -- Maybe there are more we can add
+                , configProfShared =
+                    nubFlag tryLibProfilingShared (configProfShared fullConfigureFlags)
                 }
          in -- Not necessary to "escape" it, it's just for user output
             unwords . ("" :) $
@@ -1411,11 +1415,7 @@ dieOnBuildFailures verbosity currentCommand plan buildOutcomes
         " The build process terminated with exit code " ++ show n
 
       _ -> " The exception was:\n  "
-#if MIN_VERSION_base(4,8,0)
              ++ displayException e
-#else
-             ++ show e
-#endif
 
     buildFailureException :: BuildFailureReason -> Maybe SomeException
     buildFailureException reason =

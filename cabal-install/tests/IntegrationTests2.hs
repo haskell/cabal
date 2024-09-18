@@ -74,7 +74,9 @@ import Control.Concurrent (threadDelay)
 import Control.Exception hiding (assert)
 import System.FilePath
 import System.Directory
+import System.Environment (setEnv)
 import System.IO (hPutStrLn, stderr)
+import System.Process (callProcess)
 
 import Test.Tasty
 import Test.Tasty.HUnit
@@ -93,7 +95,16 @@ removePathForcibly = removeDirectoryRecursive
 #endif
 
 main :: IO ()
-main =
+main = do
+  -- this is needed to ensure tests aren't affected by the user's cabal config
+  cwd <- getCurrentDirectory
+  let configDir = cwd </> basedir </> "config" </> "cabal-config"
+  setEnv "CABAL_DIR" configDir
+  removeDirectoryRecursive configDir <|> return ()
+  createDirectoryIfMissing True configDir
+  -- sigh
+  callProcess "cabal" ["user-config", "init", "-f"]
+  callProcess "cabal" ["update"]
   defaultMainWithIngredients
     (defaultIngredients ++ [includingOptions projectConfigOptionDescriptions])
     (withProjectConfig $ \config ->
@@ -260,11 +271,14 @@ testTargetSelectors reportSubCase = do
                                   ":pkg:q:lib:q:file:Q.y"
                      , "app/Main.hs", "p:app/Main.hs", "exe:ppexe:app/Main.hs", "p:ppexe:app/Main.hs",
                                   ":pkg:p:exe:ppexe:file:app/Main.hs"
+                     , "a p p/Main.hs", "p:a p p/Main.hs", "exe:pppexe:a p p/Main.hs", "p:pppexe:a p p/Main.hs",
+                                  ":pkg:p:exe:pppexe:file:a p p/Main.hs"
                      ]
        ts @?= replicate 5 (TargetComponent "p-0.1" (CLibName LMainLibName) (FileTarget "P"))
            ++ replicate 5 (TargetComponent "q-0.1" (CLibName LMainLibName) (FileTarget "QQ"))
            ++ replicate 5 (TargetComponent "q-0.1" (CLibName LMainLibName) (FileTarget "Q"))
            ++ replicate 5 (TargetComponent "p-0.1" (CExeName "ppexe") (FileTarget ("app" </> "Main.hs")))
+           ++ replicate 5 (TargetComponent "p-0.1" (CExeName "pppexe") (FileTarget ("a p p" </> "Main.hs")))
        -- Note there's a bit of an inconsistency here: for the single-part
        -- syntax the target has to point to a file that exists, whereas for
        -- all the other forms we don't require that.
@@ -278,9 +292,8 @@ testTargetSelectors reportSubCase = do
 testTargetSelectorBadSyntax :: Assertion
 testTargetSelectorBadSyntax = do
     (_, _, _, localPackages, _) <- configureProject testdir config
-    let targets = [ "foo bar",  " foo"
-                  , "foo:", "foo::bar"
-                  , "foo: ", "foo: :bar"
+    let targets = [ "foo:", "foo::bar"
+                  , " :foo", "foo: :bar"
                   , "a:b:c:d:e:f", "a:b:c:d:e:f:g:h" ]
     Left errs <- readTargetSelectors localPackages Nothing targets
     zipWithM_ (@?=) errs (map TargetSelectorUnrecognised targets)
@@ -1436,9 +1449,11 @@ testSetupScriptStyles config reportSubCase = do
 
   let isOSX (Platform _ OSX) = True
       isOSX _ = False
+      compilerVer = compilerVersion (pkgConfigCompiler sharedConfig)
   -- Skip the Custom tests when the shipped Cabal library is buggy
-  unless (isOSX (pkgConfigPlatform sharedConfig)
-       && compilerVersion (pkgConfigCompiler sharedConfig) < mkVersion [7,10]) $ do
+  unless ((isOSX (pkgConfigPlatform sharedConfig) && (compilerVer < mkVersion [7,10]))
+       -- 9.10 ships Cabal 3.12.0.0 affected by #9940
+       || (mkVersion [9,10] <= compilerVer && compilerVer < mkVersion [9,11])) $ do
 
     (plan1, res1) <- executePlan plan0
     pkg1          <- expectPackageInstalled plan1 res1 pkgidA
@@ -1967,8 +1982,8 @@ testNixFlags = do
 -- Tests whether config options are commented or not
 testConfigOptionComments :: Assertion
 testConfigOptionComments = do
-  _ <- createDefaultConfigFile verbosity [] (basedir </> "config/default-config")
-  defaultConfigFile <- readFile (basedir </> "config/default-config")
+  _ <- createDefaultConfigFile verbosity [] (basedir </> "config" </> "default-config")
+  defaultConfigFile <- readFile (basedir </> "config" </> "default-config")
 
   "  url" @=? findLineWith False "url" defaultConfigFile
   "  -- secure" @=? findLineWith True "secure" defaultConfigFile
@@ -2095,7 +2110,9 @@ testConfigOptionComments = do
   "  -- contents-location" @=? findLineWith True "contents-location" defaultConfigFile
   "  -- index-location" @=? findLineWith True "index-location" defaultConfigFile
   "  -- base-url" @=? findLineWith True "base-url" defaultConfigFile
+  "  -- resources-dir" @=? findLineWith True "resources-dir" defaultConfigFile
   "  -- output-dir" @=? findLineWith True "output-dir" defaultConfigFile
+  "  -- use-unicode" @=? findLineWith True "use-unicode" defaultConfigFile
 
   "  -- interactive" @=? findLineWith True "interactive" defaultConfigFile
   "  -- quiet" @=? findLineWith True "quiet" defaultConfigFile

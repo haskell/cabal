@@ -52,7 +52,20 @@ import UnitTests.Distribution.Solver.Modular.QuickCheck.Utils
 
 tests :: [TestTree]
 tests =
-  [ -- This test checks that certain solver parameters do not affect the
+  [ testPropertyWithSeed "solver does not throw exceptions" $
+      \test goalOrder reorderGoals indepGoals prefOldest ->
+        let r =
+              solve
+                (EnableBackjumping True)
+                (FineGrainedConflicts True)
+                reorderGoals
+                (CountConflicts True)
+                indepGoals
+                prefOldest
+                (getBlind <$> goalOrder)
+                test
+         in resultPlan r `seq` ()
+  , -- This test checks that certain solver parameters do not affect the
     -- existence of a solution. It runs the solver twice, and only sets those
     -- parameters on the second run. The test also applies parameters that
     -- can affect the existence of a solution to both runs.
@@ -227,7 +240,7 @@ solve enableBj fineGrainedConflicts reorder countConflicts indep prefOldest goal
             (unTestDb (testDb test))
             Nothing
             Nothing
-            (pkgConfigDbFromList [])
+            (Just $ pkgConfigDbFromList [])
             (map unPN (testTargets test))
             -- The backjump limit prevents individual tests from using
             -- too much time and memory.
@@ -515,6 +528,11 @@ instance Arbitrary IndependentGoals where
   arbitrary = IndependentGoals <$> arbitrary
 
   shrink (IndependentGoals indep) = [IndependentGoals False | indep]
+
+instance Arbitrary PreferOldest where
+  arbitrary = PreferOldest <$> arbitrary
+
+  shrink (PreferOldest prefOldest) = [PreferOldest False | prefOldest]
 
 instance Arbitrary Component where
   arbitrary =

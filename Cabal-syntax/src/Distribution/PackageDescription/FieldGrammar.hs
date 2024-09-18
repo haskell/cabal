@@ -143,6 +143,8 @@ packageDescriptionFieldGrammar =
     <*> monoidalFieldAla "extra-source-files" formatExtraSourceFiles L.extraSrcFiles
     <*> monoidalFieldAla "extra-tmp-files" (alaList' VCat RelativePathNT) L.extraTmpFiles
     <*> monoidalFieldAla "extra-doc-files" formatExtraSourceFiles L.extraDocFiles
+    <*> monoidalFieldAla "extra-files" formatExtraSourceFiles L.extraFiles
+      ^^^ availableSince CabalSpecV3_14 []
   where
     packageIdentifierGrammar =
       PackageIdentifier
@@ -673,6 +675,7 @@ buildInfoFieldGrammar =
     <*> optionsFieldGrammar
     <*> profOptionsFieldGrammar
     <*> sharedOptionsFieldGrammar
+    <*> profSharedOptionsFieldGrammar
     <*> pure mempty -- static-options ???
     <*> prefixedFields "x-" L.customFieldsBI
     <*> monoidalFieldAla "build-depends" formatDependencyList L.targetBuildDepends
@@ -737,6 +740,19 @@ sharedOptionsFieldGrammar =
   where
     extract :: CompilerFlavor -> ALens' BuildInfo [String]
     extract flavor = L.sharedOptions . lookupLens flavor
+
+profSharedOptionsFieldGrammar
+  :: (FieldGrammar c g, Applicative (g BuildInfo), c (List NoCommaFSep Token' String))
+  => g BuildInfo (PerCompilerFlavor [String])
+profSharedOptionsFieldGrammar =
+  PerCompilerFlavor
+    <$> monoidalFieldAla "ghc-prof-shared-options" (alaList' NoCommaFSep Token') (extract GHC)
+      ^^^ availableSince CabalSpecV3_14 []
+    <*> monoidalFieldAla "ghcjs-prof-shared-options" (alaList' NoCommaFSep Token') (extract GHCJS)
+      ^^^ availableSince CabalSpecV3_14 []
+  where
+    extract :: CompilerFlavor -> ALens' BuildInfo [String]
+    extract flavor = L.profSharedOptions . lookupLens flavor
 
 lookupLens :: (Functor f, Monoid v) => CompilerFlavor -> LensLike' f (PerCompilerFlavor v) v
 lookupLens k f p@(PerCompilerFlavor ghc ghcjs)

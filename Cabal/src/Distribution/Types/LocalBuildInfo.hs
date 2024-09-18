@@ -28,11 +28,12 @@ module Distribution.Types.LocalBuildInfo
       , withPackageDB
       , withVanillaLib
       , withProfLib
-      , withSharedLib
-      , withStaticLib
+      , withProfLibShared
       , withDynExe
       , withFullyStaticExe
       , withProfExe
+      , withSharedLib
+      , withStaticLib
       , withProfLibDetail
       , withProfExeDetail
       , withOptimization
@@ -57,6 +58,7 @@ module Distribution.Types.LocalBuildInfo
   , buildDir
   , buildDirPBD
   , setupFlagsBuildDir
+  , distPrefLBI
   , packageRoot
   , progPrefix
   , progSuffix
@@ -81,6 +83,7 @@ module Distribution.Types.LocalBuildInfo
   , neededTargetsInBuildOrder'
   , withNeededTargetsInBuildOrder'
   , testCoverage
+  , buildWays
 
     -- * Functions you SHOULD NOT USE (yet), but are defined here to
 
@@ -100,6 +103,7 @@ import Prelude ()
 import Distribution.Types.ComponentId
 import Distribution.Types.ComponentLocalBuildInfo
 import Distribution.Types.ComponentRequestedSpec
+import Distribution.Types.GivenComponent
 import qualified Distribution.Types.LocalBuildConfig as LBC
 import Distribution.Types.PackageDescription
 import Distribution.Types.PackageId
@@ -110,6 +114,7 @@ import Distribution.Utils.Path
 
 import Distribution.PackageDescription
 import Distribution.Pretty
+import Distribution.Simple.BuildWay
 import Distribution.Simple.Compiler
 import Distribution.Simple.Flag
 import Distribution.Simple.InstallDirs hiding
@@ -156,11 +161,12 @@ pattern LocalBuildInfo
   -> Maybe (SymbolicPath Pkg File)
   -> Graph ComponentLocalBuildInfo
   -> Map ComponentName [ComponentLocalBuildInfo]
-  -> Map (PackageName, ComponentName) ComponentId
+  -> Map (PackageName, ComponentName) PromisedComponent
   -> InstalledPackageIndex
   -> PackageDescription
   -> ProgramDb
   -> PackageDBStack
+  -> Bool
   -> Bool
   -> Bool
   -> Bool
@@ -200,6 +206,7 @@ pattern LocalBuildInfo
   , withPackageDB
   , withVanillaLib
   , withProfLib
+  , withProfLibShared
   , withSharedLib
   , withStaticLib
   , withDynExe
@@ -251,6 +258,7 @@ pattern LocalBuildInfo
           LBC.BuildOptions
             { withVanillaLib
             , withProfLib
+            , withProfLibShared
             , withSharedLib
             , withStaticLib
             , withDynExe
@@ -288,6 +296,9 @@ buildDirPBD (LBC.PackageBuildDescr{configFlags = cfg}) =
 
 setupFlagsBuildDir :: CommonSetupFlags -> SymbolicPath Pkg (Dir Build)
 setupFlagsBuildDir cfg = fromFlag (setupDistPref cfg) </> makeRelativePathEx "build"
+
+distPrefLBI :: LocalBuildInfo -> SymbolicPath Pkg (Dir Dist)
+distPrefLBI = fromFlag . setupDistPref . configCommonFlags . LBC.configFlags . LBC.packageBuildDescr . localBuildDescr
 
 -- | The (relative or absolute) path to the package root, based on
 --
@@ -424,6 +435,49 @@ withNeededTargetsInBuildOrder' pkg_descr lbi uids f =
 testCoverage :: LocalBuildInfo -> Bool
 testCoverage (LocalBuildInfo{exeCoverage = exes, libCoverage = libs}) =
   exes && libs
+
+-- | Returns a list of ways, in the order which they should be built, and the
+-- way we build executable and foreign library components.
+--
+-- Ideally all this info should be fixed at configure time and not dependent on
+-- additional info but `LocalBuildInfo` is per package (not per component) so it's
+-- currently not possible to configure components to be built in certain ways.
+buildWays :: LocalBuildInfo -> (Bool -> [BuildWay], Bool -> BuildWay, BuildWay)
+buildWays lbi =
+  let
+    -- enable-library-profiling (enable (static profiling way)) .p_o
+    -- enable-shared (enabled dynamic way)  .dyn_o
+    -- enable-profiling-shared (enable dyanmic profilng way) .p_dyn_o
+    -- enable-library-vanilla (enable vanilla way) .o
+    --
+    -- enable-executable-dynamic => build dynamic executables
+    -- => --enable-profiling + --enable-executable-dynamic => build dynamic profiled executables
+    -- => --enable-profiling => build vanilla profiled executables
+
+    wantedLibWays is_indef =
+      [ProfDynWay | withProfLibShared lbi && not is_indef]
+        <> [ProfWay | withProfLib lbi]
+        -- I don't see why we shouldn't build with dynamic-- indefinite components.
+        <> [DynWay | withSharedLib lbi && not is_indef]
+        -- MP: Ideally we should have `BuildOptions` on a per component basis, in
+        -- which case this `is_indef` check could be moved to configure time.
+        <> [StaticWay | withVanillaLib lbi || withStaticLib lbi]
+
+    wantedFLibWay is_dyn_flib =
+      case (is_dyn_flib, withProfExe lbi) of
+        (True, True) -> ProfDynWay
+        (False, True) -> ProfWay
+        (True, False) -> DynWay
+        (False, False) -> StaticWay
+
+    wantedExeWay =
+      case (withDynExe lbi, withProfExe lbi) of
+        (True, True) -> ProfDynWay
+        (True, False) -> DynWay
+        (False, True) -> ProfWay
+        (False, False) -> StaticWay
+   in
+    (wantedLibWays, wantedFLibWay, wantedExeWay)
 
 -------------------------------------------------------------------------------
 -- Stub functions to prevent someone from accidentally defining them

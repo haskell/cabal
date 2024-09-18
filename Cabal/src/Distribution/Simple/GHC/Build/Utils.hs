@@ -13,6 +13,7 @@ import qualified Distribution.ModuleName as ModuleName
 import Distribution.PackageDescription as PD
 import Distribution.PackageDescription.Utils (cabalBug)
 import Distribution.Simple.BuildPaths
+import Distribution.Simple.BuildWay
 import Distribution.Simple.Compiler
 import qualified Distribution.Simple.GHC.Internal as Internal
 import Distribution.Simple.Program.GHC
@@ -30,7 +31,7 @@ import System.FilePath
   )
 
 -- | Find the path to the entry point of an executable (typically specified in
--- @main-is@, and found in @hs-source-dirs@).
+-- @main-is@, and found in @hs-source-dirs@ -- yes, even when @main-is@ is not a Haskell file).
 findExecutableMain
   :: Verbosity
   -> Maybe (SymbolicPath CWD (Dir Pkg))
@@ -47,9 +48,20 @@ findExecutableMain verbosity mbWorkDir buildDir (bnfo, modPath) =
 supportsDynamicToo :: Compiler -> Bool
 supportsDynamicToo = Internal.ghcLookupProperty "Support dynamic-too"
 
+compilerBuildWay :: Compiler -> BuildWay
+compilerBuildWay c =
+  case (isDynamic c, isProfiled c) of
+    (True, True) -> ProfDynWay
+    (True, False) -> DynWay
+    (False, True) -> ProfWay
+    (False, False) -> StaticWay
+
 -- | Is this compiler's RTS dynamically linked?
 isDynamic :: Compiler -> Bool
 isDynamic = Internal.ghcLookupProperty "GHC Dynamic"
+
+isProfiled :: Compiler -> Bool
+isProfiled = Internal.ghcLookupProperty "GHC Profiled"
 
 -- | Should we dynamically link the foreign library, based on its 'foreignLibType'?
 withDynFLib :: ForeignLib -> Bool

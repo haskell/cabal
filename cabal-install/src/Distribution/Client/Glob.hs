@@ -12,47 +12,24 @@ module Distribution.Client.Glob
   , Glob (..)
   , GlobPiece (..)
   , GlobPieces
-  , matchGlob
-  , matchGlobPieces
   , matchFileGlob
   ) where
 
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
+import Distribution.Simple.FileMonitor.Types
 import Distribution.Simple.Glob
 import Distribution.Simple.Glob.Internal
+  ( Glob (..)
+  , GlobPiece (..)
+  , GlobPieces
+  )
 
 import System.Directory
 import System.FilePath
 
-import qualified Distribution.Compat.CharParsing as P
-import qualified Text.PrettyPrint as Disp
-
 --------------------------------------------------------------------------------
-
--- | A file path specified by globbing, relative
--- to some root directory.
-data RootedGlob
-  = RootedGlob
-      FilePathRoot
-      -- ^ what the glob is relative to
-      Glob
-      -- ^ the glob
-  deriving (Eq, Show, Generic)
-
-instance Binary RootedGlob
-instance Structured RootedGlob
-
-data FilePathRoot
-  = FilePathRelative
-  | -- | e.g. @"/"@, @"c:\"@ or result of 'takeDrive'
-    FilePathRoot FilePath
-  | FilePathHomeDir
-  deriving (Eq, Show, Generic)
-
-instance Binary FilePathRoot
-instance Structured FilePathRoot
 
 -- | Check if a 'RootedGlob' doesn't actually make use of any globbing and
 -- is in fact equivalent to a non-glob 'FilePath'.
@@ -105,33 +82,3 @@ matchFileGlob relroot (RootedGlob globroot glob) = do
   case globroot of
     FilePathRelative -> return matches
     _ -> return (map (root </>) matches)
-
-------------------------------------------------------------------------------
--- Parsing & pretty-printing
---
-
-instance Pretty RootedGlob where
-  pretty (RootedGlob root pathglob) = pretty root Disp.<> pretty pathglob
-
-instance Parsec RootedGlob where
-  parsec = do
-    root <- parsec
-    case root of
-      FilePathRelative -> RootedGlob root <$> parsec
-      _ -> RootedGlob root <$> parsec <|> pure (RootedGlob root GlobDirTrailing)
-
-instance Pretty FilePathRoot where
-  pretty FilePathRelative = Disp.empty
-  pretty (FilePathRoot root) = Disp.text root
-  pretty FilePathHomeDir = Disp.char '~' Disp.<> Disp.char '/'
-
-instance Parsec FilePathRoot where
-  parsec = root <|> P.try home <|> P.try drive <|> pure FilePathRelative
-    where
-      root = FilePathRoot "/" <$ P.char '/'
-      home = FilePathHomeDir <$ P.string "~/"
-      drive = do
-        dr <- P.satisfy $ \c -> (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
-        _ <- P.char ':'
-        _ <- P.char '/' <|> P.char '\\'
-        return (FilePathRoot (toUpper dr : ":\\"))

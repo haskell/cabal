@@ -1,5 +1,8 @@
 import Test.Cabal.Prelude
 
+normalizeWindowsOutput :: String -> String
+normalizeWindowsOutput = if isWindows then map (\x -> case x of '/' -> '\\'; _ -> x) else id
+
 main = cabalTest . withRepo "repo" . recordMode RecordMarked $ do
   let log = recordHeader . pure
 
@@ -76,7 +79,7 @@ main = cabalTest . withRepo "repo" . recordMode RecordMarked $ do
   --    +-- etc
   log "checking that cyclical check catches a same file name that imports itself"
   cyclical4a <- fails $ cabal' "v2-build" [ "--project-file=cyclical-same-filename-out-out-self.project" ]
-  assertOutputContains "cyclical import of same-filename/cyclical-same-filename-out-out-self.config" cyclical4a
+  assertOutputContains (normalizeWindowsOutput "cyclical import of same-filename/cyclical-same-filename-out-out-self.config") cyclical4a
 
   -- +-- cyclical-same-filename-out-out-backback.project
   --  +-- cyclical-same-filename-out-out-backback.config
@@ -112,31 +115,31 @@ main = cabalTest . withRepo "repo" . recordMode RecordMarked $ do
   assertOutputContains "- hops-0.project" hopping
 
   assertOutputContains
-    "- hops-2.config \
+    (normalizeWindowsOutput "- hops-2.config \
     \    imported by: hops/hops-1.config \
-    \    imported by: hops-0.project"
+    \    imported by: hops-0.project")
     hopping
 
   assertOutputContains
-    "- hops-4.config \
+    (normalizeWindowsOutput "- hops-4.config \
     \    imported by: hops/hops-3.config \
     \    imported by: hops-2.config \
     \    imported by: hops/hops-1.config \
-    \    imported by: hops-0.project"
+    \    imported by: hops-0.project")
     hopping
 
   assertOutputContains
-    "- hops-6.config \
+    (normalizeWindowsOutput "- hops-6.config \
     \    imported by: hops/hops-5.config \
     \    imported by: hops-4.config \
     \    imported by: hops/hops-3.config \
     \    imported by: hops-2.config \
     \    imported by: hops/hops-1.config \
-    \    imported by: hops-0.project"
+    \    imported by: hops-0.project")
     hopping
 
   assertOutputContains
-    "- hops-8.config \
+    (normalizeWindowsOutput "- hops-8.config \
     \    imported by: hops/hops-7.config \
     \    imported by: hops-6.config \
     \    imported by: hops/hops-5.config \
@@ -144,43 +147,43 @@ main = cabalTest . withRepo "repo" . recordMode RecordMarked $ do
     \    imported by: hops/hops-3.config \
     \    imported by: hops-2.config \
     \    imported by: hops/hops-1.config \
-    \    imported by: hops-0.project"
+    \    imported by: hops-0.project")
     hopping
 
   assertOutputContains
-    "- hops/hops-1.config \
-    \    imported by: hops-0.project"
+    (normalizeWindowsOutput "- hops/hops-1.config \
+    \    imported by: hops-0.project")
     hopping
 
   assertOutputContains
-    "- hops/hops-3.config \
+    (normalizeWindowsOutput "- hops/hops-3.config \
     \    imported by: hops-2.config \
     \    imported by: hops/hops-1.config \
-    \    imported by: hops-0.project"
+    \    imported by: hops-0.project")
     hopping
 
   assertOutputContains
-    "- hops/hops-5.config \
+    (normalizeWindowsOutput "- hops/hops-5.config \
     \    imported by: hops-4.config \
     \    imported by: hops/hops-3.config \
     \    imported by: hops-2.config \
     \    imported by: hops/hops-1.config \
-    \    imported by: hops-0.project"
+    \    imported by: hops-0.project")
     hopping
 
   assertOutputContains
-    "- hops/hops-7.config \
+    (normalizeWindowsOutput "- hops/hops-7.config \
     \    imported by: hops-6.config \
     \    imported by: hops/hops-5.config \
     \    imported by: hops-4.config \
     \    imported by: hops/hops-3.config \
     \    imported by: hops-2.config \
     \    imported by: hops/hops-1.config \
-    \    imported by: hops-0.project"
+    \    imported by: hops-0.project")
     hopping
 
   assertOutputContains
-    "- hops/hops-9.config \
+    (normalizeWindowsOutput "- hops/hops-9.config \
     \    imported by: hops-8.config \
     \    imported by: hops/hops-7.config \
     \    imported by: hops-6.config \
@@ -189,7 +192,7 @@ main = cabalTest . withRepo "repo" . recordMode RecordMarked $ do
     \    imported by: hops/hops-3.config \
     \    imported by: hops-2.config \
     \    imported by: hops/hops-1.config \
-    \    imported by: hops-0.project"
+    \    imported by: hops-0.project")
     hopping
 
   -- The project is named oops as it is like hops but has conflicting constraints.
@@ -210,7 +213,7 @@ main = cabalTest . withRepo "repo" . recordMode RecordMarked $ do
   assertOutputContains "(constraint from oops-0.project requires ==1.4.3.0)" oopsing
 
   assertOutputContains
-    "      (constraint from oops/oops-9.config requires ==1.4.2.0) \
+    (normalizeWindowsOutput "      (constraint from oops/oops-9.config requires ==1.4.2.0) \
     \        imported by: oops-8.config \
     \        imported by: oops/oops-7.config \
     \        imported by: oops-6.config \
@@ -219,11 +222,22 @@ main = cabalTest . withRepo "repo" . recordMode RecordMarked $ do
     \        imported by: oops/oops-3.config \
     \        imported by: oops-2.config \
     \        imported by: oops/oops-1.config \
-    \        imported by: oops-0.project"
+    \        imported by: oops-0.project")
     oopsing
 
   log "checking bad conditional"
   badIf <- fails $ cabal' "v2-build" [ "--project-file=bad-conditional.project" ]
   assertOutputContains "Cannot set compiler in a conditional clause of a cabal project file" badIf
+
+  log "checking that missing package message lists configuration provenance"
+  missing <- fails $ cabal' "v2-build" [ "--project-file=cabal-missing-package.project" ]
+  assertOutputContains
+    (normalizeWindowsOutput "When using configuration from: \
+    \  - cabal-missing-package.project \
+    \  - missing/pkgs.config \
+    \  - missing/pkgs/default.config \
+    \The following errors occurred: \
+    \  - The package location 'pkg-doesnt-exist' does not exist.")
+    missing
 
   return ()

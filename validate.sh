@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 # shellcheck disable=SC2086
 
 # default config
@@ -12,7 +12,7 @@
 #   See https://github.com/haskell/cabal/issues/8049
 HC=ghc
 CABAL=cabal
-JOBS=4
+JOBS=""
 LIBTESTS=true
 CLITESTS=true
 CABALSUITETESTS=true
@@ -280,7 +280,7 @@ if [ -z "$STEPS" ]; then
     STEPS="$STEPS time-summary"
 fi
 
-TARGETS="Cabal cabal-testsuite Cabal-tests Cabal-QuickCheck Cabal-tree-diff Cabal-described"
+TARGETS="Cabal Cabal-hooks cabal-testsuite Cabal-tests Cabal-QuickCheck Cabal-tree-diff Cabal-described"
 if ! $LIBONLY;  then TARGETS="$TARGETS cabal-install cabal-install-solver cabal-benchmarks"; fi
 if $BENCHMARKS; then TARGETS="$TARGETS solver-benchmarks"; fi
 
@@ -293,28 +293,57 @@ fi
 # Adjust runtime configuration
 #######################################################################
 
+if [ -z "$JOBS" ]; then
+    if command -v nproc >/dev/null; then
+        JOBS=$(nproc)
+    else
+        echo "Warning: \`nproc\` not found, setting \`--jobs\` to default of 4."
+        JOBS=4
+    fi
+fi
+
 TESTSUITEJOBS="-j$JOBS"
 JOBS="-j$JOBS"
 
 # assume compiler is GHC
 RUNHASKELL=$(echo "$HC" | sed -E 's/ghc(-[0-9.]*)$/runghc\1/')
 
-case "$(uname)" in
-    MINGW64*)
-        ARCH="x86_64-windows"
+ARCH=$(uname -m)
+
+case "$ARCH" in
+    arm64)
+        ARCH=aarch64
         ;;
-    Linux   )
-        ARCH="x86_64-linux"
+    x86_64)
+        ARCH=x86_64
         ;;
     *)
-        ARCH="x86_64-osx"
+        echo "Warning: Unknown architecture '$ARCH'"
+        ;;
+esac
+
+OS=$(uname)
+
+case "$OS" in
+    MINGW64*)
+        ARCH="$ARCH-windows"
+        ;;
+    Linux)
+        ARCH="$ARCH-linux"
+        ;;
+    Darwin)
+        ARCH="$ARCH-osx"
+        ;;
+    *)
+        echo "Warning: Unknown operating system '$OS'"
+        ARCH="$ARCH-$OS"
         ;;
 esac
 
 if $LIBONLY; then
-    PROJECTFILE=cabal.project.validate.libonly
+    PROJECTFILE=cabal.validate-libonly.project
 else
-    PROJECTFILE=cabal.project.validate
+    PROJECTFILE=cabal.validate.project
 fi
 
 BASEHC=ghc-$($HC --numeric-version)
@@ -323,6 +352,9 @@ CABAL_TESTSUITE_BDIR="$(pwd)/$BUILDDIR/build/$ARCH/$BASEHC/cabal-testsuite-3"
 
 CABALNEWBUILD="${CABAL} build $JOBS -w $HC --builddir=$BUILDDIR --project-file=$PROJECTFILE"
 CABALLISTBIN="${CABAL} list-bin --builddir=$BUILDDIR --project-file=$PROJECTFILE"
+
+# See https://github.com/haskell/cabal/issues/9571 for why we set this for Windows
+RTSOPTS="$([ $ARCH = "x86_64-windows" ] && [ "$($HC --numeric-version)" != "9.0.2" ] && [ "$(echo -e "$(ghc --numeric-version)\n9.0.2" | sort -V | head -n1)" = "9.0.2" ] && echo "+RTS --io-manager=native" || echo "")"
 
 # header
 #######################################################################
@@ -344,6 +376,7 @@ doctest:             $DOCTEST
 benchmarks:          $BENCHMARKS
 verbose:             $VERBOSE
 extra compilers:     $EXTRAHCS
+extra RTS options:   $RTSOPTS
 
 EOF
 }
@@ -409,14 +442,18 @@ CMD="$($CABALLISTBIN Cabal-tests:test:rpmvercmp) $TESTSUITEJOBS --hide-successes
 CMD="$($CABALLISTBIN Cabal-tests:test:no-thunks-test) $TESTSUITEJOBS --hide-successes"
 (cd Cabal-tests && timed $CMD) || exit 1
 
+
+# See #10284 for why this value is pinned.
+HACKAGE_TESTS_INDEX_STATE="--index-state=2024-08-25"
+
 CMD=$($CABALLISTBIN Cabal-tests:test:hackage-tests)
-(cd Cabal-tests && timed $CMD read-fields) || exit 1
+(cd Cabal-tests && timed $CMD read-fields $HACKAGE_TESTS_INDEX_STATE) || exit 1
 if $HACKAGETESTSALL; then
-    (cd Cabal-tests && timed $CMD parsec)    || exit 1
-    (cd Cabal-tests && timed $CMD roundtrip) || exit 1
+    (cd Cabal-tests && timed $CMD parsec $HACKAGE_TESTS_INDEX_STATE)    || exit 1
+    (cd Cabal-tests && timed $CMD roundtrip $HACKAGE_TESTS_INDEX_STATE) || exit 1
 else
-    (cd Cabal-tests && timed $CMD parsec d)    || exit 1
-    (cd Cabal-tests && timed $CMD roundtrip k) || exit 1
+    (cd Cabal-tests && timed $CMD parsec d $HACKAGE_TESTS_INDEX_STATE)    || exit 1
+    (cd Cabal-tests && timed $CMD roundtrip k $HACKAGE_TESTS_INDEX_STATE) || exit 1
 fi
 }
 
@@ -426,7 +463,7 @@ fi
 step_lib_suite() {
 print_header "Cabal: cabal-testsuite"
 
-CMD="$($CABALLISTBIN cabal-testsuite:exe:cabal-tests) --builddir=$CABAL_TESTSUITE_BDIR $TESTSUITEJOBS --with-ghc=$HC --hide-successes"
+CMD="$($CABALLISTBIN cabal-testsuite:exe:cabal-tests) --builddir=$CABAL_TESTSUITE_BDIR $TESTSUITEJOBS --with-ghc=$HC --hide-successes $RTSOPTS"
 (cd cabal-testsuite && timed $CMD) || exit 1
 }
 
@@ -468,7 +505,7 @@ CMD="$($CABALLISTBIN cabal-install:test:integration-tests2) -j1 --hide-successes
 step_cli_suite() {
 print_header "cabal-install: cabal-testsuite"
 
-CMD="$($CABALLISTBIN cabal-testsuite:exe:cabal-tests) --builddir=$CABAL_TESTSUITE_BDIR --with-cabal=$($CABALLISTBIN cabal-install:exe:cabal) $TESTSUITEJOBS  --with-ghc=$HC --hide-successes --intree-cabal-lib=$PWD --test-tmp=$PWD/testdb"
+CMD="$($CABALLISTBIN cabal-testsuite:exe:cabal-tests) --builddir=$CABAL_TESTSUITE_BDIR --with-cabal=$($CABALLISTBIN cabal-install:exe:cabal) $TESTSUITEJOBS  --with-ghc=$HC --hide-successes --intree-cabal-lib=$PWD --test-tmp=$PWD/testdb $RTSOPTS"
 (cd cabal-testsuite && timed $CMD) || exit 1
 }
 

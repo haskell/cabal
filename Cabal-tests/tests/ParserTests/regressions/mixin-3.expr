@@ -32,7 +32,8 @@ GenericPackageDescription {
     dataDir = SymbolicPath ".",
     extraSrcFiles = [],
     extraTmpFiles = [],
-    extraDocFiles = []},
+    extraDocFiles = [],
+    extraFiles = []},
   gpdScannedVersion = Nothing,
   genPackageFlags = [],
   condLibrary = Nothing,
@@ -97,6 +98,8 @@ GenericPackageDescription {
               []
               [],
             sharedOptions =
+            PerCompilerFlavor [] [],
+            profSharedOptions =
             PerCompilerFlavor [] [],
             staticOptions =
             PerCompilerFlavor [] [],

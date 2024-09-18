@@ -5,12 +5,9 @@
 CABALBUILD := cabal build
 CABALRUN   := cabal run
 
-# The newer and prefered way to call the doctest tool is:
-#   $ cabal repl --with-ghc=doctest
-# SEE: https://github.com/haskell/cabal/issues/8504
-# There is but one caveat, we have to avoid allow-newer.
+# We have to avoid allow-newer.
 # SEE: https://github.com/haskell/cabal/issues/6859
-DOCTEST := cabal repl --with-ghc=doctest --repl-options="-w" --ghc-options="-Wwarn" --allow-newer=False
+DOCTEST := cabal doctest --allow-newer=False
 
 # default rules
 
@@ -55,13 +52,13 @@ SPDX_EXCEPTION_HS:=Cabal-syntax/src/Distribution/SPDX/LicenseExceptionId.hs
 .PHONY: spdx
 spdx : $(SPDX_LICENSE_HS) $(SPDX_EXCEPTION_HS)
 
-SPDX_LICENSE_VERSIONS:=3.0 3.2 3.6 3.9 3.10 3.16 3.23
+SPDX_LICENSE_VERSIONS:=3.0 3.2 3.6 3.9 3.10 3.16 3.23 3.25
 
 $(SPDX_LICENSE_HS) : templates/SPDX.LicenseId.template.hs cabal-dev-scripts/src/GenUtils.hs cabal-dev-scripts/src/GenSPDX.hs license-list-data/licenses-3.0.json license-list-data/licenses-3.2.json
-	cabal run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-spdx -- templates/SPDX.LicenseId.template.hs $(SPDX_LICENSE_VERSIONS:%=license-list-data/licenses-%.json) $(SPDX_LICENSE_HS)
+	cabal run --builddir=dist-newstyle-meta --project-file=cabal.meta.project gen-spdx -- templates/SPDX.LicenseId.template.hs $(SPDX_LICENSE_VERSIONS:%=license-list-data/licenses-%.json) $(SPDX_LICENSE_HS)
 
 $(SPDX_EXCEPTION_HS) : templates/SPDX.LicenseExceptionId.template.hs cabal-dev-scripts/src/GenUtils.hs cabal-dev-scripts/src/GenSPDXExc.hs license-list-data/exceptions-3.0.json license-list-data/exceptions-3.2.json
-	cabal run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-spdx-exc -- templates/SPDX.LicenseExceptionId.template.hs $(SPDX_LICENSE_VERSIONS:%=license-list-data/exceptions-%.json) $(SPDX_EXCEPTION_HS)
+	cabal run --builddir=dist-newstyle-meta --project-file=cabal.meta.project gen-spdx-exc -- templates/SPDX.LicenseExceptionId.template.hs $(SPDX_LICENSE_VERSIONS:%=license-list-data/exceptions-%.json) $(SPDX_EXCEPTION_HS)
 
 # source generation: templates
 
@@ -75,10 +72,10 @@ TEMPLATE_PATHS:=Cabal/src/Distribution/Simple/Build/PathsModule/Z.hs
 templates : $(TEMPLATE_MACROS) $(TEMPLATE_PATHS)
 
 $(TEMPLATE_MACROS) : templates/cabal_macros.template.h cabal-dev-scripts/src/GenCabalMacros.hs
-	cabal run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-cabal-macros -- $< $@
+	cabal run --builddir=dist-newstyle-meta --project-file=cabal.meta.project gen-cabal-macros -- $< $@
 
 $(TEMPLATE_PATHS) : templates/Paths_pkg.template.hs cabal-dev-scripts/src/GenPathsModule.hs
-	cabal run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-paths-module -- $< $@
+	cabal run --builddir=dist-newstyle-meta --project-file=cabal.meta.project gen-paths-module -- $< $@
 
 # generated docs
 # Use cabal build before cabal run to avoid output of the build on stdout when running
@@ -93,7 +90,7 @@ doc/buildinfo-fields-reference.rst : \
 
 .PHONY: analyse-imports
 analyse-imports :
-	find Cabal-syntax/src Cabal/src cabal-install/src -type f -name '*.hs' | xargs cabal run --builddir=dist-newstyle-meta --project-file=cabal.project.meta analyse-imports --
+	find Cabal-syntax/src Cabal/src cabal-install/src -type f -name '*.hs' | xargs cabal run --builddir=dist-newstyle-meta --project-file=cabal.meta.project analyse-imports --
 
 # ghcid
 
@@ -107,11 +104,11 @@ ghcid-cli :
 
 .PHONY: doctest
 doctest :
-	$(DOCTEST) Cabal-syntax
-	$(DOCTEST) Cabal-described
-	$(DOCTEST) --build-depends=QuickCheck Cabal
-	$(DOCTEST) cabal-install-solver
-	$(DOCTEST) cabal-install
+	cd Cabal-syntax && $(DOCTEST)
+	cd Cabal-described && $(DOCTEST)
+	cd Cabal && $(DOCTEST)
+	cd cabal-install-solver && $(DOCTEST)
+	cd cabal-install && $(DOCTEST)
 
 # This is not run as part of validate.sh (we need hackage-security, which is tricky to get).
 .PHONY: doctest-cli
@@ -120,7 +117,7 @@ doctest-cli :
 
 .PHONY: doctest-install
 doctest-install:
-	cabal install doctest --overwrite-policy=always --ignore-project
+	cabal install doctest --overwrite-policy=always --ignore-project --flag cabal-doctest
 
 # tests
 
@@ -178,19 +175,17 @@ cabal-install-test-accept:
 .PHONY: validate-via-docker-all
 validate-via-docker-all : validate-via-docker-8.2.2
 validate-via-docker-all : validate-via-docker-8.4.4
-validate-via-docker-all : validate-via-docker-8.6.5
 validate-via-docker-all : validate-via-docker-8.8.4
 validate-via-docker-all : validate-via-docker-8.10.4
 
 .PHONY: validate-dockerfiles
 validate-dockerfiles : .docker/validate-8.10.4.dockerfile
 validate-dockerfiles : .docker/validate-8.8.4.dockerfile
-validate-dockerfiles : .docker/validate-8.6.5.dockerfile
 validate-dockerfiles : .docker/validate-8.4.4.dockerfile
 validate-dockerfiles : .docker/validate-8.2.2.dockerfile
 
 .docker/validate-%.dockerfile : .docker/validate.dockerfile.zinza cabal-dev-scripts/src/GenValidateDockerfile.hs
-	cabal run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-validate-dockerfile -- $* $< $@
+	cabal run --builddir=dist-newstyle-meta --project-file=cabal.meta.project gen-validate-dockerfile -- $* $< $@
 
 # This is good idea anyway
 # and we have a test relying on this limit being sufficiently small
@@ -203,10 +198,6 @@ validate-via-docker-8.2.2:
 .PHONY: validate-via-docker-8.4.4
 validate-via-docker-8.4.4:
 	docker build $(DOCKERARGS) -t cabal-validate:8.4.4 -f .docker/validate-8.4.4.dockerfile .
-
-.PHONY: validate-via-docker-8.6.5
-validate-via-docker-8.6.5:
-	docker build $(DOCKERARGS) -t cabal-validate:8.6.5 -f .docker/validate-8.6.5.dockerfile .
 
 .PHONY: validate-via-docker-8.8.4
 validate-via-docker-8.8.4:
@@ -229,13 +220,13 @@ tags :
 ##############################################################################
 
 bootstrap-json-%: phony
-	cabal build --project-file=cabal.project.release --with-compiler=ghc-$* --dry-run cabal-install:exe:cabal
+	cabal build --project-file=cabal.bootstrap.project --with-compiler=ghc-$* --dry-run cabal-install:exe:cabal
 	cp dist-newstyle/cache/plan.json bootstrap/linux-$*.plan.json
 	@# -v0 to avoid build output on stdout
 	cd bootstrap && cabal run -v0 cabal-bootstrap-gen -- linux-$*.plan.json \
 		| python3 -m json.tool > linux-$*.json
 
-BOOTSTRAP_GHC_VERSIONS := 8.10.7 9.0.2 9.2.7 9.4.4
+BOOTSTRAP_GHC_VERSIONS := 9.0.2 9.2.8 9.4.8 9.6.6 9.8.2
 
 .PHONY: bootstrap-jsons
 bootstrap-jsons: $(BOOTSTRAP_GHC_VERSIONS:%=bootstrap-json-%)

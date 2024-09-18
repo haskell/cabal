@@ -548,13 +548,46 @@ class CabalPackageFieldXRef(CabalFieldXRef):
     '''
     section_key = 'cabal:pkg-section'
 
-class CabalConfigSection(CabalSection):
+class CabalConfigSection(CabalObject):
     """
     Marks section in package.cabal file
     """
     indextemplate = '%s; cabal.project section'
     section_key = 'cabal:cfg-section'
     target_prefix = 'cfg-section-'
+
+    def handle_signature(self, sig, signode):
+        '''
+        As in sphinx.directives.ObjectDescription
+
+        By default make an object description from name and adding
+        either deprecated or since as annotation.
+        '''
+        env = self.state.document.settings.env
+
+        sig = sig.strip()
+        parts = sig.split(' ',1)
+        name = parts[0]
+        signode += addnodes.desc_name(name, name)
+        signode += addnodes.desc_addname(' ', ' ')
+        if len(parts) > 1:
+            rest = parts[1].strip()
+            signode += addnodes.desc_annotation(rest, rest)
+
+        return name
+
+    def get_env_key(self, env, name):
+        store = CabalDomain.types[self.objtype]
+        return name, store
+
+    def run(self):
+        env = self.state.document.settings.env
+        section = self.arguments[0].strip().split(' ',1)[0]
+        if section == 'None':
+            env.ref_context.pop('cabal:cfg-section', None)
+            return []
+        env.ref_context['cabal:cfg-section'] = section
+        return super(CabalConfigSection, self).run()
 
 class ConfigField(CabalField):
     section_key = 'cabal:cfg-section'
@@ -791,6 +824,9 @@ def make_full_name(typ, key, meta):
     if typ == 'pkg-section':
         return 'pkg-section-' + key
 
+    elif typ == 'cfg-section':
+        return 'cfg-section-' + key
+
     elif typ == 'pkg-field':
         section, name = key
         if section is not None:
@@ -914,4 +950,3 @@ class CabalLexer(lexer.RegexLexer):
 def setup(app):
     app.add_domain(CabalDomain)
     app.add_lexer('cabal', CabalLexer)
-

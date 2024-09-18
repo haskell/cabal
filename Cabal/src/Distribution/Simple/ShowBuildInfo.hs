@@ -91,7 +91,7 @@ import Distribution.Verbosity
 -- | Construct a JSON document describing the build information for a
 -- package.
 mkBuildInfo
-  :: FilePath
+  :: AbsolutePath (Dir Pkg)
   -- ^ The source directory of the package
   -> PackageDescription
   -- ^ Mostly information from the .cabal file
@@ -139,7 +139,7 @@ mkCompilerInfo compilerProgram compilerInfo =
     , "path" .= JsonString (programPath compilerProgram)
     ]
 
-mkComponentInfo :: FilePath -> PackageDescription -> LocalBuildInfo -> ComponentLocalBuildInfo -> ([String], Json)
+mkComponentInfo :: AbsolutePath (Dir Pkg) -> PackageDescription -> LocalBuildInfo -> ComponentLocalBuildInfo -> ([String], Json)
 mkComponentInfo wdir pkg_descr lbi clbi =
   ( warnings
   , JsonObject $
@@ -150,7 +150,7 @@ mkComponentInfo wdir pkg_descr lbi clbi =
       , "modules" .= JsonArray (map (JsonString . display) modules)
       , "src-files" .= JsonArray (map (JsonString . getSymbolicPath) sourceFiles)
       , "hs-src-dirs" .= JsonArray (map (JsonString . prettyShow) $ hsSourceDirs bi)
-      , "src-dir" .= JsonString (addTrailingPathSeparator wdir)
+      , "src-dir" .= JsonString (addTrailingPathSeparator (getAbsolutePath wdir))
       ]
         <> cabalFile
   )

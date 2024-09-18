@@ -44,10 +44,6 @@ import Distribution.Package
   ( packageId
   )
 import Distribution.Simple.Compiler
-  ( Compiler
-  , PackageDBStack
-  , compilerInfo
-  )
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import Distribution.Simple.Program
   ( ProgramDb
@@ -88,7 +84,7 @@ import Distribution.System
 -- | Fetch a list of packages and their dependencies.
 fetch
   :: Verbosity
-  -> PackageDBStack
+  -> PackageDBStackCWD
   -> RepoContext
   -> Compiler
   -> Platform
@@ -161,7 +157,7 @@ planPackages
   -> FetchFlags
   -> InstalledPackageIndex
   -> SourcePackageDb
-  -> PkgConfigDb
+  -> Maybe PkgConfigDb
   -> [PackageSpecifier UnresolvedSourcePackage]
   -> IO [UnresolvedSourcePackage]
 planPackages

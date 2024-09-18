@@ -72,10 +72,6 @@ import Distribution.Client.Types hiding
 
 import Distribution.Package
 import Distribution.Simple.Compiler
-  ( Compiler
-  , PackageDB (..)
-  , jsemSupported
-  )
 import Distribution.Simple.Program
 import qualified Distribution.Simple.Register as Cabal
 
@@ -366,7 +362,7 @@ rebuildTargets
           NumJobs n -> newParallelJobControl (fromMaybe numberOfProcessors n)
           UseSem n ->
             if jsemSupported compiler
-              then newSemaphoreJobControl n
+              then newSemaphoreJobControl verbosity n
               else do
                 warn verbosity "-jsem is not supported by the selected compiler, falling back to normal parallelism control."
                 newParallelJobControl n
@@ -478,7 +474,7 @@ createPackageDBIfMissing
   :: Verbosity
   -> Compiler
   -> ProgramDb
-  -> PackageDB
+  -> PackageDBCWD
   -> IO ()
 createPackageDBIfMissing
   verbosity

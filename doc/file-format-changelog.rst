@@ -19,6 +19,15 @@ relative to the respective preceding *published* version.
     versions of the ``Cabal`` library denote unreleased development
     branches which have no stability guarantee.
 
+``cabal-version: 3.14``
+-----------------------
+
+* Added field ``extra-files`` for specifying extra files to be included in
+  ``sdist`` without adding any other semantics (cf. ``extra-source-files``
+  is tracked by ``cabal build``).
+* License fields use identifiers from SPDX License List version
+  ``3.25 2024-08-19``.
+
 ``cabal-version: 3.12``
 -----------------------
 

@@ -35,7 +35,7 @@ import qualified Data.Monoid as M
 -- parameters for invoking GHC.  Mostly subset of 'LocalBuildInfo'.
 data ScriptEnv = ScriptEnv
         { runnerProgramDb       :: ProgramDb
-        , runnerPackageDbStack  :: PackageDBStack
+        , runnerPackageDbStack  :: PackageDBStackCWD
         , runnerVerbosity       :: Verbosity
         , runnerPlatform        :: Platform
         , runnerCompiler        :: Compiler
@@ -97,7 +97,7 @@ runnerGhcArgs :: ScriptEnv -> Maybe FilePath -> [String]
 runnerGhcArgs senv mb_cwd =
   renderGhcOptions (runnerCompiler senv) (runnerPlatform senv) ghc_options
   where
-    ghc_options = M.mempty { ghcOptPackageDBs = runnerPackageDbStack senv
+    ghc_options = M.mempty { ghcOptPackageDBs = fmap (fmap makeSymbolicPath) (runnerPackageDbStack senv)
                            , ghcOptPackages   = toNubListR (runnerPackages senv)
                            , ghcOptHideAllPackages = Flag True
                            -- Avoid picking stray module files that look

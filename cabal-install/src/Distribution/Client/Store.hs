@@ -48,9 +48,7 @@ import Lukko
 #else
 import System.IO (openFile, IOMode(ReadWriteMode), hClose)
 import GHC.IO.Handle.Lock (hLock, hTryLock, LockMode(ExclusiveLock))
-#if MIN_VERSION_base(4,11,0)
 import GHC.IO.Handle.Lock (hUnlock)
-#endif
 #endif
 
 -- $concurrency

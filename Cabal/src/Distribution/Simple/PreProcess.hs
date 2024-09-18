@@ -24,6 +24,7 @@
 module Distribution.Simple.PreProcess
   ( preprocessComponent
   , preprocessExtras
+  , preprocessFile
   , knownSuffixHandlers
   , ppSuffixes
   , PPSuffixHandler
@@ -297,7 +298,10 @@ preprocessFile mbWorkDir searchLoc buildLoc forSDist baseFile verbosity builtinS
   case psrcFiles of
     -- no preprocessor file exists, look for an ordinary source file
     -- just to make sure one actually exists at all for this module.
-    -- Note: by looking in the target/output build dir too, we allow
+
+    -- Note [Dodgy build dirs for preprocessors]
+    -- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    -- By looking in the target/output build dir too, we allow
     -- source files to appear magically in the target build dir without
     -- any corresponding "real" source file. This lets custom Setup.hs
     -- files generate source modules directly into the build dir without
@@ -343,8 +347,8 @@ preprocessFile mbWorkDir searchLoc buildLoc forSDist baseFile verbosity builtinS
           createDirectoryIfMissingVerbose verbosity True destDir
           runPreProcessorWithHsBootHack
             pp
-            (i psrcLoc, getSymbolicPath $ psrcRelFile)
-            (i buildLoc, srcStem <.> "hs")
+            (getSymbolicPath $ psrcLoc, getSymbolicPath $ psrcRelFile)
+            (getSymbolicPath $ buildLoc, srcStem <.> "hs")
   where
     i = interpretSymbolicPath mbWorkDir -- See Note [Symbolic paths] in Distribution.Utils.Path
     buildAsSrcLoc :: SymbolicPath Pkg (Dir Source)
@@ -386,8 +390,9 @@ ppGreenCard _ lbi _ =
     { platformIndependent = False
     , ppOrdering = unsorted
     , runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity ->
-        runDbProgram
+        runDbProgramCwd
           verbosity
+          (mbWorkDirLBI lbi)
           greencardProgram
           (withPrograms lbi)
           (["-tffi", "-o" ++ outFile, inFile])
@@ -859,8 +864,9 @@ standardPP lbi prog args =
     { platformIndependent = False
     , ppOrdering = unsorted
     , runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity ->
-        runDbProgram
+        runDbProgramCwd
           verbosity
+          (mbWorkDirLBI lbi)
           prog
           (withPrograms lbi)
           (args ++ ["-o", outFile, inFile])

@@ -1,4 +1,3 @@
 # Setup configure
 Configuring my-0.1...
-Warning: [misplaced-c-opt] Instead of 'ghc-options: -DNOERROR4' use 'cpp-options: -DNOERROR4'
 # Setup build

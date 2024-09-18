@@ -64,6 +64,7 @@ module Distribution.Client.Dependency
   , addDefaultSetupDependencies
   , addSetupCabalMinVersionConstraint
   , addSetupCabalMaxVersionConstraint
+  , addSetupCabalProfiledDynamic
   ) where
 
 import Distribution.Client.Compat.Prelude
@@ -463,6 +464,7 @@ nonReinstallablePackages :: [PackageName]
 nonReinstallablePackages =
   [ mkPackageName "base"
   , mkPackageName "ghc-bignum"
+  , mkPackageName "ghc-internal"
   , mkPackageName "ghc-prim"
   , mkPackageName "ghc"
   , mkPackageName "integer-gmp"
@@ -630,7 +632,7 @@ addDefaultSetupDependencies defaultSetupDeps params =
               }
         }
       where
-        isCustom = PD.buildType pkgdesc == PD.Custom
+        isCustom = PD.buildType pkgdesc == PD.Custom || PD.buildType pkgdesc == PD.Hooks
         gpkgdesc = srcpkgDescription srcpkg
         pkgdesc = PD.packageDescription gpkgdesc
 
@@ -666,6 +668,22 @@ addSetupCabalMaxVersionConstraint maxVersion =
             (PackagePropertyVersion $ earlierVersion maxVersion)
         )
         ConstraintSetupCabalMaxVersion
+    ]
+  where
+    cabalPkgname = mkPackageName "Cabal"
+
+-- | Add an a lower bound @setup.Cabal >= 3.13@ labeled with 'ConstraintSourceProfiledDynamic'
+addSetupCabalProfiledDynamic
+  :: DepResolverParams
+  -> DepResolverParams
+addSetupCabalProfiledDynamic =
+  addConstraints
+    [ LabeledPackageConstraint
+        ( PackageConstraint
+            (ScopeAnySetupQualifier cabalPkgname)
+            (PackagePropertyVersion $ orLaterVersion (mkVersion [3, 13, 0]))
+        )
+        ConstraintSourceProfiledDynamic
     ]
   where
     cabalPkgname = mkPackageName "Cabal"
@@ -729,7 +747,7 @@ standardInstallPolicy installedPkgIndex sourcePkgDb pkgSpecifiers =
         gpkgdesc = srcpkgDescription srcpkg
         pkgdesc = PD.packageDescription gpkgdesc
         bt = PD.buildType pkgdesc
-        affected = bt == PD.Custom && hasBuildableFalse gpkgdesc
+        affected = (bt == PD.Custom || bt == PD.Hooks) && hasBuildableFalse gpkgdesc
 
     -- Does this package contain any components with non-empty 'build-depends'
     -- and a 'buildable' field that could potentially be set to 'False'? False
@@ -763,7 +781,7 @@ runSolver = modularResolver
 resolveDependencies
   :: Platform
   -> CompilerInfo
-  -> PkgConfigDb
+  -> Maybe PkgConfigDb
   -> DepResolverParams
   -> Progress String String SolverInstallPlan
 resolveDependencies platform comp pkgConfigDB params =

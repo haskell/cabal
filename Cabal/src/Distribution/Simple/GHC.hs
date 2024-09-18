@@ -4,6 +4,7 @@
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections #-}
 
 -----------------------------------------------------------------------------
@@ -61,7 +62,7 @@ module Distribution.Simple.GHC
   , Internal.componentCcGhcOptions
   , getGhcAppDir
   , getLibDir
-  , isDynamic
+  , compilerBuildWay
   , getGlobalPackageDB
   , pkgRoot
 
@@ -98,6 +99,7 @@ import Distribution.Simple.BuildPaths
 import Distribution.Simple.Compiler
 import Distribution.Simple.Errors
 import qualified Distribution.Simple.GHC.Build as GHC
+import Distribution.Simple.GHC.Build.Modules (BuildWay (..))
 import Distribution.Simple.GHC.Build.Utils
 import Distribution.Simple.GHC.EnvironmentParser
 import Distribution.Simple.GHC.ImplInfo
@@ -162,14 +164,14 @@ configure verbosity hcPath hcPkgPath conf0 = do
       (userMaybeSpecifyPath "ghc" hcPath conf0)
   let implInfo = ghcVersionImplInfo ghcVersion
 
-  -- Cabal currently supports ghc >= 7.0.1 && < 9.10
+  -- Cabal currently supports ghc >= 7.0.1 && < 9.12
   -- ... and the following odd development version
-  unless (ghcVersion < mkVersion [9, 10]) $
+  unless (ghcVersion < mkVersion [9, 12]) $
     warn verbosity $
       "Unknown/unsupported 'ghc' version detected "
         ++ "(Cabal "
         ++ prettyShow cabalVersion
-        ++ " supports 'ghc' version < 9.10): "
+        ++ " supports 'ghc' version < 9.12): "
         ++ programPath ghcProg
         ++ " is version "
         ++ prettyShow ghcVersion
@@ -393,8 +395,8 @@ getGhcInfo verbosity ghcProg = Internal.getGhcInfo verbosity implInfo ghcProg
 -- | Given a single package DB, return all installed packages.
 getPackageDBContents
   :: Verbosity
-  -> Maybe (SymbolicPath CWD (Dir Pkg))
-  -> PackageDB
+  -> Maybe (SymbolicPath CWD (Dir from))
+  -> PackageDBX (SymbolicPath from (Dir PkgDB))
   -> ProgramDb
   -> IO InstalledPackageIndex
 getPackageDBContents verbosity mbWorkDir packagedb progdb = do
@@ -405,8 +407,8 @@ getPackageDBContents verbosity mbWorkDir packagedb progdb = do
 getInstalledPackages
   :: Verbosity
   -> Compiler
-  -> Maybe (SymbolicPath CWD (Dir Pkg))
-  -> PackageDBStack
+  -> Maybe (SymbolicPath CWD (Dir from))
+  -> PackageDBStackX (SymbolicPath from (Dir PkgDB))
   -> ProgramDb
   -> IO InstalledPackageIndex
 getInstalledPackages verbosity comp mbWorkDir packagedbs progdb = do
@@ -428,7 +430,7 @@ getInstalledPackages verbosity comp mbWorkDir packagedbs progdb = do
 -- 'getInstalledPackages'.
 toPackageIndex
   :: Verbosity
-  -> [(PackageDB, [InstalledPackageInfo])]
+  -> [(PackageDBX a, [InstalledPackageInfo])]
   -> ProgramDb
   -> IO InstalledPackageIndex
 toPackageIndex verbosity pkgss progdb = do
@@ -491,7 +493,7 @@ checkPackageDbEnvVar :: Verbosity -> IO ()
 checkPackageDbEnvVar verbosity =
   Internal.checkPackageDbEnvVar verbosity "GHC" "GHC_PACKAGE_PATH"
 
-checkPackageDbStack :: Verbosity -> Compiler -> PackageDBStack -> IO ()
+checkPackageDbStack :: Eq fp => Verbosity -> Compiler -> PackageDBStackX fp -> IO ()
 checkPackageDbStack verbosity comp =
   if flagPackageConf implInfo
     then checkPackageDbStackPre76 verbosity
@@ -499,7 +501,7 @@ checkPackageDbStack verbosity comp =
   where
     implInfo = ghcVersionImplInfo (compilerVersion comp)
 
-checkPackageDbStackPost76 :: Verbosity -> PackageDBStack -> IO ()
+checkPackageDbStackPost76 :: Eq fp => Verbosity -> PackageDBStackX fp -> IO ()
 checkPackageDbStackPost76 _ (GlobalPackageDB : rest)
   | GlobalPackageDB `notElem` rest = return ()
 checkPackageDbStackPost76 verbosity rest
@@ -507,7 +509,7 @@ checkPackageDbStackPost76 verbosity rest
       dieWithException verbosity CheckPackageDbStackPost76
 checkPackageDbStackPost76 _ _ = return ()
 
-checkPackageDbStackPre76 :: Verbosity -> PackageDBStack -> IO ()
+checkPackageDbStackPre76 :: Eq fp => Verbosity -> PackageDBStackX fp -> IO ()
 checkPackageDbStackPre76 _ (GlobalPackageDB : rest)
   | GlobalPackageDB `notElem` rest = return ()
 checkPackageDbStackPre76 verbosity rest
@@ -528,10 +530,10 @@ removeMingwIncludeDir pkg =
 -- | Get the packages from specific PackageDBs, not cumulative.
 getInstalledPackages'
   :: Verbosity
-  -> Maybe (SymbolicPath CWD (Dir Pkg))
-  -> [PackageDB]
+  -> Maybe (SymbolicPath CWD (Dir from))
+  -> [PackageDBX (SymbolicPath from (Dir PkgDB))]
   -> ProgramDb
-  -> IO [(PackageDB, [InstalledPackageInfo])]
+  -> IO [(PackageDBX (SymbolicPath from (Dir PkgDB)), [InstalledPackageInfo])]
 getInstalledPackages' verbosity mbWorkDir packagedbs progdb =
   sequenceA
     [ do
@@ -541,21 +543,22 @@ getInstalledPackages' verbosity mbWorkDir packagedbs progdb =
     ]
 
 getInstalledPackagesMonitorFiles
-  :: Verbosity
-  -> Maybe (SymbolicPath CWD (Dir Pkg))
+  :: forall from
+   . Verbosity
+  -> Maybe (SymbolicPath CWD (Dir from))
   -> Platform
   -> ProgramDb
-  -> [PackageDB]
+  -> [PackageDBS from]
   -> IO [FilePath]
 getInstalledPackagesMonitorFiles verbosity mbWorkDir platform progdb =
   traverse getPackageDBPath
   where
-    getPackageDBPath :: PackageDB -> IO FilePath
+    getPackageDBPath :: PackageDBS from -> IO FilePath
     getPackageDBPath GlobalPackageDB =
       selectMonitorFile =<< getGlobalPackageDB verbosity ghcProg
     getPackageDBPath UserPackageDB =
       selectMonitorFile =<< getUserPackageDB verbosity ghcProg platform
-    getPackageDBPath (SpecificPackageDB path) = selectMonitorFile path
+    getPackageDBPath (SpecificPackageDB path) = selectMonitorFile (interpretSymbolicPath mbWorkDir path)
 
     -- GHC has old style file dbs, and new style directory dbs.
     -- Note that for dir style dbs, we only need to monitor the cache file, not
@@ -733,7 +736,7 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
           , ghcOptFPic = toFlag True
           , ghcOptHiSuffix = toFlag "dyn_hi"
           , ghcOptObjSuffix = toFlag "dyn_o"
-          , ghcOptExtra = hcSharedOptions GHC libBi
+          , ghcOptExtra = hcOptions GHC libBi ++ hcSharedOptions GHC libBi
           }
     profArgs =
       vanillaArgs
@@ -745,13 +748,30 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
                 (withProfLibDetail lbi)
           , ghcOptHiSuffix = toFlag "p_hi"
           , ghcOptObjSuffix = toFlag "p_o"
-          , ghcOptExtra = hcProfOptions GHC libBi
+          , ghcOptExtra = hcOptions GHC libBi ++ hcProfOptions GHC libBi
           }
-    ghcArgs
-      | withVanillaLib lbi = vanillaArgs
-      | withSharedLib lbi = sharedArgs
-      | withProfLib lbi = profArgs
-      | otherwise = error "libAbiHash: Can't find an enabled library way"
+    profDynArgs =
+      vanillaArgs
+        `mappend` mempty
+          { ghcOptProfilingMode = toFlag True
+          , ghcOptProfilingAuto =
+              Internal.profDetailLevelFlag
+                True
+                (withProfLibDetail lbi)
+          , ghcOptDynLinkMode = toFlag GhcDynamicOnly
+          , ghcOptFPic = toFlag True
+          , ghcOptHiSuffix = toFlag "p_dyn_hi"
+          , ghcOptObjSuffix = toFlag "p_dyn_o"
+          , ghcOptExtra = hcOptions GHC libBi ++ hcProfSharedOptions GHC libBi
+          }
+    ghcArgs =
+      let (libWays, _, _) = buildWays lbi
+       in case libWays (componentIsIndefinite clbi) of
+            (ProfDynWay : _) -> profDynArgs
+            (ProfWay : _) -> profArgs
+            (StaticWay : _) -> vanillaArgs
+            (DynWay : _) -> sharedArgs
+            _ -> error "libAbiHash: Can't find an enabled library way"
 
   (ghcProg, _) <- requireProgram verbosity ghcProgram (withPrograms lbi)
 
@@ -870,75 +890,91 @@ installLib
   -> ComponentLocalBuildInfo
   -> IO ()
 installLib verbosity lbi targetDir dynlibTargetDir _builtDir pkg lib clbi = do
+  let
+    (wantedLibWays, _, _) = buildWays lbi
+    isIndef = componentIsIndefinite clbi
+    libWays = wantedLibWays isIndef
+
+  info verbosity ("Wanted install ways: " ++ show libWays)
+
   -- copy .hi files over:
-  whenVanilla $ copyModuleFiles $ Suffix "hi"
-  whenProf $ copyModuleFiles $ Suffix "p_hi"
-  whenShared $ copyModuleFiles $ Suffix "dyn_hi"
+  forM_ (wantedLibWays isIndef) $ \w -> case w of
+    StaticWay -> copyModuleFiles (Suffix "hi")
+    DynWay -> copyModuleFiles (Suffix "dyn_hi")
+    ProfWay -> copyModuleFiles (Suffix "p_hi")
+    ProfDynWay -> copyModuleFiles (Suffix "p_dyn_hi")
 
   -- copy extra compilation artifacts that ghc plugins may produce
   copyDirectoryIfExists extraCompilationArtifacts
 
   -- copy the built library files over:
-  whenHasCode $ do
-    whenVanilla $ do
-      sequence_
-        [ installOrdinary
+  when (has_code && hasLib) $ do
+    forM_ libWays $ \w -> case w of
+      StaticWay -> do
+        sequence_
+          [ installOrdinary
+            builtDir
+            targetDir
+            (mkGenericStaticLibName (l ++ f))
+          | l <-
+              getHSLibraryName
+                (componentUnitId clbi)
+                : (extraBundledLibs (libBuildInfo lib))
+          , f <- "" : extraLibFlavours (libBuildInfo lib)
+          ]
+        whenGHCi $ installOrdinary builtDir targetDir ghciLibName
+      ProfWay -> do
+        installOrdinary builtDir targetDir profileLibName
+        whenGHCi $ installOrdinary builtDir targetDir ghciProfLibName
+      ProfDynWay -> do
+        installShared
           builtDir
-          targetDir
-          (mkGenericStaticLibName (l ++ f))
-        | l <-
-            getHSLibraryName
-              (componentUnitId clbi)
-              : (extraBundledLibs (libBuildInfo lib))
-        , f <- "" : extraLibFlavours (libBuildInfo lib)
-        ]
-      whenGHCi $ installOrdinary builtDir targetDir ghciLibName
-    whenProf $ do
-      installOrdinary builtDir targetDir profileLibName
-      whenGHCi $ installOrdinary builtDir targetDir ghciProfLibName
-    whenShared $
-      if
-          -- The behavior for "extra-bundled-libraries" changed in version 2.5.0.
-          -- See ghc issue #15837 and Cabal PR #5855.
-          | specVersion pkg < CabalSpecV3_0 -> do
-              sequence_
-                [ installShared
-                  builtDir
-                  dynlibTargetDir
-                  (mkGenericSharedLibName platform compiler_id (l ++ f))
-                | l <- getHSLibraryName uid : extraBundledLibs (libBuildInfo lib)
-                , f <- "" : extraDynLibFlavours (libBuildInfo lib)
-                ]
-          | otherwise -> do
-              sequence_
-                [ installShared
-                  builtDir
-                  dynlibTargetDir
-                  ( mkGenericSharedLibName
-                      platform
-                      compiler_id
-                      (getHSLibraryName uid ++ f)
-                  )
-                | f <- "" : extraDynLibFlavours (libBuildInfo lib)
-                ]
-              sequence_
-                [ do
-                  files <- getDirectoryContents (i builtDir)
-                  let l' =
-                        mkGenericSharedBundledLibName
-                          platform
-                          compiler_id
-                          l
-                  forM_ files $ \file ->
-                    when (l' `isPrefixOf` file) $ do
-                      isFile <- doesFileExist (i $ builtDir </> makeRelativePathEx file)
-                      when isFile $ do
-                        installShared
-                          builtDir
-                          dynlibTargetDir
-                          file
-                | l <- extraBundledLibs (libBuildInfo lib)
-                ]
+          dynlibTargetDir
+          (mkProfSharedLibName platform compiler_id uid)
+      DynWay -> do
+        if
+            -- The behavior for "extra-bundled-libraries" changed in version 2.5.0.
+            -- See ghc issue #15837 and Cabal PR #5855.
+            | specVersion pkg < CabalSpecV3_0 -> do
+                sequence_
+                  [ installShared
+                    builtDir
+                    dynlibTargetDir
+                    (mkGenericSharedLibName platform compiler_id (l ++ f))
+                  | l <- getHSLibraryName uid : extraBundledLibs (libBuildInfo lib)
+                  , f <- "" : extraDynLibFlavours (libBuildInfo lib)
+                  ]
+            | otherwise -> do
+                sequence_
+                  [ installShared
+                    builtDir
+                    dynlibTargetDir
+                    ( mkGenericSharedLibName
+                        platform
+                        compiler_id
+                        (getHSLibraryName uid ++ f)
+                    )
+                  | f <- "" : extraDynLibFlavours (libBuildInfo lib)
+                  ]
+                sequence_
+                  [ do
+                    files <- getDirectoryContents (i builtDir)
+                    let l' =
+                          mkGenericSharedBundledLibName
+                            platform
+                            compiler_id
+                            (l ++ f)
+                    forM_ files $ \file ->
+                      when (l' `isPrefixOf` file) $ do
+                        isFile <- doesFileExist (i $ builtDir </> makeRelativePathEx file)
+                        when isFile $ do
+                          installShared
+                            builtDir
+                            dynlibTargetDir
+                            file
+                  | l <- extraBundledLibs (libBuildInfo lib)
+                  , f <- "" : extraDynLibFlavours (libBuildInfo lib)
+                  ]
   where
     -- See Note [Symbolic paths] in Distribution.Utils.Path
     i = interpretSymbolicPathLBI lbi
@@ -997,11 +1033,7 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir pkg lib clbi = do
       Platform JavaScript _ -> True
       _ -> False
     has_code = not (componentIsIndefinite clbi)
-    whenHasCode = when has_code
-    whenVanilla = when (hasLib && withVanillaLib lbi)
-    whenProf = when (hasLib && withProfLib lbi && has_code)
     whenGHCi = when (hasLib && withGHCiLib lbi && has_code)
-    whenShared = when (hasLib && withSharedLib lbi && has_code)
 
 -- -----------------------------------------------------------------------------
 -- Registering
@@ -1027,8 +1059,8 @@ hcPkgInfo progdb =
 registerPackage
   :: Verbosity
   -> ProgramDb
-  -> Maybe (SymbolicPath CWD (Dir Pkg))
-  -> PackageDBStack
+  -> Maybe (SymbolicPath CWD (Dir from))
+  -> PackageDBStackS from
   -> InstalledPackageInfo
   -> HcPkg.RegisterOptions
   -> IO ()
@@ -1066,4 +1098,4 @@ pkgRoot verbosity lbi = fmap makeSymbolicPath . pkgRoot'
     pkgRoot' (SpecificPackageDB fp) =
       return $
         takeDirectory $
-          interpretSymbolicPathLBI lbi (unsafeMakeSymbolicPath fp)
+          interpretSymbolicPathLBI lbi fp

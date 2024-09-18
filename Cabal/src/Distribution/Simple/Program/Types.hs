@@ -107,7 +107,7 @@ data ProgramSearchPathEntry
     ProgramSearchPathDir FilePath
   | -- | The system default
     ProgramSearchPathDefault
-  deriving (Eq, Generic, Typeable)
+  deriving (Show, Eq, Generic, Typeable)
 
 instance Binary ProgramSearchPathEntry
 instance Structured ProgramSearchPathEntry

@@ -1,0 +1,5 @@
+imports:
+
+import X
+foo1 :: Double
+foo1 = x

@@ -139,6 +139,7 @@ import Distribution.Types.Library
   ( Library (..)
   , emptyLibrary
   )
+import Distribution.Types.ParStrat
 import Distribution.Types.Version
   ( Version
   , mkVersion
@@ -467,6 +468,10 @@ replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings g
                in -- GHC considers the last unit passed to be the active one
                   other_units ++ active_unit_files
 
+            render_j Serial = "1"
+            render_j (UseSem n) = show @Int n
+            render_j (NumJobs mn) = maybe "" (show @Int) mn
+
         -- run ghc --interactive with
         runProgramInvocation verbosity $
           programInvocation ghcProg' $
@@ -475,7 +480,7 @@ replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings g
               , "-package-env"
               , "-" -- to ignore ghc.environment.* files
               , "-j"
-              , show (buildSettingNumJobs (buildSettings ctx))
+              , render_j (buildSettingNumJobs (buildSettings ctx))
               ]
                 : [ ["-unit", "@" ++ dir </> unit]
                   | unit <- unit_files_ordered

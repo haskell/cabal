@@ -73,7 +73,8 @@ import qualified Distribution.PackageDescription as PD
 import Distribution.Simple.BuildPaths (haddockDirName)
 import Distribution.Simple.Command (CommandUI)
 import Distribution.Simple.Compiler
-  ( PackageDBStack
+  ( PackageDBStackCWD
+  , coercePackageDBStack
   )
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import Distribution.Simple.LocalBuildInfo
@@ -99,7 +100,7 @@ import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString.Lazy.Char8 as LBS.Char8
 import qualified Data.List.NonEmpty as NE
 
-import Control.Exception (ErrorCall, Handler (..), SomeAsyncException, assert, catches)
+import Control.Exception (ErrorCall, Handler (..), SomeAsyncException, assert, catches, onException)
 import System.Directory (canonicalizePath, createDirectoryIfMissing, doesDirectoryExist, doesFileExist, removeFile)
 import System.FilePath (dropDrive, normalise, takeDirectory, (<.>), (</>))
 import System.IO (Handle, IOMode (AppendMode), withFile)
@@ -133,7 +134,7 @@ data PackageBuildingPhase
   | PBInstallPhase
       { runCopy :: FilePath -> IO ()
       , runRegister
-          :: PackageDBStack
+          :: PackageDBStackCWD
           -> Cabal.RegisterOptions
           -> IO InstalledPackageInfo
       }
@@ -168,7 +169,7 @@ buildAndRegisterUnpackedPackage
   verbosity
   distDirLayout@DistDirLayout{distTempDirectory}
   maybe_semaphore
-  BuildTimeSettings{buildSettingNumJobs}
+  buildTimeSettings@BuildTimeSettings{buildSettingNumJobs}
   registerLock
   cacheLock
   pkgshared@ElaboratedSharedConfig
@@ -191,21 +192,21 @@ buildAndRegisterUnpackedPackage
     delegate $
       PBBuildPhase $
         annotateFailure mlogFile BuildFailed $ do
-          setup buildCommand Cabal.buildCommonFlags buildFlags buildArgs
+          setup buildCommand Cabal.buildCommonFlags (return . buildFlags) buildArgs
 
     -- Haddock phase
     whenHaddock $
       delegate $
         PBHaddockPhase $
           annotateFailure mlogFile HaddocksFailed $ do
-            setup haddockCommand Cabal.haddockCommonFlags haddockFlags haddockArgs
+            setup haddockCommand Cabal.haddockCommonFlags (return . haddockFlags) haddockArgs
 
     -- Install phase
     delegate $
       PBInstallPhase
         { runCopy = \destdir ->
             annotateFailure mlogFile InstallFailed $
-              setup Cabal.copyCommand Cabal.copyCommonFlags (copyFlags destdir) copyArgs
+              setup Cabal.copyCommand Cabal.copyCommonFlags (return . copyFlags destdir) copyArgs
         , runRegister = \pkgDBStack registerOpts ->
             annotateFailure mlogFile InstallFailed $ do
               -- We register ourselves rather than via Setup.hs. We need to
@@ -219,7 +220,7 @@ buildAndRegisterUnpackedPackage
                   compiler
                   progdb
                   Nothing
-                  pkgDBStack
+                  (coercePackageDBStack pkgDBStack)
                   ipkg
                   registerOpts
               return ipkg
@@ -230,14 +231,14 @@ buildAndRegisterUnpackedPackage
       delegate $
         PBTestPhase $
           annotateFailure mlogFile TestsFailed $
-            setup testCommand Cabal.testCommonFlags testFlags testArgs
+            setup testCommand Cabal.testCommonFlags (return . testFlags) testArgs
 
     -- Bench phase
     whenBench $
       delegate $
         PBBenchPhase $
           annotateFailure mlogFile BenchFailed $
-            setup benchCommand Cabal.benchmarkCommonFlags benchFlags benchArgs
+            setup benchCommand Cabal.benchmarkCommonFlags (return . benchFlags) benchArgs
 
     -- Repl phase
     whenRepl $
@@ -277,8 +278,9 @@ buildAndRegisterUnpackedPackage
 
       configureCommand = Cabal.configureCommand defaultProgramDb
       configureFlags v =
-        flip filterConfigureFlags v $
-          setupHsConfigureFlags
+        flip filterConfigureFlags v
+          <$> setupHsConfigureFlags
+            (\p -> makeSymbolicPath <$> canonicalizePath p)
             plan
             rpkg
             pkgshared
@@ -329,6 +331,7 @@ buildAndRegisterUnpackedPackage
           setupHsHaddockFlags
             pkg
             pkgshared
+            buildTimeSettings
             (commonFlags v)
       haddockArgs v =
         flip filterHaddockArgs v $
@@ -348,11 +351,11 @@ buildAndRegisterUnpackedPackage
       setup
         :: CommandUI flags
         -> (flags -> CommonSetupFlags)
-        -> (Version -> flags)
+        -> (Version -> IO flags)
         -> (Version -> [String])
         -> IO ()
       setup cmd getCommonFlags flags args =
-        withLogging $ \mLogFileHandle ->
+        withLogging $ \mLogFileHandle -> do
           setupWrapper
             verbosity
             scriptOptions
@@ -381,7 +384,7 @@ buildAndRegisterUnpackedPackage
           (Just (elabPkgDescription pkg))
           cmd
           getCommonFlags
-          flags
+          (\v -> return (flags v))
           args
 
       generateInstalledPackageInfo :: IO InstalledPackageInfo
@@ -396,7 +399,7 @@ buildAndRegisterUnpackedPackage
                     pkgshared
                     (commonFlags v)
                     pkgConfDest
-            setup (Cabal.registerCommand) Cabal.registerCommonFlags registerFlags (const [])
+            setup (Cabal.registerCommand) Cabal.registerCommonFlags (\v -> return (registerFlags v)) (const [])
 
       withLogging :: (Maybe Handle -> IO r) -> IO r
       withLogging action =
@@ -479,6 +482,10 @@ buildInplaceUnpackedPackage
           whenRebuild $ do
             timestamp <- beginUpdateFileMonitor
             runBuild
+              -- Be sure to invalidate the cache if building throws an exception!
+              -- If not, we'll abort execution with a stale recompilation cache.
+              -- See ghc#24926 for an example of how this can go wrong.
+              `onException` invalidatePackageRegFileMonitor packageFileMonitor
 
             let listSimple =
                   execRebuild (getSymbolicPath srcdir) (needElaboratedConfiguredPackage pkg)
