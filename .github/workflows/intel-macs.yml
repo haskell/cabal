@@ -1,0 +1,178 @@
+name: Validate Intel Macs
+
+# This workflow will send notifications only to me (geekosaur) if it fails.
+# To change this, someone other than me must modify the "cron" entry with a PR.
+# https://docs.github.com/en/actions/writing-workflows/choosing-when-your-workflow-runs/events-that-trigger-workflows#status# (it's the paragraph just above the "Status" header)
+
+# Ideally we'd skip the run if only docs changed. In practice, GHA uses an "or", not an "and", so
+# there's no way to specify that.
+on:
+  schedule:
+    - cron: '11 02 * * *'
+
+env:
+  # We choose a stable ghc version across all os's
+  # which will be used to do the next release
+  GHC_FOR_RELEASE: "9.4.8"
+  # Ideally we should use the version about to be released for hackage tests and benchmarks
+  GHC_FOR_SOLVER_BENCHMARKS: "9.4.8"
+  GHC_FOR_COMPLETE_HACKAGE_TESTS: "9.4.8"
+  COMMON_FLAGS: "-j 2 -v"
+
+jobs:
+  validate-intel-macs:
+    name: Validate macos-13 ghc-${{ matrix.ghc }}
+    runs-on: macos-13
+    outputs:
+      GHC_FOR_RELEASE: ${{ format('["{0}"]', env.GHC_FOR_RELEASE) }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # If you remove something from here, then add it to the old-ghcs job.
+        # Also a removed GHC from here means that we are actually dropping
+        # support, so the PR *must* have a changelog entry.
+        ghc:
+          [
+            "9.10.1",
+            "9.8.2",
+            "9.6.6",
+            "9.4.8",
+            "9.2.8",
+            "9.0.2",
+            "8.10.7",
+            "8.8.4",
+          ]
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Work around XDG directories existence (haskell-actions/setup#62)
+        run: |
+          rm -rf ~/.config/cabal
+          rm -rf ~/.cache/cabal
+
+      - uses: actions/checkout@v4
+
+      - uses: haskell-actions/setup@v2
+        id: setup-haskell
+        with:
+          ghc-version: ${{ matrix.ghc }}
+          cabal-version: 3.12.1.0 # see https://github.com/haskell/cabal/pull/10251
+          ghcup-release-channel: https://raw.githubusercontent.com/haskell/ghcup-metadata/master/ghcup-prereleases-0.0.8.yaml
+
+      #  See the following link for a breakdown of the following step
+      #  https://github.com/haskell/actions/issues/7#issuecomment-745697160
+      - uses: actions/cache@v4
+        with:
+          # validate.sh uses a special build dir
+          path: |
+            ${{ steps.setup-haskell.outputs.cabal-store }}
+            dist-*
+          key: macOS-${{ matrix.ghc }}-${{ github.sha }}
+          restore-keys: macOS-${{ matrix.ghc }}-
+
+      # The tool is not essential to the rest of the test suite. If
+      # hackage-repo-tool is not present, any test that requires it will
+      # be skipped.
+      # We want to keep this in the loop but we don't want to fail if
+      # hackage-repo-tool breaks or fails to support a newer GHC version.
+      - name: Install hackage-repo-tool
+        continue-on-error: true
+        run: cabal install --ignore-project hackage-repo-tool
+
+      # Needed by cabal-testsuite/PackageTests/Configure/setup.test.hs
+      - name: "Install Autotools"
+        run: brew install automake
+
+      - name: Set validate inputs
+        run: |
+          FLAGS="${{ env.COMMON_FLAGS }}"
+          if [[ "${{ matrix.ghc }}" == "${{ env.GHC_FOR_SOLVER_BENCHMARKS }}" ]]; then
+            FLAGS="$FLAGS --solver-benchmarks"
+          fi
+          if [[ "${{ matrix.ghc }}" == "${{ env.GHC_FOR_COMPLETE_HACKAGE_TESTS }}" ]]; then
+            FLAGS="$FLAGS --complete-hackage-tests"
+          fi
+          echo "FLAGS=$FLAGS" >> "$GITHUB_ENV"
+
+      - name: Validate print-config
+        run: sh validate.sh $FLAGS -s print-config
+
+      - name: Validate print-tool-versions
+        run: sh validate.sh $FLAGS -s print-tool-versions
+
+      - name: Validate build
+        run: sh validate.sh $FLAGS -s build
+
+      - name: Tar cabal head executable
+        if: matrix.ghc == env.GHC_FOR_RELEASE
+        run: |
+          CABAL_EXEC=$(cabal list-bin --builddir=dist-newstyle-validate-ghc-${{ matrix.ghc }} --project-file=cabal.validate.project cabal-install:exe:cabal)
+          # We have to tar the executable to preserve executable permissions
+          # see https://github.com/actions/upload-artifact/issues/38
+          # Workaround to avoid bsdtar corrupts the executable
+          # so executing it after untar throws `cannot execute binary file`
+          # see https://github.com/actions/virtual-environments/issues/2619#issuecomment-788397841
+          sudo /usr/sbin/purge
+          DIR=$(dirname "$CABAL_EXEC")
+          FILE=$(basename "$CABAL_EXEC")
+          CABAL_EXEC_TAR="cabal-head-macOS-x86_64.tar.gz"
+          tar -czvf "$CABAL_EXEC_TAR" -C "$DIR" "$FILE"
+          echo "CABAL_EXEC_TAR=$CABAL_EXEC_TAR" >> "$GITHUB_ENV"
+
+      # We upload the cabal executable built with the ghc used in the release for:
+      # - Reuse it in the dogfooding job (although we could use the cached build dir)
+      # - Make it available in the workflow to make easier testing it locally
+      - name: Upload cabal-install executable to workflow artifacts
+        if: matrix.ghc == env.GHC_FOR_RELEASE
+        uses: actions/upload-artifact@v4
+        with:
+          name: cabal-macOS-x86_64
+          path: ${{ env.CABAL_EXEC_TAR }}
+
+      # Does this want to be made a loop as in #10361? seems less useful here
+      - name: Validate lib-tests
+        env:
+          # `rawSystemStdInOut reports text decoding errors`
+          # test does not find ghc without the full path in windows
+          GHCPATH: ${{ steps.setup-haskell.outputs.ghc-exe }}
+        run: sh validate.sh $FLAGS -s lib-tests
+
+      - name: Validate lib-suite
+        run: sh validate.sh $FLAGS -s lib-suite
+
+      - name: Validate cli-tests
+        run: sh validate.sh $FLAGS -s cli-tests
+
+      - name: Validate cli-suite
+        run: sh validate.sh $FLAGS -s cli-suite
+
+      - name: Validate solver-benchmarks-tests
+        if: matrix.ghc == env.GHC_FOR_SOLVER_BENCHMARKS
+        run: sh validate.sh $FLAGS -s solver-benchmarks-tests
+
+      - name: Validate solver-benchmarks-run
+        if: matrix.ghc == env.GHC_FOR_SOLVER_BENCHMARKS
+        run: sh validate.sh $FLAGS -s solver-benchmarks-run
+
+  prerelease-head-macos:
+    name: Create a GitHub prerelease with the binary artifacts
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/master'
+
+    needs: validate-intel-macs
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: cabal-macOS-x86_64
+
+      - name: Create GitHub prerelease
+        uses: marvinpinto/action-automatic-releases@v1.2.1
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          automatic_release_tag: cabal-head-mac-intel
+          prerelease: true
+          title: cabal-head-mac-intel
+          files: |
+            cabal-head-macOS-x86_64.tar.gz
