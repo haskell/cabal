@@ -12,3 +12,5 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - uses: andreasabel/fix-whitespace-action@v1
+      with:
+        verbose:    true
