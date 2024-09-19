@@ -23,7 +23,7 @@ https://github.com/haskell/cabal.
 
 | Latest release | 3.14 |
 |---|---|
-| Long-Time Support release | 3.12 |
+| Long-Term Support release | 3.12 |
 
 ## Learn how to use `cabal` and get support
 
