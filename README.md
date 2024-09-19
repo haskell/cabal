@@ -9,21 +9,20 @@
 
 <img src="https://www.haskell.org/cabal/images/Cabal-light.png" align="right">
 
-This Cabal Git repository contains the following main packages:
+This repository contains the following packages:
 
  * [Cabal](Cabal/README.md): the Cabal library package ([license](Cabal/LICENSE))
  * [Cabal-syntax](Cabal-syntax/README.md): the `.cabal` file format library ([license](Cabal-syntax/LICENSE))
  * [cabal-install](cabal-install/README.md): the package containing the `cabal` tool ([license](cabal-install/LICENSE))
  * [cabal-install-solver](cabal-install-solver): the package containing the solver component of the `cabal` tool ([license](cabal-install-solver/LICENSE))
 
-The canonical upstream repository is located at
-https://github.com/haskell/cabal.
+The canonical upstream repository is located at https://github.com/haskell/cabal.
 
 ## Support window for releases
 
 | Latest release | 3.14 |
 |---|---|
-| Long-Time Support release | 3.12 |
+| Long-Term Support release | 3.12 |
 
 ## Learn how to use `cabal` and get support
 
@@ -47,7 +46,7 @@ Got questions? Ask in [Haskell Matrix](https://matrix.to/#/#haskell:matrix.org)
 
 ### Preview Releases
 
-_Getting unreleased versions of `cabal-install`_: gives you a chance to try out yet-unreleased features.
+_Getting unreleased versions of `cabal-install`_ gives you a chance to try out yet-unreleased features.
 Currently, we only provide binaries for `x86_64` platforms.
 
 1. _GitHub preview release built from the tip of the `master` branch_: [download from GitHub](https://github.com/haskell/cabal/releases/tag/cabal-head) or use this GHCup command to install:
@@ -104,6 +103,6 @@ Currently, we only provide binaries for `x86_64` platforms.
     if you don't have a pre-existing version of `cabal-install`,
     look into the [`bootstrap`](bootstrap) directory.
 
-## Contributing to cabal
+## Contributing to `cabal`
 
 Refer to [CONTRIBUTING.md](CONTRIBUTING.md).
