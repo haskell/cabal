@@ -191,7 +191,9 @@ Whitespace Conventions
 
 We use automated whitespace convention checking. Violations can be fixed by
 running [fix-whitespace](https://hackage.haskell.org/package/fix-whitespace). If
-you push a fix of a whitespace violation, please do so in a _separate commit_.
+you push a fix of a whitespace violation, please do so in a _separate commit_. For convenience,
+`make whitespace` will show violations and `make fix-whitespace` will fix them, if the
+`fix-whitespace` utility is installed.
 
 Other Conventions
 -----------------
