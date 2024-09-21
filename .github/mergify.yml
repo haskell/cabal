@@ -1,5 +1,6 @@
-# Note: We do not use the rebase strategy to merge PRs, because that
-# loses information needed by changelog-d to associate commits with PRs.
+# Note: We do not use the rebase or fast-forward strategies to merge PRs,
+# because that loses information needed by changelog-d to associate commits
+# with PRs.
 
 pull_request_rules:
 
@@ -11,6 +12,8 @@ pull_request_rules:
           - merge delay passed
     name: Wait for 2 days before validating merge
     conditions:
+      # nobody seeems to know why this conditional is reversed, but
+      # it works.
       - updated-at<2 days ago
       - or:
         - label=merge me
@@ -19,6 +22,8 @@ pull_request_rules:
       - '#approved-reviews-by>=2'
 
   # label when Mergify is ready but waiting for the above
+  # the bot reports these in #hackage:matrix.org, plus it's a
+  # useful way to track PR progress
   - actions:
       label:
         add:
@@ -69,6 +74,9 @@ pull_request_rules:
       - '-label~=^blocked:'
 
   # merge+no rebase strategy
+  # use this only in cases where the normal merge workflow won't work, as
+  # when a PR is from an organization account and we don't have permissions
+  # on it so can't rebase. IMPORTANT: THE PR OWNER MUST REBASE MANUALLY.
   - actions:
       merge:
         method: merge

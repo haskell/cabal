@@ -7,7 +7,7 @@ concurrency:
 
 # Note: This workflow file contains the required job "Bootstrap post job". We are using path filtering
 # here to ignore PRs which only change documentation. This can cause a problem, see the workflow file
-# "bootstrap.skip.yml" for a description of the problem and the solution provided in that file.
+# "validate.skip.yml" for a description of the problem and the solution provided in that file.
 on:
   push:
     paths-ignore:
@@ -88,6 +88,7 @@ jobs:
   # This way we can use it exclusively in branch protection rules
   # and abstract away the concrete jobs of the workflow, including their names
   bootstrap-post-job:
+    # This conditional overrides job cancellation
     if: always()
     name: Bootstrap post job
     runs-on: ubuntu-latest
