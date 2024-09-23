@@ -74,6 +74,9 @@ import Distribution.Simple.Utils (info, withTempDirectory)
 import Distribution.System
   ( Platform
   )
+import Distribution.Types.DependencySatisfaction
+  ( DependencySatisfaction (..)
+  )
 import Distribution.Types.UnqualComponentName
 
 import System.Directory
@@ -204,7 +207,7 @@ symlinkBinaries
           case finalizePD
             flags
             (enableStanzas stanzas)
-            (const True)
+            (const Satisfied)
             platform
             cinfo
             []

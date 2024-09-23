@@ -67,6 +67,9 @@ import Distribution.Types.ComponentRequestedSpec
   ( defaultComponentRequestedSpec
   )
 import Distribution.Types.Dependency
+import Distribution.Types.DependencySatisfaction
+  ( DependencySatisfaction (..)
+  )
 import Distribution.Version
   ( LowerBound (..)
   , UpperBound (..)
@@ -141,7 +144,7 @@ genBounds verbosity packageDBs repoCtxt comp platform progdb globalFlags freezeF
         finalizePD
           mempty
           defaultComponentRequestedSpec
-          (const True)
+          (const Satisfied)
           platform
           cinfo
           []

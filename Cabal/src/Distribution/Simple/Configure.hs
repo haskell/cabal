@@ -91,9 +91,11 @@ import Distribution.Simple.Setup.Config as Setup
 import Distribution.Simple.Utils
 import Distribution.System
 import Distribution.Types.ComponentRequestedSpec
+import Distribution.Types.DependencySatisfaction (DependencySatisfaction (..))
 import Distribution.Types.GivenComponent
 import qualified Distribution.Types.LocalBuildConfig as LBC
 import Distribution.Types.LocalBuildInfo
+import Distribution.Types.MissingDependencyReason (MissingDependencyReason (..))
 import Distribution.Types.PackageVersionConstraint
 import Distribution.Utils.LogProgress
 import Distribution.Utils.NubList
@@ -1335,7 +1337,7 @@ dependencySatisfiable
   -> Map (PackageName, ComponentName) ComponentId
   -> Map (PackageName, ComponentName) InstalledPackageInfo
   -- ^ required dependencies
-  -> (Dependency -> Bool)
+  -> (Dependency -> DependencySatisfaction)
 dependencySatisfiable
   use_external_internal_deps
   exact_config
@@ -1361,16 +1363,14 @@ dependencySatisfiable
             internalDepSatisfiable
           else -- Backward compatibility for the old sublibrary syntax
 
-            ( sublibs == mainLibSet
-                && Map.member
-                  ( pn
-                  , CLibName $
-                      LSubLibName $
-                        packageNameToUnqualComponentName depName
-                  )
-                  requiredDepsMap
-            )
-              || all visible sublibs
+            let depComponentName =
+                  CLibName $ LSubLibName $ packageNameToUnqualComponentName depName
+                invisibleLibraries = NES.filter (not . visible) sublibs
+             in if sublibs == mainLibSet && Map.member (pn, depComponentName) requiredDepsMap
+                  then Satisfied
+                  else case nonEmpty $ Set.toList invisibleLibraries of
+                    Nothing -> Satisfied
+                    Just invisibleLibraries' -> Unsatisfied $ MissingLibrary invisibleLibraries'
     | isInternalDep =
         if use_external_internal_deps
           then -- When we are doing per-component configure, we now need to
@@ -1387,12 +1387,31 @@ dependencySatisfiable
       isInternalDep = pn == depName
 
       depSatisfiable =
-        not . null $ PackageIndex.lookupDependency installedPackageSet depName vr
+        let allVersions = PackageIndex.lookupPackageName installedPackageSet depName
+            eligibleVersions =
+              [ version
+              | (version, _infos) <- PackageIndex.eligibleDependencies allVersions
+              ]
+         in if null $ PackageIndex.matchingDependencies vr allVersions
+              then
+                if null eligibleVersions
+                  then Unsatisfied $ MissingPackage
+                  else Unsatisfied $ WrongVersion eligibleVersions
+              else Satisfied
 
       internalDepSatisfiable =
-        Set.isSubsetOf (NES.toSet sublibs) packageLibraries
+        let missingLibraries = (NES.toSet sublibs) `Set.difference` packageLibraries
+         in case nonEmpty $ Set.toList missingLibraries of
+              Nothing -> Satisfied
+              Just missingLibraries' -> Unsatisfied $ MissingLibrary missingLibraries'
+
       internalDepSatisfiableExternally =
-        all (\ln -> not $ null $ PackageIndex.lookupInternalDependency installedPackageSet pn vr ln) sublibs
+        -- TODO: Might need to propagate information on which versions _are_ available, if any...
+        let missingLibraries =
+              NES.filter (null . PackageIndex.lookupInternalDependency installedPackageSet pn vr) sublibs
+         in case nonEmpty $ Set.toList missingLibraries of
+              Nothing -> Satisfied
+              Just missingLibraries' -> Unsatisfied $ MissingLibrary missingLibraries'
 
       -- Check whether a library exists and is visible.
       -- We don't disambiguate between dependency on non-existent or private
@@ -1427,7 +1446,7 @@ configureFinalizedPackage
   -> ConfigFlags
   -> ComponentRequestedSpec
   -> [PackageVersionConstraint]
-  -> (Dependency -> Bool)
+  -> (Dependency -> DependencySatisfaction)
   -- ^ tests if a dependency is satisfiable.
   -- Might say it's satisfiable even when not.
   -> Compiler

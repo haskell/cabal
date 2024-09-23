@@ -12,6 +12,7 @@ module Distribution.Compat.NonEmptySet
 
     -- * Deletion
   , delete
+  , filter
 
     -- * Conversions
   , toNonEmpty
@@ -118,6 +119,9 @@ delete x (NES xs)
   | otherwise = Just (NES xs)
   where
     res = Set.delete x xs
+
+filter :: (a -> Bool) -> NonEmptySet a -> Set.Set a
+filter predicate (NES set) = Set.filter predicate set
 
 -------------------------------------------------------------------------------
 -- Conversions

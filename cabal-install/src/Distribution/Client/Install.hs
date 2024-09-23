@@ -237,6 +237,9 @@ import Distribution.System
   , buildOS
   , buildPlatform
   )
+import Distribution.Types.DependencySatisfaction
+  ( DependencySatisfaction (..)
+  )
 import Distribution.Types.Flag
   ( FlagAssignment
   , PackageFlag (..)
@@ -1669,7 +1672,7 @@ installReadyPackage
       pkg = case finalizePD
         flags
         (enableStanzas stanzas)
-        (const True)
+        (const Satisfied)
         platform
         cinfo
         []

@@ -68,6 +68,7 @@ module Distribution.Simple.PackageIndex
   , lookupSourcePackageId
   , lookupPackageId
   , lookupPackageName
+  , lookupInternalPackageName
   , lookupDependency
   , lookupInternalDependency
 
@@ -93,6 +94,10 @@ module Distribution.Simple.PackageIndex
   , dependencyCycles
   , dependencyGraph
   , moduleNameIndex
+
+    -- ** Filters on lookup results
+  , eligibleDependencies
+  , matchingDependencies
   ) where
 
 import qualified Data.Map.Strict as Map
@@ -474,7 +479,18 @@ lookupPackageName
   -> [(Version, [a])]
 lookupPackageName index name =
   -- Do not match internal libraries
-  case Map.lookup (name, LMainLibName) (packageIdIndex index) of
+  lookupInternalPackageName index name LMainLibName
+
+-- | Does a lookup by source package name and library name.
+--
+-- Also looks up internal packages.
+lookupInternalPackageName
+  :: PackageIndex a
+  -> PackageName
+  -> LibraryName
+  -> [(Version, [a])]
+lookupInternalPackageName index name library =
+  case Map.lookup (name, library) (packageIdIndex index) of
     Nothing -> []
     Just pvers -> Map.toList pvers
 
@@ -509,22 +525,45 @@ lookupInternalDependency
   -> LibraryName
   -> [(Version, [IPI.InstalledPackageInfo])]
 lookupInternalDependency index name versionRange libn =
-  case Map.lookup (name, libn) (packageIdIndex index) of
-    Nothing -> []
-    Just pvers ->
-      [ (ver, pkgs')
-      | (ver, pkgs) <- Map.toList pvers
-      , ver `withinRange` versionRange
-      , let pkgs' = filter eligible pkgs
-      , -- Enforce the invariant
-      not (null pkgs')
-      ]
+  matchingDependencies versionRange $
+    lookupInternalPackageName index name libn
+
+-- | Filter a set of installed packages to ones eligible as dependencies.
+--
+-- When we select for dependencies, we ONLY want to pick up indefinite
+-- packages, or packages with no instantiations.  We'll do mix-in linking to
+-- improve any such package into an instantiated one later.
+--
+-- INVARIANT: List of eligible 'IPI.InstalledPackageInfo' is non-empty.
+eligibleDependencies
+  :: [(Version, [IPI.InstalledPackageInfo])]
+  -> [(Version, [IPI.InstalledPackageInfo])]
+eligibleDependencies versions =
+  [ (ver, pkgs')
+  | (ver, pkgs) <- versions
+  , let pkgs' = filter eligible pkgs
+  , -- Enforce the invariant
+  not (null pkgs')
+  ]
   where
-    -- When we select for dependencies, we ONLY want to pick up indefinite
-    -- packages, or packages with no instantiations.  We'll do mix-in
-    -- linking to improve any such package into an instantiated one
-    -- later.
     eligible pkg = IPI.indefinite pkg || null (IPI.instantiatedWith pkg)
+
+-- | Get eligible dependencies from a list of versions.
+--
+-- This can be used to filter the output of 'lookupPackageName' or
+-- 'lookupInternalPackageName'.
+--
+-- INVARIANT: List of eligible 'IPI.InstalledPackageInfo' is non-empty.
+matchingDependencies
+  :: VersionRange
+  -> [(Version, [IPI.InstalledPackageInfo])]
+  -> [(Version, [IPI.InstalledPackageInfo])]
+matchingDependencies versionRange versions =
+  let eligibleVersions = eligibleDependencies versions
+   in [ (ver, pkgs)
+      | (ver, pkgs) <- eligibleVersions
+      , ver `withinRange` versionRange
+      ]
 
 --
 
