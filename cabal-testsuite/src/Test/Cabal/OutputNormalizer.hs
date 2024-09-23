@@ -80,6 +80,7 @@ normalizeOutput nenv =
   . maybe id normalizePathCmdOutput (normalizerCabalInstallVersion nenv)
   -- hackage-security locks occur non-deterministically
   . resub "(Released|Acquired|Waiting) .*hackage-security-lock\n" ""
+  . resub "installed: [0-9]+(\\.[0-9]+)*" "installed: <VERSION>"
   where
     sameDir = "(\\.((\\\\)+|\\/))*"
     packageIdRegex pid =
