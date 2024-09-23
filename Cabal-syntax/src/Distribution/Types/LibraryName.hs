@@ -10,6 +10,7 @@ module Distribution.Types.LibraryName
   , libraryNameString
 
     -- * Pretty & Parse
+  , prettyLibraryNames
   , prettyLibraryNameComponent
   , parsecLibraryNameComponent
   ) where
@@ -17,6 +18,7 @@ module Distribution.Types.LibraryName
 import Distribution.Compat.Prelude
 import Prelude ()
 
+import qualified Data.List.NonEmpty as NEL
 import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.Types.UnqualComponentName
@@ -41,6 +43,22 @@ instance NFData LibraryName where rnf = genericRnf
 prettyLibraryNameComponent :: LibraryName -> Disp.Doc
 prettyLibraryNameComponent LMainLibName = Disp.text "lib"
 prettyLibraryNameComponent (LSubLibName str) = Disp.text "lib:" <<>> pretty str
+
+-- | Pretty print a 'LibraryName' after a package name.
+--
+-- Produces output like @foo@, @foo:bar@, or @foo:{bar,baz}@
+prettyLibraryNames :: Pretty a => a -> NonEmpty LibraryName -> Disp.Doc
+prettyLibraryNames package libraries =
+  let doc = pretty package
+
+      prettyComponent LMainLibName = pretty package
+      prettyComponent (LSubLibName component) = Disp.text $ unUnqualComponentName component
+
+      prettyComponents = commaSep $ prettyComponent <$> NEL.toList libraries
+   in case libraries of
+        LMainLibName :| [] -> doc
+        LSubLibName component :| [] -> doc <<>> Disp.colon <<>> pretty component
+        _ -> doc <<>> Disp.colon <<>> Disp.braces prettyComponents
 
 parsecLibraryNameComponent :: CabalParsing m => m LibraryName
 parsecLibraryNameComponent = do
