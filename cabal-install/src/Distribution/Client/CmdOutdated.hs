@@ -129,6 +129,9 @@ import Distribution.Types.ComponentRequestedSpec
 import Distribution.Types.Dependency
   ( Dependency (..)
   )
+import Distribution.Types.DependencySatisfaction
+  ( DependencySatisfaction (..)
+  )
 import Distribution.Types.PackageVersionConstraint
   ( PackageVersionConstraint (..)
   , simplifyPackageVersionConstraint
@@ -443,7 +446,7 @@ depsFromPkgDesc verbosity comp platform = do
         finalizePD
           mempty
           (ComponentRequestedSpec True True)
-          (const True)
+          (const Satisfied)
           platform
           cinfo
           []

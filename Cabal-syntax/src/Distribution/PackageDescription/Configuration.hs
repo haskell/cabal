@@ -56,12 +56,13 @@ import Distribution.System
 import Distribution.Types.Component
 import Distribution.Types.ComponentRequestedSpec
 import Distribution.Types.DependencyMap
+import Distribution.Types.DependencySatisfaction (DependencySatisfaction (..))
+import Distribution.Types.MissingDependency (MissingDependency (..))
 import Distribution.Types.PackageVersionConstraint
 import Distribution.Utils.Generic
 import Distribution.Utils.Path (sameDirectory)
 import Distribution.Version
 
-import qualified Data.Map.Lazy as Map
 import Data.Tree (Tree (Node))
 
 ------------------------------------------------------------------------------
@@ -144,15 +145,17 @@ parseCondition = condOr
 
 ------------------------------------------------------------------------------
 
--- | Result of dependency test. Isomorphic to @Maybe d@ but renamed for
+-- | Result of dependency test. Isomorphic to @Maybe@ but renamed for
 --   clarity.
-data DepTestRslt d = DepOk | MissingDeps d
+data DepTestRslt
+  = DepOk
+  | MissingDeps [MissingDependency]
 
-instance Semigroup d => Monoid (DepTestRslt d) where
+instance Monoid DepTestRslt where
   mempty = DepOk
   mappend = (<>)
 
-instance Semigroup d => Semigroup (DepTestRslt d) where
+instance Semigroup DepTestRslt where
   DepOk <> x = x
   x <> DepOk = x
   (MissingDeps d) <> (MissingDeps d') = MissingDeps (d <> d')
@@ -190,13 +193,13 @@ resolveWithFlags
   -> [PackageVersionConstraint]
   -- ^ Additional constraints
   -> [CondTree ConfVar [Dependency] PDTagged]
-  -> ([Dependency] -> DepTestRslt [Dependency])
+  -> ([Dependency] -> DepTestRslt)
   -- ^ Dependency test function.
-  -> Either [Dependency] (TargetSet PDTagged, FlagAssignment)
+  -> Either [MissingDependency] (TargetSet PDTagged, FlagAssignment)
   -- ^ Either the missing dependencies (error case), or a pair of
   -- (set of build targets with dependencies, chosen flag assignments)
 resolveWithFlags dom enabled os arch impl constrs trees checkDeps =
-  either (Left . fromDepMapUnion) Right $ explore (build mempty dom)
+  explore (build mempty dom)
   where
     -- simplify trees by (partially) evaluating all conditions and converting
     -- dependencies to dependency maps.
@@ -216,7 +219,7 @@ resolveWithFlags dom enabled os arch impl constrs trees checkDeps =
     -- computation overhead in the successful case.
     explore
       :: Tree FlagAssignment
-      -> Either DepMapUnion (TargetSet PDTagged, FlagAssignment)
+      -> Either [MissingDependency] (TargetSet PDTagged, FlagAssignment)
     explore (Node flags ts) =
       let targetSet =
             TargetSet $
@@ -229,7 +232,7 @@ resolveWithFlags dom enabled os arch impl constrs trees checkDeps =
             DepOk
               | null ts -> Right (targetSet, flags)
               | otherwise -> tryAll $ map explore ts
-            MissingDeps mds -> Left (toDepMapUnion mds)
+            MissingDeps mds -> Left mds
 
     -- Builds a tree of all possible flag assignments.  Internal nodes
     -- have only partial assignments.
@@ -238,18 +241,18 @@ resolveWithFlags dom enabled os arch impl constrs trees checkDeps =
     build assigned ((fn, vals) : unassigned) =
       Node assigned $ map (\v -> build (insertFlagAssignment fn v assigned) unassigned) vals
 
-    tryAll :: [Either DepMapUnion a] -> Either DepMapUnion a
+    tryAll :: Monoid a => [Either a b] -> Either a b
     tryAll = foldr mp mz
 
     -- special version of `mplus' for our local purposes
-    mp :: Either DepMapUnion a -> Either DepMapUnion a -> Either DepMapUnion a
+    mp :: Monoid a => Either a b -> Either a b -> Either a b
     mp m@(Right _) _ = m
     mp _ m@(Right _) = m
     mp (Left xs) (Left ys) = Left (xs <> ys)
 
     -- `mzero'
-    mz :: Either DepMapUnion a
-    mz = Left (DepMapUnion Map.empty)
+    mz :: Monoid a => Either a b
+    mz = Left mempty
 
     env :: FlagAssignment -> FlagName -> Either FlagName Bool
     env flags flag = (maybe (Left flag) Right . lookupFlagAssignment flag) flags
@@ -322,27 +325,6 @@ extractConditions f gpkg =
     , extractCondition (f . testBuildInfo) . snd <$> condTestSuites gpkg
     , extractCondition (f . benchmarkBuildInfo) . snd <$> condBenchmarks gpkg
     ]
-
--- | A map of package constraints that combines version ranges using 'unionVersionRanges'.
-newtype DepMapUnion = DepMapUnion {unDepMapUnion :: Map PackageName (VersionRange, NonEmptySet LibraryName)}
-
-instance Semigroup DepMapUnion where
-  DepMapUnion x <> DepMapUnion y =
-    DepMapUnion $
-      Map.unionWith unionVersionRanges' x y
-
-unionVersionRanges'
-  :: (VersionRange, NonEmptySet LibraryName)
-  -> (VersionRange, NonEmptySet LibraryName)
-  -> (VersionRange, NonEmptySet LibraryName)
-unionVersionRanges' (vr, cs) (vr', cs') = (unionVersionRanges vr vr', cs <> cs')
-
-toDepMapUnion :: [Dependency] -> DepMapUnion
-toDepMapUnion ds =
-  DepMapUnion $ Map.fromListWith unionVersionRanges' [(p, (vr, cs)) | Dependency p vr cs <- ds]
-
-fromDepMapUnion :: DepMapUnion -> [Dependency]
-fromDepMapUnion m = [Dependency p vr cs | (p, (vr, cs)) <- Map.toList (unDepMapUnion m)]
 
 freeVars :: CondTree ConfVar c a -> [FlagName]
 freeVars t = [f | PackageFlag f <- freeVars' t]
@@ -453,7 +435,7 @@ finalizePD
   :: FlagAssignment
   -- ^ Explicitly specified flag assignments
   -> ComponentRequestedSpec
-  -> (Dependency -> Bool)
+  -> (Dependency -> DependencySatisfaction)
   -- ^ Is a given dependency satisfiable from the set of
   -- available packages?  If this is unknown then use
   -- True.
@@ -465,7 +447,7 @@ finalizePD
   -- ^ Additional constraints
   -> GenericPackageDescription
   -> Either
-      [Dependency]
+      [MissingDependency]
       (PackageDescription, FlagAssignment)
   -- ^ Either missing dependencies or the resolved package
   -- description along with the flag assignments chosen.
@@ -526,7 +508,11 @@ finalizePD
           | otherwise -> [b, not b]
       -- flagDefaults = map (\(n,x:_) -> (n,x)) flagChoices
       check ds =
-        let missingDeps = filter (not . satisfyDep) ds
+        let missingDeps =
+              [ MissingDependency dependency reason
+              | (dependency, Unsatisfied reason) <-
+                  map (\dependency -> (dependency, satisfyDep dependency)) ds
+              ]
          in if null missingDeps
               then DepOk
               else MissingDeps missingDeps

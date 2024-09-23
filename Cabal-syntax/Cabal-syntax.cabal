@@ -135,6 +135,7 @@ library
     Distribution.Types.ConfVar
     Distribution.Types.Dependency
     Distribution.Types.DependencyMap
+    Distribution.Types.DependencySatisfaction
     Distribution.Types.ExeDependency
     Distribution.Types.Executable
     Distribution.Types.Executable.Lens
@@ -158,6 +159,8 @@ library
     Distribution.Types.Library.Lens
     Distribution.Types.LibraryName
     Distribution.Types.LibraryVisibility
+    Distribution.Types.MissingDependency
+    Distribution.Types.MissingDependencyReason
     Distribution.Types.Mixin
     Distribution.Types.Module
     Distribution.Types.ModuleReexport

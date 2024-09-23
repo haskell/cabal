@@ -176,6 +176,9 @@ import Distribution.System
 import Distribution.Types.AnnotatedId
 import Distribution.Types.ComponentInclude
 import Distribution.Types.ComponentName
+import Distribution.Types.DependencySatisfaction
+  ( DependencySatisfaction (..)
+  )
 import Distribution.Types.DumpBuildInfo
 import Distribution.Types.GivenComponent
 import Distribution.Types.LibraryName
@@ -2130,7 +2133,7 @@ elaborateInstallPlan
             elabPkgDescription = case PD.finalizePD
               flags
               elabEnabledSpec
-              (const True)
+              (const Satisfied)
               platform
               (compilerInfo compiler)
               []
