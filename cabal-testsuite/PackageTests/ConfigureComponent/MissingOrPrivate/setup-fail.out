@@ -1,0 +1,16 @@
+# Setup configure
+Configuring library 'foo-internal' for Lib-0.1.0.0...
+# Setup build
+Preprocessing library 'foo-internal' for Lib-0.1.0.0...
+Building library 'foo-internal' for Lib-0.1.0.0...
+# Setup copy
+Installing internal library foo-internal in <PATH>
+# Setup register
+Registering library 'foo-internal' for Lib-0.1.0.0...
+# Setup configure
+Configuring executable 'exe' for Lib-0.1.0.0...
+Error: [Cabal-8010]
+Encountered missing or private dependencies:
+    Lib:{bar-internal,foo-internal} (missing :bar-internal),
+    base <=1.0 (installed: <VERSION>),
+    package-that-does-not-exist (missing)
