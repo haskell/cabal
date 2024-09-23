@@ -9,15 +9,22 @@
 module UnitTests.Distribution.Client.VCS (tests) where
 
 import Distribution.Client.Compat.Prelude
-import Distribution.Client.RebuildMonad
-  ( execRebuild
+import Distribution.Client.RebuildMonad (execRebuild)
+import Distribution.Client.Types.SourceRepo
+  ( SourceRepoProxy
+  , SourceRepositoryPackage (..)
   )
-import Distribution.Client.Types.SourceRepo (SourceRepoProxy, SourceRepositoryPackage (..))
 import Distribution.Client.VCS
 import Distribution.Simple.Program
-import Distribution.System (OS (Windows), buildOS)
+import Distribution.System
+  ( OS (Windows)
+  , buildOS
+  )
 import Distribution.Verbosity as Verbosity
-import Test.Utils.TempTestDir (removeDirectoryRecursiveHack, withTestDir)
+import Test.Utils.TempTestDir
+  ( removeDirectoryRecursiveHack
+  , withTestDir
+  )
 
 import Data.List (mapAccumL)
 import qualified Data.Map as Map
@@ -26,7 +33,11 @@ import Data.Tuple
 
 import Control.Concurrent (threadDelay)
 import Control.Exception
-import Control.Monad.State (StateT, execStateT, liftIO)
+import Control.Monad.State
+  ( StateT
+  , execStateT
+  , liftIO
+  )
 import qualified Control.Monad.State as State
 
 import System.Directory
@@ -81,6 +92,13 @@ tests mtimeChange =
           ]
     , ignoreTestBecause "for the moment they're not yet working" $
         testGroup
+          "fossil"
+          [ testProperty "check VCS test framework" prop_framework_fossil
+          , testProperty "cloneSourceRepo" prop_cloneRepo_fossil
+          , testProperty "syncSourceRepos" prop_syncRepos_fossil
+          ]
+    , ignoreTestBecause "for the moment they're not yet working" $
+        testGroup
           "mercurial"
           [ testProperty "check VCS test framework" prop_framework_hg
           , testProperty "cloneSourceRepo" prop_cloneRepo_hg
@@ -110,6 +128,12 @@ prop_framework_pijul =
     . prop_framework vcsPijul vcsTestDriverPijul
     . WithBranchingSupport
 
+prop_framework_fossil :: BranchingRepoRecipe 'SubmodulesNotSupported -> Property
+prop_framework_fossil =
+  ioProperty
+    . prop_framework vcsFossil vcsTestDriverFossil
+    . WithBranchingSupport
+
 prop_framework_hg :: BranchingRepoRecipe 'SubmodulesNotSupported -> Property
 prop_framework_hg =
   ioProperty
@@ -135,6 +159,12 @@ prop_cloneRepo_pijul :: BranchingRepoRecipe 'SubmodulesNotSupported -> Property
 prop_cloneRepo_pijul =
   ioProperty
     . prop_cloneRepo vcsPijul vcsTestDriverPijul
+    . WithBranchingSupport
+
+prop_cloneRepo_fossil :: BranchingRepoRecipe 'SubmodulesNotSupported -> Property
+prop_cloneRepo_fossil =
+  ioProperty
+    . prop_cloneRepo vcsFossil vcsTestDriverFossil
     . WithBranchingSupport
 
 prop_cloneRepo_hg :: BranchingRepoRecipe 'SubmodulesNotSupported -> Property
@@ -187,6 +217,22 @@ prop_syncRepos_pijul destRepoDirs syncTargetSetIterations seed =
     . prop_syncRepos
       vcsPijul
       vcsTestDriverPijul
+      destRepoDirs
+      syncTargetSetIterations
+      seed
+    . WithBranchingSupport
+
+prop_syncRepos_fossil
+  :: RepoDirSet
+  -> SyncTargetIterations
+  -> PrngSeed
+  -> BranchingRepoRecipe 'SubmodulesNotSupported
+  -> Property
+prop_syncRepos_fossil destRepoDirs syncTargetSetIterations seed =
+  ioProperty
+    . prop_syncRepos
+      vcsFossil
+      vcsTestDriverFossil
       destRepoDirs
       syncTargetSetIterations
       seed
@@ -1073,3 +1119,51 @@ vcsTestDriverHg verbosity vcs _ repoRoot =
     hg = runProgramInvocation verbosity . hgInvocation
     hg' = getProgramInvocationOutput verbosity . hgInvocation
     verboseArg = ["--quiet" | verbosity < Verbosity.normal]
+
+vcsTestDriverFossil
+  :: Verbosity
+  -> VCS ConfiguredProgram
+  -> FilePath
+  -> FilePath
+  -> VCSTestDriver
+vcsTestDriverFossil verbosity vcs _ repoRoot =
+  VCSTestDriver
+    { vcsVCS = vcs
+    , vcsRepoRoot = repoRoot
+    , vcsIgnoreFiles = Set.empty
+    , vcsInit = fossil $ ["init"] ++ verboseArg
+    , vcsAddFile = \_ filename ->
+        fossil $ ["add"] ++ [filename]
+    , vcsSubmoduleDriver = \_ ->
+        fail "vcsSubmoduleDriver: fossil submodules not supported"
+    , vcsAddSubmodule = \_ _ _ ->
+        fail "vcsAddSubmodule: fossil submodules not supported"
+    , vcsCommitChanges = \_state -> do
+        fossil $
+          [ "--user-override"
+          , "author"
+          , "--comment"
+          , "a patch"
+          , "commit"
+          ]
+            ++ verboseArg
+        commit <- fossil' ["timeline", "--format", "%H", "--type", "ci"]
+        let commit' = takeWhile (not . isSpace) commit
+        return (Just commit')
+    , vcsTagState = \_ tagname ->
+        fossil ["tag", "add", "--user-override", "author", tagname]
+    , vcsSwitchBranch = \RepoState{allBranches} branchname -> do
+        unless (branchname `Map.member` allBranches) $
+          fossil ["branch", "new", branchname]
+        fossil $ ["update", branchname] ++ verboseArg
+    , vcsCheckoutTag = Left $ \tagname ->
+        fossil $ ["update", tagname] ++ verboseArg
+    }
+  where
+    fossilInvocation args =
+      (programInvocation (vcsProgram vcs) args)
+        { progInvokeCwd = Just repoRoot
+        }
+    fossil = runProgramInvocation verbosity . fossilInvocation
+    fossil' = getProgramInvocationOutput verbosity . fossilInvocation
+    verboseArg = ["--verbose" | verbosity > Verbosity.normal]

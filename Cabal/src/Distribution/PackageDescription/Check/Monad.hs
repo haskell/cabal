@@ -92,6 +92,7 @@ data CheckInterface m = CheckInterface
 data CheckPackageContentOps m = CheckPackageContentOps
   { doesFileExist :: FilePath -> m Bool
   , doesDirectoryExist :: FilePath -> m Bool
+  , doesPathExist :: FilePath -> m Bool
   , getDirectoryContents :: FilePath -> m [FilePath]
   , getFileContents :: FilePath -> m BS.ByteString
   }

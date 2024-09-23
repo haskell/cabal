@@ -32,6 +32,7 @@ module Distribution.Client.VCS
   , knownVCSs
   , vcsBzr
   , vcsDarcs
+  , vcsFossil
   , vcsGit
   , vcsHg
   , vcsSvn
@@ -293,7 +294,7 @@ syncSourceRepos verbosity vcs repos = do
 knownVCSs :: Map RepoType (VCS Program)
 knownVCSs = Map.fromList [(vcsRepoType vcs, vcs) | vcs <- vcss]
   where
-    vcss = [vcsBzr, vcsDarcs, vcsGit, vcsHg, vcsSvn]
+    vcss = [vcsBzr, vcsDarcs, vcsFossil, vcsGit, vcsHg, vcsSvn]
 
 -- | VCS driver for Bazaar.
 vcsBzr :: VCS Program
@@ -444,6 +445,83 @@ darcsProgram =
         case words str of
           -- "2.8.5 (release)"
           (ver : _) -> ver
+          _ -> ""
+    }
+
+vcsFossil :: VCS Program
+vcsFossil =
+  VCS
+    { vcsRepoType = KnownRepoType Fossil
+    , vcsProgram = fossilProgram
+    , vcsCloneRepo
+    , vcsSyncRepos
+    }
+  where
+    vcsCloneRepo
+      :: Verbosity
+      -> ConfiguredProgram
+      -> SourceRepositoryPackage f
+      -> FilePath
+      -> FilePath
+      -> [ProgramInvocation]
+    vcsCloneRepo verbosity prog repo srcuri destdir =
+      [programInvocation prog cloneArgs]
+      where
+        cloneArgs :: [String]
+        cloneArgs = ["open", srcuri, "--workdir", takeDirectory destdir] ++ tagArg ++ verboseArg
+        tagArg :: [String]
+        tagArg = case srpTag repo of
+          Nothing -> []
+          Just tag -> [tag]
+        verboseArg :: [String]
+        verboseArg = ["--verbose" | verbosity > Verbosity.normal]
+
+    vcsSyncRepos
+      :: Verbosity
+      -> ConfiguredProgram
+      -> [(SourceRepositoryPackage f, FilePath)]
+      -> IO [MonitorFilePath]
+    vcsSyncRepos _ _ [] = return []
+    vcsSyncRepos verbosity prog ((primaryRepo, primaryLocalDir) : secondaryRepos) = do
+      putStrLn $ "primaryLocalDir: " <> show primaryLocalDir
+      vcsSyncRepo verbosity prog primaryRepo primaryLocalDir
+      return
+        [ monitorDirectoryExistence dir
+        | dir <- dirs
+        ]
+      where
+        dirs :: [FilePath]
+        dirs = primaryLocalDir : (snd <$> secondaryRepos)
+
+    vcsSyncRepo verbosity prog repo localDir = do
+      exists <- doesDirectoryExist localDir
+      if exists
+        then fossil localDir ["update"]
+        else fossil (takeDirectory localDir) cloneArgs
+      fossil localDir updateArgs
+      where
+        fossil :: FilePath -> [String] -> IO ()
+        fossil cwd args =
+          runProgramInvocation verbosity $
+            (programInvocation prog args)
+              { progInvokeCwd = Just cwd
+              }
+        cloneArgs =
+          ["clone", (srpLocation repo), "--workdir", localDir]
+            ++ verboseArg
+        verboseArg = ["--verbose" | verbosity > Verbosity.normal]
+        updateArgs = ["update"] ++ tagArgs ++ verboseArg
+        tagArgs = case srpTag repo of
+          Just t -> [t]
+          Nothing -> []
+
+fossilProgram :: Program
+fossilProgram =
+  (simpleProgram "fossil")
+    { programFindVersion = findProgramVersion "version" $ \str ->
+        case words str of
+          -- "This is fossil version 2.23"
+          (_ : _ : _ : _ : ver : _) -> ver
           _ -> ""
     }
 

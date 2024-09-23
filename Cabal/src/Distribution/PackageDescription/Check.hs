@@ -88,6 +88,7 @@ import qualified Distribution.Utils.ShortText as ShortText
 import qualified Distribution.Types.GenericPackageDescription.Lens as L
 
 import Control.Monad
+import qualified Distribution.Compat.Directory as Compat (doesPathExist)
 
 -- $setup
 -- >>> import Control.Arrow ((&&&))
@@ -171,6 +172,7 @@ checkPackageFilesGPD verbosity gpd root =
       CheckPackageContentOps
         { doesFileExist = System.doesFileExist . relative
         , doesDirectoryExist = System.doesDirectoryExist . relative
+        , doesPathExist = Compat.doesPathExist . relative
         , getDirectoryContents = System.Directory.getDirectoryContents . relative
         , getFileContents = BS.readFile . relative
         }
@@ -704,24 +706,25 @@ checkSourceRepos rs = do
 
 checkMissingVcsInfo :: Monad m => [SourceRepo] -> CheckM m ()
 checkMissingVcsInfo rs =
-  let rdirs = concatMap repoTypeDirname knownRepoTypes
+  let rdirs = concatMap repoTypeCheckPath knownRepoTypes
    in checkPkg
         ( \ops -> do
-            us <- or <$> traverse (doesDirectoryExist ops) rdirs
+            us <- or <$> traverse (doesPathExist ops) rdirs
             return (null rs && us)
         )
         (PackageDistSuspicious MissingSourceControl)
   where
-    repoTypeDirname :: KnownRepoType -> [FilePath]
-    repoTypeDirname Darcs = ["_darcs"]
-    repoTypeDirname Git = [".git"]
-    repoTypeDirname SVN = [".svn"]
-    repoTypeDirname CVS = ["CVS"]
-    repoTypeDirname Mercurial = [".hg"]
-    repoTypeDirname GnuArch = [".arch-params"]
-    repoTypeDirname Bazaar = [".bzr"]
-    repoTypeDirname Monotone = ["_MTN"]
-    repoTypeDirname Pijul = [".pijul"]
+    repoTypeCheckPath :: KnownRepoType -> [FilePath]
+    repoTypeCheckPath Darcs = ["_darcs"]
+    repoTypeCheckPath Git = [".git"]
+    repoTypeCheckPath SVN = [".svn"]
+    repoTypeCheckPath CVS = ["CVS"]
+    repoTypeCheckPath Mercurial = [".hg"]
+    repoTypeCheckPath GnuArch = [".arch-params"]
+    repoTypeCheckPath Bazaar = [".bzr"]
+    repoTypeCheckPath Monotone = ["_MTN"]
+    repoTypeCheckPath Pijul = [".pijul"]
+    repoTypeCheckPath Fossil = [".fslckout"]
 
 -- git:// lacks TLS or other encryption, see
 -- https://git-scm.com/book/en/v2/Git-on-the-Server-The-Protocols#_the_cons_4
