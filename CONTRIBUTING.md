@@ -159,13 +159,14 @@ Contributions that touch `cabal-install` are expected to include notes for the Q
 They are a description of an expected result upon calling `cabal-install` with certain parameters,
 and should be written in the body of the ticket or PR under their own heading, like this:
 
-For instance:
+```markdown
+## QA Notes
 
-> \#\# QA Notes
->
-> Calling `cabal haddock-project` should produce documentation for the whole cabal project with the following defaults enabled:
-> * Documentation lives in ./haddocks
-> * The file `./haddocks/index.html` should exist
+Calling `cabal haddock-project` should produce documentation for the whole
+cabal project with the following defaults enabled:
+* Documentation lives in ./haddocks
+* The file `./haddocks/index.html` should exist
+```
 
 Manual QA is not expected to find every possible bug, but to really challenge the assumptions of the contributor, and to verify that their own testing
 of their patch is not influenced by their setup or implicit knowledge of the system.
