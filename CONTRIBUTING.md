@@ -171,8 +171,7 @@ Manual QA is not expected to find every possible bug, but to really challenge th
 of their patch is not influenced by their setup or implicit knowledge of the system.
 
 
-Code Style
----------------
+## Code Style
 
 We use automated formatting with Fourmolu to enforce a unified style across the code bases. It is checked in the CI process.
 After installing Fourmolu 0.12, there are some makefile targets to help formatting
