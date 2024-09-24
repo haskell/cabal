@@ -59,7 +59,8 @@ $ cabal build cabal-tests            # etc...
 
 ## Running tests
 
-**Using GitHub Actions.**
+### Using GitHub Actions.
+
 If you are not in a hurry, the most convenient way to run tests on Cabal
 is to make a branch on GitHub and then open a pull request; our
 continuous integration service on GitHub Actions builds and
@@ -83,7 +84,8 @@ Some tips for using GitHub Actions effectively:
   already failed), be nice to others and cancel the rest of the jobs,
   so that other commits on the build queue can be processed.
 
-**How to debug a failing CI test.**
+### How to debug a failing CI test.
+
 One of the annoying things about running tests on CI is when they
 fail, there is often no easy way to further troubleshoot the broken
 build.  Here are some guidelines for debugging continuous integration
@@ -111,7 +113,8 @@ failures:
 If none of these let you reproduce, there might be some race condition
 or continuous integration breakage; please file a bug.
 
-**Running tests locally.**
+### Running tests locally.
+
 To run tests locally with `cabal`, you will need to know the
 name of the test suite you want.  Cabal and cabal-install have
 several.  Also, you'll want to read [Where are my build products?](http://cabal.readthedocs.io/en/latest/nix-local-build.html#where-are-my-build-products)
