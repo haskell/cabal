@@ -1,7 +1,6 @@
 # Contributing to Cabal
 
-Building Cabal for hacking
---------------------------
+## Building Cabal for hacking
 
 If you use the `cabal` executable from the latest version of the
 [cabal-install](https://hackage.haskell.org/package/cabal-install) package
@@ -58,8 +57,7 @@ $ cabal build Cabal-tests:unit-tests # build Cabal's unit test suite
 $ cabal build cabal-tests            # etc...
 ```
 
-Running tests
--------------
+## Running tests
 
 **Using GitHub Actions.**
 If you are not in a hurry, the most convenient way to run tests on Cabal
@@ -150,8 +148,7 @@ For these test executables, `-p` which applies a regex filter to the test
 names. When running `cabal-install` test suites, one need only use `cabal test` or
 `cabal run <test-target>` in order to test locally.
 
-QA Notes
---------
+## QA Notes
 
 Manual Quality Assurance (QA) is performed to ensure that the changes impacting
 the command-line interface, whether adding or modifying a behaviour,
@@ -186,15 +183,13 @@ the code base.
 * `make style-modified` - Format files modified in the current tree.
 * `make style-commit COMMIT=<ref>` - Format files modified between HEAD and the given reference.
 
-Whitespace Conventions
-----------------------
+## Whitespace Conventions
 
 We use automated whitespace convention checking. Violations can be fixed by
 running [fix-whitespace](https://hackage.haskell.org/package/fix-whitespace). If
 you push a fix of a whitespace violation, please do so in a _separate commit_.
 
-Other Conventions
------------------
+## Other Conventions
 
 * Format your commit messages [in the standard way](https://chris.beams.io/posts/git-commit/#seven-rules).
 
@@ -254,8 +249,7 @@ Other Conventions
   #endif
   ```
 
-GitHub Ticket Conventions
--------------------
+## GitHub Ticket Conventions
 
 Each major `Cabal`/`cabal-install` release (e.g. 3.4, 3.6, etc.) has a
 corresponding GitHub Project and milestone. A ticket is included in a release's
@@ -268,8 +262,7 @@ accepting a fix in that release, i.e. we would very much appreciate someone
 working on it, but are not committing to actively sourcing someone to work on
 it.
 
-GitHub Pull Request Conventions
--------------------
+## GitHub Pull Request Conventions
 
 Every (non-backport) pull request has to go through a review and get 2
 approvals. After this is done, the author of the pull request is expected to add
@@ -310,8 +303,7 @@ think it does not warrant an issue). Feel free to open a new issue (or new
 issues) when appropriate.
 
 
-Changelog
----------
+## Changelog
 
 Anything that changes `cabal-install:exe:cabal` or changes exports from library
 modules or changes behaviour of functions exported from packages published to
@@ -365,8 +357,7 @@ At release time, the entries will be merged with
 In addition, if you're changing the `.cabal` file format specification you should
 add an entry in `doc/file-format-changelog.rst`.
 
-Communicating
--------------
+## Communicating
 
 There are a few main venues of communication:
 
@@ -379,8 +370,7 @@ There are a few main venues of communication:
   * You can join the channel using a web client, even anonymously: https://web.libera.chat/#hackage
   * Alternatively you can join it using [matrix](https://matrix.org/): https://matrix.to/#/#hackage:libera.chat
 
-Releases
---------
+## Releases
 
 Notes for how to make a release are at the
 wiki page ["Making a release"](https://github.com/haskell/cabal/wiki/Making-a-release).
@@ -388,8 +378,7 @@ Currently, [@emilypi](https://github.com/emilypi), [@fgaz](https://github.com/fg
 `haskell.org/cabal`, and [@Mikolaj](https://github.com/Mikolaj) is the point of contact for getting
 permissions.
 
-Preview Releases
-----------------
+## Preview Releases
 
 We make preview releases available to facilitate testing of development builds.
 
@@ -407,8 +396,7 @@ To reproduce these locally, set up an Alpine build environment using GHCup,
 and then build by calling `cabal build cabal-install --enable-executable-static`.
 
 
-API Documentation
------------------
+## API Documentation
 
 Auto-generated API documentation for the `master` branch of Cabal is automatically uploaded here: http://haskell.github.io/cabal-website/doc/html/Cabal/.
 
@@ -416,8 +404,7 @@ Auto-generated API documentation for the `master` branch of Cabal is automatical
 
 You can contribute by triaging issues which may include reproducing bug reports or asking for vital information, such as version numbers or reproduction instructions. If you would like to start triaging issues, one easy way to get started is to [subscribe to cabal on CodeTriage](https://www.codetriage.com/haskell/cabal).
 
-Hackage Revisions
------------------
+## Hackage Revisions
 
 We are reactive rather than proactive with revising bounds on our dependencies
 for code already released on Hackage. If you would benefit from a version bump,
