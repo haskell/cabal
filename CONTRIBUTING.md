@@ -59,6 +59,9 @@ $ cabal build cabal-tests            # etc...
 
 ## Running tests
 
+There are two ways to run tests: in CI with GitHub actions and locally with
+`./validate.sh`.
+
 ### Using GitHub Actions.
 
 If you are not in a hurry, the most convenient way to run tests on Cabal
@@ -114,6 +117,9 @@ If none of these let you reproduce, there might be some race condition
 or continuous integration breakage; please file a bug.
 
 ### Running tests locally.
+
+The [`./validate.sh`](./validate.sh) script runs all the test suites. It takes
+various options to restrict the test suites it runs; use `--help` to list them.
 
 To run tests locally with `cabal`, you will need to know the
 name of the test suite you want.  Cabal and cabal-install have
