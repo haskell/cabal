@@ -475,8 +475,8 @@ runTestM mode m =
             b <- diff ["-uw"] expect_fp actual_fp
             unless b . void $ diff ["-u"] expect_fp actual_fp
             if accept
-                then do liftIO $ putStrLn $ "Writing actual test output to " <> testExpectFile env
-                        liftIO $ writeFileNoCR (testExpectFile env) actual
+                then do liftIO $ putStrLn $ "Writing actual test output to " <> testExpectAcceptFile env
+                        liftIO $ writeFileNoCR (testExpectAcceptFile env) actual
                         pure (pure ())
                 else pure (E.throwIO TestCodeFail)
          -- normal test, output matches
@@ -880,10 +880,17 @@ testUserCabalConfigFile env = testCabalDir env </> "config"
 
 -- | The file where the expected output of the test lives
 --
--- Note: This needs to point to `testSourceDir` so we write @--accept@ output
--- in the correct place.
+-- Pointing to the @testTmpDir@ allows us to modify the expected output if
+-- needed, to adapt it to outcomes of previous steps in the test.
 testExpectFile :: TestEnv -> FilePath
-testExpectFile env = testSourceDir env </> testName env <.> "out"
+testExpectFile env = testTmpDir env </> testName env <.> "out"
+
+-- | The file where the expected output of the test is written in @--accept@ mode
+--
+-- Note: This needs to point to `testSourceDir` so the output is visible in the
+-- user's repository.
+testExpectAcceptFile :: TestEnv -> FilePath
+testExpectAcceptFile env = testSourceDir env </> testName env <.> "out"
 
 -- | Where we store the actual output
 testActualFile :: TestEnv -> FilePath
