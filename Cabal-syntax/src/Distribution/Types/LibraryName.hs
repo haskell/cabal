@@ -18,11 +18,11 @@ module Distribution.Types.LibraryName
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import qualified Data.List.NonEmpty as NEL
 import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.Types.UnqualComponentName
 
+import qualified Data.List.NonEmpty as NEL
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
 
