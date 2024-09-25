@@ -511,8 +511,6 @@ ppHsc2hs bi lbi clbi =
             withResponseFile
               verbosity
               defaultTempFileOptions
-              mbWorkDir
-              (makeSymbolicPath $ takeDirectory outFile)
               "hsc2hs-response.txt"
               Nothing
               pureArgs

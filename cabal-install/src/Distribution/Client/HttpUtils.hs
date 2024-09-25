@@ -467,7 +467,6 @@ curlTransport prog =
   where
     gethttp verbosity uri etag destPath reqHeaders = do
       withTempFile
-        (takeDirectory destPath)
         "curl-headers.txt"
         $ \tmpFile tmpHandle -> do
           hClose tmpHandle
@@ -675,10 +674,9 @@ wgetTransport prog =
 
     posthttpfile verbosity uri path auth =
       withTempFile
-        (takeDirectory path)
         (takeFileName path)
         $ \tmpFile tmpHandle ->
-          withTempFile (takeDirectory path) "response" $
+          withTempFile "response" $
             \responseFile responseHandle -> do
               hClose responseHandle
               (body, boundary) <- generateMultipartBody path
@@ -702,7 +700,7 @@ wgetTransport prog =
                 evaluate $ force (code, resp)
 
     puthttpfile verbosity uri path auth headers =
-      withTempFile (takeDirectory path) "response" $
+      withTempFile "response" $
         \responseFile responseHandle -> do
           hClose responseHandle
           let args =
@@ -824,7 +822,6 @@ powershellTransport prog =
 
     posthttpfile verbosity uri path auth =
       withTempFile
-        (takeDirectory path)
         (takeFileName path)
         $ \tmpFile tmpHandle -> do
           (body, boundary) <- generateMultipartBody path

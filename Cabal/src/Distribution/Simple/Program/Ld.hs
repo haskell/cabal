@@ -83,8 +83,6 @@ combineObjectFiles verbosity lbi ldProg target files = do
     middle = ld middleArgs
     final = ld finalArgs
 
-    targetDir = takeDirectorySymbolicPath target
-
     invokeWithResponseFile :: FilePath -> ProgramInvocation
     invokeWithResponseFile atFile =
       ld $ simpleArgs ++ ['@' : atFile]
@@ -106,7 +104,7 @@ combineObjectFiles verbosity lbi ldProg target files = do
 
   if oldVersionManualOverride || responseArgumentsNotSupported
     then run $ multiStageProgramInvocation simple (initial, middle, final) (map getSymbolicPath files)
-    else withResponseFile verbosity defaultTempFileOptions mbWorkDir targetDir "ld.rsp" Nothing (map getSymbolicPath files) $
+    else withResponseFile verbosity defaultTempFileOptions "ld.rsp" Nothing (map getSymbolicPath files) $
       \path -> runProgramInvocation verbosity $ invokeWithResponseFile path
   where
     tmpfile = target <.> "tmp" -- perhaps should use a proper temp file

@@ -124,6 +124,11 @@ jobs:
           rm -rf ~/.config/cabal
           rm -rf ~/.cache/cabal
 
+      - name: "WIN: Setup TMP environment variable"
+        if: runner.os == 'Windows'
+        run: |
+           echo "TMP=${{ runner.temp }}" >> "$GITHUB_ENV"
+
       - uses: actions/checkout@v4
 
       # See https://github.com/haskell/cabal/blob/master/CONTRIBUTING.md#hackage-revisions
@@ -396,7 +401,6 @@ jobs:
         # We need to build an array dynamically to inject the appropiate env var in a previous job,
         # see https://docs.github.com/en/actions/learn-github-actions/expressions#fromjson
         ghc: ${{ fromJSON (needs.validate.outputs.GHC_FOR_RELEASE) }}
-
     defaults:
       run:
         shell: ${{ matrix.sys.shell }}
@@ -413,11 +417,16 @@ jobs:
           esac
           echo "CABAL_ARCH=$arch" >> "$GITHUB_ENV"
 
-      - name: Work around XDG directories existence (haskell-actions/setup#62)
+      - name: "MAC: Work around XDG directories existence (haskell-actions/setup#62)"
         if: runner.os == 'macOS'
         run: |
           rm -rf ~/.config/cabal
           rm -rf ~/.cache/cabal
+
+      - name: "WIN: Setup TMP environment variable"
+        if: runner.os == 'Windows'
+        run: |
+           echo "TMP=${{ runner.temp }}" >> "$GITHUB_ENV"
 
       - uses: actions/checkout@v4
 

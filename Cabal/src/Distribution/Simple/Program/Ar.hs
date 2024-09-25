@@ -154,7 +154,7 @@ createArLibArchive verbosity lbi targetPath files = do
                 (initial, middle, final)
                 (map getSymbolicPath files)
           ]
-      else withResponseFile verbosity defaultTempFileOptions mbWorkDir tmpDir "ar.rsp" Nothing (map getSymbolicPath files) $
+      else withResponseFile verbosity defaultTempFileOptions "ar.rsp" Nothing (map getSymbolicPath files) $
         \path -> runProgramInvocation verbosity $ invokeWithResponseFile path
 
     unless

@@ -156,7 +156,6 @@ import System.Directory
   ( canonicalizePath
   , createDirectoryIfMissing
   , doesFileExist
-  , getTemporaryDirectory
   , removeFile
   )
 import System.FilePath
@@ -2693,10 +2692,9 @@ checkForeignDeps pkg lbi verbosity =
 
     builds :: String -> [ProgArg] -> IO Bool
     builds program args =
-      do
-        tempDir <- makeSymbolicPath <$> getTemporaryDirectory
-        withTempFileCwd mbWorkDir tempDir ".c" $ \cName cHnd ->
-          withTempFileCwd mbWorkDir tempDir "" $ \oNname oHnd -> do
+      withTempFileCwd ".c" $ \cName cHnd ->
+        withTempFileCwd "" $ \oNname oHnd ->
+          do
             hPutStrLn cHnd program
             hClose cHnd
             hClose oHnd
@@ -2708,8 +2706,8 @@ checkForeignDeps pkg lbi verbosity =
                 (withPrograms lbi)
                 (getSymbolicPath cName : "-o" : getSymbolicPath oNname : args)
             return True
-        `catchIO` (\_ -> return False)
-        `catchExit` (\_ -> return False)
+            `catchIO` (\_ -> return False)
+            `catchExit` (\_ -> return False)
 
     explainErrors Nothing [] = return () -- should be impossible!
     explainErrors _ _
