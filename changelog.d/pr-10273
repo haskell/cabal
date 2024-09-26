@@ -14,7 +14,7 @@ incompatible version:
 ```
 Error: [Cabal-8010]
 Encountered missing or private dependencies:
-    Lib:{bar-internal,foo-internal} (missing :bar-internal),
+    Lib:\{bar-internal,foo-internal\} (missing :bar-internal),
     base <=1.0 (installed: 4.18.2.1),
     package-that-does-not-exist (missing)
 ```
