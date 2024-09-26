@@ -55,7 +55,7 @@ import qualified Data.Aeson as JSON
 import qualified Data.ByteString.Lazy as BSL
 import Control.Monad (unless, when, void, forM_, liftM2, liftM4)
 import Control.Monad.Catch ( bracket_ )
-import Control.Monad.Trans.Reader (withReaderT, runReaderT)
+import Control.Monad.Trans.Reader (asks, withReaderT, runReaderT)
 import Control.Monad.IO.Class (MonadIO (..))
 import qualified Crypto.Hash.SHA256 as SHA256
 import qualified Data.ByteString.Base16 as Base16
@@ -70,6 +70,7 @@ import System.Directory
 import Control.Retry (exponentialBackoff, limitRetriesByCumulativeDelay)
 import Network.Wait (waitTcpVerbose)
 import System.Environment
+import qualified System.FilePath.Glob as Glob (globDir1, compile)
 import System.Process
 import System.IO
 
@@ -726,7 +727,7 @@ recordHeader args = do
 
 ------------------------------------------------------------------------
 -- * Subprocess run results
-assertFailure :: WithCallStack (String -> m ())
+assertFailure :: WithCallStack (String -> m a)
 assertFailure msg = withFrozenCallStack $ error msg
 
 assertExitCode :: MonadIO m => WithCallStack (ExitCode -> Result -> m ())
@@ -846,6 +847,53 @@ getScriptCacheDirectory script = do
     hashinput <- liftIO $ canonicalizePath script
     let hash = C.unpack . Base16.encode . C.take 26 . SHA256.hash . C.pack $ hashinput
     return $ cabalDir </> "script-builds" </> hash
+
+------------------------------------------------------------------------
+-- * Globs
+
+-- | Match a glob from a root directory and return the results.
+matchGlob :: MonadIO m => FilePath -> String -> m [FilePath]
+matchGlob root glob = do
+  liftIO $ Glob.globDir1 (Glob.compile glob) root
+
+-- | Assert that a glob matches at least one path in the given root directory.
+assertGlobMatches :: MonadIO m => WithCallStack (FilePath -> String -> m ())
+assertGlobMatches root glob = do
+  results <- matchGlob root glob
+  withFrozenCallStack $
+    when (null results) $
+      assertFailure $
+        "Expected glob " <> show glob <> " to match in " <> show root
+
+-- | Assert that a glob matches no paths in the given root directory.
+assertGlobDoesNotMatch :: MonadIO m => WithCallStack (FilePath -> String -> m ())
+assertGlobDoesNotMatch root glob = do
+  results <- matchGlob root glob
+  withFrozenCallStack $
+    unless (null results) $
+      assertFailure $
+        "Expected glob "
+          <> show glob
+          <> " to not match any paths in "
+          <> show root
+          <> ", but the following matches were found:"
+          <> unlines (map ("* " <>) results)
+
+-- | Assert that a glob matches a path in the given root directory.
+--
+-- The root directory is determined from the `TestEnv` with a function like `testDistDir`.
+assertGlobMatchesTestDir :: WithCallStack ((TestEnv -> FilePath) -> String -> TestM ())
+assertGlobMatchesTestDir rootSelector glob = do
+  root <- asks rootSelector
+  assertGlobMatches root glob
+
+-- | Assert that a glob matches a path in the given root directory.
+--
+-- The root directory is determined from the `TestEnv` with a function like `testDistDir`.
+assertGlobDoesNotMatchTestDir :: WithCallStack ((TestEnv -> FilePath) -> String -> TestM ())
+assertGlobDoesNotMatchTestDir rootSelector glob = do
+  root <- asks rootSelector
+  assertGlobDoesNotMatch root glob
 
 ------------------------------------------------------------------------
 -- * Skipping tests
