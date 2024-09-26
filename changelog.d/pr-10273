@@ -1,6 +1,6 @@
 ---
 synopsis: "Show why `cabal act-as-setup configure` failed"
-packages: Cabal
+packages: [Cabal]
 prs: 10273
 ---
 
