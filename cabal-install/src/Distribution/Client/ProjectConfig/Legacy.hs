@@ -1408,7 +1408,8 @@ legacySharedConfigFieldDescrs constraintSrc =
               configPackageDBs
               (\v conf -> conf{configPackageDBs = v})
           ]
-        . filterFields (["verbose", "builddir"] ++ map optionName installDirsOptions)
+        . aliasField "keep-temp-files" "haddock-keep-temp-files"
+        . filterFields (["verbose", "builddir", "keep-temp-files"] ++ map optionName installDirsOptions)
         . commandOptionsToFields
         $ configureOptions ParseArgs
     , liftFields
