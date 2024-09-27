@@ -862,8 +862,8 @@ convertLegacyBuildOnlyFlags
   installFlags
   clientInstallFlags
   haddockFlags
-  _
-  _ =
+  _testFlags
+  _benchmarkFlags =
     ProjectConfigBuildOnly{..}
     where
       projectConfigClientInstallFlags = clientInstallFlags
