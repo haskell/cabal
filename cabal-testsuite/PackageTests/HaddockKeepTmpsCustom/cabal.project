@@ -1,0 +1,3 @@
+packages: .
+
+haddock-keep-temp-files: true
