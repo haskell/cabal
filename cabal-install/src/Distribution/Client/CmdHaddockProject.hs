@@ -85,7 +85,6 @@ import Distribution.Simple.Setup
   , HaddockProjectFlags (..)
   , HaddockTarget (..)
   , Visibility (..)
-  , defaultCommonSetupFlags
   , defaultHaddockFlags
   , haddockProjectCommand
   )
@@ -118,62 +117,6 @@ haddockProjectAction flags _extraArgs globalFlags = do
   createDirectoryIfMissingVerbose verbosity True outputDir
 
   warn verbosity "haddock-project command is experimental, it might break in the future"
-
-  -- build all packages with appropriate haddock flags
-  let commonFlags =
-        defaultCommonSetupFlags
-          { setupVerbosity = haddockProjectVerbosity flags
-          }
-      haddockFlags =
-        defaultHaddockFlags
-          { haddockCommonFlags = commonFlags
-          , haddockHtml = Flag True
-          , -- one can either use `--haddock-base-url` or
-            -- `--haddock-html-location`.
-            haddockBaseUrl =
-              if localStyle
-                then Flag ".."
-                else NoFlag
-          , haddockProgramPaths = haddockProjectProgramPaths flags
-          , haddockProgramArgs = haddockProjectProgramArgs flags
-          , haddockHtmlLocation =
-              if fromFlagOrDefault False (haddockProjectHackage flags)
-                then Flag "https://hackage.haskell.org/package/$pkg-$version/docs"
-                else haddockProjectHtmlLocation flags
-          , haddockHoogle = haddockProjectHoogle flags
-          , haddockExecutables = haddockProjectExecutables flags
-          , haddockTestSuites = haddockProjectTestSuites flags
-          , haddockBenchmarks = haddockProjectBenchmarks flags
-          , haddockForeignLibs = haddockProjectForeignLibs flags
-          , haddockInternal = haddockProjectInternal flags
-          , haddockCss = haddockProjectCss flags
-          , haddockLinkedSource = Flag True
-          , haddockQuickJump = Flag True
-          , haddockHscolourCss = haddockProjectHscolourCss flags
-          , haddockContents =
-              if localStyle
-                then Flag (toPathTemplate "../index.html")
-                else NoFlag
-          , haddockIndex =
-              if localStyle
-                then Flag (toPathTemplate "../doc-index.html")
-                else NoFlag
-          , haddockKeepTempFiles = haddockProjectKeepTempFiles flags
-          , haddockResourcesDir = haddockProjectResourcesDir flags
-          , haddockUseUnicode = haddockProjectUseUnicode flags
-          -- NOTE: we don't pass `haddockOutputDir`. If we do, we'll need to
-          -- make sure `InstalledPackageInfo` contains the right path to
-          -- haddock interfaces.  Instead we build documentation inside
-          -- `dist-newstyle` directory and copy it to the output directory.
-          }
-      nixFlags =
-        (commandDefaultFlags CmdHaddock.haddockCommand)
-          { NixStyleOptions.haddockFlags = haddockFlags
-          , NixStyleOptions.configFlags =
-              (NixStyleOptions.configFlags (commandDefaultFlags CmdBuild.buildCommand))
-                { configCommonFlags = commonFlags
-                }
-          }
 
   --
   -- Construct the build plan and infer the list of packages which haddocks
@@ -409,7 +352,62 @@ haddockProjectAction flags _extraArgs globalFlags = do
         Nothing
         flags'
   where
-    verbosity = fromFlagOrDefault normal (haddockProjectVerbosity flags)
+    -- build all packages with appropriate haddock flags
+    commonFlags = haddockProjectCommonFlags flags
+
+    verbosity = fromFlagOrDefault normal (setupVerbosity commonFlags)
+
+    haddockFlags =
+      defaultHaddockFlags
+        { haddockCommonFlags = commonFlags
+        , haddockHtml = Flag True
+        , -- one can either use `--haddock-base-url` or
+          -- `--haddock-html-location`.
+          haddockBaseUrl =
+            if localStyle
+              then Flag ".."
+              else NoFlag
+        , haddockProgramPaths = haddockProjectProgramPaths flags
+        , haddockProgramArgs = haddockProjectProgramArgs flags
+        , haddockHtmlLocation =
+            if fromFlagOrDefault False (haddockProjectHackage flags)
+              then Flag "https://hackage.haskell.org/package/$pkg-$version/docs"
+              else haddockProjectHtmlLocation flags
+        , haddockHoogle = haddockProjectHoogle flags
+        , haddockExecutables = haddockProjectExecutables flags
+        , haddockTestSuites = haddockProjectTestSuites flags
+        , haddockBenchmarks = haddockProjectBenchmarks flags
+        , haddockForeignLibs = haddockProjectForeignLibs flags
+        , haddockInternal = haddockProjectInternal flags
+        , haddockCss = haddockProjectCss flags
+        , haddockLinkedSource = Flag True
+        , haddockQuickJump = Flag True
+        , haddockHscolourCss = haddockProjectHscolourCss flags
+        , haddockContents =
+            if localStyle
+              then Flag (toPathTemplate "../index.html")
+              else NoFlag
+        , haddockIndex =
+            if localStyle
+              then Flag (toPathTemplate "../doc-index.html")
+              else NoFlag
+        , haddockKeepTempFiles = haddockProjectKeepTempFiles flags
+        , haddockResourcesDir = haddockProjectResourcesDir flags
+        , haddockUseUnicode = haddockProjectUseUnicode flags
+        -- NOTE: we don't pass `haddockOutputDir`. If we do, we'll need to
+        -- make sure `InstalledPackageInfo` contains the right path to
+        -- haddock interfaces.  Instead we build documentation inside
+        -- `dist-newstyle` directory and copy it to the output directory.
+        }
+
+    nixFlags =
+      (commandDefaultFlags CmdHaddock.haddockCommand)
+        { NixStyleOptions.haddockFlags = haddockFlags
+        , NixStyleOptions.configFlags =
+            (NixStyleOptions.configFlags (commandDefaultFlags CmdBuild.buildCommand))
+              { configCommonFlags = commonFlags
+              }
+        }
 
     -- Build a self contained directory which contains haddocks of all
     -- transitive dependencies; or depend on `--haddocks-html-location` to
