@@ -160,6 +160,7 @@ import qualified Distribution.Deprecated.ParseUtils as ParseUtils
 import Distribution.Parsec (ParsecParser, parsecFilePath, parsecOptCommaList, parsecToken)
 import Distribution.Simple.Command
   ( CommandUI (commandOptions)
+  , OptionField
   , ShowOrParseArgs (..)
   , commandDefaultFlags
   )
@@ -1314,6 +1315,19 @@ configFieldDescriptions src =
             ParseArgs
        ]
   where
+    toSavedConfig
+      :: (FieldDescr a -> FieldDescr SavedConfig)
+      -- Lifting function.
+      -> [OptionField a]
+      -- Option fields.
+      -> [String]
+      -- Fields to exclude, by name.
+      -> [FieldDescr a]
+      -- Field replacements.
+      --
+      -- If an option is found with the same name as one of these replacement
+      -- fields, the replacement field is used instead of the option.
+      -> [FieldDescr SavedConfig]
     toSavedConfig lift options exclusions replacements =
       [ lift (fromMaybe field replacement)
       | opt <- options
