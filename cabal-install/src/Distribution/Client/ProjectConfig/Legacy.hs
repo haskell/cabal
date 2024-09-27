@@ -2073,9 +2073,3 @@ showTokenQ "" = Disp.empty
 showTokenQ x@('-' : '-' : _) = Disp.text (show x)
 showTokenQ x@('.' : []) = Disp.text (show x)
 showTokenQ x = showToken x
-
--- Handy util
-addFields
-  :: [FieldDescr a]
-  -> ([FieldDescr a] -> [FieldDescr a])
-addFields = (++)
