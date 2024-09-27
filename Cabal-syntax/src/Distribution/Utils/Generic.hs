@@ -153,8 +153,8 @@ wrapLine width = wrap 0 []
 
 -- | Gets the contents of a file, but guarantee that it gets closed.
 --
--- The file is read lazily but if it is not fully consumed by the action then
--- the remaining input is truncated and the file is closed.
+-- The file is read lazily; if it is not fully consumed by the action then an
+-- exception is thrown.
 withFileContents :: FilePath -> (String -> IO a) -> IO a
 withFileContents name action =
   withFile
