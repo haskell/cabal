@@ -1830,7 +1830,7 @@ haddockFlagsFields =
   , name `notElem` exclusions
   ]
   where
-    exclusions = ["verbose", "builddir", "for-hackage"]
+    exclusions = ["verbose", "builddir", "cabal-file", "for-hackage"]
 
 -- | Fields for the 'init' section.
 initFlagsFields :: [FieldDescr IT.InitFlags]
