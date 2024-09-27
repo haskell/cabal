@@ -44,10 +44,14 @@ import Distribution.Client.FileMonitor
 import Distribution.Client.JobControl
 import Distribution.Client.Setup
   ( CommonSetupFlags
-  , filterCommonFlags
+  , filterBenchmarkFlags
+  , filterBuildFlags
   , filterConfigureFlags
+  , filterCopyFlags
   , filterHaddockArgs
   , filterHaddockFlags
+  , filterRegisterFlags
+  , filterReplFlags
   , filterTestFlags
   )
 import Distribution.Client.SetupWrapper
@@ -272,9 +276,7 @@ buildAndRegisterUnpackedPackage
         | otherwise = return ()
 
       mbWorkDir = useWorkingDir scriptOptions
-      commonFlags v =
-        flip filterCommonFlags v $
-          setupHsCommonFlags verbosity mbWorkDir builddir
+      commonFlags = setupHsCommonFlags verbosity mbWorkDir builddir
 
       configureCommand = Cabal.configureCommand defaultProgramDb
       configureFlags v =
@@ -284,19 +286,26 @@ buildAndRegisterUnpackedPackage
             plan
             rpkg
             pkgshared
-            (commonFlags v)
+            commonFlags
       configureArgs _ = setupHsConfigureArgs pkg
 
       buildCommand = Cabal.buildCommand defaultProgramDb
-      buildFlags v = setupHsBuildFlags comp_par_strat pkg pkgshared $ commonFlags v
+      buildFlags v =
+        flip filterBuildFlags v $
+          setupHsBuildFlags
+            comp_par_strat
+            pkg
+            pkgshared
+            commonFlags
       buildArgs _ = setupHsBuildArgs pkg
 
       copyFlags destdir v =
-        setupHsCopyFlags
-          pkg
-          pkgshared
-          (commonFlags v)
-          destdir
+        flip filterCopyFlags v $
+          setupHsCopyFlags
+            pkg
+            pkgshared
+            commonFlags
+            destdir
       -- In theory, we could want to copy less things than those that were
       -- built, but instead, we simply copy the targets that were built.
       copyArgs = buildArgs
@@ -306,23 +315,25 @@ buildAndRegisterUnpackedPackage
         flip filterTestFlags v $
           setupHsTestFlags
             pkg
-            (commonFlags v)
+            commonFlags
       testArgs _ = setupHsTestArgs pkg
 
       benchCommand = Cabal.benchmarkCommand
       benchFlags v =
-        setupHsBenchFlags
-          pkg
-          pkgshared
-          (commonFlags v)
+        flip filterBenchmarkFlags v $
+          setupHsBenchFlags
+            pkg
+            pkgshared
+            commonFlags
       benchArgs _ = setupHsBenchArgs pkg
 
       replCommand = Cabal.replCommand defaultProgramDb
       replFlags v =
-        setupHsReplFlags
-          pkg
-          pkgshared
-          (commonFlags v)
+        flip filterReplFlags v $
+          setupHsReplFlags
+            pkg
+            pkgshared
+            commonFlags
       replArgs _ = setupHsReplArgs pkg
 
       haddockCommand = Cabal.haddockCommand
@@ -332,7 +343,7 @@ buildAndRegisterUnpackedPackage
             pkg
             pkgshared
             buildTimeSettings
-            (commonFlags v)
+            commonFlags
       haddockArgs v =
         flip filterHaddockArgs v $
           setupHsHaddockArgs pkg
@@ -394,11 +405,12 @@ buildAndRegisterUnpackedPackage
           distTempDirectory
           $ \pkgConfDest -> do
             let registerFlags v =
-                  setupHsRegisterFlags
-                    pkg
-                    pkgshared
-                    (commonFlags v)
-                    pkgConfDest
+                  flip filterRegisterFlags v $
+                    setupHsRegisterFlags
+                      pkg
+                      pkgshared
+                      commonFlags
+                      pkgConfDest
             setup (Cabal.registerCommand) Cabal.registerCommonFlags (\v -> return (registerFlags v)) (const [])
 
       withLogging :: (Maybe Handle -> IO r) -> IO r
