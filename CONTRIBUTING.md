@@ -362,7 +362,7 @@ significance: significant
 - Detail number 2
 
 ```
-The package list must be enclosed in square brackets, but they aren't needed for `prs` or `issues`.
+The package list must be enclosed in square brackets and comma-separated, but this isn't needed for `prs` or `issues`.
 
 Only the `synopsis` and `prs` fields are required, but you should also set the others where applicable.
 
