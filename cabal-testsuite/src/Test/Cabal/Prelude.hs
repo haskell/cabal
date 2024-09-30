@@ -356,9 +356,15 @@ cabalGArgs global_args cmd args input = do
             [ "--store-dir=" ++ storeDir | Just storeDir <- [testMaybeStoreDir env] ]
             ++ global_args
 
+        rts_args =
+            if buildOS == Windows
+            then ["+RTS", "--io-manager=native", "-RTS"]
+            else []
+
         cabal_args = global_args'
                   ++ [ cmd, marked_verbose ]
                   ++ extra_args
+                  ++ rts_args
                   ++ args
     defaultRecordMode RecordMarked $ do
     recordHeader ["cabal", cmd]

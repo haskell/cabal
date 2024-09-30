@@ -29,6 +29,7 @@ import System.Exit
 import Data.List (intercalate, isPrefixOf)
 import Distribution.Simple.Program.Db
 import Distribution.Simple.Program
+import Distribution.System
 import Control.Exception
 import qualified Control.Exception as E
 import Control.Monad
@@ -221,7 +222,11 @@ runMain ref m = do
 startServer :: Chan ServerLogMsg -> ScriptEnv -> IO Server
 startServer chan senv = do
     (prog, _) <- requireProgram verbosity ghcProgram (runnerProgramDb senv)
-    let ghc_args = runnerGhcArgs senv Nothing ++ ["--interactive", "-v0", "-ignore-dot-ghci"]
+    let rts_args =
+          if buildOS == Windows
+          then ["+RTS", "--io-manager=native", "-RTS"]
+          else []
+        ghc_args = runnerGhcArgs senv Nothing ++ ["--interactive", "-v0", "-ignore-dot-ghci"] ++ rts_args
         proc_spec = (proc (programPath prog) ghc_args) {
                         create_group = True,
                         -- Closing fds is VERY important to avoid
