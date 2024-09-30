@@ -13,17 +13,11 @@ import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import qualified Data.Text.Lazy as T (toStrict)
 import qualified Data.Text.Lazy.Encoding as T (decodeUtf8)
-import System.Console.ANSI
-  ( Color (Blue, Green, Red)
-  , ColorIntensity (Vivid)
-  , ConsoleLayer (Foreground)
-  , SGR (Reset, SetColor)
-  , setSGRCode
-  )
 import System.Directory (withCurrentDirectory)
 import System.Exit (ExitCode (ExitFailure, ExitSuccess))
 import System.Process.Typed (ExitCodeException (..), proc, readProcess, runProcess)
 
+import ANSI (SGR (BoldBlue, BoldGreen, BoldRed, Reset), setSGR)
 import Cli (Opts (..))
 import ClockUtil (diffAbsoluteTime, formatDiffTime, getAbsoluteTime)
 
@@ -62,10 +56,10 @@ timed opts command args = do
 
   -- TODO: Replace `$HOME` or `opts.cwd` for brevity?
   putStrLn $
-    setSGRCode [SetColor Foreground Vivid Blue]
+    setSGR [BoldBlue]
       <> "$ "
       <> prettyCommand
-      <> setSGRCode [Reset]
+      <> setSGR [Reset]
 
   (exitCode, rawStdout, rawStderr) <-
     if verbose opts
@@ -99,20 +93,20 @@ timed opts command args = do
                 <> T.unlines tailLines
 
       putStrLn $
-        setSGRCode [SetColor Foreground Vivid Green]
+        setSGR [BoldGreen]
           <> "Finished after "
           <> formatDiffTime duration
           <> ": "
           <> prettyCommand
           <> "\nTotal time so far: "
           <> formatDiffTime totalDuration
-          <> setSGRCode [Reset]
+          <> setSGR [Reset]
     ExitFailure exitCode' -> do
       unless (verbose opts) $ do
         T.putStrLn output
 
       putStrLn $
-        setSGRCode [SetColor Foreground Vivid Red]
+        setSGR [BoldRed]
           <> "Failed with exit code "
           <> show exitCode'
           <> " after "
@@ -121,7 +115,7 @@ timed opts command args = do
           <> prettyCommand
           <> "\nTotal time so far: "
           <> formatDiffTime totalDuration
-          <> setSGRCode [Reset]
+          <> setSGR [Reset]
 
       throwIO
         ExitCodeException

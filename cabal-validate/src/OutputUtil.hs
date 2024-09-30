@@ -5,17 +5,10 @@ module OutputUtil
   ) where
 
 import Control.Exception (catch)
-import System.Console.ANSI
-  ( Color (Cyan, Green, Red)
-  , ColorIntensity (Vivid)
-  , ConsoleIntensity (BoldIntensity)
-  , ConsoleLayer (Foreground)
-  , SGR (Reset, SetColor, SetConsoleIntensity)
-  , setSGRCode
-  )
 import qualified System.Console.Terminal.Size as Terminal
 import System.Process.Typed (ExitCodeException)
 
+import ANSI (SGR (BoldCyan, BoldGreen, BoldRed, Reset), setSGR)
 import Cli (Opts (..))
 import ClockUtil (diffAbsoluteTime, formatDiffTime, getAbsoluteTime)
 import System.Exit (exitFailure)
@@ -36,13 +29,13 @@ printHeader title = do
   let left = 3
       right = columns - length title - left - 2
       header =
-        setSGRCode [SetConsoleIntensity BoldIntensity, SetColor Foreground Vivid Cyan]
+        setSGR [BoldCyan]
           <> replicate left '═'
           <> " "
           <> title
           <> " "
           <> replicate right '═'
-          <> setSGRCode [Reset]
+          <> setSGR [Reset]
   putStrLn header
 
 -- | Run an `IO` action and print duration information after it finishes.
@@ -71,24 +64,24 @@ withTiming opts title action = do
   case result of
     Right inner -> do
       putStrLn $
-        setSGRCode [SetColor Foreground Vivid Green]
+        setSGR [BoldGreen]
           <> title
           <> " finished after "
           <> formatDiffTime duration
           <> "\nTotal time so far: "
           <> formatDiffTime totalDuration
-          <> setSGRCode [Reset]
+          <> setSGR [Reset]
 
       pure inner
     Left _procFailed -> do
       putStrLn $
-        setSGRCode [SetColor Foreground Vivid Red]
+        setSGR [BoldRed]
           <> title
           <> " failed after "
           <> formatDiffTime duration
           <> "\nTotal time so far: "
           <> formatDiffTime totalDuration
-          <> setSGRCode [Reset]
+          <> setSGR [Reset]
 
       -- TODO: `--keep-going` mode.
       exitFailure
