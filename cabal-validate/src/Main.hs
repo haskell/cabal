@@ -140,23 +140,25 @@ timedCabalBin opts package component args = do
 -- | Print the configuration for CI logs.
 printConfig :: Opts -> IO ()
 printConfig opts = do
-  putStrLn $
-    "compiler:          "
-      <> compilerExecutable (compiler opts)
-      <> "\ncabal-install:     "
-      <> cabal opts
-      <> "\njobs:              "
-      <> show (jobs opts)
-      <> "\nsteps:             "
-      <> unwords (map displayStep (steps opts))
-      <> "\nHackage tests:     "
-      <> show (hackageTests opts)
-      <> "\nverbose:           "
-      <> show (verbose opts)
-      <> "\nextra compilers:   "
-      <> unwords (extraCompilers opts)
-      <> "\nextra RTS options: "
-      <> unwords (rtsArgs opts)
+  putStr $
+    unlines
+      [ "compiler:          "
+          <> compilerExecutable (compiler opts)
+      , "cabal-install:     "
+          <> cabal opts
+      , "jobs:              "
+          <> show (jobs opts)
+      , "steps:             "
+          <> unwords (map displayStep (steps opts))
+      , "Hackage tests:     "
+          <> show (hackageTests opts)
+      , "verbose:           "
+          <> show (verbose opts)
+      , "extra compilers:   "
+          <> unwords (extraCompilers opts)
+      , "extra RTS options: "
+          <> unwords (rtsArgs opts)
+      ]
 
 -- | Print the versions of tools being used.
 printToolVersions :: Opts -> IO ()
