@@ -402,8 +402,8 @@ runTestM mode m =
                     testSkipSetupTests =  argSkipSetupTests (testCommonArgs args),
                     testHaveCabalShared = runnerWithSharedLib senv,
                     testEnvironment =
-                        -- Try to avoid Unicode output
-                        [ ("LC_ALL", Just "C")
+                        -- Use UTF-8 output on all platforms.
+                        [ ("LC_ALL", Just "en_US.UTF-8")
                         -- Hermetic builds (knot-tied)
                         , ("HOME", Just (testHomeDir env))
                         -- Set CABAL_DIR in addition to HOME, since HOME has no
