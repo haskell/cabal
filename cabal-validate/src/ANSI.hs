@@ -42,22 +42,22 @@ data SGR
   | OnCyan
   | OnWhite
   | OnDefault
-  | BoldBlack
-  | BoldRed
-  | BoldGreen
-  | BoldYellow
-  | BoldBlue
-  | BoldMagenta
-  | BoldCyan
-  | BoldWhite
-  | OnBoldBlack
-  | OnBoldRed
-  | OnBoldGreen
-  | OnBoldYellow
-  | OnBoldBlue
-  | OnBoldMagenta
-  | OnBoldCyan
-  | OnBoldWhite
+  | BrightBlack
+  | BrightRed
+  | BrightGreen
+  | BrightYellow
+  | BrightBlue
+  | BrightMagenta
+  | BrightCyan
+  | BrightWhite
+  | OnBrightBlack
+  | OnBrightRed
+  | OnBrightGreen
+  | OnBrightYellow
+  | OnBrightBlue
+  | OnBrightMagenta
+  | OnBrightCyan
+  | OnBrightWhite
   deriving (Show)
 
 -- Render a single `SGR` sequence.
@@ -87,19 +87,19 @@ renderSGR code =
     OnCyan -> rawSGR 46
     OnWhite -> rawSGR 47
     OnDefault -> rawSGR 49
-    BoldBlack -> rawSGR 90
-    BoldRed -> rawSGR 91
-    BoldGreen -> rawSGR 92
-    BoldYellow -> rawSGR 93
-    BoldBlue -> rawSGR 94
-    BoldMagenta -> rawSGR 95
-    BoldCyan -> rawSGR 96
-    BoldWhite -> rawSGR 97
-    OnBoldBlack -> rawSGR 100
-    OnBoldRed -> rawSGR 101
-    OnBoldGreen -> rawSGR 102
-    OnBoldYellow -> rawSGR 103
-    OnBoldBlue -> rawSGR 104
-    OnBoldMagenta -> rawSGR 105
-    OnBoldCyan -> rawSGR 106
-    OnBoldWhite -> rawSGR 107
+    BrightBlack -> rawSGR 90
+    BrightRed -> rawSGR 91
+    BrightGreen -> rawSGR 92
+    BrightYellow -> rawSGR 93
+    BrightBlue -> rawSGR 94
+    BrightMagenta -> rawSGR 95
+    BrightCyan -> rawSGR 96
+    BrightWhite -> rawSGR 97
+    OnBrightBlack -> rawSGR 100
+    OnBrightRed -> rawSGR 101
+    OnBrightGreen -> rawSGR 102
+    OnBrightYellow -> rawSGR 103
+    OnBrightBlue -> rawSGR 104
+    OnBrightMagenta -> rawSGR 105
+    OnBrightCyan -> rawSGR 106
+    OnBrightWhite -> rawSGR 107

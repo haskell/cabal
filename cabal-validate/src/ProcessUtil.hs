@@ -17,7 +17,7 @@ import System.Directory (withCurrentDirectory)
 import System.Exit (ExitCode (ExitFailure, ExitSuccess))
 import System.Process.Typed (ExitCodeException (..), proc, readProcess, runProcess)
 
-import ANSI (SGR (BoldBlue, BoldGreen, BoldRed, Reset), setSGR)
+import ANSI (SGR (BrightBlue, BrightGreen, BrightRed, Reset), setSGR)
 import Cli (Opts (..))
 import ClockUtil (diffAbsoluteTime, formatDiffTime, getAbsoluteTime)
 
@@ -56,7 +56,7 @@ timed opts command args = do
 
   -- TODO: Replace `$HOME` or `opts.cwd` for brevity?
   putStrLn $
-    setSGR [BoldBlue]
+    setSGR [BrightBlue]
       <> "$ "
       <> prettyCommand
       <> setSGR [Reset]
@@ -93,7 +93,7 @@ timed opts command args = do
                 <> T.unlines tailLines
 
       putStrLn $
-        setSGR [BoldGreen]
+        setSGR [BrightGreen]
           <> "Finished after "
           <> formatDiffTime duration
           <> ": "
@@ -106,7 +106,7 @@ timed opts command args = do
         T.putStrLn output
 
       putStrLn $
-        setSGR [BoldRed]
+        setSGR [BrightRed]
           <> "Failed with exit code "
           <> show exitCode'
           <> " after "
