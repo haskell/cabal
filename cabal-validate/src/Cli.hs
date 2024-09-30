@@ -204,10 +204,13 @@ resolveOpts opts = do
             , "Cabal-QuickCheck"
             , "Cabal-tree-diff"
             , "Cabal-described"
-            , "cabal-install"
-            , "cabal-install-solver"
-            , "cabal-benchmarks"
             ]
+          , optionals
+              (not (rawLibOnly opts))
+              [ "cabal-install"
+              , "cabal-install-solver"
+              , "cabal-benchmarks"
+              ]
           , optionals
               (rawSolverBenchmarks opts)
               [ "solver-benchmarks"
