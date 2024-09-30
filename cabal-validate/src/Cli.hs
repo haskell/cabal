@@ -1,5 +1,4 @@
 -- | Parse CLI arguments and resolve defaults from the environment.
-
 module Cli
   ( Opts (..)
   , parseOpts
@@ -55,57 +54,57 @@ import Step (Step (..), displayStep, parseStep)
 -- | Command-line options, resolved with context from the environment.
 data Opts = Opts
   { verbose :: Bool
-    -- ^ Whether to display build and test output.
+  -- ^ Whether to display build and test output.
   , jobs :: Int
-    -- ^ How many jobs to use when running tests.
-    --
-    -- Defaults to the number of physical cores.
+  -- ^ How many jobs to use when running tests.
+  --
+  -- Defaults to the number of physical cores.
   , cwd :: FilePath
-    -- ^ Current working directory when @cabal-validate@ was started.
+  -- ^ Current working directory when @cabal-validate@ was started.
   , startTime :: AbsoluteTime
-    -- ^ System time when @cabal-validate@ was started.
-    --
-    -- Used to determine the total test duration so far.
+  -- ^ System time when @cabal-validate@ was started.
+  --
+  -- Used to determine the total test duration so far.
   , compiler :: Compiler
-    -- ^ Compiler to build Cabal with.
-    --
-    -- Defaults to @ghc@.
+  -- ^ Compiler to build Cabal with.
+  --
+  -- Defaults to @ghc@.
   , extraCompilers :: [FilePath]
-    -- ^ Extra compilers to run @cabal-testsuite@ with.
+  -- ^ Extra compilers to run @cabal-testsuite@ with.
   , cabal :: FilePath
-    -- ^ @cabal-install@ to build Cabal with.
-    --
-    -- Defaults to @cabal@.
+  -- ^ @cabal-install@ to build Cabal with.
+  --
+  -- Defaults to @cabal@.
   , hackageTests :: HackageTests
-    -- ^ Whether to run tests on Hackage data, and if so how much.
-    --
-    -- Defaults to `NoHackageTests`.
+  -- ^ Whether to run tests on Hackage data, and if so how much.
+  --
+  -- Defaults to `NoHackageTests`.
   , archPath :: FilePath
-    -- ^ The path for this system's architecture within the build directory.
-    --
-    -- Like @x86_64-windows@ or @aarch64-osx@ or @arm-linux@.
+  -- ^ The path for this system's architecture within the build directory.
+  --
+  -- Like @x86_64-windows@ or @aarch64-osx@ or @arm-linux@.
   , projectFile :: FilePath
-    -- ^ Path to the @cabal.project@ file to use for running tests.
+  -- ^ Path to the @cabal.project@ file to use for running tests.
   , tastyArgs :: [String]
-    -- ^ Extra arguments to pass to @tasty@ test suites.
-    --
-    -- This defaults to @--hide-successes@ (which cannot yet be changed) and
-    -- includes the @--pattern@ argument if one is given.
+  -- ^ Extra arguments to pass to @tasty@ test suites.
+  --
+  -- This defaults to @--hide-successes@ (which cannot yet be changed) and
+  -- includes the @--pattern@ argument if one is given.
   , targets :: [String]
-    -- ^ Targets to build.
+  -- ^ Targets to build.
   , steps :: [Step]
-    -- ^ Steps to run.
+  -- ^ Steps to run.
   }
   deriving (Show)
 
 -- | Whether to run tests on Hackage data, and if so how much.
 data HackageTests
-  = CompleteHackageTests
-  -- ^ Run tests on complete Hackage data.
-  | PartialHackageTests
-   -- ^ Run tests on partial Hackage data.
-  | NoHackageTests
-    -- ^ Do not run tests on Hackage data.
+  = -- | Run tests on complete Hackage data.
+    CompleteHackageTests
+  | -- | Run tests on partial Hackage data.
+    PartialHackageTests
+  | -- | Do not run tests on Hackage data.
+    NoHackageTests
   deriving (Show)
 
 -- | A compiler executable and version number.
@@ -120,9 +119,9 @@ data Compiler = Compiler
 -- | An `Exception` thrown when parsing @--numeric-version@ output from a compiler.
 data VersionParseException = VersionParseException
   { versionInput :: String
-    -- ^ The string we attempted to parse.
+  -- ^ The string we attempted to parse.
   , versionExecutable :: FilePath
-    -- ^ The compiler which produced the string.
+  -- ^ The compiler which produced the string.
   }
   deriving (Typeable, Show)
 

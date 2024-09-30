@@ -17,3 +17,4 @@ jobs:
           Cabal/**/*.hs
           Cabal-syntax/**/*.hs
           cabal-install/**/*.hs
+          cabal-validate/**/*.hs

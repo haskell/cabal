@@ -1,5 +1,4 @@
 -- | The steps that can be run by @cabal-validate@.
-
 module Step
   ( Step (..)
   , displayStep

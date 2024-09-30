@@ -1,5 +1,4 @@
 -- | Utilities for dealing with times and durations.
-
 module ClockUtil
   ( DiffTime
   , AbsoluteTime
