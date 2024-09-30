@@ -48,7 +48,7 @@ runStep opts step = do
         SolverBenchmarksTests -> solverBenchmarksTests opts
         SolverBenchmarksRun -> solverBenchmarksRun opts
         TimeSummary -> timeSummary opts
-  withTiming opts title action
+  withTiming (startTime opts) title action
   T.putStrLn ""
 
 -- | Compiler with version number like @ghc-9.6.6@.
