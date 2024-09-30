@@ -208,10 +208,16 @@ resolveOpts opts = do
           , optionals
               (CliTests `elem` steps')
               [ "cabal-install"
+              , "cabal-install:tests"
               , "cabal-install-solver"
               , "cabal-benchmarks"
+              , "Cabal-tests:tests"
               ]
-          , optional (rawSolverBenchmarks opts) "solver-benchmarks"
+          , optionals
+              (rawSolverBenchmarks opts)
+              [ "solver-benchmarks"
+              , "solver-benchmarks:tests"
+              ]
           ]
 
       archPath' =
