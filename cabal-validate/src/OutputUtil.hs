@@ -9,8 +9,7 @@ import qualified System.Console.Terminal.Size as Terminal
 import System.Process.Typed (ExitCodeException)
 
 import ANSI (SGR (BoldCyan, BoldGreen, BoldRed, Reset), setSGR)
-import Cli (Opts (..))
-import ClockUtil (diffAbsoluteTime, formatDiffTime, getAbsoluteTime)
+import ClockUtil (AbsoluteTime, diffAbsoluteTime, formatDiffTime, getAbsoluteTime)
 import System.Exit (exitFailure)
 
 -- | Get the width of the current terminal, or 80 if no width can be determined.
@@ -40,8 +39,8 @@ printHeader title = do
 
 -- | Run an `IO` action and print duration information after it finishes.
 withTiming
-  :: Opts
-  -- ^ @cabal-validate@ options.
+  :: AbsoluteTime
+  -- ^ Start time for the whole @cabal-validate@ run.
   -> String
   -- ^ Name for describing the action.
   --
@@ -49,7 +48,7 @@ withTiming
   -> IO a
   -- ^ Action to time.
   -> IO a
-withTiming opts title action = do
+withTiming startTime title action = do
   startTime' <- getAbsoluteTime
 
   result <-
@@ -59,7 +58,7 @@ withTiming opts title action = do
   endTime <- getAbsoluteTime
 
   let duration = diffAbsoluteTime endTime startTime'
-      totalDuration = diffAbsoluteTime endTime (startTime opts)
+      totalDuration = diffAbsoluteTime endTime startTime
 
   case result of
     Right inner -> do
