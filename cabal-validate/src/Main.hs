@@ -13,17 +13,10 @@ import qualified Data.Text.IO as T
 import qualified Data.Text.Lazy as T (toStrict)
 import qualified Data.Text.Lazy.Encoding as T (decodeUtf8)
 import Data.Version (makeVersion, showVersion)
-import System.Console.ANSI
-  ( Color (Cyan)
-  , ColorIntensity (Vivid)
-  , ConsoleIntensity (BoldIntensity)
-  , ConsoleLayer (Foreground)
-  , SGR (Reset, SetColor, SetConsoleIntensity)
-  , setSGRCode
-  )
 import System.FilePath ((</>))
 import System.Process.Typed (proc, readProcessStdout_)
 
+import ANSI (SGR (BoldCyan, Reset), setSGR)
 import Cli (Compiler (..), HackageTests (..), Opts (..), parseOpts)
 import ClockUtil (diffAbsoluteTime, formatDiffTime, getAbsoluteTime)
 import OutputUtil (printHeader, withTiming)
@@ -424,7 +417,7 @@ timeSummary opts = do
   endTime <- getAbsoluteTime
   let totalDuration = diffAbsoluteTime endTime (startTime opts)
   putStrLn $
-    setSGRCode [SetConsoleIntensity BoldIntensity, SetColor Foreground Vivid Cyan]
+    setSGR [BoldCyan]
       <> "!!! Validation completed in "
       <> formatDiffTime totalDuration
-      <> setSGRCode [Reset]
+      <> setSGR [Reset]
