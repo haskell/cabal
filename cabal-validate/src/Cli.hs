@@ -204,15 +204,10 @@ resolveOpts opts = do
             , "Cabal-QuickCheck"
             , "Cabal-tree-diff"
             , "Cabal-described"
+            , "cabal-install"
+            , "cabal-install-solver"
+            , "cabal-benchmarks"
             ]
-          , optionals
-              (CliTests `elem` steps')
-              [ "cabal-install"
-              , "cabal-install:tests"
-              , "cabal-install-solver"
-              , "cabal-benchmarks"
-              , "Cabal-tests:tests"
-              ]
           , optionals
               (rawSolverBenchmarks opts)
               [ "solver-benchmarks"
