@@ -267,7 +267,8 @@ resolveOpts opts = do
       , steps = steps'
       }
 
--- | Raw command-line options.
+-- | Literate command-line options as supplied by the user, before resolving
+-- defaults and other values from the environment.
 data RawOpts = RawOpts
   { rawVerbose :: Bool
   , rawJobs :: Maybe Int
@@ -290,9 +291,9 @@ data RawOpts = RawOpts
 
 -- | `Parser` for `RawOpts`.
 --
--- See: `fullOptsParser`
-optsParser :: Parser RawOpts
-optsParser =
+-- See: `fullRawOptsParser`
+rawOptsParser :: Parser RawOpts
+rawOptsParser =
   RawOpts
     <$> ( flag'
             True
@@ -419,10 +420,10 @@ boolOption defaultValue trueName =
 
 -- | Full `Parser` for `RawOpts`, which includes a @--help@ argument and
 -- information about the program.
-fullOptsParser :: ParserInfo RawOpts
-fullOptsParser =
+fullRawOptsParser :: ParserInfo RawOpts
+fullRawOptsParser =
   info
-    (optsParser <**> helper)
+    (rawOptsParser <**> helper)
     ( fullDesc
         <> progDesc "Test suite runner for `Cabal` and `cabal-install` developers"
     )
@@ -430,4 +431,4 @@ fullOptsParser =
 -- | Parse command-line arguments and resolve defaults from the environment,
 -- producing `Opts`.
 parseOpts :: IO Opts
-parseOpts = execParser fullOptsParser >>= resolveOpts
+parseOpts = execParser fullRawOptsParser >>= resolveOpts
