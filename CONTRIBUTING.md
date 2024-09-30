@@ -348,13 +348,32 @@ description: {
 }
 ```
 
+Changelogs may also be written in "markdown-frontmatter" format. This is useful if your
+description contains braces, which must be escaped with backslashes in `.cabal` file
+format.
+
+```markdown
+---
+synopsis: Add feature xyz
+packages: [cabal-install]
+prs: #0000
+issues: #0000 #0000
+significance: significant
+---
+
+- Detail number 1
+- Detail number 2
+
+```
+The package list must be enclosed in square brackets and comma-separated, but this isn't needed for `prs` or `issues`.
+
 Only the `synopsis` and `prs` fields are required, but you should also set the others where applicable.
 
 | Field          | Description                                                                                                        |
 | -----          | -----------                                                                                                        |
 | `synopsis`     | Brief description of the change. Often just the pr title.                                                          |
 | `description`  | Longer description, with a list of sub-changes. Not needed for small/atomic changes.                               |
-| `packages`     | Packages affected by the change (`cabal-install`, `Cabal`...). Omit if it's an overarching or non-package change.  |
+| `packages`     | Packages affected by the change (`cabal-install`, `Cabal`...). Omit if it's a non-package change.                  |
 | `prs`          | Space-separated hash-prefixed pull request numbers containing the change (usually just one).                       |
 | `issues`       | Space-separated hash-prefixed issue numbers that the change fixes/closes/affects.                                  |
 | `significance` | Set to `significant` if the change is significant, that is if it warrants being put near the top of the changelog. |
@@ -379,7 +398,7 @@ There are a few main venues of communication:
 
 * Many developers idle on `#hackage` on [`irc.libera.chat`](https://libera.chat). The `#ghc` channel is also a decently good bet.
   * You can join the channel using a web client, even anonymously: https://web.libera.chat/#hackage
-  * Alternatively you can join it using [matrix](https://matrix.org/): https://matrix.to/#/#hackage:libera.chat
+  * Alternatively you can join it using [matrix](https://matrix.org/): https://matrix.to/#/#hackage:matrix.org
 
 ## Releases
 
