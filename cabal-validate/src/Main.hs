@@ -16,7 +16,7 @@ import Data.Version (makeVersion, showVersion)
 import System.FilePath ((</>))
 import System.Process.Typed (proc, readProcessStdout_)
 
-import ANSI (SGR (BoldCyan, Reset), setSGR)
+import ANSI (SGR (Bold, BrightCyan, Reset), setSGR)
 import Cli (Compiler (..), HackageTests (..), Opts (..), parseOpts)
 import ClockUtil (diffAbsoluteTime, formatDiffTime, getAbsoluteTime)
 import OutputUtil (printHeader, withTiming)
@@ -419,7 +419,7 @@ timeSummary opts = do
   endTime <- getAbsoluteTime
   let totalDuration = diffAbsoluteTime endTime (startTime opts)
   putStrLn $
-    setSGR [BoldCyan]
+    setSGR [Bold, BrightCyan]
       <> "!!! Validation completed in "
       <> formatDiffTime totalDuration
       <> setSGR [Reset]

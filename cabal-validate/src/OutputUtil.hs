@@ -8,7 +8,7 @@ import Control.Exception (catch)
 import qualified System.Console.Terminal.Size as Terminal
 import System.Process.Typed (ExitCodeException)
 
-import ANSI (SGR (BoldCyan, BoldGreen, BoldRed, Reset), setSGR)
+import ANSI (SGR (Bold, BrightCyan, BrightGreen, BrightRed, Reset), setSGR)
 import ClockUtil (AbsoluteTime, diffAbsoluteTime, formatDiffTime, getAbsoluteTime)
 import System.Exit (exitFailure)
 
@@ -28,7 +28,7 @@ printHeader title = do
   let left = 3
       right = columns - length title - left - 2
       header =
-        setSGR [BoldCyan]
+        setSGR [Bold, BrightCyan]
           <> replicate left '═'
           <> " "
           <> title
@@ -63,7 +63,7 @@ withTiming startTime title action = do
   case result of
     Right inner -> do
       putStrLn $
-        setSGR [BoldGreen]
+        setSGR [Bold, BrightGreen]
           <> title
           <> " finished after "
           <> formatDiffTime duration
@@ -74,7 +74,7 @@ withTiming startTime title action = do
       pure inner
     Left _procFailed -> do
       putStrLn $
-        setSGR [BoldRed]
+        setSGR [Bold, BrightRed]
           <> title
           <> " failed after "
           <> formatDiffTime duration
