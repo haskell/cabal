@@ -4,12 +4,10 @@
 -- we use.
 --
 -- See: <https://gist.github.com/fnky/458719343aabd01cfb17a3a4f7296797>
-
 module ANSI
-  ( SGR(..)
+  ( SGR (..)
   , setSGR
   ) where
-
 
 -- | Render a single numeric SGR sequence.
 rawSGR :: Int -> String
@@ -26,7 +24,6 @@ data SGR
   | Dim
   | Italic
   | Underline
-
   | Black
   | Red
   | Green
@@ -36,7 +33,6 @@ data SGR
   | Cyan
   | White
   | Default
-
   | OnBlack
   | OnRed
   | OnGreen
@@ -46,7 +42,6 @@ data SGR
   | OnCyan
   | OnWhite
   | OnDefault
-
   | BoldBlack
   | BoldRed
   | BoldGreen
@@ -55,7 +50,6 @@ data SGR
   | BoldMagenta
   | BoldCyan
   | BoldWhite
-
   | OnBoldBlack
   | OnBoldRed
   | OnBoldGreen
@@ -64,7 +58,6 @@ data SGR
   | OnBoldMagenta
   | OnBoldCyan
   | OnBoldWhite
-
   deriving (Show)
 
 -- Render a single `SGR` sequence.
@@ -76,7 +69,6 @@ renderSGR code =
     Dim -> rawSGR 2
     Italic -> rawSGR 3
     Underline -> rawSGR 4
-
     Black -> rawSGR 30
     Red -> rawSGR 31
     Green -> rawSGR 32
@@ -86,7 +78,6 @@ renderSGR code =
     Cyan -> rawSGR 36
     White -> rawSGR 37
     Default -> rawSGR 39
-
     OnBlack -> rawSGR 40
     OnRed -> rawSGR 41
     OnGreen -> rawSGR 42
@@ -96,7 +87,6 @@ renderSGR code =
     OnCyan -> rawSGR 46
     OnWhite -> rawSGR 47
     OnDefault -> rawSGR 49
-
     BoldBlack -> rawSGR 90
     BoldRed -> rawSGR 91
     BoldGreen -> rawSGR 92
@@ -105,7 +95,6 @@ renderSGR code =
     BoldMagenta -> rawSGR 95
     BoldCyan -> rawSGR 96
     BoldWhite -> rawSGR 97
-
     OnBoldBlack -> rawSGR 100
     OnBoldRed -> rawSGR 101
     OnBoldGreen -> rawSGR 102

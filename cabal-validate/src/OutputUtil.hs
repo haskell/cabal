@@ -9,7 +9,7 @@ import qualified System.Console.Terminal.Size as Terminal
 import System.Process.Typed (ExitCodeException)
 
 import ANSI (SGR (BoldCyan, BoldGreen, BoldRed, Reset), setSGR)
-import ClockUtil (AbsoluteTime, diffAbsoluteTime, formatDiffTime, getAbsoluteTime)
+import ClockUtil (AbsoluteTime, diffAbsoluteTime, formatDiffTime, getAbsoluteTime)
 import System.Exit (exitFailure)
 
 -- | Get the width of the current terminal, or 80 if no width can be determined.
