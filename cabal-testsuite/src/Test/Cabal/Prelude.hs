@@ -53,9 +53,9 @@ import Text.Regex.TDFA ((=~))
 import Control.Concurrent.Async (withAsync)
 import qualified Data.Aeson as JSON
 import qualified Data.ByteString.Lazy as BSL
-import Control.Monad (unless, when, void, forM_, liftM2, liftM4)
+import Control.Monad (unless, when, void, forM_, foldM, liftM2, liftM4)
 import Control.Monad.Catch ( bracket_ )
-import Control.Monad.Trans.Reader (withReaderT, runReaderT)
+import Control.Monad.Trans.Reader (asks, withReaderT, runReaderT)
 import Control.Monad.IO.Class (MonadIO (..))
 import qualified Crypto.Hash.SHA256 as SHA256
 import qualified Data.ByteString.Base16 as Base16
@@ -70,6 +70,7 @@ import System.Directory
 import Control.Retry (exponentialBackoff, limitRetriesByCumulativeDelay)
 import Network.Wait (waitTcpVerbose)
 import System.Environment
+import qualified System.FilePath.Glob as Glob (globDir1, compile)
 import System.Process
 import System.IO
 
@@ -726,7 +727,7 @@ recordHeader args = do
 
 ------------------------------------------------------------------------
 -- * Subprocess run results
-assertFailure :: WithCallStack (String -> m ())
+assertFailure :: WithCallStack (String -> m a)
 assertFailure msg = withFrozenCallStack $ error msg
 
 assertExitCode :: MonadIO m => WithCallStack (ExitCode -> Result -> m ())
@@ -835,6 +836,31 @@ assertFileDoesNotContain path needle =
                        (assertFailure ("expected: " ++ needle ++ "\n" ++
                                        " in file: " ++ path)))
 
+-- | Assert that at least one of the given paths contains the given search string.
+assertAnyFileContains :: MonadIO m => WithCallStack ([FilePath] -> String -> m ())
+assertAnyFileContains paths needle = do
+    let findOne found path =
+            if found
+               then pure found
+               else withFileContents path $ \contents ->
+                   pure $! needle `isInfixOf` contents
+    foundNeedle <- liftIO $ foldM findOne False paths
+    withFrozenCallStack $
+      unless foundNeedle $
+        assertFailure $
+          "expected: " <>
+          needle <>
+          "\nin one of:\n" <>
+          unlines (map ("* " <>) paths)
+
+-- | Assert that none of the given paths contains the given search string.
+assertNoFileContains :: MonadIO m => WithCallStack ([FilePath] -> String -> m ())
+assertNoFileContains paths needle =
+    liftIO $
+      forM_ paths $
+        \path ->
+          assertFileDoesNotContain path needle
+
 -- | Replace line breaks with spaces, correctly handling "\r\n".
 concatOutput :: String -> String
 concatOutput = unwords . lines . filter ((/=) '\r')
@@ -846,6 +872,58 @@ getScriptCacheDirectory script = do
     hashinput <- liftIO $ canonicalizePath script
     let hash = C.unpack . Base16.encode . C.take 26 . SHA256.hash . C.pack $ hashinput
     return $ cabalDir </> "script-builds" </> hash
+
+------------------------------------------------------------------------
+-- * Globs
+
+-- | Match a glob from a root directory and return the results.
+matchGlob :: MonadIO m => FilePath -> String -> m [FilePath]
+matchGlob root glob = do
+  liftIO $ Glob.globDir1 (Glob.compile glob) root
+
+-- | Assert that a glob matches at least one path in the given root directory.
+--
+-- The matched paths are returned for further validation.
+assertGlobMatches :: MonadIO m => WithCallStack (FilePath -> String -> m [FilePath])
+assertGlobMatches root glob = do
+  results <- matchGlob root glob
+  withFrozenCallStack $
+    when (null results) $
+      assertFailure $
+        "Expected glob " <> show glob <> " to match in " <> show root
+  pure results
+
+-- | Assert that a glob matches no paths in the given root directory.
+assertGlobDoesNotMatch :: MonadIO m => WithCallStack (FilePath -> String -> m ())
+assertGlobDoesNotMatch root glob = do
+  results <- matchGlob root glob
+  withFrozenCallStack $
+    unless (null results) $
+      assertFailure $
+        "Expected glob "
+          <> show glob
+          <> " to not match any paths in "
+          <> show root
+          <> ", but the following matches were found:"
+          <> unlines (map ("* " <>) results)
+
+-- | Assert that a glob matches a path in the given root directory.
+--
+-- The root directory is determined from the `TestEnv` with a function like `testDistDir`.
+--
+-- The matched paths are returned for further validation.
+assertGlobMatchesTestDir :: WithCallStack ((TestEnv -> FilePath) -> String -> TestM [FilePath])
+assertGlobMatchesTestDir rootSelector glob = do
+  root <- asks rootSelector
+  assertGlobMatches root glob
+
+-- | Assert that a glob matches a path in the given root directory.
+--
+-- The root directory is determined from the `TestEnv` with a function like `testDistDir`.
+assertGlobDoesNotMatchTestDir :: WithCallStack ((TestEnv -> FilePath) -> String -> TestM ())
+assertGlobDoesNotMatchTestDir rootSelector glob = do
+  root <- asks rootSelector
+  assertGlobDoesNotMatch root glob
 
 ------------------------------------------------------------------------
 -- * Skipping tests
