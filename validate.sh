@@ -317,6 +317,9 @@ case "$ARCH" in
     x86_64)
         ARCH=x86_64
         ;;
+    i386)
+        ARCH=i386
+        ;;
     *)
         echo "Warning: Unknown architecture '$ARCH'"
         ;;
