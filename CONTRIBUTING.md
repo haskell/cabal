@@ -356,8 +356,8 @@ format.
 ---
 synopsis: Add feature xyz
 packages: [cabal-install]
-prs: #0000
-issues: #0000 #0000
+prs: 0000
+issues: [0000, 0000]
 significance: significant
 ---
 
