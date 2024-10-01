@@ -350,14 +350,15 @@ description: {
 
 Changelogs may also be written in "markdown-frontmatter" format. This is useful if your
 description contains braces, which must be escaped with backslashes in `.cabal` file
-format.
+format. The front matter is in YAML syntax, not `.cabal` file syntax, and the file
+_must_ begin with a line containing only hyphens.
 
 ```markdown
 ---
 synopsis: Add feature xyz
 packages: [cabal-install]
-prs: #0000
-issues: #0000 #0000
+prs: 0000
+issues: [0000, 0000]
 significance: significant
 ---
 
@@ -365,7 +366,11 @@ significance: significant
 - Detail number 2
 
 ```
-The package list must be enclosed in square brackets and comma-separated, but this isn't needed for `prs` or `issues`.
+The package list must be enclosed in square brackets and comma-separated, but this
+isn't needed for `prs` or `issues`; those are free-form and any YAML syntax will
+be accepted. Note that the number signs on PR and issue numbers are required in
+`.cabal` file syntax, but won't work in markdown-frontmatter syntax because they
+signify comments in YAML.
 
 Only the `synopsis` and `prs` fields are required, but you should also set the others where applicable.
 
