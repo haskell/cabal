@@ -1,0 +1,12 @@
+# See: https://editorconfig.org
+root = true
+
+[*]
+charset = utf-8
+
+[*.hs]
+indent_style = space
+indent_size = 2
+
+[Makefile]
+indent_style = tab
