@@ -1,0 +1,2 @@
+path = "FINDSH\sh.exe"
+args = "pkg-config"
