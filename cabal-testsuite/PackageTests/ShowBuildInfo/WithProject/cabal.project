@@ -1,0 +1,4 @@
+packages: ./
+
+package WithProject
+    ghc-options: -haddock
