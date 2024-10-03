@@ -1094,6 +1094,7 @@ defaultInstallHook_setupHooks inst_hooks pkg_descr localbuildinfo _ flags = do
         defaultRegisterFlags
           { regInPlace = installInPlace flags
           , regPackageDB = installPackageDB flags
+          , registerCommonFlags = installCommonFlags flags
           }
   when (hasLibs pkg_descr) $
     register pkg_descr localbuildinfo registerFlags
