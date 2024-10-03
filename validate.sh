@@ -444,7 +444,7 @@ CMD="$($CABALLISTBIN Cabal-tests:test:no-thunks-test) $TESTSUITEJOBS --hide-succ
 
 
 # See #10284 for why this value is pinned.
-HACKAGE_TESTS_INDEX_STATE="--index-state=2024-08-25"
+HACKAGE_TESTS_INDEX_STATE="--index-state=2024-08-28"
 
 CMD=$($CABALLISTBIN Cabal-tests:test:hackage-tests)
 (cd Cabal-tests && timed $CMD read-fields $HACKAGE_TESTS_INDEX_STATE) || exit 1

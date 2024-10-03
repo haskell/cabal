@@ -271,7 +271,7 @@ preProcessInternalDeps specVer gpd
 
     transformD :: Dependency -> [Dependency]
     transformD (Dependency pn vr ln)
-      | pn == thisPn =
+      | pn == thisPn && specVer < CabalSpecV3_0 =
           if LMainLibName `NES.member` ln
             then Dependency thisPn vr mainLibSet : sublibs
             else sublibs
@@ -282,9 +282,12 @@ preProcessInternalDeps specVer gpd
           ]
     transformD d = [d]
 
+    -- Always perform transformation for mixins as syntax was only introduced in 3.4
+    -- This guard is uncessary as no transformations take place when cabalSpec < CabalSpecV3_4 but
+    -- it more clearly signifies the intent.
     transformM :: Mixin -> Mixin
     transformM (Mixin pn (LSubLibName uqn) inc)
-      | pn == thisPn =
+      | pn == thisPn && specVer < CabalSpecV3_4 =
           mkMixin (unqualComponentNameToPackageName uqn) LMainLibName inc
     transformM m = m
 
