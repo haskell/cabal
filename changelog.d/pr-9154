@@ -1,0 +1,14 @@
+synopsis: Fixes incorrect handling of git branches in source-repository-package
+packages: cabal-install
+prs: #9154
+issues: #6888
+
+description: {
+
+The source-repository-package stanza in a cabal.project file allows a
+user to specify a git branch to check out. However, cabal incorrectly
+interpreted the branch as a git tag, and thus this feature did not
+work as expected. This pr fixes this; i.e. a git branch specified in a
+source-repository-package stanza is now actually treated as a branch.
+
+}

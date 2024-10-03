@@ -548,8 +548,12 @@ vcsGit =
               Nothing -> []
               Just peerLocalDir -> ["--reference", peerLocalDir]
             ++ verboseArg
+            ++ branchArg
           where
             loc = srpLocation
+            branchArg = case srpBranch of
+              Just b -> ["--branch", b]
+              Nothing -> []
         resetArgs = "reset" : verboseArg ++ ["--hard", resetTarget, "--"]
         resetTarget = fromMaybe "HEAD" (srpBranch `mplus` srpTag)
         verboseArg = ["--quiet" | verbosity < Verbosity.normal]
