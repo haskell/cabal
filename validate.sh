@@ -314,7 +314,7 @@ case "$ARCH" in
     arm64)
         ARCH=aarch64
         ;;
-    x86_64)
+    x86_64 | amd64)
         ARCH=x86_64
         ;;
     i386)
