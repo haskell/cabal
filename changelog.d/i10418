@@ -1,0 +1,13 @@
+synopsis: Fix build ways for modules in executables
+packages: Cabal
+prs: #10419
+issues: #10418
+significance: significant
+
+description: {
+
+- Modules belonging to executables were being built in too many ways. For instance, if you
+had configured to build profiled library files then your executable modules would also
+be built profiled. Which was a regression in behaviour since `Cabal-3.12`.
+
+}

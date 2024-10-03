@@ -1,0 +1,19 @@
+cabal-version:   3.12
+name:            q
+version:         0.1.0.0
+license:         NONE
+author:          Matthew Pickering
+maintainer:      matthewtpickering@gmail.com
+build-type:      Simple
+extra-doc-files: CHANGELOG.md
+
+common warnings
+    ghc-options: -Wall
+
+executable q
+    import:           warnings
+    main-is:          Main.hs
+    build-depends:    p, base
+    hs-source-dirs:   app
+    ghc-options: -dynamic-too
+    default-language: Haskell2010
