@@ -22,6 +22,8 @@ module Distribution.Solver.Types.PackageIndex (
   -- * Updates
   merge,
   override,
+  OverrideOrMerge(..),
+  overrideOrMerge,
   insert,
   deletePackageName,
   deletePackageId,
@@ -180,6 +182,28 @@ override :: Package pkg => PackageIndex pkg -> PackageIndex pkg -> PackageIndex 
 override i1@(PackageIndex m1) i2@(PackageIndex m2) =
   expensiveAssert (invariant i1 && invariant i2) $
     mkPackageIndex (Map.unionWith (\_l r -> r) m1 m2)
+
+data OverrideOrMerge = Override | Merge
+  deriving (Eq, Show)
+
+-- | Combined override-or-merge of two indexes.
+--
+-- For any package, either 'override' or 'merge' the packages from the second
+-- index into the first based on the supplied predicate.
+--
+overrideOrMerge ::
+     Package pkg
+  => (PackageName -> OverrideOrMerge)
+  -> PackageIndex pkg
+  -> PackageIndex pkg
+  -> PackageIndex pkg
+overrideOrMerge strategy i1@(PackageIndex m1) i2@(PackageIndex m2) =
+  expensiveAssert (invariant i1 && invariant i2) $
+    mkPackageIndex (Map.unionWithKey overridePkg m1 m2)
+  where
+    overridePkg name l r = case strategy name of
+      Override -> r
+      Merge -> mergeBuckets l r
 
 -- | Inserts a single package into the index.
 --
