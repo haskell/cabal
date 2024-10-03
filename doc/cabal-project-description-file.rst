@@ -1797,7 +1797,7 @@ Advanced global configuration options
     ``--build-summary=TEMPLATE``.
 
 Undocumented fields: ``root-cmd``, ``symlink-bindir``, ``build-log``,
-``remote-build-reporting``, ``report-planned-failure``, ``offline``.
+``remote-build-reporting``, ``report-planning-failure``, ``offline``.
 
 Advanced solver options
 ^^^^^^^^^^^^^^^^^^^^^^^

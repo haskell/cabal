@@ -1,0 +1,22 @@
+verbose: 2
+build-summary: summaryFile, summaryFile2
+build-log: myLog.log
+remote-build-reporting: detailed
+report-planning-failure: True
+symlink-bindir: some-bindir
+jobs: 4
+semaphore: True
+keep-going: True
+offline: True
+haddock-keep-temp-files:  True
+http-transport: wget
+ignore-expiry: True
+remote-repo-cache: some-cache-dir
+logs-dir: logs-directory
+
+-- clientInstallFlags
+lib: True
+package-env: path/to/env
+overwrite-policy: always
+install-method: symlink
+installdir: path/to/installdir

@@ -486,6 +486,9 @@ print_header "cabal-install: tests"
 CMD="$($CABALLISTBIN cabal-install:test:long-tests) $TESTSUITEJOBS --hide-successes"
 (cd cabal-install && timed $CMD) || exit 1
 
+CMD="$($CABALLISTBIN cabal-install:test:parser-tests) $TESTSUITEJOBS --hide-successes"
+(cd cabal-install && timed $CMD) || exit 1
+
 # This doesn't work in parallel either
 CMD="$($CABALLISTBIN cabal-install:test:unit-tests) -j1 --hide-successes"
 (cd cabal-install && timed $CMD) || exit 1

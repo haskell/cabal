@@ -12,6 +12,7 @@ module Distribution.Client.ProjectConfig
   , ProjectConfigToParse (..)
   , ProjectConfigBuildOnly (..)
   , ProjectConfigShared (..)
+  , ProjectConfigSkeleton
   , ProjectConfigProvenance (..)
   , PackageConfig (..)
   , MapLast (..)
@@ -37,6 +38,8 @@ module Distribution.Client.ProjectConfig
   , writeProjectLocalFreezeConfig
   , writeProjectConfigFile
   , commandLineFlagsToProjectConfig
+  , readProjectFileSkeleton
+  , readProjectFileSkeletonLegacy
 
     -- * Packages within projects
   , ProjectPackageLocation (..)
@@ -68,6 +71,7 @@ import Distribution.Client.Glob
   ( isTrivialRootedGlob
   )
 import Distribution.Client.ProjectConfig.Legacy
+import qualified Distribution.Client.ProjectConfig.Parsec as Parsec
 import Distribution.Client.ProjectConfig.Types
 import Distribution.Client.RebuildMonad
 import Distribution.Client.VCS
@@ -104,6 +108,10 @@ import Distribution.Client.HttpUtils
   )
 import Distribution.Client.Types
 import Distribution.Client.Utils.Parsec (renderParseError)
+import GHC.Stack (HasCallStack, callStack)
+
+import Distribution.Simple.Errors
+import Distribution.Simple.PackageDescription (flattenDups)
 
 import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.PackageConstraint
@@ -136,6 +144,7 @@ import Distribution.Fields
   ( PError
   , PWarning
   , runParseResult
+  , showPError
   , showPWarning
   )
 import Distribution.Package
@@ -199,7 +208,7 @@ import qualified Codec.Archive.Tar.Entry as Tar
 import qualified Distribution.Client.GZipUtils as GZipUtils
 import qualified Distribution.Client.Tar as Tar
 
-import Control.Exception (handle)
+import Control.Exception (handle, tryJust)
 import Control.Monad.Trans (liftIO)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
@@ -229,6 +238,9 @@ import System.FilePath hiding (combine)
 import System.IO
   ( IOMode (ReadMode)
   , withBinaryFile
+  )
+import System.IO.Error
+  ( isDoesNotExistError
   )
 
 import Distribution.Solver.Types.ProjectConfigPath
@@ -800,8 +812,62 @@ readProjectLocalFreezeConfig verbosity httpTransport distDirLayout =
     "project freeze file"
 
 -- | Reads a named extended (with imports and conditionals) config file in the given project root dir, or returns empty.
-readProjectFileSkeleton :: Verbosity -> HttpTransport -> DistDirLayout -> String -> String -> Rebuild ProjectConfigSkeleton
+readProjectFileSkeleton :: HasCallStack => Verbosity -> HttpTransport -> DistDirLayout -> String -> String -> Rebuild ProjectConfigSkeleton
 readProjectFileSkeleton
+  verbosity
+  httpTransport
+  dir@DistDirLayout{distProjectFile, distDownloadSrcDirectory}
+  extensionName
+  extensionDescription = do
+    legacyPcs <- readProjectFileSkeletonLegacy verbosity httpTransport dir extensionName extensionDescription
+    exists <- liftIO $ doesFileExist extensionFile
+    if exists
+      then do
+        monitorFiles [monitorFileHashed extensionFile]
+        pcs <- liftIO $ readExtensionFile verbosity extensionFile
+        monitorFiles $ map monitorFileHashed (projectConfigPathRoot <$> projectSkeletonImports pcs)
+        unless (legacyPcs == pcs) (error (show callStack ++ "\nParsec: " ++ show pcs ++ "\nLegacy: " ++ show legacyPcs))
+        pure pcs
+      else do
+        monitorFiles [monitorNonExistentFile extensionFile]
+        return mempty
+    where
+      extensionFile = distProjectFile extensionName
+      readExtensionFile :: Verbosity -> FilePath -> IO ProjectConfigSkeleton
+      readExtensionFile verbosity' file = readAndParseFile (Parsec.parseProject extensionFile distDownloadSrcDirectory httpTransport verbosity' . ProjectConfigToParse) verbosity' file
+
+readAndParseFile
+  :: (BS.ByteString -> IO (Parsec.ParseResult a))
+  -> Verbosity
+  -> FilePath
+  -> IO a
+readAndParseFile parser verbosity fpath = do
+  result <- tryJust (guard . isDoesNotExistError) (BS.readFile fpath)
+  case result of
+    Right bs -> parseString parser verbosity fpath bs
+    Left _ -> dieWithException verbosity $ ErrorParsingFileDoesntExist fpath
+
+parseString
+  :: ( BS.ByteString
+       -> IO (Parsec.ParseResult a)
+     )
+  -> Verbosity
+  -> FilePath
+  -> BS.ByteString
+  -> IO a
+parseString parser verbosity fpath bs = do
+  pr <- parser bs
+  let (warnings, result) = runParseResult pr
+  traverse_ (warn verbosity . showPWarning fpath) (flattenDups verbosity warnings)
+  case result of
+    Right x -> return x
+    Left (_, errors) -> do
+      traverse_ (warn verbosity . showPError fpath) errors
+      dieWithException verbosity $ FailedParsing fpath
+
+-- | Reads a named extended (with imports and conditionals) config file in the given project root dir, or returns empty.
+readProjectFileSkeletonLegacy :: Verbosity -> HttpTransport -> DistDirLayout -> String -> String -> Rebuild ProjectConfigSkeleton
+readProjectFileSkeletonLegacy
   verbosity
   httpTransport
   DistDirLayout{distProjectFile, distDownloadSrcDirectory}
@@ -819,7 +885,6 @@ readProjectFileSkeleton
         return mempty
     where
       extensionFile = distProjectFile extensionName
-
       readExtensionFile =
         reportParseResult verbosity extensionDescription extensionFile
           =<< parseProject extensionFile distDownloadSrcDirectory httpTransport verbosity . ProjectConfigToParse
