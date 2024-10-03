@@ -11,7 +11,11 @@ import Distribution.Simple.Flag (Flag)
 import Distribution.Simple.GHC.Build.ExtraSources
 import Distribution.Simple.GHC.Build.Link
 import Distribution.Simple.GHC.Build.Modules
+<<<<<<< HEAD
 import Distribution.Simple.GHC.Build.Utils (withDynFLib)
+=======
+import Distribution.Simple.GHC.Build.Utils (compilerBuildWay, isHaskell)
+>>>>>>> 27c266884 (Cabal: Take into account compilerBuildWay when computing final library ways)
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Program
 import Distribution.Simple.Utils
@@ -71,6 +75,7 @@ build numJobs pkg_descr pbci = do
     component = buildComponent pbci
     isLib = buildIsLib pbci
     lbi = localBuildInfo pbci
+    bi = buildBI pbci
     clbi = buildCLBI pbci
 
   -- Create a few directories for building the component
@@ -102,6 +107,7 @@ build numJobs pkg_descr pbci = do
 
   (ghcProg, _) <- liftIO $ requireProgram verbosity ghcProgram (withPrograms lbi)
 
+<<<<<<< HEAD
   -- Determine in which ways we want to build the component
   let
     wantVanilla = if isLib then withVanillaLib lbi else False
@@ -138,3 +144,43 @@ build numJobs pkg_descr pbci = do
   buildOpts <- buildHaskellModules numJobs ghcProg pkg_descr buildTargetDir_absolute wantedWays pbci
   extraSources <- buildAllExtraSources ghcProg buildTargetDir pbci
   linkOrLoadComponent ghcProg pkg_descr (fromNubListR extraSources) (buildTargetDir, targetDir_absolute) (wantedWays, buildOpts) pbci
+=======
+  -- Ways which are wanted from configuration flags
+  let wantedWays@(wantedLibWays, _, wantedExeWay) = buildWays lbi
+
+  -- Ways which are needed due to the compiler configuration
+  let doingTH = usesTemplateHaskellOrQQ bi
+      defaultGhcWay = compilerBuildWay (buildCompiler pbci)
+      wantedLibBuildWays =
+        if isLib
+          then wantedLibWays isIndef
+          else [wantedExeWay]
+      finalLibBuildWays =
+        wantedLibBuildWays
+          ++ [defaultGhcWay | doingTH && defaultGhcWay `notElem` wantedLibBuildWays]
+
+  liftIO $ info verbosity ("Wanted build ways(" ++ show isLib ++ "): " ++ show wantedLibBuildWays)
+  liftIO $ info verbosity ("Final lib build ways(" ++ show isLib ++ "): " ++ show finalLibBuildWays)
+  -- We need a separate build and link phase, and C sources must be compiled
+  -- after Haskell modules, because C sources may depend on stub headers
+  -- generated from compiling Haskell modules (#842, #3294).
+  (mbMainFile, inputModules) <- componentInputs buildTargetDir pkg_descr pbci
+  let (hsMainFile, nonHsMainFile) =
+        case mbMainFile of
+          Just mainFile
+            | PD.package pkg_descr == fakePackageId
+                || isHaskell (getSymbolicPath mainFile) ->
+                (Just mainFile, Nothing)
+            | otherwise ->
+                (Nothing, Just mainFile)
+          Nothing -> (Nothing, Nothing)
+  buildOpts <- buildHaskellModules numJobs ghcProg hsMainFile inputModules buildTargetDir finalLibBuildWays pbci
+  extraSources <- buildAllExtraSources nonHsMainFile ghcProg buildTargetDir wantedWays pbci
+  linkOrLoadComponent
+    ghcProg
+    pkg_descr
+    (fromNubListR extraSources)
+    (buildTargetDir, targetDir)
+    (wantedWays, buildOpts)
+    pbci
+>>>>>>> 27c266884 (Cabal: Take into account compilerBuildWay when computing final library ways)
