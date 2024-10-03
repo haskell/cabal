@@ -21,6 +21,8 @@ on:
       - "release-notes/**"
     branches:
       - master
+      # hardcoded LTS branch, change me when LTS does
+      - '3.12'
   pull_request:
     paths-ignore:
       - "doc/**"
