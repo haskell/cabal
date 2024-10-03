@@ -866,7 +866,11 @@ defaultInstallHook pkg_descr localbuildinfo _ flags = do
           { regDistPref = installDistPref flags
           , regInPlace = installInPlace flags
           , regPackageDB = installPackageDB flags
+<<<<<<< HEAD
           , regVerbosity = installVerbosity flags
+=======
+          , registerCommonFlags = installCommonFlags flags
+>>>>>>> 2a178f243 (Fix ./setup install comand)
           }
   when (hasLibs pkg_descr) $ register pkg_descr localbuildinfo registerFlags
 
