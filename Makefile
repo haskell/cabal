@@ -49,6 +49,13 @@ whitespace: ## Run fix-whitespace in check mode
 fix-whitespace: ## Run fix-whitespace in fix mode
 	fix-whitespace --verbose
 
+# local checks
+
+.PHONY: checks
+checks: whitespace style
+	# this should probably be a rule
+	hlint -j --json -- .
+
 # source generation: SPDX
 
 SPDX_LICENSE_HS:=Cabal-syntax/src/Distribution/SPDX/LicenseId.hs

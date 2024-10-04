@@ -157,6 +157,13 @@ For these test executables, `-p` which applies a regex filter to the test
 names. When running `cabal-install` test suites, one need only use `cabal test` or
 `cabal run <test-target>` in order to test locally.
 
+## Running other checks locally
+
+Various other checks done by CI can be run locally to make sure your code doesn't
+fail annoyingly once you push it. `make checks` will do these checks. The list of
+checks is expected to grow over time, to make it easier to avoid CI turnaround on
+simple problems.
+
 ## QA Notes
 
 Manual Quality Assurance (QA) is performed to ensure that the changes impacting
