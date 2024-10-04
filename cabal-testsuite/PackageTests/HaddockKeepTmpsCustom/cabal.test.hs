@@ -11,11 +11,11 @@ main = cabalTest $ recordMode DoNotRecord $ withProjectFile "cabal.project" $ do
   --   "foobar.ext" will be "fooXXX.ext".
   let glob =
         if isWindows
-          then "**/had*.txt"
-          else "**/haddock-response*.txt"
+          then "had*.txt"
+          else "haddock-response*.txt"
 
   -- Check that there is a response file.
-  responseFiles <- assertGlobMatchesTestDir testDistDir glob
+  responseFiles <- assertGlobMatchesTestDir testTmpDir glob
 
   -- Check that the matched response file is not empty, and is indeed a Haddock
   -- response file.
