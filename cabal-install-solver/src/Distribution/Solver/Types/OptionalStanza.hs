@@ -1,33 +1,36 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric      #-}
-module Distribution.Solver.Types.OptionalStanza (
-    -- * OptionalStanza
-    OptionalStanza(..),
-    showStanza,
-    showStanzas,
-    enableStanzas,
+{-# LANGUAGE DeriveGeneric #-}
+
+module Distribution.Solver.Types.OptionalStanza
+  ( -- * OptionalStanza
+    OptionalStanza (..)
+  , showStanza
+  , showStanzas
+  , enableStanzas
+
     -- * Set of stanzas
-    OptionalStanzaSet,
-    optStanzaSetFromList,
-    optStanzaSetToList,
-    optStanzaSetMember,
-    optStanzaSetInsert,
-    optStanzaSetSingleton,
-    optStanzaSetIntersection,
-    optStanzaSetNull,
-    optStanzaSetIsSubset,
+  , OptionalStanzaSet
+  , optStanzaSetFromList
+  , optStanzaSetToList
+  , optStanzaSetMember
+  , optStanzaSetInsert
+  , optStanzaSetSingleton
+  , optStanzaSetIntersection
+  , optStanzaSetNull
+  , optStanzaSetIsSubset
+
     -- * Map indexed by stanzas
-    OptionalStanzaMap,
-    optStanzaTabulate,
-    optStanzaIndex,
-    optStanzaLookup,
-    optStanzaKeysFilteredByValue,
-) where
+  , OptionalStanzaMap
+  , optStanzaTabulate
+  , optStanzaIndex
+  , optStanzaLookup
+  , optStanzaKeysFilteredByValue
+  ) where
 
 import Distribution.Solver.Compat.Prelude
 import Prelude ()
 
-import Data.Bits                                 (testBit, (.|.), (.&.))
+import Data.Bits (testBit, (.&.), (.|.))
 import Distribution.Types.ComponentRequestedSpec (ComponentRequestedSpec (..))
 import Distribution.Utils.Structured (Structured (..), nominalStructure)
 
@@ -36,13 +39,13 @@ import Distribution.Utils.Structured (Structured (..), nominalStructure)
 -------------------------------------------------------------------------------
 
 data OptionalStanza
-    = TestStanzas
-    | BenchStanzas
+  = TestStanzas
+  | BenchStanzas
   deriving (Eq, Ord, Enum, Bounded, Show, Generic, Typeable)
 
 -- | String representation of an OptionalStanza.
 showStanza :: OptionalStanza -> String
-showStanza TestStanzas  = "test"
+showStanza TestStanzas = "test"
 showStanza BenchStanzas = "bench"
 
 showStanzas :: OptionalStanzaSet -> String
@@ -50,10 +53,10 @@ showStanzas = unwords . map (("*" ++) . showStanza) . optStanzaSetToList
 
 -- | Convert a list of 'OptionalStanza' into the corresponding
 -- Cabal's 'ComponentRequestedSpec' which records what components are enabled.
---
 enableStanzas :: OptionalStanzaSet -> ComponentRequestedSpec
-enableStanzas optionalStanzas = ComponentRequestedSpec
-    { testsRequested      = optStanzaSetMember TestStanzas  optionalStanzas
+enableStanzas optionalStanzas =
+  ComponentRequestedSpec
+    { testsRequested = optStanzaSetMember TestStanzas optionalStanzas
     , benchmarksRequested = optStanzaSetMember BenchStanzas optionalStanzas
     }
 
@@ -68,11 +71,11 @@ newtype OptionalStanzaSet = OptionalStanzaSet Word
   deriving (Eq, Ord, Show)
 
 instance Binary OptionalStanzaSet where
-    put (OptionalStanzaSet w) = put w
-    get = fmap (OptionalStanzaSet . (.&. 0x03)) get
+  put (OptionalStanzaSet w) = put w
+  get = fmap (OptionalStanzaSet . (.&. 0x03)) get
 
 instance Structured OptionalStanzaSet where
-    structure = nominalStructure
+  structure = nominalStructure
 
 optStanzaSetFromList :: [OptionalStanza] -> OptionalStanzaSet
 optStanzaSetFromList = foldl' (flip optStanzaSetInsert) mempty
@@ -88,11 +91,11 @@ optStanzaSetInsert :: OptionalStanza -> OptionalStanzaSet -> OptionalStanzaSet
 optStanzaSetInsert x s = optStanzaSetSingleton x <> s
 
 optStanzaSetMember :: OptionalStanza -> OptionalStanzaSet -> Bool
-optStanzaSetMember TestStanzas  (OptionalStanzaSet w) = testBit w 0
+optStanzaSetMember TestStanzas (OptionalStanzaSet w) = testBit w 0
 optStanzaSetMember BenchStanzas (OptionalStanzaSet w) = testBit w 1
 
 optStanzaSetSingleton :: OptionalStanza -> OptionalStanzaSet
-optStanzaSetSingleton TestStanzas  = OptionalStanzaSet 1
+optStanzaSetSingleton TestStanzas = OptionalStanzaSet 1
 optStanzaSetSingleton BenchStanzas = OptionalStanzaSet 2
 
 optStanzaSetIntersection :: OptionalStanzaSet -> OptionalStanzaSet -> OptionalStanzaSet
@@ -105,11 +108,11 @@ optStanzaSetIsSubset :: OptionalStanzaSet -> OptionalStanzaSet -> Bool
 optStanzaSetIsSubset (OptionalStanzaSet a) (OptionalStanzaSet b) = (a .|. b) == b
 
 instance Semigroup OptionalStanzaSet where
-    OptionalStanzaSet a <> OptionalStanzaSet b = OptionalStanzaSet (a .|. b)
+  OptionalStanzaSet a <> OptionalStanzaSet b = OptionalStanzaSet (a .|. b)
 
 instance Monoid OptionalStanzaSet where
-    mempty = OptionalStanzaSet 0
-    mappend = (<>)
+  mempty = OptionalStanzaSet 0
+  mappend = (<>)
 
 -------------------------------------------------------------------------------
 -- OptionalStanzaMap
@@ -126,7 +129,7 @@ optStanzaTabulate :: (OptionalStanza -> a) -> OptionalStanzaMap a
 optStanzaTabulate f = OptionalStanzaMap (f TestStanzas) (f BenchStanzas)
 
 optStanzaIndex :: OptionalStanzaMap a -> OptionalStanza -> a
-optStanzaIndex (OptionalStanzaMap x _) TestStanzas  = x
+optStanzaIndex (OptionalStanzaMap x _) TestStanzas = x
 optStanzaIndex (OptionalStanzaMap _ x) BenchStanzas = x
 
 optStanzaLookup :: OptionalStanza -> OptionalStanzaMap a -> a
@@ -134,5 +137,5 @@ optStanzaLookup = flip optStanzaIndex
 
 optStanzaKeysFilteredByValue :: (a -> Bool) -> OptionalStanzaMap a -> OptionalStanzaSet
 optStanzaKeysFilteredByValue p (OptionalStanzaMap x y)
-    | p x       = if p y then OptionalStanzaSet 3 else OptionalStanzaSet 1
-    | otherwise = if p y then OptionalStanzaSet 2 else OptionalStanzaSet 0
+  | p x = if p y then OptionalStanzaSet 3 else OptionalStanzaSet 1
+  | otherwise = if p y then OptionalStanzaSet 2 else OptionalStanzaSet 0

@@ -1,5 +1,4 @@
 -- This is Setup.hs script from idris-1.1.1
-
 {-
 
 Copyright (c) 2011 Edwin Brady
@@ -33,12 +32,13 @@ WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
 OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-*** End of disclaimer. ***
+\*** End of disclaimer. ***
 
 -}
-
 {-# LANGUAGE CPP #-}
 {-# OPTIONS_GHC -w #-}
+{- FOURMOLU_DISABLE -}
+
 module IdrisSetup (main) where
 
 #if !defined(MIN_VERSION_Cabal)

@@ -3,6 +3,8 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 #endif
+{- FOURMOLU_DISABLE -}
+
 module Distribution.Solver.Modular.Solver
     ( SolverConfig(..)
     , solve

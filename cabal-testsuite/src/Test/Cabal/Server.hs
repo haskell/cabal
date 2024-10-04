@@ -1,7 +1,9 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE NondecreasingIndentation #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{- FOURMOLU_DISABLE -}
+
 -- | A GHC run-server, which supports running multiple GHC scripts
 -- without having to restart from scratch.
 module Test.Cabal.Server (
