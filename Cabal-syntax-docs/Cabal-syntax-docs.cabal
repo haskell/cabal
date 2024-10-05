@@ -1,0 +1,44 @@
+cabal-version: 2.2
+name:          Cabal-syntax-docs
+version:       0
+
+library
+  default-language: Haskell2010
+  hs-source-dirs:   src
+  ghc-options:      -Wall
+  build-depends:
+    , base             >=4.11 && <4.20
+    , Cabal
+    , Cabal-described
+    , containers
+    , pretty
+    , zinza            ^>=0.2
+  exposed-modules: Cabal.Syntax.Docs.ZFields
+
+executable gen-cabal-package-syntax-docs
+  default-language: Haskell2010
+  hs-source-dirs:   cabal-package
+  ghc-options:      -Wall
+  main-is:          Main.hs
+  build-depends:
+    , base             >=4.11 && <4.20
+    , Cabal
+    , Cabal-described
+    , Cabal-syntax-docs
+    , containers
+    , pretty
+    , zinza            ^>=0.2
+
+executable gen-ghc-syntax-docs
+  default-language: Haskell2010
+  hs-source-dirs:   ghc
+  ghc-options:      -Wall
+  main-is:          Main.hs
+  build-depends:
+    , base             >=4.11 && <4.20
+    , Cabal
+    , Cabal-described
+    , Cabal-syntax-docs
+    , containers
+    , pretty
+    , zinza            ^>=0.2

@@ -141,8 +141,10 @@ jobs:
           restore-keys: linux-store-buildinfo-doc-diff
       - name: Build buildinfo-reference-generator
         run: ${{ env.cabal_build }}
-      - name: Are buildinfo docs up to date?
-        run: make doc/buildinfo-fields-reference.rst
+      - name: Are cabal package syntax docs up to date?
+        run: make doc/cabal-package-syntax.rst
+      - name: Are language extensions docs up to date?
+        run: make doc/language-extensions.rst
       - name: Cache dependencies
         uses: actions/cache/save@v4
         if: always() && steps.cache.outputs.cache-hit != 'true'

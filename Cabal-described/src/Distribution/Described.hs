@@ -400,9 +400,6 @@ instance Described ExeDependency where
 instance Described ExposedModule where
     describe _ = RETodo
 
-instance Described Extension where
-    describe _ = RETodo
-
 instance Described FlagAssignment where
     describe _ = REMunch RESpaces1 $
         REUnion [fromString "+", fromString "-"] <> describe (Proxy :: Proxy FlagName)

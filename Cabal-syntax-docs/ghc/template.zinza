@@ -1,0 +1,72 @@
+.. _ghc-syntax:
+
+Language Extensions
+===================
+
+Package Language Fields
+-----------------------
+
+These are cabal package build info fields that control language.
+
+{% for field in ghcBuildInfoFields %}
+.. _ghc-{{ field.name }}:
+
+{{ field.name }}
+    * {{field.format}}
+{% if notNull field.default %}
+    * Default: ``{{field.default}}``
+{% endif %}
+{% if notNull field.availableSince %}
+    * Available since ``cabal-version: {{field.availableSince}}``.
+{% endif %}
+{% if notNull field.deprecatedSince.fst %}
+    * Deprecated since ``cabal-version: {{field.deprecatedSince.fst}}``: {{field.deprecatedSince.snd}}
+{% endif %}
+{% if notNull field.removedIn.fst %}
+    * Removed in ``cabal-version: {{field.removedIn.fst}}``: {{field.removedIn.snd}}
+{% endif %}
+{# We show documentation link only for non deprecated fields #}
+{% if null field.deprecatedSince.fst %}
+{% if null field.removedIn.fst %}
+    * Documentation of :pkg-field:`library:{{field.name}}`
+{% endif %}
+{% endif %}
+{% if notNull field.syntax %}
+
+    .. math::
+
+        {{field.syntax}}
+{% endif %}
+
+{% endfor %}
+
+Langage Extension Groups
+------------------------
+
+Language extensions groups shown here correspond to subsections of the GHC
+users' guide on language extensions.
+
+.. Note::
+
+    The Cabal package grammar accepts any tokens for extension fields. The
+    extensions specified may be anything, something which a particular Cabal
+    version doesn't know about and this list of "known" extensions is not part
+    of the ``.cabal`` file specification and shown here only as a convenience.
+    The GHC users' guide is the place to look these up.
+
+{% for production in productions %}
+.. _ghc-{{ production.name }}:
+
+{{ production.name }}
+    {{ production.description }}
+
+    .. math::
+
+        {{ production.syntax }}
+
+{% endfor %}
+
+.. Warning::
+
+    Extensions of the :ref:`ungrouped-extension <ghc-ungrouped-extension>` group
+    are undocumented in the GHC users' guide.
