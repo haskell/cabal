@@ -52,15 +52,7 @@ pull_request_rules:
         - label=merge+no rebase
       - '#approved-reviews-by>=2'
       - '#changes-requested-reviews-by=0'
-      # oy
-      # lifted these from branch protection imports
-      - check-success=fourmolu
-      - check-success=hlint
-      - check-success=Meta checks
-      - check-success=Doctest Cabal
-      - check-success=Validate post job
-      - check-success=Bootstrap post job
-      - 'check-success=docs/readthedocs.org:cabal'
+      - '#check-failure=0'
 
   # rebase+merge strategy
   - actions:
@@ -73,6 +65,7 @@ pull_request_rules:
       - label=merge delay passed
       - '#approved-reviews-by>=2'
       - '-label~=^blocked:'
+      - '#check-failure=0'
 
   # merge+squash strategy
   - actions:
@@ -85,6 +78,7 @@ pull_request_rules:
       - label=merge delay passed
       - '#approved-reviews-by>=2'
       - '-label~=^blocked:'
+      - '#check-failure=0'
 
   # merge+no rebase strategy
   - actions:
@@ -97,6 +91,11 @@ pull_request_rules:
       - label=merge delay passed
       - '#approved-reviews-by>=2'
       - '-label~=^blocked:'
+      - '#check-failure=0'
+      # unlike the others, we need to force this one to be up to date
+      # because it's intended for when Mergify doesn't have permission
+      # to rebase
+      - '#commits-behind=0'
 
   # merge strategy for release branches
   - actions:
@@ -109,6 +108,7 @@ pull_request_rules:
       - -body~=backport
       - '#approved-reviews-by>=2'
       - '-label~=^blocked:'
+      - '#check-failure=0'
 
   # merge+squash strategy for release branches
   - actions:
@@ -121,6 +121,7 @@ pull_request_rules:
       - -body~=backport
       - '#approved-reviews-by>=2'
       - '-label~=^blocked:'
+      - '#check-failure=0'
 
   # merge strategy for backports: require 1 approver instead of 2
   - actions:
@@ -133,6 +134,7 @@ pull_request_rules:
       - body~=backport
       - '#approved-reviews-by>=1'
       - '-label~=^blocked:'
+      - '#check-failure=0'
 
   # merge+squash strategy for backports: require 1 approver instead of 2
   - actions:
@@ -145,6 +147,7 @@ pull_request_rules:
       - body~=backport
       - '#approved-reviews-by>=1'
       - '-label~=^blocked:'
+      - '#check-failure=0'
 
   # backports should be labeled as such
   - actions:
