@@ -27,6 +27,8 @@ on:
       - "release-notes/**"
     branches:
       - master
+      # hardcoded LTS branch, change when new LTS released!
+      - '3.12'
   pull_request:
     paths-ignore:
       - "doc/**"
@@ -441,7 +443,9 @@ jobs:
     name: Create a GitHub LTS prerelease with the binary artifacts
     runs-on: ubuntu-latest
     # The LTS branch is hardcoded for now, update it on a new LTS!
-    if: github.ref == 'refs/heads/3.12'
+    # if: github.ref == 'refs/heads/3.12'
+    permissions:
+      contents: write
 
     # IMPORTANT! Any job added to the workflow should be added here too
     needs: [validate, validate-old-ghcs, build-alpine, dogfooding]
@@ -465,6 +469,7 @@ jobs:
 
     - run: |
         # bash-ism, but we forced bash above
+<<<<<<< HEAD
         mv cabal-{,lts-}head-Windows-x86_64.tar.gz
         mv cabal-{,lts-}head-Linux-x86_64.tar.gz
         mv cabal-{,lts-}head-Linux-static-x86_64.tar.gz
@@ -472,6 +477,18 @@ jobs:
 
     - name: Create GitHub prerelease
       uses: marvinpinto/action-automatic-releases@v1.2.1
+=======
+        cd binaries
+        for f in cabal-*; do
+          mv "$f" "cabal-lts-${f##cabal-}"
+        done
+
+    - run: echo ${{ github.ref }}
+
+    - name: Create GitHub prerelease
+      if: github.ref == 'refs/heads/3.12'
+      uses: softprops/action-gh-release@v2
+>>>>>>> 1b4db7c5a (try to fix LTS prerelease workflow)
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         automatic_release_tag: cabal-lts-head
