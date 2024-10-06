@@ -26,7 +26,6 @@ import Foreign.C
 {% endif %}
 
 import qualified Control.Exception as Exception
-import qualified Data.List as List
 import Data.Version (Version(..))
 import System.Environment (getEnv)
 import Prelude
@@ -175,9 +174,14 @@ joinFileName :: String -> String -> FilePath
 joinFileName ""  fname = fname
 joinFileName "." fname = fname
 joinFileName dir ""    = dir
-joinFileName dir fname
-  | isPathSeparator (List.last dir) = dir ++ fname
+joinFileName dir@(c:cs) fname
+  | isPathSeparator (lastChar c cs) = dir ++ fname
   | otherwise                       = dir ++ pathSeparator : fname
+ where
+  -- We do not use Data.List.NonEmpty.last, as that would limit the module to
+  -- base >= 4.9.0.0 (GHC >= 8.0.1).
+  lastChar x [] = x
+  lastChar _ (x:xs) = lastChar x xs
 
 pathSeparator :: Char
 {% if isWindows %}
