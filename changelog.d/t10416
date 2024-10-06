@@ -1,0 +1,11 @@
+synopsis: Fix ./setup install command
+packages: Cabal
+prs: #10417
+issues: #10416
+significance: significant
+
+description: {
+
+- `./setup install` was failing with a `fromFlag NoFlag` error. It is now fixed.
+
+}
