@@ -12,7 +12,7 @@ import Distribution.Simple.Flag (Flag)
 import Distribution.Simple.GHC.Build.ExtraSources
 import Distribution.Simple.GHC.Build.Link
 import Distribution.Simple.GHC.Build.Modules
-import Distribution.Simple.GHC.Build.Utils (compilerBuildWay, isHaskell)
+import Distribution.Simple.GHC.Build.Utils (compilerBuildWay, isHaskell, withDynFLib)
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Program.Builtin (ghcProgram)
 import Distribution.Simple.Program.Db (requireProgram)
@@ -113,21 +113,24 @@ build numJobs pkg_descr pbci = do
   (ghcProg, _) <- liftIO $ requireProgram verbosity ghcProgram (withPrograms lbi)
 
   -- Ways which are wanted from configuration flags
-  let wantedWays@(wantedLibWays, _, wantedExeWay) = buildWays lbi
+  let wantedWays@(wantedLibWays, wantedFLibWay, wantedExeWay) = buildWays lbi
 
   -- Ways which are needed due to the compiler configuration
   let doingTH = usesTemplateHaskellOrQQ bi
       defaultGhcWay = compilerBuildWay (buildCompiler pbci)
-      wantedLibBuildWays =
-        if isLib
-          then wantedLibWays isIndef
-          else [wantedExeWay]
-      finalLibBuildWays =
-        wantedLibBuildWays
-          ++ [defaultGhcWay | doingTH && defaultGhcWay `notElem` wantedLibBuildWays]
+      wantedModBuildWays = case buildComponent pbci of
+        CLib _ -> wantedLibWays isIndef
+        CFLib fl -> [wantedFLibWay (withDynFLib fl)]
+        CExe _ -> [wantedExeWay]
+        CTest _ -> [wantedExeWay]
+        CBench _ -> [wantedExeWay]
+      finalModBuildWays =
+        wantedModBuildWays
+          ++ [defaultGhcWay | doingTH && defaultGhcWay `notElem` wantedModBuildWays]
+      compNameStr = showComponentName $ componentName $ buildComponent pbci
 
-  liftIO $ info verbosity ("Wanted build ways(" ++ show isLib ++ "): " ++ show wantedLibBuildWays)
-  liftIO $ info verbosity ("Final lib build ways(" ++ show isLib ++ "): " ++ show finalLibBuildWays)
+  liftIO $ info verbosity ("Wanted module build ways(" ++ compNameStr ++ "): " ++ show wantedModBuildWays)
+  liftIO $ info verbosity ("Final module build ways(" ++ compNameStr ++ "): " ++ show finalModBuildWays)
   -- We need a separate build and link phase, and C sources must be compiled
   -- after Haskell modules, because C sources may depend on stub headers
   -- generated from compiling Haskell modules (#842, #3294).
@@ -141,7 +144,7 @@ build numJobs pkg_descr pbci = do
             | otherwise ->
                 (Nothing, Just mainFile)
           Nothing -> (Nothing, Nothing)
-  buildOpts <- buildHaskellModules numJobs ghcProg hsMainFile inputModules buildTargetDir finalLibBuildWays pbci
+  buildOpts <- buildHaskellModules numJobs ghcProg hsMainFile inputModules buildTargetDir finalModBuildWays pbci
   extraSources <- buildAllExtraSources nonHsMainFile ghcProg buildTargetDir wantedWays pbci
   linkOrLoadComponent
     ghcProg

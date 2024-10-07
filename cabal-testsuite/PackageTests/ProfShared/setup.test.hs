@@ -16,8 +16,8 @@ main = do
 
           let ls = lines (resultOutput r)
 
-              library_prefix = "Wanted build ways(True): "
-              executable_prefix = "Wanted build ways(False): "
+              library_prefix = "Wanted module build ways(library): "
+              executable_prefix = "Wanted module build ways(executable 'Prof'): "
 
               get_ways prefix = map (drop (length prefix)) (filter (prefix `isPrefixOf`) ls)
               library_ways = read_ways (get_ways library_prefix)
