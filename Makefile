@@ -44,6 +44,14 @@ style-commit: ## Run the code styler on the previous commit
 	@git diff --name-only HEAD $(COMMIT) Cabal Cabal-syntax cabal-install \
 		| grep '.hs$$' | xargs -P $(PROCS) -I {} fourmolu -q -i {}
 
+.PHONY: whitespace
+whitespace: ## Run fix-whitespace in check mode
+	fix-whitespace --check --verbose
+
+.PHONY: fix-whitespace
+fix-whitespace: ## Run fix-whitespace in fix mode
+	fix-whitespace --verbose
+
 # source generation: SPDX
 
 SPDX_LICENSE_HS:=Cabal-syntax/src/Distribution/SPDX/LicenseId.hs
